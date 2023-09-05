@@ -278,12 +278,12 @@ func (a *Agent) loop(ctx context.Context) error {
 			}
 
 			a.populateEC2InstanceID(ctx)
-			tg := ""
+			var previousTaskGroup string
 			if tc.taskConfig != nil && tc.taskConfig.TaskGroup != nil {
-				tg = tc.taskConfig.TaskGroup.Name
+				previousTaskGroup = tc.taskConfig.TaskGroup.Name
 			}
 			nextTask, err := a.comm.GetNextTask(ctx, &apimodels.GetNextTaskDetails{
-				TaskGroup:     tg,
+				TaskGroup:     previousTaskGroup,
 				AgentRevision: evergreen.AgentVersion,
 				EC2InstanceID: a.ec2InstanceID,
 			})
@@ -500,9 +500,9 @@ func (a *Agent) handleSetupError(ctx context.Context, tc *taskContext, err error
 	return tc, shouldExit, catcher.Resolve()
 }
 func shouldRunSetupGroup(nextTask *apimodels.NextTaskResponse, tc *taskContext) bool {
-	taskGroup := ""
-	if tc.taskConfig.TaskGroup != nil {
-		taskGroup = tc.taskConfig.TaskGroup.Name
+	var previousTaskGroup string
+	if tc.taskConfig != nil && tc.taskConfig.TaskGroup != nil {
+		previousTaskGroup = tc.taskConfig.TaskGroup.Name
 	}
 	if !tc.ranSetupGroup { // we didn't run setup group yet
 		return true
@@ -510,7 +510,7 @@ func shouldRunSetupGroup(nextTask *apimodels.NextTaskResponse, tc *taskContext) 
 		nextTask.TaskGroup == "" ||
 		nextTask.Build != tc.taskConfig.Task.BuildId { // next task has a standalone task or a new build
 		return true
-	} else if nextTask.TaskGroup != taskGroup { // next task has a different task group
+	} else if nextTask.TaskGroup != previousTaskGroup { // next task has a different task group
 		return true
 	}
 	return false
@@ -684,7 +684,7 @@ func (a *Agent) runPreAndMain(ctx context.Context, tc *taskContext) (status stri
 		"${ps|ps}",
 	)
 
-	statsCollector.logStats(execTimeoutCtx, &tc.taskConfig.Expansions)
+	statsCollector.logStats(execTimeoutCtx, tc.taskConfig.Expansions)
 
 	if execTimeoutCtx.Err() != nil {
 		tc.logger.Execution().Infof("Stopping task execution after setup: %s", execTimeoutCtx.Err())
@@ -723,6 +723,9 @@ func (a *Agent) runPreTaskCommands(ctx context.Context, tc *taskContext) error {
 	ctx, preTaskSpan := a.tracer.Start(ctx, "pre-task-commands")
 	defer preTaskSpan.End()
 
+	// kim: TODO: fix inevitable merge conflict here and in other places for
+	// command blocks.
+
 	if !tc.ranSetupGroup {
 		setupGroup, err := tc.getSetupGroup()
 		if err != nil {
@@ -731,7 +734,7 @@ func (a *Agent) runPreTaskCommands(ctx context.Context, tc *taskContext) error {
 		}
 
 		if setupGroup.commands != nil {
-			tg := ""
+			var tg string
 			if tc.taskConfig != nil && tc.taskConfig.TaskGroup != nil {
 				tg = tc.taskConfig.TaskGroup.Name
 			}
@@ -1123,10 +1126,6 @@ func (a *Agent) runTeardownGroupCommands(ctx context.Context, tc *taskContext) {
 
 // runEndTaskSync runs task sync if it was requested for the end of this task.
 func (a *Agent) runEndTaskSync(ctx context.Context, tc *taskContext, detail *apimodels.TaskEndDetail) {
-	if tc.taskConfig.Task.Id == "" {
-		tc.logger.Task().Error("Task model not found for running task sync.")
-		return
-	}
 	start := time.Now()
 	taskSyncCmds := endTaskSyncCommands(tc, detail)
 	if taskSyncCmds == nil {
@@ -1194,7 +1193,7 @@ func (a *Agent) shouldKill(tc *taskContext, ignoreTaskGroupCheck bool) bool {
 		return false
 	}
 	// kill if the task is not in a task group
-	if tc.taskConfig.TaskGroup != nil && tc.taskConfig.TaskGroup.Name == "" {
+	if tc.taskConfig.TaskGroup == nil {
 		return true
 	}
 	// kill if ignoreTaskGroupCheck is true
@@ -1202,7 +1201,7 @@ func (a *Agent) shouldKill(tc *taskContext, ignoreTaskGroupCheck bool) bool {
 		return true
 	}
 	// do not kill if share_processes is set
-	if tc.taskConfig.TaskGroup.Name != "" && tc.taskConfig.TaskGroup.ShareProcs {
+	if tc.taskConfig.TaskGroup != nil && tc.taskConfig.TaskGroup.ShareProcs {
 		return false
 	}
 	// return true otherwise

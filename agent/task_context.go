@@ -28,7 +28,9 @@ type taskContext struct {
 	oomTracker                jasper.OOMTracker
 	traceID                   string
 	unsetFunctionVarsDisabled bool
-	taskDirectory             string
+	// TODO (EVG-20289): see if taskDirectory can be replaced with
+	// TaskConfig.WorkDir.
+	taskDirectory string
 	// userEndTaskResp is the end task response that the user can define, which
 	// will overwrite the default end task response.
 	userEndTaskResp *triggerEndTaskResp
@@ -147,7 +149,10 @@ func (tc *taskContext) getTimeoutType() timeoutType {
 
 // makeTaskConfig fetches task configuration data required to run the task from the API server.
 func (a *Agent) makeTaskConfig(ctx context.Context, tc *taskContext) (*internal.TaskConfig, error) {
-	if tc.taskConfig != nil && tc.taskConfig.Project.Identifier != "" {
+	if tc.taskConfig != nil {
+		// This is only relevant in tests. For convenience, tests can
+		// pre-initialize a task config to use instead of fetching the task
+		// setup data using the communicator.
 		return tc.taskConfig, nil
 	}
 
@@ -229,7 +234,7 @@ func (tc *taskContext) getPre() (*commandBlock, error) {
 		return nil, err
 	}
 
-	if tc.taskConfig.TaskGroup.Name == "" {
+	if tc.taskConfig.TaskGroup == nil {
 		return &commandBlock{
 			block:       command.PreBlock,
 			commands:    tc.taskConfig.Project.Pre,
@@ -254,7 +259,7 @@ func (tc *taskContext) getPost() (*commandBlock, error) {
 		return nil, err
 	}
 
-	if tc.taskConfig.TaskGroup.Name == "" {
+	if tc.taskConfig.TaskGroup == nil {
 		return &commandBlock{
 			block:       command.PostBlock,
 			commands:    tc.taskConfig.Project.Post,
@@ -273,13 +278,15 @@ func (tc *taskContext) getPost() (*commandBlock, error) {
 	}, nil
 }
 
+// kim: TODO: convert getTimeout for task groups to not pass in task group.
+
 // getSetupGroup returns the setup group for a task group task.
 func (tc *taskContext) getSetupGroup() (*commandBlock, error) {
 	if err := tc.taskConfig.Validate(); err != nil {
 		return nil, err
 	}
 
-	if tc.taskConfig.TaskGroup.Name == "" {
+	if tc.taskConfig.TaskGroup == nil {
 		return &commandBlock{}, nil
 	}
 
@@ -302,7 +309,7 @@ func (tc *taskContext) getTeardownGroup() (*commandBlock, error) {
 		return nil, err
 	}
 
-	if tc.taskConfig.TaskGroup.Name == "" {
+	if tc.taskConfig.TaskGroup == nil {
 		return &commandBlock{}, nil
 	}
 
@@ -325,7 +332,7 @@ func (tc *taskContext) getTimeout() (*commandBlock, error) {
 		return nil, err
 	}
 
-	if tc.taskConfig.TaskGroup.Name == "" {
+	if tc.taskConfig.TaskGroup == nil {
 		return &commandBlock{
 			block:       command.TaskTimeoutBlock,
 			commands:    tc.taskConfig.Project.Timeout,

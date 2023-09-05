@@ -40,12 +40,12 @@ tasks:
     commands:
       - command: shell.exec
         params:
-          script: echo hi
+          script: exit 0
 
 post:
   - command: shell.exec
     params:
-      script: echo hi
+      script: exit 0
 `
 
 type AgentSuite struct {
@@ -126,9 +126,6 @@ func (s *AgentSuite) SetupTest() {
 	factory, ok := command.GetCommandFactory("setup.initial")
 	s.True(ok)
 	s.tc.setCurrentCommand(factory())
-	s.tmpDirName, err = os.MkdirTemp("", filepath.Base(s.T().Name()))
-	s.Require().NoError(err)
-	s.tc.taskConfig.WorkDir = s.tmpDirName
 	sender, err := s.a.GetSender(ctx, LogOutputStdout, "agent", "task_id", 2)
 	s.Require().NoError(err)
 	s.a.SetDefaultLogger(sender)
@@ -389,7 +386,7 @@ buildvariants:
 pre:
   - command: shell.exec
     params:
-      script: echo hi
+      script: exit 0
 `
 	s.setupRunTask(projYml)
 
@@ -646,16 +643,7 @@ func (s *AgentSuite) setupRunTask(projYml string) {
 	_, err := model.LoadProjectInto(s.ctx, []byte(projYml), nil, "", p)
 	s.Require().NoError(err)
 	s.tc.taskConfig.Project = *p
-
 	s.mockCommunicator.GetProjectResponse = p
-
-	t := &task.Task{
-		Id:           "task_id",
-		BuildVariant: "mock_build_variant",
-		DisplayName:  "this_is_a_task_name",
-		Version:      "my_version",
-	}
-	s.mockCommunicator.GetTaskResponse = t
 }
 
 func (s *AgentSuite) TestFailingPostWithPostErrorFailsTaskSetsEndTaskResults() {
@@ -963,11 +951,11 @@ tasks:
    commands: 
     - command: shell.exec
       params:
-        script: "echo hi"
+        script: exit 0
 post:
   - command: shell.exec
     params:
-      script: "echo hi"
+      script: exit 0
 `
 	s.setupRunTask(projYml)
 	s.a.opts.CloudProvider = "provider"
@@ -989,66 +977,157 @@ post:
 	s.Equal(pids, s.mockCommunicator.EndTaskResult.Detail.OOMTracker.Pids)
 }
 
-func (s *AgentSuite) TestPrepareNextTask() {
-	var err error
-	nextTask := &apimodels.NextTaskResponse{}
-	tc := &taskContext{}
-	tc.logger, err = s.a.comm.GetLoggerProducer(s.ctx, s.tc.task, nil)
-	s.Require().NoError(err)
-	tc.taskConfig = &internal.TaskConfig{
-		Task: task.Task{
-			Version:   "not_a_task_group_version",
-			TaskGroup: "foo",
+func (s *AgentSuite) TestFinishPrevTaskWithoutTaskGroup() {
+	const buildID = "build_id"
+	const versionID = "not_a_task_group_version"
+	tc := &taskContext{
+		taskConfig: &internal.TaskConfig{
+			Task: task.Task{
+				Id:      "some_task_id",
+				BuildId: buildID,
+				Version: versionID,
+			},
 		},
+		logger:        s.tc.logger,
+		ranSetupGroup: true,
+		taskDirectory: "task_directory",
 	}
-	tc.taskDirectory = "task_directory"
+	nextTask := &apimodels.NextTaskResponse{
+		TaskId:  "another_task_id",
+		Build:   buildID,
+		Version: versionID,
+	}
+
 	shouldSetupGroup, taskDirectory := s.a.finishPrevTask(s.ctx, nextTask, tc)
+
 	s.True(shouldSetupGroup, "if the next task is not in a group, shouldSetupGroup should be true")
 	s.Empty(taskDirectory)
 
-	const versionID = "task_group_version"
-	nextTask.TaskGroup = "foo"
-	nextTask.Version = versionID
-	tc.taskConfig = &internal.TaskConfig{
-		Task: task.Task{
-			Version: versionID,
+}
+
+func (s *AgentSuite) TestFinishPrevTaskAndNextTaskIsInNewTaskGroup() {
+	const buildID = "build_id"
+	const versionID = "not_a_task_group_version"
+	tc := &taskContext{
+		taskConfig: &internal.TaskConfig{
+			Task: task.Task{
+				Id:      "some_task_id",
+				BuildId: buildID,
+				Version: versionID,
+			},
 		},
+		logger:        s.tc.logger,
+		ranSetupGroup: true,
+		taskDirectory: "task_directory",
 	}
-	tc.logger, err = s.a.comm.GetLoggerProducer(s.ctx, s.tc.task, nil)
-	s.NoError(err)
-	tc.taskConfig.WorkDir = "task_directory"
-	tc.ranSetupGroup = false
-	shouldSetupGroup, taskDirectory = s.a.finishPrevTask(s.ctx, nextTask, tc)
-	s.True(shouldSetupGroup, "if the next task is in the same group as the previous task but ranSetupGroup was false, ranSetupGroup should be true")
+	nextTask := &apimodels.NextTaskResponse{
+		TaskId:    "another_task_id",
+		TaskGroup: "task_group_name",
+		Build:     buildID,
+		Version:   versionID,
+	}
+
+	shouldSetupGroup, taskDirectory := s.a.finishPrevTask(s.ctx, nextTask, tc)
+
+	s.True(shouldSetupGroup, "if the next task is in a new task group, shouldSetupGroup should be true")
 	s.Empty(taskDirectory)
 
-	tc.taskConfig = &internal.TaskConfig{
-		Task: task.Task{
-			Version: versionID,
+}
+
+func (s *AgentSuite) TestFinishPrevTaskWithSameTaskGroupAndAlreadyRanSetupGroup() {
+	const taskGroup = "task_group_name"
+	const versionID = "task_group_version"
+	const buildID = "build_id"
+	tc := &taskContext{
+		taskConfig: &internal.TaskConfig{
+			Task: task.Task{
+				Id:        "some_task_id",
+				TaskGroup: taskGroup,
+				BuildId:   buildID,
+				Version:   versionID,
+			},
+			TaskGroup: &model.TaskGroup{Name: taskGroup},
+			WorkDir:   "task_directory",
 		},
+		logger:        s.tc.logger,
+		ranSetupGroup: true,
+		taskDirectory: "task_directory",
 	}
-	tc.ranSetupGroup = true
-	tc.taskConfig.WorkDir = "task_directory"
-	shouldSetupGroup, taskDirectory = s.a.finishPrevTask(s.ctx, nextTask, tc)
+	nextTask := &apimodels.NextTaskResponse{
+		TaskId:    "another_task_id",
+		TaskGroup: taskGroup,
+		Version:   versionID,
+		Build:     buildID,
+	}
+
+	shouldSetupGroup, taskDirectory := s.a.finishPrevTask(s.ctx, nextTask, tc)
+
 	s.False(shouldSetupGroup, "if the next task is in the same group as the previous task and we already ran the setup group, shouldSetupGroup should be false")
 	s.Equal("task_directory", taskDirectory)
 
-	const newVersionID = "new_task_group_version"
-	tc.taskConfig = &internal.TaskConfig{
-		Task: task.Task{
-			Version:   newVersionID,
-			BuildId:   "build_id_1",
-			TaskGroup: "bar",
+}
+
+func (s *AgentSuite) TestFinishPrevTaskWithSameTaskGroupButDidNotRunSetupGroup() {
+	const taskGroup = "task_group_name"
+	const versionID = "task_group_version"
+	const buildID = "build_id"
+	tc := &taskContext{
+		taskConfig: &internal.TaskConfig{
+			Task: task.Task{
+				Id:        "task_id1",
+				TaskGroup: taskGroup,
+				Version:   versionID,
+				BuildId:   buildID,
+			},
+			TaskGroup: &model.TaskGroup{Name: taskGroup},
+			WorkDir:   "task_directory",
 		},
+		logger:        s.tc.logger,
+		taskDirectory: "task_directory",
 	}
-	tc.logger, err = s.a.comm.GetLoggerProducer(s.ctx, s.tc.task, nil)
-	s.NoError(err)
-	nextTask.TaskGroup = "bar"
-	nextTask.Version = newVersionID
-	nextTask.Build = "build_id_2"
-	tc.taskConfig.WorkDir = "task_directory"
-	shouldSetupGroup, taskDirectory = s.a.finishPrevTask(s.ctx, nextTask, tc)
-	s.True(shouldSetupGroup, "if the next task is in the same version and task group name but a different build, shouldSetupGroup should be true")
+	nextTask := &apimodels.NextTaskResponse{
+		TaskId:    "task_id2",
+		TaskGroup: taskGroup,
+		Version:   versionID,
+		Build:     buildID,
+	}
+
+	shouldSetupGroup, taskDirectory := s.a.finishPrevTask(s.ctx, nextTask, tc)
+
+	s.True(shouldSetupGroup, "if the next task is in the same group as the previous task but ranSetupGroup was false, shouldSetupGroup should be true")
+	s.Empty(taskDirectory)
+
+}
+
+func (s *AgentSuite) TestFinishPrevTaskWithSameBuildButDifferentTaskGroup() {
+	const taskGroup1 = "task_group_name"
+	const versionID = "task_group_version"
+	const buildID = "build_id"
+	tc := &taskContext{
+		taskConfig: &internal.TaskConfig{
+			Task: task.Task{
+				Id:        "task_id1",
+				TaskGroup: taskGroup1,
+				Version:   versionID,
+				BuildId:   buildID,
+			},
+			TaskGroup: &model.TaskGroup{Name: taskGroup1},
+			WorkDir:   "task_directory",
+		},
+		logger:        s.tc.logger,
+		ranSetupGroup: true,
+		taskDirectory: "task_directory",
+	}
+	nextTask := &apimodels.NextTaskResponse{
+		TaskId:    "task_id2",
+		TaskGroup: "task_group2",
+		Version:   versionID,
+		Build:     buildID,
+	}
+
+	shouldSetupGroup, taskDirectory := s.a.finishPrevTask(s.ctx, nextTask, tc)
+
+	s.True(shouldSetupGroup, "if the next task is in the same build but a different task group, shouldSetupGroup should be true")
 	s.Empty(taskDirectory)
 }
 
@@ -1215,7 +1294,7 @@ task_groups:
     setup_group:
       - command: shell.exec
         params:
-          script: echo hi
+          script: exit 0
 `
 
 	s.setupRunTask(projYml)
@@ -1485,7 +1564,12 @@ task_groups:
 	s.NoError(s.tc.logger.Close())
 	checkMockLogs(s.T(), s.mockCommunicator, s.tc.taskConfig.Task.Id, []string{
 		"Running post-task commands",
-	}, []string{panicLog})
+		"Running command 'shell.exec' (step 1 of 1) in block 'teardown_task'",
+		"Running post-task commands failed",
+	}, []string{
+		panicLog,
+		"Set idle timeout for 'shell.exec'",
+	})
 }
 
 func (s *AgentSuite) TestTeardownTaskTimeoutDoesNotFailTask() {
@@ -1561,7 +1645,7 @@ task_groups:
     teardown_group:
       - command: shell.exec
         params:
-          script: echo hi
+          script: exit 0
 `
 	s.setupRunTask(projYml)
 	s.tc.taskConfig.Task.TaskGroup = taskGroup
@@ -1618,7 +1702,7 @@ task_groups:
     timeout:
       - command: shell.exec
         params:
-          script: echo hi
+          script: exit 0
 `
 	s.setupRunTask(projYml)
 	s.tc.taskConfig.Task.TaskGroup = taskGroup

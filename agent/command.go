@@ -272,10 +272,6 @@ func getCommandNameForFileLogger(commandInfo model.PluginCommandConf) string {
 // endTaskSyncCommands returns the commands to sync the task to S3 if it was
 // requested when the task completes.
 func endTaskSyncCommands(tc *taskContext, detail *apimodels.TaskEndDetail) *model.YAMLCommandSet {
-	if tc.taskConfig.Task.Id == "" {
-		tc.logger.Task().Error("Task model not found for running task sync.")
-		return nil
-	}
 	if !tc.taskConfig.Task.SyncAtEndOpts.Enabled {
 		return nil
 	}

@@ -128,16 +128,10 @@ func (tc *TaskConfig) Validate() error {
 		return errors.New("unable to get task setup because task config is nil")
 	}
 	if tc.Task.Id == "" {
-		return errors.New("unable to get task setup because task is nil")
-	}
-	if tc.TaskGroup == nil {
-		return errors.New("unable to get task setup because task is nil")
+		return errors.New("unable to get task setup because task ID is nil")
 	}
 	if tc.Task.Version == "" {
 		return errors.New("task has no version")
-	}
-	if tc.Project.Identifier == "" {
-		return errors.New("project is nil")
 	}
 	return nil
 }
