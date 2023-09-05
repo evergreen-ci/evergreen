@@ -22,11 +22,11 @@ require (
 	github.com/evergreen-ci/certdepot v0.0.0-20211117185134-dbedb3d79a10
 	github.com/evergreen-ci/cocoa v0.0.0-20230814190926-efd8ab60efca
 	github.com/evergreen-ci/gimlet v0.0.0-20230626223442-f6f16b3a3a98
-	github.com/evergreen-ci/juniper v0.0.0-20230119161755-1aced8006202
+	github.com/evergreen-ci/juniper v0.0.0-20230901183147-c805ea7351aa
 	github.com/evergreen-ci/pail v0.0.0-20220908201135-8a2090a672b7
 	github.com/evergreen-ci/poplar v0.0.0-20220908212406-a5e2aa799def
 	github.com/evergreen-ci/shrub v0.0.0-20230511194147-d00fc686c715
-	github.com/evergreen-ci/timber v0.0.0-20230731225120-893f8ec27fe3
+	github.com/evergreen-ci/timber v0.0.0-20230905184025-88c53a14c47b
 	github.com/evergreen-ci/utility v0.0.0-20230809162904-922cba3c3c3c
 	github.com/golang-jwt/jwt v3.2.2+incompatible
 	github.com/google/go-github/v52 v52.0.0
@@ -45,6 +45,7 @@ require (
 	github.com/mongodb/anser v0.0.0-20230703201237-774f6f436c11
 	github.com/mongodb/grip v0.0.0-20230707141614-c686133d52e4
 	github.com/pkg/errors v0.9.1
+	github.com/radovskyb/watcher v1.0.7
 	github.com/ravilushqa/otelgqlgen v0.13.0
 	github.com/robbiet480/go.sns v0.0.0-20210223081447-c7c9eb6836cb
 	github.com/robfig/cron v1.2.0
