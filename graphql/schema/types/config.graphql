@@ -8,7 +8,7 @@ type SpruceConfig {
   bannerTheme: String
   githubOrgs: [String!]!
   jira: JiraConfig
-  keys: StringMap!
+  keys: [SSHKey!]!
   providers: CloudProviderConfig
   slack: SlackConfig
   spawnHost: SpawnHostConfig!
@@ -18,6 +18,11 @@ type SpruceConfig {
 type UIConfig {
   defaultProject: String!
   userVoice: String
+}
+
+type SSHKey {
+  location: String!
+  name: String!
 }
 
 type SlackConfig {

@@ -66,9 +66,12 @@
             "result": {
                 "data": {
                     "spruceConfig": {
-                        "keys": {
-                            "fake_ssh_key": "/path/to/key"
-                        }
+                        "keys": [
+                            {
+                                "location": "/path/to/key",
+                                "name": "fake_ssh_key"
+                            }
+                        ]
                     }
                 }
             }
