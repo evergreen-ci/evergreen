@@ -109,7 +109,6 @@ func TestFindProject(t *testing.T) {
 			So(pp, ShouldNotBeNil)
 			So(pp.Id, ShouldEqual, "good_version")
 			So(p, ShouldNotBeNil)
-			So(p.Owner, ShouldEqual, "fakeowner")
 			So(v.Id, ShouldEqual, "good_version")
 		})
 		Convey("error if no version exists", func() {

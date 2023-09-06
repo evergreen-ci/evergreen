@@ -910,7 +910,6 @@ func createIntermediateProject(yml []byte, unmarshalStrict bool) (*ParserProject
 func TranslateProject(pp *ParserProject) (*Project, error) {
 	// Transfer top level fields
 	proj := &Project{
-		Enabled:            utility.FromBoolPtr(pp.Enabled),
 		Stepback:           utility.FromBoolPtr(pp.Stepback),
 		UnsetFunctionVars:  utility.FromBoolPtr(pp.UnsetFunctionVars),
 		PreTimeoutSecs:     utility.FromIntPtr(pp.PreTimeoutSecs),
@@ -919,10 +918,6 @@ func TranslateProject(pp *ParserProject) (*Project, error) {
 		PostErrorFailsTask: utility.FromBoolPtr(pp.PostErrorFailsTask),
 		OomTracker:         utility.FromBoolPtr(pp.OomTracker),
 		BatchTime:          utility.FromIntPtr(pp.BatchTime),
-		Owner:              utility.FromStringPtr(pp.Owner),
-		Repo:               utility.FromStringPtr(pp.Repo),
-		RemotePath:         utility.FromStringPtr(pp.RemotePath),
-		Branch:             utility.FromStringPtr(pp.Branch),
 		Identifier:         utility.FromStringPtr(pp.Identifier),
 		DisplayName:        utility.FromStringPtr(pp.DisplayName),
 		CommandType:        utility.FromStringPtr(pp.CommandType),

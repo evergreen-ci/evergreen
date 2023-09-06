@@ -40,11 +40,6 @@ const (
 // Project represents the fully hydrated project configuration after translating
 // the ParserProject.
 type Project struct {
-	Enabled            bool                       `yaml:"enabled,omitempty" bson:"enabled"`         // deprecated
-	Owner              string                     `yaml:"owner,omitempty" bson:"owner_name"`        // deprecated
-	Repo               string                     `yaml:"repo,omitempty" bson:"repo_name"`          // deprecated
-	RemotePath         string                     `yaml:"remote_path,omitempty" bson:"remote_path"` // deprecated
-	Branch             string                     `yaml:"branch,omitempty" bson:"branch_name"`      // deprecated
 	Stepback           bool                       `yaml:"stepback,omitempty" bson:"stepback"`
 	UnsetFunctionVars  bool                       `yaml:"unset_function_vars,omitempty" bson:"unset_function_vars,omitempty"`
 	PreTimeoutSecs     int                        `yaml:"pre_timeout_secs,omitempty" bson:"pre_timeout_secs,omitempty"`

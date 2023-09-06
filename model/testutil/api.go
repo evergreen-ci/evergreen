@@ -82,10 +82,10 @@ func SetupAPITestData(testConfig *evergreen.Settings, taskDisplayName string, va
 	// Create the ref for the project
 	projectRef := &model.ProjectRef{
 		Id:        project.DisplayName,
-		Owner:     project.Owner,
-		Repo:      project.Repo,
-		Branch:    project.Branch,
-		Enabled:   project.Enabled,
+		Owner:     modelData.ProjectRef.Owner,
+		Repo:      modelData.ProjectRef.Repo,
+		Branch:    modelData.ProjectRef.Branch,
+		Enabled:   modelData.ProjectRef.Enabled,
 		BatchTime: project.BatchTime,
 	}
 	if err = projectRef.Insert(); err != nil {
