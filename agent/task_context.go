@@ -451,3 +451,19 @@ func (tc *taskContext) getTaskGroupCallbackTimeout(tg *model.TaskGroup) func() t
 		return defaultCallbackTimeout
 	}
 }
+
+// setUserEndTaskResponse sets the user-defined end task response data.
+func (tc *taskContext) setUserEndTaskResponse(resp *triggerEndTaskResp) {
+	tc.Lock()
+	defer tc.Unlock()
+
+	tc.userEndTaskResp = resp
+}
+
+// getUserEndTaskResponse gets the user-defined end task response data.
+func (tc *taskContext) getUserEndTaskResponse() *triggerEndTaskResp {
+	tc.RLock()
+	defer tc.RUnlock()
+
+	return tc.userEndTaskResp
+}

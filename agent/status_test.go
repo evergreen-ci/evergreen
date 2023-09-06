@@ -201,7 +201,7 @@ func (s *StatusSuite) TestCheckOOMSucceeds() {
 
 func TestUnmarshalTriggerEndTaskResp(t *testing.T) {
 	body := `{"status":"failed", "type":"setup", "desc":"this should be set", "should_continue":true}`
-	resp := TriggerEndTaskResp{}
+	resp := triggerEndTaskResp{}
 
 	assert.NoError(t, json.Unmarshal([]byte(body), &resp))
 	assert.Equal(t, resp.Status, "failed")

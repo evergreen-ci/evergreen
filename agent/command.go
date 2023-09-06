@@ -33,8 +33,6 @@ var (
 	functionNameAttribute = fmt.Sprintf("%s.function_name", commandsAttribute)
 )
 
-// TODO (EVG-20634): move the block timeout watcher and other command block
-// logging messages into a helper for runCommandsInBlock to reduce duplication.
 type runCommandsOptions struct {
 	// block is the name of the block that the command runs in.
 	block command.BlockType
@@ -43,11 +41,26 @@ type runCommandsOptions struct {
 }
 
 // runCommandsInBlock runs all the commands listed in a block (e.g. pre, post).
-func (a *Agent) runCommandsInBlock(ctx context.Context, tc *taskContext, commands []model.PluginCommandConf,
-	options runCommandsOptions) (err error) {
+func (a *Agent) runCommandsInBlock(ctx context.Context, tc *taskContext, cmdBlock commandBlock) (err error) {
+	if cmdBlock.commands == nil {
+		return nil
+	}
+
+	blockCtx, blockCancel := context.WithCancel(ctx)
+	defer blockCancel()
+	if cmdBlock.timeoutKind != "" && cmdBlock.getTimeout != nil {
+		// Start the block timeout, if any.
+		timeoutOpts := timeoutWatcherOptions{
+			tc:                    tc,
+			kind:                  cmdBlock.timeoutKind,
+			getTimeout:            cmdBlock.getTimeout,
+			canMarkTimeoutFailure: cmdBlock.canFailTask,
+		}
+		go a.startTimeoutWatcher(blockCtx, blockCancel, timeoutOpts)
+	}
 
 	defer func() {
-		op := fmt.Sprintf("running commands for block '%s'", options.block)
+		op := fmt.Sprintf("running commands for block '%s'", cmdBlock.block)
 		pErr := recovery.HandlePanicWithError(recover(), nil, op)
 		if pErr == nil {
 			return
@@ -55,13 +68,33 @@ func (a *Agent) runCommandsInBlock(ctx context.Context, tc *taskContext, command
 		err = a.logPanic(tc.logger, pErr, err, op)
 	}()
 
+	var logger grip.Journaler
+	if tc.logger != nil {
+		logger = tc.logger.Task()
+	} else {
+		// In the case of teardown group, it's not guaranteed that the agent has
+		// previously set up a valid task logger, so use the fallback file log
+		// if necessary.
+		logger = grip.GetDefaultJournaler()
+	}
+	legacyBlockName := a.blockToLegacyName(cmdBlock.block)
+	logger.Infof("Running %s commands.", legacyBlockName)
+	start := time.Now()
+	defer func() {
+		if err != nil {
+			logger.Error(errors.Wrapf(err, "Running %s commands failed", legacyBlockName))
+		}
+		logger.Infof("Finished running %s commands in %s.", legacyBlockName, time.Since(start).String())
+	}()
+
+	commands := cmdBlock.commands.List()
 	for i, commandInfo := range commands {
 		var cmds []command.Command
-		if err := ctx.Err(); err != nil {
+		if err := blockCtx.Err(); err != nil {
 			return errors.Wrap(err, "canceled while running commands")
 		}
 		blockInfo := command.BlockInfo{
-			Block:     options.block,
+			Block:     cmdBlock.block,
 			CmdNum:    i + 1,
 			TotalCmds: len(commands),
 		}
@@ -69,12 +102,44 @@ func (a *Agent) runCommandsInBlock(ctx context.Context, tc *taskContext, command
 		if err != nil {
 			return errors.Wrapf(err, "rendering command '%s'", commandInfo.Command)
 		}
-		if err = a.runCommandOrFunc(ctx, tc, commandInfo, cmds, options, blockInfo); err != nil {
+		runCmdOpts := runCommandsOptions{
+			block:       cmdBlock.block,
+			canFailTask: cmdBlock.canFailTask,
+		}
+		if err = a.runCommandOrFunc(blockCtx, tc, commandInfo, cmds, runCmdOpts, blockInfo); err != nil {
 			return errors.WithStack(err)
 		}
 	}
 
 	return errors.WithStack(err)
+}
+
+// blockToLegacyName converts the name of a command block to the name it has
+// historically been referred to as in the task logs. The legacy name should not
+// be used anymore except where it is currently still needed.
+func (a *Agent) blockToLegacyName(block command.BlockType) string {
+	switch block {
+	case command.PreBlock:
+		return "pre-task"
+	case command.MainTaskBlock:
+		return "task"
+	case command.PostBlock:
+		return "post-task"
+	case command.TaskTimeoutBlock:
+		return "task-timeout"
+	case command.SetupGroupBlock:
+		return "setup-group"
+	case command.SetupTaskBlock:
+		return "setup-task"
+	case command.TeardownTaskBlock:
+		return "teardown-task"
+	case command.TeardownGroupBlock:
+		return "teardown-group"
+	case command.TaskSyncBlock:
+		return "task-sync"
+	default:
+		return string(block)
+	}
 }
 
 // runCommandOrFunc initializes and then executes a list of commands, which can
@@ -196,6 +261,10 @@ func (a *Agent) runCommand(ctx context.Context, tc *taskContext, logger client.L
 	a.comm.UpdateLastMessageTime()
 
 	start := time.Now()
+	defer func() {
+		tc.logger.Task().Infof("Finished command %s in %s.", displayName, time.Since(start).String())
+	}()
+
 	// This method must return soon after the context errors (e.g. due to
 	// aborting the task). Even though commands ought to respect the context and
 	// finish up quickly when the context errors, we cannot guarantee that every
@@ -244,11 +313,10 @@ func (a *Agent) runCommand(ctx context.Context, tc *taskContext, logger client.L
 		return errors.Wrap(ctx.Err(), "command stopped early")
 	}
 
-	tc.logger.Task().Infof("Finished command %s in %s.", displayName, time.Since(start).String())
-
-	if options.canFailTask && a.endTaskResp != nil && !a.endTaskResp.ShouldContinue {
+	userEndTaskResp := tc.getUserEndTaskResponse()
+	if options.canFailTask && userEndTaskResp != nil && !userEndTaskResp.ShouldContinue {
 		// only error if we're running a command that should fail, and we don't want to continue to run other tasks
-		return errors.Errorf("task status has been set to '%s'; triggering end task", a.endTaskResp.Status)
+		return errors.Errorf("task status has been set to '%s'; triggering end task", userEndTaskResp.Status)
 	}
 
 	return nil

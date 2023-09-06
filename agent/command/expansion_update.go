@@ -108,7 +108,7 @@ func (c *update) Execute(ctx context.Context,
 			return errors.WithStack(err)
 		}
 
-		filename := getJoinedWithWorkDir(conf, c.YamlFile)
+		filename := getWorkingDirectory(conf, c.YamlFile)
 
 		_, err = os.Stat(filename)
 		if os.IsNotExist(err) {

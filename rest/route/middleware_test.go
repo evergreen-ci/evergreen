@@ -189,7 +189,7 @@ func TestNewCanCreateMiddleware(t *testing.T) {
 
 func TestCommitQueueItemOwnerMiddlewarePROwner(t *testing.T) {
 	assert := assert.New(t)
-	assert.NoError(db.ClearCollections(model.ProjectRefCollection, commitqueue.Collection, patch.Collection))
+	assert.NoError(db.ClearCollections(model.ProjectRefCollection, commitqueue.Collection))
 
 	ctx := context.Background()
 	opCtx := model.Context{}
@@ -212,10 +212,7 @@ func TestCommitQueueItemOwnerMiddlewarePROwner(t *testing.T) {
 		},
 	}
 	assert.NoError(commitqueue.InsertQueue(&cq))
-	p := patch.Patch{
-		Id: patch.NewId("aabbccddeeff112233445566"),
-	}
-	assert.NoError(p.Insert())
+
 	ctx = gimlet.AttachUser(ctx, &user.DBUser{
 		Settings: user.UserSettings{
 			GithubUser: user.GithubUser{
@@ -231,10 +228,10 @@ func TestCommitQueueItemOwnerMiddlewarePROwner(t *testing.T) {
 	r = r.WithContext(context.WithValue(ctx, RequestContext, &opCtx))
 	r = gimlet.SetURLVars(r, map[string]string{
 		"project_id": "mci",
-		"item":       "aabbccddeeff112233445566",
+		"item":       "1234",
 	})
 
-	mw := NewCommitQueueItemOwnerMiddleware()
+	mw := NewMockCommitQueueItemOwnerMiddleware()
 	rw := httptest.NewRecorder()
 
 	mw.ServeHTTP(rw, r, func(rw http.ResponseWriter, r *http.Request) {})
@@ -293,7 +290,7 @@ func TestCommitQueueItemOwnerMiddlewareUnauthorizedUserGitHub(t *testing.T) {
 
 func TestCommitQueueItemOwnerMiddlewareUserPatch(t *testing.T) {
 	assert := assert.New(t)
-	assert.NoError(db.ClearCollections(patch.Collection, model.ProjectRefCollection, commitqueue.Collection))
+	assert.NoError(db.ClearCollections(patch.Collection, model.ProjectRefCollection, commitqueue.Collection, user.Collection))
 
 	ctx := context.Background()
 	opCtx := model.Context{}
@@ -313,11 +310,16 @@ func TestCommitQueueItemOwnerMiddlewareUserPatch(t *testing.T) {
 	assert.NoError(err)
 	assert.NotNil(r)
 
+	patchUsr := &user.DBUser{Id: "octocat", OnlyAPI: false}
+	require.NoError(t, patchUsr.Insert())
+
 	patchId := bson.NewObjectId()
 	p := &patch.Patch{
 		Id:     patchId,
-		Author: "octocat"}
+		Author: patchUsr.Id,
+	}
 	assert.NoError(p.Insert())
+
 	cq := commitqueue.CommitQueue{
 		ProjectID: opCtx.ProjectRef.Id,
 		Queue: []commitqueue.CommitQueueItem{

@@ -7,7 +7,6 @@ import (
 	"testing"
 
 	"github.com/evergreen-ci/evergreen"
-	"github.com/evergreen-ci/evergreen/agent/command"
 	"github.com/evergreen-ci/evergreen/agent/internal"
 	"github.com/evergreen-ci/evergreen/agent/internal/client"
 	"github.com/evergreen-ci/evergreen/apimodels"
@@ -268,8 +267,10 @@ functions:
 		Vars:        map[string]string{"key1": "functionVar"},
 	}
 
-	cmds := []model.PluginCommandConf{func1}
-	err := s.a.runCommandsInBlock(s.ctx, s.tc, cmds, runCommandsOptions{})
+	cmdBlock := commandBlock{
+		commands: &model.YAMLCommandSet{SingleCommand: &func1},
+	}
+	err := s.a.runCommandsInBlock(s.ctx, s.tc, cmdBlock)
 	s.NoError(err)
 
 	key1Value := s.tc.taskConfig.Expansions.Get("key1")
@@ -297,9 +298,11 @@ functions:
 		Vars:        map[string]string{"key1": "functionVar"},
 	}
 
-	cmds := []model.PluginCommandConf{func1}
 	s.setUpConfigAndProject(projYml)
-	err := s.a.runCommandsInBlock(s.ctx, s.tc, cmds, runCommandsOptions{})
+	cmdBlock := commandBlock{
+		commands: &model.YAMLCommandSet{SingleCommand: &func1},
+	}
+	err := s.a.runCommandsInBlock(s.ctx, s.tc, cmdBlock)
 	s.NoError(err)
 
 	key1Value := s.tc.taskConfig.Expansions.Get("key1")
@@ -327,8 +330,10 @@ functions:
 		Vars:        map[string]string{"key1": "functionVar"},
 	}
 
-	cmds := []model.PluginCommandConf{func1}
-	err := s.a.runCommandsInBlock(s.ctx, s.tc, cmds, runCommandsOptions{block: command.PreBlock})
+	cmdBlock := commandBlock{
+		commands: &model.YAMLCommandSet{SingleCommand: &func1},
+	}
+	err := s.a.runCommandsInBlock(s.ctx, s.tc, cmdBlock)
 	s.NoError(err)
 
 	key1Value := s.tc.taskConfig.Expansions.Get("key1")
@@ -355,8 +360,10 @@ functions:
 		Vars:        map[string]string{"key1": "functionVar1", "key2": "functionVar2", "key3": "functionVar3"},
 	}
 
-	cmds := []model.PluginCommandConf{func1}
-	err := s.a.runCommandsInBlock(s.ctx, s.tc, cmds, runCommandsOptions{block: command.PreBlock})
+	cmdBlock := commandBlock{
+		commands: &model.YAMLCommandSet{SingleCommand: &func1},
+	}
+	err := s.a.runCommandsInBlock(s.ctx, s.tc, cmdBlock)
 	s.NoError(err)
 
 	key1Value := s.tc.taskConfig.Expansions.Get("key1")
@@ -387,8 +394,10 @@ functions:
 		Vars:        map[string]string{"key1": "newValue1", "key2": "newValue2", "key3": "newValue3"},
 	}
 
-	cmds := []model.PluginCommandConf{func1}
-	err := s.a.runCommandsInBlock(s.ctx, s.tc, cmds, runCommandsOptions{})
+	cmdBlock := commandBlock{
+		commands: &model.YAMLCommandSet{SingleCommand: &func1},
+	}
+	err := s.a.runCommandsInBlock(s.ctx, s.tc, cmdBlock)
 	s.NoError(err)
 
 	key1Value := s.tc.taskConfig.Expansions.Get("key1")
