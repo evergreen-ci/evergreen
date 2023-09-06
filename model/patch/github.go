@@ -285,7 +285,7 @@ func (g *githubIntent) NewPatch() *Patch {
 		Description: fmt.Sprintf("'%s' pull request #%d by %s: %s (%s)", g.BaseRepoName, g.PRNumber, g.User, g.Title, pullURL),
 		Author:      evergreen.GithubPatchUser,
 		Status:      evergreen.PatchCreated,
-		CreateTime:  g.PushedAt,
+		CreateTime:  g.CreatedAt,
 		Githash:     g.BaseHash,
 		GithubPatchData: thirdparty.GithubPatch{
 			PRNumber:   g.PRNumber,
