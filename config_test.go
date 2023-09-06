@@ -333,9 +333,6 @@ func (s *AdminSuite) TestAuthConfig() {
 		Naive: &NaiveAuthConfig{
 			Users: []AuthUser{{Username: "user", Password: "pw"}},
 		},
-		OnlyAPI: &OnlyAPIAuthConfig{
-			Users: []OnlyAPIUser{{Username: "user", Key: "key", Roles: []string{"admin"}}},
-		},
 		Github: &GithubAuthConfig{
 			ClientId:     "ghclient",
 			ClientSecret: "ghsecret",
