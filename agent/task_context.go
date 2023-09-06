@@ -157,7 +157,6 @@ func (a *Agent) makeTaskConfig(ctx context.Context, tc *taskContext) (*internal.
 	}
 
 	grip.Info("Fetching project config.")
-	var err error
 	task, project, expansions, redacted, err := a.fetchProjectConfig(ctx, tc)
 	if err != nil {
 		return nil, errors.Wrap(err, "fetching project config")
