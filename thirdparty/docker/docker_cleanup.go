@@ -2,9 +2,9 @@ package docker
 
 import (
 	"context"
-	"github.com/docker/docker/api/types/volume"
 
 	"github.com/docker/docker/api/types"
+	"github.com/docker/docker/api/types/volume"
 	"github.com/docker/docker/client"
 	"github.com/mongodb/grip"
 	"github.com/mongodb/grip/message"
