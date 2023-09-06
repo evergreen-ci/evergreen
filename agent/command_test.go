@@ -217,7 +217,6 @@ func (s *CommandSuite) setUpConfigAndProject(projYml string) {
 			BuildVariant: "some_build_variant",
 			Version:      "v1",
 		},
-		Timeout: &internal.Timeout{},
 	}
 	s.tc.taskConfig = config
 	p := model.Project{}

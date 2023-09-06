@@ -280,8 +280,6 @@ func (tc *taskContext) getPost() (*commandBlock, error) {
 	}, nil
 }
 
-// kim: TODO: convert getTimeout for task groups to not pass in task group.
-
 // getSetupGroup returns the setup group for a task group task.
 func (tc *taskContext) getSetupGroup() (*commandBlock, error) {
 	if err := tc.taskConfig.Validate(); err != nil {

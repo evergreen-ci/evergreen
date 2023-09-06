@@ -30,7 +30,7 @@ type TaskConfig struct {
 	WorkDir            string
 	GithubPatchData    thirdparty.GithubPatch
 	GithubMergeData    thirdparty.GithubMergeGroup
-	Timeout            *Timeout
+	Timeout            Timeout
 	TaskSync           evergreen.S3Credentials
 	EC2Keys            []evergreen.EC2Key
 	ModulePaths        map[string]string
@@ -40,35 +40,47 @@ type TaskConfig struct {
 	mu sync.RWMutex
 }
 
+// Timeout records dynamic timeout information that has been explicitly set by
+// the user during task runtime.
 type Timeout struct {
 	IdleTimeoutSecs int
 	ExecTimeoutSecs int
 }
 
+// SetIdleTimeout sets the dynamic idle timeout explicitly set by the user
+// during task runtime (e.g. via timeout.update).
 func (t *TaskConfig) SetIdleTimeout(timeout int) {
 	t.mu.Lock()
 	defer t.mu.Unlock()
 	t.Timeout.IdleTimeoutSecs = timeout
 }
 
+// SetIdleTimeout sets the dynamic idle timeout explicitly set by the user
+// during task runtime (e.g. via timeout.update).
 func (t *TaskConfig) SetExecTimeout(timeout int) {
 	t.mu.Lock()
 	defer t.mu.Unlock()
 	t.Timeout.ExecTimeoutSecs = timeout
 }
 
+// GetIdleTimeout returns the dynamic idle timeout explicitly set by the user
+// during task runtime (e.g. via timeout.update).
 func (t *TaskConfig) GetIdleTimeout() int {
 	t.mu.RLock()
 	defer t.mu.RUnlock()
 	return t.Timeout.IdleTimeoutSecs
 }
 
+// GetExecTimeout returns the dynamic execution timeout explicitly set by the
+// user during task runtime (e.g. via timeout.update).
 func (t *TaskConfig) GetExecTimeout() int {
 	t.mu.RLock()
 	defer t.mu.RUnlock()
 	return t.Timeout.ExecTimeoutSecs
 }
 
+// NewTaskConfig validates that the required inputs are given and populates the
+// information necessary for a task to run.
 func NewTaskConfig(workDir string, d *apimodels.DistroView, p *model.Project, t *task.Task, r *model.ProjectRef, patchDoc *patch.Patch, e util.Expansions) (*TaskConfig, error) {
 	if p == nil {
 		return nil, errors.Errorf("project '%s' is nil", t.Project)
@@ -89,7 +101,7 @@ func NewTaskConfig(workDir string, d *apimodels.DistroView, p *model.Project, t 
 	if t.TaskGroup != "" {
 		taskGroup = p.FindTaskGroup(t.TaskGroup)
 		if taskGroup == nil {
-			return nil, errors.Errorf("programmatic error: task is part of task group '%s' but no such task group is defined in the project", t.TaskGroup)
+			return nil, errors.Errorf("task is part of task group '%s' but no such task group is defined in the project", t.TaskGroup)
 		}
 	}
 
@@ -109,8 +121,6 @@ func NewTaskConfig(workDir string, d *apimodels.DistroView, p *model.Project, t 
 		taskConfig.GithubMergeData = patchDoc.GithubMergeData
 	}
 
-	taskConfig.Timeout = &Timeout{}
-
 	return taskConfig, nil
 }
 
@@ -123,6 +133,9 @@ func (c *TaskConfig) GetCloneMethod() string {
 
 // Validate validates that the task config is populated with the data required
 // for a task to run.
+// Note that this is here only as legacy code. These checks are not sufficient
+// to indicate that the TaskConfig has all the necessary information to run a
+// task.
 func (tc *TaskConfig) Validate() error {
 	if tc == nil {
 		return errors.New("unable to get task setup because task config is nil")

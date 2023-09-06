@@ -90,7 +90,7 @@ func TestAgentFileLogging(t *testing.T) {
 					{Name: "bv", Tasks: []model.BuildVariantTaskUnit{{Name: "task1", Variant: "bv"}}},
 				},
 			},
-			Timeout:    &internal.Timeout{IdleTimeoutSecs: 15, ExecTimeoutSecs: 15},
+			Timeout:    internal.Timeout{IdleTimeoutSecs: 15, ExecTimeoutSecs: 15},
 			WorkDir:    tmpDirName,
 			Expansions: *util.NewExpansions(nil),
 		},
@@ -179,7 +179,7 @@ func TestDefaultSender(t *testing.T) {
 		taskConfig: &internal.TaskConfig{
 			Task:         task,
 			BuildVariant: model.BuildVariant{Name: "bv"},
-			Timeout:      &internal.Timeout{IdleTimeoutSecs: 15, ExecTimeoutSecs: 15},
+			Timeout:      internal.Timeout{IdleTimeoutSecs: 15, ExecTimeoutSecs: 15},
 			Project:      model.Project{},
 		},
 	}
@@ -233,7 +233,7 @@ func TestTimberSender(t *testing.T) {
 		taskConfig: &internal.TaskConfig{
 			Task:         *task,
 			BuildVariant: model.BuildVariant{Name: "bv"},
-			Timeout:      &internal.Timeout{IdleTimeoutSecs: 15, ExecTimeoutSecs: 15},
+			Timeout:      internal.Timeout{IdleTimeoutSecs: 15, ExecTimeoutSecs: 15},
 			Project: model.Project{
 				Loggers: &model.LoggerConfig{
 					Agent:  []model.LogOpts{{Type: model.BuildloggerLogSender}},

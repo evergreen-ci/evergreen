@@ -316,7 +316,7 @@ func (s *BackgroundSuite) TestHeartbeatSometimesFailsDoesNotFailTask() {
 }
 
 func (s *BackgroundSuite) TestIdleTimeoutIsSetForCommand() {
-	s.tc.taskConfig.Timeout = &internal.Timeout{}
+	s.tc.taskConfig.Timeout = internal.Timeout{}
 	cmdFactory, exists := command.GetCommandFactory("shell.exec")
 	s.True(exists)
 	cmd := cmdFactory()

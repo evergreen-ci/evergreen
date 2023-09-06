@@ -686,9 +686,6 @@ func (a *Agent) runPreTaskCommands(ctx context.Context, tc *taskContext) error {
 	ctx, preTaskSpan := a.tracer.Start(ctx, "pre-task-commands")
 	defer preTaskSpan.End()
 
-	// kim: TODO: fix inevitable merge conflict here and in other places for
-	// command blocks.
-
 	if !tc.ranSetupGroup {
 		setupGroup, err := tc.getSetupGroup()
 		if err != nil {
