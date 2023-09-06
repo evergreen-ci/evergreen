@@ -503,9 +503,9 @@ func (s *GitGetProjectSuite) TestBuildSSHCloneCommand() {
 	// ssh clone command with branch
 	opts := cloneOpts{
 		method:      evergreen.CloneMethodLegacySSH,
-		owner:       "place",
-		repo:        "evergreen-ci",
-		branch:      "sample",
+		owner:       "evergreen-ci",
+		repo:        "sample",
+		branch:      "main",
 		dir:         "dir",
 		cloneParams: "--filter=tree:0 --single-branch",
 	}
