@@ -183,8 +183,7 @@ func (as *APIAdminSettings) BuildFromService(h interface{}) error {
 		}
 		as.Slack = &slackConfig
 		containerPoolsConfig := APIContainerPoolsConfig{}
-		err = containerPoolsConfig.BuildFromService(v.ContainerPools)
-		if err != nil {
+		if err = containerPoolsConfig.BuildFromService(v.ContainerPools); err != nil {
 			return errors.Wrap(err, "converting container pools config to API model")
 		}
 		as.ContainerPools = &containerPoolsConfig
