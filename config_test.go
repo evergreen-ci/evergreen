@@ -342,7 +342,6 @@ func (s *AdminSuite) TestAuthConfig() {
 		},
 		Multi: &MultiAuthConfig{
 			ReadWrite: []string{AuthGithubKey, AuthLDAPKey},
-			ReadOnly:  []string{AuthNaiveKey, AuthOnlyAPIKey},
 		},
 		PreferredType:           AuthLDAPKey,
 		BackgroundReauthMinutes: 60,

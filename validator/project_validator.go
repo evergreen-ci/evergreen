@@ -977,6 +977,14 @@ func checkModules(project *model.Project) ValidationErrors {
 			moduleNames[module.Name] = true
 		}
 
+		// Warn if branch is empty
+		if module.Branch == "" {
+			errs = append(errs, ValidationError{
+				Level:   Warning,
+				Message: fmt.Sprintf("module '%s' should have a set branch", module.Name),
+			})
+		}
+
 		// Warn if repo is empty or does not conform to Git URL format
 		owner, repo, err := thirdparty.ParseGitUrl(module.Repo)
 		if err != nil {
