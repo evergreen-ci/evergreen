@@ -977,14 +977,6 @@ func checkModules(project *model.Project) ValidationErrors {
 			moduleNames[module.Name] = true
 		}
 
-		// Warn if branch is empty
-		if module.Branch == "" {
-			errs = append(errs, ValidationError{
-				Level:   Warning,
-				Message: fmt.Sprintf("module '%s' should have a set branch", module.Name),
-			})
-		}
-
 		// Warn if repo is empty or does not conform to Git URL format
 		owner, repo, err := thirdparty.ParseGitUrl(module.Repo)
 		if err != nil {
@@ -1309,13 +1301,6 @@ func validatePluginCommands(project *model.Project) ValidationErrors {
 
 	if project.Timeout != nil {
 		errs = append(errs, validateCommands("timeout", project, project.Timeout.List())...)
-	}
-
-	if project.EarlyTermination != nil {
-		errs = append(errs, ValidationError{
-			Message: "early_termination block is deprecated and will be removed in the future",
-			Level:   Warning,
-		})
 	}
 
 	// validate project tasks section
