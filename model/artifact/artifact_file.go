@@ -145,16 +145,3 @@ func RotateSecrets(toReplace, replacement string, dryRun bool) (map[TaskIDAndExe
 	}
 	return changes, catcher.Resolve()
 }
-
-// Array turns the parameter map into an array of File structs.
-// Deprecated.
-func (params Params) Array() []File {
-	var files []File
-	for name, link := range params {
-		files = append(files, File{
-			Name: name,
-			Link: link,
-		})
-	}
-	return files
-}
