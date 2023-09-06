@@ -23,7 +23,7 @@ task that's not part of a task group, the blocks will run in this order:
 
 1. [`pre`](Project-Configuration-Files.md#pre-and-post)
 2. Main task commands
-3. [`timeout`](Project-Configuration-Files.md#timeout-handler) (only runs if the task [hit a timeout](#task-timeout-conditions))
+3. [`timeout`](Project-Configuration-Files.md#timeout-handler) (only runs if the task [hit a timeout](#task-timeouts))
 4. [`post`](Project-Configuration-Files.md#pre-and-post)
 
 For a task that _is_ part of a [task group](Project-Configuration-Files.md#task-groups), the blocks will run in this
@@ -33,7 +33,7 @@ order:
    the host)
 2. `setup_task`
 3. Main task commands
-4. `timeout` (only runs if the task [hit a timeout](#task-timeout-conditions))
+4. `timeout` (only runs if the task [hit a timeout](#task-timeouts))
 5. `teardown_task`
 6. `teardown_group` (only runs if it's the last task in the task group running
    on the host)
