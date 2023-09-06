@@ -549,6 +549,7 @@ functions:
     params:
       script: |
         user=${admin_user_name}
+        ## The following hosts.yml file is generated as the output of the host.list command below
         hostname=$(tr -d '"[]{}' < buildhost-configuration/hosts.yml | cut -d , -f 1 | awk -F : '{print $2}')
         identity_file=~/.ssh/mcipacker.pem
 
@@ -597,9 +598,12 @@ tasks:
       - func: ssh-ready
       - func: other-tasks
 ```
-
-The mcipacker.pem key file was created by echoing the value of the
-\${\_\_project_aws_ssh_key_value} expansion into the file. This
+Note:
+- The ${admin_user_name} expansion is set to the value of the
+**user** field set for the command's distro, which can be inspected [on Evergreen's distro page](https://evergreen.mongodb.com/distros).
+- Hosts spawned with `host.create` do not run the distro setup script, so any required initial setup must be done manually.
+- The mcipacker.pem key file was created by echoing the value of the
+\${\_\_project_aws_ssh_key_value} expansion (which gets populated automatically with the ssh public key value) into the file. This
 expansion is automatically set by Evergreen when the host is spawned.
 
 ## host.list
