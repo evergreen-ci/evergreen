@@ -231,8 +231,8 @@ func (s *AgentSuite) TestAgentEndTaskShouldExit() {
 	}
 
 	endDetail := s.mockCommunicator.EndTaskResult.Detail
-	s.Empty("", endDetail.Message, "the end message should not include any errors")
 	s.Equal(evergreen.TaskSucceeded, endDetail.Status, "the task should succeed")
+	s.Empty(endDetail.Description, "should not include end task failure description for successful task")
 }
 
 func (s *AgentSuite) TestFinishTaskWithNormalCompletedTask() {
@@ -987,9 +987,15 @@ post:
 
 func (s *AgentSuite) TestEndTaskResponse() {
 	factory, ok := command.GetCommandFactory("setup.initial")
-	s.True(ok)
+	s.Require().True(ok)
 	s.tc.setCurrentCommand(factory())
 
+	// kim: TODO: test failing default command results in failing default
+	// command description.
+	// kim: TODO: test system failure description + user defined description
+	// results in user defined description winning
+	// kim: TODO: test system failure description + failing default command
+	// results in user defined description winning
 	s.T().Run("TaskHitsIdleTimeoutButTheTaskAlreadyFinishedRunningResultsInSuccessWithTimeout", func(t *testing.T) {
 		// Simulate a (rare) scenario where the idle timeout is reached, but the
 		// last command in the main block already finished. It does record that
@@ -999,34 +1005,28 @@ func (s *AgentSuite) TestEndTaskResponse() {
 		detail := s.a.endTaskResponse(s.ctx, s.tc, evergreen.TaskSucceeded, "message")
 		s.True(detail.TimedOut)
 		s.Equal(evergreen.TaskSucceeded, detail.Status)
-		// TODO (EVG-20729): replace message, which is never used.
-		s.Equal("message", detail.Message)
+		s.Equal("message", detail.Description)
 	})
 	s.T().Run("TaskClearsIdleTimeoutAndTheTaskAlreadyFinishedRunningResultsInSuccessWithoutTimeout", func(t *testing.T) {
 		s.tc.setTimedOut(false, idleTimeout)
 		detail := s.a.endTaskResponse(s.ctx, s.tc, evergreen.TaskSucceeded, "message")
 		s.False(detail.TimedOut)
 		s.Equal(evergreen.TaskSucceeded, detail.Status)
-		// TODO (EVG-20729): replace message, which is never used.
-		s.Equal("message", detail.Message)
+		s.Equal("message", detail.Description)
 	})
-
 	s.T().Run("TaskHitsIdleTimeoutAndFailsResultsInFailureWithTimeout", func(t *testing.T) {
 		s.tc.setTimedOut(true, idleTimeout)
 		detail := s.a.endTaskResponse(s.ctx, s.tc, evergreen.TaskFailed, "message")
 		s.True(detail.TimedOut)
 		s.Equal(evergreen.TaskFailed, detail.Status)
-		// TODO (EVG-20729): replace message, which is never used.
-		s.Equal("message", detail.Message)
+		s.Equal("message", detail.Description)
 	})
-
 	s.T().Run("TaskClearsIdleTimeoutAndFailsResultsInFailureWithoutTimeout", func(t *testing.T) {
 		s.tc.setTimedOut(false, idleTimeout)
 		detail := s.a.endTaskResponse(s.ctx, s.tc, evergreen.TaskFailed, "message")
 		s.False(detail.TimedOut)
 		s.Equal(evergreen.TaskFailed, detail.Status)
-		// TODO (EVG-20729): replace message, which is never used.
-		s.Equal("message", detail.Message)
+		s.Equal("message", detail.Description)
 	})
 }
 
