@@ -1160,6 +1160,7 @@ type ComplexityRoot struct {
 		ExecutionTasksFull      func(childComplexity int) int
 		ExpectedDuration        func(childComplexity int) int
 		FailedTestCount         func(childComplexity int) int
+		Files                   func(childComplexity int) int
 		FinishTime              func(childComplexity int) int
 		GenerateTask            func(childComplexity int) int
 		GeneratedBy             func(childComplexity int) int
@@ -1760,6 +1761,8 @@ type TaskResolver interface {
 	ExecutionTasksFull(ctx context.Context, obj *model.APITask) ([]*model.APITask, error)
 
 	FailedTestCount(ctx context.Context, obj *model.APITask) (int, error)
+
+	Files(ctx context.Context, obj *model.APITask) (*TaskFiles, error)
 
 	GeneratedByName(ctx context.Context, obj *model.APITask) (*string, error)
 
@@ -7383,6 +7386,13 @@ func (e *executableSchema) Complexity(typeName, field string, childComplexity in
 		}
 
 		return e.complexity.Task.FailedTestCount(childComplexity), true
+
+	case "Task.files":
+		if e.complexity.Task.Files == nil {
+			break
+		}
+
+		return e.complexity.Task.Files(childComplexity), true
 
 	case "Task.finishTime":
 		if e.complexity.Task.FinishTime == nil {
@@ -19326,6 +19336,8 @@ func (ec *executionContext) fieldContext_GroupedBuildVariant_tasks(ctx context.C
 				return ec.fieldContext_Task_failedTestCount(ctx, field)
 			case "finishTime":
 				return ec.fieldContext_Task_finishTime(ctx, field)
+			case "files":
+				return ec.fieldContext_Task_files(ctx, field)
 			case "generatedBy":
 				return ec.fieldContext_Task_generatedBy(ctx, field)
 			case "generatedByName":
@@ -24240,6 +24252,8 @@ func (ec *executionContext) fieldContext_LogkeeperBuild_task(ctx context.Context
 				return ec.fieldContext_Task_failedTestCount(ctx, field)
 			case "finishTime":
 				return ec.fieldContext_Task_finishTime(ctx, field)
+			case "files":
+				return ec.fieldContext_Task_files(ctx, field)
 			case "generatedBy":
 				return ec.fieldContext_Task_generatedBy(ctx, field)
 			case "generatedByName":
@@ -26952,6 +26966,8 @@ func (ec *executionContext) fieldContext_Mutation_scheduleUndispatchedBaseTasks(
 				return ec.fieldContext_Task_failedTestCount(ctx, field)
 			case "finishTime":
 				return ec.fieldContext_Task_finishTime(ctx, field)
+			case "files":
+				return ec.fieldContext_Task_files(ctx, field)
 			case "generatedBy":
 				return ec.fieldContext_Task_generatedBy(ctx, field)
 			case "generatedByName":
@@ -29363,6 +29379,8 @@ func (ec *executionContext) fieldContext_Mutation_abortTask(ctx context.Context,
 				return ec.fieldContext_Task_failedTestCount(ctx, field)
 			case "finishTime":
 				return ec.fieldContext_Task_finishTime(ctx, field)
+			case "files":
+				return ec.fieldContext_Task_files(ctx, field)
 			case "generatedBy":
 				return ec.fieldContext_Task_generatedBy(ctx, field)
 			case "generatedByName":
@@ -29562,6 +29580,8 @@ func (ec *executionContext) fieldContext_Mutation_overrideTaskDependencies(ctx c
 				return ec.fieldContext_Task_failedTestCount(ctx, field)
 			case "finishTime":
 				return ec.fieldContext_Task_finishTime(ctx, field)
+			case "files":
+				return ec.fieldContext_Task_files(ctx, field)
 			case "generatedBy":
 				return ec.fieldContext_Task_generatedBy(ctx, field)
 			case "generatedByName":
@@ -29761,6 +29781,8 @@ func (ec *executionContext) fieldContext_Mutation_restartTask(ctx context.Contex
 				return ec.fieldContext_Task_failedTestCount(ctx, field)
 			case "finishTime":
 				return ec.fieldContext_Task_finishTime(ctx, field)
+			case "files":
+				return ec.fieldContext_Task_files(ctx, field)
 			case "generatedBy":
 				return ec.fieldContext_Task_generatedBy(ctx, field)
 			case "generatedByName":
@@ -29960,6 +29982,8 @@ func (ec *executionContext) fieldContext_Mutation_scheduleTasks(ctx context.Cont
 				return ec.fieldContext_Task_failedTestCount(ctx, field)
 			case "finishTime":
 				return ec.fieldContext_Task_finishTime(ctx, field)
+			case "files":
+				return ec.fieldContext_Task_files(ctx, field)
 			case "generatedBy":
 				return ec.fieldContext_Task_generatedBy(ctx, field)
 			case "generatedByName":
@@ -30159,6 +30183,8 @@ func (ec *executionContext) fieldContext_Mutation_setTaskPriority(ctx context.Co
 				return ec.fieldContext_Task_failedTestCount(ctx, field)
 			case "finishTime":
 				return ec.fieldContext_Task_finishTime(ctx, field)
+			case "files":
+				return ec.fieldContext_Task_files(ctx, field)
 			case "generatedBy":
 				return ec.fieldContext_Task_generatedBy(ctx, field)
 			case "generatedByName":
@@ -30358,6 +30384,8 @@ func (ec *executionContext) fieldContext_Mutation_unscheduleTask(ctx context.Con
 				return ec.fieldContext_Task_failedTestCount(ctx, field)
 			case "finishTime":
 				return ec.fieldContext_Task_finishTime(ctx, field)
+			case "files":
+				return ec.fieldContext_Task_files(ctx, field)
 			case "generatedBy":
 				return ec.fieldContext_Task_generatedBy(ctx, field)
 			case "generatedByName":
@@ -35572,6 +35600,8 @@ func (ec *executionContext) fieldContext_Pod_task(ctx context.Context, field gra
 				return ec.fieldContext_Task_failedTestCount(ctx, field)
 			case "finishTime":
 				return ec.fieldContext_Task_finishTime(ctx, field)
+			case "files":
+				return ec.fieldContext_Task_files(ctx, field)
 			case "generatedBy":
 				return ec.fieldContext_Task_generatedBy(ctx, field)
 			case "generatedByName":
@@ -36105,6 +36135,8 @@ func (ec *executionContext) fieldContext_PodEventLogData_task(ctx context.Contex
 				return ec.fieldContext_Task_failedTestCount(ctx, field)
 			case "finishTime":
 				return ec.fieldContext_Task_finishTime(ctx, field)
+			case "files":
+				return ec.fieldContext_Task_files(ctx, field)
 			case "generatedBy":
 				return ec.fieldContext_Task_generatedBy(ctx, field)
 			case "generatedByName":
@@ -43385,6 +43417,8 @@ func (ec *executionContext) fieldContext_Query_task(ctx context.Context, field g
 				return ec.fieldContext_Task_failedTestCount(ctx, field)
 			case "finishTime":
 				return ec.fieldContext_Task_finishTime(ctx, field)
+			case "files":
+				return ec.fieldContext_Task_files(ctx, field)
 			case "generatedBy":
 				return ec.fieldContext_Task_generatedBy(ctx, field)
 			case "generatedByName":
@@ -43584,6 +43618,8 @@ func (ec *executionContext) fieldContext_Query_taskAllExecutions(ctx context.Con
 				return ec.fieldContext_Task_failedTestCount(ctx, field)
 			case "finishTime":
 				return ec.fieldContext_Task_finishTime(ctx, field)
+			case "files":
+				return ec.fieldContext_Task_files(ctx, field)
 			case "generatedBy":
 				return ec.fieldContext_Task_generatedBy(ctx, field)
 			case "generatedByName":
@@ -49905,6 +49941,8 @@ func (ec *executionContext) fieldContext_Task_baseTask(ctx context.Context, fiel
 				return ec.fieldContext_Task_failedTestCount(ctx, field)
 			case "finishTime":
 				return ec.fieldContext_Task_finishTime(ctx, field)
+			case "files":
+				return ec.fieldContext_Task_files(ctx, field)
 			case "generatedBy":
 				return ec.fieldContext_Task_generatedBy(ctx, field)
 			case "generatedByName":
@@ -50977,6 +51015,8 @@ func (ec *executionContext) fieldContext_Task_displayTask(ctx context.Context, f
 				return ec.fieldContext_Task_failedTestCount(ctx, field)
 			case "finishTime":
 				return ec.fieldContext_Task_finishTime(ctx, field)
+			case "files":
+				return ec.fieldContext_Task_files(ctx, field)
 			case "generatedBy":
 				return ec.fieldContext_Task_generatedBy(ctx, field)
 			case "generatedByName":
@@ -51332,6 +51372,8 @@ func (ec *executionContext) fieldContext_Task_executionTasksFull(ctx context.Con
 				return ec.fieldContext_Task_failedTestCount(ctx, field)
 			case "finishTime":
 				return ec.fieldContext_Task_finishTime(ctx, field)
+			case "files":
+				return ec.fieldContext_Task_files(ctx, field)
 			case "generatedBy":
 				return ec.fieldContext_Task_generatedBy(ctx, field)
 			case "generatedByName":
@@ -51524,6 +51566,56 @@ func (ec *executionContext) fieldContext_Task_finishTime(ctx context.Context, fi
 		IsResolver: false,
 		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
 			return nil, errors.New("field of type Time does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _Task_files(ctx context.Context, field graphql.CollectedField, obj *model.APITask) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_Task_files(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
+		ctx = rctx // use context from middleware stack in children
+		return ec.resolvers.Task().Files(rctx, obj)
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.(*TaskFiles)
+	fc.Result = res
+	return ec.marshalNTaskFiles2ᚖgithubᚗcomᚋevergreenᚑciᚋevergreenᚋgraphqlᚐTaskFiles(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_Task_files(ctx context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "Task",
+		Field:      field,
+		IsMethod:   true,
+		IsResolver: true,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			switch field.Name {
+			case "fileCount":
+				return ec.fieldContext_TaskFiles_fileCount(ctx, field)
+			case "groupedFiles":
+				return ec.fieldContext_TaskFiles_groupedFiles(ctx, field)
+			}
+			return nil, fmt.Errorf("no field named %q was found under type TaskFiles", field.Name)
 		},
 	}
 	return fc, nil
@@ -58339,6 +58431,8 @@ func (ec *executionContext) fieldContext_UpstreamProject_task(ctx context.Contex
 				return ec.fieldContext_Task_failedTestCount(ctx, field)
 			case "finishTime":
 				return ec.fieldContext_Task_finishTime(ctx, field)
+			case "files":
+				return ec.fieldContext_Task_files(ctx, field)
 			case "generatedBy":
 				return ec.fieldContext_Task_generatedBy(ctx, field)
 			case "generatedByName":
@@ -61887,6 +61981,8 @@ func (ec *executionContext) fieldContext_VersionTasks_data(ctx context.Context, 
 				return ec.fieldContext_Task_failedTestCount(ctx, field)
 			case "finishTime":
 				return ec.fieldContext_Task_finishTime(ctx, field)
+			case "files":
+				return ec.fieldContext_Task_files(ctx, field)
 			case "generatedBy":
 				return ec.fieldContext_Task_generatedBy(ctx, field)
 			case "generatedByName":
@@ -80334,6 +80430,42 @@ func (ec *executionContext) _Task(ctx context.Context, sel ast.SelectionSet, obj
 			out.Concurrently(i, func(ctx context.Context) graphql.Marshaler { return innerFunc(ctx, out) })
 		case "finishTime":
 			out.Values[i] = ec._Task_finishTime(ctx, field, obj)
+		case "files":
+			field := field
+
+			innerFunc := func(ctx context.Context, fs *graphql.FieldSet) (res graphql.Marshaler) {
+				defer func() {
+					if r := recover(); r != nil {
+						ec.Error(ctx, ec.Recover(ctx, r))
+					}
+				}()
+				res = ec._Task_files(ctx, field, obj)
+				if res == graphql.Null {
+					atomic.AddUint32(&fs.Invalids, 1)
+				}
+				return res
+			}
+
+			if field.Deferrable != nil {
+				dfs, ok := deferred[field.Deferrable.Label]
+				di := 0
+				if ok {
+					dfs.AddField(field)
+					di = len(dfs.Values) - 1
+				} else {
+					dfs = graphql.NewFieldSet([]graphql.CollectedField{field})
+					deferred[field.Deferrable.Label] = dfs
+				}
+				dfs.Concurrently(di, func(ctx context.Context) graphql.Marshaler {
+					return innerFunc(ctx, dfs)
+				})
+
+				// don't run the out.Concurrently() call below
+				out.Values[i] = graphql.Null
+				continue
+			}
+
+			out.Concurrently(i, func(ctx context.Context) graphql.Marshaler { return innerFunc(ctx, out) })
 		case "generatedBy":
 			out.Values[i] = ec._Task_generatedBy(ctx, field, obj)
 		case "generatedByName":

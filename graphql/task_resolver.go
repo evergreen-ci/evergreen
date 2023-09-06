@@ -381,6 +381,44 @@ func (r *taskResolver) FailedTestCount(ctx context.Context, obj *restModel.APITa
 	return stats.FailedCount, nil
 }
 
+// Files is the resolver for the files field.
+func (r *taskResolver) Files(ctx context.Context, obj *restModel.APITask) (*TaskFiles, error) {
+	emptyTaskFiles := TaskFiles{
+		FileCount:    0,
+		GroupedFiles: []*GroupedFiles{},
+	}
+	groupedFilesList := []*GroupedFiles{}
+	fileCount := 0
+
+	if obj.DisplayOnly {
+		execTasks, err := task.Find(task.ByIds(utility.FromStringPtrSlice(obj.ExecutionTasks)))
+		if err != nil {
+			return &emptyTaskFiles, ResourceNotFound.Send(ctx, err.Error())
+		}
+		for _, execTask := range execTasks {
+			groupedFiles, err := getGroupedFiles(ctx, execTask.DisplayName, execTask.Id, obj.Execution)
+			if err != nil {
+				return &emptyTaskFiles, err
+			}
+			fileCount += len(groupedFiles.Files)
+			groupedFilesList = append(groupedFilesList, groupedFiles)
+		}
+	} else {
+		groupedFiles, err := getGroupedFiles(ctx, *obj.DisplayName, *obj.Id, obj.Execution)
+		if err != nil {
+			return &emptyTaskFiles, err
+		}
+		fileCount += len(groupedFiles.Files)
+		groupedFilesList = append(groupedFilesList, groupedFiles)
+	}
+	taskFiles := TaskFiles{
+		FileCount:    fileCount,
+		GroupedFiles: groupedFilesList,
+	}
+	return &taskFiles, nil
+
+}
+
 // GeneratedByName is the resolver for the generatedByName field.
 func (r *taskResolver) GeneratedByName(ctx context.Context, obj *restModel.APITask) (*string, error) {
 	if obj.GeneratedBy == "" {
