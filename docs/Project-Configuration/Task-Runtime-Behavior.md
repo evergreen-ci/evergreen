@@ -22,7 +22,7 @@ Once the task is set up, the command blocks will run their commands. For a
 task that's not part of a task group, the blocks will run in this order:
 
 1. [`pre`](Project-Configuration-Files.md#pre-and-post)
-2. Main task commands
+2. Main task commands (i.e. commands listed under the task definition)
 3. [`timeout`](Project-Configuration-Files.md#timeout-handler) (only runs if the task [hit a timeout](#task-timeouts))
 4. [`post`](Project-Configuration-Files.md#pre-and-post)
 
@@ -32,7 +32,7 @@ order:
 1. `setup_group` (only runs if it's the first task in this task group running on
    the host)
 2. `setup_task`
-3. Main task commands
+3. Main task commands (i.e. commands listed under the task definition)
 4. `timeout` (only runs if the task [hit a timeout](#task-timeouts))
 5. `teardown_task`
 6. `teardown_group` (only runs if it's the last task in the task group running
@@ -42,9 +42,10 @@ order:
 
 Each block will run its list of commands from top to bottom. As long as commands
 succeed, the commands will continue running in order. If a command fails, it may
-either continue on error, or treat it as a task failure. Whether it continues on
-error or fails the task depends on which block it runs in and how that block is
-configured in the project YAML.
+either continue on error, or treat it as a task failure (and stop running
+further commands in the block). Whether it continues on error or fails the task
+depends on which block it runs in and how that block is configured in the
+project YAML.
 
 For example, consider the following `pre` configuration:
 
@@ -70,8 +71,8 @@ However, if [`pre_error_fails_task`](Project-Configuration-Files.md#pre-and-post
 ```yaml
 pre_error_fails_task: true
 pre:
-  # This command will fail and skip to post commands. This failing command wil
-  # cause the task to fail.
+  # This command will fail and cause the task to skip forward to the post
+  # commands. This failing command will cause the task to fail.
   - command: shell.exec
     params:
       script: exit 1
@@ -82,16 +83,16 @@ pre:
 ```
 
 In this case, the `pre` block will not run any further commands because the
-first command failed. Instead, it will skip to running `post` commands and
-eventually report the task as failed.
+first command failed. Instead, it will skip forward to running `post` commands
+and eventually report the task as failed.
 
 By default, all blocks follow the above behavior of continuing on error (with
 configurable options to have command instead fail on error) _except_ the main
 task command block. The main task commands are treated specially when compared
 to the other command blocks. If a command fails in the main task commands, it
 will cause the task to fail. The remaining main task commands will not run, it
-will skip to running `post` commands, and will eventually report the task as
-failed.
+will skip forward to running `post` commands, and will eventually report the
+task as failed.
 
 ### Process Cleanup during a Task
 
@@ -138,8 +139,8 @@ Tasks are not allowed to run forever, so all commands that run for a task are
 subject to (configurable) timeouts. If a command hits a timeout, that command
 will stop with an error. Furthermore, if that command can cause the task to fail
 and that command is in `pre`, `setup_task`, `setup_group`, or the main task
-block, it will skip to running the `timeout` block and will eventually report
-the task as failed due to timeout.
+block, it will skip forward to running the `timeout` block and will eventually
+report the task as failed due to timeout.
 
 For example, consider the following YAML configuration:
 
@@ -177,11 +178,11 @@ task is aborted, the task will try to finish, while still performing any final
 cleanup.
 
 If the task is running `pre` `setup_group`, `setup_task`, or the main task
-commands when the task is aborted, the task will skip to running `post` (or the
-task group equivalents, `teardown_task` and `teardown_group`). The task runs
-`post` commands in order to perform any final cleanup for the task before moving
-on to the next task. Note that because `post` must run, aborting a task once
-it's already running `post` will not do anything.
+commands when the task is aborted, the task will skip forward to running `post`
+(or the task group equivalents, `teardown_task` and `teardown_group`). The task
+runs `post` commands in order to perform any final cleanup for the task before
+moving on to the next task. Note that because `post` must run, aborting a task
+once it's already running `post` will not do anything.
 
 ## REST API for Tasks
 
