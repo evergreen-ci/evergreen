@@ -9,7 +9,6 @@ import (
 	"github.com/evergreen-ci/evergreen/db"
 	mgobson "github.com/evergreen-ci/evergreen/db/mgo/bson"
 	"github.com/evergreen-ci/evergreen/thirdparty"
-	"github.com/evergreen-ci/utility"
 	"github.com/google/go-github/v52/github"
 	"github.com/mongodb/anser/bsonutil"
 	"github.com/pkg/errors"
@@ -73,9 +72,6 @@ type githubIntent struct {
 	// Title is the title of the Github PR
 	Title string `bson:"Title"`
 
-	// PushedAt was the time the Github Head Repository was pushed to
-	PushedAt time.Time `bson:"pushed_at"`
-
 	// CreatedAt is the time that this intent was stored in the database
 	CreatedAt time.Time `bson:"created_at"`
 
@@ -120,7 +116,7 @@ var (
 func NewGithubIntent(msgDeliveryID, patchOwner, calledBy string, pr *github.PullRequest) (Intent, error) {
 	if pr == nil ||
 		pr.Base == nil || pr.Base.Repo == nil ||
-		pr.Head == nil || pr.Head.Repo == nil || pr.Head.Repo.PushedAt == nil ||
+		pr.Head == nil || pr.Head.Repo == nil ||
 		pr.User == nil {
 		return nil, errors.New("incomplete PR")
 	}
@@ -151,9 +147,6 @@ func NewGithubIntent(msgDeliveryID, patchOwner, calledBy string, pr *github.Pull
 	if pr.GetTitle() == "" {
 		return nil, errors.New("PR title must not be empty")
 	}
-	if utility.IsZeroTime(pr.Head.Repo.PushedAt.Time) {
-		return nil, errors.New("pushed at time not set")
-	}
 	if patchOwner == "" {
 		patchOwner = pr.User.GetLogin()
 	}
@@ -177,7 +170,6 @@ func NewGithubIntent(msgDeliveryID, patchOwner, calledBy string, pr *github.Pull
 		BaseHash:      pr.Base.GetSHA(),
 		Title:         pr.GetTitle(),
 		IntentType:    GithubIntentType,
-		PushedAt:      pr.Head.Repo.PushedAt.Time.UTC(),
 		CalledBy:      calledBy,
 		RepeatPatchId: repeat,
 	}, nil
