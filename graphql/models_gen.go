@@ -278,6 +278,11 @@ type PublicKeyInput struct {
 	Name string `json:"name"`
 }
 
+type SSHKey struct {
+	Location string `json:"location"`
+	Name     string `json:"name"`
+}
+
 // SaveDistroInput is the input to the saveDistro mutation.
 type SaveDistroInput struct {
 	Distro *model.APIDistro      `json:"distro"`
