@@ -480,7 +480,7 @@ func shouldRunSetupGroup(nextTask *apimodels.NextTaskResponse, tc *taskContext) 
 	return false
 }
 
-func (a *Agent) fetchProjectConfig(ctx context.Context, tc *taskContext) (*task.Task, *model.Project, util.Expansions, map[string]bool, error) {
+func (a *Agent) fetchTaskInfo(ctx context.Context, tc *taskContext) (*task.Task, *model.Project, util.Expansions, map[string]bool, error) {
 	project, err := a.comm.GetProject(ctx, tc.task)
 	if err != nil {
 		return nil, nil, nil, nil, errors.Wrap(err, "getting project")
@@ -1060,24 +1060,21 @@ func (a *Agent) killProcs(ctx context.Context, tc *taskContext, ignoreTaskGroupC
 }
 
 func (a *Agent) shouldKill(tc *taskContext, ignoreTaskGroupCheck bool) bool {
-	// never kill if cleanup is false
+	// Never kill if the agent is not configured to clean up.
 	if !a.opts.Cleanup {
 		return false
 	}
-	// kill if the task is not in a task group
+	// Kill if the task is not in a task group.
 	if tc.taskConfig.TaskGroup == nil {
 		return true
 	}
-	// kill if ignoreTaskGroupCheck is true
+	// This is a task group, kill if ignoreTaskGroupCheck is true
 	if ignoreTaskGroupCheck {
 		return true
 	}
-	// do not kill if share_processes is set
-	if tc.taskConfig.TaskGroup != nil && tc.taskConfig.TaskGroup.ShareProcs {
-		return false
-	}
-	// return true otherwise
-	return true
+	// This is a task group, kill if not sharing processes between tasks in the
+	// task group.
+	return !tc.taskConfig.TaskGroup.ShareProcs
 }
 
 // logPanic logs a panic to the task log and returns the panic error, along with
