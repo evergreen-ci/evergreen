@@ -377,6 +377,7 @@ func TestContentTypeSaved(t *testing.T) {
 		Project:      &model.Project{},
 		BuildVariant: &model.BuildVariant{},
 	}
+	s.taskdata = client.TaskData{ID: conf.Task.Id, Secret: conf.Task.Secret}
 	logger, err := comm.GetLoggerProducer(ctx, client.TaskData{ID: conf.Task.Id, Secret: conf.Task.Secret}, nil)
 	require.NoError(t, err)
 
@@ -386,13 +387,13 @@ func TestContentTypeSaved(t *testing.T) {
 	require.NoError(t, s.attachFiles(ctx, comm, logger, localFiles, remoteFile))
 
 	attachedFiles := comm.AttachedFiles
-	if v, found := attachedFiles[""]; found {
+	if v, ok := attachedFiles["mock_id"]; ok {
+		assert.True(t, ok)
 		for _, file := range v {
 			assert.NotEqual(t, " ", string(file.Name[0]))
 			assert.Equal(t, file.ContentType, s.ContentType)
 		}
 	}
-
 }
 
 func TestS3LocalFilesIncludeFilterPrefix(t *testing.T) {
