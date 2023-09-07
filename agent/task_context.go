@@ -171,10 +171,10 @@ func (a *Agent) makeTaskConfig(ctx context.Context, tc *taskContext) (*internal.
 		return tc.taskConfig, nil
 	}
 
-	grip.Info("Fetching project config.")
-	tsk, project, expansions, redacted, err := a.fetchProjectConfig(ctx, tc)
+	grip.Info("Fetching task info.")
+	tsk, project, expansions, redacted, err := a.fetchTaskInfo(ctx, tc)
 	if err != nil {
-		return nil, errors.Wrap(err, "fetching project config")
+		return nil, errors.Wrap(err, "fetching task info")
 	}
 
 	grip.Info("Fetching distro configuration.")

@@ -1886,12 +1886,12 @@ callback_timeout_secs: 1
 	})
 }
 
-func (s *AgentSuite) TestFetchProjectConfig() {
+func (s *AgentSuite) TestFetchTaskInfo() {
 	s.mockCommunicator.GetProjectResponse = &model.Project{
 		Identifier: "some_cool_project",
 	}
 
-	_, project, expansions, pv, err := s.a.fetchProjectConfig(s.ctx, s.tc)
+	_, project, expansions, pv, err := s.a.fetchTaskInfo(s.ctx, s.tc)
 	s.NoError(err)
 
 	s.Require().NotZero(s.tc.taskConfig.Project)
