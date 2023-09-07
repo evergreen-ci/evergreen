@@ -533,11 +533,11 @@ func TestSetActiveState(t *testing.T) {
 		})
 		Convey("when deactivating an active task as evergreen", func() {
 			Convey("if the task is activated by evergreen, the task should deactivate", func() {
-				So(SetActiveState(ctx, evergreen.DefaultTaskActivator, true, *testTask), ShouldBeNil)
+				So(SetActiveState(ctx, "", true, *testTask), ShouldBeNil)
 				testTask, err = task.FindOne(db.Query(task.ById(testTask.Id)))
 				So(err, ShouldBeNil)
-				So(testTask.ActivatedBy, ShouldEqual, evergreen.DefaultTaskActivator)
-				So(SetActiveState(ctx, evergreen.DefaultTaskActivator, false, *testTask), ShouldBeNil)
+				So(testTask.ActivatedBy, ShouldEqual, "")
+				So(SetActiveState(ctx, "", false, *testTask), ShouldBeNil)
 				testTask, err = task.FindOne(db.Query(task.ById(testTask.Id)))
 				So(err, ShouldBeNil)
 				So(testTask.Activated, ShouldEqual, false)
@@ -558,7 +558,7 @@ func TestSetActiveState(t *testing.T) {
 				testTask, err = task.FindOne(db.Query(task.ById(testTask.Id)))
 				So(err, ShouldBeNil)
 				So(testTask.ActivatedBy, ShouldEqual, evergreen.StepbackTaskActivator)
-				So(SetActiveState(ctx, evergreen.DefaultTaskActivator, false, *testTask), ShouldBeNil)
+				So(SetActiveState(ctx, "", false, *testTask), ShouldBeNil)
 				testTask, err = task.FindOne(db.Query(task.ById(testTask.Id)))
 				So(err, ShouldBeNil)
 				So(testTask.Activated, ShouldEqual, true)
@@ -577,7 +577,7 @@ func TestSetActiveState(t *testing.T) {
 				testTask, err = task.FindOne(db.Query(task.ById(testTask.Id)))
 				So(err, ShouldBeNil)
 				So(testTask.ActivatedBy, ShouldEqual, userName)
-				So(SetActiveState(ctx, evergreen.DefaultTaskActivator, false, *testTask), ShouldBeNil)
+				So(SetActiveState(ctx, "", false, *testTask), ShouldBeNil)
 				testTask, err = task.FindOne(db.Query(task.ById(testTask.Id)))
 				So(err, ShouldBeNil)
 				So(testTask.Activated, ShouldEqual, true)
@@ -595,10 +595,10 @@ func TestSetActiveState(t *testing.T) {
 		Convey("when deactivating an active task a normal user", func() {
 			u := "test_user"
 			Convey("if the task is activated by evergreen, the task should deactivate", func() {
-				So(SetActiveState(ctx, evergreen.DefaultTaskActivator, true, *testTask), ShouldBeNil)
+				So(SetActiveState(ctx, "", true, *testTask), ShouldBeNil)
 				testTask, err = task.FindOne(db.Query(task.ById(testTask.Id)))
 				So(err, ShouldBeNil)
-				So(testTask.ActivatedBy, ShouldEqual, evergreen.DefaultTaskActivator)
+				So(testTask.ActivatedBy, ShouldEqual, "")
 				So(SetActiveState(ctx, u, false, *testTask), ShouldBeNil)
 				testTask, err = task.FindOne(db.Query(task.ById(testTask.Id)))
 				So(err, ShouldBeNil)

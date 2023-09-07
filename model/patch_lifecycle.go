@@ -91,7 +91,7 @@ func ValidateTVPairs(p *Project, in []TVPair) error {
 
 // Given a patch version and a list of variant/task pairs, creates the set of new builds that
 // do not exist yet out of the set of pairs, and adds tasks for builds which already exist.
-func addNewTasksAndBuildsForPatch(ctx context.Context, creationInfo TaskCreationInfo) error {
+func addNewTasksAndBuildsForPatch(ctx context.Context, creationInfo TaskCreationInfo, caller string) error {
 	existingBuilds, err := build.Find(build.ByIds(creationInfo.Version.BuildIds).WithFields(build.IdKey, build.BuildVariantKey, build.CreateTimeKey, build.RequesterKey))
 	if err != nil {
 		return err
@@ -100,16 +100,17 @@ func addNewTasksAndBuildsForPatch(ctx context.Context, creationInfo TaskCreation
 	if err != nil {
 		return errors.Wrap(err, "adding new builds")
 	}
-	_, err = addNewTasks(ctx, creationInfo, existingBuilds)
+	_, err = addNewTasks(ctx, creationInfo, existingBuilds, caller)
 	if err != nil {
 		return errors.Wrap(err, "adding new tasks")
 	}
-	err = activateExistingInactiveTasks(ctx, creationInfo, existingBuilds)
+	err = activateExistingInactiveTasks(ctx, creationInfo, existingBuilds, caller)
 	return errors.Wrap(err, "activating existing inactive tasks")
 }
 
 type PatchUpdate struct {
 	Description         string               `json:"description"`
+	Caller              string               `json:"caller"`
 	Parameters          []patch.Parameter    `json:"parameters,omitempty"`
 	PatchTriggerAliases []string             `json:"patch_trigger_aliases,omitempty"`
 	VariantsTasks       []patch.VariantTasks `json:"variants_tasks,omitempty"`
@@ -175,7 +176,7 @@ func ConfigurePatch(ctx context.Context, settings *evergreen.Settings, p *patch.
 			ActivationInfo: specificActivationInfo{},
 			GeneratedBy:    "",
 		}
-		err = addNewTasksAndBuildsForPatch(context.Background(), creationInfo)
+		err = addNewTasksAndBuildsForPatch(context.Background(), creationInfo, patchUpdateReq.Caller)
 		if err != nil {
 			return http.StatusInternalServerError, errors.Wrapf(err, "creating new tasks/builds for version '%s'", version.Id)
 		}
