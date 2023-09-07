@@ -9,7 +9,6 @@ import (
 
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/db"
-	"github.com/evergreen-ci/evergreen/db/mgo/bson"
 	mgobson "github.com/evergreen-ci/evergreen/db/mgo/bson"
 	"github.com/evergreen-ci/evergreen/model"
 	"github.com/evergreen-ci/evergreen/model/event"
@@ -26,6 +25,7 @@ import (
 	"github.com/mongodb/grip/message"
 	"github.com/mongodb/grip/sometimes"
 	"github.com/pkg/errors"
+	"go.mongodb.org/mongo-driver/bson"
 )
 
 const (
@@ -178,35 +178,15 @@ func (j *patchIntentProcessor) Run(ctx context.Context) {
 }
 
 func (j *patchIntentProcessor) finishPatch(ctx context.Context, patchDoc *patch.Patch) error {
-	// TODO EVG-19966 Delete fallback
-	appToken, err := j.env.Settings().CreateInstallationToken(ctx, patchDoc.GithubPatchData.BaseOwner, patchDoc.GithubPatchData.BaseRepo, nil)
-	if err != nil {
-		err = j.finishPatchWithToken(ctx, patchDoc, appToken)
-		if err == nil {
-			return nil
-		}
-	}
-	grip.Debug(message.WrapError(err, message.Fields{
-		"message": "failed to create app token, falling back to OAuth",
-		"ticket":  "EVG-19966",
-		"owner":   patchDoc.GithubPatchData.BaseOwner,
-		"repo":    patchDoc.GithubPatchData.BaseRepo,
-	}))
-
-	githubOauthToken, err := j.env.Settings().GetGithubOauthToken()
+	token, err := j.env.Settings().GetGithubOauthToken()
 	if err != nil {
 		return errors.Wrap(err, "getting GitHub OAuth token")
 	}
-
-	return j.finishPatchWithToken(ctx, patchDoc, githubOauthToken)
-}
-func (j *patchIntentProcessor) finishPatchWithToken(ctx context.Context, patchDoc *patch.Patch, token string) error {
 	catcher := grip.NewBasicCatcher()
 
 	canFinalize := true
 	var patchedProject *model.Project
 	var patchedParserProject *model.ParserProject
-	var err error
 	switch j.IntentType {
 	case patch.CliIntentType:
 		catcher.Wrap(j.buildCliPatchDoc(ctx, patchDoc, token), "building CLI patch document")
@@ -219,7 +199,7 @@ func (j *patchIntentProcessor) finishPatchWithToken(ctx context.Context, patchDo
 		}
 		catcher.Wrap(err, "building GitHub patch document")
 	case patch.GithubMergeIntentType:
-		if err := j.buildGithubMergeDoc(ctx, patchDoc, token); err != nil {
+		if err := j.buildGithubMergeDoc(ctx, patchDoc); err != nil {
 			catcher.Wrap(err, "building GitHub merge queue patch document")
 		}
 	case patch.TriggerIntentType:
@@ -303,13 +283,13 @@ func (j *patchIntentProcessor) finishPatchWithToken(ctx context.Context, patchDo
 		patchedParserProject = patchConfig.PatchedParserProject
 		patchedProjectConfig = patchConfig.PatchedProjectConfig
 	}
-	if errs := validator.CheckProjectErrors(ctx, patchedProject, false); len(errs.AtLevel(validator.Error)) != 0 {
+	if errs := validator.CheckProjectErrors(ctx, patchedProject, false).AtLevel(validator.Error); len(errs) != 0 {
 		validationCatcher.Errorf("invalid patched config syntax: %s", validator.ValidationErrorsToString(errs))
 	}
-	if errs := validator.CheckProjectSettings(ctx, j.env.Settings(), patchedProject, pref, false); len(errs.AtLevel(validator.Error)) != 0 {
+	if errs := validator.CheckProjectSettings(ctx, j.env.Settings(), patchedProject, pref, false).AtLevel(validator.Error); len(errs) != 0 {
 		validationCatcher.Errorf("invalid patched config for current project settings: %s", validator.ValidationErrorsToString(errs))
 	}
-	if errs := validator.CheckPatchedProjectConfigErrors(patchedProjectConfig); len(errs.AtLevel(validator.Error)) != 0 {
+	if errs := validator.CheckPatchedProjectConfigErrors(patchedProjectConfig).AtLevel(validator.Error); len(errs) != 0 {
 		validationCatcher.Errorf("invalid patched project config syntax: %s", validator.ValidationErrorsToString(errs))
 	}
 	if validationCatcher.HasErrors() {
@@ -531,6 +511,7 @@ func (j *patchIntentProcessor) createGitHubMergeSubscription(ctx context.Context
 	catcher.Wrap(patchSub.Upsert(), "inserting patch subscription for GitHub merge queue")
 	buildSub := event.NewExpiringBuildOutcomeSubscriptionByVersion(j.PatchID.Hex(), ghSub)
 	catcher.Wrap(buildSub.Upsert(), "inserting build subscription for GitHub merge queue")
+
 	input := thirdparty.SendGithubStatusInput{
 		VersionId: j.PatchID.Hex(),
 		Owner:     p.GithubMergeData.Org,
@@ -538,12 +519,43 @@ func (j *patchIntentProcessor) createGitHubMergeSubscription(ctx context.Context
 		Ref:       p.GithubMergeData.HeadSHA,
 		Desc:      "patch created",
 		Caller:    j.Name,
-		Context:   "evergreen",
 	}
-	err := thirdparty.SendPendingStatusToGithub(ctx, input, j.env.Settings().Ui.Url)
-	if err != nil {
-		catcher.Wrap(err, "failed to send patch status to GitHub")
+
+	rules, err := thirdparty.GetEvergreenBranchProtectionRules(ctx, "", p.GithubMergeData.Org, p.GithubMergeData.Repo, p.GithubMergeData.BaseBranch)
+	// We might have permission to send statuses but not to get branch
+	// protection rules, so log the error, but don't return it.
+	grip.Error(message.WrapError(err, message.Fields{
+		"job":      j.ID(),
+		"job_type": j.Type,
+		"message":  "failed to get branch protection rules",
+		"org":      p.GithubMergeData.Org,
+		"repo":     p.GithubMergeData.Repo,
+		"branch":   p.GithubMergeData.BaseBranch,
+	}))
+	// If we don't find any rules, send the default.
+	if len(rules) == 0 {
+		grip.Debug(message.Fields{
+			"job":      j.ID(),
+			"job_type": j.Type,
+			"message":  "could not find branch protection rules, sending default status",
+			"org":      p.GithubMergeData.Org,
+			"repo":     p.GithubMergeData.Repo,
+			"branch":   p.GithubMergeData.BaseBranch,
+			"project":  p.Project,
+		})
+		input.Context = "evergreen"
+		catcher.Wrap(thirdparty.SendPendingStatusToGithub(ctx, input, j.env.Settings().Ui.Url), "failed to send pending status to GitHub")
+	} else {
+		for i, rule := range rules {
+			// Limit statuses to 10
+			if i >= 10 {
+				break
+			}
+			input.Context = rule
+			catcher.Wrap(thirdparty.SendPendingStatusToGithub(ctx, input, j.env.Settings().Ui.Url), "failed to send pending status to GitHub")
+		}
 	}
+
 	return catcher.Resolve()
 }
 
@@ -974,7 +986,7 @@ func (j *patchIntentProcessor) buildGithubPatchDoc(ctx context.Context, patchDoc
 	return isMember, nil
 }
 
-func (j *patchIntentProcessor) buildGithubMergeDoc(ctx context.Context, patchDoc *patch.Patch, githubOauthToken string) error {
+func (j *patchIntentProcessor) buildGithubMergeDoc(ctx context.Context, patchDoc *patch.Patch) error {
 	defer func() {
 		grip.Error(message.WrapError(j.intent.SetProcessed(), message.Fields{
 			"message":     "could not mark patch intent as processed",

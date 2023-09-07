@@ -34,7 +34,6 @@ func deploy() cli.Command {
 			deployMigration(),
 			deployDataTransforms(),
 			smokeStartEvergreen(),
-			smokeTestEndpoints(),
 			startLocalEvergreen(),
 		},
 	}

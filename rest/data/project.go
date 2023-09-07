@@ -165,7 +165,7 @@ func CreateProject(ctx context.Context, env evergreen.Environment, projectRef *m
 }
 
 func tryCopyingContainerSecrets(ctx context.Context, settings *evergreen.Settings, existingSecrets []model.ContainerSecret, pRef *model.ProjectRef) error {
-	smClient, err := cloud.MakeSecretsManagerClient(settings)
+	smClient, err := cloud.MakeSecretsManagerClient(ctx, settings)
 	if err != nil {
 		return errors.Wrap(err, "setting up Secrets Manager client to store newly-created project's container secrets")
 	}

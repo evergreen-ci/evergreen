@@ -262,50 +262,38 @@ func SetTaskPriority(ctx context.Context, t task.Task, priority int64, caller st
 
 // SetBuildPriority updates the priority field of all tasks associated with the given build id.
 func SetBuildPriority(ctx context.Context, buildId string, priority int64, caller string) error {
-	_, err := task.UpdateAll(
-		bson.M{task.BuildIdKey: buildId},
-		bson.M{"$set": bson.M{task.PriorityKey: priority}},
-	)
-	if err != nil {
-		return errors.Wrapf(err, "setting priority for build '%s'", buildId)
-	}
-
-	// negative priority - these tasks should never run, so unschedule now
-	if priority < 0 {
-		tasks, err := task.FindAll(db.Query(bson.M{task.BuildIdKey: buildId}))
-		if err != nil {
-			return errors.Wrapf(err, "getting tasks for build '%s'", buildId)
-		}
-		if err = SetActiveState(ctx, caller, false, tasks...); err != nil {
-			return errors.Wrapf(err, "deactivating tasks for build '%s'", buildId)
-		}
-	}
-
-	return nil
+	query := bson.M{task.BuildIdKey: buildId}
+	return errors.Wrap(setTasksPriority(ctx, query, priority, caller), "setting priority for build")
 }
 
 // SetVersionsPriority updates the priority field of all tasks and child tasks associated with the given version ids.
 func SetVersionsPriority(ctx context.Context, versionIds []string, priority int64, caller string) error {
 	query := task.ByVersionsWithChildTasks(versionIds)
+	return errors.Wrap(setTasksPriority(ctx, query, priority, caller), "setting priority for versions")
+}
+
+func setTasksPriority(ctx context.Context, query bson.M, priority int64, caller string) error {
 	_, err := task.UpdateAll(query,
 		bson.M{"$set": bson.M{task.PriorityKey: priority}},
 	)
 	if err != nil {
-		return errors.Wrap(err, "setting priority for versions")
+		return errors.Wrap(err, "setting priority")
+	}
+	tasks, err := task.FindAll(db.Query(query))
+	if err != nil {
+		return errors.Wrap(err, "getting tasks")
+	}
+	var taskIds []string
+	for _, t := range tasks {
+		taskIds = append(taskIds, t.Id)
+	}
+	event.LogManyTaskPriority(taskIds, caller, priority)
+
+	// Tasks with negative priority should never run, so we unschedule them.
+	if priority < 0 {
+		return errors.Wrap(SetActiveState(ctx, caller, false, tasks...), "deactivating tasks")
 	}
 
-	// negative priority - these tasks should never run, so unschedule now
-	if priority < 0 {
-		var tasks []task.Task
-		tasks, err = task.FindAll(db.Query(query))
-		if err != nil {
-			return errors.Wrap(err, "getting tasks for versions")
-		}
-		err = SetActiveState(ctx, caller, false, tasks...)
-		if err != nil {
-			return errors.Wrap(err, "deactivating tasks for versions")
-		}
-	}
 	return nil
 }
 
@@ -823,6 +811,7 @@ func createTasksForBuild(creationInfo TaskCreationInfo) (task.Tasks, error) {
 
 	// Create and update display tasks
 	tasks := task.Tasks{}
+	loggedExecutionTaskNotFound := false
 	for _, dt := range creationInfo.BuildVariant.DisplayTasks {
 		id := displayTable.GetId(creationInfo.Build.BuildVariant, dt.Name)
 		if id == "" {
@@ -837,15 +826,17 @@ func createTasksForBuild(creationInfo TaskCreationInfo) (task.Tasks, error) {
 		for _, et := range dt.ExecTasks {
 			execTaskId := execTable.GetId(creationInfo.Build.BuildVariant, et)
 			if execTaskId == "" {
-				grip.Error(message.Fields{
-					"message":                     "execution task not found",
-					"variant":                     creationInfo.Build.BuildVariant,
-					"exec_task":                   et,
-					"available_tasks":             execTable,
-					"project":                     creationInfo.Project.Identifier,
-					"display_task":                id,
-					"display_task_already_exists": displayTaskAlreadyExists,
-				})
+				if !loggedExecutionTaskNotFound {
+					grip.Debug(message.Fields{
+						"message":                     "execution task not found",
+						"variant":                     creationInfo.Build.BuildVariant,
+						"exec_task":                   et,
+						"project":                     creationInfo.Project.Identifier,
+						"display_task":                id,
+						"display_task_already_exists": displayTaskAlreadyExists,
+					})
+					loggedExecutionTaskNotFound = true
+				}
 				continue
 			}
 			execTaskIds = append(execTaskIds, execTaskId)

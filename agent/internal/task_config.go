@@ -2,10 +2,7 @@ package internal
 
 import (
 	"context"
-	"os"
-	"path/filepath"
 	"strconv"
-	"strings"
 	"sync"
 
 	"github.com/evergreen-ci/evergreen"
@@ -28,6 +25,7 @@ type TaskConfig struct {
 	Task               *task.Task
 	BuildVariant       *model.BuildVariant
 	Expansions         *util.Expansions
+	DynamicExpansions  util.Expansions
 	Redacted           map[string]bool
 	WorkDir            string
 	GithubPatchData    thirdparty.GithubPatch
@@ -71,14 +69,14 @@ func (t *TaskConfig) GetExecTimeout() int {
 }
 
 func NewTaskConfig(workDir string, d *apimodels.DistroView, p *model.Project, t *task.Task, r *model.ProjectRef, patchDoc *patch.Patch, e util.Expansions) (*TaskConfig, error) {
-	// do a check on if the project is empty
 	if p == nil {
 		return nil, errors.Errorf("project '%s' is nil", t.Project)
 	}
-
-	// check on if the project ref is empty
 	if r == nil {
 		return nil, errors.Errorf("project ref '%s' is nil", p.Identifier)
+	}
+	if t == nil {
+		return nil, errors.Errorf("task cannot be nil")
 	}
 
 	bv := p.FindBuildVariant(t.BuildVariant)
@@ -87,13 +85,14 @@ func NewTaskConfig(workDir string, d *apimodels.DistroView, p *model.Project, t 
 	}
 
 	taskConfig := &TaskConfig{
-		Distro:       d,
-		ProjectRef:   r,
-		Project:      p,
-		Task:         t,
-		BuildVariant: bv,
-		Expansions:   &e,
-		WorkDir:      workDir,
+		Distro:            d,
+		ProjectRef:        r,
+		Project:           p,
+		Task:              t,
+		BuildVariant:      bv,
+		Expansions:        &e,
+		DynamicExpansions: util.Expansions{},
+		WorkDir:           workDir,
 	}
 	if patchDoc != nil {
 		taskConfig.GithubPatchData = patchDoc.GithubPatchData
@@ -105,26 +104,6 @@ func NewTaskConfig(workDir string, d *apimodels.DistroView, p *model.Project, t 
 	return taskConfig, nil
 }
 
-func (c *TaskConfig) GetWorkingDirectory(dir string) (string, error) {
-	if dir == "" {
-		dir = c.WorkDir
-	} else if strings.HasPrefix(dir, c.WorkDir) {
-		// pass
-	} else {
-		dir = filepath.Join(c.WorkDir, dir)
-	}
-
-	if stat, err := os.Stat(dir); os.IsNotExist(err) {
-		return "", errors.Errorf("path '%s' does not exist", dir)
-	} else if err != nil || stat == nil {
-		return "", errors.Wrapf(err, "retrieving file info for path '%s'", dir)
-	} else if !stat.IsDir() {
-		return "", errors.Errorf("path '%s' is not a directory", dir)
-	}
-
-	return dir, nil
-}
-
 func (c *TaskConfig) GetCloneMethod() string {
 	if c.Distro != nil {
 		return c.Distro.CloneMethod
@@ -132,8 +111,10 @@ func (c *TaskConfig) GetCloneMethod() string {
 	return evergreen.CloneMethodOAuth
 }
 
+// GetTaskGroup returns the task group for the given task group name. It may
+// return nil if the task group name is empty.
 func (tc *TaskConfig) GetTaskGroup(taskGroup string) (*model.TaskGroup, error) {
-	if err := tc.validateTaskConfig(); err != nil {
+	if err := tc.Validate(); err != nil {
 		return nil, err
 	}
 
@@ -145,73 +126,25 @@ func (tc *TaskConfig) GetTaskGroup(taskGroup string) (*model.TaskGroup, error) {
 		return nil, errors.Errorf("couldn't find task group '%s' in project '%s'", taskGroup, tc.Project.Identifier)
 	}
 
-	if tg.Timeout == nil {
-		tg.Timeout = tc.Project.Timeout
-	}
 	return tg, nil
 }
 
-// GetTimeout returns the timeout defined on the taskGroup or project.
-func (tc *TaskConfig) GetTimeout(taskGroup string) (*model.YAMLCommandSet, error) {
-	if err := tc.validateTaskConfig(); err != nil {
-		return nil, err
+// Validate validates that the task config is populated with the data required
+// for a task to run.
+func (tc *TaskConfig) Validate() error {
+	if tc == nil {
+		return errors.New("unable to get task setup because task config is nil")
 	}
-
-	if taskGroup == "" {
-		return tc.Project.Timeout, nil
+	if tc.Task == nil {
+		return errors.New("unable to get task setup because task is nil")
 	}
-
-	tg := tc.Project.FindTaskGroup(taskGroup)
-	if tg == nil {
-		return nil, errors.Errorf("couldn't find task group '%s' in project '%s'", taskGroup, tc.Project.Identifier)
+	if tc.Task.Version == "" {
+		return errors.New("task has no version")
 	}
-	if tg.Timeout == nil {
-		return tc.Project.Timeout, nil
+	if tc.Project == nil {
+		return errors.New("project is nil")
 	}
-
-	return tg.Timeout, nil
-}
-
-// CommandBlock contains information for a block of commands.
-type CommandBlock struct {
-	Commands    *model.YAMLCommandSet
-	CanFailTask bool
-}
-
-// GetPre returns a command block containing the pre task commands.
-func (tc *TaskConfig) GetPre(taskGroup string) (*CommandBlock, error) {
-	if err := tc.validateTaskConfig(); err != nil {
-		return nil, err
-	}
-
-	canFailTask := tc.Project.Pre == nil || tc.Project.PreErrorFailsTask
-	if taskGroup == "" {
-		return &CommandBlock{Commands: tc.Project.Pre, CanFailTask: canFailTask}, nil
-	}
-	tg := tc.Project.FindTaskGroup(taskGroup)
-	if tg == nil {
-		return nil, errors.Errorf("couldn't find task group '%s' in project '%s'", taskGroup, tc.Project.Identifier)
-	}
-
-	return &CommandBlock{Commands: tg.SetupTask, CanFailTask: tg.SetupGroupFailTask}, nil
-}
-
-// GetPost returns a command block containing the post task commands.
-func (tc *TaskConfig) GetPost(taskGroup string) (*CommandBlock, error) {
-	if err := tc.validateTaskConfig(); err != nil {
-		return nil, err
-	}
-
-	canFailTask := tc.Project.Post == nil || tc.Project.PostErrorFailsTask
-	if taskGroup == "" {
-		return &CommandBlock{Commands: tc.Project.Post, CanFailTask: canFailTask}, nil
-	}
-	tg := tc.Project.FindTaskGroup(taskGroup)
-	if tg == nil {
-		return nil, errors.Errorf("couldn't find task group '%s' in project '%s'", taskGroup, tc.Project.Identifier)
-	}
-	return &CommandBlock{Commands: tg.TeardownTask, CanFailTask: tg.TeardownTaskCanFailTask}, nil
-
+	return nil
 }
 
 func (tc *TaskConfig) TaskAttributeMap() map[string]string {
@@ -253,20 +186,4 @@ func (tc *TaskConfig) TaskAttributes() []attribute.KeyValue {
 	}
 
 	return attributes
-}
-
-func (tc *TaskConfig) validateTaskConfig() error {
-	if tc == nil {
-		return errors.New("unable to get task setup because task config is nil")
-	}
-	if tc.Task == nil {
-		return errors.New("unable to get task setup because task is nil")
-	}
-	if tc.Task.Version == "" {
-		return errors.New("task has no version")
-	}
-	if tc.Project == nil {
-		return errors.New("project is nil")
-	}
-	return nil
 }

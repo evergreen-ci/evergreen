@@ -97,7 +97,7 @@ var (
 	GenerateTaskKey                = bsonutil.MustHaveTag(Task{}, "GenerateTask")
 	GeneratedTasksKey              = bsonutil.MustHaveTag(Task{}, "GeneratedTasks")
 	GeneratedByKey                 = bsonutil.MustHaveTag(Task{}, "GeneratedBy")
-	LogServiceVersionKey           = bsonutil.MustHaveTag(Task{}, "LogServiceVersion")
+	TaskOutputVersionKey           = bsonutil.MustHaveTag(Task{}, "TaskOutputVersion")
 	ResultsServiceKey              = bsonutil.MustHaveTag(Task{}, "ResultsService")
 	HasCedarResultsKey             = bsonutil.MustHaveTag(Task{}, "HasCedarResults")
 	ResultsFailedKey               = bsonutil.MustHaveTag(Task{}, "ResultsFailed")
@@ -575,7 +575,7 @@ func ByPreviousCommit(buildVariant, displayName, project, requester string, orde
 		BuildVariantKey:        buildVariant,
 		DisplayNameKey:         displayName,
 		ProjectKey:             project,
-		RevisionOrderNumberKey: order - 1,
+		RevisionOrderNumberKey: bson.M{"$lt": order},
 	}
 }
 

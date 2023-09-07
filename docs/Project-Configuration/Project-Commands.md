@@ -77,10 +77,21 @@ An additional "ignore_for_fetch" parameter controls whether the file
 will be downloaded when spawning a host from the spawn link on a test
 page.
 
--   `files`: an array of gitignore file globs. All files that are
+- `files`: an array of gitignore file globs. All files that are
     matched - ones that would be ignored by gitignore - are included.
--   `prefix`: an optional path to start processing the files, relative
+- `prefix`: an optional path to start processing the files, relative
     to the working directory.
+
+#### Lifecycle Policy 
+
+These artifacts are stored in an S3 bucket which has the following lifecycle policy:
+
+* Day 0 - Object uploaded
+* Day 60 - Object moved to Standard-IA
+* Day 365 - Object moved to Deep Glacier Archive
+* Day 1095 - Object expires
+
+If you would like to download an artifact after it has been moved to Glacier, please create a BUILD ticket requesting download as it will no longer be available via the link under the Files tab on the task page.
 
 ## attach.results
 
@@ -343,7 +354,9 @@ Parameters:
 
 -   `dir`: the directory to clone into
 -   `revisions`: For commit builds, each module should be passed as
-    `<module_name> : ${<module_name>_rev}`. For patch builds, the hash
+    `<module_name> : ${<module_name>_rev}` (these are loaded from the [manifest](../API/REST-V2-Usage.md#manifest) 
+    at the beginning of the command). 
+    For patch builds, the hash
     must be passed directly as `<module_name> : <hash>`. Note that this
     means that for patch builds, editing the
     ["modules"](Project-Configuration-Files.md#modules)
@@ -356,8 +369,8 @@ Parameters:
     yaml.
 -   `clone_depth`: Clone with `git clone --depth <clone_depth>`. For
     patch builds, Evergreen will `git fetch --unshallow` if the base
-    commit is older than `<clone_depth>` commits.
--   `shallow_clone`: Sets `clone_depth` to 100.
+    commit is older than `<clone_depth>` commits. `clone_depth` takes precedence over `shallow_clone`.
+-   `shallow_clone`: Sets `clone_depth` to 100, if not already set.
 -   `recurse_submodules`: automatically initialize and update each
     submodule in the repository, including any nested submodules.
 
@@ -368,9 +381,16 @@ The parameters for each module are:
 -   `prefix`: the subdirectory to clone the repository in. It will be
     the repository name as a top-level directory in `dir` if omitted
 -   `ref`: must be a commit hash, takes precedence over the `branch`
-    parameter if both specified
+    parameter if both specified (for commits)
 -   `branch`: must be the name of branch, commit hashes _are not
     accepted_.
+
+More specifically, module hash priority is as follows:
+* For commit queue patches, Evergreen always uses the module branch name, to ensure accurate testing.
+* For other patches, the initial default is to the githash in set-module, if specified.
+* For both commits and patches, the next default is to the `<module_name>` set in revisions for the command.
+* For commits, if this is not available, the next default is to ref, and then to branch. *Note that this 
+doesn't work for patches -- hashes will need to be specified in the revisions section of the command.*
 
 ## gotest.parse_files
 
@@ -415,7 +435,7 @@ Parse From A File:
 
 Agent Parameters:
 
--   `num_hosts` - Number of hosts to start, 1 \<= `num_hosts` \<= 10.
+-   `num_hosts` - Number of hosts to start, 1 &lt;= `num_hosts` &lt;= 10.
     Defaults to 1 (must be 1 if provider is Docker).
 -   `provider` - Cloud provider. Must set `ec2` or `docker`.
 -   `retries` - How many times Evergreen should try to create this host
@@ -425,11 +445,11 @@ Agent Parameters:
     the task or build is finished. Must be either `task` or `build`.
     Defaults to `task` if not set.
 -   `timeout_setup_secs` - Stop waiting for hosts to be ready when
-    spawning. Must be 60 \<= `timeout_setup_secs` \<= 3600 (1 hour).
+    spawning. Must be 60 &lt;= `timeout_setup_secs` &lt;= 3600 (1 hour).
     Default to 600 (10 minutes).
 -   `timeout_teardown_secs` - Even if the task or build has not
     finished, tear down this host after this many seconds. Must be 60
-    \<= `timeout_teardown_secs` \<= 604800 (7 days). Default to 21600 (6
+    &lt;= `timeout_teardown_secs` &lt;= 604800 (7 days). Default to 21600 (6
     hours).
 
 EC2 Parameters:
@@ -470,7 +490,7 @@ Docker Parameters:
 -   `background` - Set to wait for logs in the background, rather than
     blocking. Default is true.
 -   `container_wait_timeout_secs` - Time to wait for the container to
-    finish running the given command. Must be \<= 3600 (1 hour). Default
+    finish running the given command. Must be &lt;= 3600 (1 hour). Default
     to 600 (10 minutes).
 -   `command` - The command to run on the container. Does not not
     support shell interpolation. If not specified, will use the default
@@ -480,7 +500,7 @@ Docker Parameters:
 -   `image` - Required. The image to use for the container. If image is
     a URL, then the image is imported, otherwise it is pulled.
 -   `poll_frequency_secs` - Check for running container and logs at this
-    interval. Must be \<= 60 (1 second). Default to 30.
+    interval. Must be &lt;= 60 (1 second). Default to 30.
 -   `publish_ports` - Set to make ports available by mapping container
     ports to ports on the Docker host. Default is false.
 -   `extra_hosts` - Optional. This is a list of hosts to be added to
@@ -492,10 +512,15 @@ Docker Parameters:
     requires authentication. Must set if `registry_password` is set.
 -   `registry_password` - Password for the `registry_name` if it
     requires authentication. Must set if `registry_username` is set.
+-   `stdin_file_name` - The file containing the content to provide as stdin to
+    the container command. By default, the container command has no input to
+    stdin. Note that if you try to start a spawn host and also choose to start
+    containers started by host.create for the task, the running container will
+    *not* have the stdin file content passed to it.
 -   `stdout_file_name` - The file path to write stdout logs from the
-    container. Default is \<container_id\>.out.log.
+    container. Default is &lt;container_id&gt;.out.log.
 -   `stderr_file_name` - The file path to write stderr logs from the
-    container. Default is \<container_id\>.err.log.
+    container. Default is &lt;container_id&gt;.err.log.
 -   `environment_vars` - Environment variables to pass to the container command.
     By default, no environment variables are passed.
 
@@ -1355,4 +1380,4 @@ Parameters:
 Both parameters are optional. If not set, the task will use the
 definition from the project config.
 
-Commands can also be configured to run if timeout occurs, as documented [here](Project-Configuration-Files.md#pre-post-and-timeout).
+Commands can also be configured to run if timeout occurs, as documented [here](Project-Configuration-Files.md#timeout-handler).

@@ -9,11 +9,16 @@ import (
 	"github.com/evergreen-ci/evergreen/model/alertrecord"
 	"github.com/evergreen-ci/evergreen/model/event"
 	"github.com/evergreen-ci/evergreen/model/host"
+	"github.com/evergreen-ci/evergreen/testutil"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
 
 func TestVolumeExpiration(t *testing.T) {
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+	testutil.TestSpan(ctx, t)
+
 	require.NoError(t, db.ClearCollections(host.Collection, host.VolumesCollection, event.EventCollection, alertrecord.Collection))
 	volumes := []host.Volume{
 		{ID: "v0", Expiration: time.Now().Add(2 * time.Hour)},

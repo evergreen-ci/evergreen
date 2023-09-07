@@ -12,7 +12,9 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-const EnvOverride = "SETTINGS_OVERRIDE"
+const (
+	EnvOverride = "SETTINGS_OVERRIDE"
+)
 
 // path to an mci settings file containing sensitive information
 var settingsOverride = flag.String("evergreen.settingsOverride", "", "Settings file"+

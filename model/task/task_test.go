@@ -3773,6 +3773,71 @@ func TestByExecutionTasksAndMaxExecution(t *testing.T) {
 	})
 }
 
+func TestFindTaskOnPreviousCommit(t *testing.T) {
+	require.NoError(t, db.ClearCollections(Collection))
+	t1 := Task{
+		Id:                  "t1",
+		Version:             "v1",
+		Execution:           0,
+		Status:              evergreen.TaskSucceeded,
+		RevisionOrderNumber: 1,
+		Requester:           evergreen.RepotrackerVersionRequester,
+		BuildVariant:        "bv",
+		DisplayName:         "dn",
+		Project:             "p",
+	}
+	assert.NoError(t, db.Insert(Collection, t1))
+	t2 := Task{
+		Id:                  "t2",
+		Version:             "v2",
+		Execution:           0,
+		Status:              evergreen.TaskSucceeded,
+		RevisionOrderNumber: 2,
+		Requester:           evergreen.RepotrackerVersionRequester,
+		BuildVariant:        "bv",
+		DisplayName:         "dn",
+		Project:             "p",
+	}
+	assert.NoError(t, db.Insert(Collection, t2))
+
+	task, err := t2.FindTaskOnPreviousCommit()
+	assert.NoError(t, err)
+	require.NotNil(t, task)
+	assert.Equal(t, t1.Id, task.Id)
+	assert.Equal(t, t1.Version, task.Version)
+	t3 := Task{
+		Id:                  "t3",
+		Version:             "v3",
+		Execution:           0,
+		Status:              evergreen.TaskSucceeded,
+		RevisionOrderNumber: 3,
+		Requester:           evergreen.TriggerRequester,
+		BuildVariant:        "bv",
+		DisplayName:         "dn",
+		Project:             "p",
+	}
+	assert.NoError(t, db.Insert(Collection, t3))
+	t4 := Task{
+		Id:                  "t4",
+		Version:             "v4",
+		Execution:           0,
+		Status:              evergreen.TaskSucceeded,
+		RevisionOrderNumber: 4,
+		Requester:           evergreen.RepotrackerVersionRequester,
+		BuildVariant:        "bv",
+		DisplayName:         "dn",
+		Project:             "p",
+	}
+	assert.NoError(t, db.Insert(Collection, t4))
+
+	// Should fetch the latest mainline commit task and should not consider non gitter tasks
+	task, err = t4.FindTaskOnPreviousCommit()
+	assert.NoError(t, err)
+	require.NotNil(t, task)
+	assert.Equal(t, t2.Id, task.Id)
+	assert.Equal(t, t2.Version, task.Version)
+}
+
 type TaskConnectorFetchByIdSuite struct {
 	suite.Suite
 }
@@ -4636,7 +4701,7 @@ func TestGenerateNotRun(t *testing.T) {
 	}
 }
 
-func TestSetLogServiceVersion(t *testing.T) {
+func TestSetTaskOutputVersion(t *testing.T) {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 	env := evergreen.GetEnvironment()
@@ -4661,7 +4726,7 @@ func TestSetLogServiceVersion(t *testing.T) {
 		{
 			name: "VersionAlreadySet",
 			tsk: &Task{
-				LogServiceVersion: utility.ToIntPtr(1),
+				TaskOutputVersion: utility.ToIntPtr(1),
 			},
 			hasErr: true,
 		},
@@ -4669,7 +4734,7 @@ func TestSetLogServiceVersion(t *testing.T) {
 			name: "TaskDNE",
 			tsk: &Task{
 				Id:                "DNE",
-				LogServiceVersion: utility.ToIntPtr(1),
+				TaskOutputVersion: utility.ToIntPtr(1),
 			},
 			hasErr: true,
 		},
@@ -4677,7 +4742,7 @@ func TestSetLogServiceVersion(t *testing.T) {
 			name: "VersionAlreadySetInDB",
 			dbTsk: &Task{
 				Id:                "task0",
-				LogServiceVersion: utility.ToIntPtr(1),
+				TaskOutputVersion: utility.ToIntPtr(1),
 			},
 			tsk: &Task{
 				Id: "task0",
@@ -4700,13 +4765,13 @@ func TestSetLogServiceVersion(t *testing.T) {
 				require.NoError(t, err)
 			}
 
-			err := test.tsk.SetLogServiceVersion(ctx, env, 0)
+			err := test.tsk.SetTaskOutputVersion(ctx, env, 0)
 			if test.hasErr {
 				require.Error(t, err)
-				assert.NotEqual(t, utility.ToIntPtr(0), test.tsk.LogServiceVersion)
+				assert.NotEqual(t, utility.ToIntPtr(0), test.tsk.TaskOutputVersion)
 			} else {
 				require.NoError(t, err)
-				assert.Equal(t, utility.ToIntPtr(0), test.tsk.LogServiceVersion)
+				assert.Equal(t, utility.ToIntPtr(0), test.tsk.TaskOutputVersion)
 			}
 		})
 	}

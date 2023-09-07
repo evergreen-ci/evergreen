@@ -3,7 +3,7 @@
 # test, because it excludes the sensitive credentials necessary for the smoke
 # test to run (which are populated during task runtime).
 
-log_path: "server_logs.txt"
+log_path: "app_server.log"
 
 database:
   url: "mongodb://localhost:27017"

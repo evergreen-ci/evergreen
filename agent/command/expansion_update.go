@@ -6,6 +6,7 @@ import (
 
 	"github.com/evergreen-ci/evergreen/agent/internal"
 	"github.com/evergreen-ci/evergreen/agent/internal/client"
+	"github.com/evergreen-ci/evergreen/util"
 	"github.com/mitchellh/mapstructure"
 	"github.com/pkg/errors"
 )
@@ -61,6 +62,9 @@ func (c *update) ParseParams(params map[string]interface{}) error {
 }
 
 func (c *update) ExecuteUpdates(ctx context.Context, conf *internal.TaskConfig) error {
+	if conf.DynamicExpansions == nil {
+		conf.DynamicExpansions = util.Expansions{}
+	}
 	for _, update := range c.Updates {
 		if err := ctx.Err(); err != nil {
 			return errors.Wrap(err, "operation aborted")
@@ -73,6 +77,7 @@ func (c *update) ExecuteUpdates(ctx context.Context, conf *internal.TaskConfig) 
 				return errors.WithStack(err)
 			}
 			conf.Expansions.Put(update.Key, newValue)
+			conf.DynamicExpansions.Put(update.Key, newValue)
 		} else {
 			newValue, err := conf.Expansions.ExpandString(update.Concat)
 			if err != nil {
@@ -81,6 +86,7 @@ func (c *update) ExecuteUpdates(ctx context.Context, conf *internal.TaskConfig) 
 
 			oldValue := conf.Expansions.Get(update.Key)
 			conf.Expansions.Put(update.Key, oldValue+newValue)
+			conf.DynamicExpansions.Put(update.Key, oldValue+newValue)
 		}
 	}
 
@@ -90,7 +96,6 @@ func (c *update) ExecuteUpdates(ctx context.Context, conf *internal.TaskConfig) 
 // Execute updates the expansions. Fulfills Command interface.
 func (c *update) Execute(ctx context.Context,
 	comm client.Communicator, logger client.LoggerProducer, conf *internal.TaskConfig) error {
-
 	err := c.ExecuteUpdates(ctx, conf)
 
 	if err != nil {
@@ -103,7 +108,7 @@ func (c *update) Execute(ctx context.Context,
 			return errors.WithStack(err)
 		}
 
-		filename := getJoinedWithWorkDir(conf, c.YamlFile)
+		filename := getWorkingDirectory(conf, c.YamlFile)
 
 		_, err = os.Stat(filename)
 		if os.IsNotExist(err) {
@@ -116,6 +121,9 @@ func (c *update) Execute(ctx context.Context,
 		logger.Task().Infof("Updating expansions with keys from file '%s'.", filename)
 		err := conf.Expansions.UpdateFromYaml(filename)
 		if err != nil {
+			return errors.WithStack(err)
+		}
+		if err = conf.DynamicExpansions.UpdateFromYaml(filename); err != nil {
 			return errors.WithStack(err)
 		}
 	}

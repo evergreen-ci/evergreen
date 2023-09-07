@@ -18,6 +18,7 @@ func TestHostMonitoringContainerStateJob(t *testing.T) {
 
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
+	ctx = testutil.TestSpan(ctx, t)
 
 	env := testutil.NewEnvironment(ctx, t)
 	h1 := &host.Host{
@@ -48,7 +49,7 @@ func TestHostMonitoringContainerStateJob(t *testing.T) {
 	j := NewHostMonitorContainerStateJob(env, h1, evergreen.ProviderNameDockerMock, "job-1")
 	assert.False(j.Status().Completed)
 
-	j.Run(context.Background())
+	j.Run(ctx)
 
 	assert.NoError(j.Error())
 	assert.True(j.Status().Completed)

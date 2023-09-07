@@ -17,11 +17,14 @@ import (
 	"github.com/mongodb/grip"
 	"github.com/mongodb/grip/message"
 	"github.com/pkg/errors"
+	"go.opentelemetry.io/otel/attribute"
+	"go.opentelemetry.io/otel/trace"
 )
 
 const (
-	createHostJobName = "provisioning-create-host"
-	maxPollAttempts   = 100
+	createHostJobName                     = "provisioning-create-host"
+	maxPollAttempts                       = 100
+	provisioningCreateHostAttributePrefix = "evergreen.provisioning_create_host"
 )
 
 func init() {
@@ -105,7 +108,8 @@ func (j *createHostJob) Run(ctx context.Context) {
 	if j.env == nil {
 		j.env = evergreen.GetEnvironment()
 	}
-	j.AddError(errors.Wrap(j.env.Settings().HostInit.Get(ctx), "refreshing hostinit settings"))
+	var hostInit evergreen.HostInitConfig
+	j.AddError(errors.Wrap(hostInit.Get(ctx), "refreshing hostinit settings"))
 
 	if j.host == nil {
 		j.host, err = host.FindOneId(ctx, j.HostID)
@@ -164,7 +168,7 @@ func (j *createHostJob) Run(ctx context.Context) {
 			lowHostNumException = true
 		}
 
-		if allRunningDynamicHosts > j.env.Settings().HostInit.MaxTotalDynamicHosts && !lowHostNumException {
+		if allRunningDynamicHosts > hostInit.MaxTotalDynamicHosts && !lowHostNumException {
 
 			grip.Info(message.Fields{
 				"host_id":                 j.HostID,
@@ -174,7 +178,7 @@ func (j *createHostJob) Run(ctx context.Context) {
 				"provider":                j.host.Provider,
 				"message":                 "not provisioning host to respect max_total_dynamic_hosts",
 				"total_dynamic_hosts":     allRunningDynamicHosts,
-				"max_total_dynamic_hosts": j.env.Settings().HostInit.MaxTotalDynamicHosts,
+				"max_total_dynamic_hosts": hostInit.MaxTotalDynamicHosts,
 			})
 			removeHostIntent = true
 
@@ -197,7 +201,7 @@ func (j *createHostJob) Run(ctx context.Context) {
 			return
 		}
 
-		if j.selfThrottle(ctx) {
+		if j.selfThrottle(ctx, hostInit) {
 			grip.Debug(message.Fields{
 				"host_id":  j.HostID,
 				"attempt":  j.RetryInfo().CurrentAttempt,
@@ -222,27 +226,20 @@ func (j *createHostJob) Run(ctx context.Context) {
 	j.AddRetryableError(j.createHost(ctx))
 }
 
-func (j *createHostJob) selfThrottle(ctx context.Context) bool {
-	var (
-		numProv            int
-		runningHosts       int
-		distroRunningHosts int
-		err                error
-	)
-
-	numProv, err = host.CountIdleStartedTaskHosts(ctx)
+func (j *createHostJob) selfThrottle(ctx context.Context, hostInit evergreen.HostInitConfig) bool {
+	numProv, err := host.CountIdleStartedTaskHosts(ctx)
 	if err != nil {
 		j.AddError(errors.Wrap(err, "counting pending host pool size"))
 		return true
 	}
 
-	distroRunningHosts, err = host.CountRunningHosts(ctx, j.host.Distro.Id)
+	distroRunningHosts, err := host.CountRunningHosts(ctx, j.host.Distro.Id)
 	if err != nil {
 		j.AddError(errors.Wrapf(err, "counting host pool size for distro '%s'", j.host.Distro.Id))
 		return true
 	}
 
-	runningHosts, err = host.CountAllRunningDynamicHosts(ctx)
+	runningHosts, err := host.CountAllRunningDynamicHosts(ctx)
 	if err != nil {
 		j.AddError(errors.Wrap(err, "counting size of entire host pool"))
 		return true
@@ -250,7 +247,7 @@ func (j *createHostJob) selfThrottle(ctx context.Context) bool {
 
 	if distroRunningHosts < runningHosts/100 || distroRunningHosts < j.host.Distro.HostAllocatorSettings.MinimumHosts {
 		return false
-	} else if numProv >= j.env.Settings().HostInit.HostThrottle {
+	} else if numProv >= hostInit.HostThrottle {
 		reason := "host creation throttle"
 		j.AddError(errors.Wrapf(j.host.SetStatusAtomically(ctx, evergreen.HostBuildingFailed, evergreen.User, reason), "getting rid of intent host '%s' for host creation throttle", j.host.Id))
 		event.LogHostCreationFailed(j.host.Id, reason)
@@ -277,6 +274,13 @@ func (j *createHostJob) createHost(ctx context.Context) error {
 		"attempt":      j.RetryInfo().CurrentAttempt,
 		"max_attempts": j.RetryInfo().MaxAttempts,
 	})
+
+	span := trace.SpanFromContext(ctx)
+	span.SetAttributes(
+		attribute.String(evergreen.DistroIDOtelAttribute, j.host.Distro.Id),
+		attribute.String(evergreen.HostIDOtelAttribute, j.host.Id),
+		attribute.Bool(fmt.Sprintf("%s.spawned_host", provisioningCreateHostAttributePrefix), false),
+	)
 
 	mgrOpts, err := cloud.GetManagerOptions(j.host.Distro)
 	if err != nil {
@@ -347,6 +351,7 @@ func (j *createHostJob) createHost(ctx context.Context) error {
 		"job":          j.ID(),
 		"runtime_secs": time.Since(j.start).Seconds(),
 	})
+	span.SetAttributes(attribute.Bool(fmt.Sprintf("%s.spawned_host", provisioningCreateHostAttributePrefix), true))
 
 	return nil
 }

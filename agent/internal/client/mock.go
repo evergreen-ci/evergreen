@@ -36,7 +36,6 @@ type Mock struct {
 
 	// mock behavior
 	NextTaskShouldFail          bool
-	NextTaskShouldConflict      bool
 	GetPatchFileShouldFail      bool
 	loggingShouldFail           bool
 	NextTaskResponse            *apimodels.NextTaskResponse
@@ -46,7 +45,7 @@ type Mock struct {
 	GetProjectResponse          *serviceModel.Project
 	EndTaskResponse             *apimodels.EndTaskResponse
 	EndTaskShouldFail           bool
-	EndTaskResult               endTaskResult
+	EndTaskResult               EndTaskResult
 	ShellExecFilename           string
 	TimeoutFilename             string
 	GenerateTasksShouldFail     bool
@@ -60,13 +59,14 @@ type Mock struct {
 
 	CedarGRPCConn *grpc.ClientConn
 
-	AttachedFiles    map[string][]*artifact.File
-	LogID            string
-	LocalTestResults []testresult.TestResult
-	ResultsService   string
-	ResultsFailed    bool
-	TestLogs         []*serviceModel.TestLog
-	TestLogCount     int
+	AttachedFiles     map[string][]*artifact.File
+	LogID             string
+	LocalTestResults  []testresult.TestResult
+	TaskOutputVersion int
+	ResultsService    string
+	ResultsFailed     bool
+	TestLogs          []*serviceModel.TestLog
+	TestLogCount      int
 
 	logMessages map[string][]apimodels.LogMessage
 	PatchFiles  map[string]string
@@ -79,7 +79,7 @@ type Mock struct {
 	mu sync.RWMutex
 }
 
-type endTaskResult struct {
+type EndTaskResult struct {
 	Detail   *apimodels.TaskEndDetail
 	TaskData TaskData
 }
@@ -124,6 +124,12 @@ func (c *Mock) StartTask(ctx context.Context, td TaskData) error {
 	if c.StartTaskShouldFail {
 		return errors.New("start task mock failure")
 	}
+	return nil
+}
+
+func (c *Mock) SetTaskOutputVersion(ctx context.Context, _ TaskData, version int) error {
+	c.TaskOutputVersion = version
+
 	return nil
 }
 
@@ -281,9 +287,6 @@ func (c *Mock) GetNextTask(ctx context.Context, details *apimodels.GetNextTaskDe
 	if c.NextTaskShouldFail {
 		return nil, errors.New("NextTaskShouldFail is true")
 	}
-	if c.NextTaskShouldConflict {
-		return nil, errors.WithStack(HTTPConflictError)
-	}
 	if c.NextTaskResponse != nil {
 		return c.NextTaskResponse, nil
 	}
@@ -408,7 +411,7 @@ func (*Mock) CreateSpawnHost(ctx context.Context, spawnRequest *model.HostReques
 	return mockHost, nil
 }
 
-func (c *Mock) SetResultsInfo(ctx context.Context, td TaskData, service string, failed bool) error {
+func (c *Mock) SetResultsInfo(ctx context.Context, _ TaskData, service string, failed bool) error {
 	c.ResultsService = service
 	if failed {
 		c.ResultsFailed = true

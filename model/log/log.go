@@ -21,6 +21,9 @@ type LogLine struct {
 
 // GetOptions represents the arguments for fetching Evergreen logs.
 type GetOptions struct {
+	// Version is the version of the underlying log service with which the
+	// specified logs were stored.
+	Version int
 	// LogNames are the names of the logs to fetch and merge, prefixes may
 	// be specified. At least one name must be specified.
 	LogNames []string
@@ -37,18 +40,9 @@ type GetOptions struct {
 	TailN int
 }
 
-// TaskOptions represents the task-level information required to fetch logs
-// belonging to an Evergreen task run.
-type TaskOptions struct {
-	ProjectID string
-	TaskID    string
-	Execution int
-	// ServiceVersion is the version of the backing logger service.
-	ServiceVersion int
-}
-
-// GetTaskLogs returns the logs from a task run specified by the options.
-func GetTaskLogs(ctx context.Context, env evergreen.Environment, taskOpts TaskOptions, opts GetOptions) (LogIterator, error) {
+// Get returns the Evergreen logs from the backing service specified by the
+// options.
+func Get(ctx context.Context, env evergreen.Environment, opts GetOptions) (LogIterator, error) {
 	return nil, errors.New("not implemented")
 }
 

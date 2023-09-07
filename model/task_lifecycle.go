@@ -567,6 +567,7 @@ func MarkEnd(ctx context.Context, settings *evergreen.Settings, t *task.Task, ca
 	if t.ResultsFailed && detailsCopy.Status != evergreen.TaskFailed {
 		detailsCopy.Type = evergreen.CommandTypeTest
 		detailsCopy.Status = evergreen.TaskFailed
+		detailsCopy.Description = evergreen.TaskDescriptionResultsFailed
 	}
 
 	if t.Status == detailsCopy.Status {
@@ -577,6 +578,7 @@ func MarkEnd(ctx context.Context, settings *evergreen.Settings, t *task.Task, ca
 		return nil
 	}
 	if detailsCopy.Status == evergreen.TaskSucceeded && t.MustHaveResults && !t.HasResults() {
+		detailsCopy.Type = evergreen.CommandTypeTest
 		detailsCopy.Status = evergreen.TaskFailed
 		detailsCopy.Description = evergreen.TaskDescriptionNoResults
 	}
@@ -2019,8 +2021,7 @@ func ClearAndResetStrandedHostTask(ctx context.Context, settings *evergreen.Sett
 // aborted, the task is reset. If the task was aborted, we do not reset the task
 // and it is just marked as failed alongside other necessary updates to finish the task.
 func FixStaleTask(ctx context.Context, settings *evergreen.Settings, t *task.Task) error {
-	err := UpdateBlockedDependencies(t)
-	if err != nil {
+	if err := UpdateBlockedDependencies(t); err != nil {
 		return errors.Wrapf(err, "updating blocked dependencies for task '%s'", t.Id)
 	}
 
@@ -2032,7 +2033,18 @@ func FixStaleTask(ctx context.Context, settings *evergreen.Settings, t *task.Tas
 		}
 	} else {
 		if err := resetSystemFailedTask(ctx, settings, t, failureDesc); err != nil {
-			return errors.Wrap(err, "resetting heartbeat task")
+			if !t.IsPartOfDisplay() {
+				return errors.Wrap(err, "resetting heartbeat task")
+			}
+			// It's possible for display tasks to race, since multiple execution tasks can system fail at the same time.
+			// Only error if the display task hasn't actually been reset.
+			dt, dbErr := t.GetDisplayTask()
+			if dbErr != nil {
+				return errors.Wrap(dbErr, "confirming display task status")
+			}
+			if utility.StringSliceContains(evergreen.TaskCompletedStatuses, dt.Status) {
+				return errors.Wrap(err, "resetting heartbeat task")
+			}
 		}
 	}
 
@@ -2043,7 +2055,6 @@ func FixStaleTask(ctx context.Context, settings *evergreen.Settings, t *task.Tas
 		"execution_platform": t.ExecutionPlatform,
 		"description":        failureDesc,
 	})
-
 	return nil
 }
 

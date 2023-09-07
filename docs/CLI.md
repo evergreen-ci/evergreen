@@ -14,6 +14,8 @@ On macOS, the evergreen binary is currently not notarized. To allow running it, 
 Basic Patch Usage
 --
 
+`evergreen patch` allows you to submit patches to test your local changes. It will also check your project YAML any for validation errors before submission. If you want to view warnings, look at the [validate](#validating-changes-to-config-files) command.
+
 To submit a patch, run this from your local copy of the mongodb/mongo repo:
 ```bash
 evergreen patch -p <project-id>
