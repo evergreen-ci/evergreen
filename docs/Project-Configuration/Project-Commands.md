@@ -462,7 +462,8 @@ EC2 Parameters:
     non-default account. Must set if `aws_access_key_id` is set.
 -   `device_name` - name of EBS device
 -   `distro` - Evergreen distro to start. Must set `ami` or `distro` but
-    must not set both.
+    must not set both. Note that the distro setup script will not run for 
+    hosts spawned by this command, so any required initial setup must be done manually.
 -   `ebs_block_device` - list of the following parameters:
 -   `ebs_iops` - EBS provisioned IOPS.
 -   `ebs_size` - Size of EBS volume in GB.
@@ -599,11 +600,11 @@ tasks:
       - func: other-tasks
 ```
 Note:
-- The ${admin_user_name} expansion is set to the value of the
+- The `${admin_user_name}` expansion should be set to the value of the
 **user** field set for the command's distro, which can be inspected [on Evergreen's distro page](https://evergreen.mongodb.com/distros).
-- Hosts spawned with `host.create` do not run the distro setup script, so any required initial setup must be done manually.
+This is not a default expansion, so it must be set manually.
 - The mcipacker.pem key file was created by echoing the value of the
-\${\_\_project_aws_ssh_key_value} expansion (which gets populated automatically with the ssh public key value) into the file. This
+`${__project_aws_ssh_key_value}` expansion (which gets populated automatically with the ssh public key value) into the file. This
 expansion is automatically set by Evergreen when the host is spawned.
 
 ## host.list
