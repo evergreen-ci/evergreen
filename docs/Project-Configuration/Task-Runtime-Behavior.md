@@ -199,6 +199,11 @@ example, if the task encountered no command errors and was going to finish with
 "success" but the task posted a "failed" status to this endpoint, the task's
 status will be "failed".
 
+Note: Overriding the default task status is intended for fairly niche use cases,
+such as manually setting the task to "failed" after a background process
+abruptly exits). Only use this if the default task status does not suit your use
+case.
+
 Posting a task status will not immediately stop the currently-running command.
 Once the current command completes, it will check if the task end status is
 defined, and will either continue or stop depending on whether `should_continue`
