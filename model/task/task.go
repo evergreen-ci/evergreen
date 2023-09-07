@@ -226,6 +226,12 @@ type Task struct {
 	ExecutionTasks        []string `bson:"execution_tasks,omitempty" json:"execution_tasks,omitempty"`
 	LatestParentExecution int      `bson:"latest_parent_execution" json:"latest_parent_execution"`
 
+	// LastFailingStepbackTaskId, LastPassingStepbackTaskId, and NextStepbackTaskId
+	// are used to track and help decide what task to stepback to.
+	LastFailingStepbackTaskId string `bson:"last_failing_stepback_task_id,omitempty" json:"last_failing_stepback_task_id,omitempty"`
+	LastPassingStepbackTaskId string `bson:"last_passing_stepback_task_id,omitempty" json:"last_passing_stepback_task_id,omitempty"`
+	NextStepbackTaskId        string `bson:"next_stepback_task_id,omitempty" json:"next_stepback_task_id,omitempty"`
+
 	// ResetWhenFinished indicates that a task should be reset once it is
 	// finished running. This is typically to deal with tasks that should be
 	// reset but cannot do so yet because they're currently running.
