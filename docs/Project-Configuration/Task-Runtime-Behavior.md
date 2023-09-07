@@ -201,8 +201,8 @@ status will be "failed".
 
 Note: Overriding the default task status is intended for fairly niche use cases,
 such as manually setting the task to "failed" after a background process
-abruptly exits). Only use this if the default task status does not suit your use
-case.
+abruptly exits. Only use this if the default task status does not suit your
+needs.
 
 Posting a task status will not immediately stop the currently-running command.
 Once the current command completes, it will check if the task end status is
