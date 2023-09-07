@@ -75,28 +75,6 @@ type Options struct {
 	SendTaskLogsToGlobalSender bool
 }
 
-// Mode represents a mode that the agent will run in.
-type Mode string
-
-const (
-	// HostMode indicates that the agent will run in a host.
-	HostMode Mode = "host"
-	// PodMode indicates that the agent will run in a pod's container.
-	PodMode Mode = "pod"
-
-	endTaskMessageLimit = 500
-)
-
-// LogOutput represents the output locations for the agent's logs.
-type LogOutputType string
-
-const (
-	// LogOutputFile indicates that the agent will log to a file.
-	LogOutputFile LogOutputType = "file"
-	// LogOutputStdout indicates that the agent will log to standard output.
-	LogOutputStdout LogOutputType = "stdout"
-)
-
 type taskContext struct {
 	currentCommand            command.Command
 	expansions                util.Expansions
@@ -128,20 +106,6 @@ type timeoutInfo struct {
 	// exceededDuration is the length of the timeout that was extended, if the task timed out
 	exceededDuration time.Duration
 }
-
-type timeoutType string
-
-const (
-	execTimeout          timeoutType = "exec"
-	idleTimeout          timeoutType = "idle"
-	callbackTimeout      timeoutType = "callback"
-	preTimeout           timeoutType = "pre"
-	postTimeout          timeoutType = "post"
-	setupGroupTimeout    timeoutType = "setup group"
-	setupTaskTimeout     timeoutType = "setup task"
-	teardownTaskTimeout  timeoutType = "teardown task"
-	teardownGroupTimeout timeoutType = "teardown group"
-)
 
 // New creates a new Agent with some Options and a client.Communicator. Call the
 // Agent's Start method to begin listening for tasks to run. Users should call
@@ -746,7 +710,6 @@ func (a *Agent) runPreAndMain(ctx context.Context, tc *taskContext) (status stri
 }
 
 func (a *Agent) runPreTaskCommands(ctx context.Context, tc *taskContext) error {
-	tc.logger.Task().Info("Running pre-task commands.")
 	ctx, preTaskSpan := a.tracer.Start(ctx, "pre-task-commands")
 	defer preTaskSpan.End()
 
@@ -758,31 +721,10 @@ func (a *Agent) runPreTaskCommands(ctx context.Context, tc *taskContext) error {
 		}
 
 		if setupGroup.commands != nil {
-			tc.logger.Task().Infof("Running setup-group commands for task group '%s'.", tc.taskGroup)
-
-			setupGroupCtx, setupGroupCancel := context.WithCancel(ctx)
-			defer setupGroupCancel()
-
-			timeoutOpts := timeoutWatcherOptions{
-				tc:                    tc,
-				kind:                  setupGroup.timeoutKind,
-				getTimeout:            setupGroup.getTimeout,
-				canMarkTimeoutFailure: setupGroup.canFailTask,
+			err = a.runCommandsInBlock(ctx, tc, *setupGroup)
+			if err != nil && setupGroup.canFailTask {
+				return err
 			}
-			go a.startTimeoutWatcher(setupGroupCtx, setupGroupCancel, timeoutOpts)
-
-			opts := runCommandsOptions{
-				block:       setupGroup.block,
-				canFailTask: setupGroup.canFailTask,
-			}
-			err = a.runCommandsInBlock(setupGroupCtx, tc, setupGroup.commands.List(), opts)
-			if err != nil {
-				tc.logger.Task().Error(errors.Wrap(err, "Running task setup group commands failed"))
-				if opts.canFailTask {
-					return err
-				}
-			}
-			tc.logger.Task().Infof("Finished running setup group for task group '%s'.", tc.taskGroup)
 		}
 		tc.ranSetupGroup = true
 	}
@@ -794,30 +736,12 @@ func (a *Agent) runPreTaskCommands(ctx context.Context, tc *taskContext) error {
 	}
 
 	if pre.commands != nil {
-		preCtx, preCancel := context.WithCancel(ctx)
-		defer preCancel()
-		timeoutOpts := timeoutWatcherOptions{
-			tc:                    tc,
-			kind:                  pre.timeoutKind,
-			getTimeout:            pre.getTimeout,
-			canMarkTimeoutFailure: pre.canFailTask,
-		}
-		go a.startTimeoutWatcher(preCtx, preCancel, timeoutOpts)
-
-		opts := runCommandsOptions{
-			canFailTask: pre.canFailTask,
-			block:       pre.block,
-		}
-		err = a.runCommandsInBlock(preCtx, tc, pre.commands.List(), opts)
-		if err != nil {
-			tc.logger.Task().Error(errors.Wrap(err, "Running pre-task commands failed"))
-			if opts.canFailTask {
-				return err
-			}
+		err = a.runCommandsInBlock(ctx, tc, *pre)
+		if err != nil && pre.canFailTask {
+			return err
 		}
 	}
 
-	tc.logger.Task().InfoWhen(err == nil, "Finished running pre-task commands.")
 	return nil
 }
 
@@ -826,26 +750,131 @@ func (a *Agent) runTaskCommands(ctx context.Context, tc *taskContext) error {
 	ctx, span := a.tracer.Start(ctx, "task-commands")
 	defer span.End()
 
-	conf := tc.taskConfig
-	task := conf.Project.FindProjectTask(conf.Task.DisplayName)
+	task := tc.taskConfig.Project.FindProjectTask(tc.taskConfig.Task.DisplayName)
 
 	if task == nil {
-		return errors.Errorf("unable to find task '%s' in project '%s'", conf.Task.DisplayName, conf.Task.Project)
+		return errors.Errorf("unable to find task '%s' in project '%s'", tc.taskConfig.Task.DisplayName, tc.taskConfig.Task.Project)
 	}
 
 	if err := ctx.Err(); err != nil {
 		return errors.Wrap(err, "canceled while running task commands")
 	}
-	tc.logger.Execution().Info("Running task commands.")
-	start := time.Now()
-	opts := runCommandsOptions{block: command.MainTaskBlock, canFailTask: true}
-	err := a.runCommandsInBlock(ctx, tc, task.Commands, opts)
-	tc.logger.Task().Error(errors.Wrap(err, "Running task commands failed"))
-	tc.logger.Task().Infof("Finished running task commands in %s.", time.Since(start).String())
+
+	mainTask := commandBlock{
+		block:       command.MainTaskBlock,
+		commands:    &model.YAMLCommandSet{MultiCommand: task.Commands},
+		canFailTask: true,
+	}
+	err := a.runCommandsInBlock(ctx, tc, mainTask)
 	if err != nil {
 		return err
 	}
+
 	return nil
+}
+
+func (a *Agent) runTaskTimeoutCommands(ctx context.Context, tc *taskContext) {
+	timeout, err := tc.getTimeout(tc.taskGroup)
+	if err != nil {
+		tc.logger.Execution().Error(errors.Wrap(err, "fetching task group for task timeout commands"))
+		return
+	}
+	if timeout.commands != nil {
+		// If the timeout commands error, ignore the error. runCommandsInBlock
+		// already logged the error, and the timeout commands cannot cause the
+		// task to fail since the task has already timed out.
+		_ = a.runCommandsInBlock(ctx, tc, *timeout)
+	}
+}
+
+func (a *Agent) runPostTaskCommands(ctx context.Context, tc *taskContext) error {
+	ctx, span := a.tracer.Start(ctx, "post-task-commands")
+	defer span.End()
+
+	a.killProcs(ctx, tc, false, "post task commands are starting")
+	defer a.killProcs(ctx, tc, false, "post task commands are finished")
+
+	post, err := tc.getPost(tc.taskGroup)
+	if err != nil {
+		tc.logger.Execution().Error(errors.Wrap(err, "fetching task group for post-task commands"))
+		return nil
+	}
+
+	if post.commands != nil {
+		err = a.runCommandsInBlock(ctx, tc, *post)
+		if err != nil && post.canFailTask {
+			return err
+		}
+	}
+	return nil
+}
+
+func (a *Agent) runTeardownGroupCommands(ctx context.Context, tc *taskContext) {
+	defer a.removeTaskDirectory(tc)
+	if tc.taskConfig == nil {
+		return
+	}
+	// Only killProcs if tc.taskConfig is not nil. This avoids passing an
+	// empty working directory to killProcs, and is okay because this
+	// killProcs is only for the processes run in runTeardownGroupCommands.
+	defer a.killProcs(ctx, tc, true, "teardown group commands are finished")
+
+	defer func() {
+		if tc.logger != nil {
+			// If the logger from the task is still open, running the teardown
+			// group is the last thing that a task can do, so close the logger
+			// to indicate logging is complete for the task.
+			grip.Error(tc.logger.Close())
+		}
+	}()
+
+	teardownGroup, err := tc.getTeardownGroup(tc.taskGroup)
+	if err != nil {
+		if tc.logger != nil {
+			tc.logger.Execution().Error(errors.Wrap(err, "fetching task group for teardown-group commands"))
+		}
+		return
+	}
+
+	if teardownGroup.commands != nil {
+		a.killProcs(ctx, tc, true, "teardown group commands are starting")
+
+		_ = a.runCommandsInBlock(ctx, tc, *teardownGroup)
+	}
+}
+
+// runEndTaskSync runs task sync if it was requested for the end of this task.
+func (a *Agent) runEndTaskSync(ctx context.Context, tc *taskContext, detail *apimodels.TaskEndDetail) {
+	if tc.taskConfig.Task == nil {
+		tc.logger.Task().Error("Task not found for running task sync.")
+		return
+	}
+
+	taskSyncCmds := endTaskSyncCommands(tc, detail)
+	if taskSyncCmds == nil {
+		return
+	}
+
+	var timeout time.Duration
+	if tc.taskConfig.Task.SyncAtEndOpts.Timeout != 0 {
+		timeout = tc.taskConfig.Task.SyncAtEndOpts.Timeout
+	} else {
+		timeout = evergreen.DefaultTaskSyncAtEndTimeout
+	}
+
+	taskSync := commandBlock{
+		block:       command.TaskSyncBlock,
+		commands:    taskSyncCmds,
+		timeoutKind: taskSyncTimeout,
+		getTimeout: func() time.Duration {
+			return timeout
+		},
+	}
+
+	// If the task sync commands error, ignore the error. runCommandsInBlock
+	// already logged the error and the task sync commands cannot cause the task
+	// to fail since they're optional.
+	_ = a.runCommandsInBlock(ctx, tc, taskSync)
 }
 
 func (a *Agent) handleTaskResponse(ctx context.Context, tc *taskContext, status string, message string) (bool, error) {
@@ -883,31 +912,6 @@ func (a *Agent) handleTimeoutAndOOM(ctx context.Context, tc *taskContext, status
 	}
 }
 
-func (a *Agent) runTaskTimeoutCommands(ctx context.Context, tc *taskContext) {
-	tc.logger.Task().Info("Running task-timeout commands.")
-	start := time.Now()
-
-	timeout, err := tc.getTimeout(tc.taskGroup)
-	if err != nil {
-		tc.logger.Execution().Error(errors.Wrap(err, "fetching task group for task timeout commands"))
-		return
-	}
-	if timeout.commands != nil {
-		timeoutCtx, timeoutCancel := context.WithCancel(ctx)
-		defer timeoutCancel()
-		timeoutOpts := timeoutWatcherOptions{
-			tc:         tc,
-			kind:       timeout.timeoutKind,
-			getTimeout: timeout.getTimeout,
-		}
-		go a.startTimeoutWatcher(timeoutCtx, timeoutCancel, timeoutOpts)
-
-		err := a.runCommandsInBlock(timeoutCtx, tc, timeout.commands.List(), runCommandsOptions{block: timeout.block})
-		tc.logger.Task().Error(errors.Wrap(err, "Running timeout commands failed"))
-		tc.logger.Task().Infof("Finished running timeout commands in %s.", time.Since(start))
-	}
-}
-
 // finishTask sends the returned EndTaskResponse and error
 func (a *Agent) finishTask(ctx context.Context, tc *taskContext, status string, message string) (*apimodels.EndTaskResponse, error) {
 	detail := a.endTaskResponse(ctx, tc, status, message)
@@ -923,9 +927,10 @@ func (a *Agent) finishTask(ctx context.Context, tc *taskContext, status string, 
 	case evergreen.TaskFailed:
 		a.handleTimeoutAndOOM(ctx, tc, status)
 		tc.logger.Task().Info("Task completed - FAILURE.")
-		if err := a.runPostTaskCommands(ctx, tc); err != nil {
-			tc.logger.Task().Error(errors.Wrap(err, "running post task commands"))
-		}
+		// If the post commands error, ignore the error. runCommandsInBlock
+		// already logged the error, and the post commands cannot cause the
+		// task to fail since the task already failed.
+		_ = a.runPostTaskCommands(ctx, tc)
 		a.runEndTaskSync(ctx, tc, detail)
 	case evergreen.TaskSystemFailed:
 		// This is a special status indicating that the agent failed for reasons
@@ -1045,131 +1050,6 @@ func setEndTaskFailureDetails(tc *taskContext, detail *apimodels.TaskEndDetail, 
 		detail.TimeoutDuration = tc.getTimeoutDuration()
 	}
 
-}
-
-func (a *Agent) runPostTaskCommands(ctx context.Context, tc *taskContext) error {
-	ctx, span := a.tracer.Start(ctx, "post-task-commands")
-	defer span.End()
-
-	start := time.Now()
-	a.killProcs(ctx, tc, false, "post task commands are starting")
-	defer a.killProcs(ctx, tc, false, "post task commands are finished")
-	tc.logger.Task().Info("Running post-task commands.")
-
-	post, err := tc.getPost(tc.taskGroup)
-	if err != nil {
-		tc.logger.Execution().Error(errors.Wrap(err, "fetching task group for post-task commands"))
-		return nil
-	}
-
-	if post.commands != nil {
-		postCtx, postCancel := context.WithCancel(ctx)
-		defer postCancel()
-		timeoutOpts := timeoutWatcherOptions{
-			tc:                    tc,
-			kind:                  post.timeoutKind,
-			getTimeout:            post.getTimeout,
-			canMarkTimeoutFailure: post.canFailTask,
-		}
-		go a.startTimeoutWatcher(postCtx, postCancel, timeoutOpts)
-
-		opts := runCommandsOptions{
-			block:       post.block,
-			canFailTask: post.canFailTask,
-		}
-		err = a.runCommandsInBlock(postCtx, tc, post.commands.List(), opts)
-		if err != nil {
-			tc.logger.Task().Error(errors.Wrap(err, "Running post-task commands failed"))
-			if opts.canFailTask {
-				return err
-			}
-		}
-	}
-	tc.logger.Task().Infof("Finished running post-task commands in %s.", time.Since(start))
-	return nil
-}
-
-func (a *Agent) runTeardownGroupCommands(ctx context.Context, tc *taskContext) {
-	defer a.removeTaskDirectory(tc)
-	if tc.taskConfig == nil {
-		return
-	}
-	// Only killProcs if tc.taskConfig is not nil. This avoids passing an
-	// empty working directory to killProcs, and is okay because this
-	// killProcs is only for the processes run in runTeardownGroupCommands.
-	defer a.killProcs(ctx, tc, true, "teardown group commands are finished")
-
-	defer func() {
-		if tc.logger != nil {
-			// If the logger from the task is still open, running the teardown
-			// group is the last thing that a task can do, so close the logger
-			// to indicate logging is complete for the task.
-			grip.Error(tc.logger.Close())
-		}
-	}()
-
-	var logger grip.Journaler
-	if tc.logger != nil {
-		logger = tc.logger.Task()
-	} else {
-		logger = grip.GetDefaultJournaler()
-	}
-
-	teardownGroup, err := tc.getTeardownGroup(tc.taskGroup)
-	if err != nil {
-		if tc.logger != nil {
-			tc.logger.Execution().Error(errors.Wrap(err, "fetching task group for teardown-group commands"))
-		}
-		return
-	}
-
-	if teardownGroup.commands != nil {
-		grip.Infof("Running teardown-group commands for task group '%s'.", tc.taskGroup)
-		a.killProcs(ctx, tc, true, "teardown group commands are starting")
-
-		teardownGroupCtx, teardownGroupCancel := context.WithCancel(ctx)
-		defer teardownGroupCancel()
-		timeoutOpts := timeoutWatcherOptions{
-			tc:         tc,
-			kind:       teardownGroup.timeoutKind,
-			getTimeout: teardownGroup.getTimeout,
-		}
-		go a.startTimeoutWatcher(teardownGroupCtx, teardownGroupCancel, timeoutOpts)
-
-		opts := runCommandsOptions{block: teardownGroup.block}
-		err := a.runCommandsInBlock(teardownGroupCtx, tc, teardownGroup.commands.List(), opts)
-		logger.Error(errors.Wrap(err, "Running post-group commands failed"))
-
-		logger.Info("Finished running post-group commands.")
-	}
-}
-
-// runEndTaskSync runs task sync if it was requested for the end of this task.
-func (a *Agent) runEndTaskSync(ctx context.Context, tc *taskContext, detail *apimodels.TaskEndDetail) {
-	if tc.taskModel == nil {
-		tc.logger.Task().Error("Task model not found for running task sync.")
-		return
-	}
-	start := time.Now()
-	taskSyncCmds := endTaskSyncCommands(tc, detail)
-	if taskSyncCmds == nil {
-		return
-	}
-
-	var syncCtx context.Context
-	var cancel context.CancelFunc
-	if timeout := tc.taskModel.SyncAtEndOpts.Timeout; timeout != 0 {
-		syncCtx, cancel = context.WithTimeout(ctx, timeout)
-	} else {
-		// Default to a generously long timeout if none is specified, since
-		// the sync could be a long operation.
-		syncCtx, cancel = context.WithTimeout(ctx, evergreen.DefaultTaskSyncAtEndTimeout)
-	}
-	defer cancel()
-
-	err := a.runCommandsInBlock(syncCtx, tc, taskSyncCmds.List(), runCommandsOptions{block: command.TaskSyncBlock})
-	tc.logger.Task().Error(errors.Wrap(err, "Running task sync commands failed"))
-	tc.logger.Task().Infof("Finished running task sync in %s.", time.Since(start))
 }
 
 func (a *Agent) killProcs(ctx context.Context, tc *taskContext, ignoreTaskGroupCheck bool, reason string) {
