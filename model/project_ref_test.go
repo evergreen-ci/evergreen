@@ -394,11 +394,11 @@ func TestGetActivationTimeForTask(t *testing.T) {
 	assert.NoError(t, versionWithoutTask.Insert())
 	assert.NoError(t, versionWithTask.Insert())
 
-	activationTime, err := projectRef.GetActivationTimeForTask(bvt)
+	activationTime, err := projectRef.GetActivationTimeForTask(bvt, "t0")
 	assert.NoError(t, err)
 	assert.True(t, activationTime.Equal(prevTime.Add(time.Hour)))
 
-	activationTime, err = projectRef.GetActivationTimeForTask(bvt2)
+	activationTime, err = projectRef.GetActivationTimeForTask(bvt2, "t0")
 	assert.NoError(t, err)
 	assert.True(t, activationTime.Equal(utility.ZeroTime))
 }
