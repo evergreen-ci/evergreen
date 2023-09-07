@@ -4,7 +4,7 @@ import (
 	"context"
 
 	"github.com/docker/docker/api/types"
-	"github.com/docker/docker/api/types/filters"
+	"github.com/docker/docker/api/types/volume"
 	"github.com/docker/docker/client"
 	"github.com/mongodb/grip"
 	"github.com/mongodb/grip/message"
@@ -72,7 +72,7 @@ func cleanImages(ctx context.Context, dockerClient *client.Client) error {
 }
 
 func cleanVolumes(ctx context.Context, dockerClient *client.Client, logger grip.Journaler) error {
-	volumes, err := dockerClient.VolumeList(ctx, filters.Args{})
+	volumes, err := dockerClient.VolumeList(ctx, volume.ListOptions{})
 	if err != nil {
 		return errors.Wrap(err, "can't get volume list")
 	}
