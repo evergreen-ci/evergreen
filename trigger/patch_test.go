@@ -162,8 +162,8 @@ func (s *patchSuite) TestAllTriggers() {
 	s.NoError(err)
 	s.Len(n, 0)
 
-	s.patch.Status = evergreen.PatchSucceeded
-	s.data.Status = evergreen.PatchSucceeded
+	s.patch.Status = evergreen.LegacyPatchSucceeded
+	s.data.Status = evergreen.LegacyPatchSucceeded
 	s.NoError(db.Update(patch.Collection, bson.M{"_id": s.patch.Id}, &s.patch))
 
 	n, err = NotificationsFromEvent(s.ctx, &s.event)
@@ -189,7 +189,7 @@ func (s *patchSuite) TestPatchSuccess() {
 	s.NoError(err)
 	s.Nil(n)
 
-	s.data.Status = evergreen.PatchSucceeded
+	s.data.Status = evergreen.LegacyPatchSucceeded
 	n, err = s.t.patchSuccess(&s.subs[1])
 	s.NoError(err)
 	s.NotNil(n)
@@ -201,7 +201,7 @@ func (s *patchSuite) TestPatchFailure() {
 	s.NoError(err)
 	s.Nil(n)
 
-	s.data.Status = evergreen.PatchSucceeded
+	s.data.Status = evergreen.LegacyPatchSucceeded
 	n, err = s.t.patchFailure(&s.subs[2])
 	s.NoError(err)
 	s.Nil(n)
@@ -218,7 +218,7 @@ func (s *patchSuite) TestPatchOutcome() {
 	s.NoError(err)
 	s.Nil(n)
 
-	s.data.Status = evergreen.PatchSucceeded
+	s.data.Status = evergreen.LegacyPatchSucceeded
 	n, err = s.t.patchOutcome(&s.subs[0])
 	s.NoError(err)
 	s.NotNil(n)
@@ -266,7 +266,7 @@ func (s *patchSuite) TestRunChildrenOnPatchOutcome() {
 		s.NoError(s.subs[i].Upsert())
 	}
 
-	s.data.Status = evergreen.PatchSucceeded
+	s.data.Status = evergreen.LegacyPatchSucceeded
 	n, err := s.t.patchOutcome(&s.subs[0])
 	// there is no token set up in settings, but hitting this error
 	// means it's trying to finalize the patch
@@ -280,7 +280,7 @@ func (s *patchSuite) TestRunChildrenOnPatchOutcome() {
 	s.Contains(err.Error(), "no 'github' token in settings")
 	s.Nil(n)
 
-	s.data.Status = evergreen.PatchSucceeded
+	s.data.Status = evergreen.LegacyPatchSucceeded
 	n, err = s.t.patchOutcome(&s.subs[2])
 	s.Require().Error(err)
 	s.Contains(err.Error(), "no 'github' token in settings")

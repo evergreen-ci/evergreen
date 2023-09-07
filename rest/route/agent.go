@@ -1211,7 +1211,7 @@ func (h *gitServePatchHandler) Run(ctx context.Context) gimlet.Responder {
 			return gimlet.MakeJSONInternalErrorResponder(errors.Wrap(err, "finding tasks for version"))
 		}
 
-		status := evergreen.PatchSucceeded
+		status := evergreen.LegacyPatchSucceeded
 		for _, b := range builds {
 			if b.BuildVariant == evergreen.MergeTaskVariant {
 				continue
@@ -1231,7 +1231,7 @@ func (h *gitServePatchHandler) Run(ctx context.Context) gimlet.Responder {
 		}
 		p.MergeStatus = status
 	}
-	p.MergeStatus = evergreen.PatchSucceeded
+	p.MergeStatus = evergreen.LegacyPatchSucceeded
 
 	return gimlet.NewJSONResponse(p)
 }

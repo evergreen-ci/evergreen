@@ -946,19 +946,19 @@ func TestSetChildPatches(t *testing.T) {
 }
 
 func TestGetCollectiveStatusFromPatchStatuses(t *testing.T) {
-	successful := []string{evergreen.PatchSucceeded}
-	assert.Equal(t, evergreen.PatchSucceeded, GetCollectiveStatusFromPatchStatuses(successful))
+	successful := []string{evergreen.LegacyPatchSucceeded}
+	assert.Equal(t, evergreen.LegacyPatchSucceeded, GetCollectiveStatusFromPatchStatuses(successful))
 
-	failed := []string{evergreen.PatchSucceeded, evergreen.VersionFailed}
+	failed := []string{evergreen.LegacyPatchSucceeded, evergreen.VersionFailed}
 	assert.Equal(t, evergreen.VersionFailed, GetCollectiveStatusFromPatchStatuses(failed))
 
-	started := []string{evergreen.VersionStarted, evergreen.PatchSucceeded, evergreen.VersionFailed}
+	started := []string{evergreen.VersionStarted, evergreen.LegacyPatchSucceeded, evergreen.VersionFailed}
 	assert.Equal(t, evergreen.VersionStarted, GetCollectiveStatusFromPatchStatuses(started))
 
-	started = []string{evergreen.VersionCreated, evergreen.PatchSucceeded, evergreen.VersionFailed}
+	started = []string{evergreen.VersionCreated, evergreen.LegacyPatchSucceeded, evergreen.VersionFailed}
 	assert.Equal(t, evergreen.VersionStarted, GetCollectiveStatusFromPatchStatuses(started))
 
-	aborted := []string{evergreen.PatchSucceeded, evergreen.VersionAborted}
+	aborted := []string{evergreen.LegacyPatchSucceeded, evergreen.VersionAborted}
 	assert.Equal(t, evergreen.VersionAborted, GetCollectiveStatusFromPatchStatuses(aborted))
 
 	created := []string{evergreen.VersionCreated}

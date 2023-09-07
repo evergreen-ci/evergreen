@@ -82,10 +82,10 @@ func (c *gitMergePR) Execute(ctx context.Context, comm client.Communicator, logg
 	}
 
 	status := evergreen.VersionFailed
-	if patchDoc.MergeStatus == evergreen.PatchSucceeded {
-		status = evergreen.PatchSucceeded
+	if evergreen.IsSuccessfulVersionStatus(patchDoc.MergeStatus) {
+		status = evergreen.LegacyPatchSucceeded
 	}
-	if status != evergreen.PatchSucceeded {
+	if status != evergreen.LegacyPatchSucceeded {
 		logger.Task().Warning("At least 1 task failed, will not merge pull request.")
 		return nil
 	}

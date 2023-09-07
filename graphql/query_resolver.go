@@ -373,7 +373,7 @@ func (r *queryResolver) Patch(ctx context.Context, id string) (*restModel.APIPat
 		return nil, InternalServerError.Send(ctx, err.Error())
 	}
 
-	if evergreen.IsFinishedPatchStatus(*patch.Status) {
+	if evergreen.IsFinishedVersionStatus(*patch.Status) {
 		statuses, err := task.GetTaskStatusesByVersion(ctx, id, false)
 		if err != nil {
 			return nil, InternalServerError.Send(ctx, fmt.Sprintf("Could not fetch task statuses for patch: %s ", err.Error()))

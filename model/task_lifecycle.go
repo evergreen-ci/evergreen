@@ -1545,7 +1545,7 @@ func UpdatePatchStatus(p *patch.Patch, versionStatus string) error {
 
 	event.LogPatchStateChangeEvent(p.Version, patchStatus)
 
-	if evergreen.IsFinishedPatchStatus(patchStatus) {
+	if evergreen.IsFinishedVersionStatus(patchStatus) {
 		if err = p.MarkFinished(patchStatus, time.Now()); err != nil {
 			return errors.Wrapf(err, "marking patch '%s' as finished with status '%s'", p.Id.Hex(), patchStatus)
 		}

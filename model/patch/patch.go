@@ -242,7 +242,7 @@ type TaskSpecifier struct {
 // IsFinished returns whether or not the patch has finished based on its
 // status.
 func (p *Patch) IsFinished() bool {
-	return evergreen.IsFinishedPatchStatus(p.Status)
+	return evergreen.IsFinishedVersionStatus(p.Status)
 }
 
 // SetDescription sets a patch's description in the database
@@ -894,7 +894,7 @@ func GetGithubContextForChildPatch(projectIdentifier string, parentPatch, childP
 
 func (p *Patch) GetFamilyInformation() (bool, *Patch, error) {
 	if !p.IsChild() && !p.IsParent() {
-		return evergreen.IsFinishedPatchStatus(p.Status), nil, nil
+		return evergreen.IsFinishedVersionStatus(p.Status), nil, nil
 	}
 
 	isDone := false
@@ -904,14 +904,14 @@ func (p *Patch) GetFamilyInformation() (bool, *Patch, error) {
 	}
 
 	// make sure the parent is done, if not, wait for the parent
-	if p.IsChild() && !evergreen.IsFinishedPatchStatus(parentPatch.Status) {
+	if p.IsChild() && !evergreen.IsFinishedVersionStatus(parentPatch.Status) {
 		return isDone, parentPatch, nil
 	}
 	childrenStatus, err := GetChildrenOrSiblingsReadiness(childrenOrSiblings)
 	if err != nil {
 		return isDone, parentPatch, errors.Wrap(err, "getting child or sibling information")
 	}
-	if !evergreen.IsFinishedPatchStatus(childrenStatus) {
+	if !evergreen.IsFinishedVersionStatus(childrenStatus) {
 		return isDone, parentPatch, nil
 	} else {
 		isDone = true
@@ -924,7 +924,7 @@ func GetChildrenOrSiblingsReadiness(childrenOrSiblings []string) (string, error)
 	if len(childrenOrSiblings) == 0 {
 		return "", nil
 	}
-	childrenStatus := evergreen.PatchSucceeded
+	childrenStatus := evergreen.LegacyPatchSucceeded
 	for _, childPatch := range childrenOrSiblings {
 		childPatchDoc, err := FindOneId(childPatch)
 		if err != nil {
@@ -937,7 +937,7 @@ func GetChildrenOrSiblingsReadiness(childrenOrSiblings []string) (string, error)
 		if childPatchDoc.Status == evergreen.VersionFailed {
 			childrenStatus = evergreen.VersionFailed
 		}
-		if !evergreen.IsFinishedPatchStatus(childPatchDoc.Status) {
+		if !evergreen.IsFinishedVersionStatus(childPatchDoc.Status) {
 			return childPatchDoc.Status, nil
 		}
 	}
@@ -1256,7 +1256,7 @@ func GetCollectiveStatusFromPatchStatuses(statuses []string) string {
 			hasCreated = true
 		case evergreen.VersionFailed:
 			hasFailure = true
-		case evergreen.PatchSucceeded:
+		case evergreen.LegacyPatchSucceeded, evergreen.VersionSucceeded:
 			hasSuccess = true
 		case evergreen.VersionAborted:
 			// Note that we only consider this if the passed in statuses considered display status handling.
@@ -1281,7 +1281,7 @@ func GetCollectiveStatusFromPatchStatuses(statuses []string) string {
 	} else if hasAborted {
 		return evergreen.VersionAborted
 	} else if hasSuccess {
-		return evergreen.PatchSucceeded
+		return evergreen.LegacyPatchSucceeded
 	}
 	return evergreen.VersionCreated
 }

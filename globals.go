@@ -164,8 +164,7 @@ const (
 	VersionFailed    = "failed"
 	VersionSucceeded = "success"
 
-	PatchSucceeded   = "succeeded"
-	PatchAllOutcomes = "*"
+	LegacyPatchSucceeded = "succeeded" // deprecated
 
 	// VersionAborted is a display status only and not stored in the DB
 	VersionAborted = "aborted"
@@ -344,6 +343,10 @@ const (
 	PRTasksRunningDescription = "tasks are running"
 )
 
+var VersionSucceededStatuses = []string{
+	VersionSucceeded, LegacyPatchSucceeded,
+}
+
 var TaskStatuses = []string{
 	TaskStarted,
 	TaskSucceeded,
@@ -424,48 +427,36 @@ func IsValidTaskEndStatus(status string) bool {
 	return status == TaskSucceeded || status == TaskFailed
 }
 
-func IsFinishedPatchStatus(status string) bool {
-	return status == VersionFailed || status == PatchSucceeded
-}
-
 func IsFinishedBuildStatus(status string) bool {
 	return status == BuildFailed || status == BuildSucceeded
 }
 
+// IsFinishedVersionStatus returns true if the version or patch is true.
+// Also handles the legacy status, to be removed in EVG-20032.
 func IsFinishedVersionStatus(status string) bool {
-	return status == VersionFailed || status == VersionSucceeded
+	return status == VersionFailed || status == VersionSucceeded || status == LegacyPatchSucceeded
 }
 
-func VersionStatusToPatchStatus(versionStatus string) (string, error) {
-	switch versionStatus {
-	case VersionCreated:
-		return VersionCreated, nil
-	case VersionStarted:
-		return VersionStarted, nil
-	case VersionFailed:
-		return VersionFailed, nil
-	case VersionSucceeded:
-		return PatchSucceeded, nil
-	default:
-		return "", errors.Errorf("unknown version status: %s", versionStatus)
-	}
+// IsSuccessfulVersionStatus returns true if the status represents a successful version.
+// Will deprecate this legacy status in EVG-20032.
+func IsSuccessfulVersionStatus(status string) bool {
+	return utility.StringSliceContains(VersionSucceededStatuses, status)
 }
 
-func PatchStatusToVersionStatus(patchStatus string) (string, error) {
-	switch patchStatus {
-	case VersionCreated:
-		return VersionCreated, nil
-	case VersionStarted:
-		return VersionStarted, nil
-	case VersionFailed:
-		return VersionFailed, nil
-	case PatchSucceeded:
-		return VersionSucceeded, nil
-	case VersionAborted:
-		return VersionAborted, nil
-	default:
-		return "", errors.Errorf("unknown patch status: %s", patchStatus)
+// VersionStatusToPatchStatus ensures that we continue reading the legacy patch status for the time being.
+func VersionStatusToPatchStatus(versionStatus string) string {
+	if versionStatus == VersionSucceeded {
+		return LegacyPatchSucceeded
 	}
+	return versionStatus
+}
+
+// PatchStatusToVersionStatus handles the legacy version status, which may still be in use.
+func PatchStatusToVersionStatus(patchStatus string) string {
+	if patchStatus == LegacyPatchSucceeded {
+		return VersionSucceeded
+	}
+	return patchStatus
 }
 
 type ModificationAction string
