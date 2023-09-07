@@ -1452,10 +1452,10 @@ func (t *Task) SetStepbackInformation(s StepbackInformation) error {
 		},
 		bson.M{
 			"$set": bson.M{
-				StepbackDepthKey:             s.StepbackDepth,
-				StepbackLastPassingTaskIdKey: s.LastPassingStepbackTaskId,
-				StepbackLastFailingTaskIdKey: s.LastFailingStepbackTaskId,
-				StepbackNextTaskIdKey:        s.NextStepbackTaskId,
+				StepbackDepthKey:          s.StepbackDepth,
+				LastPassingStepbackTaskId: s.LastPassingStepbackTaskId,
+				LastFailingStepbackTaskId: s.LastFailingStepbackTaskId,
+				NextStepbackTaskId:        s.NextStepbackTaskId,
 			},
 		})
 }
