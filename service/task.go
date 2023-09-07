@@ -642,12 +642,6 @@ func (uis *UIServer) taskLogRaw(w http.ResponseWriter, r *http.Request) {
 }
 
 func (uis *UIServer) taskFileRaw(w http.ResponseWriter, r *http.Request) {
-	grip.Info(message.Fields{
-		"message": "Starting taskFileRaw",
-		"method":  r.Method,
-		"url":     r.URL,
-	})
-	startTime := time.Now()
 	projCtx := MustHaveProjectContext(r)
 	if projCtx.Task == nil {
 		uis.LoggedError(w, r, http.StatusNotFound, errors.New("task not found"))
@@ -662,50 +656,41 @@ func (uis *UIServer) taskFileRaw(w http.ResponseWriter, r *http.Request) {
 	}
 
 	fileName, _ := gimlet.GetVars(r)["file_name"]
+	if fileName == "" {
+		uis.LoggedError(w, r, http.StatusBadRequest, errors.New("file name not specified"))
+		return
+	}
 
 	var tFile *artifact.File
 	taskFiles, _ := artifact.GetAllArtifacts([]artifact.TaskIDAndExecution{{TaskID: projCtx.Task.Id, Execution: projCtx.Task.Execution}})
 	for _, taskFile := range taskFiles {
 		if taskFile.Name == fileName {
-			fmt.Println("Found matching file")
-			//  Save the taskFile
 			tFile = &taskFile
 			break
 		}
 	}
 	if tFile == nil {
 		uis.LoggedError(w, r, http.StatusNotFound, errors.New("File not found"))
-
 		return
 	}
 
-	preDownloadTime := time.Now()
-	fmt.Println("Downloading files")
-	body, err := downloadFile(tFile.Link)
+	response, err := http.Get(tFile.Link)
 	if err != nil {
 		uis.LoggedError(w, r, http.StatusInternalServerError, errors.Wrap(err, "Error downloading file:"))
-	}
+		return
 
-	// // Close the stream when done reading
-	// if closer, ok := body.(io.Closer); ok {
-	// 	closer.Close()
-	// }
-	// content, err := io.ReadAll(body)
-	if err != nil {
-		fmt.Println("Error reading content:", err)
+	}
+	if response.StatusCode != http.StatusOK {
+		uis.LoggedError(w, r, response.StatusCode, errors.New(fmt.Sprintf("Failed to download file. Status code: %d", response.StatusCode)))
 		return
 	}
 
-	fmt.Println("Downloaded content:")
-	fmt.Println("Pre-download time")
-	fmt.Println(preDownloadTime.Sub(startTime))
-	// uis.renderText.Stream(w, http.StatusOK, body, "base", "task_file_raw.html")
 	pr, pw := io.Pipe()
 
 	// Create a goroutine to copy data from the body to the pipe
 	go func() {
 		defer pw.Close()
-		_, err := io.Copy(pw, body)
+		_, err := io.Copy(pw, response.Body)
 		if err != nil {
 			pw.CloseWithError(err)
 		}
@@ -717,20 +702,6 @@ func (uis *UIServer) taskFileRaw(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "Internal Server Error", http.StatusInternalServerError)
 	}
 
-}
-
-func downloadFile(url string) (io.ReadCloser, error) {
-	fmt.Println("Fetching from url: ", url)
-	response, err := http.Get(url)
-	if err != nil {
-		return nil, err
-	}
-	fmt.Println("response", response)
-	if response.StatusCode != http.StatusOK {
-		return nil, fmt.Errorf("Failed to download file. Status code: %d", response.StatusCode)
-	}
-
-	return response.Body, nil
 }
 
 // avoids type-checking json params for the below function
