@@ -227,7 +227,7 @@ func DisableStaleContainerTasks(caller string) error {
 // originalStepbackTask is only specified if we're first activating the generator for a generated task.
 // StepbackDepth should be reconsidered in EVG-17949 and is currently only used for logging.
 // Depth passed in is the depth we should assign to the previous task.
-func activatePreviousTask(ctx context.Context, taskId, caller string, originalStepbackTask *task.Task, stepbackDepth int) error {
+func activatePreviousTask(ctx context.Context, taskId, caller string, originalStepbackTask *task.Task, s task.StepbackInformation) error {
 	// find the task first
 	t, err := task.FindOneId(taskId)
 	if err != nil {
@@ -247,7 +247,7 @@ func activatePreviousTask(ctx context.Context, taskId, caller string, originalSt
 
 	// for generated tasks, try to activate the generator instead if the previous task we found isn't the actual last task
 	if t.GeneratedBy != "" && prevTask != nil && prevTask.RevisionOrderNumber+1 != t.RevisionOrderNumber {
-		return activatePreviousTask(ctx, t.GeneratedBy, caller, t, stepbackDepth)
+		return activatePreviousTask(ctx, t.GeneratedBy, caller, t, s)
 	}
 
 	// if this is the first time we're running the task, or it's finished, has a negative priority, or already activated
@@ -256,11 +256,14 @@ func activatePreviousTask(ctx context.Context, taskId, caller string, originalSt
 	}
 
 	grip.Debug(message.Fields{
-		"ticket":         "EVG-17949",
-		"message":        "stepping back task",
-		"stepback_depth": stepbackDepth,
-		"project_id":     t.Project,
-		"task_id":        t.Id,
+		"ticket":                        "EVG-17949",
+		"message":                       "stepping back task",
+		"stepback_depth":                s.StepbackDepth,
+		"stepback_last_failing_task_id": s.LastFailingStepbackTaskId,
+		"stepback_last_passing_task_id": s.LastPassingStepbackTaskId,
+		"stepback_next_task_id":         s.NextStepbackTaskId,
+		"project_id":                    t.Project,
+		"task_id":                       t.Id,
 	})
 
 	// activate the task
@@ -273,8 +276,8 @@ func activatePreviousTask(ctx context.Context, taskId, caller string, originalSt
 			return errors.Wrap(err, "setting generated tasks to activate")
 		}
 	}
-	if stepbackDepth > 0 {
-		if err = prevTask.SetStepbackDepth(stepbackDepth); err != nil {
+	if s.StepbackDepth > 0 {
+		if err = prevTask.SetStepbackInformation(s); err != nil {
 			return errors.Wrap(err, "setting stepback depth")
 		}
 	}
@@ -553,8 +556,15 @@ func doStepback(ctx context.Context, t *task.Task) error {
 		return nil
 	}
 
+	s := task.StepbackInformation{
+		StepbackDepth:             t.StepbackDepth + 1,
+		LastFailingStepbackTaskId: "",
+		LastPassingStepbackTaskId: "",
+		NextStepbackTaskId:        "",
+	}
+
 	// activate the previous task to pinpoint regression
-	return errors.WithStack(activatePreviousTask(ctx, t.Id, evergreen.StepbackTaskActivator, nil, t.StepbackDepth+1))
+	return errors.WithStack(activatePreviousTask(ctx, t.Id, evergreen.StepbackTaskActivator, nil, s))
 }
 
 // MarkEnd updates the task as being finished, performs a stepback if necessary, and updates the build status
