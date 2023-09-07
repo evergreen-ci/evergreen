@@ -1765,6 +1765,103 @@ func GetMergeablePullRequest(ctx context.Context, issue int, githubToken, owner,
 	return pr, nil
 }
 
+// HasEvergreenBranchProtections checks if any branch protection rule begins "evergreen".
+// We deliberately check for the prefix because users may have installed variant-level branch protections.
+func HasEvergreenBranchProtection(ctx context.Context, token, owner, repo, branch string) (bool, error) {
+	caller := "HasEvergreenBranchProtection"
+	ctx, span := tracer.Start(ctx, caller, trace.WithAttributes(
+		attribute.String(githubEndpointAttribute, caller),
+		attribute.String(githubOwnerAttribute, owner),
+		attribute.String(githubRepoAttribute, repo),
+		attribute.String(githubRefAttribute, branch),
+	))
+	defer span.End()
+
+	if token == "" {
+		var err error
+		token, err = getInstallationToken(ctx, owner, repo, nil)
+		if err != nil {
+			return false, errors.Wrap(err, "getting installation token")
+		}
+	}
+	githubClient := getGithubClient(token, caller, retryConfig{})
+
+	protection, resp, err := githubClient.Repositories.GetBranchProtection(ctx, owner, repo, branch)
+	if resp != nil {
+		defer resp.Body.Close()
+		span.SetAttributes(attribute.Bool(githubCachedAttribute, respFromCache(resp.Response)))
+	}
+	if err != nil {
+		return false, errors.Wrap(err, "getting branch protection")
+	}
+
+	for _, check := range protection.GetRequiredStatusChecks().Checks {
+		if strings.HasPrefix(check.Context, "evergreen") {
+			return true, nil
+		}
+	}
+
+	return false, nil
+}
+
+// InstallEvergreenBranchProtections installs "evergreen" branch protection.
+func InstallEvergreenBranchProtections(ctx context.Context, token, owner, repo, branch string) error {
+	caller := "InstallEvergreenBranchProtections"
+	ctx, span := tracer.Start(ctx, caller, trace.WithAttributes(
+		attribute.String(githubEndpointAttribute, caller),
+		attribute.String(githubOwnerAttribute, owner),
+		attribute.String(githubRepoAttribute, repo),
+		attribute.String(githubRefAttribute, branch),
+	))
+	defer span.End()
+
+	if token == "" {
+		var err error
+		token, err = getInstallationToken(ctx, owner, repo, nil)
+		if err != nil {
+			return errors.Wrap(err, "getting installation token")
+		}
+	}
+	githubClient := getGithubClient(token, caller, retryConfig{})
+
+	protection, resp, err := githubClient.Repositories.GetBranchProtection(ctx, owner, repo, branch)
+	if resp != nil {
+		defer resp.Body.Close()
+		span.SetAttributes(attribute.Bool(githubCachedAttribute, respFromCache(resp.Response)))
+	}
+	if err != nil {
+		return errors.Wrap(err, "getting branch protection")
+	}
+
+	found := false
+	for _, check := range protection.GetRequiredStatusChecks().Checks {
+		if check.Context == "evergreen" {
+			found = true
+			break
+		}
+	}
+	if !found {
+		checks := append(protection.RequiredStatusChecks.Checks, &github.RequiredStatusCheck{
+			Context: "evergreen",
+			AppID:   utility.ToInt64Ptr(-1), // allow any app to set status
+		})
+		preq := &github.ProtectionRequest{}
+		preq.RequiredStatusChecks = &github.RequiredStatusChecks{
+			Checks: checks,
+		}
+		_, resp, err = githubClient.Repositories.UpdateBranchProtection(ctx, owner, repo, branch, preq)
+		if resp != nil {
+			defer resp.Body.Close()
+			span.SetAttributes(attribute.Bool(githubCachedAttribute, respFromCache(resp.Response)))
+		}
+		if err != nil {
+			return errors.Wrap(err, "setting branch protection")
+		}
+	}
+
+	return nil
+}
+
 // CreateGithubHook creates a new GitHub webhook for a repo.
 func CreateGithubHook(ctx context.Context, settings evergreen.Settings, owner, repo string) (*github.Hook, error) {
 	if settings.Api.GithubWebhookSecret == "" {
