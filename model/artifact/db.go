@@ -18,7 +18,7 @@ var (
 	NameKey        = bsonutil.MustHaveTag(File{}, "Name")
 	LinkKey        = bsonutil.MustHaveTag(File{}, "Link")
 	ContentTypeKey = bsonutil.MustHaveTag(File{}, "ContentType")
-	AwsSecretKey   = "aws_secret"
+	AwsSecretKey   = bsonutil.MustHaveTag(File{}, "AwsSecret")
 )
 
 type TaskIDAndExecution struct {
