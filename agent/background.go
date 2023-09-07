@@ -6,6 +6,8 @@ import (
 	"time"
 
 	"github.com/evergreen-ci/evergreen"
+	"github.com/mongodb/grip"
+	"github.com/mongodb/grip/message"
 	"github.com/mongodb/grip/recovery"
 )
 
@@ -45,11 +47,20 @@ func (a *Agent) startHeartbeat(ctx context.Context, preAndMainCancel context.Can
 				// the task).
 				// kim: TODO: figure out if abort and return is appropriate
 				// kim: TODO: add test for heartbeat timeout
-				if !hasSentAbort {
-					preAndMainCancel()
-				}
-				tc.logger.Task().Errorf("Heartbeat has hit maximum allowed %s timeout of %s, task is at risk of timing out if it runs for much longer.", timeoutOpts.kind, timeoutOpts.timeout.String())
-				return
+				msg := fmt.Sprintf("Heartbeat has hit maximum allowed %s timeout of %s, task is at risk of timing out if it runs for much longer.", timeoutOpts.kind, timeoutOpts.timeout.String())
+				tc.logger.Task().Errorf(msg)
+				grip.Alert(message.Fields{
+					"message":      msg,
+					"task_context": tc,
+					"timeout_opts": timeoutOpts,
+				})
+				// TODO (EVG-20701): uncomment the timeout handling once there
+				// is confidence that this case is never hit during regular
+				// agent operation.
+				// if !hasSentAbort {
+				//     preAndMainCancel()
+				// }
+				// return
 			}
 
 			signalBeat, err := a.doHeartbeat(ctx, tc)

@@ -65,6 +65,8 @@ func (tc *taskContext) getCurrentIdleTimeout() time.Duration {
 	return defaultIdleTimeout
 }
 
+const defaultHeartbeatTimeout = 15 * time.Minute
+
 // kim: TODO: figure out which timeout to set when heartbeat ticker starts.
 // Maybe execution timeout is simplest just because it covers most of the
 // blocks, then just need to set it for post/teardown_task (teardown_group
@@ -77,9 +79,10 @@ func (tc *taskContext) setHeartbeatTimeout(opts heartbeatTimeoutOptions) {
 	defer tc.Unlock()
 
 	if opts.timeout == 0 {
-		// If we're in a part of the task that has no timeout, set an arbitrary
-		// hard timeout. No task should reasonably run for 24 hours.
-		opts.timeout = 24 * time.Hour
+		// If the agent is running a portion of the task that has no timeout
+		// (e.g. during setup.initial, in between command blocks), it should not
+		// spend more than brief amount of time doing these things.
+		opts.timeout = defaultHeartbeatTimeout
 	}
 	if utility.IsZeroTime(opts.startAt) {
 		opts.startAt = time.Now()
