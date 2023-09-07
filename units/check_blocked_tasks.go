@@ -3,20 +3,18 @@ package units
 import (
 	"context"
 	"fmt"
-	"github.com/evergreen-ci/evergreen/db"
 	"time"
 
-	"github.com/mongodb/grip"
-	"github.com/mongodb/grip/message"
-
-	"github.com/pkg/errors"
-
 	"github.com/evergreen-ci/evergreen"
+	"github.com/evergreen-ci/evergreen/db"
 	"github.com/evergreen-ci/evergreen/model"
 	"github.com/evergreen-ci/evergreen/model/task"
 	"github.com/mongodb/amboy"
 	"github.com/mongodb/amboy/job"
 	"github.com/mongodb/amboy/registry"
+	"github.com/mongodb/grip"
+	"github.com/mongodb/grip/message"
+	"github.com/pkg/errors"
 )
 
 const (
