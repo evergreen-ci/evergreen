@@ -87,7 +87,7 @@ var (
 	PriorityKey                    = bsonutil.MustHaveTag(Task{}, "Priority")
 	ActivatedByKey                 = bsonutil.MustHaveTag(Task{}, "ActivatedBy")
 	StepbackDepthKey               = bsonutil.MustHaveTag(Task{}, "StepbackDepth")
-	StepbackLastFailingTaskIdKey   = bsonutil.MustHaveTag(Task{}, "StepBackLastFailingTaskId")
+	StepbackLastFailingTaskIdKey   = bsonutil.MustHaveTag(Task{}, "StepbackLastFailingTaskId")
 	StepbackLastPassingTaskIdKey   = bsonutil.MustHaveTag(Task{}, "StepbackLastPassingTaskId")
 	StepbackNextTaskIdKey          = bsonutil.MustHaveTag(Task{}, "StepbackNextTaskId")
 	ExecutionTasksKey              = bsonutil.MustHaveTag(Task{}, "ExecutionTasks")
