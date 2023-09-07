@@ -3774,7 +3774,7 @@ func TestByExecutionTasksAndMaxExecution(t *testing.T) {
 }
 
 func TestFindTaskOnPreviousCommit(t *testing.T) {
-	require.NoError(t, db.ClearCollections(Collection, OldCollection))
+	require.NoError(t, db.ClearCollections(Collection))
 	t1 := Task{
 		Id:                  "t1",
 		Version:             "v1",
@@ -3802,7 +3802,7 @@ func TestFindTaskOnPreviousCommit(t *testing.T) {
 
 	task, err := t2.FindTaskOnPreviousCommit()
 	assert.NoError(t, err)
-	assert.NotNil(t, task)
+	require.NotNil(t, task)
 	assert.Equal(t, t1.Id, task.Id)
 	assert.Equal(t, t1.Version, task.Version)
 	t3 := Task{
@@ -3833,10 +3833,9 @@ func TestFindTaskOnPreviousCommit(t *testing.T) {
 	// Should fetch the latest mainline commit task and should not consider non gitter tasks
 	task, err = t4.FindTaskOnPreviousCommit()
 	assert.NoError(t, err)
-	assert.NotNil(t, task)
+	require.NotNil(t, task)
 	assert.Equal(t, t2.Id, task.Id)
 	assert.Equal(t, t2.Version, task.Version)
-
 }
 
 type TaskConnectorFetchByIdSuite struct {
