@@ -1728,7 +1728,7 @@ func MarkStart(t *task.Task, updates *StatusChanges) error {
 	if evergreen.IsPatchRequester(t.Requester) {
 		err := patch.TryMarkStarted(t.Version, startTime)
 		if err == nil {
-			updates.PatchNewStatus = evergreen.PatchStarted
+			updates.PatchNewStatus = evergreen.VersionStarted
 
 		} else if !adb.ResultsNotFound(err) {
 			return errors.WithStack(err)

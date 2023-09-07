@@ -380,7 +380,7 @@ func (s *CliIntentSuite) TestNewPatch() {
 	s.Equal(s.hash, patchDoc.Githash)
 	s.Zero(patchDoc.PatchNumber)
 	s.Empty(patchDoc.Version)
-	s.Equal(evergreen.PatchCreated, patchDoc.Status)
+	s.Equal(evergreen.VersionCreated, patchDoc.Status)
 	s.Zero(patchDoc.CreateTime)
 	s.Zero(patchDoc.StartTime)
 	s.Zero(patchDoc.FinishTime)

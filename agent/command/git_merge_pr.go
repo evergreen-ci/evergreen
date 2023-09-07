@@ -81,7 +81,7 @@ func (c *gitMergePR) Execute(ctx context.Context, comm client.Communicator, logg
 		return errors.Wrap(err, "setting up GitHub status logger")
 	}
 
-	status := evergreen.PatchFailed
+	status := evergreen.VersionFailed
 	if patchDoc.MergeStatus == evergreen.PatchSucceeded {
 		status = evergreen.PatchSucceeded
 	}

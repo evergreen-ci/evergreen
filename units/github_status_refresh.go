@@ -176,7 +176,7 @@ func getGithubStateAndDescriptionForPatch(p *patch.Patch) (message.GithubState, 
 	var state message.GithubState
 	if p.Status == evergreen.PatchSucceeded {
 		state = message.GithubStateSuccess
-	} else if p.Status == evergreen.PatchFailed {
+	} else if p.Status == evergreen.VersionFailed {
 		state = message.GithubStateFailure
 	} else {
 		return message.GithubStatePending, evergreen.PRTasksRunningDescription

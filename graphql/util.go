@@ -143,7 +143,7 @@ func getDisplayStatus(v *model.Version) (string, error) {
 		return "", errors.Wrapf(err, "getting version status for patch '%s'", v.Id)
 	}
 	if v.Aborted {
-		patchStatus = evergreen.PatchAborted
+		patchStatus = evergreen.VersionAborted
 	}
 	if !evergreen.IsPatchRequester(v.Requester) || v.IsChild() {
 		return patchStatus, nil

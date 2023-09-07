@@ -164,15 +164,11 @@ const (
 	VersionFailed    = "failed"
 	VersionSucceeded = "success"
 
-	PatchCreated     = "created"
-	PatchStarted     = "started"
 	PatchSucceeded   = "succeeded"
-	PatchFailed      = "failed"
 	PatchAllOutcomes = "*"
 
-	// VersionAborted and PatchAborted are display statuses only and not stored in the DB
+	// VersionAborted is a display status only and not stored in the DB
 	VersionAborted = "aborted"
-	PatchAborted   = "aborted"
 
 	PushLogPushing = "pushing"
 	PushLogSuccess = "success"
@@ -429,7 +425,7 @@ func IsValidTaskEndStatus(status string) bool {
 }
 
 func IsFinishedPatchStatus(status string) bool {
-	return status == PatchFailed || status == PatchSucceeded
+	return status == VersionFailed || status == PatchSucceeded
 }
 
 func IsFinishedBuildStatus(status string) bool {
@@ -443,11 +439,11 @@ func IsFinishedVersionStatus(status string) bool {
 func VersionStatusToPatchStatus(versionStatus string) (string, error) {
 	switch versionStatus {
 	case VersionCreated:
-		return PatchCreated, nil
+		return VersionCreated, nil
 	case VersionStarted:
-		return PatchStarted, nil
+		return VersionStarted, nil
 	case VersionFailed:
-		return PatchFailed, nil
+		return VersionFailed, nil
 	case VersionSucceeded:
 		return PatchSucceeded, nil
 	default:
@@ -457,15 +453,15 @@ func VersionStatusToPatchStatus(versionStatus string) (string, error) {
 
 func PatchStatusToVersionStatus(patchStatus string) (string, error) {
 	switch patchStatus {
-	case PatchCreated:
+	case VersionCreated:
 		return VersionCreated, nil
-	case PatchStarted:
+	case VersionStarted:
 		return VersionStarted, nil
-	case PatchFailed:
+	case VersionFailed:
 		return VersionFailed, nil
 	case PatchSucceeded:
 		return VersionSucceeded, nil
-	case PatchAborted:
+	case VersionAborted:
 		return VersionAborted, nil
 	default:
 		return "", errors.Errorf("unknown patch status: %s", patchStatus)

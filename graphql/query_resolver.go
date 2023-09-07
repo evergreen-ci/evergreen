@@ -392,7 +392,7 @@ func (r *queryResolver) Patch(ctx context.Context, id string) (*restModel.APIPat
 		// If theres an aborted task we should set the patch status to aborted if there are no other failures
 		if utility.StringSliceContains(statuses, evergreen.TaskAborted) {
 			if len(utility.StringSliceIntersection(statuses, evergreen.TaskFailureStatuses)) == 0 {
-				patch.Status = utility.ToStringPtr(evergreen.PatchAborted)
+				patch.Status = utility.ToStringPtr(evergreen.VersionAborted)
 			}
 		}
 	}

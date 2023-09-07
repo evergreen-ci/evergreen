@@ -183,7 +183,7 @@ func TestGetDisplayStatus(t *testing.T) {
 
 	cp := &patch.Patch{
 		Id:     childPatchId,
-		Status: evergreen.PatchFailed,
+		Status: evergreen.VersionFailed,
 	}
 	assert.NoError(t, cp.Insert())
 
