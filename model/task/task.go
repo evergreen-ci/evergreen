@@ -106,10 +106,6 @@ type Task struct {
 	ActivatedBy              string `bson:"activated_by" json:"activated_by"`
 	DeactivatedForDependency bool   `bson:"deactivated_for_dependency" json:"deactivated_for_dependency"`
 
-	// StepbackDepth indicates how far into stepback this task was activated, starting at 1 for stepback tasks.
-	// After EVG-17949, should either remove this field/logging or use it to limit stepback depth.
-	StepbackDepth int `bson:"stepback_depth" json:"stepback_depth"`
-
 	// ContainerAllocated indicates whether this task has been allocated a
 	// container to run it. It only applies to tasks running in containers.
 	ContainerAllocated bool `bson:"container_allocated" json:"container_allocated"`
@@ -226,11 +222,8 @@ type Task struct {
 	ExecutionTasks        []string `bson:"execution_tasks,omitempty" json:"execution_tasks,omitempty"`
 	LatestParentExecution int      `bson:"latest_parent_execution" json:"latest_parent_execution"`
 
-	// LastFailingStepbackTaskId, LastPassingStepbackTaskId, and NextStepbackTaskId
-	// are used to track and help decide what task to stepback to.
-	LastFailingStepbackTaskId string `bson:"last_failing_stepback_task_id,omitempty" json:"last_failing_stepback_task_id,omitempty"`
-	LastPassingStepbackTaskId string `bson:"last_passing_stepback_task_id,omitempty" json:"last_passing_stepback_task_id,omitempty"`
-	NextStepbackTaskId        string `bson:"next_stepback_task_id,omitempty" json:"next_stepback_task_id,omitempty"`
+	// StepbackInformation contains the necessary information to determine what task to stepback to.
+	StepbackInformation
 
 	// ResetWhenFinished indicates that a task should be reset once it is
 	// finished running. This is typically to deal with tasks that should be
@@ -277,6 +270,17 @@ type Task struct {
 	// before its build or version can be reported as successful, but tasks
 	// manually scheduled by the user afterwards are not required.
 	IsEssentialToSucceed bool `bson:"is_essential_to_succeed" json:"is_essential_to_succeed"`
+}
+
+// StepbackInformation contains the necessary information to determine what
+// task to stepback to.
+type StepbackInformation struct {
+	LastFailingStepbackTaskId string `bson:"last_failing_stepback_task_id,omitempty" json:"last_failing_stepback_task_id"`
+	LastPassingStepbackTaskId string `bson:"last_passing_stepback_task_id,omitempty" json:"last_passing_stepback_task_id"`
+	NextStepbackTaskId        string `bson:"next_stepback_task_id,omitempty" json:"next_stepback_task_id"`
+
+	// StepbackDepth indicates how far into stepback this task was activated, starting at 1 for stepback tasks.
+	StepbackDepth int `bson:"stepback_depth" json:"stepback_depth"`
 }
 
 // ExecutionPlatform indicates the type of environment that the task runs in.
@@ -1440,15 +1444,18 @@ func (t *Task) SetAborted(reason AbortInfo) error {
 }
 
 // SetStepbackDepth adds the stepback depth to the task.
-func (t *Task) SetStepbackDepth(stepbackDepth int) error {
-	t.StepbackDepth = stepbackDepth
+func (t *Task) SetStepbackInformation(s StepbackInformation) error {
+	t.StepbackInformation = s
 	return UpdateOne(
 		bson.M{
 			IdKey: t.Id,
 		},
 		bson.M{
 			"$set": bson.M{
-				StepbackDepthKey: stepbackDepth,
+				StepbackDepthKey:             s.StepbackDepth,
+				StepbackLastPassingTaskIdKey: s.LastPassingStepbackTaskId,
+				StepbackLastFailingTaskIdKey: s.LastFailingStepbackTaskId,
+				StepbackNextTaskIdKey:        s.NextStepbackTaskId,
 			},
 		})
 }
