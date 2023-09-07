@@ -386,7 +386,7 @@ The parameters for each module are:
     accepted_.
 
 More specifically, module hash priority is as follows:
-* For commit queue patches, Evergreen always uses the module branch name, to ensure accurate testing.
+* For commit queue and GitHub merge queue patches, Evergreen always uses the module branch name, to ensure accurate testing.
 * For other patches, the initial default is to the githash in set-module, if specified.
 * For both commits and patches, the next default is to the `<module_name>` set in revisions for the command.
 * For commits, if this is not available, the next default is to ref, and then to branch. *Note that this 
