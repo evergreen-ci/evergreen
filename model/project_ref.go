@@ -2289,6 +2289,8 @@ func (p *ProjectRef) GetActivationTimeForTask(t *BuildVariantTaskUnit, taskId st
 			"task_name":      t.Name,
 			"bvtu_batchtime": t.BatchTime,
 			"bvtu_activate":  t.Activate,
+			"bvtu_cron":      t.CronBatchTime,
+			"bvtu_disabled":  t.IsDisabled(),
 			"stack":          string(debug.Stack()),
 		})
 		return defaultRes, nil
