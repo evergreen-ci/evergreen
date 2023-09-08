@@ -67,6 +67,7 @@ type ResolverRoot interface {
 	ProjectVars() ProjectVarsResolver
 	Query() QueryResolver
 	RepoSettings() RepoSettingsResolver
+	SpruceConfig() SpruceConfigResolver
 	SubscriberWrapper() SubscriberWrapperResolver
 	Task() TaskResolver
 	TaskContainerCreationOpts() TaskContainerCreationOptsResolver
@@ -1070,6 +1071,11 @@ type ComplexityRoot struct {
 		VirtualMemoryKB func(childComplexity int) int
 	}
 
+	SSHKey struct {
+		Location func(childComplexity int) int
+		Name     func(childComplexity int) int
+	}
+
 	SaveDistroPayload struct {
 		Distro    func(childComplexity int) int
 		HostCount func(childComplexity int) int
@@ -1109,6 +1115,7 @@ type ComplexityRoot struct {
 		ContainerPools func(childComplexity int) int
 		GithubOrgs     func(childComplexity int) int
 		Jira           func(childComplexity int) int
+		Keys           func(childComplexity int) int
 		Providers      func(childComplexity int) int
 		Slack          func(childComplexity int) int
 		Spawnhost      func(childComplexity int) int
@@ -1745,6 +1752,9 @@ type RepoSettingsResolver interface {
 
 	Subscriptions(ctx context.Context, obj *model.APIProjectSettings) ([]*model.APISubscription, error)
 	Vars(ctx context.Context, obj *model.APIProjectSettings) (*model.APIProjectVars, error)
+}
+type SpruceConfigResolver interface {
+	Keys(ctx context.Context, obj *model.APIAdminSettings) ([]*SSHKey, error)
 }
 type SubscriberWrapperResolver interface {
 	Subscriber(ctx context.Context, obj *model.APISubscriber) (*Subscriber, error)
@@ -6941,6 +6951,20 @@ func (e *executableSchema) Complexity(typeName, field string, childComplexity in
 
 		return e.complexity.ResourceLimits.VirtualMemoryKB(childComplexity), true
 
+	case "SSHKey.location":
+		if e.complexity.SSHKey.Location == nil {
+			break
+		}
+
+		return e.complexity.SSHKey.Location(childComplexity), true
+
+	case "SSHKey.name":
+		if e.complexity.SSHKey.Name == nil {
+			break
+		}
+
+		return e.complexity.SSHKey.Name(childComplexity), true
+
 	case "SaveDistroPayload.distro":
 		if e.complexity.SaveDistroPayload.Distro == nil {
 			break
@@ -7080,6 +7104,13 @@ func (e *executableSchema) Complexity(typeName, field string, childComplexity in
 		}
 
 		return e.complexity.SpruceConfig.Jira(childComplexity), true
+
+	case "SpruceConfig.keys":
+		if e.complexity.SpruceConfig.Keys == nil {
+			break
+		}
+
+		return e.complexity.SpruceConfig.Keys(childComplexity), true
 
 	case "SpruceConfig.providers":
 		if e.complexity.SpruceConfig.Providers == nil {
@@ -41888,14 +41919,16 @@ func (ec *executionContext) fieldContext_Query_spruceConfig(ctx context.Context,
 				return ec.fieldContext_SpruceConfig_githubOrgs(ctx, field)
 			case "jira":
 				return ec.fieldContext_SpruceConfig_jira(ctx, field)
+			case "keys":
+				return ec.fieldContext_SpruceConfig_keys(ctx, field)
 			case "providers":
 				return ec.fieldContext_SpruceConfig_providers(ctx, field)
+			case "slack":
+				return ec.fieldContext_SpruceConfig_slack(ctx, field)
 			case "spawnHost":
 				return ec.fieldContext_SpruceConfig_spawnHost(ctx, field)
 			case "ui":
 				return ec.fieldContext_SpruceConfig_ui(ctx, field)
-			case "slack":
-				return ec.fieldContext_SpruceConfig_slack(ctx, field)
 			}
 			return nil, fmt.Errorf("no field named %q was found under type SpruceConfig", field.Name)
 		},
@@ -48105,6 +48138,94 @@ func (ec *executionContext) fieldContext_ResourceLimits_virtualMemoryKb(ctx cont
 	return fc, nil
 }
 
+func (ec *executionContext) _SSHKey_location(ctx context.Context, field graphql.CollectedField, obj *SSHKey) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_SSHKey_location(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.Location, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.(string)
+	fc.Result = res
+	return ec.marshalNString2string(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_SSHKey_location(ctx context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "SSHKey",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type String does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _SSHKey_name(ctx context.Context, field graphql.CollectedField, obj *SSHKey) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_SSHKey_name(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.Name, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.(string)
+	fc.Result = res
+	return ec.marshalNString2string(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_SSHKey_name(ctx context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "SSHKey",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type String does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
 func (ec *executionContext) _SaveDistroPayload_distro(ctx context.Context, field graphql.CollectedField, obj *SaveDistroPayload) (ret graphql.Marshaler) {
 	fc, err := ec.fieldContext_SaveDistroPayload_distro(ctx, field)
 	if err != nil {
@@ -49044,6 +49165,56 @@ func (ec *executionContext) fieldContext_SpruceConfig_jira(ctx context.Context, 
 	return fc, nil
 }
 
+func (ec *executionContext) _SpruceConfig_keys(ctx context.Context, field graphql.CollectedField, obj *model.APIAdminSettings) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_SpruceConfig_keys(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
+		ctx = rctx // use context from middleware stack in children
+		return ec.resolvers.SpruceConfig().Keys(rctx, obj)
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.([]*SSHKey)
+	fc.Result = res
+	return ec.marshalNSSHKey2ᚕᚖgithubᚗcomᚋevergreenᚑciᚋevergreenᚋgraphqlᚐSSHKeyᚄ(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_SpruceConfig_keys(ctx context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "SpruceConfig",
+		Field:      field,
+		IsMethod:   true,
+		IsResolver: true,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			switch field.Name {
+			case "location":
+				return ec.fieldContext_SSHKey_location(ctx, field)
+			case "name":
+				return ec.fieldContext_SSHKey_name(ctx, field)
+			}
+			return nil, fmt.Errorf("no field named %q was found under type SSHKey", field.Name)
+		},
+	}
+	return fc, nil
+}
+
 func (ec *executionContext) _SpruceConfig_providers(ctx context.Context, field graphql.CollectedField, obj *model.APIAdminSettings) (ret graphql.Marshaler) {
 	fc, err := ec.fieldContext_SpruceConfig_providers(ctx, field)
 	if err != nil {
@@ -49084,6 +49255,51 @@ func (ec *executionContext) fieldContext_SpruceConfig_providers(ctx context.Cont
 				return ec.fieldContext_CloudProviderConfig_aws(ctx, field)
 			}
 			return nil, fmt.Errorf("no field named %q was found under type CloudProviderConfig", field.Name)
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _SpruceConfig_slack(ctx context.Context, field graphql.CollectedField, obj *model.APIAdminSettings) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_SpruceConfig_slack(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.Slack, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		return graphql.Null
+	}
+	res := resTmp.(*model.APISlackConfig)
+	fc.Result = res
+	return ec.marshalOSlackConfig2ᚖgithubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐAPISlackConfig(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_SpruceConfig_slack(ctx context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "SpruceConfig",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			switch field.Name {
+			case "name":
+				return ec.fieldContext_SlackConfig_name(ctx, field)
+			}
+			return nil, fmt.Errorf("no field named %q was found under type SlackConfig", field.Name)
 		},
 	}
 	return fc, nil
@@ -49183,51 +49399,6 @@ func (ec *executionContext) fieldContext_SpruceConfig_ui(ctx context.Context, fi
 				return ec.fieldContext_UIConfig_userVoice(ctx, field)
 			}
 			return nil, fmt.Errorf("no field named %q was found under type UIConfig", field.Name)
-		},
-	}
-	return fc, nil
-}
-
-func (ec *executionContext) _SpruceConfig_slack(ctx context.Context, field graphql.CollectedField, obj *model.APIAdminSettings) (ret graphql.Marshaler) {
-	fc, err := ec.fieldContext_SpruceConfig_slack(ctx, field)
-	if err != nil {
-		return graphql.Null
-	}
-	ctx = graphql.WithFieldContext(ctx, fc)
-	defer func() {
-		if r := recover(); r != nil {
-			ec.Error(ctx, ec.Recover(ctx, r))
-			ret = graphql.Null
-		}
-	}()
-	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
-		ctx = rctx // use context from middleware stack in children
-		return obj.Slack, nil
-	})
-	if err != nil {
-		ec.Error(ctx, err)
-		return graphql.Null
-	}
-	if resTmp == nil {
-		return graphql.Null
-	}
-	res := resTmp.(*model.APISlackConfig)
-	fc.Result = res
-	return ec.marshalOSlackConfig2ᚖgithubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐAPISlackConfig(ctx, field.Selections, res)
-}
-
-func (ec *executionContext) fieldContext_SpruceConfig_slack(ctx context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
-	fc = &graphql.FieldContext{
-		Object:     "SpruceConfig",
-		Field:      field,
-		IsMethod:   false,
-		IsResolver: false,
-		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
-			switch field.Name {
-			case "name":
-				return ec.fieldContext_SlackConfig_name(ctx, field)
-			}
-			return nil, fmt.Errorf("no field named %q was found under type SlackConfig", field.Name)
 		},
 	}
 	return fc, nil
@@ -79655,6 +79826,50 @@ func (ec *executionContext) _ResourceLimits(ctx context.Context, sel ast.Selecti
 	return out
 }
 
+var sSHKeyImplementors = []string{"SSHKey"}
+
+func (ec *executionContext) _SSHKey(ctx context.Context, sel ast.SelectionSet, obj *SSHKey) graphql.Marshaler {
+	fields := graphql.CollectFields(ec.OperationContext, sel, sSHKeyImplementors)
+
+	out := graphql.NewFieldSet(fields)
+	deferred := make(map[string]*graphql.FieldSet)
+	for i, field := range fields {
+		switch field.Name {
+		case "__typename":
+			out.Values[i] = graphql.MarshalString("SSHKey")
+		case "location":
+			out.Values[i] = ec._SSHKey_location(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "name":
+			out.Values[i] = ec._SSHKey_name(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		default:
+			panic("unknown field " + strconv.Quote(field.Name))
+		}
+	}
+	out.Dispatch(ctx)
+	if out.Invalids > 0 {
+		return graphql.Null
+	}
+
+	atomic.AddInt32(&ec.deferred, int32(len(deferred)))
+
+	for label, dfs := range deferred {
+		ec.processDeferredGroup(graphql.DeferredGroup{
+			Label:    label,
+			Path:     graphql.GetPath(ctx),
+			FieldSet: dfs,
+			Context:  ctx,
+		})
+	}
+
+	return out
+}
+
 var saveDistroPayloadImplementors = []string{"SaveDistroPayload"}
 
 func (ec *executionContext) _SaveDistroPayload(ctx context.Context, sel ast.SelectionSet, obj *SaveDistroPayload) graphql.Marshaler {
@@ -79951,21 +80166,57 @@ func (ec *executionContext) _SpruceConfig(ctx context.Context, sel ast.Selection
 		case "githubOrgs":
 			out.Values[i] = ec._SpruceConfig_githubOrgs(ctx, field, obj)
 			if out.Values[i] == graphql.Null {
-				out.Invalids++
+				atomic.AddUint32(&out.Invalids, 1)
 			}
 		case "jira":
 			out.Values[i] = ec._SpruceConfig_jira(ctx, field, obj)
+		case "keys":
+			field := field
+
+			innerFunc := func(ctx context.Context, fs *graphql.FieldSet) (res graphql.Marshaler) {
+				defer func() {
+					if r := recover(); r != nil {
+						ec.Error(ctx, ec.Recover(ctx, r))
+					}
+				}()
+				res = ec._SpruceConfig_keys(ctx, field, obj)
+				if res == graphql.Null {
+					atomic.AddUint32(&fs.Invalids, 1)
+				}
+				return res
+			}
+
+			if field.Deferrable != nil {
+				dfs, ok := deferred[field.Deferrable.Label]
+				di := 0
+				if ok {
+					dfs.AddField(field)
+					di = len(dfs.Values) - 1
+				} else {
+					dfs = graphql.NewFieldSet([]graphql.CollectedField{field})
+					deferred[field.Deferrable.Label] = dfs
+				}
+				dfs.Concurrently(di, func(ctx context.Context) graphql.Marshaler {
+					return innerFunc(ctx, dfs)
+				})
+
+				// don't run the out.Concurrently() call below
+				out.Values[i] = graphql.Null
+				continue
+			}
+
+			out.Concurrently(i, func(ctx context.Context) graphql.Marshaler { return innerFunc(ctx, out) })
 		case "providers":
 			out.Values[i] = ec._SpruceConfig_providers(ctx, field, obj)
+		case "slack":
+			out.Values[i] = ec._SpruceConfig_slack(ctx, field, obj)
 		case "spawnHost":
 			out.Values[i] = ec._SpruceConfig_spawnHost(ctx, field, obj)
 			if out.Values[i] == graphql.Null {
-				out.Invalids++
+				atomic.AddUint32(&out.Invalids, 1)
 			}
 		case "ui":
 			out.Values[i] = ec._SpruceConfig_ui(ctx, field, obj)
-		case "slack":
-			out.Values[i] = ec._SpruceConfig_slack(ctx, field, obj)
 		default:
 			panic("unknown field " + strconv.Quote(field.Name))
 		}
@@ -87581,6 +87832,60 @@ func (ec *executionContext) unmarshalNRoundingRule2githubᚗcomᚋevergreenᚑci
 
 func (ec *executionContext) marshalNRoundingRule2githubᚗcomᚋevergreenᚑciᚋevergreenᚋgraphqlᚐRoundingRule(ctx context.Context, sel ast.SelectionSet, v RoundingRule) graphql.Marshaler {
 	return v
+}
+
+func (ec *executionContext) marshalNSSHKey2ᚕᚖgithubᚗcomᚋevergreenᚑciᚋevergreenᚋgraphqlᚐSSHKeyᚄ(ctx context.Context, sel ast.SelectionSet, v []*SSHKey) graphql.Marshaler {
+	ret := make(graphql.Array, len(v))
+	var wg sync.WaitGroup
+	isLen1 := len(v) == 1
+	if !isLen1 {
+		wg.Add(len(v))
+	}
+	for i := range v {
+		i := i
+		fc := &graphql.FieldContext{
+			Index:  &i,
+			Result: &v[i],
+		}
+		ctx := graphql.WithFieldContext(ctx, fc)
+		f := func(i int) {
+			defer func() {
+				if r := recover(); r != nil {
+					ec.Error(ctx, ec.Recover(ctx, r))
+					ret = nil
+				}
+			}()
+			if !isLen1 {
+				defer wg.Done()
+			}
+			ret[i] = ec.marshalNSSHKey2ᚖgithubᚗcomᚋevergreenᚑciᚋevergreenᚋgraphqlᚐSSHKey(ctx, sel, v[i])
+		}
+		if isLen1 {
+			f(i)
+		} else {
+			go f(i)
+		}
+
+	}
+	wg.Wait()
+
+	for _, e := range ret {
+		if e == graphql.Null {
+			return graphql.Null
+		}
+	}
+
+	return ret
+}
+
+func (ec *executionContext) marshalNSSHKey2ᚖgithubᚗcomᚋevergreenᚑciᚋevergreenᚋgraphqlᚐSSHKey(ctx context.Context, sel ast.SelectionSet, v *SSHKey) graphql.Marshaler {
+	if v == nil {
+		if !graphql.HasFieldError(ctx, graphql.GetFieldContext(ctx)) {
+			ec.Errorf(ctx, "the requested element is null which the schema does not allow")
+		}
+		return graphql.Null
+	}
+	return ec._SSHKey(ctx, sel, v)
 }
 
 func (ec *executionContext) unmarshalNSaveDistroInput2githubᚗcomᚋevergreenᚑciᚋevergreenᚋgraphqlᚐSaveDistroInput(ctx context.Context, v interface{}) (SaveDistroInput, error) {

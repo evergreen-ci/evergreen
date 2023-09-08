@@ -9,10 +9,11 @@ type SpruceConfig {
   containerPools: ContainerPoolsConfig
   githubOrgs: [String!]!
   jira: JiraConfig
+  keys: [SSHKey!]!
   providers: CloudProviderConfig
+  slack: SlackConfig
   spawnHost: SpawnHostConfig!
   ui: UIConfig
-  slack: SlackConfig
 }
 
 type ContainerPoolsConfig {
@@ -29,6 +30,11 @@ type ContainerPool {
 type UIConfig {
   defaultProject: String!
   userVoice: String
+}
+
+type SSHKey {
+  location: String!
+  name: String!
 }
 
 type SlackConfig {

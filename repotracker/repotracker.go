@@ -934,7 +934,7 @@ func createVersionItems(ctx context.Context, v *model.Version, metadata model.Ve
 				if !ok || !bvt.HasSpecificActivation() {
 					continue
 				}
-				activateTaskAt, err := projectInfo.Ref.GetActivationTimeForTask(&bvt)
+				activateTaskAt, err := projectInfo.Ref.GetActivationTimeForTask(&bvt, tId)
 				batchTimeCatcher.Add(errors.Wrapf(err, "unable to get activation time for task '%s' (variant '%s')", bvt.Name, buildvariant.Name))
 
 				taskStatuses = append(taskStatuses,
