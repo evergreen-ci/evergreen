@@ -1768,35 +1768,12 @@ func GetMergeablePullRequest(ctx context.Context, issue int, githubToken, owner,
 // HasEvergreenBranchProtections checks if any branch protection rule begins "evergreen".
 // We deliberately check for the prefix because users may have installed variant-level branch protections.
 func HasEvergreenBranchProtection(ctx context.Context, token, owner, repo, branch string) (bool, error) {
-	caller := "HasEvergreenBranchProtection"
-	ctx, span := tracer.Start(ctx, caller, trace.WithAttributes(
-		attribute.String(githubEndpointAttribute, caller),
-		attribute.String(githubOwnerAttribute, owner),
-		attribute.String(githubRepoAttribute, repo),
-		attribute.String(githubRefAttribute, branch),
-	))
-	defer span.End()
-
-	if token == "" {
-		var err error
-		token, err = getInstallationToken(ctx, owner, repo, nil)
-		if err != nil {
-			return false, errors.Wrap(err, "getting installation token")
-		}
-	}
-	githubClient := getGithubClient(token, caller, retryConfig{})
-
-	protection, resp, err := githubClient.Repositories.GetBranchProtection(ctx, owner, repo, branch)
-	if resp != nil {
-		defer resp.Body.Close()
-		span.SetAttributes(attribute.Bool(githubCachedAttribute, respFromCache(resp.Response)))
-	}
+	rules, err := GetEvergreenBranchProtectionRules(ctx, token, owner, repo, branch)
 	if err != nil {
-		return false, errors.Wrap(err, "getting branch protection")
+		return false, errors.Wrap(err, "getting branch protection rules")
 	}
-
-	for _, check := range protection.GetRequiredStatusChecks().Checks {
-		if strings.HasPrefix(check.Context, "evergreen") {
+	for _, rule := range rules {
+		if strings.HasPrefix(rule, "evergreen") {
 			return true, nil
 		}
 	}
