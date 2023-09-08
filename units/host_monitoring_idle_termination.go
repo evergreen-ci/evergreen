@@ -24,7 +24,7 @@ const (
 	idleWaitingForAgentCutoff = 10 * time.Minute
 
 	// outdatedIdleTimeCutoff is the amount of time we wait for an outdated idle host to be marked idle.
-	outdatedIdleTimeCutoff = time.Minute
+	outdatedIdleTimeCutoff = 10 * time.Second
 	// MaxTimeNextPayment is the amount of time we wait to have left before marking a host as idle
 	maxTimeTilNextPayment = 5 * time.Minute
 )
