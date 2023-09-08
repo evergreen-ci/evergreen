@@ -578,7 +578,7 @@ func ByPreviousCommit(buildVariant, displayName, project, requester string, orde
 		BuildVariantKey:        buildVariant,
 		DisplayNameKey:         displayName,
 		ProjectKey:             project,
-		RevisionOrderNumberKey: order - 1,
+		RevisionOrderNumberKey: bson.M{"$lt": order},
 	}
 }
 

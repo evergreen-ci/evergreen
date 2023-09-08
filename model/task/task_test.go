@@ -3783,6 +3783,71 @@ func TestByExecutionTasksAndMaxExecution(t *testing.T) {
 	})
 }
 
+func TestFindTaskOnPreviousCommit(t *testing.T) {
+	require.NoError(t, db.ClearCollections(Collection))
+	t1 := Task{
+		Id:                  "t1",
+		Version:             "v1",
+		Execution:           0,
+		Status:              evergreen.TaskSucceeded,
+		RevisionOrderNumber: 1,
+		Requester:           evergreen.RepotrackerVersionRequester,
+		BuildVariant:        "bv",
+		DisplayName:         "dn",
+		Project:             "p",
+	}
+	assert.NoError(t, db.Insert(Collection, t1))
+	t2 := Task{
+		Id:                  "t2",
+		Version:             "v2",
+		Execution:           0,
+		Status:              evergreen.TaskSucceeded,
+		RevisionOrderNumber: 2,
+		Requester:           evergreen.RepotrackerVersionRequester,
+		BuildVariant:        "bv",
+		DisplayName:         "dn",
+		Project:             "p",
+	}
+	assert.NoError(t, db.Insert(Collection, t2))
+
+	task, err := t2.FindTaskOnPreviousCommit()
+	assert.NoError(t, err)
+	require.NotNil(t, task)
+	assert.Equal(t, t1.Id, task.Id)
+	assert.Equal(t, t1.Version, task.Version)
+	t3 := Task{
+		Id:                  "t3",
+		Version:             "v3",
+		Execution:           0,
+		Status:              evergreen.TaskSucceeded,
+		RevisionOrderNumber: 3,
+		Requester:           evergreen.TriggerRequester,
+		BuildVariant:        "bv",
+		DisplayName:         "dn",
+		Project:             "p",
+	}
+	assert.NoError(t, db.Insert(Collection, t3))
+	t4 := Task{
+		Id:                  "t4",
+		Version:             "v4",
+		Execution:           0,
+		Status:              evergreen.TaskSucceeded,
+		RevisionOrderNumber: 4,
+		Requester:           evergreen.RepotrackerVersionRequester,
+		BuildVariant:        "bv",
+		DisplayName:         "dn",
+		Project:             "p",
+	}
+	assert.NoError(t, db.Insert(Collection, t4))
+
+	// Should fetch the latest mainline commit task and should not consider non gitter tasks
+	task, err = t4.FindTaskOnPreviousCommit()
+	assert.NoError(t, err)
+	require.NotNil(t, task)
+	assert.Equal(t, t2.Id, task.Id)
+	assert.Equal(t, t2.Version, task.Version)
+}
+
 type TaskConnectorFetchByIdSuite struct {
 	suite.Suite
 }

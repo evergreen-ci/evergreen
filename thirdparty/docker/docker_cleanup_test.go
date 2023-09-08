@@ -7,7 +7,6 @@ import (
 
 	"github.com/docker/docker/api/types"
 	"github.com/docker/docker/api/types/container"
-	"github.com/docker/docker/api/types/filters"
 	"github.com/docker/docker/api/types/volume"
 	"github.com/docker/docker/client"
 	"github.com/mongodb/grip"
@@ -31,7 +30,7 @@ func TestCleanup(t *testing.T) {
 	const imageName = "public.ecr.aws/docker/library/hello-world:latest"
 	for name, test := range map[string]func(*testing.T){
 		"cleanContainers": func(*testing.T) {
-			var resp container.ContainerCreateCreatedBody
+			var resp container.CreateResponse
 			resp, err = dockerClient.ContainerCreate(ctx, &container.Config{
 				Image: imageName,
 			}, nil, nil, nil, "")
@@ -57,15 +56,15 @@ func TestCleanup(t *testing.T) {
 			assert.Equal(t, 0, info.Images)
 		},
 		"cleanVolumes": func(*testing.T) {
-			_, err = dockerClient.VolumeCreate(ctx, volume.VolumeCreateBody{})
+			_, err = dockerClient.VolumeCreate(ctx, volume.CreateOptions{})
 			require.NoError(t, err)
-			volumes, err := dockerClient.VolumeList(ctx, filters.Args{})
+			volumes, err := dockerClient.VolumeList(ctx, volume.ListOptions{})
 			require.NoError(t, err)
 			require.True(t, len(volumes.Volumes) > 0)
 
 			assert.NoError(t, cleanVolumes(context.Background(), dockerClient, grip.NewJournaler("")))
 
-			volumes, err = dockerClient.VolumeList(ctx, filters.Args{})
+			volumes, err = dockerClient.VolumeList(ctx, volume.ListOptions{})
 			assert.NoError(t, err)
 			assert.Len(t, volumes.Volumes, 0)
 		},
@@ -80,9 +79,9 @@ func TestCleanup(t *testing.T) {
 			require.True(t, info.ContainersRunning > 0)
 			require.True(t, info.Images > 0)
 
-			_, err = dockerClient.VolumeCreate(ctx, volume.VolumeCreateBody{})
+			_, err = dockerClient.VolumeCreate(ctx, volume.CreateOptions{})
 			require.NoError(t, err)
-			volumes, err := dockerClient.VolumeList(ctx, filters.Args{})
+			volumes, err := dockerClient.VolumeList(ctx, volume.ListOptions{})
 			require.NoError(t, err)
 			require.True(t, len(volumes.Volumes) > 0)
 
@@ -93,7 +92,7 @@ func TestCleanup(t *testing.T) {
 			assert.Equal(t, 0, info.Containers)
 			assert.Equal(t, 0, info.Images)
 
-			volumes, err = dockerClient.VolumeList(ctx, filters.Args{})
+			volumes, err = dockerClient.VolumeList(ctx, volume.ListOptions{})
 			assert.NoError(t, err)
 			assert.Len(t, volumes.Volumes, 0)
 		},
