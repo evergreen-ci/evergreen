@@ -172,9 +172,6 @@ func (s *TimeoutSuite) TestExecTimeoutTask() {
 	s.NoError(s.a.startLogging(s.ctx, tc))
 	defer s.a.removeTaskDirectory(tc)
 
-	const expectedTimeout = time.Second
-	const expectedTimeoutType = execTimeout
-
 	nextTask := &apimodels.NextTaskResponse{
 		TaskId:     taskID,
 		TaskSecret: taskSecret,

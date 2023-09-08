@@ -32,7 +32,6 @@ func (a *Agent) startHeartbeat(ctx context.Context, preAndMainCancel context.Can
 	}
 
 	var numRepeatedFailures int
-	const maxRepeatedFailures = 10
 	ticker := time.NewTicker(heartbeatInterval)
 	defer ticker.Stop()
 
