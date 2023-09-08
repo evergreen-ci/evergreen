@@ -674,9 +674,19 @@ func (a *Agent) runPreAndMain(ctx context.Context, tc *taskContext) (status stri
 		kind:                  execTimeout,
 		getTimeout:            tc.getExecTimeout,
 		canMarkTimeoutFailure: true,
-		canTimeoutHeartbeat:   true,
 	}
 	go a.startTimeoutWatcher(timeoutWatcherCtx, execTimeoutCancel, timeoutOpts)
+
+	tc.logger.Execution().Infof("Setting heartbeat timeout to type '%s'.", execTimeout)
+	tc.setHeartbeatTimeout(heartbeatTimeoutOptions{
+		startAt:    time.Now(),
+		getTimeout: tc.getExecTimeout,
+		kind:       execTimeout,
+	})
+	defer func() {
+		tc.logger.Execution().Infof("Resetting heartbeat timeout from type '%s' back to default.", execTimeout)
+		tc.setHeartbeatTimeout(heartbeatTimeoutOptions{})
+	}()
 
 	// set up the system stats collector
 	statsCollector := NewSimpleStatsCollector(

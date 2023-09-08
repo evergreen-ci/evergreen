@@ -48,10 +48,6 @@ post:
       script: echo hi
 `
 
-// kim: TODO: see if there's a less janky way to do this. Maybe put it in a
-// helper function to wrap the jank.
-const backgroundLoggerWait = time.Millisecond
-
 type AgentSuite struct {
 	suite.Suite
 	a                *Agent
@@ -260,11 +256,11 @@ func (s *AgentSuite) TestFinishTaskWithAbnormallyCompletedTask() {
 	resp, err := s.a.finishTask(s.ctx, s.tc, status, "")
 	s.Equal(&apimodels.EndTaskResponse{}, resp)
 	s.NoError(err)
-	s.NoError(s.tc.logger.Close())
 
 	s.Equal(evergreen.TaskFailed, s.mockCommunicator.EndTaskResult.Detail.Status, "task that failed due to non-task-related reasons should record the final status")
 	s.Equal(evergreen.CommandTypeSystem, s.mockCommunicator.EndTaskResult.Detail.Type)
 	s.NotEmpty(s.mockCommunicator.EndTaskResult.Detail.Description)
+	s.NoError(s.tc.logger.Close())
 	checkMockLogs(s.T(), s.mockCommunicator, s.tc.taskConfig.Task.Id, []string{
 		"Task encountered unexpected task lifecycle system failure",
 	}, []string{
@@ -584,6 +580,7 @@ tasks:
 	s.setupRunTask(projYml)
 
 	s.Error(s.a.runTaskCommands(s.ctx, s.tc))
+
 	s.NoError(s.tc.logger.Close())
 	checkMockLogs(s.T(), s.mockCommunicator, s.tc.taskConfig.Task.Id, []string{
 		"Running task commands",
@@ -607,9 +604,6 @@ post:
 
 	s.NoError(s.a.runPostTaskCommands(s.ctx, s.tc))
 
-	// Since the post timeout watcher runs in the background, it may
-	// not have finished logging yet, so give it a brief window to finish.
-	time.Sleep(backgroundLoggerWait)
 	s.NoError(s.tc.logger.Close())
 	checkMockLogs(s.T(), s.mockCommunicator, s.tc.taskConfig.Task.Id, []string{
 		"Running post-task commands",
@@ -646,9 +640,6 @@ post:
 	s.Zero(s.tc.getTimeoutType())
 	s.Zero(s.tc.getTimeoutDuration())
 
-	// Since the post timeout watcher runs in the background, it may
-	// not have finished logging yet, so give it a brief window to finish.
-	time.Sleep(backgroundLoggerWait)
 	s.NoError(s.tc.logger.Close())
 	checkMockLogs(s.T(), s.mockCommunicator, s.tc.taskConfig.Task.Id, []string{
 		"Running post-task commands",
@@ -707,9 +698,6 @@ post:
 	s.Equal(postTimeout, s.tc.getTimeoutType())
 	s.Equal(time.Second, s.tc.getTimeoutDuration())
 
-	// Since the post timeout watcher runs in the background, it may
-	// not have finished logging yet, so give it a brief window to finish.
-	time.Sleep(backgroundLoggerWait)
 	s.NoError(s.tc.logger.Close())
 	checkMockLogs(s.T(), s.mockCommunicator, s.tc.taskConfig.Task.Id, []string{
 		"Running post-task commands",
@@ -767,9 +755,6 @@ post:
 	s.EqualValues(postTimeout, s.mockCommunicator.EndTaskResult.Detail.TimeoutType)
 	s.Equal(time.Second, s.mockCommunicator.EndTaskResult.Detail.TimeoutDuration)
 
-	// Since the post timeout watcher runs in the background, it may
-	// not have finished logging yet, so give it a brief window to finish.
-	time.Sleep(backgroundLoggerWait)
 	s.NoError(s.tc.logger.Close())
 	checkMockLogs(s.T(), s.mockCommunicator, s.tc.taskConfig.Task.Id, []string{
 		"Running task commands",
@@ -821,9 +806,6 @@ post:
 	s.Zero(s.mockCommunicator.EndTaskResult.Detail.Description, "should not include command failure description for a successful task")
 	s.Zero(s.mockCommunicator.EndTaskResult.Detail.Type, "should not include command failure type for a successful task")
 
-	// Since the post timeout watcher runs in the background, it may
-	// not have finished logging yet, so give it a brief window to finish.
-	time.Sleep(backgroundLoggerWait)
 	s.NoError(s.tc.logger.Close())
 	checkMockLogs(s.T(), s.mockCommunicator, s.tc.taskConfig.Task.Id, []string{
 		"Running task commands",
@@ -875,9 +857,6 @@ post:
 	s.Zero(s.mockCommunicator.EndTaskResult.Detail.Description, "should not include command failure description for a successful task")
 	s.Zero(s.mockCommunicator.EndTaskResult.Detail.Type, "should not include command failure type for a successful task")
 
-	// Since the post timeout watcher runs in the background, it may
-	// not have finished logging yet, so give it a brief window to finish.
-	time.Sleep(backgroundLoggerWait)
 	s.NoError(s.tc.logger.Close())
 	checkMockLogs(s.T(), s.mockCommunicator, s.tc.taskConfig.Task.Id, []string{
 		"Running task commands",
@@ -930,9 +909,6 @@ post:
 	s.Equal("'shell.exec' (step 1 of 1)", s.mockCommunicator.EndTaskResult.Detail.Description, "should show main block command as the failing command if both main and post block commands fail")
 	s.True(s.mockCommunicator.EndTaskResult.Detail.TimedOut, "should show main block command hitting timeout")
 
-	// Since the post timeout watcher runs in the background, it may
-	// not have finished logging yet, so give it a brief window to finish.
-	time.Sleep(backgroundLoggerWait)
 	s.NoError(s.tc.logger.Close())
 	checkMockLogs(s.T(), s.mockCommunicator, s.tc.taskConfig.Task.Id, []string{
 		"Running command 'shell.exec' (step 1 of 1)",
@@ -981,9 +957,6 @@ post:
 	s.Equal(evergreen.TaskFailed, s.mockCommunicator.EndTaskResult.Detail.Status)
 	s.Equal("'shell.exec' (step 1 of 1)", s.mockCommunicator.EndTaskResult.Detail.Description)
 
-	// Since the post timeout watcher runs in the background, it may
-	// not have finished logging yet, so give it a brief window to finish.
-	time.Sleep(backgroundLoggerWait)
 	s.NoError(s.tc.logger.Close())
 	checkMockLogs(s.T(), s.mockCommunicator, s.tc.taskConfig.Task.Id, []string{
 		"Running task commands",
@@ -1018,9 +991,6 @@ post:
 
 	s.NoError(s.a.runPostTaskCommands(s.ctx, s.tc))
 
-	// Since the post timeout watcher runs in the background, it may
-	// not have finished logging yet, so give it a brief window to finish.
-	time.Sleep(backgroundLoggerWait)
 	s.NoError(s.tc.logger.Close())
 	checkMockLogs(s.T(), s.mockCommunicator, s.tc.taskConfig.Task.Id, []string{
 		"Running post-task commands",
@@ -1613,9 +1583,6 @@ task_groups:
 
 	s.NoError(s.a.runPostTaskCommands(s.ctx, s.tc))
 
-	// Since the teardown_task timeout watcher runs in the background, it may
-	// not have finished logging yet, so give it a brief window to finish.
-	time.Sleep(backgroundLoggerWait)
 	s.NoError(s.tc.logger.Close())
 	checkMockLogs(s.T(), s.mockCommunicator, s.tc.taskConfig.Task.Id, []string{
 		"Running teardown-task commands",
@@ -1648,9 +1615,6 @@ task_groups:
 
 	s.Error(s.a.runPostTaskCommands(s.ctx, s.tc))
 
-	// Since the teardown_task timeout watcher runs in the background, it may
-	// not have finished logging yet, so give it a brief window to finish.
-	time.Sleep(backgroundLoggerWait)
 	s.NoError(s.tc.logger.Close())
 	checkMockLogs(s.T(), s.mockCommunicator, s.tc.taskConfig.Task.Id, []string{
 		"Running teardown-task commands",
@@ -1930,9 +1894,6 @@ timeout:
 	// knowing that the heartbeat is still going despite receiving an abort.
 	s.GreaterOrEqual(s.mockCommunicator.GetHeartbeatCount(), 1, "heartbeat should be still running for teardown_task block even when initial abort signal is received")
 
-	// Since the post timeout watcher runs in the background, it may
-	// not have finished logging yet, so give it a brief window to finish.
-	time.Sleep(backgroundLoggerWait)
 	s.NoError(s.tc.logger.Close())
 	checkMockLogs(s.T(), s.mockCommunicator, s.tc.taskConfig.Task.Id, []string{
 		"Heartbeat received signal to abort task.",

@@ -46,6 +46,19 @@ func (a *Agent) runCommandsInBlock(ctx context.Context, tc *taskContext, cmdBloc
 		return nil
 	}
 
+	var taskLogger grip.Journaler
+	var execLogger grip.Journaler
+	if tc.logger != nil {
+		taskLogger = tc.logger.Task()
+		execLogger = tc.logger.Execution()
+	} else {
+		// In the case of teardown group, it's not guaranteed that the agent has
+		// previously set up a valid logger set up, so use the fallback default
+		// logger if necessary.
+		taskLogger = grip.GetDefaultJournaler()
+		execLogger = grip.GetDefaultJournaler()
+	}
+
 	blockCtx, blockCancel := context.WithCancel(ctx)
 	defer blockCancel()
 	if cmdBlock.timeoutKind != "" && cmdBlock.getTimeout != nil {
@@ -55,9 +68,21 @@ func (a *Agent) runCommandsInBlock(ctx context.Context, tc *taskContext, cmdBloc
 			kind:                  cmdBlock.timeoutKind,
 			getTimeout:            cmdBlock.getTimeout,
 			canMarkTimeoutFailure: cmdBlock.canFailTask,
-			canTimeoutHeartbeat:   cmdBlock.canTimeoutHeartbeat,
 		}
 		go a.startTimeoutWatcher(blockCtx, blockCancel, timeoutOpts)
+
+		if cmdBlock.canTimeoutHeartbeat {
+			execLogger.Infof("Setting heartbeat timeout to type '%s'.", cmdBlock.timeoutKind)
+			tc.setHeartbeatTimeout(heartbeatTimeoutOptions{
+				startAt:    time.Now(),
+				getTimeout: cmdBlock.getTimeout,
+				kind:       cmdBlock.timeoutKind,
+			})
+			defer func() {
+				execLogger.Infof("Resetting heartbeat timeout from type '%s' back to default.", cmdBlock.timeoutKind)
+				tc.setHeartbeatTimeout(heartbeatTimeoutOptions{})
+			}()
+		}
 	}
 
 	defer func() {
@@ -69,23 +94,14 @@ func (a *Agent) runCommandsInBlock(ctx context.Context, tc *taskContext, cmdBloc
 		err = a.logPanic(tc.logger, pErr, err, op)
 	}()
 
-	var logger grip.Journaler
-	if tc.logger != nil {
-		logger = tc.logger.Task()
-	} else {
-		// In the case of teardown group, it's not guaranteed that the agent has
-		// previously set up a valid task logger, so use the fallback file log
-		// if necessary.
-		logger = grip.GetDefaultJournaler()
-	}
 	legacyBlockName := a.blockToLegacyName(cmdBlock.block)
-	logger.Infof("Running %s commands.", legacyBlockName)
+	taskLogger.Infof("Running %s commands.", legacyBlockName)
 	start := time.Now()
 	defer func() {
 		if err != nil {
-			logger.Error(errors.Wrapf(err, "Running %s commands failed", legacyBlockName))
+			taskLogger.Error(errors.Wrapf(err, "Running %s commands failed", legacyBlockName))
 		}
-		logger.Infof("Finished running %s commands in %s.", legacyBlockName, time.Since(start).String())
+		taskLogger.Infof("Finished running %s commands in %s.", legacyBlockName, time.Since(start).String())
 	}()
 
 	commands := cmdBlock.commands.List()

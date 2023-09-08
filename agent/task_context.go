@@ -67,7 +67,7 @@ func (tc *taskContext) getCurrentIdleTimeout() time.Duration {
 
 func (tc *taskContext) setHeartbeatTimeout(opts heartbeatTimeoutOptions) {
 	if opts.getTimeout == nil {
-		opts.getTimeout = func() time.Duration { return 0 }
+		opts.getTimeout = func() time.Duration { return defaultHeartbeatTimeout }
 	}
 	if utility.IsZeroTime(opts.startAt) {
 		opts.startAt = time.Now()
@@ -94,9 +94,8 @@ func (tc *taskContext) getHeartbeatTimeout() heartbeatTimeoutOptions {
 func (tc *taskContext) hadHeartbeatTimeout() bool {
 	timeoutOpts := tc.getHeartbeatTimeout()
 
-	// Once the agent hit a timeout that can stop the task heartbeat, give the
-	// agent some extra time just in case it's being a bit slow on making
-	// progress.
+	// Give the agent some extra time just in case it's being a bit slow but is
+	// making progress.
 	timeoutWithGracePeriod := timeoutOpts.getTimeout() + evergreen.HeartbeatTimeoutThreshold
 	return time.Since(timeoutOpts.startAt) > timeoutWithGracePeriod
 }

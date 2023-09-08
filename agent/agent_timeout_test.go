@@ -70,7 +70,7 @@ func (s *TimeoutSuite) TearDownTest() {
 func checkHeartbeatTimeoutReset(t *testing.T, tc *taskContext) {
 	heartbeatTimeoutOpts := tc.getHeartbeatTimeout()
 	require.NotZero(t, heartbeatTimeoutOpts.getTimeout)
-	assert.Zero(t, heartbeatTimeoutOpts.getTimeout(), "should reset heartbeat timeout to default")
+	assert.Equal(t, defaultHeartbeatTimeout, heartbeatTimeoutOpts.getTimeout(), "should reset heartbeat timeout to default")
 	assert.WithinDuration(t, heartbeatTimeoutOpts.startAt, time.Now(), time.Second, "should reset heartbeat timer start to now")
 	assert.Empty(t, heartbeatTimeoutOpts.kind, "should reset heartbeat timeout type")
 }

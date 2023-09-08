@@ -37,6 +37,7 @@ func (a *Agent) startHeartbeat(ctx context.Context, preAndMainCancel context.Can
 	defer ticker.Stop()
 
 	var hasSentAbort bool
+	var loggedTimeout bool
 	for {
 		select {
 		case <-ticker.C:
@@ -46,16 +47,23 @@ func (a *Agent) startHeartbeat(ctx context.Context, preAndMainCancel context.Can
 				// in the task runtime (e.g. a deadlock in the agent has stalled
 				// the task).
 				timeoutOpts := tc.getHeartbeatTimeout()
-				msg := fmt.Sprintf("Heartbeat has hit maximum allowed '%s' timeout of %s, task is at risk of timing out if it runs for much longer.", timeoutOpts.kind, timeoutOpts.getTimeout().String())
-				tc.logger.Task().Errorf(msg)
-				grip.Alert(message.Fields{
-					"message":      msg,
-					"task_context": tc,
-					"timeout_opts": timeoutOpts,
-				})
+				timeout := timeoutOpts.getTimeout()
+				if !loggedTimeout {
+					msg := fmt.Sprintf("Heartbeat has hit maximum allowed '%s' timeout of %s, task is at risk of timing out if it runs for much longer.", timeoutOpts.kind, timeout.String())
+					grip.Alert(message.Fields{
+						"message":        msg,
+						"task_id":        tc.taskConfig.Task.Id,
+						"task_execution": tc.taskConfig.Task.Execution,
+						"timeout_type":   timeoutOpts.kind,
+						"timeout_start":  timeoutOpts.startAt,
+						"timeout":        timeout,
+					})
+					loggedTimeout = true
+				}
 				// TODO (EVG-20701): uncomment the timeout handling once there
-				// is confidence that this case is never hit during regular
-				// agent operation.
+				// is sufficient confidence that this case is never hit during
+				// regular agent operation.
+				// tc.logger.Task().Errorf(msg)
 				// if !hasSentAbort {
 				//     preAndMainCancel()
 				// }
@@ -148,9 +156,6 @@ type timeoutWatcherOptions struct {
 	// canMarkTimeoutFailure indicates whether the timeout watcher can mark the
 	// task as having hit a timeout that can fail the task.
 	canMarkTimeoutFailure bool
-	// canTimeoutHeartbeat indicates whether the hitting the timeout can also
-	// time out the task heartbeat.
-	canTimeoutHeartbeat bool
 }
 
 // startTimeoutWatcher waits until the given timeout is hit for an operation. If
@@ -159,19 +164,6 @@ type timeoutWatcherOptions struct {
 func (a *Agent) startTimeoutWatcher(ctx context.Context, operationCancel context.CancelFunc, opts timeoutWatcherOptions) {
 	defer recovery.LogStackTraceAndContinue(fmt.Sprintf("%s timeout watcher", opts.kind))
 	defer operationCancel()
-
-	if opts.canTimeoutHeartbeat {
-		opts.tc.logger.Execution().Infof("Setting heartbeat timeout to type '%s'.", opts.kind)
-		opts.tc.setHeartbeatTimeout(heartbeatTimeoutOptions{
-			startAt:    time.Now(),
-			getTimeout: opts.getTimeout,
-			kind:       opts.kind,
-		})
-		defer func() {
-			opts.tc.logger.Execution().Infof("Resetting heartbeat timeout from type '%s' back to default.", opts.kind)
-			opts.tc.setHeartbeatTimeout(heartbeatTimeoutOptions{})
-		}()
-	}
 
 	ticker := time.NewTicker(time.Second)
 	timeTickerStarted := time.Now()
