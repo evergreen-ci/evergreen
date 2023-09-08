@@ -356,6 +356,47 @@ func TestSignedUrlVisibility(t *testing.T) {
 	}
 }
 
+func TestContentTypeSaved(t *testing.T) {
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+	s := s3put{
+		AwsKey:        "key",
+		AwsSecret:     "secret",
+		Bucket:        "bucket",
+		BuildVariants: []string{},
+		ContentType:   "content-type",
+		Permissions:   s3.BucketCannedACLPublicRead,
+		RemoteFile:    "remote",
+		Visibility:    "",
+	}
+
+	comm := client.NewMock("http://localhost.com")
+	conf := &internal.TaskConfig{
+		Expansions:   &util.Expansions{},
+		Task:         &task.Task{Id: "mock_id", Secret: "mock_secret"},
+		Project:      &model.Project{},
+		BuildVariant: &model.BuildVariant{},
+	}
+	s.taskdata = client.TaskData{ID: conf.Task.Id, Secret: conf.Task.Secret}
+	logger, err := comm.GetLoggerProducer(ctx, client.TaskData{ID: conf.Task.Id, Secret: conf.Task.Secret}, nil)
+	require.NoError(t, err)
+
+	localFiles := []string{"file1", "file2"}
+	remoteFile := "remote file"
+
+	require.NoError(t, s.attachFiles(ctx, comm, logger, localFiles, remoteFile))
+
+	attachedFiles := comm.AttachedFiles
+	files, ok := attachedFiles[conf.Task.Id]
+	// Must be able to find an attached file
+	require.True(t, ok)
+	assert.Len(t, files, 2)
+	for _, file := range files {
+		assert.Equal(t, file.ContentType, s.ContentType)
+	}
+
+}
+
 func TestS3LocalFilesIncludeFilterPrefix(t *testing.T) {
 	for _, prefix := range []string{"emptyPrefix", "subDir"} {
 		t.Run(prefix, func(t *testing.T) {

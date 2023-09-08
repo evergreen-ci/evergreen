@@ -58,6 +58,8 @@ type File struct {
 	Bucket string `json:"bucket,omitempty" bson:"bucket,omitempty"`
 	// FileKey is the path to the file in the bucket.
 	FileKey string `json:"filekey,omitempty" bson:"filekey,omitempty"`
+	// ContentType is the content type of the file.
+	ContentType string `json:"content_type" bson:"content_type"`
 }
 
 // StripHiddenFiles is a helper for only showing users the files they are allowed to see.
