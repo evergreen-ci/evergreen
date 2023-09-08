@@ -256,7 +256,7 @@ func activatePreviousTask(ctx context.Context, taskId, caller string, originalSt
 	}
 
 	grip.Debug(message.Fields{
-		"ticket":                        "EVG-17949",
+		"ticket":                        "EVG-20792",
 		"message":                       "stepping back task",
 		"stepback_depth":                s.StepbackDepth,
 		"stepback_last_failing_task_id": s.LastFailingStepbackTaskId,
