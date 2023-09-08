@@ -346,7 +346,7 @@ func (s *GitGetProjectSuite) TestTokenScrubbedFromLogger() {
 	foundCloneErr := false
 	for _, msgs := range s.comm.GetMockMessages() {
 		for _, msg := range msgs {
-			if strings.Contains(msg.Message, "https://[redacted oauth token]:x-oauth-basic@github.com/evergreen-ci/sample.git") {
+			if strings.Contains(msg.Message, "https://[redacted oauth token]:x-oauth-basic@github.com/evergreen-ci/doesntexist.git") {
 				foundCloneCommand = true
 			}
 			if strings.Contains(msg.Message, "Repository not found.") {
