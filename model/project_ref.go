@@ -2303,7 +2303,7 @@ func (p *ProjectRef) GetActivationTimeForTask(t *BuildVariantTaskUnit, taskId st
 		"task_name":             t.Name,
 		"bvtu_batchtime":        t.BatchTime,
 		"bvtu_activate":         t.Activate,
-		"stack":                 debug.Stack(),
+		"stack":                 string(debug.Stack()),
 	})
 	if lastActivated == nil {
 		return defaultRes, nil
