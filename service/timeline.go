@@ -55,24 +55,11 @@ func (uis *UIServer) myPatchesTimeline(w http.ResponseWriter, r *http.Request) {
 }
 
 func (uis *UIServer) userPatchesTimeline(w http.ResponseWriter, r *http.Request) {
-	user := MustHaveUser(r)
 	author := gimlet.GetVars(r)["user_id"]
-	if user.Settings.UseSpruceOptions.PatchPage {
-		http.Redirect(w, r, fmt.Sprintf("%s/patches/user/%s", uis.Settings.Ui.UIv2Url, author), http.StatusTemporaryRedirect)
-		return
-	}
-
 	uis.patchTimelineWrapper(author, w, r)
 }
 
 func (uis *UIServer) projectPatchesTimeline(w http.ResponseWriter, r *http.Request) {
-	user := MustHaveUser(r)
-	project := gimlet.GetVars(r)["project_id"]
-	if user.Settings.UseSpruceOptions.PatchPage {
-		http.Redirect(w, r, fmt.Sprintf("%s/patches/project/%s", uis.Settings.Ui.UIv2Url, project), http.StatusTemporaryRedirect)
-		return
-	}
-
 	uis.patchTimelineWrapper("", w, r)
 }
 

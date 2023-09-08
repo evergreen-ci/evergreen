@@ -1,9 +1,4 @@
 display_name: testBuildId
-owner: evergreen-ci
-repo: render
-repokind: github
-branch: main
-enabled: true
 batch_time: 180
 stepback: true
 

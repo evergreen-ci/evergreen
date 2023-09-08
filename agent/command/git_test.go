@@ -189,7 +189,7 @@ func (s *GitGetProjectSuite) TestBuildCloneCommandUsesHTTPS() {
 	}
 	s.Require().NoError(opts.setLocation())
 	cmds, _ := c.buildCloneCommand(s.ctx, s.comm, logger, conf, opts)
-	s.Equal("git clone https://PROJECTTOKEN:x-oauth-basic@github.com/deafgoat/mci_test.git 'dir' --branch 'master'", cmds[5])
+	s.Equal("git clone https://PROJECTTOKEN:x-oauth-basic@github.com/evergreen-ci/sample.git 'dir' --branch 'main'", cmds[5])
 }
 
 func (s *GitGetProjectSuite) TestBuildCloneCommandWithHTTPSNeedsToken() {
@@ -224,15 +224,15 @@ func (s *GitGetProjectSuite) TestBuildCloneCommandUsesSSH() {
 
 	opts := cloneOpts{
 		method: evergreen.CloneMethodLegacySSH,
-		owner:  "deafgoat",
-		repo:   "mci_test",
+		owner:  "evergreen-ci",
+		repo:   "sample",
 		branch: "main",
 		dir:    c.Directory,
 	}
 	s.Require().NoError(opts.setLocation())
 	cmds, err := c.buildCloneCommand(s.ctx, s.comm, logger, conf, opts)
 	s.Require().NoError(err)
-	s.Equal("git clone 'git@github.com:deafgoat/mci_test.git' 'dir' --branch 'main'", cmds[3])
+	s.Equal("git clone 'git@github.com:evergreen-ci/sample.git' 'dir' --branch 'main'", cmds[3])
 }
 
 func (s *GitGetProjectSuite) TestBuildCloneCommandDefaultCloneMethodUsesSSH() {
@@ -346,7 +346,7 @@ func (s *GitGetProjectSuite) TestTokenScrubbedFromLogger() {
 	foundCloneErr := false
 	for _, msgs := range s.comm.GetMockMessages() {
 		for _, msg := range msgs {
-			if strings.Contains(msg.Message, "https://[redacted oauth token]:x-oauth-basic@github.com/deafgoat/doesntexist.git") {
+			if strings.Contains(msg.Message, "https://[redacted oauth token]:x-oauth-basic@github.com/evergreen-ci/doesntexist.git") {
 				foundCloneCommand = true
 			}
 			if strings.Contains(msg.Message, "Repository not found.") {
@@ -366,6 +366,7 @@ func (s *GitGetProjectSuite) TestStdErrLogged() {
 		s.T().Skip("TestStdErrLogged will not run on docker since it requires a SSH key")
 	}
 	conf := s.taskConfig5
+	conf.ProjectRef.Repo = "doesntexist"
 	conf.Distro.CloneMethod = evergreen.CloneMethodLegacySSH
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
@@ -442,8 +443,8 @@ func (s *GitGetProjectSuite) TestValidateGitCommands() {
 
 func (s *GitGetProjectSuite) TestBuildHTTPCloneCommand() {
 	projectRef := &model.ProjectRef{
-		Owner:  "deafgoat",
-		Repo:   "mci_test",
+		Owner:  "evergreen-ci",
+		Repo:   "sample",
 		Branch: "main",
 	}
 
@@ -462,8 +463,8 @@ func (s *GitGetProjectSuite) TestBuildHTTPCloneCommand() {
 	s.NoError(err)
 	s.Require().Len(cmds, 5)
 	s.Equal("set +o xtrace", cmds[0])
-	s.Equal("echo \"git clone https://[redacted oauth token]:x-oauth-basic@github.com/deafgoat/mci_test.git 'dir' --branch 'main' --filter=tree:0 --single-branch\"", cmds[1])
-	s.Equal("git clone https://PROJECTTOKEN:x-oauth-basic@github.com/deafgoat/mci_test.git 'dir' --branch 'main' --filter=tree:0 --single-branch", cmds[2])
+	s.Equal("echo \"git clone https://[redacted oauth token]:x-oauth-basic@github.com/evergreen-ci/sample.git 'dir' --branch 'main' --filter=tree:0 --single-branch\"", cmds[1])
+	s.Equal("git clone https://PROJECTTOKEN:x-oauth-basic@github.com/evergreen-ci/sample.git 'dir' --branch 'main' --filter=tree:0 --single-branch", cmds[2])
 	s.Equal("set -o xtrace", cmds[3])
 	s.Equal("cd dir", cmds[4])
 
@@ -473,20 +474,20 @@ func (s *GitGetProjectSuite) TestBuildHTTPCloneCommand() {
 	s.NoError(err)
 	s.Require().Len(cmds, 5)
 	s.Equal("set +o xtrace", cmds[0])
-	s.Equal("echo \"git clone https://[redacted oauth token]:x-oauth-basic@github.com/deafgoat/mci_test.git 'dir' --filter=tree:0 --single-branch\"", cmds[1])
-	s.Equal("git clone https://PROJECTTOKEN:x-oauth-basic@github.com/deafgoat/mci_test.git 'dir' --filter=tree:0 --single-branch", cmds[2])
+	s.Equal("echo \"git clone https://[redacted oauth token]:x-oauth-basic@github.com/evergreen-ci/sample.git 'dir' --filter=tree:0 --single-branch\"", cmds[1])
+	s.Equal("git clone https://PROJECTTOKEN:x-oauth-basic@github.com/evergreen-ci/sample.git 'dir' --filter=tree:0 --single-branch", cmds[2])
 	s.Equal("set -o xtrace", cmds[3])
 	s.Equal("cd dir", cmds[4])
 
 	// build clone command with a URL that uses http, and ensure it's
 	// been forced to use https
-	opts.location = "http://github.com/deafgoat/mci_test.git"
+	opts.location = "http://github.com/evergreen-ci/sample.git"
 	opts.branch = projectRef.Branch
 	cmds, err = opts.buildHTTPCloneCommand(false)
 	s.NoError(err)
 	s.Require().Len(cmds, 5)
-	s.Equal("echo \"git clone https://[redacted oauth token]:x-oauth-basic@github.com/deafgoat/mci_test.git 'dir' --branch 'main' --filter=tree:0 --single-branch\"", cmds[1])
-	s.Equal("git clone https://PROJECTTOKEN:x-oauth-basic@github.com/deafgoat/mci_test.git 'dir' --branch 'main' --filter=tree:0 --single-branch", cmds[2])
+	s.Equal("echo \"git clone https://[redacted oauth token]:x-oauth-basic@github.com/evergreen-ci/sample.git 'dir' --branch 'main' --filter=tree:0 --single-branch\"", cmds[1])
+	s.Equal("git clone https://PROJECTTOKEN:x-oauth-basic@github.com/evergreen-ci/sample.git 'dir' --branch 'main' --filter=tree:0 --single-branch", cmds[2])
 
 	// ensure that we aren't sending the github oauth token to other
 	// servers
@@ -494,16 +495,16 @@ func (s *GitGetProjectSuite) TestBuildHTTPCloneCommand() {
 	cmds, err = opts.buildHTTPCloneCommand(false)
 	s.NoError(err)
 	s.Require().Len(cmds, 5)
-	s.Equal("echo \"git clone https://[redacted oauth token]:x-oauth-basic@someothergithost.com/deafgoat/mci_test.git 'dir' --branch 'main' --filter=tree:0 --single-branch\"", cmds[1])
-	s.Equal("git clone https://PROJECTTOKEN:x-oauth-basic@someothergithost.com/deafgoat/mci_test.git 'dir' --branch 'main' --filter=tree:0 --single-branch", cmds[2])
+	s.Equal("echo \"git clone https://[redacted oauth token]:x-oauth-basic@someothergithost.com/evergreen-ci/sample.git 'dir' --branch 'main' --filter=tree:0 --single-branch\"", cmds[1])
+	s.Equal("git clone https://PROJECTTOKEN:x-oauth-basic@someothergithost.com/evergreen-ci/sample.git 'dir' --branch 'main' --filter=tree:0 --single-branch", cmds[2])
 }
 
 func (s *GitGetProjectSuite) TestBuildSSHCloneCommand() {
 	// ssh clone command with branch
 	opts := cloneOpts{
 		method:      evergreen.CloneMethodLegacySSH,
-		owner:       "deafgoat",
-		repo:        "mci_test",
+		owner:       "evergreen-ci",
+		repo:        "sample",
 		branch:      "main",
 		dir:         "dir",
 		cloneParams: "--filter=tree:0 --single-branch",
@@ -512,7 +513,7 @@ func (s *GitGetProjectSuite) TestBuildSSHCloneCommand() {
 	cmds, err := opts.buildSSHCloneCommand()
 	s.NoError(err)
 	s.Len(cmds, 2)
-	s.Equal("git clone 'git@github.com:deafgoat/mci_test.git' 'dir' --branch 'main' --filter=tree:0 --single-branch", cmds[0])
+	s.Equal("git clone 'git@github.com:evergreen-ci/sample.git' 'dir' --branch 'main' --filter=tree:0 --single-branch", cmds[0])
 	s.Equal("cd dir", cmds[1])
 
 	// ssh clone command without branch
@@ -520,7 +521,7 @@ func (s *GitGetProjectSuite) TestBuildSSHCloneCommand() {
 	cmds, err = opts.buildSSHCloneCommand()
 	s.NoError(err)
 	s.Len(cmds, 2)
-	s.Equal("git clone 'git@github.com:deafgoat/mci_test.git' 'dir' --filter=tree:0 --single-branch", cmds[0])
+	s.Equal("git clone 'git@github.com:evergreen-ci/sample.git' 'dir' --filter=tree:0 --single-branch", cmds[0])
 	s.Equal("cd dir", cmds[1])
 }
 
@@ -549,7 +550,7 @@ func (s *GitGetProjectSuite) TestBuildCommand() {
 	s.Equal("set -o xtrace", cmds[0])
 	s.Equal("set -o errexit", cmds[1])
 	s.Equal("rm -rf dir", cmds[2])
-	s.Equal("git clone 'git@github.com:deafgoat/mci_test.git' 'dir' --branch 'master'", cmds[3])
+	s.Equal("git clone 'git@github.com:evergreen-ci/sample.git' 'dir' --branch 'main'", cmds[3])
 	s.Equal("cd dir", cmds[4])
 	s.Equal("git reset --hard ", cmds[5])
 	s.Equal("git log --oneline -n 10", cmds[6])
@@ -567,8 +568,8 @@ func (s *GitGetProjectSuite) TestBuildCommand() {
 	s.Equal("set -o errexit", cmds[1])
 	s.Equal("rm -rf dir", cmds[2])
 	s.Equal("set +o xtrace", cmds[3])
-	s.Equal("echo \"git clone https://[redacted oauth token]:x-oauth-basic@github.com/deafgoat/mci_test.git 'dir' --branch 'master'\"", cmds[4])
-	s.Equal("git clone https://PROJECTTOKEN:x-oauth-basic@github.com/deafgoat/mci_test.git 'dir' --branch 'master'", cmds[5])
+	s.Equal("echo \"git clone https://[redacted oauth token]:x-oauth-basic@github.com/evergreen-ci/sample.git 'dir' --branch 'main'\"", cmds[4])
+	s.Equal("git clone https://PROJECTTOKEN:x-oauth-basic@github.com/evergreen-ci/sample.git 'dir' --branch 'main'", cmds[5])
 	s.Equal("set -o xtrace", cmds[6])
 	s.Equal("cd dir", cmds[7])
 	s.Equal("git reset --hard ", cmds[8])
@@ -664,8 +665,8 @@ func (s *GitGetProjectSuite) TestBuildModuleCommand() {
 
 	opts := cloneOpts{
 		method: evergreen.CloneMethodLegacySSH,
-		owner:  "deafgoat",
-		repo:   "mci_test",
+		owner:  "evergreen-ci",
+		repo:   "sample",
 		dir:    "module",
 	}
 	s.Require().NoError(opts.setLocation())
@@ -676,7 +677,7 @@ func (s *GitGetProjectSuite) TestBuildModuleCommand() {
 	s.Require().Len(cmds, 5)
 	s.Equal("set -o xtrace", cmds[0])
 	s.Equal("set -o errexit", cmds[1])
-	s.Equal("git clone 'git@github.com:deafgoat/mci_test.git' 'module'", cmds[2])
+	s.Equal("git clone 'git@github.com:evergreen-ci/sample.git' 'module'", cmds[2])
 	s.Equal("cd module", cmds[3])
 	s.Equal("git checkout 'main'", cmds[4])
 
@@ -690,19 +691,19 @@ func (s *GitGetProjectSuite) TestBuildModuleCommand() {
 	s.Equal("set -o xtrace", cmds[0])
 	s.Equal("set -o errexit", cmds[1])
 	s.Equal("set +o xtrace", cmds[2])
-	s.Equal("echo \"git clone https://[redacted oauth token]:x-oauth-basic@github.com/deafgoat/mci_test.git 'module'\"", cmds[3])
-	s.Equal("git clone https://PROJECTTOKEN:x-oauth-basic@github.com/deafgoat/mci_test.git 'module'", cmds[4])
+	s.Equal("echo \"git clone https://[redacted oauth token]:x-oauth-basic@github.com/evergreen-ci/sample.git 'module'\"", cmds[3])
+	s.Equal("git clone https://PROJECTTOKEN:x-oauth-basic@github.com/evergreen-ci/sample.git 'module'", cmds[4])
 	s.Equal("set -o xtrace", cmds[5])
 	s.Equal("cd module", cmds[6])
 	s.Equal("git checkout 'main'", cmds[7])
 
 	// ensure insecure github url is forced to use https
-	opts.location = "http://github.com/deafgoat/mci_test.git"
+	opts.location = "http://github.com/evergreen-ci/sample.git"
 	cmds, err = c.buildModuleCloneCommand(conf, opts, "main", nil)
 	s.NoError(err)
 	s.Require().Len(cmds, 8)
-	s.Equal("echo \"git clone https://[redacted oauth token]:x-oauth-basic@github.com/deafgoat/mci_test.git 'module'\"", cmds[3])
-	s.Equal("git clone https://PROJECTTOKEN:x-oauth-basic@github.com/deafgoat/mci_test.git 'module'", cmds[4])
+	s.Equal("echo \"git clone https://[redacted oauth token]:x-oauth-basic@github.com/evergreen-ci/sample.git 'module'\"", cmds[3])
+	s.Equal("git clone https://PROJECTTOKEN:x-oauth-basic@github.com/evergreen-ci/sample.git 'module'", cmds[4])
 
 	conf = s.taskConfig4
 	// with merge test-commit checkout
@@ -720,7 +721,7 @@ func (s *GitGetProjectSuite) TestBuildModuleCommand() {
 	s.Require().Len(cmds, 7)
 	s.Equal("set -o xtrace", cmds[0])
 	s.Equal("set -o errexit", cmds[1])
-	s.Equal("git clone 'git@github.com:deafgoat/mci_test.git' 'module'", cmds[2])
+	s.Equal("git clone 'git@github.com:evergreen-ci/sample.git' 'module'", cmds[2])
 	s.Equal("cd module", cmds[3])
 	s.Regexp("^git fetch origin \"pull/1234/merge:evg-merge-test-", cmds[4])
 	s.Regexp("^git checkout 'evg-merge-test-", cmds[5])
