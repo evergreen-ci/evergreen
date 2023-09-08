@@ -222,7 +222,7 @@ type Task struct {
 	ExecutionTasks        []string `bson:"execution_tasks,omitempty" json:"execution_tasks,omitempty"`
 	LatestParentExecution int      `bson:"latest_parent_execution" json:"latest_parent_execution"`
 
-	StepbackInfo StepbackInfo `bson:"stepback_info,omitempty" json:"stepback_info,omitempty"`
+	StepbackInfo *StepbackInfo `bson:"stepback_info,omitempty" json:"stepback_info,omitempty"`
 
 	// ResetWhenFinished indicates that a task should be reset once it is
 	// finished running. This is typically to deal with tasks that should be
@@ -1443,7 +1443,7 @@ func (t *Task) SetAborted(reason AbortInfo) error {
 
 // SetStepbackInfo adds the StepbackInfo to the task.
 func (t *Task) SetStepbackInfo(s StepbackInfo) error {
-	t.StepbackInfo = s
+	t.StepbackInfo = &s
 	return UpdateOne(
 		bson.M{
 			IdKey: t.Id,
