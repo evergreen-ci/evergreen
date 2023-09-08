@@ -205,35 +205,35 @@ func (s *GithubSuite) TestSetProcessed() {
 
 func (s *GithubSuite) TestFindUnprocessedGithubIntents() {
 	intents := []githubIntent{
-		githubIntent{
+		{
 			DocumentID: utility.RandomString(),
 			IntentType: GithubIntentType,
 			Processed:  true,
 		},
-		githubIntent{
+		{
 			DocumentID: utility.RandomString(),
 			IntentType: GithubIntentType,
 			Processed:  true,
 		},
-		githubIntent{
+		{
 			DocumentID: utility.RandomString(),
 			IntentType: GithubIntentType,
 			Processed:  true,
 		},
-		githubIntent{
+		{
 			DocumentID: utility.RandomString(),
 			IntentType: GithubIntentType,
 			Processed:  true,
 		},
-		githubIntent{
+		{
 			DocumentID: utility.RandomString(),
 			IntentType: GithubIntentType,
 		},
-		githubIntent{
+		{
 			DocumentID: utility.RandomString(),
 			IntentType: GithubIntentType,
 		},
-		githubIntent{
+		{
 			DocumentID: utility.RandomString(),
 			IntentType: GithubIntentType,
 		},
@@ -249,9 +249,11 @@ func (s *GithubSuite) TestFindUnprocessedGithubIntents() {
 }
 
 func (s *GithubSuite) TestNewPatch() {
+	s.NoError(db.Clear(IntentCollection))
 	intent, err := NewGithubIntent("4", "", "", testutil.NewGithubPR(s.pr, s.baseRepo, s.baseHash, s.headRepo, s.hash, s.user, s.title))
 	s.NoError(err)
 	s.NotNil(intent)
+	s.NoError(intent.Insert())
 
 	patchDoc := intent.NewPatch()
 	s.NotNil(patchDoc)

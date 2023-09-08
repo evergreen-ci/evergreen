@@ -106,7 +106,7 @@ func Patch() cli.Command {
 		Flags: getPatchFlags(
 			cli.BoolFlag{
 				Name:  includeModulesFlag,
-				Usage: "include module diffs using changes from defined module paths",
+				Usage: "if this boolean is set, Evergreen will include module diffs using changes from defined module paths",
 			},
 		),
 		Action: func(c *cli.Context) error {

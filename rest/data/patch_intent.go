@@ -16,7 +16,9 @@ import (
 	"github.com/pkg/errors"
 )
 
+// AddPatchIntent inserts the intent and adds it to the queue if PR testing is enabled for the branch.
 func AddPatchIntent(intent patch.Intent, queue amboy.Queue) error {
+	// Verify that the owner/repo uses PR testing before inserting the intent.
 	patchDoc := intent.NewPatch()
 	projectRef, err := model.FindOneProjectRefByRepoAndBranchWithPRTesting(patchDoc.GithubPatchData.BaseOwner,
 		patchDoc.GithubPatchData.BaseRepo, patchDoc.GithubPatchData.BaseBranch, intent.GetCalledBy())
