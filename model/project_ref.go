@@ -2291,6 +2291,7 @@ func (p *ProjectRef) GetActivationTimeForTask(t *BuildVariantTaskUnit, taskId st
 		return time.Now(), nil
 	}
 
+	queryStart := time.Now()
 	lastActivated, err := VersionFindOne(VersionByLastTaskActivation(p.Id, t.Variant, t.Name).WithFields(VersionBuildVariantsKey))
 	if err != nil {
 		return defaultRes, errors.Wrap(err, "finding version")
@@ -2304,6 +2305,7 @@ func (p *ProjectRef) GetActivationTimeForTask(t *BuildVariantTaskUnit, taskId st
 		"bvtu_batchtime":        t.BatchTime,
 		"bvtu_activate":         t.Activate,
 		"stack":                 string(debug.Stack()),
+		"query_time_secs":       time.Since(queryStart).Seconds(),
 	})
 	if lastActivated == nil {
 		return defaultRes, nil
