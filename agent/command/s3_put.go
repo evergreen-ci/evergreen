@@ -509,13 +509,14 @@ func (s3pc *s3put) attachFiles(ctx context.Context, comm client.Communicator, lo
 		}
 
 		files = append(files, &artifact.File{
-			Name:       displayName,
-			Link:       fileLink,
-			Visibility: s3pc.Visibility,
-			AwsKey:     key,
-			AwsSecret:  secret,
-			Bucket:     bucket,
-			FileKey:    fileKey,
+			Name:        displayName,
+			Link:        fileLink,
+			Visibility:  s3pc.Visibility,
+			AwsKey:      key,
+			AwsSecret:   secret,
+			Bucket:      bucket,
+			FileKey:     fileKey,
+			ContentType: s3pc.ContentType,
 		})
 	}
 
