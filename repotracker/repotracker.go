@@ -931,7 +931,7 @@ func createVersionItems(ctx context.Context, v *model.Version, metadata model.Ve
 			// add only tasks that require activation times
 			for _, bvt := range buildvariant.Tasks {
 				tId, ok := taskNameToId[bvt.Name]
-				// TODO: remove activation check
+				// TODO EVG-20162: remove activation check
 				if !ok || !bvt.HasSpecificActivation() {
 					continue
 				}
