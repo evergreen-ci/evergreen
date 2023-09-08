@@ -170,15 +170,18 @@ func (j *idleHostJob) checkAndTerminateHost(ctx context.Context, schedulerConfig
 	if idleThreshold == 0 {
 		idleThreshold = time.Duration(schedulerConfig.AcceptableHostIdleTimeSeconds) * time.Second
 	}
+	hasOutdatedAMI := hostHasOutdatedAMI(*h, d)
 	if h.RunningTaskGroup != "" {
 		idleThreshold = idleThreshold * 2
-	} else if hostHasOutdatedAMI(*h, d) {
+	} else if hasOutdatedAMI {
 		idleThreshold = outdatedIdleTimeCutoff
 	}
 
 	// if we haven't heard from the host or it's been idle for longer than the cutoff, we should terminate
 	var terminateReason string
-	if communicationTime >= idleThreshold {
+	if hasOutdatedAMI {
+		terminateReason = "host has an outdated AMI"
+	} else if communicationTime >= idleThreshold {
 		terminateReason = fmt.Sprintf("host is idle or unreachable, communication time %s is over threshold time %s", communicationTime, idleThreshold)
 	} else if idleTime >= idleThreshold {
 		terminateReason = fmt.Sprintf("host is idle or unreachable, idle time %s is over threshold time %s", idleTime, idleThreshold)
