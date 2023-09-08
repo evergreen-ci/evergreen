@@ -1805,8 +1805,9 @@ func HasEvergreenBranchProtection(ctx context.Context, token, owner, repo, branc
 }
 
 // InstallEvergreenBranchProtections installs "evergreen" branch protection.
-func InstallEvergreenBranchProtections(ctx context.Context, token, owner, repo, branch string) error {
-	caller := "InstallEvergreenBranchProtections"
+// We deliberately check for the prefix because users may have installed variant-level branch protections.
+func InstallEvergreenBranchProtection(ctx context.Context, token, owner, repo, branch string) error {
+	caller := "InstallEvergreenBranchProtection"
 	ctx, span := tracer.Start(ctx, caller, trace.WithAttributes(
 		attribute.String(githubEndpointAttribute, caller),
 		attribute.String(githubOwnerAttribute, owner),
@@ -1835,7 +1836,7 @@ func InstallEvergreenBranchProtections(ctx context.Context, token, owner, repo, 
 
 	found := false
 	for _, check := range protection.GetRequiredStatusChecks().Checks {
-		if check.Context == "evergreen" {
+		if strings.HasPrefix(check.Context, "evergreen") {
 			found = true
 			break
 		}
