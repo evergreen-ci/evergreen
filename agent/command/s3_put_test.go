@@ -387,13 +387,14 @@ func TestContentTypeSaved(t *testing.T) {
 	require.NoError(t, s.attachFiles(ctx, comm, logger, localFiles, remoteFile))
 
 	attachedFiles := comm.AttachedFiles
-	if v, ok := attachedFiles["mock_id"]; ok {
-		assert.True(t, ok)
-		for _, file := range v {
-			assert.NotEqual(t, " ", string(file.Name[0]))
-			assert.Equal(t, file.ContentType, s.ContentType)
-		}
+	files, ok := attachedFiles[conf.Task.Id]
+	// Must be able to find an attached file
+	require.True(t, ok)
+	assert.Len(t, files, 2)
+	for _, file := range files {
+		assert.Equal(t, file.ContentType, s.ContentType)
 	}
+
 }
 
 func TestS3LocalFilesIncludeFilterPrefix(t *testing.T) {
