@@ -360,11 +360,12 @@ func (tc *taskContext) getTimeout(taskGroup string) (*commandBlock, error) {
 
 	if taskGroup == "" {
 		return &commandBlock{
-			block:       command.TaskTimeoutBlock,
-			commands:    tc.taskConfig.Project.Timeout,
-			timeoutKind: callbackTimeout,
-			getTimeout:  tc.getCallbackTimeout,
-			canFailTask: false,
+			block:               command.TaskTimeoutBlock,
+			commands:            tc.taskConfig.Project.Timeout,
+			timeoutKind:         callbackTimeout,
+			getTimeout:          tc.getCallbackTimeout,
+			canFailTask:         false,
+			canTimeoutHeartbeat: true,
 		}, nil
 	}
 
@@ -376,11 +377,12 @@ func (tc *taskContext) getTimeout(taskGroup string) (*commandBlock, error) {
 		// Task group timeout defaults to the project timeout settings if not
 		// explicitly set.
 		return &commandBlock{
-			block:       command.TaskTimeoutBlock,
-			commands:    tc.taskConfig.Project.Timeout,
-			timeoutKind: callbackTimeout,
-			getTimeout:  tc.getCallbackTimeout,
-			canFailTask: false,
+			block:               command.TaskTimeoutBlock,
+			commands:            tc.taskConfig.Project.Timeout,
+			timeoutKind:         callbackTimeout,
+			getTimeout:          tc.getCallbackTimeout,
+			canFailTask:         false,
+			canTimeoutHeartbeat: true,
 		}, nil
 	}
 

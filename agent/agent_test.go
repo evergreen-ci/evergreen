@@ -1826,10 +1826,12 @@ callback_timeout_secs: 1
 	s.NoError(s.tc.logger.Close())
 	checkMockLogs(s.T(), s.mockCommunicator, s.tc.taskConfig.Task.Id, []string{
 		"Running task-timeout commands",
+		"Setting heartbeat timeout to type 'callback'",
 		"Running command 'shell.exec' (step 1 of 1) in block 'timeout'",
 		"Hit callback timeout (1s)",
 		"Finished command 'shell.exec' (step 1 of 1) in block 'timeout'",
 		"Running task-timeout commands failed",
+		"Resetting heartbeat timeout from type 'callback' back to default",
 		"Finished running task-timeout commands",
 	}, []string{
 		panicLog,
