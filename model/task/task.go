@@ -222,8 +222,13 @@ type Task struct {
 	ExecutionTasks        []string `bson:"execution_tasks,omitempty" json:"execution_tasks,omitempty"`
 	LatestParentExecution int      `bson:"latest_parent_execution" json:"latest_parent_execution"`
 
-	// StepbackInformation contains the necessary information to determine what task to stepback to.
-	StepbackInformation
+	// Used to indictate what task to stepback to if needed.
+	LastFailingStepbackTaskId string `bson:"last_failing_stepback_task_id,omitempty" json:"last_failing_stepback_task_id"`
+	LastPassingStepbackTaskId string `bson:"last_passing_stepback_task_id,omitempty" json:"last_passing_stepback_task_id"`
+	NextStepbackTaskId        string `bson:"next_stepback_task_id,omitempty" json:"next_stepback_task_id"`
+
+	// StepbackDepth indicates how far into stepback this task was activated, starting at 1 for stepback tasks.
+	StepbackDepth int `bson:"stepback_depth" json:"stepback_depth"`
 
 	// ResetWhenFinished indicates that a task should be reset once it is
 	// finished running. This is typically to deal with tasks that should be
@@ -272,15 +277,12 @@ type Task struct {
 	IsEssentialToSucceed bool `bson:"is_essential_to_succeed" json:"is_essential_to_succeed"`
 }
 
-// StepbackInformation contains the necessary information to determine what
-// task to stepback to.
+// StepbackInformation is used to
 type StepbackInformation struct {
-	LastFailingStepbackTaskId string `bson:"last_failing_stepback_task_id,omitempty" json:"last_failing_stepback_task_id"`
-	LastPassingStepbackTaskId string `bson:"last_passing_stepback_task_id,omitempty" json:"last_passing_stepback_task_id"`
-	NextStepbackTaskId        string `bson:"next_stepback_task_id,omitempty" json:"next_stepback_task_id"`
-
-	// StepbackDepth indicates how far into stepback this task was activated, starting at 1 for stepback tasks.
-	StepbackDepth int `bson:"stepback_depth" json:"stepback_depth"`
+	LastFailingStepbackTaskId string
+	LastPassingStepbackTaskId string
+	NextStepbackTaskId        string
+	StepbackDepth             int
 }
 
 // ExecutionPlatform indicates the type of environment that the task runs in.
@@ -1445,7 +1447,10 @@ func (t *Task) SetAborted(reason AbortInfo) error {
 
 // SetStepbackDepth adds the stepback depth to the task.
 func (t *Task) SetStepbackInformation(s StepbackInformation) error {
-	t.StepbackInformation = s
+	t.StepbackDepth = s.StepbackDepth
+	t.LastFailingStepbackTaskId = s.LastFailingStepbackTaskId
+	t.LastPassingStepbackTaskId = s.LastPassingStepbackTaskId
+	t.NextStepbackTaskId = s.NextStepbackTaskId
 	return UpdateOne(
 		bson.M{
 			IdKey: t.Id,
