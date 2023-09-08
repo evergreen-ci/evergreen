@@ -3026,21 +3026,21 @@ func TestSetStepbackInfo(t *testing.T) {
 	task := Task{Id: "t1"}
 	assert.NoError(t, task.Insert())
 
-	s := StepbackInformation{
+	s := StepbackInfo{
 		StepbackDepth:             12,
 		LastFailingStepbackTaskId: "t2",
 		LastPassingStepbackTaskId: "t3",
 		NextStepbackTaskId:        "t4",
 	}
 
-	assert.NoError(t, task.SetStepbackInformation(s))
+	assert.NoError(t, task.SetStepbackInfo(s))
 	taskFromDb, err := FindOneId("t1")
 	assert.NoError(t, err)
 	assert.NotNil(t, taskFromDb)
-	assert.Equal(t, 12, taskFromDb.StepbackDepth)
-	assert.Equal(t, "t2", taskFromDb.LastFailingStepbackTaskId)
-	assert.Equal(t, "t3", taskFromDb.LastPassingStepbackTaskId)
-	assert.Equal(t, "t4", taskFromDb.NextStepbackTaskId)
+	assert.Equal(t, 12, taskFromDb.StepbackInfo.StepbackDepth)
+	assert.Equal(t, "t2", taskFromDb.StepbackInfo.LastFailingStepbackTaskId)
+	assert.Equal(t, "t3", taskFromDb.StepbackInfo.LastPassingStepbackTaskId)
+	assert.Equal(t, "t4", taskFromDb.StepbackInfo.NextStepbackTaskId)
 }
 
 func TestGetLatestExecution(t *testing.T) {

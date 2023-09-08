@@ -227,7 +227,7 @@ func DisableStaleContainerTasks(caller string) error {
 // originalStepbackTask is only specified if we're first activating the generator for a generated task.
 // StepbackDepth should be reconsidered in EVG-17949 and is currently only used for logging.
 // Depth passed in is the depth we should assign to the previous task.
-func activatePreviousTask(ctx context.Context, taskId, caller string, originalStepbackTask *task.Task, s task.StepbackInformation) error {
+func activatePreviousTask(ctx context.Context, taskId, caller string, originalStepbackTask *task.Task, s task.StepbackInfo) error {
 	// find the task first
 	t, err := task.FindOneId(taskId)
 	if err != nil {
@@ -277,7 +277,7 @@ func activatePreviousTask(ctx context.Context, taskId, caller string, originalSt
 		}
 	}
 	if s.StepbackDepth > 0 {
-		if err = prevTask.SetStepbackInformation(s); err != nil {
+		if err = prevTask.SetStepbackInfo(s); err != nil {
 			return errors.Wrap(err, "setting stepback depth")
 		}
 	}
@@ -556,11 +556,8 @@ func doStepback(ctx context.Context, t *task.Task) error {
 		return nil
 	}
 
-	s := task.StepbackInformation{
-		StepbackDepth:             t.StepbackDepth + 1,
-		LastFailingStepbackTaskId: "",
-		LastPassingStepbackTaskId: "",
-		NextStepbackTaskId:        "",
+	s := task.StepbackInfo{
+		StepbackDepth: t.StepbackInfo.StepbackDepth + 1,
 	}
 
 	// activate the previous task to pinpoint regression
