@@ -386,7 +386,7 @@ The parameters for each module are:
     accepted_.
 
 More specifically, module hash priority is as follows:
-* For commit queue patches, Evergreen always uses the module branch name, to ensure accurate testing.
+* For commit queue and GitHub merge queue patches, Evergreen always uses the module branch name, to ensure accurate testing.
 * For other patches, the initial default is to the githash in set-module, if specified.
 * For both commits and patches, the next default is to the `<module_name>` set in revisions for the command.
 * For commits, if this is not available, the next default is to ref, and then to branch. *Note that this 
@@ -462,7 +462,8 @@ EC2 Parameters:
     non-default account. Must set if `aws_access_key_id` is set.
 -   `device_name` - name of EBS device
 -   `distro` - Evergreen distro to start. Must set `ami` or `distro` but
-    must not set both.
+    must not set both. Note that the distro setup script will not run for 
+    hosts spawned by this command, so any required initial setup must be done manually.
 -   `ebs_block_device` - list of the following parameters:
 -   `ebs_iops` - EBS provisioned IOPS.
 -   `ebs_size` - Size of EBS volume in GB.
@@ -549,6 +550,7 @@ functions:
     params:
       script: |
         user=${admin_user_name}
+        ## The following hosts.yml file is generated as the output of the host.list command below
         hostname=$(tr -d '"[]{}' < buildhost-configuration/hosts.yml | cut -d , -f 1 | awk -F : '{print $2}')
         identity_file=~/.ssh/mcipacker.pem
 
@@ -597,9 +599,12 @@ tasks:
       - func: ssh-ready
       - func: other-tasks
 ```
-
-The mcipacker.pem key file was created by echoing the value of the
-\${\_\_project_aws_ssh_key_value} expansion into the file. This
+Note:
+- The `${admin_user_name}` expansion should be set to the value of the
+**user** field set for the command's distro, which can be inspected [on Evergreen's distro page](https://evergreen.mongodb.com/distros).
+This is not a default expansion, so it must be set manually.
+- The mcipacker.pem key file was created by echoing the value of the
+`${__project_aws_ssh_key_value}` expansion (which gets populated automatically with the ssh public key value) into the file. This
 expansion is automatically set by Evergreen when the host is spawned.
 
 ## host.list

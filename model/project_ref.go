@@ -10,6 +10,7 @@ import (
 	"path/filepath"
 	"reflect"
 	"regexp"
+	"runtime/debug"
 	"strings"
 	"time"
 
@@ -2274,7 +2275,9 @@ func (p *ProjectRef) GetActivationTimeForVariant(variant *BuildVariant) (time.Ti
 	return defaultRes, nil
 }
 
-func (p *ProjectRef) GetActivationTimeForTask(t *BuildVariantTaskUnit) (time.Time, error) {
+// GetActivationTimeForTask returns the time at which this task should next be activated.
+// Temporarily takes in the task ID that prompted this query, for logging.
+func (p *ProjectRef) GetActivationTimeForTask(t *BuildVariantTaskUnit, taskId string) (time.Time, error) {
 	defaultRes := time.Now()
 	// if we don't want to activate the task, set batchtime to the zero time
 	if !utility.FromBoolTPtr(t.Activate) || t.IsDisabled() {
@@ -2292,6 +2295,16 @@ func (p *ProjectRef) GetActivationTimeForTask(t *BuildVariantTaskUnit) (time.Tim
 	if err != nil {
 		return defaultRes, errors.Wrap(err, "finding version")
 	}
+	grip.Debug(message.Fields{
+		"ticket":                "EVG-20612",
+		"last_activated_exists": lastActivated != nil,
+		"task_id":               taskId,
+		"variant":               t.Variant,
+		"task_name":             t.Name,
+		"bvtu_batchtime":        t.BatchTime,
+		"bvtu_activate":         t.Activate,
+		"stack":                 debug.Stack(),
+	})
 	if lastActivated == nil {
 		return defaultRes, nil
 	}
