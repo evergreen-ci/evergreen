@@ -1441,7 +1441,7 @@ func (t *Task) SetAborted(reason AbortInfo) error {
 	)
 }
 
-// SetStepbackInfo adds the stebackinfo to the task.
+// SetStepbackInfo adds the StepbackInfo to the task.
 func (t *Task) SetStepbackInfo(s StepbackInfo) error {
 	t.StepbackInfo = s
 	return UpdateOne(
