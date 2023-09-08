@@ -14,6 +14,8 @@ import (
 	"github.com/evergreen-ci/evergreen/model/task"
 	"github.com/mongodb/jasper"
 	"github.com/mongodb/jasper/mock"
+	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 	"github.com/stretchr/testify/suite"
 	"go.opentelemetry.io/otel"
 )
@@ -65,6 +67,14 @@ func (s *TimeoutSuite) TearDownTest() {
 	s.Require().NoError(os.Remove(s.tmpFileName))
 }
 
+func checkHeartbeatTimeoutReset(t *testing.T, tc *taskContext) {
+	heartbeatTimeoutOpts := tc.getHeartbeatTimeout()
+	require.NotZero(t, heartbeatTimeoutOpts.getTimeout)
+	assert.Zero(t, heartbeatTimeoutOpts.getTimeout(), "should reset heartbeat timeout to default")
+	assert.WithinDuration(t, heartbeatTimeoutOpts.startAt, time.Now(), time.Second, "should reset heartbeat timer start to now")
+	assert.Empty(t, heartbeatTimeoutOpts.kind, "should reset heartbeat timeout type")
+}
+
 // TestExecTimeoutProject tests exec_timeout_secs set on a project.
 // exec_timeout_secs has an effect only on a project or a task.
 func (s *TimeoutSuite) TestExecTimeoutProject() {
@@ -92,17 +102,24 @@ func (s *TimeoutSuite) TestExecTimeoutProject() {
 
 	s.NoError(s.a.startLogging(s.ctx, tc))
 	defer s.a.removeTaskDirectory(tc)
+
+	const expectedTimeout = time.Second
+	const expectedTimeoutType = execTimeout
+
 	nextTask := &apimodels.NextTaskResponse{
 		TaskId:     taskID,
 		TaskSecret: taskSecret,
 	}
-	_, _, err := s.a.runTask(s.ctx, tc, nextTask, !tc.ranSetupGroup, "")
 
+	_, _, err := s.a.runTask(s.ctx, tc, nextTask, !tc.ranSetupGroup, "")
 	s.NoError(err)
 
 	s.Require().NoError(tc.logger.Close())
 	checkMockLogs(s.T(), s.mockCommunicator, taskID, []string{
-		"Hit exec timeout (1s)",
+		"Setting heartbeat timeout to type 'exec'",
+		"Hit exec timeout (1s).",
+		"Resetting heartbeat timeout from type 'exec' back to default",
+		"Task completed - FAILURE.",
 		"Running task-timeout commands",
 		"Finished command 'shell.exec' in function 'timeout' (step 1 of 1) in block 'timeout'",
 	}, nil)
@@ -112,16 +129,19 @@ func (s *TimeoutSuite) TestExecTimeoutProject() {
 	s.Equal(evergreen.CommandTypeTest, detail.Type)
 	s.Equal("'shell.exec' in function 'task' (step 1 of 1)", detail.Description)
 	s.True(detail.TimedOut)
-	s.Equal(1*time.Second, detail.TimeoutDuration)
-	s.EqualValues(execTimeout, detail.TimeoutType)
+	s.Equal(expectedTimeout, detail.TimeoutDuration)
+	s.EqualValues(expectedTimeoutType, detail.TimeoutType)
 
 	data, err := os.ReadFile(s.tmpFileName)
 	s.Require().NoError(err)
-	s.Equal("timeout test message", strings.Trim(string(data), "\r\n"))
+	s.Equal("timeout test message", strings.TrimSpace(string(data)))
 
 	taskData := s.mockCommunicator.EndTaskResult.TaskData
 	s.Equal(taskID, taskData.ID)
 	s.Equal(taskSecret, taskData.Secret)
+
+	s.False(tc.hadHeartbeatTimeout(), "should not hit heartbeat timeout after exec timeout is hit")
+	checkHeartbeatTimeoutReset(s.T(), tc)
 }
 
 // TestExecTimeoutTask tests exec_timeout_secs set on a task. exec_timeout_secs
@@ -151,17 +171,24 @@ func (s *TimeoutSuite) TestExecTimeoutTask() {
 
 	s.NoError(s.a.startLogging(s.ctx, tc))
 	defer s.a.removeTaskDirectory(tc)
+
+	const expectedTimeout = time.Second
+	const expectedTimeoutType = execTimeout
+
 	nextTask := &apimodels.NextTaskResponse{
 		TaskId:     taskID,
 		TaskSecret: taskSecret,
 	}
+
 	_, _, err := s.a.runTask(s.ctx, tc, nextTask, !tc.ranSetupGroup, "")
 	s.NoError(err)
 
 	s.Require().NoError(tc.logger.Close())
 	checkMockLogs(s.T(), s.mockCommunicator, taskID, []string{
-		"Task completed - FAILURE.",
+		"Setting heartbeat timeout to type 'exec'",
 		"Hit exec timeout (1s).",
+		"Resetting heartbeat timeout from type 'exec' back to default",
+		"Task completed - FAILURE.",
 		"Running task-timeout commands.",
 		"Finished command 'shell.exec' in function 'timeout' (step 1 of 1) in block 'timeout'",
 	}, nil)
@@ -181,6 +208,9 @@ func (s *TimeoutSuite) TestExecTimeoutTask() {
 	taskData := s.mockCommunicator.EndTaskResult.TaskData
 	s.Equal(taskID, taskData.ID)
 	s.Equal(taskSecret, taskData.Secret)
+
+	s.False(tc.hadHeartbeatTimeout(), "should not hit heartbeat timeout after exec timeout is hit")
+	checkHeartbeatTimeoutReset(s.T(), tc)
 }
 
 // TestIdleTimeoutFunc tests timeout_secs set in a function.
@@ -356,7 +386,7 @@ func (s *TimeoutSuite) TestDynamicIdleTimeout() {
 	s.Equal(taskSecret, taskData.Secret)
 }
 
-// TestDynamicExecTimeout tests that the `update.timeout` command sets exec_timeout_secs.
+// TestDynamicExecTimeoutTask tests that the `update.timeout` command sets exec_timeout_secs.
 func (s *TimeoutSuite) TestDynamicExecTimeoutTask() {
 	taskID := "dynamic_exec_timeout_task"
 	taskSecret := "mock_task_secret"
@@ -391,7 +421,9 @@ func (s *TimeoutSuite) TestDynamicExecTimeoutTask() {
 
 	s.Require().NoError(tc.logger.Close())
 	checkMockLogs(s.T(), s.mockCommunicator, taskID, []string{
+		"Setting heartbeat timeout to type 'exec'",
 		"Hit exec timeout (2s)",
+		"Resetting heartbeat timeout from type 'exec' back to default",
 		"Task completed - FAILURE",
 		"Running task-timeout commands",
 		"Finished command 'shell.exec' in function 'timeout' (step 1 of 1) in block 'timeout'",
@@ -412,4 +444,7 @@ func (s *TimeoutSuite) TestDynamicExecTimeoutTask() {
 	taskData := s.mockCommunicator.EndTaskResult.TaskData
 	s.Equal(taskID, taskData.ID)
 	s.Equal(taskSecret, taskData.Secret)
+
+	s.False(tc.hadHeartbeatTimeout(), "should not hit heartbeat timeout after exec timeout is hit")
+	checkHeartbeatTimeoutReset(s.T(), tc)
 }

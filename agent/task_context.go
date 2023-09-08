@@ -65,28 +65,16 @@ func (tc *taskContext) getCurrentIdleTimeout() time.Duration {
 	return defaultIdleTimeout
 }
 
-const defaultHeartbeatTimeout = 15 * time.Minute
-
-// kim: TODO: figure out which timeout to set when heartbeat ticker starts.
-// Maybe execution timeout is simplest just because it covers most of the
-// blocks, then just need to set it for post/teardown_task (teardown_group
-// doesn't have a heartbeat).
-// kim: TODO: set heartbeat timeout whenever timeout ticker starts.
-// kim: TODO: unset heartbeat timeout back to default whenever timeout ticker
-// stops.
 func (tc *taskContext) setHeartbeatTimeout(opts heartbeatTimeoutOptions) {
-	tc.Lock()
-	defer tc.Unlock()
-
-	if opts.timeout == 0 {
-		// If the agent is running a portion of the task that has no timeout
-		// (e.g. during setup.initial, in between command blocks), it should not
-		// spend more than brief amount of time doing these things.
-		opts.timeout = defaultHeartbeatTimeout
+	if opts.getTimeout == nil {
+		opts.getTimeout = func() time.Duration { return 0 }
 	}
 	if utility.IsZeroTime(opts.startAt) {
 		opts.startAt = time.Now()
 	}
+
+	tc.Lock()
+	defer tc.Unlock()
 
 	tc.timeout.heartbeatTimeoutOpts = opts
 }
@@ -96,6 +84,21 @@ func (tc *taskContext) getHeartbeatTimeout() heartbeatTimeoutOptions {
 	defer tc.RUnlock()
 
 	return tc.timeout.heartbeatTimeoutOpts
+}
+
+// hadHeartbeatTimeout returns whether the task has hit the heartbeat timeout.
+// If this returns true, the heartbeat should time out to indicate the task is
+// stuck in a way that's not recoverable. Hitting the heartbeat timeout is
+// generally a strong sign of a bug and should never occur during normal
+// operation.
+func (tc *taskContext) hadHeartbeatTimeout() bool {
+	timeoutOpts := tc.getHeartbeatTimeout()
+
+	// Once the agent hit a timeout that can stop the task heartbeat, give the
+	// agent some extra time just in case it's being a bit slow on making
+	// progress.
+	timeoutWithGracePeriod := timeoutOpts.getTimeout() + evergreen.HeartbeatTimeoutThreshold
+	return time.Since(timeoutOpts.startAt) > timeoutWithGracePeriod
 }
 
 func (tc *taskContext) reachTimeOut(kind timeoutType, dur time.Duration) {

@@ -113,9 +113,9 @@ type timeoutInfo struct {
 
 // heartbeatTimeoutOptions represent options for the heartbeat timeout.
 type heartbeatTimeoutOptions struct {
-	startAt time.Time
-	timeout time.Duration
-	kind    timeoutType
+	startAt    time.Time
+	getTimeout func() time.Duration
+	kind       timeoutType
 }
 
 // New creates a new Agent with some Options and a client.Communicator. Call the
@@ -632,8 +632,8 @@ func (a *Agent) runTask(ctx context.Context, tcInput *taskContext, nt *apimodels
 		tc.logger.Execution().Error(errors.Wrap(a.uploadTraces(tskCtx, tc.taskConfig.WorkDir), "uploading traces"))
 	}()
 
-	preAndMainCtx, preAndMainCancel := context.WithCancel(tskCtx)
 	tc.setHeartbeatTimeout(heartbeatTimeoutOptions{})
+	preAndMainCtx, preAndMainCancel := context.WithCancel(tskCtx)
 	go a.startHeartbeat(tskCtx, preAndMainCancel, tc)
 
 	status := a.runPreAndMain(preAndMainCtx, tc)
@@ -674,9 +674,7 @@ func (a *Agent) runPreAndMain(ctx context.Context, tc *taskContext) (status stri
 		kind:                  execTimeout,
 		getTimeout:            tc.getExecTimeout,
 		canMarkTimeoutFailure: true,
-		// kim: TODO: test that exec timeout sets the heartbeat timeout, then
-		// unsets it after exec timeout watcher stops.
-		canTimeoutHeartbeat: true,
+		canTimeoutHeartbeat:   true,
 	}
 	go a.startTimeoutWatcher(timeoutWatcherCtx, execTimeoutCancel, timeoutOpts)
 

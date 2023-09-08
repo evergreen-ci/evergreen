@@ -40,14 +40,13 @@ func (a *Agent) startHeartbeat(ctx context.Context, preAndMainCancel context.Can
 	for {
 		select {
 		case <-ticker.C:
-			if timeoutOpts, hasTimedOut := a.hasHitHeartbeatTimeout(ctx, tc); hasTimedOut {
+			if tc.hadHeartbeatTimeout() {
 				// If the heartbeat hits its maximum reasonable timeout, that
 				// means something unrecoverably wrong has most likely occurred
 				// in the task runtime (e.g. a deadlock in the agent has stalled
 				// the task).
-				// kim: TODO: figure out if abort and return is appropriate
-				// kim: TODO: add test for heartbeat timeout
-				msg := fmt.Sprintf("Heartbeat has hit maximum allowed %s timeout of %s, task is at risk of timing out if it runs for much longer.", timeoutOpts.kind, timeoutOpts.timeout.String())
+				timeoutOpts := tc.getHeartbeatTimeout()
+				msg := fmt.Sprintf("Heartbeat has hit maximum allowed '%s' timeout of %s, task is at risk of timing out if it runs for much longer.", timeoutOpts.kind, timeoutOpts.getTimeout().String())
 				tc.logger.Task().Errorf(msg)
 				grip.Alert(message.Fields{
 					"message":      msg,
@@ -108,30 +107,6 @@ func (a *Agent) doHeartbeat(ctx context.Context, tc *taskContext) (string, error
 	return "", err
 }
 
-// hasHitHeartbeatTimeout returns whether the task has been running for an
-// unreasonably long time.
-func (a *Agent) hasHitHeartbeatTimeout(ctx context.Context, tc *taskContext) (heartbeatTimeoutOptions, bool) {
-	// kim: TODO: get current heartbeat timeout. This may be tricky due to
-	// timeouts being dynamically modifiable for the current command and the
-	// fact that the timeouts can overlap (e.g. exec timeout). Perhaps the
-	// heartbeat timeout can be set when setting up the background timeouts.
-	// kim: TODO: need to also make sure that current ticking timeout is reset
-	// when switching to a new timeout.
-	// kim: TODO: setHeartbeatTimeout before starting the heartbeat timeout so
-	// the defaults are initialized.
-	timeoutOpts := tc.getHeartbeatTimeout()
-	if timeoutOpts == (heartbeatTimeoutOptions{}) {
-		// kim: TODO: figure out what to do if there is no timeout currently
-		// applied. Maybe this case would never happen if it's pre-initialized.
-	}
-
-	// Once the agent hit a timeout that can stop the task heartbeat, give the
-	// agent some extra time just in case it's being a bit slow on making
-	// progress.
-	timeoutWithGracePeriod := timeoutOpts.timeout + evergreen.HeartbeatTimeoutThreshold
-	return timeoutOpts, time.Since(timeoutOpts.startAt) > timeoutWithGracePeriod
-}
-
 // startIdleTimeoutWatcher waits until the idle timeout is hit for a running
 // command. If the watcher detects that the command has been idle for longer
 // than the idle timeout (i.e. no task log output), then it marks the task as
@@ -184,20 +159,23 @@ type timeoutWatcherOptions struct {
 func (a *Agent) startTimeoutWatcher(ctx context.Context, operationCancel context.CancelFunc, opts timeoutWatcherOptions) {
 	defer recovery.LogStackTraceAndContinue(fmt.Sprintf("%s timeout watcher", opts.kind))
 	defer operationCancel()
+
+	if opts.canTimeoutHeartbeat {
+		opts.tc.logger.Execution().Infof("Setting heartbeat timeout to type '%s'.", opts.kind)
+		opts.tc.setHeartbeatTimeout(heartbeatTimeoutOptions{
+			startAt:    time.Now(),
+			getTimeout: opts.getTimeout,
+			kind:       opts.kind,
+		})
+		defer func() {
+			opts.tc.logger.Execution().Infof("Resetting heartbeat timeout from type '%s' back to default.", opts.kind)
+			opts.tc.setHeartbeatTimeout(heartbeatTimeoutOptions{})
+		}()
+	}
+
 	ticker := time.NewTicker(time.Second)
 	timeTickerStarted := time.Now()
 	defer ticker.Stop()
-
-	if opts.canTimeoutHeartbeat {
-		// kim: TODO: add tests
-		// kim: TODO: ensure no deadlock
-		opts.tc.setHeartbeatTimeout(heartbeatTimeoutOptions{
-			startAt: time.Now(),
-			timeout: opts.getTimeout(),
-			kind:    opts.kind,
-		})
-		defer opts.tc.setHeartbeatTimeout(heartbeatTimeoutOptions{})
-	}
 
 	opts.tc.logger.Execution().Infof("Starting %s timeout watcher.", opts.kind)
 
