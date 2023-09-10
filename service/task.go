@@ -651,8 +651,8 @@ func (uis *UIServer) taskFileRaw(w http.ResponseWriter, r *http.Request) {
 	// Check if the requester is one of our supported origins. We can assume this means its an Evergreen application
 	requester := r.Header.Get("Origin")
 	if !utility.StringMatchesAnyRegex(requester, uis.Settings.Ui.CORSOrigins) {
-		// uis.LoggedError(w, r, http.StatusBadRequest, errors.New("Request did not originate from a valid origin. Please do not use this endpoint."))
-		// return
+		uis.LoggedError(w, r, http.StatusBadRequest, errors.New("Request did not originate from a valid origin. Please do not use this endpoint."))
+		return
 	}
 
 	fileName, _ := gimlet.GetVars(r)["file_name"]
@@ -661,8 +661,13 @@ func (uis *UIServer) taskFileRaw(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	taskFiles, err := artifact.GetAllArtifacts([]artifact.TaskIDAndExecution{{TaskID: projCtx.Task.Id, Execution: projCtx.Task.Execution}})
+	if err != nil {
+		uis.LoggedError(w, r, http.StatusInternalServerError, errors.Wrapf(err, "unable to find artifacts for %s", projCtx.Task.Id))
+	}
+	taskFiles, err = artifact.StripHiddenFiles(taskFiles, true)
+
 	var tFile *artifact.File
-	taskFiles, _ := artifact.GetAllArtifacts([]artifact.TaskIDAndExecution{{TaskID: projCtx.Task.Id, Execution: projCtx.Task.Execution}})
 	for _, taskFile := range taskFiles {
 		if taskFile.Name == fileName {
 			tFile = &taskFile
