@@ -556,8 +556,13 @@ func doStepback(ctx context.Context, t *task.Task) error {
 		return nil
 	}
 
+	depth := 1
+	if t.StepbackInfo != nil {
+		depth += t.StepbackInfo.StepbackDepth
+	}
+
 	s := task.StepbackInfo{
-		StepbackDepth: t.StepbackInfo.StepbackDepth + 1,
+		StepbackDepth: depth,
 	}
 
 	// activate the previous task to pinpoint regression
