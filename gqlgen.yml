@@ -197,6 +197,8 @@ models:
         resolver: true
       canCreateProject:
         resolver: true
+      canUpdateAdminSettings:
+        resolver: true
       distroPermissions:
         resolver: true
   PlannerSettings:

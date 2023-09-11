@@ -244,10 +244,11 @@ type PatchesInput struct {
 }
 
 type Permissions struct {
-	CanCreateDistro   bool               `json:"canCreateDistro"`
-	CanCreateProject  bool               `json:"canCreateProject"`
-	DistroPermissions *DistroPermissions `json:"distroPermissions"`
-	UserID            string             `json:"userId"`
+	CanCreateDistro        bool               `json:"canCreateDistro"`
+	CanCreateProject       bool               `json:"canCreateProject"`
+	CanUpdateAdminSettings bool               `json:"canUpdateAdminSettings"`
+	DistroPermissions      *DistroPermissions `json:"distroPermissions"`
+	UserID                 string             `json:"userId"`
 }
 
 // PodEvents is the return value for the events query.

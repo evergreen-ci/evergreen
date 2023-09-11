@@ -12,6 +12,7 @@ type DistroPermissions {
 type Permissions {
   canCreateDistro: Boolean!
   canCreateProject: Boolean!
+  canUpdateAdminSettings: Boolean!
   distroPermissions(options: DistroPermissionsOptions!): DistroPermissions!
   userId: String!
 }

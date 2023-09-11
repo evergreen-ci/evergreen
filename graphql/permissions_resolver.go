@@ -41,6 +41,21 @@ func (r *permissionsResolver) CanCreateProject(ctx context.Context, obj *Permiss
 	return canCreate, nil
 }
 
+// CanUpdateAdminSettings is the resolver for the canUpdateAdminSettings field.
+func (r *permissionsResolver) CanUpdateAdminSettings(ctx context.Context, obj *Permissions) (bool, error) {
+	usr, err := user.FindOneById(obj.UserID)
+	if err != nil {
+		return false, ResourceNotFound.Send(ctx, "user not found")
+	}
+	opts := gimlet.PermissionOpts{
+		Resource:      evergreen.SuperUserPermissionsID,
+		ResourceType:  evergreen.SuperUserResourceType,
+		Permission:    evergreen.PermissionAdminSettings,
+		RequiredLevel: evergreen.AdminSettingsEdit.Value,
+	}
+	return usr.HasPermission(opts), nil
+}
+
 // DistroPermissions is the resolver for the distroPermissions field.
 func (r *permissionsResolver) DistroPermissions(ctx context.Context, obj *Permissions, options DistroPermissionsOptions) (*DistroPermissions, error) {
 	usr, err := user.FindOneById(obj.UserID)

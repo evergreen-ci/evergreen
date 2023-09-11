@@ -771,10 +771,11 @@ type ComplexityRoot struct {
 	}
 
 	Permissions struct {
-		CanCreateDistro   func(childComplexity int) int
-		CanCreateProject  func(childComplexity int) int
-		DistroPermissions func(childComplexity int, options DistroPermissionsOptions) int
-		UserID            func(childComplexity int) int
+		CanCreateDistro        func(childComplexity int) int
+		CanCreateProject       func(childComplexity int) int
+		CanUpdateAdminSettings func(childComplexity int) int
+		DistroPermissions      func(childComplexity int, options DistroPermissionsOptions) int
+		UserID                 func(childComplexity int) int
 	}
 
 	PlannerSettings struct {
@@ -1655,6 +1656,7 @@ type PatchResolver interface {
 type PermissionsResolver interface {
 	CanCreateDistro(ctx context.Context, obj *Permissions) (bool, error)
 	CanCreateProject(ctx context.Context, obj *Permissions) (bool, error)
+	CanUpdateAdminSettings(ctx context.Context, obj *Permissions) (bool, error)
 	DistroPermissions(ctx context.Context, obj *Permissions, options DistroPermissionsOptions) (*DistroPermissions, error)
 }
 type PlannerSettingsResolver interface {
@@ -5239,6 +5241,13 @@ func (e *executableSchema) Complexity(typeName, field string, childComplexity in
 		}
 
 		return e.complexity.Permissions.CanCreateProject(childComplexity), true
+
+	case "Permissions.canUpdateAdminSettings":
+		if e.complexity.Permissions.CanUpdateAdminSettings == nil {
+			break
+		}
+
+		return e.complexity.Permissions.CanUpdateAdminSettings(childComplexity), true
 
 	case "Permissions.distroPermissions":
 		if e.complexity.Permissions.DistroPermissions == nil {
@@ -34865,6 +34874,50 @@ func (ec *executionContext) fieldContext_Permissions_canCreateProject(ctx contex
 	return fc, nil
 }
 
+func (ec *executionContext) _Permissions_canUpdateAdminSettings(ctx context.Context, field graphql.CollectedField, obj *Permissions) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_Permissions_canUpdateAdminSettings(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
+		ctx = rctx // use context from middleware stack in children
+		return ec.resolvers.Permissions().CanUpdateAdminSettings(rctx, obj)
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.(bool)
+	fc.Result = res
+	return ec.marshalNBoolean2bool(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_Permissions_canUpdateAdminSettings(ctx context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "Permissions",
+		Field:      field,
+		IsMethod:   true,
+		IsResolver: true,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type Boolean does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
 func (ec *executionContext) _Permissions_distroPermissions(ctx context.Context, field graphql.CollectedField, obj *Permissions) (ret graphql.Marshaler) {
 	fc, err := ec.fieldContext_Permissions_distroPermissions(ctx, field)
 	if err != nil {
@@ -59193,6 +59246,8 @@ func (ec *executionContext) fieldContext_User_permissions(ctx context.Context, f
 				return ec.fieldContext_Permissions_canCreateDistro(ctx, field)
 			case "canCreateProject":
 				return ec.fieldContext_Permissions_canCreateProject(ctx, field)
+			case "canUpdateAdminSettings":
+				return ec.fieldContext_Permissions_canUpdateAdminSettings(ctx, field)
 			case "distroPermissions":
 				return ec.fieldContext_Permissions_distroPermissions(ctx, field)
 			case "userId":
@@ -76384,6 +76439,42 @@ func (ec *executionContext) _Permissions(ctx context.Context, sel ast.SelectionS
 					}
 				}()
 				res = ec._Permissions_canCreateProject(ctx, field, obj)
+				if res == graphql.Null {
+					atomic.AddUint32(&fs.Invalids, 1)
+				}
+				return res
+			}
+
+			if field.Deferrable != nil {
+				dfs, ok := deferred[field.Deferrable.Label]
+				di := 0
+				if ok {
+					dfs.AddField(field)
+					di = len(dfs.Values) - 1
+				} else {
+					dfs = graphql.NewFieldSet([]graphql.CollectedField{field})
+					deferred[field.Deferrable.Label] = dfs
+				}
+				dfs.Concurrently(di, func(ctx context.Context) graphql.Marshaler {
+					return innerFunc(ctx, dfs)
+				})
+
+				// don't run the out.Concurrently() call below
+				out.Values[i] = graphql.Null
+				continue
+			}
+
+			out.Concurrently(i, func(ctx context.Context) graphql.Marshaler { return innerFunc(ctx, out) })
+		case "canUpdateAdminSettings":
+			field := field
+
+			innerFunc := func(ctx context.Context, fs *graphql.FieldSet) (res graphql.Marshaler) {
+				defer func() {
+					if r := recover(); r != nil {
+						ec.Error(ctx, ec.Recover(ctx, r))
+					}
+				}()
+				res = ec._Permissions_canUpdateAdminSettings(ctx, field, obj)
 				if res == graphql.Null {
 					atomic.AddUint32(&fs.Invalids, 1)
 				}
