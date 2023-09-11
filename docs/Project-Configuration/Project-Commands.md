@@ -540,7 +540,14 @@ permissions:
 Certain instances require more time for SSH access to become available.
 If the user plans to execute commands on the remote host, then waiting
 for SSH access to become available is mandatory. Below is an Evergreen
-function that probes for SSH connectivity:
+function that probes for SSH connectivity.
+
+Note, however, an important bash caveat! By default Evergreen implements
+bash scripting by piping the script into bash. This means that a command
+that reads from stdin, like ssh, will read the script from stdin, and none
+of the commands after ssh will execute. To work around this, you can set
+`exec_as_string` on `shell.exec`, or you can wrap curly braces around the
+script to make sure it is read entirely before executing.
 
 ``` yaml
 functions:
