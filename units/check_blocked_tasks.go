@@ -55,17 +55,17 @@ func NewCheckBlockedTasksJob(distroId string, ts time.Time) amboy.Job {
 func (j *checkBlockedTasksJob) Run(ctx context.Context) {
 	var tasksToCheck []task.Task
 	if j.DistroId != "" {
-		tasksToCheck = j.getTasksToCheckDistro()
+		tasksToCheck = j.getDistroTasksToCheck()
 	} else {
-		tasksToCheck = j.getTasksToCheckContainer()
+		tasksToCheck = j.getContainerTasksToCheck()
 	}
 	dependencyCache := map[string]task.Task{}
 	for _, t := range tasksToCheck {
-		j.AddError(checkUnmarkedBlockingTasks(&t, dependencyCache))
+		j.AddError(errors.Wrapf(checkUnmarkedBlockingTasks(&t, dependencyCache), "checking task '%s'", t.Id))
 	}
 }
 
-func (j *checkBlockedTasksJob) getTasksToCheckDistro() []task.Task {
+func (j *checkBlockedTasksJob) getDistroTasksToCheck() []task.Task {
 	queue, err := model.FindDistroTaskQueue(j.DistroId)
 	if err != nil {
 		j.AddError(errors.Wrapf(err, "getting task queue for distro '%s'", j.DistroId))
@@ -107,10 +107,10 @@ func (j *checkBlockedTasksJob) getTasksToCheckDistro() []task.Task {
 	return tasksToCheck
 }
 
-func (j *checkBlockedTasksJob) getTasksToCheckContainer() []task.Task {
-	query := task.IsUndispatchedContainerTasksQuery()
+func (j *checkBlockedTasksJob) getContainerTasksToCheck() []task.Task {
+	query := task.UndispatchedContainerTasksQuery()
 	query[task.ContainerAllocatedKey] = false
-	tasksToCheck, err := task.FindAll(db.Query(query).Sort([]string{task.ActivatedTimeKey}))
+	tasksToCheck, err := task.FindAll(db.Query(query))
 	if err != nil {
 		j.AddError(errors.Wrap(err, "getting container tasks to check"))
 		return nil

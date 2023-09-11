@@ -773,12 +773,12 @@ func FindNeedsContainerAllocation() ([]Task, error) {
 // needsContainerAllocation returns the query that filters for a task that
 // currently needs a container to be allocated to run it.
 func needsContainerAllocation() bson.M {
-	q := IsContainerTaskScheduledQuery()
+	q := ScheduledContainerTasksQuery()
 	q[ContainerAllocatedKey] = false
 	return q
 }
 
-// IsContainerTaskScheduledQuery returns a query indicating if the container is
+// ScheduledContainerTasksQuery returns a query indicating if the container is
 // in a state where it is scheduled to run and is logically equivalent to
 // (Task).isContainerScheduled. This encompasses two potential states:
 //  1. A container is not yet allocated to the task but it's ready to be
@@ -787,15 +787,14 @@ func needsContainerAllocation() bson.M {
 //     because a container task is not scheduled until all of its dependencies
 //     have been met.
 //  2. The container is allocated but the agent has not picked up the task yet.
-func IsContainerTaskScheduledQuery() bson.M {
-	query := IsUndispatchedContainerTasksQuery()
+func ScheduledContainerTasksQuery() bson.M {
+	query := UndispatchedContainerTasksQuery()
 	query["$or"] = dependenciesAreMetQuery()
 	return query
 }
 
-// IsUndispatchedContainerTasksQuery returns a query returning all tasks that
-// are undispatched container tasks.
-func IsUndispatchedContainerTasksQuery() bson.M {
+// UndispatchedContainerTasksQuery returns a query retrieving all undispatched container tasks.
+func UndispatchedContainerTasksQuery() bson.M {
 	return bson.M{
 		StatusKey:            evergreen.TaskUndispatched,
 		ActivatedKey:         true,
