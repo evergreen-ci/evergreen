@@ -2794,28 +2794,24 @@ func TestCheckProjectWarnings(t *testing.T) {
 	})
 }
 
-type validateProjectFieldsuite struct {
+type validateProjectFieldSuite struct {
 	suite.Suite
 	project model.Project
 }
 
-func TestValidateProjectFieldsuite(t *testing.T) {
-	suite.Run(t, new(validateProjectFieldsuite))
+func TestValidateProjectFieldSuite(t *testing.T) {
+	suite.Run(t, new(validateProjectFieldSuite))
 }
 
-func (s *validateProjectFieldsuite) SetupTest() {
+func (s *validateProjectFieldSuite) SetupTest() {
 	s.project = model.Project{
-		Enabled:     true,
 		Identifier:  "identifier",
-		Owner:       "owner",
-		Repo:        "repo",
-		Branch:      "branch",
 		DisplayName: "test",
 		BatchTime:   10,
 	}
 }
 
-func (s *validateProjectFieldsuite) TestBatchTimeValueMustNonNegative() {
+func (s *validateProjectFieldSuite) TestBatchTimeValueMustNonNegative() {
 	s.project.BatchTime = -10
 	validationError := validateProjectFields(&s.project)
 
@@ -2824,7 +2820,7 @@ func (s *validateProjectFieldsuite) TestBatchTimeValueMustNonNegative() {
 		"Project 'batchtime' must not be negative")
 }
 
-func (s *validateProjectFieldsuite) TestCommandTypes() {
+func (s *validateProjectFieldSuite) TestCommandTypes() {
 	s.project.CommandType = "system"
 	validationError := validateProjectFields(&s.project)
 	s.Empty(validationError)
@@ -2842,7 +2838,7 @@ func (s *validateProjectFieldsuite) TestCommandTypes() {
 	s.Empty(validationError)
 }
 
-func (s *validateProjectFieldsuite) TestFailOnInvalidCommandType() {
+func (s *validateProjectFieldSuite) TestFailOnInvalidCommandType() {
 	s.project.CommandType = "random"
 	validationError := validateProjectFields(&s.project)
 
@@ -2851,7 +2847,7 @@ func (s *validateProjectFieldsuite) TestFailOnInvalidCommandType() {
 		"Project 'CommandType' must be valid")
 }
 
-func (s *validateProjectFieldsuite) TestWarnOnLargeBatchTimeValue() {
+func (s *validateProjectFieldSuite) TestWarnOnLargeBatchTimeValue() {
 	s.project.BatchTime = math.MaxInt32 + 1
 	validationError := checkProjectFields(&s.project)
 

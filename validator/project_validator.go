@@ -1311,13 +1311,6 @@ func validatePluginCommands(project *model.Project) ValidationErrors {
 		errs = append(errs, validateCommands("timeout", project, project.Timeout.List())...)
 	}
 
-	if project.EarlyTermination != nil {
-		errs = append(errs, ValidationError{
-			Message: "early_termination block is deprecated and will be removed in the future",
-			Level:   Warning,
-		})
-	}
-
 	// validate project tasks section
 	for _, task := range project.Tasks {
 		errs = append(errs, validateCommands("tasks", project, task.Commands)...)

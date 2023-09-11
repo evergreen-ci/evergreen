@@ -25,7 +25,7 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"go.mongodb.org/mongo-driver/bson"
-	yaml "gopkg.in/yaml.v3"
+	"gopkg.in/yaml.v3"
 )
 
 // ShouldContainResembling tests whether a slice contains an element that DeepEquals
@@ -2053,12 +2053,12 @@ func TestMergeUnorderedUnique(t *testing.T) {
 			},
 		},
 		Functions: map[string]*YAMLCommandSet{
-			"add_func1": &YAMLCommandSet{
+			"add_func1": {
 				SingleCommand: &PluginCommandConf{
 					Command: "add_single_command",
 				},
 			},
-			"add_func2": &YAMLCommandSet{
+			"add_func2": {
 				MultiCommand: []PluginCommandConf{
 					{
 						Command: "add_multi_command1",
@@ -2110,12 +2110,12 @@ func TestMergeUnorderedUniqueFail(t *testing.T) {
 			},
 		},
 		Functions: map[string]*YAMLCommandSet{
-			"func1": &YAMLCommandSet{
+			"func1": {
 				SingleCommand: &PluginCommandConf{
 					Command: "single_command",
 				},
 			},
-			"func2": &YAMLCommandSet{
+			"func2": {
 				MultiCommand: []PluginCommandConf{
 					{
 						Command: "multi_command1",
@@ -2233,11 +2233,6 @@ func TestMergeOrderedUnique(t *testing.T) {
 				Command: "timeout",
 			},
 		},
-		EarlyTermination: &YAMLCommandSet{
-			SingleCommand: &PluginCommandConf{
-				Command: "early termination",
-			},
-		},
 	}
 
 	err := main.mergeOrderedUnique(add)
@@ -2245,7 +2240,6 @@ func TestMergeOrderedUnique(t *testing.T) {
 	assert.NotNil(t, main.Pre)
 	assert.NotNil(t, main.Post)
 	assert.NotNil(t, main.Timeout)
-	assert.NotNil(t, main.EarlyTermination)
 }
 
 func TestMergeOrderedUniqueFail(t *testing.T) {
@@ -2263,11 +2257,6 @@ func TestMergeOrderedUniqueFail(t *testing.T) {
 		Timeout: &YAMLCommandSet{
 			SingleCommand: &PluginCommandConf{
 				Command: "timeout",
-			},
-		},
-		EarlyTermination: &YAMLCommandSet{
-			SingleCommand: &PluginCommandConf{
-				Command: "early termination",
 			},
 		},
 	}
@@ -2288,11 +2277,6 @@ func TestMergeOrderedUniqueFail(t *testing.T) {
 				Command: "add timeout",
 			},
 		},
-		EarlyTermination: &YAMLCommandSet{
-			SingleCommand: &PluginCommandConf{
-				Command: "add early termination",
-			},
-		},
 	}
 
 	err := main.mergeOrderedUnique(add)
@@ -2300,7 +2284,6 @@ func TestMergeOrderedUniqueFail(t *testing.T) {
 	assert.Contains(t, err.Error(), "pre can only be defined in one YAML")
 	assert.Contains(t, err.Error(), "post can only be defined in one YAML")
 	assert.Contains(t, err.Error(), "timeout can only be defined in one YAML")
-	assert.Contains(t, err.Error(), "early termination can only be defined in one YAML")
 }
 
 func TestMergeUnique(t *testing.T) {
@@ -2382,7 +2365,7 @@ func TestMergeBuildVariant(t *testing.T) {
 	bvExisting := "a_variant"
 	main := &ParserProject{
 		BuildVariants: []parserBV{
-			parserBV{
+			{
 				Name:        bvExisting,
 				DisplayName: "Defined here",
 				Tasks: parserBVTaskUnits{
@@ -2392,7 +2375,7 @@ func TestMergeBuildVariant(t *testing.T) {
 					},
 				},
 				DisplayTasks: []displayTask{
-					displayTask{
+					{
 						Name:           "my_display_task_old_variant",
 						ExecutionTasks: []string{"say-bye"},
 					},
@@ -2404,7 +2387,7 @@ func TestMergeBuildVariant(t *testing.T) {
 	bvNew2 := "one_more_variant"
 	add := &ParserProject{
 		BuildVariants: []parserBV{
-			parserBV{
+			{
 				Name: bvExisting,
 				Tasks: parserBVTaskUnits{
 					parserBVTaskUnit{
@@ -2412,7 +2395,7 @@ func TestMergeBuildVariant(t *testing.T) {
 					},
 				},
 			},
-			parserBV{
+			{
 				Name:      bvNew1,
 				BatchTime: &bvBatchTime,
 				Tasks: parserBVTaskUnits{
@@ -2425,13 +2408,13 @@ func TestMergeBuildVariant(t *testing.T) {
 					},
 				},
 				DisplayTasks: []displayTask{
-					displayTask{
+					{
 						Name:           "my_display_task_new_variant",
 						ExecutionTasks: []string{"another_task"},
 					},
 				},
 			},
-			parserBV{
+			{
 				Name: bvNew2,
 				Tasks: parserBVTaskUnits{
 					parserBVTaskUnit{
@@ -2463,7 +2446,7 @@ func TestMergeExistingBuildVariant(t *testing.T) {
 	bvExisting := "a_variant"
 	main := &ParserProject{
 		BuildVariants: []parserBV{
-			parserBV{
+			{
 				Name: bvExisting,
 				Tasks: parserBVTaskUnits{
 					parserBVTaskUnit{
@@ -2472,7 +2455,7 @@ func TestMergeExistingBuildVariant(t *testing.T) {
 					},
 				},
 				DisplayTasks: []displayTask{
-					displayTask{
+					{
 						Name:           "my_display_task_old_variant",
 						ExecutionTasks: []string{"say-bye"},
 					},
@@ -2482,7 +2465,7 @@ func TestMergeExistingBuildVariant(t *testing.T) {
 	}
 	add := &ParserProject{
 		BuildVariants: []parserBV{
-			parserBV{
+			{
 				Name:        bvExisting,
 				DisplayName: "Defined here",
 				Tasks: parserBVTaskUnits{
@@ -2503,7 +2486,7 @@ func TestMergeExistingBuildVariant(t *testing.T) {
 func TestMergeBuildVariantFail(t *testing.T) {
 	main := &ParserProject{
 		BuildVariants: []parserBV{
-			parserBV{
+			{
 				Name:        "a_variant",
 				DisplayName: "duplicate",
 				Tasks: parserBVTaskUnits{
@@ -2513,7 +2496,7 @@ func TestMergeBuildVariantFail(t *testing.T) {
 					},
 				},
 				DisplayTasks: []displayTask{
-					displayTask{
+					{
 						Name:           "my_display_task_old_variant",
 						ExecutionTasks: []string{"say-bye"},
 					},
@@ -2524,7 +2507,7 @@ func TestMergeBuildVariantFail(t *testing.T) {
 
 	add := &ParserProject{
 		BuildVariants: []parserBV{
-			parserBV{
+			{
 				Name:        "a_variant",
 				DisplayName: "break test",
 				Tasks: parserBVTaskUnits{

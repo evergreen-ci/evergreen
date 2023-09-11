@@ -14,7 +14,6 @@ import (
 
 func TestOnlyAPIUserManager(t *testing.T) {
 	config := evergreen.AuthConfig{
-		OnlyAPI:           &evergreen.OnlyAPIAuthConfig{},
 		AllowServiceUsers: true,
 	}
 	manager, info, err := LoadUserManager(&evergreen.Settings{AuthConfig: config})
