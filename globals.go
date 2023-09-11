@@ -213,6 +213,9 @@ const (
 	// app server should log to stdout.
 	standardOutputLoggingOverride = "STDOUT"
 
+	// DefaultTaskActivator is a deprecated legacy activator that used
+	// to be a majority of non-stepback and non-API activations.
+	DefaultTaskActivator = ""
 	// APIServerTaskActivator represents Evergreen's internal API activator
 	APIServerTaskActivator = "apiserver"
 	// StepbackTaskActivator represents the activator for tasks activated
@@ -246,7 +249,6 @@ const (
 	RestRoutePrefix = "rest"
 	APIRoutePrefix  = "api"
 
-	AgentAPIVersion  = 2
 	APIRoutePrefixV2 = "/rest/v2"
 
 	AgentMonitorTag = "agent-monitor"
@@ -837,7 +839,13 @@ var (
 	}
 
 	SystemActivators = []string{
+		DefaultTaskActivator,
 		APIServerTaskActivator,
+		BuildActivator,
+		CheckBlockedTasksActivator,
+		ElapsedBuildActivator,
+		ElapsedTaskActivator,
+		GenerateTasksActivator,
 	}
 
 	// UpHostStatus is a list of all host statuses that are considered up.
