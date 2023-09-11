@@ -97,7 +97,6 @@ type ParserProject struct {
 	Pre                *YAMLCommandSet            `yaml:"pre,omitempty" bson:"pre,omitempty"`
 	Post               *YAMLCommandSet            `yaml:"post,omitempty" bson:"post,omitempty"`
 	Timeout            *YAMLCommandSet            `yaml:"timeout,omitempty" bson:"timeout,omitempty"`
-	EarlyTermination   *YAMLCommandSet            `yaml:"early_termination,omitempty" bson:"early_termination,omitempty"` // deprecated and currently no-ops, may be removed in future update
 	CallbackTimeout    *int                       `yaml:"callback_timeout_secs,omitempty" bson:"callback_timeout_secs,omitempty"`
 	Modules            []Module                   `yaml:"modules,omitempty" bson:"modules,omitempty"`
 	Containers         []Container                `yaml:"containers,omitempty" bson:"containers,omitempty"`
@@ -910,7 +909,6 @@ func createIntermediateProject(yml []byte, unmarshalStrict bool) (*ParserProject
 func TranslateProject(pp *ParserProject) (*Project, error) {
 	// Transfer top level fields
 	proj := &Project{
-		Enabled:            utility.FromBoolPtr(pp.Enabled),
 		Stepback:           utility.FromBoolPtr(pp.Stepback),
 		UnsetFunctionVars:  utility.FromBoolPtr(pp.UnsetFunctionVars),
 		PreTimeoutSecs:     utility.FromIntPtr(pp.PreTimeoutSecs),
@@ -919,10 +917,6 @@ func TranslateProject(pp *ParserProject) (*Project, error) {
 		PostErrorFailsTask: utility.FromBoolPtr(pp.PostErrorFailsTask),
 		OomTracker:         utility.FromBoolPtr(pp.OomTracker),
 		BatchTime:          utility.FromIntPtr(pp.BatchTime),
-		Owner:              utility.FromStringPtr(pp.Owner),
-		Repo:               utility.FromStringPtr(pp.Repo),
-		RemotePath:         utility.FromStringPtr(pp.RemotePath),
-		Branch:             utility.FromStringPtr(pp.Branch),
 		Identifier:         utility.FromStringPtr(pp.Identifier),
 		DisplayName:        utility.FromStringPtr(pp.DisplayName),
 		CommandType:        utility.FromStringPtr(pp.CommandType),
@@ -931,7 +925,6 @@ func TranslateProject(pp *ParserProject) (*Project, error) {
 		Containers:         pp.Containers,
 		Pre:                pp.Pre,
 		Post:               pp.Post,
-		EarlyTermination:   pp.EarlyTermination,
 		Timeout:            pp.Timeout,
 		CallbackTimeout:    utility.FromIntPtr(pp.CallbackTimeout),
 		Modules:            pp.Modules,
