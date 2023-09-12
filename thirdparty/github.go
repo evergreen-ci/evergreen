@@ -1765,22 +1765,6 @@ func GetMergeablePullRequest(ctx context.Context, issue int, githubToken, owner,
 	return pr, nil
 }
 
-// HasEvergreenBranchProtections checks if any branch protection rule begins "evergreen".
-// We deliberately check for the prefix because users may have installed variant-level branch protections.
-func HasEvergreenBranchProtection(ctx context.Context, token, owner, repo, branch string) (bool, error) {
-	rules, err := GetEvergreenBranchProtectionRules(ctx, token, owner, repo, branch)
-	if err != nil {
-		return false, errors.Wrap(err, "getting branch protection rules")
-	}
-	for _, rule := range rules {
-		if strings.HasPrefix(rule, "evergreen") {
-			return true, nil
-		}
-	}
-
-	return false, nil
-}
-
 // InstallEvergreenBranchProtections installs "evergreen" branch protection.
 // We deliberately check for the prefix because users may have installed variant-level branch protections.
 func InstallEvergreenBranchProtection(ctx context.Context, token, owner, repo, branch string) error {
