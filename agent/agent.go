@@ -364,8 +364,6 @@ func (a *Agent) finishPrevTask(ctx context.Context, nextTask *apimodels.NextTask
 	if tc.taskConfig != nil {
 		taskDirectory = tc.taskConfig.WorkDir
 	}
-	// kim: TODO: remove
-	// taskDirectory := tc.taskDirectory
 
 	if shouldRunSetupGroup(nextTask, tc) {
 		shouldSetupGroup = true
@@ -388,9 +386,7 @@ func (a *Agent) setupTask(agentCtx, setupCtx context.Context, initialTC *taskCon
 				ID:     nt.TaskId,
 				Secret: nt.TaskSecret,
 			},
-			ranSetupGroup: !shouldSetupGroup,
-			// kim: TODO: remove
-			// taskDirectory:             taskDirectory,
+			ranSetupGroup:             !shouldSetupGroup,
 			oomTracker:                jasper.NewOOMTracker(),
 			unsetFunctionVarsDisabled: nt.UnsetFunctionVarsDisabled,
 		}
@@ -427,16 +423,16 @@ func (a *Agent) setupTask(agentCtx, setupCtx context.Context, initialTC *taskCon
 	}
 
 	if !tc.ranSetupGroup {
-		// kim: TODO:remove
-		// tc.taskDirectory, err = a.createTaskDirectory(tc)
+		// kim: TODO: verify that agent:
+		// - Clears working directory between regular tasks and creates new one.
+		// - Does not clear working directory between task group tasks and
+		// reuses, but then deletes when it gets to a regular task.
 		taskDirectory, err = a.createTaskDirectory(tc)
 		if err != nil {
 			return a.handleSetupError(setupCtx, tc, errors.Wrap(err, "creating task directory"))
 		}
 	}
 
-	// kim: TODO: remove
-	// tc.taskConfig.WorkDir = tc.taskDirectory
 	tc.taskConfig.WorkDir = taskDirectory
 	tc.taskConfig.Expansions.Put("workdir", tc.taskConfig.WorkDir)
 

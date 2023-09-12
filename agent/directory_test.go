@@ -39,8 +39,6 @@ func TestRemoveTaskDirectory(t *testing.T) {
 		},
 	}
 
-	// kim: TODO: remove
-	// tc := &taskContext{taskDirectory: filepath.Base(tmpDir)}
 	tc := &taskContext{
 		taskConfig: &internal.TaskConfig{
 			WorkDir: filepath.Base(tmpDir),

@@ -114,11 +114,8 @@ func (s *AgentSuite) SetupTest() {
 			ID:     "task_id",
 			Secret: "task_secret",
 		},
-		taskConfig:    taskConfig,
-		ranSetupGroup: false,
-		oomTracker:    &mock.OOMTracker{},
-		// kim: TODO: remove
-		// taskDirectory: s.tmpDirName,
+		taskConfig: taskConfig,
+		oomTracker: &mock.OOMTracker{},
 	}
 	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
 	s.canceler = cancel
@@ -733,7 +730,7 @@ post:
 		TaskId:     s.tc.task.ID,
 		TaskSecret: s.tc.task.Secret,
 	}
-	_, _, err := s.a.runTask(s.ctx, s.tc, nextTask, !s.tc.ranSetupGroup, s.tc.taskConfig.WorkDir)
+	_, _, err := s.a.runTask(s.ctx, s.tc, nextTask, false, s.tmpDirName)
 
 	s.NoError(err)
 	s.Equal(evergreen.TaskFailed, s.mockCommunicator.EndTaskResult.Detail.Status)
@@ -783,7 +780,7 @@ post:
 		TaskId:     s.tc.task.ID,
 		TaskSecret: s.tc.task.Secret,
 	}
-	_, _, err := s.a.runTask(s.ctx, s.tc, nextTask, !s.tc.ranSetupGroup, s.tc.taskConfig.WorkDir)
+	_, _, err := s.a.runTask(s.ctx, s.tc, nextTask, false, s.tmpDirName)
 
 	s.NoError(err)
 	s.Equal(evergreen.TaskSucceeded, s.mockCommunicator.EndTaskResult.Detail.Status)
@@ -831,7 +828,7 @@ post:
 		TaskId:     s.tc.task.ID,
 		TaskSecret: s.tc.task.Secret,
 	}
-	_, _, err := s.a.runTask(s.ctx, s.tc, nextTask, !s.tc.ranSetupGroup, s.tc.taskConfig.WorkDir)
+	_, _, err := s.a.runTask(s.ctx, s.tc, nextTask, false, s.tmpDirName)
 
 	s.NoError(err)
 	s.Equal(evergreen.TaskSucceeded, s.mockCommunicator.EndTaskResult.Detail.Status)
@@ -880,7 +877,7 @@ post:
 		TaskId:     s.tc.task.ID,
 		TaskSecret: s.tc.task.Secret,
 	}
-	_, _, err := s.a.runTask(s.ctx, s.tc, nextTask, !s.tc.ranSetupGroup, s.tc.taskConfig.WorkDir)
+	_, _, err := s.a.runTask(s.ctx, s.tc, nextTask, false, s.tmpDirName)
 
 	s.NoError(err)
 	s.Equal(evergreen.TaskFailed, s.mockCommunicator.EndTaskResult.Detail.Status)
@@ -925,7 +922,7 @@ post:
 		TaskId:     s.tc.task.ID,
 		TaskSecret: s.tc.task.Secret,
 	}
-	_, _, err := s.a.runTask(s.ctx, s.tc, nextTask, !s.tc.ranSetupGroup, s.tc.taskConfig.WorkDir)
+	_, _, err := s.a.runTask(s.ctx, s.tc, nextTask, false, s.tmpDirName)
 
 	s.NoError(err)
 	s.Equal(evergreen.TaskFailed, s.mockCommunicator.EndTaskResult.Detail.Status)
@@ -1050,7 +1047,7 @@ post:
 		TaskId:     s.tc.task.ID,
 		TaskSecret: s.tc.task.Secret,
 	}
-	_, _, err := s.a.runTask(s.ctx, s.tc, nextTask, !s.tc.ranSetupGroup, s.tc.taskConfig.WorkDir)
+	_, _, err := s.a.runTask(s.ctx, s.tc, nextTask, false, s.tmpDirName)
 	s.NoError(err)
 	s.Equal(evergreen.TaskSucceeded, s.mockCommunicator.EndTaskResult.Detail.Status)
 	s.True(s.mockCommunicator.EndTaskResult.Detail.OOMTracker.Detected)
@@ -1071,8 +1068,6 @@ func (s *AgentSuite) TestFinishPrevTaskWithoutTaskGroup() {
 		},
 		logger:        s.tc.logger,
 		ranSetupGroup: true,
-		// kim: TODO: remove
-		// taskDirectory: "task_directory",
 	}
 	nextTask := &apimodels.NextTaskResponse{
 		TaskId:  "another_task_id",
@@ -1100,8 +1095,6 @@ func (s *AgentSuite) TestFinishPrevTaskAndNextTaskIsInNewTaskGroup() {
 		},
 		logger:        s.tc.logger,
 		ranSetupGroup: true,
-		// kim: TODO: remove
-		// taskDirectory: "task_directory",
 	}
 	nextTask := &apimodels.NextTaskResponse{
 		TaskId:    "another_task_id",
@@ -1134,8 +1127,6 @@ func (s *AgentSuite) TestFinishPrevTaskWithSameTaskGroupAndAlreadyRanSetupGroup(
 		},
 		logger:        s.tc.logger,
 		ranSetupGroup: true,
-		// kim: TODO: remove
-		// taskDirectory: "task_directory",
 	}
 	nextTask := &apimodels.NextTaskResponse{
 		TaskId:    "another_task_id",
@@ -1167,8 +1158,6 @@ func (s *AgentSuite) TestFinishPrevTaskWithSameTaskGroupButDidNotRunSetupGroup()
 			WorkDir:   "task_directory",
 		},
 		logger: s.tc.logger,
-		// kim: TODO: remove
-		// taskDirectory: "task_directory",
 	}
 	nextTask := &apimodels.NextTaskResponse{
 		TaskId:    "task_id2",
@@ -1201,8 +1190,6 @@ func (s *AgentSuite) TestFinishPrevTaskWithSameBuildButDifferentTaskGroup() {
 		},
 		logger:        s.tc.logger,
 		ranSetupGroup: true,
-		// kim: TODO: remove
-		// taskDirectory: "task_directory",
 	}
 	nextTask := &apimodels.NextTaskResponse{
 		TaskId:    "task_id2",
@@ -1220,8 +1207,6 @@ func (s *AgentSuite) TestFinishPrevTaskWithSameBuildButDifferentTaskGroup() {
 func (s *AgentSuite) TestGeneralTaskSetupSucceeds() {
 	nextTask := &apimodels.NextTaskResponse{}
 	s.setupRunTask(defaultProjYml)
-	// kim: TODO: remove
-	// s.tc.taskDirectory = "task_directory"
 	shouldSetupGroup, taskDirectory := s.a.finishPrevTask(s.ctx, nextTask, s.tc)
 	_, shouldExit, err := s.a.setupTask(s.ctx, s.ctx, s.tc, nextTask, shouldSetupGroup, taskDirectory)
 	s.False(shouldExit)
@@ -1265,9 +1250,7 @@ tasks:
 		TaskId:     s.tc.task.ID,
 		TaskSecret: s.tc.task.Secret,
 	}
-	// kim: TODO: remove
-	// _, _, err := s.a.runTask(s.ctx, s.tc, nextTask, !s.tc.ranSetupGroup, s.tc.taskDirectory)
-	_, _, err := s.a.runTask(s.ctx, s.tc, nextTask, !s.tc.ranSetupGroup, s.tc.taskConfig.WorkDir)
+	_, _, err := s.a.runTask(s.ctx, s.tc, nextTask, false, s.tmpDirName)
 	s.NoError(err)
 
 	s.Equal(resp.Status, s.mockCommunicator.EndTaskResult.Detail.Status, "should set user-defined task status")
@@ -1309,9 +1292,7 @@ tasks:
 		TaskId:     s.tc.task.ID,
 		TaskSecret: s.tc.task.Secret,
 	}
-	// kim: TODO: remove
-	// _, _, err := s.a.runTask(s.ctx, s.tc, nextTask, !s.tc.ranSetupGroup, s.tc.taskDirectory)
-	_, _, err := s.a.runTask(s.ctx, s.tc, nextTask, !s.tc.ranSetupGroup, s.tc.taskConfig.WorkDir)
+	_, _, err := s.a.runTask(s.ctx, s.tc, nextTask, false, s.tmpDirName)
 	s.NoError(err)
 
 	s.Equal(resp.Status, s.mockCommunicator.EndTaskResult.Detail.Status, "should set user-defined task status")
@@ -1357,9 +1338,7 @@ tasks:
 		TaskId:     s.tc.task.ID,
 		TaskSecret: s.tc.task.Secret,
 	}
-	// kim: TODO: remove
-	// _, _, err := s.a.runTask(s.ctx, s.tc, nextTask, !s.tc.ranSetupGroup, s.tc.taskDirectory)
-	_, _, err := s.a.runTask(s.ctx, s.tc, nextTask, !s.tc.ranSetupGroup, s.tc.taskConfig.WorkDir)
+	_, _, err := s.a.runTask(s.ctx, s.tc, nextTask, false, s.tmpDirName)
 	s.NoError(err)
 
 	s.Equal(resp.Status, s.mockCommunicator.EndTaskResult.Detail.Status, "should set user-defined task status")
@@ -1950,7 +1929,7 @@ timeout:
 		TaskId:     s.tc.task.ID,
 		TaskSecret: s.tc.task.Secret,
 	}
-	_, _, err := s.a.runTask(s.ctx, s.tc, nextTask, !s.tc.ranSetupGroup, s.tc.taskConfig.WorkDir)
+	_, _, err := s.a.runTask(s.ctx, s.tc, nextTask, false, s.tmpDirName)
 	s.NoError(err)
 
 	s.WithinDuration(start, time.Now(), 4*time.Second, "abort should prevent commands in the main block from continuing to run")
@@ -2009,7 +1988,7 @@ timeout:
 		TaskSecret: s.tc.task.Secret,
 		TaskGroup:  taskGroup,
 	}
-	_, _, err := s.a.runTask(s.ctx, s.tc, nextTask, !s.tc.ranSetupGroup, s.tc.taskConfig.WorkDir)
+	_, _, err := s.a.runTask(s.ctx, s.tc, nextTask, false, s.tmpDirName)
 	s.NoError(err)
 
 	s.WithinDuration(start, time.Now(), 4*time.Second, "abort should prevent commands in the main block from continuing to run")
