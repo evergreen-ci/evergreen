@@ -33,7 +33,9 @@ func TestRemoveTaskDirectory(t *testing.T) {
 
 	// remove the task directory
 	agent := Agent{}
+
 	tc := &taskContext{taskDirectory: filepath.Base(tmpDir)}
+
 	agent.removeTaskDirectory(tc)
 	_, err = os.Stat(tmpDir)
 	require.True(os.IsNotExist(err), "directory should have been deleted")

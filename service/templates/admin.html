@@ -850,6 +850,11 @@ Admin Settings
 										<input type="text" ng-model="Settings.ui.parsley_url">
 									</md-input-container>
 									<md-input-container class="control" style="width:45%;  margin-left:50px;">
+										<label>File Streaming Content Types</label>
+										<textarea ng-model="Settings.ui.file_streaming_content_types" ng-list="&#10;" ng-trim="false" rows="3"
+											md-select-on-focus></textarea>
+									</md-input-container>
+									<md-input-container class="control" style="width:45%;  margin-left:50px;">
 										<label>HTTP listener address</label>
 										<input type="text" ng-model="Settings.ui.http_listen_addr">
 									</md-input-container>

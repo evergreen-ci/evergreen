@@ -69,7 +69,7 @@ func (c *createHost) expandAndValidate(ctx context.Context, conf *internal.TaskC
 		}
 	}
 
-	if err := c.CreateHost.Expand(conf.Expansions); err != nil {
+	if err := c.CreateHost.Expand(&conf.Expansions); err != nil {
 		return err
 	}
 
