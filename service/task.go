@@ -678,6 +678,10 @@ func (uis *UIServer) taskFileRaw(w http.ResponseWriter, r *http.Request) {
 		uis.LoggedError(w, r, http.StatusNotFound, errors.New("File not found"))
 		return
 	}
+	if !utility.StringMatchesAnyRegex(tFile.ContentType, uis.Settings.Ui.FileStreamingContentTypes) {
+		uis.LoggedError(w, r, http.StatusBadRequest, errors.New("File content type not supported"))
+		return
+	}
 
 	response, err := http.Get(tFile.Link)
 	if err != nil {
