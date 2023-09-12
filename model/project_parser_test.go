@@ -2295,7 +2295,7 @@ func TestMergeUnique(t *testing.T) {
 	}
 
 	add := &ParserProject{
-		StepbackType:      (*StepbackType)(utility.ToInt64Ptr(int64(StepbackBisect))),
+		StepbackType:      utility.ToStringPtr("linear"),
 		PreTimeoutSecs:    utility.ToIntPtr(1),
 		PostTimeoutSecs:   utility.ToIntPtr(1),
 		PreErrorFailsTask: utility.ToBoolPtr(true),
