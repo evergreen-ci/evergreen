@@ -113,7 +113,7 @@ type ParserProject struct {
 	Axes []matrixAxis `yaml:"axes,omitempty" bson:"axes,omitempty"`
 } // End of ParserProject mergeable fields (this comment is used by the linter).
 
-type StepbackType int64
+type StepbackType int
 
 const (
 	StepbackDisabled StepbackType = iota
