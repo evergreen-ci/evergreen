@@ -860,7 +860,7 @@ func (a *Agent) runEndTaskSync(ctx context.Context, tc *taskContext, detail *api
 		getTimeout: func() time.Duration {
 			return timeout
 		},
-		canTimeoutHeartbeat: true,
+		canTimeOutHeartbeat: true,
 	}
 
 	// If the task sync commands error, ignore the error. runCommandsInBlock

@@ -258,7 +258,7 @@ type commandBlock struct {
 	commands            *model.YAMLCommandSet
 	timeoutKind         timeoutType
 	getTimeout          func() time.Duration
-	canTimeoutHeartbeat bool
+	canTimeOutHeartbeat bool
 	canFailTask         bool
 }
 
@@ -301,7 +301,7 @@ func (tc *taskContext) getPost() (*commandBlock, error) {
 			commands:            tc.taskConfig.Project.Post,
 			timeoutKind:         postTimeout,
 			getTimeout:          tc.getPostTimeout,
-			canTimeoutHeartbeat: true,
+			canTimeOutHeartbeat: true,
 			canFailTask:         tc.taskConfig.Project.PostErrorFailsTask,
 		}, nil
 	}
@@ -311,7 +311,7 @@ func (tc *taskContext) getPost() (*commandBlock, error) {
 		commands:            tg.TeardownTask,
 		timeoutKind:         teardownTaskTimeout,
 		getTimeout:          tc.getTeardownTaskTimeout(),
-		canTimeoutHeartbeat: true,
+		canTimeOutHeartbeat: true,
 		canFailTask:         tg.TeardownTaskCanFailTask,
 	}, nil
 }
@@ -376,7 +376,7 @@ func (tc *taskContext) getTimeout() (*commandBlock, error) {
 			timeoutKind:         callbackTimeout,
 			getTimeout:          tc.getCallbackTimeout,
 			canFailTask:         false,
-			canTimeoutHeartbeat: true,
+			canTimeOutHeartbeat: true,
 		}, nil
 	}
 	if tg.Timeout == nil {
@@ -388,7 +388,7 @@ func (tc *taskContext) getTimeout() (*commandBlock, error) {
 			timeoutKind:         callbackTimeout,
 			getTimeout:          tc.getCallbackTimeout,
 			canFailTask:         false,
-			canTimeoutHeartbeat: true,
+			canTimeOutHeartbeat: true,
 		}, nil
 	}
 

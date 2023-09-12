@@ -48,7 +48,7 @@ func (a *Agent) startHeartbeat(ctx context.Context, preAndMainCancel context.Can
 				timeoutOpts := tc.getHeartbeatTimeout()
 				timeout := timeoutOpts.getTimeout()
 				if !loggedTimeout {
-					msg := fmt.Sprintf("Heartbeat has hit maximum allowed '%s' timeout of %s, task is at risk of timing out if it runs for much longer.", timeoutOpts.kind, timeout.String())
+					msg := fmt.Sprintf("Heartbeat has hit maximum allowed '%s' timeout of %s; task is at risk of timing out if it runs for much longer.", timeoutOpts.kind, timeout.String())
 					grip.Alert(message.Fields{
 						"message":        msg,
 						"task_id":        tc.taskConfig.Task.Id,
@@ -82,7 +82,7 @@ func (a *Agent) startHeartbeat(ctx context.Context, preAndMainCancel context.Can
 				// This is a best-effort attempt, since there's no graceful way
 				// to handle heartbeat failures when abort was already sent.
 				if numRepeatedFailures == maxHeartbeats {
-					tc.logger.Task().Error("Hit max heartbeat attempts when task is already aborted, task is at risk of timing out if it runs for much longer.")
+					tc.logger.Task().Error("Hit max heartbeat attempts when task is already aborted; task is at risk of timing out if it runs for much longer.")
 				}
 				continue
 			}

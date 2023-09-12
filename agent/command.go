@@ -71,7 +71,7 @@ func (a *Agent) runCommandsInBlock(ctx context.Context, tc *taskContext, cmdBloc
 		}
 		go a.startTimeoutWatcher(blockCtx, blockCancel, timeoutOpts)
 
-		if cmdBlock.canTimeoutHeartbeat {
+		if cmdBlock.canTimeOutHeartbeat {
 			execLogger.Infof("Setting heartbeat timeout to type '%s'.", cmdBlock.timeoutKind)
 			tc.setHeartbeatTimeout(heartbeatTimeoutOptions{
 				startAt:    time.Now(),
