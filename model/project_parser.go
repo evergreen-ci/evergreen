@@ -78,7 +78,7 @@ type ParserProject struct {
 
 	// Beginning of ParserProject mergeable fields (this comment is used by the linter).
 	Stepback           *bool                      `yaml:"stepback,omitempty" bson:"stepback,omitempty"`
-	StepbackType       *StepbackType              `yaml:"stepback_type,omitempty" bson:"stepback_type,omitempty"`
+	StepbackType       *string                    `yaml:"stepback_type,omitempty" bson:"stepback_type,omitempty"`
 	UnsetFunctionVars  *bool                      `yaml:"unset_function_vars,omitempty" bson:"unset_function_vars,omitempty"`
 	PreTimeoutSecs     *int                       `yaml:"pre_timeout_secs,omitempty" bson:"pre_timeout_secs,omitempty"`
 	PostTimeoutSecs    *int                       `yaml:"post_timeout_secs,omitempty" bson:"post_timeout_secs,omitempty"`
@@ -112,14 +112,6 @@ type ParserProject struct {
 	// Matrix code
 	Axes []matrixAxis `yaml:"axes,omitempty" bson:"axes,omitempty"`
 } // End of ParserProject mergeable fields (this comment is used by the linter).
-
-type StepbackType int
-
-const (
-	StepbackDisabled StepbackType = iota
-	StepbackBisect
-	StepbackLinear
-)
 
 type parserTaskGroup struct {
 	Name                     string             `yaml:"name,omitempty" bson:"name,omitempty"`
@@ -919,7 +911,7 @@ func TranslateProject(pp *ParserProject) (*Project, error) {
 	// Transfer top level fields
 	proj := &Project{
 		Stepback:           utility.FromBoolPtr(pp.Stepback),
-		StepbackType:       *pp.StepbackType,
+		StepbackType:       utility.FromStringPtr(pp.StepbackType),
 		UnsetFunctionVars:  utility.FromBoolPtr(pp.UnsetFunctionVars),
 		PreTimeoutSecs:     utility.FromIntPtr(pp.PreTimeoutSecs),
 		PostTimeoutSecs:    utility.FromIntPtr(pp.PostTimeoutSecs),
