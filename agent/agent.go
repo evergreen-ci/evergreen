@@ -297,7 +297,7 @@ func (a *Agent) processNextTask(ctx context.Context, nt *apimodels.NextTaskRespo
 		return processNextResponse{shouldExit: true}, nil
 	}
 	if nt.ShouldTeardownGroup {
-		// Tear down the task gropu if the task group is finished.
+		// Tear down the task group if the task group is finished.
 		a.runTeardownGroupCommands(ctx, tc)
 		return processNextResponse{
 			// Running the teardown group commands implies exiting the group, so
