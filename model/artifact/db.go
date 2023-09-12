@@ -9,15 +9,16 @@ import (
 
 var (
 	// BSON fields for artifact file structs
-	TaskIdKey     = bsonutil.MustHaveTag(Entry{}, "TaskId")
-	TaskNameKey   = bsonutil.MustHaveTag(Entry{}, "TaskDisplayName")
-	BuildIdKey    = bsonutil.MustHaveTag(Entry{}, "BuildId")
-	FilesKey      = bsonutil.MustHaveTag(Entry{}, "Files")
-	ExecutionKey  = bsonutil.MustHaveTag(Entry{}, "Execution")
-	CreateTimeKey = bsonutil.MustHaveTag(Entry{}, "CreateTime")
-	NameKey       = bsonutil.MustHaveTag(File{}, "Name")
-	LinkKey       = bsonutil.MustHaveTag(File{}, "Link")
-	AwsSecretKey  = "aws_secret"
+	TaskIdKey      = bsonutil.MustHaveTag(Entry{}, "TaskId")
+	TaskNameKey    = bsonutil.MustHaveTag(Entry{}, "TaskDisplayName")
+	BuildIdKey     = bsonutil.MustHaveTag(Entry{}, "BuildId")
+	FilesKey       = bsonutil.MustHaveTag(Entry{}, "Files")
+	ExecutionKey   = bsonutil.MustHaveTag(Entry{}, "Execution")
+	CreateTimeKey  = bsonutil.MustHaveTag(Entry{}, "CreateTime")
+	NameKey        = bsonutil.MustHaveTag(File{}, "Name")
+	LinkKey        = bsonutil.MustHaveTag(File{}, "Link")
+	ContentTypeKey = bsonutil.MustHaveTag(File{}, "ContentType")
+	AwsSecretKey   = bsonutil.MustHaveTag(File{}, "AwsSecret")
 )
 
 type TaskIDAndExecution struct {

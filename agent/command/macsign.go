@@ -126,7 +126,7 @@ func (macSign *macSign) expandParams(conf *internal.TaskConfig) error {
 		macSign.WorkingDir = conf.WorkDir
 	}
 
-	if err = util.ExpandValues(macSign, conf.Expansions); err != nil {
+	if err = util.ExpandValues(macSign, &conf.Expansions); err != nil {
 		return errors.Wrap(err, "applying expansions")
 	}
 

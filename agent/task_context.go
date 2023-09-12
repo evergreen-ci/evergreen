@@ -2,18 +2,40 @@ package agent
 
 import (
 	"context"
+	"sync"
 	"time"
 
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/agent/command"
 	"github.com/evergreen-ci/evergreen/agent/internal"
+	"github.com/evergreen-ci/evergreen/agent/internal/client"
 	"github.com/evergreen-ci/evergreen/apimodels"
 	"github.com/evergreen-ci/evergreen/model"
 	"github.com/evergreen-ci/evergreen/model/patch"
 	"github.com/evergreen-ci/utility"
 	"github.com/mongodb/grip"
+	"github.com/mongodb/jasper"
 	"github.com/pkg/errors"
 )
+
+type taskContext struct {
+	currentCommand            command.Command
+	logger                    client.LoggerProducer
+	task                      client.TaskData
+	ranSetupGroup             bool
+	taskConfig                *internal.TaskConfig
+	timeout                   timeoutInfo
+	oomTracker                jasper.OOMTracker
+	traceID                   string
+	unsetFunctionVarsDisabled bool
+	// TODO (EVG-20289): see if taskDirectory can be replaced with
+	// TaskConfig.WorkDir.
+	taskDirectory string
+	// userEndTaskResp is the end task response that the user can define, which
+	// will overwrite the default end task response.
+	userEndTaskResp *triggerEndTaskResp
+	sync.RWMutex
+}
 
 func (tc *taskContext) setCurrentCommand(command command.Command) {
 	tc.Lock()
@@ -128,7 +150,7 @@ func (tc *taskContext) getOomTrackerInfo() *apimodels.OOMTrackerInfo {
 }
 
 func (tc *taskContext) oomTrackerEnabled(cloudProvider string) bool {
-	return tc.project.OomTracker && !utility.StringSliceContains(evergreen.ProviderContainer, cloudProvider)
+	return tc.taskConfig.Project.OomTracker && !utility.StringSliceContains(evergreen.ProviderContainer, cloudProvider)
 }
 
 func (tc *taskContext) setIdleTimeout(dur time.Duration) {
@@ -160,61 +182,9 @@ func (tc *taskContext) getTimeoutType() timeoutType {
 	return tc.timeout.timeoutType
 }
 
-// makeTaskConfig fetches task configuration data required to run the task from the API server.
-func (a *Agent) makeTaskConfig(ctx context.Context, tc *taskContext) (*internal.TaskConfig, error) {
-	if tc.project == nil {
-		grip.Info("Fetching project config.")
-		err := a.fetchProjectConfig(ctx, tc)
-		if err != nil {
-			return nil, err
-		}
-	}
-	grip.Info("Fetching distro configuration.")
-	var confDistro *apimodels.DistroView
-	var err error
-	if a.opts.Mode == HostMode {
-		confDistro, err = a.comm.GetDistroView(ctx, tc.task)
-		if err != nil {
-			return nil, err
-		}
-	}
-
-	grip.Info("Fetching project ref.")
-	confRef, err := a.comm.GetProjectRef(ctx, tc.task)
-	if err != nil {
-		return nil, err
-	}
-	if confRef == nil {
-		return nil, errors.New("agent retrieved an empty project ref")
-	}
-
-	var confPatch *patch.Patch
-	if evergreen.IsGitHubPatchRequester(tc.taskModel.Requester) {
-		grip.Info("Fetching patch document for GitHub PR request.")
-		confPatch, err = a.comm.GetTaskPatch(ctx, tc.task, "")
-		if err != nil {
-			return nil, errors.Wrap(err, "fetching patch for GitHub PR request")
-		}
-	}
-
-	grip.Info("Constructing task config.")
-	taskConfig, err := internal.NewTaskConfig(a.opts.WorkingDirectory, confDistro, tc.project, tc.taskModel, confRef, confPatch, tc.expansions)
-	if err != nil {
-		return nil, err
-	}
-	taskConfig.Redacted = tc.privateVars
-	taskConfig.TaskSync = a.opts.SetupData.TaskSync
-	taskConfig.EC2Keys = a.opts.SetupData.EC2Keys
-
-	return taskConfig, nil
-}
-
 func (tc *taskContext) getExecTimeout() time.Duration {
 	tc.RLock()
 	defer tc.RUnlock()
-	if tc.taskConfig == nil {
-		return DefaultExecTimeout
-	}
 	if dynamicTimeout := tc.taskConfig.GetExecTimeout(); dynamicTimeout > 0 {
 		return time.Duration(dynamicTimeout) * time.Second
 	}
@@ -225,6 +195,61 @@ func (tc *taskContext) getExecTimeout() time.Duration {
 		return time.Duration(tc.taskConfig.Project.ExecTimeoutSecs) * time.Second
 	}
 	return DefaultExecTimeout
+}
+
+// makeTaskConfig fetches task configuration data required to run the task from the API server.
+func (a *Agent) makeTaskConfig(ctx context.Context, tc *taskContext) (*internal.TaskConfig, error) {
+	if tc.taskConfig != nil {
+		// This is only relevant in tests. For convenience, tests can
+		// pre-initialize a task config to use instead of fetching the task
+		// setup data using the communicator.
+		return tc.taskConfig, nil
+	}
+
+	grip.Info("Fetching task info.")
+	tsk, project, expansions, redacted, err := a.fetchTaskInfo(ctx, tc)
+	if err != nil {
+		return nil, errors.Wrap(err, "fetching task info")
+	}
+
+	grip.Info("Fetching distro configuration.")
+	var confDistro *apimodels.DistroView
+	if a.opts.Mode == HostMode {
+		var err error
+		confDistro, err = a.comm.GetDistroView(ctx, tc.task)
+		if err != nil {
+			return nil, errors.Wrap(err, "fetching distro view")
+		}
+	}
+
+	grip.Info("Fetching project ref.")
+	confRef, err := a.comm.GetProjectRef(ctx, tc.task)
+	if err != nil {
+		return nil, errors.Wrap(err, "getting project ref")
+	}
+	if confRef == nil {
+		return nil, errors.New("agent retrieved an empty project ref")
+	}
+
+	var confPatch *patch.Patch
+	if evergreen.IsGitHubPatchRequester(tsk.Requester) {
+		grip.Info("Fetching patch document for GitHub PR request.")
+		confPatch, err = a.comm.GetTaskPatch(ctx, tc.task, "")
+		if err != nil {
+			return nil, errors.Wrap(err, "fetching patch for GitHub PR request")
+		}
+	}
+
+	grip.Info("Constructing task config.")
+	taskConfig, err := internal.NewTaskConfig(a.opts.WorkingDirectory, confDistro, project, tsk, confRef, confPatch, expansions)
+	if err != nil {
+		return nil, err
+	}
+	taskConfig.Redacted = redacted
+	taskConfig.TaskSync = a.opts.SetupData.TaskSync
+	taskConfig.EC2Keys = a.opts.SetupData.EC2Keys
+
+	return taskConfig, nil
 }
 
 // commandBlock contains information for a block of commands.
@@ -238,12 +263,13 @@ type commandBlock struct {
 }
 
 // getPre returns a command block containing the pre task commands.
-func (tc *taskContext) getPre(taskGroup string) (*commandBlock, error) {
+func (tc *taskContext) getPre() (*commandBlock, error) {
 	if err := tc.taskConfig.Validate(); err != nil {
 		return nil, err
 	}
 
-	if taskGroup == "" {
+	tg := tc.taskConfig.TaskGroup
+	if tg == nil {
 		return &commandBlock{
 			block:       command.PreBlock,
 			commands:    tc.taskConfig.Project.Pre,
@@ -253,27 +279,23 @@ func (tc *taskContext) getPre(taskGroup string) (*commandBlock, error) {
 		}, nil
 	}
 
-	tg := tc.taskConfig.Project.FindTaskGroup(taskGroup)
-	if tg == nil {
-		return nil, errors.Errorf("couldn't find task group '%s' in project '%s'", taskGroup, tc.taskConfig.Project.Identifier)
-	}
-
 	return &commandBlock{
 		block:       command.SetupTaskBlock,
 		commands:    tg.SetupTask,
 		timeoutKind: setupTaskTimeout,
-		getTimeout:  tc.getSetupTaskTimeout(tg),
+		getTimeout:  tc.getSetupTaskTimeout(),
 		canFailTask: tg.SetupTaskCanFailTask,
 	}, nil
 }
 
 // getPost returns a command block containing the post task commands.
-func (tc *taskContext) getPost(taskGroup string) (*commandBlock, error) {
+func (tc *taskContext) getPost() (*commandBlock, error) {
 	if err := tc.taskConfig.Validate(); err != nil {
 		return nil, err
 	}
 
-	if taskGroup == "" {
+	tg := tc.taskConfig.TaskGroup
+	if tg == nil {
 		return &commandBlock{
 			block:               command.PostBlock,
 			commands:            tc.taskConfig.Project.Post,
@@ -284,33 +306,25 @@ func (tc *taskContext) getPost(taskGroup string) (*commandBlock, error) {
 		}, nil
 	}
 
-	tg := tc.taskConfig.Project.FindTaskGroup(taskGroup)
-	if tg == nil {
-		return nil, errors.Errorf("couldn't find task group '%s' in project '%s'", taskGroup, tc.taskConfig.Project.Identifier)
-	}
 	return &commandBlock{
 		block:               command.TeardownTaskBlock,
 		commands:            tg.TeardownTask,
 		timeoutKind:         teardownTaskTimeout,
-		getTimeout:          tc.getTeardownTaskTimeout(tg),
+		getTimeout:          tc.getTeardownTaskTimeout(),
 		canTimeoutHeartbeat: true,
 		canFailTask:         tg.TeardownTaskCanFailTask,
 	}, nil
 }
 
 // getSetupGroup returns the setup group for a task group task.
-func (tc *taskContext) getSetupGroup(taskGroup string) (*commandBlock, error) {
+func (tc *taskContext) getSetupGroup() (*commandBlock, error) {
 	if err := tc.taskConfig.Validate(); err != nil {
 		return nil, err
 	}
 
-	if taskGroup == "" {
-		return &commandBlock{}, nil
-	}
-
-	tg := tc.taskConfig.Project.FindTaskGroup(taskGroup)
+	tg := tc.taskConfig.TaskGroup
 	if tg == nil {
-		return nil, errors.Errorf("couldn't find task group '%s' in project '%s'", taskGroup, tc.taskConfig.Project.Identifier)
+		return &commandBlock{}, nil
 	}
 	if tg.SetupGroup == nil {
 		return &commandBlock{}, nil
@@ -320,24 +334,20 @@ func (tc *taskContext) getSetupGroup(taskGroup string) (*commandBlock, error) {
 		block:       command.SetupGroupBlock,
 		commands:    tg.SetupGroup,
 		timeoutKind: setupGroupTimeout,
-		getTimeout:  tc.getSetupGroupTimeout(tg),
+		getTimeout:  tc.getSetupGroupTimeout(),
 		canFailTask: tg.SetupGroupCanFailTask,
 	}, nil
 }
 
 // getTeardownGroup returns the teardown group for a task group task.
-func (tc *taskContext) getTeardownGroup(taskGroup string) (*commandBlock, error) {
+func (tc *taskContext) getTeardownGroup() (*commandBlock, error) {
 	if err := tc.taskConfig.Validate(); err != nil {
 		return nil, err
 	}
 
-	if taskGroup == "" {
-		return &commandBlock{}, nil
-	}
-
-	tg := tc.taskConfig.Project.FindTaskGroup(taskGroup)
+	tg := tc.taskConfig.TaskGroup
 	if tg == nil {
-		return nil, errors.Errorf("couldn't find task group '%s' in project '%s'", taskGroup, tc.taskConfig.Project.Identifier)
+		return &commandBlock{}, nil
 	}
 	if tg.TeardownGroup == nil {
 		return &commandBlock{}, nil
@@ -347,18 +357,19 @@ func (tc *taskContext) getTeardownGroup(taskGroup string) (*commandBlock, error)
 		block:       command.TeardownGroupBlock,
 		commands:    tg.TeardownGroup,
 		timeoutKind: teardownGroupTimeout,
-		getTimeout:  tc.getTeardownGroupTimeout(tg),
+		getTimeout:  tc.getTeardownGroupTimeout(),
 		canFailTask: false,
 	}, nil
 }
 
 // getTimeout returns a command block containing the timeout handler commands.
-func (tc *taskContext) getTimeout(taskGroup string) (*commandBlock, error) {
+func (tc *taskContext) getTimeout() (*commandBlock, error) {
 	if err := tc.taskConfig.Validate(); err != nil {
 		return nil, err
 	}
 
-	if taskGroup == "" {
+	tg := tc.taskConfig.TaskGroup
+	if tg == nil {
 		return &commandBlock{
 			block:               command.TaskTimeoutBlock,
 			commands:            tc.taskConfig.Project.Timeout,
@@ -367,11 +378,6 @@ func (tc *taskContext) getTimeout(taskGroup string) (*commandBlock, error) {
 			canFailTask:         false,
 			canTimeoutHeartbeat: true,
 		}, nil
-	}
-
-	tg := tc.taskConfig.Project.FindTaskGroup(taskGroup)
-	if tg == nil {
-		return nil, errors.Errorf("couldn't find task group '%s' in project '%s'", taskGroup, tc.taskConfig.Project.Identifier)
 	}
 	if tg.Timeout == nil {
 		// Task group timeout defaults to the project timeout settings if not
@@ -390,7 +396,7 @@ func (tc *taskContext) getTimeout(taskGroup string) (*commandBlock, error) {
 		block:       command.TaskTimeoutBlock,
 		commands:    tg.Timeout,
 		timeoutKind: callbackTimeout,
-		getTimeout:  tc.getTaskGroupCallbackTimeout(tg),
+		getTimeout:  tc.getTaskGroupCallbackTimeout(),
 		canFailTask: false,
 	}, nil
 }
@@ -400,7 +406,7 @@ func (tc *taskContext) getPreTimeout() time.Duration {
 	tc.RLock()
 	defer tc.RUnlock()
 
-	if tc.taskConfig != nil && tc.taskConfig.Project != nil && tc.taskConfig.Project.PreTimeoutSecs != 0 {
+	if tc.taskConfig.Project.PreTimeoutSecs != 0 {
 		return time.Duration(tc.taskConfig.Project.PreTimeoutSecs) * time.Second
 	}
 
@@ -412,19 +418,20 @@ func (tc *taskContext) getPostTimeout() time.Duration {
 	tc.RLock()
 	defer tc.RUnlock()
 
-	if tc.taskConfig != nil && tc.taskConfig.Project != nil && tc.taskConfig.Project.PostTimeoutSecs != 0 {
+	if tc.taskConfig.Project.PostTimeoutSecs != 0 {
 		return time.Duration(tc.taskConfig.Project.PostTimeoutSecs) * time.Second
 	}
 	return defaultPostTimeout
 }
 
 // getSetupGroupTimeout returns the timeout for the setup group block.
-func (tc *taskContext) getSetupGroupTimeout(tg *model.TaskGroup) func() time.Duration {
+func (tc *taskContext) getSetupGroupTimeout() func() time.Duration {
 	return func() time.Duration {
 		tc.RLock()
 		defer tc.RUnlock()
 
-		if tg.SetupGroupTimeoutSecs != 0 {
+		tg := tc.taskConfig.TaskGroup
+		if tg != nil && tg.SetupGroupTimeoutSecs != 0 {
 			return time.Duration(tg.SetupGroupTimeoutSecs) * time.Second
 		}
 		return defaultPreTimeout
@@ -432,12 +439,13 @@ func (tc *taskContext) getSetupGroupTimeout(tg *model.TaskGroup) func() time.Dur
 }
 
 // getSetupTaskTimeout returns the timeout for the setup task block.
-func (tc *taskContext) getSetupTaskTimeout(tg *model.TaskGroup) func() time.Duration {
+func (tc *taskContext) getSetupTaskTimeout() func() time.Duration {
 	return func() time.Duration {
 		tc.RLock()
 		defer tc.RUnlock()
 
-		if tg.SetupTaskTimeoutSecs != 0 {
+		tg := tc.taskConfig.TaskGroup
+		if tg != nil && tg.SetupTaskTimeoutSecs != 0 {
 			return time.Duration(tg.SetupTaskTimeoutSecs) * time.Second
 		}
 		return defaultPreTimeout
@@ -445,12 +453,13 @@ func (tc *taskContext) getSetupTaskTimeout(tg *model.TaskGroup) func() time.Dura
 }
 
 // getTeardownTaskTimeout returns the timeout for the teardown task block.
-func (tc *taskContext) getTeardownTaskTimeout(tg *model.TaskGroup) func() time.Duration {
+func (tc *taskContext) getTeardownTaskTimeout() func() time.Duration {
 	return func() time.Duration {
 		tc.RLock()
 		defer tc.RUnlock()
 
-		if tg.TeardownTaskTimeoutSecs != 0 {
+		tg := tc.taskConfig.TaskGroup
+		if tg != nil && tg.TeardownTaskTimeoutSecs != 0 {
 			return time.Duration(tg.TeardownTaskTimeoutSecs) * time.Second
 		}
 		return defaultPostTimeout
@@ -458,12 +467,13 @@ func (tc *taskContext) getTeardownTaskTimeout(tg *model.TaskGroup) func() time.D
 }
 
 // getTeardownGroupTimeout returns the timeout for the teardown group block.
-func (tc *taskContext) getTeardownGroupTimeout(tg *model.TaskGroup) func() time.Duration {
+func (tc *taskContext) getTeardownGroupTimeout() func() time.Duration {
 	return func() time.Duration {
 		tc.RLock()
 		defer tc.RUnlock()
 
-		if tg.TeardownGroupTimeoutSecs != 0 {
+		tg := tc.taskConfig.TaskGroup
+		if tg != nil && tg.TeardownGroupTimeoutSecs != 0 {
 			return time.Duration(tg.TeardownGroupTimeoutSecs) * time.Second
 		}
 		return defaultTeardownGroupTimeout
@@ -475,7 +485,7 @@ func (tc *taskContext) getCallbackTimeout() time.Duration {
 	tc.RLock()
 	defer tc.RUnlock()
 
-	if tc.taskConfig != nil && tc.taskConfig.Project != nil && tc.taskConfig.Project.CallbackTimeout != 0 {
+	if tc.taskConfig.Project.CallbackTimeout != 0 {
 		return time.Duration(tc.taskConfig.Project.CallbackTimeout) * time.Second
 	}
 	return defaultCallbackTimeout
@@ -483,9 +493,13 @@ func (tc *taskContext) getCallbackTimeout() time.Duration {
 
 // getTaskGroupCallbackTimeout returns the callback timeout for a task group
 // task.
-func (tc *taskContext) getTaskGroupCallbackTimeout(tg *model.TaskGroup) func() time.Duration {
+func (tc *taskContext) getTaskGroupCallbackTimeout() func() time.Duration {
 	return func() time.Duration {
-		if tg.CallbackTimeoutSecs != 0 {
+		tc.RLock()
+		defer tc.RUnlock()
+
+		tg := tc.taskConfig.TaskGroup
+		if tg != nil && tg.CallbackTimeoutSecs != 0 {
 			return time.Duration(tg.CallbackTimeoutSecs) * time.Second
 		}
 		return defaultCallbackTimeout

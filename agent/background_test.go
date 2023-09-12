@@ -17,6 +17,8 @@ import (
 
 type BackgroundSuite struct {
 	suite.Suite
+	ctx              context.Context
+	cancel           context.CancelFunc
 	a                *Agent
 	mockCommunicator *client.Mock
 	tc               *taskContext
@@ -28,6 +30,7 @@ func TestBackgroundSuite(t *testing.T) {
 }
 
 func (s *BackgroundSuite) SetupTest() {
+	s.ctx, s.cancel = context.WithCancel(context.Background())
 	var err error
 	s.a = &Agent{
 		opts: Options{
@@ -46,15 +49,19 @@ func (s *BackgroundSuite) SetupTest() {
 
 	s.tc = &taskContext{}
 	s.tc.taskConfig = &internal.TaskConfig{}
-	s.tc.taskConfig.Project = &model.Project{}
+	s.tc.taskConfig.Project = model.Project{}
 	s.tc.taskConfig.Project.CallbackTimeout = 0
 	s.sender = send.MakeInternalLogger()
 	s.tc.logger = client.NewSingleChannelLogHarness("test", s.sender)
 }
 
+func (s *BackgroundSuite) TearDownTest() {
+	s.cancel()
+}
+
 func (s *BackgroundSuite) TestStartTimeoutWatcherTimesOut() {
 	const testTimeout = 30 * time.Second
-	ctx, cancel := context.WithTimeout(context.Background(), testTimeout)
+	ctx, cancel := context.WithTimeout(s.ctx, testTimeout)
 	defer cancel()
 	const timeout = time.Nanosecond
 	startAt := time.Now()
@@ -74,7 +81,7 @@ func (s *BackgroundSuite) TestStartTimeoutWatcherTimesOut() {
 }
 
 func (s *BackgroundSuite) TestStartTimeoutWatcherExitsWithoutTimeout() {
-	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
+	ctx, cancel := context.WithTimeout(s.ctx, 30*time.Second)
 	timeoutWatcherDone := make(chan struct{})
 	go func() {
 		timeoutOpts := timeoutWatcherOptions{
@@ -97,7 +104,7 @@ func (s *BackgroundSuite) TestStartTimeoutWatcherExitsWithoutTimeout() {
 
 func (s *BackgroundSuite) TestStartTimeoutWatcherTimesOutButDoesNotMarkTimeoutFailure() {
 	const testTimeout = 30 * time.Second
-	ctx, cancel := context.WithTimeout(context.Background(), testTimeout)
+	ctx, cancel := context.WithTimeout(s.ctx, testTimeout)
 	defer cancel()
 	const timeout = time.Nanosecond
 	startAt := time.Now()
@@ -124,10 +131,10 @@ func (s *BackgroundSuite) TestAbortedTaskStillHeartbeats() {
 	s.mockCommunicator.HeartbeatShouldAbort = true
 	s.a.opts.HeartbeatInterval = time.Millisecond
 
-	heartbeatCtx, heartbeatCancel := context.WithTimeout(context.Background(), time.Second)
+	heartbeatCtx, heartbeatCancel := context.WithTimeout(s.ctx, time.Second)
 	defer heartbeatCancel()
 
-	childCtx, childCancel := context.WithCancel(context.Background())
+	childCtx, childCancel := context.WithCancel(s.ctx)
 
 	s.tc.setHeartbeatTimeout(heartbeatTimeoutOptions{})
 	go s.a.startHeartbeat(heartbeatCtx, childCancel, s.tc)
@@ -164,10 +171,10 @@ func (s *BackgroundSuite) TestHeartbeatSignalsAbortOnTaskConflict() {
 	s.mockCommunicator.HeartbeatShouldConflict = true
 	s.a.opts.HeartbeatInterval = time.Millisecond
 
-	heartbeatCtx, heartbeatCancel := context.WithTimeout(context.Background(), time.Second)
+	heartbeatCtx, heartbeatCancel := context.WithTimeout(s.ctx, time.Second)
 	defer heartbeatCancel()
 
-	childCtx, childCancel := context.WithCancel(context.Background())
+	childCtx, childCancel := context.WithCancel(s.ctx)
 
 	s.tc.setHeartbeatTimeout(heartbeatTimeoutOptions{})
 	go s.a.startHeartbeat(heartbeatCtx, childCancel, s.tc)
@@ -204,10 +211,10 @@ func (s *BackgroundSuite) TestHeartbeatSignalsAbortOnHittingMaxFailedHeartbeats(
 	s.mockCommunicator.HeartbeatShouldErr = true
 	s.a.opts.HeartbeatInterval = time.Millisecond
 
-	heartbeatCtx, heartbeatCancel := context.WithTimeout(context.Background(), time.Second)
+	heartbeatCtx, heartbeatCancel := context.WithTimeout(s.ctx, time.Second)
 	defer heartbeatCancel()
 
-	childCtx, childCancel := context.WithCancel(context.Background())
+	childCtx, childCancel := context.WithCancel(s.ctx)
 
 	s.tc.setHeartbeatTimeout(heartbeatTimeoutOptions{})
 	go s.a.startHeartbeat(heartbeatCtx, childCancel, s.tc)
@@ -243,10 +250,10 @@ func (s *BackgroundSuite) TestHeartbeatSignalsAbortOnHittingMaxFailedHeartbeats(
 func (s *BackgroundSuite) TestHeartbeatSignalsAbortWhenHeartbeatStops() {
 	s.a.opts.HeartbeatInterval = time.Millisecond
 
-	heartbeatCtx, heartbeatCancel := context.WithTimeout(context.Background(), time.Second)
+	heartbeatCtx, heartbeatCancel := context.WithTimeout(s.ctx, time.Second)
 	defer heartbeatCancel()
 
-	childCtx, childCancel := context.WithCancel(context.Background())
+	childCtx, childCancel := context.WithCancel(s.ctx)
 
 	s.tc.setHeartbeatTimeout(heartbeatTimeoutOptions{})
 	go s.a.startHeartbeat(heartbeatCtx, childCancel, s.tc)
@@ -264,7 +271,7 @@ func (s *BackgroundSuite) TestHeartbeatSignalsAbortWhenHeartbeatStops() {
 		exitCondition: func() {
 			// Check that once the heartbeat exits, the task is signaled to
 			// abort (if it is still running) in a timely manner.
-			checkChildCtx, checkChildCancel := context.WithTimeout(context.Background(), 100*time.Millisecond)
+			checkChildCtx, checkChildCancel := context.WithTimeout(s.ctx, 100*time.Millisecond)
 			defer checkChildCancel()
 			select {
 			case <-childCtx.Done():
@@ -279,10 +286,10 @@ func (s *BackgroundSuite) TestHeartbeatSometimesFailsDoesNotFailTask() {
 	s.mockCommunicator.HeartbeatShouldSometimesErr = true
 	s.a.opts.HeartbeatInterval = time.Millisecond
 
-	heartbeatCtx, heartbeatCancel := context.WithTimeout(context.Background(), time.Second)
+	heartbeatCtx, heartbeatCancel := context.WithTimeout(s.ctx, time.Second)
 	defer heartbeatCancel()
 
-	childCtx, childCancel := context.WithCancel(context.Background())
+	childCtx, childCancel := context.WithCancel(s.ctx)
 
 	s.tc.setHeartbeatTimeout(heartbeatTimeoutOptions{})
 	go s.a.startHeartbeat(heartbeatCtx, childCancel, s.tc)
@@ -302,7 +309,7 @@ func (s *BackgroundSuite) TestHeartbeatSometimesFailsDoesNotFailTask() {
 		exitCondition: func() {
 			// Check that once the heartbeat exits, the task is signaled to
 			// abort (if it is still running) in a timely manner.
-			checkChildCtx, checkChildCancel := context.WithTimeout(context.Background(), 100*time.Millisecond)
+			checkChildCtx, checkChildCancel := context.WithTimeout(s.ctx, 100*time.Millisecond)
 			defer checkChildCancel()
 			select {
 			case <-childCtx.Done():
@@ -314,7 +321,7 @@ func (s *BackgroundSuite) TestHeartbeatSometimesFailsDoesNotFailTask() {
 }
 
 func (s *BackgroundSuite) TestIdleTimeoutIsSetForCommand() {
-	s.tc.taskConfig.Timeout = &internal.Timeout{}
+	s.tc.taskConfig.Timeout = internal.Timeout{}
 	cmdFactory, exists := command.GetCommandFactory("shell.exec")
 	s.True(exists)
 	cmd := cmdFactory()

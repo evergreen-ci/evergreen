@@ -55,7 +55,7 @@ func (c *listHosts) ParseParams(params map[string]interface{}) error {
 }
 
 func (c *listHosts) Execute(ctx context.Context, comm client.Communicator, logger client.LoggerProducer, conf *internal.TaskConfig) error {
-	if err := util.ExpandValues(c, conf.Expansions); err != nil {
+	if err := util.ExpandValues(c, &conf.Expansions); err != nil {
 		return errors.Wrap(err, "applying expansions")
 	}
 

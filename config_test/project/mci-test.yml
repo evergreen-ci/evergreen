@@ -1,10 +1,5 @@
 identifier: mci-test
 id: mci-test
-owner: deafgoat
-repo: mci-test
-repokind: github
-branch: master
-enabled: true
 batchtime: 10
 stepback: true
 remote: false

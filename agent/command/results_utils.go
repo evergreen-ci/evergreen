@@ -40,7 +40,7 @@ func sendTestResults(ctx context.Context, comm client.Communicator, logger clien
 
 // sendTestLog sends test logs to the backend logging service.
 func sendTestLog(ctx context.Context, comm client.Communicator, conf *internal.TaskConfig, log *model.TestLog) error {
-	return errors.Wrap(sendTestLogToCedar(ctx, conf.Task, comm, log), "sending test logs to Cedar")
+	return errors.Wrap(sendTestLogToCedar(ctx, &conf.Task, comm, log), "sending test logs to Cedar")
 }
 
 // sendTestLogsAndResults sends the test logs and test results to backend
@@ -88,7 +88,7 @@ func sendTestResultsToCedar(ctx context.Context, conf *internal.TaskConfig, td c
 		}
 	}
 
-	cedarResults, failed := makeCedarTestResults(conf.CedarTestResultsID, conf.Task, results)
+	cedarResults, failed := makeCedarTestResults(conf.CedarTestResultsID, &conf.Task, results)
 	if err = client.AddResults(ctx, cedarResults); err != nil {
 		return errors.Wrap(err, "adding test results")
 	}

@@ -87,7 +87,7 @@ first command failed. Instead, it will skip forward to running `post` commands
 and eventually report the task as failed.
 
 By default, all blocks follow the above behavior of continuing on error (with
-configurable options to have command instead fail on error) _except_ the main
+configurable options to have commands instead fail on error) _except_ the main
 task command block. The main task commands are treated specially when compared
 to the other command blocks. If a command fails in the main task commands, it
 will cause the task to fail. The remaining main task commands will not run, it

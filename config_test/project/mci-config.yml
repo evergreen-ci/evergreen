@@ -1,10 +1,5 @@
 identifier: mci-config
 id: mci-config
-owner: deafgoat
-repo: config
-repokind: github
-branch: master
-enabled: true
 batchtime: 10
 stepback: true
 remote: true

@@ -498,6 +498,12 @@ func ensureHasValidPlannerSettings(ctx context.Context, d *distro.Distro, s *eve
 			Level:   Error,
 		})
 	}
+	if settings.GenerateTaskFactor < 0 || settings.GenerateTaskFactor > 100 {
+		errs = append(errs, ValidationError{
+			Message: fmt.Sprintf("invalid planner_settings.generate_task_factor value of %d for distro '%s' - its value must be a non-negative integer between 0 and 100, inclusive", settings.GenerateTaskFactor, d.Id),
+			Level:   Error,
+		})
+	}
 
 	return errs
 }
