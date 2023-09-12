@@ -2,8 +2,6 @@ package agent
 
 import (
 	"context"
-	"os"
-	"path/filepath"
 	"strings"
 	"testing"
 	"time"
@@ -66,7 +64,7 @@ func TestAgentSuite(t *testing.T) {
 func (s *AgentSuite) SetupTest() {
 	var err error
 
-	s.tmpDirName, err = os.MkdirTemp("", filepath.Base(s.T().Name()))
+	s.tmpDirName = s.T().TempDir()
 	s.Require().NoError(err)
 
 	s.a = &Agent{
@@ -133,7 +131,18 @@ func (s *AgentSuite) SetupTest() {
 
 func (s *AgentSuite) TearDownTest() {
 	s.canceler()
-	s.Require().NoError(os.RemoveAll(s.tmpDirName))
+	// This is intentionally not using os.RemoveAll to prevent tests on Windows
+	// from flaking. Some agent tests are intentionally testing that the agent
+	// will move on without waiting after a context error, even if commands are
+	// taking a long time to finish. This means that by the time the test is
+	// tearing down, there may still be lingering commands accessing the
+	// directory. In Windows, if a process is still using the directory, it can
+	// cause os.RemoveAll to fail. However, for some reason, the
+	// (Agent).removeAll still works. The best guesses here for why it works is
+	// that either 1. the chmod does something in Windows to make the directory
+	// removal stop erroring, or 2. the chmod delays the directory removal for
+	// just long enough that the lingering process can finish.
+	s.NoError(s.a.removeAll(s.tmpDirName))
 }
 
 func (s *AgentSuite) TestNextTaskResponseShouldExit() {
