@@ -1204,22 +1204,92 @@ func (s *AgentSuite) TestFinishPrevTaskWithSameBuildButDifferentTaskGroup() {
 	s.Empty(taskDirectory)
 }
 
-func (s *AgentSuite) TestGeneralTaskSetupSucceeds() {
+func (s *AgentSuite) TestGeneralPreviousTaskCleanupAndNextTaskSetupSucceeds() {
 	nextTask := &apimodels.NextTaskResponse{}
 	s.setupRunTask(defaultProjYml)
 	shouldSetupGroup, taskDirectory := s.a.finishPrevTask(s.ctx, nextTask, s.tc)
-	_, shouldExit, err := s.a.setupTask(s.ctx, s.ctx, s.tc, nextTask, shouldSetupGroup, taskDirectory)
+	s.True(shouldSetupGroup, "should set up task directory again")
+	s.Empty(taskDirectory, "task directory should not carry over to next task unless they're part of the same task group")
+	tc, shouldExit, err := s.a.setupTask(s.ctx, s.ctx, s.tc, nextTask, shouldSetupGroup, taskDirectory)
 	s.False(shouldExit)
 	s.NoError(err)
+
+	s.Require().NotZero(tc)
+	s.Require().NotZero(tc.taskConfig)
+	s.Contains(tc.taskConfig.WorkDir, s.a.opts.WorkingDirectory)
+
 	s.NoError(s.tc.logger.Close())
 	checkMockLogs(s.T(), s.mockCommunicator, s.tc.taskConfig.Task.Id, []string{
 		"Current command set to initial task setup (system).",
-		"Making new folder",
+		"Making new directory",
 		"Task logger initialized",
 		"Execution logger initialized.",
 		"System logger initialized.",
 		"Starting task 'task_id', execution 0.",
 	}, []string{panicLog})
+}
+
+func (s *AgentSuite) TestGeneralPreviousTaskCleanupAndNextTaskSetupSucceedsWithTasksInSameTaskGroup() {
+	const taskGroup = "this_is_a_task_group"
+	projYml := `
+buildvariants:
+  - name: mock_build_variant
+    tasks:
+      - this_is_a_task_group
+
+tasks:
+  - name: this_is_a_task_name
+    commands:
+      - command: shell.exec
+        params:
+          script: exit 0
+  - name: this_is_another_task_name
+    commands:
+      - command: shell.exec
+        params:
+          script: exit 0
+
+task_groups:
+  - name: this_is_a_task_group
+    tasks:
+      - this_is_a_task_name
+      - this_is_another_task_name
+`
+	s.setupRunTask(projYml)
+
+	// Fake out the data so that the previous task already set up the task
+	// group, and next task is part of the same task group.
+	s.tc.ranSetupGroup = true
+	s.tc.taskConfig.Task.TaskGroup = taskGroup
+	s.tc.taskConfig.TaskGroup = s.tc.taskConfig.Project.FindTaskGroup(taskGroup)
+	s.Require().NotNil(s.tc.taskConfig.TaskGroup, "task group should be defined in project")
+	nextTask := &apimodels.NextTaskResponse{
+		TaskGroup: taskGroup,
+	}
+
+	shouldSetupGroup, taskDirectory := s.a.finishPrevTask(s.ctx, nextTask, s.tc)
+	s.False(shouldSetupGroup, "should not set up task directory again for task in same task group")
+	s.Equal(s.tc.taskConfig.WorkDir, taskDirectory, "task directory should carry over to next task since it's part of the same task group")
+
+	tc, shouldExit, err := s.a.setupTask(s.ctx, s.ctx, s.tc, nextTask, shouldSetupGroup, taskDirectory)
+	s.False(shouldExit)
+	s.NoError(err)
+
+	s.Require().NotZero(tc)
+	s.Require().NotZero(tc.taskConfig)
+	s.Equal(taskDirectory, tc.taskConfig.WorkDir, "should reuse same working directory for task in same task group")
+
+	s.NoError(s.tc.logger.Close())
+	checkMockLogs(s.T(), s.mockCommunicator, s.tc.taskConfig.Task.Id, []string{
+		"Current command set to initial task setup (system).",
+		"Task logger initialized",
+		"Execution logger initialized.",
+		"System logger initialized.",
+		"Starting task 'task_id', execution 0.",
+	}, []string{
+		panicLog,
+		"Making new directory",
+	})
 }
 
 func (s *AgentSuite) TestRunTaskWithUserDefinedTaskStatus() {

@@ -31,7 +31,7 @@ func (a *Agent) createTaskDirectory(tc *taskContext) (string, error) {
 	dirName := hex.EncodeToString(h.Sum(nil))
 	newDir := filepath.Join(a.opts.WorkingDirectory, dirName)
 
-	tc.logger.Execution().Infof("Making new folder '%s' for task execution.", newDir)
+	tc.logger.Execution().Infof("Making new directory '%s' for task execution.", newDir)
 
 	if err = os.MkdirAll(newDir, 0777); err != nil {
 		tc.logger.Execution().Error(errors.Wrapf(err, "creating task directory '%s'", newDir))
