@@ -51,25 +51,39 @@ func (a *Agent) createTaskDirectory(tc *taskContext) (string, error) {
 // a task run, and the agent loop will start another task regardless of how this
 // exits.
 func (a *Agent) removeTaskDirectory(tc *taskContext) {
-	if tc.taskDirectory == "" {
+	// kim: TODO: remove
+	// if tc.taskDirectory == "" {
+	if tc.taskConfig == nil || tc.taskConfig.WorkDir == "" {
 		grip.Info("Task directory is not set, not removing.")
 		return
 	}
 
-	grip.Infof("Deleting task directory '%s' for completed task.", tc.taskDirectory)
+	dir := tc.taskConfig.WorkDir
+
+	// kim: TODO: remove
+	// grip.Infof("Deleting task directory '%s' for completed task.", tc.taskConfig.WorkDir)
+	grip.Infof("Deleting task directory '%s' for completed task.", dir)
 
 	// Removing long relative paths hangs on Windows https://github.com/golang/go/issues/36375,
 	// so we have to convert to an absolute path before removing.
-	abs, err := filepath.Abs(tc.taskDirectory)
+	// kim: TODO: remove
+	// abs, err := filepath.Abs(tc.taskDirectory)
+	abs, err := filepath.Abs(dir)
 	if err != nil {
-		grip.Critical(errors.Wrapf(err, "getting absolute path for task directory '%s'", tc.taskDirectory))
+		// kim: TODO: remove
+		// grip.Critical(errors.Wrapf(err, "getting absolute path for task directory '%s'", tc.taskDirectory))
+		grip.Critical(errors.Wrapf(err, "getting absolute path for task directory '%s'", dir))
 		return
 	}
 	err = a.removeAll(abs)
-	grip.Critical(errors.Wrapf(err, "removing task directory '%s'", tc.taskDirectory))
+	// kim: TODO: remove
+	// grip.Critical(errors.Wrapf(err, "removing task directory '%s'", tc.taskDirectory))
+	grip.Critical(errors.Wrapf(err, "removing task directory '%s'", dir))
 	grip.InfoWhen(err == nil, message.Fields{
-		"message":   "Successfully deleted directory for completed task.",
-		"directory": tc.taskDirectory,
+		"message": "Successfully deleted directory for completed task.",
+		// kim: TODO: remove
+		// "directory": tc.taskDirectory,
+		"directory": tc.taskConfig.WorkDir,
 	})
 }
 

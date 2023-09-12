@@ -30,7 +30,8 @@ type taskContext struct {
 	unsetFunctionVarsDisabled bool
 	// TODO (EVG-20289): see if taskDirectory can be replaced with
 	// TaskConfig.WorkDir.
-	taskDirectory string
+	// kim: TODO: remove
+	// taskDirectory string
 	// userEndTaskResp is the end task response that the user can define, which
 	// will overwrite the default end task response.
 	userEndTaskResp *triggerEndTaskResp
