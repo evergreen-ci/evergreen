@@ -648,13 +648,6 @@ func (uis *UIServer) taskFileRaw(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// Check if the requester is one of our supported origins. We can assume this means its an Evergreen application
-	requester := r.Header.Get("Origin")
-	if !utility.StringMatchesAnyRegex(requester, uis.Settings.Ui.CORSOrigins) {
-		uis.LoggedError(w, r, http.StatusBadRequest, errors.New("Request did not originate from a valid origin. Please do not use this endpoint."))
-		return
-	}
-
 	fileName, _ := gimlet.GetVars(r)["file_name"]
 	if fileName == "" {
 		uis.LoggedError(w, r, http.StatusBadRequest, errors.New("file name not specified"))
@@ -679,7 +672,7 @@ func (uis *UIServer) taskFileRaw(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	if !utility.StringMatchesAnyRegex(tFile.ContentType, uis.Settings.Ui.FileStreamingContentTypes) {
-		uis.LoggedError(w, r, http.StatusBadRequest, errors.New("File content type not supported"))
+		uis.LoggedError(w, r, http.StatusBadRequest, errors.New(fmt.Sprintf("File content type: %s not supported", tFile.ContentType)))
 		return
 	}
 
