@@ -33,7 +33,6 @@ ui:
   url: "http://localhost:9090"
   httplistenaddr: ":9090"
   cors_origins: ["http://localhost:3000"]
-  valid_content_types: ["application/json", "text/plain", "text/csv"]
 
 notify:
   logfile: "evg_notify.log"
