@@ -99,6 +99,7 @@ func (s *TimeoutSuite) TestExecTimeoutProject() {
 		TaskSecret: taskSecret,
 	}
 	_, _, err := s.a.runTask(s.ctx, tc, nextTask, !tc.ranSetupGroup, s.tmpDirName)
+	s.NoError(err)
 
 	s.Require().NoError(tc.logger.Close())
 	checkMockLogs(s.T(), s.mockCommunicator, taskID, []string{
