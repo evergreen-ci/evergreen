@@ -41,6 +41,7 @@ const (
 // the ParserProject.
 type Project struct {
 	Stepback           bool                       `yaml:"stepback,omitempty" bson:"stepback"`
+	StepbackType       StepbackType               `yaml:"stepback_yaml,omitempty" bson:"stepback_yaml,omitempty"`
 	UnsetFunctionVars  bool                       `yaml:"unset_function_vars,omitempty" bson:"unset_function_vars,omitempty"`
 	PreTimeoutSecs     int                        `yaml:"pre_timeout_secs,omitempty" bson:"pre_timeout_secs,omitempty"`
 	PostTimeoutSecs    int                        `yaml:"post_timeout_secs,omitempty" bson:"post_timeout_secs,omitempty"`
