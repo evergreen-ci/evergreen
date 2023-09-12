@@ -55,6 +55,7 @@ func (a *Agent) removeTaskDirectory(tc *taskContext) {
 		grip.Info("Task directory is not set, not removing.")
 		return
 	}
+
 	grip.Infof("Deleting task directory '%s' for completed task.", tc.taskDirectory)
 
 	// Removing long relative paths hangs on Windows https://github.com/golang/go/issues/36375,

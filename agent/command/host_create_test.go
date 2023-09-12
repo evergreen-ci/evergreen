@@ -39,9 +39,9 @@ func (s *createHostSuite) SetupSuite() {
 	var err error
 	s.comm = client.NewMock("http://localhost.com")
 	s.conf = &internal.TaskConfig{
-		Expansions: &util.Expansions{"subnet_id": "subnet-123456"},
-		Task:       &task.Task{Id: "mock_id", Secret: "mock_secret"},
-		Project:    &model.Project{}}
+		Expansions: util.Expansions{"subnet_id": "subnet-123456"},
+		Task:       task.Task{Id: "mock_id", Secret: "mock_secret"},
+		Project:    model.Project{}}
 	s.logger, err = s.comm.GetLoggerProducer(context.Background(), client.TaskData{ID: s.conf.Task.Id, Secret: s.conf.Task.Secret}, nil)
 	s.NoError(err)
 }

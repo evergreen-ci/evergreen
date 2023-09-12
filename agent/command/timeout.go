@@ -50,7 +50,7 @@ func (c *timeout) Execute(ctx context.Context,
 		if errStr := mapstructure.Decode(c.params, t); errStr != nil {
 			return errors.Wrap(err, "decoding mapstructure params")
 		}
-		if err := util.ExpandValues(t, conf.Expansions); err != nil {
+		if err := util.ExpandValues(t, &conf.Expansions); err != nil {
 			return errors.Wrap(err, "applying expansions")
 		}
 		timeout, errTimeout := strconv.Atoi(t.TimeoutSecs)

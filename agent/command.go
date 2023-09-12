@@ -98,7 +98,7 @@ func (a *Agent) runCommandsInBlock(ctx context.Context, tc *taskContext, cmdBloc
 			CmdNum:    i + 1,
 			TotalCmds: len(commands),
 		}
-		cmds, err = command.Render(commandInfo, tc.taskConfig.Project, blockInfo)
+		cmds, err = command.Render(commandInfo, &tc.taskConfig.Project, blockInfo)
 		if err != nil {
 			return errors.Wrapf(err, "rendering command '%s'", commandInfo.Command)
 		}
@@ -233,7 +233,7 @@ func (a *Agent) runCommand(ctx context.Context, tc *taskContext, logger client.L
 		tc.taskConfig.Expansions.Put(key, newVal)
 	}
 	defer func() {
-		if !tc.unsetFunctionVarsDisabled || tc.project.UnsetFunctionVars {
+		if !tc.unsetFunctionVarsDisabled || tc.taskConfig.Project.UnsetFunctionVars {
 			// This defer ensures that the function vars do not persist in the expansions after the function is over
 			// unless they were updated using expansions.update
 			if cmd.Name() == "expansions.update" {
@@ -293,7 +293,7 @@ func (a *Agent) runCommand(ctx context.Context, tc *taskContext, logger client.L
 		if err != nil {
 			tc.logger.Task().Errorf("Command %s failed: %s.", displayName, err)
 			if options.canFailTask ||
-				(cmd.Name() == "git.get_project" && tc.taskModel.Requester == evergreen.MergeTestRequester) {
+				(cmd.Name() == "git.get_project" && tc.taskConfig.Task.Requester == evergreen.MergeTestRequester) {
 				// any git.get_project in the commit queue should fail
 				return errors.Wrap(err, "command failed")
 			}
@@ -340,14 +340,10 @@ func getCommandNameForFileLogger(commandInfo model.PluginCommandConf) string {
 // endTaskSyncCommands returns the commands to sync the task to S3 if it was
 // requested when the task completes.
 func endTaskSyncCommands(tc *taskContext, detail *apimodels.TaskEndDetail) *model.YAMLCommandSet {
-	if tc.taskModel == nil {
-		tc.logger.Task().Error("Task model not found for running task sync.")
+	if !tc.taskConfig.Task.SyncAtEndOpts.Enabled {
 		return nil
 	}
-	if !tc.taskModel.SyncAtEndOpts.Enabled {
-		return nil
-	}
-	if statusFilter := tc.taskModel.SyncAtEndOpts.Statuses; len(statusFilter) != 0 {
+	if statusFilter := tc.taskConfig.Task.SyncAtEndOpts.Statuses; len(statusFilter) != 0 {
 		if detail.Status == evergreen.TaskSucceeded {
 			if !utility.StringSliceContains(statusFilter, evergreen.TaskSucceeded) {
 				return nil

@@ -162,7 +162,7 @@ func (c *s3copy) validate() error {
 func (c *s3copy) Execute(ctx context.Context,
 	comm client.Communicator, logger client.LoggerProducer, conf *internal.TaskConfig) error {
 
-	if err := util.ExpandValues(c, conf.Expansions); err != nil {
+	if err := util.ExpandValues(c, &conf.Expansions); err != nil {
 		return errors.Wrap(err, "applying expansions")
 	}
 	// Re-validate the command here, in case an expansion is not defined.

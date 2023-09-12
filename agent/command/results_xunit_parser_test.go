@@ -223,8 +223,8 @@ func TestXMLToModelConversion(t *testing.T) {
 		So(err, ShouldBeNil)
 		So(len(res), ShouldBeGreaterThan, 0)
 		conf := &internal.TaskConfig{
-			ProjectRef: &model.ProjectRef{},
-			Task:       &task.Task{Id: "TEST", Execution: 5},
+			ProjectRef: model.ProjectRef{},
+			Task:       task.Task{Id: "TEST", Execution: 5},
 		}
 		sender := send.MakeInternalLogger()
 		logger := client.NewSingleChannelLogHarness("", sender)
