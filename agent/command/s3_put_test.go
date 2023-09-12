@@ -372,10 +372,10 @@ func TestContentTypeSaved(t *testing.T) {
 
 	comm := client.NewMock("http://localhost.com")
 	conf := &internal.TaskConfig{
-		Expansions:   &util.Expansions{},
-		Task:         &task.Task{Id: "mock_id", Secret: "mock_secret"},
-		Project:      &model.Project{},
-		BuildVariant: &model.BuildVariant{},
+		Expansions:   util.Expansions{},
+		Task:         task.Task{Id: "mock_id", Secret: "mock_secret"},
+		Project:      model.Project{},
+		BuildVariant: model.BuildVariant{},
 	}
 	s.taskdata = client.TaskData{ID: conf.Task.Id, Secret: conf.Task.Secret}
 	logger, err := comm.GetLoggerProducer(ctx, client.TaskData{ID: conf.Task.Id, Secret: conf.Task.Secret}, nil)
