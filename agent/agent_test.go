@@ -990,43 +990,69 @@ func (s *AgentSuite) TestEndTaskResponse() {
 	s.Require().True(ok)
 	s.tc.setCurrentCommand(factory())
 
-	// kim: TODO: test failing default command results in failing default
-	// command description.
-	// kim: TODO: test system failure description + user defined description
-	// results in user defined description winning
-	// kim: TODO: test system failure description + failing default command
-	// results in user defined description winning
-	s.T().Run("TaskHitsIdleTimeoutButTheTaskAlreadyFinishedRunningResultsInSuccessWithTimeout", func(t *testing.T) {
-		// Simulate a (rare) scenario where the idle timeout is reached, but the
-		// last command in the main block already finished. It does record that
-		// the timeout occurred, but the task commands nonethelessstill
-		// succeeded.
-		s.tc.setTimedOut(true, idleTimeout)
-		detail := s.a.endTaskResponse(s.ctx, s.tc, evergreen.TaskSucceeded, "message")
-		s.True(detail.TimedOut)
-		s.Equal(evergreen.TaskSucceeded, detail.Status)
-		s.Equal("message", detail.Description)
+	const systemFailureDescription = "failure message"
+	s.T().Run("TaskFailingWithCurrentCommandOverridesEmptyDescription", func(t *testing.T) {
+		detail := s.a.endTaskResponse(s.ctx, s.tc, evergreen.TaskFailed, "")
+		s.Equal(evergreen.TaskFailed, detail.Status)
+		s.Contains(detail.Description, s.tc.getCurrentCommand().DisplayName())
 	})
-	s.T().Run("TaskClearsIdleTimeoutAndTheTaskAlreadyFinishedRunningResultsInSuccessWithoutTimeout", func(t *testing.T) {
-		s.tc.setTimedOut(false, idleTimeout)
-		detail := s.a.endTaskResponse(s.ctx, s.tc, evergreen.TaskSucceeded, "message")
+	s.T().Run("TaskFailingWithCurrentCommandIsOverriddenBySystemFailureDescription", func(t *testing.T) {
+		detail := s.a.endTaskResponse(s.ctx, s.tc, evergreen.TaskFailed, systemFailureDescription)
+		s.Equal(evergreen.TaskFailed, detail.Status)
+		s.Equal(systemFailureDescription, detail.Description)
+	})
+	s.T().Run("TaskSucceedsWithEmptyDescription", func(t *testing.T) {
+		detail := s.a.endTaskResponse(s.ctx, s.tc, evergreen.TaskSucceeded, "")
 		s.False(detail.TimedOut)
 		s.Equal(evergreen.TaskSucceeded, detail.Status)
-		s.Equal("message", detail.Description)
+		s.Empty(detail.Description)
+	})
+	s.T().Run("TaskSucceedsWithSystemFailureDescription", func(t *testing.T) {
+		s.tc.setTimedOut(true, idleTimeout)
+		defer s.tc.setTimedOut(false, "")
+		detail := s.a.endTaskResponse(s.ctx, s.tc, evergreen.TaskSucceeded, systemFailureDescription)
+		s.True(detail.TimedOut)
+		s.Equal(evergreen.TaskSucceeded, detail.Status)
+		s.Equal(systemFailureDescription, detail.Description)
+	})
+	s.T().Run("TaskWithUserDefinedTaskStatusAndDescriptionOverridesDescription", func(t *testing.T) {
+		s.tc.userEndTaskResp = &triggerEndTaskResp{
+			Description: "user description of what failed",
+			Status:      evergreen.TaskFailed,
+		}
+		defer func() {
+			s.tc.userEndTaskResp = nil
+		}()
+		detail := s.a.endTaskResponse(s.ctx, s.tc, evergreen.TaskSucceeded, systemFailureDescription)
+		s.Equal(s.tc.userEndTaskResp.Status, detail.Status)
+		s.Equal(s.tc.userEndTaskResp.Description, detail.Description)
 	})
 	s.T().Run("TaskHitsIdleTimeoutAndFailsResultsInFailureWithTimeout", func(t *testing.T) {
 		s.tc.setTimedOut(true, idleTimeout)
-		detail := s.a.endTaskResponse(s.ctx, s.tc, evergreen.TaskFailed, "message")
+		detail := s.a.endTaskResponse(s.ctx, s.tc, evergreen.TaskFailed, systemFailureDescription)
 		s.True(detail.TimedOut)
 		s.Equal(evergreen.TaskFailed, detail.Status)
-		s.Equal("message", detail.Description)
+		s.Equal(systemFailureDescription, detail.Description)
 	})
 	s.T().Run("TaskClearsIdleTimeoutAndFailsResultsInFailureWithoutTimeout", func(t *testing.T) {
 		s.tc.setTimedOut(false, idleTimeout)
-		detail := s.a.endTaskResponse(s.ctx, s.tc, evergreen.TaskFailed, "message")
+		defer s.tc.setTimedOut(false, "")
+		detail := s.a.endTaskResponse(s.ctx, s.tc, evergreen.TaskFailed, systemFailureDescription)
 		s.False(detail.TimedOut)
 		s.Equal(evergreen.TaskFailed, detail.Status)
-		s.Equal("message", detail.Description)
+		s.Equal(systemFailureDescription, detail.Description)
+	})
+	s.T().Run("TaskClearsIdleTimeoutAndTheTaskAlreadyFinishedRunningResultsInSuccessWithoutTimeout", func(t *testing.T) {
+		// Simulate a (rare) scenario where the idle timeout is reached, but the
+		// last command in the main block already finished. It does record that
+		// the timeout occurred, but the task commands nonetheless still
+		// succeeded.
+		s.tc.setTimedOut(true, idleTimeout)
+		defer s.tc.setTimedOut(false, "")
+		detail := s.a.endTaskResponse(s.ctx, s.tc, evergreen.TaskSucceeded, "")
+		s.True(detail.TimedOut)
+		s.Equal(evergreen.TaskSucceeded, detail.Status)
+		s.Empty(detail.Description)
 	})
 }
 

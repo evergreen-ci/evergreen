@@ -877,8 +877,8 @@ func (a *Agent) runEndTaskSync(ctx context.Context, tc *taskContext, detail *api
 	_ = a.runCommandsInBlock(ctx, tc, taskSync)
 }
 
-func (a *Agent) handleTaskResponse(ctx context.Context, tc *taskContext, status string, description string) (bool, error) {
-	resp, err := a.finishTask(ctx, tc, status, description)
+func (a *Agent) handleTaskResponse(ctx context.Context, tc *taskContext, status string, systemFailureDescription string) (bool, error) {
+	resp, err := a.finishTask(ctx, tc, status, systemFailureDescription)
 	if err != nil {
 		return false, errors.Wrap(err, "marking task complete")
 	}
@@ -914,8 +914,8 @@ func (a *Agent) handleTimeoutAndOOM(ctx context.Context, tc *taskContext, status
 
 // finishTask finishes up a running task. It runs any post-task command blocks
 // such as timeout and post, then sends the final end task response.
-func (a *Agent) finishTask(ctx context.Context, tc *taskContext, status string, description string) (*apimodels.EndTaskResponse, error) {
-	detail := a.endTaskResponse(ctx, tc, status, description)
+func (a *Agent) finishTask(ctx context.Context, tc *taskContext, status string, systemFailureDescription string) (*apimodels.EndTaskResponse, error) {
+	detail := a.endTaskResponse(ctx, tc, status, systemFailureDescription)
 	switch detail.Status {
 	case evergreen.TaskSucceeded:
 		a.handleTimeoutAndOOM(ctx, tc, status)
@@ -980,8 +980,8 @@ func (a *Agent) finishTask(ctx context.Context, tc *taskContext, status string, 
 	return resp, nil
 }
 
-func (a *Agent) endTaskResponse(ctx context.Context, tc *taskContext, status string, description string) *apimodels.TaskEndDetail {
-	userDefinedDescription := description
+func (a *Agent) endTaskResponse(ctx context.Context, tc *taskContext, status string, systemFailureDescription string) *apimodels.TaskEndDetail {
+	description := systemFailureDescription
 	var userDefinedFailureType string
 	if userEndTaskResp := tc.getUserEndTaskResponse(); userEndTaskResp != nil {
 		tc.logger.Task().Infof("Task status set to '%s' with HTTP endpoint.", userEndTaskResp.Status)
@@ -995,7 +995,7 @@ func (a *Agent) endTaskResponse(ctx context.Context, tc *taskContext, status str
 			if len(userEndTaskResp.Description) > endTaskMessageLimit {
 				tc.logger.Task().Warningf("Description from endpoint is too long to set (%d character limit), using default description.", endTaskMessageLimit)
 			} else {
-				userDefinedDescription = userEndTaskResp.Description
+				description = userEndTaskResp.Description
 			}
 
 			if userEndTaskResp.Type != "" && !utility.StringSliceContains(evergreen.ValidCommandTypes, userEndTaskResp.Type) {
@@ -1007,11 +1007,10 @@ func (a *Agent) endTaskResponse(ctx context.Context, tc *taskContext, status str
 	}
 
 	detail := &apimodels.TaskEndDetail{
-		OOMTracker:  tc.getOomTrackerInfo(),
-		Description: description,
-		TraceID:     tc.traceID,
+		OOMTracker: tc.getOomTrackerInfo(),
+		TraceID:    tc.traceID,
 	}
-	setEndTaskFailureDetails(tc, detail, status, userDefinedDescription, userDefinedFailureType)
+	setEndTaskFailureDetails(tc, detail, status, description, userDefinedFailureType)
 	if tc.taskConfig != nil {
 		detail.Modules.Prefixes = tc.taskConfig.ModulePaths
 	}
