@@ -2377,18 +2377,19 @@ func (a *APISplunkConnectionInfo) ToService() send.SplunkConnectionInfo {
 }
 
 type APIUIConfig struct {
-	Url            *string  `json:"url"`
-	HelpUrl        *string  `json:"help_url"`
-	UIv2Url        *string  `json:"uiv2_url"`
-	ParsleyUrl     *string  `json:"parsley_url"`
-	HttpListenAddr *string  `json:"http_listen_addr"`
-	Secret         *string  `json:"secret"`
-	DefaultProject *string  `json:"default_project"`
-	CacheTemplates bool     `json:"cache_templates"`
-	CsrfKey        *string  `json:"csrf_key"`
-	CORSOrigins    []string `json:"cors_origins"`
-	LoginDomain    *string  `json:"login_domain"`
-	UserVoice      *string  `json:"userVoice"`
+	Url                       *string  `json:"url"`
+	HelpUrl                   *string  `json:"help_url"`
+	UIv2Url                   *string  `json:"uiv2_url"`
+	ParsleyUrl                *string  `json:"parsley_url"`
+	HttpListenAddr            *string  `json:"http_listen_addr"`
+	Secret                    *string  `json:"secret"`
+	DefaultProject            *string  `json:"default_project"`
+	CacheTemplates            bool     `json:"cache_templates"`
+	CsrfKey                   *string  `json:"csrf_key"`
+	CORSOrigins               []string `json:"cors_origins"`
+	FileStreamingContentTypes []string `json:"file_streaming_content_types"`
+	LoginDomain               *string  `json:"login_domain"`
+	UserVoice                 *string  `json:"userVoice"`
 }
 
 func (a *APIUIConfig) BuildFromService(h interface{}) error {
@@ -2406,6 +2407,7 @@ func (a *APIUIConfig) BuildFromService(h interface{}) error {
 		a.CORSOrigins = v.CORSOrigins
 		a.LoginDomain = utility.ToStringPtr(v.LoginDomain)
 		a.UserVoice = utility.ToStringPtr(v.UserVoice)
+		a.FileStreamingContentTypes = v.FileStreamingContentTypes
 	default:
 		return errors.Errorf("programmatic error: expected UI config but got type %T", h)
 	}
@@ -2414,18 +2416,19 @@ func (a *APIUIConfig) BuildFromService(h interface{}) error {
 
 func (a *APIUIConfig) ToService() (interface{}, error) {
 	return evergreen.UIConfig{
-		Url:            utility.FromStringPtr(a.Url),
-		HelpUrl:        utility.FromStringPtr(a.HelpUrl),
-		UIv2Url:        utility.FromStringPtr(a.UIv2Url),
-		ParsleyUrl:     utility.FromStringPtr(a.ParsleyUrl),
-		HttpListenAddr: utility.FromStringPtr(a.HttpListenAddr),
-		Secret:         utility.FromStringPtr(a.Secret),
-		DefaultProject: utility.FromStringPtr(a.DefaultProject),
-		CacheTemplates: a.CacheTemplates,
-		CsrfKey:        utility.FromStringPtr(a.CsrfKey),
-		CORSOrigins:    a.CORSOrigins,
-		LoginDomain:    utility.FromStringPtr(a.LoginDomain),
-		UserVoice:      utility.FromStringPtr(a.UserVoice),
+		Url:                       utility.FromStringPtr(a.Url),
+		HelpUrl:                   utility.FromStringPtr(a.HelpUrl),
+		UIv2Url:                   utility.FromStringPtr(a.UIv2Url),
+		ParsleyUrl:                utility.FromStringPtr(a.ParsleyUrl),
+		HttpListenAddr:            utility.FromStringPtr(a.HttpListenAddr),
+		Secret:                    utility.FromStringPtr(a.Secret),
+		DefaultProject:            utility.FromStringPtr(a.DefaultProject),
+		CacheTemplates:            a.CacheTemplates,
+		CsrfKey:                   utility.FromStringPtr(a.CsrfKey),
+		CORSOrigins:               a.CORSOrigins,
+		FileStreamingContentTypes: a.FileStreamingContentTypes,
+		LoginDomain:               utility.FromStringPtr(a.LoginDomain),
+		UserVoice:                 utility.FromStringPtr(a.UserVoice),
 	}, nil
 }
 

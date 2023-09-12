@@ -118,7 +118,7 @@ func (c *shellExec) Execute(ctx context.Context, _ client.Communicator, logger c
 	logger.Execution().Debug("Preparing script...")
 
 	var err error
-	if err = c.doExpansions(conf.Expansions); err != nil {
+	if err = c.doExpansions(&conf.Expansions); err != nil {
 		return errors.WithStack(err)
 	}
 
@@ -140,7 +140,7 @@ func (c *shellExec) Execute(ctx context.Context, _ client.Communicator, logger c
 		taskID:                 conf.Task.Id,
 		workingDir:             c.WorkingDir,
 		tmpDir:                 taskTmpDir,
-		expansions:             *conf.Expansions,
+		expansions:             conf.Expansions,
 		includeExpansionsInEnv: c.IncludeExpansionsInEnv,
 		addExpansionsToEnv:     c.AddExpansionsToEnv,
 	})

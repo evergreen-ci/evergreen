@@ -101,7 +101,7 @@ func TestS3PushExecute(t *testing.T) {
 
 			c.ExcludeFilter = "${exclude_filter}"
 			excludeFilterExpansion := "expanded_exclude_filter"
-			conf.Expansions = util.NewExpansions(map[string]string{
+			conf.Expansions = *util.NewExpansions(map[string]string{
 				"exclude_filter": excludeFilterExpansion,
 			})
 			assert.NoError(t, c.Execute(ctx, comm, logger, conf))
@@ -127,17 +127,17 @@ func TestS3PushExecute(t *testing.T) {
 			ctx, cancel := context.WithCancel(context.Background())
 			defer cancel()
 			conf := &internal.TaskConfig{
-				Task: &task.Task{
+				Task: task.Task{
 					Id:           "id",
 					Secret:       "secret",
 					Version:      "version",
 					BuildVariant: "build_variant",
 					DisplayName:  "display_name",
 				},
-				BuildVariant: &model.BuildVariant{
+				BuildVariant: model.BuildVariant{
 					Name: "build_variant",
 				},
-				ProjectRef: &model.ProjectRef{
+				ProjectRef: model.ProjectRef{
 					Id: "project_identifier",
 					TaskSync: model.TaskSyncOptions{
 						ConfigEnabled: utility.TruePtr(),

@@ -38,9 +38,9 @@ func (s *generateSuite) SetupTest() {
 
 	s.comm = client.NewMock("http://localhost.com")
 	s.conf = &internal.TaskConfig{
-		Expansions: &util.Expansions{},
-		Task:       &task.Task{Id: "mock_id", Secret: "mock_secret"},
-		Project:    &model.Project{}}
+		Expansions: util.Expansions{},
+		Task:       task.Task{Id: "mock_id", Secret: "mock_secret"},
+		Project:    model.Project{}}
 	s.logger, err = s.comm.GetLoggerProducer(s.ctx, client.TaskData{ID: s.conf.Task.Id, Secret: s.conf.Task.Secret}, nil)
 	s.NoError(err)
 	s.g = &generateTask{}
@@ -166,7 +166,7 @@ func (s *generateSuite) TestNoErrorWithValidExpansions() {
 	tmpFileBase := filepath.Base(tmpFile)
 	defer os.Remove(tmpFile)
 
-	s.conf.Expansions = &util.Expansions{"bar": tmpFileBase}
+	s.conf.Expansions = util.Expansions{"bar": tmpFileBase}
 
 	n, err := f.WriteString(s.json)
 	s.NoError(err)
