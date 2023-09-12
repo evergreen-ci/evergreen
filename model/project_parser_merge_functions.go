@@ -142,7 +142,7 @@ func (pp *ParserProject) mergeUnique(toMerge *ParserProject) error {
 
 	if pp.BisectStepback != nil && toMerge.BisectStepback != nil {
 		catcher.New("bisect stepback can only be defined in one YAML")
-	} else if toMerge.Stepback != nil {
+	} else if toMerge.BisectStepback != nil {
 		pp.BisectStepback = toMerge.BisectStepback
 	}
 
