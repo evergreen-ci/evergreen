@@ -296,8 +296,8 @@ func (a *Agent) processNextTask(ctx context.Context, nt *apimodels.NextTaskRespo
 		grip.Notice("Next task response indicates agent should exit.")
 		return processNextResponse{shouldExit: true}, nil
 	}
-	// if the host's current task group is finished we teardown
 	if nt.ShouldTeardownGroup {
+		// Tear down the task gropu if the task group is finished.
 		a.runTeardownGroupCommands(ctx, tc)
 		return processNextResponse{
 			// Running the teardown group commands implies exiting the group, so
@@ -308,6 +308,9 @@ func (a *Agent) processNextTask(ctx context.Context, nt *apimodels.NextTaskRespo
 	}
 
 	if nt.TaskId == "" && needTeardownGroup {
+		// Tear down the task group if there's no next task to run (i.e. there's
+		// no more tasks in the task group), and the agent just finished a task
+		// or task group.
 		a.runTeardownGroupCommands(ctx, tc)
 		return processNextResponse{
 			needTeardownGroup: false,
@@ -423,10 +426,6 @@ func (a *Agent) setupTask(agentCtx, setupCtx context.Context, initialTC *taskCon
 	}
 
 	if !tc.ranSetupGroup {
-		// kim: TODO: verify that agent:
-		// - Clears working directory between regular tasks and creates new one.
-		// - Does not clear working directory between task group tasks and
-		// reuses, but then deletes when it gets to a regular task.
 		taskDirectory, err = a.createTaskDirectory(tc)
 		if err != nil {
 			return a.handleSetupError(setupCtx, tc, errors.Wrap(err, "creating task directory"))
