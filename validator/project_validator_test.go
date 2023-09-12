@@ -1053,7 +1053,10 @@ func TestCheckTaskRuns(t *testing.T) {
 	})
 	Convey("When a task is patch-only and also has allowed requesters, a warning should be thrown", t, func() {
 		project := makeProject()
-		project.BuildVariants[0].Tasks[0].AllowedRequesters = []string{evergreen.PatchVersionRequester, evergreen.RepotrackerVersionRequester}
+		project.BuildVariants[0].Tasks[0].AllowedRequesters = []evergreen.UserRequester{
+			evergreen.PatchVersionUserRequester,
+			evergreen.RepotrackerVersionUserRequester,
+		}
 		project.BuildVariants[0].Tasks[0].PatchOnly = utility.TruePtr()
 		errs := checkTaskRuns(project)
 		So(len(errs), ShouldEqual, 1)
@@ -1061,7 +1064,10 @@ func TestCheckTaskRuns(t *testing.T) {
 	})
 	Convey("When a task is not patchable and also has allowed requesters, a warning should be thrown", t, func() {
 		project := makeProject()
-		project.BuildVariants[0].Tasks[0].AllowedRequesters = []string{evergreen.PatchVersionRequester, evergreen.RepotrackerVersionRequester}
+		project.BuildVariants[0].Tasks[0].AllowedRequesters = []evergreen.UserRequester{
+			evergreen.PatchVersionUserRequester,
+			evergreen.RepotrackerVersionUserRequester,
+		}
 		project.BuildVariants[0].Tasks[0].Patchable = utility.FalsePtr()
 		errs := checkTaskRuns(project)
 		So(len(errs), ShouldEqual, 1)
@@ -1069,7 +1075,10 @@ func TestCheckTaskRuns(t *testing.T) {
 	})
 	Convey("When a task is git-tag-only and also has allowed requesters, a warning should be thrown", t, func() {
 		project := makeProject()
-		project.BuildVariants[0].Tasks[0].AllowedRequesters = []string{evergreen.PatchVersionRequester, evergreen.RepotrackerVersionRequester}
+		project.BuildVariants[0].Tasks[0].AllowedRequesters = []evergreen.UserRequester{
+			evergreen.PatchVersionUserRequester,
+			evergreen.RepotrackerVersionUserRequester,
+		}
 		project.BuildVariants[0].Tasks[0].GitTagOnly = utility.TruePtr()
 		errs := checkTaskRuns(project)
 		So(len(errs), ShouldEqual, 1)
@@ -1077,10 +1086,29 @@ func TestCheckTaskRuns(t *testing.T) {
 	})
 	Convey("When a task is allowed for git tags and also has allowed requesters, a warning should be thrown", t, func() {
 		project := makeProject()
-		project.BuildVariants[0].Tasks[0].AllowedRequesters = []string{evergreen.GitTagRequester, evergreen.RepotrackerVersionRequester}
+		project.BuildVariants[0].Tasks[0].AllowedRequesters = []evergreen.UserRequester{
+			evergreen.GitTagUserRequester,
+			evergreen.RepotrackerVersionUserRequester,
+		}
 		project.BuildVariants[0].Tasks[0].AllowForGitTag = utility.TruePtr()
 		errs := checkTaskRuns(project)
 		So(len(errs), ShouldEqual, 1)
+		So(errs[0].Level, ShouldEqual, Warning)
+	})
+	Convey("When a task has a valid allowed requester, no warning or error should be thrown", t, func() {
+		project := makeProject()
+		for _, userRequester := range evergreen.AllUserRequesterTypes {
+			project.BuildVariants[0].Tasks[0].AllowedRequesters = []evergreen.UserRequester{userRequester}
+			errs := checkTaskRuns(project)
+			So(len(errs), ShouldEqual, 0)
+		}
+	})
+	Convey("When a task has an invalid allowed_requester, a warning should be thrown", t, func() {
+		project := makeProject()
+		project.BuildVariants[0].Tasks[0].AllowedRequesters = []evergreen.UserRequester{"foobar"}
+		errs := checkTaskRuns(project)
+		So(len(errs), ShouldEqual, 1)
+		So(errs[0].Message, ShouldContainSubstring, "invalid allowed_requester")
 		So(errs[0].Level, ShouldEqual, Warning)
 	})
 }

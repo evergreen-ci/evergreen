@@ -1374,6 +1374,7 @@ func validateProjectTaskIdsAndTags(project *model.Project) ValidationErrors {
 func checkTaskRuns(project *model.Project) ValidationErrors {
 	var errs ValidationErrors
 	for _, bvtu := range project.FindAllBuildVariantTasks() {
+		var hasValidAllowedRequester bool
 		if len(bvtu.AllowedRequesters) != 0 {
 			if bvtu.PatchOnly != nil {
 				errs = append(errs, ValidationError{
@@ -1403,15 +1404,29 @@ func checkTaskRuns(project *model.Project) ValidationErrors {
 						bvtu.Name, bvtu.Variant),
 				})
 			}
+			for _, requester := range bvtu.AllowedRequesters {
+				if requester.Validate() != nil {
+					errs = append(errs, ValidationError{
+						Level: Warning,
+						Message: fmt.Sprintf("task '%s' in build variant '%s' specifies invalid allowed_requester '%s'",
+							bvtu.Name, bvtu.Variant, requester),
+					})
+				} else {
+					hasValidAllowedRequester = true
+				}
+			}
+		} else {
+			hasValidAllowedRequester = true
 		}
-		if bvtu.SkipOnPatchBuild() && bvtu.SkipOnNonPatchBuild() {
+
+		if hasValidAllowedRequester && bvtu.SkipOnPatchBuild() && bvtu.SkipOnNonPatchBuild() {
 			errs = append(errs, ValidationError{
 				Level: Warning,
 				Message: fmt.Sprintf("task '%s' in build variant '%s' will never run because it skips both patch builds and non-patch builds",
 					bvtu.Name, bvtu.Variant),
 			})
 		}
-		if bvtu.SkipOnGitTagBuild() && bvtu.SkipOnNonGitTagBuild() {
+		if hasValidAllowedRequester && bvtu.SkipOnGitTagBuild() && bvtu.SkipOnNonGitTagBuild() {
 			errs = append(errs, ValidationError{
 				Level: Warning,
 				Message: fmt.Sprintf("task '%s' in build variant '%s' will never run because it skips both git tag builds and non git tag builds",
@@ -1419,14 +1434,14 @@ func checkTaskRuns(project *model.Project) ValidationErrors {
 			})
 		}
 		// Git-tag-only builds cannot run in patches.
-		if bvtu.SkipOnNonGitTagBuild() && bvtu.SkipOnNonPatchBuild() {
+		if hasValidAllowedRequester && bvtu.SkipOnNonGitTagBuild() && bvtu.SkipOnNonPatchBuild() {
 			errs = append(errs, ValidationError{
 				Level: Warning,
 				Message: fmt.Sprintf("task '%s' in build variant '%s' will never run because it only runs for git tag builds but also is patch-only",
 					bvtu.Name, bvtu.Variant),
 			})
 		}
-		if bvtu.SkipOnNonGitTagBuild() && utility.FromBoolPtr(bvtu.Patchable) {
+		if hasValidAllowedRequester && bvtu.SkipOnNonGitTagBuild() && utility.FromBoolPtr(bvtu.Patchable) {
 			errs = append(errs, ValidationError{
 				Level: Warning,
 				Message: fmt.Sprintf("task '%s' in build variant '%s' cannot be patchable if it only runs for git tag builds",
