@@ -981,7 +981,7 @@ func (a *Agent) finishTask(ctx context.Context, tc *taskContext, status string, 
 }
 
 func (a *Agent) endTaskResponse(ctx context.Context, tc *taskContext, status string, systemFailureDescription string) *apimodels.TaskEndDetail {
-	description := systemFailureDescription
+	highestPriorityDescription := systemFailureDescription
 	var userDefinedFailureType string
 	if userEndTaskResp := tc.getUserEndTaskResponse(); userEndTaskResp != nil {
 		tc.logger.Task().Infof("Task status set to '%s' with HTTP endpoint.", userEndTaskResp.Status)
@@ -995,7 +995,7 @@ func (a *Agent) endTaskResponse(ctx context.Context, tc *taskContext, status str
 			if len(userEndTaskResp.Description) > endTaskMessageLimit {
 				tc.logger.Task().Warningf("Description from endpoint is too long to set (%d character limit), using default description.", endTaskMessageLimit)
 			} else {
-				description = userEndTaskResp.Description
+				highestPriorityDescription = userEndTaskResp.Description
 			}
 
 			if userEndTaskResp.Type != "" && !utility.StringSliceContains(evergreen.ValidCommandTypes, userEndTaskResp.Type) {
@@ -1010,7 +1010,7 @@ func (a *Agent) endTaskResponse(ctx context.Context, tc *taskContext, status str
 		OOMTracker: tc.getOomTrackerInfo(),
 		TraceID:    tc.traceID,
 	}
-	setEndTaskFailureDetails(tc, detail, status, description, userDefinedFailureType)
+	setEndTaskFailureDetails(tc, detail, status, highestPriorityDescription, userDefinedFailureType)
 	if tc.taskConfig != nil {
 		detail.Modules.Prefixes = tc.taskConfig.ModulePaths
 	}
