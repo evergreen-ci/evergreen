@@ -2295,7 +2295,7 @@ func TestMergeUnique(t *testing.T) {
 	}
 
 	add := &ParserProject{
-		StepbackType:      utility.ToStringPtr("linear"),
+		BisectStepback:    utility.ToBoolPtr(true),
 		PreTimeoutSecs:    utility.ToIntPtr(1),
 		PostTimeoutSecs:   utility.ToIntPtr(1),
 		PreErrorFailsTask: utility.ToBoolPtr(true),
@@ -2311,7 +2311,7 @@ func TestMergeUnique(t *testing.T) {
 	assert.NotNil(t, main.BatchTime)
 	assert.NotNil(t, main.OomTracker)
 	assert.NotNil(t, main.DisplayName)
-	assert.NotNil(t, main.StepbackType)
+	assert.NotNil(t, main.BisectStepback)
 	assert.NotNil(t, main.PreTimeoutSecs)
 	assert.NotNil(t, main.PostTimeoutSecs)
 	assert.NotNil(t, main.PreErrorFailsTask)
