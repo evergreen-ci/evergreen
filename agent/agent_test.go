@@ -2,6 +2,9 @@ package agent
 
 import (
 	"context"
+	"os"
+	"path/filepath"
+	"runtime"
 	"strings"
 	"testing"
 	"time"
@@ -54,17 +57,42 @@ type AgentSuite struct {
 	task             task.Task
 	ctx              context.Context
 	canceler         context.CancelFunc
-	tmpDirName       string
+	suiteTmpDirName  string
+	testTmpDirName   string
 }
 
 func TestAgentSuite(t *testing.T) {
 	suite.Run(t, new(AgentSuite))
 }
 
+func (s *AgentSuite) SetupSuite() {
+	s.suiteTmpDirName = s.T().TempDir()
+}
+
+func (s *AgentSuite) TearDownSuite() {
+	if runtime.GOOS == "windows" {
+		// This is a hack to give extra time for processes in Windows to finish
+		// using the temporary working directory before the Go testing framework
+		// cna attempt to clean it up. When using (testing.T).TempDir, the Go
+		// testing framework will automatically clean up the directory at the
+		// end of the test, and will fail the test if it cannot clean it up.
+		// Furthermore, some agent tests are intentionally testing that the
+		// agent will continue without waiting for a command after a context
+		// error. Unfortunately, this means that by the time the test is
+		// cleaning up, there may still be lingering processes accessing the
+		// temporary task working directory. In Windows, if a process is still
+		// using the directory, it can cause the Go testing framework to fail to
+		// remove the directory, which fails the test. Therefore, the sleep here
+		// gives the processes time to all shut down and stop using the
+		// temporary working directory.
+		time.Sleep(10 * time.Second)
+	}
+}
+
 func (s *AgentSuite) SetupTest() {
 	var err error
 
-	s.tmpDirName = s.T().TempDir()
+	s.testTmpDirName, err = os.MkdirTemp(s.suiteTmpDirName, filepath.Base(s.T().Name()))
 	s.Require().NoError(err)
 
 	s.a = &Agent{
@@ -74,7 +102,7 @@ func (s *AgentSuite) SetupTest() {
 			StatusPort:       2286,
 			LogOutput:        LogOutputStdout,
 			LogPrefix:        "agent",
-			WorkingDirectory: s.tmpDirName,
+			WorkingDirectory: s.testTmpDirName,
 		},
 		comm:   client.NewMock("url"),
 		tracer: otel.GetTracerProvider().Tracer("noop_tracer"),
@@ -101,7 +129,7 @@ func (s *AgentSuite) SetupTest() {
 		},
 		BuildVariants: []model.BuildVariant{{Name: bvName}},
 	}
-	taskConfig, err := internal.NewTaskConfig(s.tmpDirName, &apimodels.DistroView{}, project, &s.task, &model.ProjectRef{
+	taskConfig, err := internal.NewTaskConfig(s.testTmpDirName, &apimodels.DistroView{}, project, &s.task, &model.ProjectRef{
 		Id:         "project_id",
 		Identifier: "project_identifier",
 	}, &patch.Patch{}, util.Expansions{})
@@ -131,18 +159,6 @@ func (s *AgentSuite) SetupTest() {
 
 func (s *AgentSuite) TearDownTest() {
 	s.canceler()
-	// This is intentionally not using os.RemoveAll to prevent tests on Windows
-	// from flaking. Some agent tests are intentionally testing that the agent
-	// will move on without waiting after a context error, even if commands are
-	// taking a long time to finish. This means that by the time the test is
-	// tearing down, there may still be lingering commands accessing the
-	// directory. In Windows, if a process is still using the directory, it can
-	// cause os.RemoveAll to fail. However, for some reason, the
-	// (Agent).removeAll still works. The best guesses here for why it works is
-	// that either 1. the chmod does something in Windows to make the directory
-	// removal stop erroring, or 2. the chmod delays the directory removal for
-	// just long enough that the lingering process can finish.
-	s.NoError(s.a.removeAll(s.tmpDirName))
 }
 
 func (s *AgentSuite) TestNextTaskResponseShouldExit() {
@@ -739,7 +755,7 @@ post:
 		TaskId:     s.tc.task.ID,
 		TaskSecret: s.tc.task.Secret,
 	}
-	_, _, err := s.a.runTask(s.ctx, s.tc, nextTask, false, s.tmpDirName)
+	_, _, err := s.a.runTask(s.ctx, s.tc, nextTask, false, s.testTmpDirName)
 
 	s.NoError(err)
 	s.Equal(evergreen.TaskFailed, s.mockCommunicator.EndTaskResult.Detail.Status)
@@ -789,7 +805,7 @@ post:
 		TaskId:     s.tc.task.ID,
 		TaskSecret: s.tc.task.Secret,
 	}
-	_, _, err := s.a.runTask(s.ctx, s.tc, nextTask, false, s.tmpDirName)
+	_, _, err := s.a.runTask(s.ctx, s.tc, nextTask, false, s.testTmpDirName)
 
 	s.NoError(err)
 	s.Equal(evergreen.TaskSucceeded, s.mockCommunicator.EndTaskResult.Detail.Status)
@@ -837,7 +853,7 @@ post:
 		TaskId:     s.tc.task.ID,
 		TaskSecret: s.tc.task.Secret,
 	}
-	_, _, err := s.a.runTask(s.ctx, s.tc, nextTask, false, s.tmpDirName)
+	_, _, err := s.a.runTask(s.ctx, s.tc, nextTask, false, s.testTmpDirName)
 
 	s.NoError(err)
 	s.Equal(evergreen.TaskSucceeded, s.mockCommunicator.EndTaskResult.Detail.Status)
@@ -886,7 +902,7 @@ post:
 		TaskId:     s.tc.task.ID,
 		TaskSecret: s.tc.task.Secret,
 	}
-	_, _, err := s.a.runTask(s.ctx, s.tc, nextTask, false, s.tmpDirName)
+	_, _, err := s.a.runTask(s.ctx, s.tc, nextTask, false, s.testTmpDirName)
 
 	s.NoError(err)
 	s.Equal(evergreen.TaskFailed, s.mockCommunicator.EndTaskResult.Detail.Status)
@@ -931,7 +947,7 @@ post:
 		TaskId:     s.tc.task.ID,
 		TaskSecret: s.tc.task.Secret,
 	}
-	_, _, err := s.a.runTask(s.ctx, s.tc, nextTask, false, s.tmpDirName)
+	_, _, err := s.a.runTask(s.ctx, s.tc, nextTask, false, s.testTmpDirName)
 
 	s.NoError(err)
 	s.Equal(evergreen.TaskFailed, s.mockCommunicator.EndTaskResult.Detail.Status)
@@ -1056,7 +1072,7 @@ post:
 		TaskId:     s.tc.task.ID,
 		TaskSecret: s.tc.task.Secret,
 	}
-	_, _, err := s.a.runTask(s.ctx, s.tc, nextTask, false, s.tmpDirName)
+	_, _, err := s.a.runTask(s.ctx, s.tc, nextTask, false, s.testTmpDirName)
 	s.NoError(err)
 	s.Equal(evergreen.TaskSucceeded, s.mockCommunicator.EndTaskResult.Detail.Status)
 	s.True(s.mockCommunicator.EndTaskResult.Detail.OOMTracker.Detected)
@@ -1329,7 +1345,7 @@ tasks:
 		TaskId:     s.tc.task.ID,
 		TaskSecret: s.tc.task.Secret,
 	}
-	_, _, err := s.a.runTask(s.ctx, s.tc, nextTask, false, s.tmpDirName)
+	_, _, err := s.a.runTask(s.ctx, s.tc, nextTask, false, s.testTmpDirName)
 	s.NoError(err)
 
 	s.Equal(resp.Status, s.mockCommunicator.EndTaskResult.Detail.Status, "should set user-defined task status")
@@ -1371,7 +1387,7 @@ tasks:
 		TaskId:     s.tc.task.ID,
 		TaskSecret: s.tc.task.Secret,
 	}
-	_, _, err := s.a.runTask(s.ctx, s.tc, nextTask, false, s.tmpDirName)
+	_, _, err := s.a.runTask(s.ctx, s.tc, nextTask, false, s.testTmpDirName)
 	s.NoError(err)
 
 	s.Equal(resp.Status, s.mockCommunicator.EndTaskResult.Detail.Status, "should set user-defined task status")
@@ -1417,7 +1433,7 @@ tasks:
 		TaskId:     s.tc.task.ID,
 		TaskSecret: s.tc.task.Secret,
 	}
-	_, _, err := s.a.runTask(s.ctx, s.tc, nextTask, false, s.tmpDirName)
+	_, _, err := s.a.runTask(s.ctx, s.tc, nextTask, false, s.testTmpDirName)
 	s.NoError(err)
 
 	s.Equal(resp.Status, s.mockCommunicator.EndTaskResult.Detail.Status, "should set user-defined task status")
@@ -2008,7 +2024,7 @@ timeout:
 		TaskId:     s.tc.task.ID,
 		TaskSecret: s.tc.task.Secret,
 	}
-	_, _, err := s.a.runTask(s.ctx, s.tc, nextTask, false, s.tmpDirName)
+	_, _, err := s.a.runTask(s.ctx, s.tc, nextTask, false, s.testTmpDirName)
 	s.NoError(err)
 
 	s.WithinDuration(start, time.Now(), 4*time.Second, "abort should prevent commands in the main block from continuing to run")
@@ -2067,7 +2083,7 @@ timeout:
 		TaskSecret: s.tc.task.Secret,
 		TaskGroup:  taskGroup,
 	}
-	_, _, err := s.a.runTask(s.ctx, s.tc, nextTask, false, s.tmpDirName)
+	_, _, err := s.a.runTask(s.ctx, s.tc, nextTask, false, s.testTmpDirName)
 	s.NoError(err)
 
 	s.WithinDuration(start, time.Now(), 4*time.Second, "abort should prevent commands in the main block from continuing to run")
