@@ -463,6 +463,7 @@ func (a *Agent) handleSetupError(ctx context.Context, tc *taskContext, err error
 	catcher.Wrap(err, "handling task response")
 	return tc, shouldExit, catcher.Resolve()
 }
+
 func shouldRunSetupGroup(nextTask *apimodels.NextTaskResponse, tc *taskContext) bool {
 	var previousTaskGroup string
 	if tc.taskConfig != nil && tc.taskConfig.TaskGroup != nil {
