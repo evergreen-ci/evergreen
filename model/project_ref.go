@@ -60,6 +60,7 @@ type ProjectRef struct {
 	RepotrackerDisabled    *bool               `bson:"repotracker_disabled,omitempty" json:"repotracker_disabled,omitempty" yaml:"repotracker_disabled"`
 	DispatchingDisabled    *bool               `bson:"dispatching_disabled,omitempty" json:"dispatching_disabled,omitempty" yaml:"dispatching_disabled"`
 	StepbackDisabled       *bool               `bson:"stepback_disabled,omitempty" json:"stepback_disabled,omitempty" yaml:"stepback_disabled"`
+	StepbackBisect         *bool               `bson:"stepback_bisect,omitempty" json:"stepback_bisect,omitempty" yaml:"stepback_bisect"`
 	VersionControlEnabled  *bool               `bson:"version_control_enabled,omitempty" json:"version_control_enabled,omitempty" yaml:"version_control_enabled"`
 	PRTestingEnabled       *bool               `bson:"pr_testing_enabled,omitempty" json:"pr_testing_enabled,omitempty" yaml:"pr_testing_enabled"`
 	ManualPRTestingEnabled *bool               `bson:"manual_pr_testing_enabled,omitempty" json:"manual_pr_testing_enabled,omitempty" yaml:"manual_pr_testing_enabled"`
@@ -331,6 +332,7 @@ var (
 	projectRefPatchingDisabledKey         = bsonutil.MustHaveTag(ProjectRef{}, "PatchingDisabled")
 	projectRefDispatchingDisabledKey      = bsonutil.MustHaveTag(ProjectRef{}, "DispatchingDisabled")
 	projectRefStepbackDisabledKey         = bsonutil.MustHaveTag(ProjectRef{}, "StepbackDisabled")
+	projectRefStepbackBisectKey           = bsonutil.MustHaveTag(ProjectRef{}, "StepbackBisect")
 	projectRefVersionControlEnabledKey    = bsonutil.MustHaveTag(ProjectRef{}, "VersionControlEnabled")
 	projectRefNotifyOnFailureKey          = bsonutil.MustHaveTag(ProjectRef{}, "NotifyOnBuildFailure")
 	projectRefSpawnHostScriptPathKey      = bsonutil.MustHaveTag(ProjectRef{}, "SpawnHostScriptPath")
@@ -382,6 +384,10 @@ func (p *ProjectRef) IsPRTestingEnabled() bool {
 
 func (p *ProjectRef) IsStepbackDisabled() bool {
 	return utility.FromBoolPtr(p.StepbackDisabled)
+}
+
+func (p *ProjectRef) IsStepbackBisect() bool {
+	return utility.FromBoolPtr(p.StepbackBisect)
 }
 
 func (p *ProjectRef) IsAutoPRTestingEnabled() bool {
@@ -1966,6 +1972,7 @@ func SaveProjectPageForSection(projectId string, p *ProjectRef, section ProjectP
 			projectRefSpawnHostScriptPathKey:   p.SpawnHostScriptPath,
 			projectRefDispatchingDisabledKey:   p.DispatchingDisabled,
 			projectRefStepbackDisabledKey:      p.StepbackDisabled,
+			projectRefStepbackBisectKey:        p.StepbackBisect,
 			projectRefVersionControlEnabledKey: p.VersionControlEnabled,
 			ProjectRefDeactivatePreviousKey:    p.DeactivatePrevious,
 			projectRefRepotrackerDisabledKey:   p.RepotrackerDisabled,
