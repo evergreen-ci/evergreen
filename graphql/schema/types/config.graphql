@@ -6,6 +6,7 @@ For example, if the banner field is populated, then a sitewide banner will be sh
 type SpruceConfig {
   banner: String
   bannerTheme: String
+  containerPools: ContainerPoolsConfig
   githubOrgs: [String!]!
   jira: JiraConfig
   keys: [SSHKey!]!
@@ -13,6 +14,17 @@ type SpruceConfig {
   slack: SlackConfig
   spawnHost: SpawnHostConfig!
   ui: UIConfig
+}
+
+type ContainerPoolsConfig {
+  pools: [ContainerPool!]!
+}
+
+type ContainerPool {
+  id: String!
+  distro: String!
+  maxContainers: Int!
+  port: Int!
 }
 
 type UIConfig {

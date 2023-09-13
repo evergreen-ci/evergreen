@@ -1,0 +1,12 @@
+query {
+  spruceConfig {
+    containerPools {
+      pools {
+        id
+        distro
+        maxContainers
+        port
+      }
+    }
+  }
+}
