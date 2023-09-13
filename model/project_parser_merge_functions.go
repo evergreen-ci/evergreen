@@ -140,12 +140,6 @@ func (pp *ParserProject) mergeUnique(toMerge *ParserProject) error {
 		pp.Stepback = toMerge.Stepback
 	}
 
-	if pp.BisectStepback != nil && toMerge.BisectStepback != nil {
-		catcher.New("bisect stepback can only be defined in one YAML")
-	} else if toMerge.BisectStepback != nil {
-		pp.BisectStepback = toMerge.BisectStepback
-	}
-
 	if pp.BatchTime != nil && toMerge.BatchTime != nil {
 		catcher.New("batch time can only be defined in one YAML")
 	} else if toMerge.BatchTime != nil {

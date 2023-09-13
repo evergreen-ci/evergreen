@@ -78,7 +78,6 @@ type ParserProject struct {
 
 	// Beginning of ParserProject mergeable fields (this comment is used by the linter).
 	Stepback           *bool                      `yaml:"stepback,omitempty" bson:"stepback,omitempty"`
-	BisectStepback     *bool                      `yaml:"bisect_stepback,omitempty" bson:"bisect_stepback,omitempty"`
 	UnsetFunctionVars  *bool                      `yaml:"unset_function_vars,omitempty" bson:"unset_function_vars,omitempty"`
 	PreTimeoutSecs     *int                       `yaml:"pre_timeout_secs,omitempty" bson:"pre_timeout_secs,omitempty"`
 	PostTimeoutSecs    *int                       `yaml:"post_timeout_secs,omitempty" bson:"post_timeout_secs,omitempty"`
@@ -911,7 +910,6 @@ func TranslateProject(pp *ParserProject) (*Project, error) {
 	// Transfer top level fields
 	proj := &Project{
 		Stepback:           utility.FromBoolPtr(pp.Stepback),
-		BisectStepback:     utility.FromBoolPtr(pp.BisectStepback),
 		UnsetFunctionVars:  utility.FromBoolPtr(pp.UnsetFunctionVars),
 		PreTimeoutSecs:     utility.FromIntPtr(pp.PreTimeoutSecs),
 		PostTimeoutSecs:    utility.FromIntPtr(pp.PostTimeoutSecs),

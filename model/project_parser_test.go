@@ -2295,7 +2295,6 @@ func TestMergeUnique(t *testing.T) {
 	}
 
 	add := &ParserProject{
-		BisectStepback:    utility.ToBoolPtr(true),
 		PreTimeoutSecs:    utility.ToIntPtr(1),
 		PostTimeoutSecs:   utility.ToIntPtr(1),
 		PreErrorFailsTask: utility.ToBoolPtr(true),
@@ -2311,7 +2310,6 @@ func TestMergeUnique(t *testing.T) {
 	assert.NotNil(t, main.BatchTime)
 	assert.NotNil(t, main.OomTracker)
 	assert.NotNil(t, main.DisplayName)
-	assert.NotNil(t, main.BisectStepback)
 	assert.NotNil(t, main.PreTimeoutSecs)
 	assert.NotNil(t, main.PostTimeoutSecs)
 	assert.NotNil(t, main.PreErrorFailsTask)
@@ -2324,7 +2322,6 @@ func TestMergeUnique(t *testing.T) {
 func TestMergeUniqueFail(t *testing.T) {
 	main := &ParserProject{
 		Stepback:          utility.ToBoolPtr(true),
-		BisectStepback:    utility.ToBoolPtr(true),
 		BatchTime:         utility.ToIntPtr(1),
 		OomTracker:        utility.ToBoolPtr(true),
 		PreTimeoutSecs:    utility.ToIntPtr(1),
@@ -2339,7 +2336,6 @@ func TestMergeUniqueFail(t *testing.T) {
 
 	add := &ParserProject{
 		Stepback:          utility.ToBoolPtr(true),
-		BisectStepback:    utility.ToBoolPtr(true),
 		BatchTime:         utility.ToIntPtr(1),
 		OomTracker:        utility.ToBoolPtr(true),
 		PreTimeoutSecs:    utility.ToIntPtr(1),
@@ -2354,7 +2350,6 @@ func TestMergeUniqueFail(t *testing.T) {
 
 	err := main.mergeUnique(add)
 	assert.Contains(t, err.Error(), "stepback can only be defined in one YAML")
-	assert.Contains(t, err.Error(), "bisect stepback can only be defined in one YAML")
 	assert.Contains(t, err.Error(), "batch time can only be defined in one YAML")
 	assert.Contains(t, err.Error(), "OOM tracker can only be defined in one YAML")
 	assert.Contains(t, err.Error(), "pre timeout secs can only be defined in one YAML")
