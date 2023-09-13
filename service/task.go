@@ -648,7 +648,7 @@ func (uis *UIServer) taskFileRaw(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	fileName, _ := gimlet.GetVars(r)["file_name"]
+	fileName := gimlet.GetVars(r)["file_name"]
 	if fileName == "" {
 		uis.LoggedError(w, r, http.StatusBadRequest, errors.New("file name not specified"))
 		return
