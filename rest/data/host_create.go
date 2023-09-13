@@ -199,8 +199,8 @@ func GetHostCreateDistro(ctx context.Context, createHost apimodels.CreateHost) (
 			if d == nil {
 				return nil, errors.Errorf("distro '%s' not found", createHost.Distro)
 			}
-			d.Provider = evergreen.ProviderNameEc2OnDemand
 		}
+		d.Provider = evergreen.ProviderNameEc2OnDemand
 	}
 	// Do not provision task-spawned hosts.
 	d.BootstrapSettings.Method = distro.BootstrapMethodNone
