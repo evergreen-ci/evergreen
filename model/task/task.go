@@ -907,7 +907,7 @@ func (t *Task) cacheExpectedDuration() error {
 // to a pod.
 func (t *Task) MarkAsContainerDispatched(ctx context.Context, env evergreen.Environment, podID, agentVersion string) error {
 	dispatchedAt := time.Now()
-	output := t.getTaskOutputMetadata()
+	output := t.newTaskOutput()
 
 	query := ScheduledContainerTasksQuery()
 	query[IdKey] = t.Id
@@ -972,7 +972,7 @@ func (t *Task) MarkAsHostDispatchedWithContext(ctx context.Context, env evergree
 }
 
 func (t *Task) markAsHostDispatchedWithFunc(doUpdate func(update bson.M) error, hostID, distroID, agentRevision string, dispatchTime time.Time) error {
-	output := t.getTaskOutputMetadata()
+	output := t.newTaskOutput()
 
 	set := bson.M{
 		DispatchTimeKey:  dispatchTime,
@@ -1010,8 +1010,10 @@ func (t *Task) markAsHostDispatchedWithFunc(doUpdate func(update bson.M) error, 
 	return nil
 }
 
-// getTaskOutputMetadata returns the task output metadata for the task run.
-func (t *Task) getTaskOutputMetadata() *taskoutput.TaskOutput {
+// newTaskOutput returns a new task output with the most up-to-date
+// configuration for the task run. This function should only be used to set the
+// task output field upon task dispatch.
+func (t *Task) newTaskOutput() *taskoutput.TaskOutput {
 	if t.DisplayOnly {
 		return nil
 	}
@@ -1478,11 +1480,11 @@ func (t *Task) SetStepbackDepth(stepbackDepth int) error {
 // needed to support backwards compatibility for tasks that do not have the
 // output metadata saved in the database.
 func (t *Task) output() *taskoutput.TaskOutput {
-	if t.TaskOutput == nil && !t.DisplayOnly {
-		t.TaskOutput = &taskoutput.TaskOutput{}
+	if t.DisplayOnly {
+		return nil
 	}
 
-	return t.TaskOutput
+	return &taskoutput.TaskOutput{}
 }
 
 // GetTaskLogs returns the task's task logs with the given options.
