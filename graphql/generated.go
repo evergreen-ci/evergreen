@@ -771,11 +771,11 @@ type ComplexityRoot struct {
 	}
 
 	Permissions struct {
-		CanCreateDistro        func(childComplexity int) int
-		CanCreateProject       func(childComplexity int) int
-		CanUpdateAdminSettings func(childComplexity int) int
-		DistroPermissions      func(childComplexity int, options DistroPermissionsOptions) int
-		UserID                 func(childComplexity int) int
+		CanCreateDistro      func(childComplexity int) int
+		CanCreateProject     func(childComplexity int) int
+		CanEditAdminSettings func(childComplexity int) int
+		DistroPermissions    func(childComplexity int, options DistroPermissionsOptions) int
+		UserID               func(childComplexity int) int
 	}
 
 	PlannerSettings struct {
@@ -1656,7 +1656,7 @@ type PatchResolver interface {
 type PermissionsResolver interface {
 	CanCreateDistro(ctx context.Context, obj *Permissions) (bool, error)
 	CanCreateProject(ctx context.Context, obj *Permissions) (bool, error)
-	CanUpdateAdminSettings(ctx context.Context, obj *Permissions) (bool, error)
+	CanEditAdminSettings(ctx context.Context, obj *Permissions) (bool, error)
 	DistroPermissions(ctx context.Context, obj *Permissions, options DistroPermissionsOptions) (*DistroPermissions, error)
 }
 type PlannerSettingsResolver interface {
@@ -5242,12 +5242,12 @@ func (e *executableSchema) Complexity(typeName, field string, childComplexity in
 
 		return e.complexity.Permissions.CanCreateProject(childComplexity), true
 
-	case "Permissions.canUpdateAdminSettings":
-		if e.complexity.Permissions.CanUpdateAdminSettings == nil {
+	case "Permissions.canEditAdminSettings":
+		if e.complexity.Permissions.CanEditAdminSettings == nil {
 			break
 		}
 
-		return e.complexity.Permissions.CanUpdateAdminSettings(childComplexity), true
+		return e.complexity.Permissions.CanEditAdminSettings(childComplexity), true
 
 	case "Permissions.distroPermissions":
 		if e.complexity.Permissions.DistroPermissions == nil {
@@ -34874,8 +34874,8 @@ func (ec *executionContext) fieldContext_Permissions_canCreateProject(ctx contex
 	return fc, nil
 }
 
-func (ec *executionContext) _Permissions_canUpdateAdminSettings(ctx context.Context, field graphql.CollectedField, obj *Permissions) (ret graphql.Marshaler) {
-	fc, err := ec.fieldContext_Permissions_canUpdateAdminSettings(ctx, field)
+func (ec *executionContext) _Permissions_canEditAdminSettings(ctx context.Context, field graphql.CollectedField, obj *Permissions) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_Permissions_canEditAdminSettings(ctx, field)
 	if err != nil {
 		return graphql.Null
 	}
@@ -34888,7 +34888,7 @@ func (ec *executionContext) _Permissions_canUpdateAdminSettings(ctx context.Cont
 	}()
 	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
 		ctx = rctx // use context from middleware stack in children
-		return ec.resolvers.Permissions().CanUpdateAdminSettings(rctx, obj)
+		return ec.resolvers.Permissions().CanEditAdminSettings(rctx, obj)
 	})
 	if err != nil {
 		ec.Error(ctx, err)
@@ -34905,7 +34905,7 @@ func (ec *executionContext) _Permissions_canUpdateAdminSettings(ctx context.Cont
 	return ec.marshalNBoolean2bool(ctx, field.Selections, res)
 }
 
-func (ec *executionContext) fieldContext_Permissions_canUpdateAdminSettings(ctx context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+func (ec *executionContext) fieldContext_Permissions_canEditAdminSettings(ctx context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
 	fc = &graphql.FieldContext{
 		Object:     "Permissions",
 		Field:      field,
@@ -59246,8 +59246,8 @@ func (ec *executionContext) fieldContext_User_permissions(ctx context.Context, f
 				return ec.fieldContext_Permissions_canCreateDistro(ctx, field)
 			case "canCreateProject":
 				return ec.fieldContext_Permissions_canCreateProject(ctx, field)
-			case "canUpdateAdminSettings":
-				return ec.fieldContext_Permissions_canUpdateAdminSettings(ctx, field)
+			case "canEditAdminSettings":
+				return ec.fieldContext_Permissions_canEditAdminSettings(ctx, field)
 			case "distroPermissions":
 				return ec.fieldContext_Permissions_distroPermissions(ctx, field)
 			case "userId":
@@ -76465,7 +76465,7 @@ func (ec *executionContext) _Permissions(ctx context.Context, sel ast.SelectionS
 			}
 
 			out.Concurrently(i, func(ctx context.Context) graphql.Marshaler { return innerFunc(ctx, out) })
-		case "canUpdateAdminSettings":
+		case "canEditAdminSettings":
 			field := field
 
 			innerFunc := func(ctx context.Context, fs *graphql.FieldSet) (res graphql.Marshaler) {
@@ -76474,7 +76474,7 @@ func (ec *executionContext) _Permissions(ctx context.Context, sel ast.SelectionS
 						ec.Error(ctx, ec.Recover(ctx, r))
 					}
 				}()
-				res = ec._Permissions_canUpdateAdminSettings(ctx, field, obj)
+				res = ec._Permissions_canEditAdminSettings(ctx, field, obj)
 				if res == graphql.Null {
 					atomic.AddUint32(&fs.Invalids, 1)
 				}

@@ -6,7 +6,7 @@
     permissions {
       canCreateDistro
       canCreateProject
-      canUpdateAdminSettings
+      canEditAdminSettings
       distroPermissions(options: { distroId: "rhel71-power8-large" }) {
         admin
         edit

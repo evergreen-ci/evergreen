@@ -11,7 +11,7 @@
             "permissions": {
               "canCreateDistro": true,
               "canCreateProject": true,
-              "canUpdateAdminSettings": true,
+              "canEditAdminSettings": true,
               "distroPermissions": {
                 "admin": true,
                 "edit": true,
