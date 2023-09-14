@@ -2,10 +2,13 @@ package taskoutput
 
 import (
 	"context"
+	"errors"
 	"fmt"
 
 	"github.com/evergreen-ci/evergreen"
+	"github.com/evergreen-ci/evergreen/apimodels"
 	"github.com/evergreen-ci/evergreen/model/log"
+	"github.com/evergreen-ci/utility"
 )
 
 // TestLogOutput is the versioned entry point for coordinating persistent
@@ -38,6 +41,10 @@ type TestLogGetOptions struct {
 
 // Get returns test logs belonging to the specified task run.
 func (o TestLogOutput) Get(ctx context.Context, env evergreen.Environment, taskOpts TaskOptions, getOpts TestLogGetOptions) (log.LogIterator, error) {
+	if o.Version == 0 {
+		return o.getBuildloggerLogs(ctx, env, taskOpts, getOpts)
+	}
+
 	return log.Get(ctx, env, log.GetOptions{
 		LogNames:  o.getLogNames(taskOpts, getOpts.LogPaths),
 		Start:     getOpts.Start,
@@ -64,4 +71,24 @@ func (o TestLogOutput) getLogServiceVersion() int {
 	default:
 		return 0
 	}
+}
+
+// getBuildloggerLogs makes request to Cedar Buildlogger for logs.
+func (o TestLogOutput) getBuildloggerLogs(ctx context.Context, env evergreen.Environment, taskOpts TaskOptions, getOpts TestLogGetOptions) (log.LogIterator, error) {
+	if len(getOpts.LogPaths) != 1 {
+		return nil, errors.New("must request exactly one test log from Cedar Buildlogger")
+	}
+
+	opts := apimodels.GetBuildloggerLogsOptionsV2{
+		BaseURL:   env.Settings().Cedar.BaseURL,
+		TaskID:    taskOpts.TaskID,
+		Execution: utility.ToIntPtr(taskOpts.Execution),
+		TestName:  getOpts.LogPaths[0],
+		Start:     getOpts.Start,
+		End:       getOpts.End,
+		Limit:     getOpts.LineLimit,
+		Tail:      getOpts.TailN,
+	}
+
+	return apimodels.GetBuildloggerLogsV2(ctx, opts)
 }

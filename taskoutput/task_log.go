@@ -5,7 +5,9 @@ import (
 	"fmt"
 
 	"github.com/evergreen-ci/evergreen"
+	"github.com/evergreen-ci/evergreen/apimodels"
 	"github.com/evergreen-ci/evergreen/model/log"
+	"github.com/evergreen-ci/utility"
 	"github.com/pkg/errors"
 )
 
@@ -61,6 +63,10 @@ func (o TaskLogOutput) Get(ctx context.Context, env evergreen.Environment, taskO
 		return nil, err
 	}
 
+	if o.Version == 0 {
+		return o.getBuildloggerLogs(ctx, env, taskOpts, getOpts)
+	}
+
 	return log.Get(ctx, env, log.GetOptions{
 		LogNames:  []string{o.getLogName(taskOpts, getOpts.LogType)},
 		Start:     getOpts.Start,
@@ -94,4 +100,28 @@ func (o TaskLogOutput) getLogServiceVersion() int {
 	default:
 		return 0
 	}
+}
+
+// getBuildloggerLogs makes request to Cedar Buildlogger for logs.
+func (o TaskLogOutput) getBuildloggerLogs(ctx context.Context, env evergreen.Environment, taskOpts TaskOptions, getOpts TaskLogGetOptions) (log.LogIterator, error) {
+	opts := apimodels.GetBuildloggerLogsOptionsV2{
+		BaseURL:   env.Settings().Cedar.BaseURL,
+		TaskID:    taskOpts.TaskID,
+		Execution: utility.ToIntPtr(taskOpts.Execution),
+		Start:     getOpts.Start,
+		End:       getOpts.End,
+		Limit:     getOpts.LineLimit,
+		Tail:      getOpts.TailN,
+	}
+	if getOpts.LogType == TaskLogTypeAll {
+		opts.Tags = []string{
+			string(TaskLogTypeAgent),
+			string(TaskLogTypeSystem),
+			string(TaskLogTypeTask),
+		}
+	} else {
+		opts.Tags = []string{string(getOpts.LogType)}
+	}
+
+	return apimodels.GetBuildloggerLogsV2(ctx, opts)
 }
