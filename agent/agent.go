@@ -82,6 +82,17 @@ type timeoutInfo struct {
 	hadTimeout          bool
 	// exceededDuration is the length of the timeout that was extended, if the task timed out
 	exceededDuration time.Duration
+
+	// heartbeatTimeoutOpts is used to determine when the heartbeat should time
+	// out.
+	heartbeatTimeoutOpts heartbeatTimeoutOptions
+}
+
+// heartbeatTimeoutOptions represent options for the heartbeat timeout.
+type heartbeatTimeoutOptions struct {
+	startAt    time.Time
+	getTimeout func() time.Duration
+	kind       timeoutType
 }
 
 // New creates a new Agent with some Options and a client.Communicator. Call the
@@ -594,6 +605,7 @@ func (a *Agent) runTask(ctx context.Context, tcInput *taskContext, nt *apimodels
 		tc.logger.Execution().Error(errors.Wrap(a.uploadTraces(tskCtx, tc.taskConfig.WorkDir), "uploading traces"))
 	}()
 
+	tc.setHeartbeatTimeout(heartbeatTimeoutOptions{})
 	preAndMainCtx, preAndMainCancel := context.WithCancel(tskCtx)
 	go a.startHeartbeat(tskCtx, preAndMainCancel, tc)
 
@@ -637,6 +649,17 @@ func (a *Agent) runPreAndMain(ctx context.Context, tc *taskContext) (status stri
 		canMarkTimeoutFailure: true,
 	}
 	go a.startTimeoutWatcher(timeoutWatcherCtx, execTimeoutCancel, timeoutOpts)
+
+	tc.logger.Execution().Infof("Setting heartbeat timeout to type '%s'.", execTimeout)
+	tc.setHeartbeatTimeout(heartbeatTimeoutOptions{
+		startAt:    time.Now(),
+		getTimeout: tc.getExecTimeout,
+		kind:       execTimeout,
+	})
+	defer func() {
+		tc.logger.Execution().Infof("Resetting heartbeat timeout from type '%s' back to default.", execTimeout)
+		tc.setHeartbeatTimeout(heartbeatTimeoutOptions{})
+	}()
 
 	// set up the system stats collector
 	statsCollector := NewSimpleStatsCollector(
@@ -837,6 +860,7 @@ func (a *Agent) runEndTaskSync(ctx context.Context, tc *taskContext, detail *api
 		getTimeout: func() time.Duration {
 			return timeout
 		},
+		canTimeOutHeartbeat: true,
 	}
 
 	// If the task sync commands error, ignore the error. runCommandsInBlock

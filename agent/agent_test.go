@@ -250,11 +250,11 @@ func (s *AgentSuite) TestFinishTaskWithAbnormallyCompletedTask() {
 	resp, err := s.a.finishTask(s.ctx, s.tc, status, "")
 	s.Equal(&apimodels.EndTaskResponse{}, resp)
 	s.NoError(err)
-	s.NoError(s.tc.logger.Close())
 
 	s.Equal(evergreen.TaskFailed, s.mockCommunicator.EndTaskResult.Detail.Status, "task that failed due to non-task-related reasons should record the final status")
 	s.Equal(evergreen.CommandTypeSystem, s.mockCommunicator.EndTaskResult.Detail.Type)
 	s.NotEmpty(s.mockCommunicator.EndTaskResult.Detail.Description)
+	s.NoError(s.tc.logger.Close())
 	checkMockLogs(s.T(), s.mockCommunicator, s.tc.taskConfig.Task.Id, []string{
 		"Task encountered unexpected task lifecycle system failure",
 	}, []string{
@@ -574,6 +574,7 @@ tasks:
 	s.setupRunTask(projYml)
 
 	s.Error(s.a.runTaskCommands(s.ctx, s.tc))
+
 	s.NoError(s.tc.logger.Close())
 	checkMockLogs(s.T(), s.mockCommunicator, s.tc.taskConfig.Task.Id, []string{
 		"Running task commands",
@@ -596,11 +597,14 @@ post:
 	s.setupRunTask(projYml)
 
 	s.NoError(s.a.runPostTaskCommands(s.ctx, s.tc))
+
 	s.NoError(s.tc.logger.Close())
 	checkMockLogs(s.T(), s.mockCommunicator, s.tc.taskConfig.Task.Id, []string{
 		"Running post-task commands",
+		"Setting heartbeat timeout to type 'post'",
 		"Running command 'shell.exec' (step 1 of 1) in block 'post'",
 		"Finished command 'shell.exec' (step 1 of 1) in block 'post'",
+		"Resetting heartbeat timeout from type 'post' back to default",
 		"Finished running post-task commands",
 	}, []string{
 		panicLog,
@@ -633,9 +637,11 @@ post:
 	s.NoError(s.tc.logger.Close())
 	checkMockLogs(s.T(), s.mockCommunicator, s.tc.taskConfig.Task.Id, []string{
 		"Running post-task commands",
+		"Setting heartbeat timeout to type 'post'",
 		"Running command 'shell.exec' (step 1 of 1) in block 'post'",
 		"Hit post timeout (1s)",
 		"Finished command 'shell.exec' (step 1 of 1) in block 'post'",
+		"Resetting heartbeat timeout from type 'post' back to default",
 		"Running post-task commands failed",
 		"Finished running post-task commands",
 	}, []string{
@@ -689,8 +695,10 @@ post:
 	s.NoError(s.tc.logger.Close())
 	checkMockLogs(s.T(), s.mockCommunicator, s.tc.taskConfig.Task.Id, []string{
 		"Running post-task commands",
+		"Setting heartbeat timeout to type 'post'",
 		"Running command 'shell.exec' (step 1 of 1) in block 'post'",
 		"Hit post timeout (1s)",
+		"Resetting heartbeat timeout from type 'post' back to default",
 		"Running post-task commands failed",
 		"Finished running post-task commands",
 	}, []string{panicLog})
@@ -747,8 +755,10 @@ post:
 		"Finished command 'shell.exec' (step 1 of 1)",
 		"Finished running task commands",
 		"Running post-task commands",
+		"Setting heartbeat timeout to type 'post'",
 		"Running command 'shell.exec' (step 1 of 1) in block 'post'",
 		"Finished command 'shell.exec' (step 1 of 1) in block 'post'",
+		"Resetting heartbeat timeout from type 'post' back to default",
 		"Running post-task commands failed",
 		"Finished running post-task commands",
 	}, []string{
@@ -795,8 +805,10 @@ post:
 		"Finished command 'shell.exec' (step 1 of 1)",
 		"Finished running task commands",
 		"Running post-task commands",
+		"Setting heartbeat timeout to type 'post'",
 		"Running command 'shell.exec' (step 1 of 1) in block 'post'",
 		"Finished command 'shell.exec' (step 1 of 1) in block 'post'",
+		"Resetting heartbeat timeout from type 'post' back to default",
 		"Finished running post-task commands",
 	}, []string{
 		panicLog,
@@ -843,8 +855,10 @@ post:
 		"Finished command 'shell.exec' (step 1 of 1)",
 		"Finished running task commands",
 		"Running post-task commands",
+		"Setting heartbeat timeout to type 'post'",
 		"Running command 'shell.exec' (step 1 of 1) in block 'post'",
 		"Finished command 'shell.exec' (step 1 of 1) in block 'post'",
+		"Resetting heartbeat timeout from type 'post' back to default",
 		"Finished running post-task commands",
 	}, []string{
 		panicLog,
@@ -889,8 +903,11 @@ post:
 		"Running command 'shell.exec' (step 1 of 1)",
 		"Set idle timeout for 'shell.exec' (step 1 of 1) (test) to 1s.",
 		"Hit idle timeout",
+		"Running post-task commands",
+		"Setting heartbeat timeout to type 'post'",
 		"Running command 'shell.exec' (step 1 of 1) in block 'post'",
 		"Finished command 'shell.exec' (step 1 of 1) in block 'post'",
+		"Resetting heartbeat timeout from type 'post' back to default",
 		"Running post-task commands failed",
 		"Finished running post-task commands",
 	}, []string{
@@ -936,8 +953,10 @@ post:
 		"Finished command 'shell.exec' (step 1 of 1)",
 		"Finished running task commands",
 		"Running post-task commands",
+		"Setting heartbeat timeout to type 'post'",
 		"Running command 'shell.exec' (step 1 of 1) in block 'post'",
 		"Finished command 'shell.exec' (step 1 of 1) in block 'post'",
+		"Resetting heartbeat timeout from type 'post' back to default",
 		"Finished running post-task commands",
 	}, []string{
 		panicLog,
@@ -963,10 +982,12 @@ post:
 	s.NoError(s.tc.logger.Close())
 	checkMockLogs(s.T(), s.mockCommunicator, s.tc.taskConfig.Task.Id, []string{
 		"Running post-task commands",
+		"Setting heartbeat timeout to type 'post'",
 		"Running command 'shell.exec' (step 1 of 2) in block 'post'",
 		"Finished command 'shell.exec' (step 1 of 2) in block 'post'",
 		"Running command 'shell.exec' (step 2 of 2) in block 'post'",
 		"Finished command 'shell.exec' (step 2 of 2) in block 'post'",
+		"Resetting heartbeat timeout from type 'post' back to default",
 		"Finished running post-task commands",
 	}, []string{
 		panicLog,
@@ -1667,8 +1688,10 @@ task_groups:
 	s.NoError(s.tc.logger.Close())
 	checkMockLogs(s.T(), s.mockCommunicator, s.tc.taskConfig.Task.Id, []string{
 		"Running teardown-task commands",
+		"Setting heartbeat timeout to type 'teardown_task'",
 		"Running command 'shell.exec' (step 1 of 1) in block 'teardown_task'",
 		"Finished command 'shell.exec' (step 1 of 1) in block 'teardown_task'",
+		"Resetting heartbeat timeout from type 'teardown_task' back to default",
 		"Finished running teardown-task commands",
 	}, []string{
 		panicLog,
@@ -1697,9 +1720,11 @@ task_groups:
 	s.NoError(s.tc.logger.Close())
 	checkMockLogs(s.T(), s.mockCommunicator, s.tc.taskConfig.Task.Id, []string{
 		"Running teardown-task commands",
+		"Setting heartbeat timeout to type 'teardown_task'",
 		"Running command 'shell.exec' (step 1 of 1) in block 'teardown_task'",
 		"Finished command 'shell.exec' (step 1 of 1) in block 'teardown_task'",
 		"Running teardown-task commands failed",
+		"Resetting heartbeat timeout from type 'teardown_task' back to default",
 		"Finished running teardown-task commands",
 	}, []string{
 		panicLog,
@@ -1733,10 +1758,13 @@ task_groups:
 	s.NoError(s.tc.logger.Close())
 	checkMockLogs(s.T(), s.mockCommunicator, s.tc.taskConfig.Task.Id, []string{
 		"Running teardown-task commands",
+		"Setting heartbeat timeout to type 'teardown_task'",
 		"Running command 'shell.exec' (step 1 of 1) in block 'teardown_task'",
+		"Setting heartbeat timeout to type 'teardown_task'",
 		"Hit teardown_task timeout (1s)",
 		"Finished command 'shell.exec' (step 1 of 1) in block 'teardown_task'",
 		"Running teardown-task commands failed",
+		"Resetting heartbeat timeout from type 'teardown_task' back to default",
 		"Finished running teardown-task commands",
 	}, []string{
 		panicLog,
@@ -1772,10 +1800,13 @@ task_groups:
 	s.NoError(s.tc.logger.Close())
 	checkMockLogs(s.T(), s.mockCommunicator, s.tc.taskConfig.Task.Id, []string{
 		"Running teardown-task commands",
+		"Setting heartbeat timeout to type 'teardown_task'",
 		"Running command 'shell.exec' (step 1 of 1) in block 'teardown_task'",
+		"Setting heartbeat timeout to type 'teardown_task'",
 		"Hit teardown_task timeout (1s)",
 		"Finished command 'shell.exec' (step 1 of 1) in block 'teardown_task'",
 		"Running teardown-task commands failed",
+		"Resetting heartbeat timeout from type 'teardown_task' back to default",
 		"Finished running teardown-task commands",
 	}, []string{panicLog})
 }
@@ -1901,10 +1932,12 @@ callback_timeout_secs: 1
 	s.NoError(s.tc.logger.Close())
 	checkMockLogs(s.T(), s.mockCommunicator, s.tc.taskConfig.Task.Id, []string{
 		"Running task-timeout commands",
+		"Setting heartbeat timeout to type 'callback'",
 		"Running command 'shell.exec' (step 1 of 1) in block 'timeout'",
 		"Hit callback timeout (1s)",
 		"Finished command 'shell.exec' (step 1 of 1) in block 'timeout'",
 		"Running task-timeout commands failed",
+		"Resetting heartbeat timeout from type 'callback' back to default",
 		"Finished running task-timeout commands",
 	}, []string{
 		panicLog,
@@ -1968,11 +2001,17 @@ timeout:
 	// The exact count is not of particular importance, we're only interested in
 	// knowing that the heartbeat is still going despite receiving an abort.
 	s.GreaterOrEqual(s.mockCommunicator.GetHeartbeatCount(), 1, "heartbeat should be still running for teardown_task block even when initial abort signal is received")
+
+	s.NoError(s.tc.logger.Close())
 	checkMockLogs(s.T(), s.mockCommunicator, s.tc.taskConfig.Task.Id, []string{
 		"Heartbeat received signal to abort task.",
 		"Task completed - FAILURE",
 		"Running post-task commands",
+		"Setting heartbeat timeout to type 'post'",
 		"Running command 'shell.exec' (step 1 of 1) in block 'post'",
+		"Finished command 'shell.exec' (step 1 of 1) in block 'post'",
+		"Resetting heartbeat timeout from type 'post' back to default",
+		"Finished running post-task commands",
 	}, []string{
 		panicLog,
 		"Running task-timeout commands",

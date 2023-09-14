@@ -136,6 +136,7 @@ func (s *BackgroundSuite) TestAbortedTaskStillHeartbeats() {
 
 	childCtx, childCancel := context.WithCancel(s.ctx)
 
+	s.tc.setHeartbeatTimeout(heartbeatTimeoutOptions{})
 	go s.a.startHeartbeat(heartbeatCtx, childCancel, s.tc)
 
 	lastHeartbeatCount := 0
@@ -175,6 +176,7 @@ func (s *BackgroundSuite) TestHeartbeatSignalsAbortOnTaskConflict() {
 
 	childCtx, childCancel := context.WithCancel(s.ctx)
 
+	s.tc.setHeartbeatTimeout(heartbeatTimeoutOptions{})
 	go s.a.startHeartbeat(heartbeatCtx, childCancel, s.tc)
 
 	lastHeartbeatCount := 0
@@ -214,6 +216,7 @@ func (s *BackgroundSuite) TestHeartbeatSignalsAbortOnHittingMaxFailedHeartbeats(
 
 	childCtx, childCancel := context.WithCancel(s.ctx)
 
+	s.tc.setHeartbeatTimeout(heartbeatTimeoutOptions{})
 	go s.a.startHeartbeat(heartbeatCtx, childCancel, s.tc)
 
 	lastHeartbeatCount := 0
@@ -252,6 +255,7 @@ func (s *BackgroundSuite) TestHeartbeatSignalsAbortWhenHeartbeatStops() {
 
 	childCtx, childCancel := context.WithCancel(s.ctx)
 
+	s.tc.setHeartbeatTimeout(heartbeatTimeoutOptions{})
 	go s.a.startHeartbeat(heartbeatCtx, childCancel, s.tc)
 
 	s.checkHeartbeatCondition(heartbeatCheckOptions{
@@ -287,6 +291,7 @@ func (s *BackgroundSuite) TestHeartbeatSometimesFailsDoesNotFailTask() {
 
 	childCtx, childCancel := context.WithCancel(s.ctx)
 
+	s.tc.setHeartbeatTimeout(heartbeatTimeoutOptions{})
 	go s.a.startHeartbeat(heartbeatCtx, childCancel, s.tc)
 
 	s.checkHeartbeatCondition(heartbeatCheckOptions{
