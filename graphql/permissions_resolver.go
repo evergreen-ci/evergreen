@@ -43,7 +43,17 @@ func (r *permissionsResolver) CanCreateProject(ctx context.Context, obj *Permiss
 
 // CanEditAdminSettings is the resolver for the canEditAdminSettings field.
 func (r *permissionsResolver) CanEditAdminSettings(ctx context.Context, obj *Permissions) (bool, error) {
-	panic(fmt.Errorf("not implemented: CanEditAdminSettings - canEditAdminSettings"))
+	usr, err := user.FindOneById(obj.UserID)
+	if err != nil {
+		return false, ResourceNotFound.Send(ctx, "user not found")
+	}
+	opts := gimlet.PermissionOpts{
+		Resource:      evergreen.SuperUserPermissionsID,
+		ResourceType:  evergreen.SuperUserResourceType,
+		Permission:    evergreen.PermissionAdminSettings,
+		RequiredLevel: evergreen.AdminSettingsEdit.Value,
+	}
+	return usr.HasPermission(opts), nil
 }
 
 // DistroPermissions is the resolver for the distroPermissions field.
@@ -63,23 +73,3 @@ func (r *permissionsResolver) DistroPermissions(ctx context.Context, obj *Permis
 func (r *Resolver) Permissions() PermissionsResolver { return &permissionsResolver{r} }
 
 type permissionsResolver struct{ *Resolver }
-
-// !!! WARNING !!!
-// The code below was going to be deleted when updating resolvers. It has been copied here so you have
-// one last chance to move it out of harms way if you want. There are two reasons this happens:
-//   - When renaming or deleting a resolver the old code will be put in here. You can safely delete
-//     it when you're done.
-//   - You have helper methods in this file. Move them out to keep these resolver files clean.
-func (r *permissionsResolver) canEditAdminSettings(ctx context.Context, obj *Permissions) (bool, error) {
-	usr, err := user.FindOneById(obj.UserID)
-	if err != nil {
-		return false, ResourceNotFound.Send(ctx, "user not found")
-	}
-	opts := gimlet.PermissionOpts{
-		Resource:      evergreen.SuperUserPermissionsID,
-		ResourceType:  evergreen.SuperUserResourceType,
-		Permission:    evergreen.PermissionAdminSettings,
-		RequiredLevel: evergreen.AdminSettingsEdit.Value,
-	}
-	return usr.HasPermission(opts), nil
-}
