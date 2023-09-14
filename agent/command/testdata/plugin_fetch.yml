@@ -1,8 +1,3 @@
-owner: deafgoat
-repo: mci_test
-repokind: github
-branch: master
-enabled: true
 batch_time: 180
 
 buildvariants:

@@ -643,6 +643,23 @@ var (
 // UserRequester represents the allowed user-facing requester types.
 type UserRequester string
 
+// Validate checks that the user-facing requester type is valid.
+func (r UserRequester) Validate() error {
+	switch r {
+	case PatchVersionUserRequester,
+		GithubPRUserRequester,
+		GitTagUserRequester,
+		RepotrackerVersionUserRequester,
+		TriggerUserRequester,
+		MergeTestUserRequester,
+		AdHocUserRequester,
+		GithubMergeUserRequester:
+		return nil
+	default:
+		return errors.Errorf("invalid user requester '%s'", r)
+	}
+}
+
 const (
 	// User-facing requester types. These are equivalent in meaning to the above
 	// requesters, but are more user-friendly. These should only be used for

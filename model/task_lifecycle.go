@@ -201,7 +201,7 @@ func findMissingTasks(taskIDs []string, tasksPresent map[string]struct{}) ([]tas
 // DisableStaleContainerTasks disables all container tasks that have been
 // scheduled to run for a long time without actually dispatching the task.
 func DisableStaleContainerTasks(caller string) error {
-	query := task.IsContainerTaskScheduledQuery()
+	query := task.ScheduledContainerTasksQuery()
 	query[task.ActivatedTimeKey] = bson.M{"$lte": time.Now().Add(-task.UnschedulableThreshold)}
 
 	tasks, err := task.FindAll(db.Query(query))

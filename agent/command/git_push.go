@@ -60,7 +60,7 @@ func (c *gitPush) Execute(ctx context.Context, comm client.Communicator, logger 
 		td := client.TaskData{ID: conf.Task.Id, Secret: conf.Task.Secret}
 		logger.Task().Error(comm.ConcludeMerge(ctx, conf.Task.Version, status, td))
 	}()
-	if err = util.ExpandValues(c, conf.Expansions); err != nil {
+	if err = util.ExpandValues(c, &conf.Expansions); err != nil {
 		return errors.Wrap(err, "applying expansions")
 	}
 

@@ -97,7 +97,6 @@ type ParserProject struct {
 	Pre                *YAMLCommandSet            `yaml:"pre,omitempty" bson:"pre,omitempty"`
 	Post               *YAMLCommandSet            `yaml:"post,omitempty" bson:"post,omitempty"`
 	Timeout            *YAMLCommandSet            `yaml:"timeout,omitempty" bson:"timeout,omitempty"`
-	EarlyTermination   *YAMLCommandSet            `yaml:"early_termination,omitempty" bson:"early_termination,omitempty"` // deprecated and currently no-ops, may be removed in future update
 	CallbackTimeout    *int                       `yaml:"callback_timeout_secs,omitempty" bson:"callback_timeout_secs,omitempty"`
 	Modules            []Module                   `yaml:"modules,omitempty" bson:"modules,omitempty"`
 	Containers         []Container                `yaml:"containers,omitempty" bson:"containers,omitempty"`
@@ -910,7 +909,6 @@ func createIntermediateProject(yml []byte, unmarshalStrict bool) (*ParserProject
 func TranslateProject(pp *ParserProject) (*Project, error) {
 	// Transfer top level fields
 	proj := &Project{
-		Enabled:            utility.FromBoolPtr(pp.Enabled),
 		Stepback:           utility.FromBoolPtr(pp.Stepback),
 		UnsetFunctionVars:  utility.FromBoolPtr(pp.UnsetFunctionVars),
 		PreTimeoutSecs:     utility.FromIntPtr(pp.PreTimeoutSecs),
@@ -919,10 +917,6 @@ func TranslateProject(pp *ParserProject) (*Project, error) {
 		PostErrorFailsTask: utility.FromBoolPtr(pp.PostErrorFailsTask),
 		OomTracker:         utility.FromBoolPtr(pp.OomTracker),
 		BatchTime:          utility.FromIntPtr(pp.BatchTime),
-		Owner:              utility.FromStringPtr(pp.Owner),
-		Repo:               utility.FromStringPtr(pp.Repo),
-		RemotePath:         utility.FromStringPtr(pp.RemotePath),
-		Branch:             utility.FromStringPtr(pp.Branch),
 		Identifier:         utility.FromStringPtr(pp.Identifier),
 		DisplayName:        utility.FromStringPtr(pp.DisplayName),
 		CommandType:        utility.FromStringPtr(pp.CommandType),
@@ -931,7 +925,6 @@ func TranslateProject(pp *ParserProject) (*Project, error) {
 		Containers:         pp.Containers,
 		Pre:                pp.Pre,
 		Post:               pp.Post,
-		EarlyTermination:   pp.EarlyTermination,
 		Timeout:            pp.Timeout,
 		CallbackTimeout:    utility.FromIntPtr(pp.CallbackTimeout),
 		Modules:            pp.Modules,
@@ -1033,8 +1026,7 @@ func evaluateTaskUnits(tse *taskSelectorEvaluator, tgse *tagSelectorEvaluator, v
 		if strings.Contains(strings.TrimSpace(pt.Name), " ") {
 			evalErrs = append(evalErrs, errors.Errorf("spaces are not allowed in task names ('%s')", pt.Name))
 		}
-		t.AllowedRequesters, errs = evaluateRequesters(pt.AllowedRequesters)
-		evalErrs = append(evalErrs, errs...)
+		t.AllowedRequesters = pt.AllowedRequesters
 		t.DependsOn, errs = evaluateDependsOn(tse.tagEval, tgse, vse, pt.DependsOn)
 		evalErrs = append(evalErrs, errs...)
 		tasks = append(tasks, t)
@@ -1100,8 +1092,7 @@ func evaluateBuildVariants(tse *taskSelectorEvaluator, tgse *tagSelectorEvaluato
 			RunOn:          pbv.RunOn,
 			Tags:           pbv.Tags,
 		}
-		bv.AllowedRequesters, errs = evaluateRequesters(pbv.AllowedRequesters)
-		evalErrs = append(evalErrs, errs...)
+		bv.AllowedRequesters = pbv.AllowedRequesters
 		bv.Tasks, errs = evaluateBVTasks(tse, tgse, vse, pbv, tasks)
 
 		// evaluate any rules passed in during matrix construction
@@ -1260,9 +1251,7 @@ func evaluateBVTasks(tse *taskSelectorEvaluator, tgse *tagSelectorEvaluator, vse
 			parserTask := tasksByName[name]
 			// create a new task by copying the task that selected it,
 			// so we can preserve the "Variant" and "Status" field.
-			var t BuildVariantTaskUnit
-			t, errs = getParserBuildVariantTaskUnit(name, parserTask, pbvt, pbv)
-			evalErrs = append(evalErrs, errs...)
+			t := getParserBuildVariantTaskUnit(name, parserTask, pbvt, pbv)
 
 			// Task-level dependencies defined in the variant override variant-level dependencies which override
 			// task-level dependencies defined in the task.
@@ -1305,7 +1294,7 @@ func evaluateBVTasks(tse *taskSelectorEvaluator, tgse *tagSelectorEvaluator, vse
 // * Task settings within a task group's list of tasks
 // * Project task's settings
 // * Build variant's settings
-func getParserBuildVariantTaskUnit(name string, pt parserTask, bvt parserBVTaskUnit, bv parserBV) (BuildVariantTaskUnit, []error) {
+func getParserBuildVariantTaskUnit(name string, pt parserTask, bvt parserBVTaskUnit, bv parserBV) BuildVariantTaskUnit {
 	res := BuildVariantTaskUnit{
 		Name:             name,
 		Variant:          bv.Name,
@@ -1323,10 +1312,7 @@ func getParserBuildVariantTaskUnit(name string, pt parserTask, bvt parserBVTaskU
 		BatchTime:        bvt.BatchTime,
 		Activate:         bvt.Activate,
 	}
-	var errs []error
-	catcher := grip.NewBasicCatcher()
-	res.AllowedRequesters, errs = evaluateRequesters(bvt.AllowedRequesters)
-	catcher.Extend(errs)
+	res.AllowedRequesters = bvt.AllowedRequesters
 	if bvt.TaskGroup != nil {
 		res.TaskGroup = &TaskGroup{
 			Name:                     bvt.Name,
@@ -1367,8 +1353,7 @@ func getParserBuildVariantTaskUnit(name string, pt parserTask, bvt parserBVTaskU
 		res.GitTagOnly = pt.GitTagOnly
 	}
 	if len(res.AllowedRequesters) == 0 {
-		res.AllowedRequesters, errs = evaluateRequesters(pt.AllowedRequesters)
-		catcher.Extend(errs)
+		res.AllowedRequesters = pt.AllowedRequesters
 	}
 	if res.ExecTimeoutSecs == 0 {
 		res.ExecTimeoutSecs = pt.ExecTimeoutSecs
@@ -1399,15 +1384,14 @@ func getParserBuildVariantTaskUnit(name string, pt parserTask, bvt parserBVTaskU
 		res.GitTagOnly = bv.GitTagOnly
 	}
 	if len(res.AllowedRequesters) == 0 {
-		res.AllowedRequesters, errs = evaluateRequesters(bv.AllowedRequesters)
-		catcher.Extend(errs)
+		res.AllowedRequesters = bv.AllowedRequesters
 	}
 
 	if res.Disable == nil {
 		res.Disable = bv.Disable
 	}
 
-	return res, catcher.Errors()
+	return res
 }
 
 // evaluateDependsOn expands any selectors in a dependency definition.
@@ -1485,13 +1469,14 @@ func evaluateDependsOn(tse *tagSelectorEvaluator, tgse *tagSelectorEvaluator, vs
 }
 
 // evaluateRequesters translates user requesters into internal requesters.
-func evaluateRequesters(userRequesters []evergreen.UserRequester) ([]string, []error) {
+func evaluateRequesters(userRequesters []evergreen.UserRequester) []string {
 	requesters := make([]string, 0, len(userRequesters))
-	catcher := grip.NewBasicCatcher()
 	for _, userRequester := range userRequesters {
 		requester := evergreen.UserRequesterToInternalRequester(userRequester)
-		catcher.ErrorfWhen(requester == "", "invalid requester '%s'", userRequester)
+		if !utility.StringSliceContains(evergreen.AllRequesterTypes, requester) {
+			continue
+		}
 		requesters = append(requesters, requester)
 	}
-	return requesters, catcher.Errors()
+	return requesters
 }

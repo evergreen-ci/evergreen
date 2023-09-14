@@ -38,7 +38,7 @@ func TestExpansionsPlugin(t *testing.T) {
 		expansions.Put("topping", "bacon")
 
 		taskConfig := internal.TaskConfig{
-			Expansions: &expansions,
+			Expansions: expansions,
 		}
 
 		So(updateCommand.ExecuteUpdates(ctx, &taskConfig), ShouldBeNil)
@@ -53,19 +53,19 @@ func TestExpansionsPluginWExecution(t *testing.T) {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 	comm := client.NewMock("http://localhost.com")
-	conf := &internal.TaskConfig{Expansions: &util.Expansions{}, Task: &task.Task{}, Project: &model.Project{}}
+	conf := &internal.TaskConfig{Expansions: util.Expansions{}, Task: task.Task{}, Project: model.Project{}}
 	logger, _ := comm.GetLoggerProducer(ctx, client.TaskData{ID: conf.Task.Id, Secret: conf.Task.Secret}, nil)
 
 	Convey("When running Update commands", t, func() {
 		Convey("if there is no expansion, the file name is not changed", func() {
-			So(conf.Expansions, ShouldResemble, &util.Expansions{})
+			So(conf.Expansions, ShouldResemble, util.Expansions{})
 			cmd := &update{YamlFile: "foo"}
 			So(cmd.Execute(ctx, comm, logger, conf), ShouldNotBeNil)
 			So(cmd.YamlFile, ShouldEqual, "foo")
 		})
 
 		Convey("With an Expansion, the file name is expanded", func() {
-			conf.Expansions = util.NewExpansions(map[string]string{"foo": "bar"})
+			conf.Expansions = *util.NewExpansions(map[string]string{"foo": "bar"})
 			cmd := &update{YamlFile: "${foo}"}
 			So(cmd.Execute(ctx, comm, logger, conf), ShouldNotBeNil)
 			So(cmd.YamlFile, ShouldEqual, "bar")
@@ -82,7 +82,7 @@ func TestExpansionWriter(t *testing.T) {
 	logger, err := comm.GetLoggerProducer(ctx, client.TaskData{ID: "id", Secret: "secret"}, nil)
 	assert.NoError(err)
 	tc := &internal.TaskConfig{
-		Expansions: &util.Expansions{
+		Expansions: util.Expansions{
 			"foo":                                "bar",
 			"baz":                                "qux",
 			"password":                           "hunter2",

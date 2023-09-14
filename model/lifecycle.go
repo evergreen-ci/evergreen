@@ -566,7 +566,9 @@ func addTasksToBuild(ctx context.Context, creationInfo TaskCreationInfo) (*build
 		if !utility.StringSliceContains(tasksWithActivationTime, t.DisplayName) {
 			continue
 		}
-		activateTaskAt, err := creationInfo.ProjectRef.GetActivationTimeForTask(creationInfo.Project.FindTaskForVariant(t.DisplayName, creationInfo.Build.BuildVariant))
+		activateTaskAt, err := creationInfo.ProjectRef.GetActivationTimeForTask(
+			creationInfo.Project.FindTaskForVariant(t.DisplayName, creationInfo.Build.BuildVariant),
+			t.Id)
 		batchTimeCatcher.Wrapf(err, "getting activation time for task '%s'", t.DisplayName)
 		batchTimeTaskStatuses = append(batchTimeTaskStatuses, BatchTimeTaskStatus{
 			TaskName: t.DisplayName,
@@ -1627,7 +1629,8 @@ func addNewBuilds(ctx context.Context, creationInfo TaskCreationInfo, existingBu
 			batchTimeCatcher.Wrapf(err, "getting activation time for variant '%s'", pair.Variant)
 		}
 		for taskName, id := range batchTimeTasksToIds {
-			activateTaskAt, err := creationInfo.ProjectRef.GetActivationTimeForTask(creationInfo.Project.FindTaskForVariant(taskName, pair.Variant))
+			activateTaskAt, err := creationInfo.ProjectRef.GetActivationTimeForTask(
+				creationInfo.Project.FindTaskForVariant(taskName, pair.Variant), id)
 			batchTimeCatcher.Wrapf(err, "getting activation time for task '%s' in variant '%s'", taskName, pair.Variant)
 			batchTimeTaskStatuses = append(batchTimeTaskStatuses, BatchTimeTaskStatus{
 				TaskId:   id,

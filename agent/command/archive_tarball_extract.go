@@ -41,7 +41,7 @@ func (e *tarballExtract) ParseParams(params map[string]interface{}) error {
 func (e *tarballExtract) Execute(ctx context.Context,
 	client client.Communicator, logger client.LoggerProducer, conf *internal.TaskConfig) error {
 
-	if err := util.ExpandValues(e, conf.Expansions); err != nil {
+	if err := util.ExpandValues(e, &conf.Expansions); err != nil {
 		return errors.Wrap(err, "applying expansions")
 	}
 

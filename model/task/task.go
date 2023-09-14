@@ -488,7 +488,7 @@ func (t *Task) IsContainerDispatchable() bool {
 
 // isContainerTaskScheduled returns whether the task is in a state where it
 // should eventually dispatch to run on a container and is logically equivalent
-// to IsContainerTaskScheduledQuery. This encompasses two potential states:
+// to ScheduledContainerTasksQuery. This encompasses two potential states:
 //  1. A container is not yet allocated to the task but it's ready to be
 //     allocated one. Note that this is a subset of all container tasks that
 //     could eventually run (i.e. evergreen.TaskWillRun from
@@ -909,7 +909,7 @@ func (t *Task) cacheExpectedDuration() error {
 // to a pod.
 func (t *Task) MarkAsContainerDispatched(ctx context.Context, env evergreen.Environment, podID, agentVersion string) error {
 	dispatchedAt := time.Now()
-	query := IsContainerTaskScheduledQuery()
+	query := ScheduledContainerTasksQuery()
 	query[IdKey] = t.Id
 	query[StatusKey] = evergreen.TaskUndispatched
 	query[ContainerAllocatedKey] = true

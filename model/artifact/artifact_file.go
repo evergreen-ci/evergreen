@@ -58,6 +58,8 @@ type File struct {
 	Bucket string `json:"bucket,omitempty" bson:"bucket,omitempty"`
 	// FileKey is the path to the file in the bucket.
 	FileKey string `json:"filekey,omitempty" bson:"filekey,omitempty"`
+	// ContentType is the content type of the file.
+	ContentType string `json:"content_type" bson:"content_type"`
 }
 
 // StripHiddenFiles is a helper for only showing users the files they are allowed to see.
@@ -144,17 +146,4 @@ func RotateSecrets(toReplace, replacement string, dryRun bool) (map[TaskIDAndExe
 		}
 	}
 	return changes, catcher.Resolve()
-}
-
-// Array turns the parameter map into an array of File structs.
-// Deprecated.
-func (params Params) Array() []File {
-	var files []File
-	for name, link := range params {
-		files = append(files, File{
-			Name: name,
-			Link: link,
-		})
-	}
-	return files
 }

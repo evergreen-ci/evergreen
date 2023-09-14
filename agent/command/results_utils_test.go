@@ -39,7 +39,7 @@ func TestSendTestResults(t *testing.T) {
 		},
 	}
 	conf := &internal.TaskConfig{
-		Task: &task.Task{
+		Task: task.Task{
 			Id:           "id",
 			Secret:       "secret",
 			CreateTime:   time.Now().Add(-time.Hour),
@@ -188,7 +188,7 @@ func TestSendTestResults(t *testing.T) {
 func TestSendTestLog(t *testing.T) {
 	ctx := context.TODO()
 	conf := &internal.TaskConfig{
-		Task: &task.Task{
+		Task: task.Task{
 			Id:           "id",
 			Project:      "project",
 			Version:      "version",
@@ -196,7 +196,7 @@ func TestSendTestLog(t *testing.T) {
 			Execution:    5,
 			Requester:    evergreen.GithubPRRequester,
 		},
-		ProjectRef: &model.ProjectRef{},
+		ProjectRef: model.ProjectRef{},
 	}
 	log := &model.TestLog{
 		Id:            "id",

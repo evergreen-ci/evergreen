@@ -69,7 +69,7 @@ func (r *ec2AssumeRole) validate() error {
 
 func (r *ec2AssumeRole) Execute(ctx context.Context,
 	comm client.Communicator, logger client.LoggerProducer, conf *internal.TaskConfig) error {
-	if err := util.ExpandValues(r, conf.Expansions); err != nil {
+	if err := util.ExpandValues(r, &conf.Expansions); err != nil {
 		return errors.Wrap(err, "applying expansions")
 	}
 	// Re-validate the command here, in case an expansion is not defined.
