@@ -429,7 +429,7 @@ func TestFindMergedAliasesFromProjectRepoOrProjectConfig(t *testing.T) {
 }
 
 func (s *ProjectAliasSuite) TestFindAliasInProjectRepoOrConfig() {
-	s.Require().NoError(db.ClearCollections(ProjectRefCollection, RepoRefCollection))
+	s.Require().NoError(db.ClearCollections(ProjectRefCollection, RepoRefCollection, ProjectConfigCollection))
 
 	repoRef := RepoRef{ProjectRef{
 		Id:    "repo_ref",
@@ -463,8 +463,8 @@ func (s *ProjectAliasSuite) TestFindAliasInProjectRepoOrConfig() {
 			},
 			CommitQueueAliases: []ProjectAlias{
 				{
-					Variant: "*",
-					Task:    "*",
+					Variant: "cq-.*",
+					Task:    "cq-.*",
 				},
 			},
 		}}
@@ -523,11 +523,17 @@ func (s *ProjectAliasSuite) TestFindAliasInProjectRepoOrConfig() {
 	found, err = FindAliasInProjectRepoOrConfig(pRef1.Id, "alias-6")
 	s.NoError(err)
 	s.Len(found, 1)
+	s.Equal(found[0].Alias, "alias-6")
+	s.Equal(found[0].Task, "*")
+	s.Equal(found[0].Variant, "*")
 
 	// Test non-patch aliases defined in config
 	found, err = FindAliasInProjectRepoOrConfig(pRef1.Id, evergreen.CommitQueueAlias)
 	s.NoError(err)
 	s.Len(found, 1)
+	s.Equal(found[0].Alias, evergreen.CommitQueueAlias)
+	s.Equal(found[0].Task, "cq-.*")
+	s.Equal(found[0].Variant, "cq-.*")
 }
 
 func (s *ProjectAliasSuite) TestUpsertAliasesForProject() {
