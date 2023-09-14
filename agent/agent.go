@@ -307,8 +307,8 @@ func (a *Agent) processNextTask(ctx context.Context, nt *apimodels.NextTaskRespo
 		grip.Notice("Next task response indicates agent should exit.")
 		return processNextResponse{shouldExit: true}, nil
 	}
-	// if the host's current task group is finished we teardown
 	if nt.ShouldTeardownGroup {
+		// Tear down the task group if the task group is finished.
 		a.runTeardownGroupCommands(ctx, tc)
 		return processNextResponse{
 			// Running the teardown group commands implies exiting the group, so
@@ -319,6 +319,9 @@ func (a *Agent) processNextTask(ctx context.Context, nt *apimodels.NextTaskRespo
 	}
 
 	if nt.TaskId == "" && needTeardownGroup {
+		// Tear down the task group if there's no next task to run (i.e. there's
+		// no more tasks in the task group), and the agent just finished a task
+		// or task group.
 		a.runTeardownGroupCommands(ctx, tc)
 		return processNextResponse{
 			needTeardownGroup: false,
@@ -370,8 +373,11 @@ func (a *Agent) processNextTask(ctx context.Context, nt *apimodels.NextTaskRespo
 
 // finishPrevTask finishes up the previous task and returns information needed for the next task.
 func (a *Agent) finishPrevTask(ctx context.Context, nextTask *apimodels.NextTaskResponse, tc *taskContext) (bool, string) {
-	shouldSetupGroup := false
-	taskDirectory := tc.taskDirectory
+	var shouldSetupGroup bool
+	var taskDirectory string
+	if tc.taskConfig != nil {
+		taskDirectory = tc.taskConfig.WorkDir
+	}
 
 	if shouldRunSetupGroup(nextTask, tc) {
 		shouldSetupGroup = true
@@ -395,7 +401,6 @@ func (a *Agent) setupTask(agentCtx, setupCtx context.Context, initialTC *taskCon
 				Secret: nt.TaskSecret,
 			},
 			ranSetupGroup:             !shouldSetupGroup,
-			taskDirectory:             taskDirectory,
 			oomTracker:                jasper.NewOOMTracker(),
 			unsetFunctionVarsDisabled: nt.UnsetFunctionVarsDisabled,
 		}
@@ -432,13 +437,13 @@ func (a *Agent) setupTask(agentCtx, setupCtx context.Context, initialTC *taskCon
 	}
 
 	if !tc.ranSetupGroup {
-		tc.taskDirectory, err = a.createTaskDirectory(tc)
+		taskDirectory, err = a.createTaskDirectory(tc)
 		if err != nil {
 			return a.handleSetupError(setupCtx, tc, errors.Wrap(err, "creating task directory"))
 		}
 	}
 
-	tc.taskConfig.WorkDir = tc.taskDirectory
+	tc.taskConfig.WorkDir = taskDirectory
 	tc.taskConfig.Expansions.Put("workdir", tc.taskConfig.WorkDir)
 
 	// We are only calling this again to get the log for the current command after logging has been set up.
