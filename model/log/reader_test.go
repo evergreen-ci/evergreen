@@ -4,7 +4,6 @@ import (
 	"context"
 	"fmt"
 	"io"
-	"strings"
 	"testing"
 	"time"
 
@@ -33,7 +32,7 @@ func TestLogIteratorReader(t *testing.T) {
 		{
 			name:          "LineDataOnly",
 			it:            newChunkIterator(ctx, chunkIteratorOptions{bucket: bucket, chunks: chunks, parser: parser}),
-			formatLine:    func(line LogLine) string { return line.Data },
+			formatLine:    func(line LogLine) string { return line.Data + "\n" },
 			expectedLines: lines,
 		},
 		{
@@ -42,7 +41,7 @@ func TestLogIteratorReader(t *testing.T) {
 			opts:          LogIteratorReaderOptions{PrintTime: true},
 			expectedLines: lines,
 			formatLine: func(line LogLine) string {
-				return fmt.Sprintf("[%s] %s", time.Unix(0, line.Timestamp).UTC().Format("2006/01/02 15:04:05.000"), line.Data)
+				return fmt.Sprintf("[%s] %s\n", time.Unix(0, line.Timestamp).UTC().Format("2006/01/02 15:04:05.000"), line.Data)
 			},
 		},
 		{
@@ -50,7 +49,7 @@ func TestLogIteratorReader(t *testing.T) {
 			it:            newChunkIterator(ctx, chunkIteratorOptions{bucket: bucket, chunks: chunks, parser: parser}),
 			opts:          LogIteratorReaderOptions{PrintPriority: true},
 			expectedLines: lines,
-			formatLine:    func(line LogLine) string { return fmt.Sprintf("[P:%3d] %s", line.Priority, line.Data) },
+			formatLine:    func(line LogLine) string { return fmt.Sprintf("[P:%3d] %s\n", line.Priority, line.Data) },
 		},
 		{
 			name: "PrintTimeAndPriority",
@@ -61,7 +60,7 @@ func TestLogIteratorReader(t *testing.T) {
 			},
 			expectedLines: lines,
 			formatLine: func(line LogLine) string {
-				return fmt.Sprintf("[P:%3d] [%s] %s", line.Priority, time.Unix(0, line.Timestamp).UTC().Format("2006/01/02 15:04:05.000"), line.Data)
+				return fmt.Sprintf("[P:%3d] [%s] %s\n", line.Priority, time.Unix(0, line.Timestamp).UTC().Format("2006/01/02 15:04:05.000"), line.Data)
 			},
 		},
 		{
@@ -86,15 +85,15 @@ func TestLogIteratorReader(t *testing.T) {
 				}
 				return mergedLines
 			}(),
-			formatLine: func(line LogLine) string { return line.Data },
+			formatLine: func(line LogLine) string { return line.Data + "\n" },
 		},
 	} {
 		t.Run(test.name, func(t *testing.T) {
 			r := NewLogIteratorReader(test.it, test.opts)
 
-			formattedLines := make([]string, len(test.expectedLines))
-			for i, line := range test.expectedLines {
-				formattedLines[i] = test.formatLine(line)
+			var expectedData []byte
+			for _, line := range test.expectedLines {
+				expectedData = append(expectedData, []byte(test.formatLine(line))...)
 			}
 
 			var (
@@ -115,15 +114,8 @@ func TestLogIteratorReader(t *testing.T) {
 				}
 				require.NoError(t, err)
 			}
-			assert.Equal(t, len(strings.Join(formattedLines, "")), nTotal)
-			readLines := strings.Split(string(readData), "\n")
-			require.Equal(t, "", readLines[len(readLines)-1])
-
-			require.Len(t, readLines, len(test.expectedLines)+1)
-			for i, line := range readLines[:len(readLines)-1] {
-				require.Less(t, i, len(lines))
-				require.Equal(t, formattedLines[i], line+"\n")
-			}
+			assert.Equal(t, len(expectedData), nTotal)
+			require.Equal(t, expectedData, readData)
 
 			n, err := r.Read(p)
 			assert.Zero(t, n)

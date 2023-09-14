@@ -3,8 +3,8 @@ package taskoutput
 // TaskOutput is the versioned entry point for coordinating persistent storage
 // of a task run's output data.
 type TaskOutput struct {
-	TaskLogs TaskLogOutput
-	TestLogs TestLogOutput
+	TaskLogs TaskLogOutput `bson:"task_logs" json:"task_logs"`
+	TestLogs TestLogOutput `bson:"test_logs" json:"test_logs"`
 }
 
 // TaskOptions represents the task-level information required for accessing

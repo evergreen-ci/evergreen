@@ -18,6 +18,11 @@ type logServiceV0 struct {
 	bucket pail.Bucket
 }
 
+// NewLogServiceV0 returns a new V0 Evergreen log service.
+func NewLogServiceV0(bucket pail.Bucket) *logServiceV0 {
+	return &logServiceV0{bucket: bucket}
+}
+
 func (s *logServiceV0) Get(ctx context.Context, getOpts GetOptions) (LogIterator, error) {
 	var its []LogIterator
 	logChunks, err := s.getLogChunks(ctx, getOpts.LogNames)
@@ -88,14 +93,11 @@ func (s *logServiceV0) getLogChunks(ctx context.Context, logNames []string) (map
 			continue
 		}
 
-		// Strip any prefixes from the key and append it to the log's
-		// name as callers may pass in prefixes that contain multiple
+		// Strip any prefix from the key and set it as the log's name
+		// as callers may pass in prefixes that contain multiple
 		// logical logs.
 		if lastIdx := strings.LastIndex(chunkKey, "/"); lastIdx >= 0 {
-			if logName != "" {
-				logName += "/"
-			}
-			logName += chunkKey[:lastIdx]
+			logName = chunkKey[:lastIdx]
 			chunkKey = chunkKey[lastIdx+1:]
 		}
 
@@ -185,7 +187,7 @@ func (s *logServiceV0) getParser(logName string) LineParser {
 			LogName:   logName,
 			Priority:  level.Priority(priority),
 			Timestamp: ts,
-			Data:      lineParts[2],
+			Data:      strings.TrimSuffix(lineParts[2], "\n"),
 		}, nil
 	}
 }
