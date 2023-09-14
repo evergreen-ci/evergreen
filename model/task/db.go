@@ -789,22 +789,7 @@ func needsContainerAllocation() bson.M {
 //  2. The container is allocated but the agent has not picked up the task yet.
 func ScheduledContainerTasksQuery() bson.M {
 	query := UndispatchedContainerTasksQuery()
-	query["$or"] = dependenciesAreMetQuery()
-	return query
-}
-
-// UndispatchedContainerTasksQuery returns a query retrieving all undispatched container tasks.
-func UndispatchedContainerTasksQuery() bson.M {
-	return bson.M{
-		StatusKey:            evergreen.TaskUndispatched,
-		ActivatedKey:         true,
-		ExecutionPlatformKey: ExecutionPlatformContainer,
-		PriorityKey:          bson.M{"$gt": evergreen.DisabledTaskPriority},
-	}
-}
-
-func dependenciesAreMetQuery() []bson.M {
-	return []bson.M{
+	query["$or"] = []bson.M{
 		{
 			DependsOnKey: bson.M{"$size": 0},
 		},
@@ -817,6 +802,17 @@ func dependenciesAreMetQuery() []bson.M {
 			bsonutil.GetDottedKeyName(DependsOnKey, DependencyUnattainableKey): bson.M{"$ne": true},
 		},
 		{OverrideDependenciesKey: true},
+	}
+	return query
+}
+
+// UndispatchedContainerTasksQuery returns a query retrieving all undispatched container tasks.
+func UndispatchedContainerTasksQuery() bson.M {
+	return bson.M{
+		StatusKey:            evergreen.TaskUndispatched,
+		ActivatedKey:         true,
+		ExecutionPlatformKey: ExecutionPlatformContainer,
+		PriorityKey:          bson.M{"$gt": evergreen.DisabledTaskPriority},
 	}
 }
 
