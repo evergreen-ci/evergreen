@@ -161,7 +161,7 @@ func ByUserWithUnterminatedStatus(user string) bson.M {
 	}
 }
 
-// IdleEphemeralGroupedByDistroId groups and collates the following by distro.Id:
+// IdleEphemeralGroupedByDistroID groups and collates the following by distro.Id:
 // - []host.Host of ephemeral hosts without containers which having no running task, ordered by {host.CreationTime: 1}
 // - the total number of ephemeral hosts that are capable of running tasks
 func IdleEphemeralGroupedByDistroID(ctx context.Context, env evergreen.Environment) ([]IdleHostsByDistroID, error) {
