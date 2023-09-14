@@ -496,11 +496,16 @@ func TestTranslateTasks(t *testing.T) {
 	patchRequestersAllowedBV := out.BuildVariants[5]
 	assert.Equal(t, "patch_requesters_allowed", patchRequestersAllowedBV.Name)
 	assert.Equal(t, "a_task_with_no_special_configuration", gitTagOnlyBV.Tasks[0].Name)
-	assert.Equal(t, evergreen.PatchRequesters, patchRequestersAllowedBV.Tasks[0].AllowedRequesters)
+	assert.ElementsMatch(t, []evergreen.UserRequester{
+		evergreen.PatchVersionUserRequester,
+		evergreen.GithubPRUserRequester,
+		evergreen.MergeTestUserRequester,
+		evergreen.GithubMergeUserRequester,
+	}, patchRequestersAllowedBV.Tasks[0].AllowedRequesters)
 	assert.Equal(t, "a_task_with_allowed_requesters", patchRequestersAllowedBV.Tasks[1].Name)
-	assert.Equal(t, []string{evergreen.AdHocRequester}, patchRequestersAllowedBV.Tasks[1].AllowedRequesters)
+	assert.Equal(t, []evergreen.UserRequester{evergreen.AdHocUserRequester}, patchRequestersAllowedBV.Tasks[1].AllowedRequesters)
 	assert.Equal(t, "a_task_with_build_variant_task_configuration", patchRequestersAllowedBV.Tasks[2].Name)
-	assert.Equal(t, []string{evergreen.RepotrackerVersionRequester, evergreen.GitTagRequester}, patchRequestersAllowedBV.Tasks[2].AllowedRequesters)
+	assert.Equal(t, []evergreen.UserRequester{evergreen.RepotrackerVersionUserRequester, evergreen.GitTagUserRequester}, patchRequestersAllowedBV.Tasks[2].AllowedRequesters)
 
 	disabledBV := out.BuildVariants[6]
 	assert.Equal(t, "disabled_bv", disabledBV.Name)

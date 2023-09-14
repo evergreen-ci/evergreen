@@ -105,14 +105,14 @@ type BuildVariantTaskUnit struct {
 	Variant string `yaml:"-" bson:"-"`
 
 	// fields to overwrite ProjectTask settings.
-	Patchable         *bool                `yaml:"patchable,omitempty" bson:"patchable,omitempty"`
-	PatchOnly         *bool                `yaml:"patch_only,omitempty" bson:"patch_only,omitempty"`
-	Disable           *bool                `yaml:"disable,omitempty" bson:"disable,omitempty"`
-	AllowForGitTag    *bool                `yaml:"allow_for_git_tag,omitempty" bson:"allow_for_git_tag,omitempty"`
-	GitTagOnly        *bool                `yaml:"git_tag_only,omitempty" bson:"git_tag_only,omitempty"`
-	AllowedRequesters []string             `yaml:"allowed_requesters,omitempty" bson:"allowed_requesters,omitempty"`
-	Priority          int64                `yaml:"priority,omitempty" bson:"priority"`
-	DependsOn         []TaskUnitDependency `yaml:"depends_on,omitempty" bson:"depends_on"`
+	Patchable         *bool                     `yaml:"patchable,omitempty" bson:"patchable,omitempty"`
+	PatchOnly         *bool                     `yaml:"patch_only,omitempty" bson:"patch_only,omitempty"`
+	Disable           *bool                     `yaml:"disable,omitempty" bson:"disable,omitempty"`
+	AllowForGitTag    *bool                     `yaml:"allow_for_git_tag,omitempty" bson:"allow_for_git_tag,omitempty"`
+	GitTagOnly        *bool                     `yaml:"git_tag_only,omitempty" bson:"git_tag_only,omitempty"`
+	AllowedRequesters []evergreen.UserRequester `yaml:"allowed_requesters,omitempty" bson:"allowed_requesters,omitempty"`
+	Priority          int64                     `yaml:"priority,omitempty" bson:"priority"`
+	DependsOn         []TaskUnitDependency      `yaml:"depends_on,omitempty" bson:"depends_on"`
 
 	// the distros that the task can be run on
 	RunOn []string `yaml:"run_on,omitempty" bson:"run_on"`
@@ -284,7 +284,7 @@ func (bvt *BuildVariantTaskUnit) UnmarshalYAML(unmarshal func(interface{}) error
 
 func (bvt *BuildVariantTaskUnit) SkipOnRequester(requester string) bool {
 	if len(bvt.AllowedRequesters) != 0 {
-		return !utility.StringSliceContains(bvt.AllowedRequesters, requester)
+		return !utility.StringSliceContains(evaluateRequesters(bvt.AllowedRequesters), requester)
 	}
 
 	return evergreen.IsPatchRequester(requester) && bvt.SkipOnPatchBuild() ||
@@ -295,7 +295,7 @@ func (bvt *BuildVariantTaskUnit) SkipOnRequester(requester string) bool {
 
 func (bvt *BuildVariantTaskUnit) SkipOnPatchBuild() bool {
 	if len(bvt.AllowedRequesters) != 0 {
-		allowed := utility.StringSliceIntersection(bvt.AllowedRequesters, evergreen.PatchRequesters)
+		allowed := utility.StringSliceIntersection(evaluateRequesters(bvt.AllowedRequesters), evergreen.PatchRequesters)
 		return len(allowed) == 0
 	}
 
@@ -304,7 +304,7 @@ func (bvt *BuildVariantTaskUnit) SkipOnPatchBuild() bool {
 
 func (bvt *BuildVariantTaskUnit) SkipOnNonPatchBuild() bool {
 	if len(bvt.AllowedRequesters) != 0 {
-		allowed, _ := utility.StringSliceSymmetricDifference(bvt.AllowedRequesters, evergreen.PatchRequesters)
+		allowed, _ := utility.StringSliceSymmetricDifference(evaluateRequesters(bvt.AllowedRequesters), evergreen.PatchRequesters)
 		return len(allowed) == 0
 	}
 
@@ -313,7 +313,7 @@ func (bvt *BuildVariantTaskUnit) SkipOnNonPatchBuild() bool {
 
 func (bvt *BuildVariantTaskUnit) SkipOnGitTagBuild() bool {
 	if len(bvt.AllowedRequesters) != 0 {
-		return !utility.StringSliceContains(bvt.AllowedRequesters, evergreen.GitTagRequester)
+		return !utility.StringSliceContains(evaluateRequesters(bvt.AllowedRequesters), evergreen.GitTagRequester)
 	}
 
 	return !utility.FromBoolTPtr(bvt.AllowForGitTag)
@@ -321,7 +321,7 @@ func (bvt *BuildVariantTaskUnit) SkipOnGitTagBuild() bool {
 
 func (bvt *BuildVariantTaskUnit) SkipOnNonGitTagBuild() bool {
 	if len(bvt.AllowedRequesters) != 0 {
-		allowed, _ := utility.StringSliceSymmetricDifference(bvt.AllowedRequesters, []string{evergreen.GitTagRequester})
+		allowed, _ := utility.StringSliceSymmetricDifference(evaluateRequesters(bvt.AllowedRequesters), []string{evergreen.GitTagRequester})
 		return len(allowed) == 0
 	}
 
@@ -387,7 +387,7 @@ type BuildVariant struct {
 	// task. If set, the allowed requesters take precedence over other
 	// requester-related filters such as Patchable, PatchOnly, AllowForGitTag,
 	// and GitTagOnly. By default, all requesters are allowed to run the task.
-	AllowedRequesters []string `yaml:"allowed_requesters,omitempty" bson:"allowed_requesters,omitempty"`
+	AllowedRequesters []evergreen.UserRequester `yaml:"allowed_requesters,omitempty" bson:"allowed_requesters,omitempty"`
 
 	// Use a *bool so that there are 3 possible states:
 	//   1. nil   = not overriding the project setting (default)
@@ -698,14 +698,14 @@ type ProjectTask struct {
 	//   1. nil   = not overriding the project setting (default)
 	//   2. true  = overriding the project setting with true
 	//   3. false = overriding the project setting with false
-	Patchable         *bool    `yaml:"patchable,omitempty" bson:"patchable,omitempty"`
-	PatchOnly         *bool    `yaml:"patch_only,omitempty" bson:"patch_only,omitempty"`
-	Disable           *bool    `yaml:"disable,omitempty" bson:"disable,omitempty"`
-	AllowForGitTag    *bool    `yaml:"allow_for_git_tag,omitempty" bson:"allow_for_git_tag,omitempty"`
-	GitTagOnly        *bool    `yaml:"git_tag_only,omitempty" bson:"git_tag_only,omitempty"`
-	AllowedRequesters []string `yaml:"allowed_requesters,omitempty" bson:"allowed_requesters,omitempty"`
-	Stepback          *bool    `yaml:"stepback,omitempty" bson:"stepback,omitempty"`
-	MustHaveResults   *bool    `yaml:"must_have_test_results,omitempty" bson:"must_have_test_results,omitempty"`
+	Patchable         *bool                     `yaml:"patchable,omitempty" bson:"patchable,omitempty"`
+	PatchOnly         *bool                     `yaml:"patch_only,omitempty" bson:"patch_only,omitempty"`
+	Disable           *bool                     `yaml:"disable,omitempty" bson:"disable,omitempty"`
+	AllowForGitTag    *bool                     `yaml:"allow_for_git_tag,omitempty" bson:"allow_for_git_tag,omitempty"`
+	GitTagOnly        *bool                     `yaml:"git_tag_only,omitempty" bson:"git_tag_only,omitempty"`
+	AllowedRequesters []evergreen.UserRequester `yaml:"allowed_requesters,omitempty" bson:"allowed_requesters,omitempty"`
+	Stepback          *bool                     `yaml:"stepback,omitempty" bson:"stepback,omitempty"`
+	MustHaveResults   *bool                     `yaml:"must_have_test_results,omitempty" bson:"must_have_test_results,omitempty"`
 }
 
 type LoggerConfig struct {
@@ -2235,7 +2235,7 @@ func GetVariantsAndTasksFromPatchProject(ctx context.Context, settings *evergree
 		// Note that this can return the incorrect set of tasks based on
 		// requester settings because requester settings may be overridden at
 		// the build variant task level.
-		if len(task.AllowedRequesters) != 0 && !utility.StringSliceContains(task.AllowedRequesters, p.GetRequester()) {
+		if len(task.AllowedRequesters) != 0 && !utility.StringSliceContains(evaluateRequesters(task.AllowedRequesters), p.GetRequester()) {
 			continue
 		}
 		if utility.FromBoolPtr(task.Disable) || !utility.FromBoolTPtr(task.Patchable) || utility.FromBoolPtr(task.GitTagOnly) {
