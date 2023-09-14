@@ -522,7 +522,7 @@ func (s *ProjectAliasSuite) TestFindAliasInProjectRepoOrConfig() {
 	// Test project config
 	found, err = FindAliasInProjectRepoOrConfig(pRef1.Id, "alias-6")
 	s.NoError(err)
-	s.Len(found, 1)
+	s.Require().Len(found, 1)
 	s.Equal(found[0].Alias, "alias-6")
 	s.Equal(found[0].Task, "*")
 	s.Equal(found[0].Variant, "*")
@@ -530,7 +530,7 @@ func (s *ProjectAliasSuite) TestFindAliasInProjectRepoOrConfig() {
 	// Test non-patch aliases defined in config
 	found, err = FindAliasInProjectRepoOrConfig(pRef1.Id, evergreen.CommitQueueAlias)
 	s.NoError(err)
-	s.Len(found, 1)
+	s.Require().Len(found, 1)
 	s.Equal(found[0].Alias, evergreen.CommitQueueAlias)
 	s.Equal(found[0].Task, "cq-.*")
 	s.Equal(found[0].Variant, "cq-.*")
