@@ -1474,6 +1474,17 @@ func (t *Task) SetStepbackDepth(stepbackDepth int) error {
 		})
 }
 
+// output returns the populated task output metadata when appropriate. This is
+// needed to support backwards compatibility for tasks that do not have the
+// output metadata saved in the database.
+func (t *Task) output() *taskoutput.TaskOutput {
+	if t.TaskOutput == nil && !t.DisplayOnly {
+		t.TaskOutput = &taskoutput.TaskOutput{}
+	}
+
+	return t.TaskOutput
+}
+
 // GetTaskLogs returns the task's task logs with the given options.
 func (t *Task) GetTaskLogs(ctx context.Context, env evergreen.Environment, getOpts taskoutput.TaskLogGetOptions) (log.LogIterator, error) {
 	if t.DisplayOnly {
@@ -1490,7 +1501,7 @@ func (t *Task) GetTaskLogs(ctx context.Context, env evergreen.Environment, getOp
 		Execution: t.Execution,
 	}
 
-	return t.TaskOutput.TaskLogs.Get(ctx, env, taskOpts, getOpts)
+	return t.output().TaskLogs.Get(ctx, env, taskOpts, getOpts)
 }
 
 // GetTestLogs returns the task's test logs with the specified options.
@@ -1509,7 +1520,7 @@ func (t *Task) GetTestLogs(ctx context.Context, env evergreen.Environment, getOp
 		Execution: t.Execution,
 	}
 
-	return t.TaskOutput.TestLogs.Get(ctx, env, taskOpts, getOpts)
+	return t.output().TestLogs.Get(ctx, env, taskOpts, getOpts)
 }
 
 // SetResultsInfo sets the task's test results info.
