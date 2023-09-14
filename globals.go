@@ -164,7 +164,7 @@ const (
 	VersionFailed    = "failed"
 	VersionSucceeded = "success"
 
-	LegacyPatchSucceeded = "succeeded" // deprecated
+	LegacyPatchSucceeded = "succeeded" // deprecated: will remove in EVG-20032
 
 	// VersionAborted is a display status only and not stored in the DB
 	VersionAborted = "aborted"
@@ -434,7 +434,7 @@ func IsFinishedBuildStatus(status string) bool {
 // IsFinishedVersionStatus returns true if the version or patch is true.
 // Also handles the legacy status, to be removed in EVG-20032.
 func IsFinishedVersionStatus(status string) bool {
-	return status == VersionFailed || status == VersionSucceeded || status == LegacyPatchSucceeded
+	return status == VersionFailed || IsSuccessfulVersionStatus(status)
 }
 
 // IsSuccessfulVersionStatus returns true if the status represents a successful version.

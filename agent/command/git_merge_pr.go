@@ -81,11 +81,7 @@ func (c *gitMergePR) Execute(ctx context.Context, comm client.Communicator, logg
 		return errors.Wrap(err, "setting up GitHub status logger")
 	}
 
-	status := evergreen.VersionFailed
-	if evergreen.IsSuccessfulVersionStatus(patchDoc.MergeStatus) {
-		status = evergreen.LegacyPatchSucceeded
-	}
-	if status != evergreen.LegacyPatchSucceeded {
+	if !evergreen.IsSuccessfulVersionStatus(patchDoc.MergeStatus) {
 		logger.Task().Warning("At least 1 task failed, will not merge pull request.")
 		return nil
 	}
