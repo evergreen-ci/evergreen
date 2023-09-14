@@ -23,8 +23,6 @@ const (
 	idleHostJobName           = "idle-host-termination"
 	idleWaitingForAgentCutoff = 10 * time.Minute
 
-	// outdatedIdleTimeCutoff is the amount of time we wait for an outdated idle host to be marked idle.
-	outdatedIdleTimeCutoff = time.Minute
 	// MaxTimeNextPayment is the amount of time we wait to have left before marking a host as idle
 	maxTimeTilNextPayment = 5 * time.Minute
 )
@@ -172,13 +170,14 @@ func (j *idleHostJob) checkAndTerminateHost(ctx context.Context, schedulerConfig
 	}
 	if h.RunningTaskGroup != "" {
 		idleThreshold = idleThreshold * 2
-	} else if hostHasOutdatedAMI(*h, d) {
-		idleThreshold = outdatedIdleTimeCutoff
 	}
 
-	// if we haven't heard from the host or it's been idle for longer than the cutoff, we should terminate
 	var terminateReason string
-	if communicationTime >= idleThreshold {
+	if hostHasOutdatedAMI(*h, d) {
+		// Since tasks created after the AMI is updated will only run on new hosts,
+		// we want to terminate outdated hosts aggressively to ensure we're respecting task priorities.
+		terminateReason = "host has an outdated AMI"
+	} else if communicationTime >= idleThreshold {
 		terminateReason = fmt.Sprintf("host is idle or unreachable, communication time %s is over threshold time %s", communicationTime, idleThreshold)
 	} else if idleTime >= idleThreshold {
 		terminateReason = fmt.Sprintf("host is idle or unreachable, idle time %s is over threshold time %s", idleTime, idleThreshold)
