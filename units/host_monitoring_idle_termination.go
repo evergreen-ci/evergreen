@@ -168,17 +168,12 @@ func (j *idleHostJob) checkAndTerminateHost(ctx context.Context, schedulerConfig
 	if idleThreshold == 0 {
 		idleThreshold = time.Duration(schedulerConfig.AcceptableHostIdleTimeSeconds) * time.Second
 	}
-	hasOutdatedAMI := hostHasOutdatedAMI(*h, d)
 	if h.RunningTaskGroup != "" {
 		idleThreshold = idleThreshold * 2
-	} else if hasOutdatedAMI {
-		// Since tasks created after the AMI is updated will only run on new hosts,
-		// we want to terminate outdated hosts aggressively to ensure we're respecting task priorities.
-		idleThreshold = 0
 	}
 
 	var terminateReason string
-	if hasOutdatedAMI && communicationTime >= idleThreshold {
+	if hostHasOutdatedAMI(*h, d) {
 		// Since tasks created after the AMI is updated will only run on new hosts,
 		// we want to terminate outdated hosts aggressively to ensure we're respecting task priorities.
 		terminateReason = "host has an outdated AMI"
