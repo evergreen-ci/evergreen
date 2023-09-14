@@ -138,12 +138,9 @@ func getFormattedDate(t *time.Time, timezone string) (*string, error) {
 // (this is because success is different for version/patches,
 // and for display we rely on the patch status. Will address this in EVG-19914).
 func getDisplayStatus(v *model.Version) (string, error) {
-	patchStatus, err := evergreen.VersionStatusToPatchStatus(v.Status)
-	if err != nil {
-		return "", errors.Wrapf(err, "getting version status for patch '%s'", v.Id)
-	}
+	patchStatus := evergreen.VersionStatusToPatchStatus(v.Status)
 	if v.Aborted {
-		patchStatus = evergreen.PatchAborted
+		patchStatus = evergreen.VersionAborted
 	}
 	if !evergreen.IsPatchRequester(v.Requester) || v.IsChild() {
 		return patchStatus, nil
@@ -168,10 +165,7 @@ func getDisplayStatus(v *model.Version) (string, error) {
 		if cpVersion.Aborted {
 			allStatuses = append(allStatuses, evergreen.VersionAborted)
 		} else {
-			cpStatus, err := evergreen.VersionStatusToPatchStatus(cpVersion.Status)
-			if err != nil {
-				return "", errors.Wrapf(err, "getting version status for child patch '%s'", cpVersion.Id)
-			}
+			cpStatus := evergreen.VersionStatusToPatchStatus(cpVersion.Status)
 			allStatuses = append(allStatuses, cpStatus)
 		}
 	}

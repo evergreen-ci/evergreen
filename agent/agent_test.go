@@ -59,17 +59,42 @@ type AgentSuite struct {
 	task             task.Task
 	ctx              context.Context
 	canceler         context.CancelFunc
-	tmpDirName       string
+	suiteTmpDirName  string
+	testTmpDirName   string
 }
 
 func TestAgentSuite(t *testing.T) {
 	suite.Run(t, new(AgentSuite))
 }
 
-// kim: TODO: fix merge conflict due to task working directory consolidation
+func (s *AgentSuite) SetupSuite() {
+	s.suiteTmpDirName = s.T().TempDir()
+}
+
+func (s *AgentSuite) TearDownSuite() {
+	if runtime.GOOS == "windows" {
+		// This is a hack to give extra time for processes in Windows to finish
+		// using the temporary working directory before the Go testing framework
+		// cna attempt to clean it up. When using (testing.T).TempDir, the Go
+		// testing framework will automatically clean up the directory at the
+		// end of the test, and will fail the test if it cannot clean it up.
+		// Furthermore, some agent tests are intentionally testing that the
+		// agent will continue without waiting for a command after a context
+		// error. Unfortunately, this means that by the time the test is
+		// cleaning up, there may still be lingering processes accessing the
+		// temporary task working directory. In Windows, if a process is still
+		// using the directory, it can cause the Go testing framework to fail to
+		// remove the directory, which fails the test. Therefore, the sleep here
+		// gives the processes time to all shut down and stop using the
+		// temporary working directory.
+		time.Sleep(10 * time.Second)
+	}
+}
+
 func (s *AgentSuite) SetupTest() {
 	var err error
-	s.tmpDirName, err = os.MkdirTemp("", filepath.Base(s.T().Name()))
+
+	s.testTmpDirName, err = os.MkdirTemp(s.suiteTmpDirName, filepath.Base(s.T().Name()))
 	s.Require().NoError(err)
 
 	s.a = &Agent{
@@ -79,7 +104,7 @@ func (s *AgentSuite) SetupTest() {
 			StatusPort:       2286,
 			LogOutput:        LogOutputStdout,
 			LogPrefix:        "agent",
-			WorkingDirectory: s.tmpDirName,
+			WorkingDirectory: s.testTmpDirName,
 		},
 		comm:   client.NewMock("url"),
 		tracer: otel.GetTracerProvider().Tracer("noop_tracer"),
@@ -106,7 +131,7 @@ func (s *AgentSuite) SetupTest() {
 		},
 		BuildVariants: []model.BuildVariant{{Name: bvName}},
 	}
-	taskConfig, err := internal.NewTaskConfig(s.tmpDirName, &apimodels.DistroView{}, project, &s.task, &model.ProjectRef{
+	taskConfig, err := internal.NewTaskConfig(s.testTmpDirName, &apimodels.DistroView{}, project, &s.task, &model.ProjectRef{
 		Id:         "project_id",
 		Identifier: "project_identifier",
 	}, &patch.Patch{}, util.Expansions{})
@@ -117,10 +142,8 @@ func (s *AgentSuite) SetupTest() {
 			ID:     "task_id",
 			Secret: "task_secret",
 		},
-		taskConfig:    taskConfig,
-		ranSetupGroup: false,
-		oomTracker:    &mock.OOMTracker{},
-		taskDirectory: s.tmpDirName,
+		taskConfig: taskConfig,
+		oomTracker: &mock.OOMTracker{},
 	}
 	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
 	s.canceler = cancel
@@ -138,7 +161,6 @@ func (s *AgentSuite) SetupTest() {
 
 func (s *AgentSuite) TearDownTest() {
 	s.canceler()
-	s.Require().NoError(os.RemoveAll(s.tmpDirName))
 }
 
 func (s *AgentSuite) TestNextTaskResponseShouldExit() {
@@ -255,11 +277,11 @@ func (s *AgentSuite) TestFinishTaskWithAbnormallyCompletedTask() {
 	resp, err := s.a.finishTask(s.ctx, s.tc, status, "")
 	s.Equal(&apimodels.EndTaskResponse{}, resp)
 	s.NoError(err)
-	s.NoError(s.tc.logger.Close())
 
 	s.Equal(evergreen.TaskFailed, s.mockCommunicator.EndTaskResult.Detail.Status, "task that failed due to non-task-related reasons should record the final status")
 	s.Equal(evergreen.CommandTypeSystem, s.mockCommunicator.EndTaskResult.Detail.Type)
 	s.NotEmpty(s.mockCommunicator.EndTaskResult.Detail.Description)
+	s.NoError(s.tc.logger.Close())
 	checkMockLogs(s.T(), s.mockCommunicator, s.tc.taskConfig.Task.Id, []string{
 		"Task encountered unexpected task lifecycle system failure",
 	}, []string{
@@ -579,6 +601,7 @@ tasks:
 	s.setupRunTask(projYml)
 
 	s.Error(s.a.runTaskCommands(s.ctx, s.tc))
+
 	s.NoError(s.tc.logger.Close())
 	checkMockLogs(s.T(), s.mockCommunicator, s.tc.taskConfig.Task.Id, []string{
 		"Running task commands",
@@ -601,11 +624,14 @@ post:
 	s.setupRunTask(projYml)
 
 	s.NoError(s.a.runPostTaskCommands(s.ctx, s.tc))
+
 	s.NoError(s.tc.logger.Close())
 	checkMockLogs(s.T(), s.mockCommunicator, s.tc.taskConfig.Task.Id, []string{
 		"Running post-task commands",
+		"Setting heartbeat timeout to type 'post'",
 		"Running command 'shell.exec' (step 1 of 1) in block 'post'",
 		"Finished command 'shell.exec' (step 1 of 1) in block 'post'",
+		"Resetting heartbeat timeout from type 'post' back to default",
 		"Finished running post-task commands",
 	}, []string{
 		panicLog,
@@ -638,9 +664,11 @@ post:
 	s.NoError(s.tc.logger.Close())
 	checkMockLogs(s.T(), s.mockCommunicator, s.tc.taskConfig.Task.Id, []string{
 		"Running post-task commands",
+		"Setting heartbeat timeout to type 'post'",
 		"Running command 'shell.exec' (step 1 of 1) in block 'post'",
 		"Hit post timeout (1s)",
 		"Finished command 'shell.exec' (step 1 of 1) in block 'post'",
+		"Resetting heartbeat timeout from type 'post' back to default",
 		"Running post-task commands failed",
 		"Finished running post-task commands",
 	}, []string{
@@ -694,8 +722,10 @@ post:
 	s.NoError(s.tc.logger.Close())
 	checkMockLogs(s.T(), s.mockCommunicator, s.tc.taskConfig.Task.Id, []string{
 		"Running post-task commands",
+		"Setting heartbeat timeout to type 'post'",
 		"Running command 'shell.exec' (step 1 of 1) in block 'post'",
 		"Hit post timeout (1s)",
+		"Resetting heartbeat timeout from type 'post' back to default",
 		"Running post-task commands failed",
 		"Finished running post-task commands",
 	}, []string{panicLog})
@@ -735,7 +765,7 @@ post:
 		TaskId:     s.tc.task.ID,
 		TaskSecret: s.tc.task.Secret,
 	}
-	_, _, err := s.a.runTask(s.ctx, s.tc, nextTask, !s.tc.ranSetupGroup, s.tc.taskConfig.WorkDir)
+	_, _, err := s.a.runTask(s.ctx, s.tc, nextTask, false, s.testTmpDirName)
 
 	s.NoError(err)
 	s.Equal(evergreen.TaskFailed, s.mockCommunicator.EndTaskResult.Detail.Status)
@@ -752,8 +782,10 @@ post:
 		"Finished command 'shell.exec' (step 1 of 1)",
 		"Finished running task commands",
 		"Running post-task commands",
+		"Setting heartbeat timeout to type 'post'",
 		"Running command 'shell.exec' (step 1 of 1) in block 'post'",
 		"Finished command 'shell.exec' (step 1 of 1) in block 'post'",
+		"Resetting heartbeat timeout from type 'post' back to default",
 		"Running post-task commands failed",
 		"Finished running post-task commands",
 	}, []string{
@@ -785,7 +817,7 @@ post:
 		TaskId:     s.tc.task.ID,
 		TaskSecret: s.tc.task.Secret,
 	}
-	_, _, err := s.a.runTask(s.ctx, s.tc, nextTask, !s.tc.ranSetupGroup, s.tc.taskConfig.WorkDir)
+	_, _, err := s.a.runTask(s.ctx, s.tc, nextTask, false, s.testTmpDirName)
 
 	s.NoError(err)
 	s.Equal(evergreen.TaskSucceeded, s.mockCommunicator.EndTaskResult.Detail.Status)
@@ -800,8 +832,10 @@ post:
 		"Finished command 'shell.exec' (step 1 of 1)",
 		"Finished running task commands",
 		"Running post-task commands",
+		"Setting heartbeat timeout to type 'post'",
 		"Running command 'shell.exec' (step 1 of 1) in block 'post'",
 		"Finished command 'shell.exec' (step 1 of 1) in block 'post'",
+		"Resetting heartbeat timeout from type 'post' back to default",
 		"Finished running post-task commands",
 	}, []string{
 		panicLog,
@@ -833,7 +867,7 @@ post:
 		TaskId:     s.tc.task.ID,
 		TaskSecret: s.tc.task.Secret,
 	}
-	_, _, err := s.a.runTask(s.ctx, s.tc, nextTask, !s.tc.ranSetupGroup, s.tc.taskConfig.WorkDir)
+	_, _, err := s.a.runTask(s.ctx, s.tc, nextTask, false, s.testTmpDirName)
 
 	s.NoError(err)
 	s.Equal(evergreen.TaskSucceeded, s.mockCommunicator.EndTaskResult.Detail.Status)
@@ -848,8 +882,10 @@ post:
 		"Finished command 'shell.exec' (step 1 of 1)",
 		"Finished running task commands",
 		"Running post-task commands",
+		"Setting heartbeat timeout to type 'post'",
 		"Running command 'shell.exec' (step 1 of 1) in block 'post'",
 		"Finished command 'shell.exec' (step 1 of 1) in block 'post'",
+		"Resetting heartbeat timeout from type 'post' back to default",
 		"Finished running post-task commands",
 	}, []string{
 		panicLog,
@@ -882,7 +918,7 @@ post:
 		TaskId:     s.tc.task.ID,
 		TaskSecret: s.tc.task.Secret,
 	}
-	_, _, err := s.a.runTask(s.ctx, s.tc, nextTask, !s.tc.ranSetupGroup, s.tc.taskConfig.WorkDir)
+	_, _, err := s.a.runTask(s.ctx, s.tc, nextTask, false, s.testTmpDirName)
 
 	s.NoError(err)
 	s.Equal(evergreen.TaskFailed, s.mockCommunicator.EndTaskResult.Detail.Status)
@@ -894,8 +930,11 @@ post:
 		"Running command 'shell.exec' (step 1 of 1)",
 		"Set idle timeout for 'shell.exec' (step 1 of 1) (test) to 1s.",
 		"Hit idle timeout",
+		"Running post-task commands",
+		"Setting heartbeat timeout to type 'post'",
 		"Running command 'shell.exec' (step 1 of 1) in block 'post'",
 		"Finished command 'shell.exec' (step 1 of 1) in block 'post'",
+		"Resetting heartbeat timeout from type 'post' back to default",
 		"Running post-task commands failed",
 		"Finished running post-task commands",
 	}, []string{
@@ -927,7 +966,7 @@ post:
 		TaskId:     s.tc.task.ID,
 		TaskSecret: s.tc.task.Secret,
 	}
-	_, _, err := s.a.runTask(s.ctx, s.tc, nextTask, !s.tc.ranSetupGroup, s.tc.taskConfig.WorkDir)
+	_, _, err := s.a.runTask(s.ctx, s.tc, nextTask, false, s.testTmpDirName)
 
 	s.NoError(err)
 	s.Equal(evergreen.TaskFailed, s.mockCommunicator.EndTaskResult.Detail.Status)
@@ -941,8 +980,10 @@ post:
 		"Finished command 'shell.exec' (step 1 of 1)",
 		"Finished running task commands",
 		"Running post-task commands",
+		"Setting heartbeat timeout to type 'post'",
 		"Running command 'shell.exec' (step 1 of 1) in block 'post'",
 		"Finished command 'shell.exec' (step 1 of 1) in block 'post'",
+		"Resetting heartbeat timeout from type 'post' back to default",
 		"Finished running post-task commands",
 	}, []string{
 		panicLog,
@@ -968,10 +1009,12 @@ post:
 	s.NoError(s.tc.logger.Close())
 	checkMockLogs(s.T(), s.mockCommunicator, s.tc.taskConfig.Task.Id, []string{
 		"Running post-task commands",
+		"Setting heartbeat timeout to type 'post'",
 		"Running command 'shell.exec' (step 1 of 2) in block 'post'",
 		"Finished command 'shell.exec' (step 1 of 2) in block 'post'",
 		"Running command 'shell.exec' (step 2 of 2) in block 'post'",
 		"Finished command 'shell.exec' (step 2 of 2) in block 'post'",
+		"Resetting heartbeat timeout from type 'post' back to default",
 		"Finished running post-task commands",
 	}, []string{
 		panicLog,
@@ -1078,7 +1121,7 @@ post:
 		TaskId:     s.tc.task.ID,
 		TaskSecret: s.tc.task.Secret,
 	}
-	_, _, err := s.a.runTask(s.ctx, s.tc, nextTask, !s.tc.ranSetupGroup, s.tc.taskConfig.WorkDir)
+	_, _, err := s.a.runTask(s.ctx, s.tc, nextTask, false, s.testTmpDirName)
 	s.NoError(err)
 	s.Equal(evergreen.TaskSucceeded, s.mockCommunicator.EndTaskResult.Detail.Status)
 	s.True(s.mockCommunicator.EndTaskResult.Detail.OOMTracker.Detected)
@@ -1095,10 +1138,10 @@ func (s *AgentSuite) TestFinishPrevTaskWithoutTaskGroup() {
 				BuildId: buildID,
 				Version: versionID,
 			},
+			WorkDir: "task_directory",
 		},
 		logger:        s.tc.logger,
 		ranSetupGroup: true,
-		taskDirectory: "task_directory",
 	}
 	nextTask := &apimodels.NextTaskResponse{
 		TaskId:  "another_task_id",
@@ -1110,7 +1153,6 @@ func (s *AgentSuite) TestFinishPrevTaskWithoutTaskGroup() {
 
 	s.True(shouldSetupGroup, "if the next task is not in a group, shouldSetupGroup should be true")
 	s.Empty(taskDirectory)
-
 }
 
 func (s *AgentSuite) TestFinishPrevTaskAndNextTaskIsInNewTaskGroup() {
@@ -1123,10 +1165,10 @@ func (s *AgentSuite) TestFinishPrevTaskAndNextTaskIsInNewTaskGroup() {
 				BuildId: buildID,
 				Version: versionID,
 			},
+			WorkDir: "task_directory",
 		},
 		logger:        s.tc.logger,
 		ranSetupGroup: true,
-		taskDirectory: "task_directory",
 	}
 	nextTask := &apimodels.NextTaskResponse{
 		TaskId:    "another_task_id",
@@ -1159,7 +1201,6 @@ func (s *AgentSuite) TestFinishPrevTaskWithSameTaskGroupAndAlreadyRanSetupGroup(
 		},
 		logger:        s.tc.logger,
 		ranSetupGroup: true,
-		taskDirectory: "task_directory",
 	}
 	nextTask := &apimodels.NextTaskResponse{
 		TaskId:    "another_task_id",
@@ -1190,8 +1231,7 @@ func (s *AgentSuite) TestFinishPrevTaskWithSameTaskGroupButDidNotRunSetupGroup()
 			TaskGroup: &model.TaskGroup{Name: taskGroup},
 			WorkDir:   "task_directory",
 		},
-		logger:        s.tc.logger,
-		taskDirectory: "task_directory",
+		logger: s.tc.logger,
 	}
 	nextTask := &apimodels.NextTaskResponse{
 		TaskId:    "task_id2",
@@ -1224,7 +1264,6 @@ func (s *AgentSuite) TestFinishPrevTaskWithSameBuildButDifferentTaskGroup() {
 		},
 		logger:        s.tc.logger,
 		ranSetupGroup: true,
-		taskDirectory: "task_directory",
 	}
 	nextTask := &apimodels.NextTaskResponse{
 		TaskId:    "task_id2",
@@ -1239,22 +1278,22 @@ func (s *AgentSuite) TestFinishPrevTaskWithSameBuildButDifferentTaskGroup() {
 	s.Empty(taskDirectory)
 }
 
-// kim: TODO: fix gnarly merge conflict from task working directory PR.
-
-func (s *AgentSuite) TestSetupInitialSucceeds() {
+func (s *AgentSuite) TestGeneralPreviousTaskCleanupAndNextTaskSetupSucceeds() {
 	nextTask := &apimodels.NextTaskResponse{}
 	s.setupRunTask(defaultProjYml)
-	s.tc.taskDirectory = "task_directory"
 	shouldSetupGroup, taskDirectory := s.a.finishPrevTask(s.ctx, nextTask, s.tc)
-
+	s.True(shouldSetupGroup, "should set up task directory again")
+	s.Empty(taskDirectory, "task directory should not carry over to next task unless they're part of the same task group")
 	tc, shouldExit, err := s.a.setupTask(s.ctx, s.ctx, s.tc, nextTask, shouldSetupGroup, taskDirectory)
 	s.False(shouldExit)
 	s.NoError(err)
-	s.Require().NotZero(tc, "task context should be populated with initial data")
 
+	s.Require().NotZero(tc, "task context should be populated with initial data")
+	s.Require().NotZero(tc.taskConfig)
 	s.Equal(s.tc.taskConfig, tc.taskConfig)
 	s.NotZero(tc.logger, "logger should be set")
 
+	s.Contains(tc.taskConfig.WorkDir, s.a.opts.WorkingDirectory)
 	taskDir := s.getTaskWorkingDirectory(s.a.opts.WorkingDirectory)
 	s.NotZero(taskDir, "should have created task working directory")
 
@@ -1267,6 +1306,69 @@ func (s *AgentSuite) TestSetupInitialSucceeds() {
 		"System logger initialized.",
 		"Starting task 'task_id', execution 0.",
 	}, []string{panicLog})
+}
+
+func (s *AgentSuite) TestGeneralPreviousTaskCleanupAndNextTaskSetupSucceedsWithTasksInSameTaskGroup() {
+	const taskGroup = "this_is_a_task_group"
+	projYml := `
+buildvariants:
+  - name: mock_build_variant
+    tasks:
+      - this_is_a_task_group
+
+tasks:
+  - name: this_is_a_task_name
+    commands:
+      - command: shell.exec
+        params:
+          script: exit 0
+  - name: this_is_another_task_name
+    commands:
+      - command: shell.exec
+        params:
+          script: exit 0
+
+task_groups:
+  - name: this_is_a_task_group
+    tasks:
+      - this_is_a_task_name
+      - this_is_another_task_name
+`
+	s.setupRunTask(projYml)
+
+	// Fake out the data so that the previous task already set up the task
+	// group, and next task is part of the same task group.
+	s.tc.ranSetupGroup = true
+	s.tc.taskConfig.Task.TaskGroup = taskGroup
+	s.tc.taskConfig.TaskGroup = s.tc.taskConfig.Project.FindTaskGroup(taskGroup)
+	s.Require().NotNil(s.tc.taskConfig.TaskGroup, "task group should be defined in project")
+	nextTask := &apimodels.NextTaskResponse{
+		TaskGroup: taskGroup,
+	}
+
+	shouldSetupGroup, taskDirectory := s.a.finishPrevTask(s.ctx, nextTask, s.tc)
+	s.False(shouldSetupGroup, "should not set up task directory again for task in same task group")
+	s.Equal(s.tc.taskConfig.WorkDir, taskDirectory, "task directory should carry over to next task since it's part of the same task group")
+
+	tc, shouldExit, err := s.a.setupTask(s.ctx, s.ctx, s.tc, nextTask, shouldSetupGroup, taskDirectory)
+	s.False(shouldExit)
+	s.NoError(err)
+
+	s.Require().NotZero(tc)
+	s.Require().NotZero(tc.taskConfig)
+	s.Equal(taskDirectory, tc.taskConfig.WorkDir, "should reuse same working directory for task in same task group")
+
+	s.NoError(s.tc.logger.Close())
+	checkMockLogs(s.T(), s.mockCommunicator, s.tc.taskConfig.Task.Id, []string{
+		"Current command set to initial task setup (system).",
+		"Task logger initialized",
+		"Execution logger initialized.",
+		"System logger initialized.",
+		"Starting task 'task_id', execution 0.",
+	}, []string{
+		panicLog,
+		"Making new directory",
+	})
 }
 
 func (s *AgentSuite) checkTaskSystemFailed() {
@@ -1413,7 +1515,7 @@ tasks:
 		TaskId:     s.tc.task.ID,
 		TaskSecret: s.tc.task.Secret,
 	}
-	_, _, err := s.a.runTask(s.ctx, s.tc, nextTask, !s.tc.ranSetupGroup, s.tc.taskDirectory)
+	_, _, err := s.a.runTask(s.ctx, s.tc, nextTask, false, s.testTmpDirName)
 	s.NoError(err)
 
 	s.Equal(resp.Status, s.mockCommunicator.EndTaskResult.Detail.Status, "should set user-defined task status")
@@ -1455,7 +1557,7 @@ tasks:
 		TaskId:     s.tc.task.ID,
 		TaskSecret: s.tc.task.Secret,
 	}
-	_, _, err := s.a.runTask(s.ctx, s.tc, nextTask, !s.tc.ranSetupGroup, s.tc.taskDirectory)
+	_, _, err := s.a.runTask(s.ctx, s.tc, nextTask, false, s.testTmpDirName)
 	s.NoError(err)
 
 	s.Equal(resp.Status, s.mockCommunicator.EndTaskResult.Detail.Status, "should set user-defined task status")
@@ -1501,7 +1603,7 @@ tasks:
 		TaskId:     s.tc.task.ID,
 		TaskSecret: s.tc.task.Secret,
 	}
-	_, _, err := s.a.runTask(s.ctx, s.tc, nextTask, !s.tc.ranSetupGroup, s.tc.taskDirectory)
+	_, _, err := s.a.runTask(s.ctx, s.tc, nextTask, false, s.testTmpDirName)
 	s.NoError(err)
 
 	s.Equal(resp.Status, s.mockCommunicator.EndTaskResult.Detail.Status, "should set user-defined task status")
@@ -1799,8 +1901,10 @@ task_groups:
 	s.NoError(s.tc.logger.Close())
 	checkMockLogs(s.T(), s.mockCommunicator, s.tc.taskConfig.Task.Id, []string{
 		"Running teardown-task commands",
+		"Setting heartbeat timeout to type 'teardown_task'",
 		"Running command 'shell.exec' (step 1 of 1) in block 'teardown_task'",
 		"Finished command 'shell.exec' (step 1 of 1) in block 'teardown_task'",
+		"Resetting heartbeat timeout from type 'teardown_task' back to default",
 		"Finished running teardown-task commands",
 	}, []string{
 		panicLog,
@@ -1829,9 +1933,11 @@ task_groups:
 	s.NoError(s.tc.logger.Close())
 	checkMockLogs(s.T(), s.mockCommunicator, s.tc.taskConfig.Task.Id, []string{
 		"Running teardown-task commands",
+		"Setting heartbeat timeout to type 'teardown_task'",
 		"Running command 'shell.exec' (step 1 of 1) in block 'teardown_task'",
 		"Finished command 'shell.exec' (step 1 of 1) in block 'teardown_task'",
 		"Running teardown-task commands failed",
+		"Resetting heartbeat timeout from type 'teardown_task' back to default",
 		"Finished running teardown-task commands",
 	}, []string{
 		panicLog,
@@ -1865,10 +1971,13 @@ task_groups:
 	s.NoError(s.tc.logger.Close())
 	checkMockLogs(s.T(), s.mockCommunicator, s.tc.taskConfig.Task.Id, []string{
 		"Running teardown-task commands",
+		"Setting heartbeat timeout to type 'teardown_task'",
 		"Running command 'shell.exec' (step 1 of 1) in block 'teardown_task'",
+		"Setting heartbeat timeout to type 'teardown_task'",
 		"Hit teardown_task timeout (1s)",
 		"Finished command 'shell.exec' (step 1 of 1) in block 'teardown_task'",
 		"Running teardown-task commands failed",
+		"Resetting heartbeat timeout from type 'teardown_task' back to default",
 		"Finished running teardown-task commands",
 	}, []string{
 		panicLog,
@@ -1904,10 +2013,13 @@ task_groups:
 	s.NoError(s.tc.logger.Close())
 	checkMockLogs(s.T(), s.mockCommunicator, s.tc.taskConfig.Task.Id, []string{
 		"Running teardown-task commands",
+		"Setting heartbeat timeout to type 'teardown_task'",
 		"Running command 'shell.exec' (step 1 of 1) in block 'teardown_task'",
+		"Setting heartbeat timeout to type 'teardown_task'",
 		"Hit teardown_task timeout (1s)",
 		"Finished command 'shell.exec' (step 1 of 1) in block 'teardown_task'",
 		"Running teardown-task commands failed",
+		"Resetting heartbeat timeout from type 'teardown_task' back to default",
 		"Finished running teardown-task commands",
 	}, []string{panicLog})
 }
@@ -2033,10 +2145,12 @@ callback_timeout_secs: 1
 	s.NoError(s.tc.logger.Close())
 	checkMockLogs(s.T(), s.mockCommunicator, s.tc.taskConfig.Task.Id, []string{
 		"Running task-timeout commands",
+		"Setting heartbeat timeout to type 'callback'",
 		"Running command 'shell.exec' (step 1 of 1) in block 'timeout'",
 		"Hit callback timeout (1s)",
 		"Finished command 'shell.exec' (step 1 of 1) in block 'timeout'",
 		"Running task-timeout commands failed",
+		"Resetting heartbeat timeout from type 'callback' back to default",
 		"Finished running task-timeout commands",
 	}, []string{
 		panicLog,
@@ -2092,7 +2206,7 @@ timeout:
 		TaskId:     s.tc.task.ID,
 		TaskSecret: s.tc.task.Secret,
 	}
-	_, _, err := s.a.runTask(s.ctx, s.tc, nextTask, !s.tc.ranSetupGroup, s.tc.taskConfig.WorkDir)
+	_, _, err := s.a.runTask(s.ctx, s.tc, nextTask, false, s.testTmpDirName)
 	s.NoError(err)
 
 	s.WithinDuration(start, time.Now(), 4*time.Second, "abort should prevent commands in the main block from continuing to run")
@@ -2100,11 +2214,17 @@ timeout:
 	// The exact count is not of particular importance, we're only interested in
 	// knowing that the heartbeat is still going despite receiving an abort.
 	s.GreaterOrEqual(s.mockCommunicator.GetHeartbeatCount(), 1, "heartbeat should be still running for teardown_task block even when initial abort signal is received")
+
+	s.NoError(s.tc.logger.Close())
 	checkMockLogs(s.T(), s.mockCommunicator, s.tc.taskConfig.Task.Id, []string{
 		"Heartbeat received signal to abort task.",
 		"Task completed - FAILURE",
 		"Running post-task commands",
+		"Setting heartbeat timeout to type 'post'",
 		"Running command 'shell.exec' (step 1 of 1) in block 'post'",
+		"Finished command 'shell.exec' (step 1 of 1) in block 'post'",
+		"Resetting heartbeat timeout from type 'post' back to default",
+		"Finished running post-task commands",
 	}, []string{
 		panicLog,
 		"Running task-timeout commands",
@@ -2151,7 +2271,7 @@ timeout:
 		TaskSecret: s.tc.task.Secret,
 		TaskGroup:  taskGroup,
 	}
-	_, _, err := s.a.runTask(s.ctx, s.tc, nextTask, !s.tc.ranSetupGroup, s.tc.taskConfig.WorkDir)
+	_, _, err := s.a.runTask(s.ctx, s.tc, nextTask, false, s.testTmpDirName)
 	s.NoError(err)
 
 	s.WithinDuration(start, time.Now(), 4*time.Second, "abort should prevent commands in the main block from continuing to run")

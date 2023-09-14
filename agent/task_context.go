@@ -28,9 +28,6 @@ type taskContext struct {
 	oomTracker                jasper.OOMTracker
 	traceID                   string
 	unsetFunctionVarsDisabled bool
-	// TODO (EVG-20289): see if taskDirectory can be replaced with
-	// TaskConfig.WorkDir.
-	taskDirectory string
 	// userEndTaskResp is the end task response that the user can define, which
 	// will overwrite the default end task response.
 	userEndTaskResp *triggerEndTaskResp
@@ -85,6 +82,41 @@ func (tc *taskContext) getCurrentIdleTimeout() time.Duration {
 		return timeout
 	}
 	return defaultIdleTimeout
+}
+
+func (tc *taskContext) setHeartbeatTimeout(opts heartbeatTimeoutOptions) {
+	if opts.getTimeout == nil {
+		opts.getTimeout = func() time.Duration { return defaultHeartbeatTimeout }
+	}
+	if utility.IsZeroTime(opts.startAt) {
+		opts.startAt = time.Now()
+	}
+
+	tc.Lock()
+	defer tc.Unlock()
+
+	tc.timeout.heartbeatTimeoutOpts = opts
+}
+
+func (tc *taskContext) getHeartbeatTimeout() heartbeatTimeoutOptions {
+	tc.RLock()
+	defer tc.RUnlock()
+
+	return tc.timeout.heartbeatTimeoutOpts
+}
+
+// hadHeartbeatTimeout returns whether the task has hit the heartbeat timeout.
+// If this returns true, the heartbeat should time out to indicate the task is
+// stuck in a way that's not recoverable. Hitting the heartbeat timeout is
+// generally a strong sign of a bug and should never occur during normal
+// operation.
+func (tc *taskContext) hadHeartbeatTimeout() bool {
+	timeoutOpts := tc.getHeartbeatTimeout()
+
+	// Give the agent some extra time just in case it's being a bit slow but is
+	// making progress.
+	timeoutWithGracePeriod := timeoutOpts.getTimeout() + evergreen.HeartbeatTimeoutThreshold
+	return time.Since(timeoutOpts.startAt) > timeoutWithGracePeriod
 }
 
 func (tc *taskContext) reachTimeOut(kind timeoutType, dur time.Duration) {
@@ -219,11 +251,12 @@ func (a *Agent) makeTaskConfig(ctx context.Context, tc *taskContext) (*internal.
 
 // commandBlock contains information for a block of commands.
 type commandBlock struct {
-	block       command.BlockType
-	commands    *model.YAMLCommandSet
-	timeoutKind timeoutType
-	getTimeout  func() time.Duration
-	canFailTask bool
+	block               command.BlockType
+	commands            *model.YAMLCommandSet
+	timeoutKind         timeoutType
+	getTimeout          func() time.Duration
+	canTimeOutHeartbeat bool
+	canFailTask         bool
 }
 
 // getPre returns a command block containing the pre task commands.
@@ -261,20 +294,22 @@ func (tc *taskContext) getPost() (*commandBlock, error) {
 	tg := tc.taskConfig.TaskGroup
 	if tg == nil {
 		return &commandBlock{
-			block:       command.PostBlock,
-			commands:    tc.taskConfig.Project.Post,
-			timeoutKind: postTimeout,
-			getTimeout:  tc.getPostTimeout,
-			canFailTask: tc.taskConfig.Project.PostErrorFailsTask,
+			block:               command.PostBlock,
+			commands:            tc.taskConfig.Project.Post,
+			timeoutKind:         postTimeout,
+			getTimeout:          tc.getPostTimeout,
+			canTimeOutHeartbeat: true,
+			canFailTask:         tc.taskConfig.Project.PostErrorFailsTask,
 		}, nil
 	}
 
 	return &commandBlock{
-		block:       command.TeardownTaskBlock,
-		commands:    tg.TeardownTask,
-		timeoutKind: teardownTaskTimeout,
-		getTimeout:  tc.getTeardownTaskTimeout(),
-		canFailTask: tg.TeardownTaskCanFailTask,
+		block:               command.TeardownTaskBlock,
+		commands:            tg.TeardownTask,
+		timeoutKind:         teardownTaskTimeout,
+		getTimeout:          tc.getTeardownTaskTimeout(),
+		canTimeOutHeartbeat: true,
+		canFailTask:         tg.TeardownTaskCanFailTask,
 	}, nil
 }
 
@@ -333,22 +368,24 @@ func (tc *taskContext) getTimeout() (*commandBlock, error) {
 	tg := tc.taskConfig.TaskGroup
 	if tg == nil {
 		return &commandBlock{
-			block:       command.TaskTimeoutBlock,
-			commands:    tc.taskConfig.Project.Timeout,
-			timeoutKind: callbackTimeout,
-			getTimeout:  tc.getCallbackTimeout,
-			canFailTask: false,
+			block:               command.TaskTimeoutBlock,
+			commands:            tc.taskConfig.Project.Timeout,
+			timeoutKind:         callbackTimeout,
+			getTimeout:          tc.getCallbackTimeout,
+			canFailTask:         false,
+			canTimeOutHeartbeat: true,
 		}, nil
 	}
 	if tg.Timeout == nil {
 		// Task group timeout defaults to the project timeout settings if not
 		// explicitly set.
 		return &commandBlock{
-			block:       command.TaskTimeoutBlock,
-			commands:    tc.taskConfig.Project.Timeout,
-			timeoutKind: callbackTimeout,
-			getTimeout:  tc.getCallbackTimeout,
-			canFailTask: false,
+			block:               command.TaskTimeoutBlock,
+			commands:            tc.taskConfig.Project.Timeout,
+			timeoutKind:         callbackTimeout,
+			getTimeout:          tc.getCallbackTimeout,
+			canFailTask:         false,
+			canTimeOutHeartbeat: true,
 		}, nil
 	}
 

@@ -428,8 +428,8 @@ func TestFindMergedAliasesFromProjectRepoOrProjectConfig(t *testing.T) {
 	}
 }
 
-func (s *ProjectAliasSuite) TestFindAliasInProjectOrRepo() {
-	s.Require().NoError(db.ClearCollections(ProjectRefCollection, RepoRefCollection))
+func (s *ProjectAliasSuite) TestFindAliasInProjectRepoOrConfig() {
+	s.Require().NoError(db.ClearCollections(ProjectRefCollection, RepoRefCollection, ProjectConfigCollection))
 
 	repoRef := RepoRef{ProjectRef{
 		Id:    "repo_ref",
@@ -444,9 +444,34 @@ func (s *ProjectAliasSuite) TestFindAliasInProjectOrRepo() {
 		Id:        "p2",
 		RepoRefId: repoRef.Id,
 	}
+	projectConfig := ProjectConfig{
+		Project: pRef1.Id,
+		ProjectConfigFields: ProjectConfigFields{
+			PatchAliases: []ProjectAlias{
+				{
+					// This alias should be ignored because it's already defined at the higher project level
+					Alias:   "alias-3",
+					Variant: "*",
+					Task:    "*",
+				},
+				{
+					// This alias should not be ignored because it's not defined at any higher level
+					Alias:   "alias-6",
+					Variant: "*",
+					Task:    "*",
+				},
+			},
+			CommitQueueAliases: []ProjectAlias{
+				{
+					Variant: "cq-.*",
+					Task:    "cq-.*",
+				},
+			},
+		}}
 	s.NoError(repoRef.Upsert())
 	s.NoError(pRef1.Upsert())
 	s.NoError(pRef2.Upsert())
+	s.NoError(projectConfig.Insert())
 
 	for i := 0; i < 3; i++ {
 		alias := ProjectAlias{
@@ -493,6 +518,22 @@ func (s *ProjectAliasSuite) TestFindAliasInProjectOrRepo() {
 	found, err = FindAliasInProjectRepoOrConfig(pRef1.Id, "alias-5")
 	s.NoError(err)
 	s.Len(found, 0)
+
+	// Test project config
+	found, err = FindAliasInProjectRepoOrConfig(pRef1.Id, "alias-6")
+	s.NoError(err)
+	s.Require().Len(found, 1)
+	s.Equal(found[0].Alias, "alias-6")
+	s.Equal(found[0].Task, "*")
+	s.Equal(found[0].Variant, "*")
+
+	// Test non-patch aliases defined in config
+	found, err = FindAliasInProjectRepoOrConfig(pRef1.Id, evergreen.CommitQueueAlias)
+	s.NoError(err)
+	s.Require().Len(found, 1)
+	s.Equal(found[0].Alias, evergreen.CommitQueueAlias)
+	s.Equal(found[0].Task, "cq-.*")
+	s.Equal(found[0].Variant, "cq-.*")
 }
 
 func (s *ProjectAliasSuite) TestUpsertAliasesForProject() {

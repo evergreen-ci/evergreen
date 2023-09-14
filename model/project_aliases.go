@@ -197,9 +197,9 @@ func findMatchingAliasForProjectRef(projectID, alias string) ([]ProjectAlias, er
 	return out, nil
 }
 
-// getMatchingAliasForVersion finds any aliases matching the alias input in the project config.
-func getMatchingAliasForVersion(versionID, alias string) ([]ProjectAlias, error) {
-	projectConfig, err := FindProjectConfigById(versionID)
+// getMatchingAliasesForProjectConfig finds any aliases matching the alias input in the project config.
+func getMatchingAliasesForProjectConfig(projectID, versionID, alias string) ([]ProjectAlias, error) {
+	projectConfig, err := FindProjectConfigForProjectOrVersion(projectID, versionID)
 	if err != nil {
 		return nil, errors.Wrap(err, "finding project config")
 	}
@@ -243,7 +243,7 @@ func FindAliasInProjectRepoOrConfig(projectID, alias string) ([]ProjectAlias, er
 	if len(aliases) > 0 {
 		return aliases, nil
 	}
-	return getMatchingAliasForVersion(projectID, alias)
+	return getMatchingAliasesForProjectConfig(projectID, "", alias)
 }
 
 // patchAliasKey is used internally to group patch aliases together.

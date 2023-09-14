@@ -82,6 +82,17 @@ type timeoutInfo struct {
 	hadTimeout          bool
 	// exceededDuration is the length of the timeout that was extended, if the task timed out
 	exceededDuration time.Duration
+
+	// heartbeatTimeoutOpts is used to determine when the heartbeat should time
+	// out.
+	heartbeatTimeoutOpts heartbeatTimeoutOptions
+}
+
+// heartbeatTimeoutOptions represent options for the heartbeat timeout.
+type heartbeatTimeoutOptions struct {
+	startAt    time.Time
+	getTimeout func() time.Duration
+	kind       timeoutType
 }
 
 // New creates a new Agent with some Options and a client.Communicator. Call the
@@ -296,8 +307,8 @@ func (a *Agent) processNextTask(ctx context.Context, nt *apimodels.NextTaskRespo
 		grip.Notice("Next task response indicates agent should exit.")
 		return processNextResponse{shouldExit: true}, nil
 	}
-	// if the host's current task group is finished we teardown
 	if nt.ShouldTeardownGroup {
+		// Tear down the task group if the task group is finished.
 		a.runTeardownGroupCommands(ctx, tc)
 		return processNextResponse{
 			// Running the teardown group commands implies exiting the group, so
@@ -308,6 +319,9 @@ func (a *Agent) processNextTask(ctx context.Context, nt *apimodels.NextTaskRespo
 	}
 
 	if nt.TaskId == "" && needTeardownGroup {
+		// Tear down the task group if there's no next task to run (i.e. there's
+		// no more tasks in the task group), and the agent just finished a task
+		// or task group.
 		a.runTeardownGroupCommands(ctx, tc)
 		return processNextResponse{
 			needTeardownGroup: false,
@@ -359,8 +373,11 @@ func (a *Agent) processNextTask(ctx context.Context, nt *apimodels.NextTaskRespo
 
 // finishPrevTask finishes up the previous task and returns information needed for the next task.
 func (a *Agent) finishPrevTask(ctx context.Context, nextTask *apimodels.NextTaskResponse, tc *taskContext) (bool, string) {
-	shouldSetupGroup := false
-	taskDirectory := tc.taskDirectory
+	var shouldSetupGroup bool
+	var taskDirectory string
+	if tc.taskConfig != nil {
+		taskDirectory = tc.taskConfig.WorkDir
+	}
 
 	if shouldRunSetupGroup(nextTask, tc) {
 		shouldSetupGroup = true
@@ -384,7 +401,6 @@ func (a *Agent) setupTask(agentCtx, setupCtx context.Context, initialTC *taskCon
 				Secret: nt.TaskSecret,
 			},
 			ranSetupGroup:             !shouldSetupGroup,
-			taskDirectory:             taskDirectory,
 			oomTracker:                jasper.NewOOMTracker(),
 			unsetFunctionVarsDisabled: nt.UnsetFunctionVarsDisabled,
 		}
@@ -421,13 +437,13 @@ func (a *Agent) setupTask(agentCtx, setupCtx context.Context, initialTC *taskCon
 	}
 
 	if !tc.ranSetupGroup {
-		tc.taskDirectory, err = a.createTaskDirectory(tc)
+		taskDirectory, err = a.createTaskDirectory(tc)
 		if err != nil {
 			return a.handleSetupError(setupCtx, tc, errors.Wrap(err, "creating task directory"))
 		}
 	}
 
-	tc.taskConfig.WorkDir = tc.taskDirectory
+	tc.taskConfig.WorkDir = taskDirectory
 	tc.taskConfig.Expansions.Put("workdir", tc.taskConfig.WorkDir)
 
 	// We are only calling this again to get the log for the current command after logging has been set up.
@@ -595,6 +611,7 @@ func (a *Agent) runTask(ctx context.Context, tcInput *taskContext, nt *apimodels
 		tc.logger.Execution().Error(errors.Wrap(a.uploadTraces(tskCtx, tc.taskConfig.WorkDir), "uploading traces"))
 	}()
 
+	tc.setHeartbeatTimeout(heartbeatTimeoutOptions{})
 	preAndMainCtx, preAndMainCancel := context.WithCancel(tskCtx)
 	go a.startHeartbeat(tskCtx, preAndMainCancel, tc)
 
@@ -638,6 +655,17 @@ func (a *Agent) runPreAndMain(ctx context.Context, tc *taskContext) (status stri
 		canMarkTimeoutFailure: true,
 	}
 	go a.startTimeoutWatcher(timeoutWatcherCtx, execTimeoutCancel, timeoutOpts)
+
+	tc.logger.Execution().Infof("Setting heartbeat timeout to type '%s'.", execTimeout)
+	tc.setHeartbeatTimeout(heartbeatTimeoutOptions{
+		startAt:    time.Now(),
+		getTimeout: tc.getExecTimeout,
+		kind:       execTimeout,
+	})
+	defer func() {
+		tc.logger.Execution().Infof("Resetting heartbeat timeout from type '%s' back to default.", execTimeout)
+		tc.setHeartbeatTimeout(heartbeatTimeoutOptions{})
+	}()
 
 	// set up the system stats collector
 	statsCollector := NewSimpleStatsCollector(
@@ -838,6 +866,7 @@ func (a *Agent) runEndTaskSync(ctx context.Context, tc *taskContext, detail *api
 		getTimeout: func() time.Duration {
 			return timeout
 		},
+		canTimeOutHeartbeat: true,
 	}
 
 	// If the task sync commands error, ignore the error. runCommandsInBlock
