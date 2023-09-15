@@ -1252,7 +1252,10 @@ Parameters:
     If the background script exits with an error while the
     task is still running, the task will continue running.
 -   `silent`: if set to true, does not log any shell output during
-    execution; useful to avoid leaking sensitive info
+    execution; useful to avoid leaking sensitive info. Note that you should 
+    not pass secrets as command-line arguments but instead as environment
+    variables or from a file, as Evergreen runs `ps` periodically, which
+    will log command-line arguments.
 -   `continue_on_err`: by default, a task will fail if the script returns
     a non-zero exit code; for scripts that set `background`, the task will
     fail only if the script fails to start. If `continue_on_err`
@@ -1316,7 +1319,10 @@ Parameters:
     does not wait for the process to exit before running the next command. 
     If the background process exits with an error while the
     task is still running, the task will continue running.
--   `silent`: do not log output of command
+-   `silent`: do not log output of command. Note that you should
+    not pass secrets as command-line arguments but instead as environment
+    variables or from a file, as Evergreen runs `ps` periodically, which
+    will log command-line arguments.
 -   `system_log`: write output to system logs instead of task logs
 -   `working_dir`: working directory to start shell in
 -   `ignore_standard_out`: if true, do not log standard output

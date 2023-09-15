@@ -42,3 +42,10 @@ echo $foo
 ## Distro Choice
 
 Tasks on more popular distros are often run quicker than tasks on less popular ones. Prefer more popular distros where possible.
+
+## Secrets
+
+Note that you should not pass secrets as command-line arguments but instead as
+environment variables or from a file, as Evergreen runs `ps` periodically, which
+will log command-line arguments. You can use the `silent` parameter in
+`shell.exec` or `subprocess.exec` to avoid logging output.
