@@ -271,11 +271,20 @@ type Task struct {
 	IsEssentialToSucceed bool `bson:"is_essential_to_succeed" json:"is_essential_to_succeed"`
 }
 
-// StepbackInfo is used to indicate what task to stepback to.
+// StepbackInfo helps determine which task to bisect to when performing stepback.
 type StepbackInfo struct {
+	// LastFailingStepbackTaskId stores the last failing task while doing stepback. Initially,
+	// this will be the top commit (that causes stepback). As bisect stepback continues,
+	// it will either stay as the top commit or become the NextStepbackTaskId.
 	LastFailingStepbackTaskId string `bson:"last_failing_stepback_task_id,omitempty" json:"last_failing_stepback_task_id"`
+	// LastPassingStepbackTaskId stores the last passing task while doing stepback. Initially,
+	// this is the potentially the previous head if that passed the task and if it had not passed
+	// the task, this may be a commit further back in the history. As bisect stepback continues,
+	// it will either stay or become the NextStepbackTaskId.
 	LastPassingStepbackTaskId string `bson:"last_passing_stepback_task_id,omitempty" json:"last_passing_stepback_task_id"`
-	NextStepbackTaskId        string `bson:"next_stepback_task_id,omitempty" json:"next_stepback_task_id"`
+	// NextStepbackTaskId stores the next task id to stepback to when doing bisect stepback. This
+	// is the middle of LastFailingStepbackTaskId and LastPassingStepbackTaskId.
+	NextStepbackTaskId string `bson:"next_stepback_task_id,omitempty" json:"next_stepback_task_id"`
 
 	// StepbackDepth indicates how far into stepback this task was activated, starting at 1 for stepback tasks.
 	StepbackDepth int `bson:"stepback_depth,omitempty" json:"stepback_depth,omitempty"`
