@@ -15,7 +15,7 @@ import (
 type TaskLogType string
 
 const (
-	TaskLogTypeAll    TaskLogType = "all"
+	TaskLogTypeAll    TaskLogType = "all_logs"
 	TaskLogTypeAgent  TaskLogType = "agent_log"
 	TaskLogTypeSystem TaskLogType = "system_log"
 	TaskLogTypeTask   TaskLogType = "task_log"
@@ -39,6 +39,7 @@ type TaskLogOutput struct {
 }
 
 // ID returns the unique identifier of the task log output type.
+// Note that this is distinct from the task log output type subtype `task_log`.
 func (TaskLogOutput) ID() string { return "task_logs" }
 
 // TaskLogGetOptions represents the arguments for fetching task logs belonging
