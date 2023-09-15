@@ -1464,6 +1464,14 @@ func (t *Task) SetStepbackInfo(s StepbackInfo) error {
 		})
 }
 
+// GetStepbackDepth
+func (t *Task) GetStepbackDepth() int {
+	if t.StepbackInfo != nil {
+		return t.StepbackInfo.StepbackDepth
+	}
+	return 0
+}
+
 // SetTaskOutputVersion sets the version of the task output. This should only
 // be called once at the beginning of a task run.
 func (t *Task) SetTaskOutputVersion(ctx context.Context, env evergreen.Environment, version int) error {

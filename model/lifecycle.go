@@ -1203,6 +1203,7 @@ func createOneTask(id string, creationInfo TaskCreationInfo, buildVarTask BuildV
 		RevisionOrderNumber:     creationInfo.Version.RevisionOrderNumber,
 		Requester:               creationInfo.Version.Requester,
 		ParentPatchID:           creationInfo.Build.ParentPatchID,
+		StepbackInfo:            &task.StepbackInfo{},
 		ParentPatchNumber:       creationInfo.Build.ParentPatchNumber,
 		Version:                 creationInfo.Version.Id,
 		Revision:                creationInfo.Version.Revision,
