@@ -39,24 +39,21 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"go.mongodb.org/mongo-driver/bson"
-	"go.mongodb.org/mongo-driver/mongo"
 )
 
 type AtomicGraphQLState struct {
-	ServerURL   string
-	ApiUser     string
-	ApiKey      string
-	Directory   string
-	TaskLogDB   string
-	TaskLogColl string
-	TestData    map[string]json.RawMessage
-	Settings    *evergreen.Settings
+	ServerURL string
+	ApiUser   string
+	ApiKey    string
+	Directory string
+	TestData  map[string]json.RawMessage
+	Settings  *evergreen.Settings
 }
 
 const apiUser = "testuser"
 const apiKey = "testapikey"
 
-func setup(t *testing.T, state *AtomicGraphQLState) {
+func setup(t *testing.T, state *AtomicGraphQLState, pathToTests string) {
 	const slackUsername = "testslackuser"
 	const slackMemberId = "12345member"
 	const email = "testuser@mongodb.com"
@@ -73,6 +70,14 @@ func setup(t *testing.T, state *AtomicGraphQLState) {
 	env := evergreen.GetEnvironment()
 	ctx := context.Background()
 	require.NoError(t, env.DB().Drop(ctx))
+
+	// Setup buckets for task data.
+	logBucketName, err := filepath.Abs(filepath.Join(pathToTests, "tests", state.Directory, "task_log_data"))
+	require.NoError(t, err)
+	env.Settings().Buckets.LogBucket = evergreen.Bucket{
+		Name: logBucketName,
+		Type: evergreen.BucketTypeLocal,
+	}
 
 	require.NoError(t, db.Clear(user.Collection),
 		"unable to clear user collection")
@@ -100,7 +105,7 @@ func setup(t *testing.T, state *AtomicGraphQLState) {
 		err := usr.AddPublicKey(pk.Name, pk.Key)
 		require.NoError(t, err)
 	}
-	err := usr.UpdateSettings(user.UserSettings{Timezone: "America/New_York", SlackUsername: slackUsername, SlackMemberId: slackMemberId})
+	err = usr.UpdateSettings(user.UserSettings{Timezone: "America/New_York", SlackUsername: slackUsername, SlackMemberId: slackMemberId})
 	require.NoError(t, err)
 
 	for _, role := range systemRoles {
@@ -110,7 +115,7 @@ func setup(t *testing.T, state *AtomicGraphQLState) {
 
 	require.NoError(t, usr.UpdateAPIKey(apiKey))
 
-	require.NoError(t, setupData(*env.DB(), *env.Client().Database(state.TaskLogDB), state.TestData, *state))
+	require.NoError(t, setupData(env, state.TestData, *state))
 	roleManager := env.RoleManager()
 
 	roles, err := roleManager.GetAllRoles()
@@ -260,21 +265,7 @@ func MakeTestsInDirectory(state *AtomicGraphQLState, pathToTests string) func(t 
 		err = json.Unmarshal(resultsFile, &tests)
 		require.NoError(t, errors.Wrapf(err, "unmarshalling results file for %s", resultsFilePath))
 
-		// Delete exactly the documents added to the task_logg coll instead of dropping task log db
-		// we do this to minimize deleting data that was not added from this test suite
-		if testData[state.TaskLogColl] != nil {
-			logsDb := evergreen.GetEnvironment().Client().Database(state.TaskLogDB)
-			idArr := []string{}
-			var docs []model.TaskLog
-			require.NoError(t, bson.UnmarshalExtJSON(testData[state.TaskLogColl], false, &docs))
-			for _, d := range docs {
-				idArr = append(idArr, d.Id)
-			}
-			_, err := logsDb.Collection(state.TaskLogColl).DeleteMany(context.Background(), bson.M{"_id": bson.M{"$in": idArr}})
-			require.NoError(t, err)
-		}
-
-		setup(t, state)
+		setup(t, state, pathToTests)
 		for _, testCase := range tests.Tests {
 			singleTest := func(t *testing.T) {
 				f, err := os.ReadFile(filepath.Join(pathToTests, "tests", state.Directory, "queries", testCase.QueryFile))
@@ -323,7 +314,7 @@ func MakeTestsInDirectory(state *AtomicGraphQLState, pathToTests string) func(t 
 	}
 }
 
-func setupData(db mongo.Database, logsDb mongo.Database, data map[string]json.RawMessage, state AtomicGraphQLState) error {
+func setupData(env evergreen.Environment, data map[string]json.RawMessage, state AtomicGraphQLState) error {
 	ctx := context.Background()
 	catcher := grip.NewBasicCatcher()
 	for coll, d := range data {
@@ -331,15 +322,10 @@ func setupData(db mongo.Database, logsDb mongo.Database, data map[string]json.Ra
 		// test spec is normal JSON
 		var docs []interface{}
 		catcher.Add(bson.UnmarshalExtJSON(d, false, &docs))
-		if coll == state.TaskLogColl {
-			// task_logg collection belongs to the logs db
-			_, err := logsDb.Collection(coll).InsertMany(ctx, docs)
-			catcher.Add(err)
-		} else {
-			_, err := db.Collection(coll).InsertMany(ctx, docs)
-			catcher.Add(err)
-		}
+		_, err := env.DB().Collection(coll).InsertMany(ctx, docs)
+		catcher.Add(err)
 	}
+
 	return catcher.Resolve()
 }
 
@@ -356,7 +342,7 @@ func directorySpecificTestSetup(t *testing.T, state AtomicGraphQLState) {
 
 	}
 	type setupFn func(*testing.T)
-	// Map the directory name to the test setup function
+	// Map the directory name to the test setup function.
 	m := map[string][]setupFn{
 		"mutation/attachVolumeToHost":   {spawnTestHostAndVolume},
 		"mutation/detachVolumeFromHost": {spawnTestHostAndVolume},

@@ -1,7 +1,6 @@
 package service
 
 import (
-	"context"
 	"encoding/json"
 	"fmt"
 	"io"
@@ -19,6 +18,7 @@ import (
 	"github.com/evergreen-ci/evergreen/model/task"
 	"github.com/evergreen-ci/evergreen/model/testresult"
 	"github.com/evergreen-ci/evergreen/plugin"
+	"github.com/evergreen-ci/evergreen/taskoutput"
 	"github.com/evergreen-ci/gimlet"
 	"github.com/evergreen-ci/gimlet/rolemanager"
 	"github.com/evergreen-ci/utility"
@@ -135,9 +135,8 @@ type uiTestResult struct {
 }
 
 type logData struct {
-	Buildlogger chan apimodels.LogMessage
-	Data        chan apimodels.LogMessage
-	User        gimlet.User
+	Data chan apimodels.LogMessage
+	User gimlet.User
 }
 
 type abortedByDisplay struct {
@@ -446,19 +445,6 @@ type taskHistoryPageData struct {
 // the task's most recent log messages
 const DefaultLogMessages = 100 // passed as a limit, so 0 means don't limit
 
-const AllLogsType = "ALL"
-
-func getTaskLogs(taskId string, execution int, limit int, logType string) ([]apimodels.LogMessage, error) {
-
-	logTypeFilter := []string{}
-	if logType != AllLogsType {
-		logTypeFilter = []string{logType}
-	}
-
-	return model.FindMostRecentLogMessages(taskId, execution, limit, []string{},
-		logTypeFilter)
-}
-
 // getTaskDependencies returns the uiDeps for the task and its status (either its original status,
 // "blocked", or "pending")
 func getTaskDependencies(t *task.Task) ([]uiDep, string, error) {
@@ -505,139 +491,122 @@ func getTaskDependencies(t *task.Task) ([]uiDep, string, error) {
 	return uiDependencies, state, nil
 }
 
-// async handler for polling the task log
-type taskLogsWrapper struct {
-	LogMessages []apimodels.LogMessage
-}
-
 func (uis *UIServer) taskLog(w http.ResponseWriter, r *http.Request) {
 	projCtx := MustHaveProjectContext(r)
-
 	if projCtx.Task == nil {
-		http.Error(w, "Not found", http.StatusNotFound)
+		http.Error(w, "task not found", http.StatusNotFound)
 		return
 	}
 
-	execution, err := strconv.Atoi(gimlet.GetVars(r)["execution"])
-	if err != nil {
-		http.Error(w, "Invalid execution number", http.StatusBadRequest)
-		return
-	}
-	logType := r.FormValue("type")
-	if logType == "EV" {
-		var loggedEvents []event.EventLogEntry
-		loggedEvents, err = event.Find(event.MostRecentTaskEvents(projCtx.Task.Id, DefaultLogMessages))
+	tsk := projCtx.Task
+	if execStr := gimlet.GetVars(r)["execution"]; execStr != "" {
+		execution, err := strconv.Atoi(execStr)
 		if err != nil {
-			http.Error(w, err.Error(), http.StatusInternalServerError)
+			http.Error(w, "invalid execution", http.StatusBadRequest)
 			return
 		}
+
+		if tsk.Execution != execution {
+			tsk, err = task.FindOneIdAndExecution(tsk.Id, execution)
+			if err != nil {
+				uis.LoggedError(w, r, http.StatusInternalServerError, err)
+				return
+			}
+			if tsk == nil {
+				http.Error(w, fmt.Sprintf("task '%s' with execution '%d' not found", projCtx.Task.Id, execution), http.StatusNotFound)
+				return
+			}
+		}
+	}
+
+	logType := r.FormValue("type")
+	if logType == "EV" {
+		loggedEvents, err := event.Find(event.MostRecentTaskEvents(projCtx.Task.Id, DefaultLogMessages))
+		if err != nil {
+			uis.LoggedError(w, r, http.StatusInternalServerError, err)
+			return
+		}
+
 		gimlet.WriteJSON(w, loggedEvents)
 		return
 	}
-	ctx := r.Context()
 
-	// check buildlogger logs first
-	opts := apimodels.GetBuildloggerLogsOptions{
-		BaseURL:       uis.Settings.Cedar.BaseURL,
-		TaskID:        projCtx.Task.Id,
-		Execution:     utility.ToIntPtr(execution),
-		PrintPriority: true,
-		Tail:          DefaultLogMessages,
-		LogType:       logType,
-	}
-	var logReader io.ReadCloser
-	logReader, err = apimodels.GetBuildloggerLogs(ctx, opts)
-	if err == nil {
-		defer func() {
-			grip.Warning(message.WrapError(logReader.Close(), message.Fields{
-				"task_id": projCtx.Task.Id,
-				"message": "failed to close buildlogger log ReadCloser",
-			}))
-		}()
-		gimlet.WriteJSON(w, apimodels.ReadBuildloggerToSlice(ctx, projCtx.Task.Id, logReader))
-		return
-	}
-	grip.Warning(message.WrapError(err, message.Fields{
-		"task_id": projCtx.Task.Id,
-		"message": "problem getting buildlogger logs",
-	}))
-
-	taskLogs, err := getTaskLogs(projCtx.Task.Id, execution, DefaultLogMessages, logType)
+	it, err := tsk.GetTaskLogs(r.Context(), uis.env, taskoutput.TaskLogGetOptions{
+		LogType: getTaskLogTypeMapping(logType),
+		TailN:   DefaultLogMessages,
+	})
 	if err != nil {
-		http.Error(w, err.Error(), http.StatusInternalServerError)
+		uis.LoggedError(w, r, http.StatusInternalServerError, err)
 		return
 	}
-	wrapper := &taskLogsWrapper{LogMessages: taskLogs}
-	gimlet.WriteJSON(w, wrapper)
+
+	lines, err := apimodels.ReadLogToSlice(it)
+	if err != nil {
+		uis.LoggedError(w, r, http.StatusInternalServerError, err)
+		return
+	}
+
+	gimlet.WriteJSON(w, struct {
+		LogMessages []*apimodels.LogMessage
+	}{LogMessages: lines})
 }
 
 func (uis *UIServer) taskLogRaw(w http.ResponseWriter, r *http.Request) {
 	projCtx := MustHaveProjectContext(r)
 	if projCtx.Task == nil {
-		http.Error(w, "Not found", http.StatusNotFound)
+		http.Error(w, "task not found", http.StatusNotFound)
 		return
 	}
 
-	raw := (r.FormValue("text") == "true") || (r.Header.Get("Content-Type") == "text/plain")
-	execution, err := strconv.Atoi(gimlet.GetVars(r)["execution"])
-	grip.Warning(err)
-	logType := r.FormValue("type")
-	if logType == "" {
-		logType = AllLogsType
-	}
-
-	ctx := r.Context()
-	usr := gimlet.GetUser(ctx)
-
-	var logReader io.ReadCloser
-
-	// check buildlogger logs first
-	opts := apimodels.GetBuildloggerLogsOptions{
-		BaseURL:       uis.Settings.Cedar.BaseURL,
-		TaskID:        projCtx.Task.Id,
-		Execution:     utility.ToIntPtr(execution),
-		PrintPriority: !raw,
-		LogType:       logType,
-	}
-	logReader, err = apimodels.GetBuildloggerLogs(ctx, opts)
-	if err == nil {
-		defer func() {
-			grip.Warning(message.WrapError(logReader.Close(), message.Fields{
-				"task_id": projCtx.Task.Id,
-				"message": "failed to close buildlogger log ReadCloser",
-			}))
-		}()
-	} else {
-		grip.Warning(message.WrapError(err, message.Fields{
-			"task_id": projCtx.Task.Id,
-			"message": "problem getting buildlogger logs",
-		}))
-	}
-
-	data := logData{Buildlogger: make(chan apimodels.LogMessage, 1024), User: usr}
-	if logReader == nil {
-		logTypeFilter := []string{}
-		if logType != AllLogsType {
-			logTypeFilter = []string{logType}
-		}
-		data.Data, err = model.GetRawTaskLogChannel(projCtx.Task.Id, execution, []string{}, logTypeFilter)
+	tsk := projCtx.Task
+	if execStr := gimlet.GetVars(r)["execution"]; execStr != "" {
+		execution, err := strconv.Atoi(execStr)
 		if err != nil {
-			uis.LoggedError(w, r, http.StatusInternalServerError, errors.Wrap(err, "Error getting log data"))
+			http.Error(w, "invalid execution", http.StatusBadRequest)
 			return
 		}
+
+		if tsk.Execution != execution {
+			tsk, err = task.FindOneIdAndExecution(tsk.Id, execution)
+			if err != nil {
+				uis.LoggedError(w, r, http.StatusInternalServerError, err)
+				return
+			}
+			if tsk == nil {
+				http.Error(w, fmt.Sprintf("task '%s' with execution '%d' not found", projCtx.Task.Id, execution), http.StatusNotFound)
+				return
+			}
+		}
 	}
 
-	if raw {
-		if logReader != nil {
-			gimlet.WriteText(w, logReader)
-		} else {
-			uis.renderText.Stream(w, http.StatusOK, data, "base", "task_log_raw.html")
-		}
+	it, err := tsk.GetTaskLogs(r.Context(), uis.env, taskoutput.TaskLogGetOptions{LogType: getTaskLogTypeMapping(r.FormValue("type"))})
+	if err != nil {
+		uis.LoggedError(w, r, http.StatusInternalServerError, err)
 		return
 	}
 
-	go apimodels.ReadBuildloggerToChan(r.Context(), projCtx.Task.Id, logReader, data.Buildlogger)
-	uis.render.Stream(w, http.StatusOK, data, "base", "task_log.html")
+	data := logData{
+		Data: apimodels.StreamFromLogIterator(it),
+		User: gimlet.GetUser(r.Context()),
+	}
+	if r.FormValue("text") == "true" || r.Header.Get("Content-Type") == "text/plain" {
+		uis.renderText.Stream(w, http.StatusOK, data, "base", "task_log_raw.html")
+	} else {
+		uis.render.Stream(w, http.StatusOK, data, "base", "task_log.html")
+	}
+}
+
+func getTaskLogTypeMapping(prefix string) taskoutput.TaskLogType {
+	switch prefix {
+	case apimodels.AgentLogPrefix:
+		return taskoutput.TaskLogTypeAgent
+	case apimodels.SystemLogPrefix:
+		return taskoutput.TaskLogTypeSystem
+	case apimodels.TaskLogPrefix:
+		return taskoutput.TaskLogTypeTask
+	default:
+		return taskoutput.TaskLogTypeAll
+	}
 }
 
 // avoids type-checking json params for the below function
@@ -779,138 +748,44 @@ func (uis *UIServer) taskModify(w http.ResponseWriter, r *http.Request) {
 }
 
 func (uis *UIServer) testLog(w http.ResponseWriter, r *http.Request) {
-	usr := gimlet.GetUser(r.Context())
-	data := logData{Buildlogger: make(chan apimodels.LogMessage, 1024), User: usr}
 	vars := gimlet.GetVars(r)
 	vals := r.URL.Query()
-	raw := (vals.Get("text") == "true") || (r.Header.Get("Content-Type") == "text/plain")
 
-	logId := vars["log_id"]
 	taskID := vars["task_id"]
+	execution, err := strconv.Atoi(vars["task_execution"])
+	if err != nil {
+		http.Error(w, "invalid execution", http.StatusBadRequest)
+		return
+	}
+	tsk, err := task.FindOneIdAndExecution(taskID, execution)
+	if err != nil {
+		uis.LoggedError(w, r, http.StatusInternalServerError, err)
+		return
+	}
+	if tsk == nil {
+		http.Error(w, "task not found", http.StatusNotFound)
+		return
+	}
+
 	testName := vars["test_name"]
 	if testName == "" {
 		testName = vals.Get("test_name")
 	}
-	taskExecutionsAsString := vars["task_execution"]
-	taskExec, err := strconv.Atoi(taskExecutionsAsString)
-	if logId == "" && err != nil {
-		grip.Error(message.WrapError(err, message.Fields{
-			"task_id":   taskID,
-			"test_name": testName,
-			"message":   "invalid execution",
-		}))
-		uis.LoggedError(w, r, http.StatusBadRequest, err)
+	it, err := tsk.GetTestLogs(r.Context(), uis.env, taskoutput.TestLogGetOptions{LogPaths: []string{testName}})
+	if err != nil {
+		uis.LoggedError(w, r, http.StatusInternalServerError, err)
 		return
 	}
 
-	var (
-		logReader io.ReadCloser
-		testLog   *model.TestLog
-	)
-
-	if logId != "" {
-		// Direct link to a log document in the database.
-		testLog, err = model.FindOneTestLogById(logId)
-		if err != nil {
-			uis.LoggedError(w, r, http.StatusInternalServerError, err)
-			return
-		}
-
-		if testLog == nil {
-			http.Error(w, "not found", http.StatusNotFound)
-			return
-		}
-
-		ctx, cancel := context.WithCancel(r.Context())
-		defer cancel()
-
-		data.Data = make(chan apimodels.LogMessage)
-		go func() {
-			defer close(data.Data)
-			for _, line := range testLog.Lines {
-				if ctx.Err() != nil {
-					return
-				}
-				data.Data <- apimodels.LogMessage{
-					Type:     apimodels.TaskLogPrefix,
-					Severity: apimodels.LogInfoPrefix,
-					Version:  evergreen.LogmessageCurrentVersion,
-					Message:  line,
-				}
-			}
-		}()
-	} else if uis.Settings.Cedar.BaseURL != "" {
-		// Search for logs in cedar.
-		opts := apimodels.GetBuildloggerLogsOptions{
-			BaseURL:       uis.Settings.Cedar.BaseURL,
-			TaskID:        taskID,
-			TestName:      testName,
-			GroupID:       vals.Get("group_id"),
-			Execution:     utility.ToIntPtr(taskExec),
-			PrintPriority: !raw,
-		}
-		logReader, err = apimodels.GetBuildloggerLogs(r.Context(), opts)
-		if err == nil {
-			defer func() {
-				grip.Warning(message.WrapError(logReader.Close(), message.Fields{
-					"task_id":   taskID,
-					"test_name": testName,
-					"message":   "failed to close buildlogger log ReadCloser",
-				}))
-			}()
-		} else {
-			grip.Warning(message.WrapError(err, message.Fields{
-				"task_id":   taskID,
-				"test_name": testName,
-				"message":   "problem getting buildlogger logs",
-			}))
-		}
+	data := logData{
+		Data: apimodels.StreamFromLogIterator(it),
+		User: gimlet.GetUser(r.Context()),
+	}
+	if vals.Get("text") == "true" || r.Header.Get("Content-Type") == "text/plain" {
+		uis.renderText.Stream(w, http.StatusOK, data, "base", "task_log_raw.html")
 	} else {
-		// TODO (EVG-17662): Replace this with a more permanent option.
-		// Fallback to legacy test results.
-		// Direct link to a log document in the database.
-		testLog, err = model.FindOneTestLog(testName, taskID, taskExec)
-		if err != nil {
-			uis.LoggedError(w, r, http.StatusInternalServerError, err)
-			return
-		}
-
-		if testLog == nil {
-			http.Error(w, "not found", http.StatusNotFound)
-			return
-		}
-
-		ctx, cancel := context.WithCancel(r.Context())
-		defer cancel()
-
-		data.Data = make(chan apimodels.LogMessage)
-		go func() {
-			defer close(data.Data)
-			for _, line := range testLog.Lines {
-				if ctx.Err() != nil {
-					return
-				}
-				data.Data <- apimodels.LogMessage{
-					Type:     apimodels.TaskLogPrefix,
-					Severity: apimodels.LogInfoPrefix,
-					Version:  evergreen.LogmessageCurrentVersion,
-					Message:  line,
-				}
-			}
-		}()
+		uis.render.Stream(w, http.StatusOK, data, "base", "task_log.html")
 	}
-
-	if raw {
-		if logReader != nil {
-			gimlet.WriteText(w, logReader)
-		} else {
-			uis.renderText.Stream(w, http.StatusOK, data, "base", "task_log_raw.html")
-		}
-		return
-	}
-
-	go apimodels.ReadBuildloggerToChan(r.Context(), taskID, logReader, data.Buildlogger)
-	uis.render.Stream(w, http.StatusOK, data, "base", "task_log.html")
 }
 
 func (uis *UIServer) getTestResults(projCtx projectContext, uiTask *uiTaskData) []testresult.TestResult {

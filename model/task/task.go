@@ -1018,14 +1018,18 @@ func (t *Task) newTaskOutput() *taskoutput.TaskOutput {
 		return nil
 	}
 
-	return &taskoutput.TaskOutput{
-		TaskLogs: taskoutput.TaskLogOutput{
-			Version: 0,
-		},
-		TestLogs: taskoutput.TestLogOutput{
-			Version: 0,
-		},
+	settings := evergreen.GetEnvironment().Settings()
+	output := &taskoutput.TaskOutput{}
+	if settings.LoggerConfig.DefaultLogger == "" {
+		output.TaskLogs.Version = 1
+		output.TaskLogs.BucketName = settings.Buckets.LogBucket.Name
+		output.TaskLogs.BucketType = settings.Buckets.LogBucket.Type
+		output.TestLogs.Version = 1
+		output.TestLogs.BucketName = settings.Buckets.LogBucket.Name
+		output.TestLogs.BucketType = settings.Buckets.LogBucket.Type
 	}
+
+	return output
 }
 
 // MarkAsHostUndispatchedWithContext marks that the host task is undispatched.
@@ -1482,6 +1486,9 @@ func (t *Task) SetStepbackDepth(stepbackDepth int) error {
 func (t *Task) output() *taskoutput.TaskOutput {
 	if t.DisplayOnly {
 		return nil
+	}
+	if t.TaskOutput != nil {
+		return t.TaskOutput
 	}
 
 	return &taskoutput.TaskOutput{}

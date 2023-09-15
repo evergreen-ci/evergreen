@@ -20,6 +20,7 @@ import (
 	patchmodel "github.com/evergreen-ci/evergreen/model/patch"
 	"github.com/evergreen-ci/evergreen/model/task"
 	restmodel "github.com/evergreen-ci/evergreen/rest/model"
+	"github.com/evergreen-ci/evergreen/taskoutput"
 	"github.com/evergreen-ci/evergreen/util"
 	"github.com/evergreen-ci/juniper/gopb"
 	"github.com/evergreen-ci/timber"
@@ -374,17 +375,17 @@ func (c *baseCommunicator) GetLoggerProducer(ctx context.Context, td TaskData, c
 	}
 	underlying := []send.Sender{}
 
-	exec, senders, err := c.makeSender(ctx, td, config.Agent, config.SendToGlobalSender, apimodels.AgentLogPrefix, evergreen.LogTypeAgent)
+	exec, senders, err := c.makeSender(ctx, td, config.Agent, config.SendToGlobalSender, apimodels.AgentLogPrefix, taskoutput.TaskLogTypeAgent)
 	if err != nil {
 		return nil, errors.Wrap(err, "making agent logger")
 	}
 	underlying = append(underlying, senders...)
-	task, senders, err := c.makeSender(ctx, td, config.Task, config.SendToGlobalSender, apimodels.TaskLogPrefix, evergreen.LogTypeTask)
+	task, senders, err := c.makeSender(ctx, td, config.Task, config.SendToGlobalSender, apimodels.TaskLogPrefix, taskoutput.TaskLogTypeTask)
 	if err != nil {
 		return nil, errors.Wrap(err, "making task logger")
 	}
 	underlying = append(underlying, senders...)
-	system, senders, err := c.makeSender(ctx, td, config.System, config.SendToGlobalSender, apimodels.SystemLogPrefix, evergreen.LogTypeSystem)
+	system, senders, err := c.makeSender(ctx, td, config.System, config.SendToGlobalSender, apimodels.SystemLogPrefix, taskoutput.TaskLogTypeSystem)
 	if err != nil {
 		return nil, errors.Wrap(err, "making system logger")
 	}
@@ -398,7 +399,7 @@ func (c *baseCommunicator) GetLoggerProducer(ctx context.Context, td TaskData, c
 	}, nil
 }
 
-func (c *baseCommunicator) makeSender(ctx context.Context, td TaskData, opts []LogOpts, sendToGlobalSender bool, prefix string, logType string) (send.Sender, []send.Sender, error) {
+func (c *baseCommunicator) makeSender(ctx context.Context, td TaskData, opts []LogOpts, sendToGlobalSender bool, prefix string, logType taskoutput.TaskLogType) (send.Sender, []send.Sender, error) {
 	levelInfo := send.LevelInfo{Default: level.Info, Threshold: level.Debug}
 	var senders []send.Sender
 	if sendToGlobalSender {
@@ -466,7 +467,7 @@ func (c *baseCommunicator) makeSender(ctx context.Context, td TaskData, opts []L
 				TaskName:      tk.DisplayName,
 				TaskID:        tk.Id,
 				Execution:     int32(tk.Execution),
-				Tags:          append(tk.Tags, logType, utility.RandomString()),
+				Tags:          append(tk.Tags, string(logType), utility.RandomString()),
 				Mainline:      !evergreen.IsPatchRequester(tk.Requester),
 				Storage:       buildlogger.LogStorageS3,
 				MaxBufferSize: opt.BufferSize,
@@ -478,7 +479,20 @@ func (c *baseCommunicator) makeSender(ctx context.Context, td TaskData, opts []L
 				return nil, nil, errors.Wrap(err, "creating Buildlogger logger")
 			}
 		default:
-			sender = newEvergreenLogSender(ctx, c, prefix, td, bufferSize, bufferDuration)
+			tsk, err := c.GetTask(ctx, td)
+			if err != nil {
+				return nil, nil, err
+			}
+
+			taskOpts := taskoutput.TaskOptions{
+				ProjectID: tsk.Project,
+				TaskID:    tsk.Id,
+				Execution: tsk.Execution,
+			}
+			sender, err = tsk.TaskOutput.TaskLogs.NewSender(ctx, taskOpts, logType)
+			if err != nil {
+				return nil, nil, errors.Wrap(err, "creating Evergreen log sender")
+			}
 		}
 
 		grip.Error(sender.SetFormatter(send.MakeDefaultFormatter()))

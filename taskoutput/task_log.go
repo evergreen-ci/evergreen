@@ -3,11 +3,13 @@ package taskoutput
 import (
 	"context"
 	"fmt"
+	"time"
 
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/apimodels"
 	"github.com/evergreen-ci/evergreen/model/log"
 	"github.com/evergreen-ci/utility"
+	"github.com/mongodb/grip/send"
 	"github.com/pkg/errors"
 )
 
@@ -40,6 +42,26 @@ type TaskLogOutput struct {
 
 // ID returns the unique identifier of the task log output type.
 func (TaskLogOutput) ID() string { return "task_logs" }
+
+// NewSender returns a new task log sender for the given task run.
+func (o TaskLogOutput) NewSender(ctx context.Context, taskOpts TaskOptions, logType TaskLogType) (send.Sender, error) {
+	if err := logType.validate(); err != nil {
+		return nil, err
+	}
+	if logType == TaskLogTypeAll {
+		return nil, errors.Errorf("cannot create a sender for task log type '%s'", TaskLogTypeAll)
+	}
+
+	svc, err := o.getLogService()
+	if err != nil {
+		return nil, errors.Wrap(err, "getting log service")
+	}
+
+	return log.NewSender(ctx, taskOpts.TaskID, svc, log.SenderOptions{
+		LogName:       o.getLogName(taskOpts, logType),
+		FlushInterval: time.Minute,
+	})
+}
 
 // TaskLogGetOptions represents the arguments for fetching task logs belonging
 // to a task run.
@@ -112,7 +134,7 @@ func (o TaskLogOutput) getLogService() (log.LogService, error) {
 
 // getBuildloggerLogs makes request to Cedar Buildlogger for logs.
 func (o TaskLogOutput) getBuildloggerLogs(ctx context.Context, env evergreen.Environment, taskOpts TaskOptions, getOpts TaskLogGetOptions) (log.LogIterator, error) {
-	opts := apimodels.GetBuildloggerLogsOptionsV2{
+	opts := apimodels.GetBuildloggerLogsOptions{
 		BaseURL:   env.Settings().Cedar.BaseURL,
 		TaskID:    taskOpts.TaskID,
 		Execution: utility.ToIntPtr(taskOpts.Execution),
@@ -131,5 +153,5 @@ func (o TaskLogOutput) getBuildloggerLogs(ctx context.Context, env evergreen.Env
 		opts.Tags = []string{string(getOpts.LogType)}
 	}
 
-	return apimodels.GetBuildloggerLogsV2(ctx, opts)
+	return apimodels.GetBuildloggerLogs(ctx, opts)
 }

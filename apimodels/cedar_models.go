@@ -28,9 +28,7 @@ type CedarConfig struct {
 
 // GetBuildloggerLogsOptions represents the arguments passed into the
 // GetBuildloggerLogs function.
-// TODO (EVG-20019): Remove the "V2" suffix once log fetching is consolidated
-// and the original GetBuildloggerLogsOptions struct is deleted.
-type GetBuildloggerLogsOptionsV2 struct {
+type GetBuildloggerLogsOptions struct {
 	BaseURL   string   `json:"_"`
 	TaskID    string   `json:"-"`
 	Execution *int     `json:"-"`
@@ -44,9 +42,7 @@ type GetBuildloggerLogsOptionsV2 struct {
 
 // GetBuildloggerLogs makes request to Cedar for a specifc log and returns an
 // io.ReadCloser.
-// TODO (EVG-20019): Remove the "V2" suffix once log fetching is consolidated
-// and the original GetBuildloggerLogs function is deleted.
-func GetBuildloggerLogsV2(ctx context.Context, opts GetBuildloggerLogsOptionsV2) (log.LogIterator, error) {
+func GetBuildloggerLogs(ctx context.Context, opts GetBuildloggerLogsOptions) (log.LogIterator, error) {
 	usr := gimlet.GetUser(ctx)
 	if usr == nil {
 		return nil, errors.New("error getting user from context")
