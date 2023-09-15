@@ -22,12 +22,17 @@ type TaskOptions struct {
 
 // InitializeTaskOutput initializes the task output for a new task run.
 func InitializeTaskOutput(env evergreen.Environment, opts TaskOptions) *TaskOutput {
-	return &TaskOutput{
-		TaskLogs: TaskLogOutput{
-			Version: 0,
-		},
-		TestLogs: TestLogOutput{
-			Version: 0,
-		},
+	settings := evergreen.GetEnvironment().Settings()
+
+	output := &TaskOutput{}
+	if settings.LoggerConfig.DefaultLogger != "buildlogger" {
+		output.TaskLogs.Version = 1
+		output.TaskLogs.BucketName = settings.Buckets.LogBucket.Name
+		output.TaskLogs.BucketType = settings.Buckets.LogBucket.Type
+		output.TestLogs.Version = 1
+		output.TestLogs.BucketName = settings.Buckets.LogBucket.Name
+		output.TestLogs.BucketType = settings.Buckets.LogBucket.Type
 	}
+
+	return output
 }

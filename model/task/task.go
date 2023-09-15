@@ -1481,9 +1481,6 @@ func (t *Task) initializeTaskOutputInfo(env evergreen.Environment) (*taskoutput.
 	if t.DisplayOnly {
 		return nil, false
 	}
-	if t.TaskOutput != nil {
-		return t.TaskOutput
-	}
 
 	taskID := t.Id
 	if t.Archived {
