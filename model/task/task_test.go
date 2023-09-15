@@ -2227,7 +2227,7 @@ func TestMarkAsContainerDispatched(t *testing.T) {
 		assert.False(t, utility.IsZeroTime(dbTask.LastHeartbeat))
 		assert.Equal(t, podID, dbTask.PodID)
 		assert.Equal(t, evergreen.AgentVersion, dbTask.AgentVersion)
-		assert.Equal(t, dbTask.getTaskOutputMetadata(), dbTask.TaskOutput)
+		assert.Equal(t, dbTask.newTaskOutput(), dbTask.TaskOutput)
 	}
 
 	for tName, tCase := range map[string]func(ctx context.Context, t *testing.T, env *mock.Environment, tsks []Task){
