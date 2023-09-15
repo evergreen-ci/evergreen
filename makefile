@@ -195,7 +195,7 @@ $(buildDir)/.lintSetup:$(buildDir)/golangci-lint
 $(buildDir)/golangci-lint:
 	@curl --retry 10 --retry-max-time 120 -sSfL -o "$(buildDir)/install.sh" https://raw.githubusercontent.com/golangci/golangci-lint/$(goLintInstallerVersion)/install.sh
 	@echo "$(goLintInstallerChecksum) $(buildDir)/install.sh" | sha256sum --check
-	@bash $(buildDir)/install.sh -b $(buildDir) $(goLintInstallerVersion) >/dev/null 2>&1 && touch $@
+	@bash $(buildDir)/install.sh -b $(buildDir) $(goLintInstallerVersion) && touch $@
 $(buildDir)/run-linter:cmd/run-linter/run-linter.go $(buildDir)/.lintSetup
 	$(gobin) build -ldflags "-w" -o $@ $<
 # end lint setup targets

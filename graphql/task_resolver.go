@@ -416,7 +416,6 @@ func (r *taskResolver) Files(ctx context.Context, obj *restModel.APITask) (*Task
 		GroupedFiles: groupedFilesList,
 	}
 	return &taskFiles, nil
-
 }
 
 // GeneratedByName is the resolver for the generatedByName field.

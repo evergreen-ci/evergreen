@@ -48,7 +48,7 @@ func SetupPatches(patchMode PatchTestMode, b *build.Build, patches ...PatchReque
 
 	ptch := &patch.Patch{
 		Id:      patch.NewId(PatchId),
-		Status:  evergreen.PatchCreated,
+		Status:  evergreen.VersionCreated,
 		Version: b.Version,
 		Patches: []patch.ModulePatch{},
 	}

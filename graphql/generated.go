@@ -48,6 +48,7 @@ type Config struct {
 type ResolverRoot interface {
 	Annotation() AnnotationResolver
 	BootstrapSettings() BootstrapSettingsResolver
+	ContainerPool() ContainerPoolResolver
 	DispatcherSettings() DispatcherSettingsResolver
 	Distro() DistroResolver
 	FinderSettings() FinderSettingsResolver
@@ -210,6 +211,17 @@ type ComplexityRoot struct {
 		MergeMethod func(childComplexity int) int
 		MergeQueue  func(childComplexity int) int
 		Message     func(childComplexity int) int
+	}
+
+	ContainerPool struct {
+		Distro        func(childComplexity int) int
+		Id            func(childComplexity int) int
+		MaxContainers func(childComplexity int) int
+		Port          func(childComplexity int) int
+	}
+
+	ContainerPoolsConfig struct {
+		Pools func(childComplexity int) int
 	}
 
 	ContainerResources struct {
@@ -1098,15 +1110,16 @@ type ComplexityRoot struct {
 	}
 
 	SpruceConfig struct {
-		Banner      func(childComplexity int) int
-		BannerTheme func(childComplexity int) int
-		GithubOrgs  func(childComplexity int) int
-		Jira        func(childComplexity int) int
-		Keys        func(childComplexity int) int
-		Providers   func(childComplexity int) int
-		Slack       func(childComplexity int) int
-		Spawnhost   func(childComplexity int) int
-		Ui          func(childComplexity int) int
+		Banner         func(childComplexity int) int
+		BannerTheme    func(childComplexity int) int
+		ContainerPools func(childComplexity int) int
+		GithubOrgs     func(childComplexity int) int
+		Jira           func(childComplexity int) int
+		Keys           func(childComplexity int) int
+		Providers      func(childComplexity int) int
+		Slack          func(childComplexity int) int
+		Spawnhost      func(childComplexity int) int
+		Ui             func(childComplexity int) int
 	}
 
 	StatusCount struct {
@@ -1529,6 +1542,9 @@ type BootstrapSettingsResolver interface {
 	Communication(ctx context.Context, obj *model.APIBootstrapSettings) (CommunicationMethod, error)
 
 	Method(ctx context.Context, obj *model.APIBootstrapSettings) (BootstrapMethod, error)
+}
+type ContainerPoolResolver interface {
+	Port(ctx context.Context, obj *model.APIContainerPool) (int, error)
 }
 type DispatcherSettingsResolver interface {
 	Version(ctx context.Context, obj *model.APIDispatcherSettings) (DispatcherVersion, error)
@@ -2399,6 +2415,41 @@ func (e *executableSchema) Complexity(typeName, field string, childComplexity in
 		}
 
 		return e.complexity.CommitQueueParams.Message(childComplexity), true
+
+	case "ContainerPool.distro":
+		if e.complexity.ContainerPool.Distro == nil {
+			break
+		}
+
+		return e.complexity.ContainerPool.Distro(childComplexity), true
+
+	case "ContainerPool.id":
+		if e.complexity.ContainerPool.Id == nil {
+			break
+		}
+
+		return e.complexity.ContainerPool.Id(childComplexity), true
+
+	case "ContainerPool.maxContainers":
+		if e.complexity.ContainerPool.MaxContainers == nil {
+			break
+		}
+
+		return e.complexity.ContainerPool.MaxContainers(childComplexity), true
+
+	case "ContainerPool.port":
+		if e.complexity.ContainerPool.Port == nil {
+			break
+		}
+
+		return e.complexity.ContainerPool.Port(childComplexity), true
+
+	case "ContainerPoolsConfig.pools":
+		if e.complexity.ContainerPoolsConfig.Pools == nil {
+			break
+		}
+
+		return e.complexity.ContainerPoolsConfig.Pools(childComplexity), true
 
 	case "ContainerResources.cpu":
 		if e.complexity.ContainerResources.CPU == nil {
@@ -7032,6 +7083,13 @@ func (e *executableSchema) Complexity(typeName, field string, childComplexity in
 		}
 
 		return e.complexity.SpruceConfig.BannerTheme(childComplexity), true
+
+	case "SpruceConfig.containerPools":
+		if e.complexity.SpruceConfig.ContainerPools == nil {
+			break
+		}
+
+		return e.complexity.SpruceConfig.ContainerPools(childComplexity), true
 
 	case "SpruceConfig.githubOrgs":
 		if e.complexity.SpruceConfig.GithubOrgs == nil {
@@ -14871,6 +14929,236 @@ func (ec *executionContext) fieldContext_CommitQueueParams_message(ctx context.C
 		IsResolver: false,
 		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
 			return nil, errors.New("field of type String does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _ContainerPool_id(ctx context.Context, field graphql.CollectedField, obj *model.APIContainerPool) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_ContainerPool_id(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.Id, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.(*string)
+	fc.Result = res
+	return ec.marshalNString2ᚖstring(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_ContainerPool_id(ctx context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "ContainerPool",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type String does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _ContainerPool_distro(ctx context.Context, field graphql.CollectedField, obj *model.APIContainerPool) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_ContainerPool_distro(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.Distro, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.(*string)
+	fc.Result = res
+	return ec.marshalNString2ᚖstring(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_ContainerPool_distro(ctx context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "ContainerPool",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type String does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _ContainerPool_maxContainers(ctx context.Context, field graphql.CollectedField, obj *model.APIContainerPool) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_ContainerPool_maxContainers(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.MaxContainers, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.(int)
+	fc.Result = res
+	return ec.marshalNInt2int(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_ContainerPool_maxContainers(ctx context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "ContainerPool",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type Int does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _ContainerPool_port(ctx context.Context, field graphql.CollectedField, obj *model.APIContainerPool) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_ContainerPool_port(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
+		ctx = rctx // use context from middleware stack in children
+		return ec.resolvers.ContainerPool().Port(rctx, obj)
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.(int)
+	fc.Result = res
+	return ec.marshalNInt2int(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_ContainerPool_port(ctx context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "ContainerPool",
+		Field:      field,
+		IsMethod:   true,
+		IsResolver: true,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type Int does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _ContainerPoolsConfig_pools(ctx context.Context, field graphql.CollectedField, obj *model.APIContainerPoolsConfig) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_ContainerPoolsConfig_pools(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.Pools, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.([]model.APIContainerPool)
+	fc.Result = res
+	return ec.marshalNContainerPool2ᚕgithubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐAPIContainerPoolᚄ(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_ContainerPoolsConfig_pools(ctx context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "ContainerPoolsConfig",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			switch field.Name {
+			case "id":
+				return ec.fieldContext_ContainerPool_id(ctx, field)
+			case "distro":
+				return ec.fieldContext_ContainerPool_distro(ctx, field)
+			case "maxContainers":
+				return ec.fieldContext_ContainerPool_maxContainers(ctx, field)
+			case "port":
+				return ec.fieldContext_ContainerPool_port(ctx, field)
+			}
+			return nil, fmt.Errorf("no field named %q was found under type ContainerPool", field.Name)
 		},
 	}
 	return fc, nil
@@ -41625,6 +41913,8 @@ func (ec *executionContext) fieldContext_Query_spruceConfig(ctx context.Context,
 				return ec.fieldContext_SpruceConfig_banner(ctx, field)
 			case "bannerTheme":
 				return ec.fieldContext_SpruceConfig_bannerTheme(ctx, field)
+			case "containerPools":
+				return ec.fieldContext_SpruceConfig_containerPools(ctx, field)
 			case "githubOrgs":
 				return ec.fieldContext_SpruceConfig_githubOrgs(ctx, field)
 			case "jira":
@@ -48736,6 +49026,51 @@ func (ec *executionContext) fieldContext_SpruceConfig_bannerTheme(ctx context.Co
 		IsResolver: false,
 		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
 			return nil, errors.New("field of type String does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _SpruceConfig_containerPools(ctx context.Context, field graphql.CollectedField, obj *model.APIAdminSettings) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_SpruceConfig_containerPools(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.ContainerPools, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		return graphql.Null
+	}
+	res := resTmp.(*model.APIContainerPoolsConfig)
+	fc.Result = res
+	return ec.marshalOContainerPoolsConfig2ᚖgithubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐAPIContainerPoolsConfig(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_SpruceConfig_containerPools(ctx context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "SpruceConfig",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			switch field.Name {
+			case "pools":
+				return ec.fieldContext_ContainerPoolsConfig_pools(ctx, field)
+			}
+			return nil, fmt.Errorf("no field named %q was found under type ContainerPoolsConfig", field.Name)
 		},
 	}
 	return fc, nil
@@ -71511,6 +71846,130 @@ func (ec *executionContext) _CommitQueueParams(ctx context.Context, sel ast.Sele
 	return out
 }
 
+var containerPoolImplementors = []string{"ContainerPool"}
+
+func (ec *executionContext) _ContainerPool(ctx context.Context, sel ast.SelectionSet, obj *model.APIContainerPool) graphql.Marshaler {
+	fields := graphql.CollectFields(ec.OperationContext, sel, containerPoolImplementors)
+
+	out := graphql.NewFieldSet(fields)
+	deferred := make(map[string]*graphql.FieldSet)
+	for i, field := range fields {
+		switch field.Name {
+		case "__typename":
+			out.Values[i] = graphql.MarshalString("ContainerPool")
+		case "id":
+			out.Values[i] = ec._ContainerPool_id(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				atomic.AddUint32(&out.Invalids, 1)
+			}
+		case "distro":
+			out.Values[i] = ec._ContainerPool_distro(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				atomic.AddUint32(&out.Invalids, 1)
+			}
+		case "maxContainers":
+			out.Values[i] = ec._ContainerPool_maxContainers(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				atomic.AddUint32(&out.Invalids, 1)
+			}
+		case "port":
+			field := field
+
+			innerFunc := func(ctx context.Context, fs *graphql.FieldSet) (res graphql.Marshaler) {
+				defer func() {
+					if r := recover(); r != nil {
+						ec.Error(ctx, ec.Recover(ctx, r))
+					}
+				}()
+				res = ec._ContainerPool_port(ctx, field, obj)
+				if res == graphql.Null {
+					atomic.AddUint32(&fs.Invalids, 1)
+				}
+				return res
+			}
+
+			if field.Deferrable != nil {
+				dfs, ok := deferred[field.Deferrable.Label]
+				di := 0
+				if ok {
+					dfs.AddField(field)
+					di = len(dfs.Values) - 1
+				} else {
+					dfs = graphql.NewFieldSet([]graphql.CollectedField{field})
+					deferred[field.Deferrable.Label] = dfs
+				}
+				dfs.Concurrently(di, func(ctx context.Context) graphql.Marshaler {
+					return innerFunc(ctx, dfs)
+				})
+
+				// don't run the out.Concurrently() call below
+				out.Values[i] = graphql.Null
+				continue
+			}
+
+			out.Concurrently(i, func(ctx context.Context) graphql.Marshaler { return innerFunc(ctx, out) })
+		default:
+			panic("unknown field " + strconv.Quote(field.Name))
+		}
+	}
+	out.Dispatch(ctx)
+	if out.Invalids > 0 {
+		return graphql.Null
+	}
+
+	atomic.AddInt32(&ec.deferred, int32(len(deferred)))
+
+	for label, dfs := range deferred {
+		ec.processDeferredGroup(graphql.DeferredGroup{
+			Label:    label,
+			Path:     graphql.GetPath(ctx),
+			FieldSet: dfs,
+			Context:  ctx,
+		})
+	}
+
+	return out
+}
+
+var containerPoolsConfigImplementors = []string{"ContainerPoolsConfig"}
+
+func (ec *executionContext) _ContainerPoolsConfig(ctx context.Context, sel ast.SelectionSet, obj *model.APIContainerPoolsConfig) graphql.Marshaler {
+	fields := graphql.CollectFields(ec.OperationContext, sel, containerPoolsConfigImplementors)
+
+	out := graphql.NewFieldSet(fields)
+	deferred := make(map[string]*graphql.FieldSet)
+	for i, field := range fields {
+		switch field.Name {
+		case "__typename":
+			out.Values[i] = graphql.MarshalString("ContainerPoolsConfig")
+		case "pools":
+			out.Values[i] = ec._ContainerPoolsConfig_pools(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		default:
+			panic("unknown field " + strconv.Quote(field.Name))
+		}
+	}
+	out.Dispatch(ctx)
+	if out.Invalids > 0 {
+		return graphql.Null
+	}
+
+	atomic.AddInt32(&ec.deferred, int32(len(deferred)))
+
+	for label, dfs := range deferred {
+		ec.processDeferredGroup(graphql.DeferredGroup{
+			Label:    label,
+			Path:     graphql.GetPath(ctx),
+			FieldSet: dfs,
+			Context:  ctx,
+		})
+	}
+
+	return out
+}
+
 var containerResourcesImplementors = []string{"ContainerResources"}
 
 func (ec *executionContext) _ContainerResources(ctx context.Context, sel ast.SelectionSet, obj *model.APIContainerResources) graphql.Marshaler {
@@ -79702,6 +80161,8 @@ func (ec *executionContext) _SpruceConfig(ctx context.Context, sel ast.Selection
 			out.Values[i] = ec._SpruceConfig_banner(ctx, field, obj)
 		case "bannerTheme":
 			out.Values[i] = ec._SpruceConfig_bannerTheme(ctx, field, obj)
+		case "containerPools":
+			out.Values[i] = ec._SpruceConfig_containerPools(ctx, field, obj)
 		case "githubOrgs":
 			out.Values[i] = ec._SpruceConfig_githubOrgs(ctx, field, obj)
 			if out.Values[i] == graphql.Null {
@@ -84950,6 +85411,54 @@ func (ec *executionContext) marshalNCommunicationMethod2githubᚗcomᚋevergreen
 	return v
 }
 
+func (ec *executionContext) marshalNContainerPool2githubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐAPIContainerPool(ctx context.Context, sel ast.SelectionSet, v model.APIContainerPool) graphql.Marshaler {
+	return ec._ContainerPool(ctx, sel, &v)
+}
+
+func (ec *executionContext) marshalNContainerPool2ᚕgithubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐAPIContainerPoolᚄ(ctx context.Context, sel ast.SelectionSet, v []model.APIContainerPool) graphql.Marshaler {
+	ret := make(graphql.Array, len(v))
+	var wg sync.WaitGroup
+	isLen1 := len(v) == 1
+	if !isLen1 {
+		wg.Add(len(v))
+	}
+	for i := range v {
+		i := i
+		fc := &graphql.FieldContext{
+			Index:  &i,
+			Result: &v[i],
+		}
+		ctx := graphql.WithFieldContext(ctx, fc)
+		f := func(i int) {
+			defer func() {
+				if r := recover(); r != nil {
+					ec.Error(ctx, ec.Recover(ctx, r))
+					ret = nil
+				}
+			}()
+			if !isLen1 {
+				defer wg.Done()
+			}
+			ret[i] = ec.marshalNContainerPool2githubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐAPIContainerPool(ctx, sel, v[i])
+		}
+		if isLen1 {
+			f(i)
+		} else {
+			go f(i)
+		}
+
+	}
+	wg.Wait()
+
+	for _, e := range ret {
+		if e == graphql.Null {
+			return graphql.Null
+		}
+	}
+
+	return ret
+}
+
 func (ec *executionContext) marshalNContainerResources2githubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐAPIContainerResources(ctx context.Context, sel ast.SelectionSet, v model.APIContainerResources) graphql.Marshaler {
 	return ec._ContainerResources(ctx, sel, &v)
 }
@@ -89124,6 +89633,13 @@ func (ec *executionContext) marshalOCommitQueueItem2ᚕgithubᚗcomᚋevergreen�
 func (ec *executionContext) unmarshalOCommitQueueParamsInput2githubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐAPICommitQueueParams(ctx context.Context, v interface{}) (model.APICommitQueueParams, error) {
 	res, err := ec.unmarshalInputCommitQueueParamsInput(ctx, v)
 	return res, graphql.ErrorOnPath(ctx, err)
+}
+
+func (ec *executionContext) marshalOContainerPoolsConfig2ᚖgithubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐAPIContainerPoolsConfig(ctx context.Context, sel ast.SelectionSet, v *model.APIContainerPoolsConfig) graphql.Marshaler {
+	if v == nil {
+		return graphql.Null
+	}
+	return ec._ContainerPoolsConfig(ctx, sel, v)
 }
 
 func (ec *executionContext) marshalOContainerResources2ᚕgithubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐAPIContainerResourcesᚄ(ctx context.Context, sel ast.SelectionSet, v []model.APIContainerResources) graphql.Marshaler {

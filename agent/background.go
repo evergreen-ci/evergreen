@@ -6,6 +6,8 @@ import (
 	"time"
 
 	"github.com/evergreen-ci/evergreen"
+	"github.com/mongodb/grip"
+	"github.com/mongodb/grip/message"
 	"github.com/mongodb/grip/recovery"
 )
 
@@ -15,7 +17,8 @@ import (
 //     alive and running its task. If the app server does not receive a
 //     heartbeat for a long time while the task is still running, then it can
 //     assume the task has somehow stopped running and can choose to system-fail
-//     the task.
+//     the task. The heartbeat may also stop indicating that the task is alive
+//     if it's been running for a suspiciously long time.
 //  2. It decides if/when to abort a task. If it receives an explicit message
 //     from the app server to abort (e.g. the user requested the task to abort),
 //     then it triggers the running task to abort by cancelling
@@ -33,9 +36,39 @@ func (a *Agent) startHeartbeat(ctx context.Context, preAndMainCancel context.Can
 	defer ticker.Stop()
 
 	var hasSentAbort bool
+	var loggedTimeout bool
 	for {
 		select {
 		case <-ticker.C:
+			if tc.hadHeartbeatTimeout() {
+				// If the heartbeat hits its maximum reasonable timeout, that
+				// means something unrecoverably wrong has most likely occurred
+				// in the task runtime (e.g. a deadlock in the agent has stalled
+				// the task).
+				timeoutOpts := tc.getHeartbeatTimeout()
+				timeout := timeoutOpts.getTimeout()
+				if !loggedTimeout {
+					msg := fmt.Sprintf("Heartbeat has hit maximum allowed '%s' timeout of %s; task is at risk of timing out if it runs for much longer.", timeoutOpts.kind, timeout.String())
+					grip.Alert(message.Fields{
+						"message":        msg,
+						"task_id":        tc.taskConfig.Task.Id,
+						"task_execution": tc.taskConfig.Task.Execution,
+						"timeout_type":   timeoutOpts.kind,
+						"timeout_start":  timeoutOpts.startAt,
+						"timeout":        timeout,
+					})
+					loggedTimeout = true
+				}
+				// TODO (EVG-20701): uncomment the timeout handling once there
+				// is sufficient confidence that this case is never hit during
+				// regular agent operation.
+				// tc.logger.Task().Errorf(msg)
+				// if !hasSentAbort {
+				//     preAndMainCancel()
+				// }
+				// return
+			}
+
 			signalBeat, err := a.doHeartbeat(ctx, tc)
 			if err != nil {
 				numRepeatedFailures++
@@ -49,7 +82,7 @@ func (a *Agent) startHeartbeat(ctx context.Context, preAndMainCancel context.Can
 				// This is a best-effort attempt, since there's no graceful way
 				// to handle heartbeat failures when abort was already sent.
 				if numRepeatedFailures == maxHeartbeats {
-					tc.logger.Task().Error("Hit max heartbeat attempts when task is already aborted, task is at risk of timing out if it runs for much longer.")
+					tc.logger.Task().Error("Hit max heartbeat attempts when task is already aborted; task is at risk of timing out if it runs for much longer.")
 				}
 				continue
 			}
@@ -83,7 +116,7 @@ func (a *Agent) doHeartbeat(ctx context.Context, tc *taskContext) (string, error
 
 // startIdleTimeoutWatcher waits until the idle timeout is hit for a running
 // command. If the watcher detects that the command has been idle for longer
-// than the idle timeout (i.e. no task log output), then it arks the task as
+// than the idle timeout (i.e. no task log output), then it marks the task as
 // having hit the timeout and cancels the command.
 func (a *Agent) startIdleTimeoutWatcher(ctx context.Context, cancel context.CancelFunc, tc *taskContext) {
 	defer recovery.LogStackTraceAndContinue("idle timeout watcher")
@@ -130,6 +163,7 @@ type timeoutWatcherOptions struct {
 func (a *Agent) startTimeoutWatcher(ctx context.Context, operationCancel context.CancelFunc, opts timeoutWatcherOptions) {
 	defer recovery.LogStackTraceAndContinue(fmt.Sprintf("%s timeout watcher", opts.kind))
 	defer operationCancel()
+
 	ticker := time.NewTicker(time.Second)
 	timeTickerStarted := time.Now()
 	defer ticker.Stop()

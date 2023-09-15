@@ -114,7 +114,7 @@ func (s *commitQueueSuite) TestTryUnstickDequeuesAlreadyFinishedCommitQueueItem(
 	patchID := mgobson.NewObjectId()
 	patchDoc := &patch.Patch{
 		Id:         patchID,
-		Status:     evergreen.PatchFailed,
+		Status:     evergreen.VersionFailed,
 		Githash:    "abcdef",
 		FinishTime: time.Now(),
 	}
@@ -163,7 +163,7 @@ func (s *commitQueueSuite) TestTryUnstickFixesBlockedMergeTask() {
 
 	p := &patch.Patch{
 		Id:     mgobson.NewObjectId(),
-		Status: evergreen.PatchStarted,
+		Status: evergreen.VersionStarted,
 	}
 	s.Require().NoError(p.Insert())
 	v := model.Version{
@@ -212,7 +212,7 @@ func (s *commitQueueSuite) TestTryUnstickDoesNotUnstickMergeTaskBlockedByResetti
 
 	p := &patch.Patch{
 		Id:     mgobson.NewObjectId(),
-		Status: evergreen.PatchStarted,
+		Status: evergreen.VersionStarted,
 	}
 	s.Require().NoError(p.Insert())
 	v := model.Version{

@@ -41,21 +41,24 @@ func (s *CommandSuite) TearDownTest() {
 
 func (s *CommandSuite) SetupTest() {
 	s.ctx, s.cancel = context.WithCancel(context.Background())
+
+	var err error
+	s.tmpDirName = s.T().TempDir()
+
 	s.a = &Agent{
 		opts: Options{
-			HostID:     "host",
-			HostSecret: "secret",
-			StatusPort: 2286,
-			LogOutput:  LogOutputStdout,
-			LogPrefix:  "agent",
+			HostID:           "host",
+			HostSecret:       "secret",
+			StatusPort:       2286,
+			LogOutput:        LogOutputStdout,
+			LogPrefix:        "agent",
+			WorkingDirectory: s.tmpDirName,
 		},
 		comm:   client.NewMock("url"),
 		tracer: otel.GetTracerProvider().Tracer("noop_tracer"),
 	}
 	s.mockCommunicator = s.a.comm.(*client.Mock)
 
-	var err error
-	s.tmpDirName = s.T().TempDir()
 	s.a.jasper, err = jasper.NewSynchronizedManager(false)
 	s.Require().NoError(err)
 
@@ -64,7 +67,6 @@ func (s *CommandSuite) SetupTest() {
 			ID:     "mock_task_id",
 			Secret: "mock_task_secret",
 		},
-		taskDirectory:             s.tmpDirName,
 		oomTracker:                &mock.OOMTracker{},
 		unsetFunctionVarsDisabled: false,
 	}
