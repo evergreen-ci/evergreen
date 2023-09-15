@@ -218,10 +218,10 @@ const (
 	// TODO: EVG-20869 remove this activator after sufficient time has passed
 	LegacyTaskActivator = ""
 	// APIServerTaskActivator represents Evergreen's internal API activator
-	APIServerTaskActivator = "apiserver-activator"
+	APIServerTaskActivator = "apiserver"
 	// StepbackTaskActivator represents the activator for tasks activated
 	// due to stepback.
-	StepbackTaskActivator = "stepback-activator"
+	StepbackTaskActivator = "stepback"
 	// CheckBlockedTasksActivator represents the activator for task deactivated
 	// by the check blocked tasks job.
 	CheckBlockedTasksActivator = "check-blocked-tasks-job-activator"
