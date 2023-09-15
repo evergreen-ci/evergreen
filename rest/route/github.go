@@ -101,8 +101,8 @@ func (gh *githubHookApi) Parse(ctx context.Context, r *http.Request) error {
 	return nil
 }
 
-// shouldSkipWebhook returns true if the event is from a GitHub app and the app is not set up or,
-// the event is from webhooks and app is set up.
+// shouldSkipWebhook returns true if the event is from a GitHub app and the app is available for the owner/repo or,
+// the event is from webhooks and the app is not available for the owner/repo.
 func (gh *githubHookApi) shouldSkipWebhook(ctx context.Context, owner, repo string, fromApp bool) bool {
 	token, _ := gh.settings.CreateInstallationToken(ctx, owner, repo, nil)
 	hasApp := token != ""
