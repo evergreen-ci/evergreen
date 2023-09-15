@@ -1,5 +1,7 @@
 package taskoutput
 
+import "github.com/evergreen-ci/evergreen"
+
 // TaskOutput is the versioned entry point for coordinating persistent storage
 // of a task run's output data.
 type TaskOutput struct {
@@ -16,4 +18,16 @@ type TaskOptions struct {
 	TaskID string
 	// Execution is the execution number of the task run.
 	Execution int
+}
+
+// InitializeTaskOutput initializes the task output for a new task run.
+func InitializeTaskOutput(env evergreen.Environment, opts TaskOptions) *TaskOutput {
+	return &TaskOutput{
+		TaskLogs: TaskLogOutput{
+			Version: 0,
+		},
+		TestLogs: TestLogOutput{
+			Version: 0,
+		},
+	}
 }
