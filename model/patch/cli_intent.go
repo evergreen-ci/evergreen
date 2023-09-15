@@ -194,7 +194,7 @@ func (c *cliIntent) NewPatch() *Patch {
 		Project:            c.ProjectID,
 		Githash:            c.BaseHash,
 		Path:               c.Path,
-		Status:             evergreen.PatchCreated,
+		Status:             evergreen.VersionCreated,
 		BuildVariants:      c.BuildVariants,
 		RegexBuildVariants: c.RegexBuildVariants,
 		Parameters:         c.Parameters,

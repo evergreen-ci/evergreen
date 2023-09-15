@@ -1878,7 +1878,7 @@ func findAliasesForPatch(projectId, alias string, patchDoc *patch.Patch) ([]Proj
 			return nil, errors.Wrapf(err, "retrieving alias '%s' from project config", alias)
 		}
 	} else if patchDoc.Version != "" {
-		aliases, err = getMatchingAliasForVersion(patchDoc.Version, alias)
+		aliases, err = getMatchingAliasesForProjectConfig(projectId, patchDoc.Version, alias)
 		if err != nil {
 			return nil, errors.Wrapf(err, "retrieving alias '%s' from project config", alias)
 		}
