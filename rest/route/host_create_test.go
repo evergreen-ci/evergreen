@@ -79,7 +79,7 @@ func TestMakeHost(t *testing.T) {
 	}
 	handler.createHost = c
 	handler.taskID = "task-id"
-	foundDistro, err := data.GetHostCreateDistro(ctx, c)
+	foundDistro, err := distro.GetHostCreateDistro(ctx, c)
 	assert.NoError(err)
 	h, err := data.MakeHost(ctx, env, handler.taskID, "", "", handler.createHost, *foundDistro)
 	assert.NoError(err)
@@ -127,7 +127,7 @@ func TestMakeHost(t *testing.T) {
 	}
 	handler.createHost = c
 	handler.taskID = "task-id"
-	foundDistro, err = data.GetHostCreateDistro(ctx, c)
+	foundDistro, err = distro.GetHostCreateDistro(ctx, c)
 	assert.NoError(err)
 	h, err = data.MakeHost(ctx, env, handler.taskID, "", "", handler.createHost, *foundDistro)
 	assert.NoError(err)
@@ -151,7 +151,7 @@ func TestMakeHost(t *testing.T) {
 	}
 	handler.createHost = c
 	handler.taskID = "task-id"
-	foundDistro, err = data.GetHostCreateDistro(ctx, c)
+	foundDistro, err = distro.GetHostCreateDistro(ctx, c)
 	assert.NoError(err)
 	h, err = data.MakeHost(ctx, env, handler.taskID, "", "", handler.createHost, *foundDistro)
 	require.NoError(err)
@@ -183,7 +183,7 @@ func TestMakeHost(t *testing.T) {
 		Subnet:              "subnet-123456",
 	}
 	handler.createHost = c
-	foundDistro, err = data.GetHostCreateDistro(ctx, c)
+	foundDistro, err = distro.GetHostCreateDistro(ctx, c)
 	assert.NoError(err)
 	h, err = data.MakeHost(ctx, env, handler.taskID, "", "", handler.createHost, *foundDistro)
 	assert.NoError(err)
@@ -224,7 +224,7 @@ func TestMakeHost(t *testing.T) {
 		SecurityGroups:      []string{"1234"},
 	}
 	handler.createHost = c
-	foundDistro, err = data.GetHostCreateDistro(ctx, c)
+	foundDistro, err = distro.GetHostCreateDistro(ctx, c)
 	assert.NoError(err)
 	h, err = data.MakeHost(ctx, env, handler.taskID, "", "", handler.createHost, *foundDistro)
 	require.NoError(err)
@@ -256,7 +256,7 @@ func TestMakeHost(t *testing.T) {
 		KeyName:             "mock_key",
 	}
 	handler.createHost = c
-	foundDistro, err = data.GetHostCreateDistro(ctx, c)
+	foundDistro, err = distro.GetHostCreateDistro(ctx, c)
 	assert.NoError(err)
 	h, err = data.MakeHost(ctx, env, handler.taskID, "", "", handler.createHost, *foundDistro)
 	assert.NoError(err)
@@ -268,7 +268,7 @@ func TestMakeHost(t *testing.T) {
 	assert.Equal(ec2Settings2.AMI, "ami-123456")
 
 	handler.createHost.Region = "us-west-1"
-	foundDistro, err = data.GetHostCreateDistro(ctx, c)
+	foundDistro, err = distro.GetHostCreateDistro(ctx, c)
 	assert.NoError(err)
 	h, err = data.MakeHost(ctx, env, handler.taskID, "", "", handler.createHost, *foundDistro)
 	assert.NoError(err)
@@ -338,7 +338,7 @@ func TestHostCreateDocker(t *testing.T) {
 	c.Registry.Name = "myregistry"
 	handler.createHost = c
 
-	foundDistro, err := data.GetHostCreateDistro(ctx, c)
+	foundDistro, err := distro.GetHostCreateDistro(ctx, c)
 	assert.NoError(err)
 	h, err := data.MakeHost(ctx, env, handler.taskID, "", "", handler.createHost, *foundDistro)
 	assert.NoError(err)

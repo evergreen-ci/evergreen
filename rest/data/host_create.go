@@ -146,7 +146,7 @@ func CreateHostsFromTask(ctx context.Context, env evergreen.Environment, t *task
 			catcher.Wrapf(err, "parsing host.create number of hosts '%s' as int", createHost.NumHosts)
 			continue
 		}
-		d, err := GetHostCreateDistro(ctx, createHost)
+		d, err := distro.GetHostCreateDistro(ctx, createHost)
 		if err != nil {
 			catcher.Add(err)
 			continue
@@ -160,51 +160,6 @@ func CreateHostsFromTask(ctx context.Context, env evergreen.Environment, t *task
 	}
 
 	return catcher.Resolve()
-}
-
-// GetHostCreateDistro returns the distro based on the name and provider.
-// If the provider is Docker, passing in the distro is required, and the
-// distro must be a Docker distro. If the provider is EC2, the distro
-// name is optional.
-func GetHostCreateDistro(ctx context.Context, createHost apimodels.CreateHost) (*distro.Distro, error) {
-	var err error
-	d := &distro.Distro{}
-	isDockerProvider := evergreen.IsDockerProvider(createHost.CloudProvider)
-	if isDockerProvider {
-		d, err = distro.FindOneId(ctx, createHost.Distro)
-		if err != nil {
-			return nil, errors.Wrapf(err, "finding distro '%s'", createHost.Distro)
-		}
-		if d == nil {
-			return nil, errors.Errorf("distro '%s' not found", createHost.Distro)
-		}
-		if !evergreen.IsDockerProvider(d.Provider) {
-			return nil, errors.Errorf("distro '%s' provider must support Docker but actual provider is '%s'", d.Id, d.Provider)
-		}
-	} else {
-		if createHost.Distro != "" {
-			var dat distro.AliasLookupTable
-			dat, err := distro.NewDistroAliasesLookupTable(ctx)
-			if err != nil {
-				return nil, errors.Wrap(err, "getting distro lookup table")
-			}
-			distroIDs := dat.Expand([]string{createHost.Distro})
-			if len(distroIDs) == 0 {
-				return nil, errors.Wrap(err, "distro lookup returned no matching distro IDs")
-			}
-			d, err = distro.FindOneId(ctx, distroIDs[0])
-			if err != nil {
-				return nil, errors.Wrapf(err, "finding distro '%s'", createHost.Distro)
-			}
-			if d == nil {
-				return nil, errors.Errorf("distro '%s' not found", createHost.Distro)
-			}
-		}
-		d.Provider = evergreen.ProviderNameEc2OnDemand
-	}
-	// Do not provision task-spawned hosts.
-	d.BootstrapSettings.Method = distro.BootstrapMethodNone
-	return d, nil
 }
 
 func makeProjectAndExpansionsFromTask(ctx context.Context, settings *evergreen.Settings, t *task.Task) (*model.Project, *util.Expansions, error) {
