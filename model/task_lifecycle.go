@@ -255,17 +255,6 @@ func activatePreviousTask(ctx context.Context, taskId, caller string, originalSt
 		return nil
 	}
 
-	grip.Debug(message.Fields{
-		"ticket":                        "EVG-20792",
-		"message":                       "stepping back task",
-		"stepback_depth":                s.StepbackDepth,
-		"stepback_last_failing_task_id": s.LastFailingStepbackTaskId,
-		"stepback_last_passing_task_id": s.LastPassingStepbackTaskId,
-		"stepback_next_task_id":         s.NextStepbackTaskId,
-		"project_id":                    t.Project,
-		"task_id":                       t.Id,
-	})
-
 	// activate the task
 	if err = SetActiveState(ctx, caller, true, *prevTask); err != nil {
 		return errors.Wrapf(err, "setting task '%s' active", prevTask.Id)
