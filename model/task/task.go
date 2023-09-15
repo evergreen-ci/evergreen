@@ -1521,8 +1521,8 @@ func (t *Task) GetTaskLogs(ctx context.Context, env evergreen.Environment, getOp
 
 	output, ok := t.getTaskOutputSafe()
 	if !ok {
-		// We know there task cannot have task output, likely because
-		// it has not run yet. Return an empty iterator.
+		// We know the task have does not have output data, likely
+		// because it has not run yet. Return an empty log iterator.
 		return log.EmptyIterator(), nil
 	}
 
@@ -1547,8 +1547,8 @@ func (t *Task) GetTestLogs(ctx context.Context, env evergreen.Environment, getOp
 
 	output, ok := t.getTaskOutputSafe()
 	if !ok {
-		// We know there task cannot have task output, likely because
-		// it has not run yet. Return an empty iterator.
+		// We know the task have does not have output data, likely
+		// because it has not run yet. Return an empty log iterator.
 		return log.EmptyIterator(), nil
 	}
 
