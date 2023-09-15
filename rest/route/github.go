@@ -101,10 +101,11 @@ func (gh *githubHookApi) Parse(ctx context.Context, r *http.Request) error {
 	return nil
 }
 
-// shouldSkipWebhook returns true if the event is from a GitHub app and the app is not set up or,
-// the event is from webhooks and app is set up.
-func (gh *githubHookApi) shouldSkipWebhook(fromApp bool) bool {
-	hasApp := gh.settings.GetGithubAppAuth() != nil
+// shouldSkipWebhook returns true if the event is from a GitHub app and the app is available for the owner/repo or,
+// the event is from webhooks and the app is not available for the owner/repo.
+func (gh *githubHookApi) shouldSkipWebhook(ctx context.Context, owner, repo string, fromApp bool) bool {
+	token, _ := gh.settings.CreateInstallationToken(ctx, owner, repo, nil)
+	hasApp := token != ""
 	return (fromApp && !hasApp) || (!fromApp && hasApp)
 }
 
@@ -112,7 +113,7 @@ func (gh *githubHookApi) Run(ctx context.Context) gimlet.Responder {
 	switch event := gh.event.(type) {
 	case *github.PingEvent:
 		fromApp := event.GetInstallation() != nil
-		if gh.shouldSkipWebhook(fromApp) {
+		if gh.shouldSkipWebhook(ctx, event.Repo.Owner.GetLogin(), event.Repo.GetName(), fromApp) {
 			break
 		}
 		if event.HookID == nil {
@@ -130,7 +131,7 @@ func (gh *githubHookApi) Run(ctx context.Context) gimlet.Responder {
 
 	case *github.PullRequestEvent:
 		fromApp := event.GetInstallation() != nil
-		if gh.shouldSkipWebhook(fromApp) {
+		if gh.shouldSkipWebhook(ctx, event.Repo.Owner.GetLogin(), event.Repo.GetName(), fromApp) {
 			break
 		}
 		if event.Action == nil {
@@ -198,7 +199,7 @@ func (gh *githubHookApi) Run(ctx context.Context) gimlet.Responder {
 		}
 	case *github.PushEvent:
 		fromApp := event.GetInstallation() != nil
-		if gh.shouldSkipWebhook(fromApp) {
+		if gh.shouldSkipWebhook(ctx, event.Repo.Owner.GetLogin(), event.Repo.GetName(), fromApp) {
 			break
 		}
 		grip.Debug(message.Fields{
@@ -223,7 +224,7 @@ func (gh *githubHookApi) Run(ctx context.Context) gimlet.Responder {
 
 	case *github.IssueCommentEvent:
 		fromApp := event.GetInstallation() != nil
-		if gh.shouldSkipWebhook(fromApp) {
+		if gh.shouldSkipWebhook(ctx, event.Repo.Owner.GetLogin(), event.Repo.GetName(), fromApp) {
 			break
 		}
 		if err := gh.handleComment(ctx, event); err != nil {
@@ -232,7 +233,7 @@ func (gh *githubHookApi) Run(ctx context.Context) gimlet.Responder {
 
 	case *github.MetaEvent:
 		fromApp := event.GetInstallation() != nil
-		if gh.shouldSkipWebhook(fromApp) {
+		if gh.shouldSkipWebhook(ctx, event.Repo.Owner.GetLogin(), event.Repo.GetName(), fromApp) {
 			break
 		}
 		if event.GetAction() == "deleted" {
@@ -255,7 +256,7 @@ func (gh *githubHookApi) Run(ctx context.Context) gimlet.Responder {
 
 	case *github.MergeGroupEvent:
 		fromApp := event.GetInstallation() != nil
-		if gh.shouldSkipWebhook(fromApp) {
+		if gh.shouldSkipWebhook(ctx, event.Repo.Owner.GetLogin(), event.Repo.GetName(), fromApp) {
 			break
 		}
 		return gh.handleMergeGroupEvent(event)
