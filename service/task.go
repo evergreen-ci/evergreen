@@ -644,7 +644,7 @@ func (uis *UIServer) taskLogRaw(w http.ResponseWriter, r *http.Request) {
 func (uis *UIServer) taskFileRaw(w http.ResponseWriter, r *http.Request) {
 	projCtx := MustHaveProjectContext(r)
 	if projCtx.Task == nil {
-		uis.LoggedError(w, r, http.StatusNotFound, errors.New("task not found"))
+		http.Error(w, "task not found", http.StatusNotFound)
 		return
 	}
 
@@ -656,11 +656,11 @@ func (uis *UIServer) taskFileRaw(w http.ResponseWriter, r *http.Request) {
 
 	taskFiles, err := artifact.GetAllArtifacts([]artifact.TaskIDAndExecution{{TaskID: projCtx.Task.Id, Execution: projCtx.Task.Execution}})
 	if err != nil {
-		uis.LoggedError(w, r, http.StatusInternalServerError, errors.Wrapf(err, "unable to find artifacts for %s", projCtx.Task.Id))
+		uis.LoggedError(w, r, http.StatusInternalServerError, errors.Wrapf(err, "unable to find artifacts for task: %s", projCtx.Task.Id))
 	}
 	taskFiles, err = artifact.StripHiddenFiles(taskFiles, true)
 	if err != nil {
-		uis.LoggedError(w, r, http.StatusInternalServerError, errors.Wrapf(err, "unable to strip hidden files for %s", projCtx.Task.Id))
+		uis.LoggedError(w, r, http.StatusInternalServerError, errors.Wrapf(err, "unable to strip hidden files for task: %s", projCtx.Task.Id))
 	}
 	var tFile *artifact.File
 	for _, taskFile := range taskFiles {
@@ -674,18 +674,18 @@ func (uis *UIServer) taskFileRaw(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	if !utility.StringMatchesAnyRegex(tFile.ContentType, uis.Settings.Ui.FileStreamingContentTypes) {
-		uis.LoggedError(w, r, http.StatusBadRequest, errors.New(fmt.Sprintf("File content type: %s not supported", tFile.ContentType)))
+		uis.LoggedError(w, r, http.StatusBadRequest, errors.New(fmt.Sprintf("unsupported file content type: %s", tFile.ContentType)))
 		return
 	}
 
 	response, err := http.Get(tFile.Link)
 	if err != nil {
-		uis.LoggedError(w, r, http.StatusInternalServerError, errors.Wrap(err, "Error downloading file:"))
+		uis.LoggedError(w, r, http.StatusInternalServerError, errors.Wrap(err, "downloading file:"))
 		return
 
 	}
 	if response.StatusCode != http.StatusOK {
-		uis.LoggedError(w, r, response.StatusCode, errors.New(fmt.Sprintf("Failed to download file. Status code: %d", response.StatusCode)))
+		uis.LoggedError(w, r, response.StatusCode, errors.Errorf("failed to download file with status code: %d", response.StatusCode))
 		return
 	}
 
@@ -703,7 +703,8 @@ func (uis *UIServer) taskFileRaw(w http.ResponseWriter, r *http.Request) {
 	// Copy data from the pipe to the response writer
 	_, err = io.Copy(w, pr)
 	if err != nil {
-		http.Error(w, "Internal Server Error", http.StatusInternalServerError)
+		uis.LoggedError(w, r, http.StatusInternalServerError, errors.Wrap(err, "Error streaming file:"))
+		return
 	}
 
 }
