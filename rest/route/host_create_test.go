@@ -80,7 +80,7 @@ func TestMakeHost(t *testing.T) {
 	handler.createHost = c
 	handler.taskID = "task-id"
 	foundDistro, err := distro.GetHostCreateDistro(ctx, c)
-	assert.NoError(err)
+	require.NoError(err)
 	h, err := data.MakeHost(ctx, env, handler.taskID, "", "", handler.createHost, *foundDistro)
 	assert.NoError(err)
 	require.NotNil(h)
@@ -128,7 +128,7 @@ func TestMakeHost(t *testing.T) {
 	handler.createHost = c
 	handler.taskID = "task-id"
 	foundDistro, err = distro.GetHostCreateDistro(ctx, c)
-	assert.NoError(err)
+	require.NoError(err)
 	h, err = data.MakeHost(ctx, env, handler.taskID, "", "", handler.createHost, *foundDistro)
 	assert.NoError(err)
 	assert.NotNil(h)
@@ -152,7 +152,7 @@ func TestMakeHost(t *testing.T) {
 	handler.createHost = c
 	handler.taskID = "task-id"
 	foundDistro, err = distro.GetHostCreateDistro(ctx, c)
-	assert.NoError(err)
+	require.NoError(err)
 	h, err = data.MakeHost(ctx, env, handler.taskID, "", "", handler.createHost, *foundDistro)
 	require.NoError(err)
 	require.NotNil(h)
@@ -184,7 +184,7 @@ func TestMakeHost(t *testing.T) {
 	}
 	handler.createHost = c
 	foundDistro, err = distro.GetHostCreateDistro(ctx, c)
-	assert.NoError(err)
+	require.NoError(err)
 	h, err = data.MakeHost(ctx, env, handler.taskID, "", "", handler.createHost, *foundDistro)
 	assert.NoError(err)
 	assert.NotNil(h)
@@ -225,7 +225,7 @@ func TestMakeHost(t *testing.T) {
 	}
 	handler.createHost = c
 	foundDistro, err = distro.GetHostCreateDistro(ctx, c)
-	assert.NoError(err)
+	require.NoError(err)
 	h, err = data.MakeHost(ctx, env, handler.taskID, "", "", handler.createHost, *foundDistro)
 	require.NoError(err)
 	require.NotNil(h)
@@ -257,7 +257,7 @@ func TestMakeHost(t *testing.T) {
 	}
 	handler.createHost = c
 	foundDistro, err = distro.GetHostCreateDistro(ctx, c)
-	assert.NoError(err)
+	require.NoError(err)
 	h, err = data.MakeHost(ctx, env, handler.taskID, "", "", handler.createHost, *foundDistro)
 	assert.NoError(err)
 	assert.NotNil(h)
@@ -269,7 +269,7 @@ func TestMakeHost(t *testing.T) {
 
 	handler.createHost.Region = "us-west-1"
 	foundDistro, err = distro.GetHostCreateDistro(ctx, c)
-	assert.NoError(err)
+	require.NoError(err)
 	h, err = data.MakeHost(ctx, env, handler.taskID, "", "", handler.createHost, *foundDistro)
 	assert.NoError(err)
 	assert.NotNil(h)
@@ -339,7 +339,7 @@ func TestHostCreateDocker(t *testing.T) {
 	handler.createHost = c
 
 	foundDistro, err := distro.GetHostCreateDistro(ctx, c)
-	assert.NoError(err)
+	require.NoError(err)
 	h, err := data.MakeHost(ctx, env, handler.taskID, "", "", handler.createHost, *foundDistro)
 	assert.NoError(err)
 	require.NotNil(h)
