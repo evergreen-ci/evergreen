@@ -331,7 +331,7 @@ func (s *BackgroundSuite) TestHeartbeatTimesOut() {
 
 	// Set the initial state so the heartbeat has already timed out.
 	s.tc.setHeartbeatTimeout(heartbeatTimeoutOptions{
-		startAt:    time.Now().Add(-10 * defaultHeartbeatInterval),
+		startAt:    time.Now().Add(-10 * defaultHeartbeatTimeout),
 		getTimeout: func() time.Duration { return defaultHeartbeatTimeout },
 	})
 	go s.a.startHeartbeat(heartbeatCtx, childCancel, s.tc)
