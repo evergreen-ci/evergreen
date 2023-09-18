@@ -10,6 +10,7 @@ import (
 	"github.com/docker/docker/api/types"
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/apimodels"
+	"github.com/evergreen-ci/evergreen/model/distro"
 	"github.com/evergreen-ci/evergreen/model/host"
 	"github.com/evergreen-ci/evergreen/model/task"
 	"github.com/evergreen-ci/evergreen/rest/data"
@@ -24,6 +25,7 @@ import (
 type hostCreateHandler struct {
 	taskID     string
 	createHost apimodels.CreateHost
+	distro     distro.Distro
 	env        evergreen.Environment
 }
 
@@ -53,6 +55,11 @@ func (h *hostCreateHandler) Parse(ctx context.Context, r *http.Request) error {
 			Message:    err.Error(),
 		}
 	}
+	d, err := distro.GetHostCreateDistro(ctx, h.createHost)
+	if err != nil {
+		return err
+	}
+	h.distro = *d
 	return h.createHost.Validate(ctx)
 }
 
@@ -64,7 +71,7 @@ func (h *hostCreateHandler) Run(ctx context.Context) gimlet.Responder {
 
 	ids := []string{}
 	for i := 0; i < numHosts; i++ {
-		intentHost, err := data.MakeHost(ctx, h.env, h.taskID, "", "", h.createHost)
+		intentHost, err := data.MakeHost(ctx, h.env, h.taskID, "", "", h.createHost, h.distro)
 		if err != nil {
 			return gimlet.MakeJSONInternalErrorResponder(errors.Wrap(err, "creating intent host"))
 		}
