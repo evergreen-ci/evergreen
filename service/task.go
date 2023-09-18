@@ -657,10 +657,12 @@ func (uis *UIServer) taskFileRaw(w http.ResponseWriter, r *http.Request) {
 	taskFiles, err := artifact.GetAllArtifacts([]artifact.TaskIDAndExecution{{TaskID: projCtx.Task.Id, Execution: projCtx.Task.Execution}})
 	if err != nil {
 		uis.LoggedError(w, r, http.StatusInternalServerError, errors.Wrapf(err, "unable to find artifacts for task: %s", projCtx.Task.Id))
+		return
 	}
 	taskFiles, err = artifact.StripHiddenFiles(taskFiles, true)
 	if err != nil {
 		uis.LoggedError(w, r, http.StatusInternalServerError, errors.Wrapf(err, "unable to strip hidden files for task: %s", projCtx.Task.Id))
+		return
 	}
 	var tFile *artifact.File
 	for _, taskFile := range taskFiles {
@@ -684,27 +686,32 @@ func (uis *UIServer) taskFileRaw(w http.ResponseWriter, r *http.Request) {
 		return
 
 	}
+	defer response.Body.Close()
 	if response.StatusCode != http.StatusOK {
 		uis.LoggedError(w, r, response.StatusCode, errors.Errorf("failed to download file with status code: %d", response.StatusCode))
 		return
 	}
 
-	pr, pw := io.Pipe()
+	// Create a buffer to stream the file in chunks
+	bufferSize := 1000000 // 1mb
+	buffer := make([]byte, bufferSize)
 
-	// Create a goroutine to copy data from the body to the pipe
-	go func() {
-		defer pw.Close()
-		_, err := io.Copy(pw, response.Body)
-		if err != nil {
-			pw.CloseWithError(err)
+	w.Header().Set("Content-Type", tFile.ContentType)
+	// Stream the file content to the response writer
+	for {
+		n, err := response.Body.Read(buffer)
+		if err == io.EOF {
+			break // End of file
 		}
-	}()
-
-	// Copy data from the pipe to the response writer
-	_, err = io.Copy(w, pr)
-	if err != nil {
-		uis.LoggedError(w, r, http.StatusInternalServerError, errors.Wrap(err, "Error streaming file:"))
-		return
+		if err != nil {
+			uis.LoggedError(w, r, http.StatusInternalServerError, errors.Wrap(err, "reading file:"))
+			return
+		}
+		_, err = w.Write(buffer[:n])
+		if err != nil {
+			uis.LoggedError(w, r, http.StatusInternalServerError, errors.Wrap(err, "writing to response:"))
+			return
+		}
 	}
 
 }
