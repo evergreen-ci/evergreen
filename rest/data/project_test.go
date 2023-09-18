@@ -22,6 +22,7 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"github.com/stretchr/testify/suite"
+	"go.mongodb.org/mongo-driver/bson/primitive"
 )
 
 ////////////////////////////////////////////////////////////////////////
@@ -378,7 +379,7 @@ func TestCreateProject(t *testing.T) {
 	defer cancel()
 
 	defer func() {
-		assert.NoError(t, db.ClearCollections(model.ProjectRefCollection, model.ProjectVarsCollection, commitqueue.Collection, event.EventCollection, user.Collection))
+		assert.NoError(t, db.ClearCollections(model.ProjectRefCollection, model.ProjectVarsCollection, commitqueue.Collection, event.EventCollection, user.Collection, evergreen.ScopeCollection))
 
 		cocoaMock.ResetGlobalSecretCache()
 	}()
@@ -411,6 +412,62 @@ func TestCreateProject(t *testing.T) {
 		},
 		"FailsWithAlreadyExistingID": func(ctx context.Context, t *testing.T, env *mock.Environment, pRef model.ProjectRef, u user.DBUser) {
 			require.NoError(t, pRef.Insert())
+			pRef.Identifier = "some new identifier"
+			created, err := CreateProject(ctx, env, &pRef, &u)
+			require.Error(t, err)
+			require.False(t, created)
+		},
+		"FailsWithAlreadyExistingIdentifier": func(ctx context.Context, t *testing.T, env *mock.Environment, pRef model.ProjectRef, u user.DBUser) {
+			require.NoError(t, pRef.Insert())
+			pRef.Id = "some new ID"
+			created, err := CreateProject(ctx, env, &pRef, &u)
+			require.Error(t, err)
+			require.False(t, created)
+		},
+		"SucceedsWithEmptyID": func(ctx context.Context, t *testing.T, env *mock.Environment, pRef model.ProjectRef, u user.DBUser) {
+			pRef.Id = ""
+			created, err := CreateProject(ctx, env, &pRef, &u)
+			require.NoError(t, err)
+			require.True(t, created)
+
+			dbProjRef, err := model.FindBranchProjectRef(pRef.Identifier)
+			require.NoError(t, err)
+			require.NotZero(t, dbProjRef)
+			assert.NotZero(t, dbProjRef.Id, "project ID should be set to something")
+			assert.Equal(t, pRef.Identifier, dbProjRef.Identifier)
+		},
+		"SucceedsWithEmptyIdentifier": func(ctx context.Context, t *testing.T, env *mock.Environment, pRef model.ProjectRef, u user.DBUser) {
+			pRef.Identifier = ""
+			created, err := CreateProject(ctx, env, &pRef, &u)
+			require.NoError(t, err)
+			require.True(t, created)
+
+			dbProjRef, err := model.FindBranchProjectRef(pRef.Identifier)
+			require.NoError(t, err)
+			require.NotZero(t, dbProjRef)
+			assert.NotZero(t, dbProjRef.Id)
+			assert.Equal(t, pRef.Identifier, dbProjRef.Identifier)
+		},
+		"SucceedsWithObjectIDAsProjectID": func(ctx context.Context, t *testing.T, env *mock.Environment, pRef model.ProjectRef, u user.DBUser) {
+			pRef.Id = primitive.NewObjectID().Hex()
+			created, err := CreateProject(ctx, env, &pRef, &u)
+			require.NoError(t, err)
+			require.True(t, created)
+		},
+		"SucceedsWithValidSpecialCharactersInProjectID": func(ctx context.Context, t *testing.T, env *mock.Environment, pRef model.ProjectRef, u user.DBUser) {
+			pRef.Id = `(This 1) ~is-totally_fine.`
+			created, err := CreateProject(ctx, env, &pRef, &u)
+			require.NoError(t, err)
+			require.True(t, created)
+		},
+		"FailsWithInvalidCharactersInProjectID": func(ctx context.Context, t *testing.T, env *mock.Environment, pRef model.ProjectRef, u user.DBUser) {
+			pRef.Id = `^this / % is $ invalid*`
+			created, err := CreateProject(ctx, env, &pRef, &u)
+			require.Error(t, err)
+			require.False(t, created)
+		},
+		"FailsWithInvalidCharactersInProjectIdentifier": func(ctx context.Context, t *testing.T, env *mock.Environment, pRef model.ProjectRef, u user.DBUser) {
+			pRef.Identifier = `^this / % is $ invalid*`
 			created, err := CreateProject(ctx, env, &pRef, &u)
 			require.Error(t, err)
 			require.False(t, created)
@@ -420,7 +477,7 @@ func TestCreateProject(t *testing.T) {
 			tctx, tcancel := context.WithCancel(context.Background())
 			defer tcancel()
 
-			require.NoError(t, db.ClearCollections(model.ProjectRefCollection, model.ProjectVarsCollection, commitqueue.Collection, event.EventCollection, user.Collection))
+			require.NoError(t, db.ClearCollections(model.ProjectRefCollection, model.ProjectVarsCollection, commitqueue.Collection, event.EventCollection, user.Collection, evergreen.ScopeCollection))
 
 			cocoaMock.ResetGlobalSecretCache()
 
@@ -428,9 +485,10 @@ func TestCreateProject(t *testing.T) {
 			require.NoError(t, env.Configure(ctx))
 
 			pRef := model.ProjectRef{
-				Id:    "new_project",
-				Owner: "evergreen-ci",
-				Repo:  "treepo",
+				Id:         "new_project",
+				Identifier: "new project identifier",
+				Owner:      "evergreen-ci",
+				Repo:       "treepo",
 			}
 
 			adminUser := user.DBUser{

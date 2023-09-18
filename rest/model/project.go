@@ -538,6 +538,7 @@ type APIProjectRef struct {
 	RepotrackerDisabled         *bool                     `json:"repotracker_disabled"`
 	DispatchingDisabled         *bool                     `json:"dispatching_disabled"`
 	StepbackDisabled            *bool                     `json:"stepback_disabled"`
+	StepbackBisect              *bool                     `json:"stepback_bisect"`
 	VersionControlEnabled       *bool                     `json:"version_control_enabled"`
 	DisabledStatsCache          *bool                     `json:"disabled_stats_cache"`
 	Admins                      []*string                 `json:"admins"`
@@ -601,6 +602,7 @@ func (p *APIProjectRef) ToService() (*model.ProjectRef, error) {
 		RepotrackerDisabled:    utility.BoolPtrCopy(p.RepotrackerDisabled),
 		DispatchingDisabled:    utility.BoolPtrCopy(p.DispatchingDisabled),
 		StepbackDisabled:       utility.BoolPtrCopy(p.StepbackDisabled),
+		StepbackBisect:         utility.BoolPtrCopy(p.StepbackBisect),
 		VersionControlEnabled:  utility.BoolPtrCopy(p.VersionControlEnabled),
 		DisabledStatsCache:     utility.BoolPtrCopy(p.DisabledStatsCache),
 		NotifyOnBuildFailure:   utility.BoolPtrCopy(p.NotifyOnBuildFailure),
@@ -709,6 +711,7 @@ func (p *APIProjectRef) BuildPublicFields(projectRef model.ProjectRef) error {
 	p.RepotrackerDisabled = utility.BoolPtrCopy(projectRef.RepotrackerDisabled)
 	p.DispatchingDisabled = utility.BoolPtrCopy(projectRef.DispatchingDisabled)
 	p.StepbackDisabled = utility.BoolPtrCopy(projectRef.StepbackDisabled)
+	p.StepbackBisect = utility.BoolPtrCopy(projectRef.StepbackBisect)
 	p.VersionControlEnabled = utility.BoolPtrCopy(projectRef.VersionControlEnabled)
 	p.DisabledStatsCache = utility.BoolPtrCopy(projectRef.DisabledStatsCache)
 	p.NotifyOnBuildFailure = utility.BoolPtrCopy(projectRef.NotifyOnBuildFailure)

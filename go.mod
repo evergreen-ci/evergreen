@@ -10,7 +10,7 @@ require (
 	github.com/aws/aws-sdk-go-v2/config v1.18.27
 	github.com/aws/aws-sdk-go-v2/credentials v1.13.35
 	github.com/aws/aws-sdk-go-v2/service/ec2 v1.115.0
-	github.com/aws/aws-sdk-go-v2/service/ecs v1.27.1
+	github.com/aws/aws-sdk-go-v2/service/ecs v1.30.1
 	github.com/aws/aws-sdk-go-v2/service/resourcegroupstaggingapi v1.14.12
 	github.com/aws/aws-sdk-go-v2/service/secretsmanager v1.21.3
 	github.com/aws/smithy-go v1.14.2
@@ -56,10 +56,10 @@ require (
 	github.com/vmware/govmomi v0.27.1
 	go.mongodb.org/mongo-driver v1.11.6
 	go.opentelemetry.io/contrib/detectors/aws/ec2 v1.17.0
-	go.opentelemetry.io/contrib/detectors/aws/ecs v1.17.0
+	go.opentelemetry.io/contrib/detectors/aws/ecs v1.18.0
 	go.opentelemetry.io/contrib/instrumentation/github.com/aws/aws-sdk-go-v2/otelaws v0.42.0
 	go.opentelemetry.io/contrib/instrumentation/github.com/gorilla/mux/otelmux v0.42.0
-	go.opentelemetry.io/contrib/instrumentation/net/http/otelhttp v0.42.0
+	go.opentelemetry.io/contrib/instrumentation/net/http/otelhttp v0.43.0
 	go.opentelemetry.io/otel v1.17.0
 	go.opentelemetry.io/otel/exporters/otlp/otlpmetric/otlpmetricgrpc v0.40.0
 	go.opentelemetry.io/otel/exporters/otlp/otlptrace v1.16.0
@@ -184,8 +184,8 @@ require (
 	github.com/slack-go/slack v0.12.1 // indirect
 	github.com/smarty/assertions v1.15.0 // indirect
 	github.com/square/certstrap v1.2.0 // indirect
-	github.com/tklauser/go-sysconf v0.3.11 // indirect
-	github.com/tklauser/numcpus v0.6.0 // indirect
+	github.com/tklauser/go-sysconf v0.3.12 // indirect
+	github.com/tklauser/numcpus v0.6.1 // indirect
 	github.com/trivago/tgo v1.0.7 // indirect
 	github.com/ulikunitz/xz v0.5.10 // indirect
 	github.com/urfave/cli/v2 v2.25.5 // indirect
@@ -223,6 +223,6 @@ require (
 	github.com/evergreen-ci/plank v0.0.0-20230207190607-5f47f8a30da1
 	github.com/evergreen-ci/tarjan v0.0.0-20170824211642-fcd3f3321826
 	github.com/mongodb/jasper v0.0.0-20220214215554-82e5a72cff6b
-	github.com/shirou/gopsutil/v3 v3.23.5
+	github.com/shirou/gopsutil/v3 v3.23.8
 	gopkg.in/yaml.v3 v3.0.1
 )

@@ -537,8 +537,8 @@ type githubAppAuth struct {
 	privateKey []byte
 }
 
-// GetGithubAppAuth returns app id and app private key if it exists.
-func (s *Settings) GetGithubAppAuth() *githubAppAuth {
+// getGithubAppAuth returns app id and app private key if it exists.
+func (s *Settings) getGithubAppAuth() *githubAppAuth {
 	if s.AuthConfig.Github == nil || s.AuthConfig.Github.AppId == 0 {
 		return nil
 	}
@@ -566,7 +566,7 @@ func (s *Settings) CreateInstallationToken(ctx context.Context, owner, repo stri
 	if owner == "" || repo == "" {
 		return "", errors.New("no owner/repo specified to create installation token")
 	}
-	authFields := s.GetGithubAppAuth()
+	authFields := s.getGithubAppAuth()
 	if authFields == nil {
 		// TODO EVG-19966: Return error here
 		grip.Debug(message.Fields{

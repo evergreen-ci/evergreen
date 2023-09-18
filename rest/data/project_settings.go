@@ -236,7 +236,7 @@ func SaveProjectSettingsForSection(ctx context.Context, projectId string, change
 	switch section {
 	case model.ProjectPageGeneralSection:
 		if mergedSection.Identifier != mergedBeforeRef.Identifier {
-			if err = handleIdentifierConflict(mergedSection); err != nil {
+			if err = validateModifiedIdentifier(mergedSection); err != nil {
 				return nil, err
 			}
 		}
@@ -441,13 +441,19 @@ func SaveProjectSettingsForSection(ctx context.Context, projectId string, change
 	return &res, errors.Wrapf(catcher.Resolve(), "saving section '%s'", section)
 }
 
-func handleIdentifierConflict(pRef *model.ProjectRef) error {
+func validateModifiedIdentifier(pRef *model.ProjectRef) error {
 	conflictingRef, err := model.FindBranchProjectRef(pRef.Identifier)
 	if err != nil {
 		return errors.Wrapf(err, "checking for conflicting project ref")
 	}
 	if conflictingRef != nil && conflictingRef.Id != pRef.Id {
 		return errors.Errorf("identifier '%s' is already being used for another project", conflictingRef.Id)
+	}
+	if !projectIDRegexp.MatchString(pRef.Identifier) {
+		return gimlet.ErrorResponse{
+			StatusCode: http.StatusBadRequest,
+			Message:    fmt.Sprintf("project identifier '%s' contains invalid characters", pRef.Identifier),
+		}
 	}
 	return nil
 }

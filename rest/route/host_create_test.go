@@ -79,7 +79,9 @@ func TestMakeHost(t *testing.T) {
 	}
 	handler.createHost = c
 	handler.taskID = "task-id"
-	h, err := data.MakeHost(ctx, env, handler.taskID, "", "", handler.createHost)
+	foundDistro, err := distro.GetHostCreateDistro(ctx, c)
+	require.NoError(err)
+	h, err := data.MakeHost(ctx, env, handler.taskID, "", "", handler.createHost, *foundDistro)
 	assert.NoError(err)
 	require.NotNil(h)
 
@@ -125,7 +127,9 @@ func TestMakeHost(t *testing.T) {
 	}
 	handler.createHost = c
 	handler.taskID = "task-id"
-	h, err = data.MakeHost(ctx, env, handler.taskID, "", "", handler.createHost)
+	foundDistro, err = distro.GetHostCreateDistro(ctx, c)
+	require.NoError(err)
+	h, err = data.MakeHost(ctx, env, handler.taskID, "", "", handler.createHost, *foundDistro)
 	assert.NoError(err)
 	assert.NotNil(h)
 	ec2Settings = &cloud.EC2ProviderSettings{}
@@ -133,6 +137,10 @@ func TestMakeHost(t *testing.T) {
 	assert.Equal("build-id", h.SpawnOptions.BuildID)
 	assert.Equal("mock_key", ec2Settings.KeyName)
 	assert.Equal(true, ec2Settings.IsVpc)
+
+	assert.Equal("archlinux-test", h.Distro.Id)
+	assert.Equal(evergreen.ProviderNameEc2OnDemand, h.Provider)
+	assert.Equal(evergreen.ProviderNameEc2OnDemand, h.Distro.Provider)
 	assert.Equal(distro.BootstrapMethodNone, h.Distro.BootstrapSettings.Method, "host provisioning should be set to none by default")
 
 	// Using an alias should resolve to the actual distro
@@ -147,7 +155,9 @@ func TestMakeHost(t *testing.T) {
 	}
 	handler.createHost = c
 	handler.taskID = "task-id"
-	h, err = data.MakeHost(ctx, env, handler.taskID, "", "", handler.createHost)
+	foundDistro, err = distro.GetHostCreateDistro(ctx, c)
+	require.NoError(err)
+	h, err = data.MakeHost(ctx, env, handler.taskID, "", "", handler.createHost, *foundDistro)
 	require.NoError(err)
 	require.NotNil(h)
 
@@ -177,10 +187,15 @@ func TestMakeHost(t *testing.T) {
 		Subnet:              "subnet-123456",
 	}
 	handler.createHost = c
-	h, err = data.MakeHost(ctx, env, handler.taskID, "", "", handler.createHost)
+	foundDistro, err = distro.GetHostCreateDistro(ctx, c)
+	require.NoError(err)
+	h, err = data.MakeHost(ctx, env, handler.taskID, "", "", handler.createHost, *foundDistro)
 	assert.NoError(err)
 	assert.NotNil(h)
+
 	assert.Equal("archlinux-test", h.Distro.Id)
+	assert.Equal(evergreen.ProviderNameEc2OnDemand, h.Provider)
+	assert.Equal(evergreen.ProviderNameEc2OnDemand, h.Distro.Provider)
 	assert.Equal(distro.BootstrapMethodNone, h.Distro.BootstrapSettings.Method, "host provisioning should be set to none by default")
 
 	ec2Settings = &cloud.EC2ProviderSettings{}
@@ -216,10 +231,15 @@ func TestMakeHost(t *testing.T) {
 		SecurityGroups:      []string{"1234"},
 	}
 	handler.createHost = c
-	h, err = data.MakeHost(ctx, env, handler.taskID, "", "", handler.createHost)
+	foundDistro, err = distro.GetHostCreateDistro(ctx, c)
+	require.NoError(err)
+	h, err = data.MakeHost(ctx, env, handler.taskID, "", "", handler.createHost, *foundDistro)
 	require.NoError(err)
 	require.NotNil(h)
+
 	assert.Equal("", h.Distro.Id)
+	assert.Equal(evergreen.ProviderNameEc2OnDemand, h.Provider, "provider should be set to ec2 in the absence of a distro")
+	assert.Equal(evergreen.ProviderNameEc2OnDemand, h.Distro.Provider)
 	assert.Equal(distro.BootstrapMethodNone, h.Distro.BootstrapSettings.Method, "host provisioning should be set to none by default")
 
 	ec2Settings2 = &cloud.EC2ProviderSettings{}
@@ -246,20 +266,29 @@ func TestMakeHost(t *testing.T) {
 		KeyName:             "mock_key",
 	}
 	handler.createHost = c
-	h, err = data.MakeHost(ctx, env, handler.taskID, "", "", handler.createHost)
+	foundDistro, err = distro.GetHostCreateDistro(ctx, c)
+	require.NoError(err)
+	h, err = data.MakeHost(ctx, env, handler.taskID, "", "", handler.createHost, *foundDistro)
 	assert.NoError(err)
 	assert.NotNil(h)
 	assert.Equal("archlinux-test", h.Distro.Id)
 	require.Len(h.Distro.ProviderSettingsList, 1)
+	assert.Equal(evergreen.ProviderNameEc2OnDemand, h.Provider)
+	assert.Equal(evergreen.ProviderNameEc2OnDemand, h.Distro.Provider)
+
 	ec2Settings2 = &cloud.EC2ProviderSettings{}
 	assert.NoError(ec2Settings2.FromDistroSettings(h.Distro, "us-east-1"))
 	assert.Equal(ec2Settings2.AMI, "ami-123456")
 
 	handler.createHost.Region = "us-west-1"
-	h, err = data.MakeHost(ctx, env, handler.taskID, "", "", handler.createHost)
+	foundDistro, err = distro.GetHostCreateDistro(ctx, c)
+	require.NoError(err)
+	h, err = data.MakeHost(ctx, env, handler.taskID, "", "", handler.createHost, *foundDistro)
 	assert.NoError(err)
 	assert.NotNil(h)
 	assert.Equal("archlinux-test", h.Distro.Id)
+	assert.Equal(evergreen.ProviderNameEc2OnDemand, h.Provider)
+	assert.Equal(evergreen.ProviderNameEc2OnDemand, h.Distro.Provider)
 	require.Len(h.Distro.ProviderSettingsList, 1)
 	ec2Settings2 = &cloud.EC2ProviderSettings{}
 	assert.NoError(ec2Settings2.FromDistroSettings(h.Distro, "us-west-1"))
@@ -324,7 +353,9 @@ func TestHostCreateDocker(t *testing.T) {
 	c.Registry.Name = "myregistry"
 	handler.createHost = c
 
-	h, err := data.MakeHost(ctx, env, handler.taskID, "", "", handler.createHost)
+	foundDistro, err := distro.GetHostCreateDistro(ctx, c)
+	require.NoError(err)
+	h, err := data.MakeHost(ctx, env, handler.taskID, "", "", handler.createHost, *foundDistro)
 	assert.NoError(err)
 	require.NotNil(h)
 	assert.Equal("distro", h.Distro.Id)
@@ -335,6 +366,7 @@ func TestHostCreateDocker(t *testing.T) {
 	assert.Equal([]string{"env_key=env_value"}, h.DockerOptions.EnvironmentVars)
 	assert.Equal(extraHosts, h.DockerOptions.ExtraHosts)
 
+	handler.distro = *foundDistro
 	assert.Equal(http.StatusOK, handler.Run(ctx).Status())
 
 	hosts, err := host.Find(ctx, bson.M{})
@@ -399,7 +431,7 @@ func TestGetDockerLogs(t *testing.T) {
 		Image:         "my-image",
 		Command:       "echo hello",
 	}
-	h, err := data.MakeHost(ctx, env, "task-id", "", "", c)
+	h, err := data.MakeHost(ctx, env, "task-id", "", "", c, d)
 	require.NoError(err)
 	require.NotNil(h)
 	assert.NotEmpty(h.ParentID)
@@ -513,7 +545,7 @@ func TestGetDockerStatus(t *testing.T) {
 		Image:         "my-image",
 		Command:       "echo hello",
 	}
-	h, err := data.MakeHost(ctx, env, "task-id", "", "", c)
+	h, err := data.MakeHost(ctx, env, "task-id", "", "", c, d)
 	require.NoError(err)
 	assert.NotEmpty(h.ParentID)
 
