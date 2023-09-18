@@ -29,9 +29,10 @@ func TestProvisioningCreateHostJob(t *testing.T) {
 
 			assert.Equal(t, env, hostCreateJob.env)
 			assert.Equal(t, h.Id, hostCreateJob.HostID)
+			require.NotZero(t, hostCreateJob.host)
 			assert.Equal(t, *h, *hostCreateJob.host)
 		},
-		"SucceedsForAMICreateHost": func(ctx context.Context, t *testing.T, env *mock.Environment, h *host.Host) {
+		"SucceedsForHostCreate": func(ctx context.Context, t *testing.T, env *mock.Environment, h *host.Host) {
 			require.NoError(t, h.Insert(ctx))
 			j := NewHostCreateJob(env, *h, "job-id", 0, true)
 			hostCreateJob, ok := j.(*createHostJob)
