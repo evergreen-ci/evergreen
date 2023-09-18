@@ -137,6 +137,10 @@ func TestMakeHost(t *testing.T) {
 	assert.Equal("build-id", h.SpawnOptions.BuildID)
 	assert.Equal("mock_key", ec2Settings.KeyName)
 	assert.Equal(true, ec2Settings.IsVpc)
+
+	assert.Equal("archlinux-test", h.Distro.Id)
+	assert.Equal(evergreen.ProviderNameEc2OnDemand, h.Provider)
+	assert.Equal(evergreen.ProviderNameEc2OnDemand, h.Distro.Provider)
 	assert.Equal(distro.BootstrapMethodNone, h.Distro.BootstrapSettings.Method, "host provisioning should be set to none by default")
 
 	// Using an alias should resolve to the actual distro
@@ -188,7 +192,10 @@ func TestMakeHost(t *testing.T) {
 	h, err = data.MakeHost(ctx, env, handler.taskID, "", "", handler.createHost, *foundDistro)
 	assert.NoError(err)
 	assert.NotNil(h)
+
 	assert.Equal("archlinux-test", h.Distro.Id)
+	assert.Equal(evergreen.ProviderNameEc2OnDemand, h.Provider)
+	assert.Equal(evergreen.ProviderNameEc2OnDemand, h.Distro.Provider)
 	assert.Equal(distro.BootstrapMethodNone, h.Distro.BootstrapSettings.Method, "host provisioning should be set to none by default")
 
 	ec2Settings = &cloud.EC2ProviderSettings{}
@@ -229,7 +236,10 @@ func TestMakeHost(t *testing.T) {
 	h, err = data.MakeHost(ctx, env, handler.taskID, "", "", handler.createHost, *foundDistro)
 	require.NoError(err)
 	require.NotNil(h)
+
 	assert.Equal("", h.Distro.Id)
+	assert.Equal(evergreen.ProviderNameEc2OnDemand, h.Provider, "provider should be set to ec2 in the absence of a distro")
+	assert.Equal(evergreen.ProviderNameEc2OnDemand, h.Distro.Provider)
 	assert.Equal(distro.BootstrapMethodNone, h.Distro.BootstrapSettings.Method, "host provisioning should be set to none by default")
 
 	ec2Settings2 = &cloud.EC2ProviderSettings{}
@@ -263,6 +273,9 @@ func TestMakeHost(t *testing.T) {
 	assert.NotNil(h)
 	assert.Equal("archlinux-test", h.Distro.Id)
 	require.Len(h.Distro.ProviderSettingsList, 1)
+	assert.Equal(evergreen.ProviderNameEc2OnDemand, h.Provider)
+	assert.Equal(evergreen.ProviderNameEc2OnDemand, h.Distro.Provider)
+
 	ec2Settings2 = &cloud.EC2ProviderSettings{}
 	assert.NoError(ec2Settings2.FromDistroSettings(h.Distro, "us-east-1"))
 	assert.Equal(ec2Settings2.AMI, "ami-123456")
@@ -274,6 +287,8 @@ func TestMakeHost(t *testing.T) {
 	assert.NoError(err)
 	assert.NotNil(h)
 	assert.Equal("archlinux-test", h.Distro.Id)
+	assert.Equal(evergreen.ProviderNameEc2OnDemand, h.Provider)
+	assert.Equal(evergreen.ProviderNameEc2OnDemand, h.Distro.Provider)
 	require.Len(h.Distro.ProviderSettingsList, 1)
 	ec2Settings2 = &cloud.EC2ProviderSettings{}
 	assert.NoError(ec2Settings2.FromDistroSettings(h.Distro, "us-west-1"))
