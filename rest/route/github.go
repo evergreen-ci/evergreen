@@ -24,10 +24,11 @@ import (
 )
 
 const (
-	githubActionClosed      = "closed"
-	githubActionOpened      = "opened"
-	githubActionSynchronize = "synchronize"
-	githubActionReopened    = "reopened"
+	githubActionClosed          = "closed"
+	githubActionOpened          = "opened"
+	githubActionSynchronize     = "synchronize"
+	githubActionReopened        = "reopened"
+	githubActionChecksRequested = "checks_requested"
 
 	// pull request comments
 	retryComment            = "evergreen retry"
@@ -259,13 +260,15 @@ func (gh *githubHookApi) Run(ctx context.Context) gimlet.Responder {
 		if gh.shouldSkipWebhook(ctx, event.Repo.Owner.GetLogin(), event.Repo.GetName(), fromApp) {
 			break
 		}
-		return gh.handleMergeGroupEvent(event)
+		if event.GetAction() == githubActionChecksRequested {
+			return gh.handleMergeGroupChecksRequested(event)
+		}
 	}
 
 	return gimlet.NewJSONResponse(struct{}{})
 }
 
-func (gh *githubHookApi) handleMergeGroupEvent(event *github.MergeGroupEvent) gimlet.Responder {
+func (gh *githubHookApi) handleMergeGroupChecksRequested(event *github.MergeGroupEvent) gimlet.Responder {
 	org := event.GetOrg().GetLogin()
 	repo := event.GetRepo().GetName()
 	branch := strings.TrimPrefix(event.MergeGroup.GetBaseRef(), "refs/heads/")
