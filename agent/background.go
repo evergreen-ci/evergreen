@@ -36,7 +36,6 @@ func (a *Agent) startHeartbeat(ctx context.Context, preAndMainCancel context.Can
 	defer ticker.Stop()
 
 	var hasSentAbort bool
-	var loggedTimeout bool
 	for {
 		select {
 		case <-ticker.C:
@@ -47,26 +46,20 @@ func (a *Agent) startHeartbeat(ctx context.Context, preAndMainCancel context.Can
 				// the task).
 				timeoutOpts := tc.getHeartbeatTimeout()
 				timeout := timeoutOpts.getTimeout()
-				if !loggedTimeout {
-					msg := fmt.Sprintf("Heartbeat has hit maximum allowed '%s' timeout of %s; task is at risk of timing out if it runs for much longer.", timeoutOpts.kind, timeout.String())
-					grip.Alert(message.Fields{
-						"message":        msg,
-						"task_id":        tc.taskConfig.Task.Id,
-						"task_execution": tc.taskConfig.Task.Execution,
-						"timeout_type":   timeoutOpts.kind,
-						"timeout_start":  timeoutOpts.startAt,
-						"timeout":        timeout,
-					})
-					loggedTimeout = true
+				msg := fmt.Sprintf("Heartbeat has hit maximum allowed '%s' timeout of %s; task is at risk of timing out if it runs for much longer.", timeoutOpts.kind, timeout.String())
+				grip.Alert(message.Fields{
+					"message":        msg,
+					"task_id":        tc.taskConfig.Task.Id,
+					"task_execution": tc.taskConfig.Task.Execution,
+					"timeout_type":   timeoutOpts.kind,
+					"timeout_start":  timeoutOpts.startAt,
+					"timeout_secs":   timeout.Seconds(),
+				})
+				tc.logger.Task().Errorf(msg)
+				if !hasSentAbort {
+					preAndMainCancel()
 				}
-				// TODO (EVG-20701): uncomment the timeout handling once there
-				// is sufficient confidence that this case is never hit during
-				// regular agent operation.
-				// tc.logger.Task().Errorf(msg)
-				// if !hasSentAbort {
-				//     preAndMainCancel()
-				// }
-				// return
+				return
 			}
 
 			signalBeat, err := a.doHeartbeat(ctx, tc)
