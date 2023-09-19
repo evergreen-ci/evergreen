@@ -7,11 +7,13 @@ import (
 	"io"
 	"net/http"
 	"strconv"
+	"strings"
 	"time"
 
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/apimodels"
 	"github.com/evergreen-ci/evergreen/model"
+	"github.com/evergreen-ci/evergreen/model/artifact"
 	"github.com/evergreen-ci/evergreen/model/build"
 	"github.com/evergreen-ci/evergreen/model/distro"
 	"github.com/evergreen-ci/evergreen/model/event"
@@ -638,6 +640,77 @@ func (uis *UIServer) taskLogRaw(w http.ResponseWriter, r *http.Request) {
 
 	go apimodels.ReadBuildloggerToChan(r.Context(), projCtx.Task.Id, logReader, data.Buildlogger)
 	uis.render.Stream(w, http.StatusOK, data, "base", "task_log.html")
+}
+
+func (uis *UIServer) taskFileRaw(w http.ResponseWriter, r *http.Request) {
+	projCtx := MustHaveProjectContext(r)
+	if projCtx.Task == nil {
+		http.Error(w, "task not found", http.StatusNotFound)
+		return
+	}
+
+	fileName := gimlet.GetVars(r)["file_name"]
+	if fileName == "" {
+		http.Error(w, "file name not specified", http.StatusBadRequest)
+		return
+	}
+
+	taskFiles, err := artifact.GetAllArtifacts([]artifact.TaskIDAndExecution{{TaskID: projCtx.Task.Id, Execution: projCtx.Task.Execution}})
+	if err != nil {
+		uis.LoggedError(w, r, http.StatusInternalServerError, errors.Wrapf(err, "unable to find artifacts for task '%s'", projCtx.Task.Id))
+		return
+	}
+	taskFiles, err = artifact.StripHiddenFiles(taskFiles, true)
+	if err != nil {
+		uis.LoggedError(w, r, http.StatusInternalServerError, errors.Wrapf(err, "unable to strip hidden files for task '%s'", projCtx.Task.Id))
+		return
+	}
+	var tFile *artifact.File
+	for _, taskFile := range taskFiles {
+		if taskFile.Name == fileName {
+			tFile = &taskFile
+			break
+		}
+	}
+	if tFile == nil {
+		uis.LoggedError(w, r, http.StatusNotFound, errors.New(fmt.Sprintf("file '%s' not found", fileName)))
+		return
+	}
+
+	hasContentType := false
+	for _, contentType := range uis.Settings.Ui.FileStreamingContentTypes {
+		if strings.HasPrefix(tFile.ContentType, contentType) {
+			hasContentType = true
+			break
+		}
+	}
+	if !hasContentType {
+		uis.LoggedError(w, r, http.StatusBadRequest, errors.New(fmt.Sprintf("unsupported file content type '%s'", tFile.ContentType)))
+		return
+	}
+
+	response, err := http.Get(tFile.Link)
+	if err != nil {
+		uis.LoggedError(w, r, http.StatusInternalServerError, errors.Wrap(err, "downloading file"))
+		return
+	}
+	defer response.Body.Close()
+	if response.StatusCode != http.StatusOK {
+		uis.LoggedError(w, r, response.StatusCode, errors.Errorf("failed to download file with status code: %d", response.StatusCode))
+		return
+	}
+
+	// Create a buffer to stream the file in chunks.
+	const bufferSize = 1024 * 1024 // 1MB
+	buffer := make([]byte, bufferSize)
+
+	w.Header().Set("Content-Type", tFile.ContentType)
+	_, err = io.CopyBuffer(w, response.Body, buffer)
+	if err != nil {
+		uis.LoggedError(w, r, http.StatusInternalServerError, errors.Wrap(err, "writing to response"))
+		return
+	}
+
 }
 
 // avoids type-checking json params for the below function
