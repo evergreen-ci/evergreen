@@ -1,6 +1,7 @@
 query {
   spruceConfig {
     jira {
+        email
         host
     }
   }
