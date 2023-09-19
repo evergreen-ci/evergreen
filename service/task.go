@@ -673,7 +673,7 @@ func (uis *UIServer) taskFileRaw(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 	if tFile == nil {
-		uis.LoggedError(w, r, http.StatusNotFound, errors.New("File not found"))
+		uis.LoggedError(w, r, http.StatusNotFound, errors.New("file not found"))
 		return
 	}
 
@@ -685,13 +685,13 @@ func (uis *UIServer) taskFileRaw(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 	if !hasContentType {
-		uis.LoggedError(w, r, http.StatusBadRequest, errors.New(fmt.Sprintf("unsupported file content type: %s", tFile.ContentType)))
+		uis.LoggedError(w, r, http.StatusBadRequest, errors.New(fmt.Sprintf("unsupported file content type '%s'", tFile.ContentType)))
 		return
 	}
 
 	response, err := http.Get(tFile.Link)
 	if err != nil {
-		uis.LoggedError(w, r, http.StatusInternalServerError, errors.Wrap(err, "downloading file:"))
+		uis.LoggedError(w, r, http.StatusInternalServerError, errors.Wrap(err, "downloading file"))
 		return
 
 	}
