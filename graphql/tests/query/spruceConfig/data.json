@@ -64,6 +64,7 @@
                 "password": "password"
             },
             "default_project": "",
+            "email": "evg-user@jira.mongodb.org",
             "host": "jira.mongodb.org",
             "oauth1": {
                 "private_key": "",

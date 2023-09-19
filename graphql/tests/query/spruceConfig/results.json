@@ -41,6 +41,7 @@
                 "data": {
                     "spruceConfig": {
                         "jira": {
+                            "email": "evg-user@jira.mongodb.org",
                             "host": "jira.mongodb.org"
                         }
                     }
