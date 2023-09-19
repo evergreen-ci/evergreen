@@ -3027,7 +3027,6 @@ func TestSetStepbackInfo(t *testing.T) {
 	assert.NoError(t, task.Insert())
 
 	s := StepbackInfo{
-		StepbackDepth:             12,
 		LastFailingStepbackTaskId: "t2",
 		LastPassingStepbackTaskId: "t3",
 		NextStepbackTaskId:        "t4",
@@ -3037,7 +3036,6 @@ func TestSetStepbackInfo(t *testing.T) {
 	taskFromDb, err := FindOneId("t1")
 	assert.NoError(t, err)
 	assert.NotNil(t, taskFromDb)
-	assert.Equal(t, 12, taskFromDb.StepbackInfo.StepbackDepth)
 	assert.Equal(t, "t2", taskFromDb.StepbackInfo.LastFailingStepbackTaskId)
 	assert.Equal(t, "t3", taskFromDb.StepbackInfo.LastPassingStepbackTaskId)
 	assert.Equal(t, "t4", taskFromDb.StepbackInfo.NextStepbackTaskId)

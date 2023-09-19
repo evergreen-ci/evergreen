@@ -265,7 +265,7 @@ func activatePreviousTask(ctx context.Context, taskId, caller string, originalSt
 			return errors.Wrap(err, "setting generated tasks to activate")
 		}
 	}
-	if s.StepbackDepth > 0 {
+	if s.LastFailingStepbackTaskId != "" {
 		if err = prevTask.SetStepbackInfo(s); err != nil {
 			return errors.Wrap(err, "setting stepback depth")
 		}
@@ -545,9 +545,7 @@ func doStepback(ctx context.Context, t *task.Task) error {
 		return nil
 	}
 
-	s := task.StepbackInfo{
-		StepbackDepth: 1 + t.GetStepbackDepth(),
-	}
+	s := task.StepbackInfo{}
 
 	// activate the previous task to pinpoint regression
 	return errors.WithStack(activatePreviousTask(ctx, t.Id, evergreen.StepbackTaskActivator, nil, s))
