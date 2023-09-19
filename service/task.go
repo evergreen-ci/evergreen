@@ -702,22 +702,6 @@ func (uis *UIServer) taskFileRaw(w http.ResponseWriter, r *http.Request) {
 		uis.LoggedError(w, r, http.StatusInternalServerError, errors.Wrap(err, "writing to response"))
 		return
 	}
-	// // Stream the file content to the response writer.
-	// for {
-	// 	n, err := response.Body.Read(buffer)
-	// 	if err == io.EOF {
-	// 		return
-	// 	}
-	// 	if err != nil {
-	// 		uis.LoggedError(w, r, http.StatusInternalServerError, errors.Wrap(err, "reading file"))
-	// 		return
-	// 	}
-	// 	_, err = w.Write(buffer[:n])
-	// 	if err != nil {
-	// 		uis.LoggedError(w, r, http.StatusInternalServerError, errors.Wrap(err, "writing to response"))
-	// 		return
-	// 	}
-	// }
 
 }
 
