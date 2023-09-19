@@ -650,18 +650,18 @@ func (uis *UIServer) taskFileRaw(w http.ResponseWriter, r *http.Request) {
 
 	fileName := gimlet.GetVars(r)["file_name"]
 	if fileName == "" {
-		uis.LoggedError(w, r, http.StatusBadRequest, errors.New("file name not specified"))
+		http.Error(w, "file name not specified", http.StatusBadRequest)
 		return
 	}
 
 	taskFiles, err := artifact.GetAllArtifacts([]artifact.TaskIDAndExecution{{TaskID: projCtx.Task.Id, Execution: projCtx.Task.Execution}})
 	if err != nil {
-		uis.LoggedError(w, r, http.StatusInternalServerError, errors.Wrapf(err, "unable to find artifacts for task: %s", projCtx.Task.Id))
+		uis.LoggedError(w, r, http.StatusInternalServerError, errors.Wrapf(err, "unable to find artifacts for task '%s'", projCtx.Task.Id))
 		return
 	}
 	taskFiles, err = artifact.StripHiddenFiles(taskFiles, true)
 	if err != nil {
-		uis.LoggedError(w, r, http.StatusInternalServerError, errors.Wrapf(err, "unable to strip hidden files for task: %s", projCtx.Task.Id))
+		uis.LoggedError(w, r, http.StatusInternalServerError, errors.Wrapf(err, "unable to strip hidden files for task '%s'", projCtx.Task.Id))
 		return
 	}
 	var tFile *artifact.File
@@ -692,24 +692,24 @@ func (uis *UIServer) taskFileRaw(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// Create a buffer to stream the file in chunks
+	// Create a buffer to stream the file in chunks.
 	bufferSize := 1000000 // 1mb
 	buffer := make([]byte, bufferSize)
 
 	w.Header().Set("Content-Type", tFile.ContentType)
-	// Stream the file content to the response writer
+	// Stream the file content to the response writer.
 	for {
 		n, err := response.Body.Read(buffer)
 		if err == io.EOF {
-			break // End of file
+			return
 		}
 		if err != nil {
-			uis.LoggedError(w, r, http.StatusInternalServerError, errors.Wrap(err, "reading file:"))
+			uis.LoggedError(w, r, http.StatusInternalServerError, errors.Wrap(err, "reading file"))
 			return
 		}
 		_, err = w.Write(buffer[:n])
 		if err != nil {
-			uis.LoggedError(w, r, http.StatusInternalServerError, errors.Wrap(err, "writing to response:"))
+			uis.LoggedError(w, r, http.StatusInternalServerError, errors.Wrap(err, "writing to response"))
 			return
 		}
 	}
