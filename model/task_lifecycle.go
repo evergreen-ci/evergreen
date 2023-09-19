@@ -225,8 +225,6 @@ func DisableStaleContainerTasks(caller string) error {
 // activatePreviousTask will set the Active state for the first task with a
 // revision order number less than the current task's revision order number.
 // originalStepbackTask is only specified if we're first activating the generator for a generated task.
-// StepbackDepth should be reconsidered in EVG-17949 and is currently only used for logging.
-// Depth passed in is the depth we should assign to the previous task.
 func activatePreviousTask(ctx context.Context, taskId, caller string, originalStepbackTask *task.Task, s task.StepbackInfo) error {
 	// find the task first
 	t, err := task.FindOneId(taskId)

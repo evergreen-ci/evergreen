@@ -118,7 +118,6 @@ var (
 
 var (
 	// BSON fields for stepback information
-	StepbackDepthKey             = bsonutil.MustHaveTag(StepbackInfo{}, "StepbackDepth")
 	LastFailingStepbackTaskIdKey = bsonutil.MustHaveTag(StepbackInfo{}, "LastFailingStepbackTaskId")
 	LastPassingStepbackTaskIdKey = bsonutil.MustHaveTag(StepbackInfo{}, "LastPassingStepbackTaskId")
 	NextStepbackTaskIdKey        = bsonutil.MustHaveTag(StepbackInfo{}, "NextStepbackTaskId")
