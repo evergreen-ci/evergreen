@@ -673,7 +673,7 @@ func (uis *UIServer) taskFileRaw(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 	if tFile == nil {
-		uis.LoggedError(w, r, http.StatusNotFound, errors.New("file not found"))
+		uis.LoggedError(w, r, http.StatusNotFound, errors.New(fmt.Sprintf("file '%s' not found", fileName)))
 		return
 	}
 
@@ -693,7 +693,6 @@ func (uis *UIServer) taskFileRaw(w http.ResponseWriter, r *http.Request) {
 	if err != nil {
 		uis.LoggedError(w, r, http.StatusInternalServerError, errors.Wrap(err, "downloading file"))
 		return
-
 	}
 	defer response.Body.Close()
 	if response.StatusCode != http.StatusOK {
@@ -702,7 +701,7 @@ func (uis *UIServer) taskFileRaw(w http.ResponseWriter, r *http.Request) {
 	}
 
 	// Create a buffer to stream the file in chunks.
-	bufferSize := 1000000 // 1mb
+	const bufferSize = 1024 * 1024 // 1MB
 	buffer := make([]byte, bufferSize)
 
 	w.Header().Set("Content-Type", tFile.ContentType)
