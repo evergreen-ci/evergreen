@@ -473,8 +473,7 @@ type specificActivationInfo struct {
 }
 
 type specificStepbackInfo struct {
-	task  string
-	depth int // store the depth that the new stepback task should use
+	task string
 }
 
 func newSpecificActivationInfo() specificActivationInfo {
@@ -506,15 +505,6 @@ func (b *specificActivationInfo) isStepbackTask(variant, task string) bool {
 	return false
 }
 
-func (b *specificActivationInfo) getStepbackTaskDepth(variant, task string) int {
-	for _, stepbackInfo := range b.stepbackTasks[variant] {
-		if stepbackInfo.task == task {
-			return stepbackInfo.depth
-		}
-	}
-	return 0
-}
-
 func (b *specificActivationInfo) taskHasSpecificActivation(variant, task string) bool {
 	return utility.StringSliceContains(b.activationTasks[variant], task)
 }
@@ -539,8 +529,7 @@ func (g *GeneratedProject) findTasksAndVariantsWithSpecificActivations(requester
 		batchTimeTasks := []string{}
 		for _, bvt := range bv.Tasks {
 			if isStepbackTask(g.Task, bv.Name, bvt.Name) {
-				// If it's a stepback task, it should store the same stepback depth as the generator.
-				stepbackInfo := specificStepbackInfo{task: bvt.Name, depth: g.Task.GetStepbackDepth()}
+				stepbackInfo := specificStepbackInfo{task: bvt.Name}
 				res.stepbackTasks[bv.Name] = append(res.stepbackTasks[bv.Name], stepbackInfo)
 				continue // Don't consider batchtime/activation if we're stepping back this generated task
 			}
