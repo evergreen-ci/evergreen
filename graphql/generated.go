@@ -515,7 +515,8 @@ type ComplexityRoot struct {
 	}
 
 	JiraConfig struct {
-		Host func(childComplexity int) int
+		Email func(childComplexity int) int
+		Host  func(childComplexity int) int
 	}
 
 	JiraField struct {
@@ -3705,6 +3706,13 @@ func (e *executableSchema) Complexity(typeName, field string, childComplexity in
 		}
 
 		return e.complexity.IssueLink.URL(childComplexity), true
+
+	case "JiraConfig.email":
+		if e.complexity.JiraConfig.Email == nil {
+			break
+		}
+
+		return e.complexity.JiraConfig.Email(childComplexity), true
 
 	case "JiraConfig.host":
 		if e.complexity.JiraConfig.Host == nil {
@@ -23559,6 +23567,47 @@ func (ec *executionContext) _IssueLink_url(ctx context.Context, field graphql.Co
 func (ec *executionContext) fieldContext_IssueLink_url(ctx context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
 	fc = &graphql.FieldContext{
 		Object:     "IssueLink",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type String does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _JiraConfig_email(ctx context.Context, field graphql.CollectedField, obj *model.APIJiraConfig) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_JiraConfig_email(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.Email, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		return graphql.Null
+	}
+	res := resTmp.(*string)
+	fc.Result = res
+	return ec.marshalOString2ᚖstring(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_JiraConfig_email(ctx context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "JiraConfig",
 		Field:      field,
 		IsMethod:   false,
 		IsResolver: false,
@@ -49209,6 +49258,8 @@ func (ec *executionContext) fieldContext_SpruceConfig_jira(ctx context.Context, 
 		IsResolver: false,
 		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
 			switch field.Name {
+			case "email":
+				return ec.fieldContext_JiraConfig_email(ctx, field)
 			case "host":
 				return ec.fieldContext_JiraConfig_host(ctx, field)
 			}
@@ -74584,6 +74635,8 @@ func (ec *executionContext) _JiraConfig(ctx context.Context, sel ast.SelectionSe
 		switch field.Name {
 		case "__typename":
 			out.Values[i] = graphql.MarshalString("JiraConfig")
+		case "email":
+			out.Values[i] = ec._JiraConfig_email(ctx, field, obj)
 		case "host":
 			out.Values[i] = ec._JiraConfig_host(ctx, field, obj)
 		default:
