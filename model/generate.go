@@ -467,7 +467,7 @@ func (g *GeneratedProject) filterInactiveTasks(ctx context.Context, tasks TVPair
 }
 
 type specificActivationInfo struct {
-	stepbackTasks      map[string][]specificStepbackInfo // tasks by variant that are being stepped back, along with the stepback depth to use
+	stepbackTasks      map[string][]specificStepbackInfo // tasks by variant that are being stepped back
 	activationTasks    map[string][]string               // tasks by variant that have batchtime or activate specified
 	activationVariants []string                          // variants that have batchtime or activate specified
 }
