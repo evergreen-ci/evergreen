@@ -725,7 +725,7 @@ Every task has some expansions available by default:
     projects this is the same as `${project}`. If you aren't sure which
     you are, you can check using this API route:
     `https://evergreen.mongodb.com/rest/v2/<project_id>`)
--   `${branch_name}` is the name of the branch being tested by the
+-   `${branch_name}` is the name of the branch tracked by the
     project
 -   `${distro_id}` is name of the distro the task is running on
 -   `${created_at}` is the time the version was created
