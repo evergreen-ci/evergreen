@@ -7,6 +7,7 @@ import (
 	"io"
 	"net/http"
 	"strconv"
+	"strings"
 	"time"
 
 	"github.com/evergreen-ci/evergreen"
@@ -675,7 +676,15 @@ func (uis *UIServer) taskFileRaw(w http.ResponseWriter, r *http.Request) {
 		uis.LoggedError(w, r, http.StatusNotFound, errors.New("File not found"))
 		return
 	}
-	if !utility.StringMatchesAnyRegex(tFile.ContentType, uis.Settings.Ui.FileStreamingContentTypes) {
+
+	hasContentType := false
+	for _, contentType := range uis.Settings.Ui.FileStreamingContentTypes {
+		if strings.HasPrefix(tFile.ContentType, contentType) {
+			hasContentType = true
+			break
+		}
+	}
+	if !hasContentType {
 		uis.LoggedError(w, r, http.StatusBadRequest, errors.New(fmt.Sprintf("unsupported file content type: %s", tFile.ContentType)))
 		return
 	}
