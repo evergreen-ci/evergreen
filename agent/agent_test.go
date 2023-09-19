@@ -2,6 +2,8 @@ package agent
 
 import (
 	"context"
+	"encoding/hex"
+	"io/fs"
 	"os"
 	"path/filepath"
 	"runtime"
@@ -1286,9 +1288,14 @@ func (s *AgentSuite) TestGeneralPreviousTaskCleanupAndNextTaskSetupSucceeds() {
 	s.False(shouldExit)
 	s.NoError(err)
 
-	s.Require().NotZero(tc)
+	s.Require().NotZero(tc, "task context should be populated with initial data")
 	s.Require().NotZero(tc.taskConfig)
+	s.Equal(s.tc.taskConfig, tc.taskConfig)
+	s.NotZero(tc.logger, "logger should be set")
+
 	s.Contains(tc.taskConfig.WorkDir, s.a.opts.WorkingDirectory)
+	taskDir := s.getTaskWorkingDirectory(s.a.opts.WorkingDirectory)
+	s.NotZero(taskDir, "should have created task working directory")
 
 	s.NoError(s.tc.logger.Close())
 	checkMockLogs(s.T(), s.mockCommunicator, s.tc.taskConfig.Task.Id, []string{
@@ -1362,6 +1369,122 @@ task_groups:
 		panicLog,
 		"Making new directory",
 	})
+}
+
+func (s *AgentSuite) checkTaskSystemFailed() {
+	s.Require().NotZero(s.mockCommunicator.EndTaskResult)
+	detail := s.mockCommunicator.EndTaskResult.Detail
+	s.Require().NotZero(detail)
+	s.Equal(evergreen.TaskFailed, detail.Status, "task should fail")
+	s.Equal(evergreen.CommandTypeSystem, detail.Type, "task should fail due to system failure")
+	s.NotEmpty(detail.Description, "task failure description should be included")
+}
+
+func (s *AgentSuite) getTaskWorkingDirectory(baseDir string) fs.DirEntry {
+	entries, err := os.ReadDir(baseDir)
+	s.NoError(err)
+	for _, entry := range entries {
+		if !entry.IsDir() {
+			continue
+		}
+		if strings.Contains(entry.Name(), taskLogDirectory) {
+			// The task log directory is an unused logging directory, and is not
+			// the task working directory.
+			continue
+		}
+		if _, err := hex.DecodeString(entry.Name()); err != nil {
+			// The task working directory name is always hex-encoded.
+			continue
+		}
+
+		return entry
+	}
+	return nil
+}
+
+func (s *AgentSuite) TestSetupInitialWithTaskDataLoadingErrorResultsInSystemFailure() {
+	const (
+		taskID     = "task_id"
+		taskName   = "task_name"
+		taskSecret = "task_secret"
+		buildID    = "build_id"
+		versionID  = "version_id"
+	)
+	s.mockCommunicator.GetTaskResponse = &task.Task{
+		Id:           taskID,
+		DisplayName:  taskName,
+		Secret:       taskSecret,
+		BuildVariant: "nonexistent_bv",
+		BuildId:      buildID,
+		Version:      versionID,
+	}
+	s.mockCommunicator.GetProjectResponse = &model.Project{
+		Tasks: []model.ProjectTask{
+			{
+				Name: taskName,
+			},
+		},
+	}
+	ntr := &apimodels.NextTaskResponse{
+		TaskId:     taskID,
+		TaskSecret: taskSecret,
+	}
+	tc, shouldExit, err := s.a.setupTask(s.ctx, s.ctx, nil, ntr, true, "")
+	s.Error(err, "setup.initial should error because task does not have a matching build variant in the project")
+	s.False(shouldExit)
+
+	s.Require().NotZero(tc, "task context should be populated with initial data")
+	s.Empty(tc.taskConfig)
+	s.NotZero(tc.logger)
+
+	taskDir := s.getTaskWorkingDirectory(s.a.opts.WorkingDirectory)
+	s.Zero(taskDir, "should not have created a task working directory")
+
+	s.checkTaskSystemFailed()
+}
+
+func (s *AgentSuite) TestSetupInitialWithLoggingSetupErrorResultsInSystemFailure() {
+	s.mockCommunicator.GetLoggerProducerShouldFail = true
+	ntr := &apimodels.NextTaskResponse{
+		TaskId:     s.task.Id,
+		TaskSecret: s.task.Secret,
+	}
+
+	tc, shouldExit, err := s.a.setupTask(s.ctx, s.ctx, s.tc, ntr, true, "")
+	s.Error(err, "setup.initial should error because logging setup errored")
+	s.False(shouldExit)
+
+	s.Require().NotZero(tc, "task context should be populated with initial data")
+	s.Equal(s.tc.taskConfig, tc.taskConfig)
+	s.NotZero(tc.logger)
+
+	taskDir := s.getTaskWorkingDirectory(s.a.opts.WorkingDirectory)
+	s.Zero(taskDir, "should not have created a task working directory")
+
+	s.checkTaskSystemFailed()
+}
+
+func (s *AgentSuite) TestSetupInitialWithTaskDirectoryCreationErrorResultsInSystemFailure() {
+	_, thisFile, _, _ := runtime.Caller(1)
+	s.a.opts.WorkingDirectory = thisFile
+	ntr := &apimodels.NextTaskResponse{
+		TaskId:     s.task.Id,
+		TaskSecret: s.task.Secret,
+	}
+
+	tc, shouldExit, err := s.a.setupTask(s.ctx, s.ctx, s.tc, ntr, true, "")
+	s.Error(err, "setup.initial should error because task working directory could not be created")
+	s.False(shouldExit)
+
+	s.Require().NotZero(tc, "task context should be populated with initial data")
+	s.Equal(s.tc.taskConfig, tc.taskConfig)
+	s.NotZero(tc.logger)
+
+	fileInfo, err := os.Stat(thisFile)
+	s.NoError(err)
+	s.False(fileInfo.IsDir(), "cannot use file as prefix path for task working directory")
+
+	s.checkTaskSystemFailed()
 }
 
 func (s *AgentSuite) TestRunTaskWithUserDefinedTaskStatus() {
