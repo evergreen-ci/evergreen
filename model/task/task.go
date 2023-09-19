@@ -165,12 +165,13 @@ type Task struct {
 	//     1. The task will never have output data (e.g., display tasks)
 	//        and, therefore, the value is and always will be nil.
 	//     2. The task does not have output data yet, but can in the future
-	//        after running, and, therefore, the value is currently nil.
+	//        once dispatched, and, therefore, the value is currently nil.
 	//     3. The task ran with the task output information initialized
 	//        upon getting dispatched and the application can safely use
 	//        this field to fetch any output data.
 	//     4. The task has data but was run before the introduction of the
-	//        field and should be initialized to the zero value on the
+	//        field and should be initialized before the application can
+	to the zero value on the
 	//        application to safely fetch any output data.
 	// This field should *never* be accessed directly, instead call
 	// `Task.getTaskOutputSafe()` to instantiate the task output interface.
