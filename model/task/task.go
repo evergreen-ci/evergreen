@@ -1264,6 +1264,10 @@ func SetTasksScheduledTime(tasks []Task, scheduledTime time.Time) error {
 	return nil
 }
 
+func GetNextStepbackTaskId(lastFailingTaskId, lastPassingTaskId string) string {
+	return ""
+}
+
 // UnscheduleStaleUnderwaterHostTasks Removes host tasks older than the unscheduable threshold (e.g. one week) from
 // the scheduler queue.
 // If you pass an empty string as an argument to this function, this operation
