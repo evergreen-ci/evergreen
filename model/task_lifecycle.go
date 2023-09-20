@@ -263,9 +263,9 @@ func activatePreviousTask(ctx context.Context, taskId, caller string, originalSt
 			return errors.Wrap(err, "setting generated tasks to activate")
 		}
 	}
-	if s.LastFailingStepbackTaskId != "" {
+	if s.LastFailingStepbackTaskId != "" || s.LastPassingStepbackTaskId != "" || s.NextStepbackTaskId != "" {
 		if err = prevTask.SetStepbackInfo(s); err != nil {
-			return errors.Wrap(err, "setting stepback depth")
+			return errors.Wrap(err, "setting stepback info")
 		}
 	}
 	return nil
