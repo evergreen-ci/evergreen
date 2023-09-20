@@ -3,6 +3,7 @@ package route
 import (
 	"context"
 	"encoding/json"
+	"fmt"
 	"net/http"
 
 	"github.com/evergreen-ci/evergreen/model"
@@ -32,6 +33,9 @@ func (h *versionCreateHandler) Factory() gimlet.RouteHandler {
 }
 
 func (h *versionCreateHandler) Parse(ctx context.Context, r *http.Request) error {
+	fmt.Println("TESTING THIS AS WELl")
+	fmt.Println("TESTING THIS AS WELl")
+	fmt.Println("TESTING THIS AS WELl")
 	err := utility.ReadJSON(r.Body, h)
 	if err != nil {
 		return errors.Wrap(err, "reading version creation options from JSON request body")
@@ -40,6 +44,7 @@ func (h *versionCreateHandler) Parse(ctx context.Context, r *http.Request) error
 }
 
 func (h *versionCreateHandler) Run(ctx context.Context) gimlet.Responder {
+	fmt.Println("HELLO TESTING HELLO TESTING HELLO TESTING HELLO TESTINGHELLO TESTING HELLO TESTINGHELLO TESTING HELLO TESTINGHELLO TESTING HELLO TESTINGHELLO TESTING HELLO TESTINGHELLO TESTING HELLO TESTINGHELLO TESTING HELLO TESTINGHELLO TESTING HELLO TESTING")
 	u := gimlet.GetUser(ctx).(*user.DBUser)
 	metadata := model.VersionMetadata{
 		Message:  h.Message,
