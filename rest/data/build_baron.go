@@ -15,6 +15,7 @@ import (
 	"github.com/evergreen-ci/evergreen/trigger"
 	"github.com/evergreen-ci/evergreen/units"
 	"github.com/evergreen-ci/utility"
+	"github.com/mongodb/amboy"
 	"github.com/mongodb/grip"
 	"github.com/pkg/errors"
 )
@@ -36,13 +37,6 @@ func BbFileTicket(ctx context.Context, taskId string, execution int) (int, error
 	if t == nil {
 		return http.StatusNotFound, errors.Wrapf(err, "task '%s' not found with execution '%d'", taskId, execution)
 	}
-	env := evergreen.GetEnvironment()
-	settings := env.Settings()
-	queue := env.RemoteQueue()
-	bbProject, ok := model.GetBuildBaronSettings(t.Project, t.Version)
-	if !ok {
-		return http.StatusInternalServerError, errors.Errorf("could not find build baron plugin for task '%s' with execution '%d'", taskId, execution)
-	}
 
 	webHook, ok, err := model.IsWebhookConfigured(t.Project, t.Version)
 	if err != nil {
@@ -54,19 +48,26 @@ func BbFileTicket(ctx context.Context, taskId string, execution int) (int, error
 		return resp.StatusCode, err
 	}
 
-	//if there is no custom web-hook, use the build baron
+	// If there is no custom webhook, use the build baron settings to file a
+	// Jira ticket.
+	env := evergreen.GetEnvironment()
+	settings := env.Settings()
+	queue := env.RemoteQueue()
+	bbProject, ok := model.GetBuildBaronSettings(t.Project, t.Version)
+	if !ok {
+		return http.StatusInternalServerError, errors.Errorf("could not find build baron plugin for task '%s' with execution '%d'", taskId, execution)
+	}
+
 	n, err := makeJiraNotification(ctx, settings, t, jiraTicketOptions{
-		project: bbProject.TicketCreateProject,
-		// kim: TODO: pass in issue type from project settings.
+		project:   bbProject.TicketCreateProject,
+		issueType: bbProject.TicketCreateIssueType,
 	})
 	if err != nil {
 		return http.StatusInternalServerError, err
 	}
 	ts := utility.RoundPartOfMinute(1).Format(units.TSFormat)
-	err = queue.Put(ctx, units.NewEventSendJob(n.ID, ts))
-	if err != nil {
+	if err = amboy.EnqueueUniqueJob(ctx, queue, units.NewEventSendJob(n.ID, ts)); err != nil {
 		return http.StatusInternalServerError, errors.Wrapf(err, "inserting notification job")
-
 	}
 
 	return http.StatusOK, nil
