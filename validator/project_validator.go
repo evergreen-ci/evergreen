@@ -1165,7 +1165,7 @@ func checkBVBatchTimes(buildVariant *model.BuildVariant) ValidationErrors {
 	errs := ValidationErrors{}
 	// check task batchtimes first
 	for _, t := range buildVariant.Tasks {
-		// setting activate explicitly to true with batchtime/cron will use batchtime/cron
+		// setting activate explicitly to true with batchtime will use batchtime
 		if utility.FromBoolPtr(t.Activate) && (t.CronBatchTime != "" || t.BatchTime != nil) {
 			errs = append(errs,
 				ValidationError{
