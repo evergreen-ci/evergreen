@@ -992,7 +992,7 @@ func TestRetryCommitQueueItems(t *testing.T) {
 					Githash:     patchedRevision,
 					StartTime:   startTime.Add(30 * time.Minute),
 					FinishTime:  endTime.Add(30 * time.Minute),
-					Status:      evergreen.LegacyPatchSucceeded,
+					Status:      evergreen.VersionSucceeded,
 					Alias:       evergreen.CommitQueueAlias,
 				},
 				{ // within time frame, not commit queue
