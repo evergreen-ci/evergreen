@@ -526,6 +526,7 @@ func (p *schedulePatchHandler) Parse(ctx context.Context, r *http.Request) error
 }
 
 func (p *schedulePatchHandler) Run(ctx context.Context) gimlet.Responder {
+	u := MustHaveUser(ctx)
 	dbVersion, _ := dbModel.VersionFindOneId(p.patchId)
 	var project *dbModel.Project
 	var err error
@@ -546,6 +547,7 @@ func (p *schedulePatchHandler) Run(ctx context.Context) gimlet.Responder {
 	}
 	patchUpdateReq := dbModel.PatchUpdate{
 		Description: p.variantTasks.Description,
+		Caller:      u.Id,
 	}
 	if patchUpdateReq.Description == "" && dbVersion != nil {
 		patchUpdateReq.Description = dbVersion.Message

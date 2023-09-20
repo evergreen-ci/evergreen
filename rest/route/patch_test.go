@@ -684,6 +684,7 @@ func TestSchedulePatchRoute(t *testing.T) {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 
+	ctx = gimlet.AttachUser(ctx, &user.DBUser{Id: "user"})
 	env := &mock.Environment{}
 	require.NoError(t, env.Configure(ctx))
 
@@ -939,6 +940,7 @@ func TestSchedulePatchActivatesInactiveTasks(t *testing.T) {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 
+	ctx = gimlet.AttachUser(ctx, &user.DBUser{Id: "user"})
 	env := &mock.Environment{}
 	require.NoError(t, env.Configure(ctx))
 

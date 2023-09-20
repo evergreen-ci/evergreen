@@ -281,7 +281,7 @@ func (g *GeneratedProject) saveNewBuildsAndTasks(ctx context.Context, v *Version
 		// tasks inherit that requirement.
 		ActivatedTasksAreEssentialToSucceed: g.Task.IsEssentialToSucceed,
 	}
-	activatedTasksInExistingBuilds, err := addNewTasks(ctx, creationInfo, existingBuilds)
+	activatedTasksInExistingBuilds, err := addNewTasks(ctx, creationInfo, existingBuilds, evergreen.GenerateTasksActivator)
 	if err != nil {
 		return errors.Wrap(err, "adding new tasks")
 	}

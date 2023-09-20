@@ -95,6 +95,7 @@ func (uis *UIServer) schedulePatchUI(w http.ResponseWriter, r *http.Request) {
 	if err := utility.ReadJSON(utility.NewRequestReader(r), &patchUpdateReq); err != nil {
 		uis.LoggedError(w, r, http.StatusBadRequest, err)
 	}
+	patchUpdateReq.Caller = curUser.Username()
 
 	status, err := units.SchedulePatch(r.Context(), uis.env, projCtx.Patch.Id.Hex(), projCtx.Version, patchUpdateReq)
 	if err != nil {
