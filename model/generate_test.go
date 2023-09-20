@@ -1544,10 +1544,28 @@ func TestFilterInactiveTasks(t *testing.T) {
 		},
 		"FiltersExplicitlyActiveNewBuildWithBatchTime": func(ctx context.Context, t *testing.T, g GeneratedProject, v *Version) {
 			// When activate and batchtime are both defined on the build
-			// variant, batchtime takes priority. This is a little unintuitive
-			// because if activate is defined in the build variant task, it can
-			// override build variant-level batchtime.
+			// variant, batchtime takes priority.
 			g.BuildVariants[0].Activate = utility.TruePtr()
+			g.BuildVariants[0].BatchTime = utility.ToIntPtr(10)
+
+			tasks, err := g.filterInactiveTasks(ctx, TVPairSet{{
+				TaskName: g.BuildVariants[0].Tasks[0].Name,
+				Variant:  g.BuildVariants[0].Name,
+			}}, v, &Project{})
+
+			assert.NoError(t, err)
+			assert.Empty(t, tasks)
+		},
+		"FiltersExplicitlyActiveNewBuildWithBatchTimeAndActivateAtDifferentLevels": func(ctx context.Context, t *testing.T, g GeneratedProject, v *Version) {
+			// TODO (EVG-20904): When activate and batchtime are defined at
+			// different levels and furthermore, activate is defined at a more
+			// specific level, the variant-level batchtime still takes priority
+			// and the task gets filtered out and will not activate until later.
+			// This is unintuitive because the behavior of static YAML vs.
+			// generate.tasks differ in prioritization of the fields. For
+			// example, if this same configuration is done in the static YAML,
+			// the task will activate immediately.
+			g.BuildVariants[0].Tasks[0].Activate = utility.TruePtr()
 			g.BuildVariants[0].BatchTime = utility.ToIntPtr(10)
 
 			tasks, err := g.filterInactiveTasks(ctx, TVPairSet{{
