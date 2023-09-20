@@ -1279,9 +1279,23 @@ func SetTasksScheduledTime(tasks []Task, scheduledTime time.Time) error {
 // 	return intermediateTasksReversed, nil
 // }
 
-func GetTaskIdBetweenIds(t1, t2 string) string {
+func GetTaskIdBetweenIds(prevTaskId, currentTaskId string) (string, error) {
+	previous, err := FindByIdExecution(prevTaskId, nil)
+	if previous == nil || err != nil {
+		return "", err
+	}
+	current, err := FindByIdExecution(currentTaskId, nil)
+	if current == nil || err != nil {
+		return "", err
+	}
+	tasks, err := Find(ByIntermediateRevisions(previous.RevisionOrderNumber, current.RevisionOrderNumber, current.BuildVariant,
+		current.DisplayName, current.Project, current.Requester))
+	if err != nil {
+		return "", err
+	}
+	// Get the middle of tasks and then return the id of that task
 
-	return ""
+	return "", nil
 }
 
 // UnscheduleStaleUnderwaterHostTasks Removes host tasks older than the unscheduable threshold (e.g. one week) from
