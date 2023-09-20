@@ -15,10 +15,9 @@ import (
 	"github.com/evergreen-ci/evergreen/trigger"
 	"github.com/evergreen-ci/evergreen/units"
 	"github.com/evergreen-ci/utility"
+	"github.com/mongodb/grip"
 	"github.com/pkg/errors"
 )
-
-const jiraIssueType = "Build Failure"
 
 type FailingTaskData struct {
 	TaskId    string `bson:"task_id"`
@@ -26,6 +25,8 @@ type FailingTaskData struct {
 }
 
 // BbFileTicket creates a JIRA ticket for a task with the given test failures.
+// kim: NOTE: this is the resolver used to actually file a ticket when pressing
+// "File Ticket".
 func BbFileTicket(ctx context.Context, taskId string, execution int) (int, error) {
 	// Find information about the task
 	t, err := task.FindOneIdAndExecution(taskId, execution)
@@ -54,7 +55,10 @@ func BbFileTicket(ctx context.Context, taskId string, execution int) (int, error
 	}
 
 	//if there is no custom web-hook, use the build baron
-	n, err := makeNotification(ctx, settings, bbProject.TicketCreateProject, t)
+	n, err := makeJiraNotification(ctx, settings, t, jiraTicketOptions{
+		project: bbProject.TicketCreateProject,
+		// kim: TODO: pass in issue type from project settings.
+	})
 	if err != nil {
 		return http.StatusInternalServerError, err
 	}
@@ -103,13 +107,38 @@ func fileTicketCustomHook(context context.Context, taskId string, execution int,
 	return resp, nil
 }
 
-func makeNotification(ctx context.Context, settings *evergreen.Settings, project string, t *task.Task) (*notification.Notification, error) {
+type jiraTicketOptions struct {
+	project   string
+	issueType string
+}
+
+func (o *jiraTicketOptions) validate() error {
+	catcher := grip.NewBasicCatcher()
+	catcher.NewWhen(o.project == "", "must specify Jira project")
+	if catcher.HasErrors() {
+		return catcher.Resolve()
+	}
+
+	if o.issueType == "" {
+		o.issueType = defaultJiraIssueType
+	}
+
+	return nil
+}
+
+const defaultJiraIssueType = "Build Failure"
+
+func makeJiraNotification(ctx context.Context, settings *evergreen.Settings, t *task.Task, jiraOpts jiraTicketOptions) (*notification.Notification, error) {
+	if err := jiraOpts.validate(); err != nil {
+		return nil, errors.Wrap(err, "invalid Jira ticket options")
+	}
+
 	mappings := &evergreen.JIRANotificationsConfig{}
 	if err := mappings.Get(ctx); err != nil {
 		return nil, errors.Wrap(err, "getting Jira mappings")
 	}
 	payload, err := trigger.JIRATaskPayload(trigger.JiraIssueParameters{
-		Project:  project,
+		Project:  jiraOpts.project,
 		UiURL:    settings.Ui.Url,
 		Mappings: mappings,
 		Task:     t,
@@ -120,8 +149,8 @@ func makeNotification(ctx context.Context, settings *evergreen.Settings, project
 	sub := event.Subscriber{
 		Type: event.JIRAIssueSubscriberType,
 		Target: event.JIRAIssueSubscriber{
-			Project:   project,
-			IssueType: jiraIssueType,
+			Project:   jiraOpts.project,
+			IssueType: jiraOpts.issueType,
 		},
 	}
 	n, err := notification.New("", utility.RandomString(), &sub, payload)
