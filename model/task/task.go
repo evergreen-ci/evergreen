@@ -1264,7 +1264,23 @@ func SetTasksScheduledTime(tasks []Task, scheduledTime time.Time) error {
 	return nil
 }
 
+// func (current *Task) FindIntermediateTasks(previous *Task) ([]Task, error) {
+// 	intermediateTasks, err := Find(ByIntermediateRevisions(previous.RevisionOrderNumber, current.RevisionOrderNumber, current.BuildVariant,
+// 		current.DisplayName, current.Project, current.Requester))
+// 	if err != nil {
+// 		return nil, err
+// 	}
+
+// 	// reverse the slice of tasks
+// 	intermediateTasksReversed := make([]Task, len(intermediateTasks))
+// 	for idx, t := range intermediateTasks {
+// 		intermediateTasksReversed[len(intermediateTasks)-idx-1] = t
+// 	}
+// 	return intermediateTasksReversed, nil
+// }
+
 func GetTaskIdBetweenIds(t1, t2 string) string {
+
 	return ""
 }
 
