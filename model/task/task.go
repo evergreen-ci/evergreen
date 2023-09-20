@@ -1264,7 +1264,7 @@ func SetTasksScheduledTime(tasks []Task, scheduledTime time.Time) error {
 	return nil
 }
 
-func GetNextStepbackTaskId(lastFailingTaskId, lastPassingTaskId string) string {
+func GetTaskIdBetweenIds(t1, t2 string) string {
 	return ""
 }
 
