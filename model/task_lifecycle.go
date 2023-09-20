@@ -201,7 +201,7 @@ func findMissingTasks(taskIDs []string, tasksPresent map[string]struct{}) ([]tas
 // DisableStaleContainerTasks disables all container tasks that have been
 // scheduled to run for a long time without actually dispatching the task.
 func DisableStaleContainerTasks(caller string) error {
-	query := task.IsContainerTaskScheduledQuery()
+	query := task.ScheduledContainerTasksQuery()
 	query[task.ActivatedTimeKey] = bson.M{"$lte": time.Now().Add(-task.UnschedulableThreshold)}
 
 	tasks, err := task.FindAll(db.Query(query))
@@ -1526,10 +1526,7 @@ func updateVersionStatus(v *Version) (string, error) {
 
 // UpdatePatchStatus updates the status of a patch.
 func UpdatePatchStatus(p *patch.Patch, versionStatus string) error {
-	patchStatus, err := evergreen.VersionStatusToPatchStatus(versionStatus)
-	if err != nil {
-		return errors.Wrapf(err, "getting patch status from version status '%s'", versionStatus)
-	}
+	patchStatus := evergreen.VersionStatusToPatchStatus(versionStatus)
 
 	if patchStatus == p.Status {
 		return nil
@@ -1537,11 +1534,11 @@ func UpdatePatchStatus(p *patch.Patch, versionStatus string) error {
 
 	event.LogPatchStateChangeEvent(p.Version, patchStatus)
 
-	if evergreen.IsFinishedPatchStatus(patchStatus) {
-		if err = p.MarkFinished(patchStatus, time.Now()); err != nil {
+	if evergreen.IsFinishedVersionStatus(patchStatus) {
+		if err := p.MarkFinished(patchStatus, time.Now()); err != nil {
 			return errors.Wrapf(err, "marking patch '%s' as finished with status '%s'", p.Id.Hex(), patchStatus)
 		}
-	} else if err = p.UpdateStatus(patchStatus); err != nil {
+	} else if err := p.UpdateStatus(patchStatus); err != nil {
 		return errors.Wrapf(err, "updating patch '%s' with status '%s'", p.Id.Hex(), patchStatus)
 	}
 
@@ -1625,10 +1622,7 @@ func UpdateBuildAndVersionStatusForTask(ctx context.Context, t *task.Task) error
 			if err != nil {
 				return errors.Wrapf(err, "getting collective status for patch '%s'", p.Id.Hex())
 			}
-			versionStatus, err := evergreen.PatchStatusToVersionStatus(collectiveStatus)
-			if err != nil {
-				return errors.Wrapf(err, "getting version status")
-			}
+			versionStatus := evergreen.PatchStatusToVersionStatus(collectiveStatus)
 			if parentPatch != nil {
 				event.LogVersionChildrenCompletionEvent(parentPatch.Id.Hex(), versionStatus, parentPatch.Author)
 			} else {
@@ -1720,7 +1714,7 @@ func MarkStart(t *task.Task, updates *StatusChanges) error {
 	if evergreen.IsPatchRequester(t.Requester) {
 		err := patch.TryMarkStarted(t.Version, startTime)
 		if err == nil {
-			updates.PatchNewStatus = evergreen.PatchStarted
+			updates.PatchNewStatus = evergreen.VersionStarted
 
 		} else if !adb.ResultsNotFound(err) {
 			return errors.WithStack(err)

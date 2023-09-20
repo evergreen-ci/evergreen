@@ -603,7 +603,7 @@ func (j *patchIntentProcessor) buildTasksAndVariants(patchDoc *patch.Patch, proj
 	}
 
 	// If the user only wants failed tasks but the previous patch has no failed tasks, there is nothing to build
-	skipForFailed := failedOnly && previousPatchStatus != evergreen.PatchFailed
+	skipForFailed := failedOnly && previousPatchStatus != evergreen.VersionFailed
 
 	if len(patchDoc.VariantsTasks) == 0 && !skipForFailed {
 		project.BuildProjectTVPairs(patchDoc, j.intent.GetAlias())

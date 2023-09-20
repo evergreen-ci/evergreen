@@ -55,7 +55,7 @@ func (h *hostCreateHandler) Parse(ctx context.Context, r *http.Request) error {
 			Message:    err.Error(),
 		}
 	}
-	d, err := data.GetHostCreateDistro(ctx, h.createHost)
+	d, err := distro.GetHostCreateDistro(ctx, h.createHost)
 	if err != nil {
 		return err
 	}

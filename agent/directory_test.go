@@ -5,6 +5,7 @@ import (
 	"path/filepath"
 	"testing"
 
+	"github.com/evergreen-ci/evergreen/agent/internal"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
@@ -32,8 +33,18 @@ func TestRemoveTaskDirectory(t *testing.T) {
 	require.NoError(os.WriteFile(filepath.Join(tmpDir, "read.txt"), []byte("haha can't delete me!"), 0444))
 
 	// remove the task directory
-	agent := Agent{}
-	tc := &taskContext{taskDirectory: filepath.Base(tmpDir)}
+	agent := Agent{
+		opts: Options{
+			WorkingDirectory: tmpDir,
+		},
+	}
+
+	tc := &taskContext{
+		taskConfig: &internal.TaskConfig{
+			WorkDir: filepath.Base(tmpDir),
+		},
+	}
+
 	agent.removeTaskDirectory(tc)
 	_, err = os.Stat(tmpDir)
 	require.True(os.IsNotExist(err), "directory should have been deleted")

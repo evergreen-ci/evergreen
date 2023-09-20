@@ -1,74 +1,16 @@
 package internal
 
 import (
-	"context"
 	"testing"
 
 	"github.com/evergreen-ci/evergreen/apimodels"
-	"github.com/evergreen-ci/evergreen/db"
 	"github.com/evergreen-ci/evergreen/model"
 	"github.com/evergreen-ci/evergreen/model/patch"
 	"github.com/evergreen-ci/evergreen/model/task"
 	"github.com/evergreen-ci/evergreen/testutil"
 	"github.com/evergreen-ci/evergreen/util"
 	"github.com/stretchr/testify/assert"
-	"github.com/stretchr/testify/require"
 )
-
-func TestTaskConfigGetTaskGroup(t *testing.T) {
-	require.NoError(t, db.ClearCollections(model.VersionCollection))
-	tgName := "example_task_group"
-	projYml := `
-timeout:
-  - command: shell.exec
-    params:
-      script: "echo timeout"
-tasks:
-- name: example_task_1
-- name: example_task_2
-task_groups:
-- name: example_task_group
-  max_hosts: 2
-  setup_group:
-  - command: shell.exec
-    params:
-      script: "echo setup_group"
-  teardown_group:
-  - command: shell.exec
-    params:
-      script: "echo teardown_group"
-  setup_task:
-  - command: shell.exec
-    params:
-      script: "echo setup_group"
-  teardown_task:
-  - command: shell.exec
-    params:
-      script: "echo setup_group"
-  tasks:
-  - example_task_1
-  - example_task_2
-`
-	p := &model.Project{}
-	ctx := context.Background()
-	_, err := model.LoadProjectInto(ctx, []byte(projYml), nil, "", p)
-	require.NoError(t, err)
-	v := model.Version{
-		Id: "v1",
-	}
-	t1 := task.Task{
-		Id:        "t1",
-		TaskGroup: tgName,
-		Version:   v.Id,
-	}
-
-	tc := TaskConfig{Task: &t1, Project: p}
-	tg, err := tc.GetTaskGroup(tgName)
-	assert.NoError(t, err)
-	assert.Equal(t, tgName, tg.Name)
-	assert.Len(t, tg.Tasks, 2)
-	assert.Equal(t, 2, tg.MaxHosts)
-}
 
 func TestNewTaskConfig(t *testing.T) {
 	curdir := testutil.GetDirectoryOfFile()
@@ -96,8 +38,8 @@ func TestNewTaskConfig(t *testing.T) {
 	assert.NoError(t, err)
 
 	assert.Equal(t, util.Expansions{}, taskConfig.DynamicExpansions)
-	assert.Equal(t, &util.Expansions{}, taskConfig.Expansions)
+	assert.Equal(t, util.Expansions{}, taskConfig.Expansions)
 	assert.Equal(t, &apimodels.DistroView{}, taskConfig.Distro)
-	assert.Equal(t, p, taskConfig.Project)
-	assert.Equal(t, task, taskConfig.Task)
+	assert.Equal(t, p, &taskConfig.Project)
+	assert.Equal(t, task, &taskConfig.Task)
 }

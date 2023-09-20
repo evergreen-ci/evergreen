@@ -346,6 +346,8 @@ func (r *mutationResolver) SetPatchVisibility(ctx context.Context, patchIds []st
 // SchedulePatch is the resolver for the schedulePatch field.
 func (r *mutationResolver) SchedulePatch(ctx context.Context, patchID string, configure PatchConfigure) (*restModel.APIPatch, error) {
 	patchUpdateReq := buildFromGqlInput(configure)
+	usr := mustHaveUser(ctx)
+	patchUpdateReq.Caller = usr.Id
 	version, err := model.VersionFindOneId(patchID)
 	if err != nil && !adb.ResultsNotFound(err) {
 		return nil, InternalServerError.Send(ctx, fmt.Sprintf("Error occurred fetching patch '%s': %s", patchID, err.Error()))

@@ -84,17 +84,17 @@ func TestGetGithubSettings(t *testing.T) {
 	assert.NoError(err)
 	assert.Equal(settings.Credentials["github"], tokens[0])
 
-	authFields := settings.GetGithubAppAuth()
+	authFields := settings.getGithubAppAuth()
 	assert.Nil(authFields)
 
 	settings.AuthConfig.Github = &GithubAuthConfig{
 		AppId: 1234,
 	}
-	authFields = settings.GetGithubAppAuth()
+	authFields = settings.getGithubAppAuth()
 	assert.Nil(authFields)
 
 	settings.Expansions[githubAppPrivateKey] = "key"
-	authFields = settings.GetGithubAppAuth()
+	authFields = settings.getGithubAppAuth()
 	assert.NotNil(authFields)
 	assert.Equal(int64(1234), authFields.AppId)
 	assert.Equal([]byte("key"), authFields.privateKey)
@@ -333,9 +333,6 @@ func (s *AdminSuite) TestAuthConfig() {
 		Naive: &NaiveAuthConfig{
 			Users: []AuthUser{{Username: "user", Password: "pw"}},
 		},
-		OnlyAPI: &OnlyAPIAuthConfig{
-			Users: []OnlyAPIUser{{Username: "user", Key: "key", Roles: []string{"admin"}}},
-		},
 		Github: &GithubAuthConfig{
 			ClientId:     "ghclient",
 			ClientSecret: "ghsecret",
@@ -345,7 +342,6 @@ func (s *AdminSuite) TestAuthConfig() {
 		},
 		Multi: &MultiAuthConfig{
 			ReadWrite: []string{AuthGithubKey, AuthLDAPKey},
-			ReadOnly:  []string{AuthNaiveKey, AuthOnlyAPIKey},
 		},
 		PreferredType:           AuthLDAPKey,
 		BackgroundReauthMinutes: 60,

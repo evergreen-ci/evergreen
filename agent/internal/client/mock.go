@@ -16,6 +16,7 @@ import (
 	serviceModel "github.com/evergreen-ci/evergreen/model"
 	"github.com/evergreen-ci/evergreen/model/artifact"
 	"github.com/evergreen-ci/evergreen/model/manifest"
+	"github.com/evergreen-ci/evergreen/model/patch"
 	patchmodel "github.com/evergreen-ci/evergreen/model/patch"
 	"github.com/evergreen-ci/evergreen/model/task"
 	"github.com/evergreen-ci/evergreen/model/testresult"
@@ -56,6 +57,8 @@ type Mock struct {
 	HeartbeatCount              int
 	TaskExecution               int
 	CreatedHost                 apimodels.CreateHost
+	GetTaskPatchResponse        *patchmodel.Patch
+	GetLoggerProducerShouldFail bool
 
 	CedarGRPCConn *grpc.ClientConn
 
@@ -365,6 +368,9 @@ func (c *Mock) GetMockMessages() map[string][]apimodels.LogMessage {
 
 // GetLoggerProducer constructs a single channel log producer.
 func (c *Mock) GetLoggerProducer(ctx context.Context, td TaskData, config *LoggerConfig) (LoggerProducer, error) {
+	if c.GetLoggerProducerShouldFail {
+		return nil, errors.New("operation run in fail mode.")
+	}
 	return NewSingleChannelLogHarness(td.ID, newEvergreenLogSender(ctx, c, apimodels.AgentLogPrefix, td, defaultLogBufferSize, defaultLogBufferTime)), nil
 }
 
@@ -383,12 +389,11 @@ func (c *Mock) GetPatchFile(ctx context.Context, td TaskData, patchFileID string
 }
 
 func (c *Mock) GetTaskPatch(ctx context.Context, td TaskData, patchId string) (*patchmodel.Patch, error) {
-	patch, ok := ctx.Value("patch").(*patchmodel.Patch)
-	if !ok {
-		return &patchmodel.Patch{}, nil
+	if c.GetTaskPatchResponse != nil {
+		return c.GetTaskPatchResponse, nil
 	}
 
-	return patch, nil
+	return &patch.Patch{}, nil
 }
 
 // CreateSpawnHost will return a mock host that would have been intended
@@ -429,7 +434,6 @@ func (c *Mock) AttachFiles(ctx context.Context, td TaskData, taskFiles []*artifa
 	c.mu.Lock()
 	defer c.mu.Unlock()
 
-	grip.Info("attaching files")
 	c.AttachedFiles[td.ID] = append(c.AttachedFiles[td.ID], taskFiles...)
 
 	return nil

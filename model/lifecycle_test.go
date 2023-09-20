@@ -253,7 +253,7 @@ func TestBuildRestart(t *testing.T) {
 			}
 			So(taskTwo.Insert(), ShouldBeNil)
 
-			So(RestartBuild(ctx, b, []string{"task1", "task2"}, true, evergreen.DefaultTaskActivator), ShouldBeNil)
+			So(RestartBuild(ctx, b, []string{"task1", "task2"}, true, ""), ShouldBeNil)
 			var err error
 			b, err = build.FindOne(build.ById(b.Id))
 			So(err, ShouldBeNil)
@@ -288,7 +288,7 @@ func TestBuildRestart(t *testing.T) {
 			}
 			So(taskFour.Insert(), ShouldBeNil)
 
-			So(RestartBuild(ctx, b, []string{"task3", "task4"}, false, evergreen.DefaultTaskActivator), ShouldBeNil)
+			So(RestartBuild(ctx, b, []string{"task3", "task4"}, false, ""), ShouldBeNil)
 			var err error
 			b, err = build.FindOne(build.ById(b.Id))
 			So(err, ShouldBeNil)
@@ -335,7 +335,7 @@ func TestBuildRestart(t *testing.T) {
 			}
 			So(taskSeven.Insert(), ShouldBeNil)
 
-			So(RestartBuild(ctx, b, []string{"task5", "task6", "task7"}, false, evergreen.DefaultTaskActivator), ShouldBeNil)
+			So(RestartBuild(ctx, b, []string{"task5", "task6", "task7"}, false, ""), ShouldBeNil)
 			var err error
 			b, err = build.FindOne(build.ById(b.Id))
 			So(err, ShouldBeNil)
@@ -376,7 +376,7 @@ func TestBuildRestart(t *testing.T) {
 			}
 			So(taskNine.Insert(), ShouldBeNil)
 
-			So(RestartBuild(ctx, b, []string{"task8", "task9"}, false, evergreen.DefaultTaskActivator), ShouldBeNil)
+			So(RestartBuild(ctx, b, []string{"task8", "task9"}, false, ""), ShouldBeNil)
 			var err error
 			b, err = build.FindOne(build.ById(b.Id))
 			So(err, ShouldBeNil)
@@ -421,7 +421,7 @@ func TestBuildMarkAborted(t *testing.T) {
 
 			Convey("it should be deactivated", func() {
 				var err error
-				So(AbortBuild(b.Id, evergreen.DefaultTaskActivator), ShouldBeNil)
+				So(AbortBuild(b.Id, ""), ShouldBeNil)
 				b, err = build.FindOne(build.ById(b.Id))
 				So(err, ShouldBeNil)
 				So(b.Activated, ShouldBeFalse)
@@ -464,7 +464,7 @@ func TestBuildMarkAborted(t *testing.T) {
 				// aborting the build should mark only the two abortable tasks
 				// with the correct build id as aborted
 
-				So(AbortBuild(b.Id, evergreen.DefaultTaskActivator), ShouldBeNil)
+				So(AbortBuild(b.Id, ""), ShouldBeNil)
 
 				abortedTasks, err := task.Find(task.ByAborted(true))
 				So(err, ShouldBeNil)
@@ -600,12 +600,12 @@ func TestBuildSetActivated(t *testing.T) {
 				}
 				So(canary.Insert(), ShouldBeNil)
 
-				So(ActivateBuildsAndTasks([]string{b.Id}, false, evergreen.DefaultTaskActivator), ShouldBeNil)
+				So(ActivateBuildsAndTasks([]string{b.Id}, false, ""), ShouldBeNil)
 				// the build should have been updated in the db
 				b, err := build.FindOne(build.ById(b.Id))
 				So(err, ShouldBeNil)
 				So(b.Activated, ShouldBeFalse)
-				So(b.ActivatedBy, ShouldEqual, evergreen.DefaultTaskActivator)
+				So(b.ActivatedBy, ShouldEqual, "")
 
 				// only the matching task should have been updated that has not been set by a user
 				deactivatedTasks, err := task.Find(task.ByActivation(false))
@@ -619,7 +619,7 @@ func TestBuildSetActivated(t *testing.T) {
 				So(differentUserTask.Activated, ShouldBeTrue)
 				So(differentUserTask.ActivatedBy, ShouldEqual, user)
 
-				So(ActivateBuildsAndTasks([]string{b.Id}, true, evergreen.DefaultTaskActivator), ShouldBeNil)
+				So(ActivateBuildsAndTasks([]string{b.Id}, true, ""), ShouldBeNil)
 				activatedTasks, err := task.Find(task.ByActivation(true))
 				So(err, ShouldBeNil)
 				So(len(activatedTasks), ShouldEqual, 5)
@@ -686,7 +686,7 @@ func TestBuildSetActivated(t *testing.T) {
 				So(b.ActivatedBy, ShouldEqual, user)
 
 				// deactivate the task from evergreen and nothing should be deactivated.
-				So(ActivateBuildsAndTasks([]string{b.Id}, false, evergreen.DefaultTaskActivator), ShouldBeNil)
+				So(ActivateBuildsAndTasks([]string{b.Id}, false, ""), ShouldBeNil)
 
 				// refresh from the database and check again
 				b, err = build.FindOne(build.ById(b.Id))
@@ -2827,7 +2827,7 @@ func TestAddNewTasks(t *testing.T) {
 				SyncAtEndOpts:  patch.SyncAtEndOptions{},
 				GeneratedBy:    "",
 			}
-			_, err := addNewTasks(context.Background(), creationInfo, []build.Build{b})
+			_, err := addNewTasks(context.Background(), creationInfo, []build.Build{b}, "")
 			assert.NoError(t, err)
 			activatedTasks, err := task.FindAll(db.Query(bson.M{task.ActivatedKey: true}))
 			assert.NoError(t, err)

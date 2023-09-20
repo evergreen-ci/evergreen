@@ -62,7 +62,7 @@ func (s *githubStatusUpdateSuite) SetupTest() {
 	s.patchDoc = &patch.Patch{
 		Id:         id,
 		Version:    id.Hex(),
-		Status:     evergreen.PatchFailed,
+		Status:     evergreen.VersionFailed,
 		StartTime:  startTime,
 		FinishTime: startTime.Add(10 * time.Minute),
 		GithubPatchData: thirdparty.GithubPatch{
@@ -104,7 +104,7 @@ func (s *githubStatusUpdateSuite) TestRunInDegradedMode() {
 
 func (s *githubStatusUpdateSuite) TestForPatchCreated() {
 	s.NoError(db.ClearCollections(patch.Collection))
-	s.patchDoc.Status = evergreen.PatchCreated
+	s.patchDoc.Status = evergreen.VersionCreated
 	s.NoError(s.patchDoc.Insert())
 
 	job, ok := NewGithubStatusUpdateJobForNewPatch(s.patchDoc.Version).(*githubStatusUpdateJob)
@@ -194,7 +194,7 @@ func (s *githubStatusUpdateSuite) TestForProcessingError() {
 
 func (s *githubStatusUpdateSuite) TestRequestForAuth() {
 	s.NoError(db.ClearCollections(patch.Collection))
-	s.patchDoc.Status = evergreen.PatchCreated
+	s.patchDoc.Status = evergreen.VersionCreated
 	s.NoError(s.patchDoc.Insert())
 
 	job, ok := NewGithubStatusUpdateJobForExternalPatch(s.patchDoc.Version).(*githubStatusUpdateJob)

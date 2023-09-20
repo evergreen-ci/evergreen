@@ -58,7 +58,7 @@ func (c *zipArchiveCreate) ParseParams(params map[string]interface{}) error {
 func (c *zipArchiveCreate) Execute(ctx context.Context,
 	client client.Communicator, logger client.LoggerProducer, conf *internal.TaskConfig) error {
 
-	if err := util.ExpandValues(c, conf.Expansions); err != nil {
+	if err := util.ExpandValues(c, &conf.Expansions); err != nil {
 		return errors.Wrap(err, "applying expansions")
 	}
 

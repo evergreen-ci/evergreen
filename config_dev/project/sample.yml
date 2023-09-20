@@ -1,7 +1,3 @@
-owner: mpobrien
-repo: sample
-branch: main
-repokind: github
 enabled: true
 batchtime: 120
 identifier: sample

@@ -129,7 +129,7 @@ func TestExpandS3GetParams(t *testing.T) {
 
 			cmd = &s3get{}
 			conf = &internal.TaskConfig{
-				Expansions: util.NewExpansions(map[string]string{}),
+				Expansions: *util.NewExpansions(map[string]string{}),
 			}
 
 			Convey("all appropriate values should be expanded, if they"+

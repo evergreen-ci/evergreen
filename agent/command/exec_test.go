@@ -52,7 +52,7 @@ func (s *execCmdSuite) SetupTest() {
 	var err error
 
 	s.comm = client.NewMock("http://localhost.com")
-	s.conf = &internal.TaskConfig{Expansions: &util.Expansions{}, Task: &task.Task{}, Project: &model.Project{}}
+	s.conf = &internal.TaskConfig{Expansions: util.Expansions{}, Task: task.Task{}, Project: model.Project{}}
 	s.logger, err = s.comm.GetLoggerProducer(s.ctx, client.TaskData{ID: s.conf.Task.Id, Secret: s.conf.Task.Secret}, nil)
 	s.NoError(err)
 }
@@ -68,7 +68,7 @@ func (s *execCmdSuite) TestNoopExpansion() {
 		Args:       []string{"a", "b"},
 	}
 
-	s.NoError(cmd.doExpansions(s.conf.Expansions))
+	s.NoError(cmd.doExpansions(&s.conf.Expansions))
 	s.Equal("foo", cmd.WorkingDir)
 	s.Equal("bar", cmd.Binary)
 	s.Equal("a", cmd.Args[0])
@@ -86,7 +86,7 @@ func (s *execCmdSuite) TestExpansionOfArgs() {
 	s.NotEqual("a", cmd.Args[0])
 	s.NotEqual("b", cmd.Args[1])
 
-	s.NoError(cmd.doExpansions(s.conf.Expansions))
+	s.NoError(cmd.doExpansions(&s.conf.Expansions))
 	s.Len(cmd.Args, 2)
 	s.Equal("a", cmd.Args[0])
 	s.Equal("b", cmd.Args[1])
@@ -100,7 +100,7 @@ func (s *execCmdSuite) TestExpansionOfEnvVarValues() {
 		},
 	}
 
-	s.NoError(cmd.doExpansions(s.conf.Expansions))
+	s.NoError(cmd.doExpansions(&s.conf.Expansions))
 	v, ok := cmd.Env["${foo|a}"]
 	s.True(ok)
 	s.Equal("a", v)
@@ -113,7 +113,7 @@ func (s *execCmdSuite) TestWeirdAndBadExpansions() {
 		Args:       []string{"${foo|a}", "${bar|b}"},
 	}
 
-	s.Error(cmd.doExpansions(s.conf.Expansions))
+	s.Error(cmd.doExpansions(&s.conf.Expansions))
 	s.Equal("fo${o", cmd.WorkingDir)
 	s.Equal("baf}}r", cmd.Binary)
 	s.Equal("a", cmd.Args[0])
@@ -437,7 +437,7 @@ func (s *execCmdSuite) TestEnvAddsExpansionsAndDefaults() {
 		AddExpansionsToEnv: true,
 		WorkingDir:         testutil.GetDirectoryOfFile(),
 	}
-	s.conf.Expansions = util.NewExpansions(map[string]string{
+	s.conf.Expansions = *util.NewExpansions(map[string]string{
 		"expansion1": "foo",
 		"expansion2": "bar",
 	})

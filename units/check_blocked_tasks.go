@@ -5,17 +5,16 @@ import (
 	"fmt"
 	"time"
 
-	"github.com/mongodb/grip"
-	"github.com/mongodb/grip/message"
-
-	"github.com/pkg/errors"
-
 	"github.com/evergreen-ci/evergreen"
+	"github.com/evergreen-ci/evergreen/db"
 	"github.com/evergreen-ci/evergreen/model"
 	"github.com/evergreen-ci/evergreen/model/task"
 	"github.com/mongodb/amboy"
 	"github.com/mongodb/amboy/job"
 	"github.com/mongodb/amboy/registry"
+	"github.com/mongodb/grip"
+	"github.com/mongodb/grip/message"
+	"github.com/pkg/errors"
 )
 
 const (
@@ -54,6 +53,19 @@ func NewCheckBlockedTasksJob(distroId string, ts time.Time) amboy.Job {
 }
 
 func (j *checkBlockedTasksJob) Run(ctx context.Context) {
+	var tasksToCheck []task.Task
+	if j.DistroId != "" {
+		tasksToCheck = j.getDistroTasksToCheck()
+	} else {
+		tasksToCheck = j.getContainerTasksToCheck()
+	}
+	dependencyCache := map[string]task.Task{}
+	for _, t := range tasksToCheck {
+		j.AddError(errors.Wrapf(checkUnmarkedBlockingTasks(&t, dependencyCache), "checking task '%s'", t.Id))
+	}
+}
+
+func (j *checkBlockedTasksJob) getDistroTasksToCheck() []task.Task {
 	queue, err := model.FindDistroTaskQueue(j.DistroId)
 	if err != nil {
 		j.AddError(errors.Wrapf(err, "getting task queue for distro '%s'", j.DistroId))
@@ -84,29 +96,29 @@ func (j *checkBlockedTasksJob) Run(ctx context.Context) {
 			"job":                 j.ID(),
 			"source":              checkBlockedTasks,
 		})
-		return
+		return nil
 	}
 
 	tasksToCheck, err := task.Find(task.ByIds(taskIds))
 	if err != nil {
 		j.AddError(errors.Wrapf(err, "getting tasks to check in distro '%s'", j.DistroId))
-		return
+		return nil
 	}
-
-	dependencyCache := map[string]task.Task{}
-	numTasksModified := 0
-	numChecksThatUpdatedTasks := 0
-	for _, t := range tasksToCheck {
-		numModified, err := checkUnmarkedBlockingTasks(&t, dependencyCache)
-		j.AddError(err)
-		numTasksModified += numModified
-		if numTasksModified > 0 {
-			numChecksThatUpdatedTasks++
-		}
-	}
+	return tasksToCheck
 }
 
-func checkUnmarkedBlockingTasks(t *task.Task, dependencyCaches map[string]task.Task) (int, error) {
+func (j *checkBlockedTasksJob) getContainerTasksToCheck() []task.Task {
+	query := task.UndispatchedContainerTasksQuery()
+	query[task.ContainerAllocatedKey] = false
+	tasksToCheck, err := task.FindAll(db.Query(query))
+	if err != nil {
+		j.AddError(errors.Wrap(err, "getting container tasks to check"))
+		return nil
+	}
+	return tasksToCheck
+}
+
+func checkUnmarkedBlockingTasks(t *task.Task, dependencyCaches map[string]task.Task) error {
 	catcher := grip.NewBasicCatcher()
 
 	dependenciesMet, err := t.DependenciesMet(dependencyCaches)
@@ -117,10 +129,10 @@ func checkUnmarkedBlockingTasks(t *task.Task, dependencyCaches map[string]task.T
 			"activated_by": t.ActivatedBy,
 			"depends_on":   t.DependsOn,
 		})
-		return 0, errors.Wrapf(err, "checking if dependencies met for task '%s'", t.Id)
+		return errors.Wrapf(err, "checking if dependencies met for task '%s'", t.Id)
 	}
 	if dependenciesMet {
-		return 0, nil
+		return nil
 	}
 
 	blockingTasks, err := t.RefreshBlockedDependencies(dependencyCaches)
@@ -137,7 +149,7 @@ func checkUnmarkedBlockingTasks(t *task.Task, dependencyCaches map[string]task.T
 	blockingDeactivatedTasks, err := t.BlockedOnDeactivatedDependency(dependencyCaches)
 	catcher.Wrap(err, "getting blocked status")
 	if err == nil && len(blockingDeactivatedTasks) > 0 {
-		err = task.DeactivateDependencies(blockingDeactivatedTasks, evergreen.DefaultTaskActivator+".dispatcher")
+		err = task.DeactivateDependencies(blockingDeactivatedTasks, evergreen.CheckBlockedTasksActivator)
 		catcher.Add(err)
 	}
 
@@ -155,5 +167,5 @@ func checkUnmarkedBlockingTasks(t *task.Task, dependencyCaches map[string]task.T
 		"exec_task":                          t.IsPartOfDisplay(),
 		"source":                             checkBlockedTasks,
 	})
-	return numModified, catcher.Resolve()
+	return catcher.Resolve()
 }

@@ -10,6 +10,7 @@ import (
 	"path/filepath"
 	"reflect"
 	"regexp"
+	"runtime/debug"
 	"strings"
 	"time"
 
@@ -59,6 +60,7 @@ type ProjectRef struct {
 	RepotrackerDisabled    *bool               `bson:"repotracker_disabled,omitempty" json:"repotracker_disabled,omitempty" yaml:"repotracker_disabled"`
 	DispatchingDisabled    *bool               `bson:"dispatching_disabled,omitempty" json:"dispatching_disabled,omitempty" yaml:"dispatching_disabled"`
 	StepbackDisabled       *bool               `bson:"stepback_disabled,omitempty" json:"stepback_disabled,omitempty" yaml:"stepback_disabled"`
+	StepbackBisect         *bool               `bson:"stepback_bisect,omitempty" json:"stepback_bisect,omitempty" yaml:"stepback_bisect"`
 	VersionControlEnabled  *bool               `bson:"version_control_enabled,omitempty" json:"version_control_enabled,omitempty" yaml:"version_control_enabled"`
 	PRTestingEnabled       *bool               `bson:"pr_testing_enabled,omitempty" json:"pr_testing_enabled,omitempty" yaml:"pr_testing_enabled"`
 	ManualPRTestingEnabled *bool               `bson:"manual_pr_testing_enabled,omitempty" json:"manual_pr_testing_enabled,omitempty" yaml:"manual_pr_testing_enabled"`
@@ -330,6 +332,7 @@ var (
 	projectRefPatchingDisabledKey         = bsonutil.MustHaveTag(ProjectRef{}, "PatchingDisabled")
 	projectRefDispatchingDisabledKey      = bsonutil.MustHaveTag(ProjectRef{}, "DispatchingDisabled")
 	projectRefStepbackDisabledKey         = bsonutil.MustHaveTag(ProjectRef{}, "StepbackDisabled")
+	projectRefStepbackBisectKey           = bsonutil.MustHaveTag(ProjectRef{}, "StepbackBisect")
 	projectRefVersionControlEnabledKey    = bsonutil.MustHaveTag(ProjectRef{}, "VersionControlEnabled")
 	projectRefNotifyOnFailureKey          = bsonutil.MustHaveTag(ProjectRef{}, "NotifyOnBuildFailure")
 	projectRefSpawnHostScriptPathKey      = bsonutil.MustHaveTag(ProjectRef{}, "SpawnHostScriptPath")
@@ -381,6 +384,10 @@ func (p *ProjectRef) IsPRTestingEnabled() bool {
 
 func (p *ProjectRef) IsStepbackDisabled() bool {
 	return utility.FromBoolPtr(p.StepbackDisabled)
+}
+
+func (p *ProjectRef) IsStepbackBisect() bool {
+	return utility.FromBoolPtr(p.StepbackBisect)
 }
 
 func (p *ProjectRef) IsAutoPRTestingEnabled() bool {
@@ -1965,6 +1972,7 @@ func SaveProjectPageForSection(projectId string, p *ProjectRef, section ProjectP
 			projectRefSpawnHostScriptPathKey:   p.SpawnHostScriptPath,
 			projectRefDispatchingDisabledKey:   p.DispatchingDisabled,
 			projectRefStepbackDisabledKey:      p.StepbackDisabled,
+			projectRefStepbackBisectKey:        p.StepbackBisect,
 			projectRefVersionControlEnabledKey: p.VersionControlEnabled,
 			ProjectRefDeactivatePreviousKey:    p.DeactivatePrevious,
 			projectRefRepotrackerDisabledKey:   p.RepotrackerDisabled,
@@ -2274,8 +2282,26 @@ func (p *ProjectRef) GetActivationTimeForVariant(variant *BuildVariant) (time.Ti
 	return defaultRes, nil
 }
 
-func (p *ProjectRef) GetActivationTimeForTask(t *BuildVariantTaskUnit) (time.Time, error) {
+// GetActivationTimeForTask returns the time at which this task should next be activated.
+// Temporarily takes in the task ID that prompted this query, for logging.
+func (p *ProjectRef) GetActivationTimeForTask(t *BuildVariantTaskUnit, taskId string) (time.Time, error) {
 	defaultRes := time.Now()
+	// Verify that we mean to be getting activation time for task
+	if !t.HasSpecificActivation() {
+		grip.Debug(message.Fields{
+			"ticket":         "EVG-20612",
+			"message":        "incorrectly called GetActivationTimeForTask",
+			"task_id":        taskId,
+			"variant":        t.Variant,
+			"task_name":      t.Name,
+			"bvtu_batchtime": t.BatchTime,
+			"bvtu_activate":  t.Activate,
+			"bvtu_cron":      t.CronBatchTime,
+			"bvtu_disabled":  t.IsDisabled(),
+			"stack":          string(debug.Stack()),
+		})
+		return defaultRes, nil
+	}
 	// if we don't want to activate the task, set batchtime to the zero time
 	if !utility.FromBoolTPtr(t.Activate) || t.IsDisabled() {
 		return utility.ZeroTime, nil
@@ -2288,10 +2314,23 @@ func (p *ProjectRef) GetActivationTimeForTask(t *BuildVariantTaskUnit) (time.Tim
 		return time.Now(), nil
 	}
 
+	queryStart := time.Now()
 	lastActivated, err := VersionFindOne(VersionByLastTaskActivation(p.Id, t.Variant, t.Name).WithFields(VersionBuildVariantsKey))
 	if err != nil {
 		return defaultRes, errors.Wrap(err, "finding version")
 	}
+	grip.Debug(message.Fields{
+		"ticket":                "EVG-20612",
+		"message":               "queried last activated",
+		"last_activated_exists": lastActivated != nil,
+		"task_id":               taskId,
+		"variant":               t.Variant,
+		"task_name":             t.Name,
+		"bvtu_batchtime":        t.BatchTime,
+		"bvtu_activate":         t.Activate,
+		"stack":                 string(debug.Stack()),
+		"query_time_secs":       time.Since(queryStart).Seconds(),
+	})
 	if lastActivated == nil {
 		return defaultRes, nil
 	}
@@ -2938,7 +2977,7 @@ func ValidateTriggerDefinition(definition patch.PatchTriggerDefinition, parentPr
 		return definition, errors.Wrapf(err, "finding child project '%s'", definition.ChildProject)
 	}
 
-	if !utility.StringSliceContains([]string{"", AllStatuses, evergreen.PatchSucceeded, evergreen.PatchFailed}, definition.Status) {
+	if !utility.StringSliceContains([]string{"", AllStatuses, evergreen.LegacyPatchSucceeded, evergreen.VersionSucceeded, evergreen.VersionFailed}, definition.Status) {
 		return definition, errors.Errorf("invalid status: %s", definition.Status)
 	}
 

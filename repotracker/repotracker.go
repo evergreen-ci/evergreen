@@ -931,10 +931,11 @@ func createVersionItems(ctx context.Context, v *model.Version, metadata model.Ve
 			// add only tasks that require activation times
 			for _, bvt := range buildvariant.Tasks {
 				tId, ok := taskNameToId[bvt.Name]
+				// TODO EVG-20612: remove activation check
 				if !ok || !bvt.HasSpecificActivation() {
 					continue
 				}
-				activateTaskAt, err := projectInfo.Ref.GetActivationTimeForTask(&bvt)
+				activateTaskAt, err := projectInfo.Ref.GetActivationTimeForTask(&bvt, tId)
 				batchTimeCatcher.Add(errors.Wrapf(err, "unable to get activation time for task '%s' (variant '%s')", bvt.Name, buildvariant.Name))
 
 				taskStatuses = append(taskStatuses,

@@ -48,7 +48,7 @@ func TestPerfSendAddEvgData(t *testing.T) {
 		Prefix:    "prefix",
 	}
 	conf := &internal.TaskConfig{
-		Task: &task.Task{
+		Task: task.Task{
 			Id:                  "id",
 			Project:             "project",
 			Version:             "version",
