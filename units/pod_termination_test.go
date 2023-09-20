@@ -383,7 +383,7 @@ func TestPodTerminationJob(t *testing.T) {
 // generateTestingECSPod creates a pod in ECS from the given options. The
 // cluster must exist before this is called.
 func generateTestingECSPod(ctx context.Context, t *testing.T, client cocoa.ECSClient, cluster string, creationOpts pod.TaskContainerCreationOptions) cocoa.ECSPod {
-	pc, err := ecs.NewBasicPodCreator(client, nil)
+	pc, err := ecs.NewBasicPodCreator(*ecs.NewBasicPodCreatorOptions().SetClient(client))
 	require.NoError(t, err)
 
 	containerDef := cocoa.NewECSContainerDefinition().
