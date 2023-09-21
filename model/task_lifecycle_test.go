@@ -951,11 +951,14 @@ func TestActivatePreviousTask(t *testing.T) {
 		So(previousTask.Insert(), ShouldBeNil)
 		So(currentTask.Insert(), ShouldBeNil)
 		Convey("activating a previous task should set the previous task's active field to true", func() {
-			So(activatePreviousTask(ctx, currentTask.Id, "", nil, 12), ShouldBeNil)
+			s := task.StepbackInfo{
+				NextStepbackTaskId: "three",
+			}
+			So(activatePreviousTask(ctx, currentTask.Id, "", nil, s), ShouldBeNil)
 			t, err := task.FindOne(db.Query(task.ById(previousTask.Id)))
 			So(err, ShouldBeNil)
 			So(t.Activated, ShouldBeTrue)
-			So(t.StepbackDepth, ShouldEqual, 12)
+			So(t.StepbackInfo.NextStepbackTaskId, ShouldEqual, "three")
 		})
 	})
 }

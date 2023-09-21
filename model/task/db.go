@@ -86,7 +86,7 @@ var (
 	DurationPredictionKey          = bsonutil.MustHaveTag(Task{}, "DurationPrediction")
 	PriorityKey                    = bsonutil.MustHaveTag(Task{}, "Priority")
 	ActivatedByKey                 = bsonutil.MustHaveTag(Task{}, "ActivatedBy")
-	StepbackDepthKey               = bsonutil.MustHaveTag(Task{}, "StepbackDepth")
+	StepbackInfoKey                = bsonutil.MustHaveTag(Task{}, "StepbackInfo")
 	ExecutionTasksKey              = bsonutil.MustHaveTag(Task{}, "ExecutionTasks")
 	DisplayOnlyKey                 = bsonutil.MustHaveTag(Task{}, "DisplayOnly")
 	DisplayTaskIdKey               = bsonutil.MustHaveTag(Task{}, "DisplayTaskId")
@@ -114,6 +114,13 @@ var (
 	BaseTaskKey                 = bsonutil.MustHaveTag(Task{}, "BaseTask")
 	BuildVariantDisplayNameKey  = bsonutil.MustHaveTag(Task{}, "BuildVariantDisplayName")
 	IsEssentialToSucceedKey     = bsonutil.MustHaveTag(Task{}, "IsEssentialToSucceed")
+)
+
+var (
+	// BSON fields for stepback information
+	LastFailingStepbackTaskIdKey = bsonutil.MustHaveTag(StepbackInfo{}, "LastFailingStepbackTaskId")
+	LastPassingStepbackTaskIdKey = bsonutil.MustHaveTag(StepbackInfo{}, "LastPassingStepbackTaskId")
+	NextStepbackTaskIdKey        = bsonutil.MustHaveTag(StepbackInfo{}, "NextStepbackTaskId")
 )
 
 var (

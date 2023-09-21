@@ -1205,6 +1205,7 @@ func createOneTask(id string, creationInfo TaskCreationInfo, buildVarTask BuildV
 		RevisionOrderNumber:     creationInfo.Version.RevisionOrderNumber,
 		Requester:               creationInfo.Version.Requester,
 		ParentPatchID:           creationInfo.Build.ParentPatchID,
+		StepbackInfo:            &task.StepbackInfo{},
 		ParentPatchNumber:       creationInfo.Build.ParentPatchNumber,
 		Version:                 creationInfo.Version.Id,
 		Revision:                creationInfo.Version.Revision,
@@ -1248,7 +1249,6 @@ func createOneTask(id string, creationInfo TaskCreationInfo, buildVarTask BuildV
 
 	if isStepback {
 		t.ActivatedBy = evergreen.StepbackTaskActivator
-		t.StepbackDepth = creationInfo.ActivationInfo.getStepbackTaskDepth(t.BuildVariant, t.DisplayName)
 	} else if t.Activated {
 		t.ActivatedBy = creationInfo.Version.Author
 	}
