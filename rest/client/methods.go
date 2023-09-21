@@ -1036,7 +1036,6 @@ func (c *communicatorImpl) GetSubscriptions(ctx context.Context) ([]event.Subscr
 }
 
 func (c *communicatorImpl) CreateVersionFromConfig(ctx context.Context, project, message string, active bool, config []byte) (*serviceModel.Version, error) {
-	fmt.Println("RUNNING CREATE VERSION COMMAND")
 	info := requestInfo{
 		method: http.MethodPut,
 		path:   "/versions",
