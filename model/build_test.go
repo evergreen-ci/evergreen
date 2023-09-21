@@ -8,6 +8,7 @@ import (
 	"github.com/evergreen-ci/evergreen/db"
 	"github.com/evergreen-ci/evergreen/model/build"
 	"github.com/evergreen-ci/evergreen/model/task"
+	"github.com/evergreen-ci/evergreen/testutil"
 	"github.com/stretchr/testify/suite"
 )
 
@@ -182,7 +183,7 @@ func (s *BuildConnectorRestartSuite) SetupSuite() {
 func (s *BuildConnectorRestartSuite) TestRestart() {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
-	env := evergreen.GetEnvironment()
+	env := testutil.NewEnvironment(ctx, s.T())
 
 	err := RestartBuild(ctx, env, &build.Build{Id: "build1"}, []string{}, true, "user1")
 	s.NoError(err)

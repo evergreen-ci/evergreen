@@ -10,6 +10,7 @@ import (
 	"github.com/evergreen-ci/evergreen/model/build"
 	"github.com/evergreen-ci/evergreen/model/patch"
 	"github.com/evergreen-ci/evergreen/model/task"
+	"github.com/evergreen-ci/evergreen/testutil"
 	"github.com/evergreen-ci/utility"
 	. "github.com/smartystreets/goconvey/convey"
 	"github.com/stretchr/testify/assert"
@@ -218,7 +219,7 @@ func TestBuildSetPriority(t *testing.T) {
 func TestBuildRestart(t *testing.T) {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
-	env := evergreen.GetEnvironment()
+	env := testutil.NewEnvironment(ctx, t)
 
 	defer func() {
 		assert.NoError(t, db.ClearCollections(task.Collection, task.OldCollection, VersionCollection, build.Collection))
@@ -2122,7 +2123,7 @@ func TestSortTasks(t *testing.T) {
 func TestVersionRestart(t *testing.T) {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
-	env := evergreen.GetEnvironment()
+	env := testutil.NewEnvironment(ctx, t)
 
 	assert := assert.New(t)
 	require := require.New(t)
@@ -2196,7 +2197,7 @@ func TestVersionRestart(t *testing.T) {
 func TestDisplayTaskRestart(t *testing.T) {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
-	env := evergreen.GetEnvironment()
+	env := testutil.NewEnvironment(ctx, t)
 
 	assert := assert.New(t)
 	displayTasks := []string{"displayTask"}
