@@ -1254,7 +1254,7 @@ func SetTasksScheduledTime(tasks []Task, scheduledTime time.Time) error {
 func GetTaskIdBetweenTasks(t1, t2 Task) (*Task, error) {
 	mid := (t1.RevisionOrderNumber + t2.RevisionOrderNumber) / 2
 
-	return Find(ByRevisionOrderNumber(t1.BuildVariant, t2.DisplayName, t1.Project, t1.Requester, mid))
+	return FindOne(db.Query(ByRevisionOrderNumber(t1.BuildVariant, t2.DisplayName, t1.Project, t1.Requester, mid)))
 }
 
 // UnscheduleStaleUnderwaterHostTasks Removes host tasks older than the unscheduable threshold (e.g. one week) from

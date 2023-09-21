@@ -1260,35 +1260,34 @@ func TestGetTaskIdBetweenIds(t *testing.T) {
 	buildVarient := "bv"
 	requester := "r"
 	project := "proj"
-	t1 := Task{
-		Id:                  "t1",
-		DisplayName:         displayName,
-		BuildVariant:        buildVarient,
-		Requester:           requester,
-		Project:             project,
-		RevisionOrderNumber: 0,
+	tasks := []Task{}
+	for i := 1; i <= 20; i++ {
+		task := Task{
+			Id:                  "t" + fmt.Sprint(i),
+			DisplayName:         displayName,
+			BuildVariant:        buildVarient,
+			Requester:           requester,
+			Project:             project,
+			RevisionOrderNumber: i,
+		}
+		assert.NoError(task.Insert())
+		tasks = append(tasks, task)
 	}
-	assert.NoError(t1.Insert())
-	t2 := Task{
-		Id:                  "t2",
-		DisplayName:         displayName,
-		BuildVariant:        buildVarient,
-		Requester:           requester,
-		Project:             project,
-		RevisionOrderNumber: 0,
-	}
-	assert.NoError(t2.Insert())
-	t3 := Task{
-		Id:                  "t3",
-		DisplayName:         displayName,
-		BuildVariant:        buildVarient,
-		Requester:           requester,
-		Project:             project,
-		RevisionOrderNumber: 0,
-	}
-	assert.NoError(t3.Insert())
+	t10, err := GetTaskIdBetweenTasks(tasks[0], tasks[19])
+	assert.Equal(t10.RevisionOrderNumber, 10)
+	assert.NoError(err)
 
-	// TODO CONTINUE
+	t5, err := GetTaskIdBetweenTasks(tasks[0], tasks[9])
+	assert.Equal(t5.RevisionOrderNumber, 5)
+	assert.NoError(err)
+
+	t15, err := GetTaskIdBetweenTasks(tasks[10], tasks[19])
+	assert.Equal(t15.RevisionOrderNumber, 15)
+	assert.NoError(err)
+
+	t19, err := GetTaskIdBetweenTasks(tasks[17], tasks[19])
+	assert.Equal(t19.RevisionOrderNumber, 19)
+	assert.NoError(err)
 }
 
 func TestUnscheduleStaleUnderwaterHostTasksNoDistro(t *testing.T) {
