@@ -173,7 +173,9 @@ type Task struct {
 	OldTaskId string `bson:"old_task_id,omitempty" json:"old_task_id,omitempty"`
 	Archived  bool   `bson:"archived,omitempty" json:"archived,omitempty"`
 
-	// TODO for patches it is how many patches a user has submitted.
+	// RevisionOrderNumber for user submitted patches is their count of patches
+	// that they have submitted and attached to their user. For mainline commits,
+	// it's the amount of versions for that repository so far.
 	RevisionOrderNumber int `bson:"order,omitempty" json:"order,omitempty"`
 
 	// task requester - this is used to help tell the
