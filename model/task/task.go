@@ -855,6 +855,8 @@ func (t *Task) FindTaskOnPreviousCommit() (*Task, error) {
 	return FindOne(db.Query(ByPreviousCommit(t.BuildVariant, t.DisplayName, t.Project, evergreen.RepotrackerVersionRequester, t.RevisionOrderNumber)).Sort([]string{"-" + RevisionOrderNumberKey}))
 }
 
+// This is used no where, should we remove it? Does it even work?
+// There is no tests related to it
 // FindIntermediateTasks returns the tasks from most recent to least recent between two tasks.
 func (current *Task) FindIntermediateTasks(previous *Task) ([]Task, error) {
 	intermediateTasks, err := Find(ByIntermediateRevisions(previous.RevisionOrderNumber, current.RevisionOrderNumber, current.BuildVariant,
@@ -1264,21 +1266,7 @@ func SetTasksScheduledTime(tasks []Task, scheduledTime time.Time) error {
 	return nil
 }
 
-// func (current *Task) FindIntermediateTasks(previous *Task) ([]Task, error) {
-// 	intermediateTasks, err := Find(ByIntermediateRevisions(previous.RevisionOrderNumber, current.RevisionOrderNumber, current.BuildVariant,
-// 		current.DisplayName, current.Project, current.Requester))
-// 	if err != nil {
-// 		return nil, err
-// 	}
-
-// 	// reverse the slice of tasks
-// 	intermediateTasksReversed := make([]Task, len(intermediateTasks))
-// 	for idx, t := range intermediateTasks {
-// 		intermediateTasksReversed[len(intermediateTasks)-idx-1] = t
-// 	}
-// 	return intermediateTasksReversed, nil
-// }
-
+// GetTaskIdBetweenIds retrieves the task id between two tasks that are of the same
 func GetTaskIdBetweenIds(prevTaskId, currentTaskId string) (string, error) {
 	previous, err := FindByIdExecution(prevTaskId, nil)
 	if previous == nil || err != nil {
@@ -1293,9 +1281,12 @@ func GetTaskIdBetweenIds(prevTaskId, currentTaskId string) (string, error) {
 	if err != nil {
 		return "", err
 	}
-	// Get the middle of tasks and then return the id of that task
-
-	return "", nil
+	taskLength := len(tasks)
+	if taskLength == 0 {
+		return "", nil
+	}
+	mid := int(float32(taskLength) / 2.0)
+	return tasks[mid].Id, nil
 }
 
 // UnscheduleStaleUnderwaterHostTasks Removes host tasks older than the unscheduable threshold (e.g. one week) from
