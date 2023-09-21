@@ -243,7 +243,7 @@ func (s *VersionSuite) TestRestartVersion() {
 	ctx := context.Background()
 	ctx = gimlet.AttachUser(ctx, &user.DBUser{Id: "caller1"})
 
-	handler := &versionRestartHandler{versionId: "versionId"}
+	handler := &versionRestartHandler{env: s.env, versionId: "versionId"}
 
 	// Check that Execute runs without error and returns
 	// the correct Version.

@@ -2849,7 +2849,7 @@ func CountNumExecutionsForInterval(input NumExecutionsForIntervalInput) (int, er
 // from the specified task IDs and build ID. If no task IDs are specified, all
 // in-progress tasks belonging to the build are aborted and marked to reset.
 func AbortAndMarkResetTasksForBuild(ctx context.Context, env evergreen.Environment, buildID string, taskIDs []string, caller string) error {
-	return abortAndMarkResetTasks(ctx, env, bson.M{BuildIdKey: buildID}, taskIDs, caller)
+	return abortAndMarkResetTasks(ctx, env, ByBuildId(buildID), taskIDs, caller)
 }
 
 // AbortAndMarkResetTasksForVersion aborts and marks in-progress tasks to reset
@@ -2857,7 +2857,7 @@ func AbortAndMarkResetTasksForBuild(ctx context.Context, env evergreen.Environme
 // all in-progress tasks belonging to the version are aborted and marked to
 // reset.
 func AbortAndMarkResetTasksForVersion(ctx context.Context, env evergreen.Environment, versionID string, taskIDs []string, caller string) error {
-	return abortAndMarkResetTasks(ctx, env, bson.M{VersionKey: versionID}, taskIDs, caller)
+	return abortAndMarkResetTasks(ctx, env, ByVersion(versionID), taskIDs, caller)
 }
 
 func abortAndMarkResetTasks(ctx context.Context, env evergreen.Environment, filter bson.M, taskIDs []string, caller string) error {
