@@ -404,6 +404,7 @@ func (s *PatchesChangeStatusSuite) TestChangeStatus() {
 // Tests for restart patch by id route
 
 type PatchRestartSuite struct {
+	env    evergreen.Environment
 	objIds []string
 
 	suite.Suite
@@ -414,6 +415,7 @@ func TestPatchRestartSuite(t *testing.T) {
 }
 
 func (s *PatchRestartSuite) SetupSuite() {
+	s.env = testutil.NewEnvironment(context.Background(), s.T())
 	s.NoError(db.ClearCollections(patch.Collection, serviceModel.VersionCollection, task.Collection))
 	s.objIds = []string{"aabbccddeeff001122334455", "aabbccddeeff001122334456"}
 	version1 := "version1"
@@ -451,7 +453,7 @@ func (s *PatchRestartSuite) TestRestart() {
 	ctx := context.Background()
 	ctx = gimlet.AttachUser(ctx, &user.DBUser{Id: "user1"})
 
-	rm := makeRestartPatch().(*patchRestartHandler)
+	rm := makeRestartPatch(s.env).(*patchRestartHandler)
 	rm.patchId = s.objIds[0]
 	res := rm.Run(ctx)
 	s.NotNil(res)

@@ -852,7 +852,6 @@ func RestartItemsAfterVersion(ctx context.Context, cq *commitqueue.CommitQueue, 
 	catcher := grip.NewBasicCatcher()
 	for _, item := range cq.Queue {
 		if item.Version == "" {
-			// TODO: should this break instead?
 			return nil
 		}
 		if item.Version == version {
@@ -865,8 +864,7 @@ func RestartItemsAfterVersion(ctx context.Context, cq *commitqueue.CommitQueue, 
 				"project":            project,
 				"caller":             caller,
 			})
-			// this block executes on all items after the given task
-			// TODO: fix this
+			// This block executes on all items after the given task.
 			catcher.Add(RestartVersion(ctx, evergreen.GetEnvironment(), item.Version, nil, true, caller))
 		}
 	}

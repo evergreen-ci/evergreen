@@ -2959,6 +2959,7 @@ func TestDequeueAndRestartForFirstItemInBatch(t *testing.T) {
 		Version:          v1.Hex(),
 		BuildId:          "1",
 		Project:          "p",
+		DisplayTaskId:    utility.ToStringPtr(""),
 		Status:           evergreen.TaskSucceeded,
 		Requester:        evergreen.MergeTestRequester,
 		CommitQueueMerge: true,
@@ -2969,6 +2970,7 @@ func TestDequeueAndRestartForFirstItemInBatch(t *testing.T) {
 		Version:          v2.Hex(),
 		BuildId:          "2",
 		Project:          "p",
+		DisplayTaskId:    utility.ToStringPtr(""),
 		Status:           evergreen.TaskFailed,
 		Requester:        evergreen.MergeTestRequester,
 		CommitQueueMerge: true,
@@ -2979,6 +2981,7 @@ func TestDequeueAndRestartForFirstItemInBatch(t *testing.T) {
 		Version:          v3.Hex(),
 		BuildId:          "3",
 		Project:          "p",
+		DisplayTaskId:    utility.ToStringPtr(""),
 		Status:           evergreen.TaskUndispatched,
 		Requester:        evergreen.MergeTestRequester,
 		CommitQueueMerge: true,
@@ -2988,12 +2991,13 @@ func TestDequeueAndRestartForFirstItemInBatch(t *testing.T) {
 	}
 	require.NoError(t, t3.Insert())
 	t4 := task.Task{
-		Id:        "4",
-		Version:   v3.Hex(),
-		BuildId:   "3",
-		Project:   "p",
-		Status:    evergreen.TaskSucceeded,
-		Requester: evergreen.MergeTestRequester,
+		Id:            "4",
+		Version:       v3.Hex(),
+		BuildId:       "3",
+		Project:       "p",
+		DisplayTaskId: utility.ToStringPtr(""),
+		Status:        evergreen.TaskSucceeded,
+		Requester:     evergreen.MergeTestRequester,
 	}
 	require.NoError(t, t4.Insert())
 	b1 := build.Build{
@@ -3094,6 +3098,7 @@ func TestDequeueAndRestartForItemInMiddleOfBatch(t *testing.T) {
 		Version:          v1.Hex(),
 		BuildId:          "1",
 		Project:          "p",
+		DisplayTaskId:    utility.ToStringPtr(""),
 		Status:           evergreen.TaskSucceeded,
 		Requester:        evergreen.MergeTestRequester,
 		CommitQueueMerge: true,
@@ -3104,6 +3109,7 @@ func TestDequeueAndRestartForItemInMiddleOfBatch(t *testing.T) {
 		Version:          v2.Hex(),
 		BuildId:          "2",
 		Project:          "p",
+		DisplayTaskId:    utility.ToStringPtr(""),
 		Status:           evergreen.TaskFailed,
 		Requester:        evergreen.MergeTestRequester,
 		CommitQueueMerge: true,
@@ -3114,6 +3120,7 @@ func TestDequeueAndRestartForItemInMiddleOfBatch(t *testing.T) {
 		Version:          v3.Hex(),
 		BuildId:          "3",
 		Project:          "p",
+		DisplayTaskId:    utility.ToStringPtr(""),
 		Status:           evergreen.TaskUndispatched,
 		Requester:        evergreen.MergeTestRequester,
 		CommitQueueMerge: true,
@@ -3123,12 +3130,13 @@ func TestDequeueAndRestartForItemInMiddleOfBatch(t *testing.T) {
 	}
 	require.NoError(t, t3.Insert())
 	t4 := task.Task{
-		Id:        "4",
-		Version:   v3.Hex(),
-		BuildId:   "3",
-		Project:   "p",
-		Status:    evergreen.TaskSucceeded,
-		Requester: evergreen.MergeTestRequester,
+		Id:            "4",
+		Version:       v3.Hex(),
+		BuildId:       "3",
+		Project:       "p",
+		DisplayTaskId: utility.ToStringPtr(""),
+		Status:        evergreen.TaskSucceeded,
+		Requester:     evergreen.MergeTestRequester,
 	}
 	require.NoError(t, t4.Insert())
 	b1 := build.Build{
