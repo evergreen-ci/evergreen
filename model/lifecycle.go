@@ -321,7 +321,8 @@ func RestartVersion(ctx context.Context, env evergreen.Environment, versionID st
 }
 
 // RestartVersions restarts selected tasks for a set of versions.
-// If abortInProgress is true for any version, it also sets the abort flag on any in-progress tasks.
+// If abortInProgress is true for any version, it also sets the abort and reset
+// flags on any in-progress tasks belonging to that version.
 func RestartVersions(ctx context.Context, env evergreen.Environment, versionsToRestart []*VersionToRestart, abortInProgress bool, caller string) error {
 	catcher := grip.NewBasicCatcher()
 	for _, t := range versionsToRestart {
