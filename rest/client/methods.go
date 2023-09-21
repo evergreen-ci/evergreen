@@ -19,6 +19,7 @@ import (
 	"github.com/evergreen-ci/evergreen/util"
 	"github.com/evergreen-ci/utility"
 	"github.com/pkg/errors"
+	"gopkg.in/yaml.v2"
 )
 
 // CreateSpawnHost will insert an intent host into the DB that will be spawned later by the runner
@@ -1040,18 +1041,20 @@ func (c *communicatorImpl) CreateVersionFromConfig(ctx context.Context, project,
 		method: http.MethodPut,
 		path:   "/versions",
 	}
+	var configAsYaml yaml.MapSlice
+	yaml.Unmarshal(config, &configAsYaml)
 	body := struct {
-		ProjectID string      `json:"project_id"`
-		Message   string      `json:"message"`
-		Active    bool        `json:"activate"`
-		IsAdHoc   bool        `json:"is_adhoc"`
-		Config    interface{} `json:"config"`
+		ProjectID string        `json:"project_id"`
+		Message   string        `json:"message"`
+		Active    bool          `json:"activate"`
+		IsAdHoc   bool          `json:"is_adhoc"`
+		Config    yaml.MapSlice `json:"config"`
 	}{
 		ProjectID: project,
 		Message:   message,
 		Active:    active,
 		IsAdHoc:   true,
-		Config:    config,
+		Config:    configAsYaml,
 	}
 	resp, err := c.request(ctx, info, body)
 	if err != nil {
