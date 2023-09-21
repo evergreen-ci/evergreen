@@ -1042,11 +1042,11 @@ func (c *communicatorImpl) CreateVersionFromConfig(ctx context.Context, project,
 		path:   "/versions",
 	}
 	body := struct {
-		ProjectID string          `json:"project_id"`
-		Message   string          `json:"message"`
-		Active    bool            `json:"activate"`
-		IsAdHoc   bool            `json:"is_adhoc"`
-		Config    json.RawMessage `json:"config"`
+		ProjectID string      `json:"project_id"`
+		Message   string      `json:"message"`
+		Active    bool        `json:"activate"`
+		IsAdHoc   bool        `json:"is_adhoc"`
+		Config    interface{} `json:"config"`
 	}{
 		ProjectID: project,
 		Message:   message,
