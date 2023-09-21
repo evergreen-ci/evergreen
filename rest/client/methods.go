@@ -1042,7 +1042,10 @@ func (c *communicatorImpl) CreateVersionFromConfig(ctx context.Context, project,
 		path:   "/versions",
 	}
 	var configAsYaml yaml.Node
-	yaml.Unmarshal(config, &configAsYaml)
+	err := yaml.Unmarshal(config, &configAsYaml)
+	if err != nil {
+		return nil, errors.Wrap(err, "reading provided yaml config")
+	}
 	body := struct {
 		ProjectID string    `json:"project_id"`
 		Message   string    `json:"message"`

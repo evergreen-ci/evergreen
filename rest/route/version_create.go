@@ -2,7 +2,6 @@ package route
 
 import (
 	"context"
-	"fmt"
 	"net/http"
 
 	"github.com/evergreen-ci/evergreen/model"
@@ -34,7 +33,6 @@ func (h *versionCreateHandler) Factory() gimlet.RouteHandler {
 
 func (h *versionCreateHandler) Parse(ctx context.Context, r *http.Request) error {
 	err := utility.ReadJSON(r.Body, h)
-	fmt.Println("0")
 	if err != nil {
 		return errors.Wrap(err, "reading version creation options from JSON request body")
 	}
@@ -42,7 +40,6 @@ func (h *versionCreateHandler) Parse(ctx context.Context, r *http.Request) error
 }
 
 func (h *versionCreateHandler) Run(ctx context.Context) gimlet.Responder {
-	fmt.Println("1")
 	u := gimlet.GetUser(ctx).(*user.DBUser)
 	metadata := model.VersionMetadata{
 		Message:  h.Message,
@@ -64,21 +61,21 @@ func (h *versionCreateHandler) Run(ctx context.Context) gimlet.Responder {
 		Ref:          projectInfo.Ref,
 		ReadFileFrom: model.ReadFromGithub,
 	}
-	fmt.Println("2")
 	var data []byte
 	err = h.Config.Decode(&data)
+	if err != nil {
+		return gimlet.NewJSONInternalErrorResponse(errors.Wrapf(err, "decoding config for project '%s'", h.ProjectID))
+	}
 	projectInfo.IntermediateProject, err = model.LoadProjectInto(ctx, data, opts, projectInfo.Ref.Id, p)
 	if err != nil {
 		return gimlet.NewJSONInternalErrorResponse(errors.Wrapf(err, "loading project '%s' from config", h.ProjectID))
 	}
-	fmt.Println("3")
 	if projectInfo.Ref.IsVersionControlEnabled() {
 		projectInfo.Config, err = model.CreateProjectConfig(data, projectInfo.Ref.Id)
 		if err != nil {
 			return gimlet.NewJSONErrorResponse(errors.Wrapf(err, "creating config for project '%s'", h.ProjectID))
 		}
 	}
-	fmt.Println("4")
 	projectInfo.Project = p
 	newVersion, err := h.sc.CreateVersionFromConfig(ctx, projectInfo, metadata)
 	if err != nil {
