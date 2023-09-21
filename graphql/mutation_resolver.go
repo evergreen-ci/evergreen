@@ -370,7 +370,7 @@ func (r *mutationResolver) SchedulePatchTasks(ctx context.Context, patchID strin
 		Active: true,
 		Abort:  false,
 	}
-	err := modifyVersionHandler(ctx, patchID, modifications)
+	err := modifyVersionHandler(ctx, evergreen.GetEnvironment(), patchID, modifications)
 	if err != nil {
 		return nil, err
 	}
@@ -450,7 +450,7 @@ func (r *mutationResolver) SetPatchPriority(ctx context.Context, patchID string,
 		Action:   evergreen.SetPriorityAction,
 		Priority: int64(priority),
 	}
-	err := modifyVersionHandler(ctx, patchID, modifications)
+	err := modifyVersionHandler(ctx, evergreen.GetEnvironment(), patchID, modifications)
 	if err != nil {
 		return nil, err
 	}
@@ -464,7 +464,7 @@ func (r *mutationResolver) UnschedulePatchTasks(ctx context.Context, patchID str
 		Active: false,
 		Abort:  abort,
 	}
-	err := modifyVersionHandler(ctx, patchID, modifications)
+	err := modifyVersionHandler(ctx, evergreen.GetEnvironment(), patchID, modifications)
 	if err != nil {
 		return nil, err
 	}
@@ -1290,7 +1290,7 @@ func (r *mutationResolver) RestartVersions(ctx context.Context, versionID string
 		Abort:             abort,
 		VersionsToRestart: versionsToRestart,
 	}
-	err := modifyVersionHandler(ctx, versionID, modifications)
+	err := modifyVersionHandler(ctx, evergreen.GetEnvironment(), versionID, modifications)
 	if err != nil {
 		return nil, err
 	}

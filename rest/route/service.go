@@ -118,7 +118,7 @@ func AttachHandler(app *gimlet.APIApp, opts HandlerOpts) {
 	app.AddRoute("/builds/{build_id}").Version(2).Get().Wrap(viewTasks).RouteHandler(makeGetBuildByID(env))
 	app.AddRoute("/builds/{build_id}").Version(2).Patch().Wrap(requireUser, editTasks).RouteHandler(makeChangeStatusForBuild())
 	app.AddRoute("/builds/{build_id}/abort").Version(2).Post().Wrap(requireUser, editTasks).RouteHandler(makeAbortBuild())
-	app.AddRoute("/builds/{build_id}/restart").Version(2).Post().Wrap(requireUser, editTasks).RouteHandler(makeRestartBuild())
+	app.AddRoute("/builds/{build_id}/restart").Version(2).Post().Wrap(requireUser, editTasks).RouteHandler(makeRestartBuild(env))
 	app.AddRoute("/builds/{build_id}/tasks").Version(2).Get().Wrap(requireUser, viewTasks).RouteHandler(makeFetchTasksByBuild(parsleyURL, opts.URL))
 	app.AddRoute("/builds/{build_id}/annotations").Version(2).Get().Wrap(requireUser, viewAnnotations).RouteHandler(makeFetchAnnotationsByBuild())
 	app.AddRoute("/commit_queue/{project_id}").Version(2).Get().Wrap(requireUser, viewTasks).RouteHandler(makeGetCommitQueueItems())
@@ -183,7 +183,7 @@ func AttachHandler(app *gimlet.APIApp, opts HandlerOpts) {
 	app.AddRoute("/patches/{patch_id}/configure").Version(2).Post().Wrap(requireUser, submitPatches).RouteHandler(makeSchedulePatchHandler(env))
 	app.AddRoute("/patches/{patch_id}/raw").Version(2).Get().Wrap(requireUser, viewTasks).RouteHandler(makePatchRawHandler())
 	app.AddRoute("/patches/{patch_id}/raw_modules").Version(2).Get().Wrap(requireUser, viewTasks).RouteHandler(makeModuleRawHandler())
-	app.AddRoute("/patches/{patch_id}/restart").Version(2).Post().Wrap(requireUser, submitPatches).RouteHandler(makeRestartPatch())
+	app.AddRoute("/patches/{patch_id}/restart").Version(2).Post().Wrap(requireUser, submitPatches).RouteHandler(makeRestartPatch(env))
 	app.AddRoute("/patches/{patch_id}/merge_patch").Version(2).Put().Wrap(requireUser, addProject, submitPatches, requireCommitQueueItemOwner).RouteHandler(makeMergePatch(env))
 	app.AddRoute("/pods").Version(2).Post().Wrap(adminSettings).RouteHandler(makePostPod(env))
 	app.AddRoute("/pods/{pod_id}").Version(2).Get().Wrap(adminSettings).RouteHandler(makeGetPod(env))
@@ -257,7 +257,7 @@ func AttachHandler(app *gimlet.APIApp, opts HandlerOpts) {
 	app.AddRoute("/versions/{version_id}").Version(2).Patch().Wrap(requireUser, editTasks).RouteHandler(makePatchVersion())
 	app.AddRoute("/versions/{version_id}/abort").Version(2).Post().Wrap(requireUser, editTasks).RouteHandler(makeAbortVersion())
 	app.AddRoute("/versions/{version_id}/builds").Version(2).Get().Wrap(requireUser, viewTasks).RouteHandler(makeGetVersionBuilds(env))
-	app.AddRoute("/versions/{version_id}/restart").Version(2).Post().Wrap(requireUser, editTasks).RouteHandler(makeRestartVersion())
+	app.AddRoute("/versions/{version_id}/restart").Version(2).Post().Wrap(requireUser, editTasks).RouteHandler(makeRestartVersion(env))
 	app.AddRoute("/versions/{version_id}/annotations").Version(2).Get().Wrap(requireUser, viewAnnotations).RouteHandler(makeFetchAnnotationsByVersion())
 
 	// Add an options method to every POST request to handle pre-flight Options requests.

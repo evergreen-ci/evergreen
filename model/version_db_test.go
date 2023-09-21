@@ -53,6 +53,7 @@ func TestVersionByMostRecentNonIgnored(t *testing.T) {
 func TestRestartVersion(t *testing.T) {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
+	env := evergreen.GetEnvironment()
 
 	// Insert data for the test paths
 	assert.NoError(t, db.ClearCollections(VersionCollection, build.Collection, task.Collection, task.OldCollection))
@@ -60,17 +61,23 @@ func TestRestartVersion(t *testing.T) {
 		assert.NoError(t, db.ClearCollections(VersionCollection, build.Collection, task.Collection, task.OldCollection))
 	}()
 
+	versionID := "version0"
 	versions := []*Version{
-		{Id: "version3"},
+		{Id: versionID},
+	}
+	buildID := "build0"
+	builds := []*build.Build{
+		{Id: buildID},
 	}
 	tasks := []*task.Task{
-		{Id: "task5", Version: "version3", DisplayTaskId: utility.ToStringPtr(""), Aborted: false, Status: evergreen.TaskSucceeded, BuildId: "build1"},
-		{Id: "display", Version: "version3", DisplayTaskId: utility.ToStringPtr(""), Aborted: false, Status: evergreen.TaskStarted, BuildId: "build1"},
-		{Id: "exec0", Version: "version3", DisplayTaskId: utility.ToStringPtr("display"), Aborted: false, Status: evergreen.TaskSucceeded, BuildId: "build1"},
-		{Id: "exec1", Version: "version3", DisplayTaskId: utility.ToStringPtr("display"), Aborted: false, Status: evergreen.TaskStarted, BuildId: "build1"},
-	}
-	builds := []*build.Build{
-		{Id: "build1"},
+		{Id: "task0", Version: versionID, DisplayTaskId: utility.ToStringPtr(""), Aborted: false, Status: evergreen.TaskSucceeded, BuildId: buildID},
+		{Id: "task1", Version: versionID, DisplayTaskId: utility.ToStringPtr(""), Aborted: false, Status: evergreen.TaskDispatched, BuildId: buildID},
+		{Id: "display0", Version: versionID, DisplayTaskId: utility.ToStringPtr(""), Aborted: false, Status: evergreen.TaskStarted, BuildId: buildID},
+		{Id: "exec00", Version: versionID, DisplayTaskId: utility.ToStringPtr("display0"), Aborted: false, Status: evergreen.TaskSucceeded, BuildId: buildID},
+		{Id: "exec10", Version: versionID, DisplayTaskId: utility.ToStringPtr("display0"), Aborted: false, Status: evergreen.TaskStarted, BuildId: buildID},
+		{Id: "display1", Version: versionID, DisplayTaskId: utility.ToStringPtr(""), Aborted: false, Status: evergreen.TaskFailed, BuildId: buildID},
+		{Id: "exec01", Version: versionID, DisplayTaskId: utility.ToStringPtr("display1"), Aborted: false, Status: evergreen.TaskSucceeded, BuildId: buildID},
+		{Id: "exec11", Version: versionID, DisplayTaskId: utility.ToStringPtr("display1"), Aborted: false, Status: evergreen.TaskFailed, BuildId: buildID},
 	}
 	for _, item := range versions {
 		require.NoError(t, item.Insert())
@@ -82,38 +89,52 @@ func TestRestartVersion(t *testing.T) {
 		require.NoError(t, item.Insert())
 	}
 
-	versionId := "version3"
-	require.NoError(t, RestartVersion(ctx, versionId, nil, true, "caller3"))
+	require.NoError(t, RestartVersion(ctx, env, versionID, nil, true, "caller"))
 
-	// When a version is restarted, all of its completed tasks should be reset.
-	// (task.Status should be undispatched)
-	t5, _ := task.FindOneId("task5")
-	assert.Equal(t, versionId, t5.Version)
-	assert.Equal(t, evergreen.TaskUndispatched, t5.Status)
+	// Check that completed non-execution tasks are reset.
+	for _, taskID := range []string{"task0", "display1"} {
+		tsk, err := task.FindOneId(taskID)
+		require.NoError(t, err)
 
-	display, err := task.FindOneId("display")
-	require.NoError(t, err)
-	assert.Equal(t, versionId, display.Version)
-	assert.True(t, display.Aborted)
-	assert.True(t, display.ResetWhenFinished)
+		assert.Equal(t, evergreen.TaskUndispatched, tsk.Status)
+	}
 
-	exec0, err := task.FindOneId("exec0")
-	require.NoError(t, err)
-	assert.Equal(t, versionId, exec0.Version)
-	assert.False(t, exec0.Aborted)
-	assert.False(t, exec0.ResetWhenFinished)
+	// Check that completed execution tasks are neither aborted nor reset.
+	for _, taskID := range []string{"exec00", "exec01", "exec11"} {
+		tsk, err := task.FindOneId(taskID)
+		require.NoError(t, err)
 
-	exec1, err := task.FindOneId("exec1")
-	require.NoError(t, err)
-	assert.Equal(t, versionId, exec1.Version)
-	assert.True(t, exec1.Aborted)
-	assert.True(t, exec1.ResetWhenFinished)
+		assert.Contains(t, evergreen.TaskCompletedStatuses, tsk.Status)
+		assert.Empty(t, tsk.AbortInfo)
+		assert.False(t, tsk.Aborted)
+		assert.False(t, tsk.ResetWhenFinished)
+	}
+
+	// Check that in-progress tasks are aborted and marked for reset.
+	for _, taskID := range []string{"task1", "display0", "exec00", "exec10"} {
+		tsk, err := task.FindOneId(taskID)
+		require.NoError(t, err)
+
+		if !utility.StringSliceContains(evergreen.TaskCompletedStatuses, tsk.Status) {
+			assert.Equal(t, task.AbortInfo{User: "caller"}, tsk.AbortInfo, taskID)
+			assert.True(t, tsk.Aborted)
+			assert.True(t, tsk.ResetWhenFinished)
+		} else {
+			// Check that completed execution tasks that are part
+			// of an in-progress display task are not aborted or
+			// reset.
+			assert.Empty(t, tsk.AbortInfo)
+			assert.False(t, tsk.Aborted)
+			assert.False(t, tsk.ResetWhenFinished)
+		}
+	}
 
 	// Build status for all builds containing the tasks that we touched
 	// should be updated.
-	b1, _ := build.FindOneId("build1")
-	assert.Equal(t, evergreen.BuildStarted, b1.Status)
-	assert.Equal(t, "caller3", b1.ActivatedBy)
+	b, err := build.FindOneId(buildID)
+	require.NoError(t, err)
+	assert.Equal(t, evergreen.BuildStarted, b.Status)
+	assert.Equal(t, "caller", b.ActivatedBy)
 }
 
 func TestFindVersionByIdFail(t *testing.T) {

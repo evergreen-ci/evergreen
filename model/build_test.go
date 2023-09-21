@@ -182,7 +182,8 @@ func (s *BuildConnectorRestartSuite) SetupSuite() {
 func (s *BuildConnectorRestartSuite) TestRestart() {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
+	env := evergreen.GetEnvironment()
 
-	err := RestartBuild(ctx, &build.Build{Id: "build1"}, []string{}, true, "user1")
+	err := RestartBuild(ctx, env, &build.Build{Id: "build1"}, []string{}, true, "user1")
 	s.NoError(err)
 }

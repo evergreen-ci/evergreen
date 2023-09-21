@@ -227,15 +227,16 @@ func (b *buildAbortHandler) Run(ctx context.Context) gimlet.Responder {
 //    /builds/{build_id}/restart
 
 type buildRestartHandler struct {
+	env     evergreen.Environment
 	buildId string
 }
 
-func makeRestartBuild() gimlet.RouteHandler {
-	return &buildRestartHandler{}
+func makeRestartBuild(env evergreen.Environment) gimlet.RouteHandler {
+	return &buildRestartHandler{env: env}
 }
 
 func (b *buildRestartHandler) Factory() gimlet.RouteHandler {
-	return &buildRestartHandler{}
+	return &buildRestartHandler{env: b.env}
 }
 
 func (b *buildRestartHandler) Parse(ctx context.Context, r *http.Request) error {
@@ -260,7 +261,7 @@ func (b *buildRestartHandler) Run(ctx context.Context) gimlet.Responder {
 		})
 	}
 
-	err = serviceModel.RestartBuild(ctx, foundBuild, taskIds, true, usr.Id)
+	err = serviceModel.RestartBuild(ctx, b.env, foundBuild, taskIds, true, usr.Id)
 	if err != nil {
 		return gimlet.MakeJSONInternalErrorResponder(errors.Wrapf(err, "restarting all tasks in build '%s'", b.buildId))
 	}

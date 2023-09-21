@@ -1905,49 +1905,41 @@ func (t *Task) updateAllMatchingDependenciesForTask(dependencyID string, unattai
 	return res.Decode(&t)
 }
 
-// AbortAndMarkResetTasksForBuild aborts and marks tasks for a build to reset when finished.
-func AbortAndMarkResetTasksForBuild(buildId string, taskIds []string, caller string) error {
-	q := bson.M{
-		BuildIdKey:       buildId,
-		StatusKey:        bson.M{"$in": evergreen.TaskInProgressStatuses},
-		DisplayTaskIdKey: "",
-	}
-	if len(taskIds) > 0 {
-		q[IdKey] = bson.M{"$in": taskIds}
-	}
-	_, err := UpdateAll(
-		q,
-		bson.M{
-			"$set": bson.M{
-				AbortedKey:           true,
-				AbortInfoKey:         AbortInfo{User: caller},
-				ResetWhenFinishedKey: true,
-			},
-		},
-	)
-	return err
+// AbortAndMarkResetTasksForBuild aborts and marks in-progress tasks to reset
+// from the specified task IDs and build ID. If no task IDs are specified, all
+// in-progress tasks belonging to the build are aborted and marked to reset.
+func AbortAndMarkResetTasksForBuild(ctx context.Context, env evergreen.Environment, buildID string, taskIDs []string, caller string) error {
+	return abortAndMarkResetTasks(ctx, env, bson.M{BuildIdKey: buildID}, taskIDs, caller)
 }
 
-func AbortAndMarkResetTasksForVersion(versionID string, taskIDs []string, caller string) error {
-	q := bson.M{
-		VersionKey: versionID,
-		StatusKey:  bson.M{"$in": evergreen.TaskInProgressStatuses},
-	}
+// AbortAndMarkResetTasksForVersion aborts and marks in-progress tasks to reset
+// from the specified task IDs and version ID. If no task IDs are specified,
+// all in-progress tasks belonging to the version are aborted and marked to
+// reset.
+func AbortAndMarkResetTasksForVersion(ctx context.Context, env evergreen.Environment, versionID string, taskIDs []string, caller string) error {
+	return abortAndMarkResetTasks(ctx, env, bson.M{VersionKey: versionID}, taskIDs, caller)
+}
+
+func abortAndMarkResetTasks(ctx context.Context, env evergreen.Environment, filter bson.M, taskIDs []string, caller string) error {
+	filter[StatusKey] = bson.M{"$in": evergreen.TaskInProgressStatuses}
 	if len(taskIDs) > 0 {
-		q["$or"] = []bson.M{
+		filter["$or"] = []bson.M{
 			{IdKey: bson.M{"$in": taskIDs}},
 			{DisplayTaskIdKey: bson.M{"$in": taskIDs}},
 			{ExecutionTasksKey: bson.M{"$in": taskIDs}},
 		}
 	}
-	_, err := UpdateAll(
-		q,
+
+	_, err := env.DB().Collection(Collection).UpdateMany(
+		ctx,
+		filter,
 		bson.M{"$set": bson.M{
 			AbortedKey:           true,
 			AbortInfoKey:         AbortInfo{User: caller},
 			ResetWhenFinishedKey: true,
 		}},
 	)
+
 	return err
 }
 
@@ -2892,10 +2884,8 @@ func CountNumExecutionsForInterval(input NumExecutionsForIntervalInput) (int, er
 }
 
 // FindCompletedTasksByVersion returns all completed tasks for the given
-// version. Executions tasks are excluded.
-func FindCompletedTasksByVersion(ctx context.Context, version string) ([]Task, error) {
-	env := evergreen.GetEnvironment()
-
+// version. Excludes execution tasks.
+func FindCompletedTasksByVersion(ctx context.Context, env evergreen.Environment, version string) ([]Task, error) {
 	cur, err := env.DB().Collection(Collection).Find(ctx, bson.M{
 		VersionKey:       version,
 		DisplayTaskIdKey: "",
