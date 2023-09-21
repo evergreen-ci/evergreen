@@ -591,22 +591,6 @@ func ByVersionsForNameAndVariant(versions, displayNames []string, buildVariant s
 	}
 }
 
-// ByIntermediateRevisions creates a query that returns the tasks existing
-// between two revision order numbers, exclusive.
-func ByIntermediateRevisions(previousRevisionOrder, currentRevisionOrder int,
-	buildVariant, displayName, project, requester string) bson.M {
-	return bson.M{
-		BuildVariantKey: buildVariant,
-		DisplayNameKey:  displayName,
-		RequesterKey:    requester,
-		RevisionOrderNumberKey: bson.M{
-			"$lt": currentRevisionOrder,
-			"$gt": previousRevisionOrder,
-		},
-		ProjectKey: project,
-	}
-}
-
 func ByBeforeRevision(revisionOrder int, buildVariant, displayName, project, requester string) (bson.M, []string) {
 	return bson.M{
 		BuildVariantKey: buildVariant,
