@@ -2434,6 +2434,7 @@ func resetTaskData() error {
 		DisplayName:    "displayTask",
 		BuildId:        build3.Id,
 		Version:        v.Id,
+		DisplayTaskId:  utility.ToStringPtr(""),
 		DisplayOnly:    true,
 		ExecutionTasks: []string{task5.Id, task6.Id},
 		Status:         evergreen.TaskFailed,
