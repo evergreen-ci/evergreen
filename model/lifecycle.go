@@ -320,39 +320,50 @@ func RestartTasksInVersion(ctx context.Context, versionId string, abortInProgres
 // RestartVersion restarts completed tasks associated with a versionId.
 // If abortInProgress is true, it also sets the abort flag on any in-progress tasks.
 func RestartVersion(ctx context.Context, versionId string, taskIds []string, abortInProgress bool, caller string) error {
-	if abortInProgress {
-		if err := task.AbortAndMarkResetTasksForVersion(versionId, taskIds, caller); err != nil {
-			return errors.WithStack(err)
-		}
-	}
-	allFinishedTasks, err := getTasksToReset(taskIds)
+	// Fetch tasks to reset before aborting to ensure we're including any needed display tasks.
+	tasks, err := getTasksWithDisplayTasks(taskIds)
 	if err != nil {
 		return errors.Wrap(err, "getting finished tasks")
 	}
-	if len(allFinishedTasks) == 0 {
-		return nil
-	}
-	return restartTasks(ctx, allFinishedTasks, caller, versionId)
-}
-
-// getTasksToReset returns all finished tasks that should be reset given an initial input list of
-// finished taskIds. If a display task is in the list, its execution tasks are removed if they also exist.
-func getTasksToReset(taskIds []string) ([]task.Task, error) {
-	finishedTasks, err := task.FindAll(db.Query(task.ByIdsAndStatus(taskIds, evergreen.TaskCompletedStatuses)))
-	if err != nil {
-		return nil, errors.WithStack(err)
-	}
-	allFinishedTasks, err := task.AddParentDisplayTasks(finishedTasks)
-	if err != nil {
-		return nil, errors.WithStack(err)
-	}
-	for i := len(allFinishedTasks) - 1; i >= 0; i-- {
-		t := allFinishedTasks[i]
-		if t.DisplayTask != nil {
-			allFinishedTasks = append(allFinishedTasks[:i], allFinishedTasks[i+1:]...)
+	tasksToReset := []task.Task{}
+	abortIds := []string{}
+	for i, t := range tasks {
+		if utility.StringSliceContains(evergreen.TaskCompletedStatuses, t.Status) {
+			tasksToReset = append(tasksToReset, tasks[i])
+		} else {
+			abortIds = append(abortIds, t.Id)
 		}
 	}
-	return allFinishedTasks, nil
+	if abortInProgress {
+		if err := task.AbortAndMarkResetTasksForVersion(versionId, abortIds, caller); err != nil {
+			return errors.WithStack(err)
+		}
+	}
+	if len(tasksToReset) == 0 {
+		return nil
+	}
+	return restartTasks(ctx, tasksToReset, caller, versionId)
+}
+
+// getTasksWithDisplayTasks returns all finished tasks that should be reset given an initial input list of
+// finished taskIds. If a display task is in the list, its execution tasks are removed if they also exist.
+func getTasksWithDisplayTasks(taskIds []string) ([]task.Task, error) {
+	tasks, err := task.FindAll(db.Query(task.ByIds(taskIds)))
+	if err != nil {
+		return nil, errors.WithStack(err)
+	}
+	parents, err := task.FindAll(db.Query(task.ByExecutionTasks(taskIds)))
+	if err != nil {
+		return nil, errors.Wrap(err, "finding parent display tasks")
+	}
+	allTasks := []task.Task{}
+	for i, t := range tasks {
+		if !t.IsPartOfDisplay() {
+			allTasks = append(allTasks, tasks[i])
+		}
+	}
+	allTasks = append(allTasks, parents...)
+	return allTasks, nil
 }
 
 // restartTasks restarts all finished tasks in the given list that are not part of
@@ -442,15 +453,29 @@ func RestartVersions(ctx context.Context, versionsToRestart []*VersionToRestart,
 // RestartBuild restarts completed tasks associated with a given buildId.
 // If abortInProgress is true, it also sets the abort flag on any in-progress tasks.
 func RestartBuild(ctx context.Context, build *build.Build, taskIds []string, abortInProgress bool, caller string) error {
-	if abortInProgress {
-		// abort in-progress tasks in this build
-		if err := task.AbortAndMarkResetTasksForBuild(build.Id, taskIds, caller); err != nil {
-			return errors.WithStack(err)
-		}
-	}
-	tasksToReset, err := getTasksToReset(taskIds)
+	// Fetch tasks to reset before aborting to ensure we're including any needed display tasks.
+	tasks, err := getTasksWithDisplayTasks(taskIds)
 	if err != nil {
 		return errors.Wrap(err, "getting finished tasks")
+	}
+	tasksToReset := []task.Task{}
+	abortIds := []string{}
+	for i, t := range tasks {
+		if utility.StringSliceContains(evergreen.TaskCompletedStatuses, t.Status) {
+			tasksToReset = append(tasksToReset, tasks[i])
+		} else {
+			abortIds = append(abortIds, t.Id)
+		}
+	}
+	if abortInProgress {
+		allIds := []string{}
+		for _, t := range tasksToReset {
+			allIds = append(allIds, t.Id)
+		}
+		// abort in-progress tasks in this build
+		if err := task.AbortAndMarkResetTasksForBuild(build.Id, abortIds, caller); err != nil {
+			return errors.WithStack(err)
+		}
 	}
 	if len(tasksToReset) == 0 {
 		return nil

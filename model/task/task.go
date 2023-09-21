@@ -3205,6 +3205,7 @@ type GetTasksByProjectAndCommitOptions struct {
 	Limit          int
 }
 
+// AddParentDisplayTasks adds the display task to the task struct if applicable, rather than the task list.
 func AddParentDisplayTasks(tasks []Task) ([]Task, error) {
 	if len(tasks) == 0 {
 		return tasks, nil

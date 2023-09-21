@@ -226,7 +226,7 @@ func TestBuildRestart(t *testing.T) {
 	// Running a multi-document transaction requires the collections to exist
 	// first before any documents can be inserted.
 	require.NoError(t, db.CreateCollections(task.Collection, task.OldCollection, VersionCollection, build.Collection))
-	require.NoError(t, db.ClearCollections(task.Collection, task.OldCollection, build.Collection))
+	require.NoError(t, db.ClearCollections(task.Collection, task.OldCollection, VersionCollection, build.Collection))
 	v := &Version{Id: "version"}
 	require.NoError(t, v.Insert())
 	b := &build.Build{Id: "build", Version: "version"}
@@ -791,14 +791,14 @@ func TestCreateBuildFromVersion(t *testing.T) {
 				{Name: "taskA"}, {Name: "taskB"}, {Name: "taskC"}, {Name: "taskD"},
 			},
 			DisplayTasks: []displayTask{
-				displayTask{
+				{
 					Name: "bv1DisplayTask1",
 					ExecutionTasks: []string{
 						"taskA",
 						"taskB",
 					},
 				},
-				displayTask{
+				{
 					Name: "bv1DisplayTask2",
 					ExecutionTasks: []string{
 						"taskC",
@@ -2180,6 +2180,24 @@ func TestVersionRestart(t *testing.T) {
 	assert.NoError(err)
 	// Version status should not update if no tasks are being reset.
 	assert.Equal("", dbVersion.Status)
+
+	// Test that aborting in-progress execution tasks correctly updates the display task instead of the execution task.
+	assert.NoError(resetTaskData())
+	_, err = task.UpdateAll(task.ByIds([]string{"task6", "displayTask"}), bson.M{"$set": bson.M{task.StatusKey: evergreen.TaskStarted}})
+	assert.NoError(err)
+	taskIds = []string{"task6"}
+	assert.NoError(RestartVersion(ctx, "version", taskIds, true, "test"))
+	dbTask, err = task.FindOne(db.Query(task.ById("task6")))
+	assert.NoError(err)
+	assert.NotNil(dbTask)
+	assert.False(dbTask.Aborted)
+	assert.False(dbTask.ResetWhenFinished)
+
+	displayTask, err := task.FindOne(db.Query(task.ById("displayTask")))
+	assert.NoError(err)
+	assert.NotNil(displayTask)
+	assert.True(displayTask.Aborted)
+	assert.True(displayTask.ResetWhenFinished)
 }
 
 func TestDisplayTaskRestart(t *testing.T) {
@@ -2383,12 +2401,13 @@ func resetTaskData() error {
 		return err
 	}
 	task5 := &task.Task{
-		Id:           "task5",
-		DisplayName:  "task5",
-		BuildId:      build3.Id,
-		Version:      v.Id,
-		Status:       evergreen.TaskSucceeded,
-		DispatchTime: time.Now(),
+		Id:            "task5",
+		DisplayName:   "task5",
+		DisplayTaskId: utility.ToStringPtr("displayTask"),
+		BuildId:       build3.Id,
+		Version:       v.Id,
+		Status:        evergreen.TaskSucceeded,
+		DispatchTime:  time.Now(),
 		DependsOn: []task.Dependency{
 			{
 				TaskId:   task1.Id,
@@ -2400,12 +2419,13 @@ func resetTaskData() error {
 		return err
 	}
 	task6 := &task.Task{
-		Id:           "task6",
-		DisplayName:  "task6",
-		BuildId:      build3.Id,
-		Version:      v.Id,
-		Status:       evergreen.TaskFailed,
-		DispatchTime: time.Now(),
+		Id:            "task6",
+		DisplayName:   "task6",
+		DisplayTaskId: utility.ToStringPtr("displayTask"),
+		BuildId:       build3.Id,
+		Version:       v.Id,
+		Status:        evergreen.TaskFailed,
+		DispatchTime:  time.Now(),
 	}
 	if err := task6.Insert(); err != nil {
 		return err
