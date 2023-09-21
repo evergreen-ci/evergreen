@@ -1251,12 +1251,10 @@ func SetTasksScheduledTime(tasks []Task, scheduledTime time.Time) error {
 }
 
 // GetTaskIdBetweenIds retrieves the task id between two tasks that are of the same
-func GetTaskIdBetweenTasks(t1, t2 Task) (string, error) {
+func GetTaskIdBetweenTasks(t1, t2 Task) (*Task, error) {
 	mid := (t1.RevisionOrderNumber + t2.RevisionOrderNumber) / 2
 
-	t3, err := Find(bson.M{})
-
-	return tasks[mid].Id, nil
+	return Find(ByRevisionOrderNumber(t1.BuildVariant, t2.DisplayName, t1.Project, t1.Requester, mid))
 }
 
 // UnscheduleStaleUnderwaterHostTasks Removes host tasks older than the unscheduable threshold (e.g. one week) from
