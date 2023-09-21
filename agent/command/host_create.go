@@ -55,12 +55,12 @@ func (c *createHost) ParseParams(params map[string]interface{}) error {
 
 func (c *createHost) parseParamsFromFile(fn string, conf *internal.TaskConfig) error {
 	if !filepath.IsAbs(fn) {
-		fn = getJoinedWithWorkDir(conf, fn)
+		fn = getWorkingDirectory(conf, fn)
 	}
 	return errors.Wrapf(utility.ReadYAMLFile(fn, &c.CreateHost), "reading YAML from file '%s'", fn)
 }
 
-func (c *createHost) expandAndValidate(conf *internal.TaskConfig) error {
+func (c *createHost) expandAndValidate(ctx context.Context, conf *internal.TaskConfig) error {
 	// if a filename is defined, then parseParams has not parsed the parameters yet,
 	// since the file was not yet available. it therefore needs to be parsed now.
 	if c.File != "" {
@@ -69,11 +69,11 @@ func (c *createHost) expandAndValidate(conf *internal.TaskConfig) error {
 		}
 	}
 
-	if err := c.CreateHost.Expand(conf.Expansions); err != nil {
+	if err := c.CreateHost.Expand(&conf.Expansions); err != nil {
 		return err
 	}
 
-	if err := c.CreateHost.Validate(); err != nil {
+	if err := c.CreateHost.Validate(ctx); err != nil {
 		return errors.Wrap(err, "invalid command options")
 	}
 	return nil
@@ -81,7 +81,7 @@ func (c *createHost) expandAndValidate(conf *internal.TaskConfig) error {
 
 func (c *createHost) Execute(ctx context.Context, comm client.Communicator,
 	logger client.LoggerProducer, conf *internal.TaskConfig) error {
-	if err := c.expandAndValidate(conf); err != nil {
+	if err := c.expandAndValidate(ctx, conf); err != nil {
 		return err
 	}
 
@@ -94,6 +94,14 @@ func (c *createHost) Execute(ctx context.Context, comm client.Communicator,
 		if err := c.populateUserdata(); err != nil {
 			return err
 		}
+	}
+	if c.CreateHost.StdinFile != "" {
+		c.CreateHost.StdinFile = getWorkingDirectory(conf, c.CreateHost.StdinFile)
+		fileContent, err := os.ReadFile(c.CreateHost.StdinFile)
+		if err != nil {
+			return errors.Wrapf(err, "reading stdin file '%s'", c.CreateHost.StdinFile)
+		}
+		c.CreateHost.StdinFileContents = fileContent
 	}
 	startTime := time.Now()
 
@@ -176,13 +184,13 @@ func (c *createHost) initializeLogBatchInfo(id string, conf *internal.TaskConfig
 		c.CreateHost.StderrFile = fmt.Sprintf("%s.err.log", id)
 	}
 	if !filepath.IsAbs(c.CreateHost.StderrFile) {
-		c.CreateHost.StderrFile = getJoinedWithWorkDir(conf, c.CreateHost.StderrFile)
+		c.CreateHost.StderrFile = getWorkingDirectory(conf, c.CreateHost.StderrFile)
 	}
 	if c.CreateHost.StdoutFile == "" {
 		c.CreateHost.StdoutFile = fmt.Sprintf("%s.out.log", id)
 	}
 	if !filepath.IsAbs(c.CreateHost.StdoutFile) {
-		c.CreateHost.StdoutFile = getJoinedWithWorkDir(conf, c.CreateHost.StdoutFile)
+		c.CreateHost.StdoutFile = getWorkingDirectory(conf, c.CreateHost.StdoutFile)
 	}
 
 	// initialize files

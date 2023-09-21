@@ -210,6 +210,11 @@ func TestPlanner(t *testing.T) {
 					unit.SetDistro(&distro.Distro{})
 					assert.EqualValues(t, 2413, unit.RankValue())
 				})
+				t.Run("MergeQueue", func(t *testing.T) {
+					unit := NewUnit(task.Task{Id: "foo", Requester: evergreen.GithubMergeRequester})
+					unit.SetDistro(&distro.Distro{})
+					assert.EqualValues(t, 2413, unit.RankValue())
+				})
 				t.Run("Patches", func(t *testing.T) {
 					t.Run("CLI", func(t *testing.T) {
 						unit := NewUnit(task.Task{Id: "foo", Requester: evergreen.PatchVersionRequester})

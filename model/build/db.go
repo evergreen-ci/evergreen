@@ -17,29 +17,30 @@ const Collection = "builds"
 
 var (
 	// bson fields for the build struct
-	IdKey                  = bsonutil.MustHaveTag(Build{}, "Id")
-	CreateTimeKey          = bsonutil.MustHaveTag(Build{}, "CreateTime")
-	StartTimeKey           = bsonutil.MustHaveTag(Build{}, "StartTime")
-	FinishTimeKey          = bsonutil.MustHaveTag(Build{}, "FinishTime")
-	VersionKey             = bsonutil.MustHaveTag(Build{}, "Version")
-	ProjectKey             = bsonutil.MustHaveTag(Build{}, "Project")
-	RevisionKey            = bsonutil.MustHaveTag(Build{}, "Revision")
-	BuildVariantKey        = bsonutil.MustHaveTag(Build{}, "BuildVariant")
-	StatusKey              = bsonutil.MustHaveTag(Build{}, "Status")
-	GithubCheckStatusKey   = bsonutil.MustHaveTag(Build{}, "GithubCheckStatus")
-	ActivatedKey           = bsonutil.MustHaveTag(Build{}, "Activated")
-	ActivatedByKey         = bsonutil.MustHaveTag(Build{}, "ActivatedBy")
-	ActivatedTimeKey       = bsonutil.MustHaveTag(Build{}, "ActivatedTime")
-	RevisionOrderNumberKey = bsonutil.MustHaveTag(Build{}, "RevisionOrderNumber")
-	TasksKey               = bsonutil.MustHaveTag(Build{}, "Tasks")
-	TimeTakenKey           = bsonutil.MustHaveTag(Build{}, "TimeTaken")
-	DisplayNameKey         = bsonutil.MustHaveTag(Build{}, "DisplayName")
-	RequesterKey           = bsonutil.MustHaveTag(Build{}, "Requester")
-	PredictedMakespanKey   = bsonutil.MustHaveTag(Build{}, "PredictedMakespan")
-	ActualMakespanKey      = bsonutil.MustHaveTag(Build{}, "ActualMakespan")
-	IsGithubCheckKey       = bsonutil.MustHaveTag(Build{}, "IsGithubCheck")
-	AbortedKey             = bsonutil.MustHaveTag(Build{}, "Aborted")
-	AllTasksBlockedKey     = bsonutil.MustHaveTag(Build{}, "AllTasksBlocked")
+	IdKey                         = bsonutil.MustHaveTag(Build{}, "Id")
+	CreateTimeKey                 = bsonutil.MustHaveTag(Build{}, "CreateTime")
+	StartTimeKey                  = bsonutil.MustHaveTag(Build{}, "StartTime")
+	FinishTimeKey                 = bsonutil.MustHaveTag(Build{}, "FinishTime")
+	VersionKey                    = bsonutil.MustHaveTag(Build{}, "Version")
+	ProjectKey                    = bsonutil.MustHaveTag(Build{}, "Project")
+	RevisionKey                   = bsonutil.MustHaveTag(Build{}, "Revision")
+	BuildVariantKey               = bsonutil.MustHaveTag(Build{}, "BuildVariant")
+	StatusKey                     = bsonutil.MustHaveTag(Build{}, "Status")
+	GithubCheckStatusKey          = bsonutil.MustHaveTag(Build{}, "GithubCheckStatus")
+	ActivatedKey                  = bsonutil.MustHaveTag(Build{}, "Activated")
+	ActivatedByKey                = bsonutil.MustHaveTag(Build{}, "ActivatedBy")
+	ActivatedTimeKey              = bsonutil.MustHaveTag(Build{}, "ActivatedTime")
+	RevisionOrderNumberKey        = bsonutil.MustHaveTag(Build{}, "RevisionOrderNumber")
+	TasksKey                      = bsonutil.MustHaveTag(Build{}, "Tasks")
+	TimeTakenKey                  = bsonutil.MustHaveTag(Build{}, "TimeTaken")
+	DisplayNameKey                = bsonutil.MustHaveTag(Build{}, "DisplayName")
+	RequesterKey                  = bsonutil.MustHaveTag(Build{}, "Requester")
+	PredictedMakespanKey          = bsonutil.MustHaveTag(Build{}, "PredictedMakespan")
+	ActualMakespanKey             = bsonutil.MustHaveTag(Build{}, "ActualMakespan")
+	IsGithubCheckKey              = bsonutil.MustHaveTag(Build{}, "IsGithubCheck")
+	AbortedKey                    = bsonutil.MustHaveTag(Build{}, "Aborted")
+	AllTasksBlockedKey            = bsonutil.MustHaveTag(Build{}, "AllTasksBlocked")
+	HasUnfinishedEssentialTaskKey = bsonutil.MustHaveTag(Build{}, "HasUnfinishedEssentialTask")
 
 	TaskCacheIdKey = bsonutil.MustHaveTag(TaskCache{}, "Id")
 )
@@ -208,9 +209,11 @@ func FindOneId(id string) (*Build, error) {
 	return FindOne(ById(id))
 }
 
+// FindBuildsByVersions finds builds matching the version. This only populates a
+// subset of the build fields.
 func FindBuildsByVersions(versionIds []string) ([]Build, error) {
 	return Find(ByVersions(versionIds).
-		WithFields(BuildVariantKey, DisplayNameKey, TasksKey, VersionKey, StatusKey, TimeTakenKey, PredictedMakespanKey, ActualMakespanKey))
+		WithFields(BuildVariantKey, DisplayNameKey, TasksKey, VersionKey, StatusKey, TimeTakenKey, PredictedMakespanKey, ActualMakespanKey, HasUnfinishedEssentialTaskKey))
 }
 
 // Find returns all builds that satisfy the query.

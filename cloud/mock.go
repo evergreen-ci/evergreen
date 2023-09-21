@@ -40,7 +40,7 @@ type MockInstance struct {
 type MockVolume struct {
 	DeviceName   string
 	Type         string
-	Size         int
+	Size         int32
 	Expiration   time.Time
 	NoExpiration bool
 }
@@ -175,7 +175,7 @@ func (m *mockManager) ModifyHost(ctx context.Context, host *host.Host, changes h
 		host.AddTags(changes.AddInstanceTags)
 		instance.Tags = host.InstanceTags
 		m.Instances[host.Id] = instance
-		if err = host.SetTags(); err != nil {
+		if err = host.SetTags(ctx); err != nil {
 			return errors.Errorf("adding tags in DB")
 		}
 	}
@@ -184,7 +184,7 @@ func (m *mockManager) ModifyHost(ctx context.Context, host *host.Host, changes h
 		instance.Tags = host.InstanceTags
 		m.Instances[host.Id] = instance
 		host.DeleteTags(changes.DeleteInstanceTags)
-		if err = host.SetTags(); err != nil {
+		if err = host.SetTags(ctx); err != nil {
 			return errors.Errorf("deleting tags in DB")
 		}
 	}
@@ -192,7 +192,7 @@ func (m *mockManager) ModifyHost(ctx context.Context, host *host.Host, changes h
 	if changes.InstanceType != "" {
 		instance.Type = host.InstanceType
 		m.Instances[host.Id] = instance
-		if err = host.SetInstanceType(changes.InstanceType); err != nil {
+		if err = host.SetInstanceType(ctx, changes.InstanceType); err != nil {
 			return errors.Errorf("setting instance type in DB")
 		}
 	}
@@ -200,17 +200,17 @@ func (m *mockManager) ModifyHost(ctx context.Context, host *host.Host, changes h
 	if changes.NoExpiration != nil {
 		expireOnValue := expireInDays(30)
 		if *changes.NoExpiration {
-			if err = host.MarkShouldNotExpire(expireOnValue); err != nil {
+			if err = host.MarkShouldNotExpire(ctx, expireOnValue); err != nil {
 				return errors.Errorf("setting no expiration in DB")
 			}
 		}
-		if err = host.MarkShouldExpire(expireOnValue); err != nil {
+		if err = host.MarkShouldExpire(ctx, expireOnValue); err != nil {
 			return errors.Errorf("setting expiration in DB")
 		}
 	}
 
 	if changes.NewName != "" {
-		if err = host.SetDisplayName(changes.NewName); err != nil {
+		if err = host.SetDisplayName(ctx, changes.NewName); err != nil {
 			return errors.Errorf("setting display name in DB")
 		}
 	}
@@ -263,7 +263,7 @@ func (m *mockManager) TerminateInstance(ctx context.Context, host *host.Host, us
 	instance.Status = StatusTerminated
 	m.Instances[host.Id] = instance
 
-	return errors.WithStack(host.Terminate(user, reason))
+	return errors.WithStack(host.Terminate(ctx, user, reason))
 }
 
 func (m *mockManager) StopInstance(ctx context.Context, host *host.Host, user string) error {
@@ -280,7 +280,7 @@ func (m *mockManager) StopInstance(ctx context.Context, host *host.Host, user st
 	instance.Status = StatusStopped
 	m.Instances[host.Id] = instance
 
-	return errors.WithStack(host.SetStopped(user))
+	return errors.WithStack(host.SetStopped(ctx, user))
 
 }
 
@@ -298,7 +298,7 @@ func (m *mockManager) StartInstance(ctx context.Context, host *host.Host, user s
 	instance.Status = StatusRunning
 	m.Instances[host.Id] = instance
 
-	return errors.WithStack(host.SetRunning(user))
+	return errors.WithStack(host.SetRunning(ctx, user))
 }
 
 func (m *mockManager) Configure(ctx context.Context, settings *evergreen.Settings) error {
@@ -328,7 +328,7 @@ func (m *mockManager) AttachVolume(ctx context.Context, h *host.Host, attachment
 	instance.BlockDevices = append(instance.BlockDevices, attachment.VolumeID)
 	m.Instances[h.Id] = instance
 
-	return errors.WithStack(h.AddVolumeToHost(attachment))
+	return errors.WithStack(h.AddVolumeToHost(ctx, attachment))
 }
 
 func (m *mockManager) DetachVolume(ctx context.Context, h *host.Host, volumeID string) error {
@@ -347,7 +347,7 @@ func (m *mockManager) DetachVolume(ctx context.Context, h *host.Host, volumeID s
 	}
 	m.Instances[h.Id] = instance
 
-	return errors.WithStack(h.RemoveVolumeFromHost(volumeID))
+	return errors.WithStack(h.RemoveVolumeFromHost(ctx, volumeID))
 }
 
 func (m *mockManager) CreateVolume(ctx context.Context, volume *host.Volume) (*host.Volume, error) {

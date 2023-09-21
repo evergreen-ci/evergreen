@@ -104,17 +104,18 @@ func disableStartingSettings(p *model.ProjectRef) {
 // PromoteVarsToRepo moves variables from an attached project to its repo.
 // Promoted vars are removed from the project as part of this operation.
 // Variables whose names already appear in the repo settings will be overwritten.
-func PromoteVarsToRepo(projectId string, varNames []string, userId string) error {
-	project, err := model.GetProjectSettingsById(projectId, false)
+func PromoteVarsToRepo(projectIdentifier string, varNames []string, userId string) error {
+	project, err := model.GetProjectSettingsById(projectIdentifier, false)
 	if err != nil {
-		return errors.Wrapf(err, "getting project settings for project '%s'", projectId)
+		return errors.Wrapf(err, "getting project settings for project '%s'", projectIdentifier)
 	}
 
+	projectId := project.ProjectRef.Id
 	repoId := project.ProjectRef.RepoRefId
 
 	projectVars, err := model.FindOneProjectVars(projectId)
 	if err != nil {
-		return errors.Wrapf(err, "getting project variables for project '%s'", projectId)
+		return errors.Wrapf(err, "getting project variables for project '%s'", projectIdentifier)
 	}
 
 	repo, err := model.GetProjectSettingsById(repoId, true)
@@ -145,7 +146,7 @@ func PromoteVarsToRepo(projectId string, varNames []string, userId string) error
 	}
 
 	if err = UpdateProjectVars(repoId, apiRepoVars, true); err != nil {
-		return errors.Wrapf(err, "adding variables from project '%s' to repo", projectId)
+		return errors.Wrapf(err, "adding variables from project '%s' to repo", projectIdentifier)
 	}
 
 	// Log repo update
@@ -182,15 +183,15 @@ func PromoteVarsToRepo(projectId string, varNames []string, userId string) error
 	}
 
 	if err := UpdateProjectVars(projectId, apiProjectVars, true); err != nil {
-		return errors.Wrapf(err, "removing promoted project variables from project '%s'", projectId)
+		return errors.Wrapf(err, "removing promoted project variables from project '%s'", projectIdentifier)
 	}
 
 	projectAfter, err := model.GetProjectSettingsById(projectId, false)
 	if err != nil {
-		return errors.Wrapf(err, "getting settings for project '%s' after removing promoted variables", projectId)
+		return errors.Wrapf(err, "getting settings for project '%s' after removing promoted variables", projectIdentifier)
 	}
 	if err = model.LogProjectModified(projectId, userId, project, projectAfter); err != nil {
-		return errors.Wrapf(err, "logging project '%s' modified", projectId)
+		return errors.Wrapf(err, "logging project '%s' modified", projectIdentifier)
 	}
 
 	return nil
@@ -235,7 +236,7 @@ func SaveProjectSettingsForSection(ctx context.Context, projectId string, change
 	switch section {
 	case model.ProjectPageGeneralSection:
 		if mergedSection.Identifier != mergedBeforeRef.Identifier {
-			if err = handleIdentifierConflict(mergedSection); err != nil {
+			if err = validateModifiedIdentifier(mergedSection); err != nil {
 				return nil, err
 			}
 		}
@@ -243,7 +244,7 @@ func SaveProjectSettingsForSection(ctx context.Context, projectId string, change
 		// Validate owner/repo if the project is enabled or owner/repo is populated.
 		// This validation is cheap so it makes sense to be strict about this.
 		if mergedSection.Enabled || (mergedSection.Owner != "" && mergedSection.Repo != "") {
-			config, err := evergreen.GetConfig()
+			config, err := evergreen.GetConfig(ctx)
 			if err != nil {
 				return nil, errors.Wrap(err, "getting evergreen config")
 			}
@@ -280,7 +281,7 @@ func SaveProjectSettingsForSection(ctx context.Context, projectId string, change
 				return nil, errors.New("branch not set on enabled project")
 			}
 
-			config, err := evergreen.GetConfig()
+			config, err := evergreen.GetConfig(ctx)
 			if err != nil {
 				return nil, errors.Wrap(err, "getting evergreen config")
 			}
@@ -440,13 +441,19 @@ func SaveProjectSettingsForSection(ctx context.Context, projectId string, change
 	return &res, errors.Wrapf(catcher.Resolve(), "saving section '%s'", section)
 }
 
-func handleIdentifierConflict(pRef *model.ProjectRef) error {
+func validateModifiedIdentifier(pRef *model.ProjectRef) error {
 	conflictingRef, err := model.FindBranchProjectRef(pRef.Identifier)
 	if err != nil {
 		return errors.Wrapf(err, "checking for conflicting project ref")
 	}
 	if conflictingRef != nil && conflictingRef.Id != pRef.Id {
 		return errors.Errorf("identifier '%s' is already being used for another project", conflictingRef.Id)
+	}
+	if !projectIDRegexp.MatchString(pRef.Identifier) {
+		return gimlet.ErrorResponse{
+			StatusCode: http.StatusBadRequest,
+			Message:    fmt.Sprintf("project identifier '%s' contains invalid characters", pRef.Identifier),
+		}
 	}
 	return nil
 }

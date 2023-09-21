@@ -5,11 +5,14 @@ import (
 	"fmt"
 	"net/http"
 	"sort"
+	"strings"
 	"time"
 
 	"github.com/evergreen-ci/evergreen"
+	"github.com/evergreen-ci/evergreen/api"
 	"github.com/evergreen-ci/evergreen/cloud"
 	"github.com/evergreen-ci/evergreen/db"
+	"github.com/evergreen-ci/evergreen/db/mgo/bson"
 	"github.com/evergreen-ci/evergreen/model"
 	"github.com/evergreen-ci/evergreen/model/artifact"
 	"github.com/evergreen-ci/evergreen/model/distro"
@@ -89,7 +92,7 @@ func setManyTasksScheduled(ctx context.Context, url string, isActive bool, taskI
 			return nil, InputValidationError.Send(ctx, "commit queue tasks cannot be manually scheduled")
 		}
 	}
-	if err = model.SetActiveState(usr.Username(), isActive, tasks...); err != nil {
+	if err = model.SetActiveState(ctx, usr.Username(), isActive, tasks...); err != nil {
 		return nil, InternalServerError.Send(ctx, err.Error())
 	}
 
@@ -101,7 +104,7 @@ func setManyTasksScheduled(ctx context.Context, url string, isActive bool, taskI
 	apiTasks := []*restModel.APITask{}
 	for _, t := range tasks {
 		apiTask := restModel.APITask{}
-		err = apiTask.BuildFromService(&t, &restModel.APITaskArgs{
+		err = apiTask.BuildFromService(ctx, &t, &restModel.APITaskArgs{
 			LogURL: url,
 		})
 		if err != nil {
@@ -130,42 +133,14 @@ func getFormattedDate(t *time.Time, timezone string) (*string, error) {
 	return &newTime, nil
 }
 
-func getVersionBaseTasks(versionID string) ([]task.Task, error) {
-	version, err := model.VersionFindOneId(versionID)
-	if err != nil {
-		return nil, fmt.Errorf("Error getting version %s: %s", versionID, err.Error())
-	}
-	if version == nil {
-		return nil, fmt.Errorf("No version found for ID %s", versionID)
-	}
-	baseVersion, err := model.VersionFindOne(model.BaseVersionByProjectIdAndRevision(version.Identifier, version.Revision))
-	if err != nil {
-		return nil, fmt.Errorf("Error getting base version from version %s: %s", version.Id, err.Error())
-	}
-	if baseVersion == nil {
-		return nil, fmt.Errorf("No base version found from version %s", version.Id)
-	}
-	baseTasks, err := task.FindTasksFromVersions([]string{baseVersion.Id})
-	if err != nil {
-		return nil, fmt.Errorf("Error getting tasks from version %s: %s", baseVersion.Id, err.Error())
-	}
-	if baseTasks == nil {
-		return nil, fmt.Errorf("No tasks found for version %s", baseVersion.Id)
-	}
-	return baseTasks, nil
-}
-
 // GetDisplayStatus considers both child patch statuses and
 // aborted status, and returns an overall patch status
 // (this is because success is different for version/patches,
 // and for display we rely on the patch status. Will address this in EVG-19914).
 func getDisplayStatus(v *model.Version) (string, error) {
-	patchStatus, err := evergreen.VersionStatusToPatchStatus(v.Status)
-	if err != nil {
-		return "", errors.Wrapf(err, "getting version status for patch '%s'", v.Id)
-	}
+	patchStatus := evergreen.VersionStatusToPatchStatus(v.Status)
 	if v.Aborted {
-		patchStatus = evergreen.PatchAborted
+		patchStatus = evergreen.VersionAborted
 	}
 	if !evergreen.IsPatchRequester(v.Requester) || v.IsChild() {
 		return patchStatus, nil
@@ -190,10 +165,7 @@ func getDisplayStatus(v *model.Version) (string, error) {
 		if cpVersion.Aborted {
 			allStatuses = append(allStatuses, evergreen.VersionAborted)
 		} else {
-			cpStatus, err := evergreen.VersionStatusToPatchStatus(cpVersion.Status)
-			if err != nil {
-				return "", errors.Wrapf(err, "getting version status for child patch '%s'", cpVersion.Id)
-			}
+			cpStatus := evergreen.VersionStatusToPatchStatus(cpVersion.Status)
 			allStatuses = append(allStatuses, cpStatus)
 		}
 	}
@@ -304,7 +276,7 @@ func buildFromGqlInput(r PatchConfigure) model.PatchUpdate {
 // getAPITaskFromTask builds an APITask from the given task
 func getAPITaskFromTask(ctx context.Context, url string, task task.Task) (*restModel.APITask, error) {
 	apiTask := restModel.APITask{}
-	err := apiTask.BuildFromService(&task, &restModel.APITaskArgs{
+	err := apiTask.BuildFromService(ctx, &task, &restModel.APITaskArgs{
 		LogURL: url,
 	})
 	if err != nil {
@@ -336,17 +308,25 @@ func generateBuildVariants(ctx context.Context, versionId string, buildVariantOp
 	defaultSort := []task.TasksSortOrder{
 		{Key: task.DisplayNameKey, Order: 1},
 	}
+	baseVersionID := ""
 	if buildVariantOpts.IncludeBaseTasks == nil {
 		buildVariantOpts.IncludeBaseTasks = utility.ToBoolPtr(true)
 	}
-
+	if utility.FromBoolPtr(buildVariantOpts.IncludeBaseTasks) {
+		baseVersion, err := model.FindBaseVersionForVersion(versionId)
+		if err != nil {
+			return nil, errors.Wrapf(err, fmt.Sprintf("Error getting base version for version `%s`", versionId))
+		}
+		if baseVersion != nil {
+			baseVersionID = baseVersion.Id
+		}
+	}
 	opts := task.GetTasksByVersionOptions{
-		Statuses:                       getValidTaskStatusesFilter(buildVariantOpts.Statuses),
-		Variants:                       buildVariantOpts.Variants,
-		TaskNames:                      buildVariantOpts.Tasks,
-		Sorts:                          defaultSort,
-		IncludeBaseTasks:               utility.FromBoolPtr(buildVariantOpts.IncludeBaseTasks),
-		IncludeBuildVariantDisplayName: true,
+		Statuses:      getValidTaskStatusesFilter(buildVariantOpts.Statuses),
+		Variants:      buildVariantOpts.Variants,
+		TaskNames:     buildVariantOpts.Tasks,
+		Sorts:         defaultSort,
+		BaseVersionID: baseVersionID,
 		// Do not fetch inactive tasks for patches. This is because the UI does not display inactive tasks for patches.
 		IncludeNeverActivatedTasks: !evergreen.IsPatchRequester(requester),
 	}
@@ -360,7 +340,7 @@ func generateBuildVariants(ctx context.Context, versionId string, buildVariantOp
 	buildTaskStartTime := time.Now()
 	for _, t := range tasks {
 		apiTask := restModel.APITask{}
-		err := apiTask.BuildFromService(&t, &restModel.APITaskArgs{
+		err := apiTask.BuildFromService(ctx, &t, &restModel.APITaskArgs{
 			LogURL: logURL,
 		})
 		if err != nil {
@@ -419,26 +399,10 @@ func modifyVersionHandler(ctx context.Context, patchID string, modification mode
 		return ResourceNotFound.Send(ctx, fmt.Sprintf("Unable to find version with id: `%s`", patchID))
 	}
 	user := mustHaveUser(ctx)
-	httpStatus, err := model.ModifyVersion(*v, *user, modification)
+	httpStatus, err := model.ModifyVersion(ctx, *v, *user, modification)
 	if err != nil {
 		return mapHTTPStatusToGqlError(ctx, httpStatus, err)
 	}
-
-	// Restart is handled through graphql because we need the user to specify
-	// which downstream tasks they want to restart.
-	if evergreen.IsPatchRequester(v.Requester) && modification.Action != evergreen.RestartAction {
-		// Only modify the child patch if it is finalized.
-		childPatchIds, err := patch.GetFinalizedChildPatchIdsForPatch(patchID)
-		if err != nil {
-			return ResourceNotFound.Send(ctx, err.Error())
-		}
-		for _, childPatchId := range childPatchIds {
-			if err = modifyVersionHandler(ctx, childPatchId, modification); err != nil {
-				return errors.Wrap(mapHTTPStatusToGqlError(ctx, httpStatus, err), fmt.Sprintf("modifying child patch '%s'", childPatchId))
-			}
-		}
-	}
-
 	return nil
 }
 
@@ -477,21 +441,6 @@ func canScheduleTask(t *task.Task) bool {
 		return false
 	}
 	return true
-}
-
-func getAllTaskStatuses(tasks []task.Task) []string {
-	statusesMap := map[string]bool{}
-	for _, task := range tasks {
-		statusesMap[task.GetDisplayStatus()] = true
-	}
-	statusesArr := []string{}
-	for key := range statusesMap {
-		statusesArr = append(statusesArr, key)
-	}
-	sort.SliceStable(statusesArr, func(i, j int) bool {
-		return statusesArr[i] < statusesArr[j]
-	})
-	return statusesArr
 }
 
 func removeGeneralSubscriptions(usr *user.DBUser, subscriptions []event.Subscription) []string {
@@ -675,9 +624,7 @@ func setVersionActivationStatus(ctx context.Context, version *model.Version) err
 		{Key: task.DisplayNameKey, Order: 1},
 	}
 	opts := task.GetTasksByVersionOptions{
-		Sorts:                          defaultSort,
-		IncludeBaseTasks:               false,
-		IncludeBuildVariantDisplayName: false,
+		Sorts: defaultSort,
 	}
 	tasks, _, err := task.GetTasksByVersion(ctx, version.Id, opts)
 	if err != nil {
@@ -820,11 +767,16 @@ func groupProjects(projects []model.ProjectRef, onlyDefaultedToRepo bool) ([]*Gr
 
 // getProjectIdFromArgs extracts a project ID from the requireProjectAccess directive args.
 func getProjectIdFromArgs(ctx context.Context, args map[string]interface{}) (res string, err error) {
+	// id should always be a repo ID.
 	if id, hasId := args["id"].(string); hasId {
 		return id, nil
 	}
 	if projectId, hasProjectId := args["projectId"].(string); hasProjectId {
-		return projectId, nil
+		pid, err := model.GetIdForProject(projectId)
+		if err != nil {
+			return "", ResourceNotFound.Send(ctx, fmt.Sprintf("Could not find project with projectId: %s", projectId))
+		}
+		return pid, nil
 	}
 	if identifier, hasIdentifier := args["identifier"].(string); hasIdentifier {
 		pid, err := model.GetIdForProject(identifier)
@@ -884,7 +836,7 @@ func getHostRequestOptions(ctx context.Context, usr *user.DBUser, spawnHostInput
 			return nil, err
 		}
 	}
-	dist, err := distro.FindOneId(spawnHostInput.DistroID)
+	dist, err := distro.FindOneId(ctx, spawnHostInput.DistroID)
 	if err != nil {
 		return nil, InternalServerError.Send(ctx, fmt.Sprintf("trying to find distro with id: %s, err:  `%s`", spawnHostInput.DistroID, err))
 	}
@@ -942,7 +894,7 @@ func getHostRequestOptions(ctx context.Context, usr *user.DBUser, spawnHostInput
 		if t == nil {
 			return nil, ResourceNotFound.Send(ctx, "A valid task id must be supplied when SpawnHostsStartedByTask is set to true")
 		}
-		if err = data.CreateHostsFromTask(ctx, evergreen.GetEnvironment().Settings(), t, *usr, spawnHostInput.PublicKey.Key); err != nil {
+		if err = data.CreateHostsFromTask(ctx, evergreen.GetEnvironment(), t, *usr, spawnHostInput.PublicKey.Key); err != nil {
 			return nil, InternalServerError.Send(ctx, fmt.Sprintf("spawning hosts from task %s: %s", *spawnHostInput.TaskID, err))
 		}
 	}
@@ -979,13 +931,14 @@ func convertTestFilterOptions(ctx context.Context, dbTask *task.Task, opts *Test
 	}
 
 	return &testresult.FilterOptions{
-		TestName:  utility.FromStringPtr(opts.TestName),
-		Statuses:  opts.Statuses,
-		GroupID:   utility.FromStringPtr(opts.GroupID),
-		Sort:      sort,
-		Limit:     utility.FromIntPtr(opts.Limit),
-		Page:      utility.FromIntPtr(opts.Page),
-		BaseTasks: baseTaskOpts,
+		TestName:            utility.FromStringPtr(opts.TestName),
+		ExcludeDisplayNames: utility.FromBoolPtr(opts.ExcludeDisplayNames),
+		Statuses:            opts.Statuses,
+		GroupID:             utility.FromStringPtr(opts.GroupID),
+		Sort:                sort,
+		Limit:               utility.FromIntPtr(opts.Limit),
+		Page:                utility.FromIntPtr(opts.Page),
+		BaseTasks:           baseTaskOpts,
 	}, nil
 }
 
@@ -1047,4 +1000,112 @@ func getBaseTaskTestResultsOptions(ctx context.Context, dbTask *task.Task) ([]te
 	}
 
 	return taskOpts, nil
+}
+
+func handleDistroOnSaveOperation(ctx context.Context, distroID string, onSave DistroOnSaveOperation, userID string) (int, error) {
+	noHostsUpdated := 0
+	if onSave == DistroOnSaveOperationNone {
+		return noHostsUpdated, nil
+	}
+
+	hosts, err := host.Find(ctx, host.ByDistroIDs(distroID))
+	if err != nil {
+		return noHostsUpdated, errors.Wrap(err, fmt.Sprintf("finding hosts for distro '%s'", distroID))
+	}
+
+	switch onSave {
+	case DistroOnSaveOperationDecommission:
+		if err = host.DecommissionHostsWithDistroId(ctx, distroID); err != nil {
+			return noHostsUpdated, errors.Wrap(err, fmt.Sprintf("decommissioning hosts for distro '%s'", distroID))
+		}
+		for _, h := range hosts {
+			event.LogHostStatusChanged(h.Id, h.Status, evergreen.HostDecommissioned, userID, "distro page")
+		}
+	case DistroOnSaveOperationReprovision:
+		failed := []string{}
+		for _, h := range hosts {
+			if _, err = api.GetReprovisionToNewCallback(ctx, evergreen.GetEnvironment(), userID)(&h); err != nil {
+				failed = append(failed, h.Id)
+			}
+		}
+		if len(failed) > 0 {
+			return len(hosts) - len(failed), errors.New(fmt.Sprintf("failed to mark the following hosts for reprovision: %s", strings.Join(failed, ", ")))
+		}
+	case DistroOnSaveOperationRestartJasper:
+		failed := []string{}
+		for _, h := range hosts {
+			if _, err = api.GetRestartJasperCallback(ctx, evergreen.GetEnvironment(), userID)(&h); err != nil {
+				failed = append(failed, h.Id)
+			}
+		}
+		if len(failed) > 0 {
+			return len(hosts) - len(failed), errors.New(fmt.Sprintf("failed to mark the following hosts for Jasper service restart: %s", strings.Join(failed, ", ")))
+		}
+	}
+
+	return len(hosts), nil
+}
+
+func userHasDistroPermission(u *user.DBUser, distroId string, requiredLevel int) bool {
+	opts := gimlet.PermissionOpts{
+		Resource:      distroId,
+		ResourceType:  evergreen.DistroResourceType,
+		Permission:    evergreen.PermissionDistroSettings,
+		RequiredLevel: requiredLevel,
+	}
+	return u.HasPermission(opts)
+}
+
+func makeDistroEvent(ctx context.Context, entry event.EventLogEntry) (*DistroEvent, error) {
+	data, ok := entry.Data.(*event.DistroEventData)
+	if !ok {
+		return nil, errors.New("casting distro event data")
+	}
+
+	after, err := interfaceToMap(ctx, data.After)
+	if err != nil {
+		return nil, errors.Wrapf(err, "converting 'after' field to map")
+	}
+
+	before, err := interfaceToMap(ctx, data.Before)
+	if err != nil {
+		return nil, errors.Wrapf(err, "converting 'before' field to map")
+	}
+
+	legacyData, err := interfaceToMap(ctx, data.Data)
+	if err != nil {
+		return nil, errors.Wrapf(err, "converting legacy 'data' field to map")
+	}
+
+	user := data.User
+	if user == "" {
+		// Use legacy UserId field if User is undefined
+		user = data.UserId
+	}
+
+	return &DistroEvent{
+		After:     after,
+		Before:    before,
+		Data:      legacyData,
+		Timestamp: entry.Timestamp,
+		User:      user,
+	}, nil
+}
+
+func interfaceToMap(ctx context.Context, data interface{}) (map[string]interface{}, error) {
+	if data == nil {
+		return nil, nil
+	}
+
+	mapField := map[string]interface{}{}
+	marshalledData, err := bson.Marshal(data)
+	if err != nil {
+		return nil, errors.Wrapf(err, "marshalling data")
+	}
+
+	if err = bson.Unmarshal(marshalledData, &mapField); err != nil {
+		return nil, errors.Wrapf(err, "unmarshalling data")
+	}
+
+	return mapField, nil
 }

@@ -109,7 +109,6 @@ func TestFindProject(t *testing.T) {
 			So(pp, ShouldNotBeNil)
 			So(pp.Id, ShouldEqual, "good_version")
 			So(p, ShouldNotBeNil)
-			So(p.Owner, ShouldEqual, "fakeowner")
 			So(v.Id, ShouldEqual, "good_version")
 		})
 		Convey("error if no version exists", func() {
@@ -155,27 +154,6 @@ func TestGetVariantMappings(t *testing.T) {
 
 	})
 
-}
-
-func TestGetModuleRepoName(t *testing.T) {
-
-	Convey("With a module", t, func() {
-
-		Convey("getting the repo owner and name should return the repo"+
-			" field, split at the ':' and removing the .git from"+
-			" the end", func() {
-
-			module := &Module{
-				Repo: "blecch:owner/repo.git",
-			}
-
-			owner, name := module.GetRepoOwnerAndName()
-			So(owner, ShouldEqual, "owner")
-			So(name, ShouldEqual, "repo")
-
-		})
-
-	})
 }
 
 func TestPopulateBVT(t *testing.T) {
@@ -350,9 +328,9 @@ func TestPopulateExpansions(t *testing.T) {
 	}
 	oauthToken, err := settings.GetGithubOauthToken()
 	assert.NoError(err)
-	expansions, err := PopulateExpansions(taskDoc, &h, oauthToken)
+	expansions, err := PopulateExpansions(taskDoc, &h, oauthToken, "appToken")
 	assert.NoError(err)
-	assert.Len(map[string]string(expansions), 23)
+	assert.Len(map[string]string(expansions), 24)
 	assert.Equal("0", expansions.Get("execution"))
 	assert.Equal("v1", expansions.Get("version_id"))
 	assert.Equal("t1", expansions.Get("task_id"))
@@ -370,6 +348,7 @@ func TestPopulateExpansions(t *testing.T) {
 	assert.Equal("d1", expansions.Get("distro_id"))
 	assert.Equal("release", expansions.Get("triggered_by_git_tag"))
 	assert.Equal("globalGitHubOauthToken", expansions.Get(evergreen.GlobalGitHubTokenExpansion))
+	assert.Equal("appToken", expansions.Get(evergreen.GithubAppToken))
 	assert.True(expansions.Exists("created_at"))
 	assert.Equal("42", expansions.Get("revision_order_id"))
 	assert.Equal("", expansions.Get("is_patch"))
@@ -387,9 +366,9 @@ func TestPopulateExpansions(t *testing.T) {
 	}
 	require.NoError(t, p.Insert())
 
-	expansions, err = PopulateExpansions(taskDoc, &h, oauthToken)
+	expansions, err = PopulateExpansions(taskDoc, &h, oauthToken, "")
 	assert.NoError(err)
-	assert.Len(map[string]string(expansions), 23)
+	assert.Len(map[string]string(expansions), 24)
 	assert.Equal("true", expansions.Get("is_patch"))
 	assert.Equal("patch", expansions.Get("requester"))
 	assert.False(expansions.Exists("is_commit_queue"))
@@ -415,9 +394,9 @@ func TestPopulateExpansions(t *testing.T) {
 		},
 	}
 	require.NoError(t, p.Insert())
-	expansions, err = PopulateExpansions(taskDoc, &h, oauthToken)
+	expansions, err = PopulateExpansions(taskDoc, &h, oauthToken, "")
 	assert.NoError(err)
-	assert.Len(map[string]string(expansions), 29)
+	assert.Len(map[string]string(expansions), 30)
 	assert.Equal("true", expansions.Get("is_patch"))
 	assert.Equal("true", expansions.Get("is_commit_queue"))
 	assert.Equal("12", expansions.Get("github_pr_number"))
@@ -429,15 +408,29 @@ func TestPopulateExpansions(t *testing.T) {
 	require.NoError(t, db.ClearCollections(patch.Collection))
 
 	assert.NoError(VersionUpdateOne(bson.M{VersionIdKey: v.Id}, bson.M{
+		"$set": bson.M{VersionRequesterKey: evergreen.GithubMergeRequester},
+	}))
+	p = patch.Patch{
+		Version: v.Id,
+	}
+	require.NoError(t, p.Insert())
+	expansions, err = PopulateExpansions(taskDoc, &h, oauthToken, "")
+	assert.NoError(err)
+	assert.Len(map[string]string(expansions), 25)
+	assert.Equal("true", expansions.Get("is_patch"))
+	assert.Equal("true", expansions.Get("is_commit_queue"))
+	require.NoError(t, db.ClearCollections(patch.Collection))
+
+	assert.NoError(VersionUpdateOne(bson.M{VersionIdKey: v.Id}, bson.M{
 		"$set": bson.M{VersionRequesterKey: evergreen.GithubPRRequester},
 	}))
 	p = patch.Patch{
 		Version: v.Id,
 	}
 	require.NoError(t, p.Insert())
-	expansions, err = PopulateExpansions(taskDoc, &h, oauthToken)
+	expansions, err = PopulateExpansions(taskDoc, &h, oauthToken, "")
 	assert.NoError(err)
-	assert.Len(map[string]string(expansions), 27)
+	assert.Len(map[string]string(expansions), 28)
 	assert.Equal("true", expansions.Get("is_patch"))
 	assert.Equal("github_pr", expansions.Get("requester"))
 	assert.False(expansions.Exists("is_commit_queue"))
@@ -460,9 +453,9 @@ func TestPopulateExpansions(t *testing.T) {
 	}
 	assert.NoError(patchDoc.Insert())
 
-	expansions, err = PopulateExpansions(taskDoc, &h, oauthToken)
+	expansions, err = PopulateExpansions(taskDoc, &h, oauthToken, "")
 	assert.NoError(err)
-	assert.Len(map[string]string(expansions), 27)
+	assert.Len(map[string]string(expansions), 28)
 	assert.Equal("github_pr", expansions.Get("requester"))
 	assert.Equal("true", expansions.Get("is_patch"))
 	assert.Equal("evergreen", expansions.Get("github_repo"))
@@ -485,9 +478,9 @@ func TestPopulateExpansions(t *testing.T) {
 	assert.NoError(upstreamProject.Insert())
 	taskDoc.TriggerID = "upstreamTask"
 	taskDoc.TriggerType = ProjectTriggerLevelTask
-	expansions, err = PopulateExpansions(taskDoc, &h, oauthToken)
+	expansions, err = PopulateExpansions(taskDoc, &h, oauthToken, "")
 	assert.NoError(err)
-	assert.Len(map[string]string(expansions), 35)
+	assert.Len(map[string]string(expansions), 36)
 	assert.Equal(taskDoc.TriggerID, expansions.Get("trigger_event_identifier"))
 	assert.Equal(taskDoc.TriggerType, expansions.Get("trigger_event_type"))
 	assert.Equal(upstreamTask.Revision, expansions.Get("trigger_revision"))
@@ -1731,9 +1724,9 @@ func TestLoggerMerge(t *testing.T) {
 
 	var config1 *LoggerConfig
 	config2 := &LoggerConfig{
-		Agent:  []LogOpts{{Type: LogkeeperLogSender}},
-		System: []LogOpts{{Type: LogkeeperLogSender}},
-		Task:   []LogOpts{{Type: LogkeeperLogSender}},
+		Agent:  []LogOpts{{Type: BuildloggerLogSender}},
+		System: []LogOpts{{Type: BuildloggerLogSender}},
+		Task:   []LogOpts{{Type: BuildloggerLogSender}},
 	}
 
 	assert.Nil(mergeAllLogs(config1, config1))
@@ -2210,6 +2203,7 @@ func TestVariantTasksForSelectors(t *testing.T) {
 func TestSkipOnRequester(t *testing.T) {
 	t.Run("PatchRequester", func(t *testing.T) {
 		requester := evergreen.PatchVersionRequester
+		userRequester := evergreen.PatchVersionUserRequester
 
 		t.Run("Runnable", func(t *testing.T) {
 			bvt := BuildVariantTaskUnit{}
@@ -2223,10 +2217,26 @@ func TestSkipOnRequester(t *testing.T) {
 			bvt := BuildVariantTaskUnit{GitTagOnly: utility.TruePtr()}
 			assert.True(t, bvt.SkipOnRequester(requester))
 		})
+		t.Run("AllowedRequester", func(t *testing.T) {
+			bvt := BuildVariantTaskUnit{AllowedRequesters: []evergreen.UserRequester{userRequester}}
+			assert.False(t, bvt.SkipOnRequester(requester))
+		})
+		t.Run("NotAllowedRequester", func(t *testing.T) {
+			bvt := BuildVariantTaskUnit{AllowedRequesters: []evergreen.UserRequester{evergreen.GitTagUserRequester}}
+			assert.True(t, bvt.SkipOnRequester(requester))
+		})
+		t.Run("AllowedRequesterHasHigherPrecedenceThanPatchableFalse", func(t *testing.T) {
+			bvt := BuildVariantTaskUnit{
+				Patchable:         utility.FalsePtr(),
+				AllowedRequesters: []evergreen.UserRequester{userRequester},
+			}
+			assert.False(t, bvt.SkipOnRequester(requester))
+		})
 	})
 
 	t.Run("NonPatchRequester", func(t *testing.T) {
 		requester := evergreen.RepotrackerVersionRequester
+		userRequester := evergreen.RepotrackerVersionUserRequester
 
 		t.Run("Runnable", func(t *testing.T) {
 			bvt := BuildVariantTaskUnit{}
@@ -2240,10 +2250,26 @@ func TestSkipOnRequester(t *testing.T) {
 			bvt := BuildVariantTaskUnit{GitTagOnly: utility.TruePtr()}
 			assert.True(t, bvt.SkipOnRequester(requester))
 		})
+		t.Run("AllowedRequester", func(t *testing.T) {
+			bvt := BuildVariantTaskUnit{AllowedRequesters: []evergreen.UserRequester{userRequester}}
+			assert.False(t, bvt.SkipOnRequester(requester))
+		})
+		t.Run("NotAllowedRequester", func(t *testing.T) {
+			bvt := BuildVariantTaskUnit{AllowedRequesters: []evergreen.UserRequester{evergreen.PatchVersionUserRequester}}
+			assert.True(t, bvt.SkipOnRequester(requester))
+		})
+		t.Run("AllowedRequesterHasHigherPrecedenceThanPatchOnly", func(t *testing.T) {
+			bvt := BuildVariantTaskUnit{
+				PatchOnly:         utility.TruePtr(),
+				AllowedRequesters: []evergreen.UserRequester{userRequester},
+			}
+			assert.False(t, bvt.SkipOnRequester(requester))
+		})
 	})
 
 	t.Run("GitTagRequester", func(t *testing.T) {
 		requester := evergreen.GitTagRequester
+		userRequester := evergreen.GitTagUserRequester
 
 		t.Run("Runnable", func(t *testing.T) {
 			bvt := BuildVariantTaskUnit{}
@@ -2257,6 +2283,129 @@ func TestSkipOnRequester(t *testing.T) {
 			bvt := BuildVariantTaskUnit{AllowForGitTag: utility.FalsePtr()}
 			assert.True(t, bvt.SkipOnRequester(requester))
 		})
+		t.Run("AllowedRequester", func(t *testing.T) {
+			bvt := BuildVariantTaskUnit{AllowedRequesters: []evergreen.UserRequester{userRequester}}
+			assert.False(t, bvt.SkipOnRequester(requester))
+		})
+		t.Run("NotAllowedRequester", func(t *testing.T) {
+			bvt := BuildVariantTaskUnit{AllowedRequesters: []evergreen.UserRequester{evergreen.PatchVersionUserRequester}}
+			assert.True(t, bvt.SkipOnRequester(requester))
+		})
+		t.Run("AllowedRequesterHasHigherPrecedenceThanPatchOnly", func(t *testing.T) {
+			bvt := BuildVariantTaskUnit{
+				PatchOnly:         utility.TruePtr(),
+				AllowedRequesters: []evergreen.UserRequester{userRequester},
+			}
+			assert.False(t, bvt.SkipOnRequester(requester))
+		})
+	})
+}
+
+func TestSkipOnPatchBuild(t *testing.T) {
+	t.Run("ReturnsFalseByDefault", func(t *testing.T) {
+		bvt := BuildVariantTaskUnit{}
+		assert.False(t, bvt.SkipOnPatchBuild())
+	})
+	t.Run("ReturnsFalseWithPatchable", func(t *testing.T) {
+		bvt := BuildVariantTaskUnit{Patchable: utility.TruePtr()}
+		assert.False(t, bvt.SkipOnPatchBuild())
+	})
+	t.Run("ReturnsTrueWithNotPatchable", func(t *testing.T) {
+		bvt := BuildVariantTaskUnit{Patchable: utility.FalsePtr()}
+		assert.True(t, bvt.SkipOnPatchBuild())
+	})
+	t.Run("ReturnsFalseWithAllowedRequester", func(t *testing.T) {
+		bvt := BuildVariantTaskUnit{AllowedRequesters: []evergreen.UserRequester{evergreen.GithubPRUserRequester, evergreen.AdHocUserRequester}}
+		assert.False(t, bvt.SkipOnPatchBuild())
+	})
+	t.Run("ReturnsTrueWithNotAllowedRequester", func(t *testing.T) {
+		bvt := BuildVariantTaskUnit{AllowedRequesters: []evergreen.UserRequester{evergreen.AdHocUserRequester}}
+		assert.True(t, bvt.SkipOnPatchBuild())
+	})
+	t.Run("ReturnsFalseWithAllowedRequesterAndNotPatchable", func(t *testing.T) {
+		bvt := BuildVariantTaskUnit{Patchable: utility.FalsePtr(), AllowedRequesters: []evergreen.UserRequester{evergreen.GithubPRUserRequester}}
+		assert.False(t, bvt.SkipOnPatchBuild())
+	})
+}
+
+func TestSkipOnNonPatchBuild(t *testing.T) {
+	t.Run("ReturnsFalseByDefault", func(t *testing.T) {
+		bvt := BuildVariantTaskUnit{}
+		assert.False(t, bvt.SkipOnNonPatchBuild())
+	})
+	t.Run("ReturnsFalseWithNotPatchOnly", func(t *testing.T) {
+		bvt := BuildVariantTaskUnit{PatchOnly: utility.FalsePtr()}
+		assert.False(t, bvt.SkipOnNonPatchBuild())
+	})
+	t.Run("ReturnsTrueWithPatchOnly", func(t *testing.T) {
+		bvt := BuildVariantTaskUnit{PatchOnly: utility.TruePtr()}
+		assert.True(t, bvt.SkipOnNonPatchBuild())
+	})
+	t.Run("ReturnsFalseWithAllowedRequester", func(t *testing.T) {
+		bvt := BuildVariantTaskUnit{AllowedRequesters: []evergreen.UserRequester{evergreen.GithubPRUserRequester, evergreen.AdHocUserRequester}}
+		assert.False(t, bvt.SkipOnNonPatchBuild())
+	})
+	t.Run("ReturnsTrueWithNotAllowedRequester", func(t *testing.T) {
+		bvt := BuildVariantTaskUnit{AllowedRequesters: []evergreen.UserRequester{evergreen.GithubPRUserRequester}}
+		assert.True(t, bvt.SkipOnNonPatchBuild())
+	})
+	t.Run("ReturnsFalseWithAllowedRequesterAndPatchOnly", func(t *testing.T) {
+		bvt := BuildVariantTaskUnit{PatchOnly: utility.TruePtr(), AllowedRequesters: []evergreen.UserRequester{evergreen.AdHocUserRequester}}
+		assert.False(t, bvt.SkipOnNonPatchBuild())
+	})
+}
+
+func TestSkipOnGitTagBuild(t *testing.T) {
+	t.Run("ReturnsFalseByDefault", func(t *testing.T) {
+		bvt := BuildVariantTaskUnit{}
+		assert.False(t, bvt.SkipOnGitTagBuild())
+	})
+	t.Run("ReturnsFalseWithGitTagAllowed", func(t *testing.T) {
+		bvt := BuildVariantTaskUnit{AllowForGitTag: utility.TruePtr()}
+		assert.False(t, bvt.SkipOnGitTagBuild())
+	})
+	t.Run("ReturnsTrueWithNotGitTagAllowed", func(t *testing.T) {
+		bvt := BuildVariantTaskUnit{AllowForGitTag: utility.FalsePtr()}
+		assert.True(t, bvt.SkipOnGitTagBuild())
+	})
+	t.Run("ReturnsFalseWithAllowedRequester", func(t *testing.T) {
+		bvt := BuildVariantTaskUnit{AllowedRequesters: []evergreen.UserRequester{evergreen.GitTagUserRequester}}
+		assert.False(t, bvt.SkipOnGitTagBuild())
+	})
+	t.Run("ReturnsTrueWithNotAllowedRequester", func(t *testing.T) {
+		bvt := BuildVariantTaskUnit{AllowedRequesters: []evergreen.UserRequester{evergreen.AdHocUserRequester}}
+		assert.True(t, bvt.SkipOnGitTagBuild())
+	})
+	t.Run("ReturnsFalseWithAllowedRequesterAndGitTagNotAllowed", func(t *testing.T) {
+		bvt := BuildVariantTaskUnit{AllowForGitTag: utility.FalsePtr(), AllowedRequesters: []evergreen.UserRequester{evergreen.GitTagUserRequester}}
+		assert.False(t, bvt.SkipOnGitTagBuild())
+	})
+}
+
+func TestSkipOnNonGitTagBuild(t *testing.T) {
+	t.Run("ReturnsFalseByDefault", func(t *testing.T) {
+		bvt := BuildVariantTaskUnit{}
+		assert.False(t, bvt.SkipOnNonGitTagBuild())
+	})
+	t.Run("ReturnsFalseWithNotGitTagOnly", func(t *testing.T) {
+		bvt := BuildVariantTaskUnit{GitTagOnly: utility.FalsePtr()}
+		assert.False(t, bvt.SkipOnNonGitTagBuild())
+	})
+	t.Run("ReturnsTrueWithGitTagOnly", func(t *testing.T) {
+		bvt := BuildVariantTaskUnit{GitTagOnly: utility.TruePtr()}
+		assert.True(t, bvt.SkipOnNonGitTagBuild())
+	})
+	t.Run("ReturnsFalseWithAllowedRequester", func(t *testing.T) {
+		bvt := BuildVariantTaskUnit{AllowedRequesters: []evergreen.UserRequester{evergreen.AdHocUserRequester}}
+		assert.False(t, bvt.SkipOnNonGitTagBuild())
+	})
+	t.Run("ReturnsTrueWithNotAllowedRequester", func(t *testing.T) {
+		bvt := BuildVariantTaskUnit{AllowedRequesters: []evergreen.UserRequester{evergreen.GitTagUserRequester}}
+		assert.True(t, bvt.SkipOnNonGitTagBuild())
+	})
+	t.Run("ReturnsFalseWithAllowedRequesterAndGitTagOnly", func(t *testing.T) {
+		bvt := BuildVariantTaskUnit{GitTagOnly: utility.TruePtr(), AllowedRequesters: []evergreen.UserRequester{evergreen.AdHocUserRequester}}
+		assert.False(t, bvt.SkipOnNonGitTagBuild())
 	})
 }
 

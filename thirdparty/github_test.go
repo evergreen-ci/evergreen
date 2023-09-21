@@ -58,27 +58,87 @@ func (s *githubSuite) TestGithubShouldRetry() {
 			Host:   "www.example.com",
 		},
 	}
-	resp := &http.Response{
-		StatusCode: 200,
-		Header: http.Header{
+
+	s.Run("RetryTrue", func() {
+		resp := &http.Response{
+			StatusCode: 200,
+			Header: http.Header{
+				"X-Ratelimit-Limit":     []string{"10"},
+				"X-Ratelimit-Remaining": []string{"10"},
+			},
+		}
+
+		retryFn := githubShouldRetry("", retryConfig{retry: true})
+		s.False(retryFn(0, req, resp, nil))
+		s.True(retryFn(0, req, resp, &net.DNSError{IsTimeout: true}))
+		s.False(retryFn(0, req, resp, net.InvalidAddrError("wrong address")))
+
+		resp.StatusCode = http.StatusBadGateway
+		s.True(retryFn(0, req, resp, nil))
+
+		resp.StatusCode = http.StatusNotFound
+		s.False(retryFn(0, req, resp, nil))
+
+		resp.Header = http.Header{
 			"X-Ratelimit-Limit":     []string{"10"},
-			"X-Ratelimit-Remaining": []string{"10"},
-		},
-	}
+			"X-Ratelimit-Remaining": []string{"0"},
+		}
+		s.False(retryFn(0, req, resp, nil))
+	})
 
-	retryFn := githubShouldRetry("")
-	s.False(retryFn(0, req, resp, nil))
-	s.True(retryFn(0, req, resp, &net.DNSError{IsTimeout: true}))
-	s.False(retryFn(0, req, resp, net.InvalidAddrError("wrong address")))
+	s.Run("Retry404", func() {
+		resp := &http.Response{
+			StatusCode: 200,
+			Header: http.Header{
+				"X-Ratelimit-Limit":     []string{"10"},
+				"X-Ratelimit-Remaining": []string{"10"},
+			},
+		}
 
-	resp.StatusCode = http.StatusBadGateway
-	s.True(retryFn(0, req, resp, nil))
+		retryFn := githubShouldRetry("", retryConfig{retry404: true})
+		s.False(retryFn(0, req, resp, nil))
+		s.True(retryFn(0, req, resp, &net.DNSError{IsTimeout: true}))
+		s.False(retryFn(0, req, resp, net.InvalidAddrError("wrong address")))
 
-	resp.Header = http.Header{
-		"X-Ratelimit-Limit":     []string{"10"},
-		"X-Ratelimit-Remaining": []string{"0"},
-	}
-	s.False(retryFn(0, req, resp, nil))
+		resp.StatusCode = http.StatusBadGateway
+		s.True(retryFn(0, req, resp, nil))
+
+		resp.StatusCode = http.StatusNotFound
+		s.True(retryFn(0, req, resp, nil))
+
+		resp.Header = http.Header{
+			"X-Ratelimit-Limit":     []string{"10"},
+			"X-Ratelimit-Remaining": []string{"0"},
+		}
+		s.False(retryFn(0, req, resp, nil))
+	})
+
+	s.Run("RetryFalse", func() {
+		resp := &http.Response{
+			StatusCode: 200,
+			Header: http.Header{
+				"X-Ratelimit-Limit":     []string{"10"},
+				"X-Ratelimit-Remaining": []string{"10"},
+			},
+		}
+
+		retryFn := githubShouldRetry("", retryConfig{})
+		s.False(retryFn(0, req, resp, nil))
+		s.False(retryFn(0, req, resp, &net.DNSError{IsTimeout: true}))
+		s.False(retryFn(0, req, resp, net.InvalidAddrError("wrong address")))
+
+		resp.StatusCode = http.StatusBadGateway
+		s.False(retryFn(0, req, resp, nil))
+
+		resp.StatusCode = http.StatusNotFound
+		s.False(retryFn(0, req, resp, nil))
+
+		resp.Header = http.Header{
+			"X-Ratelimit-Limit":     []string{"10"},
+			"X-Ratelimit-Remaining": []string{"0"},
+		}
+		s.False(retryFn(0, req, resp, nil))
+	})
 }
 
 func (s *githubSuite) TestCheckGithubAPILimit() {
@@ -98,6 +158,20 @@ func (s *githubSuite) TestGetGithubCommitsUntil() {
 	githubCommits, _, err := GetGithubCommits(s.ctx, s.token, "deafgoat", "mci-test", "", until, 0)
 	s.NoError(err)
 	s.Len(githubCommits, 2)
+}
+
+func (s *githubSuite) TestGetTaggedCommitFromGithub() {
+	s.Run("AnnotatedTag", func() {
+		commit, err := GetTaggedCommitFromGithub(s.ctx, s.token, "evergreen-ci", "spruce", "refs/tags/v3.0.97")
+		s.NoError(err)
+		s.Equal("89549e0939ecf5fc59ddd288d860b8a150e6346e", commit)
+	})
+
+	s.Run("LightweightTag", func() {
+		commit, err := GetTaggedCommitFromGithub(s.ctx, s.token, "evergreen-ci", "evergreen", "refs/tags/v3")
+		s.NoError(err)
+		s.Equal("f0dd0c11df68b975c7dab3d7d3ee675d27119736", commit)
+	})
 }
 
 func (s *githubSuite) TestGetBranchEvent() {
@@ -226,6 +300,11 @@ func (s *githubSuite) TestGetGithubPullRequestDiff() {
 	s.Contains(diff, "diff --git a/cli/host.go b/cli/host.go")
 }
 
+func (s *githubSuite) TestGetBranchProtectionRules() {
+	_, err := GetEvergreenBranchProtectionRules(s.ctx, s.token, "evergreen-ci", "evergreen", "main")
+	s.NoError(err)
+}
+
 func TestVerifyGithubAPILimitHeader(t *testing.T) {
 	assert := assert.New(t)
 	header := http.Header{}
@@ -275,7 +354,7 @@ func TestValidatePR(t *testing.T) {
 
 	prBody, err := os.ReadFile(filepath.Join(testutil.GetDirectoryOfFile(), "..", "units", "testdata", "pull_request.json"))
 	assert.NoError(err)
-	assert.Len(prBody, 24745)
+	assert.Len(prBody, 24706)
 	webhookInterface, err := github.ParseWebHook("pull_request", prBody)
 	assert.NoError(err)
 	prEvent, ok := webhookInterface.(*github.PullRequestEvent)
@@ -309,4 +388,11 @@ func TestParseGithubErrorResponse(t *testing.T) {
 	assert.Equal(t, message, apiRequestErr.Message)
 	assert.Equal(t, http.StatusNotFound, apiRequestErr.StatusCode)
 	assert.Equal(t, url, apiRequestErr.DocumentationUrl)
+}
+
+func TestGetRulesWithEvergreenPrefix(t *testing.T) {
+	rules := getRulesWithEvergreenPrefix([]string{"evergreen", "evergreen/foo", "bar/baz"})
+	assert.Len(t, rules, 2)
+	assert.Contains(t, rules, "evergreen")
+	assert.Contains(t, rules, "evergreen/foo")
 }

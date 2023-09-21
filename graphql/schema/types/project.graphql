@@ -34,12 +34,14 @@ input MoveProjectInput {
 input ProjectAliasInput {
   id: String!
   alias: String!
+  description: String
   gitTag: String!
   remotePath: String!
   task: String!
   taskTags: [String!]!
   variant: String!
   variantTags: [String!]!
+  parameters: [ParameterInput!]
 }
 
 input TaskSyncOptionsInput {
@@ -59,6 +61,7 @@ input PeriodicBuildInput {
 
 input ExternalLinkInput {
   displayName: String!
+  requesters: [String!]!
   urlTemplate: String!
 }
 
@@ -66,13 +69,6 @@ input ParsleyFilterInput {
   expression: String!
   caseSensitive: Boolean!
   exactMatch: Boolean!
-}
-
-enum BannerTheme {
-  ANNOUNCEMENT
-  INFORMATION
-  WARNING
-  IMPORTANT
 }
 
 input ProjectBannerInput {
@@ -114,6 +110,7 @@ input TriggerAliasInput {
   project: String!
   status: String!
   taskRegex: String!
+  unscheduleDownstreamVersions: Boolean
 }
 
 input ContainerResourcesInput {
@@ -139,6 +136,7 @@ input TaskSpecifierInput {
 input CommitQueueParamsInput {
   enabled: Boolean
   mergeMethod: String
+  mergeQueue: MergeQueue
   message: String
 }
 
@@ -173,9 +171,22 @@ type GithubProjectConflicts {
   prTestingIdentifiers: [String!]
 }
 
+###### ENUMS ######
+enum BannerTheme {
+  ANNOUNCEMENT
+  INFORMATION
+  WARNING
+  IMPORTANT
+}
+
 enum ProjectHealthView {
-  PROJECT_HEALTH_VIEW_ALL
-  PROJECT_HEALTH_VIEW_FAILED
+  ALL
+  FAILED
+}
+
+enum MergeQueue {
+  EVERGREEN
+  GITHUB
 }
 
 """
@@ -234,6 +245,7 @@ type Project {
 type CommitQueueParams {
   enabled: Boolean
   mergeMethod: String!
+  mergeQueue: MergeQueue!
   message: String!
 }
 
@@ -249,6 +261,7 @@ type WorkstationConfig {
 
 type ExternalLink {
   displayName: String!
+  requesters: [String!]!
   urlTemplate: String!
 }
 

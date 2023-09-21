@@ -49,13 +49,16 @@ tasks:
 Notice that tasks contain:
 
 1.  A name
-2.  A set of dependencies on other tasks
+2.  A set of dependencies on other tasks. `depends_on` can be defined at
+    multiple levels of the YAML. If there are conflicting `depends_on`
+    definitions at different levels, the order of priority is defined
+    [here](#dependency-override-hierarchy).
 3.  A distro or list of distros to run on (documented more under
     ["Build
     Variants"](#build-variants)).
-    If run_on is set at the task level, it takes precedent over the
-    default set for the buildvariant (unless run_on is explicitly
-    defined for this task under a specific build variant).
+    `run_on` can be defined at multiple levels of the YAML. If there are
+    conflicting `run_on` definitions at different levels, the order of priority
+    is defined [here](#task-fields-override-hierarchy).
 4.  A list of commands and/or functions that tell Evergreen how to run
     it.
 
@@ -252,7 +255,7 @@ Fields:
 -   `name`: an identification string for the variant
 -   `display_name`: how the variant is displayed in the Evergreen UI
 -   `run_on`: a list of acceptable distros to run tasks for that variant
-    a. The first distro in the list is the primary distro. The others
+    The first distro in the list is the primary distro. The others
     are secondary distros. Each distro has a primary queue, a queue of
     all tasks that have specified it as their primary distro; and a
     secondary queue, a queue of tasks that have specified it as a
@@ -260,20 +263,31 @@ Fields:
     process that queue and ignore the secondary queue. If the primary
     queue is empty, the distro will process the secondary queue. If both
     queues are empty, idle hosts will eventually be terminated.
+    `run_on` can be defined at multiple levels of the YAML. If there are
+    conflicting `run_on` definitions at different levels, the order of priority
+    is defined [here](#task-fields-override-hierarchy).
+-   `depends_on`: a list of dependencies on other tasks. All tasks in the build
+    variant will depend on these tasks. `depends_on` can be defined under a
+    task, under an entire build variant, or for a specific task under a specific
+    build variant. If there are conflicting `depends_on` definitions at
+    different levels, the order of priority is defined
+    [here](#dependency-override-hierarchy).
 -   `expansions`: a set of key-value expansion pairs
--   `tasks`: a list of tasks to run, using `name`. This can also include
-    batchtime/cron/activate (defined below), which will overwrite all
-    other defaults. We can also [define when a task will
-    run](#limiting-when-a-task-will-run)
-    under this list or [add dependencies](#task-dependencies), also demonstrated in the example above.
--   `batchtime`: interval of time in minutes that Evergreen should wait
-    before activating this variant. The default is set on the project
-    settings page. This can also be set for individual tasks. Only applies to tasks from mainline commits.
+-   `tasks`: a list of tasks to run, referenced either by task name or by tags.
+    Tasks listed here can also include other task-level fields, such as
+    `batchtime`, `cron`, `activate`, `depends_on`, and `run_on`. We can also
+    [define when a task will run](#limiting-when-a-task-will-run). If there are
+    conflicting settings definitions at different levels, the order of priority
+    is defined [here](#task-fields-override-hierarchy).
 -   `activate`: by default, we'll activate if the whole version is
-    being activated or if batchtime specifies it should be activated. If
+    being activated or if `batchtime` specifies it should be activated. If
     we instead want to activate immediately, then set activate to true.
     If this should only activate when manually scheduled or by
     stepback/dependencies, set activate to false.
+-   `batchtime`: interval of time in minutes that Evergreen should wait
+    before activating this variant. The default is set on the project
+    settings page. This can also be set for individual tasks. Only applies to
+    tasks from mainline commits.
 -   `cron`: define with [cron syntax](https://crontab.guru/) (i.e. Min \| Hour \| DayOfMonth \|
     Month \| DayOfWeekOptional) when (in UTC) a task or variant should be activated
     (cannot be combined with batchtime). This also accepts descriptors
@@ -347,7 +361,7 @@ We will maintain the following merge rules:
     yaml. Examples: pre, post, timeout, early termination.
 -   Non-list values cannot be defined for more than one yaml. Examples:
     stepback, batchtime, pre error fails task, OOM tracker, display
-    name, command type, and callback/exec timeout.
+    name, command type, and exec timeout.
 -   It is illegal to define a build variant multiple times except to add
     additional tasks to it. That is, a build variant should only be
     defined once, but other files can include this build variant's
@@ -421,22 +435,17 @@ Fields:
 -   `auto_update`: if true, the latest revision for the module will be
     dynamically retrieved for each Github PR and CLI patch submission
 
-### Pre, Post, and Timeout
+### Pre and Post
 
-All projects can have a `pre` and `post` field which define a list of
-command to run at the start and end of every task that isn't in a task
-group. For task groups, setup_task and teardown_task will run instead.
-These are incredibly useful as a place for results commands or for
-cleanup and setup tasks.
-
-**NOTE:** failures in `pre` and `post` commands will be ignored by
-default, so only use commands you know will succeed. See
-`pre_error_fails_task` and `post_error_fails_task` below. By default,
-commands in pre and post will time out after 15 minutes. You can
-override this timeout by setting `callback_timeout_secs` at the root
-level of the yaml config.
+All projects can have a `pre` and `post` field which define a list of commands
+to run at the start and end of every task that isn't in a task group. For task
+groups, `setup_task` and `teardown_task` will run instead of `pre` and `post`
+(see [task groups](#task-groups) for more information). These are incredibly
+useful as a place for results commands or for task setup and cleanup.
 
 ``` yaml
+pre_error_fails_task: true
+pre_timeout_secs: 1800 # 30 minutes
 pre:
   - command: shell.exec
     params:
@@ -444,17 +453,37 @@ pre:
       script: |
         ## do setup
 
+post_error_fails_task: true
+post_timeout_secs: 1800 # 30 minutes
 post:
   - command: attach.results
     params:
       file_location: src/report.json
 ```
 
-Additionally, project configs offer a hook for running command when a
-task times out, allowing you to automatically run a debug script when
-something is stuck.
+Parameters:
+
+- `pre`: commands to run prior to the task. Note that `pre` does not run for
+  task group tasks.
+- `pre_error_fails_task`: if true, task will fail if a command in `pre` fails.
+  Defaults to false.
+- `pre_timeout_secs`: set a timeout for `pre`. Defaults to 2 hours. Hitting this
+  timeout will stop the `pre` commands but will not cause the task to fail
+  unless `pre_error_fails_task` is true.
+- `post`: commands to run after the task. Note that `post` does not run for task
+  group tasks.
+- `post_error_fails_task`: if true, task will fail if a command in `post` fails.
+- `post_timeout_secs`: set a timeout for `post`. Defaults to 30 minutes. Hitting
+  this timeout will stop the `post` commands but will not cause the task to fail
+  unless `post_error_fails_task` is true.
+
+### Timeout Handler
+
+Project configs offer a hook for running command when a task times out, allowing
+you to automatically run a debug script when something is stuck.
 
 ``` yaml
+callback_timeout_secs: 60
 timeout:
   - command: shell.exec
     params:
@@ -464,22 +493,43 @@ timeout:
         python buildscripts/hang_analyzer.py
 ```
 
+Parameters:
+
+- `timeout`: commands to run when the task hits a timeout. The timeout commands
+  will only run if the timeout occurs in `pre`, `setup_group`, `setup_task`, or
+  the task commands. Furthermore, for `pre`, `setup_group`, and `setup_task`,
+  because they do not fail the task by default, they must be explicitly set to
+  fail for the timeout to trigger. For example, if a command in `pre`
+  hits the default 2 hour timeout for `pre` but `pre_error_fails_task` is not
+  set to true, then the timeout block will not trigger.
+- `callback_timeout_secs`: set a timeout for the `timeout` block. Defaults to
+  15 minutes.
+
+**Exec timeout: exec_timeout_secs**
 You can customize the points at which the "timeout" conditions are
 triggered. To cause a task to stop (and fail) if it doesn't complete
 within an allotted time, set the key `exec_timeout_secs` on the project
-or task to the maximum allowed length of execution time. This timeout
-defaults to 6 hours. `exec_timeout_secs` can only be set on the project
-or on a task. It cannot be set on functions.
+or task to the maximum allowed length of execution time. Exec timeout only
+applies to commands that run in `pre`, `setup_group`, `setup_task`, and the main
+task commands; it does not apply to the `post`, `teardown_task`, and
+`teardown_group` blocks. This timeout defaults to 6 hours. `exec_timeout_secs`
+can only be set on the project or on a task. It cannot be set on functions.
 
-You can also set exec_timeout_secs using [timeout.update](Project-Commands.md#timeoutupdate). 
+You can also set `exec_timeout_secs` using [timeout.update](Project-Commands.md#timeoutupdate).
 
-You may also force a specific command to trigger a failure if it does
-not appear to generate any output on `stdout`/`stderr` for more than a
-certain threshold, using the `timeout_secs` setting on the command. As
-long as the command does not appear to be idle it will be allowed to
-continue, but if it does not write any output for longer than
-`timeout_secs` then the timeout handler will be triggered. This timeout
-defaults to 2 hours.
+**Idle timeout: timeout_secs**
+You may also force a specific command to trigger a failure if it does not appear
+to generate any output on `stdout`/`stderr` for more than a certain threshold,
+using the `timeout_secs` setting on the command. As long as the command produces
+output to `stdout`/`stderr`, it will be allowed to continue, but if it does not
+write any output for longer than `timeout_secs` then the command will time out.
+If this timeout is hit, the task will stop (and fail). Idle timeout only applies
+to commands that run in `pre`, `setup_group`, `setup_task` and the main task
+commands; it does not apply to the `post`, `teardown_task`, and `teardown_group`
+blocks. This timeout defaults to 2 hours.
+
+You can also overwrite the default `timeout_secs` for all later commands using
+[timeout.update](Project-Commands.md#timeoutupdate).
 
 Example:
 
@@ -503,17 +553,8 @@ tasks:
           sleep 1000
 ```
 
-By default, a command failing during the `pre` step will not cause the
-entire task to fail. If you want to enforce that failures during `pre`
-cause the task to fail, set the field `pre_error_fails_task` to true.
-Likewise, setting the field `post_error_fails_task` to true will enforce
-that failures in `post` cause the task to fail.
-
-``` yaml
+```yaml
 exec_timeout_secs: 60
-pre_error_fails_task: true
-pre:
-  - ...
 ```
 
 ### Limiting When a Task Will Run
@@ -540,28 +581,49 @@ To cause a task to not run at all, set `disable: true`.
     dependent task will simply exclude the disabled task from its
     dependencies.
 
-Can also set batchtime or cron on tasks or build variants, detailed
+Can also set activate, batchtime or cron on tasks or build variants, detailed
 [here](#build-variants).
 
 If there are conflicting settings defined at different levels, the order of
-priority (from highest to lowest) is:
+priority is defined [here](#task-fields-override-hierarchy).
 
-- Tasks listed under a build variant.
-- The task definition.
-- The build variant definition.
+#### Allowed Requesters
 
-For example, if we have this configuration:
+If the above settings do not provide the particular combination of conditions
+when you want a task to run, you can specify `allowed_requesters` to enumerate
+the list of conditions when a task is allowed to run. For example, if you wish
+for a task to only run for manual patches and git tag versions, you can specify
+it like this:
+
 ```yaml
-buildvariants:
-- name: some-build-variant
-  patchable: false
-  tasks:
-    - name: unpatchable-task
-    - name: patchable-task
-      patchable: true
+tasks:
+- name: only-run-for-manual-patches-and-git-tag-versions
+  allowed_requesters: ["patch", "github_tag"]
 ```
-In this case, `unpatchable-task` cannot run in patches, but `patchable-task`
-can.
+
+The valid requester values are:
+- `patch`: manual patches.
+- `github_pr`: GitHub PR patches.
+- `github_tag`: git tag versions.
+- `commit`: mainline commits.
+- `trigger`: downstream trigger versions.
+- `ad_hoc`: periodic build versions.
+- `commit_queue`: Evergreen's commit queue.
+- `github_merge_queue`: GitHub's merge queue.
+
+By default, if no `allowed_requesters` are explicitly specified, then a task can
+run for any requester. If you specify an empty `allowed_requesters` list (i.e.
+`allowed_requesters: []`), this is also treated the same as the default.
+`allowed_requesters` is not compatible with `patchable`, `patch_only`,
+`allow_for_git_tag`, or `git_tag_only` (if combined, the
+`allowed_requesters` will always take higher precedence).
+
+If `allowed_requesters` is specified and a conflicting project setting is also
+specified, `allowed_requesters` will take higher precedence. For example, if the
+project settings configure a [GitHub PR patch
+definition](Project-and-Distro-Settings.md#github-pull-request-testing) to run
+tasks A and B but task A has `allowed_requesters: ["commit"]`, then GitHub PR
+patches will only run task B.
 
 ### Expansions
 
@@ -663,7 +725,7 @@ Every task has some expansions available by default:
     projects this is the same as `${project}`. If you aren't sure which
     you are, you can check using this API route:
     `https://evergreen.mongodb.com/rest/v2/<project_id>`)
--   `${branch_name}` is the name of the branch being tested by the
+-   `${branch_name}` is the name of the branch tracked by the
     project
 -   `${distro_id}` is name of the distro the task is running on
 -   `${created_at}` is the time the version was created
@@ -684,7 +746,7 @@ Every task has some expansions available by default:
     queue task
 -   `${commit_message}` is the commit message if this is a commit queue
     task
--   `${requester}` is what triggered the task: patch, `github_pr`,
+-   `${requester}` is what triggered the task: `patch`, `github_pr`,
     `github_tag`, `commit`, `trigger`, `commit_queue`, or `ad_hoc`
 -   `${otel_collector_endpoint}` is the gRPC endpoint for Evergreen's
     OTel collector. Tasks can send traces to this endpoint.
@@ -878,9 +940,14 @@ in the case of a failing task. This can be set or unset at the
 top-level, at the build variant level, and for individual tasks (in the task definition or for the
 task within a specific build variant).
 
-### OOM Tracker
+### Out of memory (OOM) Tracker
 
 This is set to true at the top level if you'd like to enable the OOM Tracker for your project.
+
+If there is an OOM kill, immediately before the post-task starts, there will be
+a task log message saying whether it found any OOM killed processes, with their
+PIDs. A message with PIDs will also be displayed in the metadata panel in the
+UI.
 
 ### Matrix Variant Definition
 
@@ -1043,14 +1110,14 @@ axes:
  - id: big
    variables:
      distro_size: big
--id: os
- values:
- - id: win
-   run_on: "windows_${distro_size}"
+- id: os
+  values:
+  - id: win
+    run_on: "windows_${distro_size}"
 
- - id: linux
-   run_on: "linux_${distro_size}"
-   variables:
+  - id: linux
+    run_on: "linux_${distro_size}"
+    variables:
 ```
 
 Where the run_on fields will be evaluated when the matrix is parsed.
@@ -1254,23 +1321,29 @@ task_groups:
     setup_group:
       - command: shell.exec
         params:
-        script: |
-          "echo setup_group"
+          script: echo setup_group
+    teardown_group_timeout_secs: 60
     teardown_group:
       - command: shell.exec
         params:
-        script:
-          "echo teardown_group"
+          script: echo teardown_group
+    setup_task_can_fail_task: true
+    setup_task_timeout_secs: 1200
     setup_task:
       - command: shell.exec
         params:
-        script: |
-          "echo setup_task"
+          script: echo setup_task
+    teardown_task_can_fail_task: true
+    teardown_task_timeout_secs: 1200
     teardown_task:
       - command: shell.exec
         params:
-        script: |
-          "echo teardown_task"
+          script: echo teardown_task
+    callback_timeout_secs: 60
+    timeout:
+      - command: shell.exec
+      - params:
+          script: echo timeout
     tasks:
       - example_task_1
       - example_task_2
@@ -1287,28 +1360,47 @@ buildvariants:
 
 Parameters:
 
--   `setup_group`: commands to run prior to running this task group.
-    Note that pre does not run for task group tasks.
--   `teardown_group`: commands to run after running this task group.
-    Note that post does not run for task group tasks.
--   `setup_task`: commands to run prior to running each task. Note that
-    pre does not run for task group tasks.
--   `teardown_task`: commands to run after running each task. Note that
-    post does not run for task group tasks.
+-   `setup_group`: commands to run prior to running this task group. These
+    commands run once per host that's running tasks in the task group. Note that
+    `pre` does not run for task group tasks.
+-   `setup_group_can_fail_task`: if true, task will fail if a command in
+    `setup_group` fails. Defaults to false.
+-   `setup_group_timeout_secs`: set a timeout for the `setup_group`. Defaults to
+    2 hours. Hitting this timeout will stop the `setup_group` commands but will
+    not cause the task to fail unless `setup_group_can_fail_task` is true.
+-   `teardown_group`: commands to run after running this task group. These
+    commands run once per host that's running the task group tasks. Note that
+    `post` does not run for task group tasks.
+-   `teardown_group_timeout_secs`: set a timeout for the `teardown_group`.
+    Defaults to 15 minutes. Hitting this timeout will stop the `teardown_task`
+    commands but will not cause the task to fail.
+-   `setup_task`: commands to run prior to running each task in the task group.
+    Note that `pre` does not run for task group tasks.
+-   `setup_task_can_fail_task`: if true, task will fail if a command in
+    `setup_task` fails. Defaults to false.
+-   `setup_task_timeout_secs`: set a timeout for the `setup_task`. Defaults to 2
+    hours. Hitting this timeout will stop the `setup_task` commands but will not
+    cause the task to fail unless `setup_group_can_fail_task` is true.
+-   `teardown_task`: commands to run after running each task in the task group.
+    Note that `post` does not run for task group tasks.
+-   `teardown_task_can_fail_task`: if true, task will fail if a command in
+    `teardown_task` fails. Defaults to false.
+-   `teardown_task_timeout_secs`: set a timeout for the `teardown_task`.
+    Defaults to 30 minutes. Hitting this timeout will stop the `teardown_task`
+    commands but will not cause the task to fail unless
+    `teardown_task_can_fail_task` is true.
 -   `max_hosts`: number of hosts across which to distribute the tasks in
     this group. This defaults to 1. There will be a validation warning
     if max hosts is less than 1 or greater than the number of tasks in
     task group. When max hosts is 1, this is a special case where the tasks
     will run serially on a single host. If any task fails, the task group
     will stop, so the remaining tasks after the failed one will not run.
--   `timeout`: timeout handler which will be called instead of the
-    top-level timeout handler. If it is not present, the top-level
-    timeout handler will run if a top-level timeout handler exists.
--   `setup_group_can_fail_task`: if true, task will fail if setup group
-    fails. Defaults to false.
--   `setup_group_timeout_secs`: override default timeout for setup
-    group. (This only fails task if `setup_group_can_fail_task` is also
-    set.)
+-   `timeout`: timeout handler which will be called instead of the top-level
+    timeout handler. If it is not present, the top-level timeout handler will
+    run if a top-level timeout handler exists. See [timeout
+    handler](#timeout-handler).
+-   `callback_timeout_secs`: set a timeout for the `timeout` block. Defaults to
+    15 minutes.
 -   `share_processes`: by default, processes and Docker state changes
     (e.g. containers, images, volumes) are cleaned up between each
     task's execution. If this is set to true, cleanup will be deferred
@@ -1389,6 +1481,20 @@ supported as a space-separated list. For example,
     variant: "A B C D"
 ```
 
+[Task/variant tags](#task-and-variant-tags) 
+can also be used to define dependencies.
+
+``` yaml
+- name: push
+  depends_on:
+  - name: test
+    variant: ".favorite"
+
+- name: push
+  depends_on:
+  - "!.favorite !.other" ## runs all tasks that don't match these tags
+```
+
 ### Ignoring Changes to Certain Files
 
 Some commits to your repository don't need to be tested. The obvious
@@ -1430,8 +1536,6 @@ override this behavior at the project or command level by log type
     available on the task page. This option is not available to system
     logs for security reasons. The `log_directory` parameter may be
     specified to override the default storage directory for log files.
--   `logkeeper` - Output is sent to a Logkeeper instance. Links to the
-    logs will be available on the task page.
 -   `splunk` - Output is sent to Splunk. No links will be provided on
     the task page, but the logs can be searched using
     `metadata.context.task_id=<task_id>` as a Splunk query. Choosing
@@ -1515,41 +1619,17 @@ based on its exit status, and then subsequent commands with different
 types can exit non-zero conditionally based on the contents of that
 file.
 
-### Set Task Status within Task
-
-The following endpoint was created to give tasks the ability to define
-their task end status, rather than relying on hacky YAML tricks to use
-different failure types for the same command. This will not kill the
-current command, but will set the task status when the current command
-is complete (or when the task is complete, if `should_continue` is set).
-
-    POST localhost:2285/task_status
-
-| Name            | Type    | Description                                                                                                                                          |
-|-----------------|---------|------------------------------------------------------------------------------------------------------------------------------------------------------|
-| status          | string  | Required. The overall task status. This can be "success" or "failed". If this is configured incorrectly, the task will system fail.                  |
-| type            | string  | The failure type. This can be "setup", "system", or "test" (see above section for corresponding colors). Will default to the command's failure type. |
-| desc            | string  | Provide details on the task failure. This is limited to 500 characters. Will default to the command's display name.                                  |
-| should_continue | boolean | Defaults to false. If set, will finish running the task before setting the status.                                                                   |
-
-Example in a command:
-
-``` yaml
-- command: shell.exec
-     params:
-        shell: bash
-        script: |
-          curl -d '{"status":"failed", "type":"setup", "desc":"this should be set"}' -H "Content-Type: application/json" -X POST localhost:2285/task_status
-```
-
 ### Task Fields Override Hierarchy
 
-The task's specific fields will be taken into priority in the following
-order:
+Some task fields can be specified at multiple levels in the YAML.
 
--   The fields in the build variant definition
--   The fields in the task definition
--   The fields in the variant task definition
+If a field is defined at multiple levels and they conflict, the one with the
+highest priority will overwrite the others. The task's specific fields will be
+taken into priority in the following order (from highest to lowest):
+
+- Tasks listed under a build variant.
+- The task definition.
+- The build variant definition.
 
 Example:
 
@@ -1565,3 +1645,13 @@ tasks:
 - name: task_definiton
   run_on: mid_priority
 ```
+
+#### Dependency Override Hierarchy
+Task fields all follow the same priority rules, except for `depends_on`, for
+which a build variant's `depends_on` overrides the task definition's
+`depends_on`. `depends_on` will be taken into priority in the following order
+(from highest to lowest):
+
+- Tasks listed under a build variant.
+- The build variant definition.
+- The task definition.

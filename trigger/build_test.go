@@ -1,6 +1,7 @@
 package trigger
 
 import (
+	"context"
 	"testing"
 	"time"
 
@@ -18,10 +19,12 @@ func TestBuildTriggers(t *testing.T) {
 }
 
 type buildSuite struct {
-	event event.EventLogEntry
-	data  *event.BuildEventData
-	build build.Build
-	subs  []event.Subscription
+	event  event.EventLogEntry
+	data   *event.BuildEventData
+	build  build.Build
+	subs   []event.Subscription
+	ctx    context.Context
+	cancel context.CancelFunc
 
 	t *buildTriggers
 
@@ -33,6 +36,8 @@ func (s *buildSuite) SetupSuite() {
 }
 
 func (s *buildSuite) SetupTest() {
+	s.ctx, s.cancel = context.WithCancel(context.Background())
+
 	s.NoError(db.ClearCollections(event.EventCollection, build.Collection, event.SubscriptionsCollection))
 
 	s.build = build.Build{
@@ -114,7 +119,7 @@ func (s *buildSuite) SetupTest() {
 	ui := &evergreen.UIConfig{
 		Url: "https://evergreen.mongodb.com",
 	}
-	s.NoError(ui.Set())
+	s.NoError(ui.Set(s.ctx))
 
 	s.t = makeBuildTriggers().(*buildTriggers)
 	s.t.event = &s.event
@@ -123,8 +128,12 @@ func (s *buildSuite) SetupTest() {
 	s.t.uiConfig = *ui
 }
 
+func (s *buildSuite) TearDownTest() {
+	s.cancel()
+}
+
 func (s *buildSuite) TestAllTriggers() {
-	n, err := NotificationsFromEvent(&s.event)
+	n, err := NotificationsFromEvent(s.ctx, &s.event)
 	s.NoError(err)
 	s.Len(n, 0)
 
@@ -132,7 +141,7 @@ func (s *buildSuite) TestAllTriggers() {
 	s.data.Status = evergreen.BuildSucceeded
 	s.NoError(db.Update(build.Collection, bson.M{"_id": s.build.Id}, &s.build))
 
-	n, err = NotificationsFromEvent(&s.event)
+	n, err = NotificationsFromEvent(s.ctx, &s.event)
 	s.NoError(err)
 	s.Len(n, 2)
 
@@ -140,7 +149,7 @@ func (s *buildSuite) TestAllTriggers() {
 	s.data.Status = evergreen.BuildFailed
 	s.NoError(db.Update(build.Collection, bson.M{"_id": s.build.Id}, &s.build))
 
-	n, err = NotificationsFromEvent(&s.event)
+	n, err = NotificationsFromEvent(s.ctx, &s.event)
 	s.NoError(err)
 	s.Len(n, 2)
 
@@ -148,7 +157,7 @@ func (s *buildSuite) TestAllTriggers() {
 	s.data.Status = evergreen.BuildCreated
 	s.NoError(db.Update(build.Collection, bson.M{"_id": s.build.Id}, &s.build))
 
-	n, err = NotificationsFromEvent(&s.event)
+	n, err = NotificationsFromEvent(s.ctx, &s.event)
 	s.NoError(err)
 	s.Len(n, 0)
 
@@ -156,7 +165,7 @@ func (s *buildSuite) TestAllTriggers() {
 	s.data.GithubCheckStatus = evergreen.BuildFailed
 	s.NoError(db.Update(build.Collection, bson.M{"_id": s.build.Id}, &s.build))
 
-	n, err = NotificationsFromEvent(&s.event)
+	n, err = NotificationsFromEvent(s.ctx, &s.event)
 	s.NoError(err)
 	s.Len(n, 1)
 

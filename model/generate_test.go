@@ -786,14 +786,14 @@ func (s *GenerateSuite) TestSaveNewBuildsAndTasks() {
 	s.Require().NoError(env.Configure(ctx))
 
 	genTask := &task.Task{
-		Id:                  "task_that_called_generate_task",
-		Project:             "proj",
-		Version:             "version_that_called_generate_task",
-		Priority:            10,
-		BuildId:             "sample_build",
-		Activated:           true,
-		DisplayName:         "task_that_called_generate_task",
-		IsEssentialToFinish: true,
+		Id:                   "task_that_called_generate_task",
+		Project:              "proj",
+		Version:              "version_that_called_generate_task",
+		Priority:             10,
+		BuildId:              "sample_build",
+		Activated:            true,
+		DisplayName:          "task_that_called_generate_task",
+		IsEssentialToSucceed: true,
 	}
 	s.NoError(genTask.Insert())
 	prevBatchTimeVersion := Version{
@@ -853,8 +853,9 @@ func (s *GenerateSuite) TestSaveNewBuildsAndTasks() {
 
 	p, pp, err := FindAndTranslateProjectForVersion(ctx, env.Settings(), v)
 	s.Require().NoError(err)
-	p, pp, v, err = g.NewVersion(p, pp, v)
+	p, pp, v, err = g.NewVersion(context.Background(), p, pp, v)
 	s.Require().NoError(err)
+	g.GetNewTasksAndActivationInfo(ctx, v, p)
 	s.NoError(g.Save(s.ctx, s.env.Settings(), p, pp, v))
 
 	// verify we stopped saving versions
@@ -881,22 +882,32 @@ func (s *GenerateSuite) TestSaveNewBuildsAndTasks() {
 	s.Require().NotNil(pp)
 	s.Len(pp.BuildVariants, 3)
 	s.Len(pp.Tasks, 6)
+
 	builds, err := build.FindBuildsByVersions([]string{v.Id})
 	s.NoError(err)
+	s.Len(builds, 2)
+	for _, b := range builds {
+		s.Equal(b.Id == sampleBuild.Id, b.HasUnfinishedEssentialTask, "existing build that has essential tasks added should be marked")
+	}
+
 	tasks, err := task.FindAll(db.Query(bson.M{task.VersionKey: v.Id})) // with display
 	s.NoError(err)
-	s.Len(builds, 2)
 	s.Len(tasks, 7)
+
+	dbExistingBV, err := build.FindOneId(sampleBuild.Id)
+	s.NoError(err)
+	s.Require().NotZero(dbExistingBV)
+
 	tasksInExistingBV, err := task.Find(task.ByBuildId(sampleBuild.Id)) // without display
 	s.NoError(err)
 	s.Len(tasksInExistingBV, 3)
 	for _, tsk := range tasksInExistingBV {
 		if tsk.DisplayName == "say-bye" {
 			s.False(tsk.Activated)
-			s.False(tsk.IsEssentialToFinish)
+			s.False(tsk.IsEssentialToSucceed)
 		} else {
 			s.True(tsk.Activated)
-			s.True(tsk.IsEssentialToFinish)
+			s.True(tsk.IsEssentialToSucceed)
 		}
 	}
 
@@ -953,16 +964,17 @@ func (s *GenerateSuite) TestSaveWithAlreadyGeneratedTasksAndVariants() {
 
 	g := partiallyGeneratedProject
 	g.Task = generatorTask
-	p, pp, v, err = g.NewVersion(p, pp, v)
+	p, pp, v, err = g.NewVersion(context.Background(), p, pp, v)
 	s.NoError(err)
 	pp.UpdatedByGenerators = []string{generatorTask.Id}
 	s.NoError(ParserProjectUpsertOne(ctx, s.env.Settings(), v.ProjectStorageMethod, pp))
 
 	// Shouldn't error trying to add the same generated project.
-	p, pp, v, err = g.NewVersion(p, pp, v)
+	p, pp, v, err = g.NewVersion(context.Background(), p, pp, v)
 	s.NoError(err)
 	s.Len(pp.UpdatedByGenerators, 1) // Not modified again.
 
+	g.GetNewTasksAndActivationInfo(ctx, v, p)
 	s.NoError(g.Save(s.ctx, s.env.Settings(), p, pp, v))
 
 	tasks := []task.Task{}
@@ -1035,8 +1047,9 @@ func (s *GenerateSuite) TestSaveNewTasksWithDependencies() {
 	g.Task = &tasksThatExist[0]
 	p, pp, err := FindAndTranslateProjectForVersion(s.ctx, s.env.Settings(), v)
 	s.Require().NoError(err)
-	p, pp, v, err = g.NewVersion(p, pp, v)
+	p, pp, v, err = g.NewVersion(context.Background(), p, pp, v)
 	s.NoError(err)
+	g.GetNewTasksAndActivationInfo(s.ctx, v, p)
 	s.NoError(g.Save(s.ctx, s.env.Settings(), p, pp, v))
 
 	v, err = VersionFindOneId(v.Id)
@@ -1142,8 +1155,9 @@ buildvariants:
 
 	p, pp, err := FindAndTranslateProjectForVersion(s.ctx, s.env.Settings(), v)
 	s.Require().NoError(err)
-	p, pp, v, err = g.NewVersion(p, pp, v)
+	p, pp, v, err = g.NewVersion(context.Background(), p, pp, v)
 	s.NoError(err)
+	g.GetNewTasksAndActivationInfo(s.ctx, v, p)
 	s.NoError(g.Save(s.ctx, s.env.Settings(), p, pp, v))
 
 	// the depended-on task is created in the existing variant
@@ -1194,8 +1208,9 @@ func (s *GenerateSuite) TestSaveNewTaskWithExistingExecutionTask() {
 	g.Task = &taskThatExists
 	p, pp, err := FindAndTranslateProjectForVersion(s.ctx, s.env.Settings(), v)
 	s.Require().NoError(err)
-	p, pp, v, err = g.NewVersion(p, pp, v)
+	p, pp, v, err = g.NewVersion(context.Background(), p, pp, v)
 	s.Require().NoError(err)
+	g.GetNewTasksAndActivationInfo(s.ctx, v, p)
 	s.NoError(g.Save(s.ctx, s.env.Settings(), p, pp, v))
 
 	v, err = VersionFindOneId(v.Id)
@@ -1227,7 +1242,7 @@ func (s *GenerateSuite) TestSaveNewTaskWithExistingExecutionTask() {
 
 func (s *GenerateSuite) TestMergeGeneratedProjects() {
 	projects := []GeneratedProject{sampleGeneratedProjectWithAllMultiFields}
-	merged, err := MergeGeneratedProjects(projects)
+	merged, err := MergeGeneratedProjects(context.Background(), projects)
 	s.Require().NoError(err)
 
 	expectedBVs := map[string]struct {
@@ -1314,7 +1329,7 @@ func (s *GenerateSuite) TestMergeGeneratedProjects() {
 
 func (s *GenerateSuite) TestMergeGeneratedProjectsWithNoTasks() {
 	projects := []GeneratedProject{smallGeneratedProject}
-	merged, err := MergeGeneratedProjects(projects)
+	merged, err := MergeGeneratedProjects(context.Background(), projects)
 	s.Require().NoError(err)
 	s.Require().NotNil(merged)
 	s.Require().Len(merged.BuildVariants, 1)
@@ -1322,6 +1337,8 @@ func (s *GenerateSuite) TestMergeGeneratedProjectsWithNoTasks() {
 }
 
 func TestSimulateNewDependencyGraph(t *testing.T) {
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
 	defer func() {
 		assert.NoError(t, db.Clear(task.Collection))
 	}()
@@ -1358,7 +1375,8 @@ func TestSimulateNewDependencyGraph(t *testing.T) {
 				},
 			},
 		}
-		assert.Error(t, g.CheckForCycles(v, project, &ProjectRef{Identifier: "mci"}))
+		g.GetNewTasksAndActivationInfo(ctx, v, project)
+		assert.Error(t, g.CheckForCycles(context.Background(), v, project, &ProjectRef{Identifier: "mci"}))
 	})
 
 	t.Run("CreatesLoop", func(t *testing.T) {
@@ -1387,7 +1405,8 @@ func TestSimulateNewDependencyGraph(t *testing.T) {
 			},
 		}
 
-		assert.Error(t, g.CheckForCycles(v, project, &ProjectRef{Identifier: "mci"}))
+		g.GetNewTasksAndActivationInfo(ctx, v, project)
+		assert.Error(t, g.CheckForCycles(context.Background(), v, project, &ProjectRef{Identifier: "mci"}))
 	})
 
 	t.Run("NoCycles", func(t *testing.T) {
@@ -1420,7 +1439,8 @@ func TestSimulateNewDependencyGraph(t *testing.T) {
 				},
 			},
 		}
-		assert.NoError(t, g.CheckForCycles(v, project, &ProjectRef{Identifier: "mci"}))
+		g.GetNewTasksAndActivationInfo(ctx, v, project)
+		assert.NoError(t, g.CheckForCycles(context.Background(), v, project, &ProjectRef{Identifier: "mci"}))
 	})
 
 	t.Run("InactiveBuild", func(t *testing.T) {
@@ -1454,7 +1474,8 @@ func TestSimulateNewDependencyGraph(t *testing.T) {
 				},
 			},
 		}
-		assert.NoError(t, g.CheckForCycles(v, project, &ProjectRef{Identifier: "mci"}))
+		g.GetNewTasksAndActivationInfo(ctx, v, project)
+		assert.NoError(t, g.CheckForCycles(context.Background(), v, project, &ProjectRef{Identifier: "mci"}))
 	})
 }
 
@@ -1474,7 +1495,7 @@ func TestFilterInactiveTasks(t *testing.T) {
 			Task: &task.Task{},
 		}
 
-		tasks, err := g.filterInactiveTasks(TVPairSet{{TaskName: "generated", Variant: "bv0"}}, v, &Project{})
+		tasks, err := g.filterInactiveTasks(context.Background(), TVPairSet{{TaskName: "generated", Variant: "bv0"}}, v, &Project{})
 		assert.NoError(t, err)
 		assert.Len(t, tasks, 1)
 	})
@@ -1493,7 +1514,7 @@ func TestFilterInactiveTasks(t *testing.T) {
 			Task: &task.Task{},
 		}
 
-		tasks, err := g.filterInactiveTasks(TVPairSet{{TaskName: "generated", Variant: "bv0"}}, v, &Project{})
+		tasks, err := g.filterInactiveTasks(context.Background(), TVPairSet{{TaskName: "generated", Variant: "bv0"}}, v, &Project{})
 		assert.NoError(t, err)
 		assert.Empty(t, tasks)
 	})
@@ -1525,7 +1546,7 @@ func TestFilterInactiveTasks(t *testing.T) {
 			},
 		}
 
-		tasks, err := g.filterInactiveTasks(TVPairSet{{TaskName: "generated", Variant: "bv0"}}, v, p)
+		tasks, err := g.filterInactiveTasks(context.Background(), TVPairSet{{TaskName: "generated", Variant: "bv0"}}, v, p)
 		assert.NoError(t, err)
 		assert.Len(t, tasks, 1)
 	})
@@ -1557,7 +1578,7 @@ func TestFilterInactiveTasks(t *testing.T) {
 			},
 		}
 
-		tasks, err := g.filterInactiveTasks(TVPairSet{{TaskName: "generated", Variant: "bv0"}}, v, p)
+		tasks, err := g.filterInactiveTasks(context.Background(), TVPairSet{{TaskName: "generated", Variant: "bv0"}}, v, p)
 		assert.NoError(t, err)
 		assert.Empty(t, tasks)
 	})
@@ -1578,7 +1599,7 @@ func TestFilterInactiveTasks(t *testing.T) {
 			Task: &task.Task{},
 		}
 
-		tasks, err := g.filterInactiveTasks(TVPairSet{{TaskName: "generated", Variant: "bv0"}}, v, &Project{})
+		tasks, err := g.filterInactiveTasks(context.Background(), TVPairSet{{TaskName: "generated", Variant: "bv0"}}, v, &Project{})
 		assert.NoError(t, err)
 		assert.Empty(t, tasks)
 	})
@@ -1596,7 +1617,7 @@ func TestAddDependencies(t *testing.T) {
 	}
 
 	g := GeneratedProject{Task: &task.Task{Id: "generator"}}
-	assert.NoError(t, g.addDependencies([]string{"t3"}))
+	assert.NoError(t, g.addDependencies(context.Background(), []string{"t3"}))
 
 	t1, err := task.FindOneId("t1")
 	assert.NoError(t, err)

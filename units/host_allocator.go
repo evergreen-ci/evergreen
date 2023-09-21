@@ -19,10 +19,13 @@ import (
 	"github.com/mongodb/grip/message"
 	"github.com/mongodb/grip/sometimes"
 	"github.com/pkg/errors"
+	"go.opentelemetry.io/otel/attribute"
+	"go.opentelemetry.io/otel/trace"
 )
 
 const (
-	hostAllocatorJobName = "host-allocator"
+	hostAllocatorJobName         = "host-allocator"
+	hostAllocatorAttributePrefix = "evergreen.host_allocator"
 )
 
 func init() {
@@ -68,13 +71,13 @@ func (j *hostAllocatorJob) Run(ctx context.Context) {
 		j.env = evergreen.GetEnvironment()
 	}
 
-	config, err := evergreen.GetConfig()
+	config, err := evergreen.GetConfig(ctx)
 	if err != nil {
 		j.AddError(errors.Wrap(err, "getting admin settings"))
 		return
 	}
 
-	flags, err := evergreen.GetServiceFlags()
+	flags, err := evergreen.GetServiceFlags(ctx)
 	if err != nil {
 		j.AddError(errors.Wrapf(err, "getting service flags"))
 		return
@@ -88,7 +91,7 @@ func (j *hostAllocatorJob) Run(ctx context.Context) {
 		return
 	}
 
-	distro, err := distro.FindByIdWithDefaultSettings(j.DistroID)
+	distro, err := distro.FindByIdWithDefaultSettings(ctx, j.DistroID)
 	if err != nil {
 		j.AddError(errors.Wrapf(err, "finding distro '%s'", j.DistroID))
 		return
@@ -102,7 +105,7 @@ func (j *hostAllocatorJob) Run(ctx context.Context) {
 		return
 	}
 
-	if err = scheduler.UpdateStaticDistro(*distro); err != nil {
+	if err = scheduler.UpdateStaticDistro(ctx, *distro); err != nil {
 		j.AddError(errors.Wrapf(err, "updating static host in distro '%s'", j.DistroID))
 		return
 	}
@@ -116,11 +119,11 @@ func (j *hostAllocatorJob) Run(ctx context.Context) {
 		}
 	}
 
-	if err = host.RemoveStaleInitializing(j.DistroID); err != nil {
+	if err = host.RemoveStaleInitializing(ctx, j.DistroID); err != nil {
 		j.AddError(errors.Wrap(err, "removing stale initializing intent hosts"))
 		return
 	}
-	if err = host.MarkStaleBuildingAsFailed(j.DistroID); err != nil {
+	if err = host.MarkStaleBuildingAsFailed(ctx, j.DistroID); err != nil {
 		j.AddError(errors.Wrap(err, "marking building intent hosts as failed"))
 		return
 	}
@@ -133,7 +136,7 @@ func (j *hostAllocatorJob) Run(ctx context.Context) {
 	// host-allocation phase
 	////////////////////////
 
-	existingHosts, err := host.AllActiveHosts(j.DistroID)
+	existingHosts, err := host.AllActiveHosts(ctx, j.DistroID)
 	if err != nil {
 		j.AddError(errors.Wrap(err, "finding active hosts"))
 		return
@@ -193,6 +196,10 @@ func (j *hostAllocatorJob) Run(ctx context.Context) {
 		"instance":      j.ID(),
 		"duration_secs": time.Since(hostSpawningBegins).Seconds(),
 	})
+
+	if err := EnqueueHostCreateJobs(ctx, j.env, hostsSpawned); err != nil {
+		j.AddError(errors.Wrapf(err, "enqueueing host create jobs"))
+	}
 
 	// ignoring all the tasks that will take longer than the threshold to run,
 	// and the hosts allocated for them,
@@ -277,6 +284,23 @@ func (j *hostAllocatorJob) Run(ctx context.Context) {
 		"instance":                     j.ID(),
 		"runner":                       scheduler.RunnerName,
 	})
+
+	span := trace.SpanFromContext(ctx)
+	span.SetAttributes(
+		attribute.String(evergreen.DistroIDOtelAttribute, distro.Id),
+		attribute.Int(fmt.Sprintf("%s.hosts_requested", hostAllocatorAttributePrefix), len(hostsSpawned)),
+		attribute.Int(fmt.Sprintf("%s.hosts_free", hostAllocatorAttributePrefix), nHostsFree),
+		attribute.Int(fmt.Sprintf("%s.hosts_running", hostAllocatorAttributePrefix), len(upHosts)),
+		attribute.Int(fmt.Sprintf("%s.hosts_active", hostAllocatorAttributePrefix), existingHosts.Stats().Active),
+		attribute.Int(fmt.Sprintf("%s.hosts_idle", hostAllocatorAttributePrefix), existingHosts.Stats().Idle),
+		attribute.Int(fmt.Sprintf("%s.hosts_provisioning", hostAllocatorAttributePrefix), existingHosts.Stats().Provisioning),
+		attribute.Int(fmt.Sprintf("%s.hosts_quarantined", hostAllocatorAttributePrefix), existingHosts.Stats().Quarantined),
+		attribute.Int(fmt.Sprintf("%s.hosts_decommissioned", hostAllocatorAttributePrefix), existingHosts.Stats().Decommissioned),
+		attribute.Int(fmt.Sprintf("%s.task_queue_length", hostAllocatorAttributePrefix), distroQueueInfo.Length),
+		attribute.Int(fmt.Sprintf("%s.overdue_tasks", hostAllocatorAttributePrefix), distroQueueInfo.CountWaitOverThreshold),
+		attribute.Float64(fmt.Sprintf("%s.seconds_to_empty", hostAllocatorAttributePrefix), timeToEmptyNoSpawns.Seconds()),
+		attribute.Float64(fmt.Sprintf("%s.queue_ratio", hostAllocatorAttributePrefix), float64(noSpawnsRatio)),
+	)
 }
 
 func (j *hostAllocatorJob) setTargetAndTerminate(ctx context.Context, numUpHosts int, hostQueueRatio float32, distro *distro.Distro) {

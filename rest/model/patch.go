@@ -94,12 +94,31 @@ type APIParameter struct {
 	Value *string `json:"value"`
 }
 
+// APIRawPatch contains a patch diff along with its module diffs.
+type APIRawPatch struct {
+	Patch      APIRawModule   `json:"patch"`
+	RawModules []APIRawModule `json:"raw_modules"`
+}
+
+// APIRawModule contains a module diff.
+type APIRawModule struct {
+	Name    string `json:"name"`
+	Diff    string `json:"diff"`
+	Githash string `json:"githash"`
+}
+
 // ToService converts a service layer parameter using the data from APIParameter
 func (p *APIParameter) ToService() patch.Parameter {
 	res := patch.Parameter{}
 	res.Key = utility.FromStringPtr(p.Key)
 	res.Value = utility.FromStringPtr(p.Value)
 	return res
+}
+
+// BuildFromService converts from service level parameter to an APIPatch.
+func (p *APIParameter) BuildFromService(param *patch.Parameter) {
+	p.Key = utility.ToStringPtr(param.Key)
+	p.Value = utility.ToStringPtr(param.Value)
 }
 
 type APIPatchArgs struct {
@@ -138,6 +157,10 @@ func (apiPatch *APIPatch) BuildFromService(p patch.Patch, args *APIPatchArgs) er
 
 func (apiPatch *APIPatch) GetCommitQueuePosition() error {
 	if apiPatch.CommitQueuePosition != nil {
+		return nil
+	}
+	// GitHub merge patches use the commit queue alias but do not have commit queue positions.
+	if utility.FromStringPtr(apiPatch.Requester) == evergreen.GithubMergeRequester {
 		return nil
 	}
 	if utility.FromStringPtr(apiPatch.Alias) == evergreen.CommitQueueAlias {
@@ -216,10 +239,9 @@ func (apiPatch *APIPatch) buildBasePatch(p patch.Patch) {
 	if p.Parameters != nil {
 		apiPatch.Parameters = []APIParameter{}
 		for _, param := range p.Parameters {
-			apiPatch.Parameters = append(apiPatch.Parameters, APIParameter{
-				Key:   utility.ToStringPtr(param.Key),
-				Value: utility.ToStringPtr(param.Value),
-			})
+			APIParam := APIParameter{}
+			APIParam.BuildFromService(&param)
+			apiPatch.Parameters = append(apiPatch.Parameters, APIParam)
 		}
 	}
 

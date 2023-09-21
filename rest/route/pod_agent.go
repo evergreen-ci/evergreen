@@ -67,7 +67,7 @@ func (h *podProvisioningScript) Run(ctx context.Context) gimlet.Responder {
 		"secs_since_pod_creation":   time.Since(p.TimeInfo.Starting).Seconds(),
 	})
 
-	flags, err := evergreen.GetServiceFlags()
+	flags, err := evergreen.GetServiceFlags(ctx)
 	if err != nil {
 		return gimlet.NewTextInternalErrorResponse(errors.Wrap(err, "getting service flags"))
 	}
@@ -116,6 +116,7 @@ func (h *podProvisioningScript) agentCommand(p *pod.Pod) []string {
 		"agent",
 		fmt.Sprintf("--api_server=%s", h.settings.ApiUrl),
 		"--mode=pod",
+		"--log_output=file",
 		fmt.Sprintf("--log_prefix=%s", strings.Join([]string{p.TaskContainerCreationOpts.WorkingDir, "agent"}, "/")),
 		fmt.Sprintf("--working_directory=%s", p.TaskContainerCreationOpts.WorkingDir),
 	}
@@ -246,7 +247,7 @@ func (h *podAgentNextTask) Run(ctx context.Context) gimlet.Responder {
 		return gimlet.NewJSONResponse(&apimodels.NextTaskResponse{})
 	}
 
-	flags, err := evergreen.GetServiceFlags()
+	flags, err := evergreen.GetServiceFlags(ctx)
 	if err != nil {
 		return gimlet.MakeJSONInternalErrorResponder(errors.Wrap(err, "retrieving admin settings"))
 	}
@@ -281,11 +282,12 @@ func (h *podAgentNextTask) Run(ctx context.Context) gimlet.Responder {
 	}
 
 	return gimlet.NewJSONResponse(&apimodels.NextTaskResponse{
-		TaskId:     nextTask.Id,
-		TaskSecret: nextTask.Secret,
-		TaskGroup:  nextTask.TaskGroup,
-		Version:    nextTask.Version,
-		Build:      nextTask.BuildId,
+		TaskId:                    nextTask.Id,
+		TaskSecret:                nextTask.Secret,
+		TaskGroup:                 nextTask.TaskGroup,
+		Version:                   nextTask.Version,
+		Build:                     nextTask.BuildId,
+		UnsetFunctionVarsDisabled: flags.UnsetFunctionVarsDisabled,
 	})
 }
 
@@ -515,13 +517,13 @@ func (h *podAgentEndTask) Run(ctx context.Context) gimlet.Responder {
 	}
 
 	deactivatePrevious := utility.FromBoolPtr(projectRef.DeactivatePrevious)
-	err = model.MarkEnd(h.env.Settings(), t, evergreen.APIServerTaskActivator, finishTime, &h.details, deactivatePrevious)
+	err = model.MarkEnd(ctx, h.env.Settings(), t, evergreen.APIServerTaskActivator, finishTime, &h.details, deactivatePrevious)
 	if err != nil {
 		return gimlet.MakeJSONErrorResponder(errors.Wrapf(err, "calling mark finish on task '%s'", t.Id))
 	}
 
 	if evergreen.IsCommitQueueRequester(t.Requester) {
-		if err = model.HandleEndTaskForCommitQueueTask(t, h.details.Status); err != nil {
+		if err = model.HandleEndTaskForCommitQueueTask(ctx, t, h.details.Status); err != nil {
 			return gimlet.MakeJSONInternalErrorResponder(err)
 		}
 	}
@@ -563,7 +565,7 @@ func (h *podAgentEndTask) Run(ctx context.Context) gimlet.Responder {
 		"operation":   "mark end",
 		"duration":    time.Since(finishTime),
 		"should_exit": endTaskResp.ShouldExit,
-		"status":      h.details.Status,
+		"status":      t.Status,
 		"path":        fmt.Sprintf("/rest/v2/pods/%s/task/%s/end", p.ID, t.Id),
 	}
 

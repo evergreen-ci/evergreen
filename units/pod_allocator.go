@@ -77,7 +77,7 @@ func (j *podAllocatorJob) Run(ctx context.Context) {
 		}
 	}()
 
-	canAllocate, err := j.systemCanAllocate()
+	canAllocate, err := j.systemCanAllocate(ctx)
 	if err != nil {
 		j.AddRetryableError(errors.Wrap(err, "checking allocation attempt against max parallel pod request limit"))
 		return
@@ -95,7 +95,7 @@ func (j *podAllocatorJob) Run(ctx context.Context) {
 		return
 	}
 
-	if err := j.populate(); err != nil {
+	if err := j.populate(ctx); err != nil {
 		j.AddRetryableError(errors.Wrap(err, "populating job"))
 		return
 	}
@@ -103,7 +103,7 @@ func (j *podAllocatorJob) Run(ctx context.Context) {
 	if j.task.RemainingContainerAllocationAttempts() == 0 {
 		// A task that has used up all of its container allocation attempts
 		// should not try to allocate again.
-		if err := model.MarkUnallocatableContainerTasksSystemFailed(j.env.Settings(), []string{j.TaskID}); err != nil {
+		if err := model.MarkUnallocatableContainerTasksSystemFailed(ctx, j.env.Settings(), []string{j.TaskID}); err != nil {
 			j.AddRetryableError(errors.Wrap(err, "marking unallocatable container task as system-failed"))
 		}
 
@@ -174,8 +174,8 @@ func (j *podAllocatorJob) Run(ctx context.Context) {
 	}
 }
 
-func (j *podAllocatorJob) systemCanAllocate() (canAllocate bool, err error) {
-	flags, err := evergreen.GetServiceFlags()
+func (j *podAllocatorJob) systemCanAllocate(ctx context.Context) (canAllocate bool, err error) {
+	flags, err := evergreen.GetServiceFlags(ctx)
 	if err != nil {
 		return false, errors.Wrap(err, "getting service flags")
 	}
@@ -183,7 +183,7 @@ func (j *podAllocatorJob) systemCanAllocate() (canAllocate bool, err error) {
 		return false, nil
 	}
 
-	settings, err := evergreen.GetConfig()
+	settings, err := evergreen.GetConfig(ctx)
 	if err != nil {
 		return false, errors.Wrap(err, "getting admin settings")
 	}
@@ -198,17 +198,16 @@ func (j *podAllocatorJob) systemCanAllocate() (canAllocate bool, err error) {
 	return true, nil
 }
 
-func (j *podAllocatorJob) populate() error {
+func (j *podAllocatorJob) populate(ctx context.Context) error {
 	if j.env == nil {
 		j.env = evergreen.GetEnvironment()
 	}
-
-	// Use the latest service flags instead of those cached in the environment.
-	settings := *j.env.Settings()
-	if err := settings.ServiceFlags.Get(j.env); err != nil {
-		return errors.Wrap(err, "getting service flags")
+	// Retrieve the latest settings rather than the cached ones.
+	settings, err := evergreen.GetConfig(ctx)
+	if err != nil {
+		return errors.Wrap(err, "getting admin settings")
 	}
-	j.settings = settings
+	j.settings = *settings
 
 	if j.task == nil {
 		t, err := task.FindOneId(j.TaskID)
@@ -233,7 +232,7 @@ func (j *podAllocatorJob) populate() error {
 	}
 
 	if j.smClient == nil {
-		client, err := cloud.MakeSecretsManagerClient(&settings)
+		client, err := cloud.MakeSecretsManagerClient(ctx, &j.settings)
 		if err != nil {
 			return errors.Wrap(err, "initializing Secrets Manager client")
 		}

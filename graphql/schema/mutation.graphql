@@ -32,6 +32,12 @@ type Mutation {
     metadataLinks: [MetadataLinkInput!]!
   ): Boolean!
 
+  # distros
+  deleteDistro(opts: DeleteDistroInput!): DeleteDistroPayload!
+  copyDistro(opts: CopyDistroInput! @requireDistroAccess(access: CREATE)): NewDistroPayload!
+  createDistro(opts: CreateDistroInput! @requireDistroAccess(access: CREATE)): NewDistroPayload!
+  saveDistro(opts: SaveDistroInput!): SaveDistroPayload!
+
   # hosts
   reprovisionToNew(hostIds: [String!]!): Int!
   restartJasper(hostIds: [String!]!): Int!
@@ -101,7 +107,7 @@ type Mutation {
   updateUserSettings(userSettings: UserSettingsInput): Boolean!
 
   # commit queue
-  removeItemFromCommitQueue(commitQueueId: String!, issue: String!): String
+  removeItemFromCommitQueue(commitQueueId: String!, issue: String! @requireCommitQueueItemOwner): String
 
   # version
   restartVersions(versionId: String!, abort: Boolean!, versionsToRestart: [VersionToRestart!]!): [Version!]

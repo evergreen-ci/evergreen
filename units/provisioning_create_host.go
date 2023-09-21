@@ -17,11 +17,14 @@ import (
 	"github.com/mongodb/grip"
 	"github.com/mongodb/grip/message"
 	"github.com/pkg/errors"
+	"go.opentelemetry.io/otel/attribute"
+	"go.opentelemetry.io/otel/trace"
 )
 
 const (
-	createHostJobName = "provisioning-create-host"
-	maxPollAttempts   = 100
+	createHostJobName                     = "provisioning-create-host"
+	maxPollAttempts                       = 100
+	provisioningCreateHostAttributePrefix = "evergreen.provisioning_create_host"
 )
 
 func init() {
@@ -87,7 +90,7 @@ func (j *createHostJob) Run(ctx context.Context) {
 
 	j.start = time.Now()
 
-	flags, err := evergreen.GetServiceFlags()
+	flags, err := evergreen.GetServiceFlags(ctx)
 	if err != nil {
 		j.AddError(err)
 	}
@@ -105,10 +108,11 @@ func (j *createHostJob) Run(ctx context.Context) {
 	if j.env == nil {
 		j.env = evergreen.GetEnvironment()
 	}
-	j.AddError(errors.Wrap(j.env.Settings().HostInit.Get(j.env), "refreshing hostinit settings"))
+	var hostInit evergreen.HostInitConfig
+	j.AddError(errors.Wrap(hostInit.Get(ctx), "refreshing hostinit settings"))
 
 	if j.host == nil {
-		j.host, err = host.FindOneId(j.HostID)
+		j.host, err = host.FindOneId(ctx, j.HostID)
 		if err != nil {
 			j.AddError(err)
 			return
@@ -136,7 +140,7 @@ func (j *createHostJob) Run(ctx context.Context) {
 
 	if j.host.IsSubjectToHostCreationThrottle() {
 		var numHosts int
-		numHosts, err = host.CountRunningHosts(j.host.Distro.Id)
+		numHosts, err = host.CountRunningHosts(ctx, j.host.Distro.Id)
 		if err != nil {
 			j.AddError(errors.Wrapf(err, "counting existing host pool size for distro '%s'", j.host.Distro.Id))
 			return
@@ -157,14 +161,14 @@ func (j *createHostJob) Run(ctx context.Context) {
 
 		}
 
-		allRunningDynamicHosts, err := host.CountAllRunningDynamicHosts()
+		allRunningDynamicHosts, err := host.CountAllRunningDynamicHosts(ctx)
 		j.AddError(err)
 		lowHostNumException := false
 		if numHosts < 10 {
 			lowHostNumException = true
 		}
 
-		if allRunningDynamicHosts > j.env.Settings().HostInit.MaxTotalDynamicHosts && !lowHostNumException {
+		if allRunningDynamicHosts > hostInit.MaxTotalDynamicHosts && !lowHostNumException {
 
 			grip.Info(message.Fields{
 				"host_id":                 j.HostID,
@@ -174,14 +178,14 @@ func (j *createHostJob) Run(ctx context.Context) {
 				"provider":                j.host.Provider,
 				"message":                 "not provisioning host to respect max_total_dynamic_hosts",
 				"total_dynamic_hosts":     allRunningDynamicHosts,
-				"max_total_dynamic_hosts": j.env.Settings().HostInit.MaxTotalDynamicHosts,
+				"max_total_dynamic_hosts": hostInit.MaxTotalDynamicHosts,
 			})
 			removeHostIntent = true
 
 		}
 
 		if removeHostIntent {
-			err = errors.Wrap(j.host.Remove(), "removing host intent to respect max distro hosts")
+			err = errors.Wrap(j.host.Remove(ctx), "removing host intent to respect max distro hosts")
 
 			j.AddError(err)
 			grip.Error(message.WrapError(err, message.Fields{
@@ -197,7 +201,7 @@ func (j *createHostJob) Run(ctx context.Context) {
 			return
 		}
 
-		if j.selfThrottle() {
+		if j.selfThrottle(ctx, hostInit) {
 			grip.Debug(message.Fields{
 				"host_id":  j.HostID,
 				"attempt":  j.RetryInfo().CurrentAttempt,
@@ -222,27 +226,20 @@ func (j *createHostJob) Run(ctx context.Context) {
 	j.AddRetryableError(j.createHost(ctx))
 }
 
-func (j *createHostJob) selfThrottle() bool {
-	var (
-		numProv            int
-		runningHosts       int
-		distroRunningHosts int
-		err                error
-	)
-
-	numProv, err = host.CountIdleStartedTaskHosts()
+func (j *createHostJob) selfThrottle(ctx context.Context, hostInit evergreen.HostInitConfig) bool {
+	numProv, err := host.CountIdleStartedTaskHosts(ctx)
 	if err != nil {
 		j.AddError(errors.Wrap(err, "counting pending host pool size"))
 		return true
 	}
 
-	distroRunningHosts, err = host.CountRunningHosts(j.host.Distro.Id)
+	distroRunningHosts, err := host.CountRunningHosts(ctx, j.host.Distro.Id)
 	if err != nil {
 		j.AddError(errors.Wrapf(err, "counting host pool size for distro '%s'", j.host.Distro.Id))
 		return true
 	}
 
-	runningHosts, err = host.CountAllRunningDynamicHosts()
+	runningHosts, err := host.CountAllRunningDynamicHosts(ctx)
 	if err != nil {
 		j.AddError(errors.Wrap(err, "counting size of entire host pool"))
 		return true
@@ -250,9 +247,9 @@ func (j *createHostJob) selfThrottle() bool {
 
 	if distroRunningHosts < runningHosts/100 || distroRunningHosts < j.host.Distro.HostAllocatorSettings.MinimumHosts {
 		return false
-	} else if numProv >= j.env.Settings().HostInit.HostThrottle {
+	} else if numProv >= hostInit.HostThrottle {
 		reason := "host creation throttle"
-		j.AddError(errors.Wrapf(j.host.SetStatusAtomically(evergreen.HostBuildingFailed, evergreen.User, reason), "getting rid of intent host '%s' for host creation throttle", j.host.Id))
+		j.AddError(errors.Wrapf(j.host.SetStatusAtomically(ctx, evergreen.HostBuildingFailed, evergreen.User, reason), "getting rid of intent host '%s' for host creation throttle", j.host.Id))
 		event.LogHostCreationFailed(j.host.Id, reason)
 		return true
 	}
@@ -278,6 +275,13 @@ func (j *createHostJob) createHost(ctx context.Context) error {
 		"max_attempts": j.RetryInfo().MaxAttempts,
 	})
 
+	span := trace.SpanFromContext(ctx)
+	span.SetAttributes(
+		attribute.String(evergreen.DistroIDOtelAttribute, j.host.Distro.Id),
+		attribute.String(evergreen.HostIDOtelAttribute, j.host.Id),
+		attribute.Bool(fmt.Sprintf("%s.spawned_host", provisioningCreateHostAttributePrefix), false),
+	)
+
 	mgrOpts, err := cloud.GetManagerOptions(j.host.Distro)
 	if err != nil {
 		return errors.Wrapf(err, "getting cloud manager options for distro '%s'", j.host.Distro.Id)
@@ -301,7 +305,7 @@ func (j *createHostJob) createHost(ctx context.Context) error {
 	// with the agent. This state allows intent documents to stay around until
 	// SpawnHost returns, but NOT as initializing hosts that could still be
 	// spawned by Evergreen.
-	if err = j.host.SetStatusAtomically(evergreen.HostBuilding, evergreen.User, ""); err != nil {
+	if err = j.host.SetStatusAtomically(ctx, evergreen.HostBuilding, evergreen.User, ""); err != nil {
 		grip.Info(message.WrapError(err, message.Fields{
 			"message": "host could not be transitioned from initializing to building, so it may already be building",
 			"host_id": j.host.Id,
@@ -347,12 +351,13 @@ func (j *createHostJob) createHost(ctx context.Context) error {
 		"job":          j.ID(),
 		"runtime_secs": time.Since(j.start).Seconds(),
 	})
+	span.SetAttributes(attribute.Bool(fmt.Sprintf("%s.spawned_host", provisioningCreateHostAttributePrefix), true))
 
 	return nil
 }
 
 func (j *createHostJob) isImageBuilt(ctx context.Context) (bool, error) {
-	parent, err := j.host.GetParent()
+	parent, err := j.host.GetParent(ctx)
 	if err != nil {
 		return false, errors.Wrapf(err, "getting parent host for container '%s'", j.host.Id)
 	}
@@ -429,7 +434,7 @@ func (j *createHostJob) spawnAndReplaceHost(ctx context.Context, cloudMgr cloud.
 	}
 
 	if j.host.HasContainers {
-		grip.Error(message.WrapError(j.host.UpdateParentIDs(), message.Fields{
+		grip.Error(message.WrapError(j.host.UpdateParentIDs(ctx), message.Fields{
 			"message": "unable to update parent ID of containers",
 			"host_id": j.host.Id,
 			"distro":  j.host.Distro.Id,
@@ -469,7 +474,7 @@ func (j *createHostJob) tryHostReplacement(ctx context.Context, cloudMgr cloud.M
 	// In the case of the agent asking for a task before this succeeds,
 	// check to see if the instance ID exists in the DB. If so,
 	// the host has already been swapped successfully.
-	checkHost, _ := host.FindOneId(j.host.Id)
+	checkHost, _ := host.FindOneId(ctx, j.host.Id)
 	if checkHost != nil {
 		return false, nil
 	}
@@ -486,4 +491,20 @@ func (j *createHostJob) tryHostReplacement(ctx context.Context, cloudMgr cloud.M
 	}))
 
 	return false, errors.Wrapf(err, "replacing intent host '%s' with real host '%s'", j.HostID, j.host.Id)
+}
+
+func EnqueueHostCreateJobs(ctx context.Context, env evergreen.Environment, hostIntents []host.Host) error {
+	appCtx, _ := env.Context()
+	queue, err := env.RemoteQueueGroup().Get(appCtx, CreateHostQueueGroup)
+	if err != nil {
+		return errors.Wrap(err, "getting host create queue")
+	}
+
+	catcher := grip.NewBasicCatcher()
+	ts := utility.RoundPartOfHour(0).Format(TSFormat)
+	for _, intent := range hostIntents {
+		catcher.Add(errors.Wrapf(amboy.EnqueueUniqueJob(ctx, queue, NewHostCreateJob(env, intent, ts, 0, false)), "enqueueing host create job for '%s'", intent.Id))
+	}
+
+	return catcher.Resolve()
 }

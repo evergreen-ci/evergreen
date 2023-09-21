@@ -1,6 +1,7 @@
 package model
 
 import (
+	"context"
 	"strings"
 	"time"
 
@@ -117,6 +118,7 @@ type TaskQueueItem struct {
 	ExpectedDuration    time.Duration `bson:"exp_dur" json:"exp_dur"`
 	Priority            int64         `bson:"priority" json:"priority"`
 	Dependencies        []string      `bson:"dependencies" json:"dependencies"`
+	ActivatedBy         string        `bson:"activated_by" json:"activated_by"`
 }
 
 // must not no-lint these values
@@ -142,8 +144,7 @@ var (
 	taskQueueItemProjectKey       = bsonutil.MustHaveTag(TaskQueueItem{}, "Project")
 	taskQueueItemExpDurationKey   = bsonutil.MustHaveTag(TaskQueueItem{}, "ExpectedDuration")
 	taskQueueItemPriorityKey      = bsonutil.MustHaveTag(TaskQueueItem{}, "Priority")
-
-	taskQueueInfoPlanCreatedAtKey = bsonutil.MustHaveTag(DistroQueueInfo{}, "PlanCreatedAt")
+	taskQueueItemActivatedByKey   = bsonutil.MustHaveTag(TaskQueueItem{}, "ActivatedBy")
 )
 
 // TaskSpec is an argument structure to formalize the way that callers
@@ -186,9 +187,9 @@ func (tq *TaskQueue) NextTask() *TaskQueueItem {
 }
 
 // shouldRunTaskGroup returns true if the number of hosts running a task is less than the maximum for that task group.
-func shouldRunTaskGroup(taskId string, spec TaskSpec) bool {
+func shouldRunTaskGroup(ctx context.Context, taskId string, spec TaskSpec) bool {
 	// Get number of hosts running this spec.
-	numHosts, err := host.NumHostsByTaskSpec(spec.Group, spec.BuildVariant, spec.Project, spec.Version)
+	numHosts, err := host.NumHostsByTaskSpec(ctx, spec.Group, spec.BuildVariant, spec.Project, spec.Version)
 	if err != nil {
 		grip.Error(message.WrapError(err, message.Fields{
 			"message":    "error finding hosts for spec",
@@ -244,7 +245,7 @@ func (tq *TaskQueue) Save() error {
 	return updateTaskQueue(tq.Distro, tq.Queue, tq.DistroQueueInfo)
 }
 
-func (tq *TaskQueue) FindNextTask(spec TaskSpec) (*TaskQueueItem, []string) {
+func (tq *TaskQueue) FindNextTask(ctx context.Context, spec TaskSpec) (*TaskQueueItem, []string) {
 	if tq.Length() == 0 {
 		return nil, nil
 	}
@@ -295,7 +296,7 @@ func (tq *TaskQueue) FindNextTask(spec TaskSpec) (*TaskQueueItem, []string) {
 			Version:       it.Version,
 			GroupMaxHosts: it.GroupMaxHosts,
 		}
-		if shouldRun := shouldRunTaskGroup(it.Id, spec); shouldRun {
+		if shouldRun := shouldRunTaskGroup(ctx, it.Id, spec); shouldRun {
 			return &it, nil
 		}
 	}
@@ -332,9 +333,7 @@ func ClearTaskQueue(distroId string) error {
 
 	// Task queue should always exist, so proceed with clearing
 	distroQueueInfo, err := GetDistroQueueInfo(distroId)
-	if err != nil {
-		catcher.Wrap(err, "getting task queue info")
-	}
+	catcher.AddWhen(!adb.ResultsNotFound(err), errors.Wrapf(err, "getting task queue info"))
 	distroQueueInfo = clearQueueInfo(distroQueueInfo)
 	err = clearTaskQueueCollection(distroId, distroQueueInfo)
 	if err != nil {
@@ -451,6 +450,7 @@ func findTaskQueueForDistro(q taskQueueQuery) (*TaskQueue, error) {
 						taskQueueItemProjectKey:       "$" + bsonutil.GetDottedKeyName(taskQueueQueueKey, taskQueueItemProjectKey),
 						taskQueueItemExpDurationKey:   "$" + bsonutil.GetDottedKeyName(taskQueueQueueKey, taskQueueItemExpDurationKey),
 						taskQueueItemPriorityKey:      "$" + bsonutil.GetDottedKeyName(taskQueueQueueKey, taskQueueItemPriorityKey),
+						taskQueueItemActivatedByKey:   "$" + bsonutil.GetDottedKeyName(taskQueueQueueKey, taskQueueItemActivatedByKey),
 					},
 				},
 			},
@@ -575,107 +575,6 @@ func FindDistroSecondaryTaskQueue(distroID string) (TaskQueue, error) {
 	err := db.FindOneQ(TaskSecondaryQueuesCollection, q, &queue)
 
 	return queue, errors.WithStack(err)
-}
-
-func taskQueueGenerationTimesPipeline() []bson.M {
-	return []bson.M{
-		{
-			"$group": bson.M{
-				"_id": 0,
-				"distroQueue": bson.M{"$push": bson.M{
-					"k": "$" + taskQueueDistroKey,
-					"v": "$" + taskQueueGeneratedAtKey,
-				}}},
-		},
-		{
-			"$project": bson.M{
-				"root": bson.M{"$arrayToObject": "$distroQueue"},
-			},
-		},
-		{
-			"$replaceRoot": bson.M{"newRoot": "$root"},
-		},
-	}
-}
-
-func taskQueueGenerationRuntimePipeline() []bson.M {
-	return []bson.M{
-		{
-			"$group": bson.M{
-				"_id": 0,
-				"distroQueue": bson.M{"$push": bson.M{
-					"k": "$" + taskQueueDistroKey,
-					"v": bson.M{"$multiply": []interface{}{
-						// convert ms to ns
-						// for duration value
-						1000000,
-						bson.M{"$subtract": []interface{}{
-							"$" + taskQueueGeneratedAtKey,
-							"$" + bsonutil.GetDottedKeyName(taskQueueDistroQueueInfoKey, taskQueueInfoPlanCreatedAtKey),
-						}},
-					}}}}},
-		},
-		{
-			"$project": bson.M{
-				"root": bson.M{"$arrayToObject": "$distroQueue"},
-			},
-		},
-		{
-			"$replaceRoot": bson.M{"newRoot": "$root"},
-		},
-	}
-}
-
-func runTimeMapAggregation(collection string, pipe []bson.M) (map[string]time.Time, error) {
-	out := []map[string]time.Time{}
-
-	err := db.Aggregate(collection, pipe, &out)
-
-	if err != nil {
-		return map[string]time.Time{}, errors.Wrapf(err, "aggregating times from collection '%s'", collection)
-	}
-
-	switch len(out) {
-	case 0:
-		return map[string]time.Time{}, nil
-	case 1:
-		return out[0], nil
-	default:
-		return map[string]time.Time{}, errors.Errorf("expected 0 or 1 element in the result from the aggregation on collection '%s' but actually got %d elements", collection, len(out))
-	}
-
-}
-
-func runDurationMapAggregation(collection string, pipe []bson.M) (map[string]time.Duration, error) {
-	out := []map[string]time.Duration{}
-
-	err := db.Aggregate(collection, pipe, &out)
-
-	if err != nil {
-		return map[string]time.Duration{}, errors.Wrapf(err, "aggregating durations from collection '%s'", collection)
-	}
-
-	switch len(out) {
-	case 0:
-		return map[string]time.Duration{}, nil
-	case 1:
-		return out[0], nil
-	default:
-		return map[string]time.Duration{}, errors.Errorf("expected 0 or 1 element in the result from the aggregation on collection '%s' but actually got %d elements", collection, len(out))
-	}
-
-}
-
-func FindTaskQueueGenerationRuntime() (map[string]time.Duration, error) {
-	return runDurationMapAggregation(TaskQueuesCollection, taskQueueGenerationRuntimePipeline())
-}
-
-func FindTaskQueueLastGenerationTimes() (map[string]time.Time, error) {
-	return runTimeMapAggregation(TaskQueuesCollection, taskQueueGenerationTimesPipeline())
-}
-
-func FindTaskSecondaryQueueLastGenerationTimes() (map[string]time.Time, error) {
-	return runTimeMapAggregation(TaskSecondaryQueuesCollection, taskQueueGenerationTimesPipeline())
 }
 
 // pull out the task with the specified id from both the in-memory and db

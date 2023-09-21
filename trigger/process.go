@@ -1,6 +1,7 @@
 package trigger
 
 import (
+	"context"
 	"regexp"
 	"time"
 
@@ -23,13 +24,13 @@ import (
 // It is possible for this function to return notifications and errors at the
 // same time. If the notifications array is not nil, they are valid and should
 // be processed as normal.
-func NotificationsFromEvent(e *event.EventLogEntry) ([]notification.Notification, error) {
+func NotificationsFromEvent(ctx context.Context, e *event.EventLogEntry) ([]notification.Notification, error) {
 	h := registry.eventHandler(e.ResourceType, e.EventType)
 	if h == nil {
 		return nil, errors.Errorf("unknown event resource type '%s' or event type '%s'", e.ResourceType, e.EventType)
 	}
 
-	if err := h.Fetch(e); err != nil {
+	if err := h.Fetch(ctx, e); err != nil {
 		return nil, errors.Wrapf(err, "fetching data for event '%s' (resource type: '%s', event type: '%s')", e.ID, e.ResourceType, e.EventType)
 	}
 
@@ -84,22 +85,23 @@ func NotificationsFromEvent(e *event.EventLogEntry) ([]notification.Notification
 	return notifications, catcher.Resolve()
 }
 
-type projectProcessor func(ProcessorArgs) (*model.Version, error)
+type projectProcessor func(context.Context, ProcessorArgs) (*model.Version, error)
 
 type ProcessorArgs struct {
-	SourceVersion     *model.Version
-	DownstreamProject model.ProjectRef
-	ConfigFile        string
-	TriggerID         string
-	TriggerType       string
-	EventID           string
-	DefinitionID      string
-	Alias             string
+	SourceVersion                *model.Version
+	DownstreamProject            model.ProjectRef
+	ConfigFile                   string
+	TriggerID                    string
+	TriggerType                  string
+	EventID                      string
+	DefinitionID                 string
+	Alias                        string
+	UnscheduleDownstreamVersions bool
 }
 
 // EvalProjectTriggers takes an event log entry and a processor (either the mock or TriggerDownstreamVersion)
 // and checks if any downstream builds should be triggered, creating them if they should
-func EvalProjectTriggers(e *event.EventLogEntry, processor projectProcessor) ([]model.Version, error) {
+func EvalProjectTriggers(ctx context.Context, e *event.EventLogEntry, processor projectProcessor) ([]model.Version, error) {
 	switch e.EventType {
 	case event.TaskFinished:
 		t, err := task.FindOneId(e.ResourceId)
@@ -109,7 +111,7 @@ func EvalProjectTriggers(e *event.EventLogEntry, processor projectProcessor) ([]
 		if t == nil {
 			return nil, errors.Errorf("task '%s' not found", e.ResourceId)
 		}
-		return triggerDownstreamProjectsForTask(t, e, processor)
+		return triggerDownstreamProjectsForTask(ctx, t, e, processor)
 	case event.BuildStateChange:
 		if e.ResourceType != event.ResourceTypeBuild {
 			return nil, nil
@@ -128,13 +130,13 @@ func EvalProjectTriggers(e *event.EventLogEntry, processor projectProcessor) ([]
 		if b == nil {
 			return nil, errors.Errorf("build '%s' not found", e.ResourceId)
 		}
-		return triggerDownstreamProjectsForBuild(b, e, processor)
+		return triggerDownstreamProjectsForBuild(ctx, b, e, processor)
 	default:
 		return nil, nil
 	}
 }
 
-func triggerDownstreamProjectsForTask(t *task.Task, e *event.EventLogEntry, processor projectProcessor) ([]model.Version, error) {
+func triggerDownstreamProjectsForTask(ctx context.Context, t *task.Task, e *event.EventLogEntry, processor projectProcessor) ([]model.Version, error) {
 	if t.Requester != evergreen.RepotrackerVersionRequester {
 		return nil, nil
 	}
@@ -193,16 +195,17 @@ projectLoop:
 			}
 
 			args := ProcessorArgs{
-				SourceVersion:     sourceVersion,
-				DownstreamProject: ref,
-				ConfigFile:        trigger.ConfigFile,
-				TriggerType:       model.ProjectTriggerLevelTask,
-				TriggerID:         t.Id,
-				EventID:           e.ID,
-				DefinitionID:      trigger.DefinitionID,
-				Alias:             trigger.Alias,
+				SourceVersion:                sourceVersion,
+				DownstreamProject:            ref,
+				ConfigFile:                   trigger.ConfigFile,
+				TriggerType:                  model.ProjectTriggerLevelTask,
+				TriggerID:                    t.Id,
+				EventID:                      e.ID,
+				DefinitionID:                 trigger.DefinitionID,
+				Alias:                        trigger.Alias,
+				UnscheduleDownstreamVersions: trigger.UnscheduleDownstreamVersions,
 			}
-			v, err := processor(args)
+			v, err := processor(ctx, args)
 			if err != nil {
 				catcher.Add(err)
 				continue
@@ -217,7 +220,7 @@ projectLoop:
 	return versions, catcher.Resolve()
 }
 
-func triggerDownstreamProjectsForBuild(b *build.Build, e *event.EventLogEntry, processor projectProcessor) ([]model.Version, error) {
+func triggerDownstreamProjectsForBuild(ctx context.Context, b *build.Build, e *event.EventLogEntry, processor projectProcessor) ([]model.Version, error) {
 	if b.Requester != evergreen.RepotrackerVersionRequester {
 		return nil, nil
 	}
@@ -247,6 +250,9 @@ projectLoop:
 			if trigger.Status != "" && trigger.Status != b.Status {
 				continue
 			}
+			if utility.StringSliceContains(sourceVersion.SatisfiedTriggers, trigger.DefinitionID) {
+				continue
+			}
 			if trigger.BuildVariantRegex != "" {
 				regex, err := regexp.Compile(trigger.BuildVariantRegex)
 				if err != nil {
@@ -259,16 +265,17 @@ projectLoop:
 			}
 
 			args := ProcessorArgs{
-				SourceVersion:     sourceVersion,
-				DownstreamProject: ref,
-				ConfigFile:        trigger.ConfigFile,
-				TriggerType:       model.ProjectTriggerLevelBuild,
-				TriggerID:         b.Id,
-				EventID:           e.ID,
-				DefinitionID:      trigger.DefinitionID,
-				Alias:             trigger.Alias,
+				SourceVersion:                sourceVersion,
+				DownstreamProject:            ref,
+				ConfigFile:                   trigger.ConfigFile,
+				TriggerType:                  model.ProjectTriggerLevelBuild,
+				TriggerID:                    b.Id,
+				EventID:                      e.ID,
+				DefinitionID:                 trigger.DefinitionID,
+				Alias:                        trigger.Alias,
+				UnscheduleDownstreamVersions: trigger.UnscheduleDownstreamVersions,
 			}
-			v, err := processor(args)
+			v, err := processor(ctx, args)
 			if err != nil {
 				catcher.Add(err)
 				continue

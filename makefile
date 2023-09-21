@@ -5,10 +5,12 @@ nodeDir := public
 packages := $(name) agent agent-command agent-util agent-internal agent-internal-client agent-internal-testutil operations cloud cloud-userdata
 packages += db util plugin units graphql thirdparty thirdparty-docker auth scheduler model validator service repotracker cmd-codegen-core mock
 packages += model-annotations model-patch model-artifact model-host model-pod model-pod-definition model-pod-dispatcher model-build model-event model-task model-user model-distro model-manifest model-testresult model-log
-packages += model-commitqueue
+packages += model-commitqueue model-cache
 packages += rest-client rest-data rest-route rest-model migrations trigger model-alertrecord model-notification model-taskstats model-reliability
+packages += taskoutput taskoutput-tasklogs taskoutput-testlogs
 lintOnlyPackages := api apimodels testutil model-manifest model-testutil service-testutil service-graphql db-mgo db-mgo-bson db-mgo-internal-json rest
-testOnlyPackages := service-graphql # has only test files so can't undergo all operations
+lintOnlyPackages += smoke-internal smoke-internal-host smoke-internal-container smoke-internal-agentmonitor smoke-internal-endpoint
+testOnlyPackages := service-graphql smoke-internal-host smoke-internal-container smoke-internal-agentmonitor smoke-internal-endpoint # has only test files so can't undergo all operations
 orgPath := github.com/evergreen-ci
 projectPath := $(orgPath)/$(name)
 evghome := $(abspath .)
@@ -39,10 +41,13 @@ endif
 
 ifeq ($(OS),Windows_NT)
 gobin := $(shell cygpath $(gobin))
+nativeGobin := $(shell cygpath -m $(gobin))
 goCache := $(shell cygpath -m $(goCache))
 goModCache := $(shell cygpath -m $(goModCache))
 lintCache := $(shell cygpath -m $(lintCache))
 export GOROOT := $(shell cygpath -m $(GOROOT))
+else
+nativeGobin := $(gobin)
 endif
 
 ifneq ($(goCache),$(GOCACHE))
@@ -120,7 +125,7 @@ endif
 cli:$(localClientBinary)
 clis:$(clientBinaries)
 $(clientBuildDir)/%/$(unixBinaryBasename) $(clientBuildDir)/%/$(windowsBinaryBasename):$(buildDir)/build-cross-compile $(srcFiles) go.mod go.sum
-	@./$(buildDir)/build-cross-compile -buildName=$* -ldflags="$(ldFlags)" -gcflags="$(gcFlags)" -goBinary="$(gobin)" -directory=$(clientBuildDir) -source=$(clientSource) -output=$@
+	./$(buildDir)/build-cross-compile -buildName=$* -ldflags="$(ldFlags)" -gcflags="$(gcFlags)" -goBinary="$(nativeGobin)" -directory=$(clientBuildDir) -source=$(clientSource) -output=$@
 # Targets to upload the CLI binaries to S3.
 $(buildDir)/upload-s3:cmd/upload-s3/upload-s3.go
 	@$(gobin) build -o $@ $<
@@ -140,11 +145,21 @@ $(buildDir)/set-project-var:cmd/set-project-var/set-project-var.go
 	$(gobin) build -o $@ $<
 set-var:$(buildDir)/set-var
 set-project-var:$(buildDir)/set-project-var
+
+# set-smoke-vars is necessary for the smoke test to run correctly. The AWS credentials are needed to run AWS-related
+# commands such as s3.put. The agent revision must be set to the current version because the agent will have to exit
+# under the expectation that it will be redeployed if it's outdated (and the smoke test cannot deploy agents).
 set-smoke-vars:$(buildDir)/.load-smoke-data $(buildDir)/set-project-var $(buildDir)/set-var
 	@$(buildDir)/set-project-var -dbName mci_smoke -key aws_key -value $(AWS_KEY)
 	@$(buildDir)/set-project-var -dbName mci_smoke -key aws_secret -value $(AWS_SECRET)
 	@$(buildDir)/set-var -dbName=mci_smoke -collection=hosts -id=localhost -key=agent_revision -value=$(agentVersion)
 	@$(buildDir)/set-var -dbName=mci_smoke -collection=pods -id=localhost -key=agent_version -value=$(agentVersion)
+
+# set-smoke-git-config is necessary for the smoke test to submit a manual patch because the patch command uses git
+# metadata.
+set-smoke-git-config:
+	git config user.name username
+	git config user.email email
 load-smoke-data:$(buildDir)/.load-smoke-data
 load-local-data:$(buildDir)/.load-local-data
 $(buildDir)/.load-smoke-data:$(buildDir)/load-smoke-data
@@ -153,35 +168,6 @@ $(buildDir)/.load-smoke-data:$(buildDir)/load-smoke-data
 $(buildDir)/.load-local-data:$(buildDir)/load-smoke-data
 	./$< -path testdata/local -dbName evergreen_local -amboyDBName amboy_local
 	@touch $@
-smoke-test-agent-monitor:$(localClientBinary) load-smoke-data
-	# Start the smoke test's Evergreen app server.
-	./$< service deploy start-evergreen --web --binary ./$< &
-	# Start the smoke test's agent monitor, which will run the Evergreen agent based on the locally-compiled Evergreen
-	# executable. This agent will coordinate with the app server to run the smoke test's tasks.
-	# It is necessary to set up this locally-running agent because the app server can't actually start hosts to run
-	# tasks.
-	# Note that the distro comes from the smoke test's DB files.
-	./$< service deploy start-evergreen --monitor --binary ./$< --distro localhost &
-	# Run the smoke test's actual tests.
-	# The username/password to is used to authenticate to the app server, and these credentials come from the smoke
-	# test's DB files.
-	./$< service deploy test-endpoints --check-build --username admin --key abb623665fdbf368a1db980dde6ee0f0
-	# Clean up all smoke test Evergreen executable processes.
-	pkill -f $<
-smoke-test-host-task:$(localClientBinary) load-smoke-data
-	./$< service deploy start-evergreen --web --binary ./$< &
-	./$< service deploy start-evergreen --mode host --agent --binary ./$< &
-	./$< service deploy test-endpoints --check-build --mode host --username admin --key abb623665fdbf368a1db980dde6ee0f0
-	pkill -f $<
-smoke-test-container-task:$(localClientBinary) load-smoke-data
-	./$< service deploy start-evergreen --web --binary ./$< &
-	./$< service deploy start-evergreen --mode pod --agent --binary ./$< &
-	./$< service deploy test-endpoints --check-build --mode pod --username admin --key abb623665fdbf368a1db980dde6ee0f0
-	pkill -f $<
-smoke-test-endpoints:$(localClientBinary) load-smoke-data
-	./$< service deploy start-evergreen --web --binary ./$< &
-	./$< service deploy test-endpoints --username admin --key abb623665fdbf368a1db980dde6ee0f0
-	pkill -f $<
 local-evergreen:$(localClientBinary) load-local-data
 	./$< service deploy start-local-evergreen
 # end smoke test rules
@@ -203,13 +189,15 @@ coverageOutput := $(foreach target,$(packages),$(buildDir)/output.$(target).cove
 coverageHtmlOutput := $(foreach target,$(packages),$(buildDir)/output.$(target).coverage.html)
 # end output files
 
+curlRetryOpts := --retry 10 --retry-max-time 120
+
 # lint setup targets
 $(buildDir)/.lintSetup:$(buildDir)/golangci-lint
 	@touch $@
 $(buildDir)/golangci-lint:
-	@curl --retry 10 --retry-max-time 120 -sSfL -o "$(buildDir)/install.sh" https://raw.githubusercontent.com/golangci/golangci-lint/$(goLintInstallerVersion)/install.sh
+	@curl $(curlRetryOpts) -o "$(buildDir)/install.sh" https://raw.githubusercontent.com/golangci/golangci-lint/$(goLintInstallerVersion)/install.sh
 	@echo "$(goLintInstallerChecksum) $(buildDir)/install.sh" | sha256sum --check
-	@bash $(buildDir)/install.sh -b $(buildDir) $(goLintInstallerVersion) >/dev/null 2>&1 && touch $@
+	@bash $(buildDir)/install.sh -b $(buildDir) $(goLintInstallerVersion) && touch $@
 $(buildDir)/run-linter:cmd/run-linter/run-linter.go $(buildDir)/.lintSetup
 	$(gobin) build -ldflags "-w" -o $@ $<
 # end lint setup targets
@@ -305,7 +293,7 @@ html-coverage-%:$(buildDir)/output.%.coverage $(buildDir)/output.%.coverage.html
 	@grep -s -q -e "^PASS" $(subst coverage,test,$<)
 lint-%:$(buildDir)/output.%.lint
 	@grep -v -s -q "^--- FAIL" $<
-# end convienence targets
+# end convenience targets
 
 
 # start test and coverage artifacts
@@ -352,6 +340,12 @@ $(buildDir)/output.%.test: .FORCE
 # Codegen is special because it requires that the repository be compiled for goimports to resolve imports properly.
 $(buildDir)/output.cmd-codegen-core.test: build-codegen .FORCE
 	$(testRunEnv) $(gobin) test $(testArgs) ./$(if $(subst $(name),,$*),$(subst -,/,$*),) 2>&1 | tee $@
+# test-agent-command is special because it requires that the Evergreen binary be compiled to run some of the tests.
+$(buildDir)/output.agent-command.test: cli .FORCE
+	$(testRunEnv) $(gobin) test $(testArgs) ./agent/command 2>&1 | tee $@
+# Smoke tests are special because they require that the Evergreen binary is compiled and the smoke test data is loaded.
+$(buildDir)/output.smoke-internal-%.test: cli load-smoke-data
+	$(testRunEnv) $(gobin) test $(testArgs) ./smoke/internal/$(if $(subst $(name),,$*),$(subst -,/,$*),) 2>&1 | tee $@
 $(buildDir)/output-dlv.%.test: .FORCE
 	$(testRunEnv) dlv test $(testArgs) ./$(if $(subst $(name),,$*),$(subst -,/,$*),) -- $(dlvArgs) 2>&1 | tee $@
 $(buildDir)/output.%.coverage: .FORCE
@@ -396,12 +390,12 @@ scramble:
 mongodb/.get-mongodb:
 	rm -rf mongodb
 	mkdir -p mongodb
-	cd mongodb && curl "$(MONGODB_URL)" -o mongodb.tgz && $(MONGODB_DECOMPRESS) mongodb.tgz && chmod +x ./mongodb-*/bin/*
+	cd mongodb && curl $(curlRetryOpts) "$(MONGODB_URL)" -o mongodb.tgz && $(MONGODB_DECOMPRESS) mongodb.tgz && chmod +x ./mongodb-*/bin/*
 	cd mongodb && mv ./mongodb-*/bin/* . && rm -rf db_files && rm -rf db_logs && mkdir -p db_files && mkdir -p db_logs
 mongodb/.get-mongosh:
 	rm -rf mongosh
 	mkdir -p mongosh
-	cd mongosh && curl "$(MONGOSH_URL)" -o mongosh.tgz && $(MONGOSH_DECOMPRESS) mongosh.tgz && chmod +x ./mongosh-*/bin/*
+	cd mongosh && curl $(curlRetryOpts) "$(MONGOSH_URL)" -o mongosh.tgz && $(MONGOSH_DECOMPRESS) mongosh.tgz && chmod +x ./mongosh-*/bin/*
 	cd mongosh && mv ./mongosh-*/bin/* .
 get-mongodb:mongodb/.get-mongodb
 	@touch $<

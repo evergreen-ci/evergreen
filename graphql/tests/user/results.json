@@ -8,6 +8,16 @@
             "displayName": "testuser",
             "userId": "testuser",
             "emailAddress": "testuser@mongodb.com",
+            "permissions": {
+              "canCreateDistro": true,
+              "canCreateProject": true,
+              "canEditAdminSettings": true,
+              "distroPermissions": {
+                "admin": true,
+                "edit": true,
+                "view": true
+              }
+            },
             "subscriptions": [
               {
                 "id": "61326406a620e4737f57003e",
@@ -27,7 +37,15 @@
         "data": {
           "user": {
             "displayName": "Bob Smith",
-            "userId": "bob.smith"
+            "userId": "bob.smith",
+            "permissions": {
+              "canCreateDistro": false,
+              "distroPermissions": {
+                "admin": false,
+                "edit": false,
+                "view": false
+              }
+            }
           }
         }
       }
@@ -143,8 +161,8 @@
               ],
               "filteredPatchCount": 6
             }
-        },
-        "page1": {
+          },
+          "page1": {
             "patches": {
               "patches": [
                 { "id": "5e4ff3abe3c3317e352062e5" },
@@ -153,7 +171,7 @@
               ],
               "filteredPatchCount": 6
             }
-        }
+          }
         }
       }
     },

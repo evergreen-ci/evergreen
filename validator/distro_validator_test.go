@@ -81,7 +81,7 @@ func TestCheckDistro(t *testing.T) {
 			}
 			// simulate duplicate id
 			dupe := distro.Distro{Id: "a"}
-			So(dupe.Insert(), ShouldBeNil)
+			So(dupe.Insert(ctx), ShouldBeNil)
 			verrs, err := CheckDistro(ctx, d, conf, true)
 			So(err, ShouldBeNil)
 			So(verrs, ShouldNotResemble, ValidationErrors{})
@@ -480,10 +480,10 @@ func TestEnsureValidContainerPool(t *testing.T) {
 	d4 := &distro.Distro{
 		Id: "d4",
 	}
-	assert.NoError(d1.Insert())
-	assert.NoError(d2.Insert())
-	assert.NoError(d3.Insert())
-	assert.NoError(d4.Insert())
+	assert.NoError(d1.Insert(ctx))
+	assert.NoError(d2.Insert(ctx))
+	assert.NoError(d3.Insert(ctx))
+	assert.NoError(d4.Insert(ctx))
 
 	err := ensureValidContainerPool(ctx, d1, conf)
 	assert.Equal(err, ValidationErrors{{Error,
@@ -726,4 +726,48 @@ func TestEnsureHasValidVirtualWorkstationSettings(t *testing.T) {
 	assert.NotNil(t, ensureHasValidVirtualWorkstationSettings(ctx, &distro.Distro{
 		IsVirtualWorkstation: true,
 	}, settings))
+}
+
+func TestValidateAliases(t *testing.T) {
+	assert.NotNil(t, validateAliases(&distro.Distro{
+		Id:            "distro",
+		Provider:      evergreen.ProviderNameDocker,
+		ContainerPool: "",
+		Aliases:       []string{"alias_1", "alias_2"},
+	}, []string{}))
+
+	assert.NotNil(t, validateAliases(&distro.Distro{
+		Id:            "distro",
+		Provider:      evergreen.ProviderNameStatic,
+		ContainerPool: "container_pool",
+		Aliases:       []string{"alias_1", "alias_2"},
+	}, []string{}))
+
+	assert.NotNil(t, validateAliases(&distro.Distro{
+		Id:            "distro",
+		Provider:      evergreen.ProviderNameStatic,
+		ContainerPool: "container_pool",
+		Aliases:       []string{},
+	}, []string{"distro"}))
+
+	assert.NotNil(t, validateAliases(&distro.Distro{
+		Id:            "distro",
+		Provider:      evergreen.ProviderNameStatic,
+		ContainerPool: "",
+		Aliases:       []string{"distro"},
+	}, []string{}))
+
+	assert.Nil(t, validateAliases(&distro.Distro{
+		Id:            "distro",
+		Provider:      evergreen.ProviderNameDocker,
+		ContainerPool: "container_pool",
+		Aliases:       []string{},
+	}, []string{"something_else"}))
+
+	assert.Nil(t, validateAliases(&distro.Distro{
+		Id:            "distro",
+		Provider:      evergreen.ProviderNameStatic,
+		ContainerPool: "",
+		Aliases:       []string{"alias_1", "alias_2"},
+	}, []string{}))
 }

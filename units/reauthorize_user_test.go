@@ -10,6 +10,7 @@ import (
 	"github.com/evergreen-ci/evergreen/db"
 	"github.com/evergreen-ci/evergreen/mock"
 	"github.com/evergreen-ci/evergreen/model/user"
+	"github.com/evergreen-ci/evergreen/testutil"
 	"github.com/evergreen-ci/gimlet"
 	"github.com/evergreen-ci/utility"
 	"github.com/mongodb/amboy"
@@ -65,6 +66,10 @@ func (*mockReauthUserManager) GetGroupsForUser(string) ([]string, error) {
 }
 
 func TestReauthorizeUserJob(t *testing.T) {
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+	ctx = testutil.TestSpan(ctx, t)
+
 	needsReauth := func(env *mock.Environment, u *user.DBUser) (bool, error) {
 		dbUser, err := user.FindOneById(u.Username())
 		if err != nil {
@@ -122,9 +127,9 @@ func TestReauthorizeUserJob(t *testing.T) {
 			assert.False(t, um.attemptedReauth)
 		},
 		"NoopsIfDegraded": func(ctx context.Context, t *testing.T, env *mock.Environment, um *mockReauthUserManager, u *user.DBUser) {
-			require.NoError(t, evergreen.SetServiceFlags(evergreen.ServiceFlags{BackgroundReauthDisabled: true}))
+			require.NoError(t, evergreen.SetServiceFlags(ctx, evergreen.ServiceFlags{BackgroundReauthDisabled: true}))
 			defer func() {
-				assert.NoError(t, evergreen.SetServiceFlags(evergreen.ServiceFlags{BackgroundReauthDisabled: false}))
+				assert.NoError(t, evergreen.SetServiceFlags(ctx, evergreen.ServiceFlags{BackgroundReauthDisabled: false}))
 			}()
 			j := NewReauthorizeUserJob(env, u, "test")
 			j.Run(ctx)
@@ -164,16 +169,17 @@ func TestReauthorizeUserJob(t *testing.T) {
 		},
 	} {
 		t.Run(testName, func(t *testing.T) {
+			tctx, cancel := context.WithCancel(ctx)
+			defer cancel()
+			tctx = testutil.TestSpan(tctx, t)
+
 			require.NoError(t, db.Clear(user.Collection))
 			defer func() {
 				assert.NoError(t, db.Clear(user.Collection))
 			}()
 
-			ctx, cancel := context.WithCancel(context.Background())
-			defer cancel()
-
 			env := &mock.Environment{}
-			require.NoError(t, env.Configure(ctx))
+			require.NoError(t, env.Configure(tctx))
 			env.EvergreenSettings.AuthConfig.BackgroundReauthMinutes = 1
 
 			u := &user.DBUser{
@@ -189,7 +195,7 @@ func TestReauthorizeUserJob(t *testing.T) {
 			env.SetUserManager(um)
 			env.SetUserManagerInfo(evergreen.UserManagerInfo{CanReauthorize: true})
 
-			testCase(ctx, t, env, um, u)
+			testCase(tctx, t, env, um, u)
 		})
 	}
 }

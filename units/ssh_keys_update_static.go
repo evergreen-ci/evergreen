@@ -54,7 +54,7 @@ func NewStaticUpdateSSHKeysJob(h host.Host, id string) amboy.Job {
 
 func (j *staticUpdateSSHKeysJob) Run(ctx context.Context) {
 	if j.host == nil {
-		h, err := host.FindOneId(j.HostID)
+		h, err := host.FindOneId(ctx, j.HostID)
 		if err != nil {
 			j.AddError(errors.Wrapf(err, "finding host '%s'", j.HostID))
 			return
@@ -89,7 +89,7 @@ func (j *staticUpdateSSHKeysJob) Run(ctx context.Context) {
 			j.AddError(err)
 			return
 		}
-		if err := j.host.AddSSHKeyName(pair.Name); err != nil {
+		if err := j.host.AddSSHKeyName(ctx, pair.Name); err != nil {
 			grip.Error(message.WrapError(err, message.Fields{
 				"message": "could not add SSH key name to host",
 				"host_id": j.host.Id,

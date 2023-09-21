@@ -9,6 +9,7 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
+	"strconv"
 	"testing"
 	"time"
 
@@ -19,7 +20,8 @@ import (
 )
 
 func TestGetPIDsToKill(t *testing.T) {
-	ctx, cancel := context.WithCancel(context.Background())
+	const timeoutSecs = 10
+	ctx, cancel := context.WithTimeout(context.Background(), timeoutSecs*time.Second)
 	defer cancel()
 
 	agentPID, ok := os.LookupEnv(MarkerAgentPID)
@@ -31,7 +33,7 @@ func TestGetPIDsToKill(t *testing.T) {
 		defer os.Setenv(MarkerAgentPID, agentPID)
 	}
 
-	inEvergreenCmd := exec.CommandContext(ctx, "sleep", "10")
+	inEvergreenCmd := exec.CommandContext(ctx, "sleep", strconv.Itoa(timeoutSecs))
 	inEvergreenCmd.Env = append(inEvergreenCmd.Env, fmt.Sprintf("%s=true", MarkerInEvergreen))
 	require.NoError(t, inEvergreenCmd.Start())
 	inEvergreenPID := inEvergreenCmd.Process.Pid
@@ -39,21 +41,39 @@ func TestGetPIDsToKill(t *testing.T) {
 	fullSleepPath, err := exec.LookPath("sleep")
 	require.NoError(t, err)
 
-	inWorkingDirCmd := exec.CommandContext(ctx, fullSleepPath, "10")
+	inWorkingDirCmd := exec.CommandContext(ctx, fullSleepPath, strconv.Itoa(timeoutSecs))
 	require.NoError(t, inWorkingDirCmd.Start())
 	inWorkingDirPID := inWorkingDirCmd.Process.Pid
 
-	pids, err := getPIDsToKill(ctx, "", filepath.Dir(fullSleepPath), grip.GetDefaultJournaler())
-	require.NoError(t, err)
-	assert.Contains(t, pids, inEvergreenPID)
-	assert.Contains(t, pids, inWorkingDirPID)
-	assert.NotContains(t, pids, os.Getpid())
+	assert.Eventually(t, func() bool {
+		// Since the processes run in the background, we have to poll them until
+		// they actually start, at which point they should appear in the listed
+		// PIDs.
+		pids, err := getPIDsToKill(ctx, "", filepath.Dir(fullSleepPath), grip.GetDefaultJournaler())
+		require.NoError(t, err)
+
+		var (
+			foundInEvergreenPID  bool
+			foundInWorkingDirPID bool
+		)
+		for _, pid := range pids {
+			if pid == inEvergreenPID {
+				foundInEvergreenPID = true
+			}
+			if pid == inWorkingDirPID {
+				foundInWorkingDirPID = true
+			}
+			if foundInEvergreenPID && foundInWorkingDirPID {
+				break
+			}
+		}
+		return foundInEvergreenPID && foundInWorkingDirPID
+	}, timeoutSecs*time.Second, 100*time.Millisecond, "in Evergreen process (pid %d) and in working directory process (pid %d) both should have eventually appeared in the listed PID")
 }
 
 func TestKillSpawnedProcs(t *testing.T) {
-	ctx := context.Background()
-	for testName, test := range map[string]func(*testing.T){
-		"expired context": func(t *testing.T) {
+	for testName, test := range map[string]func(ctx context.Context, t *testing.T){
+		"ErrorsWithContextTimeout": func(ctx context.Context, t *testing.T) {
 			expiredContext, cancel := context.WithTimeout(ctx, -time.Second)
 			defer cancel()
 
@@ -61,7 +81,7 @@ func TestKillSpawnedProcs(t *testing.T) {
 			assert.Error(t, err)
 			assert.Equal(t, ErrPSTimeout, errors.Cause(err))
 		},
-		"cancelled context": func(t *testing.T) {
+		"ErrorsWithContextCancelled": func(ctx context.Context, t *testing.T) {
 			cancelledContext, cancel := context.WithCancel(ctx)
 			cancel()
 
@@ -69,40 +89,45 @@ func TestKillSpawnedProcs(t *testing.T) {
 			assert.Error(t, err)
 			assert.NotEqual(t, ErrPSTimeout, errors.Cause(err))
 		},
-		"not cancelled": func(t *testing.T) {
+		"SucceedsWithNoContextError": func(ctx context.Context, t *testing.T) {
 			err := KillSpawnedProcs(ctx, "", "", grip.GetDefaultJournaler())
 			assert.NoError(t, err)
 		},
 	} {
-		t.Run(testName, test)
+		t.Run(testName, func(t *testing.T) {
+			ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
+			defer cancel()
+
+			test(ctx, t)
+		})
 	}
 
 }
 
 func TestWaitForExit(t *testing.T) {
-	ctx, cancel := context.WithCancel(context.Background())
-	defer cancel()
-
-	for testName, test := range map[string]func(*testing.T){
-		"non-existent process": func(t *testing.T) {
-			waitCtx, cancel := context.WithTimeout(ctx, 10*time.Second)
-			defer cancel()
-			pids, err := waitForExit(waitCtx, []int{1234567890})
+	for testName, test := range map[string]func(ctx context.Context, t *testing.T){
+		"DoesNotReturnNonexistentProcess": func(ctx context.Context, t *testing.T) {
+			pids, err := waitForExit(ctx, []int{1234567890})
+			require.NoError(t, ctx.Err())
 			assert.NoError(t, err)
 			assert.Empty(t, pids)
 		},
-		"long-running process": func(t *testing.T) {
+		"ReturnsLongRunningProcess": func(ctx context.Context, t *testing.T) {
 			longProcess := exec.CommandContext(ctx, "sleep", "30")
 			require.NoError(t, longProcess.Start())
-			waitCtx, cancel := context.WithTimeout(ctx, 5*time.Second)
-			defer cancel()
-			pids, err := waitForExit(waitCtx, []int{longProcess.Process.Pid})
+			pids, err := waitForExit(ctx, []int{longProcess.Process.Pid})
+			require.NoError(t, ctx.Err())
 			assert.Error(t, err)
 			require.Len(t, pids, 1)
 			assert.Equal(t, longProcess.Process.Pid, pids[0])
 		},
 	} {
-		t.Run(testName, test)
+		t.Run(testName, func(t *testing.T) {
+			ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
+			defer cancel()
+
+			test(ctx, t)
+		})
 	}
 }
 

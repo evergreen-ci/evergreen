@@ -67,7 +67,7 @@ func (n *Notification) SetBSON(raw mgobson.Raw) error {
 	case event.SlackSubscriberType:
 		n.Payload = &SlackPayload{}
 
-	case event.GithubPullRequestSubscriberType, event.GithubCheckSubscriberType:
+	case event.GithubPullRequestSubscriberType, event.GithubCheckSubscriberType, event.GithubMergeSubscriberType:
 		n.Payload = &message.GithubStatus{}
 
 	case event.EnqueuePatchSubscriberType:

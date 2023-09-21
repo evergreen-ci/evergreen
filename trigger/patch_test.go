@@ -1,6 +1,7 @@
 package trigger
 
 import (
+	"context"
 	"testing"
 	"time"
 
@@ -22,10 +23,12 @@ func TestPatchTriggers(t *testing.T) {
 }
 
 type patchSuite struct {
-	event event.EventLogEntry
-	data  *event.PatchEventData
-	patch patch.Patch
-	subs  []event.Subscription
+	event  event.EventLogEntry
+	data   *event.PatchEventData
+	patch  patch.Patch
+	subs   []event.Subscription
+	ctx    context.Context
+	cancel context.CancelFunc
 
 	t *patchTriggers
 
@@ -37,6 +40,8 @@ func (s *patchSuite) SetupSuite() {
 }
 
 func (s *patchSuite) SetupTest() {
+	s.ctx, s.cancel = context.WithCancel(context.Background())
+
 	s.NoError(db.ClearCollections(event.EventCollection, patch.Collection, event.SubscriptionsCollection, dbModel.ProjectRefCollection, model.VersionCollection))
 	startTime := time.Now().Truncate(time.Millisecond)
 
@@ -71,7 +76,7 @@ func (s *patchSuite) SetupTest() {
 		Id:         mgobson.ObjectIdHex(childPatchId),
 		Project:    "test",
 		Author:     "someone",
-		Status:     evergreen.PatchCreated,
+		Status:     evergreen.VersionCreated,
 		StartTime:  startTime,
 		FinishTime: startTime.Add(10 * time.Minute),
 		GithubPatchData: thirdparty.GithubPatch{
@@ -97,7 +102,7 @@ func (s *patchSuite) SetupTest() {
 	s.NoError(childVersion.Insert())
 
 	s.data = &event.PatchEventData{
-		Status: evergreen.PatchCreated,
+		Status: evergreen.VersionCreated,
 	}
 	s.event = event.EventLogEntry{
 		ResourceType: event.ResourceTypePatch,
@@ -127,7 +132,7 @@ func (s *patchSuite) SetupTest() {
 	ui := &evergreen.UIConfig{
 		Url: "https://evergreen.mongodb.com",
 	}
-	s.NoError(ui.Set())
+	s.NoError(ui.Set(s.ctx))
 
 	s.t = makePatchTriggers().(*patchTriggers)
 	s.t.event = &s.event
@@ -136,10 +141,14 @@ func (s *patchSuite) SetupTest() {
 	s.t.uiConfig = *ui
 }
 
+func (s *patchSuite) TearDownTest() {
+	s.cancel()
+}
+
 func (s *patchSuite) TestFetch() {
 	t, ok := makePatchTriggers().(*patchTriggers)
 	s.Require().True(ok)
-	s.NoError(t.Fetch(&s.event))
+	s.NoError(t.Fetch(s.ctx, &s.event))
 	s.NotNil(t.event)
 	s.Equal(t.event, &s.event)
 	s.NotNil(t.data)
@@ -149,23 +158,23 @@ func (s *patchSuite) TestFetch() {
 }
 
 func (s *patchSuite) TestAllTriggers() {
-	n, err := NotificationsFromEvent(&s.event)
+	n, err := NotificationsFromEvent(s.ctx, &s.event)
 	s.NoError(err)
 	s.Len(n, 0)
 
-	s.patch.Status = evergreen.PatchSucceeded
-	s.data.Status = evergreen.PatchSucceeded
+	s.patch.Status = evergreen.LegacyPatchSucceeded
+	s.data.Status = evergreen.LegacyPatchSucceeded
 	s.NoError(db.Update(patch.Collection, bson.M{"_id": s.patch.Id}, &s.patch))
 
-	n, err = NotificationsFromEvent(&s.event)
+	n, err = NotificationsFromEvent(s.ctx, &s.event)
 	s.NoError(err)
 	s.Len(n, 2)
 
-	s.patch.Status = evergreen.PatchFailed
-	s.data.Status = evergreen.PatchFailed
+	s.patch.Status = evergreen.VersionFailed
+	s.data.Status = evergreen.VersionFailed
 	s.NoError(db.Update(patch.Collection, bson.M{"_id": s.patch.Id}, &s.patch))
 
-	n, err = NotificationsFromEvent(&s.event)
+	n, err = NotificationsFromEvent(s.ctx, &s.event)
 	s.NoError(err)
 	s.Len(n, 2)
 }
@@ -175,46 +184,46 @@ func (s *patchSuite) TestPatchSuccess() {
 	s.NoError(err)
 	s.Nil(n)
 
-	s.data.Status = evergreen.PatchFailed
+	s.data.Status = evergreen.VersionFailed
 	n, err = s.t.patchSuccess(&s.subs[1])
 	s.NoError(err)
 	s.Nil(n)
 
-	s.data.Status = evergreen.PatchSucceeded
+	s.data.Status = evergreen.LegacyPatchSucceeded
 	n, err = s.t.patchSuccess(&s.subs[1])
 	s.NoError(err)
 	s.NotNil(n)
 }
 
 func (s *patchSuite) TestPatchFailure() {
-	s.data.Status = evergreen.PatchCreated
+	s.data.Status = evergreen.VersionCreated
 	n, err := s.t.patchFailure(&s.subs[2])
 	s.NoError(err)
 	s.Nil(n)
 
-	s.data.Status = evergreen.PatchSucceeded
+	s.data.Status = evergreen.LegacyPatchSucceeded
 	n, err = s.t.patchFailure(&s.subs[2])
 	s.NoError(err)
 	s.Nil(n)
 
-	s.data.Status = evergreen.PatchFailed
+	s.data.Status = evergreen.VersionFailed
 	n, err = s.t.patchFailure(&s.subs[2])
 	s.NoError(err)
 	s.NotNil(n)
 }
 
 func (s *patchSuite) TestPatchOutcome() {
-	s.data.Status = evergreen.PatchCreated
+	s.data.Status = evergreen.VersionCreated
 	n, err := s.t.patchOutcome(&s.subs[0])
 	s.NoError(err)
 	s.Nil(n)
 
-	s.data.Status = evergreen.PatchSucceeded
+	s.data.Status = evergreen.LegacyPatchSucceeded
 	n, err = s.t.patchOutcome(&s.subs[0])
 	s.NoError(err)
 	s.NotNil(n)
 
-	s.data.Status = evergreen.PatchFailed
+	s.data.Status = evergreen.VersionFailed
 	n, err = s.t.patchOutcome(&s.subs[0])
 	s.NoError(err)
 	s.NotNil(n)
@@ -257,7 +266,7 @@ func (s *patchSuite) TestRunChildrenOnPatchOutcome() {
 		s.NoError(s.subs[i].Upsert())
 	}
 
-	s.data.Status = evergreen.PatchSucceeded
+	s.data.Status = evergreen.LegacyPatchSucceeded
 	n, err := s.t.patchOutcome(&s.subs[0])
 	// there is no token set up in settings, but hitting this error
 	// means it's trying to finalize the patch
@@ -265,19 +274,19 @@ func (s *patchSuite) TestRunChildrenOnPatchOutcome() {
 	s.Contains(err.Error(), "no 'github' token in settings")
 	s.Nil(n)
 
-	s.data.Status = evergreen.PatchFailed
+	s.data.Status = evergreen.VersionFailed
 	n, err = s.t.patchOutcome(&s.subs[1])
 	s.Require().Error(err)
 	s.Contains(err.Error(), "no 'github' token in settings")
 	s.Nil(n)
 
-	s.data.Status = evergreen.PatchSucceeded
+	s.data.Status = evergreen.LegacyPatchSucceeded
 	n, err = s.t.patchOutcome(&s.subs[2])
 	s.Require().Error(err)
 	s.Contains(err.Error(), "no 'github' token in settings")
 	s.Nil(n)
 
-	s.data.Status = evergreen.PatchFailed
+	s.data.Status = evergreen.VersionFailed
 	n, err = s.t.patchOutcome(&s.subs[2])
 	s.Require().Error(err)
 	s.Contains(err.Error(), "no 'github' token in settings")
@@ -290,7 +299,7 @@ func (s *patchSuite) TestPatchStarted() {
 	s.Nil(err)
 	s.Nil(n)
 
-	s.data.Status = evergreen.PatchStarted
+	s.data.Status = evergreen.VersionStarted
 	n, err = s.t.patchStarted(&s.subs[0])
 	s.Nil(err)
 	s.NotNil(n)

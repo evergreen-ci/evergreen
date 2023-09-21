@@ -69,7 +69,7 @@ func (j *cacheHistoricalTaskDataJob) Run(ctx context.Context) {
 		grip.Info(timingMsg)
 	}()
 
-	flags, err := evergreen.GetServiceFlags()
+	flags, err := evergreen.GetServiceFlags(ctx)
 	if err != nil {
 		j.AddError(errors.Wrap(err, "getting service flags"))
 		return

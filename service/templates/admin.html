@@ -58,7 +58,6 @@ Admin Settings
 						<li class="link" ng-click="scrollTo('degraded')">Service Flags</li>
 						<li class="link" ng-click="scrollTo('announcements')">Announcements</li>
 						<div>Runners</div>
-						<li class="link" ng-click="scrollTo('alerts')">Alerts</li>
 						<li class="link" ng-click="scrollTo('notify')">Notify</li>
 						<li class="link" ng-click="scrollTo('hostinit')">Hostinit</li>
 						<li class="link" ng-click="scrollTo('pod_lifecycle')">Pod Lifecycle</li>
@@ -97,6 +96,7 @@ Admin Settings
 						<div>Other</div>
 						<li class="link" ng-click="scrollTo('misc')">Misc Settings</li>
 						<li class="link" ng-click="scrollTo('credentials')">Credentials</li>
+						<li class="link" ng-click="scrollTo('buckets')">Bucket Config</li>
 						<li class="link" ng-click="scrollTo('expansions')">Expansions</li>
 						<li class="link" ng-click="scrollTo('host_jasper')">Host Jasper</li>
 						<li class="link" ng-click="scrollTo('jira_notifications')">JIRA Custom Field Mappings</li>
@@ -246,6 +246,15 @@ Admin Settings
 												</td>
 											</tr>
 											<tr>
+												<td>Unset Function Vars</td>
+												<td colspan="2">
+													<md-radio-group data-ng-model="Settings.service_flags.unset_function_vars_disabled" layout="row">
+														<md-radio-button data-ng-value="false"></md-radio-button>
+														<md-radio-button data-ng-value="true"></md-radio-button>
+													</md-radio-group>
+												</td>
+											</tr>
+											<tr>
 												<td>Test GitHub pull requests</td>
 												<td colspan="2">
 													<md-radio-group
@@ -389,17 +398,6 @@ Admin Settings
 												</td>
 											</tr>
 											<tr>
-												<td>Container configurations</td>
-												<td colspan="2">
-													<md-radio-group
-															data-ng-model="Settings.service_flags.container_configurations_disabled"
-															layout="row">
-														<md-radio-button data-ng-value="false"></md-radio-button>
-														<md-radio-button data-ng-value="true"></md-radio-button>
-													</md-radio-group>
-												</td>
-											</tr>
-											<tr>
 												<td>Public access for legacy UI</td>
 												<td colspan="2">
 													<md-radio-group
@@ -411,11 +409,9 @@ Admin Settings
 												</td>
 											</tr>
 											<tr>
-												<td>Legacy UI Project Page</td>
+												<td>Global GitHub Token</td>
 												<td colspan="2">
-													<md-radio-group
-															data-ng-model="Settings.service_flags.legacy_ui_project_page_disabled"
-															layout="row">
+													<md-radio-group data-ng-model="Settings.service_flags.global_github_token_disabled" layout="row">
 														<md-radio-button data-ng-value="false"></md-radio-button>
 														<md-radio-button data-ng-value="true"></md-radio-button>
 													</md-radio-group>
@@ -553,53 +549,10 @@ Admin Settings
 							</section>
 						</section>
 						<section layout="row" flex>
-							<md-card flex=50 id="alerts">
-								<md-card-title>
-									<md-card-title-text>
-										<span>Alerts - SMTP Settings</span>
-									</md-card-title-text>
-									<md-button ng-click="clearSection('alerts')">
-										<i class="fa fa-trash"></i>
-									</md-button>
-								</md-card-title>
-								<md-card-content>
-									<md-input-container class="control" style="width:45%;">
-										<label>Server address</label>
-										<input type="text" ng-model="Settings.alerts.smtp.server">
-									</md-input-container>
-									<md-input-container class="control" style="width:45%; margin-left:50px;">
-										<label>From email</label>
-										<input type="text" ng-model="Settings.alerts.smtp.from">
-									</md-input-container>
-									<md-input-container class="control" style="width:45%;">
-										<label>Port</label>
-										<input type="number" ng-model="Settings.alerts.smtp.port">
-									</md-input-container>
-									<md-input-container class="control" style="width:250px; margin-left:50px;">
-										<md-checkbox ng-model="Settings.alerts.smtp.use_ssl">
-											Use SSL
-										</md-checkbox>
-									</md-input-container>
-									<md-input-container class="control" style="width:45%;">
-										<label>Username</label>
-										<input type="text" ng-model="Settings.alerts.smtp.username">
-									</md-input-container>
-									<md-input-container class="control" style="width:45%; margin-left:50px;">
-										<label>Password</label>
-										<input type="text" ng-model="Settings.alerts.smtp.password">
-									</md-input-container>
-									<md-input-container class="control">
-										<label>Admin emails</label>
-										<textarea ng-model="Settings.alerts.smtp.admin_email" ng-list="&#10;"
-											ng-trim="false" rows="3" md-select-on-focus></textarea>
-									</md-input-container>
-								</md-card-content>
-							</md-card>
-
 							<md-card flex=50 id="notify">
 								<md-card-title>
 									<md-card-title-text>
-										<span>Notify - SMTP Settings</span>
+										<span>Notify - SES Settings</span>
 									</md-card-title-text>
 									<md-button ng-click="clearSection('notify')">
 										<i class="fa fa-trash"></i>
@@ -607,34 +560,8 @@ Admin Settings
 								</md-card-title>
 								<md-card-content>
 									<md-input-container class="control" style="width:45%;">
-										<label>Server address</label>
-										<input type="text" ng-model="Settings.notify.smtp.server">
-									</md-input-container>
-									<md-input-container class="control" style="width:45%; margin-left:50px;">
 										<label>From email</label>
-										<input type="text" ng-model="Settings.notify.smtp.from">
-									</md-input-container>
-									<md-input-container class="control" style="width:45%;">
-										<label>Port</label>
-										<input type="number" ng-model="Settings.notify.smtp.port">
-									</md-input-container>
-									<md-input-container class="control" style="width:250px; margin-left:50px;">
-										<md-checkbox ng-model="Settings.notify.smtp.use_ssl">
-											Use SSL
-										</md-checkbox>
-									</md-input-container>
-									<md-input-container class="control" style="width:45%;">
-										<label>Username</label>
-										<input type="text" ng-model="Settings.notify.smtp.username">
-									</md-input-container>
-									<md-input-container class="control" style="width:45%; margin-left:50px;">
-										<label>Password</label>
-										<input type="text" ng-model="Settings.notify.smtp.password">
-									</md-input-container>
-									<md-input-container class="control">
-										<label>Admin emails</label>
-										<textarea ng-model="Settings.notify.smtp.admin_email" ng-list="&#10;"
-											ng-trim="false" rows="3" md-select-on-focus></textarea>
+										<input type="text" ng-model="Settings.notify.ses.sender_address">
 									</md-input-container>
 								</md-card-content>
 							</md-card>
@@ -923,6 +850,11 @@ Admin Settings
 										<input type="text" ng-model="Settings.ui.parsley_url">
 									</md-input-container>
 									<md-input-container class="control" style="width:45%;  margin-left:50px;">
+										<label>File Streaming Content Types</label>
+										<textarea ng-model="Settings.ui.file_streaming_content_types" ng-list="&#10;" ng-trim="false" rows="3"
+											md-select-on-focus></textarea>
+									</md-input-container>
+									<md-input-container class="control" style="width:45%;  margin-left:50px;">
 										<label>HTTP listener address</label>
 										<input type="text" ng-model="Settings.ui.http_listen_addr">
 									</md-input-container>
@@ -1173,6 +1105,14 @@ Admin Settings
 										<label>Github App Id</label>
 										<input type="number" ng-model="Settings.auth.github.app_id">
 									</md-input-container>
+									<md-input-container class="control" style="width:45%;">
+										<label>Default Owner</label>
+										<input type="text" ng-model="Settings.auth.github.default_owner">
+									</md-input-container>
+									<md-input-container class="control" style="width:45%;">
+										<label>Default Repo</label>
+										<input type="text" ng-model="Settings.auth.github.default_repo">
+									</md-input-container>
 								</md-card-content>
 							</md-card>
 							<md-card flex=50 id="multi" style="max-width:49%">
@@ -1259,6 +1199,10 @@ Admin Settings
 									<md-input-container class="control" style="width:45%; margin-left:50px;">
 										<label>Default project</label>
 										<input type="text" ng-model="Settings.jira.default_project">
+									</md-input-container>
+									<md-input-container class="control" style="width:45%;">
+										<label>Email</label>
+										<input type="text" ng-model="Settings.jira.email">
 									</md-input-container>
 									<md-card>
 										<md-card-title>
@@ -2327,9 +2271,22 @@ Admin Settings
 									</md-input-container>
 								</md-card-content>
 							</md-card>
+
+							<md-card flex=50 id="buckets">
+								<md-card-title>
+									<md-card-title-text>
+										<span>Bucket Config</span>
+									</md-card-title-text>
+								</md-card-title>
+								<md-card-content>
+									<md-input-container class="control" style="width:45%;">
+										<label>Log Bucket</label>
+										<input type="text" ng-model="Settings.buckets.log_bucket.name">
+									</md-input-container>
+								</md-card-content>
+							</md-card>
+
 						</section>
-
-
 
 						<section layout="row" flex>
 

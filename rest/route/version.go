@@ -211,9 +211,9 @@ func (h *versionAbortHandler) Parse(ctx context.Context, r *http.Request) error 
 	return nil
 }
 
-// Execute calls the data AbortVersion function to abort all tasks of a version.
+// Execute calls the data AbortVersionTasks function to abort all tasks of a version.
 func (h *versionAbortHandler) Run(ctx context.Context) gimlet.Responder {
-	if err := task.AbortVersion(h.versionId, task.AbortInfo{User: h.userId}); err != nil {
+	if err := task.AbortVersionTasks(h.versionId, task.AbortInfo{User: h.userId}); err != nil {
 		return gimlet.MakeJSONInternalErrorResponder(errors.Wrapf(err, "aborting version '%s'", h.versionId))
 	}
 
@@ -262,7 +262,7 @@ func (h *versionRestartHandler) Parse(ctx context.Context, r *http.Request) erro
 // Execute calls the data RestartVersion function to restart completed tasks of a version.
 func (h *versionRestartHandler) Run(ctx context.Context) gimlet.Responder {
 	// RestartAction the version
-	err := dbModel.RestartTasksInVersion(h.versionId, true, MustHaveUser(ctx).Id)
+	err := dbModel.RestartTasksInVersion(ctx, h.versionId, true, MustHaveUser(ctx).Id)
 	if err != nil {
 		return gimlet.MakeJSONInternalErrorResponder(errors.Wrapf(err, "restarting tasks in version '%s'", h.versionId))
 	}

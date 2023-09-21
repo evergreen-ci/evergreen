@@ -64,6 +64,7 @@
                 "password": "password"
             },
             "default_project": "",
+            "email": "evg-user@jira.mongodb.org",
             "host": "jira.mongodb.org",
             "oauth1": {
                 "private_key": "",
@@ -71,6 +72,25 @@
                 "token_secret": "",
                 "consumer_key": ""
             }
-        }
+        },
+        {
+            "_id": "container_pools",
+            "pools": [
+              {
+                "distro": "localhost",
+                "id": "test-pool",
+                "max_containers": 5,
+                "port": 2525,
+                "maximages": 0
+              },
+              {
+                "distro": "localhost",
+                "id": "ubuntu-test-pool",
+                "max_containers": 10,
+                "port": 4649,
+                "maximages": 0
+              }
+            ]
+          }
     ]
 }

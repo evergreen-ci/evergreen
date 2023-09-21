@@ -1,6 +1,7 @@
 package trigger
 
 import (
+	"context"
 	"fmt"
 
 	"github.com/evergreen-ci/evergreen"
@@ -36,9 +37,9 @@ func makeCommitQueueTriggers() eventHandler {
 	return t
 }
 
-func (t *commitQueueTriggers) Fetch(e *event.EventLogEntry) error {
+func (t *commitQueueTriggers) Fetch(ctx context.Context, e *event.EventLogEntry) error {
 	var err error
-	if err = t.uiConfig.Get(evergreen.GetEnvironment()); err != nil {
+	if err = t.uiConfig.Get(ctx); err != nil {
 		return errors.Wrap(err, "fetching UI config")
 	}
 
@@ -108,7 +109,7 @@ func (t *commitQueueTriggers) makeData(sub *event.Subscription) (*commonTemplate
 	}
 
 	slackColor := evergreenFailColor
-	if t.data.Status == evergreen.PatchSucceeded || t.data.Status == evergreen.MergeTestStarted {
+	if evergreen.IsSuccessfulVersionStatus(t.data.Status) || t.data.Status == evergreen.MergeTestStarted {
 		slackColor = evergreenSuccessColor
 	}
 

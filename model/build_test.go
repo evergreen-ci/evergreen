@@ -1,6 +1,7 @@
 package model
 
 import (
+	"context"
 	"testing"
 
 	"github.com/evergreen-ci/evergreen"
@@ -112,10 +113,13 @@ func (s *BuildConnectorChangeStatusSuite) TestSetActivated() {
 }
 
 func (s *BuildConnectorChangeStatusSuite) TestSetPriority() {
-	err := SetBuildPriority("build1", int64(2), "")
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
+	err := SetBuildPriority(ctx, "build1", int64(2), "")
 	s.NoError(err)
 
-	err = SetBuildPriority("build1", int64(3), "")
+	err = SetBuildPriority(ctx, "build1", int64(3), "")
 	s.NoError(err)
 }
 
@@ -176,6 +180,9 @@ func (s *BuildConnectorRestartSuite) SetupSuite() {
 }
 
 func (s *BuildConnectorRestartSuite) TestRestart() {
-	err := RestartBuild(&build.Build{Id: "build1"}, []string{}, true, "user1")
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
+	err := RestartBuild(ctx, &build.Build{Id: "build1"}, []string{}, true, "user1")
 	s.NoError(err)
 }

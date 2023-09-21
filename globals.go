@@ -13,6 +13,7 @@ import (
 const (
 	User            = "mci"
 	GithubPatchUser = "github_pull_request"
+	GithubMergeUser = "github_merge_queue"
 	ParentPatchUser = "parent_patch"
 
 	HostRunning       = "running"
@@ -41,19 +42,12 @@ const (
 
 	HostExternalUserName = "external"
 
-	// Task Statuses used in the database models
-
-	// TaskInactive is not assigned to any new tasks, but can be found
-	// in the database and is used in the UI.
-	TaskInactive = "inactive"
+	// Task statuses stored in the database (i.e. (Task).Status):
 
 	// TaskUndispatched indicates either:
 	//  1. a task is not scheduled to run (when Task.Activated == false)
 	//  2. a task is scheduled to run (when Task.Activated == true)
 	TaskUndispatched = "undispatched"
-	TaskUnscheduled  = "unscheduled"
-	// TaskWillRun is a subset of undispatched tasks and is only used in the UI.
-	TaskWillRun = "will-run"
 
 	// TaskDispatched indicates that an agent has received the task, but
 	// the agent has not yet told Evergreen that it's running the task
@@ -63,31 +57,59 @@ const (
 	TaskStarted = "started"
 
 	// The task statuses below indicate that a task has finished.
+	// TaskSucceeded indicates that the task has finished and is successful.
 	TaskSucceeded = "success"
 
-	// These statuses indicate the types of failures. Of these, TaskFailed is
-	// the only one that's allowed in the Task.Status field - the other ones are
-	// computed for the UI based on the Task.Status and its Task.Details.
+	// TaskFailed indicates that the task has finished and failed. This
+	// encompasses any task failure, regardless of the specific failure reason
+	// which can be found in the task end details.
 	TaskFailed = "failed"
-	// All task failure reasons other than TaskFailed are only for UI display
-	// purposes. These are not stored in the task status (although they used to
-	// be for very old tasks).
+
+	// Task statuses used for the UI or other special-case purposes:
+
+	// TaskUnscheduled indicates that the task is undispatched and is not
+	// scheduled to eventually run. This is a display status, so it's only used
+	// in the UI.
+	TaskUnscheduled = "unscheduled"
+	// TaskInactive is a deprecated legacy status that used to mean that the
+	// task was not scheduled to run. This is equivalent to the TaskUnscheduled
+	// display status. These are not stored in the task status (although they
+	// used to be for very old tasks) but may be still used in some outdated
+	// pieces of code.
+	TaskInactive = "inactive"
+
+	// TaskWillRun indicates that the task is scheduled to eventually run,
+	// unless one of its dependencies becomes unattainable. This is a display
+	// status, so it's only used in the UI.
+	TaskWillRun = "will-run"
+
+	// All other task failure reasons other than TaskFailed are display
+	// statuses, so they're only used in the UI. These are not stored in the
+	// task status (although they used to be for very old tasks).
 	TaskSystemFailed = "system-failed"
 	TaskTestTimedOut = "test-timed-out"
 	TaskSetupFailed  = "setup-failed"
 
-	// This is not an official task status; however it is used by the front end to distinguish aborted and failing tasks
-	// Tasks can be filtered on the front end by `aborted` status
+	// TaskAborted indicates that the task was aborted while it was running.
 	TaskAborted = "aborted"
 
-	// Not official task statuses; used to indicate if a task is unreachable or if it's still waiting on dependencies.
+	// TaskStatusBlocked indicates that the task cannot run because it is
+	// blocked by an unattainable dependency. This is a display status, so it's
+	// only used in the UI.
 	TaskStatusBlocked = "blocked"
-	TaskStatusPending = "pending"
 
-	// This is not an official task status; it is used by the front end to indicate that there is a linked issue in the annotation
+	// TaskKnownIssue indicates that the task has failed and is being tracked by
+	// a linked issue in the task annotations. This is a display status, so it's
+	// only used in the UI.
 	TaskKnownIssue = "known-issue"
 
-	// This is not an official task status; it is used by the front end to indicate that the filter should apply to all of the tasks
+	// TaskStatusPending is a special state that's used for one specific return
+	// value. Generally do not use this status as it is neither a meaningful
+	// status in the UI nor in the back end.
+	TaskStatusPending = "pending"
+
+	// TaskAll is not a status, but rather a UI filter indicating that it should
+	// select all tasks regardless of their status.
 	TaskAll = "all"
 
 	// Task Command Types
@@ -106,8 +128,13 @@ const (
 	// underlying runtime environment (i.e. container or host) encountered an
 	// issue. For example, if a host is terminated while the task is still
 	// running, the task is considered stranded.
-	TaskDescriptionStranded  = "stranded"
+	TaskDescriptionStranded = "stranded"
+	// TaskDescriptionNoResults indicates that a task failed because it did not
+	// post any test results.
 	TaskDescriptionNoResults = "expected test results, but none attached"
+	// TaskDescriptionResultsFailed indicates that a task failed because the
+	// test results contained a failure.
+	TaskDescriptionResultsFailed = "test results contained failing test"
 	// TaskDescriptionContainerUnallocatable indicates that the reason a
 	// container task failed is because it cannot be allocated a container.
 	TaskDescriptionContainerUnallocatable = "container task cannot be allocated"
@@ -121,9 +148,6 @@ const (
 	TaskSystemUnresponse = "system-unresponsive"
 	TaskSystemTimedOut   = "system-timed-out"
 	TaskTimedOut         = "task-timed-out"
-
-	// TaskConflict is used only in communication with the Agent
-	TaskConflict = "task-conflict"
 
 	TestFailedStatus         = "fail"
 	TestSilentlyFailedStatus = "silentfail"
@@ -140,15 +164,10 @@ const (
 	VersionFailed    = "failed"
 	VersionSucceeded = "success"
 
-	PatchCreated     = "created"
-	PatchStarted     = "started"
-	PatchSucceeded   = "succeeded"
-	PatchFailed      = "failed"
-	PatchAllOutcomes = "*"
+	LegacyPatchSucceeded = "succeeded" // deprecated: will remove in EVG-20032
 
-	// VersionAborted and PatchAborted are display statuses only and not stored in the DB
+	// VersionAborted is a display status only and not stored in the DB
 	VersionAborted = "aborted"
-	PatchAborted   = "aborted"
 
 	PushLogPushing = "pushing"
 	PushLogSuccess = "success"
@@ -181,13 +200,38 @@ const (
 	MongodbUrl      = "MONGO_URL"
 	MongodbAuthFile = "MONGO_CREDS_FILE"
 
-	// Special logging output targets
-	LocalLoggingOverride          = "LOCAL"
-	StandardOutputLoggingOverride = "STDOUT"
+	// localLoggingOverride is a special log path indicating that the app server
+	// should attempt to log to systemd if available, and otherwise fall back to
+	// logging to stdout.
+	localLoggingOverride = "LOCAL"
+	// standardOutputLoggingOverride is a special log path indicating that the
+	// app server should log to stdout.
+	standardOutputLoggingOverride = "STDOUT"
 
-	DefaultTaskActivator   = ""
-	StepbackTaskActivator  = "stepback"
+	// LegacyTaskActivator is a deprecated legacy activator that used
+	// to be a majority of non-stepback and non-API activations.
+	// TODO: EVG-20869 remove this activator after sufficient time has passed
+	LegacyTaskActivator = ""
+	// APIServerTaskActivator represents Evergreen's internal API activator
 	APIServerTaskActivator = "apiserver"
+	// StepbackTaskActivator represents the activator for tasks activated
+	// due to stepback.
+	StepbackTaskActivator = "stepback"
+	// CheckBlockedTasksActivator represents the activator for task deactivated
+	// by the check blocked tasks job.
+	CheckBlockedTasksActivator = "check-blocked-tasks-job-activator"
+	// BuildActivator represents the activator for builds that have been
+	// activated.
+	BuildActivator = "build-activator"
+	// ElapsedBuildActivator represents the activator for batch time builds
+	// that have their batchtimes elapsed.
+	ElapsedBuildActivator = "elapsed-build-activator"
+	// ElapsedTaskActivator represents the activator for batch time tasks
+	// that have their batchtimes elapsed.
+	ElapsedTaskActivator = "elapsed-task-activator"
+	// GenerateTasksActivator represents the activator for tasks that have been
+	// generated by a task generator.
+	GenerateTasksActivator = "generate-tasks-activator"
 
 	// StaleContainerTaskMonitor is the special name representing the unit
 	// responsible for monitoring container tasks that have not dispatched but
@@ -201,7 +245,6 @@ const (
 	RestRoutePrefix = "rest"
 	APIRoutePrefix  = "api"
 
-	AgentAPIVersion  = 2
 	APIRoutePrefixV2 = "/rest/v2"
 
 	AgentMonitorTag = "agent-monitor"
@@ -284,8 +327,10 @@ const (
 
 	DefaultJasperPort = 2385
 
+	// TODO EVG-19966: Remove GlobalGitHubTokenExpansion
 	GlobalGitHubTokenExpansion = "global_github_oauth_token"
-	githubAppPrivateKey        = "github_app_private_key"
+	GithubAppToken             = "github_app_token"
+	githubAppPrivateKey        = "github_app_key"
 
 	VSCodePort = 2021
 
@@ -295,14 +340,19 @@ const (
 
 	DefaultShutdownWaitSeconds = 10
 
+	// HeartbeatTimeoutThreshold is the timeout for how long a task can run without sending
+	// a heartbeat
+	HeartbeatTimeoutThreshold = 7 * time.Minute
+
 	SaveGenerateTasksError     = "error saving config in `generate.tasks`"
 	TasksAlreadyGeneratedError = "generator already ran and generated tasks"
 	KeyTooLargeToIndexError    = "key too large to index"
 	InvalidDivideInputError    = "$divide only supports numeric types"
 
 	// Valid types of performing git clone
-	CloneMethodLegacySSH = "legacy-ssh"
-	CloneMethodOAuth     = "oauth"
+	CloneMethodLegacySSH   = "legacy-ssh"
+	CloneMethodOAuth       = "oauth"
+	CloneMethodAccessToken = "access-token"
 
 	// ContainerHealthDashboard is the name of the Splunk dashboard that displays
 	// charts relating to the health of container tasks.
@@ -312,6 +362,10 @@ const (
 	// indicating that there are still running tasks.
 	PRTasksRunningDescription = "tasks are running"
 )
+
+var VersionSucceededStatuses = []string{
+	VersionSucceeded, LegacyPatchSucceeded,
+}
 
 var TaskStatuses = []string{
 	TaskStarted,
@@ -393,54 +447,46 @@ func IsValidTaskEndStatus(status string) bool {
 	return status == TaskSucceeded || status == TaskFailed
 }
 
-func IsFinishedPatchStatus(status string) bool {
-	return status == PatchFailed || status == PatchSucceeded
-}
-
 func IsFinishedBuildStatus(status string) bool {
 	return status == BuildFailed || status == BuildSucceeded
 }
 
+// IsFinishedVersionStatus returns true if the version or patch is true.
+// Also handles the legacy status, to be removed in EVG-20032.
 func IsFinishedVersionStatus(status string) bool {
-	return status == VersionFailed || status == VersionSucceeded
+	return status == VersionFailed || IsSuccessfulVersionStatus(status)
 }
 
-func VersionStatusToPatchStatus(versionStatus string) (string, error) {
-	switch versionStatus {
-	case VersionCreated:
-		return PatchCreated, nil
-	case VersionStarted:
-		return PatchStarted, nil
-	case VersionFailed:
-		return PatchFailed, nil
-	case VersionSucceeded:
-		return PatchSucceeded, nil
-	default:
-		return "", errors.Errorf("unknown version status: %s", versionStatus)
-	}
+// IsSuccessfulVersionStatus returns true if the status represents a successful version.
+// Will deprecate this legacy status in EVG-20032.
+func IsSuccessfulVersionStatus(status string) bool {
+	return utility.StringSliceContains(VersionSucceededStatuses, status)
 }
 
-func PatchStatusToVersionStatus(patchStatus string) (string, error) {
-	switch patchStatus {
-	case PatchCreated:
-		return VersionCreated, nil
-	case PatchStarted:
-		return VersionStarted, nil
-	case PatchFailed:
-		return VersionFailed, nil
-	case PatchSucceeded:
-		return VersionSucceeded, nil
-	case PatchAborted:
-		return VersionAborted, nil
-	default:
-		return "", errors.Errorf("unknown patch status: %s", patchStatus)
+// VersionStatusToPatchStatus ensures that we continue reading the legacy patch status for the time being.
+func VersionStatusToPatchStatus(versionStatus string) string {
+	if versionStatus == VersionSucceeded {
+		return LegacyPatchSucceeded
 	}
+	return versionStatus
+}
+
+// PatchStatusToVersionStatus handles the legacy version status, which may still be in use.
+func PatchStatusToVersionStatus(patchStatus string) string {
+	if patchStatus == LegacyPatchSucceeded {
+		return VersionSucceeded
+	}
+	return patchStatus
 }
 
 type ModificationAction string
 
-// Common OTEL attribute keys
+// Common OTEL constants and attribute keys
 const (
+	PackageName = "github.com/evergreen-ci/evergreen"
+
+	OtelAttributeMaxLength = 10000
+
 	TaskIDOtelAttribute            = "evergreen.task.id"
 	TaskNameOtelAttribute          = "evergreen.task.name"
 	TaskExecutionOtelAttribute     = "evergreen.task.execution"
@@ -452,6 +498,8 @@ const (
 	ProjectIdentifierOtelAttribute = "evergreen.project.identifier"
 	ProjectIDOtelAttribute         = "evergreen.project.id"
 	DistroIDOtelAttribute          = "evergreen.distro.id"
+	HostIDOtelAttribute            = "evergreen.host.id"
+	AggregationNameOtelAttribute   = "db.aggregationName"
 )
 
 const (
@@ -586,8 +634,9 @@ const (
 	GitTagRequester             = "git_tag_request"
 	RepotrackerVersionRequester = "gitter_request"
 	TriggerRequester            = "trigger_request"
-	MergeTestRequester          = "merge_test" // commit queue
-	AdHocRequester              = "ad_hoc"     // periodic build
+	MergeTestRequester          = "merge_test"           // Evergreen commit queue
+	AdHocRequester              = "ad_hoc"               // periodic build
+	GithubMergeRequester        = "github_merge_request" // GitHub merge queue
 )
 
 var AllRequesterTypes = []string{
@@ -598,6 +647,7 @@ var AllRequesterTypes = []string{
 	TriggerRequester,
 	MergeTestRequester,
 	AdHocRequester,
+	GithubMergeRequester,
 }
 
 // Constants related to requester types.
@@ -609,6 +659,103 @@ var (
 		AdHocRequester,
 	}
 )
+
+// UserRequester represents the allowed user-facing requester types.
+type UserRequester string
+
+// Validate checks that the user-facing requester type is valid.
+func (r UserRequester) Validate() error {
+	switch r {
+	case PatchVersionUserRequester,
+		GithubPRUserRequester,
+		GitTagUserRequester,
+		RepotrackerVersionUserRequester,
+		TriggerUserRequester,
+		MergeTestUserRequester,
+		AdHocUserRequester,
+		GithubMergeUserRequester:
+		return nil
+	default:
+		return errors.Errorf("invalid user requester '%s'", r)
+	}
+}
+
+const (
+	// User-facing requester types. These are equivalent in meaning to the above
+	// requesters, but are more user-friendly. These should only be used for
+	// user-facing functionality such as YAML configuration and expansions and
+	// should be translated into the true internal requester types so they're
+	// actually usable.
+	PatchVersionUserRequester       UserRequester = "patch"
+	GithubPRUserRequester           UserRequester = "github_pr"
+	GitTagUserRequester             UserRequester = "github_tag"
+	RepotrackerVersionUserRequester UserRequester = "commit"
+	TriggerUserRequester            UserRequester = "trigger"
+	MergeTestUserRequester          UserRequester = "commit_queue"
+	AdHocUserRequester              UserRequester = "ad_hoc"
+	GithubMergeUserRequester        UserRequester = "github_merge_queue"
+)
+
+var AllUserRequesterTypes = []UserRequester{
+	PatchVersionUserRequester,
+	GithubPRUserRequester,
+	GitTagUserRequester,
+	RepotrackerVersionUserRequester,
+	TriggerUserRequester,
+	MergeTestUserRequester,
+	AdHocUserRequester,
+	GithubMergeUserRequester,
+}
+
+// InternalRequesterToUserRequester translates an internal requester type to a
+// user-facing requester type.
+func InternalRequesterToUserRequester(requester string) UserRequester {
+	switch requester {
+	case PatchVersionRequester:
+		return PatchVersionUserRequester
+	case GithubPRRequester:
+		return GithubPRUserRequester
+	case GitTagRequester:
+		return GitTagUserRequester
+	case RepotrackerVersionRequester:
+		return RepotrackerVersionUserRequester
+	case TriggerRequester:
+		return TriggerUserRequester
+	case MergeTestRequester:
+		return MergeTestUserRequester
+	case AdHocRequester:
+		return AdHocUserRequester
+	case GithubMergeRequester:
+		return GithubMergeUserRequester
+	default:
+		return ""
+	}
+}
+
+// UserRequesterToInternalRequester translates a user-facing requester type to
+// its equivalent internal requester type.
+func UserRequesterToInternalRequester(requester UserRequester) string {
+	switch requester {
+	case PatchVersionUserRequester:
+		return PatchVersionRequester
+	case GithubPRUserRequester:
+		return GithubPRRequester
+	case GitTagUserRequester:
+		return GitTagRequester
+	case RepotrackerVersionUserRequester:
+		return RepotrackerVersionRequester
+	case TriggerUserRequester:
+		return TriggerRequester
+	case MergeTestUserRequester:
+		return MergeTestRequester
+	case AdHocUserRequester:
+		return AdHocRequester
+	case GithubMergeUserRequester:
+		return GithubMergeRequester
+	default:
+		return ""
+	}
+}
 
 // Constants for project command names.
 const (
@@ -693,11 +840,17 @@ var (
 		PatchVersionRequester,
 		GithubPRRequester,
 		MergeTestRequester,
+		GithubMergeRequester,
 	}
 
 	SystemActivators = []string{
-		DefaultTaskActivator,
+		LegacyTaskActivator,
 		APIServerTaskActivator,
+		BuildActivator,
+		CheckBlockedTasksActivator,
+		ElapsedBuildActivator,
+		ElapsedTaskActivator,
+		GenerateTasksActivator,
 	}
 
 	// UpHostStatus is a list of all host statuses that are considered up.
@@ -830,7 +983,6 @@ var (
 		TaskStarted,
 		TaskUndispatched,
 		TaskDispatched,
-		TaskConflict,
 		TaskInactive,
 	}
 
@@ -855,6 +1007,7 @@ var (
 	ValidCloneMethods = []string{
 		CloneMethodLegacySSH,
 		CloneMethodOAuth,
+		CloneMethodAccessToken,
 	}
 )
 
@@ -880,7 +1033,7 @@ func IsPatchRequester(requester string) bool {
 }
 
 func IsGitHubPatchRequester(requester string) bool {
-	return requester == GithubPRRequester || requester == MergeTestRequester
+	return requester == GithubPRRequester || requester == MergeTestRequester || requester == GithubMergeRequester
 }
 
 func IsGitTagRequester(requester string) bool {
@@ -889,6 +1042,10 @@ func IsGitTagRequester(requester string) bool {
 
 func IsCommitQueueRequester(requester string) bool {
 	return requester == MergeTestRequester
+}
+
+func IsGithubMergeQueueRequester(requester string) bool {
+	return requester == GithubMergeRequester
 }
 
 func ShouldConsiderBatchtime(requester string) bool {
@@ -1119,6 +1276,7 @@ func GetPermissionLevelsForPermissionKey(permissionKey string) []PermissionLevel
 		}
 	case PermissionDistroSettings:
 		return []PermissionLevel{
+			DistroSettingsAdmin,
 			DistroSettingsEdit,
 			DistroSettingsView,
 			DistroSettingsNone,

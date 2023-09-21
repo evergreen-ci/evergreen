@@ -27,7 +27,6 @@ type shellExecuteCommandSuite struct {
 	conf   *internal.TaskConfig
 	comm   client.Communicator
 	logger client.LoggerProducer
-	shells []string
 
 	jasper jasper.Manager
 
@@ -50,21 +49,15 @@ func (s *shellExecuteCommandSuite) SetupTest() {
 
 	s.comm = client.NewMock("http://localhost.com")
 	s.conf = &internal.TaskConfig{
-		Expansions: &util.Expansions{},
-		Task: &task.Task{
+		Expansions: util.Expansions{},
+		Task: task.Task{
 			Id:     "task_id",
 			Secret: "task_secret",
 		},
-		Project: &model.Project{},
+		Project: model.Project{},
 	}
 	s.logger, err = s.comm.GetLoggerProducer(s.ctx, client.TaskData{ID: s.conf.Task.Id, Secret: s.conf.Task.Secret}, nil)
 	s.NoError(err)
-
-	s.shells = []string{"bash", "python", "sh"}
-
-	if runtime.GOOS != "windows" {
-		s.shells = append(s.shells, "/bin/sh", "/bin/bash", "/usr/bin/python")
-	}
 }
 
 func (s *shellExecuteCommandSuite) TearDownTest() {
@@ -142,7 +135,11 @@ func (s *shellExecuteCommandSuite) TestTerribleQuotingIsHandledProperly() {
 }
 
 func (s *shellExecuteCommandSuite) TestShellIsNotChangedDuringExecution() {
-	for _, sh := range s.shells {
+	shells := []string{"bash", "python", "sh"}
+	if runtime.GOOS != "windows" {
+		shells = append(shells, "/bin/sh", "/bin/bash", "/usr/bin/python")
+	}
+	for _, sh := range shells {
 		cmd := &shellExec{Shell: sh, WorkingDir: testutil.GetDirectoryOfFile()}
 		cmd.SetJasperManager(s.jasper)
 		s.NoError(cmd.Execute(s.ctx, s.comm, s.logger, s.conf))
@@ -172,12 +169,14 @@ func (s *shellExecuteCommandSuite) TestErrorIfWorkingDirectoryDoesntExist() {
 func (s *shellExecuteCommandSuite) TestCancellingContextShouldCancelCommand() {
 	cmd := &shellExec{
 		Script:     "sleep 60",
+		Shell:      "bash",
 		WorkingDir: testutil.GetDirectoryOfFile(),
 	}
 	cmd.SetJasperManager(s.jasper)
 	ctx, cancel := context.WithTimeout(s.ctx, time.Nanosecond)
-	time.Sleep(time.Millisecond)
 	defer cancel()
+
+	time.Sleep(100 * time.Millisecond)
 
 	err := cmd.Execute(ctx, s.comm, s.logger, s.conf)
 	s.Require().NotNil(err)
@@ -213,7 +212,7 @@ func (s *shellExecuteCommandSuite) TestEnvAddsExpansionsAndDefaults() {
 		AddExpansionsToEnv: true,
 		WorkingDir:         testutil.GetDirectoryOfFile(),
 	}
-	s.conf.Expansions = util.NewExpansions(map[string]string{
+	s.conf.Expansions = *util.NewExpansions(map[string]string{
 		"expansion1": "foo",
 		"expansion2": "bar",
 	})

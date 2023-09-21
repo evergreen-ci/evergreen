@@ -13,6 +13,7 @@ import (
 	"github.com/bradleyfalzon/ghinstallation"
 	"github.com/evergreen-ci/evergreen/util"
 	"github.com/evergreen-ci/utility"
+	"github.com/golang-jwt/jwt"
 	"github.com/google/go-github/v52/github"
 	"github.com/mongodb/amboy/logger"
 	"github.com/mongodb/anser/bsonutil"
@@ -34,10 +35,10 @@ var (
 	BuildRevision = ""
 
 	// ClientVersion is the commandline version string used to control auto-updating.
-	ClientVersion = "2023-06-01"
+	ClientVersion = "2023-09-06"
 
 	// Agent version to control agent rollover.
-	AgentVersion = "2023-05-31"
+	AgentVersion = "2023-09-18"
 )
 
 // ConfigSection defines a sub-document in the evergreen config
@@ -46,9 +47,9 @@ type ConfigSection interface {
 	// SectionId returns the ID of the section to be used in the database document and struct tag
 	SectionId() string
 	// Get populates the section from the DB
-	Get(Environment) error
+	Get(context.Context) error
 	// Set upserts the section document into the DB
-	Set() error
+	Set(context.Context) error
 	// ValidateAndDefault validates input and sets defaults
 	ValidateAndDefault() error
 }
@@ -57,7 +58,6 @@ type ConfigSection interface {
 // with the "id" struct tag should implement the ConfigSection interface.
 type Settings struct {
 	Id                  string                  `bson:"_id" json:"id" yaml:"id"`
-	Alerts              AlertsConfig            `yaml:"alerts" bson:"alerts" json:"alerts" id:"alerts"`
 	Amboy               AmboyConfig             `yaml:"amboy" bson:"amboy" json:"amboy" id:"amboy"`
 	Api                 APIConfig               `yaml:"api" bson:"api" json:"api" id:"api"`
 	ApiUrl              string                  `yaml:"api_url" bson:"api_url" json:"api_url"`
@@ -65,6 +65,7 @@ type Settings struct {
 	AWSInstanceRole     string                  `yaml:"aws_instance_role" bson:"aws_instance_role" json:"aws_instance_role"`
 	Banner              string                  `bson:"banner" json:"banner" yaml:"banner"`
 	BannerTheme         BannerTheme             `bson:"banner_theme" json:"banner_theme" yaml:"banner_theme"`
+	Buckets             BucketConfig            `bson:"buckets" json:"buckets" yaml:"buckets" id:"buckets"`
 	Cedar               CedarConfig             `bson:"cedar" json:"cedar" yaml:"cedar" id:"cedar"`
 	ClientBinariesDir   string                  `yaml:"client_binaries_dir" bson:"client_binaries_dir" json:"client_binaries_dir"`
 	CommitQueue         CommitQueueConfig       `yaml:"commit_queue" bson:"commit_queue" json:"commit_queue" id:"commit_queue"`
@@ -113,12 +114,8 @@ type Settings struct {
 
 func (c *Settings) SectionId() string { return ConfigDocID }
 
-func (c *Settings) Get(env Environment) error {
-	ctx, cancel := env.Context()
-	defer cancel()
-	coll := env.DB().Collection(ConfigCollection)
-
-	res := coll.FindOne(ctx, byId(c.SectionId()))
+func (c *Settings) Get(ctx context.Context) error {
+	res := GetEnvironment().DB().Collection(ConfigCollection).FindOne(ctx, byId(c.SectionId()))
 	if err := res.Err(); err != nil {
 		if err == mongo.ErrNoDocuments {
 			*c = Settings{}
@@ -126,7 +123,7 @@ func (c *Settings) Get(env Environment) error {
 		}
 		return errors.Wrapf(err, "getting config section '%s'", c.SectionId())
 	}
-	if err := res.Decode(c); err != nil {
+	if err := res.Decode(&c); err != nil {
 		return errors.Wrapf(err, "decoding config section '%s'", c.SectionId())
 	}
 
@@ -135,13 +132,8 @@ func (c *Settings) Get(env Environment) error {
 
 // Set saves the global fields in the configuration (i.e. those that are not
 // ConfigSections).
-func (c *Settings) Set() error {
-	env := GetEnvironment()
-	ctx, cancel := env.Context()
-	defer cancel()
-	coll := env.DB().Collection(ConfigCollection)
-
-	_, err := coll.UpdateOne(ctx, byId(c.SectionId()), bson.M{
+func (c *Settings) Set(ctx context.Context) error {
+	_, err := GetEnvironment().DB().Collection(ConfigCollection).UpdateOne(ctx, byId(c.SectionId()), bson.M{
 		"$set": bson.M{
 			apiUrlKey:             c.ApiUrl,
 			awsInstanceRoleKey:    c.AWSInstanceRole,
@@ -279,7 +271,7 @@ func (c *Settings) ValidateAndDefault() error {
 		c.ClientBinariesDir = ClientDirectory
 	}
 	if c.LogPath == "" {
-		c.LogPath = LocalLoggingOverride
+		c.LogPath = localLoggingOverride
 	}
 	if c.ShutdownWaitSeconds < 0 {
 		c.ShutdownWaitSeconds = DefaultShutdownWaitSeconds
@@ -303,23 +295,18 @@ func NewSettings(filename string) (*Settings, error) {
 	return settings, nil
 }
 
-// GetConfig retrieves the Evergreen config document. If no document is
+// GetConfig returns the Evergreen config document. If no document is
 // present in the DB, it will return the defaults.
-func GetConfig() (*Settings, error) { return BootstrapConfig(GetEnvironment()) }
-
-// Bootstrap config gets a config from the database defined in the environment.
-func BootstrapConfig(env Environment) (*Settings, error) {
-	config := &Settings{}
-
-	// retrieve the root config document
-	if err := config.Get(env); err != nil {
-		return nil, err
+// Use Settings() to get the cached settings object.
+func GetConfig(ctx context.Context) (*Settings, error) {
+	config := NewConfigSections()
+	if err := config.populateSections(ctx); err != nil {
+		return nil, errors.Wrap(err, "populating sections")
 	}
 
-	// retrieve the other config sub-documents and form the whole struct
 	catcher := grip.NewSimpleCatcher()
-	sections := ConfigRegistry.GetSections()
-	valConfig := reflect.ValueOf(*config)
+	baseConfig := config.Sections[ConfigDocID].(*Settings)
+	valConfig := reflect.ValueOf(*baseConfig)
 	//iterate over each field in the config struct
 	for i := 0; i < valConfig.NumField(); i++ {
 		// retrieve the 'id' struct tag
@@ -330,21 +317,15 @@ func BootstrapConfig(env Environment) (*Settings, error) {
 
 		// get the property name and find its corresponding section in the registry
 		propName := valConfig.Type().Field(i).Name
-		section, ok := sections[sectionId]
+		section, ok := config.Sections[sectionId]
 		if !ok {
 			catcher.Add(fmt.Errorf("config section '%s' not found in registry", sectionId))
 			continue
 		}
 
-		// retrieve the section's document from the db
-		if err := section.Get(env); err != nil {
-			catcher.Add(errors.Wrapf(err, "populating section '%s'", sectionId))
-			continue
-		}
-
 		// set the value of the section struct to the value of the corresponding field in the config
 		sectionVal := reflect.ValueOf(section).Elem()
-		propVal := reflect.ValueOf(config).Elem().FieldByName(propName)
+		propVal := reflect.ValueOf(baseConfig).Elem().FieldByName(propName)
 		if !propVal.CanSet() {
 			catcher.Errorf("unable to set field '%s' in section '%s'", propName, sectionId)
 			continue
@@ -355,14 +336,14 @@ func BootstrapConfig(env Environment) (*Settings, error) {
 	if catcher.HasErrors() {
 		return nil, errors.WithStack(catcher.Resolve())
 	}
-	return config, nil
+	return baseConfig, nil
 
 }
 
-// UpdateConfig updates all evergreen settings documents in DB
-func UpdateConfig(config *Settings) error {
+// UpdateConfig updates all evergreen settings documents in the DB.
+func UpdateConfig(ctx context.Context, config *Settings) error {
 	// update the root config document
-	if err := config.Set(); err != nil {
+	if err := config.Set(ctx); err != nil {
 		return err
 	}
 
@@ -396,7 +377,7 @@ func UpdateConfig(config *Settings) error {
 			continue
 		}
 
-		catcher.Add(section.Set())
+		catcher.Add(section.Set(ctx))
 	}
 
 	return errors.WithStack(catcher.Resolve())
@@ -480,11 +461,11 @@ func (s *Settings) GetSender(ctx context.Context, env Environment) (send.Sender,
 	// setup the base/default logger (generally direct to systemd
 	// or standard output)
 	switch s.LogPath {
-	case LocalLoggingOverride:
+	case localLoggingOverride:
 		// log directly to systemd if possible, and log to
 		// standard output otherwise.
 		sender = getSystemLogger()
-	case StandardOutputLoggingOverride, "":
+	case standardOutputLoggingOverride, "":
 		sender = send.MakeNative()
 	default:
 		sender, err = send.MakeFileLogger(s.LogPath)
@@ -576,21 +557,54 @@ func (s *Settings) getGithubAppAuth() *githubAppAuth {
 // CreateInstallationToken uses the owner/repo information to request an github app installation id
 // and uses that id to create an installation token.
 func (s *Settings) CreateInstallationToken(ctx context.Context, owner, repo string, opts *github.InstallationTokenOptions) (string, error) {
+	const (
+		maxDelay   = 10 * time.Second
+		minDelay   = time.Second
+		maxRetries = 5
+	)
+
+	if owner == "" || repo == "" {
+		return "", errors.New("no owner/repo specified to create installation token")
+	}
 	authFields := s.getGithubAppAuth()
 	if authFields == nil {
-		return "", errors.New("Github app settings are not set")
+		// TODO EVG-19966: Return error here
+		grip.Debug(message.Fields{
+			"message": "no auth",
+			"owner":   owner,
+			"repo":    repo,
+			"ticket":  "EVG-19966",
+		})
+		return "", nil
 	}
-	httpClient := utility.GetHTTPClient()
+
+	retryConf := utility.NewDefaultHTTPRetryConf()
+	retryConf.MaxDelay = maxDelay
+	retryConf.BaseDelay = minDelay
+	retryConf.MaxRetries = maxRetries
+
+	httpClient := utility.GetHTTPRetryableClient(retryConf)
 	defer utility.PutHTTPClient(httpClient)
-	itr, err := ghinstallation.NewAppsTransport(httpClient.Transport, authFields.AppId, authFields.privateKey)
+
+	key, err := jwt.ParseRSAPrivateKeyFromPEM(authFields.privateKey)
 	if err != nil {
-		return "", errors.Wrap(err, "creating transport with JWT")
+		return "", errors.Wrap(err, "parsing private key")
 	}
+
+	itr := ghinstallation.NewAppsTransportFromPrivateKey(httpClient.Transport, authFields.AppId, key)
 	httpClient.Transport = itr
 	client := github.NewClient(httpClient)
 	installationId, _, err := client.Apps.FindRepositoryInstallation(ctx, owner, repo)
 	if err != nil {
-		return "", errors.Wrapf(err, "finding installation token for '%s/%s'", owner, repo)
+		// TODO EVG-19966: Return error here
+		grip.Debug(message.WrapError(err, message.Fields{
+			"message": "error finding installation id",
+			"owner":   owner,
+			"repo":    repo,
+			"appId":   authFields.AppId,
+			"ticket":  "EVG-19966",
+		}))
+		return "", errors.Wrap(err, "finding installation id")
 	}
 	if installationId == nil {
 		return "", errors.New(fmt.Sprintf("Installation id for '%s/%s' not found", owner, repo))
@@ -600,6 +614,21 @@ func (s *Settings) CreateInstallationToken(ctx context.Context, owner, repo stri
 		return "", errors.Wrapf(err, "creating installation token for installation id: %d", installationId.GetID())
 	}
 	return token.GetToken(), nil
+}
+
+// CreateInstallationTokenWithDefaultOwnerRepo returns an installation token when we do not care about
+// the owner/repo that we are calling the GitHub function with (i.e. checking rate limit).
+// It will use the default owner/repo specified in the admin settings and error if it's not set.
+func (s *Settings) CreateInstallationTokenWithDefaultOwnerRepo(ctx context.Context, opts *github.InstallationTokenOptions) (string, error) {
+	if s.AuthConfig.Github == nil || s.AuthConfig.Github.DefaultOwner == "" || s.AuthConfig.Github.DefaultRepo == "" {
+		// TODO EVG-19966: Return error here
+		grip.Debug(message.Fields{
+			"message": "no default owner/repo",
+			"ticket":  "EVG-19966",
+		})
+		return "", nil
+	}
+	return s.CreateInstallationToken(ctx, s.AuthConfig.Github.DefaultOwner, s.AuthConfig.Github.DefaultRepo, opts)
 }
 
 func (s *Settings) makeSplunkSender(ctx context.Context, client *http.Client, levelInfo send.LevelInfo, fallback send.Sender) (send.Sender, error) {
@@ -662,9 +691,13 @@ func (s *Settings) GetGithubOauthStrings() ([]string, error) {
 	return tokens, nil
 }
 
+// TODO EVG-19966: Delete this function
 func (s *Settings) GetGithubOauthToken() (string, error) {
 	if s == nil {
 		return "", errors.New("not defined")
+	}
+	if s.ServiceFlags.GlobalGitHubTokenDisabled {
+		return "", nil
 	}
 
 	oauthStrings, err := s.GetGithubOauthStrings()
@@ -694,13 +727,6 @@ func splitToken(oauthString string) (string, error) {
 		return "", errors.New("token format was invalid, expected 'token [token]'")
 	}
 	return splitToken[1], nil
-}
-func GetServiceFlags() (*ServiceFlags, error) {
-	flags := &ServiceFlags{}
-	if err := flags.Get(GetEnvironment()); err != nil {
-		return nil, errors.Wrapf(err, "getting section '%s'", flags.SectionId())
-	}
-	return flags, nil
 }
 
 // PluginConfig holds plugin-specific settings, which are handled.

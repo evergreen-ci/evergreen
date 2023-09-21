@@ -90,6 +90,7 @@ type RepoRef {
 type RepoCommitQueueParams {
   enabled: Boolean!
   mergeMethod: String!
+  mergeQueue: MergeQueue!
   message: String!
 }
 

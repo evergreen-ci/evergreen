@@ -16,6 +16,7 @@ import (
 var (
 	expansionsToRedact = []string{
 		evergreen.GlobalGitHubTokenExpansion,
+		evergreen.GithubAppToken,
 		AWSAccessKeyId,
 		AWSSecretAccessKey,
 		AWSSessionToken,
@@ -59,7 +60,7 @@ func (c *expansionsWriter) Execute(ctx context.Context,
 	if err != nil {
 		return errors.Wrap(err, "marshalling expansions")
 	}
-	fn := getJoinedWithWorkDir(conf, c.File)
+	fn := getWorkingDirectory(conf, c.File)
 	if err := os.WriteFile(fn, out, 0600); err != nil {
 		return errors.Wrapf(err, "writing expansions to file '%s'", fn)
 	}

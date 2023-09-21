@@ -2,13 +2,13 @@ package route
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
+	"io"
 	"net/http"
-	"strconv"
 	"strings"
 
 	"github.com/evergreen-ci/evergreen"
-	"github.com/evergreen-ci/evergreen/db/mgo/bson"
 	"github.com/evergreen-ci/evergreen/model"
 	"github.com/evergreen-ci/evergreen/model/build"
 	"github.com/evergreen-ci/evergreen/model/distro"
@@ -21,9 +21,11 @@ import (
 	"github.com/evergreen-ci/evergreen/util"
 	"github.com/evergreen-ci/gimlet"
 	"github.com/evergreen-ci/utility"
+	"github.com/google/go-github/v52/github"
 	"github.com/mongodb/grip"
 	"github.com/mongodb/grip/message"
 	"github.com/pkg/errors"
+	sns "github.com/robbiet480/go.sns"
 )
 
 type (
@@ -33,7 +35,9 @@ type (
 
 const (
 	// These are private custom types to avoid key collisions.
-	RequestContext requestContextKey = 0
+	RequestContext   requestContextKey = 0
+	githubPayloadKey requestContextKey = 3
+	snsPayloadKey    requestContextKey = 5
 )
 
 type projCtxMiddleware struct{}
@@ -264,7 +268,7 @@ func (m *TaskHostAuthMiddleware) ServeHTTP(rw http.ResponseWriter, r *http.Reque
 			return
 		}
 	}
-	h, err := host.FindOneId(hostID)
+	h, err := host.FindOneId(r.Context(), hostID)
 	if err != nil {
 		gimlet.WriteResponse(rw, gimlet.MakeJSONErrorResponder(err))
 		return
@@ -331,7 +335,7 @@ func (m *hostAuthMiddleware) ServeHTTP(rw http.ResponseWriter, r *http.Request, 
 		}))
 		return
 	}
-	updateHostAccessTime(h)
+	updateHostAccessTime(r.Context(), h)
 	next(rw, r)
 }
 
@@ -374,7 +378,7 @@ func (m *podOrHostAuthMiddleware) ServeHTTP(rw http.ResponseWriter, r *http.Requ
 			}))
 			return
 		}
-		updateHostAccessTime(h)
+		updateHostAccessTime(r.Context(), h)
 		next(rw, r)
 		return
 	}
@@ -512,17 +516,6 @@ func (m *CommitQueueItemOwnerMiddleware) ServeHTTP(rw http.ResponseWriter, r *ht
 		return
 	}
 
-	if !projRef.CommitQueue.IsEnabled() {
-		gimlet.WriteResponse(rw, gimlet.MakeJSONErrorResponder(errors.Errorf("commit queue is not enabled for project '%s'", projRef.Id)))
-		return
-	}
-
-	if canAlwaysSubmitPatchesForProject(user, opCtx.ProjectRef.Id) {
-		next(rw, r)
-		return
-	}
-
-	// The owner of the patch can also pass
 	vars := gimlet.GetVars(r)
 	itemId, ok := vars["item"]
 	if !ok {
@@ -533,39 +526,8 @@ func (m *CommitQueueItemOwnerMiddleware) ServeHTTP(rw http.ResponseWriter, r *ht
 		return
 	}
 
-	if bson.IsObjectIdHex(itemId) {
-		patch, err := data.FindPatchById(itemId)
-		if err != nil {
-			gimlet.WriteResponse(rw, gimlet.MakeJSONInternalErrorResponder(errors.Wrapf(err, "finding patch '%s'", itemId)))
-			return
-		}
-		if user.Id != *patch.Author {
-			gimlet.WriteResponse(rw, gimlet.MakeJSONErrorResponder(gimlet.ErrorResponse{
-				StatusCode: http.StatusUnauthorized,
-				Message:    "not authorized to patch on behalf of author",
-			}))
-			return
-		}
-	} else if itemInt, err := strconv.Atoi(itemId); err == nil {
-		pr, err := m.sc.GetGitHubPR(ctx, projRef.Owner, projRef.Repo, itemInt)
-		if err != nil {
-			gimlet.WriteResponse(rw, gimlet.MakeJSONErrorResponder(errors.Wrapf(err, "unable to get pull request info, PR number (%d) may be invalid", itemInt)))
-			return
-		}
-
-		var githubUID int
-		if pr != nil && pr.User != nil && pr.User.ID != nil {
-			githubUID = int(*pr.User.ID)
-		}
-		if githubUID == 0 || user.Settings.GithubUser.UID != githubUID {
-			gimlet.WriteResponse(rw, gimlet.MakeJSONErrorResponder(gimlet.ErrorResponse{
-				StatusCode: http.StatusUnauthorized,
-				Message:    "not authorized to patch on behalf of GitHub user",
-			}))
-			return
-		}
-	} else {
-		gimlet.WriteResponse(rw, gimlet.MakeJSONErrorResponder(errors.New("commit queue item is not a valid identifier")))
+	if err = data.CheckCanRemoveCommitQueueItem(ctx, m.sc, user, projRef, itemId); err != nil {
+		gimlet.WriteResponse(rw, gimlet.MakeJSONErrorResponder(err))
 		return
 	}
 
@@ -574,8 +536,8 @@ func (m *CommitQueueItemOwnerMiddleware) ServeHTTP(rw http.ResponseWriter, r *ht
 
 // updateHostAccessTime updates the host access time and disables the host's flags to deploy new a new agent
 // or agent monitor if they are set.
-func updateHostAccessTime(h *host.Host) {
-	if err := h.UpdateLastCommunicated(); err != nil {
+func updateHostAccessTime(ctx context.Context, h *host.Host) {
+	if err := h.UpdateLastCommunicated(ctx); err != nil {
 		grip.Warningf("Could not update host last communication time for %s: %+v", h.Id, err)
 	}
 	// Since the host has contacted the app server, we should prevent the
@@ -583,38 +545,19 @@ func updateHostAccessTime(h *host.Host) {
 	// Deciding whether we should redeploy agents or agent monitors
 	// is handled within the REST route handler.
 	if h.NeedsNewAgent {
-		grip.Warning(message.WrapError(h.SetNeedsNewAgent(false), "problem clearing host needs new agent"))
+		grip.Warning(message.WrapError(h.SetNeedsNewAgent(ctx, false), "problem clearing host needs new agent"))
 	}
 	if h.NeedsNewAgentMonitor {
-		grip.Warning(message.WrapError(h.SetNeedsNewAgentMonitor(false), "problem clearing host needs new agent monitor"))
+		grip.Warning(message.WrapError(h.SetNeedsNewAgentMonitor(ctx, false), "problem clearing host needs new agent monitor"))
 	}
-}
-
-// canAlwaysSubmitPatchesForProject returns true if the user is a superuser or project admin,
-// or is authorized specifically to patch on behalf of other users.
-func canAlwaysSubmitPatchesForProject(user *user.DBUser, projectId string) bool {
-	isAdmin := user.HasPermission(gimlet.PermissionOpts{
-		Resource:      projectId,
-		ResourceType:  evergreen.ProjectResourceType,
-		Permission:    evergreen.PermissionProjectSettings,
-		RequiredLevel: evergreen.ProjectSettingsEdit.Value,
-	})
-	if isAdmin {
-		return true
-	}
-	return user.HasPermission(gimlet.PermissionOpts{
-		Resource:      projectId,
-		ResourceType:  evergreen.ProjectResourceType,
-		Permission:    evergreen.PermissionPatches,
-		RequiredLevel: evergreen.PatchSubmitAdmin.Value,
-	})
 }
 
 func RequiresProjectPermission(permission string, level evergreen.PermissionLevel) gimlet.Middleware {
 	defaultRoles, err := evergreen.GetEnvironment().RoleManager().GetRoles(evergreen.UnauthedUserRoles)
 	if err != nil {
-		grip.Critical(message.WrapError(err, message.Fields{
+		grip.Error(message.WrapError(err, message.Fields{
 			"message": "unable to get default roles",
+			"op":      "middleware",
 		}))
 	}
 
@@ -633,8 +576,9 @@ func RequiresProjectPermission(permission string, level evergreen.PermissionLeve
 func RequiresDistroPermission(permission string, level evergreen.PermissionLevel) gimlet.Middleware {
 	defaultRoles, err := evergreen.GetEnvironment().RoleManager().GetRoles(evergreen.UnauthedUserRoles)
 	if err != nil {
-		grip.Critical(message.WrapError(err, message.Fields{
+		grip.Error(message.WrapError(err, message.Fields{
 			"message": "unable to get default roles",
+			"op":      "middleware",
 		}))
 	}
 
@@ -652,8 +596,9 @@ func RequiresDistroPermission(permission string, level evergreen.PermissionLevel
 func RequiresSuperUserPermission(permission string, level evergreen.PermissionLevel) gimlet.Middleware {
 	defaultRoles, err := evergreen.GetEnvironment().RoleManager().GetRoles(evergreen.UnauthedUserRoles)
 	if err != nil {
-		grip.Critical(message.WrapError(err, message.Fields{
+		grip.Error(message.WrapError(err, message.Fields{
 			"message": "unable to get default roles",
+			"op":      "middleware",
 		}))
 	}
 
@@ -750,25 +695,23 @@ func urlVarsToProjectScopes(r *http.Request) ([]string, int, error) {
 		return []string{repoID}, http.StatusOK, nil
 	}
 
+	// Return an error if the project isn't found
+	if projectID == "" {
+		return nil, http.StatusNotFound, errors.New("no project found")
+	}
+
 	projectRef, err := model.FindMergedProjectRef(projectID, versionID, true)
 	if err != nil {
-		return nil, http.StatusNotFound, errors.Wrap(err, "finding project")
+		return nil, http.StatusInternalServerError, errors.Wrap(err, "finding project")
 	}
 	if projectRef == nil {
 		return nil, http.StatusNotFound, errors.Errorf("project '%s' not found", projectID)
 	}
-	projectID = projectRef.Id
-
-	// check to see if this is an anonymous user requesting a private project
-	user := gimlet.GetUser(r.Context())
-	if user == nil && projectRef.IsPrivate() {
-		projectID = ""
+	usr := gimlet.GetUser(r.Context())
+	if usr == nil && projectRef.IsPrivate() {
+		return nil, http.StatusUnauthorized, errors.New("unauthorized")
 	}
 
-	// no project found - return a 404
-	if projectID == "" {
-		return nil, http.StatusNotFound, errors.New("no project found")
-	}
 	res := []string{projectRef.Id}
 	if destProjectID != "" {
 		res = append(res, destProjectID)
@@ -798,7 +741,7 @@ func urlVarsToDistroScopes(r *http.Request) ([]string, int, error) {
 
 	hostID := util.CoalesceStrings(append(query["host_id"], query["hostId"]...), vars["host_id"], vars["hostId"])
 	if distroID == "" && hostID != "" {
-		distroID, err = host.FindDistroForHost(hostID)
+		distroID, err = host.FindDistroForHost(r.Context(), hostID)
 		if err != nil {
 			return nil, http.StatusNotFound, errors.Wrapf(err, "finding distro for host '%s'", hostID)
 		}
@@ -809,7 +752,7 @@ func urlVarsToDistroScopes(r *http.Request) ([]string, int, error) {
 		return nil, http.StatusNotFound, errors.New("no distro found")
 	}
 
-	dat, err := distro.NewDistroAliasesLookupTable()
+	dat, err := distro.NewDistroAliasesLookupTable(r.Context())
 	if err != nil {
 		return nil, http.StatusInternalServerError, errors.Wrap(err, "getting distro lookup table")
 	}
@@ -820,7 +763,7 @@ func urlVarsToDistroScopes(r *http.Request) ([]string, int, error) {
 	// Verify that all the concrete distros that this request is accessing
 	// exist.
 	for _, resolvedDistroID := range distroIDs {
-		d, err := distro.FindOneId(resolvedDistroID)
+		d, err := distro.FindOneId(r.Context(), resolvedDistroID)
 		if err != nil {
 			return nil, http.StatusInternalServerError, errors.Wrapf(err, "finding distro '%s'", resolvedDistroID)
 		}
@@ -912,6 +855,93 @@ func (m *EventLogPermissionsMiddleware) ServeHTTP(rw http.ResponseWriter, r *htt
 	}
 
 	next(rw, r)
+}
+
+// NewGithubAuthMiddleware returns a middleware that verifies the payload.
+func NewGithubAuthMiddleware() gimlet.Middleware {
+	return &githubAuthMiddleware{}
+}
+
+type githubAuthMiddleware struct{}
+
+func (m *githubAuthMiddleware) ServeHTTP(rw http.ResponseWriter, r *http.Request, next http.HandlerFunc) {
+	githubSecret := []byte(evergreen.GetEnvironment().Settings().Api.GithubWebhookSecret)
+
+	payload, err := github.ValidatePayload(r, githubSecret)
+	if err != nil {
+		grip.Error(message.WrapError(err, message.Fields{
+			"source":  "GitHub hook",
+			"message": "rejecting GitHub webhook",
+			"msg_id":  r.Header.Get("X-Github-Delivery"),
+			"event":   r.Header.Get("X-Github-Event"),
+		}))
+		gimlet.WriteResponse(rw, gimlet.MakeJSONErrorResponder(errors.Wrap(err, "validating GitHub payload")))
+		return
+	}
+
+	r = setGitHubPayload(r, payload)
+	next(rw, r)
+}
+
+func setGitHubPayload(r *http.Request, payload []byte) *http.Request {
+	return r.WithContext(context.WithValue(r.Context(), githubPayloadKey, payload))
+}
+
+func getGitHubPayload(ctx context.Context) []byte {
+	if rv := ctx.Value(githubPayloadKey); rv != nil {
+		if t, ok := rv.([]byte); ok {
+			return t
+		}
+	}
+
+	return []byte{}
+}
+
+type snsAuthMiddleware struct{}
+
+// NewSNSAuthMiddleware returns a middleware that verifies the payload
+func NewSNSAuthMiddleware() gimlet.Middleware {
+	return &snsAuthMiddleware{}
+}
+
+func (m *snsAuthMiddleware) ServeHTTP(rw http.ResponseWriter, r *http.Request, next http.HandlerFunc) {
+	body, err := io.ReadAll(r.Body)
+	if err != nil {
+		gimlet.WriteResponse(rw, gimlet.MakeJSONErrorResponder(errors.Wrap(err, "reading body")))
+		return
+	}
+	var payload sns.Payload
+	if err = json.Unmarshal(body, &payload); err != nil {
+		gimlet.WriteResponse(rw, gimlet.MakeJSONErrorResponder(errors.Wrap(err, "unmarshalling JSON payload")))
+		return
+	}
+
+	if err = payload.VerifyPayload(); err != nil {
+		msg := "AWS SNS message failed validation"
+		grip.Error(message.WrapError(err, message.Fields{
+			"message": msg,
+			"payload": payload,
+		}))
+		gimlet.WriteResponse(rw, gimlet.MakeJSONErrorResponder(errors.Wrap(err, msg)))
+		return
+	}
+
+	r = setSNSPayload(r, payload)
+	next(rw, r)
+}
+
+func setSNSPayload(r *http.Request, payload sns.Payload) *http.Request {
+	return r.WithContext(context.WithValue(r.Context(), snsPayloadKey, payload))
+}
+
+func getSNSPayload(ctx context.Context) sns.Payload {
+	if rv := ctx.Value(snsPayloadKey); rv != nil {
+		if t, ok := rv.(sns.Payload); ok {
+			return t
+		}
+	}
+
+	return sns.Payload{}
 }
 
 func AddCORSHeaders(allowedOrigins []string, next http.HandlerFunc) http.HandlerFunc {

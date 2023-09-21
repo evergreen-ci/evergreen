@@ -34,7 +34,6 @@ func TestLoadUserManager(t *testing.T) {
 	}
 	multiNoInfo := evergreen.MultiAuthConfig{
 		ReadWrite: []string{evergreen.AuthGithubKey},
-		ReadOnly:  []string{evergreen.AuthOnlyAPIKey},
 	}
 
 	a := evergreen.AuthConfig{}

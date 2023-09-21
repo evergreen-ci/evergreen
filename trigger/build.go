@@ -1,6 +1,7 @@
 package trigger
 
 import (
+	"context"
 	"fmt"
 	"strconv"
 	"time"
@@ -45,9 +46,9 @@ func makeBuildTriggers() eventHandler {
 	return t
 }
 
-func (t *buildTriggers) Fetch(e *event.EventLogEntry) error {
+func (t *buildTriggers) Fetch(ctx context.Context, e *event.EventLogEntry) error {
 	var err error
-	if err = t.uiConfig.Get(evergreen.GetEnvironment()); err != nil {
+	if err = t.uiConfig.Get(ctx); err != nil {
 		return errors.Wrap(err, "fetching UI config")
 	}
 
@@ -213,7 +214,7 @@ func (t *buildTriggers) makeData(sub *event.Subscription, pastTenseOverride stri
 	if t.data.GithubCheckStatus != "" {
 		data.PastTenseStatus = t.data.GithubCheckStatus
 	}
-	if t.build.Requester == evergreen.GithubPRRequester || t.build.Requester == evergreen.RepotrackerVersionRequester {
+	if t.build.Requester == evergreen.GithubPRRequester || t.build.Requester == evergreen.RepotrackerVersionRequester || t.build.Requester == evergreen.GithubMergeRequester {
 		data.githubContext = fmt.Sprintf("evergreen/%s", t.build.BuildVariant)
 		data.githubDescription = t.build.GetPRNotificationDescription(t.tasks)
 	}

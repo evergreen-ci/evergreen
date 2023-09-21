@@ -394,11 +394,11 @@ func TestGetActivationTimeForTask(t *testing.T) {
 	assert.NoError(t, versionWithoutTask.Insert())
 	assert.NoError(t, versionWithTask.Insert())
 
-	activationTime, err := projectRef.GetActivationTimeForTask(bvt)
+	activationTime, err := projectRef.GetActivationTimeForTask(bvt, "t0")
 	assert.NoError(t, err)
 	assert.True(t, activationTime.Equal(prevTime.Add(time.Hour)))
 
-	activationTime, err = projectRef.GetActivationTimeForTask(bvt2)
+	activationTime, err = projectRef.GetActivationTimeForTask(bvt2, "t0")
 	assert.NoError(t, err)
 	assert.True(t, activationTime.Equal(utility.ZeroTime))
 }
@@ -454,6 +454,9 @@ func TestGetActivationTimeWithCron(t *testing.T) {
 }
 
 func TestAttachToNewRepo(t *testing.T) {
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
 	require.NoError(t, db.ClearCollections(ProjectRefCollection, RepoRefCollection, evergreen.ScopeCollection,
 		evergreen.RoleCollection, user.Collection, evergreen.ConfigCollection, GithubHooksCollection))
 	require.NoError(t, db.CreateCollections(evergreen.ScopeCollection))
@@ -461,7 +464,7 @@ func TestAttachToNewRepo(t *testing.T) {
 	settings := evergreen.Settings{
 		GithubOrgs: []string{"newOwner", "evergreen-ci"},
 	}
-	assert.NoError(t, settings.Set())
+	assert.NoError(t, settings.Set(ctx))
 	pRef := ProjectRef{
 		Id:        "myProject",
 		Owner:     "evergreen-ci",
@@ -567,13 +570,16 @@ func checkRepoAttachmentEventLog(t *testing.T, project ProjectRef, attachmentTyp
 }
 
 func TestAttachToRepo(t *testing.T) {
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
 	require.NoError(t, db.ClearCollections(ProjectRefCollection, RepoRefCollection, evergreen.ScopeCollection,
 		evergreen.RoleCollection, user.Collection, GithubHooksCollection, event.EventCollection, evergreen.ConfigCollection))
 	require.NoError(t, db.CreateCollections(evergreen.ScopeCollection))
 	settings := evergreen.Settings{
 		GithubOrgs: []string{"newOwner", "evergreen-ci"},
 	}
-	assert.NoError(t, settings.Set())
+	assert.NoError(t, settings.Set(ctx))
 	pRef := ProjectRef{
 		Id:     "myProject",
 		Owner:  "evergreen-ci",
@@ -598,7 +604,7 @@ func TestAttachToRepo(t *testing.T) {
 	u := &user.DBUser{Id: "me"}
 	assert.NoError(t, u.Insert())
 	// No repo exists, but one should be created.
-	assert.NoError(t, pRef.AttachToRepo(u))
+	assert.NoError(t, pRef.AttachToRepo(ctx, u))
 	assert.True(t, pRef.UseRepoSettings())
 	assert.NotEmpty(t, pRef.RepoRefId)
 	checkRepoAttachmentEventLog(t, pRef, event.EventTypeProjectAttachedToRepo)
@@ -638,7 +644,7 @@ func TestAttachToRepo(t *testing.T) {
 		Enabled:          true,
 	}
 	assert.NoError(t, pRef.Insert())
-	assert.NoError(t, pRef.AttachToRepo(u))
+	assert.NoError(t, pRef.AttachToRepo(ctx, u))
 	assert.True(t, pRef.UseRepoSettings())
 	assert.NotEmpty(t, pRef.RepoRefId)
 	checkRepoAttachmentEventLog(t, pRef, event.EventTypeProjectAttachedToRepo)
@@ -661,10 +667,13 @@ func TestAttachToRepo(t *testing.T) {
 		Branch: "main",
 	}
 	assert.NoError(t, pRef.Insert())
-	assert.Error(t, pRef.AttachToRepo(u))
+	assert.Error(t, pRef.AttachToRepo(ctx, u))
 }
 
 func TestDetachFromRepo(t *testing.T) {
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
 	for name, test := range map[string]func(t *testing.T, pRef *ProjectRef, dbUser *user.DBUser){
 		"project ref is updated correctly": func(t *testing.T, pRef *ProjectRef, dbUser *user.DBUser) {
 			assert.NoError(t, pRef.DetachFromRepo(dbUser))
@@ -716,7 +725,7 @@ func TestDetachFromRepo(t *testing.T) {
 			assert.Equal(t, aliases[0].Alias, projectAlias.Alias)
 
 			// reattach to repo to test without project patch aliases
-			assert.NoError(t, pRef.AttachToRepo(dbUser))
+			assert.NoError(t, pRef.AttachToRepo(ctx, dbUser))
 			assert.NotEmpty(t, pRef.RepoRefId)
 			assert.True(t, pRef.UseRepoSettings())
 			assert.NoError(t, RemoveProjectAlias(projectAlias.ID.Hex()))
@@ -803,7 +812,7 @@ func TestDetachFromRepo(t *testing.T) {
 			assert.Equal(t, subs[0].Trigger, event.TriggerOutcome)
 
 			// reattach to repo to test without subscription
-			assert.NoError(t, pRef.AttachToRepo(dbUser))
+			assert.NoError(t, pRef.AttachToRepo(ctx, dbUser))
 			assert.NoError(t, event.RemoveSubscription(projectSubscription.ID))
 			assert.NoError(t, pRef.DetachFromRepo(dbUser))
 
@@ -1994,6 +2003,23 @@ func TestValidateContainerSecrets(t *testing.T) {
 		}
 		_, err := ValidateContainerSecrets(&settings, projectID, nil, toUpdate)
 		assert.Error(t, err)
+
+		toUpdate = []ContainerSecret{
+			{
+				Name:  "pear",
+				Type:  ContainerSecretPodSecret,
+				Value: "abcde",
+			},
+		}
+		original := []ContainerSecret{
+			{
+				Name:  "dragonfruit",
+				Type:  ContainerSecretPodSecret,
+				Value: "abcde",
+			},
+		}
+		_, err = ValidateContainerSecrets(&settings, projectID, original, toUpdate)
+		assert.Error(t, err)
 	})
 }
 
@@ -2833,6 +2859,9 @@ func TestMergeWithProjectConfig(t *testing.T) {
 }
 
 func TestSaveProjectPageForSection(t *testing.T) {
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
 	assert := assert.New(t)
 
 	assert.NoError(db.ClearCollections(ProjectRefCollection, RepoRefCollection, evergreen.ConfigCollection))
@@ -2856,7 +2885,7 @@ func TestSaveProjectPageForSection(t *testing.T) {
 	settings := evergreen.Settings{
 		GithubOrgs: []string{"newOwner", "evergreen-ci"},
 	}
-	assert.NoError(settings.Set())
+	assert.NoError(settings.Set(ctx))
 
 	update := &ProjectRef{
 		Id:      "iden_",
@@ -2914,12 +2943,15 @@ func TestSaveProjectPageForSection(t *testing.T) {
 }
 
 func TestValidateOwnerAndRepo(t *testing.T) {
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
 	require.NoError(t, db.ClearCollections(ProjectRefCollection, RepoRefCollection, evergreen.ConfigCollection))
 
 	settings := evergreen.Settings{
 		GithubOrgs: []string{"newOwner", "evergreen-ci"},
 	}
-	assert.NoError(t, settings.Set())
+	assert.NoError(t, settings.Set(ctx))
 
 	// a project with no owner should error
 	project := ProjectRef{

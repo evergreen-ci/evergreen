@@ -40,7 +40,7 @@ func (c *s3Push) Execute(ctx context.Context, comm client.Communicator, logger c
 		return errors.Wrap(err, "creating S3 task bucket")
 	}
 
-	wd, err := conf.GetWorkingDirectory("")
+	wd, err := getWorkingDirectoryLegacy(conf, "")
 	if err != nil {
 		return errors.Wrap(err, "getting working directory")
 	}

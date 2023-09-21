@@ -7,11 +7,13 @@ import (
 	"io"
 	"net/http"
 	"strconv"
+	"strings"
 	"time"
 
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/apimodels"
 	"github.com/evergreen-ci/evergreen/model"
+	"github.com/evergreen-ci/evergreen/model/artifact"
 	"github.com/evergreen-ci/evergreen/model/build"
 	"github.com/evergreen-ci/evergreen/model/distro"
 	"github.com/evergreen-ci/evergreen/model/event"
@@ -61,7 +63,6 @@ type uiTaskData struct {
 	IngestTime           time.Time               `json:"ingest_time"`
 	EstWaitTime          time.Duration           `json:"wait_time"`
 	UpstreamData         *uiUpstreamData         `json:"upstream_data,omitempty"`
-	Logs                 *apimodels.TaskLogs     `json:"logs,omitempty"`
 
 	// from the host doc (the dns name)
 	HostDNS string `json:"host_dns,omitempty"`
@@ -268,7 +269,6 @@ func (uis *UIServer) taskPage(w http.ResponseWriter, r *http.Request) {
 		VersionId:            projCtx.Version.Id,
 		RepoOwner:            projCtx.ProjectRef.Owner,
 		Repo:                 projCtx.ProjectRef.Repo,
-		Logs:                 projCtx.Task.Logs,
 		Archived:             archived,
 		TotalExecutions:      totalExecutions,
 		PartOfDisplay:        projCtx.Task.IsPartOfDisplay(),
@@ -293,7 +293,7 @@ func (uis *UIServer) taskPage(w http.ResponseWriter, r *http.Request) {
 		uiTask.MinQueuePos = 0
 	}
 	if uiTask.Status == evergreen.TaskUndispatched {
-		uiTask.EstWaitTime, err = model.GetEstimatedStartTime(*projCtx.Task)
+		uiTask.EstWaitTime, err = model.GetEstimatedStartTime(ctx, *projCtx.Task)
 		if err != nil {
 			uis.LoggedError(w, r, http.StatusInternalServerError, err)
 			return
@@ -313,7 +313,7 @@ func (uis *UIServer) taskPage(w http.ResponseWriter, r *http.Request) {
 	if projCtx.Task.HostId != "" {
 		uiTask.HostDNS = projCtx.Task.HostId
 		uiTask.HostId = projCtx.Task.HostId
-		taskHost, err = host.FindOne(host.ById(projCtx.Task.HostId))
+		taskHost, err = host.FindOne(ctx, host.ById(projCtx.Task.HostId))
 		if err != nil {
 			http.Error(w, err.Error(), http.StatusInternalServerError)
 			return
@@ -323,7 +323,7 @@ func (uis *UIServer) taskPage(w http.ResponseWriter, r *http.Request) {
 			// ensure that the ability to spawn is updated from the existing distro
 			taskHost.Distro.SpawnAllowed = false
 			var d *distro.Distro
-			d, err = distro.FindOneId(taskHost.Distro.Id)
+			d, err = distro.FindOneId(ctx, taskHost.Distro.Id)
 			if err != nil {
 				http.Error(w, err.Error(), http.StatusInternalServerError)
 				return
@@ -642,6 +642,77 @@ func (uis *UIServer) taskLogRaw(w http.ResponseWriter, r *http.Request) {
 	uis.render.Stream(w, http.StatusOK, data, "base", "task_log.html")
 }
 
+func (uis *UIServer) taskFileRaw(w http.ResponseWriter, r *http.Request) {
+	projCtx := MustHaveProjectContext(r)
+	if projCtx.Task == nil {
+		http.Error(w, "task not found", http.StatusNotFound)
+		return
+	}
+
+	fileName := gimlet.GetVars(r)["file_name"]
+	if fileName == "" {
+		http.Error(w, "file name not specified", http.StatusBadRequest)
+		return
+	}
+
+	taskFiles, err := artifact.GetAllArtifacts([]artifact.TaskIDAndExecution{{TaskID: projCtx.Task.Id, Execution: projCtx.Task.Execution}})
+	if err != nil {
+		uis.LoggedError(w, r, http.StatusInternalServerError, errors.Wrapf(err, "unable to find artifacts for task '%s'", projCtx.Task.Id))
+		return
+	}
+	taskFiles, err = artifact.StripHiddenFiles(taskFiles, true)
+	if err != nil {
+		uis.LoggedError(w, r, http.StatusInternalServerError, errors.Wrapf(err, "unable to strip hidden files for task '%s'", projCtx.Task.Id))
+		return
+	}
+	var tFile *artifact.File
+	for _, taskFile := range taskFiles {
+		if taskFile.Name == fileName {
+			tFile = &taskFile
+			break
+		}
+	}
+	if tFile == nil {
+		uis.LoggedError(w, r, http.StatusNotFound, errors.New(fmt.Sprintf("file '%s' not found", fileName)))
+		return
+	}
+
+	hasContentType := false
+	for _, contentType := range uis.Settings.Ui.FileStreamingContentTypes {
+		if strings.HasPrefix(tFile.ContentType, contentType) {
+			hasContentType = true
+			break
+		}
+	}
+	if !hasContentType {
+		uis.LoggedError(w, r, http.StatusBadRequest, errors.New(fmt.Sprintf("unsupported file content type '%s'", tFile.ContentType)))
+		return
+	}
+
+	response, err := http.Get(tFile.Link)
+	if err != nil {
+		uis.LoggedError(w, r, http.StatusInternalServerError, errors.Wrap(err, "downloading file"))
+		return
+	}
+	defer response.Body.Close()
+	if response.StatusCode != http.StatusOK {
+		uis.LoggedError(w, r, response.StatusCode, errors.Errorf("failed to download file with status code: %d", response.StatusCode))
+		return
+	}
+
+	// Create a buffer to stream the file in chunks.
+	const bufferSize = 1024 * 1024 // 1MB
+	buffer := make([]byte, bufferSize)
+
+	w.Header().Set("Content-Type", tFile.ContentType)
+	_, err = io.CopyBuffer(w, response.Body, buffer)
+	if err != nil {
+		uis.LoggedError(w, r, http.StatusInternalServerError, errors.Wrap(err, "writing to response"))
+		return
+	}
+
+}
+
 // avoids type-checking json params for the below function
 func (uis *UIServer) taskModify(w http.ResponseWriter, r *http.Request) {
 	projCtx := MustHaveProjectContext(r)
@@ -688,7 +759,7 @@ func (uis *UIServer) taskModify(w http.ResponseWriter, r *http.Request) {
 	// determine what action needs to be taken
 	switch putParams.Action {
 	case evergreen.RestartAction:
-		if err = model.TryResetTask(uis.env.Settings(), projCtx.Task.Id, authName, evergreen.UIPackage, nil); err != nil {
+		if err = model.TryResetTask(ctx, uis.env.Settings(), projCtx.Task.Id, authName, evergreen.UIPackage, nil); err != nil {
 			http.Error(w, fmt.Sprintf("Error restarting task %v: %v", projCtx.Task.Id, err), http.StatusInternalServerError)
 			return
 		}
@@ -701,7 +772,7 @@ func (uis *UIServer) taskModify(w http.ResponseWriter, r *http.Request) {
 		gimlet.WriteJSON(w, projCtx.Task)
 		return
 	case evergreen.AbortAction:
-		if err = model.AbortTask(projCtx.Task.Id, authName); err != nil {
+		if err = model.AbortTask(ctx, projCtx.Task.Id, authName); err != nil {
 			http.Error(w, fmt.Sprintf("Error aborting task %v: %v", projCtx.Task.Id, err), http.StatusInternalServerError)
 			return
 		}
@@ -720,7 +791,7 @@ func (uis *UIServer) taskModify(w http.ResponseWriter, r *http.Request) {
 			http.Error(w, "commit queue tasks cannot be manually scheduled", http.StatusBadRequest)
 			return
 		}
-		if err = model.SetActiveState(authUser.Username(), active, *projCtx.Task); err != nil {
+		if err = model.SetActiveState(r.Context(), authUser.Username(), active, *projCtx.Task); err != nil {
 			http.Error(w, fmt.Sprintf("Error activating task %v: %v", projCtx.Task.Id, err),
 				http.StatusInternalServerError)
 			return
@@ -747,7 +818,7 @@ func (uis *UIServer) taskModify(w http.ResponseWriter, r *http.Request) {
 				return
 			}
 		}
-		if err = model.SetTaskPriority(*projCtx.Task, priority, authUser.Username()); err != nil {
+		if err = model.SetTaskPriority(r.Context(), *projCtx.Task, priority, authUser.Username()); err != nil {
 			http.Error(w, fmt.Sprintf("Error setting task priority %v: %v", projCtx.Task.Id, err), http.StatusInternalServerError)
 			return
 		}

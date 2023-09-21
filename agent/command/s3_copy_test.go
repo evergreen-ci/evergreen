@@ -24,17 +24,17 @@ func TestS3CopyExecute(t *testing.T) {
 			ctx, cancel := context.WithCancel(context.Background())
 			defer cancel()
 			conf := &internal.TaskConfig{
-				Task: &task.Task{
+				Task: task.Task{
 					Id:           "id",
 					Project:      "project",
 					Version:      "version",
 					BuildVariant: "build_variant",
 					DisplayName:  "display_name",
 				},
-				BuildVariant: &model.BuildVariant{
+				BuildVariant: model.BuildVariant{
 					Name: "build_variant",
 				},
-				ProjectRef: &model.ProjectRef{
+				ProjectRef: model.ProjectRef{
 					Id: "project_identifier",
 					TaskSync: model.TaskSyncOptions{
 						ConfigEnabled: utility.TruePtr(),

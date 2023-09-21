@@ -15,4 +15,4 @@
 * **test**: A test is sent to Evergreen in a known format by a command during a task, parsed by Evergreen, and displayed on the task page.
 * **user configuration file**: The user configuration file is a file parsed by the Evergreen CLI. It contains the user’s API key and various settings.
 * **version**: A version, which corresponds to a vertical slice of tasks on the waterfall, is all tasks for a given commit or patch build.
-* **working directory**: The working directory is the temporary directory which Evergreen creates to run a task. It is available as an expansion.
+* **working directory**: The working directory is the temporary directory which Evergreen creates to run a task. It is available as [an expansion](../Project-Configuration/Project-Configuration-Files.md#default-expansions).

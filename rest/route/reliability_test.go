@@ -30,12 +30,15 @@ const (
 )
 
 func configureTaskReliability(disabled bool) error {
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
 	var err error
 	flags := &evergreen.ServiceFlags{}
-	err = flags.Get(evergreen.GetEnvironment())
+	err = flags.Get(ctx)
 	if err == nil {
 		flags.TaskReliabilityDisabled = disabled
-		err = flags.Set()
+		err = flags.Set(ctx)
 	}
 	return err
 }
@@ -416,6 +419,7 @@ func TestReliabilityParse(t *testing.T) {
 						evergreen.PatchVersionRequester,
 						evergreen.GithubPRRequester,
 						evergreen.MergeTestRequester,
+						evergreen.GithubMergeRequester,
 					}, handler.filter.Requesters)
 					require.Equal(t, time.Date(1998, 7, 12, 0, 0, 0, 0, time.UTC), handler.filter.AfterDate)
 					require.Equal(t, time.Date(2018, 7, 15, 0, 0, 0, 0, time.UTC), handler.filter.BeforeDate)

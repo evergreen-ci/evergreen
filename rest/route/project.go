@@ -202,7 +202,7 @@ func (h *attachProjectToRepoHandler) Parse(ctx context.Context, r *http.Request)
 }
 
 func (h *attachProjectToRepoHandler) Run(ctx context.Context) gimlet.Responder {
-	if err := h.project.AttachToRepo(h.user); err != nil {
+	if err := h.project.AttachToRepo(ctx, h.user); err != nil {
 		return gimlet.MakeJSONInternalErrorResponder(errors.Wrap(err, "attaching repo to project"))
 	}
 
@@ -365,7 +365,7 @@ func (h *projectIDPatchHandler) Run(ctx context.Context) gimlet.Responder {
 	}
 
 	if mergedProjectRef.Enabled {
-		settings, err := evergreen.GetConfig()
+		settings, err := evergreen.GetConfig(ctx)
 		if err != nil {
 			return gimlet.MakeJSONInternalErrorResponder(errors.Wrap(err, "getting evergreen settings"))
 		}
@@ -475,7 +475,7 @@ func (h *projectIDPatchHandler) Run(ctx context.Context) gimlet.Responder {
 
 	var vault cocoa.Vault
 	if len(h.apiNewProjectRef.DeleteContainerSecrets) != 0 || len(h.apiNewProjectRef.ContainerSecrets) != 0 {
-		smClient, err := cloud.MakeSecretsManagerClient(h.settings)
+		smClient, err := cloud.MakeSecretsManagerClient(ctx, h.settings)
 		if err != nil {
 			return gimlet.MakeJSONInternalErrorResponder(errors.Wrap(err, "initializing Secrets Manager client"))
 		}
@@ -884,10 +884,14 @@ func (h *getProjectVersionsHandler) Parse(ctx context.Context, r *http.Request) 
 		if err != nil {
 			return errors.Wrap(err, "invalid start query parameter")
 		}
-		h.opts.StartAfter = startOrder
+		h.opts.Start = startOrder
 	}
-	if h.opts.StartAfter < 0 {
+	if h.opts.Start < 0 {
 		return errors.New("start must be a non-negative integer")
+	}
+
+	if h.opts.RevisionEnd < 0 {
+		return errors.New("revision_end must be a non-negative integer")
 	}
 
 	requester := params.Get("requester")
@@ -1017,7 +1021,7 @@ func (h *modifyProjectVersionsHandler) Run(ctx context.Context) gimlet.Responder
 	for _, v := range versions {
 		versionIds = append(versionIds, v.Id)
 	}
-	if err = dbModel.SetVersionsPriority(versionIds, priority, user.Id); err != nil {
+	if err = dbModel.SetVersionsPriority(ctx, versionIds, priority, user.Id); err != nil {
 		return gimlet.MakeJSONInternalErrorResponder(errors.Wrap(err, "setting version priorities"))
 	}
 	return gimlet.NewJSONResponse(struct{}{})
@@ -1072,7 +1076,7 @@ func (h *getProjectTasksHandler) Parse(ctx context.Context, r *http.Request) err
 }
 
 func (h *getProjectTasksHandler) Run(ctx context.Context) gimlet.Responder {
-	versions, err := data.GetProjectTasksWithOptions(h.projectName, h.taskName, h.opts)
+	versions, err := data.GetProjectTasksWithOptions(ctx, h.projectName, h.taskName, h.opts)
 	if err != nil {
 		return gimlet.MakeJSONInternalErrorResponder(errors.Wrapf(err, "getting versions for project '%s' and task '%s'", h.projectName, h.taskName))
 	}

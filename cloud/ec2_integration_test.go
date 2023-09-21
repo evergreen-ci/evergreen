@@ -75,7 +75,7 @@ func TestSpawnEC2InstanceOnDemand(t *testing.T) {
 
 	m := &ec2Manager{env: env, EC2ManagerOptions: opts}
 	require.NoError(m.Configure(ctx, testConfig))
-	require.NoError(m.client.Create(m.credentials, evergreen.DefaultEC2Region))
+	require.NoError(m.client.Create(ctx, m.credentials, evergreen.DefaultEC2Region))
 
 	d := fetchTestDistro()
 	h := host.NewIntent(host.CreateOptions{
@@ -85,13 +85,13 @@ func TestSpawnEC2InstanceOnDemand(t *testing.T) {
 	})
 	h, err := m.SpawnHost(ctx, h)
 	assert.NoError(err)
-	assert.NoError(h.Insert())
-	foundHosts, err := host.Find(host.IsUninitialized)
+	assert.NoError(h.Insert(ctx))
+	foundHosts, err := host.Find(ctx, host.IsUninitialized)
 	assert.NoError(err)
 	assert.Len(foundHosts, 1)
 
 	assert.NoError(m.TerminateInstance(ctx, h, evergreen.User, ""))
-	foundHosts, err = host.Find(host.IsTerminated)
+	foundHosts, err = host.Find(ctx, host.IsTerminated)
 	assert.NoError(err)
 	assert.Len(foundHosts, 1)
 

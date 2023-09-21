@@ -10,6 +10,7 @@ type APIFile struct {
 	Link           *string `json:"url"`
 	Visibility     *string `json:"visibility"`
 	IgnoreForFetch bool    `json:"ignore_for_fetch"`
+	ContentType    *string `json:"content_type"`
 }
 
 type APIEntry struct {
@@ -21,6 +22,7 @@ type APIEntry struct {
 }
 
 func (f *APIFile) BuildFromService(file artifact.File) {
+	f.ContentType = utility.ToStringPtr(file.ContentType)
 	f.Name = utility.ToStringPtr(file.Name)
 	f.Link = utility.ToStringPtr(file.Link)
 	f.Visibility = utility.ToStringPtr(file.Visibility)
@@ -29,6 +31,7 @@ func (f *APIFile) BuildFromService(file artifact.File) {
 
 func (f *APIFile) ToService() artifact.File {
 	return artifact.File{
+		ContentType:    utility.FromStringPtr(f.ContentType),
 		Name:           utility.FromStringPtr(f.Name),
 		Link:           utility.FromStringPtr(f.Link),
 		Visibility:     utility.FromStringPtr(f.Visibility),

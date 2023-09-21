@@ -58,7 +58,7 @@ func clearAll(t *testing.T) {
 
 // resetPatchSetup clears the ProjectRef, Patch, Version, Build, and Task Collections
 // and creates a patch from the test path given. The patch is not inserted.
-func resetPatchSetup(t *testing.T, testPath string) *patch.Patch {
+func resetPatchSetup(ctx context.Context, t *testing.T, testPath string) *patch.Patch {
 	clearAll(t)
 	projectRef := &ProjectRef{
 		Id:         patchedProject,
@@ -70,7 +70,7 @@ func resetPatchSetup(t *testing.T, testPath string) *patch.Patch {
 	// insert distros to be used
 	distros := []distro.Distro{{Id: "d1"}, {Id: "d2"}}
 	for _, d := range distros {
-		err := d.Insert()
+		err := d.Insert(ctx)
 		require.NoError(t, err, "Couldn't insert test distro: %v", err)
 	}
 
@@ -116,7 +116,7 @@ func resetPatchSetup(t *testing.T, testPath string) *patch.Patch {
 	return configPatch
 }
 
-func resetProjectlessPatchSetup(t *testing.T) *patch.Patch {
+func resetProjectlessPatchSetup(ctx context.Context, t *testing.T) *patch.Patch {
 	clearAll(t)
 	projectRef := &ProjectRef{
 		Id:         patchedProject,
@@ -128,7 +128,7 @@ func resetProjectlessPatchSetup(t *testing.T) *patch.Patch {
 	// insert distros to be used
 	distros := []distro.Distro{{Id: "d1"}, {Id: "d2"}}
 	for _, d := range distros {
-		err := d.Insert()
+		err := d.Insert(ctx)
 		require.NoError(t, err, "Couldn't insert test distro: %v", err)
 	}
 
@@ -160,6 +160,9 @@ func resetProjectlessPatchSetup(t *testing.T) *patch.Patch {
 }
 
 func TestSetPriority(t *testing.T) {
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
 	require.NoError(t, db.ClearCollections(patch.Collection, task.Collection))
 	patches := []*patch.Patch{
 		{Id: patch.NewId("aabbccddeeff001122334455"), Version: "aabbccddeeff001122334455"},
@@ -168,13 +171,23 @@ func TestSetPriority(t *testing.T) {
 		Id:      "t1",
 		Version: "aabbccddeeff001122334455",
 	}
+	t2 := task.Task{
+		Id:            "t2",
+		Version:       "something_else",
+		ParentPatchID: t1.Version,
+	}
 	assert.NoError(t, t1.Insert())
+	assert.NoError(t, t2.Insert())
 	for _, p := range patches {
 		assert.NoError(t, p.Insert())
 	}
-	err := SetVersionsPriority([]string{"aabbccddeeff001122334455"}, 7, "")
+	err := SetVersionsPriority(ctx, []string{"aabbccddeeff001122334455"}, 7, "")
 	assert.NoError(t, err)
 	foundTask, err := task.FindOneId("t1")
+	assert.NoError(t, err)
+	assert.Equal(t, int64(7), foundTask.Priority)
+
+	foundTask, err = task.FindOneId("t2")
 	assert.NoError(t, err)
 	assert.Equal(t, int64(7), foundTask.Priority)
 }
@@ -189,7 +202,7 @@ func TestGetPatchedProjectAndGetPatchedProjectConfig(t *testing.T) {
 	Convey("With calling GetPatchedProject with a config and remote configuration path",
 		t, func() {
 			Convey("Calling GetPatchedProject returns a valid project given a patch and settings", func() {
-				configPatch := resetPatchSetup(t, configFilePath)
+				configPatch := resetPatchSetup(ctx, t, configFilePath)
 				project, patchConfig, err := GetPatchedProject(ctx, patchTestConfig, configPatch, token)
 				So(err, ShouldBeNil)
 				So(project, ShouldNotBeNil)
@@ -204,7 +217,7 @@ func TestGetPatchedProjectAndGetPatchedProjectConfig(t *testing.T) {
 				})
 
 				Convey("Calling GetPatchedProject with a created but unfinalized patch", func() {
-					configPatch := resetPatchSetup(t, configFilePath)
+					configPatch := resetPatchSetup(ctx, t, configFilePath)
 
 					// Simulate what patch creation does.
 					patchConfig.PatchedParserProject.Id = configPatch.Id.Hex()
@@ -229,7 +242,7 @@ func TestGetPatchedProjectAndGetPatchedProjectConfig(t *testing.T) {
 				})
 
 				Convey("Calling GetPatchedProject with a created but unfinalized patch using deprecated patched parser project", func() {
-					configPatch := resetPatchSetup(t, configFilePath)
+					configPatch := resetPatchSetup(ctx, t, configFilePath)
 
 					// Simulate what patch creation does for old patches.
 					configPatch.PatchedParserProject = patchConfig.PatchedParserProjectYAML
@@ -255,7 +268,7 @@ func TestGetPatchedProjectAndGetPatchedProjectConfig(t *testing.T) {
 			})
 
 			Convey("Calling GetPatchedProject on a project-less version returns a valid project", func() {
-				configPatch := resetProjectlessPatchSetup(t)
+				configPatch := resetProjectlessPatchSetup(ctx, t)
 				project, patchConfig, err := GetPatchedProject(ctx, patchTestConfig, configPatch, token)
 				So(err, ShouldBeNil)
 				So(patchConfig, ShouldNotBeEmpty)
@@ -269,7 +282,7 @@ func TestGetPatchedProjectAndGetPatchedProjectConfig(t *testing.T) {
 			})
 
 			Convey("Calling GetPatchedProject on a patch with GridFS patches works", func() {
-				configPatch := resetProjectlessPatchSetup(t)
+				configPatch := resetProjectlessPatchSetup(ctx, t)
 
 				patchFileID := primitive.NewObjectID()
 				So(db.WriteGridFile(patch.GridFSPrefix, patchFileID.Hex(), strings.NewReader(configPatch.Patches[0].PatchSet.Patch)), ShouldBeNil)
@@ -296,10 +309,11 @@ func TestGetPatchedProjectAndGetPatchedProjectConfig(t *testing.T) {
 }
 
 func TestFinalizePatch(t *testing.T) {
-	testutil.ConfigureIntegrationTest(t, patchTestConfig, t.Name())
-	require.NoError(t, evergreen.UpdateConfig(patchTestConfig), ShouldBeNil)
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
+
+	testutil.ConfigureIntegrationTest(t, patchTestConfig, t.Name())
+	require.NoError(t, evergreen.UpdateConfig(ctx, patchTestConfig), ShouldBeNil)
 
 	// Running a multi-document transaction requires the collections to exist
 	// first before any documents can be inserted.
@@ -422,18 +436,17 @@ modules:
 			ppStorageMethod := evergreen.ProjectStorageMethodDB
 			p.ProjectStorageMethod = ppStorageMethod
 
-			//normal patch works
+			//normal patch should error
 			p.Tasks = []string{}
 			p.BuildVariants = []string{}
 			p.VariantsTasks = []patch.VariantTasks{}
 			require.NoError(t, p.Insert())
 
-			v, err := FinalizePatch(ctx, p, evergreen.MergeTestRequester, token)
-			require.NoError(t, err)
-			assert.NotNil(t, v)
-			assert.Empty(t, v.BuildIds)
+			_, err := FinalizePatch(ctx, p, evergreen.MergeTestRequester, token)
+			require.Error(t, err)
+			assert.Contains(t, err.Error(), "cannot finalize patch with no tasks")
 
-			// commit queue patch should not
+			// commit queue patch should fail with different error
 			p.Alias = evergreen.CommitQueueAlias
 			_, err = FinalizePatch(ctx, p, evergreen.MergeTestRequester, token)
 			require.Error(t, err)
@@ -455,21 +468,22 @@ modules:
 			require.NoError(t, err)
 			require.NotZero(t, dbPatch)
 			assert.True(t, dbPatch.Activated)
-			// ensure the relevant builds/tasks were created
+
 			builds, err := build.Find(build.All)
 			require.NoError(t, err)
 			assert.Len(t, builds, 1)
 			assert.Len(t, builds[0].Tasks, 2)
+
 			tasks, err := task.Find(bson.M{})
 			require.NoError(t, err)
 			assert.Len(t, tasks, 2)
 			for _, tsk := range tasks {
-				assert.True(t, tsk.IsEssentialToFinish, "tasks automatically selected when a GitHub PR patch is finalized should be essential to finish")
+				assert.True(t, tsk.IsEssentialToSucceed, "tasks automatically selected when a GitHub PR patch is finalized should be essential to succeed")
 			}
 		},
 	} {
 		t.Run(name, func(t *testing.T) {
-			p := resetPatchSetup(t, configFilePath)
+			p := resetPatchSetup(ctx, t, configFilePath)
 
 			project, patchConfig, err := GetPatchedProject(ctx, patchTestConfig, p, token)
 			require.NoError(t, err)
@@ -729,7 +743,7 @@ func TestAddNewPatch(t *testing.T) {
 	assert.NotNil(dbBuild)
 	assert.Len(dbBuild.Tasks, 2)
 
-	_, err = addNewTasks(context.Background(), creationInfo, []build.Build{*dbBuild})
+	_, err = addNewTasks(context.Background(), creationInfo, []build.Build{*dbBuild}, "")
 	assert.NoError(err)
 	dbTasks, err := task.FindAll(db.Query(task.ByBuildId(dbBuild.Id)))
 	assert.NoError(err)
@@ -818,7 +832,7 @@ func TestAddNewPatchWithMissingBaseVersion(t *testing.T) {
 	assert.NotNil(dbBuild)
 	assert.Len(dbBuild.Tasks, 2)
 
-	_, err = addNewTasks(context.Background(), creationInfo, []build.Build{*dbBuild})
+	_, err = addNewTasks(context.Background(), creationInfo, []build.Build{*dbBuild}, "")
 	assert.NoError(err)
 	dbTasks, err := task.FindAll(db.Query(task.ByBuildId(dbBuild.Id)))
 	assert.NoError(err)
@@ -853,7 +867,7 @@ func TestMakeCommitQueueDescription(t *testing.T) {
 
 	// no commits
 	patches := []patch.ModulePatch{}
-	assert.Equal(t, "Commit Queue Merge: No Commits Added", MakeCommitQueueDescription(patches, projectRef, project))
+	assert.Equal(t, "Commit Queue Merge: No Commits Added", MakeCommitQueueDescription(patches, projectRef, project, false, ""))
 
 	// main repo commit
 	patches = []patch.ModulePatch{
@@ -862,7 +876,9 @@ func TestMakeCommitQueueDescription(t *testing.T) {
 			PatchSet:   patch.PatchSet{CommitMessages: []string{"Commit"}},
 		},
 	}
-	assert.Equal(t, "Commit Queue Merge: 'Commit' into 'evergreen-ci/evergreen:main'", MakeCommitQueueDescription(patches, projectRef, project))
+	assert.Equal(t, "Commit Queue Merge: 'Commit' into 'evergreen-ci/evergreen:main'", MakeCommitQueueDescription(patches, projectRef, project, false, ""))
+
+	assert.Equal(t, "GitHub Merge Queue: 0e312ff", MakeCommitQueueDescription(patches, projectRef, project, true, "0e312ff6c06bd09eff0aed1bd1f73911a7daa350"))
 
 	// main repo + module commits
 	patches = []patch.ModulePatch{
@@ -876,7 +892,7 @@ func TestMakeCommitQueueDescription(t *testing.T) {
 		},
 	}
 
-	assert.Equal(t, "Commit Queue Merge: 'Commit 1 <- Commit 2' into 'evergreen-ci/evergreen:main' || 'Module Commit 1 <- Module Commit 2' into 'evergreen-ci/module_repo:feature'", MakeCommitQueueDescription(patches, projectRef, project))
+	assert.Equal(t, "Commit Queue Merge: 'Commit 1 <- Commit 2' into 'evergreen-ci/evergreen:main' || 'Module Commit 1 <- Module Commit 2' into 'evergreen-ci/module_repo:feature'", MakeCommitQueueDescription(patches, projectRef, project, false, ""))
 
 	// module only commits
 	patches = []patch.ModulePatch{
@@ -888,7 +904,7 @@ func TestMakeCommitQueueDescription(t *testing.T) {
 			PatchSet:   patch.PatchSet{CommitMessages: []string{"Module Commit 1", "Module Commit 2"}},
 		},
 	}
-	assert.Equal(t, "Commit Queue Merge: 'Module Commit 1 <- Module Commit 2' into 'evergreen-ci/module_repo:feature'", MakeCommitQueueDescription(patches, projectRef, project))
+	assert.Equal(t, "Commit Queue Merge: 'Module Commit 1 <- Module Commit 2' into 'evergreen-ci/module_repo:feature'", MakeCommitQueueDescription(patches, projectRef, project, false, ""))
 }
 
 func TestRetryCommitQueueItems(t *testing.T) {
@@ -936,7 +952,7 @@ func TestRetryCommitQueueItems(t *testing.T) {
 				Githash:    patchedRevision,
 				StartTime:  startTime.Add(-30 * time.Minute), // started out of range
 				FinishTime: startTime.Add(30 * time.Minute),
-				Status:     evergreen.PatchFailed,
+				Status:     evergreen.VersionFailed,
 				Alias:      evergreen.CommitQueueAlias,
 				GithubPatchData: thirdparty.GithubPatch{
 					PRNumber: 456,
@@ -962,7 +978,7 @@ func TestRetryCommitQueueItems(t *testing.T) {
 					Githash:     patchedRevision,
 					StartTime:   startTime.Add(30 * time.Minute),
 					FinishTime:  endTime.Add(30 * time.Minute),
-					Status:      evergreen.PatchFailed,
+					Status:      evergreen.VersionFailed,
 					Alias:       evergreen.CommitQueueAlias,
 					Author:      "me",
 					GithubPatchData: thirdparty.GithubPatch{
@@ -976,7 +992,7 @@ func TestRetryCommitQueueItems(t *testing.T) {
 					Githash:     patchedRevision,
 					StartTime:   startTime.Add(30 * time.Minute),
 					FinishTime:  endTime.Add(30 * time.Minute),
-					Status:      evergreen.PatchSucceeded,
+					Status:      evergreen.LegacyPatchSucceeded,
 					Alias:       evergreen.CommitQueueAlias,
 				},
 				{ // within time frame, not commit queue
@@ -986,7 +1002,7 @@ func TestRetryCommitQueueItems(t *testing.T) {
 					Githash:     patchedRevision,
 					StartTime:   startTime.Add(30 * time.Minute),
 					FinishTime:  endTime.Add(30 * time.Minute),
-					Status:      evergreen.PatchFailed,
+					Status:      evergreen.VersionFailed,
 				},
 				{ // not within time frame
 					Id:          mgobson.NewObjectId(),
@@ -995,7 +1011,7 @@ func TestRetryCommitQueueItems(t *testing.T) {
 					Githash:     patchedRevision,
 					StartTime:   time.Date(2019, 6, 15, 12, 0, 0, 0, time.Local),
 					FinishTime:  time.Date(2019, 6, 15, 12, 20, 0, 0, time.Local),
-					Status:      evergreen.PatchFailed,
+					Status:      evergreen.VersionFailed,
 					Alias:       evergreen.CommitQueueAlias,
 				},
 			}
@@ -1031,6 +1047,9 @@ func TestAddDisplayTasksToPatchReq(t *testing.T) {
 }
 
 func TestAbortPatchesWithGithubPatchData(t *testing.T) {
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
 	defer func() {
 		assert.NoError(t, db.ClearCollections(commitqueue.Collection, patch.Collection, task.Collection, VersionCollection))
 	}()
@@ -1039,7 +1058,7 @@ func TestAbortPatchesWithGithubPatchData(t *testing.T) {
 			require.NoError(t, p.Insert())
 			require.NoError(t, tsk.Insert())
 
-			require.NoError(t, AbortPatchesWithGithubPatchData(time.Now(), false, "", p.GithubPatchData.BaseOwner, p.GithubPatchData.BaseRepo, p.GithubPatchData.PRNumber))
+			require.NoError(t, AbortPatchesWithGithubPatchData(ctx, time.Now(), false, "", p.GithubPatchData.BaseOwner, p.GithubPatchData.BaseRepo, p.GithubPatchData.PRNumber))
 
 			dbTask, err := task.FindOneId(tsk.Id)
 			require.NoError(t, err)
@@ -1051,7 +1070,7 @@ func TestAbortPatchesWithGithubPatchData(t *testing.T) {
 			require.NoError(t, p.Insert())
 			require.NoError(t, tsk.Insert())
 
-			require.NoError(t, AbortPatchesWithGithubPatchData(time.Now().Add(-time.Hour), false, "", p.GithubPatchData.BaseOwner, p.GithubPatchData.BaseRepo, p.GithubPatchData.PRNumber))
+			require.NoError(t, AbortPatchesWithGithubPatchData(ctx, time.Now().Add(-time.Hour), false, "", p.GithubPatchData.BaseOwner, p.GithubPatchData.BaseRepo, p.GithubPatchData.PRNumber))
 
 			dbTask, err := task.FindOneId(tsk.Id)
 			require.NoError(t, err)
@@ -1074,7 +1093,7 @@ func TestAbortPatchesWithGithubPatchData(t *testing.T) {
 			}
 			require.NoError(t, commitqueue.InsertQueue(&cq))
 
-			require.NoError(t, AbortPatchesWithGithubPatchData(time.Now(), false, "", p.GithubPatchData.BaseOwner, p.GithubPatchData.BaseRepo, p.GithubPatchData.PRNumber))
+			require.NoError(t, AbortPatchesWithGithubPatchData(ctx, time.Now(), false, "", p.GithubPatchData.BaseOwner, p.GithubPatchData.BaseRepo, p.GithubPatchData.PRNumber))
 
 			dbCommitQueue, err := commitqueue.FindOneId(cq.ProjectID)
 			require.NoError(t, err)
@@ -1097,7 +1116,7 @@ func TestAbortPatchesWithGithubPatchData(t *testing.T) {
 			}
 			require.NoError(t, commitqueue.InsertQueue(&cq))
 
-			require.NoError(t, AbortPatchesWithGithubPatchData(time.Now(), false, "", p.GithubPatchData.BaseOwner, p.GithubPatchData.BaseRepo, p.GithubPatchData.PRNumber))
+			require.NoError(t, AbortPatchesWithGithubPatchData(ctx, time.Now(), false, "", p.GithubPatchData.BaseOwner, p.GithubPatchData.BaseRepo, p.GithubPatchData.PRNumber))
 
 			dbCommitQueue, err := commitqueue.FindOneId(cq.ProjectID)
 			require.NoError(t, err)
@@ -1117,7 +1136,7 @@ func TestAbortPatchesWithGithubPatchData(t *testing.T) {
 			p := patch.Patch{
 				Id:         id,
 				Version:    v.Id,
-				Status:     evergreen.PatchStarted,
+				Status:     evergreen.VersionStarted,
 				Activated:  true,
 				Project:    "project",
 				CreateTime: time.Now().Add(-time.Hour),

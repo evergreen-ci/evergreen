@@ -1,3 +1,4 @@
+unset_function_vars: true
 command_type: test
 stepback: true
 ignore:
@@ -7,39 +8,31 @@ ignore:
 post:
   - func: attach-test-results
   - command: s3.put
-    type: system
-    params:
-      aws_key: ${aws_key}
-      aws_secret: ${aws_secret}
-      local_files_include_filter: ["evergreen/bin/output.*.coverage.html"]
-      remote_file: evergreen/${task_id}/
-      bucket: mciuploads
-      content_type: text/html
-      permissions: public-read
-      display_name: "(html) coverage:"
-  - command: s3.put
-    type: system
-    params:
-      aws_key: ${aws_key}
-      aws_secret: ${aws_secret}
-      local_files_include_filter: ["evergreen/bin/output.*.coverage"]
-      remote_file: evergreen/${task_id}/
-      bucket: mciuploads
-      content_type: text/plain
-      permissions: public-read
-      display_name: "(txt) coverage:"
-  - command: s3.put
     display_name: Upload smoke test's app server logs to S3
     type: system
     params:
       aws_key: ${aws_key}
       aws_secret: ${aws_secret}
-      local_file: evergreen/server_logs.txt
-      remote_file: evergreen/${task_id}/app_server_logs.txt
+      local_file: evergreen/app_server.log
+      remote_file: evergreen/${task_id}/app_server.log
       bucket: mciuploads
       content_type: text/plain
-      permissions: public-read
-      display_name: Evergreen test application server logs
+      permissions: private
+      visibility: signed
+      display_name: Evergreen smoke test application server logs
+  - command: s3.put
+    display_name: Upload smoke test agent logs to S3
+    type: system
+    params:
+      aws_key: ${aws_key}
+      aws_secret: ${aws_secret}
+      local_files_include_filter: evergreen/smoke*.log
+      remote_file: evergreen/${task_id}/
+      bucket: mciuploads
+      content_type: text/plain
+      permissions: private
+      visibility: signed
+      display_name: (Evergreen smoke test agent logs)
 
 #######################################
 #         YAML Templates              #
@@ -111,6 +104,7 @@ variables:
         vars: { target: "${task_name}", tz: "America/New_York" }
   - &run-smoke-test
     name: smoke
+    must_have_test_results: true
     commands:
       - command: timeout.update
         params:
@@ -128,6 +122,9 @@ variables:
       - func: run-make
         vars:
           target: set-smoke-vars
+      - func: run-make
+        vars:
+          target: set-smoke-git-config
       - func: run-make
         vars:
           target: "${task_name}"
@@ -194,6 +191,16 @@ functions:
         - RUN_TEST
         - RUN_EC2_SPECIFIC_TESTS
         - IS_DOCKER
+        - task_id
+        - task_name
+        - execution
+        - version_id
+        - requester
+        - build_id
+        - build_variant
+        - project
+        - project_id
+        - distro_id
       env:
         AWS_KEY: ${aws_key}
         AWS_SECRET: ${aws_secret}
@@ -217,6 +224,9 @@ functions:
         MACOS_NOTARY_SECRET: ${notary_server_secret}
         EVERGREEN_BUNDLE_ID: ${evergreen_bundle_id}
         SIGN_MACOS: ${sign_macos}
+        OTEL_COLLECTOR_ENDPOINT: ${otel_collector_endpoint}
+        OTEL_TRACE_ID: ${otel_trace_id}
+        OTEL_PARENT_ID: ${otel_parent_id}
 
   setup-credentials:
     command: subprocess.exec
@@ -359,16 +369,16 @@ tasks:
   - <<: *run-build
     name: dist-unsigned
   - <<: *run-smoke-test
-    name: smoke-test-host-task
+    name: test-smoke-internal-host
     tags: ["smoke"]
   - <<: *run-smoke-test
-    name: smoke-test-container-task
+    name: test-smoke-internal-container
     tags: ["smoke"]
   - <<: *run-smoke-test
-    name: smoke-test-endpoints
+    name: test-smoke-internal-endpoint
     tags: ["smoke"]
   - <<: *run-smoke-test
-    name: smoke-test-agent-monitor
+    name: test-smoke-internal-agentmonitor
     tags: ["smoke"]
   - <<: *run-generate-lint
   - <<: *run-go-test-suite
@@ -501,6 +511,9 @@ tasks:
     name: test-model-commitqueue
   - <<: *run-go-test-suite-with-mongodb
     tags: ["db", "test"]
+    name: test-model-cache
+  - <<: *run-go-test-suite-with-mongodb
+    tags: ["db", "test"]
     name: test-model-manifest
   - <<: *run-go-test-suite-with-mongodb
     tags: ["db", "test"]
@@ -520,12 +533,6 @@ tasks:
   - <<: *run-go-test-suite-with-mongodb-useast
     tags: ["db", "test"]
     name: test-graphql
-  - name: docker-cleanup
-    commands:
-      - func: get-project-and-modules
-      - func: setup-credentials
-      - func: run-make
-        vars: { target: "test-thirdparty-docker" }
   - name: test-repotracker
     tags: ["db", "test"]
     commands:
@@ -633,7 +640,6 @@ buildvariants:
       - name: ".smoke"
       - name: ".test"
       - name: ".linter"
-      - name: "docker-cleanup"
       - name: test-db-auth
       - name: test-cloud
       - name: "js-test"
@@ -732,11 +738,10 @@ buildvariants:
       - name: ".agent .test"
       - name: ".cli .test"
 
-# TODO: EVG-19745 Use a security-vetted image once one is available
 containers:
   - name: evg-container
     working_dir: /
-    image: "hadjri/evg-container-self-testing"
+    image: "557821124784.dkr.ecr.us-east-1.amazonaws.com/evergreen/production-ecs:1635b8ecdd264fb4f5fde38d88931b4e9a677b06"
     resources:
       cpu: 4096
       memory_mb: 8192

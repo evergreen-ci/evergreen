@@ -19,7 +19,7 @@ import (
 	"github.com/pkg/errors"
 )
 
-func FindHostsInRange(apiParams restmodel.APIHostParams, username string) ([]host.Host, error) {
+func FindHostsInRange(ctx context.Context, apiParams restmodel.APIHostParams, username string) ([]host.Host, error) {
 	params := host.HostsInRangeParams{
 		CreatedBefore: apiParams.CreatedBefore,
 		CreatedAfter:  apiParams.CreatedAfter,
@@ -30,7 +30,7 @@ func FindHostsInRange(apiParams restmodel.APIHostParams, username string) ([]hos
 		User:          username,
 	}
 
-	hostRes, err := host.FindHostsInRange(params)
+	hostRes, err := host.FindHostsInRange(ctx, params)
 	if err != nil {
 		return nil, err
 	}
@@ -41,18 +41,18 @@ func FindHostsInRange(apiParams restmodel.APIHostParams, username string) ([]hos
 // NewIntentHost is a method to insert an intent host given a distro and a public key
 // The public key can be the name of a saved key or the actual key string
 func NewIntentHost(ctx context.Context, options *restmodel.HostRequestOptions, user *user.DBUser,
-	settings *evergreen.Settings) (*host.Host, error) {
+	env evergreen.Environment) (*host.Host, error) {
 	spawnOptions, err := makeSpawnOptions(options, user)
 	if err != nil {
 		return nil, err
 	}
 
-	intentHost, err := cloud.CreateSpawnHost(ctx, *spawnOptions, settings)
+	intentHost, err := cloud.CreateSpawnHost(ctx, *spawnOptions, env.Settings())
 	if err != nil {
 		return nil, errors.Wrap(err, "creating spawn host")
 	}
 
-	if err := intentHost.Insert(); err != nil {
+	if err := intentHost.Insert(ctx); err != nil {
 		return nil, err
 	}
 
@@ -62,6 +62,10 @@ func NewIntentHost(ctx context.Context, options *restmodel.HostRequestOptions, u
 		"distro":   intentHost.Distro.Id,
 		"user":     user.Username(),
 	})
+
+	if err := units.EnqueueHostCreateJobs(ctx, env, []host.Host{*intentHost}); err != nil {
+		return nil, errors.Wrapf(err, "enqueueing host create job for '%s'", intentHost.Id)
+	}
 
 	return intentHost, nil
 }
@@ -75,7 +79,7 @@ func GenerateHostProvisioningScript(ctx context.Context, env evergreen.Environme
 			Message:    "cannot generate host provisioning script without a host ID",
 		}
 	}
-	h, err := host.FindOneByIdOrTag(hostID)
+	h, err := host.FindOneByIdOrTag(ctx, hostID)
 	if err != nil {
 		return "", gimlet.ErrorResponse{
 			StatusCode: http.StatusInternalServerError,
@@ -96,7 +100,7 @@ func GenerateHostProvisioningScript(ctx context.Context, env evergreen.Environme
 			Message:    errors.Wrap(err, "generating Jasper credentials").Error(),
 		}
 	}
-	script, err := h.GenerateUserDataProvisioningScript(env.Settings(), creds)
+	script, err := h.GenerateUserDataProvisioningScript(ctx, env.Settings(), creds)
 	if err != nil {
 		return "", gimlet.ErrorResponse{
 			StatusCode: http.StatusInternalServerError,
@@ -116,8 +120,8 @@ func GenerateHostProvisioningScript(ctx context.Context, env evergreen.Environme
 // started by the given user. If the given user is a super-user,
 // the host will also be returned regardless of who the host was
 // started by
-func FindHostByIdWithOwner(hostID string, user gimlet.User) (*host.Host, error) {
-	hostById, err := host.FindOneId(hostID)
+func FindHostByIdWithOwner(ctx context.Context, hostID string, user gimlet.User) (*host.Host, error) {
+	hostById, err := host.FindOneId(ctx, hostID)
 	if err != nil {
 		return nil, gimlet.ErrorResponse{
 			StatusCode: http.StatusInternalServerError,

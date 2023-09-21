@@ -205,13 +205,14 @@ func (uis *UIServer) GetCommonViewData(w http.ResponseWriter, r *http.Request, n
 		}
 		viewData.Project = *project
 	}
-	settings, err := evergreen.GetConfig()
+	settings, err := evergreen.GetConfig(ctx)
 	if err != nil {
 		grip.Error(message.WrapError(err, message.Fields{
 			"message": "unable to retrieve admin settings",
 			"url":     r.URL,
 			"request": gimlet.GetRequestID(r.Context()),
 		}))
+		return ViewData{}
 	}
 
 	if u, ok := userCtx.(*user.DBUser); ok {
@@ -296,7 +297,7 @@ func (uis *UIServer) GetServiceApp() *gimlet.APIApp {
 	}
 
 	// Lobster
-	app.AddPrefixRoute("/lobster").Handler(uis.lobsterPage).Get()
+	app.AddPrefixRoute("/lobster").Wrap(needsLogin).Handler(uis.lobsterPage).Get()
 
 	// GraphQL
 	app.AddRoute("/graphql").Wrap(allowsCORS, needsLogin).Handler(playground.ApolloSandboxHandler("GraphQL playground", "/graphql/query")).Get()
@@ -315,6 +316,8 @@ func (uis *UIServer) GetServiceApp() *gimlet.APIApp {
 	app.AddRoute("/json/task_log/{task_id}/{execution}").Wrap(needsLogin, needsContext, viewLogs).Handler(uis.taskLog).Get()
 	app.AddRoute("/task_log_raw/{task_id}/{execution}").Wrap(needsLogin, needsContext, allowsCORS, viewLogs).Handler(uis.taskLogRaw).Get()
 
+	// Proxy downloads for task uploaded files via S3
+	app.AddRoute(("/task_file_raw/{task_id}/{execution}/{file_name}")).Wrap(needsLogin, needsContext, allowsCORS, viewLogs).Handler(uis.taskFileRaw).Get()
 	// Test Logs
 	app.AddRoute("/test_log/{log_id}").Wrap(needsLogin, needsContext, allowsCORS).Handler(uis.testLog).Get()
 	app.AddRoute("/test_log/{task_id}/{task_execution}").Wrap(needsLogin, needsContext, allowsCORS, viewLogs).Handler(uis.testLog).Get()
@@ -420,9 +423,7 @@ func (uis *UIServer) GetServiceApp() *gimlet.APIApp {
 
 	// Project routes
 	app.AddRoute("/projects").Wrap(needsLogin, needsContext).Handler(uis.projectsPage).Get()
-	app.AddRoute("/project/{project_id}").Wrap(needsContext, viewProjectSettings).Handler(uis.projectPage).Get()
 	app.AddRoute("/project/{project_id}/events").Wrap(needsContext, viewProjectSettings).Handler(uis.projectEvents).Get()
-	app.AddRoute("/project/{project_id}").Wrap(needsContext, editProjectSettings).Handler(uis.modifyProject).Post()
 	app.AddRoute("/project/{project_id}/repo_revision").Wrap(needsContext, editProjectSettings).Handler(uis.setRevision).Put()
 
 	// Admin routes

@@ -179,14 +179,15 @@ type Patch struct {
 	// ProjectStorageMethod to decide where the parser project is persistently
 	// stored. This field is kept solely for backward compatibility with
 	// existing, unfinalized patches.
-	PatchedParserProject string                 `bson:"patched_config,omitempty"`
-	PatchedProjectConfig string                 `bson:"patched_project_config"`
-	Alias                string                 `bson:"alias"`
-	Triggers             TriggerInfo            `bson:"triggers"`
-	BackportOf           BackportInfo           `bson:"backport_of,omitempty"`
-	MergePatch           string                 `bson:"merge_patch"`
-	GithubPatchData      thirdparty.GithubPatch `bson:"github_patch_data,omitempty"`
-	GitInfo              *GitMetadata           `bson:"git_info,omitempty"`
+	PatchedParserProject string                      `bson:"patched_config,omitempty"`
+	PatchedProjectConfig string                      `bson:"patched_project_config"`
+	Alias                string                      `bson:"alias"`
+	Triggers             TriggerInfo                 `bson:"triggers"`
+	BackportOf           BackportInfo                `bson:"backport_of,omitempty"`
+	MergePatch           string                      `bson:"merge_patch"`
+	GithubPatchData      thirdparty.GithubPatch      `bson:"github_patch_data,omitempty"`
+	GithubMergeData      thirdparty.GithubMergeGroup `bson:"github_merge_data,omitempty"`
+	GitInfo              *GitMetadata                `bson:"git_info,omitempty"`
 	// DisplayNewUI is only used when roundtripping the patch via the CLI
 	DisplayNewUI bool `bson:"display_new_ui,omitempty"`
 	// MergeStatus is only used in gitServePatch to send the status of this
@@ -241,7 +242,7 @@ type TaskSpecifier struct {
 // IsFinished returns whether or not the patch has finished based on its
 // status.
 func (p *Patch) IsFinished() bool {
-	return evergreen.IsFinishedPatchStatus(p.Status)
+	return evergreen.IsFinishedVersionStatus(p.Status)
 }
 
 // SetDescription sets a patch's description in the database
@@ -528,6 +529,35 @@ func (p *Patch) AddSyncVariantsTasks(vts []VariantTasks) error {
 	return nil
 }
 
+// UpdateMergeCommitSHA updates the merge commit SHA for the patch.
+func (p *Patch) UpdateMergeCommitSHA(sha string) error {
+	if p.GithubPatchData.MergeCommitSHA == sha {
+		return nil
+	}
+	shaKey := bsonutil.GetDottedKeyName(githubPatchDataKey, thirdparty.GithubPatchMergeCommitSHAKey)
+	return UpdateOne(
+		bson.M{IdKey: p.Id},
+		bson.M{
+			"$set": bson.M{
+				shaKey: sha,
+			},
+		},
+	)
+}
+
+// UpdateRepeatPatchId updates the repeat patch Id value to be used for subsequent pr patches
+func (p *Patch) UpdateRepeatPatchId(patchId string) error {
+	repeatKey := bsonutil.GetDottedKeyName(githubPatchDataKey, thirdparty.RepeatPatchIdNextPatchKey)
+	return UpdateOne(
+		bson.M{IdKey: p.Id},
+		bson.M{
+			"$set": bson.M{
+				repeatKey: patchId,
+			},
+		},
+	)
+}
+
 func (p *Patch) FindModule(moduleName string) *ModulePatch {
 	for _, module := range p.Patches {
 		if module.ModuleName == moduleName {
@@ -542,12 +572,12 @@ func (p *Patch) FindModule(moduleName string) *ModulePatch {
 func TryMarkStarted(versionId string, startTime time.Time) error {
 	filter := bson.M{
 		VersionKey: versionId,
-		StatusKey:  evergreen.PatchCreated,
+		StatusKey:  evergreen.VersionCreated,
 	}
 	update := bson.M{
 		"$set": bson.M{
 			StartTimeKey: startTime,
-			StatusKey:    evergreen.PatchStarted,
+			StatusKey:    evergreen.VersionStarted,
 		},
 	}
 	return UpdateOne(filter, update)
@@ -771,8 +801,15 @@ func (p *Patch) IsPRMergePatch() bool {
 	return p.GithubPatchData.MergeCommitSHA != ""
 }
 
+// IsCommitQueuePatch returns true if the the patch is part of any commit queue:
+// either Evergreen's commit queue or GitHub's merge queue.
 func (p *Patch) IsCommitQueuePatch() bool {
-	return p.Alias == evergreen.CommitQueueAlias || p.IsPRMergePatch()
+	return p.Alias == evergreen.CommitQueueAlias || p.IsPRMergePatch() || p.IsGithubMergePatch()
+}
+
+// IsGithubMergePatch returns true if the patch is from the GitHub merge queue.
+func (p *Patch) IsGithubMergePatch() bool {
+	return p.GithubMergeData.HeadSHA != ""
 }
 
 func (p *Patch) IsBackport() bool {
@@ -857,7 +894,7 @@ func GetGithubContextForChildPatch(projectIdentifier string, parentPatch, childP
 
 func (p *Patch) GetFamilyInformation() (bool, *Patch, error) {
 	if !p.IsChild() && !p.IsParent() {
-		return evergreen.IsFinishedPatchStatus(p.Status), nil, nil
+		return evergreen.IsFinishedVersionStatus(p.Status), nil, nil
 	}
 
 	isDone := false
@@ -867,14 +904,14 @@ func (p *Patch) GetFamilyInformation() (bool, *Patch, error) {
 	}
 
 	// make sure the parent is done, if not, wait for the parent
-	if p.IsChild() && !evergreen.IsFinishedPatchStatus(parentPatch.Status) {
+	if p.IsChild() && !evergreen.IsFinishedVersionStatus(parentPatch.Status) {
 		return isDone, parentPatch, nil
 	}
 	childrenStatus, err := GetChildrenOrSiblingsReadiness(childrenOrSiblings)
 	if err != nil {
 		return isDone, parentPatch, errors.Wrap(err, "getting child or sibling information")
 	}
-	if !evergreen.IsFinishedPatchStatus(childrenStatus) {
+	if !evergreen.IsFinishedVersionStatus(childrenStatus) {
 		return isDone, parentPatch, nil
 	} else {
 		isDone = true
@@ -887,7 +924,7 @@ func GetChildrenOrSiblingsReadiness(childrenOrSiblings []string) (string, error)
 	if len(childrenOrSiblings) == 0 {
 		return "", nil
 	}
-	childrenStatus := evergreen.PatchSucceeded
+	childrenStatus := evergreen.LegacyPatchSucceeded
 	for _, childPatch := range childrenOrSiblings {
 		childPatchDoc, err := FindOneId(childPatch)
 		if err != nil {
@@ -897,10 +934,10 @@ func GetChildrenOrSiblingsReadiness(childrenOrSiblings []string) (string, error)
 		if childPatchDoc == nil {
 			return "", errors.Errorf("child patch '%s' not found", childPatch)
 		}
-		if childPatchDoc.Status == evergreen.PatchFailed {
-			childrenStatus = evergreen.PatchFailed
+		if childPatchDoc.Status == evergreen.VersionFailed {
+			childrenStatus = evergreen.VersionFailed
 		}
-		if !evergreen.IsFinishedPatchStatus(childPatchDoc.Status) {
+		if !evergreen.IsFinishedVersionStatus(childPatchDoc.Status) {
 			return childPatchDoc.Status, nil
 		}
 	}
@@ -952,6 +989,11 @@ func (p *Patch) SetParametersFromParent() (*Patch, error) {
 func (p *Patch) GetRequester() string {
 	if p.IsGithubPRPatch() {
 		return evergreen.GithubPRRequester
+	}
+	// GitHub merge patches are technically considered commit queue patches since they use the
+	// commit queue alias, but they use a separate requester.
+	if p.IsGithubMergePatch() {
+		return evergreen.GithubMergeRequester
 	}
 	if p.IsCommitQueuePatch() {
 		return evergreen.MergeTestRequester
@@ -1166,7 +1208,7 @@ func MakeNewMergePatch(pr *github.PullRequest, projectID, alias, commitTitle, co
 		Githash:     pr.Base.GetSHA(),
 		Description: fmt.Sprintf("'%s' commit queue merge (PR #%d) by %s: %s (%s)", pr.Base.Repo.GetFullName(), pr.GetNumber(), u.Username(), pr.GetTitle(), pr.GetHTMLURL()),
 		CreateTime:  time.Now(),
-		Status:      evergreen.PatchCreated,
+		Status:      evergreen.VersionCreated,
 		Alias:       alias,
 		PatchNumber: patchNumber,
 		GithubPatchData: thirdparty.GithubPatch{
@@ -1208,15 +1250,15 @@ func GetCollectiveStatusFromPatchStatuses(statuses []string) string {
 
 	for _, s := range statuses {
 		switch s {
-		case evergreen.PatchStarted:
-			return evergreen.PatchStarted
-		case evergreen.PatchCreated:
+		case evergreen.VersionStarted:
+			return evergreen.VersionStarted
+		case evergreen.VersionCreated:
 			hasCreated = true
-		case evergreen.PatchFailed:
+		case evergreen.VersionFailed:
 			hasFailure = true
-		case evergreen.PatchSucceeded:
+		case evergreen.LegacyPatchSucceeded, evergreen.VersionSucceeded:
 			hasSuccess = true
-		case evergreen.PatchAborted:
+		case evergreen.VersionAborted:
 			// Note that we only consider this if the passed in statuses considered display status handling.
 			hasAborted = true
 		}
@@ -1231,15 +1273,15 @@ func GetCollectiveStatusFromPatchStatuses(statuses []string) string {
 	}
 
 	if hasCreated && (hasFailure || hasSuccess) {
-		return evergreen.PatchStarted
+		return evergreen.VersionStarted
 	} else if hasCreated {
-		return evergreen.PatchCreated
+		return evergreen.VersionCreated
 	} else if hasFailure {
-		return evergreen.PatchFailed
+		return evergreen.VersionFailed
 	} else if hasAborted {
-		return evergreen.PatchAborted
+		return evergreen.VersionAborted
 	} else if hasSuccess {
-		return evergreen.PatchSucceeded
+		return evergreen.LegacyPatchSucceeded
 	}
-	return evergreen.PatchCreated
+	return evergreen.VersionCreated
 }

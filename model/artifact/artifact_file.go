@@ -1,6 +1,9 @@
 package artifact
 
 import (
+	"net/url"
+	"path/filepath"
+	"strings"
 	"time"
 
 	"github.com/evergreen-ci/pail"
@@ -58,6 +61,8 @@ type File struct {
 	Bucket string `json:"bucket,omitempty" bson:"bucket,omitempty"`
 	// FileKey is the path to the file in the bucket.
 	FileKey string `json:"filekey,omitempty" bson:"filekey,omitempty"`
+	// ContentType is the content type of the file.
+	ContentType string `json:"content_type" bson:"content_type"`
 }
 
 // StripHiddenFiles is a helper for only showing users the files they are allowed to see.
@@ -146,15 +151,17 @@ func RotateSecrets(toReplace, replacement string, dryRun bool) (map[TaskIDAndExe
 	return changes, catcher.Resolve()
 }
 
-// Array turns the parameter map into an array of File structs.
-// Deprecated.
-func (params Params) Array() []File {
-	var files []File
-	for name, link := range params {
-		files = append(files, File{
-			Name: name,
-			Link: link,
-		})
+func EscapeFiles(files []File) []File {
+	var escapedFiles []File
+	for _, file := range files {
+		file.Link = escapeFile(file.Link)
+		escapedFiles = append(escapedFiles, file)
 	}
-	return files
+	return escapedFiles
+}
+
+func escapeFile(path string) string {
+	base := filepath.Base(path)
+	i := strings.LastIndex(path, base)
+	return path[:i] + strings.Replace(path[i:], base, url.QueryEscape(base), 1)
 }

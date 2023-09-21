@@ -1,0 +1,10 @@
+mutation {
+    copyDistro(
+        opts: {
+            distroIdToCopy: "rhel71-power8-large",
+            newDistroId: "windows-64-vs2015-small",
+        }
+    ) {
+      newDistroId
+    }
+}

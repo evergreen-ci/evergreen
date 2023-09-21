@@ -1,0 +1,10 @@
+mutation {
+    copyDistro(
+        opts: {
+            distroIdToCopy: "rhel71-power8-large",
+            newDistroId: "localhost-2",
+        }
+    ) {
+      newDistroId
+    }
+}

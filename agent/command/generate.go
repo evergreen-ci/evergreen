@@ -43,7 +43,7 @@ func (c *generateTask) ParseParams(params map[string]interface{}) error {
 
 func (c *generateTask) Execute(ctx context.Context, comm client.Communicator, logger client.LoggerProducer, conf *internal.TaskConfig) error {
 	var err error
-	if err = util.ExpandValues(c, conf.Expansions); err != nil {
+	if err = util.ExpandValues(c, &conf.Expansions); err != nil {
 		return errors.Wrap(err, "applying expansions")
 	}
 
@@ -135,7 +135,7 @@ func (c *generateTask) Execute(ctx context.Context, comm client.Communicator, lo
 }
 
 func generateTaskForFile(fn string, conf *internal.TaskConfig) ([]byte, error) {
-	fileLoc := getJoinedWithWorkDir(conf, fn)
+	fileLoc := getWorkingDirectory(conf, fn)
 	if _, err := os.Stat(fileLoc); os.IsNotExist(err) {
 		return nil, errors.Wrapf(err, "getting information for file '%s'", fn)
 	}

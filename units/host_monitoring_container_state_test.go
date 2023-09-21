@@ -18,6 +18,7 @@ func TestHostMonitoringContainerStateJob(t *testing.T) {
 
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
+	ctx = testutil.TestSpan(ctx, t)
 
 	env := testutil.NewEnvironment(ctx, t)
 	h1 := &host.Host{
@@ -40,28 +41,28 @@ func TestHostMonitoringContainerStateJob(t *testing.T) {
 		Status:   evergreen.HostUninitialized,
 		ParentID: "parent-1",
 	}
-	assert.NoError(h1.Insert())
-	assert.NoError(h2.Insert())
-	assert.NoError(h3.Insert())
-	assert.NoError(h4.Insert())
+	assert.NoError(h1.Insert(ctx))
+	assert.NoError(h2.Insert(ctx))
+	assert.NoError(h3.Insert(ctx))
+	assert.NoError(h4.Insert(ctx))
 
 	j := NewHostMonitorContainerStateJob(env, h1, evergreen.ProviderNameDockerMock, "job-1")
 	assert.False(j.Status().Completed)
 
-	j.Run(context.Background())
+	j.Run(ctx)
 
 	assert.NoError(j.Error())
 	assert.True(j.Status().Completed)
 
-	container1, err := host.FindOne(host.ById("container-1"))
+	container1, err := host.FindOne(ctx, host.ById("container-1"))
 	assert.NoError(err)
 	assert.Equal(evergreen.HostRunning, container1.Status)
 
-	container2, err := host.FindOne(host.ById("container-2"))
+	container2, err := host.FindOne(ctx, host.ById("container-2"))
 	assert.NoError(err)
 	assert.Equal(evergreen.HostTerminated, container2.Status)
 
-	container3, err := host.FindOne(host.ById("container-3"))
+	container3, err := host.FindOne(ctx, host.ById("container-3"))
 	assert.NoError(err)
 	assert.Equal(evergreen.HostUninitialized, container3.Status)
 }

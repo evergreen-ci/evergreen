@@ -73,18 +73,18 @@ func (c *tarballCreate) ParseParams(params map[string]interface{}) error {
 func (c *tarballCreate) Execute(ctx context.Context,
 	client client.Communicator, logger client.LoggerProducer, conf *internal.TaskConfig) error {
 
-	if err := util.ExpandValues(c, conf.Expansions); err != nil {
+	if err := util.ExpandValues(c, &conf.Expansions); err != nil {
 		return errors.Wrap(err, "applying expansions")
 	}
 
 	// if the source dir is a relative path, join it to the working dir
 	if !filepath.IsAbs(c.SourceDir) {
-		c.SourceDir = getJoinedWithWorkDir(conf, c.SourceDir)
+		c.SourceDir = getWorkingDirectory(conf, c.SourceDir)
 	}
 
 	// if the target is a relative path, join it to the working dir
 	if !filepath.IsAbs(c.Target) {
-		c.Target = getJoinedWithWorkDir(conf, c.Target)
+		c.Target = getWorkingDirectory(conf, c.Target)
 	}
 
 	errChan := make(chan error)

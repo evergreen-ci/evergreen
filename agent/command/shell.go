@@ -118,7 +118,7 @@ func (c *shellExec) Execute(ctx context.Context, _ client.Communicator, logger c
 	logger.Execution().Debug("Preparing script...")
 
 	var err error
-	if err = c.doExpansions(conf.Expansions); err != nil {
+	if err = c.doExpansions(&conf.Expansions); err != nil {
 		return errors.WithStack(err)
 	}
 
@@ -126,25 +126,21 @@ func (c *shellExec) Execute(ctx context.Context, _ client.Communicator, logger c
 		fmt.Sprintf("The working directory is an absolute path [%s], which isn't supported except when prefixed by '%s'.",
 			c.WorkingDir, conf.WorkDir))
 
-	c.WorkingDir, err = conf.GetWorkingDirectory(c.WorkingDir)
+	c.WorkingDir, err = getWorkingDirectoryLegacy(conf, c.WorkingDir)
 	if err != nil {
 		return errors.Wrap(err, "getting working directory")
 	}
 
-	taskTmpDir, err := conf.GetWorkingDirectory("tmp")
+	taskTmpDir, err := getWorkingDirectoryLegacy(conf, "tmp")
 	if err != nil {
 		logger.Execution().Notice(errors.Wrap(err, "getting task temporary directory"))
 	}
 
-	var exp util.Expansions
-	if conf.Expansions != nil {
-		exp = *conf.Expansions
-	}
 	c.Env = defaultAndApplyExpansionsToEnv(c.Env, modifyEnvOptions{
 		taskID:                 conf.Task.Id,
 		workingDir:             c.WorkingDir,
 		tmpDir:                 taskTmpDir,
-		expansions:             exp,
+		expansions:             conf.Expansions,
 		includeExpansionsInEnv: c.IncludeExpansionsInEnv,
 		addExpansionsToEnv:     c.AddExpansionsToEnv,
 	})

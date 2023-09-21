@@ -16,6 +16,10 @@ import (
 )
 
 func TestHostTerminationJob(t *testing.T) {
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+	ctx = testutil.TestSpan(ctx, t)
+
 	checkTerminationEvent := func(t *testing.T, hostID, reason string) {
 		events, err := event.Find(event.MostRecentHostEvents(hostID, "", 50))
 		require.NoError(t, err)
@@ -40,7 +44,7 @@ func TestHostTerminationJob(t *testing.T) {
 
 	for tName, tCase := range map[string]func(ctx context.Context, t *testing.T, env evergreen.Environment, mcp cloud.MockProvider, h *host.Host){
 		"TerminatesRunningHost": func(ctx context.Context, t *testing.T, env evergreen.Environment, mcp cloud.MockProvider, h *host.Host) {
-			require.NoError(t, h.Insert())
+			require.NoError(t, h.Insert(ctx))
 			mcp.Set(h.Id, cloud.MockInstance{
 				Status: cloud.StatusRunning,
 			})
@@ -53,7 +57,7 @@ func TestHostTerminationJob(t *testing.T) {
 			j.Run(ctx)
 			require.NoError(t, j.Error())
 
-			dbHost, err := host.FindOne(host.ById(h.Id))
+			dbHost, err := host.FindOne(ctx, host.ById(h.Id))
 			require.NoError(t, err)
 			require.NotZero(t, dbHost)
 			assert.Equal(t, evergreen.HostTerminated, dbHost.Status)
@@ -65,7 +69,7 @@ func TestHostTerminationJob(t *testing.T) {
 			assert.Equal(t, cloud.StatusTerminated, cloudHost.Status)
 		},
 		"SkipsCloudHostTermination": func(ctx context.Context, t *testing.T, env evergreen.Environment, mcp cloud.MockProvider, h *host.Host) {
-			require.NoError(t, h.Insert())
+			require.NoError(t, h.Insert(ctx))
 			mcp.Set(h.Id, cloud.MockInstance{
 				Status: cloud.StatusRunning,
 			})
@@ -79,7 +83,7 @@ func TestHostTerminationJob(t *testing.T) {
 			j.Run(ctx)
 			require.NoError(t, j.Error())
 
-			dbHost, err := host.FindOne(host.ById(h.Id))
+			dbHost, err := host.FindOne(ctx, host.ById(h.Id))
 			require.NoError(t, err)
 			require.NotZero(t, dbHost)
 			assert.Equal(t, evergreen.HostTerminated, dbHost.Status)
@@ -90,10 +94,10 @@ func TestHostTerminationJob(t *testing.T) {
 			require.NotZero(t, cloudHost)
 			assert.Equal(t, cloud.StatusRunning, cloudHost.Status, "cloud host should be unchanged because cloud host termination should be skipped")
 		},
-		"NoopsForStaticHosts": func(ctx context.Context, t *testing.T, env evergreen.Environment, mcp cloud.MockProvider, h *host.Host) {
-			h.Provider = evergreen.ProviderNameStatic
+		"TerminatesStaticHosts": func(ctx context.Context, t *testing.T, env evergreen.Environment, mcp cloud.MockProvider, h *host.Host) {
 			h.Distro.Provider = evergreen.ProviderNameStatic
-			require.NoError(t, h.Insert())
+			h.Provider = evergreen.ProviderNameStatic
+			require.NoError(t, h.Insert(ctx))
 
 			j := NewHostTerminationJob(env, h, HostTerminationOptions{
 				TerminateIfBusy:   true,
@@ -102,10 +106,10 @@ func TestHostTerminationJob(t *testing.T) {
 			j.Run(ctx)
 			require.NoError(t, j.Error())
 
-			dbHost, err := host.FindOne(host.ById(h.Id))
+			dbHost, err := host.FindOne(ctx, host.ById(h.Id))
 			require.NoError(t, err)
 			require.NotZero(t, dbHost)
-			assert.Equal(t, evergreen.HostRunning, dbHost.Status)
+			assert.Equal(t, evergreen.HostTerminated, dbHost.Status)
 		},
 		"FailsWithNonexistentDBHost": func(ctx context.Context, t *testing.T, env evergreen.Environment, mcp cloud.MockProvider, h *host.Host) {
 			j := NewHostTerminationJob(env, h, HostTerminationOptions{
@@ -121,7 +125,7 @@ func TestHostTerminationJob(t *testing.T) {
 		},
 		"ReterminatesCloudHostIfAlreadyMarkedTerminated": func(ctx context.Context, t *testing.T, env evergreen.Environment, mcp cloud.MockProvider, h *host.Host) {
 			h.Status = evergreen.HostTerminated
-			require.NoError(t, h.Insert())
+			require.NoError(t, h.Insert(ctx))
 			mcp.Set(h.Id, cloud.MockInstance{
 				Status: cloud.StatusRunning,
 			})
@@ -141,7 +145,7 @@ func TestHostTerminationJob(t *testing.T) {
 			assert.Equal(t, cloud.StatusTerminated, mockInstance.Status)
 		},
 		"TerminatesDBHostWithoutCloudHost": func(ctx context.Context, t *testing.T, env evergreen.Environment, mcp cloud.MockProvider, h *host.Host) {
-			require.NoError(t, h.Insert())
+			require.NoError(t, h.Insert(ctx))
 
 			const reason = "foo"
 			j := NewHostTerminationJob(env, h, HostTerminationOptions{
@@ -153,14 +157,14 @@ func TestHostTerminationJob(t *testing.T) {
 
 			checkTerminationEvent(t, h.Id, reason)
 
-			dbHost, err := host.FindOneId(h.Id)
+			dbHost, err := host.FindOneId(ctx, h.Id)
 			require.NoError(t, err)
 			require.NotZero(t, dbHost)
 			assert.NotEqual(t, evergreen.HostRunning, dbHost.Status)
 		},
 		"MarksUninitializedIntentHostAsTerminated": func(ctx context.Context, t *testing.T, env evergreen.Environment, mcp cloud.MockProvider, h *host.Host) {
 			h.Status = evergreen.HostUninitialized
-			require.NoError(t, h.Insert())
+			require.NoError(t, h.Insert(ctx))
 
 			const reason = "foo"
 			j := NewHostTerminationJob(env, h, HostTerminationOptions{
@@ -172,14 +176,14 @@ func TestHostTerminationJob(t *testing.T) {
 
 			checkTerminationEvent(t, h.Id, reason)
 
-			dbHost, err := host.FindOneId(h.Id)
+			dbHost, err := host.FindOneId(ctx, h.Id)
 			require.NoError(t, err)
 			require.NotZero(t, dbHost)
 			assert.Equal(t, evergreen.HostTerminated, dbHost.Status)
 		},
 		"MarksBuildingIntentHostAsTerminated": func(ctx context.Context, t *testing.T, env evergreen.Environment, mcp cloud.MockProvider, h *host.Host) {
 			h.Status = evergreen.HostBuilding
-			require.NoError(t, h.Insert())
+			require.NoError(t, h.Insert(ctx))
 
 			const reason = "foo"
 			j := NewHostTerminationJob(env, h, HostTerminationOptions{
@@ -191,14 +195,14 @@ func TestHostTerminationJob(t *testing.T) {
 
 			checkTerminationEvent(t, h.Id, reason)
 
-			dbHost, err := host.FindOneId(h.Id)
+			dbHost, err := host.FindOneId(ctx, h.Id)
 			require.NoError(t, err)
 			require.NotZero(t, dbHost)
 			assert.Equal(t, evergreen.HostTerminated, dbHost.Status)
 		},
 		"MarksBuildingFailedIntentHostAsTerminated": func(ctx context.Context, t *testing.T, env evergreen.Environment, mcp cloud.MockProvider, h *host.Host) {
 			h.Status = evergreen.HostBuildingFailed
-			require.NoError(t, h.Insert())
+			require.NoError(t, h.Insert(ctx))
 
 			const reason = "foo"
 			j := NewHostTerminationJob(env, h, HostTerminationOptions{
@@ -210,7 +214,7 @@ func TestHostTerminationJob(t *testing.T) {
 
 			checkTerminationEvent(t, h.Id, reason)
 
-			dbHost, err := host.FindOneId(h.Id)
+			dbHost, err := host.FindOneId(ctx, h.Id)
 			require.NoError(t, err)
 			require.NotZero(t, dbHost)
 			assert.Equal(t, evergreen.HostTerminated, dbHost.Status)
@@ -219,7 +223,7 @@ func TestHostTerminationJob(t *testing.T) {
 			// The ID must be a valid intent host ID.
 			h.Id = h.Distro.GenerateName()
 			h.Status = evergreen.HostTerminated
-			require.NoError(t, h.Insert())
+			require.NoError(t, h.Insert(ctx))
 
 			j := NewHostTerminationJob(env, h, HostTerminationOptions{
 				TerminateIfBusy:   true,
@@ -228,7 +232,7 @@ func TestHostTerminationJob(t *testing.T) {
 			j.Run(ctx)
 			require.NoError(t, j.Error())
 
-			dbHost, err := host.FindOneId(h.Id)
+			dbHost, err := host.FindOneId(ctx, h.Id)
 			require.NoError(t, err)
 			require.NotZero(t, dbHost)
 			assert.Equal(t, evergreen.HostTerminated, dbHost.Status)
@@ -236,10 +240,9 @@ func TestHostTerminationJob(t *testing.T) {
 	} {
 		t.Run(tName, func(t *testing.T) {
 			require.NoError(t, db.ClearCollections(host.Collection, event.EventCollection))
-			ctx, cancel := context.WithCancel(context.Background())
-			defer cancel()
+			tctx := testutil.TestSpan(ctx, t)
 
-			env := testutil.NewEnvironment(ctx, t)
+			env := testutil.NewEnvironment(tctx, t)
 
 			h := &host.Host{
 				Id:          "i-12345",
@@ -252,7 +255,7 @@ func TestHostTerminationJob(t *testing.T) {
 			provider := cloud.GetMockProvider()
 			provider.Reset()
 
-			tCase(ctx, t, env, provider, h)
+			tCase(tctx, t, env, provider, h)
 		})
 	}
 }

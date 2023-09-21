@@ -33,6 +33,7 @@ func PersistTaskQueue(distro string, tasks []task.Task, distroQueueInfo model.Di
 			GroupMaxHosts:       t.TaskGroupMaxHosts,
 			GroupIndex:          t.TaskGroupOrder,
 			Version:             t.Version,
+			ActivatedBy:         t.ActivatedBy,
 			Dependencies:        dependencies,
 		})
 	}

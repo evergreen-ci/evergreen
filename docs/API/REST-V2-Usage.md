@@ -90,8 +90,8 @@ comprise a suite of tests or generation of a set of artifacts.
 | `tags`                 | []string      | List of tags defined for the task, if any                                                                                                                                                                                                               |
 | `execution`            | int           | The number of the execution of this particular task                                                                                                                                                                                                     |
 | `order`                | int           | For mainline commits, represents the position in the commit history of commit this task is associated with. For patches, this represents the number of total patches submitted by the user.                                                             |
-| `status`               | string        | The current status of this task                                                                                                                                                                                                                         |
-| `display_status`       | string        | The status of this task that is displayed in the UI                                                                                                                                                                                                     |
+| `status`               | string        | The current status of this task (possible values are "undispatched", "dispatched", "started", "success", and "failed")                                                                                                                                  |
+| `display_status`       | string        | The status of this task that is displayed in the UI (possible values are "will-run", "unscheduled", "blocked", "dispatched", "started", "success", "failed", "aborted", "system-failed", "system-unresponsive", "system-timed-out", "task-timed-out")   |
 | `status_details`       | status_object | Object containing additional information about the status                                                                                                                                                                                               |
 | `logs`                 | logs_object   | Object containing raw and event logs for this task                                                                                                                                                                                                      |
 | `parsley_logs`         | logs_object   | Object containing parsley logs for this task                                                                                                                                                                                                            |
@@ -164,9 +164,10 @@ patch tasks)
 
 Fetch a single task using its ID
 
-| Name                 | Type | Description                                                             |
-|----------------------|------|-------------------------------------------------------------------------|
-| fetch_all_executions | any  | Optional. Fetches previous executions of the task if they are available |
+| Name                 | Type | Description                                                                                                  |
+|----------------------|------|--------------------------------------------------------------------------------------------------------------|
+| execution            | int  | Optional. The 0-based number corresponding to the execution of the task ID. Defaults to the latest execution |
+| fetch_all_executions | any  | Optional. Fetches previous executions of the task if they are available                                      |
 
 ##### Restart A Task
 
@@ -330,50 +331,6 @@ Creates a task annotation, or updates an existing task annotation, appending iss
     }
 
 
-Bulk Create or Update Many Task Annotations
-
-    PATCH tasks/annotations
-
-Creates many new task annotations, or updates the annotation if it
-already exists. A list of updates to a task annotation is provided in
-the request body, where each list item specifies a set of task id /
-execution pairs, and an annotation update to apply to all tasks matching
-that criteria. Note that usage of this endpoint requires that the
-requesting user have security to modify task annotations. Example
-request body:
-
-    {
-      "tasks_updates": [
-       {
-         "task_data": [{"task_id": "t1", "execution":3}],
-         "annotation": {
-           "note": {
-             "message": "this is a note about my_task_id's failure"
-           },
-           "issues":[
-            {
-              "url": "https://link.com",
-              "issue_key": "link-1234"
-            }
-           ]
-         }
-       },
-       {
-         "task_data": [{"task_id": "t2", "execution":0}, {"task_id": "t2", "execution":1}],
-         "annotation": {
-           "note": {
-             "message": "this is a note about my_task_id's failure"
-           },
-           "issues":[
-            {
-              "url": "https://other-link.com",
-              "issue_key": "link-4567"
-            }
-           ]
-         }
-       }]
-    }
-
 List Task Annotations By Build 
 
     GET /builds/<build_id>/annotations
@@ -429,7 +386,7 @@ A test is a sub-operation of a task performed by Evergreen.
 | Name       | Type     | Description                                                |
 |------------|----------|------------------------------------------------------------|
 | task_id    | string   | Identifier of the task this test is a part of              |
-| Status     | string   | Execution status of the test                               |
+| status     | string   | Execution status of the test                               |
 | test_file  | string   | Name of the test file that this test was run in            |
 | logs       | test_log | Object containing information about the logs for this test |
 | exit_code  | int      | The exit code of the process that ran this test            |
@@ -697,7 +654,7 @@ A patch is a manually initiated version submitted to test local changes.
 | git_hash              | string         | Hash of commit off which the patch was initiated                                                                                     |
 | patch_number          | int            | Incrementing counter of user's patches                                                                                               |
 | author                | string         | Author of the patch                                                                                                                  |
-| status                | string         | Status of patch                                                                                                                      |
+| status                | string         | Status of patch (possible values are "created", "started", "success", or "failed")                                                   |
 | commit_queue_position | int            | Only populated for commit queue patches: returns the 0-indexed position of the patch on the queue, or -1 if not on the queue anymore |
 | create_time           | time           | Time patch was created                                                                                                               |
 | start_time            | time           | Time patch started to run                                                                                                            |
@@ -712,7 +669,7 @@ A patch is a manually initiated version submitted to test local changes.
 | Name  | Type       | Description                                      |
 |-------|------------|--------------------------------------------------|
 | name  | string     | Name of build variant                            |
-| tasks | string[] | All tasks available to run on this build variant |
+| tasks | string[] | All tasks available to run on this build variant   |
 
 
 #### Endpoints
@@ -763,6 +720,31 @@ Fetch the raw diff for a patch
 | Name   | Type   | Description                                                                                           |
 |--------|--------|-------------------------------------------------------------------------------------------------------|
 | module | string | Optional. A module to get the diff for. Returns the empty string when no patch exists for the module. |
+
+##### Get Patch Diff with Module Diffs
+
+    GET /patches/<patch_id>/raw_modules
+
+Fetch the raw diff for a patch along with the module diffs. 
+
+#### Response
+
+| Name             | Type                   | Description                                                                                                      |
+|------------------|------------------------|------------------------------------------------------------------------------------------------------------------|
+| patch          | RawModule                 | The main patch                                                                |
+| raw_modules   | []RawModule                   | The list of module diffs                                                |
+
+#### Objects
+
+**RawModule**
+
+| Name             | Type                   | Description                                                                                                      |
+|------------------|------------------------|------------------------------------------------------------------------------------------------------------------|
+| name          | string                 | The module name                                                                |
+| diff   | string                    | The module diff                                               |
+| githash         | string | The githash for the module |
+
+
 
 ##### Abort a Patch
 
@@ -841,7 +823,7 @@ buildvariant.
 | `branch`                | string   | The branch of project the build is running                                                                                                                                                                                                                                       |
 | `gitspec`               | string   | Hash of the revision on which this build is running                                                                                                                                                                                                                              |
 | `build_variant`         | string   | Build distro and architecture information                                                                                                                                                                                                                                        |
-| `status`                | string   | The status of the build                                                                                                                                                                                                                                                          |
+| `status`                | string   | The status of the build (possible values are "created", "started", "success", or "failed")                                                                                                                                                                                       |
 | `tags`                  | []string | List of tags defined for the build variant, if any                                                                                                                                                                                                                               |
 | `activated`             | bool     | Whether this build was manually initiated                                                                                                                                                                                                                                        |
 | `activated_by`          | string   | Who initiated the build                                                                                                                                                                                                                                                          |
@@ -854,7 +836,7 @@ buildvariant.
 | `actual_makespan_ms`    | int      | Actual makespan measured during execution                                                                                                                                                                                                                                        |
 | `origin`                | string   | The source of the patch, a commit or a patch                                                                                                                                                                                                                                     |
 | `status_counts`         | Object   | Contains aggregated data about the statuses of tasks in this build. The keys of this object are statuses and the values are the number of tasks within this build in that status. Note that this field provides data that you can get yourself by querying tasks for this build. |
-| `task_cache`            | Object   | Contains a subset of information about tasks for the build; this is not provided/accurate for most routes ([get versions for project](REST-V2-Usage.md#get-versions-for-a-project) is an exception).                                 |
+| `task_cache`            | Object   | Contains a subset of information about tasks for the build; this is not provided/accurate for most routes ([get versions for project](REST-V2-Usage.md#get-versions-for-a-project) is an exception).                                                                             |
 | `definition_info`       | Object   | Some routes will return information about the variant as defined in the project. Does not expand expansions; they will be returned as written in the project yaml (i.e. `${syntax}`)                                                                                             |
 
 
@@ -918,7 +900,7 @@ A version is a commit in a project.
 | `author`                | string          | Author of the version                                                                                                                                                                                                                                    |
 | `author_email`          | string          | Email of the author of the version                                                                                                                                                                                                                       |
 | `message`               | string          | Message left with the commit                                                                                                                                                                                                                             |
-| `status`                | string          | The status of the version                                                                                                                                                                                                                                |
+| `status`                | string          | The status of the version (possible values are "created", "started", "success", or "failed")                                                                                                                                                             |
 | `repo`                  | string          | The github repository where the commit was made                                                                                                                                                                                                          |
 | `branch`                | string          | The version control branch where the commit was made                                                                                                                                                                                                     |
 | `build_variants_status` | []buildDetail   | List of documents of the associated build variant and the build id                                                                                                                                                                                       |
@@ -1039,6 +1021,7 @@ exception of project variables, task annotation settings, workstation settings, 
 |--------------|--------|-------------------------------------------|
 | enabled      | bool   | Enable/disable the commit queue           |
 | merge_method | string | method of merging (squash, merge, rebase) |
+| merge_queue  | string | merge queue to use (EVERGREEN or GITHUB)  |
 | patch_type   | string | type of patch (PR, CLI)                   |
 
 
@@ -1212,10 +1195,8 @@ start as query parameters to support legacy behavior).
 |------------------|--------|--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
 | skip             | int    | Optional. Number of versions to skip.                                                                                                                                                                                                                                                                        |
 | limit            | int    | Optional. The number of versions to be returned per page of pagination. Defaults to 20.                                                                                                                                                                                                                      |
-| revision_start   | int    | Optional. The version order number to start at, for pagination.                                                                                                                                                                                                                                              |
-| revision_end     | int    | Optional. The version order number to end at, for pagination.                                                                                                                                                                                                                                                |
-| start_time_str   | string | Optional. Timestamp to start looking for applicable versions.                                                                                                                                                                                                                                                |
-| end_time_str     | string | Optional. Timestamp to stop looking for applicable versions.                                                                                                                                                                                                                                                 |
+| start   | int    | Optional. The version order number to start at, for pagination. Will return the versions that are less than (and therefore older) the revision number specified.                                                                                                                                                                                                                                                 |
+| revision_end     | int    | Optional. Will return the versions that are greater than (and therefore more recent) or equal to revision number specified.                                                                                                                                                                                                                                                  |
 | requester        | string | Returns versions for this requester only. Defaults to `gitter_request` (caused by git commit, aka the repotracker requester). Can also be set to `patch_request`, `github_pull_request`, `trigger_request` (Project Trigger versions) , `merge_test` (commit queue patches), and `ad_hoc` (periodic builds). |
 | include_builds   | bool   | If set, will return some information for each build in the version.                                                                                                                                                                                                                                          |
 | by_build_variant | string | If set, will only include information for this build, and only return versions with this build activated. Must have `include_builds` set.                                                                                                                                                                    |
@@ -1233,7 +1214,7 @@ start as query parameters to support legacy behavior).
 | `revision`              | string        | The version control identifier                                                                                                       |
 | `author`                | string        | Author of the version                                                                                                                |
 | `message`               | string        | Message left with the commit                                                                                                         |
-| `status`                | string        | The status of the version                                                                                                            |
+| `status`                | string        | The status of the version (possible values are "created", "started", "success", or "failed")                                         |
 | `errors`                | []string      | List of errors creating the version                                                                                                  |
 | `build_variants_status` | []buildDetail | List of documents of the associated build variant and the build id (this won't be populated if include_builds is set)                |
 | `builds`                | []APIBuild    | List of builds for the version (only populated if include_builds is set). If include_tasks is set, then the task_cache is populated. |
@@ -1256,12 +1237,10 @@ This route is restricted to project admins.
 | end_time_str     | string | Optional. Timestamp to stop looking for applicable versions.                                                                                                                                                                                                                                                 |
 | revision_start   | int    | Optional. The version order number to start at.                                                                                                                                                                                                                                                              |
 | revision_end     | int    | Optional. The version order number to end at.                                                                                                                                                                                                                                                                |
-| priority         | int    | Priority to set for all tasks within applicable versions.                                                                                                                                                                                                                                                    |
-| limit            | int    | Optional. The number of versions to be returned per page of pagination. Defaults to 20.                                                                                                                                                                                                                      |
+| priority         | int    | Priority to set for all tasks within applicable versions.                                                                                                                                                                                                                      |
 | requester        | string | Returns versions for this requester only. Defaults to `gitter_request` (caused by git commit, aka the repotracker requester). Can also be set to `patch_request`, `github_pull_request`, `trigger_request` (Project Trigger versions) , `merge_test` (commit queue patches), and `ad_hoc` (periodic builds). |
 | by_build_variant | string | If set, will only include information for this build, and only return versions with this build activated. Must have `include_builds` set.                                                                                                                                                                    |
-| by_task          | string | If set, will only include information for this task, and will only return versions with this task activated. Must have `include_tasks` set.                                                                                                                                                                  |
-| skip             | int    | Optional. Number of versions to skip.                                                                                                                                                                                                                                                                        |
+| by_task          | string | If set, will only include information for this task, and will only return versions with this task activated. Must have `include_tasks` set.                                                                                                                                                                                                                                                                        |
 
 
 ##### Get Tasks For A Project
@@ -1522,7 +1501,8 @@ defined endpoints in evergreen source:
       "theme": "warning"
     }
 
-### TaskStats
+### TaskStats (DEPRECATED)
+**IMPORTANT: The task stats REST API has been deprecated, please use [Trino task stats](../Project-Configuration/Evergreen-Data-for-Analytics.md) instead.**
 
 Task stats are aggregated task execution statistics for a given project.
 The statistics can be grouped by time period and by task, variant,
@@ -1652,7 +1632,7 @@ Project is mongodb-mongo-master, task is lint. Assuming today is
 
 ### Notifications
 
-Create custom notifications for email, slack, JIRA comments, and JIRA
+Create custom notifications for email or Slack.
 issues.
 
 #### Objects
@@ -1705,42 +1685,11 @@ issues.
 This corresponds with documentation for the [Slack API for
 attachments](https://api.slack.com/reference/messaging/attachments).
 
-**JIRA Issue**
-
-| Name          | Type                   | Description                                     |
-|---------------|------------------------|-------------------------------------------------|
-| `issue_key`   | string                 | Optional.                                       |
-| `project`     | string                 | Optional. The project name.                     |
-| `summary`     | string                 | Optional. The summary text.                     |
-| `description` | string                 | Optional. The issue description.                |
-| `reporter`    | string                 | Optional. The issue reporter.                   |
-| `assignee`    | string                 | Optional. The issue assignee.                   |
-| `type`        | string                 | Optional. The issue type.                       |
-| `components`  | string                 | Optional. The project components.               |
-| `labels`      | string                 | Optional. The issue labels.                     |
-| `fields`      | map[string]interface{} | Optional. Arbitrary map of custom field values. |
-
-
-This corresponds with the documentation in the [JIRA API for creating
-issues](https://docs.atlassian.com/software/jira/docs/api/REST/7.6.1/#api/2/issue-createIssue).
-
-**JIRA Comment**
-
-| Name       | Type   | Description                                                       |
-|------------|--------|-------------------------------------------------------------------|
-| `issue_id` | string | Optional. The ID of the issue where the comment should be posted. |
-| `body`     | string | Optional. The comment text.                                       |
-
-
-This corresponds with the documentation in the [JIRA API for adding
-comments](https://docs.atlassian.com/software/jira/docs/api/REST/7.6.1/#api/2/issue-addComment).
-
 #### Endpoints
 
     POST /notifications/<type>
 
-The type can be "email", "slack", "jira_issue", or
-"jira_comment".
+The type can be "email" or "slack".
 
 ### Permissions
 
@@ -1995,7 +1944,7 @@ provisioning, or provision failed).
 
 #### Endpoints
 
-`GET /project/<project_name>/versions/<commit_hash>/tasks`
+`GET /project/<project_name>/revisions/<commit_hash>/tasks`
 
 `POST /tasks/<task_id>/restart`
 
@@ -2004,7 +1953,7 @@ provisioning, or provision failed).
 Some Evergreen projects contain flaky tests or can endure spurious
 failures. To restart all of these tasks to gain better signal a user can
 fetch all of the tasks for a commit. Make a request to
-`GET /project/<project_name>/versions/<commit_hash>/tasks` to fetch the
+`GET /project/<project_name>/revisions/<commit_hash>/tasks` to fetch the
 tasks that ran and then loop over all of the returned tasks, calling
 `POST /tasks/<task_id>/restart` on each task which has failed.
 

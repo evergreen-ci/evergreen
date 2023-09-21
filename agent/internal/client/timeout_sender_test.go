@@ -89,7 +89,7 @@ func (s *logSenderSuite) randomSleep() {
 
 func (s *logSenderSuite) TestFileLogger() {
 	logFileName := fmt.Sprintf("%s/log", s.tempDir)
-	fileSender, toClose, err := s.restClient.makeSender(context.Background(), TaskData{}, []LogOpts{{Sender: model.FileLogSender, Filepath: logFileName}}, "", "")
+	fileSender, toClose, err := s.restClient.makeSender(context.Background(), TaskData{}, []LogOpts{{Sender: model.FileLogSender, Filepath: logFileName}}, false, "", "")
 	s.NoError(err)
 	s.underlyingSenders = append(s.underlyingSenders, toClose...)
 	s.NotNil(fileSender)
@@ -114,7 +114,7 @@ func (s *logSenderSuite) TestFileLogger() {
 
 	// no file logger for system logs
 	path := filepath.Join(s.tempDir, "nothere")
-	defaultSender, toClose, err := s.restClient.makeSender(context.Background(), TaskData{}, []LogOpts{{Sender: model.FileLogSender, Filepath: path}}, apimodels.SystemLogPrefix, "")
+	defaultSender, toClose, err := s.restClient.makeSender(context.Background(), TaskData{}, []LogOpts{{Sender: model.FileLogSender, Filepath: path}}, false, apimodels.SystemLogPrefix, "")
 	s.NoError(err)
 	s.underlyingSenders = append(s.underlyingSenders, toClose...)
 	s.NotNil(defaultSender)
@@ -148,8 +148,8 @@ func (s *logSenderSuite) TestEvergreenLogger() {
 	}
 }
 
-func (s *logSenderSuite) TestMisconfiguredLogkeeper() {
-	sender, toClose, err := s.restClient.makeSender(context.Background(), TaskData{}, []LogOpts{{Sender: model.LogkeeperLogSender}}, "", "")
+func (s *logSenderSuite) TestMisconfiguredSender() {
+	sender, toClose, err := s.restClient.makeSender(context.Background(), TaskData{}, []LogOpts{{Sender: model.BuildloggerLogSender}}, false, "", "")
 	s.underlyingSenders = append(s.underlyingSenders, toClose...)
 	s.Error(err)
 	s.Nil(sender)

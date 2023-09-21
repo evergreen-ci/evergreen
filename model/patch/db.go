@@ -1,6 +1,7 @@
 package patch
 
 import (
+	"context"
 	"time"
 
 	"github.com/evergreen-ci/evergreen"
@@ -144,7 +145,7 @@ type ByPatchNameStatusesCommitQueuePaginatedOptions struct {
 	IncludeHidden      bool
 }
 
-func ByPatchNameStatusesCommitQueuePaginated(opts ByPatchNameStatusesCommitQueuePaginatedOptions) ([]Patch, int, error) {
+func ByPatchNameStatusesCommitQueuePaginated(ctx context.Context, opts ByPatchNameStatusesCommitQueuePaginatedOptions) ([]Patch, int, error) {
 	if opts.OnlyCommitQueue != nil && opts.IncludeCommitQueue != nil {
 		return nil, 0, errors.New("can't both include commit queue patches and also set only including commit queue patches")
 	}
@@ -170,6 +171,10 @@ func ByPatchNameStatusesCommitQueuePaginated(opts ByPatchNameStatusesCommitQueue
 		match[DescriptionKey] = bson.M{"$regex": opts.PatchName, "$options": "i"}
 	}
 	if len(opts.Statuses) > 0 {
+		// Verify that we're considering the legacy patch status as well; we'll remove this logic in EVG-20032.
+		if len(utility.StringSliceIntersection(opts.Statuses, evergreen.VersionSucceededStatuses)) > 0 {
+			opts.Statuses = utility.UniqueStrings(append(opts.Statuses, evergreen.VersionSucceededStatuses...))
+		}
 		match[StatusKey] = bson.M{"$in": opts.Statuses}
 	}
 	if opts.Author != nil {
@@ -205,8 +210,6 @@ func ByPatchNameStatusesCommitQueuePaginated(opts ByPatchNameStatusesCommitQueue
 
 	results := []Patch{}
 	env := evergreen.GetEnvironment()
-	ctx, cancel := env.Context()
-	defer cancel()
 	cursor, err := env.DB().Collection(Collection).Aggregate(ctx, paginatePipeline)
 	if err != nil {
 		return nil, 0, err
@@ -328,7 +331,7 @@ func PatchesByProject(projectId string, ts time.Time, limit int) db.Q {
 func FindFailedCommitQueuePatchesInTimeRange(projectID string, startTime, endTime time.Time) ([]Patch, error) {
 	query := bson.M{
 		ProjectKey: projectID,
-		StatusKey:  evergreen.PatchFailed,
+		StatusKey:  evergreen.VersionFailed,
 		AliasKey:   evergreen.CommitQueueAlias,
 		"$or": []bson.M{
 			{"$and": []bson.M{

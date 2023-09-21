@@ -10,6 +10,7 @@ import (
 	"github.com/evergreen-ci/evergreen/mock"
 	"github.com/evergreen-ci/evergreen/model/distro"
 	"github.com/evergreen-ci/evergreen/model/host"
+	"github.com/evergreen-ci/evergreen/testutil"
 	jmock "github.com/mongodb/jasper/mock"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -18,10 +19,11 @@ import (
 func TestUserDataDoneJob(t *testing.T) {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
+	ctx = testutil.TestSpan(ctx, t)
 
 	for testName, testCase := range map[string]func(ctx context.Context, t *testing.T, env evergreen.Environment, mngr *jmock.Manager, h *host.Host){
 		"NewUserDataSpawnHostReadyJobPopulatesFields": func(ctx context.Context, t *testing.T, env evergreen.Environment, mngr *jmock.Manager, h *host.Host) {
-			_, err := h.Upsert()
+			_, err := h.Upsert(ctx)
 			require.NoError(t, err)
 
 			j := NewUserDataDoneJob(env, h.Id, time.Now())
@@ -31,7 +33,7 @@ func TestUserDataDoneJob(t *testing.T) {
 			assert.Equal(t, h.Id, readyJob.HostID)
 		},
 		"RunNoopsIfHostNotProvisioning": func(ctx context.Context, t *testing.T, env evergreen.Environment, mngr *jmock.Manager, h *host.Host) {
-			require.NoError(t, h.SetRunning(evergreen.User))
+			require.NoError(t, h.SetRunning(ctx, evergreen.User))
 
 			j := NewUserDataDoneJob(env, h.Id, time.Now())
 			j.Run(ctx)
@@ -53,7 +55,7 @@ func TestUserDataDoneJob(t *testing.T) {
 			require.Equal(t, len(expectedCmd), len(info.Options.Args))
 			assert.Equal(t, expectedCmd, info.Options.Args)
 
-			dbHost, err := host.FindOneId(h.Id)
+			dbHost, err := host.FindOneId(ctx, h.Id)
 			require.NoError(t, err)
 			assert.Equal(t, evergreen.HostRunning, dbHost.Status)
 		},
@@ -61,6 +63,7 @@ func TestUserDataDoneJob(t *testing.T) {
 		t.Run(testName, func(t *testing.T) {
 			tctx, cancel := context.WithTimeout(ctx, 30*time.Second)
 			defer cancel()
+			tctx = testutil.TestSpan(tctx, t)
 
 			env := &mock.Environment{}
 			require.NoError(t, env.Configure(tctx))

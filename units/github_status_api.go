@@ -160,28 +160,19 @@ func NewGithubStatusUpdateJobForProcessingError(githubContext, owner, repo, ref,
 	return job
 }
 
-func (j *githubStatusUpdateJob) preamble() error {
+func (j *githubStatusUpdateJob) preamble(ctx context.Context) error {
 	if j.env == nil {
 		j.env = evergreen.GetEnvironment()
 	}
 	uiConfig := evergreen.UIConfig{}
-	if err := uiConfig.Get(j.env); err != nil {
+	if err := uiConfig.Get(ctx); err != nil {
 		return err
 	}
 	j.urlBase = uiConfig.Url
 	if len(j.urlBase) == 0 {
 		return errors.New("UI URL is empty")
 	}
-
-	if j.sender == nil {
-		var err error
-		j.sender, err = j.env.GetSender(evergreen.SenderGithubStatus)
-		if err != nil {
-			return err
-		}
-	}
-
-	flags, err := evergreen.GetServiceFlags()
+	flags, err := evergreen.GetServiceFlags(ctx)
 	if err != nil {
 		return errors.Wrap(err, "getting service flags")
 	}
@@ -255,15 +246,27 @@ func (j *githubStatusUpdateJob) fetch() (*message.GithubStatus, error) {
 	return &status, nil
 }
 
-func (j *githubStatusUpdateJob) Run(_ context.Context) {
+func (j *githubStatusUpdateJob) setSender(owner, repo string) error {
+	var err error
+	j.sender, err = j.env.GetGitHubSender(owner, repo)
+	return err
+}
+
+func (j *githubStatusUpdateJob) Run(ctx context.Context) {
 	defer j.MarkComplete()
 
-	j.AddError(j.preamble())
+	j.AddError(j.preamble(ctx))
 	if j.HasErrors() {
 		return
 	}
 
 	status, err := j.fetch()
+	if err != nil {
+		j.AddError(err)
+		return
+	}
+
+	err = j.setSender(status.Owner, status.Repo)
 	if err != nil {
 		j.AddError(err)
 		return

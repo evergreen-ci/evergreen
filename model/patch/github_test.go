@@ -8,7 +8,9 @@ import (
 
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/db"
+	mgobson "github.com/evergreen-ci/evergreen/db/mgo/bson"
 	"github.com/evergreen-ci/evergreen/testutil"
+	"github.com/evergreen-ci/evergreen/thirdparty"
 	"github.com/evergreen-ci/utility"
 	"github.com/stretchr/testify/suite"
 	"go.mongodb.org/mongo-driver/bson"
@@ -43,6 +45,7 @@ func (s *GithubSuite) SetupSuite() {
 
 func (s *GithubSuite) SetupTest() {
 	s.Require().NoError(db.Clear(IntentCollection))
+	s.Require().NoError(db.Clear(Collection))
 }
 
 func (s *GithubSuite) TestNewGithubIntent() {
@@ -88,16 +91,16 @@ func (s *GithubSuite) TestNewGithubIntent() {
 	s.NoError(err)
 	s.NotNil(intent)
 	s.Implements((*Intent)(nil), intent)
-	githubIntent, ok := intent.(*githubIntent)
+	ghIntent, ok := intent.(*githubIntent)
 	s.True(ok)
-	s.Equal("4", githubIntent.MsgID)
-	s.Equal(s.baseRepo, githubIntent.BaseRepoName)
-	s.Equal(s.headRepo, githubIntent.HeadRepoName)
-	s.Equal(s.pr, githubIntent.PRNumber)
-	s.Equal(s.user, githubIntent.User)
-	s.Equal(s.hash, githubIntent.HeadHash)
-	s.Equal(1234, githubIntent.UID)
-	s.Zero(githubIntent.ProcessedAt)
+	s.Equal("4", ghIntent.MsgID)
+	s.Equal(s.baseRepo, ghIntent.BaseRepoName)
+	s.Equal(s.headRepo, ghIntent.HeadRepoName)
+	s.Equal(s.pr, ghIntent.PRNumber)
+	s.Equal(s.user, ghIntent.User)
+	s.Equal(s.hash, ghIntent.HeadHash)
+	s.Equal(1234, ghIntent.UID)
+	s.Zero(ghIntent.ProcessedAt)
 	s.False(intent.IsProcessed())
 	s.Equal(GithubIntentType, intent.GetType())
 	s.Equal(evergreen.GithubPRRequester, intent.RequesterIdentity())
@@ -108,7 +111,7 @@ func (s *GithubSuite) TestNewGithubIntent() {
 	headRepo := strings.Split(s.headRepo, "/")
 	s.Equal(fmt.Sprintf("'%s' pull request #%d by %s: %s (https://github.com/evergreen-ci/evergreen/pull/5)", s.baseRepo, s.pr, s.user, s.title), patchDoc.Description)
 	s.Equal(evergreen.GithubPatchUser, patchDoc.Author)
-	s.Equal(evergreen.PatchCreated, patchDoc.Status)
+	s.Equal(evergreen.VersionCreated, patchDoc.Status)
 
 	s.Equal(s.pr, patchDoc.GithubPatchData.PRNumber)
 	s.Equal(baseRepo[0], patchDoc.GithubPatchData.BaseOwner)
@@ -117,6 +120,23 @@ func (s *GithubSuite) TestNewGithubIntent() {
 	s.Equal(headRepo[1], patchDoc.GithubPatchData.HeadRepo)
 	s.Equal(s.hash, patchDoc.GithubPatchData.HeadHash)
 	s.Equal(s.user, patchDoc.GithubPatchData.Author)
+	patchId := "5aeb4514f27e4f9984646d97"
+	patch := Patch{
+		Id:      mgobson.ObjectIdHex(patchId),
+		Project: "mci",
+		GithubPatchData: thirdparty.GithubPatch{
+			PRNumber:               5,
+			RepeatPatchIdNextPatch: patchId,
+		},
+	}
+	s.NoError(patch.Insert())
+	intent, err = NewGithubIntent("4", "", "", testutil.NewGithubPR(s.pr, s.baseRepo, s.baseHash, s.headRepo, s.hash, s.user, s.title))
+	s.NoError(err)
+	s.NotNil(intent)
+	s.Implements((*Intent)(nil), intent)
+	ghIntent, ok = intent.(*githubIntent)
+	s.True(ok)
+	s.Equal(patchId, ghIntent.RepeatPatchId)
 }
 
 func (s *GithubSuite) TestInsert() {
@@ -185,35 +205,35 @@ func (s *GithubSuite) TestSetProcessed() {
 
 func (s *GithubSuite) TestFindUnprocessedGithubIntents() {
 	intents := []githubIntent{
-		githubIntent{
+		{
 			DocumentID: utility.RandomString(),
 			IntentType: GithubIntentType,
 			Processed:  true,
 		},
-		githubIntent{
+		{
 			DocumentID: utility.RandomString(),
 			IntentType: GithubIntentType,
 			Processed:  true,
 		},
-		githubIntent{
+		{
 			DocumentID: utility.RandomString(),
 			IntentType: GithubIntentType,
 			Processed:  true,
 		},
-		githubIntent{
+		{
 			DocumentID: utility.RandomString(),
 			IntentType: GithubIntentType,
 			Processed:  true,
 		},
-		githubIntent{
+		{
 			DocumentID: utility.RandomString(),
 			IntentType: GithubIntentType,
 		},
-		githubIntent{
+		{
 			DocumentID: utility.RandomString(),
 			IntentType: GithubIntentType,
 		},
-		githubIntent{
+		{
 			DocumentID: utility.RandomString(),
 			IntentType: GithubIntentType,
 		},
@@ -229,9 +249,11 @@ func (s *GithubSuite) TestFindUnprocessedGithubIntents() {
 }
 
 func (s *GithubSuite) TestNewPatch() {
+	s.NoError(db.Clear(IntentCollection))
 	intent, err := NewGithubIntent("4", "", "", testutil.NewGithubPR(s.pr, s.baseRepo, s.baseHash, s.headRepo, s.hash, s.user, s.title))
 	s.NoError(err)
 	s.NotNil(intent)
+	s.NoError(intent.Insert())
 
 	patchDoc := intent.NewPatch()
 	s.NotNil(patchDoc)
@@ -239,7 +261,7 @@ func (s *GithubSuite) TestNewPatch() {
 	s.Empty(patchDoc.Project)
 	s.Zero(patchDoc.PatchNumber)
 	s.Empty(patchDoc.Version)
-	s.Equal(evergreen.PatchCreated, patchDoc.Status)
+	s.Equal(evergreen.VersionCreated, patchDoc.Status)
 	s.NotZero(patchDoc.CreateTime)
 	s.Zero(patchDoc.StartTime)
 	s.Zero(patchDoc.FinishTime)

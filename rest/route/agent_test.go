@@ -1,6 +1,7 @@
 package route
 
 import (
+	"bytes"
 	"context"
 	"net/http"
 	"testing"
@@ -16,6 +17,7 @@ import (
 	"github.com/evergreen-ci/evergreen/model/host"
 	"github.com/evergreen-ci/evergreen/model/patch"
 	"github.com/evergreen-ci/evergreen/model/task"
+	"github.com/evergreen-ci/evergreen/thirdparty"
 	"github.com/evergreen-ci/gimlet"
 	"github.com/mongodb/amboy/queue"
 	"github.com/mongodb/grip/send"
@@ -155,7 +157,7 @@ func TestAgentGetExpansionsAndVars(t *testing.T) {
 			require.NoError(t, v2.Insert())
 			require.NoError(t, pp1.Insert())
 			require.NoError(t, pp2.Insert())
-			require.NoError(t, h.Insert())
+			require.NoError(t, h.Insert(ctx))
 
 			r, ok := makeGetExpansionsAndVars(env.Settings()).(*getExpansionsAndVarsHandler)
 			require.True(t, ok)
@@ -296,10 +298,9 @@ func TestAgentSetup(t *testing.T) {
 			assert.Equal(t, data.SplunkServerURL, s.Splunk.SplunkConnectionInfo.ServerURL)
 			assert.Equal(t, data.SplunkClientToken, s.Splunk.SplunkConnectionInfo.Token)
 			assert.Equal(t, data.SplunkChannel, s.Splunk.SplunkConnectionInfo.Channel)
-			assert.Equal(t, data.S3Bucket, s.Providers.AWS.S3.Bucket)
-			assert.Equal(t, data.S3Key, s.Providers.AWS.S3.Key)
-			assert.Equal(t, data.S3Secret, s.Providers.AWS.S3.Secret)
-			assert.Equal(t, data.LogkeeperURL, s.LoggerConfig.LogkeeperURL)
+			assert.Equal(t, data.Buckets, s.Buckets)
+			assert.Equal(t, data.TaskSync, s.Providers.AWS.TaskSync)
+			assert.Equal(t, data.EC2Keys, s.Providers.AWS.EC2Keys)
 		},
 		"ReturnsEmpty": func(ctx context.Context, t *testing.T, rh *agentSetup, s *evergreen.Settings) {
 			*s = evergreen.Settings{}
@@ -317,6 +318,12 @@ func TestAgentSetup(t *testing.T) {
 			defer cancel()
 
 			s := &evergreen.Settings{
+				Buckets: evergreen.BucketConfig{
+					LogBucket: evergreen.Bucket{
+						Name: "logs",
+						Type: evergreen.BucketTypeS3,
+					},
+				},
 				Splunk: evergreen.SplunkConfig{
 					SplunkConnectionInfo: send.SplunkConnectionInfo{
 						ServerURL: "server_url",
@@ -326,20 +333,20 @@ func TestAgentSetup(t *testing.T) {
 				},
 				Providers: evergreen.CloudProviders{
 					AWS: evergreen.AWSConfig{
-						S3: evergreen.S3Credentials{
-							Bucket: "bucket",
-							Key:    "key",
-							Secret: "secret",
-						},
 						TaskSync: evergreen.S3Credentials{
 							Bucket: "bucket",
 							Key:    "key",
 							Secret: "secret",
 						},
+						EC2Keys: []evergreen.EC2Key{
+							{
+								Name:   "ec2-key",
+								Region: "us-east-1",
+								Key:    "key",
+								Secret: "secret",
+							},
+						},
 					},
-				},
-				LoggerConfig: evergreen.LoggerConfig{
-					LogkeeperURL: "logkeeper_url",
 				},
 			}
 
@@ -347,6 +354,59 @@ func TestAgentSetup(t *testing.T) {
 			require.True(t, ok)
 
 			tCase(ctx, t, r, s)
+		})
+	}
+}
+
+func TestAgentCheckGetPullRequestHandler(t *testing.T) {
+	for tName, tCase := range map[string]func(ctx context.Context, t *testing.T, rh *agentCheckGetPullRequestHandler, s *evergreen.Settings){
+		"FactorySucceeds": func(ctx context.Context, t *testing.T, rh *agentCheckGetPullRequestHandler, s *evergreen.Settings) {
+			copied := rh.Factory()
+			assert.NotZero(t, copied)
+			_, ok := copied.(*agentCheckGetPullRequestHandler)
+			assert.True(t, ok)
+		},
+		"ParseSucceeds": func(ctx context.Context, t *testing.T, rh *agentCheckGetPullRequestHandler, s *evergreen.Settings) {
+			json := []byte(`{
+                "owner": "evergreen",
+                "repo": "sandbox"
+            }`)
+			req, err := http.NewRequest(http.MethodGet, "https://example.com/rest/v2/task/t1/pull_request", bytes.NewBuffer(json))
+			req = gimlet.SetURLVars(req, map[string]string{"task_id": "t1"})
+			require.NoError(t, err)
+			assert.NoError(t, rh.Parse(ctx, req))
+			assert.Equal(t, "t1", rh.taskID)
+			assert.Equal(t, "evergreen", rh.req.Owner)
+			assert.Equal(t, "sandbox", rh.req.Repo)
+		},
+	} {
+		t.Run(tName, func(t *testing.T) {
+			require.NoError(t, db.ClearCollections(patch.Collection, task.Collection))
+			ctx, cancel := context.WithCancel(context.Background())
+			defer cancel()
+
+			env := &mock.Environment{}
+			assert.NoError(t, env.Configure(ctx))
+			env.EvergreenSettings.Credentials = map[string]string{"github": "token globalGitHubOauthToken"}
+
+			tsk := &task.Task{
+				Id:      "t1",
+				Version: "aaaaaaaaaaff001122334456",
+			}
+			patch := &patch.Patch{
+				Id:      patch.NewId("aaaaaaaaaaff001122334456"),
+				Version: "aaaaaaaaaaff001122334456",
+				GithubPatchData: thirdparty.GithubPatch{
+					MergeCommitSHA: "abc",
+				},
+			}
+			require.NoError(t, tsk.Insert())
+			require.NoError(t, patch.Insert())
+
+			r, ok := makeAgentGetPullRequest(env.Settings()).(*agentCheckGetPullRequestHandler)
+			require.True(t, ok)
+
+			tCase(ctx, t, r, env.Settings())
 		})
 	}
 }
@@ -397,7 +457,7 @@ func TestDownstreamParams(t *testing.T) {
 		AgentRevision:         evergreen.AgentVersion,
 		LastTaskCompletedTime: time.Now().Add(-20 * time.Minute).Round(time.Second),
 	}
-	require.NoError(t, sampleHost.Insert())
+	require.NoError(t, sampleHost.Insert(ctx))
 
 	q := queue.NewLocalLimitedSize(4, 2048)
 	require.NoError(t, q.Start(ctx))

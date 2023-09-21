@@ -1,0 +1,24 @@
+{
+  "tests": [
+    {
+      "query_file": "git_tags.graphql",
+      "result": {
+        "data": {
+          "version": {
+            "id": "spruce_a7906eed65f88ae436ddb5c19096969f198a9efe",
+            "gitTags": [
+              {
+                "pusher": "release-bot",
+                "tag": "v1.6.2-rc0"
+              },
+              {
+                "pusher": "evergreen.user",
+                "tag": "v1.6.2"
+              }
+            ]
+          }
+        }
+      }
+    }
+  ]
+}

@@ -18,6 +18,7 @@ import (
 	"github.com/evergreen-ci/evergreen/model/manifest"
 	"github.com/evergreen-ci/evergreen/model/patch"
 	"github.com/evergreen-ci/evergreen/model/task"
+	"github.com/evergreen-ci/evergreen/thirdparty"
 	"github.com/evergreen-ci/evergreen/util"
 	"github.com/evergreen-ci/utility"
 	"github.com/mongodb/anser/bsonutil"
@@ -36,13 +37,13 @@ const (
 	waterfallTasksQueryMaxTime = 90 * time.Second
 )
 
+// Project represents the fully hydrated project configuration after translating
+// the ParserProject.
 type Project struct {
-	Enabled            bool                       `yaml:"enabled,omitempty" bson:"enabled"`         // deprecated
-	Owner              string                     `yaml:"owner,omitempty" bson:"owner_name"`        // deprecated
-	Repo               string                     `yaml:"repo,omitempty" bson:"repo_name"`          // deprecated
-	RemotePath         string                     `yaml:"remote_path,omitempty" bson:"remote_path"` // deprecated
-	Branch             string                     `yaml:"branch,omitempty" bson:"branch_name"`      // deprecated
 	Stepback           bool                       `yaml:"stepback,omitempty" bson:"stepback"`
+	UnsetFunctionVars  bool                       `yaml:"unset_function_vars,omitempty" bson:"unset_function_vars,omitempty"`
+	PreTimeoutSecs     int                        `yaml:"pre_timeout_secs,omitempty" bson:"pre_timeout_secs,omitempty"`
+	PostTimeoutSecs    int                        `yaml:"post_timeout_secs,omitempty" bson:"post_timeout_secs,omitempty"`
 	PreErrorFailsTask  bool                       `yaml:"pre_error_fails_task,omitempty" bson:"pre_error_fails_task,omitempty"`
 	PostErrorFailsTask bool                       `yaml:"post_error_fails_task,omitempty" bson:"post_error_fails_task,omitempty"`
 	OomTracker         bool                       `yaml:"oom_tracker,omitempty" bson:"oom_tracker"`
@@ -55,7 +56,6 @@ type Project struct {
 	Pre                *YAMLCommandSet            `yaml:"pre,omitempty" bson:"pre"`
 	Post               *YAMLCommandSet            `yaml:"post,omitempty" bson:"post"`
 	Timeout            *YAMLCommandSet            `yaml:"timeout,omitempty" bson:"timeout"`
-	EarlyTermination   *YAMLCommandSet            `yaml:"early_termination,omitempty" bson:"early_termination,omitempty"`
 	CallbackTimeout    int                        `yaml:"callback_timeout_secs,omitempty" bson:"callback_timeout_secs"`
 	Modules            ModuleList                 `yaml:"modules,omitempty" bson:"modules"`
 	Containers         []Container                `yaml:"containers,omitempty" bson:"containers"`
@@ -105,13 +105,14 @@ type BuildVariantTaskUnit struct {
 	Variant string `yaml:"-" bson:"-"`
 
 	// fields to overwrite ProjectTask settings.
-	Patchable      *bool                `yaml:"patchable,omitempty" bson:"patchable,omitempty"`
-	PatchOnly      *bool                `yaml:"patch_only,omitempty" bson:"patch_only,omitempty"`
-	Disable        *bool                `yaml:"disable,omitempty" bson:"disable,omitempty"`
-	AllowForGitTag *bool                `yaml:"allow_for_git_tag,omitempty" bson:"allow_for_git_tag,omitempty"`
-	GitTagOnly     *bool                `yaml:"git_tag_only,omitempty" bson:"git_tag_only,omitempty"`
-	Priority       int64                `yaml:"priority,omitempty" bson:"priority"`
-	DependsOn      []TaskUnitDependency `yaml:"depends_on,omitempty" bson:"depends_on"`
+	Patchable         *bool                     `yaml:"patchable,omitempty" bson:"patchable,omitempty"`
+	PatchOnly         *bool                     `yaml:"patch_only,omitempty" bson:"patch_only,omitempty"`
+	Disable           *bool                     `yaml:"disable,omitempty" bson:"disable,omitempty"`
+	AllowForGitTag    *bool                     `yaml:"allow_for_git_tag,omitempty" bson:"allow_for_git_tag,omitempty"`
+	GitTagOnly        *bool                     `yaml:"git_tag_only,omitempty" bson:"git_tag_only,omitempty"`
+	AllowedRequesters []evergreen.UserRequester `yaml:"allowed_requesters,omitempty" bson:"allowed_requesters,omitempty"`
+	Priority          int64                     `yaml:"priority,omitempty" bson:"priority"`
+	DependsOn         []TaskUnitDependency      `yaml:"depends_on,omitempty" bson:"depends_on"`
 
 	// the distros that the task can be run on
 	RunOn []string `yaml:"run_on,omitempty" bson:"run_on"`
@@ -202,6 +203,9 @@ func (bvt *BuildVariantTaskUnit) Populate(pt ProjectTask, bv BuildVariant) {
 	if bvt.GitTagOnly == nil {
 		bvt.GitTagOnly = pt.GitTagOnly
 	}
+	if len(bvt.AllowedRequesters) == 0 {
+		bvt.AllowedRequesters = pt.AllowedRequesters
+	}
 	// TODO these are copied but unused until EVG-578 is completed
 	if bvt.ExecTimeoutSecs == 0 {
 		bvt.ExecTimeoutSecs = pt.ExecTimeoutSecs
@@ -223,6 +227,9 @@ func (bvt *BuildVariantTaskUnit) Populate(pt ProjectTask, bv BuildVariant) {
 	}
 	if bvt.GitTagOnly == nil {
 		bvt.GitTagOnly = bv.GitTagOnly
+	}
+	if len(bvt.AllowedRequesters) == 0 {
+		bvt.AllowedRequesters = bv.AllowedRequesters
 	}
 	if bvt.Disable == nil {
 		bvt.Disable = bv.Disable
@@ -276,6 +283,10 @@ func (bvt *BuildVariantTaskUnit) UnmarshalYAML(unmarshal func(interface{}) error
 }
 
 func (bvt *BuildVariantTaskUnit) SkipOnRequester(requester string) bool {
+	if len(bvt.AllowedRequesters) != 0 {
+		return !utility.StringSliceContains(evaluateRequesters(bvt.AllowedRequesters), requester)
+	}
+
 	return evergreen.IsPatchRequester(requester) && bvt.SkipOnPatchBuild() ||
 		!evergreen.IsPatchRequester(requester) && bvt.SkipOnNonPatchBuild() ||
 		evergreen.IsGitTagRequester(requester) && bvt.SkipOnGitTagBuild() ||
@@ -283,18 +294,37 @@ func (bvt *BuildVariantTaskUnit) SkipOnRequester(requester string) bool {
 }
 
 func (bvt *BuildVariantTaskUnit) SkipOnPatchBuild() bool {
+	if len(bvt.AllowedRequesters) != 0 {
+		allowed := utility.StringSliceIntersection(evaluateRequesters(bvt.AllowedRequesters), evergreen.PatchRequesters)
+		return len(allowed) == 0
+	}
+
 	return !utility.FromBoolTPtr(bvt.Patchable)
 }
 
 func (bvt *BuildVariantTaskUnit) SkipOnNonPatchBuild() bool {
+	if len(bvt.AllowedRequesters) != 0 {
+		allowed, _ := utility.StringSliceSymmetricDifference(evaluateRequesters(bvt.AllowedRequesters), evergreen.PatchRequesters)
+		return len(allowed) == 0
+	}
+
 	return utility.FromBoolPtr(bvt.PatchOnly)
 }
 
 func (bvt *BuildVariantTaskUnit) SkipOnGitTagBuild() bool {
+	if len(bvt.AllowedRequesters) != 0 {
+		return !utility.StringSliceContains(evaluateRequesters(bvt.AllowedRequesters), evergreen.GitTagRequester)
+	}
+
 	return !utility.FromBoolTPtr(bvt.AllowForGitTag)
 }
 
 func (bvt *BuildVariantTaskUnit) SkipOnNonGitTagBuild() bool {
+	if len(bvt.AllowedRequesters) != 0 {
+		allowed, _ := utility.StringSliceSymmetricDifference(evaluateRequesters(bvt.AllowedRequesters), []string{evergreen.GitTagRequester})
+		return len(allowed) == 0
+	}
+
 	return utility.FromBoolPtr(bvt.GitTagOnly)
 }
 
@@ -353,6 +383,11 @@ type BuildVariant struct {
 	// versions when set to true. By default, the build variant runs in non-git
 	// tag versions.
 	GitTagOnly *bool `yaml:"git_tag_only,omitempty" bson:"git_tag_only,omitempty"`
+	// AllowedRequesters lists all internal requester types which can run a
+	// task. If set, the allowed requesters take precedence over other
+	// requester-related filters such as Patchable, PatchOnly, AllowForGitTag,
+	// and GitTagOnly. By default, all requesters are allowed to run the task.
+	AllowedRequesters []evergreen.UserRequester `yaml:"allowed_requesters,omitempty" bson:"allowed_requesters,omitempty"`
 
 	// Use a *bool so that there are 3 possible states:
 	//   1. nil   = not overriding the project setting (default)
@@ -421,7 +456,10 @@ func (l *ModuleList) IsIdentical(m manifest.Manifest) bool {
 	}
 	projectModules := map[string]manifest.Module{}
 	for _, module := range *l {
-		owner, repo := module.GetRepoOwnerAndName()
+		owner, repo, err := thirdparty.ParseGitUrl(module.Repo)
+		if err != nil {
+			return false
+		}
 		projectModules[module.Name] = manifest.Module{
 			Branch: module.Branch,
 			Repo:   repo,
@@ -440,11 +478,6 @@ func GetModuleByName(moduleList ModuleList, moduleName string) (*Module, error) 
 	}
 
 	return nil, errors.Errorf("module '%s' doesn't exist", moduleName)
-}
-
-type TestSuite struct {
-	Name  string `yaml:"name,omitempty"`
-	Phase string `yaml:"phase,omitempty"`
 }
 
 type PluginCommandConf struct {
@@ -632,17 +665,22 @@ type TaskGroup struct {
 	Name string `yaml:"name" bson:"name"`
 
 	// data about the task group
-	MaxHosts                int             `yaml:"max_hosts" bson:"max_hosts"`
-	SetupGroupFailTask      bool            `yaml:"setup_group_can_fail_task" bson:"setup_group_can_fail_task"`
-	SetupGroupTimeoutSecs   int             `yaml:"setup_group_timeout_secs" bson:"setup_group_timeout_secs"`
-	SetupGroup              *YAMLCommandSet `yaml:"setup_group" bson:"setup_group"`
-	TeardownTaskCanFailTask bool            `yaml:"teardown_task_can_fail_task" bson:"teardown_task_can_fail_task"`
-	TeardownGroup           *YAMLCommandSet `yaml:"teardown_group" bson:"teardown_group"`
-	SetupTask               *YAMLCommandSet `yaml:"setup_task" bson:"setup_task"`
-	TeardownTask            *YAMLCommandSet `yaml:"teardown_task" bson:"teardown_task"`
-	Timeout                 *YAMLCommandSet `yaml:"timeout,omitempty" bson:"timeout"`
-	Tasks                   []string        `yaml:"tasks" bson:"tasks"`
-	Tags                    []string        `yaml:"tags,omitempty" bson:"tags"`
+	MaxHosts                 int             `yaml:"max_hosts" bson:"max_hosts"`
+	SetupGroup               *YAMLCommandSet `yaml:"setup_group" bson:"setup_group"`
+	SetupGroupCanFailTask    bool            `yaml:"setup_group_can_fail_task" bson:"setup_group_can_fail_task"`
+	SetupGroupTimeoutSecs    int             `yaml:"setup_group_timeout_secs" bson:"setup_group_timeout_secs"`
+	TeardownGroup            *YAMLCommandSet `yaml:"teardown_group" bson:"teardown_group"`
+	TeardownGroupTimeoutSecs int             `yaml:"teardown_group_timeout_secs" bson:"teardown_group_timeout_secs"`
+	SetupTask                *YAMLCommandSet `yaml:"setup_task" bson:"setup_task"`
+	SetupTaskCanFailTask     bool            `yaml:"setup_task_can_fail_task,omitempty" bson:"setup_task_can_fail_task,omitempty"`
+	SetupTaskTimeoutSecs     int             `yaml:"setup_task_timeout_secs,omitempty" bson:"setup_task_timeout_secs,omitempty"`
+	TeardownTask             *YAMLCommandSet `yaml:"teardown_task" bson:"teardown_task"`
+	TeardownTaskCanFailTask  bool            `yaml:"teardown_task_can_fail_task" bson:"teardown_task_can_fail_task"`
+	TeardownTaskTimeoutSecs  int             `yaml:"teardown_task_timeout_secs,omitempty" bson:"teardown_task_timeout_secs,omitempty"`
+	Timeout                  *YAMLCommandSet `yaml:"timeout,omitempty" bson:"timeout"`
+	CallbackTimeoutSecs      int             `yaml:"callback_timeout_secs,omitempty" bson:"callback_timeout_secs,omitempty"`
+	Tasks                    []string        `yaml:"tasks" bson:"tasks"`
+	Tags                     []string        `yaml:"tags,omitempty" bson:"tags"`
 	// ShareProcs causes processes to persist between task group tasks.
 	ShareProcs bool `yaml:"share_processes" bson:"share_processes"`
 }
@@ -660,13 +698,14 @@ type ProjectTask struct {
 	//   1. nil   = not overriding the project setting (default)
 	//   2. true  = overriding the project setting with true
 	//   3. false = overriding the project setting with false
-	Patchable       *bool `yaml:"patchable,omitempty" bson:"patchable,omitempty"`
-	PatchOnly       *bool `yaml:"patch_only,omitempty" bson:"patch_only,omitempty"`
-	Disable         *bool `yaml:"disable,omitempty" bson:"disable,omitempty"`
-	AllowForGitTag  *bool `yaml:"allow_for_git_tag,omitempty" bson:"allow_for_git_tag,omitempty"`
-	GitTagOnly      *bool `yaml:"git_tag_only,omitempty" bson:"git_tag_only,omitempty"`
-	Stepback        *bool `yaml:"stepback,omitempty" bson:"stepback,omitempty"`
-	MustHaveResults *bool `yaml:"must_have_test_results,omitempty" bson:"must_have_test_results,omitempty"`
+	Patchable         *bool                     `yaml:"patchable,omitempty" bson:"patchable,omitempty"`
+	PatchOnly         *bool                     `yaml:"patch_only,omitempty" bson:"patch_only,omitempty"`
+	Disable           *bool                     `yaml:"disable,omitempty" bson:"disable,omitempty"`
+	AllowForGitTag    *bool                     `yaml:"allow_for_git_tag,omitempty" bson:"allow_for_git_tag,omitempty"`
+	GitTagOnly        *bool                     `yaml:"git_tag_only,omitempty" bson:"git_tag_only,omitempty"`
+	AllowedRequesters []evergreen.UserRequester `yaml:"allowed_requesters,omitempty" bson:"allowed_requesters,omitempty"`
+	Stepback          *bool                     `yaml:"stepback,omitempty" bson:"stepback,omitempty"`
+	MustHaveResults   *bool                     `yaml:"must_have_test_results,omitempty" bson:"must_have_test_results,omitempty"`
 }
 
 type LoggerConfig struct {
@@ -694,8 +733,6 @@ func (c *LoggerConfig) IsValid() error {
 		catcher.Wrap(opts.IsValid(), "invalid system logger config")
 		if opts.Type == FileLogSender {
 			catcher.New("file logger is disallowed for system logs; will use Evergreen logger")
-		} else if opts.Type == LogkeeperLogSender {
-			catcher.New("logkeeper is disallowed for system logs; will use Evergreen logger")
 		}
 	}
 	for _, opts := range c.Task {
@@ -736,7 +773,6 @@ func mergeAllLogs(main, add *LoggerConfig) *LoggerConfig {
 const (
 	EvergreenLogSender   = "evergreen"
 	FileLogSender        = "file"
-	LogkeeperLogSender   = "logkeeper"
 	BuildloggerLogSender = "buildlogger"
 	SplunkLogSender      = "splunk"
 )
@@ -762,7 +798,6 @@ var ValidDefaultLoggers = []string{
 var ValidLogSenders = []string{
 	EvergreenLogSender,
 	FileLogSender,
-	LogkeeperLogSender,
 	SplunkLogSender,
 	BuildloggerLogSender,
 }
@@ -1043,7 +1078,7 @@ var (
 
 // PopulateExpansions returns expansions for a task, excluding build variant
 // expansions, project variables, and project/version parameters.
-func PopulateExpansions(t *task.Task, h *host.Host, oauthToken string) (util.Expansions, error) {
+func PopulateExpansions(t *task.Task, h *host.Host, oauthToken, appToken string) (util.Expansions, error) {
 	if t == nil {
 		return nil, errors.New("task cannot be nil")
 	}
@@ -1063,6 +1098,7 @@ func PopulateExpansions(t *task.Task, h *host.Host, oauthToken string) (util.Exp
 	expansions.Put("revision", t.Revision)
 	expansions.Put("github_commit", t.Revision)
 	expansions.Put(evergreen.GlobalGitHubTokenExpansion, oauthToken)
+	expansions.Put(evergreen.GithubAppToken, appToken)
 	expansions.Put("project", projectRef.Identifier)
 	expansions.Put("project_identifier", projectRef.Identifier) // TODO: deprecate
 	expansions.Put("project_id", projectRef.Id)
@@ -1128,26 +1164,8 @@ func PopulateExpansions(t *task.Task, h *host.Host, oauthToken string) (util.Exp
 	expansions.Put("author_email", v.AuthorEmail)
 	expansions.Put("created_at", v.CreateTime.Format(build.IdTimeLayout))
 
-	requesterExpansion := ""
-	switch v.Requester {
-	case evergreen.PatchVersionRequester:
-		requesterExpansion = "patch"
-	case evergreen.GithubPRRequester:
-		requesterExpansion = "github_pr"
-	case evergreen.GitTagRequester:
-		requesterExpansion = "github_tag"
-	case evergreen.RepotrackerVersionRequester:
-		requesterExpansion = "commit"
-	case evergreen.TriggerRequester:
-		requesterExpansion = "trigger"
-	case evergreen.MergeTestRequester:
-		requesterExpansion = "commit_queue"
-	case evergreen.AdHocRequester:
-		requesterExpansion = "ad_hoc"
-	default:
-		requesterExpansion = "unknown_requester"
-	}
-	expansions.Put("requester", requesterExpansion)
+	requesterExpansion := evergreen.InternalRequesterToUserRequester(v.Requester)
+	expansions.Put("requester", string(requesterExpansion))
 
 	if evergreen.IsGitTagRequester(v.Requester) {
 		expansions.Put("triggered_by_git_tag", v.TriggeredByGitTag.Tag)
@@ -1169,6 +1187,10 @@ func PopulateExpansions(t *task.Task, h *host.Host, oauthToken string) (util.Exp
 		if v.Requester == evergreen.MergeTestRequester {
 			expansions.Put("is_commit_queue", "true")
 			expansions.Put("commit_message", p.Description)
+		}
+
+		if v.Requester == evergreen.GithubMergeRequester {
+			expansions.Put("is_commit_queue", "true")
 		}
 
 		if p.IsPRMergePatch() || v.Requester == evergreen.GithubPRRequester {
@@ -1233,19 +1255,6 @@ func (p PluginCommandConf) GetType(prj *Project) string {
 		return prj.CommandType
 	}
 	return DefaultCommandType
-}
-
-// GetRepoOwnerAndName returns the owner and repo name (in that order) of a module
-func (m *Module) GetRepoOwnerAndName() (string, string) {
-	parts := strings.Split(m.Repo, ":")
-	basename := parts[len(parts)-1]
-	ownerAndName := strings.TrimSuffix(basename, ".git")
-	ownersplit := strings.Split(ownerAndName, "/")
-	if len(ownersplit) != 2 {
-		return "", ""
-	} else {
-		return ownersplit[0], ownersplit[1]
-	}
 }
 
 // FindTaskGroup returns a specific task group from a project
@@ -1590,22 +1599,23 @@ func (p *Project) tasksFromGroup(bvTaskGroup BuildVariantTaskUnit) []BuildVarian
 			Name: t,
 			// IsGroup is not persisted, and indicates here that the
 			// task is a member of a task group.
-			IsGroup:          true,
-			TaskGroup:        bvTaskGroup.TaskGroup,
-			GroupName:        bvTaskGroup.Name,
-			Variant:          bvTaskGroup.Variant,
-			Patchable:        bvTaskGroup.Patchable,
-			PatchOnly:        bvTaskGroup.PatchOnly,
-			Disable:          bvTaskGroup.Disable,
-			AllowForGitTag:   bvTaskGroup.AllowForGitTag,
-			GitTagOnly:       bvTaskGroup.GitTagOnly,
-			Priority:         bvTaskGroup.Priority,
-			DependsOn:        bvTaskGroup.DependsOn,
-			RunOn:            bvTaskGroup.RunOn,
-			ExecTimeoutSecs:  bvTaskGroup.ExecTimeoutSecs,
-			Stepback:         bvTaskGroup.Stepback,
-			Activate:         bvTaskGroup.Activate,
-			CommitQueueMerge: bvTaskGroup.CommitQueueMerge,
+			IsGroup:           true,
+			TaskGroup:         bvTaskGroup.TaskGroup,
+			GroupName:         bvTaskGroup.Name,
+			Variant:           bvTaskGroup.Variant,
+			Patchable:         bvTaskGroup.Patchable,
+			PatchOnly:         bvTaskGroup.PatchOnly,
+			Disable:           bvTaskGroup.Disable,
+			AllowForGitTag:    bvTaskGroup.AllowForGitTag,
+			GitTagOnly:        bvTaskGroup.GitTagOnly,
+			AllowedRequesters: bvTaskGroup.AllowedRequesters,
+			Priority:          bvTaskGroup.Priority,
+			DependsOn:         bvTaskGroup.DependsOn,
+			RunOn:             bvTaskGroup.RunOn,
+			ExecTimeoutSecs:   bvTaskGroup.ExecTimeoutSecs,
+			Stepback:          bvTaskGroup.Stepback,
+			Activate:          bvTaskGroup.Activate,
+			CommitQueueMerge:  bvTaskGroup.CommitQueueMerge,
 		}
 		// Default to project task settings when unspecified
 		bvt.Populate(taskMap[t], *bv)
@@ -1868,7 +1878,7 @@ func findAliasesForPatch(projectId, alias string, patchDoc *patch.Patch) ([]Proj
 			return nil, errors.Wrapf(err, "retrieving alias '%s' from project config", alias)
 		}
 	} else if patchDoc.Version != "" {
-		aliases, err = getMatchingAliasForVersion(patchDoc.Version, alias)
+		aliases, err = getMatchingAliasesForProjectConfig(projectId, patchDoc.Version, alias)
 		if err != nil {
 			return nil, errors.Wrapf(err, "retrieving alias '%s' from project config", alias)
 		}
@@ -2205,8 +2215,7 @@ func GetVariantsAndTasksFromPatchProject(ctx context.Context, settings *evergree
 	for _, variant := range project.BuildVariants {
 		tasksForVariant := []BuildVariantTaskUnit{}
 		for _, taskFromVariant := range variant.Tasks {
-			// add a task name to the list if it's patchable and not restricted to git tags and not disabled
-			if !taskFromVariant.IsDisabled() && utility.FromBoolTPtr(taskFromVariant.Patchable) && !utility.FromBoolPtr(taskFromVariant.GitTagOnly) {
+			if !taskFromVariant.IsDisabled() && !taskFromVariant.SkipOnRequester(p.GetRequester()) {
 				if taskFromVariant.IsGroup {
 					tasksForVariant = append(tasksForVariant, CreateTasksFromGroup(taskFromVariant, project, evergreen.PatchVersionRequester)...)
 				} else {
@@ -2223,9 +2232,16 @@ func GetVariantsAndTasksFromPatchProject(ctx context.Context, settings *evergree
 	tasksList := []struct{ Name string }{}
 	for _, task := range project.Tasks {
 		// add a task name to the list if it's patchable and not restricted to git tags and not disabled
-		if !utility.FromBoolPtr(task.Disable) && utility.FromBoolTPtr(task.Patchable) && !utility.FromBoolPtr(task.GitTagOnly) {
-			tasksList = append(tasksList, struct{ Name string }{task.Name})
+		// Note that this can return the incorrect set of tasks based on
+		// requester settings because requester settings may be overridden at
+		// the build variant task level.
+		if len(task.AllowedRequesters) != 0 && !utility.StringSliceContains(evaluateRequesters(task.AllowedRequesters), p.GetRequester()) {
+			continue
 		}
+		if utility.FromBoolPtr(task.Disable) || !utility.FromBoolTPtr(task.Patchable) || utility.FromBoolPtr(task.GitTagOnly) {
+			continue
+		}
+		tasksList = append(tasksList, struct{ Name string }{task.Name})
 	}
 
 	variantsAndTasksFromProject := VariantsAndTasksFromProject{

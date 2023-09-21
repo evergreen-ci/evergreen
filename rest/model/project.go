@@ -40,28 +40,30 @@ type ProjectTaskExecutionResp struct {
 }
 
 type APITriggerDefinition struct {
-	Project           *string `json:"project"`
-	Level             *string `json:"level"` //build or task
-	DefinitionID      *string `json:"definition_id"`
-	BuildVariantRegex *string `json:"variant_regex"`
-	TaskRegex         *string `json:"task_regex"`
-	Status            *string `json:"status"`
-	DateCutoff        *int    `json:"date_cutoff"`
-	ConfigFile        *string `json:"config_file"`
-	Alias             *string `json:"alias"`
+	Project                      *string `json:"project"`
+	Level                        *string `json:"level"` //build or task
+	DefinitionID                 *string `json:"definition_id"`
+	BuildVariantRegex            *string `json:"variant_regex"`
+	TaskRegex                    *string `json:"task_regex"`
+	Status                       *string `json:"status"`
+	DateCutoff                   *int    `json:"date_cutoff"`
+	ConfigFile                   *string `json:"config_file"`
+	Alias                        *string `json:"alias"`
+	UnscheduleDownstreamVersions *bool   `json:"unschedule_downstream_versions"`
 }
 
 func (t *APITriggerDefinition) ToService() model.TriggerDefinition {
 	return model.TriggerDefinition{
-		Project:           utility.FromStringPtr(t.Project),
-		Level:             utility.FromStringPtr(t.Level),
-		DefinitionID:      utility.FromStringPtr(t.DefinitionID),
-		BuildVariantRegex: utility.FromStringPtr(t.BuildVariantRegex),
-		TaskRegex:         utility.FromStringPtr(t.TaskRegex),
-		Status:            utility.FromStringPtr(t.Status),
-		ConfigFile:        utility.FromStringPtr(t.ConfigFile),
-		Alias:             utility.FromStringPtr(t.Alias),
-		DateCutoff:        t.DateCutoff,
+		Project:                      utility.FromStringPtr(t.Project),
+		Level:                        utility.FromStringPtr(t.Level),
+		DefinitionID:                 utility.FromStringPtr(t.DefinitionID),
+		BuildVariantRegex:            utility.FromStringPtr(t.BuildVariantRegex),
+		TaskRegex:                    utility.FromStringPtr(t.TaskRegex),
+		Status:                       utility.FromStringPtr(t.Status),
+		ConfigFile:                   utility.FromStringPtr(t.ConfigFile),
+		Alias:                        utility.FromStringPtr(t.Alias),
+		UnscheduleDownstreamVersions: utility.FromBoolPtr(t.UnscheduleDownstreamVersions),
+		DateCutoff:                   t.DateCutoff,
 	}
 }
 
@@ -74,6 +76,7 @@ func (t *APITriggerDefinition) BuildFromService(triggerDef model.TriggerDefiniti
 	t.Status = utility.ToStringPtr(triggerDef.Status)
 	t.ConfigFile = utility.ToStringPtr(triggerDef.ConfigFile)
 	t.Alias = utility.ToStringPtr(triggerDef.Alias)
+	t.UnscheduleDownstreamVersions = utility.ToBoolPtr(triggerDef.UnscheduleDownstreamVersions)
 	t.DateCutoff = triggerDef.DateCutoff
 }
 
@@ -175,20 +178,23 @@ func (t *APIParsleyFilter) BuildFromService(h model.ParsleyFilter) {
 }
 
 type APIExternalLink struct {
-	URLTemplate *string `json:"url_template"`
-	DisplayName *string `json:"display_name"`
+	DisplayName *string   `json:"display_name"`
+	Requesters  []*string `json:"requesters"`
+	URLTemplate *string   `json:"url_template"`
 }
 
 func (t *APIExternalLink) ToService() model.ExternalLink {
 	return model.ExternalLink{
-		URLTemplate: utility.FromStringPtr(t.URLTemplate),
 		DisplayName: utility.FromStringPtr(t.DisplayName),
+		Requesters:  utility.FromStringPtrSlice(t.Requesters),
+		URLTemplate: utility.FromStringPtr(t.URLTemplate),
 	}
 }
 
 func (t *APIExternalLink) BuildFromService(h model.ExternalLink) {
-	t.URLTemplate = utility.ToStringPtr(h.URLTemplate)
 	t.DisplayName = utility.ToStringPtr(h.DisplayName)
+	t.Requesters = utility.ToStringPtrSlice(h.Requesters)
+	t.URLTemplate = utility.ToStringPtr(h.URLTemplate)
 }
 
 type APIProjectBanner struct {
@@ -206,12 +212,6 @@ func (t *APIProjectBanner) ToService() model.ProjectBanner {
 func (t *APIProjectBanner) BuildFromService(h model.ProjectBanner) {
 	t.Theme = h.Theme
 	t.Text = utility.ToStringPtr(h.Text)
-}
-
-type APICommitQueueParams struct {
-	Enabled     *bool   `json:"enabled"`
-	MergeMethod *string `json:"merge_method"`
-	Message     *string `json:"message"`
 }
 
 func (bd *APIPeriodicBuildDefinition) ToService() model.PeriodicBuildDefinition {
@@ -236,10 +236,22 @@ func (bd *APIPeriodicBuildDefinition) BuildFromService(params model.PeriodicBuil
 	bd.NextRunTime = utility.ToTimePtr(params.NextRunTime)
 }
 
+type APICommitQueueParams struct {
+	Enabled     *bool            `json:"enabled"`
+	MergeMethod *string          `json:"merge_method"`
+	MergeQueue  model.MergeQueue `json:"merge_queue"`
+	Message     *string          `json:"message"`
+}
+
 func (cqParams *APICommitQueueParams) BuildFromService(params model.CommitQueueParams) {
 	cqParams.Enabled = utility.BoolPtrCopy(params.Enabled)
 	cqParams.MergeMethod = utility.ToStringPtr(params.MergeMethod)
 	cqParams.Message = utility.ToStringPtr(params.Message)
+
+	if params.MergeQueue == "" {
+		params.MergeQueue = model.MergeQueueEvergreen
+	}
+	cqParams.MergeQueue = params.MergeQueue
 }
 
 func (cqParams *APICommitQueueParams) ToService() model.CommitQueueParams {
@@ -247,6 +259,11 @@ func (cqParams *APICommitQueueParams) ToService() model.CommitQueueParams {
 	serviceParams.Enabled = utility.BoolPtrCopy(cqParams.Enabled)
 	serviceParams.MergeMethod = utility.FromStringPtr(cqParams.MergeMethod)
 	serviceParams.Message = utility.FromStringPtr(cqParams.Message)
+
+	if cqParams.MergeQueue == "" {
+		cqParams.MergeQueue = model.MergeQueueEvergreen
+	}
+	serviceParams.MergeQueue = cqParams.MergeQueue
 
 	return serviceParams
 }
@@ -521,6 +538,7 @@ type APIProjectRef struct {
 	RepotrackerDisabled         *bool                     `json:"repotracker_disabled"`
 	DispatchingDisabled         *bool                     `json:"dispatching_disabled"`
 	StepbackDisabled            *bool                     `json:"stepback_disabled"`
+	StepbackBisect              *bool                     `json:"stepback_bisect"`
 	VersionControlEnabled       *bool                     `json:"version_control_enabled"`
 	DisabledStatsCache          *bool                     `json:"disabled_stats_cache"`
 	Admins                      []*string                 `json:"admins"`
@@ -584,6 +602,7 @@ func (p *APIProjectRef) ToService() (*model.ProjectRef, error) {
 		RepotrackerDisabled:    utility.BoolPtrCopy(p.RepotrackerDisabled),
 		DispatchingDisabled:    utility.BoolPtrCopy(p.DispatchingDisabled),
 		StepbackDisabled:       utility.BoolPtrCopy(p.StepbackDisabled),
+		StepbackBisect:         utility.BoolPtrCopy(p.StepbackBisect),
 		VersionControlEnabled:  utility.BoolPtrCopy(p.VersionControlEnabled),
 		DisabledStatsCache:     utility.BoolPtrCopy(p.DisabledStatsCache),
 		NotifyOnBuildFailure:   utility.BoolPtrCopy(p.NotifyOnBuildFailure),
@@ -692,6 +711,7 @@ func (p *APIProjectRef) BuildPublicFields(projectRef model.ProjectRef) error {
 	p.RepotrackerDisabled = utility.BoolPtrCopy(projectRef.RepotrackerDisabled)
 	p.DispatchingDisabled = utility.BoolPtrCopy(projectRef.DispatchingDisabled)
 	p.StepbackDisabled = utility.BoolPtrCopy(projectRef.StepbackDisabled)
+	p.StepbackBisect = utility.BoolPtrCopy(projectRef.StepbackBisect)
 	p.VersionControlEnabled = utility.BoolPtrCopy(projectRef.VersionControlEnabled)
 	p.DisabledStatsCache = utility.BoolPtrCopy(projectRef.DisabledStatsCache)
 	p.NotifyOnBuildFailure = utility.BoolPtrCopy(projectRef.NotifyOnBuildFailure)

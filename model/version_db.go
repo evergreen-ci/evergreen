@@ -6,6 +6,7 @@ import (
 
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/db"
+	"github.com/evergreen-ci/utility"
 	"github.com/mongodb/anser/bsonutil"
 	adb "github.com/mongodb/anser/db"
 	"github.com/pkg/errors"
@@ -151,7 +152,7 @@ func VersionByProjectIdAndOrder(projectId string, revisionOrderNumber int) db.Q 
 		}).Sort([]string{"-" + VersionRevisionOrderNumberKey})
 }
 
-// ByLastVariantActivation finds the most recent non-patch, non-ignored
+// VersionByLastVariantActivation finds the most recent non-patch, non-ignored
 // versions in a project that have a particular variant activated.
 func VersionByLastVariantActivation(projectId, variant string) db.Q {
 	return db.Query(
@@ -171,6 +172,8 @@ func VersionByLastVariantActivation(projectId, variant string) db.Q {
 	).Sort([]string{"-" + VersionRevisionOrderNumberKey})
 }
 
+// VersionByLastTaskActivation finds the most recent non-patch, non-ignored
+// versions in a project that have a particular task activated.
 func VersionByLastTaskActivation(projectId, variant, taskName string) db.Q {
 	return db.Query(
 		bson.M{
@@ -404,4 +407,29 @@ func FindProjectForVersion(versionID string) (string, error) {
 		return "", errors.New("version not found")
 	}
 	return v.Identifier, nil
+}
+
+// FindBaseVersionForVersion finds the base version  for a given version ID. If the version is a patch, it will
+// return the base version. If the version is a mainline commit, it will return the previously run mainline commit.
+func FindBaseVersionForVersion(versionID string) (*Version, error) {
+	v, err := VersionFindOne(VersionById(versionID))
+	if err != nil {
+		return nil, err
+	}
+	if v == nil {
+		return nil, errors.New("version not found")
+	}
+	if evergreen.IsPatchRequester(v.Requester) {
+		baseVersion, err := VersionFindOne(BaseVersionByProjectIdAndRevision(v.Identifier, v.Revision))
+		if err != nil {
+			return nil, errors.Wrapf(err, "finding base version with id: '%s'", v.Id)
+		}
+		return baseVersion, nil
+	} else {
+		previousVersion, err := VersionFindOne(VersionByProjectIdAndOrder(utility.FromStringPtr(&v.Identifier), v.RevisionOrderNumber-1))
+		if err != nil {
+			return nil, errors.Wrapf(err, "finding base version with id: '%s'", v.Id)
+		}
+		return previousVersion, nil
+	}
 }

@@ -83,7 +83,7 @@ func (s *ProjectPatchByIDSuite) SetupTest() {
 		TotalProjectLimit: 1,
 		RepoProjectLimit:  1,
 	}
-	s.NoError(projectSetting.Set())
+	s.NoError(projectSetting.Set(ctx))
 	s.rm = makePatchProjectByID(settings).(*projectIDPatchHandler)
 	projectAdminRole := gimlet.Role{
 		ID:    "dimoxinil",
@@ -440,7 +440,7 @@ func (s *ProjectPatchByIDSuite) TestRotateAndDeleteProjectPodSecret() {
 	h := s.rm.(*projectIDPatchHandler)
 	h.user = &user.DBUser{Id: "me"}
 
-	smClient, err := cloud.MakeSecretsManagerClient(s.env.Settings())
+	smClient, err := cloud.MakeSecretsManagerClient(ctx, s.env.Settings())
 	s.Require().NoError(err)
 	defer func() {
 		s.Require().NoError(smClient.Close(ctx))
@@ -558,13 +558,16 @@ func TestProjectPutSuite(t *testing.T) {
 }
 
 func (s *ProjectPutSuite) SetupTest() {
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
 	s.NoError(db.ClearCollections(serviceModel.ProjectRefCollection, serviceModel.ProjectVarsCollection, user.Collection))
 	s.NoError(getTestProjectRef().Insert())
 
 	settings := s.env.Settings()
 	s.settings = settings
 	settings.GithubOrgs = []string{"Rembrandt Q. Einstein"}
-	s.NoError(evergreen.UpdateConfig(settings))
+	s.NoError(evergreen.UpdateConfig(ctx, settings))
 
 	s.rm = makePutProjectByID(s.env).(*projectIDPutHandler)
 }
@@ -962,6 +965,7 @@ func TestGetProjectVersions(t *testing.T) {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 	assert.NoError(db.ClearCollections(serviceModel.VersionCollection, serviceModel.ProjectRefCollection))
+
 	const projectId = "proj"
 	project := serviceModel.ProjectRef{
 		Id:         projectId,
@@ -1004,12 +1008,21 @@ func TestGetProjectVersions(t *testing.T) {
 			Limit:     20,
 		},
 	}
-
 	resp := h.Run(ctx)
 	respJson, err := json.Marshal(resp.Data())
 	assert.NoError(err)
 	assert.Contains(string(respJson), `"version_id":"v4"`)
 	assert.NotContains(string(respJson), `"version_id":"v3"`)
+
+	body := []byte(`{"revision_end": 1, "start": 4}`)
+	url := "https://example.com/rest/v2/projects/something-else/versions"
+	req, err := http.NewRequest(http.MethodGet, url, bytes.NewReader(body))
+	assert.NoError(err)
+	req = gimlet.SetURLVars(req, map[string]string{"project_id": projectId})
+	err = h.Parse(ctx, req)
+	assert.NoError(err)
+	assert.Contains(string(respJson), `"version_id":"v4"`)
+	assert.Contains(string(respJson), `"version_id":"v1"`)
 }
 
 func TestDeleteProject(t *testing.T) {

@@ -240,6 +240,8 @@ type DockerOptions struct {
 	SkipImageBuild bool `mapstructure:"skip_build" bson:"skip_build,omitempty" json:"skip_build,omitempty"`
 	// list of container environment variables KEY=VALUE
 	EnvironmentVars []string `mapstructure:"environment_vars" bson:"environment_vars,omitempty" json:"environment_vars,omitempty"`
+	// StdinData is the data to pass to the container command's stdin.
+	StdinData []byte `mapstructure:"stdin_data" bson:"stdin_data,omitempty" json:"stdin_data,omitempty"`
 }
 
 // FromDistroSettings loads the Docker container options from the provider
@@ -261,10 +263,6 @@ func (opts *DockerOptions) FromDistroSettings(d distro.Distro, _ string) error {
 func (opts *DockerOptions) Validate() error {
 	catcher := grip.NewBasicCatcher()
 	catcher.ErrorfWhen(opts.Image == "", "image must not be empty")
-
-	for _, h := range opts.ExtraHosts {
-		catcher.ErrorfWhen(len(strings.Split(h, ":")) != 2, "extra host '%s' must be of the form hostname:IP", h)
-	}
 
 	return catcher.Resolve()
 }
@@ -507,7 +505,7 @@ func IsIntentHostId(id string) bool {
 
 // SetStatus updates a host's status on behalf of the given user.
 // Clears last running task for hosts that are being moved to running, since this information is likely outdated.
-func (h *Host) SetStatus(newStatus, user, logs string) error {
+func (h *Host) SetStatus(ctx context.Context, newStatus, user, logs string) error {
 	var unset bson.M
 	if newStatus == evergreen.HostRunning {
 		unset = bson.M{
@@ -519,12 +517,12 @@ func (h *Host) SetStatus(newStatus, user, logs string) error {
 			LTCProjectKey: 1,
 		}
 	}
-	return h.setStatusAndFields(newStatus, nil, nil, unset, user, logs)
+	return h.setStatusAndFields(ctx, newStatus, nil, nil, unset, user, logs)
 }
 
 // setStatusAndFields sets the status as well as any of the other given fields.
 // Accepts fields to query in addition to host status.
-func (h *Host) setStatusAndFields(newStatus string, query, setFields, unsetFields bson.M, user, logs string) error {
+func (h *Host) setStatusAndFields(ctx context.Context, newStatus string, query, setFields, unsetFields bson.M, user, logs string) error {
 	if h.Status == newStatus {
 		return nil
 	}
@@ -557,6 +555,7 @@ func (h *Host) setStatusAndFields(newStatus string, query, setFields, unsetField
 	}
 
 	if err := UpdateOne(
+		ctx,
 		query,
 		update,
 	); err != nil {
@@ -579,7 +578,7 @@ func (h *Host) setStatusAndFields(newStatus string, query, setFields, unsetField
 
 // SetStatusAtomically is the same as SetStatus but only updates the host if its
 // status in the database matches currentStatus.
-func (h *Host) SetStatusAtomically(newStatus, user string, logs string) error {
+func (h *Host) SetStatusAtomically(ctx context.Context, newStatus, user string, logs string) error {
 	if h.Status == evergreen.HostTerminated && h.Provider != evergreen.ProviderNameStatic {
 		msg := ErrorHostAlreadyTerminated
 		grip.Warning(message.Fields{
@@ -591,6 +590,7 @@ func (h *Host) SetStatusAtomically(newStatus, user string, logs string) error {
 	}
 
 	err := UpdateOne(
+		ctx,
 		bson.M{
 			IdKey:     h.Id,
 			StatusKey: h.Status,
@@ -621,8 +621,9 @@ func (h *Host) SetStatusAtomically(newStatus, user string, logs string) error {
 
 // SetProvisioning marks the host as initializing. Only allow this
 // if the host is uninitialized.
-func (h *Host) SetProvisioning() error {
+func (h *Host) SetProvisioning(ctx context.Context) error {
 	return UpdateOne(
+		ctx,
 		bson.M{
 			IdKey:     h.Id,
 			StatusKey: evergreen.HostStarting,
@@ -637,13 +638,13 @@ func (h *Host) SetProvisioning() error {
 
 // SetDecommissioned sets the host as decommissioned. If checkTaskGroup is set,
 // we only update the host if it hasn't started running a task group.
-func (h *Host) SetDecommissioned(user string, checkTaskGroup bool, logs string) error {
+func (h *Host) SetDecommissioned(ctx context.Context, user string, checkTaskGroup bool, logs string) error {
 	query := bson.M{}
 	if checkTaskGroup {
 		query[RunningTaskGroupKey] = bson.M{"$eq": ""}
 	}
 	if h.HasContainers {
-		containers, err := h.GetContainers()
+		containers, err := h.GetContainers(ctx)
 		grip.Error(message.WrapError(err, message.Fields{
 			"message": "error getting containers",
 			"host_id": h.Id,
@@ -651,7 +652,7 @@ func (h *Host) SetDecommissioned(user string, checkTaskGroup bool, logs string) 
 		catcher := grip.NewBasicCatcher()
 		failedContainerIds := []string{}
 		for _, c := range containers {
-			err = c.setStatusAndFields(evergreen.HostDecommissioned, query, nil, nil, user, "parent is being decommissioned")
+			err = c.setStatusAndFields(ctx, evergreen.HostDecommissioned, query, nil, nil, user, "parent is being decommissioned")
 			if err != nil && err.Error() != ErrorHostAlreadyTerminated {
 				catcher.Add(err)
 				failedContainerIds = append(failedContainerIds, c.Id)
@@ -662,7 +663,7 @@ func (h *Host) SetDecommissioned(user string, checkTaskGroup bool, logs string) 
 			"host_ids": failedContainerIds,
 		}))
 	}
-	err := h.setStatusAndFields(evergreen.HostDecommissioned, query, nil, nil, user, logs)
+	err := h.setStatusAndFields(ctx, evergreen.HostDecommissioned, query, nil, nil, user, logs)
 	// Shouldn't consider it an error if the host isn't found when checking task group,
 	// because a task group may have been set for the host.
 	if err != nil && checkTaskGroup && adb.ResultsNotFound(err) {
@@ -671,20 +672,21 @@ func (h *Host) SetDecommissioned(user string, checkTaskGroup bool, logs string) 
 	return err
 }
 
-func (h *Host) SetRunning(user string) error {
-	return h.SetStatus(evergreen.HostRunning, user, "")
+func (h *Host) SetRunning(ctx context.Context, user string) error {
+	return h.SetStatus(ctx, evergreen.HostRunning, user, "")
 }
 
-func (h *Host) SetTerminated(user, reason string) error {
-	return h.SetStatus(evergreen.HostTerminated, user, reason)
+func (h *Host) SetTerminated(ctx context.Context, user, reason string) error {
+	return h.SetStatus(ctx, evergreen.HostTerminated, user, reason)
 }
 
-func (h *Host) SetStopping(user string) error {
-	return h.SetStatus(evergreen.HostStopping, user, "")
+func (h *Host) SetStopping(ctx context.Context, user string) error {
+	return h.SetStatus(ctx, evergreen.HostStopping, user, "")
 }
 
-func (h *Host) SetStopped(user string) error {
+func (h *Host) SetStopped(ctx context.Context, user string) error {
 	err := UpdateOne(
+		ctx,
 		bson.M{
 			IdKey:     h.Id,
 			StatusKey: h.Status,
@@ -715,8 +717,9 @@ func (h *Host) SetStopped(user string) error {
 	return nil
 }
 
-func (h *Host) SetUnprovisioned() error {
+func (h *Host) SetUnprovisioned(ctx context.Context) error {
 	if err := UpdateOne(
+		ctx,
 		bson.M{
 			IdKey:     h.Id,
 			StatusKey: h.Status,
@@ -735,15 +738,16 @@ func (h *Host) SetUnprovisioned() error {
 	return nil
 }
 
-func (h *Host) SetQuarantined(user string, logs string) error {
-	return h.SetStatus(evergreen.HostQuarantined, user, logs)
+func (h *Host) SetQuarantined(ctx context.Context, user string, logs string) error {
+	return h.SetStatus(ctx, evergreen.HostQuarantined, user, logs)
 }
 
 // CreateSecret generates a host secret and updates the host both locally
 // and in the database.
-func (h *Host) CreateSecret() error {
+func (h *Host) CreateSecret(ctx context.Context) error {
 	secret := utility.RandomString()
 	err := UpdateOne(
+		ctx,
 		bson.M{IdKey: h.Id},
 		bson.M{"$set": bson.M{SecretKey: secret}},
 	)
@@ -754,8 +758,9 @@ func (h *Host) CreateSecret() error {
 	return nil
 }
 
-func (h *Host) SetBillingStartTime(startTime time.Time) error {
+func (h *Host) SetBillingStartTime(ctx context.Context, startTime time.Time) error {
 	if err := UpdateOne(
+		ctx,
 		bson.M{IdKey: h.Id},
 		bson.M{"$set": bson.M{BillingStartTimeKey: startTime}},
 	); err != nil {
@@ -765,9 +770,10 @@ func (h *Host) SetBillingStartTime(startTime time.Time) error {
 	return nil
 }
 
-func (h *Host) SetAgentStartTime() error {
+func (h *Host) SetAgentStartTime(ctx context.Context) error {
 	now := time.Now()
 	if err := UpdateOne(
+		ctx,
 		bson.M{IdKey: h.Id},
 		bson.M{"$set": bson.M{AgentStartTimeKey: now}},
 	); err != nil {
@@ -818,7 +824,7 @@ func (h *Host) JasperClientCredentials(ctx context.Context, env evergreen.Enviro
 // database, they are deleted.
 func (h *Host) GenerateJasperCredentials(ctx context.Context, env evergreen.Environment) (*certdepot.Credentials, error) {
 	if h.JasperCredentialsID == "" {
-		if err := h.UpdateJasperCredentialsID(h.Id); err != nil {
+		if err := h.UpdateJasperCredentialsID(ctx, h.Id); err != nil {
 			return nil, errors.Wrap(err, "setting Jasper credentials ID")
 		}
 	}
@@ -881,8 +887,9 @@ func (h *Host) DeleteJasperCredentials(ctx context.Context, env evergreen.Enviro
 }
 
 // UpdateJasperCredentialsID sets the ID of the host's Jasper credentials.
-func (h *Host) UpdateJasperCredentialsID(id string) error {
+func (h *Host) UpdateJasperCredentialsID(ctx context.Context, id string) error {
 	if err := UpdateOne(
+		ctx,
 		bson.M{IdKey: h.Id},
 		bson.M{"$set": bson.M{JasperCredentialsIDKey: id}},
 	); err != nil {
@@ -893,9 +900,10 @@ func (h *Host) UpdateJasperCredentialsID(id string) error {
 }
 
 // UpdateLastCommunicated sets the host's last communication time to the current time.
-func (h *Host) UpdateLastCommunicated() error {
+func (h *Host) UpdateLastCommunicated(ctx context.Context) error {
 	now := time.Now()
 	err := UpdateOne(
+		ctx,
 		bson.M{IdKey: h.Id},
 		bson.M{"$set": bson.M{
 			LastCommunicationTimeKey: now,
@@ -909,8 +917,9 @@ func (h *Host) UpdateLastCommunicated() error {
 }
 
 // ResetLastCommunicated sets the LastCommunicationTime to be zero.
-func (h *Host) ResetLastCommunicated() error {
+func (h *Host) ResetLastCommunicated(ctx context.Context) error {
 	err := UpdateOne(
+		ctx,
 		bson.M{IdKey: h.Id},
 		bson.M{"$set": bson.M{LastCommunicationTimeKey: time.Unix(0, 0)}})
 	if err != nil {
@@ -922,9 +931,9 @@ func (h *Host) ResetLastCommunicated() error {
 
 // Terminate marks a host as terminated, sets the termination time, and unsets
 // the host volumes.
-func (h *Host) Terminate(user, reason string) error {
+func (h *Host) Terminate(ctx context.Context, user, reason string) error {
 	terminatedAt := time.Now()
-	if err := h.setStatusAndFields(evergreen.HostTerminated, nil, bson.M{
+	if err := h.setStatusAndFields(ctx, evergreen.HostTerminated, nil, bson.M{
 		TerminationTimeKey: terminatedAt,
 		VolumesKey:         nil,
 	}, nil, user, reason); err != nil {
@@ -938,8 +947,9 @@ func (h *Host) Terminate(user, reason string) error {
 }
 
 // SetDNSName updates the DNS name for a given host once
-func (h *Host) SetDNSName(dnsName string) error {
+func (h *Host) SetDNSName(ctx context.Context, dnsName string) error {
 	err := UpdateOne(
+		ctx,
 		bson.M{
 			IdKey:  h.Id,
 			DNSKey: "",
@@ -966,8 +976,9 @@ func (h *Host) SetDNSName(dnsName string) error {
 	return err
 }
 
-func (h *Host) SetIPv6Address(ipv6Address string) error {
+func (h *Host) SetIPv6Address(ctx context.Context, ipv6Address string) error {
 	err := UpdateOne(
+		ctx,
 		bson.M{
 			IdKey: h.Id,
 		},
@@ -987,8 +998,9 @@ func (h *Host) SetIPv6Address(ipv6Address string) error {
 }
 
 // probably don't want to store the port mapping exactly this way
-func (h *Host) SetPortMapping(portsMap PortMap) error {
+func (h *Host) SetPortMapping(ctx context.Context, portsMap PortMap) error {
 	err := UpdateOne(
+		ctx,
 		bson.M{
 			IdKey: h.Id,
 		},
@@ -1005,8 +1017,9 @@ func (h *Host) SetPortMapping(portsMap PortMap) error {
 	return nil
 }
 
-func (h *Host) UpdateCachedDistroProviderSettings(settingsDocuments []*birch.Document) error {
+func (h *Host) UpdateCachedDistroProviderSettings(ctx context.Context, settingsDocuments []*birch.Document) error {
 	err := UpdateOne(
+		ctx,
 		bson.M{IdKey: h.Id},
 		bson.M{
 			"$set": bson.M{
@@ -1022,9 +1035,10 @@ func (h *Host) UpdateCachedDistroProviderSettings(settingsDocuments []*birch.Doc
 	return nil
 }
 
-func (h *Host) MarkAsProvisioned() error {
+func (h *Host) MarkAsProvisioned(ctx context.Context) error {
 	now := time.Now()
 	err := UpdateOne(
+		ctx,
 		bson.M{
 			IdKey: h.Id,
 			StatusKey: bson.M{
@@ -1063,9 +1077,10 @@ func (h *Host) MarkAsProvisioned() error {
 
 // SetProvisionedNotRunning marks the host as having been provisioned by the app
 // server but the host is not necessarily running yet.
-func (h *Host) SetProvisionedNotRunning() error {
+func (h *Host) SetProvisionedNotRunning(ctx context.Context) error {
 	now := time.Now()
 	if err := UpdateOne(
+		ctx,
 		bson.M{
 			IdKey: h.Id,
 			StatusKey: bson.M{
@@ -1089,12 +1104,13 @@ func (h *Host) SetProvisionedNotRunning() error {
 
 // UpdateStartingToRunning changes the host status from provisioning to
 // running, as well as logging that the host has finished provisioning.
-func (h *Host) UpdateStartingToRunning() error {
+func (h *Host) UpdateStartingToRunning(ctx context.Context) error {
 	if h.Status != evergreen.HostStarting {
 		return nil
 	}
 
 	if err := UpdateOne(
+		ctx,
 		bson.M{
 			IdKey:          h.Id,
 			StatusKey:      evergreen.HostStarting,
@@ -1123,26 +1139,26 @@ func (h *Host) UpdateStartingToRunning() error {
 // restarted as long as the host does not already need a different
 // reprovisioning change. If the host is ready to reprovision now (i.e. no agent
 // monitor is running), it is put in the reprovisioning state.
-func (h *Host) SetNeedsToRestartJasper(user string) error {
+func (h *Host) SetNeedsToRestartJasper(ctx context.Context, user string) error {
 	// Ignore hosts that are not provisioned by us (e.g. hosts spawned by
 	// tasks) and legacy SSH hosts.
 	if utility.StringSliceContains([]string{distro.BootstrapMethodNone, distro.BootstrapMethodLegacySSH}, h.Distro.BootstrapSettings.Method) {
 		return nil
 	}
 
-	if err := h.setAwaitingJasperRestart(user); err != nil {
+	if err := h.setAwaitingJasperRestart(ctx, user); err != nil {
 		return err
 	}
 	if h.StartedBy == evergreen.User && !h.NeedsNewAgentMonitor {
 		return nil
 	}
-	return h.MarkAsReprovisioning()
+	return h.MarkAsReprovisioning(ctx)
 }
 
 // setAwaitingJasperRestart marks a host as needing Jasper to be restarted by
 // the given user but is not yet ready to reprovision now (i.e. the agent
 // monitor is still running).
-func (h *Host) setAwaitingJasperRestart(user string) error {
+func (h *Host) setAwaitingJasperRestart(ctx context.Context, user string) error {
 	// While these checks aren't strictly necessary since they're already
 	// filtered in the query, they do return more useful error messages.
 
@@ -1163,7 +1179,7 @@ func (h *Host) setAwaitingJasperRestart(user string) error {
 	}
 
 	bootstrapKey := bsonutil.GetDottedKeyName(DistroKey, distro.BootstrapSettingsKey, distro.BootstrapSettingsMethodKey)
-	if err := UpdateOne(bson.M{
+	if err := UpdateOne(ctx, bson.M{
 		IdKey:        h.Id,
 		StatusKey:    bson.M{"$in": allowedStatuses},
 		bootstrapKey: bson.M{"$in": allowedBootstrapMethods},
@@ -1199,24 +1215,24 @@ func (h *Host) setAwaitingJasperRestart(user string) error {
 
 // SetNeedsReprovisionToNew marks a host that is currently using new
 // provisioning to provision again.
-func (h *Host) SetNeedsReprovisionToNew(user string) error {
+func (h *Host) SetNeedsReprovisionToNew(ctx context.Context, user string) error {
 	// Ignore hosts that are not provisioned by us (e.g. hosts spawned by
 	// tasks) and legacy SSH hosts.
 	if utility.StringSliceContains([]string{distro.BootstrapMethodNone, distro.BootstrapMethodLegacySSH}, h.Distro.BootstrapSettings.Method) {
 		return nil
 	}
 
-	if err := h.setAwaitingReprovisionToNew(user); err != nil {
+	if err := h.setAwaitingReprovisionToNew(ctx, user); err != nil {
 		return err
 	}
 	if h.StartedBy == evergreen.User && !h.NeedsNewAgentMonitor {
 		return nil
 	}
 
-	return h.MarkAsReprovisioning()
+	return h.MarkAsReprovisioning(ctx)
 }
 
-func (h *Host) setAwaitingReprovisionToNew(user string) error {
+func (h *Host) setAwaitingReprovisionToNew(ctx context.Context, user string) error {
 	// While these checks aren't strictly necessary since they're already
 	// filtered in the query, they do return more useful error messages.
 
@@ -1238,7 +1254,7 @@ func (h *Host) setAwaitingReprovisionToNew(user string) error {
 	}
 
 	bootstrapKey := bsonutil.GetDottedKeyName(DistroKey, distro.BootstrapSettingsKey, distro.BootstrapSettingsMethodKey)
-	if err := UpdateOne(bson.M{
+	if err := UpdateOne(ctx, bson.M{
 		IdKey:        h.Id,
 		StatusKey:    bson.M{"$in": allowedStatuses},
 		bootstrapKey: bson.M{"$in": allowedBootstrapMethods},
@@ -1275,7 +1291,7 @@ func (h *Host) setAwaitingReprovisionToNew(user string) error {
 
 // MarkAsReprovisioning puts the host in a state that means it is ready to be
 // reprovisioned immediately.
-func (h *Host) MarkAsReprovisioning() error {
+func (h *Host) MarkAsReprovisioning(ctx context.Context) error {
 	allowedStatuses := []string{evergreen.HostProvisioning, evergreen.HostRunning}
 	if !utility.StringSliceContains(allowedStatuses, h.Status) {
 		return errors.Errorf("cannot reprovision a host when host status is '%s'", h.Status)
@@ -1292,7 +1308,7 @@ func (h *Host) MarkAsReprovisioning() error {
 		needsAgentMonitor = h.StartedBy == evergreen.User
 	}
 
-	err := UpdateOne(bson.M{
+	err := UpdateOne(ctx, bson.M{
 		IdKey:               h.Id,
 		NeedsReprovisionKey: h.NeedsReprovision,
 		StatusKey:           bson.M{"$in": allowedStatuses},
@@ -1321,9 +1337,10 @@ func (h *Host) MarkAsReprovisioning() error {
 }
 
 // MarkAsReprovisioned indicates that the host was successfully reprovisioned.
-func (h *Host) MarkAsReprovisioned() error {
+func (h *Host) MarkAsReprovisioned(ctx context.Context) error {
 	now := time.Now()
 	err := UpdateOne(
+		ctx,
 		bson.M{
 			IdKey: h.Id,
 			StatusKey: bson.M{
@@ -1354,9 +1371,10 @@ func (h *Host) MarkAsReprovisioned() error {
 }
 
 // ClearRunningAndSetLastTask unsets the running task on the host and updates the last task fields.
-func (h *Host) ClearRunningAndSetLastTask(t *task.Task) error {
+func (h *Host) ClearRunningAndSetLastTask(ctx context.Context, t *task.Task) error {
 	now := time.Now()
 	err := UpdateOne(
+		ctx,
 		bson.M{
 			IdKey:                   h.Id,
 			RunningTaskKey:          h.RunningTask,
@@ -1416,10 +1434,10 @@ func (h *Host) ClearRunningAndSetLastTask(t *task.Task) error {
 
 // ClearRunningTask unsets the running task on the host and logs an event
 // indicating it is no longer running the task.
-func (h *Host) ClearRunningTask() error {
+func (h *Host) ClearRunningTask(ctx context.Context) error {
 	hadRunningTask := h.RunningTask != ""
 	doUpdate := func(update bson.M) error {
-		return UpdateOne(bson.M{IdKey: h.Id}, update)
+		return UpdateOne(ctx, bson.M{IdKey: h.Id}, update)
 	}
 	if err := h.clearRunningTaskWithFunc(doUpdate); err != nil {
 		return err
@@ -1536,8 +1554,8 @@ func (h *Host) UpdateRunningTaskWithContext(ctx context.Context, env evergreen.E
 }
 
 // SetAgentRevision sets the updated agent revision for the host
-func (h *Host) SetAgentRevision(agentRevision string) error {
-	err := UpdateOne(bson.M{IdKey: h.Id},
+func (h *Host) SetAgentRevision(ctx context.Context, agentRevision string) error {
+	err := UpdateOne(ctx, bson.M{IdKey: h.Id},
 		bson.M{"$set": bson.M{AgentRevisionKey: agentRevision}})
 	if err != nil {
 		return err
@@ -1572,8 +1590,8 @@ func (h *Host) IsWaitingForAgent() bool {
 }
 
 // SetNeedsNewAgent sets the "needs new agent" flag on the host.
-func (h *Host) SetNeedsNewAgent(needsAgent bool) error {
-	err := UpdateOne(bson.M{IdKey: h.Id},
+func (h *Host) SetNeedsNewAgent(ctx context.Context, needsAgent bool) error {
+	err := UpdateOne(ctx, bson.M{IdKey: h.Id},
 		bson.M{"$set": bson.M{NeedsNewAgentKey: needsAgent}})
 	if err != nil {
 		return err
@@ -1584,8 +1602,8 @@ func (h *Host) SetNeedsNewAgent(needsAgent bool) error {
 
 // SetNeedsNewAgentMonitor sets the "needs new agent monitor" flag on the host
 // to indicate that the host needs to have the agent monitor deployed.
-func (h *Host) SetNeedsNewAgentMonitor(needsAgentMonitor bool) error {
-	err := UpdateOne(bson.M{IdKey: h.Id},
+func (h *Host) SetNeedsNewAgentMonitor(ctx context.Context, needsAgentMonitor bool) error {
+	err := UpdateOne(ctx, bson.M{IdKey: h.Id},
 		bson.M{"$set": bson.M{NeedsNewAgentMonitorKey: needsAgentMonitor}})
 	if err != nil {
 		return err
@@ -1596,21 +1614,22 @@ func (h *Host) SetNeedsNewAgentMonitor(needsAgentMonitor bool) error {
 
 // SetNeedsAgentDeploy indicates that the host's agent or agent monitor needs
 // to be deployed.
-func (h *Host) SetNeedsAgentDeploy(needsDeploy bool) error {
+func (h *Host) SetNeedsAgentDeploy(ctx context.Context, needsDeploy bool) error {
 	if !h.Distro.LegacyBootstrap() {
-		if err := h.SetNeedsNewAgentMonitor(needsDeploy); err != nil {
+		if err := h.SetNeedsNewAgentMonitor(ctx, needsDeploy); err != nil {
 			return errors.Wrap(err, "setting host needs new agent monitor")
 		}
 	}
-	return errors.Wrap(h.SetNeedsNewAgent(needsDeploy), "setting host needs new agent")
+	return errors.Wrap(h.SetNeedsNewAgent(ctx, needsDeploy), "setting host needs new agent")
 }
 
 // SetExpirationTime updates the expiration time of a spawn host
-func (h *Host) SetExpirationTime(expirationTime time.Time) error {
+func (h *Host) SetExpirationTime(ctx context.Context, expirationTime time.Time) error {
 	// update the in-memory host, then the database
 	h.ExpirationTime = expirationTime
 	h.NoExpiration = false
 	return UpdateOne(
+		ctx,
 		bson.M{
 			IdKey: h.Id,
 		},
@@ -1623,12 +1642,13 @@ func (h *Host) SetExpirationTime(expirationTime time.Time) error {
 	)
 }
 
-func (h *Host) MarkReachable() error {
+func (h *Host) MarkReachable(ctx context.Context) error {
 	if h.Status == evergreen.HostRunning {
 		return nil
 	}
 
 	if err := UpdateOne(
+		ctx,
 		bson.M{IdKey: h.Id},
 		bson.M{"$set": bson.M{StatusKey: evergreen.HostRunning}}); err != nil {
 		return errors.WithStack(err)
@@ -1647,7 +1667,7 @@ func (h *Host) MarkReachable() error {
 	return nil
 }
 
-func (h *Host) Upsert() (*adb.ChangeInfo, error) {
+func (h *Host) Upsert(ctx context.Context) (*mongo.UpdateResult, error) {
 	setFields := bson.M{
 		// If adding or removing fields here, make sure that all callers will work
 		// correctly after the change. Any fields defined here but not set by the
@@ -1691,11 +1711,12 @@ func (h *Host) Upsert() (*adb.ChangeInfo, error) {
 		update["$unset"] = unsetFields
 	}
 
-	return UpsertOne(bson.M{IdKey: h.Id}, update)
+	return UpsertOne(ctx, bson.M{IdKey: h.Id}, update)
 }
 
-func (h *Host) CacheHostData() error {
+func (h *Host) CacheHostData(ctx context.Context) error {
 	_, err := UpsertOne(
+		ctx,
 		bson.M{
 			IdKey: h.Id,
 		},
@@ -1712,8 +1733,8 @@ func (h *Host) CacheHostData() error {
 	return err
 }
 
-func (h *Host) Insert() error {
-	if err := db.Insert(Collection, h); err != nil {
+func (h *Host) Insert(ctx context.Context) error {
+	if err := InsertOne(ctx, h); err != nil {
 		return errors.Wrap(err, "inserting host")
 	}
 	h.logHostCreated()
@@ -1746,13 +1767,8 @@ func (h *Host) logHostCreated() {
 // what happened to it. Instead, it's preferable to set a host to a failure
 // state (e.g. building-failed, decommissioned) so that it can be cleaned up by
 // host termination.
-func (h *Host) Remove() error {
-	return db.Remove(
-		Collection,
-		bson.M{
-			IdKey: h.Id,
-		},
-	)
+func (h *Host) Remove(ctx context.Context) error {
+	return errors.Wrapf(DeleteOne(ctx, ById(h.Id)), "deleting host '%s'", h.Id)
 }
 
 // RemoveStrict deletes a host and errors if the host is not found.
@@ -1795,8 +1811,9 @@ func (h *Host) GetElapsedCommunicationTime() time.Duration {
 
 // DecommissionHostsWithDistroId marks all up hosts intended for running tasks
 // that have a matching distro ID as decommissioned.
-func DecommissionHostsWithDistroId(distroId string) error {
+func DecommissionHostsWithDistroId(ctx context.Context, distroId string) error {
 	err := UpdateAll(
+		ctx,
 		ByDistroIDs(distroId),
 		bson.M{
 			"$set": bson.M{
@@ -1807,9 +1824,9 @@ func DecommissionHostsWithDistroId(distroId string) error {
 	return err
 }
 
-func (h *Host) DisablePoisonedHost(logs string) error {
+func (h *Host) DisablePoisonedHost(ctx context.Context, logs string) error {
 	if h.Provider == evergreen.ProviderNameStatic {
-		if err := h.SetQuarantined(evergreen.User, logs); err != nil {
+		if err := h.SetQuarantined(ctx, evergreen.User, logs); err != nil {
 			return errors.WithStack(err)
 		}
 
@@ -1824,19 +1841,21 @@ func (h *Host) DisablePoisonedHost(logs string) error {
 		return nil
 	}
 
-	return errors.WithStack(h.SetDecommissioned(evergreen.User, false, logs))
+	return errors.WithStack(h.SetDecommissioned(ctx, evergreen.User, false, logs))
 }
 
-func (h *Host) SetExtId() error {
+func (h *Host) SetExtId(ctx context.Context) error {
 	return UpdateOne(
+		ctx,
 		bson.M{IdKey: h.Id},
 		bson.M{"$set": bson.M{ExtIdKey: h.ExternalIdentifier}},
 	)
 }
 
-func (h *Host) SetDisplayName(newName string) error {
+func (h *Host) SetDisplayName(ctx context.Context, newName string) error {
 	h.DisplayName = newName
 	return UpdateOne(
+		ctx,
 		bson.M{IdKey: h.Id},
 		bson.M{"$set": bson.M{DisplayNameKey: h.DisplayName}},
 	)
@@ -1844,14 +1863,14 @@ func (h *Host) SetDisplayName(newName string) error {
 
 // AddSSHKeyName adds the SSH key name for the host if it doesn't already have
 // it.
-func (h *Host) AddSSHKeyName(name string) error {
+func (h *Host) AddSSHKeyName(ctx context.Context, name string) error {
 	var update bson.M
 	if len(h.SSHKeyNames) == 0 {
 		update = bson.M{"$push": bson.M{SSHKeyNamesKey: name}}
 	} else {
 		update = bson.M{"$addToSet": bson.M{SSHKeyNamesKey: name}}
 	}
-	if err := UpdateOne(bson.M{IdKey: h.Id}, update); err != nil {
+	if err := UpdateOne(ctx, bson.M{IdKey: h.Id}, update); err != nil {
 		return errors.WithStack(err)
 	}
 
@@ -1862,7 +1881,7 @@ func (h *Host) AddSSHKeyName(name string) error {
 	return nil
 }
 
-func FindHostsToTerminate() ([]Host, error) {
+func FindHostsToTerminate(ctx context.Context) ([]Host, error) {
 	// unreachableCutoff is the threshold to wait for an decommissioned host to
 	// become marked as reachable again before giving up and terminating it.
 	const unreachableCutoff = 5 * time.Minute
@@ -1940,7 +1959,7 @@ func FindHostsToTerminate() ([]Host, error) {
 
 	// In some cases, the query planner will choose a very slow plan for this
 	// query. The hint guarantees that the query will use the host status index.
-	hosts, err := Find(db.Query(query).Hint(StatusIndex))
+	hosts, err := Find(ctx, query, options.Find().SetHint(StatusIndex))
 
 	if adb.ResultsNotFound(err) {
 		return []Host{}, nil
@@ -1965,22 +1984,38 @@ var StatusIndex = bson.D{
 	},
 }
 
-func CountInactiveHostsByProvider() ([]InactiveHostCounts, error) {
-	var counts []InactiveHostCounts
-	err := db.Aggregate(Collection, inactiveHostCountPipeline(), &counts)
+// StartedByStatusIndex is the started_by_1_status_1 index.
+var StartedByStatusIndex = bson.D{
+	{
+		Key:   StartedByKey,
+		Value: 1,
+	},
+	{
+		Key:   StatusKey,
+		Value: 1,
+	},
+}
+
+func CountInactiveHostsByProvider(ctx context.Context) ([]InactiveHostCounts, error) {
+	cur, err := evergreen.GetEnvironment().DB().Collection(Collection).Aggregate(ctx, inactiveHostCountPipeline())
 	if err != nil {
 		return nil, errors.Wrap(err, "aggregating inactive hosts")
 	}
+	var counts []InactiveHostCounts
+	if err = cur.All(ctx, &counts); err != nil {
+		return nil, errors.Wrap(err, "decoding inactive hosts")
+	}
+
 	return counts, nil
 }
 
 // FindAllRunningContainers finds all the containers that are currently running
-func FindAllRunningContainers() ([]Host, error) {
-	query := db.Query(bson.M{
+func FindAllRunningContainers(ctx context.Context) ([]Host, error) {
+	query := bson.M{
 		ParentIDKey: bson.M{"$exists": true},
 		StatusKey:   evergreen.HostRunning,
-	})
-	hosts, err := Find(query)
+	}
+	hosts, err := Find(ctx, query)
 	if err != nil {
 		return nil, errors.Wrap(err, "finding running containers")
 	}
@@ -1989,12 +2024,12 @@ func FindAllRunningContainers() ([]Host, error) {
 }
 
 // FindAllRunningParents finds all running hosts that have child containers
-func FindAllRunningParents() ([]Host, error) {
-	query := db.Query(bson.M{
+func FindAllRunningParents(ctx context.Context) ([]Host, error) {
+	query := bson.M{
 		StatusKey:        evergreen.HostRunning,
 		HasContainersKey: true,
-	})
-	hosts, err := Find(query)
+	}
+	hosts, err := Find(ctx, query)
 	if err != nil {
 		return nil, errors.Wrap(err, "finding running parents")
 	}
@@ -2004,12 +2039,12 @@ func FindAllRunningParents() ([]Host, error) {
 
 // FindAllRunningParentsOrdered finds all running hosts with child containers,
 // sorted in order of soonest  to latest LastContainerFinishTime
-func FindAllRunningParentsOrdered() ([]Host, error) {
-	query := db.Query(bson.M{
+func FindAllRunningParentsOrdered(ctx context.Context) ([]Host, error) {
+	query := bson.M{
 		StatusKey:        evergreen.HostRunning,
 		HasContainersKey: true,
-	}).Sort([]string{LastContainerFinishTimeKey})
-	hosts, err := Find(query)
+	}
+	hosts, err := Find(ctx, query, options.Find().SetSort(bson.M{LastContainerFinishTimeKey: 1}))
 	if err != nil {
 		return nil, errors.Wrap(err, "finding ordered running parents")
 	}
@@ -2019,26 +2054,26 @@ func FindAllRunningParentsOrdered() ([]Host, error) {
 
 // FindAllRunningParentsByDistroID finds all running hosts of a given distro ID
 // with child containers.
-func FindAllRunningParentsByDistroID(distroID string) ([]Host, error) {
-	query := db.Query(bson.M{
+func FindAllRunningParentsByDistroID(ctx context.Context, distroID string) ([]Host, error) {
+	query := bson.M{
 		StatusKey:        evergreen.HostRunning,
 		HasContainersKey: true,
 		bsonutil.GetDottedKeyName(DistroKey, distro.IdKey): distroID,
-	}).Sort([]string{LastContainerFinishTimeKey})
-	return Find(query)
+	}
+	return Find(ctx, query, options.Find().SetSort(bson.M{LastContainerFinishTimeKey: 1}))
 }
 
 // GetContainers finds all the containers belonging to this host
 // errors if this host is not a parent
-func (h *Host) GetContainers() ([]Host, error) {
+func (h *Host) GetContainers(ctx context.Context) ([]Host, error) {
 	if !h.HasContainers {
 		return nil, errors.New("host is not a container parent")
 	}
-	query := db.Query(bson.M{"$or": []bson.M{
+	query := bson.M{"$or": []bson.M{
 		{ParentIDKey: h.Id},
 		{ParentIDKey: h.Tag},
-	}})
-	hosts, err := Find(query)
+	}}
+	hosts, err := Find(ctx, query)
 	if err != nil {
 		return nil, errors.Wrap(err, "finding containers")
 	}
@@ -2046,19 +2081,19 @@ func (h *Host) GetContainers() ([]Host, error) {
 	return hosts, nil
 }
 
-func (h *Host) GetActiveContainers() ([]Host, error) {
+func (h *Host) GetActiveContainers(ctx context.Context) ([]Host, error) {
 	if !h.HasContainers {
 		return nil, errors.New("host is not a container parent")
 	}
-	query := db.Query(bson.M{
+	query := bson.M{
 		StatusKey: bson.M{
 			"$in": evergreen.UpHostStatus,
 		},
 		"$or": []bson.M{
 			{ParentIDKey: h.Id},
 			{ParentIDKey: h.Tag},
-		}})
-	hosts, err := Find(query)
+		}}
+	hosts, err := Find(ctx, query)
 	if err != nil {
 		return nil, errors.Wrap(err, "finding containers")
 	}
@@ -2068,11 +2103,11 @@ func (h *Host) GetActiveContainers() ([]Host, error) {
 
 // GetParent finds the parent of this container
 // errors if host is not a container or if parent cannot be found
-func (h *Host) GetParent() (*Host, error) {
+func (h *Host) GetParent(ctx context.Context) (*Host, error) {
 	if h.ParentID == "" {
 		return nil, errors.New("host does not have a parent")
 	}
-	host, err := FindOneByIdOrTag(h.ParentID)
+	host, err := FindOneByIdOrTag(ctx, h.ParentID)
 	if err != nil {
 		return nil, errors.Wrap(err, "finding container parent")
 	}
@@ -2087,7 +2122,7 @@ func (h *Host) GetParent() (*Host, error) {
 }
 
 // IsIdleParent determines whether a host has only inactive containers
-func (h *Host) IsIdleParent() (bool, error) {
+func (h *Host) IsIdleParent(ctx context.Context) (bool, error) {
 	const idleTimeCutoff = 20 * time.Minute
 	if !h.HasContainers {
 		return false, nil
@@ -2096,11 +2131,11 @@ func (h *Host) IsIdleParent() (bool, error) {
 	if h.IdleTime() < idleTimeCutoff {
 		return false, nil
 	}
-	query := db.Query(bson.M{
+	query := bson.M{
 		ParentIDKey: h.Id,
 		StatusKey:   bson.M{"$in": evergreen.UpHostStatus},
-	})
-	num, err := Count(query)
+	}
+	num, err := Count(ctx, query)
 	if err != nil {
 		return false, errors.Wrap(err, "counting non-terminated containers")
 	}
@@ -2108,7 +2143,7 @@ func (h *Host) IsIdleParent() (bool, error) {
 	return num == 0, nil
 }
 
-func (h *Host) UpdateParentIDs() error {
+func (h *Host) UpdateParentIDs(ctx context.Context) error {
 	query := bson.M{
 		ParentIDKey: h.Tag,
 	}
@@ -2117,7 +2152,7 @@ func (h *Host) UpdateParentIDs() error {
 			ParentIDKey: h.Id,
 		},
 	}
-	return UpdateAll(query, update)
+	return UpdateAll(ctx, query, update)
 }
 
 // For spawn hosts that have never been set unexpirable, this will
@@ -2135,7 +2170,7 @@ func (h *Host) PastMaxExpiration(extension time.Duration) error {
 }
 
 // UpdateLastContainerFinishTime updates latest finish time for a host with containers
-func (h *Host) UpdateLastContainerFinishTime(t time.Time) error {
+func (h *Host) UpdateLastContainerFinishTime(ctx context.Context, t time.Time) error {
 	selector := bson.M{
 		IdKey: h.Id,
 	}
@@ -2146,7 +2181,7 @@ func (h *Host) UpdateLastContainerFinishTime(t time.Time) error {
 		},
 	}
 
-	if err := UpdateOne(selector, update); err != nil {
+	if err := UpdateOne(ctx, selector, update); err != nil {
 		return errors.Wrapf(err, "updating last container finish time for host '%s'", h.Id)
 	}
 
@@ -2154,7 +2189,7 @@ func (h *Host) UpdateLastContainerFinishTime(t time.Time) error {
 }
 
 // FindRunningHosts is the underlying query behind the hosts page's table
-func FindRunningHosts(includeSpawnHosts bool) ([]Host, error) {
+func FindRunningHosts(ctx context.Context, includeSpawnHosts bool) ([]Host, error) {
 	query := bson.M{StatusKey: bson.M{"$ne": evergreen.HostTerminated}}
 
 	if !includeSpawnHosts {
@@ -2181,23 +2216,17 @@ func FindRunningHosts(includeSpawnHosts bool) ([]Host, error) {
 		},
 	}
 
-	var dbHosts []Host
-
-	if err := db.Aggregate(Collection, pipeline, &dbHosts); err != nil {
-		return nil, errors.WithStack(err)
-	}
-
-	return dbHosts, nil
+	return Aggregate(ctx, pipeline)
 }
 
 // FindAllHostsSpawnedByTasks finds all running hosts spawned by the
 // `host.create` command.
-func FindAllHostsSpawnedByTasks() ([]Host, error) {
-	query := db.Query(bson.M{
+func FindAllHostsSpawnedByTasks(ctx context.Context) ([]Host, error) {
+	query := bson.M{
 		StatusKey: evergreen.HostRunning,
 		bsonutil.GetDottedKeyName(SpawnOptionsKey, SpawnOptionsSpawnedByTaskKey): true,
-	})
-	hosts, err := Find(query)
+	}
+	hosts, err := Find(ctx, query)
 	if err != nil {
 		return nil, errors.Wrap(err, "finding hosts spawned by tasks")
 	}
@@ -2205,15 +2234,15 @@ func FindAllHostsSpawnedByTasks() ([]Host, error) {
 }
 
 // FindHostsSpawnedByTask finds hosts spawned by the `createhost` command scoped to a given task.
-func FindHostsSpawnedByTask(taskID string, execution int) ([]Host, error) {
+func FindHostsSpawnedByTask(ctx context.Context, taskID string, execution int) ([]Host, error) {
 	taskIDKey := bsonutil.GetDottedKeyName(SpawnOptionsKey, SpawnOptionsTaskIDKey)
 	taskExecutionNumberKey := bsonutil.GetDottedKeyName(SpawnOptionsKey, SpawnOptionsTaskExecutionNumberKey)
-	query := db.Query(bson.M{
+	query := bson.M{
 		StatusKey:              evergreen.HostRunning,
 		taskIDKey:              taskID,
 		taskExecutionNumberKey: execution,
-	})
-	hosts, err := Find(query)
+	}
+	hosts, err := Find(ctx, query)
 	if err != nil {
 		return nil, errors.Wrapf(err, "finding hosts spawned by task '%s' for execution %d", taskID, execution)
 	}
@@ -2221,13 +2250,13 @@ func FindHostsSpawnedByTask(taskID string, execution int) ([]Host, error) {
 }
 
 // FindHostsSpawnedByBuild finds hosts spawned by the `createhost` command scoped to a given build.
-func FindHostsSpawnedByBuild(buildID string) ([]Host, error) {
+func FindHostsSpawnedByBuild(ctx context.Context, buildID string) ([]Host, error) {
 	buildIDKey := bsonutil.GetDottedKeyName(SpawnOptionsKey, SpawnOptionsBuildIDKey)
-	query := db.Query(bson.M{
+	query := bson.M{
 		StatusKey:  evergreen.HostRunning,
 		buildIDKey: buildID,
-	})
-	hosts, err := Find(query)
+	}
+	hosts, err := Find(ctx, query)
 	if err != nil {
 		return nil, errors.Wrapf(err, "finding hosts spawned by build '%s'", buildID)
 	}
@@ -2236,18 +2265,13 @@ func FindHostsSpawnedByBuild(buildID string) ([]Host, error) {
 
 // FindTerminatedHostsRunningTasks finds all hosts that were running tasks when
 // they were terminated.
-func FindTerminatedHostsRunningTasks() ([]Host, error) {
-	hosts, err := Find(db.Query(bson.M{
+func FindTerminatedHostsRunningTasks(ctx context.Context) ([]Host, error) {
+	hosts, err := Find(ctx, bson.M{
 		StatusKey: evergreen.HostTerminated,
 		"$and": []bson.M{
 			{RunningTaskKey: bson.M{"$exists": true}},
 			{RunningTaskKey: bson.M{"$ne": ""}}},
-	}))
-
-	if adb.ResultsNotFound(err) {
-		err = nil
-	}
-
+	})
 	if err != nil {
 		return nil, errors.Wrap(err, "finding terminated hosts that have a running task")
 	}
@@ -2256,23 +2280,31 @@ func FindTerminatedHostsRunningTasks() ([]Host, error) {
 }
 
 // CountContainersOnParents counts how many containers are children of the given group of hosts
-func (hosts HostGroup) CountContainersOnParents() (int, error) {
+func (hosts HostGroup) CountContainersOnParents(ctx context.Context) (int, error) {
 	ids := hosts.GetHostIds()
-	query := db.Query(mgobson.M{
-		StatusKey:   mgobson.M{"$in": evergreen.UpHostStatus},
-		ParentIDKey: mgobson.M{"$in": ids},
-	})
-	return Count(query)
+	if len(ids) == 0 {
+		return 0, nil
+	}
+
+	query := bson.M{
+		StatusKey:   bson.M{"$in": evergreen.UpHostStatus},
+		ParentIDKey: bson.M{"$in": ids},
+	}
+	return Count(ctx, query)
 }
 
 // FindUphostContainersOnParents returns the containers that are children of the given hosts
-func (hosts HostGroup) FindUphostContainersOnParents() ([]Host, error) {
+func (hosts HostGroup) FindUphostContainersOnParents(ctx context.Context) ([]Host, error) {
 	ids := hosts.GetHostIds()
-	query := db.Query(mgobson.M{
-		StatusKey:   mgobson.M{"$in": evergreen.UpHostStatus},
-		ParentIDKey: mgobson.M{"$in": ids},
-	})
-	return Find(query)
+	if len(ids) == 0 {
+		return nil, nil
+	}
+
+	query := bson.M{
+		StatusKey:   bson.M{"$in": evergreen.UpHostStatus},
+		ParentIDKey: bson.M{"$in": ids},
+	}
+	return Find(ctx, query)
 }
 
 // GetHostIds returns a slice of host IDs for the given group of hosts
@@ -2331,8 +2363,8 @@ func (hosts HostGroup) Uphosts() HostGroup {
 // getNumContainersOnParents returns a slice of running parents and their respective
 // number of current containers currently running in order of longest expected
 // finish time
-func GetContainersOnParents(d distro.Distro) ([]ContainersOnParents, error) {
-	allParents, err := findAllRunningParentsByContainerPool(d.ContainerPool)
+func GetContainersOnParents(ctx context.Context, d distro.Distro) ([]ContainersOnParents, error) {
+	allParents, err := findAllRunningParentsByContainerPool(ctx, d.ContainerPool)
 	if err != nil {
 		return nil, errors.Wrapf(err, "finding running container parents in container pool '%s'", d.ContainerPool)
 	}
@@ -2341,7 +2373,7 @@ func GetContainersOnParents(d distro.Distro) ([]ContainersOnParents, error) {
 	// parents come in sorted order from soonest to latest expected finish time
 	for i := len(allParents) - 1; i >= 0; i-- {
 		parent := allParents[i]
-		currentContainers, err := parent.GetActiveContainers()
+		currentContainers, err := parent.GetActiveContainers(ctx)
 		if err != nil && !adb.ResultsNotFound(err) {
 			return nil, errors.Wrapf(err, "finding active containers for container parent '%s'", parent.Id)
 		}
@@ -2355,14 +2387,14 @@ func GetContainersOnParents(d distro.Distro) ([]ContainersOnParents, error) {
 	return containersOnParents, nil
 }
 
-func getNumNewParentsAndHostsToSpawn(pool *evergreen.ContainerPool, newContainersNeeded int, ignoreMaxHosts bool) (int, int, error) {
-	existingParents, err := findUphostParentsByContainerPool(pool.Id)
+func getNumNewParentsAndHostsToSpawn(ctx context.Context, pool *evergreen.ContainerPool, newContainersNeeded int, ignoreMaxHosts bool) (int, int, error) {
+	existingParents, err := findUphostParentsByContainerPool(ctx, pool.Id)
 	if err != nil {
 		return 0, 0, errors.Wrap(err, "finding container parents that are up")
 	}
 
 	// find all child containers running on those parents
-	existingContainers, err := HostGroup(existingParents).FindUphostContainersOnParents()
+	existingContainers, err := HostGroup(existingParents).FindUphostContainersOnParents(ctx)
 	if err != nil {
 		return 0, 0, errors.Wrap(err, "finding containers that are up")
 	}
@@ -2380,7 +2412,7 @@ func getNumNewParentsAndHostsToSpawn(pool *evergreen.ContainerPool, newContainer
 		return 0, 0, nil
 	}
 	// get parent distro from pool
-	parentDistro, err := distro.FindOneId(pool.Distro)
+	parentDistro, err := distro.FindOneId(ctx, pool.Distro)
 	if err != nil {
 		return 0, 0, errors.Wrap(err, "finding container parent's distro")
 	}
@@ -2451,50 +2483,40 @@ func parentCapacity(parent distro.Distro, numNewParents, numCurrentParents int, 
 
 // findAllRunningParentsByContainerPool returns a slice of hosts that are
 // parents of the container pool specified by the given ID.
-func findAllRunningParentsByContainerPool(poolId string) ([]Host, error) {
+func findAllRunningParentsByContainerPool(ctx context.Context, poolId string) ([]Host, error) {
 	hostContainerPoolId := bsonutil.GetDottedKeyName(ContainerPoolSettingsKey, evergreen.ContainerPoolIdKey)
-	query := db.Query(bson.M{
+	query := bson.M{
 		HasContainersKey:    true,
 		StatusKey:           evergreen.HostRunning,
 		hostContainerPoolId: poolId,
-	}).Sort([]string{LastContainerFinishTimeKey})
-	return Find(query)
+	}
+	return Find(ctx, query, options.Find().SetSort(bson.M{LastContainerFinishTimeKey: 1}))
 }
 
 // findUphostParents returns the container parent hosts that are up.
-func findUphostParentsByContainerPool(poolId string) ([]Host, error) {
+func findUphostParentsByContainerPool(ctx context.Context, poolId string) ([]Host, error) {
 	hostContainerPoolId := bsonutil.GetDottedKeyName(ContainerPoolSettingsKey, evergreen.ContainerPoolIdKey)
-	query := db.Query(bson.M{
+	query := bson.M{
 		HasContainersKey:    true,
 		StatusKey:           bson.M{"$in": evergreen.UpHostStatus},
 		hostContainerPoolId: poolId,
-	}).Sort([]string{LastContainerFinishTimeKey})
-	return Find(query)
-}
-
-func InsertMany(hosts []Host) error {
-	docs := make([]interface{}, len(hosts))
-	for idx := range hosts {
-		docs[idx] = &hosts[idx]
 	}
-
-	return errors.WithStack(db.InsertMany(Collection, docs...))
-
+	return Find(ctx, query, options.Find().SetSort(bson.M{LastContainerFinishTimeKey: 1}))
 }
 
 // CountContainersRunningAtTime counts how many containers were running on the
 // given parent host at the specified time, using the host StartTime and
 // TerminationTime fields.
-func (h *Host) CountContainersRunningAtTime(timestamp time.Time) (int, error) {
-	query := db.Query(bson.M{
+func (h *Host) CountContainersRunningAtTime(ctx context.Context, timestamp time.Time) (int, error) {
+	query := bson.M{
 		ParentIDKey:  h.Id,
 		StartTimeKey: bson.M{"$lt": timestamp},
 		"$or": []bson.M{
 			{TerminationTimeKey: bson.M{"$gt": timestamp}},
 			{TerminationTimeKey: time.Time{}},
 		},
-	})
-	return Count(query)
+	}
+	return Count(ctx, query)
 }
 
 func (h *Host) addTag(new Tag, hasPermissions bool) {
@@ -2539,8 +2561,9 @@ func (h *Host) DeleteTags(keys []string) {
 }
 
 // SetTags updates the host's instance tags in the database.
-func (h *Host) SetTags() error {
+func (h *Host) SetTags(ctx context.Context) error {
 	return UpdateOne(
+		ctx,
 		bson.M{
 			IdKey: h.Id,
 		},
@@ -2589,8 +2612,9 @@ func MakeHostTags(tagSlice []string) ([]Tag, error) {
 }
 
 // SetInstanceType updates the host's instance type in the database.
-func (h *Host) SetInstanceType(instanceType string) error {
+func (h *Host) SetInstanceType(ctx context.Context, instanceType string) error {
 	err := UpdateOne(
+		ctx,
 		bson.M{
 			IdKey: h.Id,
 		},
@@ -2608,8 +2632,7 @@ func (h *Host) SetInstanceType(instanceType string) error {
 }
 
 // AggregateSpawnhostData returns basic metrics on spawn host/volume usage.
-func AggregateSpawnhostData() (*SpawnHostUsage, error) {
-	res := []SpawnHostUsage{}
+func AggregateSpawnhostData(ctx context.Context) (*SpawnHostUsage, error) {
 	hostPipeline := []bson.M{
 		{"$match": bson.M{
 			UserHostKey: bson.M{"$eq": true},
@@ -2631,8 +2654,16 @@ func AggregateSpawnhostData() (*SpawnHostUsage, error) {
 		}},
 	}
 
-	if err := db.Aggregate(Collection, hostPipeline, &res); err != nil {
+	cur, err := evergreen.GetEnvironment().DB().Collection(Collection).Aggregate(ctx, hostPipeline)
+	if err != nil {
 		return nil, errors.Wrap(err, "aggregating spawn host usage data")
+	}
+	var hostRes []SpawnHostUsage
+	if err = cur.All(ctx, &hostRes); err != nil {
+		return nil, errors.Wrap(err, "decoding spawn host usage data")
+	}
+	if len(hostRes) == 0 {
+		return nil, errors.New("no host results found")
 	}
 
 	volumePipeline := []bson.M{
@@ -2649,17 +2680,18 @@ func AggregateSpawnhostData() (*SpawnHostUsage, error) {
 			"num_users_with_volumes": bson.M{"$size": "$users"},
 		}},
 	}
-	if err := db.Aggregate(VolumesCollection, volumePipeline, &res); err != nil {
+	cur, err = evergreen.GetEnvironment().DB().Collection(VolumesCollection).Aggregate(ctx, volumePipeline)
+	if err != nil {
 		return nil, errors.Wrap(err, "aggregating spawn host volume usage data")
 	}
-	if len(res) == 0 {
-		return nil, errors.New("no host/volume results found")
+	var volRes []SpawnHostUsage
+	if err = cur.All(ctx, &volRes); err != nil {
+		return nil, errors.Wrap(err, "decoding spawn host volume usage data")
 	}
 
-	temp := []struct {
-		InstanceType string `bson:"instance_type"`
-		Count        int    `bson:"count"`
-	}{}
+	if len(volRes) == 0 {
+		return nil, errors.New("no volume results found")
+	}
 
 	instanceTypePipeline := []bson.M{
 		{"$match": bson.M{
@@ -2677,39 +2709,57 @@ func AggregateSpawnhostData() (*SpawnHostUsage, error) {
 		}},
 	}
 
-	if err := db.Aggregate(Collection, instanceTypePipeline, &temp); err != nil {
+	cur, err = evergreen.GetEnvironment().DB().Collection(Collection).Aggregate(ctx, instanceTypePipeline)
+	if err != nil {
 		return nil, errors.Wrap(err, "aggregating spawn host instance type usage data")
 	}
-
-	res[0].InstanceTypes = map[string]int{}
-	for _, each := range temp {
-		res[0].InstanceTypes[each.InstanceType] = each.Count
+	temp := []struct {
+		InstanceType string `bson:"instance_type"`
+		Count        int    `bson:"count"`
+	}{}
+	if err = cur.All(ctx, &temp); err != nil {
+		return nil, errors.Wrap(err, "decoding spawn host instance type usage data")
 	}
-	return &res[0], nil
+
+	instanceTypes := make(map[string]int, len(temp))
+	for _, each := range temp {
+		instanceTypes[each.InstanceType] = each.Count
+	}
+
+	return &SpawnHostUsage{
+		TotalHosts:            hostRes[0].TotalHosts,
+		TotalStoppedHosts:     hostRes[0].TotalStoppedHosts,
+		TotalUnexpirableHosts: hostRes[0].TotalUnexpirableHosts,
+		NumUsersWithHosts:     hostRes[0].NumUsersWithHosts,
+		TotalVolumes:          volRes[0].TotalVolumes,
+		TotalVolumeSize:       volRes[0].TotalVolumeSize,
+		NumUsersWithVolumes:   volRes[0].NumUsersWithVolumes,
+		InstanceTypes:         instanceTypes,
+	}, nil
 }
 
 // CountSpawnhostsWithNoExpirationByUser returns a count of all hosts associated
 // with a given users that are considered up and should never expire.
-func CountSpawnhostsWithNoExpirationByUser(user string) (int, error) {
-	query := db.Query(bson.M{
+func CountSpawnhostsWithNoExpirationByUser(ctx context.Context, user string) (int, error) {
+	query := bson.M{
 		StartedByKey:    user,
 		NoExpirationKey: true,
 		StatusKey:       bson.M{"$in": evergreen.UpHostStatus},
-	})
-	return Count(query)
+	}
+	return Count(ctx, query)
 }
 
 // FindSpawnhostsWithNoExpirationToExtend returns all hosts that are set to never
 // expire but have their expiration time within the next day and are still up.
-func FindSpawnhostsWithNoExpirationToExtend() ([]Host, error) {
-	query := db.Query(bson.M{
+func FindSpawnhostsWithNoExpirationToExtend(ctx context.Context) ([]Host, error) {
+	query := bson.M{
 		UserHostKey:       true,
 		NoExpirationKey:   true,
 		StatusKey:         bson.M{"$in": evergreen.UpHostStatus},
 		ExpirationTimeKey: bson.M{"$lte": time.Now().Add(24 * time.Hour)},
-	})
+	}
 
-	return Find(query)
+	return Find(ctx, query)
 }
 
 func makeExpireOnTag(expireOn string) Tag {
@@ -2722,11 +2772,12 @@ func makeExpireOnTag(expireOn string) Tag {
 
 // MarkShouldNotExpire marks a host as one that should not expire
 // and updates its expiration time to avoid early reaping.
-func (h *Host) MarkShouldNotExpire(expireOnValue string) error {
+func (h *Host) MarkShouldNotExpire(ctx context.Context, expireOnValue string) error {
 	h.NoExpiration = true
 	h.ExpirationTime = time.Now().Add(evergreen.SpawnHostNoExpirationDuration)
 	h.addTag(makeExpireOnTag(expireOnValue), true)
 	return UpdateOne(
+		ctx,
 		bson.M{
 			IdKey: h.Id,
 		},
@@ -2742,7 +2793,7 @@ func (h *Host) MarkShouldNotExpire(expireOnValue string) error {
 
 // MarkShouldExpire resets a host's expiration to expire like
 // a normal spawn host, after 24 hours.
-func (h *Host) MarkShouldExpire(expireOnValue string) error {
+func (h *Host) MarkShouldExpire(ctx context.Context, expireOnValue string) error {
 	// If it's already set to expire, do nothing.
 	if !h.NoExpiration {
 		return nil
@@ -2753,9 +2804,9 @@ func (h *Host) MarkShouldExpire(expireOnValue string) error {
 	if expireOnValue != "" {
 		h.addTag(makeExpireOnTag(expireOnValue), true)
 	}
-	return UpdateOne(bson.M{
-		IdKey: h.Id,
-	},
+	return UpdateOne(
+		ctx,
+		bson.M{IdKey: h.Id},
 		bson.M{
 			"$set": bson.M{
 				NoExpirationKey:   h.NoExpiration,
@@ -2769,8 +2820,9 @@ func (h *Host) MarkShouldExpire(expireOnValue string) error {
 // UnsetHomeVolume disassociates a home volume from a (stopped) host.
 // This is for internal use, and should only be used on hosts that
 // will be terminated imminently; otherwise, the host will fail to boot.
-func (h *Host) UnsetHomeVolume() error {
+func (h *Host) UnsetHomeVolume(ctx context.Context) error {
 	err := UpdateOne(
+		ctx,
 		bson.M{IdKey: h.Id},
 		bson.M{"$set": bson.M{HomeVolumeIDKey: ""}},
 	)
@@ -2782,9 +2834,9 @@ func (h *Host) UnsetHomeVolume() error {
 	return nil
 }
 
-func (h *Host) SetHomeVolumeID(volumeID string) error {
+func (h *Host) SetHomeVolumeID(ctx context.Context, volumeID string) error {
 	h.HomeVolumeID = volumeID
-	return UpdateOne(bson.M{
+	return UpdateOne(ctx, bson.M{
 		IdKey:           h.Id,
 		HomeVolumeIDKey: "",
 	},
@@ -2814,47 +2866,41 @@ func (h *Host) HostVolumeDeviceNames() []string {
 
 // FindHostWithVolume finds the host associated with the
 // specified volume ID.
-func FindHostWithVolume(volumeID string) (*Host, error) {
-	q := db.Query(
-		bson.M{
-			StatusKey:   bson.M{"$in": evergreen.UpHostStatus},
-			UserHostKey: true,
-			bsonutil.GetDottedKeyName(VolumesKey, VolumeAttachmentIDKey): volumeID,
-		},
-	)
-	return FindOne(q)
+func FindHostWithVolume(ctx context.Context, volumeID string) (*Host, error) {
+	q := bson.M{
+		StatusKey:   bson.M{"$in": evergreen.UpHostStatus},
+		UserHostKey: true,
+		bsonutil.GetDottedKeyName(VolumesKey, VolumeAttachmentIDKey): volumeID,
+	}
+	return FindOne(ctx, q)
 }
 
 // FindUpHostWithHomeVolume finds the up host associated with the
 // specified home volume ID.
-func FindUpHostWithHomeVolume(homeVolumeID string) (*Host, error) {
-	q := db.Query(
-		bson.M{
-			StatusKey:       bson.M{"$in": evergreen.UpHostStatus},
-			UserHostKey:     true,
-			HomeVolumeIDKey: homeVolumeID,
-		},
-	)
-	return FindOne(q)
+func FindUpHostWithHomeVolume(ctx context.Context, homeVolumeID string) (*Host, error) {
+	q := bson.M{
+		StatusKey:       bson.M{"$in": evergreen.UpHostStatus},
+		UserHostKey:     true,
+		HomeVolumeIDKey: homeVolumeID,
+	}
+	return FindOne(ctx, q)
 }
 
 // FindLatestTerminatedHostWithHomeVolume finds the user's most recently terminated host
 // associated with the specified home volume ID.
-func FindLatestTerminatedHostWithHomeVolume(homeVolumeID string, startedBy string) (*Host, error) {
-	q := db.Query(
-		bson.M{
-			StatusKey:       evergreen.HostTerminated,
-			StartedByKey:    startedBy,
-			UserHostKey:     true,
-			HomeVolumeIDKey: homeVolumeID,
-		},
-	).Sort([]string{"-" + TerminationTimeKey})
-	return FindOne(q)
+func FindLatestTerminatedHostWithHomeVolume(ctx context.Context, homeVolumeID string, startedBy string) (*Host, error) {
+	q := bson.M{
+		StatusKey:       evergreen.HostTerminated,
+		StartedByKey:    startedBy,
+		UserHostKey:     true,
+		HomeVolumeIDKey: homeVolumeID,
+	}
+	return FindOne(ctx, q, options.FindOne().SetSort(bson.M{TerminationTimeKey: -1}))
 }
 
 // FindStaticNeedsNewSSHKeys finds all static hosts that do not have the same
 // set of SSH keys as those in the global settings.
-func FindStaticNeedsNewSSHKeys(settings *evergreen.Settings) ([]Host, error) {
+func FindStaticNeedsNewSSHKeys(ctx context.Context, settings *evergreen.Settings) ([]Host, error) {
 	if len(settings.SSHKeyPairs) == 0 {
 		return nil, nil
 	}
@@ -2864,11 +2910,11 @@ func FindStaticNeedsNewSSHKeys(settings *evergreen.Settings) ([]Host, error) {
 		names = append(names, pair.Name)
 	}
 
-	return Find(db.Query(bson.M{
+	return Find(ctx, bson.M{
 		StatusKey:      evergreen.HostRunning,
 		ProviderKey:    evergreen.ProviderNameStatic,
 		SSHKeyNamesKey: bson.M{"$not": bson.M{"$all": names}},
-	}))
+	})
 }
 
 func (h *Host) IsSubjectToHostCreationThrottle() bool {
@@ -2938,9 +2984,21 @@ func GetHostByIdOrTagWithTask(hostID string) (*Host, error) {
 	return &hosts[0], nil
 }
 
-// GetPaginatedRunningHosts gets running hosts with pagination and applies any
-// filters.
-func GetPaginatedRunningHosts(hostID, distroID, currentTaskID string, statuses []string, startedBy string, sortBy string, sortDir, page, limit int) ([]Host, *int, int, error) {
+// HostsFilterOptions represents the filtering arguments for fetching hosts.
+type HostsFilterOptions struct {
+	HostID        string
+	DistroID      string
+	CurrentTaskID string
+	Statuses      []string
+	StartedBy     string
+	SortBy        string
+	SortDir       int
+	Page          int
+	Limit         int
+}
+
+// GetPaginatedRunningHosts gets running hosts with pagination and applies any filters.
+func GetPaginatedRunningHosts(ctx context.Context, opts HostsFilterOptions) ([]Host, *int, int, error) {
 	runningHostsPipeline := []bson.M{
 		{
 			"$match": bson.M{StatusKey: bson.M{"$ne": evergreen.HostTerminated}},
@@ -2961,15 +3019,12 @@ func GetPaginatedRunningHosts(hostID, distroID, currentTaskID string, statuses [
 		},
 	}
 
-	env := evergreen.GetEnvironment()
-	ctx, cancel := env.Context()
-	defer cancel()
-
 	countPipeline := []bson.M{}
 	countPipeline = append(countPipeline, runningHostsPipeline...)
 	countPipeline = append(countPipeline, bson.M{"$count": "count"})
 
 	tmp := []counter{}
+	env := evergreen.GetEnvironment()
 	cursor, err := env.DB().Collection(Collection).Aggregate(ctx, countPipeline)
 	if err != nil {
 		return nil, nil, 0, err
@@ -2985,53 +3040,56 @@ func GetPaginatedRunningHosts(hostID, distroID, currentTaskID string, statuses [
 
 	hasFilters := false
 
-	if len(hostID) > 0 {
+	if len(opts.HostID) > 0 {
 		hasFilters = true
 
 		runningHostsPipeline = append(runningHostsPipeline, bson.M{
 			"$match": bson.M{
-				IdKey: hostID,
+				"$or": []bson.M{
+					{IdKey: opts.HostID},
+					{DNSKey: opts.HostID},
+				},
 			},
 		})
 	}
 
-	if len(distroID) > 0 {
+	if len(opts.DistroID) > 0 {
 		hasFilters = true
 
 		distroIDKey := bsonutil.GetDottedKeyName(DistroKey, distro.IdKey)
 		runningHostsPipeline = append(runningHostsPipeline, bson.M{
 			"$match": bson.M{
-				distroIDKey: bson.M{"$regex": distroID, "$options": "i"},
+				distroIDKey: bson.M{"$regex": opts.DistroID, "$options": "i"},
 			},
 		})
 	}
 
-	if len(currentTaskID) > 0 {
+	if len(opts.CurrentTaskID) > 0 {
 		hasFilters = true
 
 		runningHostsPipeline = append(runningHostsPipeline, bson.M{
 			"$match": bson.M{
-				RunningTaskKey: currentTaskID,
+				RunningTaskKey: opts.CurrentTaskID,
 			},
 		})
 	}
 
-	if len(startedBy) > 0 {
+	if len(opts.StartedBy) > 0 {
 		hasFilters = true
 
 		runningHostsPipeline = append(runningHostsPipeline, bson.M{
 			"$match": bson.M{
-				StartedByKey: startedBy,
+				StartedByKey: opts.StartedBy,
 			},
 		})
 	}
 
-	if len(statuses) > 0 {
+	if len(opts.Statuses) > 0 {
 		hasFilters = true
 
 		runningHostsPipeline = append(runningHostsPipeline, bson.M{
 			"$match": bson.M{
-				StatusKey: bson.M{"$in": statuses},
+				StatusKey: bson.M{"$in": opts.Statuses},
 			},
 		})
 	}
@@ -3058,8 +3116,8 @@ func GetPaginatedRunningHosts(hostID, distroID, currentTaskID string, statuses [
 	}
 
 	sorters := bson.D{}
-	if len(sortBy) > 0 {
-		sorters = append(sorters, bson.E{Key: sortBy, Value: sortDir})
+	if len(opts.SortBy) > 0 {
+		sorters = append(sorters, bson.E{Key: opts.SortBy, Value: opts.SortDir})
 	}
 	// _id must be the last item in the sort array to ensure a consistent sort
 	// order when previous sort keys result in a tie.
@@ -3068,12 +3126,12 @@ func GetPaginatedRunningHosts(hostID, distroID, currentTaskID string, statuses [
 		"$sort": sorters,
 	})
 
-	if limit > 0 {
+	if opts.Limit > 0 {
 		runningHostsPipeline = append(runningHostsPipeline, bson.M{
-			"$skip": page * limit,
+			"$skip": opts.Page * opts.Limit,
 		})
 		runningHostsPipeline = append(runningHostsPipeline, bson.M{
-			"$limit": limit,
+			"$limit": opts.Limit,
 		})
 	}
 
@@ -3100,7 +3158,7 @@ type VirtualWorkstationCounter struct {
 	Count        int    `bson:"count" json:"count"`
 }
 
-func CountVirtualWorkstationsByInstanceType() ([]VirtualWorkstationCounter, error) {
+func CountVirtualWorkstationsByInstanceType(ctx context.Context) ([]VirtualWorkstationCounter, error) {
 	pipeline := []bson.M{
 		{"$match": bson.M{
 			StatusKey:               evergreen.HostRunning,
@@ -3117,9 +3175,36 @@ func CountVirtualWorkstationsByInstanceType() ([]VirtualWorkstationCounter, erro
 		}},
 	}
 
-	data := []VirtualWorkstationCounter{}
-	if err := db.Aggregate(Collection, pipeline, &data); err != nil {
+	cur, err := evergreen.GetEnvironment().DB().Collection(Collection).Aggregate(ctx, pipeline)
+	if err != nil {
 		return nil, errors.Wrap(err, "aggregating virtual workstation counts by instance type")
 	}
+	var data []VirtualWorkstationCounter
+	if err = cur.All(ctx, &data); err != nil {
+		return nil, errors.Wrap(err, "decoding virtual workstation counts")
+	}
+
 	return data, nil
+}
+
+// ClearDockerStdinData clears the Docker stdin data from the host.
+func (h *Host) ClearDockerStdinData(ctx context.Context) error {
+	if len(h.DockerOptions.StdinData) == 0 {
+		return nil
+	}
+
+	dockerStdinDataKey := bsonutil.GetDottedKeyName(DockerOptionsKey, DockerOptionsStdinDataKey)
+	if err := UpdateOne(ctx, bson.M{
+		IdKey: h.Id,
+	},
+		bson.M{
+			"$unset": bson.M{dockerStdinDataKey: true},
+		},
+	); err != nil {
+		return err
+	}
+
+	h.DockerOptions.StdinData = nil
+
+	return nil
 }

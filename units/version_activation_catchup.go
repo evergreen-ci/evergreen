@@ -55,7 +55,7 @@ func NewVersionActivationJob(ts string) amboy.Job {
 func (j *versionActivationCatchup) Run(ctx context.Context) {
 	defer j.MarkComplete()
 
-	flags, err := evergreen.GetServiceFlags()
+	flags, err := evergreen.GetServiceFlags(ctx)
 	if err != nil {
 		j.AddError(err)
 		return

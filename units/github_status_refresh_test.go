@@ -14,6 +14,7 @@ import (
 	"github.com/evergreen-ci/evergreen/model/build"
 	"github.com/evergreen-ci/evergreen/model/patch"
 	"github.com/evergreen-ci/evergreen/model/task"
+	"github.com/evergreen-ci/evergreen/testutil"
 	"github.com/evergreen-ci/evergreen/thirdparty"
 	"github.com/mongodb/grip/message"
 	"github.com/mongodb/grip/send"
@@ -24,26 +25,36 @@ type githubStatusRefreshSuite struct {
 	env      *mock.Environment
 	patchDoc *patch.Patch
 
-	cancel context.CancelFunc
+	suiteCtx context.Context
+	cancel   context.CancelFunc
+	ctx      context.Context
+
 	suite.Suite
 }
 
 func TestGithubStatusRefresh(t *testing.T) {
-	suite.Run(t, new(githubStatusRefreshSuite))
+	s := &githubStatusRefreshSuite{}
+	s.suiteCtx, s.cancel = context.WithCancel(context.Background())
+	s.suiteCtx = testutil.TestSpan(s.suiteCtx, t)
+
+	suite.Run(t, s)
+}
+
+func (s *githubStatusRefreshSuite) TearDownSuite() {
+	s.cancel()
 }
 
 func (s *githubStatusRefreshSuite) SetupTest() {
+	s.ctx = testutil.TestSpan(s.suiteCtx, s.T())
+
 	s.NoError(db.ClearCollections(patch.Collection, build.Collection, task.Collection, model.ProjectRefCollection, evergreen.ConfigCollection))
 
 	uiConfig := evergreen.UIConfig{}
 	uiConfig.Url = "https://example.com"
-	s.Require().NoError(uiConfig.Set())
-
-	ctx, cancel := context.WithCancel(context.Background())
-	s.cancel = cancel
+	s.Require().NoError(uiConfig.Set(s.ctx))
 
 	s.env = &mock.Environment{}
-	s.Require().NoError(s.env.Configure(ctx))
+	s.Require().NoError(s.env.Configure(s.ctx))
 
 	pRef := model.ProjectRef{
 		Id:         "myChildProject",
@@ -58,7 +69,7 @@ func (s *githubStatusRefreshSuite) SetupTest() {
 		Version:      id.Hex(),
 		Activated:    true,
 		DisplayNewUI: true,
-		Status:       evergreen.PatchStarted,
+		Status:       evergreen.VersionStarted,
 		StartTime:    startTime,
 		FinishTime:   startTime.Add(10 * time.Minute),
 		GithubPatchData: thirdparty.GithubPatch{
@@ -74,21 +85,17 @@ func (s *githubStatusRefreshSuite) SetupTest() {
 
 }
 
-func (s *githubStatusRefreshSuite) TearDownTest() {
-	s.cancel()
-}
-
 func (s *githubStatusRefreshSuite) TestRunInDegradedMode() {
 	flags := evergreen.ServiceFlags{
 		GithubStatusAPIDisabled: true,
 	}
-	s.Require().NoError(evergreen.SetServiceFlags(flags))
+	s.Require().NoError(evergreen.SetServiceFlags(s.ctx, flags))
 
 	job, ok := NewGithubStatusRefreshJob(s.patchDoc).(*githubStatusRefreshJob)
 	s.Require().NotNil(job)
 	s.Require().True(ok)
 	job.env = s.env
-	job.Run(context.Background())
+	job.Run(s.ctx)
 
 	s.False(job.HasErrors())
 }
@@ -113,7 +120,7 @@ func (s *githubStatusRefreshSuite) TestFetch() {
 	s.Require().NotNil(job.patch)
 	job.env = s.env
 
-	s.NoError(job.fetch())
+	s.NoError(job.fetch(s.ctx))
 	s.NotEmpty(job.urlBase)
 	s.Len(job.builds, 1)
 	s.Len(job.childPatches, 1)
@@ -140,7 +147,7 @@ func (s *githubStatusRefreshSuite) TestStatusPending() {
 
 	childPatch := patch.Patch{
 		Id:        mgobson.NewObjectId(),
-		Status:    evergreen.PatchStarted,
+		Status:    evergreen.VersionStarted,
 		Project:   "myChildProject",
 		Activated: true,
 		Triggers: patch.TriggerInfo{
@@ -156,7 +163,7 @@ func (s *githubStatusRefreshSuite) TestStatusPending() {
 	s.Require().True(ok)
 	s.Require().NotNil(job.patch)
 	job.env = s.env
-	job.Run(context.Background())
+	job.Run(s.ctx)
 	s.False(job.HasErrors())
 
 	status := s.getAndValidateStatus(s.env.InternalSender)
@@ -181,15 +188,15 @@ func (s *githubStatusRefreshSuite) TestStatusPending() {
 	s.Equal("tasks are running", status.Description)
 }
 
-func (s *githubStatusRefreshSuite) TestStatusPendingDueToUnscheduledEssentialTasks() {
+func (s *githubStatusRefreshSuite) TestStatusPendingDueToEssentialTaskThatWillRun() {
 	tsk := task.Task{
-		Id:                  "t1",
-		BuildId:             "b1",
-		BuildVariant:        "myBuild",
-		Version:             s.patchDoc.Version,
-		Activated:           false,
-		Status:              evergreen.TaskUndispatched,
-		IsEssentialToFinish: true,
+		Id:                   "t1",
+		BuildId:              "b1",
+		BuildVariant:         "myBuild",
+		Version:              s.patchDoc.Version,
+		Activated:            true,
+		Status:               evergreen.TaskStarted,
+		IsEssentialToSucceed: true,
 	}
 	s.NoError(tsk.Insert())
 
@@ -206,7 +213,50 @@ func (s *githubStatusRefreshSuite) TestStatusPendingDueToUnscheduledEssentialTas
 	s.Require().True(ok)
 	s.Require().NotNil(job.patch)
 	job.env = s.env
-	job.Run(context.Background())
+	job.Run(s.ctx)
+	s.False(job.HasErrors())
+
+	status := s.getAndValidateStatus(s.env.InternalSender)
+	// Patch status
+	s.Equal(fmt.Sprintf("https://example.com/version/%s?redirect_spruce_users=true", s.patchDoc.Version), status.URL)
+	s.Equal("evergreen", status.Context)
+	s.Equal(message.GithubStatePending, status.State)
+	s.Equal("tasks are running", status.Description)
+
+	// Build status
+	status = s.getAndValidateStatus(s.env.InternalSender)
+	s.Equal(fmt.Sprintf("https://example.com/build/%s?redirect_spruce_users=true", b.Id), status.URL)
+	s.Equal("evergreen/myBuild", status.Context)
+	s.Equal(message.GithubStatePending, status.State)
+	s.Equal("tasks are running", status.Description)
+}
+
+func (s *githubStatusRefreshSuite) TestStatusPendingDueToAllUnscheduledEssentialTasks() {
+	tsk := task.Task{
+		Id:                   "t1",
+		BuildId:              "b1",
+		BuildVariant:         "myBuild",
+		Version:              s.patchDoc.Version,
+		Activated:            false,
+		Status:               evergreen.TaskUndispatched,
+		IsEssentialToSucceed: true,
+	}
+	s.NoError(tsk.Insert())
+
+	b := build.Build{
+		Id:           "b1",
+		BuildVariant: "myBuild",
+		Version:      s.patchDoc.Version,
+		Status:       evergreen.BuildStarted,
+	}
+	s.NoError(b.Insert())
+
+	job, ok := NewGithubStatusRefreshJob(s.patchDoc).(*githubStatusRefreshJob)
+	s.Require().NotNil(job)
+	s.Require().True(ok)
+	s.Require().NotNil(job.patch)
+	job.env = s.env
+	job.Run(s.ctx)
 	s.False(job.HasErrors())
 
 	// Patch status
@@ -221,7 +271,63 @@ func (s *githubStatusRefreshSuite) TestStatusPendingDueToUnscheduledEssentialTas
 	s.Equal(fmt.Sprintf("https://example.com/build/%s?redirect_spruce_users=true", b.Id), status.URL)
 	s.Equal("evergreen/myBuild", status.Context)
 	s.Equal(message.GithubStatePending, status.State)
-	s.Equal(build.UnscheduledEssentialTasksPRBuildDescription(1), status.Description)
+	s.Equal("1 essential task(s) not scheduled", status.Description)
+}
+
+func (s *githubStatusRefreshSuite) TestStatusFailedDueToMixOfFailedAndUnscheduledEssentialTasks() {
+	failedTask := task.Task{
+		Id:                   "t1",
+		BuildId:              "b1",
+		BuildVariant:         "myBuild",
+		Version:              s.patchDoc.Version,
+		Activated:            true,
+		Status:               evergreen.TaskFailed,
+		IsEssentialToSucceed: true,
+	}
+	s.NoError(failedTask.Insert())
+	unscheduledEssentialTask := task.Task{
+		Id:                   "t2",
+		BuildId:              "b1",
+		BuildVariant:         "myBuild",
+		Version:              s.patchDoc.Version,
+		Activated:            false,
+		Status:               evergreen.TaskUndispatched,
+		IsEssentialToSucceed: true,
+	}
+	s.NoError(unscheduledEssentialTask.Insert())
+
+	startTime := time.Now()
+	b := build.Build{
+		Id:           "b1",
+		BuildVariant: "myBuild",
+		StartTime:    startTime,
+		FinishTime:   startTime.Add(time.Minute),
+		Version:      s.patchDoc.Version,
+		Status:       evergreen.BuildFailed,
+	}
+	s.NoError(b.Insert())
+
+	job, ok := NewGithubStatusRefreshJob(s.patchDoc).(*githubStatusRefreshJob)
+	s.Require().NotNil(job)
+	s.Require().True(ok)
+	s.Require().NotNil(job.patch)
+	job.env = s.env
+	job.Run(s.ctx)
+	s.False(job.HasErrors())
+
+	// Patch status
+	status := s.getAndValidateStatus(s.env.InternalSender)
+	s.Equal(fmt.Sprintf("https://example.com/version/%s?redirect_spruce_users=true", s.patchDoc.Version), status.URL)
+	s.Equal("evergreen", status.Context)
+	s.Equal(message.GithubStatePending, status.State)
+	s.Equal("tasks are running", status.Description)
+
+	// Build status
+	status = s.getAndValidateStatus(s.env.InternalSender)
+	s.Equal(fmt.Sprintf("https://example.com/build/%s?redirect_spruce_users=true", b.Id), status.URL)
+	s.Equal("evergreen/myBuild", status.Context)
+	s.Equal(message.GithubStateFailure, status.State)
+	s.Equal("none succeeded, 1 failed, 1 essential task(s) not scheduled in 1m0s", status.Description)
 }
 
 func (s *githubStatusRefreshSuite) TestStatusSucceeded() {
@@ -245,7 +351,7 @@ func (s *githubStatusRefreshSuite) TestStatusSucceeded() {
 
 	childPatch := patch.Patch{
 		Id:         mgobson.NewObjectId(),
-		Status:     evergreen.PatchSucceeded,
+		Status:     evergreen.LegacyPatchSucceeded,
 		Project:    "myChildProject",
 		Activated:  true,
 		StartTime:  startTime,
@@ -257,7 +363,7 @@ func (s *githubStatusRefreshSuite) TestStatusSucceeded() {
 	}
 	s.NoError(childPatch.Insert())
 	s.patchDoc.Triggers.ChildPatches = []string{childPatch.Id.Hex()}
-	s.patchDoc.Status = evergreen.PatchSucceeded
+	s.patchDoc.Status = evergreen.LegacyPatchSucceeded
 
 	job, ok := NewGithubStatusRefreshJob(s.patchDoc).(*githubStatusRefreshJob)
 	s.Require().NotNil(job)
@@ -265,7 +371,7 @@ func (s *githubStatusRefreshSuite) TestStatusSucceeded() {
 	s.Require().NotNil(job.patch)
 
 	job.env = s.env
-	job.Run(context.Background())
+	job.Run(s.ctx)
 	s.Zero(job.Error())
 
 	// Patch status
@@ -311,7 +417,7 @@ func (s *githubStatusRefreshSuite) TestStatusFailed() {
 
 	childPatch := patch.Patch{
 		Id:         mgobson.NewObjectId(),
-		Status:     evergreen.PatchFailed,
+		Status:     evergreen.VersionFailed,
 		Project:    "myChildProject",
 		Activated:  true,
 		StartTime:  startTime,
@@ -323,9 +429,9 @@ func (s *githubStatusRefreshSuite) TestStatusFailed() {
 	}
 	s.NoError(childPatch.Insert())
 	s.patchDoc.Triggers.ChildPatches = []string{childPatch.Id.Hex()}
-	s.patchDoc.Status = evergreen.PatchSucceeded
+	s.patchDoc.Status = evergreen.LegacyPatchSucceeded
 
-	s.patchDoc.Status = evergreen.PatchFailed
+	s.patchDoc.Status = evergreen.VersionFailed
 
 	job, ok := NewGithubStatusRefreshJob(s.patchDoc).(*githubStatusRefreshJob)
 	s.Require().NotNil(job)
@@ -333,7 +439,7 @@ func (s *githubStatusRefreshSuite) TestStatusFailed() {
 	s.Require().NotNil(job.patch)
 
 	job.env = s.env
-	job.Run(context.Background())
+	job.Run(s.ctx)
 	s.False(job.HasErrors())
 
 	// Patch status

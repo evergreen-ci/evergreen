@@ -16,12 +16,13 @@
         },
         "errors": [
           {
-            "message": "error defaulting to repo for section: getting before project settings event: project ref 'repo_id' not found",
+            "message": "Could not find project with projectId: repo_id",
             "path": [
-              "defaultSectionToRepo"
+              "defaultSectionToRepo",
+              "projectId"
             ],
             "extensions": {
-              "code": "INTERNAL_SERVER_ERROR"
+              "code": "RESOURCE_NOT_FOUND"
             }
           }
         ]

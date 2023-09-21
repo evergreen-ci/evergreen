@@ -36,7 +36,7 @@ func NewSimpleStatsCollector(logger client.LoggerProducer, jpm jasper.Manager, i
 	}
 }
 
-func (sc *StatsCollector) expandCommands(exp *util.Expansions) {
+func (sc *StatsCollector) expandCommands(exp util.Expansions) {
 	expandedCmds := []string{}
 	for _, cmd := range sc.Cmds {
 		expanded, err := exp.ExpandString(cmd)
@@ -49,7 +49,7 @@ func (sc *StatsCollector) expandCommands(exp *util.Expansions) {
 	sc.Cmds = expandedCmds
 }
 
-func (sc *StatsCollector) logStats(ctx context.Context, exp *util.Expansions) {
+func (sc *StatsCollector) logStats(ctx context.Context, exp util.Expansions) {
 	if sc.Interval < 0 {
 		panic(fmt.Sprintf("Illegal stats collection interval: %s", sc.Interval))
 	}

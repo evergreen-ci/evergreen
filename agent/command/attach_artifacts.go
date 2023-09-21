@@ -50,11 +50,11 @@ func (c *attachArtifacts) Execute(ctx context.Context,
 
 	var err error
 
-	if err = util.ExpandValues(c, conf.Expansions); err != nil {
+	if err = util.ExpandValues(c, &conf.Expansions); err != nil {
 		return errors.Wrap(err, "applying expansions")
 	}
 
-	workDir := getJoinedWithWorkDir(conf, c.Prefix)
+	workDir := getWorkingDirectory(conf, c.Prefix)
 	include := utility.NewGitIgnoreFileMatcher(workDir, c.Files...)
 	b := utility.FileListBuilder{
 		WorkingDir: workDir,
@@ -78,7 +78,7 @@ func (c *attachArtifacts) Execute(ctx context.Context,
 	files := []*artifact.File{}
 	var segment []*artifact.File
 	for idx := range c.Files {
-		segment, err = readArtifactsFile(getJoinedWithWorkDir(conf, c.Prefix), c.Files[idx])
+		segment, err = readArtifactsFile(getWorkingDirectory(conf, c.Prefix), c.Files[idx])
 		if err != nil {
 			if c.Optional && os.IsNotExist(errors.Cause(err)) {
 				// pass;

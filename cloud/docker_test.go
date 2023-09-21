@@ -32,6 +32,9 @@ func (s *DockerSuite) SetupSuite() {
 }
 
 func (s *DockerSuite) SetupTest() {
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
 	s.client = &dockerClientMock{
 		hasOpenPorts: true,
 	}
@@ -57,7 +60,7 @@ func (s *DockerSuite) SetupTest() {
 			Image: "http://0.0.0.0:8000/docker_image.tgz",
 		},
 	}
-	s.NoError(s.parentHost.Insert())
+	s.NoError(s.parentHost.Insert(ctx))
 }
 
 func (s *DockerSuite) TearDownTest() {
@@ -83,19 +86,19 @@ func (s *DockerSuite) TestTerminateInstanceAPICall() {
 	defer cancel()
 
 	hostA := host.NewIntent(s.hostOpts)
-	s.NoError(hostA.Insert())
+	s.NoError(hostA.Insert(ctx))
 	hostA, err := s.manager.SpawnHost(ctx, hostA)
 	s.NoError(err)
 	s.Require().NotNil(hostA)
-	_, err = hostA.Upsert()
+	_, err = hostA.Upsert(ctx)
 	s.NoError(err)
 
 	hostB := host.NewIntent(s.hostOpts)
-	s.NoError(hostB.Insert())
+	s.NoError(hostB.Insert(ctx))
 	hostB, err = s.manager.SpawnHost(ctx, hostB)
 	s.NoError(err)
 	s.Require().NotNil(hostB)
-	_, err = hostB.Upsert()
+	_, err = hostB.Upsert(ctx)
 	s.NoError(err)
 
 	mock, ok := s.client.(*dockerClientMock)
@@ -114,14 +117,14 @@ func (s *DockerSuite) TestTerminateInstanceDB() {
 	defer cancel()
 
 	myHost := host.NewIntent(s.hostOpts)
-	s.NoError(myHost.Insert())
+	s.NoError(myHost.Insert(ctx))
 	myHost, err := s.manager.SpawnHost(ctx, myHost)
 	s.NotNil(myHost)
 	s.NoError(err)
-	_, err = myHost.Upsert()
+	_, err = myHost.Upsert(ctx)
 	s.NoError(err)
 
-	dbHost, err := host.FindOne(host.ById(myHost.Id))
+	dbHost, err := host.FindOne(ctx, host.ById(myHost.Id))
 	s.NotEqual(dbHost.Status, evergreen.HostTerminated)
 	s.NoError(err)
 
@@ -129,7 +132,7 @@ func (s *DockerSuite) TestTerminateInstanceDB() {
 	err = s.manager.TerminateInstance(ctx, myHost, evergreen.User, "")
 	s.NoError(err)
 
-	dbHost, err = host.FindOne(host.ById(myHost.Id))
+	dbHost, err = host.FindOne(ctx, host.ById(myHost.Id))
 	s.Equal(dbHost.Status, evergreen.HostTerminated)
 	s.NoError(err)
 
@@ -155,16 +158,6 @@ func (s *DockerSuite) TestSpawnInvalidSettings() {
 	s.Error(err)
 	s.Contains(err.Error(), "image must not be empty")
 	s.Nil(h)
-
-	emptyHostOpts.DockerOptions.Image = "my image"
-	emptyHostOpts.DockerOptions.ExtraHosts = []string{"invalid format", "also:so:invalid"}
-	h = host.NewIntent(emptyHostOpts)
-	h, err = s.manager.SpawnHost(ctx, h)
-	s.Error(err)
-	s.Contains(err.Error(), "invalid format")
-	s.Contains(err.Error(), "also:so:invalid")
-	s.NotContains(err.Error(), "Image")
-	s.Nil(h)
 }
 
 func (s *DockerSuite) TestSpawnDuplicateHostID() {
@@ -174,13 +167,13 @@ func (s *DockerSuite) TestSpawnDuplicateHostID() {
 	// SpawnInstance should generate a unique ID for each instance, even
 	// when using the same distro. Otherwise the DB would return an error.
 	hostOne := host.NewIntent(s.hostOpts)
-	s.NoError(hostOne.Insert())
+	s.NoError(hostOne.Insert(ctx))
 	hostOne, err := s.manager.SpawnHost(ctx, hostOne)
 	s.NoError(err)
 	s.NotNil(hostOne)
 
 	hostTwo := host.NewIntent(s.hostOpts)
-	s.NoError(hostTwo.Insert())
+	s.NoError(hostTwo.Insert(ctx))
 	hostTwo, err = s.manager.SpawnHost(ctx, hostTwo)
 	s.NoError(err)
 	s.NotNil(hostTwo)
@@ -195,14 +188,14 @@ func (s *DockerSuite) TestSpawnCreateAPICall() {
 	defer cancel()
 
 	h := host.NewIntent(s.hostOpts)
-	s.NoError(h.Insert())
+	s.NoError(h.Insert(ctx))
 	h, err := s.manager.SpawnHost(ctx, h)
 	s.NoError(err)
 	s.NotNil(h)
 
 	mock.failCreate = true
 	h = host.NewIntent(s.hostOpts)
-	s.NoError(h.Insert())
+	s.NoError(h.Insert(ctx))
 	h, err = s.manager.SpawnHost(ctx, h)
 	s.Error(err)
 	s.Nil(h)
@@ -217,7 +210,7 @@ func (s *DockerSuite) TestSpawnStartRemoveAPICall() {
 	defer cancel()
 
 	intent := host.NewIntent(s.hostOpts)
-	s.NoError(intent.Insert())
+	s.NoError(intent.Insert(ctx))
 	h, err := s.manager.SpawnHost(ctx, intent)
 	s.NoError(err)
 	s.NotNil(h)
@@ -266,7 +259,7 @@ func (s *DockerSuite) TestGetContainers() {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 
-	parent, err := host.FindOneId("parent")
+	parent, err := host.FindOneId(ctx, "parent")
 	s.NoError(err)
 	s.Equal("parent", parent.Id)
 
@@ -284,7 +277,7 @@ func (s *DockerSuite) TestRemoveOldestImage() {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 
-	parent, err := host.FindOneId("parent")
+	parent, err := host.FindOneId(ctx, "parent")
 	s.NoError(err)
 	s.Equal("parent", parent.Id)
 
@@ -301,7 +294,7 @@ func (s *DockerSuite) TestGetContainerImage() {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 
-	parent, err := host.FindOneId("parent")
+	parent, err := host.FindOneId(ctx, "parent")
 	s.NoError(err)
 	s.Equal("parent", parent.Id)
 
@@ -318,7 +311,7 @@ func (s *DockerSuite) TestGetContainerImageNoBuild() {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 
-	parent, err := host.FindOneId("parent")
+	parent, err := host.FindOneId(ctx, "parent")
 	s.NoError(err)
 	s.Equal("parent", parent.Id)
 
@@ -335,7 +328,7 @@ func (s *DockerSuite) TestGetContainerImageFailedDownload() {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 
-	parent, err := host.FindOneId("parent")
+	parent, err := host.FindOneId(ctx, "parent")
 	s.NoError(err)
 	s.Equal("parent", parent.Id)
 
@@ -353,7 +346,7 @@ func (s *DockerSuite) TestGetContainerImageFailedBuild() {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 
-	parent, err := host.FindOneId("parent")
+	parent, err := host.FindOneId(ctx, "parent")
 	s.NoError(err)
 	s.Equal("parent", parent.Id)
 

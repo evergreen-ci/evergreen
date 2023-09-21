@@ -9,7 +9,6 @@ import (
 	"github.com/evergreen-ci/evergreen/db"
 	mgobson "github.com/evergreen-ci/evergreen/db/mgo/bson"
 	"github.com/evergreen-ci/evergreen/thirdparty"
-	"github.com/evergreen-ci/utility"
 	"github.com/google/go-github/v52/github"
 	"github.com/mongodb/anser/bsonutil"
 	"github.com/pkg/errors"
@@ -73,9 +72,6 @@ type githubIntent struct {
 	// Title is the title of the Github PR
 	Title string `bson:"Title"`
 
-	// PushedAt was the time the Github Head Repository was pushed to
-	PushedAt time.Time `bson:"pushed_at"`
-
 	// CreatedAt is the time that this intent was stored in the database
 	CreatedAt time.Time `bson:"created_at"`
 
@@ -90,6 +86,9 @@ type githubIntent struct {
 
 	// CalledBy indicates whether the intent was created automatically by Evergreen or by a user
 	CalledBy string `bson:"called_by"`
+
+	// RepeatPatchId uses the given patch to reuse the task/variant definitions
+	RepeatPatchId string `bson:"repeat_patch_id"`
 }
 
 // BSON fields for the patches
@@ -117,7 +116,7 @@ var (
 func NewGithubIntent(msgDeliveryID, patchOwner, calledBy string, pr *github.PullRequest) (Intent, error) {
 	if pr == nil ||
 		pr.Base == nil || pr.Base.Repo == nil ||
-		pr.Head == nil || pr.Head.Repo == nil || pr.Head.Repo.PushedAt == nil ||
+		pr.Head == nil || pr.Head.Repo == nil ||
 		pr.User == nil {
 		return nil, errors.New("incomplete PR")
 	}
@@ -148,29 +147,46 @@ func NewGithubIntent(msgDeliveryID, patchOwner, calledBy string, pr *github.Pull
 	if pr.GetTitle() == "" {
 		return nil, errors.New("PR title must not be empty")
 	}
-	if utility.IsZeroTime(pr.Head.Repo.PushedAt.Time) {
-		return nil, errors.New("pushed at time not set")
-	}
 	if patchOwner == "" {
 		patchOwner = pr.User.GetLogin()
 	}
 
+	// get the patchId to repeat the definitions from
+	repeat, err := getRepeatPatchId(pr.Base.Repo.Owner.GetLogin(), pr.Base.Repo.GetName(), pr.GetNumber())
+	if err != nil {
+		return nil, errors.Wrap(err, "getting patch to repeat definitions from")
+	}
+
 	return &githubIntent{
-		DocumentID:   msgDeliveryID,
-		MsgID:        msgDeliveryID,
-		BaseRepoName: pr.Base.Repo.GetFullName(),
-		BaseBranch:   pr.Base.GetRef(),
-		HeadRepoName: pr.Head.Repo.GetFullName(),
-		PRNumber:     pr.GetNumber(),
-		User:         patchOwner,
-		UID:          int(pr.User.GetID()),
-		HeadHash:     pr.Head.GetSHA(),
-		BaseHash:     pr.Base.GetSHA(),
-		Title:        pr.GetTitle(),
-		IntentType:   GithubIntentType,
-		PushedAt:     pr.Head.Repo.PushedAt.Time.UTC(),
-		CalledBy:     calledBy,
+		DocumentID:    msgDeliveryID,
+		MsgID:         msgDeliveryID,
+		BaseRepoName:  pr.Base.Repo.GetFullName(),
+		BaseBranch:    pr.Base.GetRef(),
+		HeadRepoName:  pr.Head.Repo.GetFullName(),
+		PRNumber:      pr.GetNumber(),
+		User:          patchOwner,
+		UID:           int(pr.User.GetID()),
+		HeadHash:      pr.Head.GetSHA(),
+		BaseHash:      pr.Base.GetSHA(),
+		Title:         pr.GetTitle(),
+		IntentType:    GithubIntentType,
+		CalledBy:      calledBy,
+		RepeatPatchId: repeat,
 	}, nil
+}
+
+// getRepeatPatchId returns the patch id to repeat the definitions from
+// this information is found on the most recent pr patch
+func getRepeatPatchId(owner, repo string, prNumber int) (string, error) {
+	p, err := FindLatestGithubPRPatch(owner, repo, prNumber)
+	if err != nil {
+		return "", errors.Errorf("finding latest patch for PR '%s/%s:%d'", owner, repo, prNumber)
+	}
+	if p == nil {
+		// do not error, it may be the first patch for the PR
+		return "", nil
+	}
+	return p.GithubPatchData.RepeatPatchIdNextPatch, nil
 }
 
 // SetProcessed should be called by an amboy queue after creating a patch from an intent.
@@ -226,7 +242,7 @@ func (g *githubIntent) ShouldFinalizePatch() bool {
 }
 
 func (g *githubIntent) RepeatPreviousPatchDefinition() (string, bool) {
-	return "", false
+	return g.RepeatPatchId, g.RepeatPatchId != ""
 }
 
 func (g *githubIntent) RepeatFailedTasksAndVariants() (string, bool) {
@@ -260,8 +276,8 @@ func (g *githubIntent) NewPatch() *Patch {
 		Alias:       evergreen.GithubPRAlias,
 		Description: fmt.Sprintf("'%s' pull request #%d by %s: %s (%s)", g.BaseRepoName, g.PRNumber, g.User, g.Title, pullURL),
 		Author:      evergreen.GithubPatchUser,
-		Status:      evergreen.PatchCreated,
-		CreateTime:  g.PushedAt,
+		Status:      evergreen.VersionCreated,
+		CreateTime:  g.CreatedAt,
 		Githash:     g.BaseHash,
 		GithubPatchData: thirdparty.GithubPatch{
 			PRNumber:   g.PRNumber,

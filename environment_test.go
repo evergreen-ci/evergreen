@@ -102,7 +102,7 @@ func (s *EnvironmentSuite) TestLoadingConfig() {
 	s.env = env.(*envState)
 	s.Equal("http://localhost:9090", s.env.Settings().ApiUrl)
 	// persist to db
-	s.NoError(s.env.SaveConfig())
+	s.NoError(s.env.SaveConfig(ctx))
 
 	// then test loading it from the db
 	s.env.settings = nil
@@ -120,8 +120,11 @@ func (s *EnvironmentSuite) TestLoadingConfig() {
 }
 
 func (s *EnvironmentSuite) TestConfigErrorsIfCannotValidateConfig() {
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
 	s.env.settings = &Settings{}
-	err := s.env.initSettings("")
+	err := s.env.initSettings(ctx, "")
 	s.Error(err)
 	s.Contains(err.Error(), "validating settings")
 }

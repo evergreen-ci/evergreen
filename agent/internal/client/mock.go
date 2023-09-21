@@ -16,6 +16,7 @@ import (
 	serviceModel "github.com/evergreen-ci/evergreen/model"
 	"github.com/evergreen-ci/evergreen/model/artifact"
 	"github.com/evergreen-ci/evergreen/model/manifest"
+	"github.com/evergreen-ci/evergreen/model/patch"
 	patchmodel "github.com/evergreen-ci/evergreen/model/patch"
 	"github.com/evergreen-ci/evergreen/model/task"
 	"github.com/evergreen-ci/evergreen/model/testresult"
@@ -36,14 +37,16 @@ type Mock struct {
 
 	// mock behavior
 	NextTaskShouldFail          bool
-	NextTaskShouldConflict      bool
 	GetPatchFileShouldFail      bool
 	loggingShouldFail           bool
 	NextTaskResponse            *apimodels.NextTaskResponse
 	NextTaskIsNil               bool
+	StartTaskShouldFail         bool
+	GetTaskResponse             *task.Task
+	GetProjectResponse          *serviceModel.Project
 	EndTaskResponse             *apimodels.EndTaskResponse
 	EndTaskShouldFail           bool
-	EndTaskResult               endTaskResult
+	EndTaskResult               EndTaskResult
 	ShellExecFilename           string
 	TimeoutFilename             string
 	GenerateTasksShouldFail     bool
@@ -51,31 +54,35 @@ type Mock struct {
 	HeartbeatShouldConflict     bool
 	HeartbeatShouldErr          bool
 	HeartbeatShouldSometimesErr bool
+	HeartbeatCount              int
 	TaskExecution               int
 	CreatedHost                 apimodels.CreateHost
+	GetTaskPatchResponse        *patchmodel.Patch
+	GetLoggerProducerShouldFail bool
 
 	CedarGRPCConn *grpc.ClientConn
 
-	AttachedFiles    map[string][]*artifact.File
-	LogID            string
-	LocalTestResults []testresult.TestResult
-	ResultsService   string
-	ResultsFailed    bool
-	TestLogs         []*serviceModel.TestLog
-	TestLogCount     int
+	AttachedFiles     map[string][]*artifact.File
+	LogID             string
+	LocalTestResults  []testresult.TestResult
+	TaskOutputVersion int
+	ResultsService    string
+	ResultsFailed     bool
+	TestLogs          []*serviceModel.TestLog
+	TestLogCount      int
 
-	// data collected by mocked methods
-	logMessages      map[string][]apimodels.LogMessage
-	PatchFiles       map[string]string
-	keyVal           map[string]*serviceModel.KeyVal
+	logMessages map[string][]apimodels.LogMessage
+	PatchFiles  map[string]string
+	keyVal      map[string]*serviceModel.KeyVal
+
+	// Mock data returned from methods
 	LastMessageSent  time.Time
 	DownstreamParams []patchmodel.Parameter
-	Project          *serviceModel.Project
 
 	mu sync.RWMutex
 }
 
-type endTaskResult struct {
+type EndTaskResult struct {
 	Detail   *apimodels.TaskEndDetail
 	TaskData TaskData
 }
@@ -116,20 +123,34 @@ func (c *Mock) GetAgentSetupData(ctx context.Context) (*apimodels.AgentSetupData
 	return &apimodels.AgentSetupData{}, nil
 }
 
-func (c *Mock) StartTask(ctx context.Context, td TaskData) error { return nil }
+func (c *Mock) StartTask(ctx context.Context, td TaskData) error {
+	if c.StartTaskShouldFail {
+		return errors.New("start task mock failure")
+	}
+	return nil
+}
+
+func (c *Mock) SetTaskOutputVersion(ctx context.Context, _ TaskData, version int) error {
+	c.TaskOutputVersion = version
+
+	return nil
+}
 
 // EndTask returns a mock EndTaskResponse.
 func (c *Mock) EndTask(ctx context.Context, detail *apimodels.TaskEndDetail, td TaskData) (*apimodels.EndTaskResponse, error) {
 	if c.EndTaskShouldFail {
 		return nil, errors.New("end task should fail")
 	}
-	if c.EndTaskResponse != nil {
-		return c.EndTaskResponse, nil
-	}
+
 	c.mu.Lock()
 	defer c.mu.Unlock()
 	c.EndTaskResult.Detail = detail
 	c.EndTaskResult.TaskData = td
+
+	if c.EndTaskResponse != nil {
+		return c.EndTaskResponse, nil
+	}
+
 	return &apimodels.EndTaskResponse{}, nil
 }
 
@@ -142,6 +163,9 @@ func (c *Mock) GetEndTaskDetail() *apimodels.TaskEndDetail {
 
 // GetTask returns a mock Task.
 func (c *Mock) GetTask(ctx context.Context, td TaskData) (*task.Task, error) {
+	if c.GetTaskResponse != nil {
+		return c.GetTaskResponse, nil
+	}
 	return &task.Task{
 		Id:           "mock_task_id",
 		Secret:       "mock_task_secret",
@@ -176,9 +200,14 @@ func (c *Mock) GetDistroAMI(context.Context, string, string, TaskData) (string, 
 	return "ami-mock", nil
 }
 
+// GetProject returns the mock project. If an explicit GetProjectResponse is
+// specified, it will return that. Otherwise, by default, it will load data from
+// the agent's testdata directory, which contains project YAML files for
+// testing. The task ID is used to identify the name of the YAML file it will
+// load.
 func (c *Mock) GetProject(ctx context.Context, td TaskData) (*serviceModel.Project, error) {
-	if c.Project != nil {
-		return c.Project, nil
+	if c.GetProjectResponse != nil {
+		return c.GetProjectResponse, nil
 	}
 	var err error
 	var data []byte
@@ -219,11 +248,14 @@ func (c *Mock) GetExpansionsAndVars(ctx context.Context, taskData TaskData) (*ap
 }
 
 func (c *Mock) Heartbeat(ctx context.Context, td TaskData) (string, error) {
+	c.mu.Lock()
+	defer c.mu.Unlock()
+	c.HeartbeatCount++
 	if c.HeartbeatShouldAbort {
 		return evergreen.TaskFailed, nil
 	}
 	if c.HeartbeatShouldConflict {
-		return evergreen.TaskConflict, errors.Errorf("unauthorized - wrong secret")
+		return evergreen.TaskFailed, nil
 	}
 	if c.HeartbeatShouldSometimesErr {
 		if c.HeartbeatShouldErr {
@@ -239,6 +271,14 @@ func (c *Mock) Heartbeat(ctx context.Context, td TaskData) (string, error) {
 	return "", nil
 }
 
+// GetHeartbeatCount returns the current number of recorded heartbeats. This is
+// thread-safe.
+func (c *Mock) GetHeartbeatCount() int {
+	c.mu.RLock()
+	defer c.mu.RUnlock()
+	return c.HeartbeatCount
+}
+
 // GetNextTask returns a mock NextTaskResponse.
 func (c *Mock) GetNextTask(ctx context.Context, details *apimodels.GetNextTaskDetails) (*apimodels.NextTaskResponse, error) {
 	if c.NextTaskIsNil {
@@ -249,9 +289,6 @@ func (c *Mock) GetNextTask(ctx context.Context, details *apimodels.GetNextTaskDe
 	}
 	if c.NextTaskShouldFail {
 		return nil, errors.New("NextTaskShouldFail is true")
-	}
-	if c.NextTaskShouldConflict {
-		return nil, errors.WithStack(HTTPConflictError)
 	}
 	if c.NextTaskResponse != nil {
 		return c.NextTaskResponse, nil
@@ -331,24 +368,10 @@ func (c *Mock) GetMockMessages() map[string][]apimodels.LogMessage {
 
 // GetLoggerProducer constructs a single channel log producer.
 func (c *Mock) GetLoggerProducer(ctx context.Context, td TaskData, config *LoggerConfig) (LoggerProducer, error) {
-	return NewSingleChannelLogHarness(td.ID, newEvergreenLogSender(ctx, c, apimodels.AgentLogPrefix, td, defaultLogBufferSize, defaultLogBufferTime)), nil
-}
-
-func (c *Mock) GetLoggerMetadata() LoggerMetadata {
-	return LoggerMetadata{
-		Agent: []LogkeeperMetadata{{
-			Build: "build1",
-			Test:  "test1",
-		}},
-		System: []LogkeeperMetadata{{
-			Build: "build1",
-			Test:  "test2",
-		}},
-		Task: []LogkeeperMetadata{{
-			Build: "build1",
-			Test:  "test3",
-		}},
+	if c.GetLoggerProducerShouldFail {
+		return nil, errors.New("operation run in fail mode.")
 	}
+	return NewSingleChannelLogHarness(td.ID, newEvergreenLogSender(ctx, c, apimodels.AgentLogPrefix, td, defaultLogBufferSize, defaultLogBufferTime)), nil
 }
 
 func (c *Mock) GetPatchFile(ctx context.Context, td TaskData, patchFileID string) (string, error) {
@@ -366,12 +389,11 @@ func (c *Mock) GetPatchFile(ctx context.Context, td TaskData, patchFileID string
 }
 
 func (c *Mock) GetTaskPatch(ctx context.Context, td TaskData, patchId string) (*patchmodel.Patch, error) {
-	patch, ok := ctx.Value("patch").(*patchmodel.Patch)
-	if !ok {
-		return &patchmodel.Patch{}, nil
+	if c.GetTaskPatchResponse != nil {
+		return c.GetTaskPatchResponse, nil
 	}
 
-	return patch, nil
+	return &patch.Patch{}, nil
 }
 
 // CreateSpawnHost will return a mock host that would have been intended
@@ -394,7 +416,7 @@ func (*Mock) CreateSpawnHost(ctx context.Context, spawnRequest *model.HostReques
 	return mockHost, nil
 }
 
-func (c *Mock) SetResultsInfo(ctx context.Context, td TaskData, service string, failed bool) error {
+func (c *Mock) SetResultsInfo(ctx context.Context, _ TaskData, service string, failed bool) error {
 	c.ResultsService = service
 	if failed {
 		c.ResultsFailed = true
@@ -412,7 +434,6 @@ func (c *Mock) AttachFiles(ctx context.Context, td TaskData, taskFiles []*artifa
 	c.mu.Lock()
 	defer c.mu.Unlock()
 
-	grip.Info("attaching files")
 	c.AttachedFiles[td.ID] = append(c.AttachedFiles[td.ID], taskFiles...)
 
 	return nil
@@ -484,7 +505,7 @@ func (c *Mock) CreateHost(ctx context.Context, td TaskData, options apimodels.Cr
 		return []string{}, errors.New("no task secret sent to CreateHost")
 	}
 	c.CreatedHost = options
-	return []string{"id"}, options.Validate()
+	return []string{"id"}, options.Validate(ctx)
 }
 
 func (c *Mock) ListHosts(_ context.Context, _ TaskData) (model.HostListResults, error) {

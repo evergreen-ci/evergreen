@@ -26,10 +26,58 @@ type Resolver struct {
 }
 
 func New(apiURL string) Config {
+	dbConnector := &data.DBConnector{URL: apiURL}
 	c := Config{
 		Resolvers: &Resolver{
-			sc: &data.DBConnector{URL: apiURL},
+			sc: dbConnector,
 		},
+	}
+	c.Directives.RequireDistroAccess = func(ctx context.Context, obj interface{}, next graphql.Resolver, access DistroSettingsAccess) (interface{}, error) {
+		user := mustHaveUser(ctx)
+
+		// If directive is checking for create permissions, no distro ID is required.
+		if access == DistroSettingsAccessCreate {
+			opts := gimlet.PermissionOpts{
+				Resource:      evergreen.SuperUserPermissionsID,
+				ResourceType:  evergreen.SuperUserResourceType,
+				Permission:    evergreen.PermissionDistroCreate,
+				RequiredLevel: evergreen.DistroCreate.Value,
+			}
+			if user.HasPermission(opts) {
+				return next(ctx)
+			}
+			return nil, Forbidden.Send(ctx, fmt.Sprintf("user '%s' does not have create distro permissions", user.Username()))
+		}
+
+		args, isStringMap := obj.(map[string]interface{})
+		if !isStringMap {
+			return nil, ResourceNotFound.Send(ctx, "distro not specified")
+		}
+		distroId, hasDistroId := args["distroId"].(string)
+		if !hasDistroId {
+			name, hasName := args["name"].(string)
+
+			if !hasName {
+				return nil, ResourceNotFound.Send(ctx, "Distro not specified")
+			}
+			distroId = name
+		}
+
+		var requiredLevel int
+		if access == DistroSettingsAccessAdmin {
+			requiredLevel = evergreen.DistroSettingsAdmin.Value
+		} else if access == DistroSettingsAccessEdit {
+			requiredLevel = evergreen.DistroSettingsEdit.Value
+		} else if access == DistroSettingsAccessView {
+			requiredLevel = evergreen.DistroSettingsView.Value
+		} else {
+			return nil, Forbidden.Send(ctx, "Permission not specified")
+		}
+
+		if userHasDistroPermission(user, distroId, requiredLevel) {
+			return next(ctx)
+		}
+		return nil, Forbidden.Send(ctx, fmt.Sprintf("user '%s' does not have permission to access settings for the distro '%s'", user.Username(), distroId))
 	}
 	c.Directives.RequireProjectAdmin = func(ctx context.Context, obj interface{}, next graphql.Resolver) (interface{}, error) {
 		// Allow if user is superuser.
@@ -151,6 +199,38 @@ func New(apiURL string) Config {
 			return next(ctx)
 		}
 		return nil, Forbidden.Send(ctx, fmt.Sprintf("user does not have permission to access the field '%s' for project with ID '%s'", graphql.GetFieldContext(ctx).Path(), projectId))
+	}
+	c.Directives.RequireCommitQueueItemOwner = func(ctx context.Context, obj interface{}, next graphql.Resolver) (interface{}, error) {
+		usr := mustHaveUser(ctx)
+
+		args, isStringMap := obj.(map[string]interface{})
+		if !isStringMap {
+			return nil, InternalServerError.Send(ctx, "converting mutation args into map")
+		}
+
+		commitQueueId, hasCommitQueueId := args["commitQueueId"].(string)
+		if !hasCommitQueueId {
+			return nil, InputValidationError.Send(ctx, "commit queue id was not provided")
+		}
+
+		issue, hasIssue := args["issue"].(string)
+		if !hasIssue {
+			return nil, InputValidationError.Send(ctx, "issue was not provided")
+		}
+
+		project, err := data.FindProjectById(commitQueueId, true, false)
+		if err != nil {
+			return nil, InternalServerError.Send(ctx, err.Error())
+		}
+
+		if err = data.CheckCanRemoveCommitQueueItem(ctx, dbConnector, usr, project, issue); err != nil {
+			gimletErr, ok := err.(gimlet.ErrorResponse)
+			if ok {
+				return nil, mapHTTPStatusToGqlError(ctx, gimletErr.StatusCode, err)
+			}
+			return nil, InternalServerError.Send(ctx, err.Error())
+		}
+		return next(ctx)
 	}
 	return c
 }

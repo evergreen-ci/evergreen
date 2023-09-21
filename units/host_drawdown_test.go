@@ -8,6 +8,7 @@ import (
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/model/distro"
 	"github.com/evergreen-ci/evergreen/model/host"
+	"github.com/evergreen-ci/evergreen/testutil"
 	"github.com/evergreen-ci/utility"
 	"github.com/mongodb/amboy"
 	"github.com/mongodb/amboy/queue"
@@ -42,10 +43,14 @@ func numHostsTerminated(ctx context.Context, env evergreen.Environment, drawdown
 //
 
 func TestTerminatingHosts(t *testing.T) {
-	ctx := context.Background()
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+	ctx = testutil.TestSpan(ctx, t)
+
 	env := evergreen.GetEnvironment()
 
 	t.Run("SimpleTerminationTest", func(t *testing.T) {
+		tctx := testutil.TestSpan(ctx, t)
 		// clear the distro and hosts collections; add an index on the host collection
 		testFlaggingIdleHostsSetupTest(t)
 		// insert two reference distro.Distro
@@ -57,7 +62,7 @@ func TestTerminatingHosts(t *testing.T) {
 				MinimumHosts: 2,
 			},
 		}
-		require.NoError(t, distro1.Insert())
+		require.NoError(t, distro1.Insert(tctx))
 
 		// insert a gaggle of hosts, some of which reference a host.Distro that doesn't exist in the distro collection
 		host1 := host.Host{
@@ -102,11 +107,11 @@ func TestTerminatingHosts(t *testing.T) {
 			Status:       evergreen.HostRunning,
 			StartedBy:    evergreen.User,
 		}
-		require.NoError(t, host1.Insert())
-		require.NoError(t, host2.Insert())
-		require.NoError(t, host3.Insert())
-		require.NoError(t, host4.Insert())
-		require.NoError(t, host5.Insert())
+		require.NoError(t, host1.Insert(tctx))
+		require.NoError(t, host2.Insert(tctx))
+		require.NoError(t, host3.Insert(tctx))
+		require.NoError(t, host4.Insert(tctx))
+		require.NoError(t, host5.Insert(tctx))
 
 		// If we encounter missing distros, we decommission hosts from those
 		// distros.
@@ -116,7 +121,7 @@ func TestTerminatingHosts(t *testing.T) {
 			NewCapTarget: 3,
 		}
 		// 3 idle hosts, 2 need to be terminated to reach NewCapTarget
-		num, hosts := numHostsTerminated(ctx, env, drawdownInfo, t)
+		num, hosts := numHostsTerminated(tctx, env, drawdownInfo, t)
 		assert.Equal(t, 2, num)
 
 		assert.Contains(t, hosts, "h3")

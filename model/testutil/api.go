@@ -82,10 +82,10 @@ func SetupAPITestData(testConfig *evergreen.Settings, taskDisplayName string, va
 	// Create the ref for the project
 	projectRef := &model.ProjectRef{
 		Id:        project.DisplayName,
-		Owner:     project.Owner,
-		Repo:      project.Repo,
-		Branch:    project.Branch,
-		Enabled:   project.Enabled,
+		Owner:     "evergreen-ci",
+		Repo:      "sample",
+		Branch:    "main",
+		Enabled:   true,
 		BatchTime: project.BatchTime,
 	}
 	if err = projectRef.Insert(); err != nil {
@@ -228,7 +228,7 @@ func SetupAPITestData(testConfig *evergreen.Settings, taskDisplayName string, va
 		AgentRevision: evergreen.AgentVersion,
 		Status:        evergreen.HostRunning,
 	}
-	if err = testHost.Insert(); err != nil {
+	if err = testHost.Insert(ctx); err != nil {
 		return nil, errors.Wrap(err, "inserting host")
 	}
 	modelData.Host = testHost

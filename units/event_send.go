@@ -14,6 +14,7 @@ import (
 	"github.com/mongodb/grip"
 	"github.com/mongodb/grip/level"
 	"github.com/mongodb/grip/message"
+	"github.com/mongodb/grip/send"
 	"github.com/mongodb/grip/sometimes"
 	"github.com/pkg/errors"
 )
@@ -54,7 +55,7 @@ func NewEventSendJob(id, ts string) amboy.Job {
 	return j
 }
 
-func (j *eventSendJob) setup() error {
+func (j *eventSendJob) setup(ctx context.Context) error {
 	if len(j.NotificationID) == 0 {
 		return errors.New("notification ID is not valid")
 	}
@@ -64,7 +65,7 @@ func (j *eventSendJob) setup() error {
 	}
 	if j.flags == nil {
 		j.flags = &evergreen.ServiceFlags{}
-		if err := j.flags.Get(j.env); err != nil {
+		if err := j.flags.Get(ctx); err != nil {
 			return errors.Wrap(err, "getting service flags")
 		}
 	}
@@ -72,10 +73,10 @@ func (j *eventSendJob) setup() error {
 	return nil
 }
 
-func (j *eventSendJob) Run(_ context.Context) {
+func (j *eventSendJob) Run(ctx context.Context) {
 	defer j.MarkComplete()
 
-	if err := j.setup(); err != nil {
+	if err := j.setup(ctx); err != nil {
 		j.AddError(err)
 		return
 	}
@@ -129,9 +130,21 @@ func (j *eventSendJob) send(n *notification.Notification) error {
 		return errors.Wrap(err, "getting sender key for notification")
 	}
 
-	sender, err := j.env.GetSender(key)
-	if err != nil {
-		return errors.Wrap(err, "getting global notification sender")
+	var sender send.Sender
+	if key == evergreen.SenderGithubStatus {
+		payload, ok := n.Payload.(*message.GithubStatus)
+		if !ok || payload == nil {
+			return errors.New("github status payload is invalid")
+		}
+		sender, err = j.env.GetGitHubSender(payload.Owner, payload.Repo)
+		if err != nil {
+			return errors.Wrap(err, "getting github status sender")
+		}
+	} else {
+		sender, err = j.env.GetSender(key)
+		if err != nil {
+			return errors.Wrap(err, "getting global notification sender")
+		}
 	}
 	sender.Send(c)
 	return nil
@@ -139,7 +152,7 @@ func (j *eventSendJob) send(n *notification.Notification) error {
 
 func (j *eventSendJob) checkDegradedMode(n *notification.Notification) error {
 	switch n.Subscriber.Type {
-	case event.GithubPullRequestSubscriberType, event.GithubCheckSubscriberType:
+	case event.GithubPullRequestSubscriberType, event.GithubCheckSubscriberType, event.GithubMergeSubscriberType:
 		return checkFlag(j.flags.GithubStatusAPIDisabled)
 
 	case event.SlackSubscriberType:

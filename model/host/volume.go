@@ -1,9 +1,11 @@
 package host
 
 import (
+	"context"
 	"sort"
 	"time"
 
+	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/db"
 	"github.com/pkg/errors"
 	"go.mongodb.org/mongo-driver/bson"
@@ -14,9 +16,9 @@ type Volume struct {
 	DisplayName      string    `bson:"display_name" json:"display_name"`
 	CreatedBy        string    `bson:"created_by" json:"created_by"`
 	Type             string    `bson:"type" json:"type"`
-	Size             int       `bson:"size" json:"size"`
-	Throughput       int       `bson:"throughput,omitempty" json:"throughput,omitempty"`
-	IOPS             int       `bson:"iops,omitempty" json:"iops,omitempty"`
+	Size             int32     `bson:"size" json:"size"`
+	Throughput       int32     `bson:"throughput,omitempty" json:"throughput,omitempty"`
+	IOPS             int32     `bson:"iops,omitempty" json:"iops,omitempty"`
 	AvailabilityZone string    `bson:"availability_zone" json:"availability_zone"`
 	Expiration       time.Time `bson:"expiration" json:"expiration"`
 	NoExpiration     bool      `bson:"no_expiration" json:"no_expiration"`
@@ -62,7 +64,7 @@ func (v *Volume) SetDisplayName(displayName string) error {
 	return nil
 }
 
-func (v *Volume) SetSize(size int) error {
+func (v *Volume) SetSize(size int32) error {
 	err := db.Update(VolumesCollection,
 		bson.M{VolumeIDKey: v.ID},
 		bson.M{"$set": bson.M{VolumeSizeKey: size}})
@@ -121,6 +123,33 @@ func FindVolumesToDelete(expirationTime time.Time) ([]Volume, error) {
 	}
 
 	return findVolumes(q)
+}
+
+// FindVolumesWithTerminatedHost finds volumes that are attached to a host we have marked as terminated, indicating the
+// volume is stuck in an invalid state.
+func FindVolumesWithTerminatedHost() ([]Volume, error) {
+	match := bson.M{
+		"$match": bson.M{
+			VolumeHostKey: bson.M{"$exists": true},
+		}}
+	lookup := bson.M{
+		"$lookup": bson.M{
+			"from":         Collection,
+			"localField":   "host",
+			"foreignField": "_id",
+			"as":           "host_doc",
+		}}
+	matchTerminatedHosts := bson.M{
+		"$match": bson.M{
+			"host_doc.status": evergreen.HostTerminated,
+		}}
+	project := bson.M{"$project": bson.M{"host_doc": 0}}
+	pipeline := []bson.M{match, lookup, matchTerminatedHosts, project}
+	volumes := []Volume{}
+	if err := db.Aggregate(VolumesCollection, pipeline, &volumes); err != nil {
+		return nil, err
+	}
+	return volumes, nil
 }
 
 func FindUnattachedExpirableVolumes() ([]Volume, error) {
@@ -198,7 +227,7 @@ func FindSortedVolumesByUser(userID string) ([]Volume, error) {
 	return volumes, nil
 }
 
-func ValidateVolumeCanBeAttached(volumeID string) (*Volume, error) {
+func ValidateVolumeCanBeAttached(ctx context.Context, volumeID string) (*Volume, error) {
 	volume, err := FindVolumeByID(volumeID)
 	if err != nil {
 		return nil, errors.Wrapf(err, "getting volume '%s'", volumeID)
@@ -207,7 +236,7 @@ func ValidateVolumeCanBeAttached(volumeID string) (*Volume, error) {
 		return nil, errors.Errorf("volume '%s' does not exist", volumeID)
 	}
 	var sourceHost *Host
-	sourceHost, err = FindHostWithVolume(volumeID)
+	sourceHost, err = FindHostWithVolume(ctx, volumeID)
 	if err != nil {
 		return nil, errors.Wrapf(err, "getting host with volume '%s' attached", volumeID)
 	}

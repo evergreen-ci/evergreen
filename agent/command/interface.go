@@ -24,7 +24,7 @@ type Command interface {
 	// Execute is called after ParseParams.
 	Execute(context.Context, client.Communicator, client.LoggerProducer, *internal.TaskConfig) error
 
-	// A string name for the command
+	// Name is the name of the command.
 	Name() string
 
 	// Type returns the command's type (e.g. system or test).
@@ -32,14 +32,25 @@ type Command interface {
 	// SetType sets the command's type (e.g. system or test).
 	SetType(string)
 
+	// DisplayName is the user-configurable display name for the command. It can
+	// be set by the user; otherwise, it defaults to displaying information
+	// about the command and other relevant context like the function and block
+	// it runs in.
 	DisplayName() string
 	SetDisplayName(string)
 
+	// IdleTimeout is the user-configurable timeout for how long an individual
+	// command can run without writing output to the task logs. If the command
+	// hits this timeout, then it will time out and stop early.
+	// This timeout only applies in certain blocks, such as pre, setup group,
+	// setup task, and the main task block.
 	IdleTimeout() time.Duration
 	SetIdleTimeout(time.Duration)
 
-	SetJasperManager(jasper.Manager)
+	// JasperManager is the Jasper process manager for the command. Jasper can
+	// be used to run and manage processes that are started within commands.
 	JasperManager() jasper.Manager
+	SetJasperManager(jasper.Manager)
 }
 
 // base contains a basic implementation of functionality that is

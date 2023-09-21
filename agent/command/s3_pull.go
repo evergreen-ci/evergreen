@@ -32,7 +32,7 @@ func (c *s3Base) ParseParams(params map[string]interface{}) error {
 }
 
 func (c *s3Base) expandParams(conf *internal.TaskConfig) error {
-	return errors.Wrap(util.ExpandValues(c, conf.Expansions), "applying expansions")
+	return errors.Wrap(util.ExpandValues(c, &conf.Expansions), "applying expansions")
 }
 
 func (c *s3Base) createBucket(client *http.Client, conf *internal.TaskConfig) error {
@@ -94,7 +94,7 @@ func (c *s3Pull) ParseParams(params map[string]interface{}) error {
 func (c *s3Pull) expandParams(conf *internal.TaskConfig) error {
 	catcher := grip.NewBasicCatcher()
 	catcher.Add(c.s3Base.expandParams(conf))
-	catcher.Add(util.ExpandValues(c, conf.Expansions))
+	catcher.Add(util.ExpandValues(c, &conf.Expansions))
 	return catcher.Resolve()
 }
 
@@ -130,7 +130,7 @@ func (c *s3Pull) Execute(ctx context.Context, comm client.Communicator, logger c
 	if err := createEnclosingDirectoryIfNeeded(c.WorkingDir); err != nil {
 		return errors.Wrapf(err, "creating parent directories for working directory '%s'", c.WorkingDir)
 	}
-	wd, err := conf.GetWorkingDirectory(c.WorkingDir)
+	wd, err := getWorkingDirectoryLegacy(conf, c.WorkingDir)
 	if err != nil {
 		return errors.Wrapf(err, "getting working directory")
 	}

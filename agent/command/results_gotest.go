@@ -61,13 +61,13 @@ func (c *goTestResults) ParseParams(params map[string]interface{}) error {
 func (c *goTestResults) Execute(ctx context.Context,
 	comm client.Communicator, logger client.LoggerProducer, conf *internal.TaskConfig) error {
 
-	if err := util.ExpandValues(c, conf.Expansions); err != nil {
+	if err := util.ExpandValues(c, &conf.Expansions); err != nil {
 		return errors.Wrap(err, "applying expansions")
 	}
 
 	// All file patterns should be relative to the task's working directory.
 	for i, file := range c.Files {
-		c.Files[i] = getJoinedWithWorkDir(conf, file)
+		c.Files[i] = getWorkingDirectory(conf, file)
 	}
 
 	// will be all files containing test results

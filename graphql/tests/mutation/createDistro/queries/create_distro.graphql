@@ -1,0 +1,9 @@
+mutation {
+  createDistro(
+    opts: {
+      newDistroId: "my-new-distro"
+    }
+  ) {
+    newDistroId
+  }
+}

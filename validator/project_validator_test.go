@@ -13,6 +13,7 @@ import (
 	"github.com/evergreen-ci/evergreen/model/distro"
 	"github.com/evergreen-ci/evergreen/model/patch"
 	_ "github.com/evergreen-ci/evergreen/plugin"
+	"github.com/evergreen-ci/evergreen/testutil"
 	"github.com/evergreen-ci/utility"
 	. "github.com/smartystreets/goconvey/convey"
 	"github.com/stretchr/testify/assert"
@@ -21,179 +22,648 @@ import (
 )
 
 func TestValidateTaskDependencies(t *testing.T) {
-	Convey("When validating a project's dependencies", t, func() {
-		Convey("if any task has a duplicate dependency, an error should be returned", func() {
-			project := &model.Project{
-				Tasks: []model.ProjectTask{
-					{
-						Name:      "compile",
-						DependsOn: []model.TaskUnitDependency{},
-					},
-					{
-						Name: "testOne",
-						DependsOn: []model.TaskUnitDependency{
-							{Name: "compile"},
-							{Name: "compile"},
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
+	t.Run("SucceedsWithTaskDependingOnTaskInSpecificBuildVariant", func(t *testing.T) {
+		projYAML := `
+tasks:
+- name: t1
+  depends_on:
+  - name: t2
+    variant: bv2
+- name: t2
+
+buildvariants:
+- name: bv1
+  tasks:
+  - name: t1
+- name: bv2
+  tasks:
+  - name: t2
+`
+		var p model.Project
+		_, err := model.LoadProjectInto(ctx, []byte(projYAML), nil, "", &p)
+		require.NoError(t, err)
+		errs := validateTaskDependencies(&p)
+
+		assert.Empty(t, errs)
+	})
+	t.Run("WarnsWithTaskDependingOnNonexistentTaskInSpecificBuildVariant", func(t *testing.T) {
+		projYAML := `
+tasks:
+- name: t1
+  depends_on:
+  - name: t2
+    variant: bv2
+- name: t2
+
+buildvariants:
+- name: bv1
+  tasks:
+  - name: t1
+  - name: t2
+- name: bv2
+`
+		var p model.Project
+		_, err := model.LoadProjectInto(ctx, []byte(projYAML), nil, "", &p)
+		require.NoError(t, err)
+		errs := validateTaskDependencies(&p)
+
+		require.Len(t, errs, 1)
+		assert.Equal(t, Warning, errs[0].Level)
+		assert.Contains(t, errs[0].Message, "task 't1' in build variant 'bv1' depends on task 't2' in build variant 'bv2', but it was not found")
+	})
+	t.Run("IgnoresDuplicateDependencies", func(t *testing.T) {
+		// Duplicate dependencies are allowed because when the project is
+		// translated, it consolidates all the duplicates.
+		projYAML := `
+tasks:
+- name: t1
+  depends_on:
+  - name: t2
+  - name: t2
+- name: t2
+
+buildvariants:
+- name: bv1
+  tasks:
+  - name: t1
+  - name: t2
+`
+		var p model.Project
+		_, err := model.LoadProjectInto(ctx, []byte(projYAML), nil, "", &p)
+		require.NoError(t, err)
+		errs := validateTaskDependencies(&p)
+
+		assert.Empty(t, errs)
+	})
+	t.Run("ErrorsWithInvalidDependencyStatus", func(t *testing.T) {
+		// Duplicate dependencies are allowed because when the project is
+		// translated, it consolidates all the duplicates.
+		projYAML := `
+tasks:
+- name: t1
+  depends_on:
+  - name: t2
+    status: foobar
+- name: t2
+
+buildvariants:
+- name: bv1
+  tasks:
+  - name: t1
+  - name: t2
+`
+		var p model.Project
+		_, err := model.LoadProjectInto(ctx, []byte(projYAML), nil, "", &p)
+		require.NoError(t, err)
+		errs := validateTaskDependencies(&p)
+
+		require.Len(t, errs, 1)
+		assert.Equal(t, Error, errs[0].Level)
+		assert.Contains(t, errs[0].Message, "invalid dependency status 'foobar' for task 't2'")
+	})
+	t.Run("AllowsDependenciesOnSameTaskInDifferentBuildVariants", func(t *testing.T) {
+		projYAML := `
+tasks:
+- name: t1
+  depends_on:
+  - name: t2
+    variant: bv1
+  - name: t2
+    variant: bv2
+- name: t2
+
+buildvariants:
+- name: bv1
+  tasks:
+  - name: t1
+  - name: t2
+- name: bv2
+  tasks:
+  - name: t2
+`
+		var p model.Project
+		_, err := model.LoadProjectInto(ctx, []byte(projYAML), nil, "", &p)
+		require.NoError(t, err)
+		errs := validateTaskDependencies(&p)
+
+		assert.Empty(t, errs)
+	})
+	t.Run("SucceedsWithTaskImplicitlyDependingOnTaskInSameBuildVariant", func(t *testing.T) {
+		projYAML := `
+tasks:
+- name: t1
+  depends_on:
+  - name: t2
+- name: t2
+
+buildvariants:
+- name: bv1
+  tasks:
+  - name: t1
+  - name: t2
+`
+		var p model.Project
+		_, err := model.LoadProjectInto(ctx, []byte(projYAML), nil, "", &p)
+		require.NoError(t, err)
+		errs := validateTaskDependencies(&p)
+
+		assert.Empty(t, errs)
+	})
+	t.Run("WarnsWithTaskImplicitlyDependingOnNonexistentTaskInSameBuildVariant", func(t *testing.T) {
+		projYAML := `
+tasks:
+- name: t1
+  depends_on:
+  - name: t2
+- name: t2
+
+buildvariants:
+- name: bv1
+  tasks:
+  - name: t1
+`
+		var p model.Project
+		_, err := model.LoadProjectInto(ctx, []byte(projYAML), nil, "", &p)
+		require.NoError(t, err)
+		require.NoError(t, err)
+		errs := validateTaskDependencies(&p)
+
+		require.Len(t, errs, 1)
+		assert.Equal(t, Warning, errs[0].Level)
+		assert.Contains(t, errs[0].Message, "task 't1' in build variant 'bv1' depends on task 't2' in build variant 'bv1', but it was not found")
+	})
+	t.Run("SucceedsWithTaskImplicitlyDependingOnTaskGroupTaskInSameBuildVariant", func(t *testing.T) {
+		projYAML := `
+tasks:
+- name: t1
+  depends_on:
+  - name: t2
+- name: t2
+
+task_groups:
+- name: tg1
+  tasks:
+  - t2
+
+buildvariants:
+- name: bv1
+  tasks:
+  - name: t1
+  - name: tg1
+`
+		var p model.Project
+		_, err := model.LoadProjectInto(ctx, []byte(projYAML), nil, "", &p)
+		require.NoError(t, err)
+		errs := validateTaskDependencies(&p)
+
+		assert.Empty(t, errs)
+	})
+	t.Run("WarnsWithTaskImplicitlyDependingOnNonexistentTaskGroupTaskInSameBuildVariant", func(t *testing.T) {
+		projYAML := `
+tasks:
+- name: t1
+  depends_on:
+  - name: t2
+- name: t2
+
+task_groups:
+- name: tg1
+  tasks:
+  - t2
+
+buildvariants:
+- name: bv1
+  tasks:
+  - name: t1
+`
+		var p model.Project
+		_, err := model.LoadProjectInto(ctx, []byte(projYAML), nil, "", &p)
+		require.NoError(t, err)
+		errs := validateTaskDependencies(&p)
+
+		require.Len(t, errs, 1)
+		assert.Equal(t, Warning, errs[0].Level)
+		assert.Contains(t, errs[0].Message, "task 't1' in build variant 'bv1' depends on task 't2' in build variant 'bv1', but it was not found")
+	})
+	t.Run("SucceedsWithTaskGroupTaskImplicitlyDependingOnTask", func(t *testing.T) {
+		projYAML := `
+tasks:
+- name: t1
+  depends_on:
+  - name: t2
+- name: t2
+
+task_groups:
+- name: tg1
+  tasks:
+  - t1
+
+buildvariants:
+- name: bv1
+  tasks:
+  - name: tg1
+  - name: t2
+`
+		var p model.Project
+		_, err := model.LoadProjectInto(ctx, []byte(projYAML), nil, "", &p)
+		require.NoError(t, err)
+		errs := validateTaskDependencies(&p)
+
+		assert.Empty(t, errs)
+	})
+	t.Run("WarnsWithTaskGroupTaskImplicitlyDependingOnNonexistentTask", func(t *testing.T) {
+		projYAML := `
+tasks:
+- name: t1
+  depends_on:
+  - name: t2
+- name: t2
+
+task_groups:
+- name: tg1
+  tasks:
+  - t1
+
+buildvariants:
+- name: bv1
+  tasks:
+  - name: tg1
+`
+		var p model.Project
+		_, err := model.LoadProjectInto(ctx, []byte(projYAML), nil, "", &p)
+		require.NoError(t, err)
+		errs := validateTaskDependencies(&p)
+
+		require.Len(t, errs, 1)
+		assert.Equal(t, Warning, errs[0].Level)
+		assert.Contains(t, errs[0].Message, "task 't1' in build variant 'bv1' depends on task 't2' in build variant 'bv1', but it was not found")
+	})
+	t.Run("SucceedsWithBuildVariantTaskDependingOnTask", func(t *testing.T) {
+		projYAML := `
+tasks:
+- name: t1
+- name: t2
+
+buildvariants:
+- name: bv1
+  tasks:
+  - name: t1
+    depends_on:
+    - name: t2
+  - name: t2
+`
+		var p model.Project
+		_, err := model.LoadProjectInto(ctx, []byte(projYAML), nil, "", &p)
+		require.NoError(t, err)
+		errs := validateTaskDependencies(&p)
+
+		assert.Empty(t, errs)
+	})
+	t.Run("WarnsWithBuildVariantTaskDependingOnNonexistentTask", func(t *testing.T) {
+		projYAML := `
+tasks:
+- name: t1
+- name: t2
+
+buildvariants:
+- name: bv1
+  tasks:
+  - name: t1
+    depends_on:
+    - name: t2
+`
+		var p model.Project
+		_, err := model.LoadProjectInto(ctx, []byte(projYAML), nil, "", &p)
+		require.NoError(t, err)
+		require.NoError(t, err)
+		errs := validateTaskDependencies(&p)
+
+		require.Len(t, errs, 1)
+		assert.Equal(t, Warning, errs[0].Level)
+		assert.Contains(t, errs[0].Message, "task 't1' in build variant 'bv1' depends on task 't2' in build variant 'bv1', but it was not found")
+	})
+	t.Run("SucceedsWithBuildVariantTaskDependingOnTaskAndOverridingTaskDependencyDefinition", func(t *testing.T) {
+		projYAML := `
+tasks:
+- name: t1
+  depends_on:
+  - name: t3
+- name: t2
+- name: t3
+
+buildvariants:
+- name: bv1
+  tasks:
+  - name: t1
+    depends_on:
+    - name: t2
+  - name: t2
+`
+		var p model.Project
+		_, err := model.LoadProjectInto(ctx, []byte(projYAML), nil, "", &p)
+		require.NoError(t, err)
+		errs := validateTaskDependencies(&p)
+
+		assert.Empty(t, errs)
+	})
+	t.Run("WarnsWithBuildVariantTaskDependingOnNonexistentTaskAndOverridingTaskDependencyDefinition", func(t *testing.T) {
+		projYAML := `
+tasks:
+- name: t1
+  depends_on:
+  - name: t2
+- name: t2
+- name: t3
+
+buildvariants:
+- name: bv1
+  tasks:
+  - name: t1
+    depends_on:
+    - name: t3
+  - name: t2
+`
+		var p model.Project
+		_, err := model.LoadProjectInto(ctx, []byte(projYAML), nil, "", &p)
+		require.NoError(t, err)
+		require.NoError(t, err)
+		errs := validateTaskDependencies(&p)
+
+		require.Len(t, errs, 1)
+		assert.Equal(t, Warning, errs[0].Level)
+		assert.Contains(t, errs[0].Message, "task 't1' in build variant 'bv1' depends on task 't3' in build variant 'bv1', but it was not found")
+	})
+	t.Run("SucceedsWithBuildVariantDependingOnTask", func(t *testing.T) {
+		projYAML := `
+tasks:
+- name: t1
+- name: t2
+
+buildvariants:
+- name: bv1
+  depends_on:
+  - name: t2
+    variant: bv2
+  tasks:
+  - name: t1
+- name: bv2
+  tasks:
+  - name: t2
+`
+		var p model.Project
+		_, err := model.LoadProjectInto(ctx, []byte(projYAML), nil, "", &p)
+		require.NoError(t, err)
+		errs := validateTaskDependencies(&p)
+
+		assert.Empty(t, errs)
+	})
+	t.Run("WarnsWithBuildVariantDependingOnNonexistentTask", func(t *testing.T) {
+		projYAML := `
+tasks:
+- name: t1
+- name: t2
+
+buildvariants:
+- name: bv1
+  depends_on:
+  - name: t2
+    variant: bv2
+  tasks:
+  - name: t1
+- name: bv2
+`
+		var p model.Project
+		_, err := model.LoadProjectInto(ctx, []byte(projYAML), nil, "", &p)
+		require.NoError(t, err)
+		errs := validateTaskDependencies(&p)
+
+		require.Len(t, errs, 1)
+		assert.Equal(t, Warning, errs[0].Level)
+		assert.Contains(t, errs[0].Message, "task 't1' in build variant 'bv1' depends on task 't2' in build variant 'bv2', but it was not found")
+	})
+	t.Run("SucceedsWithTaskDependingOnAllTasksAndAllVariants", func(t *testing.T) {
+		projYAML := `
+tasks:
+- name: t1
+  depends_on:
+  - name: "*"
+    variant: "*"
+
+buildvariants:
+- name: bv1
+  tasks:
+  - name: t1
+`
+		var p model.Project
+		_, err := model.LoadProjectInto(ctx, []byte(projYAML), nil, "", &p)
+		require.NoError(t, err)
+		errs := validateTaskDependencies(&p)
+
+		assert.Empty(t, errs)
+	})
+	t.Run("SucceedsWithTaskDependingOnAllTasksInSpecificVariant", func(t *testing.T) {
+		projYAML := `
+tasks:
+- name: t1
+  depends_on:
+  - name: "*"
+    variant: bv2
+- name: t2
+
+buildvariants:
+- name: bv1
+  tasks:
+  - name: t1
+- name: bv2
+  tasks:
+  - name: t2
+`
+		var p model.Project
+		_, err := model.LoadProjectInto(ctx, []byte(projYAML), nil, "", &p)
+		require.NoError(t, err)
+		errs := validateTaskDependencies(&p)
+
+		assert.Empty(t, errs)
+	})
+	t.Run("WarnsWithTaskDependingOnAllTasksInSpecificNonexistentVariant", func(t *testing.T) {
+		p := model.Project{
+			Tasks: []model.ProjectTask{
+				{
+					Name: "t1",
+					DependsOn: []model.TaskUnitDependency{
+						{
+							Name:    model.AllDependencies,
+							Variant: "bv2",
 						},
 					},
 				},
-			}
-			errs := validateTaskDependencies(project)
-			So(errs, ShouldNotResemble, ValidationErrors{})
-			So(len(errs), ShouldEqual, 1)
-		})
-
-		Convey("no error should be returned for dependencies of the same task on two variants", func() {
-			project := &model.Project{
-				Tasks: []model.ProjectTask{
-					{
-						Name:      "compile",
-						DependsOn: []model.TaskUnitDependency{},
-					},
-					{
-						Name: "testOne",
-						DependsOn: []model.TaskUnitDependency{
-							{Name: "compile", Variant: "v1"},
-							{Name: "compile", Variant: "v2"},
-						},
-					},
-				},
-				BuildVariants: []model.BuildVariant{
-					{Name: "v1"},
-					{Name: "v2"},
-				},
-			}
-			So(validateTaskDependencies(project), ShouldResemble, ValidationErrors{})
-		})
-
-		Convey("if any dependencies have an invalid name field, an error should be returned", func() {
-
-			project := &model.Project{
-				Tasks: []model.ProjectTask{
-					{
-						Name:      "compile",
-						DependsOn: []model.TaskUnitDependency{},
-					},
-					{
-						Name:      "testOne",
-						DependsOn: []model.TaskUnitDependency{{Name: "bad"}},
-					},
-				},
-			}
-			errs := validateTaskDependencies(project)
-			So(errs, ShouldNotResemble, ValidationErrors{})
-			So(len(errs), ShouldEqual, 1)
-		})
-		Convey("if any dependencies have an invalid variant field, an error should be returned", func() {
-			project := &model.Project{
-				Tasks: []model.ProjectTask{
-					{
-						Name: "compile",
-					},
-					{
-						Name: "testOne",
-						DependsOn: []model.TaskUnitDependency{{
-							Name:    "compile",
-							Variant: "nonexistent",
-						}},
-					},
-				},
-			}
-			errs := validateTaskDependencies(project)
-			So(errs, ShouldNotResemble, ValidationErrors{})
-			So(len(errs), ShouldEqual, 1)
-		})
-
-		Convey("if any dependencies have an invalid status field, an error should be returned", func() {
-			project := &model.Project{
-				Tasks: []model.ProjectTask{
-					{
-						Name:      "compile",
-						DependsOn: []model.TaskUnitDependency{},
-					},
-					{
-						Name:      "testOne",
-						DependsOn: []model.TaskUnitDependency{{Name: "compile", Status: "flibbertyjibbit"}},
-					},
-					{
-						Name:      "testTwo",
-						DependsOn: []model.TaskUnitDependency{{Name: "compile", Status: evergreen.TaskSucceeded}},
-					},
-				},
-			}
-			errs := validateTaskDependencies(project)
-			So(errs, ShouldNotResemble, ValidationErrors{})
-			So(len(errs), ShouldEqual, 1)
-		})
-
-		Convey("if the dependencies are well-formed, no error should be returned", func() {
-			project := &model.Project{
-				Tasks: []model.ProjectTask{
-					{
-						Name:      "compile",
-						DependsOn: []model.TaskUnitDependency{},
-					},
-					{
-						Name:      "testOne",
-						DependsOn: []model.TaskUnitDependency{{Name: "compile"}},
-					},
-					{
-						Name:      "testTwo",
-						DependsOn: []model.TaskUnitDependency{{Name: "compile"}},
-					},
-				},
-			}
-			So(validateTaskDependencies(project), ShouldResemble, ValidationErrors{})
-		})
-		Convey("hiding a nonexistent dependency in a task group is found", func() {
-			p := &model.Project{
-				Tasks: []model.ProjectTask{
-					{Name: "1"},
-					{Name: "2"},
-					{Name: "3", DependsOn: []model.TaskUnitDependency{{Name: "nonexistent"}}},
-				},
-				TaskGroups: []model.TaskGroup{
-					{Name: "tg", Tasks: []string{"3"}},
-				},
-				BuildVariants: []model.BuildVariant{
-					{
-						Name: "v1",
-						Tasks: []model.BuildVariantTaskUnit{
-							{
-								Name:    "1",
-								Variant: "v1",
-							},
-							{
-								Name:    "2",
-								Variant: "v1",
-							},
-							{
-								Name:    "tg",
-								Variant: "v1",
-								IsGroup: true,
+				{Name: "t2"},
+			},
+			BuildVariants: []model.BuildVariant{
+				{
+					Name: "bv1",
+					Tasks: []model.BuildVariantTaskUnit{
+						{
+							Name:    "t1",
+							Variant: "bv1",
+							DependsOn: []model.TaskUnitDependency{
+								{
+									Name:    model.AllDependencies,
+									Variant: "bv2",
+								},
 							},
 						},
 					},
 				},
-			}
-			So(validateTaskDependencies(p)[0].Message, ShouldResemble, "non-existent task name 'nonexistent' in dependencies for task '3'")
-		})
-		Convey("depending on a non-patchable task should generate a warning", func() {
-			p := model.Project{
-				Tasks: []model.ProjectTask{
-					{Name: "t1", DependsOn: []model.TaskUnitDependency{
-						{Name: "t2", Variant: model.AllVariants},
-					}},
-					{Name: "t2", Patchable: utility.FalsePtr()},
+			},
+		}
+		errs := validateTaskDependencies(&p)
+
+		require.Len(t, errs, 1)
+		assert.Equal(t, Warning, errs[0].Level)
+		assert.Contains(t, errs[0].Message, "task 't1' in build variant 'bv1' depends on '*' tasks in build variant 'bv2', but the build variant was not found")
+	})
+	t.Run("SucceedsWithTaskDependingOnSpecificTaskInAllBuildVariants", func(t *testing.T) {
+		projYAML := `
+tasks:
+- name: t1
+  depends_on:
+  - name: t2
+    variant: "*"
+- name: t2
+
+buildvariants:
+- name: bv1
+  tasks:
+  - name: t1
+- name: bv2
+  tasks:
+  - name: t2
+`
+		var p model.Project
+		_, err := model.LoadProjectInto(ctx, []byte(projYAML), nil, "", &p)
+		require.NoError(t, err)
+		errs := validateTaskDependencies(&p)
+
+		assert.Empty(t, errs)
+	})
+	t.Run("WarnsWithTaskDependingOnSpecificTaskInAllBuildVariantsButNoneMatch", func(t *testing.T) {
+		projYAML := `
+tasks:
+- name: t1
+  depends_on:
+  - name: t2
+    variant: "*"
+- name: t2
+
+buildvariants:
+- name: bv1
+  tasks:
+  - name: t1
+`
+		var p model.Project
+		_, err := model.LoadProjectInto(ctx, []byte(projYAML), nil, "", &p)
+		require.NoError(t, err)
+		errs := validateTaskDependencies(&p)
+
+		require.Len(t, errs, 1)
+		assert.Equal(t, Warning, errs[0].Level)
+		assert.Contains(t, errs[0].Message, "task 't1' in build variant 'bv1' depends on task 't2' in '*' build variants, but no build variant contains that task")
+	})
+	t.Run("WarnsWithTaskDependingOnNonexistentTask", func(t *testing.T) {
+		p := model.Project{
+			Tasks: []model.ProjectTask{
+				{
+					Name: "t1",
+					DependsOn: []model.TaskUnitDependency{
+						{
+							Name: "t2",
+						},
+					},
 				},
-			}
-			allTasks := p.FindAllTasksMap()
-			errs := checkTaskDependencies(&p.Tasks[0], allTasks)
-			errs = append(errs, checkTaskDependencies(&p.Tasks[1], allTasks)...)
-			So(len(errs), ShouldEqual, 1)
-			So(errs[0].Level, ShouldEqual, Warning)
-			So(errs[0].Message, ShouldEqual, "Task 't1' depends on non-patchable task 't2'. Neither will run in patches")
-		})
+			},
+			BuildVariants: []model.BuildVariant{
+				{
+					Name: "bv1",
+					Tasks: []model.BuildVariantTaskUnit{
+						{
+							Name:    "t1",
+							Variant: "bv1",
+							DependsOn: []model.TaskUnitDependency{
+								{
+									Name:    "t2",
+									Variant: "bv1",
+								},
+							},
+						},
+					},
+				},
+			},
+		}
+		errs := validateTaskDependencies(&p)
+
+		require.Len(t, errs, 1)
+		assert.Equal(t, Warning, errs[0].Level)
+		assert.Contains(t, errs[0].Message, "task 't1' in build variant 'bv1' depends on task 't2' in build variant 'bv1', but it was not found")
+	})
+	t.Run("WarnsWithTaskDependingOnNonexistentVariant", func(t *testing.T) {
+		p := model.Project{
+			Tasks: []model.ProjectTask{
+				{
+					Name: "t1",
+					DependsOn: []model.TaskUnitDependency{
+						{
+							Name:    "t2",
+							Variant: "bv2",
+						},
+					},
+				},
+			},
+			BuildVariants: []model.BuildVariant{
+				{
+					Name: "bv1",
+					Tasks: []model.BuildVariantTaskUnit{
+						{
+							Name:    "t1",
+							Variant: "bv1",
+							DependsOn: []model.TaskUnitDependency{
+								{
+									Name:    "t2",
+									Variant: "bv2",
+								},
+							},
+						},
+					},
+				},
+			},
+		}
+		errs := validateTaskDependencies(&p)
+
+		require.Len(t, errs, 1)
+		assert.Equal(t, Warning, errs[0].Level)
+		assert.Contains(t, errs[0].Message, "task 't1' in build variant 'bv1' depends on task 't2' in build variant 'bv2', but it was not found")
+	})
+}
+
+func TestCheckRequestersForTaskDependencies(t *testing.T) {
+	t.Run("DependingOnNonPatchableTaskGeneratesWarning", func(t *testing.T) {
+		p := model.Project{
+			Tasks: []model.ProjectTask{
+				{Name: "t1", DependsOn: []model.TaskUnitDependency{
+					{Name: "t2", Variant: model.AllVariants},
+				}},
+				{Name: "t2", Patchable: utility.FalsePtr()},
+			},
+		}
+		allTasks := p.FindAllTasksMap()
+		errs := checkRequestersForTaskDependencies(&p.Tasks[0], allTasks)
+		errs = append(errs, checkRequestersForTaskDependencies(&p.Tasks[1], allTasks)...)
+		require.Len(t, errs, 1)
+		assert.Equal(t, Warning, errs[0].Level)
+		assert.Contains(t, errs[0].Message, "'t1' depends on non-patchable task 't2'")
 	})
 }
 
@@ -580,6 +1050,66 @@ func TestCheckTaskRuns(t *testing.T) {
 		project.BuildVariants[0].Tasks[0].AllowForGitTag = utility.FalsePtr()
 		project.BuildVariants[0].Tasks[0].GitTagOnly = utility.TruePtr()
 		So(len(checkTaskRuns(project)), ShouldEqual, 1)
+	})
+	Convey("When a task is patch-only and also has allowed requesters, a warning should be thrown", t, func() {
+		project := makeProject()
+		project.BuildVariants[0].Tasks[0].AllowedRequesters = []evergreen.UserRequester{
+			evergreen.PatchVersionUserRequester,
+			evergreen.RepotrackerVersionUserRequester,
+		}
+		project.BuildVariants[0].Tasks[0].PatchOnly = utility.TruePtr()
+		errs := checkTaskRuns(project)
+		So(len(errs), ShouldEqual, 1)
+		So(errs[0].Level, ShouldEqual, Warning)
+	})
+	Convey("When a task is not patchable and also has allowed requesters, a warning should be thrown", t, func() {
+		project := makeProject()
+		project.BuildVariants[0].Tasks[0].AllowedRequesters = []evergreen.UserRequester{
+			evergreen.PatchVersionUserRequester,
+			evergreen.RepotrackerVersionUserRequester,
+		}
+		project.BuildVariants[0].Tasks[0].Patchable = utility.FalsePtr()
+		errs := checkTaskRuns(project)
+		So(len(errs), ShouldEqual, 1)
+		So(errs[0].Level, ShouldEqual, Warning)
+	})
+	Convey("When a task is git-tag-only and also has allowed requesters, a warning should be thrown", t, func() {
+		project := makeProject()
+		project.BuildVariants[0].Tasks[0].AllowedRequesters = []evergreen.UserRequester{
+			evergreen.PatchVersionUserRequester,
+			evergreen.RepotrackerVersionUserRequester,
+		}
+		project.BuildVariants[0].Tasks[0].GitTagOnly = utility.TruePtr()
+		errs := checkTaskRuns(project)
+		So(len(errs), ShouldEqual, 1)
+		So(errs[0].Level, ShouldEqual, Warning)
+	})
+	Convey("When a task is allowed for git tags and also has allowed requesters, a warning should be thrown", t, func() {
+		project := makeProject()
+		project.BuildVariants[0].Tasks[0].AllowedRequesters = []evergreen.UserRequester{
+			evergreen.GitTagUserRequester,
+			evergreen.RepotrackerVersionUserRequester,
+		}
+		project.BuildVariants[0].Tasks[0].AllowForGitTag = utility.TruePtr()
+		errs := checkTaskRuns(project)
+		So(len(errs), ShouldEqual, 1)
+		So(errs[0].Level, ShouldEqual, Warning)
+	})
+	Convey("When a task has a valid allowed requester, no warning or error should be thrown", t, func() {
+		project := makeProject()
+		for _, userRequester := range evergreen.AllUserRequesterTypes {
+			project.BuildVariants[0].Tasks[0].AllowedRequesters = []evergreen.UserRequester{userRequester}
+			errs := checkTaskRuns(project)
+			So(len(errs), ShouldEqual, 0)
+		}
+	})
+	Convey("When a task has an invalid allowed_requester, a warning should be thrown", t, func() {
+		project := makeProject()
+		project.BuildVariants[0].Tasks[0].AllowedRequesters = []evergreen.UserRequester{"foobar"}
+		errs := checkTaskRuns(project)
+		So(len(errs), ShouldEqual, 1)
+		So(errs[0].Message, ShouldContainSubstring, "invalid allowed_requester")
+		So(errs[0].Level, ShouldEqual, Warning)
 	})
 }
 
@@ -2249,6 +2779,9 @@ tasks:
 }
 
 func TestCheckProjectWarnings(t *testing.T) {
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
 	Convey("When validating a project's semantics", t, func() {
 		Convey("if the project passes all of the validation funcs, no errors"+
 			" should be returned", func() {
@@ -2258,7 +2791,7 @@ func TestCheckProjectWarnings(t *testing.T) {
 			}
 
 			for _, d := range distros {
-				So(d.Insert(), ShouldBeNil)
+				So(d.Insert(ctx), ShouldBeNil)
 			}
 
 			projectRef := &model.ProjectRef{
@@ -2289,28 +2822,24 @@ func TestCheckProjectWarnings(t *testing.T) {
 	})
 }
 
-type validateProjectFieldsuite struct {
+type validateProjectFieldSuite struct {
 	suite.Suite
 	project model.Project
 }
 
-func TestValidateProjectFieldsuite(t *testing.T) {
-	suite.Run(t, new(validateProjectFieldsuite))
+func TestValidateProjectFieldSuite(t *testing.T) {
+	suite.Run(t, new(validateProjectFieldSuite))
 }
 
-func (s *validateProjectFieldsuite) SetupTest() {
+func (s *validateProjectFieldSuite) SetupTest() {
 	s.project = model.Project{
-		Enabled:     true,
 		Identifier:  "identifier",
-		Owner:       "owner",
-		Repo:        "repo",
-		Branch:      "branch",
 		DisplayName: "test",
 		BatchTime:   10,
 	}
 }
 
-func (s *validateProjectFieldsuite) TestBatchTimeValueMustNonNegative() {
+func (s *validateProjectFieldSuite) TestBatchTimeValueMustNonNegative() {
 	s.project.BatchTime = -10
 	validationError := validateProjectFields(&s.project)
 
@@ -2319,7 +2848,7 @@ func (s *validateProjectFieldsuite) TestBatchTimeValueMustNonNegative() {
 		"Project 'batchtime' must not be negative")
 }
 
-func (s *validateProjectFieldsuite) TestCommandTypes() {
+func (s *validateProjectFieldSuite) TestCommandTypes() {
 	s.project.CommandType = "system"
 	validationError := validateProjectFields(&s.project)
 	s.Empty(validationError)
@@ -2337,7 +2866,7 @@ func (s *validateProjectFieldsuite) TestCommandTypes() {
 	s.Empty(validationError)
 }
 
-func (s *validateProjectFieldsuite) TestFailOnInvalidCommandType() {
+func (s *validateProjectFieldSuite) TestFailOnInvalidCommandType() {
 	s.project.CommandType = "random"
 	validationError := validateProjectFields(&s.project)
 
@@ -2346,7 +2875,7 @@ func (s *validateProjectFieldsuite) TestFailOnInvalidCommandType() {
 		"Project 'CommandType' must be valid")
 }
 
-func (s *validateProjectFieldsuite) TestWarnOnLargeBatchTimeValue() {
+func (s *validateProjectFieldSuite) TestWarnOnLargeBatchTimeValue() {
 	s.project.BatchTime = math.MaxInt32 + 1
 	validationError := checkProjectFields(&s.project)
 
@@ -2756,11 +3285,14 @@ task_groups:
 }
 
 func TestTaskNotInTaskGroupDependsOnTaskInTaskGroup(t *testing.T) {
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
 	assert := assert.New(t)
 	require := require.New(t)
 	require.NoError(db.Clear(distro.Collection))
 	d := distro.Distro{Id: "example_distro"}
-	require.NoError(d.Insert())
+	require.NoError(d.Insert(ctx))
 	exampleYml := `
 exec_timeout_secs: 100
 tasks:
@@ -2799,7 +3331,6 @@ buildvariants:
   - name: example_task_group
 `
 	proj := model.Project{}
-	ctx := context.Background()
 	pp, err := model.LoadProjectInto(ctx, []byte(exampleYml), nil, "example_project", &proj)
 	assert.NotNil(proj)
 	assert.NotNil(pp)
@@ -2810,18 +3341,21 @@ buildvariants:
 	assert.Len(tg.Tasks, 2)
 	assert.Equal("not_in_a_task_group", proj.Tasks[0].Name)
 	assert.Equal("task_in_a_task_group_1", proj.Tasks[0].DependsOn[0].Name)
-	errors := CheckProjectErrors(&proj, false)
+	errors := CheckProjectErrors(ctx, &proj, false)
 	assert.Len(errors, 0)
 	warnings := CheckProjectWarnings(&proj)
 	assert.Len(warnings, 0)
 }
 
 func TestDisplayTaskExecutionTasksNameValidation(t *testing.T) {
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
 	assert := assert.New(t)
 	require := require.New(t)
 	require.NoError(db.Clear(distro.Collection))
 	d := distro.Distro{Id: "example_distro"}
-	require.NoError(d.Insert())
+	require.NoError(d.Insert(ctx))
 	exampleYml := `
 tasks:
 - name: one
@@ -2857,7 +3391,6 @@ buildvariants:
     - two
 `
 	proj := model.Project{}
-	ctx := context.Background()
 	pp, err := model.LoadProjectInto(ctx, []byte(exampleYml), nil, "example_project", &proj)
 	assert.NotNil(proj)
 	assert.NotNil(pp)
@@ -2866,8 +3399,8 @@ buildvariants:
 	proj.BuildVariants[0].DisplayTasks[0].ExecTasks = append(proj.BuildVariants[0].DisplayTasks[0].ExecTasks,
 		"display_three")
 
-	errors := CheckProjectErrors(&proj, false)
-	assert.Len(errors, 1)
+	errors := CheckProjectErrors(ctx, &proj, false)
+	require.Len(errors, 1)
 	assert.Equal(errors[0].Level, Error)
 	assert.Equal("execution task 'display_three' has prefix 'display_' which is invalid",
 		errors[0].Message)
@@ -3065,11 +3598,14 @@ tasks:
 }
 
 func TestCheckProjectConfigurationIsValid(t *testing.T) {
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
 	assert := assert.New(t)
 	require := require.New(t)
 	require.NoError(db.Clear(distro.Collection))
 	d := distro.Distro{Id: "example_distro"}
-	require.NoError(d.Insert())
+	require.NoError(d.Insert(ctx))
 	exampleYml := `
 tasks:
 - name: one
@@ -3099,16 +3635,15 @@ buildvariants:
   - name: two
 `
 	proj := model.Project{}
-	ctx := context.Background()
 	pp, err := model.LoadProjectInto(ctx, []byte(exampleYml), nil, "example_project", &proj)
 	require.NoError(err)
 	assert.NotEmpty(proj)
 	assert.NotNil(pp)
-	errs := CheckProjectErrors(&proj, false)
+	errs := CheckProjectErrors(ctx, &proj, false)
 	assert.Len(errs, 0, "no errors were found")
 	errs = CheckProjectWarnings(&proj)
 	assert.Len(errs, 2, "two warnings were found")
-	assert.NoError(CheckProjectConfigurationIsValid(&evergreen.Settings{}, &proj, &model.ProjectRef{}), "no errors are reported because they are warnings")
+	assert.NoError(CheckProjectConfigurationIsValid(ctx, &evergreen.Settings{}, &proj, &model.ProjectRef{}), "no errors are reported because they are warnings")
 
 	exampleYml = `
 tasks:
@@ -3127,10 +3662,13 @@ buildvariants:
 	require.NoError(err)
 	assert.NotNil(pp)
 	assert.NotEmpty(proj)
-	assert.Error(CheckProjectConfigurationIsValid(&evergreen.Settings{}, &proj, &model.ProjectRef{}))
+	assert.Error(CheckProjectConfigurationIsValid(ctx, &evergreen.Settings{}, &proj, &model.ProjectRef{}))
 }
 
 func TestGetDistrosForProject(t *testing.T) {
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
 	assert := assert.New(t)
 	require := require.New(t)
 	require.NoError(db.Clear(distro.Collection))
@@ -3139,32 +3677,32 @@ func TestGetDistrosForProject(t *testing.T) {
 		Aliases:       []string{"distro1-alias", "distro1and2-alias"},
 		ValidProjects: []string{"project1", "project2"},
 	}
-	require.NoError(d.Insert())
+	require.NoError(d.Insert(ctx))
 	d = distro.Distro{
 		Id:      "distro2",
 		Aliases: []string{"distro2-alias", "distro1and2-alias"},
 	}
-	require.NoError(d.Insert())
+	require.NoError(d.Insert(ctx))
 	d = distro.Distro{
 		Id:            "distro3",
 		ValidProjects: []string{"project5"},
 	}
-	require.NoError(d.Insert())
+	require.NoError(d.Insert(ctx))
 
-	ids, aliases, err := getDistros()
+	ids, aliases, err := getDistros(ctx)
 	require.NoError(err)
 	require.Len(ids, 3)
 	require.Len(aliases, 3)
 	assert.Contains(aliases, "distro1and2-alias")
 	assert.Contains(aliases, "distro1-alias")
 	assert.Contains(aliases, "distro2-alias")
-	ids, aliases, err = getDistrosForProject("project1")
+	ids, aliases, err = getDistrosForProject(ctx, "project1")
 	require.NoError(err)
 	require.Len(ids, 2)
 	assert.Contains(ids, "distro1")
 	assert.Contains(aliases, "distro1and2-alias")
 	assert.Contains(aliases, "distro1-alias")
-	ids, aliases, err = getDistrosForProject("project3")
+	ids, aliases, err = getDistrosForProject(ctx, "project3")
 	require.NoError(err)
 	require.Len(ids, 1)
 	assert.Contains(ids, "distro2")
@@ -3216,6 +3754,9 @@ func TestValidateTaskSyncCommands(t *testing.T) {
 }
 
 func TestValidateVersionControl(t *testing.T) {
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
 	ref := &model.ProjectRef{
 		Identifier:            "proj",
 		VersionControlEnabled: utility.FalsePtr(),
@@ -3230,59 +3771,69 @@ func TestValidateVersionControl(t *testing.T) {
 		},
 	}
 	isConfigDefined := &projectConfig != nil
-	verrs := validateVersionControl(&evergreen.Settings{}, &model.Project{}, ref, isConfigDefined)
+	verrs := validateVersionControl(ctx, &evergreen.Settings{}, &model.Project{}, ref, isConfigDefined)
 	assert.Equal(t, "version control is disabled for project 'proj'; the currently defined project config fields will not be picked up", verrs[0].Message)
 
 	ref.VersionControlEnabled = utility.TruePtr()
-	verrs = validateVersionControl(&evergreen.Settings{}, &model.Project{}, ref, false)
+	verrs = validateVersionControl(ctx, &evergreen.Settings{}, &model.Project{}, ref, false)
 	assert.Equal(t, "version control is enabled for project 'proj' but no project config fields have been set.", verrs[0].Message)
 
 }
 
 func TestValidateContainers(t *testing.T) {
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
 	s := &evergreen.Settings{
 		Providers: evergreen.CloudProviders{
 			AWS: evergreen.AWSConfig{
 				Pod: evergreen.AWSPodConfig{
 					ECS: evergreen.ECSConfig{
 						AllowedImages: []string{
-							"demo/image:latest",
+							"hadjri/evg-container-self-tests",
 						},
 					},
 				},
 			},
 		},
 	}
+	assert.NoError(t, evergreen.UpdateConfig(ctx, testutil.TestConfig()))
 	defer func() {
 		assert.NoError(t, db.Clear(model.ProjectRefCollection))
 	}()
 	for tName, tCase := range map[string]func(t *testing.T, p *model.Project, ref *model.ProjectRef){
 		"SucceedsWithValidProjectAndRef": func(t *testing.T, p *model.Project, ref *model.ProjectRef) {
-			verrs := validateContainers(s, p, ref, false)
+			verrs := validateContainers(ctx, s, p, ref, false)
 			assert.Len(t, verrs, 0)
 		},
 		"FailsWithoutContainerName": func(t *testing.T, p *model.Project, ref *model.ProjectRef) {
 			p.Containers[0].Name = ""
-			verrs := validateContainers(s, p, ref, false)
+			verrs := validateContainers(ctx, s, p, ref, false)
 			require.Len(t, verrs, 1)
 			assert.Contains(t, verrs[0].Message, "name must be defined")
 		},
 		"FailsWithoutContainerImage": func(t *testing.T, p *model.Project, ref *model.ProjectRef) {
 			p.Containers[0].Image = ""
-			verrs := validateContainers(s, p, ref, false)
+			verrs := validateContainers(ctx, s, p, ref, false)
 			require.Len(t, verrs, 1)
 			assert.Contains(t, verrs[0].Message, "image must be defined")
 		},
+		"FailsWithoutContainerWorkingDirectory": func(t *testing.T, p *model.Project, ref *model.ProjectRef) {
+			p.Containers[0].WorkingDir = ""
+			verrs := validateContainers(ctx, s, p, ref, false)
+			require.Len(t, verrs, 1)
+			assert.Contains(t, verrs[0].Message, "working directory must be defined")
+		},
 		"FailsWithNotAllowedImage": func(t *testing.T, p *model.Project, ref *model.ProjectRef) {
 			p.Containers[0].Image = "not_allowed"
-			verrs := validateContainers(s, p, ref, false)
+			verrs := validateContainers(ctx, s, p, ref, false)
 			require.Len(t, verrs, 1)
 			assert.Contains(t, verrs[0].Message, "image 'not_allowed' not allowed")
 		},
 		"MustSpecifyEitherContainerSizeOrResources": func(t *testing.T, p *model.Project, ref *model.ProjectRef) {
 			p.Containers[0].Size = ""
 			p.Containers[0].Resources = nil
-			verrs := validateContainers(s, p, ref, false)
+			verrs := validateContainers(ctx, s, p, ref, false)
 			require.Len(t, verrs, 1)
 			assert.Contains(t, verrs[0].Message, "either size or resources must be defined")
 		},
@@ -3291,19 +3842,19 @@ func TestValidateContainers(t *testing.T) {
 				MemoryMB: 100,
 				CPU:      1,
 			}
-			verrs := validateContainers(s, p, ref, false)
+			verrs := validateContainers(ctx, s, p, ref, false)
 			require.Len(t, verrs, 1)
 			assert.Contains(t, verrs[0].Message, "size and resources cannot both be defined")
 		},
 		"FailsWithNonexistentContainerSize": func(t *testing.T, p *model.Project, ref *model.ProjectRef) {
 			p.Containers[0].Size = "s2"
-			verrs := validateContainers(s, p, ref, false)
+			verrs := validateContainers(ctx, s, p, ref, false)
 			require.Len(t, verrs, 1)
 			assert.Contains(t, verrs[0].Message, "container size 's2' not found")
 		},
 		"FailsWithNonexistentRepoCred": func(t *testing.T, p *model.Project, ref *model.ProjectRef) {
 			p.Containers[0].Credential = "nonexistent"
-			verrs := validateContainers(s, p, ref, false)
+			verrs := validateContainers(ctx, s, p, ref, false)
 			require.Len(t, verrs, 1)
 			assert.Contains(t, verrs[0].Message, "credential 'nonexistent' is not defined in project settings")
 		},
@@ -3312,7 +3863,7 @@ func TestValidateContainers(t *testing.T) {
 				OperatingSystem: "oops",
 				CPUArchitecture: "oops",
 			}
-			verrs := validateContainers(s, p, ref, false)
+			verrs := validateContainers(ctx, s, p, ref, false)
 			require.Len(t, verrs, 1)
 			assert.Contains(t, verrs[0].Message, "unrecognized container OS 'oops'")
 			assert.Contains(t, verrs[0].Message, "unrecognized CPU architecture 'oops'")
@@ -3322,14 +3873,14 @@ func TestValidateContainers(t *testing.T) {
 				MemoryMB: 0,
 				CPU:      -1,
 			}
-			verrs := validateContainers(s, p, ref, false)
+			verrs := validateContainers(ctx, s, p, ref, false)
 			require.Len(t, verrs, 1)
 			assert.Contains(t, verrs[0].Message, "container resource CPU must be a positive integer")
 			assert.Contains(t, verrs[0].Message, "container resource memory MB must be a positive integer")
 		},
 		"FailsWithPodSecretAsReferencedRepoCred": func(t *testing.T, p *model.Project, ref *model.ProjectRef) {
 			ref.ContainerSecrets[0].Type = model.ContainerSecretPodSecret
-			verrs := validateContainers(s, p, ref, false)
+			verrs := validateContainers(ctx, s, p, ref, false)
 			require.Len(t, verrs, 1)
 			assert.Contains(t, verrs[0].Message, "container credential named 'c1' exists but is not valid for use as a repository credential")
 		},
@@ -3342,7 +3893,7 @@ func TestValidateContainers(t *testing.T) {
 				Containers: []model.Container{
 					{
 						Name:       "c1",
-						Image:      "demo/image:latest",
+						Image:      "hadjri/evg-container-self-tests",
 						WorkingDir: "/root",
 						Size:       "s1",
 						Credential: "c1",
@@ -3379,6 +3930,9 @@ func TestValidateContainers(t *testing.T) {
 }
 
 func TestValidateTaskSyncSettings(t *testing.T) {
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
 	for testName, testParams := range map[string]struct {
 		tasks                    []model.ProjectTask
 		taskSyncEnabledForConfig bool
@@ -3436,7 +3990,7 @@ func TestValidateTaskSyncSettings(t *testing.T) {
 				},
 			}
 			p := &model.Project{Tasks: testParams.tasks}
-			errs := validateTaskSyncSettings(&evergreen.Settings{}, p, ref, false)
+			errs := validateTaskSyncSettings(ctx, &evergreen.Settings{}, p, ref, false)
 			if testParams.expectError {
 				assert.NotEmpty(t, errs)
 			} else {
@@ -3456,13 +4010,13 @@ func TestValidateTaskSyncSettings(t *testing.T) {
 			},
 		},
 	}
-	assert.NotEmpty(t, validateTaskSyncSettings(&evergreen.Settings{}, p, ref, false))
+	assert.NotEmpty(t, validateTaskSyncSettings(ctx, &evergreen.Settings{}, p, ref, false))
 
 	ref.TaskSync.ConfigEnabled = utility.TruePtr()
-	assert.Empty(t, validateTaskSyncSettings(&evergreen.Settings{}, p, ref, false))
+	assert.Empty(t, validateTaskSyncSettings(ctx, &evergreen.Settings{}, p, ref, false))
 
 	p.Tasks = []model.ProjectTask{}
-	assert.Empty(t, validateTaskSyncSettings(&evergreen.Settings{}, p, ref, false))
+	assert.Empty(t, validateTaskSyncSettings(ctx, &evergreen.Settings{}, p, ref, false))
 }
 
 func TestTVToTaskUnit(t *testing.T) {

@@ -75,8 +75,9 @@ func insertFileDocsToDB(ctx context.Context, fn string, db *mongo.Database, logs
 			return errors.Wrap(err, "creating task indexes")
 		}
 	case host.Collection:
-		if _, err = collection.Indexes().CreateOne(ctx, mongo.IndexModel{
-			Keys: host.StatusIndex,
+		if _, err = collection.Indexes().CreateMany(ctx, []mongo.IndexModel{
+			{Keys: host.StatusIndex},
+			{Keys: host.StartedByStatusIndex},
 		}); err != nil {
 			return errors.Wrap(err, "creating host index")
 		}
@@ -220,7 +221,7 @@ func main() {
 		amboyDBName string
 	)
 
-	flag.StringVar(&path, "path", filepath.Join(wd, "testdata", "smoke"), "load data from json files from these paths")
+	flag.StringVar(&path, "path", filepath.Join(wd, "smoke", "internal", "testdata", "db"), "load data from json files from these paths")
 	flag.StringVar(&dbName, "dbName", "mci_smoke", "database name for directory")
 	flag.StringVar(&logsDBName, "logsDBName", "logs", "logs database name for directory")
 	flag.StringVar(&amboyDBName, "amboyDBName", "amboy_smoke", "name of the Amboy DB to use")

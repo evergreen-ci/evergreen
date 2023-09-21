@@ -30,11 +30,15 @@ type GeneratedProject struct {
 	Functions     map[string]*YAMLCommandSet `yaml:"functions"`
 	TaskGroups    []parserTaskGroup          `yaml:"task_groups"`
 
-	Task *task.Task
+	Task           *task.Task
+	ActivationInfo *specificActivationInfo
+	NewTVPairs     *TaskVariantPairs
 }
 
 // MergeGeneratedProjects takes a slice of generated projects and returns a single, deduplicated project.
-func MergeGeneratedProjects(projects []GeneratedProject) (*GeneratedProject, error) {
+func MergeGeneratedProjects(ctx context.Context, projects []GeneratedProject) (*GeneratedProject, error) {
+	_, span := tracer.Start(ctx, "merge-generated-projects")
+	defer span.End()
 	catcher := grip.NewBasicCatcher()
 
 	bvs := map[string]*parserBV{}
@@ -107,20 +111,11 @@ func ParseProjectFromJSONString(data string) (GeneratedProject, error) {
 	return g, nil
 }
 
-// ParseProjectFromJSON returns a GeneratedTasks type from JSON. We use the
-// YAML parser instead of the JSON parser because the JSON parser will not
-// properly unmarshal into a struct with multiple fields as options, like the YAMLCommandSet.
-func ParseProjectFromJSON(data []byte) (GeneratedProject, error) {
-	g := GeneratedProject{}
-	if err := util.UnmarshalYAMLWithFallback(data, &g); err != nil {
-		return g, errors.Wrap(err, "unmarshalling generated project from JSON data")
-	}
-	return g, nil
-}
-
 // NewVersion adds the buildvariants, tasks, and functions
 // from a generated project config to a project, and returns the previous config number.
-func (g *GeneratedProject) NewVersion(p *Project, pp *ParserProject, v *Version) (*Project, *ParserProject, *Version, error) {
+func (g *GeneratedProject) NewVersion(ctx context.Context, p *Project, pp *ParserProject, v *Version) (*Project, *ParserProject, *Version, error) {
+	_, span := tracer.Start(ctx, "create-generated-version")
+	defer span.End()
 	// Cache project data in maps for quick lookup
 	cachedProject := cacheProjectData(p)
 
@@ -147,6 +142,8 @@ func (g *GeneratedProject) NewVersion(p *Project, pp *ParserProject, v *Version)
 }
 
 func (g *GeneratedProject) Save(ctx context.Context, settings *evergreen.Settings, p *Project, pp *ParserProject, v *Version) error {
+	ctx, span := tracer.Start(ctx, "save-generated-project")
+	defer span.End()
 	// Get task again, to exit early if another generator finished early.
 	t, err := task.FindOneId(g.Task.Id)
 	if err != nil {
@@ -219,16 +216,14 @@ func cacheProjectData(p *Project) projectMaps {
 
 // saveNewBuildsAndTasks saves new builds and tasks to the db.
 func (g *GeneratedProject) saveNewBuildsAndTasks(ctx context.Context, v *Version, p *Project) error {
+	ctx, span := tracer.Start(ctx, "save-builds-and-tasks")
+	defer span.End()
 	// Inherit priority from the parent generator task.
 	for i, projBv := range p.BuildVariants {
 		for j := range projBv.Tasks {
 			p.BuildVariants[i].Tasks[j].Priority = g.Task.Priority
 		}
 	}
-	// Only consider batchtime for mainline builds. We should always respect activate if it is set.
-	activationInfo := g.findTasksAndVariantsWithSpecificActivations(v.Requester)
-
-	newTVPairs := g.getNewTasksWithDependencies(v, p, &activationInfo)
 
 	existingBuilds, err := build.Find(build.ByVersion(v.Id))
 	if err != nil {
@@ -239,6 +234,7 @@ func (g *GeneratedProject) saveNewBuildsAndTasks(ctx context.Context, v *Version
 		buildSet[b.BuildVariant] = struct{}{}
 	}
 
+	newTVPairs, activationInfo := g.GetNewTasksAndActivationInfo(ctx, v, p)
 	// Group into new builds and new tasks for existing builds.
 	newTVPairsForExistingVariants := TaskVariantPairs{}
 	newTVPairsForNewVariants := TaskVariantPairs{}
@@ -278,14 +274,14 @@ func (g *GeneratedProject) saveNewBuildsAndTasks(ctx context.Context, v *Version
 		ProjectRef:     projectRef,
 		Version:        v,
 		Pairs:          newTVPairsForExistingVariants,
-		ActivationInfo: activationInfo,
+		ActivationInfo: *activationInfo,
 		SyncAtEndOpts:  syncAtEndOpts,
 		GeneratedBy:    g.Task.Id,
 		// If the parent generator is required to finish, then its generated
 		// tasks inherit that requirement.
-		ActivatedTasksAreEssentialToComplete: g.Task.IsEssentialToFinish,
+		ActivatedTasksAreEssentialToSucceed: g.Task.IsEssentialToSucceed,
 	}
-	activatedTasksInExistingBuilds, err := addNewTasks(ctx, creationInfo, existingBuilds)
+	activatedTasksInExistingBuilds, err := addNewTasks(ctx, creationInfo, existingBuilds, evergreen.GenerateTasksActivator)
 	if err != nil {
 		return errors.Wrap(err, "adding new tasks")
 	}
@@ -297,23 +293,37 @@ func (g *GeneratedProject) saveNewBuildsAndTasks(ctx context.Context, v *Version
 	}
 
 	// only want to add dependencies to activated tasks
-	if err = g.addDependencies(append(activatedTasksInExistingBuilds, activatedTasksInNewBuilds...)); err != nil {
+	if err = g.addDependencies(ctx, append(activatedTasksInExistingBuilds, activatedTasksInNewBuilds...)); err != nil {
 		return errors.Wrap(err, "adding dependencies")
 	}
 
 	return nil
 }
 
+// GetNewTasksAndActivationInfo computes the NewTVPairs and ActivationInfo fields on the generator if they are nil.
+func (g *GeneratedProject) GetNewTasksAndActivationInfo(ctx context.Context, v *Version, p *Project) (*TaskVariantPairs, *specificActivationInfo) {
+	if g.NewTVPairs != nil && g.ActivationInfo != nil {
+		return g.NewTVPairs, g.ActivationInfo
+	}
+	activationInfo := g.findTasksAndVariantsWithSpecificActivations(v.Requester)
+	newTasks := g.getNewTasksWithDependencies(ctx, v, p, &activationInfo)
+	g.NewTVPairs = &newTasks
+	g.ActivationInfo = &activationInfo
+	return g.NewTVPairs, g.ActivationInfo
+}
+
 // CheckForCycles builds a dependency graph from the existing tasks in the version and simulates
 // adding the generated tasks, their dependencies, and dependencies on the generated tasks to the graph.
 // Returns a DependencyCycleError error if the resultant graph contains dependency cycles.
-func (g *GeneratedProject) CheckForCycles(v *Version, p *Project, projectRef *ProjectRef) error {
+func (g *GeneratedProject) CheckForCycles(ctx context.Context, v *Version, p *Project, projectRef *ProjectRef) error {
+	ctx, span := tracer.Start(ctx, "check-for-cycles")
+	defer span.End()
 	existingTasksGraph, err := task.VersionDependencyGraph(g.Task.Version, false)
 	if err != nil {
 		return errors.Wrapf(err, "creating dependency graph for version '%s'", g.Task.Version)
 	}
 
-	simulatedGraph, err := g.simulateNewTasks(existingTasksGraph, v, p, projectRef)
+	simulatedGraph, err := g.simulateNewTasks(ctx, existingTasksGraph, v, p, projectRef)
 	if err != nil {
 		return errors.Wrap(err, "simulating new tasks")
 	}
@@ -327,26 +337,27 @@ func (g *GeneratedProject) CheckForCycles(v *Version, p *Project, projectRef *Pr
 
 // simulateNewTasks adds the tasks we're planning to add to the version to the graph and
 // adds simulated edges from each task that depends on the generator to each of the generated tasks.
-func (g *GeneratedProject) simulateNewTasks(graph task.DependencyGraph, v *Version, p *Project, projectRef *ProjectRef) (task.DependencyGraph, error) {
-	newTasks := g.getNewTasksWithDependencies(v, p, nil)
-
+func (g *GeneratedProject) simulateNewTasks(ctx context.Context, graph task.DependencyGraph, v *Version, p *Project, projectRef *ProjectRef) (task.DependencyGraph, error) {
+	newTVPairs, _ := g.GetNewTasksAndActivationInfo(ctx, v, p)
 	creationInfo := TaskCreationInfo{
 		Project:    p,
 		ProjectRef: projectRef,
 		Version:    v,
-		Pairs:      newTasks,
+		Pairs:      *newTVPairs,
 	}
 	taskIDs, err := getTaskIdTables(creationInfo)
 	if err != nil {
 		return graph, errors.Wrap(err, "getting task ids")
 	}
 
-	graph = addTasksToGraph(newTasks.ExecTasks, graph, p, taskIDs)
-	return g.addDependencyEdgesToGraph(newTasks.ExecTasks, v, p, graph, taskIDs)
+	graph = addTasksToGraph(newTVPairs.ExecTasks, graph, p, taskIDs)
+	return g.addDependencyEdgesToGraph(ctx, newTVPairs.ExecTasks, v, p, graph, taskIDs)
 }
 
 // getNewTasksWithDependencies returns the generated tasks and their recursive dependencies.
-func (g *GeneratedProject) getNewTasksWithDependencies(v *Version, p *Project, activationInfo *specificActivationInfo) TaskVariantPairs {
+func (g *GeneratedProject) getNewTasksWithDependencies(ctx context.Context, v *Version, p *Project, activationInfo *specificActivationInfo) TaskVariantPairs {
+	_, span := tracer.Start(ctx, "get-new-tasks-with-dependencies")
+	defer span.End()
 	newTVPairs := TaskVariantPairs{}
 	for _, bv := range g.BuildVariants {
 		newTVPairs = appendTasks(newTVPairs, bv, p)
@@ -391,8 +402,8 @@ func addTasksToGraph(tasks TVPairSet, graph task.DependencyGraph, p *Project, ta
 }
 
 // addDependencyEdgesToGraph adds edges from the tasks that depend on the generator to activated generated tasks.
-func (g *GeneratedProject) addDependencyEdgesToGraph(newTasks TVPairSet, v *Version, p *Project, graph task.DependencyGraph, taskIDs TaskIdConfig) (task.DependencyGraph, error) {
-	activatedNewTasks, err := g.filterInactiveTasks(newTasks, v, p)
+func (g *GeneratedProject) addDependencyEdgesToGraph(ctx context.Context, newTasks TVPairSet, v *Version, p *Project, graph task.DependencyGraph, taskIDs TaskIdConfig) (task.DependencyGraph, error) {
+	activatedNewTasks, err := g.filterInactiveTasks(ctx, newTasks, v, p)
 	if err != nil {
 		return graph, errors.Wrap(err, "filtering inactive tasks")
 	}
@@ -411,8 +422,7 @@ func (g *GeneratedProject) addDependencyEdgesToGraph(newTasks TVPairSet, v *Vers
 }
 
 // filterInactiveTasks returns a copy of tasks with the tasks that will not be activated by the generator removed.
-func (g *GeneratedProject) filterInactiveTasks(tasks TVPairSet, v *Version, p *Project) (TVPairSet, error) {
-	activationInfo := g.findTasksAndVariantsWithSpecificActivations(v.Requester)
+func (g *GeneratedProject) filterInactiveTasks(ctx context.Context, tasks TVPairSet, v *Version, p *Project) (TVPairSet, error) {
 	existingBuilds, err := build.Find(build.ByVersion(v.Id))
 	if err != nil {
 		return nil, errors.Wrap(err, "finding builds for version")
@@ -427,6 +437,7 @@ func (g *GeneratedProject) filterInactiveTasks(tasks TVPairSet, v *Version, p *P
 		buildSet[t.Variant] = append(buildSet[t.Variant], t.TaskName)
 	}
 
+	_, activationInfo := g.GetNewTasksAndActivationInfo(ctx, v, p)
 	activatedTasks := make(TVPairSet, 0, len(tasks))
 	for bv, tasks := range buildSet {
 		if existingBuildMap[bv] {
@@ -518,7 +529,7 @@ func (b *specificActivationInfo) taskOrVariantHasSpecificActivation(variant, tas
 func (g *GeneratedProject) findTasksAndVariantsWithSpecificActivations(requester string) specificActivationInfo {
 	res := newSpecificActivationInfo()
 	for _, bv := range g.BuildVariants {
-		// Only consider batchtime for certain requesters
+		// Only consider batchtime for mainline builds. We should always respect activate if it is set.
 		if evergreen.ShouldConsiderBatchtime(requester) && bv.hasSpecificActivation() {
 			res.activationVariants = append(res.activationVariants, bv.name())
 		} else if bv.Activate != nil {
@@ -556,7 +567,9 @@ func isStepbackTask(generatorTask *task.Task, variant, taskName string) bool {
 	return false
 }
 
-func (g *GeneratedProject) addDependencies(newTaskIds []string) error {
+func (g *GeneratedProject) addDependencies(ctx context.Context, newTaskIds []string) error {
+	_, span := tracer.Start(ctx, "add-dependencies")
+	defer span.End()
 	statuses := []string{evergreen.TaskSucceeded, task.AllStatuses}
 	for _, status := range statuses {
 		if err := g.Task.UpdateDependsOn(status, newTaskIds); err != nil {
@@ -691,7 +704,7 @@ func isNonZeroBV(bv parserBV) bool {
 	if bv.DisplayName != "" || len(bv.Expansions) > 0 || len(bv.Modules) > 0 ||
 		bv.Disable != nil || len(bv.Tags) > 0 ||
 		bv.BatchTime != nil || bv.Patchable != nil || bv.PatchOnly != nil ||
-		bv.AllowForGitTag != nil || bv.GitTagOnly != nil ||
+		bv.AllowForGitTag != nil || bv.GitTagOnly != nil || len(bv.AllowedRequesters) > 0 ||
 		bv.Stepback != nil || len(bv.RunOn) > 0 {
 		return true
 	}

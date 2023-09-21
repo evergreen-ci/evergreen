@@ -83,7 +83,7 @@ func (tgh *taskGetHandler) Run(ctx context.Context) gimlet.Responder {
 	}
 
 	taskModel := &model.APITask{}
-	err = taskModel.BuildFromService(foundTask, &model.APITaskArgs{
+	err = taskModel.BuildFromService(ctx, foundTask, &model.APITaskArgs{
 		IncludeProjectIdentifier: true,
 		IncludeAMI:               true,
 		IncludeArtifacts:         true,
@@ -101,12 +101,12 @@ func (tgh *taskGetHandler) Run(ctx context.Context) gimlet.Responder {
 			return gimlet.MakeJSONInternalErrorResponder(errors.Wrapf(err, "finding archived executions for task '%s'", tgh.taskID))
 		}
 
-		if err = taskModel.BuildPreviousExecutions(tasks, tgh.url, tgh.parsleyURL); err != nil {
+		if err = taskModel.BuildPreviousExecutions(ctx, tasks, tgh.url, tgh.parsleyURL); err != nil {
 			return gimlet.MakeJSONInternalErrorResponder(errors.Wrapf(err, "adding previous task executions to API model for task '%s'", tgh.taskID))
 		}
 	}
 
-	start, err := dbModel.GetEstimatedStartTime(*foundTask)
+	start, err := dbModel.GetEstimatedStartTime(ctx, *foundTask)
 	if err != nil {
 		return gimlet.MakeJSONInternalErrorResponder(errors.Wrapf(err, "getting estimated start time for task '%s'", tgh.taskID))
 	}
@@ -179,13 +179,13 @@ func (tep *taskExecutionPatchHandler) Run(ctx context.Context) gimlet.Responder 
 				})
 			}
 		}
-		if err := dbModel.SetTaskPriority(*tep.task, priority, tep.user.Username()); err != nil {
+		if err := dbModel.SetTaskPriority(ctx, *tep.task, priority, tep.user.Username()); err != nil {
 			return gimlet.MakeJSONInternalErrorResponder(errors.Wrapf(err, "setting priority for task '%s'", tep.task.Id))
 		}
 	}
 	if tep.Activated != nil {
 		activated := *tep.Activated
-		if err := dbModel.SetActiveStateById(tep.task.Id, tep.user.Username(), activated); err != nil {
+		if err := dbModel.SetActiveStateById(ctx, tep.task.Id, tep.user.Username(), activated); err != nil {
 			return gimlet.MakeJSONInternalErrorResponder(errors.Wrapf(err, "setting activation state for task '%s'", tep.task.Id))
 		}
 	}
@@ -201,7 +201,7 @@ func (tep *taskExecutionPatchHandler) Run(ctx context.Context) gimlet.Responder 
 	}
 
 	taskModel := &model.APITask{}
-	err = taskModel.BuildFromService(refreshedTask, &model.APITaskArgs{
+	err = taskModel.BuildFromService(ctx, refreshedTask, &model.APITaskArgs{
 		IncludeProjectIdentifier: true,
 		IncludeAMI:               true,
 	})
@@ -294,50 +294,6 @@ func (rh *taskSyncPathGetHandler) Run(ctx context.Context) gimlet.Responder {
 	return gimlet.NewTextResponse(t.S3Path(t.BuildVariant, t.DisplayName))
 }
 
-// POST /tasks/{task_id}/set_results_info
-
-type taskSetResultsInfoHandler struct {
-	taskID string
-	info   apimodels.TaskTestResultsInfo
-}
-
-func makeTaskSetResultsInfoHandler() gimlet.RouteHandler {
-	return &taskSetResultsInfoHandler{}
-}
-
-func (rh *taskSetResultsInfoHandler) Factory() gimlet.RouteHandler {
-	return &taskSetResultsInfoHandler{}
-}
-
-func (rh *taskSetResultsInfoHandler) Parse(ctx context.Context, r *http.Request) error {
-	rh.taskID = gimlet.GetVars(r)["task_id"]
-
-	if err := gimlet.GetJSON(r.Body, &rh.info); err != nil {
-		return errors.Wrap(err, "reading test results info from JSON request body")
-	}
-
-	return nil
-}
-
-func (rh *taskSetResultsInfoHandler) Run(ctx context.Context) gimlet.Responder {
-	t, err := task.FindOneId(rh.taskID)
-	if err != nil {
-		return gimlet.MakeJSONInternalErrorResponder(errors.Wrapf(err, "finding task '%s'", rh.taskID))
-	}
-	if t == nil {
-		return gimlet.MakeJSONInternalErrorResponder(gimlet.ErrorResponse{
-			StatusCode: http.StatusNotFound,
-			Message:    fmt.Sprintf("task '%s' not found", rh.taskID),
-		})
-	}
-
-	if err = t.SetResultsInfo(rh.info.Service, rh.info.Failed); err != nil {
-		return gimlet.MakeJSONInternalErrorResponder(errors.Wrapf(err, "setting results info for task '%s'", rh.taskID))
-	}
-
-	return gimlet.NewTextResponse("Results info set in task")
-}
-
 // GET /task/sync_read_credentials
 
 type taskSyncReadCredentialsGetHandler struct{}
@@ -355,7 +311,7 @@ func (rh *taskSyncReadCredentialsGetHandler) Parse(ctx context.Context, r *http.
 }
 
 func (rh *taskSyncReadCredentialsGetHandler) Run(ctx context.Context) gimlet.Responder {
-	settings, err := evergreen.GetConfig()
+	settings, err := evergreen.GetConfig(ctx)
 	if err != nil {
 		return gimlet.MakeJSONErrorResponder(err)
 	}

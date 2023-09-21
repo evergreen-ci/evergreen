@@ -13,6 +13,7 @@ import (
 	"github.com/evergreen-ci/evergreen/model/distro"
 	"github.com/evergreen-ci/evergreen/model/host"
 	"github.com/evergreen-ci/evergreen/model/task"
+	"github.com/evergreen-ci/evergreen/testutil"
 	"github.com/mongodb/amboy"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -20,6 +21,10 @@ import (
 )
 
 func TestCloudStatusJob(t *testing.T) {
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+	ctx = testutil.TestSpan(ctx, t)
+
 	assert := assert.New(t)
 	require := require.New(t)
 
@@ -79,21 +84,20 @@ func TestCloudStatusJob(t *testing.T) {
 	mockState := cloud.GetMockProvider()
 	mockState.Reset()
 	for _, h := range hosts {
-		require.NoError(h.Insert())
+		require.NoError(h.Insert(ctx))
 		mockState.Set(h.Id, cloud.MockInstance{
 			Status:  cloud.StatusRunning,
 			DNSName: "dns_name",
 		})
 	}
 
-	ctx := context.Background()
 	env := &mock.Environment{}
 	require.NoError(env.Configure(ctx))
 	j := NewCloudHostReadyJob(env, "id")
 	j.Run(ctx)
 	assert.NoError(j.Error())
 
-	hosts, err := host.Find(db.Query(bson.M{}))
+	hosts, err := host.Find(ctx, bson.M{})
 	assert.Len(hosts, 6)
 	assert.NoError(err)
 	for _, h := range hosts {
@@ -120,17 +124,20 @@ func TestCloudStatusJob(t *testing.T) {
 }
 
 func TestTerminateUnknownHosts(t *testing.T) {
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+	ctx = testutil.TestSpan(ctx, t)
+
 	require.NoError(t, db.ClearCollections(host.Collection))
 	h1 := host.Host{
 		Id: "h1",
 	}
-	require.NoError(t, h1.Insert())
+	require.NoError(t, h1.Insert(ctx))
 	h2 := host.Host{
 		Id: "h2",
 	}
-	require.NoError(t, h2.Insert())
+	require.NoError(t, h2.Insert(ctx))
 	env := &mock.Environment{}
-	ctx := context.Background()
 	require.NoError(t, env.Configure(ctx))
 	j := NewCloudHostReadyJob(env, "id").(*cloudHostReadyJob)
 	awsErr := "getting host statuses for providers: error describing instances: after 10 retries, operation failed: InvalidInstanceID.NotFound: The instance IDs 'h1, h2' do not exist"
@@ -140,6 +147,7 @@ func TestTerminateUnknownHosts(t *testing.T) {
 func TestSetCloudHostStatus(t *testing.T) {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
+	ctx = testutil.TestSpan(ctx, t)
 
 	for testName, testCase := range map[string]func(ctx context.Context, t *testing.T, env *mock.Environment, h *host.Host, j *cloudHostReadyJob, mockMgr cloud.Manager){
 		"RunningStatusPreparesLegacyHostForProvisioning": func(ctx context.Context, t *testing.T, env *mock.Environment, h *host.Host, j *cloudHostReadyJob, mockMgr cloud.Manager) {
@@ -150,11 +158,11 @@ func TestSetCloudHostStatus(t *testing.T) {
 			provider.Set(h.Id, mockInstance)
 
 			h.Distro.BootstrapSettings.Method = distro.BootstrapMethodLegacySSH
-			require.NoError(t, h.Insert())
+			require.NoError(t, h.Insert(ctx))
 
 			require.NoError(t, j.setCloudHostStatus(ctx, mockMgr, *h, mockInstance.Status))
 
-			dbHost, err := host.FindOneId(h.Id)
+			dbHost, err := host.FindOneId(ctx, h.Id)
 			require.NoError(t, err)
 			require.NotZero(t, dbHost)
 			assert.False(t, dbHost.Provisioned)
@@ -168,36 +176,36 @@ func TestSetCloudHostStatus(t *testing.T) {
 			provider.Set(h.Id, mockInstance)
 
 			h.Distro.BootstrapSettings.Method = distro.BootstrapMethodUserData
-			require.NoError(t, h.Insert())
+			require.NoError(t, h.Insert(ctx))
 
 			require.NoError(t, j.setCloudHostStatus(ctx, mockMgr, *h, mockInstance.Status))
 
-			dbHost, err := host.FindOneId(h.Id)
+			dbHost, err := host.FindOneId(ctx, h.Id)
 			require.NoError(t, err)
 			require.NotZero(t, dbHost)
 			assert.Equal(t, evergreen.HostStarting, dbHost.Status)
 			assert.True(t, dbHost.Provisioned)
 		},
 		"NonExistentStatusInitiatesTermination": func(ctx context.Context, t *testing.T, env *mock.Environment, h *host.Host, j *cloudHostReadyJob, mockMgr cloud.Manager) {
-			require.NoError(t, h.Insert())
+			require.NoError(t, h.Insert(ctx))
 			require.NoError(t, j.setCloudHostStatus(ctx, mockMgr, *h, cloud.StatusNonExistent))
 
 			require.True(t, amboy.WaitInterval(ctx, env.RemoteQueue(), 100*time.Millisecond))
 
-			dbHost, err := host.FindOneId(h.Id)
+			dbHost, err := host.FindOneId(ctx, h.Id)
 			require.NoError(t, err)
 			require.NotZero(t, dbHost)
 			assert.Equal(t, evergreen.HostTerminated, dbHost.Status)
 		},
 		"FailedStatusInitiatesTermination": func(ctx context.Context, t *testing.T, env *mock.Environment, h *host.Host, j *cloudHostReadyJob, mockMgr cloud.Manager) {
-			require.NoError(t, h.Insert())
+			require.NoError(t, h.Insert(ctx))
 			require.NoError(t, j.setCloudHostStatus(ctx, mockMgr, *h, cloud.StatusFailed))
 
 			require.True(t, amboy.WaitInterval(ctx, env.RemoteQueue(), 100*time.Millisecond))
 
 			assert.Equal(t, cloud.StatusTerminated, cloud.GetMockProvider().Get(h.Id).Status)
 
-			dbHost, err := host.FindOneId(h.Id)
+			dbHost, err := host.FindOneId(ctx, h.Id)
 			require.NoError(t, err)
 			require.NotZero(t, dbHost)
 			assert.Equal(t, evergreen.HostTerminated, dbHost.Status)
@@ -208,14 +216,14 @@ func TestSetCloudHostStatus(t *testing.T) {
 			}
 			require.NoError(t, tsk.Insert())
 			h.RunningTask = tsk.Id
-			require.NoError(t, h.Insert())
+			require.NoError(t, h.Insert(ctx))
 			require.NoError(t, j.setCloudHostStatus(ctx, mockMgr, *h, cloud.StatusStopped))
 
 			require.True(t, amboy.WaitInterval(ctx, env.RemoteQueue(), 100*time.Millisecond))
 
 			assert.Equal(t, cloud.StatusTerminated, cloud.GetMockProvider().Get(h.Id).Status)
 
-			dbHost, err := host.FindOneId(h.Id)
+			dbHost, err := host.FindOneId(ctx, h.Id)
 			require.NoError(t, err)
 			require.NotZero(t, dbHost)
 			assert.Equal(t, evergreen.HostTerminated, dbHost.Status)
@@ -225,14 +233,15 @@ func TestSetCloudHostStatus(t *testing.T) {
 		t.Run(testName, func(t *testing.T) {
 			tctx, tcancel := context.WithTimeout(ctx, 5*time.Second)
 			defer tcancel()
+			tctx = testutil.TestSpan(tctx, t)
+
 			require.NoError(t, db.ClearCollections(host.Collection, task.Collection))
 			defer func() {
 				assert.NoError(t, db.ClearCollections(host.Collection, task.Collection))
 			}()
 
 			env := &mock.Environment{}
-			ctx := context.Background()
-			require.NoError(t, env.Configure(ctx))
+			require.NoError(t, env.Configure(tctx))
 
 			h := &host.Host{
 				Id:       "id",

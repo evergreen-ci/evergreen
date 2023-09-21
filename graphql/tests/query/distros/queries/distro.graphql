@@ -1,0 +1,18 @@
+query {
+  distro(distroId: "rhel71-power8-large") {
+    bootstrapSettings {
+      communication
+      resourceLimits {
+        numFiles
+        numProcesses
+      }
+    }
+    name
+    plannerSettings {
+      mainlineTimeInQueueFactor
+    }
+    provider
+    providerSettingsList
+    user
+  }
+}

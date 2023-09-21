@@ -13,6 +13,7 @@ It's used to filter, sort, and paginate test results of a task.
 """
 input TestFilterOptions {
   testName: String
+  excludeDisplayNames: Boolean
   statuses: [String!]
   groupID: String
   sort: [TestSortOptions!]
@@ -82,6 +83,7 @@ type Task {
   expectedDuration: Duration
   failedTestCount: Int!
   finishTime: Time
+  files: TaskFiles!
   generatedBy: String
   generatedByName: String
   generateTask: Boolean
@@ -106,7 +108,7 @@ type Task {
   spawnHostLink: String
   startTime: Time
   status: String!
-  taskFiles: TaskFiles!
+  taskFiles: TaskFiles! @deprecated(reason: "Use files instead")
   taskGroup: String
   taskGroupMaxHosts: Int
   """
@@ -156,6 +158,7 @@ type TaskEndDetail {
   timedOut: Boolean
   timeoutType: String
   type: String!
+  traceID: String
 }
 
 type OomTrackerInfo {

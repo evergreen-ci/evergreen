@@ -1,6 +1,7 @@
 package trigger
 
 import (
+	"context"
 	"testing"
 	"time"
 
@@ -51,18 +52,21 @@ func TestMetadataFromVersion(t *testing.T) {
 }
 
 func TestMakeDownstreamConfigFromFile(t *testing.T) {
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
 	assert := assert.New(t)
 	testConfig := testutil.TestConfig()
 	testutil.ConfigureIntegrationTest(t, testConfig, "TestMakeDownstreamConfigFromFile")
 	assert.NoError(db.ClearCollections(evergreen.ConfigCollection))
-	assert.NoError(testConfig.Set())
+	assert.NoError(testConfig.Set(ctx))
 
 	ref := model.ProjectRef{
 		Id:    "myProj",
 		Owner: "evergreen-ci",
 		Repo:  "evergreen",
 	}
-	projectInfo, err := makeDownstreamProjectFromFile(ref, "trigger/testdata/downstream_config.yml")
+	projectInfo, err := makeDownstreamProjectFromFile(ctx, ref, "trigger/testdata/downstream_config.yml")
 	assert.NoError(err)
 	assert.NotNil(projectInfo.Project)
 	assert.NotNil(projectInfo.IntermediateProject)

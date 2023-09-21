@@ -21,7 +21,6 @@ import (
 )
 
 const (
-	heartbeatTimeoutThreshold             = 7 * time.Minute
 	taskExecutionTimeoutJobName           = "task-execution-timeout"
 	taskExecutionTimeoutPopulationJobName = "task-execution-timeout-populate"
 	maxTaskExecutionTimeoutAttempts       = 10
@@ -75,7 +74,7 @@ func NewTaskExecutionMonitorJob(taskID string, ts string) amboy.Job {
 func (j *taskExecutionTimeoutJob) Run(ctx context.Context) {
 	defer j.MarkComplete()
 
-	flags, err := evergreen.GetServiceFlags()
+	flags, err := evergreen.GetServiceFlags(ctx)
 	if err != nil {
 		j.AddError(err)
 		return
@@ -117,7 +116,7 @@ func (j *taskExecutionTimeoutJob) Run(ctx context.Context) {
 	}
 
 	// If the task has heartbeat since this job was queued, let it run.
-	if j.task.LastHeartbeat.Add(heartbeatTimeoutThreshold).After(time.Now()) {
+	if j.task.LastHeartbeat.Add(evergreen.HeartbeatTimeoutThreshold).After(time.Now()) {
 		msg["message"] = "refusing to clean up timed-out task because it has a recent heartbeat"
 		grip.Info(msg)
 		return
@@ -166,10 +165,10 @@ func (j *taskExecutionTimeoutJob) cleanUpTimedOutTask(ctx context.Context) error
 			}
 		}
 
-		return errors.Wrapf(model.FixStaleTask(j.env.Settings(), j.task), "resetting stale task '%s'", j.task.Id)
+		return errors.Wrapf(model.FixStaleTask(ctx, j.env.Settings(), j.task), "resetting stale task '%s'", j.task.Id)
 	}
 
-	host, err := host.FindOne(host.ById(j.task.HostId))
+	host, err := host.FindOne(ctx, host.ById(j.task.HostId))
 	if err != nil {
 		return errors.Wrapf(err, "finding host '%s' for task '%s'", j.task.HostId, j.task.Id)
 	}
@@ -203,12 +202,12 @@ func (j *taskExecutionTimeoutJob) cleanUpTimedOutTask(ctx context.Context) error
 			// fixing the stranded task.
 			return nil
 		}
-		if err = host.ClearRunningAndSetLastTask(j.task); err != nil {
+		if err = host.ClearRunningAndSetLastTask(ctx, j.task); err != nil {
 			return errors.Wrapf(err, "clearing running task '%s' from host '%s'", j.task.Id, host.Id)
 		}
 	}
 
-	if err := model.FixStaleTask(j.env.Settings(), j.task); err != nil {
+	if err := model.FixStaleTask(ctx, j.env.Settings(), j.task); err != nil {
 		return errors.Wrapf(err, "resetting stale task '%s'", j.task.Id)
 	}
 
@@ -247,7 +246,7 @@ func NewTaskExecutionMonitorPopulateJob(id string) amboy.Job {
 func (j *taskExecutionTimeoutPopulationJob) Run(ctx context.Context) {
 	defer j.MarkComplete()
 
-	flags, err := evergreen.GetServiceFlags()
+	flags, err := evergreen.GetServiceFlags(ctx)
 	if err != nil {
 		j.AddError(err)
 		return
@@ -267,7 +266,7 @@ func (j *taskExecutionTimeoutPopulationJob) Run(ctx context.Context) {
 	}
 	queue := j.env.RemoteQueue()
 
-	tasks, err := task.FindWithFields(task.ByStaleRunningTask(heartbeatTimeoutThreshold), task.IdKey)
+	tasks, err := task.FindWithFields(task.ByStaleRunningTask(evergreen.HeartbeatTimeoutThreshold), task.IdKey)
 	if err != nil {
 		j.AddError(errors.Wrap(err, "finding tasks with timed-out or stale heartbeats"))
 		return

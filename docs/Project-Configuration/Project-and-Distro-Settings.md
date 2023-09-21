@@ -126,10 +126,10 @@ those define what tasks will be run in this patch.
 The status of each build and the patch overall will appear as GitHub statuses
 under your pull request. These will update as tasks in your PR complete. All the
 tasks selected by the GitHub patch definition **must** pass for the patch to be
-considered complete (except if they have specific activation conditions like
+considered successful (except if they have specific activation conditions like
 `activate: false`). For example, if you unschedule some of the tasks
 automatically configured by the GitHub patch definition, the GitHub build status
-will remain pending until all those tasks finish running.
+will refuse to show a green check until all those tasks finish running.
 
 If you'd like the option of creating patches but wouldn't like it to happen automatically,
 you can enable "Manual Testing".
@@ -243,6 +243,9 @@ Options:
     not have to be.
 -   Alias: Run a subset of tasks by specifying an alias. Otherwise, all
     tasks run.
+-   Unschedule Downstream Versions: If toggled, all tasks in the triggered 
+    downstream version will be unscheduled by default, requiring manual scheduling. 
+    Otherwise, all tasks will immediately scheduled once the downstream version is created.
 
 ### Patch Trigger Aliases
 
@@ -279,7 +282,7 @@ To pass information from the upstream patch to the downstream patch use
 ### Periodic Builds
 
 Evergreen has the capability to periodically run a set of tasks in the
-project. This section holds settings allowing you to specify
+project. The Periodic Builds section of the Project Settings page allows you to specify
 what should be run periodically, and how often. **This is different than build variant crons** because
 a build variant cron activates build variants on _existing waterfall commits_ based on the cron you specify
 (so if you want it to run daily, it’ll activate the most recent build variant at that time daily),
@@ -312,6 +315,18 @@ Also note that periodic builds cannot currently be used to schedule
 tasks for which you hope to use performance tooling, like performance
 monitoring charts. Use a cron to schedule your tasks if you'd like to
 use performance tooling.
+
+### Views and Filters
+#### Project Health View
+Customize the default behavior of the Project Health page by choosing to show failed task icons or all task icons. This setting corresponds to the toggle on the Project Health page (pictured below).
+
+![project_health_view.png](../images/project_health_view.png)
+
+#### Parsley Filters
+Define default filters for your project. Users can access these filters in Parsley and apply them directly to their logs.
+
+![parsley_filters.png](../images/parsley_filters.png)
+
 
 ### Task Sync
 
@@ -373,13 +388,10 @@ Options:
     creation of a specific field when displaying jira links.
 
 
-## Metadata Links
+### Metadata Links
 
 Customize additional links to specify for your project under the Plugins section
 of the project page, by specifying a link and title. 
-
-Right now this is restricted to patches, but work is planned in
-EVG-16363 to extend this to other requesters.
 
 Special Fields:
 * `{version_id}` -- if this is included in the metadata link, we will sub in the ID when rendering the link

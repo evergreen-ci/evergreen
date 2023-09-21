@@ -12,6 +12,7 @@ import (
 	"time"
 
 	"github.com/evergreen-ci/evergreen/model"
+	"github.com/evergreen-ci/evergreen/testutil"
 
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/db"
@@ -30,15 +31,17 @@ import (
 
 type cronsEventSuite struct {
 	suite.Suite
-	cancel func()
-	n      []notification.Notification
-	ctx    context.Context
-	env    evergreen.Environment
+	cancel   func()
+	n        []notification.Notification
+	suiteCtx context.Context
+	ctx      context.Context
+	env      evergreen.Environment
 }
 
 func TestEventCrons(t *testing.T) {
 	s := &cronsEventSuite{}
-	s.ctx, s.cancel = context.WithCancel(context.Background())
+	s.suiteCtx, s.cancel = context.WithCancel(context.Background())
+	s.suiteCtx = testutil.TestSpan(s.suiteCtx, t)
 
 	suite.Run(t, s)
 }
@@ -49,6 +52,8 @@ func (s *cronsEventSuite) TearDownSuite() {
 
 func (s *cronsEventSuite) SetupTest() {
 	env := &mock.Environment{}
+	s.ctx = testutil.TestSpan(s.suiteCtx, s.T())
+
 	s.Require().NoError(env.Configure(s.ctx))
 	s.env = env
 
@@ -113,23 +118,23 @@ func (s *cronsEventSuite) SetupTest() {
 
 func (s *cronsEventSuite) TestDegradedMode() {
 	// Reset to original flags after the test finishes.
-	originalFlags, err := evergreen.GetServiceFlags()
+	originalFlags, err := evergreen.GetServiceFlags(s.ctx)
 	s.Require().NoError(err)
 	defer func() {
-		s.NoError(originalFlags.Set())
+		s.NoError(originalFlags.Set(s.ctx))
 	}()
 
 	flags := evergreen.ServiceFlags{
 		EventProcessingDisabled: true,
 	}
-	s.NoError(flags.Set())
+	s.NoError(flags.Set(s.ctx))
 
 	e := event.EventLogEntry{
 		ResourceType: event.ResourceTypePatch,
 		EventType:    event.PatchStateChange,
 		ResourceId:   "12345",
 		Data: &event.PatchEventData{
-			Status: evergreen.PatchFailed,
+			Status: evergreen.VersionFailed,
 		},
 	}
 
@@ -176,16 +181,19 @@ func (s *cronsEventSuite) TestSenderDegradedModeDoesntDispatchJobs() {
 }
 
 func (s *cronsEventSuite) TestNotificationIsEnabled() {
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
 	flags := evergreen.ServiceFlags{}
 	for i := range s.n {
 		s.True(notificationIsEnabled(&flags, &s.n[i]))
 	}
 
 	// Reset to original flags after the test finishes.
-	originalFlags, err := evergreen.GetServiceFlags()
+	originalFlags, err := evergreen.GetServiceFlags(s.ctx)
 	s.Require().NoError(err)
 	defer func() {
-		s.NoError(originalFlags.Set())
+		s.NoError(originalFlags.Set(ctx))
 	}()
 
 	flags = evergreen.ServiceFlags{
@@ -196,7 +204,7 @@ func (s *cronsEventSuite) TestNotificationIsEnabled() {
 		GithubStatusAPIDisabled:      true,
 		BackgroundStatsDisabled:      true,
 	}
-	s.Require().NoError(flags.Set())
+	s.Require().NoError(flags.Set(ctx))
 
 	for i := range s.n {
 		s.False(notificationIsEnabled(&flags, &s.n[i]))
@@ -211,7 +219,7 @@ func (s *cronsEventSuite) TestEndToEnd() {
 	p := &patch.Patch{
 		Id:      mgobson.NewObjectId(),
 		Project: "test",
-		Status:  evergreen.PatchFailed,
+		Status:  evergreen.VersionFailed,
 		Author:  "somebody",
 	}
 	s.NoError(p.Insert())
@@ -226,7 +234,7 @@ func (s *cronsEventSuite) TestEndToEnd() {
 		EventType:    event.PatchStateChange,
 		ResourceId:   p.Id.Hex(),
 		Data: &event.PatchEventData{
-			Status: evergreen.PatchFailed,
+			Status: evergreen.VersionFailed,
 		},
 	}
 
@@ -303,7 +311,7 @@ func (s *cronsEventSuite) TestEndToEnd() {
 
 func (s *cronsEventSuite) TestDispatchUnprocessedNotifications() {
 	s.NoError(notification.InsertMany(s.n...))
-	flags, err := evergreen.GetServiceFlags()
+	flags, err := evergreen.GetServiceFlags(s.ctx)
 	s.NoError(err)
 	origStats := s.env.LocalQueue().Stats(s.ctx)
 

@@ -18,8 +18,12 @@ import (
 )
 
 func TestSpawnhostExpirationCheckJob(t *testing.T) {
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+	ctx = testutil.TestSpan(ctx, t)
+
 	config := testutil.TestConfig()
-	assert.NoError(t, evergreen.UpdateConfig(config))
+	assert.NoError(t, evergreen.UpdateConfig(ctx, config))
 	assert.NoError(t, db.ClearCollections(host.Collection))
 	mock := cloud.GetMockProvider()
 
@@ -38,7 +42,7 @@ func TestSpawnhostExpirationCheckJob(t *testing.T) {
 		ExpirationTime: time.Now(),
 	}
 
-	assert.NoError(t, h.Insert())
+	assert.NoError(t, h.Insert(ctx))
 	mock.Set(h.Id, cloud.MockInstance{
 		Status: cloud.StatusRunning,
 	})
@@ -49,7 +53,7 @@ func TestSpawnhostExpirationCheckJob(t *testing.T) {
 	assert.NoError(t, j.Error())
 	assert.True(t, j.Status().Completed)
 
-	found, err := host.FindOneId(h.Id)
+	found, err := host.FindOneId(ctx, h.Id)
 	assert.NoError(t, err)
 	require.NotNil(t, found)
 	assert.True(t, found.ExpirationTime.Sub(h.ExpirationTime) > 0)

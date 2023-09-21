@@ -41,7 +41,7 @@ func (e *tarballExtract) ParseParams(params map[string]interface{}) error {
 func (e *tarballExtract) Execute(ctx context.Context,
 	client client.Communicator, logger client.LoggerProducer, conf *internal.TaskConfig) error {
 
-	if err := util.ExpandValues(e, conf.Expansions); err != nil {
+	if err := util.ExpandValues(e, &conf.Expansions); err != nil {
 		return errors.Wrap(err, "applying expansions")
 	}
 
@@ -51,11 +51,11 @@ func (e *tarballExtract) Execute(ctx context.Context,
 
 	// if the target is a relative path, join it to the working dir
 	if !filepath.IsAbs(e.TargetDirectory) {
-		e.TargetDirectory = getJoinedWithWorkDir(conf, e.TargetDirectory)
+		e.TargetDirectory = getWorkingDirectory(conf, e.TargetDirectory)
 	}
 
 	if !filepath.IsAbs(e.ArchivePath) {
-		e.ArchivePath = getJoinedWithWorkDir(conf, e.ArchivePath)
+		e.ArchivePath = getWorkingDirectory(conf, e.ArchivePath)
 	}
 
 	if _, err := os.Stat(e.ArchivePath); os.IsNotExist(err) {

@@ -107,11 +107,11 @@ func (s *SchedulerSuite) TestSpawnHostsParents() {
 		Status:   evergreen.HostRunning,
 		ParentID: "host1",
 	}
-	s.NoError(d.Insert())
-	s.NoError(parent.Insert())
-	s.NoError(host1.Insert())
-	s.NoError(host2.Insert())
-	s.NoError(host3.Insert())
+	s.NoError(d.Insert(ctx))
+	s.NoError(parent.Insert(ctx))
+	s.NoError(host1.Insert(ctx))
+	s.NoError(host2.Insert(ctx))
+	s.NoError(host3.Insert(ctx))
 
 	newHostsSpawned, err := SpawnHosts(ctx, d, 1, pool)
 	s.NoError(err)
@@ -167,11 +167,11 @@ func (s *SchedulerSuite) TestSpawnHostsContainers() {
 		Status:   evergreen.HostTerminated,
 		ParentID: "host1",
 	}
-	s.NoError(d.Insert())
-	s.NoError(parent.Insert())
-	s.NoError(host1.Insert())
-	s.NoError(host2.Insert())
-	s.NoError(host3.Insert())
+	s.NoError(d.Insert(ctx))
+	s.NoError(parent.Insert(ctx))
+	s.NoError(host1.Insert(ctx))
+	s.NoError(host2.Insert(ctx))
+	s.NoError(host3.Insert(ctx))
 
 	newHostsSpawned, err := SpawnHosts(ctx, d, 1, pool)
 	s.NoError(err)
@@ -218,11 +218,11 @@ func (s *SchedulerSuite) TestSpawnHostsParentsAndSomeContainers() {
 		Status:   evergreen.HostRunning,
 		ParentID: "host1",
 	}
-	s.NoError(d.Insert())
-	s.NoError(parent.Insert())
-	s.NoError(host1.Insert())
-	s.NoError(host2.Insert())
-	s.NoError(host3.Insert())
+	s.NoError(d.Insert(ctx))
+	s.NoError(parent.Insert(ctx))
+	s.NoError(host1.Insert(ctx))
+	s.NoError(host2.Insert(ctx))
+	s.NoError(host3.Insert(ctx))
 
 	newHostsSpawned, err := SpawnHosts(ctx, d, 5, pool)
 	s.NoError(err)
@@ -261,8 +261,8 @@ func (s *SchedulerSuite) TestSpawnHostsOneNewParent() {
 
 	pool := &evergreen.ContainerPool{Distro: "parent-distro", Id: "test-pool", MaxContainers: 3}
 
-	s.NoError(d.Insert())
-	s.NoError(parent.Insert())
+	s.NoError(d.Insert(ctx))
+	s.NoError(parent.Insert(ctx))
 
 	newHostsSpawned, err := SpawnHosts(ctx, d, 1, pool)
 	s.NoError(err)
@@ -284,7 +284,7 @@ func (s *SchedulerSuite) TestSpawnHostsOneNewParent() {
 	s.Require().NotEmpty(parentHost)
 
 	s.Equal(childHost.ParentID, parentHost.Id)
-	parentDoc, err := childHost.GetParent()
+	parentDoc, err := childHost.GetParent(ctx)
 	s.NoError(err)
 	s.Require().NotNil(parentDoc)
 	s.Equal(parentHost.Id, parentDoc.Id)
@@ -320,9 +320,9 @@ func (s *SchedulerSuite) TestSpawnHostsMaximumCapacity() {
 		Status:   evergreen.HostRunning,
 		ParentID: "host1",
 	}
-	s.NoError(d.Insert())
-	s.NoError(host1.Insert())
-	s.NoError(host2.Insert())
+	s.NoError(d.Insert(ctx))
+	s.NoError(host1.Insert(ctx))
+	s.NoError(host2.Insert(ctx))
 
 	newHostsSpawned, err := SpawnHosts(ctx, d, 2, pool)
 	s.NoError(err)
@@ -381,11 +381,11 @@ func (s *SchedulerSuite) TestSpawnContainersStatic() {
 		ContainerPoolSettings: pool,
 	}
 
-	s.NoError(d.Insert())
-	s.NoError(parent.Insert())
-	s.NoError(host1.Insert())
-	s.NoError(host2.Insert())
-	s.NoError(host3.Insert())
+	s.NoError(d.Insert(ctx))
+	s.NoError(parent.Insert(ctx))
+	s.NoError(host1.Insert(ctx))
+	s.NoError(host2.Insert(ctx))
+	s.NoError(host3.Insert(ctx))
 
 	newHostsSpawned, err := SpawnHosts(ctx, d, 4, pool)
 	s.NoError(err)

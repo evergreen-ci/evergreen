@@ -150,6 +150,17 @@ func (as *APIServer) submitPatch(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	hasPermission := dbUser.HasPermission(gimlet.PermissionOpts{
+		Resource:      pref.Id,
+		ResourceType:  evergreen.ProjectResourceType,
+		Permission:    evergreen.PermissionPatches,
+		RequiredLevel: evergreen.PatchSubmit.Value,
+	})
+	if !hasPermission {
+		as.LoggedError(w, r, http.StatusUnauthorized, errors.Errorf("not authorized to patch for project '%s'", data.Project))
+		return
+	}
+
 	patchString := string(data.PatchBytes)
 	if len(patchString) > patch.SizeLimit {
 		as.LoggedError(w, r, http.StatusBadRequest, errors.New("Patch is too large"))
@@ -282,12 +293,6 @@ func (as *APIServer) updatePatchModule(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	githubOauthToken, err := as.Settings.GetGithubOauthToken()
-	if err != nil {
-		gimlet.WriteJSONError(w, err)
-		return
-	}
-
 	data := struct {
 		Module     string `json:"module"`
 		PatchBytes []byte `json:"patch_bytes"`
@@ -344,17 +349,6 @@ func (as *APIServer) updatePatchModule(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 
-	repoOwner, repo := module.GetRepoOwnerAndName()
-
-	ctx, cancel := context.WithTimeout(r.Context(), 10*time.Second)
-	defer cancel()
-
-	_, err = thirdparty.GetCommitEvent(ctx, githubOauthToken, repoOwner, repo, githash)
-	if err != nil {
-		as.LoggedError(w, r, http.StatusInternalServerError, err)
-		return
-	}
-
 	// write the patch content into a GridFS file under a new ObjectId.
 	patchFileId := mgobson.NewObjectId().Hex()
 	err = db.WriteGridFile(patch.GridFSPrefix, patchFileId, strings.NewReader(patchContent))
@@ -379,7 +373,7 @@ func (as *APIServer) updatePatchModule(w http.ResponseWriter, r *http.Request) {
 	}
 
 	if p.IsCommitQueuePatch() {
-		if err = p.SetDescription(model.MakeCommitQueueDescription(p.Patches, projectRef, project)); err != nil {
+		if err = p.SetDescription(model.MakeCommitQueueDescription(p.Patches, projectRef, project, p.IsGithubMergePatch(), p.GithubMergeData.HeadSHA)); err != nil {
 			as.LoggedError(w, r, http.StatusInternalServerError, err)
 			return
 		}

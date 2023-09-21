@@ -189,7 +189,7 @@ func TestNewCanCreateMiddleware(t *testing.T) {
 
 func TestCommitQueueItemOwnerMiddlewarePROwner(t *testing.T) {
 	assert := assert.New(t)
-	assert.NoError(db.ClearCollections(model.ProjectRefCollection, commitqueue.Collection, patch.Collection))
+	assert.NoError(db.ClearCollections(model.ProjectRefCollection, commitqueue.Collection))
 
 	ctx := context.Background()
 	opCtx := model.Context{}
@@ -212,10 +212,7 @@ func TestCommitQueueItemOwnerMiddlewarePROwner(t *testing.T) {
 		},
 	}
 	assert.NoError(commitqueue.InsertQueue(&cq))
-	p := patch.Patch{
-		Id: patch.NewId("aabbccddeeff112233445566"),
-	}
-	assert.NoError(p.Insert())
+
 	ctx = gimlet.AttachUser(ctx, &user.DBUser{
 		Settings: user.UserSettings{
 			GithubUser: user.GithubUser{
@@ -231,10 +228,10 @@ func TestCommitQueueItemOwnerMiddlewarePROwner(t *testing.T) {
 	r = r.WithContext(context.WithValue(ctx, RequestContext, &opCtx))
 	r = gimlet.SetURLVars(r, map[string]string{
 		"project_id": "mci",
-		"item":       "aabbccddeeff112233445566",
+		"item":       "1234",
 	})
 
-	mw := NewCommitQueueItemOwnerMiddleware()
+	mw := NewMockCommitQueueItemOwnerMiddleware()
 	rw := httptest.NewRecorder()
 
 	mw.ServeHTTP(rw, r, func(rw http.ResponseWriter, r *http.Request) {})
@@ -293,7 +290,7 @@ func TestCommitQueueItemOwnerMiddlewareUnauthorizedUserGitHub(t *testing.T) {
 
 func TestCommitQueueItemOwnerMiddlewareUserPatch(t *testing.T) {
 	assert := assert.New(t)
-	assert.NoError(db.ClearCollections(patch.Collection, model.ProjectRefCollection, commitqueue.Collection))
+	assert.NoError(db.ClearCollections(patch.Collection, model.ProjectRefCollection, commitqueue.Collection, user.Collection))
 
 	ctx := context.Background()
 	opCtx := model.Context{}
@@ -313,11 +310,16 @@ func TestCommitQueueItemOwnerMiddlewareUserPatch(t *testing.T) {
 	assert.NoError(err)
 	assert.NotNil(r)
 
+	patchUsr := &user.DBUser{Id: "octocat", OnlyAPI: false}
+	require.NoError(t, patchUsr.Insert())
+
 	patchId := bson.NewObjectId()
 	p := &patch.Patch{
 		Id:     patchId,
-		Author: "octocat"}
+		Author: patchUsr.Id,
+	}
 	assert.NoError(p.Insert())
+
 	cq := commitqueue.CommitQueue{
 		ProjectID: opCtx.ProjectRef.Id,
 		Queue: []commitqueue.CommitQueueItem{
@@ -428,6 +430,9 @@ func TestCommitQueueItemOwnerMiddlewarePatchAdmin(t *testing.T) {
 }
 
 func TestTaskAuthMiddleware(t *testing.T) {
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
 	assert := assert.New(t)
 
 	assert.NoError(db.ClearCollections(host.Collection, task.Collection))
@@ -440,7 +445,7 @@ func TestTaskAuthMiddleware(t *testing.T) {
 		Secret: "abcdef",
 	}
 	assert.NoError(task1.Insert())
-	assert.NoError(host1.Insert())
+	assert.NoError(host1.Insert(ctx))
 	m := NewTaskAuthMiddleware()
 	r := &http.Request{
 		Header: http.Header{
@@ -461,6 +466,9 @@ func TestTaskAuthMiddleware(t *testing.T) {
 }
 
 func TestHostAuthMiddleware(t *testing.T) {
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
 	m := NewHostAuthMiddleware()
 	for testName, testCase := range map[string]func(t *testing.T, h *host.Host, rw *httptest.ResponseRecorder){
 		"Succeeds": func(t *testing.T, h *host.Host, rw *httptest.ResponseRecorder) {
@@ -513,7 +521,7 @@ func TestHostAuthMiddleware(t *testing.T) {
 				Id:     "id",
 				Secret: "secret",
 			}
-			require.NoError(t, h.Insert())
+			require.NoError(t, h.Insert(ctx))
 
 			testCase(t, h, httptest.NewRecorder())
 		})
@@ -602,6 +610,9 @@ func TestPodAuthMiddleware(t *testing.T) {
 }
 
 func TestPodOrHostAuthMiddleware(t *testing.T) {
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
 	m := NewPodOrHostAuthMiddleWare()
 	for testName, testCase := range map[string]func(t *testing.T, p *pod.Pod, h *host.Host, rw *httptest.ResponseRecorder){
 		"SucceedsWithPod": func(t *testing.T, p *pod.Pod, h *host.Host, rw *httptest.ResponseRecorder) {
@@ -748,7 +759,7 @@ func TestPodOrHostAuthMiddleware(t *testing.T) {
 				Id:     "id",
 				Secret: "secret",
 			}
-			require.NoError(t, h.Insert())
+			require.NoError(t, h.Insert(ctx))
 			require.NoError(t, p.Insert())
 
 			testCase(t, p, h, httptest.NewRecorder())
@@ -828,11 +839,11 @@ func TestProjectViewPermission(t *testing.T) {
 	assert.Equal(http.StatusOK, rw.Code)
 	assert.Equal(1, counter)
 
-	// private project with no user attached should 404
+	// private project with no user attached should 401
 	req = gimlet.SetURLVars(req, map[string]string{"project_id": "proj1"})
 	rw = httptest.NewRecorder()
 	authHandler.ServeHTTP(rw, req, checkPermission)
-	assert.Equal(http.StatusNotFound, rw.Code)
+	assert.Equal(http.StatusUnauthorized, rw.Code)
 	assert.Equal(1, counter)
 
 	// attach a user, but with no permissions yet
@@ -915,7 +926,7 @@ func TestEventLogPermission(t *testing.T) {
 	distro1 := distro.Distro{
 		Id: "distro1",
 	}
-	assert.NoError(distro1.Insert())
+	assert.NoError(distro1.Insert(ctx))
 	permissionMiddleware := EventLogPermissionsMiddleware{}
 	checkPermission := func(rw http.ResponseWriter, r *http.Request) {
 		permissionMiddleware.ServeHTTP(rw, r, counterFunc)
@@ -929,11 +940,11 @@ func TestEventLogPermission(t *testing.T) {
 	authHandler := gimlet.NewAuthenticationHandler(authenticator, um)
 	req := httptest.NewRequest(http.MethodGet, "http://foo.com/bar", nil)
 
-	// no user + private project should 404
+	// no user + private project should 401
 	rw := httptest.NewRecorder()
 	req = gimlet.SetURLVars(req, map[string]string{"resource_type": event.EventResourceTypeProject, "resource_id": proj1.Id})
 	authHandler.ServeHTTP(rw, req, checkPermission)
-	assert.Equal(http.StatusNotFound, rw.Code)
+	assert.Equal(http.StatusUnauthorized, rw.Code)
 	assert.Equal(0, counter)
 
 	// have user, project event

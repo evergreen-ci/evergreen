@@ -70,7 +70,7 @@ func (j *eventNotifierJob) Run(ctx context.Context) {
 		j.q = j.env.RemoteQueue()
 	}
 	var err error
-	j.flags, err = evergreen.GetServiceFlags()
+	j.flags, err = evergreen.GetServiceFlags(ctx)
 	if err != nil {
 		j.AddError(errors.Wrap(err, "getting admin settings"))
 		return
@@ -103,7 +103,7 @@ func (j *eventNotifierJob) processEvent(ctx context.Context, e *event.EventLogEn
 	startTime := time.Now()
 	catcher := grip.NewSimpleCatcher()
 
-	n, err := j.processEventTriggers(e)
+	n, err := j.processEventTriggers(ctx, e)
 	catcher.Add(err)
 	catcher.Add(e.MarkProcessed())
 
@@ -141,7 +141,7 @@ func (j *eventNotifierJob) processEvent(ctx context.Context, e *event.EventLogEn
 	return catcher.Resolve()
 }
 
-func (j *eventNotifierJob) processEventTriggers(e *event.EventLogEntry) (n []notification.Notification, err error) {
+func (j *eventNotifierJob) processEventTriggers(ctx context.Context, e *event.EventLogEntry) (n []notification.Notification, err error) {
 	if e == nil {
 		return nil, errors.New("cannot process event triggers for nil event")
 	}
@@ -162,7 +162,7 @@ func (j *eventNotifierJob) processEventTriggers(e *event.EventLogEntry) (n []not
 	}()
 
 	startDebug := time.Now()
-	n, err = trigger.NotificationsFromEvent(e)
+	n, err = trigger.NotificationsFromEvent(ctx, e)
 	grip.Info(message.Fields{
 		"job_id":        j.ID(),
 		"job_type":      j.Type().Name,
@@ -184,7 +184,7 @@ func (j *eventNotifierJob) processEventTriggers(e *event.EventLogEntry) (n []not
 		"event_type": e.ResourceType,
 	}))
 
-	v, err := trigger.EvalProjectTriggers(e, trigger.TriggerDownstreamVersion)
+	v, err := trigger.EvalProjectTriggers(ctx, e, trigger.TriggerDownstreamVersion)
 	grip.Info(message.Fields{
 		"job_id":        j.ID(),
 		"job_type":      j.Type().Name,
@@ -229,7 +229,7 @@ func dispatchNotifications(ctx context.Context, notifications []notification.Not
 
 func notificationIsEnabled(flags *evergreen.ServiceFlags, n *notification.Notification) bool {
 	switch n.Subscriber.Type {
-	case event.GithubPullRequestSubscriberType, event.GithubCheckSubscriberType:
+	case event.GithubPullRequestSubscriberType, event.GithubCheckSubscriberType, event.GithubMergeSubscriberType:
 		return !flags.GithubStatusAPIDisabled
 
 	case event.JIRAIssueSubscriberType, event.JIRACommentSubscriberType:

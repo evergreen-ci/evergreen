@@ -58,14 +58,14 @@ func NewHostStatsJob(ts string) amboy.Job {
 	return job
 }
 
-func (j *hostStatsJob) Run(_ context.Context) {
+func (j *hostStatsJob) Run(ctx context.Context) {
 	defer j.MarkComplete()
 
 	if j.logger == nil {
 		j.logger = logging.MakeGrip(grip.GetSender())
 	}
 
-	inactiveHosts, err := host.CountInactiveHostsByProvider()
+	inactiveHosts, err := host.CountInactiveHostsByProvider(ctx)
 	if err != nil {
 		j.AddError(errors.Wrap(err, "counting inactive hosts by cloud provider"))
 		return
@@ -75,7 +75,7 @@ func (j *hostStatsJob) Run(_ context.Context) {
 		"counts":  inactiveHosts,
 	})
 
-	taskSpawned, err := host.FindAllHostsSpawnedByTasks()
+	taskSpawned, err := host.FindAllHostsSpawnedByTasks(ctx)
 	if err != nil {
 		j.AddError(errors.Wrap(err, "finding hosts spawned by tasks"))
 		return
@@ -110,7 +110,7 @@ func (j *hostStatsJob) Run(_ context.Context) {
 		}
 	}
 
-	count, err := host.CountVirtualWorkstationsByInstanceType()
+	count, err := host.CountVirtualWorkstationsByInstanceType(ctx)
 	j.AddError(err)
 	grip.Info(message.Fields{
 		"message": "virtual workstations",

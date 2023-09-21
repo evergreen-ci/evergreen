@@ -1,6 +1,7 @@
 package data
 
 import (
+	"context"
 	"testing"
 
 	"github.com/evergreen-ci/evergreen"
@@ -13,6 +14,9 @@ import (
 )
 
 func TestMakeTicket(t *testing.T) {
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
 	assert.NoError(t, db.ClearCollections(task.Collection, model.VersionCollection, build.Collection, model.ProjectRefCollection))
 	t1 := task.Task{
 		Id:      "t1",
@@ -41,7 +45,7 @@ func TestMakeTicket(t *testing.T) {
 		},
 	}
 
-	n, err := makeNotification(&evgSettings, "MCI", &t1)
+	n, err := makeNotification(ctx, &evgSettings, "MCI", &t1)
 	assert.NoError(t, err)
 	assert.NotNil(t, n)
 	assert.EqualValues(t, event.JIRAIssueSubscriber{
@@ -49,7 +53,7 @@ func TestMakeTicket(t *testing.T) {
 		IssueType: jiraIssueType,
 	}, n.Subscriber.Target)
 	// test that creating another ticket creates another notification
-	n, err = makeNotification(&evgSettings, "MCI", &t1)
+	n, err = makeNotification(ctx, &evgSettings, "MCI", &t1)
 	assert.NoError(t, err)
 	assert.NotNil(t, n)
 }

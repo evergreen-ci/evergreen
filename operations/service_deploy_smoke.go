@@ -10,7 +10,6 @@ import (
 	"runtime"
 	"strconv"
 
-	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/agent"
 	timberutil "github.com/evergreen-ci/timber/testutil"
 	"github.com/mongodb/grip"
@@ -19,7 +18,6 @@ import (
 	"github.com/mongodb/jasper/remote"
 	"github.com/pkg/errors"
 	"github.com/urfave/cli"
-	"gopkg.in/yaml.v3"
 )
 
 func setupSmokeTest(err error) cli.BeforeFunc {
@@ -54,20 +52,18 @@ func startLocalEvergreen() cli.Command {
 
 func smokeStartEvergreen() cli.Command {
 	const (
-		binaryFlagName       = "binary"
-		agentFlagName        = "agent"
-		webFlagName          = "web"
-		agentMonitorFlagName = "monitor"
-		distroIDFlagName     = "distro"
-		modeFlagName         = "mode"
-
-		// apiPort is the local port the API will listen on.
-		apiPort = ":9090"
+		binaryFlagName         = "binary"
+		agentFlagName          = "agent"
+		webFlagName            = "web"
+		agentMonitorFlagName   = "monitor"
+		distroIDFlagName       = "distro"
+		apiServerURLFlagName   = "api_server"
+		modeFlagName           = "mode"
+		execModeIDFlagName     = "exec_mode_id"
+		execModeSecretFlagName = "exec_mode_secret"
 
 		cedarPort = 7070
 
-		id         = "localhost"
-		secret     = "de249183582947721fdfb2ea1796574b"
 		statusPort = "2287"
 
 		monitorPort = 2288
@@ -77,12 +73,12 @@ func smokeStartEvergreen() cli.Command {
 	wd, err := os.Getwd()
 
 	binary := filepath.Join(wd, "clients", runtime.GOOS+"_"+runtime.GOARCH, "evergreen")
-	confPath := filepath.Join(wd, "testdata", "smoke_config.yml")
+	confPath := filepath.Join(wd, "smoke", "internal", "testdata", "admin_settings.yml")
 
 	return cli.Command{
 		Name:    "start-evergreen",
 		Aliases: []string{},
-		Usage:   "start Evergreen web service for smoke tests",
+		Usage:   "run Evergreen binary for smoke tests",
 		Flags: []cli.Flag{
 			cli.StringFlag{
 				Name:  confFlagName,
@@ -97,6 +93,10 @@ func smokeStartEvergreen() cli.Command {
 			cli.BoolFlag{
 				Name:  webFlagName,
 				Usage: "run the Evergreen web service",
+			},
+			cli.StringFlag{
+				Name:  apiServerURLFlagName,
+				Usage: "the URL of the app server",
 			},
 			cli.BoolFlag{
 				Name:  agentFlagName,
@@ -114,6 +114,14 @@ func smokeStartEvergreen() cli.Command {
 				Name:  modeFlagName,
 				Usage: "run the agent in host or pod mode",
 			},
+			cli.StringFlag{
+				Name:  execModeIDFlagName,
+				Usage: "the ID of the host or pod running the agent",
+			},
+			cli.StringFlag{
+				Name:  execModeSecretFlagName,
+				Usage: "the secret of the host or pod running the agent",
+			},
 		},
 		Before: mergeBeforeFuncs(setupSmokeTest(err), requireFileExists(confFlagName), requireAtLeastOneBool(webFlagName, agentFlagName, agentMonitorFlagName)),
 		Action: func(c *cli.Context) error {
@@ -122,20 +130,22 @@ func smokeStartEvergreen() cli.Command {
 			startWeb := c.Bool(webFlagName)
 			startAgent := c.Bool(agentFlagName)
 			startAgentMonitor := c.Bool(agentMonitorFlagName)
+			execModeID := c.String(execModeIDFlagName)
+			execModeSecret := c.String(execModeSecretFlagName)
 			distroID := c.String(distroIDFlagName)
 			mode := c.String(modeFlagName)
-
-			exit := make(chan error, 3)
+			apiServerURL := c.String(apiServerURLFlagName)
 
 			ctx, cancel := context.WithCancel(context.Background())
 			defer cancel()
+
+			exit := make(chan error, 3)
 
 			if startWeb {
 				if err := smokeRunBinary(exit, "web.service", wd, binary, "service", "web", "--conf", confPath); err != nil {
 					return errors.Wrap(err, "running web service")
 				}
 			}
-			apiServerURL := smokeUrlPrefix + apiPort
 
 			if startAgent {
 				_, err = timberutil.NewMockCedarServer(ctx, cedarPort)
@@ -148,10 +158,12 @@ func smokeStartEvergreen() cli.Command {
 					binary,
 					"agent",
 					fmt.Sprintf("--mode=%s", mode),
-					fmt.Sprintf("--%s_id", mode), id,
-					fmt.Sprintf("--%s_secret", mode), secret,
+					fmt.Sprintf("--%s_id=%s", mode, execModeID),
+					fmt.Sprintf("--%s_secret=%s", mode, execModeSecret),
 					"--api_server", apiServerURL,
-					"--log_prefix", evergreen.StandardOutputLoggingOverride,
+					"--log_output", string(agent.LogOutputFile),
+					"--log_prefix", "smoke.agent",
+					"--global_task_logs",
 					"--status_port", statusPort,
 					"--working_directory", wd,
 				)
@@ -194,21 +206,24 @@ func smokeStartEvergreen() cli.Command {
 
 				err = smokeRunBinary(
 					exit,
-					"monitor",
+					"agent.monitor",
 					wd,
 					binary,
 					"agent",
-					"--mode=host",
-					"--host_id", id,
-					"--host_secret", secret,
+					fmt.Sprintf("--mode=%s", agent.HostMode),
+					"--host_id", execModeID,
+					"--host_secret", execModeSecret,
 					"--api_server", apiServerURL,
-					"--log_prefix", evergreen.StandardOutputLoggingOverride,
+					"--log_output", string(agent.LogOutputFile),
+					"--global_task_logs",
+					"--log_prefix", "smoke.agent",
 					"--status_port", statusPort,
 					"--working_directory", wd,
 					"monitor",
 					"--distro", distroID,
 					"--client_path", clientFile.Name(),
-					"--log_prefix", evergreen.StandardOutputLoggingOverride,
+					"--log_output", string(agent.LogOutputFile),
+					"--log_prefix", "smoke.agent.monitor",
 					"--port", strconv.Itoa(monitorPort),
 					"--jasper_port", strconv.Itoa(jasperPort),
 				)
@@ -236,73 +251,7 @@ func smokeRunBinary(exit chan error, name, wd, bin string, cmdParts ...string) e
 	}
 	go func() {
 		exit <- cmd.Wait()
-		grip.Errorf("%s service exited", name)
+		grip.Errorf("%s exited", name)
 	}()
 	return nil
-}
-
-func smokeTestEndpoints() cli.Command {
-	const (
-		testFileFlagName = "test-file"
-		userNameFlagName = "username"
-		userKeyFlagName  = "key"
-		checkBuildName   = "check-build"
-		modeFlagName     = "mode"
-	)
-
-	wd, err := os.Getwd()
-
-	return cli.Command{
-		Name:    "test-endpoints",
-		Aliases: []string{"smoke-test"},
-		Usage:   "run smoke tests against ",
-		Flags: []cli.Flag{
-			cli.StringFlag{
-				Name:  testFileFlagName,
-				Usage: "file with test endpoints definitions",
-				Value: filepath.Join(wd, "scripts", "smoke_test.yml"),
-			},
-			cli.StringFlag{
-				Name:  userNameFlagName,
-				Usage: "username to use with the API",
-			},
-			cli.StringFlag{
-				Name:  userKeyFlagName,
-				Usage: "key to use with the API",
-			},
-			cli.StringFlag{
-				Name:  modeFlagName,
-				Usage: "run host or pod build variant",
-			},
-			cli.BoolFlag{
-				Name:  checkBuildName,
-				Usage: "verify agent has built latest commit",
-			},
-		},
-		Before: mergeBeforeFuncs(setupSmokeTest(err)),
-		Action: func(c *cli.Context) error {
-			testFile := c.String(testFileFlagName)
-			username := c.String(userNameFlagName)
-			key := c.String(userKeyFlagName)
-			mode := c.String(modeFlagName)
-
-			defs, err := os.ReadFile(testFile)
-			if err != nil {
-				return errors.Wrapf(err, "opening smoke endpoint test file '%s'", testFile)
-			}
-			tests := smokeEndpointTestDefinitions{}
-			err = yaml.Unmarshal(defs, &tests)
-			if err != nil {
-				return errors.Wrapf(err, "unmarshalling smoke endpoint test YAML '%s'", testFile)
-			}
-
-			if c.Bool(checkBuildName) {
-				if mode == string(agent.PodMode) {
-					return errors.Wrap(checkContainerTask(username, key), "checking container task")
-				}
-				return errors.Wrap(checkHostTaskByCommit(username, key), "checking host task")
-			}
-			return errors.WithStack(tests.checkEndpoints(username, key))
-		},
-	}
 }

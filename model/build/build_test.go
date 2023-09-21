@@ -258,6 +258,57 @@ func TestBuildUpdateStatus(t *testing.T) {
 	})
 }
 
+func TestBuildSetHasUnfinishedEssentialTask(t *testing.T) {
+	defer func() {
+		assert.NoError(t, db.ClearCollections(Collection))
+	}()
+	for tName, tCase := range map[string]func(t *testing.T, b Build){
+		"FailsWithNonexistentBuild": func(t *testing.T, b Build) {
+			assert.Error(t, b.SetHasUnfinishedEssentialTask(true))
+			assert.False(t, b.HasUnfinishedEssentialTask)
+		},
+		"NoopsWithSameValue": func(t *testing.T, b Build) {
+			require.NoError(t, b.Insert())
+			require.NoError(t, b.SetHasUnfinishedEssentialTask(false))
+			assert.False(t, b.HasUnfinishedEssentialTask)
+
+			dbBuild, err := FindOneId(b.Id)
+			require.NoError(t, err)
+			require.NotZero(t, dbBuild)
+			assert.False(t, dbBuild.HasUnfinishedEssentialTask)
+		},
+		"SetsFlag": func(t *testing.T, b Build) {
+			require.NoError(t, b.Insert())
+			require.NoError(t, b.SetHasUnfinishedEssentialTask(true))
+			assert.True(t, b.HasUnfinishedEssentialTask)
+
+			dbBuild, err := FindOneId(b.Id)
+			require.NoError(t, err)
+			require.NotZero(t, dbBuild)
+			assert.True(t, dbBuild.HasUnfinishedEssentialTask)
+		},
+		"ClearsFlag": func(t *testing.T, b Build) {
+			b.HasUnfinishedEssentialTask = true
+			require.NoError(t, b.Insert())
+			require.NoError(t, b.SetHasUnfinishedEssentialTask(false))
+			assert.False(t, b.HasUnfinishedEssentialTask)
+
+			dbBuild, err := FindOneId(b.Id)
+			require.NoError(t, err)
+			require.NotZero(t, dbBuild)
+			assert.False(t, dbBuild.HasUnfinishedEssentialTask)
+		},
+	} {
+		t.Run(tName, func(t *testing.T) {
+			require.NoError(t, db.ClearCollections(Collection))
+			tCase(t, Build{
+				Id:                         "build_id",
+				HasUnfinishedEssentialTask: false,
+			})
+		})
+	}
+}
+
 func TestAllTasksFinished(t *testing.T) {
 	assert := assert.New(t)
 
@@ -494,25 +545,33 @@ func TestGetPRNotificationDescription(t *testing.T) {
 		tasks := []task.Task{
 			{Status: evergreen.TaskSucceeded},
 			{Status: evergreen.TaskFailed},
-			{Status: evergreen.TaskUndispatched, IsEssentialToFinish: true, Activated: false},
+			{Status: evergreen.TaskUndispatched, IsEssentialToSucceed: true, Activated: false},
 		}
-		assert.Equal(t, "build is incomplete - 1 required PR task(s) not scheduled", b.GetPRNotificationDescription(tasks))
+		assert.Equal(t, "1 succeeded, 1 failed, 1 essential task(s) not scheduled in 10s", b.GetPRNotificationDescription(tasks))
 	})
-	t.Run("MixOfUnscheduledEssentialTasksAndRunningTasksReturnsIncompleteBuild", func(t *testing.T) {
+	t.Run("MixOfUnscheduledEssentialTasksAndRunningTasksReturnsRunningBuild", func(t *testing.T) {
 		tasks := []task.Task{
 			{Status: evergreen.TaskStarted},
 			{Status: evergreen.TaskFailed},
-			{Status: evergreen.TaskUndispatched, IsEssentialToFinish: true, Activated: false},
+			{Status: evergreen.TaskUndispatched, IsEssentialToSucceed: true, Activated: false},
 		}
-		assert.Equal(t, "build is incomplete - 1 required PR task(s) not scheduled", b.GetPRNotificationDescription(tasks))
+		assert.Equal(t, "tasks are running", b.GetPRNotificationDescription(tasks))
 	})
 	t.Run("RunningEssentialTasksThatWillRunReturnsTasksRunning", func(t *testing.T) {
 		tasks := []task.Task{
 			{Status: evergreen.TaskSucceeded},
 			{Status: evergreen.TaskFailed},
-			{Status: evergreen.TaskUndispatched, IsEssentialToFinish: true, Activated: true},
+			{Status: evergreen.TaskUndispatched, IsEssentialToSucceed: true, Activated: true},
 		}
 		assert.Equal(t, "tasks are running", b.GetPRNotificationDescription(tasks))
+	})
+	t.Run("MixOfSuccessfulAndFailedAndUnscheduledEssentialTasksReturnsFailedBuild", func(t *testing.T) {
+		tasks := []task.Task{
+			{Status: evergreen.TaskSucceeded},
+			{Status: evergreen.TaskFailed},
+			{Status: evergreen.TaskUndispatched, IsEssentialToSucceed: true, Activated: false},
+		}
+		assert.Equal(t, "1 succeeded, 1 failed, 1 essential task(s) not scheduled in 10s", b.GetPRNotificationDescription(tasks))
 	})
 	t.Run("ScheduledTasksThatWillRunReturnsTasksRunning", func(t *testing.T) {
 		tasks := []task.Task{

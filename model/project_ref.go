@@ -10,6 +10,7 @@ import (
 	"path/filepath"
 	"reflect"
 	"regexp"
+	"runtime/debug"
 	"strings"
 	"time"
 
@@ -59,6 +60,7 @@ type ProjectRef struct {
 	RepotrackerDisabled    *bool               `bson:"repotracker_disabled,omitempty" json:"repotracker_disabled,omitempty" yaml:"repotracker_disabled"`
 	DispatchingDisabled    *bool               `bson:"dispatching_disabled,omitempty" json:"dispatching_disabled,omitempty" yaml:"dispatching_disabled"`
 	StepbackDisabled       *bool               `bson:"stepback_disabled,omitempty" json:"stepback_disabled,omitempty" yaml:"stepback_disabled"`
+	StepbackBisect         *bool               `bson:"stepback_bisect,omitempty" json:"stepback_bisect,omitempty" yaml:"stepback_bisect"`
 	VersionControlEnabled  *bool               `bson:"version_control_enabled,omitempty" json:"version_control_enabled,omitempty" yaml:"version_control_enabled"`
 	PRTestingEnabled       *bool               `bson:"pr_testing_enabled,omitempty" json:"pr_testing_enabled,omitempty" yaml:"pr_testing_enabled"`
 	ManualPRTestingEnabled *bool               `bson:"manual_pr_testing_enabled,omitempty" json:"manual_pr_testing_enabled,omitempty" yaml:"manual_pr_testing_enabled"`
@@ -138,8 +140,8 @@ type ParsleyFilter struct {
 type ProjectHealthView string
 
 const (
-	ProjectHealthViewFailed ProjectHealthView = "failed"
-	ProjectHealthViewAll    ProjectHealthView = "all"
+	ProjectHealthViewAll    ProjectHealthView = "ALL"
+	ProjectHealthViewFailed ProjectHealthView = "FAILED"
 )
 
 type ProjectBanner struct {
@@ -148,14 +150,23 @@ type ProjectBanner struct {
 }
 
 type ExternalLink struct {
-	DisplayName string `bson:"display_name,omitempty" json:"display_name,omitempty" yaml:"display_name,omitempty"`
-	URLTemplate string `bson:"url_template,omitempty" json:"url_template,omitempty" yaml:"url_template,omitempty"`
+	DisplayName string   `bson:"display_name,omitempty" json:"display_name,omitempty" yaml:"display_name,omitempty"`
+	Requesters  []string `bson:"requesters,omitempty" json:"requesters,omitempty" yaml:"requesters,omitempty"`
+	URLTemplate string   `bson:"url_template,omitempty" json:"url_template,omitempty" yaml:"url_template,omitempty"`
 }
 
+type MergeQueue string
+
+const (
+	MergeQueueEvergreen MergeQueue = "EVERGREEN"
+	MergeQueueGitHub    MergeQueue = "GITHUB"
+)
+
 type CommitQueueParams struct {
-	Enabled     *bool  `bson:"enabled" json:"enabled" yaml:"enabled"`
-	MergeMethod string `bson:"merge_method" json:"merge_method" yaml:"merge_method"`
-	Message     string `bson:"message,omitempty" json:"message,omitempty" yaml:"message"`
+	Enabled     *bool      `bson:"enabled" json:"enabled" yaml:"enabled"`
+	MergeMethod string     `bson:"merge_method" json:"merge_method" yaml:"merge_method"`
+	MergeQueue  MergeQueue `bson:"merge_queue" json:"merge_queue" yaml:"merge_queue"`
+	Message     string     `bson:"message,omitempty" json:"message,omitempty" yaml:"message"`
 }
 
 // TaskSyncOptions contains information about which features are allowed for
@@ -246,8 +257,9 @@ type TriggerDefinition struct {
 	DateCutoff        *int   `bson:"date_cutoff,omitempty" json:"date_cutoff,omitempty"`
 
 	// definitions for tasks to run for this trigger
-	ConfigFile string `bson:"config_file,omitempty" json:"config_file,omitempty"`
-	Alias      string `bson:"alias,omitempty" json:"alias,omitempty"`
+	ConfigFile                   string `bson:"config_file,omitempty" json:"config_file,omitempty"`
+	Alias                        string `bson:"alias,omitempty" json:"alias,omitempty"`
+	UnscheduleDownstreamVersions bool   `bson:"unschedule_downstream_versions,omitempty" json:"unschedule_downstream_versions,omitempty"`
 }
 
 type PeriodicBuildDefinition struct {
@@ -320,6 +332,7 @@ var (
 	projectRefPatchingDisabledKey         = bsonutil.MustHaveTag(ProjectRef{}, "PatchingDisabled")
 	projectRefDispatchingDisabledKey      = bsonutil.MustHaveTag(ProjectRef{}, "DispatchingDisabled")
 	projectRefStepbackDisabledKey         = bsonutil.MustHaveTag(ProjectRef{}, "StepbackDisabled")
+	projectRefStepbackBisectKey           = bsonutil.MustHaveTag(ProjectRef{}, "StepbackBisect")
 	projectRefVersionControlEnabledKey    = bsonutil.MustHaveTag(ProjectRef{}, "VersionControlEnabled")
 	projectRefNotifyOnFailureKey          = bsonutil.MustHaveTag(ProjectRef{}, "NotifyOnBuildFailure")
 	projectRefSpawnHostScriptPathKey      = bsonutil.MustHaveTag(ProjectRef{}, "SpawnHostScriptPath")
@@ -371,6 +384,10 @@ func (p *ProjectRef) IsPRTestingEnabled() bool {
 
 func (p *ProjectRef) IsStepbackDisabled() bool {
 	return utility.FromBoolPtr(p.StepbackDisabled)
+}
+
+func (p *ProjectRef) IsStepbackBisect() bool {
+	return utility.FromBoolPtr(p.StepbackBisect)
 }
 
 func (p *ProjectRef) IsAutoPRTestingEnabled() bool {
@@ -719,9 +736,9 @@ func (p *ProjectRef) DetachFromRepo(u *user.DBUser) error {
 // AttachToRepo adds the branch to the relevant repo scopes, and updates the project to point to the repo.
 // Any values that previously were unset will now use the repo value, unless this would introduce
 // a GitHub project conflict. If no repo ref currently exists, the user attaching it will be added as the repo ref admin.
-func (p *ProjectRef) AttachToRepo(u *user.DBUser) error {
+func (p *ProjectRef) AttachToRepo(ctx context.Context, u *user.DBUser) error {
 	// Before allowing a project to attach to a repo, verify that this is a valid GitHub organization.
-	config, err := evergreen.GetConfig()
+	config, err := evergreen.GetConfig(ctx)
 	if err != nil {
 		return errors.Wrap(err, "getting config")
 	}
@@ -1494,8 +1511,8 @@ func FindBranchAdminsForRepo(repoId string) ([]string, error) {
 	return utility.UniqueStrings(allBranchAdmins), nil
 }
 
-// Find repos that have that trigger / are enabled
-// find projects that have this repo ID and nil triggers,OR that have the trigger
+// FindDownstreamProjects finds projects that have that trigger enabled or
+// inherits it from the repo project.
 func FindDownstreamProjects(project string) ([]ProjectRef, error) {
 	projectRefs := []ProjectRef{}
 
@@ -1638,7 +1655,7 @@ func EnableWebhooks(ctx context.Context, projectRef *ProjectRef) (bool, error) {
 		return true, nil
 	}
 
-	settings, err := evergreen.GetConfig()
+	settings, err := evergreen.GetConfig(ctx)
 	if err != nil {
 		return false, errors.Wrap(err, "finding evergreen settings")
 	}
@@ -1955,6 +1972,7 @@ func SaveProjectPageForSection(projectId string, p *ProjectRef, section ProjectP
 			projectRefSpawnHostScriptPathKey:   p.SpawnHostScriptPath,
 			projectRefDispatchingDisabledKey:   p.DispatchingDisabled,
 			projectRefStepbackDisabledKey:      p.StepbackDisabled,
+			projectRefStepbackBisectKey:        p.StepbackBisect,
 			projectRefVersionControlEnabledKey: p.VersionControlEnabled,
 			ProjectRefDeactivatePreviousKey:    p.DeactivatePrevious,
 			projectRefRepotrackerDisabledKey:   p.RepotrackerDisabled,
@@ -2264,8 +2282,26 @@ func (p *ProjectRef) GetActivationTimeForVariant(variant *BuildVariant) (time.Ti
 	return defaultRes, nil
 }
 
-func (p *ProjectRef) GetActivationTimeForTask(t *BuildVariantTaskUnit) (time.Time, error) {
+// GetActivationTimeForTask returns the time at which this task should next be activated.
+// Temporarily takes in the task ID that prompted this query, for logging.
+func (p *ProjectRef) GetActivationTimeForTask(t *BuildVariantTaskUnit, taskId string) (time.Time, error) {
 	defaultRes := time.Now()
+	// Verify that we mean to be getting activation time for task
+	if !t.HasSpecificActivation() {
+		grip.Debug(message.Fields{
+			"ticket":         "EVG-20612",
+			"message":        "incorrectly called GetActivationTimeForTask",
+			"task_id":        taskId,
+			"variant":        t.Variant,
+			"task_name":      t.Name,
+			"bvtu_batchtime": t.BatchTime,
+			"bvtu_activate":  t.Activate,
+			"bvtu_cron":      t.CronBatchTime,
+			"bvtu_disabled":  t.IsDisabled(),
+			"stack":          string(debug.Stack()),
+		})
+		return defaultRes, nil
+	}
 	// if we don't want to activate the task, set batchtime to the zero time
 	if !utility.FromBoolTPtr(t.Activate) || t.IsDisabled() {
 		return utility.ZeroTime, nil
@@ -2278,10 +2314,23 @@ func (p *ProjectRef) GetActivationTimeForTask(t *BuildVariantTaskUnit) (time.Tim
 		return time.Now(), nil
 	}
 
+	queryStart := time.Now()
 	lastActivated, err := VersionFindOne(VersionByLastTaskActivation(p.Id, t.Variant, t.Name).WithFields(VersionBuildVariantsKey))
 	if err != nil {
 		return defaultRes, errors.Wrap(err, "finding version")
 	}
+	grip.Debug(message.Fields{
+		"ticket":                "EVG-20612",
+		"message":               "queried last activated",
+		"last_activated_exists": lastActivated != nil,
+		"task_id":               taskId,
+		"variant":               t.Variant,
+		"task_name":             t.Name,
+		"bvtu_batchtime":        t.BatchTime,
+		"bvtu_activate":         t.Activate,
+		"stack":                 string(debug.Stack()),
+		"query_time_secs":       time.Since(queryStart).Seconds(),
+	})
 	if lastActivated == nil {
 		return defaultRes, nil
 	}
@@ -2559,7 +2608,7 @@ func (p *ProjectRef) removeFromAdminsList(user string) {
 	}
 }
 
-func (p *ProjectRef) AuthorizedForGitTag(ctx context.Context, githubUser string, token string) bool {
+func (p *ProjectRef) AuthorizedForGitTag(ctx context.Context, githubUser, token, owner, repo string) bool {
 	if utility.StringSliceContains(p.GitTagAuthorizedUsers, githubUser) {
 		return true
 	}
@@ -2583,7 +2632,7 @@ func (p *ProjectRef) AuthorizedForGitTag(ctx context.Context, githubUser string,
 		}
 	}
 
-	return thirdparty.IsUserInGithubTeam(ctx, p.GitTagAuthorizedTeams, p.Owner, githubUser, token)
+	return thirdparty.IsUserInGithubTeam(ctx, p.GitTagAuthorizedTeams, p.Owner, githubUser, token, owner, repo)
 }
 
 // GetProjectSetupCommands returns jasper commands for the project's configuration commands
@@ -2751,7 +2800,7 @@ func GetProjectRefForTask(taskId string) (*ProjectRef, error) {
 }
 
 func GetSetupScriptForTask(ctx context.Context, taskId string) (string, error) {
-	conf, err := evergreen.GetConfig()
+	conf, err := evergreen.GetConfig(ctx)
 	if err != nil {
 		return "", errors.Wrap(err, "can't get evergreen configuration")
 	}
@@ -2765,6 +2814,9 @@ func GetSetupScriptForTask(ctx context.Context, taskId string) (string, error) {
 		return "", errors.Wrap(err, "getting project")
 	}
 
+	if pRef.SpawnHostScriptPath == "" {
+		return "", nil
+	}
 	configFile, err := thirdparty.GetGithubFile(ctx, token, pRef.Owner, pRef.Repo, pRef.SpawnHostScriptPath, pRef.Branch)
 	if err != nil {
 		return "", errors.Wrapf(err,
@@ -2870,9 +2922,9 @@ func ValidateContainers(ecsConf evergreen.ECSConfig, pRef *ProjectRef, container
 		catcher.NewWhen(container.Size != "" && container.Resources != nil, "size and resources cannot both be defined")
 		catcher.NewWhen(container.Size == "" && container.Resources == nil, "either size or resources must be defined")
 		catcher.NewWhen(container.Image == "", "image must be defined")
+		catcher.NewWhen(container.WorkingDir == "", "working directory must be defined")
 		catcher.NewWhen(container.Name == "", "name must be defined")
-		catcher.ErrorfWhen(!utility.StringSliceContains(ecsConf.AllowedImages, container.Image), "image '%s' not allowed", container.Image)
-
+		catcher.ErrorfWhen(len(ecsConf.AllowedImages) > 0 && !util.HasAllowedImageAsPrefix(container.Image, ecsConf.AllowedImages), "image '%s' not allowed", container.Image)
 	}
 	return catcher.Resolve()
 }
@@ -2925,7 +2977,7 @@ func ValidateTriggerDefinition(definition patch.PatchTriggerDefinition, parentPr
 		return definition, errors.Wrapf(err, "finding child project '%s'", definition.ChildProject)
 	}
 
-	if !utility.StringSliceContains([]string{"", AllStatuses, evergreen.PatchSucceeded, evergreen.PatchFailed}, definition.Status) {
+	if !utility.StringSliceContains([]string{"", AllStatuses, evergreen.LegacyPatchSucceeded, evergreen.VersionSucceeded, evergreen.VersionFailed}, definition.Status) {
 		return definition, errors.Errorf("invalid status: %s", definition.Status)
 	}
 
@@ -3193,13 +3245,18 @@ func ValidateContainerSecrets(settings *evergreen.Settings, projectID string, or
 	combined := make([]ContainerSecret, len(original))
 	_ = copy(combined, original)
 
-	var numPodSecrets int
 	catcher := grip.NewBasicCatcher()
+	podSecrets := make(map[string]bool)
+	for _, originalSecret := range original {
+		if originalSecret.Type == ContainerSecretPodSecret {
+			podSecrets[originalSecret.Name] = true
+		}
+	}
 	for _, updatedSecret := range toUpdate {
 		name := updatedSecret.Name
 
 		if updatedSecret.Type == ContainerSecretPodSecret {
-			numPodSecrets++
+			podSecrets[name] = true
 		}
 
 		idx := -1
@@ -3236,7 +3293,7 @@ func ValidateContainerSecrets(settings *evergreen.Settings, projectID string, or
 		combined = append(combined, updatedSecret)
 	}
 
-	catcher.ErrorfWhen(numPodSecrets > 1, "a project can have at most one pod secret but tried to create %d pod secrets total", numPodSecrets)
+	catcher.ErrorfWhen(len(podSecrets) > 1, "a project can have at most one pod secret but tried to create %d pod secrets total", len(podSecrets))
 
 	return combined, catcher.Resolve()
 }

@@ -10,6 +10,7 @@ import (
 	"github.com/docker/docker/api/types"
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/apimodels"
+	"github.com/evergreen-ci/evergreen/model/distro"
 	"github.com/evergreen-ci/evergreen/model/host"
 	"github.com/evergreen-ci/evergreen/model/task"
 	"github.com/evergreen-ci/evergreen/rest/data"
@@ -24,13 +25,19 @@ import (
 type hostCreateHandler struct {
 	taskID     string
 	createHost apimodels.CreateHost
+	distro     distro.Distro
+	env        evergreen.Environment
 }
 
-func makeHostCreateRouteManager() gimlet.RouteHandler {
-	return &hostCreateHandler{}
+func makeHostCreateRouteManager(env evergreen.Environment) gimlet.RouteHandler {
+	return &hostCreateHandler{env: env}
 }
 
-func (h *hostCreateHandler) Factory() gimlet.RouteHandler { return &hostCreateHandler{} }
+func (h *hostCreateHandler) Factory() gimlet.RouteHandler {
+	return &hostCreateHandler{
+		env: h.env,
+	}
+}
 
 func (h *hostCreateHandler) Parse(ctx context.Context, r *http.Request) error {
 	taskID := gimlet.GetVars(r)["task_id"]
@@ -48,7 +55,12 @@ func (h *hostCreateHandler) Parse(ctx context.Context, r *http.Request) error {
 			Message:    err.Error(),
 		}
 	}
-	return h.createHost.Validate()
+	d, err := distro.GetHostCreateDistro(ctx, h.createHost)
+	if err != nil {
+		return err
+	}
+	h.distro = *d
+	return h.createHost.Validate(ctx)
 }
 
 func (h *hostCreateHandler) Run(ctx context.Context) gimlet.Responder {
@@ -59,7 +71,7 @@ func (h *hostCreateHandler) Run(ctx context.Context) gimlet.Responder {
 
 	ids := []string{}
 	for i := 0; i < numHosts; i++ {
-		intentHost, err := data.MakeIntentHost(h.taskID, "", "", h.createHost)
+		intentHost, err := data.MakeHost(ctx, h.env, h.taskID, "", "", h.createHost, h.distro)
 		if err != nil {
 			return gimlet.MakeJSONInternalErrorResponder(errors.Wrap(err, "creating intent host"))
 		}
@@ -160,7 +172,7 @@ func (h *containerLogsHandler) Factory() gimlet.RouteHandler {
 
 func (h *containerLogsHandler) Parse(ctx context.Context, r *http.Request) error {
 	id := gimlet.GetVars(r)["host_id"]
-	host, err := host.FindOneId(id)
+	host, err := host.FindOneId(ctx, id)
 	if err != nil {
 		return gimlet.ErrorResponse{
 			StatusCode: http.StatusInternalServerError,
@@ -200,11 +212,11 @@ func (h *containerLogsHandler) Parse(ctx context.Context, r *http.Request) error
 }
 
 func (h *containerLogsHandler) Run(ctx context.Context) gimlet.Responder {
-	parent, err := h.host.GetParent()
+	parent, err := h.host.GetParent(ctx)
 	if err != nil {
 		return gimlet.NewJSONInternalErrorResponse(errors.Wrapf(err, "finding parent for container '%s'", h.host.Id))
 	}
-	settings, err := evergreen.GetConfig()
+	settings, err := evergreen.GetConfig(ctx)
 	if err != nil {
 		return gimlet.NewJSONInternalErrorResponse(errors.Wrap(err, "getting admin settings"))
 	}
@@ -244,7 +256,7 @@ func (h *containerStatusHandler) Factory() gimlet.RouteHandler {
 
 func (h *containerStatusHandler) Parse(ctx context.Context, r *http.Request) error {
 	id := gimlet.GetVars(r)["host_id"]
-	host, err := host.FindOneId(id)
+	host, err := host.FindOneId(ctx, id)
 	if err != nil {
 		return gimlet.ErrorResponse{
 			StatusCode: http.StatusInternalServerError,
@@ -262,11 +274,11 @@ func (h *containerStatusHandler) Parse(ctx context.Context, r *http.Request) err
 }
 
 func (h *containerStatusHandler) Run(ctx context.Context) gimlet.Responder {
-	parent, err := h.host.GetParent()
+	parent, err := h.host.GetParent(ctx)
 	if err != nil {
 		return gimlet.NewJSONInternalErrorResponse(errors.Wrapf(err, "finding parent for container '%s'", h.host.Id))
 	}
-	settings, err := evergreen.GetConfig()
+	settings, err := evergreen.GetConfig(ctx)
 	if err != nil {
 		return gimlet.NewJSONInternalErrorResponse(errors.Wrap(err, "getting admin settings"))
 	}

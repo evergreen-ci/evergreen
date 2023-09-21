@@ -58,7 +58,7 @@ func (c *gitMergePR) Execute(ctx context.Context, comm client.Communicator, logg
 		td := client.TaskData{ID: conf.Task.Id, Secret: conf.Task.Secret}
 		logger.Task().Error(comm.ConcludeMerge(ctx, conf.Task.Version, status, td))
 	}()
-	if err = util.ExpandValues(c, conf.Expansions); err != nil {
+	if err = util.ExpandValues(c, &conf.Expansions); err != nil {
 		return errors.Wrap(err, "applying expansions")
 	}
 
@@ -72,6 +72,7 @@ func (c *gitMergePR) Execute(ctx context.Context, comm client.Communicator, logg
 	if token == "" {
 		token = conf.Expansions.Get(evergreen.GlobalGitHubTokenExpansion)
 	}
+	appToken := conf.Expansions.Get(evergreen.GithubAppToken)
 
 	c.statusSender, err = send.NewGithubStatusLogger("evergreen", &send.GithubOptions{
 		Token: token,
@@ -80,11 +81,7 @@ func (c *gitMergePR) Execute(ctx context.Context, comm client.Communicator, logg
 		return errors.Wrap(err, "setting up GitHub status logger")
 	}
 
-	status := evergreen.PatchFailed
-	if patchDoc.MergeStatus == evergreen.PatchSucceeded {
-		status = evergreen.PatchSucceeded
-	}
-	if status != evergreen.PatchSucceeded {
+	if !evergreen.IsSuccessfulVersionStatus(patchDoc.MergeStatus) {
 		logger.Task().Warning("At least 1 task failed, will not merge pull request.")
 		return nil
 	}
@@ -101,7 +98,7 @@ func (c *gitMergePR) Execute(ctx context.Context, comm client.Communicator, logg
 	// Add retry logic in case multiple PRs are merged in quick succession, since
 	// it takes GitHub some time to put the PR back in a mergeable state.
 	err = utility.Retry(ctx, func() (bool, error) {
-		err = thirdparty.MergePullRequest(ctx, token, conf.ProjectRef.Owner, conf.ProjectRef.Repo,
+		err = thirdparty.MergePullRequest(ctx, token, appToken, conf.ProjectRef.Owner, conf.ProjectRef.Repo,
 			patchDoc.GithubPatchData.CommitMessage, patchDoc.GithubPatchData.PRNumber, mergeOpts)
 		if err != nil {
 			return true, errors.Wrap(err, "getting pull request data from GitHub")

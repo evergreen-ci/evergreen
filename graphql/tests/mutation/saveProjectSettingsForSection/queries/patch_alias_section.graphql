@@ -1,0 +1,44 @@
+mutation {
+  saveProjectSettingsForSection(
+    projectSettings: {
+      projectRef: {
+        id: "sandbox_project_id"
+        patchTriggerAliases: []
+        githubTriggerAliases: []
+      }
+      aliases: [
+        {
+          id: "64c80057d1d6f12b0d4c69d0"
+          alias: "test"
+          description: "alias"
+          variant: ""
+          variantTags: [".*"]
+          task: ""
+          taskTags: [".*"]
+          gitTag: ""
+          remotePath: ""
+          parameters: [{ key: "test", value: "thing" }]
+        }
+      ]
+    }
+    section: PATCH_ALIASES
+  ) {
+    aliases {
+      id
+      alias
+      description
+      variant
+      variantTags
+      task
+      taskTags
+      gitTag
+      remotePath
+      parameters {
+        key
+        value
+      }
+    }
+
+
+  }
+}

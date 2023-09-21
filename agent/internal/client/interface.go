@@ -41,6 +41,8 @@ type SharedCommunicator interface {
 	UpdateLastMessageTime()
 	LastMessageAt() time.Time
 
+	// SetTaskOutputVersion sets the task output version for the task.
+	SetTaskOutputVersion(context.Context, TaskData, int) error
 	// StartTask marks the task as started.
 	StartTask(context.Context, TaskData) error
 	// GetTask returns the active task.
@@ -58,9 +60,8 @@ type SharedCommunicator interface {
 	// GetProject loads the project using the task's version ID.
 	GetProject(context.Context, TaskData) (*model.Project, error)
 	// Heartbeat will return a non-empty task status if the agent should stop running the task.
-	// Returning evergreen.TaskConflict means the agent is no longer authorized to run this task and
-	// should move on to the next available one. Returning evergreen.TaskFailed means that the task
-	// has been aborted. An empty string indicates the heartbeat has succeeded.
+	// Returning evergreen.TaskFailed means that the task has been aborted. An empty string
+	// indicates the heartbeat has succeeded.
 	Heartbeat(context.Context, TaskData) (string, error)
 	// GetExpansionsAndVars returns the expansions, project variables, and
 	// version parameters. For expansions, all expansions are loaded except for
@@ -86,7 +87,7 @@ type SharedCommunicator interface {
 
 	// GetLoggerProducer constructs a new LogProducer instance for use by tasks.
 	GetLoggerProducer(context.Context, TaskData, *LoggerConfig) (LoggerProducer, error)
-	GetLoggerMetadata() LoggerMetadata
+	// GetLoggerMetadata() LoggerMetadata
 
 	// SendLogMessages sends a group of log messages to the API Server
 	SendLogMessages(context.Context, TaskData, []apimodels.LogMessage) error
@@ -123,17 +124,6 @@ type SharedCommunicator interface {
 	SetDownstreamParams(ctx context.Context, downstreamParams []patchmodel.Parameter, taskData TaskData) error
 }
 
-type LoggerMetadata struct {
-	Agent  []LogkeeperMetadata
-	System []LogkeeperMetadata
-	Task   []LogkeeperMetadata
-}
-
-type LogkeeperMetadata struct {
-	Build string
-	Test  string
-}
-
 // TaskData contains the taskData.ID and taskData.Secret. It must be set for
 // some client methods.
 type TaskData struct {
@@ -143,21 +133,20 @@ type TaskData struct {
 }
 
 type LoggerConfig struct {
-	System []LogOpts
-	Agent  []LogOpts
-	Task   []LogOpts
+	System             []LogOpts
+	Agent              []LogOpts
+	Task               []LogOpts
+	SendToGlobalSender bool
 }
 
 type LogOpts struct {
-	Sender            string
-	SplunkServerURL   string
-	SplunkToken       string
-	Filepath          string
-	LogkeeperURL      string
-	LogkeeperBuildNum int
-	BuilderID         string
-	BufferDuration    time.Duration
-	BufferSize        int
+	Sender          string
+	SplunkServerURL string
+	SplunkToken     string
+	Filepath        string
+	BuilderID       string
+	BufferDuration  time.Duration
+	BufferSize      int
 }
 
 // LoggerProducer provides a mechanism for agents (and command plugins) to access the
