@@ -154,13 +154,13 @@ func RotateSecrets(toReplace, replacement string, dryRun bool) (map[TaskIDAndExe
 func EscapeFiles(files []File) []File {
 	var escapedFiles []File
 	for _, file := range files {
-		file.Link = EscapeFile(file.Link)
+		file.Link = escapeFile(file.Link)
 		escapedFiles = append(escapedFiles, file)
 	}
 	return escapedFiles
 }
 
-func EscapeFile(path string) string {
+func escapeFile(path string) string {
 	base := filepath.Base(path)
 	i := strings.LastIndex(path, base)
 	return path[:i] + strings.Replace(path[i:], base, url.QueryEscape(base), 1)
