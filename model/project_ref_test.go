@@ -2818,6 +2818,7 @@ func TestMergeWithProjectConfig(t *testing.T) {
 			},
 			BuildBaronSettings: &evergreen.BuildBaronSettings{
 				TicketCreateProject:     "BFG",
+				TicketCreateIssueType:   "Bug",
 				TicketSearchProjects:    []string{"BF", "BFG"},
 				BFSuggestionServer:      "https://evergreen.mongodb.com",
 				BFSuggestionTimeoutSecs: 10,
@@ -2840,6 +2841,8 @@ func TestMergeWithProjectConfig(t *testing.T) {
 	assert.Equal(t, "https://evergreen.mongodb.com", projectRef.BuildBaronSettings.BFSuggestionServer)
 	assert.Equal(t, 10, projectRef.BuildBaronSettings.BFSuggestionTimeoutSecs)
 	assert.Equal(t, "EVG", projectRef.BuildBaronSettings.TicketCreateProject)
+	assert.Equal(t, "Bug", projectRef.BuildBaronSettings.TicketCreateIssueType)
+	assert.Equal(t, []string{"BF", "BFG"}, projectRef.BuildBaronSettings.TicketSearchProjects)
 	assert.Equal(t, []string{"one", "two"}, projectRef.GithubTriggerAliases)
 	assert.Equal(t, "p1", projectRef.PeriodicBuilds[0].ID)
 	assert.Equal(t, 1, projectRef.ContainerSizeDefinitions[0].CPU)

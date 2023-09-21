@@ -999,10 +999,8 @@ func (e *envState) ClientConfig() *ClientConfig {
 type BuildBaronSettings struct {
 	// todo: reconfigure the BuildBaronConfigured check to use TicketSearchProjects instead
 
-	TicketCreateProject string `mapstructure:"ticket_create_project" bson:"ticket_create_project" json:"ticket_create_project" yaml:"ticket_create_project"`
-	// kim:  TODO: verify that this is not used in any place but project
-	// settings.
-	TicketCreateIssueType string   `mapstructure:"ticket_create_issue_type" bson:"ticket_create_issue_type" json:"ticket_create_issue_type"`
+	TicketCreateProject   string   `mapstructure:"ticket_create_project" bson:"ticket_create_project" json:"ticket_create_project" yaml:"ticket_create_project"`
+	TicketCreateIssueType string   `mapstructure:"ticket_create_issue_type" bson:"ticket_create_issue_type" json:"ticket_create_issue_type" yaml:"ticket_create_issue_type"`
 	TicketSearchProjects  []string `mapstructure:"ticket_search_projects" bson:"ticket_search_projects" json:"ticket_search_projects" yaml:"ticket_search_projects"`
 
 	// The BF Suggestion server as a source of suggestions is only enabled for projects where BFSuggestionServer isn't the empty string.
