@@ -1253,6 +1253,44 @@ func TestBulkInsert(t *testing.T) {
 	}
 }
 
+func TestGetTaskIdBetweenIds(t *testing.T) {
+	assert := assert.New(t)
+	require.NoError(t, db.ClearCollections(Collection))
+	displayName := "cool-task-9000"
+	buildVarient := "bv"
+	requester := "r"
+	project := "proj"
+	t1 := Task{
+		Id:                  "t1",
+		DisplayName:         displayName,
+		BuildVariant:        buildVarient,
+		Requester:           requester,
+		Project:             project,
+		RevisionOrderNumber: 0,
+	}
+	assert.NoError(t1.Insert())
+	t2 := Task{
+		Id:                  "t2",
+		DisplayName:         displayName,
+		BuildVariant:        buildVarient,
+		Requester:           requester,
+		Project:             project,
+		RevisionOrderNumber: 0,
+	}
+	assert.NoError(t2.Insert())
+	t3 := Task{
+		Id:                  "t3",
+		DisplayName:         displayName,
+		BuildVariant:        buildVarient,
+		Requester:           requester,
+		Project:             project,
+		RevisionOrderNumber: 0,
+	}
+	assert.NoError(t3.Insert())
+
+	// TODO CONTINUE
+}
+
 func TestUnscheduleStaleUnderwaterHostTasksNoDistro(t *testing.T) {
 	assert := assert.New(t)
 

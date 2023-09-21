@@ -169,10 +169,12 @@ type Task struct {
 	// CanReset indicates that the task has successfully archived and is in a valid state to be reset.
 	CanReset bool `bson:"can_reset,omitempty" json:"can_reset,omitempty"`
 
-	Execution           int    `bson:"execution" json:"execution"`
-	OldTaskId           string `bson:"old_task_id,omitempty" json:"old_task_id,omitempty"`
-	Archived            bool   `bson:"archived,omitempty" json:"archived,omitempty"`
-	RevisionOrderNumber int    `bson:"order,omitempty" json:"order,omitempty"`
+	Execution int    `bson:"execution" json:"execution"`
+	OldTaskId string `bson:"old_task_id,omitempty" json:"old_task_id,omitempty"`
+	Archived  bool   `bson:"archived,omitempty" json:"archived,omitempty"`
+
+	// TODO for patches it is how many patches a user has submitted.
+	RevisionOrderNumber int `bson:"order,omitempty" json:"order,omitempty"`
 
 	// task requester - this is used to help tell the
 	// reason this task was created. e.g. it could be
@@ -855,24 +857,6 @@ func (t *Task) FindTaskOnPreviousCommit() (*Task, error) {
 	return FindOne(db.Query(ByPreviousCommit(t.BuildVariant, t.DisplayName, t.Project, evergreen.RepotrackerVersionRequester, t.RevisionOrderNumber)).Sort([]string{"-" + RevisionOrderNumberKey}))
 }
 
-// This is used no where, should we remove it? Does it even work?
-// There is no tests related to it
-// FindIntermediateTasks returns the tasks from most recent to least recent between two tasks.
-func (current *Task) FindIntermediateTasks(previous *Task) ([]Task, error) {
-	intermediateTasks, err := Find(ByIntermediateRevisions(previous.RevisionOrderNumber, current.RevisionOrderNumber, current.BuildVariant,
-		current.DisplayName, current.Project, current.Requester))
-	if err != nil {
-		return nil, err
-	}
-
-	// reverse the slice of tasks
-	intermediateTasksReversed := make([]Task, len(intermediateTasks))
-	for idx, t := range intermediateTasks {
-		intermediateTasksReversed[len(intermediateTasks)-idx-1] = t
-	}
-	return intermediateTasksReversed, nil
-}
-
 // CountSimilarFailingTasks returns a count of all tasks with the same project,
 // same display name, and in other buildvariants, that have failed in the same
 // revision
@@ -1267,25 +1251,11 @@ func SetTasksScheduledTime(tasks []Task, scheduledTime time.Time) error {
 }
 
 // GetTaskIdBetweenIds retrieves the task id between two tasks that are of the same
-func GetTaskIdBetweenIds(prevTaskId, currentTaskId string) (string, error) {
-	previous, err := FindByIdExecution(prevTaskId, nil)
-	if previous == nil || err != nil {
-		return "", err
-	}
-	current, err := FindByIdExecution(currentTaskId, nil)
-	if current == nil || err != nil {
-		return "", err
-	}
-	tasks, err := Find(ByIntermediateRevisions(previous.RevisionOrderNumber, current.RevisionOrderNumber, current.BuildVariant,
-		current.DisplayName, current.Project, current.Requester))
-	if err != nil {
-		return "", err
-	}
-	taskLength := len(tasks)
-	if taskLength == 0 {
-		return "", nil
-	}
-	mid := int(float32(taskLength) / 2.0)
+func GetTaskIdBetweenTasks(t1, t2 Task) (string, error) {
+	mid := (t1.RevisionOrderNumber + t2.RevisionOrderNumber) / 2
+
+	t3, err := Find(bson.M{})
+
 	return tasks[mid].Id, nil
 }
 
