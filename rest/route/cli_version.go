@@ -2,7 +2,6 @@ package route
 
 import (
 	"context"
-	"fmt"
 	"net/http"
 
 	"github.com/evergreen-ci/evergreen/rest/data"
@@ -25,9 +24,6 @@ func (gh *cliVersion) Parse(ctx context.Context, r *http.Request) error {
 }
 
 func (gh *cliVersion) Run(ctx context.Context) gimlet.Responder {
-	fmt.Println("CLI VERSION CLI VERSION")
-	fmt.Println("CLI VERSION CLI VERSION")
-	fmt.Println("CLI VERSION CLI VERSION")
 	version, err := data.GetCLIUpdate(ctx)
 	if err != nil {
 		return gimlet.MakeJSONInternalErrorResponder(errors.Wrap(err, "getting CLI updates"))
