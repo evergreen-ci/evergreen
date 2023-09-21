@@ -63,7 +63,7 @@ func (s *ZipCreateSuite) TestMalformedParams() {
 
 func (s *ZipCreateSuite) TestErrorsWithMalformedExpansions() {
 	s.cmd.Target = "${feoo"
-	s.Error(s.cmd.Execute(context.Background(), s.comm, s.logger, s.conf))
+	s.Error(s.cmd.Execute(s.ctx, s.comm, s.logger, s.conf))
 }
 
 func (s *ZipCreateSuite) TestErrorsWithMissingArguments() {
@@ -84,7 +84,7 @@ func (s *ZipCreateSuite) TestErrorsAndNormalizedPath() {
 	s.cmd.SourceDir = "foo"
 	s.cmd.Target = "bar"
 
-	s.Error(s.cmd.Execute(context.Background(), s.comm, s.logger, s.conf))
+	s.Error(s.cmd.Execute(s.ctx, s.comm, s.logger, s.conf))
 	s.Contains(s.cmd.SourceDir, s.conf.WorkDir)
 	s.Contains(s.cmd.Target, s.conf.WorkDir)
 }
@@ -93,5 +93,8 @@ func (s *ZipCreateSuite) TestCreateZipOfPackage() {
 	s.cmd.Target = filepath.Join(s.targetLocation, "test1.zip")
 	s.cmd.SourceDir = testutil.GetDirectoryOfFile()
 	s.cmd.Include = []string{"*.go"}
-	s.NoError(s.cmd.Execute(context.Background(), s.comm, s.logger, s.conf))
+	s.NoError(s.cmd.Execute(s.ctx, s.comm, s.logger, s.conf))
+
+	// kim: TODO: check that file exists and has expected data by walking the
+	// files with archiver.
 }

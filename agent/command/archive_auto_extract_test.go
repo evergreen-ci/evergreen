@@ -4,6 +4,7 @@ import (
 	"context"
 	"os"
 	"path/filepath"
+	"strings"
 	"testing"
 
 	"github.com/evergreen-ci/evergreen/agent/internal"
@@ -12,6 +13,8 @@ import (
 	"github.com/evergreen-ci/evergreen/model/task"
 	"github.com/evergreen-ci/evergreen/testutil"
 	"github.com/evergreen-ci/evergreen/util"
+	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 	"github.com/stretchr/testify/suite"
 )
 
@@ -75,12 +78,12 @@ func (s *AutoExtractSuite) TestErrorWhenExcludeFilesExist() {
 
 func (s *AutoExtractSuite) TestErrorsWithMalformedExpansions() {
 	s.cmd.TargetDirectory = "${foo"
-	s.Error(s.cmd.Execute(context.Background(), s.comm, s.logger, s.conf))
+	s.Error(s.cmd.Execute(s.ctx, s.comm, s.logger, s.conf))
 }
 
 func (s *AutoExtractSuite) TestErrorsIfNoTarget() {
 	s.Zero(s.cmd.TargetDirectory)
-	s.Error(s.cmd.Execute(context.Background(), s.comm, s.logger, s.conf))
+	s.Error(s.cmd.Execute(s.ctx, s.comm, s.logger, s.conf))
 }
 
 func (s *AutoExtractSuite) TestErrorsAndNormalizedPath() {
@@ -90,7 +93,7 @@ func (s *AutoExtractSuite) TestErrorsAndNormalizedPath() {
 	s.cmd.TargetDirectory = "foo"
 	s.cmd.ArchivePath = "bar"
 
-	s.Error(s.cmd.Execute(context.Background(), s.comm, s.logger, s.conf))
+	s.Error(s.cmd.Execute(s.ctx, s.comm, s.logger, s.conf))
 	s.Contains(s.cmd.TargetDirectory, s.conf.WorkDir)
 	s.Contains(s.cmd.ArchivePath, s.conf.WorkDir)
 }
@@ -101,7 +104,7 @@ func (s *AutoExtractSuite) TestExtractionArchiveDoesNotExist() {
 	s.cmd.ArchivePath = filepath.Join(testutil.GetDirectoryOfFile(),
 		"testdata", "archive", "artifacts.tar.gauto")
 
-	s.Error(s.cmd.Execute(context.Background(), s.comm, s.logger, s.conf))
+	s.Error(s.cmd.Execute(s.ctx, s.comm, s.logger, s.conf))
 }
 
 func (s *AutoExtractSuite) TestExtractionFileExistsAndIsNotArchive() {
@@ -110,7 +113,7 @@ func (s *AutoExtractSuite) TestExtractionFileExistsAndIsNotArchive() {
 	s.cmd.ArchivePath = filepath.Join(testutil.GetDirectoryOfFile(),
 		"interface.go")
 
-	s.Error(s.cmd.Execute(context.Background(), s.comm, s.logger, s.conf))
+	s.Error(s.cmd.Execute(s.ctx, s.comm, s.logger, s.conf))
 }
 
 func (s *AutoExtractSuite) TestExtractionZipWorkingCase() {
@@ -119,18 +122,9 @@ func (s *AutoExtractSuite) TestExtractionZipWorkingCase() {
 	s.cmd.ArchivePath = filepath.Join(testutil.GetDirectoryOfFile(),
 		"testdata", "archive", "artifacts.zip")
 
-	s.NoError(s.cmd.Execute(context.Background(), s.comm, s.logger, s.conf))
+	s.NoError(s.cmd.Execute(s.ctx, s.comm, s.logger, s.conf))
 
-	counter := 0
-	err := filepath.Walk(s.targetLocation, func(path string, info os.FileInfo, err error) error {
-		if err != nil {
-			return err
-		}
-		counter++
-		return nil
-	})
-	s.NoError(err)
-	s.True(counter > 1)
+	checkCommonExtractedArchiveContents(s.T(), s.cmd.TargetDirectory)
 }
 
 func (s *AutoExtractSuite) TestExtractionTarWorkingCase() {
@@ -139,16 +133,44 @@ func (s *AutoExtractSuite) TestExtractionTarWorkingCase() {
 	s.cmd.ArchivePath = filepath.Join(testutil.GetDirectoryOfFile(),
 		"testdata", "archive", "artifacts.tar.gz")
 
-	s.NoError(s.cmd.Execute(context.Background(), s.comm, s.logger, s.conf))
+	s.NoError(s.cmd.Execute(s.ctx, s.comm, s.logger, s.conf))
 
-	counter := 0
-	err := filepath.Walk(s.targetLocation, func(path string, info os.FileInfo, err error) error {
+	checkCommonExtractedArchiveContents(s.T(), s.cmd.TargetDirectory)
+}
+
+// checkCommonExtractedArchiveContents checks that the testdata's archive file
+// extracted to the expected contents.
+func checkCommonExtractedArchiveContents(t *testing.T, targetDirectory string) {
+	// There's a single file artifacts/dir1/dir2/testfile.txt.
+	expectedContents := map[string]bool{}
+	pathParts := []string{"artifacts", "dir1", "dir2", "testfile.txt"}
+	for i := range pathParts {
+		expectedContents[filepath.Join(pathParts[:i+1]...)] = false
+	}
+
+	// Check that the proper directory structure is created and contains the one
+	// extracted file.
+	err := filepath.Walk(targetDirectory, func(path string, info os.FileInfo, err error) error {
 		if err != nil {
 			return err
 		}
-		counter++
+
+		assert.True(t, strings.HasPrefix(path, targetDirectory), "path '%s' should be inside target directory '%s'", path, targetDirectory)
+		if path == targetDirectory {
+			return nil
+		}
+
+		relPath, err := filepath.Rel(targetDirectory, path)
+		require.NoError(t, err)
+		_, ok := expectedContents[relPath]
+		assert.True(t, ok, "unexpected file '%s'", relPath)
+		expectedContents[relPath] = true
 		return nil
 	})
-	s.NoError(err)
-	s.True(counter > 1)
+
+	assert.NoError(t, err)
+
+	for path, found := range expectedContents {
+		assert.True(t, found, "did not find expected path '%s'", path)
+	}
 }

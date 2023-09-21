@@ -2,7 +2,6 @@ package command
 
 import (
 	"context"
-	"os"
 	"path/filepath"
 	"testing"
 
@@ -90,7 +89,7 @@ func (s *ZipExtractSuite) TestErrorsAndNormalizedPath() {
 	s.cmd.TargetDirectory = "foo"
 	s.cmd.ArchivePath = "bar"
 
-	s.Error(s.cmd.Execute(context.Background(), s.comm, s.logger, s.conf))
+	s.Error(s.cmd.Execute(s.ctx, s.comm, s.logger, s.conf))
 	s.Contains(s.cmd.TargetDirectory, s.conf.WorkDir)
 	s.Contains(s.cmd.ArchivePath, s.conf.WorkDir)
 }
@@ -101,7 +100,7 @@ func (s *ZipExtractSuite) TestExtractionArchiveDoesNotExist() {
 	s.cmd.ArchivePath = filepath.Join(testutil.GetDirectoryOfFile(),
 		"testdata", "archive", "artifacts.tar.gzip")
 
-	s.Error(s.cmd.Execute(context.Background(), s.comm, s.logger, s.conf))
+	s.Error(s.cmd.Execute(s.ctx, s.comm, s.logger, s.conf))
 }
 
 func (s *ZipExtractSuite) TestExtractionFileExistsAndIsNotArchive() {
@@ -110,7 +109,7 @@ func (s *ZipExtractSuite) TestExtractionFileExistsAndIsNotArchive() {
 	s.cmd.ArchivePath = filepath.Join(testutil.GetDirectoryOfFile(),
 		"interface.go")
 
-	s.Error(s.cmd.Execute(context.Background(), s.comm, s.logger, s.conf))
+	s.Error(s.cmd.Execute(s.ctx, s.comm, s.logger, s.conf))
 }
 
 func (s *ZipExtractSuite) TestExtractionWorkingCase() {
@@ -119,16 +118,7 @@ func (s *ZipExtractSuite) TestExtractionWorkingCase() {
 	s.cmd.ArchivePath = filepath.Join(testutil.GetDirectoryOfFile(),
 		"testdata", "archive", "artifacts.zip")
 
-	s.NoError(s.cmd.Execute(context.Background(), s.comm, s.logger, s.conf))
+	s.NoError(s.cmd.Execute(s.ctx, s.comm, s.logger, s.conf))
 
-	counter := 0
-	err := filepath.Walk(s.targetLocation, func(path string, info os.FileInfo, err error) error {
-		if err != nil {
-			return err
-		}
-		counter++
-		return nil
-	})
-	s.NoError(err)
-	s.True(counter > 1)
+	checkCommonExtractedArchiveContents(s.T(), s.cmd.TargetDirectory)
 }

@@ -8,7 +8,7 @@ import (
 	"github.com/evergreen-ci/evergreen/agent/internal"
 	"github.com/evergreen-ci/evergreen/agent/internal/client"
 	"github.com/evergreen-ci/evergreen/util"
-	"github.com/mholt/archiver"
+	"github.com/mholt/archiver/v3"
 	"github.com/mitchellh/mapstructure"
 	"github.com/pkg/errors"
 )
@@ -62,9 +62,14 @@ func (e *zipExtract) Execute(ctx context.Context,
 		return errors.Errorf("archive '%s' does not exist", e.ArchivePath)
 	}
 
-	if err := archiver.Zip.Open(e.ArchivePath, e.TargetDirectory); err != nil {
+	// kim: TODO: verify that unarchiving a zip file works in the same way as
+	// before.
+	if err := archiver.NewZip().Unarchive(e.ArchivePath, e.TargetDirectory); err != nil {
 		return errors.Wrapf(err, "extracting archive '%s' to directory '%s'", e.ArchivePath, e.TargetDirectory)
 	}
+	// if err := archiver.Zip.Open(e.ArchivePath, e.TargetDirectory); err != nil {
+	//     return errors.Wrapf(err, "extracting archive '%s' to directory '%s'", e.ArchivePath, e.TargetDirectory)
+	// }
 
 	return nil
 }

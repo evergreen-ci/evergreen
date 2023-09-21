@@ -8,7 +8,7 @@ import (
 	"github.com/evergreen-ci/evergreen/agent/internal/client"
 	agentutil "github.com/evergreen-ci/evergreen/agent/util"
 	"github.com/evergreen-ci/evergreen/util"
-	"github.com/mholt/archiver"
+	"github.com/mholt/archiver/v3"
 	"github.com/mitchellh/mapstructure"
 	"github.com/mongodb/grip/message"
 	"github.com/pkg/errors"
@@ -82,9 +82,14 @@ func (c *zipArchiveCreate) Execute(ctx context.Context,
 		filenames[idx] = files[idx].Path
 	}
 
-	if err := archiver.Zip.Make(c.Target, filenames); err != nil {
+	// kim: TODO: verify that archiving a zip file works in the same way as
+	// before.
+	if err := archiver.NewZip().Archive(filenames, c.Target); err != nil {
 		return errors.Wrapf(err, "constructing zip archive '%s'", c.Target)
 	}
+	// if err := archiver.Zip.Make(c.Target, filenames); err != nil {
+	//     return errors.Wrapf(err, "constructing zip archive '%s'", c.Target)
+	// }
 
 	logger.Task().Info(message.Fields{
 		"target":    c.Target,
