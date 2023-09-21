@@ -2883,16 +2883,24 @@ func CountNumExecutionsForInterval(input NumExecutionsForIntervalInput) (int, er
 	return numTasks + numOldTasks, nil
 }
 
-// FindCompletedTasksByVersion returns all completed tasks for the given
-// version. Excludes execution tasks.
-func FindCompletedTasksByVersion(ctx context.Context, env evergreen.Environment, version string) ([]Task, error) {
-	cur, err := env.DB().Collection(Collection).Find(ctx, bson.M{
-		VersionKey:       version,
-		DisplayTaskIdKey: "",
-		StatusKey:        bson.M{"$in": evergreen.TaskCompletedStatuses},
-	})
+// FindCompletedTasksByVersion returns all completed tasks belonging to the
+// given version ID. Excludes execution tasks.
+func FindCompletedTasksByVersion(ctx context.Context, env evergreen.Environment, versionID string) ([]Task, error) {
+	return findCompletedTasks(ctx, env, bson.M{VersionKey: versionID})
+}
+
+// FindCompletedTasksByBuild returns all completed tasks belonging to the
+// given build ID. Excludes execution tasks.
+func FindCompletedTasksByBuild(ctx context.Context, env evergreen.Environment, buildID string) ([]Task, error) {
+	return findCompletedTasks(ctx, env, bson.M{BuildIdKey: buildID})
+}
+
+func findCompletedTasks(ctx context.Context, env evergreen.Environment, filter bson.M) ([]Task, error) {
+	filter[StatusKey] = bson.M{"$in": evergreen.TaskCompletedStatuses}
+	filter[DisplayTaskIdKey] = ""
+	cur, err := env.DB().Collection(Collection).Find(ctx, filter)
 	if err != nil {
-		return nil, errors.Wrap(err, "finding completed tasks by version")
+		return nil, errors.Wrap(err, "finding completed tasks")
 	}
 
 	var out []Task

@@ -438,7 +438,29 @@ func RestartVersions(ctx context.Context, env evergreen.Environment, versionsToR
 // If abortInProgress is true, it also sets the abort and reset flags on
 // any in-progress tasks.
 func RestartBuild(ctx context.Context, env evergreen.Environment, b *build.Build, taskIDs []string, abortInProgress bool, caller string) error {
-	return RestartVersion(ctx, env, b.Version, taskIDs, abortInProgress, caller)
+	if abortInProgress {
+		if err := task.AbortAndMarkResetTasksForBuild(ctx, env, b.Id, taskIDs, caller); err != nil {
+			return errors.WithStack(err)
+		}
+	}
+
+	var (
+		completedTasks []task.Task
+		err            error
+	)
+	if len(taskIDs) == 0 {
+		completedTasks, err = task.FindCompletedTasksByBuild(ctx, env, b.Id)
+	} else {
+		completedTasks, err = getTasksToReset(taskIDs)
+	}
+	if err != nil {
+		return errors.Wrap(err, "finding completed tasks for build")
+	}
+	if len(completedTasks) == 0 {
+		return nil
+	}
+
+	return restartTasks(ctx, completedTasks, caller, b.Version)
 }
 
 func CreateTasksCache(tasks []task.Task) []build.TaskCache {
