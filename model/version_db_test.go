@@ -9,6 +9,7 @@ import (
 	"github.com/evergreen-ci/evergreen/db"
 	"github.com/evergreen-ci/evergreen/model/build"
 	"github.com/evergreen-ci/evergreen/model/task"
+	"github.com/evergreen-ci/utility"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
@@ -55,11 +56,18 @@ func TestRestartVersion(t *testing.T) {
 
 	// Insert data for the test paths
 	assert.NoError(t, db.ClearCollections(VersionCollection, build.Collection, task.Collection, task.OldCollection))
+	defer func() {
+		assert.NoError(t, db.ClearCollections(VersionCollection, build.Collection, task.Collection, task.OldCollection))
+	}()
+
 	versions := []*Version{
 		{Id: "version3"},
 	}
 	tasks := []*task.Task{
-		{Id: "task5", Version: "version3", Aborted: false, Status: evergreen.TaskSucceeded, BuildId: "build1"},
+		{Id: "task5", Version: "version3", DisplayTaskId: utility.ToStringPtr(""), Aborted: false, Status: evergreen.TaskSucceeded, BuildId: "build1"},
+		{Id: "display", Version: "version3", DisplayTaskId: utility.ToStringPtr(""), Aborted: false, Status: evergreen.TaskStarted, BuildId: "build1"},
+		{Id: "exec0", Version: "version3", DisplayTaskId: utility.ToStringPtr("display"), Aborted: false, Status: evergreen.TaskSucceeded, BuildId: "build1"},
+		{Id: "exec1", Version: "version3", DisplayTaskId: utility.ToStringPtr("display"), Aborted: false, Status: evergreen.TaskStarted, BuildId: "build1"},
 	}
 	builds := []*build.Build{
 		{Id: "build1"},
@@ -75,14 +83,31 @@ func TestRestartVersion(t *testing.T) {
 	}
 
 	versionId := "version3"
-	err := RestartTasksInVersion(ctx, versionId, true, "caller3")
-	assert.NoError(t, err)
+	require.NoError(t, RestartVersion(ctx, versionId, nil, true, "caller3"))
 
 	// When a version is restarted, all of its completed tasks should be reset.
 	// (task.Status should be undispatched)
 	t5, _ := task.FindOneId("task5")
 	assert.Equal(t, versionId, t5.Version)
 	assert.Equal(t, evergreen.TaskUndispatched, t5.Status)
+
+	display, err := task.FindOneId("display")
+	require.NoError(t, err)
+	assert.Equal(t, versionId, display.Version)
+	assert.True(t, display.Aborted)
+	assert.True(t, display.ResetWhenFinished)
+
+	exec0, err := task.FindOneId("exec0")
+	require.NoError(t, err)
+	assert.Equal(t, versionId, exec0.Version)
+	assert.False(t, exec0.Aborted)
+	assert.False(t, exec0.ResetWhenFinished)
+
+	exec1, err := task.FindOneId("exec1")
+	require.NoError(t, err)
+	assert.Equal(t, versionId, exec1.Version)
+	assert.True(t, exec1.Aborted)
+	assert.True(t, exec1.ResetWhenFinished)
 
 	// Build status for all builds containing the tasks that we touched
 	// should be updated.

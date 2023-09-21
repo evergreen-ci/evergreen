@@ -1908,8 +1908,9 @@ func (t *Task) updateAllMatchingDependenciesForTask(dependencyID string, unattai
 // AbortAndMarkResetTasksForBuild aborts and marks tasks for a build to reset when finished.
 func AbortAndMarkResetTasksForBuild(buildId string, taskIds []string, caller string) error {
 	q := bson.M{
-		BuildIdKey: buildId,
-		StatusKey:  bson.M{"$in": evergreen.TaskInProgressStatuses},
+		BuildIdKey:       buildId,
+		StatusKey:        bson.M{"$in": evergreen.TaskInProgressStatuses},
+		DisplayTaskIdKey: "",
 	}
 	if len(taskIds) > 0 {
 		q[IdKey] = bson.M{"$in": taskIds}
@@ -1927,13 +1928,20 @@ func AbortAndMarkResetTasksForBuild(buildId string, taskIds []string, caller str
 	return err
 }
 
-func AbortAndMarkResetTasksForVersion(versionId string, taskIds []string, caller string) error {
+func AbortAndMarkResetTasksForVersion(versionID string, taskIDs []string, caller string) error {
+	q := bson.M{
+		VersionKey: versionID,
+		StatusKey:  bson.M{"$in": evergreen.TaskInProgressStatuses},
+	}
+	if len(taskIDs) > 0 {
+		q["$or"] = []bson.M{
+			{IdKey: bson.M{"$in": taskIDs}},
+			{DisplayTaskIdKey: bson.M{"$in": taskIDs}},
+			{ExecutionTasksKey: bson.M{"$in": taskIDs}},
+		}
+	}
 	_, err := UpdateAll(
-		bson.M{
-			VersionKey: versionId, // Include to improve query.
-			IdKey:      bson.M{"$in": taskIds},
-			StatusKey:  bson.M{"$in": evergreen.TaskInProgressStatuses},
-		},
+		q,
 		bson.M{"$set": bson.M{
 			AbortedKey:           true,
 			AbortInfoKey:         AbortInfo{User: caller},
@@ -2881,4 +2889,26 @@ func CountNumExecutionsForInterval(input NumExecutionsForIntervalInput) (int, er
 		return 0, errors.Wrap(err, "counting old task executions")
 	}
 	return numTasks + numOldTasks, nil
+}
+
+// FindCompletedTasksByVersion returns all completed tasks for the given
+// version. Executions tasks are excluded.
+func FindCompletedTasksByVersion(ctx context.Context, version string) ([]Task, error) {
+	env := evergreen.GetEnvironment()
+
+	cur, err := env.DB().Collection(Collection).Find(ctx, bson.M{
+		VersionKey:       version,
+		DisplayTaskIdKey: "",
+		StatusKey:        bson.M{"$in": evergreen.TaskCompletedStatuses},
+	})
+	if err != nil {
+		return nil, errors.Wrap(err, "finding completed tasks by version")
+	}
+
+	var out []Task
+	if err = cur.All(ctx, &out); err != nil {
+		return nil, errors.Wrap(err, "decoding task documents")
+	}
+
+	return out, nil
 }

@@ -297,42 +297,36 @@ func setTasksPriority(ctx context.Context, query bson.M, priority int64, caller 
 	return nil
 }
 
-// RestartTasksInVersion restarts completed tasks associated with a given versionId.
-// If abortInProgress is true, it also sets the abort flag on any in-progress tasks. In addition, it
-// updates all builds containing the tasks affected.
-func RestartTasksInVersion(ctx context.Context, versionId string, abortInProgress bool, caller string) error {
-	tasks, err := task.Find(task.ByVersion(versionId))
-	if err != nil {
-		return errors.Wrap(err, "error finding tasks in version")
-	}
-	if tasks == nil {
-		return errors.New("no tasks found for version")
-	}
-	var taskIds []string
-	for _, task := range tasks {
-		taskIds = append(taskIds, task.Id)
-	}
-
-	toRestart := VersionToRestart{VersionId: &versionId, TaskIds: taskIds}
-	return RestartVersions(ctx, []*VersionToRestart{&toRestart}, abortInProgress, caller)
-}
-
-// RestartVersion restarts completed tasks associated with a versionId.
-// If abortInProgress is true, it also sets the abort flag on any in-progress tasks.
-func RestartVersion(ctx context.Context, versionId string, taskIds []string, abortInProgress bool, caller string) error {
+// RestartVersion restarts completed tasks associated with the given version
+// ID.
+// If no task IDs are provided, all completed task IDs in the version are
+// restarted.
+// If abortInProgress is true, it also sets the abort and reset flags on
+// any in-progress tasks.
+func RestartVersion(ctx context.Context, versionID string, taskIDs []string, abortInProgress bool, caller string) error {
 	if abortInProgress {
-		if err := task.AbortAndMarkResetTasksForVersion(versionId, taskIds, caller); err != nil {
+		if err := task.AbortAndMarkResetTasksForVersion(versionID, taskIDs, caller); err != nil {
 			return errors.WithStack(err)
 		}
 	}
-	allFinishedTasks, err := getTasksToReset(taskIds)
-	if err != nil {
-		return errors.Wrap(err, "getting finished tasks")
+
+	var (
+		completedTasks []task.Task
+		err            error
+	)
+	if len(taskIDs) == 0 {
+		completedTasks, err = task.FindCompletedTasksByVersion(ctx, versionID)
+	} else {
+		completedTasks, err = getTasksToReset(taskIDs)
 	}
-	if len(allFinishedTasks) == 0 {
+	if err != nil {
+		return errors.Wrap(err, "finding completed tasks for version")
+	}
+	if len(completedTasks) == 0 {
 		return nil
 	}
-	return restartTasks(ctx, allFinishedTasks, caller, versionId)
+
+	return restartTasks(ctx, completedTasks, caller, versionID)
 }
 
 // getTasksToReset returns all finished tasks that should be reset given an initial input list of
