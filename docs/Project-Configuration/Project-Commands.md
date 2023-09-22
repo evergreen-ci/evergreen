@@ -228,11 +228,11 @@ Parameters:
 
 ## expansions.write
 
-`expansions.write` writes the task's expansions to a file
+`expansions.write` writes the task's expansions to a file.
 
 `global_github_oauth_token`, `github_app_token`, `AWS_ACCESS_KEY_ID`,
 `AWS_SECRET_ACCESS_KEY`, `AWS_SESSION_TOKEN` are always redacted for
-security reasons
+security reasons.
 
 ``` yaml
 - command: expansions.write
@@ -244,6 +244,15 @@ Parameters:
 
 -   `file`: filename to write expansions to
 -   `redacted`: include redacted project variables, defaults to false
+
+For example, if the expansions are currently `fruit=apple`, `vegetable=spinach`,
+and `bread=cornbread`, then the output file will look like this:
+
+```yaml
+fruit: apple
+vegetable: spinach
+bread: cornbread
+```
 
 ## generate.tasks
 
