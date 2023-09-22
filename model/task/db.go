@@ -1912,44 +1912,6 @@ func (t *Task) updateAllMatchingDependenciesForTask(dependencyID string, unattai
 	return res.Decode(&t)
 }
 
-// AbortAndMarkResetTasksForBuild aborts and marks tasks for a build to reset when finished.
-func AbortAndMarkResetTasksForBuild(buildId string, taskIds []string, caller string) error {
-	q := bson.M{
-		BuildIdKey: buildId,
-		StatusKey:  bson.M{"$in": evergreen.TaskInProgressStatuses},
-	}
-	if len(taskIds) > 0 {
-		q[IdKey] = bson.M{"$in": taskIds}
-	}
-	_, err := UpdateAll(
-		q,
-		bson.M{
-			"$set": bson.M{
-				AbortedKey:           true,
-				AbortInfoKey:         AbortInfo{User: caller},
-				ResetWhenFinishedKey: true,
-			},
-		},
-	)
-	return err
-}
-
-func AbortAndMarkResetTasksForVersion(versionId string, taskIds []string, caller string) error {
-	_, err := UpdateAll(
-		bson.M{
-			VersionKey: versionId, // Include to improve query.
-			IdKey:      bson.M{"$in": taskIds},
-			StatusKey:  bson.M{"$in": evergreen.TaskInProgressStatuses},
-		},
-		bson.M{"$set": bson.M{
-			AbortedKey:           true,
-			AbortInfoKey:         AbortInfo{User: caller},
-			ResetWhenFinishedKey: true,
-		}},
-	)
-	return err
-}
-
 // HasUnfinishedTaskForVersions returns true if there are any scheduled but
 // unfinished tasks matching the given conditions.
 func HasUnfinishedTaskForVersions(versionIds []string, taskName, variantName string) (bool, error) {
@@ -2888,4 +2850,79 @@ func CountNumExecutionsForInterval(input NumExecutionsForIntervalInput) (int, er
 		return 0, errors.Wrap(err, "counting old task executions")
 	}
 	return numTasks + numOldTasks, nil
+}
+
+// AbortAndMarkResetTasksForBuild aborts and marks in-progress tasks to reset
+// from the specified task IDs and build ID. If no task IDs are specified, all
+// in-progress tasks belonging to the build are aborted and marked to reset.
+func AbortAndMarkResetTasksForBuild(ctx context.Context, buildID string, taskIDs []string, caller string) error {
+	return abortAndMarkResetTasks(ctx, ByBuildId(buildID), taskIDs, caller)
+}
+
+// AbortAndMarkResetTasksForVersion aborts and marks in-progress tasks to reset
+// from the specified task IDs and version ID. If no task IDs are specified,
+// all in-progress tasks belonging to the version are aborted and marked to
+// reset.
+func AbortAndMarkResetTasksForVersion(ctx context.Context, versionID string, taskIDs []string, caller string) error {
+	return abortAndMarkResetTasks(ctx, ByVersion(versionID), taskIDs, caller)
+}
+
+func abortAndMarkResetTasks(ctx context.Context, filter bson.M, taskIDs []string, caller string) error {
+	filter[StatusKey] = bson.M{"$in": evergreen.TaskInProgressStatuses}
+	if len(taskIDs) > 0 {
+		filter["$or"] = []bson.M{
+			{IdKey: bson.M{"$in": taskIDs}},
+			{DisplayTaskIdKey: bson.M{"$in": taskIDs}},
+			{ExecutionTasksKey: bson.M{"$in": taskIDs}},
+		}
+	}
+
+	_, err := evergreen.GetEnvironment().DB().Collection(Collection).UpdateMany(
+		ctx,
+		filter,
+		bson.M{"$set": bson.M{
+			AbortedKey:           true,
+			AbortInfoKey:         AbortInfo{User: caller},
+			ResetWhenFinishedKey: true,
+		}},
+	)
+
+	return err
+}
+
+// FindCompletedTasksByBuild returns all completed tasks belonging to the
+// given build ID. Excludes execution tasks. If no taskIDs are specified, all
+// completed tasks belonging to the build are returned.
+func FindCompletedTasksByBuild(ctx context.Context, buildID string, taskIDs []string) ([]Task, error) {
+	return findCompletedTasks(ctx, ByBuildId(buildID), taskIDs)
+}
+
+// FindCompletedTasksByVersion returns all completed tasks belonging to the
+// given version ID. Excludes execution tasks. If no task IDs are specified,
+// all completed tasks belonging to the version are returned.
+func FindCompletedTasksByVersion(ctx context.Context, versionID string, taskIDs []string) ([]Task, error) {
+	return findCompletedTasks(ctx, ByVersion(versionID), taskIDs)
+}
+
+func findCompletedTasks(ctx context.Context, filter bson.M, taskIDs []string) ([]Task, error) {
+	filter[StatusKey] = bson.M{"$in": evergreen.TaskCompletedStatuses}
+	filter[DisplayTaskIdKey] = ""
+	if len(taskIDs) > 0 {
+		filter["$or"] = []bson.M{
+			{IdKey: bson.M{"$in": taskIDs}},
+			{ExecutionTasksKey: bson.M{"$in": taskIDs}},
+		}
+	}
+
+	cur, err := evergreen.GetEnvironment().DB().Collection(Collection).Find(ctx, filter)
+	if err != nil {
+		return nil, errors.Wrap(err, "finding completed tasks")
+	}
+
+	var out []Task
+	if err = cur.All(ctx, &out); err != nil {
+		return nil, errors.Wrap(err, "decoding task documents")
+	}
+
+	return out, nil
 }

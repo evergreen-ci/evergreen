@@ -856,8 +856,8 @@ func RestartItemsAfterVersion(ctx context.Context, cq *commitqueue.CommitQueue, 
 				"project":            project,
 				"caller":             caller,
 			})
-			// this block executes on all items after the given task
-			catcher.Add(RestartTasksInVersion(ctx, item.Version, true, caller))
+			// This block executes on all items after the given task.
+			catcher.Add(RestartVersion(ctx, item.Version, nil, true, caller))
 		}
 	}
 
