@@ -26,8 +26,6 @@ type FailingTaskData struct {
 }
 
 // BbFileTicket creates a JIRA ticket for a task with the given test failures.
-// kim: NOTE: this is the resolver used to actually file a ticket when pressing
-// "File Ticket".
 func BbFileTicket(ctx context.Context, taskId string, execution int) (int, error) {
 	// Find information about the task
 	t, err := task.FindOneIdAndExecution(taskId, execution)
