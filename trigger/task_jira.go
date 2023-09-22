@@ -386,9 +386,10 @@ func (j *jiraBuilder) getDescription() (string, error) {
 	tests := []jiraTestFailure{}
 	for _, test := range j.data.Task.LocalTestResults {
 		if test.Status == evergreen.TestFailedStatus {
-			url := test.GetLogURL(evergreen.GetEnvironment(), evergreen.LogViewerHTML)
+			env := evergreen.GetEnvironment()
+			url := test.GetLogURL(env, evergreen.LogViewerHTML)
 			if url == "" {
-				url = test.GetLogURL(evergreen.GetEnvironment(), evergreen.LogViewerParsley)
+				url = test.GetLogURL(env, evergreen.LogViewerParsley)
 			}
 
 			tests = append(tests, jiraTestFailure{
