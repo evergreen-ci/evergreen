@@ -3,6 +3,9 @@ package data
 import (
 	"context"
 	"fmt"
+	"net/http"
+	"strings"
+
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/model"
 	"github.com/evergreen-ci/evergreen/trigger"
@@ -15,8 +18,6 @@ import (
 	"github.com/mongodb/grip/message"
 	"github.com/mongodb/grip/sometimes"
 	"github.com/pkg/errors"
-	"net/http"
-	"strings"
 )
 
 const branchRefPrefix = "refs/heads/"
