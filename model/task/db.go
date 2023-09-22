@@ -2883,18 +2883,18 @@ func abortAndMarkResetTasks(ctx context.Context, filter bson.M, taskIDs []string
 	return err
 }
 
-// FindCompletedTasksByVersion returns all completed tasks belonging to the
-// given version ID. Excludes execution tasks. If no task IDs are specified,
-// all completed tasks belonging to the version are returned.
-func FindCompletedTasksByVersion(ctx context.Context, versionID string, taskIDs []string) ([]Task, error) {
-	return findCompletedTasks(ctx, bson.M{VersionKey: versionID}, taskIDs)
-}
-
 // FindCompletedTasksByBuild returns all completed tasks belonging to the
 // given build ID. Excludes execution tasks. If no taskIDs are specified, all
 // completed tasks belonging to the build are returned.
 func FindCompletedTasksByBuild(ctx context.Context, buildID string, taskIDs []string) ([]Task, error) {
-	return findCompletedTasks(ctx, bson.M{BuildIdKey: buildID}, taskIDs)
+	return findCompletedTasks(ctx, ByBuildId(buildID), taskIDs)
+}
+
+// FindCompletedTasksByVersion returns all completed tasks belonging to the
+// given version ID. Excludes execution tasks. If no task IDs are specified,
+// all completed tasks belonging to the version are returned.
+func FindCompletedTasksByVersion(ctx context.Context, versionID string, taskIDs []string) ([]Task, error) {
+	return findCompletedTasks(ctx, ByVersion(versionID), taskIDs)
 }
 
 func findCompletedTasks(ctx context.Context, filter bson.M, taskIDs []string) ([]Task, error) {
