@@ -865,7 +865,7 @@ func RestartItemsAfterVersion(ctx context.Context, cq *commitqueue.CommitQueue, 
 				"caller":             caller,
 			})
 			// This block executes on all items after the given task.
-			catcher.Add(RestartVersion(ctx, evergreen.GetEnvironment(), item.Version, nil, true, caller))
+			catcher.Add(RestartVersion(ctx, item.Version, nil, true, caller))
 		}
 	}
 

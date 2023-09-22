@@ -236,17 +236,16 @@ func (h *versionAbortHandler) Run(ctx context.Context) gimlet.Responder {
 // versionRestartHandler is a RequestHandler for restarting all completed tasks
 // of a version.
 type versionRestartHandler struct {
-	env       evergreen.Environment
 	versionId string
 }
 
-func makeRestartVersion(env evergreen.Environment) gimlet.RouteHandler {
-	return &versionRestartHandler{env: env}
+func makeRestartVersion() gimlet.RouteHandler {
+	return &versionRestartHandler{}
 }
 
 // Handler returns a pointer to a new versionRestartHandler.
 func (h *versionRestartHandler) Factory() gimlet.RouteHandler {
-	return &versionRestartHandler{env: h.env}
+	return &versionRestartHandler{}
 }
 
 // ParseAndValidate fetches the versionId from the http request.
@@ -263,7 +262,7 @@ func (h *versionRestartHandler) Parse(ctx context.Context, r *http.Request) erro
 // Execute calls the data RestartVersion function to restart completed tasks of a version.
 func (h *versionRestartHandler) Run(ctx context.Context) gimlet.Responder {
 	// RestartAction the version
-	err := dbModel.RestartVersion(ctx, h.env, h.versionId, nil, true, MustHaveUser(ctx).Id)
+	err := dbModel.RestartVersion(ctx, h.versionId, nil, true, MustHaveUser(ctx).Id)
 	if err != nil {
 		return gimlet.MakeJSONInternalErrorResponder(errors.Wrapf(err, "restarting tasks in version '%s'", h.versionId))
 	}

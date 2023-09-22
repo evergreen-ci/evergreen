@@ -20,10 +20,10 @@ type VersionModification struct {
 	VersionsToRestart []*VersionToRestart          `json:"versions_to_restart"`
 }
 
-func ModifyVersion(ctx context.Context, env evergreen.Environment, version Version, user user.DBUser, modifications VersionModification) (int, error) {
+func ModifyVersion(ctx context.Context, version Version, user user.DBUser, modifications VersionModification) (int, error) {
 	switch modifications.Action {
 	case evergreen.RestartAction:
-		if err := RestartVersions(ctx, env, modifications.VersionsToRestart, modifications.Abort, user.Id); err != nil {
+		if err := RestartVersions(ctx, modifications.VersionsToRestart, modifications.Abort, user.Id); err != nil {
 			return http.StatusInternalServerError, errors.Wrap(err, "restarting patch")
 		}
 	case evergreen.SetActiveAction:

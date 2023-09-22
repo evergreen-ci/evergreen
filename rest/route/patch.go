@@ -393,16 +393,15 @@ func (p *patchAbortHandler) Run(ctx context.Context) gimlet.Responder {
 //    /patches/{patch_id}/restart
 
 type patchRestartHandler struct {
-	env     evergreen.Environment
 	patchId string
 }
 
-func makeRestartPatch(env evergreen.Environment) gimlet.RouteHandler {
-	return &patchRestartHandler{env: env}
+func makeRestartPatch() gimlet.RouteHandler {
+	return &patchRestartHandler{}
 }
 
 func (p *patchRestartHandler) Factory() gimlet.RouteHandler {
-	return &patchRestartHandler{env: p.env}
+	return &patchRestartHandler{}
 }
 
 func (p *patchRestartHandler) Parse(ctx context.Context, r *http.Request) error {
@@ -413,7 +412,7 @@ func (p *patchRestartHandler) Parse(ctx context.Context, r *http.Request) error 
 func (p *patchRestartHandler) Run(ctx context.Context) gimlet.Responder {
 	// If the version has not been finalized, returns NotFound
 	usr := MustHaveUser(ctx)
-	if err := dbModel.RestartVersion(ctx, p.env, p.patchId, nil, true, usr.Id); err != nil {
+	if err := dbModel.RestartVersion(ctx, p.patchId, nil, true, usr.Id); err != nil {
 		return gimlet.MakeJSONInternalErrorResponder(errors.Wrapf(err, "restarting tasks in patch '%s'", p.patchId))
 	}
 

@@ -390,7 +390,7 @@ func generateBuildVariants(ctx context.Context, versionId string, buildVariantOp
 }
 
 // modifyVersionHandler handles the boilerplate code for performing a modify version action, i.e. schedule, unschedule, restart and set priority
-func modifyVersionHandler(ctx context.Context, env evergreen.Environment, patchID string, modification model.VersionModification) error {
+func modifyVersionHandler(ctx context.Context, patchID string, modification model.VersionModification) error {
 	v, err := model.VersionFindOneId(patchID)
 	if err != nil {
 		return ResourceNotFound.Send(ctx, fmt.Sprintf("error finding version %s: %s", patchID, err.Error()))
@@ -399,7 +399,7 @@ func modifyVersionHandler(ctx context.Context, env evergreen.Environment, patchI
 		return ResourceNotFound.Send(ctx, fmt.Sprintf("Unable to find version with id: `%s`", patchID))
 	}
 	user := mustHaveUser(ctx)
-	httpStatus, err := model.ModifyVersion(ctx, env, *v, *user, modification)
+	httpStatus, err := model.ModifyVersion(ctx, *v, *user, modification)
 	if err != nil {
 		return mapHTTPStatusToGqlError(ctx, httpStatus, err)
 	}

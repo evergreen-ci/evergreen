@@ -9,7 +9,6 @@ import (
 	"github.com/evergreen-ci/evergreen/db"
 	"github.com/evergreen-ci/evergreen/model/build"
 	"github.com/evergreen-ci/evergreen/model/task"
-	"github.com/evergreen-ci/evergreen/testutil"
 	"github.com/evergreen-ci/utility"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -54,7 +53,6 @@ func TestVersionByMostRecentNonIgnored(t *testing.T) {
 func TestRestartVersion(t *testing.T) {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
-	env := testutil.NewEnvironment(ctx, t)
 
 	// Insert data for the test paths
 	assert.NoError(t, db.ClearCollections(VersionCollection, build.Collection, task.Collection, task.OldCollection))
@@ -90,7 +88,7 @@ func TestRestartVersion(t *testing.T) {
 		require.NoError(t, item.Insert())
 	}
 
-	require.NoError(t, RestartVersion(ctx, env, versionID, nil, true, "caller"))
+	require.NoError(t, RestartVersion(ctx, versionID, nil, true, "caller"))
 
 	// Check that completed non-execution tasks are reset.
 	for _, taskID := range []string{"task0", "display1"} {

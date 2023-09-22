@@ -267,7 +267,7 @@ func (uis *UIServer) modifyBuild(w http.ResponseWriter, r *http.Request) {
 			}
 		}
 	case evergreen.RestartAction:
-		if err = model.RestartBuild(r.Context(), uis.env, projCtx.Build, putParams.TaskIds, putParams.Abort, user.Id); err != nil {
+		if err = model.RestartBuild(r.Context(), projCtx.Build, putParams.TaskIds, putParams.Abort, user.Id); err != nil {
 			http.Error(w, fmt.Sprintf("Error restarting build %v", projCtx.Build.Id), http.StatusInternalServerError)
 			return
 		}

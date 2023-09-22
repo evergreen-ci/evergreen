@@ -14,7 +14,6 @@ import (
 	"github.com/evergreen-ci/evergreen/model/task"
 	"github.com/evergreen-ci/evergreen/model/user"
 	"github.com/evergreen-ci/evergreen/rest/model"
-	"github.com/evergreen-ci/evergreen/testutil"
 	"github.com/evergreen-ci/gimlet"
 	"github.com/evergreen-ci/utility"
 	"github.com/stretchr/testify/suite"
@@ -298,8 +297,7 @@ func (s *BuildAbortSuite) TestAbort() {
 // Tests for restart build route
 
 type BuildRestartSuite struct {
-	env evergreen.Environment
-	rm  gimlet.RouteHandler
+	rm gimlet.RouteHandler
 
 	suite.Suite
 }
@@ -309,7 +307,6 @@ func TestBuildRestartSuite(t *testing.T) {
 }
 
 func (s *BuildRestartSuite) SetupSuite() {
-	s.env = testutil.NewEnvironment(context.Background(), s.T())
 	s.NoError(db.ClearCollections(build.Collection, serviceModel.VersionCollection))
 	builds := []build.Build{
 		{Id: "build1", Project: "branch", Version: "version"},
@@ -323,7 +320,7 @@ func (s *BuildRestartSuite) SetupSuite() {
 }
 
 func (s *BuildRestartSuite) SetupTest() {
-	s.rm = makeRestartBuild(s.env)
+	s.rm = makeRestartBuild()
 }
 
 func (s *BuildRestartSuite) TestRestart() {

@@ -302,14 +302,14 @@ func setTasksPriority(ctx context.Context, query bson.M, priority int64, caller 
 // restarted.
 // If abortInProgress is true, it also sets the abort and reset flags on
 // any in-progress tasks.
-func RestartVersion(ctx context.Context, env evergreen.Environment, versionID string, taskIDs []string, abortInProgress bool, caller string) error {
+func RestartVersion(ctx context.Context, versionID string, taskIDs []string, abortInProgress bool, caller string) error {
 	if abortInProgress {
-		if err := task.AbortAndMarkResetTasksForVersion(ctx, env, versionID, taskIDs, caller); err != nil {
+		if err := task.AbortAndMarkResetTasksForVersion(ctx, versionID, taskIDs, caller); err != nil {
 			return errors.WithStack(err)
 		}
 	}
 
-	completedTasks, err := task.FindCompletedTasksByVersion(ctx, env, versionID, taskIDs)
+	completedTasks, err := task.FindCompletedTasksByVersion(ctx, versionID, taskIDs)
 	if err != nil {
 		return errors.Wrap(err, "finding completed tasks for version")
 	}
@@ -323,10 +323,10 @@ func RestartVersion(ctx context.Context, env evergreen.Environment, versionID st
 // RestartVersions restarts selected tasks for a set of versions.
 // If abortInProgress is true for any version, it also sets the abort and reset
 // flags on any in-progress tasks belonging to that version.
-func RestartVersions(ctx context.Context, env evergreen.Environment, versionsToRestart []*VersionToRestart, abortInProgress bool, caller string) error {
+func RestartVersions(ctx context.Context, versionsToRestart []*VersionToRestart, abortInProgress bool, caller string) error {
 	catcher := grip.NewBasicCatcher()
 	for _, t := range versionsToRestart {
-		err := RestartVersion(ctx, env, *t.VersionId, t.TaskIds, abortInProgress, caller)
+		err := RestartVersion(ctx, *t.VersionId, t.TaskIds, abortInProgress, caller)
 		catcher.Wrapf(err, "restarting tasks for version '%s'", *t.VersionId)
 	}
 	return errors.Wrap(catcher.Resolve(), "restarting tasks")
@@ -337,14 +337,14 @@ func RestartVersions(ctx context.Context, env evergreen.Environment, versionsToR
 // restarted.
 // If abortInProgress is true, it also sets the abort and reset flags on
 // any in-progress tasks.
-func RestartBuild(ctx context.Context, env evergreen.Environment, b *build.Build, taskIDs []string, abortInProgress bool, caller string) error {
+func RestartBuild(ctx context.Context, b *build.Build, taskIDs []string, abortInProgress bool, caller string) error {
 	if abortInProgress {
-		if err := task.AbortAndMarkResetTasksForBuild(ctx, env, b.Id, taskIDs, caller); err != nil {
+		if err := task.AbortAndMarkResetTasksForBuild(ctx, b.Id, taskIDs, caller); err != nil {
 			return errors.WithStack(err)
 		}
 	}
 
-	completedTasks, err := task.FindCompletedTasksByBuild(ctx, env, b.Id, taskIDs)
+	completedTasks, err := task.FindCompletedTasksByBuild(ctx, b.Id, taskIDs)
 	if err != nil {
 		return errors.Wrap(err, "finding completed tasks for build")
 	}
