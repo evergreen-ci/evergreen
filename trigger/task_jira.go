@@ -29,7 +29,7 @@ h2. [{{.Task.DisplayName}} failed on {{.Build.DisplayName}}|{{taskurl .}}]
 Project: [{{.Project.DisplayName}}|{{.UIRoot}}/waterfall/{{.Project.Id}}?redirect_spruce_users=true]
 Commit: [diff|https://github.com/{{.Project.Owner}}/{{.Project.Repo}}/commit/{{.Version.Revision}}]: {{.Version.Message}} | {{.Task.CreateTime | formatAsTimestamp}}
 Evergreen Subscription: {{.SubscriptionID}}; Evergreen Event: {{.EventID}}
-{{range .Tests}}*{{.Name}}* - [Logs|{{.URL}}] | {{if (eq .DisplayTaskId "") }}[History|{{.HistoryURL}}]{{end}}
+{{range .Tests}}*{{.Name}}* - [Logs|{{.URL}}] {{if (eq .DisplayTaskId "") }} |[History|{{.HistoryURL}}]{{end}}
 {{end}}
 {{range taskLogURLs . }}[Task Logs ({{.DisplayName}}) | {{.URL}}]
 {{end}}`
