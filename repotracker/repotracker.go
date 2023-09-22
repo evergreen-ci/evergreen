@@ -723,9 +723,15 @@ func ShellVersionFromRevision(ctx context.Context, ref *model.ProjectRef, metada
 		Activated:            utility.ToBoolPtr(metadata.Activate),
 	}
 	if metadata.TriggerType != "" {
-		v.Id = util.CleanName(fmt.Sprintf("%s_%s_%s", ref.Identifier, metadata.SourceVersion.Revision, metadata.TriggerDefinitionID))
+		revision := metadata.Revision.Revision
+		createTime := metadata.Revision.CreateTime
+		if metadata.SourceVersion != nil {
+			revision = metadata.SourceVersion.Revision
+			createTime = metadata.SourceVersion.CreateTime
+		}
+		v.Id = util.CleanName(fmt.Sprintf("%s_%s_%s", ref.Identifier, revision, metadata.TriggerDefinitionID))
 		v.Requester = evergreen.TriggerRequester
-		v.CreateTime = metadata.SourceVersion.CreateTime
+		v.CreateTime = createTime
 	} else if metadata.IsAdHoc {
 		v.Id = mgobson.NewObjectId().Hex()
 		v.Requester = evergreen.AdHocRequester

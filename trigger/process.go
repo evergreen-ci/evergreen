@@ -12,6 +12,7 @@ import (
 	"github.com/evergreen-ci/evergreen/model/notification"
 	"github.com/evergreen-ci/evergreen/model/task"
 	"github.com/evergreen-ci/utility"
+	"github.com/google/go-github/v52/github"
 	"github.com/mongodb/grip"
 	"github.com/mongodb/grip/message"
 	"github.com/pkg/errors"
@@ -96,7 +97,13 @@ type ProcessorArgs struct {
 	EventID                      string
 	DefinitionID                 string
 	Alias                        string
+	ProjectID                    string
 	UnscheduleDownstreamVersions bool
+	PushInfo                     PushInfo
+}
+
+type PushInfo struct {
+	Revision model.Revision
 }
 
 // EvalProjectTriggers takes an event log entry and a processor (either the mock or TriggerDownstreamVersion)
@@ -274,6 +281,60 @@ projectLoop:
 				DefinitionID:                 trigger.DefinitionID,
 				Alias:                        trigger.Alias,
 				UnscheduleDownstreamVersions: trigger.UnscheduleDownstreamVersions,
+			}
+			v, err := processor(ctx, args)
+			if err != nil {
+				catcher.Add(err)
+				continue
+			}
+			if v != nil {
+				versions = append(versions, *v)
+			}
+			continue projectLoop
+		}
+	}
+
+	return versions, catcher.Resolve()
+}
+
+// TriggerDownstreamProjectsForPush triggers downstream projects for a push event from a repo that does not
+// have repotracker enabled.
+func TriggerDownstreamProjectsForPush(ctx context.Context, projectId string, event *github.PushEvent, processor projectProcessor) ([]model.Version, error) {
+	downstreamProjects, err := model.FindDownstreamProjects(projectId)
+	if err != nil {
+		return nil, errors.Wrapf(err, "finding downstream projects of project '%s'", projectId)
+	}
+
+	catcher := grip.NewBasicCatcher()
+	versions := []model.Version{}
+projectLoop:
+	for _, ref := range downstreamProjects {
+
+		for _, trigger := range ref.Triggers {
+			if trigger.Level != model.ProjectTriggerLevelPush {
+				continue
+			}
+			if trigger.Project != projectId {
+				continue
+			}
+
+			args := ProcessorArgs{
+				DownstreamProject:            ref,
+				ConfigFile:                   trigger.ConfigFile,
+				TriggerType:                  model.ProjectTriggerLevelPush,
+				DefinitionID:                 trigger.DefinitionID,
+				Alias:                        trigger.Alias,
+				ProjectID:                    trigger.Project,
+				UnscheduleDownstreamVersions: trigger.UnscheduleDownstreamVersions,
+				PushInfo: PushInfo{
+					Revision: model.Revision{
+						Revision:        utility.FromStringPtr(event.GetHeadCommit().SHA),
+						CreateTime:      event.GetHeadCommit().Timestamp.Time,
+						Author:          utility.FromStringPtr(event.GetHeadCommit().Author.Name),
+						AuthorEmail:     utility.FromStringPtr(event.GetHeadCommit().Author.Email),
+						RevisionMessage: utility.FromStringPtr(event.GetHeadCommit().Message),
+					},
+				},
 			}
 			v, err := processor(ctx, args)
 			if err != nil {

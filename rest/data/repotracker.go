@@ -3,11 +3,9 @@ package data
 import (
 	"context"
 	"fmt"
-	"net/http"
-	"strings"
-
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/model"
+	"github.com/evergreen-ci/evergreen/trigger"
 	"github.com/evergreen-ci/evergreen/units"
 	"github.com/evergreen-ci/gimlet"
 	"github.com/evergreen-ci/utility"
@@ -17,6 +15,8 @@ import (
 	"github.com/mongodb/grip/message"
 	"github.com/mongodb/grip/sometimes"
 	"github.com/pkg/errors"
+	"net/http"
+	"strings"
 )
 
 const branchRefPrefix = "refs/heads/"
@@ -101,6 +101,17 @@ func TriggerRepotracker(ctx context.Context, q amboy.Queue, msgID string, event 
 	for i := range refs {
 		if !refs[i].DoesTrackPushEvents() || !refs[i].Enabled || refs[i].IsRepotrackerDisabled() {
 			unactionable = append(unactionable, refs[i].Id)
+			triggeredVersions, err := trigger.TriggerDownstreamProjectsForPush(ctx, refs[i].Id, event, trigger.TriggerDownstreamVersion)
+			catcher.Wrapf(err, "triggering downstream projects for push event for project '%s'", refs[i].Id)
+			versions := []string{}
+			for _, version := range triggeredVersions {
+				versions = append(versions, version.Id)
+			}
+			grip.InfoWhen(len(versions) > 0, message.Fields{
+				"source":   "GitHub hook",
+				"message":  fmt.Sprintf("triggered versions for push event for project '%s'", refs[i].Id),
+				"versions": versions,
+			})
 			continue
 		}
 
