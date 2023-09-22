@@ -102,17 +102,19 @@ func TriggerRepotracker(ctx context.Context, q amboy.Queue, msgID string, event 
 	for i := range refs {
 		if !refs[i].DoesTrackPushEvents() || !refs[i].Enabled || refs[i].IsRepotrackerDisabled() {
 			unactionable = append(unactionable, refs[i].Id)
-			triggeredVersions, err := trigger.TriggerDownstreamProjectsForPush(ctx, refs[i].Id, event, trigger.TriggerDownstreamVersion)
-			catcher.Wrapf(err, "triggering downstream projects for push event for project '%s'", refs[i].Id)
-			versions := []string{}
-			for _, version := range triggeredVersions {
-				versions = append(versions, version.Id)
+			if refs[i].IsRepotrackerDisabled() {
+				triggeredVersions, err := trigger.TriggerDownstreamProjectsForPush(ctx, refs[i].Id, event, trigger.TriggerDownstreamVersion)
+				catcher.Wrapf(err, "triggering downstream projects for push event for project '%s'", refs[i].Id)
+				versions := []string{}
+				for _, version := range triggeredVersions {
+					versions = append(versions, version.Id)
+				}
+				grip.InfoWhen(len(versions) > 0, message.Fields{
+					"source":   "GitHub hook",
+					"message":  fmt.Sprintf("triggered versions for push event for project '%s'", refs[i].Id),
+					"versions": versions,
+				})
 			}
-			grip.InfoWhen(len(versions) > 0, message.Fields{
-				"source":   "GitHub hook",
-				"message":  fmt.Sprintf("triggered versions for push event for project '%s'", refs[i].Id),
-				"versions": versions,
-			})
 			continue
 		}
 
