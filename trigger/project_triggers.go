@@ -108,6 +108,7 @@ func metadataFromVersion(args ProcessorArgs) (model.VersionMetadata, error) {
 		}
 	} else {
 		metadata.Revision = args.PushInfo.Revision
+		metadata.SourceCommit = args.PushInfo.Revision.Revision
 	}
 	repo, err := model.FindRepository(args.DownstreamProject.Id)
 	if err != nil {

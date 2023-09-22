@@ -15,6 +15,7 @@ import (
 	"github.com/evergreen-ci/evergreen/model/task"
 	"github.com/evergreen-ci/evergreen/testutil"
 	"github.com/evergreen-ci/utility"
+	"github.com/google/go-github/v52/github"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"github.com/stretchr/testify/suite"
@@ -520,6 +521,115 @@ func TestProjectTriggerIntegrationForBuild(t *testing.T) {
 	assert.NoError(err)
 	assert.Contains(upstreamVersionFromDB.SatisfiedTriggers, "def1")
 	downstreamVersions, err = EvalProjectTriggers(ctx, &e, TriggerDownstreamVersion)
+	assert.NoError(err)
+	assert.Len(downstreamVersions, 0)
+}
+
+func TestProjectTriggerIntegrationForPush(t *testing.T) {
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
+	assert := assert.New(t)
+	require := require.New(t)
+	assert.NoError(db.ClearCollections(task.Collection, build.Collection, model.VersionCollection, evergreen.ConfigCollection,
+		model.ProjectRefCollection, model.RepositoriesCollection, model.ProjectAliasCollection, model.ParserProjectCollection, manifest.Collection))
+	_ = evergreen.GetEnvironment().DB().RunCommand(nil, map[string]string{"create": model.ParserProjectCollection})
+
+	config := testutil.TestConfig()
+	testutil.ConfigureIntegrationTest(t, config, "TestProjectTriggerIntegration")
+	assert.NoError(config.Set(ctx))
+	downstreamProjectRef := model.ProjectRef{
+		Id:         mgobson.NewObjectId().Hex(),
+		Identifier: "downstream",
+		Enabled:    true,
+		Owner:      "evergreen-ci",
+		Repo:       "evergreen",
+		RemotePath: "self-tests.yml",
+		Branch:     "main",
+		Triggers: []model.TriggerDefinition{
+			{Project: "upstream", Level: model.ProjectTriggerLevelPush, DefinitionID: "def1", TaskRegex: "upstream*", Status: evergreen.BuildSucceeded, ConfigFile: "trigger/testdata/downstream_config.yml", Alias: "a1"},
+		},
+	}
+	assert.NoError(downstreamProjectRef.Insert())
+	uptreamProjectRef := model.ProjectRef{
+		Id:         mgobson.NewObjectId().Hex(),
+		Identifier: "upstream",
+		Enabled:    true,
+		Owner:      "evergreen-ci",
+		Repo:       "sample",
+		Branch:     "main",
+	}
+	assert.NoError(uptreamProjectRef.Insert())
+	alias := model.ProjectAlias{
+		ID:        mgobson.NewObjectId(),
+		ProjectID: downstreamProjectRef.Id,
+		Alias:     "a1",
+		Variant:   "buildvariant",
+		Task:      "task1",
+	}
+	assert.NoError(alias.Upsert())
+	_, err := model.GetNewRevisionOrderNumber(downstreamProjectRef.Id)
+	assert.NoError(err)
+	downstreamRevision := "cf46076567e4949f9fc68e0634139d4ac495c89b"
+	assert.NoError(model.UpdateLastRevision(downstreamProjectRef.Id, downstreamRevision))
+
+	pushEvent := &github.PushEvent{
+		HeadCommit: &github.HeadCommit{
+			SHA:     utility.ToStringPtr("abc"),
+			Message: utility.ToStringPtr("message"),
+			Author: &github.CommitAuthor{
+				Email: utility.ToStringPtr("hello@example.com"),
+				Name:  utility.ToStringPtr("test"),
+			},
+			Timestamp: &github.Timestamp{Time: time.Now()},
+		},
+	}
+	downstreamVersions, err := TriggerDownstreamProjectsForPush(ctx, "upstream", pushEvent, TriggerDownstreamVersion)
+	assert.NoError(err)
+	dbVersions, err := model.VersionFind(model.BaseVersionByProjectIdAndRevision(downstreamProjectRef.Id, downstreamRevision))
+	assert.NoError(err)
+	require.Len(downstreamVersions, 1)
+	require.Len(dbVersions, 1)
+	versions := []model.Version{downstreamVersions[0], dbVersions[0]}
+	for _, v := range versions {
+		assert.True(utility.FromBoolPtr(v.Activated))
+		assert.Equal("downstream_abc_def1", v.Id)
+		assert.Equal(downstreamRevision, v.Revision)
+		assert.Equal(evergreen.VersionCreated, v.Status)
+		assert.Equal(downstreamProjectRef.Id, v.Identifier)
+		assert.Equal(evergreen.TriggerRequester, v.Requester)
+		assert.Equal(model.ProjectTriggerLevelPush, v.TriggerType)
+	}
+	builds, err := build.Find(build.ByVersion(downstreamVersions[0].Id))
+	assert.NoError(err)
+	assert.True(len(builds) > 0)
+	for _, b := range builds {
+		assert.True(b.Activated)
+		assert.Equal(downstreamProjectRef.Id, b.Project)
+		assert.Equal(evergreen.TriggerRequester, b.Requester)
+		assert.Equal(evergreen.BuildCreated, b.Status)
+		assert.Equal(model.ProjectTriggerLevelPush, b.TriggerType)
+		assert.Contains(b.BuildVariant, "buildvariant")
+	}
+	tasks, err := task.Find(task.ByVersion(downstreamVersions[0].Id))
+	assert.NoError(err)
+	assert.True(len(tasks) > 0)
+	for _, t := range tasks {
+		assert.True(t.Activated)
+		assert.Equal(downstreamProjectRef.Id, t.Project)
+		assert.Equal(evergreen.TriggerRequester, t.Requester)
+		assert.Equal(evergreen.TaskUndispatched, t.Status)
+		assert.Equal(model.ProjectTriggerLevelPush, t.TriggerType)
+		assert.Contains(t.DisplayName, "task1")
+	}
+	mani, err := manifest.FindFromVersion(dbVersions[0].Id, downstreamProjectRef.Id, downstreamRevision, evergreen.RepotrackerVersionRequester)
+	assert.NoError(err)
+	require.NotNil(mani)
+	assert.Equal(downstreamProjectRef.Id, mani.ProjectName)
+	assert.Equal(uptreamProjectRef.Branch, mani.Branch)
+
+	// verify that triggering this version again does nothing
+	downstreamVersions, err = TriggerDownstreamProjectsForPush(ctx, uptreamProjectRef.Id, pushEvent, TriggerDownstreamVersion)
 	assert.NoError(err)
 	assert.Len(downstreamVersions, 0)
 }

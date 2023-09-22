@@ -723,7 +723,7 @@ func ShellVersionFromRevision(ctx context.Context, ref *model.ProjectRef, metada
 		Activated:            utility.ToBoolPtr(metadata.Activate),
 	}
 	if metadata.TriggerType != "" {
-		revision := metadata.Revision.Revision
+		revision := metadata.SourceCommit
 		createTime := metadata.Revision.CreateTime
 		if metadata.SourceVersion != nil {
 			revision = metadata.SourceVersion.Revision
