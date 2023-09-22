@@ -1617,7 +1617,7 @@ func addNewBuilds(ctx context.Context, creationInfo TaskCreationInfo, existingBu
 			if t.Activated {
 				newActivatedTaskIds = append(newActivatedTaskIds, t.Id)
 			}
-			if creationInfo.ActivationInfo.taskHasSpecificActivation(t.BuildVariant, t.DisplayName) {
+			if evergreen.ShouldConsiderBatchtime(t.Requester) && creationInfo.ActivationInfo.taskHasSpecificActivation(t.BuildVariant, t.DisplayName) {
 				batchTimeTasksToIds[t.DisplayName] = t.Id
 			}
 		}
