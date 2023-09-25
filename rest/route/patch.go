@@ -412,7 +412,7 @@ func (p *patchRestartHandler) Parse(ctx context.Context, r *http.Request) error 
 func (p *patchRestartHandler) Run(ctx context.Context) gimlet.Responder {
 	// If the version has not been finalized, returns NotFound
 	usr := MustHaveUser(ctx)
-	if err := dbModel.RestartTasksInVersion(ctx, p.patchId, true, usr.Id); err != nil {
+	if err := dbModel.RestartVersion(ctx, p.patchId, nil, true, usr.Id); err != nil {
 		return gimlet.MakeJSONInternalErrorResponder(errors.Wrapf(err, "restarting tasks in patch '%s'", p.patchId))
 	}
 
