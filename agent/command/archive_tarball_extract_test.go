@@ -118,5 +118,5 @@ func (s *TarballExtractSuite) TestExtractionSucceedsAndIsIdempotent() {
 
 	// Extracting the same archive contents multiple times to the same directory
 	// results results in no error. The command simply ignores duplicate files.
-	s.Error(s.cmd.Execute(s.ctx, s.comm, s.logger, s.conf))
+	s.NoError(s.cmd.Execute(s.ctx, s.comm, s.logger, s.conf))
 }
