@@ -1276,37 +1276,37 @@ func TestGetTaskIdBetweenIds(t *testing.T) {
 	t10, err := FindMidwayTask(tasks[0], tasks[19])
 	assert.NoError(err)
 	require.NotNil(t, t10)
-	assert.Equal(t10.RevisionOrderNumber, 10)
+	assert.Equal(10, t10.RevisionOrderNumber)
 
 	t5, err := FindMidwayTask(tasks[0], tasks[9])
 	assert.NoError(err)
 	require.NotNil(t, t5)
-	assert.Equal(t5.RevisionOrderNumber, 5)
+	assert.Equal(5, t5.RevisionOrderNumber, 5)
 
 	t15, err := FindMidwayTask(tasks[10], tasks[19])
 	assert.NoError(err)
 	require.NotNil(t, t15)
-	assert.Equal(t15.RevisionOrderNumber, 15)
+	assert.Equal(15, t15.RevisionOrderNumber)
 
 	t19, err := FindMidwayTask(tasks[17], tasks[19])
 	assert.NoError(err)
 	require.NotNil(t, t19)
-	assert.Equal(t19.RevisionOrderNumber, 19)
+	assert.Equal(19, t19.RevisionOrderNumber)
 
 	t4, err := FindMidwayTask(tasks[6], tasks[0])
 	assert.NoError(err)
 	require.NotNil(t, t4)
-	assert.Equal(t4.RevisionOrderNumber, 4)
+	assert.Equal(4, t4.RevisionOrderNumber)
 
 	t12, err := FindMidwayTask(tasks[11], tasks[11])
 	assert.NoError(err)
 	require.NotNil(t, t12)
-	assert.Equal(t12.RevisionOrderNumber, 12)
+	assert.Equal(12, t12.RevisionOrderNumber)
 
 	t16, err := FindMidwayTask(tasks[15], tasks[16])
 	assert.NoError(err)
 	require.NotNil(t, t16)
-	assert.Equal(t16.RevisionOrderNumber, 16)
+	assert.Equal(16, t16.RevisionOrderNumber)
 }
 
 func TestUnscheduleStaleUnderwaterHostTasksNoDistro(t *testing.T) {
