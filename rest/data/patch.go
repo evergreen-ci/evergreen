@@ -235,10 +235,7 @@ func GetRawPatches(patchID string) (*restModel.APIRawPatch, error) {
 	if rawPatch.Patch.Githash == "" {
 		// If there aren't any changes for the base project, we should still add this to the list,
 		// using the patch githash.
-		rawPatch.Patch = restModel.APIRawModule{
-			Name:    "",
-			Githash: patchDoc.Githash,
-		}
+		rawPatch.Patch.Githash = patchDoc.Githash
 	}
 
 	return &rawPatch, nil
