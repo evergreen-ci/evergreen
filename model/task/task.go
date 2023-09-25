@@ -1257,8 +1257,27 @@ func SetTasksScheduledTime(tasks []Task, scheduledTime time.Time) error {
 // middle (i.e. it is sequential tasks or the same task) it will return the
 // the first task given.
 func GetMidwayTask(t1, t2 Task) (*Task, error) {
+	// The tasks should be the same build variant, display name, project, and requester.
+	if t1.BuildVariant != t2.BuildVariant {
+		return nil, errors.Errorf("given tasks have differing build variants '%s' and '%s'", t1.BuildVariant, t2.BuildVariant)
+	}
+	if t1.DisplayName != t2.DisplayName {
+		return nil, errors.Errorf("given tasks have differing display names '%s' and '%s'", t1.DisplayName, t2.DisplayName)
+	}
+	if t1.Project != t2.Project {
+		return nil, errors.Errorf("given tasks have differing projects '%s' and '%s'", t1.Project, t2.Project)
+	}
+	if t1.Requester != t2.Requester {
+		return nil, errors.Errorf("given tasks have differing requesters '%s' and '%s'", t1.Requester, t2.Requester)
+	}
+	// If the tasks are sequential or the same order number, return the first given task.
+	d := t1.RevisionOrderNumber - t2.RevisionOrderNumber
+	if d == -1 || d == 0 || d == 1 {
+		return &t1, nil
+	}
+
 	mid := (t1.RevisionOrderNumber + t2.RevisionOrderNumber) / 2
-	return FindOne(db.Query(ByRevisionOrderNumber(t1.BuildVariant, t2.DisplayName, t1.Project, t1.Requester, mid)))
+	return FindOne(db.Query(ByRevisionOrderNumber(t1.BuildVariant, t1.DisplayName, t1.Project, t1.Requester, mid)))
 }
 
 // UnscheduleStaleUnderwaterHostTasks Removes host tasks older than the unscheduable threshold (e.g. one week) from
