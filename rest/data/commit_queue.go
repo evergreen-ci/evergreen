@@ -131,8 +131,11 @@ func getPatchInfo(ctx context.Context, settings *evergreen.Settings, githubToken
 		return "", nil, nil, nil, errors.Wrap(err, "getting GitHub PR diff")
 	}
 
-	// fetch the latest config file
-	config, patchConfig, err := model.GetPatchedProject(ctx, settings, patchDoc, githubToken)
+	// Fetch the latest config file.
+	// Set a higher timeout for this operation. 
+	fetchCtx, ctxCancel := context.WithTimeout(context.Background(), 5*time.Minute)
+	defer ctxCancel()
+	config, patchConfig, err := model.GetPatchedProject(fetchCtx, settings, patchDoc, githubToken)
 	if err != nil {
 		return "", nil, nil, nil, errors.Wrap(err, "getting remote config file")
 	}
