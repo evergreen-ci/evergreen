@@ -1253,7 +1253,7 @@ func TestBulkInsert(t *testing.T) {
 	}
 }
 
-func TestGetTaskIdBetweenIds(t *testing.T) {
+func TestFindMidwayTask(t *testing.T) {
 	assert := assert.New(t)
 	assert.NoError(db.ClearCollections(Collection))
 	displayName := "cool-task-9000"
