@@ -1256,7 +1256,7 @@ func SetTasksScheduledTime(tasks []Task, scheduledTime time.Time) error {
 // order of the ID's does not matter and if the task passed cannot have a
 // middle (i.e. it is sequential tasks or the same task) it will return the
 // the first task given.
-func GetTaskIdBetweenTasks(t1, t2 Task) (*Task, error) {
+func GetMidwayTask(t1, t2 Task) (*Task, error) {
 	mid := (t1.RevisionOrderNumber + t2.RevisionOrderNumber) / 2
 	return FindOne(db.Query(ByRevisionOrderNumber(t1.BuildVariant, t2.DisplayName, t1.Project, t1.Requester, mid)))
 }
