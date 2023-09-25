@@ -1307,6 +1307,54 @@ func TestFindMidwayTask(t *testing.T) {
 	assert.NoError(err)
 	require.NotNil(t, t16)
 	assert.Equal(16, t16.RevisionOrderNumber)
+
+	otherDisplayName := Task{
+		Id:           "otherTask",
+		DisplayName:  "Other display name",
+		BuildVariant: buildVarient,
+		Requester:    requester,
+		Project:      project,
+	}
+	assert.NoError(otherDisplayName.Insert())
+	task, err := FindMidwayTask(tasks[0], otherDisplayName)
+	assert.Error(err)
+	assert.Nil(task)
+
+	otherBuildVariant := Task{
+		Id:           "otherTask",
+		DisplayName:  displayName,
+		BuildVariant: "Other Build Variant",
+		Requester:    requester,
+		Project:      project,
+	}
+	assert.NoError(otherBuildVariant.Insert())
+	task, err = FindMidwayTask(tasks[0], otherBuildVariant)
+	assert.Error(err)
+	assert.Nil(task)
+
+	otherRequester := Task{
+		Id:           "otherTask",
+		DisplayName:  displayName,
+		BuildVariant: buildVarient,
+		Requester:    "Other Requester",
+		Project:      project,
+	}
+	assert.NoError(otherRequester.Insert())
+	task, err = FindMidwayTask(tasks[0], otherRequester)
+	assert.Error(err)
+	assert.Nil(task)
+
+	otherProject := Task{
+		Id:           "otherTask",
+		DisplayName:  displayName,
+		BuildVariant: buildVarient,
+		Requester:    requester,
+		Project:      "Other project",
+	}
+	assert.NoError(otherProject.Insert())
+	task, err = FindMidwayTask(tasks[0], otherProject)
+	assert.Error(err)
+	assert.Nil(task)
 }
 
 func TestUnscheduleStaleUnderwaterHostTasksNoDistro(t *testing.T) {
