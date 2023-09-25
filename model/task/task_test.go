@@ -1255,7 +1255,7 @@ func TestBulkInsert(t *testing.T) {
 
 func TestGetTaskIdBetweenIds(t *testing.T) {
 	assert := assert.New(t)
-	require.NoError(t, db.ClearCollections(Collection))
+	assert.NoError(db.ClearCollections(Collection))
 	displayName := "cool-task-9000"
 	buildVarient := "bv"
 	requester := "r"
@@ -1274,20 +1274,40 @@ func TestGetTaskIdBetweenIds(t *testing.T) {
 		tasks = append(tasks, task)
 	}
 	t10, err := GetTaskIdBetweenTasks(tasks[0], tasks[19])
-	assert.Equal(t10.RevisionOrderNumber, 10)
 	assert.NoError(err)
+	assert.NotNil(t10)
+	assert.Equal(t10.RevisionOrderNumber, 10)
 
 	t5, err := GetTaskIdBetweenTasks(tasks[0], tasks[9])
-	assert.Equal(t5.RevisionOrderNumber, 5)
 	assert.NoError(err)
+	assert.NotNil(t5)
+	assert.Equal(t5.RevisionOrderNumber, 5)
 
 	t15, err := GetTaskIdBetweenTasks(tasks[10], tasks[19])
-	assert.Equal(t15.RevisionOrderNumber, 15)
 	assert.NoError(err)
+	assert.NotNil(t15)
+	assert.Equal(t15.RevisionOrderNumber, 15)
 
 	t19, err := GetTaskIdBetweenTasks(tasks[17], tasks[19])
-	assert.Equal(t19.RevisionOrderNumber, 19)
 	assert.NoError(err)
+	assert.NotNil(t19)
+	assert.Equal(t19.RevisionOrderNumber, 19)
+
+	t4, err := GetTaskIdBetweenTasks(tasks[6], tasks[0])
+	assert.NoError(err)
+	assert.NotNil(t4)
+	assert.Equal(t4.RevisionOrderNumber, 4)
+
+	t12, err := GetTaskIdBetweenTasks(tasks[11], tasks[11])
+	assert.NoError(err)
+	assert.NotNil(t12)
+	assert.Equal(t12.RevisionOrderNumber, 12)
+
+	t16, err := GetTaskIdBetweenTasks(tasks[15], tasks[16])
+	assert.NoError(err)
+	assert.NotNil(t16)
+	assert.Equal(t16.RevisionOrderNumber, 16)
+
 }
 
 func TestUnscheduleStaleUnderwaterHostTasksNoDistro(t *testing.T) {
