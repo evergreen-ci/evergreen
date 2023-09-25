@@ -10,7 +10,6 @@ import (
 	"github.com/evergreen-ci/gimlet"
 	"github.com/evergreen-ci/utility"
 	"github.com/pkg/errors"
-	"gopkg.in/yaml.v3"
 )
 
 func makeVersionCreateHandler(sc data.Connector) gimlet.RouteHandler {
@@ -18,11 +17,11 @@ func makeVersionCreateHandler(sc data.Connector) gimlet.RouteHandler {
 }
 
 type versionCreateHandler struct {
-	ProjectID string    `json:"project_id"`
-	Message   string    `json:"message"`
-	Active    bool      `json:"activate"`
-	IsAdHoc   bool      `json:"is_adhoc"`
-	Config    yaml.Node `json:"config"`
+	ProjectID string `json:"project_id"`
+	Message   string `json:"message"`
+	Active    bool   `json:"activate"`
+	IsAdHoc   bool   `json:"is_adhoc"`
+	Config    []byte `json:"config"`
 
 	sc data.Connector
 }
@@ -61,17 +60,22 @@ func (h *versionCreateHandler) Run(ctx context.Context) gimlet.Responder {
 		Ref:          projectInfo.Ref,
 		ReadFileFrom: model.ReadFromGithub,
 	}
-	var data []byte
-	err = h.Config.Decode(&data)
+	// var data []byte
+	// var configAsYaml yaml.Node
+	// err := yaml.Unmarshal(config, &configAsYaml)
+	// if err != nil {
+	// 	return nil, errors.Wrap(err, "reading provided yaml config")
+	// }
+	// err = h.Config.Decode(&data)
 	if err != nil {
 		return gimlet.NewJSONInternalErrorResponse(errors.Wrapf(err, "decoding config for project '%s'", h.ProjectID))
 	}
-	projectInfo.IntermediateProject, err = model.LoadProjectInto(ctx, data, opts, projectInfo.Ref.Id, p)
+	projectInfo.IntermediateProject, err = model.LoadProjectInto(ctx, h.Config, opts, projectInfo.Ref.Id, p)
 	if err != nil {
 		return gimlet.NewJSONInternalErrorResponse(errors.Wrapf(err, "loading project '%s' from config", h.ProjectID))
 	}
 	if projectInfo.Ref.IsVersionControlEnabled() {
-		projectInfo.Config, err = model.CreateProjectConfig(data, projectInfo.Ref.Id)
+		projectInfo.Config, err = model.CreateProjectConfig(h.Config, projectInfo.Ref.Id)
 		if err != nil {
 			return gimlet.NewJSONErrorResponse(errors.Wrapf(err, "creating config for project '%s'", h.ProjectID))
 		}
