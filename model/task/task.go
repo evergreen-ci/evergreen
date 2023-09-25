@@ -1265,19 +1265,15 @@ func SetTasksScheduledTime(tasks []Task, scheduledTime time.Time) error {
 // order of the ID's does not matter and if the task passed cannot have a
 // middle (i.e. it is sequential tasks or the same task) it will return the
 // the first task given.
-func GetMidwayTask(t1, t2 Task) (*Task, error) {
+func FindMidwayTask(t1, t2 Task) (*Task, error) {
 	// The tasks should be the same build variant, display name, project, and requester.
-	if t1.BuildVariant != t2.BuildVariant {
-		return nil, errors.Errorf("given tasks have differing build variants '%s' and '%s'", t1.BuildVariant, t2.BuildVariant)
-	}
-	if t1.DisplayName != t2.DisplayName {
-		return nil, errors.Errorf("given tasks have differing display names '%s' and '%s'", t1.DisplayName, t2.DisplayName)
-	}
-	if t1.Project != t2.Project {
-		return nil, errors.Errorf("given tasks have differing projects '%s' and '%s'", t1.Project, t2.Project)
-	}
-	if t1.Requester != t2.Requester {
-		return nil, errors.Errorf("given tasks have differing requesters '%s' and '%s'", t1.Requester, t2.Requester)
+	catcher := grip.NewBasicCatcher() // Makes an error accumulator
+	catcher.ErrorfWhen(t1.BuildVariant != t2.BuildVariant, "given tasks have differing build variants '%s' and '%s'", t1.BuildVariant, t2.BuildVariant)
+	catcher.ErrorfWhen(t1.DisplayName != t2.DisplayName, "given tasks have differing display name '%s' and '%s'", t1.DisplayName, t2.DisplayName)
+	catcher.ErrorfWhen(t1.Project != t2.Project, "given tasks have differing project '%s' and '%s'", t1.Project, t2.Project)
+	catcher.ErrorfWhen(t1.Requester != t2.Requester, "given tasks have differing project '%s' and '%s'", t1.Requester, t2.Requester)
+	if catcher.HasErrors() {
+		return nil, catcher.Resolve()
 	}
 	// If the tasks are sequential or the same order number, return the first given task.
 	d := t1.RevisionOrderNumber - t2.RevisionOrderNumber
