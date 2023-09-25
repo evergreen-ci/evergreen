@@ -2,6 +2,8 @@ package command
 
 import (
 	"context"
+	"fmt"
+	"os"
 	"os/exec"
 	"path/filepath"
 	"runtime"
@@ -186,7 +188,6 @@ func (macSign *macSign) Execute(ctx context.Context,
 	}
 	args := []string{"-f", macSign.LocalZipFile,
 		"-k", macSign.KeyId,
-		"-s", macSign.Secret,
 		"-u", macSign.ServiceUrl,
 		"-m", signMode,
 		"-o", macSign.OutputZipFile,
@@ -204,7 +205,13 @@ func (macSign *macSign) Execute(ctx context.Context,
 		args = append(args, "--verify")
 	}
 
+	envs := []string{
+		fmt.Sprintf("PATH=%s", os.Getenv("PATH")),
+		fmt.Sprintf("MACOS_NOTARY_SECRET=%s", macSign.Secret),
+	}
+
 	cmd := exec.Command(macSign.ClientBinary, args...)
+	cmd.Env = append(os.Environ(), envs...)
 
 	stdout, err := cmd.CombinedOutput()
 	output := string(stdout)
