@@ -72,7 +72,7 @@ require (
 	golang.org/x/crypto v0.13.0
 	golang.org/x/oauth2 v0.12.0
 	golang.org/x/text v0.13.0
-	golang.org/x/tools v0.9.3
+	golang.org/x/tools v0.13.0
 	gonum.org/v1/gonum v0.14.0
 	google.golang.org/api v0.126.0
 	google.golang.org/grpc v1.57.0
@@ -202,9 +202,9 @@ require (
 	go.opentelemetry.io/otel/exporters/otlp/internal/retry v1.17.0 // indirect
 	go.opentelemetry.io/otel/exporters/otlp/otlpmetric v0.40.0 // indirect
 	golang.org/x/exp v0.0.0-20230321023759-10a507213a29 // indirect
-	golang.org/x/mod v0.10.0 // indirect
+	golang.org/x/mod v0.12.0 // indirect
 	golang.org/x/net v0.15.0 // indirect
-	golang.org/x/sync v0.2.0 // indirect
+	golang.org/x/sync v0.3.0 // indirect
 	golang.org/x/sys v0.12.0 // indirect
 	google.golang.org/appengine v1.6.7 // indirect
 	google.golang.org/genproto/googleapis/api v0.0.0-20230530153820-e85fd2cbaebc // indirect
