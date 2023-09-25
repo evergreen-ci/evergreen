@@ -1309,7 +1309,7 @@ func TestFindMidwayTask(t *testing.T) {
 	assert.Equal(16, t16.RevisionOrderNumber)
 
 	otherDisplayName := Task{
-		Id:           "otherTask",
+		Id:           "otherTaskDisplayName",
 		DisplayName:  "Other display name",
 		BuildVariant: buildVarient,
 		Requester:    requester,
@@ -1321,7 +1321,7 @@ func TestFindMidwayTask(t *testing.T) {
 	assert.Nil(task)
 
 	otherBuildVariant := Task{
-		Id:           "otherTask",
+		Id:           "otherTaskBuildVariant",
 		DisplayName:  displayName,
 		BuildVariant: "Other Build Variant",
 		Requester:    requester,
@@ -1333,7 +1333,7 @@ func TestFindMidwayTask(t *testing.T) {
 	assert.Nil(task)
 
 	otherRequester := Task{
-		Id:           "otherTask",
+		Id:           "otherTaskRequester",
 		DisplayName:  displayName,
 		BuildVariant: buildVarient,
 		Requester:    "Other Requester",
@@ -1345,7 +1345,7 @@ func TestFindMidwayTask(t *testing.T) {
 	assert.Nil(task)
 
 	otherProject := Task{
-		Id:           "otherTask",
+		Id:           "otherTaskProject",
 		DisplayName:  displayName,
 		BuildVariant: buildVarient,
 		Requester:    requester,
