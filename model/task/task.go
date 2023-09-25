@@ -173,9 +173,8 @@ type Task struct {
 	OldTaskId string `bson:"old_task_id,omitempty" json:"old_task_id,omitempty"`
 	Archived  bool   `bson:"archived,omitempty" json:"archived,omitempty"`
 
-	// RevisionOrderNumber for user submitted patches is their count of patches
-	// that they have submitted and attached to their user. For mainline commits,
-	// it's the amount of versions for that repository so far.
+	// RevisionOrderNumber for user-submitted patches is the user's current patch submission count.
+	// For mainline commits for a project, it is the amount of versions for that repositry so far.
 	RevisionOrderNumber int `bson:"order,omitempty" json:"order,omitempty"`
 
 	// task requester - this is used to help tell the
@@ -1252,7 +1251,11 @@ func SetTasksScheduledTime(tasks []Task, scheduledTime time.Time) error {
 	return nil
 }
 
-// GetTaskIdBetweenIds retrieves the task id between two tasks that are of the same.
+// GetTaskIdBetweenIds gets the task between two task given that they are
+// from the same project, requester, build variant, and display name. The
+// order of the ID's does not matter and if the task passed cannot have a
+// middle (i.e. it is sequential tasks or the same task) it will return the
+// the first task given.
 func GetTaskIdBetweenTasks(t1, t2 Task) (*Task, error) {
 	mid := (t1.RevisionOrderNumber + t2.RevisionOrderNumber) / 2
 	return FindOne(db.Query(ByRevisionOrderNumber(t1.BuildVariant, t2.DisplayName, t1.Project, t1.Requester, mid)))
