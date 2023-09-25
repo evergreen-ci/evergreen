@@ -3,7 +3,7 @@ module github.com/evergreen-ci/evergreen
 go 1.20
 
 require (
-	github.com/99designs/gqlgen v0.17.36
+	github.com/99designs/gqlgen v0.17.38
 	github.com/PuerkitoBio/rehttp v1.2.0
 	github.com/aws/aws-sdk-go v1.44.266
 	github.com/aws/aws-sdk-go-v2 v1.21.0
@@ -52,7 +52,7 @@ require (
 	github.com/smartystreets/goconvey v1.8.1
 	github.com/stretchr/testify v1.8.4
 	github.com/urfave/cli v1.22.13
-	github.com/vektah/gqlparser/v2 v2.5.8
+	github.com/vektah/gqlparser/v2 v2.5.10
 	github.com/vmware/govmomi v0.27.1
 	go.mongodb.org/mongo-driver v1.11.6
 	go.opentelemetry.io/contrib/detectors/aws/ec2 v1.17.0
