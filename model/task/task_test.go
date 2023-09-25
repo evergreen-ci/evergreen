@@ -1307,7 +1307,6 @@ func TestGetTaskIdBetweenIds(t *testing.T) {
 	assert.NoError(err)
 	require.NotNil(t, t16)
 	assert.Equal(t16.RevisionOrderNumber, 16)
-
 }
 
 func TestUnscheduleStaleUnderwaterHostTasksNoDistro(t *testing.T) {
