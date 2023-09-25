@@ -308,7 +308,6 @@ func (c *gitFetchProject) buildCloneCommand(ctx context.Context, comm client.Com
 	gitCommands := []string{
 		"set -o xtrace",
 		"set -o errexit",
-		fmt.Sprintf("chmod +rwx %s", c.Directory),
 		fmt.Sprintf("rm -rf %s", c.Directory),
 	}
 
@@ -580,6 +579,7 @@ func (c *gitFetchProject) fetchSource(ctx context.Context,
 	if err != nil {
 		return err
 	}
+	commands := append([]string{"chmod -w " + opts.dir}, gitCommands)
 	fetchScript := strings.Join(gitCommands, "\n")
 
 	// This needs to use a thread-safe buffer just in case the context errors
