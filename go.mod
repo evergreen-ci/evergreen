@@ -5,7 +5,7 @@ go 1.20
 require (
 	github.com/99designs/gqlgen v0.17.36
 	github.com/PuerkitoBio/rehttp v1.2.0
-	github.com/aws/aws-sdk-go v1.44.266
+	github.com/aws/aws-sdk-go v1.45.15
 	github.com/aws/aws-sdk-go-v2 v1.21.0
 	github.com/aws/aws-sdk-go-v2/config v1.18.39
 	github.com/aws/aws-sdk-go-v2/credentials v1.13.37
