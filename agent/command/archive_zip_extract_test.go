@@ -3,6 +3,7 @@ package command
 import (
 	"context"
 	"path/filepath"
+	"runtime"
 	"testing"
 
 	"github.com/evergreen-ci/evergreen/agent/internal"
@@ -38,7 +39,12 @@ func (s *ZipExtractSuite) SetupTest() {
 
 	s.ctx, s.cancel = context.WithCancel(context.Background())
 	s.comm = client.NewMock("http://localhost.com")
-	s.conf = &internal.TaskConfig{Expansions: util.Expansions{}, Task: task.Task{}, Project: model.Project{}}
+	s.conf = &internal.TaskConfig{
+		Expansions: util.Expansions{},
+		Task:       task.Task{},
+		Project:    model.Project{},
+		WorkDir:    s.targetLocation,
+	}
 	s.logger, err = s.comm.GetLoggerProducer(s.ctx, client.TaskData{ID: s.conf.Task.Id, Secret: s.conf.Task.Secret}, nil)
 	s.NoError(err)
 
@@ -83,9 +89,6 @@ func (s *ZipExtractSuite) TestErrorsIfNoTarget() {
 }
 
 func (s *ZipExtractSuite) TestErrorsAndNormalizedPath() {
-	var err error
-	s.conf.WorkDir, err = filepath.Abs(filepath.Join("srv", "evergreen"))
-	s.Require().NoError(err)
 	s.cmd.TargetDirectory = "foo"
 	s.cmd.ArchivePath = "bar"
 
@@ -95,7 +98,6 @@ func (s *ZipExtractSuite) TestErrorsAndNormalizedPath() {
 }
 
 func (s *ZipExtractSuite) TestExtractionArchiveDoesNotExist() {
-	s.conf.WorkDir = "/srv/evergreen"
 	s.cmd.TargetDirectory = s.targetLocation
 	s.cmd.ArchivePath = filepath.Join(testutil.GetDirectoryOfFile(),
 		"testdata", "archive", "artifacts.tar.gzip")
@@ -104,16 +106,14 @@ func (s *ZipExtractSuite) TestExtractionArchiveDoesNotExist() {
 }
 
 func (s *ZipExtractSuite) TestExtractionFileExistsAndIsNotArchive() {
-	s.conf.WorkDir = "/srv/evergreen"
 	s.cmd.TargetDirectory = s.targetLocation
-	s.cmd.ArchivePath = filepath.Join(testutil.GetDirectoryOfFile(),
-		"interface.go")
+	_, thisFile, _, _ := runtime.Caller(0)
+	s.cmd.ArchivePath = thisFile
 
 	s.Error(s.cmd.Execute(s.ctx, s.comm, s.logger, s.conf))
 }
 
-func (s *ZipExtractSuite) TestExtractionWorkingCase() {
-	s.conf.WorkDir = "/srv/evergreen"
+func (s *ZipExtractSuite) TestExtractionSucceedsButIsNotIdempotent() {
 	s.cmd.TargetDirectory = s.targetLocation
 	s.cmd.ArchivePath = filepath.Join(testutil.GetDirectoryOfFile(),
 		"testdata", "archive", "artifacts.zip")
@@ -121,4 +121,8 @@ func (s *ZipExtractSuite) TestExtractionWorkingCase() {
 	s.NoError(s.cmd.Execute(s.ctx, s.comm, s.logger, s.conf))
 
 	checkCommonExtractedArchiveContents(s.T(), s.cmd.TargetDirectory)
+
+	// Extracting the same archive contents multiple times to the same directory
+	// results in an error because the files already exist.
+	s.Error(s.cmd.Execute(s.ctx, s.comm, s.logger, s.conf))
 }

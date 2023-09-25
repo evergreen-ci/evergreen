@@ -3,3 +3,7 @@ ui_server_host: http://localhost:9090
 api_key: abb623665fdbf368a1db980dde6ee0f0
 user: admin
 disable_auto_defaulting: true
+ # Patch uncommitted changes ensures that any local changes that affect the
+ # smoke test (e.g. changes to the smoke test YAML) will be tested as part of
+ # the smoke test.
+patch_uncommitted_changes: true
