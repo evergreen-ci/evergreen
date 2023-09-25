@@ -1275,37 +1275,37 @@ func TestGetTaskIdBetweenIds(t *testing.T) {
 	}
 	t10, err := FindMidwayTask(tasks[0], tasks[19])
 	assert.NoError(err)
-	assert.NotNil(t10)
+	require.NotNil(t, t10)
 	assert.Equal(t10.RevisionOrderNumber, 10)
 
 	t5, err := FindMidwayTask(tasks[0], tasks[9])
 	assert.NoError(err)
-	assert.NotNil(t5)
+	require.NotNil(t, t5)
 	assert.Equal(t5.RevisionOrderNumber, 5)
 
 	t15, err := FindMidwayTask(tasks[10], tasks[19])
 	assert.NoError(err)
-	assert.NotNil(t15)
+	require.NotNil(t, t15)
 	assert.Equal(t15.RevisionOrderNumber, 15)
 
 	t19, err := FindMidwayTask(tasks[17], tasks[19])
 	assert.NoError(err)
-	assert.NotNil(t19)
+	require.NotNil(t, t19)
 	assert.Equal(t19.RevisionOrderNumber, 19)
 
 	t4, err := FindMidwayTask(tasks[6], tasks[0])
 	assert.NoError(err)
-	assert.NotNil(t4)
+	require.NotNil(t, t4)
 	assert.Equal(t4.RevisionOrderNumber, 4)
 
 	t12, err := FindMidwayTask(tasks[11], tasks[11])
 	assert.NoError(err)
-	assert.NotNil(t12)
+	require.NotNil(t, t12)
 	assert.Equal(t12.RevisionOrderNumber, 12)
 
 	t16, err := FindMidwayTask(tasks[15], tasks[16])
 	assert.NoError(err)
-	assert.NotNil(t16)
+	require.NotNil(t, t16)
 	assert.Equal(t16.RevisionOrderNumber, 16)
 
 }
