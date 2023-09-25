@@ -1480,129 +1480,216 @@ func TestSimulateNewDependencyGraph(t *testing.T) {
 }
 
 func TestFilterInactiveTasks(t *testing.T) {
-	v := &Version{Requester: evergreen.PatchVersionRequester}
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
 
-	t.Run("ActiveNonExistentBuild", func(t *testing.T) {
-		g := GeneratedProject{
-			BuildVariants: []parserBV{
-				{
-					Name: "bv0",
-					Tasks: []parserBVTaskUnit{
-						{Name: "generated"},
+	defer func() {
+		assert.NoError(t, db.ClearCollections(build.Collection))
+	}()
+
+	for tName, tCase := range map[string]func(ctx context.Context, t *testing.T, g GeneratedProject, v *Version){
+		"DoesNotFilterActiveNewBuild": func(ctx context.Context, t *testing.T, g GeneratedProject, v *Version) {
+			tasks, err := g.filterInactiveTasks(ctx, TVPairSet{{
+				TaskName: g.BuildVariants[0].Tasks[0].Name,
+				Variant:  g.BuildVariants[0].Name,
+			}}, v, &Project{})
+
+			assert.NoError(t, err)
+			assert.Len(t, tasks, 1)
+		},
+		"DoesNotFilterExplicitlyActiveNewBuild": func(ctx context.Context, t *testing.T, g GeneratedProject, v *Version) {
+			g.BuildVariants[0].Activate = utility.TruePtr()
+
+			tasks, err := g.filterInactiveTasks(ctx, TVPairSet{{
+				TaskName: g.BuildVariants[0].Tasks[0].Name,
+				Variant:  g.BuildVariants[0].Name,
+			}}, v, &Project{})
+
+			assert.NoError(t, err)
+			assert.Len(t, tasks, 1)
+		},
+		"FiltersInactiveNewBuild": func(ctx context.Context, t *testing.T, g GeneratedProject, v *Version) {
+			g.BuildVariants[0].Activate = utility.FalsePtr()
+
+			tasks, err := g.filterInactiveTasks(ctx, TVPairSet{{
+				TaskName: g.BuildVariants[0].Tasks[0].Name,
+				Variant:  g.BuildVariants[0].Name,
+			}}, v, &Project{})
+
+			assert.NoError(t, err)
+			assert.Empty(t, tasks)
+		},
+		"FiltersNewBuildsWithBatchTime": func(ctx context.Context, t *testing.T, g GeneratedProject, v *Version) {
+			g.BuildVariants[0].BatchTime = utility.ToIntPtr(10)
+
+			tasks, err := g.filterInactiveTasks(ctx, TVPairSet{{
+				TaskName: g.BuildVariants[0].Tasks[0].Name,
+				Variant:  g.BuildVariants[0].Name,
+			}}, v, &Project{})
+
+			assert.NoError(t, err)
+			assert.Empty(t, tasks)
+		},
+		"DoesNotFilterNewBuildWithBatchTimeForPatch": func(ctx context.Context, t *testing.T, g GeneratedProject, v *Version) {
+			v.Requester = evergreen.PatchVersionRequester
+			g.BuildVariants[0].BatchTime = utility.ToIntPtr(10)
+
+			tasks, err := g.filterInactiveTasks(ctx, TVPairSet{{
+				TaskName: g.BuildVariants[0].Tasks[0].Name,
+				Variant:  g.BuildVariants[0].Name,
+			}}, v, &Project{})
+
+			assert.NoError(t, err)
+			assert.Len(t, tasks, 1)
+		},
+		"FiltersExplicitlyActiveNewBuildWithBatchTime": func(ctx context.Context, t *testing.T, g GeneratedProject, v *Version) {
+			// When activate and batchtime are both defined on the build
+			// variant, batchtime takes priority.
+			g.BuildVariants[0].Activate = utility.TruePtr()
+			g.BuildVariants[0].BatchTime = utility.ToIntPtr(10)
+
+			tasks, err := g.filterInactiveTasks(ctx, TVPairSet{{
+				TaskName: g.BuildVariants[0].Tasks[0].Name,
+				Variant:  g.BuildVariants[0].Name,
+			}}, v, &Project{})
+
+			assert.NoError(t, err)
+			assert.Empty(t, tasks)
+		},
+		"FiltersExplicitlyActiveNewBuildWithBatchTimeAndActivateAtDifferentLevels": func(ctx context.Context, t *testing.T, g GeneratedProject, v *Version) {
+			// TODO (EVG-20904): When activate and batchtime are defined at
+			// different levels and furthermore, activate is defined at a more
+			// specific level, the variant-level batchtime still takes priority
+			// and the task gets filtered out and will not activate until later.
+			// This is unintuitive because the behavior of static YAML vs.
+			// generate.tasks differ in prioritization of the fields. For
+			// example, if this same configuration is done in the static YAML,
+			// the task will activate immediately.
+			g.BuildVariants[0].Tasks[0].Activate = utility.TruePtr()
+			g.BuildVariants[0].BatchTime = utility.ToIntPtr(10)
+
+			tasks, err := g.filterInactiveTasks(ctx, TVPairSet{{
+				TaskName: g.BuildVariants[0].Tasks[0].Name,
+				Variant:  g.BuildVariants[0].Name,
+			}}, v, &Project{})
+
+			assert.NoError(t, err)
+			assert.Empty(t, tasks)
+		},
+		"DoesNotFilterActiveExistingBuild": func(ctx context.Context, t *testing.T, g GeneratedProject, v *Version) {
+			b := &build.Build{
+				BuildVariant: g.BuildVariants[0].Name,
+				Version:      v.Id,
+			}
+			assert.NoError(t, b.Insert())
+
+			p := &Project{
+				BuildVariants: []BuildVariant{
+					{Name: g.BuildVariants[0].Name},
+				},
+			}
+
+			tasks, err := g.filterInactiveTasks(ctx, TVPairSet{{
+				TaskName: g.BuildVariants[0].Tasks[0].Name,
+				Variant:  g.BuildVariants[0].Name,
+			}}, v, p)
+
+			assert.NoError(t, err)
+			assert.Len(t, tasks, 1)
+		},
+		"DoesNotFilterExplicitlyActiveExistingBuild": func(ctx context.Context, t *testing.T, g GeneratedProject, v *Version) {
+			b := &build.Build{
+				BuildVariant: g.BuildVariants[0].Name,
+				Version:      v.Id,
+			}
+			assert.NoError(t, b.Insert())
+
+			p := &Project{
+				BuildVariants: []BuildVariant{
+					{
+						Name:     g.BuildVariants[0].Name,
+						Activate: utility.TruePtr(),
 					},
 				},
-			},
-			Task: &task.Task{},
-		}
+			}
 
-		tasks, err := g.filterInactiveTasks(context.Background(), TVPairSet{{TaskName: "generated", Variant: "bv0"}}, v, &Project{})
-		assert.NoError(t, err)
-		assert.Len(t, tasks, 1)
-	})
+			tasks, err := g.filterInactiveTasks(ctx, TVPairSet{{
+				TaskName: g.BuildVariants[0].Tasks[0].Name,
+				Variant:  g.BuildVariants[0].Name,
+			}}, v, p)
 
-	t.Run("InactiveNonExistentBuild", func(t *testing.T) {
-		g := GeneratedProject{
-			BuildVariants: []parserBV{
-				{
-					Name: "bv0",
-					Tasks: []parserBVTaskUnit{
-						{Name: "generated"},
+			assert.NoError(t, err)
+			assert.Len(t, tasks, 1)
+		},
+		"FiltersInactiveExistingBuild": func(ctx context.Context, t *testing.T, g GeneratedProject, v *Version) {
+			b := &build.Build{
+				BuildVariant: g.BuildVariants[0].Name,
+				Version:      v.Id,
+			}
+			assert.NoError(t, b.Insert())
+
+			p := &Project{
+				BuildVariants: []BuildVariant{
+					{
+						Name:     g.BuildVariants[0].Name,
+						Activate: utility.FalsePtr(),
 					},
-					Activate: utility.FalsePtr(),
 				},
-			},
-			Task: &task.Task{},
-		}
+			}
 
-		tasks, err := g.filterInactiveTasks(context.Background(), TVPairSet{{TaskName: "generated", Variant: "bv0"}}, v, &Project{})
-		assert.NoError(t, err)
-		assert.Empty(t, tasks)
-	})
+			tasks, err := g.filterInactiveTasks(ctx, TVPairSet{{
+				TaskName: g.BuildVariants[0].Tasks[0].Name,
+				Variant:  g.BuildVariants[0].Name,
+			}}, v, p)
 
-	t.Run("ActiveExistingBuild", func(t *testing.T) {
-		defer func() {
-			assert.NoError(t, db.Clear(build.Collection))
-		}()
-		assert.NoError(t, db.Clear(build.Collection))
-		assert.NoError(t, (&build.Build{DisplayName: "bv0"}).Insert())
+			assert.NoError(t, err)
+			assert.Empty(t, tasks)
+		},
+		"DoesNotFilterExplicitlyActiveTask": func(ctx context.Context, t *testing.T, g GeneratedProject, v *Version) {
+			g.BuildVariants[0].Tasks[0].Activate = utility.TruePtr()
 
-		g := GeneratedProject{
-			BuildVariants: []parserBV{
-				{
-					Name: "bv0",
-					Tasks: []parserBVTaskUnit{
-						{
-							Name: "generated",
+			tasks, err := g.filterInactiveTasks(ctx, TVPairSet{{
+				TaskName: g.BuildVariants[0].Tasks[0].Name,
+				Variant:  g.BuildVariants[0].Name,
+			}}, v, &Project{})
+
+			assert.NoError(t, err)
+			assert.Len(t, tasks, 1)
+		},
+		"FiltersInactiveTask": func(ctx context.Context, t *testing.T, g GeneratedProject, v *Version) {
+			g.BuildVariants[0].Tasks[0].Activate = utility.FalsePtr()
+
+			tasks, err := g.filterInactiveTasks(ctx, TVPairSet{{
+				TaskName: g.BuildVariants[0].Tasks[0].Name,
+				Variant:  g.BuildVariants[0].Name,
+			}}, v, &Project{})
+
+			assert.NoError(t, err)
+			assert.Empty(t, tasks)
+		},
+	} {
+		t.Run(tName, func(t *testing.T) {
+			tctx, tcancel := context.WithCancel(ctx)
+			defer tcancel()
+
+			require.NoError(t, db.ClearCollections(build.Collection))
+
+			g := GeneratedProject{
+				BuildVariants: []parserBV{
+					{
+						Name: "bv0",
+						Tasks: []parserBVTaskUnit{
+							{Name: "generated"},
 						},
 					},
 				},
-			},
-			Task: &task.Task{},
-		}
+				Task: &task.Task{},
+			}
+			v := &Version{Id: "version_id", Requester: evergreen.RepotrackerVersionRequester}
 
-		p := &Project{
-			BuildVariants: []BuildVariant{
-				{Name: "bv0"},
-			},
-		}
-
-		tasks, err := g.filterInactiveTasks(context.Background(), TVPairSet{{TaskName: "generated", Variant: "bv0"}}, v, p)
-		assert.NoError(t, err)
-		assert.Len(t, tasks, 1)
-	})
-
-	t.Run("InactiveExistingBuild", func(t *testing.T) {
-		defer func() {
-			assert.NoError(t, db.Clear(build.Collection))
-		}()
-		assert.NoError(t, db.Clear(build.Collection))
-		assert.NoError(t, (&build.Build{BuildVariant: "bv0"}).Insert())
-
-		g := GeneratedProject{
-			BuildVariants: []parserBV{
-				{
-					Name: "bv0",
-					Tasks: []parserBVTaskUnit{
-						{
-							Name: "generated",
-						},
-					},
-				},
-			},
-			Task: &task.Task{},
-		}
-
-		p := &Project{
-			BuildVariants: []BuildVariant{
-				{Name: "bv0", Activate: utility.FalsePtr()},
-			},
-		}
-
-		tasks, err := g.filterInactiveTasks(context.Background(), TVPairSet{{TaskName: "generated", Variant: "bv0"}}, v, p)
-		assert.NoError(t, err)
-		assert.Empty(t, tasks)
-	})
-
-	t.Run("InactiveTask", func(t *testing.T) {
-		g := GeneratedProject{
-			BuildVariants: []parserBV{
-				{
-					Name: "bv0",
-					Tasks: []parserBVTaskUnit{
-						{
-							Name:     "generated",
-							Activate: utility.FalsePtr(),
-						},
-					},
-				},
-			},
-			Task: &task.Task{},
-		}
-
-		tasks, err := g.filterInactiveTasks(context.Background(), TVPairSet{{TaskName: "generated", Variant: "bv0"}}, v, &Project{})
-		assert.NoError(t, err)
-		assert.Empty(t, tasks)
-	})
+			tCase(tctx, t, g, v)
+		})
+	}
 }
 
 func TestAddDependencies(t *testing.T) {

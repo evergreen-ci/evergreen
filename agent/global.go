@@ -30,7 +30,7 @@ const (
 
 	// defaultHeartbeatTimeout is how long the agent can perform operations when
 	// there is no other applicable timeout before the heartbeat times out.
-	defaultHeartbeatTimeout = time.Minute
+	defaultHeartbeatTimeout = time.Hour
 
 	// defaultStatsInterval is the interval after which agent sends system stats
 	// to API server
