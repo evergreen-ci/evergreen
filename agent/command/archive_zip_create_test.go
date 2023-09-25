@@ -3,6 +3,8 @@ package command
 import (
 	"context"
 	"path/filepath"
+	"runtime"
+	"strings"
 	"testing"
 
 	"github.com/evergreen-ci/evergreen/agent/internal"
@@ -11,6 +13,7 @@ import (
 	"github.com/evergreen-ci/evergreen/model/task"
 	"github.com/evergreen-ci/evergreen/testutil"
 	"github.com/evergreen-ci/evergreen/util"
+	"github.com/mholt/archiver/v3"
 	"github.com/stretchr/testify/suite"
 )
 
@@ -95,6 +98,17 @@ func (s *ZipCreateSuite) TestCreateZipOfPackage() {
 	s.cmd.Include = []string{"*.go"}
 	s.NoError(s.cmd.Execute(s.ctx, s.comm, s.logger, s.conf))
 
-	// kim: TODO: check that file exists and has expected data by walking the
-	// files with archiver.
+	var numFiles int
+	var foundThisFile bool
+	_, thisFile, _, _ := runtime.Caller(0)
+	s.NoError(archiver.NewZip().Walk(s.cmd.Target, func(f archiver.File) error {
+		s.True(strings.HasSuffix(f.FileInfo.Name(), ".go"))
+		if f.FileInfo.Name() == filepath.Base(thisFile) {
+			foundThisFile = true
+		}
+		numFiles++
+		return nil
+	}))
+	s.NotZero(numFiles)
+	s.True(foundThisFile)
 }
