@@ -62,14 +62,9 @@ func (e *zipExtract) Execute(ctx context.Context,
 		return errors.Errorf("archive '%s' does not exist", e.ArchivePath)
 	}
 
-	// kim: TODO: verify that unarchiving a zip file works in the same way as
-	// before.
 	if err := archiver.NewZip().Unarchive(e.ArchivePath, e.TargetDirectory); err != nil {
 		return errors.Wrapf(err, "extracting archive '%s' to directory '%s'", e.ArchivePath, e.TargetDirectory)
 	}
-	// if err := archiver.Zip.Open(e.ArchivePath, e.TargetDirectory); err != nil {
-	//     return errors.Wrapf(err, "extracting archive '%s' to directory '%s'", e.ArchivePath, e.TargetDirectory)
-	// }
 
 	return nil
 }

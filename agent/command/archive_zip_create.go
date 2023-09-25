@@ -82,14 +82,9 @@ func (c *zipArchiveCreate) Execute(ctx context.Context,
 		filenames[idx] = files[idx].Path
 	}
 
-	// kim: TODO: verify that archiving a zip file works in the same way as
-	// before.
 	if err := archiver.NewZip().Archive(filenames, c.Target); err != nil {
 		return errors.Wrapf(err, "constructing zip archive '%s'", c.Target)
 	}
-	// if err := archiver.Zip.Make(c.Target, filenames); err != nil {
-	//     return errors.Wrapf(err, "constructing zip archive '%s'", c.Target)
-	// }
 
 	logger.Task().Info(message.Fields{
 		"target":    c.Target,

@@ -62,19 +62,9 @@ func (e *autoExtract) Execute(ctx context.Context,
 		return errors.Errorf("archive '%s' does not exist", e.ArchivePath)
 	}
 
-	// kim: TODO: test this against .tar, .tar.gz, .zip in staging and verify
-	// that it works the same way as before.
 	if err := archiver.Unarchive(e.ArchivePath, e.TargetDirectory); err != nil {
 		return errors.Wrapf(err, "extracting archive '%s' to '%s'", e.ArchivePath, e.TargetDirectory)
 	}
-	// unzipper := archiver.MatchingFormat(e.ArchivePath)
-	// if unzipper == nil {
-	//     return errors.Errorf("could not detect archive format for archive '%s'", e.ArchivePath)
-	// }
-	//
-	// if err := unzipper.Open(e.ArchivePath, e.TargetDirectory); err != nil {
-	//     return errors.Wrapf(err, "extracting archive '%s'", e.ArchivePath)
-	// }
 
 	return nil
 }
