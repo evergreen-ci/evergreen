@@ -2,6 +2,7 @@ package model
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"strconv"
 	"testing"
@@ -6128,6 +6129,86 @@ tasks:
 	checkTask, err = task.FindOneId(stepbackTask.Id)
 	assert.NoError(err)
 	assert.True(checkTask.Activated)
+}
+
+func TestEvalStepbackBisect(t *testing.T) {
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
+	assert := assert.New(t)
+	assert.NoError(db.ClearCollections(task.Collection, ProjectRefCollection, ParserProjectCollection, distro.Collection, build.Collection, VersionCollection))
+	yml := `
+stepback: true
+buildvariants:
+- name: "bv"
+  run_on: distro
+  tasks:
+  - name: task
+  - name: generator
+tasks:
+- name: task
+- name: generator
+  `
+	proj := ProjectRef{
+		Id:             "proj",
+		StepbackBisect: utility.ToBoolPtr(true),
+	}
+	require.NoError(t, proj.Insert())
+	d := distro.Distro{
+		Id: "distro",
+	}
+	require.NoError(t, d.Insert(ctx))
+	v := Version{
+		Id:        "sample_version",
+		Requester: evergreen.RepotrackerVersionRequester,
+	}
+	require.NoError(t, v.Insert())
+	pp := &ParserProject{}
+	err := util.UnmarshalYAMLWithFallback([]byte(yml), &pp)
+	assert.NoError(err)
+	pp.Id = v.Id
+	assert.NoError(pp.Insert())
+	stepbackTask := task.Task{
+		Id:                  "t2",
+		BuildId:             "b2",
+		Status:              evergreen.TaskUndispatched,
+		BuildVariant:        "bv",
+		DisplayName:         "task",
+		Project:             "proj",
+		Activated:           false,
+		RevisionOrderNumber: 2,
+		DispatchTime:        utility.ZeroTime,
+		Requester:           evergreen.RepotrackerVersionRequester,
+		Version:             v.Id,
+	}
+	assert.NoError(stepbackTask.Insert())
+	b2 := build.Build{
+		Id:           "b2",
+		BuildVariant: "bv",
+	}
+	assert.NoError(b2.Insert())
+	finishedTask := task.Task{
+		Id:                  "t3",
+		BuildId:             "b3",
+		Status:              evergreen.TaskUndispatched,
+		BuildVariant:        "bv",
+		DisplayName:         "task",
+		Project:             "proj",
+		Activated:           true,
+		RevisionOrderNumber: 3,
+		Requester:           evergreen.RepotrackerVersionRequester,
+		Version:             v.Id,
+	}
+	assert.NoError(finishedTask.Insert())
+	b3 := build.Build{
+		Id:           "b3",
+		BuildVariant: "bv",
+	}
+	assert.NoError(b3.Insert())
+
+	err = evalStepback(ctx, &finishedTask, "", evergreen.TaskFailed, false)
+	assert.Error(err)
+	assert.Equal(errors.New("bisect stepback not implemented yet, EVG-20788"), err)
 }
 
 func TestEvalStepbackTaskGroup(t *testing.T) {
