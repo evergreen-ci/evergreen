@@ -3923,13 +3923,13 @@ func TestStepback(t *testing.T) {
 	assert.NoError(v2.Insert())
 	assert.NoError(v3.Insert())
 	// test stepping back a regular task
-	assert.NoError(doStepback(ctx, t3))
+	assert.NoError(doLienarStepback(ctx, t3))
 	dbTask, err := task.FindOne(db.Query(task.ById(t2.Id)))
 	assert.NoError(err)
 	assert.True(dbTask.Activated)
 
 	// test stepping back a display task
-	assert.NoError(doStepback(ctx, dt3))
+	assert.NoError(doLienarStepback(ctx, dt3))
 	dbTask, err = task.FindOne(db.Query(task.ById(dt2.Id)))
 	assert.NoError(err)
 	assert.True(dbTask.Activated)
@@ -4101,13 +4101,13 @@ func TestStepbackWithGenerators(t *testing.T) {
 	assert.NoError(t, v2.Insert())
 
 	// test stepping back where an existing generated task needs to be activated
-	assert.NoError(t, doStepback(ctx, taskToStepback))
+	assert.NoError(t, doLienarStepback(ctx, taskToStepback))
 	dbTask, err := task.FindOne(db.Query(task.ById(t1.Id)))
 	assert.NoError(t, err)
 	assert.True(t, dbTask.Activated)
 
 	// test stepping back where the generator needs to be activated
-	assert.NoError(t, doStepback(ctx, taskToStepback2))
+	assert.NoError(t, doLienarStepback(ctx, taskToStepback2))
 	dbTask, err = task.FindOne(db.Query(task.ById(genPrevious.Id)))
 	assert.NoError(t, err)
 	assert.True(t, dbTask.Activated)

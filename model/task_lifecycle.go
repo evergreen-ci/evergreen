@@ -530,8 +530,9 @@ func getStepback(taskId string) (stepbackInstructions, error) {
 	return s, nil
 }
 
-// doStepBack performs a stepback on the task if there is a previous task and if not it returns nothing.
-func doStepback(ctx context.Context, t *task.Task) error {
+// doLienarStepback performs a stepback on the task linearly (the previous
+// tasks one by one). If there is a previous task and if not it returns nothing.
+func doLienarStepback(ctx context.Context, t *task.Task) error {
 	if t.DisplayOnly {
 		execTasks, err := task.Find(task.ByIds(t.ExecutionTasks))
 		if err != nil {
@@ -539,7 +540,7 @@ func doStepback(ctx context.Context, t *task.Task) error {
 		}
 		catcher := grip.NewSimpleCatcher()
 		for _, et := range execTasks {
-			catcher.Add(doStepback(ctx, &et))
+			catcher.Add(doLienarStepback(ctx, &et))
 		}
 		if catcher.HasErrors() {
 			return catcher.Resolve()
@@ -561,6 +562,25 @@ func doStepback(ctx context.Context, t *task.Task) error {
 
 	// activate the previous task to pinpoint regression
 	return errors.WithStack(activatePreviousTask(ctx, t.Id, evergreen.StepbackTaskActivator, nil, s))
+}
+
+// doBisectStepback performs a bisect stepback on the task. If there are no tasks
+// to bisect, it returns nothing.
+func doBisectStepback(ctx context.Context, t *task.Task) error {
+	if t.DisplayOnly {
+		execTasks, err := task.Find(task.ByIds(t.ExecutionTasks))
+		if err != nil {
+			return errors.Wrapf(err, "finding tasks for stepback of '%s'", t.Id)
+		}
+		catcher := grip.NewSimpleCatcher()
+		for _, et := range execTasks {
+			catcher.Add(doBisectStepback(ctx, &et))
+		}
+		if catcher.HasErrors() {
+			return catcher.Resolve()
+		}
+	}
+	return errors.New("bisect stepback not implemented yet, EVG-20788")
 }
 
 // MarkEnd updates the task as being finished, performs a stepback if necessary, and updates the build status
@@ -1165,7 +1185,7 @@ func evalLinearStepback(ctx context.Context, t *task.Task, caller, status string
 				return errors.Errorf("no tasks in task group '%s' for task '%s'", t.TaskGroup, t.Id)
 			}
 			for _, tgTask := range tasks {
-				catcher.Wrapf(doStepback(ctx, &tgTask), "stepping back task group task '%s'", tgTask.DisplayName)
+				catcher.Wrapf(doLienarStepback(ctx, &tgTask), "stepping back task group task '%s'", tgTask.DisplayName)
 				if tgTask.Id == t.Id {
 					break // don't need to stepback later tasks in the group
 				}
@@ -1173,21 +1193,18 @@ func evalLinearStepback(ctx context.Context, t *task.Task, caller, status string
 
 			return catcher.Resolve()
 		}
-		return errors.Wrap(doStepback(ctx, t), "performing stepback")
-
+		return errors.Wrap(doLienarStepback(ctx, t), "performing linear stepback")
 	} else if status == evergreen.TaskSucceeded && deactivatePrevious && t.Requester == evergreen.RepotrackerVersionRequester {
-		// if the task was successful and is a mainline commit (not git tag or project trigger),
-		// ignore running previous activated tasks for this buildvariant
-		if err := DeactivatePreviousTasks(ctx, t, caller); err != nil {
-			return errors.Wrap(err, "deactivating previous task")
-		}
+		// When stepback finishes (the task is successful), and stepback was done on mainline commits,
+		// ignore running previous activated tasks for this build variant.
+		return errors.Wrap(DeactivatePreviousTasks(ctx, t, caller), "deactivating previous tasks")
 	}
 	return nil
 }
 
 // evalBisectStepback performs bisect stepback on the task. To be implemented in EVG-20788.
 func evalBisectStepback(ctx context.Context, t *task.Task, caller, status string, deactivatePrevious bool) error {
-	return errors.New("bisect stepback not implemented yet, EVG-20788")
+	return errors.Wrap(doBisectStepback(ctx, t), "performing bisect stepback")
 }
 
 // updateMakespans updates the predicted and actual makespans for the tasks in
