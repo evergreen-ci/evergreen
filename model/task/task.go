@@ -175,7 +175,7 @@ type Task struct {
 	//        field and should be initialized before the application can
 	//        safely fetch any output data.
 	// This field should *never* be accessed directly, instead call
-	// `Task.getTaskOutputSafe()` to instantiate the task output interface.
+	// `Task.getTaskOutputSafe()`.
 	TaskOutputInfo *taskoutput.TaskOutput `bson:"task_output_info,omitempty" json:"task_output_info,omitempty"`
 
 	// Set to true if the task should be considered for mainline github checks
