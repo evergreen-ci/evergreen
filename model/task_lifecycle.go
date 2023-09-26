@@ -1149,7 +1149,7 @@ func evalStepback(ctx context.Context, t *task.Task, caller, status string, deac
 func evalLinearStepback(ctx context.Context, t *task.Task, caller, status string, stepback, deactivatePrevious bool) error {
 	if (status == evergreen.TaskFailed && !t.Aborted) ||
 		(evergreen.IsFailedTaskStatus(status) && t.ActivatedBy == evergreen.StepbackTaskActivator) {
-		if stepback {
+		if !stepback {
 			return nil
 		}
 
