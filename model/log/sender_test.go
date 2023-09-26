@@ -321,7 +321,7 @@ type senderTestMock struct {
 // Evergreen log sender, and a local mock sender. The log sender is configured
 // with the mock log service, a basic line parser function, max buffer size of
 // 4096, and the mock sender as the local sender. Invidiual tests may require
-// to further customization of the configuration after calling.
+// further customization of the configuration after calling.
 func newSenderTestMock(ctx context.Context) *senderTestMock {
 	ctx, cancel := context.WithCancel(ctx)
 	svc := &mockService{}
