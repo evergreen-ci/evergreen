@@ -308,7 +308,7 @@ func (c *gitFetchProject) buildCloneCommand(ctx context.Context, comm client.Com
 	gitCommands := []string{
 		"set -o xtrace",
 		"set -o errexit",
-		fmt.Sprintf("chmod +w %s", c.Directory),
+		fmt.Sprintf("chmod +w %s 2>/dev/null", c.Directory),
 		fmt.Sprintf("rm -rf %s", c.Directory),
 	}
 
