@@ -566,7 +566,7 @@ func (c *gitFetchProject) Execute(ctx context.Context, comm client.Communicator,
 	span := trace.SpanFromContext(ctx)
 	span.SetAttributes(attribute.Int(cloneRetriesAttribute, attemptNum))
 
-	return err
+	return errors.Wrapf(err, "retrying git.get_project failed")
 }
 
 func (c *gitFetchProject) fetchSource(ctx context.Context,
