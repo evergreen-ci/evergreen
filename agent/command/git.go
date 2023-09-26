@@ -537,7 +537,6 @@ func (c *gitFetchProject) Execute(ctx context.Context, comm client.Communicator,
 				// If clone failed once with the cached merge SHA, do not use it again
 				opts.usePatchMergeCommitSha = false
 			}
-			// TODO: Run chmod here?
 			if err := c.fetch(ctx, comm, logger, conf, opts); err != nil {
 				attemptNum++
 				if attemptNum == 1 {
@@ -808,8 +807,6 @@ func (c *gitFetchProject) fetch(ctx context.Context,
 			return errors.WithStack(err)
 		}
 	}
-
-	// TODO: Maybe chmod here?
 
 	// Clone the project.
 	if err = c.fetchSource(ctx, comm, logger, conf, jpm, opts); err != nil {
