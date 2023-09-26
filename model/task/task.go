@@ -18,8 +18,6 @@ import (
 	"github.com/evergreen-ci/evergreen/model/log"
 	"github.com/evergreen-ci/evergreen/model/testresult"
 	"github.com/evergreen-ci/evergreen/taskoutput"
-	"github.com/evergreen-ci/evergreen/taskoutput/tasklogs"
-	"github.com/evergreen-ci/evergreen/taskoutput/testlogs"
 	"github.com/evergreen-ci/evergreen/util"
 	"github.com/evergreen-ci/tarjan"
 	"github.com/evergreen-ci/utility"
@@ -156,8 +154,25 @@ type Task struct {
 	ExecutionPlatform ExecutionPlatform `bson:"execution_platform,omitempty" json:"execution_platform,omitempty"`
 
 	// The version of the agent this task was run on.
-	AgentVersion      string `bson:"agent_version,omitempty" json:"agent_version,omitempty"`
-	TaskOutputVersion *int   `bson:"task_output_version,omitempty" json:"task_output_version,omitempty"`
+	AgentVersion string `bson:"agent_version,omitempty" json:"agent_version,omitempty"`
+	// TaskOutputInfo holds the information for the interface that
+	// coordinates persistent storage of a task's output data.
+	// There are four possible scenarios:
+	//     1. The task will never have output data (e.g., display tasks)
+	//        and, therefore, the value is and always will be nil.
+	//     2. The task does not have output data yet, but can in the future
+	//        if/when dispatched, and, therefore, the value is currently
+	//        nil.
+	//     3. The task has been dispatched with the task output information
+	//        initialized and the application can safely use this field to
+	//        fetch any output data. If the task has not finished running,
+	//        the output data is accessible but may not be complete yet.
+	//     4. The task has data but was run before the introduction of the
+	//        field and should be initialized before the application can
+	//        safely fetch any output data.
+	// This field should *never* be accessed directly, instead call
+	// `Task.getTaskOutputSafe()`.
+	TaskOutputInfo *taskoutput.TaskOutput `bson:"task_output_info,omitempty" json:"task_output_info,omitempty"`
 
 	// Set to true if the task should be considered for mainline github checks
 	IsGithubCheck bool `bson:"is_github_check,omitempty" json:"is_github_check,omitempty"`
@@ -905,20 +920,23 @@ func (t *Task) cacheExpectedDuration() error {
 // to a pod.
 func (t *Task) MarkAsContainerDispatched(ctx context.Context, env evergreen.Environment, podID, agentVersion string) error {
 	dispatchedAt := time.Now()
+
 	query := ScheduledContainerTasksQuery()
 	query[IdKey] = t.Id
 	query[StatusKey] = evergreen.TaskUndispatched
 	query[ContainerAllocatedKey] = true
-	update := bson.M{
-		"$set": bson.M{
-			StatusKey:        evergreen.TaskDispatched,
-			DispatchTimeKey:  dispatchedAt,
-			LastHeartbeatKey: dispatchedAt,
-			PodIDKey:         podID,
-			AgentVersionKey:  agentVersion,
-		},
+	set := bson.M{
+		StatusKey:        evergreen.TaskDispatched,
+		DispatchTimeKey:  dispatchedAt,
+		LastHeartbeatKey: dispatchedAt,
+		PodIDKey:         podID,
+		AgentVersionKey:  agentVersion,
 	}
-	res, err := env.DB().Collection(Collection).UpdateOne(ctx, query, update)
+	output, ok := t.initializeTaskOutputInfo(env)
+	if ok {
+		set[TaskOutputInfoKey] = output
+	}
+	res, err := env.DB().Collection(Collection).UpdateOne(ctx, query, bson.M{"$set": set})
 	if err != nil {
 		return errors.Wrap(err, "updating task")
 	}
@@ -931,6 +949,7 @@ func (t *Task) MarkAsContainerDispatched(ctx context.Context, env evergreen.Envi
 	t.LastHeartbeat = dispatchedAt
 	t.PodID = podID
 	t.AgentVersion = agentVersion
+	t.TaskOutputInfo = output
 
 	return nil
 }
@@ -947,7 +966,7 @@ func (t *Task) MarkAsHostDispatched(hostID, distroID, agentRevision string, disp
 		return err
 	}
 
-	//when dispatching an execution task, mark its parent as dispatched
+	// When dispatching an execution task, mark its parent as dispatched.
 	if dt, _ := t.GetDisplayTask(); dt != nil && dt.DispatchTime == utility.ZeroTime {
 		return dt.MarkAsHostDispatched("", "", "", dispatchTime)
 	}
@@ -966,15 +985,21 @@ func (t *Task) MarkAsHostDispatchedWithContext(ctx context.Context, env evergree
 }
 
 func (t *Task) markAsHostDispatchedWithFunc(doUpdate func(update bson.M) error, hostID, distroID, agentRevision string, dispatchTime time.Time) error {
+
+	set := bson.M{
+		DispatchTimeKey:  dispatchTime,
+		StatusKey:        evergreen.TaskDispatched,
+		HostIdKey:        hostID,
+		LastHeartbeatKey: dispatchTime,
+		DistroIdKey:      distroID,
+		AgentVersionKey:  agentRevision,
+	}
+	output, ok := t.initializeTaskOutputInfo(evergreen.GetEnvironment())
+	if ok {
+		set[TaskOutputInfoKey] = output
+	}
 	if err := doUpdate(bson.M{
-		"$set": bson.M{
-			DispatchTimeKey:  dispatchTime,
-			StatusKey:        evergreen.TaskDispatched,
-			HostIdKey:        hostID,
-			LastHeartbeatKey: dispatchTime,
-			DistroIdKey:      distroID,
-			AgentVersionKey:  agentRevision,
-		},
+		"$set": set,
 		"$unset": bson.M{
 			AbortedKey:   "",
 			AbortInfoKey: "",
@@ -988,6 +1013,7 @@ func (t *Task) markAsHostDispatchedWithFunc(doUpdate func(update bson.M) error, 
 	t.Status = evergreen.TaskDispatched
 	t.HostId = hostID
 	t.AgentVersion = agentRevision
+	t.TaskOutputInfo = output
 	t.LastHeartbeat = dispatchTime
 	t.DistroId = distroID
 	t.Aborted = false
@@ -1017,11 +1043,12 @@ func (t *Task) markAsHostUndispatchedWithFunc(doUpdate func(update bson.M) error
 			LastHeartbeatKey: utility.ZeroTime,
 		},
 		"$unset": bson.M{
-			HostIdKey:       "",
-			AgentVersionKey: "",
-			AbortedKey:      "",
-			AbortInfoKey:    "",
-			DetailsKey:      "",
+			HostIdKey:         "",
+			AgentVersionKey:   "",
+			TaskOutputInfoKey: "",
+			AbortedKey:        "",
+			AbortInfoKey:      "",
+			DetailsKey:        "",
 		},
 	}
 
@@ -1034,6 +1061,7 @@ func (t *Task) markAsHostUndispatchedWithFunc(doUpdate func(update bson.M) error
 	t.LastHeartbeat = utility.ZeroTime
 	t.HostId = ""
 	t.AgentVersion = ""
+	t.TaskOutputInfo = nil
 	t.Aborted = false
 	t.AbortInfo = AbortInfo{}
 	t.Details = apimodels.TaskEndDetail{}
@@ -1468,84 +1496,91 @@ func (t *Task) SetStepbackInfo(s StepbackInfo) error {
 		})
 }
 
-// SetTaskOutputVersion sets the version of the task output. This should only
-// be called once at the beginning of a task run.
-func (t *Task) SetTaskOutputVersion(ctx context.Context, env evergreen.Environment, version int) error {
-	if t.DisplayOnly {
-		return errors.New("cannot set task output version on a display task")
-	}
-	if t.TaskOutputVersion != nil {
-		return errors.New("task output version already set")
+// initializeTaskOutputInfo returns the task output information with the most
+// up-to-date configuration for the task run. Returns false if the task will
+// never have output. This function should only be used to set the task output
+// field upon task dispatch.
+func (t *Task) initializeTaskOutputInfo(env evergreen.Environment) (*taskoutput.TaskOutput, bool) {
+	if t.DisplayOnly || t.Archived {
+		return nil, false
 	}
 
-	res, err := env.DB().Collection(Collection).UpdateByID(ctx, t.Id, []bson.M{
-		{
-			"$set": bson.M{TaskOutputVersionKey: bson.M{
-				"$ifNull": bson.A{
-					"$" + TaskOutputVersionKey,
-					version,
-				}},
-			},
-		},
-	})
-	if err != nil {
-		return errors.Wrap(err, "setting the task output version")
-	}
-	if res.MatchedCount == 0 {
-		return errors.New("programmatic error: task not found")
-	}
-	if res.ModifiedCount == 0 {
-		return errors.New("task output version already set")
-	}
-	t.TaskOutputVersion = utility.ToIntPtr(version)
-
-	return nil
+	return taskoutput.InitializeTaskOutput(env, taskoutput.TaskOptions{
+		ProjectID: t.Project,
+		TaskID:    t.Id,
+		Execution: t.Execution,
+	}), true
 }
 
-func (t *Task) output() taskoutput.TaskOutput {
-	if t.TaskOutputVersion == nil {
-		return taskoutput.TaskOutput(-1)
+// getTaskOutputSafe returns an instantiation of the task output interface and
+// whether it is safe to fetch task output data. This function should always
+// be called to access task output data.
+func (t *Task) getTaskOutputSafe() (*taskoutput.TaskOutput, bool) {
+	if t.DisplayOnly || t.Status == evergreen.TaskUndispatched {
+		return nil, false
 	}
 
-	return taskoutput.TaskOutput(utility.FromIntPtr(t.TaskOutputVersion))
+	if t.TaskOutputInfo == nil {
+		// Return the zero value for tasks that do not have the task
+		// output metadata saved in the database. This is for backwards
+		// compatibility. We can safely assume version zero for each
+		// task output type.
+		return &taskoutput.TaskOutput{}, true
+	}
+
+	return t.TaskOutputInfo, true
 }
 
 // GetTaskLogs returns the task's task logs with the given options.
-func (t *Task) GetTaskLogs(ctx context.Context, env evergreen.Environment, getOpts tasklogs.GetOptions) (log.LogIterator, error) {
+func (t *Task) GetTaskLogs(ctx context.Context, env evergreen.Environment, getOpts taskoutput.TaskLogGetOptions) (log.LogIterator, error) {
 	if t.DisplayOnly {
 		return nil, errors.New("cannot get task logs for a display task")
 	}
 
+	output, ok := t.getTaskOutputSafe()
+	if !ok {
+		// We know there task cannot have task output, likely because
+		// it has not run yet. Return an empty iterator.
+		return log.EmptyIterator(), nil
+	}
+
 	taskID := t.Id
 	if t.Archived {
 		taskID = t.OldTaskId
 	}
-	taskOpts := tasklogs.TaskOptions{
+	taskOpts := taskoutput.TaskOptions{
 		ProjectID: t.Project,
 		TaskID:    taskID,
 		Execution: t.Execution,
 	}
 
-	return t.output().TaskLogs().Get(ctx, env, taskOpts, getOpts)
+	return output.TaskLogs.Get(ctx, env, taskOpts, getOpts)
 }
 
 // GetTestLogs returns the task's test logs with the specified options.
-func (t *Task) GetTestLogs(ctx context.Context, env evergreen.Environment, getOpts testlogs.GetOptions) (log.LogIterator, error) {
+func (t *Task) GetTestLogs(ctx context.Context, env evergreen.Environment, getOpts taskoutput.TestLogGetOptions) (log.LogIterator, error) {
 	if t.DisplayOnly {
 		return nil, errors.New("cannot get test logs for a display task")
 	}
 
+	output, ok := t.getTaskOutputSafe()
+	if !ok {
+		// We know there task cannot have task output, likely because
+		// it has not run yet. Return an empty iterator.
+		return log.EmptyIterator(), nil
+	}
+
 	taskID := t.Id
 	if t.Archived {
 		taskID = t.OldTaskId
 	}
-	taskOpts := testlogs.TaskOptions{
+	taskOpts := taskoutput.TaskOptions{
 		ProjectID: t.Project,
 		TaskID:    taskID,
 		Execution: t.Execution,
 	}
 
-	return t.output().TestLogs().Get(ctx, env, taskOpts, getOpts)
+	return output.TestLogs.Get(ctx, env, taskOpts, getOpts)
 }
 
 // SetResultsInfo sets the task's test results info.
@@ -2126,7 +2161,7 @@ func resetTaskUpdate(t *Task) []bson.M {
 		t.TimeTaken = 0
 		t.LastHeartbeat = utility.ZeroTime
 		t.Details = apimodels.TaskEndDetail{}
-		t.TaskOutputVersion = nil
+		t.TaskOutputInfo = nil
 		t.ResultsService = ""
 		t.ResultsFailed = false
 		t.HasCedarResults = false
@@ -2164,7 +2199,7 @@ func resetTaskUpdate(t *Task) []bson.M {
 		{
 			"$unset": []string{
 				DetailsKey,
-				TaskOutputVersionKey,
+				TaskOutputInfoKey,
 				ResultsServiceKey,
 				ResultsFailedKey,
 				HasCedarResultsKey,

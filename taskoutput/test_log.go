@@ -1,4 +1,4 @@
-package testlogs
+package taskoutput
 
 import (
 	"context"
@@ -8,27 +8,18 @@ import (
 	"github.com/evergreen-ci/evergreen/model/log"
 )
 
-// TestLogs is the versioned entry point for coordinating persistent storage
-// of a task run's test log data.
-type TestLogs int
-
-// ID returns the unique identifier of the test logs output type.
-func (TestLogs) ID() string { return "test_logs" }
-
-// TaskOptions represents the task-level information required for accessing
-// task logs belonging to a task run.
-type TaskOptions struct {
-	// ProjectID is the project ID of the task run.
-	ProjectID string
-	// TaskID is the task ID of the task run.
-	TaskID string
-	// Execution is the execution number of the task run.
-	Execution int
+// TestLogOutput is the versioned entry point for coordinating persistent
+// storage of a task run's test log data.
+type TestLogOutput struct {
+	Version int `bson:"version" json:"version"`
 }
 
-// GetOptions represents the arguments for fetching test logs belonging to a
-// task run.
-type GetOptions struct {
+// ID returns the unique identifier of the test log output type.
+func (TestLogOutput) ID() string { return "test_logs" }
+
+// TestLogGetOptions represents the arguments for fetching test logs belonging
+// to a task run.
+type TestLogGetOptions struct {
 	// LogPaths are the paths of the logs to fetch and merge, prefixes may
 	// be specified. At least one name must be specified.
 	LogPaths []string
@@ -45,8 +36,8 @@ type GetOptions struct {
 	TailN int
 }
 
-// Get returns the test logs belonging to the specified task run.
-func (o TestLogs) Get(ctx context.Context, env evergreen.Environment, taskOpts TaskOptions, getOpts GetOptions) (log.LogIterator, error) {
+// Get returns test logs belonging to the specified task run.
+func (o TestLogOutput) Get(ctx context.Context, env evergreen.Environment, taskOpts TaskOptions, getOpts TestLogGetOptions) (log.LogIterator, error) {
 	return log.Get(ctx, env, log.GetOptions{
 		LogNames:  o.getLogNames(taskOpts, getOpts.LogPaths),
 		Start:     getOpts.Start,
@@ -57,7 +48,7 @@ func (o TestLogs) Get(ctx context.Context, env evergreen.Environment, taskOpts T
 	})
 }
 
-func (o TestLogs) getLogNames(taskOpts TaskOptions, logPaths []string) []string {
+func (o TestLogOutput) getLogNames(taskOpts TaskOptions, logPaths []string) []string {
 	prefix := fmt.Sprintf("%s/%s/%d/%s", taskOpts.ProjectID, taskOpts.TaskID, taskOpts.Execution, o.ID())
 
 	logNames := make([]string, len(logPaths))
@@ -68,11 +59,9 @@ func (o TestLogs) getLogNames(taskOpts TaskOptions, logPaths []string) []string 
 	return logNames
 }
 
-func (o TestLogs) getLogServiceVersion() int {
+func (o TestLogOutput) getLogServiceVersion() int {
 	switch {
-	case o >= 0:
-		return 0
 	default:
-		return -1
+		return 0
 	}
 }
