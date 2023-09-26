@@ -3402,7 +3402,7 @@ buildvariants:
 			Convey("then the value should be false", func() {
 				val, err := getStepback(testTask.Id)
 				So(err, ShouldBeNil)
-				So(val, ShouldBeFalse)
+				So(val.shouldStepback, ShouldBeFalse)
 			})
 		})
 		Convey("if the task does not override the setting", func() {
@@ -3411,7 +3411,7 @@ buildvariants:
 			Convey("then the value should be true", func() {
 				val, err := getStepback(testTask.Id)
 				So(err, ShouldBeNil)
-				So(val, ShouldBeTrue)
+				So(val.shouldStepback, ShouldBeTrue)
 			})
 		})
 
@@ -3421,7 +3421,7 @@ buildvariants:
 			Convey("then the value should be true", func() {
 				val, err := getStepback(testTask.Id)
 				So(err, ShouldBeNil)
-				So(val, ShouldBeTrue)
+				So(val.shouldStepback, ShouldBeTrue)
 			})
 		})
 
@@ -3431,7 +3431,7 @@ buildvariants:
 			Convey("then the value should be false", func() {
 				val, err := getStepback(testTask.Id)
 				So(err, ShouldBeNil)
-				So(val, ShouldBeFalse)
+				So(val.shouldStepback, ShouldBeFalse)
 			})
 		})
 
@@ -3441,7 +3441,7 @@ buildvariants:
 			Convey("then the value should be true", func() {
 				val, err := getStepback(testTask.Id)
 				So(err, ShouldBeNil)
-				So(val, ShouldBeTrue)
+				So(val.shouldStepback, ShouldBeTrue)
 			})
 		})
 
@@ -3451,7 +3451,7 @@ buildvariants:
 			Convey("then the value should be true", func() {
 				val, err := getStepback(testTask.Id)
 				So(err, ShouldBeNil)
-				So(val, ShouldBeTrue)
+				So(val.shouldStepback, ShouldBeTrue)
 			})
 		})
 
@@ -3461,7 +3461,7 @@ buildvariants:
 			Convey("then the value should be false", func() {
 				val, err := getStepback(testTask.Id)
 				So(err, ShouldBeNil)
-				So(val, ShouldBeFalse)
+				So(val.shouldStepback, ShouldBeFalse)
 			})
 		})
 
