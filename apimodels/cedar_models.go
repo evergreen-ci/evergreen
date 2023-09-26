@@ -42,8 +42,8 @@ type GetBuildloggerLogsOptionsV2 struct {
 	Tail      int      `json:"-"`
 }
 
-// GetBuildloggerLogs makes request to Cedar for a specifc log and returns an
-// io.ReadCloser.
+// GetBuildloggerLogs makes request to Cedar for a specifc log and returns a
+// log iterator.
 // TODO (EVG-20019): Remove the "V2" suffix once log fetching is consolidated
 // and the original GetBuildloggerLogs function is deleted.
 func GetBuildloggerLogsV2(ctx context.Context, opts GetBuildloggerLogsOptionsV2) (log.LogIterator, error) {
