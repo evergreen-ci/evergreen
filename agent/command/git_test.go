@@ -597,7 +597,7 @@ func (s *GitGetProjectSuite) TestBuildCommandForPullRequests() {
 
 	cmds, err := c.buildCloneCommand(s.ctx, s.comm, logger, conf, opts)
 	s.NoError(err)
-	s.Require().Len(cmds, 9)
+	s.Require().Len(cmds, 10)
 	s.True(strings.HasPrefix(cmds[6], "git fetch origin \"pull/9001/head:evg-pr-test-"))
 	s.True(strings.HasPrefix(cmds[7], "git checkout \"evg-pr-test-"))
 	s.Equal("git reset --hard 55ca6286e3e4f4fba5d0448333fa99fc5a404a73", cmds[7])
