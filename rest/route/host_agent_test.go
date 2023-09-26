@@ -1473,28 +1473,31 @@ func TestHandleEndTaskForCommitQueueTask(t *testing.T) {
 	p2 := mgobson.NewObjectId().Hex()
 	p3 := mgobson.NewObjectId().Hex()
 	taskA := task.Task{
-		Id:           "taskA",
-		Version:      p1,
-		Project:      "my_project",
-		DisplayName:  "important_task",
-		BuildVariant: "best_variant",
-		BuildId:      "build",
+		Id:            "taskA",
+		Version:       p1,
+		Project:       "my_project",
+		DisplayName:   "important_task",
+		BuildVariant:  "best_variant",
+		BuildId:       "build",
+		DisplayTaskId: utility.ToStringPtr(""),
 	}
 	taskB := task.Task{
-		Id:           "taskB",
-		Version:      p2,
-		Project:      "my_project",
-		DisplayName:  "important_task",
-		BuildVariant: "best_variant",
-		BuildId:      "build",
+		Id:            "taskB",
+		Version:       p2,
+		Project:       "my_project",
+		DisplayName:   "important_task",
+		BuildVariant:  "best_variant",
+		BuildId:       "build",
+		DisplayTaskId: utility.ToStringPtr(""),
 	}
 	taskC := task.Task{
-		Id:           "taskC",
-		Version:      p3,
-		Project:      "my_project",
-		DisplayName:  "important_task",
-		BuildVariant: "best_variant",
-		BuildId:      "build",
+		Id:            "taskC",
+		Version:       p3,
+		Project:       "my_project",
+		DisplayName:   "important_task",
+		BuildVariant:  "best_variant",
+		BuildId:       "build",
+		DisplayTaskId: utility.ToStringPtr(""),
 	}
 	for testName, testCase := range map[string]func(t *testing.T, cq commitqueue.CommitQueue){
 		"next task is failed": func(t *testing.T, cq commitqueue.CommitQueue) {

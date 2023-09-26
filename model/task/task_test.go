@@ -1253,6 +1253,110 @@ func TestBulkInsert(t *testing.T) {
 	}
 }
 
+func TestFindMidwayTask(t *testing.T) {
+	assert := assert.New(t)
+	assert.NoError(db.ClearCollections(Collection))
+	displayName := "cool-task-9000"
+	buildVarient := "bv"
+	requester := "r"
+	project := "proj"
+	tasks := []Task{}
+	for i := 1; i <= 20; i++ {
+		task := Task{
+			Id:                  "t" + fmt.Sprint(i),
+			DisplayName:         displayName,
+			BuildVariant:        buildVarient,
+			Requester:           requester,
+			Project:             project,
+			RevisionOrderNumber: i,
+		}
+		assert.NoError(task.Insert())
+		tasks = append(tasks, task)
+	}
+	t10, err := FindMidwayTask(tasks[0], tasks[19])
+	assert.NoError(err)
+	require.NotNil(t, t10)
+	assert.Equal(10, t10.RevisionOrderNumber)
+
+	t5, err := FindMidwayTask(tasks[0], tasks[9])
+	assert.NoError(err)
+	require.NotNil(t, t5)
+	assert.Equal(5, t5.RevisionOrderNumber, 5)
+
+	t15, err := FindMidwayTask(tasks[10], tasks[19])
+	assert.NoError(err)
+	require.NotNil(t, t15)
+	assert.Equal(15, t15.RevisionOrderNumber)
+
+	t19, err := FindMidwayTask(tasks[17], tasks[19])
+	assert.NoError(err)
+	require.NotNil(t, t19)
+	assert.Equal(19, t19.RevisionOrderNumber)
+
+	t4, err := FindMidwayTask(tasks[6], tasks[0])
+	assert.NoError(err)
+	require.NotNil(t, t4)
+	assert.Equal(4, t4.RevisionOrderNumber)
+
+	t12, err := FindMidwayTask(tasks[11], tasks[11])
+	assert.NoError(err)
+	require.NotNil(t, t12)
+	assert.Equal(12, t12.RevisionOrderNumber)
+
+	t16, err := FindMidwayTask(tasks[15], tasks[16])
+	assert.NoError(err)
+	require.NotNil(t, t16)
+	assert.Equal(16, t16.RevisionOrderNumber)
+
+	otherDisplayName := Task{
+		Id:           "otherTaskDisplayName",
+		DisplayName:  "Other display name",
+		BuildVariant: buildVarient,
+		Requester:    requester,
+		Project:      project,
+	}
+	assert.NoError(otherDisplayName.Insert())
+	task, err := FindMidwayTask(tasks[0], otherDisplayName)
+	assert.Error(err)
+	assert.Nil(task)
+
+	otherBuildVariant := Task{
+		Id:           "otherTaskBuildVariant",
+		DisplayName:  displayName,
+		BuildVariant: "Other Build Variant",
+		Requester:    requester,
+		Project:      project,
+	}
+	assert.NoError(otherBuildVariant.Insert())
+	task, err = FindMidwayTask(tasks[0], otherBuildVariant)
+	assert.Error(err)
+	assert.Nil(task)
+
+	otherRequester := Task{
+		Id:           "otherTaskRequester",
+		DisplayName:  displayName,
+		BuildVariant: buildVarient,
+		Requester:    "Other Requester",
+		Project:      project,
+	}
+	assert.NoError(otherRequester.Insert())
+	task, err = FindMidwayTask(tasks[0], otherRequester)
+	assert.Error(err)
+	assert.Nil(task)
+
+	otherProject := Task{
+		Id:           "otherTaskProject",
+		DisplayName:  displayName,
+		BuildVariant: buildVarient,
+		Requester:    requester,
+		Project:      "Other project",
+	}
+	assert.NoError(otherProject.Insert())
+	task, err = FindMidwayTask(tasks[0], otherProject)
+	assert.Error(err)
+	assert.Nil(task)
+}
+
 func TestUnscheduleStaleUnderwaterHostTasksNoDistro(t *testing.T) {
 	assert := assert.New(t)
 
@@ -3021,16 +3125,24 @@ func TestSetGeneratedTasksToActivate(t *testing.T) {
 	assert.Equal(t, taskFromDb.GeneratedTasksToActivate["bv3"], []string{"t3"})
 }
 
-func TestSetStepbackDepth(t *testing.T) {
+func TestSetStepbackInfo(t *testing.T) {
 	require.NoError(t, db.ClearCollections(Collection))
 	task := Task{Id: "t1"}
 	assert.NoError(t, task.Insert())
 
-	assert.NoError(t, task.SetStepbackDepth(12))
+	s := StepbackInfo{
+		LastFailingStepbackTaskId: "t2",
+		LastPassingStepbackTaskId: "t3",
+		NextStepbackTaskId:        "t4",
+	}
+
+	assert.NoError(t, task.SetStepbackInfo(s))
 	taskFromDb, err := FindOneId("t1")
 	assert.NoError(t, err)
 	assert.NotNil(t, taskFromDb)
-	assert.Equal(t, 12, taskFromDb.StepbackDepth)
+	assert.Equal(t, "t2", taskFromDb.StepbackInfo.LastFailingStepbackTaskId)
+	assert.Equal(t, "t3", taskFromDb.StepbackInfo.LastPassingStepbackTaskId)
+	assert.Equal(t, "t4", taskFromDb.StepbackInfo.NextStepbackTaskId)
 }
 
 func TestGetLatestExecution(t *testing.T) {

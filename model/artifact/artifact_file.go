@@ -1,6 +1,9 @@
 package artifact
 
 import (
+	"net/url"
+	"path/filepath"
+	"strings"
 	"time"
 
 	"github.com/evergreen-ci/pail"
@@ -146,4 +149,19 @@ func RotateSecrets(toReplace, replacement string, dryRun bool) (map[TaskIDAndExe
 		}
 	}
 	return changes, catcher.Resolve()
+}
+
+func EscapeFiles(files []File) []File {
+	var escapedFiles []File
+	for _, file := range files {
+		file.Link = escapeFile(file.Link)
+		escapedFiles = append(escapedFiles, file)
+	}
+	return escapedFiles
+}
+
+func escapeFile(path string) string {
+	base := filepath.Base(path)
+	i := strings.LastIndex(path, base)
+	return path[:i] + strings.Replace(path[i:], base, url.QueryEscape(base), 1)
 }

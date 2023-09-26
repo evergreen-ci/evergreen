@@ -218,3 +218,22 @@ func (s *TestArtifactFileSuite) TestRotateSecret() {
 	s.NoError(err)
 	s.Equal(entryFromDb.Files[0].AwsSecret, "changedSecret")
 }
+
+func (s *TestArtifactFileSuite) TestEscapeFiles() {
+	files := []File{
+		{
+			Name: "cat_picture",
+			Link: "https://bucket.s3.amazonaws.com/something/file#1.tar.gz",
+		},
+		{
+			Name: "not_a_cat_picture",
+			Link: "https://notacat#0.png",
+		},
+	}
+
+	escapedFiles := EscapeFiles(files)
+
+	s.Equal("https://bucket.s3.amazonaws.com/something/file%231.tar.gz", escapedFiles[0].Link)
+	s.Equal("https://notacat%230.png", escapedFiles[1].Link)
+
+}
