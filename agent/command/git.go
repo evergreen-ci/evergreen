@@ -308,7 +308,6 @@ func (c *gitFetchProject) buildCloneCommand(ctx context.Context, comm client.Com
 	gitCommands := []string{
 		"set -o xtrace",
 		"set -o errexit",
-		fmt.Sprintf("chmod +w %s 2>/dev/null", c.Directory), // Redirect because we don't care if this errors
 		fmt.Sprintf("rm -rf %s", c.Directory),
 	}
 
@@ -538,6 +537,7 @@ func (c *gitFetchProject) Execute(ctx context.Context, comm client.Communicator,
 				// If clone failed once with the cached merge SHA, do not use it again
 				opts.usePatchMergeCommitSha = false
 			}
+			// TODO: Run chmod here?
 			if err := c.fetch(ctx, comm, logger, conf, opts); err != nil {
 				attemptNum++
 				if attemptNum == 1 {
@@ -580,6 +580,7 @@ func (c *gitFetchProject) fetchSource(ctx context.Context,
 	if err != nil {
 		return err
 	}
+	gitCommands = append([]string{fmt.Sprintf("chmod +w %s", c.Directory)}, gitCommands...)
 	fetchScript := strings.Join(gitCommands, "\n")
 
 	// This needs to use a thread-safe buffer just in case the context errors
@@ -807,6 +808,8 @@ func (c *gitFetchProject) fetch(ctx context.Context,
 			return errors.WithStack(err)
 		}
 	}
+
+	// TODO: Maybe chmod here?
 
 	// Clone the project.
 	if err = c.fetchSource(ctx, comm, logger, conf, jpm, opts); err != nil {
