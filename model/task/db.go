@@ -586,6 +586,18 @@ func ByPreviousCommit(buildVariant, displayName, project, requester string, orde
 	}
 }
 
+// ByRevisionOrderNumber returns a query for a given task with requester,
+// build variant, display name, project and revision order number (aka 'order').
+func ByRevisionOrderNumber(buildVariant, displayName, project, requester string, order int) bson.M {
+	return bson.M{
+		RequesterKey:           requester,
+		BuildVariantKey:        buildVariant,
+		DisplayNameKey:         displayName,
+		ProjectKey:             project,
+		RevisionOrderNumberKey: order,
+	}
+}
+
 func ByVersionsForNameAndVariant(versions, displayNames []string, buildVariant string) bson.M {
 	return bson.M{
 		VersionKey: bson.M{
@@ -595,22 +607,6 @@ func ByVersionsForNameAndVariant(versions, displayNames []string, buildVariant s
 			"$in": displayNames,
 		},
 		BuildVariantKey: buildVariant,
-	}
-}
-
-// ByIntermediateRevisions creates a query that returns the tasks existing
-// between two revision order numbers, exclusive.
-func ByIntermediateRevisions(previousRevisionOrder, currentRevisionOrder int,
-	buildVariant, displayName, project, requester string) bson.M {
-	return bson.M{
-		BuildVariantKey: buildVariant,
-		DisplayNameKey:  displayName,
-		RequesterKey:    requester,
-		RevisionOrderNumberKey: bson.M{
-			"$lt": currentRevisionOrder,
-			"$gt": previousRevisionOrder,
-		},
-		ProjectKey: project,
 	}
 }
 
