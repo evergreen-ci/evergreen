@@ -165,15 +165,17 @@ type Task struct {
 	//     1. The task will never have output data (e.g., display tasks)
 	//        and, therefore, the value is and always will be nil.
 	//     2. The task does not have output data yet, but can in the future
-	//        after running, and, therefore, the value is currently nil.
-	//     3. The task ran with the task output information initialized
-	//        upon getting dispatched and the application can safely use
-	//        this field to fetch any output data.
+	//        if/when dispatched, and, therefore, the value is currently
+	//        nil.
+	//     3. The task has been dispatched with the task output information
+	//        initialized and the application can safely use this field to
+	//        fetch any output data. If the task has not finished running,
+	//        the output data is accessible but may not be complete yet.
 	//     4. The task has data but was run before the introduction of the
-	//        field and should be initialized to the zero value on the
-	//        application to safely fetch any output data.
+	//        field and should be initialized before the application can
+	//        safely fetch any output data.
 	// This field should *never* be accessed directly, instead call
-	// `Task.getTaskOutputSafe()` to instantiate the task output interface.
+	// `Task.getTaskOutputSafe()`.
 	TaskOutputInfo *taskoutput.TaskOutput `bson:"task_output_info,omitempty" json:"task_output_info,omitempty"`
 
 	// Set to true if the task should be considered for mainline github checks
@@ -1478,18 +1480,13 @@ func (t *Task) SetStepbackDepth(stepbackDepth int) error {
 // never have output. This function should only be used to set the task output
 // field upon task dispatch.
 func (t *Task) initializeTaskOutputInfo(env evergreen.Environment) (*taskoutput.TaskOutput, bool) {
-	if t.DisplayOnly {
+	if t.DisplayOnly || t.Archived {
 		return nil, false
-	}
-
-	taskID := t.Id
-	if t.Archived {
-		taskID = t.OldTaskId
 	}
 
 	return taskoutput.InitializeTaskOutput(env, taskoutput.TaskOptions{
 		ProjectID: t.Project,
-		TaskID:    taskID,
+		TaskID:    t.Id,
 		Execution: t.Execution,
 	}), true
 }

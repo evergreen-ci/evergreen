@@ -1,12 +1,9 @@
 package log
 
-var empty = &emptyIterator{}
-
 type emptyIterator struct{}
 
-// EmptyIterator returns a convenience log iterator with no data that returns
-// false immediately.
-func EmptyIterator() *emptyIterator { return empty }
+// EmptyIterator returns a convenience log iterator with no data.
+func EmptyIterator() *emptyIterator { return &emptyIterator{} }
 
 func (*emptyIterator) Next() bool { return false }
 

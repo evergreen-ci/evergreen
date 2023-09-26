@@ -2228,9 +2228,8 @@ func TestMarkAsContainerDispatched(t *testing.T) {
 		assert.Equal(t, podID, dbTask.PodID)
 		assert.Equal(t, evergreen.AgentVersion, dbTask.AgentVersion)
 		output, ok := dbTask.initializeTaskOutputInfo(env)
-		if ok {
-			assert.Equal(t, output, dbTask.TaskOutputInfo)
-		}
+		require.True(t, ok)
+		assert.Equal(t, output, dbTask.TaskOutputInfo)
 	}
 
 	for tName, tCase := range map[string]func(ctx context.Context, t *testing.T, env *mock.Environment, tsks []Task){

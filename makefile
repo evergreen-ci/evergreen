@@ -189,11 +189,13 @@ coverageOutput := $(foreach target,$(packages),$(buildDir)/output.$(target).cove
 coverageHtmlOutput := $(foreach target,$(packages),$(buildDir)/output.$(target).coverage.html)
 # end output files
 
+curlRetryOpts := --retry 10 --retry-max-time 120
+
 # lint setup targets
 $(buildDir)/.lintSetup:$(buildDir)/golangci-lint
 	@touch $@
 $(buildDir)/golangci-lint:
-	@curl --retry 10 --retry-max-time 120 -sSfL -o "$(buildDir)/install.sh" https://raw.githubusercontent.com/golangci/golangci-lint/$(goLintInstallerVersion)/install.sh
+	@curl $(curlRetryOpts) -o "$(buildDir)/install.sh" https://raw.githubusercontent.com/golangci/golangci-lint/$(goLintInstallerVersion)/install.sh
 	@echo "$(goLintInstallerChecksum) $(buildDir)/install.sh" | sha256sum --check
 	@bash $(buildDir)/install.sh -b $(buildDir) $(goLintInstallerVersion) && touch $@
 $(buildDir)/run-linter:cmd/run-linter/run-linter.go $(buildDir)/.lintSetup
@@ -388,12 +390,12 @@ scramble:
 mongodb/.get-mongodb:
 	rm -rf mongodb
 	mkdir -p mongodb
-	cd mongodb && curl "$(MONGODB_URL)" -o mongodb.tgz && $(MONGODB_DECOMPRESS) mongodb.tgz && chmod +x ./mongodb-*/bin/*
+	cd mongodb && curl $(curlRetryOpts) "$(MONGODB_URL)" -o mongodb.tgz && $(MONGODB_DECOMPRESS) mongodb.tgz && chmod +x ./mongodb-*/bin/*
 	cd mongodb && mv ./mongodb-*/bin/* . && rm -rf db_files && rm -rf db_logs && mkdir -p db_files && mkdir -p db_logs
 mongodb/.get-mongosh:
 	rm -rf mongosh
 	mkdir -p mongosh
-	cd mongosh && curl "$(MONGOSH_URL)" -o mongosh.tgz && $(MONGOSH_DECOMPRESS) mongosh.tgz && chmod +x ./mongosh-*/bin/*
+	cd mongosh && curl $(curlRetryOpts) "$(MONGOSH_URL)" -o mongosh.tgz && $(MONGOSH_DECOMPRESS) mongosh.tgz && chmod +x ./mongosh-*/bin/*
 	cd mongosh && mv ./mongosh-*/bin/* .
 get-mongodb:mongodb/.get-mongodb
 	@touch $<
