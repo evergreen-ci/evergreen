@@ -30,6 +30,7 @@ type GeneratedProject struct {
 	Functions     map[string]*YAMLCommandSet `yaml:"functions"`
 	TaskGroups    []parserTaskGroup          `yaml:"task_groups"`
 
+	// Task is the task that is running generate.tasks.
 	Task           *task.Task
 	ActivationInfo *specificActivationInfo
 	NewTVPairs     *TaskVariantPairs
@@ -519,10 +520,12 @@ func (b *specificActivationInfo) taskOrVariantHasSpecificActivation(variant, tas
 func (g *GeneratedProject) findTasksAndVariantsWithSpecificActivations(requester string) specificActivationInfo {
 	res := newSpecificActivationInfo()
 	for _, bv := range g.BuildVariants {
-		// Only consider batchtime for mainline builds. We should always respect activate if it is set.
+		// Only consider batchtime for mainline builds. A task/BV will have
+		// specific activation if activate if it is explicitly set to false;
+		// otherwise, if it's explicitly set to true, activate it immediately.
 		if evergreen.ShouldConsiderBatchtime(requester) && bv.hasSpecificActivation() {
 			res.activationVariants = append(res.activationVariants, bv.name())
-		} else if bv.Activate != nil {
+		} else if !utility.FromBoolTPtr(bv.Activate) {
 			res.activationVariants = append(res.activationVariants, bv.name())
 		}
 		// Regardless of whether the build variant has batchtime, there may be tasks with different batchtime
@@ -535,7 +538,7 @@ func (g *GeneratedProject) findTasksAndVariantsWithSpecificActivations(requester
 			}
 			if evergreen.ShouldConsiderBatchtime(requester) && bvt.hasSpecificActivation() {
 				batchTimeTasks = append(batchTimeTasks, bvt.Name)
-			} else if bvt.Activate != nil {
+			} else if !utility.FromBoolTPtr(bvt.Activate) {
 				batchTimeTasks = append(batchTimeTasks, bvt.Name)
 			}
 		}
