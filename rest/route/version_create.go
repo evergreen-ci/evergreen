@@ -60,16 +60,6 @@ func (h *versionCreateHandler) Run(ctx context.Context) gimlet.Responder {
 		Ref:          projectInfo.Ref,
 		ReadFileFrom: model.ReadFromGithub,
 	}
-	// var data []byte
-	// var configAsYaml yaml.Node
-	// err := yaml.Unmarshal(config, &configAsYaml)
-	// if err != nil {
-	// 	return nil, errors.Wrap(err, "reading provided yaml config")
-	// }
-	// err = h.Config.Decode(&data)
-	if err != nil {
-		return gimlet.NewJSONInternalErrorResponse(errors.Wrapf(err, "decoding config for project '%s'", h.ProjectID))
-	}
 	projectInfo.IntermediateProject, err = model.LoadProjectInto(ctx, h.Config, opts, projectInfo.Ref.Id, p)
 	if err != nil {
 		return gimlet.NewJSONInternalErrorResponse(errors.Wrapf(err, "loading project '%s' from config", h.ProjectID))
