@@ -529,6 +529,7 @@ func getAliasCoverage(p *model.Project, aliasMap map[string]model.ProjectAlias) 
 		aliasNeedsVariant[a] = true
 		aliasNeedsTask[a] = true
 	}
+	// kim: NOTE: this is where alias coverage is verified.
 	for _, bv := range p.BuildVariants {
 		for aliasID, alias := range aliasMap {
 			if !aliasNeedsVariant[aliasID] && !aliasNeedsTask[aliasID] { // Have already found both variants and tasks.

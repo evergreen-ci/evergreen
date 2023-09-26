@@ -66,13 +66,15 @@ const (
 // variants/tasks, assuming the tag matches the defined git_tag regex.
 // In this way, users can define different behavior for different kind of tags.
 type ProjectAlias struct {
-	ID          mgobson.ObjectId  `bson:"_id,omitempty" json:"_id" yaml:"id"`
-	ProjectID   string            `bson:"project_id" json:"project_id" yaml:"project_id"`
-	Alias       string            `bson:"alias" json:"alias" yaml:"alias"`
-	Variant     string            `bson:"variant,omitempty" json:"variant" yaml:"variant"`
-	Description string            `bson:"description" json:"description" yaml:"description"`
-	GitTag      string            `bson:"git_tag" json:"git_tag" yaml:"git_tag"`
-	RemotePath  string            `bson:"remote_path" json:"remote_path" yaml:"remote_path"`
+	ID          mgobson.ObjectId `bson:"_id,omitempty" json:"_id" yaml:"id"`
+	ProjectID   string           `bson:"project_id" json:"project_id" yaml:"project_id"`
+	Alias       string           `bson:"alias" json:"alias" yaml:"alias"`
+	Variant     string           `bson:"variant,omitempty" json:"variant" yaml:"variant"`
+	Description string           `bson:"description" json:"description" yaml:"description"`
+	GitTag      string           `bson:"git_tag" json:"git_tag" yaml:"git_tag"`
+	RemotePath  string           `bson:"remote_path" json:"remote_path" yaml:"remote_path"`
+	// kim: NOTE: both task and variant tags seems to have issue with not
+	// respecting multi-tag intersection (e.g. "primary !blue").
 	VariantTags []string          `bson:"variant_tags,omitempty" json:"variant_tags" yaml:"variant_tags"`
 	Task        string            `bson:"task,omitempty" json:"task" yaml:"task"`
 	TaskTags    []string          `bson:"tags,omitempty" json:"tags" yaml:"task_tags"`
@@ -479,6 +481,9 @@ func IsPatchAlias(alias string) bool {
 	return !utility.StringSliceContains(evergreen.InternalAliases, alias)
 }
 
+// kim: TODO: test
+// HasMatchingGitTag determines whether or not the given git tag name matches
+// any of the project aliases' git tag regexp.
 func (a ProjectAliases) HasMatchingGitTag(tag string) (bool, error) {
 	matchingAliases, err := aliasesMatchingGitTag(a, tag)
 	if err != nil {
@@ -501,6 +506,9 @@ func aliasesMatchingGitTag(a ProjectAliases, tag string) (ProjectAliases, error)
 	return res, nil
 }
 
+// AliasesMatchingVariant returns the filtered set of project aliases for which
+// the alias' variant regexp matches the variant's name, or the alias' variant
+// tags match the variant's tags.
 func (a ProjectAliases) AliasesMatchingVariant(variant string, variantTags []string) (ProjectAliases, error) {
 	res := []ProjectAlias{}
 	for _, alias := range a {
@@ -515,6 +523,9 @@ func (a ProjectAliases) AliasesMatchingVariant(variant string, variantTags []str
 	return res, nil
 }
 
+// HasMatchingVariant returns whether or not one the alias variant regexp
+// matches the variant's name, or the alias' variant tags match the variant's
+// tags. Note that this does not check for matching tasks.
 func (a ProjectAlias) HasMatchingVariant(variant string, variantTags []string) (bool, error) {
 	variantRegex, err := a.getVariantRegex()
 	if err != nil {
@@ -556,7 +567,9 @@ func (a *ProjectAlias) getGitTagRegex() (*regexp.Regexp, error) {
 	return gitTagRegex, nil
 }
 
-// HasMatchingTask assumes that the aliases given already match the preferred variant.
+// HasMatchingTask returns whether or not one the alias task regexp matches the
+// variant's name, or the alias' task tags match the variant's tags. Note that
+// this does not check for matching variant.
 func (a ProjectAliases) HasMatchingTask(taskName string, taskTags []string) (bool, error) {
 	for _, alias := range a {
 		hasMatch, err := alias.HasMatchingTask(taskName, taskTags)
@@ -570,6 +583,7 @@ func (a ProjectAliases) HasMatchingTask(taskName string, taskTags []string) (boo
 	return false, nil
 }
 
+// kim: TODO: test
 func (a ProjectAlias) HasMatchingTask(taskName string, taskTags []string) (bool, error) {
 	taskRegex, err := a.getTaskRegex()
 	if err != nil {
@@ -580,18 +594,72 @@ func (a ProjectAlias) HasMatchingTask(taskName string, taskTags []string) (bool,
 }
 
 // isValidRegexOrTag returns true if the item/tag matches the alias tag/regex.
+// kim: NOTE: this is the logic that determines if a project alias matches the
+// item.
+// kim: NOTE: may be worth reordering parameters since aliasRegex is trying to
+// match against curItem whereas aliasTags is trying to match against curTags.
+// kim: TODO: add lots of tests
 func isValidRegexOrTag(curItem string, curTags, aliasTags []string, aliasRegex *regexp.Regexp) bool {
 	if aliasRegex != nil && aliasRegex.MatchString(curItem) {
 		return true
 	}
 	for _, tag := range aliasTags {
-		if utility.StringSliceContains(curTags, tag) {
-			return true
+		// kim: TODO: remove
+		// if utility.StringSliceContains(curTags, tag) {
+		//     return true
+		// }
+		// // a negated tag
+		// if len(tag) > 0 && tag[0] == '!' && !utility.StringSliceContains(curTags, tag[1:]) {
+		//     return true
+		// }
+
+		// kim: NOTE: we can't use ParseSelector because it expects a "." for a
+		// tag, whereas project aliases do not.
+		// kim: NOTE: tag selector logic in a BVTU lets you negate specific
+		// task names. We can't support that here because tags do not use the
+		// leading dot (".") to differentiate between a tag name and a
+		// task/variant name. Therefore, it's not possible to distinguish
+		// between "blue" being a task name or a tag name in the alias tag.
+
+		// For this tag selector to match the current item's tags, it has to
+		// satisfy all the criteria of the selector.
+		// Note that this is functionally equivalent to project tag selector
+		// syntax, but doesn't prefix the tag name with a period.
+
+		criteria := strings.Fields(tag)
+		if len(criteria) == 0 {
+			continue
 		}
-		// a negated tag
-		if len(tag) > 0 && tag[0] == '!' && !utility.StringSliceContains(curTags, tag[1:]) {
-			return true
+
+		allCriteriaSatisfied := true
+		for _, criterion := range criteria {
+			if len(criterion) == 0 {
+				continue
+			}
+
+			tagName := criterion
+			var negated bool
+			if criterion[0] == '!' {
+				negated = true
+				tagName = criterion[1:]
+			}
+			if negated && utility.StringSliceContains(curTags, tagName) {
+				// Negation - tag matches the item's tags.
+				allCriteriaSatisfied = false
+				break
+			}
+			if !negated && !utility.StringSliceContains(curTags, tagName) {
+				// Intersection - tag does not match the item's tags.
+				allCriteriaSatisfied = false
+				break
+			}
 		}
+
+		if !allCriteriaSatisfied {
+			continue
+		}
+
+		return true
 	}
 	return false
 }

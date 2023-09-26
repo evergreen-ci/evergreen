@@ -1963,6 +1963,9 @@ func (p *Project) BuildProjectTVPairsWithAlias(aliases []ProjectAlias, requester
 		}
 
 		for _, variant := range p.BuildVariants {
+			// kim: TODO: ascertain that VariantTags and TaskTags here are the
+			// list of tags as-is. If so, then each individual tag has to do set
+			// intersection of the space-delimited tags.
 			if !isValidRegexOrTag(variant.Name, variant.Tags, alias.VariantTags, variantRegex) {
 				continue
 			}

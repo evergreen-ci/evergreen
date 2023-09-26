@@ -26,6 +26,10 @@ import (
 //   ".primary" would return all items with the tag "primary"
 //   "!.primary" would return all items that are NOT tagged "primary"
 //   ".cool !blue" would return all items that are tagged "cool" and NOT named "blue"
+// kim: NOTE: this is where the tag intersection rules are evaluated. This
+// comment lines up with the docs. Most likely, the tag selector rules are
+// implemented separately from the project alias rules, resulting in
+// behavioral differences.
 
 const (
 	SelectAll             = "*"

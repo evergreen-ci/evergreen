@@ -816,6 +816,8 @@ func createVersionItems(ctx context.Context, v *model.Version, metadata model.Ve
 			return errors.Wrapf(ctx.Err(), "aborting version creation for version '%s'", v.Id)
 		}
 		if len(aliases) > 0 {
+			// kim: NOTE: this is used to decide what variants/tasks to run for
+			// git tag versions.
 			var aliasesMatchingVariant model.ProjectAliases
 			aliasesMatchingVariant, err = aliases.AliasesMatchingVariant(buildvariant.Name, buildvariant.Tags)
 			if err != nil {

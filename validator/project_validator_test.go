@@ -1701,6 +1701,7 @@ func TestValidatePlugins(t *testing.T) {
 	})
 }
 
+// kim: TODO: add tests to ensure that this allows tag intersection syntax.
 func TestValidateAliasCoverage(t *testing.T) {
 	for testName, testCase := range map[string]func(*testing.T, *model.Project){
 		"matchesNothing": func(t *testing.T, p *model.Project) {

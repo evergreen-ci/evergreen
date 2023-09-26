@@ -102,6 +102,12 @@ Options:
 
 ### Aliases
 
+<!--
+kim: TODO: update docs for tag selector logic and describe set intersection (AND) + union (OR)
+Space-delimited selections result in set intersection within that tag selector
+All selected tasks across all tags are set unioned together.
+-->
+
 Aliases can be used for patch testing, commit queue testing, Github PRs,
 github checks, git tag triggers, project triggers, and patch triggers.
 
