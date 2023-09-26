@@ -2331,6 +2331,9 @@ func TestMarkAsContainerDispatched(t *testing.T) {
 		assert.False(t, utility.IsZeroTime(dbTask.LastHeartbeat))
 		assert.Equal(t, podID, dbTask.PodID)
 		assert.Equal(t, evergreen.AgentVersion, dbTask.AgentVersion)
+		output, ok := dbTask.initializeTaskOutputInfo(env)
+		require.True(t, ok)
+		assert.Equal(t, output, dbTask.TaskOutputInfo)
 	}
 
 	for tName, tCase := range map[string]func(ctx context.Context, t *testing.T, env *mock.Environment, tsks []Task){
@@ -4809,82 +4812,6 @@ func TestGenerateNotRun(t *testing.T) {
 				GeneratedTasks:        false,
 				GeneratedJSONAsString: []string{"some_generated_json"},
 			})
-		})
-	}
-}
-
-func TestSetTaskOutputVersion(t *testing.T) {
-	ctx, cancel := context.WithCancel(context.Background())
-	defer cancel()
-	env := evergreen.GetEnvironment()
-	defer func() {
-		assert.NoError(t, env.DB().Collection(Collection).Drop(ctx))
-	}()
-	require.NoError(t, env.DB().Collection(Collection).Drop(ctx))
-
-	for _, test := range []struct {
-		name   string
-		dbTsk  *Task
-		tsk    *Task
-		hasErr bool
-	}{
-		{
-			name: "DisplayTask",
-			tsk: &Task{
-				DisplayOnly: true,
-			},
-			hasErr: true,
-		},
-		{
-			name: "VersionAlreadySet",
-			tsk: &Task{
-				TaskOutputVersion: utility.ToIntPtr(1),
-			},
-			hasErr: true,
-		},
-		{
-			name: "TaskDNE",
-			tsk: &Task{
-				Id:                "DNE",
-				TaskOutputVersion: utility.ToIntPtr(1),
-			},
-			hasErr: true,
-		},
-		{
-			name: "VersionAlreadySetInDB",
-			dbTsk: &Task{
-				Id:                "task0",
-				TaskOutputVersion: utility.ToIntPtr(1),
-			},
-			tsk: &Task{
-				Id: "task0",
-			},
-			hasErr: true,
-		},
-		{
-			name: "UnsetVersion",
-			dbTsk: &Task{
-				Id: "task1",
-			},
-			tsk: &Task{
-				Id: "task1",
-			},
-		},
-	} {
-		t.Run(test.name, func(t *testing.T) {
-			if test.dbTsk != nil {
-				_, err := env.DB().Collection(Collection).InsertOne(ctx, test.dbTsk)
-				require.NoError(t, err)
-			}
-
-			err := test.tsk.SetTaskOutputVersion(ctx, env, 0)
-			if test.hasErr {
-				require.Error(t, err)
-				assert.NotEqual(t, utility.ToIntPtr(0), test.tsk.TaskOutputVersion)
-			} else {
-				require.NoError(t, err)
-				assert.Equal(t, utility.ToIntPtr(0), test.tsk.TaskOutputVersion)
-			}
 		})
 	}
 }
