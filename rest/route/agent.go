@@ -644,7 +644,7 @@ func (h *attachFilesHandler) Run(ctx context.Context) gimlet.Responder {
 		BuildId:         t.BuildId,
 		Execution:       t.Execution,
 		CreateTime:      time.Now(),
-		Files:           h.files,
+		Files:           artifact.EscapeFiles(h.files),
 	}
 
 	if err = entry.Upsert(); err != nil {

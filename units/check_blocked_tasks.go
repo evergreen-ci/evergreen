@@ -149,7 +149,7 @@ func checkUnmarkedBlockingTasks(t *task.Task, dependencyCaches map[string]task.T
 	blockingDeactivatedTasks, err := t.BlockedOnDeactivatedDependency(dependencyCaches)
 	catcher.Wrap(err, "getting blocked status")
 	if err == nil && len(blockingDeactivatedTasks) > 0 {
-		err = task.DeactivateDependencies(blockingDeactivatedTasks, evergreen.DefaultTaskActivator+".dispatcher")
+		err = task.DeactivateDependencies(blockingDeactivatedTasks, evergreen.CheckBlockedTasksActivator)
 		catcher.Add(err)
 	}
 
