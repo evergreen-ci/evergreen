@@ -1131,20 +1131,25 @@ func removeNextMergeTaskDependency(cq commitqueue.CommitQueue, currentIssue stri
 
 	return nil
 }
-func newEvalStepback(ctx context.Context, t *task.Task, caller, status string, deactivatePrevious bool) error {
 
-	return nil
+// evalStepback runs linear or bisect stepback depending on project, build variant, and task settings.
+func evalStepback(ctx context.Context, t *task.Task, caller, status string, deactivatePrevious bool) error {
+	s, err := getStepback(t.Id)
+	if err != nil {
+		return errors.WithStack(err)
+	}
+	if s.bisect {
+		return evalBisectStepback(ctx, t, caller, status, deactivatePrevious)
+	}
+	return evalLinearStepback(ctx, t, caller, status, s.shouldStepback, deactivatePrevious)
 }
 
-func evalStepback(ctx context.Context, t *task.Task, caller, status string, deactivatePrevious bool) error {
-	// Stepback if the task failed regularly _or_ if we are currently stepping back and we encountered any failure.
+// evalLinearStepback performs linear stepback on the task or cleans up after previous iterations of lienar
+// stepback.
+func evalLinearStepback(ctx context.Context, t *task.Task, caller, status string, stepback, deactivatePrevious bool) error {
 	if (status == evergreen.TaskFailed && !t.Aborted) ||
 		(evergreen.IsFailedTaskStatus(status) && t.ActivatedBy == evergreen.StepbackTaskActivator) {
-		s, err := getStepback(t.Id)
-		if err != nil {
-			return errors.WithStack(err)
-		}
-		if !s.shouldStepback {
+		if stepback {
 			return nil
 		}
 
@@ -1176,8 +1181,12 @@ func evalStepback(ctx context.Context, t *task.Task, caller, status string, deac
 			return errors.Wrap(err, "deactivating previous task")
 		}
 	}
-
 	return nil
+}
+
+// evalBisectStepback performs bisect stepback on the task. To be implemented in EVG-20788.
+func evalBisectStepback(ctx context.Context, t *task.Task, caller, status string, deactivatePrevious bool) error {
+	return errors.New("bisect stepback not implemented yet, EVG-20788")
 }
 
 // updateMakespans updates the predicted and actual makespans for the tasks in
