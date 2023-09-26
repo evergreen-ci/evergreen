@@ -470,50 +470,63 @@ func DeactivatePreviousTasks(ctx context.Context, t *task.Task, caller string) e
 	return nil
 }
 
+type stepbackInstructions struct {
+	shouldStepback bool
+	// If true, bisect should be used, if false, linear should be used.
+	bisect bool
+}
+
 // Returns true if the task should stepback upon failure, and false
 // otherwise. Note that the setting is obtained from the top-level
 // project, if not explicitly set on the task or disabled at the project level.
-func getStepback(taskId string) (bool, error) {
+func getStepback(taskId string) (stepbackInstructions, error) {
 	t, err := task.FindOneId(taskId)
 	if err != nil {
-		return false, errors.Wrapf(err, "finding task '%s'", taskId)
+		return stepbackInstructions{}, errors.Wrapf(err, "finding task '%s'", taskId)
 	}
 	if t == nil {
-		return false, errors.Errorf("task '%s' not found", taskId)
+		return stepbackInstructions{}, errors.Errorf("task '%s' not found", taskId)
 	}
 	projectRef, err := FindMergedProjectRef(t.Project, "", false)
 	if err != nil {
-		return false, errors.Wrapf(err, "finding merged project ref for task '%s'", taskId)
+		return stepbackInstructions{}, errors.Wrapf(err, "finding merged project ref for task '%s'", taskId)
 	}
 	if projectRef == nil {
-		return false, errors.Errorf("project for task '%s' not found", taskId)
+		return stepbackInstructions{}, errors.Errorf("project for task '%s' not found", taskId)
 	}
 	// Disabling the feature at the project level takes precedent.
 	if projectRef.IsStepbackDisabled() {
-		return false, nil
+		return stepbackInstructions{}, nil
 	}
 
 	project, err := FindProjectFromVersionID(t.Version)
 	if err != nil {
-		return false, errors.WithStack(err)
+		return stepbackInstructions{}, errors.WithStack(err)
 	}
 
 	projectTask := project.FindProjectTask(t.DisplayName)
 	// Check if the task overrides the stepback policy specified by the project
+	s := stepbackInstructions{}
+	if projectRef.StepbackBisect != nil {
+		s.bisect = *projectRef.StepbackBisect
+	}
 	if projectTask != nil && projectTask.Stepback != nil {
-		return *projectTask.Stepback, nil
+		s.shouldStepback = *projectTask.Stepback
+		return s, nil
 	}
 
 	// Check if the build variant overrides the stepback policy specified by the project
 	for _, buildVariant := range project.BuildVariants {
 		if t.BuildVariant == buildVariant.Name {
 			if buildVariant.Stepback != nil {
-				return *buildVariant.Stepback, nil
+				s.shouldStepback = *buildVariant.Stepback
+				return s, nil
 			}
 			break
 		}
 	}
-	return project.Stepback, nil
+	s.shouldStepback = project.Stepback
+	return s, nil
 }
 
 // doStepBack performs a stepback on the task if there is a previous task and if not it returns nothing.
@@ -1118,17 +1131,20 @@ func removeNextMergeTaskDependency(cq commitqueue.CommitQueue, currentIssue stri
 
 	return nil
 }
+func newEvalStepback(ctx context.Context, t *task.Task, caller, status string, deactivatePrevious bool) error {
+
+	return nil
+}
 
 func evalStepback(ctx context.Context, t *task.Task, caller, status string, deactivatePrevious bool) error {
 	// Stepback if the task failed regularly _or_ if we are currently stepping back and we encountered any failure.
 	if (status == evergreen.TaskFailed && !t.Aborted) ||
 		(evergreen.IsFailedTaskStatus(status) && t.ActivatedBy == evergreen.StepbackTaskActivator) {
-		var shouldStepBack bool
-		shouldStepBack, err := getStepback(t.Id)
+		s, err := getStepback(t.Id)
 		if err != nil {
 			return errors.WithStack(err)
 		}
-		if !shouldStepBack {
+		if !s.shouldStepback {
 			return nil
 		}
 
