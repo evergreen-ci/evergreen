@@ -353,7 +353,7 @@ by a patch submission.
 ``` yaml
 - modules: 
   - name: example
-    repo: git@github.com:10gen/mongo-example-modules.git
+    repo: https://github.com/10gen/mongo-example-modules.git
     prefix: src/mongo/db/modules
     ref: 12341a65256ff78b6d15ab79a1c7088443b9abcd
     branch: master
@@ -386,7 +386,7 @@ Parameters:
 The parameters for each module are:
 
 -   `name`: the name of the module
--   `repo`: the repo of the module
+-   `repo`: the repo of the module (should be in `https://github.com/owner/repo.git` format)
 -   `prefix`: the subdirectory to clone the repository in. It will be
     the repository name as a top-level directory in `dir` if omitted
 -   `ref`: must be a commit hash, takes precedence over the `branch`
