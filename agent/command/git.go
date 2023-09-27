@@ -190,8 +190,18 @@ func (opts cloneOpts) getCloneCommand() ([]string, error) {
 	}
 	switch opts.method {
 	case "", evergreen.CloneMethodLegacySSH:
+		grip.Debug(message.Fields{
+			"message": "using legacy ssh clone method",
+			"ticket":  "EVG-19966",
+			"opts":    opts,
+		})
 		return opts.buildSSHCloneCommand()
 	case evergreen.CloneMethodOAuth:
+		grip.Debug(message.Fields{
+			"message": "using legacy oauth clone method",
+			"ticket":  "EVG-19966",
+			"opts":    opts,
+		})
 		return opts.buildHTTPCloneCommand(false)
 	case evergreen.CloneMethodAccessToken:
 		return opts.buildHTTPCloneCommand(true)
@@ -559,6 +569,7 @@ func (c *gitFetchProject) Execute(ctx context.Context, comm client.Communicator,
 			"owner":                conf.ProjectRef.Owner,
 			"repo":                 conf.ProjectRef.Repo,
 			"branch":               conf.ProjectRef.Branch,
+			"clone_method":         opts.method,
 		}))
 	}
 
@@ -636,6 +647,7 @@ func (c *gitFetchProject) fetchModuleSource(ctx context.Context,
 	logger client.LoggerProducer,
 	jpm jasper.Manager,
 	projectToken string,
+	cloneMethod string,
 	p *patch.Patch,
 	moduleName string) error {
 
@@ -710,9 +722,10 @@ func (c *gitFetchProject) fetchModuleSource(ctx context.Context,
 	// Module's location takes precedence over the project-level clone
 	// method.
 	if strings.Contains(opts.location, "git@github.com:") {
+		logger.Execution().Warning("Using legacy SSH clone method is deprecated. Please pass in an https clone string instead")
 		opts.method = evergreen.CloneMethodLegacySSH
 	} else {
-		opts.method = evergreen.CloneMethodOAuth
+		opts.method = cloneMethod
 		opts.token = projectToken
 	}
 	if err = opts.validate(); err != nil {
@@ -827,7 +840,7 @@ func (c *gitFetchProject) fetch(ctx context.Context,
 		if err := ctx.Err(); err != nil {
 			return errors.Wrapf(err, "canceled while applying module '%s'", moduleName)
 		}
-		err = c.fetchModuleSource(ctx, conf, logger, jpm, opts.token, p, moduleName)
+		err = c.fetchModuleSource(ctx, conf, logger, jpm, opts.token, opts.method, p, moduleName)
 		if err != nil {
 			logger.Execution().Error(errors.Wrap(err, "fetching module source"))
 			return err
