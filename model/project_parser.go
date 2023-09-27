@@ -631,9 +631,48 @@ func GetProjectFromBSON(data []byte) (*Project, error) {
 	return TranslateProject(pp)
 }
 
-type yamlNamePair struct {
+func processIntermediateProjectInludes(ctx context.Context, identifier string, intermediateProject *ParserProject,
+	include Include, yamlChan chan<- yamlTuple, projectOpts *GetProjectOpts) {
+	// Make a copy of opts because otherwise parts of opts would be
+	// modified concurrently.  Note, however, that Ref and PatchOpts are
+	// themselves pointers, so should not be modified.
+	localOpts := &GetProjectOpts{
+		Ref:             projectOpts.Ref,
+		PatchOpts:       projectOpts.PatchOpts,
+		LocalModules:    projectOpts.LocalModules,
+		RemotePath:      include.FileName,
+		Revision:        projectOpts.Revision,
+		Token:           projectOpts.Token,
+		ReadFileFrom:    projectOpts.ReadFileFrom,
+		Identifier:      identifier,
+		UnmarshalStrict: projectOpts.UnmarshalStrict,
+	}
+	localOpts.UpdateReadFileFrom(include.FileName)
+
+	var yaml []byte
+	var err error
+	grip.Debug(message.Fields{
+		"message":     "retrieving included YAML file",
+		"remote_path": localOpts.RemotePath,
+		"read_from":   localOpts.ReadFileFrom,
+		"module":      include.Module,
+	})
+	if include.Module != "" {
+		yaml, err = retrieveFileForModule(ctx, *localOpts, intermediateProject.Modules, include.Module)
+	} else {
+		yaml, err = retrieveFile(ctx, *localOpts)
+	}
+	if err != nil {
+		yamlChan <- yamlTuple{nil, include.FileName, errors.Wrapf(err, "%s: retrieving file '%s'", LoadProjectError, include.FileName)}
+	} else {
+		yamlChan <- yamlTuple{yaml, include.FileName, nil}
+	}
+}
+
+type yamlTuple struct {
 	yaml []byte
 	name string
+	err  error
 }
 
 // LoadProjectInto loads the raw data from the config file into project
@@ -656,68 +695,42 @@ func LoadProjectInto(ctx context.Context, data []byte, opts *GetProjectOpts, ide
 			return nil, errors.Wrapf(err, LoadProjectError)
 		}
 		wg := sync.WaitGroup{}
-		catcher := grip.NewBasicCatcher()
-		yamlNamePairs := make(chan yamlNamePair, len(intermediateProject.Include))
+		yamlChan := make(chan yamlTuple, len(intermediateProject.Include))
 
 		for _, path := range intermediateProject.Include {
 			wg.Add(1)
-			go func(include Include, projectOpts *GetProjectOpts) {
+			go func() {
 				defer wg.Done()
-				// Make a copy of opts because otherwise parts opts would be
-				// modified concurrenly.  Note, however, that Ref and PatchOpts are
-				// themselves pointers, so should not be modified.
-				localOpts := &GetProjectOpts{
-					Ref:             opts.Ref,
-					PatchOpts:       opts.PatchOpts,
-					LocalModules:    opts.LocalModules,
-					RemotePath:      projectOpts.RemotePath,
-					Revision:        projectOpts.Revision,
-					Token:           projectOpts.Token,
-					ReadFileFrom:    projectOpts.ReadFileFrom,
-					Identifier:      projectOpts.Identifier,
-					UnmarshalStrict: projectOpts.UnmarshalStrict,
-				}
-				localOpts.UpdateForFile(include.FileName)
-
-				var yaml []byte
-				localOpts.Identifier = identifier
-				localOpts.RemotePath = include.FileName
-				grip.Debug(message.Fields{
-					"message":     "retrieving included YAML file",
-					"remote_path": localOpts.RemotePath,
-					"read_from":   localOpts.ReadFileFrom,
-					"module":      include.Module,
-				})
-				if include.Module != "" {
-					yaml, err = retrieveFileForModule(ctx, *localOpts, intermediateProject.Modules, include.Module)
-					if err == nil && yaml != nil {
-						yamlNamePairs <- yamlNamePair{yaml, include.FileName}
-					}
-				} else {
-					yaml, err = retrieveFile(ctx, *localOpts)
-					if err == nil && yaml != nil {
-						yamlNamePairs <- yamlNamePair{yaml, include.FileName}
-					}
-				}
-				catcher.Add(errors.Wrapf(err, "%s: retrieving file '%s'", LoadProjectError, include.FileName))
-			}(path, opts)
+				processIntermediateProjectInludes(ctx, identifier, intermediateProject, path, yamlChan, opts)
+			}()
 		}
 		wg.Wait()
-		close(yamlNamePairs)
+		close(yamlChan)
+
+		// We must apply the includes in order, so we indirect through a map.
+		yamlMap := map[string][]byte{}
+		catcher := grip.NewBasicCatcher()
+		for elem := range yamlChan {
+			if elem.err != nil {
+				catcher.Add(err)
+			} else {
+				yamlMap[elem.name] = elem.yaml
+			}
+		}
 
 		if catcher.HasErrors() {
-			return intermediateProject, catcher.Resolve()
-		} else {
-			// return intermediateProject even if we run into issues to show merge progress
-			for pair := range yamlNamePairs {
-				add, err := createIntermediateProject(pair.yaml, opts.UnmarshalStrict)
-				if err != nil {
-					return intermediateProject, errors.Wrapf(err, "%s: loading file '%s'", LoadProjectError, pair.name)
-				}
-				err = intermediateProject.mergeMultipleParserProjects(add)
-				if err != nil {
-					return intermediateProject, errors.Wrapf(err, "%s: merging file '%s'", LoadProjectError, pair.name)
-				}
+			return intermediateProject, errors.Wrap(catcher.Resolve(), "getting includes")
+		}
+
+		for _, path := range intermediateProject.Include {
+			add, err := createIntermediateProject(yamlMap[path.FileName], opts.UnmarshalStrict)
+			if err != nil {
+				// Return intermediateProject even if we run into issues to show merge progress.
+				return intermediateProject, errors.Wrapf(err, "%s: loading file '%s'", LoadProjectError, path.FileName)
+			}
+			if err = intermediateProject.mergeMultipleParserProjects(add); err != nil {
+				// Return intermediateProject even if we run into issues to show merge progress.
+				return intermediateProject, errors.Wrapf(err, "%s: merging file '%s'", LoadProjectError, path.FileName)
 			}
 		}
 
@@ -760,7 +773,7 @@ type PatchOpts struct {
 
 // UpdateNewFile modifies ReadFileFrom to read from the patch diff
 // if the included file has been modified.
-func (opts *GetProjectOpts) UpdateForFile(path string) {
+func (opts *GetProjectOpts) UpdateReadFileFrom(path string) {
 	if opts.ReadFileFrom == ReadFromPatch || opts.ReadFileFrom == ReadFromPatchDiff {
 		if opts.PatchOpts.patch != nil && opts.PatchOpts.patch.ShouldPatchFileWithDiff(path) {
 			opts.ReadFileFrom = ReadFromPatchDiff
