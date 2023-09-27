@@ -842,7 +842,6 @@ func (c *gitFetchProject) fetch(ctx context.Context,
 		err = c.fetchModuleSource(ctx, conf, logger, jpm, opts.token, opts.method, p, moduleName)
 		if err != nil {
 			logger.Execution().Error(errors.Wrap(err, "fetching module source"))
-			return err
 		}
 	}
 
