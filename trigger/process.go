@@ -99,11 +99,7 @@ type ProcessorArgs struct {
 	Alias                        string
 	ProjectID                    string
 	UnscheduleDownstreamVersions bool
-	PushInfo                     PushInfo
-}
-
-type PushInfo struct {
-	Revision model.Revision
+	PushRevision                 model.Revision
 }
 
 // EvalProjectTriggers takes an event log entry and a processor (either the mock or TriggerDownstreamVersion)
@@ -161,7 +157,7 @@ func triggerDownstreamProjectsForTask(ctx context.Context, t *task.Task, e *even
 
 	catcher := grip.NewBasicCatcher()
 	versions := []model.Version{}
-projectLoop:
+
 	for _, ref := range downstreamProjects {
 
 		for _, trigger := range ref.Triggers {
@@ -220,7 +216,7 @@ projectLoop:
 			if v != nil {
 				versions = append(versions, *v)
 			}
-			continue projectLoop
+			break
 		}
 	}
 
@@ -245,7 +241,7 @@ func triggerDownstreamProjectsForBuild(ctx context.Context, b *build.Build, e *e
 
 	catcher := grip.NewBasicCatcher()
 	versions := []model.Version{}
-projectLoop:
+
 	for _, ref := range downstreamProjects {
 		for _, trigger := range ref.Triggers {
 			if trigger.Level != model.ProjectTriggerLevelBuild {
@@ -290,7 +286,7 @@ projectLoop:
 			if v != nil {
 				versions = append(versions, *v)
 			}
-			continue projectLoop
+			break
 		}
 	}
 
@@ -299,22 +295,18 @@ projectLoop:
 
 // TriggerDownstreamProjectsForPush triggers downstream projects for a push event from a repo that does not
 // have repotracker enabled.
-func TriggerDownstreamProjectsForPush(ctx context.Context, projectId string, event *github.PushEvent, processor projectProcessor) ([]model.Version, error) {
+func TriggerDownstreamProjectsForPush(ctx context.Context, projectId string, event *github.PushEvent, processor projectProcessor) error {
 	downstreamProjects, err := model.FindDownstreamProjects(projectId)
 	if err != nil {
-		return nil, errors.Wrapf(err, "finding downstream projects of project '%s'", projectId)
+		return errors.Wrapf(err, "finding downstream projects of project '%s'", projectId)
 	}
 
 	catcher := grip.NewBasicCatcher()
 	versions := []model.Version{}
-projectLoop:
 	for _, ref := range downstreamProjects {
 
 		for _, trigger := range ref.Triggers {
-			if trigger.Level != model.ProjectTriggerLevelPush {
-				continue
-			}
-			if trigger.Project != projectId {
+			if trigger.Level != model.ProjectTriggerLevelPush || trigger.Project != projectId {
 				continue
 			}
 
@@ -326,14 +318,12 @@ projectLoop:
 				Alias:                        trigger.Alias,
 				ProjectID:                    trigger.Project,
 				UnscheduleDownstreamVersions: trigger.UnscheduleDownstreamVersions,
-				PushInfo: PushInfo{
-					Revision: model.Revision{
-						Revision:        utility.FromStringPtr(event.GetHeadCommit().SHA),
-						CreateTime:      event.GetHeadCommit().Timestamp.Time,
-						Author:          utility.FromStringPtr(event.GetHeadCommit().Author.Name),
-						AuthorEmail:     utility.FromStringPtr(event.GetHeadCommit().Author.Email),
-						RevisionMessage: utility.FromStringPtr(event.GetHeadCommit().Message),
-					},
+				PushRevision: model.Revision{
+					Revision:        utility.FromStringPtr(event.GetHeadCommit().SHA),
+					CreateTime:      event.GetHeadCommit().Timestamp.Time,
+					Author:          utility.FromStringPtr(event.GetHeadCommit().Author.Name),
+					AuthorEmail:     utility.FromStringPtr(event.GetHeadCommit().Author.Email),
+					RevisionMessage: utility.FromStringPtr(event.GetHeadCommit().Message),
 				},
 			}
 			v, err := processor(ctx, args)
@@ -344,9 +334,20 @@ projectLoop:
 			if v != nil {
 				versions = append(versions, *v)
 			}
-			continue projectLoop
+			break
 		}
 	}
 
-	return versions, catcher.Resolve()
+	versionIds := []string{}
+	for _, v := range versions {
+		versionIds = append(versionIds, v.Id)
+	}
+	grip.InfoWhen(len(versions) > 0, message.Fields{
+		"source":     "GitHub hook",
+		"message":    "triggered versions for push event for project",
+		"versions":   versions,
+		"project_id": projectId,
+	})
+
+	return catcher.Resolve()
 }
