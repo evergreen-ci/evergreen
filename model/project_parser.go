@@ -664,9 +664,9 @@ func processIntermediateProjectInludes(ctx context.Context, identifier string, i
 	}
 	if err != nil {
 		yamlChan <- yamlTuple{nil, include.FileName, errors.Wrapf(err, "%s: retrieving file '%s'", LoadProjectError, include.FileName)}
-	} else {
-		yamlChan <- yamlTuple{yaml, include.FileName, nil}
+		return
 	}
+	yamlChan <- yamlTuple{yaml, include.FileName, nil}
 }
 
 type yamlTuple struct {
