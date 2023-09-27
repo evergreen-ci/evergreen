@@ -553,7 +553,7 @@ func (s *ProjectAliasSuite) TestUpsertAliasesForProject() {
 	s.Len(found, 10)
 }
 
-func TestGitTagMatching(t *testing.T) {
+func TestProjectAliasGitTagMatching(t *testing.T) {
 	aliases := ProjectAliases{
 		{Alias: "one", Variant: "bv1", Task: "t1", GitTag: "tag-."},
 		{Alias: "two", Variant: "bv2", Task: "t2"},
@@ -575,60 +575,91 @@ func TestGitTagMatching(t *testing.T) {
 	})
 }
 
-func TestAliasVariantMatching(t *testing.T) {
-	// kim: TODO: current test only covers variant name and task/task tag. Need
-	// to have:
-	// - Variant regexp
-	// - Variant tag
-	// - Task regexp
-	// - Task tag
-	aliases := ProjectAliases{
-		{Alias: "one", Variant: "bv2", Task: "t2"},
-		{Alias: "two", Variant: "bv3", TaskTags: []string{"tag3"}},
-		{Alias: "three", VariantTags: []string{"variantTag"}, TaskTags: []string{"tag4"}},
-		{Alias: "four", Variant: "bv4", TaskTags: []string{"!tag3", "tag5"}},
-		{Alias: "five", Variant: "bv4", TaskTags: []string{"!tag3 tag4"}},
-	}
+func TestProjectAliasVariantMatching(t *testing.T) {
 	t.Run("MatchesVariantRegexp", func(t *testing.T) {
-		bv1Matches, err := aliases.AliasesMatchingVariant("bv1", nil)
+		a := ProjectAlias{Alias: "one", Variant: "bv1"}
+		match, err := a.HasMatchingVariant("bv12345", nil)
 		assert.NoError(t, err)
-		assert.NotEmpty(t, bv1Matches)
-		bv2Matches, err := aliases.AliasesMatchingVariant("bv2", nil)
-		assert.NoError(t, err)
-		assert.NotEmpty(t, bv2Matches)
-		bv3Matches, err := aliases.AliasesMatchingVariant("bv3", nil)
-		assert.NoError(t, err)
-		assert.NotEmpty(t, bv3Matches)
-		bv4Matches, err := aliases.AliasesMatchingVariant("bv4", nil)
-		assert.NoError(t, err)
-		assert.NotEmpty(t, bv4Matches)
+		assert.True(t, match)
 	})
-	t.Run("MatchesVariantTags", func(t *testing.T) {
-		// kim: TODO: fill in
+	t.Run("DoesNotMatchVariantRegexp", func(t *testing.T) {
+		a := ProjectAlias{Alias: "alias", Variant: "bv1"}
+		match, err := a.HasMatchingVariant("nonexistent", nil)
+		assert.NoError(t, err)
+		assert.False(t, match)
 	})
-	// kim: TODO: both variant and tags, but only one set needs to match
+	t.Run("DoesNotMatchVariantTags", func(t *testing.T) {
+		a := ProjectAlias{Alias: "alias", VariantTags: []string{"tag3"}}
+		match, err := a.HasMatchingVariant("", []string{"nonexistent"})
+		assert.NoError(t, err)
+		assert.False(t, match)
+	})
+	t.Run("DoesNotMatchVariantRegexpOrTag", func(t *testing.T) {
+		a := ProjectAlias{Alias: "alias", Variant: "v1"}
+		match, err := a.HasMatchingVariant("nonexistent", []string{"nonexistent"})
+		assert.NoError(t, err)
+		assert.False(t, match)
+	})
+	t.Run("MatchesVariantTagButNotRegexp", func(t *testing.T) {
+		a := ProjectAlias{Alias: "alias", VariantTags: []string{"tag1"}}
+		match, err := a.HasMatchingVariant("nonexistent", []string{"tag1"})
+		assert.NoError(t, err)
+		assert.True(t, match)
+	})
 	t.Run("MatchesAtLeastOneVariantTag", func(t *testing.T) {
-		tagsMatches, err := aliases.AliasesMatchingVariant("", []string{"variantTag", "notATag"})
+		a := ProjectAlias{Alias: "alias", VariantTags: []string{"tag1"}}
+		match, err := a.HasMatchingVariant("nonexistent", []string{"nonexistent", "tag1"})
 		assert.NoError(t, err)
-		assert.NotEmpty(t, tagsMatches)
+		assert.True(t, match)
 	})
-	t.Run("DoesNotMatchVariantTagsOrRegexp", func(t *testing.T) {
-		bv5Matches, err := aliases.AliasesMatchingVariant("bv5", nil)
+	t.Run("MatchesVariantTagIntersection", func(t *testing.T) {
+		a := ProjectAlias{Alias: "alias", VariantTags: []string{"!tag1 tag2 tag3"}}
+		match, err := a.HasMatchingVariant("nonexistent", []string{"tag2", "tag3", "tag4"})
 		assert.NoError(t, err)
-		assert.Empty(t, bv5Matches)
+		assert.True(t, match)
+	})
+	t.Run("DoesNotMatchVariantTagIntersection", func(t *testing.T) {
+		a := ProjectAlias{Alias: "alias", VariantTags: []string{"!tag1 tag2 tag3"}}
+		match, err := a.HasMatchingVariant("nonexistent", []string{"tag2"})
+		assert.NoError(t, err)
+		assert.False(t, match)
+	})
+	t.Run("DoesNotMatchVariantTagIntersectionNegation", func(t *testing.T) {
+		a := ProjectAlias{Alias: "alias", VariantTags: []string{"!tag1 tag2 tag3"}}
+		match, err := a.HasMatchingVariant("nonexistent", []string{"tag1", "tag2", "tag3"})
+		assert.NoError(t, err)
+		assert.False(t, match)
+	})
+	t.Run("MatchesVariantRegexpButNotTag", func(t *testing.T) {
+		a := ProjectAlias{Alias: "alias", Variant: "v2"}
+		match, err := a.HasMatchingVariant("v2", []string{"nonexistent"})
+		assert.NoError(t, err)
+		assert.True(t, match)
+	})
+	t.Run("DoesNotMatchEmpty", func(t *testing.T) {
+		regexpAlias := ProjectAlias{Alias: "alias", Variant: "v1"}
+		match, err := regexpAlias.HasMatchingVariant("", nil)
+		assert.NoError(t, err)
+		assert.False(t, match)
 
-		matches, err := aliases.AliasesMatchingVariant("variantTag", nil)
+		tagAlias := ProjectAlias{Alias: "alias", VariantTags: []string{"tag"}}
+		match, err = tagAlias.HasMatchingVariant("", nil)
 		assert.NoError(t, err)
-		assert.Empty(t, matches)
-
-		matches, err = aliases.AliasesMatchingVariant("", []string{"notATag"})
+		assert.False(t, match)
+	})
+	t.Run("MatchesAtLeastOneAlias", func(t *testing.T) {
+		aliases := ProjectAliases{
+			{Alias: "one", Variant: "v1", VariantTags: []string{"tag1"}},
+			{Alias: "two", Variant: "v2"},
+		}
+		matches, err := aliases.AliasesMatchingVariant("v1", []string{"nonexistent"})
 		assert.NoError(t, err)
-		assert.Empty(t, matches)
+		require.Len(t, matches, 1)
+		assert.Equal(t, aliases[0], matches[0])
 	})
 }
 
-// kim: TODO: replicate task alias coverage over to variant tests above.
-func TestAliasTaskMatching(t *testing.T) {
+func TestProjectAliasTaskMatching(t *testing.T) {
 	t.Run("MatchesTaskRegexp", func(t *testing.T) {
 		a := ProjectAlias{Alias: "one", Task: "t1"}
 		match, err := a.HasMatchingTask("t12345", nil)
@@ -702,8 +733,8 @@ func TestAliasTaskMatching(t *testing.T) {
 	})
 	t.Run("MatchesAtLeastOneAlias", func(t *testing.T) {
 		aliases := ProjectAliases{
-			{Alias: "one", Variant: "bv2", TaskTags: []string{"tag1"}},
-			{Alias: "two", Variant: "bv1", Task: "t1"},
+			{Alias: "one", TaskTags: []string{"tag1"}},
+			{Alias: "two", Task: "t1"},
 		}
 		match, err := aliases.HasMatchingTask("t1", []string{"nonexistent"})
 		assert.NoError(t, err)
