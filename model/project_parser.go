@@ -705,17 +705,22 @@ func LoadProjectInto(ctx context.Context, data []byte, opts *GetProjectOpts, ide
 		wg.Wait()
 		close(yamlNamePairs)
 
-		// return intermediateProject even if we run into issues to show merge progress
-		for pair := range yamlNamePairs {
-			add, err := createIntermediateProject(pair.yaml, opts.UnmarshalStrict)
-			if err != nil {
-				return intermediateProject, errors.Wrapf(err, "%s: loading file '%s'", LoadProjectError, pair.name)
-			}
-			err = intermediateProject.mergeMultipleParserProjects(add)
-			if err != nil {
-				return intermediateProject, errors.Wrapf(err, "%s: merging file '%s'", LoadProjectError, pair.name)
+		if catcher.HasErrors() {
+			return intermediateProject, catcher.Resolve()
+		} else {
+			// return intermediateProject even if we run into issues to show merge progress
+			for pair := range yamlNamePairs {
+				add, err := createIntermediateProject(pair.yaml, opts.UnmarshalStrict)
+				if err != nil {
+					return intermediateProject, errors.Wrapf(err, "%s: loading file '%s'", LoadProjectError, pair.name)
+				}
+				err = intermediateProject.mergeMultipleParserProjects(add)
+				if err != nil {
+					return intermediateProject, errors.Wrapf(err, "%s: merging file '%s'", LoadProjectError, pair.name)
+				}
 			}
 		}
+
 	}
 
 	intermediateProject.Include = nil
