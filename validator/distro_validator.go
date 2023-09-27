@@ -547,6 +547,19 @@ func ensureHasValidVirtualWorkstationSettings(ctx context.Context, d *distro.Dis
 			Level:   Error,
 		})
 	}
+	linuxDistros := []string{
+		evergreen.ArchLinux386,
+		evergreen.ArchLinuxPpc64le,
+		evergreen.ArchLinuxS390x,
+		evergreen.ArchLinuxArm64,
+	}
+
+	if !utility.StringSliceContains(linuxDistros, d.Arch) {
+		errs = append(errs, ValidationError{
+			Message: "spawnable distros must use Linux architecture",
+			Level:   Error,
+		})
+	}
 	return errs
 }
 
