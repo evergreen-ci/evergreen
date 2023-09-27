@@ -1701,15 +1701,14 @@ func TestValidatePlugins(t *testing.T) {
 	})
 }
 
-// kim: TODO: add tests to ensure that this allows tag intersection syntax.
 func TestValidateAliasCoverage(t *testing.T) {
 	for testName, testCase := range map[string]func(*testing.T, *model.Project){
-		"matchesNothing": func(t *testing.T, p *model.Project) {
+		"MatchesNothing": func(t *testing.T, p *model.Project) {
 			alias1 := model.ProjectAlias{
 				ID:          mgobson.NewObjectId(),
 				Alias:       evergreen.CommitQueueAlias,
 				VariantTags: []string{"notTheVariantTag"},
-				TaskTags:    []string{"taskTag"},
+				TaskTags:    []string{"taskTag1", "taskTag2"},
 			}
 			alias2 := model.ProjectAlias{
 				ID:      mgobson.NewObjectId(),
@@ -1743,12 +1742,12 @@ func TestValidateAliasCoverage(t *testing.T) {
 			assert.Equal(t, errs[0].Level, Warning)
 			assert.Equal(t, errs[1].Level, Warning)
 		},
-		"matchesAll": func(t *testing.T, p *model.Project) {
+		"MatchesAll": func(t *testing.T, p *model.Project) {
 			alias1 := model.ProjectAlias{
 				ID:          mgobson.NewObjectId(),
 				Alias:       evergreen.CommitQueueAlias,
 				VariantTags: []string{"variantTag"},
-				TaskTags:    []string{"taskTag"},
+				TaskTags:    []string{"taskTag1"},
 			}
 			alias2 := model.ProjectAlias{
 				ID:      mgobson.NewObjectId(),
@@ -1773,7 +1772,7 @@ func TestValidateAliasCoverage(t *testing.T) {
 			errs := validateAliasCoverage(p, model.ProjectAliases{alias1, alias2})
 			assert.Len(t, errs, 0)
 		},
-		"matchesVariantTag": func(t *testing.T, p *model.Project) {
+		"MatchesVariantTag": func(t *testing.T, p *model.Project) {
 			alias1 := model.ProjectAlias{
 				ID:          mgobson.NewObjectId(),
 				Alias:       evergreen.CommitQueueAlias,
@@ -1810,7 +1809,7 @@ func TestValidateAliasCoverage(t *testing.T) {
 			assert.Equal(t, errs[0].Level, Warning)
 			assert.Equal(t, errs[1].Level, Warning)
 		},
-		"negatedTag": func(t *testing.T, p *model.Project) {
+		"NegatedTag": func(t *testing.T, p *model.Project) {
 			negatedAlias := model.ProjectAlias{
 				ID:          mgobson.NewObjectId(),
 				Alias:       evergreen.CommitQueueAlias,
@@ -1846,7 +1845,7 @@ func TestValidateAliasCoverage(t *testing.T) {
 			assert.False(t, needsVariants["negatedAlias"]) // Matches the second build variant again
 			assert.True(t, needsTasks["negatedAlias"])     // Second build variant task doesn't match
 		},
-		"matchesTaskInTaskGroupWithTaskRegexp": func(t *testing.T, p *model.Project) {
+		"MatchesTaskInTaskGroupWithTaskRegexp": func(t *testing.T, p *model.Project) {
 			a := model.ProjectAlias{
 				ID:      mgobson.NewObjectId(),
 				Alias:   "alias",
@@ -1867,12 +1866,12 @@ func TestValidateAliasCoverage(t *testing.T) {
 			errs := validateAliasCoverage(p, model.ProjectAliases{a})
 			assert.Len(t, errs, 0)
 		},
-		"matchesTaskInTaskGroupWithTaskTag": func(t *testing.T, p *model.Project) {
+		"MatchesTaskInTaskGroupWithTaskTag": func(t *testing.T, p *model.Project) {
 			a := model.ProjectAlias{
 				ID:       mgobson.NewObjectId(),
 				Alias:    "alias",
 				Variant:  "bvWithTaskGroup",
-				TaskTags: []string{"taskTag"},
+				TaskTags: []string{"taskTag1"},
 			}
 			aliases := map[string]model.ProjectAlias{a.Alias: a}
 			needsVariants, needsTasks, err := getAliasCoverage(p, aliases)
@@ -1887,6 +1886,48 @@ func TestValidateAliasCoverage(t *testing.T) {
 			}
 			errs := validateAliasCoverage(p, model.ProjectAliases{a})
 			assert.Len(t, errs, 0)
+		},
+		"MatchesTaskWithTaskTagHavingMultipleCriteria": func(t *testing.T, p *model.Project) {
+			a := model.ProjectAlias{
+				ID:       mgobson.NewObjectId(),
+				Alias:    "alias",
+				Variant:  "bvWithTag",
+				TaskTags: []string{"taskTag1 taskTag2"},
+			}
+			aliases := map[string]model.ProjectAlias{a.Alias: a}
+			needsVariants, needsTasks, err := getAliasCoverage(p, aliases)
+			require.NoError(t, err)
+			assert.Len(t, needsVariants, len(aliases))
+			assert.Len(t, needsTasks, len(aliases))
+			for _, noMatch := range needsVariants {
+				assert.False(t, noMatch)
+			}
+			for _, noMatch := range needsTasks {
+				assert.False(t, noMatch)
+			}
+			errs := validateAliasCoverage(p, model.ProjectAliases{a})
+			assert.Len(t, errs, 0)
+		},
+		"DoesNotMatchTaskWithTaskTagHavingMultipleCriteria": func(t *testing.T, p *model.Project) {
+			a := model.ProjectAlias{
+				ID:       mgobson.NewObjectId(),
+				Alias:    "alias",
+				Variant:  "bvWithTag",
+				TaskTags: []string{"taskTag1 taskTag2 nonexistent"},
+			}
+			aliases := map[string]model.ProjectAlias{a.Alias: a}
+			needsVariants, needsTasks, err := getAliasCoverage(p, aliases)
+			require.NoError(t, err)
+			assert.Len(t, needsVariants, len(aliases))
+			assert.Len(t, needsTasks, len(aliases))
+			for _, noMatch := range needsVariants {
+				assert.False(t, noMatch)
+			}
+			for _, noMatch := range needsTasks {
+				assert.True(t, noMatch)
+			}
+			errs := validateAliasCoverage(p, model.ProjectAliases{a})
+			assert.Len(t, errs, 1)
 		},
 	} {
 		t.Run(testName, func(t *testing.T) {
@@ -1925,7 +1966,7 @@ func TestValidateAliasCoverage(t *testing.T) {
 				Tasks: []model.ProjectTask{
 					{
 						Name: "taskWithTag",
-						Tags: []string{"taskTag"},
+						Tags: []string{"taskTag1", "taskTag2"},
 					},
 					{
 						Name: "taskWithoutTag",

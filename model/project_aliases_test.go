@@ -612,19 +612,19 @@ func TestProjectAliasVariantMatching(t *testing.T) {
 		assert.NoError(t, err)
 		assert.True(t, match)
 	})
-	t.Run("MatchesVariantTagIntersection", func(t *testing.T) {
+	t.Run("MatchesVariantTagWithMultipleCriteria", func(t *testing.T) {
 		a := ProjectAlias{Alias: "alias", VariantTags: []string{"!tag1 tag2 tag3"}}
 		match, err := a.HasMatchingVariant("nonexistent", []string{"tag2", "tag3", "tag4"})
 		assert.NoError(t, err)
 		assert.True(t, match)
 	})
-	t.Run("DoesNotMatchVariantTagIntersection", func(t *testing.T) {
+	t.Run("DoesNotMatchVariantTagWithMultipleCriteria", func(t *testing.T) {
 		a := ProjectAlias{Alias: "alias", VariantTags: []string{"!tag1 tag2 tag3"}}
 		match, err := a.HasMatchingVariant("nonexistent", []string{"tag2"})
 		assert.NoError(t, err)
 		assert.False(t, match)
 	})
-	t.Run("DoesNotMatchVariantTagIntersectionNegation", func(t *testing.T) {
+	t.Run("DoesNotMatchVariantTagWithMultipleCriteriaAndNegation", func(t *testing.T) {
 		a := ProjectAlias{Alias: "alias", VariantTags: []string{"!tag1 tag2 tag3"}}
 		match, err := a.HasMatchingVariant("nonexistent", []string{"tag1", "tag2", "tag3"})
 		assert.NoError(t, err)
@@ -696,21 +696,21 @@ func TestProjectAliasTaskMatching(t *testing.T) {
 		assert.NoError(t, err)
 		assert.True(t, match)
 	})
-	t.Run("MatchesTaskTagIntersection", func(t *testing.T) {
-		a := ProjectAlias{Alias: "alias", TaskTags: []string{"!tag4 tag5 tag6"}}
-		match, err := a.HasMatchingTask("nonexistent", []string{"tag1", "tag5", "tag6"})
+	t.Run("MatchesTaskTagWithMultipleCriteria", func(t *testing.T) {
+		a := ProjectAlias{Alias: "alias", TaskTags: []string{"!tag1 tag2 tag3"}}
+		match, err := a.HasMatchingTask("nonexistent", []string{"tag2", "tag3", "tag4"})
 		assert.NoError(t, err)
 		assert.True(t, match)
 	})
-	t.Run("DoesNotMatchTaskTagIntersection", func(t *testing.T) {
-		a := ProjectAlias{Alias: "alias", TaskTags: []string{"!tag4 tag5 tag6"}}
-		match, err := a.HasMatchingTask("nonexistent", []string{"tag1", "tag5"})
+	t.Run("DoesNotMatchTaskTagWithMultipleCriteria", func(t *testing.T) {
+		a := ProjectAlias{Alias: "alias", TaskTags: []string{"!tag1 tag2 tag3"}}
+		match, err := a.HasMatchingTask("nonexistent", []string{"tag2"})
 		assert.NoError(t, err)
 		assert.False(t, match)
 	})
-	t.Run("DoesNotMatchTaskTagIntersectionNegation", func(t *testing.T) {
-		a := ProjectAlias{Alias: "alias", TaskTags: []string{"!tag4 tag5 tag6"}}
-		match, err := a.HasMatchingTask("nonexistent", []string{"tag4", "tag5", "tag6"})
+	t.Run("DoesNotMatchTaskTagWithMultipleCriteriaAndNegation", func(t *testing.T) {
+		a := ProjectAlias{Alias: "alias", TaskTags: []string{"!tag1 tag2 tag3"}}
+		match, err := a.HasMatchingTask("nonexistent", []string{"tag1", "tag2", "tag3"})
 		assert.NoError(t, err)
 		assert.False(t, match)
 	})
