@@ -663,10 +663,18 @@ func processIntermediateProjectInludes(ctx context.Context, identifier string, i
 		yaml, err = retrieveFile(ctx, *localOpts)
 	}
 	if err != nil {
-		yamlChan <- yamlTuple{nil, include.FileName, errors.Wrapf(err, "%s: retrieving file '%s'", LoadProjectError, include.FileName)}
+		yamlChan <- yamlTuple{
+			yaml: nil,
+			name: include.FileName,
+			err:  errors.Wrapf(err, "%s: retrieving file '%s'", LoadProjectError, include.FileName),
+		}
 		return
 	}
-	yamlChan <- yamlTuple{yaml, include.FileName, nil}
+	yamlChan <- yamlTuple{
+		yaml: yaml,
+		name: include.FileName,
+		err:  nil,
+	}
 }
 
 type yamlTuple struct {
@@ -699,10 +707,10 @@ func LoadProjectInto(ctx context.Context, data []byte, opts *GetProjectOpts, ide
 
 		for _, path := range intermediateProject.Include {
 			wg.Add(1)
-			go func() {
+			go func(include Include) {
 				defer wg.Done()
-				processIntermediateProjectInludes(ctx, identifier, intermediateProject, path, yamlChan, opts)
-			}()
+				processIntermediateProjectInludes(ctx, identifier, intermediateProject, include, yamlChan, opts)
+			}(path)
 		}
 		wg.Wait()
 		close(yamlChan)
