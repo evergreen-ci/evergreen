@@ -184,12 +184,13 @@ func parseToken(token string) (string, error) {
 	return splitToken[1], nil
 }
 
-func (opts cloneOpts) getCloneCommand() ([]string, error) {
+func (opts cloneOpts) getCloneCommand(logger client.LoggerProducer) ([]string, error) {
 	if err := opts.validate(); err != nil {
 		return nil, errors.Wrap(err, "invalid clone command options")
 	}
 	switch opts.method {
 	case "", evergreen.CloneMethodLegacySSH:
+		logger.Execution().Debug("Legacy ssh clone method will be deprecated soon. Please switch to HTTP clone method.")
 		return opts.buildSSHCloneCommand()
 	case evergreen.CloneMethodOAuth:
 		return opts.buildHTTPCloneCommand(false)
@@ -311,7 +312,7 @@ func (c *gitFetchProject) buildCloneCommand(ctx context.Context, comm client.Com
 		fmt.Sprintf("rm -rf %s", c.Directory),
 	}
 
-	cloneCmd, err := opts.getCloneCommand()
+	cloneCmd, err := opts.getCloneCommand(logger)
 	if err != nil {
 		return nil, errors.Wrap(err, "getting command to clone repo")
 	}
@@ -422,7 +423,7 @@ func (c *gitFetchProject) waitForMergeableCheck(ctx context.Context, comm client
 	return mergeSHA, err
 }
 
-func (c *gitFetchProject) buildModuleCloneCommand(conf *internal.TaskConfig, opts cloneOpts, ref string, modulePatch *patch.ModulePatch) ([]string, error) {
+func (c *gitFetchProject) buildModuleCloneCommand(conf *internal.TaskConfig, opts cloneOpts, logger client.LoggerProducer, ref string, modulePatch *patch.ModulePatch) ([]string, error) {
 	gitCommands := []string{
 		"set -o xtrace",
 		"set -o errexit",
@@ -437,7 +438,7 @@ func (c *gitFetchProject) buildModuleCloneCommand(conf *internal.TaskConfig, opt
 		return nil, errors.New("empty ref/branch to check out")
 	}
 
-	cloneCmd, err := opts.getCloneCommand()
+	cloneCmd, err := opts.getCloneCommand(logger)
 	if err != nil {
 		return nil, errors.Wrap(err, "getting command to clone repo")
 	}
@@ -720,7 +721,7 @@ func (c *gitFetchProject) fetchModuleSource(ctx context.Context,
 	}
 
 	var moduleCmds []string
-	moduleCmds, err = c.buildModuleCloneCommand(conf, opts, revision, modulePatch)
+	moduleCmds, err = c.buildModuleCloneCommand(conf, opts, logger, revision, modulePatch)
 	if err != nil {
 		return err
 	}

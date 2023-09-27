@@ -670,8 +670,11 @@ func (s *GitGetProjectSuite) TestBuildModuleCommand() {
 	}
 	s.Require().NoError(opts.setLocation())
 
+	logger, err := s.comm.GetLoggerProducer(s.ctx, client.TaskData{ID: conf.Task.Id, Secret: conf.Task.Secret}, nil)
+	s.NoError(err)
+
 	// ensure module clone command with ssh URL does not inject token
-	cmds, err := c.buildModuleCloneCommand(conf, opts, "main", nil)
+	cmds, err := c.buildModuleCloneCommand(conf, opts, logger, "main", nil)
 	s.NoError(err)
 	s.Require().Len(cmds, 5)
 	s.Equal("set -o xtrace", cmds[0])
@@ -684,7 +687,7 @@ func (s *GitGetProjectSuite) TestBuildModuleCommand() {
 	opts.method = evergreen.CloneMethodOAuth
 	opts.token = c.Token
 	s.Require().NoError(opts.setLocation())
-	cmds, err = c.buildModuleCloneCommand(conf, opts, "main", nil)
+	cmds, err = c.buildModuleCloneCommand(conf, opts, logger, "main", nil)
 	s.NoError(err)
 	s.Require().Len(cmds, 8)
 	s.Equal("set -o xtrace", cmds[0])
@@ -698,7 +701,7 @@ func (s *GitGetProjectSuite) TestBuildModuleCommand() {
 
 	// ensure insecure github url is forced to use https
 	opts.location = "http://github.com/evergreen-ci/sample.git"
-	cmds, err = c.buildModuleCloneCommand(conf, opts, "main", nil)
+	cmds, err = c.buildModuleCloneCommand(conf, opts, logger, "main", nil)
 	s.NoError(err)
 	s.Require().Len(cmds, 8)
 	s.Equal("echo \"git clone https://[redacted oauth token]:x-oauth-basic@github.com/evergreen-ci/sample.git 'module'\"", cmds[3])
@@ -715,7 +718,7 @@ func (s *GitGetProjectSuite) TestBuildModuleCommand() {
 	}
 	opts.method = evergreen.CloneMethodLegacySSH
 	s.Require().NoError(opts.setLocation())
-	cmds, err = c.buildModuleCloneCommand(conf, opts, "main", module)
+	cmds, err = c.buildModuleCloneCommand(conf, opts, logger, "main", module)
 	s.NoError(err)
 	s.Require().Len(cmds, 7)
 	s.Equal("set -o xtrace", cmds[0])
