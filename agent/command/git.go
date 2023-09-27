@@ -565,7 +565,7 @@ func (c *gitFetchProject) Execute(ctx context.Context, comm client.Communicator,
 	span := trace.SpanFromContext(ctx)
 	span.SetAttributes(attribute.Int(cloneRetriesAttribute, attemptNum))
 
-	return errors.Wrapf(err, "retrying git.get_project failed")
+	return err
 }
 
 func (c *gitFetchProject) fetchSource(ctx context.Context,
@@ -579,7 +579,6 @@ func (c *gitFetchProject) fetchSource(ctx context.Context,
 	if err != nil {
 		return err
 	}
-	gitCommands = append([]string{fmt.Sprintf("chmod +w %s", c.Directory)}, gitCommands...)
 	fetchScript := strings.Join(gitCommands, "\n")
 
 	// This needs to use a thread-safe buffer just in case the context errors
