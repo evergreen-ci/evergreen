@@ -375,10 +375,9 @@ func (s *commitQueueSuite) TestUpdatePatch() {
 		Patches: []patch.ModulePatch{
 			{ModuleName: "", Githash: "abcdef"},
 		},
-		PatchedParserProject: "asdf",
-		Project:              "evergreen",
-		BuildVariants:        []string{"my-variant"},
-		Tasks:                []string{"my-task"},
+		Project:       "evergreen",
+		BuildVariants: []string{"my-variant"},
+		Tasks:         []string{"my-task"},
 		VariantsTasks: []patch.VariantTasks{
 			{Variant: "my-variant", Tasks: []string{"my-task"}},
 		},
@@ -388,7 +387,6 @@ func (s *commitQueueSuite) TestUpdatePatch() {
 	s.NoError(err)
 	s.NotEqual("abcdef", patchDoc.Patches[0].Githash)
 	s.NotEqual(model.Project{}, projectConfig)
-	s.NotEqual("asdf", patchDoc.PatchedParserProject)
 
 	s.Empty(patchDoc.Tasks)
 	s.Empty(patchDoc.VariantsTasks)

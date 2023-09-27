@@ -24,6 +24,7 @@ import (
 	restmodel "github.com/evergreen-ci/evergreen/rest/model"
 	"github.com/evergreen-ci/evergreen/testutil"
 	"github.com/evergreen-ci/evergreen/units"
+	"github.com/evergreen-ci/evergreen/util"
 	"github.com/evergreen-ci/gimlet"
 	"github.com/evergreen-ci/utility"
 	"github.com/stretchr/testify/assert"
@@ -810,8 +811,8 @@ buildvariants:
   - name: passing_test
   - name: failing_test
   - name: timeout_test`
-	require.NoError(t, db.ClearCollections(serviceModel.ProjectRefCollection, patch.Collection, evergreen.ConfigCollection, task.Collection, serviceModel.VersionCollection, build.Collection))
-	require.NoError(t, db.CreateCollections(build.Collection, task.Collection, serviceModel.VersionCollection, serviceModel.ParserProjectCollection, manifest.Collection))
+	require.NoError(t, db.ClearCollections(serviceModel.ParserProjectCollection, serviceModel.ProjectRefCollection, patch.Collection, evergreen.ConfigCollection, task.Collection, serviceModel.VersionCollection, build.Collection))
+	require.NoError(t, db.CreateCollections(serviceModel.ParserProjectCollection, build.Collection, task.Collection, serviceModel.VersionCollection, serviceModel.ParserProjectCollection, manifest.Collection))
 	settings := testutil.TestConfig()
 	testutil.ConfigureIntegrationTest(t, settings, "TestSchedulePatchRoute")
 	require.NoError(t, settings.Set(ctx))
@@ -829,9 +830,17 @@ buildvariants:
 		Id:                   mgobson.NewObjectId(),
 		Project:              projectRef.Id,
 		Githash:              "3c7bfeb82d492dc453e7431be664539c35b5db4b",
-		PatchedParserProject: config,
+		ProjectStorageMethod: evergreen.ProjectStorageMethodDB,
+		PatchedProjectConfig: config,
 	}
 	require.NoError(t, unfinalized.Insert())
+
+	pp := &serviceModel.ParserProject{}
+	err := util.UnmarshalYAMLWithFallback([]byte(config), &pp)
+	require.NoError(t, err)
+	pp.Id = unfinalized.Id.Hex()
+	require.NoError(t, pp.Insert())
+
 	handler := makeSchedulePatchHandler(env).(*schedulePatchHandler)
 
 	// nonexistent patch ID should error
@@ -914,9 +923,16 @@ buildvariants:
 		Id:                   mgobson.NewObjectId(),
 		Project:              projectRef.Id,
 		Githash:              "3c7bfeb82d492dc453e7431be664539c35b5db4b",
-		PatchedParserProject: config,
+		ProjectStorageMethod: evergreen.ProjectStorageMethodDB,
+		PatchedProjectConfig: config,
 	}
 	assert.NoError(t, patch2.Insert())
+
+	err = util.UnmarshalYAMLWithFallback([]byte(config), &pp)
+	require.NoError(t, err)
+	pp.Id = patch2.Id.Hex()
+	require.NoError(t, pp.Insert())
+
 	handler = makeSchedulePatchHandler(env).(*schedulePatchHandler)
 	body = patchTasks{
 		Variants: []variant{{Id: "ubuntu", Tasks: []string{"*"}}},
@@ -1122,8 +1138,8 @@ tasks:
             files:
               - src/evergreen.json
 `
-	require.NoError(t, db.ClearCollections(serviceModel.ProjectRefCollection, patch.Collection, evergreen.ConfigCollection, task.Collection, serviceModel.VersionCollection, build.Collection))
-	require.NoError(t, db.CreateCollections(build.Collection, task.Collection, serviceModel.VersionCollection, serviceModel.ParserProjectCollection, manifest.Collection))
+	require.NoError(t, db.ClearCollections(serviceModel.ParserProjectCollection, serviceModel.ProjectRefCollection, patch.Collection, evergreen.ConfigCollection, task.Collection, serviceModel.VersionCollection, build.Collection))
+	require.NoError(t, db.CreateCollections(serviceModel.ParserProjectCollection, build.Collection, task.Collection, serviceModel.VersionCollection, serviceModel.ParserProjectCollection, manifest.Collection))
 	settings := testutil.TestConfig()
 	testutil.ConfigureIntegrationTest(t, settings, "TestSchedulePatchRoute")
 	require.NoError(t, settings.Set(ctx))
@@ -1141,9 +1157,17 @@ tasks:
 		Id:                   mgobson.NewObjectId(),
 		Project:              projectRef.Id,
 		Githash:              "3c7bfeb82d492dc453e7431be664539c35b5db4b",
-		PatchedParserProject: config,
+		ProjectStorageMethod: evergreen.ProjectStorageMethodDB,
+		PatchedProjectConfig: config,
 	}
 	require.NoError(t, unfinalized.Insert())
+
+	pp := &serviceModel.ParserProject{}
+	err := util.UnmarshalYAMLWithFallback([]byte(config), &pp)
+	require.NoError(t, err)
+	pp.Id = unfinalized.Id.Hex()
+	require.NoError(t, pp.Insert())
+
 	// schedule patch with task generator for the first run
 	handler := makeSchedulePatchHandler(env).(*schedulePatchHandler)
 	description := "some text"

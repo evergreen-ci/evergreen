@@ -169,25 +169,14 @@ type Patch struct {
 	// be empty for old, unfinalized patch documents before this field was
 	// introduced (see PatchedParserProject).
 	ProjectStorageMethod evergreen.ParserProjectStorageMethod `bson:"project_storage_method,omitempty"`
-	// PatchedParserProject is a deprecated field to temporarily store the
-	// project configuration before the patch is finalized. It is either 1. the
-	// patch's ParserProject or 2. another version's finalized Project. The
-	// string stores the BSON representation of one of these two for the patch
-	// until the patch is finalized. Once the patch is finalized, this field is
-	// cleared.
-	// Newly-created patches do not use this field at all and instead use the
-	// ProjectStorageMethod to decide where the parser project is persistently
-	// stored. This field is kept solely for backward compatibility with
-	// existing, unfinalized patches.
-	PatchedParserProject string                      `bson:"patched_config,omitempty"`
-	PatchedProjectConfig string                      `bson:"patched_project_config"`
-	Alias                string                      `bson:"alias"`
-	Triggers             TriggerInfo                 `bson:"triggers"`
-	BackportOf           BackportInfo                `bson:"backport_of,omitempty"`
-	MergePatch           string                      `bson:"merge_patch"`
-	GithubPatchData      thirdparty.GithubPatch      `bson:"github_patch_data,omitempty"`
-	GithubMergeData      thirdparty.GithubMergeGroup `bson:"github_merge_data,omitempty"`
-	GitInfo              *GitMetadata                `bson:"git_info,omitempty"`
+	PatchedProjectConfig string                               `bson:"patched_project_config"`
+	Alias                string                               `bson:"alias"`
+	Triggers             TriggerInfo                          `bson:"triggers"`
+	BackportOf           BackportInfo                         `bson:"backport_of,omitempty"`
+	MergePatch           string                               `bson:"merge_patch"`
+	GithubPatchData      thirdparty.GithubPatch               `bson:"github_patch_data,omitempty"`
+	GithubMergeData      thirdparty.GithubMergeGroup          `bson:"github_merge_data,omitempty"`
+	GitInfo              *GitMetadata                         `bson:"git_info,omitempty"`
 	// DisplayNewUI is only used when roundtripping the patch via the CLI
 	DisplayNewUI bool `bson:"display_new_ui,omitempty"`
 	// MergeStatus is only used in gitServePatch to send the status of this
@@ -652,7 +641,6 @@ func (p *Patch) SetFinalized(ctx context.Context, versionId string) error {
 			},
 			"$unset": bson.M{
 				ProjectStorageMethodKey: 1,
-				PatchedParserProjectKey: 1,
 				PatchedProjectConfigKey: 1,
 			},
 		},
@@ -663,7 +651,6 @@ func (p *Patch) SetFinalized(ctx context.Context, versionId string) error {
 	p.Version = versionId
 	p.Activated = true
 	p.ProjectStorageMethod = ""
-	p.PatchedParserProject = ""
 	p.PatchedProjectConfig = ""
 
 	return nil

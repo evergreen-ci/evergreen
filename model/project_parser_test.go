@@ -2773,19 +2773,6 @@ func TestFindAndTranslateProjectForPatch(t *testing.T) {
 			assert.Equal(t, utility.FromStringPtr(pp.DisplayName), utility.FromStringPtr(ppFromDB.DisplayName))
 			assert.Equal(t, utility.FromStringPtr(pp.DisplayName), project.DisplayName)
 		},
-		"SucceedsWithDeprecatedPatchedParserProject": func(ctx context.Context, t *testing.T, p *patch.Patch, pp *ParserProject) {
-			yamlPP, err := yaml.Marshal(pp)
-			require.NoError(t, err)
-			p.PatchedParserProject = string(yamlPP)
-			require.NoError(t, p.Insert())
-
-			project, ppFromPatch, err := FindAndTranslateProjectForPatch(ctx, env.Settings(), p)
-			require.NoError(t, err)
-			require.NotZero(t, ppFromPatch)
-			require.NotZero(t, project)
-			assert.Equal(t, utility.FromStringPtr(pp.DisplayName), utility.FromStringPtr(ppFromPatch.DisplayName))
-			assert.Equal(t, utility.FromStringPtr(pp.DisplayName), project.DisplayName)
-		},
 		"FailsWithoutStoredParserProject": func(ctx context.Context, t *testing.T, p *patch.Patch, pp *ParserProject) {
 			p.ProjectStorageMethod = evergreen.ProjectStorageMethodDB
 			require.NoError(t, p.Insert())
