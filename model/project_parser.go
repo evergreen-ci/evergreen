@@ -7,6 +7,7 @@ import (
 	"os"
 	"reflect"
 	"strings"
+	"sync"
 	"time"
 
 	"github.com/evergreen-ci/evergreen"
@@ -630,6 +631,11 @@ func GetProjectFromBSON(data []byte) (*Project, error) {
 	return TranslateProject(pp)
 }
 
+type yamlNamePair struct {
+	yaml []byte
+	name string
+}
+
 // LoadProjectInto loads the raw data from the config file into project
 // and sets the project's identifier field to identifier. Tags are evaluated. Returns the intermediate step.
 // If reading from a version config, LoadProjectInfoForVersion should be used to persist the resulting parser project.
@@ -644,40 +650,73 @@ func LoadProjectInto(ctx context.Context, data []byte, opts *GetProjectOpts, ide
 		return nil, errors.Wrapf(err, LoadProjectError)
 	}
 
-	// return intermediateProject even if we run into issues to show merge progress
-	for _, path := range intermediateProject.Include {
-		if opts == nil {
-			err = errors.New("trying to open include files with empty options")
-			return nil, errors.Wrapf(err, LoadProjectError)
-		}
-		opts.UpdateForFile(path.FileName)
+	if opts == nil {
+		err = errors.New("trying to open include files with empty options")
+		return nil, errors.Wrapf(err, LoadProjectError)
+	}
 
-		var yaml []byte
-		opts.Identifier = identifier
-		opts.RemotePath = path.FileName
-		grip.Debug(message.Fields{
-			"message":     "retrieving included YAML file",
-			"remote_path": opts.RemotePath,
-			"read_from":   opts.ReadFileFrom,
-			"module":      path.Module,
-		})
-		if path.Module != "" {
-			yaml, err = retrieveFileForModule(ctx, *opts, intermediateProject.Modules, path.Module)
-		} else {
-			yaml, err = retrieveFile(ctx, *opts)
-		}
+	wg := sync.WaitGroup{}
+	catcher := grip.NewBasicCatcher()
+	yamlNamePairs := make(chan yamlNamePair, len(intermediateProject.Include))
+
+	for _, path := range intermediateProject.Include {
+		wg.Add(1)
+		go func(include Include, projectOpts *GetProjectOpts) {
+			defer wg.Done()
+			// Make a copy of opts because otherwise parts opts would be
+			// modified concurrenly.  Note, however, that Ref and PatchOpts are
+			// themselves pointers, so should not be modified.
+			localOpts := &GetProjectOpts{
+				Ref:             opts.Ref,
+				PatchOpts:       opts.PatchOpts,
+				LocalModules:    opts.LocalModules,
+				RemotePath:      projectOpts.RemotePath,
+				Revision:        projectOpts.Revision,
+				Token:           projectOpts.Token,
+				ReadFileFrom:    projectOpts.ReadFileFrom,
+				Identifier:      projectOpts.Identifier,
+				UnmarshalStrict: projectOpts.UnmarshalStrict,
+			}
+			localOpts.UpdateForFile(include.FileName)
+
+			var yaml []byte
+			localOpts.Identifier = identifier
+			localOpts.RemotePath = include.FileName
+			grip.Debug(message.Fields{
+				"message":     "retrieving included YAML file",
+				"remote_path": localOpts.RemotePath,
+				"read_from":   localOpts.ReadFileFrom,
+				"module":      include.Module,
+			})
+			if include.Module != "" {
+				yaml, err = retrieveFileForModule(ctx, *localOpts, intermediateProject.Modules, include.Module)
+				if err == nil && yaml != nil {
+					yamlNamePairs <- yamlNamePair{yaml, include.FileName}
+				}
+			} else {
+				yaml, err = retrieveFile(ctx, *localOpts)
+				if err == nil && yaml != nil {
+					yamlNamePairs <- yamlNamePair{yaml, include.FileName}
+				}
+			}
+			catcher.Add(errors.Wrapf(err, "%s: retrieving file '%s'", LoadProjectError, include.FileName))
+		}(path, opts)
+	}
+	wg.Wait()
+
+	// return intermediateProject even if we run into issues to show merge progress
+	for pair := range yamlNamePairs {
+		add, err := createIntermediateProject(pair.yaml, opts.UnmarshalStrict)
 		if err != nil {
-			return intermediateProject, errors.Wrapf(err, "%s: retrieving file '%s'", LoadProjectError, path.FileName)
-		}
-		add, err := createIntermediateProject(yaml, opts.UnmarshalStrict)
-		if err != nil {
-			return intermediateProject, errors.Wrapf(err, "%s: loading file '%s'", LoadProjectError, path.FileName)
+			return intermediateProject, errors.Wrapf(err, "%s: loading file '%s'", LoadProjectError, pair.name)
 		}
 		err = intermediateProject.mergeMultipleParserProjects(add)
 		if err != nil {
-			return intermediateProject, errors.Wrapf(err, "%s: merging file '%s'", LoadProjectError, path.FileName)
+			return intermediateProject, errors.Wrapf(err, "%s: merging file '%s'", LoadProjectError, pair.name)
 		}
 	}
+	close(yamlNamePairs)
+
 	intermediateProject.Include = nil
 
 	// return project even with errors
