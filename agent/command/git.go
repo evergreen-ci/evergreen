@@ -190,18 +190,8 @@ func (opts cloneOpts) getCloneCommand() ([]string, error) {
 	}
 	switch opts.method {
 	case "", evergreen.CloneMethodLegacySSH:
-		grip.Debug(message.Fields{
-			"message": "using legacy ssh clone method",
-			"ticket":  "EVG-19966",
-			"opts":    opts,
-		})
 		return opts.buildSSHCloneCommand()
 	case evergreen.CloneMethodOAuth:
-		grip.Debug(message.Fields{
-			"message": "using legacy oauth clone method",
-			"ticket":  "EVG-19966",
-			"opts":    opts,
-		})
 		return opts.buildHTTPCloneCommand(false)
 	case evergreen.CloneMethodAccessToken:
 		return opts.buildHTTPCloneCommand(true)
