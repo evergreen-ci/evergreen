@@ -1236,7 +1236,7 @@ Parameters:
 
 ## shell.exec
 
-This command runs a shell script.
+This command runs a shell script. To follow [Evergreen best practices](Best-Practices.md#subprocessexec), we recommend using [subprocess.exec](#subprocess.exec).
 
 ``` yaml
 - command: shell.exec
