@@ -722,7 +722,6 @@ func (c *gitFetchProject) fetchModuleSource(ctx context.Context,
 	// Module's location takes precedence over the project-level clone
 	// method.
 	if strings.Contains(opts.location, "git@github.com:") {
-		logger.Execution().Warning("Using legacy SSH clone method is deprecated. Please pass in an https clone string instead")
 		opts.method = evergreen.CloneMethodLegacySSH
 	} else {
 		opts.method = cloneMethod
