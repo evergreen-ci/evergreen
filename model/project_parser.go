@@ -704,14 +704,24 @@ func LoadProjectInto(ctx context.Context, data []byte, opts *GetProjectOpts, ide
 		}
 		wg := sync.WaitGroup{}
 		yamlChan := make(chan yamlTuple, len(intermediateProject.Include))
+		includeChan := make(chan Include)
+
+		// Be polite. Don't make more than 10 concurrent requests to GitHub.
+		for i := 0; i < 10; i++ {
+			wg.Add(1)
+			go func() {
+				defer wg.Done()
+				for include := range includeChan {
+					processIntermediateProjectInludes(ctx, identifier, intermediateProject, include, yamlChan, opts)
+				}
+			}()
+		}
 
 		for _, path := range intermediateProject.Include {
-			wg.Add(1)
-			go func(include Include) {
-				defer wg.Done()
-				processIntermediateProjectInludes(ctx, identifier, intermediateProject, include, yamlChan, opts)
-			}(path)
+			includeChan <- path
 		}
+
+		close(includeChan)
 		wg.Wait()
 		close(yamlChan)
 
@@ -720,6 +730,8 @@ func LoadProjectInto(ctx context.Context, data []byte, opts *GetProjectOpts, ide
 		catcher := grip.NewBasicCatcher()
 		for elem := range yamlChan {
 			catcher.Add(elem.err)
+			// defensive programming, since there should always be an error in
+			// the nil case, causing us to return early
 			if elem.yaml != nil {
 				yamlMap[elem.name] = elem.yaml
 			}
