@@ -188,7 +188,7 @@ func (s *GitGetProjectSuite) TestBuildCloneCommandUsesHTTPS() {
 	}
 	s.Require().NoError(opts.setLocation())
 	cmds, _ := c.buildCloneCommand(s.ctx, s.comm, logger, conf, opts)
-	s.Equal("git clone https://PROJECTTOKEN:x-oauth-basic@github.com/evergreen-ci/sample.git 'dir' --branch 'main'", cmds[5])
+	s.Equal("git clone https://PROJECTTOKEN:x-oauth-basic@github.com/evergreen-ci/sample.git 'dir' --branch 'main'", cmds[6])
 }
 
 func (s *GitGetProjectSuite) TestBuildCloneCommandWithHTTPSNeedsToken() {
@@ -231,7 +231,7 @@ func (s *GitGetProjectSuite) TestBuildCloneCommandUsesSSH() {
 	s.Require().NoError(opts.setLocation())
 	cmds, err := c.buildCloneCommand(s.ctx, s.comm, logger, conf, opts)
 	s.Require().NoError(err)
-	s.Equal("git clone 'git@github.com:evergreen-ci/sample.git' 'dir' --branch 'main'", cmds[3])
+	s.Equal("git clone 'git@github.com:evergreen-ci/sample.git' 'dir' --branch 'main'", cmds[4])
 }
 
 func (s *GitGetProjectSuite) TestBuildCloneCommandDefaultCloneMethodUsesSSH() {
@@ -251,7 +251,7 @@ func (s *GitGetProjectSuite) TestBuildCloneCommandDefaultCloneMethodUsesSSH() {
 	s.Require().NoError(opts.setLocation())
 	cmds, err := c.buildCloneCommand(s.ctx, s.comm, logger, conf, opts)
 	s.Require().NoError(err)
-	s.Equal("git clone 'git@github.com:evergreen-ci/sample.git' 'dir' --branch 'main'", cmds[3])
+	s.Equal("git clone 'git@github.com:evergreen-ci/sample.git' 'dir' --branch 'main'", cmds[4])
 }
 
 func (s *GitGetProjectSuite) TestBuildCloneCommandCloneDepth() {
@@ -545,14 +545,15 @@ func (s *GitGetProjectSuite) TestBuildCommand() {
 	s.Require().NoError(opts.setLocation())
 	cmds, err := c.buildCloneCommand(s.ctx, s.comm, logger, conf, opts)
 	s.NoError(err)
-	s.Require().Len(cmds, 7)
+	s.Require().Len(cmds, 8)
 	s.Equal("set -o xtrace", cmds[0])
 	s.Equal("set -o errexit", cmds[1])
-	s.Equal("rm -rf dir", cmds[2])
-	s.Equal("git clone 'git@github.com:evergreen-ci/sample.git' 'dir' --branch 'main'", cmds[3])
-	s.Equal("cd dir", cmds[4])
-	s.Equal("git reset --hard ", cmds[5])
-	s.Equal("git log --oneline -n 10", cmds[6])
+	s.Equal("find dir -print0 | xargs -0 chmod 775 || true", cmds[2])
+	s.Equal("rm -rf dir", cmds[3])
+	s.Equal("git clone 'git@github.com:evergreen-ci/sample.git' 'dir' --branch 'main'", cmds[4])
+	s.Equal("cd dir", cmds[5])
+	s.Equal("git reset --hard ", cmds[6])
+	s.Equal("git log --oneline -n 10", cmds[7])
 
 	// ensure clone command with location containing "https://github.com" uses
 	// HTTPS.
@@ -562,17 +563,18 @@ func (s *GitGetProjectSuite) TestBuildCommand() {
 	s.Require().NoError(err)
 	cmds, err = c.buildCloneCommand(s.ctx, s.comm, logger, conf, opts)
 	s.NoError(err)
-	s.Require().Len(cmds, 10)
+	s.Require().Len(cmds, 11)
 	s.Equal("set -o xtrace", cmds[0])
 	s.Equal("set -o errexit", cmds[1])
-	s.Equal("rm -rf dir", cmds[2])
-	s.Equal("set +o xtrace", cmds[3])
-	s.Equal("echo \"git clone https://[redacted oauth token]:x-oauth-basic@github.com/evergreen-ci/sample.git 'dir' --branch 'main'\"", cmds[4])
-	s.Equal("git clone https://PROJECTTOKEN:x-oauth-basic@github.com/evergreen-ci/sample.git 'dir' --branch 'main'", cmds[5])
-	s.Equal("set -o xtrace", cmds[6])
-	s.Equal("cd dir", cmds[7])
-	s.Equal("git reset --hard ", cmds[8])
-	s.Equal("git log --oneline -n 10", cmds[9])
+	s.Equal("find dir -print0 | xargs -0 chmod 775 || true", cmds[2])
+	s.Equal("rm -rf dir", cmds[3])
+	s.Equal("set +o xtrace", cmds[4])
+	s.Equal("echo \"git clone https://[redacted oauth token]:x-oauth-basic@github.com/evergreen-ci/sample.git 'dir' --branch 'main'\"", cmds[5])
+	s.Equal("git clone https://PROJECTTOKEN:x-oauth-basic@github.com/evergreen-ci/sample.git 'dir' --branch 'main'", cmds[6])
+	s.Equal("set -o xtrace", cmds[7])
+	s.Equal("cd dir", cmds[8])
+	s.Equal("git reset --hard ", cmds[9])
+	s.Equal("git log --oneline -n 10", cmds[10])
 }
 
 func (s *GitGetProjectSuite) TestBuildCommandForPullRequests() {
@@ -595,11 +597,11 @@ func (s *GitGetProjectSuite) TestBuildCommandForPullRequests() {
 
 	cmds, err := c.buildCloneCommand(s.ctx, s.comm, logger, conf, opts)
 	s.NoError(err)
-	s.Require().Len(cmds, 9)
-	s.True(strings.HasPrefix(cmds[5], "git fetch origin \"pull/9001/head:evg-pr-test-"))
-	s.True(strings.HasPrefix(cmds[6], "git checkout \"evg-pr-test-"))
-	s.Equal("git reset --hard 55ca6286e3e4f4fba5d0448333fa99fc5a404a73", cmds[7])
-	s.Equal("git log --oneline -n 10", cmds[8])
+	s.Require().Len(cmds, 10)
+	s.True(strings.HasPrefix(cmds[6], "git fetch origin \"pull/9001/head:evg-pr-test-"))
+	s.True(strings.HasPrefix(cmds[7], "git checkout \"evg-pr-test-"))
+	s.Equal("git reset --hard 55ca6286e3e4f4fba5d0448333fa99fc5a404a73", cmds[8])
+	s.Equal("git log --oneline -n 10", cmds[9])
 }
 func (s *GitGetProjectSuite) TestBuildCommandForGitHubMergeQueue() {
 	conf := s.taskConfig7
@@ -621,11 +623,11 @@ func (s *GitGetProjectSuite) TestBuildCommandForGitHubMergeQueue() {
 
 	cmds, err := c.buildCloneCommand(s.ctx, s.comm, logger, conf, opts)
 	s.NoError(err)
-	s.Len(cmds, 9)
-	s.True(strings.HasPrefix(cmds[5], "git fetch origin \"gh-readonly-queue/main/pr-515-9cd8a2532bcddf58369aa82eb66ba88e2323c056:evg-mg-test-"))
-	s.True(strings.HasPrefix(cmds[6], "git checkout \"evg-mg-test-"))
-	s.Equal("git reset --hard d2a90288ad96adca4a7d0122d8d4fd1deb24db11", cmds[7])
-	s.Equal("git log --oneline -n 10", cmds[8])
+	s.Len(cmds, 10)
+	s.True(strings.HasPrefix(cmds[6], "git fetch origin \"gh-readonly-queue/main/pr-515-9cd8a2532bcddf58369aa82eb66ba88e2323c056:evg-mg-test-"))
+	s.True(strings.HasPrefix(cmds[7], "git checkout \"evg-mg-test-"))
+	s.Equal("git reset --hard d2a90288ad96adca4a7d0122d8d4fd1deb24db11", cmds[8])
+	s.Equal("git log --oneline -n 10", cmds[9])
 }
 
 func (s *GitGetProjectSuite) TestBuildCommandForCLIMergeTests() {
@@ -651,8 +653,8 @@ func (s *GitGetProjectSuite) TestBuildCommandForCLIMergeTests() {
 	s.taskConfig2.Task.Requester = evergreen.MergeTestRequester
 	cmds, err := c.buildCloneCommand(s.ctx, s.comm, logger, conf, opts)
 	s.NoError(err)
-	s.Len(cmds, 9)
-	s.True(strings.HasSuffix(cmds[5], fmt.Sprintf("--branch '%s'", s.taskConfig2.ProjectRef.Branch)))
+	s.Len(cmds, 10)
+	s.True(strings.HasSuffix(cmds[6], fmt.Sprintf("--branch '%s'", s.taskConfig2.ProjectRef.Branch)))
 }
 
 func (s *GitGetProjectSuite) TestBuildModuleCommand() {
