@@ -719,9 +719,8 @@ func LoadProjectInto(ctx context.Context, data []byte, opts *GetProjectOpts, ide
 		yamlMap := map[string][]byte{}
 		catcher := grip.NewBasicCatcher()
 		for elem := range yamlChan {
-			if elem.err != nil {
-				catcher.Add(err)
-			} else {
+			catcher.Add(elem.err)
+			if elem.yaml != nil {
 				yamlMap[elem.name] = elem.yaml
 			}
 		}
