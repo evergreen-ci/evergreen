@@ -584,23 +584,20 @@ func TestProjectTriggerIntegrationForPush(t *testing.T) {
 			Timestamp: &github.Timestamp{Time: time.Now()},
 		},
 	}
-	downstreamVersions, err := TriggerDownstreamProjectsForPush(ctx, "upstream", pushEvent, TriggerDownstreamVersion)
+	err = TriggerDownstreamProjectsForPush(ctx, "upstream", pushEvent, TriggerDownstreamVersion)
 	assert.NoError(err)
 	dbVersions, err := model.VersionFind(model.BaseVersionByProjectIdAndRevision(downstreamProjectRef.Id, downstreamRevision))
 	assert.NoError(err)
-	require.Len(downstreamVersions, 1)
 	require.Len(dbVersions, 1)
-	versions := []model.Version{downstreamVersions[0], dbVersions[0]}
-	for _, v := range versions {
-		assert.True(utility.FromBoolPtr(v.Activated))
-		assert.Equal("downstream_abc_def1", v.Id)
-		assert.Equal(downstreamRevision, v.Revision)
-		assert.Equal(evergreen.VersionCreated, v.Status)
-		assert.Equal(downstreamProjectRef.Id, v.Identifier)
-		assert.Equal(evergreen.TriggerRequester, v.Requester)
-		assert.Equal(model.ProjectTriggerLevelPush, v.TriggerType)
-	}
-	builds, err := build.Find(build.ByVersion(downstreamVersions[0].Id))
+	assert.True(utility.FromBoolPtr(dbVersions[0].Activated))
+	assert.Equal("downstream_abc_def1", dbVersions[0].Id)
+	assert.Equal(downstreamRevision, dbVersions[0].Revision)
+	assert.Equal(evergreen.VersionCreated, dbVersions[0].Status)
+	assert.Equal(downstreamProjectRef.Id, dbVersions[0].Identifier)
+	assert.Equal(evergreen.TriggerRequester, dbVersions[0].Requester)
+	assert.Equal(model.ProjectTriggerLevelPush, dbVersions[0].TriggerType)
+
+	builds, err := build.Find(build.ByVersion(dbVersions[0].Id))
 	assert.NoError(err)
 	assert.True(len(builds) > 0)
 	for _, b := range builds {
@@ -611,7 +608,7 @@ func TestProjectTriggerIntegrationForPush(t *testing.T) {
 		assert.Equal(model.ProjectTriggerLevelPush, b.TriggerType)
 		assert.Contains(b.BuildVariant, "buildvariant")
 	}
-	tasks, err := task.Find(task.ByVersion(downstreamVersions[0].Id))
+	tasks, err := task.Find(task.ByVersion(dbVersions[0].Id))
 	assert.NoError(err)
 	assert.True(len(tasks) > 0)
 	for _, t := range tasks {
@@ -629,7 +626,6 @@ func TestProjectTriggerIntegrationForPush(t *testing.T) {
 	assert.Equal(uptreamProjectRef.Branch, mani.Branch)
 
 	// verify that triggering this version again does nothing
-	downstreamVersions, err = TriggerDownstreamProjectsForPush(ctx, uptreamProjectRef.Id, pushEvent, TriggerDownstreamVersion)
+	err = TriggerDownstreamProjectsForPush(ctx, uptreamProjectRef.Id, pushEvent, TriggerDownstreamVersion)
 	assert.NoError(err)
-	assert.Len(downstreamVersions, 0)
 }
