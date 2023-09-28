@@ -631,8 +631,8 @@ func GetProjectFromBSON(data []byte) (*Project, error) {
 	return TranslateProject(pp)
 }
 
-func processIntermediateProjectInludes(ctx context.Context, identifier string, intermediateProject *ParserProject,
-	include Include, yamlChan chan<- yamlTuple, projectOpts *GetProjectOpts) {
+func processIntermediateProjectIncludes(ctx context.Context, identifier string, intermediateProject *ParserProject,
+	include Include, outputYAMLs chan<- yamlTuple, projectOpts *GetProjectOpts) {
 	// Make a copy of opts because otherwise parts of opts would be
 	// modified concurrently.  Note, however, that Ref and PatchOpts are
 	// themselves pointers, so should not be modified.
@@ -659,21 +659,15 @@ func processIntermediateProjectInludes(ctx context.Context, identifier string, i
 	})
 	if include.Module != "" {
 		yaml, err = retrieveFileForModule(ctx, *localOpts, intermediateProject.Modules, include.Module)
+		err = errors.Wrapf(err, "%s: retrieving file for module '%s'", LoadProjectError, include.Module)
 	} else {
 		yaml, err = retrieveFile(ctx, *localOpts)
+		err = errors.Wrapf(err, "%s: retrieving file for include '%s'", LoadProjectError, include.FileName)
 	}
-	if err != nil {
-		yamlChan <- yamlTuple{
-			yaml: nil,
-			name: include.FileName,
-			err:  errors.Wrapf(err, "%s: retrieving file '%s'", LoadProjectError, include.FileName),
-		}
-		return
-	}
-	yamlChan <- yamlTuple{
+	outputYAMLs <- yamlTuple{
 		yaml: yaml,
 		name: include.FileName,
-		err:  nil,
+		err:  err,
 	}
 }
 
@@ -703,35 +697,38 @@ func LoadProjectInto(ctx context.Context, data []byte, opts *GetProjectOpts, ide
 			return nil, errors.Wrapf(err, LoadProjectError)
 		}
 		wg := sync.WaitGroup{}
-		yamlChan := make(chan yamlTuple, len(intermediateProject.Include))
-		includeChan := make(chan Include)
+		outputYAMLs := make(chan yamlTuple, len(intermediateProject.Include))
+		includesToProcess := make(chan Include, len(intermediateProject.Include))
+
+		for _, path := range intermediateProject.Include {
+			includesToProcess <- path
+		}
 
 		// Be polite. Don't make more than 10 concurrent requests to GitHub.
-		for i := 0; i < 10; i++ {
+		const maxWorkers = 10
+		workers := util.Min(maxWorkers, len(intermediateProject.Include))
+		for i := 0; i < workers; i++ {
 			wg.Add(1)
 			go func() {
 				defer wg.Done()
-				for include := range includeChan {
-					processIntermediateProjectInludes(ctx, identifier, intermediateProject, include, yamlChan, opts)
+				for include := range includesToProcess {
+					processIntermediateProjectIncludes(ctx, identifier, intermediateProject, include, outputYAMLs, opts)
 				}
 			}()
 		}
 
-		for _, path := range intermediateProject.Include {
-			includeChan <- path
-		}
-
-		close(includeChan)
+		// This order is deliberate:
+		// 1. Close `includesToProcess` so that the workers stop `range`ing over it.
+		// 2. Wait for the workers, since closing on a `nil` `outputYAMLs` would panic.
+		// 3. Close `outputYAMLs` so that they later `range` statement over it will stop after the channel is drained.
+		close(includesToProcess)
 		wg.Wait()
-		close(yamlChan)
+		close(outputYAMLs)
 
-		// We must apply the includes in order, so we indirect through a map.
 		yamlMap := map[string][]byte{}
 		catcher := grip.NewBasicCatcher()
-		for elem := range yamlChan {
+		for elem := range outputYAMLs {
 			catcher.Add(elem.err)
-			// defensive programming, since there should always be an error in
-			// the nil case, causing us to return early
 			if elem.yaml != nil {
 				yamlMap[elem.name] = elem.yaml
 			}
@@ -752,7 +749,6 @@ func LoadProjectInto(ctx context.Context, data []byte, opts *GetProjectOpts, ide
 				return intermediateProject, errors.Wrapf(err, "%s: merging file '%s'", LoadProjectError, path.FileName)
 			}
 		}
-
 	}
 
 	intermediateProject.Include = nil
