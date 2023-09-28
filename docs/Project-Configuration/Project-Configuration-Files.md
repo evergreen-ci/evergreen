@@ -791,6 +791,11 @@ given module
 -   `${<module_name>_owner}` is the Github repo owner for the evergreen
     module associated with this task
 
+In the [Github merge queue](Merge-Queue.md), a single additional expansion is
+available. This is the name of the temporary branch that GitHub creates for this
+merge group item. It looks something like
+"gh-readonly-queue/main/pr-515-9cd8a2532bcddf58369aa82eb66ba88e2323c056".
+
 ### Task and Variant Tags
 
 Most projects have some implicit grouping at every layer. Some tests are

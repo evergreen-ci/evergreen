@@ -412,13 +412,18 @@ func TestPopulateExpansions(t *testing.T) {
 	}))
 	p = patch.Patch{
 		Version: v.Id,
+		GithubMergeData: thirdparty.GithubMergeGroup{
+			HeadBranch: "merge_head_branch",
+			HeadSHA:    "merge_head_sha",
+		},
 	}
 	require.NoError(t, p.Insert())
 	expansions, err = PopulateExpansions(taskDoc, &h, oauthToken, "")
 	assert.NoError(err)
-	assert.Len(map[string]string(expansions), 25)
+	assert.Len(map[string]string(expansions), 26)
 	assert.Equal("true", expansions.Get("is_patch"))
 	assert.Equal("true", expansions.Get("is_commit_queue"))
+	assert.Equal("merge_head_branch", expansions.Get("github_head_branch"))
 	require.NoError(t, db.ClearCollections(patch.Collection))
 
 	assert.NoError(VersionUpdateOne(bson.M{VersionIdKey: v.Id}, bson.M{
