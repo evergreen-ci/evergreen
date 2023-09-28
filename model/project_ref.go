@@ -1554,7 +1554,7 @@ func FindOneProjectRefByRepoAndBranchWithPRTesting(owner, repo, branch, calledBy
 	if err != nil {
 		return nil, errors.Wrapf(err, "finding merged repo refs for repo '%s/%s'", owner, repo)
 	}
-	if repoRef == nil || !repoRef.IsPRTestingEnabledByCaller(calledBy) || repoRef.RemotePath == "" {
+	if repoRef == nil || !repoRef.IsPRTestingEnabledByCaller(calledBy) {
 		grip.Debug(message.Fields{
 			"source":  "find project ref for PR testing",
 			"message": "repo ref not configured for PR testing untracked branches",
@@ -1563,6 +1563,16 @@ func FindOneProjectRefByRepoAndBranchWithPRTesting(owner, repo, branch, calledBy
 			"branch":  branch,
 		})
 		return nil, nil
+	}
+	if repoRef.RemotePath == "" {
+		grip.Error(message.Fields{
+			"source":  "find project ref for PR testing",
+			"message": "repo ref has no remote path, cannot use for PR testing",
+			"owner":   owner,
+			"repo":    repo,
+			"branch":  branch,
+		})
+		return nil, errors.Wrapf(err, "repo ref '%s' has no remote path, cannot use for PR testing", repoRef.Id)
 	}
 
 	projectRefs, err = FindMergedProjectRefsThatUseRepoSettingsByRepoAndBranch(owner, repo, branch)
