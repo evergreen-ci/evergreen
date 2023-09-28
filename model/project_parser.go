@@ -703,6 +703,7 @@ func LoadProjectInto(ctx context.Context, data []byte, opts *GetProjectOpts, ide
 		for _, path := range intermediateProject.Include {
 			includesToProcess <- path
 		}
+		close(includesToProcess)
 
 		// Be polite. Don't make more than 10 concurrent requests to GitHub.
 		const maxWorkers = 10
@@ -718,10 +719,8 @@ func LoadProjectInto(ctx context.Context, data []byte, opts *GetProjectOpts, ide
 		}
 
 		// This order is deliberate:
-		// 1. Close `includesToProcess` so that the workers stop `range`ing over it.
-		// 2. Wait for the workers, since sending on a `nil` `outputYAMLs` would panic.
-		// 3. Close `outputYAMLs` so that the later `range` statement over it will stop after it's is drained.
-		close(includesToProcess)
+		// 1. Wait for the workers, since sending on a `nil` `outputYAMLs` would panic.
+		// 2. Close `outputYAMLs` so that the later `range` statement over it will stop after it's is drained.
 		wg.Wait()
 		close(outputYAMLs)
 
@@ -740,6 +739,9 @@ func LoadProjectInto(ctx context.Context, data []byte, opts *GetProjectOpts, ide
 
 		// We promise to iterate over includes in the order they are defined.
 		for _, path := range intermediateProject.Include {
+			if _, ok := yamlMap[path.FileName]; !ok {
+				return intermediateProject, errors.WithStack(errors.Errorf("yaml was nil in map for %s, but it never should be", path.FileName))
+			}
 			add, err := createIntermediateProject(yamlMap[path.FileName], opts.UnmarshalStrict)
 			if err != nil {
 				// Return intermediateProject even if we run into issues to show merge progress.
