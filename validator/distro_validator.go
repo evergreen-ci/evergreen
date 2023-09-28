@@ -552,6 +552,7 @@ func ensureHasValidVirtualWorkstationSettings(ctx context.Context, d *distro.Dis
 		evergreen.ArchLinuxPpc64le,
 		evergreen.ArchLinuxS390x,
 		evergreen.ArchLinuxArm64,
+		evergreen.ArchLinuxAmd64,
 	}
 
 	if !utility.StringSliceContains(linuxDistros, d.Arch) {
