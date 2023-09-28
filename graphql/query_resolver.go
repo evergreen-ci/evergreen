@@ -598,22 +598,22 @@ func (r *queryResolver) Task(ctx context.Context, taskID string, execution *int)
 
 // TaskAllExecutions is the resolver for the taskAllExecutions field.
 func (r *queryResolver) TaskAllExecutions(ctx context.Context, taskID string) ([]*restModel.APITask, error) {
-	latestTask, err := task.FindOneId(taskID)
+	latestTask, err := task.FindOneIdAndExecutionWithDisplayStatus(taskID, nil)
 	if err != nil {
 		return nil, ResourceNotFound.Send(ctx, err.Error())
 	}
 	if latestTask == nil {
-		return nil, werrors.Errorf("unable to find task %s", taskID)
+		return nil, ResourceNotFound.Send(ctx, fmt.Sprintf("unable to find task %s", taskID))
 	}
 	allTasks := []*restModel.APITask{}
 	for i := 0; i < latestTask.Execution; i++ {
 		var dbTask *task.Task
-		dbTask, err = task.FindByIdExecution(taskID, &i)
+		dbTask, err = task.FindOneIdAndExecutionWithDisplayStatus(taskID, &i)
 		if err != nil {
 			return nil, ResourceNotFound.Send(ctx, err.Error())
 		}
 		if dbTask == nil {
-			return nil, werrors.Errorf("unable to find task %s", taskID)
+			return nil, ResourceNotFound.Send(ctx, fmt.Sprintf("unable to find task %s", taskID))
 		}
 		var apiTask *restModel.APITask
 		apiTask, err = getAPITaskFromTask(ctx, r.sc.GetURL(), *dbTask)
