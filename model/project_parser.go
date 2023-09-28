@@ -719,8 +719,8 @@ func LoadProjectInto(ctx context.Context, data []byte, opts *GetProjectOpts, ide
 
 		// This order is deliberate:
 		// 1. Close `includesToProcess` so that the workers stop `range`ing over it.
-		// 2. Wait for the workers, since closing on a `nil` `outputYAMLs` would panic.
-		// 3. Close `outputYAMLs` so that they later `range` statement over it will stop after the channel is drained.
+		// 2. Wait for the workers, since sending on a `nil` `outputYAMLs` would panic.
+		// 3. Close `outputYAMLs` so that the later `range` statement over it will stop after it's is drained.
 		close(includesToProcess)
 		wg.Wait()
 		close(outputYAMLs)
@@ -738,6 +738,7 @@ func LoadProjectInto(ctx context.Context, data []byte, opts *GetProjectOpts, ide
 			return intermediateProject, errors.Wrap(catcher.Resolve(), "getting includes")
 		}
 
+		// We promise to iterate over includes in the order they are defined.
 		for _, path := range intermediateProject.Include {
 			add, err := createIntermediateProject(yamlMap[path.FileName], opts.UnmarshalStrict)
 			if err != nil {
