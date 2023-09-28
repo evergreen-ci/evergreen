@@ -557,7 +557,7 @@ func ensureHasValidVirtualWorkstationSettings(ctx context.Context, d *distro.Dis
 
 	if !utility.StringSliceContains(linuxDistros, d.Arch) {
 		errs = append(errs, ValidationError{
-			Message: "spawnable distros must use Linux architecture",
+			Message: "workstation distros must use Linux architecture",
 			Level:   Error,
 		})
 	}
