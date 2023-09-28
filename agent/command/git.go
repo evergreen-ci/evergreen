@@ -633,9 +633,11 @@ func (c *gitFetchProject) fetchAdditionalPatches(ctx context.Context,
 }
 
 func (c *gitFetchProject) fetchModuleSource(ctx context.Context,
+	comm client.Communicator,
 	conf *internal.TaskConfig,
 	logger client.LoggerProducer,
 	jpm jasper.Manager,
+	appTokens map[string]string,
 	projectToken string,
 	cloneMethod string,
 	p *patch.Patch,
@@ -713,8 +715,20 @@ func (c *gitFetchProject) fetchModuleSource(ctx context.Context,
 	// method.
 	if strings.Contains(opts.location, "git@github.com:") {
 		opts.method = evergreen.CloneMethodLegacySSH
+	} else if opts.method == evergreen.CloneMethodAccessToken {
+		opts.method = evergreen.CloneMethodOAuth
+		if appToken, ok := appTokens[opts.owner]; ok {
+			opts.token = appToken
+		} else {
+			appToken, err := comm.CreateInstallationToken(ctx, opts.owner, opts.repo)
+			if err != nil {
+				return errors.Wrapf(err, "creating installation token for '%s/%s'", opts.owner, opts.repo)
+			}
+			appTokens[opts.owner] = appToken
+			opts.token = appToken
+		}
 	} else {
-		opts.method = cloneMethod
+		opts.method = evergreen.CloneMethodOAuth
 		opts.token = projectToken
 	}
 	if err = opts.validate(); err != nil {
@@ -829,7 +843,11 @@ func (c *gitFetchProject) fetch(ctx context.Context,
 		if err := ctx.Err(); err != nil {
 			return errors.Wrapf(err, "canceled while applying module '%s'", moduleName)
 		}
-		err = c.fetchModuleSource(ctx, conf, logger, jpm, opts.token, opts.method, p, moduleName)
+		appTokens := map[string]string{}
+		if opts.method == evergreen.CloneMethodAccessToken {
+			appTokens[opts.owner] = opts.token
+		}
+		err = c.fetchModuleSource(ctx, comm, conf, logger, jpm, appTokens, opts.token, opts.method, p, moduleName)
 		if err != nil {
 			logger.Execution().Error(errors.Wrap(err, "fetching module source"))
 		}
