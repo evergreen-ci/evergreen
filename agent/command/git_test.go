@@ -551,9 +551,9 @@ func (s *GitGetProjectSuite) TestBuildCommand() {
 	s.Equal("set -o errexit", cmds[2])
 	s.Equal("rm -rf dir", cmds[3])
 	s.Equal("git clone 'git@github.com:evergreen-ci/sample.git' 'dir' --branch 'main'", cmds[4])
-	s.Equal("cd dir", cmds[7])
-	s.Equal("git reset --hard ", cmds[8])
-	s.Equal("git log --oneline -n 10", cmds[9])
+	s.Equal("cd dir", cmds[5])
+	s.Equal("git reset --hard ", cmds[6])
+	s.Equal("git log --oneline -n 10", cmds[7])
 
 	// ensure clone command with location containing "https://github.com" uses
 	// HTTPS.
@@ -654,7 +654,7 @@ func (s *GitGetProjectSuite) TestBuildCommandForCLIMergeTests() {
 	cmds, err := c.buildCloneCommand(s.ctx, s.comm, logger, conf, opts)
 	s.NoError(err)
 	s.Len(cmds, 10)
-	s.True(strings.HasSuffix(cmds[8], fmt.Sprintf("--branch '%s'", s.taskConfig2.ProjectRef.Branch)))
+	s.True(strings.HasSuffix(cmds[6], fmt.Sprintf("--branch '%s'", s.taskConfig2.ProjectRef.Branch)))
 }
 
 func (s *GitGetProjectSuite) TestBuildModuleCommand() {
