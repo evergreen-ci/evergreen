@@ -492,8 +492,7 @@ func getStepback(taskId string) (stepbackInstructions, error) {
 		return stepbackInstructions{}, errors.Wrapf(err, "finding merged project ref for task '%s'", taskId)
 	}
 	if projectRef == nil {
-		return stepbackInstructions{}, nil
-		// return stepbackInstructions{}, errors.Errorf("project for task '%s' not found", taskId)
+		return stepbackInstructions{}, errors.Errorf("project ref for task '%s' not found", taskId)
 	}
 	// Disabling the feature at the project level takes precedent.
 	if projectRef.IsStepbackDisabled() {
