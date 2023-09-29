@@ -4609,36 +4609,47 @@ func TestClearAndResetStaleStrandedHostTask(t *testing.T) {
 	require.NoError(t, db.ClearCollections(host.Collection, task.Collection, task.OldCollection, build.Collection))
 	assert := assert.New(t)
 
+	projectRef := ProjectRef{
+		Identifier: "project-ref",
+	}
+	require.NoError(t, projectRef.Insert())
+	version := Version{
+		Id:         "version",
+		Identifier: "mci",
+	}
+	require.NoError(t, version.Insert())
+	parserProject := ParserProject{
+		Id: version.Id,
+	}
+	require.NoError(t, parserProject.Insert())
+	patch := patch.Patch{
+		Id:      mgobson.NewObjectId(),
+		Version: version.Id,
+	}
+	require.NoError(t, patch.Insert())
+	host := &host.Host{
+		Id:          "h1",
+		RunningTask: "t",
+	}
+	assert.NoError(host.Insert(ctx))
+
 	runningTask := &task.Task{
 		Id:            "t",
 		Status:        evergreen.TaskStarted,
 		Activated:     true,
 		ActivatedTime: utility.ZeroTime,
-		BuildId:       "b",
-		Version:       "version",
-		HostId:        "h1",
+		Version:       version.Id,
+		Project:       projectRef.Identifier,
+		HostId:        host.Id,
 	}
 	assert.NoError(runningTask.Insert())
-
-	h := &host.Host{
-		Id:          "h1",
-		RunningTask: "t",
-	}
-	assert.NoError(h.Insert(ctx))
-
-	b := build.Build{Id: "b"}
-	assert.NoError(b.Insert())
-	v := Version{
-		Id: b.Version,
-	}
-	assert.NoError(v.Insert())
 
 	settings := &evergreen.Settings{
 		CommitQueue: evergreen.CommitQueueConfig{
 			MaxSystemFailedTaskRetries: 2,
 		},
 	}
-	assert.NoError(ClearAndResetStrandedHostTask(ctx, settings, h))
+	assert.NoError(ClearAndResetStrandedHostTask(ctx, settings, host))
 	runningTask, err := task.FindOne(db.Query(task.ById("t")))
 	assert.NoError(err)
 	assert.Equal(evergreen.TaskFailed, runningTask.Status)
