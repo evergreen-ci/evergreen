@@ -12,6 +12,8 @@
               "groupedFiles": [
                 {
                   "taskName": "test-thirdparty-docker",
+                  "taskId": "some_task",
+                  "execution": 1,
                   "files": [
                     {
                       "name": "File 1"
