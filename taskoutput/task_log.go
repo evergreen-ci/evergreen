@@ -1,4 +1,4 @@
-package tasklogs
+package taskoutput
 
 import (
 	"context"
@@ -13,10 +13,10 @@ import (
 type TaskLogType string
 
 const (
-	TaskLogTypeAll    TaskLogType = "all"
-	TaskLogTypeAgent  TaskLogType = "agent"
-	TaskLogTypeSystem TaskLogType = "system"
-	TaskLogTypeTask   TaskLogType = "task"
+	TaskLogTypeAll    TaskLogType = "all_logs"
+	TaskLogTypeAgent  TaskLogType = "agent_log"
+	TaskLogTypeSystem TaskLogType = "system_log"
+	TaskLogTypeTask   TaskLogType = "task_log"
 )
 
 func (t TaskLogType) validate() error {
@@ -28,27 +28,19 @@ func (t TaskLogType) validate() error {
 	}
 }
 
-// TaskLogs is the versioned entry point for coordinating persistent storage
-// of a task run's task log data.
-type TaskLogs int
-
-// ID returns the unique identifier of the task logs output type.
-func (TaskLogs) ID() string { return "task_logs" }
-
-// TaskOptions represents the task-level information required for accessing
-// task logs belonging to a task run.
-type TaskOptions struct {
-	// ProjectID is the project ID of the task run.
-	ProjectID string
-	// TaskID is the task ID of the task run.
-	TaskID string
-	// Execution is the execution number of the task run.
-	Execution int
+// TaskLogOutput is the versioned entry point for coordinating persistent
+// storage of a task run's task log data.
+type TaskLogOutput struct {
+	Version int `bson:"version" json:"version"`
 }
 
-// GetOptions represents the arguments for fetching task logs belonging to a
-// task run.
-type GetOptions struct {
+// ID returns the unique identifier of the task log output type.
+// Note that this is distinct from the task log output type subtype `task_log`.
+func (TaskLogOutput) ID() string { return "task_logs" }
+
+// TaskLogGetOptions represents the arguments for fetching task logs belonging
+// to a task run.
+type TaskLogGetOptions struct {
 	// LogType is the type of task log to fetch.
 	LogType TaskLogType
 	// Start is the start time (inclusive) of the time range filter,
@@ -64,8 +56,8 @@ type GetOptions struct {
 	TailN int
 }
 
-// Get returns the task logs belonging to the specified task run.
-func (o TaskLogs) Get(ctx context.Context, env evergreen.Environment, taskOpts TaskOptions, getOpts GetOptions) (log.LogIterator, error) {
+// Get returns task logs belonging to the specified task run.
+func (o TaskLogOutput) Get(ctx context.Context, env evergreen.Environment, taskOpts TaskOptions, getOpts TaskLogGetOptions) (log.LogIterator, error) {
 	if err := getOpts.LogType.validate(); err != nil {
 		return nil, err
 	}
@@ -80,29 +72,27 @@ func (o TaskLogs) Get(ctx context.Context, env evergreen.Environment, taskOpts T
 	})
 }
 
-func (o TaskLogs) getLogName(taskOpts TaskOptions, logType TaskLogType) string {
+func (o TaskLogOutput) getLogName(taskOpts TaskOptions, logType TaskLogType) string {
 	prefix := fmt.Sprintf("%s/%s/%d/%s", taskOpts.ProjectID, taskOpts.TaskID, taskOpts.Execution, o.ID())
 
-	var filename string
+	var logTypePrefix string
 	switch logType {
 	case TaskLogTypeAgent:
-		filename = "agent"
+		logTypePrefix = "agent"
 	case TaskLogTypeSystem:
-		filename = "system"
+		logTypePrefix = "system"
 	case TaskLogTypeTask:
-		filename = "task"
+		logTypePrefix = "task"
 	default:
 		return prefix
 	}
 
-	return fmt.Sprintf("%s/%s", prefix, filename)
+	return fmt.Sprintf("%s/%s", prefix, logTypePrefix)
 }
 
-func (o TaskLogs) getLogServiceVersion() int {
+func (o TaskLogOutput) getLogServiceVersion() int {
 	switch {
-	case o >= 0:
-		return 0
 	default:
-		return -1
+		return 0
 	}
 }

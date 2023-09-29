@@ -24,13 +24,6 @@ const (
 	DefaultRetries                  = 2
 )
 
-// TaskOutputVersionRequest holds information sent by the agent to the API
-// server for the task output version used to coordinate persistent storage of
-// output data collected during a task run.
-type TaskOutputVersionRequest struct {
-	Version int `json:"version"`
-}
-
 // TaskStartRequest holds information sent by the agent to the
 // API server at the beginning of each task run.
 type TaskStartRequest struct {
