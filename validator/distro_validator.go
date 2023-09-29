@@ -547,7 +547,7 @@ func ensureHasValidVirtualWorkstationSettings(ctx context.Context, d *distro.Dis
 			Level:   Error,
 		})
 	}
-	linuxDistros := []string{
+	linuxArchs := []string{
 		evergreen.ArchLinux386,
 		evergreen.ArchLinuxPpc64le,
 		evergreen.ArchLinuxS390x,
@@ -555,9 +555,9 @@ func ensureHasValidVirtualWorkstationSettings(ctx context.Context, d *distro.Dis
 		evergreen.ArchLinuxAmd64,
 	}
 
-	if !utility.StringSliceContains(linuxDistros, d.Arch) {
+	if !utility.StringSliceContains(linuxArchs, d.Arch) {
 		errs = append(errs, ValidationError{
-			Message: "workstation distros must use Linux architecture",
+			Message: "workstation distros must use Linux with a supported CPU architecture",
 			Level:   Error,
 		})
 	}
