@@ -128,7 +128,7 @@ tasks:
       - command: archive.targz_extract
         params:
           path: "archive.tgz"
-          destination: "output"
+          destination: "output/targz"
       - command: archive.zip_pack
         params:
           target: "archive.zip"
@@ -138,15 +138,15 @@ tasks:
       - command: archive.zip_extract
         params:
           path: "archive.zip"
-          destination: "output"
+          destination: "output/zip"
       - command: archive.auto_extract
         params:
           path: "archive.zip"
-          destination: "output"
+          destination: "output/zip-auto"
       - command: archive.auto_extract
         params:
           path: "archive.tgz"
-          destination: "output"
+          destination: "output/targz-auto"
       - command: attach.results
         params:
           file_location: "src/agent/command/testdata/attach/plugin_attach_results.json"

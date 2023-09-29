@@ -163,7 +163,7 @@ require (
 	github.com/lestrrat-go/option v1.0.0 // indirect
 	github.com/lufia/plan9stats v0.0.0-20220913051719-115f729f3c8c // indirect
 	github.com/mattn/go-xmpp v0.0.0-20211029151415-912ba614897a // indirect
-	github.com/mholt/archiver/v3 v3.5.1 // indirect
+	github.com/mholt/archiver/v3 v3.5.1
 	github.com/mongodb/ftdc v0.0.0-20220401165013-13e4af55e809 // indirect
 	github.com/montanaflynn/stats v0.0.0-20180911141734-db72e6cae808 // indirect
 	github.com/nwaples/rardecode v1.1.2 // indirect
@@ -210,11 +210,6 @@ require (
 	google.golang.org/genproto/googleapis/api v0.0.0-20230530153820-e85fd2cbaebc // indirect
 	google.golang.org/genproto/googleapis/rpc v0.0.0-20230530153820-e85fd2cbaebc // indirect
 	gopkg.in/mgo.v2 v2.0.0-20190816093944-a6b53ec6cb22 // indirect
-)
-
-require (
-	github.com/mholt/archiver v2.0.1-0.20180417220235-e4ef56d48eb0+incompatible
-	github.com/pierrec/lz4 v2.6.1+incompatible // indirect
 )
 
 require (
