@@ -603,7 +603,7 @@ func (r *queryResolver) TaskAllExecutions(ctx context.Context, taskID string) ([
 		return nil, ResourceNotFound.Send(ctx, err.Error())
 	}
 	if latestTask == nil {
-		return nil, ResourceNotFound.Send(ctx, fmt.Sprintf("unable to find task %s", taskID))
+		return nil, ResourceNotFound.Send(ctx, fmt.Sprintf("unable to find task '%s'", taskID))
 	}
 	allTasks := []*restModel.APITask{}
 	for i := 0; i < latestTask.Execution; i++ {
@@ -613,7 +613,7 @@ func (r *queryResolver) TaskAllExecutions(ctx context.Context, taskID string) ([
 			return nil, ResourceNotFound.Send(ctx, err.Error())
 		}
 		if dbTask == nil {
-			return nil, ResourceNotFound.Send(ctx, fmt.Sprintf("unable to find task %s", taskID))
+			return nil, ResourceNotFound.Send(ctx, fmt.Sprintf("unable to find task '%s'", taskID))
 		}
 		var apiTask *restModel.APITask
 		apiTask, err = getAPITaskFromTask(ctx, r.sc.GetURL(), *dbTask)
