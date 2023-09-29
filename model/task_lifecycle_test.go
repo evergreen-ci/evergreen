@@ -4618,6 +4618,10 @@ func TestClearAndResetStaleStrandedHostTask(t *testing.T) {
 		Identifier: "mci",
 	}
 	require.NoError(t, version.Insert())
+	build := build.Build{
+		Id: version.Id,
+	}
+	require.NoError(t, build.Insert())
 	parserProject := ParserProject{
 		Id: version.Id,
 	}
@@ -4639,6 +4643,7 @@ func TestClearAndResetStaleStrandedHostTask(t *testing.T) {
 		Activated:     true,
 		ActivatedTime: utility.ZeroTime,
 		Version:       version.Id,
+		BuildId:       build.Id,
 		Project:       projectRef.Identifier,
 		HostId:        host.Id,
 	}
