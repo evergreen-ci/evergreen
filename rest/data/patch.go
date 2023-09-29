@@ -232,6 +232,11 @@ func GetRawPatches(patchID string) (*restModel.APIRawPatch, error) {
 			rawPatch.RawModules = append(rawPatch.RawModules, module)
 		}
 	}
+	if rawPatch.Patch.Githash == "" {
+		// If there aren't any changes for the base project, we should still add this to the list,
+		// using the patch githash.
+		rawPatch.Patch.Githash = patchDoc.Githash
+	}
 
 	return &rawPatch, nil
 }
