@@ -307,9 +307,8 @@ func (c *gitFetchProject) ParseParams(params map[string]interface{}) error {
 func (c *gitFetchProject) buildCloneCommand(ctx context.Context, comm client.Communicator, logger client.LoggerProducer, conf *internal.TaskConfig, opts cloneOpts) ([]string, error) {
 	gitCommands := []string{
 		"set -o xtrace",
-		"set -o errexit",
-		fmt.Sprintf("mkdir -p %s", c.Directory),
 		fmt.Sprintf("chmod -R 755 %s", c.Directory),
+		"set -o errexit",
 		fmt.Sprintf("rm -rf %s", c.Directory),
 	}
 
