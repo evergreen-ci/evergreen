@@ -626,6 +626,5 @@ func TestProjectTriggerIntegrationForPush(t *testing.T) {
 	assert.Equal(uptreamProjectRef.Branch, mani.Branch)
 
 	// verify that triggering this version again does nothing
-	err = TriggerDownstreamProjectsForPush(ctx, uptreamProjectRef.Id, pushEvent, TriggerDownstreamVersion)
-	assert.NoError(err)
+	assert.NoError(TriggerDownstreamProjectsForPush(ctx, uptreamProjectRef.Id, pushEvent, TriggerDownstreamVersion))
 }

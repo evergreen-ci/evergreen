@@ -302,7 +302,7 @@ func TriggerDownstreamProjectsForPush(ctx context.Context, projectId string, eve
 	}
 
 	catcher := grip.NewBasicCatcher()
-	versions := []model.Version{}
+	versionIds := []string{}
 	for _, ref := range downstreamProjects {
 
 		for _, trigger := range ref.Triggers {
@@ -332,20 +332,15 @@ func TriggerDownstreamProjectsForPush(ctx context.Context, projectId string, eve
 				continue
 			}
 			if v != nil {
-				versions = append(versions, *v)
+				versionIds = append(versionIds, v.Id)
 			}
 			break
 		}
 	}
-
-	versionIds := []string{}
-	for _, v := range versions {
-		versionIds = append(versionIds, v.Id)
-	}
-	grip.InfoWhen(len(versions) > 0, message.Fields{
+	grip.InfoWhen(len(versionIds) > 0, message.Fields{
 		"source":     "GitHub hook",
 		"message":    "triggered versions for push event for project",
-		"versions":   versions,
+		"versions":   versionIds,
 		"project_id": projectId,
 	})
 

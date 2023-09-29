@@ -43,8 +43,7 @@ func TriggerDownstreamVersion(ctx context.Context, args ProcessorArgs) (*model.V
 		return nil, errors.Wrap(err, "creating version")
 	}
 	if args.SourceVersion != nil {
-		err = args.SourceVersion.AddSatisfiedTrigger(args.DefinitionID)
-		if err != nil {
+		if err = args.SourceVersion.AddSatisfiedTrigger(args.DefinitionID); err != nil {
 			return nil, err
 		}
 	}
@@ -53,6 +52,9 @@ func TriggerDownstreamVersion(ctx context.Context, args ProcessorArgs) (*model.V
 		return nil, errors.Wrap(err, "getting Evergreen settings")
 	}
 	var versionID string
+	// For build and task level triggers, there is a source version from which we can extract a project ID.
+	// For push triggers, since there is no source version and the ProjectID field gets populated from
+	// the trigger definition's project ID.
 	projectID := args.ProjectID
 	if projectID == "" {
 		projectID = args.SourceVersion.Identifier
@@ -118,13 +120,12 @@ func metadataFromVersion(args ProcessorArgs) (model.VersionMetadata, error) {
 		return metadata, errors.Errorf("repo '%s' not found", args.DownstreamProject.Id)
 	}
 	metadata.Revision.Revision = repo.LastRevision
-	var authorId string
+	var author *user.DBUser
 	if args.SourceVersion != nil {
-		authorId = args.SourceVersion.AuthorID
-	}
-	author, err := user.FindOneById(authorId)
-	if err != nil {
-		return metadata, errors.Wrapf(err, "finding version author '%s'", authorId)
+		author, err = user.FindOneById(args.SourceVersion.AuthorID)
+		if err != nil {
+			return metadata, errors.Wrapf(err, "finding version author '%s'", args.SourceVersion.AuthorID)
+		}
 	}
 	if author != nil {
 		metadata.Revision.AuthorGithubUID = author.Settings.GithubUser.UID
