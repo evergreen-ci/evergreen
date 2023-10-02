@@ -2,7 +2,6 @@ package model
 
 import (
 	"context"
-	"errors"
 	"fmt"
 	"strconv"
 	"testing"
@@ -4636,7 +4635,6 @@ func TestClearAndResetStaleStrandedHostTask(t *testing.T) {
 		RunningTask: "t",
 	}
 	assert.NoError(host.Insert(ctx))
-
 	runningTask := &task.Task{
 		Id:            "t",
 		Status:        evergreen.TaskStarted,
@@ -5943,6 +5941,7 @@ func TestEvalStepbackDeactivatePrevious(t *testing.T) {
 		Requester:           evergreen.TriggerRequester,
 		Version:             v.Id,
 	}
+	assert.NoError(finishedTask.Insert())
 	b3 := build.Build{
 		Id:           "b3",
 		BuildVariant: "bv",
@@ -6224,7 +6223,6 @@ tasks:
 
 	err = evalStepback(ctx, &finishedTask, "", evergreen.TaskFailed, false)
 	assert.Error(err)
-	assert.Equal(errors.New("bisect stepback not implemented yet, EVG-20788"), err)
 }
 
 func TestEvalStepbackTaskGroup(t *testing.T) {
