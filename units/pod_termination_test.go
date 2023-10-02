@@ -267,8 +267,13 @@ func TestPodTerminationJob(t *testing.T) {
 				ContainerAllocated:     true,
 				ContainerAllocatedTime: time.Now(),
 				PodID:                  j.pod.ID,
+				Project:                "project-ref",
 			}
 			require.NoError(t, t0.Insert())
+			projectRef := model.ProjectRef{
+				Identifier: "project-ref",
+			}
+			require.NoError(t, projectRef.Insert())
 			v := model.Version{
 				Id:     "version_id",
 				Status: evergreen.VersionCreated,
@@ -284,6 +289,7 @@ func TestPodTerminationJob(t *testing.T) {
 				Id:                          "task_id1",
 				BuildId:                     b.Id,
 				Version:                     v.Id,
+				Project:                     projectRef.Identifier,
 				PodID:                       j.PodID,
 				Activated:                   true,
 				ExecutionPlatform:           task.ExecutionPlatformContainer,
