@@ -629,12 +629,11 @@ func isValidRegexOrTag(curItem string, curTags, aliasTags []string, aliasRegex *
 			}
 		}
 
-		if !allCriteriaSatisfied {
-			continue
+		if allCriteriaSatisfied {
+			return true
 		}
-
-		return true
 	}
+
 	return false
 }
 
