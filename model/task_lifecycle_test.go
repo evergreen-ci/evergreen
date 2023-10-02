@@ -5963,6 +5963,10 @@ func TestEvalStepbackDeactivatePrevious(t *testing.T) {
 		Requester: evergreen.RepotrackerVersionRequester,
 	}
 	require.NoError(t, v.Insert())
+	pp := ParserProject{
+		Id: v.Id,
+	}
+	require.NoError(t, pp.Insert())
 	stepbackTask := task.Task{
 		Id:                  "t2",
 		BuildId:             "b2",
