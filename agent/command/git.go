@@ -637,6 +637,7 @@ func (c *gitFetchProject) fetchModuleSource(ctx context.Context,
 	conf *internal.TaskConfig,
 	logger client.LoggerProducer,
 	jpm jasper.Manager,
+	td client.TaskData,
 	appTokens map[string]string,
 	projectToken string,
 	cloneMethod string,
@@ -710,17 +711,17 @@ func (c *gitFetchProject) fetchModuleSource(ctx context.Context,
 		repo:     repo,
 		branch:   "",
 		dir:      moduleBase,
+		method:   cloneMethod,
 	}
 	// Module's location takes precedence over the project-level clone
 	// method.
 	if strings.Contains(opts.location, "git@github.com:") {
 		opts.method = evergreen.CloneMethodLegacySSH
 	} else if opts.method == evergreen.CloneMethodAccessToken {
-		opts.method = evergreen.CloneMethodOAuth
 		if appToken, ok := appTokens[opts.owner]; ok {
 			opts.token = appToken
 		} else {
-			appToken, err := comm.CreateInstallationToken(ctx, opts.owner, opts.repo)
+			appToken, err := comm.CreateInstallationToken(ctx, td, opts.owner, opts.repo)
 			if err != nil {
 				return errors.Wrapf(err, "creating installation token for '%s/%s'", opts.owner, opts.repo)
 			}
@@ -728,7 +729,6 @@ func (c *gitFetchProject) fetchModuleSource(ctx context.Context,
 			opts.token = appToken
 		}
 	} else {
-		opts.method = evergreen.CloneMethodOAuth
 		opts.token = projectToken
 	}
 	if err = opts.validate(); err != nil {
@@ -847,7 +847,12 @@ func (c *gitFetchProject) fetch(ctx context.Context,
 		if opts.method == evergreen.CloneMethodAccessToken {
 			appTokens[opts.owner] = opts.token
 		}
-		err = c.fetchModuleSource(ctx, comm, conf, logger, jpm, appTokens, opts.token, opts.method, p, moduleName)
+		logger.Execution().Debug(message.Fields{
+			"message": "fetching module",
+			"module":  moduleName,
+			"method":  opts.method,
+		})
+		err = c.fetchModuleSource(ctx, comm, conf, logger, jpm, td, appTokens, opts.token, opts.method, p, moduleName)
 		if err != nil {
 			logger.Execution().Error(errors.Wrap(err, "fetching module source"))
 		}

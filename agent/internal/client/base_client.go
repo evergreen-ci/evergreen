@@ -1070,10 +1070,11 @@ func (c *baseCommunicator) GetAdditionalPatches(ctx context.Context, patchId str
 	return patches, nil
 }
 
-func (c *baseCommunicator) CreateInstallationToken(ctx context.Context, owner, repo string) (string, error) {
+func (c *baseCommunicator) CreateInstallationToken(ctx context.Context, td TaskData, owner, repo string) (string, error) {
 	info := requestInfo{
-		method: http.MethodGet,
-		path:   fmt.Sprintf("github/installation_token/%s/%s", owner, repo),
+		method:   http.MethodGet,
+		path:     fmt.Sprintf("github/installation_token/%s/%s", owner, repo),
+		taskData: &td,
 	}
 	resp, err := c.request(ctx, info, nil)
 	if err != nil {

@@ -120,6 +120,8 @@ type SharedCommunicator interface {
 	GetAdditionalPatches(ctx context.Context, patchId string, td TaskData) ([]string, error)
 
 	SetDownstreamParams(ctx context.Context, downstreamParams []patchmodel.Parameter, taskData TaskData) error
+
+	CreateInstallationToken(ctx context.Context, td TaskData, owner, repo string) (string, error)
 }
 
 // TaskData contains the taskData.ID and taskData.Secret. It must be set for
