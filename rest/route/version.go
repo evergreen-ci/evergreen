@@ -262,7 +262,7 @@ func (h *versionRestartHandler) Parse(ctx context.Context, r *http.Request) erro
 // Execute calls the data RestartVersion function to restart completed tasks of a version.
 func (h *versionRestartHandler) Run(ctx context.Context) gimlet.Responder {
 	// RestartAction the version
-	err := dbModel.RestartTasksInVersion(ctx, h.versionId, true, MustHaveUser(ctx).Id)
+	err := dbModel.RestartVersion(ctx, h.versionId, nil, true, MustHaveUser(ctx).Id)
 	if err != nil {
 		return gimlet.MakeJSONInternalErrorResponder(errors.Wrapf(err, "restarting tasks in version '%s'", h.versionId))
 	}

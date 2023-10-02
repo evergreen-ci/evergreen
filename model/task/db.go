@@ -86,7 +86,7 @@ var (
 	DurationPredictionKey          = bsonutil.MustHaveTag(Task{}, "DurationPrediction")
 	PriorityKey                    = bsonutil.MustHaveTag(Task{}, "Priority")
 	ActivatedByKey                 = bsonutil.MustHaveTag(Task{}, "ActivatedBy")
-	StepbackDepthKey               = bsonutil.MustHaveTag(Task{}, "StepbackDepth")
+	StepbackInfoKey                = bsonutil.MustHaveTag(Task{}, "StepbackInfo")
 	ExecutionTasksKey              = bsonutil.MustHaveTag(Task{}, "ExecutionTasks")
 	DisplayOnlyKey                 = bsonutil.MustHaveTag(Task{}, "DisplayOnly")
 	DisplayTaskIdKey               = bsonutil.MustHaveTag(Task{}, "DisplayTaskId")
@@ -97,7 +97,7 @@ var (
 	GenerateTaskKey                = bsonutil.MustHaveTag(Task{}, "GenerateTask")
 	GeneratedTasksKey              = bsonutil.MustHaveTag(Task{}, "GeneratedTasks")
 	GeneratedByKey                 = bsonutil.MustHaveTag(Task{}, "GeneratedBy")
-	TaskOutputVersionKey           = bsonutil.MustHaveTag(Task{}, "TaskOutputVersion")
+	TaskOutputInfoKey              = bsonutil.MustHaveTag(Task{}, "TaskOutputInfo")
 	ResultsServiceKey              = bsonutil.MustHaveTag(Task{}, "ResultsService")
 	HasCedarResultsKey             = bsonutil.MustHaveTag(Task{}, "HasCedarResults")
 	ResultsFailedKey               = bsonutil.MustHaveTag(Task{}, "ResultsFailed")
@@ -114,6 +114,13 @@ var (
 	BaseTaskKey                 = bsonutil.MustHaveTag(Task{}, "BaseTask")
 	BuildVariantDisplayNameKey  = bsonutil.MustHaveTag(Task{}, "BuildVariantDisplayName")
 	IsEssentialToSucceedKey     = bsonutil.MustHaveTag(Task{}, "IsEssentialToSucceed")
+)
+
+var (
+	// BSON fields for stepback information
+	LastFailingStepbackTaskIdKey = bsonutil.MustHaveTag(StepbackInfo{}, "LastFailingStepbackTaskId")
+	LastPassingStepbackTaskIdKey = bsonutil.MustHaveTag(StepbackInfo{}, "LastPassingStepbackTaskId")
+	NextStepbackTaskIdKey        = bsonutil.MustHaveTag(StepbackInfo{}, "NextStepbackTaskId")
 )
 
 var (
@@ -579,6 +586,18 @@ func ByPreviousCommit(buildVariant, displayName, project, requester string, orde
 	}
 }
 
+// ByRevisionOrderNumber returns a query for a given task with requester,
+// build variant, display name, project and revision order number (aka 'order').
+func ByRevisionOrderNumber(buildVariant, displayName, project, requester string, order int) bson.M {
+	return bson.M{
+		RequesterKey:           requester,
+		BuildVariantKey:        buildVariant,
+		DisplayNameKey:         displayName,
+		ProjectKey:             project,
+		RevisionOrderNumberKey: order,
+	}
+}
+
 func ByVersionsForNameAndVariant(versions, displayNames []string, buildVariant string) bson.M {
 	return bson.M{
 		VersionKey: bson.M{
@@ -588,22 +607,6 @@ func ByVersionsForNameAndVariant(versions, displayNames []string, buildVariant s
 			"$in": displayNames,
 		},
 		BuildVariantKey: buildVariant,
-	}
-}
-
-// ByIntermediateRevisions creates a query that returns the tasks existing
-// between two revision order numbers, exclusive.
-func ByIntermediateRevisions(previousRevisionOrder, currentRevisionOrder int,
-	buildVariant, displayName, project, requester string) bson.M {
-	return bson.M{
-		BuildVariantKey: buildVariant,
-		DisplayNameKey:  displayName,
-		RequesterKey:    requester,
-		RevisionOrderNumberKey: bson.M{
-			"$lt": currentRevisionOrder,
-			"$gt": previousRevisionOrder,
-		},
-		ProjectKey: project,
 	}
 }
 
@@ -1905,44 +1908,6 @@ func (t *Task) updateAllMatchingDependenciesForTask(dependencyID string, unattai
 	return res.Decode(&t)
 }
 
-// AbortAndMarkResetTasksForBuild aborts and marks tasks for a build to reset when finished.
-func AbortAndMarkResetTasksForBuild(buildId string, taskIds []string, caller string) error {
-	q := bson.M{
-		BuildIdKey: buildId,
-		StatusKey:  bson.M{"$in": evergreen.TaskInProgressStatuses},
-	}
-	if len(taskIds) > 0 {
-		q[IdKey] = bson.M{"$in": taskIds}
-	}
-	_, err := UpdateAll(
-		q,
-		bson.M{
-			"$set": bson.M{
-				AbortedKey:           true,
-				AbortInfoKey:         AbortInfo{User: caller},
-				ResetWhenFinishedKey: true,
-			},
-		},
-	)
-	return err
-}
-
-func AbortAndMarkResetTasksForVersion(versionId string, taskIds []string, caller string) error {
-	_, err := UpdateAll(
-		bson.M{
-			VersionKey: versionId, // Include to improve query.
-			IdKey:      bson.M{"$in": taskIds},
-			StatusKey:  bson.M{"$in": evergreen.TaskInProgressStatuses},
-		},
-		bson.M{"$set": bson.M{
-			AbortedKey:           true,
-			AbortInfoKey:         AbortInfo{User: caller},
-			ResetWhenFinishedKey: true,
-		}},
-	)
-	return err
-}
-
 // HasUnfinishedTaskForVersions returns true if there are any scheduled but
 // unfinished tasks matching the given conditions.
 func HasUnfinishedTaskForVersions(versionIds []string, taskName, variantName string) (bool, error) {
@@ -2881,4 +2846,79 @@ func CountNumExecutionsForInterval(input NumExecutionsForIntervalInput) (int, er
 		return 0, errors.Wrap(err, "counting old task executions")
 	}
 	return numTasks + numOldTasks, nil
+}
+
+// AbortAndMarkResetTasksForBuild aborts and marks in-progress tasks to reset
+// from the specified task IDs and build ID. If no task IDs are specified, all
+// in-progress tasks belonging to the build are aborted and marked to reset.
+func AbortAndMarkResetTasksForBuild(ctx context.Context, buildID string, taskIDs []string, caller string) error {
+	return abortAndMarkResetTasks(ctx, ByBuildId(buildID), taskIDs, caller)
+}
+
+// AbortAndMarkResetTasksForVersion aborts and marks in-progress tasks to reset
+// from the specified task IDs and version ID. If no task IDs are specified,
+// all in-progress tasks belonging to the version are aborted and marked to
+// reset.
+func AbortAndMarkResetTasksForVersion(ctx context.Context, versionID string, taskIDs []string, caller string) error {
+	return abortAndMarkResetTasks(ctx, ByVersion(versionID), taskIDs, caller)
+}
+
+func abortAndMarkResetTasks(ctx context.Context, filter bson.M, taskIDs []string, caller string) error {
+	filter[StatusKey] = bson.M{"$in": evergreen.TaskInProgressStatuses}
+	if len(taskIDs) > 0 {
+		filter["$or"] = []bson.M{
+			{IdKey: bson.M{"$in": taskIDs}},
+			{DisplayTaskIdKey: bson.M{"$in": taskIDs}},
+			{ExecutionTasksKey: bson.M{"$in": taskIDs}},
+		}
+	}
+
+	_, err := evergreen.GetEnvironment().DB().Collection(Collection).UpdateMany(
+		ctx,
+		filter,
+		bson.M{"$set": bson.M{
+			AbortedKey:           true,
+			AbortInfoKey:         AbortInfo{User: caller},
+			ResetWhenFinishedKey: true,
+		}},
+	)
+
+	return err
+}
+
+// FindCompletedTasksByBuild returns all completed tasks belonging to the
+// given build ID. Excludes execution tasks. If no taskIDs are specified, all
+// completed tasks belonging to the build are returned.
+func FindCompletedTasksByBuild(ctx context.Context, buildID string, taskIDs []string) ([]Task, error) {
+	return findCompletedTasks(ctx, ByBuildId(buildID), taskIDs)
+}
+
+// FindCompletedTasksByVersion returns all completed tasks belonging to the
+// given version ID. Excludes execution tasks. If no task IDs are specified,
+// all completed tasks belonging to the version are returned.
+func FindCompletedTasksByVersion(ctx context.Context, versionID string, taskIDs []string) ([]Task, error) {
+	return findCompletedTasks(ctx, ByVersion(versionID), taskIDs)
+}
+
+func findCompletedTasks(ctx context.Context, filter bson.M, taskIDs []string) ([]Task, error) {
+	filter[StatusKey] = bson.M{"$in": evergreen.TaskCompletedStatuses}
+	filter[DisplayTaskIdKey] = ""
+	if len(taskIDs) > 0 {
+		filter["$or"] = []bson.M{
+			{IdKey: bson.M{"$in": taskIDs}},
+			{ExecutionTasksKey: bson.M{"$in": taskIDs}},
+		}
+	}
+
+	cur, err := evergreen.GetEnvironment().DB().Collection(Collection).Find(ctx, filter)
+	if err != nil {
+		return nil, errors.Wrap(err, "finding completed tasks")
+	}
+
+	var out []Task
+	if err = cur.All(ctx, &out); err != nil {
+		return nil, errors.Wrap(err, "decoding task documents")
+	}
+
+	return out, nil
 }

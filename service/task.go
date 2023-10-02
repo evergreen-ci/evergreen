@@ -581,6 +581,7 @@ func (uis *UIServer) taskLogRaw(w http.ResponseWriter, r *http.Request) {
 	}
 
 	raw := (r.FormValue("text") == "true") || (r.Header.Get("Content-Type") == "text/plain")
+	printPriority := r.FormValue("priority") == "true" || !raw
 	execution, err := strconv.Atoi(gimlet.GetVars(r)["execution"])
 	grip.Warning(err)
 	logType := r.FormValue("type")
@@ -598,7 +599,7 @@ func (uis *UIServer) taskLogRaw(w http.ResponseWriter, r *http.Request) {
 		BaseURL:       uis.Settings.Cedar.BaseURL,
 		TaskID:        projCtx.Task.Id,
 		Execution:     utility.ToIntPtr(execution),
-		PrintPriority: !raw,
+		PrintPriority: printPriority,
 		LogType:       logType,
 	}
 	logReader, err = apimodels.GetBuildloggerLogs(ctx, opts)

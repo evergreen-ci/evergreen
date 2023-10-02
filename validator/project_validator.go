@@ -1165,11 +1165,11 @@ func checkBVBatchTimes(buildVariant *model.BuildVariant) ValidationErrors {
 	errs := ValidationErrors{}
 	// check task batchtimes first
 	for _, t := range buildVariant.Tasks {
-		// setting explicitly to true with batchtime will use batchtime
+		// setting activate explicitly to true with batchtime will use batchtime
 		if utility.FromBoolPtr(t.Activate) && (t.CronBatchTime != "" || t.BatchTime != nil) {
 			errs = append(errs,
 				ValidationError{
-					Message: fmt.Sprintf("task '%s' for variant '%s' activation ignored since batchtime specified",
+					Message: fmt.Sprintf("task '%s' for variant '%s' activation ignored since batchtime or cron specified",
 						t.Name, buildVariant.Name),
 					Level: Warning,
 				})

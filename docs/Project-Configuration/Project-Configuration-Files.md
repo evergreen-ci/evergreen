@@ -791,6 +791,15 @@ given module
 -   `${<module_name>_owner}` is the Github repo owner for the evergreen
     module associated with this task
 
+In the [Github merge queue](Merge-Queue.md), a single additional expansion
+called `${github_head_branch}` is available. This is the name of the temporary
+branch that GitHub creates for this merge group item. It looks something like
+"gh-readonly-queue/main/pr-515-9cd8a2532bcddf58369aa82eb66ba88e2323c056". In the
+case of a single PR item in the queue, the integer following "/pr-" is the PR
+number. If multiple PRs are being tested together, that number belongs to one of
+the PRs. That is, since a merge queue build can belong to multiple PRs, you
+cannot depend on this number to enforce PR-specific behavior.
+
 ### Task and Variant Tags
 
 Most projects have some implicit grouping at every layer. Some tests are

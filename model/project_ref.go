@@ -40,7 +40,8 @@ import (
 	"go.mongodb.org/mongo-driver/bson"
 )
 
-// The ProjectRef struct contains general information, independent of any revision control system, needed to track a given project.
+// ProjectRef contains Evergreen project-related settings which can be set
+// independently of version control.
 // Booleans that can be defined from both the repo and branch must be pointers, so that branch configurations can specify when to default to the repo.
 type ProjectRef struct {
 	// Id is the unmodifiable unique ID for the configuration, used internally.

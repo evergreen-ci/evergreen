@@ -133,6 +133,21 @@ If `share_procs` is true, the task group will not clean up processes for the
 entire duration of the task. It will only clean up those processes once the
 entire task group is finished.
 
+### Task Directory Cleanup
+
+The task working directory is removed when a task finishes as part of cleaning
+up the task. Note that _only_ the task directory is cleaned up - if any file is
+written outside the task directory, it will not be cleaned up. As part of
+[Evergreen best
+practices](https://docs.devprod.prod.corp.mongodb.com/evergreen/Project-Configuration/Best-Practices#task-directory),
+writing outside of the task directory is discouraged.
+
+For a task that's not part of a task group, the task will clean up at the end of
+the task, after all commands have finished running. For a task that _is_ part of
+a task group, it will keep the task directory as long as it is running tasks
+in the same task group. Once all the task group tasks have finished, it will
+clean up the task directory.
+
 ## Task Timeouts
 
 Tasks are not allowed to run forever, so all commands that run for a task are

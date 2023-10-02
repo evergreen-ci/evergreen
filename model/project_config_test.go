@@ -31,6 +31,7 @@ task_groups:
       script: "echo hi"
 build_baron_settings:
   ticket_create_project: BF
+  ticket_create_issue_type: Bug
   ticket_search_projects: ["BF"]
 
 github_pr_aliases:
@@ -41,5 +42,7 @@ github_pr_aliases:
 	pc, err = CreateProjectConfig([]byte(projYml), "")
 	assert.Nil(t, err)
 	assert.NotNil(t, pc)
+	assert.Equal(t, []string{"BF"}, pc.BuildBaronSettings.TicketSearchProjects)
 	assert.Equal(t, "BF", pc.BuildBaronSettings.TicketCreateProject)
+	assert.Equal(t, "Bug", pc.BuildBaronSettings.TicketCreateIssueType)
 }
