@@ -1201,6 +1201,8 @@ func PopulateExpansions(t *task.Task, h *host.Host, oauthToken, appToken string)
 			expansions.Put("github_commit", p.GithubPatchData.HeadHash)
 		}
 		if p.IsGithubMergePatch() {
+			expansions.Put("github_org", p.GithubMergeData.Org)
+			expansions.Put("github_repo", p.GithubMergeData.Repo)
 			// this looks like "gh-readonly-queue/main/pr-515-9cd8a2532bcddf58369aa82eb66ba88e2323c056"
 			expansions.Put("github_head_branch", p.GithubMergeData.HeadBranch)
 		}
