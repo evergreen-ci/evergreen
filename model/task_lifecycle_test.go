@@ -4838,7 +4838,7 @@ func TestMarkUnallocatableContainerTasksSystemFailed(t *testing.T) {
 		},
 	} {
 		t.Run(tName, func(t *testing.T) {
-			require.NoError(t, db.ClearCollections(task.Collection, build.Collection, pod.Collection, VersionCollection, event.EventCollection))
+			require.NoError(t, db.ClearCollections(task.Collection, build.Collection, pod.Collection, VersionCollection, event.EventCollection, ParserProjectCollection))
 			v := Version{
 				Id:     "version_id",
 				Status: evergreen.VersionStarted,
@@ -5453,7 +5453,7 @@ func TestMarkEndWithNoResults(t *testing.T) {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 
-	require.NoError(t, db.ClearCollections(task.Collection, build.Collection, host.Collection, VersionCollection, event.EventCollection))
+	require.NoError(t, db.ClearCollections(task.Collection, build.Collection, host.Collection, VersionCollection, event.EventCollection, ParserProjectCollection))
 
 	testTask1 := task.Task{
 		Id:              "t1",
@@ -5948,7 +5948,7 @@ func TestEvalStepbackDeactivatePrevious(t *testing.T) {
 	defer cancel()
 
 	assert := assert.New(t)
-	assert.NoError(db.ClearCollections(task.Collection, ProjectRefCollection, distro.Collection, build.Collection, VersionCollection))
+	assert.NoError(db.ClearCollections(task.Collection, ProjectRefCollection, distro.Collection, build.Collection, VersionCollection, ParserProjectCollection))
 
 	proj := ProjectRef{
 		Id: "proj",
