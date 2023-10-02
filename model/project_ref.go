@@ -2021,6 +2021,13 @@ func SaveProjectPageForSection(projectId string, p *ProjectRef, section ProjectP
 		if catcher.HasErrors() {
 			return false, errors.Wrapf(catcher.Resolve(), "validating external links")
 		}
+		pRef, err := FindMergedProjectRef(projectId, "", false)
+		if err != nil {
+			return false, errors.Wrapf(err, "error getting project")
+		}
+		if pRef.Id != pRef.Identifier {
+			return false, errors.Wrapf(err, "project id and identifier are different")
+		}
 		err = db.Update(coll,
 			bson.M{ProjectRefIdKey: projectId},
 			bson.M{
