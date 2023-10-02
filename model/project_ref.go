@@ -2025,8 +2025,8 @@ func SaveProjectPageForSection(projectId string, p *ProjectRef, section ProjectP
 		if err != nil {
 			return false, errors.Wrapf(err, "error getting project")
 		}
-		if pRef.Id != pRef.Identifier {
-			return false, errors.Wrapf(err, "project id and identifier are different")
+		if &p.PerfEnabled != &pRef.PerfEnabled && pRef.Identifier != pRef.Id {
+			return false, errors.Wrapf(err, "project id and identifier are different when setting performance plugin")
 		}
 		err = db.Update(coll,
 			bson.M{ProjectRefIdKey: projectId},
