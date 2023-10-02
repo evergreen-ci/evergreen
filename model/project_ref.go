@@ -2021,7 +2021,7 @@ func SaveProjectPageForSection(projectId string, p *ProjectRef, section ProjectP
 		if catcher.HasErrors() {
 			return false, errors.Wrapf(catcher.Resolve(), "validating external links")
 		}
-		pRef, err := FindMergedProjectRef(projectId, "", false)
+		pRef, err := FindBranchProjectRef(projectId)
 		if err != nil {
 			return false, errors.Wrapf(err, "error getting project")
 		}
