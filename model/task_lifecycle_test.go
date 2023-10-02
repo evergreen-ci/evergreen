@@ -2176,6 +2176,11 @@ func TestMarkEnd(t *testing.T) {
 			Status: evergreen.VersionStarted,
 		}
 		So(v.Insert(), ShouldBeNil)
+		pp := &ParserProject{
+			Id:         b.Version,
+			Identifier: utility.ToStringPtr("sample"),
+		}
+		So(pp.Insert(), ShouldBeNil)
 		dt := &task.Task{
 			Id:             "displayTask",
 			Activated:      true,
@@ -2183,6 +2188,7 @@ func TestMarkEnd(t *testing.T) {
 			Status:         evergreen.TaskStarted,
 			DisplayOnly:    true,
 			ExecutionTasks: []string{"execTask"},
+			Version:        "version1",
 		}
 		So(dt.Insert(), ShouldBeNil)
 		t1 := &task.Task{
