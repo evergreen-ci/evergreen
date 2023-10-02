@@ -5861,7 +5861,10 @@ func TestAbortedTaskDelayedRestart(t *testing.T) {
 		Id: "version",
 	}
 	assert.NoError(t, v.Insert())
-
+	pp := ParserProject{
+		Id: v.Id,
+	}
+	require.NoError(t, pp.Insert())
 	detail := &apimodels.TaskEndDetail{
 		Status: evergreen.TaskFailed,
 	}
