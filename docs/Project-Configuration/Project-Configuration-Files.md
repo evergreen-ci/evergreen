@@ -797,7 +797,7 @@ branch that GitHub creates for this merge group item. It looks something like
 "gh-readonly-queue/main/pr-515-9cd8a2532bcddf58369aa82eb66ba88e2323c056". In the
 case of a single PR item in the queue, the integer following "/pr-" is the PR
 number. If multiple PRs are being tested together, that number belongs to one of
-the builds. That is, since a merge queue build can belong to multiple PRs, you
+the PRs. That is, since a merge queue build can belong to multiple PRs, you
 cannot depend on this number to enforce PR-specific behavior.
 
 ### Task and Variant Tags
