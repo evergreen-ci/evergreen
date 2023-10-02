@@ -472,6 +472,10 @@ func TestPodAgentEndTask(t *testing.T) {
 				Identifier: "identifier",
 			}
 			require.NoError(t, projectToInsert.Insert())
+			parserProjectToInsert := model.ParserProject{
+				Id: projectToInsert.Id,
+			}
+			require.NoError(t, parserProjectToInsert.Insert())
 			rh.podID = podID
 			rh.taskID = taskID
 			rh.details = *td
