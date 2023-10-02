@@ -1572,7 +1572,7 @@ func FindOneProjectRefByRepoAndBranchWithPRTesting(owner, repo, branch, calledBy
 			"repo":    repo,
 			"branch":  branch,
 		})
-		return nil, errors.Wrapf(err, "repo ref '%s' has no remote path, cannot use for PR testing", repoRef.Id)
+		return nil, errors.Errorf("repo ref '%s' has no remote path, cannot use for PR testing", repoRef.Id)
 	}
 
 	projectRefs, err = FindMergedProjectRefsThatUseRepoSettingsByRepoAndBranch(owner, repo, branch)
