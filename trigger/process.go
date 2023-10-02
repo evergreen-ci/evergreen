@@ -338,10 +338,10 @@ func TriggerDownstreamProjectsForPush(ctx context.Context, projectId string, eve
 		}
 	}
 	grip.InfoWhen(len(versionIds) > 0, message.Fields{
-		"source":     "GitHub hook",
-		"message":    "triggered versions for push event for project",
-		"versions":   versionIds,
-		"project_id": projectId,
+		"source":      "GitHub hook",
+		"message":     "triggered versions for push event for project",
+		"version_ids": versionIds,
+		"project_id":  projectId,
 	})
 
 	return catcher.Resolve()
