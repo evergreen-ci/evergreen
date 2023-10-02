@@ -848,11 +848,6 @@ func (c *gitFetchProject) fetch(ctx context.Context,
 		if opts.method == evergreen.CloneMethodAccessToken {
 			appTokens[opts.owner] = opts.token
 		}
-		logger.Execution().Debug(message.Fields{
-			"message": "fetching module",
-			"module":  moduleName,
-			"method":  opts.method,
-		})
 		err = c.fetchModuleSource(ctx, comm, conf, logger, jpm, td, appTokens, opts.token, opts.method, p, moduleName)
 		if err != nil {
 			logger.Execution().Error(errors.Wrap(err, "fetching module source"))
