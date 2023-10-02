@@ -28,6 +28,48 @@
           }
         }
       }
+    },
+    {
+      "query_file": "display_task.graphql",
+      "result": {
+        "data": {
+          "task": {
+            "id": "display_task",
+            "execution": 0,
+            "files": {
+              "fileCount": 0,
+              "groupedFiles": [
+                {
+                  "taskName": "test-exec-task-1",
+                  "taskId": "exec_task_1",
+                  "execution": 0,
+                  "files": [
+                    {
+                      "name": "File 1"
+                    },
+                    {
+                      "name": "File 2"
+                    }
+                  ]
+                },
+                {
+                  "taskName": "test-exec-task-2",
+                  "taskId": "exec_task_2",
+                  "execution": 0,
+                  "files": [
+                    {
+                      "name": "File 1"
+                    },
+                    {
+                      "name": "File 2"
+                    }
+                  ]
+                }
+              ]
+            }
+          }
+        }
+      }
     }
   ]
 }
