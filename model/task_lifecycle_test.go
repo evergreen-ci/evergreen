@@ -4844,6 +4844,10 @@ func TestMarkUnallocatableContainerTasksSystemFailed(t *testing.T) {
 				Status: evergreen.VersionStarted,
 			}
 			require.NoError(t, v.Insert())
+			pp := ParserProject{
+				Id: v.Id,
+			}
+			require.NoError(t, pp.Insert())
 			b := build.Build{
 				Id:      "build_id",
 				Version: v.Id,
