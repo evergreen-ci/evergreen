@@ -5362,17 +5362,36 @@ func TestResetStaleTask(t *testing.T) {
 		},
 	} {
 		t.Run(tName, func(t *testing.T) {
-			assert.NoError(t, db.ClearCollections(pod.Collection, task.Collection, task.OldCollection, build.Collection, VersionCollection))
-			b := build.Build{
-				Id:     "build_id",
-				Status: evergreen.BuildStarted,
+			require.NoError(t, db.ClearCollections(host.Collection, VersionCollection, patch.Collection, ParserProjectCollection, ProjectRefCollection, task.Collection, task.OldCollection, build.Collection))
+			assert := assert.New(t)
+
+			projectRef := ProjectRef{
+				Identifier: "project-ref",
 			}
-			require.NoError(t, b.Insert())
-			v := Version{
-				Id:     "version_id",
-				Status: evergreen.VersionStarted,
+			require.NoError(t, projectRef.Insert())
+			version := Version{
+				Id:         "version",
+				Identifier: "mci",
 			}
-			require.NoError(t, v.Insert())
+			require.NoError(t, version.Insert())
+			build := build.Build{
+				Id: version.Id,
+			}
+			require.NoError(t, build.Insert())
+			parserProject := ParserProject{
+				Id: version.Id,
+			}
+			require.NoError(t, parserProject.Insert())
+			patch := patch.Patch{
+				Id:      mgobson.NewObjectId(),
+				Version: version.Id,
+			}
+			require.NoError(t, patch.Insert())
+			host := &host.Host{
+				Id:          "h1",
+				RunningTask: "t",
+			}
+			assert.NoError(host.Insert(ctx))
 			taskPod := pod.Pod{
 				ID: "pod_id",
 			}
@@ -5387,9 +5406,11 @@ func TestResetStaleTask(t *testing.T) {
 				Activated:              true,
 				ActivatedTime:          time.Now(),
 				LastHeartbeat:          time.Now().Add(-30 * time.Hour),
-				BuildId:                b.Id,
-				Version:                v.Id,
+				BuildId:                build.Id,
+				Version:                version.Id,
+				Project:                projectRef.Identifier,
 				PodID:                  taskPod.ID,
+				HostId:                 host.Id,
 			}
 			tCase(t, tsk)
 		})
