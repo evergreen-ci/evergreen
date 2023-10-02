@@ -720,7 +720,7 @@ func LoadProjectInto(ctx context.Context, data []byte, opts *GetProjectOpts, ide
 
 		// This order is deliberate:
 		// 1. Wait for the workers, since sending on a `nil` `outputYAMLs` would panic.
-		// 2. Close `outputYAMLs` so that the later `range` statement over it will stop after it's is drained.
+		// 2. Close `outputYAMLs` so that the later `range` statement over it will stop after it's drained.
 		wg.Wait()
 		close(outputYAMLs)
 
