@@ -492,6 +492,7 @@ func TestRemovePod(t *testing.T) {
 				ContainerAllocated:     true,
 				ContainerAllocatedTime: time.Now(),
 				PodID:                  podID,
+				Project:                "project-ref",
 			}
 			require.NoError(t, t0.Insert())
 
@@ -500,6 +501,10 @@ func TestRemovePod(t *testing.T) {
 				Status: evergreen.BuildStarted,
 			}
 			require.NoError(t, v.Insert())
+			pRef := model.ProjectRef{
+				Identifier: "project-ref",
+			}
+			require.NoError(t, pRef.Insert())
 			pp := model.ParserProject{
 				Id: v.Id,
 			}
