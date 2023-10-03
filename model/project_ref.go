@@ -2025,7 +2025,7 @@ func SaveProjectPageForSection(projectId string, p *ProjectRef, section ProjectP
 		if err != nil {
 			return false, errors.Wrapf(err, "error getting project")
 		}
-		if &p.PerfEnabled != &pRef.PerfEnabled && pRef.Identifier != pRef.Id {
+		if *p.PerfEnabled != *pRef.PerfEnabled && pRef.Identifier != pRef.Id {
 			return false, errors.New("project id and identifier are different when setting performance plugin")
 		}
 		err = db.Update(coll,
