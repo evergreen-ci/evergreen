@@ -515,7 +515,8 @@ type ComplexityRoot struct {
 	}
 
 	JiraConfig struct {
-		Host func(childComplexity int) int
+		Email func(childComplexity int) int
+		Host  func(childComplexity int) int
 	}
 
 	JiraField struct {
@@ -783,10 +784,11 @@ type ComplexityRoot struct {
 	}
 
 	Permissions struct {
-		CanCreateDistro   func(childComplexity int) int
-		CanCreateProject  func(childComplexity int) int
-		DistroPermissions func(childComplexity int, options DistroPermissionsOptions) int
-		UserID            func(childComplexity int) int
+		CanCreateDistro      func(childComplexity int) int
+		CanCreateProject     func(childComplexity int) int
+		CanEditAdminSettings func(childComplexity int) int
+		DistroPermissions    func(childComplexity int, options DistroPermissionsOptions) int
+		UserID               func(childComplexity int) int
 	}
 
 	PlannerSettings struct {
@@ -1671,6 +1673,7 @@ type PatchResolver interface {
 type PermissionsResolver interface {
 	CanCreateDistro(ctx context.Context, obj *Permissions) (bool, error)
 	CanCreateProject(ctx context.Context, obj *Permissions) (bool, error)
+	CanEditAdminSettings(ctx context.Context, obj *Permissions) (bool, error)
 	DistroPermissions(ctx context.Context, obj *Permissions, options DistroPermissionsOptions) (*DistroPermissions, error)
 }
 type PlannerSettingsResolver interface {
@@ -3704,6 +3707,13 @@ func (e *executableSchema) Complexity(typeName, field string, childComplexity in
 
 		return e.complexity.IssueLink.URL(childComplexity), true
 
+	case "JiraConfig.email":
+		if e.complexity.JiraConfig.Email == nil {
+			break
+		}
+
+		return e.complexity.JiraConfig.Email(childComplexity), true
+
 	case "JiraConfig.host":
 		if e.complexity.JiraConfig.Host == nil {
 			break
@@ -5290,6 +5300,13 @@ func (e *executableSchema) Complexity(typeName, field string, childComplexity in
 		}
 
 		return e.complexity.Permissions.CanCreateProject(childComplexity), true
+
+	case "Permissions.canEditAdminSettings":
+		if e.complexity.Permissions.CanEditAdminSettings == nil {
+			break
+		}
+
+		return e.complexity.Permissions.CanEditAdminSettings(childComplexity), true
 
 	case "Permissions.distroPermissions":
 		if e.complexity.Permissions.DistroPermissions == nil {
@@ -23560,6 +23577,47 @@ func (ec *executionContext) fieldContext_IssueLink_url(ctx context.Context, fiel
 	return fc, nil
 }
 
+func (ec *executionContext) _JiraConfig_email(ctx context.Context, field graphql.CollectedField, obj *model.APIJiraConfig) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_JiraConfig_email(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.Email, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		return graphql.Null
+	}
+	res := resTmp.(*string)
+	fc.Result = res
+	return ec.marshalOString2ᚖstring(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_JiraConfig_email(ctx context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "JiraConfig",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type String does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
 func (ec *executionContext) _JiraConfig_host(ctx context.Context, field graphql.CollectedField, obj *model.APIJiraConfig) (ret graphql.Marshaler) {
 	fc, err := ec.fieldContext_JiraConfig_host(ctx, field)
 	if err != nil {
@@ -35141,6 +35199,50 @@ func (ec *executionContext) _Permissions_canCreateProject(ctx context.Context, f
 }
 
 func (ec *executionContext) fieldContext_Permissions_canCreateProject(ctx context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "Permissions",
+		Field:      field,
+		IsMethod:   true,
+		IsResolver: true,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type Boolean does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _Permissions_canEditAdminSettings(ctx context.Context, field graphql.CollectedField, obj *Permissions) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_Permissions_canEditAdminSettings(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
+		ctx = rctx // use context from middleware stack in children
+		return ec.resolvers.Permissions().CanEditAdminSettings(rctx, obj)
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.(bool)
+	fc.Result = res
+	return ec.marshalNBoolean2bool(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_Permissions_canEditAdminSettings(ctx context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
 	fc = &graphql.FieldContext{
 		Object:     "Permissions",
 		Field:      field,
@@ -49156,6 +49258,8 @@ func (ec *executionContext) fieldContext_SpruceConfig_jira(ctx context.Context, 
 		IsResolver: false,
 		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
 			switch field.Name {
+			case "email":
+				return ec.fieldContext_JiraConfig_email(ctx, field)
 			case "host":
 				return ec.fieldContext_JiraConfig_host(ctx, field)
 			}
@@ -59528,6 +59632,8 @@ func (ec *executionContext) fieldContext_User_permissions(ctx context.Context, f
 				return ec.fieldContext_Permissions_canCreateDistro(ctx, field)
 			case "canCreateProject":
 				return ec.fieldContext_Permissions_canCreateProject(ctx, field)
+			case "canEditAdminSettings":
+				return ec.fieldContext_Permissions_canEditAdminSettings(ctx, field)
 			case "distroPermissions":
 				return ec.fieldContext_Permissions_distroPermissions(ctx, field)
 			case "userId":
@@ -74529,6 +74635,8 @@ func (ec *executionContext) _JiraConfig(ctx context.Context, sel ast.SelectionSe
 		switch field.Name {
 		case "__typename":
 			out.Values[i] = graphql.MarshalString("JiraConfig")
+		case "email":
+			out.Values[i] = ec._JiraConfig_email(ctx, field, obj)
 		case "host":
 			out.Values[i] = ec._JiraConfig_host(ctx, field, obj)
 		default:
@@ -76843,6 +76951,42 @@ func (ec *executionContext) _Permissions(ctx context.Context, sel ast.SelectionS
 					}
 				}()
 				res = ec._Permissions_canCreateProject(ctx, field, obj)
+				if res == graphql.Null {
+					atomic.AddUint32(&fs.Invalids, 1)
+				}
+				return res
+			}
+
+			if field.Deferrable != nil {
+				dfs, ok := deferred[field.Deferrable.Label]
+				di := 0
+				if ok {
+					dfs.AddField(field)
+					di = len(dfs.Values) - 1
+				} else {
+					dfs = graphql.NewFieldSet([]graphql.CollectedField{field})
+					deferred[field.Deferrable.Label] = dfs
+				}
+				dfs.Concurrently(di, func(ctx context.Context) graphql.Marshaler {
+					return innerFunc(ctx, dfs)
+				})
+
+				// don't run the out.Concurrently() call below
+				out.Values[i] = graphql.Null
+				continue
+			}
+
+			out.Concurrently(i, func(ctx context.Context) graphql.Marshaler { return innerFunc(ctx, out) })
+		case "canEditAdminSettings":
+			field := field
+
+			innerFunc := func(ctx context.Context, fs *graphql.FieldSet) (res graphql.Marshaler) {
+				defer func() {
+					if r := recover(); r != nil {
+						ec.Error(ctx, ec.Recover(ctx, r))
+					}
+				}()
+				res = ec._Permissions_canEditAdminSettings(ctx, field, obj)
 				if res == graphql.Null {
 					atomic.AddUint32(&fs.Invalids, 1)
 				}

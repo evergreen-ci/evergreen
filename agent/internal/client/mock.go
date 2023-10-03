@@ -58,6 +58,7 @@ type Mock struct {
 	TaskExecution               int
 	CreatedHost                 apimodels.CreateHost
 	GetTaskPatchResponse        *patchmodel.Patch
+	GetLoggerProducerShouldFail bool
 
 	CedarGRPCConn *grpc.ClientConn
 
@@ -360,6 +361,9 @@ func (c *Mock) GetMockMessages() map[string][]apimodels.LogMessage {
 
 // GetLoggerProducer constructs a single channel log producer.
 func (c *Mock) GetLoggerProducer(ctx context.Context, td TaskData, config *LoggerConfig) (LoggerProducer, error) {
+	if c.GetLoggerProducerShouldFail {
+		return nil, errors.New("operation run in fail mode.")
+	}
 	return NewSingleChannelLogHarness(td.ID, newEvergreenLogSender(ctx, c, apimodels.AgentLogPrefix, td, defaultLogBufferSize, defaultLogBufferTime)), nil
 }
 

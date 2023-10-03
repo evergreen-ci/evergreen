@@ -295,6 +295,7 @@ type VersionMetadata struct {
 	EventID             string
 	TriggerDefinitionID string
 	SourceVersion       *Version
+	SourceCommit        string
 	IsAdHoc             bool
 	Activate            bool
 	User                *user.DBUser

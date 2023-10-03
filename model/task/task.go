@@ -104,10 +104,6 @@ type Task struct {
 	ActivatedBy              string `bson:"activated_by" json:"activated_by"`
 	DeactivatedForDependency bool   `bson:"deactivated_for_dependency" json:"deactivated_for_dependency"`
 
-	// StepbackDepth indicates how far into stepback this task was activated, starting at 1 for stepback tasks.
-	// After EVG-17949, should either remove this field/logging or use it to limit stepback depth.
-	StepbackDepth int `bson:"stepback_depth" json:"stepback_depth"`
-
 	// ContainerAllocated indicates whether this task has been allocated a
 	// container to run it. It only applies to tasks running in containers.
 	ContainerAllocated bool `bson:"container_allocated" json:"container_allocated"`
@@ -165,15 +161,17 @@ type Task struct {
 	//     1. The task will never have output data (e.g., display tasks)
 	//        and, therefore, the value is and always will be nil.
 	//     2. The task does not have output data yet, but can in the future
-	//        after running, and, therefore, the value is currently nil.
-	//     3. The task ran with the task output information initialized
-	//        upon getting dispatched and the application can safely use
-	//        this field to fetch any output data.
+	//        if/when dispatched, and, therefore, the value is currently
+	//        nil.
+	//     3. The task has been dispatched with the task output information
+	//        initialized and the application can safely use this field to
+	//        fetch any output data. If the task has not finished running,
+	//        the output data is accessible but may not be complete yet.
 	//     4. The task has data but was run before the introduction of the
-	//        field and should be initialized to the zero value on the
-	//        application to safely fetch any output data.
+	//        field and should be initialized before the application can
+	//        safely fetch any output data.
 	// This field should *never* be accessed directly, instead call
-	// `Task.getTaskOutputSafe()` to instantiate the task output interface.
+	// `Task.getTaskOutputSafe()`.
 	TaskOutputInfo *taskoutput.TaskOutput `bson:"task_output_info,omitempty" json:"task_output_info,omitempty"`
 
 	// Set to true if the task should be considered for mainline github checks
@@ -182,10 +180,13 @@ type Task struct {
 	// CanReset indicates that the task has successfully archived and is in a valid state to be reset.
 	CanReset bool `bson:"can_reset,omitempty" json:"can_reset,omitempty"`
 
-	Execution           int    `bson:"execution" json:"execution"`
-	OldTaskId           string `bson:"old_task_id,omitempty" json:"old_task_id,omitempty"`
-	Archived            bool   `bson:"archived,omitempty" json:"archived,omitempty"`
-	RevisionOrderNumber int    `bson:"order,omitempty" json:"order,omitempty"`
+	Execution int    `bson:"execution" json:"execution"`
+	OldTaskId string `bson:"old_task_id,omitempty" json:"old_task_id,omitempty"`
+	Archived  bool   `bson:"archived,omitempty" json:"archived,omitempty"`
+
+	// RevisionOrderNumber for user-submitted patches is the user's current patch submission count.
+	// For mainline commits for a project, it is the amount of versions for that repositry so far.
+	RevisionOrderNumber int `bson:"order,omitempty" json:"order,omitempty"`
 
 	// task requester - this is used to help tell the
 	// reason this task was created. e.g. it could be
@@ -239,6 +240,8 @@ type Task struct {
 	ExecutionTasks        []string `bson:"execution_tasks,omitempty" json:"execution_tasks,omitempty"`
 	LatestParentExecution int      `bson:"latest_parent_execution" json:"latest_parent_execution"`
 
+	StepbackInfo *StepbackInfo `bson:"stepback_info,omitempty" json:"stepback_info,omitempty"`
+
 	// ResetWhenFinished indicates that a task should be reset once it is
 	// finished running. This is typically to deal with tasks that should be
 	// reset but cannot do so yet because they're currently running.
@@ -284,6 +287,17 @@ type Task struct {
 	// before its build or version can be reported as successful, but tasks
 	// manually scheduled by the user afterwards are not required.
 	IsEssentialToSucceed bool `bson:"is_essential_to_succeed" json:"is_essential_to_succeed"`
+}
+
+// StepbackInfo helps determine which task to bisect to when performing stepback.
+type StepbackInfo struct {
+	// LastFailingStepbackTaskId stores the last failing task while doing stepback.
+	LastFailingStepbackTaskId string `bson:"last_failing_stepback_task_id,omitempty" json:"last_failing_stepback_task_id"`
+	// LastPassingStepbackTaskId stores the last passing task while doing stepback.
+	LastPassingStepbackTaskId string `bson:"last_passing_stepback_task_id,omitempty" json:"last_passing_stepback_task_id"`
+	// NextStepbackTaskId stores the next task id to stepback to when doing bisect stepback. This
+	// is the middle of LastFailingStepbackTaskId and LastPassingStepbackTaskId.
+	NextStepbackTaskId string `bson:"next_stepback_task_id,omitempty" json:"next_stepback_task_id"`
 }
 
 // ExecutionPlatform indicates the type of environment that the task runs in.
@@ -868,22 +882,6 @@ func (t *Task) FindTaskOnPreviousCommit() (*Task, error) {
 	return FindOne(db.Query(ByPreviousCommit(t.BuildVariant, t.DisplayName, t.Project, evergreen.RepotrackerVersionRequester, t.RevisionOrderNumber)).Sort([]string{"-" + RevisionOrderNumberKey}))
 }
 
-// FindIntermediateTasks returns the tasks from most recent to least recent between two tasks.
-func (current *Task) FindIntermediateTasks(previous *Task) ([]Task, error) {
-	intermediateTasks, err := Find(ByIntermediateRevisions(previous.RevisionOrderNumber, current.RevisionOrderNumber, current.BuildVariant,
-		current.DisplayName, current.Project, current.Requester))
-	if err != nil {
-		return nil, err
-	}
-
-	// reverse the slice of tasks
-	intermediateTasksReversed := make([]Task, len(intermediateTasks))
-	for idx, t := range intermediateTasks {
-		intermediateTasksReversed[len(intermediateTasks)-idx-1] = t
-	}
-	return intermediateTasksReversed, nil
-}
-
 // CountSimilarFailingTasks returns a count of all tasks with the same project,
 // same display name, and in other buildvariants, that have failed in the same
 // revision
@@ -1290,6 +1288,31 @@ func SetTasksScheduledTime(tasks []Task, scheduledTime time.Time) error {
 	return nil
 }
 
+// GetTaskIdBetweenIds gets the task between two task given that they are
+// from the same project, requester, build variant, and display name. The
+// order of the ID's does not matter and if the task passed cannot have a
+// middle (i.e. it is sequential tasks or the same task) it will return the
+// the first task given.
+func FindMidwayTask(t1, t2 Task) (*Task, error) {
+	// The tasks should be the same build variant, display name, project, and requester.
+	catcher := grip.NewBasicCatcher() // Makes an error accumulator
+	catcher.ErrorfWhen(t1.BuildVariant != t2.BuildVariant, "given tasks have differing build variants '%s' and '%s'", t1.BuildVariant, t2.BuildVariant)
+	catcher.ErrorfWhen(t1.DisplayName != t2.DisplayName, "given tasks have differing display name '%s' and '%s'", t1.DisplayName, t2.DisplayName)
+	catcher.ErrorfWhen(t1.Project != t2.Project, "given tasks have differing project '%s' and '%s'", t1.Project, t2.Project)
+	catcher.ErrorfWhen(t1.Requester != t2.Requester, "given tasks have differing project '%s' and '%s'", t1.Requester, t2.Requester)
+	if catcher.HasErrors() {
+		return nil, catcher.Resolve()
+	}
+	// If the tasks are sequential or the same order number, return the first given task.
+	d := t1.RevisionOrderNumber - t2.RevisionOrderNumber
+	if d == -1 || d == 0 || d == 1 {
+		return &t1, nil
+	}
+
+	mid := (t1.RevisionOrderNumber + t2.RevisionOrderNumber) / 2
+	return FindOne(db.Query(ByRevisionOrderNumber(t1.BuildVariant, t1.DisplayName, t1.Project, t1.Requester, mid)))
+}
+
 // UnscheduleStaleUnderwaterHostTasks Removes host tasks older than the unscheduable threshold (e.g. one week) from
 // the scheduler queue.
 // If you pass an empty string as an argument to this function, this operation
@@ -1459,16 +1482,16 @@ func (t *Task) SetAborted(reason AbortInfo) error {
 	)
 }
 
-// SetStepbackDepth adds the stepback depth to the task.
-func (t *Task) SetStepbackDepth(stepbackDepth int) error {
-	t.StepbackDepth = stepbackDepth
+// SetStepbackInfo adds the StepbackInfo to the task.
+func (t *Task) SetStepbackInfo(s StepbackInfo) error {
+	t.StepbackInfo = &s
 	return UpdateOne(
 		bson.M{
 			IdKey: t.Id,
 		},
 		bson.M{
 			"$set": bson.M{
-				StepbackDepthKey: stepbackDepth,
+				StepbackInfoKey: s,
 			},
 		})
 }
@@ -1478,18 +1501,13 @@ func (t *Task) SetStepbackDepth(stepbackDepth int) error {
 // never have output. This function should only be used to set the task output
 // field upon task dispatch.
 func (t *Task) initializeTaskOutputInfo(env evergreen.Environment) (*taskoutput.TaskOutput, bool) {
-	if t.DisplayOnly {
+	if t.DisplayOnly || t.Archived {
 		return nil, false
-	}
-
-	taskID := t.Id
-	if t.Archived {
-		taskID = t.OldTaskId
 	}
 
 	return taskoutput.InitializeTaskOutput(env, taskoutput.TaskOptions{
 		ProjectID: t.Project,
-		TaskID:    taskID,
+		TaskID:    t.Id,
 		Execution: t.Execution,
 	}), true
 }

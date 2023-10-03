@@ -225,9 +225,7 @@ func DisableStaleContainerTasks(caller string) error {
 // activatePreviousTask will set the Active state for the first task with a
 // revision order number less than the current task's revision order number.
 // originalStepbackTask is only specified if we're first activating the generator for a generated task.
-// StepbackDepth should be reconsidered in EVG-17949 and is currently only used for logging.
-// Depth passed in is the depth we should assign to the previous task.
-func activatePreviousTask(ctx context.Context, taskId, caller string, originalStepbackTask *task.Task, stepbackDepth int) error {
+func activatePreviousTask(ctx context.Context, taskId, caller string, originalStepbackTask *task.Task, s task.StepbackInfo) error {
 	// find the task first
 	t, err := task.FindOneId(taskId)
 	if err != nil {
@@ -247,21 +245,13 @@ func activatePreviousTask(ctx context.Context, taskId, caller string, originalSt
 
 	// for generated tasks, try to activate the generator instead if the previous task we found isn't the actual last task
 	if t.GeneratedBy != "" && prevTask != nil && prevTask.RevisionOrderNumber+1 != t.RevisionOrderNumber {
-		return activatePreviousTask(ctx, t.GeneratedBy, caller, t, stepbackDepth)
+		return activatePreviousTask(ctx, t.GeneratedBy, caller, t, s)
 	}
 
 	// if this is the first time we're running the task, or it's finished, has a negative priority, or already activated
 	if prevTask == nil || prevTask.IsFinished() || prevTask.Priority < 0 || prevTask.Activated {
 		return nil
 	}
-
-	grip.Debug(message.Fields{
-		"ticket":         "EVG-17949",
-		"message":        "stepping back task",
-		"stepback_depth": stepbackDepth,
-		"project_id":     t.Project,
-		"task_id":        t.Id,
-	})
 
 	// activate the task
 	if err = SetActiveState(ctx, caller, true, *prevTask); err != nil {
@@ -273,9 +263,9 @@ func activatePreviousTask(ctx context.Context, taskId, caller string, originalSt
 			return errors.Wrap(err, "setting generated tasks to activate")
 		}
 	}
-	if stepbackDepth > 0 {
-		if err = prevTask.SetStepbackDepth(stepbackDepth); err != nil {
-			return errors.Wrap(err, "setting stepback depth")
+	if s.LastFailingStepbackTaskId != "" || s.LastPassingStepbackTaskId != "" || s.NextStepbackTaskId != "" {
+		if err = prevTask.SetStepbackInfo(s); err != nil {
+			return errors.Wrap(err, "setting stepback info")
 		}
 	}
 	return nil
@@ -553,8 +543,10 @@ func doStepback(ctx context.Context, t *task.Task) error {
 		return nil
 	}
 
+	s := task.StepbackInfo{}
+
 	// activate the previous task to pinpoint regression
-	return errors.WithStack(activatePreviousTask(ctx, t.Id, evergreen.StepbackTaskActivator, nil, t.StepbackDepth+1))
+	return errors.WithStack(activatePreviousTask(ctx, t.Id, evergreen.StepbackTaskActivator, nil, s))
 }
 
 // MarkEnd updates the task as being finished, performs a stepback if necessary, and updates the build status
@@ -864,8 +856,8 @@ func RestartItemsAfterVersion(ctx context.Context, cq *commitqueue.CommitQueue, 
 				"project":            project,
 				"caller":             caller,
 			})
-			// this block executes on all items after the given task
-			catcher.Add(RestartTasksInVersion(ctx, item.Version, true, caller))
+			// This block executes on all items after the given task.
+			catcher.Add(RestartVersion(ctx, item.Version, nil, true, caller))
 		}
 	}
 
@@ -1327,7 +1319,7 @@ func checkUpdateBuildPRStatusPending(ctx context.Context, b *build.Build) error 
 // updateBuildStatus updates the status of the build based on its tasks' statuses
 // Returns true if the build's status has changed or if all the build's tasks become blocked / unscheduled.
 func updateBuildStatus(b *build.Build) (bool, error) {
-	buildTasks, err := task.FindWithFields(task.ByBuildId(b.Id), task.StatusKey, task.ActivatedKey, task.DependsOnKey, task.IsGithubCheckKey, task.AbortedKey, task.IsEssentialToSucceedKey)
+	buildTasks, err := task.Find(task.ByBuildId(b.Id))
 	if err != nil {
 		return false, errors.Wrapf(err, "getting tasks in build '%s'", b.Id)
 	}
@@ -1480,8 +1472,7 @@ func updateVersionGithubStatus(v *Version, builds []build.Build) error {
 // unfinished essential tasks. It assumes that the build statuses have already
 // been updated prior to this.
 func updateVersionStatus(v *Version) (string, error) {
-	builds, err := build.Find(build.ByVersion(v.Id).WithFields(build.ActivatedKey, build.StatusKey,
-		build.IsGithubCheckKey, build.GithubCheckStatusKey, build.AbortedKey, build.AllTasksBlockedKey, build.HasUnfinishedEssentialTaskKey))
+	builds, err := build.Find(build.ByVersion(v.Id))
 	if err != nil {
 		return "", errors.Wrapf(err, "getting builds for version '%s'", v.Id)
 	}
@@ -1534,10 +1525,7 @@ func updateVersionStatus(v *Version) (string, error) {
 
 // UpdatePatchStatus updates the status of a patch.
 func UpdatePatchStatus(p *patch.Patch, versionStatus string) error {
-	patchStatus, err := evergreen.VersionStatusToPatchStatus(versionStatus)
-	if err != nil {
-		return errors.Wrapf(err, "getting patch status from version status '%s'", versionStatus)
-	}
+	patchStatus := evergreen.VersionStatusToPatchStatus(versionStatus)
 
 	if patchStatus == p.Status {
 		return nil
@@ -1545,11 +1533,11 @@ func UpdatePatchStatus(p *patch.Patch, versionStatus string) error {
 
 	event.LogPatchStateChangeEvent(p.Version, patchStatus)
 
-	if evergreen.IsFinishedPatchStatus(patchStatus) {
-		if err = p.MarkFinished(patchStatus, time.Now()); err != nil {
+	if evergreen.IsFinishedVersionStatus(patchStatus) {
+		if err := p.MarkFinished(patchStatus, time.Now()); err != nil {
 			return errors.Wrapf(err, "marking patch '%s' as finished with status '%s'", p.Id.Hex(), patchStatus)
 		}
-	} else if err = p.UpdateStatus(patchStatus); err != nil {
+	} else if err := p.UpdateStatus(patchStatus); err != nil {
 		return errors.Wrapf(err, "updating patch '%s' with status '%s'", p.Id.Hex(), patchStatus)
 	}
 
@@ -1633,10 +1621,7 @@ func UpdateBuildAndVersionStatusForTask(ctx context.Context, t *task.Task) error
 			if err != nil {
 				return errors.Wrapf(err, "getting collective status for patch '%s'", p.Id.Hex())
 			}
-			versionStatus, err := evergreen.PatchStatusToVersionStatus(collectiveStatus)
-			if err != nil {
-				return errors.Wrapf(err, "getting version status")
-			}
+			versionStatus := evergreen.PatchStatusToVersionStatus(collectiveStatus)
 			if parentPatch != nil {
 				event.LogVersionChildrenCompletionEvent(parentPatch.Id.Hex(), versionStatus, parentPatch.Author)
 			} else {
@@ -1728,7 +1713,7 @@ func MarkStart(t *task.Task, updates *StatusChanges) error {
 	if evergreen.IsPatchRequester(t.Requester) {
 		err := patch.TryMarkStarted(t.Version, startTime)
 		if err == nil {
-			updates.PatchNewStatus = evergreen.PatchStarted
+			updates.PatchNewStatus = evergreen.VersionStarted
 
 		} else if !adb.ResultsNotFound(err) {
 			return errors.WithStack(err)

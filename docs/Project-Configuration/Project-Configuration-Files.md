@@ -725,7 +725,7 @@ Every task has some expansions available by default:
     projects this is the same as `${project}`. If you aren't sure which
     you are, you can check using this API route:
     `https://evergreen.mongodb.com/rest/v2/<project_id>`)
--   `${branch_name}` is the name of the branch being tested by the
+-   `${branch_name}` is the name of the branch tracked by the
     project
 -   `${distro_id}` is name of the distro the task is running on
 -   `${created_at}` is the time the version was created
@@ -790,6 +790,15 @@ given module
     associated with this task
 -   `${<module_name>_owner}` is the Github repo owner for the evergreen
     module associated with this task
+
+In the [Github merge queue](Merge-Queue.md), a single additional expansion
+called `${github_head_branch}` is available. This is the name of the temporary
+branch that GitHub creates for this merge group item. It looks something like
+"gh-readonly-queue/main/pr-515-9cd8a2532bcddf58369aa82eb66ba88e2323c056". In the
+case of a single PR item in the queue, the integer following "/pr-" is the PR
+number. If multiple PRs are being tested together, that number belongs to one of
+the PRs. That is, since a merge queue build can belong to multiple PRs, you
+cannot depend on this number to enforce PR-specific behavior.
 
 ### Task and Variant Tags
 

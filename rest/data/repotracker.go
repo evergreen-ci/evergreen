@@ -8,6 +8,7 @@ import (
 
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/model"
+	"github.com/evergreen-ci/evergreen/trigger"
 	"github.com/evergreen-ci/evergreen/units"
 	"github.com/evergreen-ci/gimlet"
 	"github.com/evergreen-ci/utility"
@@ -103,6 +104,9 @@ func TriggerRepotracker(ctx context.Context, q amboy.Queue, msgID string, event 
 			unactionable = append(unactionable, refs[i].Id)
 			continue
 		}
+
+		err = trigger.TriggerDownstreamProjectsForPush(ctx, refs[i].Id, event, trigger.TriggerDownstreamVersion)
+		catcher.Wrapf(err, "triggering downstream projects for push event for project '%s'", refs[i].Id)
 
 		j := units.NewRepotrackerJob(fmt.Sprintf("github-push-%s", msgID), refs[i].Id)
 

@@ -93,9 +93,9 @@ func (s *logServiceV0) getLogChunks(ctx context.Context, logNames []string) (map
 			continue
 		}
 
-		// Strip any prefix from the key and set it as the log's name
-		// as callers may pass in prefixes that contain multiple
-		// logical logs.
+		// Strip any prefix from the key and set it as the log's name;
+		// callers may pass in prefixes that contain multiple logical
+		// logs.
 		if lastIdx := strings.LastIndex(chunkKey, "/"); lastIdx >= 0 {
 			logName = chunkKey[:lastIdx]
 			chunkKey = chunkKey[lastIdx+1:]

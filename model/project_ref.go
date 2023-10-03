@@ -40,7 +40,8 @@ import (
 	"go.mongodb.org/mongo-driver/bson"
 )
 
-// The ProjectRef struct contains general information, independent of any revision control system, needed to track a given project.
+// ProjectRef contains Evergreen project-related settings which can be set
+// independently of version control.
 // Booleans that can be defined from both the repo and branch must be pointers, so that branch configurations can specify when to default to the repo.
 type ProjectRef struct {
 	// Id is the unmodifiable unique ID for the configuration, used internally.
@@ -60,6 +61,7 @@ type ProjectRef struct {
 	RepotrackerDisabled    *bool               `bson:"repotracker_disabled,omitempty" json:"repotracker_disabled,omitempty" yaml:"repotracker_disabled"`
 	DispatchingDisabled    *bool               `bson:"dispatching_disabled,omitempty" json:"dispatching_disabled,omitempty" yaml:"dispatching_disabled"`
 	StepbackDisabled       *bool               `bson:"stepback_disabled,omitempty" json:"stepback_disabled,omitempty" yaml:"stepback_disabled"`
+	StepbackBisect         *bool               `bson:"stepback_bisect,omitempty" json:"stepback_bisect,omitempty" yaml:"stepback_bisect"`
 	VersionControlEnabled  *bool               `bson:"version_control_enabled,omitempty" json:"version_control_enabled,omitempty" yaml:"version_control_enabled"`
 	PRTestingEnabled       *bool               `bson:"pr_testing_enabled,omitempty" json:"pr_testing_enabled,omitempty" yaml:"pr_testing_enabled"`
 	ManualPRTestingEnabled *bool               `bson:"manual_pr_testing_enabled,omitempty" json:"manual_pr_testing_enabled,omitempty" yaml:"manual_pr_testing_enabled"`
@@ -331,6 +333,7 @@ var (
 	projectRefPatchingDisabledKey         = bsonutil.MustHaveTag(ProjectRef{}, "PatchingDisabled")
 	projectRefDispatchingDisabledKey      = bsonutil.MustHaveTag(ProjectRef{}, "DispatchingDisabled")
 	projectRefStepbackDisabledKey         = bsonutil.MustHaveTag(ProjectRef{}, "StepbackDisabled")
+	projectRefStepbackBisectKey           = bsonutil.MustHaveTag(ProjectRef{}, "StepbackBisect")
 	projectRefVersionControlEnabledKey    = bsonutil.MustHaveTag(ProjectRef{}, "VersionControlEnabled")
 	projectRefNotifyOnFailureKey          = bsonutil.MustHaveTag(ProjectRef{}, "NotifyOnBuildFailure")
 	projectRefSpawnHostScriptPathKey      = bsonutil.MustHaveTag(ProjectRef{}, "SpawnHostScriptPath")
@@ -382,6 +385,10 @@ func (p *ProjectRef) IsPRTestingEnabled() bool {
 
 func (p *ProjectRef) IsStepbackDisabled() bool {
 	return utility.FromBoolPtr(p.StepbackDisabled)
+}
+
+func (p *ProjectRef) IsStepbackBisect() bool {
+	return utility.FromBoolPtr(p.StepbackBisect)
 }
 
 func (p *ProjectRef) IsAutoPRTestingEnabled() bool {
@@ -467,6 +474,7 @@ const (
 	ProjectRefCollection     = "project_ref"
 	ProjectTriggerLevelTask  = "task"
 	ProjectTriggerLevelBuild = "build"
+	ProjectTriggerLevelPush  = "push"
 	intervalPrefix           = "@every"
 	maxBatchTime             = 153722867 // math.MaxInt64 / 60 / 1_000_000_000
 )
@@ -1547,7 +1555,7 @@ func FindOneProjectRefByRepoAndBranchWithPRTesting(owner, repo, branch, calledBy
 	if err != nil {
 		return nil, errors.Wrapf(err, "finding merged repo refs for repo '%s/%s'", owner, repo)
 	}
-	if repoRef == nil || !repoRef.IsPRTestingEnabledByCaller(calledBy) || repoRef.RemotePath == "" {
+	if repoRef == nil || !repoRef.IsPRTestingEnabledByCaller(calledBy) {
 		grip.Debug(message.Fields{
 			"source":  "find project ref for PR testing",
 			"message": "repo ref not configured for PR testing untracked branches",
@@ -1556,6 +1564,16 @@ func FindOneProjectRefByRepoAndBranchWithPRTesting(owner, repo, branch, calledBy
 			"branch":  branch,
 		})
 		return nil, nil
+	}
+	if repoRef.RemotePath == "" {
+		grip.Error(message.Fields{
+			"source":  "find project ref for PR testing",
+			"message": "repo ref has no remote path, cannot use for PR testing",
+			"owner":   owner,
+			"repo":    repo,
+			"branch":  branch,
+		})
+		return nil, errors.Errorf("repo ref '%s' has no remote path, cannot use for PR testing", repoRef.Id)
 	}
 
 	projectRefs, err = FindMergedProjectRefsThatUseRepoSettingsByRepoAndBranch(owner, repo, branch)
@@ -1966,6 +1984,7 @@ func SaveProjectPageForSection(projectId string, p *ProjectRef, section ProjectP
 			projectRefSpawnHostScriptPathKey:   p.SpawnHostScriptPath,
 			projectRefDispatchingDisabledKey:   p.DispatchingDisabled,
 			projectRefStepbackDisabledKey:      p.StepbackDisabled,
+			projectRefStepbackBisectKey:        p.StepbackBisect,
 			projectRefVersionControlEnabledKey: p.VersionControlEnabled,
 			ProjectRefDeactivatePreviousKey:    p.DeactivatePrevious,
 			projectRefRepotrackerDisabledKey:   p.RepotrackerDisabled,
@@ -2970,7 +2989,7 @@ func ValidateTriggerDefinition(definition patch.PatchTriggerDefinition, parentPr
 		return definition, errors.Wrapf(err, "finding child project '%s'", definition.ChildProject)
 	}
 
-	if !utility.StringSliceContains([]string{"", AllStatuses, evergreen.PatchSucceeded, evergreen.PatchFailed}, definition.Status) {
+	if !utility.StringSliceContains([]string{"", AllStatuses, evergreen.LegacyPatchSucceeded, evergreen.VersionSucceeded, evergreen.VersionFailed}, definition.Status) {
 		return definition, errors.Errorf("invalid status: %s", definition.Status)
 	}
 

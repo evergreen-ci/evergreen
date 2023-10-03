@@ -316,6 +316,8 @@ func (uis *UIServer) GetServiceApp() *gimlet.APIApp {
 	app.AddRoute("/json/task_log/{task_id}/{execution}").Wrap(needsLogin, needsContext, viewLogs).Handler(uis.taskLog).Get()
 	app.AddRoute("/task_log_raw/{task_id}/{execution}").Wrap(needsLogin, needsContext, allowsCORS, viewLogs).Handler(uis.taskLogRaw).Get()
 
+	// Proxy downloads for task uploaded files via S3
+	app.AddRoute(("/task_file_raw/{task_id}/{execution}/{file_name}")).Wrap(needsLogin, needsContext, allowsCORS, viewLogs).Handler(uis.taskFileRaw).Get()
 	// Test Logs
 	app.AddRoute("/test_log/{task_id}/{task_execution}").Wrap(needsLogin, needsContext, allowsCORS, viewLogs).Handler(uis.testLog).Get()
 	// TODO: We are keeping this route temporarily for backwards

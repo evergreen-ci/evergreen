@@ -719,12 +719,20 @@ func TestEnsureHasValidVirtualWorkstationSettings(t *testing.T) {
 	settings := &evergreen.Settings{}
 	assert.Nil(t, ensureHasValidVirtualWorkstationSettings(ctx, &distro.Distro{
 		IsVirtualWorkstation: true,
+		Arch:                 evergreen.ArchLinuxArm64,
 		HomeVolumeSettings: distro.HomeVolumeSettings{
 			FormatCommand: "format_command",
 		},
 	}, settings))
 	assert.NotNil(t, ensureHasValidVirtualWorkstationSettings(ctx, &distro.Distro{
 		IsVirtualWorkstation: true,
+	}, settings))
+	assert.NotNil(t, ensureHasValidVirtualWorkstationSettings(ctx, &distro.Distro{
+		IsVirtualWorkstation: true,
+		Arch:                 evergreen.ArchWindowsAmd64,
+		HomeVolumeSettings: distro.HomeVolumeSettings{
+			FormatCommand: "format_command",
+		},
 	}, settings))
 }
 

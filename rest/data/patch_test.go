@@ -15,6 +15,8 @@ import (
 	"github.com/evergreen-ci/evergreen/model/task"
 	"github.com/evergreen-ci/evergreen/testutil"
 	"github.com/google/go-github/v52/github"
+	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 	"github.com/stretchr/testify/suite"
 )
 
@@ -514,4 +516,24 @@ func (s *PatchConnectorFetchByUserSuite) TestFetchKeyOutOfBound() {
 	patches, err := FindPatchesByUser("user1", s.time.Add(-time.Hour), 1)
 	s.NoError(err)
 	s.Len(patches, 0)
+}
+
+func TestGetRawPatches(t *testing.T) {
+	assert.NoError(t, db.Clear(patch.Collection))
+	p := patch.Patch{
+		Id:      mgobson.NewObjectId(),
+		Githash: "hashbrown",
+		Patches: []patch.ModulePatch{
+			{ModuleName: "different", Githash: "home fries"},
+		},
+	}
+	assert.NoError(t, p.Insert())
+	raw, err := GetRawPatches(p.Id.Hex())
+	assert.NoError(t, err)
+	// Verify that we populate the raw patch patch githash regardless of whether we have changes.
+	assert.Equal(t, p.Githash, raw.Patch.Githash)
+	assert.Equal(t, "", raw.Patch.Name)
+	require.Len(t, raw.RawModules, 1)
+	assert.Equal(t, raw.RawModules[0].Name, p.Patches[0].ModuleName)
+	assert.Equal(t, raw.RawModules[0].Githash, p.Patches[0].Githash)
 }

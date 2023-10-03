@@ -102,18 +102,27 @@ Options:
 
 ### Aliases
 
-Aliases can be used for patch testing, commit queue testing, Github PRs,
-github checks, git tag triggers, project triggers, and patch triggers.
+Aliases can be used for patch testing, commit queue testing, GitHub PRs,
+GitHub checks, git tag triggers, project triggers, and patch triggers.
 
 For most aliases, you must define a variant regex or tags, and a task
-regex or tags. The matching variants/tasks will be included for the
-alias. Tags should be listed as they are defined under the task
-definition (i.e. without the ".") and tag negation is also supported
-(by prefixing the tag name with "!"). Multiple tags should be
-comma-delimited.
+regex or tags to match. The matching variants/tasks will be included for the
+alias. If matching by tags, alias tags support a limited set of the [tag
+selector syntax](https://docs.devprod.prod.corp.mongodb.com/evergreen/Project-Configuration/Project-Configuration-Files/#task-and-variant-tags).
+In particular, it supports tag negation and multiple tag criteria separated by
+spaces to get the set intersection of those tags. For example, when defining
+task tags:
 
-Aliases can also be defined locally as shown
-[here](../CLI.md#local-aliases).
+- `primary` would return all tasks with the tag `primary`.
+- `!primary` would return all tasks that are NOT tagged with "primary".
+- `cool !primary` would return all items that are tagged "cool" and NOT tagged
+  with "primary".
+
+Each tag definition is considered independently, so as long as a task fully
+matches one tag definition, it will be included. In other words, the matching
+variants/tasks are the set union of all the individual tag definitions.
+
+Aliases can also be defined locally as shown [here](../CLI.md#local-aliases).
 
 ### GitHub Pull Request Testing
 
