@@ -1090,13 +1090,5 @@ func (c *baseCommunicator) CreateInstallationToken(ctx context.Context, td TaskD
 		return "", errors.Wrap(err, "reading token from response")
 	}
 
-	grip.Debug(message.Fields{
-		"bynnbynn":    "bynnbynn",
-		"task_id":     td.ID,
-		"owner":       owner,
-		"repo":        repo,
-		"token_empty": token.Token == "",
-	})
-
 	return token.Token, nil
 }

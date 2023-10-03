@@ -716,7 +716,6 @@ func (c *gitFetchProject) fetchModuleSource(ctx context.Context,
 		dir:      moduleBase,
 		method:   cloneMethod,
 	}
-	appTokens = map[string]string{}
 	// Module's location takes precedence over the project-level clone
 	// method.
 	if strings.Contains(opts.location, "git@github.com:") {
@@ -730,15 +729,11 @@ func (c *gitFetchProject) fetchModuleSource(ctx context.Context,
 			opts.method = evergreen.CloneMethodAccessToken
 			opts.token = appToken
 		} else {
-			logger.Execution().Debug("force creating")
 			appToken, err := comm.CreateInstallationToken(ctx, td, opts.owner, opts.repo)
-			if err != nil {
-				logger.Execution().Debug("token made")
-				logger.Execution().Debug(appToken == "")
+			if err == nil {
 				appTokens[opts.owner] = appToken
 				opts.token = appToken
 			} else {
-				logger.Execution().Debug("no token")
 				// If a token cannot be created, fallback to the legacy global token.
 				opts.method = evergreen.CloneMethodOAuth
 				opts.token = conf.Expansions.Get(evergreen.GlobalGitHubTokenExpansion)

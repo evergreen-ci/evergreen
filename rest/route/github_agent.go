@@ -7,8 +7,6 @@ import (
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/apimodels"
 	"github.com/evergreen-ci/gimlet"
-	"github.com/mongodb/grip"
-	"github.com/mongodb/grip/message"
 	"github.com/pkg/errors"
 )
 
@@ -54,12 +52,6 @@ func (g *createInstallationToken) Run(ctx context.Context) gimlet.Responder {
 		return gimlet.MakeJSONErrorResponder(errors.Errorf("no installation token returned for '%s/%s'", g.owner, g.repo))
 	}
 
-	grip.Debug(message.Fields{
-		"owner":          g.owner,
-		"repo":           g.repo,
-		"token_is_empty": token == "",
-		"bynnbynn":       "bynnbynn",
-	})
 	return gimlet.NewJSONResponse(&apimodels.InstallationToken{
 		Token: token,
 	})
