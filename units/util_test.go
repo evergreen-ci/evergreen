@@ -43,6 +43,10 @@ func TestHandlePoisonedHost(t *testing.T) {
 				Id: v.Id,
 			}
 			require.NoError(t, pp.Insert())
+			pRef := model.ProjectRef{
+				Id: v.Id,
+			}
+			require.NoError(t, pRef.Insert())
 
 			parent := &host.Host{
 				Id:            "parent",
@@ -108,6 +112,10 @@ func TestHandlePoisonedHost(t *testing.T) {
 				Id: v.Id,
 			}
 			require.NoError(t, pp.Insert())
+			pRef := model.ProjectRef{
+				Id: v.Id,
+			}
+			require.NoError(t, pRef.Insert())
 
 			assert.NoError(t, HandlePoisonedHost(ctx, env, hostRunningTask, ""))
 			hostRunningTask, err := host.FindOneId(ctx, hostRunningTask.Id)
