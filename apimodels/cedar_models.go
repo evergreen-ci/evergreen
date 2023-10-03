@@ -46,6 +46,7 @@ type GetBuildloggerLogsOptionsV2 struct {
 // log iterator.
 // TODO (EVG-20019): Remove the "V2" suffix once log fetching is consolidated
 // and the original GetBuildloggerLogs function is deleted.
+// TODO (EVG-21010): Remove this once Cedar logs have TTL'ed.
 func GetBuildloggerLogsV2(ctx context.Context, opts GetBuildloggerLogsOptionsV2) (log.LogIterator, error) {
 	usr := gimlet.GetUser(ctx)
 	if usr == nil {
@@ -85,6 +86,7 @@ func GetBuildloggerLogsV2(ctx context.Context, opts GetBuildloggerLogsOptionsV2)
 	return newBuildloggerIterator(r), nil
 }
 
+// TODO (EVG-21010): Remove this once Cedar logs have TTL'ed.
 type buildloggerIterator struct {
 	readCloser io.ReadCloser
 	reader     *bufio.Reader
