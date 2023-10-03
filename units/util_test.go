@@ -169,7 +169,7 @@ func TestHandlePoisonedHost(t *testing.T) {
 			defer cancel()
 			tctx = testutil.TestSpan(tctx, t)
 
-			require.NoError(t, db.ClearCollections(host.Collection, task.Collection, build.Collection, model.VersionCollection))
+			require.NoError(t, db.ClearCollections(host.Collection, task.Collection, build.Collection, model.VersionCollection, model.ProjectRefCollection, model.ParserProjectCollection))
 			require.NoError(t, env.Configure(ctx))
 
 			test(tctx, t)

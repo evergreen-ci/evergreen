@@ -611,7 +611,7 @@ func TestPodAgentEndTask(t *testing.T) {
 			env := &mock.Environment{}
 			require.NoError(t, env.Configure(ctx))
 
-			require.NoError(t, db.ClearCollections(task.Collection, pod.Collection, event.EventCollection, model.ProjectRefCollection, build.Collection, model.VersionCollection, commitqueue.Collection, patchmodel.Collection))
+			require.NoError(t, db.ClearCollections(task.Collection, pod.Collection, event.EventCollection, model.ProjectRefCollection, build.Collection, model.VersionCollection, commitqueue.Collection, patchmodel.Collection, model.ParserProjectCollection))
 
 			rh, ok := makePodAgentEndTask(env).(*podAgentEndTask)
 			require.True(t, ok)
