@@ -30,7 +30,7 @@ func TestHandlePoisonedHost(t *testing.T) {
 				BuildId: "b",
 				Version: "v",
 				HostId:  "container2",
-				Project: "project-ref",
+				Project: "v",
 			}
 			require.NoError(t, t1.Insert())
 			b := build.Build{Id: "b", Version: "v"}
@@ -88,7 +88,7 @@ func TestHandlePoisonedHost(t *testing.T) {
 				BuildId: "b",
 				Version: "v",
 				HostId:  "runningTask",
-				Project: "project-ref",
+				Project: "v",
 			}
 			require.NoError(t, t1.Insert())
 			b := build.Build{Id: "b", Version: "v"}
