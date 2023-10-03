@@ -1456,6 +1456,7 @@ type ComplexityRoot struct {
 		FinishTime               func(childComplexity int) int
 		GitTags                  func(childComplexity int) int
 		Id                       func(childComplexity int) int
+		Ignored                  func(childComplexity int) int
 		IsPatch                  func(childComplexity int) int
 		Manifest                 func(childComplexity int) int
 		Message                  func(childComplexity int) int
@@ -8842,6 +8843,13 @@ func (e *executableSchema) Complexity(typeName, field string, childComplexity in
 		}
 
 		return e.complexity.Version.Id(childComplexity), true
+
+	case "Version.ignored":
+		if e.complexity.Version.Ignored == nil {
+			break
+		}
+
+		return e.complexity.Version.Ignored(childComplexity), true
 
 	case "Version.isPatch":
 		if e.complexity.Version.IsPatch == nil {
@@ -25074,6 +25082,8 @@ func (ec *executionContext) fieldContext_MainlineCommitVersion_rolledUpVersions(
 				return ec.fieldContext_Version_finishTime(ctx, field)
 			case "gitTags":
 				return ec.fieldContext_Version_gitTags(ctx, field)
+			case "ignored":
+				return ec.fieldContext_Version_ignored(ctx, field)
 			case "isPatch":
 				return ec.fieldContext_Version_isPatch(ctx, field)
 			case "manifest":
@@ -25189,6 +25199,8 @@ func (ec *executionContext) fieldContext_MainlineCommitVersion_version(ctx conte
 				return ec.fieldContext_Version_finishTime(ctx, field)
 			case "gitTags":
 				return ec.fieldContext_Version_gitTags(ctx, field)
+			case "ignored":
+				return ec.fieldContext_Version_ignored(ctx, field)
 			case "isPatch":
 				return ec.fieldContext_Version_isPatch(ctx, field)
 			case "manifest":
@@ -31353,6 +31365,8 @@ func (ec *executionContext) fieldContext_Mutation_restartVersions(ctx context.Co
 				return ec.fieldContext_Version_finishTime(ctx, field)
 			case "gitTags":
 				return ec.fieldContext_Version_gitTags(ctx, field)
+			case "ignored":
+				return ec.fieldContext_Version_ignored(ctx, field)
 			case "isPatch":
 				return ec.fieldContext_Version_isPatch(ctx, field)
 			case "manifest":
@@ -33988,6 +34002,8 @@ func (ec *executionContext) fieldContext_Patch_versionFull(ctx context.Context, 
 				return ec.fieldContext_Version_finishTime(ctx, field)
 			case "gitTags":
 				return ec.fieldContext_Version_gitTags(ctx, field)
+			case "ignored":
+				return ec.fieldContext_Version_ignored(ctx, field)
 			case "isPatch":
 				return ec.fieldContext_Version_isPatch(ctx, field)
 			case "manifest":
@@ -44777,6 +44793,8 @@ func (ec *executionContext) fieldContext_Query_version(ctx context.Context, fiel
 				return ec.fieldContext_Version_finishTime(ctx, field)
 			case "gitTags":
 				return ec.fieldContext_Version_gitTags(ctx, field)
+			case "ignored":
+				return ec.fieldContext_Version_ignored(ctx, field)
 			case "isPatch":
 				return ec.fieldContext_Version_isPatch(ctx, field)
 			case "manifest":
@@ -53839,6 +53857,8 @@ func (ec *executionContext) fieldContext_Task_versionMetadata(ctx context.Contex
 				return ec.fieldContext_Version_finishTime(ctx, field)
 			case "gitTags":
 				return ec.fieldContext_Version_gitTags(ctx, field)
+			case "ignored":
+				return ec.fieldContext_Version_ignored(ctx, field)
 			case "isPatch":
 				return ec.fieldContext_Version_isPatch(ctx, field)
 			case "manifest":
@@ -59266,6 +59286,8 @@ func (ec *executionContext) fieldContext_UpstreamProject_version(ctx context.Con
 				return ec.fieldContext_Version_finishTime(ctx, field)
 			case "gitTags":
 				return ec.fieldContext_Version_gitTags(ctx, field)
+			case "ignored":
+				return ec.fieldContext_Version_ignored(ctx, field)
 			case "isPatch":
 				return ec.fieldContext_Version_isPatch(ctx, field)
 			case "manifest":
@@ -60617,6 +60639,8 @@ func (ec *executionContext) fieldContext_Version_baseVersion(ctx context.Context
 				return ec.fieldContext_Version_finishTime(ctx, field)
 			case "gitTags":
 				return ec.fieldContext_Version_gitTags(ctx, field)
+			case "ignored":
+				return ec.fieldContext_Version_ignored(ctx, field)
 			case "isPatch":
 				return ec.fieldContext_Version_isPatch(ctx, field)
 			case "manifest":
@@ -60896,6 +60920,8 @@ func (ec *executionContext) fieldContext_Version_childVersions(ctx context.Conte
 				return ec.fieldContext_Version_finishTime(ctx, field)
 			case "gitTags":
 				return ec.fieldContext_Version_gitTags(ctx, field)
+			case "ignored":
+				return ec.fieldContext_Version_ignored(ctx, field)
 			case "isPatch":
 				return ec.fieldContext_Version_isPatch(ctx, field)
 			case "manifest":
@@ -61168,6 +61194,50 @@ func (ec *executionContext) fieldContext_Version_gitTags(ctx context.Context, fi
 				return ec.fieldContext_GitTag_pusher(ctx, field)
 			}
 			return nil, fmt.Errorf("no field named %q was found under type GitTag", field.Name)
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _Version_ignored(ctx context.Context, field graphql.CollectedField, obj *model.APIVersion) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_Version_ignored(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.Ignored, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.(*bool)
+	fc.Result = res
+	return ec.marshalNBoolean2ᚖbool(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_Version_ignored(ctx context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "Version",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type Boolean does not have child fields")
 		},
 	}
 	return fc, nil
@@ -61583,6 +61653,8 @@ func (ec *executionContext) fieldContext_Version_previousVersion(ctx context.Con
 				return ec.fieldContext_Version_finishTime(ctx, field)
 			case "gitTags":
 				return ec.fieldContext_Version_gitTags(ctx, field)
+			case "ignored":
+				return ec.fieldContext_Version_ignored(ctx, field)
 			case "isPatch":
 				return ec.fieldContext_Version_isPatch(ctx, field)
 			case "manifest":
@@ -84073,6 +84145,11 @@ func (ec *executionContext) _Version(ctx context.Context, sel ast.SelectionSet, 
 			out.Values[i] = ec._Version_finishTime(ctx, field, obj)
 		case "gitTags":
 			out.Values[i] = ec._Version_gitTags(ctx, field, obj)
+		case "ignored":
+			out.Values[i] = ec._Version_ignored(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				atomic.AddUint32(&out.Invalids, 1)
+			}
 		case "isPatch":
 			field := field
 
