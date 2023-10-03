@@ -34,10 +34,10 @@
       "result": {
         "data": {
           "task": {
-            "id": "display_task",
+            "id": "some_display_task",
             "execution": 0,
             "files": {
-              "fileCount": 0,
+              "fileCount": 4,
               "groupedFiles": [
                 {
                   "taskName": "test-exec-task-1",

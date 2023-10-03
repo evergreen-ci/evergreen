@@ -1,5 +1,5 @@
 {
-  task(taskId: "some_display_task", execution: 1) {
+  task(taskId: "some_display_task", execution: 0) {
     id
     execution
     files {

@@ -30,7 +30,8 @@
             "execution_tasks": [
                 "exec_task_1",
                 "exec_task_2"
-            ]
+            ],
+            "display_only": true
         },
         {
             "_id": "exec_task_1",
@@ -75,13 +76,15 @@
                     "name": "File 1",
                     "link": "link-to-file-1",
                     "visibility": "",
-                    "fetch_ignore": false
+                    "fetch_ignore": false,
+                    "content_type": "text/plain"
                 },
                 {
                     "name": "File 2",
                     "link": "link-to-file-2",
                     "visibility": "",
-                    "fetch_ignore": false
+                    "fetch_ignore": false,
+                    "content_type": "text/plain"
                 }
             ]
         },
