@@ -2694,7 +2694,7 @@ buildvariants:
 	assert.Error(t, err)
 }
 
-func TestUpdateForFile(t *testing.T) {
+func TestUpdateReadFileFrom(t *testing.T) {
 	p := &patch.Patch{
 		Id: "p1",
 		Patches: []patch.ModulePatch{
@@ -2717,15 +2717,15 @@ func TestUpdateForFile(t *testing.T) {
 			patch: p,
 		},
 	}
-	opts.UpdateForFile("small.yml")
+	opts.UpdateReadFileFrom("small.yml")
 	assert.Equal(t, opts.ReadFileFrom, ReadFromPatchDiff) // should be changed to patch diff bc it's not a github patch
 	p.GithubPatchData = thirdparty.GithubPatch{
 		HeadOwner: "me", // indicates this is a github PR patch
 	}
-	opts.UpdateForFile("small.yml")
+	opts.UpdateReadFileFrom("small.yml")
 	assert.Equal(t, opts.ReadFileFrom, ReadFromPatch) // should be changed to patch bc it is a github patch
 
-	opts.UpdateForFile("nonexistent.yml")
+	opts.UpdateReadFileFrom("nonexistent.yml")
 	// should be changed to patch diff because it's not a modified file
 
 }

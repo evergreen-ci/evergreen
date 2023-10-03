@@ -42,10 +42,11 @@ type GetBuildloggerLogsOptionsV2 struct {
 	Tail      int      `json:"-"`
 }
 
-// GetBuildloggerLogs makes request to Cedar for a specifc log and returns an
-// io.ReadCloser.
+// GetBuildloggerLogs makes request to Cedar for a specifc log and returns a
+// log iterator.
 // TODO (EVG-20019): Remove the "V2" suffix once log fetching is consolidated
 // and the original GetBuildloggerLogs function is deleted.
+// TODO (EVG-21010): Remove this once Cedar logs have TTL'ed.
 func GetBuildloggerLogsV2(ctx context.Context, opts GetBuildloggerLogsOptionsV2) (log.LogIterator, error) {
 	usr := gimlet.GetUser(ctx)
 	if usr == nil {
@@ -57,7 +58,7 @@ func GetBuildloggerLogsV2(ctx context.Context, opts GetBuildloggerLogsOptionsV2)
 		start = time.Unix(0, opts.Start).UTC()
 	}
 	if opts.End > 0 {
-		end = time.Unix(0, opts.Start).UTC()
+		end = time.Unix(0, opts.End).UTC()
 	}
 
 	getOpts := buildlogger.GetOptions{
@@ -85,6 +86,7 @@ func GetBuildloggerLogsV2(ctx context.Context, opts GetBuildloggerLogsOptionsV2)
 	return newBuildloggerIterator(r), nil
 }
 
+// TODO (EVG-21010): Remove this once Cedar logs have TTL'ed.
 type buildloggerIterator struct {
 	readCloser io.ReadCloser
 	reader     *bufio.Reader
@@ -111,6 +113,14 @@ func (it *buildloggerIterator) Next() bool {
 	if err != nil {
 		it.exhausted = err == io.EOF
 		it.catcher.AddWhen(err != io.EOF, errors.Wrap(err, "reading log lines"))
+		return false
+	}
+
+	// Each log line is expected to have the format:
+	//     [P:3%d] [2006/01/02 15:04:05.000] %s
+	// Fail if we cannot parse the first 34 characters to avoid panicking.
+	if len(line) < 34 {
+		it.catcher.Errorf("malformed line '%s'", line)
 		return false
 	}
 

@@ -40,7 +40,8 @@ import (
 	"go.mongodb.org/mongo-driver/bson"
 )
 
-// The ProjectRef struct contains general information, independent of any revision control system, needed to track a given project.
+// ProjectRef contains Evergreen project-related settings which can be set
+// independently of version control.
 // Booleans that can be defined from both the repo and branch must be pointers, so that branch configurations can specify when to default to the repo.
 type ProjectRef struct {
 	// Id is the unmodifiable unique ID for the configuration, used internally.
@@ -473,6 +474,7 @@ const (
 	ProjectRefCollection     = "project_ref"
 	ProjectTriggerLevelTask  = "task"
 	ProjectTriggerLevelBuild = "build"
+	ProjectTriggerLevelPush  = "push"
 	intervalPrefix           = "@every"
 	maxBatchTime             = 153722867 // math.MaxInt64 / 60 / 1_000_000_000
 )
@@ -1553,7 +1555,7 @@ func FindOneProjectRefByRepoAndBranchWithPRTesting(owner, repo, branch, calledBy
 	if err != nil {
 		return nil, errors.Wrapf(err, "finding merged repo refs for repo '%s/%s'", owner, repo)
 	}
-	if repoRef == nil || !repoRef.IsPRTestingEnabledByCaller(calledBy) || repoRef.RemotePath == "" {
+	if repoRef == nil || !repoRef.IsPRTestingEnabledByCaller(calledBy) {
 		grip.Debug(message.Fields{
 			"source":  "find project ref for PR testing",
 			"message": "repo ref not configured for PR testing untracked branches",
@@ -1562,6 +1564,16 @@ func FindOneProjectRefByRepoAndBranchWithPRTesting(owner, repo, branch, calledBy
 			"branch":  branch,
 		})
 		return nil, nil
+	}
+	if repoRef.RemotePath == "" {
+		grip.Error(message.Fields{
+			"source":  "find project ref for PR testing",
+			"message": "repo ref has no remote path, cannot use for PR testing",
+			"owner":   owner,
+			"repo":    repo,
+			"branch":  branch,
+		})
+		return nil, errors.Errorf("repo ref '%s' has no remote path, cannot use for PR testing", repoRef.Id)
 	}
 
 	projectRefs, err = FindMergedProjectRefsThatUseRepoSettingsByRepoAndBranch(owner, repo, branch)
