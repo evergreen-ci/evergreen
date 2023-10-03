@@ -1411,9 +1411,10 @@ func TestFindOneProjectRefByRepoAndBranchWithPRTesting(t *testing.T) {
 	assert.NotNil(projectRef)
 
 	repoDoc := RepoRef{ProjectRef{
-		Id:    "my_repo",
-		Owner: "mongodb",
-		Repo:  "mci",
+		Id:         "my_repo",
+		Owner:      "mongodb",
+		Repo:       "mci",
+		RemotePath: "",
 	}}
 	assert.NoError(repoDoc.Upsert())
 	doc = &ProjectRef{
@@ -1492,6 +1493,8 @@ func TestFindOneProjectRefByRepoAndBranchWithPRTesting(t *testing.T) {
 	assert.NotNil(projectRef)
 
 	// project explicitly disabled
+	repoDoc.RemotePath = "my_path"
+	assert.NoError(repoDoc.Upsert())
 	doc.Enabled = false
 	doc.PRTestingEnabled = utility.TruePtr()
 	assert.NoError(doc.Upsert())
@@ -1499,9 +1502,11 @@ func TestFindOneProjectRefByRepoAndBranchWithPRTesting(t *testing.T) {
 	assert.NoError(err)
 	assert.Nil(projectRef)
 
-	// branch with no project doesn't work if repo not configured right
+	// branch with no project doesn't work and returns an error if repo not configured with a remote path
+	repoDoc.RemotePath = ""
+	assert.NoError(repoDoc.Upsert())
 	projectRef, err = FindOneProjectRefByRepoAndBranchWithPRTesting("mongodb", "mci", "yours", "")
-	assert.NoError(err)
+	assert.Error(err)
 	assert.Nil(projectRef)
 
 	repoDoc.RemotePath = "my_path"
