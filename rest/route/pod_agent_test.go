@@ -473,7 +473,7 @@ func TestPodAgentEndTask(t *testing.T) {
 			}
 			require.NoError(t, projectToInsert.Insert())
 			parserProjectToInsert := model.ParserProject{
-				Id: projectToInsert.Id,
+				Id: versionId,
 			}
 			require.NoError(t, parserProjectToInsert.Insert())
 			rh.podID = podID
