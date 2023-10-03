@@ -2941,7 +2941,7 @@ func TestSaveProjectPageForSection(t *testing.T) {
 	update = &ProjectRef{
 		Identifier: "iden_",
 	}
-	_, err = SaveProjectPageForSection("iden_", update, ProjectPagePluginSection, false)
+	_, err = SaveProjectPageForSection("iden_", update, ProjectPageGeneralSection, false)
 	assert.NoError(err)
 	// Attempt to enable the performance plugin.
 	update = &ProjectRef{
