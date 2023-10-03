@@ -121,6 +121,7 @@ type SharedCommunicator interface {
 
 	SetDownstreamParams(ctx context.Context, downstreamParams []patchmodel.Parameter, taskData TaskData) error
 
+	// CreateInstallationToken creates an installation token for the given owner and repo if there is a GitHub app installed.
 	CreateInstallationToken(ctx context.Context, td TaskData, owner, repo string) (string, error)
 }
 

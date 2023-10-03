@@ -7,7 +7,6 @@ import (
 	"net/http"
 	"testing"
 
-	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/mock"
 	"github.com/evergreen-ci/gimlet"
 	"github.com/stretchr/testify/assert"
@@ -19,45 +18,45 @@ func TestCreateInstallationToken(t *testing.T) {
 	validRepo := "repo"
 
 	for tName, tCase := range map[string]func(ctx context.Context, t *testing.T, gh *createInstallationToken, env *mock.Environment){
-		"parse should error on empty owner and repo": func(ctx context.Context, t *testing.T, handler *createInstallationToken, env *mock.Environment) {
-			url := fmt.Sprintf("/github/installation_token/%s/%s", "", "")
+		"ParseErrorsOnEmptyOwnerAndRepo": func(ctx context.Context, t *testing.T, handler *createInstallationToken, env *mock.Environment) {
+			url := fmt.Sprintf("/task/{task_id}/installation_token/%s/%s", "", "")
 			request, err := http.NewRequest(http.MethodGet, url, bytes.NewReader(nil))
 			assert.NoError(t, err)
 
 			options := map[string]string{"owner": "", "repo": ""}
 			request = gimlet.SetURLVars(request, options)
 
-			assert.Error(t, handler.Parse(context.Background(), request))
+			assert.Error(t, handler.Parse(ctx, request))
 		},
-		"parse should error on empty owner": func(ctx context.Context, t *testing.T, handler *createInstallationToken, env *mock.Environment) {
-			url := fmt.Sprintf("/github/installation_token/%s/%s", "", validRepo)
+		"ParseErrorsOnEmptyOwner": func(ctx context.Context, t *testing.T, handler *createInstallationToken, env *mock.Environment) {
+			url := fmt.Sprintf("/task/{task_id}/installation_token/%s/%s", "", validRepo)
 			request, err := http.NewRequest(http.MethodGet, url, bytes.NewReader(nil))
 			assert.NoError(t, err)
 
 			options := map[string]string{"owner": "", "repo": validRepo}
 			request = gimlet.SetURLVars(request, options)
 
-			assert.Error(t, handler.Parse(context.Background(), request))
+			assert.Error(t, handler.Parse(ctx, request))
 		},
-		"parse should error on empty repo": func(ctx context.Context, t *testing.T, handler *createInstallationToken, env *mock.Environment) {
-			url := fmt.Sprintf("/github/installation_token/%s/%s", validOwner, "")
+		"ParseErrorsOnEmptyRepo": func(ctx context.Context, t *testing.T, handler *createInstallationToken, env *mock.Environment) {
+			url := fmt.Sprintf("/task/{task_id}/installation_token/%s/%s", validOwner, "")
 			request, err := http.NewRequest(http.MethodGet, url, bytes.NewReader(nil))
 			assert.NoError(t, err)
 
 			options := map[string]string{"owner": validOwner, "repo": ""}
 			request = gimlet.SetURLVars(request, options)
 
-			assert.Error(t, handler.Parse(context.Background(), request))
+			assert.Error(t, handler.Parse(ctx, request))
 		},
-		"parse should not error on valid owner and repo": func(ctx context.Context, t *testing.T, handler *createInstallationToken, env *mock.Environment) {
-			url := fmt.Sprintf("/github/installation_token/%s/%s", validOwner, validRepo)
+		"ParseSucceeds": func(ctx context.Context, t *testing.T, handler *createInstallationToken, env *mock.Environment) {
+			url := fmt.Sprintf("/task/{task_id}/installation_token/%s/%s", validOwner, validRepo)
 			request, err := http.NewRequest(http.MethodGet, url, bytes.NewReader(nil))
 			assert.NoError(t, err)
 
 			options := map[string]string{"owner": validOwner, "repo": validRepo}
 			request = gimlet.SetURLVars(request, options)
 
-			assert.NoError(t, handler.Parse(context.Background(), request))
+			assert.NoError(t, handler.Parse(ctx, request))
 		},
 	} {
 		t.Run(tName, func(t *testing.T) {
@@ -67,7 +66,7 @@ func TestCreateInstallationToken(t *testing.T) {
 			env := &mock.Environment{}
 			require.NoError(t, env.Configure(ctx))
 
-			r, ok := makeCreateInstallationToken(evergreen.GetEnvironment()).(*createInstallationToken)
+			r, ok := makeCreateInstallationToken(env).(*createInstallationToken)
 			r.env = env
 			require.True(t, ok)
 

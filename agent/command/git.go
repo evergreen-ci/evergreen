@@ -45,6 +45,7 @@ var (
 	cloneBranchAttribute  = fmt.Sprintf("%s.clone_branch", gitGetProjectAttribute)
 	cloneModuleAttribute  = fmt.Sprintf("%s.clone_module", gitGetProjectAttribute)
 	cloneRetriesAttribute = fmt.Sprintf("%s.clone_retries", gitGetProjectAttribute)
+	cloneMethodAttribute  = fmt.Sprintf("%s.clone_method", gitGetProjectAttribute)
 )
 
 // gitFetchProject is a command that fetches source code from git for the project
@@ -605,6 +606,7 @@ func (c *gitFetchProject) fetchSource(ctx context.Context,
 		attribute.String(cloneOwnerAttribute, opts.owner),
 		attribute.String(cloneRepoAttribute, opts.repo),
 		attribute.String(cloneBranchAttribute, opts.branch),
+		attribute.String(cloneMethodAttribute, opts.method),
 	))
 	defer span.End()
 
@@ -714,24 +716,42 @@ func (c *gitFetchProject) fetchModuleSource(ctx context.Context,
 		dir:      moduleBase,
 		method:   cloneMethod,
 	}
+	appTokens = map[string]string{}
 	// Module's location takes precedence over the project-level clone
 	// method.
 	if strings.Contains(opts.location, "git@github.com:") {
 		opts.method = evergreen.CloneMethodLegacySSH
-	} else if opts.method == evergreen.CloneMethodAccessToken {
+	} else if opts.method == evergreen.CloneMethodOAuth {
+		// If user provided a token, use that token.
+		opts.token = projectToken
+	} else {
+		// Use app token if possible.
 		if appToken, ok := appTokens[opts.owner]; ok {
+			opts.method = evergreen.CloneMethodAccessToken
 			opts.token = appToken
 		} else {
+			logger.Execution().Debug("force creating")
 			appToken, err := comm.CreateInstallationToken(ctx, td, opts.owner, opts.repo)
 			if err != nil {
-				return errors.Wrapf(err, "creating installation token for '%s/%s'", opts.owner, opts.repo)
+				logger.Execution().Debug("token made")
+				logger.Execution().Debug(appToken == "")
+				appTokens[opts.owner] = appToken
+				opts.token = appToken
+			} else {
+				logger.Execution().Debug("no token")
+				// If a token cannot be created, fallback to the legacy global token.
+				opts.method = evergreen.CloneMethodOAuth
+				opts.token = conf.Expansions.Get(evergreen.GlobalGitHubTokenExpansion)
+				logger.Execution().Warning(message.WrapError(err, message.Fields{
+					"message": "failed to create app token, falling back to global token",
+					"ticket":  "EVG-19966",
+					"owner":   opts.owner,
+					"repo":    opts.repo,
+				}))
 			}
-			appTokens[opts.owner] = appToken
-			opts.token = appToken
 		}
-	} else {
-		opts.token = projectToken
 	}
+
 	if err = opts.validate(); err != nil {
 		return errors.Wrap(err, "validating clone options")
 	}
@@ -839,14 +859,16 @@ func (c *gitFetchProject) fetch(ctx context.Context,
 		}
 	}
 
+	// If the task uses GitHub app token, pass it into modules.
+	appTokens := map[string]string{}
+	if opts.method == evergreen.CloneMethodAccessToken {
+		appTokens[opts.owner] = opts.token
+	}
+
 	// Clone the project's modules.
 	for _, moduleName := range conf.BuildVariant.Modules {
 		if err := ctx.Err(); err != nil {
 			return errors.Wrapf(err, "canceled while applying module '%s'", moduleName)
-		}
-		appTokens := map[string]string{}
-		if opts.method == evergreen.CloneMethodAccessToken {
-			appTokens[opts.owner] = opts.token
 		}
 		err = c.fetchModuleSource(ctx, comm, conf, logger, jpm, td, appTokens, opts.token, opts.method, p, moduleName)
 		if err != nil {

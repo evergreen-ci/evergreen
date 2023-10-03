@@ -1073,7 +1073,7 @@ func (c *baseCommunicator) GetAdditionalPatches(ctx context.Context, patchId str
 func (c *baseCommunicator) CreateInstallationToken(ctx context.Context, td TaskData, owner, repo string) (string, error) {
 	info := requestInfo{
 		method:   http.MethodGet,
-		path:     fmt.Sprintf("github/installation_token/%s/%s", owner, repo),
+		path:     fmt.Sprintf("task/%s/installation_token/%s/%s", td.ID, owner, repo),
 		taskData: &td,
 	}
 	resp, err := c.request(ctx, info, nil)
@@ -1089,6 +1089,14 @@ func (c *baseCommunicator) CreateInstallationToken(ctx context.Context, td TaskD
 	if err := utility.ReadJSON(resp.Body, &token); err != nil {
 		return "", errors.Wrap(err, "reading token from response")
 	}
+
+	grip.Debug(message.Fields{
+		"bynnbynn":    "bynnbynn",
+		"task_id":     td.ID,
+		"owner":       owner,
+		"repo":        repo,
+		"token_empty": token.Token == "",
+	})
 
 	return token.Token, nil
 }
