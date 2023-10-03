@@ -285,6 +285,10 @@ func TestPodTerminationJob(t *testing.T) {
 				Status:  evergreen.BuildCreated,
 			}
 			require.NoError(t, b.Insert())
+			pp := model.ParserProject{
+				Id: v.Id,
+			}
+			require.NoError(t, pp.Insert())
 			t1 := task.Task{
 				Id:                          "task_id1",
 				BuildId:                     b.Id,
