@@ -468,7 +468,7 @@ func TestPodAgentEndTask(t *testing.T) {
 			}
 			require.NoError(t, versionToInsert.Insert())
 			projectToInsert := model.ProjectRef{
-				Id:         projID,
+				Id:         versionId,
 				Identifier: projID,
 			}
 			require.NoError(t, projectToInsert.Insert())
