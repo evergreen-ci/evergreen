@@ -194,6 +194,7 @@ type File {
   link: String!
   name: String!
   visibility: String!
+  urlParsley: String
 }
 
 """
