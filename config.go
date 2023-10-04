@@ -27,7 +27,6 @@ import (
 	"go.mongodb.org/mongo-driver/mongo/options"
 	"go.mongodb.org/mongo-driver/mongo/readconcern"
 	"go.mongodb.org/mongo-driver/mongo/writeconcern"
-	"gopkg.in/yaml.v3"
 )
 
 var (
@@ -38,7 +37,7 @@ var (
 	ClientVersion = "2023-09-06"
 
 	// Agent version to control agent rollover.
-	AgentVersion = "2023-09-29"
+	AgentVersion = "2023-10-04"
 )
 
 // ConfigSection defines a sub-document in the evergreen config

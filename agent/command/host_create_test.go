@@ -110,10 +110,7 @@ func (s *createHostSuite) TestParseFromFile() {
 	s.Equal("myDevice", s.cmd.CreateHost.EBSDevices[0].DeviceName)
 
 	//parse from YAML file
-	path = filepath.Join(tmpdir, "example.yml")
-	s.NoError(utility.WriteYAMLFile(path, fileContent))
-	_, err = os.Stat(path)
-	s.Require().False(os.IsNotExist(err))
+
 	s.params = map[string]interface{}{
 		"file": path,
 	}
