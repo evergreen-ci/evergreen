@@ -397,8 +397,10 @@ type ComplexityRoot struct {
 	}
 
 	GroupedFiles struct {
-		Files    func(childComplexity int) int
-		TaskName func(childComplexity int) int
+		Execution func(childComplexity int) int
+		Files     func(childComplexity int) int
+		TaskID    func(childComplexity int) int
+		TaskName  func(childComplexity int) int
 	}
 
 	GroupedProjects struct {
@@ -3155,12 +3157,26 @@ func (e *executableSchema) Complexity(typeName, field string, childComplexity in
 
 		return e.complexity.GroupedBuildVariant.Variant(childComplexity), true
 
+	case "GroupedFiles.execution":
+		if e.complexity.GroupedFiles.Execution == nil {
+			break
+		}
+
+		return e.complexity.GroupedFiles.Execution(childComplexity), true
+
 	case "GroupedFiles.files":
 		if e.complexity.GroupedFiles.Files == nil {
 			break
 		}
 
 		return e.complexity.GroupedFiles.Files(childComplexity), true
+
+	case "GroupedFiles.taskId":
+		if e.complexity.GroupedFiles.TaskID == nil {
+			break
+		}
+
+		return e.complexity.GroupedFiles.TaskID(childComplexity), true
 
 	case "GroupedFiles.taskName":
 		if e.complexity.GroupedFiles.TaskName == nil {
@@ -19882,6 +19898,94 @@ func (ec *executionContext) fieldContext_GroupedFiles_taskName(ctx context.Conte
 		IsResolver: false,
 		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
 			return nil, errors.New("field of type String does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _GroupedFiles_taskId(ctx context.Context, field graphql.CollectedField, obj *GroupedFiles) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_GroupedFiles_taskId(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.TaskID, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.(string)
+	fc.Result = res
+	return ec.marshalNString2string(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_GroupedFiles_taskId(ctx context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "GroupedFiles",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type String does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _GroupedFiles_execution(ctx context.Context, field graphql.CollectedField, obj *GroupedFiles) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_GroupedFiles_execution(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.Execution, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.(int)
+	fc.Result = res
+	return ec.marshalNInt2int(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_GroupedFiles_execution(ctx context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "GroupedFiles",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type Int does not have child fields")
 		},
 	}
 	return fc, nil
@@ -55308,6 +55412,10 @@ func (ec *executionContext) fieldContext_TaskFiles_groupedFiles(ctx context.Cont
 				return ec.fieldContext_GroupedFiles_files(ctx, field)
 			case "taskName":
 				return ec.fieldContext_GroupedFiles_taskName(ctx, field)
+			case "taskId":
+				return ec.fieldContext_GroupedFiles_taskId(ctx, field)
+			case "execution":
+				return ec.fieldContext_GroupedFiles_execution(ctx, field)
 			}
 			return nil, fmt.Errorf("no field named %q was found under type GroupedFiles", field.Name)
 		},
@@ -73611,6 +73719,16 @@ func (ec *executionContext) _GroupedFiles(ctx context.Context, sel ast.Selection
 			out.Values[i] = ec._GroupedFiles_files(ctx, field, obj)
 		case "taskName":
 			out.Values[i] = ec._GroupedFiles_taskName(ctx, field, obj)
+		case "taskId":
+			out.Values[i] = ec._GroupedFiles_taskId(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "execution":
+			out.Values[i] = ec._GroupedFiles_execution(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
 		default:
 			panic("unknown field " + strconv.Quote(field.Name))
 		}

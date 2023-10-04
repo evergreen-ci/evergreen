@@ -12,6 +12,50 @@
               "groupedFiles": [
                 {
                   "taskName": "test-thirdparty-docker",
+                  "taskId": "some_task",
+                  "execution": 1,
+                  "files": [
+                    {
+                      "name": "File 1"
+                    },
+                    {
+                      "name": "File 2"
+                    }
+                  ]
+                }
+              ]
+            }
+          }
+        }
+      }
+    },
+    {
+      "query_file": "display_task.graphql",
+      "result": {
+        "data": {
+          "task": {
+            "id": "some_display_task",
+            "execution": 0,
+            "files": {
+              "fileCount": 4,
+              "groupedFiles": [
+                {
+                  "taskName": "test-exec-task-1",
+                  "taskId": "exec_task_1",
+                  "execution": 0,
+                  "files": [
+                    {
+                      "name": "File 1"
+                    },
+                    {
+                      "name": "File 2"
+                    }
+                  ]
+                },
+                {
+                  "taskName": "test-exec-task-2",
+                  "taskId": "exec_task_2",
+                  "execution": 0,
                   "files": [
                     {
                       "name": "File 1"
