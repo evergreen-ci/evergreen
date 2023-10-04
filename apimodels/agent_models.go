@@ -184,7 +184,7 @@ type RegistrySettings struct {
 }
 
 type InstallationToken struct {
-	Token string `bson:"token" json:"token"`
+	Token string `json:"token"`
 }
 
 func (ted *TaskEndDetail) IsEmpty() bool {

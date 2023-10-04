@@ -67,7 +67,6 @@ func TestCreateInstallationToken(t *testing.T) {
 			require.NoError(t, env.Configure(ctx))
 
 			r, ok := makeCreateInstallationToken(env).(*createInstallationToken)
-			r.env = env
 			require.True(t, ok)
 
 			tCase(ctx, t, r, env)
