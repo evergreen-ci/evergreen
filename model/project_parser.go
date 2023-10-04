@@ -17,6 +17,7 @@ import (
 	"github.com/evergreen-ci/evergreen/thirdparty"
 	"github.com/evergreen-ci/evergreen/util"
 	"github.com/evergreen-ci/utility"
+	"github.com/k0kubun/pp"
 	"github.com/mongodb/grip"
 	"github.com/mongodb/grip/message"
 	"github.com/pkg/errors"
@@ -1334,6 +1335,9 @@ func evaluateBVTasks(tse *taskSelectorEvaluator, tgse *tagSelectorEvaluator, vse
 			evalErrs = append(evalErrs, errs...)
 			// IsGroup indicates here that this build variant task unit is a
 			// task group.
+			if isGroup {
+				pp.Println("Setting task group IsGroup:", t.Name)
+			}
 			t.IsGroup = isGroup
 
 			// add the new task if it doesn't already exists (we must avoid conflicting status fields)

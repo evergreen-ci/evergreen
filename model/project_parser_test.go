@@ -21,6 +21,7 @@ import (
 	"github.com/evergreen-ci/evergreen/thirdparty"
 	"github.com/evergreen-ci/pail"
 	"github.com/evergreen-ci/utility"
+	"github.com/k0kubun/pp"
 	. "github.com/smartystreets/goconvey/convey"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -517,6 +518,64 @@ func TestTranslateTasks(t *testing.T) {
 	assert.Equal(t, "my_task", disabledBV.Tasks[1].Name)
 	assert.True(t, utility.FromBoolPtr(disabledBV.Tasks[1].PatchOnly))
 	assert.False(t, utility.FromBoolPtr(disabledBV.Tasks[1].Disable))
+
+	// kim: TODO: move to separate test
+	t.Run("TestTranslateTaskGroups", func(t *testing.T) {
+		parserProj := ParserProject{
+			Tasks: []parserTask{
+				{
+					Name: "task1",
+					Commands: []PluginCommandConf{
+						{
+							Command: "shell.exec",
+							Params:  map[string]interface{}{"script": "echo hello"},
+						},
+					},
+				},
+				{
+					Name: "task2",
+					Commands: []PluginCommandConf{
+						{
+							Command: "shell.exec",
+							Params:  map[string]interface{}{"script": "echo hello"},
+						},
+					},
+				},
+				{
+					Name: "regular_task",
+					Commands: []PluginCommandConf{
+						{
+							Command: "shell.exec",
+							Params:  map[string]interface{}{"script": "echo hello"},
+						},
+					},
+				},
+			},
+			TaskGroups: []parserTaskGroup{
+				{
+					Name:  "task_group_name",
+					Tasks: []string{"task1", "task2"},
+				},
+			},
+			BuildVariants: []parserBV{
+				{
+					Name: "bv1",
+					Tasks: parserBVTaskUnits{
+						{
+							Name: "task_group_name",
+						},
+						{
+							Name: "regular_task",
+						},
+					},
+				},
+			},
+		}
+
+		p, err := TranslateProject(&parserProj)
+		require.NoError(t, err)
+		pp.Println(p)
+	})
 }
 
 func TestTranslateDependsOn(t *testing.T) {

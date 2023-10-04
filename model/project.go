@@ -21,6 +21,7 @@ import (
 	"github.com/evergreen-ci/evergreen/thirdparty"
 	"github.com/evergreen-ci/evergreen/util"
 	"github.com/evergreen-ci/utility"
+	"github.com/k0kubun/pp"
 	"github.com/mongodb/anser/bsonutil"
 	"github.com/mongodb/grip"
 	"github.com/mongodb/grip/message"
@@ -92,10 +93,12 @@ type BuildVariantTaskUnit struct {
 	// Name has to match the name field of one of the tasks or groups specified at
 	// the project level, or an error will be thrown
 	Name string `yaml:"name,omitempty" bson:"name"`
-	// IsGroup indicates that it is a task group or a task within a task group.
-	// This is always populated after translating the parser project to the
-	// project.
+	// IsGroup indicates that it is a task group. This is always populated after
+	// translating the parser project to the project.
 	IsGroup bool `yaml:"-" bson:"-"`
+	// IsGroup indicates that it is a task within a task group. This is always
+	// populated after translating the parser project to the project.
+	IsPartOfGroup bool `yaml:"-" bson:"-"`
 	// GroupName is the task group name if this is a task in a task group. If
 	// it is the task group itself, it is not populated (Name is the task group
 	// name).
@@ -1550,7 +1553,9 @@ func (p *Project) FindAllVariants() []string {
 }
 
 // FindAllBuildVariantTasks returns every BuildVariantTaskUnit, fully populated,
-// for all variants of a project.
+// for all variants of a project. Note that task groups, although they are
+// considered build variant task units, are not preserved. Instead, each task in
+// the task group is expanded into its own individual tasks units.
 func (p *Project) FindAllBuildVariantTasks() []BuildVariantTaskUnit {
 	tasksByName := map[string]ProjectTask{}
 	for _, t := range p.Tasks {
@@ -1572,6 +1577,8 @@ func (p *Project) FindAllBuildVariantTasks() []BuildVariantTaskUnit {
 
 // tasksFromGroup returns a slice of the task group's tasks.
 // Settings missing from the group task are populated from the task definition.
+// kim: TODO: ensure usages of tasksFromGroup that later use IsGroup are
+// correct.
 func (p *Project) tasksFromGroup(bvTaskGroup BuildVariantTaskUnit) []BuildVariantTaskUnit {
 	tg := bvTaskGroup.TaskGroup
 	if tg == nil {
@@ -1601,11 +1608,14 @@ func (p *Project) tasksFromGroup(bvTaskGroup BuildVariantTaskUnit) []BuildVarian
 	}
 
 	for _, t := range tg.Tasks {
+		pp.Println("Setting task in task group IsPartOfGroup:", t)
 		bvt := BuildVariantTaskUnit{
 			Name: t,
+			// kim: TODO: remove
 			// IsGroup is not persisted, and indicates here that the
 			// task is a member of a task group.
 			IsGroup:           true,
+			IsPartOfGroup:     true,
 			TaskGroup:         bvTaskGroup.TaskGroup,
 			GroupName:         bvTaskGroup.Name,
 			Variant:           bvTaskGroup.Variant,
@@ -1974,6 +1984,10 @@ func (p *Project) BuildProjectTVPairsWithAlias(aliases []ProjectAlias, requester
 			}
 
 			for _, t := range p.Tasks {
+				// kim: TODO: since this should be the task group itself and not
+				// individual tasks in the task group, figure out how this lets
+				// the alias match the task in the task group. Maybe it doesn't
+				// actually include the task and some other magic makes it work.
 				if !isValidRegexOrTag(t.Name, t.Tags, alias.TaskTags, taskRegex) {
 					continue
 				}

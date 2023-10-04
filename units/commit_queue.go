@@ -593,9 +593,11 @@ func AddMergeTaskAndVariant(ctx context.Context, patchDoc *patch.Patch, project 
 		RunOn:       []string{settings.CommitQueue.MergeTaskDistro},
 		Tasks: []model.BuildVariantTaskUnit{
 			{
-				Name:             evergreen.MergeTaskGroup,
-				Variant:          evergreen.MergeTaskVariant,
+				Name:    evergreen.MergeTaskGroup,
+				Variant: evergreen.MergeTaskVariant,
+				// kim: TODO: figure out where this is used and if it works.
 				IsGroup:          true,
+				IsPartOfGroup:    true,
 				CommitQueueMerge: true,
 			},
 		},
