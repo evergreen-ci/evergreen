@@ -2,6 +2,7 @@ package model
 
 import (
 	"fmt"
+	"net/url"
 	"strings"
 
 	"github.com/evergreen-ci/evergreen"
@@ -55,7 +56,11 @@ func (f *APIFile) GetLogURL(env evergreen.Environment, taskID string, execution 
 		}
 	}
 	if hasContentType {
-		f.URLParsley = utility.ToStringPtr(fmt.Sprintf("%s/taskFile/%s/%d/%s", settings.Ui.ParsleyUrl, taskID, execution, utility.FromStringPtr(f.Name)))
+		fileName := utility.FromStringPtr(f.Name)
+		if fileName == "" {
+			return
+		}
+		f.URLParsley = utility.ToStringPtr(fmt.Sprintf("%s/taskFile/%s/%d/%s", settings.Ui.ParsleyUrl, taskID, execution, url.PathEscape(fileName)))
 	}
 }
 
