@@ -2037,7 +2037,12 @@ func SaveProjectPageForSection(projectId string, p *ProjectRef, section ProjectP
 		if err != nil {
 			return false, errors.Wrapf(err, "error getting project")
 		}
-		if p != nil && pRef != nil && p.IsPerfEnabled() != pRef.IsPerfEnabled() && pRef.Identifier != pRef.Id {
+		if pRef == nil {
+			return false, errors.Errorf("project '%s' was not found", projectId)
+		}
+		// If the performance plugin is not currently enabled, and we are trying to
+		// change it to enabled but the id and identifer ar edifferent, no-op.
+		if !pRef.IsPerfEnabled() && p.IsPerfEnabled() && pRef.Id != pRef.Identifier {
 			return false, errors.Errorf("project '%s' does not have a matching ID and identifier, cannot enable performance plugin", pRef.Id)
 		}
 		err = db.Update(coll,
