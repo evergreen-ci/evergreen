@@ -717,8 +717,6 @@ func constructManifest(v *Version, projectRef *ProjectRef, moduleList ModuleList
 		Branch:      projectRef.Branch,
 		IsBase:      v.Requester == evergreen.RepotrackerVersionRequester,
 	}
-	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
-	defer cancel()
 
 	var baseManifest *manifest.Manifest
 	var err error
@@ -744,6 +742,10 @@ func constructManifest(v *Version, projectRef *ProjectRef, moduleList ModuleList
 		if err != nil {
 			return nil, errors.Wrapf(err, "parsing git url '%s'", module.Repo)
 		}
+
+		ctx, cancel := context.WithTimeout(context.Background(), time.Minute)
+		defer cancel()
+
 		if module.Ref == "" {
 			var commit *github.RepositoryCommit
 			commit, err = thirdparty.GetCommitEvent(ctx, token, projectRef.Owner, projectRef.Repo, v.Revision)
