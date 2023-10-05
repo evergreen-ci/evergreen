@@ -186,6 +186,8 @@ type TaskFiles {
 type GroupedFiles {
   files: [File!]
   taskName: String
+  taskId: String!
+  execution: Int!
 }
 
 type File {
