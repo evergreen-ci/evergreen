@@ -62,50 +62,66 @@ the initial release for container tasks.
 
 3.  Greater configurability: When running container tasks, resources
 such as CPU and memory usage must be explicitly configured, unlike
-in the current distro model. Users are also responsible for
-picking the image to use, and all required software is downloaded
-during runtime. Furthermore, the container your task runs on is
-dedicated solely to that task and is never reused, so you are free
-to do whatever you want with it without needing to worry about
+in the current distro model. Users are also free to bring their own
+custom image to use, where only the software dependencies required for
+their particular workflow are downloaded during runtime. Furthermore, 
+the container your task runs on is dedicated solely to that task and is not 
+reused, so you are free to do whatever you want with it without needing to worry about
 leaving the environment in a messy state for the next task.
 
-# How to get started
-## Image lifecycle and self service
+## How To Get Started
+This section will walk you through the steps to get started with running container tasks in Evergreen,
+which are at a high level as follows:
+1. Create your Dockerfile in accordance with our existing [secure image
+   policy](https://docs.google.com/document/d/1MMePuL5YBjJQcNdtwzU2kMLPSsRLzDyE0rhTVkmXDqo/edit)
+2. Follow the image creation and management steps [here](Container-Tasks.md#creating-and-managing-your-container-images) to obtain a usable image URI
+to run container tasks on
+3. Configure to your project YAML via the steps [here](Container-Tasks.md#update-your-yaml-configuration) 
+to create a variant that uses the new image and runs tasks in containers.
+4. Schedule the tasks in your new container variant in a patch to test your changes
 
+### Creating a Dockerfile
+
+Due to the fact that the custom images used for container tasks in Evergreen must follow company-specific
+security requirements, Evergreen does not support using arbitrary images for container tasks, and the custom
+Dockerfile you use must adhere to these [requirements](https://docs.google.com/document/d/1MMePuL5YBjJQcNdtwzU2kMLPSsRLzDyE0rhTVkmXDqo/edit).
 At the moment, our image security automation is still [under
 development](https://docs.google.com/document/d/1MMePuL5YBjJQcNdtwzU2kMLPSsRLzDyE0rhTVkmXDqo/edit#heading=h.ghiwibz2opmd),
-so for the time being, modifying a project\'s respective Dockerfile
-requires the submission of a PR against our repo.
+so for the time being, you may create your own Dockerfile for use in container tasks but R&D Dev Prod will be temporarily
+housing your Dockerfile in a managed [repository](https://github.com/evergreen-ci/container-initial-offering-dockerfiles).
 
-1.  Stage a PR in our centralized image
-    [repository](https://github.com/evergreen-ci/container-initial-offering-dockerfiles).
-    This repo hosts Dockerfiles for all teams participating in the
-    beta of running container tasks in Evergreen. The PR, when merged
-    into the main branch, triggers an automated Drone pipeline which
-    then builds the image and pushes it to Amazon Elastic Container
-    Registry (ECR). To onboard, your PR changes must include a
-    relevant Dockerfile, created under a new directory that has the
-    name of your project. Review should be requested from
+
+### Creating And Managing Your Container Images
+
+The following is the process by which you can create a usable image from your custom Dockerfile:
+
+1.  Ensure you are properly permissioned to stage PRs in the centralized image
+    repository, which hosts Dockerfiles for all teams participating in the
+    experimental offering of running container tasks in Evergreen.
+    Permission can be requested from MANA [here](https://mana.corp.mongodbgov.com/resources/64c464185f1589fbe7faec38).
+2.  Stage a PR against the repo containing a relevant Dockerfile under a new directory
+    that has the name of your project. Review should be requested from
     **evergreen-ci/evg-app**, and the PR's approval will be contingent
     on the Dockerfile following the [secure image
     policy](https://docs.google.com/document/d/1MMePuL5YBjJQcNdtwzU2kMLPSsRLzDyE0rhTVkmXDqo/edit)
     that we currently have in place.
-
-2.  Once the PR has been approved and is merged into main with the Drone
-    build passing, you may reference the URI of the newly built image.
+3.  The PR, when approved and merged into the main branch, will trigger an automated Drone pipeline which
+    builds the image and pushes it to Amazon Elastic Container
+    Registry (ECR). You may then reference the URI of the newly built image.
     Its format will be as follows:
     
-    > **557821124784.dkr.ecr.us-east-1.amazonaws.com/evergreen/${directory}:${sha}**
+    > **557821124784.dkr.ecr.us-east-1.amazonaws.com/evergreen/<DIRECTORY\>:<SHA\>**
 
-    Where **\${dir}** is your project's directory name in our image
+    Where **<DIRECTORY\>** is your project's directory name in our image
     repository. For enhanced security, we need to use immutable image
-    tags, so rather than the typical \":latest\" tag, image URIs in your
-    Evergreen YAML must also use a **\${sha}** tag, corresponding to the
-    desired commit in our image repository.
+    tags, so rather than the typical ":latest" tag, image URIs in your
+    Evergreen YAML must also use a **<SHA\>** tag, which would be the hash
+    of the corresponding commit in our [image repository](https://github.com/evergreen-ci/container-initial-offering-dockerfiles).
 
-## YAML Configuration
+### Update Your YAML Configuration
 
-Configuring your project to use container tasks is done in YAML.
+Once you have a valid image URI that is ready to run tasks, you can test it
+by configuring your YAML to to run tasks on this new image.
 Container definitions are similar to distro configurations in that they
 both are ultimately referenced in the **run_on** field of a build
 variant. However, container configurations are defined by the user,
@@ -183,24 +199,24 @@ where a primary and secondary distro can be specified in this field
 the **run_on** field for a containerized variant. If more than one
 container name is specified, only the first entry will be recognized.
 
-### UI Changes
+## UI Changes
 
 Once configured properly, a variant with container tasks is ready to
 schedule tasks. Once tasks get created, key differences to look for in
 Spruce are:
 
-#### **Container Project Settings**
+### **Container Project Settings**
 
 A new tab has been added to the project settings page for container
 configurations. Users can create a list of resource configuration
-presets that can be referenced via alias in the size field of their
+presets that can be referenced by name in the size field of their
 container YAML configurations.
 
 ![containers.png](../images/container_configuration.png)
 
 Options:
 
--   Name: The alias for the resource preset. Names must be unique within
+-   Name: The name for the resource preset. Names must be unique within
     the list.
 
 -   Memory: The amount of memory (in MiB) to allocate.
@@ -211,14 +227,14 @@ Options:
 Users can define as many container configurations as needed, reflecting
 different appropriate resource needs for various tasks.
 
-#### **Task Metadata**
+### **Task Metadata**
 
 A link to a container task's respective container replaces the typical
 host link.
 
 <img alt="containerized_task_metadata.png" height="400" src="../images/container_metadata.png" width="300"/>
 
-#### **Container Page**
+### **Container Page**
 
 The link in the task metadata sidebar takes you to the container page,
 which details the lifecycle of a container and their tasks. Like the
@@ -229,9 +245,13 @@ of a task from a container once it has run its course.
 
 ![container_event_logs.png](../images/container_page.png)
 
-### Other Considerations
+## Other Considerations
 
 ### Disk Space
+
+For tasks that require a large amount of disk space, please be aware
+that container tasks may **not** be the best fit for your use case at this
+time.
 
 Each instance is provisioned with 200GB of space; however, the actual
 disk space available for each container task can vary depending on the
@@ -252,28 +272,25 @@ respectively. While we work on a more robust solution to this notion of
 isolating disk space, we recommend that you keep your container task
 disk space usage to a maximum of 10GB.
 
-### Git Cloning
+### Git Cloning Modules With SSH
 
-In a containerized environment, the hosts themselves are unable to be
-distributed with SSH keys used to clone GitHub repositories. This means
-that if git clones rely on the host's SSH keys to clone a private
+In a containerized environment, cloning modules via SSH is unsupported in order to prevent
+all teams from sharing the same SSH keys on the container instance hosts.
+
+Instead, modules must be cloned via OAuth over HTTPS. This means
+that if your modules' git clones rely on a host's SSH keys to clone a private
 repository in your existing workflow, the cloning method will need to be
-changed to cloning via OAuth over HTTPS.
-
-The
-[git.get_project](https://docs.devprod.prod.corp.mongodb.com/evergreen/Project-Configuration/Project-Commands#gitget_project)
-command *can* be configured to pass an OAuth token to be used for
-cloning the repository, but if no token field is specified Evergreen has
-its own general purpose OAuth token which will be used to attempt to
-clone the repository. Because of this, for most cases a token does not
-need to be set in YAML, unless the repository cannot be cloned with
-Evergreen's token.
-
-Module repos that are configured to clone via SSH will need to have
-their url format modified to HTTPS, e.g:
+changed. This can be done by modifying the url format of the module's
+repo, e.g:
 
 ```yaml
 modules:
   - name: evergreen
     repo: git@github.com:evergreen-ci/evergreen.git → https://github.com/evergreen-ci/evergreen.git
 ```
+
+### Docker host.create
+
+Using our [host.create](https://docs.devprod.prod.corp.mongodb.com/evergreen/Project-Configuration/Project-Commands#hostcreate)
+command with the `docker` provider, or otherwise spawning additional containers from within a container task will be unsupported for the time being. 
+This functionality is a feature we are looking to support in the future, and researching as part of [EVG-20339](https://jira.mongodb.org/browse/EVG-20339).
