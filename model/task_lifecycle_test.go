@@ -3928,13 +3928,13 @@ func TestStepback(t *testing.T) {
 	assert.NoError(v2.Insert())
 	assert.NoError(v3.Insert())
 	// test stepping back a regular task
-	assert.NoError(doLienarStepback(ctx, t3))
+	assert.NoError(doLinearStepback(ctx, t3))
 	dbTask, err := task.FindOne(db.Query(task.ById(t2.Id)))
 	assert.NoError(err)
 	assert.True(dbTask.Activated)
 
 	// test stepping back a display task
-	assert.NoError(doLienarStepback(ctx, dt3))
+	assert.NoError(doLinearStepback(ctx, dt3))
 	dbTask, err = task.FindOne(db.Query(task.ById(dt2.Id)))
 	assert.NoError(err)
 	assert.True(dbTask.Activated)
@@ -4106,13 +4106,13 @@ func TestStepbackWithGenerators(t *testing.T) {
 	assert.NoError(t, v2.Insert())
 
 	// test stepping back where an existing generated task needs to be activated
-	assert.NoError(t, doLienarStepback(ctx, taskToStepback))
+	assert.NoError(t, doLinearStepback(ctx, taskToStepback))
 	dbTask, err := task.FindOne(db.Query(task.ById(t1.Id)))
 	assert.NoError(t, err)
 	assert.True(t, dbTask.Activated)
 
 	// test stepping back where the generator needs to be activated
-	assert.NoError(t, doLienarStepback(ctx, taskToStepback2))
+	assert.NoError(t, doLinearStepback(ctx, taskToStepback2))
 	dbTask, err = task.FindOne(db.Query(task.ById(genPrevious.Id)))
 	assert.NoError(t, err)
 	assert.True(t, dbTask.Activated)
@@ -5163,7 +5163,6 @@ func TestClearAndResetStrandedContainerTask(t *testing.T) {
 	} {
 		t.Run(tName, func(t *testing.T) {
 			require.NoError(t, db.ClearCollections(host.Collection, VersionCollection, patch.Collection, ParserProjectCollection, ProjectRefCollection, task.Collection, task.OldCollection, build.Collection, pod.Collection))
-			assert := assert.New(t)
 
 			projectRef := ProjectRef{
 				Identifier: "project-ref",
@@ -5191,7 +5190,7 @@ func TestClearAndResetStrandedContainerTask(t *testing.T) {
 				Id:          "h1",
 				RunningTask: "t",
 			}
-			assert.NoError(host.Insert(ctx))
+			require.NoError(t, host.Insert(ctx))
 
 			tsk := task.Task{
 				Id:                     "task_id",
@@ -5395,8 +5394,6 @@ func TestResetStaleTask(t *testing.T) {
 	} {
 		t.Run(tName, func(t *testing.T) {
 			require.NoError(t, db.ClearCollections(host.Collection, VersionCollection, patch.Collection, ParserProjectCollection, ProjectRefCollection, task.Collection, task.OldCollection, build.Collection, pod.Collection))
-			assert := assert.New(t)
-
 			projectRef := ProjectRef{
 				Identifier: "project-ref",
 			}
@@ -5423,7 +5420,7 @@ func TestResetStaleTask(t *testing.T) {
 				Id:          "h1",
 				RunningTask: "t",
 			}
-			assert.NoError(host.Insert(ctx))
+			require.NoError(t, host.Insert(ctx))
 			taskPod := pod.Pod{
 				ID: "pod_id",
 			}
@@ -6001,7 +5998,7 @@ func TestEvalStepbackDeactivatePrevious(t *testing.T) {
 		Requester:           evergreen.TriggerRequester,
 		Version:             v.Id,
 	}
-	assert.NoError(finishedTask.Insert())
+	require.NoError(t, finishedTask.Insert())
 	b3 := build.Build{
 		Id:           "b3",
 		BuildVariant: "bv",
