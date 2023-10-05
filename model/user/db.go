@@ -490,9 +490,20 @@ func ClearLoginCache(user gimlet.User) error {
 func ClearUser(userId string) error {
 	update := bson.M{
 		"$unset": bson.M{
-			SettingsKey:   1,
+			SettingsKey: bson.M{
+				userSettingsGithubUserKey:    1,
+				userSettingsSlackUsernameKey: 1,
+				userSettingsSlackMemberIdKey: 1,
+			},
 			RolesKey:      1,
 			LoginCacheKey: 1,
+		},
+		"$set": bson.M{
+			SettingsKey: bson.M{
+				UseSpruceOptionsKey: bson.M{
+					SpruceV1Key: 1,
+				},
+			},
 		}}
 	query := bson.M{IdKey: userId}
 	if err := UpdateOne(query, update); err != nil {
