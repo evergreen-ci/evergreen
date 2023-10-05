@@ -8,7 +8,7 @@ import (
 	"context"
 	"fmt"
 
-	"github.com/evergreen-ci/evergreen/model"
+	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/model/event"
 	restModel "github.com/evergreen-ci/evergreen/rest/model"
 	"github.com/evergreen-ci/utility"
@@ -21,11 +21,13 @@ func (r *projectSettingsResolver) Aliases(ctx context.Context, obj *restModel.AP
 
 // GithubWebhooksEnabled is the resolver for the githubWebhooksEnabled field.
 func (r *projectSettingsResolver) GithubWebhooksEnabled(ctx context.Context, obj *restModel.APIProjectSettings) (bool, error) {
-	hook, err := model.FindGithubHook(utility.FromStringPtr(obj.ProjectRef.Owner), utility.FromStringPtr(obj.ProjectRef.Repo))
+	owner := utility.FromStringPtr(obj.ProjectRef.Owner)
+	repo := utility.FromStringPtr(obj.ProjectRef.Repo)
+	token, err := evergreen.GetEnvironment().Settings().CreateInstallationToken(ctx, owner, repo, nil)
 	if err != nil {
-		return false, InternalServerError.Send(ctx, fmt.Sprintf("Database error finding github hook for project '%s': %s", *obj.ProjectRef.Id, err.Error()))
+		return false, InternalServerError.Send(ctx, fmt.Sprintf("Error GitHub app installation for project '%s' in '%s/%s': '%s'", utility.FromStringPtr(obj.ProjectRef.Id), owner, repo, err.Error()))
 	}
-	return hook != nil, nil
+	return token != "", nil
 }
 
 // Subscriptions is the resolver for the subscriptions field.

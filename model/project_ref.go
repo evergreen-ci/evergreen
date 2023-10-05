@@ -1658,27 +1658,18 @@ func FindOneProjectRefWithCommitQueueByOwnerRepoAndBranch(owner, repo, branch st
 
 // EnableWebhooks returns true if a hook for the given owner/repo exists or was inserted.
 func EnableWebhooks(ctx context.Context, projectRef *ProjectRef) (bool, error) {
-	hook, err := FindGithubHook(projectRef.Owner, projectRef.Repo)
-	if err != nil {
-		return false, errors.Wrapf(err, "finding GitHub hook for project '%s'", projectRef.Id)
-	}
-	if hook != nil {
-		projectRef.TracksPushEvents = utility.TruePtr()
-		return true, nil
-	}
-
 	settings, err := evergreen.GetConfig(ctx)
 	if err != nil {
 		return false, errors.Wrap(err, "finding evergreen settings")
 	}
 
-	hook, err = SetupNewGithubHook(ctx, *settings, projectRef.Owner, projectRef.Repo)
-	if err != nil {
+	token, err := settings.CreateInstallationToken(ctx, projectRef.Owner, projectRef.Repo, nil)
+	if err != nil || token == "" {
 		// don't return error:
 		// sometimes people change a project to track a personal
 		// branch we don't have access to
 		grip.Error(message.WrapError(err, message.Fields{
-			"message":            "can't setup webhook",
+			"message":            "GitHub app not installed",
 			"project":            projectRef.Id,
 			"project_identifier": projectRef.Identifier,
 			"owner":              projectRef.Owner,
@@ -1688,9 +1679,6 @@ func EnableWebhooks(ctx context.Context, projectRef *ProjectRef) (bool, error) {
 		return false, nil
 	}
 
-	if err = hook.Insert(); err != nil {
-		return false, errors.Wrapf(err, "inserting new webhook for project '%s'", projectRef.Id)
-	}
 	projectRef.TracksPushEvents = utility.TruePtr()
 	return true, nil
 }
@@ -1803,9 +1791,9 @@ func GetProjectSettingsById(projectId string, isRepo bool) (*ProjectSettings, er
 
 // GetProjectSettings returns the ProjectSettings of the given identifier and ProjectRef
 func GetProjectSettings(p *ProjectRef) (*ProjectSettings, error) {
-	hook, err := FindGithubHook(p.Owner, p.Repo)
+	token, err := evergreen.GetEnvironment().Settings().CreateInstallationToken(context.Background(), p.Owner, p.Repo, nil)
 	if err != nil {
-		return nil, errors.Wrapf(err, "finding GitHub hook for project '%s'", p.Id)
+		return nil, errors.Wrapf(err, "verifying GitHub app for project '%s' in '%s/%s'", p.Id, p.Owner, p.Repo)
 	}
 	projectVars, err := FindOneProjectVars(p.Id)
 	if err != nil {
@@ -1824,7 +1812,7 @@ func GetProjectSettings(p *ProjectRef) (*ProjectSettings, error) {
 	}
 	projectSettingsEvent := ProjectSettings{
 		ProjectRef:         *p,
-		GithubHooksEnabled: hook != nil,
+		GithubHooksEnabled: token != "",
 		Vars:               *projectVars,
 		Aliases:            projectAliases,
 		Subscriptions:      subscriptions,
