@@ -86,7 +86,7 @@ func (c *attachArtifacts) Execute(ctx context.Context,
 	for idx := range c.Files {
 		segment, err = readArtifactsFile(getWorkingDirectory(conf, c.Prefix), c.Files[idx])
 		if err != nil {
-			if (c.Optional || c.ExactFileNames) && os.IsNotExist(errors.Cause(err)) {
+			if c.Optional && os.IsNotExist(errors.Cause(err)) {
 				// pass;
 			} else {
 				catcher.Add(err)
