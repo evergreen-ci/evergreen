@@ -27,11 +27,6 @@ type APIEntry struct {
 	Execution       int       `json:"execution"`
 }
 
-type APIFileBuildFromService struct {
-	TaskID    string
-	Execution int
-}
-
 func (f *APIFile) BuildFromService(file artifact.File) {
 	f.ContentType = utility.ToStringPtr(file.ContentType)
 	f.Name = utility.ToStringPtr(file.Name)
