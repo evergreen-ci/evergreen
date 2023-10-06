@@ -345,7 +345,7 @@ func TestFinalizePatch(t *testing.T) {
 
 			patchConfig.PatchedParserProject.Id = p.Id.Hex()
 			patchConfig.PatchedParserProject.Modules = modules
-			patchConfig.PatchedParserProject.Identifier = &p.Project
+			patchConfig.PatchedParserProject.Identifier = utility.ToStringPtr(p.Project)
 			require.NoError(t, patchConfig.PatchedParserProject.Insert())
 
 			p.ProjectStorageMethod = evergreen.ProjectStorageMethodDB

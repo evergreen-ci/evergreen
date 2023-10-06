@@ -256,9 +256,7 @@ func GetPatchedProject(ctx context.Context, settings *evergreen.Settings, p *pat
 
 	if p.ProjectStorageMethod != "" {
 		// If the patch has already been created but has not been finalized, it
-		// has either already stored the parser project document or stored the
-		// parser project as a string (which is the fallback case for old
-		// patches).
+		// has already stored the parser project document
 		project, pp, err := FindAndTranslateProjectForPatch(ctx, settings, p)
 		if err != nil {
 			return nil, nil, errors.Wrap(err, "finding and translating project")
@@ -336,6 +334,8 @@ func GetPatchedProjectConfig(ctx context.Context, settings *evergreen.Settings, 
 		return p.PatchedProjectConfig, nil
 	}
 
+	// The patch has not been created yet, so do the first-time initialization
+	// to get the parser project and project config.
 	projectRef, opts, err := getLoadProjectOptsForPatch(p, githubOauthToken)
 	if err != nil {
 		return "", errors.Wrap(err, "fetching project options for patch")
@@ -669,18 +669,7 @@ func FinalizePatch(ctx context.Context, p *patch.Patch, requester string, github
 		)
 	}
 
-	// Newer patches always stored the parser project during patch creation.
-	// However, it used to be that the parser project was not stored until
-	// patches were finalized. For backward compatibility with the old
-	// unfinalized patches, try storing the parser project now that it's
-	// finalizing.
-
-	ppStorageMethod := p.ProjectStorageMethod
-	if ppStorageMethod == "" {
-		ppStorageMethod = evergreen.ProjectStorageMethodDB
-	}
-
-	patchVersion.ProjectStorageMethod = ppStorageMethod
+	patchVersion.ProjectStorageMethod = p.ProjectStorageMethod
 
 	env := evergreen.GetEnvironment()
 	mongoClient := env.Client()

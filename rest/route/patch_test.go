@@ -836,8 +836,7 @@ buildvariants:
 	require.NoError(t, unfinalized.Insert())
 
 	pp := &serviceModel.ParserProject{}
-	err := util.UnmarshalYAMLWithFallback([]byte(config), &pp)
-	require.NoError(t, err)
+	require.NoError(t, util.UnmarshalYAMLWithFallback([]byte(config), serviceModel.ParserProject{}))
 	pp.Id = unfinalized.Id.Hex()
 	require.NoError(t, pp.Insert())
 
@@ -1163,8 +1162,7 @@ tasks:
 	require.NoError(t, unfinalized.Insert())
 
 	pp := &serviceModel.ParserProject{}
-	err := util.UnmarshalYAMLWithFallback([]byte(config), &pp)
-	require.NoError(t, err)
+	require.NoError(t, util.UnmarshalYAMLWithFallback([]byte(config), pp))
 	pp.Id = unfinalized.Id.Hex()
 	require.NoError(t, pp.Insert())
 
