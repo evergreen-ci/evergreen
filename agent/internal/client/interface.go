@@ -98,7 +98,7 @@ type SharedCommunicator interface {
 	NewPush(context.Context, TaskData, *apimodels.S3CopyRequest) (*model.PushLog, error)
 	UpdatePushStatus(context.Context, TaskData, *model.PushLog) error
 	AttachFiles(context.Context, TaskData, []*artifact.File) error
-	GetManifest(context.Context, TaskData) (*manifest.Manifest, error)
+	GetManifest(context.Context, TaskData, model.ModuleList) (*manifest.Manifest, error)
 	KeyValInc(context.Context, TaskData, *model.KeyVal) error
 
 	// GenerateTasks posts new tasks for the `generate.tasks` command.

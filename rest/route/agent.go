@@ -1222,6 +1222,7 @@ func (h *keyvalIncHandler) Run(ctx context.Context) gimlet.Responder {
 // GET /task/{task_id}/manifest/load
 type manifestLoadHandler struct {
 	taskID   string
+	modules  model.ModuleList
 	settings *evergreen.Settings
 }
 
@@ -1240,6 +1241,9 @@ func (h *manifestLoadHandler) Factory() gimlet.RouteHandler {
 func (h *manifestLoadHandler) Parse(ctx context.Context, r *http.Request) error {
 	if h.taskID = gimlet.GetVars(r)["task_id"]; h.taskID == "" {
 		return errors.New("missing task ID")
+	}
+	if err := utility.ReadJSON(r.Body, &h.modules); err != nil {
+		return errors.Wrap(err, "reading push log from JSON request body")
 	}
 	return nil
 }
@@ -1283,24 +1287,12 @@ func (h *manifestLoadHandler) Run(ctx context.Context) gimlet.Responder {
 		return gimlet.MakeJSONErrorResponder(errors.Wrapf(err, "retrieving manifest with version id '%s'", task.Version))
 	}
 
-	env := evergreen.GetEnvironment()
-	project, _, err := model.FindAndTranslateProjectForVersion(ctx, env.Settings(), v)
-	if err != nil {
-		return gimlet.MakeJSONErrorResponder(errors.Wrapf(err, "loading project from version"))
-	}
-	if project == nil {
-		return gimlet.MakeJSONErrorResponder(gimlet.ErrorResponse{
-			StatusCode: http.StatusNotFound,
-			Message:    "unable to find project for version",
-		})
-	}
-
-	if currentManifest != nil && project.Modules.IsIdentical(*currentManifest) {
+	if currentManifest != nil && h.modules.IsIdentical(*currentManifest) {
 		return gimlet.NewJSONResponse(currentManifest)
 	}
 
 	// attempt to insert a manifest after making GitHub API calls
-	manifest, err := model.CreateManifest(v, project, projectRef, h.settings)
+	manifest, err := model.CreateManifest(v, h.modules, projectRef, h.settings)
 	if err != nil {
 		if apiErr, ok := errors.Cause(err).(thirdparty.APIRequestError); ok && apiErr.StatusCode == http.StatusNotFound {
 			return gimlet.MakeJSONErrorResponder(errors.Wrap(err, "manifest resource not found"))

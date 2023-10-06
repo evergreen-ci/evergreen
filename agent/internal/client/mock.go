@@ -455,7 +455,7 @@ func (c *Mock) SendTestLog(ctx context.Context, td TaskData, log *serviceModel.T
 	return c.LogID, nil
 }
 
-func (c *Mock) GetManifest(ctx context.Context, td TaskData) (*manifest.Manifest, error) {
+func (c *Mock) GetManifest(ctx context.Context, td TaskData, modules serviceModel.ModuleList) (*manifest.Manifest, error) {
 	return &manifest.Manifest{}, nil
 }
 

@@ -568,7 +568,9 @@ func FinalizePatch(ctx context.Context, p *patch.Patch, requester string, github
 		AuthorEmail:         authorEmail,
 	}
 
-	mfst, err := constructManifest(patchVersion, projectRef, project.Modules, settings, githubOauthToken)
+	// TODO: either do not error out here, or skip manifest construction for configs
+	// with expansions in their modules - bring up in PR discussion
+	mfst, err := constructManifest(patchVersion, projectRef, project.Modules, githubOauthToken)
 	if err != nil {
 		return nil, errors.Wrap(err, "constructing manifest")
 	}

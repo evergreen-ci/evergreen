@@ -805,13 +805,13 @@ func (c *baseCommunicator) SetDownstreamParams(ctx context.Context, downstreamPa
 	return nil
 }
 
-func (c *baseCommunicator) GetManifest(ctx context.Context, taskData TaskData) (*manifest.Manifest, error) {
+func (c *baseCommunicator) GetManifest(ctx context.Context, taskData TaskData, modules model.ModuleList) (*manifest.Manifest, error) {
 	info := requestInfo{
 		method:   http.MethodGet,
 		taskData: &taskData,
 	}
 	info.setTaskPathSuffix("manifest/load")
-	resp, err := c.retryRequest(ctx, info, nil)
+	resp, err := c.retryRequest(ctx, info, modules)
 	if err != nil {
 		return nil, util.RespErrorf(resp, errors.Wrap(err, "loading manifest").Error())
 	}

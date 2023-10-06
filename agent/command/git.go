@@ -268,9 +268,14 @@ func moduleRevExpansionName(name string) string { return fmt.Sprintf("%s_rev", n
 func (c *gitFetchProject) manifestLoad(ctx context.Context,
 	comm client.Communicator, logger client.LoggerProducer, conf *internal.TaskConfig) error {
 
+	modules := conf.Project.Modules
+	for i := range modules {
+		if err := util.ExpandValues(&modules[i], &conf.Expansions); err != nil {
+			return errors.Wrap(err, "applying expansions")
+		}
+	}
 	td := client.TaskData{ID: conf.Task.Id, Secret: conf.Task.Secret}
-
-	manifest, err := comm.GetManifest(ctx, td)
+	manifest, err := comm.GetManifest(ctx, td, modules)
 	if err != nil {
 		return errors.Wrapf(err, "loading manifest for task '%s'", td.ID)
 	}

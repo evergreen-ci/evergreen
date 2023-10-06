@@ -72,7 +72,7 @@ func TriggerDownstreamVersion(ctx context.Context, args ProcessorArgs) (*model.V
 			return nil, errors.Wrapf(err, "parsing git url '%s'", module.Repo)
 		}
 		if owner == upstreamProject.Owner && repo == upstreamProject.Repo && module.Branch == upstreamProject.Branch {
-			_, err = model.CreateManifest(v, projectInfo.Project, upstreamProject, settings)
+			_, err = model.CreateManifest(v, projectInfo.Project.Modules, upstreamProject, settings)
 			if err != nil {
 				return nil, errors.WithStack(err)
 			}

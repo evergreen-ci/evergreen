@@ -706,7 +706,7 @@ func GetVersionsToModify(projectName string, opts ModifyVersionsOptions, startTi
 }
 
 // constructManifest will construct a manifest from the given project and version.
-func constructManifest(v *Version, projectRef *ProjectRef, moduleList ModuleList, settings *evergreen.Settings, token string) (*manifest.Manifest, error) {
+func constructManifest(v *Version, projectRef *ProjectRef, moduleList ModuleList, token string) (*manifest.Manifest, error) {
 	if len(moduleList) == 0 {
 		return nil, nil
 	}
@@ -791,12 +791,12 @@ func constructManifest(v *Version, projectRef *ProjectRef, moduleList ModuleList
 }
 
 // CreateManifest inserts a newly constructed manifest into the DB.
-func CreateManifest(v *Version, proj *Project, projectRef *ProjectRef, settings *evergreen.Settings) (*manifest.Manifest, error) {
+func CreateManifest(v *Version, modules ModuleList, projectRef *ProjectRef, settings *evergreen.Settings) (*manifest.Manifest, error) {
 	token, err := settings.GetGithubOauthToken()
 	if err != nil {
 		return nil, errors.Wrap(err, "getting GitHub token")
 	}
-	newManifest, err := constructManifest(v, projectRef, proj.Modules, settings, token)
+	newManifest, err := constructManifest(v, projectRef, modules, token)
 	if err != nil {
 		return nil, errors.Wrap(err, "constructing manifest")
 	}
