@@ -15,7 +15,7 @@ func newBucket(bucketName, bucketType string) (pail.Bucket, error) {
 	case evergreen.BucketTypeS3:
 		b, err = pail.NewS3Bucket(pail.S3Options{
 			Name:        bucketName,
-			Region:      "us-east-1",
+			Region:      evergreen.DefaultEC2Region,
 			Permissions: pail.S3PermissionsPrivate,
 			MaxRetries:  utility.ToIntPtr(10),
 			Compress:    true,
