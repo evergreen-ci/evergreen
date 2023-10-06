@@ -127,8 +127,10 @@ type GroupedBuildVariant struct {
 }
 
 type GroupedFiles struct {
-	Files    []*model.APIFile `json:"files,omitempty"`
-	TaskName *string          `json:"taskName,omitempty"`
+	Files     []*model.APIFile `json:"files,omitempty"`
+	TaskName  *string          `json:"taskName,omitempty"`
+	TaskID    string           `json:"taskId"`
+	Execution int              `json:"execution"`
 }
 
 // GroupedProjects is the return value for the projects & viewableProjectRefs queries.

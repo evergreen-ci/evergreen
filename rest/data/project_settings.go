@@ -252,7 +252,7 @@ func SaveProjectSettingsForSection(ctx context.Context, projectId string, change
 				return nil, errors.Wrap(err, "validating new owner/repo")
 			}
 		}
-		// Only need to check Github conflicts once so we use else if statements to handle this.
+		// Only need to check GitHub conflicts once so we use else if statements to handle this.
 		// Handle conflicts using the ref from the DB, since only general section settings are passed in from the UI.
 		if mergedSection.Owner != mergedBeforeRef.Owner || mergedSection.Repo != mergedBeforeRef.Repo {
 			if err = handleGithubConflicts(mergedBeforeRef, "Changing owner/repo"); err != nil {
@@ -469,13 +469,16 @@ func handleGithubConflicts(pRef *model.ProjectRef, reason string) error {
 		return errors.Wrapf(err, "getting GitHub project conflicts")
 	}
 	if pRef.IsPRTestingEnabled() && len(conflicts.PRTestingIdentifiers) > 0 {
-		conflictMsgs = append(conflictMsgs, "PR testing")
+		conflictingIdentifiers := strings.Join(conflicts.PRTestingIdentifiers, ", ")
+		conflictMsgs = append(conflictMsgs, fmt.Sprintf("PR testing (projects: %s)", conflictingIdentifiers))
 	}
 	if pRef.CommitQueue.IsEnabled() && len(conflicts.CommitQueueIdentifiers) > 0 {
-		conflictMsgs = append(conflictMsgs, "the commit queue")
+		conflictingIdentifiers := strings.Join(conflicts.CommitQueueIdentifiers, ", ")
+		conflictMsgs = append(conflictMsgs, fmt.Sprintf("the commit queue (projects: %s)", conflictingIdentifiers))
 	}
 	if pRef.IsGithubChecksEnabled() && len(conflicts.CommitCheckIdentifiers) > 0 {
-		conflictMsgs = append(conflictMsgs, "commit checks")
+		conflictingIdentifiers := strings.Join(conflicts.CommitCheckIdentifiers, ", ")
+		conflictMsgs = append(conflictMsgs, fmt.Sprintf("commit checks (projects: %s)", conflictingIdentifiers))
 	}
 
 	if len(conflictMsgs) > 0 {
