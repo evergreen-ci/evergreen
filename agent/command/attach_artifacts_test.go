@@ -120,7 +120,7 @@ func (s *ArtifactsSuite) TestArtifactErrorsIfDoesNotExist() {
 func (s *ArtifactsSuite) TestArtifactNoErrorIfDoesNotExistWithExactNames() {
 	s.cmd.Files = []string{"foo"}
 	s.cmd.ExactFileNames = true
-	s.NoError(s.cmd.Execute(s.ctx, s.comm, s.logger, s.conf))
+	s.Error(s.cmd.Execute(s.ctx, s.comm, s.logger, s.conf))
 	s.Len(s.cmd.Files, 1)
 	s.Len(s.mock.AttachedFiles, 0)
 	s.Len(s.mock.AttachedFiles[s.conf.Task.Id], 0)
@@ -160,7 +160,7 @@ func (s *ArtifactsSuite) TestCommandParsesFile() {
 func (s *ArtifactsSuite) TestCommandParsesExactFileNames() {
 	s.cmd.ExactFileNames = true
 	s.Len(s.mock.AttachedFiles, 0)
-	s.cmd.Files = []string{"exactmatch.json", "example.json", "does-not-exist.json"}
+	s.cmd.Files = []string{"exactmatch.json", "example.json"}
 	s.NoError(s.cmd.Execute(s.ctx, s.comm, s.logger, s.conf))
 	s.Len(s.mock.AttachedFiles, 1)
 	s.Len(s.mock.AttachedFiles[s.conf.Task.Id], 2)
