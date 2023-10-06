@@ -847,5 +847,6 @@ func (s *UserTestSuite) TestClearUser() {
 	s.False(u.Settings.UseSpruceOptions.SpruceV1)
 	s.NoError(ClearUser(u.Id))
 	u, err = FindOneById(s.users[1].Id)
+	s.NoError(err)
 	s.True(u.Settings.UseSpruceOptions.SpruceV1)
 }

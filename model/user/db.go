@@ -488,7 +488,7 @@ func ClearLoginCache(user gimlet.User) error {
 
 // ClearUser clears one user's settings, roles, and login cache.
 func ClearUser(userId string) error {
-	update := bson.M{
+	unsetUpdate := bson.M{
 		"$unset": bson.M{
 			SettingsKey: bson.M{
 				userSettingsGithubUserKey:    1,
@@ -498,19 +498,21 @@ func ClearUser(userId string) error {
 			RolesKey:      1,
 			LoginCacheKey: 1,
 		},
+	}
+	query := bson.M{IdKey: userId}
+	if err := UpdateOne(query, unsetUpdate); err != nil {
+		return errors.Wrap(err, "unsetting user settings")
+	}
+	setUpdate := bson.M{
 		"$set": bson.M{
 			SettingsKey: bson.M{
 				UseSpruceOptionsKey: bson.M{
 					SpruceV1Key: 1,
 				},
 			},
-		}}
-	query := bson.M{IdKey: userId}
-	if err := UpdateOne(query, update); err != nil {
-		return errors.Wrap(err, "unsetting user settings")
+		},
 	}
-
-	return nil
+	return errors.Wrap(UpdateOne(query, setUpdate), "unsetting user settings")
 }
 
 // ClearAllLoginCaches clears all users' login caches, forcibly logging them
