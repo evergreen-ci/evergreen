@@ -6,21 +6,22 @@ import (
 	"sync"
 	"time"
 
+	"github.com/mongodb/grip"
 	"github.com/mongodb/grip/level"
 	"github.com/mongodb/grip/message"
 	"github.com/mongodb/grip/send"
 	"github.com/pkg/errors"
 )
 
-const defaultMaxBufferSize = 1e7 //nolint: unused
+const defaultMaxBufferSize = 1e7
 
 // LineParser functions parse a raw log line into the service representation of
 // a log line for uniform ingestion of logs by the Evergreen log sender.
 // Parsers need not set the log name or, in most cases, the priority.
 type LineParser func(string) (LogLine, error)
 
-// LoggerOptions support the use and creation of an Evergreen log sender.
-type LoggerOptions struct {
+// SenderOptions support the use and creation of an Evergreen log sender.
+type SenderOptions struct {
 	// LogName is the identifying name of the log to use when persisting
 	// data.
 	LogName string
@@ -28,6 +29,8 @@ type LoggerOptions struct {
 	// sender.
 	// The injectable line parser allows the sender to be agnostic to the
 	// raw log line formats it ingests.
+	// Defaults to a basic line parser that adds the raw string as the log
+	// line data field.
 	Parse LineParser
 	// Local is the sender for "fallback" operations and to collect any
 	// logger error output.
@@ -37,8 +40,32 @@ type LoggerOptions struct {
 	MaxBufferSize int
 	// FlushInterval is time interval at which to flush log lines,
 	// regardless of whether the max buffer size has been reached. A flush
-	// interval less than or equal to 0 will disable timed flushes.
+	// interval equal to 0 will disable timed flushes.
 	FlushInterval time.Duration
+}
+
+func (opts *SenderOptions) validate() error {
+	catcher := grip.NewBasicCatcher()
+	catcher.NewWhen(opts.LogName == "", "must provide a log name")
+	catcher.NewWhen(opts.MaxBufferSize < 0, "max buffer size cannot be negative")
+	catcher.NewWhen(opts.FlushInterval < 0, "flush interval cannot be negative")
+
+	if opts.Parse == nil {
+		opts.Parse = func(rawLine string) (LogLine, error) {
+			return LogLine{Data: rawLine}, nil
+		}
+	}
+
+	if opts.Local == nil {
+		opts.Local = send.MakeNative()
+		opts.Local.SetName("local")
+	}
+
+	if opts.MaxBufferSize == 0 {
+		opts.MaxBufferSize = defaultMaxBufferSize
+	}
+
+	return catcher.Resolve()
 }
 
 // sender implements the send.Sender interface for persisting Evergreen logs.
@@ -46,8 +73,8 @@ type sender struct {
 	mu         sync.Mutex
 	ctx        context.Context
 	cancel     context.CancelFunc
-	opts       LoggerOptions
-	write      logWriter
+	opts       SenderOptions
+	svc        LogService
 	buffer     []LogLine
 	bufferSize int
 	lastFlush  time.Time
@@ -55,25 +82,23 @@ type sender struct {
 	*send.Base
 }
 
-type logWriter func(context.Context, []LogLine) error
+// NewSender creates a new log sender backed by an Evergreen log service.
+func NewSender(ctx context.Context, name string, svc LogService, opts SenderOptions) (send.Sender, error) {
+	if err := opts.validate(); err != nil {
+		return nil, err
+	}
 
-// makeLogger returns a sender backed by the Evergreen log service.
-func makeLogger(ctx context.Context, name string, opts LoggerOptions, write logWriter) (send.Sender, error) { //nolint: unused
 	ctx, cancel := context.WithCancel(ctx)
 	s := &sender{
 		ctx:    ctx,
 		cancel: cancel,
 		opts:   opts,
-		write:  write,
+		svc:    svc,
 		Base:   send.NewBase(name),
 	}
 
 	if err := s.SetErrorHandler(send.ErrorHandlerFromSender(s.opts.Local)); err != nil {
 		return nil, errors.Wrap(err, "setting default error handler")
-	}
-
-	if opts.MaxBufferSize <= 0 {
-		opts.MaxBufferSize = defaultMaxBufferSize
 	}
 
 	if opts.FlushInterval > 0 {
@@ -196,8 +221,8 @@ func (s *sender) timedFlush() {
 }
 
 func (s *sender) flush(ctx context.Context) error {
-	if err := s.write(ctx, s.buffer); err != nil {
-		return errors.Wrap(err, "writing log")
+	if err := s.svc.Append(ctx, s.opts.LogName, s.buffer); err != nil {
+		return errors.Wrap(err, "appending lines to log")
 	}
 
 	s.buffer = []LogLine{}
