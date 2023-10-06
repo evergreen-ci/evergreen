@@ -811,15 +811,20 @@ func (r *queryResolver) MainlineCommits(ctx context.Context, options MainlineCom
 
 	skipOrderNumber := utility.FromIntPtr(options.SkipOrderNumber)
 	revision := utility.FromStringPtr(options.Revision)
+
 	if options.SkipOrderNumber == nil && revision != "" {
-		found, err := model.VersionFindOne(model.VersionByProjectIdAndRevisionPrefix(projectId, revision))
-		if err != nil {
-			graphql.AddError(ctx, PartialError.Send(ctx, fmt.Sprintf("could not find git commit '%s'", revision)))
-		} else if found == nil {
-			graphql.AddError(ctx, PartialError.Send(ctx, fmt.Sprintf("could not find git commit '%s'", revision)))
+		if len(revision) < 7 {
+			graphql.AddError(ctx, PartialError.Send(ctx, fmt.Sprintf("at least 7 characters must be provided for the revision")))
 		} else {
-			// Offset the order number so the specified revision lands nearer to the center of the page.
-			skipOrderNumber = found.RevisionOrderNumber + 1 + limit/2
+			found, err := model.VersionFindOne(model.VersionByProjectIdAndRevisionPrefix(projectId, revision))
+			if err != nil {
+				graphql.AddError(ctx, PartialError.Send(ctx, fmt.Sprintf("could not find git commit '%s'", revision)))
+			} else if found == nil {
+				graphql.AddError(ctx, PartialError.Send(ctx, fmt.Sprintf("could not find git commit '%s'", revision)))
+			} else {
+				// Offset the order number so the specified revision lands nearer to the center of the page.
+				skipOrderNumber = found.RevisionOrderNumber + 1 + limit/2
+			}
 		}
 	}
 
