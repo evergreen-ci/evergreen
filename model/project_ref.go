@@ -1663,8 +1663,8 @@ func EnableWebhooks(ctx context.Context, projectRef *ProjectRef) (bool, error) {
 		return false, errors.Wrap(err, "finding evergreen settings")
 	}
 
-	token, err := settings.CreateInstallationToken(ctx, projectRef.Owner, projectRef.Repo, nil)
-	if err != nil || token == "" {
+	hasApp, err := settings.HasGitHubApp(ctx, projectRef.Owner, projectRef.Repo, nil)
+	if err != nil || !hasApp {
 		// don't return error:
 		// sometimes people change a project to track a personal
 		// branch we don't have access to
@@ -1791,7 +1791,7 @@ func GetProjectSettingsById(projectId string, isRepo bool) (*ProjectSettings, er
 
 // GetProjectSettings returns the ProjectSettings of the given identifier and ProjectRef
 func GetProjectSettings(p *ProjectRef) (*ProjectSettings, error) {
-	token, err := evergreen.GetEnvironment().Settings().CreateInstallationToken(context.Background(), p.Owner, p.Repo, nil)
+	hasApp, err := evergreen.GetEnvironment().Settings().HasGitHubApp(context.Background(), p.Owner, p.Repo, nil)
 	if err != nil {
 		return nil, errors.Wrapf(err, "verifying GitHub app for project '%s' in '%s/%s'", p.Id, p.Owner, p.Repo)
 	}
@@ -1812,7 +1812,7 @@ func GetProjectSettings(p *ProjectRef) (*ProjectSettings, error) {
 	}
 	projectSettingsEvent := ProjectSettings{
 		ProjectRef:         *p,
-		GithubHooksEnabled: token != "",
+		GithubHooksEnabled: hasApp,
 		Vars:               *projectVars,
 		Aliases:            projectAliases,
 		Subscriptions:      subscriptions,

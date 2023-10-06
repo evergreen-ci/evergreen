@@ -1653,20 +1653,6 @@ func (s *FindProjectsSuite) TestGetProjectSettings() {
 	s.NotNil(projectSettingsEvent)
 }
 
-func (s *FindProjectsSuite) TestGetProjectSettingsNoRepo() {
-	projRef := &ProjectRef{
-		Owner:   "admin",
-		Enabled: true,
-		Private: utility.TruePtr(),
-		Id:      projectId,
-		Admins:  []string{},
-	}
-	projectSettingsEvent, err := GetProjectSettings(projRef)
-	s.Nil(err)
-	s.NotNil(projectSettingsEvent)
-	s.False(projectSettingsEvent.GithubHooksEnabled)
-}
-
 func TestModuleList(t *testing.T) {
 	assert := assert.New(t)
 
