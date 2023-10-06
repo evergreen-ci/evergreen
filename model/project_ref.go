@@ -2035,13 +2035,13 @@ func SaveProjectPageForSection(projectId string, p *ProjectRef, section ProjectP
 		var pRef *ProjectRef
 		pRef, err = FindBranchProjectRef(projectId)
 		if err != nil {
-			return false, errors.Wrapf(err, "error getting project")
+			return false, errors.Wrapf(err, "getting project '%s'", projectId)
 		}
 		if pRef == nil {
 			return false, errors.Errorf("project '%s' was not found", projectId)
 		}
 		// If the performance plugin is not currently enabled, and we are trying to
-		// change it to enabled but the id and identifier ar edifferent, no-op.
+		// change it to enabled but the id and identifier ar different, we error.
 		if !pRef.IsPerfEnabled() && p.IsPerfEnabled() && pRef.Id != pRef.Identifier {
 			return false, errors.Errorf("project '%s' does not have a matching ID and identifier, cannot enable performance plugin", pRef.Id)
 		}
