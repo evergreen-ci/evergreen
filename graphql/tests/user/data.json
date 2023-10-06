@@ -106,6 +106,20 @@
     },
     {
       "_id": {
+        "$oid": "7e4ff3abe3c3317e352062e9"
+      },
+      "branch": "myProject",
+      "author": "testuser",
+      "create_time": {
+        "$date": "2019-01-01T00:00:06Z"
+      },
+      "desc": "hidden patch 2",
+      "status": "failed",
+      "alias": "__github",
+      "hidden": true
+    },
+    {
+      "_id": {
         "$oid": "6e4ff3abe3c3317e352062e9"
       },
       "branch": "myProject",
@@ -154,10 +168,7 @@
   "distro": [
     {
       "_id": "rhel71-power8-large",
-      "aliases": [
-        "rhel71-power8",
-        "rhel71-power8-build"
-      ],
+      "aliases": ["rhel71-power8", "rhel71-power8-build"],
       "arch": "linux_ppc64le",
       "work_dir": "/data/mci",
       "provider": "static",

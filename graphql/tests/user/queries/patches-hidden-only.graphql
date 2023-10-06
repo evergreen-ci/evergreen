@@ -1,0 +1,11 @@
+{
+  user(userId: "testuser") {
+    patches(patchesInput: { onlyHidden: true }) {
+      patches {
+        id
+        hidden
+      }
+      filteredPatchCount
+    }
+  }
+}

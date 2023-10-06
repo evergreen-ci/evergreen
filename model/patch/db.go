@@ -142,7 +142,7 @@ type ByPatchNameStatusesCommitQueuePaginatedOptions struct {
 	Limit              int
 	IncludeCommitQueue *bool
 	OnlyCommitQueue    *bool
-	IncludeHidden      bool
+	OnlyHidden         *bool
 }
 
 func ByPatchNameStatusesCommitQueuePaginated(ctx context.Context, opts ByPatchNameStatusesCommitQueuePaginatedOptions) ([]Patch, int, error) {
@@ -157,12 +157,15 @@ func ByPatchNameStatusesCommitQueuePaginated(ctx context.Context, opts ByPatchNa
 	// Conditionally add the commit queue filter if the user is explicitly filtering on it.
 	// This is only used on the project patches page when we want to conditionally only show the commit queue patches.
 	if utility.FromBoolPtr(opts.OnlyCommitQueue) {
-		match[AliasKey] = evergreen.CommitQueueAlias
+		match[AliasKey] = true
 	}
 
-	if !opts.IncludeHidden {
+	if utility.FromBoolPtr(opts.OnlyHidden) {
+		match[HiddenKey] = true
+	} else {
 		match[HiddenKey] = bson.M{"$ne": true}
 	}
+
 	// This is only used on the user patches page when we want to filter out the commit queue
 	if opts.IncludeCommitQueue != nil && !utility.FromBoolPtr(opts.IncludeCommitQueue) {
 		match[AliasKey] = commitQueueFilter

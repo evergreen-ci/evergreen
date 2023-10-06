@@ -23,7 +23,7 @@ func (r *userResolver) Patches(ctx context.Context, obj *restModel.APIDBUser, pa
 		Page:               patchesInput.Page,
 		Limit:              patchesInput.Limit,
 		IncludeCommitQueue: patchesInput.IncludeCommitQueue,
-		IncludeHidden:      false,
+		OnlyHidden:         patchesInput.OnlyHidden,
 	}
 	patches, count, err := patch.ByPatchNameStatusesCommitQueuePaginated(ctx, opts)
 	if err != nil {

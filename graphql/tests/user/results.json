@@ -114,6 +114,24 @@
       }
     },
     {
+      "query_file": "patches-hidden-only.graphql",
+      "result": {
+        "data": {
+          "user": {
+            "patches": {
+              "patches": [
+                {
+                  "id": "7e4ff3abe3c3317e352062e9",
+                  "hidden": true
+                }
+              ],
+              "filteredPatchCount": 1
+            }
+          }
+        }
+      }
+    },
+    {
       "query_file": "patches-include-commit-queue.graphql",
       "result": {
         "data": {
