@@ -1317,8 +1317,7 @@ group and each individual task. Tasks in a task group will not run the `pre`
 and `post` blocks in the YAML file; instead, the tasks will run the task group's
 setup and teardown blocks.
 
-Task groups have additional options available that can be configured
-directly inline inside the config's [build
+Task groups can be configured directly inline inside the config's [build
 variants](#build-variants).
 
 ``` yaml
@@ -1425,10 +1424,7 @@ The following constraints apply:
     phase, such as "attach.results" or "attach.artifacts".
 -   Tasks within a task group will be dispatched in order declared.
 -   Any task (including members of task groups), can depend on specific
-    tasks within a task group using the existing dependency system.
--   `patchable`, `patch_only`, `disable`, and `allow_for_git_tag` from the project
-    task will overwrite the task group parameters (Note: these settings currently do not work when defined on the task
-    group due to [EVG-19706](https://jira.mongodb.org/browse/EVG-19706)).
+    tasks within a task group using [task dependencies](#task-dependencies).
 
 Tasks in a group will be displayed as
 separate tasks. Users can use display tasks if they wish to group the
@@ -1437,7 +1433,7 @@ task group tasks.
 ### Task Dependencies
 
 A task can be made to depend on other tasks by adding the depended on
-tasks to the task's depends_on field. The following additional
+tasks to the task's `depends_on` field. The following additional
 parameters are available:
 
 -   `status` - string (default: "success"). One of ["success",
