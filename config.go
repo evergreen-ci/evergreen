@@ -39,6 +39,8 @@ var (
 
 	// Agent version to control agent rollover.
 	AgentVersion = "2023-10-02"
+
+	gitHubAppNotInstalledError = errors.New("GitHub app is not installed")
 )
 
 // ConfigSection defines a sub-document in the evergreen config
@@ -604,7 +606,10 @@ func (s *Settings) CreateInstallationToken(ctx context.Context, owner, repo stri
 			"appId":   authFields.AppId,
 			"ticket":  "EVG-19966",
 		}))
-		return "", errors.Wrap(err, "finding installation id")
+		if strings.Contains(err.Error(), "404") {
+			return "", errors.Wrapf(gitHubAppNotInstalledError, "Installation id for '%s/%s' not found", owner, repo)
+		}
+		return "", errors.Wrapf(err, "finding installation id for '%s/%s'", owner, repo)
 	}
 	if installationId == nil {
 		return "", errors.New(fmt.Sprintf("Installation id for '%s/%s' not found", owner, repo))
@@ -614,6 +619,19 @@ func (s *Settings) CreateInstallationToken(ctx context.Context, owner, repo stri
 		return "", errors.Wrapf(err, "creating installation token for installation id: %d", installationId.GetID())
 	}
 	return token.GetToken(), nil
+}
+
+// HasGitHubApp returns true if the GitHub app is installed on given owner/repo.
+// Only returns an error if it is not a gitHubAppNotInstalledError.
+func (s *Settings) HasGitHubApp(ctx context.Context, owner, repo string, opts *github.InstallationTokenOptions) (bool, error) {
+	_, err := s.CreateInstallationToken(ctx, owner, repo, opts)
+	if err != nil {
+		if errors.Is(err, gitHubAppNotInstalledError) {
+			return false, nil
+		}
+		return false, err
+	}
+	return true, nil
 }
 
 // CreateInstallationTokenWithDefaultOwnerRepo returns an installation token when we do not care about

@@ -23,11 +23,11 @@ func (r *repoSettingsResolver) Aliases(ctx context.Context, obj *restModel.APIPr
 func (r *repoSettingsResolver) GithubWebhooksEnabled(ctx context.Context, obj *restModel.APIProjectSettings) (bool, error) {
 	owner := utility.FromStringPtr(obj.ProjectRef.Owner)
 	repo := utility.FromStringPtr(obj.ProjectRef.Repo)
-	token, err := evergreen.GetEnvironment().Settings().CreateInstallationToken(ctx, owner, repo, nil)
+	hasApp, err := evergreen.GetEnvironment().Settings().HasGitHubApp(ctx, owner, repo, nil)
 	if err != nil {
 		return false, InternalServerError.Send(ctx, fmt.Sprintf("Error GitHub app installation for project '%s' in '%s/%s': '%s'", utility.FromStringPtr(obj.ProjectRef.Id), owner, repo, err.Error()))
 	}
-	return token != "", nil
+	return hasApp, nil
 }
 
 // Subscriptions is the resolver for the subscriptions field.
