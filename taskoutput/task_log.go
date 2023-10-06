@@ -33,7 +33,9 @@ func (t TaskLogType) validate() error {
 // TaskLogOutput is the versioned entry point for coordinating persistent
 // storage of a task run's task log data.
 type TaskLogOutput struct {
-	Version int `bson:"version" json:"version"`
+	Version    int    `bson:"version" json:"version"`
+	BucketName string `bson:"bucket_name,omitempty" json:"bucket_name,omitempty"`
+	BucketType string `bson:"bucket_type,omitempty" json:"bucket_type,omitempty"`
 }
 
 // ID returns the unique identifier of the task log output type.
@@ -68,13 +70,17 @@ func (o TaskLogOutput) Get(ctx context.Context, env evergreen.Environment, taskO
 		return o.getBuildloggerLogs(ctx, env, taskOpts, getOpts)
 	}
 
-	return log.Get(ctx, env, log.GetOptions{
+	svc, err := o.getLogService()
+	if err != nil {
+		return nil, errors.Wrap(err, "getting log service")
+	}
+
+	return svc.Get(ctx, log.GetOptions{
 		LogNames:  []string{o.getLogName(taskOpts, getOpts.LogType)},
 		Start:     getOpts.Start,
 		End:       getOpts.End,
 		LineLimit: getOpts.LineLimit,
 		TailN:     getOpts.TailN,
-		Version:   o.getLogServiceVersion(),
 	})
 }
 
@@ -96,11 +102,13 @@ func (o TaskLogOutput) getLogName(taskOpts TaskOptions, logType TaskLogType) str
 	return fmt.Sprintf("%s/%s", prefix, logTypePrefix)
 }
 
-func (o TaskLogOutput) getLogServiceVersion() int {
-	switch {
-	default:
-		return 0
+func (o TaskLogOutput) getLogService() (log.LogService, error) {
+	b, err := newBucket(o.BucketName, o.BucketType)
+	if err != nil {
+		return nil, err
 	}
+
+	return log.NewLogServiceV0(b), nil
 }
 
 // getBuildloggerLogs makes request to Cedar Buildlogger for logs.
