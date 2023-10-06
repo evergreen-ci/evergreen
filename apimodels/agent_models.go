@@ -183,6 +183,10 @@ type RegistrySettings struct {
 	Password string `mapstructure:"registry_password" json:"registry_password" yaml:"registry_password"`
 }
 
+type InstallationToken struct {
+	Token string `json:"token"`
+}
+
 func (ted *TaskEndDetail) IsEmpty() bool {
 	return ted == nil || ted.Status == ""
 }

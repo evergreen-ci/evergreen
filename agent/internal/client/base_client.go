@@ -1083,3 +1083,26 @@ func (c *baseCommunicator) GetAdditionalPatches(ctx context.Context, patchId str
 
 	return patches, nil
 }
+
+func (c *baseCommunicator) CreateInstallationToken(ctx context.Context, td TaskData, owner, repo string) (string, error) {
+	info := requestInfo{
+		method:   http.MethodGet,
+		path:     fmt.Sprintf("task/%s/installation_token/%s/%s", td.ID, owner, repo),
+		taskData: &td,
+	}
+	resp, err := c.request(ctx, info, nil)
+	if err != nil {
+		return "", errors.Wrapf(err, "creating installation token for '%s/%s'", owner, repo)
+	}
+	defer resp.Body.Close()
+
+	if resp.StatusCode != http.StatusOK {
+		return "", util.RespErrorf(resp, "creating installation token for '%s/%s'", owner, repo)
+	}
+	token := apimodels.InstallationToken{}
+	if err := utility.ReadJSON(resp.Body, &token); err != nil {
+		return "", errors.Wrap(err, "reading token from response")
+	}
+
+	return token.Token, nil
+}

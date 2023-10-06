@@ -526,3 +526,7 @@ func (c *Mock) GetPullRequestInfo(ctx context.Context, taskData TaskData, prNum 
 		Mergeable: utility.TruePtr(),
 	}, nil
 }
+
+func (c *Mock) CreateInstallationToken(ctx context.Context, td TaskData, owner, repo string) (string, error) {
+	return "token", nil
+}
