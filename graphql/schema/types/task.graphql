@@ -193,6 +193,7 @@ type GroupedFiles {
 type File {
   link: String!
   name: String!
+  urlParsley: String
   visibility: String!
 }
 
