@@ -6036,7 +6036,7 @@ tasks:
 - name: generator
   `
 	// Task data for tests is:
-	// ('-' is failed, '?' is undispatched, '+' is suceeded).
+	// ('-' is failed, '?' is undispatched, '+' is succeeded).
 	// t1  t2  t3  t4  t5  t6  t7  t8  t9  t10
 	// -   ?   ?   ?   ?   ?   ?   ?   ?   +
 	for tName, tCase := range map[string]func(t *testing.T, t10 task.Task){
