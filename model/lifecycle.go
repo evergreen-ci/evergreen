@@ -3,6 +3,7 @@ package model
 import (
 	"context"
 	"fmt"
+	"runtime/debug"
 	"sort"
 	"strings"
 	"time"
@@ -704,6 +705,11 @@ func createTasksForBuild(creationInfo TaskCreationInfo) (task.Tasks, error) {
 	for _, task := range creationInfo.BuildVariant.Tasks {
 		// Verify that the config isn't malformed.
 		if task.Name != "" && !task.IsGroup {
+			grip.InfoWhen(task.IsPartOfGroup, message.Fields{
+				"message": "task unit IsGroup is referring to task within a task group",
+				"ticket":  "EVG-19725",
+				"stack":   string(debug.Stack()),
+			})
 			if task.IsDisabled() || task.SkipOnRequester(creationInfo.Build.Requester) {
 				continue
 			}
@@ -1225,13 +1231,12 @@ func createOneTask(id string, creationInfo TaskCreationInfo, buildVarTask BuildV
 		t.ActivatedBy = creationInfo.Version.Author
 	}
 
-	// kim: NOTE: ambiguous because it could be the group itself or part of a
-	// task group. I believe this is representing the task itself, not the task
-	// group, since CreateTasksFromGroup is used.
-	// kim: TODO: add logging to verify that IsGroup is always referring to a
-	// task in a task group, not the task group itself, before modifying this
-	// logic.
 	if buildVarTask.IsGroup {
+		grip.InfoWhen(!buildVarTask.IsPartOfGroup, message.Fields{
+			"message": "task unit IsGroup is referring to task within a task group, but IsPartOfGroup is not set",
+			"ticket":  "EVG-19725",
+			"stack":   string(debug.Stack()),
+		})
 		tg := buildVarTask.TaskGroup
 		if tg == nil {
 			tg = creationInfo.Project.FindTaskGroup(buildVarTask.GroupName)

@@ -4167,9 +4167,11 @@ func TestTVToTaskUnit(t *testing.T) {
 					Priority:        20,
 					ExecTimeoutSecs: 20,
 				}, {TaskName: "compile", Variant: "ubuntu"}: {
-					Name:             "compile",
-					Variant:          "ubuntu",
+					Name:    "compile",
+					Variant: "ubuntu",
+					// TODO (EVG-19725): remove IsGroup
 					IsGroup:          true,
+					IsPartOfGroup:    true,
 					GroupName:        "compile_group",
 					ExecTimeoutSecs:  10,
 					CommitQueueMerge: true,
@@ -4180,9 +4182,11 @@ func TestTVToTaskUnit(t *testing.T) {
 						},
 					},
 				}, {TaskName: "compile", Variant: "suse"}: {
-					Name:            "compile",
-					Variant:         "suse",
+					Name:    "compile",
+					Variant: "suse",
+					// TODO (EVG-19725): remove IsGroup
 					IsGroup:         true,
+					IsPartOfGroup:   true,
 					GroupName:       "compile_group",
 					ExecTimeoutSecs: 10,
 					DependsOn: []model.TaskUnitDependency{
@@ -4258,6 +4262,7 @@ func TestTVToTaskUnit(t *testing.T) {
 				expectedTaskUnit := testCase.expectedTVToTaskUnit[expectedTV]
 				assert.Equal(t, expectedTaskUnit.Name, taskUnit.Name)
 				assert.Equal(t, expectedTaskUnit.IsGroup, taskUnit.IsGroup, fmt.Sprintf("%s/%s", expectedTaskUnit.Variant, expectedTaskUnit.Name))
+				assert.Equal(t, expectedTaskUnit.IsPartOfGroup, taskUnit.IsPartOfGroup, fmt.Sprintf("%s/%s", expectedTaskUnit.Variant, expectedTaskUnit.Name))
 				assert.Equal(t, expectedTaskUnit.GroupName, taskUnit.GroupName, fmt.Sprintf("%s/%s", expectedTaskUnit.Variant, expectedTaskUnit.Name))
 				assert.Equal(t, expectedTaskUnit.Patchable, taskUnit.Patchable, expectedTaskUnit.Name)
 				assert.Equal(t, expectedTaskUnit.PatchOnly, taskUnit.PatchOnly)
@@ -5960,7 +5965,6 @@ func TestBVsWithTasksThatCallCommand(t *testing.T) {
 							{
 								Name:    "test",
 								Variant: "ubuntu",
-								IsGroup: true,
 							},
 						},
 					},

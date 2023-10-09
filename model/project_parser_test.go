@@ -21,7 +21,6 @@ import (
 	"github.com/evergreen-ci/evergreen/thirdparty"
 	"github.com/evergreen-ci/pail"
 	"github.com/evergreen-ci/utility"
-	"github.com/k0kubun/pp"
 	. "github.com/smartystreets/goconvey/convey"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -448,6 +447,8 @@ func TestTranslateTasks(t *testing.T) {
 	assert.Contains(t, bvt.RunOn, "my_distro")
 	assert.Equal(t, 20, bvt.ExecTimeoutSecs)
 	assert.True(t, bvt.IsGroup)
+	assert.False(t, bvt.IsPartOfGroup)
+	assert.Zero(t, bvt.GroupName)
 
 	bvt = out.FindTaskForVariant("tg_task", "bv0")
 	assert.Equal(t, "my_tg", bvt.Name, "task within a task group retains its task group name in resulting build variant task unit")
@@ -455,6 +456,8 @@ func TestTranslateTasks(t *testing.T) {
 	assert.True(t, utility.FromBoolPtr(bvt.PatchOnly))
 	assert.Contains(t, bvt.RunOn, "my_distro")
 	assert.True(t, bvt.IsGroup)
+	assert.False(t, bvt.IsPartOfGroup)
+	assert.Zero(t, bvt.GroupName)
 
 	patchOnlyBV := out.BuildVariants[1]
 	assert.Equal(t, "patch_only_bv", patchOnlyBV.Name)
@@ -518,64 +521,6 @@ func TestTranslateTasks(t *testing.T) {
 	assert.Equal(t, "my_task", disabledBV.Tasks[1].Name)
 	assert.True(t, utility.FromBoolPtr(disabledBV.Tasks[1].PatchOnly))
 	assert.False(t, utility.FromBoolPtr(disabledBV.Tasks[1].Disable))
-
-	// kim: TODO: move to separate test
-	t.Run("TestTranslateTaskGroups", func(t *testing.T) {
-		parserProj := ParserProject{
-			Tasks: []parserTask{
-				{
-					Name: "task1",
-					Commands: []PluginCommandConf{
-						{
-							Command: "shell.exec",
-							Params:  map[string]interface{}{"script": "echo hello"},
-						},
-					},
-				},
-				{
-					Name: "task2",
-					Commands: []PluginCommandConf{
-						{
-							Command: "shell.exec",
-							Params:  map[string]interface{}{"script": "echo hello"},
-						},
-					},
-				},
-				{
-					Name: "regular_task",
-					Commands: []PluginCommandConf{
-						{
-							Command: "shell.exec",
-							Params:  map[string]interface{}{"script": "echo hello"},
-						},
-					},
-				},
-			},
-			TaskGroups: []parserTaskGroup{
-				{
-					Name:  "task_group_name",
-					Tasks: []string{"task1", "task2"},
-				},
-			},
-			BuildVariants: []parserBV{
-				{
-					Name: "bv1",
-					Tasks: parserBVTaskUnits{
-						{
-							Name: "task_group_name",
-						},
-						{
-							Name: "regular_task",
-						},
-					},
-				},
-			},
-		}
-
-		p, err := TranslateProject(&parserProj)
-		require.NoError(t, err)
-		pp.Println(p)
-	})
 }
 
 func TestTranslateDependsOn(t *testing.T) {
@@ -1290,7 +1235,6 @@ buildvariants:
 
 	assert.Len(tg.Tasks, 2)
 	require.Len(t, proj.BuildVariants, 1)
-	pp.Println("BVTUs for regular task group, after translation:", proj.BuildVariants[0].Tasks)
 
 	// check that yml with inline task groups within its buildvariants correctly parses the group
 	inlineYml := `
@@ -1339,7 +1283,8 @@ buildvariants:
 	require.Len(t, proj.BuildVariants[0].Tasks, 1)
 	assert.NotNil(proj.BuildVariants[0].Tasks[0].TaskGroup)
 	assert.True(proj.BuildVariants[0].Tasks[0].IsGroup)
-	pp.Println("BVTU for inline task group, after translation:", proj.BuildVariants[0].Tasks)
+	assert.False(proj.BuildVariants[0].Tasks[0].IsPartOfGroup)
+	assert.Zero(proj.BuildVariants[0].Tasks[0].GroupName)
 
 	// check that yml with a task group that contains a nonexistent task errors
 	wrongTaskYml := `

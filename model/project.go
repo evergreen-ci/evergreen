@@ -22,7 +22,6 @@ import (
 	"github.com/evergreen-ci/evergreen/thirdparty"
 	"github.com/evergreen-ci/evergreen/util"
 	"github.com/evergreen-ci/utility"
-	"github.com/k0kubun/pp"
 	"github.com/mongodb/anser/bsonutil"
 	"github.com/mongodb/grip"
 	"github.com/mongodb/grip/message"
@@ -94,15 +93,19 @@ type BuildVariantTaskUnit struct {
 	// Name has to match the name field of one of the tasks or groups specified at
 	// the project level, or an error will be thrown
 	Name string `yaml:"name,omitempty" bson:"name"`
-	// IsGroup indicates that it is a task group. This is always populated after
-	// translating the parser project to the project.
+	// IsGroup indicates that it is a task group. This is always populated for
+	// task groups after translating the parser project to the project.
 	IsGroup bool `yaml:"-" bson:"-"`
-	// IsGroup indicates that it is a task within a task group. This is always
-	// populated after translating the parser project to the project.
+	// IsPartOfGroup indicates that this unit is a task within a task group. If
+	// this is set, then GroupName is also set. Note that project translation
+	// does not expand task groups into their individual tasks, so this is only
+	// set for special functions that explicitly expand task groups into
+	// individual task units (such as FindAllBuildVariantTasks).
 	IsPartOfGroup bool `yaml:"-" bson:"-"`
-	// GroupName is the task group name if this is a task in a task group. If
-	// it is the task group itself, it is not populated (Name is the task group
-	// name).
+	// GroupName is the task group name if this is a task in a task group. This
+	// is only set if the task unit is a task within a task group (i.e.
+	// IsPartOfGroup is set). If the task unit is the task group itself, it is
+	// not populated (Name is the task group name).
 	GroupName string `yaml:"-" bson:"-"`
 	// Variant is the build variant that the task unit is part of. This is
 	// always populated after translating the parser project to the project.
@@ -1463,6 +1466,11 @@ func (p *Project) findBuildVariantsWithTag(tags []string) []string {
 // build variant task unit, and returns the name and tags
 func (p *Project) GetTaskNameAndTags(bvt BuildVariantTaskUnit) (string, []string, bool) {
 	if bvt.IsGroup {
+		grip.InfoWhen(bvt.IsPartOfGroup, message.Fields{
+			"message": "task unit IsGroup is referring to task within a task group",
+			"ticket":  "EVG-19725",
+			"stack":   string(debug.Stack()),
+		})
 		ptg := bvt.TaskGroup
 		if ptg == nil {
 			ptg = p.FindTaskGroup(bvt.Name)
@@ -1566,6 +1574,11 @@ func (p *Project) FindAllBuildVariantTasks() []BuildVariantTaskUnit {
 	for _, b := range p.BuildVariants {
 		for _, t := range b.Tasks {
 			if t.IsGroup {
+				grip.InfoWhen(t.IsPartOfGroup, message.Fields{
+					"message": "task unit IsGroup is referring to task within a task group",
+					"ticket":  "EVG-19725",
+					"stack":   string(debug.Stack()),
+				})
 				allBVTs = append(allBVTs, p.tasksFromGroup(t)...)
 			} else {
 				t.Populate(tasksByName[t.Name], b)
@@ -1578,8 +1591,6 @@ func (p *Project) FindAllBuildVariantTasks() []BuildVariantTaskUnit {
 
 // tasksFromGroup returns a slice of the task group's tasks.
 // Settings missing from the group task are populated from the task definition.
-// kim: TODO: ensure usages of tasksFromGroup that later use IsGroup are
-// correct.
 func (p *Project) tasksFromGroup(bvTaskGroup BuildVariantTaskUnit) []BuildVariantTaskUnit {
 	tg := bvTaskGroup.TaskGroup
 	if tg == nil {
@@ -1609,13 +1620,16 @@ func (p *Project) tasksFromGroup(bvTaskGroup BuildVariantTaskUnit) []BuildVarian
 	}
 
 	for _, t := range tg.Tasks {
-		pp.Println("Setting task in task group IsPartOfGroup:", t)
 		bvt := BuildVariantTaskUnit{
 			Name: t,
-			// kim: TODO: remove
+			// TODO (EVG-19725): do not set IsGroup anymore once it's confirmed
+			// safe for removal.
 			// IsGroup is not persisted, and indicates here that the
 			// task is a member of a task group.
-			IsGroup:           true,
+			IsGroup: true,
+			// IsPartOfGroup and GroupName are used to indicate that the task
+			// unit is a task within the task group, not the task group itself.
+			// These are not persisted.
 			IsPartOfGroup:     true,
 			TaskGroup:         bvTaskGroup.TaskGroup,
 			GroupName:         bvTaskGroup.Name,
@@ -1985,9 +1999,6 @@ func (p *Project) BuildProjectTVPairsWithAlias(aliases []ProjectAlias, requester
 			}
 
 			for _, t := range p.Tasks {
-				// kim: TODO: this intentionally iterates the task list rather
-				// than the BV's task list. This is because project translation
-				// does not convert tasks group tasks into individual BVTUs.
 				if !isValidRegexOrTag(t.Name, t.Tags, alias.TaskTags, taskRegex) {
 					continue
 				}
@@ -1998,26 +2009,6 @@ func (p *Project) BuildProjectTVPairsWithAlias(aliases []ProjectAlias, requester
 					}
 					pairs = append(pairs, TVPair{variant.Name, t.Name})
 				}
-
-				msg := message.Fields{
-					"message":    "kim: matched task with variant/task alias or regex",
-					"stacktrace": string(debug.Stack()),
-				}
-
-				if true {
-					msg["task_name"] = t.Name
-					msg["task_tags"] = t.Tags
-					msg["alias_task_tags"] = alias.TaskTags
-					msg["alias_name"] = alias.Alias
-					msg["alias_project"] = alias.ProjectID
-					msg["alias_bv_tags"] = alias.VariantTags
-					msg["alias_bv_regexp"] = alias.Variant
-					msg["alias_task_tags"] = alias.TaskTags
-					msg["alias_task_regexp"] = alias.Task
-					msg["bv_name"] = variant.Name
-					msg["bv_tags"] = variant.Tags
-				}
-				grip.Info(msg)
 			}
 
 			if taskRegex == nil {
@@ -2257,6 +2248,11 @@ func GetVariantsAndTasksFromPatchProject(ctx context.Context, settings *evergree
 		for _, taskFromVariant := range variant.Tasks {
 			if !taskFromVariant.IsDisabled() && !taskFromVariant.SkipOnRequester(p.GetRequester()) {
 				if taskFromVariant.IsGroup {
+					grip.InfoWhen(taskFromVariant.IsPartOfGroup, message.Fields{
+						"message": "task unit IsGroup is referring to task within a task group",
+						"ticket":  "EVG-19725",
+						"stack":   string(debug.Stack()),
+					})
 					tasksForVariant = append(tasksForVariant, CreateTasksFromGroup(taskFromVariant, project, evergreen.PatchVersionRequester)...)
 				} else {
 					tasksForVariant = append(tasksForVariant, taskFromVariant)
