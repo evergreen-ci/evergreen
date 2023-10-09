@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"os"
 	"reflect"
+	"runtime/debug"
 	"strings"
 	"sync"
 	"time"
@@ -17,7 +18,6 @@ import (
 	"github.com/evergreen-ci/evergreen/thirdparty"
 	"github.com/evergreen-ci/evergreen/util"
 	"github.com/evergreen-ci/utility"
-	"github.com/k0kubun/pp"
 	"github.com/mongodb/grip"
 	"github.com/mongodb/grip/message"
 	"github.com/pkg/errors"
@@ -1293,6 +1293,8 @@ func evaluateBVTasks(tse *taskSelectorEvaluator, tgse *tagSelectorEvaluator, vse
 		// directly on the build variant task.
 		var names, temp []string
 		isGroup := false
+		// kim: NOTE: this does not expand the task groups into individual
+		// tasks.
 		if pbvt.TaskGroup != nil {
 			names = append(names, pbvt.Name)
 			isGroup = true
@@ -1335,10 +1337,14 @@ func evaluateBVTasks(tse *taskSelectorEvaluator, tgse *tagSelectorEvaluator, vse
 			evalErrs = append(evalErrs, errs...)
 			// IsGroup indicates here that this build variant task unit is a
 			// task group.
-			if isGroup {
-				pp.Println("Setting task group IsGroup:", t.Name)
-			}
 			t.IsGroup = isGroup
+			if isGroup {
+				grip.Info(message.Fields{
+					"message": "kim: set task group IsGroup for BVTU during project translation",
+					"bvtu":    fmt.Sprintf("%#v", t),
+					"stack":   string(debug.Stack()),
+				})
+			}
 
 			// add the new task if it doesn't already exists (we must avoid conflicting status fields)
 			if old, ok := taskUnitsByName[t.Name]; !ok {

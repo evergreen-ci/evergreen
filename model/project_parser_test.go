@@ -1289,6 +1289,8 @@ buildvariants:
 	assert.True(tg.ShareProcs)
 
 	assert.Len(tg.Tasks, 2)
+	require.Len(t, proj.BuildVariants, 1)
+	pp.Println("BVTUs for regular task group, after translation:", proj.BuildVariants[0].Tasks)
 
 	// check that yml with inline task groups within its buildvariants correctly parses the group
 	inlineYml := `
@@ -1334,8 +1336,10 @@ buildvariants:
 	_, err = LoadProjectInto(ctx, []byte(inlineYml), nil, "id", proj)
 	assert.Nil(err)
 	assert.NotNil(proj)
-	assert.Len(proj.BuildVariants[0].Tasks, 1)
+	require.Len(t, proj.BuildVariants[0].Tasks, 1)
 	assert.NotNil(proj.BuildVariants[0].Tasks[0].TaskGroup)
+	assert.True(proj.BuildVariants[0].Tasks[0].IsGroup)
+	pp.Println("BVTU for inline task group, after translation:", proj.BuildVariants[0].Tasks)
 
 	// check that yml with a task group that contains a nonexistent task errors
 	wrongTaskYml := `

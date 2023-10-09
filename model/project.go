@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"reflect"
 	"regexp"
+	"runtime/debug"
 	"sort"
 	"strconv"
 	"strings"
@@ -1984,10 +1985,9 @@ func (p *Project) BuildProjectTVPairsWithAlias(aliases []ProjectAlias, requester
 			}
 
 			for _, t := range p.Tasks {
-				// kim: TODO: since this should be the task group itself and not
-				// individual tasks in the task group, figure out how this lets
-				// the alias match the task in the task group. Maybe it doesn't
-				// actually include the task and some other magic makes it work.
+				// kim: TODO: this intentionally iterates the task list rather
+				// than the BV's task list. This is because project translation
+				// does not convert tasks group tasks into individual BVTUs.
 				if !isValidRegexOrTag(t.Name, t.Tags, alias.TaskTags, taskRegex) {
 					continue
 				}
@@ -1998,6 +1998,26 @@ func (p *Project) BuildProjectTVPairsWithAlias(aliases []ProjectAlias, requester
 					}
 					pairs = append(pairs, TVPair{variant.Name, t.Name})
 				}
+
+				msg := message.Fields{
+					"message":    "kim: matched task with variant/task alias or regex",
+					"stacktrace": string(debug.Stack()),
+				}
+
+				if true {
+					msg["task_name"] = t.Name
+					msg["task_tags"] = t.Tags
+					msg["alias_task_tags"] = alias.TaskTags
+					msg["alias_name"] = alias.Alias
+					msg["alias_project"] = alias.ProjectID
+					msg["alias_bv_tags"] = alias.VariantTags
+					msg["alias_bv_regexp"] = alias.Variant
+					msg["alias_task_tags"] = alias.TaskTags
+					msg["alias_task_regexp"] = alias.Task
+					msg["bv_name"] = variant.Name
+					msg["bv_tags"] = variant.Tags
+				}
+				grip.Info(msg)
 			}
 
 			if taskRegex == nil {
