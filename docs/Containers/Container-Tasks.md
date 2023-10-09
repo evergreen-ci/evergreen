@@ -9,7 +9,7 @@ over task environments is achievable with containers, ensuring that each
 task runs in an isolated, dedicated space with its own specific set of
 software dependencies.
 
-## Important Note
+## Warning! Containers are an experimental feature!
 
 Container tasks at this time are still an experimental feature,
 therefore they are subject to change as we iterate further on our
@@ -23,7 +23,7 @@ potential applications and assist you in preparing for its broader
 release.
 
 It's important to distinguish that this feature is entirely separate
-from the existing functionality Evergreen has to spin up docker hosts
+from the existing functionality Evergreen has to spin up docker containers
 via the host.create command, as this feature is designed to run entire
 tasks within containers, rather than spinning them up within the
 existing model.
@@ -73,12 +73,12 @@ leaving the environment in a messy state for the next task.
 This section will walk you through the steps to get started with running container tasks in Evergreen,
 which are at a high level as follows:
 1. Create your Dockerfile in accordance with our existing [secure image
-   policy](https://docs.google.com/document/d/1MMePuL5YBjJQcNdtwzU2kMLPSsRLzDyE0rhTVkmXDqo/edit)
-2. Follow the image creation and management steps [here](Container-Tasks.md#creating-and-managing-your-container-images) to obtain a usable image URI
-to run container tasks on
-3. Configure to your project YAML via the steps [here](Container-Tasks.md#update-your-yaml-configuration) 
+   policy](https://docs.google.com/document/d/1MMePuL5YBjJQcNdtwzU2kMLPSsRLzDyE0rhTVkmXDqo/edit).
+2. Follow the image creation and management steps [here](#creating-and-managing-your-container-images) to obtain a usable image URI
+to run container tasks on.
+3. Configure to your project YAML via the steps [here](#update-your-yaml-configuration) 
 to create a variant that uses the new image and runs tasks in containers.
-4. Schedule the tasks in your new container variant in a patch to test your changes
+4. Schedule the tasks in your new container variant in a patch to test your changes.
 
 ### Creating a Dockerfile
 
@@ -110,12 +110,12 @@ The following is the process by which you can create a usable image from your cu
     Registry (ECR). You may then reference the URI of the newly built image.
     Its format will be as follows:
     
-    > **557821124784.dkr.ecr.us-east-1.amazonaws.com/evergreen/<DIRECTORY\>:<SHA\>**
+    > **557821124784.dkr.ecr.us-east-1.amazonaws.com/evergreen/&lt;DIRECTORY&gt;:&lt;SHA&gt;**
 
-    Where **<DIRECTORY\>** is your project's directory name in our image
+    Where **&lt;DIRECTORY&gt;** is your project's directory name in our image
     repository. For enhanced security, we need to use immutable image
     tags, so rather than the typical ":latest" tag, image URIs in your
-    Evergreen YAML must also use a **<SHA\>** tag, which would be the hash
+    Evergreen YAML must also use a **&lt;SHA&gt;** tag, which would be the hash
     of the corresponding commit in our [image repository](https://github.com/evergreen-ci/container-initial-offering-dockerfiles).
 
 ### Update Your YAML Configuration
@@ -134,7 +134,7 @@ container tasks:
 containers:
   - name: example-container
     working_dir: /
-    image: "557821124784.dkr.ecr.us-east-1.amazonaws.com/evergreen/your_repo:<hash>"
+    image: "557821124784.dkr.ecr.us-east-1.amazonaws.com/evergreen/your_repo:&lt;hash&gt;"
     resources:
       cpu: 1024
       memory_mb: 2048
@@ -144,7 +144,7 @@ containers:
       
   - name: example-small-container
     working_dir: /
-    image: "557821124784.dkr.ecr.us-east-1.amazonaws.com/evergreen/other_repo:<hash>"
+    image: "557821124784.dkr.ecr.us-east-1.amazonaws.com/evergreen/other_repo:&lt;hash&gt;"
     size: small-container
     system:
       cpu_architecture: x86_64
