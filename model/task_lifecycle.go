@@ -563,9 +563,18 @@ func doLinearStepback(ctx context.Context, t *task.Task) error {
 	return errors.WithStack(activatePreviousTask(ctx, t.Id, evergreen.StepbackTaskActivator, nil, s))
 }
 
-// doBisectStepback performs a bisect stepback on the task. If there are no tasks
-// to bisect, it returns nothing.
+// doBisectStepback performs a bisect stepback on the task.
+// If there are no tasks to bisect, it returns nothing.
 func doBisectStepback(ctx context.Context, t *task.Task) error {
+	// If we are a generated task, do stepback on our generator.
+	if t.GeneratedBy != "" {
+		generator, err := task.FindOneId(t.Id)
+		if err != nil {
+			return errors.Wrapf(err, "finding generator")
+		}
+		return doBisectStepback(ctx, generator)
+	}
+	// Do stepback for all execution tasks.
 	if t.DisplayOnly {
 		execTasks, err := task.Find(task.ByIds(t.ExecutionTasks))
 		if err != nil {
@@ -579,7 +588,66 @@ func doBisectStepback(ctx context.Context, t *task.Task) error {
 			return catcher.Resolve()
 		}
 	}
-	return errors.New("bisect stepback not implemented yet, EVG-20788")
+
+	s := task.StepbackInfo{}
+	if t.StepbackInfo != nil {
+		// Carry over from the last task.
+		s = *t.StepbackInfo
+	} else {
+		// If this is the first iteration of stepback, we must get the initial condition (last successful passing task).
+		lastPassing, err := t.PreviousCompletedTask(t.Project, []string{evergreen.TaskSucceeded})
+		if err != nil {
+			return errors.Wrap(err, "locating previous successful task")
+		}
+		if lastPassing == nil {
+			return nil
+		}
+		s = task.StepbackInfo{
+			LastPassingStepbackTaskId: lastPassing.Id,
+		}
+	}
+
+	// Depending on the task status, we want to update the
+	// last failing or last passing task.
+	if t.Status == evergreen.TaskSucceeded {
+		s.LastPassingStepbackTaskId = t.Id
+	} else if t.Status == evergreen.TaskFailed {
+		s.LastFailingStepbackTaskId = t.Id
+	} else {
+		return errors.Errorf("stopping task stepback due to status '%s'", t.Status)
+	}
+
+	// The midway task is our next stepback target.
+	nextTask, err := task.FindMidwayTaskFromIds(s.LastFailingStepbackTaskId, s.LastPassingStepbackTaskId)
+	if err != nil {
+		return errors.Wrap(err, "finding midway task")
+	}
+	// If our next task is last passing Id, we have finished stepback.
+	if nextTask.Id == s.LastPassingStepbackTaskId {
+		return nil
+	}
+	// If the next task has finished, negative priority, or already activated, no-op.
+	if nextTask.IsFinished() || nextTask.Priority < 0 || nextTask.Activated {
+		return nil
+	}
+
+	// Set the midway task information for future stepback.
+	s.NextStepbackTaskId = nextTask.Id
+	nextTask.StepbackInfo = &s
+
+	// Activate the next task.
+	if err = SetActiveState(ctx, evergreen.StepbackTaskActivator, true, *nextTask); err != nil {
+		return errors.Wrapf(err, "setting task '%s' active", nextTask.Id)
+	}
+
+	// If this is a genearator task, activate generated tasks.
+	if nextTask.GenerateTask {
+		if err = nextTask.SetGeneratedTasksToActivate(nextTask.BuildVariant, nextTask.DisplayName); err != nil {
+			return errors.Wrap(err, "setting generated tasks to activate")
+		}
+	}
+
+	return errors.Wrap(nextTask.SetStepbackInfo(s), "setting stepback info")
 }
 
 // MarkEnd updates the task as being finished, performs a stepback if necessary, and updates the build status
