@@ -1791,10 +1791,11 @@ func GetProjectSettingsById(projectId string, isRepo bool) (*ProjectSettings, er
 
 // GetProjectSettings returns the ProjectSettings of the given identifier and ProjectRef
 func GetProjectSettings(p *ProjectRef) (*ProjectSettings, error) {
-	hasApp, err := evergreen.GetEnvironment().Settings().HasGitHubApp(context.Background(), p.Owner, p.Repo, nil)
-	if err != nil {
-		return nil, errors.Wrapf(err, "verifying GitHub app for project '%s' in '%s/%s'", p.Id, p.Owner, p.Repo)
-	}
+
+	// GetProjectSettings shouldn't error if GitHub app is not set up, or installed on a repo.
+	// It will return false for githubHooksEnabled though.
+	hasApp, _ := evergreen.GetEnvironment().Settings().HasGitHubApp(context.Background(), p.Owner, p.Repo, nil)
+
 	projectVars, err := FindOneProjectVars(p.Id)
 	if err != nil {
 		return nil, errors.Wrapf(err, "finding variables for project '%s'", p.Id)
