@@ -836,7 +836,7 @@ buildvariants:
 	require.NoError(t, unfinalized.Insert())
 
 	pp := &serviceModel.ParserProject{}
-	require.NoError(t, util.UnmarshalYAMLWithFallback([]byte(config), serviceModel.ParserProject{}))
+	require.NoError(t, util.UnmarshalYAMLWithFallback([]byte(config), pp))
 	pp.Id = unfinalized.Id.Hex()
 	require.NoError(t, pp.Insert())
 
