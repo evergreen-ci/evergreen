@@ -468,7 +468,7 @@ func generateTestLog(ctx context.Context, bucket pail.Bucket, size, chunkSize in
 				LogName:   logName,
 				Priority:  level.Debug,
 				Timestamp: ts,
-				Data:      line + "\n",
+				Data:      line,
 			}
 			rawLines += service.formatRawLine(lines[lineNum])
 			ts += int64(time.Millisecond)

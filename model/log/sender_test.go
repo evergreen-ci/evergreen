@@ -76,7 +76,7 @@ func TestSend(t *testing.T) {
 		assert.NotEmpty(t, mock.sender.buffer)
 		assert.NotZero(t, mock.sender.bufferSize)
 		assert.Empty(t, mock.service.lines)
-		assert.Contains(t, mock.local.lastMessage, "writing log")
+		assert.Contains(t, mock.local.lastMessage, "write error")
 	})
 	t.Run("ClosedSender", func(t *testing.T) {
 		mock := newSenderTestMock(ctx)
@@ -319,30 +319,29 @@ type senderTestMock struct {
 
 // newSenderTestMock returns a mock configured with a mock logging service,
 // Evergreen log sender, and a local mock sender. The log sender is configured
-// with the log writer function implemented by the mock service, a basic line
-// parser function, max buffer size of 4096, and the mock sender as the local
-// sender. Invidiual tests may require to further customization of the
-// configuration after calling.
+// with the mock log service, a basic line parser function, max buffer size of
+// 4096, and the mock sender as the local sender. Invidiual tests may require
+// further customization of the configuration after calling.
 func newSenderTestMock(ctx context.Context) *senderTestMock {
 	ctx, cancel := context.WithCancel(ctx)
-	service := &mockService{}
+	svc := &mockService{}
 	local := &mockSender{Base: send.NewBase("test")}
 
 	return &senderTestMock{
-		service: service,
+		service: svc,
 		local:   local,
 		sender: &sender{
 			ctx:    ctx,
 			cancel: cancel,
-			opts: LoggerOptions{
+			opts: SenderOptions{
 				Parse: func(rawLine string) (LogLine, error) {
 					return LogLine{Data: rawLine}, nil
 				},
 				Local:         local,
 				MaxBufferSize: 4096,
 			},
-			write: service.write,
-			Base:  send.NewBase("test"),
+			svc:  svc,
+			Base: send.NewBase("test"),
 		},
 	}
 }
@@ -361,14 +360,17 @@ func (ms *mockSender) Send(m message.Composer) {
 
 func (ms *mockSender) Flush(_ context.Context) error { return nil }
 
-// mockService implements a mock logging service with a log writer function for
-// testing.
+// mockService implements a mock logging service for testing.
 type mockService struct {
 	lines       []LogLine
 	hasWriteErr bool
 }
 
-func (s *mockService) write(ctx context.Context, lines []LogLine) error {
+func (s *mockService) Get(_ context.Context, _ GetOptions) (LogIterator, error) {
+	return nil, errors.New("not implemented")
+}
+
+func (s *mockService) Append(ctx context.Context, logName string, lines []LogLine) error {
 	if s.hasWriteErr {
 		return errors.New("write error")
 	}
