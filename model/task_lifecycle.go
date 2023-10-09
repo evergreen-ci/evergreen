@@ -1271,7 +1271,6 @@ func evalLinearStepback(ctx context.Context, t *task.Task, caller, status string
 
 // evalBisectStepback performs bisect stepback on the task.
 func evalBisectStepback(ctx context.Context, t *task.Task, caller, status string, deactivatePrevious bool) error {
-	// TODO: EVG-20788 implement stepback bisection.
 	return errors.Wrap(doBisectStepback(ctx, t), "performing bisect stepback")
 }
 
