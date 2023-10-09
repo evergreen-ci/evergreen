@@ -1288,7 +1288,7 @@ func SetTasksScheduledTime(tasks []Task, scheduledTime time.Time) error {
 	return nil
 }
 
-// GetTaskIdBetweenIds gets the task between two task given that they are
+// FindMidwayTask gets the task between two task given that they are
 // from the same project, requester, build variant, and display name. The
 // order of the ID's does not matter and if the task passed cannot have a
 // middle (i.e. it is sequential tasks or the same task) it will return the
@@ -1311,6 +1311,20 @@ func FindMidwayTask(t1, t2 Task) (*Task, error) {
 
 	mid := (t1.RevisionOrderNumber + t2.RevisionOrderNumber) / 2
 	return FindOne(db.Query(ByRevisionOrderNumber(t1.BuildVariant, t1.DisplayName, t1.Project, t1.Requester, mid)))
+}
+
+// FindMidwayTaskFromIds wraps FindMidwayTask but retrieves the two
+// tasks for you.
+func FindMidwayTaskFromIds(t1Id, t2Id string) (*Task, error) {
+	t1, err := FindOneId(t1Id)
+	if err != nil {
+		return nil, errors.Wrap(err, "finding task id")
+	}
+	t2, err := FindOneId(t2Id)
+	if err != nil {
+		return nil, errors.Wrap(err, "finding task id")
+	}
+	return FindMidwayTask(*t1, *t2)
 }
 
 // UnscheduleStaleUnderwaterHostTasks Removes host tasks older than the unscheduable threshold (e.g. one week) from
