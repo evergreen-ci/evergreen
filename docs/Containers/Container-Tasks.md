@@ -289,8 +289,10 @@ modules:
     repo: git@github.com:evergreen-ci/evergreen.git → https://github.com/evergreen-ci/evergreen.git
 ```
 
-### Docker host.create
+### Host.create
 
 Using our [host.create](https://docs.devprod.prod.corp.mongodb.com/evergreen/Project-Configuration/Project-Commands#hostcreate)
-command with the `docker` provider, or otherwise spawning additional containers from within a container task will be unsupported for the time being. 
+command will be unsupported for container tasks, as connecting to spawned hosts via SSH from a container will not be supported. 
+
+Similarly, usage of the command with the `docker` provider, or otherwise spawning additional containers from within a container task will be unsupported for the time being. 
 This functionality is a feature we are looking to support in the future, and researching as part of [EVG-20339](https://jira.mongodb.org/browse/EVG-20339).
