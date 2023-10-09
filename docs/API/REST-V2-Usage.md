@@ -905,7 +905,8 @@ A version is a commit in a project.
 | `branch`                | string          | The version control branch where the commit was made                                                                                                                                                                                                     |
 | `build_variants_status` | []buildDetail   | List of documents of the associated build variant and the build id                                                                                                                                                                                       |
 | `requester`             | string          | Version created by one of "patch_request", "github_pull_request", "gitter_request" (caused by git commit, aka the repotracker requester), "trigger_request" (Project Trigger versions) , "merge_test" (commit queue patches), "ad_hoc" (periodic builds) |
-| `activated`             | boolean or null | Will be null for versions created before this field was added.                                                                                                                                                                                           |
+| `activated`             | boolean or null | Will be null for versions created before this field was added. |
+| `ignored`             | boolean | Indicates if the version was ignored due to only making changes to ignored files. |
 
 
 #### Endpoints
