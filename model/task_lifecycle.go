@@ -511,7 +511,7 @@ func getStepback(taskId string) (stepbackInstructions, error) {
 		bisect: utility.FromBoolPtr(projectRef.StepbackBisect),
 	}
 	if projectTask != nil && projectTask.Stepback != nil {
-		s.shouldStepback = *projectTask.Stepback
+		s.shouldStepback = utility.FromBoolPtr(&project.Stepback)
 		return s, nil
 	}
 
@@ -519,7 +519,7 @@ func getStepback(taskId string) (stepbackInstructions, error) {
 	for _, buildVariant := range project.BuildVariants {
 		if t.BuildVariant == buildVariant.Name {
 			if buildVariant.Stepback != nil {
-				s.shouldStepback = *buildVariant.Stepback
+				s.shouldStepback = utility.FromBoolPtr(buildVariant.Stepback)
 				return s, nil
 			}
 			break
