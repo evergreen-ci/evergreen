@@ -511,7 +511,7 @@ func getStepback(taskId string) (stepbackInstructions, error) {
 		bisect: utility.FromBoolPtr(projectRef.StepbackBisect),
 	}
 	if projectTask != nil && projectTask.Stepback != nil {
-		s.shouldStepback = utility.FromBoolPtr(&project.Stepback)
+		s.shouldStepback = utility.FromBoolPtr(projectTask.Stepback)
 		return s, nil
 	}
 
