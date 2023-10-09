@@ -505,6 +505,7 @@ func (at *APITask) getArtifacts() error {
 	if err != nil {
 		return errors.Wrap(err, "retrieving artifacts")
 	}
+	env := evergreen.GetEnvironment()
 	for _, entry := range entries {
 		var strippedFiles []artifact.File
 		// The route requires a user, so hasUser is always true.
@@ -515,6 +516,7 @@ func (at *APITask) getArtifacts() error {
 		for _, file := range strippedFiles {
 			apiFile := APIFile{}
 			apiFile.BuildFromService(file)
+			apiFile.GetLogURL(env, utility.FromStringPtr(at.Id), at.Execution)
 			at.Artifacts = append(at.Artifacts, apiFile)
 		}
 	}

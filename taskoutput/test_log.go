@@ -5,13 +5,18 @@ import (
 	"fmt"
 
 	"github.com/evergreen-ci/evergreen"
+	"github.com/evergreen-ci/evergreen/apimodels"
 	"github.com/evergreen-ci/evergreen/model/log"
+	"github.com/evergreen-ci/utility"
+	"github.com/pkg/errors"
 )
 
 // TestLogOutput is the versioned entry point for coordinating persistent
 // storage of a task run's test log data.
 type TestLogOutput struct {
-	Version int `bson:"version" json:"version"`
+	Version    int    `bson:"version" json:"version"`
+	BucketName string `bson:"bucket_name,omitempty" json:"bucket_name,omitempty"`
+	BucketType string `bson:"bucket_type,omitempty" json:"bucket_type,omitempty"`
 }
 
 // ID returns the unique identifier of the test log output type.
@@ -38,13 +43,21 @@ type TestLogGetOptions struct {
 
 // Get returns test logs belonging to the specified task run.
 func (o TestLogOutput) Get(ctx context.Context, env evergreen.Environment, taskOpts TaskOptions, getOpts TestLogGetOptions) (log.LogIterator, error) {
-	return log.Get(ctx, env, log.GetOptions{
+	if o.Version == 0 {
+		return o.getBuildloggerLogs(ctx, env, taskOpts, getOpts)
+	}
+
+	svc, err := o.getLogService()
+	if err != nil {
+		return nil, errors.Wrap(err, "getting log service")
+	}
+
+	return svc.Get(ctx, log.GetOptions{
 		LogNames:  o.getLogNames(taskOpts, getOpts.LogPaths),
 		Start:     getOpts.Start,
 		End:       getOpts.End,
 		LineLimit: getOpts.LineLimit,
 		TailN:     getOpts.TailN,
-		Version:   o.getLogServiceVersion(),
 	})
 }
 
@@ -59,9 +72,31 @@ func (o TestLogOutput) getLogNames(taskOpts TaskOptions, logPaths []string) []st
 	return logNames
 }
 
-func (o TestLogOutput) getLogServiceVersion() int {
-	switch {
-	default:
-		return 0
+func (o TestLogOutput) getLogService() (log.LogService, error) {
+	b, err := newBucket(o.BucketName, o.BucketType)
+	if err != nil {
+		return nil, err
 	}
+
+	return log.NewLogServiceV0(b), nil
+}
+
+// getBuildloggerLogs makes request to Cedar Buildlogger for logs.
+func (o TestLogOutput) getBuildloggerLogs(ctx context.Context, env evergreen.Environment, taskOpts TaskOptions, getOpts TestLogGetOptions) (log.LogIterator, error) {
+	if len(getOpts.LogPaths) != 1 {
+		return nil, errors.New("must request exactly one test log from Cedar Buildlogger")
+	}
+
+	opts := apimodels.GetBuildloggerLogsOptionsV2{
+		BaseURL:   env.Settings().Cedar.BaseURL,
+		TaskID:    taskOpts.TaskID,
+		Execution: utility.ToIntPtr(taskOpts.Execution),
+		TestName:  getOpts.LogPaths[0],
+		Start:     getOpts.Start,
+		End:       getOpts.End,
+		Limit:     getOpts.LineLimit,
+		Tail:      getOpts.TailN,
+	}
+
+	return apimodels.GetBuildloggerLogsV2(ctx, opts)
 }
