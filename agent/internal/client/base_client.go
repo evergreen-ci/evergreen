@@ -408,6 +408,11 @@ func (c *baseCommunicator) makeSender(ctx context.Context, td TaskData, opts []L
 	underlyingBufferedSenders := []send.Sender{}
 
 	for _, opt := range opts {
+		// Disallow sending system logs to S3 for security reasons.
+		if prefix == apimodels.SystemLogPrefix && opt.Sender == model.FileLogSender {
+			return nil, nil, errors.New("cannot use a file logger for system logs")
+		}
+
 		var sender send.Sender
 		var err error
 		bufferDuration := defaultLogBufferTime
@@ -420,10 +425,6 @@ func (c *baseCommunicator) makeSender(ctx context.Context, td TaskData, opts []L
 		}
 		bufferedSenderOpts := send.BufferedSenderOptions{FlushInterval: bufferDuration, BufferSize: bufferSize}
 
-		// disallow sending system logs to S3 for security reasons
-		if prefix == apimodels.SystemLogPrefix && opt.Sender == model.FileLogSender {
-			opt.Sender = model.EvergreenLogSender
-		}
 		switch opt.Sender {
 		case model.FileLogSender:
 			sender, err = send.NewPlainFileLogger(prefix, opt.Filepath, levelInfo)

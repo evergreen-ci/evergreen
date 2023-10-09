@@ -112,17 +112,12 @@ func (s *logSenderSuite) TestFileLogger() {
 	}
 	s.Contains(logStr, "p=debug")
 
-	// no file logger for system logs
+	// No file logger for system logs.
 	path := filepath.Join(s.tempDir, "nothere")
 	defaultSender, toClose, err := s.restClient.makeSender(context.Background(), TaskData{}, []LogOpts{{Sender: model.FileLogSender, Filepath: path}}, false, apimodels.SystemLogPrefix, "")
-	s.NoError(err)
-	s.underlyingSenders = append(s.underlyingSenders, toClose...)
-	s.NotNil(defaultSender)
-	logger = logging.MakeGrip(defaultSender)
-	logger.Debug("foo")
-	s.NoError(defaultSender.Close())
-	_, err = os.Stat(path)
-	s.True(os.IsNotExist(err))
+	s.Error(err)
+	s.Nil(defaultSender)
+	s.Nil(toClose)
 }
 
 func (s *logSenderSuite) TestEvergreenLogger() {

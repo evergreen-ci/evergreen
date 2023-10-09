@@ -1,7 +1,6 @@
 package client
 
 import (
-	"context"
 	"testing"
 
 	"github.com/evergreen-ci/evergreen"
@@ -19,16 +18,4 @@ func TestEvergreenCommunicatorConstructor(t *testing.T) {
 	assert.Equal(t, defaultMaxAttempts, c.retry.MaxAttempts)
 	assert.Equal(t, defaultTimeoutStart, c.retry.MinDelay)
 	assert.Equal(t, defaultTimeoutMax, c.retry.MaxDelay)
-}
-
-func TestLoggerClose(t *testing.T) {
-	assert := assert.New(t)
-	comm := NewHostCommunicator("www.foo.com", "hostID", "hostSecret")
-	logger, err := comm.GetLoggerProducer(context.Background(), TaskData{}, nil)
-	assert.NoError(err)
-	assert.NotNil(logger)
-	assert.NoError(logger.Close())
-	assert.NotPanics(func() {
-		assert.NoError(logger.Close())
-	})
 }
