@@ -30,6 +30,7 @@ func TestHandlePoisonedHost(t *testing.T) {
 				BuildId: "b",
 				Version: "v",
 				HostId:  "container2",
+				Project: "v",
 			}
 			require.NoError(t, t1.Insert())
 			b := build.Build{Id: "b", Version: "v"}
@@ -38,6 +39,14 @@ func TestHandlePoisonedHost(t *testing.T) {
 				Id: b.Version,
 			}
 			require.NoError(t, v.Insert())
+			pp := model.ParserProject{
+				Id: v.Id,
+			}
+			require.NoError(t, pp.Insert())
+			pRef := model.ProjectRef{
+				Id: v.Id,
+			}
+			require.NoError(t, pRef.Insert())
 
 			parent := &host.Host{
 				Id:            "parent",
@@ -83,6 +92,7 @@ func TestHandlePoisonedHost(t *testing.T) {
 				BuildId: "b",
 				Version: "v",
 				HostId:  "runningTask",
+				Project: "v",
 			}
 			require.NoError(t, t1.Insert())
 			b := build.Build{Id: "b", Version: "v"}
@@ -98,6 +108,14 @@ func TestHandlePoisonedHost(t *testing.T) {
 				RunningTask: t1.Id,
 			}
 			require.NoError(t, hostRunningTask.Insert(ctx))
+			pp := model.ParserProject{
+				Id: v.Id,
+			}
+			require.NoError(t, pp.Insert())
+			pRef := model.ProjectRef{
+				Id: v.Id,
+			}
+			require.NoError(t, pRef.Insert())
 
 			assert.NoError(t, HandlePoisonedHost(ctx, env, hostRunningTask, ""))
 			hostRunningTask, err := host.FindOneId(ctx, hostRunningTask.Id)
@@ -151,7 +169,7 @@ func TestHandlePoisonedHost(t *testing.T) {
 			defer cancel()
 			tctx = testutil.TestSpan(tctx, t)
 
-			require.NoError(t, db.ClearCollections(host.Collection, task.Collection, build.Collection, model.VersionCollection))
+			require.NoError(t, db.ClearCollections(host.Collection, task.Collection, build.Collection, model.VersionCollection, model.ProjectRefCollection, model.ParserProjectCollection))
 			require.NoError(t, env.Configure(ctx))
 
 			test(tctx, t)

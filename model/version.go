@@ -16,7 +16,6 @@ import (
 	"github.com/evergreen-ci/evergreen/model/user"
 	"github.com/evergreen-ci/evergreen/thirdparty"
 	"github.com/evergreen-ci/utility"
-	"github.com/google/go-github/v52/github"
 	"github.com/mongodb/anser/bsonutil"
 	"github.com/pkg/errors"
 	"go.mongodb.org/mongo-driver/bson"
@@ -717,8 +716,6 @@ func constructManifest(v *Version, projectRef *ProjectRef, moduleList ModuleList
 		Branch:      projectRef.Branch,
 		IsBase:      v.Requester == evergreen.RepotrackerVersionRequester,
 	}
-	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
-	defer cancel()
 
 	var baseManifest *manifest.Manifest
 	var err error
@@ -730,7 +727,6 @@ func constructManifest(v *Version, projectRef *ProjectRef, moduleList ModuleList
 		}
 	}
 
-	var gitCommit *github.RepositoryCommit
 	modules := map[string]*manifest.Module{}
 	for _, module := range moduleList {
 		if isPatch && !module.AutoUpdate && baseManifest != nil {
@@ -739,55 +735,78 @@ func constructManifest(v *Version, projectRef *ProjectRef, moduleList ModuleList
 				continue
 			}
 		}
-		var sha, url string
-		owner, repo, err := thirdparty.ParseGitUrl(module.Repo)
+
+		mfstModule, err := getManifestModule(v, projectRef, token, module)
 		if err != nil {
-			return nil, errors.Wrapf(err, "parsing git url '%s'", module.Repo)
-		}
-		if module.Ref == "" {
-			var commit *github.RepositoryCommit
-			commit, err = thirdparty.GetCommitEvent(ctx, token, projectRef.Owner, projectRef.Repo, v.Revision)
-			if err != nil {
-				return nil, errors.Wrapf(err, "can't get commit '%s' on '%s/%s'", v.Revision, projectRef.Owner, projectRef.Repo)
-			}
-			if commit == nil || commit.Commit == nil || commit.Commit.Committer == nil {
-				return nil, errors.New("malformed GitHub commit response")
-			}
-			// If this is a mainline commit, retrieve the module's commit from the time of the mainline commit.
-			// Otherwise, retrieve the module's commit from the time of the patch creation.
-			revisionTime := time.Unix(0, 0)
-			if !evergreen.IsPatchRequester(v.Requester) {
-				revisionTime = commit.Commit.Committer.GetDate().Time
-			}
-			var branchCommits []*github.RepositoryCommit
-			branchCommits, _, err = thirdparty.GetGithubCommits(ctx, token, owner, repo, module.Branch, revisionTime, 0)
-			if err != nil {
-				return nil, errors.Wrapf(err, "retrieving git branch for module '%s'", module.Name)
-			}
-			if len(branchCommits) > 0 {
-				sha = branchCommits[0].GetSHA()
-				url = branchCommits[0].GetURL()
-			}
-		} else {
-			sha = module.Ref
-			gitCommit, err = thirdparty.GetCommitEvent(ctx, token, owner, repo, module.Ref)
-			if err != nil {
-				return nil, errors.Wrapf(err, "retrieving getting git commit for module %s with hash %s", module.Name, module.Ref)
-			}
-			url = gitCommit.GetURL()
+			return nil, errors.Wrapf(err, "module '%s'", module.Name)
 		}
 
-		modules[module.Name] = &manifest.Module{
+		modules[module.Name] = mfstModule
+	}
+	newManifest.Modules = modules
+	return newManifest, nil
+}
+
+func getManifestModule(v *Version, projectRef *ProjectRef, token string, module Module) (*manifest.Module, error) {
+	owner, repo, err := thirdparty.ParseGitUrl(module.Repo)
+	if err != nil {
+		return nil, errors.Wrapf(err, "parsing git url '%s'", module.Repo)
+	}
+
+	if module.Ref == "" {
+		ghCtx, cancel := context.WithTimeout(context.Background(), time.Minute)
+		defer cancel()
+
+		commit, err := thirdparty.GetCommitEvent(ghCtx, token, projectRef.Owner, projectRef.Repo, v.Revision)
+		if err != nil {
+			return nil, errors.Wrapf(err, "can't get commit '%s' on '%s/%s'", v.Revision, projectRef.Owner, projectRef.Repo)
+		}
+		if commit == nil || commit.Commit == nil || commit.Commit.Committer == nil {
+			return nil, errors.New("malformed GitHub commit response")
+		}
+		// If this is a mainline commit, retrieve the module's commit from the time of the mainline commit.
+		// Otherwise, retrieve the module's commit from the time of the patch creation.
+		revisionTime := time.Unix(0, 0)
+		if !evergreen.IsPatchRequester(v.Requester) {
+			revisionTime = commit.Commit.Committer.GetDate().Time
+		}
+
+		branchCommits, _, err := thirdparty.GetGithubCommits(ghCtx, token, owner, repo, module.Branch, revisionTime, 0)
+		if err != nil {
+			return nil, errors.Wrapf(err, "retrieving git branch for module '%s'", module.Name)
+		}
+		var sha, url string
+		if len(branchCommits) > 0 {
+			sha = branchCommits[0].GetSHA()
+			url = branchCommits[0].GetURL()
+		}
+
+		return &manifest.Module{
 			Branch:   module.Branch,
 			Revision: sha,
 			Repo:     repo,
 			Owner:    owner,
 			URL:      url,
-		}
-
+		}, nil
 	}
-	newManifest.Modules = modules
-	return newManifest, nil
+
+	ghCtx, cancel := context.WithTimeout(context.Background(), time.Minute)
+	defer cancel()
+
+	sha := module.Ref
+	gitCommit, err := thirdparty.GetCommitEvent(ghCtx, token, owner, repo, module.Ref)
+	if err != nil {
+		return nil, errors.Wrapf(err, "retrieving getting git commit for module '%s' with hash '%s'", module.Name, module.Ref)
+	}
+	url := gitCommit.GetURL()
+
+	return &manifest.Module{
+		Branch:   module.Branch,
+		Revision: sha,
+		Repo:     repo,
+		Owner:    owner,
+		URL:      url,
+	}, nil
 }
 
 // CreateManifest inserts a newly constructed manifest into the DB.
