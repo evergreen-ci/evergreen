@@ -71,14 +71,6 @@ func setup(t *testing.T, state *AtomicGraphQLState, pathToTests string) {
 	ctx := context.Background()
 	require.NoError(t, env.DB().Drop(ctx))
 
-	// Setup buckets for task data.
-	logBucketName, err := filepath.Abs(filepath.Join(pathToTests, "tests", state.Directory, "task_log_data"))
-	require.NoError(t, err)
-	env.Settings().Buckets.LogBucket = evergreen.Bucket{
-		Name: logBucketName,
-		Type: evergreen.BucketTypeLocal,
-	}
-
 	require.NoError(t, db.Clear(user.Collection),
 		"unable to clear user collection")
 
@@ -102,15 +94,12 @@ func setup(t *testing.T, state *AtomicGraphQLState, pathToTests string) {
 	assert.NoError(t, usr.Insert())
 
 	for _, pk := range pubKeys {
-		err := usr.AddPublicKey(pk.Name, pk.Key)
-		require.NoError(t, err)
+		require.NoError(t, usr.AddPublicKey(pk.Name, pk.Key))
 	}
-	err = usr.UpdateSettings(user.UserSettings{Timezone: "America/New_York", SlackUsername: slackUsername, SlackMemberId: slackMemberId})
-	require.NoError(t, err)
+	require.NoError(t, usr.UpdateSettings(user.UserSettings{Timezone: "America/New_York", SlackUsername: slackUsername, SlackMemberId: slackMemberId}))
 
 	for _, role := range systemRoles {
-		err = usr.AddRole(role)
-		require.NoError(t, err)
+		require.NoError(t, usr.AddRole(role))
 	}
 
 	require.NoError(t, usr.UpdateAPIKey(apiKey))

@@ -81,12 +81,11 @@
       "execution": 0,
       "order": 5,
       "r": "something",
-      "task_output": {
+      "task_output_info": {
           "task_logs": {
-              "version": 1
-          },
-          "test_logs": {
-              "version": 1
+            "version": 1,
+            "bucket_name": "../../graphql/tests/task/taskLogs/task_log_data",
+            "bucket_type": "local"
           }
       },
       "status": "started",
