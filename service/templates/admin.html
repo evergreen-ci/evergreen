@@ -103,6 +103,7 @@ Admin Settings
 						<li class="link" ng-click="scrollTo('spawnhosts')">Spawn Hosts</li>
 						<li class="link" ng-click="scrollTo('tracer')">Tracer Config</li>
 						<li class="link" ng-click="scrollTo('project_creation')">Project Creation</li>
+						<li class="link" ng-click="scrollTo('github_check_run')">GitHub CheckRun</li>
 						<div>Non-Configuration</div>
 						<li class="link" ng-click="scrollTo('restart')">Restart Tasks/Versions</li>
 						<a class="link" href="/admin/events" style="margin-left:10px;">Event Log</a>
@@ -2626,6 +2627,24 @@ Admin Settings
 													</div>
 												</section>
 										</md-card>
+								</md-card-content>
+							</md-card>
+						</section>
+						<section layout="row" flex>
+							<md-card flex=50 id="github_check_run">
+								<md-card-title>
+									<md-card-title-text>
+										<span>GitHub CheckRun Configuration</span>
+									</md-card-title-text>
+									<md-button ng-click="clearSection('github_check_run')">
+										<i class="fa fa-trash"></i>
+									</md-button>
+								</md-card-title>
+								<md-card-content>
+									<md-input-container class="control" style="width:45%;">
+										<label>CheckRun Limit per Patch</label>
+										<input type="number" ng-model="Settings.github_check_run.check_run_limit">
+									</md-input-container>
 								</md-card-content>
 							</md-card>
 						</section>
