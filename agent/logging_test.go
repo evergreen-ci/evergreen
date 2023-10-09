@@ -89,6 +89,11 @@ func TestAgentFileLogging(t *testing.T) {
 				BuildVariants: model.BuildVariants{
 					{Name: "bv", Tasks: []model.BuildVariantTaskUnit{{Name: "task1", Variant: "bv"}}},
 				},
+				Loggers: &model.LoggerConfig{
+					Agent:  []model.LogOpts{{Type: model.FileLogSender}},
+					System: []model.LogOpts{{Type: model.FileLogSender}},
+					Task:   []model.LogOpts{{Type: model.FileLogSender}},
+				},
 			},
 			Timeout:    internal.Timeout{IdleTimeoutSecs: 15, ExecTimeoutSecs: 15},
 			WorkDir:    tmpDirName,
