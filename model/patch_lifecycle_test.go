@@ -1159,24 +1159,18 @@ func TestAbortPatchesWithGithubPatchData(t *testing.T) {
 	}
 }
 
-func TestConfigurePatch(t *testing.T) {
-	assert.NoError(t, db.ClearCollections(VersionCollection, patch.Collection))
+func TestConfigurePatchWithOnlyUpdatedDescription(t *testing.T) {
+	assert.NoError(t, db.ClearCollections(patch.Collection), ParserProjectCollection)
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 	id := mgobson.NewObjectId()
-	v := &Version{
-		Id:        id.Hex(),
-		Status:    evergreen.VersionStarted,
-		Activated: utility.TruePtr(),
-	}
-	assert.NoError(t, v.Insert())
 	p := &patch.Patch{
-		Id:         id,
-		Version:    v.Id,
-		Status:     evergreen.VersionStarted,
-		Activated:  true,
-		Project:    "project",
-		CreateTime: time.Now().Add(-time.Hour),
+		Id:                   id,
+		Status:               evergreen.VersionCreated,
+		Activated:            false,
+		Project:              "project",
+		ProjectStorageMethod: evergreen.ProjectStorageMethodDB,
+		CreateTime:           time.Now().Add(-time.Hour),
 		GithubPatchData: thirdparty.GithubPatch{
 			BaseOwner: "owner",
 			BaseRepo:  "repo",
@@ -1201,7 +1195,7 @@ func TestConfigurePatch(t *testing.T) {
 		Id: id.Hex(),
 	}
 	assert.NoError(t, pp.Insert())
-	_, err := ConfigurePatch(ctx, evergreen.GetEnvironment().Settings(), p, v, pRef, req)
+	_, err := ConfigurePatch(ctx, &evergreen.Settings{}, p, nil, pRef, req)
 	assert.NoError(t, err)
 
 	p, err = patch.FindOneId(id.Hex())
@@ -1210,4 +1204,5 @@ func TestConfigurePatch(t *testing.T) {
 	assert.Equal(t, p.Description, req.Description)
 	assert.NotEmpty(t, p.VariantsTasks)
 	assert.NotEmpty(t, p.Tasks)
+	assert.False(t, p.Activated)
 }
