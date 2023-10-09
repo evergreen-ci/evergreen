@@ -20,6 +20,10 @@ type attachArtifacts struct {
 	// Files is a list of files, using gitignore syntax.
 	Files []string `mapstructure:"files" plugin:"expand"`
 
+	// ExactFileNames, when set to true, causes this command to treat the files array as an array of exact filenames to match,
+	// rather than the default behavior, which treats files as an array of gitignore file globs.
+	ExactFileNames bool `mapstructure:"exact_file_names"`
+
 	// Prefix is an optional directory prefix to start file globbing in, relative to Evergreen's working directory.
 	Prefix string `mapstructure:"prefix" plugin:"expand"`
 
@@ -54,14 +58,16 @@ func (c *attachArtifacts) Execute(ctx context.Context,
 		return errors.Wrap(err, "applying expansions")
 	}
 
-	workDir := getWorkingDirectory(conf, c.Prefix)
-	include := utility.NewGitIgnoreFileMatcher(workDir, c.Files...)
-	b := utility.FileListBuilder{
-		WorkingDir: workDir,
-		Include:    include,
-	}
-	if c.Files, err = b.Build(); err != nil {
-		return errors.Wrap(err, "building wildcard paths")
+	if !c.ExactFileNames {
+		workDir := getWorkingDirectory(conf, c.Prefix)
+		include := utility.NewGitIgnoreFileMatcher(workDir, c.Files...)
+		b := utility.FileListBuilder{
+			WorkingDir: workDir,
+			Include:    include,
+		}
+		if c.Files, err = b.Build(); err != nil {
+			return errors.Wrap(err, "building wildcard paths")
+		}
 	}
 
 	if len(c.Files) == 0 {
