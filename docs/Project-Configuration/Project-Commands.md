@@ -81,6 +81,9 @@ page.
     matched - ones that would be ignored by gitignore - are included.
 - `prefix`: an optional path to start processing the files, relative
     to the working directory.
+- `exact_file_names`: an optional boolean flag which, if set to true,
+    indicates to treat the files array as a list of exact filenames to
+    match, rather than an array of gitignore file globs.
 
 #### Lifecycle Policy 
 

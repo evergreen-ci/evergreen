@@ -1645,22 +1645,22 @@ func TestFindProjectRefIdsWithCommitQueueEnabled(t *testing.T) {
 func TestValidatePeriodicBuildDefinition(t *testing.T) {
 	assert := assert.New(t)
 	testCases := map[PeriodicBuildDefinition]bool{
-		PeriodicBuildDefinition{
+		{
 			IntervalHours: 24,
 			ConfigFile:    "foo.yml",
 			Alias:         "myAlias",
 		}: true,
-		PeriodicBuildDefinition{
+		{
 			IntervalHours: 0,
 			ConfigFile:    "foo.yml",
 			Alias:         "myAlias",
 		}: false,
-		PeriodicBuildDefinition{
+		{
 			IntervalHours: 24,
 			ConfigFile:    "",
 			Alias:         "myAlias",
 		}: false,
-		PeriodicBuildDefinition{
+		{
 			IntervalHours: 24,
 			ConfigFile:    "foo.yml",
 			Alias:         "",
@@ -2914,6 +2914,27 @@ func TestSaveProjectPageForSection(t *testing.T) {
 		ProjectHealthView: ProjectHealthViewAll,
 	}
 	_, err = SaveProjectPageForSection("iden_", update, ProjectPageViewsAndFiltersSection, false)
+	assert.NoError(err)
+
+	// Test performance plugin updates errors when id and identifier are different.
+	update = &ProjectRef{
+		PerfEnabled: utility.ToBoolPtr(true),
+	}
+	_, err = SaveProjectPageForSection("iden_", update, ProjectPagePluginSection, false)
+	assert.Error(err)
+
+	// Test performance plugin updates correctly when id and identifier are the same.
+	// Set the id and identifier to the same value.
+	update = &ProjectRef{
+		Identifier: "iden_",
+	}
+	_, err = SaveProjectPageForSection("iden_", update, ProjectPageGeneralSection, false)
+	assert.NoError(err)
+	// Attempt to enable the performance plugin.
+	update = &ProjectRef{
+		PerfEnabled: utility.ToBoolPtr(true),
+	}
+	_, err = SaveProjectPageForSection("iden_", update, ProjectPagePluginSection, false)
 	assert.NoError(err)
 
 	// Test private field does not get updated
