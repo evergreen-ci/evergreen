@@ -443,7 +443,7 @@
             },
             "errors": [
                {
-                  "message": "could not find git commit 'bad-revision'",
+                  "message": "version with revision 'bad-revision' not found",
                   "path": [
                      "mainlineCommits"
                   ],

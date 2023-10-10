@@ -33,6 +33,10 @@ import (
 	werrors "github.com/pkg/errors"
 )
 
+const (
+	minRevisionLength = 7
+)
+
 // BbGetCreatedTickets is the resolver for the bbGetCreatedTickets field.
 func (r *queryResolver) BbGetCreatedTickets(ctx context.Context, taskID string) ([]*thirdparty.JiraTicket, error) {
 	createdTickets, err := bbGetCreatedTicketsPointers(taskID)
@@ -813,14 +817,14 @@ func (r *queryResolver) MainlineCommits(ctx context.Context, options MainlineCom
 	revision := utility.FromStringPtr(options.Revision)
 
 	if options.SkipOrderNumber == nil && revision != "" {
-		if len(revision) < 7 {
-			graphql.AddError(ctx, PartialError.Send(ctx, fmt.Sprintf("at least 7 characters must be provided for the revision")))
+		if len(revision) < minRevisionLength {
+			graphql.AddError(ctx, PartialError.Send(ctx, fmt.Sprintf("at least %d characters must be provided for the revision", minRevisionLength)))
 		} else {
 			found, err := model.VersionFindOne(model.VersionByProjectIdAndRevisionPrefix(projectId, revision))
 			if err != nil {
-				graphql.AddError(ctx, PartialError.Send(ctx, fmt.Sprintf("could not find git commit '%s'", revision)))
+				graphql.AddError(ctx, PartialError.Send(ctx, fmt.Sprintf("getting version with revision '%s': %s", revision, err)))
 			} else if found == nil {
-				graphql.AddError(ctx, PartialError.Send(ctx, fmt.Sprintf("could not find git commit '%s'", revision)))
+				graphql.AddError(ctx, PartialError.Send(ctx, fmt.Sprintf("version with revision '%s' not found", revision)))
 			} else {
 				// Offset the order number so the specified revision lands nearer to the center of the page.
 				skipOrderNumber = found.RevisionOrderNumber + 1 + limit/2
