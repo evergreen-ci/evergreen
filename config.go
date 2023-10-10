@@ -624,14 +624,13 @@ func (s *Settings) CreateInstallationToken(ctx context.Context, owner, repo stri
 // HasGitHubApp returns true if the GitHub app is installed on given owner/repo.
 // Only returns an error if it is not a gitHubAppNotInstalledError.
 func (s *Settings) HasGitHubApp(ctx context.Context, owner, repo string, opts *github.InstallationTokenOptions) (bool, error) {
-	_, err := s.CreateInstallationToken(ctx, owner, repo, opts)
+	token, err := s.CreateInstallationToken(ctx, owner, repo, opts)
 	if err != nil {
 		if errors.Is(err, gitHubAppNotInstalledError) {
 			return false, nil
 		}
-		return false, err
 	}
-	return true, nil
+	return token != "", nil
 }
 
 // CreateInstallationTokenWithDefaultOwnerRepo returns an installation token when we do not care about
