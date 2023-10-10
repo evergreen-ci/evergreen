@@ -509,11 +509,11 @@ func TestAttachToNewRepo(t *testing.T) {
 	assert.NoError(t, err)
 	assert.NotNil(t, newRepoRef)
 
-	assert.True(t, newRepoRef.DoesTrackPushEvents())
+	assert.False(t, newRepoRef.DoesTrackPushEvents())
 
 	mergedRef, err := FindMergedProjectRef(pRef.Id, "", false)
 	assert.NoError(t, err)
-	assert.True(t, mergedRef.DoesTrackPushEvents())
+	assert.False(t, mergedRef.DoesTrackPushEvents())
 
 	userFromDB, err := user.FindOneById("me")
 	assert.NoError(t, err)
@@ -610,7 +610,7 @@ func TestAttachToRepo(t *testing.T) {
 	repoRef, err := FindOneRepoRef(pRef.RepoRefId)
 	assert.NoError(t, err)
 	require.NotNil(t, repoRef)
-	assert.True(t, repoRef.DoesTrackPushEvents())
+	assert.False(t, repoRef.DoesTrackPushEvents())
 
 	u, err = user.FindOneById("me")
 	assert.NoError(t, err)
@@ -1290,7 +1290,7 @@ func TestCreateNewRepoRef(t *testing.T) {
 	assert.Equal(t, "mongodb", repoRef.Owner)
 	assert.Equal(t, "mongo", repoRef.Repo)
 	assert.Empty(t, repoRef.Branch)
-	assert.True(t, repoRef.DoesTrackPushEvents())
+	assert.False(t, repoRef.DoesTrackPushEvents())
 	assert.Contains(t, repoRef.Admins, "bob")
 	assert.Contains(t, repoRef.Admins, "other bob")
 	assert.Contains(t, repoRef.Admins, "me")

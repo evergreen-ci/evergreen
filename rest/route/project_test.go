@@ -211,7 +211,7 @@ func (s *ProjectPatchByIDSuite) TestRunWithCommitQueueEnabled() {
 	s.NotNil(resp.Data())
 	s.Require().Equal(http.StatusBadRequest, resp.Status())
 	errResp := (resp.Data()).(gimlet.ErrorResponse)
-	s.Equal("cannot enable commit queue without a commit queue patch definition", errResp.Message)
+	s.Equal("cannot enable commit queue without first enabling GitHub webhooks", errResp.Message)
 }
 
 func (s *ProjectPatchByIDSuite) TestRunWithValidBbConfig() {
