@@ -486,18 +486,12 @@ func ClearLoginCache(user gimlet.User) error {
 	return nil
 }
 
-// ClearUser clears one user's settings, roles, and login cache.
-// ClearUser clears the users sensitive settings (GitHub and Slack credentials),
-// roles, and invalidates their login cache. It sets their settings to use Spruce,
-// or else if this user ever becomes active, they will revert to the old UI.
+// ClearUser clears the users settings, roles and invalidates their login cache.
+// It also sets their settings to use Spruce so rehires have Spruce enabled by default.
 func ClearUser(userId string) error {
 	unsetUpdate := bson.M{
 		"$unset": bson.M{
-			SettingsKey: bson.M{
-				userSettingsGithubUserKey:    1,
-				userSettingsSlackUsernameKey: 1,
-				userSettingsSlackMemberIdKey: 1,
-			},
+			SettingsKey:   1,
 			RolesKey:      1,
 			LoginCacheKey: 1,
 		},
@@ -510,7 +504,7 @@ func ClearUser(userId string) error {
 		"$set": bson.M{
 			SettingsKey: bson.M{
 				UseSpruceOptionsKey: bson.M{
-					SpruceV1Key: 1,
+					SpruceV1Key: "true",
 				},
 			},
 		},
