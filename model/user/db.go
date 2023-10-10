@@ -504,7 +504,7 @@ func ClearUser(userId string) error {
 		"$set": bson.M{
 			SettingsKey: bson.M{
 				UseSpruceOptionsKey: bson.M{
-					SpruceV1Key: "true",
+					SpruceV1Key: true,
 				},
 			},
 		},
