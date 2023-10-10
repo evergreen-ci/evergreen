@@ -48,6 +48,9 @@ func (s *UserTestSuite) SetupTest() {
 					UID:         1234,
 					LastKnownAs: "octocat",
 				},
+				UseSpruceOptions: UseSpruceOptions{
+					SpruceV1: true,
+				},
 			},
 			LoginCache: LoginCache{
 				AccessToken:  "access_token",
@@ -809,7 +812,7 @@ func TestViewableProjectSettings(t *testing.T) {
 }
 
 func (s *UserTestSuite) TestClearUser() {
-	// Error on non-existent user
+	// Error on non-existent user.
 	s.Error(ClearUser("asdf"))
 
 	u, err := FindOneById(s.users[0].Id)
@@ -817,17 +820,33 @@ func (s *UserTestSuite) TestClearUser() {
 	s.NotNil(u)
 	s.NotEmpty(u.Settings)
 	s.Equal("Test1", u.Id)
+	s.Equal(true, u.Settings.UseSpruceOptions.SpruceV1)
 	s.NoError(u.AddRole("r1p1"))
 	s.NotEmpty(u.SystemRoles)
 
 	s.NoError(ClearUser(u.Id))
 
-	// Settings and roles should now be empty
+	// Sensitive settings and roles should now be empty.
 	u, err = FindOneById(s.users[0].Id)
 	s.NoError(err)
 	s.NotNil(u)
 
-	s.Empty(u.Settings)
+	s.Empty(u.Settings.GithubUser)
+	s.Empty(u.Settings.SlackUsername)
+	s.Empty(u.Settings.SlackMemberId)
 	s.Empty(u.Roles())
 	s.Empty(u.LoginCache)
+
+	// User should have spruce UI enabled.
+	s.True(u.Settings.UseSpruceOptions.SpruceV1)
+
+	// Should enable for user that previously had it false
+	u, err = FindOneById(s.users[1].Id)
+	s.NoError(err)
+	s.NotNil(u)
+	s.False(u.Settings.UseSpruceOptions.SpruceV1)
+	s.NoError(ClearUser(u.Id))
+	u, err = FindOneById(s.users[1].Id)
+	s.NoError(err)
+	s.True(u.Settings.UseSpruceOptions.SpruceV1)
 }
