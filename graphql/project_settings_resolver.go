@@ -25,7 +25,7 @@ func (r *projectSettingsResolver) GithubWebhooksEnabled(ctx context.Context, obj
 	repo := utility.FromStringPtr(obj.ProjectRef.Repo)
 	hasApp, err := evergreen.GetEnvironment().Settings().HasGitHubApp(ctx, owner, repo, nil)
 	if err != nil {
-		return false, InternalServerError.Send(ctx, fmt.Sprintf("Error GitHub app installation for project '%s' in '%s/%s': '%s'", utility.FromStringPtr(obj.ProjectRef.Id), owner, repo, err.Error()))
+		return false, InternalServerError.Send(ctx, fmt.Sprintf("Error verifying GitHub app installation for project '%s' in '%s/%s': '%s'", utility.FromStringPtr(obj.ProjectRef.Id), owner, repo, err.Error()))
 	}
 	return hasApp, nil
 }

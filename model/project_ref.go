@@ -1664,17 +1664,28 @@ func EnableWebhooks(ctx context.Context, projectRef *ProjectRef) (bool, error) {
 	}
 
 	hasApp, err := settings.HasGitHubApp(ctx, projectRef.Owner, projectRef.Repo, nil)
-	if err != nil || !hasApp {
-		// don't return error:
-		// sometimes people change a project to track a personal
-		// branch we don't have access to
+	// don't return error:
+	// sometimes people change a project to track a personal
+	// branch we don't have access to
+	if err != nil {
 		grip.Error(message.WrapError(err, message.Fields{
-			"message":            "GitHub app not installed",
+			"message":            "Error verifying GitHub app installation",
 			"project":            projectRef.Id,
 			"project_identifier": projectRef.Identifier,
 			"owner":              projectRef.Owner,
 			"repo":               projectRef.Repo,
 		}))
+		projectRef.TracksPushEvents = utility.FalsePtr()
+		return false, nil
+	}
+	if !hasApp {
+		grip.Error(message.Fields{
+			"message":            "GitHub app not installed",
+			"project":            projectRef.Id,
+			"project_identifier": projectRef.Identifier,
+			"owner":              projectRef.Owner,
+			"repo":               projectRef.Repo,
+		})
 		projectRef.TracksPushEvents = utility.FalsePtr()
 		return false, nil
 	}
@@ -1793,7 +1804,6 @@ func GetProjectSettingsById(projectId string, isRepo bool) (*ProjectSettings, er
 func GetProjectSettings(p *ProjectRef) (*ProjectSettings, error) {
 
 	// GetProjectSettings shouldn't error if GitHub app is not set up, or installed on a repo.
-	// It will return false for githubHooksEnabled though.
 	hasApp, _ := evergreen.GetEnvironment().Settings().HasGitHubApp(context.Background(), p.Owner, p.Repo, nil)
 
 	projectVars, err := FindOneProjectVars(p.Id)

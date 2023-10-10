@@ -495,6 +495,12 @@ func TestAttachToNewRepo(t *testing.T) {
 
 	pRef.Owner = "newOwner"
 	pRef.Repo = "newRepo"
+	hook := evergreen.GitHubHook{
+		Owner:          pRef.Owner,
+		Repo:           pRef.Repo,
+		InstallationID: 1234,
+	}
+	assert.NoError(t, hook.Upsert(ctx))
 	assert.NoError(t, pRef.AttachToNewRepo(u))
 
 	pRefFromDB, err := FindBranchProjectRef(pRef.Id)
@@ -509,11 +515,11 @@ func TestAttachToNewRepo(t *testing.T) {
 	assert.NoError(t, err)
 	assert.NotNil(t, newRepoRef)
 
-	assert.False(t, newRepoRef.DoesTrackPushEvents())
+	assert.True(t, newRepoRef.DoesTrackPushEvents())
 
 	mergedRef, err := FindMergedProjectRef(pRef.Id, "", false)
 	assert.NoError(t, err)
-	assert.False(t, mergedRef.DoesTrackPushEvents())
+	assert.True(t, mergedRef.DoesTrackPushEvents())
 
 	userFromDB, err := user.FindOneById("me")
 	assert.NoError(t, err)
@@ -589,6 +595,13 @@ func TestAttachToRepo(t *testing.T) {
 	}
 	assert.NoError(t, pRef.Insert())
 
+	hook := evergreen.GitHubHook{
+		Owner:          pRef.Owner,
+		Repo:           pRef.Repo,
+		InstallationID: 1234,
+	}
+	assert.NoError(t, hook.Upsert(ctx))
+
 	u := &user.DBUser{Id: "me"}
 	assert.NoError(t, u.Insert())
 	// No repo exists, but one should be created.
@@ -610,7 +623,7 @@ func TestAttachToRepo(t *testing.T) {
 	repoRef, err := FindOneRepoRef(pRef.RepoRefId)
 	assert.NoError(t, err)
 	require.NotNil(t, repoRef)
-	assert.False(t, repoRef.DoesTrackPushEvents())
+	assert.True(t, repoRef.DoesTrackPushEvents())
 
 	u, err = user.FindOneById("me")
 	assert.NoError(t, err)
@@ -1151,7 +1164,7 @@ func TestFindProjectRefsByRepoAndBranch(t *testing.T) {
 
 func TestCreateNewRepoRef(t *testing.T) {
 	assert.NoError(t, db.ClearCollections(ProjectRefCollection, RepoRefCollection, user.Collection,
-		evergreen.ScopeCollection, ProjectVarsCollection, ProjectAliasCollection))
+		evergreen.ScopeCollection, ProjectVarsCollection, ProjectAliasCollection, evergreen.GitHubHooksCollection))
 	require.NoError(t, db.CreateCollections(evergreen.ScopeCollection))
 
 	ctx, cancel := context.WithCancel(context.Background())
@@ -1194,6 +1207,13 @@ func TestCreateNewRepoRef(t *testing.T) {
 		Enabled: false,
 	}
 	assert.NoError(t, doc3.Insert())
+
+	hook := evergreen.GitHubHook{
+		Owner:          "mongodb",
+		Repo:           "mongo",
+		InstallationID: 1234,
+	}
+	assert.NoError(t, hook.Upsert(ctx))
 
 	projectVariables := []ProjectVars{
 		{
@@ -1290,7 +1310,7 @@ func TestCreateNewRepoRef(t *testing.T) {
 	assert.Equal(t, "mongodb", repoRef.Owner)
 	assert.Equal(t, "mongo", repoRef.Repo)
 	assert.Empty(t, repoRef.Branch)
-	assert.False(t, repoRef.DoesTrackPushEvents())
+	assert.True(t, repoRef.DoesTrackPushEvents())
 	assert.Contains(t, repoRef.Admins, "bob")
 	assert.Contains(t, repoRef.Admins, "other bob")
 	assert.Contains(t, repoRef.Admins, "me")
