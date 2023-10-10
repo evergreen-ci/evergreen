@@ -165,7 +165,7 @@ require (
 	github.com/mattn/go-xmpp v0.0.0-20211029151415-912ba614897a // indirect
 	github.com/mholt/archiver/v3 v3.5.1
 	github.com/mongodb/ftdc v0.0.0-20220401165013-13e4af55e809 // indirect
-	github.com/montanaflynn/stats v0.0.0-20180911141734-db72e6cae808 // indirect
+	github.com/montanaflynn/stats v0.6.6 // indirect
 	github.com/nwaples/rardecode v1.1.2 // indirect
 	github.com/okta/okta-jwt-verifier-golang v1.3.1 // indirect
 	github.com/opencontainers/go-digest v1.0.0 // indirect
@@ -188,7 +188,7 @@ require (
 	github.com/tklauser/numcpus v0.6.1 // indirect
 	github.com/trivago/tgo v1.0.7 // indirect
 	github.com/ulikunitz/xz v0.5.10 // indirect
-	github.com/urfave/cli/v2 v2.25.5 // indirect
+	github.com/urfave/cli/v2 v2.25.7 // indirect
 	github.com/urfave/negroni v1.0.0 // indirect
 	github.com/xdg-go/pbkdf2 v1.0.0 // indirect
 	github.com/xdg-go/scram v1.1.1 // indirect
@@ -217,6 +217,14 @@ require (
 	github.com/evergreen-ci/plank v0.0.0-20230207190607-5f47f8a30da1
 	github.com/evergreen-ci/tarjan v0.0.0-20170824211642-fcd3f3321826
 	github.com/mongodb/jasper v0.0.0-20220214215554-82e5a72cff6b
+	github.com/mongodb/mongo-tools v0.0.0-20231005175156-827c224aa8f6
 	github.com/shirou/gopsutil/v3 v3.23.9
 	gopkg.in/yaml.v3 v3.0.1
 )
+
+require (
+	github.com/jessevdk/go-flags v1.5.0 // indirect
+	golang.org/x/term v0.12.0 // indirect
+)
+
+replace github.com/evergreen-ci/pail => ../pail

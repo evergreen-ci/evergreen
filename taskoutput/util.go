@@ -1,6 +1,8 @@
 package taskoutput
 
 import (
+	"context"
+
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/pail"
 	"github.com/evergreen-ci/utility"
@@ -8,9 +10,12 @@ import (
 )
 
 func newBucket(bucketName, bucketType string) (pail.Bucket, error) {
-	var b pail.Bucket
-	var err error
+	env := evergreen.GetEnvironment()
 
+	var (
+		b   pail.Bucket
+		err error
+	)
 	switch bucketType {
 	case evergreen.BucketTypeS3:
 		b, err = pail.NewS3Bucket(pail.S3Options{
@@ -19,6 +24,14 @@ func newBucket(bucketName, bucketType string) (pail.Bucket, error) {
 			Permissions: pail.S3PermissionsPrivate,
 			MaxRetries:  utility.ToIntPtr(10),
 			Compress:    true,
+		})
+		if err != nil {
+			return nil, errors.WithStack(err)
+		}
+	case evergreen.BucketTypeGridFS:
+		b, err = pail.NewGridFSBucketWithClient(context.Background(), env.Client(), pail.GridFSOptions{
+			Name:     bucketName,
+			Database: env.DB().Name(),
 		})
 		if err != nil {
 			return nil, errors.WithStack(err)

@@ -11,8 +11,9 @@ import (
 )
 
 const (
-	BucketTypeLocal = "local"
-	BucketTypeS3    = "s3"
+	BucketTypeGridFS = "gridfs"
+	BucketTypeLocal  = "local"
+	BucketTypeS3     = "s3"
 )
 
 // BucketConfig represents the admin config section for bucket storage.
