@@ -179,11 +179,12 @@ func New(apiURL string) Config {
 	c.Directives.RequireProjectFieldAccess = func(ctx context.Context, obj interface{}, next graphql.Resolver) (res interface{}, err error) {
 		user := mustHaveUser(ctx)
 
-		projectRef, isProjectRef := obj.(*restModel.APIProjectRef)
-		if !isProjectRef {
+		projectSettings, isProjectSettings := obj.(*restModel.APIProjectSettings)
+		if !isProjectSettings {
 			return nil, InternalServerError.Send(ctx, "project not valid")
 		}
 
+		projectRef := projectSettings.ProjectRef
 		projectId := utility.FromStringPtr(projectRef.Id)
 		if projectId == "" {
 			return nil, ResourceNotFound.Send(ctx, "project not specified")

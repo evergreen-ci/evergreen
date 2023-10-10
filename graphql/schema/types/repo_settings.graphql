@@ -17,9 +17,9 @@ input RepoSettingsInput {
 RepoSettings models the settings for a given RepoRef.
 """
 type RepoSettings {
-  aliases: [ProjectAlias!]
-  githubWebhooksEnabled: Boolean!
-  projectRef: RepoRef ## use the repo ref here in order to have stronger types
-  subscriptions: [GeneralSubscription!]
-  vars: ProjectVars
+  aliases: [ProjectAlias!] @requireProjectFieldAccess
+  githubWebhooksEnabled: Boolean! @requireProjectFieldAccess
+  projectRef: RepoRef @requireProjectFieldAccess ## use the repo ref here in order to have stronger types
+  subscriptions: [GeneralSubscription!] @requireProjectFieldAccess
+  vars: ProjectVars @requireProjectFieldAccess
 }

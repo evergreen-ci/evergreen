@@ -83,11 +83,11 @@ input ProjectInput {
 ProjectSettings models the settings for a given Project.
 """
 type ProjectSettings {
-  aliases: [ProjectAlias!]
-  githubWebhooksEnabled: Boolean!
-  projectRef: Project
-  subscriptions: [GeneralSubscription!]
-  vars: ProjectVars
+  aliases: [ProjectAlias!] @requireProjectFieldAccess
+  githubWebhooksEnabled: Boolean! @requireProjectFieldAccess
+  projectRef: Project @requireProjectFieldAccess
+  subscriptions: [GeneralSubscription!] @requireProjectFieldAccess
+  vars: ProjectVars @requireProjectFieldAccess
 }
 
 type Selector {
