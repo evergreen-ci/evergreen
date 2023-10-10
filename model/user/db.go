@@ -509,7 +509,7 @@ func ClearUser(userId string) error {
 			},
 		},
 	}
-	return errors.Wrap(UpdateOne(query, setUpdate), "unsetting user settings")
+	return errors.Wrap(UpdateOne(query, setUpdate), "defaulting spruce setting")
 }
 
 // ClearAllLoginCaches clears all users' login caches, forcibly logging them
