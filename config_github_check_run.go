@@ -11,7 +11,7 @@ import (
 
 // GitHubCheckRunConfig configures settings for the GitHub Check Run API.
 type GitHubCheckRunConfig struct {
-	// CheckRunLimit is the number of check runs that Evergreen is willing to support per patch created by GitHub PR's.
+	// CheckRunLimit is the number of check runs that Evergreen is willing to support for each patch created by GitHub PR's.
 	CheckRunLimit int `bson:"check_run_limit" json:"check_run_limit" yaml:"check_run_limit"`
 }
 
