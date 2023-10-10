@@ -1158,3 +1158,51 @@ func TestAbortPatchesWithGithubPatchData(t *testing.T) {
 		})
 	}
 }
+
+func TestConfigurePatchWithOnlyUpdatedDescription(t *testing.T) {
+	assert.NoError(t, db.ClearCollections(patch.Collection), ParserProjectCollection)
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+	id := mgobson.NewObjectId()
+	p := &patch.Patch{
+		Id:                   id,
+		Status:               evergreen.VersionCreated,
+		Activated:            false,
+		Project:              "project",
+		ProjectStorageMethod: evergreen.ProjectStorageMethodDB,
+		CreateTime:           time.Now().Add(-time.Hour),
+		GithubPatchData: thirdparty.GithubPatch{
+			BaseOwner: "owner",
+			BaseRepo:  "repo",
+			PRNumber:  12345,
+		},
+		Tasks: []string{"my_task"},
+		VariantsTasks: []patch.VariantTasks{
+			{
+				Variant: "my_variant",
+				Tasks:   []string{"my_task"},
+			},
+		},
+	}
+	assert.NoError(t, p.Insert())
+	pRef := &ProjectRef{
+		Id: mgobson.NewObjectId().Hex(),
+	}
+	req := PatchUpdate{
+		Description: "updating the description only!",
+	}
+	pp := ParserProject{
+		Id: id.Hex(),
+	}
+	assert.NoError(t, pp.Insert())
+	_, err := ConfigurePatch(ctx, &evergreen.Settings{}, p, nil, pRef, req)
+	assert.NoError(t, err)
+
+	p, err = patch.FindOneId(id.Hex())
+	assert.NoError(t, err)
+	require.NotNil(t, p)
+	assert.Equal(t, p.Description, req.Description)
+	assert.NotEmpty(t, p.VariantsTasks)
+	assert.NotEmpty(t, p.Tasks)
+	assert.False(t, p.Activated)
+}
