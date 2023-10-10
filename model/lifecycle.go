@@ -705,11 +705,6 @@ func createTasksForBuild(creationInfo TaskCreationInfo) (task.Tasks, error) {
 	for _, task := range creationInfo.BuildVariant.Tasks {
 		// Verify that the config isn't malformed.
 		if task.Name != "" && !task.IsGroup {
-			grip.InfoWhen(task.IsPartOfGroup, message.Fields{
-				"message": "task unit IsGroup is referring to task within a task group",
-				"ticket":  "EVG-19725",
-				"stack":   string(debug.Stack()),
-			})
 			if task.IsDisabled() || task.SkipOnRequester(creationInfo.Build.Requester) {
 				continue
 			}
@@ -717,6 +712,11 @@ func createTasksForBuild(creationInfo TaskCreationInfo) (task.Tasks, error) {
 				tasksToCreate = append(tasksToCreate, task)
 			}
 		} else if _, ok := tgMap[task.Name]; ok {
+			grip.InfoWhen(task.IsPartOfGroup, message.Fields{
+				"message": "task unit IsGroup is referring to task within a task group",
+				"ticket":  "EVG-19725",
+				"stack":   string(debug.Stack()),
+			})
 			tasksFromVariant := CreateTasksFromGroup(task, creationInfo.Project, creationInfo.Build.Requester)
 			for _, taskFromVariant := range tasksFromVariant {
 				if task.IsDisabled() || taskFromVariant.SkipOnRequester(creationInfo.Build.Requester) {
