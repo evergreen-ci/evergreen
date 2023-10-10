@@ -82,6 +82,7 @@ type Version struct {
 	TriggerID    string `bson:"trigger_id,omitempty" json:"trigger_id,omitempty"`
 	TriggerType  string `bson:"trigger_type,omitempty" json:"trigger_type,omitempty"`
 	TriggerEvent string `bson:"trigger_event,omitempty" json:"trigger_event,omitempty"`
+	TriggerSHA   string `bson:"trigger_sha,omitempty" json:"trigger_sha,omitempty"`
 
 	// this is only used for aggregations, and is not stored in the DB
 	Builds []build.Build `bson:"build_variants,omitempty" json:"build_variants,omitempty"`

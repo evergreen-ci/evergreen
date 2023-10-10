@@ -97,7 +97,6 @@ type ProcessorArgs struct {
 	EventID                      string
 	DefinitionID                 string
 	Alias                        string
-	ProjectID                    string
 	UnscheduleDownstreamVersions bool
 	PushRevision                 model.Revision
 }
@@ -314,9 +313,9 @@ func TriggerDownstreamProjectsForPush(ctx context.Context, projectId string, eve
 				DownstreamProject:            ref,
 				ConfigFile:                   trigger.ConfigFile,
 				TriggerType:                  model.ProjectTriggerLevelPush,
+				TriggerID:                    trigger.Project,
 				DefinitionID:                 trigger.DefinitionID,
 				Alias:                        trigger.Alias,
-				ProjectID:                    trigger.Project,
 				UnscheduleDownstreamVersions: trigger.UnscheduleDownstreamVersions,
 				PushRevision: model.Revision{
 					Revision:        utility.FromStringPtr(event.GetHeadCommit().SHA),

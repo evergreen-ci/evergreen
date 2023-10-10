@@ -51,11 +51,14 @@ func TriggerDownstreamVersion(ctx context.Context, args ProcessorArgs) (*model.V
 	if err != nil {
 		return nil, errors.Wrap(err, "getting Evergreen settings")
 	}
-	var versionID string
 	// Since push triggers have no source version (unlike build and task level triggers), we need to
 	// extract the project ID from the trigger definition's project ID, which is populated in the ProjectID field.
-	projectID := args.ProjectID
-	if projectID == "" {
+	// UPDATE
+	var versionID string
+	var projectID string
+	if args.TriggerType == model.ProjectTriggerLevelPush {
+		projectID = args.TriggerID
+	} else {
 		projectID = args.SourceVersion.Identifier
 		versionID = args.SourceVersion.Id
 	}
