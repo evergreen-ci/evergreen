@@ -73,3 +73,21 @@ starting point, and link to Evergreen builds from there.
 
 **A:** You can set up email notifications, but the Slack integration does not
 send notifications for merges done by the GitHub merge queue.
+
+**Q:** How do branch protection rules apply to PRs and the merge queue?
+
+The same branch protection rules apply to PRs (which determine whether you can
+add the PR to the merge queue) and the merge queue itself (which determines
+whether or not GitHub will merge the PR).  Nevertheless, you can run different
+tasks in PRs and the merge queue with the separate settings on the GitHub &
+Commit Queue project settings page.
+
+Evergreen will post a status check called "evergreen" when the entire merge
+queue build has finished, and it will post a status for each variant that
+finishes called "evergreen/variant_name". Typically projects should set a branch
+protection rule for "evergreen". However, it's also possible to instead to set a
+branch protection rule for one or more "evergree/variant_name" statuses. You
+might wish to do this if you wish more variants to run in a PR than are actually
+required to merge. For example, there may be long-running tasks which users care
+about only some of the time, and you do not wish to block PRs or merges on those
+tasks, but you still wish them to run automatically.
