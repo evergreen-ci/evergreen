@@ -1376,6 +1376,30 @@ buildvariants:
 		assert.NoError(err)
 		assert.Equal(0, v%2)
 	}
+
+	validMaxHostYml := `
+tasks:
+- name: example_task_1
+- name: example_task_2
+task_groups:
+- name: example_task_group
+  max_hosts: -1
+  tasks:
+  - example_task_1
+  - example_task_2
+buildvariants:
+- name: bv
+  display_name: "bv_display"
+  tasks:
+  - name: example_task_group
+`
+	proj = &Project{}
+	_, err = LoadProjectInto(ctx, []byte(validMaxHostYml), nil, "id", proj)
+	assert.NotNil(proj)
+	assert.Nil(err)
+	assert.Equal("example_task_group", proj.TaskGroups[0].Name)
+	assert.Len(proj.TaskGroups, 1)
+	assert.Equal(proj.TaskGroups[0].MaxHosts, len(proj.TaskGroups[0].Tasks))
 }
 
 func TestTaskGroupWithDisplayTask(t *testing.T) {

@@ -1117,7 +1117,9 @@ func evaluateTaskUnits(tse *taskSelectorEvaluator, tgse *tagSelectorEvaluator, v
 			Timeout:                  ptg.Timeout,
 			ShareProcs:               ptg.ShareProcs,
 		}
-		if tg.MaxHosts < 1 {
+		if tg.MaxHosts == -1 {
+			tg.MaxHosts = len(ptg.Tasks)
+		} else if tg.MaxHosts < 1 {
 			tg.MaxHosts = 1
 		}
 		// expand, validate that tasks defined in a group are listed in the project tasks
