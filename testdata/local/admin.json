@@ -5,7 +5,8 @@
 { "_id": "amboy", "name": "evg.service", "db_connection": {"url": "mongodb://localhost:27017", "database": "amboy_local"}, "skip_preferred_indexes": true }
 { "_id" : "providers", "aws": {"pod": {"ecs": {"client_type": "mock", "max_cpu": 1024, "max_memory_mb": 1024}, "secrets_manager": {"client_type": "mock"}}, "allowed_regions": ["us-east-1","us-west-1"], "max_volume_size": 1000}}
 { "_id": "spawnhost", "unexpirable_hosts_per_user": 2, "unexpirable_volumes_per_user": 1, "spawn_hosts_per_user": 6 }
-{ "_id": "jira",  "host": "jira.example.com", "basic_auth": { "username": "mohamed.khelif", "password": "password" }, "default_project": "", "oath1": {"private_key": "", "access_token": "", "token_secret": "", "consumer_key": ""} }
+{ "_id": "jira", "host": "jira.example.com", "basic_auth": { "username": "mohamed.khelif", "password": "password" }, "default_project": "", "oath1": {"private_key": "", "access_token": "", "token_secret": "", "consumer_key": ""} }
 { "_id": "project_creation",  "total_project_limit": 10, "repo_project_limit": 2 }
 { "_id": "logger_config", "logkeeper_url": "http://localhost:8080" }
 { "_id": "container_pools", "pools": [{ "distro": "ubuntu1604-parent", "id": "test-pool-1", "max_containers": 5, "port": 2525, "maximages": 0 }, { "distro": "ubuntu1604-parent", "id": "test-pool-2", "max_containers": 10, "port": 4649, "maximages": 0 }]}
+{ "_id": "buckets", "log_bucket": { "name": "bucket-logs", "type": "local" } }

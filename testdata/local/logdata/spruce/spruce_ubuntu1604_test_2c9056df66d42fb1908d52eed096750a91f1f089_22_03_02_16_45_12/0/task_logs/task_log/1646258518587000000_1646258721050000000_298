@@ -1,0 +1,298 @@
+40 1646258518587000000 Task logger initialized (agent version 2022-02-14 from 00a4c8f3e8e4559cc23e04a019b6d1725c40c3e5).
+40 1646258518587000000 Starting task spruce_ubuntu1604_test_2c9056df66d42fb1908d52eed096750a91f1f089_22_03_02_16_45_12, execution 0.
+40 1646258518701000000 Running pre-task commands.
+40 1646258518701000000 Finished running pre-task commands.
+40 1646258518701000000 Running command 'git.get_project' in "get-project" (step 1 of 3)
+40 1646258521608000000 HEAD is now at 2c9056d EVG-14749: Add loading state for JIRA Issues and Suspected Issues (#1120)
+40 1646258521610000000 2c9056d EVG-14749: Add loading state for JIRA Issues and Suspected Issues (#1120)
+40 1646258521610000000 e695f65 EVG-16356 Use Build Variant stats to fetch grouped build variants (#1106)
+40 1646258521610000000 d54e2c6 v2.28.5
+40 1646258521610000000 d950163 EVG-13654: Introduce toggling functionality in PublicKeyForm (#1116)
+40 1646258521610000000 e391612 EVG-16049 Update spruce project page for admin only variables (#1114)
+40 1646258521610000000 04a52b2 EVG-15959 Fix rerender method in test utils (#1118)
+40 1646258521610000000 ab49443 EVG-13178: Implement Previous Commit Selector (#1006)
+40 1646258521610000000 74af23f EVG-16268: Improve save button disabled state (#1105)
+40 1646258521610000000 69c0310 v2.28.4
+40 1646258521610000000 22ea5d7 EVG-16110 Script to send deploy emails. (#1115)
+40 1646258531596000000 Your branch is up-to-date with 'origin/main'.
+40 1646258531596000000 Finished 'git.get_project' in "get-project" in 12.895377184s
+40 1646258531596000000 Running command 'shell.exec' in "yarn-install" (step 2 of 3)
+40 1646258537345000000 yarn install v1.22.5
+40 1646258537345000000 [1/5] Validating package.json...
+40 1646258537345000000 [2/5] Resolving packages...
+40 1646258538500000000 warning Pattern ["@apollo/client@latest"] is trying to unpack in the same destination "/home/ubuntu/.cache/yarn/v6/npm-@apollo-client-3.3.7-f15bf961dc0c2bee37a47bf86b8881fdc6183810-integrity/node_modules/@apollo/client" as pattern ["@apollo/client@3.3.7"]. This could result in non-deterministic behavior, skipping.
+40 1646258582173000000 [3/5] Fetching packages...
+40 1646258582173000000 info fsevents@2.3.1: The platform "linux" is incompatible with this module.
+40 1646258582173000000 info "fsevents@2.3.1" is an optional dependency and failed compatibility check. Excluding it from installation.
+40 1646258582189000000 info fsevents@1.2.13: The platform "linux" is incompatible with this module.
+40 1646258582189000000 info "fsevents@1.2.13" is an optional dependency and failed compatibility check. Excluding it from installation.
+40 1646258582213000000 warning " > @bugsnag/plugin-react@7.16.0" has unmet peer dependency "@bugsnag/core@^7.0.0".
+40 1646258582216000000 warning "@leafygreen-ui/confirmation-modal > @leafygreen-ui/modal > focus-trap-react@8.4.2" has unmet peer dependency "prop-types@^15.7.2".
+40 1646258582225000000 warning " > linkifyjs@2.1.9" has unmet peer dependency "jquery@>= 1.11.0".
+40 1646258582225000000 warning " > @cypress/webpack-preprocessor@5.4.6" has unmet peer dependency "@babel/preset-env@^7.0.0".
+40 1646258582232000000 warning "@graphql-codegen/cli > @graphql-tools/code-file-loader > @graphql-tools/graphql-tag-pluck > @vue/compiler-sfc@3.0.5" has unmet peer dependency "vue@3.0.5".
+40 1646258582242000000 warning "@storybook/addon-a11y > react-sizeme@2.6.12" has incorrect peer dependency "react@^0.14.0 || ^15.0.0-0 || ^16.0.0".
+40 1646258582242000000 warning "@storybook/addon-a11y > react-sizeme@2.6.12" has incorrect peer dependency "react-dom@^0.14.0 || ^15.0.0-0 || ^16.0.0".
+40 1646258582243000000 warning "@storybook/addon-a11y > @storybook/api > @reach/router@1.3.4" has incorrect peer dependency "react@15.x || 16.x || 16.4.0-alpha.0911da3".
+40 1646258582243000000 warning "@storybook/addon-a11y > @storybook/api > @reach/router@1.3.4" has incorrect peer dependency "react-dom@15.x || 16.x || 16.4.0-alpha.0911da3".
+40 1646258582245000000 warning "@storybook/addon-a11y > @storybook/api > @reach/router > create-react-context@0.3.0" has incorrect peer dependency "react@^0.14.0 || ^15.0.0 || ^16.0.0".
+40 1646258582245000000 warning "@storybook/addon-actions > react-inspector@5.1.0" has incorrect peer dependency "react@^16.8.4".
+40 1646258582252000000 warning "@storybook/addon-storyshots > @storybook/core > @storybook/ui > react-helmet-async@1.0.7" has incorrect peer dependency "react@^16.6.0".
+40 1646258582252000000 warning "@storybook/addon-storyshots > @storybook/core > @storybook/ui > react-helmet-async@1.0.7" has incorrect peer dependency "react-dom@^16.6.0".
+40 1646258582253000000 warning " > @storybook/preset-ant-design@0.0.2" has unmet peer dependency "@types/webpack@*".
+40 1646258582259000000 warning " > @storybook/preset-create-react-app@3.1.6" has unmet peer dependency "@storybook/node-logger@*".
+40 1646258582259000000 warning " > @storybook/preset-create-react-app@3.1.6" has unmet peer dependency "react-scripts@>=3.0.0".
+40 1646258582260000000 warning " > @testing-library/user-event@12.5.0" has unmet peer dependency "@testing-library/dom@>=7.21.4".
+40 1646258582263000000 warning " > eslint-config-react-app@6.0.0" has unmet peer dependency "eslint-plugin-flowtype@^5.2.0".
+40 1646258582269000000 warning " > storybook-react-router@1.0.8" has incorrect peer dependency "@storybook/addon-actions@^4.0.0||^5.0.0||5.2.0-beta.13".
+40 1646258582269000000 warning " > storybook-react-router@1.0.8" has unmet peer dependency "react-router@^4.0.0||^5.0.0".
+40 1646258640968000000 [4/5] Linking dependencies...
+40 1646258640968000000 [5/5] Building fresh packages...
+40 1646258640968000000 Done in 104.15s.
+40 1646258640968000000 Finished 'shell.exec' in "yarn-install" in 1m49.371951183s
+40 1646258640968000000 Running command 'shell.exec' in "yarn-test" (step 3 of 3)
+40 1646258641172000000 yarn run v1.22.5
+40 1646258641172000000 $ node scripts/test.js  --watchAll=false -u --reporters=default --reporters=jest-junit
+40 1646258649434000000 PASS src/components/HistoryTable/HistoryTableContext.test.tsx
+40 1646258649434000000 PASS src/pages/commits/ActiveCommits/utils.test.ts (5.392 s)
+40 1646258656937000000 PASS src/pages/commits/utils.test.ts (8.088 s)
+40 1646258656937000000 PASS src/pages/taskHistory/TaskHistoryRow.test.tsx (8.551 s)
+40 1646258657614000000 PASS src/pages/variantHistory/VariantHistoryRow.test.tsx (7.481 s)
+40 1646258657614000000 PASS src/utils/array/array.test.ts
+40 1646258660816000000 PASS src/components/HistoryTable/useTestResults.test.tsx
+40 1646258660816000000 PASS src/pages/task/actionButtons/PreviousCommits.test.tsx
+40 1646258665040000000 PASS src/hooks/tests/useVersionStatusSelect.test.ts
+40 1646258665040000000 PASS src/components/PatchActionButtons/ScheduleTasks.test.tsx (12.95 s)
+40 1646258665065000000   ● Console
+40 1646258665065000000     console.log
+40 1646258665065000000       ANALYTICS EVENT  {
+40 1646258665065000000         name: 'Open Schedule Tasks Modal',
+40 1646258665065000000         attributesToSend: {
+40 1646258665065000000           object: 'Version',
+40 1646258665065000000           userId: null,
+40 1646258665065000000           versionStatus: undefined,
+40 1646258665065000000           versionId: 'version'
+40 1646258665065000000         }
+40 1646258665065000000       }
+40 1646258665065000000       at addPageAction (src/analytics/addPageAction.ts:60:13)
+40 1646258666981000000 PASS src/hooks/tests/useNotificationModal.test.tsx
+40 1646258666981000000 PASS src/context/toast.test.tsx
+40 1646258667958000000 PASS src/pages/spawn/spawnVolume/spawnVolumeButton/SpawnVolumeModal.test.tsx (7.099 s)
+40 1646258667961000000   ● Console
+40 1646258667961000000     console.log
+40 1646258667961000000       ANALYTICS EVENT  {
+40 1646258667961000000         name: 'Spawned a volume',
+40 1646258667961000000         attributesToSend: {
+40 1646258667961000000           object: 'SpawnPages',
+40 1646258667961000000           userId: null,
+40 1646258667961000000           params: { SpawnVolumeInput: [Object] }
+40 1646258667961000000         }
+40 1646258667961000000       }
+40 1646258667961000000       at addPageAction (src/analytics/addPageAction.ts:60:13)
+40 1646258667961000000     console.log
+40 1646258667961000000       ANALYTICS EVENT  {
+40 1646258667961000000         name: 'Spawned a volume',
+40 1646258667961000000         attributesToSend: {
+40 1646258667961000000           object: 'SpawnPages',
+40 1646258667961000000           userId: null,
+40 1646258667961000000           params: { SpawnVolumeInput: [Object] }
+40 1646258667961000000         }
+40 1646258667961000000       }
+40 1646258667961000000       at addPageAction (src/analytics/addPageAction.ts:60:13)
+40 1646258670058000000 PASS src/utils/string/string.test.ts
+40 1646258670058000000 PASS src/pages/task/taskTabs/buildBaronAndAnnotations/BuildBaron.test.tsx
+40 1646258670059000000   ● Console
+40 1646258670059000000     console.log
+40 1646258670060000000       ANALYTICS EVENT  {
+40 1646258670060000000         name: 'Build Baron File Ticket',
+40 1646258670060000000         attributesToSend: {
+40 1646258670060000000           object: 'Annotations',
+40 1646258670060000000           userId: null,
+40 1646258670060000000           taskId: 'spruce_ubuntu1604_e2e_test_e0ece5ad52ad01630bdf29f55b9382a26d6256b3_20_08_26_19_20_41',
+40 1646258670060000000           annotation: undefined,
+40 1646258670060000000           bbConfigured: undefined
+40 1646258670060000000         }
+40 1646258670060000000       }
+40 1646258670060000000       at addPageAction (src/analytics/addPageAction.ts:60:13)
+40 1646258673799000000 PASS src/components/SearchableDropdown/SearchableDropdown.test.tsx
+40 1646258673799000000 PASS src/hooks/tests/useDisableSpawnExpirationCheckbox.test.tsx
+40 1646258674887000000 PASS src/pages/spawn/spawnHost/SpawnHostButton.test.tsx
+40 1646258674887000000 PASS src/constants/routes.test.ts
+40 1646258675504000000 PASS src/components/ProjectSettingsTabs/GithubCommitQueueTab/transformers.test.ts
+40 1646258677796000000 PASS src/utils/statuses/groupStatusesByUmbrellaStatus.test.ts
+40 1646258677796000000 PASS src/pages/taskHistory/ColumnHeaders.test.tsx
+40 1646258680901000000 PASS src/pages/spawn/spawnHost/fields/UserTagsField.test.tsx (5.052 s)
+40 1646258680901000000 PASS src/components/EditableTagField/EditableTagField.test.tsx
+40 1646258683016000000 PASS src/components/TupleSelect/TupleSelect.test.tsx
+40 1646258683016000000 PASS src/components/ProjectSettingsTabs/GeneralTab/Fields/RepoConfigField.test.tsx (15.04 s)
+40 1646258684235000000 PASS src/components/FilterBadges/FilterBadges.test.tsx
+40 1646258684235000000 PASS src/pages/commits/projectSelect/ProjectSelect.test.tsx
+40 1646258684932000000 PASS src/components/HistoryTable/utils.test.ts
+40 1646258684932000000 PASS src/utils/statuses/getCurrentStatuses.test.ts
+40 1646258685626000000 PASS src/hooks/tests/useTableFilters/useTableFilters.test.tsx
+40 1646258685626000000 PASS src/hooks/tests/UseBuildBaronVariables.test.tsx
+40 1646258687249000000 PASS src/pages/spawn/spawnHost/spawnHostModal/PublicKeyForm.test.tsx
+40 1646258687249000000 PASS src/components/ProjectSettingsTabs/GeneralTab/transformers.test.ts
+40 1646258687564000000 PASS src/pages/commits/InactiveCommits/InactiveCommits.test.tsx
+40 1646258687564000000 PASS src/pages/variantHistory/ColumnHeaders.test.tsx
+40 1646258688790000000 PASS src/components/TreeSelect/TreeSelect.test.tsx
+40 1646258688790000000 PASS src/components/ErrorBoundary/ErrorBoundary.test.tsx
+40 1646258688790000000   ● Console
+40 1646258688790000000     console.log
+40 1646258688790000000       Bugsnag started
+40 1646258688790000000       at initializeBugsnag (src/components/ErrorBoundary/index.tsx:52:13)
+40 1646258688790000000     console.log
+40 1646258688790000000       1.0.0
+40 1646258688790000000       at initializeBugsnag (src/components/ErrorBoundary/index.tsx:53:13)
+40 1646258689645000000 PASS src/components/HistoryTable/HistoryTableTestSearch/HistoryTableTestSearch.test.tsx
+40 1646258690016000000 PASS src/components/Popconfirm/PopconfirmWithCheckbox.test.tsx
+40 1646258690016000000   ● Console
+40 1646258690016000000     console.error
+40 1646258690016000000       Warning: You seem to have overlapping act() calls, this is not supported. Be sure to await previous act() calls before making a new one.
+40 1646258690016000000       at console.error (node_modules/@testing-library/react/dist/act-compat.js:52:34)
+40 1646258690016000000       at console.error (node_modules/@testing-library/react/dist/act-compat.js:52:34)
+40 1646258690016000000       at printWarning (node_modules/react-dom/cjs/react-dom-test-utils.development.js:67:30)
+40 1646258690016000000       at error (node_modules/react-dom/cjs/react-dom-test-utils.development.js:43:5)
+40 1646258690016000000       at onDone (node_modules/react-dom/cjs/react-dom-test-utils.development.js:1034:9)
+40 1646258690016000000       at node_modules/react-dom/cjs/react-dom-test-utils.development.js:1073:13
+40 1646258691902000000 PASS src/components/ProjectSettingsTabs/Context.test.tsx
+40 1646258691902000000 PASS src/components/GroupedTaskStatusBadge/GroupedTaskStatusBadge.test.tsx
+40 1646258691980000000 PASS src/components/CommitChartLabel/CommitChartLabel.test.tsx
+40 1646258691980000000 PASS src/components/SpruceForm/SpruceForm.test.tsx
+40 1646258693521000000 PASS src/hooks/tests/useGetUserPatchesPageTitleAndLink.test.tsx
+40 1646258693521000000 PASS src/pages/commits/ActiveCommits/CommitChart.test.tsx
+40 1646258694857000000 PASS src/pages/task/metadata/Metadata.test.tsx
+40 1646258694857000000 PASS src/hooks/tests/useUpdateUrlSortParamOnTableChange/useUpdateUrlSortParamOnTableChange.test.tsx
+40 1646258695210000000 PASS src/components/HistoryTable/Cell.test.tsx
+40 1646258695210000000 PASS src/components/Dropdown/Dropdown.test.tsx
+40 1646258696486000000 PASS src/components/ProjectSettingsTabs/PluginsTab/transformers.test.ts
+40 1646258696486000000 PASS src/hooks/tests/useOnClickOutside.test.tsx
+40 1646258697308000000 PASS src/utils/url/url.test.ts
+40 1646258697308000000 PASS src/pages/commits/ActiveCommits/buildVariantCard/WaterfallTaskStatusIcon.test.tsx
+40 1646258697980000000 PASS src/pages/commitqueue/codeChangesModule/bucketByCommit.test.ts
+40 1646258697980000000 PASS src/components/ProjectSettingsTabs/utils/alias.test.ts
+40 1646258698698000000 PASS src/components/ConditionalWrapper/ConditionalWrapper.test.tsx
+40 1646258698698000000 PASS src/components/ProjectSettingsTabs/AccessTab/transformers.test.ts
+40 1646258698698000000 PASS src/pages/spawn/spawnHost/SpawnHostTableActions.test.tsx
+40 1646258698698000000   ● Console
+40 1646258698698000000     console.log
+40 1646258698698000000       ANALYTICS EVENT  {
+40 1646258698698000000         name: 'Copy SSH Command',
+40 1646258698698000000         attributesToSend: { object: 'SpawnPages', userId: 'a' }
+40 1646258698698000000       }
+40 1646258698698000000       at addPageAction (src/analytics/addPageAction.ts:60:13)
+40 1646258699345000000 PASS src/utils/queryString/sortString.test.ts
+40 1646258699346000000 PASS src/hooks/tests/useNetworkStatus.test.ts
+40 1646258700265000000 PASS src/components/HistoryTable/HistoryTableIcon/HistoryTableIcon.test.tsx
+40 1646258700265000000 PASS src/utils/errorReporting.test.ts
+40 1646258700767000000 PASS src/components/ProjectSettingsTabs/PatchAliasesTab/transformers.test.ts
+40 1646258700767000000 PASS src/components/ProjectSettingsTabs/NotificationsTab/transformers.test.ts
+40 1646258701231000000 PASS src/components/HistoryTable/row/FoldedCommit.test.tsx
+40 1646258701231000000 PASS src/components/ProjectSettingsTabs/VariablesTab/transformers.test.ts
+40 1646258701391000000 PASS src/utils/queryString/parseQueryString.test.ts
+40 1646258701391000000 PASS src/components/ProjectSettingsTabs/VariablesTab/VariableRow.test.tsx
+40 1646258701954000000 PASS src/utils/statuses/sort.test.ts
+40 1646258701954000000 PASS src/utils/request.test.js
+40 1646258701954000000   ● Console
+40 1646258701954000000     console.error
+40 1646258701954000000       {
+40 1646258701954000000         err: Error: POST Error: undefined - undefined
+40 1646258701954000000             at post (/data/mci/a9d63a6608297afe7d53b107c555a2a4/spruce/src/utils/request.ts:18:13)
+40 1646258701954000000             at processTicksAndRejections (node:internal/process/task_queues:96:5)
+40 1646258701954000000             at Object.<anonymous> (/data/mci/a9d63a6608297afe7d53b107c555a2a4/spruce/src/utils/request.test.js:25:10),
+40 1646258701954000000         severity: 'warning'
+40 1646258701954000000       }
+40 1646258701954000000       18 |       },
+40 1646258701954000000       19 |       warning: () => {
+40 1646258701954000000     > 20 |         console.error({ err, severity: "warning" });
+40 1646258701954000000          |                 ^
+40 1646258701954000000       21 |       },
+40 1646258701954000000       22 |     };
+40 1646258701954000000       23 |   }
+40 1646258701954000000       at Object.warning (src/utils/errorReporting.ts:20:17)
+40 1646258701954000000       at handleError (src/utils/request.ts:42:22)
+40 1646258701954000000       at post (src/utils/request.ts:25:5)
+40 1646258701954000000       at Object.<anonymous> (src/utils/request.test.js:25:10)
+40 1646258702426000000 PASS src/constants/externalResources.test.ts
+40 1646258702426000000 PASS src/utils/statuses/getStatusBadgeCopy.test.ts
+40 1646258715588000000 PASS src/utils/validators/validators.test.ts
+40 1646258715588000000 (node:9279) DeprecationWarning: \`storyFn\` is deprecated and will be removed in Storybook 7.0.
+40 1646258715588000000 https://github.com/storybookjs/storybook/blob/next/MIGRATION.md#deprecated-storyfn
+40 1646258715588000000 (Use `node --trace-deprecation ...` to show where the warning was created)
+40 1646258715594000000 PASS src/storybook.test.ts (13.937 s)
+40 1646258715594000000   ● Console
+40 1646258715594000000     console.error
+40 1646258715594000000       Warning: Encountered two children with the same key, `success`. Keys should be unique so that components maintain their identity across updates. Non-unique keys may cause children to be duplicated and/or omitted — the behavior is unsupported and could change in a future version.
+40 1646258715594000000           at div
+40 1646258715594000000           at /data/mci/a9d63a6608297afe7d53b107c555a2a4/spruce/node_modules/@emotion/react/dist/emotion-element-cb6e9ca7.cjs.dev.js:35:23
+40 1646258715594000000           at Router (/data/mci/a9d63a6608297afe7d53b107c555a2a4/spruce/node_modules/react-router/cjs/react-router.js:99:30)
+40 1646258715594000000           at MemoryRouter (/data/mci/a9d63a6608297afe7d53b107c555a2a4/spruce/node_modules/react-router/cjs/react-router.js:187:35)
+40 1646258715594000000           at ApolloProvider (/data/mci/a9d63a6608297afe7d53b107c555a2a4/spruce/node_modules/@apollo/client/react/context/ApolloProvider.js:5:21)
+40 1646258715594000000           at MockedProvider (/data/mci/a9d63a6608297afe7d53b107c555a2a4/spruce/node_modules/@apollo/client/utilities/testing/mocking/MockedProvider.js:10:28)
+40 1646258715594000000           at storyFn
+40 1646258715594000000       at printWarning (node_modules/react-test-renderer/cjs/react-test-renderer.development.js:68:30)
+40 1646258715594000000       at error (node_modules/react-test-renderer/cjs/react-test-renderer.development.js:44:5)
+40 1646258715594000000       at warnOnInvalidKey (node_modules/react-test-renderer/cjs/react-test-renderer.development.js:4926:11)
+40 1646258715594000000       at reconcileChildrenArray (node_modules/react-test-renderer/cjs/react-test-renderer.development.js:4957:21)
+40 1646258715594000000       at reconcileChildFibers (node_modules/react-test-renderer/cjs/react-test-renderer.development.js:5431:14)
+40 1646258715594000000       at reconcileChildren (node_modules/react-test-renderer/cjs/react-test-renderer.development.js:7984:28)
+40 1646258715594000000       at updateHostComponent (node_modules/react-test-renderer/cjs/react-test-renderer.development.js:8568:3)
+40 1646258715594000000       at beginWork (node_modules/react-test-renderer/cjs/react-test-renderer.development.js:9997:14)
+40 1646258715594000000     console.error
+40 1646258715594000000       Warning: Encountered two children with the same key, `setup-failed`. Keys should be unique so that components maintain their identity across updates. Non-unique keys may cause children to be duplicated and/or omitted — the behavior is unsupported and could change in a future version.
+40 1646258715594000000           at div
+40 1646258715594000000           at /data/mci/a9d63a6608297afe7d53b107c555a2a4/spruce/node_modules/@emotion/react/dist/emotion-element-cb6e9ca7.cjs.dev.js:35:23
+40 1646258715594000000           at Router (/data/mci/a9d63a6608297afe7d53b107c555a2a4/spruce/node_modules/react-router/cjs/react-router.js:99:30)
+40 1646258715594000000           at MemoryRouter (/data/mci/a9d63a6608297afe7d53b107c555a2a4/spruce/node_modules/react-router/cjs/react-router.js:187:35)
+40 1646258715594000000           at ApolloProvider (/data/mci/a9d63a6608297afe7d53b107c555a2a4/spruce/node_modules/@apollo/client/react/context/ApolloProvider.js:5:21)
+40 1646258715594000000           at MockedProvider (/data/mci/a9d63a6608297afe7d53b107c555a2a4/spruce/node_modules/@apollo/client/utilities/testing/mocking/MockedProvider.js:10:28)
+40 1646258715594000000           at storyFn
+40 1646258715594000000       at printWarning (node_modules/react-test-renderer/cjs/react-test-renderer.development.js:68:30)
+40 1646258715594000000       at error (node_modules/react-test-renderer/cjs/react-test-renderer.development.js:44:5)
+40 1646258715594000000       at warnOnInvalidKey (node_modules/react-test-renderer/cjs/react-test-renderer.development.js:4926:11)
+40 1646258715594000000       at reconcileChildrenArray (node_modules/react-test-renderer/cjs/react-test-renderer.development.js:4957:21)
+40 1646258715594000000       at reconcileChildFibers (node_modules/react-test-renderer/cjs/react-test-renderer.development.js:5431:14)
+40 1646258715594000000       at reconcileChildren (node_modules/react-test-renderer/cjs/react-test-renderer.development.js:7984:28)
+40 1646258715594000000       at updateHostComponent (node_modules/react-test-renderer/cjs/react-test-renderer.development.js:8568:3)
+40 1646258715594000000       at beginWork (node_modules/react-test-renderer/cjs/react-test-renderer.development.js:9997:14)
+40 1646258717250000000 PASS src/App.test.tsx (14.805 s)
+40 1646258717250000000   ● Console
+40 1646258717250000000     console.log
+40 1646258717250000000       Setting userId:  null
+40 1646258717250000000       at src/analytics/useAnalyticsAttributes.ts:17:15
+40 1646258717349000000 Test Suites: 76 passed, 76 total
+40 1646258717349000000 Tests:       479 passed, 479 total
+40 1646258717349000000 Snapshots:   52 passed, 52 total
+40 1646258717349000000 Time:        74.533 s
+40 1646258717349000000 Ran all test suites.
+40 1646258717378000000 Done in 76.25s.
+40 1646258717378000000 Finished 'shell.exec' in "yarn-test" in 1m16.409323139s
+40 1646258717378000000 Task completed - SUCCESS.
+40 1646258717400000000 Running post-task commands.
+40 1646258717400000000 Running command 'attach.xunit_results' in "attach-results" (step 1 of 5)
+40 1646258717411000000 Attach test logs succeeded for 0 of 0 files
+40 1646258717411000000 Attaching results to server...
+40 1646258717533000000 Successfully attached results to server
+40 1646258717533000000 Finished 'attach.xunit_results' in "attach-results" in 132.554585ms
+40 1646258717533000000 Running command 's3.put' in "attach-cypress-screenshots" (step 2 of 5)
+40 1646258717565000000 Putting files matching filter [spruce/cypress/screenshots/*] into path spruce/spruce_ubuntu1604_test_2c9056df66d42fb1908d52eed096750a91f1f089_22_03_02_16_45_12/ in s3 bucket mciuploads
+40 1646258717565000000 performing s3 put to mciuploads of spruce/spruce_ubuntu1604_test_2c9056df66d42fb1908d52eed096750a91f1f089_22_03_02_16_45_12/ [1 of 5]
+40 1646258718537000000 s3.put: file filter 'spruce/cypress/screenshots/*' matched no files
+40 1646258718537000000 Finished 's3.put' in "attach-cypress-screenshots" in 1.004695826s
+40 1646258718538000000 Running command 's3.put' in "attach-cypress-videos" (step 3 of 5)
+40 1646258718573000000 Putting files matching filter [spruce/cypress/videos/*] into path spruce/spruce_ubuntu1604_test_2c9056df66d42fb1908d52eed096750a91f1f089_22_03_02_16_45_12/ in s3 bucket mciuploads
+40 1646258718573000000 performing s3 put to mciuploads of spruce/spruce_ubuntu1604_test_2c9056df66d42fb1908d52eed096750a91f1f089_22_03_02_16_45_12/ [1 of 5]
+40 1646258719545000000 s3.put: file filter 'spruce/cypress/videos/*' matched no files
+40 1646258719545000000 Finished 's3.put' in "attach-cypress-videos" in 1.007868288s
+40 1646258719546000000 Running command 's3.put' in "attach-server-logs" (step 4 of 5)
+40 1646258719575000000 Putting files matching filter [evergreen/server_logs.txt] into path spruce/spruce_ubuntu1604_test_2c9056df66d42fb1908d52eed096750a91f1f089_22_03_02_16_45_12/ in s3 bucket mciuploads
+40 1646258719575000000 performing s3 put to mciuploads of spruce/spruce_ubuntu1604_test_2c9056df66d42fb1908d52eed096750a91f1f089_22_03_02_16_45_12/ [1 of 5]
+40 1646258720539000000 s3.put: file filter 'evergreen/server_logs.txt' matched no files
+40 1646258720539000000 Finished 's3.put' in "attach-server-logs" in 993.696829ms
+40 1646258720539000000 Running command 's3.put' in "attach-source-map" (step 5 of 5)
+40 1646258720558000000 Putting spruce/build/source_map.html into mciuploads/spruce/spruce_ubuntu1604_test_2c9056df66d42fb1908d52eed096750a91f1f089_22_03_02_16_45_12/source_map.html (https://mciuploads.s3.amazonaws.com/spruce/spruce_ubuntu1604_test_2c9056df66d42fb1908d52eed096750a91f1f089_22_03_02_16_45_12/source_map.html)
+40 1646258720558000000 performing s3 put to mciuploads of spruce/spruce_ubuntu1604_test_2c9056df66d42fb1908d52eed096750a91f1f089_22_03_02_16_45_12/source_map.html [1 of 5]
+40 1646258720558000000 Command failed: missing file '/data/mci/a9d63a6608297afe7d53b107c555a2a4/spruce/build/source_map.html': problem opening file /data/mci/a9d63a6608297afe7d53b107c555a2a4/spruce/build/source_map.html: open /data/mci/a9d63a6608297afe7d53b107c555a2a4/spruce/build/source_map.html: no such file or directory
+40 1646258720558000000 Finished 's3.put' in "attach-source-map" in 19.088297ms
+40 1646258720558000000 [message='Finished running post-task commands.' total_time='3.180617063s']
+40 1646258721050000000 running setup group because we have a new independent task
