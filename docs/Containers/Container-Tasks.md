@@ -275,7 +275,7 @@ disk space usage to a maximum of 10GB.
 ### Git Cloning Modules With SSH
 
 In a containerized environment, cloning modules via SSH is unsupported in order to prevent
-all teams from sharing the same SSH keys on the container instance hosts.
+all teams from sharing the same SSH keys in their containers.
 
 Instead, modules must be cloned via OAuth over HTTPS. This means
 that if your modules' git clones rely on a host's SSH keys to clone a private
@@ -292,7 +292,8 @@ modules:
 ### Host.create
 
 Using our [host.create](https://docs.devprod.prod.corp.mongodb.com/evergreen/Project-Configuration/Project-Commands#hostcreate)
-command will be unsupported for container tasks, as connecting to spawned hosts via SSH from a container will not be supported. 
+command will be unsupported for container tasks.
 
-Similarly, usage of the command with the `docker` provider, or otherwise spawning additional containers from within a container task will be unsupported for the time being. 
-This functionality is a feature we are looking to support in the future, and researching as part of [EVG-20339](https://jira.mongodb.org/browse/EVG-20339).
+
+### Spawning Additional Containers
+The ability to start additional containers to run alongside your task from within the task is a feature we are looking to support in the future, and researching as part of [EVG-20339](https://jira.mongodb.org/browse/EVG-20339).
