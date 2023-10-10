@@ -213,6 +213,12 @@ func main() {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 
+	grip.EmergencyFatal(os.RemoveAll("bucket-logs"))
+	logDataPath := filepath.Join(path, "logdata")
+	if _, err := os.Stat(logDataPath); !os.IsNotExist(err) {
+		grip.EmergencyFatal(exec.Command("cp", "-r", logDataPath, "bucket-logs").Run())
+	}
+
 	const dbURI = "mongodb://localhost:27017"
 
 	clientOptions := options.Client().ApplyURI(dbURI).SetConnectTimeout(5 * time.Second)
@@ -235,9 +241,6 @@ func main() {
 
 	db := client.Database(dbName)
 	grip.EmergencyFatal(db.Drop(ctx))
-
-	grip.EmergencyFatal(os.RemoveAll("bucket-logs"))
-	grip.EmergencyFatal(exec.Command("cp", "-r", filepath.Join(path, "logdata"), "bucket-logs").Run())
 
 	amboyDB := client.Database(amboyDBName)
 	grip.EmergencyFatal(amboyDB.Drop(ctx))
