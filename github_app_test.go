@@ -8,68 +8,67 @@ import (
 	"go.mongodb.org/mongo-driver/bson"
 )
 
-type hookSuite struct {
+type installationSuite struct {
 	ctx    context.Context
 	cancel context.CancelFunc
 
 	suite.Suite
 }
 
-func TestGithubHookSuite(t *testing.T) {
-	suite.Run(t, new(hookSuite))
+func TestGithubInstallationSuite(t *testing.T) {
+	suite.Run(t, new(installationSuite))
 }
 
-func (s *hookSuite) SetupTest() {
+func (s *installationSuite) SetupTest() {
 	s.ctx, s.cancel = context.WithCancel(context.Background())
-	_, err := GetEnvironment().DB().Collection(GitHubHooksCollection).DeleteMany(s.ctx, bson.M{})
+	_, err := GetEnvironment().DB().Collection(GitHubAppCollection).DeleteMany(s.ctx, bson.M{})
 	s.NoError(err)
 }
 
-func (s *hookSuite) TearDownTest() {
+func (s *installationSuite) TearDownTest() {
 	s.cancel()
 }
 
-func (s *hookSuite) TestUpsert() {
-	hook := GitHubHook{
-		HookID:         1,
+func (s *installationSuite) TestUpsert() {
+	installation := GitHubAppInstallation{
 		Owner:          "evergreen-ci",
 		Repo:           "evergreen",
 		InstallationID: 0,
 	}
 
-	s.NoError(hook.Upsert(s.ctx))
+	s.NoError(installation.Upsert(s.ctx))
 
-	hook.Owner = ""
-	err := hook.Upsert(s.ctx)
+	installation.Owner = ""
+	err := installation.Upsert(s.ctx)
 	s.Error(err)
 	s.Equal("Owner and repository must not be empty strings", err.Error())
 
-	hook.Owner = "evergreen-ci"
-	hook.Repo = ""
-	err = hook.Upsert(s.ctx)
+	installation.Owner = "evergreen-ci"
+	installation.Repo = ""
+	err = installation.Upsert(s.ctx)
 	s.Error(err)
 	s.Equal("Owner and repository must not be empty strings", err.Error())
 
-	hookWithInstallationID := GitHubHook{
+	installationWithInstallationID := GitHubAppInstallation{
 		Owner:          "evergreen-ci",
 		Repo:           "evergreen",
 		InstallationID: 1234,
 	}
-	s.NoError(hookWithInstallationID.Upsert(s.ctx))
+	s.NoError(installationWithInstallationID.Upsert(s.ctx))
 }
 
-func (s *hookSuite) TestGetInstallationID() {
-	hook := GitHubHook{
+func (s *installationSuite) TestGetInstallationID() {
+	installation := GitHubAppInstallation{
 		Owner:          "evergreen-ci",
 		Repo:           "evergreen",
 		InstallationID: 1234,
 	}
 
-	s.NoError(hook.Upsert(s.ctx))
+	s.NoError(installation.Upsert(s.ctx))
 
 	id, err := getInstallationID(s.ctx, "evergreen-ci", "evergreen")
 	s.NoError(err)
-	s.Equal(hook.InstallationID, id)
+	s.Equal(installation.InstallationID, id)
 
 	_, err = getInstallationID(s.ctx, "evergreen-ci", "")
 	s.Error(err)
@@ -80,10 +79,10 @@ func (s *hookSuite) TestGetInstallationID() {
 	_, err = getInstallationID(s.ctx, "", "")
 	s.Error(err)
 
-	hook.InstallationID = 0
-	s.NoError(hook.Upsert(s.ctx))
+	installation.InstallationID = 0
+	s.NoError(installation.Upsert(s.ctx))
 
 	id, err = getInstallationID(s.ctx, "evergreen-ci", "evergreen")
 	s.NoError(err)
-	s.Equal(hook.InstallationID, id)
+	s.Equal(installation.InstallationID, id)
 }

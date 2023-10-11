@@ -458,11 +458,19 @@ func TestAttachToNewRepo(t *testing.T) {
 	defer cancel()
 
 	require.NoError(t, db.ClearCollections(ProjectRefCollection, RepoRefCollection, evergreen.ScopeCollection,
-		evergreen.RoleCollection, user.Collection, evergreen.ConfigCollection))
+		evergreen.RoleCollection, user.Collection, evergreen.ConfigCollection, evergreen.GitHubAppCollection))
 	require.NoError(t, db.CreateCollections(evergreen.ScopeCollection))
 
 	settings := evergreen.Settings{
 		GithubOrgs: []string{"newOwner", "evergreen-ci"},
+		AuthConfig: evergreen.AuthConfig{
+			Github: &evergreen.GithubAuthConfig{
+				AppId: 1234,
+			},
+		},
+		Expansions: map[string]string{
+			"github_app_key": "test",
+		},
 	}
 	assert.NoError(t, settings.Set(ctx))
 	pRef := ProjectRef{
@@ -495,12 +503,12 @@ func TestAttachToNewRepo(t *testing.T) {
 
 	pRef.Owner = "newOwner"
 	pRef.Repo = "newRepo"
-	hook := evergreen.GitHubHook{
+	installation := evergreen.GitHubAppInstallation{
 		Owner:          pRef.Owner,
 		Repo:           pRef.Repo,
 		InstallationID: 1234,
 	}
-	assert.NoError(t, hook.Upsert(ctx))
+	assert.NoError(t, installation.Upsert(ctx))
 	assert.NoError(t, pRef.AttachToNewRepo(u))
 
 	pRefFromDB, err := FindBranchProjectRef(pRef.Id)
@@ -595,12 +603,12 @@ func TestAttachToRepo(t *testing.T) {
 	}
 	assert.NoError(t, pRef.Insert())
 
-	hook := evergreen.GitHubHook{
+	installation := evergreen.GitHubAppInstallation{
 		Owner:          pRef.Owner,
 		Repo:           pRef.Repo,
 		InstallationID: 1234,
 	}
-	assert.NoError(t, hook.Upsert(ctx))
+	assert.NoError(t, installation.Upsert(ctx))
 
 	u := &user.DBUser{Id: "me"}
 	assert.NoError(t, u.Insert())
@@ -1164,7 +1172,7 @@ func TestFindProjectRefsByRepoAndBranch(t *testing.T) {
 
 func TestCreateNewRepoRef(t *testing.T) {
 	assert.NoError(t, db.ClearCollections(ProjectRefCollection, RepoRefCollection, user.Collection,
-		evergreen.ScopeCollection, ProjectVarsCollection, ProjectAliasCollection, evergreen.GitHubHooksCollection))
+		evergreen.ScopeCollection, ProjectVarsCollection, ProjectAliasCollection, evergreen.GitHubAppCollection))
 	require.NoError(t, db.CreateCollections(evergreen.ScopeCollection))
 
 	ctx, cancel := context.WithCancel(context.Background())
@@ -1208,12 +1216,12 @@ func TestCreateNewRepoRef(t *testing.T) {
 	}
 	assert.NoError(t, doc3.Insert())
 
-	hook := evergreen.GitHubHook{
+	installation := evergreen.GitHubAppInstallation{
 		Owner:          "mongodb",
 		Repo:           "mongo",
 		InstallationID: 1234,
 	}
-	assert.NoError(t, hook.Upsert(ctx))
+	assert.NoError(t, installation.Upsert(ctx))
 
 	projectVariables := []ProjectVars{
 		{
