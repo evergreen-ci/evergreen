@@ -496,6 +496,12 @@ func TestAttachToNewRepo(t *testing.T) {
 		SystemRoles: []string{GetViewRepoRole("myRepo")},
 	}
 	assert.NoError(t, u.Insert())
+	installation := evergreen.GitHubAppInstallation{
+		Owner:          pRef.Owner,
+		Repo:           pRef.Repo,
+		InstallationID: 1234,
+	}
+	assert.NoError(t, installation.Upsert(ctx))
 
 	// Can't attach to repo with an invalid owner
 	pRef.Owner = "invalid"
@@ -503,12 +509,12 @@ func TestAttachToNewRepo(t *testing.T) {
 
 	pRef.Owner = "newOwner"
 	pRef.Repo = "newRepo"
-	installation := evergreen.GitHubAppInstallation{
+	newInstallation := evergreen.GitHubAppInstallation{
 		Owner:          pRef.Owner,
 		Repo:           pRef.Repo,
 		InstallationID: 1234,
 	}
-	assert.NoError(t, installation.Upsert(ctx))
+	assert.NoError(t, newInstallation.Upsert(ctx))
 	assert.NoError(t, pRef.AttachToNewRepo(u))
 
 	pRefFromDB, err := FindBranchProjectRef(pRef.Id)
