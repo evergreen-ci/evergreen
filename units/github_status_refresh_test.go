@@ -351,7 +351,7 @@ func (s *githubStatusRefreshSuite) TestStatusSucceeded() {
 
 	childPatch := patch.Patch{
 		Id:         mgobson.NewObjectId(),
-		Status:     evergreen.LegacyPatchSucceeded,
+		Status:     evergreen.VersionSucceeded,
 		Project:    "myChildProject",
 		Activated:  true,
 		StartTime:  startTime,
@@ -363,7 +363,7 @@ func (s *githubStatusRefreshSuite) TestStatusSucceeded() {
 	}
 	s.NoError(childPatch.Insert())
 	s.patchDoc.Triggers.ChildPatches = []string{childPatch.Id.Hex()}
-	s.patchDoc.Status = evergreen.LegacyPatchSucceeded
+	s.patchDoc.Status = evergreen.VersionSucceeded
 
 	job, ok := NewGithubStatusRefreshJob(s.patchDoc).(*githubStatusRefreshJob)
 	s.Require().NotNil(job)
@@ -429,7 +429,7 @@ func (s *githubStatusRefreshSuite) TestStatusFailed() {
 	}
 	s.NoError(childPatch.Insert())
 	s.patchDoc.Triggers.ChildPatches = []string{childPatch.Id.Hex()}
-	s.patchDoc.Status = evergreen.LegacyPatchSucceeded
+	s.patchDoc.Status = evergreen.VersionSucceeded
 
 	s.patchDoc.Status = evergreen.VersionFailed
 
