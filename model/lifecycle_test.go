@@ -2490,8 +2490,7 @@ func TestCreateTasksFromGroup(t *testing.T) {
 	for _, bvtu := range bvts {
 		require.Len(t, bvtu.DependsOn, 1)
 		assert.Equal("new_dependency", bvtu.DependsOn[0].Name)
-		// TODO (EVG-19725): remove IsGroup
-		assert.True(bvtu.IsGroup)
+		assert.False(bvtu.IsGroup)
 		assert.True(bvtu.IsPartOfGroup)
 		assert.Equal(tgName, bvtu.GroupName)
 	}

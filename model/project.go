@@ -5,7 +5,6 @@ import (
 	"fmt"
 	"reflect"
 	"regexp"
-	"runtime/debug"
 	"sort"
 	"strconv"
 	"strings"
@@ -1466,15 +1465,6 @@ func (p *Project) findBuildVariantsWithTag(tags []string) []string {
 // build variant task unit, and returns the name and tags
 func (p *Project) GetTaskNameAndTags(bvt BuildVariantTaskUnit) (string, []string, bool) {
 	if bvt.IsGroup || bvt.IsPartOfGroup {
-		grip.InfoWhen(bvt.IsPartOfGroup, message.Fields{
-			"message":            "task unit IsGroup is referring to task within a task group",
-			"ticket":             "EVG-19725",
-			"project_identifier": p.Identifier,
-			"task_name":          bvt.Name,
-			"task_group_name":    bvt.GroupName,
-			"stack":              string(debug.Stack()),
-		})
-
 		ptg := bvt.TaskGroup
 		if ptg == nil {
 			ptg = p.FindTaskGroup(bvt.Name)
@@ -1578,11 +1568,6 @@ func (p *Project) FindAllBuildVariantTasks() []BuildVariantTaskUnit {
 	for _, b := range p.BuildVariants {
 		for _, t := range b.Tasks {
 			if t.IsGroup {
-				grip.InfoWhen(t.IsPartOfGroup, message.Fields{
-					"message": "task unit IsGroup is referring to task within a task group",
-					"ticket":  "EVG-19725",
-					"stack":   string(debug.Stack()),
-				})
 				allBVTs = append(allBVTs, p.tasksFromGroup(t)...)
 			} else {
 				t.Populate(tasksByName[t.Name], b)
@@ -1626,11 +1611,6 @@ func (p *Project) tasksFromGroup(bvTaskGroup BuildVariantTaskUnit) []BuildVarian
 	for _, t := range tg.Tasks {
 		bvt := BuildVariantTaskUnit{
 			Name: t,
-			// TODO (EVG-19725): do not set IsGroup anymore once it's confirmed
-			// safe for removal.
-			// IsGroup is not persisted, and indicates here that the
-			// task is a member of a task group.
-			IsGroup: true,
 			// IsPartOfGroup and GroupName are used to indicate that the task
 			// unit is a task within the task group, not the task group itself.
 			// These are not persisted.
@@ -2252,11 +2232,6 @@ func GetVariantsAndTasksFromPatchProject(ctx context.Context, settings *evergree
 		for _, taskFromVariant := range variant.Tasks {
 			if !taskFromVariant.IsDisabled() && !taskFromVariant.SkipOnRequester(p.GetRequester()) {
 				if taskFromVariant.IsGroup {
-					grip.InfoWhen(taskFromVariant.IsPartOfGroup, message.Fields{
-						"message": "task unit IsGroup is referring to task within a task group",
-						"ticket":  "EVG-19725",
-						"stack":   string(debug.Stack()),
-					})
 					tasksForVariant = append(tasksForVariant, CreateTasksFromGroup(taskFromVariant, project, evergreen.PatchVersionRequester)...)
 				} else {
 					tasksForVariant = append(tasksForVariant, taskFromVariant)
