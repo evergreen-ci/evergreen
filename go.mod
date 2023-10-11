@@ -226,5 +226,3 @@ require (
 	github.com/jessevdk/go-flags v1.5.0 // indirect
 	golang.org/x/term v0.12.0 // indirect
 )
-
-replace github.com/evergreen-ci/pail => ../pail
