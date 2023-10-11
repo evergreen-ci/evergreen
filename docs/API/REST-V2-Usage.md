@@ -1631,9 +1631,11 @@ Project is mongodb-mongo-master, task is lint. Assuming today is
     GET /projects/mongodb-mongo-master/task_reliability?tasks=lint&after_date=2019-03-15&group_num_days=7
     GET /projects/mongodb-mongo-master/task_reliability?tasks=lint&after_date=2019-03-15&group_num_days=28
 
-### Notifications
+### Notifications  (DEPRECATED)
 
-Create custom notifications for email or Slack issues.
+Create custom notifications for email or Slack issues. 
+
+We are investigating moving this out of Evergreen (EVG-21065) and won't be supporting future work for this. 
 
 #### Objects
 
