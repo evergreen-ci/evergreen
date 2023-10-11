@@ -318,7 +318,7 @@ func TriggerDownstreamProjectsForPush(ctx context.Context, projectId string, eve
 				Alias:                        trigger.Alias,
 				UnscheduleDownstreamVersions: trigger.UnscheduleDownstreamVersions,
 				PushRevision: model.Revision{
-					Revision:        utility.FromStringPtr(event.GetHeadCommit().SHA),
+					Revision:        utility.FromStringPtr(event.GetHeadCommit().ID),
 					CreateTime:      event.GetHeadCommit().Timestamp.Time,
 					Author:          utility.FromStringPtr(event.GetHeadCommit().Author.Name),
 					AuthorEmail:     utility.FromStringPtr(event.GetHeadCommit().Author.Email),
