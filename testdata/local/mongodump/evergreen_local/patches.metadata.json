@@ -1,0 +1,1 @@
+{"indexes":[{"v":{"$numberInt":"2"},"key":{"_id":{"$numberInt":"1"}},"name":"_id_"}],"uuid":"3b500c9e3b0f4a3c8f47f360a1d25e1a","collectionName":"patches","type":"collection"}

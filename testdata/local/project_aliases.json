@@ -1,1 +1,0 @@
-{ "_id" : {"$oid":"5c5dc7492fbabe0e5dbf14db"}, "alias" : "__commit_queue", "project_id" : "evergreen", "tags" : [ ], "task" : "^smoke-test-endpoints$", "variant" : "^ubuntu1604$", "variant_tags" : null, "git_tag" : "", "remote_path" : "" }

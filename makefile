@@ -165,8 +165,8 @@ load-local-data:$(buildDir)/.load-local-data
 $(buildDir)/.load-smoke-data:$(buildDir)/load-smoke-data
 	./$<
 	@touch $@
-$(buildDir)/.load-local-data:$(buildDir)/load-smoke-data
-	./$< -path testdata/local -dbName evergreen_local -amboyDBName amboy_local
+$(buildDir)/.load-local-data:$(buildDir)/mongotools testdata/local/mongodump
+	./$</mongorestore --drop testdata/local/mongodump
 	@touch $@
 local-evergreen:$(localClientBinary) load-local-data
 	./$< service deploy start-local-evergreen
@@ -174,7 +174,7 @@ local-evergreen:$(localClientBinary) load-local-data
 
 ######################################################################
 ##
-## Build, Test, and Dist targets and mechisms.
+## Build, Test, and Dist targets and mechanisms.
 ##
 ######################################################################
 
@@ -259,7 +259,7 @@ $(buildDir)/dist.tar.gz:$(buildDir)/make-tarball $(clientBinaries) $(uiFiles) $(
 	./$< --name $@ --prefix $(name) $(foreach item,$(distContents),--item $(item)) --exclude "public/node_modules" --exclude "clients/.cache"
 # end main build
 
-# userfacing targets for basic build and development operations
+# user-facing targets for basic build and development operations
 build:cli
 lint:$(foreach target,$(packages) $(lintOnlyPackages),$(buildDir)/output.$(target).lint)
 test:$(foreach target,$(packages) $(testOnlyPackages),test-$(target))
@@ -281,7 +281,7 @@ verify-mod-tidy:
 phony += mod-tidy verify-mod-tidy
 # end module management targets
 
-# convenience targets for runing tests and coverage tasks on a
+# convenience targets for running tests and coverage tasks on a
 # specific package.
 test-%:$(buildDir)/output.%.test
 	@grep -s -q -e "^PASS" $< && ! grep -s -q "^WARNING: DATA RACE" $<
@@ -297,8 +297,8 @@ lint-%:$(buildDir)/output.%.lint
 
 
 # start test and coverage artifacts
-#    This varable includes everything that the tests actually need to
-#    run. (The "build" target is intentional and makes these targetsb
+#    This variable includes everything that the tests actually need to
+#    run. (The "build" target is intentional and makes these targets
 #    rerun as expected.)
 testRunDeps := $(name)
 testArgs := -v
@@ -378,7 +378,7 @@ phony += clean
 gqlgen:
 	go run github.com/99designs/gqlgen generate
 
-# sanitizes a json file by hashing string values. Note that this will not work well with
+# sanitizes a JSON file by hashing string values. Note that this will not work well with
 # string data that only has a subset of valid values
 ifneq (,$(multi))
 multiarg = --multi
@@ -387,6 +387,11 @@ scramble:
 	python cmd/scrambled-eggs/scramble.py $(file) $(multiarg)
 
 # mongodb utility targets
+$(buildDir)/mongotools:
+	rm -rf $(buildDir)/mongotools
+	mkdir -p $(buildDir)/mongotools
+	cd $(buildDir)/mongotools && curl $(curlRetryOpts) https://fastdl.mongodb.org/tools/db/mongodb-database-tools-$(subst darwin,macos,$(shell uname -s | tr A-Z a-z))-$(shell uname -m | tr A-Z a-z)-100.8.0.zip -o mongotools.zip
+	cd $(buildDir)/mongotools && unzip mongotools.zip && chmod +x ./mongodb-*/bin/* && mv ./mongodb-*/bin/* .
 mongodb/.get-mongodb:
 	rm -rf mongodb
 	mkdir -p mongodb
@@ -399,7 +404,7 @@ mongodb/.get-mongosh:
 	cd mongosh && mv ./mongosh-*/bin/* .
 get-mongodb:mongodb/.get-mongodb
 	@touch $<
-get-mongosh: mongodb/.get-mongosh
+get-mongosh:mongodb/.get-mongosh
 	@touch $<
 start-mongod:mongodb/.get-mongodb
 ifdef AUTH_ENABLED
