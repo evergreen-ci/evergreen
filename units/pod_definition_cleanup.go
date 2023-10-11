@@ -127,8 +127,9 @@ func (j *podDefinitionCleanupJob) cleanupStrandedPodDefinitions(ctx context.Cont
 		definition.PodDefinitionTag: {strconv.FormatBool(false)},
 	}, limit)
 	if err != nil {
-		j.AddError(errors.Wrap(err, "getting un"))
-		return 0, errors.Wrap(err, "getting stranded pod definitions")
+		err = errors.Wrap(err, "getting stranded pod definitions")
+		j.AddError(err)
+		return 0, err
 	}
 
 	catcher := grip.NewBasicCatcher()

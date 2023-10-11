@@ -314,6 +314,7 @@ func (s *commitQueueSuite) TestAddMergeTaskAndVariant() {
 	s.Require().Len(pp.BuildVariants[0].Tasks, 1)
 	s.True(project.BuildVariants[0].Tasks[0].CommitQueueMerge)
 	s.Equal(evergreen.MergeTaskGroup, project.BuildVariants[0].Tasks[0].Name)
+	s.True(project.BuildVariants[0].Tasks[0].IsGroup)
 	s.Equal(evergreen.MergeTaskVariant, project.BuildVariants[0].Tasks[0].Variant)
 	s.Require().Len(pp.Tasks, 1)
 	s.Equal(evergreen.MergeTaskName, project.Tasks[0].Name)
