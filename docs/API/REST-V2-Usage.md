@@ -1633,8 +1633,7 @@ Project is mongodb-mongo-master, task is lint. Assuming today is
 
 ### Notifications
 
-Create custom notifications for email or Slack.
-issues.
+Create custom notifications for email or Slack issues.
 
 #### Objects
 
