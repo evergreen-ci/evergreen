@@ -1275,9 +1275,12 @@ func evaluateBuildVariants(tse *taskSelectorEvaluator, tgse *tagSelectorEvaluato
 	return bvs, evalErrs
 }
 
-// evaluateBVTasks translates intermediate tasks into true BuildVariantTaskUnit types,
-// evaluating any selectors referencing tasks, and further evaluating any selectors
-// in the DependsOn field of those tasks.
+// evaluateBVTasks translates intermediate tasks listed under build variants
+// into true BuildVariantTaskUnit types, evaluating any selectors referencing
+// tasks, and further evaluating any selectors in the DependsOn field of those
+// tasks.
+// For task units that represent task groups, the resulting BuildVariantTaskUnit
+// represents the task group itself, not the individual tasks in the task group.
 func evaluateBVTasks(tse *taskSelectorEvaluator, tgse *tagSelectorEvaluator, vse *variantSelectorEvaluator,
 	pbv parserBV, tasks []parserTask) ([]BuildVariantTaskUnit, []error) {
 	var evalErrs, errs []error

@@ -93,18 +93,23 @@ type BuildVariantTaskUnit struct {
 	// the project level, or an error will be thrown
 	Name string `yaml:"name,omitempty" bson:"name"`
 	// IsGroup indicates that it is a task group. This is always populated for
-	// task groups after translating the parser project to the project.
+	// task groups after project translation.
 	IsGroup bool `yaml:"-" bson:"-"`
 	// IsPartOfGroup indicates that this unit is a task within a task group. If
-	// this is set, then GroupName is also set. Note that project translation
-	// does not expand task groups into their individual tasks, so this is only
-	// set for special functions that explicitly expand task groups into
-	// individual task units (such as FindAllBuildVariantTasks).
+	// this is set, then GroupName is also set.
+	// Note that project translation does not expand task groups into their
+	// individual tasks, so this is only set for special functions that
+	// explicitly expand task groups into individual task units (such as
+	// FindAllBuildVariantTasks).
 	IsPartOfGroup bool `yaml:"-" bson:"-"`
 	// GroupName is the task group name if this is a task in a task group. This
 	// is only set if the task unit is a task within a task group (i.e.
 	// IsPartOfGroup is set). If the task unit is the task group itself, it is
 	// not populated (Name is the task group name).
+	// Note that project translation does not expand task groups into their
+	// individual tasks, so this is only set for special functions that
+	// explicitly expand task groups into individual task units (such as
+	// FindAllBuildVariantTasks).
 	GroupName string `yaml:"-" bson:"-"`
 	// Variant is the build variant that the task unit is part of. This is
 	// always populated after translating the parser project to the project.
