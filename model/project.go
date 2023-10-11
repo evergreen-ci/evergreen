@@ -1465,12 +1465,16 @@ func (p *Project) findBuildVariantsWithTag(tags []string) []string {
 // GetTaskNameAndTags checks the project for a task or task group matching the
 // build variant task unit, and returns the name and tags
 func (p *Project) GetTaskNameAndTags(bvt BuildVariantTaskUnit) (string, []string, bool) {
-	if bvt.IsGroup {
+	if bvt.IsGroup || bvt.IsPartOfGroup {
 		grip.InfoWhen(bvt.IsPartOfGroup, message.Fields{
-			"message": "task unit IsGroup is referring to task within a task group",
-			"ticket":  "EVG-19725",
-			"stack":   string(debug.Stack()),
+			"message":            "task unit IsGroup is referring to task within a task group",
+			"ticket":             "EVG-19725",
+			"project_identifier": p.Identifier,
+			"task_name":          bvt.Name,
+			"task_group_name":    bvt.GroupName,
+			"stack":              string(debug.Stack()),
 		})
+
 		ptg := bvt.TaskGroup
 		if ptg == nil {
 			ptg = p.FindTaskGroup(bvt.Name)
