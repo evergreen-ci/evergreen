@@ -14,6 +14,7 @@ import (
 	"github.com/mongodb/grip/message"
 	"github.com/pkg/errors"
 	"go.mongodb.org/mongo-driver/bson"
+	"go.mongodb.org/mongo-driver/mongo"
 	"go.mongodb.org/mongo-driver/mongo/options"
 )
 
@@ -81,7 +82,10 @@ func getInstallationID(ctx context.Context, owner, repo string) (int64, error) {
 	installation := &GitHubAppInstallation{}
 	res := GetEnvironment().DB().Collection(GitHubAppCollection).FindOne(ctx, byOwnerRepo(owner, repo))
 	if err := res.Err(); err != nil {
-		return 0, errors.Wrapf(err, "finding installation ID for '%s/%s", owner, repo)
+		if err == mongo.ErrNoDocuments {
+			return 0, nil
+		}
+		return 0, errors.Wrapf(err, "finding cached installation ID for '%s/%s", owner, repo)
 	}
 	if err := res.Decode(&installation); err != nil {
 		return 0, errors.Wrapf(err, "decoding installation ID for '%s/%s", owner, repo)

@@ -5,6 +5,7 @@
       "result": {
         "data": {
           "projectSettings": {
+            "githubWebhooksEnabled": false,
             "projectRef": {
               "id": "sandbox_project_id",
               "identifier": "sandbox",

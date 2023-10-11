@@ -1663,10 +1663,18 @@ func EnableWebhooks(ctx context.Context, projectRef *ProjectRef) (bool, error) {
 		return false, errors.Wrap(err, "finding evergreen settings")
 	}
 
+	// Don't return errors because it could cause the project page to break if GitHub is down.
 	hasApp, err := settings.HasGitHubApp(ctx, projectRef.Owner, projectRef.Repo, nil)
 	if err != nil {
+		grip.Error(message.WrapError(err, message.Fields{
+			"message":            "Error verifying GitHub app installation",
+			"project":            projectRef.Id,
+			"project_identifier": projectRef.Identifier,
+			"owner":              projectRef.Owner,
+			"repo":               projectRef.Repo,
+		}))
 		projectRef.TracksPushEvents = utility.FalsePtr()
-		return false, errors.Wrapf(err, "verifying GitHub app installation for project '%s' in '%s/%s'", projectRef.Id, projectRef.Owner, projectRef.Repo)
+		return false, nil
 	}
 	// don't return error:
 	// sometimes people change a project to track a personal
@@ -1795,10 +1803,9 @@ func GetProjectSettingsById(projectId string, isRepo bool) (*ProjectSettings, er
 
 // GetProjectSettings returns the ProjectSettings of the given identifier and ProjectRef
 func GetProjectSettings(p *ProjectRef) (*ProjectSettings, error) {
-	hasApp, err := evergreen.GetEnvironment().Settings().HasGitHubApp(context.Background(), p.Owner, p.Repo, nil)
-	if err != nil {
-		return nil, errors.Wrapf(err, "verifying GitHub app installation for project '%s' in '%s/%s'", p.Id, p.Owner, p.Repo)
-	}
+	// Don't error even if there is problem with verifying the GitHub app installation
+	// because a GitHub outage could cause project settings page to not load.
+	hasApp, _ := evergreen.GetEnvironment().Settings().HasGitHubApp(context.Background(), p.Owner, p.Repo, nil)
 
 	projectVars, err := FindOneProjectVars(p.Id)
 	if err != nil {
