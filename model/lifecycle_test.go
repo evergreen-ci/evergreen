@@ -236,20 +236,22 @@ func TestBuildRestart(t *testing.T) {
 			" non in-progress tasks and abort in-progress ones and mark them to be reset", func() {
 
 			taskOne := &task.Task{
-				Id:          "task1",
-				DisplayName: "task1",
-				BuildId:     b.Id,
-				Status:      evergreen.TaskSucceeded,
-				Activated:   true,
+				Id:            "task1",
+				DisplayName:   "task1",
+				BuildId:       b.Id,
+				DisplayTaskId: utility.ToStringPtr(""),
+				Status:        evergreen.TaskSucceeded,
+				Activated:     true,
 			}
 			So(taskOne.Insert(), ShouldBeNil)
 
 			taskTwo := &task.Task{
-				Id:          "task2",
-				DisplayName: "task2",
-				BuildId:     b.Id,
-				Status:      evergreen.TaskDispatched,
-				Activated:   true,
+				Id:            "task2",
+				DisplayName:   "task2",
+				BuildId:       b.Id,
+				DisplayTaskId: utility.ToStringPtr(""),
+				Status:        evergreen.TaskDispatched,
+				Activated:     true,
 			}
 			So(taskTwo.Insert(), ShouldBeNil)
 
@@ -271,20 +273,22 @@ func TestBuildRestart(t *testing.T) {
 		Convey("without task abort should update the status"+
 			" of only those build tasks not in-progress", func() {
 			taskThree := &task.Task{
-				Id:          "task3",
-				DisplayName: "task3",
-				BuildId:     b.Id,
-				Status:      evergreen.TaskSucceeded,
-				Activated:   true,
+				Id:            "task3",
+				DisplayName:   "task3",
+				BuildId:       b.Id,
+				DisplayTaskId: utility.ToStringPtr(""),
+				Status:        evergreen.TaskSucceeded,
+				Activated:     true,
 			}
 			So(taskThree.Insert(), ShouldBeNil)
 
 			taskFour := &task.Task{
-				Id:          "task4",
-				DisplayName: "task4",
-				BuildId:     b.Id,
-				Status:      evergreen.TaskDispatched,
-				Activated:   true,
+				Id:            "task4",
+				DisplayName:   "task4",
+				BuildId:       b.Id,
+				DisplayTaskId: utility.ToStringPtr(""),
+				Status:        evergreen.TaskDispatched,
+				Activated:     true,
 			}
 			So(taskFour.Insert(), ShouldBeNil)
 
@@ -308,6 +312,7 @@ func TestBuildRestart(t *testing.T) {
 				Id:                "task5",
 				DisplayName:       "task5",
 				BuildId:           b.Id,
+				DisplayTaskId:     utility.ToStringPtr(""),
 				Status:            evergreen.TaskSucceeded,
 				Activated:         true,
 				TaskGroup:         "tg",
@@ -319,6 +324,7 @@ func TestBuildRestart(t *testing.T) {
 				Id:                "task6",
 				DisplayName:       "task6",
 				BuildId:           b.Id,
+				DisplayTaskId:     utility.ToStringPtr(""),
 				Status:            evergreen.TaskDispatched,
 				Activated:         true,
 				TaskGroup:         "tg",
@@ -327,11 +333,12 @@ func TestBuildRestart(t *testing.T) {
 			So(taskSix.Insert(), ShouldBeNil)
 
 			taskSeven := &task.Task{
-				Id:          "task7",
-				DisplayName: "task7",
-				BuildId:     b.Id,
-				Status:      evergreen.TaskSucceeded,
-				Activated:   true,
+				Id:            "task7",
+				DisplayName:   "task7",
+				BuildId:       b.Id,
+				DisplayTaskId: utility.ToStringPtr(""),
+				Status:        evergreen.TaskSucceeded,
+				Activated:     true,
 			}
 			So(taskSeven.Insert(), ShouldBeNil)
 
@@ -357,6 +364,7 @@ func TestBuildRestart(t *testing.T) {
 				DisplayName:       "task8",
 				BuildId:           b.Id,
 				Version:           v.Id,
+				DisplayTaskId:     utility.ToStringPtr(""),
 				Status:            evergreen.TaskSucceeded,
 				Activated:         true,
 				TaskGroup:         "tg2",
@@ -369,6 +377,7 @@ func TestBuildRestart(t *testing.T) {
 				DisplayName:       "task9",
 				BuildId:           b.Id,
 				Version:           v.Id,
+				DisplayTaskId:     utility.ToStringPtr(""),
 				Status:            evergreen.TaskSucceeded,
 				Activated:         true,
 				TaskGroup:         "tg2",
@@ -2337,31 +2346,34 @@ func resetTaskData() error {
 		return err
 	}
 	task1 := &task.Task{
-		Id:          "task1",
-		DisplayName: "task1",
-		BuildId:     build1.Id,
-		Version:     v.Id,
-		Status:      evergreen.TaskSucceeded,
+		Id:            "task1",
+		DisplayName:   "task1",
+		BuildId:       build1.Id,
+		Version:       v.Id,
+		DisplayTaskId: utility.ToStringPtr(""),
+		Status:        evergreen.TaskSucceeded,
 	}
 	if err := task1.Insert(); err != nil {
 		return err
 	}
 	task2 := &task.Task{
-		Id:          "task2",
-		DisplayName: "task2",
-		BuildId:     build1.Id,
-		Version:     v.Id,
-		Status:      evergreen.TaskDispatched,
+		Id:            "task2",
+		DisplayName:   "task2",
+		BuildId:       build1.Id,
+		Version:       v.Id,
+		DisplayTaskId: utility.ToStringPtr(""),
+		Status:        evergreen.TaskDispatched,
 	}
 	if err := task2.Insert(); err != nil {
 		return err
 	}
 	task3 := &task.Task{
-		Id:          "task3",
-		DisplayName: "task3",
-		BuildId:     build2.Id,
-		Version:     v.Id,
-		Status:      evergreen.TaskSucceeded,
+		Id:            "task3",
+		DisplayName:   "task3",
+		BuildId:       build2.Id,
+		Version:       v.Id,
+		DisplayTaskId: utility.ToStringPtr(""),
+		Status:        evergreen.TaskSucceeded,
 		DependsOn: []task.Dependency{
 			{
 				TaskId:   task1.Id,
@@ -2373,22 +2385,24 @@ func resetTaskData() error {
 		return err
 	}
 	task4 := &task.Task{
-		Id:          "task4",
-		DisplayName: "task4",
-		BuildId:     build2.Id,
-		Version:     v.Id,
-		Status:      evergreen.TaskFailed,
+		Id:            "task4",
+		DisplayName:   "task4",
+		BuildId:       build2.Id,
+		Version:       v.Id,
+		DisplayTaskId: utility.ToStringPtr(""),
+		Status:        evergreen.TaskFailed,
 	}
 	if err := task4.Insert(); err != nil {
 		return err
 	}
 	task5 := &task.Task{
-		Id:           "task5",
-		DisplayName:  "task5",
-		BuildId:      build3.Id,
-		Version:      v.Id,
-		Status:       evergreen.TaskSucceeded,
-		DispatchTime: time.Now(),
+		Id:            "task5",
+		DisplayName:   "task5",
+		BuildId:       build3.Id,
+		Version:       v.Id,
+		DisplayTaskId: utility.ToStringPtr("displayTask"),
+		Status:        evergreen.TaskSucceeded,
+		DispatchTime:  time.Now(),
 		DependsOn: []task.Dependency{
 			{
 				TaskId:   task1.Id,
@@ -2400,12 +2414,13 @@ func resetTaskData() error {
 		return err
 	}
 	task6 := &task.Task{
-		Id:           "task6",
-		DisplayName:  "task6",
-		BuildId:      build3.Id,
-		Version:      v.Id,
-		Status:       evergreen.TaskFailed,
-		DispatchTime: time.Now(),
+		Id:            "task6",
+		DisplayName:   "task6",
+		BuildId:       build3.Id,
+		Version:       v.Id,
+		DisplayTaskId: utility.ToStringPtr("displayTask"),
+		Status:        evergreen.TaskFailed,
+		DispatchTime:  time.Now(),
 	}
 	if err := task6.Insert(); err != nil {
 		return err
@@ -2415,6 +2430,7 @@ func resetTaskData() error {
 		DisplayName:    "displayTask",
 		BuildId:        build3.Id,
 		Version:        v.Id,
+		DisplayTaskId:  utility.ToStringPtr(""),
 		DisplayOnly:    true,
 		ExecutionTasks: []string{task5.Id, task6.Id},
 		Status:         evergreen.TaskFailed,

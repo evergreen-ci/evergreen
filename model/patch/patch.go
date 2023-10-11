@@ -247,6 +247,9 @@ func (p *Patch) IsFinished() bool {
 
 // SetDescription sets a patch's description in the database
 func (p *Patch) SetDescription(desc string) error {
+	if p.Description == desc {
+		return nil
+	}
 	p.Description = desc
 	return UpdateOne(
 		bson.M{IdKey: p.Id},

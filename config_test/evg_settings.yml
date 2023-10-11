@@ -120,6 +120,7 @@ ui:
   logfile: "/tmp/ui_test.log"
   url: "http://localhost"
   httplistenaddr: ":9090"
+  file_streaming_content_types: ["text/plain", "application/json", "text/csv"]
 
 monitor:
   logfile: ""

@@ -70,7 +70,6 @@ func AttachHandler(app *gimlet.APIApp, opts HandlerOpts) {
 	app.AddRoute("/agent/cedar_config").Version(2).Get().Wrap(requirePodOrHost).RouteHandler(makeAgentCedarConfig(settings.Cedar))
 	app.AddRoute("/agent/data_pipes_config").Version(2).Get().Wrap(requirePodOrHost).RouteHandler(makeAgentDataPipesConfig(settings.DataPipes))
 	app.AddRoute("/agent/setup").Version(2).Get().Wrap(requirePodOrHost).RouteHandler(makeAgentSetup(settings))
-	app.AddRoute("/task/{task_id}/set_task_output_version").Version(2).Post().Wrap(requireTask).RouteHandler(makeSetTaskOutputVersion(env))
 	app.AddRoute("/task/{task_id}/update_push_status").Version(2).Post().Wrap(requireTask).RouteHandler(makeUpdatePushStatus())
 	app.AddRoute("/task/{task_id}/new_push").Version(2).Post().Wrap(requireTask).RouteHandler(makeNewPush())
 	app.AddRoute("/task/{task_id}/expansions_and_vars").Version(2).Get().Wrap(requireTask, requirePodOrHost).RouteHandler(makeGetExpansionsAndVars(settings))
@@ -87,6 +86,7 @@ func AttachHandler(app *gimlet.APIApp, opts HandlerOpts) {
 	app.AddRoute("/task/{task_id}/").Version(2).Get().Wrap(requireTask).RouteHandler(makeFetchTask())
 	app.AddRoute("/task/{task_id}/log").Version(2).Post().Wrap(requireTask, requirePodOrHost).RouteHandler(makeAppendTaskLog(settings))
 	app.AddRoute("/task/{task_id}/start").Version(2).Post().Wrap(requireTask, requirePodOrHost).RouteHandler(makeStartTask(env))
+	app.AddRoute("/task/{task_id}/installation_token/{owner}/{repo}").Version(2).Get().Wrap(requireTask).RouteHandler(makeCreateInstallationToken(env))
 
 	// Plugin routes
 	app.AddRoute("/task/{task_id}/git/patchfile/{patchfile_id}").Version(2).Get().Wrap(requireTask).RouteHandler(makeGitServePatchFile())

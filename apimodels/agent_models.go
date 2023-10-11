@@ -24,13 +24,6 @@ const (
 	DefaultRetries                  = 2
 )
 
-// TaskOutputVersionRequest holds information sent by the agent to the API
-// server for the task output version used to coordinate persistent storage of
-// output data collected during a task run.
-type TaskOutputVersionRequest struct {
-	Version int `json:"version"`
-}
-
 // TaskStartRequest holds information sent by the agent to the
 // API server at the beginning of each task run.
 type TaskStartRequest struct {
@@ -188,6 +181,10 @@ type RegistrySettings struct {
 	Name     string `mapstructure:"registry_name" json:"registry_name" yaml:"registry_name"`
 	Username string `mapstructure:"registry_username" json:"registry_username" yaml:"registry_username"`
 	Password string `mapstructure:"registry_password" json:"registry_password" yaml:"registry_password"`
+}
+
+type InstallationToken struct {
+	Token string `json:"token"`
 }
 
 func (ted *TaskEndDetail) IsEmpty() bool {

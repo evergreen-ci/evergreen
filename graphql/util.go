@@ -49,13 +49,15 @@ func getGroupedFiles(ctx context.Context, name string, taskID string, execution 
 		return nil, err
 	}
 
+	env := evergreen.GetEnvironment()
 	apiFileList := []*restModel.APIFile{}
 	for _, file := range strippedFiles {
 		apiFile := restModel.APIFile{}
 		apiFile.BuildFromService(file)
+		apiFile.GetLogURL(env, taskID, execution)
 		apiFileList = append(apiFileList, &apiFile)
 	}
-	return &GroupedFiles{TaskName: &name, Files: apiFileList}, nil
+	return &GroupedFiles{TaskName: &name, Files: apiFileList, TaskID: taskID, Execution: execution}, nil
 }
 
 func findAllTasksByIds(ctx context.Context, taskIDs ...string) ([]task.Task, error) {

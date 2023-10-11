@@ -41,8 +41,6 @@ type SharedCommunicator interface {
 	UpdateLastMessageTime()
 	LastMessageAt() time.Time
 
-	// SetTaskOutputVersion sets the task output version for the task.
-	SetTaskOutputVersion(context.Context, TaskData, int) error
 	// StartTask marks the task as started.
 	StartTask(context.Context, TaskData) error
 	// GetTask returns the active task.
@@ -122,6 +120,9 @@ type SharedCommunicator interface {
 	GetAdditionalPatches(ctx context.Context, patchId string, td TaskData) ([]string, error)
 
 	SetDownstreamParams(ctx context.Context, downstreamParams []patchmodel.Parameter, taskData TaskData) error
+
+	// CreateInstallationToken creates an installation token for the given owner and repo if there is a GitHub app installed.
+	CreateInstallationToken(ctx context.Context, td TaskData, owner, repo string) (string, error)
 }
 
 // TaskData contains the taskData.ID and taskData.Secret. It must be set for

@@ -791,6 +791,15 @@ given module
 -   `${<module_name>_owner}` is the Github repo owner for the evergreen
     module associated with this task
 
+In the [Github merge queue](Merge-Queue.md), a single additional expansion
+called `${github_head_branch}` is available. This is the name of the temporary
+branch that GitHub creates for this merge group item. It looks something like
+"gh-readonly-queue/main/pr-515-9cd8a2532bcddf58369aa82eb66ba88e2323c056". In the
+case of a single PR item in the queue, the integer following "/pr-" is the PR
+number. If multiple PRs are being tested together, that number belongs to one of
+the PRs. That is, since a merge queue build can belong to multiple PRs, you
+cannot depend on this number to enforce PR-specific behavior.
+
 ### Task and Variant Tags
 
 Most projects have some implicit grouping at every layer. Some tests are
@@ -1308,8 +1317,7 @@ group and each individual task. Tasks in a task group will not run the `pre`
 and `post` blocks in the YAML file; instead, the tasks will run the task group's
 setup and teardown blocks.
 
-Task groups have additional options available that can be configured
-directly inline inside the config's [build
+Task groups can be configured directly inline inside the config's [build
 variants](#build-variants).
 
 ``` yaml
@@ -1416,10 +1424,7 @@ The following constraints apply:
     phase, such as "attach.results" or "attach.artifacts".
 -   Tasks within a task group will be dispatched in order declared.
 -   Any task (including members of task groups), can depend on specific
-    tasks within a task group using the existing dependency system.
--   `patchable`, `patch_only`, `disable`, and `allow_for_git_tag` from the project
-    task will overwrite the task group parameters (Note: these settings currently do not work when defined on the task
-    group due to [EVG-19706](https://jira.mongodb.org/browse/EVG-19706)).
+    tasks within a task group using [task dependencies](#task-dependencies).
 
 Tasks in a group will be displayed as
 separate tasks. Users can use display tasks if they wish to group the
@@ -1428,7 +1433,7 @@ task group tasks.
 ### Task Dependencies
 
 A task can be made to depend on other tasks by adding the depended on
-tasks to the task's depends_on field. The following additional
+tasks to the task's `depends_on` field. The following additional
 parameters are available:
 
 -   `status` - string (default: "success"). One of ["success",

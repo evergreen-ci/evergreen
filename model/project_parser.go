@@ -7,6 +7,7 @@ import (
 	"os"
 	"reflect"
 	"strings"
+	"sync"
 	"time"
 
 	"github.com/evergreen-ci/evergreen"
@@ -113,33 +114,24 @@ type ParserProject struct {
 } // End of ParserProject mergeable fields (this comment is used by the linter).
 
 type parserTaskGroup struct {
-	Name                     string             `yaml:"name,omitempty" bson:"name,omitempty"`
-	Priority                 int64              `yaml:"priority,omitempty" bson:"priority,omitempty"`
-	Patchable                *bool              `yaml:"patchable,omitempty" bson:"patchable,omitempty"`
-	PatchOnly                *bool              `yaml:"patch_only,omitempty" bson:"patch_only,omitempty"`
-	AllowForGitTag           *bool              `yaml:"allow_for_git_tag,omitempty" bson:"allow_for_git_tag,omitempty"`
-	GitTagOnly               *bool              `yaml:"git_tag_only,omitempty" bson:"git_tag_only,omitempty"`
-	AllowedRequesters        []string           `yaml:"allowed_requesters,omitempty" bson:"allowed_requesters,omitempty"`
-	ExecTimeoutSecs          int                `yaml:"exec_timeout_secs,omitempty" bson:"exec_timeout_secs,omitempty"`
-	Stepback                 *bool              `yaml:"stepback,omitempty" bson:"stepback,omitempty"`
-	MaxHosts                 int                `yaml:"max_hosts,omitempty" bson:"max_hosts,omitempty"`
-	SetupGroup               *YAMLCommandSet    `yaml:"setup_group,omitempty" bson:"setup_group,omitempty"`
-	SetupGroupCanFailTask    bool               `yaml:"setup_group_can_fail_task,omitempty" bson:"setup_group_can_fail_task,omitempty"`
-	SetupGroupTimeoutSecs    int                `yaml:"setup_group_timeout_secs,omitempty" bson:"setup_group_timeout_secs,omitempty"`
-	TeardownGroup            *YAMLCommandSet    `yaml:"teardown_group,omitempty" bson:"teardown_group,omitempty"`
-	TeardownGroupTimeoutSecs int                `yaml:"teardown_group_timeout_secs,omitempty" bson:"teardown_group_timeout_secs,omitempty"`
-	SetupTask                *YAMLCommandSet    `yaml:"setup_task,omitempty" bson:"setup_task,omitempty"`
-	SetupTaskCanFailTask     bool               `yaml:"setup_task_can_fail_task,omitempty" bson:"setup_task_can_fail_task,omitempty"`
-	SetupTaskTimeoutSecs     int                `yaml:"setup_task_timeout_secs,omitempty" bson:"setup_task_timeout_secs,omitempty"`
-	TeardownTask             *YAMLCommandSet    `yaml:"teardown_task,omitempty" bson:"teardown_task,omitempty"`
-	TeardownTaskCanFailTask  bool               `yaml:"teardown_task_can_fail_task,omitempty" bson:"teardown_task_can_fail_task,omitempty"`
-	TeardownTaskTimeoutSecs  int                `yaml:"teardown_task_timeout_secs,omitempty" bson:"teardown_task_timeout_secs,omitempty"`
-	Timeout                  *YAMLCommandSet    `yaml:"timeout,omitempty" bson:"timeout,omitempty"`
-	CallbackTimeoutSecs      int                `yaml:"callback_timeout_secs,omitempty" bson:"callback_timeout_secs,omitempty"`
-	Tasks                    []string           `yaml:"tasks,omitempty" bson:"tasks,omitempty"`
-	DependsOn                parserDependencies `yaml:"depends_on,omitempty" bson:"depends_on,omitempty"`
-	Tags                     parserStringSlice  `yaml:"tags,omitempty" bson:"tags,omitempty"`
-	ShareProcs               bool               `yaml:"share_processes,omitempty" bson:"share_processes,omitempty"`
+	Name                     string            `yaml:"name,omitempty" bson:"name,omitempty"`
+	MaxHosts                 int               `yaml:"max_hosts,omitempty" bson:"max_hosts,omitempty"`
+	SetupGroup               *YAMLCommandSet   `yaml:"setup_group,omitempty" bson:"setup_group,omitempty"`
+	SetupGroupCanFailTask    bool              `yaml:"setup_group_can_fail_task,omitempty" bson:"setup_group_can_fail_task,omitempty"`
+	SetupGroupTimeoutSecs    int               `yaml:"setup_group_timeout_secs,omitempty" bson:"setup_group_timeout_secs,omitempty"`
+	TeardownGroup            *YAMLCommandSet   `yaml:"teardown_group,omitempty" bson:"teardown_group,omitempty"`
+	TeardownGroupTimeoutSecs int               `yaml:"teardown_group_timeout_secs,omitempty" bson:"teardown_group_timeout_secs,omitempty"`
+	SetupTask                *YAMLCommandSet   `yaml:"setup_task,omitempty" bson:"setup_task,omitempty"`
+	SetupTaskCanFailTask     bool              `yaml:"setup_task_can_fail_task,omitempty" bson:"setup_task_can_fail_task,omitempty"`
+	SetupTaskTimeoutSecs     int               `yaml:"setup_task_timeout_secs,omitempty" bson:"setup_task_timeout_secs,omitempty"`
+	TeardownTask             *YAMLCommandSet   `yaml:"teardown_task,omitempty" bson:"teardown_task,omitempty"`
+	TeardownTaskCanFailTask  bool              `yaml:"teardown_task_can_fail_task,omitempty" bson:"teardown_task_can_fail_task,omitempty"`
+	TeardownTaskTimeoutSecs  int               `yaml:"teardown_task_timeout_secs,omitempty" bson:"teardown_task_timeout_secs,omitempty"`
+	Timeout                  *YAMLCommandSet   `yaml:"timeout,omitempty" bson:"timeout,omitempty"`
+	CallbackTimeoutSecs      int               `yaml:"callback_timeout_secs,omitempty" bson:"callback_timeout_secs,omitempty"`
+	Tasks                    []string          `yaml:"tasks,omitempty" bson:"tasks,omitempty"`
+	Tags                     parserStringSlice `yaml:"tags,omitempty" bson:"tags,omitempty"`
+	ShareProcs               bool              `yaml:"share_processes,omitempty" bson:"share_processes,omitempty"`
 }
 
 func (ptg *parserTaskGroup) name() string   { return ptg.Name }
@@ -630,6 +622,52 @@ func GetProjectFromBSON(data []byte) (*Project, error) {
 	return TranslateProject(pp)
 }
 
+func processIntermediateProjectIncludes(ctx context.Context, identifier string, intermediateProject *ParserProject,
+	include Include, outputYAMLs chan<- yamlTuple, projectOpts *GetProjectOpts) {
+	// Make a copy of opts because otherwise parts of opts would be
+	// modified concurrently.  Note, however, that Ref and PatchOpts are
+	// themselves pointers, so should not be modified.
+	localOpts := &GetProjectOpts{
+		Ref:             projectOpts.Ref,
+		PatchOpts:       projectOpts.PatchOpts,
+		LocalModules:    projectOpts.LocalModules,
+		RemotePath:      include.FileName,
+		Revision:        projectOpts.Revision,
+		Token:           projectOpts.Token,
+		ReadFileFrom:    projectOpts.ReadFileFrom,
+		Identifier:      identifier,
+		UnmarshalStrict: projectOpts.UnmarshalStrict,
+	}
+	localOpts.UpdateReadFileFrom(include.FileName)
+
+	var yaml []byte
+	var err error
+	grip.Debug(message.Fields{
+		"message":     "retrieving included YAML file",
+		"remote_path": localOpts.RemotePath,
+		"read_from":   localOpts.ReadFileFrom,
+		"module":      include.Module,
+	})
+	if include.Module != "" {
+		yaml, err = retrieveFileForModule(ctx, *localOpts, intermediateProject.Modules, include.Module)
+		err = errors.Wrapf(err, "%s: retrieving file for module '%s'", LoadProjectError, include.Module)
+	} else {
+		yaml, err = retrieveFile(ctx, *localOpts)
+		err = errors.Wrapf(err, "%s: retrieving file for include '%s'", LoadProjectError, include.FileName)
+	}
+	outputYAMLs <- yamlTuple{
+		yaml: yaml,
+		name: include.FileName,
+		err:  err,
+	}
+}
+
+type yamlTuple struct {
+	yaml []byte
+	name string
+	err  error
+}
+
 // LoadProjectInto loads the raw data from the config file into project
 // and sets the project's identifier field to identifier. Tags are evaluated. Returns the intermediate step.
 // If reading from a version config, LoadProjectInfoForVersion should be used to persist the resulting parser project.
@@ -644,40 +682,69 @@ func LoadProjectInto(ctx context.Context, data []byte, opts *GetProjectOpts, ide
 		return nil, errors.Wrapf(err, LoadProjectError)
 	}
 
-	// return intermediateProject even if we run into issues to show merge progress
-	for _, path := range intermediateProject.Include {
+	if len(intermediateProject.Include) > 0 {
 		if opts == nil {
 			err = errors.New("trying to open include files with empty options")
 			return nil, errors.Wrapf(err, LoadProjectError)
 		}
-		opts.UpdateForFile(path.FileName)
+		wg := sync.WaitGroup{}
+		outputYAMLs := make(chan yamlTuple, len(intermediateProject.Include))
+		includesToProcess := make(chan Include, len(intermediateProject.Include))
 
-		var yaml []byte
-		opts.Identifier = identifier
-		opts.RemotePath = path.FileName
-		grip.Debug(message.Fields{
-			"message":     "retrieving included YAML file",
-			"remote_path": opts.RemotePath,
-			"read_from":   opts.ReadFileFrom,
-			"module":      path.Module,
-		})
-		if path.Module != "" {
-			yaml, err = retrieveFileForModule(ctx, *opts, intermediateProject.Modules, path.Module)
-		} else {
-			yaml, err = retrieveFile(ctx, *opts)
+		for _, path := range intermediateProject.Include {
+			includesToProcess <- path
 		}
-		if err != nil {
-			return intermediateProject, errors.Wrapf(err, "%s: retrieving file '%s'", LoadProjectError, path.FileName)
+		close(includesToProcess)
+
+		// Be polite. Don't make more than 10 concurrent requests to GitHub.
+		const maxWorkers = 10
+		workers := util.Min(maxWorkers, len(intermediateProject.Include))
+		for i := 0; i < workers; i++ {
+			wg.Add(1)
+			go func() {
+				defer wg.Done()
+				for include := range includesToProcess {
+					processIntermediateProjectIncludes(ctx, identifier, intermediateProject, include, outputYAMLs, opts)
+				}
+			}()
 		}
-		add, err := createIntermediateProject(yaml, opts.UnmarshalStrict)
-		if err != nil {
-			return intermediateProject, errors.Wrapf(err, "%s: loading file '%s'", LoadProjectError, path.FileName)
+
+		// This order is deliberate:
+		// 1. Wait for the workers, since sending on a `nil` `outputYAMLs` would panic.
+		// 2. Close `outputYAMLs` so that the later `range` statement over it will stop after it's drained.
+		wg.Wait()
+		close(outputYAMLs)
+
+		yamlMap := map[string][]byte{}
+		catcher := grip.NewBasicCatcher()
+		for elem := range outputYAMLs {
+			catcher.Add(elem.err)
+			if elem.yaml != nil {
+				yamlMap[elem.name] = elem.yaml
+			}
 		}
-		err = intermediateProject.mergeMultipleParserProjects(add)
-		if err != nil {
-			return intermediateProject, errors.Wrapf(err, "%s: merging file '%s'", LoadProjectError, path.FileName)
+
+		if catcher.HasErrors() {
+			return intermediateProject, errors.Wrap(catcher.Resolve(), "getting includes")
+		}
+
+		// We promise to iterate over includes in the order they are defined.
+		for _, path := range intermediateProject.Include {
+			if _, ok := yamlMap[path.FileName]; !ok {
+				return intermediateProject, errors.WithStack(errors.Errorf("yaml was nil in map for %s, but it never should be", path.FileName))
+			}
+			add, err := createIntermediateProject(yamlMap[path.FileName], opts.UnmarshalStrict)
+			if err != nil {
+				// Return intermediateProject even if we run into issues to show merge progress.
+				return intermediateProject, errors.Wrapf(err, "%s: loading file '%s'", LoadProjectError, path.FileName)
+			}
+			if err = intermediateProject.mergeMultipleParserProjects(add); err != nil {
+				// Return intermediateProject even if we run into issues to show merge progress.
+				return intermediateProject, errors.Wrapf(err, "%s: merging file '%s'", LoadProjectError, path.FileName)
+			}
 		}
 	}
+
 	intermediateProject.Include = nil
 
 	// return project even with errors
@@ -715,7 +782,7 @@ type PatchOpts struct {
 
 // UpdateNewFile modifies ReadFileFrom to read from the patch diff
 // if the included file has been modified.
-func (opts *GetProjectOpts) UpdateForFile(path string) {
+func (opts *GetProjectOpts) UpdateReadFileFrom(path string) {
 	if opts.ReadFileFrom == ReadFromPatch || opts.ReadFileFrom == ReadFromPatchDiff {
 		if opts.PatchOpts.patch != nil && opts.PatchOpts.patch.ShouldPatchFileWithDiff(path) {
 			opts.ReadFileFrom = ReadFromPatchDiff

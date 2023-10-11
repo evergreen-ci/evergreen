@@ -84,7 +84,7 @@ func (r *LogIteratorReader) Read(p []byte) (int, error) {
 		if r.opts.PrintPriority {
 			data = fmt.Sprintf("[P:%3d] %s", r.it.Item().Priority, data)
 		}
-		n = r.writeToBuffer([]byte(data), p, n)
+		n = r.writeToBuffer([]byte(data+"\n"), p, n)
 		if n == len(p) {
 			return n, nil
 		}

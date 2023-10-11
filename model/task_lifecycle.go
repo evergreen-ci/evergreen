@@ -225,9 +225,7 @@ func DisableStaleContainerTasks(caller string) error {
 // activatePreviousTask will set the Active state for the first task with a
 // revision order number less than the current task's revision order number.
 // originalStepbackTask is only specified if we're first activating the generator for a generated task.
-// StepbackDepth should be reconsidered in EVG-17949 and is currently only used for logging.
-// Depth passed in is the depth we should assign to the previous task.
-func activatePreviousTask(ctx context.Context, taskId, caller string, originalStepbackTask *task.Task, stepbackDepth int) error {
+func activatePreviousTask(ctx context.Context, taskId, caller string, originalStepbackTask *task.Task, s task.StepbackInfo) error {
 	// find the task first
 	t, err := task.FindOneId(taskId)
 	if err != nil {
@@ -247,21 +245,13 @@ func activatePreviousTask(ctx context.Context, taskId, caller string, originalSt
 
 	// for generated tasks, try to activate the generator instead if the previous task we found isn't the actual last task
 	if t.GeneratedBy != "" && prevTask != nil && prevTask.RevisionOrderNumber+1 != t.RevisionOrderNumber {
-		return activatePreviousTask(ctx, t.GeneratedBy, caller, t, stepbackDepth)
+		return activatePreviousTask(ctx, t.GeneratedBy, caller, t, s)
 	}
 
 	// if this is the first time we're running the task, or it's finished, has a negative priority, or already activated
 	if prevTask == nil || prevTask.IsFinished() || prevTask.Priority < 0 || prevTask.Activated {
 		return nil
 	}
-
-	grip.Debug(message.Fields{
-		"ticket":         "EVG-17949",
-		"message":        "stepping back task",
-		"stepback_depth": stepbackDepth,
-		"project_id":     t.Project,
-		"task_id":        t.Id,
-	})
 
 	// activate the task
 	if err = SetActiveState(ctx, caller, true, *prevTask); err != nil {
@@ -273,9 +263,9 @@ func activatePreviousTask(ctx context.Context, taskId, caller string, originalSt
 			return errors.Wrap(err, "setting generated tasks to activate")
 		}
 	}
-	if stepbackDepth > 0 {
-		if err = prevTask.SetStepbackDepth(stepbackDepth); err != nil {
-			return errors.Wrap(err, "setting stepback depth")
+	if s.LastFailingStepbackTaskId != "" || s.LastPassingStepbackTaskId != "" || s.NextStepbackTaskId != "" {
+		if err = prevTask.SetStepbackInfo(s); err != nil {
+			return errors.Wrap(err, "setting stepback info")
 		}
 	}
 	return nil
@@ -480,54 +470,68 @@ func DeactivatePreviousTasks(ctx context.Context, t *task.Task, caller string) e
 	return nil
 }
 
-// Returns true if the task should stepback upon failure, and false
-// otherwise. Note that the setting is obtained from the top-level
-// project, if not explicitly set on the task or disabled at the project level.
-func getStepback(taskId string) (bool, error) {
+type stepbackInstructions struct {
+	shouldStepback bool
+	// If true, bisect should be used, if false, linear should be used.
+	bisect bool
+}
+
+// getStepback returns what type of stepback and if a task should stepback.
+// If it should stepback is retrieved from the top-level project if not explicitly
+// set on the task or disabled at the project level. And the stepback type is
+// either linear or bisect, which is retrieved from the project ref.
+func getStepback(taskId string) (stepbackInstructions, error) {
 	t, err := task.FindOneId(taskId)
 	if err != nil {
-		return false, errors.Wrapf(err, "finding task '%s'", taskId)
+		return stepbackInstructions{}, errors.Wrapf(err, "finding task '%s'", taskId)
 	}
 	if t == nil {
-		return false, errors.Errorf("task '%s' not found", taskId)
+		return stepbackInstructions{}, errors.Errorf("task '%s' not found", taskId)
 	}
 	projectRef, err := FindMergedProjectRef(t.Project, "", false)
 	if err != nil {
-		return false, errors.Wrapf(err, "finding merged project ref for task '%s'", taskId)
+		return stepbackInstructions{}, errors.Wrapf(err, "finding merged project ref for task '%s'", taskId)
 	}
 	if projectRef == nil {
-		return false, errors.Errorf("project for task '%s' not found", taskId)
+		return stepbackInstructions{}, errors.Errorf("project ref for task '%s' not found", taskId)
 	}
 	// Disabling the feature at the project level takes precedent.
 	if projectRef.IsStepbackDisabled() {
-		return false, nil
+		return stepbackInstructions{}, nil
 	}
 
 	project, err := FindProjectFromVersionID(t.Version)
 	if err != nil {
-		return false, errors.WithStack(err)
+		return stepbackInstructions{}, errors.WithStack(err)
 	}
 
 	projectTask := project.FindProjectTask(t.DisplayName)
 	// Check if the task overrides the stepback policy specified by the project
+	s := stepbackInstructions{
+		bisect: utility.FromBoolPtr(projectRef.StepbackBisect),
+	}
 	if projectTask != nil && projectTask.Stepback != nil {
-		return *projectTask.Stepback, nil
+		s.shouldStepback = utility.FromBoolPtr(projectTask.Stepback)
+		return s, nil
 	}
 
 	// Check if the build variant overrides the stepback policy specified by the project
 	for _, buildVariant := range project.BuildVariants {
 		if t.BuildVariant == buildVariant.Name {
 			if buildVariant.Stepback != nil {
-				return *buildVariant.Stepback, nil
+				s.shouldStepback = utility.FromBoolPtr(buildVariant.Stepback)
+				return s, nil
 			}
 			break
 		}
 	}
-	return project.Stepback, nil
+	s.shouldStepback = project.Stepback
+	return s, nil
 }
 
-// doStepBack performs a stepback on the task if there is a previous task and if not it returns nothing.
-func doStepback(ctx context.Context, t *task.Task) error {
+// doLinearStepback performs a stepback on the task linearly (the previous
+// tasks one by one). If there is a previous task and if not it returns nothing.
+func doLinearStepback(ctx context.Context, t *task.Task) error {
 	if t.DisplayOnly {
 		execTasks, err := task.Find(task.ByIds(t.ExecutionTasks))
 		if err != nil {
@@ -535,7 +539,7 @@ func doStepback(ctx context.Context, t *task.Task) error {
 		}
 		catcher := grip.NewSimpleCatcher()
 		for _, et := range execTasks {
-			catcher.Add(doStepback(ctx, &et))
+			catcher.Add(doLinearStepback(ctx, &et))
 		}
 		if catcher.HasErrors() {
 			return catcher.Resolve()
@@ -553,8 +557,29 @@ func doStepback(ctx context.Context, t *task.Task) error {
 		return nil
 	}
 
+	s := task.StepbackInfo{}
+
 	// activate the previous task to pinpoint regression
-	return errors.WithStack(activatePreviousTask(ctx, t.Id, evergreen.StepbackTaskActivator, nil, t.StepbackDepth+1))
+	return errors.WithStack(activatePreviousTask(ctx, t.Id, evergreen.StepbackTaskActivator, nil, s))
+}
+
+// doBisectStepback performs a bisect stepback on the task. If there are no tasks
+// to bisect, it returns nothing.
+func doBisectStepback(ctx context.Context, t *task.Task) error {
+	if t.DisplayOnly {
+		execTasks, err := task.Find(task.ByIds(t.ExecutionTasks))
+		if err != nil {
+			return errors.Wrapf(err, "finding tasks for stepback of '%s'", t.Id)
+		}
+		catcher := grip.NewSimpleCatcher()
+		for _, et := range execTasks {
+			catcher.Add(doBisectStepback(ctx, &et))
+		}
+		if catcher.HasErrors() {
+			return catcher.Resolve()
+		}
+	}
+	return errors.New("bisect stepback not implemented yet, EVG-20788")
 }
 
 // MarkEnd updates the task as being finished, performs a stepback if necessary, and updates the build status
@@ -864,8 +889,8 @@ func RestartItemsAfterVersion(ctx context.Context, cq *commitqueue.CommitQueue, 
 				"project":            project,
 				"caller":             caller,
 			})
-			// this block executes on all items after the given task
-			catcher.Add(RestartTasksInVersion(ctx, item.Version, true, caller))
+			// This block executes on all items after the given task.
+			catcher.Add(RestartVersion(ctx, item.Version, nil, true, caller))
 		}
 	}
 
@@ -1127,16 +1152,24 @@ func removeNextMergeTaskDependency(cq commitqueue.CommitQueue, currentIssue stri
 	return nil
 }
 
+// evalStepback runs linear or bisect stepback depending on project, build variant, and task settings.
 func evalStepback(ctx context.Context, t *task.Task, caller, status string, deactivatePrevious bool) error {
-	// Stepback if the task failed regularly _or_ if we are currently stepping back and we encountered any failure.
+	s, err := getStepback(t.Id)
+	if err != nil {
+		return errors.WithStack(err)
+	}
+	if s.bisect {
+		return evalBisectStepback(ctx, t, caller, status, deactivatePrevious)
+	}
+	return evalLinearStepback(ctx, t, caller, status, s.shouldStepback, deactivatePrevious)
+}
+
+// evalLinearStepback performs linear stepback on the task or cleans up after previous iterations of lienar
+// stepback.
+func evalLinearStepback(ctx context.Context, t *task.Task, caller, status string, stepback, deactivatePrevious bool) error {
 	if (status == evergreen.TaskFailed && !t.Aborted) ||
 		(evergreen.IsFailedTaskStatus(status) && t.ActivatedBy == evergreen.StepbackTaskActivator) {
-		var shouldStepBack bool
-		shouldStepBack, err := getStepback(t.Id)
-		if err != nil {
-			return errors.WithStack(err)
-		}
-		if !shouldStepBack {
+		if !stepback {
 			return nil
 		}
 
@@ -1151,7 +1184,7 @@ func evalStepback(ctx context.Context, t *task.Task, caller, status string, deac
 				return errors.Errorf("no tasks in task group '%s' for task '%s'", t.TaskGroup, t.Id)
 			}
 			for _, tgTask := range tasks {
-				catcher.Wrapf(doStepback(ctx, &tgTask), "stepping back task group task '%s'", tgTask.DisplayName)
+				catcher.Wrapf(doLinearStepback(ctx, &tgTask), "stepping back task group task '%s'", tgTask.DisplayName)
 				if tgTask.Id == t.Id {
 					break // don't need to stepback later tasks in the group
 				}
@@ -1159,17 +1192,19 @@ func evalStepback(ctx context.Context, t *task.Task, caller, status string, deac
 
 			return catcher.Resolve()
 		}
-		return errors.Wrap(doStepback(ctx, t), "performing stepback")
-
+		return errors.Wrap(doLinearStepback(ctx, t), "performing linear stepback")
 	} else if status == evergreen.TaskSucceeded && deactivatePrevious && t.Requester == evergreen.RepotrackerVersionRequester {
-		// if the task was successful and is a mainline commit (not git tag or project trigger),
-		// ignore running previous activated tasks for this buildvariant
-		if err := DeactivatePreviousTasks(ctx, t, caller); err != nil {
-			return errors.Wrap(err, "deactivating previous task")
-		}
+		// When stepback finishes (the task is successful), and stepback was done on mainline commits,
+		// ignore running previous activated tasks for this build variant.
+		return errors.Wrap(DeactivatePreviousTasks(ctx, t, caller), "deactivating previous tasks")
 	}
-
 	return nil
+}
+
+// evalBisectStepback performs bisect stepback on the task.
+func evalBisectStepback(ctx context.Context, t *task.Task, caller, status string, deactivatePrevious bool) error {
+	// TODO: EVG-20788 implement stepback bisection.
+	return errors.Wrap(doBisectStepback(ctx, t), "performing bisect stepback")
 }
 
 // updateMakespans updates the predicted and actual makespans for the tasks in
@@ -1327,7 +1362,7 @@ func checkUpdateBuildPRStatusPending(ctx context.Context, b *build.Build) error 
 // updateBuildStatus updates the status of the build based on its tasks' statuses
 // Returns true if the build's status has changed or if all the build's tasks become blocked / unscheduled.
 func updateBuildStatus(b *build.Build) (bool, error) {
-	buildTasks, err := task.FindWithFields(task.ByBuildId(b.Id), task.StatusKey, task.ActivatedKey, task.DependsOnKey, task.IsGithubCheckKey, task.AbortedKey, task.IsEssentialToSucceedKey)
+	buildTasks, err := task.Find(task.ByBuildId(b.Id))
 	if err != nil {
 		return false, errors.Wrapf(err, "getting tasks in build '%s'", b.Id)
 	}
@@ -1480,8 +1515,7 @@ func updateVersionGithubStatus(v *Version, builds []build.Build) error {
 // unfinished essential tasks. It assumes that the build statuses have already
 // been updated prior to this.
 func updateVersionStatus(v *Version) (string, error) {
-	builds, err := build.Find(build.ByVersion(v.Id).WithFields(build.ActivatedKey, build.StatusKey,
-		build.IsGithubCheckKey, build.GithubCheckStatusKey, build.AbortedKey, build.AllTasksBlockedKey, build.HasUnfinishedEssentialTaskKey))
+	builds, err := build.Find(build.ByVersion(v.Id))
 	if err != nil {
 		return "", errors.Wrapf(err, "getting builds for version '%s'", v.Id)
 	}

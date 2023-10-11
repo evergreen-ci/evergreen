@@ -62,14 +62,13 @@ type Mock struct {
 
 	CedarGRPCConn *grpc.ClientConn
 
-	AttachedFiles     map[string][]*artifact.File
-	LogID             string
-	LocalTestResults  []testresult.TestResult
-	TaskOutputVersion int
-	ResultsService    string
-	ResultsFailed     bool
-	TestLogs          []*serviceModel.TestLog
-	TestLogCount      int
+	AttachedFiles    map[string][]*artifact.File
+	LogID            string
+	LocalTestResults []testresult.TestResult
+	ResultsService   string
+	ResultsFailed    bool
+	TestLogs         []*serviceModel.TestLog
+	TestLogCount     int
 
 	logMessages map[string][]apimodels.LogMessage
 	PatchFiles  map[string]string
@@ -127,12 +126,6 @@ func (c *Mock) StartTask(ctx context.Context, td TaskData) error {
 	if c.StartTaskShouldFail {
 		return errors.New("start task mock failure")
 	}
-	return nil
-}
-
-func (c *Mock) SetTaskOutputVersion(ctx context.Context, _ TaskData, version int) error {
-	c.TaskOutputVersion = version
-
 	return nil
 }
 
@@ -532,4 +525,8 @@ func (c *Mock) GetPullRequestInfo(ctx context.Context, taskData TaskData, prNum 
 	return &apimodels.PullRequestInfo{
 		Mergeable: utility.TruePtr(),
 	}, nil
+}
+
+func (c *Mock) CreateInstallationToken(ctx context.Context, td TaskData, owner, repo string) (string, error) {
+	return "token", nil
 }

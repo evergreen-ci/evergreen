@@ -38,7 +38,7 @@ var (
 	ClientVersion = "2023-09-06"
 
 	// Agent version to control agent rollover.
-	AgentVersion = "2023-09-18"
+	AgentVersion = "2023-10-04"
 )
 
 // ConfigSection defines a sub-document in the evergreen config
@@ -110,6 +110,7 @@ type Settings struct {
 	Spawnhost           SpawnHostConfig         `yaml:"spawnhost" bson:"spawnhost" json:"spawnhost" id:"spawnhost"`
 	ShutdownWaitSeconds int                     `yaml:"shutdown_wait_seconds" bson:"shutdown_wait_seconds" json:"shutdown_wait_seconds"`
 	Tracer              TracerConfig            `yaml:"tracer" bson:"tracer" json:"tracer" id:"tracer"`
+	GitHubCheckRun      GitHubCheckRunConfig    `yaml:"github_check_run" bson:"github_check_run" json:"github_check_run" id:"github_check_run"`
 }
 
 func (c *Settings) SectionId() string { return ConfigDocID }
@@ -667,28 +668,14 @@ func (s *Settings) makeSplunkSender(ctx context.Context, client *http.Client, le
 	return sender, nil
 }
 
-func (s *Settings) GetGithubOauthStrings() ([]string, error) {
-	var tokens []string
-	var tokenName string
+func (s *Settings) GetGithubOauthString() (string, error) {
 
 	token, ok := s.Credentials["github"]
 	if ok && token != "" {
-		// we want to make sure tokens[0] is always the default token
-		tokens = append(tokens, token)
-	} else {
-		return nil, errors.New("no 'github' token in settings")
+		return token, nil
 	}
 
-	for i := 1; i < 10; i++ {
-		tokenName = fmt.Sprintf("github_alt%d", i)
-		token, ok := s.Credentials[tokenName]
-		if ok && token != "" {
-			tokens = append(tokens, token)
-		} else {
-			break
-		}
-	}
-	return tokens, nil
+	return "", errors.New("no github token in settings")
 }
 
 // TODO EVG-19966: Delete this function
@@ -700,28 +687,10 @@ func (s *Settings) GetGithubOauthToken() (string, error) {
 		return "", nil
 	}
 
-	oauthStrings, err := s.GetGithubOauthStrings()
+	oauthString, err := s.GetGithubOauthString()
 	if err != nil {
 		return "", err
 	}
-	timeSeed := time.Now().Nanosecond()
-	randomStartIdx := timeSeed % len(oauthStrings)
-	var oauthString string
-	for i := range oauthStrings {
-		oauthString = oauthStrings[randomStartIdx+i]
-		splitToken, err := splitToken(oauthString)
-		if err != nil {
-			grip.Error(message.Fields{
-				"error":   err,
-				"message": fmt.Sprintf("problem with github_alt%d", i)})
-		} else {
-			return splitToken, nil
-		}
-	}
-	return "", errors.New("all github tokens are malformatted. Proper format is github:token <token> or github_alt#:token <token>")
-}
-
-func splitToken(oauthString string) (string, error) {
 	splitToken := strings.Split(oauthString, " ")
 	if len(splitToken) != 2 || splitToken[0] != "token" {
 		return "", errors.New("token format was invalid, expected 'token [token]'")

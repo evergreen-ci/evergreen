@@ -267,8 +267,13 @@ func TestPodTerminationJob(t *testing.T) {
 				ContainerAllocated:     true,
 				ContainerAllocatedTime: time.Now(),
 				PodID:                  j.pod.ID,
+				Project:                "project-ref",
 			}
 			require.NoError(t, t0.Insert())
+			projectRef := model.ProjectRef{
+				Identifier: "project-ref",
+			}
+			require.NoError(t, projectRef.Insert())
 			v := model.Version{
 				Id:     "version_id",
 				Status: evergreen.VersionCreated,
@@ -280,10 +285,15 @@ func TestPodTerminationJob(t *testing.T) {
 				Status:  evergreen.BuildCreated,
 			}
 			require.NoError(t, b.Insert())
+			pp := model.ParserProject{
+				Id: v.Id,
+			}
+			require.NoError(t, pp.Insert())
 			t1 := task.Task{
 				Id:                          "task_id1",
 				BuildId:                     b.Id,
 				Version:                     v.Id,
+				Project:                     projectRef.Identifier,
 				PodID:                       j.PodID,
 				Activated:                   true,
 				ExecutionPlatform:           task.ExecutionPlatformContainer,
@@ -383,7 +393,7 @@ func TestPodTerminationJob(t *testing.T) {
 // generateTestingECSPod creates a pod in ECS from the given options. The
 // cluster must exist before this is called.
 func generateTestingECSPod(ctx context.Context, t *testing.T, client cocoa.ECSClient, cluster string, creationOpts pod.TaskContainerCreationOptions) cocoa.ECSPod {
-	pc, err := ecs.NewBasicPodCreator(client, nil)
+	pc, err := ecs.NewBasicPodCreator(*ecs.NewBasicPodCreatorOptions().SetClient(client))
 	require.NoError(t, err)
 
 	containerDef := cocoa.NewECSContainerDefinition().

@@ -16,6 +16,7 @@ import (
 	"github.com/evergreen-ci/evergreen/model/pod"
 	"github.com/evergreen-ci/evergreen/model/task"
 	"github.com/evergreen-ci/evergreen/model/testresult"
+	"github.com/evergreen-ci/utility"
 	"github.com/mongodb/grip"
 	"github.com/mongodb/grip/message"
 	"github.com/pkg/errors"
@@ -28,7 +29,7 @@ h2. [{{.Task.DisplayName}} failed on {{.Build.DisplayName}}|{{taskurl .}}]
 Project: [{{.Project.DisplayName}}|{{.UIRoot}}/waterfall/{{.Project.Id}}?redirect_spruce_users=true]
 Commit: [diff|https://github.com/{{.Project.Owner}}/{{.Project.Repo}}/commit/{{.Version.Revision}}]: {{.Version.Message}} | {{.Task.CreateTime | formatAsTimestamp}}
 Evergreen Subscription: {{.SubscriptionID}}; Evergreen Event: {{.EventID}}
-{{range .Tests}}*{{.Name}}* - [Logs|{{.URL}}] | [History|{{.HistoryURL}}]
+{{range .Tests}}*{{.Name}}* - [Logs|{{.URL}}] {{if (eq .DisplayTaskId "") }} |[History|{{.HistoryURL}}]{{end}}
 {{end}}
 {{range taskLogURLs . }}[Task Logs ({{.DisplayName}}) | {{.URL}}]
 {{end}}`
@@ -163,11 +164,12 @@ func getTaskLogURLs(data *jiraTemplateData) ([]taskInfo, error) {
 
 // jiraTestFailure contains the required fields for generating a failure report.
 type jiraTestFailure struct {
-	Name       string
-	URL        string
-	HistoryURL string
-	TaskID     string
-	Execution  int
+	Name          string
+	URL           string
+	HistoryURL    string
+	TaskID        string
+	Execution     int
+	DisplayTaskId string
 }
 
 type jiraBuilder struct {
@@ -386,12 +388,19 @@ func (j *jiraBuilder) getDescription() (string, error) {
 	tests := []jiraTestFailure{}
 	for _, test := range j.data.Task.LocalTestResults {
 		if test.Status == evergreen.TestFailedStatus {
+			env := evergreen.GetEnvironment()
+			url := test.GetLogURL(env, evergreen.LogViewerHTML)
+			if url == "" {
+				url = test.GetLogURL(env, evergreen.LogViewerParsley)
+			}
+
 			tests = append(tests, jiraTestFailure{
-				Name:       cleanTestName(test.GetDisplayTestName()),
-				URL:        test.GetLogURL(evergreen.GetEnvironment(), evergreen.LogViewerHTML),
-				HistoryURL: historyURL(j.data.Task, cleanTestName(test.TestName), j.data.UIRoot),
-				TaskID:     test.TaskID,
-				Execution:  test.Execution,
+				Name:          cleanTestName(test.GetDisplayTestName()),
+				URL:           url,
+				HistoryURL:    historyURL(j.data.Task, cleanTestName(test.TestName), j.data.UIRoot),
+				TaskID:        test.TaskID,
+				Execution:     test.Execution,
+				DisplayTaskId: utility.FromStringPtr(j.data.Task.DisplayTaskId),
 			})
 		}
 	}

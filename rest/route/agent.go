@@ -191,52 +191,6 @@ func (h *agentCheckGetPullRequestHandler) Run(ctx context.Context) gimlet.Respon
 	return gimlet.NewJSONResponse(resp)
 }
 
-// POST /rest/v2/task/{task_id}/set_task_output_version
-type setTaskOutputVersionHandler struct {
-	taskID string
-	req    apimodels.TaskOutputVersionRequest
-
-	env evergreen.Environment
-}
-
-func makeSetTaskOutputVersion(env evergreen.Environment) gimlet.RouteHandler {
-	return &setTaskOutputVersionHandler{env: env}
-}
-
-func (h *setTaskOutputVersionHandler) Factory() gimlet.RouteHandler {
-	return &setTaskOutputVersionHandler{env: h.env}
-}
-
-func (h *setTaskOutputVersionHandler) Parse(ctx context.Context, r *http.Request) error {
-	if h.taskID = gimlet.GetVars(r)["task_id"]; h.taskID == "" {
-		return errors.New("missing task ID")
-	}
-	if err := utility.ReadJSON(r.Body, &h.req); err != nil {
-		return errors.Wrap(err, "reading task output version from JSON request body")
-	}
-
-	return nil
-}
-
-func (h *setTaskOutputVersionHandler) Run(ctx context.Context) gimlet.Responder {
-	t, err := task.FindOneId(h.taskID)
-	if err != nil {
-		return gimlet.MakeJSONInternalErrorResponder(errors.Wrapf(err, "finding task '%s'", h.taskID))
-	}
-	if t == nil {
-		return gimlet.MakeJSONErrorResponder(gimlet.ErrorResponse{
-			StatusCode: http.StatusNotFound,
-			Message:    fmt.Sprintf("task '%s' not found", h.taskID),
-		})
-	}
-
-	if err := t.SetTaskOutputVersion(ctx, h.env, h.req.Version); err != nil {
-		return gimlet.MakeJSONInternalErrorResponder(errors.Wrapf(err, "setting task output version in task '%s'", h.taskID))
-	}
-
-	return gimlet.NewTextResponse("Task output version set in task")
-}
-
 // POST /task/{task_id}/update_push_status
 type updatePushStatusHandler struct {
 	taskID  string
@@ -690,7 +644,7 @@ func (h *attachFilesHandler) Run(ctx context.Context) gimlet.Responder {
 		BuildId:         t.BuildId,
 		Execution:       t.Execution,
 		CreateTime:      time.Now(),
-		Files:           h.files,
+		Files:           artifact.EscapeFiles(h.files),
 	}
 
 	if err = entry.Upsert(); err != nil {
@@ -1431,4 +1385,51 @@ func (h *setDownstreamParamsHandler) Run(ctx context.Context) gimlet.Responder {
 	}
 
 	return gimlet.NewJSONResponse(fmt.Sprintf("Downstream patches for %v have successfully been set", p.Id))
+}
+
+// GET /rest/v2/task/{task_id}/installation_token/{owner}/{repo}
+
+type createInstallationToken struct {
+	owner string
+	repo  string
+
+	env evergreen.Environment
+}
+
+func makeCreateInstallationToken(env evergreen.Environment) gimlet.RouteHandler {
+	return &createInstallationToken{
+		env: env,
+	}
+}
+
+func (g *createInstallationToken) Factory() gimlet.RouteHandler {
+	return &createInstallationToken{
+		env: g.env,
+	}
+}
+
+func (g *createInstallationToken) Parse(ctx context.Context, r *http.Request) error {
+	if g.owner = gimlet.GetVars(r)["owner"]; g.owner == "" {
+		return errors.New("missing owner")
+	}
+
+	if g.repo = gimlet.GetVars(r)["repo"]; g.repo == "" {
+		return errors.New("missing repo")
+	}
+
+	return nil
+}
+
+func (g *createInstallationToken) Run(ctx context.Context) gimlet.Responder {
+	token, err := g.env.Settings().CreateInstallationToken(ctx, g.owner, g.repo, nil)
+	if err != nil {
+		return gimlet.MakeJSONInternalErrorResponder(errors.Wrapf(err, "creating installation token for '%s/%s'", g.owner, g.repo))
+	}
+	if token == "" {
+		return gimlet.MakeJSONErrorResponder(errors.Errorf("no installation token returned for '%s/%s'", g.owner, g.repo))
+	}
+
+	return gimlet.NewJSONResponse(&apimodels.InstallationToken{
+		Token: token,
+	})
 }

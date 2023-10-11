@@ -12,9 +12,10 @@ import (
 )
 
 // TriggerDownstreamVersion assumes that you definitely want to create a downstream version
-// and will go through the process of version creation given a triggering version
+// and will go through the process of version creation given a triggering version.
+// If the trigger is a push event, the triggering version will be nonexistent.
 func TriggerDownstreamVersion(ctx context.Context, args ProcessorArgs) (*model.Version, error) {
-	if args.SourceVersion == nil {
+	if args.SourceVersion == nil && args.TriggerType != model.ProjectTriggerLevelPush {
 		return nil, errors.Errorf("unable to find source version in downstream project '%s'", args.DownstreamProject.Id)
 	}
 
@@ -41,20 +42,29 @@ func TriggerDownstreamVersion(ctx context.Context, args ProcessorArgs) (*model.V
 	if err != nil {
 		return nil, errors.Wrap(err, "creating version")
 	}
-	err = args.SourceVersion.AddSatisfiedTrigger(args.DefinitionID)
-	if err != nil {
-		return nil, err
+	if args.SourceVersion != nil {
+		if err = args.SourceVersion.AddSatisfiedTrigger(args.DefinitionID); err != nil {
+			return nil, err
+		}
 	}
 	settings, err := evergreen.GetConfig(ctx)
 	if err != nil {
 		return nil, errors.Wrap(err, "getting Evergreen settings")
 	}
-	upstreamProject, err := model.FindMergedProjectRef(args.SourceVersion.Identifier, args.SourceVersion.Id, true)
+	var versionID string
+	// Since push triggers have no source version (unlike build and task level triggers), we need to
+	// extract the project ID from the trigger definition's project ID, which is populated in the ProjectID field.
+	projectID := args.ProjectID
+	if projectID == "" {
+		projectID = args.SourceVersion.Identifier
+		versionID = args.SourceVersion.Id
+	}
+	upstreamProject, err := model.FindMergedProjectRef(projectID, versionID, true)
 	if err != nil {
-		return nil, errors.Wrapf(err, "finding project ref '%s' for source version '%s'", args.SourceVersion.Identifier, args.SourceVersion.Id)
+		return nil, errors.Wrapf(err, "finding project ref '%s' for source version '%s'", projectID, versionID)
 	}
 	if upstreamProject == nil {
-		return nil, errors.Errorf("upstream project '%s' not found", args.SourceVersion.Identifier)
+		return nil, errors.Errorf("upstream project '%s' not found", projectID)
 	}
 	for _, module := range projectInfo.Project.Modules {
 		owner, repo, err := thirdparty.ParseGitUrl(module.Repo)
@@ -90,11 +100,16 @@ func metadataFromVersion(args ProcessorArgs) (model.VersionMetadata, error) {
 		TriggerDefinitionID: args.DefinitionID,
 		Alias:               args.Alias,
 	}
-	metadata.Revision = model.Revision{
-		Author:          args.SourceVersion.Author,
-		AuthorEmail:     args.SourceVersion.AuthorEmail,
-		CreateTime:      args.SourceVersion.CreateTime,
-		RevisionMessage: args.SourceVersion.Message,
+	if args.SourceVersion != nil {
+		metadata.Revision = model.Revision{
+			Author:          args.SourceVersion.Author,
+			AuthorEmail:     args.SourceVersion.AuthorEmail,
+			CreateTime:      args.SourceVersion.CreateTime,
+			RevisionMessage: args.SourceVersion.Message,
+		}
+	} else {
+		metadata.Revision = args.PushRevision
+		metadata.SourceCommit = args.PushRevision.Revision
 	}
 	repo, err := model.FindRepository(args.DownstreamProject.Id)
 	if err != nil {
@@ -104,9 +119,12 @@ func metadataFromVersion(args ProcessorArgs) (model.VersionMetadata, error) {
 		return metadata, errors.Errorf("repo '%s' not found", args.DownstreamProject.Id)
 	}
 	metadata.Revision.Revision = repo.LastRevision
-	author, err := user.FindOneById(args.SourceVersion.AuthorID)
-	if err != nil {
-		return metadata, errors.Wrapf(err, "finding version author '%s'", args.SourceVersion.AuthorID)
+	var author *user.DBUser
+	if args.SourceVersion != nil {
+		author, err = user.FindOneById(args.SourceVersion.AuthorID)
+		if err != nil {
+			return metadata, errors.Wrapf(err, "finding version author '%s'", args.SourceVersion.AuthorID)
+		}
 	}
 	if author != nil {
 		metadata.Revision.AuthorGithubUID = author.Settings.GithubUser.UID

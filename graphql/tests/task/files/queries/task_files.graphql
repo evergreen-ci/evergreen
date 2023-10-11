@@ -6,6 +6,8 @@
       fileCount
       groupedFiles {
         taskName
+        taskId
+        execution
         files {
           name
         }

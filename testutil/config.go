@@ -449,6 +449,9 @@ func MockConfig() *evergreen.Settings {
 			Enabled:           true,
 			CollectorEndpoint: "localhost:4317",
 		},
+		GitHubCheckRun: evergreen.GitHubCheckRunConfig{
+			CheckRunLimit: 0,
+		},
 		ShutdownWaitSeconds: 15,
 	}
 }

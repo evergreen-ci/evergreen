@@ -144,21 +144,6 @@ func (c *baseCommunicator) createCedarGRPCConn(ctx context.Context) error {
 	return errors.Wrap(err, "checking Cedar gRPC health")
 }
 
-func (c *baseCommunicator) SetTaskOutputVersion(ctx context.Context, taskData TaskData, version int) error {
-	info := requestInfo{
-		method:   http.MethodPost,
-		taskData: &taskData,
-	}
-	info.path = fmt.Sprintf("tasks/%s/set_task_output_version", taskData.ID)
-	resp, err := c.retryRequest(ctx, info, &apimodels.TaskOutputVersionRequest{Version: version})
-	if err != nil {
-		return util.RespErrorf(resp, errors.Wrap(err, "setting task output version").Error())
-	}
-	defer resp.Body.Close()
-
-	return nil
-}
-
 // GetProjectRef loads the task's project.
 func (c *baseCommunicator) GetProjectRef(ctx context.Context, taskData TaskData) (*model.ProjectRef, error) {
 	projectRef := &model.ProjectRef{}
@@ -1083,4 +1068,27 @@ func (c *baseCommunicator) GetAdditionalPatches(ctx context.Context, patchId str
 	}
 
 	return patches, nil
+}
+
+func (c *baseCommunicator) CreateInstallationToken(ctx context.Context, td TaskData, owner, repo string) (string, error) {
+	info := requestInfo{
+		method:   http.MethodGet,
+		path:     fmt.Sprintf("task/%s/installation_token/%s/%s", td.ID, owner, repo),
+		taskData: &td,
+	}
+	resp, err := c.request(ctx, info, nil)
+	if err != nil {
+		return "", errors.Wrapf(err, "creating installation token for '%s/%s'", owner, repo)
+	}
+	defer resp.Body.Close()
+
+	if resp.StatusCode != http.StatusOK {
+		return "", util.RespErrorf(resp, "creating installation token for '%s/%s'", owner, repo)
+	}
+	token := apimodels.InstallationToken{}
+	if err := utility.ReadJSON(resp.Body, &token); err != nil {
+		return "", errors.Wrap(err, "reading token from response")
+	}
+
+	return token.Token, nil
 }

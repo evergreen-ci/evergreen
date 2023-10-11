@@ -131,8 +131,11 @@ func getPatchInfo(ctx context.Context, settings *evergreen.Settings, githubToken
 		return "", nil, nil, nil, errors.Wrap(err, "getting GitHub PR diff")
 	}
 
-	// fetch the latest config file
-	config, patchConfig, err := model.GetPatchedProject(ctx, settings, patchDoc, githubToken)
+	// Fetch the latest config file.
+	// Set a higher timeout for this operation.
+	fetchCtx, ctxCancel := context.WithTimeout(context.Background(), 5*time.Minute)
+	defer ctxCancel()
+	config, patchConfig, err := model.GetPatchedProject(fetchCtx, settings, patchDoc, githubToken)
 	if err != nil {
 		return "", nil, nil, nil, errors.Wrap(err, "getting remote config file")
 	}
@@ -346,7 +349,7 @@ func getAndEnqueueCommitQueueItemForPR(ctx context.Context, env evergreen.Enviro
 	}
 
 	if projectRef.CommitQueue.MergeQueue == model.MergeQueueGitHub {
-		return nil, pr, errors.Wrapf(errors.New("project is using GitHub merge queue"), "repo '%s:%s', branch '%s'", info.Owner, info.Repo, baseBranch)
+		return nil, pr, errors.Wrapf(errors.New("This project is using GitHub merge queue. Click the merge button instead."), "repo '%s:%s', branch '%s'", info.Owner, info.Repo, baseBranch)
 	}
 
 	authorized, err := sc.IsAuthorizedToPatchAndMerge(ctx, env.Settings(), NewUserRepoInfo(info))

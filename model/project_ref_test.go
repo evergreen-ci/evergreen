@@ -1411,9 +1411,10 @@ func TestFindOneProjectRefByRepoAndBranchWithPRTesting(t *testing.T) {
 	assert.NotNil(projectRef)
 
 	repoDoc := RepoRef{ProjectRef{
-		Id:    "my_repo",
-		Owner: "mongodb",
-		Repo:  "mci",
+		Id:         "my_repo",
+		Owner:      "mongodb",
+		Repo:       "mci",
+		RemotePath: "",
 	}}
 	assert.NoError(repoDoc.Upsert())
 	doc = &ProjectRef{
@@ -1492,6 +1493,8 @@ func TestFindOneProjectRefByRepoAndBranchWithPRTesting(t *testing.T) {
 	assert.NotNil(projectRef)
 
 	// project explicitly disabled
+	repoDoc.RemotePath = "my_path"
+	assert.NoError(repoDoc.Upsert())
 	doc.Enabled = false
 	doc.PRTestingEnabled = utility.TruePtr()
 	assert.NoError(doc.Upsert())
@@ -1499,9 +1502,11 @@ func TestFindOneProjectRefByRepoAndBranchWithPRTesting(t *testing.T) {
 	assert.NoError(err)
 	assert.Nil(projectRef)
 
-	// branch with no project doesn't work if repo not configured right
+	// branch with no project doesn't work and returns an error if repo not configured with a remote path
+	repoDoc.RemotePath = ""
+	assert.NoError(repoDoc.Upsert())
 	projectRef, err = FindOneProjectRefByRepoAndBranchWithPRTesting("mongodb", "mci", "yours", "")
-	assert.NoError(err)
+	assert.Error(err)
 	assert.Nil(projectRef)
 
 	repoDoc.RemotePath = "my_path"
@@ -1658,22 +1663,22 @@ func TestFindProjectRefIdsWithCommitQueueEnabled(t *testing.T) {
 func TestValidatePeriodicBuildDefinition(t *testing.T) {
 	assert := assert.New(t)
 	testCases := map[PeriodicBuildDefinition]bool{
-		PeriodicBuildDefinition{
+		{
 			IntervalHours: 24,
 			ConfigFile:    "foo.yml",
 			Alias:         "myAlias",
 		}: true,
-		PeriodicBuildDefinition{
+		{
 			IntervalHours: 0,
 			ConfigFile:    "foo.yml",
 			Alias:         "myAlias",
 		}: false,
-		PeriodicBuildDefinition{
+		{
 			IntervalHours: 24,
 			ConfigFile:    "",
 			Alias:         "myAlias",
 		}: false,
-		PeriodicBuildDefinition{
+		{
 			IntervalHours: 24,
 			ConfigFile:    "foo.yml",
 			Alias:         "",
@@ -2818,6 +2823,7 @@ func TestMergeWithProjectConfig(t *testing.T) {
 			},
 			BuildBaronSettings: &evergreen.BuildBaronSettings{
 				TicketCreateProject:     "BFG",
+				TicketCreateIssueType:   "Bug",
 				TicketSearchProjects:    []string{"BF", "BFG"},
 				BFSuggestionServer:      "https://evergreen.mongodb.com",
 				BFSuggestionTimeoutSecs: 10,
@@ -2840,6 +2846,8 @@ func TestMergeWithProjectConfig(t *testing.T) {
 	assert.Equal(t, "https://evergreen.mongodb.com", projectRef.BuildBaronSettings.BFSuggestionServer)
 	assert.Equal(t, 10, projectRef.BuildBaronSettings.BFSuggestionTimeoutSecs)
 	assert.Equal(t, "EVG", projectRef.BuildBaronSettings.TicketCreateProject)
+	assert.Equal(t, "Bug", projectRef.BuildBaronSettings.TicketCreateIssueType)
+	assert.Equal(t, []string{"BF", "BFG"}, projectRef.BuildBaronSettings.TicketSearchProjects)
 	assert.Equal(t, []string{"one", "two"}, projectRef.GithubTriggerAliases)
 	assert.Equal(t, "p1", projectRef.PeriodicBuilds[0].ID)
 	assert.Equal(t, 1, projectRef.ContainerSizeDefinitions[0].CPU)
@@ -2924,6 +2932,27 @@ func TestSaveProjectPageForSection(t *testing.T) {
 		ProjectHealthView: ProjectHealthViewAll,
 	}
 	_, err = SaveProjectPageForSection("iden_", update, ProjectPageViewsAndFiltersSection, false)
+	assert.NoError(err)
+
+	// Test performance plugin updates errors when id and identifier are different.
+	update = &ProjectRef{
+		PerfEnabled: utility.ToBoolPtr(true),
+	}
+	_, err = SaveProjectPageForSection("iden_", update, ProjectPagePluginSection, false)
+	assert.Error(err)
+
+	// Test performance plugin updates correctly when id and identifier are the same.
+	// Set the id and identifier to the same value.
+	update = &ProjectRef{
+		Identifier: "iden_",
+	}
+	_, err = SaveProjectPageForSection("iden_", update, ProjectPageGeneralSection, false)
+	assert.NoError(err)
+	// Attempt to enable the performance plugin.
+	update = &ProjectRef{
+		PerfEnabled: utility.ToBoolPtr(true),
+	}
+	_, err = SaveProjectPageForSection("iden_", update, ProjectPagePluginSection, false)
 	assert.NoError(err)
 
 	// Test private field does not get updated
