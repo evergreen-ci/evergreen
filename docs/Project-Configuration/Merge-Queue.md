@@ -86,7 +86,7 @@ Evergreen will post a status check called "evergreen" when the entire merge
 queue build has finished, and it will post a status for each variant that
 finishes called "evergreen/variant_name". Typically projects should set a branch
 protection rule for "evergreen". However, it's also possible to instead to set a
-branch protection rule for one or more "evergree/variant_name" statuses. You
+branch protection rule for one or more "evergreen/variant_name" statuses. You
 might wish to do this if you wish more variants to run in a PR than are actually
 required to merge. For example, there may be long-running tasks which users care
 about only some of the time, and you do not wish to block PRs or merges on those
