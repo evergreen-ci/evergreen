@@ -1,3 +1,0 @@
-{"_id":"admin","display_name":"Evergreen Admin","email":"","apikey":"abb623665fdbf368a1db980dde6ee0f0", "roles": ["logkeeper", "evergreen", "localhostRemove", "localhost2", "superuser", "admin_project_access", "superuser_distro_access", "sys-perf"]}
-{"_id":"privileged","display_name":"Privileged User","email":"","apikey":"abb623665fdbf368a1db980dde6ee0f0", "roles": ["logkeeper", "evergreen", "localhostEdit", "localhost2", "admin_project_access", "superuser_distro_access"]}
-{"_id":"regular","display_name":"Regular User","email":"","apikey":"abb623665fdbf368a1db980dde6ee0f0", "roles": ["logkeeper", "evergreen", "localhostEdit", "localhost2"]}
