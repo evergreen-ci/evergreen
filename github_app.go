@@ -203,6 +203,8 @@ func (s *Settings) HasGitHubApp(ctx context.Context, owner, repo string, opts *g
 		return true, nil
 	}
 
+	grip.Info(s)
+
 	token, err := s.CreateInstallationToken(ctx, owner, repo, opts)
 	if err != nil {
 		if errors.Is(err, gitHubAppNotInstalledError) {

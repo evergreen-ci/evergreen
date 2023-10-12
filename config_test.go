@@ -84,6 +84,11 @@ func TestGetGithubSettings(t *testing.T) {
 	assert.NoError(err)
 	assert.Equal(settings.Credentials["github"], token)
 
+	settings.AuthConfig.Github = &GithubAuthConfig{
+		AppId: 0,
+	}
+	settings.Expansions[githubAppPrivateKey] = ""
+
 	authFields := settings.getGithubAppAuth()
 	assert.Nil(authFields)
 
