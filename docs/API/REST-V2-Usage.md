@@ -1653,11 +1653,11 @@ We are investigating moving this out of Evergreen (EVG-21065) and won't be suppo
 
 **Slack**
 
-| Name          | Type                | Description                                  |
-|--------------------|---------|----------------------------------------------|
-| `target`      | string              | Required. @name or #channel of the recipient |
-| `msg`         | string              | Required. The message for the notification.  |
-| `attachments` | []SlackAttachment | Optional. Array of attachments to a message. |
+| Name          | Type                | Description                                         |
+|--------------------|---------|-----------------------------------------------------|
+| `target`      | string              | Required. @name or public #channel of the recipient |
+| `msg`         | string              | Required. The message for the notification.         |
+| `attachments` | []SlackAttachment | Optional. Array of attachments to a message.        |
 
 
 **SlackAttachment**
