@@ -1680,9 +1680,9 @@ func checkTaskGroups(p *model.Project) ValidationErrors {
 			})
 		}
 		names[tg.Name] = true
-		if tg.MaxHosts < 1 {
+		if tg.MaxHosts < -1 {
 			errs = append(errs, ValidationError{
-				Message: fmt.Sprintf("task group %s has number of hosts %d less than 1", tg.Name, tg.MaxHosts),
+				Message: fmt.Sprintf("task group '%s' has number of hosts %d less than 1", tg.Name, tg.MaxHosts),
 				Level:   Warning,
 			})
 		}
@@ -1691,7 +1691,7 @@ func checkTaskGroups(p *model.Project) ValidationErrors {
 		}
 		if tg.MaxHosts > len(tg.Tasks) {
 			errs = append(errs, ValidationError{
-				Message: fmt.Sprintf("task group %s has max number of hosts %d greater than the number of tasks %d", tg.Name, tg.MaxHosts, len(tg.Tasks)),
+				Message: fmt.Sprintf("task group '%s' has max number of hosts %d greater than the number of tasks %d", tg.Name, tg.MaxHosts, len(tg.Tasks)),
 				Level:   Warning,
 			})
 		}

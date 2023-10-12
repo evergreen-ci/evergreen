@@ -855,6 +855,8 @@ github.com/mongodb/grip v0.0.0-20220210164115-898ba2888109/go.mod h1:VAvqrRA7VH0
 github.com/mongodb/grip v0.0.0-20220401165023-6a1d9bb90c21/go.mod h1:QfF6CwbaTQx1Kgww77c6ROPBFN+JCiU2qBnk2SjKHyU=
 github.com/mongodb/grip v0.0.0-20230707141614-c686133d52e4 h1:NplzGM1tz0EJ1gZcW4cYIrPGRYhfivZhyUmCuuysmXA=
 github.com/mongodb/grip v0.0.0-20230707141614-c686133d52e4/go.mod h1:spapbbQelDqeUQpDl7A/AlSLFIPUZuk33grixpbniTg=
+github.com/mongodb/grip v0.0.0-20231010153552-fd9e260891f5 h1:rbPGWe4UR/rFmkFZ+n7bGjj6ELIa1r9uBuD46GF5nF8=
+github.com/mongodb/grip v0.0.0-20231010153552-fd9e260891f5/go.mod h1:spapbbQelDqeUQpDl7A/AlSLFIPUZuk33grixpbniTg=
 github.com/mongodb/jasper v0.0.0-20220214215554-82e5a72cff6b h1:VeoszGUVkmmRmPxwiJIiO/psZbPwz7tc6qbX2xDoQLY=
 github.com/mongodb/jasper v0.0.0-20220214215554-82e5a72cff6b/go.mod h1:ZMsAlwE3H8Yh/L9bc3lliN3EZME41wButVxWpt2e4Io=
 github.com/montanaflynn/stats v0.0.0-20171201202039-1bf9dbcd8cbe/go.mod h1:wL8QJuTMNUDYhXwkmfOly8iTdp5TEcJFWZD2D7SIkUc=

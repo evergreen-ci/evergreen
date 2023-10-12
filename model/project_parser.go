@@ -1402,6 +1402,11 @@ func getParserBuildVariantTaskUnit(name string, pt parserTask, bvt parserBVTaskU
 			Timeout:                  bvt.TaskGroup.Timeout,
 			ShareProcs:               bvt.TaskGroup.ShareProcs,
 		}
+		if bvt.TaskGroup.MaxHosts == -1 {
+			res.TaskGroup.MaxHosts = len(bvt.TaskGroup.Tasks)
+		} else if bvt.TaskGroup.MaxHosts < 1 {
+			res.TaskGroup.MaxHosts = 1
+		}
 	}
 	if res.Priority == 0 {
 		res.Priority = pt.Priority
