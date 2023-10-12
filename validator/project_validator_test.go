@@ -3218,7 +3218,7 @@ func TestTaskGroupValidation(t *testing.T) {
 		},
 	}
 	validationErrs = checkTaskGroups(&proj)
-	assert.Len(validationErrs, 1)
+	require.Len(t, validationErrs, 1)
 	assert.Contains(validationErrs[0].Message, "task group 'tg1' is defined multiple times; only the first will be used")
 
 	// check that yml with a task group named the same as a task errors
@@ -3272,14 +3272,14 @@ buildvariants:
         - example_task_2
 `
 	pp, err = model.LoadProjectInto(ctx, []byte(largeMaxHostYml), nil, "", &proj)
-	assert.NotNil(proj)
+	require.NotNil(t, proj)
 	assert.NotNil(pp)
 	assert.NoError(err)
 	validationErrs = validateTaskGroups(&proj)
-	assert.Len(validationErrs, 1)
+	require.Len(t, validationErrs, 1)
 	assert.Contains(validationErrs[0].Message, "attach.results cannot be used in the group teardown stage")
 	validationErrs = checkTaskGroups(&proj)
-	assert.Len(validationErrs, 2)
+	require.Len(t, validationErrs, 2)
 	assert.Contains(validationErrs[0].Message, "task group 'example_task_group' has max number of hosts 4 greater than the number of tasks 3")
 	assert.Contains(validationErrs[1].Message, "task group 'inline_task_group' has max number of hosts 3 greater than the number of tasks 2")
 	assert.Equal(validationErrs[0].Level, Warning)
