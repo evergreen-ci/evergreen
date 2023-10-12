@@ -1411,6 +1411,45 @@ buildvariants:
 			checkIsTaskGroupTaskUnit(t, bvtu)
 		}
 	})
+
+	t.Run("MaxHostsForTaskGroup", func(t *testing.T) {
+		validMaxHostYml := `
+tasks:
+- name: example_task_1
+- name: example_task_2
+- name: example_task_3
+- name: example_task_4
+task_groups:
+- name: example_task_group
+  max_hosts: -1
+  tasks:
+  - example_task_1
+  - example_task_2
+buildvariants:
+- name: bv
+  display_name: "bv_display"
+  tasks:
+  - name: example_task_group
+  - name: inline_task_group
+    task_group:
+      max_hosts: -1
+      tasks:
+      - example_task_3
+      - example_task_4
+`
+		proj := &Project{}
+		_, err := LoadProjectInto(ctx, []byte(validMaxHostYml), nil, "id", proj)
+		require.NotNil(t, proj)
+		assert.Nil(t, err)
+		require.Len(t, proj.TaskGroups, 1)
+		assert.Equal(t, "example_task_group", proj.TaskGroups[0].Name)
+		assert.Equal(t, proj.TaskGroups[0].MaxHosts, len(proj.TaskGroups[0].Tasks))
+
+		require.Len(t, proj.BuildVariants, 1)
+		require.Len(t, proj.BuildVariants[0].Tasks, 2)
+		assert.Equal(t, "inline_task_group", proj.BuildVariants[0].Tasks[1].Name)
+		assert.Equal(t, proj.BuildVariants[0].Tasks[1].TaskGroup.MaxHosts, len(proj.BuildVariants[0].Tasks[1].TaskGroup.Tasks))
+	})
 }
 
 func TestTaskGroupWithDisplayTask(t *testing.T) {

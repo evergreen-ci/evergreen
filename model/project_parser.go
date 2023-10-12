@@ -1117,7 +1117,9 @@ func evaluateTaskUnits(tse *taskSelectorEvaluator, tgse *tagSelectorEvaluator, v
 			Timeout:                  ptg.Timeout,
 			ShareProcs:               ptg.ShareProcs,
 		}
-		if tg.MaxHosts < 1 {
+		if tg.MaxHosts == -1 {
+			tg.MaxHosts = len(ptg.Tasks)
+		} else if tg.MaxHosts < 1 {
 			tg.MaxHosts = 1
 		}
 		// expand, validate that tasks defined in a group are listed in the project tasks
@@ -1399,6 +1401,11 @@ func getParserBuildVariantTaskUnit(name string, pt parserTask, bvt parserBVTaskU
 			MaxHosts:                 bvt.TaskGroup.MaxHosts,
 			Timeout:                  bvt.TaskGroup.Timeout,
 			ShareProcs:               bvt.TaskGroup.ShareProcs,
+		}
+		if bvt.TaskGroup.MaxHosts == -1 {
+			res.TaskGroup.MaxHosts = len(bvt.TaskGroup.Tasks)
+		} else if bvt.TaskGroup.MaxHosts < 1 {
+			res.TaskGroup.MaxHosts = 1
 		}
 	}
 	if res.Priority == 0 {
