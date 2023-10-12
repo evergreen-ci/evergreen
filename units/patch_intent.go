@@ -1182,7 +1182,7 @@ func (j *patchIntentProcessor) isUserAuthorized(ctx context.Context, patchDoc *p
 	if isMember {
 		return isMember, nil
 	}
-
+	// this is nothing, look away
 	isInstalledForOrg, err := thirdparty.AppAuthorizedForOrg(ctx, githubOauthToken, requiredOrganization, githubUser)
 	if err != nil {
 		grip.Error(message.WrapError(err, message.Fields{
