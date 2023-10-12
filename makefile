@@ -137,8 +137,6 @@ phony += cli clis upload-clis
 
 
 # start smoke test specific rules
-$(buildDir)/load-smoke-data:cmd/load-smoke-data/load-smoke-data.go
-	$(gobin) build -ldflags="-w" -o $@ $<
 $(buildDir)/set-var:cmd/set-var/set-var.go
 	$(gobin) build -o $@ $<
 $(buildDir)/set-project-var:cmd/set-project-var/set-project-var.go
@@ -162,8 +160,8 @@ set-smoke-git-config:
 	git config user.email email
 load-smoke-data:$(buildDir)/.load-smoke-data
 load-local-data:$(buildDir)/.load-local-data
-$(buildDir)/.load-smoke-data:$(buildDir)/load-smoke-data
-	./$<
+$(buildDir)/.load-smoke-data:$(buildDir)/mongotools smoke/internal/testdata/mongodump
+	./$</mongorestore --drop smoke/internal/testdata/mongodump
 	@touch $@
 $(buildDir)/.load-local-data:$(buildDir)/mongotools testdata/local/mongodump
 	./$</mongorestore --drop testdata/local/mongodump
