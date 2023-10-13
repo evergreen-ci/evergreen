@@ -633,6 +633,7 @@ buildvariants:
       RUN_EC2_SPECIFIC_TESTS: true
       mongodb_url: https://fastdl.mongodb.org/linux/mongodb-linux-x86_64-ubuntu2204-6.0.6.tgz
       mongosh_url: https://downloads.mongodb.com/compass/mongosh-1.9.0-linux-x64.tgz
+      mongotools_url: https://fastdl.mongodb.org/tools/db/mongodb-database-tools-ubuntu2204-x86_64-100.8.0.tgz
       notary_client_url: https://macos-notary-1628249594.s3.amazonaws.com/releases/client/v3.1.2/linux_amd64.zip
       sign_macos: true
     tasks:
@@ -657,7 +658,6 @@ buildvariants:
       RUN_EC2_SPECIFIC_TESTS: true
       mongodb_url: https://fastdl.mongodb.org/linux/mongodb-linux-x86_64-ubuntu2204-6.0.6.tgz
       mongosh_url: https://downloads.mongodb.com/compass/mongosh-1.9.0-linux-x64.tgz
-      mongotools_url: https://fastdl.mongodb.org/tools/db/mongodb-database-tools-ubuntu2204-x86_64-100.8.0.tgz
       race_detector: true
       test_timeout: 15m
     tasks:
@@ -675,7 +675,7 @@ buildvariants:
       GOROOT: /usr/local/go
       mongodb_url: https://fastdl.mongodb.org/linux/mongodb-linux-x86_64-ubuntu2004-6.0.6.tgz
       mongosh_url: https://downloads.mongodb.com/compass/mongosh-1.9.0-linux-x64.tgz
-      mongotools_url: https://fastdl.mongodb.org/tools/db/mongodb-database-tools-ubuntu2204-x86_64-100.8.0.tgz
+      mongotools_url: https://fastdl.mongodb.org/tools/db/mongodb-database-tools-ubuntu2004-x86_64-100.8.0.tgz
       decompress: tar zxvf
     tasks:
       - name: "dist-unsigned"
