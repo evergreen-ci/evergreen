@@ -118,6 +118,52 @@ The following is the process by which you can create a usable image from your cu
     Evergreen YAML must also use a **&lt;SHA&gt;** tag, which would be the hash
     of the corresponding commit in our [image repository](https://github.com/evergreen-ci/container-initial-offering-dockerfiles).
 
+The following is a starter Dockerfile that abides by our image policy and
+includes commonly used tools and packages (e.g. Go, Python, NodeJS, etc.)
+that you can copy/paste and use as a reference for creating your own. 
+
+``` dockerfile
+# Use an approved base image
+FROM ubuntu:latest
+
+# Required label that points to an owning team, per our image policy
+LABEL mongodb.maintainer="Your Team Name <team-email@company.com>"
+
+# Update package inventory
+ENV DEBIAN_FRONTEND=noninteractive
+RUN apt-get update
+
+# Common tools
+RUN apt-get install -y \
+    curl \
+    wget \
+    git
+
+# Install Go
+RUN wget https://dl.google.com/go/go1.17.2.linux-amd64.tar.gz -O go.tar.gz \
+    # Must verify the checksum of downloaded file
+    && md5sum go.tar.gz | cut -d ' ' -f 1 | grep -xq b7af894763e397335efe5a9ca70a5d63 \
+    && tar -C /usr/local -xzf go.tar.gz \
+    && rm go.tar.gz
+ENV PATH=$PATH:/usr/local/go/bin
+
+# Install Node.js and npm
+RUN curl -sL https://deb.nodesource.com/setup_16.x -o nodesource_setup.sh \
+    # Must verify the checksum of downloaded file
+    && md5sum nodesource_setup.sh | cut -d ' ' -f 1 | grep -xq 26ac33def0855ea2c8dddfe361e6d313 \
+    && bash nodesource_setup.sh \
+    && apt-get install -y nodejs
+
+# Install Python3 and pip
+RUN apt-get install -y \
+    python3 \
+    python3-pip
+
+# Default to bash shell, as required by the Evergreen agent
+CMD [ "bin/bash" ]
+
+```
+
 ### Update Your YAML Configuration
 
 Once you have a valid image URI that is ready to run tasks, you can test it
@@ -205,7 +251,7 @@ Once configured properly, a variant with container tasks is ready to
 schedule tasks. Once tasks get created, key differences to look for in
 Spruce are:
 
-### **Container Project Settings**
+### Container Project Settings
 
 A new tab has been added to the project settings page for container
 configurations. Users can create a list of resource configuration
@@ -227,14 +273,14 @@ Options:
 Users can define as many container configurations as needed, reflecting
 different appropriate resource needs for various tasks.
 
-### **Task Metadata**
+### Task Metadata
 
 A link to a container task's respective container replaces the typical
 host link.
 
-<img alt="containerized_task_metadata.png" height="400" src="../images/container_metadata.png" width="300"/>
+![container_metadata.png](../images/container_metadata.png)
 
-### **Container Page**
+### Container Page
 
 The link in the task metadata sidebar takes you to the container page,
 which details the lifecycle of a container and their tasks. Like the
