@@ -110,6 +110,7 @@ type Settings struct {
 	Spawnhost           SpawnHostConfig         `yaml:"spawnhost" bson:"spawnhost" json:"spawnhost" id:"spawnhost"`
 	ShutdownWaitSeconds int                     `yaml:"shutdown_wait_seconds" bson:"shutdown_wait_seconds" json:"shutdown_wait_seconds"`
 	Tracer              TracerConfig            `yaml:"tracer" bson:"tracer" json:"tracer" id:"tracer"`
+	GitHubCheckRun      GitHubCheckRunConfig    `yaml:"github_check_run" bson:"github_check_run" json:"github_check_run" id:"github_check_run"`
 }
 
 func (c *Settings) SectionId() string { return ConfigDocID }

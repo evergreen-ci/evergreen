@@ -118,6 +118,9 @@ var (
 
 	tracerEnabledKey        = bsonutil.MustHaveTag(TracerConfig{}, "Enabled")
 	tracerCollectorEndpoint = bsonutil.MustHaveTag(TracerConfig{}, "CollectorEndpoint")
+
+	// GithubCheckRun keys
+	checkRunLimitKey = bsonutil.MustHaveTag(GitHubCheckRunConfig{}, "CheckRunLimit")
 )
 
 func byId(id string) bson.M {

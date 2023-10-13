@@ -2487,8 +2487,14 @@ func TestCreateTasksFromGroup(t *testing.T) {
 	}
 	bvts := CreateTasksFromGroup(in, p, evergreen.PatchVersionRequester)
 	require.Equal(t, 2, len(bvts))
-	assert.Equal("new_dependency", bvts[0].DependsOn[0].Name)
-	assert.Equal("new_dependency", bvts[1].DependsOn[0].Name)
+	for _, bvtu := range bvts {
+		require.Len(t, bvtu.DependsOn, 1)
+		assert.Equal("new_dependency", bvtu.DependsOn[0].Name)
+		// TODO (EVG-19725): remove IsGroup
+		assert.True(bvtu.IsGroup)
+		assert.True(bvtu.IsPartOfGroup)
+		assert.Equal(tgName, bvtu.GroupName)
+	}
 }
 
 func TestMarkAsHostDispatched(t *testing.T) {

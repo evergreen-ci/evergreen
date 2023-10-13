@@ -1398,10 +1398,11 @@ Parameters:
     commands but will not cause the task to fail unless
     `teardown_task_can_fail_task` is true.
 -   `max_hosts`: number of hosts across which to distribute the tasks in
-    this group. This defaults to 1. There will be a validation warning
-    if max hosts is less than 1 or greater than the number of tasks in
-    task group. When max hosts is 1, this is a special case where the tasks
-    will run serially on a single host. If any task fails, the task group
+    this group. This defaults to 1. If set to -1, it will be updated to the 
+    number of tasks in this task group. There will be a validation warning
+    if max hosts is less than 1 (apart from -1) or greater than the number of 
+    tasks in task group. When max hosts is 1, this is a special case where the
+    tasks will run serially on a single host. If any task fails, the task group
     will stop, so the remaining tasks after the failed one will not run.
 -   `timeout`: timeout handler which will be called instead of the top-level
     timeout handler. If it is not present, the top-level timeout handler will
