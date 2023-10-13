@@ -38,7 +38,7 @@ var (
 	ClientVersion = "2023-10-02"
 
 	// Agent version to control agent rollover.
-	AgentVersion = "2023-09-29"
+	AgentVersion = "2023-10-04"
 )
 
 // ConfigSection defines a sub-document in the evergreen config
@@ -110,6 +110,7 @@ type Settings struct {
 	Spawnhost           SpawnHostConfig         `yaml:"spawnhost" bson:"spawnhost" json:"spawnhost" id:"spawnhost"`
 	ShutdownWaitSeconds int                     `yaml:"shutdown_wait_seconds" bson:"shutdown_wait_seconds" json:"shutdown_wait_seconds"`
 	Tracer              TracerConfig            `yaml:"tracer" bson:"tracer" json:"tracer" id:"tracer"`
+	GitHubCheckRun      GitHubCheckRunConfig    `yaml:"github_check_run" bson:"github_check_run" json:"github_check_run" id:"github_check_run"`
 }
 
 func (c *Settings) SectionId() string { return ConfigDocID }

@@ -905,7 +905,8 @@ A version is a commit in a project.
 | `branch`                | string          | The version control branch where the commit was made                                                                                                                                                                                                     |
 | `build_variants_status` | []buildDetail   | List of documents of the associated build variant and the build id                                                                                                                                                                                       |
 | `requester`             | string          | Version created by one of "patch_request", "github_pull_request", "gitter_request" (caused by git commit, aka the repotracker requester), "trigger_request" (Project Trigger versions) , "merge_test" (commit queue patches), "ad_hoc" (periodic builds) |
-| `activated`             | boolean or null | Will be null for versions created before this field was added.                                                                                                                                                                                           |
+| `activated`             | boolean or null | Will be null for versions created before this field was added. |
+| `ignored`             | boolean | Indicates if the version was ignored due to only making changes to ignored files. |
 
 
 #### Endpoints
@@ -1630,10 +1631,11 @@ Project is mongodb-mongo-master, task is lint. Assuming today is
     GET /projects/mongodb-mongo-master/task_reliability?tasks=lint&after_date=2019-03-15&group_num_days=7
     GET /projects/mongodb-mongo-master/task_reliability?tasks=lint&after_date=2019-03-15&group_num_days=28
 
-### Notifications
+### Notifications  (DEPRECATED)
 
-Create custom notifications for email or Slack.
-issues.
+Create custom notifications for email or Slack issues. 
+
+We are investigating moving this out of Evergreen (EVG-21065) and won't be supporting future work for this. 
 
 #### Objects
 
@@ -1651,11 +1653,11 @@ issues.
 
 **Slack**
 
-| Name          | Type                | Description                                  |
-|--------------------|---------|-------------------------------------------|
-| `target`      | string              | Required. The name of the recipient.         |
-| `msg`         | string              | Required. The message for the notification.  |
-| `attachments` | []SlackAttachment | Optional. Array of attachments to a message. |
+| Name          | Type                | Description                                         |
+|--------------------|---------|-----------------------------------------------------|
+| `target`      | string              | Required. @name or public #channel of the recipient |
+| `msg`         | string              | Required. The message for the notification.         |
+| `attachments` | []SlackAttachment | Optional. Array of attachments to a message.        |
 
 
 **SlackAttachment**

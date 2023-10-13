@@ -116,7 +116,7 @@ type PatchUpdate struct {
 	VariantsTasks       []patch.VariantTasks `json:"variants_tasks,omitempty"`
 }
 
-// ConfigurePatch validates and creates the updated tasks/variants, and updates description if needed.
+// ConfigurePatch validates and creates the updated tasks/variants if given, and updates description if needed.
 // Returns an http status code and error.
 func ConfigurePatch(ctx context.Context, settings *evergreen.Settings, p *patch.Patch, version *Version, proj *ProjectRef, patchUpdateReq PatchUpdate) (int, error) {
 	var err error
@@ -142,17 +142,17 @@ func ConfigurePatch(ctx context.Context, settings *evergreen.Settings, p *patch.
 			return http.StatusInternalServerError, errors.Wrap(err, "setting patch parameters")
 		}
 	}
-
 	// update the description for both reconfigured and new patches
 	if err = p.SetDescription(patchUpdateReq.Description); err != nil {
 		return http.StatusInternalServerError, errors.Wrap(err, "setting description")
 	}
 
-	// update the description for both reconfigured and new patches
-	if err = p.SetVariantsTasks(tasks.TVPairsToVariantTasks()); err != nil {
-		return http.StatusInternalServerError, errors.Wrap(err, "setting description")
+	patchVariantTasks := tasks.TVPairsToVariantTasks()
+	if len(patchVariantTasks) > 0 {
+		if err = p.SetVariantsTasks(patchVariantTasks); err != nil {
+			return http.StatusInternalServerError, errors.Wrap(err, "setting description")
+		}
 	}
-	p.Activated = true
 
 	if p.Version != "" {
 		// This patch has already been finalized, just add the new builds and tasks
@@ -166,19 +166,21 @@ func ConfigurePatch(ctx context.Context, settings *evergreen.Settings, p *patch.
 			}
 		}
 
-		// First add new tasks to existing builds, if necessary
-		creationInfo := TaskCreationInfo{
-			Project:        project,
-			ProjectRef:     proj,
-			Version:        version,
-			Pairs:          tasks,
-			SyncAtEndOpts:  p.SyncAtEndOpts,
-			ActivationInfo: specificActivationInfo{},
-			GeneratedBy:    "",
-		}
-		err = addNewTasksAndBuildsForPatch(context.Background(), creationInfo, patchUpdateReq.Caller)
-		if err != nil {
-			return http.StatusInternalServerError, errors.Wrapf(err, "creating new tasks/builds for version '%s'", version.Id)
+		if len(patchVariantTasks) > 0 {
+			// Add new tasks to existing builds, if necessary
+			creationInfo := TaskCreationInfo{
+				Project:        project,
+				ProjectRef:     proj,
+				Version:        version,
+				Pairs:          tasks,
+				SyncAtEndOpts:  p.SyncAtEndOpts,
+				ActivationInfo: specificActivationInfo{},
+				GeneratedBy:    "",
+			}
+			err = addNewTasksAndBuildsForPatch(context.Background(), creationInfo, patchUpdateReq.Caller)
+			if err != nil {
+				return http.StatusInternalServerError, errors.Wrapf(err, "creating new tasks/builds for version '%s'", version.Id)
+			}
 		}
 	}
 	return http.StatusOK, nil

@@ -236,6 +236,9 @@ func (p *Patch) IsFinished() bool {
 
 // SetDescription sets a patch's description in the database
 func (p *Patch) SetDescription(desc string) error {
+	if p.Description == desc {
+		return nil
+	}
 	p.Description = desc
 	return UpdateOne(
 		bson.M{IdKey: p.Id},
@@ -911,7 +914,7 @@ func GetChildrenOrSiblingsReadiness(childrenOrSiblings []string) (string, error)
 	if len(childrenOrSiblings) == 0 {
 		return "", nil
 	}
-	childrenStatus := evergreen.LegacyPatchSucceeded
+	childrenStatus := evergreen.VersionSucceeded
 	for _, childPatch := range childrenOrSiblings {
 		childPatchDoc, err := FindOneId(childPatch)
 		if err != nil {
@@ -1268,7 +1271,7 @@ func GetCollectiveStatusFromPatchStatuses(statuses []string) string {
 	} else if hasAborted {
 		return evergreen.VersionAborted
 	} else if hasSuccess {
-		return evergreen.LegacyPatchSucceeded
+		return evergreen.VersionSucceeded
 	}
 	return evergreen.VersionCreated
 }

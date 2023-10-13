@@ -121,14 +121,12 @@ func (t *versionTriggers) makeData(sub *event.Subscription, pastTenseOverride st
 		}
 
 		// Look at collective status because we don't know whether the last patch to finish in the version was a child or a parent.
-		patchStatus, err := p.CollectiveStatus()
+		versionStatus, err = p.CollectiveStatus()
 		if err != nil {
 			return nil, errors.Wrap(err, "getting collective status for patch")
 		}
-		versionStatus = evergreen.PatchStatusToVersionStatus(patchStatus)
 		grip.NoticeWhen(versionStatus != t.data.Status, message.Fields{
 			"message":                   "patch's current collective status does not match the version event data's status",
-			"patch_collective_status":   patchStatus,
 			"version_collective_status": versionStatus,
 			"version_event_status":      t.data.Status,
 			"patch_and_version_id":      t.version.Id,

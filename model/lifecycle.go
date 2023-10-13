@@ -3,6 +3,7 @@ package model
 import (
 	"context"
 	"fmt"
+	"runtime/debug"
 	"sort"
 	"strings"
 	"time"
@@ -658,6 +659,8 @@ func CreateBuildFromVersionNoInsert(creationInfo TaskCreationInfo) (*build.Build
 	return b, tasksForBuild, nil
 }
 
+// CreateTasksFromGroup expands a task group into its individual tasks and
+// returns a build variant task unit for each task in the task group.
 func CreateTasksFromGroup(in BuildVariantTaskUnit, proj *Project, requester string) []BuildVariantTaskUnit {
 	var willRun []BuildVariantTaskUnit
 	for _, bvt := range proj.tasksFromGroup(in) {
@@ -709,6 +712,11 @@ func createTasksForBuild(creationInfo TaskCreationInfo) (task.Tasks, error) {
 				tasksToCreate = append(tasksToCreate, task)
 			}
 		} else if _, ok := tgMap[task.Name]; ok {
+			grip.InfoWhen(task.IsPartOfGroup, message.Fields{
+				"message": "task unit IsGroup is referring to task within a task group",
+				"ticket":  "EVG-19725",
+				"stack":   string(debug.Stack()),
+			})
 			tasksFromVariant := CreateTasksFromGroup(task, creationInfo.Project, creationInfo.Build.Requester)
 			for _, taskFromVariant := range tasksFromVariant {
 				if task.IsDisabled() || taskFromVariant.SkipOnRequester(creationInfo.Build.Requester) {
@@ -1224,6 +1232,11 @@ func createOneTask(id string, creationInfo TaskCreationInfo, buildVarTask BuildV
 	}
 
 	if buildVarTask.IsGroup {
+		grip.InfoWhen(!buildVarTask.IsPartOfGroup, message.Fields{
+			"message": "task unit IsGroup is referring to task within a task group, but IsPartOfGroup is not set",
+			"ticket":  "EVG-19725",
+			"stack":   string(debug.Stack()),
+		})
 		tg := buildVarTask.TaskGroup
 		if tg == nil {
 			tg = creationInfo.Project.FindTaskGroup(buildVarTask.GroupName)
