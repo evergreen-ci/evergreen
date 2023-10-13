@@ -54,8 +54,7 @@ func TriggerDownstreamVersion(ctx context.Context, args ProcessorArgs) (*model.V
 	// Since push triggers have no source version (unlike build and task level triggers), we need to
 	// extract the project ID from the trigger definition's project ID, which is populated in the TriggerID field
 	// for push triggers.
-	var versionID string
-	var projectID string
+	var versionID, projectID string
 	if args.TriggerType == model.ProjectTriggerLevelPush {
 		projectID = args.TriggerID
 	} else {
