@@ -429,15 +429,3 @@ endif
 .FORCE:
 .PHONY:$(phony) .FORCE
 .DEFAULT_GOAL := build
-
-tools := hugo terraform aws exiftool jpegoptim optipng mogrify
-$(tools):
-	@which $@ > /dev/null
-	
-.PHONY: serve
-serve: hugo
-	$(HUGO) server -D
-
-.PHONY: validate
-validate: terraform
-	$(TERRAFORM) validate
