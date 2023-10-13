@@ -377,9 +377,9 @@ func (h *projectIDPatchHandler) Run(ctx context.Context) gimlet.Responder {
 
 	if h.newProjectRef.Enabled {
 		var hasHook bool
-		hasHook, err = dbModel.EnableWebhooks(ctx, h.newProjectRef)
+		hasHook, err = dbModel.SetTracksPushEvents(ctx, h.newProjectRef)
 		if err != nil {
-			return gimlet.MakeJSONErrorResponder(errors.Wrapf(err, "enabling webhooks for project '%s'", h.project))
+			return gimlet.MakeJSONErrorResponder(errors.Wrapf(err, "setting project tracks push events for project '%s' in '%s/%s'", h.project, h.newProjectRef.Owner, h.newProjectRef.Repo))
 		}
 
 		var allAliases []model.APIProjectAlias

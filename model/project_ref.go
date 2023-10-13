@@ -1082,10 +1082,10 @@ func (p *ProjectRef) createNewRepoRef(u *user.DBUser) (repoRef *RepoRef, err err
 	// Set explicitly in case no project is enabled.
 	repoRef.Owner = p.Owner
 	repoRef.Repo = p.Repo
-	_, err = EnableWebhooks(context.Background(), &repoRef.ProjectRef)
+	_, err = SetTracksPushEvents(context.Background(), &repoRef.ProjectRef)
 	if err != nil {
 		grip.Debug(message.WrapError(err, message.Fields{
-			"message": "error enabling webhooks",
+			"message": "error setting project tracks push events",
 			"repo_id": repoRef.Id,
 			"owner":   repoRef.Owner,
 			"repo":    repoRef.Repo,
@@ -1656,8 +1656,8 @@ func FindOneProjectRefWithCommitQueueByOwnerRepoAndBranch(owner, repo, branch st
 	return nil, nil
 }
 
-// EnableWebhooks returns true if a hook for the given owner/repo exists or was inserted.
-func EnableWebhooks(ctx context.Context, projectRef *ProjectRef) (bool, error) {
+// SetTracksPushEvents returns true if the GitHub app is installed on the owner/repo for the given project.
+func SetTracksPushEvents(ctx context.Context, projectRef *ProjectRef) (bool, error) {
 	settings, err := evergreen.GetConfig(ctx)
 	if err != nil {
 		return false, errors.Wrap(err, "finding evergreen settings")
@@ -1680,7 +1680,7 @@ func EnableWebhooks(ctx context.Context, projectRef *ProjectRef) (bool, error) {
 	// sometimes people change a project to track a personal
 	// branch we don't have access to
 	if !hasApp {
-		grip.Error(message.Fields{
+		grip.Warning(message.Fields{
 			"message":            "GitHub app not installed",
 			"project":            projectRef.Id,
 			"project_identifier": projectRef.Identifier,

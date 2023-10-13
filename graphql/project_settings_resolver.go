@@ -6,12 +6,13 @@ package graphql
 
 import (
 	"context"
-	"fmt"
 
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/model/event"
 	restModel "github.com/evergreen-ci/evergreen/rest/model"
 	"github.com/evergreen-ci/utility"
+	"github.com/mongodb/grip"
+	"github.com/mongodb/grip/message"
 )
 
 // Aliases is the resolver for the aliases field.
@@ -24,9 +25,12 @@ func (r *projectSettingsResolver) GithubWebhooksEnabled(ctx context.Context, obj
 	owner := utility.FromStringPtr(obj.ProjectRef.Owner)
 	repo := utility.FromStringPtr(obj.ProjectRef.Repo)
 	hasApp, err := evergreen.GetEnvironment().Settings().HasGitHubApp(ctx, owner, repo, nil)
-	if err != nil {
-		return false, InternalServerError.Send(ctx, fmt.Sprintf("Error verifying GitHub app installation for project '%s' in '%s/%s': '%s'", utility.FromStringPtr(obj.ProjectRef.Id), owner, repo, err.Error()))
-	}
+	grip.Error(message.WrapError(err, message.Fields{
+		"message": "Error verifying GitHub app installation",
+		"project": utility.FromStringPtr(obj.ProjectRef.Id),
+		"owner":   owner,
+		"repo":    repo,
+	}))
 	return hasApp, nil
 }
 
