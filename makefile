@@ -393,8 +393,7 @@ ifeq (,$(shell which mongorestore))
 	mkdir -p $(mongotoolsDir)
 	cd $(mongotoolsDir) && curl $(curlRetryOpts) "$(MONGOTOOLS_URL)" -o mongotools.tgz && $(MONGOTOOLS_DECOMPRESS) mongotools.tgz && chmod +x ./mongodb-*/bin/* && mv ./mongodb-*/bin/* .
 endif
-get-mongotools:$(buildDir)/.get-mongotools
-	@touch $<
+	@touch $@
 mongodb/.get-mongodb:
 	rm -rf mongodb
 	mkdir -p mongodb
