@@ -160,11 +160,11 @@ set-smoke-git-config:
 	git config user.email email
 load-smoke-data:$(buildDir)/.load-smoke-data
 load-local-data:$(buildDir)/.load-local-data
-$(buildDir)/.load-smoke-data:$(buildDir)/mongotools smoke/internal/testdata/mongodump
-	./$</mongorestore --drop smoke/internal/testdata/mongodump
+$(buildDir)/.load-smoke-data:$(buildDir)/.get-mongotools smoke/internal/testdata/mongodump
+	$(call run-mongotools,mongorestore) --drop smoke/internal/testdata/mongodump
 	@touch $@
-$(buildDir)/.load-local-data:$(buildDir)/mongotools testdata/local/mongodump
-	./$</mongorestore --drop testdata/local/mongodump
+$(buildDir)/.load-local-data:$(buildDir)/.get-mongotools testdata/local/mongodump
+	$(call run-mongotools,mongorestore) --drop testdata/local/mongodump
 	@touch $@
 local-evergreen:$(localClientBinary) load-local-data
 	./$< service deploy start-local-evergreen
@@ -385,11 +385,16 @@ scramble:
 	python cmd/scrambled-eggs/scramble.py $(file) $(multiarg)
 
 # mongodb utility targets
-$(buildDir)/mongotools:
-	rm -rf $(buildDir)/mongotools
-	mkdir -p $(buildDir)/mongotools
-	cd $(buildDir)/mongotools && curl $(curlRetryOpts) https://fastdl.mongodb.org/tools/db/mongodb-database-tools-$(subst darwin,macos,$(shell uname -s | tr A-Z a-z))-$(shell uname -m | tr A-Z a-z)-100.8.0.zip -o mongotools.zip
-	cd $(buildDir)/mongotools && unzip mongotools.zip && chmod +x ./mongodb-*/bin/* && mv ./mongodb-*/bin/* .
+mongotoolsDir := mongotools
+run-mongotools = $(if $(wildcard $(mongotoolsDir)), ./$(mongotoolsDir)/$(1), $(1))
+$(buildDir)/.get-mongotools:
+ifeq (,$(shell which mongorestore))
+	rm -rf $(mongotoolsDir)
+	mkdir -p $(mongotoolsDir)
+	cd $(mongotoolsDir) && curl $(curlRetryOpts) "$(MONGOTOOLS_URL)" -o mongotools.tgz && $(MONGOTOOLS_DECOMPRESS) mongotools.tgz && chmod +x ./mongodb-*/bin/* && mv ./mongodb-*/bin/* .
+endif
+get-mongotools:$(buildDir)/.get-mongotools
+	@touch $<
 mongodb/.get-mongodb:
 	rm -rf mongodb
 	mkdir -p mongodb
@@ -425,3 +430,15 @@ endif
 .FORCE:
 .PHONY:$(phony) .FORCE
 .DEFAULT_GOAL := build
+
+tools := hugo terraform aws exiftool jpegoptim optipng mogrify
+$(tools):
+	@which $@ > /dev/null
+	
+.PHONY: serve
+serve: hugo
+	$(HUGO) server -D
+
+.PHONY: validate
+validate: terraform
+	$(TERRAFORM) validate

@@ -227,6 +227,8 @@ functions:
         OTEL_COLLECTOR_ENDPOINT: ${otel_collector_endpoint}
         OTEL_TRACE_ID: ${otel_trace_id}
         OTEL_PARENT_ID: ${otel_parent_id}
+        MONGOTOOLS_URL: ${mongotools_url}
+        MONGOTOOLS_DECOMPRESS: ${mongotools_decompress|*decompress}
 
   setup-credentials:
     command: subprocess.exec
@@ -246,6 +248,7 @@ functions:
         JIRA_TOKEN_SECRET: ${jira_token_secret}
         JIRA_CONSUMER_KEY: ${jira_consumer_key}
       command: bash scripts/setup-credentials.sh
+
   setup-mongodb:
     - command: subprocess.exec
       type: setup
@@ -654,6 +657,7 @@ buildvariants:
       RUN_EC2_SPECIFIC_TESTS: true
       mongodb_url: https://fastdl.mongodb.org/linux/mongodb-linux-x86_64-ubuntu2204-6.0.6.tgz
       mongosh_url: https://downloads.mongodb.com/compass/mongosh-1.9.0-linux-x64.tgz
+      mongotools_url: https://fastdl.mongodb.org/tools/db/mongodb-database-tools-ubuntu2204-x86_64-100.8.0.tgz
       race_detector: true
       test_timeout: 15m
     tasks:
@@ -671,6 +675,7 @@ buildvariants:
       GOROOT: /usr/local/go
       mongodb_url: https://fastdl.mongodb.org/linux/mongodb-linux-x86_64-ubuntu2004-6.0.6.tgz
       mongosh_url: https://downloads.mongodb.com/compass/mongosh-1.9.0-linux-x64.tgz
+      mongotools_url: https://fastdl.mongodb.org/tools/db/mongodb-database-tools-ubuntu2204-x86_64-100.8.0.tgz
       decompress: tar zxvf
     tasks:
       - name: "dist-unsigned"
