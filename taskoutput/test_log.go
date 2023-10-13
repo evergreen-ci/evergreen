@@ -47,7 +47,7 @@ func (o TestLogOutput) Get(ctx context.Context, env evergreen.Environment, taskO
 		return o.getBuildloggerLogs(ctx, env, taskOpts, getOpts)
 	}
 
-	svc, err := o.getLogService()
+	svc, err := o.getLogService(ctx, env)
 	if err != nil {
 		return nil, errors.Wrap(err, "getting log service")
 	}
@@ -72,8 +72,8 @@ func (o TestLogOutput) getLogNames(taskOpts TaskOptions, logPaths []string) []st
 	return logNames
 }
 
-func (o TestLogOutput) getLogService() (log.LogService, error) {
-	b, err := newBucket(o.BucketName, o.BucketType)
+func (o TestLogOutput) getLogService(ctx context.Context, env evergreen.Environment) (log.LogService, error) {
+	b, err := newBucket(ctx, env, o.BucketName, o.BucketType)
 	if err != nil {
 		return nil, err
 	}

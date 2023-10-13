@@ -9,9 +9,7 @@ import (
 	"github.com/pkg/errors"
 )
 
-func newBucket(bucketName, bucketType string) (pail.Bucket, error) {
-	env := evergreen.GetEnvironment()
-
+func newBucket(ctx context.Context, env evergreen.Environment, bucketName, bucketType string) (pail.Bucket, error) {
 	var (
 		b   pail.Bucket
 		err error
@@ -29,7 +27,7 @@ func newBucket(bucketName, bucketType string) (pail.Bucket, error) {
 			return nil, errors.WithStack(err)
 		}
 	case evergreen.BucketTypeGridFS:
-		b, err = pail.NewGridFSBucketWithClient(context.Background(), env.Client(), pail.GridFSOptions{
+		b, err = pail.NewGridFSBucketWithClient(ctx, env.Client(), pail.GridFSOptions{
 			Name:     bucketName,
 			Database: env.DB().Name(),
 		})
