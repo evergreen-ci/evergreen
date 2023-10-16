@@ -437,11 +437,11 @@ type ContainerSystem struct {
 }
 
 type Module struct {
-	Name       string `yaml:"name,omitempty" bson:"name"`
-	Branch     string `yaml:"branch,omitempty" bson:"branch"`
-	Repo       string `yaml:"repo,omitempty" bson:"repo"`
-	Prefix     string `yaml:"prefix,omitempty" bson:"prefix"`
-	Ref        string `yaml:"ref,omitempty" bson:"ref"`
+	Name       string `yaml:"name,omitempty" bson:"name" plugin:"expand"`
+	Branch     string `yaml:"branch,omitempty" bson:"branch"  plugin:"expand"`
+	Repo       string `yaml:"repo,omitempty" bson:"repo"  plugin:"expand"`
+	Prefix     string `yaml:"prefix,omitempty" bson:"prefix"  plugin:"expand"`
+	Ref        string `yaml:"ref,omitempty" bson:"ref"  plugin:"expand"`
 	AutoUpdate bool   `yaml:"auto_update,omitempty" bson:"auto_update"`
 }
 
