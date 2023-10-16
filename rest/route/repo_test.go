@@ -81,8 +81,7 @@ func TestPatchRepoIDHandler(t *testing.T) {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 	require.NoError(t, db.ClearCollections(dbModel.RepoRefCollection, dbModel.ProjectVarsCollection,
-		dbModel.ProjectAliasCollection, dbModel.GithubHooksCollection, commitqueue.Collection,
-		dbModel.ProjectRefCollection))
+		dbModel.ProjectAliasCollection, commitqueue.Collection, dbModel.ProjectRefCollection, evergreen.GitHubAppCollection))
 
 	repoRef := &dbModel.RepoRef{
 		ProjectRef: dbModel.ProjectRef{
@@ -92,12 +91,14 @@ func TestPatchRepoIDHandler(t *testing.T) {
 		},
 	}
 	assert.NoError(t, repoRef.Upsert())
-	hook := dbModel.GithubHook{
-		HookID: 1,
-		Owner:  repoRef.Owner,
-		Repo:   repoRef.Repo,
+
+	installation := evergreen.GitHubAppInstallation{
+		Owner:          repoRef.Owner,
+		Repo:           repoRef.Repo,
+		InstallationID: 1234,
 	}
-	assert.NoError(t, hook.Insert())
+	assert.NoError(t, installation.Upsert(ctx))
+
 	repoVars := &dbModel.ProjectVars{
 		Id:          repoRef.Id,
 		Vars:        map[string]string{"a": "hello", "b": "world"},
@@ -218,12 +219,12 @@ func TestPatchRepoIDHandler(t *testing.T) {
 	assert.Equal(t, http.StatusBadRequest, resp.Status())
 	assert.Contains(t, resp.Data().(gimlet.ErrorResponse).Message, "must enable GitHub webhooks first")
 
-	hook = dbModel.GithubHook{
-		HookID: 2,
-		Owner:  "10gen",
-		Repo:   repoRef.Repo,
+	installation = evergreen.GitHubAppInstallation{
+		Owner:          "10gen",
+		Repo:           repoRef.Repo,
+		InstallationID: 1234,
 	}
-	assert.NoError(t, hook.Insert())
+	assert.NoError(t, installation.Upsert(ctx))
 
 	resp = h.Run(ctx)
 	assert.Equal(t, http.StatusOK, resp.Status())
@@ -244,8 +245,8 @@ func TestPatchHandlersWithRestricted(t *testing.T) {
 	defer cancel()
 	env := testutil.NewEnvironment(ctx, t)
 	require.NoError(t, db.ClearCollections(dbModel.RepoRefCollection, dbModel.ProjectVarsCollection,
-		dbModel.ProjectAliasCollection, dbModel.GithubHooksCollection, commitqueue.Collection, user.Collection,
-		dbModel.ProjectRefCollection, evergreen.ScopeCollection, evergreen.RoleCollection, evergreen.ConfigCollection))
+		dbModel.ProjectAliasCollection, commitqueue.Collection, user.Collection, dbModel.ProjectRefCollection,
+		evergreen.ScopeCollection, evergreen.RoleCollection, evergreen.ConfigCollection, evergreen.GitHubAppCollection))
 
 	independentProject := &dbModel.ProjectRef{
 		Id:         "branch1",
@@ -269,12 +270,12 @@ func TestPatchHandlersWithRestricted(t *testing.T) {
 	assert.NoError(t, independentProject.Insert())
 	assert.NoError(t, branchProject.Insert())
 
-	hook := dbModel.GithubHook{
-		HookID: 1,
-		Owner:  branchProject.Owner,
-		Repo:   branchProject.Repo,
+	installation := evergreen.GitHubAppInstallation{
+		Owner:          branchProject.Owner,
+		Repo:           branchProject.Repo,
+		InstallationID: 1234,
 	}
-	assert.NoError(t, hook.Insert())
+	assert.NoError(t, installation.Upsert(ctx))
 
 	u := &user.DBUser{Id: "branch1_admin"}
 	assert.NoError(t, u.Insert())
