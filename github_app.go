@@ -1,5 +1,7 @@
 package evergreen
 
+// TODO EVG-21064: Refactor into model package.
+
 import (
 	"context"
 	"net/http"
@@ -186,10 +188,10 @@ func (s *Settings) CreateInstallationToken(ctx context.Context, owner, repo stri
 
 	token, _, err := client.Apps.CreateInstallationToken(ctx, installationID, opts)
 	if err != nil {
-		return "", errors.Wrapf(err, "creating installation token for installation id: %d", installationID)
+		return "", errors.Wrapf(err, "creating installation token for installation id: '%d'", installationID)
 	}
 	if token == nil {
-		return "", errors.Errorf("Installation token for installation id: %d not found", installationID)
+		return "", errors.Errorf("Installation token for installation 'id': %d not found", installationID)
 	}
 	return token.GetToken(), nil
 }
