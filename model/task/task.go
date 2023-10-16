@@ -1288,12 +1288,12 @@ func SetTasksScheduledTime(tasks []Task, scheduledTime time.Time) error {
 	return nil
 }
 
-// FindMidwayTask gets the task between two task given that they are
+// findMidwayTask gets the task between two task given that they are
 // from the same project, requester, build variant, and display name. The
 // order of the ID's does not matter and if the task passed cannot have a
 // middle (i.e. it is sequential tasks or the same task) it will return the
 // the first task given.
-func FindMidwayTask(t1, t2 Task) (*Task, error) {
+func findMidwayTask(t1, t2 Task) (*Task, error) {
 	// The tasks should be the same build variant, display name, project, and requester.
 	catcher := grip.NewBasicCatcher() // Makes an error accumulator
 	catcher.ErrorfWhen(t1.BuildVariant != t2.BuildVariant, "given tasks have differing build variants '%s' and '%s'", t1.BuildVariant, t2.BuildVariant)
@@ -1313,18 +1313,21 @@ func FindMidwayTask(t1, t2 Task) (*Task, error) {
 	return FindOne(db.Query(ByRevisionOrderNumber(t1.BuildVariant, t1.DisplayName, t1.Project, t1.Requester, mid)))
 }
 
-// FindMidwayTaskFromIds wraps FindMidwayTask but retrieves the two
-// tasks for you.
+// FindMidwayTaskFromIds gets the task between two task given that they are
+// from the same project, requester, build variant, and display name. The
+// order of the ID's does not matter and if the task passed cannot have a
+// middle (i.e. it is sequential tasks or the same task) it will return the
+// the first task given.
 func FindMidwayTaskFromIds(t1Id, t2Id string) (*Task, error) {
 	t1, err := FindOneId(t1Id)
-	if err != nil {
-		return nil, errors.Wrap(err, "finding task id")
+	if err != nil || t1 == nil {
+		return nil, errors.Wrapf(err, "finding task id %s", t1Id)
 	}
 	t2, err := FindOneId(t2Id)
-	if err != nil {
-		return nil, errors.Wrap(err, "finding task id")
+	if err != nil || t2 == nil {
+		return nil, errors.Wrapf(err, "finding task id %s", t2Id)
 	}
-	return FindMidwayTask(*t1, *t2)
+	return findMidwayTask(*t1, *t2)
 }
 
 // UnscheduleStaleUnderwaterHostTasks Removes host tasks older than the unscheduable threshold (e.g. one week) from
