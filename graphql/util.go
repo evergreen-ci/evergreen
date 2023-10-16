@@ -136,16 +136,14 @@ func getFormattedDate(t *time.Time, timezone string) (*string, error) {
 }
 
 // GetDisplayStatus considers both child patch statuses and
-// aborted status, and returns an overall patch status
-// (this is because success is different for version/patches,
-// and for display we rely on the patch status. Will address this in EVG-19914).
+// aborted status, and returns an overall status.
 func getDisplayStatus(v *model.Version) (string, error) {
-	patchStatus := evergreen.VersionStatusToPatchStatus(v.Status)
+	status := v.Status
 	if v.Aborted {
-		patchStatus = evergreen.VersionAborted
+		status = evergreen.VersionAborted
 	}
 	if !evergreen.IsPatchRequester(v.Requester) || v.IsChild() {
-		return patchStatus, nil
+		return status, nil
 	}
 
 	p, err := patch.FindOneId(v.Id)
@@ -155,7 +153,7 @@ func getDisplayStatus(v *model.Version) (string, error) {
 	if p == nil {
 		return "", errors.Errorf("patch '%s' doesn't exist", v.Id)
 	}
-	allStatuses := []string{patchStatus}
+	allStatuses := []string{status}
 	for _, cp := range p.Triggers.ChildPatches {
 		cpVersion, err := model.VersionFindOneId(cp)
 		if err != nil {
@@ -167,8 +165,7 @@ func getDisplayStatus(v *model.Version) (string, error) {
 		if cpVersion.Aborted {
 			allStatuses = append(allStatuses, evergreen.VersionAborted)
 		} else {
-			cpStatus := evergreen.VersionStatusToPatchStatus(cpVersion.Status)
-			allStatuses = append(allStatuses, cpStatus)
+			allStatuses = append(allStatuses, cpVersion.Status)
 		}
 	}
 	return patch.GetCollectiveStatusFromPatchStatuses(allStatuses), nil

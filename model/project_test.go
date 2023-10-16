@@ -2450,7 +2450,8 @@ func TestFindAllBuildVariantTasks(t *testing.T) {
 			{Name: "in_group_1"},
 		}
 		const bvName = "bv"
-		bvTasks := []BuildVariantTaskUnit{{Name: "task_group", IsGroup: true, Variant: bvName}}
+		const tgName = "task_group"
+		bvTasks := []BuildVariantTaskUnit{{Name: tgName, IsGroup: true, Variant: bvName}}
 		groups := []TaskGroup{{Name: bvTasks[0].Name, Tasks: []string{tasks[0].Name, tasks[1].Name}}}
 		p := Project{
 			Tasks:         tasks,
@@ -2459,12 +2460,15 @@ func TestFindAllBuildVariantTasks(t *testing.T) {
 		}
 
 		bvts := p.FindAllBuildVariantTasks()
-		require.Len(t, bvts, 2)
-		assert.Equal(t, tasks[0].Name, bvts[0].Name)
-		assert.Equal(t, "bv", bvts[0].Variant)
-
-		assert.Equal(t, tasks[1].Name, bvts[1].Name)
-		assert.Equal(t, "bv", bvts[1].Variant)
+		require.Len(t, bvts, len(tasks))
+		for i, bvtu := range bvts {
+			assert.Equal(t, tasks[i].Name, bvtu.Name)
+			assert.Equal(t, bvName, bvtu.Variant)
+			// TODO (EVG-19725): remove IsGroup
+			assert.True(t, bvtu.IsGroup)
+			assert.True(t, bvtu.IsPartOfGroup)
+			assert.Equal(t, tgName, bvtu.GroupName)
+		}
 	})
 }
 
