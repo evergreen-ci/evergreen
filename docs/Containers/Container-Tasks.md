@@ -118,9 +118,11 @@ The following is the process by which you can create a usable image from your cu
     Evergreen YAML must also use a **&lt;SHA&gt;** tag, which would be the hash
     of the corresponding commit in our [image repository](https://github.com/evergreen-ci/container-initial-offering-dockerfiles).
 
-The following is a starter Dockerfile that abides by our image policy and
+The following is a template Dockerfile that abides by our [image
+policy](https://docs.google.com/document/d/1MMePuL5YBjJQcNdtwzU2kMLPSsRLzDyE0rhTVkmXDqo/edit) and
 includes commonly used tools and packages (e.g. Go, Python, NodeJS, etc.)
-that you can copy/paste and use as a reference for creating your own. 
+that you can copy/paste and use as a reference for creating your own. Note that directly copying and pasting this
+Dockerfile isn't recommended as it may not be up to date with the latest versions of the tools and packages it installs.
 
 ``` dockerfile
 # Use an approved base image
@@ -160,7 +162,7 @@ RUN apt-get install -y \
     python3-pip
 
 # Default to bash shell, as required by the Evergreen agent
-CMD [ "bin/bash" ]
+ENTRYPOINT ["/bin/bash"]
 
 ```
 
