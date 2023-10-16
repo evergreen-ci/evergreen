@@ -240,7 +240,7 @@ type PatchesInput struct {
 	IncludeCommitQueue *bool    `json:"includeCommitQueue,omitempty"`
 	Limit              int      `json:"limit"`
 	OnlyCommitQueue    *bool    `json:"onlyCommitQueue,omitempty"`
-	OnlyHidden         *bool    `json:"onlyHidden,omitempty"`
+	IncludeHidden      *bool    `json:"includeHidden,omitempty"`
 	Page               int      `json:"page"`
 	PatchName          string   `json:"patchName"`
 	Statuses           []string `json:"statuses"`

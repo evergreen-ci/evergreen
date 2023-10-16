@@ -114,18 +114,104 @@
       }
     },
     {
-      "query_file": "patches-hidden-only.graphql",
+      "query_file": "patches-include-hidden.graphql",
       "result": {
         "data": {
           "user": {
-            "patches": {
+            "includeHidden": {
               "patches": [
+                {
+                  "id": "5e4ff3abe3c3317e352062e8",
+                  "hidden": false
+                },
+                {
+                  "id": "5e4ff3abe3c3317e352062e7",
+                  "hidden": false
+                },
+                {
+                  "id": "5e4ff3abe3c3317e352062e6",
+                  "hidden": false
+                },
+                {
+                  "id": "5e4ff3abe3c3317e352062e5",
+                  "hidden": false
+                },
+                {
+                  "id": "5e4ff3abe3c3317e352062e4",
+                  "hidden": false
+                },
+                {
+                  "id": "5e4ff3abe3c3317e352062e9",
+                  "hidden": false
+                },
                 {
                   "id": "7e4ff3abe3c3317e352062e9",
                   "hidden": true
                 }
               ],
-              "filteredPatchCount": 1
+              "filteredPatchCount": 7
+            },
+            "excludeHidden": {
+              "patches": [
+                {
+                  "id": "5e4ff3abe3c3317e352062e8",
+                  "hidden": false
+                },
+                {
+                  "id": "5e4ff3abe3c3317e352062e7",
+                  "hidden": false
+                },
+                {
+                  "id": "5e4ff3abe3c3317e352062e6",
+                  "hidden": false
+                },
+                {
+                  "id": "5e4ff3abe3c3317e352062e5",
+                  "hidden": false
+                },
+                {
+                  "id": "5e4ff3abe3c3317e352062e4",
+                  "hidden": false
+                },
+                {
+                  "id": "5e4ff3abe3c3317e352062e9",
+                  "hidden": false
+                }
+              ],
+              "filteredPatchCount": 6
+            },
+            "unsuppliedHidden": {
+              "patches": [
+                {
+                  "id": "5e4ff3abe3c3317e352062e8",
+                  "hidden": false
+                },
+                {
+                  "id": "5e4ff3abe3c3317e352062e7",
+                  "hidden": false
+                },
+                {
+                  "id": "5e4ff3abe3c3317e352062e6",
+                  "hidden": false
+                },
+                {
+                  "id": "5e4ff3abe3c3317e352062e5",
+                  "hidden": false
+                },
+                {
+                  "id": "5e4ff3abe3c3317e352062e4",
+                  "hidden": false
+                },
+                {
+                  "id": "5e4ff3abe3c3317e352062e9",
+                  "hidden": false
+                },
+                {
+                  "id": "7e4ff3abe3c3317e352062e9",
+                  "hidden": true
+                }
+              ],
+              "filteredPatchCount": 7
             }
           }
         }

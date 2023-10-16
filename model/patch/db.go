@@ -141,8 +141,8 @@ type ByPatchNameStatusesCommitQueuePaginatedOptions struct {
 	Page               int
 	Limit              int
 	IncludeCommitQueue *bool
+	IncludeHidden      *bool
 	OnlyCommitQueue    *bool
-	OnlyHidden         *bool
 }
 
 func ByPatchNameStatusesCommitQueuePaginated(ctx context.Context, opts ByPatchNameStatusesCommitQueuePaginatedOptions) ([]Patch, int, error) {
@@ -160,16 +160,15 @@ func ByPatchNameStatusesCommitQueuePaginated(ctx context.Context, opts ByPatchNa
 		match[AliasKey] = true
 	}
 
-	if utility.FromBoolPtr(opts.OnlyHidden) {
-		match[HiddenKey] = true
-	} else {
-		match[HiddenKey] = bson.M{"$ne": true}
-	}
-
 	// This is only used on the user patches page when we want to filter out the commit queue
 	if opts.IncludeCommitQueue != nil && !utility.FromBoolPtr(opts.IncludeCommitQueue) {
 		match[AliasKey] = commitQueueFilter
 	}
+
+	if opts.IncludeHidden != nil && !utility.FromBoolPtr(opts.IncludeHidden) {
+		match[HiddenKey] = bson.M{"$ne": true}
+	}
+
 	if opts.PatchName != "" {
 		match[DescriptionKey] = bson.M{"$regex": opts.PatchName, "$options": "i"}
 	}
