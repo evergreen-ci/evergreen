@@ -35,7 +35,6 @@ tags
 
 mci_testing_env
 /executables
-logs
 public/node_modules/
 artifacts-*
 
