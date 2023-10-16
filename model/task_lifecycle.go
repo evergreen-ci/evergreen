@@ -1567,21 +1567,19 @@ func updateVersionStatus(v *Version) (string, error) {
 }
 
 // UpdatePatchStatus updates the status of a patch.
-func UpdatePatchStatus(p *patch.Patch, versionStatus string) error {
-	patchStatus := evergreen.VersionStatusToPatchStatus(versionStatus)
-
-	if patchStatus == p.Status {
+func UpdatePatchStatus(p *patch.Patch, status string) error {
+	if status == p.Status {
 		return nil
 	}
 
-	event.LogPatchStateChangeEvent(p.Version, patchStatus)
+	event.LogPatchStateChangeEvent(p.Version, status)
 
-	if evergreen.IsFinishedVersionStatus(patchStatus) {
-		if err := p.MarkFinished(patchStatus, time.Now()); err != nil {
-			return errors.Wrapf(err, "marking patch '%s' as finished with status '%s'", p.Id.Hex(), patchStatus)
+	if evergreen.IsFinishedVersionStatus(status) {
+		if err := p.MarkFinished(status, time.Now()); err != nil {
+			return errors.Wrapf(err, "marking patch '%s' as finished with status '%s'", p.Id.Hex(), status)
 		}
-	} else if err := p.UpdateStatus(patchStatus); err != nil {
-		return errors.Wrapf(err, "updating patch '%s' with status '%s'", p.Id.Hex(), patchStatus)
+	} else if err := p.UpdateStatus(status); err != nil {
+		return errors.Wrapf(err, "updating patch '%s' with status '%s'", p.Id.Hex(), status)
 	}
 
 	isDone, parentPatch, err := p.GetFamilyInformation()
@@ -1660,11 +1658,10 @@ func UpdateBuildAndVersionStatusForTask(ctx context.Context, t *task.Task) error
 			return errors.Wrapf(err, "getting family information for patch '%s'", p.Id.Hex())
 		}
 		if isDone {
-			collectiveStatus, err := p.CollectiveStatus()
+			versionStatus, err := p.CollectiveStatus()
 			if err != nil {
 				return errors.Wrapf(err, "getting collective status for patch '%s'", p.Id.Hex())
 			}
-			versionStatus := evergreen.PatchStatusToVersionStatus(collectiveStatus)
 			if parentPatch != nil {
 				event.LogVersionChildrenCompletionEvent(parentPatch.Id.Hex(), versionStatus, parentPatch.Author)
 			} else {

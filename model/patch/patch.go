@@ -927,7 +927,7 @@ func GetChildrenOrSiblingsReadiness(childrenOrSiblings []string) (string, error)
 	if len(childrenOrSiblings) == 0 {
 		return "", nil
 	}
-	childrenStatus := evergreen.LegacyPatchSucceeded
+	childrenStatus := evergreen.VersionSucceeded
 	for _, childPatch := range childrenOrSiblings {
 		childPatchDoc, err := FindOneId(childPatch)
 		if err != nil {
@@ -1284,7 +1284,7 @@ func GetCollectiveStatusFromPatchStatuses(statuses []string) string {
 	} else if hasAborted {
 		return evergreen.VersionAborted
 	} else if hasSuccess {
-		return evergreen.LegacyPatchSucceeded
+		return evergreen.VersionSucceeded
 	}
 	return evergreen.VersionCreated
 }
