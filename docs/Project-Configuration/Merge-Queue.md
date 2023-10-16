@@ -76,7 +76,7 @@ send notifications for merges done by the GitHub merge queue.
 
 **Q:** How do branch protection rules apply to PRs and the merge queue?
 
-The same branch protection rules apply to PRs (which determine whether you can
+**A:** The same branch protection rules apply to PRs (which determine whether you can
 add the PR to the merge queue) and the merge queue itself (which determines
 whether or not GitHub will merge the PR).  Nevertheless, you can run different
 tasks in PRs and the merge queue with the separate settings on the GitHub &
