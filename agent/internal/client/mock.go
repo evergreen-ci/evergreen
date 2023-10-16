@@ -28,6 +28,10 @@ import (
 	"google.golang.org/grpc"
 )
 
+const (
+	MockedGitHubAppToken = "mocked_github_app_token"
+)
+
 // Mock mocks the Communicator for testing.
 type Mock struct {
 	maxAttempts  int
@@ -528,5 +532,8 @@ func (c *Mock) GetPullRequestInfo(ctx context.Context, taskData TaskData, prNum 
 }
 
 func (c *Mock) CreateInstallationToken(ctx context.Context, td TaskData, owner, repo string) (string, error) {
-	return "token", nil
+	if owner != "" && repo != "" {
+		return MockedGitHubAppToken, nil
+	}
+	return "", nil
 }

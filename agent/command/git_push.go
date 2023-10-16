@@ -65,7 +65,8 @@ func (c *gitPush) Execute(ctx context.Context, comm client.Communicator, logger 
 	}
 
 	var p *patch.Patch
-	p, err = comm.GetTaskPatch(ctx, client.TaskData{ID: conf.Task.Id, Secret: conf.Task.Secret}, "")
+	td := client.TaskData{ID: conf.Task.Id, Secret: conf.Task.Secret}
+	p, err = comm.GetTaskPatch(ctx, td, "")
 	if err != nil {
 		return errors.Wrap(err, "getting task patch")
 	}
@@ -81,7 +82,7 @@ func (c *gitPush) Execute(ctx context.Context, comm client.Communicator, logger 
 
 	// get commit information
 	var projectToken string
-	_, projectToken, err = getProjectMethodAndToken(c.Token, conf.Expansions.Get(evergreen.GlobalGitHubTokenExpansion), conf.Expansions.Get(evergreen.GithubAppToken), conf.GetCloneMethod())
+	_, projectToken, err = getProjectMethodAndToken(ctx, comm, td, conf.ProjectRef.Owner, conf.ProjectRef.Repo, c.Token, conf.Expansions.Get(evergreen.GlobalGitHubTokenExpansion), conf.GetCloneMethod())
 	if err != nil {
 		return errors.Wrap(err, "getting token")
 	}
