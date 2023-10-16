@@ -118,32 +118,43 @@ func getAllTargets() ([]string, error) {
 
 // generateTasks returns a map of tasks to generate.
 func generateTasks() (*shrub.Configuration, error) {
-	changes, err := whatChanged()
-	if err != nil {
-		return nil, err
-	}
-	var targets []string
-	if len(changes) == 0 {
-		targets, err = getAllTargets()
-		if err != nil {
-			return nil, err
-		}
-	} else {
-		targets, err = targetsFromChangedFiles(changes)
-		if err != nil {
-			return nil, err
-		}
-	}
-
+	// changes, err := whatChanged()
+	// if err != nil {
+	//     return nil, err
+	// }
+	// var targets []string
+	// if len(changes) == 0 {
+	//     targets, err = getAllTargets()
+	//     if err != nil {
+	//         return nil, err
+	//     }
+	// } else {
+	//     targets, err = targetsFromChangedFiles(changes)
+	//     if err != nil {
+	//         return nil, err
+	//     }
+	// }
+	//
 	conf := &shrub.Configuration{}
-	if len(targets) == 0 {
-		return conf, nil
-	}
+	// if len(targets) == 0 {
+	//     return conf, nil
+	// }
+
+	targets := []string{"util"}
 
 	lintTargets := []string{}
 	for _, t := range targets {
 		name := makeTarget(t)
-		conf.Task(name).MustHaveTestResults(true).FunctionWithVars("run-make", map[string]string{"target": name})
+		tsk := conf.Task(name).
+			MustHaveTestResults(true).
+			FunctionWithVars("run-make", map[string]string{"target": name})
+		if t == "util" {
+			// Depend on an existing task in a different variant.
+			tsk.Dependency(shrub.TaskDependency{
+				Name:    "test-util",
+				Variant: "ubuntu2204",
+			})
+		}
 		lintTargets = append(lintTargets, name)
 	}
 

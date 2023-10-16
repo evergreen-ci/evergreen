@@ -9,6 +9,7 @@ import (
 	"github.com/evergreen-ci/evergreen/model/task"
 	"github.com/evergreen-ci/evergreen/util"
 	"github.com/evergreen-ci/utility"
+	"github.com/k0kubun/pp"
 	"github.com/mongodb/grip"
 	"github.com/mongodb/grip/message"
 	"github.com/pkg/errors"
@@ -271,9 +272,13 @@ func (g *GeneratedProject) saveNewBuildsAndTasks(ctx context.Context, v *Version
 	}
 
 	creationInfo := TaskCreationInfo{
-		Project:        p,
-		ProjectRef:     projectRef,
-		Version:        v,
+		Project:    p,
+		ProjectRef: projectRef,
+		Version:    v,
+		// kim: NOTE: this only has the TV pairs for newly generated tasks in
+		// existing BVs, but doesn't handle the case of an existing BV with no
+		// new generated tasks. I'm not sure if adding existing BVs and existing
+		// tasks will cause anything bad to happen here.
 		Pairs:          newTVPairsForExistingVariants,
 		ActivationInfo: *activationInfo,
 		SyncAtEndOpts:  syncAtEndOpts,
@@ -282,18 +287,26 @@ func (g *GeneratedProject) saveNewBuildsAndTasks(ctx context.Context, v *Version
 		// tasks inherit that requirement.
 		ActivatedTasksAreEssentialToSucceed: g.Task.IsEssentialToSucceed,
 	}
+	pp.Println("creating new tasks for existing BVs:", creationInfo.Pairs)
+	// kim: NOTE: this adds more tasks to existing builds.
 	activatedTasksInExistingBuilds, err := addNewTasks(ctx, creationInfo, existingBuilds, evergreen.GenerateTasksActivator)
 	if err != nil {
 		return errors.Wrap(err, "adding new tasks")
 	}
 
+	// kim: NOTE: this activates more tasks in new builds
 	creationInfo.Pairs = newTVPairsForNewVariants
+	pp.Println("creating new tasks for new BVs:", creationInfo.Pairs)
 	activatedTasksInNewBuilds, err := addNewBuilds(ctx, creationInfo, existingBuilds)
 	if err != nil {
 		return errors.Wrap(err, "adding new builds")
 	}
 
 	// only want to add dependencies to activated tasks
+	// kim: TODO: check what dependencies are added.
+	// kim: NOTE: we could do a sloppy fix and add the dependencies after both
+	// the dependency and the task exist, but it may be subject to races with
+	// the scheduler. Maybe good enough for a quick fix, but not a proper fix.
 	if err = g.addDependencies(ctx, append(activatedTasksInExistingBuilds, activatedTasksInNewBuilds...)); err != nil {
 		return errors.Wrap(err, "adding dependencies")
 	}

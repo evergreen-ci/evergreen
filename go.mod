@@ -220,3 +220,9 @@ require (
 	github.com/shirou/gopsutil/v3 v3.23.9
 	gopkg.in/yaml.v3 v3.0.1
 )
+
+require (
+	github.com/k0kubun/pp v3.0.1+incompatible // indirect
+	github.com/mattn/go-colorable v0.1.13 // indirect
+	github.com/mattn/go-isatty v0.0.19 // indirect
+)

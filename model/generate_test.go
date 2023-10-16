@@ -1086,7 +1086,63 @@ func (s *GenerateSuite) TestSaveNewTasksWithDependencies() {
 	}
 }
 
-func (s *GenerateSuite) TestSaveNewTasksWithCrossVariantDependencies() {
+// kim: TODO: This currently tests:
+// - New task in new BV with existing cross BV existing task dependency.
+// Need to add tests for:
+// - New task in existing BV with existing cross BV existing task dependency.
+// - New task in existing BV with existing cross BV new task dependency.
+// - New task in new BV with new cross BV new task dependency.
+
+// kim: NOTE: the essence of the bug is that creating a new generated task may
+// rely on creating a new build first (and vice versa). For example:
+/*
+Original project:
+tasks:
+- t0
+- t1
+
+buildvariants:
+- name: v0 # build initially scheduled for generate.tasks, so it exists
+  tasks:
+	- t0 # generator
+- name: v1 # build not initially scheduled, so it doesn't exist
+  tasks:
+	- t1 #
+
+New project:
+tasks:
+- name: t2
+  depends_on:
+    - name: t0 # Need to create new build and schedule new task so it can depend on this
+      variant: v1
+
+
+buildvariants:
+- name: v0
+  tasks:
+    - t2 # defined in generate.tasks
+*/
+//
+// - One existing BV V0 has generator task T0. A BV V1 is defined with task T1
+// but no tasks are scheduled in it yet.
+// - Generator creates a new task T2 in V0 that depends on an already-defined
+// task T1 in V1.
+// - Generator V0/T0 calls addNewTasks to try to add the new task V0/T2, but
+// V1/T1 that it depends on has yet to exist.
+// - Order of operations (new tasks in existing builds -> new builds) can't
+// handle depending on a build that hasn't been created yet.
+// - This isn't as simple as fixing the dependency after the fact, because if
+// the task doesn't have the dependency upon creation, it may run without
+// waiting for its dependency.
+// - In order to ensure dependencies exist immediately when the task is created,
+// logic would dictate that tasks have to be created in order of dependency
+// topological sort, rather than splitting by new/existing BV.
+func (s *GenerateSuite) TestSaveNewTasksInNewVariantWithCrossVariantDependencies() {
+	// kim: NOTE: this test should be testing that cross-variant dependencies
+	// work and create the dependency edge.
+	// kim: NOTE: this test was changed with the additon of
+	// GetNewTasksAndActivationInfo, so maybe the dependency creation logic
+	// changed.
 	t1 := &task.Task{
 		Id:      "generator",
 		BuildId: "b1",
@@ -1094,9 +1150,14 @@ func (s *GenerateSuite) TestSaveNewTasksWithCrossVariantDependencies() {
 	}
 	s.NoError(t1.Insert())
 
-	existingBuild := build.Build{
-		Id:           "b1",
-		BuildVariant: "a_variant",
+	// existingBuild := build.Build{
+	//     Id:           "b1",
+	//     BuildVariant: "a_variant",
+	//     Version:      "v1",
+	// }
+	existingOtherBuild := build.Build{
+		Id:           "b2",
+		BuildVariant: "a_new_variant",
 		Version:      "v1",
 	}
 	v := &Version{
@@ -1114,13 +1175,18 @@ buildvariants:
   - "arch"
   tasks:
   - name: say_something
+- name: a_new_variant
+  run_on:
+  - "arch"
+  tasks:
   - name: generator
 `
 	err := util.UnmarshalYAMLWithFallback([]byte(config), &parserProj)
 	s.NoError(err)
 	parserProj.Id = "v1"
 	s.NoError(parserProj.Insert())
-	s.NoError(existingBuild.Insert())
+	// s.NoError(existingBuild.Insert())
+	s.NoError(existingOtherBuild.Insert())
 	s.NoError(v.Insert())
 
 	g := GeneratedProject{
@@ -1148,7 +1214,6 @@ buildvariants:
 						Name: "task_that_has_dependencies",
 					},
 				},
-				RunOn: []string{"arch"},
 			},
 		},
 	}
@@ -1157,13 +1222,17 @@ buildvariants:
 	s.Require().NoError(err)
 	p, pp, v, err = g.NewVersion(context.Background(), p, pp, v)
 	s.NoError(err)
-	g.GetNewTasksAndActivationInfo(s.ctx, v, p)
+	// kim: TODO: see if GetNewTasksAndActivationInfo is necessary here. It
+	// seems like it's already called in Save.
+	// g.GetNewTasksAndActivationInfo(s.ctx, v, p)
+	// pp.Println("tasks after GetNewTasksAndActivationInfo:", g)
 	s.NoError(g.Save(s.ctx, s.env.Settings(), p, pp, v))
 
 	// the depended-on task is created in the existing variant
 	saySomething := task.Task{}
 	err = db.FindOneQ(task.Collection, db.Query(bson.M{task.DisplayNameKey: "say_something"}), &saySomething)
 	s.NoError(err)
+	s.True(saySomething.Activated, "dependency should be activated")
 
 	// the dependent task depends on the depended-on task
 	taskWithDeps := task.Task{}
