@@ -130,10 +130,10 @@ func CreateProject(ctx context.Context, env evergreen.Environment, projectRef *m
 	existingContainerSecrets := projectRef.ContainerSecrets
 	projectRef.ContainerSecrets = nil
 
-	_, err = model.EnableWebhooks(ctx, projectRef)
+	_, err = model.SetTracksPushEvents(ctx, projectRef)
 	if err != nil {
 		grip.Debug(message.WrapError(err, message.Fields{
-			"message":            "error enabling webhooks",
+			"message":            "error setting project tracks push events",
 			"project_id":         projectRef.Id,
 			"project_identifier": projectRef.Identifier,
 			"owner":              projectRef.Owner,

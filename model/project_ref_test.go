@@ -458,11 +458,19 @@ func TestAttachToNewRepo(t *testing.T) {
 	defer cancel()
 
 	require.NoError(t, db.ClearCollections(ProjectRefCollection, RepoRefCollection, evergreen.ScopeCollection,
-		evergreen.RoleCollection, user.Collection, evergreen.ConfigCollection, GithubHooksCollection))
+		evergreen.RoleCollection, user.Collection, evergreen.ConfigCollection, evergreen.GitHubAppCollection))
 	require.NoError(t, db.CreateCollections(evergreen.ScopeCollection))
 
 	settings := evergreen.Settings{
 		GithubOrgs: []string{"newOwner", "evergreen-ci"},
+		AuthConfig: evergreen.AuthConfig{
+			Github: &evergreen.GithubAuthConfig{
+				AppId: 1234,
+			},
+		},
+		Expansions: map[string]string{
+			"github_app_key": "test",
+		},
 	}
 	assert.NoError(t, settings.Set(ctx))
 	pRef := ProjectRef{
@@ -488,6 +496,12 @@ func TestAttachToNewRepo(t *testing.T) {
 		SystemRoles: []string{GetViewRepoRole("myRepo")},
 	}
 	assert.NoError(t, u.Insert())
+	installation := evergreen.GitHubAppInstallation{
+		Owner:          pRef.Owner,
+		Repo:           pRef.Repo,
+		InstallationID: 1234,
+	}
+	assert.NoError(t, installation.Upsert(ctx))
 
 	// Can't attach to repo with an invalid owner
 	pRef.Owner = "invalid"
@@ -495,12 +509,12 @@ func TestAttachToNewRepo(t *testing.T) {
 
 	pRef.Owner = "newOwner"
 	pRef.Repo = "newRepo"
-	hook := GithubHook{
-		HookID: 12,
-		Owner:  pRef.Owner,
-		Repo:   pRef.Repo,
+	newInstallation := evergreen.GitHubAppInstallation{
+		Owner:          pRef.Owner,
+		Repo:           pRef.Repo,
+		InstallationID: 1234,
 	}
-	assert.NoError(t, hook.Insert())
+	assert.NoError(t, newInstallation.Upsert(ctx))
 	assert.NoError(t, pRef.AttachToNewRepo(u))
 
 	pRefFromDB, err := FindBranchProjectRef(pRef.Id)
@@ -574,7 +588,7 @@ func TestAttachToRepo(t *testing.T) {
 	defer cancel()
 
 	require.NoError(t, db.ClearCollections(ProjectRefCollection, RepoRefCollection, evergreen.ScopeCollection,
-		evergreen.RoleCollection, user.Collection, GithubHooksCollection, event.EventCollection, evergreen.ConfigCollection))
+		evergreen.RoleCollection, user.Collection, event.EventCollection, evergreen.ConfigCollection))
 	require.NoError(t, db.CreateCollections(evergreen.ScopeCollection))
 	settings := evergreen.Settings{
 		GithubOrgs: []string{"newOwner", "evergreen-ci"},
@@ -595,12 +609,13 @@ func TestAttachToRepo(t *testing.T) {
 	}
 	assert.NoError(t, pRef.Insert())
 
-	hook := GithubHook{
-		HookID: 12,
-		Owner:  pRef.Owner,
-		Repo:   pRef.Repo,
+	installation := evergreen.GitHubAppInstallation{
+		Owner:          pRef.Owner,
+		Repo:           pRef.Repo,
+		InstallationID: 1234,
 	}
-	assert.NoError(t, hook.Insert())
+	assert.NoError(t, installation.Upsert(ctx))
+
 	u := &user.DBUser{Id: "me"}
 	assert.NoError(t, u.Insert())
 	// No repo exists, but one should be created.
@@ -1163,7 +1178,7 @@ func TestFindProjectRefsByRepoAndBranch(t *testing.T) {
 
 func TestCreateNewRepoRef(t *testing.T) {
 	assert.NoError(t, db.ClearCollections(ProjectRefCollection, RepoRefCollection, user.Collection,
-		evergreen.ScopeCollection, ProjectVarsCollection, ProjectAliasCollection, GithubHooksCollection))
+		evergreen.ScopeCollection, ProjectVarsCollection, ProjectAliasCollection, evergreen.GitHubAppCollection))
 	require.NoError(t, db.CreateCollections(evergreen.ScopeCollection))
 
 	ctx, cancel := context.WithCancel(context.Background())
@@ -1207,12 +1222,13 @@ func TestCreateNewRepoRef(t *testing.T) {
 	}
 	assert.NoError(t, doc3.Insert())
 
-	hook := GithubHook{
-		HookID: 12,
-		Owner:  "mongodb",
-		Repo:   "mongo",
+	installation := evergreen.GitHubAppInstallation{
+		Owner:          "mongodb",
+		Repo:           "mongo",
+		InstallationID: 1234,
 	}
-	assert.NoError(t, hook.Insert())
+	assert.NoError(t, installation.Upsert(ctx))
+
 	projectVariables := []ProjectVars{
 		{
 			Id: doc1.Id,

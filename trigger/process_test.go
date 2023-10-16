@@ -575,7 +575,7 @@ func TestProjectTriggerIntegrationForPush(t *testing.T) {
 
 	pushEvent := &github.PushEvent{
 		HeadCommit: &github.HeadCommit{
-			SHA:     utility.ToStringPtr("abc"),
+			ID:      utility.ToStringPtr("abc"),
 			Message: utility.ToStringPtr("message"),
 			Author: &github.CommitAuthor{
 				Email: utility.ToStringPtr("hello@example.com"),
@@ -596,6 +596,8 @@ func TestProjectTriggerIntegrationForPush(t *testing.T) {
 	assert.Equal(downstreamProjectRef.Id, dbVersions[0].Identifier)
 	assert.Equal(evergreen.TriggerRequester, dbVersions[0].Requester)
 	assert.Equal(model.ProjectTriggerLevelPush, dbVersions[0].TriggerType)
+	assert.Equal("abc", dbVersions[0].TriggerSHA)
+	assert.Equal("upstream", dbVersions[0].TriggerID)
 
 	builds, err := build.Find(build.ByVersion(dbVersions[0].Id))
 	assert.NoError(err)
