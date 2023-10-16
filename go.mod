@@ -217,12 +217,6 @@ require (
 	github.com/evergreen-ci/plank v0.0.0-20230207190607-5f47f8a30da1
 	github.com/evergreen-ci/tarjan v0.0.0-20170824211642-fcd3f3321826
 	github.com/mongodb/jasper v0.0.0-20220214215554-82e5a72cff6b
-	github.com/mongodb/mongo-tools v0.0.0-20231005175156-827c224aa8f6
 	github.com/shirou/gopsutil/v3 v3.23.9
 	gopkg.in/yaml.v3 v3.0.1
-)
-
-require (
-	github.com/jessevdk/go-flags v1.5.0 // indirect
-	golang.org/x/term v0.13.0 // indirect
 )
