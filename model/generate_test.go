@@ -778,7 +778,7 @@ func (s *GenerateSuite) TestAddGeneratedProjectToConfig() {
 	s.NotEmpty(newPP2)
 }
 
-func (s *GenerateSuite) TestSaveNewBuildsAndTasks() {
+func (s *GenerateSuite) TestSaveNewBuildsAndTasksWithBatchtime() {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 
@@ -855,7 +855,6 @@ func (s *GenerateSuite) TestSaveNewBuildsAndTasks() {
 	s.Require().NoError(err)
 	p, pp, v, err = g.NewVersion(context.Background(), p, pp, v)
 	s.Require().NoError(err)
-	g.GetNewTasksAndActivationInfo(ctx, v, p)
 	s.NoError(g.Save(s.ctx, s.env.Settings(), p, pp, v))
 
 	// verify we stopped saving versions
@@ -974,7 +973,6 @@ func (s *GenerateSuite) TestSaveWithAlreadyGeneratedTasksAndVariants() {
 	s.NoError(err)
 	s.Len(pp.UpdatedByGenerators, 1) // Not modified again.
 
-	g.GetNewTasksAndActivationInfo(ctx, v, p)
 	s.NoError(g.Save(s.ctx, s.env.Settings(), p, pp, v))
 
 	tasks := []task.Task{}
@@ -1049,7 +1047,6 @@ func (s *GenerateSuite) TestSaveNewTasksWithDependencies() {
 	s.Require().NoError(err)
 	p, pp, v, err = g.NewVersion(context.Background(), p, pp, v)
 	s.NoError(err)
-	g.GetNewTasksAndActivationInfo(s.ctx, v, p)
 	s.NoError(g.Save(s.ctx, s.env.Settings(), p, pp, v))
 
 	v, err = VersionFindOneId(v.Id)
@@ -1071,18 +1068,15 @@ func (s *GenerateSuite) TestSaveNewTasksWithDependencies() {
 	s.True(taskWithDepsFound, "task '%s' should have been added to build variant", expectedTask)
 
 	tasks := []task.Task{}
-	err = db.FindAllQ(task.Collection, db.Query(bson.M{}), &tasks)
-	s.NoError(err)
-	err = db.FindAllQ(task.Collection, db.Query(bson.M{task.DisplayNameKey: expectedTask}), &tasks)
-	s.NoError(err)
+	s.NoError(db.FindAllQ(task.Collection, db.Query(bson.M{task.DisplayNameKey: expectedTask}), &tasks))
 	s.Require().Len(tasks, 1)
 	s.Require().Len(tasks[0].DependsOn, 3)
 	expected := map[string]bool{"say-hi-task-id": false, "say-bye-task-id": false, "say_something_else": false}
 	for _, dependency := range tasks[0].DependsOn {
 		expected[dependency.TaskId] = true
 	}
-	for taskName, expect := range expected {
-		s.True(expect, fmt.Sprintf("%s should be a dependency but wasn't", taskName))
+	for taskID, expect := range expected {
+		s.True(expect, fmt.Sprintf("%s should be a dependency but wasn't", taskID))
 	}
 }
 
@@ -1138,11 +1132,6 @@ buildvariants:
 // logic would dictate that tasks have to be created in order of dependency
 // topological sort, rather than splitting by new/existing BV.
 func (s *GenerateSuite) TestSaveNewTasksInNewVariantWithCrossVariantDependencies() {
-	// kim: NOTE: this test should be testing that cross-variant dependencies
-	// work and create the dependency edge.
-	// kim: NOTE: this test was changed with the additon of
-	// GetNewTasksAndActivationInfo, so maybe the dependency creation logic
-	// changed.
 	t1 := &task.Task{
 		Id:      "generator",
 		BuildId: "b1",
@@ -1150,14 +1139,10 @@ func (s *GenerateSuite) TestSaveNewTasksInNewVariantWithCrossVariantDependencies
 	}
 	s.NoError(t1.Insert())
 
-	// existingBuild := build.Build{
-	//     Id:           "b1",
-	//     BuildVariant: "a_variant",
-	//     Version:      "v1",
-	// }
-	existingOtherBuild := build.Build{
-		Id:           "b2",
-		BuildVariant: "a_new_variant",
+	existingBuild := build.Build{
+		Id:           "b1",
+		Activated:    true,
+		BuildVariant: "a_variant",
 		Version:      "v1",
 	}
 	v := &Version{
@@ -1175,18 +1160,13 @@ buildvariants:
   - "arch"
   tasks:
   - name: say_something
-- name: a_new_variant
-  run_on:
-  - "arch"
-  tasks:
   - name: generator
 `
 	err := util.UnmarshalYAMLWithFallback([]byte(config), &parserProj)
 	s.NoError(err)
 	parserProj.Id = "v1"
 	s.NoError(parserProj.Insert())
-	// s.NoError(existingBuild.Insert())
-	s.NoError(existingOtherBuild.Insert())
+	s.NoError(existingBuild.Insert())
 	s.NoError(v.Insert())
 
 	g := GeneratedProject{
@@ -1214,6 +1194,7 @@ buildvariants:
 						Name: "task_that_has_dependencies",
 					},
 				},
+				RunOn: []string{"arch"},
 			},
 		},
 	}
@@ -1222,24 +1203,108 @@ buildvariants:
 	s.Require().NoError(err)
 	p, pp, v, err = g.NewVersion(context.Background(), p, pp, v)
 	s.NoError(err)
-	// kim: TODO: see if GetNewTasksAndActivationInfo is necessary here. It
-	// seems like it's already called in Save.
-	// g.GetNewTasksAndActivationInfo(s.ctx, v, p)
-	// pp.Println("tasks after GetNewTasksAndActivationInfo:", g)
 	s.NoError(g.Save(s.ctx, s.env.Settings(), p, pp, v))
 
-	// the depended-on task is created in the existing variant
 	saySomething := task.Task{}
 	err = db.FindOneQ(task.Collection, db.Query(bson.M{task.DisplayNameKey: "say_something"}), &saySomething)
 	s.NoError(err)
-	s.True(saySomething.Activated, "dependency should be activated")
+	s.True(saySomething.Activated, "generate.tasks should have activated dependency")
 
-	// the dependent task depends on the depended-on task
 	taskWithDeps := task.Task{}
 	err = db.FindOneQ(task.Collection, db.Query(bson.M{task.DisplayNameKey: "task_that_has_dependencies"}), &taskWithDeps)
 	s.NoError(err)
 	s.Require().Len(taskWithDeps.DependsOn, 1)
-	s.Equal(taskWithDeps.DependsOn[0].TaskId, saySomething.Id)
+	s.Equal(taskWithDeps.DependsOn[0].TaskId, saySomething.Id, "generated task should depend on cross-variant dependency")
+}
+
+// kim: TODO: make some other tests like this one.
+func (s *GenerateSuite) TestSaveNewTasksInNewVariantWithCrossVariantDependenciesInNewBuildWithExistingDefinition() {
+	// This tests generating a task that depends on a task in a different BV.
+	// Furthermore, that BV was already defined before generate.tasks but had no
+	// tasks scheduled in it initially. It should scheduled by the
+	// generate.tasks dependency.
+	genTask := &task.Task{
+		Id:      "generator",
+		BuildId: "b1",
+		Version: "v1",
+	}
+	s.NoError(genTask.Insert())
+
+	existingOtherBuild := build.Build{
+		Id:           "b2",
+		Activated:    true,
+		BuildVariant: "scheduled_bv_with_generator",
+		Version:      "v1",
+	}
+	v := &Version{
+		Id:       "v1",
+		BuildIds: []string{"b1"},
+	}
+	parserProj := ParserProject{}
+	config := `
+tasks:
+- name: defined_but_not_scheduled_task
+- name: generator
+
+buildvariants:
+- name: defined_but_not_scheduled_bv
+  run_on:
+  - "arch"
+  tasks:
+  - name: defined_but_not_scheduled_task
+- name: scheduled_bv_with_generator
+  run_on:
+  - "arch"
+  tasks:
+  - name: generator
+`
+	err := util.UnmarshalYAMLWithFallback([]byte(config), &parserProj)
+	s.NoError(err)
+	parserProj.Id = "v1"
+	s.NoError(parserProj.Insert())
+	s.NoError(existingOtherBuild.Insert())
+	s.NoError(v.Insert())
+
+	generateTasksJSON := `
+{
+	"tasks": [
+		{
+			"name": "task_that_has_cross_variant_dependency",
+			"depends_on": [
+				{
+					"name": "defined_but_not_scheduled_task",
+					"variant": "defined_but_not_scheduled_bv"
+				}
+			]
+		}
+	],
+	"buildvariants": [
+		{
+			"name": "scheduled_bv_with_generator",
+			"tasks": "task_that_has_cross_variant_dependency"
+		}
+	]
+}
+`
+
+	g, err := ParseProjectFromJSONString(generateTasksJSON)
+	s.NoError(err)
+	g.Task = genTask
+
+	p, pp, err := FindAndTranslateProjectForVersion(s.ctx, s.env.Settings(), v)
+	s.Require().NoError(err)
+	p, pp, v, err = g.NewVersion(context.Background(), p, pp, v)
+	s.NoError(err)
+	s.NoError(g.Save(s.ctx, s.env.Settings(), p, pp, v))
+
+	alreadyDefinedTask := task.Task{}
+	s.NoError(db.FindOneQ(task.Collection, db.Query(bson.M{task.DisplayNameKey: "defined_but_not_scheduled_task"}), &alreadyDefinedTask))
+	s.True(alreadyDefinedTask.Activated, "dependency should be activated")
+
+	taskWithDeps := task.Task{}
+	s.NoError(db.FindOneQ(task.Collection, db.Query(bson.M{task.DisplayNameKey: "task_that_has_cross_variant_dependency"}), &taskWithDeps))
+	s.Require().Len(taskWithDeps.DependsOn, 1)
+	s.Equal(alreadyDefinedTask.Id, taskWithDeps.DependsOn[0].TaskId)
 }
 
 func (s *GenerateSuite) TestSaveNewTaskWithExistingExecutionTask() {
@@ -1279,7 +1344,6 @@ func (s *GenerateSuite) TestSaveNewTaskWithExistingExecutionTask() {
 	s.Require().NoError(err)
 	p, pp, v, err = g.NewVersion(context.Background(), p, pp, v)
 	s.Require().NoError(err)
-	g.GetNewTasksAndActivationInfo(s.ctx, v, p)
 	s.NoError(g.Save(s.ctx, s.env.Settings(), p, pp, v))
 
 	v, err = VersionFindOneId(v.Id)
@@ -1406,8 +1470,6 @@ func (s *GenerateSuite) TestMergeGeneratedProjectsWithNoTasks() {
 }
 
 func TestSimulateNewDependencyGraph(t *testing.T) {
-	ctx, cancel := context.WithCancel(context.Background())
-	defer cancel()
 	defer func() {
 		assert.NoError(t, db.Clear(task.Collection))
 	}()
@@ -1444,7 +1506,6 @@ func TestSimulateNewDependencyGraph(t *testing.T) {
 				},
 			},
 		}
-		g.GetNewTasksAndActivationInfo(ctx, v, project)
 		assert.Error(t, g.CheckForCycles(context.Background(), v, project, &ProjectRef{Identifier: "mci"}))
 	})
 
@@ -1474,7 +1535,6 @@ func TestSimulateNewDependencyGraph(t *testing.T) {
 			},
 		}
 
-		g.GetNewTasksAndActivationInfo(ctx, v, project)
 		assert.Error(t, g.CheckForCycles(context.Background(), v, project, &ProjectRef{Identifier: "mci"}))
 	})
 
@@ -1508,7 +1568,6 @@ func TestSimulateNewDependencyGraph(t *testing.T) {
 				},
 			},
 		}
-		g.GetNewTasksAndActivationInfo(ctx, v, project)
 		assert.NoError(t, g.CheckForCycles(context.Background(), v, project, &ProjectRef{Identifier: "mci"}))
 	})
 
@@ -1543,7 +1602,6 @@ func TestSimulateNewDependencyGraph(t *testing.T) {
 				},
 			},
 		}
-		g.GetNewTasksAndActivationInfo(ctx, v, project)
 		assert.NoError(t, g.CheckForCycles(context.Background(), v, project, &ProjectRef{Identifier: "mci"}))
 	})
 }

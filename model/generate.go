@@ -9,7 +9,6 @@ import (
 	"github.com/evergreen-ci/evergreen/model/task"
 	"github.com/evergreen-ci/evergreen/util"
 	"github.com/evergreen-ci/utility"
-	"github.com/k0kubun/pp"
 	"github.com/mongodb/grip"
 	"github.com/mongodb/grip/message"
 	"github.com/pkg/errors"
@@ -271,15 +270,62 @@ func (g *GeneratedProject) saveNewBuildsAndTasks(ctx context.Context, v *Version
 		return errors.Errorf("project '%s' not found", p.Identifier)
 	}
 
+	// kim: NOTE: one potentially annoying but seemingly valid solution could be
+	// to pre-create pre-existing tasks when they're the dependencies of tasks
+	// we're about to create and are in already-existing BVs (this may not be
+	// valid if those dependencies themselves have dependencies on
+	// not-yet-existing BVs, but should work for immediate dependencies). Then
+	// remove those pre-created tasks from newTVPairsForNewVariants and
+	// newTVPairsForExistingVariants.
+
+	// creationInfo := TaskCreationInfo{
+	//     Project:        p,
+	//     ProjectRef:     projectRef,
+	//     Version:        v,
+	//     Pairs:          *newTVPairs,
+	//     ActivationInfo: *activationInfo,
+	//     SyncAtEndOpts:  syncAtEndOpts,
+	//     GeneratedBy:    g.Task.Id,
+	//     // If the parent generator is required to finish, then its generated
+	//     // tasks inherit that requirement.
+	//     ActivatedTasksAreEssentialToSucceed: g.Task.IsEssentialToSucceed,
+	// }
+	//
+	// // kim: TODO: see if there's reasoning behind scheduling existing variants
+	// // -> new variants, rather than ensuring new variants exist, then scheduling
+	// // existing. However, swapping the order causes test failures for batchtime.
+	// // If we were to do this, would need lots of manual checking for correctness
+	// // and extensive testing.
+	// // kim: NOTE: there's no original context for why it's new tasks -> new
+	// // builds in the original PR (https://github.com/evergreen-ci/evergreen/pull/754)
+	//
+	// // kim: NOTE: this adds more tasks to existing builds.
+	// activatedTasksInNewBuilds, err := addNewBuilds(ctx, creationInfo, existingBuilds)
+	// if err != nil {
+	//     return errors.Wrap(err, "adding new builds")
+	// }
+	//
+	// activatedTasksInExistingBuilds, err := addNewTasks(ctx, creationInfo, existingBuilds, evergreen.GenerateTasksActivator)
+	// if err != nil {
+	//     return errors.Wrap(err, "adding new tasks")
+	// }
+	allTasksToBeCreatedIncludingDeps, err := NewPatchTaskIdTable(p, v, *newTVPairs, projectRef.Identifier)
+	if err != nil {
+		return errors.Wrap(err, "creating task ID table for new variant-tasks to create")
+	}
+
+	// kim: NOTE: this is the original code. Above is the new code.
 	creationInfo := TaskCreationInfo{
 		Project:    p,
 		ProjectRef: projectRef,
 		Version:    v,
+		TaskIDs:    allTasksToBeCreatedIncludingDeps,
+		Pairs:      newTVPairsForExistingVariants,
 		// kim: NOTE: this only has the TV pairs for newly generated tasks in
 		// existing BVs, but doesn't handle the case of an existing BV with no
 		// new generated tasks. I'm not sure if adding existing BVs and existing
 		// tasks will cause anything bad to happen here.
-		Pairs:          newTVPairsForExistingVariants,
+		// Pairs:          *newTVPairs,
 		ActivationInfo: *activationInfo,
 		SyncAtEndOpts:  syncAtEndOpts,
 		GeneratedBy:    g.Task.Id,
@@ -287,16 +333,20 @@ func (g *GeneratedProject) saveNewBuildsAndTasks(ctx context.Context, v *Version
 		// tasks inherit that requirement.
 		ActivatedTasksAreEssentialToSucceed: g.Task.IsEssentialToSucceed,
 	}
-	pp.Println("creating new tasks for existing BVs:", creationInfo.Pairs)
-	// kim: NOTE: this adds more tasks to existing builds.
+
+	// kim: TODO: see if there's reasoning behind scheduling existing variants
+	// -> new variants, rather than ensuring new variants exist, then scheduling
+	// existing. However, swapping the order causes test failures for batchtime.
+	// If we were to do this, would need lots of manual checking for correctness
+	// and extensive testing.
+	// kim: NOTE: there's no original context for why it's new tasks -> new
+	// builds in the original PR (https://github.com/evergreen-ci/evergreen/pull/754)
 	activatedTasksInExistingBuilds, err := addNewTasks(ctx, creationInfo, existingBuilds, evergreen.GenerateTasksActivator)
 	if err != nil {
 		return errors.Wrap(err, "adding new tasks")
 	}
 
-	// kim: NOTE: this activates more tasks in new builds
 	creationInfo.Pairs = newTVPairsForNewVariants
-	pp.Println("creating new tasks for new BVs:", creationInfo.Pairs)
 	activatedTasksInNewBuilds, err := addNewBuilds(ctx, creationInfo, existingBuilds)
 	if err != nil {
 		return errors.Wrap(err, "adding new builds")
@@ -314,7 +364,8 @@ func (g *GeneratedProject) saveNewBuildsAndTasks(ctx context.Context, v *Version
 	return nil
 }
 
-// GetNewTasksAndActivationInfo computes the NewTVPairs and ActivationInfo fields on the generator if they are nil.
+// GetNewTasksAndActivationInfo computes the generate.task variant-tasks to be
+// created and specific activation information for those tasks.
 func (g *GeneratedProject) GetNewTasksAndActivationInfo(ctx context.Context, v *Version, p *Project) (*TaskVariantPairs, *specificActivationInfo) {
 	if g.NewTVPairs != nil && g.ActivationInfo != nil {
 		return g.NewTVPairs, g.ActivationInfo

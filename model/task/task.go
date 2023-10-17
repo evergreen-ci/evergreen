@@ -605,14 +605,6 @@ func (t *Task) SetOverrideDependencies(userID string) error {
 }
 
 func (t *Task) AddDependency(d Dependency) error {
-	grip.Info(message.Fields{
-		"message":    "kim: adding dependency for task",
-		"op":         "AddDependency",
-		"task":       t.Id,
-		"task_name":  t.DisplayName,
-		"dependency": d,
-		"stack":      string(debug.Stack()),
-	})
 	// ensure the dependency doesn't already exist
 	for _, existingDependency := range t.DependsOn {
 		if d.TaskId == t.Id {

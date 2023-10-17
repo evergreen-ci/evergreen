@@ -812,6 +812,7 @@ var ValidLogSenders = []string{
 // TaskIdTable is a map of [variant, task display name]->[task id].
 type TaskIdTable map[TVPair]string
 
+// TaskIdConfig stores TaskIdTables split by execution and display tasks.
 type TaskIdConfig struct {
 	ExecutionTasks TaskIdTable
 	DisplayTasks   TaskIdTable
@@ -2130,13 +2131,6 @@ func dependenciesForTaskUnit(taskUnits []BuildVariantTaskUnit) []task.Dependency
 	var dependencies []task.DependencyEdge
 	for _, dependentTask := range taskUnits {
 		for _, dep := range dependentTask.DependsOn {
-			grip.Info(message.Fields{
-				"message":            "kim: evaluating dependency edge for generated task",
-				"dependent_task":     dependentTask,
-				"dependency_task":    dep.Name,
-				"dependency_variant": dep.Variant,
-				"dependency_status":  dep.Status,
-			})
 			// Use the current variant if none is specified.
 			if dep.Variant == "" {
 				dep.Variant = dependentTask.Variant
@@ -2146,13 +2140,6 @@ func dependenciesForTaskUnit(taskUnits []BuildVariantTaskUnit) []task.Dependency
 				if dependedOnTask.ToTVPair() != dependentTask.ToTVPair() &&
 					(dep.Variant == AllVariants || dependedOnTask.Variant == dep.Variant) &&
 					(dep.Name == AllDependencies || dependedOnTask.Name == dep.Name) {
-					grip.Info(message.Fields{
-						"message":            "kim: adding dependency edge for generated task",
-						"dependent_task":     dependentTask,
-						"dependency_task":    dep.Name,
-						"dependency_variant": dep.Variant,
-						"dependency_status":  dep.Status,
-					})
 					dependencies = append(dependencies, task.DependencyEdge{
 						Status: dep.Status,
 						From:   dependentTask.toTaskNode(),
