@@ -142,22 +142,22 @@ RUN apt-get install -y \
     git
 
 # Install Go
-RUN wget https://dl.google.com/go/go1.17.2.linux-amd64.tar.gz -O go.tar.gz \
+RUN wget https://dl.google.com/go/go1.21.3.linux-amd64.tar.gz -O go.tar.gz \
     # Must verify the checksum of downloaded file
-    && md5sum go.tar.gz | cut -d ' ' -f 1 | grep -xq b7af894763e397335efe5a9ca70a5d63 \
+    && md5sum go.tar.gz | cut -d ' ' -f 1 | grep -xq 5c3a4f142d3bb8080f9b705b84eeff06 \
     && tar -C /usr/local -xzf go.tar.gz \
     && rm go.tar.gz
 ENV PATH=$PATH:/usr/local/go/bin
 
 # Install Node.js and npm
-RUN curl -sL https://deb.nodesource.com/setup_16.x -o nodesource_setup.sh \
+RUN curl -sL https://deb.nodesource.com/setup_20.x -o nodesource_setup.sh \
     # Must verify the checksum of downloaded file
-    && md5sum nodesource_setup.sh | cut -d ' ' -f 1 | grep -xq 26ac33def0855ea2c8dddfe361e6d313 \
+    && md5sum nodesource_setup.sh | cut -d ' ' -f 1 | grep -xq 6d2cee63baadd6b45fafca0cd0f4a269 \
     && bash nodesource_setup.sh \
     && apt-get install -y nodejs
 
 # Install Python3 and pip
-RUN apt-get install -y \
+RUN apt-get update && apt-get install -y \
     python3 \
     python3-pip
 
