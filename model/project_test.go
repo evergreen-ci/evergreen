@@ -2693,17 +2693,7 @@ tasks:
 			assert.Len(t, variantsAndTasks.Variants["bv1"].Tasks, 1)
 			assert.Equal(t, "task3", variantsAndTasks.Variants["bv1"].Tasks[0].Name)
 		},
-		"SucceedsWithPatchedParserProject": func(t *testing.T, p *patch.Patch, pp *ParserProject) {
-			p.PatchedParserProject = patchedProject
-
-			variantsAndTasks, err := GetVariantsAndTasksFromPatchProject(ctx, env.Settings(), p)
-			require.NoError(t, err)
-			assert.Len(t, variantsAndTasks.Tasks, 2)
-			require.NotZero(t, variantsAndTasks)
-			assert.Len(t, variantsAndTasks.Variants["bv1"].Tasks, 1)
-			assert.Equal(t, "task3", variantsAndTasks.Variants["bv1"].Tasks[0].Name)
-		},
-		"FailsWithUnfinalizedPatchThatHasNeitherPatchedParserProjectNorParserProjectStorage": func(t *testing.T, p *patch.Patch, pp *ParserProject) {
+		"FailsWithUnfinalizedPatchDoesntHaveParserProjectStorage": func(t *testing.T, p *patch.Patch, pp *ParserProject) {
 			_, err := GetVariantsAndTasksFromPatchProject(ctx, env.Settings(), p)
 			assert.Error(t, err)
 		},

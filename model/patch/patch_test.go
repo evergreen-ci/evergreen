@@ -179,7 +179,6 @@ func (s *patchSuite) TestUpdateGithashProjectAndTasks() {
 	s.Empty(patch.VariantsTasks)
 	s.Empty(patch.Tasks)
 	s.Empty(patch.BuildVariants)
-	s.Empty(patch.PatchedParserProject)
 
 	patch.Githash = "abcdef"
 	patch.Patches = []ModulePatch{{Githash: "abcdef"}}

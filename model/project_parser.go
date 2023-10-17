@@ -543,15 +543,6 @@ func FindAndTranslateProjectForPatch(ctx context.Context, settings *evergreen.Se
 		return project, pp, nil
 	}
 
-	if p.PatchedParserProject != "" {
-		project := &Project{}
-		pp, err := LoadProjectInto(ctx, []byte(p.PatchedParserProject), nil, p.Project, project)
-		if err != nil {
-			return nil, nil, errors.Wrap(err, "unmarshalling project config from patched parser project")
-		}
-		return project, pp, nil
-	}
-
 	// This fallback handles the case where the patch is already finalized.
 	v, err := VersionFindOneId(p.Version)
 	if err != nil {
