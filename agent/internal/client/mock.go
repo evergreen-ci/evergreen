@@ -30,6 +30,7 @@ import (
 
 const (
 	MockedGitHubAppToken = "mocked_github_app_token"
+	NotValidRepo         = "not_valid_repo"
 )
 
 // Mock mocks the Communicator for testing.
@@ -532,7 +533,7 @@ func (c *Mock) GetPullRequestInfo(ctx context.Context, taskData TaskData, prNum 
 }
 
 func (c *Mock) CreateInstallationToken(ctx context.Context, td TaskData, owner, repo string) (string, error) {
-	if owner != "" && repo != "" {
+	if owner != "" && repo != "" && repo != NotValidRepo {
 		return MockedGitHubAppToken, nil
 	}
 	return "", nil

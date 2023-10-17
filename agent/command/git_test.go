@@ -304,6 +304,7 @@ func (s *GitGetProjectSuite) TestGitFetchRetries() {
 
 	conf := s.taskConfig1
 	conf.Distro.CloneMethod = "this is not real!"
+	conf.ProjectRef.Repo = client.NotValidRepo
 
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
@@ -364,7 +365,7 @@ func (s *GitGetProjectSuite) TestStdErrLogged() {
 		s.T().Skip("TestStdErrLogged will not run on docker since it requires a SSH key")
 	}
 	conf := s.taskConfig5
-	conf.ProjectRef.Repo = "doesntexist"
+	conf.ProjectRef.Repo = client.NotValidRepo
 	conf.Distro.CloneMethod = evergreen.CloneMethodLegacySSH
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
@@ -389,7 +390,7 @@ func (s *GitGetProjectSuite) TestStdErrLogged() {
 	foundSSHErr := false
 	for _, msgs := range s.comm.GetMockMessages() {
 		for _, msg := range msgs {
-			if strings.Contains(msg.Message, "git clone 'git@github.com:evergreen-ci/doesntexist.git' 'src' --branch 'main'") {
+			if strings.Contains(msg.Message, "git clone 'git@github.com:evergreen-ci/not_valid_repo.git' 'src' --branch 'main'") {
 				foundCloneCommand = true
 			}
 			if strings.Contains(msg.Message, "ERROR: Repository not found.") {
