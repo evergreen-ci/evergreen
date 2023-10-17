@@ -687,8 +687,6 @@ func createTasksForBuild(creationInfo TaskCreationInfo) (task.Tasks, error) {
 		createAll = true
 	}
 	// Tables includes only new and existing tasks.
-	// kim: NOTE: for generate.tasks, it must be the case that this does not yet
-	// include all the pre-existing tasks before generate.tasks.
 	execTable := creationInfo.TaskIDs.ExecutionTasks
 	displayTable := creationInfo.TaskIDs.DisplayTasks
 
@@ -737,7 +735,6 @@ func createTasksForBuild(creationInfo TaskCreationInfo) (task.Tasks, error) {
 
 	// if any tasks already exist in the build, add them to the id table
 	// so they can be used as dependencies
-	// kim: NOTE: this does not handle the case of tasks in a different BV.
 	for _, task := range creationInfo.TasksInBuild {
 		execTable.AddId(creationInfo.Build.BuildVariant, task.DisplayName, task.Id)
 	}
@@ -756,8 +753,6 @@ func createTasksForBuild(creationInfo TaskCreationInfo) (task.Tasks, error) {
 	// create all the actual tasks
 	taskMap := make(map[string]*task.Task)
 	for _, t := range tasksToCreate {
-		// kim: NOTE: this gets a pre-generated task ID from execTable, which
-		// originates from creationInfo.TaskIDs.
 		id := execTable.GetId(creationInfo.Build.BuildVariant, t.Name)
 		newTask, err := createOneTask(id, creationInfo, t)
 		if err != nil {
@@ -768,10 +763,6 @@ func createTasksForBuild(creationInfo TaskCreationInfo) (task.Tasks, error) {
 		if projectTask != nil {
 			newTask.Tags = projectTask.Tags
 		}
-		// kim: NOTE: DependsOn is empty in cross-variant case, implying that it
-		// was unable to find the referenced dependency in the task IDs.
-		// kim: NOTE: execTable must be missing the existing task ID from the
-		// other BV.
 		newTask.DependsOn = makeDeps(t.DependsOn, newTask, execTable)
 		newTask.GeneratedBy = creationInfo.GeneratedBy
 		if generatorIsGithubCheck {
@@ -940,16 +931,6 @@ func makeDeps(deps []TaskUnitDependency, thisTask *task.Task, taskIds TaskIdTabl
 		if dep.Variant == "" {
 			dep.Variant = thisTask.BuildVariant
 		}
-		grip.Info(message.Fields{
-			"message":            "kim: adding task's dependency during creation",
-			"op":                 "makeDeps",
-			"task_id":            thisTask.Id,
-			"task_name":          thisTask.DisplayName,
-			"dependency_task":    dep.Name,
-			"dependency_variant": dep.Variant,
-			"dependency_status":  dep.Status,
-			"stack":              string(debug.Stack()),
-		})
 
 		var depIDs []string
 		if dep.Variant == AllVariants && dep.Name == AllDependencies {
@@ -959,9 +940,6 @@ func makeDeps(deps []TaskUnitDependency, thisTask *task.Task, taskIds TaskIdTabl
 		} else if dep.Name == AllDependencies {
 			depIDs = taskIds.GetIdsForAllTasksInVariant(dep.Variant)
 		} else {
-			// kim: NOTE: specific variant, specific task case. In this case, it
-			// couldn't find the ID of the existing task, but it did find it for
-			// new tasks.
 			// don't add missing dependencies
 			// patch_optional tasks aren't in the patch and will be missing from the table
 			if id := taskIds.GetId(dep.Variant, dep.Name); id != "" {
@@ -1553,8 +1531,6 @@ func sortLayer(layer []task.Task, idToDisplayName map[string]string) []task.Task
 // do not exist yet out of the set of pairs. No tasks are added for builds which already exist
 // (see AddNewTasksForPatch). New builds/tasks are activated depending on their batchtime.
 // Returns activated task IDs.
-// kim: TODO: read through logic carefully to understand exactly what it's doing
-// and why.
 func addNewBuilds(ctx context.Context, creationInfo TaskCreationInfo, existingBuilds []build.Build) ([]string, error) {
 	ctx, span := tracer.Start(ctx, "add-new-builds")
 	defer span.End()
@@ -1677,8 +1653,6 @@ func addNewBuilds(ctx context.Context, creationInfo TaskCreationInfo, existingBu
 		"version": creationInfo.Version.Id,
 	}))
 
-	// kim: NOTE: this sets the new batchtime BVs for the version. addNewTasks
-	// doesn't do this.
 	return newActivatedTaskIds, errors.WithStack(VersionUpdateOne(
 		bson.M{VersionIdKey: creationInfo.Version.Id},
 		bson.M{
@@ -1692,9 +1666,6 @@ func addNewBuilds(ctx context.Context, creationInfo TaskCreationInfo, existingBu
 
 // Given a version and set of variant/task pairs, creates any tasks that don't exist yet,
 // within the set of already existing builds. Returns activated task IDs.
-// kim: NOTE: saveNewBuildsAndTasks -> addNewTasks
-// kim: TODO: read through logic carefully to understand exactly what it's doing
-// and why.
 func addNewTasks(ctx context.Context, creationInfo TaskCreationInfo, existingBuilds []build.Build, caller string) ([]string, error) {
 	ctx, span := tracer.Start(ctx, "add-new-tasks")
 	defer span.End()
@@ -1706,9 +1677,6 @@ func addNewTasks(ctx context.Context, creationInfo TaskCreationInfo, existingBui
 		return nil, err
 	}
 
-	// kim: NOTE: this may have to be pre-initialized with the pre-existing
-	// tasks before generate.tasks in order to account for dependencies on
-	// existing tasks in different BVs.
 	taskIdTables, err := getTaskIdTables(creationInfo)
 	if err != nil {
 		return nil, errors.Wrap(err, "getting table of task IDs")
@@ -1718,9 +1686,6 @@ func addNewTasks(ctx context.Context, creationInfo TaskCreationInfo, existingBui
 	activatedTasks := []task.Task{}
 	var buildIdsToActivate []string
 	for _, b := range existingBuilds {
-		// kim: TODO: could consider iterating through all tasks in existing
-		// builds (scheduled or not), and adding it to taskIdTables, so it
-		// eventually makes it to the task ID table for makeDeps.
 		wasActivated := b.Activated
 		// Find the set of task names that already exist for the given build, including display tasks.
 		tasksInBuild, err := task.FindAll(db.Query(task.ByBuildId(b.Id)).WithFields(task.DisplayNameKey, task.ActivatedKey))
@@ -1761,8 +1726,6 @@ func addNewTasks(ctx context.Context, creationInfo TaskCreationInfo, existingBui
 		}
 		// Add the new set of tasks to the build.
 		creationInfo.Build = &b
-		// kim: NOTE: this is supposed to store the tasks that are already
-		// present.
 		creationInfo.TasksInBuild = tasksInBuild
 		creationInfo.TaskIDs = taskIdTables
 		creationInfo.TaskNames = tasksToAdd

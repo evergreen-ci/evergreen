@@ -270,62 +270,17 @@ func (g *GeneratedProject) saveNewBuildsAndTasks(ctx context.Context, v *Version
 		return errors.Errorf("project '%s' not found", p.Identifier)
 	}
 
-	// kim: NOTE: one potentially annoying but seemingly valid solution could be
-	// to pre-create pre-existing tasks when they're the dependencies of tasks
-	// we're about to create and are in already-existing BVs (this may not be
-	// valid if those dependencies themselves have dependencies on
-	// not-yet-existing BVs, but should work for immediate dependencies). Then
-	// remove those pre-created tasks from newTVPairsForNewVariants and
-	// newTVPairsForExistingVariants.
-
-	// creationInfo := TaskCreationInfo{
-	//     Project:        p,
-	//     ProjectRef:     projectRef,
-	//     Version:        v,
-	//     Pairs:          *newTVPairs,
-	//     ActivationInfo: *activationInfo,
-	//     SyncAtEndOpts:  syncAtEndOpts,
-	//     GeneratedBy:    g.Task.Id,
-	//     // If the parent generator is required to finish, then its generated
-	//     // tasks inherit that requirement.
-	//     ActivatedTasksAreEssentialToSucceed: g.Task.IsEssentialToSucceed,
-	// }
-	//
-	// // kim: TODO: see if there's reasoning behind scheduling existing variants
-	// // -> new variants, rather than ensuring new variants exist, then scheduling
-	// // existing. However, swapping the order causes test failures for batchtime.
-	// // If we were to do this, would need lots of manual checking for correctness
-	// // and extensive testing.
-	// // kim: NOTE: there's no original context for why it's new tasks -> new
-	// // builds in the original PR (https://github.com/evergreen-ci/evergreen/pull/754)
-	//
-	// // kim: NOTE: this adds more tasks to existing builds.
-	// activatedTasksInNewBuilds, err := addNewBuilds(ctx, creationInfo, existingBuilds)
-	// if err != nil {
-	//     return errors.Wrap(err, "adding new builds")
-	// }
-	//
-	// activatedTasksInExistingBuilds, err := addNewTasks(ctx, creationInfo, existingBuilds, evergreen.GenerateTasksActivator)
-	// if err != nil {
-	//     return errors.Wrap(err, "adding new tasks")
-	// }
 	allTasksToBeCreatedIncludingDeps, err := NewPatchTaskIdTable(p, v, *newTVPairs, projectRef.Identifier)
 	if err != nil {
 		return errors.Wrap(err, "creating task ID table for new variant-tasks to create")
 	}
 
-	// kim: NOTE: this is the original code. Above is the new code.
 	creationInfo := TaskCreationInfo{
-		Project:    p,
-		ProjectRef: projectRef,
-		Version:    v,
-		TaskIDs:    allTasksToBeCreatedIncludingDeps,
-		Pairs:      newTVPairsForExistingVariants,
-		// kim: NOTE: this only has the TV pairs for newly generated tasks in
-		// existing BVs, but doesn't handle the case of an existing BV with no
-		// new generated tasks. I'm not sure if adding existing BVs and existing
-		// tasks will cause anything bad to happen here.
-		// Pairs:          *newTVPairs,
+		Project:        p,
+		ProjectRef:     projectRef,
+		Version:        v,
+		TaskIDs:        allTasksToBeCreatedIncludingDeps,
+		Pairs:          newTVPairsForExistingVariants,
 		ActivationInfo: *activationInfo,
 		SyncAtEndOpts:  syncAtEndOpts,
 		GeneratedBy:    g.Task.Id,
@@ -334,13 +289,6 @@ func (g *GeneratedProject) saveNewBuildsAndTasks(ctx context.Context, v *Version
 		ActivatedTasksAreEssentialToSucceed: g.Task.IsEssentialToSucceed,
 	}
 
-	// kim: TODO: see if there's reasoning behind scheduling existing variants
-	// -> new variants, rather than ensuring new variants exist, then scheduling
-	// existing. However, swapping the order causes test failures for batchtime.
-	// If we were to do this, would need lots of manual checking for correctness
-	// and extensive testing.
-	// kim: NOTE: there's no original context for why it's new tasks -> new
-	// builds in the original PR (https://github.com/evergreen-ci/evergreen/pull/754)
 	activatedTasksInExistingBuilds, err := addNewTasks(ctx, creationInfo, existingBuilds, evergreen.GenerateTasksActivator)
 	if err != nil {
 		return errors.Wrap(err, "adding new tasks")
@@ -353,10 +301,6 @@ func (g *GeneratedProject) saveNewBuildsAndTasks(ctx context.Context, v *Version
 	}
 
 	// only want to add dependencies to activated tasks
-	// kim: TODO: check what dependencies are added.
-	// kim: NOTE: we could do a sloppy fix and add the dependencies after both
-	// the dependency and the task exist, but it may be subject to races with
-	// the scheduler. Maybe good enough for a quick fix, but not a proper fix.
 	if err = g.addDependencies(ctx, append(activatedTasksInExistingBuilds, activatedTasksInNewBuilds...)); err != nil {
 		return errors.Wrap(err, "adding dependencies")
 	}
