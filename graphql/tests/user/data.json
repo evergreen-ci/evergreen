@@ -76,7 +76,8 @@
       },
       "desc": "222",
       "status": "failed",
-      "alias": "__github"
+      "alias": "__github",
+      "hidden": true
     },
     {
       "_id": {
@@ -103,20 +104,6 @@
       "desc": "222",
       "status": "failed",
       "alias": "__github"
-    },
-    {
-      "_id": {
-        "$oid": "7e4ff3abe3c3317e352062e9"
-      },
-      "branch": "myProject",
-      "author": "testuser",
-      "create_time": {
-        "$date": "2019-01-01T00:00:06Z"
-      },
-      "desc": "hidden patch 2",
-      "status": "failed",
-      "alias": "__github",
-      "hidden": true
     },
     {
       "_id": {
