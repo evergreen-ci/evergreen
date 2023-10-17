@@ -4169,10 +4169,8 @@ func TestTVToTaskUnit(t *testing.T) {
 					Priority:        20,
 					ExecTimeoutSecs: 20,
 				}, {TaskName: "compile", Variant: "ubuntu"}: {
-					Name:    "compile",
-					Variant: "ubuntu",
-					// TODO (EVG-19725): remove IsGroup
-					IsGroup:          true,
+					Name:             "compile",
+					Variant:          "ubuntu",
 					IsPartOfGroup:    true,
 					GroupName:        "compile_group",
 					ExecTimeoutSecs:  10,
@@ -4184,10 +4182,8 @@ func TestTVToTaskUnit(t *testing.T) {
 						},
 					},
 				}, {TaskName: "compile", Variant: "suse"}: {
-					Name:    "compile",
-					Variant: "suse",
-					// TODO (EVG-19725): remove IsGroup
-					IsGroup:         true,
+					Name:            "compile",
+					Variant:         "suse",
 					IsPartOfGroup:   true,
 					GroupName:       "compile_group",
 					ExecTimeoutSecs: 10,
