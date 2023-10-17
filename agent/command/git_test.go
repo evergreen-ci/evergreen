@@ -26,6 +26,7 @@ import (
 	"github.com/evergreen-ci/evergreen/thirdparty"
 	"github.com/evergreen-ci/evergreen/util"
 	"github.com/evergreen-ci/utility"
+	"github.com/mongodb/grip"
 	"github.com/mongodb/grip/level"
 	"github.com/mongodb/grip/send"
 	"github.com/mongodb/jasper"
@@ -317,7 +318,7 @@ func (s *GitGetProjectSuite) TestGitFetchRetries() {
 
 func (s *GitGetProjectSuite) TestTokenScrubbedFromLogger() {
 	conf := s.taskConfig1
-	conf.ProjectRef.Repo = "doesntexist"
+	conf.ProjectRef.Repo = client.NotValidRepo
 	conf.Distro = nil
 	token, err := s.settings.GetGithubOauthToken()
 	s.Require().NoError(err)
@@ -345,7 +346,8 @@ func (s *GitGetProjectSuite) TestTokenScrubbedFromLogger() {
 	foundCloneErr := false
 	for _, msgs := range s.comm.GetMockMessages() {
 		for _, msg := range msgs {
-			if strings.Contains(msg.Message, "https://[redacted oauth token]:x-oauth-basic@github.com/evergreen-ci/doesntexist.git") {
+			grip.Info(msg)
+			if strings.Contains(msg.Message, "https://[redacted oauth token]:x-oauth-basic@github.com/evergreen-ci/not_valid_repo.git") {
 				foundCloneCommand = true
 			}
 			if strings.Contains(msg.Message, "Repository not found.") {
