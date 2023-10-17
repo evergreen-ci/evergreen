@@ -429,6 +429,11 @@ func (r *versionResolver) UpstreamProject(ctx context.Context, obj *restModel.AP
 			Revision: upstreamBuild.Revision,
 			Version:  &apiVersion,
 		}
+	} else if v.TriggerType == model.ProjectTriggerLevelPush {
+		projectID = v.TriggerID
+		upstreamProject = &UpstreamProject{
+			Revision: v.TriggerSHA,
+		}
 	}
 	upstreamProjectRef, err := model.FindBranchProjectRef(projectID)
 	if err != nil {
