@@ -605,14 +605,6 @@ tasks:
           AUTH_ENABLED: 1
           RUN_TEST: "TestEnvironmentSuite/TestInitDB"
           MONGO_CREDS_FILE: testdata/test_auth.yml
-  - name: test-kim
-    depends_on:
-      - name: test-util
-        variant: ubuntu2204
-    commands:
-      - command: shell.exec
-        params:
-          script: echo hello world!
 
 task_groups:
   - name: dist-and-upload-clis
@@ -699,7 +691,6 @@ buildvariants:
       GOROOT: /opt/golang/go1.20
     tasks:
       - name: generate-lint
-      - name: test-kim
 
   - name: windows
     display_name: Windows
