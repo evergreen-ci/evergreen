@@ -29,10 +29,8 @@ import (
 )
 
 const (
-	numGithubAttempts   = 3
-	githubRetryMinDelay = time.Second
-	githubAccessURL     = "https://github.com/login/oauth/access_token"
-	githubHookURL       = "%s/rest/v2/hooks/github"
+	githubAccessURL = "https://github.com/login/oauth/access_token"
+	githubHookURL   = "%s/rest/v2/hooks/github"
 
 	Github502Error   = "502 Server Error"
 	commitObjectType = "commit"
@@ -193,7 +191,7 @@ func githubShouldRetry(caller string, config retryConfig) utility.HTTPRetryFunct
 			return false
 		}
 
-		if index >= numGithubAttempts {
+		if index >= evergreen.GitHubRetryAttempts {
 			return false
 		}
 
@@ -287,8 +285,8 @@ func getGithubClient(token, caller string, config retryConfig) *github.Client {
 		token,
 		githubShouldRetry(caller, config),
 		utility.RetryHTTPDelay(utility.RetryOptions{
-			MaxAttempts: numGithubAttempts,
-			MinDelay:    githubRetryMinDelay,
+			MaxAttempts: evergreen.GitHubRetryAttempts,
+			MinDelay:    evergreen.GithubRetryMinDelay,
 		}),
 		utility.DefaultHttpClient(githubTransport),
 	)
@@ -873,8 +871,8 @@ func tryGithubPost(ctx context.Context, url string, oauthToken string, data inte
 
 		return false, nil
 	}, utility.RetryOptions{
-		MaxAttempts: numGithubAttempts,
-		MinDelay:    githubRetryMinDelay,
+		MaxAttempts: evergreen.GitHubRetryAttempts,
+		MinDelay:    evergreen.GithubRetryMinDelay,
 	})
 
 	if err != nil {

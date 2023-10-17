@@ -740,7 +740,9 @@ func (e *envState) initSenders(ctx context.Context) error {
 	if err == nil && len(githubToken) > 0 {
 		// Github Status
 		sender, err = send.NewGithubStatusLogger("evergreen", &send.GithubOptions{
-			Token: githubToken,
+			Token:       githubToken,
+			MinDelay:    GithubRetryMinDelay,
+			MaxAttempts: GitHubRetryAttempts,
 		}, "")
 		if err != nil {
 			return errors.Wrap(err, "setting up GitHub status logger")
@@ -1099,7 +1101,9 @@ func (e *envState) GetGitHubSender(owner, repo string) (send.Sender, error) {
 		return legacySender, nil
 	}
 	sender, err := send.NewGithubStatusLogger("evergreen", &send.GithubOptions{
-		Token: token,
+		Token:       token,
+		MinDelay:    GithubRetryMinDelay,
+		MaxAttempts: GitHubRetryAttempts,
 	}, "")
 	if err != nil {
 		// TODO EVG-19966: Delete fallback to legacy GitHub sender
