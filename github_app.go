@@ -157,7 +157,7 @@ func (s *Settings) CreateInstallationToken(ctx context.Context, owner, repo stri
 		return "", errors.Wrapf(err, "getting cached installation id for '%s/%s'", owner, repo)
 	}
 	if installationID == 0 {
-		installationID, resp, err := client.Apps.FindRepositoryInstallation(ctx, owner, repo)
+		installation, resp, err := client.Apps.FindRepositoryInstallation(ctx, owner, repo)
 		if err != nil {
 			if resp != nil && resp.StatusCode == http.StatusNotFound {
 				return "", errors.Wrapf(gitHubAppNotInstalledError, "installation id for '%s/%s' not found", owner, repo)
@@ -171,17 +171,19 @@ func (s *Settings) CreateInstallationToken(ctx context.Context, owner, repo stri
 			}))
 			return "", errors.Wrapf(err, "finding installation id for '%s/%s'", owner, repo)
 		}
-		if installationID == nil {
+		if installation == nil {
 			return "", errors.Errorf("Installation id for '%s/%s' not found", owner, repo)
 		}
 
+		installationID = installation.GetID()
+
 		// Cache the installation ID for owner/repo.
-		installation := GitHubAppInstallation{
+		cachedInstallation := GitHubAppInstallation{
 			Owner:          owner,
 			Repo:           repo,
-			InstallationID: installationID.GetID(),
+			InstallationID: installationID,
 		}
-		if err := installation.Upsert(ctx); err != nil {
+		if err := cachedInstallation.Upsert(ctx); err != nil {
 			return "", errors.Wrapf(err, "saving installation id for '%s/%s'", owner, repo)
 		}
 	}
