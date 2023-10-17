@@ -6,12 +6,13 @@ package graphql
 
 import (
 	"context"
-	"fmt"
 
-	"github.com/evergreen-ci/evergreen/model"
+	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/model/event"
 	restModel "github.com/evergreen-ci/evergreen/rest/model"
 	"github.com/evergreen-ci/utility"
+	"github.com/mongodb/grip"
+	"github.com/mongodb/grip/message"
 )
 
 // Aliases is the resolver for the aliases field.
@@ -21,11 +22,16 @@ func (r *projectSettingsResolver) Aliases(ctx context.Context, obj *restModel.AP
 
 // GithubWebhooksEnabled is the resolver for the githubWebhooksEnabled field.
 func (r *projectSettingsResolver) GithubWebhooksEnabled(ctx context.Context, obj *restModel.APIProjectSettings) (bool, error) {
-	hook, err := model.FindGithubHook(utility.FromStringPtr(obj.ProjectRef.Owner), utility.FromStringPtr(obj.ProjectRef.Repo))
-	if err != nil {
-		return false, InternalServerError.Send(ctx, fmt.Sprintf("Database error finding github hook for project '%s': %s", *obj.ProjectRef.Id, err.Error()))
-	}
-	return hook != nil, nil
+	owner := utility.FromStringPtr(obj.ProjectRef.Owner)
+	repo := utility.FromStringPtr(obj.ProjectRef.Repo)
+	hasApp, err := evergreen.GetEnvironment().Settings().HasGitHubApp(ctx, owner, repo, nil)
+	grip.Error(message.WrapError(err, message.Fields{
+		"message": "Error verifying GitHub app installation",
+		"project": utility.FromStringPtr(obj.ProjectRef.Id),
+		"owner":   owner,
+		"repo":    repo,
+	}))
+	return hasApp, nil
 }
 
 // Subscriptions is the resolver for the subscriptions field.
