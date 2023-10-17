@@ -41,3 +41,8 @@ type GithubAuthResponse struct {
 	Scope       string `json:"scope"`
 	TokenType   string `json:"token_type"`
 }
+
+type githubAppAuth struct {
+	appId      int64
+	privateKey []byte
+}
