@@ -157,7 +157,7 @@ func ByPatchNameStatusesCommitQueuePaginated(ctx context.Context, opts ByPatchNa
 	// Conditionally add the commit queue filter if the user is explicitly filtering on it.
 	// This is only used on the project patches page when we want to conditionally only show the commit queue patches.
 	if utility.FromBoolPtr(opts.OnlyCommitQueue) {
-		match[AliasKey] = true
+		match[AliasKey] = evergreen.CommitQueueAlias
 	}
 
 	// This is only used on the user patches page when we want to filter out the commit queue
