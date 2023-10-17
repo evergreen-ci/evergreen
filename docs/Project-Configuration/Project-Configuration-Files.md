@@ -408,8 +408,8 @@ by specifying the `auto_update` option (as described below) to use the
 latest revision available for a module.
 
 Module fields support the expansion of variables defined in the [Variables](Project-and-Distro-Settings.md#variables)
-tab of the Spruce project settings. Once expanded, the "Version Manifest" shown in
-the Spruce UI should show module configurations including the expanded variables.
+tab of the Spruce project settings. These fields are expanded at the time of version creation, at which point 
+the "Version Manifest" shown in the Spruce UI should show module configurations including the expanded variables.
 
 ``` yaml
 modules:
@@ -428,6 +428,8 @@ modules:
 ```
 
 Fields:
+
+(note: all fields can be expanded by project variables with the exception of `auto_update`)
 
 -   `name`: alias to refer to the module
 -   `branch`: the branch of the module to use in the project
