@@ -1,2 +1,2 @@
-{"_id":{"$oid":"628ce40875c5071247ec564d"},"hook_id":0,"owner":"evergreen-ci","repo":"evergreen"}
-{"_id":{"$oid":"628ce6d275c5071247ec564e"},"hook_id":1,"owner":"evergreen-ci","repo":"spruce"}
+{"_id":{"$oid":"628ce40875c5071247ec564d"},"hook_id":0,"owner":"evergreen-ci","repo":"evergreen", "installation_id": 1234}
+{"_id":{"$oid":"628ce6d275c5071247ec564e"},"hook_id":1,"owner":"evergreen-ci","repo":"spruce", "installation_id": 1234}

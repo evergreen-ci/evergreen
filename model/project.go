@@ -5,7 +5,6 @@ import (
 	"fmt"
 	"reflect"
 	"regexp"
-	"runtime/debug"
 	"sort"
 	"strconv"
 	"strings"
@@ -94,18 +93,23 @@ type BuildVariantTaskUnit struct {
 	// the project level, or an error will be thrown
 	Name string `yaml:"name,omitempty" bson:"name"`
 	// IsGroup indicates that it is a task group. This is always populated for
-	// task groups after translating the parser project to the project.
+	// task groups after project translation.
 	IsGroup bool `yaml:"-" bson:"-"`
 	// IsPartOfGroup indicates that this unit is a task within a task group. If
-	// this is set, then GroupName is also set. Note that project translation
-	// does not expand task groups into their individual tasks, so this is only
-	// set for special functions that explicitly expand task groups into
-	// individual task units (such as FindAllBuildVariantTasks).
+	// this is set, then GroupName is also set.
+	// Note that project translation does not expand task groups into their
+	// individual tasks, so this is only set for special functions that
+	// explicitly expand task groups into individual task units (such as
+	// FindAllBuildVariantTasks).
 	IsPartOfGroup bool `yaml:"-" bson:"-"`
 	// GroupName is the task group name if this is a task in a task group. This
 	// is only set if the task unit is a task within a task group (i.e.
 	// IsPartOfGroup is set). If the task unit is the task group itself, it is
 	// not populated (Name is the task group name).
+	// Note that project translation does not expand task groups into their
+	// individual tasks, so this is only set for special functions that
+	// explicitly expand task groups into individual task units (such as
+	// FindAllBuildVariantTasks).
 	GroupName string `yaml:"-" bson:"-"`
 	// Variant is the build variant that the task unit is part of. This is
 	// always populated after translating the parser project to the project.
@@ -436,12 +440,15 @@ type ContainerSystem struct {
 	WindowsVersion  evergreen.WindowsVersion `yaml:"windows_version,omitempty" bson:"windows_version"`
 }
 
+// Module specifies the git details of another git project to be included within a
+// given version at runtime. Module fields include the expand plugin tag because they
+// need to support project ref variable expansions.
 type Module struct {
-	Name       string `yaml:"name,omitempty" bson:"name"`
-	Branch     string `yaml:"branch,omitempty" bson:"branch"`
-	Repo       string `yaml:"repo,omitempty" bson:"repo"`
-	Prefix     string `yaml:"prefix,omitempty" bson:"prefix"`
-	Ref        string `yaml:"ref,omitempty" bson:"ref"`
+	Name       string `yaml:"name,omitempty" bson:"name" plugin:"expand"`
+	Branch     string `yaml:"branch,omitempty" bson:"branch"  plugin:"expand"`
+	Repo       string `yaml:"repo,omitempty" bson:"repo"  plugin:"expand"`
+	Prefix     string `yaml:"prefix,omitempty" bson:"prefix"  plugin:"expand"`
+	Ref        string `yaml:"ref,omitempty" bson:"ref"  plugin:"expand"`
 	AutoUpdate bool   `yaml:"auto_update,omitempty" bson:"auto_update"`
 }
 
@@ -1466,15 +1473,6 @@ func (p *Project) findBuildVariantsWithTag(tags []string) []string {
 // build variant task unit, and returns the name and tags
 func (p *Project) GetTaskNameAndTags(bvt BuildVariantTaskUnit) (string, []string, bool) {
 	if bvt.IsGroup || bvt.IsPartOfGroup {
-		grip.InfoWhen(bvt.IsPartOfGroup, message.Fields{
-			"message":            "task unit IsGroup is referring to task within a task group",
-			"ticket":             "EVG-19725",
-			"project_identifier": p.Identifier,
-			"task_name":          bvt.Name,
-			"task_group_name":    bvt.GroupName,
-			"stack":              string(debug.Stack()),
-		})
-
 		ptg := bvt.TaskGroup
 		if ptg == nil {
 			ptg = p.FindTaskGroup(bvt.Name)
@@ -1578,11 +1576,6 @@ func (p *Project) FindAllBuildVariantTasks() []BuildVariantTaskUnit {
 	for _, b := range p.BuildVariants {
 		for _, t := range b.Tasks {
 			if t.IsGroup {
-				grip.InfoWhen(t.IsPartOfGroup, message.Fields{
-					"message": "task unit IsGroup is referring to task within a task group",
-					"ticket":  "EVG-19725",
-					"stack":   string(debug.Stack()),
-				})
 				allBVTs = append(allBVTs, p.tasksFromGroup(t)...)
 			} else {
 				t.Populate(tasksByName[t.Name], b)
@@ -1626,11 +1619,6 @@ func (p *Project) tasksFromGroup(bvTaskGroup BuildVariantTaskUnit) []BuildVarian
 	for _, t := range tg.Tasks {
 		bvt := BuildVariantTaskUnit{
 			Name: t,
-			// TODO (EVG-19725): do not set IsGroup anymore once it's confirmed
-			// safe for removal.
-			// IsGroup is not persisted, and indicates here that the
-			// task is a member of a task group.
-			IsGroup: true,
 			// IsPartOfGroup and GroupName are used to indicate that the task
 			// unit is a task within the task group, not the task group itself.
 			// These are not persisted.
@@ -2252,11 +2240,6 @@ func GetVariantsAndTasksFromPatchProject(ctx context.Context, settings *evergree
 		for _, taskFromVariant := range variant.Tasks {
 			if !taskFromVariant.IsDisabled() && !taskFromVariant.SkipOnRequester(p.GetRequester()) {
 				if taskFromVariant.IsGroup {
-					grip.InfoWhen(taskFromVariant.IsPartOfGroup, message.Fields{
-						"message": "task unit IsGroup is referring to task within a task group",
-						"ticket":  "EVG-19725",
-						"stack":   string(debug.Stack()),
-					})
 					tasksForVariant = append(tasksForVariant, CreateTasksFromGroup(taskFromVariant, project, evergreen.PatchVersionRequester)...)
 				} else {
 					tasksForVariant = append(tasksForVariant, taskFromVariant)

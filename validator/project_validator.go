@@ -5,7 +5,6 @@ import (
 	"context"
 	"fmt"
 	"math"
-	"runtime/debug"
 	"sort"
 	"strconv"
 	"strings"
@@ -22,7 +21,6 @@ import (
 	"github.com/evergreen-ci/utility"
 	"github.com/mongodb/grip"
 	"github.com/mongodb/grip/level"
-	"github.com/mongodb/grip/message"
 	"github.com/pkg/errors"
 	"go.opentelemetry.io/otel/attribute"
 	"go.opentelemetry.io/otel/trace"
@@ -559,11 +557,6 @@ func getAliasCoverage(p *model.Project, aliasMap map[string]model.ProjectAlias) 
 				}
 				if name != "" {
 					if t.IsGroup {
-						grip.InfoWhen(t.IsPartOfGroup, message.Fields{
-							"message": "task unit IsGroup is referring to task within a task group",
-							"ticket":  "EVG-19725",
-							"stack":   string(debug.Stack()),
-						})
 						matchesTaskGroupTask, err := aliasMatchesTaskGroupTask(p, alias, name)
 						if err != nil {
 							return nil, nil, err
@@ -708,11 +701,6 @@ func validateBVFields(project *model.Project) ValidationErrors {
 				break
 			}
 			if task.IsGroup {
-				grip.InfoWhen(task.IsPartOfGroup, message.Fields{
-					"message": "task unit IsGroup is referring to task within a task group",
-					"ticket":  "EVG-19725",
-					"stack":   string(debug.Stack()),
-				})
 				for _, t := range project.FindTaskGroup(task.Name).Tasks {
 					pt := project.FindProjectTask(t)
 					if pt != nil {
@@ -1713,11 +1701,6 @@ func validateDuplicateBVTasks(p *model.Project) ValidationErrors {
 		for _, t := range bv.Tasks {
 
 			if t.IsGroup {
-				grip.InfoWhen(t.IsPartOfGroup, message.Fields{
-					"message": "task unit IsGroup is referring to task within a task group",
-					"ticket":  "EVG-19725",
-					"stack":   string(debug.Stack()),
-				})
 				tg := t.TaskGroup
 				if tg == nil {
 					tg = p.FindTaskGroup(t.Name)
@@ -1950,11 +1933,6 @@ func bvsWithTasksThatCallCommand(p *model.Project, cmd string) (map[string]map[s
 
 		for _, bvtu := range bv.Tasks {
 			if bvtu.IsGroup {
-				grip.InfoWhen(bvtu.IsPartOfGroup, message.Fields{
-					"message": "task unit IsGroup is referring to task within a task group",
-					"ticket":  "EVG-19725",
-					"stack":   string(debug.Stack()),
-				})
 				tg := bvtu.TaskGroup
 				if tg == nil {
 					tg = p.FindTaskGroup(bvtu.Name)

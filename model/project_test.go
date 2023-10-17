@@ -2464,8 +2464,7 @@ func TestFindAllBuildVariantTasks(t *testing.T) {
 		for i, bvtu := range bvts {
 			assert.Equal(t, tasks[i].Name, bvtu.Name)
 			assert.Equal(t, bvName, bvtu.Variant)
-			// TODO (EVG-19725): remove IsGroup
-			assert.True(t, bvtu.IsGroup)
+			assert.False(t, bvtu.IsGroup)
 			assert.True(t, bvtu.IsPartOfGroup)
 			assert.Equal(t, tgName, bvtu.GroupName)
 		}
