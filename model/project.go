@@ -144,6 +144,9 @@ type BuildVariantTaskUnit struct {
 	Activate *bool `yaml:"activate,omitempty" bson:"activate,omitempty"`
 	// TaskGroup is set if an inline task group is defined on the build variant.
 	TaskGroup *TaskGroup `yaml:"task_group,omitempty" bson:"task_group,omitempty"`
+
+	// CreateCheckRun will create a check run on GitHub if set
+	CreateCheckRun *CheckRun `yaml:"create_check_run,omitempty" bson:"create_check_run,omitempty"`
 }
 
 func (b BuildVariant) Get(name string) (BuildVariantTaskUnit, error) {
@@ -413,6 +416,16 @@ type BuildVariant struct {
 	// all of the tasks/groups to be run on the build variant, compile through tests.
 	Tasks        []BuildVariantTaskUnit `yaml:"tasks,omitempty" bson:"tasks"`
 	DisplayTasks []patch.DisplayTask    `yaml:"display_tasks,omitempty" bson:"display_tasks,omitempty"`
+}
+
+// CheckRun is used to provide extra information about a github check run.
+type CheckRun struct {
+	// PathToOutputs is a local file path to an output json file for the checkrun
+	PathToOutputs *string `yaml:"path_to_outputs" bson:"path_to_outputs"`
+	// GithubAppId and GitubPrivateKey are the user's credentials for
+	// authenticating with github for check runs.
+	GithubAppId      string `yaml:"github_app_id" bson:"github_app_id"`
+	GithubPrivateKey string `yaml:"github_private_key" bson:"github_private_key"`
 }
 
 // ParameterInfo is used to provide extra information about a parameter.

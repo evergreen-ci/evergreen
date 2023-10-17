@@ -403,6 +403,17 @@ func TestTranslateTasks(t *testing.T) {
 					},
 				},
 			},
+			{
+				Name: "bv_with_check_run",
+				Tasks: parserBVTaskUnits{
+					{
+						Name: "a_task_with_no_special_configuration",
+						CreateCheckRun: &CheckRun{
+							PathToOutputs: utility.ToStringPtr("path"),
+						},
+					},
+				},
+			},
 		},
 		Tasks: []parserTask{
 			{Name: "my_task", PatchOnly: utility.TruePtr(), ExecTimeoutSecs: 15},
@@ -421,7 +432,7 @@ func TestTranslateTasks(t *testing.T) {
 	assert.NoError(t, err)
 	assert.NotNil(t, out)
 	require.Len(t, out.Tasks, 6)
-	require.Len(t, out.BuildVariants, 7)
+	require.Len(t, out.BuildVariants, 8)
 
 	for _, bv := range out.BuildVariants {
 		for _, bvtu := range bv.Tasks {
@@ -521,6 +532,12 @@ func TestTranslateTasks(t *testing.T) {
 	assert.Equal(t, "my_task", disabledBV.Tasks[1].Name)
 	assert.True(t, utility.FromBoolPtr(disabledBV.Tasks[1].PatchOnly))
 	assert.False(t, utility.FromBoolPtr(disabledBV.Tasks[1].Disable))
+
+	checkRunBV := out.BuildVariants[7]
+	assert.Equal(t, "bv_with_check_run", checkRunBV.Name)
+	require.Len(t, checkRunBV.Tasks, 1)
+	assert.NotNil(t, checkRunBV.Tasks[0].CreateCheckRun)
+	assert.Equal(t, "path", utility.FromStringPtr(checkRunBV.Tasks[0].CreateCheckRun.PathToOutputs))
 }
 
 func TestTranslateDependsOn(t *testing.T) {
@@ -1159,6 +1176,72 @@ tasks:
 	assert.Equal("execTask3", proj.BuildVariants[0].DisplayTasks[0].ExecTasks[1])
 	assert.Equal("execTask2", proj.BuildVariants[0].DisplayTasks[1].ExecTasks[0])
 	assert.Equal("execTask4", proj.BuildVariants[0].DisplayTasks[1].ExecTasks[1])
+}
+
+func TestCheckRunParsing(t *testing.T) {
+	assert := assert.New(t)
+
+	validYml := `
+buildvariants:
+- name: "v1"
+  tasks:
+  - name: "t1"
+    create_check_run:
+      path_to_outputs: "path"
+      github_app_id: "some_id"
+      github_private_key: "some_key"
+`
+	p, err := createIntermediateProject([]byte(validYml), false)
+	require.NotNil(t, p)
+	assert.Nil(err)
+	assert.Equal(len(p.BuildVariants), 1)
+	bv := p.BuildVariants[0]
+	assert.Equal("v1", bv.Name)
+	assert.Equal(len(bv.Tasks), 1)
+	assert.Equal("t1", bv.Tasks[0].Name)
+	cr := bv.Tasks[0].CreateCheckRun
+	assert.Equal("path", utility.FromStringPtr(cr.PathToOutputs))
+	assert.Equal("some_id", cr.GithubAppId)
+	assert.Equal("some_key", cr.GithubPrivateKey)
+
+	ymlWithNoPath := `
+buildvariants:
+- name: "v1"
+  tasks:
+  - name: "t1"
+    create_check_run:
+      github_app_id: "some_id"
+      github_private_key: "some_key"
+`
+
+	p, err = createIntermediateProject([]byte(ymlWithNoPath), false)
+	assert.NotNil(err)
+	assert.Contains(err.Error(), "'path_to_outputs' must be set")
+
+	ymlWithNoSecret := `
+buildvariants:
+- name: "v1"
+  tasks:
+  - name: "t1"
+    create_check_run:
+      path_to_outputs: "path"
+      github_app_id: "some_id"
+`
+	p, err = createIntermediateProject([]byte(ymlWithNoSecret), false)
+	assert.NotNil(err)
+	assert.Contains(err.Error(), "a github private key must be provided for check runs if a github app is provided")
+
+	ymlWithNoCredentials := `
+buildvariants:
+- name: "v1"
+  tasks:
+  - name: "t1"
+    create_check_run:
+      path_to_outputs: "path"
+`
+	p, err = createIntermediateProject([]byte(ymlWithNoCredentials), false)
+	require.NotNil(t, p)
+	assert.Nil(err)
 }
 
 func TestTaskGroupParsing(t *testing.T) {
