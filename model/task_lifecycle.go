@@ -570,10 +570,10 @@ func doBisectStepback(ctx context.Context, t *task.Task) error {
 	if t.GeneratedBy != "" {
 		generator, err := task.FindOneId(t.GeneratedBy)
 		if err != nil {
-			return errors.Wrapf(err, "finding generator with id '%s'", t.GeneratedBy)
+			return errors.Wrapf(err, "finding generator '%s'", t.GeneratedBy)
 		}
 		if generator == nil {
-			return errors.Errorf("generator is nil with id '%s'", t.GeneratedBy)
+			return errors.Errorf("nil generator '%s'", t.GeneratedBy)
 		}
 		return doBisectStepback(ctx, generator)
 	}
@@ -623,7 +623,7 @@ func doBisectStepback(ctx context.Context, t *task.Task) error {
 	// The midway task is our next stepback target.
 	nextTask, err := task.FindMidwayTaskFromIds(s.LastFailingStepbackTaskId, s.LastPassingStepbackTaskId)
 	if err != nil {
-		return errors.Wrapf(err, "finding midway task between tasks '%s' '%s'", s.LastFailingStepbackTaskId, s.LastPassingStepbackTaskId)
+		return errors.Wrapf(err, "finding midway task between tasks '%s' and '%s'", s.LastFailingStepbackTaskId, s.LastPassingStepbackTaskId)
 	}
 	if nextTask == nil {
 		return errors.Errorf("midway task could not be found for tasks '%s' '%s'", s.LastFailingStepbackTaskId, s.LastPassingStepbackTaskId)
@@ -1282,7 +1282,18 @@ func evalLinearStepback(ctx context.Context, t *task.Task, caller, status string
 
 // evalBisectStepback performs bisect stepback on the task.
 func evalBisectStepback(ctx context.Context, t *task.Task, caller, status string, deactivatePrevious bool) error {
-	return errors.Wrap(doBisectStepback(ctx, t), "performing bisect stepback")
+	// If the task is aborted or it isn't a mainline commit or existing stepback, no-op.
+	if t.Aborted || (t.ActivatedBy != evergreen.RepotrackerVersionRequester && t.ActivatedBy != evergreen.StepbackTaskActivator) {
+		return nil
+	}
+
+	newStepback := t.StepbackInfo == nil && evergreen.IsFailedTaskStatus(t.Status)
+	existingStepback := t.StepbackInfo != nil
+	if newStepback || existingStepback {
+		return errors.Wrap(doBisectStepback(ctx, t), "performing bisect stepback")
+	}
+
+	return nil
 }
 
 // updateMakespans updates the predicted and actual makespans for the tasks in

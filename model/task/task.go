@@ -1313,19 +1313,24 @@ func findMidwayTask(t1, t2 Task) (*Task, error) {
 	return FindOne(db.Query(ByRevisionOrderNumber(t1.BuildVariant, t1.DisplayName, t1.Project, t1.Requester, mid)))
 }
 
-// FindMidwayTaskFromIds gets the task between two task given that they are
-// from the same project, requester, build variant, and display name. The
-// order of the ID's does not matter and if the task passed cannot have a
-// middle (i.e. it is sequential tasks or the same task) it will return the
-// the first task given.
+// FindMidwayTaskFromIds gets the task between two tasks given that they are
+// from the same project, requester, build variant, and display name. If the tasks
+// passed cannot have a middle (i.e. it is sequential tasks or the same task)
+// it will return the first task given.
 func FindMidwayTaskFromIds(t1Id, t2Id string) (*Task, error) {
 	t1, err := FindOneId(t1Id)
-	if err != nil || t1 == nil {
-		return nil, errors.Wrapf(err, "finding task id %s", t1Id)
+	if err != nil {
+		return nil, errors.Wrapf(err, "finding task id '%s'", t1Id)
+	}
+	if t1 == nil {
+		return nil, errors.Errorf("could not find task id '%s'", t1Id)
 	}
 	t2, err := FindOneId(t2Id)
-	if err != nil || t2 == nil {
+	if err != nil {
 		return nil, errors.Wrapf(err, "finding task id %s", t2Id)
+	}
+	if t2 == nil {
+		return nil, errors.Errorf("could not find task id '%s'", t2Id)
 	}
 	return findMidwayTask(*t1, *t2)
 }
