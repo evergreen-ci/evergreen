@@ -944,17 +944,6 @@ func makeDeps(deps []TaskUnitDependency, thisTask *task.Task, taskIds TaskIdTabl
 			// patch_optional tasks aren't in the patch and will be missing from the table
 			if id := taskIds.GetId(dep.Variant, dep.Name); id != "" {
 				depIDs = []string{id}
-			} else {
-				grip.Info(message.Fields{
-					"message":            "kim: task dependency's ID could not be resolved!!",
-					"op":                 "makeDeps",
-					"task_id":            thisTask.Id,
-					"task_name":          thisTask.DisplayName,
-					"dependency_task":    dep.Name,
-					"dependency_variant": dep.Variant,
-					"dependency_status":  dep.Status,
-					"stack":              string(debug.Stack()),
-				})
 			}
 		}
 
