@@ -722,10 +722,12 @@ func constructManifest(v *Version, projectRef *ProjectRef, moduleList ModuleList
 	if err != nil {
 		return nil, errors.Wrapf(err, "getting project vars for project '%s'", projectRef.Id)
 	}
-	expansions := util.NewExpansions(projVars.Vars)
-	for i := range moduleList {
-		if err = util.ExpandValues(&moduleList[i], expansions); err != nil {
-			return nil, errors.Wrapf(err, "expanding module '%s'", moduleList[i].Name)
+	if projVars != nil {
+		expansions := util.NewExpansions(projVars.Vars)
+		for i := range moduleList {
+			if err = util.ExpandValues(&moduleList[i], expansions); err != nil {
+				return nil, errors.Wrapf(err, "expanding module '%s'", moduleList[i].Name)
+			}
 		}
 	}
 
