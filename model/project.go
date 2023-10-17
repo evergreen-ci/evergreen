@@ -436,6 +436,9 @@ type ContainerSystem struct {
 	WindowsVersion  evergreen.WindowsVersion `yaml:"windows_version,omitempty" bson:"windows_version"`
 }
 
+// Module specifies the git details of another git project to be included within a
+// given version at runtime. Module fields include the expand plugin tag because they
+// need to support project ref variable expansions.
 type Module struct {
 	Name       string `yaml:"name,omitempty" bson:"name" plugin:"expand"`
 	Branch     string `yaml:"branch,omitempty" bson:"branch"  plugin:"expand"`

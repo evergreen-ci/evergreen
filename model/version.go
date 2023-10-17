@@ -724,7 +724,7 @@ func constructManifest(v *Version, projectRef *ProjectRef, moduleList ModuleList
 	}
 	expansions := util.NewExpansions(projVars.Vars)
 	for i := range moduleList {
-		if err = errors.Wrap(util.ExpandValues(&moduleList[i], expansions), "could not expand module"); err != nil {
+		if err = util.ExpandValues(&moduleList[i], expansions); err != nil {
 			return nil, errors.Wrapf(err, "expanding module '%s'", moduleList[i].Name)
 		}
 	}

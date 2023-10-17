@@ -407,12 +407,16 @@ the git revision for modules by setting a module manually with
 by specifying the `auto_update` option (as described below) to use the
 latest revision available for a module.
 
+Module fields support the expansion of variables defined in the [Variables](Project-and-Distro-Settings.md#variables)
+tab of the Spruce project settings. Once expanded, the "Version Manifest" shown in
+the Spruce UI should show module configurations including the expanded variables.
+
 ``` yaml
 modules:
 - name: evergreen
   repo: https://github.com/deafgoat/mci_test.git
   prefix: src/mongo/db/modules
-  branch: master
+  branch: ${project_variable}
 - name: sandbox
   repo: https://github.com/deafgoat/sandbox.git
   branch: main
