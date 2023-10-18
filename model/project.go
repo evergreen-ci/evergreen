@@ -421,11 +421,7 @@ type BuildVariant struct {
 // CheckRun is used to provide extra information about a github check run.
 type CheckRun struct {
 	// PathToOutputs is a local file path to an output json file for the checkrun
-	PathToOutputs *string `yaml:"path_to_outputs" bson:"path_to_outputs"`
-	// GithubAppId and GitubPrivateKey are the user's credentials for
-	// authenticating with github for check runs.
-	GithubAppId      string `yaml:"github_app_id" bson:"github_app_id"`
-	GithubPrivateKey string `yaml:"github_private_key" bson:"github_private_key"`
+	PathToOutputs string `yaml:"path_to_outputs" bson:"path_to_outputs"`
 }
 
 // ParameterInfo is used to provide extra information about a parameter.

@@ -469,18 +469,6 @@ func (pbvt *parserBVTaskUnit) UnmarshalYAML(unmarshal func(interface{}) error) e
 		copy.RunOn, copy.Distros = copy.Distros, nil
 	}
 
-	// validate check runs
-	cr := copy.CreateCheckRun
-	if cr != nil {
-		if cr.PathToOutputs == nil {
-			return errors.New("'path_to_outputs' must be set")
-		}
-		if cr.GithubAppId != "" && cr.GithubPrivateKey == "" {
-			return errors.New("a github private key must be provided for check runs if a github app is provided")
-		}
-
-	}
-
 	*pbvt = parserBVTaskUnit(copy)
 	return nil
 }
