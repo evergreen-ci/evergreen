@@ -10,7 +10,6 @@ import (
 	"path/filepath"
 	"reflect"
 	"regexp"
-	"runtime/debug"
 	"strings"
 	"time"
 
@@ -2311,20 +2310,8 @@ func (p *ProjectRef) GetActivationTimeForVariant(variant *BuildVariant) (time.Ti
 // Temporarily takes in the task ID that prompted this query, for logging.
 func (p *ProjectRef) GetActivationTimeForTask(t *BuildVariantTaskUnit, taskId string) (time.Time, error) {
 	defaultRes := time.Now()
-	// Verify that we mean to be getting activation time for task
+	// Verify that we need to be getting activation time for task
 	if !t.HasSpecificActivation() {
-		grip.Debug(message.Fields{
-			"ticket":         "EVG-20612",
-			"message":        "incorrectly called GetActivationTimeForTask",
-			"task_id":        taskId,
-			"variant":        t.Variant,
-			"task_name":      t.Name,
-			"bvtu_batchtime": t.BatchTime,
-			"bvtu_activate":  t.Activate,
-			"bvtu_cron":      t.CronBatchTime,
-			"bvtu_disabled":  t.IsDisabled(),
-			"stack":          string(debug.Stack()),
-		})
 		return defaultRes, nil
 	}
 	// if we don't want to activate the task, set batchtime to the zero time
@@ -2339,23 +2326,10 @@ func (p *ProjectRef) GetActivationTimeForTask(t *BuildVariantTaskUnit, taskId st
 		return time.Now(), nil
 	}
 
-	queryStart := time.Now()
 	lastActivated, err := VersionFindOne(VersionByLastTaskActivation(p.Id, t.Variant, t.Name).WithFields(VersionBuildVariantsKey))
 	if err != nil {
 		return defaultRes, errors.Wrap(err, "finding version")
 	}
-	grip.Debug(message.Fields{
-		"ticket":                "EVG-20612",
-		"message":               "queried last activated",
-		"last_activated_exists": lastActivated != nil,
-		"task_id":               taskId,
-		"variant":               t.Variant,
-		"task_name":             t.Name,
-		"bvtu_batchtime":        t.BatchTime,
-		"bvtu_activate":         t.Activate,
-		"stack":                 string(debug.Stack()),
-		"query_time_secs":       time.Since(queryStart).Seconds(),
-	})
 	if lastActivated == nil {
 		return defaultRes, nil
 	}
