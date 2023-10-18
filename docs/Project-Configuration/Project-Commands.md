@@ -157,7 +157,8 @@ This command parses results in the XUnit format and posts them to the
 API server. Use this when you use a library in your programming language
 to generate XUnit results from tests. Evergreen will parse these XML
 files, creating links to individual tests in the test logs in the UI and
-API.
+API. (Logs are only generated if the test case did not succeed -- this is
+ part of the XUnit XML file design.)
 
 This command will not error if there are no test results, as XML files can still
 be valid. We will error if no file paths given are valid XML files.
