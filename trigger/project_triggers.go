@@ -103,33 +103,32 @@ func metadataFromVersion(args ProcessorArgs) (model.VersionMetadata, error) {
 		Alias:               args.Alias,
 	}
 	if args.SourceVersion != nil {
+		repo, err := model.FindRepository(args.DownstreamProject.Id)
+		if err != nil {
+			return metadata, errors.Wrap(err, "finding most recent revision")
+		}
+		if repo == nil {
+			return metadata, errors.Errorf("repo '%s' not found", args.DownstreamProject.Id)
+		}
+
 		metadata.Revision = model.Revision{
 			Author:          args.SourceVersion.Author,
 			AuthorEmail:     args.SourceVersion.AuthorEmail,
 			CreateTime:      args.SourceVersion.CreateTime,
 			RevisionMessage: args.SourceVersion.Message,
+			Revision:        repo.LastRevision,
+		}
+
+		author, err := user.FindOneById(args.SourceVersion.AuthorID)
+		if err != nil {
+			return metadata, errors.Wrapf(err, "finding version author '%s'", args.SourceVersion.AuthorID)
+		}
+		if author != nil {
+			metadata.Revision.AuthorGithubUID = author.Settings.GithubUser.UID
 		}
 	} else {
 		metadata.Revision = args.PushRevision
 		metadata.SourceCommit = args.PushRevision.Revision
-	}
-	repo, err := model.FindRepository(args.DownstreamProject.Id)
-	if err != nil {
-		return metadata, errors.Wrap(err, "finding most recent revision")
-	}
-	if repo == nil {
-		return metadata, errors.Errorf("repo '%s' not found", args.DownstreamProject.Id)
-	}
-	metadata.Revision.Revision = repo.LastRevision
-	var author *user.DBUser
-	if args.SourceVersion != nil {
-		author, err = user.FindOneById(args.SourceVersion.AuthorID)
-		if err != nil {
-			return metadata, errors.Wrapf(err, "finding version author '%s'", args.SourceVersion.AuthorID)
-		}
-	}
-	if author != nil {
-		metadata.Revision.AuthorGithubUID = author.Settings.GithubUser.UID
 	}
 
 	return metadata, nil

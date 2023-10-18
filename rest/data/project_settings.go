@@ -14,9 +14,12 @@ import (
 	"github.com/evergreen-ci/evergreen/model/pod"
 	"github.com/evergreen-ci/evergreen/model/user"
 	restModel "github.com/evergreen-ci/evergreen/rest/model"
+	"github.com/evergreen-ci/evergreen/units"
 	"github.com/evergreen-ci/gimlet"
 	"github.com/evergreen-ci/utility"
+	"github.com/mongodb/amboy"
 	"github.com/mongodb/grip"
+	"github.com/mongodb/grip/message"
 	"github.com/pkg/errors"
 )
 
@@ -436,6 +439,23 @@ func SaveProjectSettingsForSection(ctx context.Context, projectId string, change
 			if err != nil {
 				catcher.Wrapf(err, "converting project settings")
 			}
+		}
+	}
+
+	// If we're just enabled the project, we should run the repotracker to kick things off.
+	if modifiedProjectRef && mergedSection.Enabled && !mergedBeforeRef.Enabled {
+		ts := utility.RoundPartOfHour(1).Format(units.TSFormat)
+		j := units.NewRepotrackerJob(fmt.Sprintf("project-enabled-%s", ts), projectId)
+
+		queue := evergreen.GetEnvironment().RemoteQueue()
+		if err := amboy.EnqueueUniqueJob(ctx, queue, j); err != nil {
+			grip.Warning(message.WrapError(err, message.Fields{
+				"message": "problem enqueueing repotracker job for enabled project",
+				"project": projectId,
+				"owner":   mergedSection.Owner,
+				"repo":    mergedSection.Repo,
+				"branch":  mergedSection.Branch,
+			}))
 		}
 	}
 	return &res, errors.Wrapf(catcher.Resolve(), "saving section '%s'", section)
