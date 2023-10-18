@@ -910,8 +910,9 @@ func (tt TaskIdTable) GetIdsForAllTasks() []string {
 	return ids
 }
 
-// TaskIdTable builds a TaskIdTable for the given version and project
-func NewTaskIdTable(p *Project, v *Version, sourceRev, defID string) TaskIdConfig {
+// NewTaskIdConfigForRepotrackerVersion creates a special TaskIdTable for a
+// repotracker version.
+func NewTaskIdConfigForRepotrackerVersion(p *Project, v *Version, sourceRev, defID string) TaskIdConfig {
 	// init the variant map
 	execTable := TaskIdTable{}
 	displayTable := TaskIdTable{}
@@ -963,8 +964,9 @@ func NewTaskIdTable(p *Project, v *Version, sourceRev, defID string) TaskIdConfi
 	return TaskIdConfig{ExecutionTasks: execTable, DisplayTasks: displayTable}
 }
 
-// NewPatchTaskIdTable constructs a new TaskIdTable (map of [variant, task display name]->[task  id])
-func NewPatchTaskIdTable(proj *Project, v *Version, tasks TaskVariantPairs, projectIdentifier string) (TaskIdConfig, error) {
+// NewTaskIdConfig constructs a new set of TaskIdTables (map of [variant, task display name]->[task  id])
+// split by display and execution tasks.
+func NewTaskIdConfig(proj *Project, v *Version, tasks TaskVariantPairs, projectIdentifier string) (TaskIdConfig, error) {
 	config := TaskIdConfig{ExecutionTasks: TaskIdTable{}, DisplayTasks: TaskIdTable{}}
 	processedVariants := map[string]bool{}
 

@@ -100,7 +100,7 @@ func addNewTasksAndBuildsForPatch(ctx context.Context, creationInfo TaskCreation
 	if err != nil {
 		return errors.Wrap(err, "adding new builds")
 	}
-	_, err = addNewTasks(ctx, creationInfo, existingBuilds, caller)
+	_, err = addNewTasksToExistingBuilds(ctx, creationInfo, existingBuilds, caller)
 	if err != nil {
 		return errors.Wrap(err, "adding new tasks")
 	}
@@ -601,7 +601,7 @@ func FinalizePatch(ctx context.Context, p *patch.Patch, requester string, github
 		}
 		return nil, errors.New("cannot finalize patch with no tasks")
 	}
-	taskIds, err := NewPatchTaskIdTable(project, patchVersion, tasks, projectRef.Identifier)
+	taskIds, err := NewTaskIdConfig(project, patchVersion, tasks, projectRef.Identifier)
 	if err != nil {
 		return nil, errors.Wrap(err, "creating patch's task ID table")
 	}

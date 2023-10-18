@@ -1330,7 +1330,7 @@ func (s *projectSuite) TestNewPatchTaskIdTable() {
 		},
 	}
 
-	config, err := NewPatchTaskIdTable(p, v, pairs, "project_identifier")
+	config, err := NewTaskIdConfig(p, v, pairs, "project_identifier")
 	s.Require().NoError(err)
 	s.Len(config.DisplayTasks, 0)
 	s.Len(config.ExecutionTasks, 2)
