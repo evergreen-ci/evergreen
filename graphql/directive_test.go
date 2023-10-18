@@ -525,9 +525,11 @@ func TestRequireProjectFieldAccess(t *testing.T) {
 	ctx = gimlet.AttachUser(ctx, usr)
 	require.NotNil(t, ctx)
 
-	apiProjectRef := &restModel.APIProjectRef{
-		Identifier: utility.ToStringPtr("project_identifier"),
-		Admins:     utility.ToStringPtrSlice([]string{"admin_1", "admin_2", "admin_3"}),
+	apiProjectSettings := &restModel.APIProjectSettings{
+		ProjectRef: restModel.APIProjectRef{
+			Identifier: utility.ToStringPtr("project_identifier"),
+			Admins:     utility.ToStringPtrSlice([]string{"admin_1", "admin_2", "admin_3"}),
+		},
 	}
 
 	fieldCtx := &graphql.FieldContext{
@@ -544,14 +546,19 @@ func TestRequireProjectFieldAccess(t *testing.T) {
 	require.Nil(t, res)
 	require.Equal(t, 0, callCount)
 
-	res, err = config.Directives.RequireProjectFieldAccess(ctx, apiProjectRef, next)
+	res, err = config.Directives.RequireProjectFieldAccess(ctx, apiProjectSettings, next)
 	require.EqualError(t, err, "input: project not specified")
 	require.Nil(t, res)
 	require.Equal(t, 0, callCount)
 
-	apiProjectRef.Id = utility.ToStringPtr("project_id")
-
-	res, err = config.Directives.RequireProjectFieldAccess(ctx, apiProjectRef, next)
+	validApiProjectSettings := &restModel.APIProjectSettings{
+		ProjectRef: restModel.APIProjectRef{
+			Id:         utility.ToStringPtr("project_id"),
+			Identifier: utility.ToStringPtr("project_identifier"),
+			Admins:     utility.ToStringPtrSlice([]string{"admin_1", "admin_2", "admin_3"}),
+		},
+	}
+	res, err = config.Directives.RequireProjectFieldAccess(ctx, validApiProjectSettings, next)
 	require.EqualError(t, err, "input: user does not have permission to access the field 'admins' for project with ID 'project_id'")
 	require.Nil(t, res)
 	require.Equal(t, 0, callCount)
@@ -559,7 +566,7 @@ func TestRequireProjectFieldAccess(t *testing.T) {
 	err = usr.AddRole("view_project")
 	require.NoError(t, err)
 
-	res, err = config.Directives.RequireProjectFieldAccess(ctx, apiProjectRef, next)
+	res, err = config.Directives.RequireProjectFieldAccess(ctx, validApiProjectSettings, next)
 	require.NoError(t, err)
 	require.Nil(t, res)
 	require.Equal(t, 1, callCount)
