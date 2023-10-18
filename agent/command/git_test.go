@@ -746,8 +746,8 @@ func (s *GitGetProjectSuite) TestBuildModuleCommand() {
 		"set -o errexit",
 		"git clone 'git@github.com:evergreen-ci/sample.git' 'module'",
 		"cd module",
-		"^git fetch origin \"pull/1234/merge:evg-merge-test-",
-		"^git checkout 'evg-merge-test-",
+		"git fetch origin \"pull/1234/merge:evg-merge-test-",
+		"git checkout 'evg-merge-test-",
 		"git reset --hard 1234abcd",
 	}, cmds))
 }
