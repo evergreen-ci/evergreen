@@ -40754,28 +40754,8 @@ func (ec *executionContext) _ProjectSettings_aliases(ctx context.Context, field 
 		}
 	}()
 	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
-		directive0 := func(rctx context.Context) (interface{}, error) {
-			ctx = rctx // use context from middleware stack in children
-			return ec.resolvers.ProjectSettings().Aliases(rctx, obj)
-		}
-		directive1 := func(ctx context.Context) (interface{}, error) {
-			if ec.directives.RequireProjectFieldAccess == nil {
-				return nil, errors.New("directive requireProjectFieldAccess is not implemented")
-			}
-			return ec.directives.RequireProjectFieldAccess(ctx, obj, directive0)
-		}
-
-		tmp, err := directive1(rctx)
-		if err != nil {
-			return nil, graphql.ErrorOnPath(ctx, err)
-		}
-		if tmp == nil {
-			return nil, nil
-		}
-		if data, ok := tmp.([]*model.APIProjectAlias); ok {
-			return data, nil
-		}
-		return nil, fmt.Errorf(`unexpected type %T from directive, should be []*github.com/evergreen-ci/evergreen/rest/model.APIProjectAlias`, tmp)
+		ctx = rctx // use context from middleware stack in children
+		return ec.resolvers.ProjectSettings().Aliases(rctx, obj)
 	})
 	if err != nil {
 		ec.Error(ctx, err)
@@ -40837,28 +40817,8 @@ func (ec *executionContext) _ProjectSettings_githubWebhooksEnabled(ctx context.C
 		}
 	}()
 	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
-		directive0 := func(rctx context.Context) (interface{}, error) {
-			ctx = rctx // use context from middleware stack in children
-			return ec.resolvers.ProjectSettings().GithubWebhooksEnabled(rctx, obj)
-		}
-		directive1 := func(ctx context.Context) (interface{}, error) {
-			if ec.directives.RequireProjectFieldAccess == nil {
-				return nil, errors.New("directive requireProjectFieldAccess is not implemented")
-			}
-			return ec.directives.RequireProjectFieldAccess(ctx, obj, directive0)
-		}
-
-		tmp, err := directive1(rctx)
-		if err != nil {
-			return nil, graphql.ErrorOnPath(ctx, err)
-		}
-		if tmp == nil {
-			return nil, nil
-		}
-		if data, ok := tmp.(bool); ok {
-			return data, nil
-		}
-		return nil, fmt.Errorf(`unexpected type %T from directive, should be bool`, tmp)
+		ctx = rctx // use context from middleware stack in children
+		return ec.resolvers.ProjectSettings().GithubWebhooksEnabled(rctx, obj)
 	})
 	if err != nil {
 		ec.Error(ctx, err)
@@ -41058,28 +41018,8 @@ func (ec *executionContext) _ProjectSettings_subscriptions(ctx context.Context, 
 		}
 	}()
 	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
-		directive0 := func(rctx context.Context) (interface{}, error) {
-			ctx = rctx // use context from middleware stack in children
-			return ec.resolvers.ProjectSettings().Subscriptions(rctx, obj)
-		}
-		directive1 := func(ctx context.Context) (interface{}, error) {
-			if ec.directives.RequireProjectFieldAccess == nil {
-				return nil, errors.New("directive requireProjectFieldAccess is not implemented")
-			}
-			return ec.directives.RequireProjectFieldAccess(ctx, obj, directive0)
-		}
-
-		tmp, err := directive1(rctx)
-		if err != nil {
-			return nil, graphql.ErrorOnPath(ctx, err)
-		}
-		if tmp == nil {
-			return nil, nil
-		}
-		if data, ok := tmp.([]*model.APISubscription); ok {
-			return data, nil
-		}
-		return nil, fmt.Errorf(`unexpected type %T from directive, should be []*github.com/evergreen-ci/evergreen/rest/model.APISubscription`, tmp)
+		ctx = rctx // use context from middleware stack in children
+		return ec.resolvers.ProjectSettings().Subscriptions(rctx, obj)
 	})
 	if err != nil {
 		ec.Error(ctx, err)
@@ -41137,28 +41077,8 @@ func (ec *executionContext) _ProjectSettings_vars(ctx context.Context, field gra
 		}
 	}()
 	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
-		directive0 := func(rctx context.Context) (interface{}, error) {
-			ctx = rctx // use context from middleware stack in children
-			return ec.resolvers.ProjectSettings().Vars(rctx, obj)
-		}
-		directive1 := func(ctx context.Context) (interface{}, error) {
-			if ec.directives.RequireProjectFieldAccess == nil {
-				return nil, errors.New("directive requireProjectFieldAccess is not implemented")
-			}
-			return ec.directives.RequireProjectFieldAccess(ctx, obj, directive0)
-		}
-
-		tmp, err := directive1(rctx)
-		if err != nil {
-			return nil, graphql.ErrorOnPath(ctx, err)
-		}
-		if tmp == nil {
-			return nil, nil
-		}
-		if data, ok := tmp.(*model.APIProjectVars); ok {
-			return data, nil
-		}
-		return nil, fmt.Errorf(`unexpected type %T from directive, should be *github.com/evergreen-ci/evergreen/rest/model.APIProjectVars`, tmp)
+		ctx = rctx // use context from middleware stack in children
+		return ec.resolvers.ProjectSettings().Vars(rctx, obj)
 	})
 	if err != nil {
 		ec.Error(ctx, err)
@@ -46613,28 +46533,8 @@ func (ec *executionContext) _RepoSettings_aliases(ctx context.Context, field gra
 		}
 	}()
 	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
-		directive0 := func(rctx context.Context) (interface{}, error) {
-			ctx = rctx // use context from middleware stack in children
-			return ec.resolvers.RepoSettings().Aliases(rctx, obj)
-		}
-		directive1 := func(ctx context.Context) (interface{}, error) {
-			if ec.directives.RequireProjectFieldAccess == nil {
-				return nil, errors.New("directive requireProjectFieldAccess is not implemented")
-			}
-			return ec.directives.RequireProjectFieldAccess(ctx, obj, directive0)
-		}
-
-		tmp, err := directive1(rctx)
-		if err != nil {
-			return nil, graphql.ErrorOnPath(ctx, err)
-		}
-		if tmp == nil {
-			return nil, nil
-		}
-		if data, ok := tmp.([]*model.APIProjectAlias); ok {
-			return data, nil
-		}
-		return nil, fmt.Errorf(`unexpected type %T from directive, should be []*github.com/evergreen-ci/evergreen/rest/model.APIProjectAlias`, tmp)
+		ctx = rctx // use context from middleware stack in children
+		return ec.resolvers.RepoSettings().Aliases(rctx, obj)
 	})
 	if err != nil {
 		ec.Error(ctx, err)
@@ -46696,28 +46596,8 @@ func (ec *executionContext) _RepoSettings_githubWebhooksEnabled(ctx context.Cont
 		}
 	}()
 	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
-		directive0 := func(rctx context.Context) (interface{}, error) {
-			ctx = rctx // use context from middleware stack in children
-			return ec.resolvers.RepoSettings().GithubWebhooksEnabled(rctx, obj)
-		}
-		directive1 := func(ctx context.Context) (interface{}, error) {
-			if ec.directives.RequireProjectFieldAccess == nil {
-				return nil, errors.New("directive requireProjectFieldAccess is not implemented")
-			}
-			return ec.directives.RequireProjectFieldAccess(ctx, obj, directive0)
-		}
-
-		tmp, err := directive1(rctx)
-		if err != nil {
-			return nil, graphql.ErrorOnPath(ctx, err)
-		}
-		if tmp == nil {
-			return nil, nil
-		}
-		if data, ok := tmp.(bool); ok {
-			return data, nil
-		}
-		return nil, fmt.Errorf(`unexpected type %T from directive, should be bool`, tmp)
+		ctx = rctx // use context from middleware stack in children
+		return ec.resolvers.RepoSettings().GithubWebhooksEnabled(rctx, obj)
 	})
 	if err != nil {
 		ec.Error(ctx, err)
@@ -46899,28 +46779,8 @@ func (ec *executionContext) _RepoSettings_subscriptions(ctx context.Context, fie
 		}
 	}()
 	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
-		directive0 := func(rctx context.Context) (interface{}, error) {
-			ctx = rctx // use context from middleware stack in children
-			return ec.resolvers.RepoSettings().Subscriptions(rctx, obj)
-		}
-		directive1 := func(ctx context.Context) (interface{}, error) {
-			if ec.directives.RequireProjectFieldAccess == nil {
-				return nil, errors.New("directive requireProjectFieldAccess is not implemented")
-			}
-			return ec.directives.RequireProjectFieldAccess(ctx, obj, directive0)
-		}
-
-		tmp, err := directive1(rctx)
-		if err != nil {
-			return nil, graphql.ErrorOnPath(ctx, err)
-		}
-		if tmp == nil {
-			return nil, nil
-		}
-		if data, ok := tmp.([]*model.APISubscription); ok {
-			return data, nil
-		}
-		return nil, fmt.Errorf(`unexpected type %T from directive, should be []*github.com/evergreen-ci/evergreen/rest/model.APISubscription`, tmp)
+		ctx = rctx // use context from middleware stack in children
+		return ec.resolvers.RepoSettings().Subscriptions(rctx, obj)
 	})
 	if err != nil {
 		ec.Error(ctx, err)
@@ -46978,28 +46838,8 @@ func (ec *executionContext) _RepoSettings_vars(ctx context.Context, field graphq
 		}
 	}()
 	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
-		directive0 := func(rctx context.Context) (interface{}, error) {
-			ctx = rctx // use context from middleware stack in children
-			return ec.resolvers.RepoSettings().Vars(rctx, obj)
-		}
-		directive1 := func(ctx context.Context) (interface{}, error) {
-			if ec.directives.RequireProjectFieldAccess == nil {
-				return nil, errors.New("directive requireProjectFieldAccess is not implemented")
-			}
-			return ec.directives.RequireProjectFieldAccess(ctx, obj, directive0)
-		}
-
-		tmp, err := directive1(rctx)
-		if err != nil {
-			return nil, graphql.ErrorOnPath(ctx, err)
-		}
-		if tmp == nil {
-			return nil, nil
-		}
-		if data, ok := tmp.(*model.APIProjectVars); ok {
-			return data, nil
-		}
-		return nil, fmt.Errorf(`unexpected type %T from directive, should be *github.com/evergreen-ci/evergreen/rest/model.APIProjectVars`, tmp)
+		ctx = rctx // use context from middleware stack in children
+		return ec.resolvers.RepoSettings().Vars(rctx, obj)
 	})
 	if err != nil {
 		ec.Error(ctx, err)
