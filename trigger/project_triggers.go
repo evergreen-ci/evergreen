@@ -20,7 +20,7 @@ func TriggerDownstreamVersion(ctx context.Context, args ProcessorArgs) (*model.V
 	}
 
 	// propagate version metadata to the downstream version
-	metadata, err := metadataFromVersion(args)
+	metadata, err := getMetadataFromArgs(args)
 	if err != nil {
 		return nil, err
 	}
@@ -92,7 +92,7 @@ func TriggerDownstreamVersion(ctx context.Context, args ProcessorArgs) (*model.V
 	return v, nil
 }
 
-func metadataFromVersion(args ProcessorArgs) (model.VersionMetadata, error) {
+func getMetadataFromArgs(args ProcessorArgs) (model.VersionMetadata, error) {
 	metadata := model.VersionMetadata{
 		SourceVersion:       args.SourceVersion,
 		Activate:            !args.UnscheduleDownstreamVersions,
