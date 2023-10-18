@@ -9,12 +9,12 @@ over task environments is achievable with containers, ensuring that each
 task runs in an isolated, dedicated space with its own specific set of
 software dependencies.
 
-## Warning! Containers are an experimental feature!
+## Warning: Container tasks are new and subject to ongoing changes
 
-Container tasks at this time are still an experimental feature,
-therefore they are subject to change as we iterate further on our
-roadmap. The feature may have bugs that get discovered as we roll it out
-as an initial offering.
+Container tasks at this time are subject to (potentially substantial) change as we iterate further on our
+[container roadmap](https://docs.google.com/document/d/1kotO7FalECSC78snAgRflwzwnZZVmGDBLth7jqQyrGk/edit). 
+The feature may have bugs as it is not currently as battle-tested as our host-based infrastructure,
+which should be considered if your goal is to port over a critical workflow to container tasks.
 
 If you have any questions about container tasks or are interested in
 exploring how this feature could benefit your project, we encourage you
