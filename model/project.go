@@ -418,7 +418,7 @@ type BuildVariant struct {
 	DisplayTasks []patch.DisplayTask    `yaml:"display_tasks,omitempty" bson:"display_tasks,omitempty"`
 }
 
-// CheckRun is used to provide extra information about a github check run.
+// CheckRun is used to provide information about a github check run.
 type CheckRun struct {
 	// PathToOutputs is a local file path to an output json file for the checkrun
 	PathToOutputs string `yaml:"path_to_outputs" bson:"path_to_outputs"`

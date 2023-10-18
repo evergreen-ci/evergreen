@@ -468,7 +468,6 @@ func (pbvt *parserBVTaskUnit) UnmarshalYAML(unmarshal func(interface{}) error) e
 		}
 		copy.RunOn, copy.Distros = copy.Distros, nil
 	}
-
 	*pbvt = parserBVTaskUnit(copy)
 	return nil
 }
