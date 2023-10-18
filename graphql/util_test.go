@@ -167,7 +167,7 @@ func TestGetDisplayStatus(t *testing.T) {
 
 	p := &patch.Patch{
 		Id:     patchId,
-		Status: evergreen.LegacyPatchSucceeded,
+		Status: evergreen.VersionSucceeded,
 		Triggers: patch.TriggerInfo{
 			ChildPatches: []string{childPatchId.Hex()},
 		},

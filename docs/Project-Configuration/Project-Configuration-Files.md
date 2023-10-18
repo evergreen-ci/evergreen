@@ -407,12 +407,16 @@ the git revision for modules by setting a module manually with
 by specifying the `auto_update` option (as described below) to use the
 latest revision available for a module.
 
+Module fields support the expansion of variables defined in the [Variables](Project-and-Distro-Settings.md#variables)
+tab of the Spruce project settings. These fields are expanded at the time of version creation, at which point 
+the "Version Manifest" shown in the Spruce UI should show module configurations including the expanded variables.
+
 ``` yaml
 modules:
 - name: evergreen
   repo: https://github.com/deafgoat/mci_test.git
   prefix: src/mongo/db/modules
-  branch: master
+  branch: ${project_variable}
 - name: sandbox
   repo: https://github.com/deafgoat/sandbox.git
   branch: main
@@ -424,6 +428,8 @@ modules:
 ```
 
 Fields:
+
+(note: all fields can be expanded by project variables with the exception of `auto_update`)
 
 -   `name`: alias to refer to the module
 -   `branch`: the branch of the module to use in the project
@@ -1398,10 +1404,11 @@ Parameters:
     commands but will not cause the task to fail unless
     `teardown_task_can_fail_task` is true.
 -   `max_hosts`: number of hosts across which to distribute the tasks in
-    this group. This defaults to 1. There will be a validation warning
-    if max hosts is less than 1 or greater than the number of tasks in
-    task group. When max hosts is 1, this is a special case where the tasks
-    will run serially on a single host. If any task fails, the task group
+    this group. This defaults to 1. If set to -1, it will be updated to the 
+    number of tasks in this task group. There will be a validation warning
+    if max hosts is less than 1 (apart from -1) or greater than the number of 
+    tasks in task group. When max hosts is 1, this is a special case where the
+    tasks will run serially on a single host. If any task fails, the task group
     will stop, so the remaining tasks after the failed one will not run.
 -   `timeout`: timeout handler which will be called instead of the top-level
     timeout handler. If it is not present, the top-level timeout handler will

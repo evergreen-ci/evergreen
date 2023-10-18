@@ -585,7 +585,7 @@ functions:
           -o IdentitiesOnly=yes \
           -o StrictHostKeyChecking=no \
           "$(printf "%s@%s" "$user" "$hostname")" \
-          exit 2> /dev/null
+          exit
         do
           [ "$attempts" -ge "$connection_attempts" ] && exit 1
           ((attempts++))

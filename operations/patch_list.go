@@ -83,7 +83,6 @@ func PatchList() cli.Command {
 					if err != nil {
 						return errors.Wrap(err, "converting patch to API model")
 					}
-					api.PatchedParserProject = nil
 					display = append(display, api)
 				}
 

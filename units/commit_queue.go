@@ -740,7 +740,6 @@ func updatePatch(ctx context.Context, settings *evergreen.Settings, githubToken 
 	// Ensure that the project remote configuration loads directly from GitHub
 	// rather than loading from the cached information from the patch document.
 	patchDoc.ProjectStorageMethod = ""
-	patchDoc.PatchedParserProject = ""
 	patchDoc.PatchedProjectConfig = ""
 	project, patchConfig, err := model.GetPatchedProject(ctx, settings, patchDoc, githubToken)
 	if err != nil {

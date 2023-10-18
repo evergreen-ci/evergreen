@@ -1167,7 +1167,6 @@ func (s *PatchIntentUnitsSuite) verifyPatchDoc(patchDoc *patch.Patch, expectedPa
 	if verifyModules {
 		s.NotEmpty(patchDoc.Patches)
 	}
-	s.Empty(patchDoc.PatchedParserProject)
 	s.NotZero(patchDoc.CreateTime)
 	s.Zero(patchDoc.GithubPatchData)
 	s.Zero(patchDoc.StartTime)

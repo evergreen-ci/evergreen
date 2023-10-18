@@ -16,6 +16,9 @@ func FindApplicableDistroIDs(ctx context.Context, id string) ([]string, error) {
 	if err != nil {
 		return nil, errors.WithStack(err)
 	}
+	if d == nil {
+		return nil, errors.Errorf("error finding distro '%s'", id)
+	}
 
 	out := []string{id}
 	out = append(out, d.Aliases...)
