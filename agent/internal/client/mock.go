@@ -64,6 +64,7 @@ type Mock struct {
 	CreatedHost                 apimodels.CreateHost
 	GetTaskPatchResponse        *patchmodel.Patch
 	GetLoggerProducerShouldFail bool
+	CreateInstallationTokenFail bool
 
 	CedarGRPCConn *grpc.ClientConn
 
@@ -533,8 +534,8 @@ func (c *Mock) GetPullRequestInfo(ctx context.Context, taskData TaskData, prNum 
 }
 
 func (c *Mock) CreateInstallationToken(ctx context.Context, td TaskData, owner, repo string) (string, error) {
-	if owner != "" && repo != "" && repo != NotValidRepo {
-		return MockedGitHubAppToken, nil
+	if c.CreateInstallationTokenFail {
+		return "", nil
 	}
-	return "", nil
+	return MockedGitHubAppToken, nil
 }

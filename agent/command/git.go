@@ -137,40 +137,41 @@ func (opts *cloneOpts) setLocation() error {
 
 // getProjectMethodAndToken returns the project's clone method and token. If
 // set, the project token takes precedence over GitHub App token which takes precedence over over global settings.
-func getProjectMethodAndToken(ctx context.Context, comm client.Communicator, td client.TaskData, owner, repo, projectToken, globalToken, globalCloneMethod string) (string, string, error) {
+func getProjectMethodAndToken(ctx context.Context, comm client.Communicator, td client.TaskData, conf *internal.TaskConfig, projectToken string) (string, string, error) {
 	if projectToken != "" {
 		token, err := parseToken(projectToken)
 		return evergreen.CloneMethodOAuth, token, err
 	}
 
+	owner := conf.ProjectRef.Owner
+	repo := conf.ProjectRef.Repo
 	appToken, err := comm.CreateInstallationToken(ctx, td, owner, repo)
 	// TODO EVG-21022: Remove fallback once we delete GitHub tokens as expansions.
-	if err != nil {
-		grip.Warning(message.WrapError(err, message.Fields{
-			"message": "error creating GitHub app token, falling back to legacy clone methods",
-			"owner":   owner,
-			"repo":    repo,
-			"task":    td.ID,
-			"ticket":  "EVG-21022",
-		}))
-	} else if appToken == "" {
-		grip.Debug(message.Fields{
-			"message": "GitHub app token not found, falling back to legacy clone methods",
-			"owner":   owner,
-			"repo":    repo,
-			"task":    td.ID,
-			"ticket":  "EVG-21022",
-		})
-	} else {
+	grip.Warning(message.WrapError(err, message.Fields{
+		"message": "error creating GitHub app token, falling back to legacy clone methods",
+		"owner":   owner,
+		"repo":    repo,
+		"task":    td.ID,
+		"ticket":  "EVG-21022",
+	}))
+	if appToken != "" {
 		return evergreen.CloneMethodAccessToken, appToken, nil
 	}
+	grip.DebugWhen(err == nil, message.Fields{
+		"message": "GitHub app token not found, falling back to legacy clone methods",
+		"owner":   owner,
+		"repo":    repo,
+		"task":    td.ID,
+		"ticket":  "EVG-21022",
+	})
 
+	globalToken := conf.Expansions.Get(evergreen.GlobalGitHubTokenExpansion)
 	token, err := parseToken(globalToken)
 	if err != nil {
 		return evergreen.CloneMethodLegacySSH, "", err
 	}
 
-	switch globalCloneMethod {
+	switch conf.GetCloneMethod() {
 	// No clone method specified is equivalent to using legacy SSH.
 	case "", evergreen.CloneMethodLegacySSH:
 		return evergreen.CloneMethodLegacySSH, token, nil
@@ -184,7 +185,7 @@ func getProjectMethodAndToken(ctx context.Context, comm client.Communicator, td 
 		return evergreen.CloneMethodLegacySSH, "", errors.New("cannot specify clone method access token")
 	}
 
-	return "", "", errors.Errorf("unrecognized clone method '%s'", globalCloneMethod)
+	return "", "", errors.Errorf("unrecognized clone method '%s'", conf.GetCloneMethod())
 }
 
 // parseToken parses the OAuth token, if it is in the format "token <token>";
@@ -529,7 +530,7 @@ func (c *gitFetchProject) Execute(ctx context.Context, comm client.Communicator,
 
 	td := client.TaskData{ID: conf.Task.Id, Secret: conf.Task.Secret}
 
-	projectMethod, projectToken, err := getProjectMethodAndToken(ctx, comm, td, conf.ProjectRef.Owner, conf.ProjectRef.Repo, c.Token, conf.Expansions.Get(evergreen.GlobalGitHubTokenExpansion), conf.GetCloneMethod())
+	projectMethod, projectToken, err := getProjectMethodAndToken(ctx, comm, td, conf, c.Token)
 	if err != nil {
 		return errors.Wrap(err, "getting method of cloning and token")
 	}

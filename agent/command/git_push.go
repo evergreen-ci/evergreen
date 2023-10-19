@@ -82,7 +82,7 @@ func (c *gitPush) Execute(ctx context.Context, comm client.Communicator, logger 
 
 	// get commit information
 	var projectToken string
-	_, projectToken, err = getProjectMethodAndToken(ctx, comm, td, conf.ProjectRef.Owner, conf.ProjectRef.Repo, c.Token, conf.Expansions.Get(evergreen.GlobalGitHubTokenExpansion), conf.GetCloneMethod())
+	_, projectToken, err = getProjectMethodAndToken(ctx, comm, td, conf, c.Token)
 	if err != nil {
 		return errors.Wrap(err, "getting token")
 	}
