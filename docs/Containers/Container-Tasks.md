@@ -12,8 +12,7 @@ software dependencies.
 ## Warning: Container tasks are new and subject to ongoing changes
 
 Container tasks at this time are subject to (potentially substantial) change as we iterate further on our
-[container roadmap](https://docs.google.com/document/d/1kotO7FalECSC78snAgRflwzwnZZVmGDBLth7jqQyrGk/edit). 
-The feature may have bugs as it is not currently as battle-tested as our host-based infrastructure,
+container roadmap. The feature may have bugs as it is not currently as battle-tested as our host-based infrastructure,
 which should be considered if your goal is to port over a critical workflow to container tasks.
 
 If you have any questions about container tasks or are interested in
