@@ -55,9 +55,8 @@ func TestAPIPatch(t *testing.T) {
 		Patches: []patch.ModulePatch{
 			{},
 		},
-		Activated:            true,
-		PatchedParserProject: "config",
-		Alias:                evergreen.CommitQueueAlias,
+		Activated: true,
+		Alias:     evergreen.CommitQueueAlias,
 		GithubPatchData: thirdparty.GithubPatch{
 			PRNumber:  123,
 			BaseOwner: "evergreen-ci",

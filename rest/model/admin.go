@@ -44,6 +44,7 @@ func NewConfigModel() *APIAdminSettings {
 		Ui:                &APIUIConfig{},
 		Spawnhost:         &APISpawnHostConfig{},
 		Tracer:            &APITracerSettings{},
+		GitHubCheckRun:    &APIGitHubCheckRunConfig{},
 	}
 }
 
@@ -95,6 +96,7 @@ type APIAdminSettings struct {
 	Ui                  *APIUIConfig                      `json:"ui,omitempty"`
 	Spawnhost           *APISpawnHostConfig               `json:"spawnhost,omitempty"`
 	Tracer              *APITracerSettings                `json:"tracer,omitempty"`
+	GitHubCheckRun      *APIGitHubCheckRunConfig          `json:"github_check_run,omitempty"`
 	ShutdownWaitSeconds *int                              `json:"shutdown_wait_seconds,omitempty"`
 }
 
@@ -2853,4 +2855,26 @@ func (c *APIDataPipesConfig) ToService() (interface{}, error) {
 		AWSSecretKey: utility.FromStringPtr(c.AWSSecretKey),
 		AWSToken:     utility.FromStringPtr(c.AWSToken),
 	}, nil
+}
+
+type APIGitHubCheckRunConfig struct {
+	CheckRunLimit *int `json:"check_run_limit"`
+}
+
+func (c *APIGitHubCheckRunConfig) BuildFromService(h interface{}) error {
+	switch v := h.(type) {
+	case evergreen.GitHubCheckRunConfig:
+		c.CheckRunLimit = utility.ToIntPtr(v.CheckRunLimit)
+	default:
+		return errors.Errorf("programmatic error: expected GitHub check run config but got type %T", h)
+	}
+	return nil
+}
+
+func (c *APIGitHubCheckRunConfig) ToService() (interface{}, error) {
+	config := evergreen.GitHubCheckRunConfig{
+		CheckRunLimit: utility.FromIntPtr(c.CheckRunLimit),
+	}
+
+	return config, nil
 }

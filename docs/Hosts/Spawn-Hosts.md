@@ -2,6 +2,22 @@
 
 If a test fails on a platform other than the one you develop on locally, you'll likely want to get access to a machine of that type in order to investigate the source of the failure. You can accomplish this using the spawn hosts feature of evergreen.
 
+## Troubleshooting connecting to a spawn host
+
+If you are having trouble connecting to a spawn host:
+
+- Make sure you are connected to the MongoDB network or VPN.
+- Verify the host is in the "RUNNING" state and the DNS host name for the spawn host is correct. Note that if you pause and then start the host, it will get a new DNS name.
+- Verify you are using the correct user. This can be found on the [My Hosts](https://spruce.mongodb.com/spawn/host) page under the Spawn Host detail drop down.
+- Verify you are using the correct ssh key used when creating the Spawn Host. Use the -i argument to specify the location of your local private ssh key to use.
+- Newer versions of macOS do not by default support older SSH algorithms. Please add these lines to the `Host *` stanza of your ~/.ssh/config:
+
+```
+  Host *
+      HostkeyAlgorithms +ssh-rsa
+      PubkeyAcceptedAlgorithms +ssh-rsa
+```
+
 ## Making a distro "spawnable"
 
 Evergreen administrators can choose to make a distro available to users for spawning by checking the box on the distro configuration panel labeled *"Allow users to spawn these hosts for personal use"*

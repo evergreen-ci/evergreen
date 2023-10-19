@@ -216,5 +216,12 @@
         }
       ]
     }
+  ],
+    "github_hooks": [
+    {
+      "owner": "evergreen-ci",
+      "repo": "commit-queue-sandbox",
+      "installation_id": 1234
+    }
   ]
 }

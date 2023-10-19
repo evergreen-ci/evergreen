@@ -447,6 +447,8 @@ func TestTranslateTasks(t *testing.T) {
 	assert.Contains(t, bvt.RunOn, "my_distro")
 	assert.Equal(t, 20, bvt.ExecTimeoutSecs)
 	assert.True(t, bvt.IsGroup)
+	assert.False(t, bvt.IsPartOfGroup)
+	assert.Zero(t, bvt.GroupName)
 
 	bvt = out.FindTaskForVariant("tg_task", "bv0")
 	assert.Equal(t, "my_tg", bvt.Name, "task within a task group retains its task group name in resulting build variant task unit")
@@ -454,6 +456,8 @@ func TestTranslateTasks(t *testing.T) {
 	assert.True(t, utility.FromBoolPtr(bvt.PatchOnly))
 	assert.Contains(t, bvt.RunOn, "my_distro")
 	assert.True(t, bvt.IsGroup)
+	assert.False(t, bvt.IsPartOfGroup)
+	assert.Zero(t, bvt.GroupName)
 
 	patchOnlyBV := out.BuildVariants[1]
 	assert.Equal(t, "patch_only_bv", patchOnlyBV.Name)
@@ -1158,10 +1162,17 @@ tasks:
 }
 
 func TestTaskGroupParsing(t *testing.T) {
-	assert := assert.New(t)
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
 
-	// check that yml with valid task group does not error and parses correctly
-	validYml := `
+	checkIsTaskGroupTaskUnit := func(t *testing.T, bvtu BuildVariantTaskUnit) {
+		assert.True(t, bvtu.IsGroup)
+		assert.False(t, bvtu.IsPartOfGroup)
+		assert.Zero(t, bvtu.GroupName)
+	}
+
+	t.Run("SucceedsWithRegularTaskGroup", func(t *testing.T) {
+		validYml := `
 tasks:
 - name: example_task_1
 - name: example_task_2
@@ -1202,37 +1213,42 @@ buildvariants:
   - name: example_task_group
 `
 
-	proj := &Project{}
-	ctx := context.Background()
-	_, err := LoadProjectInto(ctx, []byte(validYml), nil, "id", proj)
-	assert.NotNil(proj)
-	assert.Nil(err)
-	assert.Len(proj.TaskGroups, 1)
-	tg := proj.TaskGroups[0]
-	assert.Equal("example_task_group", tg.Name)
-	assert.Equal(2, tg.MaxHosts)
+		proj := &Project{}
+		_, err := LoadProjectInto(ctx, []byte(validYml), nil, "id", proj)
+		require.NotNil(t, proj)
+		assert.Nil(t, err)
+		require.Len(t, proj.TaskGroups, 1)
+		tg := proj.TaskGroups[0]
+		assert.Equal(t, "example_task_group", tg.Name)
+		assert.Equal(t, 2, tg.MaxHosts)
 
-	assert.Len(tg.SetupGroup.List(), 1)
-	assert.Equal(true, tg.SetupGroupCanFailTask)
-	assert.Equal(10, tg.SetupGroupTimeoutSecs)
+		assert.Len(t, tg.SetupGroup.List(), 1)
+		assert.Equal(t, true, tg.SetupGroupCanFailTask)
+		assert.Equal(t, 10, tg.SetupGroupTimeoutSecs)
 
-	assert.Len(tg.SetupTask.List(), 1)
-	assert.True(tg.SetupTaskCanFailTask)
-	assert.Equal(10, tg.SetupTaskTimeoutSecs)
+		assert.Len(t, tg.SetupTask.List(), 1)
+		assert.True(t, tg.SetupTaskCanFailTask)
+		assert.Equal(t, 10, tg.SetupTaskTimeoutSecs)
 
-	assert.Len(tg.TeardownTask.List(), 1)
-	assert.True(tg.TeardownTaskCanFailTask)
-	assert.Equal(10, tg.TeardownTaskTimeoutSecs)
+		assert.Len(t, tg.TeardownTask.List(), 1)
+		assert.True(t, tg.TeardownTaskCanFailTask)
+		assert.Equal(t, 10, tg.TeardownTaskTimeoutSecs)
 
-	assert.Len(tg.TeardownGroup.List(), 1)
-	assert.Equal(10, tg.TeardownGroupTimeoutSecs)
+		assert.Len(t, tg.TeardownGroup.List(), 1)
+		assert.Equal(t, 10, tg.TeardownGroupTimeoutSecs)
 
-	assert.True(tg.ShareProcs)
+		assert.True(t, tg.ShareProcs)
 
-	assert.Len(tg.Tasks, 2)
+		assert.Len(t, tg.Tasks, 2)
 
-	// check that yml with inline task groups within its buildvariants correctly parses the group
-	inlineYml := `
+		require.Len(t, proj.BuildVariants, 1)
+		require.Len(t, proj.BuildVariants[0].Tasks, 1)
+		assert.Zero(t, proj.BuildVariants[0].Tasks[0].TaskGroup)
+		checkIsTaskGroupTaskUnit(t, proj.BuildVariants[0].Tasks[0])
+	})
+
+	t.Run("SucceedsWithInlineTaskGroup", func(t *testing.T) {
+		inlineYml := `
 tasks:
 - name: example_task_1
 - name: example_task_2
@@ -1271,15 +1287,18 @@ buildvariants:
       tasks:
       - example_task_1
 `
-	proj = &Project{}
-	_, err = LoadProjectInto(ctx, []byte(inlineYml), nil, "id", proj)
-	assert.Nil(err)
-	assert.NotNil(proj)
-	assert.Len(proj.BuildVariants[0].Tasks, 1)
-	assert.NotNil(proj.BuildVariants[0].Tasks[0].TaskGroup)
+		proj := &Project{}
+		_, err := LoadProjectInto(ctx, []byte(inlineYml), nil, "id", proj)
+		assert.Nil(t, err)
+		require.NotNil(t, proj)
+		require.Len(t, proj.BuildVariants, 1)
+		require.Len(t, proj.BuildVariants[0].Tasks, 1)
+		assert.NotNil(t, proj.BuildVariants[0].Tasks[0].TaskGroup)
+		checkIsTaskGroupTaskUnit(t, proj.BuildVariants[0].Tasks[0])
+	})
 
-	// check that yml with a task group that contains a nonexistent task errors
-	wrongTaskYml := `
+	t.Run("FailsWithTaskGroupContainingNonexistentTask", func(t *testing.T) {
+		wrongTaskYml := `
 tasks:
 - name: example_task_1
 - name: example_task_2
@@ -1294,14 +1313,15 @@ buildvariants:
   - name: example_task_group
 `
 
-	proj = &Project{}
-	_, err = LoadProjectInto(ctx, []byte(wrongTaskYml), nil, "id", proj)
-	assert.NotNil(proj)
-	assert.NotNil(err)
-	assert.Contains(err.Error(), `nothing named 'example_task_3'`)
+		proj := &Project{}
+		_, err := LoadProjectInto(ctx, []byte(wrongTaskYml), nil, "id", proj)
+		assert.NotNil(t, proj)
+		require.NotNil(t, err)
+		assert.Contains(t, err.Error(), `nothing named 'example_task_3'`)
+	})
 
-	// check that tasks listed in the task group yml maintain their order
-	orderedYml := `
+	t.Run("MaintainsTaskGroupTaskOrdering", func(t *testing.T) {
+		orderedYml := `
 tasks:
 - name: 8
 - name: 7
@@ -1330,16 +1350,20 @@ buildvariants:
   - name: example_task_group
 `
 
-	proj = &Project{}
-	_, err = LoadProjectInto(ctx, []byte(orderedYml), nil, "id", proj)
-	assert.NotNil(proj)
-	assert.Nil(err)
-	for i, t := range proj.TaskGroups[0].Tasks {
-		assert.Equal(strconv.Itoa(i+1), t)
-	}
+		proj := &Project{}
+		_, err := LoadProjectInto(ctx, []byte(orderedYml), nil, "id", proj)
+		require.NotNil(t, proj)
+		assert.Nil(t, err)
+		for i, tsk := range proj.TaskGroups[0].Tasks {
+			assert.Equal(t, strconv.Itoa(i+1), tsk)
+		}
+		require.Len(t, proj.BuildVariants, 1)
+		require.Len(t, proj.BuildVariants[0].Tasks, 1)
+		checkIsTaskGroupTaskUnit(t, proj.BuildVariants[0].Tasks[0])
+	})
 
-	// check that tags select the correct tasks
-	tagYml := `
+	t.Run("TagsSelectCorrectTasksForTaskGroup", func(t *testing.T) {
+		tagYml := `
 tasks:
 - name: 1
   tags: [ "odd" ]
@@ -1364,18 +1388,68 @@ buildvariants:
   - name: odd_task_group
 `
 
-	proj = &Project{}
-	_, err = LoadProjectInto(ctx, []byte(tagYml), nil, "id", proj)
-	assert.NotNil(proj)
-	assert.Nil(err)
-	assert.Len(proj.TaskGroups, 2)
-	assert.Equal("even_task_group", proj.TaskGroups[0].Name)
-	assert.Len(proj.TaskGroups[0].Tasks, 2)
-	for _, t := range proj.TaskGroups[0].Tasks {
-		v, err := strconv.Atoi(t)
-		assert.NoError(err)
-		assert.Equal(0, v%2)
-	}
+		proj := &Project{}
+		_, err := LoadProjectInto(ctx, []byte(tagYml), nil, "id", proj)
+		require.NotNil(t, proj)
+		assert.Nil(t, err)
+		require.Len(t, proj.TaskGroups, 2)
+		assert.Equal(t, "even_task_group", proj.TaskGroups[0].Name)
+		require.Len(t, proj.TaskGroups[0].Tasks, 2)
+		for _, tsk := range proj.TaskGroups[0].Tasks {
+			v, err := strconv.Atoi(tsk)
+			assert.NoError(t, err)
+			assert.Zero(t, v%2)
+		}
+		for _, tsk := range proj.TaskGroups[1].Tasks {
+			v, err := strconv.Atoi(tsk)
+			assert.NoError(t, err)
+			assert.Equal(t, 1, v%2)
+		}
+		require.Len(t, proj.BuildVariants, 1)
+		require.Len(t, proj.BuildVariants[0].Tasks, 2)
+		for _, bvtu := range proj.BuildVariants[0].Tasks {
+			checkIsTaskGroupTaskUnit(t, bvtu)
+		}
+	})
+
+	t.Run("MaxHostsForTaskGroup", func(t *testing.T) {
+		validMaxHostYml := `
+tasks:
+- name: example_task_1
+- name: example_task_2
+- name: example_task_3
+- name: example_task_4
+task_groups:
+- name: example_task_group
+  max_hosts: -1
+  tasks:
+  - example_task_1
+  - example_task_2
+buildvariants:
+- name: bv
+  display_name: "bv_display"
+  tasks:
+  - name: example_task_group
+  - name: inline_task_group
+    task_group:
+      max_hosts: -1
+      tasks:
+      - example_task_3
+      - example_task_4
+`
+		proj := &Project{}
+		_, err := LoadProjectInto(ctx, []byte(validMaxHostYml), nil, "id", proj)
+		require.NotNil(t, proj)
+		assert.Nil(t, err)
+		require.Len(t, proj.TaskGroups, 1)
+		assert.Equal(t, "example_task_group", proj.TaskGroups[0].Name)
+		assert.Equal(t, proj.TaskGroups[0].MaxHosts, len(proj.TaskGroups[0].Tasks))
+
+		require.Len(t, proj.BuildVariants, 1)
+		require.Len(t, proj.BuildVariants[0].Tasks, 2)
+		assert.Equal(t, "inline_task_group", proj.BuildVariants[0].Tasks[1].Name)
+		assert.Equal(t, proj.BuildVariants[0].Tasks[1].TaskGroup.MaxHosts, len(proj.BuildVariants[0].Tasks[1].TaskGroup.Tasks))
+	})
 }
 
 func TestTaskGroupWithDisplayTask(t *testing.T) {
@@ -2771,19 +2845,6 @@ func TestFindAndTranslateProjectForPatch(t *testing.T) {
 			require.NotZero(t, ppFromDB)
 			require.NotZero(t, project)
 			assert.Equal(t, utility.FromStringPtr(pp.DisplayName), utility.FromStringPtr(ppFromDB.DisplayName))
-			assert.Equal(t, utility.FromStringPtr(pp.DisplayName), project.DisplayName)
-		},
-		"SucceedsWithDeprecatedPatchedParserProject": func(ctx context.Context, t *testing.T, p *patch.Patch, pp *ParserProject) {
-			yamlPP, err := yaml.Marshal(pp)
-			require.NoError(t, err)
-			p.PatchedParserProject = string(yamlPP)
-			require.NoError(t, p.Insert())
-
-			project, ppFromPatch, err := FindAndTranslateProjectForPatch(ctx, env.Settings(), p)
-			require.NoError(t, err)
-			require.NotZero(t, ppFromPatch)
-			require.NotZero(t, project)
-			assert.Equal(t, utility.FromStringPtr(pp.DisplayName), utility.FromStringPtr(ppFromPatch.DisplayName))
 			assert.Equal(t, utility.FromStringPtr(pp.DisplayName), project.DisplayName)
 		},
 		"FailsWithoutStoredParserProject": func(ctx context.Context, t *testing.T, p *patch.Patch, pp *ParserProject) {

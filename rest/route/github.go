@@ -232,29 +232,6 @@ func (gh *githubHookApi) Run(ctx context.Context) gimlet.Responder {
 			return gimlet.MakeJSONInternalErrorResponder(err)
 		}
 
-	case *github.MetaEvent:
-		fromApp := event.GetInstallation() != nil
-		if gh.shouldSkipWebhook(ctx, event.Repo.Owner.GetLogin(), event.Repo.GetName(), fromApp) {
-			break
-		}
-		if event.GetAction() == "deleted" {
-			hookID := event.GetHookID()
-			if hookID == 0 {
-				err := errors.New("invalid hook ID for deleted hook")
-				grip.Error(message.WrapError(err, message.Fields{
-					"source": "GitHub hook",
-					"msg_id": gh.msgID,
-					"event":  gh.eventType,
-					"action": event.Action,
-					"hook":   event.Hook,
-				}))
-				return gimlet.MakeJSONInternalErrorResponder(errors.Wrap(err, "handling deleted event"))
-			}
-			if err := model.RemoveGithubHook(int(hookID)); err != nil {
-				return gimlet.MakeJSONInternalErrorResponder(errors.Wrap(err, "removing hook"))
-			}
-		}
-
 	case *github.MergeGroupEvent:
 		fromApp := event.GetInstallation() != nil
 		if gh.shouldSkipWebhook(ctx, event.Repo.Owner.GetLogin(), event.Repo.GetName(), fromApp) {
