@@ -15,6 +15,7 @@ import (
 	"github.com/evergreen-ci/evergreen/agent/internal"
 	"github.com/evergreen-ci/evergreen/agent/internal/client"
 	agentutil "github.com/evergreen-ci/evergreen/agent/internal/testutil"
+	"github.com/evergreen-ci/evergreen/apimodels"
 	"github.com/evergreen-ci/evergreen/db"
 	"github.com/evergreen-ci/evergreen/model"
 	"github.com/evergreen-ci/evergreen/model/build"
@@ -35,9 +36,9 @@ import (
 )
 
 const (
-	globalGitHubToken  = "GLOBALTOKEN"
-	projectGitHubToken = "PROJECTTOKEN"
-	githubAppToken     = "APPTOKEN"
+	globalGitHubToken    = "GLOBALTOKEN"
+	projectGitHubToken   = "PROJECTTOKEN"
+	mockedGitHubAppToken = "MOCKEDTOKEN"
 )
 
 type GitGetProjectSuite struct {
@@ -168,6 +169,8 @@ func (s *GitGetProjectSuite) SetupTest() {
 		HeadSHA:    "d2a90288ad96adca4a7d0122d8d4fd1deb24db11",
 	}
 	s.taskConfig7.Task.Requester = evergreen.GithubMergeRequester
+
+	s.comm.CreateInstallationTokenResult = mockedGitHubAppToken
 }
 
 func (s *GitGetProjectSuite) TestBuildCloneCommandUsesHTTPS() {
@@ -305,6 +308,7 @@ func (s *GitGetProjectSuite) TestGitFetchRetries() {
 
 	conf := s.taskConfig1
 	conf.Distro.CloneMethod = "this is not real!"
+	s.comm.CreateInstallationTokenFail = true
 
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
@@ -317,8 +321,9 @@ func (s *GitGetProjectSuite) TestGitFetchRetries() {
 
 func (s *GitGetProjectSuite) TestTokenScrubbedFromLogger() {
 	conf := s.taskConfig1
-	conf.ProjectRef.Repo = "doesntexist"
+	conf.ProjectRef.Repo = "invalidRepo"
 	conf.Distro = nil
+	s.comm.CreateInstallationTokenFail = true
 	token, err := s.settings.GetGithubOauthToken()
 	s.Require().NoError(err)
 	conf.Expansions.Put(evergreen.GlobalGitHubTokenExpansion, token)
@@ -345,7 +350,7 @@ func (s *GitGetProjectSuite) TestTokenScrubbedFromLogger() {
 	foundCloneErr := false
 	for _, msgs := range s.comm.GetMockMessages() {
 		for _, msg := range msgs {
-			if strings.Contains(msg.Message, "https://[redacted oauth token]:x-oauth-basic@github.com/evergreen-ci/doesntexist.git") {
+			if strings.Contains(msg.Message, "https://[redacted oauth token]:x-oauth-basic@github.com/evergreen-ci/invalidRepo.git") {
 				foundCloneCommand = true
 			}
 			if strings.Contains(msg.Message, "Repository not found.") {
@@ -365,8 +370,9 @@ func (s *GitGetProjectSuite) TestStdErrLogged() {
 		s.T().Skip("TestStdErrLogged will not run on docker since it requires a SSH key")
 	}
 	conf := s.taskConfig5
-	conf.ProjectRef.Repo = "doesntexist"
+	conf.ProjectRef.Repo = "invalidRepo"
 	conf.Distro.CloneMethod = evergreen.CloneMethodLegacySSH
+	s.comm.CreateInstallationTokenFail = true
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 	logger, err := s.comm.GetLoggerProducer(ctx, client.TaskData{ID: conf.Task.Id, Secret: conf.Task.Secret}, nil)
@@ -390,7 +396,7 @@ func (s *GitGetProjectSuite) TestStdErrLogged() {
 	foundSSHErr := false
 	for _, msgs := range s.comm.GetMockMessages() {
 		for _, msg := range msgs {
-			if strings.Contains(msg.Message, "git clone 'git@github.com:evergreen-ci/doesntexist.git' 'src' --branch 'main'") {
+			if strings.Contains(msg.Message, "git clone 'git@github.com:evergreen-ci/invalidRepo.git' 'src' --branch 'main'") {
 				foundCloneCommand = true
 			}
 			if strings.Contains(msg.Message, "ERROR: Repository not found.") {
@@ -950,60 +956,104 @@ func (s *GitGetProjectSuite) TestGetProjectMethodAndToken() {
 	var method string
 	var err error
 
-	method, token, err = getProjectMethodAndToken(projectGitHubToken, globalGitHubToken, githubAppToken, evergreen.CloneMethodOAuth)
+	td := client.TaskData{ID: s.taskConfig1.Task.Id, Secret: s.taskConfig1.Task.Secret}
+
+	conf := &internal.TaskConfig{
+		ProjectRef: model.ProjectRef{
+			Owner: "valid-owner",
+			Repo:  "valid-repo",
+		},
+		Expansions: map[string]string{
+			evergreen.GlobalGitHubTokenExpansion: globalGitHubToken,
+		},
+		Distro: &apimodels.DistroView{
+			CloneMethod: evergreen.CloneMethodOAuth,
+		},
+	}
+
+	method, token, err = getProjectMethodAndToken(s.ctx, s.comm, td, conf, projectGitHubToken)
 	s.NoError(err)
 	s.Equal(projectGitHubToken, token)
 	s.Equal(evergreen.CloneMethodOAuth, method)
 
-	method, token, err = getProjectMethodAndToken(projectGitHubToken, globalGitHubToken, githubAppToken, evergreen.CloneMethodLegacySSH)
-	s.NoError(err)
-	s.Equal(projectGitHubToken, token)
-	s.Equal(evergreen.CloneMethodOAuth, method)
+	conf.Distro.CloneMethod = evergreen.CloneMethodOAuth
 
-	method, token, err = getProjectMethodAndToken(projectGitHubToken, "", "", evergreen.CloneMethodOAuth)
+	method, token, err = getProjectMethodAndToken(s.ctx, s.comm, td, conf, "")
 	s.NoError(err)
-	s.Equal(projectGitHubToken, token)
-	s.Equal(evergreen.CloneMethodOAuth, method)
-
-	method, token, err = getProjectMethodAndToken(projectGitHubToken, "", "", evergreen.CloneMethodLegacySSH)
-	s.NoError(err)
-	s.Equal(projectGitHubToken, token)
-	s.Equal(evergreen.CloneMethodOAuth, method)
-
-	method, token, err = getProjectMethodAndToken("", globalGitHubToken, githubAppToken, evergreen.CloneMethodOAuth)
-	s.NoError(err)
-	s.Equal(githubAppToken, token)
+	s.Equal(mockedGitHubAppToken, token)
 	s.Equal(evergreen.CloneMethodAccessToken, method)
 
-	method, token, err = getProjectMethodAndToken("", "", "", evergreen.CloneMethodLegacySSH)
+	conf.Distro.CloneMethod = evergreen.CloneMethodLegacySSH
+
+	method, token, err = getProjectMethodAndToken(s.ctx, s.comm, td, conf, "")
+	s.NoError(err)
+	s.Equal(mockedGitHubAppToken, token)
+	s.Equal(evergreen.CloneMethodAccessToken, method)
+
+	method, token, err = getProjectMethodAndToken(s.ctx, s.comm, td, conf, projectGitHubToken)
+	s.NoError(err)
+	s.Equal(projectGitHubToken, token)
+	s.Equal(evergreen.CloneMethodOAuth, method)
+
+	conf.Distro.CloneMethod = evergreen.CloneMethodOAuth
+	conf.Expansions[evergreen.GlobalGitHubTokenExpansion] = ""
+
+	method, token, err = getProjectMethodAndToken(s.ctx, s.comm, td, conf, projectGitHubToken)
+	s.NoError(err)
+	s.Equal(projectGitHubToken, token)
+	s.Equal(evergreen.CloneMethodOAuth, method)
+
+	conf.Distro.CloneMethod = evergreen.CloneMethodLegacySSH
+
+	method, token, err = getProjectMethodAndToken(s.ctx, s.comm, td, conf, projectGitHubToken)
+	s.NoError(err)
+	s.Equal(projectGitHubToken, token)
+	s.Equal(evergreen.CloneMethodOAuth, method)
+
+	s.comm.CreateInstallationTokenFail = true
+
+	method, token, err = getProjectMethodAndToken(s.ctx, s.comm, td, conf, "")
 	s.NoError(err)
 	s.Equal("", token)
 	s.Equal(evergreen.CloneMethodLegacySSH, method)
 
-	method, token, err = getProjectMethodAndToken("", "", "", evergreen.CloneMethodOAuth)
+	conf.Distro.CloneMethod = evergreen.CloneMethodOAuth
+
+	method, token, err = getProjectMethodAndToken(s.ctx, s.comm, td, conf, "")
 	s.Error(err)
 	s.Equal("", token)
 	s.Equal(evergreen.CloneMethodLegacySSH, method)
 
-	method, token, err = getProjectMethodAndToken("", "", "", evergreen.CloneMethodLegacySSH)
+	conf.Distro.CloneMethod = evergreen.CloneMethodLegacySSH
+
+	method, token, err = getProjectMethodAndToken(s.ctx, s.comm, td, conf, "")
 	s.NoError(err)
 	s.Equal("", token)
 	s.Equal(evergreen.CloneMethodLegacySSH, method)
 
-	method, token, err = getProjectMethodAndToken("", "", "", "")
+	conf.Distro.CloneMethod = ""
+
+	method, token, err = getProjectMethodAndToken(s.ctx, s.comm, td, conf, "")
 	s.NoError(err)
 	s.Equal("", token)
 	s.Equal(evergreen.CloneMethodLegacySSH, method)
 
-	method, token, err = getProjectMethodAndToken("", "", "", "foobar")
+	conf.Distro.CloneMethod = "not real clone method"
+
+	method, token, err = getProjectMethodAndToken(s.ctx, s.comm, td, conf, "")
 	s.Error(err)
 	s.Equal("", token)
 	s.Equal("", method)
 
-	_, _, err = getProjectMethodAndToken("", "token this is an invalid token", "", evergreen.CloneMethodOAuth)
+	conf.Distro.CloneMethod = evergreen.CloneMethodOAuth
+	conf.Expansions[evergreen.GlobalGitHubTokenExpansion] = "token this is not a real token"
+
+	_, _, err = getProjectMethodAndToken(s.ctx, s.comm, td, conf, "")
 	s.Error(err)
 
-	_, _, err = getProjectMethodAndToken("token this is an invalid token", "", "", evergreen.CloneMethodOAuth)
+	conf.Expansions[evergreen.GlobalGitHubTokenExpansion] = globalGitHubToken
+
+	_, _, err = getProjectMethodAndToken(s.ctx, s.comm, td, conf, "token this is not a real token")
 	s.Error(err)
 }
 
