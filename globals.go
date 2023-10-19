@@ -332,6 +332,7 @@ const (
 	GithubAppToken             = "github_app_token"
 	githubAppPrivateKey        = "github_app_key"
 
+	// GitHub client retry limit and the minimum amount of delay before attempting again.
 	GitHubRetryAttempts = 3
 	GithubRetryMinDelay = time.Second
 
