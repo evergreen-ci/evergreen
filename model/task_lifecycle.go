@@ -1275,8 +1275,8 @@ func evalLinearStepback(ctx context.Context, t *task.Task, caller, status string
 
 // evalBisectStepback performs bisect stepback on the task.
 func evalBisectStepback(ctx context.Context, t *task.Task, caller string, stepback, deactivatePrevious bool) error {
-	// If the task is aborted or it isn't a mainline commit or existing stepback, no-op.
-	if t.Aborted {
+	// If the task is aborted or stepback is disabled then no-op.
+	if t.Aborted || !stepback {
 		return nil
 	}
 
