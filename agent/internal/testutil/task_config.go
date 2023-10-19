@@ -5,7 +5,6 @@ import (
 
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/agent/internal"
-	"github.com/evergreen-ci/evergreen/apimodels"
 	"github.com/evergreen-ci/evergreen/model"
 	"github.com/evergreen-ci/evergreen/model/testutil"
 	"github.com/mongodb/grip"
@@ -33,13 +32,8 @@ func MakeTaskConfigFromModelData(ctx context.Context, settings *evergreen.Settin
 	if err != nil {
 		return nil, errors.Wrap(err, "populating expansions")
 	}
-	var dv *apimodels.DistroView
-	if data.Host != nil {
-		dv = &apimodels.DistroView{
-			CloneMethod: data.Host.Distro.CloneMethod,
-		}
-	}
-	config, err := internal.NewTaskConfig(data.Host.Distro.WorkDir, dv, data.Project, data.Task, data.ProjectRef, nil, exp)
+
+	config, err := internal.NewTaskConfig(data.Host.Distro.WorkDir, nil, data.Project, data.Task, data.ProjectRef, nil, exp)
 	if err != nil {
 		return nil, errors.Wrap(err, "making task config from test model data")
 	}

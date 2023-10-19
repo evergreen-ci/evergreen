@@ -136,40 +136,14 @@ func (opts *cloneOpts) setLocation() error {
 }
 
 // getProjectMethodAndToken returns the project's clone method and token. If
-// set, the project token takes precedence over GitHub App token which takes precedence over over global settings.
-func getProjectMethodAndToken(projectToken, globalToken, appToken, globalCloneMethod string) (string, string, error) {
+// set, the project token takes precedence over GitHub App token.
+func getProjectMethodAndToken(projectToken, appToken string) (string, string, error) {
 	if projectToken != "" {
 		token, err := parseToken(projectToken)
 		return evergreen.CloneMethodOAuth, token, err
 	}
-	if appToken != "" {
-		token, err := parseToken(appToken)
-		return evergreen.CloneMethodAccessToken, token, err
-	}
-	grip.Debug(message.Fields{
-		"message": "using legacy ssh clone method and global token",
-		"ticket":  "EVG-19966",
-	})
-	token, err := parseToken(globalToken)
-	if err != nil {
-		return evergreen.CloneMethodLegacySSH, "", err
-	}
-
-	switch globalCloneMethod {
-	// No clone method specified is equivalent to using legacy SSH.
-	case "", evergreen.CloneMethodLegacySSH:
-		return evergreen.CloneMethodLegacySSH, token, nil
-	case evergreen.CloneMethodOAuth:
-		if token == "" {
-			return evergreen.CloneMethodLegacySSH, "", errors.New("cannot clone using OAuth if explicit token from parameter and global token are both empty")
-		}
-		token, err := parseToken(globalToken)
-		return evergreen.CloneMethodOAuth, token, err
-	case evergreen.CloneMethodAccessToken:
-		return evergreen.CloneMethodLegacySSH, "", errors.New("cannot specify clone method access token")
-	}
-
-	return "", "", errors.Errorf("unrecognized clone method '%s'", globalCloneMethod)
+	token, err := parseToken(appToken)
+	return evergreen.CloneMethodAccessToken, token, err
 }
 
 // parseToken parses the OAuth token, if it is in the format "token <token>";
@@ -512,7 +486,7 @@ func (c *gitFetchProject) Execute(ctx context.Context, comm client.Communicator,
 		return errors.Wrap(err, "applying expansions")
 	}
 
-	projectMethod, projectToken, err := getProjectMethodAndToken(c.Token, conf.Expansions.Get(evergreen.GlobalGitHubTokenExpansion), conf.Expansions.Get(evergreen.GithubAppToken), conf.GetCloneMethod())
+	projectMethod, projectToken, err := getProjectMethodAndToken(c.Token, conf.Expansions.Get(evergreen.GithubAppToken))
 	if err != nil {
 		return errors.Wrap(err, "getting method of cloning and token")
 	}

@@ -339,8 +339,7 @@ type GeneratePollResponse struct {
 // DistroView represents the view of data that the agent uses from the distro
 // it is running on.
 type DistroView struct {
-	CloneMethod         string `json:"clone_method"`
-	DisableShallowClone bool   `json:"disable_shallow_clone"`
+	DisableShallowClone bool `json:"disable_shallow_clone"`
 }
 
 // ExpansionsAndVars represents expansions, project variables, and parameters

@@ -95,22 +95,6 @@ func (r *distroResolver) Arch(ctx context.Context, obj *model.APIDistro) (Arch, 
 	}
 }
 
-// CloneMethod is the resolver for the cloneMethod field.
-func (r *distroResolver) CloneMethod(ctx context.Context, obj *model.APIDistro) (CloneMethod, error) {
-	if obj == nil {
-		return "", InternalServerError.Send(ctx, "distro undefined when attempting to resolve clone method")
-	}
-
-	switch utility.FromStringPtr(obj.CloneMethod) {
-	case evergreen.CloneMethodLegacySSH:
-		return CloneMethodLegacySSH, nil
-	case evergreen.CloneMethodOAuth:
-		return CloneMethodOauth, nil
-	default:
-		return "", InternalServerError.Send(ctx, fmt.Sprintf("clone method '%s' is invalid", utility.FromStringPtr(obj.CloneMethod)))
-	}
-}
-
 // Provider is the resolver for the provider field.
 func (r *distroResolver) Provider(ctx context.Context, obj *model.APIDistro) (Provider, error) {
 	if obj == nil {
@@ -307,19 +291,6 @@ func (r *distroInputResolver) Arch(ctx context.Context, obj *model.APIDistro, da
 		obj.Arch = utility.ToStringPtr(evergreen.ArchWindowsAmd64)
 	default:
 		return InputValidationError.Send(ctx, fmt.Sprintf("arch '%s' is invalid", data))
-	}
-	return nil
-}
-
-// CloneMethod is the resolver for the cloneMethod field.
-func (r *distroInputResolver) CloneMethod(ctx context.Context, obj *model.APIDistro, data CloneMethod) error {
-	switch data {
-	case CloneMethodLegacySSH:
-		obj.CloneMethod = utility.ToStringPtr(evergreen.CloneMethodLegacySSH)
-	case CloneMethodOauth:
-		obj.CloneMethod = utility.ToStringPtr(evergreen.CloneMethodOAuth)
-	default:
-		return InputValidationError.Send(ctx, fmt.Sprintf("clone method '%s' is invalid", data))
 	}
 	return nil
 }

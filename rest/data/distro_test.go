@@ -186,7 +186,6 @@ func TestCopyDistro(t *testing.T) {
 				BootstrapSettings: distro.BootstrapSettings{
 					Method: distro.BootstrapMethodNone,
 				},
-				CloneMethod: evergreen.CloneMethodLegacySSH,
 				DispatcherSettings: distro.DispatcherSettings{
 					Version: evergreen.DispatcherVersionRevised,
 				},
@@ -273,7 +272,6 @@ func TestCreateDistro(t *testing.T) {
 				BootstrapSettings: distro.BootstrapSettings{
 					Method: distro.BootstrapMethodNone,
 				},
-				CloneMethod: evergreen.CloneMethodLegacySSH,
 				DispatcherSettings: distro.DispatcherSettings{
 					Version: evergreen.DispatcherVersionRevised,
 				},

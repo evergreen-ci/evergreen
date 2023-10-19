@@ -33,7 +33,6 @@ var distroSyntaxValidators = []distroValidator{
 	ensureValidArch,
 	ensureValidBootstrapSettings,
 	ensureValidStaticBootstrapSettings,
-	ensureValidCloneMethod,
 	ensureHasNoUnauthorizedCharacters,
 	ensureHasValidHostAllocatorSettings,
 	ensureHasValidPlannerSettings,
@@ -316,15 +315,6 @@ func ensureValidStaticBootstrapSettings(ctx context.Context, d *distro.Distro, s
 				Level:   Error,
 			},
 		}
-	}
-	return nil
-}
-
-// ensureValidCloneMethod checks that the clone method is one of the supported
-// methods.
-func ensureValidCloneMethod(ctx context.Context, d *distro.Distro, s *evergreen.Settings) ValidationErrors {
-	if err := evergreen.ValidateCloneMethod(d.CloneMethod); err != nil {
-		return ValidationErrors{{Level: Error, Message: err.Error()}}
 	}
 	return nil
 }

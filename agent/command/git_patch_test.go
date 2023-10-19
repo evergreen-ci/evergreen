@@ -47,7 +47,7 @@ func TestPatchPluginAPI(t *testing.T) {
 		taskConfig, err := agentutil.MakeTaskConfigFromModelData(ctx, settings, modelData)
 		require.NoError(t, err)
 		taskConfig.Expansions = *util.NewExpansions(settings.Credentials)
-		taskConfig.Distro = &apimodels.DistroView{CloneMethod: evergreen.CloneMethodOAuth}
+		taskConfig.Distro = &apimodels.DistroView{}
 
 		err = setupTestPatchData(modelData, patchFile, t)
 		require.NoError(t, err)
@@ -118,7 +118,7 @@ func TestPatchPlugin(t *testing.T) {
 		taskConfig, err := agentutil.MakeTaskConfigFromModelData(ctx, settings, modelData)
 		require.NoError(t, err)
 		taskConfig.Expansions = *util.NewExpansions(settings.Credentials)
-		taskConfig.Distro = &apimodels.DistroView{CloneMethod: evergreen.CloneMethodOAuth}
+		taskConfig.Distro = &apimodels.DistroView{}
 
 		err = setupTestPatchData(modelData, patchFile, t)
 		require.NoError(t, err)
