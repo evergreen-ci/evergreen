@@ -28,11 +28,6 @@ import (
 	"google.golang.org/grpc"
 )
 
-const (
-	MockedGitHubAppToken = "mocked_github_app_token"
-	NotValidRepo         = "not_valid_repo"
-)
-
 // Mock mocks the Communicator for testing.
 type Mock struct {
 	maxAttempts  int
@@ -41,30 +36,31 @@ type Mock struct {
 	serverURL    string
 
 	// mock behavior
-	NextTaskShouldFail          bool
-	GetPatchFileShouldFail      bool
-	loggingShouldFail           bool
-	NextTaskResponse            *apimodels.NextTaskResponse
-	NextTaskIsNil               bool
-	StartTaskShouldFail         bool
-	GetTaskResponse             *task.Task
-	GetProjectResponse          *serviceModel.Project
-	EndTaskResponse             *apimodels.EndTaskResponse
-	EndTaskShouldFail           bool
-	EndTaskResult               EndTaskResult
-	ShellExecFilename           string
-	TimeoutFilename             string
-	GenerateTasksShouldFail     bool
-	HeartbeatShouldAbort        bool
-	HeartbeatShouldConflict     bool
-	HeartbeatShouldErr          bool
-	HeartbeatShouldSometimesErr bool
-	HeartbeatCount              int
-	TaskExecution               int
-	CreatedHost                 apimodels.CreateHost
-	GetTaskPatchResponse        *patchmodel.Patch
-	GetLoggerProducerShouldFail bool
-	CreateInstallationTokenFail bool
+	NextTaskShouldFail            bool
+	GetPatchFileShouldFail        bool
+	loggingShouldFail             bool
+	NextTaskResponse              *apimodels.NextTaskResponse
+	NextTaskIsNil                 bool
+	StartTaskShouldFail           bool
+	GetTaskResponse               *task.Task
+	GetProjectResponse            *serviceModel.Project
+	EndTaskResponse               *apimodels.EndTaskResponse
+	EndTaskShouldFail             bool
+	EndTaskResult                 EndTaskResult
+	ShellExecFilename             string
+	TimeoutFilename               string
+	GenerateTasksShouldFail       bool
+	HeartbeatShouldAbort          bool
+	HeartbeatShouldConflict       bool
+	HeartbeatShouldErr            bool
+	HeartbeatShouldSometimesErr   bool
+	HeartbeatCount                int
+	TaskExecution                 int
+	CreatedHost                   apimodels.CreateHost
+	GetTaskPatchResponse          *patchmodel.Patch
+	GetLoggerProducerShouldFail   bool
+	CreateInstallationTokenFail   bool
+	CreateInstallationTokenResult string
 
 	CedarGRPCConn *grpc.ClientConn
 
@@ -535,7 +531,7 @@ func (c *Mock) GetPullRequestInfo(ctx context.Context, taskData TaskData, prNum 
 
 func (c *Mock) CreateInstallationToken(ctx context.Context, td TaskData, owner, repo string) (string, error) {
 	if c.CreateInstallationTokenFail {
-		return "", nil
+		return "", errors.New("failed to create token")
 	}
-	return MockedGitHubAppToken, nil
+	return c.CreateInstallationTokenResult, nil
 }

@@ -36,8 +36,9 @@ import (
 )
 
 const (
-	globalGitHubToken  = "GLOBALTOKEN"
-	projectGitHubToken = "PROJECTTOKEN"
+	globalGitHubToken    = "GLOBALTOKEN"
+	projectGitHubToken   = "PROJECTTOKEN"
+	mockedGitHubAppToken = "MOCKEDTOKEN"
 )
 
 type GitGetProjectSuite struct {
@@ -168,6 +169,8 @@ func (s *GitGetProjectSuite) SetupTest() {
 		HeadSHA:    "d2a90288ad96adca4a7d0122d8d4fd1deb24db11",
 	}
 	s.taskConfig7.Task.Requester = evergreen.GithubMergeRequester
+
+	s.comm.CreateInstallationTokenResult = mockedGitHubAppToken
 }
 
 func (s *GitGetProjectSuite) TestBuildCloneCommandUsesHTTPS() {
@@ -954,14 +957,14 @@ func (s *GitGetProjectSuite) TestGetProjectMethodAndToken() {
 
 	method, token, err = getProjectMethodAndToken(s.ctx, s.comm, td, conf, "")
 	s.NoError(err)
-	s.Equal(client.MockedGitHubAppToken, token)
+	s.Equal(mockedGitHubAppToken, token)
 	s.Equal(evergreen.CloneMethodAccessToken, method)
 
 	conf.Distro.CloneMethod = evergreen.CloneMethodLegacySSH
 
 	method, token, err = getProjectMethodAndToken(s.ctx, s.comm, td, conf, "")
 	s.NoError(err)
-	s.Equal(client.MockedGitHubAppToken, token)
+	s.Equal(mockedGitHubAppToken, token)
 	s.Equal(evergreen.CloneMethodAccessToken, method)
 
 	method, token, err = getProjectMethodAndToken(s.ctx, s.comm, td, conf, projectGitHubToken)
