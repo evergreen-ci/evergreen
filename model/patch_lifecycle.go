@@ -256,24 +256,20 @@ func GetPatchedProject(ctx context.Context, settings *evergreen.Settings, p *pat
 		return nil, nil, errors.Errorf("patch '%s' already finalized", p.Version)
 	}
 
-	if p.ProjectStorageMethod != "" || p.PatchedParserProject != "" {
+	if p.ProjectStorageMethod != "" {
 		// If the patch has already been created but has not been finalized, it
-		// has either already stored the parser project document or stored the
-		// parser project as a string (which is the fallback case for old
-		// patches).
+		// has already stored the parser project document
 		project, pp, err := FindAndTranslateProjectForPatch(ctx, settings, p)
 		if err != nil {
 			return nil, nil, errors.Wrap(err, "finding and translating project")
 		}
 
-		patchedParserProjectYAML := p.PatchedParserProject
-		if patchedParserProjectYAML == "" {
-			ppOut, err := yaml.Marshal(pp)
-			if err != nil {
-				return nil, nil, errors.Wrap(err, "marshalling parser project into YAML")
-			}
-			patchedParserProjectYAML = string(ppOut)
+		ppOut, err := yaml.Marshal(pp)
+		if err != nil {
+			return nil, nil, errors.Wrap(err, "marshalling parser project into YAML")
 		}
+		patchedParserProjectYAML := string(ppOut)
+
 		patchConfig := &PatchConfig{
 			PatchedParserProjectYAML: patchedParserProjectYAML,
 			PatchedParserProject:     pp,
@@ -329,19 +325,19 @@ func GetPatchedProjectConfig(ctx context.Context, settings *evergreen.Settings, 
 		return "", errors.Errorf("patch '%s' already finalized", p.Version)
 	}
 
-	if p.ProjectStorageMethod != "" || p.PatchedParserProject != "" {
+	if p.ProjectStorageMethod != "" {
 		// If the patch has been created but not finalized, it has either
-		// already saved the project config as a string (if any), stored the
-		// parser project document (i.e. ProjectStorageMethod), or has the
-		// entire patched parser project as a string (i.e.
-		// PatchedParserProject). Since the project config is optional, the
-		// patch may be created and have already evaluated the patched project
-		// config, but there simply was none. Therefore, this is a valid way to
-		// check and get the PatchedProjectConfig after the patch is already
-		// created.
+		// already saved the project config as a string (if any) or stored
+		// the parser project document (i.e. ProjectStorageMethod). Since
+		// the project config is optional, the patch may be created and have
+		// already evaluated the patched project config, but there simply
+		// was none. Therefore, this is a valid way to check and get the
+		// PatchedProjectConfig after the patch is already created.
 		return p.PatchedProjectConfig, nil
 	}
 
+	// The patch has not been created yet, so do the first-time initialization
+	// to get the parser project and project config.
 	projectRef, opts, err := getLoadProjectOptsForPatch(p, githubOauthToken)
 	if err != nil {
 		return "", errors.Wrap(err, "fetching project options for patch")
@@ -498,7 +494,7 @@ func FinalizePatch(ctx context.Context, p *patch.Patch, requester string, github
 		return nil, errors.Errorf("project '%s' not found", p.Project)
 	}
 
-	project, intermediateProject, err := FindAndTranslateProjectForPatch(ctx, settings, p)
+	project, _, err := FindAndTranslateProjectForPatch(ctx, settings, p)
 	if err != nil {
 		return nil, errors.Wrapf(err, "finding and translating project for patch '%s'", p.Id.Hex())
 	}
@@ -570,7 +566,7 @@ func FinalizePatch(ctx context.Context, p *patch.Patch, requester string, github
 		AuthorEmail:         authorEmail,
 	}
 
-	mfst, err := constructManifest(patchVersion, projectRef, project.Modules, settings, githubOauthToken)
+	mfst, err := constructManifest(patchVersion, projectRef, project.Modules, githubOauthToken)
 	if err != nil {
 		return nil, errors.Wrap(err, "constructing manifest")
 	}
@@ -676,25 +672,7 @@ func FinalizePatch(ctx context.Context, p *patch.Patch, requester string, github
 		)
 	}
 
-	// Newer patches always stored the parser project during patch creation.
-	// However, it used to be that the parser project was not stored until
-	// patches were finalized. For backward compatibility with the old
-	// unfinalized patches, try storing the parser project now that it's
-	// finalizing.
-
-	ppStorageMethod := p.ProjectStorageMethod
-	if ppStorageMethod == "" {
-		ppStorageMethod = evergreen.ProjectStorageMethodDB
-	}
-
-	if p.PatchedParserProject != "" {
-		intermediateProject.Init(p.Id.Hex(), patchVersion.CreateTime)
-		ppStorageMethod, err = ParserProjectUpsertOneWithS3Fallback(ctx, settings, ppStorageMethod, intermediateProject)
-		if err != nil {
-			return nil, errors.Wrapf(err, "upserting parser project for patch '%s'", p.Id.Hex())
-		}
-	}
-	patchVersion.ProjectStorageMethod = ppStorageMethod
+	patchVersion.ProjectStorageMethod = p.ProjectStorageMethod
 
 	env := evergreen.GetEnvironment()
 	mongoClient := env.Client()
@@ -1056,7 +1034,6 @@ func MakeMergePatchFromExisting(ctx context.Context, settings *evergreen.Setting
 	if err = projectRef.CommitQueueIsOn(); err != nil {
 		return nil, errors.WithStack(err)
 	}
-
 	project, _, err := FindAndTranslateProjectForPatch(ctx, settings, existingPatch)
 	if err != nil {
 		return nil, errors.Wrap(err, "loading existing project")

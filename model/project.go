@@ -92,13 +92,24 @@ type BuildVariantTaskUnit struct {
 	// Name has to match the name field of one of the tasks or groups specified at
 	// the project level, or an error will be thrown
 	Name string `yaml:"name,omitempty" bson:"name"`
-	// IsGroup indicates that it is a task group or a task within a task group.
-	// This is always populated after translating the parser project to the
-	// project.
+	// IsGroup indicates that it is a task group. This is always populated for
+	// task groups after project translation.
 	IsGroup bool `yaml:"-" bson:"-"`
-	// GroupName is the task group name if this is a task in a task group. If
-	// it is the task group itself, it is not populated (Name is the task group
-	// name).
+	// IsPartOfGroup indicates that this unit is a task within a task group. If
+	// this is set, then GroupName is also set.
+	// Note that project translation does not expand task groups into their
+	// individual tasks, so this is only set for special functions that
+	// explicitly expand task groups into individual task units (such as
+	// FindAllBuildVariantTasks).
+	IsPartOfGroup bool `yaml:"-" bson:"-"`
+	// GroupName is the task group name if this is a task in a task group. This
+	// is only set if the task unit is a task within a task group (i.e.
+	// IsPartOfGroup is set). If the task unit is the task group itself, it is
+	// not populated (Name is the task group name).
+	// Note that project translation does not expand task groups into their
+	// individual tasks, so this is only set for special functions that
+	// explicitly expand task groups into individual task units (such as
+	// FindAllBuildVariantTasks).
 	GroupName string `yaml:"-" bson:"-"`
 	// Variant is the build variant that the task unit is part of. This is
 	// always populated after translating the parser project to the project.
@@ -429,12 +440,15 @@ type ContainerSystem struct {
 	WindowsVersion  evergreen.WindowsVersion `yaml:"windows_version,omitempty" bson:"windows_version"`
 }
 
+// Module specifies the git details of another git project to be included within a
+// given version at runtime. Module fields include the expand plugin tag because they
+// need to support project ref variable expansions.
 type Module struct {
-	Name       string `yaml:"name,omitempty" bson:"name"`
-	Branch     string `yaml:"branch,omitempty" bson:"branch"`
-	Repo       string `yaml:"repo,omitempty" bson:"repo"`
-	Prefix     string `yaml:"prefix,omitempty" bson:"prefix"`
-	Ref        string `yaml:"ref,omitempty" bson:"ref"`
+	Name       string `yaml:"name,omitempty" bson:"name" plugin:"expand"`
+	Branch     string `yaml:"branch,omitempty" bson:"branch"  plugin:"expand"`
+	Repo       string `yaml:"repo,omitempty" bson:"repo"  plugin:"expand"`
+	Prefix     string `yaml:"prefix,omitempty" bson:"prefix"  plugin:"expand"`
+	Ref        string `yaml:"ref,omitempty" bson:"ref"  plugin:"expand"`
 	AutoUpdate bool   `yaml:"auto_update,omitempty" bson:"auto_update"`
 }
 
@@ -1458,7 +1472,7 @@ func (p *Project) findBuildVariantsWithTag(tags []string) []string {
 // GetTaskNameAndTags checks the project for a task or task group matching the
 // build variant task unit, and returns the name and tags
 func (p *Project) GetTaskNameAndTags(bvt BuildVariantTaskUnit) (string, []string, bool) {
-	if bvt.IsGroup {
+	if bvt.IsGroup || bvt.IsPartOfGroup {
 		ptg := bvt.TaskGroup
 		if ptg == nil {
 			ptg = p.FindTaskGroup(bvt.Name)
@@ -1550,7 +1564,9 @@ func (p *Project) FindAllVariants() []string {
 }
 
 // FindAllBuildVariantTasks returns every BuildVariantTaskUnit, fully populated,
-// for all variants of a project.
+// for all variants of a project. Note that task groups, although they are
+// considered build variant task units, are not preserved. Instead, each task in
+// the task group is expanded into its own individual tasks units.
 func (p *Project) FindAllBuildVariantTasks() []BuildVariantTaskUnit {
 	tasksByName := map[string]ProjectTask{}
 	for _, t := range p.Tasks {
@@ -1603,9 +1619,10 @@ func (p *Project) tasksFromGroup(bvTaskGroup BuildVariantTaskUnit) []BuildVarian
 	for _, t := range tg.Tasks {
 		bvt := BuildVariantTaskUnit{
 			Name: t,
-			// IsGroup is not persisted, and indicates here that the
-			// task is a member of a task group.
-			IsGroup:           true,
+			// IsPartOfGroup and GroupName are used to indicate that the task
+			// unit is a task within the task group, not the task group itself.
+			// These are not persisted.
+			IsPartOfGroup:     true,
 			TaskGroup:         bvTaskGroup.TaskGroup,
 			GroupName:         bvTaskGroup.Name,
 			Variant:           bvTaskGroup.Variant,

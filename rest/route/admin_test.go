@@ -373,7 +373,7 @@ func (s *AdminRouteSuite) TestRestartVersionsRoute() {
 			Project:     projectRef.Id,
 			StartTime:   startTime.Add(30 * time.Minute),
 			FinishTime:  endTime.Add(30 * time.Minute),
-			Status:      evergreen.LegacyPatchSucceeded,
+			Status:      evergreen.VersionSucceeded,
 			Alias:       evergreen.CommitQueueAlias,
 		},
 	}

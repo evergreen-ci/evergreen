@@ -658,6 +658,8 @@ func CreateBuildFromVersionNoInsert(creationInfo TaskCreationInfo) (*build.Build
 	return b, tasksForBuild, nil
 }
 
+// CreateTasksFromGroup expands a task group into its individual tasks and
+// returns a build variant task unit for each task in the task group.
 func CreateTasksFromGroup(in BuildVariantTaskUnit, proj *Project, requester string) []BuildVariantTaskUnit {
 	var willRun []BuildVariantTaskUnit
 	for _, bvt := range proj.tasksFromGroup(in) {
@@ -1223,7 +1225,7 @@ func createOneTask(id string, creationInfo TaskCreationInfo, buildVarTask BuildV
 		t.ActivatedBy = creationInfo.Version.Author
 	}
 
-	if buildVarTask.IsGroup {
+	if buildVarTask.IsPartOfGroup {
 		tg := buildVarTask.TaskGroup
 		if tg == nil {
 			tg = creationInfo.Project.FindTaskGroup(buildVarTask.GroupName)

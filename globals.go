@@ -467,22 +467,6 @@ func IsSuccessfulVersionStatus(status string) bool {
 	return utility.StringSliceContains(VersionSucceededStatuses, status)
 }
 
-// VersionStatusToPatchStatus ensures that we continue reading the legacy patch status for the time being.
-func VersionStatusToPatchStatus(versionStatus string) string {
-	if versionStatus == VersionSucceeded {
-		return LegacyPatchSucceeded
-	}
-	return versionStatus
-}
-
-// PatchStatusToVersionStatus handles the legacy version status, which may still be in use.
-func PatchStatusToVersionStatus(patchStatus string) string {
-	if patchStatus == LegacyPatchSucceeded {
-		return VersionSucceeded
-	}
-	return patchStatus
-}
-
 type ModificationAction string
 
 // Common OTEL constants and attribute keys

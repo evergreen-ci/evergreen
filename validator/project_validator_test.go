@@ -3217,7 +3217,9 @@ func TestTaskGroupValidation(t *testing.T) {
 			},
 		},
 	}
-	assert.Len(checkTaskGroups(&proj), 3)
+	validationErrs = checkTaskGroups(&proj)
+	require.Len(t, validationErrs, 1)
+	assert.Contains(validationErrs[0].Message, "task group 'tg1' is defined multiple times; only the first will be used")
 
 	// check that yml with a task group named the same as a task errors
 	duplicateTaskYml := `
@@ -3270,16 +3272,16 @@ buildvariants:
         - example_task_2
 `
 	pp, err = model.LoadProjectInto(ctx, []byte(largeMaxHostYml), nil, "", &proj)
-	assert.NotNil(proj)
+	require.NotNil(t, proj)
 	assert.NotNil(pp)
 	assert.NoError(err)
 	validationErrs = validateTaskGroups(&proj)
-	assert.Len(validationErrs, 1)
+	require.Len(t, validationErrs, 1)
 	assert.Contains(validationErrs[0].Message, "attach.results cannot be used in the group teardown stage")
 	validationErrs = checkTaskGroups(&proj)
-	assert.Len(validationErrs, 2)
-	assert.Contains(validationErrs[0].Message, "task group example_task_group has max number of hosts 4 greater than the number of tasks 3")
-	assert.Contains(validationErrs[1].Message, "task group inline_task_group has max number of hosts 3 greater than the number of tasks 2")
+	require.Len(t, validationErrs, 2)
+	assert.Contains(validationErrs[0].Message, "task group 'example_task_group' has max number of hosts 4 greater than the number of tasks 3")
+	assert.Contains(validationErrs[1].Message, "task group 'inline_task_group' has max number of hosts 3 greater than the number of tasks 2")
 	assert.Equal(validationErrs[0].Level, Warning)
 	assert.Equal(validationErrs[1].Level, Warning)
 }
@@ -4169,7 +4171,7 @@ func TestTVToTaskUnit(t *testing.T) {
 				}, {TaskName: "compile", Variant: "ubuntu"}: {
 					Name:             "compile",
 					Variant:          "ubuntu",
-					IsGroup:          true,
+					IsPartOfGroup:    true,
 					GroupName:        "compile_group",
 					ExecTimeoutSecs:  10,
 					CommitQueueMerge: true,
@@ -4182,7 +4184,7 @@ func TestTVToTaskUnit(t *testing.T) {
 				}, {TaskName: "compile", Variant: "suse"}: {
 					Name:            "compile",
 					Variant:         "suse",
-					IsGroup:         true,
+					IsPartOfGroup:   true,
 					GroupName:       "compile_group",
 					ExecTimeoutSecs: 10,
 					DependsOn: []model.TaskUnitDependency{
@@ -4258,6 +4260,7 @@ func TestTVToTaskUnit(t *testing.T) {
 				expectedTaskUnit := testCase.expectedTVToTaskUnit[expectedTV]
 				assert.Equal(t, expectedTaskUnit.Name, taskUnit.Name)
 				assert.Equal(t, expectedTaskUnit.IsGroup, taskUnit.IsGroup, fmt.Sprintf("%s/%s", expectedTaskUnit.Variant, expectedTaskUnit.Name))
+				assert.Equal(t, expectedTaskUnit.IsPartOfGroup, taskUnit.IsPartOfGroup, fmt.Sprintf("%s/%s", expectedTaskUnit.Variant, expectedTaskUnit.Name))
 				assert.Equal(t, expectedTaskUnit.GroupName, taskUnit.GroupName, fmt.Sprintf("%s/%s", expectedTaskUnit.Variant, expectedTaskUnit.Name))
 				assert.Equal(t, expectedTaskUnit.Patchable, taskUnit.Patchable, expectedTaskUnit.Name)
 				assert.Equal(t, expectedTaskUnit.PatchOnly, taskUnit.PatchOnly)
@@ -5960,7 +5963,6 @@ func TestBVsWithTasksThatCallCommand(t *testing.T) {
 							{
 								Name:    "test",
 								Variant: "ubuntu",
-								IsGroup: true,
 							},
 						},
 					},

@@ -643,8 +643,7 @@ func TestSaveProjectSettingsForSection(t *testing.T) {
 		},
 	} {
 		assert.NoError(t, db.ClearCollections(model.ProjectRefCollection, model.ProjectVarsCollection,
-			event.SubscriptionsCollection, event.EventCollection, evergreen.ScopeCollection, user.Collection,
-			model.GithubHooksCollection, evergreen.ConfigCollection))
+			event.SubscriptionsCollection, event.EventCollection, evergreen.ScopeCollection, user.Collection, evergreen.ConfigCollection))
 		require.NoError(t, db.CreateCollections(evergreen.ScopeCollection))
 
 		pRef := model.ProjectRef{
