@@ -1,1 +1,1 @@
-{"indexes":[{"v":{"$numberInt":"2"},"key":{"_id":{"$numberInt":"1"}},"name":"_id_"}],"uuid":"220255ada97e464e8d731f9d2ab2502a","collectionName":"manifest","type":"collection"}
+{"indexes":[{"v":{"$numberInt":"2"},"key":{"_id":{"$numberInt":"1"}},"name":"_id_"}],"uuid":"f47fbdbd27654051ab0130359ab6cac8","collectionName":"manifest","type":"collection"}
