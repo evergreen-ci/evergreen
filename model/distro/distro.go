@@ -35,7 +35,7 @@ type Distro struct {
 	Setup                 string                `bson:"setup,omitempty" json:"setup,omitempty" mapstructure:"setup,omitempty"`
 	User                  string                `bson:"user,omitempty" json:"user,omitempty" mapstructure:"user,omitempty"`
 	BootstrapSettings     BootstrapSettings     `bson:"bootstrap_settings" json:"bootstrap_settings" mapstructure:"bootstrap_settings"`
-	CloneMethod           string                `bson:"clone_method" json:"clone_method,omitempty" mapstructure:"clone_method,omitempty"`
+	CloneMethod           string                `bson:"clone_method" json:"clone_method,omitempty" mapstructure:"clone_method,omitempty"` // deprecated: will remove in EVG-21049
 	SSHKey                string                `bson:"ssh_key,omitempty" json:"ssh_key,omitempty" mapstructure:"ssh_key,omitempty"`
 	SSHOptions            []string              `bson:"ssh_options,omitempty" json:"ssh_options,omitempty" mapstructure:"ssh_options,omitempty"`
 	AuthorizedKeysFile    string                `bson:"authorized_keys_file,omitempty" json:"authorized_keys_file,omitempty" mapstructure:"authorized_keys_file,omitempty"`

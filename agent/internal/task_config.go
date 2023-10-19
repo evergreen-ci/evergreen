@@ -125,13 +125,6 @@ func NewTaskConfig(workDir string, d *apimodels.DistroView, p *model.Project, t 
 	return taskConfig, nil
 }
 
-func (c *TaskConfig) GetCloneMethod() string {
-	if c.Distro != nil {
-		return c.Distro.CloneMethod
-	}
-	return evergreen.CloneMethodOAuth
-}
-
 // Validate validates that the task config is populated with the data required
 // for a task to run.
 // Note that this is here only as legacy code. These checks are not sufficient

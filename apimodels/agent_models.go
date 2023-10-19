@@ -339,6 +339,7 @@ type GeneratePollResponse struct {
 // DistroView represents the view of data that the agent uses from the distro
 // it is running on.
 type DistroView struct {
+	// deprecated: will remove in EVG-21049
 	CloneMethod         string `json:"clone_method"`
 	DisableShallowClone bool   `json:"disable_shallow_clone"`
 }
