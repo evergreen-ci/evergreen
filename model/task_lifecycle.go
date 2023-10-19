@@ -1238,7 +1238,7 @@ func evalStepback(ctx context.Context, t *task.Task, caller, status string, deac
 		return errors.WithStack(err)
 	}
 	if s.bisect {
-		return evalBisectStepback(ctx, t, caller, status, deactivatePrevious)
+		return evalBisectStepback(ctx, t, caller, s.shouldStepback, deactivatePrevious)
 	}
 	return evalLinearStepback(ctx, t, caller, status, s.shouldStepback, deactivatePrevious)
 }
@@ -1281,13 +1281,16 @@ func evalLinearStepback(ctx context.Context, t *task.Task, caller, status string
 }
 
 // evalBisectStepback performs bisect stepback on the task.
-func evalBisectStepback(ctx context.Context, t *task.Task, caller, status string, deactivatePrevious bool) error {
+func evalBisectStepback(ctx context.Context, t *task.Task, caller string, stepback, deactivatePrevious bool) error {
 	// If the task is aborted or it isn't a mainline commit or existing stepback, no-op.
-	if t.Aborted || (t.ActivatedBy != evergreen.RepotrackerVersionRequester && t.ActivatedBy != evergreen.StepbackTaskActivator) {
+	if t.Aborted {
 		return nil
 	}
 
+	// If the stepback info is nil but we reached this point, this must be the first
+	// iteration of stepback.
 	newStepback := t.StepbackInfo == nil && evergreen.IsFailedTaskStatus(t.Status)
+	// If the stepback is not nil, this is an ongoing stepback.
 	existingStepback := t.StepbackInfo != nil
 	if newStepback || existingStepback {
 		return errors.Wrap(doBisectStepback(ctx, t), "performing bisect stepback")
