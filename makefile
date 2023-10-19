@@ -161,9 +161,13 @@ set-smoke-git-config:
 load-smoke-data:$(buildDir)/.load-smoke-data
 load-local-data:$(buildDir)/.load-local-data
 $(buildDir)/.load-smoke-data:$(buildDir)/.get-mongotools smoke/internal/testdata/mongodump
+	# Invoke `mongorestore` by calling `run-mongotools` (see below) with
+	# `mongorestore` as the argument.
 	$(call run-mongotools,mongorestore) --drop smoke/internal/testdata/mongodump
 	@touch $@
 $(buildDir)/.load-local-data:$(buildDir)/.get-mongotools testdata/local/mongodump
+	# Invoke `mongorestore` by calling `run-mongotools` (see below) with
+	# `mongorestore` as the argument.
 	$(call run-mongotools,mongorestore) --drop testdata/local/mongodump
 	@touch $@
 local-evergreen:$(localClientBinary) load-local-data
@@ -386,7 +390,17 @@ scramble:
 
 # mongodb utility targets
 mongotoolsDir := mongotools
+#    Invoke the given Mongo tools command located in PATH (for local machines)
+#    or in the `mongotoolsDir` (for CI testing). When running targets that rely
+#    on Mongo tools, the binaries must be downloaded accordingly (see below).
 run-mongotools = $(if $(wildcard $(mongotoolsDir)), ./$(mongotoolsDir)/$(1), $(1))
+#    Check to see if a Mongo tools binary already exists and, if not, attempt
+#    to download them using the URL specified in the environment variable. This
+#    enables running targets that rely on Mongo tools in both CI testing, where
+#    Mongo tools would not exist, *and* on local machines, where they are
+#    expected to exist.
+#    All targets relying on Mongo tools should have this target as a
+#    prerequisite.
 $(buildDir)/.get-mongotools:
 ifeq (,$(shell which mongorestore))
 	rm -rf $(mongotoolsDir)
