@@ -225,7 +225,7 @@ func DisableStaleContainerTasks(caller string) error {
 // activatePreviousTask will set the Active state for the first task with a
 // revision order number less than the current task's revision order number.
 // originalStepbackTask is only specified if we're first activating the generator for a generated task.
-func activatePreviousTask(ctx context.Context, taskId, caller string, originalStepbackTask *task.Task, s task.StepbackInfo) error {
+func activatePreviousTask(ctx context.Context, taskId, caller string, originalStepbackTask *task.Task) error {
 	// find the task first
 	t, err := task.FindOneId(taskId)
 	if err != nil {
@@ -245,7 +245,7 @@ func activatePreviousTask(ctx context.Context, taskId, caller string, originalSt
 
 	// for generated tasks, try to activate the generator instead if the previous task we found isn't the actual last task
 	if t.GeneratedBy != "" && prevTask != nil && prevTask.RevisionOrderNumber+1 != t.RevisionOrderNumber {
-		return activatePreviousTask(ctx, t.GeneratedBy, caller, t, s)
+		return activatePreviousTask(ctx, t.GeneratedBy, caller, t)
 	}
 
 	// if this is the first time we're running the task, or it's finished, has a negative priority, or already activated
@@ -261,11 +261,6 @@ func activatePreviousTask(ctx context.Context, taskId, caller string, originalSt
 	if prevTask.GenerateTask && originalStepbackTask != nil {
 		if err = prevTask.SetGeneratedTasksToActivate(originalStepbackTask.BuildVariant, originalStepbackTask.DisplayName); err != nil {
 			return errors.Wrap(err, "setting generated tasks to activate")
-		}
-	}
-	if s.LastFailingStepbackTaskId != "" || s.LastPassingStepbackTaskId != "" || s.NextStepbackTaskId != "" {
-		if err = prevTask.SetStepbackInfo(s); err != nil {
-			return errors.Wrap(err, "setting stepback info")
 		}
 	}
 	return nil
@@ -557,10 +552,8 @@ func doLinearStepback(ctx context.Context, t *task.Task) error {
 		return nil
 	}
 
-	s := task.StepbackInfo{}
-
 	// activate the previous task to pinpoint regression
-	return errors.WithStack(activatePreviousTask(ctx, t.Id, evergreen.StepbackTaskActivator, nil, s))
+	return errors.WithStack(activatePreviousTask(ctx, t.Id, evergreen.StepbackTaskActivator, nil))
 }
 
 // doBisectStepback performs a bisect stepback on the task.
