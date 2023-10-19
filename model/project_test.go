@@ -1330,7 +1330,7 @@ func (s *projectSuite) TestNewPatchTaskIdTable() {
 		},
 	}
 
-	config, err := NewPatchTaskIdTable(p, v, pairs, "project_identifier")
+	config, err := NewTaskIdConfig(p, v, pairs, "project_identifier")
 	s.Require().NoError(err)
 	s.Len(config.DisplayTasks, 0)
 	s.Len(config.ExecutionTasks, 2)
@@ -2464,8 +2464,7 @@ func TestFindAllBuildVariantTasks(t *testing.T) {
 		for i, bvtu := range bvts {
 			assert.Equal(t, tasks[i].Name, bvtu.Name)
 			assert.Equal(t, bvName, bvtu.Variant)
-			// TODO (EVG-19725): remove IsGroup
-			assert.True(t, bvtu.IsGroup)
+			assert.False(t, bvtu.IsGroup)
 			assert.True(t, bvtu.IsPartOfGroup)
 			assert.Equal(t, tgName, bvtu.GroupName)
 		}
@@ -2694,17 +2693,7 @@ tasks:
 			assert.Len(t, variantsAndTasks.Variants["bv1"].Tasks, 1)
 			assert.Equal(t, "task3", variantsAndTasks.Variants["bv1"].Tasks[0].Name)
 		},
-		"SucceedsWithPatchedParserProject": func(t *testing.T, p *patch.Patch, pp *ParserProject) {
-			p.PatchedParserProject = patchedProject
-
-			variantsAndTasks, err := GetVariantsAndTasksFromPatchProject(ctx, env.Settings(), p)
-			require.NoError(t, err)
-			assert.Len(t, variantsAndTasks.Tasks, 2)
-			require.NotZero(t, variantsAndTasks)
-			assert.Len(t, variantsAndTasks.Variants["bv1"].Tasks, 1)
-			assert.Equal(t, "task3", variantsAndTasks.Variants["bv1"].Tasks[0].Name)
-		},
-		"FailsWithUnfinalizedPatchThatHasNeitherPatchedParserProjectNorParserProjectStorage": func(t *testing.T, p *patch.Patch, pp *ParserProject) {
+		"FailsWithUnfinalizedPatchDoesntHaveParserProjectStorage": func(t *testing.T, p *patch.Patch, pp *ParserProject) {
 			_, err := GetVariantsAndTasksFromPatchProject(ctx, env.Settings(), p)
 			assert.Error(t, err)
 		},

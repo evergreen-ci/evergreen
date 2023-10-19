@@ -9,7 +9,7 @@ require (
 	github.com/aws/aws-sdk-go-v2 v1.21.2
 	github.com/aws/aws-sdk-go-v2/config v1.18.42
 	github.com/aws/aws-sdk-go-v2/credentials v1.13.40
-	github.com/aws/aws-sdk-go-v2/service/ec2 v1.124.0
+	github.com/aws/aws-sdk-go-v2/service/ec2 v1.125.0
 	github.com/aws/aws-sdk-go-v2/service/ecs v1.30.1
 	github.com/aws/aws-sdk-go-v2/service/resourcegroupstaggingapi v1.16.0
 	github.com/aws/aws-sdk-go-v2/service/secretsmanager v1.21.3
@@ -97,7 +97,7 @@ require (
 	github.com/aws/aws-sdk-go-v2/service/dynamodb v1.21.5 // indirect
 	github.com/aws/aws-sdk-go-v2/service/internal/accept-encoding v1.9.14 // indirect
 	github.com/aws/aws-sdk-go-v2/service/internal/endpoint-discovery v1.7.35 // indirect
-	github.com/aws/aws-sdk-go-v2/service/internal/presigned-url v1.9.36 // indirect
+	github.com/aws/aws-sdk-go-v2/service/internal/presigned-url v1.9.37 // indirect
 	github.com/aws/aws-sdk-go-v2/service/ses v1.16.10 // indirect
 	github.com/aws/aws-sdk-go-v2/service/sqs v1.24.5 // indirect
 	github.com/aws/aws-sdk-go-v2/service/sso v1.14.1 // indirect

@@ -475,7 +475,6 @@ func (as *APIServer) existingPatchRequest(w http.ResponseWriter, r *http.Request
 				as.LoggedError(w, r, http.StatusInternalServerError, err)
 				return
 			}
-			p.PatchedParserProject = patchConfig.PatchedParserProjectYAML
 			p.PatchedProjectConfig = patchConfig.PatchedProjectConfig
 		}
 

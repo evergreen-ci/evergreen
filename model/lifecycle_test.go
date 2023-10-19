@@ -1006,7 +1006,7 @@ func TestCreateBuildFromVersion(t *testing.T) {
 		project, err := TranslateProject(parserProject)
 		So(err, ShouldBeNil)
 		So(project, ShouldNotBeNil)
-		table := NewTaskIdTable(project, v, "", "")
+		table := NewTaskIdConfigForRepotrackerVersion(project, v, "", "")
 		tt := table.ExecutionTasks
 		dt := table.DisplayTasks
 
@@ -1709,7 +1709,7 @@ func TestCreateTaskGroup(t *testing.T) {
 		Id:         "projectId",
 		Identifier: projectIdentifier,
 	}
-	table := NewTaskIdTable(proj, v, "", "")
+	table := NewTaskIdConfigForRepotrackerVersion(proj, v, "", "")
 
 	creationInfo := TaskCreationInfo{
 		Project:          proj,
@@ -1783,7 +1783,7 @@ func TestGetTaskIdTable(t *testing.T) {
 	existingTask := task.Task{Id: "t2", DisplayName: "existing_task", BuildVariant: "bv0", Version: v.Id}
 	require.NoError(t, existingTask.Insert())
 
-	tables, err := getTaskIdTables(creationInfo)
+	tables, err := getTaskIdConfig(creationInfo)
 	assert.NoError(t, err)
 	assert.Len(t, tables.ExecutionTasks, 2)
 	assert.Equal(t, "p0_bv0_t0_abcde_09_11_10_23_00_00", tables.ExecutionTasks.GetId("bv0", "t0"))
@@ -2490,8 +2490,7 @@ func TestCreateTasksFromGroup(t *testing.T) {
 	for _, bvtu := range bvts {
 		require.Len(t, bvtu.DependsOn, 1)
 		assert.Equal("new_dependency", bvtu.DependsOn[0].Name)
-		// TODO (EVG-19725): remove IsGroup
-		assert.True(bvtu.IsGroup)
+		assert.False(bvtu.IsGroup)
 		assert.True(bvtu.IsPartOfGroup)
 		assert.Equal(tgName, bvtu.GroupName)
 	}
@@ -2849,7 +2848,7 @@ func TestAddNewTasks(t *testing.T) {
 				SyncAtEndOpts:  patch.SyncAtEndOptions{},
 				GeneratedBy:    "",
 			}
-			_, err := addNewTasks(context.Background(), creationInfo, []build.Build{b}, "")
+			_, err := addNewTasksToExistingBuilds(context.Background(), creationInfo, []build.Build{b}, "")
 			assert.NoError(t, err)
 			activatedTasks, err := task.FindAll(db.Query(bson.M{task.ActivatedKey: true}))
 			assert.NoError(t, err)
