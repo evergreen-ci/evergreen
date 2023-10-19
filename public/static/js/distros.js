@@ -90,14 +90,6 @@ mciModule.controller('DistrosCtrl', function ($scope, $window, $http, $location,
     'display': 'RPC'
   }]
 
-  $scope.cloneMethods = [{
-    'id': 'legacy-ssh',
-    'display': 'Legacy SSH'
-  }, {
-    'id': 'oauth',
-    'display': 'OAuth Token'
-  }]
-
   $scope.fleetInstanceTypes = [{
     'id': 'spot',
     'display': 'Spot'
@@ -219,7 +211,6 @@ mciModule.controller('DistrosCtrl', function ($scope, $window, $http, $location,
           distro.distro.dispatcher_settings.version = distro.distro.dispatcher_settings.version || 'revised';
           distro.distro.bootstrap_settings.method = distro.distro.bootstrap_settings.method || 'legacy-ssh';
           distro.distro.bootstrap_settings.communication = distro.distro.bootstrap_settings.communication || 'legacy-ssh';
-          distro.distro.clone_method = distro.distro.clone_method || 'legacy-ssh';
           distro.distro.icecream_settings = distro.distro.icecream_settings || {};
 
           // current settings from provider settings
@@ -544,7 +535,6 @@ mciModule.controller('DistrosCtrl', function ($scope, $window, $http, $location,
           'method': 'legacy-ssh',
           'communication': 'legacy-ssh'
         },
-        'clone_method': 'legacy-ssh',
         'provider_settings': [$scope.getNewProviderSettings('ec2-fleet', "")], // empty list with one new object
         'finder_settings': {
           'version': 'legacy'
@@ -592,7 +582,6 @@ mciModule.controller('DistrosCtrl', function ($scope, $window, $http, $location,
         'user_data': $scope.activeDistro.user_data,
         'iam_instance_profile_arn': $scope.activeDistro.iam_instance_profile_arn,
         'setup_as_sudo': $scope.activeDistro.setup_as_sudo,
-        'clone_method': $scope.activeDistro.clone_method,
         'is_virtual_workstation': $scope.activeDistro.is_virtual_workstation,
         'is_cluster': $scope.activeDistro.is_cluster,
         'disable_shallow_clone': $scope.activeDistro.disable_shallow_clone,
@@ -827,12 +816,6 @@ mciModule.filter('communicationMethodDisplay', function () {
     return scope.getKeyDisplay('communicationMethods', communicationMethod);
   }
 });
-
-mciModule.filter('cloneMethodDisplay', function () {
-  return function (cloneMethod, scope) {
-    return scope.getKeyDisplay('cloneMethods', cloneMethod);
-  }
-})
 
 mciModule.directive('unique', function () {
   return {

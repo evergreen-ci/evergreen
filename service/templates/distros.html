@@ -1007,17 +1007,6 @@ Evergreen - Distros
               placeholder="Path to the icecream config file">
           </div>
         </div>
-        <div class="dropdown">
-          <span class="distro-menu-title">Project Cloning Method:</span>
-            <button class="btn btn-default dropdown-toggle" type="button" data-toggle="dropdown" aria-expanded="true" ng-disabled="readOnly">
-              <strong class="distro-menu-item">[[activeDistro.clone_method | cloneMethodDisplay:this]]<span class="fa fa-caret-down"></span></strong>
-            </button>
-            <ul class="dropdown-menu" style="margin-left: 125px" role="menu">
-              <li required name="cloneMethodForm" ng-click="form.$setDirty();activeDistro.clone_method = cloneMethod.id" ng-repeat="cloneMethod in cloneMethods"
-                role="presentation"><a role="menuitem" tabindex="-1">[[cloneMethod.display]]</a></li>
-            </ul>
-        </div>
-        <div class="icon fa fa-warning distro-error" ng-show="form.cloneMethodForm.$dirty && form.cloneMethodForm.$invalid || cloneMethodForm.$error.required">Clone method is required</div>
         <div>
           <div ng-form name="expansions">
             <label class="distro-label">Expansions:</label>

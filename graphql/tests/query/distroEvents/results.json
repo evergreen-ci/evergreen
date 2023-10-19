@@ -52,7 +52,6 @@
                     "shell_path": "/bin/fish",
                     "root_dir": "C:/cygwin"
                   },
-                  "clone_method": "legacy-ssh",
                   "ssh_key": "mci",
                   "ssh_options": [
                     "StrictHostKeyChecking=no",
@@ -161,7 +160,6 @@
                     "shell_path": "/bin/fish",
                     "root_dir": "C:/cygwin"
                   },
-                  "clone_method": "legacy-ssh",
                   "ssh_key": "mci",
                   "ssh_options": [
                     "StrictHostKeyChecking=no",
@@ -266,7 +264,6 @@
                     "shell_path": "/bin/fish",
                     "root_dir": "C:/cygwin"
                   },
-                  "clone_method": "legacy-ssh",
                   "ssh_key": "mci",
                   "ssh_options": [
                     "StrictHostKeyChecking=no",
@@ -371,7 +368,6 @@
                     "shell_path": "/bin/fish",
                     "root_dir": "C:/cygwin"
                   },
-                  "clone_method": "legacy-ssh",
                   "ssh_key": "mci",
                   "ssh_options": [
                     "StrictHostKeyChecking=no",

@@ -36,7 +36,6 @@
           "virtual_memory": -1
         }
       },
-      "clone_method": "legacy-ssh",
       "ssh_key": "mci",
       "ssh_options": [
         "StrictHostKeyChecking=no",
@@ -150,7 +149,7 @@
         "root_dir": "C:/cygwin",
         "resource_limits": {}
       },
-      "clone_method": "oauth",
+      "": "oauth",
       "ssh_key": "mci",
       "ssh_options": [
         "StrictHostKeyChecking=no",

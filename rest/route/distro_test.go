@@ -488,7 +488,6 @@ func (s *DistroPutSuite) TestParse() {
 			"patch_first": false
 		},
 		"bootstrap_settings": {"method": "legacy-ssh", "communication": "legacy-ssh"},
-		"clone_method": "legacy-ssh",
 	}`,
 	)
 
@@ -519,7 +518,6 @@ func (s *DistroPutSuite) TestRunNewWithInvalidEntity() {
 		"work_dir": "/data/mci",
 		"ssh_key": "",
 		"bootstrap_settings": {"method": "foo", "communication": "bar"},
-		"clone_method": "bat",
 		"provider": "mock",
 		"user": "tibor",
 		"planner_settings": {"version": "invalid"}
@@ -1274,32 +1272,6 @@ func (s *DistroPatchByIDSuite) TestRunValidNonLegacyBootstrapSettings() {
 	s.Equal(utility.ToStringPtr("/root_dir"), apiDistro.BootstrapSettings.RootDir)
 }
 
-func (s *DistroPatchByIDSuite) TestRunValidCloneMethod() {
-	ctx := context.Background()
-	ctx = gimlet.AttachUser(ctx, &user.DBUser{Id: "me"})
-	json := []byte(fmt.Sprintf(`{"clone_method": "%s"}`, evergreen.CloneMethodLegacySSH))
-	h := s.rm.(*distroIDPatchHandler)
-	h.distroID = "fedora8"
-	h.body = json
-
-	resp := s.rm.Run(ctx)
-	s.NotNil(resp.Data())
-	s.Equal(resp.Status(), http.StatusOK)
-}
-
-func (s *DistroPatchByIDSuite) TestRunInvalidCloneMethod() {
-	ctx := context.Background()
-	ctx = gimlet.AttachUser(ctx, &user.DBUser{Id: "me"})
-	json := []byte(`{"clone_method": "foobar"}`)
-	h := s.rm.(*distroIDPatchHandler)
-	h.distroID = "fedora8"
-	h.body = json
-
-	resp := s.rm.Run(ctx)
-	s.NotNil(resp.Data())
-	s.Equal(http.StatusBadRequest, resp.Status())
-}
-
 func (s *DistroPatchByIDSuite) TestValidFindAndReplaceFullDocument() {
 	ctx := context.Background()
 	ctx = gimlet.AttachUser(ctx, &user.DBUser{Id: "me"})
@@ -1363,7 +1335,6 @@ func (s *DistroPatchByIDSuite) TestValidFindAndReplaceFullDocument() {
 						}
 					]
 				},
-				"clone_method": "legacy-ssh",
 				"ssh_key" : "New SSH Key",
 				"ssh_options" : [
 					"~StrictHostKeyChecking=no",
