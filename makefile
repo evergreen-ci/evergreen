@@ -161,13 +161,13 @@ set-smoke-git-config:
 load-smoke-data:$(buildDir)/.load-smoke-data
 load-local-data:$(buildDir)/.load-local-data
 $(buildDir)/.load-smoke-data:$(buildDir)/.get-mongotools smoke/internal/testdata/mongodump
-	# Invoke `mongorestore` by calling `run-mongotools` (see below) with
-	# `mongorestore` as the argument.
+#    Invoke `mongorestore` by calling `run-mongotools` (see below) with
+#    `mongorestore` as the argument.
 	$(call run-mongotools,mongorestore) --drop smoke/internal/testdata/mongodump
 	@touch $@
 $(buildDir)/.load-local-data:$(buildDir)/.get-mongotools testdata/local/mongodump
-	# Invoke `mongorestore` by calling `run-mongotools` (see below) with
-	# `mongorestore` as the argument.
+#    Invoke `mongorestore` by calling `run-mongotools` (see below) with
+#    `mongorestore` as the argument.
 	$(call run-mongotools,mongorestore) --drop testdata/local/mongodump
 	@touch $@
 local-evergreen:$(localClientBinary) load-local-data
