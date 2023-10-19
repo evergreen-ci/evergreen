@@ -87,11 +87,11 @@ type ResolverRoot interface {
 }
 
 type DirectiveRoot struct {
-	RequireCommitQueueItemOwner func(ctx context.Context, obj interface{}, next graphql.Resolver) (res interface{}, err error)
-	RequireDistroAccess         func(ctx context.Context, obj interface{}, next graphql.Resolver, access DistroSettingsAccess) (res interface{}, err error)
-	RequireProjectAccess        func(ctx context.Context, obj interface{}, next graphql.Resolver, access ProjectSettingsAccess) (res interface{}, err error)
-	RequireProjectAdmin         func(ctx context.Context, obj interface{}, next graphql.Resolver) (res interface{}, err error)
-	RequireProjectFieldAccess   func(ctx context.Context, obj interface{}, next graphql.Resolver) (res interface{}, err error)
+	RequireCommitQueueItemOwner  func(ctx context.Context, obj interface{}, next graphql.Resolver) (res interface{}, err error)
+	RequireDistroAccess          func(ctx context.Context, obj interface{}, next graphql.Resolver, access DistroSettingsAccess) (res interface{}, err error)
+	RequireProjectAccess         func(ctx context.Context, obj interface{}, next graphql.Resolver, access ProjectSettingsAccess) (res interface{}, err error)
+	RequireProjectAdmin          func(ctx context.Context, obj interface{}, next graphql.Resolver) (res interface{}, err error)
+	RequireProjectSettingsAccess func(ctx context.Context, obj interface{}, next graphql.Resolver) (res interface{}, err error)
 }
 
 type ComplexityRoot struct {
@@ -40866,10 +40866,10 @@ func (ec *executionContext) _ProjectSettings_projectRef(ctx context.Context, fie
 			return obj.ProjectRef, nil
 		}
 		directive1 := func(ctx context.Context) (interface{}, error) {
-			if ec.directives.RequireProjectFieldAccess == nil {
-				return nil, errors.New("directive requireProjectFieldAccess is not implemented")
+			if ec.directives.RequireProjectSettingsAccess == nil {
+				return nil, errors.New("directive requireProjectSettingsAccess is not implemented")
 			}
-			return ec.directives.RequireProjectFieldAccess(ctx, obj, directive0)
+			return ec.directives.RequireProjectSettingsAccess(ctx, obj, directive0)
 		}
 
 		tmp, err := directive1(rctx)
@@ -46645,10 +46645,10 @@ func (ec *executionContext) _RepoSettings_projectRef(ctx context.Context, field 
 			return obj.ProjectRef, nil
 		}
 		directive1 := func(ctx context.Context) (interface{}, error) {
-			if ec.directives.RequireProjectFieldAccess == nil {
-				return nil, errors.New("directive requireProjectFieldAccess is not implemented")
+			if ec.directives.RequireProjectSettingsAccess == nil {
+				return nil, errors.New("directive requireProjectSettingsAccess is not implemented")
 			}
-			return ec.directives.RequireProjectFieldAccess(ctx, obj, directive0)
+			return ec.directives.RequireProjectSettingsAccess(ctx, obj, directive0)
 		}
 
 		tmp, err := directive1(rctx)

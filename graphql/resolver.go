@@ -176,7 +176,7 @@ func New(apiURL string) Config {
 		}
 		return nil, Forbidden.Send(ctx, fmt.Sprintf("user %s does not have permission to access settings for the project %s", user.Username(), projectId))
 	}
-	c.Directives.RequireProjectFieldAccess = func(ctx context.Context, obj interface{}, next graphql.Resolver) (res interface{}, err error) {
+	c.Directives.RequireProjectSettingsAccess = func(ctx context.Context, obj interface{}, next graphql.Resolver) (res interface{}, err error) {
 		user := mustHaveUser(ctx)
 
 		projectSettings, isProjectSettings := obj.(*restModel.APIProjectSettings)
