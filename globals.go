@@ -332,8 +332,9 @@ const (
 	GithubAppToken             = "github_app_token"
 	githubAppPrivateKey        = "github_app_key"
 
-	// GitHub client retry limit and the minimum amount of delay before attempting again.
+	// GitHubRetryAttempts is the github client maximum number of attempts.
 	GitHubRetryAttempts = 3
+	// GitHubRetryMinDelay is the github client's minimum amount of delay before attempting another request.
 	GithubRetryMinDelay = time.Second
 
 	VSCodePort = 2021
