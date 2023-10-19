@@ -744,6 +744,32 @@ func TestParserTaskSelectorEvaluation(t *testing.T) {
 	})
 }
 
+func TestTestCheckRunParsing(t *testing.T) {
+	assert := assert.New(t)
+	yml := `
+buildvariants:
+- name: "v1"
+  tasks:
+  - name: "t1"
+    create_check_run:
+      path_to_outputs: "path"
+tasks:
+- name: t1
+`
+
+	proj := &Project{}
+	ctx := context.Background()
+	_, err := LoadProjectInto(ctx, []byte(yml), nil, "id", proj)
+	assert.NotNil(proj)
+	assert.Nil(err)
+	assert.Len(proj.BuildVariants, 1)
+
+	assert.Len(proj.BuildVariants[0].Tasks, 1)
+	cr := proj.BuildVariants[0].Tasks[0].CreateCheckRun
+	assert.NotNil(cr)
+	assert.Equal("path", cr.PathToOutputs)
+}
+
 func TestDisplayTaskParsing(t *testing.T) {
 	assert := assert.New(t)
 	yml := `

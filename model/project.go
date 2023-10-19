@@ -145,7 +145,7 @@ type BuildVariantTaskUnit struct {
 	// TaskGroup is set if an inline task group is defined on the build variant.
 	TaskGroup *TaskGroup `yaml:"task_group,omitempty" bson:"task_group,omitempty"`
 
-	// CreateCheckRun will create a check run on GitHub if set
+	// CreateCheckRun will create a check run on GitHub if set.
 	CreateCheckRun *CheckRun `yaml:"create_check_run,omitempty" bson:"create_check_run,omitempty"`
 }
 
@@ -420,7 +420,7 @@ type BuildVariant struct {
 
 // CheckRun is used to provide information about a github check run.
 type CheckRun struct {
-	// PathToOutputs is a local file path to an output json file for the checkrun
+	// PathToOutputs is a local file path to an output json file for the checkrun.
 	PathToOutputs string `yaml:"path_to_outputs" bson:"path_to_outputs"`
 }
 
