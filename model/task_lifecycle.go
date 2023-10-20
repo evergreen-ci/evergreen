@@ -639,7 +639,7 @@ func doBisectStepback(ctx context.Context, t *task.Task) error {
 		return errors.Wrapf(err, "setting stepback info for task '%s'", nextTask.Id)
 	}
 
-	grip.Debug(message.Fields{
+	grip.Info(message.Fields{
 		"message":                       "bisect stepback",
 		"last_failing_stepback_task_id": s.LastFailingStepbackTaskId,
 		"last_passing_stepback_task_id": s.LastPassingStepbackTaskId,
