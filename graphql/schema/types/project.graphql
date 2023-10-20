@@ -194,52 +194,52 @@ Project models single repository on GitHub.
 """
 type Project {
   id: String!
-  admins: [String] @requireProjectFieldAccess
+  admins: [String]
   banner: ProjectBanner
-  batchTime: Int! @requireProjectFieldAccess
+  batchTime: Int!
   branch: String!
-  buildBaronSettings: BuildBaronSettings! @requireProjectFieldAccess
-  commitQueue: CommitQueueParams! @requireProjectFieldAccess
-  containerSizeDefinitions: [ContainerResources!] @requireProjectFieldAccess
-  deactivatePrevious: Boolean @requireProjectFieldAccess
-  disabledStatsCache: Boolean @requireProjectFieldAccess
-  dispatchingDisabled: Boolean @requireProjectFieldAccess
+  buildBaronSettings: BuildBaronSettings!
+  commitQueue: CommitQueueParams!
+  containerSizeDefinitions: [ContainerResources!]
+  deactivatePrevious: Boolean
+  disabledStatsCache: Boolean
+  dispatchingDisabled: Boolean
   displayName: String!
   enabled: Boolean
   externalLinks: [ExternalLink!]
-  githubChecksEnabled: Boolean @requireProjectFieldAccess
-  githubTriggerAliases: [String!] @requireProjectFieldAccess
-  gitTagAuthorizedTeams: [String!] @requireProjectFieldAccess
-  gitTagAuthorizedUsers: [String!] @requireProjectFieldAccess
-  gitTagVersionsEnabled: Boolean @requireProjectFieldAccess
+  githubChecksEnabled: Boolean
+  githubTriggerAliases: [String!]
+  gitTagAuthorizedTeams: [String!]
+  gitTagAuthorizedUsers: [String!]
+  gitTagVersionsEnabled: Boolean
   hidden: Boolean
   identifier: String!
   isFavorite: Boolean!
-  manualPrTestingEnabled: Boolean @requireProjectFieldAccess
-  notifyOnBuildFailure: Boolean @requireProjectFieldAccess
+  manualPrTestingEnabled: Boolean
+  notifyOnBuildFailure: Boolean
   owner: String!
   parsleyFilters: [ParsleyFilter!]
   patches(patchesInput: PatchesInput!): Patches! # project patches
-  patchingDisabled: Boolean @requireProjectFieldAccess
-  patchTriggerAliases: [PatchTriggerAlias!] @requireProjectFieldAccess
-  perfEnabled: Boolean @requireProjectFieldAccess
-  periodicBuilds: [PeriodicBuild!] @requireProjectFieldAccess
+  patchingDisabled: Boolean
+  patchTriggerAliases: [PatchTriggerAlias!]
+  perfEnabled: Boolean
+  periodicBuilds: [PeriodicBuild!]
   private: Boolean
   projectHealthView: ProjectHealthView!
-  prTestingEnabled: Boolean @requireProjectFieldAccess
-  remotePath: String! @requireProjectFieldAccess
+  prTestingEnabled: Boolean
+  remotePath: String!
   repo: String!
   repoRefId: String!
-  repotrackerDisabled: Boolean @requireProjectFieldAccess
+  repotrackerDisabled: Boolean
   restricted: Boolean
   spawnHostScriptPath: String!
-  stepbackDisabled: Boolean @requireProjectFieldAccess
-  taskAnnotationSettings: TaskAnnotationSettings! @requireProjectFieldAccess
-  taskSync: TaskSyncOptions! @requireProjectFieldAccess
-  tracksPushEvents: Boolean @requireProjectFieldAccess
-  triggers: [TriggerAlias!] @requireProjectFieldAccess
-  versionControlEnabled: Boolean @requireProjectFieldAccess
-  workstationConfig: WorkstationConfig! @requireProjectFieldAccess
+  stepbackDisabled: Boolean
+  taskAnnotationSettings: TaskAnnotationSettings!
+  taskSync: TaskSyncOptions!
+  tracksPushEvents: Boolean
+  triggers: [TriggerAlias!]
+  versionControlEnabled: Boolean
+  workstationConfig: WorkstationConfig!
 }
 
 type CommitQueueParams {

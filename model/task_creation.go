@@ -14,10 +14,10 @@ type TaskCreationInfo struct {
 	Version             *Version
 	Project             *Project
 	ProjectRef          *ProjectRef
-	BuildVariant        *BuildVariant
-	Build               *build.Build
-	Pairs               TaskVariantPairs
-	BuildVariantName    string
+	BuildVariant        *BuildVariant           // If creating tasks in a specific BV, the BV definition
+	Build               *build.Build            // If creating tasks in an existing build, the build itself
+	Pairs               TaskVariantPairs        // New variant-tasks to be created
+	BuildVariantName    string                  // If creating tasks in a specific BV, the name of the BV
 	TaskIDs             TaskIdConfig            // Pre-generated IDs for the tasks to be created
 	ActivateBuild       bool                    // True if the build should be scheduled
 	ActivationInfo      specificActivationInfo  // Indicates if the task has a specific activation or is a stepback task
