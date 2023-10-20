@@ -163,13 +163,21 @@ load-local-data:$(buildDir)/.load-local-data
 $(buildDir)/.load-smoke-data:$(buildDir)/.get-mongotools smoke/internal/testdata/mongodump
 #    Invoke `mongorestore` by calling `run-mongotools` (see below) with
 #    `mongorestore` as the argument.
-	$(call run-mongotools,mongorestore) --drop smoke/internal/testdata/mongodump
+	$(call run-mongotools,mongorestore) --drop --preserveUUID smoke/internal/testdata/mongodump
 	@touch $@
 $(buildDir)/.load-local-data:$(buildDir)/.get-mongotools testdata/local/mongodump
 #    Invoke `mongorestore` by calling `run-mongotools` (see below) with
 #    `mongorestore` as the argument.
-	$(call run-mongotools,mongorestore) --drop testdata/local/mongodump
+	$(call run-mongotools,mongorestore) --drop --preserveUUID testdata/local/mongodump
 	@touch $@
+dump-smoke-data:$(buildDir)/.get-mongotools
+	$(call run-mongotools,mongodump) -d mci_smoke -o smoke/internal/testdata/mongodump
+	$(call run-mongotools,mongodump) -d amboy_smoke -o smoke/internal/testdata/mongodump
+	$(call run-mongotools,mongodump) -d task_output_smoke -o smoke/internal/testdata/mongodump
+dump-local-data:$(buildDir)/.get-mongotools
+	$(call run-mongotools,mongodump) -d evergreen_local -o testdata/local/mongodump
+	$(call run-mongotools,mongodump) -d amboy_local -o testdata/local/mongodump
+	$(call run-mongotools,mongodump) -d task_output_local -o testdata/local/mongodump
 local-evergreen:$(localClientBinary) load-local-data
 	./$< service deploy start-local-evergreen
 # end smoke test rules
