@@ -6115,7 +6115,6 @@ tasks:
 					Version:             v.Id,
 				}
 				assert.NoError(t.Insert())
-
 				b := build.Build{
 					Id:           fmt.Sprintf("b%d", i),
 					BuildVariant: "bv",
