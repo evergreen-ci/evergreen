@@ -652,12 +652,10 @@ func TestCheckRequestersForTaskDependencies(t *testing.T) {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 
-	assert := assert.New(t)
-	exampleYml := `
-exec_timeout_secs: 3600
+	t.Run("SucceedsWithNilDependencySetting", func(t *testing.T) {
+		projYAML := `
 tasks:
-  - name: dep1
-    patchable: false
+  - name: dep
     commands:
       - command: shell.exec
         params:
@@ -665,28 +663,161 @@ tasks:
           script: |
             echo "hi"
 
-  - name: dep2
-    commands:
-      - command: shell.exec
-        params:
-          shell: bash
-          script: |
-            echo "hi"
-      
-  - name: dep3
-    commands:
-      - command: shell.exec
-        params:
-          shell: bash
-          script: |
-            echo "hi"
-  
-  - name: task1
+  - name: task
     patchable: true
     depends_on:
-      - name: dep1
-      - name: dep2
-      - name: dep3
+      - name: dep
+    commands:
+      - command: shell.exec
+        params:
+          shell: bash
+          script: |
+            echo "hi"
+buildvariants:
+  - name: ubuntu2204
+    display_name: Ubuntu 22.04
+    run_on:
+      - localhost
+    tasks:
+      - name: "task"
+      - name: "dep"
+`
+		var p model.Project
+		_, err := model.LoadProjectInto(ctx, []byte(projYAML), nil, "", &p)
+		require.NoError(t, err)
+		errs := checkRequestersForTaskDependencies(&p)
+
+		assert.Empty(t, errs)
+	})
+	t.Run("SucceedsAtTaskLevelMatch", func(t *testing.T) {
+		projYAML := `
+tasks:
+  - name: dep
+    patchable: true
+    commands:
+      - command: shell.exec
+        params:
+          shell: bash
+          script: |
+            echo "hi"
+
+  - name: task
+    patchable: true
+    depends_on:
+      - name: dep
+    commands:
+      - command: shell.exec
+        params:
+          shell: bash
+          script: |
+            echo "hi"
+buildvariants:
+  - name: ubuntu2204
+    display_name: Ubuntu 22.04
+    run_on:
+      - localhost
+    tasks:
+      - name: "task"
+      - name: "dep"
+`
+		var p model.Project
+		_, err := model.LoadProjectInto(ctx, []byte(projYAML), nil, "", &p)
+		require.NoError(t, err)
+		errs := checkRequestersForTaskDependencies(&p)
+
+		assert.Empty(t, errs)
+	})
+	t.Run("SucceedsAtBuildVariantLevelMatch", func(t *testing.T) {
+		projYAML := `
+tasks:
+  - name: dep
+    commands:
+      - command: shell.exec
+        params:
+          shell: bash
+          script: |
+            echo "hi"
+
+  - name: task
+    patchable: true
+    depends_on:
+      - name: dep
+    commands:
+      - command: shell.exec
+        params:
+          shell: bash
+          script: |
+            echo "hi"
+buildvariants:
+  - name: ubuntu2204
+    patchable: true
+    display_name: Ubuntu 22.04
+    run_on:
+      - localhost
+    tasks:
+      - name: "task"
+      - name: "dep"
+`
+		var p model.Project
+		_, err := model.LoadProjectInto(ctx, []byte(projYAML), nil, "", &p)
+		require.NoError(t, err)
+		errs := checkRequestersForTaskDependencies(&p)
+
+		assert.Empty(t, errs)
+	})
+	t.Run("SucceedsAtBuildVariantTaskLevelMatch", func(t *testing.T) {
+		projYAML := `
+tasks:
+  - name: dep
+    commands:
+      - command: shell.exec
+        params:
+          shell: bash
+          script: |
+            echo "hi"
+
+  - name: task
+    patchable: true
+    depends_on:
+      - name: dep
+    commands:
+      - command: shell.exec
+        params:
+          shell: bash
+          script: |
+            echo "hi"
+buildvariants:
+  - name: ubuntu2204
+    display_name: Ubuntu 22.04
+    run_on:
+      - localhost
+    tasks:
+      - name: "task"
+      - name: "dep"
+        patchable: true
+`
+		var p model.Project
+		_, err := model.LoadProjectInto(ctx, []byte(projYAML), nil, "", &p)
+		require.NoError(t, err)
+		errs := checkRequestersForTaskDependencies(&p)
+
+		assert.Empty(t, errs)
+	})
+	t.Run("WarnsWithTaskLevelConflict", func(t *testing.T) {
+		projYAML := `
+tasks:
+  - name: dep
+    patchable: false
+    commands:
+      - command: shell.exec
+        params:
+          shell: bash
+          script: |
+            echo "hi"
+  - name: task
+    patchable: true
+    depends_on:
+      - name: dep
     commands:
       - command: shell.exec
         params:
@@ -697,26 +828,103 @@ tasks:
 buildvariants:
   - name: ubuntu2204
     display_name: Ubuntu 22.04
-    patchable: false
     run_on:
       - localhost
     tasks:
-      - name: "task1"
-      - name: "dep1"
-      - name: "dep2"
-        patchable: false
-      - name: "dep3"
+      - name: "task"
+      - name: "dep"
 `
-	proj := model.Project{}
-	pp, err := model.LoadProjectInto(ctx, []byte(exampleYml), nil, "example_project", &proj)
-	assert.NotNil(proj)
-	assert.NotNil(pp)
-	assert.NoError(err)
-	warnings := CheckProjectWarnings(&proj)
-	require.Len(t, warnings, 3)
-	assert.Contains(warnings[0].Message, "'task1' depends on non-patchable task 'dep1'")
-	assert.Contains(warnings[1].Message, "'task1' depends on non-patchable task 'dep2'")
-	assert.Contains(warnings[2].Message, "'task1' depends on non-patchable task 'dep3'")
+		var p model.Project
+		_, err := model.LoadProjectInto(ctx, []byte(projYAML), nil, "", &p)
+		require.NoError(t, err)
+		errs := checkRequestersForTaskDependencies(&p)
+
+		require.Len(t, errs, 1)
+		assert.Equal(t, errs[0].Level, Warning)
+		assert.Contains(t, errs[0].Message, "'task' depends on non-patchable task 'dep'")
+	})
+	t.Run("WarnsWithVariantLevelConflict", func(t *testing.T) {
+		projYAML := `
+tasks:
+  - name: dep
+    commands:
+      - command: shell.exec
+        params:
+          shell: bash
+          script: |
+            echo "hi"
+
+  - name: task
+    patchable: true
+    depends_on:
+      - name: dep
+    commands:
+      - command: shell.exec
+        params:
+          shell: bash
+          script: |
+            echo "hi"
+
+buildvariants:
+  - name: ubuntu2204
+    patchable: false
+    display_name: Ubuntu 22.04
+    run_on:
+      - localhost
+    tasks:
+      - name: "task"
+      - name: "dep"
+`
+		var p model.Project
+		_, err := model.LoadProjectInto(ctx, []byte(projYAML), nil, "", &p)
+		require.NoError(t, err)
+		errs := checkRequestersForTaskDependencies(&p)
+
+		require.Len(t, errs, 1)
+		assert.Equal(t, errs[0].Level, Warning)
+		assert.Contains(t, errs[0].Message, "'task' depends on non-patchable task 'dep'")
+	})
+	t.Run("WarnsWithBuildVariantTaskLevelConflict", func(t *testing.T) {
+		projYAML := `
+tasks:
+  - name: dep
+    commands:
+      - command: shell.exec
+        params:
+          shell: bash
+          script: |
+            echo "hi"
+
+  - name: task
+    patchable: true
+    depends_on:
+      - name: dep
+    commands:
+      - command: shell.exec
+        params:
+          shell: bash
+          script: |
+            echo "hi"
+
+buildvariants:
+  - name: ubuntu2204
+    display_name: Ubuntu 22.04
+    run_on:
+      - localhost
+    tasks:
+      - name: "task"
+      - name: "dep"
+        patchable: false
+`
+		var p model.Project
+		_, err := model.LoadProjectInto(ctx, []byte(projYAML), nil, "", &p)
+		require.NoError(t, err)
+		errs := checkRequestersForTaskDependencies(&p)
+
+		require.Len(t, errs, 1)
+		assert.Equal(t, errs[0].Level, Warning)
+		assert.Contains(t, errs[0].Message, "'task' depends on non-patchable task 'dep'")
+	})
 }
 
 func TestValidateDependencyGraph(t *testing.T) {
