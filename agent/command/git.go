@@ -445,8 +445,8 @@ func (c *gitFetchProject) buildModuleCloneCommand(conf *internal.TaskConfig, opt
 		"set -o xtrace",
 		"set -o errexit",
 	}
-	if opts.location == "" {
-		return nil, errors.New("empty repository URI")
+	if opts.location == "" && opts.repo == "" && opts.owner == "" {
+		return nil, errors.New("must specify repository URI or owner and repo")
 	}
 	if opts.dir == "" {
 		return nil, errors.New("empty clone path")
@@ -733,14 +733,26 @@ func (c *gitFetchProject) fetchModuleSource(ctx context.Context,
 		dir:      moduleBase,
 		method:   cloneMethod,
 	}
-	// Module's location takes precedence over the project-level clone
-	// method.
+	// If the module repo is using the deprecated ssh cloning method, extract the owner
+	// and repo from the string and construct a https cloning link manually.
+	// This is a temporary workaround which will be removed once users have switched over.
 	if strings.Contains(opts.location, "git@github.com:") {
-		opts.method = evergreen.CloneMethodLegacySSH
-	} else if opts.method == evergreen.CloneMethodOAuth {
+		owner, repo, err := thirdparty.ParseModuleLocation(opts.location)
+		if err != nil {
+			return errors.Wrapf(err, "parsing module repo '%s' in the format git@github.com:", opts.location)
+		}
+		opts.repo = repo
+		opts.owner = owner
+		if err := opts.setLocation(); err != nil {
+			return errors.Wrap(err, "setting location to clone from")
+		}
+	}
+
+	if opts.method == evergreen.CloneMethodOAuth {
 		// If user provided a token, use that token.
 		opts.token = projectToken
 	} else {
+
 		// Otherwise, create an installation token for to clone the module.
 		// Fallback to the legacy global token if the token cannot be created.
 		appToken, err := comm.CreateInstallationToken(ctx, td, opts.owner, opts.repo)
@@ -771,6 +783,10 @@ func (c *gitFetchProject) fetchModuleSource(ctx context.Context,
 
 	ctx, span := getTracer().Start(ctx, "clone_module", trace.WithAttributes(
 		attribute.String(cloneModuleAttribute, module.Name),
+		attribute.String(cloneOwnerAttribute, opts.owner),
+		attribute.String(cloneRepoAttribute, opts.repo),
+		attribute.String(cloneBranchAttribute, opts.branch),
+		attribute.String(cloneMethodAttribute, opts.method),
 	))
 	defer span.End()
 
