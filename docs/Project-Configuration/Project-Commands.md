@@ -1055,7 +1055,7 @@ Parameters:
 ## s3.put
 
 This command uploads a file to Amazon s3, for use in later tasks or
-distribution.
+distribution. Files uploaded with this command will also be viewable within the Parsley log viewer if the `content_type` is set to `text/plain`, `application/json` or `text/csv`.
 
 ``` yaml
 - command: s3.put
@@ -1080,7 +1080,7 @@ Parameters:
     30, 2020 containing dots (".") are not supported.
 -   `permissions`: the S3 permissions string to upload with. See [S3 docs](https://docs.aws.amazon.com/AmazonS3/latest/userguide/acl-overview.html#canned-acl)
     for allowed values.
--   `content_type`: the MIME type of the file
+-   `content_type`: the MIME type of the file. Note it is important that this value accurately reflects the mime type of the file or else the behavior will be unpredictable.
 -   `optional`: boolean to indicate if failure to find or upload this
     file will result in a task failure. Not compatible with
     local_files_include_filter.
