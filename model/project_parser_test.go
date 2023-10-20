@@ -744,7 +744,7 @@ func TestParserTaskSelectorEvaluation(t *testing.T) {
 	})
 }
 
-func TestTestCheckRunParsing(t *testing.T) {
+func TestCheckRunParsing(t *testing.T) {
 	assert := assert.New(t)
 	yml := `
 buildvariants:
@@ -789,6 +789,40 @@ tasks:
 	cr = proj.BuildVariants[0].Tasks[0].CreateCheckRun
 	assert.NotNil(cr)
 	assert.Equal("", cr.PathToOutputs)
+}
+
+func TestParseModule(t *testing.T) {
+	assert := assert.New(t)
+	yml := `
+modules:
+- name: "something_different"
+  repo: "evergreen"
+  owner: "evergreen-ci"
+  prefix: "src/third_party"
+  branch: "master"
+buildvariants:
+- name: "v1"
+  modules:
+  - something_different
+  tasks:
+  - name: "t1"
+    create_check_run:
+      path_to_outputs: "path"
+tasks:
+- name: t1
+`
+
+	proj := &Project{}
+	ctx := context.Background()
+	_, err := LoadProjectInto(ctx, []byte(yml), nil, "id", proj)
+	assert.NotNil(proj)
+	assert.Nil(err)
+
+	modules := proj.Modules
+	require.NotNil(t, modules)
+	require.Len(t, modules, 1)
+	assert.Equal("evergreen-ci", modules[0].Owner)
+	assert.Equal("evergreen", modules[0].Repo)
 }
 
 func TestDisplayTaskParsing(t *testing.T) {
@@ -2739,7 +2773,8 @@ functions:
     command: definition_1
 modules:
 - name: "something_different"
-  repo: "git@github.com:foo/bar.git"
+  owner: "foo"
+  repo: "bar"
   prefix: "src/third_party"
   branch: "master"
 ignore:

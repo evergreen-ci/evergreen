@@ -766,9 +766,9 @@ func constructManifest(v *Version, projectRef *ProjectRef, moduleList ModuleList
 }
 
 func getManifestModule(v *Version, projectRef *ProjectRef, token string, module Module) (*manifest.Module, error) {
-	owner, repo, err := thirdparty.ParseGitUrl(module.Repo)
+	owner, repo, err := module.GetOwnerAndRepo()
 	if err != nil {
-		return nil, errors.Wrapf(err, "parsing git url '%s'", module.Repo)
+		return nil, errors.Wrapf(err, "error getting owner and repo for '%s'", module.Name)
 	}
 
 	if module.Ref == "" {

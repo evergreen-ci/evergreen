@@ -719,32 +719,34 @@ func (c *gitFetchProject) fetchModuleSource(ctx context.Context,
 			c.logModuleRevision(logger, revision, moduleName, "branch field in config file")
 		}
 	}
-	var owner, repo string
-	owner, repo, err = thirdparty.ParseGitUrl(module.Repo)
-	if err != nil {
-		return err
-	}
 
 	opts := cloneOpts{
-		location: module.Repo,
-		owner:    owner,
-		repo:     repo,
 		branch:   "",
 		dir:      moduleBase,
 		method:   cloneMethod,
+		location: module.Repo,
 	}
+
 	// If the module repo is using the deprecated ssh cloning method, extract the owner
-	// and repo from the string and construct a https cloning link manually.
+	// and repo from the string and save it to ops so that the an https cloning link
+	// can be constructed manually by opts.setLocation.
 	// This is a temporary workaround which will be removed once users have switched over.
-	if strings.Contains(opts.location, "git@github.com:") {
+	owner, repo, err := module.GetOwnerAndRepo()
+	if err != nil {
+		return errors.Wrapf(err, "getting module owner and repo '%s'", module.Name)
+	}
+
+	opts.owner = owner
+	opts.repo = repo
+	if strings.Contains(module.Repo, "git@github.com:") {
 		logger.Task().Infof("ssh cloning is being deprecated. We are manually converting '%s'"+
-			" to https format. Please update your project config.", opts.location)
-		owner, repo, err := thirdparty.ParseModuleLocation(opts.location)
-		if err != nil {
-			return errors.Wrapf(err, "parsing module repo '%s' in the format git@github.com:", opts.location)
-		}
-		opts.repo = repo
-		opts.owner = owner
+			" to https format. Please update your project config.", module.Repo)
+	}
+
+	// if the repo is an https url, use that as the location
+	if strings.HasPrefix(opts.location, "https://") {
+		opts.location = opts.repo
+	} else {
 		if err := opts.setLocation(); err != nil {
 			return errors.Wrap(err, "setting location to clone from")
 		}

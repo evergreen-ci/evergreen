@@ -12,7 +12,6 @@ import (
 	"github.com/evergreen-ci/evergreen/model/patch"
 	"github.com/evergreen-ci/evergreen/rest/client"
 	restModel "github.com/evergreen-ci/evergreen/rest/model"
-	"github.com/evergreen-ci/evergreen/thirdparty"
 	"github.com/evergreen-ci/utility"
 	"github.com/mongodb/grip"
 	"github.com/pkg/errors"
@@ -689,9 +688,9 @@ func (p *moduleParams) addModule(ac *legacyClient, rc *legacyClient) error {
 		return errors.New("module patch aborted")
 	}
 
-	owner, repo, err := thirdparty.ParseGitUrl(module.Repo)
+	owner, repo, err := module.GetOwnerAndRepo()
 	if err != nil {
-		return errors.Wrapf(err, "getting owner/repo from module repo '%s'", module.Repo)
+		return errors.Wrapf(err, "error getting owner and repo for '%s'", module.Name)
 	}
 
 	patch, err := rc.GetPatch(p.patchID)

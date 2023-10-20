@@ -302,22 +302,6 @@ func ParseGitUrl(url string) (string, string, error) {
 	return owner, repo, nil
 }
 
-// ParseModuleLocation extracts the owner and repo from a string
-// in the format "git@github.com:owner/repo.git"
-func ParseModuleLocation(moduleLocation string) (string, string, error) {
-	parts := strings.Split(moduleLocation, ":")
-	if len(parts) != 2 {
-		return "", "", errors.New(fmt.Sprintf("git URL must contain ':' '%s'", moduleLocation))
-	}
-
-	ownerAndRepo := strings.Split(strings.TrimSuffix(parts[1], ".git"), "/")
-	if len(ownerAndRepo) != 2 {
-		return "", "", errors.New(fmt.Sprintf("git URL must contain '/' %s", moduleLocation))
-	}
-
-	return ownerAndRepo[0], ownerAndRepo[1], nil
-}
-
 func FormGitURL(host, owner, repo, token string) string {
 	if token != "" {
 		return fmt.Sprintf("https://%s:x-oauth-basic@%s/%s/%s.git", token, host, owner, repo)
