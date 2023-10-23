@@ -21,9 +21,9 @@ func newBucket(ctx context.Context, config evergreen.BucketConfig) (pail.Bucket,
 			Compress:    true,
 		})
 	case evergreen.BucketTypeGridFS:
-		client, err := mongo.NewClient()
+		client, err := mongo.Connect(ctx)
 		if err != nil {
-			return nil, errors.Wrap(err, "getting Mongo client")
+			return nil, errors.Wrap(err, "connecting to the GridFS DB")
 		}
 
 		return pail.NewGridFSBucketWithClient(ctx, client, pail.GridFSOptions{

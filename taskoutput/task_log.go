@@ -33,8 +33,8 @@ func (t TaskLogType) validate() error {
 // TaskLogOutput is the versioned entry point for coordinating persistent
 // storage of a task run's task log data.
 type TaskLogOutput struct {
-	Version int                    `bson:"version" json:"version"`
-	Bucket  evergreen.BucketConfig `bson:"bucket" json:"bucket"`
+	Version      int                    `bson:"version" json:"version"`
+	BucketConfig evergreen.BucketConfig `bson:"bucket_config" json:"bucket_config"`
 }
 
 // ID returns the unique identifier of the task log output type.
@@ -102,7 +102,7 @@ func (o TaskLogOutput) getLogName(taskOpts TaskOptions, logType TaskLogType) str
 }
 
 func (o TaskLogOutput) getLogService(ctx context.Context) (log.LogService, error) {
-	b, err := newBucket(ctx, o.Bucket)
+	b, err := newBucket(ctx, o.BucketConfig)
 	if err != nil {
 		return nil, err
 	}

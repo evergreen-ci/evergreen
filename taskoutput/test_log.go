@@ -14,8 +14,8 @@ import (
 // TestLogOutput is the versioned entry point for coordinating persistent
 // storage of a task run's test log data.
 type TestLogOutput struct {
-	Version int                    `bson:"version" json:"version"`
-	Bucket  evergreen.BucketConfig `bson:"bucket,omitempty" json:"bucket,omitempty"`
+	Version      int                    `bson:"version" json:"version"`
+	BucketConfig evergreen.BucketConfig `bson:"bucket_config" json:"bucket_config"`
 }
 
 // ID returns the unique identifier of the test log output type.
@@ -72,7 +72,7 @@ func (o TestLogOutput) getLogNames(taskOpts TaskOptions, logPaths []string) []st
 }
 
 func (o TestLogOutput) getLogService(ctx context.Context) (log.LogService, error) {
-	b, err := newBucket(ctx, o.Bucket)
+	b, err := newBucket(ctx, o.BucketConfig)
 	if err != nil {
 		return nil, err
 	}
