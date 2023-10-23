@@ -664,7 +664,7 @@ tasks:
             echo "hi"
 
   - name: task
-    patchable: true
+    patch_only: true
     depends_on:
       - name: dep
     commands:
@@ -693,7 +693,7 @@ buildvariants:
 		projYAML := `
 tasks:
   - name: dep
-    patchable: true
+    patch_only: true
     commands:
       - command: shell.exec
         params:
@@ -702,7 +702,7 @@ tasks:
             echo "hi"
 
   - name: task
-    patchable: true
+    patch_only: true
     depends_on:
       - name: dep
     commands:
@@ -739,7 +739,7 @@ tasks:
             echo "hi"
 
   - name: task
-    patchable: true
+    patch_only: true
     depends_on:
       - name: dep
     commands:
@@ -750,7 +750,7 @@ tasks:
             echo "hi"
 buildvariants:
   - name: ubuntu2204
-    patchable: true
+    patch_only: true
     display_name: Ubuntu 22.04
     run_on:
       - localhost
@@ -777,7 +777,7 @@ tasks:
             echo "hi"
 
   - name: task
-    patchable: true
+    patch_only: true
     depends_on:
       - name: dep
     commands:
@@ -794,7 +794,7 @@ buildvariants:
     tasks:
       - name: "task"
       - name: "dep"
-        patchable: true
+        patch_only: true
 `
 		var p model.Project
 		_, err := model.LoadProjectInto(ctx, []byte(projYAML), nil, "", &p)
@@ -807,7 +807,7 @@ buildvariants:
 		projYAML := `
 tasks:
   - name: dep
-    patchable: false
+    patch_only: true
     commands:
       - command: shell.exec
         params:
@@ -815,7 +815,7 @@ tasks:
           script: |
             echo "hi"
   - name: task
-    patchable: true
+    patch_only: false
     depends_on:
       - name: dep
     commands:
@@ -841,7 +841,7 @@ buildvariants:
 
 		require.Len(t, errs, 1)
 		assert.Equal(t, errs[0].Level, Warning)
-		assert.Contains(t, errs[0].Message, "'task' depends on non-patchable task 'dep'")
+		assert.Contains(t, errs[0].Message, "'task' depends on patch-only task 'dep'")
 	})
 	t.Run("WarnsWithVariantLevelConflict", func(t *testing.T) {
 		projYAML := `
@@ -855,7 +855,7 @@ tasks:
             echo "hi"
 
   - name: task
-    patchable: true
+    patch_only: false
     depends_on:
       - name: dep
     commands:
@@ -867,7 +867,7 @@ tasks:
 
 buildvariants:
   - name: ubuntu2204
-    patchable: false
+    patch_only: true
     display_name: Ubuntu 22.04
     run_on:
       - localhost
@@ -882,7 +882,7 @@ buildvariants:
 
 		require.Len(t, errs, 1)
 		assert.Equal(t, errs[0].Level, Warning)
-		assert.Contains(t, errs[0].Message, "'task' depends on non-patchable task 'dep'")
+		assert.Contains(t, errs[0].Message, "'task' depends on patch-only task 'dep'")
 	})
 	t.Run("WarnsWithBuildVariantTaskLevelConflict", func(t *testing.T) {
 		projYAML := `
@@ -896,7 +896,7 @@ tasks:
             echo "hi"
 
   - name: task
-    patchable: true
+    patch_only: false
     depends_on:
       - name: dep
     commands:
@@ -914,7 +914,7 @@ buildvariants:
     tasks:
       - name: "task"
       - name: "dep"
-        patchable: false
+        patch_only: true
 `
 		var p model.Project
 		_, err := model.LoadProjectInto(ctx, []byte(projYAML), nil, "", &p)
@@ -923,7 +923,7 @@ buildvariants:
 
 		require.Len(t, errs, 1)
 		assert.Equal(t, errs[0].Level, Warning)
-		assert.Contains(t, errs[0].Message, "'task' depends on non-patchable task 'dep'")
+		assert.Contains(t, errs[0].Message, "'task' depends on patch-only task 'dep'")
 	})
 }
 
