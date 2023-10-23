@@ -214,7 +214,6 @@ func (c *s3get) Execute(ctx context.Context,
 
 	select {
 	case err := <-errChan:
-		logger.Task().Infof("skip missing? %v / optional? %v", c.skipMissing, c.Optional)
 		if c.skipMissing {
 			logger.Task().Infof("Problem getting file but optional is true, exiting without error (%s).", err.Error())
 			return nil
