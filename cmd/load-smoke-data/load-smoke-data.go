@@ -130,10 +130,6 @@ func getFilesFromPathAndInsert(ctx context.Context, path string, db *mongo.Datab
 			return errors.Wrapf(err, "getting file info for %s", fn)
 		}
 		switch mode := fileInfo.Mode(); {
-		case mode.IsDir():
-			if err := getFilesFromPathAndInsert(ctx, fn, db); err != nil {
-				return errors.Wrapf(err, "recursively adding DB documents from directory '%s'", fn)
-			}
 		case mode.IsRegular():
 			if err := insertFileDocsToDB(ctx, fn, db); err != nil {
 				return errors.Wrapf(err, "adding DB documents from file '%s'", fn)

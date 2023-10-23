@@ -1,1 +1,0 @@
-{ "_id": "apiserver", "display_name": "apiserver", "first_name": "API", "last_name": "Server", "settings": { "slack_username": "test_user", "slack_member_id": "test_user", "timezone": "America/New_York", "region": "us-west-1", "github_user": { "last_known_as": "bob_smith_1" } } }
