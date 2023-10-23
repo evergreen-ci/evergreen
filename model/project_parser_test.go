@@ -762,7 +762,7 @@ tasks:
 	_, err := LoadProjectInto(ctx, []byte(yml), nil, "id", proj)
 	assert.NotNil(proj)
 	assert.Nil(err)
-	assert.Len(proj.BuildVariants, 1)
+	require.Len(t, proj.BuildVariants, 1)
 
 	assert.Len(proj.BuildVariants[0].Tasks, 1)
 	cr := proj.BuildVariants[0].Tasks[0].CreateCheckRun
@@ -783,7 +783,7 @@ tasks:
 	_, err = LoadProjectInto(ctx, []byte(ymlWithEmptyString), nil, "id", proj)
 	assert.NotNil(proj)
 	assert.Nil(err)
-	assert.Len(proj.BuildVariants, 1)
+	require.Len(t, proj.BuildVariants, 1)
 
 	assert.Len(proj.BuildVariants[0].Tasks, 1)
 	cr = proj.BuildVariants[0].Tasks[0].CreateCheckRun
