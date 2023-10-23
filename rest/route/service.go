@@ -84,7 +84,6 @@ func AttachHandler(app *gimlet.APIApp, opts HandlerOpts) {
 	app.AddRoute("/task/{task_id}/heartbeat").Version(2).Post().Wrap(requireTask, requirePodOrHost).RouteHandler(makeHeartbeat())
 	app.AddRoute("/task/{task_id}/pull_request").Version(2).Get().Wrap(requireTask).RouteHandler(makeAgentGetPullRequest(settings))
 	app.AddRoute("/task/{task_id}/").Version(2).Get().Wrap(requireTask).RouteHandler(makeFetchTask())
-	app.AddRoute("/task/{task_id}/log").Version(2).Post().Wrap(requireTask, requirePodOrHost).RouteHandler(makeAppendTaskLog(settings))
 	app.AddRoute("/task/{task_id}/start").Version(2).Post().Wrap(requireTask, requirePodOrHost).RouteHandler(makeStartTask(env))
 	app.AddRoute("/task/{task_id}/installation_token/{owner}/{repo}").Version(2).Get().Wrap(requireTask).RouteHandler(makeCreateInstallationToken(env))
 

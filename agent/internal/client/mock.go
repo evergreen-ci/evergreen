@@ -15,6 +15,7 @@ import (
 	"github.com/evergreen-ci/evergreen/cloud"
 	serviceModel "github.com/evergreen-ci/evergreen/model"
 	"github.com/evergreen-ci/evergreen/model/artifact"
+	"github.com/evergreen-ci/evergreen/model/log"
 	"github.com/evergreen-ci/evergreen/model/manifest"
 	"github.com/evergreen-ci/evergreen/model/patch"
 	patchmodel "github.com/evergreen-ci/evergreen/model/patch"
@@ -24,6 +25,8 @@ import (
 	"github.com/evergreen-ci/evergreen/util"
 	"github.com/evergreen-ci/utility"
 	"github.com/mongodb/grip"
+	"github.com/mongodb/grip/message"
+	"github.com/mongodb/grip/send"
 	"github.com/pkg/errors"
 	"google.golang.org/grpc"
 )
@@ -72,9 +75,9 @@ type Mock struct {
 	TestLogs         []*serviceModel.TestLog
 	TestLogCount     int
 
-	logMessages map[string][]apimodels.LogMessage
-	PatchFiles  map[string]string
-	keyVal      map[string]*serviceModel.KeyVal
+	taskLogs   map[string][]log.LogLine
+	PatchFiles map[string]string
+	keyVal     map[string]*serviceModel.KeyVal
 
 	// Mock data returned from methods
 	LastMessageSent  time.Time
@@ -94,7 +97,7 @@ func NewMock(serverURL string) *Mock {
 		maxAttempts:   defaultMaxAttempts,
 		timeoutStart:  defaultTimeoutStart,
 		timeoutMax:    defaultTimeoutMax,
-		logMessages:   make(map[string][]apimodels.LogMessage),
+		taskLogs:      make(map[string][]log.LogLine),
 		PatchFiles:    make(map[string]string),
 		keyVal:        make(map[string]*serviceModel.KeyVal),
 		AttachedFiles: make(map[string][]*artifact.File),
@@ -324,8 +327,21 @@ func (c *Mock) GetDataPipesConfig(ctx context.Context) (*apimodels.DataPipesConf
 	}, nil
 }
 
-// SendTaskLogMessages posts tasks messages to the api server
-func (c *Mock) SendLogMessages(ctx context.Context, td TaskData, msgs []apimodels.LogMessage) error {
+// GetLoggerProducer constructs a single channel log producer.
+func (c *Mock) GetLoggerProducer(ctx context.Context, td TaskData, config *LoggerConfig) (LoggerProducer, error) {
+	if c.GetLoggerProducerShouldFail {
+		return nil, errors.New("operation run in fail mode.")
+	}
+
+	appendLine := func(line log.LogLine) error {
+		return c.sendTaskLogLine(td, line)
+	}
+
+	return NewSingleChannelLogHarness(td.ID, newMockSender("mock", appendLine)), nil
+}
+
+// sendTaskLine appends a task log line to the cache.
+func (c *Mock) sendTaskLogLine(td TaskData, line log.LogLine) error {
 	c.mu.Lock()
 	defer c.mu.Unlock()
 
@@ -333,40 +349,16 @@ func (c *Mock) SendLogMessages(ctx context.Context, td TaskData, msgs []apimodel
 		return errors.New("logging failed")
 	}
 
-	c.logMessages[td.ID] = append(c.logMessages[td.ID], msgs...)
+	c.taskLogs[td.ID] = append(c.taskLogs[td.ID], line)
 
 	return nil
 }
 
-// GetMockMessages returns the mock's logs.
-func (c *Mock) GetMockMessages() map[string][]apimodels.LogMessage {
-	c.mu.RLock()
-	defer c.mu.RUnlock()
+func (c *Mock) GetTaskLogs(taskID string) []log.LogLine {
+	c.mu.Lock()
+	defer c.mu.Unlock()
 
-	out := map[string][]apimodels.LogMessage{}
-	for k, v := range c.logMessages {
-		out[k] = []apimodels.LogMessage{}
-		for _, i := range v {
-			new := apimodels.LogMessage{
-				Type:      i.Type,
-				Severity:  i.Severity,
-				Message:   i.Message,
-				Timestamp: i.Timestamp,
-				Version:   i.Version,
-			}
-			out[k] = append(out[k], new)
-		}
-	}
-
-	return out
-}
-
-// GetLoggerProducer constructs a single channel log producer.
-func (c *Mock) GetLoggerProducer(ctx context.Context, td TaskData, config *LoggerConfig) (LoggerProducer, error) {
-	if c.GetLoggerProducerShouldFail {
-		return nil, errors.New("operation run in fail mode.")
-	}
-	return NewSingleChannelLogHarness(td.ID, newEvergreenLogSender(ctx, c, apimodels.AgentLogPrefix, td, defaultLogBufferSize, defaultLogBufferTime)), nil
+	return c.taskLogs[taskID]
 }
 
 func (c *Mock) GetPatchFile(ctx context.Context, td TaskData, patchFileID string) (string, error) {
@@ -535,3 +527,34 @@ func (c *Mock) CreateInstallationToken(ctx context.Context, td TaskData, owner, 
 	}
 	return c.CreateInstallationTokenResult, nil
 }
+
+type mockSender struct {
+	appendLine func(log.LogLine) error
+	lastErr    error
+	*send.Base
+}
+
+func newMockSender(name string, appendLine func(log.LogLine) error) *mockSender {
+	return &mockSender{
+		appendLine: appendLine,
+		Base:       send.NewBase(name),
+	}
+}
+
+func (s *mockSender) Send(m message.Composer) {
+	ts := time.Now().UnixNano()
+
+	if !s.Level().ShouldLog(m) {
+		return
+	}
+
+	if err := s.appendLine(log.LogLine{
+		Priority:  m.Priority(),
+		Timestamp: ts,
+		Data:      m.String(),
+	}); err != nil {
+		s.lastErr = err
+	}
+}
+
+func (s *mockSender) Flush(_ context.Context) error { return nil }

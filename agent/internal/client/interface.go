@@ -87,9 +87,6 @@ type SharedCommunicator interface {
 	GetLoggerProducer(context.Context, TaskData, *LoggerConfig) (LoggerProducer, error)
 	// GetLoggerMetadata() LoggerMetadata
 
-	// SendLogMessages sends a group of log messages to the API Server
-	SendLogMessages(context.Context, TaskData, []apimodels.LogMessage) error
-
 	// The following operations are used by task commands.
 	SendTestLog(context.Context, TaskData, *model.TestLog) (string, error)
 	GetTaskPatch(context.Context, TaskData, string) (*patchmodel.Patch, error)
