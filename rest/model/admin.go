@@ -647,12 +647,13 @@ func (a *APIAuthConfig) ToService() (interface{}, error) {
 }
 
 type APIBucketsConfig struct {
-	LogBucket APIBucket `json:"log_bucket"`
+	LogBucket APIBucketConfig `json:"log_bucket"`
 }
 
-type APIBucket struct {
-	Name *string `json:"name"`
-	Type *string `json:"type"`
+type APIBucketConfig struct {
+	Name   *string `json:"name"`
+	Type   *string `json:"type"`
+	DBName *string `json:"db_name"`
 }
 
 func (a *APIBucketsConfig) BuildFromService(h interface{}) error {
@@ -660,6 +661,7 @@ func (a *APIBucketsConfig) BuildFromService(h interface{}) error {
 	case evergreen.BucketsConfig:
 		a.LogBucket.Name = utility.ToStringPtr(v.LogBucket.Name)
 		a.LogBucket.Type = utility.ToStringPtr(v.LogBucket.Type)
+		a.LogBucket.DBName = utility.ToStringPtr(v.LogBucket.DBName)
 	default:
 		return errors.Errorf("programmatic error: expected bucket config but got type %T", h)
 	}
@@ -669,8 +671,9 @@ func (a *APIBucketsConfig) BuildFromService(h interface{}) error {
 func (a *APIBucketsConfig) ToService() (interface{}, error) {
 	return evergreen.BucketsConfig{
 		LogBucket: evergreen.BucketConfig{
-			Name: utility.FromStringPtr(a.LogBucket.Name),
-			Type: utility.FromStringPtr(a.LogBucket.Type),
+			Name:   utility.FromStringPtr(a.LogBucket.Name),
+			Type:   utility.FromStringPtr(a.LogBucket.Type),
+			DBName: utility.FromStringPtr(a.LogBucket.DBName),
 		},
 	}, nil
 }
