@@ -200,7 +200,6 @@ func (c *s3get) Execute(ctx context.Context,
 		}
 	}
 
-	logger.Task().Info("Starting the getting loop")
 	errChan := make(chan error)
 	go func() {
 		err := errors.WithStack(c.getWithRetry(ctx, logger))
