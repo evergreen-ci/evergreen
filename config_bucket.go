@@ -11,32 +11,45 @@ import (
 )
 
 const (
-	BucketTypeLocal = "local"
-	BucketTypeS3    = "s3"
+	BucketTypeGridFS = "gridfs"
+	BucketTypeLocal  = "local"
+	BucketTypeS3     = "s3"
 )
 
-// BucketConfig represents the admin config section for bucket storage.
+// BucketsConfig represents the admin config section for bucket storage.
+type BucketsConfig struct {
+	LogBucket BucketConfig `bson:"log_bucket" json:"log_bucket" yaml:"log_bucket"`
+}
+
+var bucketsConfigLogBucketKey = bsonutil.MustHaveTag(BucketsConfig{}, "LogBucket")
+
+// BucketConfig represents the admin config for an individual bucket.
 type BucketConfig struct {
-	LogBucket Bucket `bson:"log_bucket" json:"log_bucket" yaml:"log_bucket"`
+	Name   string `bson:"name" json:"name" yaml:"name"`
+	Type   string `bson:"type" json:"type" yaml:"type"`
+	DBName string `bson:"db_name" json:"db_name" yaml:"db_name"`
 }
 
-var bucketConfigLogBucketKey = bsonutil.MustHaveTag(BucketConfig{}, "LogBucket")
+func (c *BucketConfig) validate() error {
+	if c.Type == "" {
+		c.Type = BucketTypeS3
+	}
+	if c.Type == BucketTypeGridFS && c.DBName == "" {
+		return errors.New("must specify DB name for GridFS bucket")
+	}
 
-// Bucket represents the admin config for an individual bucket.
-type Bucket struct {
-	Name string `bson:"name" json:"name" yaml:"name"`
-	Type string `bson:"type" json:"type" yaml:"type"`
+	return nil
 }
 
-func (*BucketConfig) SectionId() string { return "buckets" }
+func (*BucketsConfig) SectionId() string { return "buckets" }
 
-func (c *BucketConfig) Get(ctx context.Context) error {
+func (c *BucketsConfig) Get(ctx context.Context) error {
 	coll := GetEnvironment().DB().Collection(ConfigCollection)
 
 	res := coll.FindOne(ctx, byId(c.SectionId()))
 	if err := res.Err(); err != nil {
 		if err == mongo.ErrNoDocuments {
-			*c = BucketConfig{}
+			*c = BucketsConfig{}
 			return nil
 		}
 		return errors.Wrapf(err, "retrieving section %s", c.SectionId())
@@ -49,22 +62,18 @@ func (c *BucketConfig) Get(ctx context.Context) error {
 	return nil
 }
 
-func (c *BucketConfig) Set(ctx context.Context) error {
+func (c *BucketsConfig) Set(ctx context.Context) error {
 	coll := GetEnvironment().DB().Collection(ConfigCollection)
 
 	_, err := coll.UpdateOne(ctx, byId(c.SectionId()), bson.M{
 		"$set": bson.M{
-			bucketConfigLogBucketKey: c.LogBucket,
+			bucketsConfigLogBucketKey: c.LogBucket,
 		},
 	}, options.Update().SetUpsert(true))
 
 	return errors.Wrapf(err, "updating section %s", c.SectionId())
 }
 
-func (c *BucketConfig) ValidateAndDefault() error {
-	if c.LogBucket.Type == "" {
-		c.LogBucket.Type = BucketTypeS3
-	}
-
-	return nil
+func (c *BucketsConfig) ValidateAndDefault() error {
+	return c.LogBucket.validate()
 }
