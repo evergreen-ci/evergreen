@@ -768,6 +768,27 @@ tasks:
 	cr := proj.BuildVariants[0].Tasks[0].CreateCheckRun
 	assert.NotNil(cr)
 	assert.Equal("path", cr.PathToOutputs)
+
+	ymlWithEmptyString := `
+buildvariants:
+- name: "v1"
+  tasks:
+  - name: "t1"
+    create_check_run:
+      path_to_outputs: ""
+tasks:
+- name: t1
+`
+
+	_, err = LoadProjectInto(ctx, []byte(ymlWithEmptyString), nil, "id", proj)
+	assert.NotNil(proj)
+	assert.Nil(err)
+	assert.Len(proj.BuildVariants, 1)
+
+	assert.Len(proj.BuildVariants[0].Tasks, 1)
+	cr = proj.BuildVariants[0].Tasks[0].CreateCheckRun
+	assert.NotNil(cr)
+	assert.Equal("", cr.PathToOutputs)
 }
 
 func TestDisplayTaskParsing(t *testing.T) {
