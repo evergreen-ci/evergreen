@@ -37,69 +37,6 @@ var (
 	gitHubAppNotInstalledError = errors.New("GitHub app is not installed")
 )
 
-type GitHubAppInstallation struct {
-	Owner string `bson:"owner"`
-	Repo  string `bson:"repo"`
-
-	// InstallationID is the GitHub app's installation ID for the owner/repo.
-	InstallationID int64 `bson:"installation_id"`
-}
-
-func byOwnerRepo(owner, repo string) bson.M {
-	q := bson.M{
-		ownerKey: owner,
-		repoKey:  repo,
-	}
-	return q
-}
-
-func validateOwnerRepo(owner, repo string) error {
-	if len(owner) == 0 || len(repo) == 0 {
-		return errors.New("Owner and repository must not be empty strings")
-	}
-	return nil
-}
-
-// Upsert updates the installation information in the database.
-func (h *GitHubAppInstallation) Upsert(ctx context.Context) error {
-	if err := validateOwnerRepo(h.Owner, h.Repo); err != nil {
-		return err
-	}
-
-	_, err := GetEnvironment().DB().Collection(GitHubAppCollection).UpdateOne(
-		ctx,
-		byOwnerRepo(h.Owner, h.Repo),
-		bson.M{
-			"$set": h,
-		},
-		&options.UpdateOptions{
-			Upsert: utility.TruePtr(),
-		},
-	)
-	return err
-}
-
-// getInstallationID returns the installation ID for GitHub app if it's installed for the given owner/repo.
-func getInstallationIDFromCache(ctx context.Context, owner, repo string) (int64, error) {
-	if err := validateOwnerRepo(owner, repo); err != nil {
-		return 0, err
-	}
-
-	installation := &GitHubAppInstallation{}
-	res := GetEnvironment().DB().Collection(GitHubAppCollection).FindOne(ctx, byOwnerRepo(owner, repo))
-	if err := res.Err(); err != nil {
-		if err == mongo.ErrNoDocuments {
-			return 0, nil
-		}
-		return 0, errors.Wrapf(err, "finding cached installation ID for '%s/%s", owner, repo)
-	}
-	if err := res.Decode(&installation); err != nil {
-		return 0, errors.Wrapf(err, "decoding installation ID for '%s/%s", owner, repo)
-	}
-
-	return installation.InstallationID, nil
-}
-
 type githubAppAuth struct {
 	appId      int64
 	privateKey []byte
@@ -200,6 +137,88 @@ func getInstallationID(ctx context.Context, authFields *githubAppAuth, owner, re
 
 }
 
+type GitHubAppInstallation struct {
+	Owner string `bson:"owner"`
+	Repo  string `bson:"repo"`
+
+	// InstallationID is the GitHub app's installation ID for the owner/repo.
+	InstallationID int64 `bson:"installation_id"`
+}
+
+func byOwnerRepo(owner, repo string) bson.M {
+	q := bson.M{
+		ownerKey: owner,
+		repoKey:  repo,
+	}
+	return q
+}
+
+func validateOwnerRepo(owner, repo string) error {
+	if len(owner) == 0 || len(repo) == 0 {
+		return errors.New("Owner and repository must not be empty strings")
+	}
+	return nil
+}
+
+// Upsert updates the installation information in the database.
+func (h *GitHubAppInstallation) Upsert(ctx context.Context) error {
+	if err := validateOwnerRepo(h.Owner, h.Repo); err != nil {
+		return err
+	}
+
+	_, err := GetEnvironment().DB().Collection(GitHubAppCollection).UpdateOne(
+		ctx,
+		byOwnerRepo(h.Owner, h.Repo),
+		bson.M{
+			"$set": h,
+		},
+		&options.UpdateOptions{
+			Upsert: utility.TruePtr(),
+		},
+	)
+	return err
+}
+
+// getInstallationID returns the cached installation ID for GitHub app from the database.
+func getInstallationIDFromCache(ctx context.Context, owner, repo string) (int64, error) {
+	if err := validateOwnerRepo(owner, repo); err != nil {
+		return 0, err
+	}
+
+	installation := &GitHubAppInstallation{}
+	res := GetEnvironment().DB().Collection(GitHubAppCollection).FindOne(ctx, byOwnerRepo(owner, repo))
+	if err := res.Err(); err != nil {
+		if err == mongo.ErrNoDocuments {
+			return 0, nil
+		}
+		return 0, errors.Wrapf(err, "finding cached installation ID for '%s/%s", owner, repo)
+	}
+	if err := res.Decode(&installation); err != nil {
+		return 0, errors.Wrapf(err, "decoding installation ID for '%s/%s", owner, repo)
+	}
+
+	return installation.InstallationID, nil
+}
+
+func getGitHubClientForAuth(authFields *githubAppAuth) (*github.Client, error) {
+	retryConf := utility.NewDefaultHTTPRetryConf()
+	retryConf.MaxDelay = GitHubRetryMaxDelay
+	retryConf.BaseDelay = GitHubRetryMinDelay
+	retryConf.MaxRetries = GitHubMaxRetries
+
+	httpClient := utility.GetHTTPRetryableClient(retryConf)
+
+	key, err := jwt.ParseRSAPrivateKeyFromPEM(authFields.privateKey)
+	if err != nil {
+		return nil, errors.Wrap(err, "parsing private key")
+	}
+
+	itr := ghinstallation.NewAppsTransportFromPrivateKey(httpClient.Transport, authFields.appId, key)
+	httpClient.Transport = itr
+	client := github.NewClient(httpClient)
+	return client, nil
+}
+
 func getInstallationIDFromGitHub(ctx context.Context, authFields *githubAppAuth, owner, repo string) (int64, error) {
 	client, err := getGitHubClientForAuth(authFields)
 	if err != nil {
@@ -247,24 +266,4 @@ func createInstallationToken(ctx context.Context, authFields *githubAppAuth, ins
 		return "", errors.Errorf("Installation token for installation 'id': %d not found", installationID)
 	}
 	return token.GetToken(), nil
-}
-
-func getGitHubClientForAuth(authFields *githubAppAuth) (*github.Client, error) {
-	retryConf := utility.NewDefaultHTTPRetryConf()
-	retryConf.MaxDelay = GitHubRetryMaxDelay
-	retryConf.BaseDelay = GitHubRetryMinDelay
-	retryConf.MaxRetries = GitHubMaxRetries
-
-	httpClient := utility.GetHTTPRetryableClient(retryConf)
-	// defer utility.PutHTTPClient(httpClient)
-
-	key, err := jwt.ParseRSAPrivateKeyFromPEM(authFields.privateKey)
-	if err != nil {
-		return nil, errors.Wrap(err, "parsing private key")
-	}
-
-	itr := ghinstallation.NewAppsTransportFromPrivateKey(httpClient.Transport, authFields.appId, key)
-	httpClient.Transport = itr
-	client := github.NewClient(httpClient)
-	return client, nil
 }
