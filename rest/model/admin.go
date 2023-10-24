@@ -660,7 +660,7 @@ func (a *APIBucketsConfig) BuildFromService(h interface{}) error {
 	switch v := h.(type) {
 	case evergreen.BucketsConfig:
 		a.LogBucket.Name = utility.ToStringPtr(v.LogBucket.Name)
-		a.LogBucket.Type = utility.ToStringPtr(v.LogBucket.Type)
+		a.LogBucket.Type = utility.ToStringPtr(string(v.LogBucket.Type))
 		a.LogBucket.DBName = utility.ToStringPtr(v.LogBucket.DBName)
 	default:
 		return errors.Errorf("programmatic error: expected bucket config but got type %T", h)
@@ -672,7 +672,7 @@ func (a *APIBucketsConfig) ToService() (interface{}, error) {
 	return evergreen.BucketsConfig{
 		LogBucket: evergreen.BucketConfig{
 			Name:   utility.FromStringPtr(a.LogBucket.Name),
-			Type:   utility.FromStringPtr(a.LogBucket.Type),
+			Type:   evergreen.BucketType(utility.FromStringPtr(a.LogBucket.Type)),
 			DBName: utility.FromStringPtr(a.LogBucket.DBName),
 		},
 	}, nil
