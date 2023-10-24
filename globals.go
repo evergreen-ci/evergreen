@@ -330,7 +330,7 @@ const (
 	// TODO EVG-19966: Remove GlobalGitHubTokenExpansion
 	GlobalGitHubTokenExpansion = "global_github_oauth_token"
 	GithubAppToken             = "github_app_token"
-	GithubAppPrivateKey        = "github_app_key"
+	githubAppPrivateKey        = "github_app_key"
 
 	VSCodePort = 2021
 
