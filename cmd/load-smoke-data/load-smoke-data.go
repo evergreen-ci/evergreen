@@ -55,7 +55,7 @@ func insertFileDocsToDB(ctx context.Context, fn string, db *mongo.Database) erro
 	}
 	defer file.Close()
 
-	collName := strings.Split(filepath.Base(fn), ".")[0]
+	collName := strings.TrimSuffix(filepath.Base(fn), ".json")
 	collection := db.Collection(collName)
 	switch collName {
 	case task.Collection:
