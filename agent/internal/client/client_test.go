@@ -48,6 +48,7 @@ func TestLoggerClose(t *testing.T) {
 		_, err = w.Write(data)
 		require.NoError(t, err)
 	})
+	defer server.Close()
 
 	comm := NewHostCommunicator(server.URL, "host", "host_secret")
 	logger, err := comm.GetLoggerProducer(context.Background(), TaskData{ID: "task", Secret: "task_secret"}, nil)
