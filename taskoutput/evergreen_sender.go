@@ -16,23 +16,17 @@ import (
 
 const defaultMaxBufferSize = 1e7
 
-// LogLineParser functions parse a raw log line into the service representation
+// logLineParser functions parse a raw log line into the service representation
 // of a log line for uniform ingestion of logs by the Evergreen log sender.
 // Parsers need not set the log name or, in most cases, the priority.
-type LogLineParser func(string) (log.LogLine, error)
+type logLineParser func(string) (log.LogLine, error)
 
+// logLineAppender appends a chunk of lines to the underlying log store.
 type logLineAppender func(context.Context, []log.LogLine) error
 
 // EvergreenSenderOptions support the use and creation of an Evergreen sender.
 type EvergreenSenderOptions struct {
-	// Parse is the function for parsing raw log lines collected by the
-	// sender.
-	// The injectable line parser allows the sender to be agnostic to the
-	// raw log line formats it ingests.
-	// Defaults to a basic line parser that adds the raw string as the log
-	// line data field.
-	Parse LogLineParser
-	// local is the sender for "fallback" operations and to collect any
+	// Local is the sender for "fallback" operations and to collect any
 	// logger error output.
 	Local send.Sender
 	// MaxBufferSize is the maximum number of bytes to buffer before
@@ -43,6 +37,10 @@ type EvergreenSenderOptions struct {
 	// interval equal to 0 will disable timed flushes.
 	FlushInterval time.Duration
 
+	// the injectable line parser allows the sender to be agnostic to the
+	// raw log line formats it ingests. Defaults to a basic line parser
+	// that adds the raw string as the log line data field.
+	parse       logLineParser
 	appendLines logLineAppender
 }
 
@@ -52,8 +50,8 @@ func (opts *EvergreenSenderOptions) validate() error {
 	catcher.NewWhen(opts.MaxBufferSize < 0, "max buffer size cannot be negative")
 	catcher.NewWhen(opts.FlushInterval < 0, "flush interval cannot be negative")
 
-	if opts.Parse == nil {
-		opts.Parse = func(rawLine string) (log.LogLine, error) {
+	if opts.parse == nil {
+		opts.parse = func(rawLine string) (log.LogLine, error) {
 			return log.LogLine{Data: rawLine}, nil
 		}
 	}
@@ -133,7 +131,7 @@ func (s *evergreenSender) Send(m message.Composer) {
 			continue
 		}
 
-		logLine, err := s.opts.Parse(line)
+		logLine, err := s.opts.parse(line)
 		if err != nil {
 			s.opts.Local.Send(message.NewErrorMessage(level.Error, errors.Wrap(err, "parsing log line")))
 			return
