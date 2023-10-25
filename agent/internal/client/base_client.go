@@ -483,6 +483,10 @@ func (c *baseCommunicator) makeSender(ctx context.Context, td TaskData, opts []L
 			if err != nil {
 				return nil, nil, errors.Wrap(err, "getting task")
 			}
+			taskOutput, err := tk.GetTaskOutputWithError()
+			if err != nil {
+				return nil, nil, err
+			}
 
 			taskOpts := taskoutput.TaskOptions{
 				ProjectID: tk.Project,
@@ -493,10 +497,7 @@ func (c *baseCommunicator) makeSender(ctx context.Context, td TaskData, opts []L
 				MaxBufferSize: bufferSize,
 				FlushInterval: bufferDuration,
 			}
-			// TODO: Should there be a function to get the task
-			// output info and return a programmatic error if it is
-			// nil?
-			sender, err = tk.TaskOutputInfo.TaskLogs.NewSender(ctx, taskOpts, senderOpts, logType)
+			sender, err = taskOutput.TaskLogs.NewSender(ctx, taskOpts, senderOpts, logType)
 			if err != nil {
 				return nil, nil, errors.Wrap(err, "creating Evergreen task log sender")
 			}

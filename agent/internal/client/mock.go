@@ -4,6 +4,8 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"net/http"
+	"net/http/httptest"
 	"os"
 	"path/filepath"
 	"runtime"
@@ -558,3 +560,16 @@ func (s *mockSender) Send(m message.Composer) {
 }
 
 func (s *mockSender) Flush(_ context.Context) error { return nil }
+
+type mockHandler struct {
+	serve func(http.ResponseWriter, *http.Request)
+}
+
+func (h *mockHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) { h.serve(w, r) }
+
+func newMockServer(serve func(http.ResponseWriter, *http.Request)) (*httptest.Server, *mockHandler) {
+	h := &mockHandler{
+		serve: serve,
+	}
+	return httptest.NewServer(h), h
+}
