@@ -70,6 +70,11 @@ func GetRouter(as *APIServer, uis *UIServer) (http.Handler, error) {
 	// with the "api" prefix, there are many users of restv2, so
 	// we will continue to publish these routes in these
 	// endpoints.
+	//
+	//	@title		Evergreen REST v2 API
+	//	@version	.0.0.1
+	//	@host		evergreen.mongodb.com
+	//	@BasePath	/rest/v2
 	apiRestV2 := gimlet.NewApp()
 	apiRestV2.SetPrefix(evergreen.APIRoutePrefix + "/" + evergreen.RestRoutePrefix)
 	opts = route.HandlerOpts{

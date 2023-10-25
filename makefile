@@ -378,6 +378,11 @@ phony += clean
 gqlgen:
 	go run github.com/99designs/gqlgen generate
 
+swaggo:
+	swag fmt -g service/service.go
+	swag init -g service/service.go
+	npx @redocly/cli build-docs docs/swagger.json
+
 # sanitizes a json file by hashing string values. Note that this will not work well with
 # string data that only has a subset of valid values
 ifneq (,$(multi))

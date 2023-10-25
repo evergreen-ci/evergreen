@@ -605,6 +605,42 @@ tasks:
           AUTH_ENABLED: 1
           RUN_TEST: "TestEnvironmentSuite/TestInitDB"
           MONGO_CREDS_FILE: testdata/test_auth.yml
+  - name: generate-api-docs
+    commands: 
+      - func: get-project-and-modules
+      - command: shell.exec
+        params:
+          shell: bash
+          working_dir: evergreen
+          script: |
+            set -o verbose
+            set -o errexit
+            wget https://github.com/swaggo/swag/releases/download/v1.16.2/swag_1.16.2_Linux_x86_64.tar.gz
+            tar xzvf swag_1.16.2_Linux_x86_64.tar.gz
+            ./swag init -g service/service.go
+      - command: s3.put
+        params:
+          aws_key: ${aws_key}
+          aws_secret: ${aws_secret}
+          local_file: evergreen/docs/swagger.json
+          remote_file: evergreen/${task_id}/swagger.json
+          bucket: mciuploads
+          content_type: application/json
+          permissions: public-read
+          display_name: swagger.json
+      - command: s3.put
+        params:
+          aws_key: ${aws_key}
+          aws_secret: ${aws_secret}
+          local_file: evergreen/docs/swagger.json
+          remote_file: evergreen/latest/swagger.json
+          bucket: mciuploads
+          content_type: application/json
+          permissions: public-read
+          display_name: swagger.json (latest)
+          # TODO Set this when it's time to merge
+          # patchable: false
+
 
 task_groups:
   - name: dist-and-upload-clis
@@ -643,6 +679,7 @@ buildvariants:
       - name: test-db-auth
       - name: test-cloud
       - name: "js-test"
+      - name: generate-api-docs
 
   - name: race-detector
     display_name: Race Detector

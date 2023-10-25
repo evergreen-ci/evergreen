@@ -31,6 +31,12 @@ func makeGetBuildByID(env evergreen.Environment) gimlet.RouteHandler {
 	return &buildGetHandler{env: env}
 }
 
+// @Summary		Fetch build by ID
+// @Description	Fetches a single build using its ID
+// @Tags			builds
+// @Router			/builds/{build_id} [get]
+// @Param			build_id	path		string	true	"the build ID"
+// @Success		200			{object}	model.APIBuild
 func (b *buildGetHandler) Factory() gimlet.RouteHandler {
 	return &buildGetHandler{env: b.env}
 }
@@ -102,6 +108,12 @@ func makeChangeStatusForBuild() gimlet.RouteHandler {
 
 }
 
+// @Summary		Change a build's execution status
+// @Description	Change the current execution status of a build. Accepts a JSON body with the new build status to be set.
+// @Tags			builds
+// @Router			/builds/{build_id} [patch]
+// @Param			{object}	body		buildChangeStatusHandler	true	"parameters"
+// @Success		200			{object}	model.APIBuild
 func (b *buildChangeStatusHandler) Factory() gimlet.RouteHandler {
 	return &buildChangeStatusHandler{}
 }
@@ -189,6 +201,12 @@ func makeAbortBuild() gimlet.RouteHandler {
 	return &buildAbortHandler{}
 }
 
+// @Summary		Abort a build
+// @Description	Abort the build of the given ID. Can only be performed if the build is in progress.
+// @Tags			builds
+// @Router			/builds/{build_id}/abort [post]
+// @Param			build_id	path		string	true	"build ID"
+// @Success		200			{object}	model.APIBuild
 func (b *buildAbortHandler) Factory() gimlet.RouteHandler {
 	return &buildAbortHandler{}
 }
@@ -234,6 +252,12 @@ func makeRestartBuild() gimlet.RouteHandler {
 	return &buildRestartHandler{}
 }
 
+// @Summary		Restart a build
+// @Description	Restarts the build of the given ID. Can only be performed if the build is finished.
+// @Tags			builds
+// @Router			/builds/{build_id}/restart [post]
+// @Param			build_id	path		string	true	"build ID"
+// @Success		200			{object}	model.APIBuild
 func (b *buildRestartHandler) Factory() gimlet.RouteHandler {
 	return &buildRestartHandler{}
 }

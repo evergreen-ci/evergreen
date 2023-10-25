@@ -17,15 +17,26 @@ func makeVersionCreateHandler(sc data.Connector) gimlet.RouteHandler {
 }
 
 type versionCreateHandler struct {
+	// Required. This is the project with which the version will be associated, and the code to test will be checked out from the project's branch.
 	ProjectID string `json:"project_id"`
-	Message   string `json:"message"`
-	Active    bool   `json:"activate"`
-	IsAdHoc   bool   `json:"is_adhoc"`
-	Config    []byte `json:"config"`
+	// Optional. A description of the version which will be displayed in the UI
+	Message string `json:"message"`
+	// Optional. If true, the defined tasks will run immediately. Otherwise, the version will be created and can be activated in the UI
+	Active bool `json:"activate"`
+	// Optional. If true, the version will be indicated as coming from an ad hoc source and will not display as if it were a patch or commit. If false, it will be assumed to be a commit.
+	IsAdHoc bool `json:"is_adhoc"`
+	// Required. This is the yml config that will be used for defining tasks, variants, and functions.
+	Config []byte `json:"config"`
 
 	sc data.Connector
 }
 
+//	@Summary		Create a new version
+//	@Description	Creates a version and optionally runs it, conceptually similar to a patch. The main difference is that the config yml file is provided in the request, rather than retrieved from the repo.
+//	@Tags			versions
+//	@Param			{object}	body	versionCreateHandler	true	"parameters"
+//	@Router			/versions/ [post]
+//	@Success		200	{object}	model.APIVersion
 func (h *versionCreateHandler) Factory() gimlet.RouteHandler {
 	return &versionCreateHandler{sc: h.sc}
 }

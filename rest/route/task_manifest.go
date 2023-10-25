@@ -19,6 +19,12 @@ func makeGetManifestHandler() gimlet.RouteHandler {
 	return &getManifestHandler{}
 }
 
+//	@Summary		Get manifest for task
+//	@Description	Fetch the manifest for a task using the task ID.
+//	@Tags			manifest
+//	@Router			/tasks/{task_id}/manifest [get]
+//	@Param			task_id	path		string	true	"task ID"
+//	@Success		200		{object}	manifest.Manifest
 func (h *getManifestHandler) Factory() gimlet.RouteHandler {
 	return &getManifestHandler{}
 }

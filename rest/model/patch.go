@@ -19,24 +19,39 @@ import (
 
 // APIPatch is the model to be returned by the API whenever patches are fetched.
 type APIPatch struct {
-	Id                      *string              `json:"patch_id"`
-	Description             *string              `json:"description"`
-	ProjectId               *string              `json:"project_id"`
-	ProjectIdentifier       *string              `json:"project_identifier"`
-	Branch                  *string              `json:"branch"`
-	Githash                 *string              `json:"git_hash"`
-	PatchNumber             int                  `json:"patch_number"`
-	Hidden                  bool                 `json:"hidden"`
-	Author                  *string              `json:"author"`
-	Version                 *string              `json:"version"`
-	Status                  *string              `json:"status"`
-	CreateTime              *time.Time           `json:"create_time"`
-	StartTime               *time.Time           `json:"start_time"`
-	FinishTime              *time.Time           `json:"finish_time"`
-	Variants                []*string            `json:"builds"`
-	Tasks                   []*string            `json:"tasks"`
-	DownstreamTasks         []DownstreamTasks    `json:"downstream_tasks"`
-	VariantsTasks           []VariantTask        `json:"variants_tasks"`
+	// Unique identifier of a specific patch
+	Id *string `json:"patch_id"`
+	// Description of the patch
+	Description *string `json:"description"`
+	// Name of the project
+	ProjectId         *string `json:"project_id"`
+	ProjectIdentifier *string `json:"project_identifier"`
+	// The branch on which the patch was initiated
+	Branch *string `json:"branch"`
+	// Hash of commit off which the patch was initiated
+	Githash *string `json:"git_hash"`
+	// Incrementing counter of user's patches
+	PatchNumber int  `json:"patch_number"`
+	Hidden      bool `json:"hidden"`
+	// 	Author of the patch
+	Author  *string `json:"author"`
+	Version *string `json:"version"`
+	// Status of patch (possible values are "created", "started", "success", or "failed")
+	Status *string `json:"status"`
+	// Time patch was created
+	CreateTime *time.Time `json:"create_time"`
+	// Time patch started to run
+	StartTime *time.Time `json:"start_time"`
+	// Time at patch completion
+	FinishTime *time.Time `json:"finish_time"`
+	// List of identifiers of builds to run for this patch
+	Variants []*string `json:"builds"`
+	// List of identifiers of tasks used in this patch
+	Tasks           []*string         `json:"tasks"`
+	DownstreamTasks []DownstreamTasks `json:"downstream_tasks"`
+	// List of documents of available tasks and associated build variant
+	VariantsTasks []VariantTask `json:"variants_tasks"`
+	// Whether the patch has been finalized and activated
 	Activated               bool                 `json:"activated"`
 	Alias                   *string              `json:"alias,omitempty"`
 	GithubPatchData         githubPatch          `json:"github_patch_data,omitempty"`
@@ -48,7 +63,8 @@ type APIPatch struct {
 	ChildPatchAliases       []APIChildPatchAlias `json:"child_patch_aliases,omitempty"`
 	Requester               *string              `json:"requester"`
 	MergedFrom              *string              `json:"merged_from"`
-	CommitQueuePosition     *int                 `json:"commit_queue_position,omitempty"`
+	// Only populated for commit queue patches: returns the 0-indexed position of the patch on the queue, or -1 if not on the queue anymore
+	CommitQueuePosition *int `json:"commit_queue_position,omitempty"`
 }
 
 type DownstreamTasks struct {
@@ -63,7 +79,9 @@ type ChildPatch struct {
 	Status  *string `json:"status"`
 }
 type VariantTask struct {
-	Name  *string   `json:"name"`
+	// Name of build variant
+	Name *string `json:"name"`
+	// All tasks available to run on this build variant
 	Tasks []*string `json:"tasks"`
 }
 
@@ -95,14 +113,19 @@ type APIParameter struct {
 
 // APIRawPatch contains a patch diff along with its module diffs.
 type APIRawPatch struct {
-	Patch      APIRawModule   `json:"patch"`
+	// The main patch
+	Patch APIRawModule `json:"patch"`
+	// The list of module diffs
 	RawModules []APIRawModule `json:"raw_modules"`
 }
 
 // APIRawModule contains a module diff.
 type APIRawModule struct {
-	Name    string `json:"name"`
-	Diff    string `json:"diff"`
+	// The module name
+	Name string `json:"name"`
+	// The module diff
+	Diff string `json:"diff"`
+	// The githash for the module
 	Githash string `json:"githash"`
 }
 
