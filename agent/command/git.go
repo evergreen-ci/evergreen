@@ -737,6 +737,8 @@ func (c *gitFetchProject) fetchModuleSource(ctx context.Context,
 	// and repo from the string and construct a https cloning link manually.
 	// This is a temporary workaround which will be removed once users have switched over.
 	if strings.Contains(opts.location, "git@github.com:") {
+		logger.Task().Infof("ssh cloning is being deprecated. We are manually converting '%s'"+
+			" to https format. Please update your project config.", opts.location)
 		owner, repo, err := thirdparty.ParseModuleLocation(opts.location)
 		if err != nil {
 			return errors.Wrapf(err, "parsing module repo '%s' in the format git@github.com:", opts.location)
