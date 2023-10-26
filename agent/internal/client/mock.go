@@ -330,7 +330,7 @@ func (c *Mock) GetDataPipesConfig(ctx context.Context) (*apimodels.DataPipesConf
 }
 
 // GetLoggerProducer constructs a single channel log producer.
-func (c *Mock) GetLoggerProducer(ctx context.Context, td TaskData, config *LoggerConfig) (LoggerProducer, error) {
+func (c *Mock) GetLoggerProducer(ctx context.Context, td TaskData, _ *LoggerConfig) (LoggerProducer, error) {
 	if c.GetLoggerProducerShouldFail {
 		return nil, errors.New("operation run in fail mode.")
 	}

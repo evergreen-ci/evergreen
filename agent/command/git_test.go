@@ -349,7 +349,7 @@ func (s *GitGetProjectSuite) TestTokenScrubbedFromLogger() {
 	foundCloneCommand := false
 	foundCloneErr := false
 	for _, line := range s.comm.GetTaskLogs(conf.Task.Id) {
-		if strings.Contains(line.Data, "https://[redacted oauth token]:x-oauth-basic@github.com/evergreen-ci/doesntexist.git") {
+		if strings.Contains(line.Data, "https://[redacted oauth token]:x-oauth-basic@github.com/evergreen-ci/invalidRepo.git") {
 			foundCloneCommand = true
 		}
 		if strings.Contains(line.Data, "Repository not found.") {
@@ -393,7 +393,7 @@ func (s *GitGetProjectSuite) TestStdErrLogged() {
 	foundCloneErr := false
 	foundSSHErr := false
 	for _, line := range s.comm.GetTaskLogs(conf.Task.Id) {
-		if strings.Contains(line.Data, "git clone 'git@github.com:evergreen-ci/doesntexist.git' 'src' --branch 'main'") {
+		if strings.Contains(line.Data, "git clone 'git@github.com:evergreen-ci/invalidRepo.git' 'src' --branch 'main'") {
 			foundCloneCommand = true
 		}
 		if strings.Contains(line.Data, "ERROR: Repository not found.") {
