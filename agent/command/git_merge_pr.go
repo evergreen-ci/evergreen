@@ -75,7 +75,9 @@ func (c *gitMergePR) Execute(ctx context.Context, comm client.Communicator, logg
 	appToken := conf.Expansions.Get(evergreen.GithubAppToken)
 
 	c.statusSender, err = send.NewGithubStatusLogger("evergreen", &send.GithubOptions{
-		Token: token,
+		Token:       token,
+		MinDelay:    evergreen.GithubRetryMinDelay,
+		MaxAttempts: evergreen.GitHubRetryAttempts,
 	}, "")
 	if err != nil {
 		return errors.Wrap(err, "setting up GitHub status logger")

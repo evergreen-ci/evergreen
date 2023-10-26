@@ -451,8 +451,8 @@ github.com/evergreen-ci/timber v0.0.0-20230905184025-88c53a14c47b/go.mod h1:2f2M
 github.com/evergreen-ci/utility v0.0.0-20211026201827-97b21fa2660a/go.mod h1:fuEDytmDhOv+UCUwRPG/qD7mjVkUgx37KEv+thUgHVk=
 github.com/evergreen-ci/utility v0.0.0-20220404192535-d16eb64796e6/go.mod h1:wSui4nRyDZzm2db7Ju7ZzBAelLyVLmcTPJEIh1IdSrc=
 github.com/evergreen-ci/utility v0.0.0-20230104160902-3f0e05a638bd/go.mod h1:vkCEVgfCMIDajzbG/PHZURszI2Y1SuFqNWX9EUxmLLI=
-github.com/evergreen-ci/utility v0.0.0-20230809162904-922cba3c3c3c h1:1MsTaPMQ0eM9KXeqdbbFPPAeXuhckMDKo/DkKLFfzVA=
-github.com/evergreen-ci/utility v0.0.0-20230809162904-922cba3c3c3c/go.mod h1:/9mHqlcrKHRtK2qah6a+/r6xkDpNuOaAJyxNYNgmK6A=
+github.com/evergreen-ci/utility v0.0.0-20231017180358-3a3a0617644d h1:ayWz0PCzn61cGNFxWOux4yuyLWWSbKe9SMTjxFulLbk=
+github.com/evergreen-ci/utility v0.0.0-20231017180358-3a3a0617644d/go.mod h1:/9mHqlcrKHRtK2qah6a+/r6xkDpNuOaAJyxNYNgmK6A=
 github.com/fatih/color v1.7.0/go.mod h1:Zm6kSWBoL9eyXnKyktHP6abPY2pDugNf5KwzbycvMj4=
 github.com/fatih/structs v1.1.0 h1:Q7juDM0QtcnhCpeyLGQKyg4TOIghuNXrkL32pHAUMxo=
 github.com/fatih/structs v1.1.0/go.mod h1:9NiDSp5zOcgEDl+j00MP/WkGVPOlPRLejGD8Ga6PJ7M=
@@ -850,8 +850,8 @@ github.com/mongodb/grip v0.0.0-20211028155128-86e6e47bafdb/go.mod h1:0CTWxPoPDJP
 github.com/mongodb/grip v0.0.0-20211101151816-abbea0c0d465/go.mod h1:686LUUoh+vP85XVjr1ZYqC2mk52m138QmCZ4B2HZYkI=
 github.com/mongodb/grip v0.0.0-20220210164115-898ba2888109/go.mod h1:VAvqrRA7VH0xZmgcZNbN9ksYT20R5XywjeAv6o1CZZ8=
 github.com/mongodb/grip v0.0.0-20220401165023-6a1d9bb90c21/go.mod h1:QfF6CwbaTQx1Kgww77c6ROPBFN+JCiU2qBnk2SjKHyU=
-github.com/mongodb/grip v0.0.0-20230707141614-c686133d52e4 h1:NplzGM1tz0EJ1gZcW4cYIrPGRYhfivZhyUmCuuysmXA=
-github.com/mongodb/grip v0.0.0-20230707141614-c686133d52e4/go.mod h1:spapbbQelDqeUQpDl7A/AlSLFIPUZuk33grixpbniTg=
+github.com/mongodb/grip v0.0.0-20231010153552-fd9e260891f5 h1:rbPGWe4UR/rFmkFZ+n7bGjj6ELIa1r9uBuD46GF5nF8=
+github.com/mongodb/grip v0.0.0-20231010153552-fd9e260891f5/go.mod h1:spapbbQelDqeUQpDl7A/AlSLFIPUZuk33grixpbniTg=
 github.com/mongodb/jasper v0.0.0-20220214215554-82e5a72cff6b h1:VeoszGUVkmmRmPxwiJIiO/psZbPwz7tc6qbX2xDoQLY=
 github.com/mongodb/jasper v0.0.0-20220214215554-82e5a72cff6b/go.mod h1:ZMsAlwE3H8Yh/L9bc3lliN3EZME41wButVxWpt2e4Io=
 github.com/montanaflynn/stats v0.0.0-20171201202039-1bf9dbcd8cbe/go.mod h1:wL8QJuTMNUDYhXwkmfOly8iTdp5TEcJFWZD2D7SIkUc=

@@ -332,6 +332,11 @@ const (
 	GithubAppToken             = "github_app_token"
 	githubAppPrivateKey        = "github_app_key"
 
+	// GitHubRetryAttempts is the github client maximum number of attempts.
+	GitHubRetryAttempts = 3
+	// GitHubRetryMinDelay is the github client's minimum amount of delay before attempting another request.
+	GithubRetryMinDelay = time.Second
+
 	VSCodePort = 2021
 
 	// DefaultTaskSyncAtEndTimeout is the default timeout for task sync at the

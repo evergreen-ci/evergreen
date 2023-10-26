@@ -198,7 +198,7 @@ func (c *xunitResults) parseAndUploadResults(ctx context.Context, conf *internal
 		}
 		cumulative.tests[cumulative.logIdxToTestIdx[i]].LineNum = 1
 	}
-	logger.Task().Infof("Posting test logs succeeded for %d of %d files.", succeeded, len(cumulative.logs))
+	logger.Task().Infof("Posting test logs succeeded for %d of %d logs.", succeeded, len(cumulative.logs))
 	if len(cumulative.tests) > 0 {
 		return sendTestResults(ctx, comm, logger, conf, cumulative.tests)
 	}
