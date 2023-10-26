@@ -9,7 +9,6 @@ import (
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/model/task"
 	"github.com/evergreen-ci/evergreen/taskoutput"
-	"github.com/evergreen-ci/evergreen/testutil"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
@@ -28,18 +27,17 @@ func TestEvergreenCommunicatorConstructor(t *testing.T) {
 }
 
 func TestLoggerClose(t *testing.T) {
-	ctx, cancel := context.WithCancel(context.Background())
-	defer cancel()
-	env := testutil.NewEnvironment(ctx, t)
-
 	server, _ := newMockServer(func(w http.ResponseWriter, _ *http.Request) {
 		data, err := json.Marshal(&task.Task{
 			Id:      "task",
 			Project: "project",
 			TaskOutputInfo: &taskoutput.TaskOutput{
 				TaskLogs: taskoutput.TaskLogOutput{
-					Version:      1,
-					BucketConfig: env.Settings().Buckets.LogBucket,
+					Version: 1,
+					BucketConfig: evergreen.BucketConfig{
+						Name: t.TempDir(),
+						Type: "local",
+					},
 				},
 			},
 		})
