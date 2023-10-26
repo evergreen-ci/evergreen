@@ -639,6 +639,18 @@ func doBisectStepback(ctx context.Context, t *task.Task) error {
 		return errors.Wrapf(err, "setting stepback info for task '%s'", nextTask.Id)
 	}
 
+	grip.Info(message.Fields{
+		"message":                       "bisect stepback",
+		"last_failing_stepback_task_id": s.LastFailingStepbackTaskId,
+		"last_passing_stepback_task_id": s.LastPassingStepbackTaskId,
+		"next_task_id":                  nextTask.Id,
+		"next_task_display_name":        nextTask.DisplayName,
+		"next_task_build_id":            nextTask.BuildId,
+		"last_stepback_task_id":         t.Id,
+		"last_stepback_task_status":     t.Status,
+		"project_id":                    t.Project,
+	})
+
 	// Activate the next task.
 	if err = SetActiveState(ctx, evergreen.StepbackTaskActivator, true, *nextTask); err != nil {
 		return errors.Wrapf(err, "setting task '%s' active", nextTask.Id)

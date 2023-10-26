@@ -6054,7 +6054,29 @@ tasks:
 			assert.True(midTask.Activated)
 		},
 		"GeneratedTasksStepbackGenerator": func(t *testing.T, t10 task.Task) {
-
+			generatedTasks := []task.Task{}
+			for i := 1; i <= 10; i++ {
+				generated := task.Task{
+					Id:                  fmt.Sprintf("g%d", i),
+					BuildId:             fmt.Sprintf("b%d", i),
+					GeneratedBy:         fmt.Sprintf("t%d", i),
+					Status:              evergreen.TaskFailed,
+					BuildVariant:        "bv",
+					DisplayName:         "generated",
+					Project:             "proj",
+					Activated:           false,
+					RevisionOrderNumber: i,
+					Requester:           evergreen.RepotrackerVersionRequester,
+					Version:             "sample_version",
+				}
+				assert.NoError(generated.Insert())
+				generatedTasks = append(generatedTasks, generated)
+			}
+			t10Generated := generatedTasks[9]
+			assert.NoError(evalStepback(ctx, &t10Generated, "", evergreen.TaskFailed, false))
+			midTask, err := task.FindMidwayTaskFromIds("t1", "t10")
+			assert.NoError(err)
+			assert.True(midTask.Activated)
 		},
 	} {
 		t.Run(tName, func(t *testing.T) {

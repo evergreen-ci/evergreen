@@ -299,7 +299,6 @@ func TestAgentSetup(t *testing.T) {
 			assert.Equal(t, data.SplunkServerURL, s.Splunk.SplunkConnectionInfo.ServerURL)
 			assert.Equal(t, data.SplunkClientToken, s.Splunk.SplunkConnectionInfo.Token)
 			assert.Equal(t, data.SplunkChannel, s.Splunk.SplunkConnectionInfo.Channel)
-			assert.Equal(t, data.Buckets, s.Buckets)
 			assert.Equal(t, data.TaskSync, s.Providers.AWS.TaskSync)
 			assert.Equal(t, data.EC2Keys, s.Providers.AWS.EC2Keys)
 		},
@@ -319,12 +318,6 @@ func TestAgentSetup(t *testing.T) {
 			defer cancel()
 
 			s := &evergreen.Settings{
-				Buckets: evergreen.BucketConfig{
-					LogBucket: evergreen.Bucket{
-						Name: "logs",
-						Type: evergreen.BucketTypeS3,
-					},
-				},
 				Splunk: evergreen.SplunkConfig{
 					SplunkConnectionInfo: send.SplunkConnectionInfo{
 						ServerURL: "server_url",

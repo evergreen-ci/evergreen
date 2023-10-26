@@ -169,8 +169,8 @@ func MockConfig() *evergreen.Settings {
 		AWSInstanceRole: "role",
 		Banner:          "banner",
 		BannerTheme:     "important",
-		Buckets: evergreen.BucketConfig{
-			LogBucket: evergreen.Bucket{
+		Buckets: evergreen.BucketsConfig{
+			LogBucket: evergreen.BucketConfig{
 				Name: "logs",
 				Type: evergreen.BucketTypeS3,
 			},
