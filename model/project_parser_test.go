@@ -403,6 +403,17 @@ func TestTranslateTasks(t *testing.T) {
 					},
 				},
 			},
+			{
+				Name: "bv_with_check_run",
+				Tasks: parserBVTaskUnits{
+					{
+						Name: "a_task_with_no_special_configuration",
+						CreateCheckRun: &CheckRun{
+							PathToOutputs: "path",
+						},
+					},
+				},
+			},
 		},
 		Tasks: []parserTask{
 			{Name: "my_task", PatchOnly: utility.TruePtr(), ExecTimeoutSecs: 15},
@@ -421,7 +432,7 @@ func TestTranslateTasks(t *testing.T) {
 	assert.NoError(t, err)
 	assert.NotNil(t, out)
 	require.Len(t, out.Tasks, 6)
-	require.Len(t, out.BuildVariants, 7)
+	require.Len(t, out.BuildVariants, 8)
 
 	for _, bv := range out.BuildVariants {
 		for _, bvtu := range bv.Tasks {
@@ -521,6 +532,12 @@ func TestTranslateTasks(t *testing.T) {
 	assert.Equal(t, "my_task", disabledBV.Tasks[1].Name)
 	assert.True(t, utility.FromBoolPtr(disabledBV.Tasks[1].PatchOnly))
 	assert.False(t, utility.FromBoolPtr(disabledBV.Tasks[1].Disable))
+
+	checkRunBV := out.BuildVariants[7]
+	assert.Equal(t, "bv_with_check_run", checkRunBV.Name)
+	require.Len(t, checkRunBV.Tasks, 1)
+	assert.NotNil(t, checkRunBV.Tasks[0].CreateCheckRun)
+	assert.Equal(t, "path", checkRunBV.Tasks[0].CreateCheckRun.PathToOutputs)
 }
 
 func TestTranslateDependsOn(t *testing.T) {
@@ -725,6 +742,53 @@ func TestParserTaskSelectorEvaluation(t *testing.T) {
 			})
 		})
 	})
+}
+
+func TestTestCheckRunParsing(t *testing.T) {
+	assert := assert.New(t)
+	yml := `
+buildvariants:
+- name: "v1"
+  tasks:
+  - name: "t1"
+    create_check_run:
+      path_to_outputs: "path"
+tasks:
+- name: t1
+`
+
+	proj := &Project{}
+	ctx := context.Background()
+	_, err := LoadProjectInto(ctx, []byte(yml), nil, "id", proj)
+	assert.NotNil(proj)
+	assert.Nil(err)
+	require.Len(t, proj.BuildVariants, 1)
+
+	assert.Len(proj.BuildVariants[0].Tasks, 1)
+	cr := proj.BuildVariants[0].Tasks[0].CreateCheckRun
+	assert.NotNil(cr)
+	assert.Equal("path", cr.PathToOutputs)
+
+	ymlWithEmptyString := `
+buildvariants:
+- name: "v1"
+  tasks:
+  - name: "t1"
+    create_check_run:
+      path_to_outputs: ""
+tasks:
+- name: t1
+`
+
+	_, err = LoadProjectInto(ctx, []byte(ymlWithEmptyString), nil, "id", proj)
+	assert.NotNil(proj)
+	assert.Nil(err)
+	require.Len(t, proj.BuildVariants, 1)
+
+	assert.Len(proj.BuildVariants[0].Tasks, 1)
+	cr = proj.BuildVariants[0].Tasks[0].CreateCheckRun
+	assert.NotNil(cr)
+	assert.Equal("", cr.PathToOutputs)
 }
 
 func TestDisplayTaskParsing(t *testing.T) {

@@ -2869,7 +2869,7 @@ func (t *TriggerDefinition) Validate(parentProject string) error {
 	}
 	// should be saved using its ID, in case the user used the project's identifier
 	t.Project = upstreamProject.Id
-	if t.Level != ProjectTriggerLevelBuild && t.Level != ProjectTriggerLevelTask {
+	if t.Level != ProjectTriggerLevelBuild && t.Level != ProjectTriggerLevelTask && t.Level != ProjectTriggerLevelPush {
 		return errors.Errorf("invalid level: %s", t.Level)
 	}
 	if t.Status != "" && t.Status != evergreen.TaskFailed && t.Status != evergreen.TaskSucceeded {
