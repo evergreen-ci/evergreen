@@ -302,7 +302,7 @@ func ParseGitUrl(url string) (string, string, error) {
 	return owner, repo, nil
 }
 
-// parseModuleLocation extracts the owner and repo from a string
+// ParseModuleLocation extracts the owner and repo from a string
 // in the format "git@github.com:owner/repo.git"
 func ParseModuleLocation(moduleLocation string) (string, string, error) {
 	parts := strings.Split(moduleLocation, ":")
