@@ -63,7 +63,7 @@ func getGithubAppAuth(s *Settings) *githubAppAuth {
 func (s *Settings) HasGitHubApp(ctx context.Context, owner, repo string) (bool, error) {
 	authFields := getGithubAppAuth(s)
 	if authFields == nil {
-		return false, errors.Errorf("GitHub app is not configured in admin settings for '%s/%s'", owner, repo)
+		return false, errors.New("GitHub app is not configured in admin settings")
 	}
 
 	installationID, err := getInstallationID(ctx, authFields, owner, repo)
@@ -94,7 +94,7 @@ func (s *Settings) CreateInstallationTokenWithDefaultOwnerRepo(ctx context.Conte
 func (s *Settings) CreateInstallationToken(ctx context.Context, owner, repo string, opts *github.InstallationTokenOptions) (string, error) {
 	authFields := getGithubAppAuth(s)
 	if authFields == nil {
-		return "", errors.Errorf("GitHub app is not configured in admin settings for '%s/%s'", owner, repo)
+		return "", errors.New("GitHub app is not configured in admin settings")
 	}
 
 	installationID, err := getInstallationID(ctx, authFields, owner, repo)

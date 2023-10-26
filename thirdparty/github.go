@@ -82,8 +82,7 @@ var (
 	cacheTransport  *httpcache.Transport
 
 	// TODO: (EVG-19966) Remove this error type.
-	missingTokenError          = errors.New("missing installation token")
-	gitHubAppNotInstalledError = errors.New("GitHub app is not installed")
+	missingTokenError = errors.New("missing installation token")
 )
 
 type cacheControlTransport struct {

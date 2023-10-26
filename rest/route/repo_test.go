@@ -155,6 +155,8 @@ func TestPatchRepoIDHandler(t *testing.T) {
 	h := repoIDPatchHandler{
 		settings: settings,
 	}
+	settings.AuthConfig.Github.AppId = 1234
+	settings.Expansions["github_app_key"] = "key"
 	body := bytes.NewBuffer([]byte(`{"commit_queue": {"enabled": true}}`))
 	r, err := http.NewRequest(http.MethodGet, "/repos/repo_ref", body)
 	assert.NoError(t, err)
