@@ -1,6 +1,6 @@
 mutation {
   abortTask(taskId: "activated_task") {
-    activated
     aborted
+    activated
   }
 }

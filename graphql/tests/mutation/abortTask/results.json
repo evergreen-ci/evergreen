@@ -5,8 +5,8 @@
       "result": {
         "data": {
           "abortTask": {
-            "activated": false,
-            "aborted": true
+            "aborted": true,
+            "activated": false
           }
         }
       }
@@ -16,8 +16,8 @@
       "result": {
         "data": {
           "abortTask": {
-            "activated": false,
-            "aborted": true
+            "aborted": true,
+            "activated": false
           }
         }
       }
