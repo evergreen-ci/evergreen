@@ -161,8 +161,13 @@ func (h *userPermissionsPostHandler) Run(ctx context.Context) gimlet.Responder {
 }
 
 type deletePermissionsRequest struct {
+	//   resource_type - the type of resources for which to delete permissions. Must
+	//   be one of "project", "distro", "superuser", or "all". "all" will revoke all
+	//   permissions for the user.
 	ResourceType string `json:"resource_type"`
-	ResourceId   string `json:"resource_id"`
+	//   resource_id - the resource ID for which to delete permissions.
+	//   Required unless deleting all permissions.
+	ResourceId string `json:"resource_id"`
 }
 
 const allResourceType = "all"
@@ -180,6 +185,13 @@ func makeDeleteUserPermissions(rm gimlet.RoleManager) gimlet.RouteHandler {
 	}
 }
 
+//	@Summary		Delete user permissions
+//	@Description	Deletes all permissions of a given type for a user by deleting their roles of that type for that resource ID. This ignores the Basic Project/Distro Access that is given to all MongoDB employees.
+//	@Tags			users
+//	@Router			/users/{user_id}/permissions [delete]
+//	@Param			user_id		path	string						true	"the user's ID"
+//	@Param			{object}	body	deletePermissionsRequest	true	"parameters"
+//	@Success		200
 func (h *userPermissionsDeleteHandler) Factory() gimlet.RouteHandler {
 	return &userPermissionsDeleteHandler{
 		rm: h.rm,

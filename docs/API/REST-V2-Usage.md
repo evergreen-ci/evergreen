@@ -69,29 +69,9 @@ We are investigating moving this out of Evergreen (EVG-21065) and won't be suppo
 
 #### Endpoints
 
-##### Delete User Permissions ``````````\`
-
-    DELETE /users/<user_id>/permissions
-
-Deletes all permissions of a given type for a user by deleting their
-roles of that type for that resource ID. This ignores the Basic
-Project/Distro Access that is given to all MongoDB employees.
-
-Note that usage of this endpoint requires that the requesting user have
-security to modify roles. The format of the body is: :
-
-    {
-      "resource_type": "project",
-      "resource_id": "project_id", 
-    }
-
--   resource_type - the type of resources for which to delete
-    permissions. Must be one of "project", "distro", "superuser",
-    or "all". "all" will revoke all permissions for the user.
--   resource_id - the resource ID for which to delete permissions.
-    Required unless deleting all permissions.
-
 ##### Get Users for Role
+
+NOTE: These roles are not part of the OpenAPI spec, since they are part of another package.
 
     GET /roles/<role_id>/users
 
