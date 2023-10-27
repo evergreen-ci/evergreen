@@ -89,11 +89,21 @@ type userPermissionsPostHandler struct {
 }
 
 type RequestedPermissions struct {
-	ResourceType string             `json:"resource_type"`
-	Resources    []string           `json:"resources"`
-	Permissions  gimlet.Permissions `json:"permissions"`
+	// resource_type - the type of resources for which permission is granted. Must be one of "project", "distro", or "superuser"
+	ResourceType string `json:"resource_type"`
+	// resources - an array of strings representing what resources the access is for. For a resource_type of project, this will be a list of projects. For a resource_type of distro, this will be a list of distros.
+	Resources []string `json:"resources"`
+	// permissions - an object whose keys are the permission keys returned by the /permissions endpoint above, and whose values are the levels of access to grant for that permission (also returned by the /permissions endpoint)
+	Permissions gimlet.Permissions `json:"permissions"`
 }
 
+//	@Summary		Give permissions to user
+//	@Description	Grants the user specified by user_id the permissions in the request body.
+//	@Tags			users
+//	@Router			/users/{user_id}/permissions [post]
+//	@Param			user_id		path	string					true	"the user's ID"
+//	@Param			{object}	body	RequestedPermissions	true	"parameters"
+//	@Success		200
 func makeModifyUserPermissions(rm gimlet.RoleManager) gimlet.RouteHandler {
 	return &userPermissionsPostHandler{
 		rm: rm,
@@ -267,6 +277,10 @@ type UsersPermissionsInput struct {
 // UserPermissionsResult is a map from userId to their highest permission for the resource
 type UsersPermissionsResult map[string]gimlet.Permissions
 
+// Swagger-only type, included because this API route returns an external type
+// nolint:staticcheck
+type swaggerUsersPermissionsResult map[string]swaggerPermissions
+
 type allUsersPermissionsGetHandler struct {
 	rm    gimlet.RoleManager
 	input UsersPermissionsInput
@@ -278,6 +292,13 @@ func makeGetAllUsersPermissions(rm gimlet.RoleManager) gimlet.RouteHandler {
 	}
 }
 
+//	@Summary		Get all user permissions for resource
+//	@Description	Retrieves all users with permissions for the resource, and their highest permissions, and returns this as a mapping. This ignores basic permissions that are given to all users.
+//	@Tags			users
+//	@Router			/users/{user_id}/permissions [get]
+//	@Param			user_id	path		string	true	"the user's ID"
+//	@Param			all		query		boolean	false	"If included, we will not filter out basic permissions"
+//	@Success		200		{object}	swaggerUsersPermissionsResult
 func (h *allUsersPermissionsGetHandler) Factory() gimlet.RouteHandler {
 	return &allUsersPermissionsGetHandler{
 		rm: h.rm,
@@ -366,11 +387,41 @@ func makeGetUserPermissions(rm gimlet.RoleManager) gimlet.RouteHandler {
 	}
 }
 
+//	@Summary		Get user permissions
+//	@Description	Retrieves all permissions for the user (ignoring basic permissions that are given to all users, unless all=true is included).
+//	@Tags			users
+//	@Router			/users/{user_id}/permissions [get]
+//	@Param			user_id	path	string	true	"the user's ID"
+//	@Param			all		query	boolean	false	"If included, we will not filter out basic permissions"
+//	@Success		200		{array}	swaggerPermissionSummary
 func (h *userPermissionsGetHandler) Factory() gimlet.RouteHandler {
 	return &userPermissionsGetHandler{
 		rm: h.rm,
 	}
 }
+
+// Swagger-only type, included because this API route returns an external type
+// nolint:staticcheck
+type swaggerPermissionSummary struct {
+	//   type - the type of resources for which the listed permissions apply.
+	//   Will be "project", "distro", or "superuser"
+	Type string `json:"type"`
+	//   permissions - an object whose keys are the resources for which the user has
+	//   permissions. Note that these objects will often have many keys, since
+	//   logged-in users have basic permissions to every project and distro. The
+	//   values in the keys are objects representing the permissions that the user
+	//   has for that resource, identical to the format of the permissions field in
+	//   the POST /users/\<user_id\>/permissions API.
+	Permissions swaggerPermissionsForResources `json:"permissions"`
+}
+
+// Swagger-only type, included because this API route returns an external type
+// nolint:staticcheck
+type swaggerPermissionsForResources map[string]swaggerPermissions
+
+// Swagger-only type, included because this API route returns an external type
+// nolint:staticcheck
+type swaggerPermissions map[string]int
 
 func (h *userPermissionsGetHandler) Parse(ctx context.Context, r *http.Request) error {
 	vars := gimlet.GetVars(r)

@@ -67,6 +67,11 @@ func (h *bannerGetHandler) Parse(ctx context.Context, r *http.Request) error {
 	return nil
 }
 
+//	@Summary		Get the banner
+//	@Description	Fetch the text and type of Evergreen's current banner
+//	@Tags			info
+//	@Router			/admin/banner [get]
+//	@Success		200	{object}	model.APIBanner
 func (h *bannerGetHandler) Run(ctx context.Context) gimlet.Responder {
 	banner, theme, err := data.GetBanner(ctx)
 	if err != nil {

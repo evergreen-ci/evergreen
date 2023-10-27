@@ -113,6 +113,9 @@ func GetRouter(as *APIServer, uis *UIServer) (http.Handler, error) {
 	//	@tag.name					tests
 	//	@tag.description			A test is sent to Evergreen in a known format by a command during a task, parsed by Evergreen, and displayed on the task page.
 	//
+	//	@tag.name					users
+	//	@tag.description			A user is an Evergreen user.
+	//
 	//	@tag.name					versions
 	//	@tag.description			A version, which corresponds to a vertical slice of tasks on the waterfall, is all tasks for a given commit or patch build.
 	apiRestV2 := gimlet.NewApp()
