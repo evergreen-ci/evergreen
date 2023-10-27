@@ -378,9 +378,14 @@ phony += clean
 gqlgen:
 	go run github.com/99designs/gqlgen generate
 
-swaggo:
+swaggo-install:
+	go install github.com/swaggo/swag/cmd/swag@latest
+
+swaggo-build:
 	swag fmt -g service/service.go
 	swag init -g service/service.go
+
+swaggo-render:
 	npx @redocly/cli build-docs docs/swagger.json
 
 # sanitizes a json file by hashing string values. Note that this will not work well with

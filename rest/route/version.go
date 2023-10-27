@@ -27,8 +27,6 @@ func makeGetVersionByID() gimlet.RouteHandler {
 	return &versionHandler{}
 }
 
-// Handler returns a pointer to a new versionHandler.
-//
 //	@Summary		Fetch version by ID
 //	@Description	Fetches a single version using its ID
 //	@Tags			versions

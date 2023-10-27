@@ -40,6 +40,13 @@ func makeFetchProjectsRoute(url string) gimlet.RouteHandler {
 	return &projectGetHandler{url: url}
 }
 
+//	@Summary		Fetch all projects
+//	@Description	Returns a paginated list of all projects. Any authenticated user can access this endpoint, so potentially sensitive information (variables, task annotation settings, workstation settings, and container secrets) is omitted.
+//	@Tags			projects
+//	@Router			/projects [get]
+//	@Param			start_at	query	string	false	"The identifier of the host to start at in the pagination"
+//	@Param			limit		query	int		false	"The number of hosts to be returned per page of pagination. Defaults to 100"
+//	@Success		200			{array}	model.APIProjectRef
 func (p *projectGetHandler) Factory() gimlet.RouteHandler {
 	return &projectGetHandler{url: p.url}
 }
@@ -270,6 +277,12 @@ func makePatchProjectByID(settings *evergreen.Settings) gimlet.RouteHandler {
 	}
 }
 
+//	@Summary		Modify a project
+//	@Description	Modify an existing project (restricted to project admins). Will enable webhooks if an enabled project, and enable PR testing and the commit queue if specified.  For lists, if there is a complementary "delete" field, then the former field indicates items to be added, while the "delete" field indicates items to be deleted. Otherwise, the given list will overwrite the original list (the only exception is for project variables -- we will ignore any empty project variables to avoid accidentally overwriting private variables).
+//	@Tags			projects
+//	@Router			/projects/{project_id} [patch]
+//	@Param			project_id	path		string	true	"the project ID"
+//	@Success		200			{object}	model.APIProjectRef
 func (h *projectIDPatchHandler) Factory() gimlet.RouteHandler {
 	return &projectIDPatchHandler{
 		settings: h.settings,
@@ -644,6 +657,13 @@ func makePutProjectByID(env evergreen.Environment) gimlet.RouteHandler {
 	return &projectIDPutHandler{env: env}
 }
 
+//	@Summary		Put a project
+//	@Description	Create a new project with the given project ID. Restricted to super users.
+//	@Tags			projects
+//	@Router			/projects/{project_id} [put]
+//	@Param			project_id	path		string				true	"the project ID"
+//	@Param			{object}	body		model.APIProjectRef	false	"parameters"
+//	@Success		200			{object}	model.APIProjectRef
 func (h *projectIDPutHandler) Factory() gimlet.RouteHandler {
 	return &projectIDPutHandler{env: h.env}
 }
@@ -782,6 +802,14 @@ func makeGetProjectByID() gimlet.RouteHandler {
 	return &projectIDGetHandler{}
 }
 
+//	@Summary		Get a project
+//	@Description	Returns the project (restricted to project admins). Includes public variables, aliases, and subscriptions. Note that private variables are always redacted. If you want to use this to copy project variables, see instead the "Copy Project Variables" route.
+//	@Tags			projects
+//	@Router			/projects/{project_id} [get]
+//	@Param			project_id				path		string	true	"the project ID"
+//	@Param			includeRepo				query		bool	false	"Setting to true will return the merged result of project and repo level settings. Defaults to false"
+//	@Param			includeProjectConfig	query		bool	false	"Setting to true will return the merged result of the project and the config properties set in the project YAML. Defaults to false"
+//	@Success		200						{object}	model.APIProjectRef
 func (h *projectIDGetHandler) Factory() gimlet.RouteHandler {
 	return &projectIDGetHandler{}
 }
@@ -838,6 +866,21 @@ type getProjectVersionsHandler struct {
 	url         string
 }
 
+//	@Summary		Get versions for a project
+//	@Description	Returns a paginated list of recent versions for a project. Parameters should be passed into the JSON body (the route still accepts limit and start as query parameters to support legacy behavior).
+//	@Tags			versions
+//	@Router			/projects/{project_id}/versions [get]
+//	@Param			project_id			path	string	true	"the project ID"
+//	@Param			skip				query	int		false	"Number of versions to skip."
+//	@Param			limit				query	int		false	"The number of versions to be returned per page of pagination. Defaults to 20."
+//	@Param			start				query	int		false	"The version order number to start at, for pagination. Will return the versions that are less than (and therefore older) the revision number specified."
+//	@Param			revision_end		query	int		false	"Will return the versions that are greater than (and therefore more recent) or equal to revision number specified."
+//	@Param			requester			query	string	false	"Returns versions for this requester only. Defaults to gitter_request (caused by git commit, aka the repotracker requester). Can also be set to patch_request, github_pull_request, trigger_request (Project Trigger versions) , merge_test (commit queue patches), and ad_hoc (periodic builds)."
+//	@Param			include_builds		query	bool	false	"If set, will return some information for each build in the version."
+//	@Param			by_build_variant	query	string	false	"If set, will only include information for this build, and only return versions with this build activated. Must have include_builds set."
+//	@Param			include_tasks		query	bool	false	"If set, will return some information for each task in the included builds. This is only allowed if include_builds is set."
+//	@Param			by_task				query	string	false	"If set, will only include information for this task, and will only return versions with this task activated. Must have include_tasks set."
+//	@Success		200					{array}	model.APIVersion
 func makeGetProjectVersionsHandler(url string) gimlet.RouteHandler {
 	return &getProjectVersionsHandler{url: url}
 }
@@ -950,6 +993,20 @@ func makeModifyProjectVersionsHandler(url string) gimlet.RouteHandler {
 	return &modifyProjectVersionsHandler{url: url}
 }
 
+//	@Summary		Modify versions for a project
+//	@Description	Modifies a group of versions for a project. Parameters should be passed into the JSON body. Currently supports setting priority for all versions that the given options apply to. This route is restricted to project admins.
+//	@Tags			versions
+//	@Router			/projects/{project_id}/versions [patch]
+//	@Param			project_id			path	string	true	"the project ID"
+//	@Param			start_time_str		query	string	true	"Timestamp to start looking for applicable versions."
+//	@Param			end_time_str		query	string	false	"Timestamp to stop looking for applicable versions."
+//	@Param			revision_start		query	int		false	"The version order number to start at."
+//	@Param			revision_end		query	int		false	"The version order number to end at."
+//	@Param			priority			query	int		true	"Priority to set for all tasks within applicable versions."
+//	@Param			requester			query	string	false	"Returns versions for this requester only. Defaults to gitter_request (caused by git commit, aka the repotracker requester). Can also be set to patch_request, github_pull_request, trigger_request (Project Trigger versions) , merge_test (commit queue patches), and ad_hoc (periodic builds)."
+//	@Param			by_build_variant	query	string	false	"If set, will only include information for this build, and only return versions with this build activated. Must have include_builds set."
+//	@Param			by_task				query	string	false	"If set, will only include information for this task, and will only return versions with this task activated. Must have include_tasks set."
+//	@Success		200
 func (h *modifyProjectVersionsHandler) Factory() gimlet.RouteHandler {
 	return &modifyProjectVersionsHandler{url: h.url}
 }
@@ -1043,6 +1100,16 @@ func makeGetProjectTasksHandler(url string) gimlet.RouteHandler {
 	return &getProjectTasksHandler{url: url}
 }
 
+//	@Summary		Get tasks for a project
+//	@Description	Returns the last set number of completed tasks that exist for a given project. Parameters should be passed into the JSON body. Ensure that a task name rather than a task ID is passed into the URL.
+//	@Tags			tasks
+//	@Router			/projects/{project_id}/tasks/{task_name} [get]
+//	@Param			project_id		path	string	true	"the project ID"
+//	@Param			task_name		path	string	true	"the task name"
+//	@Param			num_versions	query	int		false	"The number of latest versions to be searched. Defaults to 20."
+//	@Param			start_at		query	int		false	"The version order number to start returning results after."
+//	@Param			build_variant	query	string	false	"If set, will only include tasks that have run on this build variant."
+//	@Success		200				{array}	model.APITask
 func (h *getProjectTasksHandler) Factory() gimlet.RouteHandler {
 	return &getProjectTasksHandler{url: h.url}
 }
@@ -1076,12 +1143,12 @@ func (h *getProjectTasksHandler) Parse(ctx context.Context, r *http.Request) err
 }
 
 func (h *getProjectTasksHandler) Run(ctx context.Context) gimlet.Responder {
-	versions, err := data.GetProjectTasksWithOptions(ctx, h.projectName, h.taskName, h.opts)
+	tasks, err := data.GetProjectTasksWithOptions(ctx, h.projectName, h.taskName, h.opts)
 	if err != nil {
-		return gimlet.MakeJSONInternalErrorResponder(errors.Wrapf(err, "getting versions for project '%s' and task '%s'", h.projectName, h.taskName))
+		return gimlet.MakeJSONInternalErrorResponder(errors.Wrapf(err, "getting tasks for project '%s' and task '%s'", h.projectName, h.taskName))
 	}
 
-	return gimlet.NewJSONResponse(versions)
+	return gimlet.NewJSONResponse(tasks)
 }
 
 ////////////////////////////////////////////////////////////////////////
@@ -1101,6 +1168,17 @@ func makeGetProjectTaskExecutionsHandler() gimlet.RouteHandler {
 	return &getProjectTaskExecutionsHandler{}
 }
 
+//	@Summary		Get execution info for a task
+//	@Description	Right now, this returns the number of times the given task has executed (i.e. succeeded or failed). Parameters should be passed into the JSON body.
+//	@Tags			tasks
+//	@Router			/projects/{project_id}/task_executions [get]
+//	@Param			project_id		path		string							true	"the project ID"
+//	@Param			task_name		query		string							true	"The task to return execution info for."
+//	@Param			build_variant	query		string							true	"The build variant to return task execution info for."
+//	@Param			start_time		query		string							true	"Will only return execution info after this time. Format should be 2022-12-01T12:30:00.000Z"
+//	@Param			end_time		query		string							false	"If not provided, will default to the current time."
+//	@Param			requesters		query		[]string						false	"If not provided, will default to gitter_request (versions created by git commit). Can also be github_pull_request, trigger_request (Project Trigger versions) , merge_test (commit queue patches), or ad_hoc (periodic builds)"
+//	@Success		200				{object}	model.ProjectTaskExecutionResp	"number completed"
 func (h *getProjectTaskExecutionsHandler) Factory() gimlet.RouteHandler {
 	return &getProjectTaskExecutionsHandler{}
 }
@@ -1175,6 +1253,14 @@ func makeGetProjectAliasResultsHandler() gimlet.RouteHandler {
 	return &GetProjectAliasResultsHandler{}
 }
 
+//	@Summary		Check project alias results
+//	@Description	Checks a specified project alias in a specified project against an Evergreen configuration, returning the tasks and variants that alias would select. Currently only supports passing in the configuration via an already-created version.
+//	@Tags			projects
+//	@Router			/projects/test_alias [get]
+//	@Param			version			query		string	true	"version"
+//	@Param			alias			query		string	true	"alias"
+//	@Param			include_deps	query		bool	false	"include dependencies"
+//	@Success		200				{object}	model.APIVariantTasks
 func (p *GetProjectAliasResultsHandler) Factory() gimlet.RouteHandler {
 	return &GetProjectAliasResultsHandler{}
 }
@@ -1267,6 +1353,12 @@ func makeFetchParameters() gimlet.RouteHandler {
 	return &projectParametersGetHandler{}
 }
 
+//	@Summary		Get current parameters for a project
+//	@Description	Returns a list of parameters for the project.
+//	@Tags			projects
+//	@Router			/projects/{project_id}/parameters [get]
+//	@Param			project_id	path	string	true	"the project ID"
+//	@Success		200			{array}	model.APIParameterInfo
 func (h *projectParametersGetHandler) Factory() gimlet.RouteHandler {
 	return &projectParametersGetHandler{}
 }
@@ -1321,6 +1413,14 @@ func makeProjectVarsPut() gimlet.RouteHandler {
 	return &projectVarsPutHandler{}
 }
 
+//	@Summary		Rotate variables
+//	@Description	Restricted to superusers due to the fact it modifies ALL projects.
+//	@Tags			projects
+//	@Router			/projects/variables/rotate [put]
+//	@Param			to_replace	query		string				true	"Variable value to search and replace."
+//	@Param			replacement	query		string				true	"Value to replace the variables that match to_replace."
+//	@Param			dry_run		query		bool				false	"If set to true, we don't complete the update"
+//	@Success		200			{object}	map[string][]string	"If dry_run is set, a map of projectId to a list of keys that would be replaced. Otherwise, a map of projectId to a list of keys that were replaced."
 func (h *projectVarsPutHandler) Factory() gimlet.RouteHandler {
 	return &projectVarsPutHandler{}
 }
