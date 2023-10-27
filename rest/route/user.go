@@ -97,13 +97,13 @@ type RequestedPermissions struct {
 	Permissions gimlet.Permissions `json:"permissions"`
 }
 
-//	@Summary		Give permissions to user
-//	@Description	Grants the user specified by user_id the permissions in the request body.
-//	@Tags			users
-//	@Router			/users/{user_id}/permissions [post]
-//	@Param			user_id		path	string					true	"the user's ID"
-//	@Param			{object}	body	RequestedPermissions	true	"parameters"
-//	@Success		200
+// @Summary		Give permissions to user
+// @Description	Grants the user specified by user_id the permissions in the request body.
+// @Tags			users
+// @Router			/users/{user_id}/permissions [post]
+// @Param			user_id		path	string					true	"the user's ID"
+// @Param			{object}	body	RequestedPermissions	true	"parameters"
+// @Success		200
 func makeModifyUserPermissions(rm gimlet.RoleManager) gimlet.RouteHandler {
 	return &userPermissionsPostHandler{
 		rm: rm,
@@ -185,13 +185,13 @@ func makeDeleteUserPermissions(rm gimlet.RoleManager) gimlet.RouteHandler {
 	}
 }
 
-//	@Summary		Delete user permissions
-//	@Description	Deletes all permissions of a given type for a user by deleting their roles of that type for that resource ID. This ignores the Basic Project/Distro Access that is given to all MongoDB employees.
-//	@Tags			users
-//	@Router			/users/{user_id}/permissions [delete]
-//	@Param			user_id		path	string						true	"the user's ID"
-//	@Param			{object}	body	deletePermissionsRequest	true	"parameters"
-//	@Success		200
+// @Summary		Delete user permissions
+// @Description	Deletes all permissions of a given type for a user by deleting their roles of that type for that resource ID. This ignores the Basic Project/Distro Access that is given to all MongoDB employees.
+// @Tags		users
+// @Router		/users/{user_id}/permissions [delete]
+// @Param		user_id		path	string						true	"the user's ID"
+// @Param		{object}	body	deletePermissionsRequest	true	"parameters"
+// @Success		200
 func (h *userPermissionsDeleteHandler) Factory() gimlet.RouteHandler {
 	return &userPermissionsDeleteHandler{
 		rm: h.rm,
@@ -290,7 +290,7 @@ type UsersPermissionsInput struct {
 type UsersPermissionsResult map[string]gimlet.Permissions
 
 // Swagger-only type, included because this API route returns an external type
-// nolint:staticcheck
+// nolint:all
 type swaggerUsersPermissionsResult map[string]swaggerPermissions
 
 type allUsersPermissionsGetHandler struct {
@@ -304,13 +304,13 @@ func makeGetAllUsersPermissions(rm gimlet.RoleManager) gimlet.RouteHandler {
 	}
 }
 
-//	@Summary		Get all user permissions for resource
-//	@Description	Retrieves all users with permissions for the resource, and their highest permissions, and returns this as a mapping. This ignores basic permissions that are given to all users.
-//	@Tags			users
-//	@Router			/users/{user_id}/permissions [get]
-//	@Param			user_id	path		string	true	"the user's ID"
-//	@Param			all		query		boolean	false	"If included, we will not filter out basic permissions"
-//	@Success		200		{object}	swaggerUsersPermissionsResult
+// @Summary		Get all user permissions for resource
+// @Description	Retrieves all users with permissions for the resource, and their highest permissions, and returns this as a mapping. This ignores basic permissions that are given to all users.
+// @Tags			users
+// @Router			/users/{user_id}/permissions [get]
+// @Param			user_id	path		string	true	"the user's ID"
+// @Param			all		query		boolean	false	"If included, we will not filter out basic permissions"
+// @Success		200		{object}	swaggerUsersPermissionsResult
 func (h *allUsersPermissionsGetHandler) Factory() gimlet.RouteHandler {
 	return &allUsersPermissionsGetHandler{
 		rm: h.rm,
@@ -399,13 +399,13 @@ func makeGetUserPermissions(rm gimlet.RoleManager) gimlet.RouteHandler {
 	}
 }
 
-//	@Summary		Get user permissions
-//	@Description	Retrieves all permissions for the user (ignoring basic permissions that are given to all users, unless all=true is included).
-//	@Tags			users
-//	@Router			/users/{user_id}/permissions [get]
-//	@Param			user_id	path	string	true	"the user's ID"
-//	@Param			all		query	boolean	false	"If included, we will not filter out basic permissions"
-//	@Success		200		{array}	swaggerPermissionSummary
+// @Summary		Get user permissions
+// @Description	Retrieves all permissions for the user (ignoring basic permissions that are given to all users, unless all=true is included).
+// @Tags			users
+// @Router			/users/{user_id}/permissions [get]
+// @Param			user_id	path	string	true	"the user's ID"
+// @Param			all		query	boolean	false	"If included, we will not filter out basic permissions"
+// @Success		200		{array}	swaggerPermissionSummary
 func (h *userPermissionsGetHandler) Factory() gimlet.RouteHandler {
 	return &userPermissionsGetHandler{
 		rm: h.rm,
@@ -413,7 +413,7 @@ func (h *userPermissionsGetHandler) Factory() gimlet.RouteHandler {
 }
 
 // Swagger-only type, included because this API route returns an external type
-// nolint:staticcheck
+// nolint:all
 type swaggerPermissionSummary struct {
 	//   type - the type of resources for which the listed permissions apply.
 	//   Will be "project", "distro", or "superuser"
@@ -428,11 +428,11 @@ type swaggerPermissionSummary struct {
 }
 
 // Swagger-only type, included because this API route returns an external type
-// nolint:staticcheck
+// nolint:all
 type swaggerPermissionsForResources map[string]swaggerPermissions
 
 // Swagger-only type, included because this API route returns an external type
-// nolint:staticcheck
+// nolint:all
 type swaggerPermissions map[string]int
 
 func (h *userPermissionsGetHandler) Parse(ctx context.Context, r *http.Request) error {

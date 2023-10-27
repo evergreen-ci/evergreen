@@ -32,16 +32,16 @@ func makeFetchTasksByBuild(parsleyURL, url string) gimlet.RouteHandler {
 	}
 }
 
-//	@Summary		List tasks by build
-//	@Description	List all tasks within a specific build.
-//	@Tags			tasks
-//	@Router			/builds/{build_id}/tasks [get]
-//	@Param			build_id				path	string	true	"the build ID"
-//	@Param			start_at				query	string	false	"The identifier of the task to start at in the pagination"
-//	@Param			limit					query	int		false	"The number of tasks to be returned per page of pagination. Defaults to 100"
-//	@Param			fetch_all_executions	query	boolean	false	"Fetches previous executions of tasks if they are available"
-//	@Param			fetch_parent_ids		query	boolean	false	"Fetches the parent display task ID for each returned execution task"
-//	@Success		200						{array}	model.APITask
+// @Summary		List tasks by build
+// @Description	List all tasks within a specific build.
+// @Tags		tasks
+// @Router		/builds/{build_id}/tasks [get]
+// @Param		build_id				path	string	true	"the build ID"
+// @Param		start_at				query	string	false	"The identifier of the task to start at in the pagination"
+// @Param		limit					query	int		false	"The number of tasks to be returned per page of pagination. Defaults to 100"
+// @Param		fetch_all_executions	query	boolean	false	"Fetches previous executions of tasks if they are available"
+// @Param		fetch_parent_ids		query	boolean	false	"Fetches the parent display task ID for each returned execution task"
+// @Success		200						{array}	model.APITask
 func (tbh *tasksByBuildHandler) Factory() gimlet.RouteHandler {
 	return &tasksByBuildHandler{
 		limit:      tbh.limit,
