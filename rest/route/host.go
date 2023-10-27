@@ -41,14 +41,14 @@ func makeChangeHostsStatuses() gimlet.RouteHandler {
 	return &hostsChangeStatusesHandler{}
 }
 
-//	@Summary		Fetch all hosts
-//	@Description	Returns a paginated list of all hosts in Evergreen
-//	@Tags			hosts
-//	@Router			/hosts [get]
-//	@Param			start_at	query		string	false	"The identifier of the host to start at in the pagination"
-//	@Param			limit		query		int		false	"The number of hosts to be returned per page of pagination. Defaults to 100"
-//	@Param			status		query		string	false	"A status of host to limit the results to"
-//	@Success		200			{object}	model.APIHost
+// @Summary		Fetch all hosts
+// @Description	Returns a paginated list of all hosts in Evergreen
+// @Tags		hosts
+// @Router		/hosts [get]
+// @Param		start_at	query		string	false	"The identifier of the host to start at in the pagination"
+// @Param		limit		query		int		false	"The number of hosts to be returned per page of pagination. Defaults to 100"
+// @Param		status		query		string	false	"A status of host to limit the results to"
+// @Success		200			{object}	model.APIHost
 func (h *hostsChangeStatusesHandler) Factory() gimlet.RouteHandler {
 	return &hostsChangeStatusesHandler{}
 }
@@ -114,12 +114,12 @@ type hostIDGetHandler struct {
 	hostID string
 }
 
-//	@Summary		Fetch hosts by ID
-//	@Description	Fetches a single host using its ID
-//	@Tags			hosts
-//	@Router			/hosts/{host_id} [get]
-//	@Param			host_id	path		string	true	"the host ID"
-//	@Success		200		{object}	model.APIHost
+// @Summary		Fetch hosts by ID
+// @Description	Fetches a single host using its ID
+// @Tags		hosts
+// @Router		/hosts/{host_id} [get]
+// @Param		host_id	path		string	true	"the host ID"
+// @Success		200		{object}	model.APIHost
 func (h *hostIDGetHandler) Factory() gimlet.RouteHandler {
 	return &hostIDGetHandler{}
 }
@@ -180,15 +180,15 @@ type hostGetHandler struct {
 	url    string
 }
 
-//	@Summary		Fetch hosts spawned by user
-//	@Description	Returns a list of hosts spawned by the given user.
-//	@Tags			hosts
-//	@Router			/users/{user_id}/hosts [get]
-//	@Param			user_id		path		string	true	"the user ID"
-//	@Param			start_at	query		string	false	"The identifier of the host to start at in the pagination"
-//	@Param			limit		query		int		false	"The number of hosts to be returned per page of pagination. Defaults to 100"
-//	@Param			status		query		string	false	"A status of host to limit the results to"
-//	@Success		200			{object}	model.APIHost
+// @Summary		Fetch hosts spawned by user
+// @Description	Returns a list of hosts spawned by the given user.
+// @Tags		hosts
+// @Router		/users/{user_id}/hosts [get]
+// @Param		user_id		path		string	true	"the user ID"
+// @Param		start_at	query		string	false	"The identifier of the host to start at in the pagination"
+// @Param		limit		query		int		false	"The number of hosts to be returned per page of pagination. Defaults to 100"
+// @Param		status		query		string	false	"A status of host to limit the results to"
+// @Success		200			{object}	model.APIHost
 func (hgh *hostGetHandler) Factory() gimlet.RouteHandler {
 	return &hostGetHandler{url: hgh.url}
 }
