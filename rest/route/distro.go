@@ -603,6 +603,11 @@ func makeDistroRoute() gimlet.RouteHandler {
 	return &distroGetHandler{}
 }
 
+//	@Summary		Get distros
+//	@Description	Fetches distros defined in the system
+//	@Tags			distros
+//	@Router			/distros [get]
+//	@Success		200	{array}	model.APIDistro
 func (h *distroGetHandler) Factory() gimlet.RouteHandler {
 	return &distroGetHandler{}
 }

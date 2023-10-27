@@ -15,6 +15,11 @@ func makeFetchCLIVersionRoute() gimlet.RouteHandler {
 	return &cliVersion{}
 }
 
+//	@Summary		Fetch CLI client version
+//	@Description	Fetch the CLI update manifest from the server
+//	@Tags			info
+//	@Router			/status/cli_version [get]
+//	@Success		200	{object}	model.APICLIUpdate
 func (gh *cliVersion) Factory() gimlet.RouteHandler {
 	return &cliVersion{}
 }
