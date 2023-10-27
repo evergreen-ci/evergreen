@@ -1,0 +1,43 @@
+{
+  "versions": [
+    {
+      "_id": "5dd2e89cd1fe07048e43bb9c",
+      "identifier": "spruce",
+      "gitspec": "5e823e1f28baeaa22ae00823d83e03082cd148ab",
+      "r": "gitter_request",
+      "requester": "gitter_request"
+    },
+    {
+      "_id": "5e4ff3abe3c3317e352062e4",
+      "identifier": "spruce",
+      "gitspec": "5e823e1f28baeaa22ae00823d83e03082cd148ab",
+      "r": "gitter_request",
+      "requester": "gitter_request"
+    },
+    {
+      "_id": "5d7288d91f8c8a403bc34a7d",
+      "identifier": "spruce",
+      "r": "gitter_request",
+      "requester": "gitter_request"
+    }
+  ],
+  "patches": [
+    {
+      "_id": {
+        "$oid": "5e4ff3abe3c3317e352062e4"
+      },
+      "branch": "evergreen",
+      "version": "5e4ff3abe3c3317e352062e4",
+      "activated": true,
+      "githash": "5e823e1f28baeaa22ae00823d83e03082cd148ab"
+    },
+    {
+      "_id": {
+        "$oid": "5d7288d91f8c8a403bc34a7d"
+      },
+      "version": "5d7288d91f8c8a403bc34a7d",
+      "desc": "NO BASE COMMIT PATCH",
+      "branch": "mongodb-mongo-master"
+    }
+  ]
+}

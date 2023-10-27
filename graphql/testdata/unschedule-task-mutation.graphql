@@ -1,5 +1,0 @@
-mutation {
-  unscheduleTask(taskId: "wuzzup-activated") {
-    activated
-  }
-}

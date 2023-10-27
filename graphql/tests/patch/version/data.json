@@ -1,0 +1,33 @@
+{
+  "versions": [
+    {
+      "_id": "5dd2e89cd1fe07048e43bb9c",
+      "identifier": "spruce",
+      "gitspec": "5e823e1f28baeaa22ae00823d83e03082cd148ab",
+      "r": "gitter_request",
+      "requester": "gitter_request"
+    }
+  ],
+  "patches": [
+    {
+      "_id": {
+        "$oid": "9e4ff3abe3c3317e352062e4"
+      },
+      "desc": "'evergreen-ci/spruce' pull request #27 by tgrander: Refactor App + Use Context for global state (https://github.com/evergreen-ci/spruce/pull/27)",
+      "branch": "spruce",
+      "githash": "3b53f9b61226491cd31113c773d66e351957ed29",
+      "patch_number": 20,
+      "author": "trey.granderson",
+      "version": "5dd2e89cd1fe07048e43bb9c",
+      "status": "started"
+    },
+    {
+      "_id": {
+        "$oid": "5c74085f32f41738270aeba8"
+      },
+      "desc": "PATCH ON COMMIT QUEUE",
+      "branch": "mongodb-mongo-master",
+      "alias": "__commit_queue"
+    }
+  ]
+}

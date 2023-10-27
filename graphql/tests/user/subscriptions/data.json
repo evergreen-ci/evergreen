@@ -1,0 +1,29 @@
+{
+  "subscriptions": [
+    {
+      "_id": "61326406a620e4737f57003e",
+      "type": "VERSION",
+      "trigger": "family-outcome",
+      "selectors": [
+        {
+          "type": "project",
+          "data": "613256a4a620e4737f570038"
+        },
+        {
+          "type": "requester",
+          "data": "gitter_request"
+        }
+      ],
+      "regex_selectors": [],
+      "subscriber": {
+        "type": "slack",
+        "target": "@me"
+      },
+      "owner": "testuser",
+      "owner_type": "person",
+      "trigger_data": {
+        "requester": "gitter_request"
+      }
+    }
+  ]
+}

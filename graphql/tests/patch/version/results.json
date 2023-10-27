@@ -1,0 +1,26 @@
+{
+  "tests": [
+    {
+      "query_file": "version_null.graphql",
+      "result": {
+        "data": {
+          "patch": {
+            "versionFull": null
+          }
+        }
+      }
+    },
+    {
+      "query_file": "version.graphql",
+      "result": {
+        "data": {
+          "patch": {
+            "versionFull": {
+              "id": "5dd2e89cd1fe07048e43bb9c"
+            }
+          }
+        }
+      }
+    }
+  ]
+}

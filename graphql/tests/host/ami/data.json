@@ -1,0 +1,146 @@
+{
+  "hosts": [
+    {
+      "_id": "ubuntu1604-ppc-1.pic.build.10gen.cc",
+      "container_images": null,
+      "creation_time": {
+        "$date": "2018-09-19T13:32:26.199Z"
+      },
+      "distro": {
+        "_id": "ubuntu1604-power8-large",
+        "aliases": [
+          "ubuntu1604-power8",
+          "ubuntu1604-power8-build"
+        ],
+        "arch": "linux_ppc64le",
+        "work_dir": "/data/mci",
+        "provider": "static",
+        "provider_settings": [
+          {
+            "ami": "ami-0b69ea66ff7391e80",
+            "hosts": [
+              {
+                "name": "ubuntu1604-ppc-1.pic.build.10gen.cc"
+              },
+              {
+                "name": "ubuntu1604-ppc-4.pic.build.10gen.cc"
+              }
+            ]
+          }
+        ],
+        "user": "mci-exec",
+        "bootstrap_settings": {
+          "method": "legacy-ssh",
+          "communication": "legacy-ssh",
+          "resource_limits": {}
+        },
+        "clone_method": "legacy-ssh",
+        "ssh_key": "mci",
+        "ssh_options": [
+          "StrictHostKeyChecking=no",
+          "BatchMode=yes",
+          "ConnectTimeout=10"
+        ],
+        "spawn_allowed": false,
+        "expansions": [
+          {
+            "key": "decompress",
+            "value": "tar xzvf"
+          },
+          {
+            "key": "ps",
+            "value": "ps aux"
+          },
+          {
+            "key": "kill_pid",
+            "value": "kill -- -$(ps opgid= %v)"
+          }
+        ],
+        "finder_settings": {
+          "version": "legacy"
+        },
+        "planner_settings": {
+          "version": "tunable",
+          "target_time": {
+            "$numberLong": "0"
+          },
+          "group_versions": false,
+          "patch_zipper_factor": {
+            "$numberLong": "0"
+          },
+          "patch_time_in_queue_factor": {
+            "$numberLong": "0"
+          },
+          "commit_queue_factor": {
+            "$numberLong": "0"
+          },
+          "mainline_time_in_queue_factor": {
+            "$numberLong": "0"
+          },
+          "expected_runtime_factor": {
+            "$numberLong": "0"
+          }
+        },
+        "dispatcher_settings": {
+          "version": "revised-with-dependencies"
+        },
+        "host_allocator_settings": {
+          "version": "utilization",
+          "minimum_hosts": 0,
+          "maximum_hosts": 0,
+          "acceptable_host_idle_time": {
+            "$numberLong": "0"
+          }
+        },
+        "disable_shallow_clone": false,
+        "note": "",
+        "is_virtual_workstation": false,
+        "is_cluster": false,
+        "home_volume_settings": {
+          "format_command": ""
+        },
+        "icecream_settings": {}
+      },
+      "expiration_time": {
+        "$date": "0001-01-01T00:00:00Z"
+      },
+      "has_containers": false,
+      "host_id": "ubuntu1604-ppc-1.pic.build.10gen.cc",
+      "host_type": "static",
+      "instance_type": "",
+      "priv_attempts": 0,
+      "project": "",
+      "provision_options": null,
+      "provisioned": true,
+      "start_time": {
+        "$date": "0001-01-01T00:00:00Z"
+      },
+      "started_by": "mci",
+      "status": "running",
+      "tag": "",
+      "user": "mci-exec",
+      "zone": "",
+      "agent_revision": "2020-07-18",
+      "last_communication": {
+        "$date": "2020-07-20T19:19:29.576Z"
+      },
+      "needs_agent": false,
+      "agent_deploy_attempt": 91,
+      "last_task_completed_time": {
+        "$date": "2020-07-18T18:07:09.575Z"
+      },
+      "last_bv": "power8-ubuntu1604",
+      "last_group": "",
+      "last_project": "cxx-driver",
+      "last_task": "cxx_driver_power8_ubuntu1604_compile_with_shared_libs_1a7f2eeb898987c0b4f40b8988ffd78d7f132dfc_20_07_17_22_42_05",
+      "last_version": "cxx_driver_1a7f2eeb898987c0b4f40b8988ffd78d7f132dfc",
+      "needs_agent_monitor": false,
+      "jasper_credentials_id": "",
+      "jasper_deploy_attempts": 0,
+      "agent_start_time": {
+        "$date": "2019-08-15T12:58:20.426Z"
+      },
+      "jasper_restart_attempts": 0
+    }
+  ]
+}
