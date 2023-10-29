@@ -70,13 +70,7 @@ func getGithubAppAuth(s *Settings) *githubAppAuth {
 func (s *Settings) HasGitHubApp(ctx context.Context, owner, repo string) (bool, error) {
 	authFields := getGithubAppAuth(s)
 	if authFields == nil {
-		grip.Debug(message.Fields{
-			"message": "GitHub app is not configured in admin settings",
-			"caller":  "HasGitHubApp",
-			"owner":   owner,
-			"repo":    repo,
-		})
-		return false, nil
+		return false, errors.New("GitHub app is not configured in admin settings")
 	}
 
 	installationID, err := getInstallationID(ctx, authFields, owner, repo)
