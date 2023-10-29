@@ -36,6 +36,14 @@ var (
 	gitHubAppNotInstalledError = errors.New("GitHub app is not installed")
 )
 
+type GitHubAppInstallation struct {
+	Owner string `bson:"owner"`
+	Repo  string `bson:"repo"`
+
+	// InstallationID is the GitHub app's installation ID for the owner/repo.
+	InstallationID int64 `bson:"installation_id"`
+}
+
 type githubAppAuth struct {
 	appId      int64
 	privateKey []byte
@@ -62,7 +70,13 @@ func getGithubAppAuth(s *Settings) *githubAppAuth {
 func (s *Settings) HasGitHubApp(ctx context.Context, owner, repo string) (bool, error) {
 	authFields := getGithubAppAuth(s)
 	if authFields == nil {
-		return false, errors.New("GitHub app is not configured in admin settings")
+		grip.Debug(message.Fields{
+			"message": "GitHub app is not configured in admin settings",
+			"caller":  "HasGitHubApp",
+			"owner":   owner,
+			"repo":    repo,
+		})
+		return false, nil
 	}
 
 	installationID, err := getInstallationID(ctx, authFields, owner, repo)
@@ -136,14 +150,6 @@ func getInstallationID(ctx context.Context, authFields *githubAppAuth, owner, re
 
 }
 
-type GitHubAppInstallation struct {
-	Owner string `bson:"owner"`
-	Repo  string `bson:"repo"`
-
-	// InstallationID is the GitHub app's installation ID for the owner/repo.
-	InstallationID int64 `bson:"installation_id"`
-}
-
 func byOwnerRepo(owner, repo string) bson.M {
 	q := bson.M{
 		ownerKey: owner,
@@ -196,6 +202,8 @@ func getInstallationIDFromCache(ctx context.Context, owner, repo string) (int64,
 	return installation.InstallationID, nil
 }
 
+// getGitHubClientForAuth returns a GitHub client with the GitHub app's private key.
+// This function cannot be moved to thirdparty because it is needed to set up the environment.
 func getGitHubClientForAuth(authFields *githubAppAuth) (*github.Client, error) {
 	retryConf := utility.NewDefaultHTTPRetryConf()
 	retryConf.MaxDelay = GitHubRetryMaxDelay
@@ -215,6 +223,8 @@ func getGitHubClientForAuth(authFields *githubAppAuth) (*github.Client, error) {
 	return client, nil
 }
 
+// getInstallationIDFromGitHub returns an installation ID from GitHub given an owner and a repo.
+// This function cannot be moved to thirdparty because it is needed to set up the environment.
 func getInstallationIDFromGitHub(ctx context.Context, authFields *githubAppAuth, owner, repo string) (int64, error) {
 	client, err := getGitHubClientForAuth(authFields)
 	if err != nil {
@@ -245,6 +255,8 @@ func getInstallationIDFromGitHub(ctx context.Context, authFields *githubAppAuth,
 	return installation.GetID(), nil
 }
 
+// createInstallationToken returns an installation token from GitHub given an installation ID.
+// This function cannot be moved to thirdparty because it is needed to set up the environment.
 func createInstallationToken(ctx context.Context, authFields *githubAppAuth, installationID int64, opts *github.InstallationTokenOptions) (string, error) {
 	client, err := getGitHubClientForAuth(authFields)
 	if err != nil {

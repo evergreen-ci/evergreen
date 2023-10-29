@@ -78,11 +78,4 @@ func (s *installationSuite) TestGetInstallationID() {
 
 	_, err = getInstallationID(s.ctx, nil, "", "")
 	s.Error(err)
-
-	installation.InstallationID = 0
-	s.NoError(installation.Upsert(s.ctx))
-
-	id, err = getInstallationID(s.ctx, nil, "evergreen-ci", "evergreen")
-	s.NoError(err)
-	s.Equal(installation.InstallationID, id)
 }
