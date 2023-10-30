@@ -411,8 +411,7 @@ func SaveProjectSettingsForSection(ctx context.Context, projectId string, change
 		}
 	case model.ProjectPageTriggersSection:
 		for i := range mergedSection.Triggers {
-			err = mergedSection.Triggers[i].Validate(projectId)
-			catcher.Add(err)
+			catcher.Add(mergedSection.Triggers[i].Validate(projectId))
 		}
 		if catcher.HasErrors() {
 			return nil, errors.Wrap(catcher.Resolve(), "invalid project trigger")
