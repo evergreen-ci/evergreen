@@ -27,12 +27,12 @@ func makeGetVersionByID() gimlet.RouteHandler {
 	return &versionHandler{}
 }
 
-//	@Summary		Fetch version by ID
-//	@Description	Fetches a single version using its ID
-//	@Tags			versions
-//	@Router			/versions/{version_id} [get]
-//	@Param			version_id	path		string	true	"version ID"
-//	@Success		200			{object}	model.APIVersion
+// @Summary		Fetch version by ID
+// @Description	Fetches a single version using its ID
+// @Tags			versions
+// @Router			/versions/{version_id} [get]
+// @Param			version_id	path		string	true	"version ID"
+// @Success		200			{object}	model.APIVersion
 func (vh *versionHandler) Factory() gimlet.RouteHandler {
 	return &versionHandler{}
 }
@@ -82,13 +82,13 @@ func makePatchVersion() gimlet.RouteHandler {
 	return &versionPatchHandler{}
 }
 
-//	@Summary		Activate or deactivate a version
-//	@Description	Activate or deactivates a given version. Does not return the version.
-//	@Tags			versions
-//	@Router			/versions/{version_id} [patch]
-//	@Param			version_id	path	string				true	"the version ID"
-//	@Param			{object}	body	versionPatchHandler	true	"parameters"
-//	@Success		200
+// @Summary		Activate or deactivate a version
+// @Description	Activate or deactivates a given version. Does not return the version.
+// @Tags			versions
+// @Router			/versions/{version_id} [patch]
+// @Param			version_id	path	string				true	"the version ID"
+// @Param			{object}	body	versionPatchHandler	true	"parameters"
+// @Success		200
 func (vh *versionPatchHandler) Factory() gimlet.RouteHandler {
 	return &versionPatchHandler{}
 }

@@ -33,14 +33,14 @@ func makeGetTaskRoute(parsleyURL, url string) gimlet.RouteHandler {
 		url:        url}
 }
 
-//	@Summary		Get a single task
-//	@Description	Fetch a single task using its ID
-//	@Tags			tasks
-//	@Router			/tasks/{task_id} [get]
-//	@Param			task_id					path		string	true	"task ID"
-//	@Param			execution				query		int		false	"The 0-based number corresponding to the execution of the task ID. Defaults to the latest execution"
-//	@Param			fetch_all_executions	query		string	false	"Fetches previous executions of the task if they are available"
-//	@Success		200						{object}	model.APITask
+// @Summary		Get a single task
+// @Description	Fetch a single task using its ID
+// @Tags			tasks
+// @Router			/tasks/{task_id} [get]
+// @Param			task_id					path		string	true	"task ID"
+// @Param			execution				query		int		false	"The 0-based number corresponding to the execution of the task ID. Defaults to the latest execution"
+// @Param			fetch_all_executions	query		string	false	"Fetches previous executions of the task if they are available"
+// @Success		200						{object}	model.APITask
 func (tgh *taskGetHandler) Factory() gimlet.RouteHandler {
 	return &taskGetHandler{parsleyURL: tgh.parsleyURL, url: tgh.url}
 }
@@ -138,12 +138,12 @@ func makeModifyTaskRoute() gimlet.RouteHandler {
 	return &taskExecutionPatchHandler{}
 }
 
-//	@Summary		Change a task's execution status
-//	@Description	Change the current execution status of a task. Accepts a JSON body with the new task status to be set.
-//	@Tags			tasks
-//	@Router			/tasks/{task_id} [patch]
-//	@Param			{object}	body		taskExecutionPatchHandler	true	"parameters"
-//	@Success		200			{object}	model.APITask
+// @Summary		Change a task's execution status
+// @Description	Change the current execution status of a task. Accepts a JSON body with the new task status to be set.
+// @Tags			tasks
+// @Router			/tasks/{task_id} [patch]
+// @Param			{object}	body		taskExecutionPatchHandler	true	"parameters"
+// @Success		200			{object}	model.APITask
 func (tep *taskExecutionPatchHandler) Factory() gimlet.RouteHandler {
 	return &taskExecutionPatchHandler{}
 }
