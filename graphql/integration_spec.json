@@ -2278,44 +2278,6 @@
       }
     },
     {
-      "query_file": "unschedule-task-mutation.graphql",
-      "result": {
-        "data": {
-          "unscheduleTask": {
-            "activated": false
-          }
-        }
-      }
-    },
-    {
-      "query_file": "patch-time-1.graphql",
-      "result": {
-        "data": {
-          "patch": {
-            "time": {
-              "started": null,
-              "finished": null,
-              "submittedAt": "January 10, 2018, 7:01PM"
-            }
-          }
-        }
-      }
-    },
-    {
-      "query_file": "patch-time-2.graphql",
-      "result": {
-        "data": {
-          "patch": {
-            "time": {
-              "started": "February 13, 2020, 12:42PM",
-              "finished": "February 14, 2020, 1:03PM",
-              "submittedAt": "February 12, 2020, 11:58AM"
-            }
-          }
-        }
-      }
-    },
-    {
       "query_file": "task-files-query-exec.graphql",
       "result": {
         "data": {
@@ -2411,29 +2373,6 @@
       }
     },
     {
-      "query_file": "user.graphql",
-      "result": {
-        "data": {
-          "user": {
-            "displayName": "testuser"
-          }
-        }
-      }
-    },
-    {
-      "query_file": "patch-duration-query.graphql",
-      "result": {
-        "data": {
-          "patch": {
-            "duration": {
-              "makespan": "3m 39s",
-              "timeTaken": null
-            }
-          }
-        }
-      }
-    },
-    {
       "query_file": "set_priority-success.graphql",
       "result": {
         "data": {
@@ -2487,79 +2426,6 @@
             "id": "wuzzup-activated"
           }
         }
-      }
-    },
-    {
-      "query_file": "abort_task-success.graphql",
-      "result": {
-        "data": {
-          "abortTask": {
-            "activated": false,
-            "aborted": true
-          }
-        }
-      }
-    },
-    {
-      "query_file": "abort_task-success-remove-commit-queue.graphql",
-      "result": {
-        "data": {
-          "abortTask": {
-            "activated": false,
-            "aborted": true
-          }
-        }
-      }
-    },
-    {
-      "query_file": "abort_task-fail-remove-commit-queue.graphql",
-      "result": {
-        "errors": [
-          {
-            "message": "Error aborting task exec2: dequeueing and restarting task 'exec2': commit queue for project 'logkeeper' not found",
-            "path": [
-              "abortTask"
-            ],
-            "extensions": {
-              "code": "INTERNAL_SERVER_ERROR"
-            }
-          }
-        ],
-        "data": null
-      }
-    },
-    {
-      "query_file": "abort_task-fail.graphql",
-      "result": {
-        "errors": [
-          {
-            "message": "Error aborting task exec1: task 'exec1' currently has status 'pass' - cannot abort task in this status",
-            "path": [
-              "abortTask"
-            ],
-            "extensions": {
-              "code": "INTERNAL_SERVER_ERROR"
-            }
-          }
-        ],
-        "data": null
-      }
-    },
-    {
-      "query_file": "abort_task-task-not-found.graphql",
-      "result": {
-        "errors": [
-          {
-            "message": "cannot find task with id not-for-real-task-id",
-            "path": [
-              "abortTask"
-            ],
-            "extensions": {
-              "code": "RESOURCE_NOT_FOUND"
-            }
-          }
-        ],
-        "data": null
       }
     }
   ]

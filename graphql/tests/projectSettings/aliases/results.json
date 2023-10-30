@@ -1,0 +1,45 @@
+{
+  "tests": [
+    {
+      "query_file": "aliases.graphql",
+      "result": {
+        "data": {
+          "projectSettings": {
+            "aliases": [
+              {
+                "id": "5ffe393097b1d3759dd3c1aa",
+                "alias": "__commit_queue",
+                "gitTag": "",
+                "remotePath": "",
+                "task": "unit_tests",
+                "variant": "ubuntu1604",
+                "variantTags": [],
+                "taskTags": []
+              },
+              {
+                "id": "5ffe393097b1d3759dd3c1ac",
+                "alias": "__git_tag",
+                "gitTag": ".*",
+                "variant": "",
+                "task": "",
+                "remotePath": "release.yml",
+                "variantTags": [],
+                "taskTags": []
+              },
+              {
+                "id": "5ffe393097b1d3759dd3c1ab",
+                "alias": "test_alias",
+                "gitTag": "",
+                "variant": "",
+                "task": "",
+                "remotePath": "",
+                "taskTags": ["git"],
+                "variantTags": ["tag"]
+              }
+            ]
+          }
+        }
+      }
+    }
+  ]
+}

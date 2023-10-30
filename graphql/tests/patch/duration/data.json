@@ -1,0 +1,127 @@
+{
+  "patches": [
+    {
+      "_id": {
+        "$oid": "9a1f8ab8834b87d7b5d251a5"
+      },
+      "create_time": {
+        "$date": "2020-02-12T16:58:19Z"
+      }
+    },
+    {
+      "_id": {
+        "$oid": "9e4ff3abe3c3317e352062e4"
+      },
+      "create_time": {
+        "$date": "2019-11-18T18:53:15Z"
+      },
+      "start_time": {
+        "$date": "2019-11-18T18:54:15.734Z"
+      },
+      "finish_time": {
+        "$date": "2019-11-18T18:57:15.053Z"
+      }
+    }
+  ],
+  "tasks": [
+    {
+      "id": "task-for-testing-duration-resolver-1",
+      "create_time": {
+        "$date": "2020-02-12T16:58:19Z"
+      },
+      "start_time": {
+        "$date": "2020-02-14T22:21:13Z"
+      },
+      "finish_time": {
+        "$date": "2020-02-14T22:23:59Z"
+      },
+      "version": "9a1f8ab8834b87d7b5d251a5",
+      "time_taken": 166715
+    },
+    {
+      "id": "task-for-testing-duration-resolver-2",
+      "create_time": {
+        "$date": "2020-02-12T16:58:19Z"
+      },
+      "start_time": {
+        "$date": "2020-02-14T22:21:14Z"
+      },
+      "finish_time": {
+        "$date": "2020-02-14T22:22:26Z"
+      },
+      "version": "9a1f8ab8834b87d7b5d251a5",
+      "time_taken": 72328
+    },
+    {
+      "id": "task-for-testing-duration-resolver-3",
+      "create_time": {
+        "$date": "2020-02-12T16:58:19Z"
+      },
+      "start_time": {
+        "$date": "2020-02-14T22:21:11Z"
+      },
+      "finish_time": {
+        "$date": "2020-02-14T22:24:50Z"
+      },
+      "version": "9a1f8ab8834b87d7b5d251a5",
+      "time_taken": 219230
+    },
+    {
+      "id": "task-for-testing-duration-resolver-4",
+      "create_time": {
+        "$date": "2020-02-12T16:58:19Z"
+      },
+      "start_time": {
+        "$date": "2020-02-14T22:21:13Z"
+      },
+      "finish_time": {
+        "$date": "2020-02-14T22:22:19Z"
+      },
+      "version": "9a1f8ab8834b87d7b5d251a5",
+      "time_taken": 65589
+    },
+    {
+      "id": "task-for-testing-duration-resolver-5",
+      "create_time": {
+        "$date": "2020-02-12T16:58:19Z"
+      },
+      "start_time": {
+        "$date": "2020-02-14T22:21:15Z"
+      },
+      "finish_time": {
+        "$date": "2020-02-14T22:22:24Z"
+      },
+      "version": "9a1f8ab8834b87d7b5d251a5",
+      "time_taken": 69532
+    },
+    {
+      "_id": "evergreen_lint_generate_lint_5e823e1f28baeaa22ae00823d83e03082cd148ab_20_02_20_20_37_06",
+      "create_time": {
+        "$date": "2020-02-20T20:37:06.000Z"
+      },
+      "injest_time": {
+        "$date": "2020-02-20T20:37:10.768Z"
+      },
+      "dispatch_time": {
+        "$date": "2020-02-20T20:40:58.528Z"
+      },
+      "scheduled_time": {
+        "$date": "2020-02-20T20:38:01.392Z"
+      },
+      "start_time": {
+        "$date": "2020-02-20T20:41:00.345Z"
+      },
+      "finish_time": {
+        "$date": "2020-02-20T20:42:37.291Z"
+      },
+      "activated_time": {
+        "$date": "2020-02-20T20:37:13.179Z"
+      },
+      "version": "9e4ff3abe3c3317e352062e4",
+      "branch": "evergreen",
+      "time_taken": {
+        "$numberLong": "96946217733"
+      }
+    }
+  ]
+}

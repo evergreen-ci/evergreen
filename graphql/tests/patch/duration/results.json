@@ -1,0 +1,28 @@
+{
+  "tests": [
+    {
+      "query_file": "makespan.graphql",
+      "result": {
+        "data": {
+          "patch": {
+            "duration": {
+              "makespan": "3m 39s"
+            }
+          }
+        }
+      }
+    },
+    {
+      "query_file": "time_taken.graphql",
+      "result": {
+        "data": {
+          "patch": {
+            "duration": {
+              "timeTaken": "1m 37s"
+            }
+          }
+        }
+      }
+    }
+  ]
+}
