@@ -165,7 +165,7 @@ func ByPatchNameStatusesCommitQueuePaginated(ctx context.Context, opts ByPatchNa
 		match[AliasKey] = commitQueueFilter
 	}
 
-	if opts.IncludeHidden != nil && !utility.FromBoolPtr(opts.IncludeHidden) {
+	if !utility.FromBoolTPtr(opts.IncludeHidden) {
 		match[HiddenKey] = bson.M{"$ne": true}
 	}
 
