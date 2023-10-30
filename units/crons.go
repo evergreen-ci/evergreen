@@ -37,7 +37,7 @@ const (
 	podCreationQueueGroup           = "service.pod.create"
 )
 
-type jobFactory func(context.Context, time.Time) ([]amboy.Job, error)
+type cronJobFactory func(context.Context, time.Time) ([]amboy.Job, error)
 
 func PopulateActivationJobs(part int) amboy.QueueOperation {
 	return func(ctx context.Context, queue amboy.Queue) error {

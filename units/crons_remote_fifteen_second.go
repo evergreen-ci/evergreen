@@ -46,7 +46,7 @@ func (j *cronsRemoteFifteenSecondJob) Run(ctx context.Context) {
 		j.env = evergreen.GetEnvironment()
 	}
 
-	ops := map[string]jobFactory{
+	ops := map[string]cronJobFactory{
 		"scheduler":            schedulerJobs,
 		"alias scheduler":      aliasSchedulerJobs,
 		"host allocator":       hostAllocatorJobs,
@@ -86,7 +86,7 @@ func (j *cronsRemoteFifteenSecondJob) Run(ctx context.Context) {
 	}))
 }
 
-func populateQueueGroup(ctx context.Context, env evergreen.Environment, queueGroupName string, factory jobFactory, ts time.Time) error {
+func populateQueueGroup(ctx context.Context, env evergreen.Environment, queueGroupName string, factory cronJobFactory, ts time.Time) error {
 	queueGroup, err := env.RemoteQueueGroup().Get(ctx, queueGroupName)
 	if err != nil {
 		return errors.Wrapf(err, "getting '%s' queue", queueGroupName)
