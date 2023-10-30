@@ -2867,13 +2867,6 @@ func (t *TriggerDefinition) Validate(downstreamProject string) error {
 	if upstreamProject.Id == downstreamProject {
 		return errors.New("a project cannot trigger itself")
 	}
-	repository, err := FindRepository(downstreamProject)
-	if err != nil {
-		return errors.Wrapf(err, "finding repository for project '%s'", downstreamProject)
-	}
-	if repository == nil {
-		return errors.New("project must have existing versions in order to trigger versions")
-	}
 
 	// should be saved using its ID, in case the user used the project's identifier
 	t.Project = upstreamProject.Id

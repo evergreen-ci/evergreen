@@ -410,6 +410,16 @@ func SaveProjectSettingsForSection(ctx context.Context, projectId string, change
 			return nil, errors.Wrap(catcher.Resolve(), "invalid periodic build definition")
 		}
 	case model.ProjectPageTriggersSection:
+		if !isRepo { // Check this for project refs only, as repo projects won't have last version information stored.
+			repository, err := model.FindRepository(projectId)
+			if err != nil {
+				return nil, errors.Wrapf(err, "finding repository for project '%s'", projectId)
+			}
+			if repository == nil {
+				catcher.New("project must have existing versions in order to trigger versions")
+			}
+		}
+
 		for i := range mergedSection.Triggers {
 			catcher.Add(mergedSection.Triggers[i].Validate(projectId))
 		}
