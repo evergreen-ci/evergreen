@@ -12,6 +12,7 @@ import (
 	"github.com/evergreen-ci/evergreen/model/manifest"
 	patchmodel "github.com/evergreen-ci/evergreen/model/patch"
 	"github.com/evergreen-ci/evergreen/model/task"
+	"github.com/evergreen-ci/evergreen/model/testlog"
 	restmodel "github.com/evergreen-ci/evergreen/rest/model"
 	"github.com/mongodb/grip"
 	"google.golang.org/grpc"
@@ -91,7 +92,7 @@ type SharedCommunicator interface {
 	SendLogMessages(context.Context, TaskData, []apimodels.LogMessage) error
 
 	// The following operations are used by task commands.
-	SendTestLog(context.Context, TaskData, *model.TestLog) (string, error)
+	SendTestLog(context.Context, TaskData, *testlog.TestLog) (string, error)
 	GetTaskPatch(context.Context, TaskData, string) (*patchmodel.Patch, error)
 	GetPatchFile(context.Context, TaskData, string) (string, error)
 

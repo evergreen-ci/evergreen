@@ -11,6 +11,7 @@ import (
 	"github.com/evergreen-ci/evergreen/agent/internal/client"
 	"github.com/evergreen-ci/evergreen/model"
 	"github.com/evergreen-ci/evergreen/model/task"
+	"github.com/evergreen-ci/evergreen/model/testlog"
 	"github.com/evergreen-ci/evergreen/model/testresult"
 	serviceutil "github.com/evergreen-ci/evergreen/service/testutil"
 	"github.com/evergreen-ci/timber/buildlogger"
@@ -198,7 +199,7 @@ func TestSendTestLog(t *testing.T) {
 		},
 		ProjectRef: model.ProjectRef{},
 	}
-	log := &model.TestLog{
+	log := &testlog.TestLog{
 		Id:            "id",
 		Name:          "test",
 		Task:          "task",
