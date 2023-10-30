@@ -127,6 +127,8 @@ type logMessageIterator struct {
 	closed    bool
 }
 
+// NewLogMessageIterator returns a new log iterator for the give log messsages.
+// TODO (DEVPROD-57): Remove this once support for DB task logs is removed.
 func NewLogMessageIterator(messages []LogMessage) *logMessageIterator {
 	return &logMessageIterator{messages: messages}
 }

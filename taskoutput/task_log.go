@@ -133,6 +133,8 @@ func (o TaskLogOutput) getBuildloggerLogs(ctx context.Context, env evergreen.Env
 	}
 	it, err := apimodels.GetBuildloggerLogs(ctx, opts)
 	if err != nil {
+		// TODO (DEVPROD-57): Remove fallback code once support for DB
+		// task logs is removed.
 		var logTypeFilter []string
 		switch getOpts.LogType {
 		case TaskLogTypeAgent:
