@@ -127,8 +127,10 @@ type GroupedBuildVariant struct {
 }
 
 type GroupedFiles struct {
-	Files    []*model.APIFile `json:"files,omitempty"`
-	TaskName *string          `json:"taskName,omitempty"`
+	Files     []*model.APIFile `json:"files,omitempty"`
+	TaskName  *string          `json:"taskName,omitempty"`
+	TaskID    string           `json:"taskId"`
+	Execution int              `json:"execution"`
 }
 
 // GroupedProjects is the return value for the projects & viewableProjectRefs queries.
@@ -244,10 +246,11 @@ type PatchesInput struct {
 }
 
 type Permissions struct {
-	CanCreateDistro   bool               `json:"canCreateDistro"`
-	CanCreateProject  bool               `json:"canCreateProject"`
-	DistroPermissions *DistroPermissions `json:"distroPermissions"`
-	UserID            string             `json:"userId"`
+	CanCreateDistro      bool               `json:"canCreateDistro"`
+	CanCreateProject     bool               `json:"canCreateProject"`
+	CanEditAdminSettings bool               `json:"canEditAdminSettings"`
+	DistroPermissions    *DistroPermissions `json:"distroPermissions"`
+	UserID               string             `json:"userId"`
 }
 
 // PodEvents is the return value for the events query.
@@ -276,6 +279,11 @@ type ProjectEvents struct {
 type PublicKeyInput struct {
 	Key  string `json:"key"`
 	Name string `json:"name"`
+}
+
+type SSHKey struct {
+	Location string `json:"location"`
+	Name     string `json:"name"`
 }
 
 // SaveDistroInput is the input to the saveDistro mutation.
@@ -477,6 +485,100 @@ type VolumeHost struct {
 	HostID   string `json:"hostId"`
 }
 
+type Arch string
+
+const (
+	ArchLinux64Bit    Arch = "LINUX_64_BIT"
+	ArchLinuxArm64Bit Arch = "LINUX_ARM_64_BIT"
+	ArchLinuxPpc64Bit Arch = "LINUX_PPC_64_BIT"
+	ArchLinuxZseries  Arch = "LINUX_ZSERIES"
+	ArchOsx64Bit      Arch = "OSX_64_BIT"
+	ArchOsxArm64Bit   Arch = "OSX_ARM_64_BIT"
+	ArchWindows64Bit  Arch = "WINDOWS_64_BIT"
+)
+
+var AllArch = []Arch{
+	ArchLinux64Bit,
+	ArchLinuxArm64Bit,
+	ArchLinuxPpc64Bit,
+	ArchLinuxZseries,
+	ArchOsx64Bit,
+	ArchOsxArm64Bit,
+	ArchWindows64Bit,
+}
+
+func (e Arch) IsValid() bool {
+	switch e {
+	case ArchLinux64Bit, ArchLinuxArm64Bit, ArchLinuxPpc64Bit, ArchLinuxZseries, ArchOsx64Bit, ArchOsxArm64Bit, ArchWindows64Bit:
+		return true
+	}
+	return false
+}
+
+func (e Arch) String() string {
+	return string(e)
+}
+
+func (e *Arch) UnmarshalGQL(v interface{}) error {
+	str, ok := v.(string)
+	if !ok {
+		return fmt.Errorf("enums must be strings")
+	}
+
+	*e = Arch(str)
+	if !e.IsValid() {
+		return fmt.Errorf("%s is not a valid Arch", str)
+	}
+	return nil
+}
+
+func (e Arch) MarshalGQL(w io.Writer) {
+	fmt.Fprint(w, strconv.Quote(e.String()))
+}
+
+type BootstrapMethod string
+
+const (
+	BootstrapMethodLegacySSH BootstrapMethod = "LEGACY_SSH"
+	BootstrapMethodSSH       BootstrapMethod = "SSH"
+	BootstrapMethodUserData  BootstrapMethod = "USER_DATA"
+)
+
+var AllBootstrapMethod = []BootstrapMethod{
+	BootstrapMethodLegacySSH,
+	BootstrapMethodSSH,
+	BootstrapMethodUserData,
+}
+
+func (e BootstrapMethod) IsValid() bool {
+	switch e {
+	case BootstrapMethodLegacySSH, BootstrapMethodSSH, BootstrapMethodUserData:
+		return true
+	}
+	return false
+}
+
+func (e BootstrapMethod) String() string {
+	return string(e)
+}
+
+func (e *BootstrapMethod) UnmarshalGQL(v interface{}) error {
+	str, ok := v.(string)
+	if !ok {
+		return fmt.Errorf("enums must be strings")
+	}
+
+	*e = BootstrapMethod(str)
+	if !e.IsValid() {
+		return fmt.Errorf("%s is not a valid BootstrapMethod", str)
+	}
+	return nil
+}
+
+func (e BootstrapMethod) MarshalGQL(w io.Writer) {
+	fmt.Fprint(w, strconv.Quote(e.String()))
+}
+
 type CloneMethod string
 
 const (
@@ -515,6 +617,90 @@ func (e *CloneMethod) UnmarshalGQL(v interface{}) error {
 }
 
 func (e CloneMethod) MarshalGQL(w io.Writer) {
+	fmt.Fprint(w, strconv.Quote(e.String()))
+}
+
+type CommunicationMethod string
+
+const (
+	CommunicationMethodLegacySSH CommunicationMethod = "LEGACY_SSH"
+	CommunicationMethodSSH       CommunicationMethod = "SSH"
+	CommunicationMethodRPC       CommunicationMethod = "RPC"
+)
+
+var AllCommunicationMethod = []CommunicationMethod{
+	CommunicationMethodLegacySSH,
+	CommunicationMethodSSH,
+	CommunicationMethodRPC,
+}
+
+func (e CommunicationMethod) IsValid() bool {
+	switch e {
+	case CommunicationMethodLegacySSH, CommunicationMethodSSH, CommunicationMethodRPC:
+		return true
+	}
+	return false
+}
+
+func (e CommunicationMethod) String() string {
+	return string(e)
+}
+
+func (e *CommunicationMethod) UnmarshalGQL(v interface{}) error {
+	str, ok := v.(string)
+	if !ok {
+		return fmt.Errorf("enums must be strings")
+	}
+
+	*e = CommunicationMethod(str)
+	if !e.IsValid() {
+		return fmt.Errorf("%s is not a valid CommunicationMethod", str)
+	}
+	return nil
+}
+
+func (e CommunicationMethod) MarshalGQL(w io.Writer) {
+	fmt.Fprint(w, strconv.Quote(e.String()))
+}
+
+type DispatcherVersion string
+
+const (
+	DispatcherVersionRevised                 DispatcherVersion = "REVISED"
+	DispatcherVersionRevisedWithDependencies DispatcherVersion = "REVISED_WITH_DEPENDENCIES"
+)
+
+var AllDispatcherVersion = []DispatcherVersion{
+	DispatcherVersionRevised,
+	DispatcherVersionRevisedWithDependencies,
+}
+
+func (e DispatcherVersion) IsValid() bool {
+	switch e {
+	case DispatcherVersionRevised, DispatcherVersionRevisedWithDependencies:
+		return true
+	}
+	return false
+}
+
+func (e DispatcherVersion) String() string {
+	return string(e)
+}
+
+func (e *DispatcherVersion) UnmarshalGQL(v interface{}) error {
+	str, ok := v.(string)
+	if !ok {
+		return fmt.Errorf("enums must be strings")
+	}
+
+	*e = DispatcherVersion(str)
+	if !e.IsValid() {
+		return fmt.Errorf("%s is not a valid DispatcherVersion", str)
+	}
+	return nil
+}
+
+func (e DispatcherVersion) MarshalGQL(w io.Writer) {
 	fmt.Fprint(w, strconv.Quote(e.String()))
 }
 
@@ -608,6 +794,133 @@ func (e DistroSettingsAccess) MarshalGQL(w io.Writer) {
 	fmt.Fprint(w, strconv.Quote(e.String()))
 }
 
+type FeedbackRule string
+
+const (
+	FeedbackRuleWaitsOverThresh FeedbackRule = "WAITS_OVER_THRESH"
+	FeedbackRuleNoFeedback      FeedbackRule = "NO_FEEDBACK"
+	FeedbackRuleDefault         FeedbackRule = "DEFAULT"
+)
+
+var AllFeedbackRule = []FeedbackRule{
+	FeedbackRuleWaitsOverThresh,
+	FeedbackRuleNoFeedback,
+	FeedbackRuleDefault,
+}
+
+func (e FeedbackRule) IsValid() bool {
+	switch e {
+	case FeedbackRuleWaitsOverThresh, FeedbackRuleNoFeedback, FeedbackRuleDefault:
+		return true
+	}
+	return false
+}
+
+func (e FeedbackRule) String() string {
+	return string(e)
+}
+
+func (e *FeedbackRule) UnmarshalGQL(v interface{}) error {
+	str, ok := v.(string)
+	if !ok {
+		return fmt.Errorf("enums must be strings")
+	}
+
+	*e = FeedbackRule(str)
+	if !e.IsValid() {
+		return fmt.Errorf("%s is not a valid FeedbackRule", str)
+	}
+	return nil
+}
+
+func (e FeedbackRule) MarshalGQL(w io.Writer) {
+	fmt.Fprint(w, strconv.Quote(e.String()))
+}
+
+type FinderVersion string
+
+const (
+	FinderVersionLegacy    FinderVersion = "LEGACY"
+	FinderVersionParallel  FinderVersion = "PARALLEL"
+	FinderVersionPipeline  FinderVersion = "PIPELINE"
+	FinderVersionAlternate FinderVersion = "ALTERNATE"
+)
+
+var AllFinderVersion = []FinderVersion{
+	FinderVersionLegacy,
+	FinderVersionParallel,
+	FinderVersionPipeline,
+	FinderVersionAlternate,
+}
+
+func (e FinderVersion) IsValid() bool {
+	switch e {
+	case FinderVersionLegacy, FinderVersionParallel, FinderVersionPipeline, FinderVersionAlternate:
+		return true
+	}
+	return false
+}
+
+func (e FinderVersion) String() string {
+	return string(e)
+}
+
+func (e *FinderVersion) UnmarshalGQL(v interface{}) error {
+	str, ok := v.(string)
+	if !ok {
+		return fmt.Errorf("enums must be strings")
+	}
+
+	*e = FinderVersion(str)
+	if !e.IsValid() {
+		return fmt.Errorf("%s is not a valid FinderVersion", str)
+	}
+	return nil
+}
+
+func (e FinderVersion) MarshalGQL(w io.Writer) {
+	fmt.Fprint(w, strconv.Quote(e.String()))
+}
+
+type HostAllocatorVersion string
+
+const (
+	HostAllocatorVersionUtilization HostAllocatorVersion = "UTILIZATION"
+)
+
+var AllHostAllocatorVersion = []HostAllocatorVersion{
+	HostAllocatorVersionUtilization,
+}
+
+func (e HostAllocatorVersion) IsValid() bool {
+	switch e {
+	case HostAllocatorVersionUtilization:
+		return true
+	}
+	return false
+}
+
+func (e HostAllocatorVersion) String() string {
+	return string(e)
+}
+
+func (e *HostAllocatorVersion) UnmarshalGQL(v interface{}) error {
+	str, ok := v.(string)
+	if !ok {
+		return fmt.Errorf("enums must be strings")
+	}
+
+	*e = HostAllocatorVersion(str)
+	if !e.IsValid() {
+		return fmt.Errorf("%s is not a valid HostAllocatorVersion", str)
+	}
+	return nil
+}
+
+func (e HostAllocatorVersion) MarshalGQL(w io.Writer) {
+	fmt.Fprint(w, strconv.Quote(e.String()))
+}
+
 type HostSortBy string
 
 const (
@@ -615,7 +928,7 @@ const (
 	HostSortByCurrentTask HostSortBy = "CURRENT_TASK"
 	HostSortByDistro      HostSortBy = "DISTRO"
 	HostSortByElapsed     HostSortBy = "ELAPSED"
-	HostSortByIDLeTime    HostSortBy = "IDLE_TIME"
+	HostSortByIdleTime    HostSortBy = "IDLE_TIME"
 	HostSortByOwner       HostSortBy = "OWNER"
 	HostSortByStatus      HostSortBy = "STATUS"
 	HostSortByUptime      HostSortBy = "UPTIME"
@@ -626,7 +939,7 @@ var AllHostSortBy = []HostSortBy{
 	HostSortByCurrentTask,
 	HostSortByDistro,
 	HostSortByElapsed,
-	HostSortByIDLeTime,
+	HostSortByIdleTime,
 	HostSortByOwner,
 	HostSortByStatus,
 	HostSortByUptime,
@@ -634,7 +947,7 @@ var AllHostSortBy = []HostSortBy{
 
 func (e HostSortBy) IsValid() bool {
 	switch e {
-	case HostSortByID, HostSortByCurrentTask, HostSortByDistro, HostSortByElapsed, HostSortByIDLeTime, HostSortByOwner, HostSortByStatus, HostSortByUptime:
+	case HostSortByID, HostSortByCurrentTask, HostSortByDistro, HostSortByElapsed, HostSortByIdleTime, HostSortByOwner, HostSortByStatus, HostSortByUptime:
 		return true
 	}
 	return false
@@ -703,6 +1016,90 @@ func (e *MetStatus) UnmarshalGQL(v interface{}) error {
 }
 
 func (e MetStatus) MarshalGQL(w io.Writer) {
+	fmt.Fprint(w, strconv.Quote(e.String()))
+}
+
+type OverallocatedRule string
+
+const (
+	OverallocatedRuleTerminate OverallocatedRule = "TERMINATE"
+	OverallocatedRuleIgnore    OverallocatedRule = "IGNORE"
+	OverallocatedRuleDefault   OverallocatedRule = "DEFAULT"
+)
+
+var AllOverallocatedRule = []OverallocatedRule{
+	OverallocatedRuleTerminate,
+	OverallocatedRuleIgnore,
+	OverallocatedRuleDefault,
+}
+
+func (e OverallocatedRule) IsValid() bool {
+	switch e {
+	case OverallocatedRuleTerminate, OverallocatedRuleIgnore, OverallocatedRuleDefault:
+		return true
+	}
+	return false
+}
+
+func (e OverallocatedRule) String() string {
+	return string(e)
+}
+
+func (e *OverallocatedRule) UnmarshalGQL(v interface{}) error {
+	str, ok := v.(string)
+	if !ok {
+		return fmt.Errorf("enums must be strings")
+	}
+
+	*e = OverallocatedRule(str)
+	if !e.IsValid() {
+		return fmt.Errorf("%s is not a valid OverallocatedRule", str)
+	}
+	return nil
+}
+
+func (e OverallocatedRule) MarshalGQL(w io.Writer) {
+	fmt.Fprint(w, strconv.Quote(e.String()))
+}
+
+type PlannerVersion string
+
+const (
+	PlannerVersionLegacy  PlannerVersion = "LEGACY"
+	PlannerVersionTunable PlannerVersion = "TUNABLE"
+)
+
+var AllPlannerVersion = []PlannerVersion{
+	PlannerVersionLegacy,
+	PlannerVersionTunable,
+}
+
+func (e PlannerVersion) IsValid() bool {
+	switch e {
+	case PlannerVersionLegacy, PlannerVersionTunable:
+		return true
+	}
+	return false
+}
+
+func (e PlannerVersion) String() string {
+	return string(e)
+}
+
+func (e *PlannerVersion) UnmarshalGQL(v interface{}) error {
+	str, ok := v.(string)
+	if !ok {
+		return fmt.Errorf("enums must be strings")
+	}
+
+	*e = PlannerVersion(str)
+	if !e.IsValid() {
+		return fmt.Errorf("%s is not a valid PlannerVersion", str)
+	}
+	return nil
+}
+
+func (e PlannerVersion) MarshalGQL(w io.Writer) {
 	fmt.Fprint(w, strconv.Quote(e.String()))
 }
 
@@ -808,6 +1205,51 @@ func (e ProjectSettingsSection) MarshalGQL(w io.Writer) {
 	fmt.Fprint(w, strconv.Quote(e.String()))
 }
 
+type Provider string
+
+const (
+	ProviderDocker      Provider = "DOCKER"
+	ProviderEc2Fleet    Provider = "EC2_FLEET"
+	ProviderEc2OnDemand Provider = "EC2_ON_DEMAND"
+	ProviderStatic      Provider = "STATIC"
+)
+
+var AllProvider = []Provider{
+	ProviderDocker,
+	ProviderEc2Fleet,
+	ProviderEc2OnDemand,
+	ProviderStatic,
+}
+
+func (e Provider) IsValid() bool {
+	switch e {
+	case ProviderDocker, ProviderEc2Fleet, ProviderEc2OnDemand, ProviderStatic:
+		return true
+	}
+	return false
+}
+
+func (e Provider) String() string {
+	return string(e)
+}
+
+func (e *Provider) UnmarshalGQL(v interface{}) error {
+	str, ok := v.(string)
+	if !ok {
+		return fmt.Errorf("enums must be strings")
+	}
+
+	*e = Provider(str)
+	if !e.IsValid() {
+		return fmt.Errorf("%s is not a valid Provider", str)
+	}
+	return nil
+}
+
+func (e Provider) MarshalGQL(w io.Writer) {
+	fmt.Fprint(w, strconv.Quote(e.String()))
+}
+
 type RequiredStatus string
 
 const (
@@ -848,6 +1290,49 @@ func (e *RequiredStatus) UnmarshalGQL(v interface{}) error {
 }
 
 func (e RequiredStatus) MarshalGQL(w io.Writer) {
+	fmt.Fprint(w, strconv.Quote(e.String()))
+}
+
+type RoundingRule string
+
+const (
+	RoundingRuleDown    RoundingRule = "DOWN"
+	RoundingRuleUp      RoundingRule = "UP"
+	RoundingRuleDefault RoundingRule = "DEFAULT"
+)
+
+var AllRoundingRule = []RoundingRule{
+	RoundingRuleDown,
+	RoundingRuleUp,
+	RoundingRuleDefault,
+}
+
+func (e RoundingRule) IsValid() bool {
+	switch e {
+	case RoundingRuleDown, RoundingRuleUp, RoundingRuleDefault:
+		return true
+	}
+	return false
+}
+
+func (e RoundingRule) String() string {
+	return string(e)
+}
+
+func (e *RoundingRule) UnmarshalGQL(v interface{}) error {
+	str, ok := v.(string)
+	if !ok {
+		return fmt.Errorf("enums must be strings")
+	}
+
+	*e = RoundingRule(str)
+	if !e.IsValid() {
+		return fmt.Errorf("%s is not a valid RoundingRule", str)
+	}
+	return nil
+}
+
+func (e RoundingRule) MarshalGQL(w io.Writer) {
 	fmt.Fprint(w, strconv.Quote(e.String()))
 }
 

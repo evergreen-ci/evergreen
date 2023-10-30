@@ -5,7 +5,7 @@
       "result": {
         "data": {
           "projectSettings": {
-            "githubWebhooksEnabled": false,
+            "githubWebhooksEnabled": true,
             "projectRef": {
               "id": "sandbox_project_id",
               "identifier": "sandbox",
@@ -41,7 +41,8 @@
                   "project": "spruce",
                   "level": "task",
                   "configFile": ".evergreen.yml",
-                  "dateCutoff": null
+                  "dateCutoff": null,
+                  "unscheduleDownstreamVersions": true
                 }
               ],
               "patchTriggerAliases": [

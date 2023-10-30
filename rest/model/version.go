@@ -32,6 +32,7 @@ type APIVersion struct {
 	Activated          *bool          `json:"activated"`
 	Aborted            *bool          `json:"aborted"`
 	GitTags            []APIGitTag    `json:"git_tags"`
+	Ignored            *bool          `json:"ignored"`
 }
 
 type APIGitTag struct {
@@ -63,6 +64,7 @@ func (apiVersion *APIVersion) BuildFromService(v model.Version) {
 	apiVersion.Errors = utility.ToStringPtrSlice(v.Errors)
 	apiVersion.Activated = v.Activated
 	apiVersion.Aborted = utility.ToBoolPtr(v.Aborted)
+	apiVersion.Ignored = utility.ToBoolPtr(v.Ignored)
 
 	var bd buildDetail
 	for _, t := range v.BuildVariants {

@@ -43,7 +43,6 @@ type APIPatch struct {
 	ModuleCodeChanges       []APIModulePatch     `json:"module_code_changes"`
 	Parameters              []APIParameter       `json:"parameters"`
 	ProjectStorageMethod    *string              `json:"project_storage_method,omitempty"`
-	PatchedParserProject    *string              `json:"patched_config"`
 	CanEnqueueToCommitQueue bool                 `json:"can_enqueue_to_commit_queue"`
 	ChildPatches            []APIPatch           `json:"child_patches"`
 	ChildPatchAliases       []APIChildPatchAlias `json:"child_patch_aliases,omitempty"`
@@ -159,6 +158,10 @@ func (apiPatch *APIPatch) GetCommitQueuePosition() error {
 	if apiPatch.CommitQueuePosition != nil {
 		return nil
 	}
+	// GitHub merge patches use the commit queue alias but do not have commit queue positions.
+	if utility.FromStringPtr(apiPatch.Requester) == evergreen.GithubMergeRequester {
+		return nil
+	}
 	if utility.FromStringPtr(apiPatch.Alias) == evergreen.CommitQueueAlias {
 		cq, err := commitqueue.FindOneId(utility.FromStringPtr(apiPatch.ProjectId))
 		if err != nil {
@@ -199,12 +202,16 @@ func (apiPatch *APIPatch) buildBasePatch(p patch.Patch) {
 	apiPatch.PatchNumber = p.PatchNumber
 	apiPatch.Author = utility.ToStringPtr(p.Author)
 	apiPatch.Version = utility.ToStringPtr(p.Version)
-	apiPatch.Status = utility.ToStringPtr(p.Status)
 	apiPatch.Hidden = p.Hidden
 	apiPatch.CreateTime = ToTimePtr(p.CreateTime)
 	apiPatch.StartTime = ToTimePtr(p.StartTime)
 	apiPatch.FinishTime = ToTimePtr(p.FinishTime)
 	apiPatch.MergedFrom = utility.ToStringPtr(p.MergedFrom)
+	apiPatch.Status = utility.ToStringPtr(p.Status)
+	// Ensure we're returning a consistent successful status.
+	if p.Status == evergreen.LegacyPatchSucceeded {
+		apiPatch.Status = utility.ToStringPtr(evergreen.VersionSucceeded)
+	}
 	builds := make([]*string, 0)
 	for _, b := range p.BuildVariants {
 		builds = append(builds, utility.ToStringPtr(b))
@@ -241,7 +248,6 @@ func (apiPatch *APIPatch) buildBasePatch(p patch.Patch) {
 		}
 	}
 
-	apiPatch.PatchedParserProject = utility.ToStringPtr(p.PatchedParserProject)
 	apiPatch.ProjectStorageMethod = utility.ToStringPtr(string(p.ProjectStorageMethod))
 	apiPatch.CanEnqueueToCommitQueue = p.HasValidGitInfo() || p.IsGithubPRPatch()
 	apiPatch.GithubPatchData.BuildFromService(p.GithubPatchData)
@@ -405,7 +411,6 @@ func (apiPatch *APIPatch) ToService() (patch.Patch, error) {
 
 	res.GithubPatchData = apiPatch.GithubPatchData.ToService()
 	res.ProjectStorageMethod = evergreen.ParserProjectStorageMethod(utility.FromStringPtr(apiPatch.ProjectStorageMethod))
-	res.PatchedParserProject = utility.FromStringPtr(apiPatch.PatchedParserProject)
 	return res, catcher.Resolve()
 }
 

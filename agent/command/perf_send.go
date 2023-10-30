@@ -56,12 +56,12 @@ func (c *perfSend) ParseParams(params map[string]interface{}) error {
 }
 
 func (c *perfSend) Execute(ctx context.Context, comm client.Communicator, logger client.LoggerProducer, conf *internal.TaskConfig) error {
-	if err := util.ExpandValues(c, conf.Expansions); err != nil {
+	if err := util.ExpandValues(c, &conf.Expansions); err != nil {
 		return errors.Wrap(err, "applying expansions")
 	}
 
 	// Read the file and add the Evergreen info.
-	filename := getJoinedWithWorkDir(conf, c.File)
+	filename := getWorkingDirectory(conf, c.File)
 	report, err := poplar.LoadTests(filename)
 	if err != nil {
 		return errors.Wrapf(err, "reading tests from file '%s'", filename)

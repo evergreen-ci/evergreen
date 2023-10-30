@@ -18,7 +18,12 @@ type logServiceV0 struct {
 	bucket pail.Bucket
 }
 
-func (s *logServiceV0) GetTaskLogs(ctx context.Context, taskOpts TaskOptions, getOpts GetOptions) (LogIterator, error) {
+// NewLogServiceV0 returns a new V0 Evergreen log service.
+func NewLogServiceV0(bucket pail.Bucket) *logServiceV0 {
+	return &logServiceV0{bucket: bucket}
+}
+
+func (s *logServiceV0) Get(ctx context.Context, getOpts GetOptions) (LogIterator, error) {
 	var its []LogIterator
 	logChunks, err := s.getLogChunks(ctx, getOpts.LogNames)
 	if err != nil {
@@ -43,24 +48,17 @@ func (s *logServiceV0) GetTaskLogs(ctx context.Context, taskOpts TaskOptions, ge
 	return newMergingIterator(its...), nil
 }
 
-func (s *logServiceV0) WriteTaskLog(ctx context.Context, opts TaskOptions, logName string, lines []LogLine) error {
+func (s *logServiceV0) Append(ctx context.Context, logName string, lines []LogLine) error {
 	if len(lines) == 0 {
 		return nil
 	}
-
-	key := fmt.Sprintf("project_id=%s/task_id=%s/execution=%d/%s/%s",
-		opts.ProjectID,
-		opts.TaskID,
-		opts.Execution,
-		logName,
-		s.createChunkKey(lines[0].Timestamp, lines[len(lines)-1].Timestamp, len(lines)),
-	)
 
 	var rawLines []byte
 	for _, line := range lines {
 		rawLines = append(rawLines, []byte(s.formatRawLine(line))...)
 	}
 
+	key := fmt.Sprintf("%s/%s", logName, s.createChunkKey(lines[0].Timestamp, lines[len(lines)-1].Timestamp, len(lines)))
 	return errors.Wrap(s.bucket.Put(ctx, key, bytes.NewReader(rawLines)), "writing log chunk to bucket")
 }
 
@@ -95,14 +93,11 @@ func (s *logServiceV0) getLogChunks(ctx context.Context, logNames []string) (map
 			continue
 		}
 
-		// Strip any prefixes from the key and append it to the log's
-		// name as callers may pass in prefixes that contain multiple
-		// logical logs.
+		// Strip any prefix from the key and set it as the log's name;
+		// callers may pass in prefixes that contain multiple logical
+		// logs.
 		if lastIdx := strings.LastIndex(chunkKey, "/"); lastIdx >= 0 {
-			if logName != "" {
-				logName += "/"
-			}
-			logName += chunkKey[:lastIdx]
+			logName = chunkKey[:lastIdx]
 			chunkKey = chunkKey[lastIdx+1:]
 		}
 
@@ -192,7 +187,7 @@ func (s *logServiceV0) getParser(logName string) LineParser {
 			LogName:   logName,
 			Priority:  level.Priority(priority),
 			Timestamp: ts,
-			Data:      lineParts[2],
+			Data:      strings.TrimSuffix(lineParts[2], "\n"),
 		}, nil
 	}
 }

@@ -17,6 +17,7 @@ import (
 	restModel "github.com/evergreen-ci/evergreen/rest/model"
 	"github.com/evergreen-ci/evergreen/testutil"
 	"github.com/evergreen-ci/evergreen/thirdparty"
+	"github.com/evergreen-ci/evergreen/util"
 	"github.com/evergreen-ci/utility"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -232,7 +233,7 @@ func (s *CommitQueueSuite) TestIsAuthorizedToPatchAndMerge() {
 }
 
 func (s *CommitQueueSuite) TestCreatePatchForMerge() {
-	s.Require().NoError(db.ClearCollections(model.ProjectAliasCollection, user.Collection))
+	s.Require().NoError(db.ClearCollections(model.ParserProjectCollection, model.ProjectAliasCollection, user.Collection))
 
 	u := &user.DBUser{Id: "octocat"}
 	s.Require().NoError(u.Insert())
@@ -245,23 +246,35 @@ func (s *CommitQueueSuite) TestCreatePatchForMerge() {
 	}
 	s.Require().NoError(cqAlias.Upsert())
 
+	const config = `
+buildvariants:
+- name: v0
+  tasks:
+    - t0
+tasks:
+- name: t0`
+
+	existingPatchId := mgobson.ObjectIdHex("5e9748c4e3c331422d0d1d7a")
 	existingPatch := &patch.Patch{
+		Id:      existingPatchId,
 		Author:  "octocat",
 		Project: s.projectRef.Id,
 		GitInfo: &patch.GitMetadata{
 			Username: "octocat",
 			Email:    "octocat @github.com",
 		},
-		PatchedParserProject: `
-tasks:
-  - name: t0
-buildvariants:
-  - name: v0
-    tasks:
-    - name: "t0"
-`,
+		ProjectStorageMethod: evergreen.ProjectStorageMethodDB,
+		PatchedProjectConfig: config,
 	}
 	s.Require().NoError(existingPatch.Insert())
+
+	existingPatchParserProject := &model.ParserProject{}
+	s.Require().NoError(util.UnmarshalYAMLWithFallback([]byte(config), existingPatchParserProject))
+	existingPatchParserProject.Id = existingPatch.Id.Hex()
+	existingPatchParserProject.Identifier = utility.ToStringPtr(s.projectRef.Id)
+
+	s.Require().NoError(existingPatchParserProject.Insert())
+
 	existingPatch, err := patch.FindOne(db.Q{})
 	s.Require().NoError(err)
 	s.Require().NotNil(existingPatch)
@@ -388,4 +401,98 @@ func TestConcludeMerge(t *testing.T) {
 	queue, err := commitqueue.FindOneId(projectID)
 	require.NoError(t, err)
 	assert.Len(t, queue.Queue, 0)
+}
+
+func TestCheckCanRemoveCommitQueueItem(t *testing.T) {
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
+	require.NoError(t, db.ClearCollections(
+		user.Collection,
+		model.ProjectRefCollection,
+		model.ProjectVarsCollection,
+		evergreen.ScopeCollection,
+		evergreen.RoleCollection,
+		patch.Collection,
+		commitqueue.Collection,
+	))
+
+	basicUser := &user.DBUser{Id: "me", OnlyAPI: false}
+	require.NoError(t, basicUser.Insert())
+
+	otherUser := &user.DBUser{Id: "other user", OnlyAPI: false}
+	require.NoError(t, otherUser.Insert())
+
+	serviceUser := &user.DBUser{Id: "service user", OnlyAPI: true}
+	require.NoError(t, serviceUser.Insert())
+
+	projectAdmin := &user.DBUser{Id: "admin", OnlyAPI: false}
+	require.NoError(t, projectAdmin.Insert())
+
+	project := &model.ProjectRef{
+		Id:      "evergreen",
+		Owner:   "evergreen-ci",
+		Repo:    "evergreen",
+		Branch:  "main",
+		Enabled: true,
+		CommitQueue: model.CommitQueueParams{
+			Enabled: utility.TruePtr(),
+		},
+	}
+	require.NoError(t, project.Add(projectAdmin))
+
+	myPatch := patch.Patch{
+		Id:      bson.NewObjectId(),
+		Project: "evergreen",
+		Author:  basicUser.Id,
+	}
+	require.NoError(t, myPatch.Insert())
+
+	otherPatch := patch.Patch{
+		Id:      bson.NewObjectId(),
+		Project: "evergreen",
+		Author:  otherUser.Id,
+	}
+	require.NoError(t, otherPatch.Insert())
+
+	servicePatch := patch.Patch{
+		Id:      bson.NewObjectId(),
+		Project: "evergreen",
+		Author:  serviceUser.Id,
+	}
+	require.NoError(t, servicePatch.Insert())
+
+	mockConnector := &MockGitHubConnector{
+		MockGitHubConnectorImpl: MockGitHubConnectorImpl{},
+	}
+
+	// Basic user can remove their own CLI patch.
+	err := CheckCanRemoveCommitQueueItem(ctx, mockConnector, basicUser, project, myPatch.Id.Hex())
+	require.NoError(t, err)
+
+	// Basic user can remove service user's CLI patch.
+	err = CheckCanRemoveCommitQueueItem(ctx, mockConnector, basicUser, project, servicePatch.Id.Hex())
+	require.NoError(t, err)
+
+	// Basic user cannot remove other user's CLI patch.
+	err = CheckCanRemoveCommitQueueItem(ctx, mockConnector, basicUser, project, otherPatch.Id.Hex())
+	require.EqualError(t, err, "401 (Unauthorized): not authorized to perform action on behalf of author")
+
+	// Basic user can remove their own GitHub patch.
+	basicUser.Settings.GithubUser.UID = 1234
+	err = CheckCanRemoveCommitQueueItem(ctx, mockConnector, basicUser, project, "570")
+	require.NoError(t, err)
+
+	// Basic user cannot remove other user's GitHub patch.
+	basicUser.Settings.GithubUser.UID = 4321
+	err = CheckCanRemoveCommitQueueItem(ctx, mockConnector, basicUser, project, "570")
+	require.EqualError(t, err, "401 (Unauthorized): not authorized to perform action on behalf of GitHub user")
+
+	// Project admin can remove other user's CLI patch.
+	err = CheckCanRemoveCommitQueueItem(ctx, mockConnector, projectAdmin, project, otherPatch.Id.Hex())
+	require.NoError(t, err)
+
+	// Project admin can remove other user's GitHub patch.
+	err = CheckCanRemoveCommitQueueItem(ctx, mockConnector, projectAdmin, project, "570")
+	require.NoError(t, err)
 }

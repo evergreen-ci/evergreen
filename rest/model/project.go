@@ -270,6 +270,7 @@ func (cqParams *APICommitQueueParams) ToService() model.CommitQueueParams {
 
 type APIBuildBaronSettings struct {
 	TicketCreateProject     *string   `bson:"ticket_create_project" json:"ticket_create_project"`
+	TicketCreateIssueType   *string   `bson:"ticket_create_issue_type" json:"ticket_create_issue_type"`
 	TicketSearchProjects    []*string `bson:"ticket_search_projects" json:"ticket_search_projects"`
 	BFSuggestionServer      *string   `bson:"bf_suggestion_server" json:"bf_suggestion_server"`
 	BFSuggestionUsername    *string   `bson:"bf_suggestion_username" json:"bf_suggestion_username"`
@@ -280,6 +281,7 @@ type APIBuildBaronSettings struct {
 
 func (bb *APIBuildBaronSettings) BuildFromService(def evergreen.BuildBaronSettings) {
 	bb.TicketCreateProject = utility.ToStringPtr(def.TicketCreateProject)
+	bb.TicketCreateIssueType = utility.ToStringPtr(def.TicketCreateIssueType)
 	bb.TicketSearchProjects = utility.ToStringPtrSlice(def.TicketSearchProjects)
 	bb.BFSuggestionServer = utility.ToStringPtr(def.BFSuggestionServer)
 	bb.BFSuggestionUsername = utility.ToStringPtr(def.BFSuggestionUsername)
@@ -291,6 +293,7 @@ func (bb *APIBuildBaronSettings) BuildFromService(def evergreen.BuildBaronSettin
 func (bb *APIBuildBaronSettings) ToService() evergreen.BuildBaronSettings {
 	buildBaron := evergreen.BuildBaronSettings{}
 	buildBaron.TicketCreateProject = utility.FromStringPtr(bb.TicketCreateProject)
+	buildBaron.TicketCreateIssueType = utility.FromStringPtr(bb.TicketCreateIssueType)
 	buildBaron.TicketSearchProjects = utility.FromStringPtrSlice(bb.TicketSearchProjects)
 	buildBaron.BFSuggestionServer = utility.FromStringPtr(bb.BFSuggestionServer)
 	buildBaron.BFSuggestionUsername = utility.FromStringPtr(bb.BFSuggestionUsername)
@@ -538,6 +541,7 @@ type APIProjectRef struct {
 	RepotrackerDisabled         *bool                     `json:"repotracker_disabled"`
 	DispatchingDisabled         *bool                     `json:"dispatching_disabled"`
 	StepbackDisabled            *bool                     `json:"stepback_disabled"`
+	StepbackBisect              *bool                     `json:"stepback_bisect"`
 	VersionControlEnabled       *bool                     `json:"version_control_enabled"`
 	DisabledStatsCache          *bool                     `json:"disabled_stats_cache"`
 	Admins                      []*string                 `json:"admins"`
@@ -601,6 +605,7 @@ func (p *APIProjectRef) ToService() (*model.ProjectRef, error) {
 		RepotrackerDisabled:    utility.BoolPtrCopy(p.RepotrackerDisabled),
 		DispatchingDisabled:    utility.BoolPtrCopy(p.DispatchingDisabled),
 		StepbackDisabled:       utility.BoolPtrCopy(p.StepbackDisabled),
+		StepbackBisect:         utility.BoolPtrCopy(p.StepbackBisect),
 		VersionControlEnabled:  utility.BoolPtrCopy(p.VersionControlEnabled),
 		DisabledStatsCache:     utility.BoolPtrCopy(p.DisabledStatsCache),
 		NotifyOnBuildFailure:   utility.BoolPtrCopy(p.NotifyOnBuildFailure),
@@ -709,6 +714,7 @@ func (p *APIProjectRef) BuildPublicFields(projectRef model.ProjectRef) error {
 	p.RepotrackerDisabled = utility.BoolPtrCopy(projectRef.RepotrackerDisabled)
 	p.DispatchingDisabled = utility.BoolPtrCopy(projectRef.DispatchingDisabled)
 	p.StepbackDisabled = utility.BoolPtrCopy(projectRef.StepbackDisabled)
+	p.StepbackBisect = utility.BoolPtrCopy(projectRef.StepbackBisect)
 	p.VersionControlEnabled = utility.BoolPtrCopy(projectRef.VersionControlEnabled)
 	p.DisabledStatsCache = utility.BoolPtrCopy(projectRef.DisabledStatsCache)
 	p.NotifyOnBuildFailure = utility.BoolPtrCopy(projectRef.NotifyOnBuildFailure)

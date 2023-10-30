@@ -51,6 +51,7 @@ type Version {
   externalLinksForMetadata: [ExternalLinkForMetadata!]!
   finishTime: Time
   gitTags: [GitTag!]
+  ignored: Boolean!
   isPatch: Boolean!
   manifest: Manifest
   message: String!

@@ -46,13 +46,24 @@ func (s *ArtifactsSuite) SetupSuite() {
 
 	_, err := os.Stat(path)
 	s.Require().False(os.IsNotExist(err))
+
+	path = filepath.Join(s.tmpdir, "exactmatch.json")
+	s.NoError(utility.WriteJSONFile(path,
+		[]*artifact.File{
+			{
+				Name: "name_of_artifact",
+				Link: "here it is",
+			},
+		}))
+	_, err = os.Stat(path)
+	s.Require().False(os.IsNotExist(err))
 }
 
 func (s *ArtifactsSuite) SetupTest() {
 	var err error
 	s.ctx, s.cancel = context.WithCancel(context.Background())
 	s.comm = client.NewMock("http://localhost.com")
-	s.conf = &internal.TaskConfig{Expansions: &util.Expansions{}, Task: &task.Task{}, Project: &model.Project{}}
+	s.conf = &internal.TaskConfig{Expansions: util.Expansions{}, Task: task.Task{}, Project: model.Project{}}
 	s.logger, err = s.comm.GetLoggerProducer(s.ctx, client.TaskData{ID: s.conf.Task.Id, Secret: s.conf.Task.Secret}, nil)
 	s.NoError(err)
 	s.cmd = attachArtifactsFactory().(*attachArtifacts)
@@ -102,6 +113,17 @@ func (s *ArtifactsSuite) TestArtifactErrorsIfDoesNotExist() {
 	s.cmd.Files = []string{"foo"}
 	s.Error(s.cmd.Execute(s.ctx, s.comm, s.logger, s.conf))
 	s.Len(s.cmd.Files, 0)
+	s.Len(s.mock.AttachedFiles, 0)
+	s.Len(s.mock.AttachedFiles[s.conf.Task.Id], 0)
+}
+
+func (s *ArtifactsSuite) TestArtifactNoErrorIfDoesNotExistWithExactNames() {
+	s.cmd.Files = []string{"foo"}
+	s.cmd.ExactFileNames = true
+	s.Error(s.cmd.Execute(s.ctx, s.comm, s.logger, s.conf))
+	s.Len(s.cmd.Files, 1)
+	s.Len(s.mock.AttachedFiles, 0)
+	s.Len(s.mock.AttachedFiles[s.conf.Task.Id], 0)
 }
 
 func (s *ArtifactsSuite) TestArtifactSkipsErrorWithOptionalArgument() {
@@ -129,10 +151,19 @@ func (s *ArtifactsSuite) TestReadFileSucceeds() {
 
 func (s *ArtifactsSuite) TestCommandParsesFile() {
 	s.Len(s.mock.AttachedFiles, 0)
-	s.cmd.Files = []string{"example.json"}
+	s.cmd.Files = []string{"example*"}
 	s.NoError(s.cmd.Execute(s.ctx, s.comm, s.logger, s.conf))
 	s.Len(s.mock.AttachedFiles, 1)
 	s.Len(s.mock.AttachedFiles[s.conf.Task.Id], 1)
+}
+
+func (s *ArtifactsSuite) TestCommandParsesExactFileNames() {
+	s.cmd.ExactFileNames = true
+	s.Len(s.mock.AttachedFiles, 0)
+	s.cmd.Files = []string{"exactmatch.json", "example.json"}
+	s.NoError(s.cmd.Execute(s.ctx, s.comm, s.logger, s.conf))
+	s.Len(s.mock.AttachedFiles, 1)
+	s.Len(s.mock.AttachedFiles[s.conf.Task.Id], 2)
 }
 
 func (s *ArtifactsSuite) TestPrefixectoryEmptySubDir() {

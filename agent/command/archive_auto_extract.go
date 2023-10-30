@@ -8,7 +8,7 @@ import (
 	"github.com/evergreen-ci/evergreen/agent/internal"
 	"github.com/evergreen-ci/evergreen/agent/internal/client"
 	"github.com/evergreen-ci/evergreen/util"
-	"github.com/mholt/archiver"
+	"github.com/mholt/archiver/v3"
 	"github.com/mitchellh/mapstructure"
 	"github.com/pkg/errors"
 )
@@ -45,30 +45,25 @@ func (e *autoExtract) ParseParams(params map[string]interface{}) error {
 func (e *autoExtract) Execute(ctx context.Context,
 	client client.Communicator, logger client.LoggerProducer, conf *internal.TaskConfig) error {
 
-	if err := util.ExpandValues(e, conf.Expansions); err != nil {
+	if err := util.ExpandValues(e, &conf.Expansions); err != nil {
 		return errors.Wrap(err, "applying expansions")
 	}
 
 	// if the target is a relative path, join it to the working dir
 	if !filepath.IsAbs(e.TargetDirectory) {
-		e.TargetDirectory = getJoinedWithWorkDir(conf, e.TargetDirectory)
+		e.TargetDirectory = getWorkingDirectory(conf, e.TargetDirectory)
 	}
 
 	if !filepath.IsAbs(e.ArchivePath) {
-		e.ArchivePath = getJoinedWithWorkDir(conf, e.ArchivePath)
+		e.ArchivePath = getWorkingDirectory(conf, e.ArchivePath)
 	}
 
 	if _, err := os.Stat(e.ArchivePath); os.IsNotExist(err) {
 		return errors.Errorf("archive '%s' does not exist", e.ArchivePath)
 	}
 
-	unzipper := archiver.MatchingFormat(e.ArchivePath)
-	if unzipper == nil {
-		return errors.Errorf("could not detect archive format for archive '%s'", e.ArchivePath)
-	}
-
-	if err := unzipper.Open(e.ArchivePath, e.TargetDirectory); err != nil {
-		return errors.Wrapf(err, "extracting archive '%s'", e.ArchivePath)
+	if err := archiver.Unarchive(e.ArchivePath, e.TargetDirectory); err != nil {
+		return errors.Wrapf(err, "extracting archive '%s' to '%s'", e.ArchivePath, e.TargetDirectory)
 	}
 
 	return nil

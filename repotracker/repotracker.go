@@ -723,9 +723,19 @@ func ShellVersionFromRevision(ctx context.Context, ref *model.ProjectRef, metada
 		Activated:            utility.ToBoolPtr(metadata.Activate),
 	}
 	if metadata.TriggerType != "" {
-		v.Id = util.CleanName(fmt.Sprintf("%s_%s_%s", ref.Identifier, metadata.SourceVersion.Revision, metadata.TriggerDefinitionID))
+		var revision string
+		if metadata.TriggerType == model.ProjectTriggerLevelPush {
+			revision = metadata.SourceCommit
+			v.TriggerSHA = revision
+		}
+		createTime := metadata.Revision.CreateTime
+		if metadata.SourceVersion != nil {
+			revision = metadata.SourceVersion.Revision
+			createTime = metadata.SourceVersion.CreateTime
+		}
+		v.Id = util.CleanName(fmt.Sprintf("%s_%s_%s", ref.Identifier, revision, metadata.TriggerDefinitionID))
 		v.Requester = evergreen.TriggerRequester
-		v.CreateTime = metadata.SourceVersion.CreateTime
+		v.CreateTime = createTime
 	} else if metadata.IsAdHoc {
 		v.Id = mgobson.NewObjectId().Hex()
 		v.Requester = evergreen.AdHocRequester
@@ -804,7 +814,7 @@ func createVersionItems(ctx context.Context, v *model.Version, metadata model.Ve
 	if metadata.SourceVersion != nil {
 		sourceRev = metadata.SourceVersion.Revision
 	}
-	taskIds := model.NewTaskIdTable(projectInfo.Project, v, sourceRev, metadata.TriggerDefinitionID)
+	taskIds := model.NewTaskIdConfigForRepotrackerVersion(projectInfo.Project, v, sourceRev, metadata.TriggerDefinitionID)
 
 	// create all builds for the version
 	buildsToCreate := []interface{}{}
@@ -931,10 +941,11 @@ func createVersionItems(ctx context.Context, v *model.Version, metadata model.Ve
 			// add only tasks that require activation times
 			for _, bvt := range buildvariant.Tasks {
 				tId, ok := taskNameToId[bvt.Name]
+				// TODO EVG-20612: remove activation check
 				if !ok || !bvt.HasSpecificActivation() {
 					continue
 				}
-				activateTaskAt, err := projectInfo.Ref.GetActivationTimeForTask(&bvt)
+				activateTaskAt, err := projectInfo.Ref.GetActivationTimeForTask(&bvt, tId)
 				batchTimeCatcher.Add(errors.Wrapf(err, "unable to get activation time for task '%s' (variant '%s')", bvt.Name, buildvariant.Name))
 
 				taskStatuses = append(taskStatuses,

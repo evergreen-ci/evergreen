@@ -297,6 +297,7 @@ func TestSaveProjectSettingsForSection(t *testing.T) {
 		},
 		"github conflicts with enabling": func(t *testing.T, ref model.ProjectRef) {
 			conflictingRef := model.ProjectRef{
+				Identifier:          "conflicting-project",
 				Owner:               ref.Owner,
 				Repo:                ref.Repo,
 				Branch:              ref.Branch,
@@ -319,11 +320,12 @@ func TestSaveProjectSettingsForSection(t *testing.T) {
 			}
 			_, err := SaveProjectSettingsForSection(ctx, ref.Id, apiChanges, model.ProjectPageGeneralSection, false, "me")
 			require.Error(t, err)
-			assert.Contains(t, err.Error(), "PR testing and commit checks")
+			assert.Contains(t, err.Error(), "PR testing (projects: conflicting-project) and commit checks (projects: conflicting-project)")
 			assert.NotContains(t, err.Error(), "the commit queue")
 		},
 		"github conflicts on Commit Queue page when defaulting to repo": func(t *testing.T, ref model.ProjectRef) {
 			conflictingRef := model.ProjectRef{
+				Identifier:          "conflicting-project",
 				Owner:               ref.Owner,
 				Repo:                ref.Repo,
 				Branch:              ref.Branch,
@@ -348,7 +350,7 @@ func TestSaveProjectSettingsForSection(t *testing.T) {
 			}
 			_, err := SaveProjectSettingsForSection(ctx, changes.Id, apiChanges, model.ProjectPageGithubAndCQSection, false, "me")
 			require.Error(t, err)
-			assert.Contains(t, err.Error(), "PR testing")
+			assert.Contains(t, err.Error(), "PR testing (projects: conflicting-project)")
 			assert.NotContains(t, err.Error(), "the commit queue")
 			assert.NotContains(t, err.Error(), "commit checks")
 		},
@@ -641,8 +643,7 @@ func TestSaveProjectSettingsForSection(t *testing.T) {
 		},
 	} {
 		assert.NoError(t, db.ClearCollections(model.ProjectRefCollection, model.ProjectVarsCollection,
-			event.SubscriptionsCollection, event.EventCollection, evergreen.ScopeCollection, user.Collection,
-			model.GithubHooksCollection, evergreen.ConfigCollection))
+			event.SubscriptionsCollection, event.EventCollection, evergreen.ScopeCollection, user.Collection, evergreen.ConfigCollection))
 		require.NoError(t, db.CreateCollections(evergreen.ScopeCollection))
 
 		pRef := model.ProjectRef{

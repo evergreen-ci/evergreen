@@ -6,11 +6,9 @@ import (
 	"fmt"
 	"io"
 	"net/http"
-	"strconv"
 	"strings"
 
 	"github.com/evergreen-ci/evergreen"
-	"github.com/evergreen-ci/evergreen/db/mgo/bson"
 	"github.com/evergreen-ci/evergreen/model"
 	"github.com/evergreen-ci/evergreen/model/build"
 	"github.com/evergreen-ci/evergreen/model/distro"
@@ -518,17 +516,6 @@ func (m *CommitQueueItemOwnerMiddleware) ServeHTTP(rw http.ResponseWriter, r *ht
 		return
 	}
 
-	if !projRef.CommitQueue.IsEnabled() {
-		gimlet.WriteResponse(rw, gimlet.MakeJSONErrorResponder(errors.Errorf("commit queue is not enabled for project '%s'", projRef.Id)))
-		return
-	}
-
-	if canAlwaysSubmitPatchesForProject(user, opCtx.ProjectRef.Id) {
-		next(rw, r)
-		return
-	}
-
-	// The owner of the patch can also pass
 	vars := gimlet.GetVars(r)
 	itemId, ok := vars["item"]
 	if !ok {
@@ -539,39 +526,8 @@ func (m *CommitQueueItemOwnerMiddleware) ServeHTTP(rw http.ResponseWriter, r *ht
 		return
 	}
 
-	if bson.IsObjectIdHex(itemId) {
-		patch, err := data.FindPatchById(itemId)
-		if err != nil {
-			gimlet.WriteResponse(rw, gimlet.MakeJSONInternalErrorResponder(errors.Wrapf(err, "finding patch '%s'", itemId)))
-			return
-		}
-		if user.Id != *patch.Author {
-			gimlet.WriteResponse(rw, gimlet.MakeJSONErrorResponder(gimlet.ErrorResponse{
-				StatusCode: http.StatusUnauthorized,
-				Message:    "not authorized to patch on behalf of author",
-			}))
-			return
-		}
-	} else if itemInt, err := strconv.Atoi(itemId); err == nil {
-		pr, err := m.sc.GetGitHubPR(ctx, projRef.Owner, projRef.Repo, itemInt)
-		if err != nil {
-			gimlet.WriteResponse(rw, gimlet.MakeJSONErrorResponder(errors.Wrapf(err, "unable to get pull request info, PR number (%d) may be invalid", itemInt)))
-			return
-		}
-
-		var githubUID int
-		if pr != nil && pr.User != nil && pr.User.ID != nil {
-			githubUID = int(*pr.User.ID)
-		}
-		if githubUID == 0 || user.Settings.GithubUser.UID != githubUID {
-			gimlet.WriteResponse(rw, gimlet.MakeJSONErrorResponder(gimlet.ErrorResponse{
-				StatusCode: http.StatusUnauthorized,
-				Message:    "not authorized to patch on behalf of GitHub user",
-			}))
-			return
-		}
-	} else {
-		gimlet.WriteResponse(rw, gimlet.MakeJSONErrorResponder(errors.New("commit queue item is not a valid identifier")))
+	if err = data.CheckCanRemoveCommitQueueItem(ctx, m.sc, user, projRef, itemId); err != nil {
+		gimlet.WriteResponse(rw, gimlet.MakeJSONErrorResponder(err))
 		return
 	}
 
@@ -596,31 +552,12 @@ func updateHostAccessTime(ctx context.Context, h *host.Host) {
 	}
 }
 
-// canAlwaysSubmitPatchesForProject returns true if the user is a superuser or project admin,
-// or is authorized specifically to patch on behalf of other users.
-func canAlwaysSubmitPatchesForProject(user *user.DBUser, projectId string) bool {
-	isAdmin := user.HasPermission(gimlet.PermissionOpts{
-		Resource:      projectId,
-		ResourceType:  evergreen.ProjectResourceType,
-		Permission:    evergreen.PermissionProjectSettings,
-		RequiredLevel: evergreen.ProjectSettingsEdit.Value,
-	})
-	if isAdmin {
-		return true
-	}
-	return user.HasPermission(gimlet.PermissionOpts{
-		Resource:      projectId,
-		ResourceType:  evergreen.ProjectResourceType,
-		Permission:    evergreen.PermissionPatches,
-		RequiredLevel: evergreen.PatchSubmitAdmin.Value,
-	})
-}
-
 func RequiresProjectPermission(permission string, level evergreen.PermissionLevel) gimlet.Middleware {
 	defaultRoles, err := evergreen.GetEnvironment().RoleManager().GetRoles(evergreen.UnauthedUserRoles)
 	if err != nil {
-		grip.Critical(message.WrapError(err, message.Fields{
+		grip.Error(message.WrapError(err, message.Fields{
 			"message": "unable to get default roles",
+			"op":      "middleware",
 		}))
 	}
 
@@ -639,8 +576,9 @@ func RequiresProjectPermission(permission string, level evergreen.PermissionLeve
 func RequiresDistroPermission(permission string, level evergreen.PermissionLevel) gimlet.Middleware {
 	defaultRoles, err := evergreen.GetEnvironment().RoleManager().GetRoles(evergreen.UnauthedUserRoles)
 	if err != nil {
-		grip.Critical(message.WrapError(err, message.Fields{
+		grip.Error(message.WrapError(err, message.Fields{
 			"message": "unable to get default roles",
+			"op":      "middleware",
 		}))
 	}
 
@@ -658,8 +596,9 @@ func RequiresDistroPermission(permission string, level evergreen.PermissionLevel
 func RequiresSuperUserPermission(permission string, level evergreen.PermissionLevel) gimlet.Middleware {
 	defaultRoles, err := evergreen.GetEnvironment().RoleManager().GetRoles(evergreen.UnauthedUserRoles)
 	if err != nil {
-		grip.Critical(message.WrapError(err, message.Fields{
+		grip.Error(message.WrapError(err, message.Fields{
 			"message": "unable to get default roles",
+			"op":      "middleware",
 		}))
 	}
 
@@ -756,25 +695,23 @@ func urlVarsToProjectScopes(r *http.Request) ([]string, int, error) {
 		return []string{repoID}, http.StatusOK, nil
 	}
 
+	// Return an error if the project isn't found
+	if projectID == "" {
+		return nil, http.StatusNotFound, errors.New("no project found")
+	}
+
 	projectRef, err := model.FindMergedProjectRef(projectID, versionID, true)
 	if err != nil {
-		return nil, http.StatusNotFound, errors.Wrap(err, "finding project")
+		return nil, http.StatusInternalServerError, errors.Wrap(err, "finding project")
 	}
 	if projectRef == nil {
 		return nil, http.StatusNotFound, errors.Errorf("project '%s' not found", projectID)
 	}
-	projectID = projectRef.Id
-
-	// check to see if this is an anonymous user requesting a private project
-	user := gimlet.GetUser(r.Context())
-	if user == nil && projectRef.IsPrivate() {
-		projectID = ""
+	usr := gimlet.GetUser(r.Context())
+	if usr == nil && projectRef.IsPrivate() {
+		return nil, http.StatusUnauthorized, errors.New("unauthorized")
 	}
 
-	// no project found - return a 404
-	if projectID == "" {
-		return nil, http.StatusNotFound, errors.New("no project found")
-	}
 	res := []string{projectRef.Id}
 	if destProjectID != "" {
 		res = append(res, destProjectID)

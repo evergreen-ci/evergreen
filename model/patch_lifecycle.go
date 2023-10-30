@@ -91,7 +91,7 @@ func ValidateTVPairs(p *Project, in []TVPair) error {
 
 // Given a patch version and a list of variant/task pairs, creates the set of new builds that
 // do not exist yet out of the set of pairs, and adds tasks for builds which already exist.
-func addNewTasksAndBuildsForPatch(ctx context.Context, creationInfo TaskCreationInfo) error {
+func addNewTasksAndBuildsForPatch(ctx context.Context, creationInfo TaskCreationInfo, caller string) error {
 	existingBuilds, err := build.Find(build.ByIds(creationInfo.Version.BuildIds).WithFields(build.IdKey, build.BuildVariantKey, build.CreateTimeKey, build.RequesterKey))
 	if err != nil {
 		return err
@@ -100,22 +100,23 @@ func addNewTasksAndBuildsForPatch(ctx context.Context, creationInfo TaskCreation
 	if err != nil {
 		return errors.Wrap(err, "adding new builds")
 	}
-	_, err = addNewTasks(ctx, creationInfo, existingBuilds)
+	_, err = addNewTasksToExistingBuilds(ctx, creationInfo, existingBuilds, caller)
 	if err != nil {
 		return errors.Wrap(err, "adding new tasks")
 	}
-	err = activateExistingInactiveTasks(ctx, creationInfo, existingBuilds)
+	err = activateExistingInactiveTasks(ctx, creationInfo, existingBuilds, caller)
 	return errors.Wrap(err, "activating existing inactive tasks")
 }
 
 type PatchUpdate struct {
 	Description         string               `json:"description"`
+	Caller              string               `json:"caller"`
 	Parameters          []patch.Parameter    `json:"parameters,omitempty"`
 	PatchTriggerAliases []string             `json:"patch_trigger_aliases,omitempty"`
 	VariantsTasks       []patch.VariantTasks `json:"variants_tasks,omitempty"`
 }
 
-// ConfigurePatch validates and creates the updated tasks/variants, and updates description if needed.
+// ConfigurePatch validates and creates the updated tasks/variants if given, and updates description if needed.
 // Returns an http status code and error.
 func ConfigurePatch(ctx context.Context, settings *evergreen.Settings, p *patch.Patch, version *Version, proj *ProjectRef, patchUpdateReq PatchUpdate) (int, error) {
 	var err error
@@ -141,17 +142,17 @@ func ConfigurePatch(ctx context.Context, settings *evergreen.Settings, p *patch.
 			return http.StatusInternalServerError, errors.Wrap(err, "setting patch parameters")
 		}
 	}
-
 	// update the description for both reconfigured and new patches
 	if err = p.SetDescription(patchUpdateReq.Description); err != nil {
 		return http.StatusInternalServerError, errors.Wrap(err, "setting description")
 	}
 
-	// update the description for both reconfigured and new patches
-	if err = p.SetVariantsTasks(tasks.TVPairsToVariantTasks()); err != nil {
-		return http.StatusInternalServerError, errors.Wrap(err, "setting description")
+	patchVariantTasks := tasks.TVPairsToVariantTasks()
+	if len(patchVariantTasks) > 0 {
+		if err = p.SetVariantsTasks(patchVariantTasks); err != nil {
+			return http.StatusInternalServerError, errors.Wrap(err, "setting description")
+		}
 	}
-	p.Activated = true
 
 	if p.Version != "" {
 		// This patch has already been finalized, just add the new builds and tasks
@@ -165,19 +166,21 @@ func ConfigurePatch(ctx context.Context, settings *evergreen.Settings, p *patch.
 			}
 		}
 
-		// First add new tasks to existing builds, if necessary
-		creationInfo := TaskCreationInfo{
-			Project:        project,
-			ProjectRef:     proj,
-			Version:        version,
-			Pairs:          tasks,
-			SyncAtEndOpts:  p.SyncAtEndOpts,
-			ActivationInfo: specificActivationInfo{},
-			GeneratedBy:    "",
-		}
-		err = addNewTasksAndBuildsForPatch(context.Background(), creationInfo)
-		if err != nil {
-			return http.StatusInternalServerError, errors.Wrapf(err, "creating new tasks/builds for version '%s'", version.Id)
+		if len(patchVariantTasks) > 0 {
+			// Add new tasks to existing builds, if necessary
+			creationInfo := TaskCreationInfo{
+				Project:        project,
+				ProjectRef:     proj,
+				Version:        version,
+				Pairs:          tasks,
+				SyncAtEndOpts:  p.SyncAtEndOpts,
+				ActivationInfo: specificActivationInfo{},
+				GeneratedBy:    "",
+			}
+			err = addNewTasksAndBuildsForPatch(context.Background(), creationInfo, patchUpdateReq.Caller)
+			if err != nil {
+				return http.StatusInternalServerError, errors.Wrapf(err, "creating new tasks/builds for version '%s'", version.Id)
+			}
 		}
 	}
 	return http.StatusOK, nil
@@ -253,24 +256,20 @@ func GetPatchedProject(ctx context.Context, settings *evergreen.Settings, p *pat
 		return nil, nil, errors.Errorf("patch '%s' already finalized", p.Version)
 	}
 
-	if p.ProjectStorageMethod != "" || p.PatchedParserProject != "" {
+	if p.ProjectStorageMethod != "" {
 		// If the patch has already been created but has not been finalized, it
-		// has either already stored the parser project document or stored the
-		// parser project as a string (which is the fallback case for old
-		// patches).
+		// has already stored the parser project document
 		project, pp, err := FindAndTranslateProjectForPatch(ctx, settings, p)
 		if err != nil {
 			return nil, nil, errors.Wrap(err, "finding and translating project")
 		}
 
-		patchedParserProjectYAML := p.PatchedParserProject
-		if patchedParserProjectYAML == "" {
-			ppOut, err := yaml.Marshal(pp)
-			if err != nil {
-				return nil, nil, errors.Wrap(err, "marshalling parser project into YAML")
-			}
-			patchedParserProjectYAML = string(ppOut)
+		ppOut, err := yaml.Marshal(pp)
+		if err != nil {
+			return nil, nil, errors.Wrap(err, "marshalling parser project into YAML")
 		}
+		patchedParserProjectYAML := string(ppOut)
+
 		patchConfig := &PatchConfig{
 			PatchedParserProjectYAML: patchedParserProjectYAML,
 			PatchedParserProject:     pp,
@@ -326,19 +325,19 @@ func GetPatchedProjectConfig(ctx context.Context, settings *evergreen.Settings, 
 		return "", errors.Errorf("patch '%s' already finalized", p.Version)
 	}
 
-	if p.ProjectStorageMethod != "" || p.PatchedParserProject != "" {
+	if p.ProjectStorageMethod != "" {
 		// If the patch has been created but not finalized, it has either
-		// already saved the project config as a string (if any), stored the
-		// parser project document (i.e. ProjectStorageMethod), or has the
-		// entire patched parser project as a string (i.e.
-		// PatchedParserProject). Since the project config is optional, the
-		// patch may be created and have already evaluated the patched project
-		// config, but there simply was none. Therefore, this is a valid way to
-		// check and get the PatchedProjectConfig after the patch is already
-		// created.
+		// already saved the project config as a string (if any) or stored
+		// the parser project document (i.e. ProjectStorageMethod). Since
+		// the project config is optional, the patch may be created and have
+		// already evaluated the patched project config, but there simply
+		// was none. Therefore, this is a valid way to check and get the
+		// PatchedProjectConfig after the patch is already created.
 		return p.PatchedProjectConfig, nil
 	}
 
+	// The patch has not been created yet, so do the first-time initialization
+	// to get the parser project and project config.
 	projectRef, opts, err := getLoadProjectOptsForPatch(p, githubOauthToken)
 	if err != nil {
 		return "", errors.Wrap(err, "fetching project options for patch")
@@ -495,7 +494,7 @@ func FinalizePatch(ctx context.Context, p *patch.Patch, requester string, github
 		return nil, errors.Errorf("project '%s' not found", p.Project)
 	}
 
-	project, intermediateProject, err := FindAndTranslateProjectForPatch(ctx, settings, p)
+	project, _, err := FindAndTranslateProjectForPatch(ctx, settings, p)
 	if err != nil {
 		return nil, errors.Wrapf(err, "finding and translating project for patch '%s'", p.Id.Hex())
 	}
@@ -555,7 +554,7 @@ func FinalizePatch(ctx context.Context, p *patch.Patch, requester string, github
 		Message:             p.Description,
 		BuildIds:            []string{},
 		BuildVariants:       []VersionBuildStatus{},
-		Status:              evergreen.PatchCreated,
+		Status:              evergreen.VersionCreated,
 		Requester:           requester,
 		ParentPatchID:       p.Triggers.ParentPatch,
 		ParentPatchNumber:   parentPatchNumber,
@@ -567,7 +566,7 @@ func FinalizePatch(ctx context.Context, p *patch.Patch, requester string, github
 		AuthorEmail:         authorEmail,
 	}
 
-	mfst, err := constructManifest(patchVersion, projectRef, project.Modules, settings, githubOauthToken)
+	mfst, err := constructManifest(patchVersion, projectRef, project.Modules, githubOauthToken)
 	if err != nil {
 		return nil, errors.Wrap(err, "constructing manifest")
 	}
@@ -598,7 +597,7 @@ func FinalizePatch(ctx context.Context, p *patch.Patch, requester string, github
 		}
 		return nil, errors.New("cannot finalize patch with no tasks")
 	}
-	taskIds, err := NewPatchTaskIdTable(project, patchVersion, tasks, projectRef.Identifier)
+	taskIds, err := NewTaskIdConfig(project, patchVersion, tasks, projectRef.Identifier)
 	if err != nil {
 		return nil, errors.Wrap(err, "creating patch's task ID table")
 	}
@@ -673,25 +672,7 @@ func FinalizePatch(ctx context.Context, p *patch.Patch, requester string, github
 		)
 	}
 
-	// Newer patches always stored the parser project during patch creation.
-	// However, it used to be that the parser project was not stored until
-	// patches were finalized. For backward compatibility with the old
-	// unfinalized patches, try storing the parser project now that it's
-	// finalizing.
-
-	ppStorageMethod := p.ProjectStorageMethod
-	if ppStorageMethod == "" {
-		ppStorageMethod = evergreen.ProjectStorageMethodDB
-	}
-
-	if p.PatchedParserProject != "" {
-		intermediateProject.Init(p.Id.Hex(), patchVersion.CreateTime)
-		ppStorageMethod, err = ParserProjectUpsertOneWithS3Fallback(ctx, settings, ppStorageMethod, intermediateProject)
-		if err != nil {
-			return nil, errors.Wrapf(err, "upserting parser project for patch '%s'", p.Id.Hex())
-		}
-	}
-	patchVersion.ProjectStorageMethod = ppStorageMethod
+	patchVersion.ProjectStorageMethod = p.ProjectStorageMethod
 
 	env := evergreen.GetEnvironment()
 	mongoClient := env.Client()
@@ -1053,7 +1034,6 @@ func MakeMergePatchFromExisting(ctx context.Context, settings *evergreen.Setting
 	if err = projectRef.CommitQueueIsOn(); err != nil {
 		return nil, errors.WithStack(err)
 	}
-
 	project, _, err := FindAndTranslateProjectForPatch(ctx, settings, existingPatch)
 	if err != nil {
 		return nil, errors.Wrap(err, "loading existing project")
@@ -1064,7 +1044,7 @@ func MakeMergePatchFromExisting(ctx context.Context, settings *evergreen.Setting
 		Author:               existingPatch.Author,
 		Project:              existingPatch.Project,
 		Githash:              existingPatch.Githash,
-		Status:               evergreen.PatchCreated,
+		Status:               evergreen.VersionCreated,
 		Alias:                evergreen.CommitQueueAlias,
 		PatchedProjectConfig: existingPatch.PatchedProjectConfig,
 		CreateTime:           time.Now(),
@@ -1209,7 +1189,7 @@ func restartDiffItem(p patch.Patch, cq *commitqueue.CommitQueue) error {
 		Author:          p.Author,
 		Githash:         p.Githash,
 		CreateTime:      time.Now(),
-		Status:          evergreen.PatchCreated,
+		Status:          evergreen.VersionCreated,
 		Description:     p.Description,
 		GithubPatchData: p.GithubPatchData,
 		Tasks:           p.Tasks,
@@ -1267,7 +1247,8 @@ func SendCommitQueueResult(ctx context.Context, p *patch.Patch, status message.G
 		Description: description,
 		URL:         url,
 	}
-	sender, err := evergreen.GetEnvironment().GetSender(evergreen.SenderGithubStatus)
+
+	sender, err := evergreen.GetEnvironment().GetGitHubSender(projectRef.Owner, projectRef.Repo)
 	if err != nil {
 		return errors.Wrap(err, "getting GitHub sender")
 	}

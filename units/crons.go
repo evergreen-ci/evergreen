@@ -512,6 +512,8 @@ func PopulateCheckUnmarkedBlockedTasks() amboy.QueueOperation {
 		for _, d := range distros {
 			catcher.Wrapf(queue.Put(ctx, NewCheckBlockedTasksJob(d.Id, ts)), "enqueueing check blocked tasks job for distro '%s'", d.Id)
 		}
+		// Passing an empty string as the distro id will enqueue a job for all container tasks
+		catcher.Wrap(queue.Put(ctx, NewCheckBlockedTasksJob("", ts)), "enqueueing check blocked tasks job for container tasks")
 		return catcher.Resolve()
 	}
 }

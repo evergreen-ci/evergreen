@@ -10,6 +10,7 @@ import (
 	"path/filepath"
 	"reflect"
 	"regexp"
+	"runtime/debug"
 	"strings"
 	"time"
 
@@ -39,7 +40,8 @@ import (
 	"go.mongodb.org/mongo-driver/bson"
 )
 
-// The ProjectRef struct contains general information, independent of any revision control system, needed to track a given project.
+// ProjectRef contains Evergreen project-related settings which can be set
+// independently of version control.
 // Booleans that can be defined from both the repo and branch must be pointers, so that branch configurations can specify when to default to the repo.
 type ProjectRef struct {
 	// Id is the unmodifiable unique ID for the configuration, used internally.
@@ -59,6 +61,7 @@ type ProjectRef struct {
 	RepotrackerDisabled    *bool               `bson:"repotracker_disabled,omitempty" json:"repotracker_disabled,omitempty" yaml:"repotracker_disabled"`
 	DispatchingDisabled    *bool               `bson:"dispatching_disabled,omitempty" json:"dispatching_disabled,omitempty" yaml:"dispatching_disabled"`
 	StepbackDisabled       *bool               `bson:"stepback_disabled,omitempty" json:"stepback_disabled,omitempty" yaml:"stepback_disabled"`
+	StepbackBisect         *bool               `bson:"stepback_bisect,omitempty" json:"stepback_bisect,omitempty" yaml:"stepback_bisect"`
 	VersionControlEnabled  *bool               `bson:"version_control_enabled,omitempty" json:"version_control_enabled,omitempty" yaml:"version_control_enabled"`
 	PRTestingEnabled       *bool               `bson:"pr_testing_enabled,omitempty" json:"pr_testing_enabled,omitempty" yaml:"pr_testing_enabled"`
 	ManualPRTestingEnabled *bool               `bson:"manual_pr_testing_enabled,omitempty" json:"manual_pr_testing_enabled,omitempty" yaml:"manual_pr_testing_enabled"`
@@ -330,6 +333,7 @@ var (
 	projectRefPatchingDisabledKey         = bsonutil.MustHaveTag(ProjectRef{}, "PatchingDisabled")
 	projectRefDispatchingDisabledKey      = bsonutil.MustHaveTag(ProjectRef{}, "DispatchingDisabled")
 	projectRefStepbackDisabledKey         = bsonutil.MustHaveTag(ProjectRef{}, "StepbackDisabled")
+	projectRefStepbackBisectKey           = bsonutil.MustHaveTag(ProjectRef{}, "StepbackBisect")
 	projectRefVersionControlEnabledKey    = bsonutil.MustHaveTag(ProjectRef{}, "VersionControlEnabled")
 	projectRefNotifyOnFailureKey          = bsonutil.MustHaveTag(ProjectRef{}, "NotifyOnBuildFailure")
 	projectRefSpawnHostScriptPathKey      = bsonutil.MustHaveTag(ProjectRef{}, "SpawnHostScriptPath")
@@ -381,6 +385,10 @@ func (p *ProjectRef) IsPRTestingEnabled() bool {
 
 func (p *ProjectRef) IsStepbackDisabled() bool {
 	return utility.FromBoolPtr(p.StepbackDisabled)
+}
+
+func (p *ProjectRef) IsStepbackBisect() bool {
+	return utility.FromBoolPtr(p.StepbackBisect)
 }
 
 func (p *ProjectRef) IsAutoPRTestingEnabled() bool {
@@ -466,6 +474,7 @@ const (
 	ProjectRefCollection     = "project_ref"
 	ProjectTriggerLevelTask  = "task"
 	ProjectTriggerLevelBuild = "build"
+	ProjectTriggerLevelPush  = "push"
 	intervalPrefix           = "@every"
 	maxBatchTime             = 153722867 // math.MaxInt64 / 60 / 1_000_000_000
 )
@@ -1073,10 +1082,10 @@ func (p *ProjectRef) createNewRepoRef(u *user.DBUser) (repoRef *RepoRef, err err
 	// Set explicitly in case no project is enabled.
 	repoRef.Owner = p.Owner
 	repoRef.Repo = p.Repo
-	_, err = EnableWebhooks(context.Background(), &repoRef.ProjectRef)
+	_, err = SetTracksPushEvents(context.Background(), &repoRef.ProjectRef)
 	if err != nil {
 		grip.Debug(message.WrapError(err, message.Fields{
-			"message": "error enabling webhooks",
+			"message": "error setting project tracks push events",
 			"repo_id": repoRef.Id,
 			"owner":   repoRef.Owner,
 			"repo":    repoRef.Repo,
@@ -1546,7 +1555,7 @@ func FindOneProjectRefByRepoAndBranchWithPRTesting(owner, repo, branch, calledBy
 	if err != nil {
 		return nil, errors.Wrapf(err, "finding merged repo refs for repo '%s/%s'", owner, repo)
 	}
-	if repoRef == nil || !repoRef.IsPRTestingEnabledByCaller(calledBy) || repoRef.RemotePath == "" {
+	if repoRef == nil || !repoRef.IsPRTestingEnabledByCaller(calledBy) {
 		grip.Debug(message.Fields{
 			"source":  "find project ref for PR testing",
 			"message": "repo ref not configured for PR testing untracked branches",
@@ -1555,6 +1564,16 @@ func FindOneProjectRefByRepoAndBranchWithPRTesting(owner, repo, branch, calledBy
 			"branch":  branch,
 		})
 		return nil, nil
+	}
+	if repoRef.RemotePath == "" {
+		grip.Error(message.Fields{
+			"source":  "find project ref for PR testing",
+			"message": "repo ref has no remote path, cannot use for PR testing",
+			"owner":   owner,
+			"repo":    repo,
+			"branch":  branch,
+		})
+		return nil, errors.Errorf("repo ref '%s' has no remote path, cannot use for PR testing", repoRef.Id)
 	}
 
 	projectRefs, err = FindMergedProjectRefsThatUseRepoSettingsByRepoAndBranch(owner, repo, branch)
@@ -1637,29 +1656,18 @@ func FindOneProjectRefWithCommitQueueByOwnerRepoAndBranch(owner, repo, branch st
 	return nil, nil
 }
 
-// EnableWebhooks returns true if a hook for the given owner/repo exists or was inserted.
-func EnableWebhooks(ctx context.Context, projectRef *ProjectRef) (bool, error) {
-	hook, err := FindGithubHook(projectRef.Owner, projectRef.Repo)
-	if err != nil {
-		return false, errors.Wrapf(err, "finding GitHub hook for project '%s'", projectRef.Id)
-	}
-	if hook != nil {
-		projectRef.TracksPushEvents = utility.TruePtr()
-		return true, nil
-	}
-
+// SetTracksPushEvents returns true if the GitHub app is installed on the owner/repo for the given project.
+func SetTracksPushEvents(ctx context.Context, projectRef *ProjectRef) (bool, error) {
 	settings, err := evergreen.GetConfig(ctx)
 	if err != nil {
 		return false, errors.Wrap(err, "finding evergreen settings")
 	}
 
-	hook, err = SetupNewGithubHook(ctx, *settings, projectRef.Owner, projectRef.Repo)
+	// Don't return errors because it could cause the project page to break if GitHub is down.
+	hasApp, err := settings.HasGitHubApp(ctx, projectRef.Owner, projectRef.Repo, nil)
 	if err != nil {
-		// don't return error:
-		// sometimes people change a project to track a personal
-		// branch we don't have access to
 		grip.Error(message.WrapError(err, message.Fields{
-			"message":            "can't setup webhook",
+			"message":            "Error verifying GitHub app installation",
 			"project":            projectRef.Id,
 			"project_identifier": projectRef.Identifier,
 			"owner":              projectRef.Owner,
@@ -1668,10 +1676,21 @@ func EnableWebhooks(ctx context.Context, projectRef *ProjectRef) (bool, error) {
 		projectRef.TracksPushEvents = utility.FalsePtr()
 		return false, nil
 	}
-
-	if err = hook.Insert(); err != nil {
-		return false, errors.Wrapf(err, "inserting new webhook for project '%s'", projectRef.Id)
+	// don't return error:
+	// sometimes people change a project to track a personal
+	// branch we don't have access to
+	if !hasApp {
+		grip.Warning(message.Fields{
+			"message":            "GitHub app not installed",
+			"project":            projectRef.Id,
+			"project_identifier": projectRef.Identifier,
+			"owner":              projectRef.Owner,
+			"repo":               projectRef.Repo,
+		})
+		projectRef.TracksPushEvents = utility.FalsePtr()
+		return false, nil
 	}
+
 	projectRef.TracksPushEvents = utility.TruePtr()
 	return true, nil
 }
@@ -1784,10 +1803,10 @@ func GetProjectSettingsById(projectId string, isRepo bool) (*ProjectSettings, er
 
 // GetProjectSettings returns the ProjectSettings of the given identifier and ProjectRef
 func GetProjectSettings(p *ProjectRef) (*ProjectSettings, error) {
-	hook, err := FindGithubHook(p.Owner, p.Repo)
-	if err != nil {
-		return nil, errors.Wrapf(err, "finding GitHub hook for project '%s'", p.Id)
-	}
+	// Don't error even if there is problem with verifying the GitHub app installation
+	// because a GitHub outage could cause project settings page to not load.
+	hasApp, _ := evergreen.GetEnvironment().Settings().HasGitHubApp(context.Background(), p.Owner, p.Repo, nil)
+
 	projectVars, err := FindOneProjectVars(p.Id)
 	if err != nil {
 		return nil, errors.Wrapf(err, "finding variables for project '%s'", p.Id)
@@ -1805,7 +1824,7 @@ func GetProjectSettings(p *ProjectRef) (*ProjectSettings, error) {
 	}
 	projectSettingsEvent := ProjectSettings{
 		ProjectRef:         *p,
-		GithubHooksEnabled: hook != nil,
+		GithubHooksEnabled: hasApp,
 		Vars:               *projectVars,
 		Aliases:            projectAliases,
 		Subscriptions:      subscriptions,
@@ -1965,6 +1984,7 @@ func SaveProjectPageForSection(projectId string, p *ProjectRef, section ProjectP
 			projectRefSpawnHostScriptPathKey:   p.SpawnHostScriptPath,
 			projectRefDispatchingDisabledKey:   p.DispatchingDisabled,
 			projectRefStepbackDisabledKey:      p.StepbackDisabled,
+			projectRefStepbackBisectKey:        p.StepbackBisect,
 			projectRefVersionControlEnabledKey: p.VersionControlEnabled,
 			ProjectRefDeactivatePreviousKey:    p.DeactivatePrevious,
 			projectRefRepotrackerDisabledKey:   p.RepotrackerDisabled,
@@ -2011,6 +2031,19 @@ func SaveProjectPageForSection(projectId string, p *ProjectRef, section ProjectP
 		}
 		if catcher.HasErrors() {
 			return false, errors.Wrapf(catcher.Resolve(), "validating external links")
+		}
+		var pRef *ProjectRef
+		pRef, err = FindBranchProjectRef(projectId)
+		if err != nil {
+			return false, errors.Wrapf(err, "getting project '%s'", projectId)
+		}
+		if pRef == nil {
+			return false, errors.Errorf("project '%s' was not found", projectId)
+		}
+		// If the performance plugin is not currently enabled, and we are trying to
+		// change it to enabled but the id and identifier are different, we error.
+		if !pRef.IsPerfEnabled() && p.IsPerfEnabled() && pRef.Id != pRef.Identifier {
+			return false, errors.Errorf("project '%s' does not have a matching ID and identifier, cannot enable performance plugin", pRef.Id)
 		}
 		err = db.Update(coll,
 			bson.M{ProjectRefIdKey: projectId},
@@ -2274,8 +2307,26 @@ func (p *ProjectRef) GetActivationTimeForVariant(variant *BuildVariant) (time.Ti
 	return defaultRes, nil
 }
 
-func (p *ProjectRef) GetActivationTimeForTask(t *BuildVariantTaskUnit) (time.Time, error) {
+// GetActivationTimeForTask returns the time at which this task should next be activated.
+// Temporarily takes in the task ID that prompted this query, for logging.
+func (p *ProjectRef) GetActivationTimeForTask(t *BuildVariantTaskUnit, taskId string) (time.Time, error) {
 	defaultRes := time.Now()
+	// Verify that we mean to be getting activation time for task
+	if !t.HasSpecificActivation() {
+		grip.Debug(message.Fields{
+			"ticket":         "EVG-20612",
+			"message":        "incorrectly called GetActivationTimeForTask",
+			"task_id":        taskId,
+			"variant":        t.Variant,
+			"task_name":      t.Name,
+			"bvtu_batchtime": t.BatchTime,
+			"bvtu_activate":  t.Activate,
+			"bvtu_cron":      t.CronBatchTime,
+			"bvtu_disabled":  t.IsDisabled(),
+			"stack":          string(debug.Stack()),
+		})
+		return defaultRes, nil
+	}
 	// if we don't want to activate the task, set batchtime to the zero time
 	if !utility.FromBoolTPtr(t.Activate) || t.IsDisabled() {
 		return utility.ZeroTime, nil
@@ -2288,10 +2339,23 @@ func (p *ProjectRef) GetActivationTimeForTask(t *BuildVariantTaskUnit) (time.Tim
 		return time.Now(), nil
 	}
 
+	queryStart := time.Now()
 	lastActivated, err := VersionFindOne(VersionByLastTaskActivation(p.Id, t.Variant, t.Name).WithFields(VersionBuildVariantsKey))
 	if err != nil {
 		return defaultRes, errors.Wrap(err, "finding version")
 	}
+	grip.Debug(message.Fields{
+		"ticket":                "EVG-20612",
+		"message":               "queried last activated",
+		"last_activated_exists": lastActivated != nil,
+		"task_id":               taskId,
+		"variant":               t.Variant,
+		"task_name":             t.Name,
+		"bvtu_batchtime":        t.BatchTime,
+		"bvtu_activate":         t.Activate,
+		"stack":                 string(debug.Stack()),
+		"query_time_secs":       time.Since(queryStart).Seconds(),
+	})
 	if lastActivated == nil {
 		return defaultRes, nil
 	}
@@ -2805,7 +2869,7 @@ func (t *TriggerDefinition) Validate(parentProject string) error {
 	}
 	// should be saved using its ID, in case the user used the project's identifier
 	t.Project = upstreamProject.Id
-	if t.Level != ProjectTriggerLevelBuild && t.Level != ProjectTriggerLevelTask {
+	if t.Level != ProjectTriggerLevelBuild && t.Level != ProjectTriggerLevelTask && t.Level != ProjectTriggerLevelPush {
 		return errors.Errorf("invalid level: %s", t.Level)
 	}
 	if t.Status != "" && t.Status != evergreen.TaskFailed && t.Status != evergreen.TaskSucceeded {
@@ -2885,7 +2949,7 @@ func ValidateContainers(ecsConf evergreen.ECSConfig, pRef *ProjectRef, container
 		catcher.NewWhen(container.Image == "", "image must be defined")
 		catcher.NewWhen(container.WorkingDir == "", "working directory must be defined")
 		catcher.NewWhen(container.Name == "", "name must be defined")
-		catcher.ErrorfWhen(len(ecsConf.AllowedImages) > 0 && !utility.StringSliceContains(ecsConf.AllowedImages, container.Image), "image '%s' not allowed", container.Image)
+		catcher.ErrorfWhen(len(ecsConf.AllowedImages) > 0 && !util.HasAllowedImageAsPrefix(container.Image, ecsConf.AllowedImages), "image '%s' not allowed", container.Image)
 	}
 	return catcher.Resolve()
 }
@@ -2938,7 +3002,7 @@ func ValidateTriggerDefinition(definition patch.PatchTriggerDefinition, parentPr
 		return definition, errors.Wrapf(err, "finding child project '%s'", definition.ChildProject)
 	}
 
-	if !utility.StringSliceContains([]string{"", AllStatuses, evergreen.PatchSucceeded, evergreen.PatchFailed}, definition.Status) {
+	if !utility.StringSliceContains([]string{"", AllStatuses, evergreen.LegacyPatchSucceeded, evergreen.VersionSucceeded, evergreen.VersionFailed}, definition.Status) {
 		return definition, errors.Errorf("invalid status: %s", definition.Status)
 	}
 

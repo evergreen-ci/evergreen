@@ -6,8 +6,8 @@ import (
 	"time"
 
 	"github.com/evergreen-ci/evergreen"
-	"github.com/evergreen-ci/evergreen/agent/internal/client"
 	"github.com/mongodb/grip"
+	"github.com/mongodb/grip/message"
 	"github.com/mongodb/grip/recovery"
 )
 
@@ -17,7 +17,8 @@ import (
 //     alive and running its task. If the app server does not receive a
 //     heartbeat for a long time while the task is still running, then it can
 //     assume the task has somehow stopped running and can choose to system-fail
-//     the task.
+//     the task. The heartbeat may also stop indicating that the task is alive
+//     if it's been running for a suspiciously long time.
 //  2. It decides if/when to abort a task. If it receives an explicit message
 //     from the app server to abort (e.g. the user requested the task to abort),
 //     then it triggers the running task to abort by cancelling
@@ -38,6 +39,29 @@ func (a *Agent) startHeartbeat(ctx context.Context, preAndMainCancel context.Can
 	for {
 		select {
 		case <-ticker.C:
+			if tc.hadHeartbeatTimeout() {
+				// If the heartbeat hits its maximum reasonable timeout, that
+				// means something unrecoverably wrong has most likely occurred
+				// in the task runtime (e.g. a deadlock in the agent has stalled
+				// the task).
+				timeoutOpts := tc.getHeartbeatTimeout()
+				timeout := timeoutOpts.getTimeout()
+				msg := fmt.Sprintf("Heartbeat has hit maximum allowed '%s' timeout of %s; task is at risk of timing out if it runs for much longer.", timeoutOpts.kind, timeout.String())
+				grip.Alert(message.Fields{
+					"message":        msg,
+					"task_id":        tc.taskConfig.Task.Id,
+					"task_execution": tc.taskConfig.Task.Execution,
+					"timeout_type":   timeoutOpts.kind,
+					"timeout_start":  timeoutOpts.startAt,
+					"timeout_secs":   timeout.Seconds(),
+				})
+				tc.logger.Task().Errorf(msg)
+				if !hasSentAbort {
+					preAndMainCancel()
+				}
+				return
+			}
+
 			signalBeat, err := a.doHeartbeat(ctx, tc)
 			if err != nil {
 				numRepeatedFailures++
@@ -51,7 +75,7 @@ func (a *Agent) startHeartbeat(ctx context.Context, preAndMainCancel context.Can
 				// This is a best-effort attempt, since there's no graceful way
 				// to handle heartbeat failures when abort was already sent.
 				if numRepeatedFailures == maxHeartbeats {
-					tc.logger.Task().Error("Hit max heartbeat attempts when task is already aborted, task is at risk of timing out if it runs for much longer.")
+					tc.logger.Task().Error("Hit max heartbeat attempts when task is already aborted; task is at risk of timing out if it runs for much longer.")
 				}
 				continue
 			}
@@ -77,28 +101,35 @@ func (a *Agent) startHeartbeat(ctx context.Context, preAndMainCancel context.Can
 
 func (a *Agent) doHeartbeat(ctx context.Context, tc *taskContext) (string, error) {
 	resp, err := a.comm.Heartbeat(ctx, tc.task)
-	if resp == evergreen.TaskFailed || resp == client.TaskConflict {
+	if resp == evergreen.TaskFailed {
 		return resp, err
 	}
 	return "", err
 }
 
-func (a *Agent) startIdleTimeoutWatch(ctx context.Context, tc *taskContext, cancel context.CancelFunc) {
+// startIdleTimeoutWatcher waits until the idle timeout is hit for a running
+// command. If the watcher detects that the command has been idle for longer
+// than the idle timeout (i.e. no task log output), then it marks the task as
+// having hit the timeout and cancels the command.
+func (a *Agent) startIdleTimeoutWatcher(ctx context.Context, cancel context.CancelFunc, tc *taskContext) {
 	defer recovery.LogStackTraceAndContinue("idle timeout watcher")
 	defer cancel()
 	ticker := time.NewTicker(time.Second)
 	defer ticker.Stop()
+
+	tc.logger.Execution().Info("Starting idle timeout watcher.")
+
 	for {
 		select {
 		case <-ctx.Done():
-			grip.Info("Idle timeout watcher canceled.")
+			tc.logger.Execution().Info("Idle timeout watcher canceled.")
 			return
 		case <-ticker.C:
-			timeout := tc.getCurrentTimeout()
+			timeout := tc.getCurrentIdleTimeout()
 			timeSinceLastMessage := time.Since(a.comm.LastMessageAt())
 
 			if timeSinceLastMessage > timeout {
-				tc.logger.Execution().Errorf("Hit idle timeout (no message on stdout for more than %s).", timeout)
+				tc.logger.Task().Errorf("Hit idle timeout (no message on stdout/stderr for more than %s).", timeout)
 				tc.reachTimeOut(idleTimeout, timeout)
 				return
 			}
@@ -106,6 +137,7 @@ func (a *Agent) startIdleTimeoutWatch(ctx context.Context, tc *taskContext, canc
 	}
 }
 
+// timeoutWatcherOptions specify options for a background timeout watcher.
 type timeoutWatcherOptions struct {
 	// tc is the task context for the current running task.
 	tc *taskContext
@@ -124,14 +156,17 @@ type timeoutWatcherOptions struct {
 func (a *Agent) startTimeoutWatcher(ctx context.Context, operationCancel context.CancelFunc, opts timeoutWatcherOptions) {
 	defer recovery.LogStackTraceAndContinue(fmt.Sprintf("%s timeout watcher", opts.kind))
 	defer operationCancel()
+
 	ticker := time.NewTicker(time.Second)
 	timeTickerStarted := time.Now()
 	defer ticker.Stop()
 
+	opts.tc.logger.Execution().Infof("Starting %s timeout watcher.", opts.kind)
+
 	for {
 		select {
 		case <-ctx.Done():
-			grip.Infof("%s timeout watcher canceled.", opts.kind)
+			opts.tc.logger.Execution().Infof("Stopped %s timeout watcher.", opts.kind)
 			return
 		case <-ticker.C:
 			timeout := opts.getTimeout()
@@ -146,16 +181,4 @@ func (a *Agent) startTimeoutWatcher(ctx context.Context, operationCancel context
 			}
 		}
 	}
-}
-
-// getCallbackTimeout returns the callback timeout for the task.
-func (tc *taskContext) getCallbackTimeout() time.Duration {
-	tc.RLock()
-	defer tc.RUnlock()
-
-	taskConfig := tc.getTaskConfig()
-	if taskConfig != nil && taskConfig.Project != nil && taskConfig.Project.CallbackTimeout != 0 {
-		return time.Duration(taskConfig.Project.CallbackTimeout) * time.Second
-	}
-	return defaultCallbackCmdTimeout
 }

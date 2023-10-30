@@ -1,5 +1,0 @@
-api_server_host: http://localhost:9090/api
-ui_server_host: http://localhost:9090
-api_key: abb623665fdbf368a1db980dde6ee0f0
-user: admin
-disable_auto_defaulting: true

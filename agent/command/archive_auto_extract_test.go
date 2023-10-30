@@ -4,6 +4,8 @@ import (
 	"context"
 	"os"
 	"path/filepath"
+	"runtime"
+	"strings"
 	"testing"
 
 	"github.com/evergreen-ci/evergreen/agent/internal"
@@ -12,6 +14,8 @@ import (
 	"github.com/evergreen-ci/evergreen/model/task"
 	"github.com/evergreen-ci/evergreen/testutil"
 	"github.com/evergreen-ci/evergreen/util"
+	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 	"github.com/stretchr/testify/suite"
 )
 
@@ -39,7 +43,12 @@ func (s *AutoExtractSuite) SetupTest() {
 
 	s.ctx, s.cancel = context.WithCancel(context.Background())
 	s.comm = client.NewMock("http://localhost.com")
-	s.conf = &internal.TaskConfig{Expansions: &util.Expansions{}, Task: &task.Task{}, Project: &model.Project{}}
+	s.conf = &internal.TaskConfig{
+		Expansions: util.Expansions{},
+		Task:       task.Task{},
+		Project:    model.Project{},
+		WorkDir:    s.targetLocation,
+	}
 	s.logger, err = s.comm.GetLoggerProducer(s.ctx, client.TaskData{ID: s.conf.Task.Id, Secret: s.conf.Task.Secret}, nil)
 	s.NoError(err)
 
@@ -75,80 +84,100 @@ func (s *AutoExtractSuite) TestErrorWhenExcludeFilesExist() {
 
 func (s *AutoExtractSuite) TestErrorsWithMalformedExpansions() {
 	s.cmd.TargetDirectory = "${foo"
-	s.Error(s.cmd.Execute(context.Background(), s.comm, s.logger, s.conf))
+	s.Error(s.cmd.Execute(s.ctx, s.comm, s.logger, s.conf))
 }
 
 func (s *AutoExtractSuite) TestErrorsIfNoTarget() {
 	s.Zero(s.cmd.TargetDirectory)
-	s.Error(s.cmd.Execute(context.Background(), s.comm, s.logger, s.conf))
+	s.Error(s.cmd.Execute(s.ctx, s.comm, s.logger, s.conf))
 }
 
 func (s *AutoExtractSuite) TestErrorsAndNormalizedPath() {
-	var err error
-	s.conf.WorkDir, err = filepath.Abs(filepath.Join("srv", "evergreen"))
-	s.Require().NoError(err)
 	s.cmd.TargetDirectory = "foo"
 	s.cmd.ArchivePath = "bar"
 
-	s.Error(s.cmd.Execute(context.Background(), s.comm, s.logger, s.conf))
+	s.Error(s.cmd.Execute(s.ctx, s.comm, s.logger, s.conf))
 	s.Contains(s.cmd.TargetDirectory, s.conf.WorkDir)
 	s.Contains(s.cmd.ArchivePath, s.conf.WorkDir)
 }
 
 func (s *AutoExtractSuite) TestExtractionArchiveDoesNotExist() {
-	s.conf.WorkDir = "/srv/evergreen"
 	s.cmd.TargetDirectory = s.targetLocation
 	s.cmd.ArchivePath = filepath.Join(testutil.GetDirectoryOfFile(),
 		"testdata", "archive", "artifacts.tar.gauto")
 
-	s.Error(s.cmd.Execute(context.Background(), s.comm, s.logger, s.conf))
+	s.Error(s.cmd.Execute(s.ctx, s.comm, s.logger, s.conf))
 }
 
 func (s *AutoExtractSuite) TestExtractionFileExistsAndIsNotArchive() {
-	s.conf.WorkDir = "/srv/evergreen"
 	s.cmd.TargetDirectory = s.targetLocation
-	s.cmd.ArchivePath = filepath.Join(testutil.GetDirectoryOfFile(),
-		"interface.go")
+	_, thisFile, _, _ := runtime.Caller(0)
+	s.cmd.ArchivePath = thisFile
 
-	s.Error(s.cmd.Execute(context.Background(), s.comm, s.logger, s.conf))
+	s.Error(s.cmd.Execute(s.ctx, s.comm, s.logger, s.conf))
 }
 
-func (s *AutoExtractSuite) TestExtractionZipWorkingCase() {
-	s.conf.WorkDir = "/srv/evergreen"
+func (s *AutoExtractSuite) TestExtractionZipSucceedsButIsNotIdempotent() {
 	s.cmd.TargetDirectory = s.targetLocation
 	s.cmd.ArchivePath = filepath.Join(testutil.GetDirectoryOfFile(),
 		"testdata", "archive", "artifacts.zip")
 
-	s.NoError(s.cmd.Execute(context.Background(), s.comm, s.logger, s.conf))
+	s.NoError(s.cmd.Execute(s.ctx, s.comm, s.logger, s.conf))
 
-	counter := 0
-	err := filepath.Walk(s.targetLocation, func(path string, info os.FileInfo, err error) error {
-		if err != nil {
-			return err
-		}
-		counter++
-		return nil
-	})
-	s.NoError(err)
-	s.True(counter > 1)
+	checkCommonExtractedArchiveContents(s.T(), s.cmd.TargetDirectory)
+
+	// Extracting the same archive contents multiple times to the same directory
+	// results in an error because the files already exist.
+	s.Error(s.cmd.Execute(s.ctx, s.comm, s.logger, s.conf))
 }
 
-func (s *AutoExtractSuite) TestExtractionTarWorkingCase() {
-	s.conf.WorkDir = "/srv/evergreen"
+func (s *AutoExtractSuite) TestExtractionTarSucceedsButIsNotIdempotent() {
 	s.cmd.TargetDirectory = s.targetLocation
 	s.cmd.ArchivePath = filepath.Join(testutil.GetDirectoryOfFile(),
 		"testdata", "archive", "artifacts.tar.gz")
 
-	s.NoError(s.cmd.Execute(context.Background(), s.comm, s.logger, s.conf))
+	s.NoError(s.cmd.Execute(s.ctx, s.comm, s.logger, s.conf))
 
-	counter := 0
-	err := filepath.Walk(s.targetLocation, func(path string, info os.FileInfo, err error) error {
+	checkCommonExtractedArchiveContents(s.T(), s.cmd.TargetDirectory)
+
+	// Extracting the same archive contents multiple times to the same directory
+	// results in an error because the files already exist.
+	s.Error(s.cmd.Execute(s.ctx, s.comm, s.logger, s.conf))
+}
+
+// checkCommonExtractedArchiveContents checks that the testdata's archive file
+// extracted to the expected contents.
+func checkCommonExtractedArchiveContents(t *testing.T, targetDirectory string) {
+	// There's a single file artifacts/dir1/dir2/testfile.txt.
+	expectedContents := map[string]bool{}
+	pathParts := []string{"artifacts", "dir1", "dir2", "testfile.txt"}
+	for i := range pathParts {
+		expectedContents[filepath.Join(pathParts[:i+1]...)] = false
+	}
+
+	// Check that the proper directory structure is created and contains the one
+	// extracted file.
+	err := filepath.Walk(targetDirectory, func(path string, info os.FileInfo, err error) error {
 		if err != nil {
 			return err
 		}
-		counter++
+
+		assert.True(t, strings.HasPrefix(path, targetDirectory), "path '%s' should be inside target directory '%s'", path, targetDirectory)
+		if path == targetDirectory {
+			return nil
+		}
+
+		relPath, err := filepath.Rel(targetDirectory, path)
+		require.NoError(t, err)
+		_, ok := expectedContents[relPath]
+		assert.True(t, ok, "unexpected file '%s'", relPath)
+		expectedContents[relPath] = true
 		return nil
 	})
-	s.NoError(err)
-	s.True(counter > 1)
+
+	assert.NoError(t, err)
+
+	for path, found := range expectedContents {
+		assert.True(t, found, "did not find expected path '%s'", path)
+	}
 }

@@ -120,7 +120,8 @@ func TestModelConversion(t *testing.T) {
 	assert.EqualValues(testSettings.AuthConfig.Multi.ReadWrite[0], apiSettings.AuthConfig.Multi.ReadWrite[0])
 	assert.Equal(len(testSettings.AuthConfig.Github.Users), len(apiSettings.AuthConfig.Github.Users))
 	assert.Equal(testSettings.Buckets.LogBucket.Name, utility.FromStringPtr(apiSettings.Buckets.LogBucket.Name))
-	assert.Equal(testSettings.Buckets.LogBucket.Type, utility.FromStringPtr(apiSettings.Buckets.LogBucket.Type))
+	assert.EqualValues(testSettings.Buckets.LogBucket.Type, utility.FromStringPtr(apiSettings.Buckets.LogBucket.Type))
+	assert.Equal(testSettings.Buckets.LogBucket.DBName, utility.FromStringPtr(apiSettings.Buckets.LogBucket.DBName))
 	assert.Equal(testSettings.Cedar.BaseURL, utility.FromStringPtr(apiSettings.Cedar.BaseURL))
 	assert.Equal(testSettings.Cedar.RPCPort, utility.FromStringPtr(apiSettings.Cedar.RPCPort))
 	assert.Equal(testSettings.Cedar.User, utility.FromStringPtr(apiSettings.Cedar.User))
@@ -223,6 +224,7 @@ func TestModelConversion(t *testing.T) {
 	assert.Equal(testSettings.Spawnhost.UnexpirableVolumesPerUser, *apiSettings.Spawnhost.UnexpirableVolumesPerUser)
 	assert.Equal(testSettings.Tracer.Enabled, *apiSettings.Tracer.Enabled)
 	assert.Equal(testSettings.Tracer.CollectorEndpoint, *apiSettings.Tracer.CollectorEndpoint)
+	assert.Equal(testSettings.GitHubCheckRun.CheckRunLimit, *apiSettings.GitHubCheckRun.CheckRunLimit)
 
 	// test converting from the API model back to a DB model
 	dbInterface, err := apiSettings.ToService()
@@ -254,7 +256,8 @@ func TestModelConversion(t *testing.T) {
 	assert.Equal(len(testSettings.AuthConfig.Github.Users), len(dbSettings.AuthConfig.Github.Users))
 	assert.EqualValues(testSettings.AuthConfig.Multi.ReadWrite[0], dbSettings.AuthConfig.Multi.ReadWrite[0])
 	assert.Equal(testSettings.Buckets.LogBucket.Name, utility.FromStringPtr(apiSettings.Buckets.LogBucket.Name))
-	assert.Equal(testSettings.Buckets.LogBucket.Type, utility.FromStringPtr(apiSettings.Buckets.LogBucket.Type))
+	assert.EqualValues(testSettings.Buckets.LogBucket.Type, utility.FromStringPtr(apiSettings.Buckets.LogBucket.Type))
+	assert.Equal(testSettings.Buckets.LogBucket.DBName, utility.FromStringPtr(apiSettings.Buckets.LogBucket.DBName))
 	assert.Equal(testSettings.Cedar.BaseURL, utility.FromStringPtr(apiSettings.Cedar.BaseURL))
 	assert.Equal(testSettings.Cedar.RPCPort, utility.FromStringPtr(apiSettings.Cedar.RPCPort))
 	assert.Equal(testSettings.Cedar.User, utility.FromStringPtr(apiSettings.Cedar.User))
@@ -330,6 +333,7 @@ func TestModelConversion(t *testing.T) {
 	assert.EqualValues(testSettings.Spawnhost.UnexpirableVolumesPerUser, dbSettings.Spawnhost.UnexpirableVolumesPerUser)
 	assert.EqualValues(testSettings.Tracer.Enabled, dbSettings.Tracer.Enabled)
 	assert.EqualValues(testSettings.Tracer.CollectorEndpoint, dbSettings.Tracer.CollectorEndpoint)
+	assert.EqualValues(testSettings.GitHubCheckRun.CheckRunLimit, dbSettings.GitHubCheckRun.CheckRunLimit)
 }
 
 func TestRestart(t *testing.T) {

@@ -112,7 +112,7 @@ func (c *attachResults) Execute(ctx context.Context,
 
 	reportFileLoc := c.FileLoc
 	if !filepath.IsAbs(c.FileLoc) {
-		reportFileLoc = getJoinedWithWorkDir(conf, c.FileLoc)
+		reportFileLoc = getWorkingDirectory(conf, c.FileLoc)
 	}
 
 	// attempt to open the file

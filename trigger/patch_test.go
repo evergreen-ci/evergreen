@@ -76,7 +76,7 @@ func (s *patchSuite) SetupTest() {
 		Id:         mgobson.ObjectIdHex(childPatchId),
 		Project:    "test",
 		Author:     "someone",
-		Status:     evergreen.PatchCreated,
+		Status:     evergreen.VersionCreated,
 		StartTime:  startTime,
 		FinishTime: startTime.Add(10 * time.Minute),
 		GithubPatchData: thirdparty.GithubPatch{
@@ -102,7 +102,7 @@ func (s *patchSuite) SetupTest() {
 	s.NoError(childVersion.Insert())
 
 	s.data = &event.PatchEventData{
-		Status: evergreen.PatchCreated,
+		Status: evergreen.VersionCreated,
 	}
 	s.event = event.EventLogEntry{
 		ResourceType: event.ResourceTypePatch,
@@ -162,16 +162,16 @@ func (s *patchSuite) TestAllTriggers() {
 	s.NoError(err)
 	s.Len(n, 0)
 
-	s.patch.Status = evergreen.PatchSucceeded
-	s.data.Status = evergreen.PatchSucceeded
+	s.patch.Status = evergreen.VersionSucceeded
+	s.data.Status = evergreen.VersionSucceeded
 	s.NoError(db.Update(patch.Collection, bson.M{"_id": s.patch.Id}, &s.patch))
 
 	n, err = NotificationsFromEvent(s.ctx, &s.event)
 	s.NoError(err)
 	s.Len(n, 2)
 
-	s.patch.Status = evergreen.PatchFailed
-	s.data.Status = evergreen.PatchFailed
+	s.patch.Status = evergreen.VersionFailed
+	s.data.Status = evergreen.VersionFailed
 	s.NoError(db.Update(patch.Collection, bson.M{"_id": s.patch.Id}, &s.patch))
 
 	n, err = NotificationsFromEvent(s.ctx, &s.event)
@@ -184,46 +184,46 @@ func (s *patchSuite) TestPatchSuccess() {
 	s.NoError(err)
 	s.Nil(n)
 
-	s.data.Status = evergreen.PatchFailed
+	s.data.Status = evergreen.VersionFailed
 	n, err = s.t.patchSuccess(&s.subs[1])
 	s.NoError(err)
 	s.Nil(n)
 
-	s.data.Status = evergreen.PatchSucceeded
+	s.data.Status = evergreen.VersionSucceeded
 	n, err = s.t.patchSuccess(&s.subs[1])
 	s.NoError(err)
 	s.NotNil(n)
 }
 
 func (s *patchSuite) TestPatchFailure() {
-	s.data.Status = evergreen.PatchCreated
+	s.data.Status = evergreen.VersionCreated
 	n, err := s.t.patchFailure(&s.subs[2])
 	s.NoError(err)
 	s.Nil(n)
 
-	s.data.Status = evergreen.PatchSucceeded
+	s.data.Status = evergreen.VersionSucceeded
 	n, err = s.t.patchFailure(&s.subs[2])
 	s.NoError(err)
 	s.Nil(n)
 
-	s.data.Status = evergreen.PatchFailed
+	s.data.Status = evergreen.VersionFailed
 	n, err = s.t.patchFailure(&s.subs[2])
 	s.NoError(err)
 	s.NotNil(n)
 }
 
 func (s *patchSuite) TestPatchOutcome() {
-	s.data.Status = evergreen.PatchCreated
+	s.data.Status = evergreen.VersionCreated
 	n, err := s.t.patchOutcome(&s.subs[0])
 	s.NoError(err)
 	s.Nil(n)
 
-	s.data.Status = evergreen.PatchSucceeded
+	s.data.Status = evergreen.VersionSucceeded
 	n, err = s.t.patchOutcome(&s.subs[0])
 	s.NoError(err)
 	s.NotNil(n)
 
-	s.data.Status = evergreen.PatchFailed
+	s.data.Status = evergreen.VersionFailed
 	n, err = s.t.patchOutcome(&s.subs[0])
 	s.NoError(err)
 	s.NotNil(n)
@@ -266,30 +266,30 @@ func (s *patchSuite) TestRunChildrenOnPatchOutcome() {
 		s.NoError(s.subs[i].Upsert())
 	}
 
-	s.data.Status = evergreen.PatchSucceeded
+	s.data.Status = evergreen.VersionSucceeded
 	n, err := s.t.patchOutcome(&s.subs[0])
 	// there is no token set up in settings, but hitting this error
 	// means it's trying to finalize the patch
 	s.Require().Error(err)
-	s.Contains(err.Error(), "no 'github' token in settings")
+	s.Contains(err.Error(), "no github token in settings")
 	s.Nil(n)
 
-	s.data.Status = evergreen.PatchFailed
+	s.data.Status = evergreen.VersionFailed
 	n, err = s.t.patchOutcome(&s.subs[1])
 	s.Require().Error(err)
-	s.Contains(err.Error(), "no 'github' token in settings")
+	s.Contains(err.Error(), "no github token in settings")
 	s.Nil(n)
 
-	s.data.Status = evergreen.PatchSucceeded
+	s.data.Status = evergreen.VersionSucceeded
 	n, err = s.t.patchOutcome(&s.subs[2])
 	s.Require().Error(err)
-	s.Contains(err.Error(), "no 'github' token in settings")
+	s.Contains(err.Error(), "no github token in settings")
 	s.Nil(n)
 
-	s.data.Status = evergreen.PatchFailed
+	s.data.Status = evergreen.VersionFailed
 	n, err = s.t.patchOutcome(&s.subs[2])
 	s.Require().Error(err)
-	s.Contains(err.Error(), "no 'github' token in settings")
+	s.Contains(err.Error(), "no github token in settings")
 	s.Nil(n)
 
 }
@@ -299,7 +299,7 @@ func (s *patchSuite) TestPatchStarted() {
 	s.Nil(err)
 	s.Nil(n)
 
-	s.data.Status = evergreen.PatchStarted
+	s.data.Status = evergreen.VersionStarted
 	n, err = s.t.patchStarted(&s.subs[0])
 	s.Nil(err)
 	s.NotNil(n)

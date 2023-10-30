@@ -2,10 +2,7 @@ package internal
 
 import (
 	"context"
-	"os"
-	"path/filepath"
 	"strconv"
-	"strings"
 	"sync"
 
 	"github.com/evergreen-ci/evergreen"
@@ -23,62 +20,77 @@ import (
 
 type TaskConfig struct {
 	Distro             *apimodels.DistroView
-	ProjectRef         *model.ProjectRef
-	Project            *model.Project
-	Task               *task.Task
-	BuildVariant       *model.BuildVariant
-	Expansions         *util.Expansions
+	ProjectRef         model.ProjectRef
+	Project            model.Project
+	Task               task.Task
+	BuildVariant       model.BuildVariant
+	Expansions         util.Expansions
+	DynamicExpansions  util.Expansions
 	Redacted           map[string]bool
 	WorkDir            string
 	GithubPatchData    thirdparty.GithubPatch
 	GithubMergeData    thirdparty.GithubMergeGroup
-	Timeout            *Timeout
+	Timeout            Timeout
 	TaskSync           evergreen.S3Credentials
 	EC2Keys            []evergreen.EC2Key
 	ModulePaths        map[string]string
 	CedarTestResultsID string
+	TaskGroup          *model.TaskGroup
 
 	mu sync.RWMutex
 }
 
+// Timeout records dynamic timeout information that has been explicitly set by
+// the user during task runtime.
 type Timeout struct {
 	IdleTimeoutSecs int
 	ExecTimeoutSecs int
 }
 
+// SetIdleTimeout sets the dynamic idle timeout explicitly set by the user
+// during task runtime (e.g. via timeout.update).
 func (t *TaskConfig) SetIdleTimeout(timeout int) {
 	t.mu.Lock()
 	defer t.mu.Unlock()
 	t.Timeout.IdleTimeoutSecs = timeout
 }
 
+// SetIdleTimeout sets the dynamic idle timeout explicitly set by the user
+// during task runtime (e.g. via timeout.update).
 func (t *TaskConfig) SetExecTimeout(timeout int) {
 	t.mu.Lock()
 	defer t.mu.Unlock()
 	t.Timeout.ExecTimeoutSecs = timeout
 }
 
+// GetIdleTimeout returns the dynamic idle timeout explicitly set by the user
+// during task runtime (e.g. via timeout.update).
 func (t *TaskConfig) GetIdleTimeout() int {
 	t.mu.RLock()
 	defer t.mu.RUnlock()
 	return t.Timeout.IdleTimeoutSecs
 }
 
+// GetExecTimeout returns the dynamic execution timeout explicitly set by the
+// user during task runtime (e.g. via timeout.update).
 func (t *TaskConfig) GetExecTimeout() int {
 	t.mu.RLock()
 	defer t.mu.RUnlock()
 	return t.Timeout.ExecTimeoutSecs
 }
 
+// NewTaskConfig validates that the required inputs are given and populates the
+// information necessary for a task to run. It is generally preferred to use
+// this function over initializing the TaskConfig struct manually.
 func NewTaskConfig(workDir string, d *apimodels.DistroView, p *model.Project, t *task.Task, r *model.ProjectRef, patchDoc *patch.Patch, e util.Expansions) (*TaskConfig, error) {
-	// do a check on if the project is empty
 	if p == nil {
 		return nil, errors.Errorf("project '%s' is nil", t.Project)
 	}
-
-	// check on if the project ref is empty
 	if r == nil {
 		return nil, errors.Errorf("project ref '%s' is nil", p.Identifier)
+	}
+	if t == nil {
+		return nil, errors.Errorf("task cannot be nil")
 	}
 
 	bv := p.FindBuildVariant(t.BuildVariant)
@@ -86,43 +98,31 @@ func NewTaskConfig(workDir string, d *apimodels.DistroView, p *model.Project, t 
 		return nil, errors.Errorf("cannot find build variant '%s' for task in project '%s'", t.BuildVariant, t.Project)
 	}
 
+	var taskGroup *model.TaskGroup
+	if t.TaskGroup != "" {
+		taskGroup = p.FindTaskGroup(t.TaskGroup)
+		if taskGroup == nil {
+			return nil, errors.Errorf("task is part of task group '%s' but no such task group is defined in the project", t.TaskGroup)
+		}
+	}
+
 	taskConfig := &TaskConfig{
-		Distro:       d,
-		ProjectRef:   r,
-		Project:      p,
-		Task:         t,
-		BuildVariant: bv,
-		Expansions:   &e,
-		WorkDir:      workDir,
+		Distro:            d,
+		ProjectRef:        *r,
+		Project:           *p,
+		Task:              *t,
+		BuildVariant:      *bv,
+		Expansions:        e,
+		DynamicExpansions: util.Expansions{},
+		WorkDir:           workDir,
+		TaskGroup:         taskGroup,
 	}
 	if patchDoc != nil {
 		taskConfig.GithubPatchData = patchDoc.GithubPatchData
 		taskConfig.GithubMergeData = patchDoc.GithubMergeData
 	}
 
-	taskConfig.Timeout = &Timeout{}
-
 	return taskConfig, nil
-}
-
-func (c *TaskConfig) GetWorkingDirectory(dir string) (string, error) {
-	if dir == "" {
-		dir = c.WorkDir
-	} else if strings.HasPrefix(dir, c.WorkDir) {
-		// pass
-	} else {
-		dir = filepath.Join(c.WorkDir, dir)
-	}
-
-	if stat, err := os.Stat(dir); os.IsNotExist(err) {
-		return "", errors.Errorf("path '%s' does not exist", dir)
-	} else if err != nil || stat == nil {
-		return "", errors.Wrapf(err, "retrieving file info for path '%s'", dir)
-	} else if !stat.IsDir() {
-		return "", errors.Errorf("path '%s' is not a directory", dir)
-	}
-
-	return dir, nil
 }
 
 func (c *TaskConfig) GetCloneMethod() string {
@@ -132,86 +132,22 @@ func (c *TaskConfig) GetCloneMethod() string {
 	return evergreen.CloneMethodOAuth
 }
 
-func (tc *TaskConfig) GetTaskGroup(taskGroup string) (*model.TaskGroup, error) {
-	if err := tc.validateTaskConfig(); err != nil {
-		return nil, err
+// Validate validates that the task config is populated with the data required
+// for a task to run.
+// Note that this is here only as legacy code. These checks are not sufficient
+// to indicate that the TaskConfig has all the necessary information to run a
+// task.
+func (tc *TaskConfig) Validate() error {
+	if tc == nil {
+		return errors.New("unable to get task setup because task config is nil")
 	}
-
-	if taskGroup == "" {
-		return nil, nil
+	if tc.Task.Id == "" {
+		return errors.New("unable to get task setup because task ID is nil")
 	}
-	tg := tc.Project.FindTaskGroup(taskGroup)
-	if tg == nil {
-		return nil, errors.Errorf("couldn't find task group '%s' in project '%s'", taskGroup, tc.Project.Identifier)
+	if tc.Task.Version == "" {
+		return errors.New("task has no version")
 	}
-
-	if tg.Timeout == nil {
-		tg.Timeout = tc.Project.Timeout
-	}
-	return tg, nil
-}
-
-// GetTimeout returns the timeout defined on the taskGroup or project.
-func (tc *TaskConfig) GetTimeout(taskGroup string) (*model.YAMLCommandSet, error) {
-	if err := tc.validateTaskConfig(); err != nil {
-		return nil, err
-	}
-
-	if taskGroup == "" {
-		return tc.Project.Timeout, nil
-	}
-
-	tg := tc.Project.FindTaskGroup(taskGroup)
-	if tg == nil {
-		return nil, errors.Errorf("couldn't find task group '%s' in project '%s'", taskGroup, tc.Project.Identifier)
-	}
-	if tg.Timeout == nil {
-		return tc.Project.Timeout, nil
-	}
-
-	return tg.Timeout, nil
-}
-
-// CommandBlock contains information for a block of commands.
-type CommandBlock struct {
-	Commands    *model.YAMLCommandSet
-	CanFailTask bool
-}
-
-// GetPre returns a command block containing the pre task commands.
-func (tc *TaskConfig) GetPre(taskGroup string) (*CommandBlock, error) {
-	if err := tc.validateTaskConfig(); err != nil {
-		return nil, err
-	}
-
-	canFailTask := tc.Project.Pre == nil || tc.Project.PreErrorFailsTask
-	if taskGroup == "" {
-		return &CommandBlock{Commands: tc.Project.Pre, CanFailTask: canFailTask}, nil
-	}
-	tg := tc.Project.FindTaskGroup(taskGroup)
-	if tg == nil {
-		return nil, errors.Errorf("couldn't find task group '%s' in project '%s'", taskGroup, tc.Project.Identifier)
-	}
-
-	return &CommandBlock{Commands: tg.SetupTask, CanFailTask: tg.SetupGroupFailTask}, nil
-}
-
-// GetPost returns a command block containing the post task commands.
-func (tc *TaskConfig) GetPost(taskGroup string) (*CommandBlock, error) {
-	if err := tc.validateTaskConfig(); err != nil {
-		return nil, err
-	}
-
-	canFailTask := tc.Project.Post == nil || tc.Project.PostErrorFailsTask
-	if taskGroup == "" {
-		return &CommandBlock{Commands: tc.Project.Post, CanFailTask: canFailTask}, nil
-	}
-	tg := tc.Project.FindTaskGroup(taskGroup)
-	if tg == nil {
-		return nil, errors.Errorf("couldn't find task group '%s' in project '%s'", taskGroup, tc.Project.Identifier)
-	}
-	return &CommandBlock{Commands: tg.TeardownTask, CanFailTask: tg.TeardownTaskCanFailTask}, nil
-
+	return nil
 }
 
 func (tc *TaskConfig) TaskAttributeMap() map[string]string {
@@ -253,20 +189,4 @@ func (tc *TaskConfig) TaskAttributes() []attribute.KeyValue {
 	}
 
 	return attributes
-}
-
-func (tc *TaskConfig) validateTaskConfig() error {
-	if tc == nil {
-		return errors.New("unable to get task setup because task config is nil")
-	}
-	if tc.Task == nil {
-		return errors.New("unable to get task setup because task is nil")
-	}
-	if tc.Task.Version == "" {
-		return errors.New("task has no version")
-	}
-	if tc.Project == nil {
-		return errors.New("project is nil")
-	}
-	return nil
 }

@@ -1,4 +1,4 @@
-{ "_id" : "all_projects", "name" : "all projects", "type" : "project", "resources": ["logkeeper", "evergreen", "sys-perf", "spruce", "602d70a2b2373672ee493184"] }
+{ "_id" : "all_projects", "name" : "all projects", "type" : "project", "resources": ["logkeeper", "evergreen", "sys-perf", "spruce", "mongodb-mongo-master", "602d70a2b2373672ee493184"] }
 { "_id" : "unrestricted_projects", "name" : "unrestricted projects", "type" : "project", "parent" : "all_projects", "resources": ["logkeeper", "evergreen", "sys-perf"] }
 { "_id" : "restricted_projects", "name" : "restricted projects", "type" : "project", "parent" : "all_projects", "resources": [] }
 { "_id" : "logkeeper", "name" : "logkeeper project", "type" : "project", "resources" : [ "logkeeper" ] }
@@ -7,4 +7,4 @@
 { "_id" : "localhost", "name" : "localhost distro", "type" : "distro", "resources" : [ "localhost" ] }
 { "_id" : "localhost2", "name" : "localhost2 distro", "type" : "distro", "resources" : [ "localhost2" ] }
 { "_id" : "super", "name" : "super user", "type" : "super_user", "resources" : [ "super_user" ] }
-{"_id":"all_distros","name":"all distros","type":"distro","resources":["localhost","ubuntu1804-workstation","localhost2","rhel71-power8-large","windows-64-vs2015-small"]}
+{"_id":"all_distros","name":"all distros","type":"distro","resources":["localhost","ubuntu1804-workstation","localhost2","rhel71-power8-large","windows-64-vs2015-small","ubuntu1604-container-test","ubuntu1604-parent"]}

@@ -108,8 +108,10 @@ func (j *hostTerminationJob) Run(ctx context.Context) {
 			"status":   j.host.Status,
 			"provider": j.host.Distro.Provider,
 			"message":  "host termination for a non-spawnable distro",
-			"cause":    "programmer error",
 		})
+		if err := j.host.Terminate(ctx, evergreen.User, j.TerminationReason); err != nil {
+			j.AddError(errors.Wrapf(err, "terminating host '%s' in DB", j.host.Id))
+		}
 		return
 	}
 
@@ -318,6 +320,7 @@ func (j *hostTerminationJob) Run(ctx context.Context) {
 		attribute.Float64(fmt.Sprintf("%s.idle_secs", hostTerminationAttributePrefix), j.host.TotalIdleTime.Seconds()),
 		attribute.Float64(fmt.Sprintf("%s.running_secs", hostTerminationAttributePrefix), j.host.TerminationTime.Sub(j.host.StartTime).Seconds()),
 		attribute.Bool(fmt.Sprintf("%s.user_host", hostTerminationAttributePrefix), j.host.UserHost),
+		attribute.Int(fmt.Sprintf("%s.task_count", hostTerminationAttributePrefix), j.host.TaskCount),
 	)
 	if !utility.IsZeroTime(j.host.BillingStartTime) {
 		span.SetAttributes(attribute.Float64(fmt.Sprintf("%s.billable_secs", hostTerminationAttributePrefix), j.host.TerminationTime.Sub(j.host.BillingStartTime).Seconds()))

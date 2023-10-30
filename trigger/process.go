@@ -12,6 +12,7 @@ import (
 	"github.com/evergreen-ci/evergreen/model/notification"
 	"github.com/evergreen-ci/evergreen/model/task"
 	"github.com/evergreen-ci/utility"
+	"github.com/google/go-github/v52/github"
 	"github.com/mongodb/grip"
 	"github.com/mongodb/grip/message"
 	"github.com/pkg/errors"
@@ -97,6 +98,7 @@ type ProcessorArgs struct {
 	DefinitionID                 string
 	Alias                        string
 	UnscheduleDownstreamVersions bool
+	PushRevision                 model.Revision
 }
 
 // EvalProjectTriggers takes an event log entry and a processor (either the mock or TriggerDownstreamVersion)
@@ -154,7 +156,7 @@ func triggerDownstreamProjectsForTask(ctx context.Context, t *task.Task, e *even
 
 	catcher := grip.NewBasicCatcher()
 	versions := []model.Version{}
-projectLoop:
+
 	for _, ref := range downstreamProjects {
 
 		for _, trigger := range ref.Triggers {
@@ -213,7 +215,7 @@ projectLoop:
 			if v != nil {
 				versions = append(versions, *v)
 			}
-			continue projectLoop
+			break
 		}
 	}
 
@@ -238,7 +240,7 @@ func triggerDownstreamProjectsForBuild(ctx context.Context, b *build.Build, e *e
 
 	catcher := grip.NewBasicCatcher()
 	versions := []model.Version{}
-projectLoop:
+
 	for _, ref := range downstreamProjects {
 		for _, trigger := range ref.Triggers {
 			if trigger.Level != model.ProjectTriggerLevelBuild {
@@ -283,9 +285,63 @@ projectLoop:
 			if v != nil {
 				versions = append(versions, *v)
 			}
-			continue projectLoop
+			break
 		}
 	}
 
 	return versions, catcher.Resolve()
+}
+
+// TriggerDownstreamProjectsForPush triggers downstream projects for a push event from a repo that does not
+// have repotracker enabled.
+func TriggerDownstreamProjectsForPush(ctx context.Context, projectId string, event *github.PushEvent, processor projectProcessor) error {
+	downstreamProjects, err := model.FindDownstreamProjects(projectId)
+	if err != nil {
+		return errors.Wrapf(err, "finding downstream projects of project '%s'", projectId)
+	}
+
+	catcher := grip.NewBasicCatcher()
+	versionIds := []string{}
+	for _, ref := range downstreamProjects {
+
+		for _, trigger := range ref.Triggers {
+			if trigger.Level != model.ProjectTriggerLevelPush || trigger.Project != projectId {
+				continue
+			}
+
+			args := ProcessorArgs{
+				DownstreamProject:            ref,
+				ConfigFile:                   trigger.ConfigFile,
+				TriggerType:                  model.ProjectTriggerLevelPush,
+				TriggerID:                    trigger.Project,
+				DefinitionID:                 trigger.DefinitionID,
+				Alias:                        trigger.Alias,
+				UnscheduleDownstreamVersions: trigger.UnscheduleDownstreamVersions,
+				PushRevision: model.Revision{
+					Revision:        utility.FromStringPtr(event.GetHeadCommit().ID),
+					CreateTime:      event.GetHeadCommit().Timestamp.Time,
+					Author:          utility.FromStringPtr(event.GetHeadCommit().Author.Name),
+					AuthorEmail:     utility.FromStringPtr(event.GetHeadCommit().Author.Email),
+					RevisionMessage: utility.FromStringPtr(event.GetHeadCommit().Message),
+				},
+			}
+			v, err := processor(ctx, args)
+			if err != nil {
+				catcher.Add(err)
+				continue
+			}
+			if v != nil {
+				versionIds = append(versionIds, v.Id)
+			}
+			break
+		}
+	}
+	grip.InfoWhen(len(versionIds) > 0, message.Fields{
+		"source":      "GitHub hook",
+		"message":     "triggered versions for push event for project",
+		"version_ids": versionIds,
+		"project_id":  projectId,
+	})
+
+	return catcher.Resolve()
 }

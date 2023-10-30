@@ -94,9 +94,9 @@ func TestHostTerminationJob(t *testing.T) {
 			require.NotZero(t, cloudHost)
 			assert.Equal(t, cloud.StatusRunning, cloudHost.Status, "cloud host should be unchanged because cloud host termination should be skipped")
 		},
-		"NoopsForStaticHosts": func(ctx context.Context, t *testing.T, env evergreen.Environment, mcp cloud.MockProvider, h *host.Host) {
-			h.Provider = evergreen.ProviderNameStatic
+		"TerminatesStaticHosts": func(ctx context.Context, t *testing.T, env evergreen.Environment, mcp cloud.MockProvider, h *host.Host) {
 			h.Distro.Provider = evergreen.ProviderNameStatic
+			h.Provider = evergreen.ProviderNameStatic
 			require.NoError(t, h.Insert(ctx))
 
 			j := NewHostTerminationJob(env, h, HostTerminationOptions{
@@ -109,7 +109,7 @@ func TestHostTerminationJob(t *testing.T) {
 			dbHost, err := host.FindOne(ctx, host.ById(h.Id))
 			require.NoError(t, err)
 			require.NotZero(t, dbHost)
-			assert.Equal(t, evergreen.HostRunning, dbHost.Status)
+			assert.Equal(t, evergreen.HostTerminated, dbHost.Status)
 		},
 		"FailsWithNonexistentDBHost": func(ctx context.Context, t *testing.T, env evergreen.Environment, mcp cloud.MockProvider, h *host.Host) {
 			j := NewHostTerminationJob(env, h, HostTerminationOptions{

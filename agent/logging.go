@@ -115,10 +115,8 @@ func (a *Agent) prepLogger(tc *taskContext, c *model.LoggerConfig, commandName s
 		SendToGlobalSender: a.opts.SendTaskLogsToGlobalSender,
 	}
 
-	var defaultLogger string
-	if tc.taskConfig != nil && tc.taskConfig.ProjectRef != nil {
-		defaultLogger = tc.taskConfig.ProjectRef.DefaultLogger
-	}
+	defaultLogger := tc.taskConfig.ProjectRef.DefaultLogger
+
 	if !model.IsValidDefaultLogger(defaultLogger) {
 		grip.Warningf("Default logger '%s' is not valid, setting Evergreen logger as default.", defaultLogger)
 		defaultLogger = model.EvergreenLogSender
@@ -147,11 +145,11 @@ func (a *Agent) prepLogger(tc *taskContext, c *model.LoggerConfig, commandName s
 }
 
 func (a *Agent) prepSingleLogger(tc *taskContext, in model.LogOpts, logDir, fileName string) client.LogOpts {
-	splunkServer, err := tc.expansions.ExpandString(in.SplunkServer)
+	splunkServer, err := tc.taskConfig.Expansions.ExpandString(in.SplunkServer)
 	if err != nil {
 		grip.Error(errors.Wrap(err, "expanding Splunk server"))
 	}
-	splunkToken, err := tc.expansions.ExpandString(in.SplunkToken)
+	splunkToken, err := tc.taskConfig.Expansions.ExpandString(in.SplunkToken)
 	if err != nil {
 		grip.Error(errors.Wrap(err, "expanding Splunk token"))
 	}
@@ -160,7 +158,7 @@ func (a *Agent) prepSingleLogger(tc *taskContext, in model.LogOpts, logDir, file
 		logDir = in.LogDirectory
 	}
 	return client.LogOpts{
-		BuilderID:       tc.taskModel.Id,
+		BuilderID:       tc.taskConfig.Task.Id,
 		Sender:          in.Type,
 		SplunkServerURL: splunkServer,
 		SplunkToken:     splunkToken,

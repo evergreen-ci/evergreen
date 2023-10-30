@@ -61,7 +61,7 @@ func TestGetRecentVersions(t *testing.T) {
 				Id:                  fmt.Sprintf("version%v", i),
 				Identifier:          projectName,
 				Author:              fmt.Sprintf("author%v", i),
-				Revision:            fmt.Sprintf("%x", rand.Int()),
+				Revision:            fmt.Sprintf("%x", rand.Intn(10)),
 				Message:             fmt.Sprintf("message%v", i),
 				RevisionOrderNumber: i + 1,
 				Requester:           evergreen.RepotrackerVersionRequester,
@@ -77,7 +77,7 @@ func TestGetRecentVersions(t *testing.T) {
 			Id:                  "some-id",
 			Identifier:          projectName,
 			Author:              "some-author",
-			Revision:            fmt.Sprintf("%x", rand.Int()),
+			Revision:            fmt.Sprintf("%x", rand.Intn(10)),
 			Message:             "some-message",
 			RevisionOrderNumber: 0,
 			Requester:           evergreen.RepotrackerVersionRequester,
@@ -90,7 +90,7 @@ func TestGetRecentVersions(t *testing.T) {
 			Id:                  "some-other-id",
 			Identifier:          otherProjectName,
 			Author:              "some-other-author",
-			Revision:            fmt.Sprintf("%x", rand.Int()),
+			Revision:            fmt.Sprintf("%x", rand.Intn(10)),
 			Message:             "some-other-message",
 			RevisionOrderNumber: NumRecentVersions + 1,
 			Requester:           evergreen.RepotrackerVersionRequester,
@@ -259,7 +259,7 @@ func TestGetVersionInfo(t *testing.T) {
 			CreateTime:  time.Now().Add(-20 * time.Minute),
 			StartTime:   time.Now().Add(-10 * time.Minute),
 			FinishTime:  time.Now().Add(-5 * time.Second),
-			Revision:    fmt.Sprintf("%x", rand.Int()),
+			Revision:    fmt.Sprintf("%x", rand.Intn(10)),
 			Author:      "some-author",
 			AuthorEmail: "some-email",
 			Message:     "some-message",
@@ -272,7 +272,7 @@ func TestGetVersionInfo(t *testing.T) {
 					ActivateAt: time.Now().Add(-20 * time.Minute),
 				},
 				BuildId: "some-build-id"}},
-			RevisionOrderNumber: rand.Int(),
+			RevisionOrderNumber: rand.Intn(10),
 			Owner:               "some-owner",
 			Repo:                "some-repo",
 			Branch:              "some-branch",
@@ -337,7 +337,7 @@ func TestGetVersionInfoViaRevision(t *testing.T) {
 			"Error clearing '%v' collection", model.VersionCollection)
 
 		versionId := "my-version"
-		revision := fmt.Sprintf("%x", rand.Int())
+		revision := fmt.Sprintf("%x", rand.Intn(10))
 
 		v := &model.Version{
 			Id:          versionId,
@@ -357,7 +357,7 @@ func TestGetVersionInfoViaRevision(t *testing.T) {
 					ActivateAt: time.Now().Add(-20 * time.Minute),
 				},
 				BuildId: "some-build-id"}},
-			RevisionOrderNumber: rand.Int(),
+			RevisionOrderNumber: rand.Intn(10),
 			Owner:               "some-owner",
 			Repo:                "some-repo",
 			Branch:              "some-branch",
@@ -435,7 +435,7 @@ func TestActivateVersion(t *testing.T) {
 			CreateTime:  time.Now().Add(-20 * time.Minute),
 			StartTime:   time.Now().Add(-10 * time.Minute),
 			FinishTime:  time.Now().Add(-5 * time.Second),
-			Revision:    fmt.Sprintf("%x", rand.Int()),
+			Revision:    fmt.Sprintf("%x", rand.Intn(10)),
 			Author:      "some-author",
 			AuthorEmail: "some-email",
 			Message:     "some-message",
@@ -449,7 +449,7 @@ func TestActivateVersion(t *testing.T) {
 				},
 				BuildId: "some-build-id"},
 			}, // nolint
-			RevisionOrderNumber: rand.Int(),
+			RevisionOrderNumber: rand.Intn(10),
 			Owner:               "some-owner",
 			Repo:                "some-repo",
 			Branch:              "some-branch",

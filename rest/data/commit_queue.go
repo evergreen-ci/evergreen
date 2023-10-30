@@ -4,16 +4,19 @@ import (
 	"context"
 	"fmt"
 	"net/http"
+	"runtime/debug"
 	"strconv"
 	"strings"
 	"time"
 
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/db"
+	"github.com/evergreen-ci/evergreen/db/mgo/bson"
 	"github.com/evergreen-ci/evergreen/model"
 	"github.com/evergreen-ci/evergreen/model/commitqueue"
 	"github.com/evergreen-ci/evergreen/model/event"
 	"github.com/evergreen-ci/evergreen/model/patch"
+	"github.com/evergreen-ci/evergreen/model/user"
 	restModel "github.com/evergreen-ci/evergreen/rest/model"
 	"github.com/evergreen-ci/evergreen/thirdparty"
 	"github.com/evergreen-ci/evergreen/units"
@@ -128,8 +131,11 @@ func getPatchInfo(ctx context.Context, settings *evergreen.Settings, githubToken
 		return "", nil, nil, nil, errors.Wrap(err, "getting GitHub PR diff")
 	}
 
-	// fetch the latest config file
-	config, patchConfig, err := model.GetPatchedProject(ctx, settings, patchDoc, githubToken)
+	// Fetch the latest config file.
+	// Set a higher timeout for this operation.
+	fetchCtx, ctxCancel := context.WithTimeout(context.Background(), 5*time.Minute)
+	defer ctxCancel()
+	config, patchConfig, err := model.GetPatchedProject(fetchCtx, settings, patchDoc, githubToken)
 	if err != nil {
 		return "", nil, nil, nil, errors.Wrap(err, "getting remote config file")
 	}
@@ -343,7 +349,7 @@ func getAndEnqueueCommitQueueItemForPR(ctx context.Context, env evergreen.Enviro
 	}
 
 	if projectRef.CommitQueue.MergeQueue == model.MergeQueueGitHub {
-		return nil, pr, errors.Wrapf(errors.New("project is using GitHub merge queue"), "repo '%s:%s', branch '%s'", info.Owner, info.Repo, baseBranch)
+		return nil, pr, errors.Wrapf(errors.New("This project is using GitHub merge queue. Click the merge button instead."), "repo '%s:%s', branch '%s'", info.Owner, info.Repo, baseBranch)
 	}
 
 	authorized, err := sc.IsAuthorizedToPatchAndMerge(ctx, env.Settings(), NewUserRepoInfo(info))
@@ -576,4 +582,110 @@ func GetAdditionalPatches(patchId string) ([]string, error) {
 		StatusCode: http.StatusNotFound,
 		Message:    errors.Errorf("patch '%s' not found in commit queue", patchId).Error(),
 	}
+}
+
+// CheckCanRemoveCommitQueueItem checks if a patch can be removed from the commit queue by the given user.
+func CheckCanRemoveCommitQueueItem(ctx context.Context, sc Connector, usr *user.DBUser, project *model.ProjectRef, itemId string) error {
+	if !project.CommitQueue.IsEnabled() {
+		return gimlet.ErrorResponse{
+			StatusCode: http.StatusBadRequest,
+			Message:    errors.Errorf("commit queue is not enabled for project '%s'", project.Id).Error(),
+		}
+	}
+
+	if canAlwaysSubmitPatchesForProject(usr, project.Id) {
+		return nil
+	}
+
+	if bson.IsObjectIdHex(itemId) {
+		patch, err := FindPatchById(itemId)
+		if err != nil {
+			return gimlet.ErrorResponse{
+				StatusCode: http.StatusInternalServerError,
+				Message:    errors.Wrapf(err, "finding patch '%s'", itemId).Error(),
+			}
+		}
+
+		// TODO: Remove user lookup and OnlyAPI conditional statement after EVG-20118 is complete.
+		// Since we don't require users to save their GitHub information before submitting patches,
+		// we must allow them to remove any patches created by service users (OnlyAPI = true).
+		patchAuthor := utility.FromStringPtr(patch.Author)
+		patchUsr, err := user.FindOneById(patchAuthor)
+		if err != nil {
+			return gimlet.ErrorResponse{
+				StatusCode: http.StatusInternalServerError,
+				Message:    errors.Wrapf(err, "finding user '%s'", patchAuthor).Error(),
+			}
+		}
+		if patchUsr == nil {
+			return gimlet.ErrorResponse{
+				StatusCode: http.StatusNotFound,
+				Message:    fmt.Sprintf("user '%s' not found", patchAuthor),
+			}
+		}
+		if patchUsr.OnlyAPI {
+			return nil
+		}
+
+		if usr.Id != patchAuthor {
+			return gimlet.ErrorResponse{
+				StatusCode: http.StatusUnauthorized,
+				Message:    "not authorized to perform action on behalf of author",
+			}
+		}
+	} else if itemInt, err := strconv.Atoi(itemId); err == nil {
+		pr, err := sc.GetGitHubPR(ctx, project.Owner, project.Repo, itemInt)
+		if err != nil {
+			return gimlet.ErrorResponse{
+				StatusCode: http.StatusInternalServerError,
+				Message:    errors.Wrapf(err, "unable to get pull request info, PR number (%d) may be invalid", itemInt).Error(),
+			}
+		}
+
+		var githubUID int
+		if pr != nil && pr.User != nil && pr.User.ID != nil {
+			githubUID = int(*pr.User.ID)
+		}
+		if githubUID == 0 || usr.Settings.GithubUser.UID != githubUID {
+			return gimlet.ErrorResponse{
+				StatusCode: http.StatusUnauthorized,
+				Message:    "not authorized to perform action on behalf of GitHub user",
+			}
+		}
+	} else {
+		return gimlet.ErrorResponse{
+			StatusCode: http.StatusBadRequest,
+			Message:    "commit queue item is not a valid identifier",
+		}
+	}
+
+	return nil
+}
+
+// canAlwaysSubmitPatchesForProject returns true if the user is a superuser or project admin,
+// or is authorized specifically to patch on behalf of other users.
+func canAlwaysSubmitPatchesForProject(user *user.DBUser, projectId string) bool {
+	if projectId == "" {
+		grip.Error(message.Fields{
+			"message": "projectID is empty",
+			"op":      "middleware",
+			"stack":   string(debug.Stack()),
+		})
+		return false
+	}
+	isAdmin := user.HasPermission(gimlet.PermissionOpts{
+		Resource:      projectId,
+		ResourceType:  evergreen.ProjectResourceType,
+		Permission:    evergreen.PermissionProjectSettings,
+		RequiredLevel: evergreen.ProjectSettingsEdit.Value,
+	})
+	if isAdmin {
+		return true
+	}
+	return user.HasPermission(gimlet.PermissionOpts{
+		Resource:      projectId,
+		ResourceType:  evergreen.ProjectResourceType,
+		Permission:    evergreen.PermissionPatches,
+		RequiredLevel: evergreen.PatchSubmitAdmin.Value,
+	})
 }

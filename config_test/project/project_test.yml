@@ -1,8 +1,3 @@
-owner: fakeowner
-repo: fakerepo
-repokind: github
-branch: branch_test
-enabled: false
 stepback: true
 identifier: project_test
 id: project_test

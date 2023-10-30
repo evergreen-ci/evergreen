@@ -69,7 +69,7 @@ func (s *githubStatusRefreshSuite) SetupTest() {
 		Version:      id.Hex(),
 		Activated:    true,
 		DisplayNewUI: true,
-		Status:       evergreen.PatchStarted,
+		Status:       evergreen.VersionStarted,
 		StartTime:    startTime,
 		FinishTime:   startTime.Add(10 * time.Minute),
 		GithubPatchData: thirdparty.GithubPatch{
@@ -147,7 +147,7 @@ func (s *githubStatusRefreshSuite) TestStatusPending() {
 
 	childPatch := patch.Patch{
 		Id:        mgobson.NewObjectId(),
-		Status:    evergreen.PatchStarted,
+		Status:    evergreen.VersionStarted,
 		Project:   "myChildProject",
 		Activated: true,
 		Triggers: patch.TriggerInfo{
@@ -351,7 +351,7 @@ func (s *githubStatusRefreshSuite) TestStatusSucceeded() {
 
 	childPatch := patch.Patch{
 		Id:         mgobson.NewObjectId(),
-		Status:     evergreen.PatchSucceeded,
+		Status:     evergreen.VersionSucceeded,
 		Project:    "myChildProject",
 		Activated:  true,
 		StartTime:  startTime,
@@ -363,7 +363,7 @@ func (s *githubStatusRefreshSuite) TestStatusSucceeded() {
 	}
 	s.NoError(childPatch.Insert())
 	s.patchDoc.Triggers.ChildPatches = []string{childPatch.Id.Hex()}
-	s.patchDoc.Status = evergreen.PatchSucceeded
+	s.patchDoc.Status = evergreen.VersionSucceeded
 
 	job, ok := NewGithubStatusRefreshJob(s.patchDoc).(*githubStatusRefreshJob)
 	s.Require().NotNil(job)
@@ -417,7 +417,7 @@ func (s *githubStatusRefreshSuite) TestStatusFailed() {
 
 	childPatch := patch.Patch{
 		Id:         mgobson.NewObjectId(),
-		Status:     evergreen.PatchFailed,
+		Status:     evergreen.VersionFailed,
 		Project:    "myChildProject",
 		Activated:  true,
 		StartTime:  startTime,
@@ -429,9 +429,9 @@ func (s *githubStatusRefreshSuite) TestStatusFailed() {
 	}
 	s.NoError(childPatch.Insert())
 	s.patchDoc.Triggers.ChildPatches = []string{childPatch.Id.Hex()}
-	s.patchDoc.Status = evergreen.PatchSucceeded
+	s.patchDoc.Status = evergreen.VersionSucceeded
 
-	s.patchDoc.Status = evergreen.PatchFailed
+	s.patchDoc.Status = evergreen.VersionFailed
 
 	job, ok := NewGithubStatusRefreshJob(s.patchDoc).(*githubStatusRefreshJob)
 	s.Require().NotNil(job)

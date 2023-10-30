@@ -329,7 +329,7 @@ func (c *subprocessExec) getExecutablePath(logger client.LoggerProducer) (absPat
 func (c *subprocessExec) Execute(ctx context.Context, comm client.Communicator, logger client.LoggerProducer, conf *internal.TaskConfig) error {
 	var err error
 
-	if err = c.doExpansions(conf.Expansions); err != nil {
+	if err = c.doExpansions(&conf.Expansions); err != nil {
 		return errors.Wrap(err, "expanding command parameters")
 	}
 
@@ -340,12 +340,12 @@ func (c *subprocessExec) Execute(ctx context.Context, comm client.Communicator, 
 			"path":            c.WorkingDir,
 			"required_prefix": conf.WorkDir,
 		})
-	c.WorkingDir, err = conf.GetWorkingDirectory(c.WorkingDir)
+	c.WorkingDir, err = getWorkingDirectoryLegacy(conf, c.WorkingDir)
 	if err != nil {
 		return errors.Wrap(err, "getting working directory")
 	}
 
-	taskTmpDir, err := conf.GetWorkingDirectory("tmp")
+	taskTmpDir, err := getWorkingDirectoryLegacy(conf, "tmp")
 	if err != nil {
 		logger.Execution().Notice(errors.Wrap(err, "getting temporary directory"))
 	}
@@ -354,7 +354,7 @@ func (c *subprocessExec) Execute(ctx context.Context, comm client.Communicator, 
 		taskID:                 conf.Task.Id,
 		workingDir:             c.WorkingDir,
 		tmpDir:                 taskTmpDir,
-		expansions:             *conf.Expansions,
+		expansions:             conf.Expansions,
 		includeExpansionsInEnv: c.IncludeExpansionsInEnv,
 		addExpansionsToEnv:     c.AddExpansionsToEnv,
 		addToPath:              c.Path,

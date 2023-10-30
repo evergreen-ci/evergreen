@@ -62,7 +62,7 @@ func (t *TriggerIntent) NewPatch() *Patch {
 		Id:       mgobson.ObjectIdHex(t.Id),
 		Author:   evergreen.ParentPatchUser,
 		Triggers: TriggerInfo{ParentPatch: t.ParentID},
-		Status:   evergreen.PatchCreated,
+		Status:   evergreen.VersionCreated,
 		Project:  t.ProjectID,
 	}
 }

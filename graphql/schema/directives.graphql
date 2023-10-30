@@ -9,11 +9,16 @@ requireProjectAccess is used to restrict view and edit access for project settin
 directive @requireProjectAccess(access: ProjectSettingsAccess!) on ARGUMENT_DEFINITION | INPUT_FIELD_DEFINITION | FIELD_DEFINITION
 
 """
-requireProjectFieldAccess is used to restrict view access for certain project fields.
+requireProjectSettingsAccess is used to restrict view access for fields accessed within ProjectSettings (or RepoSettings) structs.
 """
-directive @requireProjectFieldAccess on FIELD_DEFINITION
+directive @requireProjectSettingsAccess on FIELD_DEFINITION
 
 """
 requireDistroAccess is used to restrict view, edit, admin, and create access for distros.
 """
 directive @requireDistroAccess(access: DistroSettingsAccess!) on ARGUMENT_DEFINITION | INPUT_FIELD_DEFINITION
+
+"""
+requireCommitQueueItemOwner is used to restrict changes to commit queue patches.
+"""
+directive @requireCommitQueueItemOwner on ARGUMENT_DEFINITION

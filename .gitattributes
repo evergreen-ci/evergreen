@@ -1,4 +1,4 @@
 *.sh text eol=lf
 ./public/static/dist/* binary
 ./public/package-lock.json binary
-graphql/*_resolver.go -linguist-generated
+graphql/*_resolver.go linguist-detectable linguist-generated=false linguist-language=go

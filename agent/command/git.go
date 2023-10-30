@@ -45,6 +45,7 @@ var (
 	cloneBranchAttribute  = fmt.Sprintf("%s.clone_branch", gitGetProjectAttribute)
 	cloneModuleAttribute  = fmt.Sprintf("%s.clone_module", gitGetProjectAttribute)
 	cloneRetriesAttribute = fmt.Sprintf("%s.clone_retries", gitGetProjectAttribute)
+	cloneMethodAttribute  = fmt.Sprintf("%s.clone_method", gitGetProjectAttribute)
 )
 
 // gitFetchProject is a command that fetches source code from git for the project
@@ -104,8 +105,8 @@ func (opts cloneOpts) validate() error {
 	if opts.method != "" {
 		catcher.Wrapf(evergreen.ValidateCloneMethod(opts.method), "invalid clone method '%s'", opts.method)
 	}
-	if opts.method == evergreen.CloneMethodOAuth && opts.token == "" {
-		catcher.New("cannot clone using OAuth if token is not set")
+	if (opts.method == evergreen.CloneMethodOAuth || opts.method == evergreen.CloneMethodAccessToken) && opts.token == "" {
+		catcher.New("cannot clone using OAuth or access token if token is not set")
 	}
 	if opts.cloneDepth < 0 {
 		catcher.New("clone depth cannot be negative")
@@ -114,7 +115,7 @@ func (opts cloneOpts) validate() error {
 }
 
 func (opts cloneOpts) sshLocation() string {
-	return thirdparty.FormGitUrl("github.com", opts.owner, opts.repo, "")
+	return thirdparty.FormGitURL("github.com", opts.owner, opts.repo, "")
 }
 
 func (opts cloneOpts) httpLocation() string {
@@ -126,7 +127,7 @@ func (opts *cloneOpts) setLocation() error {
 	switch opts.method {
 	case "", evergreen.CloneMethodLegacySSH:
 		opts.location = opts.sshLocation()
-	case evergreen.CloneMethodOAuth:
+	case evergreen.CloneMethodOAuth, evergreen.CloneMethodAccessToken:
 		opts.location = opts.httpLocation()
 	default:
 		return errors.Errorf("unrecognized clone method '%s'", opts.method)
@@ -135,22 +136,42 @@ func (opts *cloneOpts) setLocation() error {
 }
 
 // getProjectMethodAndToken returns the project's clone method and token. If
-// set, the project token takes precedence over global settings.
-func getProjectMethodAndToken(projectToken, globalToken, appToken, globalCloneMethod string) (string, string, error) {
+// set, the project token takes precedence over GitHub App token which takes precedence over over global settings.
+func getProjectMethodAndToken(ctx context.Context, comm client.Communicator, td client.TaskData, conf *internal.TaskConfig, projectToken string) (string, string, error) {
 	if projectToken != "" {
 		token, err := parseToken(projectToken)
 		return evergreen.CloneMethodOAuth, token, err
 	}
+
+	owner := conf.ProjectRef.Owner
+	repo := conf.ProjectRef.Repo
+	appToken, err := comm.CreateInstallationToken(ctx, td, owner, repo)
+	// TODO EVG-21022: Remove fallback once we delete GitHub tokens as expansions.
+	grip.Warning(message.WrapError(err, message.Fields{
+		"message": "error creating GitHub app token, falling back to legacy clone methods",
+		"owner":   owner,
+		"repo":    repo,
+		"task":    td.ID,
+		"ticket":  "EVG-21022",
+	}))
 	if appToken != "" {
-		token, err := parseToken(appToken)
-		return evergreen.CloneMethodOAuth, token, err
+		return evergreen.CloneMethodAccessToken, appToken, nil
 	}
+	grip.DebugWhen(err == nil, message.Fields{
+		"message": "GitHub app token not found, falling back to legacy clone methods",
+		"owner":   owner,
+		"repo":    repo,
+		"task":    td.ID,
+		"ticket":  "EVG-21022",
+	})
+
+	globalToken := conf.Expansions.Get(evergreen.GlobalGitHubTokenExpansion)
 	token, err := parseToken(globalToken)
 	if err != nil {
 		return evergreen.CloneMethodLegacySSH, "", err
 	}
 
-	switch globalCloneMethod {
+	switch conf.GetCloneMethod() {
 	// No clone method specified is equivalent to using legacy SSH.
 	case "", evergreen.CloneMethodLegacySSH:
 		return evergreen.CloneMethodLegacySSH, token, nil
@@ -160,9 +181,11 @@ func getProjectMethodAndToken(projectToken, globalToken, appToken, globalCloneMe
 		}
 		token, err := parseToken(globalToken)
 		return evergreen.CloneMethodOAuth, token, err
+	case evergreen.CloneMethodAccessToken:
+		return evergreen.CloneMethodLegacySSH, "", errors.New("cannot specify clone method access token")
 	}
 
-	return "", "", errors.Errorf("unrecognized clone method '%s'", globalCloneMethod)
+	return "", "", errors.Errorf("unrecognized clone method '%s'", conf.GetCloneMethod())
 }
 
 // parseToken parses the OAuth token, if it is in the format "token <token>";
@@ -186,22 +209,30 @@ func (opts cloneOpts) getCloneCommand() ([]string, error) {
 	case "", evergreen.CloneMethodLegacySSH:
 		return opts.buildSSHCloneCommand()
 	case evergreen.CloneMethodOAuth:
-		return opts.buildHTTPCloneCommand()
+		return opts.buildHTTPCloneCommand(false)
+	case evergreen.CloneMethodAccessToken:
+		return opts.buildHTTPCloneCommand(true)
 	}
 	return nil, errors.New("unrecognized clone method in options")
 }
 
-func (opts cloneOpts) buildHTTPCloneCommand() ([]string, error) {
+func (opts cloneOpts) buildHTTPCloneCommand(forApp bool) ([]string, error) {
 	urlLocation, err := url.Parse(opts.location)
 	if err != nil {
 		return nil, errors.Wrap(err, "parsing URL from location")
 	}
-	clone := fmt.Sprintf("git clone %s '%s'", thirdparty.FormGitUrl(urlLocation.Host, opts.owner, opts.repo, opts.token), opts.dir)
+	var gitURL string
+	if forApp {
+		gitURL = thirdparty.FormGitURLForApp(urlLocation.Host, opts.owner, opts.repo, opts.token)
+	} else {
+		gitURL = thirdparty.FormGitURL(urlLocation.Host, opts.owner, opts.repo, opts.token)
+	}
+	clone := fmt.Sprintf("git clone %s '%s'", gitURL, opts.dir)
 	if opts.recurseSubmodules {
 		clone = fmt.Sprintf("%s --recurse-submodules", clone)
 	}
 	if opts.useVerbose {
-		clone = fmt.Sprintf("GIT_TRACE=1 GIT_CURL_VERBOSE=1 %s", clone)
+		clone = fmt.Sprintf("GIT_TRACE=1 %s", clone)
 	}
 	if opts.cloneDepth > 0 {
 		clone = fmt.Sprintf("%s --depth %d", clone, opts.cloneDepth)
@@ -229,7 +260,7 @@ func (opts cloneOpts) buildSSHCloneCommand() ([]string, error) {
 		cloneCmd = fmt.Sprintf("%s --recurse-submodules", cloneCmd)
 	}
 	if opts.useVerbose {
-		cloneCmd = fmt.Sprintf("GIT_TRACE=1 GIT_CURL_VERBOSE=1 %s", cloneCmd)
+		cloneCmd = fmt.Sprintf("GIT_TRACE=1 %s", cloneCmd)
 	}
 	if opts.cloneDepth > 0 {
 		cloneCmd = fmt.Sprintf("%s --depth %d", cloneCmd, opts.cloneDepth)
@@ -293,6 +324,7 @@ func (c *gitFetchProject) ParseParams(params map[string]interface{}) error {
 func (c *gitFetchProject) buildCloneCommand(ctx context.Context, comm client.Communicator, logger client.LoggerProducer, conf *internal.TaskConfig, opts cloneOpts) ([]string, error) {
 	gitCommands := []string{
 		"set -o xtrace",
+		fmt.Sprintf("chmod -R 755 %s", c.Directory),
 		"set -o errexit",
 		fmt.Sprintf("rm -rf %s", c.Directory),
 	}
@@ -413,8 +445,8 @@ func (c *gitFetchProject) buildModuleCloneCommand(conf *internal.TaskConfig, opt
 		"set -o xtrace",
 		"set -o errexit",
 	}
-	if opts.location == "" {
-		return nil, errors.New("empty repository URI")
+	if opts.location == "" && opts.repo == "" && opts.owner == "" {
+		return nil, errors.New("must specify repository URI or owner and repo")
 	}
 	if opts.dir == "" {
 		return nil, errors.New("empty clone path")
@@ -492,11 +524,13 @@ func (c *gitFetchProject) Execute(ctx context.Context, comm client.Communicator,
 		return errors.Wrap(err, "loading manifest")
 	}
 
-	if err = util.ExpandValues(c, conf.Expansions); err != nil {
+	if err = util.ExpandValues(c, &conf.Expansions); err != nil {
 		return errors.Wrap(err, "applying expansions")
 	}
 
-	projectMethod, projectToken, err := getProjectMethodAndToken(c.Token, conf.Expansions.Get(evergreen.GlobalGitHubTokenExpansion), conf.Expansions.Get(evergreen.GithubAppToken), conf.GetCloneMethod())
+	td := client.TaskData{ID: conf.Task.Id, Secret: conf.Task.Secret}
+
+	projectMethod, projectToken, err := getProjectMethodAndToken(ctx, comm, td, conf, c.Token)
 	if err != nil {
 		return errors.Wrap(err, "getting method of cloning and token")
 	}
@@ -523,7 +557,7 @@ func (c *gitFetchProject) Execute(ctx context.Context, comm client.Communicator,
 				// If clone failed once with the cached merge SHA, do not use it again
 				opts.usePatchMergeCommitSha = false
 			}
-			if err := c.fetch(ctx, comm, logger, conf, opts); err != nil {
+			if err := c.fetch(ctx, comm, logger, conf, td, opts); err != nil {
 				attemptNum++
 				if attemptNum == 1 {
 					logger.Execution().Warning("git clone failed with cached merge SHA; re-requesting merge SHA from GitHub")
@@ -545,6 +579,7 @@ func (c *gitFetchProject) Execute(ctx context.Context, comm client.Communicator,
 			"owner":                conf.ProjectRef.Owner,
 			"repo":                 conf.ProjectRef.Repo,
 			"branch":               conf.ProjectRef.Branch,
+			"clone_method":         opts.method,
 		}))
 	}
 
@@ -589,6 +624,7 @@ func (c *gitFetchProject) fetchSource(ctx context.Context,
 		attribute.String(cloneOwnerAttribute, opts.owner),
 		attribute.String(cloneRepoAttribute, opts.repo),
 		attribute.String(cloneBranchAttribute, opts.branch),
+		attribute.String(cloneMethodAttribute, opts.method),
 	))
 	defer span.End()
 
@@ -618,10 +654,13 @@ func (c *gitFetchProject) fetchAdditionalPatches(ctx context.Context,
 }
 
 func (c *gitFetchProject) fetchModuleSource(ctx context.Context,
+	comm client.Communicator,
 	conf *internal.TaskConfig,
 	logger client.LoggerProducer,
 	jpm jasper.Manager,
+	td client.TaskData,
 	projectToken string,
+	cloneMethod string,
 	p *patch.Patch,
 	moduleName string) error {
 
@@ -641,13 +680,13 @@ func (c *gitFetchProject) fetchModuleSource(ctx context.Context,
 
 	// use submodule revisions based on the main patch. If there is a need in the future,
 	// this could maybe use the most recent submodule revision of all requested patches.
-	// We ignore set-module changes for commit queue, since we should verify HEAD before merging.
+	// We ignore set-module changes for commit queue and GitHub merge queue, since we should verify HEAD before merging.
 	var modulePatch *patch.ModulePatch
 	var revision string
 	if p != nil {
 		modulePatch := p.FindModule(moduleName)
 		if modulePatch != nil {
-			if conf.Task.Requester == evergreen.MergeTestRequester {
+			if conf.Task.Requester == evergreen.MergeTestRequester || conf.Task.Requester == evergreen.GithubMergeRequester {
 				revision = module.Branch
 				c.logModuleRevision(logger, revision, moduleName, "defaulting to HEAD for merge")
 			} else {
@@ -692,15 +731,48 @@ func (c *gitFetchProject) fetchModuleSource(ctx context.Context,
 		repo:     repo,
 		branch:   "",
 		dir:      moduleBase,
+		method:   cloneMethod,
 	}
-	// Module's location takes precedence over the project-level clone
-	// method.
+	// If the module repo is using the deprecated ssh cloning method, extract the owner
+	// and repo from the string and construct a https cloning link manually.
+	// This is a temporary workaround which will be removed once users have switched over.
 	if strings.Contains(opts.location, "git@github.com:") {
-		opts.method = evergreen.CloneMethodLegacySSH
-	} else {
-		opts.method = evergreen.CloneMethodOAuth
-		opts.token = projectToken
+		logger.Task().Infof("ssh cloning is being deprecated. We are manually converting '%s'"+
+			" to https format. Please update your project config.", opts.location)
+		owner, repo, err := thirdparty.ParseModuleLocation(opts.location)
+		if err != nil {
+			return errors.Wrapf(err, "parsing module repo '%s' in the format git@github.com:", opts.location)
+		}
+		opts.repo = repo
+		opts.owner = owner
+		if err := opts.setLocation(); err != nil {
+			return errors.Wrap(err, "setting location to clone from")
+		}
 	}
+
+	if opts.method == evergreen.CloneMethodOAuth {
+		// If user provided a token, use that token.
+		opts.token = projectToken
+	} else {
+
+		// Otherwise, create an installation token for to clone the module.
+		// Fallback to the legacy global token if the token cannot be created.
+		appToken, err := comm.CreateInstallationToken(ctx, td, opts.owner, opts.repo)
+		if err == nil {
+			opts.token = appToken
+		} else {
+			// If a token cannot be created, fallback to the legacy global token.
+			opts.method = evergreen.CloneMethodOAuth
+			opts.token = conf.Expansions.Get(evergreen.GlobalGitHubTokenExpansion)
+			logger.Execution().Warning(message.WrapError(err, message.Fields{
+				"message": "failed to create app token, falling back to global token",
+				"ticket":  "EVG-19966",
+				"owner":   opts.owner,
+				"repo":    opts.repo,
+			}))
+		}
+	}
+
 	if err = opts.validate(); err != nil {
 		return errors.Wrap(err, "validating clone options")
 	}
@@ -713,6 +785,10 @@ func (c *gitFetchProject) fetchModuleSource(ctx context.Context,
 
 	ctx, span := getTracer().Start(ctx, "clone_module", trace.WithAttributes(
 		attribute.String(cloneModuleAttribute, module.Name),
+		attribute.String(cloneOwnerAttribute, opts.owner),
+		attribute.String(cloneRepoAttribute, opts.repo),
+		attribute.String(cloneBranchAttribute, opts.branch),
+		attribute.String(cloneMethodAttribute, opts.method),
 	))
 	defer span.End()
 
@@ -725,7 +801,7 @@ func (c *gitFetchProject) fetchModuleSource(ctx context.Context,
 	// read/write the buffer, so the buffer has to be thread-safe.
 	stdErr := utility.MakeSafeBuffer(bytes.Buffer{})
 	err = jpm.CreateCommand(ctx).Add([]string{"bash", "-c", strings.Join(moduleCmds, "\n")}).
-		Directory(filepath.ToSlash(getJoinedWithWorkDir(conf, c.Directory))).
+		Directory(filepath.ToSlash(getWorkingDirectory(conf, c.Directory))).
 		SetOutputSender(level.Info, logger.Task().GetSender()).SetErrorWriter(stdErr).Run(ctx)
 
 	errOutput := stdErr.String()
@@ -772,13 +848,12 @@ func (c *gitFetchProject) fetch(ctx context.Context,
 	comm client.Communicator,
 	logger client.LoggerProducer,
 	conf *internal.TaskConfig,
+	td client.TaskData,
 	opts cloneOpts) error {
 
 	ctx, cancel := context.WithCancel(ctx)
 	defer cancel()
 	jpm := c.JasperManager()
-
-	td := client.TaskData{ID: conf.Task.Id, Secret: conf.Task.Secret}
 
 	// Additional patches are for commit queue batch execution. Patches
 	// will be applied in the order returned, with the main patch being
@@ -813,7 +888,7 @@ func (c *gitFetchProject) fetch(ctx context.Context,
 		if err := ctx.Err(); err != nil {
 			return errors.Wrapf(err, "canceled while applying module '%s'", moduleName)
 		}
-		err = c.fetchModuleSource(ctx, conf, logger, jpm, opts.token, p, moduleName)
+		err = c.fetchModuleSource(ctx, comm, conf, logger, jpm, td, opts.token, opts.method, p, moduleName)
 		if err != nil {
 			logger.Execution().Error(errors.Wrap(err, "fetching module source"))
 		}
@@ -928,7 +1003,7 @@ func (c *gitFetchProject) getApplyCommand(patchFile string, conf *internal.TaskC
 	}
 	apply := fmt.Sprintf("git apply --binary --index < '%s'", patchFile)
 	if useVerbose {
-		apply = fmt.Sprintf("GIT_TRACE=1 GIT_CURL_VERBOSE=1 %s", apply)
+		apply = fmt.Sprintf("GIT_TRACE=1 %s", apply)
 	}
 	return apply, nil
 }
@@ -1036,7 +1111,7 @@ func (c *gitFetchProject) applyPatch(ctx context.Context, logger client.LoggerPr
 		cmdsJoined := strings.Join(patchCommandStrings, "\n")
 
 		cmd := jpm.CreateCommand(ctx).Add([]string{"bash", "-c", cmdsJoined}).
-			Directory(filepath.ToSlash(getJoinedWithWorkDir(conf, c.Directory))).
+			Directory(filepath.ToSlash(getWorkingDirectory(conf, c.Directory))).
 			SetOutputSender(level.Info, logger.Task().GetSender()).SetErrorSender(level.Error, logger.Task().GetSender())
 
 		if err = cmd.Run(ctx); err != nil {

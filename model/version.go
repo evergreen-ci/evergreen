@@ -15,8 +15,8 @@ import (
 	"github.com/evergreen-ci/evergreen/model/task"
 	"github.com/evergreen-ci/evergreen/model/user"
 	"github.com/evergreen-ci/evergreen/thirdparty"
+	"github.com/evergreen-ci/evergreen/util"
 	"github.com/evergreen-ci/utility"
-	"github.com/google/go-github/v52/github"
 	"github.com/mongodb/anser/bsonutil"
 	"github.com/pkg/errors"
 	"go.mongodb.org/mongo-driver/bson"
@@ -80,9 +80,14 @@ type Version struct {
 
 	SatisfiedTriggers []string `bson:"satisfied_triggers,omitempty" json:"satisfied_triggers,omitempty"`
 	// Fields set if triggered by an upstream build
+	// TriggerID is the ID of the entity that triggered the downstream version. Depending on the trigger type, this
+	// could be a build ID, a task ID, or a project ID, for build, task, and push triggers respectively.
 	TriggerID    string `bson:"trigger_id,omitempty" json:"trigger_id,omitempty"`
 	TriggerType  string `bson:"trigger_type,omitempty" json:"trigger_type,omitempty"`
 	TriggerEvent string `bson:"trigger_event,omitempty" json:"trigger_event,omitempty"`
+	// TriggerSHA is the SHA of the untracked commit that triggered the downstream version,
+	// this field is only populated for push level triggers.
+	TriggerSHA string `bson:"trigger_sha,omitempty" json:"trigger_sha,omitempty"`
 
 	// this is only used for aggregations, and is not stored in the DB
 	Builds []build.Build `bson:"build_variants,omitempty" json:"build_variants,omitempty"`
@@ -295,6 +300,7 @@ type VersionMetadata struct {
 	EventID             string
 	TriggerDefinitionID string
 	SourceVersion       *Version
+	SourceCommit        string
 	IsAdHoc             bool
 	Activate            bool
 	User                *user.DBUser
@@ -705,7 +711,7 @@ func GetVersionsToModify(projectName string, opts ModifyVersionsOptions, startTi
 }
 
 // constructManifest will construct a manifest from the given project and version.
-func constructManifest(v *Version, projectRef *ProjectRef, moduleList ModuleList, settings *evergreen.Settings, token string) (*manifest.Manifest, error) {
+func constructManifest(v *Version, projectRef *ProjectRef, moduleList ModuleList, token string) (*manifest.Manifest, error) {
 	if len(moduleList) == 0 {
 		return nil, nil
 	}
@@ -716,11 +722,21 @@ func constructManifest(v *Version, projectRef *ProjectRef, moduleList ModuleList
 		Branch:      projectRef.Branch,
 		IsBase:      v.Requester == evergreen.RepotrackerVersionRequester,
 	}
-	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
-	defer cancel()
+
+	projVars, err := FindMergedProjectVars(projectRef.Id)
+	if err != nil {
+		return nil, errors.Wrapf(err, "getting project vars for project '%s'", projectRef.Id)
+	}
+	if projVars != nil {
+		expansions := util.NewExpansions(projVars.Vars)
+		for i := range moduleList {
+			if err = util.ExpandValues(&moduleList[i], expansions); err != nil {
+				return nil, errors.Wrapf(err, "expanding module '%s'", moduleList[i].Name)
+			}
+		}
+	}
 
 	var baseManifest *manifest.Manifest
-	var err error
 	isPatch := utility.StringSliceContains(evergreen.PatchRequesters, v.Requester)
 	if isPatch {
 		baseManifest, err = manifest.FindFromVersion(v.Id, v.Identifier, v.Revision, v.Requester)
@@ -729,7 +745,6 @@ func constructManifest(v *Version, projectRef *ProjectRef, moduleList ModuleList
 		}
 	}
 
-	var gitCommit *github.RepositoryCommit
 	modules := map[string]*manifest.Module{}
 	for _, module := range moduleList {
 		if isPatch && !module.AutoUpdate && baseManifest != nil {
@@ -738,55 +753,78 @@ func constructManifest(v *Version, projectRef *ProjectRef, moduleList ModuleList
 				continue
 			}
 		}
-		var sha, url string
-		owner, repo, err := thirdparty.ParseGitUrl(module.Repo)
+
+		mfstModule, err := getManifestModule(v, projectRef, token, module)
 		if err != nil {
-			return nil, errors.Wrapf(err, "parsing git url '%s'", module.Repo)
-		}
-		if module.Ref == "" {
-			var commit *github.RepositoryCommit
-			commit, err = thirdparty.GetCommitEvent(ctx, token, projectRef.Owner, projectRef.Repo, v.Revision)
-			if err != nil {
-				return nil, errors.Wrapf(err, "can't get commit '%s' on '%s/%s'", v.Revision, projectRef.Owner, projectRef.Repo)
-			}
-			if commit == nil || commit.Commit == nil || commit.Commit.Committer == nil {
-				return nil, errors.New("malformed GitHub commit response")
-			}
-			// If this is a mainline commit, retrieve the module's commit from the time of the mainline commit.
-			// Otherwise, retrieve the module's commit from the time of the patch creation.
-			revisionTime := time.Unix(0, 0)
-			if !evergreen.IsPatchRequester(v.Requester) {
-				revisionTime = commit.Commit.Committer.GetDate().Time
-			}
-			var branchCommits []*github.RepositoryCommit
-			branchCommits, _, err = thirdparty.GetGithubCommits(ctx, token, owner, repo, module.Branch, revisionTime, 0)
-			if err != nil {
-				return nil, errors.Wrapf(err, "retrieving git branch for module '%s'", module.Name)
-			}
-			if len(branchCommits) > 0 {
-				sha = branchCommits[0].GetSHA()
-				url = branchCommits[0].GetURL()
-			}
-		} else {
-			sha = module.Ref
-			gitCommit, err = thirdparty.GetCommitEvent(ctx, token, owner, repo, module.Ref)
-			if err != nil {
-				return nil, errors.Wrapf(err, "retrieving getting git commit for module %s with hash %s", module.Name, module.Ref)
-			}
-			url = gitCommit.GetURL()
+			return nil, errors.Wrapf(err, "module '%s'", module.Name)
 		}
 
-		modules[module.Name] = &manifest.Module{
+		modules[module.Name] = mfstModule
+	}
+	newManifest.Modules = modules
+	return newManifest, nil
+}
+
+func getManifestModule(v *Version, projectRef *ProjectRef, token string, module Module) (*manifest.Module, error) {
+	owner, repo, err := thirdparty.ParseGitUrl(module.Repo)
+	if err != nil {
+		return nil, errors.Wrapf(err, "parsing git url '%s'", module.Repo)
+	}
+
+	if module.Ref == "" {
+		ghCtx, cancel := context.WithTimeout(context.Background(), time.Minute)
+		defer cancel()
+
+		commit, err := thirdparty.GetCommitEvent(ghCtx, token, projectRef.Owner, projectRef.Repo, v.Revision)
+		if err != nil {
+			return nil, errors.Wrapf(err, "can't get commit '%s' on '%s/%s'", v.Revision, projectRef.Owner, projectRef.Repo)
+		}
+		if commit == nil || commit.Commit == nil || commit.Commit.Committer == nil {
+			return nil, errors.New("malformed GitHub commit response")
+		}
+		// If this is a mainline commit, retrieve the module's commit from the time of the mainline commit.
+		// Otherwise, retrieve the module's commit from the time of the patch creation.
+		revisionTime := time.Unix(0, 0)
+		if !evergreen.IsPatchRequester(v.Requester) {
+			revisionTime = commit.Commit.Committer.GetDate().Time
+		}
+
+		branchCommits, _, err := thirdparty.GetGithubCommits(ghCtx, token, owner, repo, module.Branch, revisionTime, 0)
+		if err != nil {
+			return nil, errors.Wrapf(err, "retrieving git branch for module '%s'", module.Name)
+		}
+		var sha, url string
+		if len(branchCommits) > 0 {
+			sha = branchCommits[0].GetSHA()
+			url = branchCommits[0].GetURL()
+		}
+
+		return &manifest.Module{
 			Branch:   module.Branch,
 			Revision: sha,
 			Repo:     repo,
 			Owner:    owner,
 			URL:      url,
-		}
-
+		}, nil
 	}
-	newManifest.Modules = modules
-	return newManifest, nil
+
+	ghCtx, cancel := context.WithTimeout(context.Background(), time.Minute)
+	defer cancel()
+
+	sha := module.Ref
+	gitCommit, err := thirdparty.GetCommitEvent(ghCtx, token, owner, repo, module.Ref)
+	if err != nil {
+		return nil, errors.Wrapf(err, "retrieving getting git commit for module '%s' with hash '%s'", module.Name, module.Ref)
+	}
+	url := gitCommit.GetURL()
+
+	return &manifest.Module{
+		Branch:   module.Branch,
+		Revision: sha,
+		Repo:     repo,
+		Owner:    owner,
+		URL:      url,
+	}, nil
 }
 
 // CreateManifest inserts a newly constructed manifest into the DB.
@@ -795,7 +833,7 @@ func CreateManifest(v *Version, proj *Project, projectRef *ProjectRef, settings 
 	if err != nil {
 		return nil, errors.Wrap(err, "getting GitHub token")
 	}
-	newManifest, err := constructManifest(v, projectRef, proj.Modules, settings, token)
+	newManifest, err := constructManifest(v, projectRef, proj.Modules, token)
 	if err != nil {
 		return nil, errors.Wrap(err, "constructing manifest")
 	}

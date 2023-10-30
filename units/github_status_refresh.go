@@ -96,12 +96,9 @@ func (j *githubStatusRefreshJob) fetch(ctx context.Context) error {
 	if j.urlBase == "" {
 		return errors.New("url base doesn't exist")
 	}
-	if j.sender == nil {
-		var err error
-		j.sender, err = j.env.GetSender(evergreen.SenderGithubStatus)
-		if err != nil {
-			return err
-		}
+	j.sender, err = j.env.GetGitHubSender(j.patch.GithubPatchData.BaseOwner, j.patch.GithubPatchData.BaseRepo)
+	if err != nil {
+		return err
 	}
 	if j.patch == nil {
 		j.patch, err = patch.FindOneId(j.FetchID)
@@ -177,9 +174,9 @@ func (j *githubStatusRefreshJob) sendChildPatchStatuses() error {
 
 func getGithubStateAndDescriptionForPatch(p *patch.Patch) (message.GithubState, string) {
 	var state message.GithubState
-	if p.Status == evergreen.PatchSucceeded {
+	if evergreen.IsSuccessfulVersionStatus(p.Status) {
 		state = message.GithubStateSuccess
-	} else if p.Status == evergreen.PatchFailed {
+	} else if p.Status == evergreen.VersionFailed {
 		state = message.GithubStateFailure
 	} else {
 		return message.GithubStatePending, evergreen.PRTasksRunningDescription

@@ -55,7 +55,7 @@ func (c *createHost) ParseParams(params map[string]interface{}) error {
 
 func (c *createHost) parseParamsFromFile(fn string, conf *internal.TaskConfig) error {
 	if !filepath.IsAbs(fn) {
-		fn = getJoinedWithWorkDir(conf, fn)
+		fn = getWorkingDirectory(conf, fn)
 	}
 	return errors.Wrapf(utility.ReadYAMLFile(fn, &c.CreateHost), "reading YAML from file '%s'", fn)
 }
@@ -69,7 +69,7 @@ func (c *createHost) expandAndValidate(ctx context.Context, conf *internal.TaskC
 		}
 	}
 
-	if err := c.CreateHost.Expand(conf.Expansions); err != nil {
+	if err := c.CreateHost.Expand(&conf.Expansions); err != nil {
 		return err
 	}
 
@@ -96,7 +96,7 @@ func (c *createHost) Execute(ctx context.Context, comm client.Communicator,
 		}
 	}
 	if c.CreateHost.StdinFile != "" {
-		c.CreateHost.StdinFile = getJoinedWithWorkDir(conf, c.CreateHost.StdinFile)
+		c.CreateHost.StdinFile = getWorkingDirectory(conf, c.CreateHost.StdinFile)
 		fileContent, err := os.ReadFile(c.CreateHost.StdinFile)
 		if err != nil {
 			return errors.Wrapf(err, "reading stdin file '%s'", c.CreateHost.StdinFile)
@@ -184,13 +184,13 @@ func (c *createHost) initializeLogBatchInfo(id string, conf *internal.TaskConfig
 		c.CreateHost.StderrFile = fmt.Sprintf("%s.err.log", id)
 	}
 	if !filepath.IsAbs(c.CreateHost.StderrFile) {
-		c.CreateHost.StderrFile = getJoinedWithWorkDir(conf, c.CreateHost.StderrFile)
+		c.CreateHost.StderrFile = getWorkingDirectory(conf, c.CreateHost.StderrFile)
 	}
 	if c.CreateHost.StdoutFile == "" {
 		c.CreateHost.StdoutFile = fmt.Sprintf("%s.out.log", id)
 	}
 	if !filepath.IsAbs(c.CreateHost.StdoutFile) {
-		c.CreateHost.StdoutFile = getJoinedWithWorkDir(conf, c.CreateHost.StdoutFile)
+		c.CreateHost.StdoutFile = getWorkingDirectory(conf, c.CreateHost.StdoutFile)
 	}
 
 	// initialize files

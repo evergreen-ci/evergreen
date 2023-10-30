@@ -29,10 +29,8 @@ import (
 )
 
 const (
-	numGithubAttempts   = 3
-	githubRetryMinDelay = time.Second
-	githubAccessURL     = "https://github.com/login/oauth/access_token"
-	githubHookURL       = "%s/rest/v2/hooks/github"
+	githubAccessURL = "https://github.com/login/oauth/access_token"
+	githubHookURL   = "%s/rest/v2/hooks/github"
 
 	Github502Error   = "502 Server Error"
 	commitObjectType = "commit"
@@ -193,7 +191,7 @@ func githubShouldRetry(caller string, config retryConfig) utility.HTTPRetryFunct
 			return false
 		}
 
-		if index >= numGithubAttempts {
+		if index >= evergreen.GitHubRetryAttempts {
 			return false
 		}
 
@@ -287,8 +285,8 @@ func getGithubClient(token, caller string, config retryConfig) *github.Client {
 		token,
 		githubShouldRetry(caller, config),
 		utility.RetryHTTPDelay(utility.RetryOptions{
-			MaxAttempts: numGithubAttempts,
-			MinDelay:    githubRetryMinDelay,
+			MaxAttempts: evergreen.GitHubRetryAttempts,
+			MinDelay:    evergreen.GithubRetryMinDelay,
 		}),
 		utility.DefaultHttpClient(githubTransport),
 	)
@@ -529,7 +527,8 @@ func SendPendingStatusToGithub(ctx context.Context, input SendGithubStatusInput,
 		State:       message.GithubStatePending,
 		Description: input.Desc,
 	}
-	sender, err := env.GetSender(evergreen.SenderGithubStatus)
+
+	sender, err := env.GetGitHubSender(input.Owner, input.Repo)
 	if err != nil {
 		return errors.Wrap(err, "getting github status sender")
 	}
@@ -872,8 +871,8 @@ func tryGithubPost(ctx context.Context, url string, oauthToken string, data inte
 
 		return false, nil
 	}, utility.RetryOptions{
-		MaxAttempts: numGithubAttempts,
-		MinDelay:    githubRetryMinDelay,
+		MaxAttempts: evergreen.GitHubRetryAttempts,
+		MinDelay:    evergreen.GithubRetryMinDelay,
 	})
 
 	if err != nil {
@@ -1710,9 +1709,12 @@ func missingHeadSHA(pr *github.PullRequest) bool {
 }
 
 func SendCommitQueueGithubStatus(ctx context.Context, env evergreen.Environment, pr *github.PullRequest, state message.GithubState, description, versionID string) error {
-	sender, err := env.GetSender(evergreen.SenderGithubStatus)
+	owner := utility.FromStringPtr(pr.Base.Repo.Owner.Login)
+	repo := utility.FromStringPtr(pr.Base.Repo.Name)
+
+	sender, err := env.GetGitHubSender(owner, repo)
 	if err != nil {
-		return errors.Wrap(err, "can't get GitHub status sender")
+		return errors.Wrap(err, "getting github status sender")
 	}
 
 	var url string
@@ -1724,9 +1726,9 @@ func SendCommitQueueGithubStatus(ctx context.Context, env evergreen.Environment,
 	}
 
 	msg := message.GithubStatus{
-		Owner:       *pr.Base.Repo.Owner.Login,
-		Repo:        *pr.Base.Repo.Name,
-		Ref:         *pr.Head.SHA,
+		Owner:       owner,
+		Repo:        repo,
+		Ref:         utility.FromStringPtr(pr.Head.SHA),
 		Context:     commitqueue.GithubContext,
 		State:       state,
 		Description: description,
@@ -1759,135 +1761,6 @@ func GetMergeablePullRequest(ctx context.Context, issue int, githubToken, owner,
 	}
 
 	return pr, nil
-}
-
-// CreateGithubHook creates a new GitHub webhook for a repo.
-func CreateGithubHook(ctx context.Context, settings evergreen.Settings, owner, repo string) (*github.Hook, error) {
-	if settings.Api.GithubWebhookSecret == "" {
-		return nil, errors.New("Evergreen is not configured for GitHub Webhooks")
-	}
-
-	hook, err := createHook(ctx, "", settings, owner, repo)
-	if err == nil {
-		return hook, nil
-	}
-	// TODO: (EVG-19966) Remove logging.
-	grip.DebugWhen(!errors.Is(err, missingTokenError), message.WrapError(err, message.Fields{
-		"ticket":  "EVG-19966",
-		"message": "failed to create hook on GitHub",
-		"caller":  "CreateGithubHook",
-		"owner":   owner,
-		"repo":    repo,
-	}))
-
-	legacyToken, err := settings.GetGithubOauthToken()
-	if err != nil {
-		return nil, errors.Wrap(err, "getting github oauth token")
-	}
-	return createHook(ctx, legacyToken, settings, owner, repo)
-}
-
-func createHook(ctx context.Context, token string, settings evergreen.Settings, owner, repo string) (*github.Hook, error) {
-	caller := "CreateGithubHook"
-	ctx, span := tracer.Start(ctx, caller, trace.WithAttributes(
-		attribute.String(githubEndpointAttribute, caller),
-		attribute.String(githubOwnerAttribute, owner),
-		attribute.String(githubRepoAttribute, repo),
-	))
-	defer span.End()
-
-	if token == "" {
-		var err error
-		token, err = getInstallationToken(ctx, owner, repo, nil)
-		if err != nil {
-			return nil, errors.Wrap(err, "getting installation token")
-		}
-	}
-	githubClient := getGithubClient(token, caller, retryConfig{})
-
-	hookObj := github.Hook{
-		Active: github.Bool(true),
-		Events: []string{"*"},
-		Config: map[string]interface{}{
-			"url":          github.String(fmt.Sprintf(githubHookURL, settings.ApiUrl)),
-			"content_type": github.String("json"),
-			"secret":       github.String(settings.Api.GithubWebhookSecret),
-			"insecure_ssl": github.String("0"),
-		},
-	}
-
-	respHook, resp, err := githubClient.Repositories.CreateHook(ctx, owner, repo, &hookObj)
-	if resp != nil {
-		defer resp.Body.Close()
-		span.SetAttributes(attribute.Bool(githubCachedAttribute, respFromCache(resp.Response)))
-	}
-	if err != nil {
-		return nil, err
-	}
-	if resp.StatusCode != http.StatusCreated || respHook == nil || respHook.ID == nil {
-		return nil, errors.New("unexpected data from GitHub")
-	}
-	return respHook, nil
-}
-
-// GetExistingGithubHook gets information from GitHub about an existing webhook
-// for a repo.
-func GetExistingGithubHook(ctx context.Context, settings evergreen.Settings, owner, repo string) (*github.Hook, error) {
-	hook, err := getExistingWebhook(ctx, "", settings, owner, repo)
-	if err == nil {
-		return hook, nil
-	}
-	// TODO: (EVG-19966) Remove logging.
-	grip.DebugWhen(!errors.Is(err, missingTokenError), message.WrapError(err, message.Fields{
-		"ticket":  "EVG-19966",
-		"message": "failed to get webhook from GitHub",
-		"caller":  "GetExistingGithubHook",
-		"owner":   owner,
-		"repo":    repo,
-	}))
-
-	legacyToken, err := settings.GetGithubOauthToken()
-	if err != nil {
-		return nil, errors.Wrap(err, "getting github oauth token")
-	}
-	return getExistingWebhook(ctx, legacyToken, settings, owner, repo)
-}
-
-func getExistingWebhook(ctx context.Context, token string, settings evergreen.Settings, owner, repo string) (*github.Hook, error) {
-	caller := "ListGithubHooks"
-	ctx, span := tracer.Start(ctx, caller, trace.WithAttributes(
-		attribute.String(githubEndpointAttribute, caller),
-		attribute.String(githubOwnerAttribute, owner),
-		attribute.String(githubRepoAttribute, repo),
-	))
-	defer span.End()
-
-	if token == "" {
-		var err error
-		token, err = getInstallationToken(ctx, owner, repo, nil)
-		if err != nil {
-			return nil, errors.Wrap(err, "getting installation token")
-		}
-	}
-	githubClient := getGithubClient(token, caller, retryConfig{})
-
-	respHooks, resp, err := githubClient.Repositories.ListHooks(ctx, owner, repo, nil)
-	if resp != nil {
-		defer resp.Body.Close()
-		span.SetAttributes(attribute.Bool(githubCachedAttribute, respFromCache(resp.Response)))
-	}
-	if err != nil {
-		return nil, errors.Wrapf(err, "getting hooks for owner '%s', repo '%s'", owner, repo)
-	}
-
-	url := fmt.Sprintf(githubHookURL, settings.ApiUrl)
-	for _, hook := range respHooks {
-		if hook.Config["url"] == url {
-			return hook, nil
-		}
-	}
-
-	return nil, errors.Errorf("no matching hooks found")
 }
 
 // MergePullRequest attempts to merge the given pull request. If commits are merged one after another, Github may
@@ -1987,4 +1860,61 @@ func postComment(ctx context.Context, token, owner, repo string, prNum int, comm
 		return errors.New("unexpected data from GitHub")
 	}
 	return nil
+}
+
+// GetEvergreenBranchProtectionRules gets all Evergreen branch protection checks as a list of strings.
+func GetEvergreenBranchProtectionRules(ctx context.Context, token, owner, repo, branch string) ([]string, error) {
+	branchProtectionRules, err := GetBranchProtectionRules(ctx, token, owner, repo, branch)
+	if err != nil {
+		return nil, err
+	}
+	return getRulesWithEvergreenPrefix(branchProtectionRules), nil
+}
+
+func getRulesWithEvergreenPrefix(rules []string) []string {
+	rulesWithEvergreenPrefix := []string{}
+	for _, rule := range rules {
+		if strings.HasPrefix(rule, "evergreen") {
+			rulesWithEvergreenPrefix = append(rulesWithEvergreenPrefix, rule)
+		}
+	}
+	return rulesWithEvergreenPrefix
+}
+
+// GetBranchProtectionRules gets all branch protection checks as a list of strings.
+func GetBranchProtectionRules(ctx context.Context, token, owner, repo, branch string) ([]string, error) {
+	caller := "GetBranchProtection"
+	ctx, span := tracer.Start(ctx, caller, trace.WithAttributes(
+		attribute.String(githubEndpointAttribute, caller),
+		attribute.String(githubOwnerAttribute, owner),
+		attribute.String(githubRepoAttribute, repo),
+		attribute.String(githubRefAttribute, branch),
+	))
+	defer span.End()
+
+	if token == "" {
+		var err error
+		token, err = getInstallationToken(ctx, owner, repo, nil)
+		if err != nil {
+			return nil, errors.Wrap(err, "getting installation token")
+		}
+	}
+	githubClient := getGithubClient(token, caller, retryConfig{})
+
+	protection, resp, err := githubClient.Repositories.GetBranchProtection(ctx, owner, repo, branch)
+	if resp != nil {
+		defer resp.Body.Close()
+		span.SetAttributes(attribute.Bool(githubCachedAttribute, respFromCache(resp.Response)))
+	}
+	if err != nil {
+		return nil, errors.Wrap(err, "can't get branch protection rules")
+	}
+	checks := []string{}
+	if requiredStatusChecks := protection.GetRequiredStatusChecks(); requiredStatusChecks != nil {
+		for _, check := range requiredStatusChecks.Checks {
+			checks = append(checks, check.Context)
+		}
+		return checks, nil
+	}
+	return nil, nil
 }

@@ -200,7 +200,7 @@ func (g *githubMergeIntent) NewPatch() *Patch {
 	patchDoc := &Patch{
 		Id:      mgobson.NewObjectId(),
 		Alias:   g.GetAlias(),
-		Status:  evergreen.PatchCreated,
+		Status:  evergreen.VersionCreated,
 		Author:  evergreen.GithubMergeUser,
 		Githash: g.BaseSHA,
 		GithubMergeData: thirdparty.GithubMergeGroup{

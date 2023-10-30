@@ -10,6 +10,7 @@ import (
 	"github.com/evergreen-ci/evergreen/agent/internal/client"
 	"github.com/evergreen-ci/evergreen/apimodels"
 	"github.com/evergreen-ci/evergreen/model"
+	"github.com/evergreen-ci/evergreen/util"
 	"github.com/evergreen-ci/utility"
 	"github.com/mongodb/grip"
 	"github.com/mongodb/grip/recovery"
@@ -33,16 +34,59 @@ var (
 )
 
 type runCommandsOptions struct {
-	isTaskCommands bool
-	failPreAndPost bool
+	// block is the name of the block that the command runs in.
+	block command.BlockType
+	// canFailTask indicates whether the command can fail the task.
+	canFailTask bool
 }
 
 // runCommandsInBlock runs all the commands listed in a block (e.g. pre, post).
-func (a *Agent) runCommandsInBlock(ctx context.Context, tc *taskContext, commands []model.PluginCommandConf,
-	options runCommandsOptions, block string) (err error) {
+func (a *Agent) runCommandsInBlock(ctx context.Context, tc *taskContext, cmdBlock commandBlock) (err error) {
+	if cmdBlock.commands == nil {
+		return nil
+	}
+
+	var taskLogger grip.Journaler
+	var execLogger grip.Journaler
+	if tc.logger != nil {
+		taskLogger = tc.logger.Task()
+		execLogger = tc.logger.Execution()
+	} else {
+		// In the case of teardown group, it's not guaranteed that the agent has
+		// previously set up a valid logger set up, so use the fallback default
+		// logger if necessary.
+		taskLogger = grip.GetDefaultJournaler()
+		execLogger = grip.GetDefaultJournaler()
+	}
+
+	blockCtx, blockCancel := context.WithCancel(ctx)
+	defer blockCancel()
+	if cmdBlock.timeoutKind != "" && cmdBlock.getTimeout != nil {
+		// Start the block timeout, if any.
+		timeoutOpts := timeoutWatcherOptions{
+			tc:                    tc,
+			kind:                  cmdBlock.timeoutKind,
+			getTimeout:            cmdBlock.getTimeout,
+			canMarkTimeoutFailure: cmdBlock.canFailTask,
+		}
+		go a.startTimeoutWatcher(blockCtx, blockCancel, timeoutOpts)
+
+		if cmdBlock.canTimeOutHeartbeat {
+			execLogger.Infof("Setting heartbeat timeout to type '%s'.", cmdBlock.timeoutKind)
+			tc.setHeartbeatTimeout(heartbeatTimeoutOptions{
+				startAt:    time.Now(),
+				getTimeout: cmdBlock.getTimeout,
+				kind:       cmdBlock.timeoutKind,
+			})
+			defer func() {
+				execLogger.Infof("Resetting heartbeat timeout from type '%s' back to default.", cmdBlock.timeoutKind)
+				tc.setHeartbeatTimeout(heartbeatTimeoutOptions{})
+			}()
+		}
+	}
 
 	defer func() {
-		op := fmt.Sprintf("running commands for block '%s'", block)
+		op := fmt.Sprintf("running commands for block '%s'", cmdBlock.block)
 		pErr := recovery.HandlePanicWithError(recover(), nil, op)
 		if pErr == nil {
 			return
@@ -50,26 +94,69 @@ func (a *Agent) runCommandsInBlock(ctx context.Context, tc *taskContext, command
 		err = a.logPanic(tc.logger, pErr, err, op)
 	}()
 
+	legacyBlockName := a.blockToLegacyName(cmdBlock.block)
+	taskLogger.Infof("Running %s commands.", legacyBlockName)
+	start := time.Now()
+	defer func() {
+		if err != nil {
+			taskLogger.Error(errors.Wrapf(err, "Running %s commands failed", legacyBlockName))
+		}
+		taskLogger.Infof("Finished running %s commands in %s.", legacyBlockName, time.Since(start).String())
+	}()
+
+	commands := cmdBlock.commands.List()
 	for i, commandInfo := range commands {
 		var cmds []command.Command
-		if err := ctx.Err(); err != nil {
+		if err := blockCtx.Err(); err != nil {
 			return errors.Wrap(err, "canceled while running commands")
 		}
 		blockInfo := command.BlockInfo{
-			Block:     block,
+			Block:     cmdBlock.block,
 			CmdNum:    i + 1,
 			TotalCmds: len(commands),
 		}
-		cmds, err = command.Render(commandInfo, tc.taskConfig.Project, blockInfo)
+		cmds, err = command.Render(commandInfo, &tc.taskConfig.Project, blockInfo)
 		if err != nil {
 			return errors.Wrapf(err, "rendering command '%s'", commandInfo.Command)
 		}
-		if err = a.runCommandOrFunc(ctx, tc, commandInfo, cmds, options, blockInfo); err != nil {
+		runCmdOpts := runCommandsOptions{
+			block:       cmdBlock.block,
+			canFailTask: cmdBlock.canFailTask,
+		}
+		if err = a.runCommandOrFunc(blockCtx, tc, commandInfo, cmds, runCmdOpts, blockInfo); err != nil {
 			return errors.WithStack(err)
 		}
 	}
 
 	return errors.WithStack(err)
+}
+
+// blockToLegacyName converts the name of a command block to the name it has
+// historically been referred to as in the task logs. The legacy name should not
+// be used anymore except where it is currently still needed.
+func (a *Agent) blockToLegacyName(block command.BlockType) string {
+	switch block {
+	case command.PreBlock:
+		return "pre-task"
+	case command.MainTaskBlock:
+		return "task"
+	case command.PostBlock:
+		return "post-task"
+	case command.TaskTimeoutBlock:
+		return "task-timeout"
+	case command.SetupGroupBlock:
+		return "setup-group"
+	case command.SetupTaskBlock:
+		return "setup-task"
+	case command.TeardownTaskBlock:
+		return "teardown-task"
+	case command.TeardownGroupBlock:
+		return "teardown-group"
+	case command.TaskSyncBlock:
+		return "task-sync"
+	default:
+		return string(block)
+	}
 }
 
 // runCommandOrFunc initializes and then executes a list of commands, which can
@@ -156,7 +243,6 @@ func (a *Agent) runCommand(ctx context.Context, tc *taskContext, logger client.L
 		prevVal := tc.taskConfig.Expansions.Get(key)
 		prevExp[key] = prevVal
 
-		var newVal string
 		newVal, err := tc.taskConfig.Expansions.ExpandString(val)
 		if err != nil {
 			return errors.Wrapf(err, "expanding '%s'", val)
@@ -164,24 +250,38 @@ func (a *Agent) runCommand(ctx context.Context, tc *taskContext, logger client.L
 		tc.taskConfig.Expansions.Put(key, newVal)
 	}
 	defer func() {
-		if !tc.unsetFunctionVarsDisabled || tc.project.UnsetFunctionVars {
-			// This defer ensures that the function vars do not persist in the expansions after the function is over.
-			for key, functionValue := range commandInfo.Vars {
-				currentValue := tc.taskConfig.Expansions.Get(key)
-				if currentValue != functionValue {
-					// If a command in the func updates the expansion value, don't reset it.
-					delete(prevExp, key)
+		if !tc.unsetFunctionVarsDisabled || tc.taskConfig.Project.UnsetFunctionVars {
+			// This defer ensures that the function vars do not persist in the expansions after the function is over
+			// unless they were updated using expansions.update
+			if cmd.Name() == "expansions.update" {
+				updatedExpansions := tc.taskConfig.DynamicExpansions.Map()
+				for k := range updatedExpansions {
+					if _, ok := commandInfo.Vars[k]; ok {
+						// If expansions.update updated this key, don't reset it
+						delete(prevExp, k)
+					}
 				}
 			}
 			tc.taskConfig.Expansions.Update(prevExp)
+			tc.taskConfig.DynamicExpansions = *util.NewExpansions(map[string]string{})
 		}
 	}()
 
 	tc.setCurrentCommand(cmd)
-	tc.setCurrentIdleTimeout(cmd)
+	switch options.block {
+	case command.PreBlock, command.SetupGroupBlock, command.SetupTaskBlock, command.MainTaskBlock:
+		// Only set the idle timeout in cases where the idle timeout is actually
+		// respected. In all other blocks, setting the idle timeout should have
+		// no effect.
+		tc.setCurrentIdleTimeout(cmd, options.block)
+	}
 	a.comm.UpdateLastMessageTime()
 
 	start := time.Now()
+	defer func() {
+		tc.logger.Task().Infof("Finished command %s in %s.", displayName, time.Since(start).String())
+	}()
+
 	// This method must return soon after the context errors (e.g. due to
 	// aborting the task). Even though commands ought to respect the context and
 	// finish up quickly when the context errors, we cannot guarantee that every
@@ -204,12 +304,13 @@ func (a *Agent) runCommand(ctx context.Context, tc *taskContext, logger client.L
 
 		cmdChan <- cmd.Execute(ctx, a.comm, logger, tc.taskConfig)
 	}()
+
 	select {
 	case err := <-cmdChan:
 		if err != nil {
 			tc.logger.Task().Errorf("Command %s failed: %s.", displayName, err)
-			if options.isTaskCommands || options.failPreAndPost ||
-				(cmd.Name() == "git.get_project" && tc.taskModel.Requester == evergreen.MergeTestRequester) {
+			if options.canFailTask ||
+				(cmd.Name() == "git.get_project" && tc.taskConfig.Task.Requester == evergreen.MergeTestRequester) {
 				// any git.get_project in the commit queue should fail
 				return errors.Wrap(err, "command failed")
 			}
@@ -228,38 +329,13 @@ func (a *Agent) runCommand(ctx context.Context, tc *taskContext, logger client.L
 		tc.logger.Task().Errorf("Command %s stopped early: %s.", displayName, ctx.Err())
 		return errors.Wrap(ctx.Err(), "command stopped early")
 	}
-	tc.logger.Task().Infof("Finished command %s in %s.", displayName, time.Since(start).String())
-	if (options.isTaskCommands || options.failPreAndPost) && a.endTaskResp != nil && !a.endTaskResp.ShouldContinue {
+
+	userEndTaskResp := tc.getUserEndTaskResponse()
+	if options.canFailTask && userEndTaskResp != nil && !userEndTaskResp.ShouldContinue {
 		// only error if we're running a command that should fail, and we don't want to continue to run other tasks
-		return errors.Errorf("task status has been set to '%s'; triggering end task", a.endTaskResp.Status)
+		return errors.Errorf("task status has been set to '%s'; triggering end task", userEndTaskResp.Status)
 	}
 
-	return nil
-}
-
-// runTaskCommands runs all commands for the task currently assigned to the agent.
-func (a *Agent) runTaskCommands(ctx context.Context, tc *taskContext) error {
-	ctx, span := a.tracer.Start(ctx, "task-commands")
-	defer span.End()
-
-	conf := tc.taskConfig
-	task := conf.Project.FindProjectTask(conf.Task.DisplayName)
-
-	if task == nil {
-		return errors.Errorf("unable to find task '%s' in project '%s'", conf.Task.DisplayName, conf.Task.Project)
-	}
-
-	if err := ctx.Err(); err != nil {
-		return errors.Wrap(err, "canceled while running task commands")
-	}
-	tc.logger.Execution().Info("Running task commands.")
-	start := time.Now()
-	opts := runCommandsOptions{isTaskCommands: true}
-	err := a.runCommandsInBlock(ctx, tc, task.Commands, opts, "")
-	tc.logger.Execution().Infof("Finished running task commands in %s.", time.Since(start).String())
-	if err != nil {
-		return err
-	}
 	return nil
 }
 
@@ -281,14 +357,10 @@ func getCommandNameForFileLogger(commandInfo model.PluginCommandConf) string {
 // endTaskSyncCommands returns the commands to sync the task to S3 if it was
 // requested when the task completes.
 func endTaskSyncCommands(tc *taskContext, detail *apimodels.TaskEndDetail) *model.YAMLCommandSet {
-	if tc.taskModel == nil {
-		tc.logger.Task().Error("Task model not found for running task sync.")
+	if !tc.taskConfig.Task.SyncAtEndOpts.Enabled {
 		return nil
 	}
-	if !tc.taskModel.SyncAtEndOpts.Enabled {
-		return nil
-	}
-	if statusFilter := tc.taskModel.SyncAtEndOpts.Statuses; len(statusFilter) != 0 {
+	if statusFilter := tc.taskConfig.Task.SyncAtEndOpts.Statuses; len(statusFilter) != 0 {
 		if detail.Status == evergreen.TaskSucceeded {
 			if !utility.StringSliceContains(statusFilter, evergreen.TaskSucceeded) {
 				return nil

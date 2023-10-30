@@ -15,10 +15,10 @@ import (
 	"github.com/evergreen-ci/evergreen/trigger"
 	"github.com/evergreen-ci/evergreen/units"
 	"github.com/evergreen-ci/utility"
+	"github.com/mongodb/amboy"
+	"github.com/mongodb/grip"
 	"github.com/pkg/errors"
 )
-
-const jiraIssueType = "Build Failure"
 
 type FailingTaskData struct {
 	TaskId    string `bson:"task_id"`
@@ -35,13 +35,6 @@ func BbFileTicket(ctx context.Context, taskId string, execution int) (int, error
 	if t == nil {
 		return http.StatusNotFound, errors.Wrapf(err, "task '%s' not found with execution '%d'", taskId, execution)
 	}
-	env := evergreen.GetEnvironment()
-	settings := env.Settings()
-	queue := env.RemoteQueue()
-	bbProject, ok := model.GetBuildBaronSettings(t.Project, t.Version)
-	if !ok {
-		return http.StatusInternalServerError, errors.Errorf("could not find build baron plugin for task '%s' with execution '%d'", taskId, execution)
-	}
 
 	webHook, ok, err := model.IsWebhookConfigured(t.Project, t.Version)
 	if err != nil {
@@ -53,16 +46,26 @@ func BbFileTicket(ctx context.Context, taskId string, execution int) (int, error
 		return resp.StatusCode, err
 	}
 
-	//if there is no custom web-hook, use the build baron
-	n, err := makeNotification(ctx, settings, bbProject.TicketCreateProject, t)
+	// If there is no custom webhook, use the build baron settings to file a
+	// Jira ticket.
+	env := evergreen.GetEnvironment()
+	settings := env.Settings()
+	queue := env.RemoteQueue()
+	bbProject, ok := model.GetBuildBaronSettings(t.Project, t.Version)
+	if !ok {
+		return http.StatusInternalServerError, errors.Errorf("could not find build baron plugin for task '%s' with execution '%d'", taskId, execution)
+	}
+
+	n, err := makeJiraNotification(ctx, settings, t, jiraTicketOptions{
+		project:   bbProject.TicketCreateProject,
+		issueType: bbProject.TicketCreateIssueType,
+	})
 	if err != nil {
 		return http.StatusInternalServerError, err
 	}
 	ts := utility.RoundPartOfMinute(1).Format(units.TSFormat)
-	err = queue.Put(ctx, units.NewEventSendJob(n.ID, ts))
-	if err != nil {
+	if err = amboy.EnqueueUniqueJob(ctx, queue, units.NewEventSendJob(n.ID, ts)); err != nil {
 		return http.StatusInternalServerError, errors.Wrapf(err, "inserting notification job")
-
 	}
 
 	return http.StatusOK, nil
@@ -103,13 +106,38 @@ func fileTicketCustomHook(context context.Context, taskId string, execution int,
 	return resp, nil
 }
 
-func makeNotification(ctx context.Context, settings *evergreen.Settings, project string, t *task.Task) (*notification.Notification, error) {
+type jiraTicketOptions struct {
+	project   string
+	issueType string
+}
+
+func (o *jiraTicketOptions) validate() error {
+	catcher := grip.NewBasicCatcher()
+	catcher.NewWhen(o.project == "", "must specify Jira project")
+	if catcher.HasErrors() {
+		return catcher.Resolve()
+	}
+
+	if o.issueType == "" {
+		o.issueType = defaultJiraIssueType
+	}
+
+	return nil
+}
+
+const defaultJiraIssueType = "Build Failure"
+
+func makeJiraNotification(ctx context.Context, settings *evergreen.Settings, t *task.Task, jiraOpts jiraTicketOptions) (*notification.Notification, error) {
+	if err := jiraOpts.validate(); err != nil {
+		return nil, errors.Wrap(err, "invalid Jira ticket options")
+	}
+
 	mappings := &evergreen.JIRANotificationsConfig{}
 	if err := mappings.Get(ctx); err != nil {
 		return nil, errors.Wrap(err, "getting Jira mappings")
 	}
 	payload, err := trigger.JIRATaskPayload(trigger.JiraIssueParameters{
-		Project:  project,
+		Project:  jiraOpts.project,
 		UiURL:    settings.Ui.Url,
 		Mappings: mappings,
 		Task:     t,
@@ -120,8 +148,8 @@ func makeNotification(ctx context.Context, settings *evergreen.Settings, project
 	sub := event.Subscriber{
 		Type: event.JIRAIssueSubscriberType,
 		Target: event.JIRAIssueSubscriber{
-			Project:   project,
-			IssueType: jiraIssueType,
+			Project:   jiraOpts.project,
+			IssueType: jiraOpts.issueType,
 		},
 	}
 	n, err := notification.New("", utility.RandomString(), &sub, payload)

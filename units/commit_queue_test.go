@@ -114,7 +114,7 @@ func (s *commitQueueSuite) TestTryUnstickDequeuesAlreadyFinishedCommitQueueItem(
 	patchID := mgobson.NewObjectId()
 	patchDoc := &patch.Patch{
 		Id:         patchID,
-		Status:     evergreen.PatchFailed,
+		Status:     evergreen.VersionFailed,
 		Githash:    "abcdef",
 		FinishTime: time.Now(),
 	}
@@ -163,7 +163,7 @@ func (s *commitQueueSuite) TestTryUnstickFixesBlockedMergeTask() {
 
 	p := &patch.Patch{
 		Id:     mgobson.NewObjectId(),
-		Status: evergreen.PatchStarted,
+		Status: evergreen.VersionStarted,
 	}
 	s.Require().NoError(p.Insert())
 	v := model.Version{
@@ -212,7 +212,7 @@ func (s *commitQueueSuite) TestTryUnstickDoesNotUnstickMergeTaskBlockedByResetti
 
 	p := &patch.Patch{
 		Id:     mgobson.NewObjectId(),
-		Status: evergreen.PatchStarted,
+		Status: evergreen.VersionStarted,
 	}
 	s.Require().NoError(p.Insert())
 	v := model.Version{
@@ -314,6 +314,7 @@ func (s *commitQueueSuite) TestAddMergeTaskAndVariant() {
 	s.Require().Len(pp.BuildVariants[0].Tasks, 1)
 	s.True(project.BuildVariants[0].Tasks[0].CommitQueueMerge)
 	s.Equal(evergreen.MergeTaskGroup, project.BuildVariants[0].Tasks[0].Name)
+	s.True(project.BuildVariants[0].Tasks[0].IsGroup)
 	s.Equal(evergreen.MergeTaskVariant, project.BuildVariants[0].Tasks[0].Variant)
 	s.Require().Len(pp.Tasks, 1)
 	s.Equal(evergreen.MergeTaskName, project.Tasks[0].Name)
@@ -375,10 +376,9 @@ func (s *commitQueueSuite) TestUpdatePatch() {
 		Patches: []patch.ModulePatch{
 			{ModuleName: "", Githash: "abcdef"},
 		},
-		PatchedParserProject: "asdf",
-		Project:              "evergreen",
-		BuildVariants:        []string{"my-variant"},
-		Tasks:                []string{"my-task"},
+		Project:       "evergreen",
+		BuildVariants: []string{"my-variant"},
+		Tasks:         []string{"my-task"},
 		VariantsTasks: []patch.VariantTasks{
 			{Variant: "my-variant", Tasks: []string{"my-task"}},
 		},
@@ -388,7 +388,6 @@ func (s *commitQueueSuite) TestUpdatePatch() {
 	s.NoError(err)
 	s.NotEqual("abcdef", patchDoc.Patches[0].Githash)
 	s.NotEqual(model.Project{}, projectConfig)
-	s.NotEqual("asdf", patchDoc.PatchedParserProject)
 
 	s.Empty(patchDoc.Tasks)
 	s.Empty(patchDoc.VariantsTasks)

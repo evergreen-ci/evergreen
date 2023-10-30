@@ -16,6 +16,7 @@ import (
 	serviceModel "github.com/evergreen-ci/evergreen/model"
 	"github.com/evergreen-ci/evergreen/model/artifact"
 	"github.com/evergreen-ci/evergreen/model/manifest"
+	"github.com/evergreen-ci/evergreen/model/patch"
 	patchmodel "github.com/evergreen-ci/evergreen/model/patch"
 	"github.com/evergreen-ci/evergreen/model/task"
 	"github.com/evergreen-ci/evergreen/model/testresult"
@@ -35,28 +36,31 @@ type Mock struct {
 	serverURL    string
 
 	// mock behavior
-	NextTaskShouldFail          bool
-	NextTaskShouldConflict      bool
-	GetPatchFileShouldFail      bool
-	loggingShouldFail           bool
-	NextTaskResponse            *apimodels.NextTaskResponse
-	NextTaskIsNil               bool
-	StartTaskShouldFail         bool
-	GetTaskResponse             *task.Task
-	GetProjectResponse          *serviceModel.Project
-	EndTaskResponse             *apimodels.EndTaskResponse
-	EndTaskShouldFail           bool
-	EndTaskResult               endTaskResult
-	ShellExecFilename           string
-	TimeoutFilename             string
-	GenerateTasksShouldFail     bool
-	HeartbeatShouldAbort        bool
-	HeartbeatShouldConflict     bool
-	HeartbeatShouldErr          bool
-	HeartbeatShouldSometimesErr bool
-	HeartbeatCount              int
-	TaskExecution               int
-	CreatedHost                 apimodels.CreateHost
+	NextTaskShouldFail            bool
+	GetPatchFileShouldFail        bool
+	loggingShouldFail             bool
+	NextTaskResponse              *apimodels.NextTaskResponse
+	NextTaskIsNil                 bool
+	StartTaskShouldFail           bool
+	GetTaskResponse               *task.Task
+	GetProjectResponse            *serviceModel.Project
+	EndTaskResponse               *apimodels.EndTaskResponse
+	EndTaskShouldFail             bool
+	EndTaskResult                 EndTaskResult
+	ShellExecFilename             string
+	TimeoutFilename               string
+	GenerateTasksShouldFail       bool
+	HeartbeatShouldAbort          bool
+	HeartbeatShouldConflict       bool
+	HeartbeatShouldErr            bool
+	HeartbeatShouldSometimesErr   bool
+	HeartbeatCount                int
+	TaskExecution                 int
+	CreatedHost                   apimodels.CreateHost
+	GetTaskPatchResponse          *patchmodel.Patch
+	GetLoggerProducerShouldFail   bool
+	CreateInstallationTokenFail   bool
+	CreateInstallationTokenResult string
 
 	CedarGRPCConn *grpc.ClientConn
 
@@ -79,7 +83,7 @@ type Mock struct {
 	mu sync.RWMutex
 }
 
-type endTaskResult struct {
+type EndTaskResult struct {
 	Detail   *apimodels.TaskEndDetail
 	TaskData TaskData
 }
@@ -281,9 +285,6 @@ func (c *Mock) GetNextTask(ctx context.Context, details *apimodels.GetNextTaskDe
 	if c.NextTaskShouldFail {
 		return nil, errors.New("NextTaskShouldFail is true")
 	}
-	if c.NextTaskShouldConflict {
-		return nil, errors.WithStack(HTTPConflictError)
-	}
 	if c.NextTaskResponse != nil {
 		return c.NextTaskResponse, nil
 	}
@@ -362,6 +363,9 @@ func (c *Mock) GetMockMessages() map[string][]apimodels.LogMessage {
 
 // GetLoggerProducer constructs a single channel log producer.
 func (c *Mock) GetLoggerProducer(ctx context.Context, td TaskData, config *LoggerConfig) (LoggerProducer, error) {
+	if c.GetLoggerProducerShouldFail {
+		return nil, errors.New("operation run in fail mode.")
+	}
 	return NewSingleChannelLogHarness(td.ID, newEvergreenLogSender(ctx, c, apimodels.AgentLogPrefix, td, defaultLogBufferSize, defaultLogBufferTime)), nil
 }
 
@@ -380,12 +384,11 @@ func (c *Mock) GetPatchFile(ctx context.Context, td TaskData, patchFileID string
 }
 
 func (c *Mock) GetTaskPatch(ctx context.Context, td TaskData, patchId string) (*patchmodel.Patch, error) {
-	patch, ok := ctx.Value("patch").(*patchmodel.Patch)
-	if !ok {
-		return &patchmodel.Patch{}, nil
+	if c.GetTaskPatchResponse != nil {
+		return c.GetTaskPatchResponse, nil
 	}
 
-	return patch, nil
+	return &patch.Patch{}, nil
 }
 
 // CreateSpawnHost will return a mock host that would have been intended
@@ -408,7 +411,7 @@ func (*Mock) CreateSpawnHost(ctx context.Context, spawnRequest *model.HostReques
 	return mockHost, nil
 }
 
-func (c *Mock) SetResultsInfo(ctx context.Context, td TaskData, service string, failed bool) error {
+func (c *Mock) SetResultsInfo(ctx context.Context, _ TaskData, service string, failed bool) error {
 	c.ResultsService = service
 	if failed {
 		c.ResultsFailed = true
@@ -426,7 +429,6 @@ func (c *Mock) AttachFiles(ctx context.Context, td TaskData, taskFiles []*artifa
 	c.mu.Lock()
 	defer c.mu.Unlock()
 
-	grip.Info("attaching files")
 	c.AttachedFiles[td.ID] = append(c.AttachedFiles[td.ID], taskFiles...)
 
 	return nil
@@ -525,4 +527,11 @@ func (c *Mock) GetPullRequestInfo(ctx context.Context, taskData TaskData, prNum 
 	return &apimodels.PullRequestInfo{
 		Mergeable: utility.TruePtr(),
 	}, nil
+}
+
+func (c *Mock) CreateInstallationToken(ctx context.Context, td TaskData, owner, repo string) (string, error) {
+	if c.CreateInstallationTokenFail {
+		return "", errors.New("failed to create token")
+	}
+	return c.CreateInstallationTokenResult, nil
 }

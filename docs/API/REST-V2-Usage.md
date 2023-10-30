@@ -331,50 +331,6 @@ Creates a task annotation, or updates an existing task annotation, appending iss
     }
 
 
-Bulk Create or Update Many Task Annotations
-
-    PATCH tasks/annotations
-
-Creates many new task annotations, or updates the annotation if it
-already exists. A list of updates to a task annotation is provided in
-the request body, where each list item specifies a set of task id /
-execution pairs, and an annotation update to apply to all tasks matching
-that criteria. Note that usage of this endpoint requires that the
-requesting user have security to modify task annotations. Example
-request body:
-
-    {
-      "tasks_updates": [
-       {
-         "task_data": [{"task_id": "t1", "execution":3}],
-         "annotation": {
-           "note": {
-             "message": "this is a note about my_task_id's failure"
-           },
-           "issues":[
-            {
-              "url": "https://link.com",
-              "issue_key": "link-1234"
-            }
-           ]
-         }
-       },
-       {
-         "task_data": [{"task_id": "t2", "execution":0}, {"task_id": "t2", "execution":1}],
-         "annotation": {
-           "note": {
-             "message": "this is a note about my_task_id's failure"
-           },
-           "issues":[
-            {
-              "url": "https://other-link.com",
-              "issue_key": "link-4567"
-            }
-           ]
-         }
-       }]
-    }
-
 List Task Annotations By Build 
 
     GET /builds/<build_id>/annotations
@@ -949,7 +905,8 @@ A version is a commit in a project.
 | `branch`                | string          | The version control branch where the commit was made                                                                                                                                                                                                     |
 | `build_variants_status` | []buildDetail   | List of documents of the associated build variant and the build id                                                                                                                                                                                       |
 | `requester`             | string          | Version created by one of "patch_request", "github_pull_request", "gitter_request" (caused by git commit, aka the repotracker requester), "trigger_request" (Project Trigger versions) , "merge_test" (commit queue patches), "ad_hoc" (periodic builds) |
-| `activated`             | boolean or null | Will be null for versions created before this field was added.                                                                                                                                                                                           |
+| `activated`             | boolean or null | Will be null for versions created before this field was added. |
+| `ignored`             | boolean | Indicates if the version was ignored due to only making changes to ignored files. |
 
 
 #### Endpoints
@@ -1545,7 +1502,8 @@ defined endpoints in evergreen source:
       "theme": "warning"
     }
 
-### TaskStats
+### TaskStats (DEPRECATED)
+**IMPORTANT: The task stats REST API has been deprecated, please use [Trino task stats](../Project-Configuration/Evergreen-Data-for-Analytics.md) instead.**
 
 Task stats are aggregated task execution statistics for a given project.
 The statistics can be grouped by time period and by task, variant,
@@ -1673,10 +1631,11 @@ Project is mongodb-mongo-master, task is lint. Assuming today is
     GET /projects/mongodb-mongo-master/task_reliability?tasks=lint&after_date=2019-03-15&group_num_days=7
     GET /projects/mongodb-mongo-master/task_reliability?tasks=lint&after_date=2019-03-15&group_num_days=28
 
-### Notifications
+### Notifications  (DEPRECATED)
 
-Create custom notifications for email or Slack.
-issues.
+Create custom notifications for email or Slack issues. 
+
+We are investigating moving this out of Evergreen (EVG-21065) and won't be supporting future work for this. 
 
 #### Objects
 
@@ -1694,11 +1653,11 @@ issues.
 
 **Slack**
 
-| Name          | Type                | Description                                  |
-|--------------------|---------|-------------------------------------------|
-| `target`      | string              | Required. The name of the recipient.         |
-| `msg`         | string              | Required. The message for the notification.  |
-| `attachments` | []SlackAttachment | Optional. Array of attachments to a message. |
+| Name          | Type                | Description                                         |
+|--------------------|---------|-----------------------------------------------------|
+| `target`      | string              | Required. @name or public #channel of the recipient |
+| `msg`         | string              | Required. The message for the notification.         |
+| `attachments` | []SlackAttachment | Optional. Array of attachments to a message.        |
 
 
 **SlackAttachment**

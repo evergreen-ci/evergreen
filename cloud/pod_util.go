@@ -80,7 +80,10 @@ func MakeECSPodDefinitionManager(c cocoa.ECSClient, v cocoa.Vault) (cocoa.ECSPod
 // MakeECSPodCreator creates a cocoa.ECSPodCreator to create pods backed by ECS
 // and secrets backed by an optional cocoa.Vault.
 func MakeECSPodCreator(c cocoa.ECSClient, v cocoa.Vault) (cocoa.ECSPodCreator, error) {
-	return ecs.NewBasicPodCreator(c, v)
+	return ecs.NewBasicPodCreator(*ecs.NewBasicPodCreatorOptions().
+		SetClient(c).
+		SetVault(v).
+		SetCache(definition.PodDefinitionCache{}))
 }
 
 // ExportECSPod exports the pod DB model to its equivalent cocoa.ECSPod backed

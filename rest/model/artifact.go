@@ -1,6 +1,11 @@
 package model
 
 import (
+	"fmt"
+	"net/url"
+	"strings"
+
+	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/model/artifact"
 	"github.com/evergreen-ci/utility"
 )
@@ -8,8 +13,10 @@ import (
 type APIFile struct {
 	Name           *string `json:"name"`
 	Link           *string `json:"url"`
+	URLParsley     *string `json:"url_parsley"`
 	Visibility     *string `json:"visibility"`
 	IgnoreForFetch bool    `json:"ignore_for_fetch"`
+	ContentType    *string `json:"content_type"`
 }
 
 type APIEntry struct {
@@ -21,14 +28,40 @@ type APIEntry struct {
 }
 
 func (f *APIFile) BuildFromService(file artifact.File) {
+	f.ContentType = utility.ToStringPtr(file.ContentType)
 	f.Name = utility.ToStringPtr(file.Name)
 	f.Link = utility.ToStringPtr(file.Link)
 	f.Visibility = utility.ToStringPtr(file.Visibility)
 	f.IgnoreForFetch = file.IgnoreForFetch
+
+}
+
+func (f *APIFile) GetLogURL(env evergreen.Environment, taskID string, execution int) {
+	settings := env.Settings()
+
+	contentType := utility.FromStringPtr(f.ContentType)
+	if contentType == "" {
+		return
+	}
+	hasContentType := false
+	for _, fileStreamingContentType := range settings.Ui.FileStreamingContentTypes {
+		if strings.HasPrefix(contentType, fileStreamingContentType) {
+			hasContentType = true
+			break
+		}
+	}
+	if hasContentType {
+		fileName := utility.FromStringPtr(f.Name)
+		if fileName == "" {
+			return
+		}
+		f.URLParsley = utility.ToStringPtr(fmt.Sprintf("%s/taskFile/%s/%d/%s", settings.Ui.ParsleyUrl, taskID, execution, url.PathEscape(fileName)))
+	}
 }
 
 func (f *APIFile) ToService() artifact.File {
 	return artifact.File{
+		ContentType:    utility.FromStringPtr(f.ContentType),
 		Name:           utility.FromStringPtr(f.Name),
 		Link:           utility.FromStringPtr(f.Link),
 		Visibility:     utility.FromStringPtr(f.Visibility),

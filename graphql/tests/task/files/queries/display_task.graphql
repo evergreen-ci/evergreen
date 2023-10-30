@@ -1,0 +1,17 @@
+{
+  task(taskId: "some_display_task", execution: 0) {
+    id
+    execution
+    files {
+      fileCount
+      groupedFiles {
+        taskName
+        taskId
+        execution
+        files {
+          name
+        }
+      }
+    }
+  }
+}

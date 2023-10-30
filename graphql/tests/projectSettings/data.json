@@ -19,7 +19,8 @@
         {
           "project": "spruce",
           "level": "task",
-          "config_file": ".evergreen.yml"
+          "config_file": ".evergreen.yml",
+          "unschedule_downstream_versions": true
         }
       ],
       "patch_trigger_aliases": [
@@ -251,6 +252,13 @@
           "data": "gitter_request"
         }
       ]
+    }
+  ],
+  "github_hooks": [
+    {
+      "owner": "evergreen-ci",
+      "repo": "commit-queue-sandbox",
+      "installation_id": 1234
     }
   ]
 }

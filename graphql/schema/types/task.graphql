@@ -83,6 +83,7 @@ type Task {
   expectedDuration: Duration
   failedTestCount: Int!
   finishTime: Time
+  files: TaskFiles!
   generatedBy: String
   generatedByName: String
   generateTask: Boolean
@@ -107,7 +108,7 @@ type Task {
   spawnHostLink: String
   startTime: Time
   status: String!
-  taskFiles: TaskFiles!
+  taskFiles: TaskFiles! @deprecated(reason: "Use files instead")
   taskGroup: String
   taskGroupMaxHosts: Int
   """
@@ -185,11 +186,14 @@ type TaskFiles {
 type GroupedFiles {
   files: [File!]
   taskName: String
+  taskId: String!
+  execution: Int!
 }
 
 type File {
   link: String!
   name: String!
+  urlParsley: String
   visibility: String!
 }
 

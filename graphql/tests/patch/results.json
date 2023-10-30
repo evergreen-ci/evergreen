@@ -123,26 +123,6 @@
       }
     },
     {
-      "query_file": "commit-queue-null.graphql",
-      "result": {
-        "data": {
-          "patch": {
-            "commitQueuePosition": null
-          }
-        }
-      }
-    },
-    {
-      "query_file": "commit-queue.graphql",
-      "result": {
-        "data": {
-          "patch": {
-            "commitQueuePosition": 0
-          }
-        }
-      }
-    },
-    {
       "query_file": "correct-duration.graphql",
       "result": {
         "data": {
@@ -274,18 +254,13 @@
       "result": {
         "data": {
           "patch": {
-            "projectIdentifier": "evergreenIdentifier",
+            "projectIdentifier": "spruce",
             "project": {
               "variants": [
                 {
-                  "name": "ubuntu1604",
-                  "displayName": "Ubuntu 16.04",
-                  "tasks": [
-                    "batchtime_task",
-                    "display_task",
-                    "display_task2",
-                    "patch_only_task"
-                  ]
+                  "name": "ubuntu1804",
+                  "displayName": "Ubuntu 18.04",
+                  "tasks": ["compile"]
                 }
               ]
             }

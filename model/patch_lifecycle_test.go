@@ -240,31 +240,6 @@ func TestGetPatchedProjectAndGetPatchedProjectConfig(t *testing.T) {
 						So(projectConfigFromPatch, ShouldEqual, patchConfig.PatchedProjectConfig)
 					})
 				})
-
-				Convey("Calling GetPatchedProject with a created but unfinalized patch using deprecated patched parser project", func() {
-					configPatch := resetPatchSetup(ctx, t, configFilePath)
-
-					// Simulate what patch creation does for old patches.
-					configPatch.PatchedParserProject = patchConfig.PatchedParserProjectYAML
-					configPatch.PatchedProjectConfig = patchConfig.PatchedProjectConfig
-
-					projectFromPatch, patchConfigFromPatch, err := GetPatchedProject(ctx, patchTestConfig, configPatch, "invalid-token-do-not-fetch-from-github")
-					So(err, ShouldBeNil)
-					So(patchConfigFromPatch, ShouldNotBeNil)
-					So(projectFromPatch, ShouldNotBeNil)
-					So(len(projectFromPatch.Tasks), ShouldEqual, len(project.Tasks))
-					So(patchConfigFromPatch.PatchedParserProject, ShouldNotBeNil)
-					So(len(patchConfigFromPatch.PatchedParserProject.Tasks), ShouldEqual, len(patchConfig.PatchedParserProject.Tasks))
-					So(patchConfigFromPatch.PatchedParserProjectYAML, ShouldEqual, patchConfig.PatchedParserProjectYAML)
-					So(patchConfigFromPatch.PatchedProjectConfig, ShouldEqual, patchConfig.PatchedProjectConfig)
-
-					Convey("Calling GetPatchedProjectConfig should return the same project config as GetPatchedProject", func() {
-						projectConfigFromPatch, err := GetPatchedProjectConfig(ctx, patchTestConfig, configPatch, token)
-						So(err, ShouldBeNil)
-						So(projectConfigFromPatch, ShouldEqual, patchConfig.PatchedProjectConfig)
-					})
-				})
-
 			})
 
 			Convey("Calling GetPatchedProject on a project-less version returns a valid project", func() {
@@ -323,40 +298,6 @@ func TestFinalizePatch(t *testing.T) {
 	require.NoError(t, err)
 
 	for name, test := range map[string]func(t *testing.T, p *patch.Patch, patchConfig *PatchConfig){
-		"VersionCreationWithPatchedParserProject": func(t *testing.T, p *patch.Patch, patchConfig *PatchConfig) {
-			modulesYml := `
-modules:
-  - name: sandbox
-    repo: git@github.com:evergreen-ci/commit-queue-sandbox.git
-    branch: main
-  - name: evergreen
-    repo: git@github.com:evergreen-ci/evergreen.git
-    branch: main
-`
-			p.PatchedParserProject = patchConfig.PatchedParserProjectYAML
-			p.PatchedParserProject += modulesYml
-			require.NoError(t, p.Insert())
-
-			version, err := FinalizePatch(ctx, p, evergreen.PatchVersionRequester, token)
-			require.NoError(t, err)
-			assert.NotNil(t, version)
-			assert.Len(t, version.Parameters, 1)
-			assert.Equal(t, evergreen.ProjectStorageMethodDB, version.ProjectStorageMethod, "version's project storage method should be set")
-
-			dbPatch, err := patch.FindOneId(p.Id.Hex())
-			require.NoError(t, err)
-			require.NotZero(t, dbPatch)
-			assert.True(t, dbPatch.Activated)
-			assert.Zero(t, dbPatch.PatchedParserProject)
-			// ensure the relevant builds/tasks were created
-			builds, err := build.Find(build.All)
-			require.NoError(t, err)
-			assert.Len(t, builds, 1)
-			assert.Len(t, builds[0].Tasks, 2)
-			tasks, err := task.Find(bson.M{})
-			require.NoError(t, err)
-			assert.Len(t, tasks, 2)
-		},
 		"VersionCreationWithParserProjectInDB": func(t *testing.T, p *patch.Patch, patchConfig *PatchConfig) {
 			project, patchConfig, err := GetPatchedProject(ctx, patchTestConfig, p, token)
 			require.NoError(t, err)
@@ -388,6 +329,28 @@ modules:
 			assert.Len(t, tasks, 2)
 		},
 		"VersionCreationWithAutoUpdateModules": func(t *testing.T, p *patch.Patch, patchConfig *PatchConfig) {
+			modules := ModuleList{
+				{
+					Name:       "sandbox",
+					Branch:     "main",
+					Repo:       "git@github.com:evergreen-ci/commit-queue-sandbox.git",
+					AutoUpdate: true,
+				},
+				{
+					Name:   "evergreen",
+					Branch: "main",
+					Repo:   "git@github.com:evergreen-ci/evergreen.git",
+				},
+			}
+
+			patchConfig.PatchedParserProject.Id = p.Id.Hex()
+			patchConfig.PatchedParserProject.Modules = modules
+			patchConfig.PatchedParserProject.Identifier = utility.ToStringPtr(p.Project)
+			require.NoError(t, patchConfig.PatchedParserProject.Insert())
+
+			p.ProjectStorageMethod = evergreen.ProjectStorageMethodDB
+			require.NoError(t, p.Insert())
+
 			project, patchConfig, err := GetPatchedProject(ctx, patchTestConfig, p, token)
 			require.NoError(t, err)
 			assert.NotNil(t, project)
@@ -403,20 +366,6 @@ modules:
 			}
 			_, err = baseManifest.TryInsert()
 			require.NoError(t, err)
-
-			modulesYml := `
-modules:
-  - name: sandbox
-    repo: git@github.com:evergreen-ci/commit-queue-sandbox.git
-    branch: main
-    auto_update: true
-  - name: evergreen
-    repo: git@github.com:evergreen-ci/evergreen.git
-    branch: main
-`
-			p.PatchedParserProject = patchConfig.PatchedParserProjectYAML
-			p.PatchedParserProject += modulesYml
-			require.NoError(t, p.Insert())
 
 			version, err := FinalizePatch(ctx, p, evergreen.PatchVersionRequester, token)
 			require.NoError(t, err)
@@ -743,7 +692,7 @@ func TestAddNewPatch(t *testing.T) {
 	assert.NotNil(dbBuild)
 	assert.Len(dbBuild.Tasks, 2)
 
-	_, err = addNewTasks(context.Background(), creationInfo, []build.Build{*dbBuild})
+	_, err = addNewTasksToExistingBuilds(context.Background(), creationInfo, []build.Build{*dbBuild}, "")
 	assert.NoError(err)
 	dbTasks, err := task.FindAll(db.Query(task.ByBuildId(dbBuild.Id)))
 	assert.NoError(err)
@@ -832,7 +781,7 @@ func TestAddNewPatchWithMissingBaseVersion(t *testing.T) {
 	assert.NotNil(dbBuild)
 	assert.Len(dbBuild.Tasks, 2)
 
-	_, err = addNewTasks(context.Background(), creationInfo, []build.Build{*dbBuild})
+	_, err = addNewTasksToExistingBuilds(context.Background(), creationInfo, []build.Build{*dbBuild}, "")
 	assert.NoError(err)
 	dbTasks, err := task.FindAll(db.Query(task.ByBuildId(dbBuild.Id)))
 	assert.NoError(err)
@@ -952,7 +901,7 @@ func TestRetryCommitQueueItems(t *testing.T) {
 				Githash:    patchedRevision,
 				StartTime:  startTime.Add(-30 * time.Minute), // started out of range
 				FinishTime: startTime.Add(30 * time.Minute),
-				Status:     evergreen.PatchFailed,
+				Status:     evergreen.VersionFailed,
 				Alias:      evergreen.CommitQueueAlias,
 				GithubPatchData: thirdparty.GithubPatch{
 					PRNumber: 456,
@@ -978,7 +927,7 @@ func TestRetryCommitQueueItems(t *testing.T) {
 					Githash:     patchedRevision,
 					StartTime:   startTime.Add(30 * time.Minute),
 					FinishTime:  endTime.Add(30 * time.Minute),
-					Status:      evergreen.PatchFailed,
+					Status:      evergreen.VersionFailed,
 					Alias:       evergreen.CommitQueueAlias,
 					Author:      "me",
 					GithubPatchData: thirdparty.GithubPatch{
@@ -992,7 +941,7 @@ func TestRetryCommitQueueItems(t *testing.T) {
 					Githash:     patchedRevision,
 					StartTime:   startTime.Add(30 * time.Minute),
 					FinishTime:  endTime.Add(30 * time.Minute),
-					Status:      evergreen.PatchSucceeded,
+					Status:      evergreen.VersionSucceeded,
 					Alias:       evergreen.CommitQueueAlias,
 				},
 				{ // within time frame, not commit queue
@@ -1002,7 +951,7 @@ func TestRetryCommitQueueItems(t *testing.T) {
 					Githash:     patchedRevision,
 					StartTime:   startTime.Add(30 * time.Minute),
 					FinishTime:  endTime.Add(30 * time.Minute),
-					Status:      evergreen.PatchFailed,
+					Status:      evergreen.VersionFailed,
 				},
 				{ // not within time frame
 					Id:          mgobson.NewObjectId(),
@@ -1011,7 +960,7 @@ func TestRetryCommitQueueItems(t *testing.T) {
 					Githash:     patchedRevision,
 					StartTime:   time.Date(2019, 6, 15, 12, 0, 0, 0, time.Local),
 					FinishTime:  time.Date(2019, 6, 15, 12, 20, 0, 0, time.Local),
-					Status:      evergreen.PatchFailed,
+					Status:      evergreen.VersionFailed,
 					Alias:       evergreen.CommitQueueAlias,
 				},
 			}
@@ -1136,7 +1085,7 @@ func TestAbortPatchesWithGithubPatchData(t *testing.T) {
 			p := patch.Patch{
 				Id:         id,
 				Version:    v.Id,
-				Status:     evergreen.PatchStarted,
+				Status:     evergreen.VersionStarted,
 				Activated:  true,
 				Project:    "project",
 				CreateTime: time.Now().Add(-time.Hour),
@@ -1157,4 +1106,52 @@ func TestAbortPatchesWithGithubPatchData(t *testing.T) {
 			tCase(t, &p, &v, &tsk)
 		})
 	}
+}
+
+func TestConfigurePatchWithOnlyUpdatedDescription(t *testing.T) {
+	assert.NoError(t, db.ClearCollections(patch.Collection), ParserProjectCollection)
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+	id := mgobson.NewObjectId()
+	p := &patch.Patch{
+		Id:                   id,
+		Status:               evergreen.VersionCreated,
+		Activated:            false,
+		Project:              "project",
+		ProjectStorageMethod: evergreen.ProjectStorageMethodDB,
+		CreateTime:           time.Now().Add(-time.Hour),
+		GithubPatchData: thirdparty.GithubPatch{
+			BaseOwner: "owner",
+			BaseRepo:  "repo",
+			PRNumber:  12345,
+		},
+		Tasks: []string{"my_task"},
+		VariantsTasks: []patch.VariantTasks{
+			{
+				Variant: "my_variant",
+				Tasks:   []string{"my_task"},
+			},
+		},
+	}
+	assert.NoError(t, p.Insert())
+	pRef := &ProjectRef{
+		Id: mgobson.NewObjectId().Hex(),
+	}
+	req := PatchUpdate{
+		Description: "updating the description only!",
+	}
+	pp := ParserProject{
+		Id: id.Hex(),
+	}
+	assert.NoError(t, pp.Insert())
+	_, err := ConfigurePatch(ctx, &evergreen.Settings{}, p, nil, pRef, req)
+	assert.NoError(t, err)
+
+	p, err = patch.FindOneId(id.Hex())
+	assert.NoError(t, err)
+	require.NotNil(t, p)
+	assert.Equal(t, p.Description, req.Description)
+	assert.NotEmpty(t, p.VariantsTasks)
+	assert.NotEmpty(t, p.Tasks)
+	assert.False(t, p.Activated)
 }

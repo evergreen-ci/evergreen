@@ -169,8 +169,8 @@ func MockConfig() *evergreen.Settings {
 		AWSInstanceRole: "role",
 		Banner:          "banner",
 		BannerTheme:     "important",
-		Buckets: evergreen.BucketConfig{
-			LogBucket: evergreen.Bucket{
+		Buckets: evergreen.BucketsConfig{
+			LogBucket: evergreen.BucketConfig{
 				Name: "logs",
 				Type: evergreen.BucketTypeS3,
 			},
@@ -448,6 +448,9 @@ func MockConfig() *evergreen.Settings {
 		Tracer: evergreen.TracerConfig{
 			Enabled:           true,
 			CollectorEndpoint: "localhost:4317",
+		},
+		GitHubCheckRun: evergreen.GitHubCheckRunConfig{
+			CheckRunLimit: 0,
 		},
 		ShutdownWaitSeconds: 15,
 	}

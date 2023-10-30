@@ -36,7 +36,7 @@ func TestAPIPatch(t *testing.T) {
 		PatchNumber:   9000,
 		Author:        "root",
 		Version:       "version_1",
-		Status:        evergreen.PatchCreated,
+		Status:        evergreen.VersionCreated,
 		CreateTime:    baseTime,
 		StartTime:     baseTime.Add(time.Hour),
 		FinishTime:    baseTime.Add(2 * time.Hour),
@@ -55,9 +55,8 @@ func TestAPIPatch(t *testing.T) {
 		Patches: []patch.ModulePatch{
 			{},
 		},
-		Activated:            true,
-		PatchedParserProject: "config",
-		Alias:                evergreen.CommitQueueAlias,
+		Activated: true,
+		Alias:     evergreen.CommitQueueAlias,
 		GithubPatchData: thirdparty.GithubPatch{
 			PRNumber:  123,
 			BaseOwner: "evergreen-ci",
@@ -196,7 +195,7 @@ func TestDownstreamTasks(t *testing.T) {
 		Triggers: patch.TriggerInfo{
 			ChildPatches: []string{childPatchId},
 		},
-		Status: evergreen.PatchCreated,
+		Status: evergreen.VersionCreated,
 	}
 
 	childPatch := patch.Patch{
@@ -211,7 +210,7 @@ func TestDownstreamTasks(t *testing.T) {
 			},
 		},
 		Activated: true,
-		Status:    evergreen.PatchCreated,
+		Status:    evergreen.VersionCreated,
 	}
 	assert.NoError(childPatch.Insert())
 

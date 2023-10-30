@@ -124,18 +124,13 @@ func (pp *ParserProject) mergeOrderedUnique(toMerge *ParserProject) error {
 		pp.Timeout = toMerge.Timeout
 	}
 
-	if pp.EarlyTermination != nil && toMerge.EarlyTermination != nil {
-		catcher.New("early termination can only be defined in one YAML")
-	} else if toMerge.EarlyTermination != nil {
-		pp.EarlyTermination = toMerge.EarlyTermination
-	}
-
 	return catcher.Resolve()
 }
 
-// mergeUnique merges fields that are non-lists.
+// mergeUnique merges fields that are non-lists across multiple project YAML
+// files.
 // These fields can only be defined in one yaml.
-// These fields are: [stepback, batch time, pre/post error fails task, OOM tracker, display name, command type, callback/exec timeout, task annotations, build baron]
+// These fields are: [stepback, batch time, pre/post timeout, pre/post error fails task, OOM tracker, display name, command type, callback/exec timeout, task annotations, build baron]
 func (pp *ParserProject) mergeUnique(toMerge *ParserProject) error {
 	catcher := grip.NewBasicCatcher()
 
@@ -151,22 +146,34 @@ func (pp *ParserProject) mergeUnique(toMerge *ParserProject) error {
 		pp.BatchTime = toMerge.BatchTime
 	}
 
+	if pp.PreTimeoutSecs != nil && toMerge.PreTimeoutSecs != nil {
+		catcher.New("pre timeout secs can only be defined in one YAML")
+	} else if toMerge.PreTimeoutSecs != nil {
+		pp.PreTimeoutSecs = toMerge.PreTimeoutSecs
+	}
+
+	if pp.PostTimeoutSecs != nil && toMerge.PostTimeoutSecs != nil {
+		catcher.New("post timeout secs can only be defined in one YAML")
+	} else if toMerge.PreTimeoutSecs != nil {
+		pp.PostTimeoutSecs = toMerge.PostTimeoutSecs
+	}
+
 	if pp.PreErrorFailsTask != nil && toMerge.PreErrorFailsTask != nil {
 		catcher.New("pre error fails task can only be defined in one YAML")
 	} else if toMerge.PreErrorFailsTask != nil {
 		pp.PreErrorFailsTask = toMerge.PreErrorFailsTask
 	}
 
-	if pp.UnsetFunctionVars != nil && toMerge.UnsetFunctionVars != nil {
-		catcher.New("unset function vars can only be defined in one YAML")
-	} else if toMerge.UnsetFunctionVars != nil {
-		pp.UnsetFunctionVars = toMerge.UnsetFunctionVars
-	}
-
 	if pp.PostErrorFailsTask != nil && toMerge.PostErrorFailsTask != nil {
 		catcher.New("post error fails task can only be defined in one YAML")
 	} else if toMerge.PostErrorFailsTask != nil {
 		pp.PostErrorFailsTask = toMerge.PostErrorFailsTask
+	}
+
+	if pp.UnsetFunctionVars != nil && toMerge.UnsetFunctionVars != nil {
+		catcher.New("unset function vars can only be defined in one YAML")
+	} else if toMerge.UnsetFunctionVars != nil {
+		pp.UnsetFunctionVars = toMerge.UnsetFunctionVars
 	}
 
 	if pp.OomTracker != nil && toMerge.OomTracker != nil {

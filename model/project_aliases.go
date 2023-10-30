@@ -197,9 +197,9 @@ func findMatchingAliasForProjectRef(projectID, alias string) ([]ProjectAlias, er
 	return out, nil
 }
 
-// getMatchingAliasForVersion finds any aliases matching the alias input in the project config.
-func getMatchingAliasForVersion(versionID, alias string) ([]ProjectAlias, error) {
-	projectConfig, err := FindProjectConfigById(versionID)
+// getMatchingAliasesForProjectConfig finds any aliases matching the alias input in the project config.
+func getMatchingAliasesForProjectConfig(projectID, versionID, alias string) ([]ProjectAlias, error) {
+	projectConfig, err := FindProjectConfigForProjectOrVersion(projectID, versionID)
 	if err != nil {
 		return nil, errors.Wrap(err, "finding project config")
 	}
@@ -243,7 +243,7 @@ func FindAliasInProjectRepoOrConfig(projectID, alias string) ([]ProjectAlias, er
 	if len(aliases) > 0 {
 		return aliases, nil
 	}
-	return getMatchingAliasForVersion(projectID, alias)
+	return getMatchingAliasesForProjectConfig(projectID, "", alias)
 }
 
 // patchAliasKey is used internally to group patch aliases together.
@@ -479,6 +479,8 @@ func IsPatchAlias(alias string) bool {
 	return !utility.StringSliceContains(evergreen.InternalAliases, alias)
 }
 
+// HasMatchingGitTag determines whether or not the given git tag name matches
+// any of the project aliases' git tag regexp.
 func (a ProjectAliases) HasMatchingGitTag(tag string) (bool, error) {
 	matchingAliases, err := aliasesMatchingGitTag(a, tag)
 	if err != nil {
@@ -501,6 +503,9 @@ func aliasesMatchingGitTag(a ProjectAliases, tag string) (ProjectAliases, error)
 	return res, nil
 }
 
+// AliasesMatchingVariant returns the filtered set of project aliases for which
+// the alias' variant regexp matches the variant's name, or the alias' variant
+// tags match the variant's tags.
 func (a ProjectAliases) AliasesMatchingVariant(variant string, variantTags []string) (ProjectAliases, error) {
 	res := []ProjectAlias{}
 	for _, alias := range a {
@@ -515,6 +520,9 @@ func (a ProjectAliases) AliasesMatchingVariant(variant string, variantTags []str
 	return res, nil
 }
 
+// HasMatchingVariant returns whether or not one the alias variant regexp
+// matches the variant's name, or the alias' variant tags match the variant's
+// tags. Note that this does not check for matching tasks.
 func (a ProjectAlias) HasMatchingVariant(variant string, variantTags []string) (bool, error) {
 	variantRegex, err := a.getVariantRegex()
 	if err != nil {
@@ -556,7 +564,9 @@ func (a *ProjectAlias) getGitTagRegex() (*regexp.Regexp, error) {
 	return gitTagRegex, nil
 }
 
-// HasMatchingTask assumes that the aliases given already match the preferred variant.
+// HasMatchingTask returns whether or not one the alias task regexp matches the
+// variant's name, or the alias' task tags match the variant's tags. Note that
+// this does not check for matching variant.
 func (a ProjectAliases) HasMatchingTask(taskName string, taskTags []string) (bool, error) {
 	for _, alias := range a {
 		hasMatch, err := alias.HasMatchingTask(taskName, taskTags)
@@ -585,14 +595,45 @@ func isValidRegexOrTag(curItem string, curTags, aliasTags []string, aliasRegex *
 		return true
 	}
 	for _, tag := range aliasTags {
-		if utility.StringSliceContains(curTags, tag) {
-			return true
+		// For this tag selector to match the current item's tags, it has to
+		// satisfy all the space-separated criteria defined in the selector.
+		// Note that this is functionally equivalent to project tag selector
+		// syntax, except that alias tags are not prefixed by a period.
+
+		criteria := strings.Fields(tag)
+		if len(criteria) == 0 {
+			continue
 		}
-		// a negated tag
-		if len(tag) > 0 && tag[0] == '!' && !utility.StringSliceContains(curTags, tag[1:]) {
+
+		allCriteriaSatisfied := true
+		for _, criterion := range criteria {
+			if len(criterion) == 0 {
+				continue
+			}
+
+			tagName := criterion
+			var negated bool
+			if criterion[0] == '!' {
+				negated = true
+				tagName = criterion[1:]
+			}
+			if negated && utility.StringSliceContains(curTags, tagName) {
+				// Negation - tag matches the item's tags.
+				allCriteriaSatisfied = false
+				break
+			}
+			if !negated && !utility.StringSliceContains(curTags, tagName) {
+				// Intersection - tag does not match the item's tags.
+				allCriteriaSatisfied = false
+				break
+			}
+		}
+
+		if allCriteriaSatisfied {
 			return true
 		}
 	}
+
 	return false
 }
 

@@ -11,6 +11,7 @@ import (
 
 	"github.com/evergreen-ci/birch"
 	"github.com/evergreen-ci/evergreen"
+	"github.com/evergreen-ci/evergreen/apimodels"
 	"github.com/evergreen-ci/evergreen/db"
 	mgobson "github.com/evergreen-ci/evergreen/db/mgo/bson"
 	"github.com/evergreen-ci/evergreen/model/user"
@@ -875,4 +876,49 @@ func AllDistros(ctx context.Context) ([]Distro, error) {
 
 func AllDistroIDs(ctx context.Context) ([]Distro, error) {
 	return Find(ctx, bson.M{}, options.Find().SetSort(bson.M{IdKey: 1}).SetProjection(bson.M{IdKey: 1}))
+}
+
+// GetHostCreateDistro returns the distro based on the name and provider.
+// If the provider is Docker, passing in the distro is required, and the
+// distro must be a Docker distro. If the provider is EC2, the distro
+// name is optional.
+func GetHostCreateDistro(ctx context.Context, createHost apimodels.CreateHost) (*Distro, error) {
+	var err error
+	d := &Distro{}
+	isDockerProvider := evergreen.IsDockerProvider(createHost.CloudProvider)
+	if isDockerProvider {
+		d, err = FindOneId(ctx, createHost.Distro)
+		if err != nil {
+			return nil, errors.Wrapf(err, "finding distro '%s'", createHost.Distro)
+		}
+		if d == nil {
+			return nil, errors.Errorf("distro '%s' not found", createHost.Distro)
+		}
+		if !evergreen.IsDockerProvider(d.Provider) {
+			return nil, errors.Errorf("distro '%s' provider must support Docker but actual provider is '%s'", d.Id, d.Provider)
+		}
+	} else {
+		if createHost.Distro != "" {
+			var dat AliasLookupTable
+			dat, err := NewDistroAliasesLookupTable(ctx)
+			if err != nil {
+				return nil, errors.Wrap(err, "getting distro lookup table")
+			}
+			distroIDs := dat.Expand([]string{createHost.Distro})
+			if len(distroIDs) == 0 {
+				return nil, errors.Wrap(err, "distro lookup returned no matching distro IDs")
+			}
+			d, err = FindOneId(ctx, distroIDs[0])
+			if err != nil {
+				return nil, errors.Wrapf(err, "finding distro '%s'", createHost.Distro)
+			}
+			if d == nil {
+				return nil, errors.Errorf("distro '%s' not found", createHost.Distro)
+			}
+		}
+		d.Provider = evergreen.ProviderNameEc2OnDemand
+	}
+	// Do not provision task-spawned hosts.
+	d.BootstrapSettings.Method = BootstrapMethodNone
+	return d, nil
 }

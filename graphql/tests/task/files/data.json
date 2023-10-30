@@ -1,0 +1,138 @@
+{
+    "tasks": [
+        {
+            "_id": "some_task",
+            "version": "5e4ff3abe3c3317e352062e4",
+            "revision": "5e823e1f28baeaa22ae00823d83e03082cd148ab",
+            "build_variant": "ubuntu1604",
+            "display_name": "test-thirdparty-docker",
+            "gitspec": "5e823e1f28baeaa22ae00823d83e03082cd148ab",
+            "r": "github_pull_request",
+            "status": "dispatched",
+            "branch": "spruce",
+            "distro": "macos-1014",
+            "execution": 1,
+            "host_id": "host2"
+        },
+        {
+            "_id": "some_display_task",
+            "version": "5e4ff3abe3c3317e352062e4",
+            "revision": "5e823e1f28baeaa22ae00823d83e03082cd148ab",
+            "build_variant": "ubuntu1604",
+            "display_name": "test-display-task",
+            "gitspec": "5e823e1f28baeaa22ae00823d83e03082cd148ab",
+            "r": "github_pull_request",
+            "status": "dispatched",
+            "branch": "spruce",
+            "distro": "ubuntu2204",
+            "execution": 0,
+            "host_id": "host2",
+            "execution_tasks": [
+                "exec_task_1",
+                "exec_task_2"
+            ],
+            "display_only": true
+        },
+        {
+            "_id": "exec_task_1",
+            "version": "5e4ff3abe3c3317e352062e4",
+            "revision": "5e823e1f28baeaa22ae00823d83e03082cd148ab",
+            "build_variant": "ubuntu1604",
+            "display_name": "test-exec-task-1",
+            "gitspec": "5e823e1f28baeaa22ae00823d83e03082cd148ab",
+            "r": "github_pull_request",
+            "status": "dispatched",
+            "branch": "spruce",
+            "distro": "ubuntu2204",
+            "execution": 0,
+            "host_id": "host2",
+            "display_task_id": "some_display_task"
+        },
+        {
+            "_id": "exec_task_2",
+            "version": "5e4ff3abe3c3317e352062e4",
+            "revision": "5e823e1f28baeaa22ae00823d83e03082cd148ab",
+            "build_variant": "ubuntu1604",
+            "display_name": "test-exec-task-2",
+            "gitspec": "5e823e1f28baeaa22ae00823d83e03082cd148ab",
+            "r": "github_pull_request",
+            "status": "dispatched",
+            "branch": "spruce",
+            "distro": "ubuntu2204",
+            "execution": 0,
+            "host_id": "host2",
+            "display_task_id": "some_display_task"
+        }
+    ],
+    "artifact_files": [
+        {
+            "_id": "some_task_files",
+            "task": "some_task",
+            "task_name": "test-thirdparty-docker",
+            "build": "some_task_build_id",
+            "execution": 1,
+            "files": [
+                {
+                    "name": "File 1",
+                    "link": "link-to-file-1",
+                    "visibility": "",
+                    "fetch_ignore": false,
+                    "content_type": "text/plain"
+                },
+                {
+                    "name": "File 2",
+                    "link": "link-to-file-2",
+                    "visibility": "",
+                    "fetch_ignore": false,
+                    "content_type": "text/plain"
+                }
+            ]
+        },
+        {
+          "_id": "some_exec_task_files",
+          "task": "exec_task_1",
+          "task_name": "test-display_task",
+          "build": "some_task_build_id",
+          "execution": 0,
+          "files": [
+              {
+                  "name": "File 1",
+                  "link": "link-to-file-1",
+                  "visibility": "",
+                  "fetch_ignore": false,
+                  "content_type": "text/plain"
+              },
+              {
+                  "name": "File 2",
+                  "link": "link-to-file-2",
+                  "visibility": "",
+                  "fetch_ignore": false,
+                  "content_type": "text/plain"
+              }
+          ]
+        },
+        {
+          "_id": "some_exec_task_files_2",
+          "task": "exec_task_2",
+          "task_name": "test-display-task",
+          "build": "some_task_build_id",
+          "execution": 0,
+          "files": [
+              {
+                  "name": "File 1",
+                  "link": "link-to-file-1",
+                  "visibility": "",
+                  "fetch_ignore": false,
+                  "content_type": "text/plain"
+              },
+              {
+                  "name": "File 2",
+                  "link": "link-to-file-2",
+                  "visibility": "",
+                  "fetch_ignore": false,
+                  "content_type":"text/plain"
+              }
+          ]
+        }
+    ]
+}

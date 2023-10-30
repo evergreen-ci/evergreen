@@ -167,7 +167,7 @@ func TestGetDisplayStatus(t *testing.T) {
 
 	p := &patch.Patch{
 		Id:     patchId,
-		Status: evergreen.PatchSucceeded,
+		Status: evergreen.VersionSucceeded,
 		Triggers: patch.TriggerInfo{
 			ChildPatches: []string{childPatchId.Hex()},
 		},
@@ -183,7 +183,7 @@ func TestGetDisplayStatus(t *testing.T) {
 
 	cp := &patch.Patch{
 		Id:     childPatchId,
-		Status: evergreen.PatchFailed,
+		Status: evergreen.VersionFailed,
 	}
 	assert.NoError(t, cp.Insert())
 

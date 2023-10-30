@@ -5,6 +5,7 @@ import (
 	"net/http"
 	"os"
 	"path/filepath"
+	"strconv"
 	"time"
 
 	"github.com/aws/aws-sdk-go/aws/endpoints"
@@ -47,7 +48,13 @@ type s3get struct {
 	LocalFile string `mapstructure:"local_file" plugin:"expand"`
 	ExtractTo string `mapstructure:"extract_to" plugin:"expand"`
 
-	bucket pail.Bucket
+	// Optional, when set to true, causes this command to be skipped over without an error when
+	// the path specified in remote_file does not exist. Defaults to false, which triggers errors
+	// for missing files.
+	Optional string `mapstructure:"optional" plugin:"expand"`
+
+	bucket      pail.Bucket
+	skipMissing bool
 
 	base
 }
@@ -57,7 +64,14 @@ func (c *s3get) Name() string { return "s3.get" }
 
 // s3get-specific implementation of ParseParams.
 func (c *s3get) ParseParams(params map[string]interface{}) error {
-	if err := mapstructure.Decode(params, c); err != nil {
+	decoder, err := mapstructure.NewDecoder(&mapstructure.DecoderConfig{
+		WeaklyTypedInput: true,
+		Result:           c,
+	})
+	if err != nil {
+		return errors.Wrap(err, "initializing mapstructure decoder")
+	}
+	if err := decoder.Decode(params); err != nil {
 		return errors.Wrap(err, "decoding mapstructure params")
 	}
 
@@ -117,7 +131,17 @@ func (c *s3get) shouldRunForVariant(buildVariantName string) bool {
 // Apply the expansions from the relevant task config
 // to all appropriate fields of the s3get.
 func (c *s3get) expandParams(conf *internal.TaskConfig) error {
-	return util.ExpandValues(c, conf.Expansions)
+	var err error
+	if err = util.ExpandValues(c, &conf.Expansions); err != nil {
+		return errors.Wrap(err, "applying expansions")
+	}
+	if c.Optional != "" {
+		c.skipMissing, err = strconv.ParseBool(c.Optional)
+		if err != nil {
+			return errors.Wrap(err, "parsing optional parameter as a boolean")
+		}
+	}
+	return nil
 }
 
 // Implementation of Execute.  Expands the parameters, and then fetches the
@@ -127,7 +151,7 @@ func (c *s3get) Execute(ctx context.Context,
 
 	// expand necessary params
 	if err := c.expandParams(conf); err != nil {
-		return errors.Wrap(err, "applying expansions")
+		return errors.Wrap(err, "expanding params")
 	}
 
 	// validate the params
@@ -158,7 +182,7 @@ func (c *s3get) Execute(ctx context.Context,
 	// working dir
 	if c.LocalFile != "" {
 		if !filepath.IsAbs(c.LocalFile) {
-			c.LocalFile = getJoinedWithWorkDir(conf, c.LocalFile)
+			c.LocalFile = getWorkingDirectory(conf, c.LocalFile)
 		}
 
 		if err := createEnclosingDirectoryIfNeeded(c.LocalFile); err != nil {
@@ -168,7 +192,7 @@ func (c *s3get) Execute(ctx context.Context,
 
 	if c.ExtractTo != "" {
 		if !filepath.IsAbs(c.ExtractTo) {
-			c.ExtractTo = getJoinedWithWorkDir(conf, c.ExtractTo)
+			c.ExtractTo = getWorkingDirectory(conf, c.ExtractTo)
 		}
 
 		if err := createEnclosingDirectoryIfNeeded(c.ExtractTo); err != nil {
@@ -190,6 +214,10 @@ func (c *s3get) Execute(ctx context.Context,
 
 	select {
 	case err := <-errChan:
+		if c.skipMissing {
+			logger.Task().Infof("Problem getting file but optional is true, exiting without error (%s).", err.Error())
+			return nil
+		}
 		return errors.WithStack(err)
 	case <-ctx.Done():
 		logger.Execution().Infof("Canceled while running command '%s': %s", c.Name(), ctx.Err())

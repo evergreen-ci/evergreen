@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"net/http"
+	"regexp"
 	"time"
 
 	"github.com/evergreen-ci/evergreen"
@@ -101,7 +102,7 @@ func RequestS3Creds(ctx context.Context, projectIdentifier, userEmail string) er
 // Returns true if the project was successfully created.
 func CreateProject(ctx context.Context, env evergreen.Environment, projectRef *model.ProjectRef, u *user.DBUser) (bool, error) {
 	if projectRef.Identifier != "" {
-		if err := VerifyUniqueProject(projectRef.Identifier); err != nil {
+		if err := ValidateProjectName(projectRef.Identifier); err != nil {
 			return false, err
 		}
 	}
@@ -110,7 +111,7 @@ func CreateProject(ctx context.Context, env evergreen.Environment, projectRef *m
 			projectRef.Id = mgobson.NewObjectId().Hex()
 		}
 	}
-	if err := VerifyUniqueProject(projectRef.Id); err != nil {
+	if err := ValidateProjectName(projectRef.Id); err != nil {
 		return false, err
 	}
 	// Always warn because created projects are never enabled.
@@ -129,10 +130,10 @@ func CreateProject(ctx context.Context, env evergreen.Environment, projectRef *m
 	existingContainerSecrets := projectRef.ContainerSecrets
 	projectRef.ContainerSecrets = nil
 
-	_, err = model.EnableWebhooks(ctx, projectRef)
+	_, err = model.SetTracksPushEvents(ctx, projectRef)
 	if err != nil {
 		grip.Debug(message.WrapError(err, message.Fields{
-			"message":            "error enabling webhooks",
+			"message":            "error setting project tracks push events",
 			"project_id":         projectRef.Id,
 			"project_identifier": projectRef.Identifier,
 			"owner":              projectRef.Owner,
@@ -194,8 +195,18 @@ func tryCopyingContainerSecrets(ctx context.Context, settings *evergreen.Setting
 	return nil
 }
 
-// VerifyUniqueProject returns a bad request error if the project ID / identifier is already in use.
-func VerifyUniqueProject(name string) error {
+// projectIDRegexp includes all the allowed characters in a project
+// ID/identifier (i.e. those that do not require percent encoding for URLs).
+// These are listed in RFC-3986:
+// https://www.rfc-editor.org/rfc/rfc3986#section-2.3
+// Note that this also includes parentheses and spaces, which may actually
+// require percent encoding, for backward compatibility because some projects
+// have already chosen to use those characters in their project ID/identifier.
+var projectIDRegexp = regexp.MustCompile(`^[0-9a-zA-Z-._~\(\) ]*$`)
+
+// ValidateProjectName checks that a project ID / identifier is not already in use
+// and has only valid characters.
+func ValidateProjectName(name string) error {
 	_, err := FindProjectById(name, false, false)
 	if err == nil {
 		return gimlet.ErrorResponse{
@@ -210,6 +221,14 @@ func VerifyUniqueProject(name string) error {
 	if apiErr.StatusCode != http.StatusNotFound {
 		return errors.Wrapf(err, "Database error verifying project '%s' doesn't already exist", name)
 	}
+
+	if !projectIDRegexp.MatchString(name) {
+		return gimlet.ErrorResponse{
+			StatusCode: http.StatusBadRequest,
+			Message:    fmt.Sprintf("project name '%s' contains invalid characters", name),
+		}
+	}
+
 	return nil
 }
 

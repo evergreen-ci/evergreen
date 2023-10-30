@@ -18,6 +18,74 @@ enum CloneMethod {
   OAUTH
 }
 
+enum FinderVersion {
+  LEGACY
+  PARALLEL
+  PIPELINE
+  ALTERNATE
+}
+
+enum PlannerVersion {
+  LEGACY
+  TUNABLE
+}
+
+enum Provider {
+  DOCKER
+  EC2_FLEET
+  EC2_ON_DEMAND
+  STATIC
+}
+
+enum DispatcherVersion {
+  REVISED
+  REVISED_WITH_DEPENDENCIES
+}
+
+enum HostAllocatorVersion {
+  UTILIZATION
+}
+
+enum RoundingRule {
+  DOWN
+  UP
+  DEFAULT
+}
+
+enum FeedbackRule {
+  WAITS_OVER_THRESH
+  NO_FEEDBACK
+  DEFAULT
+}
+
+enum OverallocatedRule {
+  TERMINATE
+  IGNORE
+  DEFAULT
+}
+
+enum Arch {
+  LINUX_64_BIT
+  LINUX_ARM_64_BIT
+  LINUX_PPC_64_BIT
+  LINUX_ZSERIES
+  OSX_64_BIT
+  OSX_ARM_64_BIT
+  WINDOWS_64_BIT
+}
+
+enum CommunicationMethod {
+  LEGACY_SSH
+  SSH
+  RPC
+}
+
+enum BootstrapMethod {
+  LEGACY_SSH
+  SSH
+  USER_DATA
+}
+
 ###### INPUTS ######
 """
 CopyDistroInput is the input to the copyDistro mutation.
@@ -61,7 +129,7 @@ input SaveDistroInput {
 
 input DistroInput {
   aliases: [String!]!
-  arch: String!
+  arch: Arch!
   authorizedKeysFile: String!
   bootstrapSettings: BootstrapSettingsInput!
   cloneMethod: CloneMethod!
@@ -79,7 +147,7 @@ input DistroInput {
   name: String! @requireDistroAccess(access: EDIT)
   note: String!
   plannerSettings: PlannerSettingsInput!
-  provider: String!
+  provider: Provider!
   providerSettingsList: [Map!]!
   setup: String!
   setupAsSudo: Boolean!
@@ -93,11 +161,11 @@ input DistroInput {
 
 input BootstrapSettingsInput {
   clientDir: String!
-  communication: String!
+  communication: CommunicationMethod!
   env: [EnvVarInput!]!
   jasperBinaryDir: String!
   jasperCredentialsPath: String!
-  method: String!
+  method: BootstrapMethod!
   preconditionScripts: [PreconditionScriptInput!]!
   resourceLimits: ResourceLimitsInput!
   rootDir: String!
@@ -106,7 +174,7 @@ input BootstrapSettingsInput {
 }
 
 input DispatcherSettingsInput {
-  version: String!
+  version: DispatcherVersion!
 }
 
 input EnvVarInput {
@@ -120,7 +188,7 @@ input ExpansionInput {
 }
 
 input FinderSettingsInput {
-  version: String!
+  version: FinderVersion!
 }
 
 input HomeVolumeSettingsInput {
@@ -129,13 +197,13 @@ input HomeVolumeSettingsInput {
 
 input HostAllocatorSettingsInput {
   acceptableHostIdleTime: Int!
-  feedbackRule: String!
+  feedbackRule: FeedbackRule!
   futureHostFraction: Float!
-  hostsOverallocatedRule: String!
+  hostsOverallocatedRule: OverallocatedRule!
   maximumHosts: Int!
   minimumHosts: Int!
-  roundingRule: String!
-  version: String!
+  roundingRule: RoundingRule!
+  version: HostAllocatorVersion!
 }
 
 input IceCreamSettingsInput {
@@ -152,7 +220,7 @@ input PlannerSettingsInput {
   patchFactor: Int!
   patchTimeInQueueFactor: Int!
   targetTime: Int!
-  version: String!
+  version: PlannerVersion!
 }
 
 input PreconditionScriptInput {
@@ -210,7 +278,7 @@ Distro models an environment configuration for a host.
 """
 type Distro {
   aliases: [String!]!
-  arch: String!
+  arch: Arch!
   authorizedKeysFile: String!
   bootstrapSettings: BootstrapSettings!
   cloneMethod: CloneMethod!
@@ -228,7 +296,7 @@ type Distro {
   name: String!
   note: String!
   plannerSettings: PlannerSettings!
-  provider: String!
+  provider: Provider!
   providerSettingsList: [Map!]!
   setup: String!
   setupAsSudo: Boolean!
@@ -242,11 +310,11 @@ type Distro {
 
 type BootstrapSettings {
   clientDir: String!
-  communication: String!
+  communication: CommunicationMethod!
   env: [EnvVar!]!
   jasperBinaryDir: String!
   jasperCredentialsPath: String!
-  method: String!
+  method: BootstrapMethod!
   preconditionScripts: [PreconditionScript!]!
   resourceLimits: ResourceLimits!
   rootDir: String!
@@ -255,7 +323,7 @@ type BootstrapSettings {
 }
 
 type DispatcherSettings {
-  version: String!
+  version: DispatcherVersion!
 }
 
 type EnvVar {
@@ -269,7 +337,7 @@ type Expansion {
 }
 
 type FinderSettings {
-  version: String!
+  version: FinderVersion!
 }
 
 type HomeVolumeSettings {
@@ -278,13 +346,13 @@ type HomeVolumeSettings {
 
 type HostAllocatorSettings {
   acceptableHostIdleTime: Duration!
-  feedbackRule: String!
+  feedbackRule: FeedbackRule!
   futureHostFraction: Float!
-  hostsOverallocatedRule: String!
+  hostsOverallocatedRule: OverallocatedRule!
   maximumHosts: Int!
   minimumHosts: Int!
-  roundingRule: String!
-  version: String!
+  roundingRule: RoundingRule!
+  version: HostAllocatorVersion!
 }
 
 type IceCreamSettings {
@@ -301,7 +369,7 @@ type PlannerSettings {
   patchFactor: Int!
   patchTimeInQueueFactor: Int!
   targetTime: Duration!
-  version: String!
+  version: PlannerVersion!
 }
 
 type PreconditionScript {

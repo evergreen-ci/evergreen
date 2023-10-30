@@ -205,7 +205,7 @@ type cloneOptions struct {
 
 func clone(opts cloneOptions) error {
 	// clone the repo first
-	cloneArgs := []string{"clone", thirdparty.FormGitUrl("github.com", opts.owner, opts.repository, opts.token)}
+	cloneArgs := []string{"clone", thirdparty.FormGitURL("github.com", opts.owner, opts.repository, opts.token)}
 	if opts.depth > 0 {
 		cloneArgs = append(cloneArgs, "--depth", fmt.Sprintf("%d", opts.depth))
 	}

@@ -7,6 +7,7 @@ import (
 	"os"
 	"reflect"
 	"strings"
+	"sync"
 	"time"
 
 	"github.com/evergreen-ci/evergreen"
@@ -79,6 +80,8 @@ type ParserProject struct {
 	// Beginning of ParserProject mergeable fields (this comment is used by the linter).
 	Stepback           *bool                      `yaml:"stepback,omitempty" bson:"stepback,omitempty"`
 	UnsetFunctionVars  *bool                      `yaml:"unset_function_vars,omitempty" bson:"unset_function_vars,omitempty"`
+	PreTimeoutSecs     *int                       `yaml:"pre_timeout_secs,omitempty" bson:"pre_timeout_secs,omitempty"`
+	PostTimeoutSecs    *int                       `yaml:"post_timeout_secs,omitempty" bson:"post_timeout_secs,omitempty"`
 	PreErrorFailsTask  *bool                      `yaml:"pre_error_fails_task,omitempty" bson:"pre_error_fails_task,omitempty"`
 	PostErrorFailsTask *bool                      `yaml:"post_error_fails_task,omitempty" bson:"post_error_fails_task,omitempty"`
 	OomTracker         *bool                      `yaml:"oom_tracker,omitempty" bson:"oom_tracker,omitempty"`
@@ -95,7 +98,6 @@ type ParserProject struct {
 	Pre                *YAMLCommandSet            `yaml:"pre,omitempty" bson:"pre,omitempty"`
 	Post               *YAMLCommandSet            `yaml:"post,omitempty" bson:"post,omitempty"`
 	Timeout            *YAMLCommandSet            `yaml:"timeout,omitempty" bson:"timeout,omitempty"`
-	EarlyTermination   *YAMLCommandSet            `yaml:"early_termination,omitempty" bson:"early_termination,omitempty"` // deprecated and currently no-ops, may be removed in future update
 	CallbackTimeout    *int                       `yaml:"callback_timeout_secs,omitempty" bson:"callback_timeout_secs,omitempty"`
 	Modules            []Module                   `yaml:"modules,omitempty" bson:"modules,omitempty"`
 	Containers         []Container                `yaml:"containers,omitempty" bson:"containers,omitempty"`
@@ -112,27 +114,24 @@ type ParserProject struct {
 } // End of ParserProject mergeable fields (this comment is used by the linter).
 
 type parserTaskGroup struct {
-	Name                    string             `yaml:"name,omitempty" bson:"name,omitempty"`
-	Priority                int64              `yaml:"priority,omitempty" bson:"priority,omitempty"`
-	Patchable               *bool              `yaml:"patchable,omitempty" bson:"patchable,omitempty"`
-	PatchOnly               *bool              `yaml:"patch_only,omitempty" bson:"patch_only,omitempty"`
-	AllowForGitTag          *bool              `yaml:"allow_for_git_tag,omitempty" bson:"allow_for_git_tag,omitempty"`
-	GitTagOnly              *bool              `yaml:"git_tag_only,omitempty" bson:"git_tag_only,omitempty"`
-	ExecTimeoutSecs         int                `yaml:"exec_timeout_secs,omitempty" bson:"exec_timeout_secs,omitempty"`
-	Stepback                *bool              `yaml:"stepback,omitempty" bson:"stepback,omitempty"`
-	MaxHosts                int                `yaml:"max_hosts,omitempty" bson:"max_hosts,omitempty"`
-	SetupGroupFailTask      bool               `yaml:"setup_group_can_fail_task,omitempty" bson:"setup_group_can_fail_task,omitempty"`
-	TeardownTaskCanFailTask bool               `yaml:"teardown_task_can_fail_task,omitempty" bson:"teardown_task_can_fail_task,omitempty"`
-	SetupGroupTimeoutSecs   int                `yaml:"setup_group_timeout_secs,omitempty" bson:"setup_group_timeout_secs,omitempty"`
-	SetupGroup              *YAMLCommandSet    `yaml:"setup_group,omitempty" bson:"setup_group,omitempty"`
-	TeardownGroup           *YAMLCommandSet    `yaml:"teardown_group,omitempty" bson:"teardown_group,omitempty"`
-	SetupTask               *YAMLCommandSet    `yaml:"setup_task,omitempty" bson:"setup_task,omitempty"`
-	TeardownTask            *YAMLCommandSet    `yaml:"teardown_task,omitempty" bson:"teardown_task,omitempty"`
-	Timeout                 *YAMLCommandSet    `yaml:"timeout,omitempty" bson:"timeout,omitempty"`
-	Tasks                   []string           `yaml:"tasks,omitempty" bson:"tasks,omitempty"`
-	DependsOn               parserDependencies `yaml:"depends_on,omitempty" bson:"depends_on,omitempty"`
-	Tags                    parserStringSlice  `yaml:"tags,omitempty" bson:"tags,omitempty"`
-	ShareProcs              bool               `yaml:"share_processes,omitempty" bson:"share_processes,omitempty"`
+	Name                     string            `yaml:"name,omitempty" bson:"name,omitempty"`
+	MaxHosts                 int               `yaml:"max_hosts,omitempty" bson:"max_hosts,omitempty"`
+	SetupGroup               *YAMLCommandSet   `yaml:"setup_group,omitempty" bson:"setup_group,omitempty"`
+	SetupGroupCanFailTask    bool              `yaml:"setup_group_can_fail_task,omitempty" bson:"setup_group_can_fail_task,omitempty"`
+	SetupGroupTimeoutSecs    int               `yaml:"setup_group_timeout_secs,omitempty" bson:"setup_group_timeout_secs,omitempty"`
+	TeardownGroup            *YAMLCommandSet   `yaml:"teardown_group,omitempty" bson:"teardown_group,omitempty"`
+	TeardownGroupTimeoutSecs int               `yaml:"teardown_group_timeout_secs,omitempty" bson:"teardown_group_timeout_secs,omitempty"`
+	SetupTask                *YAMLCommandSet   `yaml:"setup_task,omitempty" bson:"setup_task,omitempty"`
+	SetupTaskCanFailTask     bool              `yaml:"setup_task_can_fail_task,omitempty" bson:"setup_task_can_fail_task,omitempty"`
+	SetupTaskTimeoutSecs     int               `yaml:"setup_task_timeout_secs,omitempty" bson:"setup_task_timeout_secs,omitempty"`
+	TeardownTask             *YAMLCommandSet   `yaml:"teardown_task,omitempty" bson:"teardown_task,omitempty"`
+	TeardownTaskCanFailTask  bool              `yaml:"teardown_task_can_fail_task,omitempty" bson:"teardown_task_can_fail_task,omitempty"`
+	TeardownTaskTimeoutSecs  int               `yaml:"teardown_task_timeout_secs,omitempty" bson:"teardown_task_timeout_secs,omitempty"`
+	Timeout                  *YAMLCommandSet   `yaml:"timeout,omitempty" bson:"timeout,omitempty"`
+	CallbackTimeoutSecs      int               `yaml:"callback_timeout_secs,omitempty" bson:"callback_timeout_secs,omitempty"`
+	Tasks                    []string          `yaml:"tasks,omitempty" bson:"tasks,omitempty"`
+	Tags                     parserStringSlice `yaml:"tags,omitempty" bson:"tags,omitempty"`
+	ShareProcs               bool              `yaml:"share_processes,omitempty" bson:"share_processes,omitempty"`
 }
 
 func (ptg *parserTaskGroup) name() string   { return ptg.Name }
@@ -140,20 +139,21 @@ func (ptg *parserTaskGroup) tags() []string { return ptg.Tags }
 
 // parserTask represents an intermediary state of task definitions.
 type parserTask struct {
-	Name            string              `yaml:"name,omitempty" bson:"name,omitempty"`
-	Priority        int64               `yaml:"priority,omitempty" bson:"priority,omitempty"`
-	ExecTimeoutSecs int                 `yaml:"exec_timeout_secs,omitempty" bson:"exec_timeout_secs,omitempty"`
-	DependsOn       parserDependencies  `yaml:"depends_on,omitempty" bson:"depends_on,omitempty"`
-	Commands        []PluginCommandConf `yaml:"commands,omitempty" bson:"commands,omitempty"`
-	Tags            parserStringSlice   `yaml:"tags,omitempty" bson:"tags,omitempty"`
-	RunOn           parserStringSlice   `yaml:"run_on,omitempty" bson:"run_on,omitempty"`
-	Patchable       *bool               `yaml:"patchable,omitempty" bson:"patchable,omitempty"`
-	PatchOnly       *bool               `yaml:"patch_only,omitempty" bson:"patch_only,omitempty"`
-	Disable         *bool               `yaml:"disable,omitempty" bson:"disable,omitempty"`
-	AllowForGitTag  *bool               `yaml:"allow_for_git_tag,omitempty" bson:"allow_for_git_tag,omitempty"`
-	GitTagOnly      *bool               `yaml:"git_tag_only,omitempty" bson:"git_tag_only,omitempty"`
-	Stepback        *bool               `yaml:"stepback,omitempty" bson:"stepback,omitempty"`
-	MustHaveResults *bool               `yaml:"must_have_test_results,omitempty" bson:"must_have_test_results,omitempty"`
+	Name              string                    `yaml:"name,omitempty" bson:"name,omitempty"`
+	Priority          int64                     `yaml:"priority,omitempty" bson:"priority,omitempty"`
+	ExecTimeoutSecs   int                       `yaml:"exec_timeout_secs,omitempty" bson:"exec_timeout_secs,omitempty"`
+	DependsOn         parserDependencies        `yaml:"depends_on,omitempty" bson:"depends_on,omitempty"`
+	Commands          []PluginCommandConf       `yaml:"commands,omitempty" bson:"commands,omitempty"`
+	Tags              parserStringSlice         `yaml:"tags,omitempty" bson:"tags,omitempty"`
+	RunOn             parserStringSlice         `yaml:"run_on,omitempty" bson:"run_on,omitempty"`
+	Patchable         *bool                     `yaml:"patchable,omitempty" bson:"patchable,omitempty"`
+	PatchOnly         *bool                     `yaml:"patch_only,omitempty" bson:"patch_only,omitempty"`
+	Disable           *bool                     `yaml:"disable,omitempty" bson:"disable,omitempty"`
+	AllowForGitTag    *bool                     `yaml:"allow_for_git_tag,omitempty" bson:"allow_for_git_tag,omitempty"`
+	GitTagOnly        *bool                     `yaml:"git_tag_only,omitempty" bson:"git_tag_only,omitempty"`
+	AllowedRequesters []evergreen.UserRequester `yaml:"allowed_requesters,omitempty" bson:"allowed_requesters,omitempty"`
+	Stepback          *bool                     `yaml:"stepback,omitempty" bson:"stepback,omitempty"`
+	MustHaveResults   *bool                     `yaml:"must_have_test_results,omitempty" bson:"must_have_test_results,omitempty"`
 }
 
 func (pp *ParserProject) Insert() error {
@@ -329,11 +329,12 @@ type parserBV struct {
 	DisplayTasks  []displayTask      `yaml:"display_tasks,omitempty" bson:"display_tasks,omitempty"`
 	DependsOn     parserDependencies `yaml:"depends_on,omitempty" bson:"depends_on,omitempty"`
 	// If Activate is set to false, then we don't initially activate the build variant.
-	Activate       *bool `yaml:"activate,omitempty" bson:"activate,omitempty"`
-	Patchable      *bool `yaml:"patchable,omitempty" bson:"patchable,omitempty"`
-	PatchOnly      *bool `yaml:"patch_only,omitempty" bson:"patch_only,omitempty"`
-	AllowForGitTag *bool `yaml:"allow_for_git_tag,omitempty" bson:"allow_for_git_tag,omitempty"`
-	GitTagOnly     *bool `yaml:"git_tag_only,omitempty" bson:"git_tag_only,omitempty"`
+	Activate          *bool                     `yaml:"activate,omitempty" bson:"activate,omitempty"`
+	Patchable         *bool                     `yaml:"patchable,omitempty" bson:"patchable,omitempty"`
+	PatchOnly         *bool                     `yaml:"patch_only,omitempty" bson:"patch_only,omitempty"`
+	AllowForGitTag    *bool                     `yaml:"allow_for_git_tag,omitempty" bson:"allow_for_git_tag,omitempty"`
+	GitTagOnly        *bool                     `yaml:"git_tag_only,omitempty" bson:"git_tag_only,omitempty"`
+	AllowedRequesters []evergreen.UserRequester `yaml:"allowed_requesters,omitempty" bson:"allowed_requesters,omitempty"`
 
 	// internal matrix stuff
 	MatrixId  string      `yaml:"matrix_id,omitempty" bson:"matrix_id,omitempty"`
@@ -401,6 +402,7 @@ func (pbv *parserBV) canMerge() bool {
 		pbv.PatchOnly == nil &&
 		pbv.AllowForGitTag == nil &&
 		pbv.GitTagOnly == nil &&
+		len(pbv.AllowedRequesters) == 0 &&
 		pbv.MatrixId == "" &&
 		pbv.MatrixVal == nil &&
 		pbv.Matrix == nil &&
@@ -409,19 +411,20 @@ func (pbv *parserBV) canMerge() bool {
 
 // parserBVTaskUnit is a helper type storing intermediary variant task configurations.
 type parserBVTaskUnit struct {
-	Name             string             `yaml:"name,omitempty" bson:"name,omitempty"`
-	Patchable        *bool              `yaml:"patchable,omitempty" bson:"patchable,omitempty"`
-	PatchOnly        *bool              `yaml:"patch_only,omitempty" bson:"patch_only,omitempty"`
-	Disable          *bool              `yaml:"disable,omitempty" bson:"disable,omitempty"`
-	AllowForGitTag   *bool              `yaml:"allow_for_git_tag,omitempty" bson:"allow_for_git_tag,omitempty"`
-	GitTagOnly       *bool              `yaml:"git_tag_only,omitempty" bson:"git_tag_only,omitempty"`
-	Priority         int64              `yaml:"priority,omitempty" bson:"priority,omitempty"`
-	DependsOn        parserDependencies `yaml:"depends_on,omitempty" bson:"depends_on,omitempty"`
-	ExecTimeoutSecs  int                `yaml:"exec_timeout_secs,omitempty" bson:"exec_timeout_secs,omitempty"`
-	Stepback         *bool              `yaml:"stepback,omitempty" bson:"stepback,omitempty"`
-	Distros          parserStringSlice  `yaml:"distros,omitempty" bson:"distros,omitempty"`
-	RunOn            parserStringSlice  `yaml:"run_on,omitempty" bson:"run_on,omitempty"` // Alias for "Distros" TODO: deprecate Distros
-	CommitQueueMerge bool               `yaml:"commit_queue_merge,omitempty" bson:"commit_queue_merge,omitempty"`
+	Name              string                    `yaml:"name,omitempty" bson:"name,omitempty"`
+	Patchable         *bool                     `yaml:"patchable,omitempty" bson:"patchable,omitempty"`
+	PatchOnly         *bool                     `yaml:"patch_only,omitempty" bson:"patch_only,omitempty"`
+	Disable           *bool                     `yaml:"disable,omitempty" bson:"disable,omitempty"`
+	AllowForGitTag    *bool                     `yaml:"allow_for_git_tag,omitempty" bson:"allow_for_git_tag,omitempty"`
+	GitTagOnly        *bool                     `yaml:"git_tag_only,omitempty" bson:"git_tag_only,omitempty"`
+	AllowedRequesters []evergreen.UserRequester `yaml:"allowed_requesters,omitempty" bson:"allowed_requesters,omitempty"`
+	Priority          int64                     `yaml:"priority,omitempty" bson:"priority,omitempty"`
+	DependsOn         parserDependencies        `yaml:"depends_on,omitempty" bson:"depends_on,omitempty"`
+	ExecTimeoutSecs   int                       `yaml:"exec_timeout_secs,omitempty" bson:"exec_timeout_secs,omitempty"`
+	Stepback          *bool                     `yaml:"stepback,omitempty" bson:"stepback,omitempty"`
+	Distros           parserStringSlice         `yaml:"distros,omitempty" bson:"distros,omitempty"`
+	RunOn             parserStringSlice         `yaml:"run_on,omitempty" bson:"run_on,omitempty"` // Alias for "Distros" TODO: deprecate Distros
+	CommitQueueMerge  bool                      `yaml:"commit_queue_merge,omitempty" bson:"commit_queue_merge,omitempty"`
 	// Use a *int for 2 possible states
 	// nil - not overriding the project setting
 	// non-nil - overriding the project setting with this BatchTime
@@ -433,6 +436,8 @@ type parserBVTaskUnit struct {
 	Activate *bool `yaml:"activate,omitempty" bson:"activate,omitempty"`
 	// TaskGroup is set if an inline task group is defined on the build variant config.
 	TaskGroup *parserTaskGroup `yaml:"task_group,omitempty" bson:"task_group,omitempty"`
+	// CreateCheckRun will create a check run on GitHub if set.
+	CreateCheckRun *CheckRun `yaml:"create_check_run,omitempty" bson:"create_check_run,omitempty"`
 }
 
 // UnmarshalYAML allows the YAML parser to read both a single selector string or
@@ -540,15 +545,6 @@ func FindAndTranslateProjectForPatch(ctx context.Context, settings *evergreen.Se
 		return project, pp, nil
 	}
 
-	if p.PatchedParserProject != "" {
-		project := &Project{}
-		pp, err := LoadProjectInto(ctx, []byte(p.PatchedParserProject), nil, p.Project, project)
-		if err != nil {
-			return nil, nil, errors.Wrap(err, "unmarshalling project config from patched parser project")
-		}
-		return project, pp, nil
-	}
-
 	// This fallback handles the case where the patch is already finalized.
 	v, err := VersionFindOneId(p.Version)
 	if err != nil {
@@ -619,6 +615,52 @@ func GetProjectFromBSON(data []byte) (*Project, error) {
 	return TranslateProject(pp)
 }
 
+func processIntermediateProjectIncludes(ctx context.Context, identifier string, intermediateProject *ParserProject,
+	include Include, outputYAMLs chan<- yamlTuple, projectOpts *GetProjectOpts) {
+	// Make a copy of opts because otherwise parts of opts would be
+	// modified concurrently.  Note, however, that Ref and PatchOpts are
+	// themselves pointers, so should not be modified.
+	localOpts := &GetProjectOpts{
+		Ref:             projectOpts.Ref,
+		PatchOpts:       projectOpts.PatchOpts,
+		LocalModules:    projectOpts.LocalModules,
+		RemotePath:      include.FileName,
+		Revision:        projectOpts.Revision,
+		Token:           projectOpts.Token,
+		ReadFileFrom:    projectOpts.ReadFileFrom,
+		Identifier:      identifier,
+		UnmarshalStrict: projectOpts.UnmarshalStrict,
+	}
+	localOpts.UpdateReadFileFrom(include.FileName)
+
+	var yaml []byte
+	var err error
+	grip.Debug(message.Fields{
+		"message":     "retrieving included YAML file",
+		"remote_path": localOpts.RemotePath,
+		"read_from":   localOpts.ReadFileFrom,
+		"module":      include.Module,
+	})
+	if include.Module != "" {
+		yaml, err = retrieveFileForModule(ctx, *localOpts, intermediateProject.Modules, include.Module)
+		err = errors.Wrapf(err, "%s: retrieving file for module '%s'", LoadProjectError, include.Module)
+	} else {
+		yaml, err = retrieveFile(ctx, *localOpts)
+		err = errors.Wrapf(err, "%s: retrieving file for include '%s'", LoadProjectError, include.FileName)
+	}
+	outputYAMLs <- yamlTuple{
+		yaml: yaml,
+		name: include.FileName,
+		err:  err,
+	}
+}
+
+type yamlTuple struct {
+	yaml []byte
+	name string
+	err  error
+}
+
 // LoadProjectInto loads the raw data from the config file into project
 // and sets the project's identifier field to identifier. Tags are evaluated. Returns the intermediate step.
 // If reading from a version config, LoadProjectInfoForVersion should be used to persist the resulting parser project.
@@ -633,40 +675,69 @@ func LoadProjectInto(ctx context.Context, data []byte, opts *GetProjectOpts, ide
 		return nil, errors.Wrapf(err, LoadProjectError)
 	}
 
-	// return intermediateProject even if we run into issues to show merge progress
-	for _, path := range intermediateProject.Include {
+	if len(intermediateProject.Include) > 0 {
 		if opts == nil {
 			err = errors.New("trying to open include files with empty options")
 			return nil, errors.Wrapf(err, LoadProjectError)
 		}
-		opts.UpdateForFile(path.FileName)
+		wg := sync.WaitGroup{}
+		outputYAMLs := make(chan yamlTuple, len(intermediateProject.Include))
+		includesToProcess := make(chan Include, len(intermediateProject.Include))
 
-		var yaml []byte
-		opts.Identifier = identifier
-		opts.RemotePath = path.FileName
-		grip.Debug(message.Fields{
-			"message":     "retrieving included YAML file",
-			"remote_path": opts.RemotePath,
-			"read_from":   opts.ReadFileFrom,
-			"module":      path.Module,
-		})
-		if path.Module != "" {
-			yaml, err = retrieveFileForModule(ctx, *opts, intermediateProject.Modules, path.Module)
-		} else {
-			yaml, err = retrieveFile(ctx, *opts)
+		for _, path := range intermediateProject.Include {
+			includesToProcess <- path
 		}
-		if err != nil {
-			return intermediateProject, errors.Wrapf(err, "%s: retrieving file '%s'", LoadProjectError, path.FileName)
+		close(includesToProcess)
+
+		// Be polite. Don't make more than 10 concurrent requests to GitHub.
+		const maxWorkers = 10
+		workers := util.Min(maxWorkers, len(intermediateProject.Include))
+		for i := 0; i < workers; i++ {
+			wg.Add(1)
+			go func() {
+				defer wg.Done()
+				for include := range includesToProcess {
+					processIntermediateProjectIncludes(ctx, identifier, intermediateProject, include, outputYAMLs, opts)
+				}
+			}()
 		}
-		add, err := createIntermediateProject(yaml, opts.UnmarshalStrict)
-		if err != nil {
-			return intermediateProject, errors.Wrapf(err, "%s: loading file '%s'", LoadProjectError, path.FileName)
+
+		// This order is deliberate:
+		// 1. Wait for the workers, since sending on a `nil` `outputYAMLs` would panic.
+		// 2. Close `outputYAMLs` so that the later `range` statement over it will stop after it's drained.
+		wg.Wait()
+		close(outputYAMLs)
+
+		yamlMap := map[string][]byte{}
+		catcher := grip.NewBasicCatcher()
+		for elem := range outputYAMLs {
+			catcher.Add(elem.err)
+			if elem.yaml != nil {
+				yamlMap[elem.name] = elem.yaml
+			}
 		}
-		err = intermediateProject.mergeMultipleParserProjects(add)
-		if err != nil {
-			return intermediateProject, errors.Wrapf(err, "%s: merging file '%s'", LoadProjectError, path.FileName)
+
+		if catcher.HasErrors() {
+			return intermediateProject, errors.Wrap(catcher.Resolve(), "getting includes")
+		}
+
+		// We promise to iterate over includes in the order they are defined.
+		for _, path := range intermediateProject.Include {
+			if _, ok := yamlMap[path.FileName]; !ok {
+				return intermediateProject, errors.WithStack(errors.Errorf("yaml was nil in map for %s, but it never should be", path.FileName))
+			}
+			add, err := createIntermediateProject(yamlMap[path.FileName], opts.UnmarshalStrict)
+			if err != nil {
+				// Return intermediateProject even if we run into issues to show merge progress.
+				return intermediateProject, errors.Wrapf(err, "%s: loading file '%s'", LoadProjectError, path.FileName)
+			}
+			if err = intermediateProject.mergeMultipleParserProjects(add); err != nil {
+				// Return intermediateProject even if we run into issues to show merge progress.
+				return intermediateProject, errors.Wrapf(err, "%s: merging file '%s'", LoadProjectError, path.FileName)
+			}
 		}
 	}
+
 	intermediateProject.Include = nil
 
 	// return project even with errors
@@ -704,7 +775,7 @@ type PatchOpts struct {
 
 // UpdateNewFile modifies ReadFileFrom to read from the patch diff
 // if the included file has been modified.
-func (opts *GetProjectOpts) UpdateForFile(path string) {
+func (opts *GetProjectOpts) UpdateReadFileFrom(path string) {
 	if opts.ReadFileFrom == ReadFromPatch || opts.ReadFileFrom == ReadFromPatchDiff {
 		if opts.PatchOpts.patch != nil && opts.PatchOpts.patch.ShouldPatchFileWithDiff(path) {
 			opts.ReadFileFrom = ReadFromPatchDiff
@@ -898,17 +969,14 @@ func createIntermediateProject(yml []byte, unmarshalStrict bool) (*ParserProject
 func TranslateProject(pp *ParserProject) (*Project, error) {
 	// Transfer top level fields
 	proj := &Project{
-		Enabled:            utility.FromBoolPtr(pp.Enabled),
 		Stepback:           utility.FromBoolPtr(pp.Stepback),
 		UnsetFunctionVars:  utility.FromBoolPtr(pp.UnsetFunctionVars),
+		PreTimeoutSecs:     utility.FromIntPtr(pp.PreTimeoutSecs),
+		PostTimeoutSecs:    utility.FromIntPtr(pp.PostTimeoutSecs),
 		PreErrorFailsTask:  utility.FromBoolPtr(pp.PreErrorFailsTask),
 		PostErrorFailsTask: utility.FromBoolPtr(pp.PostErrorFailsTask),
 		OomTracker:         utility.FromBoolPtr(pp.OomTracker),
 		BatchTime:          utility.FromIntPtr(pp.BatchTime),
-		Owner:              utility.FromStringPtr(pp.Owner),
-		Repo:               utility.FromStringPtr(pp.Repo),
-		RemotePath:         utility.FromStringPtr(pp.RemotePath),
-		Branch:             utility.FromStringPtr(pp.Branch),
 		Identifier:         utility.FromStringPtr(pp.Identifier),
 		DisplayName:        utility.FromStringPtr(pp.DisplayName),
 		CommandType:        utility.FromStringPtr(pp.CommandType),
@@ -917,7 +985,6 @@ func TranslateProject(pp *ParserProject) (*Project, error) {
 		Containers:         pp.Containers,
 		Pre:                pp.Pre,
 		Post:               pp.Post,
-		EarlyTermination:   pp.EarlyTermination,
 		Timeout:            pp.Timeout,
 		CallbackTimeout:    utility.FromIntPtr(pp.CallbackTimeout),
 		Modules:            pp.Modules,
@@ -1019,26 +1086,33 @@ func evaluateTaskUnits(tse *taskSelectorEvaluator, tgse *tagSelectorEvaluator, v
 		if strings.Contains(strings.TrimSpace(pt.Name), " ") {
 			evalErrs = append(evalErrs, errors.Errorf("spaces are not allowed in task names ('%s')", pt.Name))
 		}
+		t.AllowedRequesters = pt.AllowedRequesters
 		t.DependsOn, errs = evaluateDependsOn(tse.tagEval, tgse, vse, pt.DependsOn)
 		evalErrs = append(evalErrs, errs...)
 		tasks = append(tasks, t)
 	}
 	for _, ptg := range tgs {
 		tg := TaskGroup{
-			Name:                    ptg.Name,
-			SetupGroupFailTask:      ptg.SetupGroupFailTask,
-			TeardownTaskCanFailTask: ptg.TeardownTaskCanFailTask,
-			SetupGroupTimeoutSecs:   ptg.SetupGroupTimeoutSecs,
-			SetupGroup:              ptg.SetupGroup,
-			TeardownGroup:           ptg.TeardownGroup,
-			SetupTask:               ptg.SetupTask,
-			TeardownTask:            ptg.TeardownTask,
-			Tags:                    ptg.Tags,
-			MaxHosts:                ptg.MaxHosts,
-			Timeout:                 ptg.Timeout,
-			ShareProcs:              ptg.ShareProcs,
+			Name:                     ptg.Name,
+			SetupGroup:               ptg.SetupGroup,
+			SetupGroupCanFailTask:    ptg.SetupGroupCanFailTask,
+			SetupGroupTimeoutSecs:    ptg.SetupGroupTimeoutSecs,
+			TeardownGroup:            ptg.TeardownGroup,
+			TeardownGroupTimeoutSecs: ptg.TeardownGroupTimeoutSecs,
+			SetupTask:                ptg.SetupTask,
+			SetupTaskCanFailTask:     ptg.SetupTaskCanFailTask,
+			SetupTaskTimeoutSecs:     ptg.SetupTaskTimeoutSecs,
+			TeardownTask:             ptg.TeardownTask,
+			TeardownTaskCanFailTask:  ptg.TeardownTaskCanFailTask,
+			TeardownTaskTimeoutSecs:  ptg.TeardownTaskTimeoutSecs,
+			Tags:                     ptg.Tags,
+			MaxHosts:                 ptg.MaxHosts,
+			Timeout:                  ptg.Timeout,
+			ShareProcs:               ptg.ShareProcs,
 		}
-		if tg.MaxHosts < 1 {
+		if tg.MaxHosts == -1 {
+			tg.MaxHosts = len(ptg.Tasks)
+		} else if tg.MaxHosts < 1 {
 			tg.MaxHosts = 1
 		}
 		// expand, validate that tasks defined in a group are listed in the project tasks
@@ -1080,6 +1154,7 @@ func evaluateBuildVariants(tse *taskSelectorEvaluator, tgse *tagSelectorEvaluato
 			RunOn:          pbv.RunOn,
 			Tags:           pbv.Tags,
 		}
+		bv.AllowedRequesters = pbv.AllowedRequesters
 		bv.Tasks, errs = evaluateBVTasks(tse, tgse, vse, pbv, tasks)
 
 		// evaluate any rules passed in during matrix construction
@@ -1193,9 +1268,12 @@ func evaluateBuildVariants(tse *taskSelectorEvaluator, tgse *tagSelectorEvaluato
 	return bvs, evalErrs
 }
 
-// evaluateBVTasks translates intermediate tasks into true BuildVariantTaskUnit types,
-// evaluating any selectors referencing tasks, and further evaluating any selectors
-// in the DependsOn field of those tasks.
+// evaluateBVTasks translates intermediate tasks listed under build variants
+// into true BuildVariantTaskUnit types, evaluating any selectors referencing
+// tasks, and further evaluating any selectors in the DependsOn field of those
+// tasks.
+// For task units that represent task groups, the resulting BuildVariantTaskUnit
+// represents the task group itself, not the individual tasks in the task group.
 func evaluateBVTasks(tse *taskSelectorEvaluator, tgse *tagSelectorEvaluator, vse *variantSelectorEvaluator,
 	pbv parserBV, tasks []parserTask) ([]BuildVariantTaskUnit, []error) {
 	var evalErrs, errs []error
@@ -1298,22 +1376,33 @@ func getParserBuildVariantTaskUnit(name string, pt parserTask, bvt parserBVTaskU
 		CronBatchTime:    bvt.CronBatchTime,
 		BatchTime:        bvt.BatchTime,
 		Activate:         bvt.Activate,
+		CreateCheckRun:   bvt.CreateCheckRun,
 	}
+	res.AllowedRequesters = bvt.AllowedRequesters
 	if bvt.TaskGroup != nil {
 		res.TaskGroup = &TaskGroup{
-			Name:                    bvt.Name,
-			SetupGroupFailTask:      bvt.TaskGroup.SetupGroupFailTask,
-			TeardownTaskCanFailTask: bvt.TaskGroup.TeardownTaskCanFailTask,
-			SetupGroupTimeoutSecs:   bvt.TaskGroup.SetupGroupTimeoutSecs,
-			SetupGroup:              bvt.TaskGroup.SetupGroup,
-			TeardownGroup:           bvt.TaskGroup.TeardownGroup,
-			SetupTask:               bvt.TaskGroup.SetupTask,
-			TeardownTask:            bvt.TaskGroup.TeardownTask,
-			Tags:                    bvt.TaskGroup.Tags,
-			Tasks:                   bvt.TaskGroup.Tasks,
-			MaxHosts:                bvt.TaskGroup.MaxHosts,
-			Timeout:                 bvt.TaskGroup.Timeout,
-			ShareProcs:              bvt.TaskGroup.ShareProcs,
+			Name:                     bvt.Name,
+			SetupGroup:               bvt.TaskGroup.SetupGroup,
+			SetupGroupCanFailTask:    bvt.TaskGroup.SetupGroupCanFailTask,
+			TeardownGroup:            bvt.TaskGroup.TeardownGroup,
+			TeardownGroupTimeoutSecs: bvt.TaskGroup.TeardownGroupTimeoutSecs,
+			SetupGroupTimeoutSecs:    bvt.TaskGroup.SetupGroupTimeoutSecs,
+			SetupTask:                bvt.TaskGroup.SetupTask,
+			SetupTaskTimeoutSecs:     bvt.TaskGroup.SetupTaskTimeoutSecs,
+			SetupTaskCanFailTask:     bvt.TaskGroup.SetupTaskCanFailTask,
+			TeardownTask:             bvt.TaskGroup.TeardownTask,
+			TeardownTaskCanFailTask:  bvt.TaskGroup.TeardownTaskCanFailTask,
+			TeardownTaskTimeoutSecs:  bvt.TaskGroup.TeardownTaskTimeoutSecs,
+			Tags:                     bvt.TaskGroup.Tags,
+			Tasks:                    bvt.TaskGroup.Tasks,
+			MaxHosts:                 bvt.TaskGroup.MaxHosts,
+			Timeout:                  bvt.TaskGroup.Timeout,
+			ShareProcs:               bvt.TaskGroup.ShareProcs,
+		}
+		if bvt.TaskGroup.MaxHosts == -1 {
+			res.TaskGroup.MaxHosts = len(bvt.TaskGroup.Tasks)
+		} else if bvt.TaskGroup.MaxHosts < 1 {
+			res.TaskGroup.MaxHosts = 1
 		}
 	}
 	if res.Priority == 0 {
@@ -1333,6 +1422,9 @@ func getParserBuildVariantTaskUnit(name string, pt parserTask, bvt parserBVTaskU
 	}
 	if res.GitTagOnly == nil {
 		res.GitTagOnly = pt.GitTagOnly
+	}
+	if len(res.AllowedRequesters) == 0 {
+		res.AllowedRequesters = pt.AllowedRequesters
 	}
 	if res.ExecTimeoutSecs == 0 {
 		res.ExecTimeoutSecs = pt.ExecTimeoutSecs
@@ -1361,6 +1453,9 @@ func getParserBuildVariantTaskUnit(name string, pt parserTask, bvt parserBVTaskU
 	}
 	if res.GitTagOnly == nil {
 		res.GitTagOnly = bv.GitTagOnly
+	}
+	if len(res.AllowedRequesters) == 0 {
+		res.AllowedRequesters = bv.AllowedRequesters
 	}
 
 	if res.Disable == nil {
@@ -1442,4 +1537,17 @@ func evaluateDependsOn(tse *tagSelectorEvaluator, tgse *tagSelectorEvaluator, vs
 		}
 	}
 	return newDeps, evalErrs
+}
+
+// evaluateRequesters translates user requesters into internal requesters.
+func evaluateRequesters(userRequesters []evergreen.UserRequester) []string {
+	requesters := make([]string, 0, len(userRequesters))
+	for _, userRequester := range userRequesters {
+		requester := evergreen.UserRequesterToInternalRequester(userRequester)
+		if !utility.StringSliceContains(evergreen.AllRequesterTypes, requester) {
+			continue
+		}
+		requesters = append(requesters, requester)
+	}
+	return requesters
 }

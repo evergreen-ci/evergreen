@@ -30,6 +30,7 @@ type GeneratedProject struct {
 	Functions     map[string]*YAMLCommandSet `yaml:"functions"`
 	TaskGroups    []parserTaskGroup          `yaml:"task_groups"`
 
+	// Task is the task that is running generate.tasks.
 	Task           *task.Task
 	ActivationInfo *specificActivationInfo
 	NewTVPairs     *TaskVariantPairs
@@ -269,10 +270,20 @@ func (g *GeneratedProject) saveNewBuildsAndTasks(ctx context.Context, v *Version
 		return errors.Errorf("project '%s' not found", p.Identifier)
 	}
 
+	// Compile a lookup table of task IDs for all tasks to be created, both in
+	// existing builds and in newly-generated builds. This lookup table is
+	// needed to ensure when a task is created, it can find the IDs of the tasks
+	// it will depend on.
+	allTasksToBeCreatedIncludingDeps, err := NewTaskIdConfig(p, v, *newTVPairs, projectRef.Identifier)
+	if err != nil {
+		return errors.Wrap(err, "creating task ID table for new variant-tasks to create")
+	}
+
 	creationInfo := TaskCreationInfo{
 		Project:        p,
 		ProjectRef:     projectRef,
 		Version:        v,
+		TaskIDs:        allTasksToBeCreatedIncludingDeps,
 		Pairs:          newTVPairsForExistingVariants,
 		ActivationInfo: *activationInfo,
 		SyncAtEndOpts:  syncAtEndOpts,
@@ -281,7 +292,8 @@ func (g *GeneratedProject) saveNewBuildsAndTasks(ctx context.Context, v *Version
 		// tasks inherit that requirement.
 		ActivatedTasksAreEssentialToSucceed: g.Task.IsEssentialToSucceed,
 	}
-	activatedTasksInExistingBuilds, err := addNewTasks(ctx, creationInfo, existingBuilds)
+
+	activatedTasksInExistingBuilds, err := addNewTasksToExistingBuilds(ctx, creationInfo, existingBuilds, evergreen.GenerateTasksActivator)
 	if err != nil {
 		return errors.Wrap(err, "adding new tasks")
 	}
@@ -300,7 +312,8 @@ func (g *GeneratedProject) saveNewBuildsAndTasks(ctx context.Context, v *Version
 	return nil
 }
 
-// GetNewTasksAndActivationInfo computes the NewTVPairs and ActivationInfo fields on the generator if they are nil.
+// GetNewTasksAndActivationInfo computes the generate.tasks variant-tasks to be
+// created and specific activation information for those tasks.
 func (g *GeneratedProject) GetNewTasksAndActivationInfo(ctx context.Context, v *Version, p *Project) (*TaskVariantPairs, *specificActivationInfo) {
 	if g.NewTVPairs != nil && g.ActivationInfo != nil {
 		return g.NewTVPairs, g.ActivationInfo
@@ -345,7 +358,7 @@ func (g *GeneratedProject) simulateNewTasks(ctx context.Context, graph task.Depe
 		Version:    v,
 		Pairs:      *newTVPairs,
 	}
-	taskIDs, err := getTaskIdTables(creationInfo)
+	taskIDs, err := getTaskIdConfig(creationInfo)
 	if err != nil {
 		return graph, errors.Wrap(err, "getting task ids")
 	}
@@ -467,14 +480,13 @@ func (g *GeneratedProject) filterInactiveTasks(ctx context.Context, tasks TVPair
 }
 
 type specificActivationInfo struct {
-	stepbackTasks      map[string][]specificStepbackInfo // tasks by variant that are being stepped back, along with the stepback depth to use
+	stepbackTasks      map[string][]specificStepbackInfo // tasks by variant that are being stepped back
 	activationTasks    map[string][]string               // tasks by variant that have batchtime or activate specified
 	activationVariants []string                          // variants that have batchtime or activate specified
 }
 
 type specificStepbackInfo struct {
-	task  string
-	depth int // store the depth that the new stepback task should use
+	task string
 }
 
 func newSpecificActivationInfo() specificActivationInfo {
@@ -506,15 +518,6 @@ func (b *specificActivationInfo) isStepbackTask(variant, task string) bool {
 	return false
 }
 
-func (b *specificActivationInfo) getStepbackTaskDepth(variant, task string) int {
-	for _, stepbackInfo := range b.stepbackTasks[variant] {
-		if stepbackInfo.task == task {
-			return stepbackInfo.depth
-		}
-	}
-	return 0
-}
-
 func (b *specificActivationInfo) taskHasSpecificActivation(variant, task string) bool {
 	return utility.StringSliceContains(b.activationTasks[variant], task)
 }
@@ -529,24 +532,25 @@ func (b *specificActivationInfo) taskOrVariantHasSpecificActivation(variant, tas
 func (g *GeneratedProject) findTasksAndVariantsWithSpecificActivations(requester string) specificActivationInfo {
 	res := newSpecificActivationInfo()
 	for _, bv := range g.BuildVariants {
-		// Only consider batchtime for mainline builds. We should always respect activate if it is set.
+		// Only consider batchtime for mainline builds. A task/BV will have
+		// specific activation if activate if it is explicitly set to false;
+		// otherwise, if it's explicitly set to true, activate it immediately.
 		if evergreen.ShouldConsiderBatchtime(requester) && bv.hasSpecificActivation() {
 			res.activationVariants = append(res.activationVariants, bv.name())
-		} else if bv.Activate != nil {
+		} else if !utility.FromBoolTPtr(bv.Activate) {
 			res.activationVariants = append(res.activationVariants, bv.name())
 		}
 		// Regardless of whether the build variant has batchtime, there may be tasks with different batchtime
 		batchTimeTasks := []string{}
 		for _, bvt := range bv.Tasks {
 			if isStepbackTask(g.Task, bv.Name, bvt.Name) {
-				// If it's a stepback task, it should store the same stepback depth as the generator.
-				stepbackInfo := specificStepbackInfo{task: bvt.Name, depth: g.Task.StepbackDepth}
+				stepbackInfo := specificStepbackInfo{task: bvt.Name}
 				res.stepbackTasks[bv.Name] = append(res.stepbackTasks[bv.Name], stepbackInfo)
 				continue // Don't consider batchtime/activation if we're stepping back this generated task
 			}
 			if evergreen.ShouldConsiderBatchtime(requester) && bvt.hasSpecificActivation() {
 				batchTimeTasks = append(batchTimeTasks, bvt.Name)
-			} else if bvt.Activate != nil {
+			} else if !utility.FromBoolTPtr(bvt.Activate) {
 				batchTimeTasks = append(batchTimeTasks, bvt.Name)
 			}
 		}
@@ -704,7 +708,7 @@ func isNonZeroBV(bv parserBV) bool {
 	if bv.DisplayName != "" || len(bv.Expansions) > 0 || len(bv.Modules) > 0 ||
 		bv.Disable != nil || len(bv.Tags) > 0 ||
 		bv.BatchTime != nil || bv.Patchable != nil || bv.PatchOnly != nil ||
-		bv.AllowForGitTag != nil || bv.GitTagOnly != nil ||
+		bv.AllowForGitTag != nil || bv.GitTagOnly != nil || len(bv.AllowedRequesters) > 0 ||
 		bv.Stepback != nil || len(bv.RunOn) > 0 {
 		return true
 	}

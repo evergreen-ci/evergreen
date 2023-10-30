@@ -104,17 +104,18 @@ func disableStartingSettings(p *model.ProjectRef) {
 // PromoteVarsToRepo moves variables from an attached project to its repo.
 // Promoted vars are removed from the project as part of this operation.
 // Variables whose names already appear in the repo settings will be overwritten.
-func PromoteVarsToRepo(projectId string, varNames []string, userId string) error {
-	project, err := model.GetProjectSettingsById(projectId, false)
+func PromoteVarsToRepo(projectIdentifier string, varNames []string, userId string) error {
+	project, err := model.GetProjectSettingsById(projectIdentifier, false)
 	if err != nil {
-		return errors.Wrapf(err, "getting project settings for project '%s'", projectId)
+		return errors.Wrapf(err, "getting project settings for project '%s'", projectIdentifier)
 	}
 
+	projectId := project.ProjectRef.Id
 	repoId := project.ProjectRef.RepoRefId
 
 	projectVars, err := model.FindOneProjectVars(projectId)
 	if err != nil {
-		return errors.Wrapf(err, "getting project variables for project '%s'", projectId)
+		return errors.Wrapf(err, "getting project variables for project '%s'", projectIdentifier)
 	}
 
 	repo, err := model.GetProjectSettingsById(repoId, true)
@@ -145,7 +146,7 @@ func PromoteVarsToRepo(projectId string, varNames []string, userId string) error
 	}
 
 	if err = UpdateProjectVars(repoId, apiRepoVars, true); err != nil {
-		return errors.Wrapf(err, "adding variables from project '%s' to repo", projectId)
+		return errors.Wrapf(err, "adding variables from project '%s' to repo", projectIdentifier)
 	}
 
 	// Log repo update
@@ -182,15 +183,15 @@ func PromoteVarsToRepo(projectId string, varNames []string, userId string) error
 	}
 
 	if err := UpdateProjectVars(projectId, apiProjectVars, true); err != nil {
-		return errors.Wrapf(err, "removing promoted project variables from project '%s'", projectId)
+		return errors.Wrapf(err, "removing promoted project variables from project '%s'", projectIdentifier)
 	}
 
 	projectAfter, err := model.GetProjectSettingsById(projectId, false)
 	if err != nil {
-		return errors.Wrapf(err, "getting settings for project '%s' after removing promoted variables", projectId)
+		return errors.Wrapf(err, "getting settings for project '%s' after removing promoted variables", projectIdentifier)
 	}
 	if err = model.LogProjectModified(projectId, userId, project, projectAfter); err != nil {
-		return errors.Wrapf(err, "logging project '%s' modified", projectId)
+		return errors.Wrapf(err, "logging project '%s' modified", projectIdentifier)
 	}
 
 	return nil
@@ -235,7 +236,7 @@ func SaveProjectSettingsForSection(ctx context.Context, projectId string, change
 	switch section {
 	case model.ProjectPageGeneralSection:
 		if mergedSection.Identifier != mergedBeforeRef.Identifier {
-			if err = handleIdentifierConflict(mergedSection); err != nil {
+			if err = validateModifiedIdentifier(mergedSection); err != nil {
 				return nil, err
 			}
 		}
@@ -251,7 +252,7 @@ func SaveProjectSettingsForSection(ctx context.Context, projectId string, change
 				return nil, errors.Wrap(err, "validating new owner/repo")
 			}
 		}
-		// Only need to check Github conflicts once so we use else if statements to handle this.
+		// Only need to check GitHub conflicts once so we use else if statements to handle this.
 		// Handle conflicts using the ref from the DB, since only general section settings are passed in from the UI.
 		if mergedSection.Owner != mergedBeforeRef.Owner || mergedSection.Repo != mergedBeforeRef.Repo {
 			if err = handleGithubConflicts(mergedBeforeRef, "Changing owner/repo"); err != nil {
@@ -259,9 +260,9 @@ func SaveProjectSettingsForSection(ctx context.Context, projectId string, change
 			}
 			// Check if webhook is enabled if the owner/repo has changed.
 			// Using the new project ref ensures we update tracking at the end.
-			_, err = model.EnableWebhooks(ctx, newProjectRef)
+			_, err = model.SetTracksPushEvents(ctx, newProjectRef)
 			if err != nil {
-				return nil, errors.Wrapf(err, "enabling webhooks for project '%s'", projectId)
+				return nil, errors.Wrapf(err, "setting project tracks push events for project '%s' in '%s/%s'", projectId, newProjectRef.Owner, newProjectRef.Repo)
 			}
 			modified = true
 		} else if mergedSection.Enabled && !mergedBeforeRef.Enabled {
@@ -440,13 +441,19 @@ func SaveProjectSettingsForSection(ctx context.Context, projectId string, change
 	return &res, errors.Wrapf(catcher.Resolve(), "saving section '%s'", section)
 }
 
-func handleIdentifierConflict(pRef *model.ProjectRef) error {
+func validateModifiedIdentifier(pRef *model.ProjectRef) error {
 	conflictingRef, err := model.FindBranchProjectRef(pRef.Identifier)
 	if err != nil {
 		return errors.Wrapf(err, "checking for conflicting project ref")
 	}
 	if conflictingRef != nil && conflictingRef.Id != pRef.Id {
 		return errors.Errorf("identifier '%s' is already being used for another project", conflictingRef.Id)
+	}
+	if !projectIDRegexp.MatchString(pRef.Identifier) {
+		return gimlet.ErrorResponse{
+			StatusCode: http.StatusBadRequest,
+			Message:    fmt.Sprintf("project identifier '%s' contains invalid characters", pRef.Identifier),
+		}
 	}
 	return nil
 }
@@ -462,13 +469,16 @@ func handleGithubConflicts(pRef *model.ProjectRef, reason string) error {
 		return errors.Wrapf(err, "getting GitHub project conflicts")
 	}
 	if pRef.IsPRTestingEnabled() && len(conflicts.PRTestingIdentifiers) > 0 {
-		conflictMsgs = append(conflictMsgs, "PR testing")
+		conflictingIdentifiers := strings.Join(conflicts.PRTestingIdentifiers, ", ")
+		conflictMsgs = append(conflictMsgs, fmt.Sprintf("PR testing (projects: %s)", conflictingIdentifiers))
 	}
 	if pRef.CommitQueue.IsEnabled() && len(conflicts.CommitQueueIdentifiers) > 0 {
-		conflictMsgs = append(conflictMsgs, "the commit queue")
+		conflictingIdentifiers := strings.Join(conflicts.CommitQueueIdentifiers, ", ")
+		conflictMsgs = append(conflictMsgs, fmt.Sprintf("the commit queue (projects: %s)", conflictingIdentifiers))
 	}
 	if pRef.IsGithubChecksEnabled() && len(conflicts.CommitCheckIdentifiers) > 0 {
-		conflictMsgs = append(conflictMsgs, "commit checks")
+		conflictingIdentifiers := strings.Join(conflicts.CommitCheckIdentifiers, ", ")
+		conflictMsgs = append(conflictMsgs, fmt.Sprintf("commit checks (projects: %s)", conflictingIdentifiers))
 	}
 
 	if len(conflictMsgs) > 0 {

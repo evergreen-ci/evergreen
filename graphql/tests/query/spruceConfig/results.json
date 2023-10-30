@@ -41,6 +41,7 @@
                 "data": {
                     "spruceConfig": {
                         "jira": {
+                            "email": "evg-user@jira.mongodb.org",
                             "host": "jira.mongodb.org"
                         }
                     }
@@ -57,6 +58,46 @@
                             "unexpirableVolumesPerUser": 0,
                             "spawnHostsPerUser": 0
                         }
+                    }
+                }
+            }
+        },
+        {
+            "query_file": "container_pools.graphql",
+            "result": {
+                "data": {
+                    "spruceConfig": {
+                        "containerPools": {
+                            "pools": [
+                                {
+                                    "id": "test-pool",
+                                    "distro": "localhost",
+                                    "maxContainers": 5,
+                                    "port": 2525
+                                },
+                                {
+                                    "id": "ubuntu-test-pool",
+                                    "distro": "localhost",
+                                    "maxContainers": 10,
+                                    "port": 4649
+                                }
+                            ]
+                        }
+                    }
+                }
+            }
+        },
+        {
+            "query_file": "keys.graphql",
+            "result": {
+                "data": {
+                    "spruceConfig": {
+                        "keys": [
+                            {
+                                "location": "/path/to/key",
+                                "name": "fake_ssh_key"
+                            }
+                        ]
                     }
                 }
             }

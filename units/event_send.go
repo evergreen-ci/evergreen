@@ -14,6 +14,7 @@ import (
 	"github.com/mongodb/grip"
 	"github.com/mongodb/grip/level"
 	"github.com/mongodb/grip/message"
+	"github.com/mongodb/grip/send"
 	"github.com/mongodb/grip/sometimes"
 	"github.com/pkg/errors"
 )
@@ -129,9 +130,21 @@ func (j *eventSendJob) send(n *notification.Notification) error {
 		return errors.Wrap(err, "getting sender key for notification")
 	}
 
-	sender, err := j.env.GetSender(key)
-	if err != nil {
-		return errors.Wrap(err, "getting global notification sender")
+	var sender send.Sender
+	if key == evergreen.SenderGithubStatus {
+		payload, ok := n.Payload.(*message.GithubStatus)
+		if !ok || payload == nil {
+			return errors.New("github status payload is invalid")
+		}
+		sender, err = j.env.GetGitHubSender(payload.Owner, payload.Repo)
+		if err != nil {
+			return errors.Wrap(err, "getting github status sender")
+		}
+	} else {
+		sender, err = j.env.GetSender(key)
+		if err != nil {
+			return errors.Wrap(err, "getting global notification sender")
+		}
 	}
 	sender.Send(c)
 	return nil

@@ -49,13 +49,15 @@ func getGroupedFiles(ctx context.Context, name string, taskID string, execution 
 		return nil, err
 	}
 
+	env := evergreen.GetEnvironment()
 	apiFileList := []*restModel.APIFile{}
 	for _, file := range strippedFiles {
 		apiFile := restModel.APIFile{}
 		apiFile.BuildFromService(file)
+		apiFile.GetLogURL(env, taskID, execution)
 		apiFileList = append(apiFileList, &apiFile)
 	}
-	return &GroupedFiles{TaskName: &name, Files: apiFileList}, nil
+	return &GroupedFiles{TaskName: &name, Files: apiFileList, TaskID: taskID, Execution: execution}, nil
 }
 
 func findAllTasksByIds(ctx context.Context, taskIDs ...string) ([]task.Task, error) {
@@ -134,19 +136,14 @@ func getFormattedDate(t *time.Time, timezone string) (*string, error) {
 }
 
 // GetDisplayStatus considers both child patch statuses and
-// aborted status, and returns an overall patch status
-// (this is because success is different for version/patches,
-// and for display we rely on the patch status. Will address this in EVG-19914).
+// aborted status, and returns an overall status.
 func getDisplayStatus(v *model.Version) (string, error) {
-	patchStatus, err := evergreen.VersionStatusToPatchStatus(v.Status)
-	if err != nil {
-		return "", errors.Wrapf(err, "getting version status for patch '%s'", v.Id)
-	}
+	status := v.Status
 	if v.Aborted {
-		patchStatus = evergreen.PatchAborted
+		status = evergreen.VersionAborted
 	}
 	if !evergreen.IsPatchRequester(v.Requester) || v.IsChild() {
-		return patchStatus, nil
+		return status, nil
 	}
 
 	p, err := patch.FindOneId(v.Id)
@@ -156,7 +153,7 @@ func getDisplayStatus(v *model.Version) (string, error) {
 	if p == nil {
 		return "", errors.Errorf("patch '%s' doesn't exist", v.Id)
 	}
-	allStatuses := []string{patchStatus}
+	allStatuses := []string{status}
 	for _, cp := range p.Triggers.ChildPatches {
 		cpVersion, err := model.VersionFindOneId(cp)
 		if err != nil {
@@ -168,11 +165,7 @@ func getDisplayStatus(v *model.Version) (string, error) {
 		if cpVersion.Aborted {
 			allStatuses = append(allStatuses, evergreen.VersionAborted)
 		} else {
-			cpStatus, err := evergreen.VersionStatusToPatchStatus(cpVersion.Status)
-			if err != nil {
-				return "", errors.Wrapf(err, "getting version status for child patch '%s'", cpVersion.Id)
-			}
-			allStatuses = append(allStatuses, cpStatus)
+			allStatuses = append(allStatuses, cpVersion.Status)
 		}
 	}
 	return patch.GetCollectiveStatusFromPatchStatuses(allStatuses), nil

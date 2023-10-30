@@ -15,7 +15,9 @@ import (
 	mgobson "github.com/evergreen-ci/evergreen/db/mgo/bson"
 	"github.com/evergreen-ci/evergreen/model/distro"
 	"github.com/evergreen-ci/evergreen/model/event"
+	"github.com/evergreen-ci/evergreen/model/log"
 	"github.com/evergreen-ci/evergreen/model/testresult"
+	"github.com/evergreen-ci/evergreen/taskoutput"
 	"github.com/evergreen-ci/evergreen/util"
 	"github.com/evergreen-ci/tarjan"
 	"github.com/evergreen-ci/utility"
@@ -89,7 +91,6 @@ type Task struct {
 	TaskGroup         string `bson:"task_group" json:"task_group"`
 	TaskGroupMaxHosts int    `bson:"task_group_max_hosts,omitempty" json:"task_group_max_hosts,omitempty"`
 	TaskGroupOrder    int    `bson:"task_group_order,omitempty" json:"task_group_order,omitempty"`
-	LogServiceVersion *int   `bson:"log_service_version" json:"log_service_version"`
 	ResultsService    string `bson:"results_service,omitempty" json:"results_service,omitempty"`
 	HasCedarResults   bool   `bson:"has_cedar_results,omitempty" json:"has_cedar_results,omitempty"`
 	ResultsFailed     bool   `bson:"results_failed,omitempty" json:"results_failed,omitempty"`
@@ -102,10 +103,6 @@ type Task struct {
 	Activated                bool   `bson:"activated" json:"activated"`
 	ActivatedBy              string `bson:"activated_by" json:"activated_by"`
 	DeactivatedForDependency bool   `bson:"deactivated_for_dependency" json:"deactivated_for_dependency"`
-
-	// StepbackDepth indicates how far into stepback this task was activated, starting at 1 for stepback tasks.
-	// After EVG-17949, should either remove this field/logging or use it to limit stepback depth.
-	StepbackDepth int `bson:"stepback_depth" json:"stepback_depth"`
 
 	// ContainerAllocated indicates whether this task has been allocated a
 	// container to run it. It only applies to tasks running in containers.
@@ -158,6 +155,24 @@ type Task struct {
 
 	// The version of the agent this task was run on.
 	AgentVersion string `bson:"agent_version,omitempty" json:"agent_version,omitempty"`
+	// TaskOutputInfo holds the information for the interface that
+	// coordinates persistent storage of a task's output data.
+	// There are four possible scenarios:
+	//     1. The task will never have output data (e.g., display tasks)
+	//        and, therefore, the value is and always will be nil.
+	//     2. The task does not have output data yet, but can in the future
+	//        if/when dispatched, and, therefore, the value is currently
+	//        nil.
+	//     3. The task has been dispatched with the task output information
+	//        initialized and the application can safely use this field to
+	//        fetch any output data. If the task has not finished running,
+	//        the output data is accessible but may not be complete yet.
+	//     4. The task has data but was run before the introduction of the
+	//        field and should be initialized before the application can
+	//        safely fetch any output data.
+	// This field should *never* be accessed directly, instead call
+	// `Task.getTaskOutputSafe()`.
+	TaskOutputInfo *taskoutput.TaskOutput `bson:"task_output_info,omitempty" json:"task_output_info,omitempty"`
 
 	// Set to true if the task should be considered for mainline github checks
 	IsGithubCheck bool `bson:"is_github_check,omitempty" json:"is_github_check,omitempty"`
@@ -165,10 +180,13 @@ type Task struct {
 	// CanReset indicates that the task has successfully archived and is in a valid state to be reset.
 	CanReset bool `bson:"can_reset,omitempty" json:"can_reset,omitempty"`
 
-	Execution           int    `bson:"execution" json:"execution"`
-	OldTaskId           string `bson:"old_task_id,omitempty" json:"old_task_id,omitempty"`
-	Archived            bool   `bson:"archived,omitempty" json:"archived,omitempty"`
-	RevisionOrderNumber int    `bson:"order,omitempty" json:"order,omitempty"`
+	Execution int    `bson:"execution" json:"execution"`
+	OldTaskId string `bson:"old_task_id,omitempty" json:"old_task_id,omitempty"`
+	Archived  bool   `bson:"archived,omitempty" json:"archived,omitempty"`
+
+	// RevisionOrderNumber for user-submitted patches is the user's current patch submission count.
+	// For mainline commits for a project, it is the amount of versions for that repositry so far.
+	RevisionOrderNumber int `bson:"order,omitempty" json:"order,omitempty"`
 
 	// task requester - this is used to help tell the
 	// reason this task was created. e.g. it could be
@@ -222,6 +240,8 @@ type Task struct {
 	ExecutionTasks        []string `bson:"execution_tasks,omitempty" json:"execution_tasks,omitempty"`
 	LatestParentExecution int      `bson:"latest_parent_execution" json:"latest_parent_execution"`
 
+	StepbackInfo *StepbackInfo `bson:"stepback_info,omitempty" json:"stepback_info,omitempty"`
+
 	// ResetWhenFinished indicates that a task should be reset once it is
 	// finished running. This is typically to deal with tasks that should be
 	// reset but cannot do so yet because they're currently running.
@@ -267,6 +287,17 @@ type Task struct {
 	// before its build or version can be reported as successful, but tasks
 	// manually scheduled by the user afterwards are not required.
 	IsEssentialToSucceed bool `bson:"is_essential_to_succeed" json:"is_essential_to_succeed"`
+}
+
+// StepbackInfo helps determine which task to bisect to when performing stepback.
+type StepbackInfo struct {
+	// LastFailingStepbackTaskId stores the last failing task while doing stepback.
+	LastFailingStepbackTaskId string `bson:"last_failing_stepback_task_id,omitempty" json:"last_failing_stepback_task_id"`
+	// LastPassingStepbackTaskId stores the last passing task while doing stepback.
+	LastPassingStepbackTaskId string `bson:"last_passing_stepback_task_id,omitempty" json:"last_passing_stepback_task_id"`
+	// NextStepbackTaskId stores the next task id to stepback to when doing bisect stepback. This
+	// is the middle of LastFailingStepbackTaskId and LastPassingStepbackTaskId.
+	NextStepbackTaskId string `bson:"next_stepback_task_id,omitempty" json:"next_stepback_task_id"`
 }
 
 // ExecutionPlatform indicates the type of environment that the task runs in.
@@ -484,7 +515,7 @@ func (t *Task) IsContainerDispatchable() bool {
 
 // isContainerTaskScheduled returns whether the task is in a state where it
 // should eventually dispatch to run on a container and is logically equivalent
-// to IsContainerTaskScheduledQuery. This encompasses two potential states:
+// to ScheduledContainerTasksQuery. This encompasses two potential states:
 //  1. A container is not yet allocated to the task but it's ready to be
 //     allocated one. Note that this is a subset of all container tasks that
 //     could eventually run (i.e. evergreen.TaskWillRun from
@@ -848,23 +879,7 @@ func (t *Task) FindTaskOnBaseCommit() (*Task, error) {
 }
 
 func (t *Task) FindTaskOnPreviousCommit() (*Task, error) {
-	return FindOne(db.Query(ByPreviousCommit(t.BuildVariant, t.DisplayName, t.Project, evergreen.RepotrackerVersionRequester, t.RevisionOrderNumber)))
-}
-
-// FindIntermediateTasks returns the tasks from most recent to least recent between two tasks.
-func (current *Task) FindIntermediateTasks(previous *Task) ([]Task, error) {
-	intermediateTasks, err := Find(ByIntermediateRevisions(previous.RevisionOrderNumber, current.RevisionOrderNumber, current.BuildVariant,
-		current.DisplayName, current.Project, current.Requester))
-	if err != nil {
-		return nil, err
-	}
-
-	// reverse the slice of tasks
-	intermediateTasksReversed := make([]Task, len(intermediateTasks))
-	for idx, t := range intermediateTasks {
-		intermediateTasksReversed[len(intermediateTasks)-idx-1] = t
-	}
-	return intermediateTasksReversed, nil
+	return FindOne(db.Query(ByPreviousCommit(t.BuildVariant, t.DisplayName, t.Project, evergreen.RepotrackerVersionRequester, t.RevisionOrderNumber)).Sort([]string{"-" + RevisionOrderNumberKey}))
 }
 
 // CountSimilarFailingTasks returns a count of all tasks with the same project,
@@ -905,20 +920,23 @@ func (t *Task) cacheExpectedDuration() error {
 // to a pod.
 func (t *Task) MarkAsContainerDispatched(ctx context.Context, env evergreen.Environment, podID, agentVersion string) error {
 	dispatchedAt := time.Now()
-	query := IsContainerTaskScheduledQuery()
+
+	query := ScheduledContainerTasksQuery()
 	query[IdKey] = t.Id
 	query[StatusKey] = evergreen.TaskUndispatched
 	query[ContainerAllocatedKey] = true
-	update := bson.M{
-		"$set": bson.M{
-			StatusKey:        evergreen.TaskDispatched,
-			DispatchTimeKey:  dispatchedAt,
-			LastHeartbeatKey: dispatchedAt,
-			PodIDKey:         podID,
-			AgentVersionKey:  agentVersion,
-		},
+	set := bson.M{
+		StatusKey:        evergreen.TaskDispatched,
+		DispatchTimeKey:  dispatchedAt,
+		LastHeartbeatKey: dispatchedAt,
+		PodIDKey:         podID,
+		AgentVersionKey:  agentVersion,
 	}
-	res, err := env.DB().Collection(Collection).UpdateOne(ctx, query, update)
+	output, ok := t.initializeTaskOutputInfo(env)
+	if ok {
+		set[TaskOutputInfoKey] = output
+	}
+	res, err := env.DB().Collection(Collection).UpdateOne(ctx, query, bson.M{"$set": set})
 	if err != nil {
 		return errors.Wrap(err, "updating task")
 	}
@@ -931,6 +949,7 @@ func (t *Task) MarkAsContainerDispatched(ctx context.Context, env evergreen.Envi
 	t.LastHeartbeat = dispatchedAt
 	t.PodID = podID
 	t.AgentVersion = agentVersion
+	t.TaskOutputInfo = output
 
 	return nil
 }
@@ -947,7 +966,7 @@ func (t *Task) MarkAsHostDispatched(hostID, distroID, agentRevision string, disp
 		return err
 	}
 
-	//when dispatching an execution task, mark its parent as dispatched
+	// When dispatching an execution task, mark its parent as dispatched.
 	if dt, _ := t.GetDisplayTask(); dt != nil && dt.DispatchTime == utility.ZeroTime {
 		return dt.MarkAsHostDispatched("", "", "", dispatchTime)
 	}
@@ -966,15 +985,21 @@ func (t *Task) MarkAsHostDispatchedWithContext(ctx context.Context, env evergree
 }
 
 func (t *Task) markAsHostDispatchedWithFunc(doUpdate func(update bson.M) error, hostID, distroID, agentRevision string, dispatchTime time.Time) error {
+
+	set := bson.M{
+		DispatchTimeKey:  dispatchTime,
+		StatusKey:        evergreen.TaskDispatched,
+		HostIdKey:        hostID,
+		LastHeartbeatKey: dispatchTime,
+		DistroIdKey:      distroID,
+		AgentVersionKey:  agentRevision,
+	}
+	output, ok := t.initializeTaskOutputInfo(evergreen.GetEnvironment())
+	if ok {
+		set[TaskOutputInfoKey] = output
+	}
 	if err := doUpdate(bson.M{
-		"$set": bson.M{
-			DispatchTimeKey:  dispatchTime,
-			StatusKey:        evergreen.TaskDispatched,
-			HostIdKey:        hostID,
-			LastHeartbeatKey: dispatchTime,
-			DistroIdKey:      distroID,
-			AgentVersionKey:  agentRevision,
-		},
+		"$set": set,
 		"$unset": bson.M{
 			AbortedKey:   "",
 			AbortInfoKey: "",
@@ -988,6 +1013,7 @@ func (t *Task) markAsHostDispatchedWithFunc(doUpdate func(update bson.M) error, 
 	t.Status = evergreen.TaskDispatched
 	t.HostId = hostID
 	t.AgentVersion = agentRevision
+	t.TaskOutputInfo = output
 	t.LastHeartbeat = dispatchTime
 	t.DistroId = distroID
 	t.Aborted = false
@@ -1017,11 +1043,12 @@ func (t *Task) markAsHostUndispatchedWithFunc(doUpdate func(update bson.M) error
 			LastHeartbeatKey: utility.ZeroTime,
 		},
 		"$unset": bson.M{
-			HostIdKey:       "",
-			AgentVersionKey: "",
-			AbortedKey:      "",
-			AbortInfoKey:    "",
-			DetailsKey:      "",
+			HostIdKey:         "",
+			AgentVersionKey:   "",
+			TaskOutputInfoKey: "",
+			AbortedKey:        "",
+			AbortInfoKey:      "",
+			DetailsKey:        "",
 		},
 	}
 
@@ -1034,6 +1061,7 @@ func (t *Task) markAsHostUndispatchedWithFunc(doUpdate func(update bson.M) error
 	t.LastHeartbeat = utility.ZeroTime
 	t.HostId = ""
 	t.AgentVersion = ""
+	t.TaskOutputInfo = nil
 	t.Aborted = false
 	t.AbortInfo = AbortInfo{}
 	t.Details = apimodels.TaskEndDetail{}
@@ -1260,6 +1288,53 @@ func SetTasksScheduledTime(tasks []Task, scheduledTime time.Time) error {
 	return nil
 }
 
+// findMidwayTask gets the task between two task given that they are
+// from the same project, requester, build variant, and display name. The
+// order of the ID's does not matter and if the task passed cannot have a
+// middle (i.e. it is sequential tasks or the same task) it will return the
+// the first task given.
+func findMidwayTask(t1, t2 Task) (*Task, error) {
+	// The tasks should be the same build variant, display name, project, and requester.
+	catcher := grip.NewBasicCatcher() // Makes an error accumulator
+	catcher.ErrorfWhen(t1.BuildVariant != t2.BuildVariant, "given tasks have differing build variants '%s' and '%s'", t1.BuildVariant, t2.BuildVariant)
+	catcher.ErrorfWhen(t1.DisplayName != t2.DisplayName, "given tasks have differing display name '%s' and '%s'", t1.DisplayName, t2.DisplayName)
+	catcher.ErrorfWhen(t1.Project != t2.Project, "given tasks have differing project '%s' and '%s'", t1.Project, t2.Project)
+	catcher.ErrorfWhen(t1.Requester != t2.Requester, "given tasks have differing project '%s' and '%s'", t1.Requester, t2.Requester)
+	if catcher.HasErrors() {
+		return nil, catcher.Resolve()
+	}
+	// If the tasks are sequential or the same order number, return the first given task.
+	d := t1.RevisionOrderNumber - t2.RevisionOrderNumber
+	if d == -1 || d == 0 || d == 1 {
+		return &t1, nil
+	}
+
+	mid := (t1.RevisionOrderNumber + t2.RevisionOrderNumber) / 2
+	return FindOne(db.Query(ByRevisionOrderNumber(t1.BuildVariant, t1.DisplayName, t1.Project, t1.Requester, mid)))
+}
+
+// FindMidwayTaskFromIds gets the task between two tasks given that they are
+// from the same project, requester, build variant, and display name. If the tasks
+// passed cannot have a middle (i.e. it is sequential tasks or the same task)
+// it will return the first task given.
+func FindMidwayTaskFromIds(t1Id, t2Id string) (*Task, error) {
+	t1, err := FindOneId(t1Id)
+	if err != nil {
+		return nil, errors.Wrapf(err, "finding task id '%s'", t1Id)
+	}
+	if t1 == nil {
+		return nil, errors.Errorf("could not find task id '%s'", t1Id)
+	}
+	t2, err := FindOneId(t2Id)
+	if err != nil {
+		return nil, errors.Wrapf(err, "finding task id %s", t2Id)
+	}
+	if t2 == nil {
+		return nil, errors.Errorf("could not find task id '%s'", t2Id)
+	}
+	return findMidwayTask(*t1, *t2)
+}
+
 // UnscheduleStaleUnderwaterHostTasks Removes host tasks older than the unscheduable threshold (e.g. one week) from
 // the scheduler queue.
 // If you pass an empty string as an argument to this function, this operation
@@ -1429,52 +1504,105 @@ func (t *Task) SetAborted(reason AbortInfo) error {
 	)
 }
 
-// SetStepbackDepth adds the stepback depth to the task.
-func (t *Task) SetStepbackDepth(stepbackDepth int) error {
-	t.StepbackDepth = stepbackDepth
+// SetStepbackInfo adds the StepbackInfo to the task.
+func (t *Task) SetStepbackInfo(s StepbackInfo) error {
+	t.StepbackInfo = &s
 	return UpdateOne(
 		bson.M{
 			IdKey: t.Id,
 		},
 		bson.M{
 			"$set": bson.M{
-				StepbackDepthKey: stepbackDepth,
+				StepbackInfoKey: s,
 			},
 		})
 }
 
-// SetLogServiceVersion sets the log service version used to write logs for the
-// task.
-func (t *Task) SetLogServiceVersion(ctx context.Context, env evergreen.Environment, version int) error {
+// initializeTaskOutputInfo returns the task output information with the most
+// up-to-date configuration for the task run. Returns false if the task will
+// never have output. This function should only be used to set the task output
+// field upon task dispatch.
+func (t *Task) initializeTaskOutputInfo(env evergreen.Environment) (*taskoutput.TaskOutput, bool) {
+	if t.DisplayOnly || t.Archived {
+		return nil, false
+	}
+
+	return taskoutput.InitializeTaskOutput(env, taskoutput.TaskOptions{
+		ProjectID: t.Project,
+		TaskID:    t.Id,
+		Execution: t.Execution,
+	}), true
+}
+
+// getTaskOutputSafe returns an instantiation of the task output interface and
+// whether it is safe to fetch task output data. This function should always
+// be called to access task output data.
+func (t *Task) getTaskOutputSafe() (*taskoutput.TaskOutput, bool) {
+	if t.DisplayOnly || t.Status == evergreen.TaskUndispatched {
+		return nil, false
+	}
+
+	if t.TaskOutputInfo == nil {
+		// Return the zero value for tasks that do not have the task
+		// output metadata saved in the database. This is for backwards
+		// compatibility. We can safely assume version zero for each
+		// task output type.
+		return &taskoutput.TaskOutput{}, true
+	}
+
+	return t.TaskOutputInfo, true
+}
+
+// GetTaskLogs returns the task's task logs with the given options.
+func (t *Task) GetTaskLogs(ctx context.Context, env evergreen.Environment, getOpts taskoutput.TaskLogGetOptions) (log.LogIterator, error) {
 	if t.DisplayOnly {
-		return errors.New("cannot set log service version on a display task")
-	}
-	if t.LogServiceVersion != nil {
-		return errors.New("log service version already set")
+		return nil, errors.New("cannot get task logs for a display task")
 	}
 
-	res, err := env.DB().Collection(Collection).UpdateByID(ctx, t.Id, []bson.M{
-		{
-			"$set": bson.M{LogServiceVersionKey: bson.M{
-				"$ifNull": bson.A{
-					"$" + LogServiceVersionKey,
-					version,
-				}},
-			},
-		},
-	})
-	if err != nil {
-		return errors.Wrap(err, "setting the log service version")
+	output, ok := t.getTaskOutputSafe()
+	if !ok {
+		// We know there task cannot have task output, likely because
+		// it has not run yet. Return an empty iterator.
+		return log.EmptyIterator(), nil
 	}
-	if res.MatchedCount == 0 {
-		return errors.New("programmatic error: task not found")
-	}
-	if res.ModifiedCount == 0 {
-		return errors.New("log service version already set")
-	}
-	t.LogServiceVersion = utility.ToIntPtr(version)
 
-	return nil
+	taskID := t.Id
+	if t.Archived {
+		taskID = t.OldTaskId
+	}
+	taskOpts := taskoutput.TaskOptions{
+		ProjectID: t.Project,
+		TaskID:    taskID,
+		Execution: t.Execution,
+	}
+
+	return output.TaskLogs.Get(ctx, env, taskOpts, getOpts)
+}
+
+// GetTestLogs returns the task's test logs with the specified options.
+func (t *Task) GetTestLogs(ctx context.Context, env evergreen.Environment, getOpts taskoutput.TestLogGetOptions) (log.LogIterator, error) {
+	if t.DisplayOnly {
+		return nil, errors.New("cannot get test logs for a display task")
+	}
+
+	output, ok := t.getTaskOutputSafe()
+	if !ok {
+		// We know there task cannot have task output, likely because
+		// it has not run yet. Return an empty iterator.
+		return log.EmptyIterator(), nil
+	}
+
+	taskID := t.Id
+	if t.Archived {
+		taskID = t.OldTaskId
+	}
+	taskOpts := taskoutput.TaskOptions{
+		ProjectID: t.Project,
+		TaskID:    taskID,
+		Execution: t.Execution,
+	}
+
+	return output.TestLogs.Get(ctx, env, taskOpts, getOpts)
 }
 
 // SetResultsInfo sets the task's test results info.
@@ -2055,7 +2183,7 @@ func resetTaskUpdate(t *Task) []bson.M {
 		t.TimeTaken = 0
 		t.LastHeartbeat = utility.ZeroTime
 		t.Details = apimodels.TaskEndDetail{}
-		t.LogServiceVersion = nil
+		t.TaskOutputInfo = nil
 		t.ResultsService = ""
 		t.ResultsFailed = false
 		t.HasCedarResults = false
@@ -2093,7 +2221,7 @@ func resetTaskUpdate(t *Task) []bson.M {
 		{
 			"$unset": []string{
 				DetailsKey,
-				LogServiceVersionKey,
+				TaskOutputInfoKey,
 				ResultsServiceKey,
 				ResultsFailedKey,
 				HasCedarResultsKey,
@@ -2429,12 +2557,6 @@ func ArchiveMany(tasks []Task) error {
 		}
 	}
 
-	grip.DebugWhen(len(utility.UniqueStrings(allTaskIds)) != len(allTaskIds), message.Fields{
-		"ticket":           "EVG-17261",
-		"message":          "archiving same task multiple times",
-		"tasks_to_archive": allTaskIds,
-	})
-
 	return archiveAll(allTaskIds, execTaskIds, toUpdateExecTaskIds, archivedTasks)
 }
 
@@ -2458,7 +2580,7 @@ func archiveAll(taskIds, execTaskIds, toRestartExecTaskIds []string, archivedTas
 		if len(archivedTasks) > 0 {
 			oldTaskColl := evergreen.GetEnvironment().DB().Collection(OldCollection)
 			_, err = oldTaskColl.InsertMany(sessCtx, archivedTasks)
-			if err != nil && !db.IsDuplicateKey(err) {
+			if err != nil {
 				return nil, errors.Wrap(err, "archiving tasks")
 			}
 		}

@@ -6,6 +6,7 @@ import (
 	"testing"
 
 	"github.com/evergreen-ci/evergreen/agent/internal"
+	"github.com/evergreen-ci/evergreen/testutil"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
@@ -44,7 +45,7 @@ func TestGetJoinedWithWorkDir(t *testing.T) {
 	expected, err := filepath.Abs("/foo/bar")
 	require.NoError(t, err)
 	expected = filepath.ToSlash(expected)
-	actual, err := filepath.Abs(getJoinedWithWorkDir(conf, relativeDir))
+	actual, err := filepath.Abs(getWorkingDirectory(conf, relativeDir))
 	require.NoError(t, err)
 	actual = filepath.ToSlash(actual)
 	assert.Equal(t, expected, actual)
@@ -52,5 +53,33 @@ func TestGetJoinedWithWorkDir(t *testing.T) {
 	expected, err = filepath.Abs("/bar")
 	require.NoError(t, err)
 	expected = filepath.ToSlash(expected)
-	assert.Equal(t, expected, filepath.ToSlash(getJoinedWithWorkDir(conf, absoluteDir)))
+	assert.Equal(t, expected, filepath.ToSlash(getWorkingDirectory(conf, absoluteDir)))
+}
+
+func TestGetWorkingDirectoryLegacy(t *testing.T) {
+	curdir := testutil.GetDirectoryOfFile()
+
+	conf := &internal.TaskConfig{
+		WorkDir: curdir,
+	}
+
+	// make sure that we fall back to the configured working directory
+	out, err := getWorkingDirectoryLegacy(conf, "")
+	assert.NoError(t, err)
+	assert.Equal(t, conf.WorkDir, out)
+
+	// check for a directory that we know exists
+	out, err = getWorkingDirectoryLegacy(conf, "testdata")
+	require.NoError(t, err)
+	assert.Equal(t, out, filepath.Join(curdir, "testdata"))
+
+	// check for a file not a directory
+	out, err = getWorkingDirectoryLegacy(conf, "exec.go")
+	assert.Error(t, err)
+	assert.Equal(t, "", out)
+
+	// presumably for a directory that doesn't exist
+	out, err = getWorkingDirectoryLegacy(conf, "does-not-exist")
+	assert.Error(t, err)
+	assert.Equal(t, "", out)
 }

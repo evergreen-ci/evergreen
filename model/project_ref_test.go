@@ -394,11 +394,11 @@ func TestGetActivationTimeForTask(t *testing.T) {
 	assert.NoError(t, versionWithoutTask.Insert())
 	assert.NoError(t, versionWithTask.Insert())
 
-	activationTime, err := projectRef.GetActivationTimeForTask(bvt)
+	activationTime, err := projectRef.GetActivationTimeForTask(bvt, "t0")
 	assert.NoError(t, err)
 	assert.True(t, activationTime.Equal(prevTime.Add(time.Hour)))
 
-	activationTime, err = projectRef.GetActivationTimeForTask(bvt2)
+	activationTime, err = projectRef.GetActivationTimeForTask(bvt2, "t0")
 	assert.NoError(t, err)
 	assert.True(t, activationTime.Equal(utility.ZeroTime))
 }
@@ -458,11 +458,19 @@ func TestAttachToNewRepo(t *testing.T) {
 	defer cancel()
 
 	require.NoError(t, db.ClearCollections(ProjectRefCollection, RepoRefCollection, evergreen.ScopeCollection,
-		evergreen.RoleCollection, user.Collection, evergreen.ConfigCollection, GithubHooksCollection))
+		evergreen.RoleCollection, user.Collection, evergreen.ConfigCollection, evergreen.GitHubAppCollection))
 	require.NoError(t, db.CreateCollections(evergreen.ScopeCollection))
 
 	settings := evergreen.Settings{
 		GithubOrgs: []string{"newOwner", "evergreen-ci"},
+		AuthConfig: evergreen.AuthConfig{
+			Github: &evergreen.GithubAuthConfig{
+				AppId: 1234,
+			},
+		},
+		Expansions: map[string]string{
+			"github_app_key": "test",
+		},
 	}
 	assert.NoError(t, settings.Set(ctx))
 	pRef := ProjectRef{
@@ -488,6 +496,12 @@ func TestAttachToNewRepo(t *testing.T) {
 		SystemRoles: []string{GetViewRepoRole("myRepo")},
 	}
 	assert.NoError(t, u.Insert())
+	installation := evergreen.GitHubAppInstallation{
+		Owner:          pRef.Owner,
+		Repo:           pRef.Repo,
+		InstallationID: 1234,
+	}
+	assert.NoError(t, installation.Upsert(ctx))
 
 	// Can't attach to repo with an invalid owner
 	pRef.Owner = "invalid"
@@ -495,12 +509,12 @@ func TestAttachToNewRepo(t *testing.T) {
 
 	pRef.Owner = "newOwner"
 	pRef.Repo = "newRepo"
-	hook := GithubHook{
-		HookID: 12,
-		Owner:  pRef.Owner,
-		Repo:   pRef.Repo,
+	newInstallation := evergreen.GitHubAppInstallation{
+		Owner:          pRef.Owner,
+		Repo:           pRef.Repo,
+		InstallationID: 1234,
 	}
-	assert.NoError(t, hook.Insert())
+	assert.NoError(t, newInstallation.Upsert(ctx))
 	assert.NoError(t, pRef.AttachToNewRepo(u))
 
 	pRefFromDB, err := FindBranchProjectRef(pRef.Id)
@@ -574,7 +588,7 @@ func TestAttachToRepo(t *testing.T) {
 	defer cancel()
 
 	require.NoError(t, db.ClearCollections(ProjectRefCollection, RepoRefCollection, evergreen.ScopeCollection,
-		evergreen.RoleCollection, user.Collection, GithubHooksCollection, event.EventCollection, evergreen.ConfigCollection))
+		evergreen.RoleCollection, user.Collection, event.EventCollection, evergreen.ConfigCollection))
 	require.NoError(t, db.CreateCollections(evergreen.ScopeCollection))
 	settings := evergreen.Settings{
 		GithubOrgs: []string{"newOwner", "evergreen-ci"},
@@ -595,12 +609,13 @@ func TestAttachToRepo(t *testing.T) {
 	}
 	assert.NoError(t, pRef.Insert())
 
-	hook := GithubHook{
-		HookID: 12,
-		Owner:  pRef.Owner,
-		Repo:   pRef.Repo,
+	installation := evergreen.GitHubAppInstallation{
+		Owner:          pRef.Owner,
+		Repo:           pRef.Repo,
+		InstallationID: 1234,
 	}
-	assert.NoError(t, hook.Insert())
+	assert.NoError(t, installation.Upsert(ctx))
+
 	u := &user.DBUser{Id: "me"}
 	assert.NoError(t, u.Insert())
 	// No repo exists, but one should be created.
@@ -1163,7 +1178,7 @@ func TestFindProjectRefsByRepoAndBranch(t *testing.T) {
 
 func TestCreateNewRepoRef(t *testing.T) {
 	assert.NoError(t, db.ClearCollections(ProjectRefCollection, RepoRefCollection, user.Collection,
-		evergreen.ScopeCollection, ProjectVarsCollection, ProjectAliasCollection, GithubHooksCollection))
+		evergreen.ScopeCollection, ProjectVarsCollection, ProjectAliasCollection, evergreen.GitHubAppCollection))
 	require.NoError(t, db.CreateCollections(evergreen.ScopeCollection))
 
 	ctx, cancel := context.WithCancel(context.Background())
@@ -1207,12 +1222,13 @@ func TestCreateNewRepoRef(t *testing.T) {
 	}
 	assert.NoError(t, doc3.Insert())
 
-	hook := GithubHook{
-		HookID: 12,
-		Owner:  "mongodb",
-		Repo:   "mongo",
+	installation := evergreen.GitHubAppInstallation{
+		Owner:          "mongodb",
+		Repo:           "mongo",
+		InstallationID: 1234,
 	}
-	assert.NoError(t, hook.Insert())
+	assert.NoError(t, installation.Upsert(ctx))
+
 	projectVariables := []ProjectVars{
 		{
 			Id: doc1.Id,
@@ -1411,9 +1427,10 @@ func TestFindOneProjectRefByRepoAndBranchWithPRTesting(t *testing.T) {
 	assert.NotNil(projectRef)
 
 	repoDoc := RepoRef{ProjectRef{
-		Id:    "my_repo",
-		Owner: "mongodb",
-		Repo:  "mci",
+		Id:         "my_repo",
+		Owner:      "mongodb",
+		Repo:       "mci",
+		RemotePath: "",
 	}}
 	assert.NoError(repoDoc.Upsert())
 	doc = &ProjectRef{
@@ -1492,6 +1509,8 @@ func TestFindOneProjectRefByRepoAndBranchWithPRTesting(t *testing.T) {
 	assert.NotNil(projectRef)
 
 	// project explicitly disabled
+	repoDoc.RemotePath = "my_path"
+	assert.NoError(repoDoc.Upsert())
 	doc.Enabled = false
 	doc.PRTestingEnabled = utility.TruePtr()
 	assert.NoError(doc.Upsert())
@@ -1499,9 +1518,11 @@ func TestFindOneProjectRefByRepoAndBranchWithPRTesting(t *testing.T) {
 	assert.NoError(err)
 	assert.Nil(projectRef)
 
-	// branch with no project doesn't work if repo not configured right
+	// branch with no project doesn't work and returns an error if repo not configured with a remote path
+	repoDoc.RemotePath = ""
+	assert.NoError(repoDoc.Upsert())
 	projectRef, err = FindOneProjectRefByRepoAndBranchWithPRTesting("mongodb", "mci", "yours", "")
-	assert.NoError(err)
+	assert.Error(err)
 	assert.Nil(projectRef)
 
 	repoDoc.RemotePath = "my_path"
@@ -1658,22 +1679,22 @@ func TestFindProjectRefIdsWithCommitQueueEnabled(t *testing.T) {
 func TestValidatePeriodicBuildDefinition(t *testing.T) {
 	assert := assert.New(t)
 	testCases := map[PeriodicBuildDefinition]bool{
-		PeriodicBuildDefinition{
+		{
 			IntervalHours: 24,
 			ConfigFile:    "foo.yml",
 			Alias:         "myAlias",
 		}: true,
-		PeriodicBuildDefinition{
+		{
 			IntervalHours: 0,
 			ConfigFile:    "foo.yml",
 			Alias:         "myAlias",
 		}: false,
-		PeriodicBuildDefinition{
+		{
 			IntervalHours: 24,
 			ConfigFile:    "",
 			Alias:         "myAlias",
 		}: false,
-		PeriodicBuildDefinition{
+		{
 			IntervalHours: 24,
 			ConfigFile:    "foo.yml",
 			Alias:         "",
@@ -2818,6 +2839,7 @@ func TestMergeWithProjectConfig(t *testing.T) {
 			},
 			BuildBaronSettings: &evergreen.BuildBaronSettings{
 				TicketCreateProject:     "BFG",
+				TicketCreateIssueType:   "Bug",
 				TicketSearchProjects:    []string{"BF", "BFG"},
 				BFSuggestionServer:      "https://evergreen.mongodb.com",
 				BFSuggestionTimeoutSecs: 10,
@@ -2840,6 +2862,8 @@ func TestMergeWithProjectConfig(t *testing.T) {
 	assert.Equal(t, "https://evergreen.mongodb.com", projectRef.BuildBaronSettings.BFSuggestionServer)
 	assert.Equal(t, 10, projectRef.BuildBaronSettings.BFSuggestionTimeoutSecs)
 	assert.Equal(t, "EVG", projectRef.BuildBaronSettings.TicketCreateProject)
+	assert.Equal(t, "Bug", projectRef.BuildBaronSettings.TicketCreateIssueType)
+	assert.Equal(t, []string{"BF", "BFG"}, projectRef.BuildBaronSettings.TicketSearchProjects)
 	assert.Equal(t, []string{"one", "two"}, projectRef.GithubTriggerAliases)
 	assert.Equal(t, "p1", projectRef.PeriodicBuilds[0].ID)
 	assert.Equal(t, 1, projectRef.ContainerSizeDefinitions[0].CPU)
@@ -2924,6 +2948,27 @@ func TestSaveProjectPageForSection(t *testing.T) {
 		ProjectHealthView: ProjectHealthViewAll,
 	}
 	_, err = SaveProjectPageForSection("iden_", update, ProjectPageViewsAndFiltersSection, false)
+	assert.NoError(err)
+
+	// Test performance plugin updates errors when id and identifier are different.
+	update = &ProjectRef{
+		PerfEnabled: utility.ToBoolPtr(true),
+	}
+	_, err = SaveProjectPageForSection("iden_", update, ProjectPagePluginSection, false)
+	assert.Error(err)
+
+	// Test performance plugin updates correctly when id and identifier are the same.
+	// Set the id and identifier to the same value.
+	update = &ProjectRef{
+		Identifier: "iden_",
+	}
+	_, err = SaveProjectPageForSection("iden_", update, ProjectPageGeneralSection, false)
+	assert.NoError(err)
+	// Attempt to enable the performance plugin.
+	update = &ProjectRef{
+		PerfEnabled: utility.ToBoolPtr(true),
+	}
+	_, err = SaveProjectPageForSection("iden_", update, ProjectPagePluginSection, false)
 	assert.NoError(err)
 
 	// Test private field does not get updated

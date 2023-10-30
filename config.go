@@ -10,11 +10,8 @@ import (
 	"strings"
 	"time"
 
-	"github.com/bradleyfalzon/ghinstallation"
 	"github.com/evergreen-ci/evergreen/util"
 	"github.com/evergreen-ci/utility"
-	"github.com/golang-jwt/jwt"
-	"github.com/google/go-github/v52/github"
 	"github.com/mongodb/amboy/logger"
 	"github.com/mongodb/anser/bsonutil"
 	"github.com/mongodb/grip"
@@ -35,10 +32,10 @@ var (
 	BuildRevision = ""
 
 	// ClientVersion is the commandline version string used to control auto-updating.
-	ClientVersion = "2023-08-04"
+	ClientVersion = "2023-10-02"
 
 	// Agent version to control agent rollover.
-	AgentVersion = "2023-08-15a"
+	AgentVersion = "2023-10-26"
 )
 
 // ConfigSection defines a sub-document in the evergreen config
@@ -65,7 +62,7 @@ type Settings struct {
 	AWSInstanceRole     string                  `yaml:"aws_instance_role" bson:"aws_instance_role" json:"aws_instance_role"`
 	Banner              string                  `bson:"banner" json:"banner" yaml:"banner"`
 	BannerTheme         BannerTheme             `bson:"banner_theme" json:"banner_theme" yaml:"banner_theme"`
-	Buckets             BucketConfig            `bson:"buckets" json:"buckets" yaml:"buckets" id:"buckets"`
+	Buckets             BucketsConfig           `bson:"buckets" json:"buckets" yaml:"buckets" id:"buckets"`
 	Cedar               CedarConfig             `bson:"cedar" json:"cedar" yaml:"cedar" id:"cedar"`
 	ClientBinariesDir   string                  `yaml:"client_binaries_dir" bson:"client_binaries_dir" json:"client_binaries_dir"`
 	CommitQueue         CommitQueueConfig       `yaml:"commit_queue" bson:"commit_queue" json:"commit_queue" id:"commit_queue"`
@@ -110,6 +107,7 @@ type Settings struct {
 	Spawnhost           SpawnHostConfig         `yaml:"spawnhost" bson:"spawnhost" json:"spawnhost" id:"spawnhost"`
 	ShutdownWaitSeconds int                     `yaml:"shutdown_wait_seconds" bson:"shutdown_wait_seconds" json:"shutdown_wait_seconds"`
 	Tracer              TracerConfig            `yaml:"tracer" bson:"tracer" json:"tracer" id:"tracer"`
+	GitHubCheckRun      GitHubCheckRunConfig    `yaml:"github_check_run" bson:"github_check_run" json:"github_check_run" id:"github_check_run"`
 }
 
 func (c *Settings) SectionId() string { return ConfigDocID }
@@ -532,94 +530,6 @@ func (s *Settings) GetSender(ctx context.Context, env Environment) (send.Sender,
 	return send.NewConfiguredMultiSender(senders...), nil
 }
 
-type githubAppAuth struct {
-	AppId      int64
-	privateKey []byte
-}
-
-// GetGithubAppAuth returns app id and app private key if it exists.
-func (s *Settings) GetGithubAppAuth() *githubAppAuth {
-	if s.AuthConfig.Github == nil || s.AuthConfig.Github.AppId == 0 {
-		return nil
-	}
-
-	key := s.Expansions[githubAppPrivateKey]
-	if key == "" {
-		return nil
-	}
-
-	return &githubAppAuth{
-		AppId:      s.AuthConfig.Github.AppId,
-		privateKey: []byte(key),
-	}
-}
-
-// CreateInstallationToken uses the owner/repo information to request an github app installation id
-// and uses that id to create an installation token.
-func (s *Settings) CreateInstallationToken(ctx context.Context, owner, repo string, opts *github.InstallationTokenOptions) (string, error) {
-	if owner == "" || repo == "" {
-		return "", errors.New("no owner/repo specified to create installation token")
-	}
-	authFields := s.GetGithubAppAuth()
-	if authFields == nil {
-		// TODO EVG-19966: Return error here
-		grip.Debug(message.Fields{
-			"message": "no auth",
-			"owner":   owner,
-			"repo":    repo,
-			"ticket":  "EVG-19966",
-		})
-
-		return "", nil
-	}
-	httpClient := utility.GetHTTPClient()
-	defer utility.PutHTTPClient(httpClient)
-
-	key, err := jwt.ParseRSAPrivateKeyFromPEM(authFields.privateKey)
-	if err != nil {
-		return "", errors.Wrap(err, "parsing private key")
-	}
-
-	itr := ghinstallation.NewAppsTransportFromPrivateKey(httpClient.Transport, authFields.AppId, key)
-	httpClient.Transport = itr
-	client := github.NewClient(httpClient)
-	installationId, _, err := client.Apps.FindRepositoryInstallation(ctx, owner, repo)
-	if err != nil {
-		// TODO EVG-19966: Return error here
-		grip.Debug(message.WrapError(err, message.Fields{
-			"message": "error finding installation id",
-			"owner":   owner,
-			"repo":    repo,
-			"appId":   authFields.AppId,
-			"ticket":  "EVG-19966",
-		}))
-		return "", errors.Wrap(err, "finding installation id")
-	}
-	if installationId == nil {
-		return "", errors.New(fmt.Sprintf("Installation id for '%s/%s' not found", owner, repo))
-	}
-	token, _, err := client.Apps.CreateInstallationToken(ctx, installationId.GetID(), opts)
-	if err != nil || token == nil {
-		return "", errors.Wrapf(err, "creating installation token for installation id: %d", installationId.GetID())
-	}
-	return token.GetToken(), nil
-}
-
-// CreateInstallationTokenWithDefaultOwnerRepo returns an installation token when we do not care about
-// the owner/repo that we are calling the GitHub function with (i.e. checking rate limit).
-// It will use the default owner/repo specified in the admin settings and error if it's not set.
-func (s *Settings) CreateInstallationTokenWithDefaultOwnerRepo(ctx context.Context, opts *github.InstallationTokenOptions) (string, error) {
-	if s.AuthConfig.Github == nil || s.AuthConfig.Github.DefaultOwner == "" || s.AuthConfig.Github.DefaultRepo == "" {
-		// TODO EVG-19966: Return error here
-		grip.Debug(message.Fields{
-			"message": "no default owner/repo",
-			"ticket":  "EVG-19966",
-		})
-		return "", nil
-	}
-	return s.CreateInstallationToken(ctx, s.AuthConfig.Github.DefaultOwner, s.AuthConfig.Github.DefaultRepo, opts)
-}
-
 func (s *Settings) makeSplunkSender(ctx context.Context, client *http.Client, levelInfo send.LevelInfo, fallback send.Sender) (send.Sender, error) {
 	sender, err := send.NewSplunkLoggerWithClient("", s.Splunk.SplunkConnectionInfo, grip.GetSender().Level(), client)
 	if err != nil {
@@ -656,28 +566,14 @@ func (s *Settings) makeSplunkSender(ctx context.Context, client *http.Client, le
 	return sender, nil
 }
 
-func (s *Settings) GetGithubOauthStrings() ([]string, error) {
-	var tokens []string
-	var tokenName string
+func (s *Settings) GetGithubOauthString() (string, error) {
 
 	token, ok := s.Credentials["github"]
 	if ok && token != "" {
-		// we want to make sure tokens[0] is always the default token
-		tokens = append(tokens, token)
-	} else {
-		return nil, errors.New("no 'github' token in settings")
+		return token, nil
 	}
 
-	for i := 1; i < 10; i++ {
-		tokenName = fmt.Sprintf("github_alt%d", i)
-		token, ok := s.Credentials[tokenName]
-		if ok && token != "" {
-			tokens = append(tokens, token)
-		} else {
-			break
-		}
-	}
-	return tokens, nil
+	return "", errors.New("no github token in settings")
 }
 
 // TODO EVG-19966: Delete this function
@@ -689,28 +585,10 @@ func (s *Settings) GetGithubOauthToken() (string, error) {
 		return "", nil
 	}
 
-	oauthStrings, err := s.GetGithubOauthStrings()
+	oauthString, err := s.GetGithubOauthString()
 	if err != nil {
 		return "", err
 	}
-	timeSeed := time.Now().Nanosecond()
-	randomStartIdx := timeSeed % len(oauthStrings)
-	var oauthString string
-	for i := range oauthStrings {
-		oauthString = oauthStrings[randomStartIdx+i]
-		splitToken, err := splitToken(oauthString)
-		if err != nil {
-			grip.Error(message.Fields{
-				"error":   err,
-				"message": fmt.Sprintf("problem with github_alt%d", i)})
-		} else {
-			return splitToken, nil
-		}
-	}
-	return "", errors.New("all github tokens are malformatted. Proper format is github:token <token> or github_alt#:token <token>")
-}
-
-func splitToken(oauthString string) (string, error) {
 	splitToken := strings.Split(oauthString, " ")
 	if len(splitToken) != 2 || splitToken[0] != "token" {
 		return "", errors.New("token format was invalid, expected 'token [token]'")

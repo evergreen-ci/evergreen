@@ -25,7 +25,7 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"go.mongodb.org/mongo-driver/bson"
-	yaml "gopkg.in/yaml.v3"
+	"gopkg.in/yaml.v3"
 )
 
 // ShouldContainResembling tests whether a slice contains an element that DeepEquals
@@ -276,9 +276,9 @@ tasks:
 - name: "t1"
 buildvariants:
 - name: "v1"
-  activate: false 
+  activate: false
   run_on: "distro1"
-  tasks: 
+  tasks:
   - name: "t1"
     activate: true
 `
@@ -370,6 +370,27 @@ func TestTranslateTasks(t *testing.T) {
 				},
 			},
 			{
+				Name: "patch_requesters_allowed",
+				AllowedRequesters: []evergreen.UserRequester{
+					evergreen.PatchVersionUserRequester,
+					evergreen.GithubPRUserRequester,
+					evergreen.MergeTestUserRequester,
+					evergreen.GithubMergeUserRequester,
+				},
+				Tasks: parserBVTaskUnits{
+					{
+						Name: "a_task_with_no_special_configuration",
+					},
+					{
+						Name: "a_task_with_allowed_requesters",
+					},
+					{
+						Name:              "a_task_with_build_variant_task_configuration",
+						AllowedRequesters: []evergreen.UserRequester{evergreen.RepotrackerVersionUserRequester, evergreen.GitTagUserRequester},
+					},
+				},
+			},
+			{
 				Name:    "disabled_bv",
 				Disable: utility.TruePtr(),
 				Tasks: parserBVTaskUnits{
@@ -382,6 +403,17 @@ func TestTranslateTasks(t *testing.T) {
 					},
 				},
 			},
+			{
+				Name: "bv_with_check_run",
+				Tasks: parserBVTaskUnits{
+					{
+						Name: "a_task_with_no_special_configuration",
+						CreateCheckRun: &CheckRun{
+							PathToOutputs: "path",
+						},
+					},
+				},
+			},
 		},
 		Tasks: []parserTask{
 			{Name: "my_task", PatchOnly: utility.TruePtr(), ExecTimeoutSecs: 15},
@@ -389,6 +421,7 @@ func TestTranslateTasks(t *testing.T) {
 			{Name: "tg_task", PatchOnly: utility.TruePtr(), RunOn: []string{"a different distro"}},
 			{Name: "a_task_with_no_special_configuration"},
 			{Name: "a_task_with_build_variant_task_configuration"},
+			{Name: "a_task_with_allowed_requesters", AllowedRequesters: []evergreen.UserRequester{evergreen.AdHocUserRequester}},
 		},
 		TaskGroups: []parserTaskGroup{{
 			Name:  "my_tg",
@@ -398,8 +431,8 @@ func TestTranslateTasks(t *testing.T) {
 	out, err := TranslateProject(parserProject)
 	assert.NoError(t, err)
 	assert.NotNil(t, out)
-	require.Len(t, out.Tasks, 5)
-	require.Len(t, out.BuildVariants, 6)
+	require.Len(t, out.Tasks, 6)
+	require.Len(t, out.BuildVariants, 8)
 
 	for _, bv := range out.BuildVariants {
 		for _, bvtu := range bv.Tasks {
@@ -415,7 +448,6 @@ func TestTranslateTasks(t *testing.T) {
 	assert.Equal(t, "your_task", out.BuildVariants[0].Tasks[1].Name)
 	assert.True(t, utility.FromBoolPtr(out.BuildVariants[0].Tasks[1].GitTagOnly))
 	assert.True(t, utility.FromBoolPtr(out.BuildVariants[0].Tasks[1].Stepback))
-
 	assert.Contains(t, out.BuildVariants[0].Tasks[1].RunOn, "a different distro")
 
 	assert.Equal(t, "my_tg", out.BuildVariants[0].Tasks[2].Name)
@@ -426,6 +458,8 @@ func TestTranslateTasks(t *testing.T) {
 	assert.Contains(t, bvt.RunOn, "my_distro")
 	assert.Equal(t, 20, bvt.ExecTimeoutSecs)
 	assert.True(t, bvt.IsGroup)
+	assert.False(t, bvt.IsPartOfGroup)
+	assert.Zero(t, bvt.GroupName)
 
 	bvt = out.FindTaskForVariant("tg_task", "bv0")
 	assert.Equal(t, "my_tg", bvt.Name, "task within a task group retains its task group name in resulting build variant task unit")
@@ -433,50 +467,77 @@ func TestTranslateTasks(t *testing.T) {
 	assert.True(t, utility.FromBoolPtr(bvt.PatchOnly))
 	assert.Contains(t, bvt.RunOn, "my_distro")
 	assert.True(t, bvt.IsGroup)
+	assert.False(t, bvt.IsPartOfGroup)
+	assert.Zero(t, bvt.GroupName)
 
-	assert.Equal(t, "patch_only_bv", out.BuildVariants[1].Name)
-	require.Len(t, out.BuildVariants[1].Tasks, 4)
-	assert.Equal(t, "your_task", out.BuildVariants[1].Tasks[0].Name)
-	assert.True(t, utility.FromBoolPtr(out.BuildVariants[1].Tasks[0].Stepback))
-	assert.False(t, utility.FromBoolPtr(out.BuildVariants[1].Tasks[0].PatchOnly))
-	assert.False(t, utility.FromBoolPtr(out.BuildVariants[1].Tasks[0].GitTagOnly))
-	assert.Equal(t, "my_task", out.BuildVariants[1].Tasks[1].Name)
-	assert.True(t, utility.FromBoolPtr(out.BuildVariants[1].Tasks[1].PatchOnly))
-	assert.Equal(t, "a_task_with_no_special_configuration", out.BuildVariants[1].Tasks[2].Name)
-	assert.False(t, utility.FromBoolPtr(out.BuildVariants[1].Tasks[2].PatchOnly))
-	assert.Equal(t, "a_task_with_build_variant_task_configuration", out.BuildVariants[1].Tasks[3].Name)
-	assert.True(t, utility.FromBoolPtr(out.BuildVariants[1].Tasks[3].PatchOnly))
+	patchOnlyBV := out.BuildVariants[1]
+	assert.Equal(t, "patch_only_bv", patchOnlyBV.Name)
+	require.Len(t, patchOnlyBV.Tasks, 4)
+	assert.Equal(t, "your_task", patchOnlyBV.Tasks[0].Name)
+	assert.True(t, utility.FromBoolPtr(patchOnlyBV.Tasks[0].Stepback))
+	assert.False(t, utility.FromBoolPtr(patchOnlyBV.Tasks[0].PatchOnly))
+	assert.False(t, utility.FromBoolPtr(patchOnlyBV.Tasks[0].GitTagOnly))
+	assert.Equal(t, "my_task", patchOnlyBV.Tasks[1].Name)
+	assert.True(t, utility.FromBoolPtr(patchOnlyBV.Tasks[1].PatchOnly))
+	assert.Equal(t, "a_task_with_no_special_configuration", patchOnlyBV.Tasks[2].Name)
+	assert.False(t, utility.FromBoolPtr(patchOnlyBV.Tasks[2].PatchOnly))
+	assert.Equal(t, "a_task_with_build_variant_task_configuration", patchOnlyBV.Tasks[3].Name)
+	assert.True(t, utility.FromBoolPtr(patchOnlyBV.Tasks[3].PatchOnly))
 
-	assert.Equal(t, "unpatchable_bv", out.BuildVariants[2].Name)
-	require.Len(t, out.BuildVariants[2].Tasks, 2)
-	assert.Equal(t, "a_task_with_no_special_configuration", out.BuildVariants[2].Tasks[0].Name)
-	assert.False(t, utility.FromBoolPtr(out.BuildVariants[2].Tasks[0].Patchable))
-	assert.Equal(t, "a_task_with_build_variant_task_configuration", out.BuildVariants[2].Tasks[1].Name)
-	assert.True(t, utility.FromBoolPtr(out.BuildVariants[2].Tasks[1].Patchable))
+	unpatchableBV := out.BuildVariants[2]
+	assert.Equal(t, "unpatchable_bv", unpatchableBV.Name)
+	require.Len(t, unpatchableBV.Tasks, 2)
+	assert.Equal(t, "a_task_with_no_special_configuration", unpatchableBV.Tasks[0].Name)
+	assert.False(t, utility.FromBoolPtr(unpatchableBV.Tasks[0].Patchable))
+	assert.Equal(t, "a_task_with_build_variant_task_configuration", unpatchableBV.Tasks[1].Name)
+	assert.True(t, utility.FromBoolPtr(unpatchableBV.Tasks[1].Patchable))
 
-	assert.Equal(t, "allow_for_git_tag_bv", out.BuildVariants[3].Name)
-	require.Len(t, out.BuildVariants[3].Tasks, 2)
-	assert.Equal(t, "a_task_with_no_special_configuration", out.BuildVariants[3].Tasks[0].Name)
-	assert.False(t, utility.FromBoolTPtr(out.BuildVariants[3].Tasks[0].AllowForGitTag))
-	assert.Equal(t, "a_task_with_build_variant_task_configuration", out.BuildVariants[3].Tasks[1].Name)
-	assert.True(t, utility.FromBoolTPtr(out.BuildVariants[3].Tasks[1].AllowForGitTag))
+	allowForGitTagBV := out.BuildVariants[3]
+	assert.Equal(t, "allow_for_git_tag_bv", allowForGitTagBV.Name)
+	require.Len(t, allowForGitTagBV.Tasks, 2)
+	assert.Equal(t, "a_task_with_no_special_configuration", allowForGitTagBV.Tasks[0].Name)
+	assert.False(t, utility.FromBoolTPtr(allowForGitTagBV.Tasks[0].AllowForGitTag))
+	assert.Equal(t, "a_task_with_build_variant_task_configuration", allowForGitTagBV.Tasks[1].Name)
+	assert.True(t, utility.FromBoolTPtr(allowForGitTagBV.Tasks[1].AllowForGitTag))
 
-	assert.Equal(t, "git_tag_only_bv", out.BuildVariants[4].Name)
-	require.Len(t, out.BuildVariants[4].Tasks, 2)
-	assert.Equal(t, "a_task_with_no_special_configuration", out.BuildVariants[4].Tasks[0].Name)
-	assert.True(t, utility.FromBoolPtr(out.BuildVariants[4].Tasks[0].GitTagOnly))
-	assert.Equal(t, "a_task_with_build_variant_task_configuration", out.BuildVariants[4].Tasks[1].Name)
-	assert.False(t, utility.FromBoolPtr(out.BuildVariants[4].Tasks[1].GitTagOnly))
+	gitTagOnlyBV := out.BuildVariants[4]
+	assert.Equal(t, "git_tag_only_bv", gitTagOnlyBV.Name)
+	require.Len(t, gitTagOnlyBV.Tasks, 2)
+	assert.Equal(t, "a_task_with_no_special_configuration", gitTagOnlyBV.Tasks[0].Name)
+	assert.True(t, utility.FromBoolPtr(gitTagOnlyBV.Tasks[0].GitTagOnly))
+	assert.Equal(t, "a_task_with_build_variant_task_configuration", gitTagOnlyBV.Tasks[1].Name)
+	assert.False(t, utility.FromBoolPtr(gitTagOnlyBV.Tasks[1].GitTagOnly))
 
-	assert.Equal(t, "disabled_bv", out.BuildVariants[5].Name)
-	require.Len(t, out.BuildVariants[5].Tasks, 2)
-	assert.Equal(t, "your_task", out.BuildVariants[5].Tasks[0].Name)
-	assert.False(t, utility.FromBoolPtr(out.BuildVariants[5].Tasks[0].GitTagOnly))
-	assert.True(t, utility.FromBoolPtr(out.BuildVariants[5].Tasks[0].Stepback))
-	assert.True(t, utility.FromBoolPtr(out.BuildVariants[5].Tasks[0].Disable))
-	assert.Equal(t, "my_task", out.BuildVariants[5].Tasks[1].Name)
-	assert.True(t, utility.FromBoolPtr(out.BuildVariants[5].Tasks[1].PatchOnly))
-	assert.False(t, utility.FromBoolPtr(out.BuildVariants[5].Tasks[1].Disable))
+	patchRequestersAllowedBV := out.BuildVariants[5]
+	assert.Equal(t, "patch_requesters_allowed", patchRequestersAllowedBV.Name)
+	assert.Equal(t, "a_task_with_no_special_configuration", gitTagOnlyBV.Tasks[0].Name)
+	assert.ElementsMatch(t, []evergreen.UserRequester{
+		evergreen.PatchVersionUserRequester,
+		evergreen.GithubPRUserRequester,
+		evergreen.MergeTestUserRequester,
+		evergreen.GithubMergeUserRequester,
+	}, patchRequestersAllowedBV.Tasks[0].AllowedRequesters)
+	assert.Equal(t, "a_task_with_allowed_requesters", patchRequestersAllowedBV.Tasks[1].Name)
+	assert.Equal(t, []evergreen.UserRequester{evergreen.AdHocUserRequester}, patchRequestersAllowedBV.Tasks[1].AllowedRequesters)
+	assert.Equal(t, "a_task_with_build_variant_task_configuration", patchRequestersAllowedBV.Tasks[2].Name)
+	assert.Equal(t, []evergreen.UserRequester{evergreen.RepotrackerVersionUserRequester, evergreen.GitTagUserRequester}, patchRequestersAllowedBV.Tasks[2].AllowedRequesters)
+
+	disabledBV := out.BuildVariants[6]
+	assert.Equal(t, "disabled_bv", disabledBV.Name)
+	require.Len(t, disabledBV.Tasks, 2)
+	assert.Equal(t, "your_task", disabledBV.Tasks[0].Name)
+	assert.False(t, utility.FromBoolPtr(disabledBV.Tasks[0].GitTagOnly))
+	assert.True(t, utility.FromBoolPtr(disabledBV.Tasks[0].Stepback))
+	assert.True(t, utility.FromBoolPtr(disabledBV.Tasks[0].Disable))
+	assert.Equal(t, "my_task", disabledBV.Tasks[1].Name)
+	assert.True(t, utility.FromBoolPtr(disabledBV.Tasks[1].PatchOnly))
+	assert.False(t, utility.FromBoolPtr(disabledBV.Tasks[1].Disable))
+
+	checkRunBV := out.BuildVariants[7]
+	assert.Equal(t, "bv_with_check_run", checkRunBV.Name)
+	require.Len(t, checkRunBV.Tasks, 1)
+	assert.NotNil(t, checkRunBV.Tasks[0].CreateCheckRun)
+	assert.Equal(t, "path", checkRunBV.Tasks[0].CreateCheckRun.PathToOutputs)
 }
 
 func TestTranslateDependsOn(t *testing.T) {
@@ -681,6 +742,53 @@ func TestParserTaskSelectorEvaluation(t *testing.T) {
 			})
 		})
 	})
+}
+
+func TestTestCheckRunParsing(t *testing.T) {
+	assert := assert.New(t)
+	yml := `
+buildvariants:
+- name: "v1"
+  tasks:
+  - name: "t1"
+    create_check_run:
+      path_to_outputs: "path"
+tasks:
+- name: t1
+`
+
+	proj := &Project{}
+	ctx := context.Background()
+	_, err := LoadProjectInto(ctx, []byte(yml), nil, "id", proj)
+	assert.NotNil(proj)
+	assert.Nil(err)
+	require.Len(t, proj.BuildVariants, 1)
+
+	assert.Len(proj.BuildVariants[0].Tasks, 1)
+	cr := proj.BuildVariants[0].Tasks[0].CreateCheckRun
+	assert.NotNil(cr)
+	assert.Equal("path", cr.PathToOutputs)
+
+	ymlWithEmptyString := `
+buildvariants:
+- name: "v1"
+  tasks:
+  - name: "t1"
+    create_check_run:
+      path_to_outputs: ""
+tasks:
+- name: t1
+`
+
+	_, err = LoadProjectInto(ctx, []byte(ymlWithEmptyString), nil, "id", proj)
+	assert.NotNil(proj)
+	assert.Nil(err)
+	require.Len(t, proj.BuildVariants, 1)
+
+	assert.Len(proj.BuildVariants[0].Tasks, 1)
+	cr = proj.BuildVariants[0].Tasks[0].CreateCheckRun
+	assert.NotNil(cr)
+	assert.Equal("", cr.PathToOutputs)
 }
 
 func TestDisplayTaskParsing(t *testing.T) {
@@ -1118,10 +1226,17 @@ tasks:
 }
 
 func TestTaskGroupParsing(t *testing.T) {
-	assert := assert.New(t)
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
 
-	// check that yml with valid task group does not error and parses correctly
-	validYml := `
+	checkIsTaskGroupTaskUnit := func(t *testing.T, bvtu BuildVariantTaskUnit) {
+		assert.True(t, bvtu.IsGroup)
+		assert.False(t, bvtu.IsPartOfGroup)
+		assert.Zero(t, bvtu.GroupName)
+	}
+
+	t.Run("SucceedsWithRegularTaskGroup", func(t *testing.T) {
+		validYml := `
 tasks:
 - name: example_task_1
 - name: example_task_2
@@ -1131,6 +1246,12 @@ task_groups:
   max_hosts: 2
   setup_group_can_fail_task: true
   setup_group_timeout_secs: 10
+  setup_task_can_fail_task: true
+  setup_task_timeout_secs: 10
+  teardown_task_can_fail_task: true
+  teardown_task_timeout_secs: 10
+  teardown_task_can_fail_task: true
+  teardown_group_timeout_secs: 10
   setup_group:
   - command: shell.exec
     params:
@@ -1156,26 +1277,42 @@ buildvariants:
   - name: example_task_group
 `
 
-	proj := &Project{}
-	ctx := context.Background()
-	_, err := LoadProjectInto(ctx, []byte(validYml), nil, "id", proj)
-	assert.NotNil(proj)
-	assert.Nil(err)
-	assert.Len(proj.TaskGroups, 1)
-	tg := proj.TaskGroups[0]
-	assert.Equal("example_task_group", tg.Name)
-	assert.Equal(2, tg.MaxHosts)
-	assert.Equal(true, tg.SetupGroupFailTask)
-	assert.Equal(10, tg.SetupGroupTimeoutSecs)
-	assert.Len(tg.Tasks, 2)
-	assert.Len(tg.SetupTask.List(), 1)
-	assert.Len(tg.SetupGroup.List(), 1)
-	assert.Len(tg.TeardownTask.List(), 1)
-	assert.Len(tg.TeardownGroup.List(), 1)
-	assert.True(tg.ShareProcs)
+		proj := &Project{}
+		_, err := LoadProjectInto(ctx, []byte(validYml), nil, "id", proj)
+		require.NotNil(t, proj)
+		assert.Nil(t, err)
+		require.Len(t, proj.TaskGroups, 1)
+		tg := proj.TaskGroups[0]
+		assert.Equal(t, "example_task_group", tg.Name)
+		assert.Equal(t, 2, tg.MaxHosts)
 
-	// check that yml with inline task groups within its buildvariants correctly parses the group
-	inlineYml := `
+		assert.Len(t, tg.SetupGroup.List(), 1)
+		assert.Equal(t, true, tg.SetupGroupCanFailTask)
+		assert.Equal(t, 10, tg.SetupGroupTimeoutSecs)
+
+		assert.Len(t, tg.SetupTask.List(), 1)
+		assert.True(t, tg.SetupTaskCanFailTask)
+		assert.Equal(t, 10, tg.SetupTaskTimeoutSecs)
+
+		assert.Len(t, tg.TeardownTask.List(), 1)
+		assert.True(t, tg.TeardownTaskCanFailTask)
+		assert.Equal(t, 10, tg.TeardownTaskTimeoutSecs)
+
+		assert.Len(t, tg.TeardownGroup.List(), 1)
+		assert.Equal(t, 10, tg.TeardownGroupTimeoutSecs)
+
+		assert.True(t, tg.ShareProcs)
+
+		assert.Len(t, tg.Tasks, 2)
+
+		require.Len(t, proj.BuildVariants, 1)
+		require.Len(t, proj.BuildVariants[0].Tasks, 1)
+		assert.Zero(t, proj.BuildVariants[0].Tasks[0].TaskGroup)
+		checkIsTaskGroupTaskUnit(t, proj.BuildVariants[0].Tasks[0])
+	})
+
+	t.Run("SucceedsWithInlineTaskGroup", func(t *testing.T) {
+		inlineYml := `
 tasks:
 - name: example_task_1
 - name: example_task_2
@@ -1214,15 +1351,18 @@ buildvariants:
       tasks:
       - example_task_1
 `
-	proj = &Project{}
-	_, err = LoadProjectInto(ctx, []byte(inlineYml), nil, "id", proj)
-	assert.Nil(err)
-	assert.NotNil(proj)
-	assert.Len(proj.BuildVariants[0].Tasks, 1)
-	assert.NotNil(proj.BuildVariants[0].Tasks[0].TaskGroup)
+		proj := &Project{}
+		_, err := LoadProjectInto(ctx, []byte(inlineYml), nil, "id", proj)
+		assert.Nil(t, err)
+		require.NotNil(t, proj)
+		require.Len(t, proj.BuildVariants, 1)
+		require.Len(t, proj.BuildVariants[0].Tasks, 1)
+		assert.NotNil(t, proj.BuildVariants[0].Tasks[0].TaskGroup)
+		checkIsTaskGroupTaskUnit(t, proj.BuildVariants[0].Tasks[0])
+	})
 
-	// check that yml with a task group that contains a nonexistent task errors
-	wrongTaskYml := `
+	t.Run("FailsWithTaskGroupContainingNonexistentTask", func(t *testing.T) {
+		wrongTaskYml := `
 tasks:
 - name: example_task_1
 - name: example_task_2
@@ -1237,14 +1377,15 @@ buildvariants:
   - name: example_task_group
 `
 
-	proj = &Project{}
-	_, err = LoadProjectInto(ctx, []byte(wrongTaskYml), nil, "id", proj)
-	assert.NotNil(proj)
-	assert.NotNil(err)
-	assert.Contains(err.Error(), `nothing named 'example_task_3'`)
+		proj := &Project{}
+		_, err := LoadProjectInto(ctx, []byte(wrongTaskYml), nil, "id", proj)
+		assert.NotNil(t, proj)
+		require.NotNil(t, err)
+		assert.Contains(t, err.Error(), `nothing named 'example_task_3'`)
+	})
 
-	// check that tasks listed in the task group yml maintain their order
-	orderedYml := `
+	t.Run("MaintainsTaskGroupTaskOrdering", func(t *testing.T) {
+		orderedYml := `
 tasks:
 - name: 8
 - name: 7
@@ -1273,16 +1414,20 @@ buildvariants:
   - name: example_task_group
 `
 
-	proj = &Project{}
-	_, err = LoadProjectInto(ctx, []byte(orderedYml), nil, "id", proj)
-	assert.NotNil(proj)
-	assert.Nil(err)
-	for i, t := range proj.TaskGroups[0].Tasks {
-		assert.Equal(strconv.Itoa(i+1), t)
-	}
+		proj := &Project{}
+		_, err := LoadProjectInto(ctx, []byte(orderedYml), nil, "id", proj)
+		require.NotNil(t, proj)
+		assert.Nil(t, err)
+		for i, tsk := range proj.TaskGroups[0].Tasks {
+			assert.Equal(t, strconv.Itoa(i+1), tsk)
+		}
+		require.Len(t, proj.BuildVariants, 1)
+		require.Len(t, proj.BuildVariants[0].Tasks, 1)
+		checkIsTaskGroupTaskUnit(t, proj.BuildVariants[0].Tasks[0])
+	})
 
-	// check that tags select the correct tasks
-	tagYml := `
+	t.Run("TagsSelectCorrectTasksForTaskGroup", func(t *testing.T) {
+		tagYml := `
 tasks:
 - name: 1
   tags: [ "odd" ]
@@ -1307,18 +1452,68 @@ buildvariants:
   - name: odd_task_group
 `
 
-	proj = &Project{}
-	_, err = LoadProjectInto(ctx, []byte(tagYml), nil, "id", proj)
-	assert.NotNil(proj)
-	assert.Nil(err)
-	assert.Len(proj.TaskGroups, 2)
-	assert.Equal("even_task_group", proj.TaskGroups[0].Name)
-	assert.Len(proj.TaskGroups[0].Tasks, 2)
-	for _, t := range proj.TaskGroups[0].Tasks {
-		v, err := strconv.Atoi(t)
-		assert.NoError(err)
-		assert.Equal(0, v%2)
-	}
+		proj := &Project{}
+		_, err := LoadProjectInto(ctx, []byte(tagYml), nil, "id", proj)
+		require.NotNil(t, proj)
+		assert.Nil(t, err)
+		require.Len(t, proj.TaskGroups, 2)
+		assert.Equal(t, "even_task_group", proj.TaskGroups[0].Name)
+		require.Len(t, proj.TaskGroups[0].Tasks, 2)
+		for _, tsk := range proj.TaskGroups[0].Tasks {
+			v, err := strconv.Atoi(tsk)
+			assert.NoError(t, err)
+			assert.Zero(t, v%2)
+		}
+		for _, tsk := range proj.TaskGroups[1].Tasks {
+			v, err := strconv.Atoi(tsk)
+			assert.NoError(t, err)
+			assert.Equal(t, 1, v%2)
+		}
+		require.Len(t, proj.BuildVariants, 1)
+		require.Len(t, proj.BuildVariants[0].Tasks, 2)
+		for _, bvtu := range proj.BuildVariants[0].Tasks {
+			checkIsTaskGroupTaskUnit(t, bvtu)
+		}
+	})
+
+	t.Run("MaxHostsForTaskGroup", func(t *testing.T) {
+		validMaxHostYml := `
+tasks:
+- name: example_task_1
+- name: example_task_2
+- name: example_task_3
+- name: example_task_4
+task_groups:
+- name: example_task_group
+  max_hosts: -1
+  tasks:
+  - example_task_1
+  - example_task_2
+buildvariants:
+- name: bv
+  display_name: "bv_display"
+  tasks:
+  - name: example_task_group
+  - name: inline_task_group
+    task_group:
+      max_hosts: -1
+      tasks:
+      - example_task_3
+      - example_task_4
+`
+		proj := &Project{}
+		_, err := LoadProjectInto(ctx, []byte(validMaxHostYml), nil, "id", proj)
+		require.NotNil(t, proj)
+		assert.Nil(t, err)
+		require.Len(t, proj.TaskGroups, 1)
+		assert.Equal(t, "example_task_group", proj.TaskGroups[0].Name)
+		assert.Equal(t, proj.TaskGroups[0].MaxHosts, len(proj.TaskGroups[0].Tasks))
+
+		require.Len(t, proj.BuildVariants, 1)
+		require.Len(t, proj.BuildVariants[0].Tasks, 2)
+		assert.Equal(t, "inline_task_group", proj.BuildVariants[0].Tasks[1].Name)
+		assert.Equal(t, proj.BuildVariants[0].Tasks[1].TaskGroup.MaxHosts, len(proj.BuildVariants[0].Tasks[1].TaskGroup.Tasks))
+	})
 }
 
 func TestTaskGroupWithDisplayTask(t *testing.T) {
@@ -1812,7 +2007,7 @@ functions:
   function-with-updates:
     command: expansions.update
     params:
-      updates: 
+      updates:
       - key: ssh_connection_options
         value: -o GSSAPIAuthentication=no -o CheckHostIP=no -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null -o ConnectTimeout=30 -o ConnectionAttempts=20
       - key: ssh_retries
@@ -2001,12 +2196,12 @@ func TestMergeUnorderedUnique(t *testing.T) {
 			},
 		},
 		Functions: map[string]*YAMLCommandSet{
-			"add_func1": &YAMLCommandSet{
+			"add_func1": {
 				SingleCommand: &PluginCommandConf{
 					Command: "add_single_command",
 				},
 			},
-			"add_func2": &YAMLCommandSet{
+			"add_func2": {
 				MultiCommand: []PluginCommandConf{
 					{
 						Command: "add_multi_command1",
@@ -2058,12 +2253,12 @@ func TestMergeUnorderedUniqueFail(t *testing.T) {
 			},
 		},
 		Functions: map[string]*YAMLCommandSet{
-			"func1": &YAMLCommandSet{
+			"func1": {
 				SingleCommand: &PluginCommandConf{
 					Command: "single_command",
 				},
 			},
-			"func2": &YAMLCommandSet{
+			"func2": {
 				MultiCommand: []PluginCommandConf{
 					{
 						Command: "multi_command1",
@@ -2181,11 +2376,6 @@ func TestMergeOrderedUnique(t *testing.T) {
 				Command: "timeout",
 			},
 		},
-		EarlyTermination: &YAMLCommandSet{
-			SingleCommand: &PluginCommandConf{
-				Command: "early termination",
-			},
-		},
 	}
 
 	err := main.mergeOrderedUnique(add)
@@ -2193,7 +2383,6 @@ func TestMergeOrderedUnique(t *testing.T) {
 	assert.NotNil(t, main.Pre)
 	assert.NotNil(t, main.Post)
 	assert.NotNil(t, main.Timeout)
-	assert.NotNil(t, main.EarlyTermination)
 }
 
 func TestMergeOrderedUniqueFail(t *testing.T) {
@@ -2211,11 +2400,6 @@ func TestMergeOrderedUniqueFail(t *testing.T) {
 		Timeout: &YAMLCommandSet{
 			SingleCommand: &PluginCommandConf{
 				Command: "timeout",
-			},
-		},
-		EarlyTermination: &YAMLCommandSet{
-			SingleCommand: &PluginCommandConf{
-				Command: "early termination",
 			},
 		},
 	}
@@ -2236,11 +2420,6 @@ func TestMergeOrderedUniqueFail(t *testing.T) {
 				Command: "add timeout",
 			},
 		},
-		EarlyTermination: &YAMLCommandSet{
-			SingleCommand: &PluginCommandConf{
-				Command: "add early termination",
-			},
-		},
 	}
 
 	err := main.mergeOrderedUnique(add)
@@ -2248,7 +2427,6 @@ func TestMergeOrderedUniqueFail(t *testing.T) {
 	assert.Contains(t, err.Error(), "pre can only be defined in one YAML")
 	assert.Contains(t, err.Error(), "post can only be defined in one YAML")
 	assert.Contains(t, err.Error(), "timeout can only be defined in one YAML")
-	assert.Contains(t, err.Error(), "early termination can only be defined in one YAML")
 }
 
 func TestMergeUnique(t *testing.T) {
@@ -2260,6 +2438,8 @@ func TestMergeUnique(t *testing.T) {
 	}
 
 	add := &ParserProject{
+		PreTimeoutSecs:    utility.ToIntPtr(1),
+		PostTimeoutSecs:   utility.ToIntPtr(1),
 		PreErrorFailsTask: utility.ToBoolPtr(true),
 		UnsetFunctionVars: utility.ToBoolPtr(true),
 		CommandType:       utility.ToStringPtr("type"),
@@ -2273,6 +2453,8 @@ func TestMergeUnique(t *testing.T) {
 	assert.NotNil(t, main.BatchTime)
 	assert.NotNil(t, main.OomTracker)
 	assert.NotNil(t, main.DisplayName)
+	assert.NotNil(t, main.PreTimeoutSecs)
+	assert.NotNil(t, main.PostTimeoutSecs)
 	assert.NotNil(t, main.PreErrorFailsTask)
 	assert.NotNil(t, main.UnsetFunctionVars)
 	assert.NotNil(t, main.CommandType)
@@ -2285,6 +2467,8 @@ func TestMergeUniqueFail(t *testing.T) {
 		Stepback:          utility.ToBoolPtr(true),
 		BatchTime:         utility.ToIntPtr(1),
 		OomTracker:        utility.ToBoolPtr(true),
+		PreTimeoutSecs:    utility.ToIntPtr(1),
+		PostTimeoutSecs:   utility.ToIntPtr(1),
 		PreErrorFailsTask: utility.ToBoolPtr(true),
 		UnsetFunctionVars: utility.ToBoolPtr(true),
 		DisplayName:       utility.ToStringPtr("name"),
@@ -2297,6 +2481,8 @@ func TestMergeUniqueFail(t *testing.T) {
 		Stepback:          utility.ToBoolPtr(true),
 		BatchTime:         utility.ToIntPtr(1),
 		OomTracker:        utility.ToBoolPtr(true),
+		PreTimeoutSecs:    utility.ToIntPtr(1),
+		PostTimeoutSecs:   utility.ToIntPtr(1),
 		PreErrorFailsTask: utility.ToBoolPtr(true),
 		UnsetFunctionVars: utility.ToBoolPtr(true),
 		DisplayName:       utility.ToStringPtr("name"),
@@ -2309,6 +2495,8 @@ func TestMergeUniqueFail(t *testing.T) {
 	assert.Contains(t, err.Error(), "stepback can only be defined in one YAML")
 	assert.Contains(t, err.Error(), "batch time can only be defined in one YAML")
 	assert.Contains(t, err.Error(), "OOM tracker can only be defined in one YAML")
+	assert.Contains(t, err.Error(), "pre timeout secs can only be defined in one YAML")
+	assert.Contains(t, err.Error(), "post timeout secs can only be defined in one YAML")
 	assert.Contains(t, err.Error(), "pre error fails task can only be defined in one YAML")
 	assert.Contains(t, err.Error(), "display name can only be defined in one YAML")
 	assert.Contains(t, err.Error(), "command type can only be defined in one YAML")
@@ -2320,7 +2508,7 @@ func TestMergeBuildVariant(t *testing.T) {
 	bvExisting := "a_variant"
 	main := &ParserProject{
 		BuildVariants: []parserBV{
-			parserBV{
+			{
 				Name:        bvExisting,
 				DisplayName: "Defined here",
 				Tasks: parserBVTaskUnits{
@@ -2330,7 +2518,7 @@ func TestMergeBuildVariant(t *testing.T) {
 					},
 				},
 				DisplayTasks: []displayTask{
-					displayTask{
+					{
 						Name:           "my_display_task_old_variant",
 						ExecutionTasks: []string{"say-bye"},
 					},
@@ -2342,7 +2530,7 @@ func TestMergeBuildVariant(t *testing.T) {
 	bvNew2 := "one_more_variant"
 	add := &ParserProject{
 		BuildVariants: []parserBV{
-			parserBV{
+			{
 				Name: bvExisting,
 				Tasks: parserBVTaskUnits{
 					parserBVTaskUnit{
@@ -2350,7 +2538,7 @@ func TestMergeBuildVariant(t *testing.T) {
 					},
 				},
 			},
-			parserBV{
+			{
 				Name:      bvNew1,
 				BatchTime: &bvBatchTime,
 				Tasks: parserBVTaskUnits{
@@ -2363,13 +2551,13 @@ func TestMergeBuildVariant(t *testing.T) {
 					},
 				},
 				DisplayTasks: []displayTask{
-					displayTask{
+					{
 						Name:           "my_display_task_new_variant",
 						ExecutionTasks: []string{"another_task"},
 					},
 				},
 			},
-			parserBV{
+			{
 				Name: bvNew2,
 				Tasks: parserBVTaskUnits{
 					parserBVTaskUnit{
@@ -2401,7 +2589,7 @@ func TestMergeExistingBuildVariant(t *testing.T) {
 	bvExisting := "a_variant"
 	main := &ParserProject{
 		BuildVariants: []parserBV{
-			parserBV{
+			{
 				Name: bvExisting,
 				Tasks: parserBVTaskUnits{
 					parserBVTaskUnit{
@@ -2410,7 +2598,7 @@ func TestMergeExistingBuildVariant(t *testing.T) {
 					},
 				},
 				DisplayTasks: []displayTask{
-					displayTask{
+					{
 						Name:           "my_display_task_old_variant",
 						ExecutionTasks: []string{"say-bye"},
 					},
@@ -2420,7 +2608,7 @@ func TestMergeExistingBuildVariant(t *testing.T) {
 	}
 	add := &ParserProject{
 		BuildVariants: []parserBV{
-			parserBV{
+			{
 				Name:        bvExisting,
 				DisplayName: "Defined here",
 				Tasks: parserBVTaskUnits{
@@ -2441,7 +2629,7 @@ func TestMergeExistingBuildVariant(t *testing.T) {
 func TestMergeBuildVariantFail(t *testing.T) {
 	main := &ParserProject{
 		BuildVariants: []parserBV{
-			parserBV{
+			{
 				Name:        "a_variant",
 				DisplayName: "duplicate",
 				Tasks: parserBVTaskUnits{
@@ -2451,7 +2639,7 @@ func TestMergeBuildVariantFail(t *testing.T) {
 					},
 				},
 				DisplayTasks: []displayTask{
-					displayTask{
+					{
 						Name:           "my_display_task_old_variant",
 						ExecutionTasks: []string{"say-bye"},
 					},
@@ -2462,7 +2650,7 @@ func TestMergeBuildVariantFail(t *testing.T) {
 
 	add := &ParserProject{
 		BuildVariants: []parserBV{
-			parserBV{
+			{
 				Name:        "a_variant",
 				DisplayName: "break test",
 				Tasks: parserBVTaskUnits{
@@ -2537,7 +2725,7 @@ func TestMergeMatrixFail(t *testing.T) {
 
 func TestMergeMultipleProjectConfigs(t *testing.T) {
 	mainYaml := `
-include: 
+include:
   - filename: small.yml
     module: something_different
 post:
@@ -2589,7 +2777,7 @@ ignore:
 
 func TestMergeMultipleProjectConfigsBuildVariant(t *testing.T) {
 	mainYaml := `
-include: 
+include:
   - filename: small.yml
 buildvariants:
   - name: bv1
@@ -2644,7 +2832,7 @@ buildvariants:
 	assert.Error(t, err)
 }
 
-func TestUpdateForFile(t *testing.T) {
+func TestUpdateReadFileFrom(t *testing.T) {
 	p := &patch.Patch{
 		Id: "p1",
 		Patches: []patch.ModulePatch{
@@ -2667,15 +2855,15 @@ func TestUpdateForFile(t *testing.T) {
 			patch: p,
 		},
 	}
-	opts.UpdateForFile("small.yml")
+	opts.UpdateReadFileFrom("small.yml")
 	assert.Equal(t, opts.ReadFileFrom, ReadFromPatchDiff) // should be changed to patch diff bc it's not a github patch
 	p.GithubPatchData = thirdparty.GithubPatch{
 		HeadOwner: "me", // indicates this is a github PR patch
 	}
-	opts.UpdateForFile("small.yml")
+	opts.UpdateReadFileFrom("small.yml")
 	assert.Equal(t, opts.ReadFileFrom, ReadFromPatch) // should be changed to patch bc it is a github patch
 
-	opts.UpdateForFile("nonexistent.yml")
+	opts.UpdateReadFileFrom("nonexistent.yml")
 	// should be changed to patch diff because it's not a modified file
 
 }
@@ -2721,19 +2909,6 @@ func TestFindAndTranslateProjectForPatch(t *testing.T) {
 			require.NotZero(t, ppFromDB)
 			require.NotZero(t, project)
 			assert.Equal(t, utility.FromStringPtr(pp.DisplayName), utility.FromStringPtr(ppFromDB.DisplayName))
-			assert.Equal(t, utility.FromStringPtr(pp.DisplayName), project.DisplayName)
-		},
-		"SucceedsWithDeprecatedPatchedParserProject": func(ctx context.Context, t *testing.T, p *patch.Patch, pp *ParserProject) {
-			yamlPP, err := yaml.Marshal(pp)
-			require.NoError(t, err)
-			p.PatchedParserProject = string(yamlPP)
-			require.NoError(t, p.Insert())
-
-			project, ppFromPatch, err := FindAndTranslateProjectForPatch(ctx, env.Settings(), p)
-			require.NoError(t, err)
-			require.NotZero(t, ppFromPatch)
-			require.NotZero(t, project)
-			assert.Equal(t, utility.FromStringPtr(pp.DisplayName), utility.FromStringPtr(ppFromPatch.DisplayName))
 			assert.Equal(t, utility.FromStringPtr(pp.DisplayName), project.DisplayName)
 		},
 		"FailsWithoutStoredParserProject": func(ctx context.Context, t *testing.T, p *patch.Patch, pp *ParserProject) {

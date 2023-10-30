@@ -152,7 +152,7 @@ func VersionByProjectIdAndOrder(projectId string, revisionOrderNumber int) db.Q 
 		}).Sort([]string{"-" + VersionRevisionOrderNumberKey})
 }
 
-// ByLastVariantActivation finds the most recent non-patch, non-ignored
+// VersionByLastVariantActivation finds the most recent non-patch, non-ignored
 // versions in a project that have a particular variant activated.
 func VersionByLastVariantActivation(projectId, variant string) db.Q {
 	return db.Query(
@@ -172,6 +172,8 @@ func VersionByLastVariantActivation(projectId, variant string) db.Q {
 	).Sort([]string{"-" + VersionRevisionOrderNumberKey})
 }
 
+// VersionByLastTaskActivation finds the most recent non-patch, non-ignored
+// versions in a project that have a particular task activated.
 func VersionByLastTaskActivation(projectId, variant, taskName string) db.Q {
 	return db.Query(
 		bson.M{

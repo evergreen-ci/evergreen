@@ -2,7 +2,6 @@ package route
 
 import (
 	"context"
-	"encoding/json"
 	"net/http"
 
 	"github.com/evergreen-ci/evergreen/model"
@@ -13,16 +12,16 @@ import (
 	"github.com/pkg/errors"
 )
 
-func makeVersionCreateHandler() gimlet.RouteHandler {
-	return &versionCreateHandler{}
+func makeVersionCreateHandler(sc data.Connector) gimlet.RouteHandler {
+	return &versionCreateHandler{sc: sc}
 }
 
 type versionCreateHandler struct {
-	ProjectID string          `json:"project_id"`
-	Message   string          `json:"message"`
-	Active    bool            `json:"activate"`
-	IsAdHoc   bool            `json:"is_adhoc"`
-	Config    json.RawMessage `json:"config"`
+	ProjectID string `json:"project_id"`
+	Message   string `json:"message"`
+	Active    bool   `json:"activate"`
+	IsAdHoc   bool   `json:"is_adhoc"`
+	Config    []byte `json:"config"`
 
 	sc data.Connector
 }

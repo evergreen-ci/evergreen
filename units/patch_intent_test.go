@@ -308,7 +308,7 @@ func (s *PatchIntentUnitsSuite) TestSetToPreviousPatchDefinition() {
 	previousPatchDoc := &patch.Patch{
 		Id:         patch.NewId(patchId),
 		Activated:  true,
-		Status:     evergreen.PatchFailed,
+		Status:     evergreen.VersionFailed,
 		Project:    s.project,
 		CreateTime: time.Now(),
 		Author:     "me",
@@ -340,7 +340,7 @@ func (s *PatchIntentUnitsSuite) TestSetToPreviousPatchDefinition() {
 	reusePatchDoc := &patch.Patch{
 		Id:         patch.NewId(reusePatchId),
 		Activated:  true,
-		Status:     evergreen.PatchFailed,
+		Status:     evergreen.VersionFailed,
 		Project:    s.project,
 		CreateTime: time.Now().Add(-time.Hour),
 		Author:     "me",
@@ -595,7 +595,7 @@ func (s *PatchIntentUnitsSuite) TestBuildTasksAndVariantsWithRepeatFailed() {
 	previousPatchDoc := &patch.Patch{
 		Id:            patch.NewId(patchId),
 		Activated:     true,
-		Status:        evergreen.PatchFailed,
+		Status:        evergreen.VersionFailed,
 		Project:       s.project,
 		CreateTime:    time.Now(),
 		Author:        s.user,
@@ -706,7 +706,7 @@ func (s *PatchIntentUnitsSuite) TestBuildTasksAndVariantsWithReuse() {
 	previousPatchDoc := &patch.Patch{
 		Id:            patch.NewId(patchId),
 		Activated:     true,
-		Status:        evergreen.PatchFailed,
+		Status:        evergreen.VersionFailed,
 		Project:       s.project,
 		CreateTime:    time.Now(),
 		Author:        s.user,
@@ -829,7 +829,7 @@ func (s *PatchIntentUnitsSuite) TestBuildTasksAndVariantsWithReusePatchId() {
 	previousPatchDoc := &patch.Patch{
 		Id:            patch.NewId(prevPatchId),
 		Activated:     true,
-		Status:        evergreen.PatchFailed,
+		Status:        evergreen.VersionFailed,
 		Project:       s.project,
 		CreateTime:    time.Now(),
 		Author:        s.user,
@@ -847,7 +847,7 @@ func (s *PatchIntentUnitsSuite) TestBuildTasksAndVariantsWithReusePatchId() {
 	earlierPatchDoc := &patch.Patch{
 		Id:            patch.NewId(earlierPatchId),
 		Activated:     true,
-		Status:        evergreen.PatchFailed,
+		Status:        evergreen.VersionFailed,
 		Project:       s.project,
 		CreateTime:    time.Now().Add(-time.Hour),
 		Author:        s.user,
@@ -1162,12 +1162,11 @@ func (s *PatchIntentUnitsSuite) TestFindEvergreenUserForGithubMergeGroup() {
 }
 
 func (s *PatchIntentUnitsSuite) verifyPatchDoc(patchDoc *patch.Patch, expectedPatchID mgobson.ObjectId, hash string, verifyModules bool, variants []string, tasks []string) {
-	s.Equal(evergreen.PatchCreated, patchDoc.Status)
+	s.Equal(evergreen.VersionCreated, patchDoc.Status)
 	s.Equal(expectedPatchID, patchDoc.Id)
 	if verifyModules {
 		s.NotEmpty(patchDoc.Patches)
 	}
-	s.Empty(patchDoc.PatchedParserProject)
 	s.NotZero(patchDoc.CreateTime)
 	s.Zero(patchDoc.GithubPatchData)
 	s.Zero(patchDoc.StartTime)

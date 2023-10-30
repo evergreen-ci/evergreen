@@ -11,6 +11,7 @@ import (
 	"github.com/evergreen-ci/evergreen/db"
 	"github.com/evergreen-ci/evergreen/db/mgo/bson"
 	"github.com/evergreen-ci/evergreen/model/event"
+	"github.com/evergreen-ci/evergreen/util"
 	"github.com/evergreen-ci/utility"
 	"github.com/mongodb/anser/bsonutil"
 	"github.com/mongodb/grip"
@@ -80,7 +81,7 @@ func (o *TaskIntentPodOptions) Validate(ecsConf evergreen.ECSConfig) error {
 	if o.OS == OSWindows {
 		catcher.Wrap(o.WindowsVersion.Validate(), "must specify a valid Windows version")
 	}
-	catcher.ErrorfWhen(len(ecsConf.AllowedImages) > 0 && !utility.StringSliceContains(ecsConf.AllowedImages, o.Image), "image '%s' not allowed", o.Image)
+	catcher.ErrorfWhen(len(ecsConf.AllowedImages) > 0 && !util.HasAllowedImageAsPrefix(o.Image, ecsConf.AllowedImages), "image '%s' not allowed", o.Image)
 	catcher.NewWhen(o.Image == "", "missing image")
 	catcher.NewWhen(o.WorkingDir == "", "missing working directory")
 	catcher.NewWhen(o.PodSecretExternalID == "", "missing pod secret external ID")

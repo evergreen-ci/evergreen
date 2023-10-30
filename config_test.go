@@ -80,23 +80,28 @@ func TestGetGithubSettings(t *testing.T) {
 	assert.NoError(err)
 	assert.NotNil(settings.Credentials["github"])
 
-	tokens, err := settings.GetGithubOauthStrings()
+	token, err = settings.GetGithubOauthString()
 	assert.NoError(err)
-	assert.Equal(settings.Credentials["github"], tokens[0])
+	assert.Equal(settings.Credentials["github"], token)
 
-	authFields := settings.GetGithubAppAuth()
+	settings.AuthConfig.Github = &GithubAuthConfig{
+		AppId: 0,
+	}
+	settings.Expansions[githubAppPrivateKey] = ""
+
+	authFields := settings.getGithubAppAuth()
 	assert.Nil(authFields)
 
 	settings.AuthConfig.Github = &GithubAuthConfig{
 		AppId: 1234,
 	}
-	authFields = settings.GetGithubAppAuth()
+	authFields = settings.getGithubAppAuth()
 	assert.Nil(authFields)
 
 	settings.Expansions[githubAppPrivateKey] = "key"
-	authFields = settings.GetGithubAppAuth()
+	authFields = settings.getGithubAppAuth()
 	assert.NotNil(authFields)
-	assert.Equal(int64(1234), authFields.AppId)
+	assert.Equal(int64(1234), authFields.appId)
 	assert.Equal([]byte("key"), authFields.privateKey)
 
 	assert.NotPanics(func() {
@@ -333,9 +338,6 @@ func (s *AdminSuite) TestAuthConfig() {
 		Naive: &NaiveAuthConfig{
 			Users: []AuthUser{{Username: "user", Password: "pw"}},
 		},
-		OnlyAPI: &OnlyAPIAuthConfig{
-			Users: []OnlyAPIUser{{Username: "user", Key: "key", Roles: []string{"admin"}}},
-		},
 		Github: &GithubAuthConfig{
 			ClientId:     "ghclient",
 			ClientSecret: "ghsecret",
@@ -345,7 +347,6 @@ func (s *AdminSuite) TestAuthConfig() {
 		},
 		Multi: &MultiAuthConfig{
 			ReadWrite: []string{AuthGithubKey, AuthLDAPKey},
-			ReadOnly:  []string{AuthNaiveKey, AuthOnlyAPIKey},
 		},
 		PreferredType:           AuthLDAPKey,
 		BackgroundReauthMinutes: 60,
@@ -1032,12 +1033,12 @@ func (s *AdminSuite) TestDataPipesConfig() {
 	s.Equal(config, settings.DataPipes)
 }
 
-func (s *AdminSuite) TestBucketConfig() {
+func (s *AdminSuite) TestBucketsConfig() {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 
-	config := BucketConfig{
-		LogBucket: Bucket{
+	config := BucketsConfig{
+		LogBucket: BucketConfig{
 			Name: "logs",
 			Type: "s3",
 		},

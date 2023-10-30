@@ -107,6 +107,7 @@ func TestS3GetValidateParams(t *testing.T) {
 					"remote_file": "remote",
 					"bucket":      "bck",
 					"local_file":  "local",
+					"optional":    true,
 				}
 				So(cmd.ParseParams(params), ShouldBeNil)
 				So(cmd.validateParams(), ShouldBeNil)
@@ -129,7 +130,7 @@ func TestExpandS3GetParams(t *testing.T) {
 
 			cmd = &s3get{}
 			conf = &internal.TaskConfig{
-				Expansions: util.NewExpansions(map[string]string{}),
+				Expansions: *util.NewExpansions(map[string]string{}),
 			}
 
 			Convey("all appropriate values should be expanded, if they"+

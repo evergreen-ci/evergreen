@@ -120,7 +120,7 @@ func ActivateElapsedBuildsAndTasks(v *Version) (bool, error) {
 	}
 	if len(buildIdsToActivate) > 0 {
 		// Don't need to set the version in here since we do it ourselves in a single update
-		if err := build.UpdateActivation(buildIdsToActivate, true, evergreen.DefaultTaskActivator); err != nil {
+		if err := build.UpdateActivation(buildIdsToActivate, true, evergreen.BuildActivator); err != nil {
 			grip.Error(message.WrapError(err, message.Fields{
 				"operation": "project-activation",
 				"message":   "problem activating builds",
@@ -131,7 +131,7 @@ func ActivateElapsedBuildsAndTasks(v *Version) (bool, error) {
 	}
 
 	if len(elapsedBuildIds) > 0 {
-		if err := setTaskActivationForBuilds(elapsedBuildIds, true, true, allIgnoreTaskIds, evergreen.DefaultTaskActivator); err != nil {
+		if err := setTaskActivationForBuilds(elapsedBuildIds, true, true, allIgnoreTaskIds, evergreen.ElapsedBuildActivator); err != nil {
 			grip.Error(message.WrapError(err, message.Fields{
 				"operation": "project-activation",
 				"message":   "problem activating tasks for builds",
@@ -141,7 +141,7 @@ func ActivateElapsedBuildsAndTasks(v *Version) (bool, error) {
 		}
 	}
 	if len(allReadyTaskIds) > 0 {
-		if err := task.ActivateTasksByIdsWithDependencies(allReadyTaskIds, evergreen.DefaultTaskActivator); err != nil {
+		if err := task.ActivateTasksByIdsWithDependencies(allReadyTaskIds, evergreen.ElapsedTaskActivator); err != nil {
 			grip.Error(message.WrapError(err, message.Fields{
 				"operation": "project-activation",
 				"message":   "problem activating batchtime tasks",

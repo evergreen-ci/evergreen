@@ -498,6 +498,12 @@ func ensureHasValidPlannerSettings(ctx context.Context, d *distro.Distro, s *eve
 			Level:   Error,
 		})
 	}
+	if settings.GenerateTaskFactor < 0 || settings.GenerateTaskFactor > 100 {
+		errs = append(errs, ValidationError{
+			Message: fmt.Sprintf("invalid planner_settings.generate_task_factor value of %d for distro '%s' - its value must be a non-negative integer between 0 and 100, inclusive", settings.GenerateTaskFactor, d.Id),
+			Level:   Error,
+		})
+	}
 
 	return errs
 }
@@ -538,6 +544,20 @@ func ensureHasValidVirtualWorkstationSettings(ctx context.Context, d *distro.Dis
 	if d.HomeVolumeSettings.FormatCommand == "" {
 		errs = append(errs, ValidationError{
 			Message: "missing format command",
+			Level:   Error,
+		})
+	}
+	linuxArchs := []string{
+		evergreen.ArchLinux386,
+		evergreen.ArchLinuxPpc64le,
+		evergreen.ArchLinuxS390x,
+		evergreen.ArchLinuxArm64,
+		evergreen.ArchLinuxAmd64,
+	}
+
+	if !utility.StringSliceContains(linuxArchs, d.Arch) {
+		errs = append(errs, ValidationError{
+			Message: "workstation distros must use Linux with a supported CPU architecture",
 			Level:   Error,
 		})
 	}

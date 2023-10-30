@@ -20,7 +20,7 @@ func MakeTaskConfigFromModelData(ctx context.Context, settings *evergreen.Settin
 	if err != nil {
 		return nil, errors.Wrap(err, "getting global GitHub OAuth token")
 	}
-	appToken, err := settings.CreateInstallationToken(ctx, data.Project.Owner, data.Project.Repo, nil)
+	appToken, err := settings.CreateInstallationToken(ctx, data.ProjectRef.Owner, data.ProjectRef.Repo, nil)
 	if err != nil {
 		grip.Debug(message.WrapError(err, message.Fields{
 			"ticket":  "EVG-19966",

@@ -360,7 +360,7 @@ func (s *VersionSuite) TestMakeDataForRepotrackerVersion() {
 func (s *VersionSuite) TestMakeDataForPatchVersion() {
 	p := patch.Patch{
 		Id:     mgobson.ObjectIdHex(s.version.Id),
-		Status: evergreen.PatchSucceeded,
+		Status: evergreen.VersionSucceeded,
 	}
 	s.Require().NoError(p.Insert())
 
@@ -374,5 +374,5 @@ func (s *VersionSuite) TestMakeDataForPatchVersion() {
 	s.Equal(sub.ID, data.SubscriptionID)
 	s.Equal(s.version.Id, data.DisplayName)
 	s.Equal(event.ObjectVersion, data.Object)
-	s.Equal(data.PastTenseStatus, evergreen.PatchSucceeded)
+	s.Equal(data.PastTenseStatus, "succeeded")
 }
