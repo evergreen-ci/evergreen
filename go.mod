@@ -3,7 +3,7 @@ module github.com/evergreen-ci/evergreen
 go 1.20
 
 require (
-	github.com/99designs/gqlgen v0.17.38
+	github.com/99designs/gqlgen v0.17.40
 	github.com/PuerkitoBio/rehttp v1.3.0
 	github.com/aws/aws-sdk-go v1.45.26
 	github.com/aws/aws-sdk-go-v2 v1.21.2
@@ -220,3 +220,5 @@ require (
 	github.com/shirou/gopsutil/v3 v3.23.9
 	gopkg.in/yaml.v3 v3.0.1
 )
+
+require github.com/sosodev/duration v1.1.0 // indirect
