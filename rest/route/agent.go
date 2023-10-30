@@ -17,6 +17,7 @@ import (
 	"github.com/evergreen-ci/evergreen/model/manifest"
 	"github.com/evergreen-ci/evergreen/model/patch"
 	"github.com/evergreen-ci/evergreen/model/task"
+	"github.com/evergreen-ci/evergreen/model/tasklog"
 	"github.com/evergreen-ci/evergreen/thirdparty"
 	"github.com/evergreen-ci/gimlet"
 	"github.com/evergreen-ci/utility"
@@ -856,7 +857,7 @@ func (h *fetchTaskHandler) Run(ctx context.Context) gimlet.Responder {
 type appendTaskLogHandler struct {
 	settings *evergreen.Settings
 	taskID   string
-	taskLog  model.TaskLog
+	taskLog  tasklog.TaskLog
 }
 
 func makeAppendTaskLog(settings *evergreen.Settings) gimlet.RouteHandler {

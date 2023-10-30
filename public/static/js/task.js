@@ -718,15 +718,10 @@ mciModule.controller('TaskLogCtrl', ['$scope', '$timeout', '$http', '$location',
     $location.path('log/' + currentLogs);
   };
 
-  $scope.formatTimestamp = function (logEntry, minVersion) {
-    if (!logEntry.version || logEntry.version < minVersion) {
-      return '';
-    }
-
+  $scope.formatTimestamp = function (ts) {
     var converter = $filter('convertDateToUserTimezone');
-    var format = 'YYYY/MM/DD HH:mm:ss.SSS';
-    var timestamp = converter(logEntry.timestamp, $scope.userTz, format);
-    return '[' + timestamp + '] '
+    var timestamp = converter(ts, $scope.userTz, 'YYYY/MM/DD HH:mm:ss.SSS');
+    return '[' + timestamp + '] ';
   }
 
   var isFinished = function (status) {
@@ -743,27 +738,19 @@ mciModule.controller('TaskLogCtrl', ['$scope', '$timeout', '$http', '$location',
   $scope.getLogs = function () {
     $http.get('/json/task_log/' + $scope.taskId + '/' + $scope.task.execution + '?type=' + $scope.currentLogs).then(
       function (resp) {
-        $scope.buildlogger = false;
         var data = resp.data;
         if ($scope.currentLogs == $scope.eventLogs) {
           $scope.eventLogData = data.reverse();
         } else {
-          if (data && data.LogMessages) {
-            //read the log messages out, and reverse their order (since they are returned backwards)
-            $scope.logs = _.map(data.LogMessages, function (entry) {
-              var msg = entry.m.replace(/&#34;/g, '"');
-              var date = new Date(entry.ts);
-              return {
-                message: msg,
-                severity: entry.s,
-                timestamp: date,
-                version: entry.v
-              };
-            });
-          } else {
-            $scope.buildlogger = true;
-            $scope.logs = data;
-          }
+          $scope.logs = _.map(data.LogMessages, function (entry) {
+            var msg = entry.m.replace(/&#34;/g, '"');
+            var date = new Date(entry.ts);
+            return {
+              message: msg,
+              severity: entry.s,
+              timestamp: date,
+            };
+          });
         }
       },
       function (resp) {

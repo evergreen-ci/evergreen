@@ -7,6 +7,7 @@ import (
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/apimodels"
 	"github.com/evergreen-ci/evergreen/model/log"
+	"github.com/evergreen-ci/evergreen/model/tasklog"
 	"github.com/evergreen-ci/utility"
 	"github.com/pkg/errors"
 )
@@ -112,7 +113,7 @@ func (o TaskLogOutput) getLogService(ctx context.Context) (log.LogService, error
 
 // getBuildloggerLogs makes request to Cedar Buildlogger for logs.
 func (o TaskLogOutput) getBuildloggerLogs(ctx context.Context, env evergreen.Environment, taskOpts TaskOptions, getOpts TaskLogGetOptions) (log.LogIterator, error) {
-	opts := apimodels.GetBuildloggerLogsOptionsV2{
+	opts := apimodels.GetBuildloggerLogsOptions{
 		BaseURL:   env.Settings().Cedar.BaseURL,
 		TaskID:    taskOpts.TaskID,
 		Execution: utility.ToIntPtr(taskOpts.Execution),
@@ -130,6 +131,36 @@ func (o TaskLogOutput) getBuildloggerLogs(ctx context.Context, env evergreen.Env
 	} else {
 		opts.Tags = []string{string(getOpts.LogType)}
 	}
+	it, err := apimodels.GetBuildloggerLogs(ctx, opts)
+	if err != nil {
+		var logTypeFilter []string
+		switch getOpts.LogType {
+		case TaskLogTypeAgent:
+			logTypeFilter = []string{apimodels.AgentLogPrefix}
+		case TaskLogTypeTask:
+			logTypeFilter = []string{apimodels.TaskLogPrefix}
+		case TaskLogTypeSystem:
+			logTypeFilter = []string{apimodels.SystemLogPrefix}
+		}
 
-	return apimodels.GetBuildloggerLogsV2(ctx, opts)
+		var messages []apimodels.LogMessage
+		if getOpts.TailN > 0 {
+			messages, err = tasklog.FindMostRecentLogMessages(taskOpts.TaskID, taskOpts.Execution, getOpts.TailN, nil, logTypeFilter)
+			if err != nil {
+				return nil, errors.Wrap(err, "getting most recent DB task logs")
+			}
+		} else {
+			msgs, err := tasklog.GetRawTaskLogChannel(taskOpts.TaskID, taskOpts.Execution, nil, logTypeFilter)
+			if err != nil {
+				return nil, errors.Wrap(err, "getting DB task logs")
+			}
+
+			for msg := range msgs {
+				messages = append(messages, msg)
+			}
+		}
+		it = apimodels.NewLogMessageIterator(messages)
+	}
+
+	return it, nil
 }
