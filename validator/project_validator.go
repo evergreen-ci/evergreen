@@ -5,7 +5,6 @@ import (
 	"context"
 	"fmt"
 	"math"
-	"runtime/debug"
 	"sort"
 	"strconv"
 	"strings"
@@ -22,7 +21,6 @@ import (
 	"github.com/evergreen-ci/utility"
 	"github.com/mongodb/grip"
 	"github.com/mongodb/grip/level"
-	"github.com/mongodb/grip/message"
 	"github.com/pkg/errors"
 	"go.opentelemetry.io/otel/attribute"
 	"go.opentelemetry.io/otel/trace"
@@ -157,6 +155,7 @@ var projectWarningValidators = []projectValidator{
 	checkTaskRuns,
 	checkModules,
 	checkTasks,
+	checkRequestersForTaskDependencies,
 	checkBuildVariants,
 }
 
@@ -559,11 +558,6 @@ func getAliasCoverage(p *model.Project, aliasMap map[string]model.ProjectAlias) 
 				}
 				if name != "" {
 					if t.IsGroup {
-						grip.InfoWhen(t.IsPartOfGroup, message.Fields{
-							"message": "task unit IsGroup is referring to task within a task group",
-							"ticket":  "EVG-19725",
-							"stack":   string(debug.Stack()),
-						})
 						matchesTaskGroupTask, err := aliasMatchesTaskGroupTask(p, alias, name)
 						if err != nil {
 							return nil, nil, err
@@ -708,11 +702,6 @@ func validateBVFields(project *model.Project) ValidationErrors {
 				break
 			}
 			if task.IsGroup {
-				grip.InfoWhen(task.IsPartOfGroup, message.Fields{
-					"message": "task unit IsGroup is referring to task within a task group",
-					"ticket":  "EVG-19725",
-					"stack":   string(debug.Stack()),
-				})
 				for _, t := range project.FindTaskGroup(task.Name).Tasks {
 					pt := project.FindProjectTask(t)
 					if pt != nil {
@@ -1545,31 +1534,48 @@ func validateTaskDependencies(project *model.Project) ValidationErrors {
 // run for the same requesters. For example, a task that runs in a mainline
 // commit cannot depend on a patch only task since the dependency will only be
 // satisfiable in patches.
-func checkRequestersForTaskDependencies(task *model.ProjectTask, allTasks map[string]model.ProjectTask) ValidationErrors {
-	errs := ValidationErrors{}
+func checkRequestersForTaskDependencies(project *model.Project) ValidationErrors {
+	bvtus := map[model.TVPair]model.BuildVariantTaskUnit{}
+	bvs := map[string]struct{}{}
+	tasks := map[string]struct{}{}
+	for _, bvtu := range project.FindAllBuildVariantTasks() {
+		bvtus[model.TVPair{Variant: bvtu.Variant, TaskName: bvtu.Name}] = bvtu
+		bvs[bvtu.Variant] = struct{}{}
+		tasks[bvtu.Name] = struct{}{}
+	}
 
-	for _, dep := range task.DependsOn {
-		dependent, exists := allTasks[dep.Name]
-		if !exists {
-			continue
-		}
-		if utility.FromBoolPtr(dependent.PatchOnly) && !utility.FromBoolPtr(task.PatchOnly) {
-			errs = append(errs, ValidationError{
-				Level:   Warning,
-				Message: fmt.Sprintf("Task '%s' depends on patch-only task '%s'. Both will only run in patches", task.Name, dep.Name),
-			})
-		}
-		if !utility.FromBoolTPtr(dependent.Patchable) && utility.FromBoolTPtr(task.Patchable) {
-			errs = append(errs, ValidationError{
-				Level:   Warning,
-				Message: fmt.Sprintf("Task '%s' depends on non-patchable task '%s'. Neither will run in patches", task.Name, dep.Name),
-			})
-		}
-		if utility.FromBoolPtr(dependent.GitTagOnly) && !utility.FromBoolPtr(task.GitTagOnly) {
-			errs = append(errs, ValidationError{
-				Level:   Warning,
-				Message: fmt.Sprintf("Task '%s' depends on git-tag-only task '%s'. Both will only run when pushing git tags", task.Name, dep.Name),
-			})
+	var errs ValidationErrors
+	for _, bvtu := range bvtus {
+		for _, d := range bvtu.DependsOn {
+			dep := model.TVPair{Variant: d.Variant, TaskName: d.Name}
+			if dep.Variant == "" {
+				// Implicit build variant - if no build variant is explicitly
+				// stated, the task and dependency should both run in the same
+				// build variant.
+				dep.Variant = bvtu.Variant
+			}
+			dependent := project.FindTaskForVariant(dep.TaskName, dep.Variant)
+			if dependent == nil {
+				continue
+			}
+			if utility.FromBoolPtr(dependent.PatchOnly) && !utility.FromBoolPtr(bvtu.PatchOnly) {
+				errs = append(errs, ValidationError{
+					Level:   Warning,
+					Message: fmt.Sprintf("Task '%s' depends on patch-only task '%s'. Both will only run in patches", bvtu.Name, d.Name),
+				})
+			}
+			if !utility.FromBoolTPtr(dependent.Patchable) && utility.FromBoolTPtr(bvtu.Patchable) {
+				errs = append(errs, ValidationError{
+					Level:   Warning,
+					Message: fmt.Sprintf("Task '%s' depends on non-patchable task '%s'. Neither will run in patches", bvtu.Name, d.Name),
+				})
+			}
+			if utility.FromBoolPtr(dependent.GitTagOnly) && !utility.FromBoolPtr(bvtu.GitTagOnly) {
+				errs = append(errs, ValidationError{
+					Level:   Warning,
+					Message: fmt.Sprintf("Task '%s' depends on git-tag-only task '%s'. Both will only run when pushing git tags", bvtu.Name, d.Name),
+				})
+			}
 		}
 	}
 
@@ -1713,11 +1719,6 @@ func validateDuplicateBVTasks(p *model.Project) ValidationErrors {
 		for _, t := range bv.Tasks {
 
 			if t.IsGroup {
-				grip.InfoWhen(t.IsPartOfGroup, message.Fields{
-					"message": "task unit IsGroup is referring to task within a task group",
-					"ticket":  "EVG-19725",
-					"stack":   string(debug.Stack()),
-				})
 				tg := t.TaskGroup
 				if tg == nil {
 					tg = p.FindTaskGroup(t.Name)
@@ -1950,11 +1951,6 @@ func bvsWithTasksThatCallCommand(p *model.Project, cmd string) (map[string]map[s
 
 		for _, bvtu := range bv.Tasks {
 			if bvtu.IsGroup {
-				grip.InfoWhen(bvtu.IsPartOfGroup, message.Fields{
-					"message": "task unit IsGroup is referring to task within a task group",
-					"ticket":  "EVG-19725",
-					"stack":   string(debug.Stack()),
-				})
 				tg := bvtu.TaskGroup
 				if tg == nil {
 					tg = p.FindTaskGroup(bvtu.Name)
@@ -2202,7 +2198,6 @@ func parseS3PullParameters(c model.PluginCommandConf) (task, bv string, err erro
 func checkTasks(project *model.Project) ValidationErrors {
 	errs := ValidationErrors{}
 	execTimeoutWarningAdded := false
-	allTasks := project.FindAllTasksMap()
 	for _, task := range project.Tasks {
 		if len(task.Commands) == 0 {
 			errs = append(errs,
@@ -2225,7 +2220,6 @@ func checkTasks(project *model.Project) ValidationErrors {
 			execTimeoutWarningAdded = true
 		}
 		errs = append(errs, checkLoggerConfig(&task)...)
-		errs = append(errs, checkRequestersForTaskDependencies(&task, allTasks)...)
 		errs = append(errs, checkTaskNames(project, &task)...)
 	}
 	if project.Loggers != nil {

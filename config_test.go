@@ -1033,12 +1033,12 @@ func (s *AdminSuite) TestDataPipesConfig() {
 	s.Equal(config, settings.DataPipes)
 }
 
-func (s *AdminSuite) TestBucketConfig() {
+func (s *AdminSuite) TestBucketsConfig() {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 
-	config := BucketConfig{
-		LogBucket: Bucket{
+	config := BucketsConfig{
+		LogBucket: BucketConfig{
 			Name: "logs",
 			Type: "s3",
 		},

@@ -778,7 +778,7 @@ func (s *GenerateSuite) TestAddGeneratedProjectToConfig() {
 	s.NotEmpty(newPP2)
 }
 
-func (s *GenerateSuite) TestSaveNewBuildsAndTasks() {
+func (s *GenerateSuite) TestSaveNewBuildsAndTasksWithBatchtime() {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 
@@ -855,7 +855,6 @@ func (s *GenerateSuite) TestSaveNewBuildsAndTasks() {
 	s.Require().NoError(err)
 	p, pp, v, err = g.NewVersion(context.Background(), p, pp, v)
 	s.Require().NoError(err)
-	g.GetNewTasksAndActivationInfo(ctx, v, p)
 	s.NoError(g.Save(s.ctx, s.env.Settings(), p, pp, v))
 
 	// verify we stopped saving versions
@@ -974,7 +973,6 @@ func (s *GenerateSuite) TestSaveWithAlreadyGeneratedTasksAndVariants() {
 	s.NoError(err)
 	s.Len(pp.UpdatedByGenerators, 1) // Not modified again.
 
-	g.GetNewTasksAndActivationInfo(ctx, v, p)
 	s.NoError(g.Save(s.ctx, s.env.Settings(), p, pp, v))
 
 	tasks := []task.Task{}
@@ -1049,7 +1047,6 @@ func (s *GenerateSuite) TestSaveNewTasksWithDependencies() {
 	s.Require().NoError(err)
 	p, pp, v, err = g.NewVersion(context.Background(), p, pp, v)
 	s.NoError(err)
-	g.GetNewTasksAndActivationInfo(s.ctx, v, p)
 	s.NoError(g.Save(s.ctx, s.env.Settings(), p, pp, v))
 
 	v, err = VersionFindOneId(v.Id)
@@ -1071,106 +1068,410 @@ func (s *GenerateSuite) TestSaveNewTasksWithDependencies() {
 	s.True(taskWithDepsFound, "task '%s' should have been added to build variant", expectedTask)
 
 	tasks := []task.Task{}
-	err = db.FindAllQ(task.Collection, db.Query(bson.M{}), &tasks)
-	s.NoError(err)
-	err = db.FindAllQ(task.Collection, db.Query(bson.M{task.DisplayNameKey: expectedTask}), &tasks)
-	s.NoError(err)
+	s.NoError(db.FindAllQ(task.Collection, db.Query(bson.M{task.DisplayNameKey: expectedTask}), &tasks))
 	s.Require().Len(tasks, 1)
 	s.Require().Len(tasks[0].DependsOn, 3)
 	expected := map[string]bool{"say-hi-task-id": false, "say-bye-task-id": false, "say_something_else": false}
 	for _, dependency := range tasks[0].DependsOn {
 		expected[dependency.TaskId] = true
 	}
-	for taskName, expect := range expected {
-		s.True(expect, fmt.Sprintf("%s should be a dependency but wasn't", taskName))
+	for taskID, expect := range expected {
+		s.True(expect, fmt.Sprintf("%s should be a dependency but wasn't", taskID))
 	}
 }
 
-func (s *GenerateSuite) TestSaveNewTasksWithCrossVariantDependencies() {
-	t1 := &task.Task{
+func (s *GenerateSuite) TestSaveNewTasksInNewVariantWithCrossVariantDependencyOnExistingUnscheduledTaskInExistingVariant() {
+	// This tests generating a task that depends on a task in a different BV
+	// that has already been defined but is not scheduled. It should scheduled
+	// by the generate.tasks dependency.
+	genTask := &task.Task{
 		Id:      "generator",
 		BuildId: "b1",
 		Version: "v1",
 	}
-	s.NoError(t1.Insert())
+	s.NoError(genTask.Insert())
 
-	existingBuild := build.Build{
+	existingGenBuild := build.Build{
 		Id:           "b1",
-		BuildVariant: "a_variant",
+		BuildVariant: "generator_bv",
 		Version:      "v1",
+		Activated:    true,
 	}
+	s.NoError(existingGenBuild.Insert())
+
 	v := &Version{
 		Id:       "v1",
 		BuildIds: []string{"b1"},
 	}
+	s.NoError(v.Insert())
+
 	parserProj := ParserProject{}
-	config := `tasks:
-- name: say_something
+	initialConfig := `
+tasks:
+- name: defined_but_not_scheduled_task
 - name: generator
 
 buildvariants:
-- name: a_variant
+- name: defined_but_not_scheduled_bv
   run_on:
-  - "arch"
+  - arch
   tasks:
-  - name: say_something
+  - name: defined_but_not_scheduled_task
+- name: generator_bv
+  run_on:
+  - arch
+  tasks:
   - name: generator
 `
-	err := util.UnmarshalYAMLWithFallback([]byte(config), &parserProj)
-	s.NoError(err)
+	s.NoError(util.UnmarshalYAMLWithFallback([]byte(initialConfig), &parserProj))
 	parserProj.Id = "v1"
 	s.NoError(parserProj.Insert())
-	s.NoError(existingBuild.Insert())
-	s.NoError(v.Insert())
 
-	g := GeneratedProject{
-		Task: t1,
-		Tasks: []parserTask{
-			{
-				Name: "task_that_has_dependencies",
-				DependsOn: []parserDependency{
-					{
-						TaskSelector: taskSelector{
-							Name: "say_something",
-							Variant: &variantSelector{
-								StringSelector: "a_variant",
-							},
-						},
-					},
-				},
-			},
-		},
-		BuildVariants: []parserBV{
-			{
-				Name: "a_new_variant",
-				Tasks: parserBVTaskUnits{
-					parserBVTaskUnit{
-						Name: "task_that_has_dependencies",
-					},
-				},
-				RunOn: []string{"arch"},
-			},
-		},
-	}
+	generateTasksJSON := `
+{
+	"tasks": [
+		{
+			"name": "generated_task_that_has_cross_variant_dependency",
+			"depends_on": [
+				{
+					"name": "defined_but_not_scheduled_task",
+					"variant": "defined_but_not_scheduled_bv"
+				}
+			]
+		}
+	],
+	"buildvariants": [
+		{
+			"name": "generator_bv",
+			"tasks": ["generated_task_that_has_cross_variant_dependency"]
+		}
+	]
+}
+`
+
+	g, err := ParseProjectFromJSONString(generateTasksJSON)
+	s.Require().NoError(err)
+	g.Task = genTask
 
 	p, pp, err := FindAndTranslateProjectForVersion(s.ctx, s.env.Settings(), v)
 	s.Require().NoError(err)
 	p, pp, v, err = g.NewVersion(context.Background(), p, pp, v)
 	s.NoError(err)
-	g.GetNewTasksAndActivationInfo(s.ctx, v, p)
 	s.NoError(g.Save(s.ctx, s.env.Settings(), p, pp, v))
 
-	// the depended-on task is created in the existing variant
-	saySomething := task.Task{}
-	err = db.FindOneQ(task.Collection, db.Query(bson.M{task.DisplayNameKey: "say_something"}), &saySomething)
-	s.NoError(err)
+	alreadyDefinedTask := task.Task{}
+	s.NoError(db.FindOneQ(task.Collection, db.Query(bson.M{task.DisplayNameKey: "defined_but_not_scheduled_task"}), &alreadyDefinedTask))
+	s.True(alreadyDefinedTask.Activated, "dependency should be activated")
 
-	// the dependent task depends on the depended-on task
 	taskWithDeps := task.Task{}
-	err = db.FindOneQ(task.Collection, db.Query(bson.M{task.DisplayNameKey: "task_that_has_dependencies"}), &taskWithDeps)
-	s.NoError(err)
+	s.NoError(db.FindOneQ(task.Collection, db.Query(bson.M{task.DisplayNameKey: "generated_task_that_has_cross_variant_dependency"}), &taskWithDeps))
 	s.Require().Len(taskWithDeps.DependsOn, 1)
-	s.Equal(taskWithDeps.DependsOn[0].TaskId, saySomething.Id)
+	s.Equal(alreadyDefinedTask.Id, taskWithDeps.DependsOn[0].TaskId, "generated task should depend on cross-variant dependency")
+}
+
+func (s *GenerateSuite) TestSaveNewTasksInNewVariantWithCrossVariantDependencyOnNewTaskInNewVariant() {
+	// This tests generating a task that depends on a task in a different BV,
+	// which is also created by generate.tasks.
+	genTask := &task.Task{
+		Id:      "generator",
+		BuildId: "b1",
+		Version: "v1",
+	}
+	s.NoError(genTask.Insert())
+
+	existingGenBuild := build.Build{
+		Id:           "b1",
+		BuildVariant: "generator_bv",
+		Version:      "v1",
+		Activated:    true,
+	}
+	s.NoError(existingGenBuild.Insert())
+
+	v := &Version{
+		Id:       "v1",
+		BuildIds: []string{"b1"},
+	}
+	s.NoError(v.Insert())
+
+	parserProj := ParserProject{}
+	initialConfig := `
+tasks:
+- name: generator
+
+buildvariants:
+- name: generator_bv
+  run_on:
+  - arch
+  tasks:
+  - name: generator
+`
+	s.NoError(util.UnmarshalYAMLWithFallback([]byte(initialConfig), &parserProj))
+	parserProj.Id = "v1"
+	s.NoError(parserProj.Insert())
+
+	generateTasksJSON := `
+{
+	"tasks": [
+		{
+			"name": "generated_task_that_has_cross_variant_dependency",
+			"depends_on": [
+				{
+					"name": "generated_task",
+					"variant": "generated_bv"
+				}
+			]
+		},
+		{
+			"name": "generated_task",
+		}
+	],
+	"buildvariants": [
+		{
+			"name": "generator_bv",
+			"tasks": ["generated_task_that_has_cross_variant_dependency"]
+		},
+		{
+			"name": "generated_bv",
+			"tasks": ["generated_task"],
+			"run_on": ["arch"]
+		}
+	]
+}
+`
+
+	g, err := ParseProjectFromJSONString(generateTasksJSON)
+	s.Require().NoError(err)
+	g.Task = genTask
+
+	p, pp, err := FindAndTranslateProjectForVersion(s.ctx, s.env.Settings(), v)
+	s.Require().NoError(err)
+	p, pp, v, err = g.NewVersion(context.Background(), p, pp, v)
+	s.NoError(err)
+	s.NoError(g.Save(s.ctx, s.env.Settings(), p, pp, v))
+
+	depTask := task.Task{}
+	s.NoError(db.FindOneQ(task.Collection, db.Query(bson.M{task.DisplayNameKey: "generated_task"}), &depTask))
+	s.True(depTask.Activated, "dependency should be activated")
+
+	taskWithDeps := task.Task{}
+	s.NoError(db.FindOneQ(task.Collection, db.Query(bson.M{task.DisplayNameKey: "generated_task_that_has_cross_variant_dependency"}), &taskWithDeps))
+	s.Require().Len(taskWithDeps.DependsOn, 1)
+	s.Equal(depTask.Id, taskWithDeps.DependsOn[0].TaskId, "generated task should depend on cross-variant dependency")
+}
+
+func (s *GenerateSuite) TestSaveNewTasksInNewVariantWithCrossVariantDependencyOnNewTaskInExistingVariant() {
+	// This tests generating a task in a new BV that depends on a new task in a
+	// different BV. The other BV already exists, and the new dependency is
+	// appended to it.
+	genTask := &task.Task{
+		Id:      "generator",
+		BuildId: "b1",
+		Version: "v1",
+	}
+	s.NoError(genTask.Insert())
+	existingTask := &task.Task{
+		Id:      "existing_task",
+		BuildId: "b2",
+		Version: "v1",
+	}
+	s.NoError(existingTask.Insert())
+
+	existingGenBuild := build.Build{
+		Id:           "b1",
+		BuildVariant: "generator_bv",
+		Version:      "v1",
+		Activated:    true,
+	}
+	s.NoError(existingGenBuild.Insert())
+	existingBuild := build.Build{
+		Id:           "b2",
+		BuildVariant: "existing_bv",
+		Version:      "v1",
+		Activated:    true,
+	}
+	s.NoError(existingBuild.Insert())
+	v := &Version{
+		Id:       "v1",
+		BuildIds: []string{"b1", "b2"},
+	}
+	s.NoError(v.Insert())
+	parserProj := ParserProject{}
+	initialConfig := `
+tasks:
+- name: generator
+- name: existing_task
+
+buildvariants:
+- name: generator_bv
+  run_on:
+  - arch
+  tasks:
+  - name: generator
+- name: existing_bv
+  run_on:
+  - arch
+  tasks:
+  - name: existing_task
+
+`
+	s.NoError(util.UnmarshalYAMLWithFallback([]byte(initialConfig), &parserProj))
+	parserProj.Id = "v1"
+	s.NoError(parserProj.Insert())
+
+	generateTasksJSON := `
+{
+	"tasks": [
+		{
+			"name": "generated_task_that_has_cross_variant_dependency",
+			"depends_on": [
+				{
+					"name": "generated_task",
+					"variant": "existing_bv"
+				}
+			]
+		},
+		{
+			"name": "generated_task",
+		}
+	],
+	"buildvariants": [
+		{
+			"name": "generator_bv",
+			"tasks": ["generated_task_that_has_cross_variant_dependency"]
+		},
+		{
+			"name": "existing_bv",
+			"tasks": ["generated_task"]
+		}
+	]
+}
+`
+
+	g, err := ParseProjectFromJSONString(generateTasksJSON)
+	s.Require().NoError(err)
+	g.Task = genTask
+
+	p, pp, err := FindAndTranslateProjectForVersion(s.ctx, s.env.Settings(), v)
+	s.Require().NoError(err)
+	p, pp, v, err = g.NewVersion(context.Background(), p, pp, v)
+	s.NoError(err)
+	s.NoError(g.Save(s.ctx, s.env.Settings(), p, pp, v))
+
+	depTask := task.Task{}
+	s.NoError(db.FindOneQ(task.Collection, db.Query(bson.M{task.DisplayNameKey: "generated_task"}), &depTask))
+	s.True(depTask.Activated, "dependency should be activated")
+
+	taskWithDeps := task.Task{}
+	s.NoError(db.FindOneQ(task.Collection, db.Query(bson.M{task.DisplayNameKey: "generated_task_that_has_cross_variant_dependency"}), &taskWithDeps))
+	s.Require().Len(taskWithDeps.DependsOn, 1)
+	s.Equal(depTask.Id, taskWithDeps.DependsOn[0].TaskId, "generated task should depend on cross-variant dependency")
+}
+
+func (s *GenerateSuite) TestSaveNewTasksInExistingVariantWithCrossVariantDependencyOnNewTaskInExistingBuild() {
+	// This tests generating a task in an existing BV that depends on a new task
+	// in a different BV. The other BV already exists, and the new task is
+	// appended to it.
+	genTask := &task.Task{
+		Id:      "generator",
+		BuildId: "b1",
+		Version: "v1",
+	}
+	s.NoError(genTask.Insert())
+	existingTask := &task.Task{
+		Id:      "existing_task",
+		BuildId: "b2",
+		Version: "v1",
+	}
+	s.NoError(existingTask.Insert())
+
+	existingGenBuild := build.Build{
+		Id:           "b1",
+		BuildVariant: "generator_bv",
+		Version:      "v1",
+		Activated:    true,
+	}
+	s.NoError(existingGenBuild.Insert())
+	existingDepBuild := build.Build{
+		Id:           "b2",
+		BuildVariant: "existing_bv",
+		Version:      "v1",
+		Activated:    true,
+	}
+	s.NoError(existingDepBuild.Insert())
+	v := &Version{
+		Id:       "v1",
+		BuildIds: []string{"b1", "b2"},
+	}
+	s.NoError(v.Insert())
+	parserProj := ParserProject{}
+	initialConfig := `
+tasks:
+- name: generator
+- name: existing_task
+
+buildvariants:
+- name: generator_bv
+  run_on:
+  - arch
+  tasks:
+  - name: generator
+- name: existing_bv
+  run_on:
+  - arch
+  tasks:
+  - name: existing_task
+`
+	s.NoError(util.UnmarshalYAMLWithFallback([]byte(initialConfig), &parserProj))
+	parserProj.Id = "v1"
+	s.NoError(parserProj.Insert())
+
+	generateTasksJSON := `
+{
+	"tasks": [
+		{
+			"name": "generated_task_that_has_cross_variant_dependency",
+			"depends_on": [
+				{
+					"name": "generated_task",
+					"variant": "existing_bv"
+				}
+			]
+		},
+		{
+			"name": "generated_task",
+		}
+	],
+	"buildvariants": [
+		{
+			"name": "generator_bv",
+			"tasks": ["generated_task_that_has_cross_variant_dependency"]
+		},
+		{
+			"name": "existing_bv",
+			"tasks": ["generated_task"],
+		}
+	]
+}
+`
+
+	g, err := ParseProjectFromJSONString(generateTasksJSON)
+	s.Require().NoError(err)
+	g.Task = genTask
+
+	p, pp, err := FindAndTranslateProjectForVersion(s.ctx, s.env.Settings(), v)
+	s.Require().NoError(err)
+	p, pp, v, err = g.NewVersion(context.Background(), p, pp, v)
+	s.NoError(err)
+	s.NoError(g.Save(s.ctx, s.env.Settings(), p, pp, v))
+
+	depTask := task.Task{}
+	s.NoError(db.FindOneQ(task.Collection, db.Query(bson.M{task.DisplayNameKey: "generated_task"}), &depTask))
+	s.True(depTask.Activated, "dependency should be activated")
+
+	taskWithDeps := task.Task{}
+	s.NoError(db.FindOneQ(task.Collection, db.Query(bson.M{task.DisplayNameKey: "generated_task_that_has_cross_variant_dependency"}), &taskWithDeps))
+	s.Require().Len(taskWithDeps.DependsOn, 1)
+	s.Equal(depTask.Id, taskWithDeps.DependsOn[0].TaskId, "generated task should depend on cross-variant dependency")
 }
 
 func (s *GenerateSuite) TestSaveNewTaskWithExistingExecutionTask() {
@@ -1210,7 +1511,6 @@ func (s *GenerateSuite) TestSaveNewTaskWithExistingExecutionTask() {
 	s.Require().NoError(err)
 	p, pp, v, err = g.NewVersion(context.Background(), p, pp, v)
 	s.Require().NoError(err)
-	g.GetNewTasksAndActivationInfo(s.ctx, v, p)
 	s.NoError(g.Save(s.ctx, s.env.Settings(), p, pp, v))
 
 	v, err = VersionFindOneId(v.Id)
@@ -1337,8 +1637,6 @@ func (s *GenerateSuite) TestMergeGeneratedProjectsWithNoTasks() {
 }
 
 func TestSimulateNewDependencyGraph(t *testing.T) {
-	ctx, cancel := context.WithCancel(context.Background())
-	defer cancel()
 	defer func() {
 		assert.NoError(t, db.Clear(task.Collection))
 	}()
@@ -1375,7 +1673,6 @@ func TestSimulateNewDependencyGraph(t *testing.T) {
 				},
 			},
 		}
-		g.GetNewTasksAndActivationInfo(ctx, v, project)
 		assert.Error(t, g.CheckForCycles(context.Background(), v, project, &ProjectRef{Identifier: "mci"}))
 	})
 
@@ -1405,7 +1702,6 @@ func TestSimulateNewDependencyGraph(t *testing.T) {
 			},
 		}
 
-		g.GetNewTasksAndActivationInfo(ctx, v, project)
 		assert.Error(t, g.CheckForCycles(context.Background(), v, project, &ProjectRef{Identifier: "mci"}))
 	})
 
@@ -1439,7 +1735,6 @@ func TestSimulateNewDependencyGraph(t *testing.T) {
 				},
 			},
 		}
-		g.GetNewTasksAndActivationInfo(ctx, v, project)
 		assert.NoError(t, g.CheckForCycles(context.Background(), v, project, &ProjectRef{Identifier: "mci"}))
 	})
 
@@ -1474,7 +1769,6 @@ func TestSimulateNewDependencyGraph(t *testing.T) {
 				},
 			},
 		}
-		g.GetNewTasksAndActivationInfo(ctx, v, project)
 		assert.NoError(t, g.CheckForCycles(context.Background(), v, project, &ProjectRef{Identifier: "mci"}))
 	})
 }

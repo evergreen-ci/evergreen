@@ -36,29 +36,31 @@ type Mock struct {
 	serverURL    string
 
 	// mock behavior
-	NextTaskShouldFail          bool
-	GetPatchFileShouldFail      bool
-	loggingShouldFail           bool
-	NextTaskResponse            *apimodels.NextTaskResponse
-	NextTaskIsNil               bool
-	StartTaskShouldFail         bool
-	GetTaskResponse             *task.Task
-	GetProjectResponse          *serviceModel.Project
-	EndTaskResponse             *apimodels.EndTaskResponse
-	EndTaskShouldFail           bool
-	EndTaskResult               EndTaskResult
-	ShellExecFilename           string
-	TimeoutFilename             string
-	GenerateTasksShouldFail     bool
-	HeartbeatShouldAbort        bool
-	HeartbeatShouldConflict     bool
-	HeartbeatShouldErr          bool
-	HeartbeatShouldSometimesErr bool
-	HeartbeatCount              int
-	TaskExecution               int
-	CreatedHost                 apimodels.CreateHost
-	GetTaskPatchResponse        *patchmodel.Patch
-	GetLoggerProducerShouldFail bool
+	NextTaskShouldFail            bool
+	GetPatchFileShouldFail        bool
+	loggingShouldFail             bool
+	NextTaskResponse              *apimodels.NextTaskResponse
+	NextTaskIsNil                 bool
+	StartTaskShouldFail           bool
+	GetTaskResponse               *task.Task
+	GetProjectResponse            *serviceModel.Project
+	EndTaskResponse               *apimodels.EndTaskResponse
+	EndTaskShouldFail             bool
+	EndTaskResult                 EndTaskResult
+	ShellExecFilename             string
+	TimeoutFilename               string
+	GenerateTasksShouldFail       bool
+	HeartbeatShouldAbort          bool
+	HeartbeatShouldConflict       bool
+	HeartbeatShouldErr            bool
+	HeartbeatShouldSometimesErr   bool
+	HeartbeatCount                int
+	TaskExecution                 int
+	CreatedHost                   apimodels.CreateHost
+	GetTaskPatchResponse          *patchmodel.Patch
+	GetLoggerProducerShouldFail   bool
+	CreateInstallationTokenFail   bool
+	CreateInstallationTokenResult string
 
 	CedarGRPCConn *grpc.ClientConn
 
@@ -528,5 +530,8 @@ func (c *Mock) GetPullRequestInfo(ctx context.Context, taskData TaskData, prNum 
 }
 
 func (c *Mock) CreateInstallationToken(ctx context.Context, td TaskData, owner, repo string) (string, error) {
-	return "token", nil
+	if c.CreateInstallationTokenFail {
+		return "", errors.New("failed to create token")
+	}
+	return c.CreateInstallationTokenResult, nil
 }

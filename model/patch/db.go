@@ -45,7 +45,6 @@ var (
 	ParametersKey           = bsonutil.MustHaveTag(Patch{}, "Parameters")
 	ActivatedKey            = bsonutil.MustHaveTag(Patch{}, "Activated")
 	ProjectStorageMethodKey = bsonutil.MustHaveTag(Patch{}, "ProjectStorageMethod")
-	PatchedParserProjectKey = bsonutil.MustHaveTag(Patch{}, "PatchedParserProject")
 	PatchedProjectConfigKey = bsonutil.MustHaveTag(Patch{}, "PatchedProjectConfig")
 	AliasKey                = bsonutil.MustHaveTag(Patch{}, "Alias")
 	githubPatchDataKey      = bsonutil.MustHaveTag(Patch{}, "GithubPatchData")

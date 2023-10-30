@@ -17,6 +17,7 @@ import (
 	restModel "github.com/evergreen-ci/evergreen/rest/model"
 	"github.com/evergreen-ci/evergreen/testutil"
 	"github.com/evergreen-ci/evergreen/thirdparty"
+	"github.com/evergreen-ci/evergreen/util"
 	"github.com/evergreen-ci/utility"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -232,7 +233,7 @@ func (s *CommitQueueSuite) TestIsAuthorizedToPatchAndMerge() {
 }
 
 func (s *CommitQueueSuite) TestCreatePatchForMerge() {
-	s.Require().NoError(db.ClearCollections(model.ProjectAliasCollection, user.Collection))
+	s.Require().NoError(db.ClearCollections(model.ParserProjectCollection, model.ProjectAliasCollection, user.Collection))
 
 	u := &user.DBUser{Id: "octocat"}
 	s.Require().NoError(u.Insert())
@@ -245,23 +246,35 @@ func (s *CommitQueueSuite) TestCreatePatchForMerge() {
 	}
 	s.Require().NoError(cqAlias.Upsert())
 
+	const config = `
+buildvariants:
+- name: v0
+  tasks:
+    - t0
+tasks:
+- name: t0`
+
+	existingPatchId := mgobson.ObjectIdHex("5e9748c4e3c331422d0d1d7a")
 	existingPatch := &patch.Patch{
+		Id:      existingPatchId,
 		Author:  "octocat",
 		Project: s.projectRef.Id,
 		GitInfo: &patch.GitMetadata{
 			Username: "octocat",
 			Email:    "octocat @github.com",
 		},
-		PatchedParserProject: `
-tasks:
-  - name: t0
-buildvariants:
-  - name: v0
-    tasks:
-    - name: "t0"
-`,
+		ProjectStorageMethod: evergreen.ProjectStorageMethodDB,
+		PatchedProjectConfig: config,
 	}
 	s.Require().NoError(existingPatch.Insert())
+
+	existingPatchParserProject := &model.ParserProject{}
+	s.Require().NoError(util.UnmarshalYAMLWithFallback([]byte(config), existingPatchParserProject))
+	existingPatchParserProject.Id = existingPatch.Id.Hex()
+	existingPatchParserProject.Identifier = utility.ToStringPtr(s.projectRef.Id)
+
+	s.Require().NoError(existingPatchParserProject.Insert())
+
 	existingPatch, err := patch.FindOne(db.Q{})
 	s.Require().NoError(err)
 	s.Require().NotNil(existingPatch)

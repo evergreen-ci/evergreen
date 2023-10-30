@@ -270,10 +270,20 @@ func (g *GeneratedProject) saveNewBuildsAndTasks(ctx context.Context, v *Version
 		return errors.Errorf("project '%s' not found", p.Identifier)
 	}
 
+	// Compile a lookup table of task IDs for all tasks to be created, both in
+	// existing builds and in newly-generated builds. This lookup table is
+	// needed to ensure when a task is created, it can find the IDs of the tasks
+	// it will depend on.
+	allTasksToBeCreatedIncludingDeps, err := NewTaskIdConfig(p, v, *newTVPairs, projectRef.Identifier)
+	if err != nil {
+		return errors.Wrap(err, "creating task ID table for new variant-tasks to create")
+	}
+
 	creationInfo := TaskCreationInfo{
 		Project:        p,
 		ProjectRef:     projectRef,
 		Version:        v,
+		TaskIDs:        allTasksToBeCreatedIncludingDeps,
 		Pairs:          newTVPairsForExistingVariants,
 		ActivationInfo: *activationInfo,
 		SyncAtEndOpts:  syncAtEndOpts,
@@ -282,7 +292,8 @@ func (g *GeneratedProject) saveNewBuildsAndTasks(ctx context.Context, v *Version
 		// tasks inherit that requirement.
 		ActivatedTasksAreEssentialToSucceed: g.Task.IsEssentialToSucceed,
 	}
-	activatedTasksInExistingBuilds, err := addNewTasks(ctx, creationInfo, existingBuilds, evergreen.GenerateTasksActivator)
+
+	activatedTasksInExistingBuilds, err := addNewTasksToExistingBuilds(ctx, creationInfo, existingBuilds, evergreen.GenerateTasksActivator)
 	if err != nil {
 		return errors.Wrap(err, "adding new tasks")
 	}
@@ -301,7 +312,8 @@ func (g *GeneratedProject) saveNewBuildsAndTasks(ctx context.Context, v *Version
 	return nil
 }
 
-// GetNewTasksAndActivationInfo computes the NewTVPairs and ActivationInfo fields on the generator if they are nil.
+// GetNewTasksAndActivationInfo computes the generate.tasks variant-tasks to be
+// created and specific activation information for those tasks.
 func (g *GeneratedProject) GetNewTasksAndActivationInfo(ctx context.Context, v *Version, p *Project) (*TaskVariantPairs, *specificActivationInfo) {
 	if g.NewTVPairs != nil && g.ActivationInfo != nil {
 		return g.NewTVPairs, g.ActivationInfo
@@ -346,7 +358,7 @@ func (g *GeneratedProject) simulateNewTasks(ctx context.Context, graph task.Depe
 		Version:    v,
 		Pairs:      *newTVPairs,
 	}
-	taskIDs, err := getTaskIdTables(creationInfo)
+	taskIDs, err := getTaskIdConfig(creationInfo)
 	if err != nil {
 		return graph, errors.Wrap(err, "getting task ids")
 	}

@@ -9,12 +9,11 @@ over task environments is achievable with containers, ensuring that each
 task runs in an isolated, dedicated space with its own specific set of
 software dependencies.
 
-## Warning! Containers are an experimental feature!
+## Warning: Container tasks are new and subject to ongoing changes
 
-Container tasks at this time are still an experimental feature,
-therefore they are subject to change as we iterate further on our
-roadmap. The feature may have bugs that get discovered as we roll it out
-as an initial offering.
+Container tasks at this time are subject to (potentially substantial) change as we iterate further on our
+container roadmap. The feature may have bugs as it is not currently as battle-tested as our host-based infrastructure,
+which should be considered if your goal is to port over a critical workflow to container tasks.
 
 If you have any questions about container tasks or are interested in
 exploring how this feature could benefit your project, we encourage you
@@ -118,6 +117,54 @@ The following is the process by which you can create a usable image from your cu
     Evergreen YAML must also use a **&lt;SHA&gt;** tag, which would be the hash
     of the corresponding commit in our [image repository](https://github.com/evergreen-ci/container-initial-offering-dockerfiles).
 
+The following is a template Dockerfile that abides by our [image
+policy](https://docs.google.com/document/d/1MMePuL5YBjJQcNdtwzU2kMLPSsRLzDyE0rhTVkmXDqo/edit) and
+includes commonly used tools and packages (e.g. Go, Python, NodeJS, etc.)
+that you can copy/paste and use as a reference for creating your own. Note that directly copying and pasting this
+Dockerfile isn't recommended as it may not be up to date with the latest versions of the tools and packages it installs.
+
+``` dockerfile
+# Use an approved base image
+FROM ubuntu:latest
+
+# Required label that points to an owning team, per our image policy
+LABEL mongodb.maintainer="Your Team Name <team-email@company.com>"
+
+# Update package inventory
+ENV DEBIAN_FRONTEND=noninteractive
+RUN apt-get update
+
+# Common tools
+RUN apt-get install -y \
+    curl \
+    wget \
+    git
+
+# Install Go
+RUN wget https://dl.google.com/go/go1.21.3.linux-amd64.tar.gz -O go.tar.gz \
+    # Must verify the checksum of downloaded file
+    && md5sum go.tar.gz | cut -d ' ' -f 1 | grep -xq 5c3a4f142d3bb8080f9b705b84eeff06 \
+    && tar -C /usr/local -xzf go.tar.gz \
+    && rm go.tar.gz
+ENV PATH=$PATH:/usr/local/go/bin
+
+# Install Node.js and npm
+RUN curl -sL https://deb.nodesource.com/setup_20.x -o nodesource_setup.sh \
+    # Must verify the checksum of downloaded file
+    && md5sum nodesource_setup.sh | cut -d ' ' -f 1 | grep -xq 6d2cee63baadd6b45fafca0cd0f4a269 \
+    && bash nodesource_setup.sh \
+    && apt-get install -y nodejs
+
+# Install Python3 and pip
+RUN apt-get update && apt-get install -y \
+    python3 \
+    python3-pip
+
+# Default to bash shell, as required by the Evergreen agent
+ENTRYPOINT ["/bin/bash"]
+
+```
+
 ### Update Your YAML Configuration
 
 Once you have a valid image URI that is ready to run tasks, you can test it
@@ -205,7 +252,7 @@ Once configured properly, a variant with container tasks is ready to
 schedule tasks. Once tasks get created, key differences to look for in
 Spruce are:
 
-### **Container Project Settings**
+### Container Project Settings
 
 A new tab has been added to the project settings page for container
 configurations. Users can create a list of resource configuration
@@ -227,14 +274,14 @@ Options:
 Users can define as many container configurations as needed, reflecting
 different appropriate resource needs for various tasks.
 
-### **Task Metadata**
+### Task Metadata
 
 A link to a container task's respective container replaces the typical
 host link.
 
-<img alt="containerized_task_metadata.png" height="400" src="../images/container_metadata.png" width="300"/>
+![container_metadata.png](../images/container_metadata.png)
 
-### **Container Page**
+### Container Page
 
 The link in the task metadata sidebar takes you to the container page,
 which details the lifecycle of a container and their tasks. Like the

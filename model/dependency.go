@@ -1,10 +1,7 @@
 package model
 
 import (
-	"runtime/debug"
-
 	"github.com/mongodb/grip"
-	"github.com/mongodb/grip/message"
 	"github.com/pkg/errors"
 )
 
@@ -210,11 +207,6 @@ func (di *dependencyIncluder) expandDependencies(pair TVPair, depends []TaskUnit
 					}
 
 					if t.IsGroup {
-						grip.InfoWhen(t.IsPartOfGroup, message.Fields{
-							"message": "task unit IsGroup is referring to task within a task group",
-							"ticket":  "EVG-19725",
-							"stack":   string(debug.Stack()),
-						})
 						if !di.dependencyMatchesTaskGroupTask(pair, t, d) {
 							continue
 						}

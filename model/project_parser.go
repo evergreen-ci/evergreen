@@ -436,6 +436,8 @@ type parserBVTaskUnit struct {
 	Activate *bool `yaml:"activate,omitempty" bson:"activate,omitempty"`
 	// TaskGroup is set if an inline task group is defined on the build variant config.
 	TaskGroup *parserTaskGroup `yaml:"task_group,omitempty" bson:"task_group,omitempty"`
+	// CreateCheckRun will create a check run on GitHub if set.
+	CreateCheckRun *CheckRun `yaml:"create_check_run,omitempty" bson:"create_check_run,omitempty"`
 }
 
 // UnmarshalYAML allows the YAML parser to read both a single selector string or
@@ -539,15 +541,6 @@ func FindAndTranslateProjectForPatch(ctx context.Context, settings *evergreen.Se
 		project, err := TranslateProject(pp)
 		if err != nil {
 			return nil, nil, errors.Wrapf(err, "translating project '%s'", pp.Id)
-		}
-		return project, pp, nil
-	}
-
-	if p.PatchedParserProject != "" {
-		project := &Project{}
-		pp, err := LoadProjectInto(ctx, []byte(p.PatchedParserProject), nil, p.Project, project)
-		if err != nil {
-			return nil, nil, errors.Wrap(err, "unmarshalling project config from patched parser project")
 		}
 		return project, pp, nil
 	}
@@ -1275,9 +1268,12 @@ func evaluateBuildVariants(tse *taskSelectorEvaluator, tgse *tagSelectorEvaluato
 	return bvs, evalErrs
 }
 
-// evaluateBVTasks translates intermediate tasks into true BuildVariantTaskUnit types,
-// evaluating any selectors referencing tasks, and further evaluating any selectors
-// in the DependsOn field of those tasks.
+// evaluateBVTasks translates intermediate tasks listed under build variants
+// into true BuildVariantTaskUnit types, evaluating any selectors referencing
+// tasks, and further evaluating any selectors in the DependsOn field of those
+// tasks.
+// For task units that represent task groups, the resulting BuildVariantTaskUnit
+// represents the task group itself, not the individual tasks in the task group.
 func evaluateBVTasks(tse *taskSelectorEvaluator, tgse *tagSelectorEvaluator, vse *variantSelectorEvaluator,
 	pbv parserBV, tasks []parserTask) ([]BuildVariantTaskUnit, []error) {
 	var evalErrs, errs []error
@@ -1380,6 +1376,7 @@ func getParserBuildVariantTaskUnit(name string, pt parserTask, bvt parserBVTaskU
 		CronBatchTime:    bvt.CronBatchTime,
 		BatchTime:        bvt.BatchTime,
 		Activate:         bvt.Activate,
+		CreateCheckRun:   bvt.CreateCheckRun,
 	}
 	res.AllowedRequesters = bvt.AllowedRequesters
 	if bvt.TaskGroup != nil {
