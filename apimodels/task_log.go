@@ -81,7 +81,7 @@ func ReadLogToSlice(it log.LogIterator) ([]*LogMessage, error) {
 		lines = append(lines, &LogMessage{
 			Severity:  GetSeverityMapping(item.Priority),
 			Message:   item.Data,
-			Timestamp: time.Unix(0, item.Timestamp).UTC(),
+			Timestamp: time.Unix(0, item.Timestamp),
 		})
 	}
 	if err := it.Err(); err != nil {
@@ -105,7 +105,7 @@ func StreamFromLogIterator(it log.LogIterator) chan LogMessage {
 			lines <- LogMessage{
 				Severity:  GetSeverityMapping(item.Priority),
 				Message:   item.Data,
-				Timestamp: time.Unix(0, item.Timestamp).UTC(),
+				Timestamp: time.Unix(0, item.Timestamp),
 			}
 		}
 
