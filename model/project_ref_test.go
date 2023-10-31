@@ -1144,17 +1144,19 @@ func TestGetGitHubProjectConflicts(t *testing.T) {
 
 	// Two project refs that are from different repos should never conflict.
 	p1 := &ProjectRef{
-		Owner:  "mongodb",
-		Repo:   "mci1",
-		Branch: "main",
-		Id:     "p1",
+		Owner:   "mongodb",
+		Repo:    "mci1",
+		Branch:  "main",
+		Id:      "p1",
+		Enabled: true,
 	}
 	require.NoError(p1.Insert())
 	p2 := &ProjectRef{
-		Owner:  "mongodb",
-		Repo:   "not-mci1",
-		Branch: "main",
-		Id:     "p2",
+		Owner:   "mongodb",
+		Repo:    "not-mci1",
+		Branch:  "main",
+		Id:      "p2",
+		Enabled: true,
 	}
 	require.NoError(p2.Insert())
 	conflicts, err := p1.GetGithubProjectConflicts()
@@ -1165,17 +1167,19 @@ func TestGetGitHubProjectConflicts(t *testing.T) {
 
 	// Two project refs that are from the same repo but do not have potential conflicting settings.
 	p3 := &ProjectRef{
-		Owner:  "mongodb",
-		Repo:   "mci2",
-		Branch: "main",
-		Id:     "p3",
+		Owner:   "mongodb",
+		Repo:    "mci2",
+		Branch:  "main",
+		Id:      "p3",
+		Enabled: true,
 	}
 	require.NoError(p3.Insert())
 	p4 := &ProjectRef{
-		Owner:  "mongodb",
-		Repo:   "mci2",
-		Branch: "main",
-		Id:     "p4",
+		Owner:   "mongodb",
+		Repo:    "mci2",
+		Branch:  "main",
+		Id:      "p4",
+		Enabled: true,
 	}
 	require.NoError(p4.Insert())
 	conflicts, err = p3.GetGithubProjectConflicts()
@@ -1190,6 +1194,7 @@ func TestGetGitHubProjectConflicts(t *testing.T) {
 		Repo:             "mci3",
 		Branch:           "main",
 		Id:               "p5",
+		Enabled:          true,
 		PRTestingEnabled: utility.TruePtr(),
 	}
 	require.NoError(p5.Insert())
@@ -1198,6 +1203,7 @@ func TestGetGitHubProjectConflicts(t *testing.T) {
 		Repo:        "mci3",
 		Branch:      "main",
 		Id:          "p6",
+		Enabled:     true,
 		CommitQueue: CommitQueueParams{Enabled: utility.TruePtr()},
 	}
 	require.NoError(p6.Insert())
@@ -1206,14 +1212,16 @@ func TestGetGitHubProjectConflicts(t *testing.T) {
 		Repo:                "mci3",
 		Branch:              "main",
 		Id:                  "p7",
+		Enabled:             true,
 		GithubChecksEnabled: utility.TruePtr(),
 	}
 	require.NoError(p7.Insert())
 	p8 := &ProjectRef{
-		Owner:  "mongodb",
-		Repo:   "mci3",
-		Branch: "main",
-		Id:     "p8",
+		Owner:   "mongodb",
+		Repo:    "mci3",
+		Branch:  "main",
+		Id:      "p8",
+		Enabled: true,
 	}
 	require.NoError(p8.Insert())
 	// p5 should have conflicting with commit queue and commit check.
@@ -1249,6 +1257,7 @@ func TestGetGitHubProjectConflicts(t *testing.T) {
 		Repo:             "mci4",
 		Branch:           "main",
 		Id:               "p9",
+		Enabled:          true,
 		PRTestingEnabled: utility.TruePtr(),
 	}
 	require.NoError(p9.Insert())
@@ -1257,6 +1266,7 @@ func TestGetGitHubProjectConflicts(t *testing.T) {
 		Repo:      "mci4",
 		Branch:    "main",
 		Id:        "p10",
+		Enabled:   true,
 		RepoRefId: p9.Id,
 	}
 	require.NoError(p10.Insert())
