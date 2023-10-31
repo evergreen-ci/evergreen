@@ -1,0 +1,6 @@
+mutation {
+  abortTask(taskId: "completed_task") {
+    aborted
+    activated
+  }
+}

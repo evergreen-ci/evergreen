@@ -1,0 +1,28 @@
+{
+  "users": [
+    {
+      "first_name": "Mohamed",
+      "last_name": "Khelif",
+      "settings": {
+        "timezone": "America/New_York",
+        "region": "us-east-1",
+        "github_user": {
+          "last_known_as": "khelif96"
+        }
+      }
+    },
+    {
+      "_id": "bob.smith",
+      "display_name": "Bob Smith",
+      "first_name": "Bob",
+      "last_name": "Smith",
+      "settings": {
+        "timezone": "America/New_York",
+        "region": "us-west-1",
+        "github_user": {
+          "last_known_as": "bob_smith_1"
+        }
+      }
+    }
+  ]
+}

@@ -3,7 +3,7 @@ module github.com/evergreen-ci/evergreen
 go 1.20
 
 require (
-	github.com/99designs/gqlgen v0.17.38
+	github.com/99designs/gqlgen v0.17.40
 	github.com/PuerkitoBio/rehttp v1.3.0
 	github.com/aws/aws-sdk-go v1.45.26
 	github.com/aws/aws-sdk-go-v2 v1.21.2
@@ -41,7 +41,7 @@ require (
 	github.com/kardianos/osext v0.0.0-20190222173326-2bc1f35cddc0
 	github.com/mitchellh/go-homedir v1.1.0
 	github.com/mitchellh/mapstructure v1.5.0
-	github.com/mongodb/amboy v0.0.0-20230524145255-082f8fd5857e
+	github.com/mongodb/amboy v0.0.0-20230816163444-5a4b04514646
 	github.com/mongodb/anser v0.0.0-20230703201237-774f6f436c11
 	github.com/mongodb/grip v0.0.0-20231010153552-fd9e260891f5
 	github.com/pkg/errors v0.9.1
@@ -56,7 +56,7 @@ require (
 	github.com/vmware/govmomi v0.27.1
 	go.mongodb.org/mongo-driver v1.11.6
 	go.opentelemetry.io/contrib/detectors/aws/ec2 v1.17.0
-	go.opentelemetry.io/contrib/detectors/aws/ecs v1.18.0
+	go.opentelemetry.io/contrib/detectors/aws/ecs v1.20.0
 	go.opentelemetry.io/contrib/instrumentation/github.com/aws/aws-sdk-go-v2/otelaws v0.45.0
 	go.opentelemetry.io/contrib/instrumentation/github.com/gorilla/mux/otelmux v0.42.0
 	go.opentelemetry.io/contrib/instrumentation/net/http/otelhttp v0.45.0
@@ -66,7 +66,7 @@ require (
 	go.opentelemetry.io/otel/exporters/otlp/otlptrace/otlptracegrpc v1.19.0
 	go.opentelemetry.io/otel/metric v1.19.0
 	go.opentelemetry.io/otel/sdk v1.19.0
-	go.opentelemetry.io/otel/sdk/metric v0.40.0
+	go.opentelemetry.io/otel/sdk/metric v1.19.0
 	go.opentelemetry.io/otel/trace v1.19.0
 	go.opentelemetry.io/proto/otlp v1.0.0
 	golang.org/x/crypto v0.14.0
@@ -220,3 +220,5 @@ require (
 	github.com/shirou/gopsutil/v3 v3.23.9
 	gopkg.in/yaml.v3 v3.0.1
 )
+
+require github.com/sosodev/duration v1.1.0 // indirect

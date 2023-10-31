@@ -1,14 +1,76 @@
 {
   "tests": [
     {
-      "query_file": "commit_queue_dequeue.graphql",
+      "query_file": "success_commit_queue.graphql",
       "result": {
         "data": {
           "abortTask": {
-            "activated": false,
-            "aborted": true
+            "aborted": true,
+            "activated": false
           }
         }
+      }
+    },
+    {
+      "query_file": "success.graphql",
+      "result": {
+        "data": {
+          "abortTask": {
+            "aborted": true,
+            "activated": false
+          }
+        }
+      }
+    },
+    {
+      "query_file": "fail_commit_queue.graphql",
+      "result": {
+        "errors": [
+          {
+            "message": "Error aborting task fail_commit_queue: dequeueing and restarting task 'fail_commit_queue': commit queue for project 'logkeeper' not found",
+            "path": [
+              "abortTask"
+            ],
+            "extensions": {
+              "code": "INTERNAL_SERVER_ERROR"
+            }
+          }
+        ],
+        "data": null
+      }
+    },
+    {
+      "query_file": "fail.graphql",
+      "result": {
+        "errors": [
+          {
+            "message": "Error aborting task completed_task: task 'completed_task' currently has status 'failed' - cannot abort task in this status",
+            "path": [
+              "abortTask"
+            ],
+            "extensions": {
+              "code": "INTERNAL_SERVER_ERROR"
+            }
+          }
+        ],
+        "data": null
+      }
+    },
+    {
+      "query_file": "nonexistent_task.graphql",
+      "result": {
+        "errors": [
+          {
+            "message": "cannot find task with id fake-task-id",
+            "path": [
+              "abortTask"
+            ],
+            "extensions": {
+              "code": "RESOURCE_NOT_FOUND"
+            }
+          }
+        ],
+        "data": null
       }
     }
   ]

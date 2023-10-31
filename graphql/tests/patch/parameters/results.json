@@ -1,0 +1,23 @@
+{
+  "tests": [
+    {
+      "query_file": "parameters.graphql",
+      "result": {
+        "data": {
+          "patch": {
+            "parameters": [
+              {
+                "key": "iter_count",
+                "value": "5"
+              },
+              {
+                "key": "my_parameter",
+                "value": "this_is_it"
+              }
+            ]
+          }
+        }
+      }
+    }
+  ]
+}

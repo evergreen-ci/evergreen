@@ -1,0 +1,24 @@
+{
+  "tests": [
+    {
+      "query_file": "subscriptions.graphql",
+      "result": {
+        "data": {
+          "user": {
+            "displayName": "testuser",
+            "userId": "testuser",
+            "subscriptions": [
+              {
+                "id": "61326406a620e4737f57003e",
+                "resourceType": "VERSION",
+                "subscriber": {
+                  "type": "slack"
+                }
+              }
+            ]
+          }
+        }
+      }
+    }
+  ]
+}
