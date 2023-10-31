@@ -60,7 +60,7 @@ func GetSeverityMapping(s level.Priority) string {
 	}
 }
 
-func GetPriority(prefix string) level.Priority {
+func getPriority(prefix string) level.Priority {
 	switch prefix {
 	case LogErrorPrefix:
 		return level.Error
@@ -92,8 +92,8 @@ func ReadLogToSlice(it log.LogIterator) ([]*LogMessage, error) {
 }
 
 // StreamFromLogIterator streams log lines from the given iterator to the
-// returned log message channel. It is the responsibility to close the log
-// iterator.
+// returned log message channel. It is the responsibility of the caller to
+// close the log iterator.
 func StreamFromLogIterator(it log.LogIterator) chan LogMessage {
 	lines := make(chan LogMessage)
 	go func() {
@@ -143,7 +143,7 @@ func (it *logMessageIterator) Next() bool {
 	}
 
 	it.item = log.LogLine{
-		Priority:  GetPriority(it.messages[it.i].Severity),
+		Priority:  getPriority(it.messages[it.i].Severity),
 		Timestamp: it.messages[it.i].Timestamp.UnixNano(),
 		Data:      it.messages[it.i].Message,
 	}
