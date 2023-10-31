@@ -59,7 +59,7 @@ type ProjectRef struct {
 	// RemotePath is the path to the Evergreen config file.
 	RemotePath       string `bson:"remote_path" json:"remote_path" yaml:"remote_path"`
 	PatchingDisabled *bool  `bson:"patching_disabled,omitempty" json:"patching_disabled,omitempty"`
-	// RepotrackerDisabled is if repotracker is enabled (i.e. true = repotracker enabled. false = repotracker disabled).
+	// RepotrackerDisabled is if repotracker is disabled (i.e. true = repotracker disabled. false = repotracker enabled).
 	RepotrackerDisabled    *bool               `bson:"repotracker_disabled,omitempty" json:"repotracker_disabled,omitempty" yaml:"repotracker_disabled"`
 	DispatchingDisabled    *bool               `bson:"dispatching_disabled,omitempty" json:"dispatching_disabled,omitempty" yaml:"dispatching_disabled"`
 	StepbackDisabled       *bool               `bson:"stepback_disabled,omitempty" json:"stepback_disabled,omitempty" yaml:"stepback_disabled"`
@@ -1979,9 +1979,6 @@ func SaveProjectPageForSection(projectId string, p *ProjectRef, section ProjectP
 	var err error
 	switch section {
 	case ProjectPageGeneralSection:
-		if p.IsRepotrackerDisabled() && p.RemotePath == "" {
-			return false, errors.Errorf("project '%s' does not have a config set", projectId)
-		}
 		setUpdate := bson.M{
 			ProjectRefBranchKey:                p.Branch,
 			ProjectRefBatchTimeKey:             p.BatchTime,
