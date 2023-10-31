@@ -49,15 +49,19 @@ type ProjectRef struct {
 	// Identifier must be unique, but is modifiable. Used by users.
 	Identifier string `bson:"identifier" json:"identifier" yaml:"identifier"`
 
-	DisplayName            string              `bson:"display_name" json:"display_name,omitempty" yaml:"display_name"`
-	Enabled                bool                `bson:"enabled,omitempty" json:"enabled,omitempty" yaml:"enabled"`
-	Private                *bool               `bson:"private,omitempty" json:"private,omitempty" yaml:"private"`
-	Restricted             *bool               `bson:"restricted,omitempty" json:"restricted,omitempty" yaml:"restricted"`
-	Owner                  string              `bson:"owner_name" json:"owner_name" yaml:"owner"`
-	Repo                   string              `bson:"repo_name" json:"repo_name" yaml:"repo"`
-	Branch                 string              `bson:"branch_name" json:"branch_name" yaml:"branch"`
-	RemotePath             string              `bson:"remote_path" json:"remote_path" yaml:"remote_path"`
-	PatchingDisabled       *bool               `bson:"patching_disabled,omitempty" json:"patching_disabled,omitempty"`
+	DisplayName string `bson:"display_name" json:"display_name,omitempty" yaml:"display_name"`
+	Enabled     bool   `bson:"enabled,omitempty" json:"enabled,omitempty" yaml:"enabled"`
+	Private     *bool  `bson:"private,omitempty" json:"private,omitempty" yaml:"private"`
+	Restricted  *bool  `bson:"restricted,omitempty" json:"restricted,omitempty" yaml:"restricted"`
+	Owner       string `bson:"owner_name" json:"owner_name" yaml:"owner"`
+	Repo        string `bson:"repo_name" json:"repo_name" yaml:"repo"`
+	Branch      string `bson:"branch_name" json:"branch_name" yaml:"branch"`
+
+	// RemotePath is the path to the Evergreen config file.
+	RemotePath       string `bson:"remote_path" json:"remote_path" yaml:"remote_path"`
+	PatchingDisabled *bool  `bson:"patching_disabled,omitempty" json:"patching_disabled,omitempty"`
+
+	// RepotrackerDisabled is if repotracker is enabled (i.e. true = repotracker enabled. false = repotracker disabled).
 	RepotrackerDisabled    *bool               `bson:"repotracker_disabled,omitempty" json:"repotracker_disabled,omitempty" yaml:"repotracker_disabled"`
 	DispatchingDisabled    *bool               `bson:"dispatching_disabled,omitempty" json:"dispatching_disabled,omitempty" yaml:"dispatching_disabled"`
 	StepbackDisabled       *bool               `bson:"stepback_disabled,omitempty" json:"stepback_disabled,omitempty" yaml:"stepback_disabled"`
@@ -1977,6 +1981,19 @@ func SaveProjectPageForSection(projectId string, p *ProjectRef, section ProjectP
 	var err error
 	switch section {
 	case ProjectPageGeneralSection:
+		if utility.FromBoolPtr(p.RepotrackerDisabled) && p.RemotePath == "" {
+			var pRef *ProjectRef
+			pRef, err = FindBranchProjectRef(projectId)
+			if err != nil {
+				return false, errors.Wrapf(err, "getting project '%s'", projectId)
+			}
+			if pRef == nil {
+				return false, errors.Errorf("project '%s' was not found", projectId)
+			}
+			if pRef.RemotePath == "" {
+				return false, errors.Errorf("project '%s' does not have a config set", projectId)
+			}
+		}
 		setUpdate := bson.M{
 			ProjectRefBranchKey:                p.Branch,
 			ProjectRefBatchTimeKey:             p.BatchTime,
