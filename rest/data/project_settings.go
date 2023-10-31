@@ -242,7 +242,7 @@ func SaveProjectSettingsForSection(ctx context.Context, projectId string, change
 		}
 
 		if !mergedSection.IsRepotrackerDisabled() && mergedSection.RemotePath == "" {
-			return nil, errors.Errorf("project '%s' does not have a config set", projectId)
+			return nil, errors.Errorf("project '%s' must have a config set when setting repotracker", mergedSection.Identifier)
 		}
 
 		// Validate owner/repo if the project is enabled or owner/repo is populated.
