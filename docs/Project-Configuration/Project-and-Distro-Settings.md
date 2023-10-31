@@ -418,7 +418,7 @@ configurations to be used by other users.
 Distros describe machine configuration that run tasks as well as the
 worker pools were tasks execute. As a result much of the available
 configuration that controls how tasks execute occurs at the distro
-level. For more information about avaliable distros choices see [Guidelines around Evergreen distros](https://wiki.corp.mongodb.com/display/DBDEVPROD/Guidelines+around+Evergreen+distros)
+level. For more information about avaliable distros choices see [Guidelines around Evergreen distros](https://wiki.corp.mongodb.com/x/CZ7yBg)
 
 ### Scheduler Options
 

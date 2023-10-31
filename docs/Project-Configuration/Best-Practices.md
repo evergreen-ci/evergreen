@@ -48,4 +48,4 @@ echo $foo
 
 ## Distro Choice
 
-Tasks on more popular distros are often run quicker than tasks on less popular ones. Prefer more popular distros where possible. For more information about avaliable distros choices see [Guidelines around Evergreen distros](https://wiki.corp.mongodb.com/display/DBDEVPROD/Guidelines+around+Evergreen+distros)
+Tasks on more popular distros are often run quicker than tasks on less popular ones. Prefer more popular distros where possible. For more information about avaliable distros choices see [Guidelines around Evergreen distros](https://wiki.corp.mongodb.com/x/CZ7yBg)
