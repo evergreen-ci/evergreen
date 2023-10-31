@@ -675,6 +675,7 @@ func (a *Agent) runPreAndMain(ctx context.Context, tc *taskContext) (status stri
 		"uptime",
 		"df -h",
 		"${ps|ps}",
+		"df -i",
 	)
 
 	statsCollector.logStats(execTimeoutCtx, tc.taskConfig.Expansions)
