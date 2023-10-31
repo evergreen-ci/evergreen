@@ -1136,6 +1136,137 @@ func TestDefaultRepoBySection(t *testing.T) {
 	}
 }
 
+func TestGetGitHubProjectConflicts(t *testing.T) {
+	assert := assert.New(t)
+	require := require.New(t)
+
+	require.NoError(db.ClearCollections(ProjectRefCollection, RepoRefCollection))
+
+	// Two project refs that are from different repos should never conflict.
+	p1 := &ProjectRef{
+		Owner:  "mongodb",
+		Repo:   "mci1",
+		Branch: "main",
+		Id:     "p1",
+	}
+	require.NoError(p1.Insert())
+	p2 := &ProjectRef{
+		Owner:  "mongodb",
+		Repo:   "not-mci1",
+		Branch: "main",
+		Id:     "p2",
+	}
+	require.NoError(p2.Insert())
+	conflicts, err := p1.GetGithubProjectConflicts()
+	require.NoError(err)
+	assert.Len(conflicts.PRTestingIdentifiers, 0)
+	assert.Len(conflicts.CommitQueueIdentifiers, 0)
+	assert.Len(conflicts.CommitCheckIdentifiers, 0)
+
+	// Two project refs that are from the same repo but do not have potential conflicting settings.
+	p3 := &ProjectRef{
+		Owner:  "mongodb",
+		Repo:   "mci2",
+		Branch: "main",
+		Id:     "p3",
+	}
+	require.NoError(p3.Insert())
+	p4 := &ProjectRef{
+		Owner:  "mongodb",
+		Repo:   "mci2",
+		Branch: "main",
+		Id:     "p4",
+	}
+	require.NoError(p4.Insert())
+	conflicts, err = p3.GetGithubProjectConflicts()
+	require.NoError(err)
+	assert.Len(conflicts.PRTestingIdentifiers, 0)
+	assert.Len(conflicts.CommitQueueIdentifiers, 0)
+	assert.Len(conflicts.CommitCheckIdentifiers, 0)
+
+	// Three project refs that do have potential conflicting settings.
+	p5 := &ProjectRef{
+		Owner:            "mongodb",
+		Repo:             "mci3",
+		Branch:           "main",
+		Id:               "p5",
+		PRTestingEnabled: utility.TruePtr(),
+	}
+	require.NoError(p5.Insert())
+	p6 := &ProjectRef{
+		Owner:               "mongodb",
+		Repo:                "mci3",
+		Branch:              "main",
+		Id:                  "p6",
+		GithubChecksEnabled: utility.TruePtr(),
+	}
+	require.NoError(p6.Insert())
+	p7 := &ProjectRef{
+		Owner:               "mongodb",
+		Repo:                "mci3",
+		Branch:              "main",
+		Id:                  "p7",
+		GithubChecksEnabled: utility.TruePtr(),
+	}
+	require.NoError(p7.Insert())
+	p8 := &ProjectRef{
+		Owner:  "mongodb",
+		Repo:   "mci3",
+		Branch: "main",
+		Id:     "p8",
+	}
+	require.NoError(p8.Insert())
+	// p5 should have conflicting with commit queue and commit check.
+	conflicts, err = p5.GetGithubProjectConflicts()
+	require.NoError(err)
+	assert.Len(conflicts.PRTestingIdentifiers, 0)
+	assert.Len(conflicts.CommitQueueIdentifiers, 1)
+	require.Len(conflicts.CommitCheckIdentifiers, 1)
+	// p6 should have conflicting with pr testing and commit check.
+	conflicts, err = p6.GetGithubProjectConflicts()
+	require.NoError(err)
+	assert.Len(conflicts.PRTestingIdentifiers, 1)
+	assert.Len(conflicts.CommitQueueIdentifiers, 0)
+	require.Len(conflicts.CommitCheckIdentifiers, 1)
+	// p7 should have conflicting with pr testing and commit queue.
+	conflicts, err = p7.GetGithubProjectConflicts()
+	require.NoError(err)
+	assert.Len(conflicts.PRTestingIdentifiers, 1)
+	assert.Len(conflicts.CommitQueueIdentifiers, 1)
+	require.Len(conflicts.CommitCheckIdentifiers, 0)
+	// p8 should have conflicting with all
+	conflicts, err = p8.GetGithubProjectConflicts()
+	require.NoError(err)
+	assert.Len(conflicts.PRTestingIdentifiers, 1)
+	assert.Len(conflicts.CommitQueueIdentifiers, 1)
+	require.Len(conflicts.CommitCheckIdentifiers, 1)
+
+	// Two project refs in which one is the 'parent' or repo tracking project while the other is
+	// a branch tracking project that has their RepoRefId set to the 'parent'. And because
+	// the branch tracking project inherits the settings, it should not conflict.
+	p9 := &ProjectRef{
+		Owner:            "mongodb",
+		Repo:             "mci4",
+		Branch:           "main",
+		Id:               "p9",
+		PRTestingEnabled: utility.TruePtr(),
+	}
+	require.NoError(p9.Insert())
+	p10 := &ProjectRef{
+		Owner:     "mongodb",
+		Repo:      "mci4",
+		Branch:    "main",
+		Id:        "p10",
+		RepoRefId: p9.Id,
+	}
+	require.NoError(p10.Insert())
+	conflicts, err = p10.GetGithubProjectConflicts()
+	require.NoError(err)
+	assert.Len(conflicts.PRTestingIdentifiers, 0)
+	assert.Len(conflicts.CommitQueueIdentifiers, 0)
+	assert.Len(conflicts.CommitCheckIdentifiers, 0)
+}
+
 func TestFindProjectRefsByRepoAndBranch(t *testing.T) {
 	assert := assert.New(t)
 	require := require.New(t)
