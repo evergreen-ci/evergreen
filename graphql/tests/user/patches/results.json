@@ -49,7 +49,7 @@
       }
     },
     {
-      "query_file": "patches-include-hidden.graphql",
+      "query_file": "include_hidden_patches.graphql",
       "result": {
         "data": {
           "user": {
