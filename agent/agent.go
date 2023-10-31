@@ -673,9 +673,8 @@ func (a *Agent) runPreAndMain(ctx context.Context, tc *taskContext) (status stri
 		a.jasper,
 		defaultStatsInterval,
 		"uptime",
-		"df -h",
+		"df -h -i",
 		"${ps|ps}",
-		"df -i",
 	)
 
 	statsCollector.logStats(execTimeoutCtx, tc.taskConfig.Expansions)
