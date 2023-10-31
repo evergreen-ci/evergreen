@@ -86,7 +86,8 @@ func TestMetadataFromArgsWithoutVersion(t *testing.T) {
 	assert.NoError(err)
 	assert.True(metadata.Activate)
 	assert.Equal(args.TriggerType, metadata.TriggerType)
-	assert.Equal(args.PushRevision.Revision, metadata.Revision.Revision)
+	// Should equal the downstream project's ref rather than the push revision.
+	assert.Equal("def", metadata.Revision.Revision)
 	assert.Equal(args.PushRevision.Revision, metadata.SourceCommit)
 }
 

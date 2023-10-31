@@ -102,15 +102,6 @@ func getMetadataFromArgs(args ProcessorArgs) (model.VersionMetadata, error) {
 		TriggerDefinitionID: args.DefinitionID,
 		Alias:               args.Alias,
 	}
-	repo, err := model.FindRepository(args.DownstreamProject.Id)
-	if err != nil {
-		return metadata, errors.Wrapf(err, "finding most recent revision for '%s'", args.DownstreamProject.Id)
-	}
-	if repo == nil {
-		return metadata, errors.Errorf("repo '%s' not found", args.DownstreamProject.Id)
-	}
-	metadata.Revision.Revision = repo.LastRevision
-
 	if args.SourceVersion != nil {
 		metadata.Revision = model.Revision{
 			Author:          args.SourceVersion.Author,
@@ -130,6 +121,14 @@ func getMetadataFromArgs(args ProcessorArgs) (model.VersionMetadata, error) {
 		metadata.Revision = args.PushRevision
 		metadata.SourceCommit = args.PushRevision.Revision
 	}
+	repo, err := model.FindRepository(args.DownstreamProject.Id)
+	if err != nil {
+		return metadata, errors.Wrapf(err, "finding most recent revision for '%s'", args.DownstreamProject.Id)
+	}
+	if repo == nil {
+		return metadata, errors.Errorf("repo '%s' not found", args.DownstreamProject.Id)
+	}
+	metadata.Revision.Revision = repo.LastRevision
 
 	return metadata, nil
 }
