@@ -1194,11 +1194,11 @@ func TestGetGitHubProjectConflicts(t *testing.T) {
 	}
 	require.NoError(p5.Insert())
 	p6 := &ProjectRef{
-		Owner:               "mongodb",
-		Repo:                "mci3",
-		Branch:              "main",
-		Id:                  "p6",
-		GithubChecksEnabled: utility.TruePtr(),
+		Owner:       "mongodb",
+		Repo:        "mci3",
+		Branch:      "main",
+		Id:          "p6",
+		CommitQueue: CommitQueueParams{Enabled: utility.TruePtr()},
 	}
 	require.NoError(p6.Insert())
 	p7 := &ProjectRef{
