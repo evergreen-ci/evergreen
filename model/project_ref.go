@@ -56,11 +56,9 @@ type ProjectRef struct {
 	Owner       string `bson:"owner_name" json:"owner_name" yaml:"owner"`
 	Repo        string `bson:"repo_name" json:"repo_name" yaml:"repo"`
 	Branch      string `bson:"branch_name" json:"branch_name" yaml:"branch"`
-
 	// RemotePath is the path to the Evergreen config file.
 	RemotePath       string `bson:"remote_path" json:"remote_path" yaml:"remote_path"`
 	PatchingDisabled *bool  `bson:"patching_disabled,omitempty" json:"patching_disabled,omitempty"`
-
 	// RepotrackerDisabled is if repotracker is enabled (i.e. true = repotracker enabled. false = repotracker disabled).
 	RepotrackerDisabled    *bool               `bson:"repotracker_disabled,omitempty" json:"repotracker_disabled,omitempty" yaml:"repotracker_disabled"`
 	DispatchingDisabled    *bool               `bson:"dispatching_disabled,omitempty" json:"dispatching_disabled,omitempty" yaml:"dispatching_disabled"`
