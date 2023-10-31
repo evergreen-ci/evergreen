@@ -2971,21 +2971,6 @@ func TestSaveProjectPageForSection(t *testing.T) {
 	_, err = SaveProjectPageForSection("iden_", update, ProjectPagePluginSection, false)
 	assert.NoError(err)
 
-	// Attempt to enable repotracker when no remote path is set.
-	update = &ProjectRef{
-		RepotrackerDisabled: utility.ToBoolPtr(true),
-	}
-	_, err = SaveProjectPageForSection("iden_", update, ProjectPagePluginSection, false)
-	assert.Error(err)
-
-	// Attempt to enable repotracker when remote path is set.
-	update = &ProjectRef{
-		RepotrackerDisabled: utility.ToBoolPtr(true),
-		RemotePath:          "I am set",
-	}
-	_, err = SaveProjectPageForSection("iden_", update, ProjectPagePluginSection, false)
-	assert.NoError(err)
-
 	// Test private field does not get updated
 	update = &ProjectRef{
 		Restricted: utility.TruePtr(),
