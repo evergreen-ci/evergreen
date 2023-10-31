@@ -1979,18 +1979,8 @@ func SaveProjectPageForSection(projectId string, p *ProjectRef, section ProjectP
 	var err error
 	switch section {
 	case ProjectPageGeneralSection:
-		if utility.FromBoolPtr(p.RepotrackerDisabled) && p.RemotePath == "" {
-			var pRef *ProjectRef
-			pRef, err = FindBranchProjectRef(projectId)
-			if err != nil {
-				return false, errors.Wrapf(err, "getting project '%s'", projectId)
-			}
-			if pRef == nil {
-				return false, errors.Errorf("project '%s' was not found", projectId)
-			}
-			if pRef.RemotePath == "" {
-				return false, errors.Errorf("project '%s' does not have a config set", projectId)
-			}
+		if p.IsRepotrackerDisabled() && p.RemotePath == "" {
+			return false, errors.Errorf("project '%s' does not have a config set", projectId)
 		}
 		setUpdate := bson.M{
 			ProjectRefBranchKey:                p.Branch,
