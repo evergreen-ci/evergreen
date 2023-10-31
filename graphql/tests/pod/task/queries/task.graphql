@@ -1,0 +1,10 @@
+{
+  pod(podId: "localhost") {
+    id
+    task {
+      id
+      execution
+      status
+    }
+  }
+}

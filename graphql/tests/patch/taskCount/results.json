@@ -1,0 +1,15 @@
+{
+  "tests": [
+    {
+      "query_file": "task_count.graphql",
+      "result": {
+        "data": {
+          "patch": {
+            "id": "5e4ff3abe3c3317e352062e4",
+            "taskCount": 5
+          }
+        }
+      }
+    }
+  ]
+}

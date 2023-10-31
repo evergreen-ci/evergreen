@@ -1,0 +1,5 @@
+mutation {
+  unscheduleTask(taskId: "activated_task") {
+    activated
+  }
+}

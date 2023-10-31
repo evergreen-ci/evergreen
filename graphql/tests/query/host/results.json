@@ -1,0 +1,22 @@
+{
+  "tests": [
+    {
+      "query_file": "host.graphql",
+      "result": {
+        "data": {
+          "host": {
+            "id": "rhel71-ppc-1.pic.build.10gen.cc",
+            "hostUrl": "rhel71-ppc-1.pic.build.10gen.cc",
+            "tag": "",
+            "distroId": "rhel71-power8-large",
+            "startedBy": "mci",
+            "provider": "static",
+            "user": "mci-exec",
+            "status": "running",
+            "lastCommunicationTime": "2020-07-20T15:19:22.146-04:00"
+          }
+        }
+      }
+    }
+  ]
+}
