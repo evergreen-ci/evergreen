@@ -1221,25 +1221,25 @@ func TestGetGitHubProjectConflicts(t *testing.T) {
 	require.NoError(err)
 	assert.Len(conflicts.PRTestingIdentifiers, 0)
 	assert.Len(conflicts.CommitQueueIdentifiers, 1)
-	require.Len(conflicts.CommitCheckIdentifiers, 1)
+	assert.Len(conflicts.CommitCheckIdentifiers, 1)
 	// p6 should have conflicting with pr testing and commit check.
 	conflicts, err = p6.GetGithubProjectConflicts()
 	require.NoError(err)
 	assert.Len(conflicts.PRTestingIdentifiers, 1)
 	assert.Len(conflicts.CommitQueueIdentifiers, 0)
-	require.Len(conflicts.CommitCheckIdentifiers, 1)
+	assert.Len(conflicts.CommitCheckIdentifiers, 1)
 	// p7 should have conflicting with pr testing and commit queue.
 	conflicts, err = p7.GetGithubProjectConflicts()
 	require.NoError(err)
 	assert.Len(conflicts.PRTestingIdentifiers, 1)
 	assert.Len(conflicts.CommitQueueIdentifiers, 1)
-	require.Len(conflicts.CommitCheckIdentifiers, 0)
+	assert.Len(conflicts.CommitCheckIdentifiers, 0)
 	// p8 should have conflicting with all
 	conflicts, err = p8.GetGithubProjectConflicts()
 	require.NoError(err)
 	assert.Len(conflicts.PRTestingIdentifiers, 1)
 	assert.Len(conflicts.CommitQueueIdentifiers, 1)
-	require.Len(conflicts.CommitCheckIdentifiers, 1)
+	assert.Len(conflicts.CommitCheckIdentifiers, 1)
 
 	// Two project refs in which one is the 'parent' or repo tracking project while the other is
 	// a branch tracking project that has their RepoRefId set to the 'parent'. And because
