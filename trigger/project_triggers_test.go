@@ -63,6 +63,7 @@ func TestMetadataFromArgsWithVersion(t *testing.T) {
 
 func TestMetadataFromArgsWithoutVersion(t *testing.T) {
 	assert := assert.New(t)
+	assert.NoError(db.Clear(model.RepositoriesCollection))
 	ref := model.ProjectRef{
 		Id: "project",
 	}
