@@ -1273,37 +1273,37 @@ func TestFindMidwayTask(t *testing.T) {
 		assert.NoError(task.Insert())
 		tasks = append(tasks, task)
 	}
-	t10, err := FindMidwayTask(tasks[0], tasks[19])
+	t10, err := findMidwayTask(tasks[0], tasks[19])
 	assert.NoError(err)
 	require.NotNil(t, t10)
 	assert.Equal(10, t10.RevisionOrderNumber)
 
-	t5, err := FindMidwayTask(tasks[0], tasks[9])
+	t5, err := findMidwayTask(tasks[0], tasks[9])
 	assert.NoError(err)
 	require.NotNil(t, t5)
 	assert.Equal(5, t5.RevisionOrderNumber, 5)
 
-	t15, err := FindMidwayTask(tasks[10], tasks[19])
+	t15, err := findMidwayTask(tasks[10], tasks[19])
 	assert.NoError(err)
 	require.NotNil(t, t15)
 	assert.Equal(15, t15.RevisionOrderNumber)
 
-	t19, err := FindMidwayTask(tasks[17], tasks[19])
+	t19, err := findMidwayTask(tasks[17], tasks[19])
 	assert.NoError(err)
 	require.NotNil(t, t19)
 	assert.Equal(19, t19.RevisionOrderNumber)
 
-	t4, err := FindMidwayTask(tasks[6], tasks[0])
+	t4, err := findMidwayTask(tasks[6], tasks[0])
 	assert.NoError(err)
 	require.NotNil(t, t4)
 	assert.Equal(4, t4.RevisionOrderNumber)
 
-	t12, err := FindMidwayTask(tasks[11], tasks[11])
+	t12, err := findMidwayTask(tasks[11], tasks[11])
 	assert.NoError(err)
 	require.NotNil(t, t12)
 	assert.Equal(12, t12.RevisionOrderNumber)
 
-	t16, err := FindMidwayTask(tasks[15], tasks[16])
+	t16, err := findMidwayTask(tasks[15], tasks[16])
 	assert.NoError(err)
 	require.NotNil(t, t16)
 	assert.Equal(16, t16.RevisionOrderNumber)
@@ -1316,7 +1316,7 @@ func TestFindMidwayTask(t *testing.T) {
 		Project:      project,
 	}
 	assert.NoError(otherDisplayName.Insert())
-	task, err := FindMidwayTask(tasks[0], otherDisplayName)
+	task, err := findMidwayTask(tasks[0], otherDisplayName)
 	assert.Error(err)
 	assert.Nil(task)
 
@@ -1328,7 +1328,7 @@ func TestFindMidwayTask(t *testing.T) {
 		Project:      project,
 	}
 	assert.NoError(otherBuildVariant.Insert())
-	task, err = FindMidwayTask(tasks[0], otherBuildVariant)
+	task, err = findMidwayTask(tasks[0], otherBuildVariant)
 	assert.Error(err)
 	assert.Nil(task)
 
@@ -1340,7 +1340,7 @@ func TestFindMidwayTask(t *testing.T) {
 		Project:      project,
 	}
 	assert.NoError(otherRequester.Insert())
-	task, err = FindMidwayTask(tasks[0], otherRequester)
+	task, err = findMidwayTask(tasks[0], otherRequester)
 	assert.Error(err)
 	assert.Nil(task)
 
@@ -1352,7 +1352,7 @@ func TestFindMidwayTask(t *testing.T) {
 		Project:      "Other project",
 	}
 	assert.NoError(otherProject.Insert())
-	task, err = FindMidwayTask(tasks[0], otherProject)
+	task, err = findMidwayTask(tasks[0], otherProject)
 	assert.Error(err)
 	assert.Nil(task)
 }

@@ -1,6 +1,0 @@
-mutation {
-  abortTask(taskId: "exec1") {
-    activated
-    aborted
-  }
-}

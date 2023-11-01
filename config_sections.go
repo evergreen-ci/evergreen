@@ -25,7 +25,7 @@ func NewConfigSections() ConfigSections {
 		&AmboyConfig{},
 		&APIConfig{},
 		&AuthConfig{},
-		&BucketConfig{},
+		&BucketsConfig{},
 		&CedarConfig{},
 		&CloudProviders{},
 		&CommitQueueConfig{},
@@ -50,6 +50,7 @@ func NewConfigSections() ConfigSections {
 		&TriggerConfig{},
 		&SpawnHostConfig{},
 		&TracerConfig{},
+		&GitHubCheckRunConfig{},
 	}
 
 	sectionMap := make(map[string]ConfigSection, len(sections))

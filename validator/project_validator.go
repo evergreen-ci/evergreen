@@ -155,6 +155,7 @@ var projectWarningValidators = []projectValidator{
 	checkTaskRuns,
 	checkModules,
 	checkTasks,
+	checkRequestersForTaskDependencies,
 	checkBuildVariants,
 }
 
@@ -1533,31 +1534,48 @@ func validateTaskDependencies(project *model.Project) ValidationErrors {
 // run for the same requesters. For example, a task that runs in a mainline
 // commit cannot depend on a patch only task since the dependency will only be
 // satisfiable in patches.
-func checkRequestersForTaskDependencies(task *model.ProjectTask, allTasks map[string]model.ProjectTask) ValidationErrors {
-	errs := ValidationErrors{}
+func checkRequestersForTaskDependencies(project *model.Project) ValidationErrors {
+	bvtus := map[model.TVPair]model.BuildVariantTaskUnit{}
+	bvs := map[string]struct{}{}
+	tasks := map[string]struct{}{}
+	for _, bvtu := range project.FindAllBuildVariantTasks() {
+		bvtus[model.TVPair{Variant: bvtu.Variant, TaskName: bvtu.Name}] = bvtu
+		bvs[bvtu.Variant] = struct{}{}
+		tasks[bvtu.Name] = struct{}{}
+	}
 
-	for _, dep := range task.DependsOn {
-		dependent, exists := allTasks[dep.Name]
-		if !exists {
-			continue
-		}
-		if utility.FromBoolPtr(dependent.PatchOnly) && !utility.FromBoolPtr(task.PatchOnly) {
-			errs = append(errs, ValidationError{
-				Level:   Warning,
-				Message: fmt.Sprintf("Task '%s' depends on patch-only task '%s'. Both will only run in patches", task.Name, dep.Name),
-			})
-		}
-		if !utility.FromBoolTPtr(dependent.Patchable) && utility.FromBoolTPtr(task.Patchable) {
-			errs = append(errs, ValidationError{
-				Level:   Warning,
-				Message: fmt.Sprintf("Task '%s' depends on non-patchable task '%s'. Neither will run in patches", task.Name, dep.Name),
-			})
-		}
-		if utility.FromBoolPtr(dependent.GitTagOnly) && !utility.FromBoolPtr(task.GitTagOnly) {
-			errs = append(errs, ValidationError{
-				Level:   Warning,
-				Message: fmt.Sprintf("Task '%s' depends on git-tag-only task '%s'. Both will only run when pushing git tags", task.Name, dep.Name),
-			})
+	var errs ValidationErrors
+	for _, bvtu := range bvtus {
+		for _, d := range bvtu.DependsOn {
+			dep := model.TVPair{Variant: d.Variant, TaskName: d.Name}
+			if dep.Variant == "" {
+				// Implicit build variant - if no build variant is explicitly
+				// stated, the task and dependency should both run in the same
+				// build variant.
+				dep.Variant = bvtu.Variant
+			}
+			dependent := project.FindTaskForVariant(dep.TaskName, dep.Variant)
+			if dependent == nil {
+				continue
+			}
+			if utility.FromBoolPtr(dependent.PatchOnly) && !utility.FromBoolPtr(bvtu.PatchOnly) {
+				errs = append(errs, ValidationError{
+					Level:   Warning,
+					Message: fmt.Sprintf("Task '%s' depends on patch-only task '%s'. Both will only run in patches", bvtu.Name, d.Name),
+				})
+			}
+			if !utility.FromBoolTPtr(dependent.Patchable) && utility.FromBoolTPtr(bvtu.Patchable) {
+				errs = append(errs, ValidationError{
+					Level:   Warning,
+					Message: fmt.Sprintf("Task '%s' depends on non-patchable task '%s'. Neither will run in patches", bvtu.Name, d.Name),
+				})
+			}
+			if utility.FromBoolPtr(dependent.GitTagOnly) && !utility.FromBoolPtr(bvtu.GitTagOnly) {
+				errs = append(errs, ValidationError{
+					Level:   Warning,
+					Message: fmt.Sprintf("Task '%s' depends on git-tag-only task '%s'. Both will only run when pushing git tags", bvtu.Name, d.Name),
+				})
+			}
 		}
 	}
 
@@ -1668,9 +1686,9 @@ func checkTaskGroups(p *model.Project) ValidationErrors {
 			})
 		}
 		names[tg.Name] = true
-		if tg.MaxHosts < 1 {
+		if tg.MaxHosts < -1 {
 			errs = append(errs, ValidationError{
-				Message: fmt.Sprintf("task group %s has number of hosts %d less than 1", tg.Name, tg.MaxHosts),
+				Message: fmt.Sprintf("task group '%s' has number of hosts %d less than 1", tg.Name, tg.MaxHosts),
 				Level:   Warning,
 			})
 		}
@@ -1679,7 +1697,7 @@ func checkTaskGroups(p *model.Project) ValidationErrors {
 		}
 		if tg.MaxHosts > len(tg.Tasks) {
 			errs = append(errs, ValidationError{
-				Message: fmt.Sprintf("task group %s has max number of hosts %d greater than the number of tasks %d", tg.Name, tg.MaxHosts, len(tg.Tasks)),
+				Message: fmt.Sprintf("task group '%s' has max number of hosts %d greater than the number of tasks %d", tg.Name, tg.MaxHosts, len(tg.Tasks)),
 				Level:   Warning,
 			})
 		}
@@ -2180,7 +2198,6 @@ func parseS3PullParameters(c model.PluginCommandConf) (task, bv string, err erro
 func checkTasks(project *model.Project) ValidationErrors {
 	errs := ValidationErrors{}
 	execTimeoutWarningAdded := false
-	allTasks := project.FindAllTasksMap()
 	for _, task := range project.Tasks {
 		if len(task.Commands) == 0 {
 			errs = append(errs,
@@ -2203,7 +2220,6 @@ func checkTasks(project *model.Project) ValidationErrors {
 			execTimeoutWarningAdded = true
 		}
 		errs = append(errs, checkLoggerConfig(&task)...)
-		errs = append(errs, checkRequestersForTaskDependencies(&task, allTasks)...)
 		errs = append(errs, checkTaskNames(project, &task)...)
 	}
 	if project.Loggers != nil {

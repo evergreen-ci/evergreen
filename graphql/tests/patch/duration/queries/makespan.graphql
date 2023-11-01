@@ -1,0 +1,7 @@
+{
+  patch(id: "9a1f8ab8834b87d7b5d251a5") {
+    duration {
+      makespan
+    }
+  }
+}

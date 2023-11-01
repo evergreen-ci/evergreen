@@ -245,9 +245,9 @@ func (h *repoIDPatchHandler) Run(ctx context.Context) gimlet.Responder {
 }
 
 func (h repoIDPatchHandler) validateBranchesForRepo(ctx context.Context, newRepoRef *dbModel.RepoRef, mergedRepos []dbModel.ProjectRef, aliases []model.APIProjectAlias) error {
-	hasHook, err := dbModel.EnableWebhooks(ctx, &newRepoRef.ProjectRef)
+	hasHook, err := dbModel.SetTracksPushEvents(ctx, &newRepoRef.ProjectRef)
 	if err != nil {
-		return errors.Wrapf(err, "error enabling webhooks for repo '%s'", h.repoName)
+		return errors.Wrapf(err, "setting project tracks push events for repo '%s'", h.repoName)
 	}
 	catcher := grip.NewBasicCatcher()
 

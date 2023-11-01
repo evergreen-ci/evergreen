@@ -15,7 +15,7 @@ func NewConfigModel() *APIAdminSettings {
 		Amboy:             &APIAmboyConfig{},
 		Api:               &APIapiConfig{},
 		AuthConfig:        &APIAuthConfig{},
-		Buckets:           &APIBucketConfig{},
+		Buckets:           &APIBucketsConfig{},
 		Cedar:             &APICedarConfig{},
 		CommitQueue:       &APICommitQueueConfig{},
 		ContainerPools:    &APIContainerPoolsConfig{},
@@ -44,6 +44,7 @@ func NewConfigModel() *APIAdminSettings {
 		Ui:                &APIUIConfig{},
 		Spawnhost:         &APISpawnHostConfig{},
 		Tracer:            &APITracerSettings{},
+		GitHubCheckRun:    &APIGitHubCheckRunConfig{},
 	}
 }
 
@@ -56,7 +57,7 @@ type APIAdminSettings struct {
 	AuthConfig          *APIAuthConfig                    `json:"auth,omitempty"`
 	Banner              *string                           `json:"banner,omitempty"`
 	BannerTheme         *string                           `json:"banner_theme,omitempty"`
-	Buckets             *APIBucketConfig                  `json:"buckets,omitempty"`
+	Buckets             *APIBucketsConfig                 `json:"buckets,omitempty"`
 	Cedar               *APICedarConfig                   `json:"cedar,omitempty"`
 	ClientBinariesDir   *string                           `json:"client_binaries_dir,omitempty"`
 	CommitQueue         *APICommitQueueConfig             `json:"commit_queue,omitempty"`
@@ -95,6 +96,7 @@ type APIAdminSettings struct {
 	Ui                  *APIUIConfig                      `json:"ui,omitempty"`
 	Spawnhost           *APISpawnHostConfig               `json:"spawnhost,omitempty"`
 	Tracer              *APITracerSettings                `json:"tracer,omitempty"`
+	GitHubCheckRun      *APIGitHubCheckRunConfig          `json:"github_check_run,omitempty"`
 	ShutdownWaitSeconds *int                              `json:"shutdown_wait_seconds,omitempty"`
 }
 
@@ -644,31 +646,34 @@ func (a *APIAuthConfig) ToService() (interface{}, error) {
 	}, nil
 }
 
+type APIBucketsConfig struct {
+	LogBucket APIBucketConfig `json:"log_bucket"`
+}
+
 type APIBucketConfig struct {
-	LogBucket APIBucket `json:"log_bucket"`
+	Name   *string `json:"name"`
+	Type   *string `json:"type"`
+	DBName *string `json:"db_name"`
 }
 
-type APIBucket struct {
-	Name *string `json:"name"`
-	Type *string `json:"type"`
-}
-
-func (a *APIBucketConfig) BuildFromService(h interface{}) error {
+func (a *APIBucketsConfig) BuildFromService(h interface{}) error {
 	switch v := h.(type) {
-	case evergreen.BucketConfig:
+	case evergreen.BucketsConfig:
 		a.LogBucket.Name = utility.ToStringPtr(v.LogBucket.Name)
-		a.LogBucket.Type = utility.ToStringPtr(v.LogBucket.Type)
+		a.LogBucket.Type = utility.ToStringPtr(string(v.LogBucket.Type))
+		a.LogBucket.DBName = utility.ToStringPtr(v.LogBucket.DBName)
 	default:
 		return errors.Errorf("programmatic error: expected bucket config but got type %T", h)
 	}
 	return nil
 }
 
-func (a *APIBucketConfig) ToService() (interface{}, error) {
-	return evergreen.BucketConfig{
-		LogBucket: evergreen.Bucket{
-			Name: utility.FromStringPtr(a.LogBucket.Name),
-			Type: utility.FromStringPtr(a.LogBucket.Type),
+func (a *APIBucketsConfig) ToService() (interface{}, error) {
+	return evergreen.BucketsConfig{
+		LogBucket: evergreen.BucketConfig{
+			Name:   utility.FromStringPtr(a.LogBucket.Name),
+			Type:   evergreen.BucketType(utility.FromStringPtr(a.LogBucket.Type)),
+			DBName: utility.FromStringPtr(a.LogBucket.DBName),
 		},
 	}, nil
 }
@@ -2853,4 +2858,26 @@ func (c *APIDataPipesConfig) ToService() (interface{}, error) {
 		AWSSecretKey: utility.FromStringPtr(c.AWSSecretKey),
 		AWSToken:     utility.FromStringPtr(c.AWSToken),
 	}, nil
+}
+
+type APIGitHubCheckRunConfig struct {
+	CheckRunLimit *int `json:"check_run_limit"`
+}
+
+func (c *APIGitHubCheckRunConfig) BuildFromService(h interface{}) error {
+	switch v := h.(type) {
+	case evergreen.GitHubCheckRunConfig:
+		c.CheckRunLimit = utility.ToIntPtr(v.CheckRunLimit)
+	default:
+		return errors.Errorf("programmatic error: expected GitHub check run config but got type %T", h)
+	}
+	return nil
+}
+
+func (c *APIGitHubCheckRunConfig) ToService() (interface{}, error) {
+	config := evergreen.GitHubCheckRunConfig{
+		CheckRunLimit: utility.FromIntPtr(c.CheckRunLimit),
+	}
+
+	return config, nil
 }

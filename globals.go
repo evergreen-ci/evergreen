@@ -332,6 +332,11 @@ const (
 	GithubAppToken             = "github_app_token"
 	githubAppPrivateKey        = "github_app_key"
 
+	// GitHubRetryAttempts is the github client maximum number of attempts.
+	GitHubRetryAttempts = 3
+	// GitHubRetryMinDelay is the github client's minimum amount of delay before attempting another request.
+	GithubRetryMinDelay = time.Second
+
 	VSCodePort = 2021
 
 	// DefaultTaskSyncAtEndTimeout is the default timeout for task sync at the
@@ -461,22 +466,6 @@ func IsFinishedVersionStatus(status string) bool {
 // Will deprecate this legacy status in EVG-20032.
 func IsSuccessfulVersionStatus(status string) bool {
 	return utility.StringSliceContains(VersionSucceededStatuses, status)
-}
-
-// VersionStatusToPatchStatus ensures that we continue reading the legacy patch status for the time being.
-func VersionStatusToPatchStatus(versionStatus string) string {
-	if versionStatus == VersionSucceeded {
-		return LegacyPatchSucceeded
-	}
-	return versionStatus
-}
-
-// PatchStatusToVersionStatus handles the legacy version status, which may still be in use.
-func PatchStatusToVersionStatus(patchStatus string) string {
-	if patchStatus == LegacyPatchSucceeded {
-		return VersionSucceeded
-	}
-	return patchStatus
 }
 
 type ModificationAction string

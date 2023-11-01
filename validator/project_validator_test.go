@@ -649,21 +649,281 @@ buildvariants:
 }
 
 func TestCheckRequestersForTaskDependencies(t *testing.T) {
-	t.Run("DependingOnNonPatchableTaskGeneratesWarning", func(t *testing.T) {
-		p := model.Project{
-			Tasks: []model.ProjectTask{
-				{Name: "t1", DependsOn: []model.TaskUnitDependency{
-					{Name: "t2", Variant: model.AllVariants},
-				}},
-				{Name: "t2", Patchable: utility.FalsePtr()},
-			},
-		}
-		allTasks := p.FindAllTasksMap()
-		errs := checkRequestersForTaskDependencies(&p.Tasks[0], allTasks)
-		errs = append(errs, checkRequestersForTaskDependencies(&p.Tasks[1], allTasks)...)
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
+	t.Run("SucceedsWithNilDependencySetting", func(t *testing.T) {
+		projYAML := `
+tasks:
+  - name: dep
+    commands:
+      - command: shell.exec
+        params:
+          shell: bash
+          script: |
+            echo "hi"
+
+  - name: task
+    patch_only: true
+    depends_on:
+      - name: dep
+    commands:
+      - command: shell.exec
+        params:
+          shell: bash
+          script: |
+            echo "hi"
+buildvariants:
+  - name: ubuntu2204
+    display_name: Ubuntu 22.04
+    run_on:
+      - localhost
+    tasks:
+      - name: "task"
+      - name: "dep"
+`
+		var p model.Project
+		_, err := model.LoadProjectInto(ctx, []byte(projYAML), nil, "", &p)
+		require.NoError(t, err)
+		errs := checkRequestersForTaskDependencies(&p)
+
+		assert.Empty(t, errs)
+	})
+	t.Run("SucceedsAtTaskLevelMatch", func(t *testing.T) {
+		projYAML := `
+tasks:
+  - name: dep
+    patch_only: true
+    commands:
+      - command: shell.exec
+        params:
+          shell: bash
+          script: |
+            echo "hi"
+
+  - name: task
+    patch_only: true
+    depends_on:
+      - name: dep
+    commands:
+      - command: shell.exec
+        params:
+          shell: bash
+          script: |
+            echo "hi"
+buildvariants:
+  - name: ubuntu2204
+    display_name: Ubuntu 22.04
+    run_on:
+      - localhost
+    tasks:
+      - name: "task"
+      - name: "dep"
+`
+		var p model.Project
+		_, err := model.LoadProjectInto(ctx, []byte(projYAML), nil, "", &p)
+		require.NoError(t, err)
+		errs := checkRequestersForTaskDependencies(&p)
+
+		assert.Empty(t, errs)
+	})
+	t.Run("SucceedsAtBuildVariantLevelMatch", func(t *testing.T) {
+		projYAML := `
+tasks:
+  - name: dep
+    commands:
+      - command: shell.exec
+        params:
+          shell: bash
+          script: |
+            echo "hi"
+
+  - name: task
+    patch_only: true
+    depends_on:
+      - name: dep
+    commands:
+      - command: shell.exec
+        params:
+          shell: bash
+          script: |
+            echo "hi"
+buildvariants:
+  - name: ubuntu2204
+    patch_only: true
+    display_name: Ubuntu 22.04
+    run_on:
+      - localhost
+    tasks:
+      - name: "task"
+      - name: "dep"
+`
+		var p model.Project
+		_, err := model.LoadProjectInto(ctx, []byte(projYAML), nil, "", &p)
+		require.NoError(t, err)
+		errs := checkRequestersForTaskDependencies(&p)
+
+		assert.Empty(t, errs)
+	})
+	t.Run("SucceedsAtBuildVariantTaskLevelMatch", func(t *testing.T) {
+		projYAML := `
+tasks:
+  - name: dep
+    commands:
+      - command: shell.exec
+        params:
+          shell: bash
+          script: |
+            echo "hi"
+
+  - name: task
+    patch_only: true
+    depends_on:
+      - name: dep
+    commands:
+      - command: shell.exec
+        params:
+          shell: bash
+          script: |
+            echo "hi"
+buildvariants:
+  - name: ubuntu2204
+    display_name: Ubuntu 22.04
+    run_on:
+      - localhost
+    tasks:
+      - name: "task"
+      - name: "dep"
+        patch_only: true
+`
+		var p model.Project
+		_, err := model.LoadProjectInto(ctx, []byte(projYAML), nil, "", &p)
+		require.NoError(t, err)
+		errs := checkRequestersForTaskDependencies(&p)
+
+		assert.Empty(t, errs)
+	})
+	t.Run("WarnsWithTaskLevelConflict", func(t *testing.T) {
+		projYAML := `
+tasks:
+  - name: dep
+    patch_only: true
+    commands:
+      - command: shell.exec
+        params:
+          shell: bash
+          script: |
+            echo "hi"
+  - name: task
+    patch_only: false
+    depends_on:
+      - name: dep
+    commands:
+      - command: shell.exec
+        params:
+          shell: bash
+          script: |
+            echo "hi"
+
+buildvariants:
+  - name: ubuntu2204
+    display_name: Ubuntu 22.04
+    run_on:
+      - localhost
+    tasks:
+      - name: "task"
+      - name: "dep"
+`
+		var p model.Project
+		_, err := model.LoadProjectInto(ctx, []byte(projYAML), nil, "", &p)
+		require.NoError(t, err)
+		errs := checkRequestersForTaskDependencies(&p)
+
 		require.Len(t, errs, 1)
-		assert.Equal(t, Warning, errs[0].Level)
-		assert.Contains(t, errs[0].Message, "'t1' depends on non-patchable task 't2'")
+		assert.Equal(t, errs[0].Level, Warning)
+		assert.Contains(t, errs[0].Message, "'task' depends on patch-only task 'dep'")
+	})
+	t.Run("WarnsWithVariantLevelConflict", func(t *testing.T) {
+		projYAML := `
+tasks:
+  - name: dep
+    commands:
+      - command: shell.exec
+        params:
+          shell: bash
+          script: |
+            echo "hi"
+
+  - name: task
+    patch_only: false
+    depends_on:
+      - name: dep
+    commands:
+      - command: shell.exec
+        params:
+          shell: bash
+          script: |
+            echo "hi"
+
+buildvariants:
+  - name: ubuntu2204
+    patch_only: true
+    display_name: Ubuntu 22.04
+    run_on:
+      - localhost
+    tasks:
+      - name: "task"
+      - name: "dep"
+`
+		var p model.Project
+		_, err := model.LoadProjectInto(ctx, []byte(projYAML), nil, "", &p)
+		require.NoError(t, err)
+		errs := checkRequestersForTaskDependencies(&p)
+
+		require.Len(t, errs, 1)
+		assert.Equal(t, errs[0].Level, Warning)
+		assert.Contains(t, errs[0].Message, "'task' depends on patch-only task 'dep'")
+	})
+	t.Run("WarnsWithBuildVariantTaskLevelConflict", func(t *testing.T) {
+		projYAML := `
+tasks:
+  - name: dep
+    commands:
+      - command: shell.exec
+        params:
+          shell: bash
+          script: |
+            echo "hi"
+
+  - name: task
+    patch_only: false
+    depends_on:
+      - name: dep
+    commands:
+      - command: shell.exec
+        params:
+          shell: bash
+          script: |
+            echo "hi"
+
+buildvariants:
+  - name: ubuntu2204
+    display_name: Ubuntu 22.04
+    run_on:
+      - localhost
+    tasks:
+      - name: "task"
+      - name: "dep"
+        patch_only: true
+`
+		var p model.Project
+		_, err := model.LoadProjectInto(ctx, []byte(projYAML), nil, "", &p)
+		require.NoError(t, err)
+		errs := checkRequestersForTaskDependencies(&p)
+
+		require.Len(t, errs, 1)
+		assert.Equal(t, errs[0].Level, Warning)
+		assert.Contains(t, errs[0].Message, "'task' depends on patch-only task 'dep'")
 	})
 }
 
@@ -3217,7 +3477,9 @@ func TestTaskGroupValidation(t *testing.T) {
 			},
 		},
 	}
-	assert.Len(checkTaskGroups(&proj), 3)
+	validationErrs = checkTaskGroups(&proj)
+	require.Len(t, validationErrs, 1)
+	assert.Contains(validationErrs[0].Message, "task group 'tg1' is defined multiple times; only the first will be used")
 
 	// check that yml with a task group named the same as a task errors
 	duplicateTaskYml := `
@@ -3270,16 +3532,16 @@ buildvariants:
         - example_task_2
 `
 	pp, err = model.LoadProjectInto(ctx, []byte(largeMaxHostYml), nil, "", &proj)
-	assert.NotNil(proj)
+	require.NotNil(t, proj)
 	assert.NotNil(pp)
 	assert.NoError(err)
 	validationErrs = validateTaskGroups(&proj)
-	assert.Len(validationErrs, 1)
+	require.Len(t, validationErrs, 1)
 	assert.Contains(validationErrs[0].Message, "attach.results cannot be used in the group teardown stage")
 	validationErrs = checkTaskGroups(&proj)
-	assert.Len(validationErrs, 2)
-	assert.Contains(validationErrs[0].Message, "task group example_task_group has max number of hosts 4 greater than the number of tasks 3")
-	assert.Contains(validationErrs[1].Message, "task group inline_task_group has max number of hosts 3 greater than the number of tasks 2")
+	require.Len(t, validationErrs, 2)
+	assert.Contains(validationErrs[0].Message, "task group 'example_task_group' has max number of hosts 4 greater than the number of tasks 3")
+	assert.Contains(validationErrs[1].Message, "task group 'inline_task_group' has max number of hosts 3 greater than the number of tasks 2")
 	assert.Equal(validationErrs[0].Level, Warning)
 	assert.Equal(validationErrs[1].Level, Warning)
 }
@@ -4169,7 +4431,7 @@ func TestTVToTaskUnit(t *testing.T) {
 				}, {TaskName: "compile", Variant: "ubuntu"}: {
 					Name:             "compile",
 					Variant:          "ubuntu",
-					IsGroup:          true,
+					IsPartOfGroup:    true,
 					GroupName:        "compile_group",
 					ExecTimeoutSecs:  10,
 					CommitQueueMerge: true,
@@ -4182,7 +4444,7 @@ func TestTVToTaskUnit(t *testing.T) {
 				}, {TaskName: "compile", Variant: "suse"}: {
 					Name:            "compile",
 					Variant:         "suse",
-					IsGroup:         true,
+					IsPartOfGroup:   true,
 					GroupName:       "compile_group",
 					ExecTimeoutSecs: 10,
 					DependsOn: []model.TaskUnitDependency{
@@ -4258,6 +4520,7 @@ func TestTVToTaskUnit(t *testing.T) {
 				expectedTaskUnit := testCase.expectedTVToTaskUnit[expectedTV]
 				assert.Equal(t, expectedTaskUnit.Name, taskUnit.Name)
 				assert.Equal(t, expectedTaskUnit.IsGroup, taskUnit.IsGroup, fmt.Sprintf("%s/%s", expectedTaskUnit.Variant, expectedTaskUnit.Name))
+				assert.Equal(t, expectedTaskUnit.IsPartOfGroup, taskUnit.IsPartOfGroup, fmt.Sprintf("%s/%s", expectedTaskUnit.Variant, expectedTaskUnit.Name))
 				assert.Equal(t, expectedTaskUnit.GroupName, taskUnit.GroupName, fmt.Sprintf("%s/%s", expectedTaskUnit.Variant, expectedTaskUnit.Name))
 				assert.Equal(t, expectedTaskUnit.Patchable, taskUnit.Patchable, expectedTaskUnit.Name)
 				assert.Equal(t, expectedTaskUnit.PatchOnly, taskUnit.PatchOnly)
@@ -5960,7 +6223,6 @@ func TestBVsWithTasksThatCallCommand(t *testing.T) {
 							{
 								Name:    "test",
 								Variant: "ubuntu",
-								IsGroup: true,
 							},
 						},
 					},

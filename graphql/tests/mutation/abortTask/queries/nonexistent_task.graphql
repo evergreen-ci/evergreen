@@ -1,0 +1,6 @@
+mutation {
+  abortTask(taskId: "fake-task-id") {
+    aborted
+    activated
+  }
+}

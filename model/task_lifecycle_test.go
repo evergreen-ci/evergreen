@@ -951,14 +951,10 @@ func TestActivatePreviousTask(t *testing.T) {
 		So(previousTask.Insert(), ShouldBeNil)
 		So(currentTask.Insert(), ShouldBeNil)
 		Convey("activating a previous task should set the previous task's active field to true", func() {
-			s := task.StepbackInfo{
-				NextStepbackTaskId: "three",
-			}
-			So(activatePreviousTask(ctx, currentTask.Id, "", nil, s), ShouldBeNil)
+			So(activatePreviousTask(ctx, currentTask.Id, "", nil), ShouldBeNil)
 			t, err := task.FindOne(db.Query(task.ById(previousTask.Id)))
 			So(err, ShouldBeNil)
 			So(t.Activated, ShouldBeTrue)
-			So(t.StepbackInfo.NextStepbackTaskId, ShouldEqual, "three")
 		})
 	})
 }
@@ -1283,7 +1279,7 @@ func TestUpdateBuildStatusForTask(t *testing.T) {
 			},
 			expectedBuildStatus:       evergreen.BuildSucceeded,
 			expectedVersionStatus:     evergreen.VersionSucceeded,
-			expectedPatchStatus:       evergreen.LegacyPatchSucceeded,
+			expectedPatchStatus:       evergreen.VersionSucceeded,
 			expectedBuildActivation:   true,
 			expectedVersionActivation: true,
 			expectedPatchActivation:   true,
@@ -1295,7 +1291,7 @@ func TestUpdateBuildStatusForTask(t *testing.T) {
 			},
 			expectedBuildStatus:       evergreen.BuildSucceeded,
 			expectedVersionStatus:     evergreen.VersionSucceeded,
-			expectedPatchStatus:       evergreen.LegacyPatchSucceeded,
+			expectedPatchStatus:       evergreen.VersionSucceeded,
 			expectedBuildActivation:   true,
 			expectedVersionActivation: true,
 			expectedPatchActivation:   true,
@@ -6018,7 +6014,157 @@ func TestEvalStepbackDeactivatePrevious(t *testing.T) {
 	assert.False(checkTask.Activated)
 }
 
-func TestEvalStepback(t *testing.T) {
+func TestEvalBisectStepback(t *testing.T) {
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
+	assert := assert.New(t)
+	yml := `
+stepback: true
+buildvariants:
+- name: "bv"
+  run_on: distro
+  tasks:
+  - name: task
+  - name: generator
+tasks:
+- name: task
+- name: generator
+  `
+	// Task data for tests is:
+	// ('-' is failed, '?' is undispatched, '+' is succeeded).
+	// t1  t2  t3  t4  t5  t6  t7  t8  t9  t10
+	// -   ?   ?   ?   ?   ?   ?   ?   ?   +
+	for tName, tCase := range map[string]func(t *testing.T, t10 task.Task){
+		"NoPreviousSuccessfulTask": func(t *testing.T, t10 task.Task) {
+			// Set the first task to failed status.
+			assert.NoError(task.UpdateOne(
+				bson.M{"_id": "t1"},
+				bson.M{"$set": bson.M{"status": evergreen.TaskFailed}},
+			))
+			assert.NoError(evalStepback(ctx, &t10, "", evergreen.TaskFailed, false))
+			midTask, err := task.FindMidwayTaskFromIds("t1", "t10")
+			assert.NoError(err)
+			assert.False(midTask.Activated)
+		},
+		"SuccessForStepback": func(t *testing.T, t10 task.Task) {
+			assert.NoError(evalStepback(ctx, &t10, "", evergreen.TaskFailed, false))
+			midTask, err := task.FindMidwayTaskFromIds("t1", "t10")
+			assert.NoError(err)
+			assert.True(midTask.Activated)
+		},
+		"GeneratedTasksStepbackGenerator": func(t *testing.T, t10 task.Task) {
+			generatedTasks := []task.Task{}
+			for i := 1; i <= 10; i++ {
+				generated := task.Task{
+					Id:                  fmt.Sprintf("g%d", i),
+					BuildId:             fmt.Sprintf("b%d", i),
+					GeneratedBy:         fmt.Sprintf("t%d", i),
+					Status:              evergreen.TaskFailed,
+					BuildVariant:        "bv",
+					DisplayName:         "generated",
+					Project:             "proj",
+					Activated:           false,
+					RevisionOrderNumber: i,
+					Requester:           evergreen.RepotrackerVersionRequester,
+					Version:             "sample_version",
+				}
+				assert.NoError(generated.Insert())
+				generatedTasks = append(generatedTasks, generated)
+			}
+			t10Generated := generatedTasks[9]
+			assert.NoError(evalStepback(ctx, &t10Generated, "", evergreen.TaskFailed, false))
+			midTask, err := task.FindMidwayTaskFromIds("t1", "t10")
+			assert.NoError(err)
+			assert.True(midTask.Activated)
+		},
+	} {
+		t.Run(tName, func(t *testing.T) {
+			assert.NoError(db.ClearCollections(task.Collection, ProjectRefCollection, ParserProjectCollection, distro.Collection, build.Collection, VersionCollection))
+			proj := ProjectRef{
+				Id:             "proj",
+				StepbackBisect: utility.ToBoolPtr(true),
+			}
+			require.NoError(t, proj.Insert())
+			d := distro.Distro{
+				Id: "distro",
+			}
+			require.NoError(t, d.Insert(ctx))
+			v := Version{
+				Id:        "sample_version",
+				Requester: evergreen.RepotrackerVersionRequester,
+			}
+			require.NoError(t, v.Insert())
+			pp := &ParserProject{}
+			err := util.UnmarshalYAMLWithFallback([]byte(yml), &pp)
+			assert.NoError(err)
+			pp.Id = v.Id
+			assert.NoError(pp.Insert())
+			// Tasks 2-9
+			for i := 2; i <= 9; i++ {
+				t := task.Task{
+					Id:                  fmt.Sprintf("t%d", i),
+					BuildId:             fmt.Sprintf("b%d", i),
+					Status:              evergreen.TaskUndispatched,
+					BuildVariant:        "bv",
+					DisplayName:         "task",
+					Project:             "proj",
+					Activated:           false,
+					RevisionOrderNumber: i,
+					Requester:           evergreen.RepotrackerVersionRequester,
+					Version:             v.Id,
+				}
+				assert.NoError(t.Insert())
+				b := build.Build{
+					Id:           fmt.Sprintf("b%d", i),
+					BuildVariant: "bv",
+				}
+				assert.NoError(b.Insert())
+			}
+			// First task (which has passed).
+			t1 := task.Task{
+				Id:                  "t1",
+				BuildId:             "b1",
+				Status:              evergreen.TaskSucceeded,
+				BuildVariant:        "bv",
+				DisplayName:         "task",
+				Project:             "proj",
+				Activated:           false,
+				RevisionOrderNumber: 1,
+				Requester:           evergreen.RepotrackerVersionRequester,
+				Version:             v.Id,
+			}
+			assert.NoError(t1.Insert())
+			b1 := build.Build{
+				Id:           "b1",
+				BuildVariant: "bv",
+			}
+			assert.NoError(b1.Insert())
+			// Latest task (which has failed).
+			t10 := task.Task{
+				Id:                  "t10",
+				BuildId:             "b10",
+				Status:              evergreen.TaskFailed,
+				BuildVariant:        "bv",
+				DisplayName:         "task",
+				Project:             "proj",
+				Activated:           false,
+				RevisionOrderNumber: 10,
+				Requester:           evergreen.RepotrackerVersionRequester,
+				Version:             v.Id,
+			}
+			assert.NoError(t10.Insert())
+			b10 := build.Build{
+				Id:           "b10",
+				BuildVariant: "bv",
+			}
+			assert.NoError(b10.Insert())
+			tCase(t, t10)
+		})
+	}
+}
+
+func TestEvalLinearStepback(t *testing.T) {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 
@@ -6201,85 +6347,6 @@ tasks:
 	checkTask, err = task.FindOneId(stepbackTask.Id)
 	assert.NoError(err)
 	assert.True(checkTask.Activated)
-}
-
-func TestEvalStepbackBisect(t *testing.T) {
-	ctx, cancel := context.WithCancel(context.Background())
-	defer cancel()
-
-	assert := assert.New(t)
-	assert.NoError(db.ClearCollections(task.Collection, ProjectRefCollection, ParserProjectCollection, distro.Collection, build.Collection, VersionCollection))
-	yml := `
-stepback: true
-buildvariants:
-- name: "bv"
-  run_on: distro
-  tasks:
-  - name: task
-  - name: generator
-tasks:
-- name: task
-- name: generator
-  `
-	proj := ProjectRef{
-		Id:             "proj",
-		StepbackBisect: utility.ToBoolPtr(true),
-	}
-	require.NoError(t, proj.Insert())
-	d := distro.Distro{
-		Id: "distro",
-	}
-	require.NoError(t, d.Insert(ctx))
-	v := Version{
-		Id:        "sample_version",
-		Requester: evergreen.RepotrackerVersionRequester,
-	}
-	require.NoError(t, v.Insert())
-	pp := &ParserProject{}
-	err := util.UnmarshalYAMLWithFallback([]byte(yml), &pp)
-	assert.NoError(err)
-	pp.Id = v.Id
-	assert.NoError(pp.Insert())
-	stepbackTask := task.Task{
-		Id:                  "t2",
-		BuildId:             "b2",
-		Status:              evergreen.TaskUndispatched,
-		BuildVariant:        "bv",
-		DisplayName:         "task",
-		Project:             "proj",
-		Activated:           false,
-		RevisionOrderNumber: 2,
-		DispatchTime:        utility.ZeroTime,
-		Requester:           evergreen.RepotrackerVersionRequester,
-		Version:             v.Id,
-	}
-	assert.NoError(stepbackTask.Insert())
-	b2 := build.Build{
-		Id:           "b2",
-		BuildVariant: "bv",
-	}
-	assert.NoError(b2.Insert())
-	finishedTask := task.Task{
-		Id:                  "t3",
-		BuildId:             "b3",
-		Status:              evergreen.TaskUndispatched,
-		BuildVariant:        "bv",
-		DisplayName:         "task",
-		Project:             "proj",
-		Activated:           true,
-		RevisionOrderNumber: 3,
-		Requester:           evergreen.RepotrackerVersionRequester,
-		Version:             v.Id,
-	}
-	assert.NoError(finishedTask.Insert())
-	b3 := build.Build{
-		Id:           "b3",
-		BuildVariant: "bv",
-	}
-	assert.NoError(b3.Insert())
-
-	err = evalStepback(ctx, &finishedTask, "", evergreen.TaskFailed, false)
-	assert.Error(err)
 }
 
 func TestEvalStepbackTaskGroup(t *testing.T) {

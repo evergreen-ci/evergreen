@@ -1,0 +1,129 @@
+{
+  "parser_projects": [
+    {
+      "_id": "evergreen_5e823e1f28baeaa22ae00823d83e03082cd148ab",
+      "stepback": true,
+      "command_type": "test",
+      "ignore": ["*.md", ".github/*"],
+      "tasks": [
+        {
+          "name": "compile",
+          "commands": [
+            {
+              "func": "get-project"
+            },
+            {
+              "func": "npm-install"
+            },
+            {
+              "func": "npm-build"
+            },
+            {
+              "func": "npm-build"
+            }
+          ]
+        },
+        {
+          "name": "test",
+          "commands": [
+            {
+              "func": "get-project"
+            },
+            {
+              "func": "npm-install"
+            },
+            {
+              "func": "npm-test"
+            },
+            {
+              "func": "attach-results"
+            }
+          ]
+        },
+        {
+          "name": "lint",
+          "commands": [
+            {
+              "func": "get-project"
+            },
+            {
+              "func": "npm-install"
+            },
+            {
+              "func": "npm-lint"
+            }
+          ]
+        },
+        {
+          "name": "coverage",
+          "commands": [
+            {
+              "func": "get-project"
+            },
+            {
+              "func": "npm-install"
+            },
+            {
+              "func": "npm-coverage"
+            }
+          ]
+        }
+      ],
+      "buildvariants": [
+        {
+          "name": "ubuntu1804",
+          "display_name": "Ubuntu 18.04",
+          "run_on": ["ubuntu1804-test"],
+          "tasks": [
+            {
+              "name": "compile"
+            }
+          ]
+        }
+      ]
+    }
+  ],
+  "versions": [
+    {
+      "_id": "evergreen_5e823e1f28baeaa22ae00823d83e03082cd148ab",
+      "gitspec": "5e823e1f28baeaa22ae00823d83e03082cd148ab",
+      "identifier": "evergreen",
+      "r": "gitter_request"
+    }
+  ],
+  "patches": [
+    {
+      "_id": {
+        "$oid": "5e94c8213e8e8651bee37561"
+      },
+      "desc": "'evergreen-ci/spruce' pull request #132 by tgrander: EVG-7795: (patch) change patch success status to `succeeded` (https://github.com/evergreen-ci/spruce/pull/132)",
+      "branch": "spruce",
+      "githash": "6cf2ca4c009f93285cf986b6de0100c1cbe54092",
+      "patch_number": 561,
+      "author": "trey.granderson",
+      "version": "evergreen_5e823e1f28baeaa22ae00823d83e03082cd148ab",
+      "status": "unscheduled",
+      "create_time": {
+        "$date": "2020-04-13T20:12:39Z"
+      },
+      "start_time": null,
+      "finish_time": null,
+      "build_variants": ["ubuntu1604"],
+      "tasks": ["coverage", "e2e_test", "compile", "test", "lint"],
+      "variants_tasks": [
+        {
+          "variant": "ubuntu1604",
+          "tasks": ["coverage", "e2e_test", "compile", "test", "lint"],
+          "displaytasks": []
+        }
+      ],
+      "activated": false
+    }
+  ],
+  "project_ref": [
+    {
+      "_id": "spruce",
+      "identifier": "spruce"
+    }
+  ]
+}

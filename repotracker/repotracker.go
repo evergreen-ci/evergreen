@@ -723,7 +723,11 @@ func ShellVersionFromRevision(ctx context.Context, ref *model.ProjectRef, metada
 		Activated:            utility.ToBoolPtr(metadata.Activate),
 	}
 	if metadata.TriggerType != "" {
-		revision := metadata.SourceCommit
+		var revision string
+		if metadata.TriggerType == model.ProjectTriggerLevelPush {
+			revision = metadata.SourceCommit
+			v.TriggerSHA = revision
+		}
 		createTime := metadata.Revision.CreateTime
 		if metadata.SourceVersion != nil {
 			revision = metadata.SourceVersion.Revision
@@ -810,7 +814,7 @@ func createVersionItems(ctx context.Context, v *model.Version, metadata model.Ve
 	if metadata.SourceVersion != nil {
 		sourceRev = metadata.SourceVersion.Revision
 	}
-	taskIds := model.NewTaskIdTable(projectInfo.Project, v, sourceRev, metadata.TriggerDefinitionID)
+	taskIds := model.NewTaskIdConfigForRepotrackerVersion(projectInfo.Project, v, sourceRev, metadata.TriggerDefinitionID)
 
 	// create all builds for the version
 	buildsToCreate := []interface{}{}

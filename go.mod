@@ -3,15 +3,15 @@ module github.com/evergreen-ci/evergreen
 go 1.20
 
 require (
-	github.com/99designs/gqlgen v0.17.38
-	github.com/PuerkitoBio/rehttp v1.2.0
-	github.com/aws/aws-sdk-go v1.45.19
-	github.com/aws/aws-sdk-go-v2 v1.21.1
-	github.com/aws/aws-sdk-go-v2/config v1.18.42
-	github.com/aws/aws-sdk-go-v2/credentials v1.13.40
-	github.com/aws/aws-sdk-go-v2/service/ec2 v1.124.0
-	github.com/aws/aws-sdk-go-v2/service/ecs v1.30.1
-	github.com/aws/aws-sdk-go-v2/service/resourcegroupstaggingapi v1.16.0
+	github.com/99designs/gqlgen v0.17.40
+	github.com/PuerkitoBio/rehttp v1.3.0
+	github.com/aws/aws-sdk-go v1.45.26
+	github.com/aws/aws-sdk-go-v2 v1.21.2
+	github.com/aws/aws-sdk-go-v2/config v1.19.1
+	github.com/aws/aws-sdk-go-v2/credentials v1.13.43
+	github.com/aws/aws-sdk-go-v2/service/ec2 v1.125.0
+	github.com/aws/aws-sdk-go-v2/service/ecs v1.30.4
+	github.com/aws/aws-sdk-go-v2/service/resourcegroupstaggingapi v1.16.2
 	github.com/aws/aws-sdk-go-v2/service/secretsmanager v1.21.3
 	github.com/aws/smithy-go v1.15.0
 	github.com/cheynewallace/tabby v1.1.1
@@ -27,7 +27,7 @@ require (
 	github.com/evergreen-ci/poplar v0.0.0-20220908212406-a5e2aa799def
 	github.com/evergreen-ci/shrub v0.0.0-20230511194147-d00fc686c715
 	github.com/evergreen-ci/timber v0.0.0-20230905184025-88c53a14c47b
-	github.com/evergreen-ci/utility v0.0.0-20230809162904-922cba3c3c3c
+	github.com/evergreen-ci/utility v0.0.0-20231017180358-3a3a0617644d
 	github.com/golang-jwt/jwt v3.2.2+incompatible
 	github.com/google/go-github/v52 v52.0.0
 	github.com/google/shlex v0.0.0-20191202100458-e7afc7fbc510
@@ -41,9 +41,9 @@ require (
 	github.com/kardianos/osext v0.0.0-20190222173326-2bc1f35cddc0
 	github.com/mitchellh/go-homedir v1.1.0
 	github.com/mitchellh/mapstructure v1.5.0
-	github.com/mongodb/amboy v0.0.0-20230524145255-082f8fd5857e
+	github.com/mongodb/amboy v0.0.0-20230816163444-5a4b04514646
 	github.com/mongodb/anser v0.0.0-20230703201237-774f6f436c11
-	github.com/mongodb/grip v0.0.0-20230707141614-c686133d52e4
+	github.com/mongodb/grip v0.0.0-20231010153552-fd9e260891f5
 	github.com/pkg/errors v0.9.1
 	github.com/ravilushqa/otelgqlgen v0.13.0
 	github.com/robbiet480/go.sns v0.0.0-20210223081447-c7c9eb6836cb
@@ -56,8 +56,8 @@ require (
 	github.com/vmware/govmomi v0.27.1
 	go.mongodb.org/mongo-driver v1.11.6
 	go.opentelemetry.io/contrib/detectors/aws/ec2 v1.17.0
-	go.opentelemetry.io/contrib/detectors/aws/ecs v1.18.0
-	go.opentelemetry.io/contrib/instrumentation/github.com/aws/aws-sdk-go-v2/otelaws v0.42.0
+	go.opentelemetry.io/contrib/detectors/aws/ecs v1.20.0
+	go.opentelemetry.io/contrib/instrumentation/github.com/aws/aws-sdk-go-v2/otelaws v0.45.0
 	go.opentelemetry.io/contrib/instrumentation/github.com/gorilla/mux/otelmux v0.42.0
 	go.opentelemetry.io/contrib/instrumentation/net/http/otelhttp v0.45.0
 	go.opentelemetry.io/otel v1.19.0
@@ -66,11 +66,11 @@ require (
 	go.opentelemetry.io/otel/exporters/otlp/otlptrace/otlptracegrpc v1.19.0
 	go.opentelemetry.io/otel/metric v1.19.0
 	go.opentelemetry.io/otel/sdk v1.19.0
-	go.opentelemetry.io/otel/sdk/metric v0.40.0
+	go.opentelemetry.io/otel/sdk/metric v1.19.0
 	go.opentelemetry.io/otel/trace v1.19.0
 	go.opentelemetry.io/proto/otlp v1.0.0
-	golang.org/x/crypto v0.13.0
-	golang.org/x/oauth2 v0.12.0
+	golang.org/x/crypto v0.14.0
+	golang.org/x/oauth2 v0.13.0
 	golang.org/x/text v0.13.0
 	golang.org/x/tools v0.13.0
 	gonum.org/v1/gonum v0.14.0
@@ -90,19 +90,19 @@ require (
 	github.com/agnivade/levenshtein v1.1.1 // indirect
 	github.com/andybalholm/brotli v1.0.3 // indirect
 	github.com/andygrunwald/go-jira v1.14.0 // indirect
-	github.com/aws/aws-sdk-go-v2/feature/ec2/imds v1.13.11 // indirect
-	github.com/aws/aws-sdk-go-v2/internal/configsources v1.1.42 // indirect
-	github.com/aws/aws-sdk-go-v2/internal/endpoints/v2 v2.4.36 // indirect
-	github.com/aws/aws-sdk-go-v2/internal/ini v1.3.43 // indirect
-	github.com/aws/aws-sdk-go-v2/service/dynamodb v1.19.7 // indirect
-	github.com/aws/aws-sdk-go-v2/service/internal/accept-encoding v1.9.11 // indirect
-	github.com/aws/aws-sdk-go-v2/service/internal/endpoint-discovery v1.7.27 // indirect
-	github.com/aws/aws-sdk-go-v2/service/internal/presigned-url v1.9.36 // indirect
+	github.com/aws/aws-sdk-go-v2/feature/ec2/imds v1.13.13 // indirect
+	github.com/aws/aws-sdk-go-v2/internal/configsources v1.1.43 // indirect
+	github.com/aws/aws-sdk-go-v2/internal/endpoints/v2 v2.4.37 // indirect
+	github.com/aws/aws-sdk-go-v2/internal/ini v1.3.45 // indirect
+	github.com/aws/aws-sdk-go-v2/service/dynamodb v1.21.5 // indirect
+	github.com/aws/aws-sdk-go-v2/service/internal/accept-encoding v1.9.14 // indirect
+	github.com/aws/aws-sdk-go-v2/service/internal/endpoint-discovery v1.7.35 // indirect
+	github.com/aws/aws-sdk-go-v2/service/internal/presigned-url v1.9.37 // indirect
 	github.com/aws/aws-sdk-go-v2/service/ses v1.15.11 // indirect
-	github.com/aws/aws-sdk-go-v2/service/sqs v1.22.0 // indirect
-	github.com/aws/aws-sdk-go-v2/service/sso v1.14.1 // indirect
-	github.com/aws/aws-sdk-go-v2/service/ssooidc v1.17.1 // indirect
-	github.com/aws/aws-sdk-go-v2/service/sts v1.22.0 // indirect
+	github.com/aws/aws-sdk-go-v2/service/sqs v1.24.5 // indirect
+	github.com/aws/aws-sdk-go-v2/service/sso v1.15.2 // indirect
+	github.com/aws/aws-sdk-go-v2/service/ssooidc v1.17.3 // indirect
+	github.com/aws/aws-sdk-go-v2/service/sts v1.23.2 // indirect
 	github.com/blang/semver v3.5.1+incompatible // indirect
 	github.com/brunoscheufler/aws-ecs-metadata-go v0.0.0-20220812150832-b6b31c6eeeaf // indirect
 	github.com/cenkalti/backoff/v4 v4.2.1 // indirect
@@ -202,9 +202,9 @@ require (
 	go.opentelemetry.io/otel/exporters/otlp/otlpmetric v0.40.0 // indirect
 	golang.org/x/exp v0.0.0-20230321023759-10a507213a29 // indirect
 	golang.org/x/mod v0.12.0 // indirect
-	golang.org/x/net v0.15.0 // indirect
+	golang.org/x/net v0.16.0 // indirect
 	golang.org/x/sync v0.3.0 // indirect
-	golang.org/x/sys v0.12.0 // indirect
+	golang.org/x/sys v0.13.0 // indirect
 	google.golang.org/appengine v1.6.7 // indirect
 	google.golang.org/genproto/googleapis/api v0.0.0-20230711160842-782d3b101e98 // indirect
 	google.golang.org/genproto/googleapis/rpc v0.0.0-20230711160842-782d3b101e98 // indirect
@@ -220,3 +220,5 @@ require (
 	github.com/shirou/gopsutil/v3 v3.23.9
 	gopkg.in/yaml.v3 v3.0.1
 )
+
+require github.com/sosodev/duration v1.1.0 // indirect

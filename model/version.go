@@ -15,6 +15,7 @@ import (
 	"github.com/evergreen-ci/evergreen/model/task"
 	"github.com/evergreen-ci/evergreen/model/user"
 	"github.com/evergreen-ci/evergreen/thirdparty"
+	"github.com/evergreen-ci/evergreen/util"
 	"github.com/evergreen-ci/utility"
 	"github.com/mongodb/anser/bsonutil"
 	"github.com/pkg/errors"
@@ -79,9 +80,14 @@ type Version struct {
 
 	SatisfiedTriggers []string `bson:"satisfied_triggers,omitempty" json:"satisfied_triggers,omitempty"`
 	// Fields set if triggered by an upstream build
+	// TriggerID is the ID of the entity that triggered the downstream version. Depending on the trigger type, this
+	// could be a build ID, a task ID, or a project ID, for build, task, and push triggers respectively.
 	TriggerID    string `bson:"trigger_id,omitempty" json:"trigger_id,omitempty"`
 	TriggerType  string `bson:"trigger_type,omitempty" json:"trigger_type,omitempty"`
 	TriggerEvent string `bson:"trigger_event,omitempty" json:"trigger_event,omitempty"`
+	// TriggerSHA is the SHA of the untracked commit that triggered the downstream version,
+	// this field is only populated for push level triggers.
+	TriggerSHA string `bson:"trigger_sha,omitempty" json:"trigger_sha,omitempty"`
 
 	// this is only used for aggregations, and is not stored in the DB
 	Builds []build.Build `bson:"build_variants,omitempty" json:"build_variants,omitempty"`
@@ -705,7 +711,7 @@ func GetVersionsToModify(projectName string, opts ModifyVersionsOptions, startTi
 }
 
 // constructManifest will construct a manifest from the given project and version.
-func constructManifest(v *Version, projectRef *ProjectRef, moduleList ModuleList, settings *evergreen.Settings, token string) (*manifest.Manifest, error) {
+func constructManifest(v *Version, projectRef *ProjectRef, moduleList ModuleList, token string) (*manifest.Manifest, error) {
 	if len(moduleList) == 0 {
 		return nil, nil
 	}
@@ -717,8 +723,20 @@ func constructManifest(v *Version, projectRef *ProjectRef, moduleList ModuleList
 		IsBase:      v.Requester == evergreen.RepotrackerVersionRequester,
 	}
 
+	projVars, err := FindMergedProjectVars(projectRef.Id)
+	if err != nil {
+		return nil, errors.Wrapf(err, "getting project vars for project '%s'", projectRef.Id)
+	}
+	if projVars != nil {
+		expansions := util.NewExpansions(projVars.Vars)
+		for i := range moduleList {
+			if err = util.ExpandValues(&moduleList[i], expansions); err != nil {
+				return nil, errors.Wrapf(err, "expanding module '%s'", moduleList[i].Name)
+			}
+		}
+	}
+
 	var baseManifest *manifest.Manifest
-	var err error
 	isPatch := utility.StringSliceContains(evergreen.PatchRequesters, v.Requester)
 	if isPatch {
 		baseManifest, err = manifest.FindFromVersion(v.Id, v.Identifier, v.Revision, v.Requester)
@@ -815,7 +833,7 @@ func CreateManifest(v *Version, proj *Project, projectRef *ProjectRef, settings 
 	if err != nil {
 		return nil, errors.Wrap(err, "getting GitHub token")
 	}
-	newManifest, err := constructManifest(v, projectRef, proj.Modules, settings, token)
+	newManifest, err := constructManifest(v, projectRef, proj.Modules, token)
 	if err != nil {
 		return nil, errors.Wrap(err, "constructing manifest")
 	}

@@ -1,0 +1,57 @@
+{
+  "tests": [
+    {
+      "query_file": "module_code_changes.graphql",
+      "result": {
+        "data": {
+          "patch": {
+            "moduleCodeChanges": [
+              {
+                "branchName": "evergreenIdentifier",
+                "htmlLink": "https://localhost:8443/filediff/5e4ff3abe3c3317e352062e4?patch_number=0",
+                "rawLink": "https://localhost:8443/rawdiff/5e4ff3abe3c3317e352062e4?patch_number=0",
+                "fileDiffs": [
+                  {
+                    "fileName": "service/api_task.go",
+                    "diffLink": "https://localhost:8443/filediff/5e4ff3abe3c3317e352062e4?file_name=service%2Fapi_task.go\u0026patch_number=0\u0026commit_number=0",
+                    "deletions": 4,
+                    "additions": 5,
+                    "description": ""
+                  }
+                ]
+              },
+              {
+                "branchName": "Spruce",
+                "htmlLink": "https://localhost:8443/filediff/5e4ff3abe3c3317e352062e4?patch_number=1",
+                "rawLink": "https://localhost:8443/rawdiff/5e4ff3abe3c3317e352062e4?patch_number=1",
+                "fileDiffs": [
+                  {
+                    "fileName": "src/page/Task.tsx",
+                    "diffLink": "https://localhost:8443/filediff/5e4ff3abe3c3317e352062e4?file_name=src%2Fpage%2FTask.tsx&patch_number=1&commit_number=0",
+                    "deletions": 4,
+                    "additions": 11,
+                    "description": ""
+                  },
+                  {
+                    "fileName": "src/App.tsx",
+                    "diffLink": "https://localhost:8443/filediff/5e4ff3abe3c3317e352062e4?file_name=src%2FApp.tsx&patch_number=1&commit_number=1",
+                    "deletions": 4,
+                    "additions": 22,
+                    "description": ""
+                  },
+                  {
+                    "fileName": "src/page/Patch.tsx",
+                    "diffLink": "https://localhost:8443/filediff/5e4ff3abe3c3317e352062e4?file_name=src%2Fpage%2FPatch.tsx&patch_number=1&commit_number=2",
+                    "deletions": 4,
+                    "additions": 33,
+                    "description": ""
+                  }
+                ]
+              }
+            ]
+          }
+        }
+      }
+    }
+  ]
+}

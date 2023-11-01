@@ -1330,7 +1330,7 @@ func (s *projectSuite) TestNewPatchTaskIdTable() {
 		},
 	}
 
-	config, err := NewPatchTaskIdTable(p, v, pairs, "project_identifier")
+	config, err := NewTaskIdConfig(p, v, pairs, "project_identifier")
 	s.Require().NoError(err)
 	s.Len(config.DisplayTasks, 0)
 	s.Len(config.ExecutionTasks, 2)
@@ -2450,7 +2450,8 @@ func TestFindAllBuildVariantTasks(t *testing.T) {
 			{Name: "in_group_1"},
 		}
 		const bvName = "bv"
-		bvTasks := []BuildVariantTaskUnit{{Name: "task_group", IsGroup: true, Variant: bvName}}
+		const tgName = "task_group"
+		bvTasks := []BuildVariantTaskUnit{{Name: tgName, IsGroup: true, Variant: bvName}}
 		groups := []TaskGroup{{Name: bvTasks[0].Name, Tasks: []string{tasks[0].Name, tasks[1].Name}}}
 		p := Project{
 			Tasks:         tasks,
@@ -2459,12 +2460,14 @@ func TestFindAllBuildVariantTasks(t *testing.T) {
 		}
 
 		bvts := p.FindAllBuildVariantTasks()
-		require.Len(t, bvts, 2)
-		assert.Equal(t, tasks[0].Name, bvts[0].Name)
-		assert.Equal(t, "bv", bvts[0].Variant)
-
-		assert.Equal(t, tasks[1].Name, bvts[1].Name)
-		assert.Equal(t, "bv", bvts[1].Variant)
+		require.Len(t, bvts, len(tasks))
+		for i, bvtu := range bvts {
+			assert.Equal(t, tasks[i].Name, bvtu.Name)
+			assert.Equal(t, bvName, bvtu.Variant)
+			assert.False(t, bvtu.IsGroup)
+			assert.True(t, bvtu.IsPartOfGroup)
+			assert.Equal(t, tgName, bvtu.GroupName)
+		}
 	})
 }
 
@@ -2690,17 +2693,7 @@ tasks:
 			assert.Len(t, variantsAndTasks.Variants["bv1"].Tasks, 1)
 			assert.Equal(t, "task3", variantsAndTasks.Variants["bv1"].Tasks[0].Name)
 		},
-		"SucceedsWithPatchedParserProject": func(t *testing.T, p *patch.Patch, pp *ParserProject) {
-			p.PatchedParserProject = patchedProject
-
-			variantsAndTasks, err := GetVariantsAndTasksFromPatchProject(ctx, env.Settings(), p)
-			require.NoError(t, err)
-			assert.Len(t, variantsAndTasks.Tasks, 2)
-			require.NotZero(t, variantsAndTasks)
-			assert.Len(t, variantsAndTasks.Variants["bv1"].Tasks, 1)
-			assert.Equal(t, "task3", variantsAndTasks.Variants["bv1"].Tasks[0].Name)
-		},
-		"FailsWithUnfinalizedPatchThatHasNeitherPatchedParserProjectNorParserProjectStorage": func(t *testing.T, p *patch.Patch, pp *ParserProject) {
+		"FailsWithUnfinalizedPatchDoesntHaveParserProjectStorage": func(t *testing.T, p *patch.Patch, pp *ParserProject) {
 			_, err := GetVariantsAndTasksFromPatchProject(ctx, env.Settings(), p)
 			assert.Error(t, err)
 		},
