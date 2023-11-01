@@ -14,7 +14,7 @@
       }
       filteredPatchCount
     }
-    unsuppliedHidden: patches(patchesInput: {}) {
+    unsuppliedHidden: patches(patchesInput: { includeHidden: true }) {
       patches {
         id
         hidden
