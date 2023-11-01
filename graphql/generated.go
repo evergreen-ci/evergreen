@@ -66657,9 +66657,6 @@ func (ec *executionContext) unmarshalInputMainlineCommitsOptions(ctx context.Con
 	if _, present := asMap["limit"]; !present {
 		asMap["limit"] = 7
 	}
-	if _, present := asMap["revision"]; !present {
-		asMap["revision"] = ""
-	}
 	if _, present := asMap["shouldCollapse"]; !present {
 		asMap["shouldCollapse"] = false
 	}

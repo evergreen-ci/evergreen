@@ -33,10 +33,6 @@ import (
 	werrors "github.com/pkg/errors"
 )
 
-const (
-	minRevisionLength = 7
-)
-
 // BbGetCreatedTickets is the resolver for the bbGetCreatedTickets field.
 func (r *queryResolver) BbGetCreatedTickets(ctx context.Context, taskID string) ([]*thirdparty.JiraTicket, error) {
 	createdTickets, err := bbGetCreatedTicketsPointers(taskID)
@@ -816,7 +812,7 @@ func (r *queryResolver) MainlineCommits(ctx context.Context, options MainlineCom
 	skipOrderNumber := utility.FromIntPtr(options.SkipOrderNumber)
 	revision := utility.FromStringPtr(options.Revision)
 
-	if options.SkipOrderNumber == nil && revision != "" {
+	if options.SkipOrderNumber == nil && options.Revision != nil {
 		if len(revision) < minRevisionLength {
 			graphql.AddError(ctx, PartialError.Send(ctx, fmt.Sprintf("at least %d characters must be provided for the revision", minRevisionLength)))
 		} else {
@@ -827,7 +823,7 @@ func (r *queryResolver) MainlineCommits(ctx context.Context, options MainlineCom
 				graphql.AddError(ctx, PartialError.Send(ctx, fmt.Sprintf("version with revision '%s' not found", revision)))
 			} else {
 				// Offset the order number so the specified revision lands nearer to the center of the page.
-				skipOrderNumber = found.RevisionOrderNumber + 1 + limit/2
+				skipOrderNumber = found.RevisionOrderNumber + limit/2 + 1
 			}
 		}
 	}
@@ -846,7 +842,7 @@ func (r *queryResolver) MainlineCommits(ctx context.Context, options MainlineCom
 	var mainlineCommits MainlineCommits
 	matchingVersionCount := 0
 
-	// We only want to return the PrevPageOrderNumber if a user is not on the first page
+	// We only want to return the PrevPageOrderNumber if a user is not on the first page.
 	if skipOrderNumber != 0 {
 		prevPageCommit, err := model.GetPreviousPageCommitOrderNumber(ctx, projectId, skipOrderNumber, limit, requesters)
 
