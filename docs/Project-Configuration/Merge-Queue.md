@@ -55,7 +55,8 @@ settings, refer to the [official GitHub documentation](https://docs.github.com/e
 
 ## FAQ
 
-**Q:** I don't see any candidate statuses in the list of possible required checks.
+**Q:** I don't see any candidate statuses in the list of possible required
+checks in the branch protection configuration.
 
 **A:** This is probably because you haven't generated any in a while. GitHub only shows
 recent statuses. To get some statuses to choose from, you can retrigger tests on
