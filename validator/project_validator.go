@@ -986,6 +986,16 @@ func checkModules(project *model.Project) ValidationErrors {
 			})
 		}
 
+		if strings.Contains(module.Repo, "git@github.com:") {
+			text := fmt.Sprintf("The project config has a module '%s' with a repo '%s' that is in git@github.com:owner/repo.git format. "+
+				"This is deprecated, please update to specify an owner and repo separately", module.Name, module.Repo)
+			errs = append(errs, ValidationError{
+				Level:   Warning,
+				Message: text,
+			})
+		}
+
+		// if the module does not use the new owner and repo format, make sure that the repo is a valid url
 		if module.Owner == "" {
 			// Warn if repo is empty or does not conform to Git URL format
 			owner, repo, err := thirdparty.ParseGitUrl(module.Repo)
@@ -1014,7 +1024,6 @@ func checkModules(project *model.Project) ValidationErrors {
 				Message: fmt.Sprintf("module '%s' should have a set repo", module.Name),
 			})
 		}
-
 	}
 
 	return errs

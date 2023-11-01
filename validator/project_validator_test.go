@@ -1423,31 +1423,37 @@ func TestCheckModules(t *testing.T) {
 					model.Module{
 						Name:   "module-0",
 						Branch: "main",
-						Repo:   "git@github.com:evergreen-ci/evergreen.git",
+						Owner:  "evergreen-ci",
+						Repo:   "evergreen",
 					},
 					model.Module{
 						Name:   "module-0",
 						Branch: "main",
-						Repo:   "git@github.com:evergreen-ci/evergreen.git",
+						Owner:  "evergreen-ci",
+						Repo:   "evergreen",
 					},
 					model.Module{
 						Name:   "module-1",
 						Branch: "main",
-						Repo:   "git@github.com:evergreen-ci/evergreen.git",
+						Owner:  "evergreen-ci",
+						Repo:   "evergreen",
 					},
 					model.Module{
 						Name:   "module-2",
 						Branch: "main",
-						Repo:   "git@github.com:evergreen-ci/evergreen.git",
+						Owner:  "evergreen-ci",
+						Repo:   "evergreen",
 					},
 					model.Module{
 						Name:   "module-1",
 						Branch: "main",
-						Repo:   "git@github.com:evergreen-ci/evergreen.git",
+						Owner:  "evergreen-ci",
+						Repo:   "evergreen",
 					},
 					model.Module{
 						Branch: "main",
-						Repo:   "git@github.com:evergreen-ci/evergreen.git",
+						Owner:  "evergreen-ci",
+						Repo:   "evergreen",
 					},
 				},
 			}
@@ -1458,24 +1464,28 @@ func TestCheckModules(t *testing.T) {
 			project := &model.Project{
 				Modules: model.ModuleList{
 					model.Module{
-						Name: "module-0",
-						Repo: "git@github.com:evergreen-ci/evergreen.git",
+						Name:  "module-0",
+						Owner: "evergreen-ci",
+						Repo:  "evergreen",
 					},
 					model.Module{
 						Name:   "module-1",
 						Branch: "main",
-						Repo:   "git@github.com:evergreen-ci/evergreen.git",
+						Owner:  "evergreen-ci",
+						Repo:   "evergreen",
 					},
 					model.Module{
-						Name: "module-2",
-						Repo: "git@github.com:evergreen-ci/evergreen.git",
+						Name:  "module-2",
+						Owner: "evergreen-ci",
+						Repo:  "evergreen",
 					},
 				},
 			}
-			So(len(checkModules(project)), ShouldEqual, 2)
+			cm := checkModules(project)
+			So(len(cm), ShouldEqual, 2)
 		})
 
-		Convey("An error should be returned when the module's repo is empty or invalid", func() {
+		Convey("An error should be returned when the module's repo is empty, in the deprecated format or invalid", func() {
 			project := &model.Project{
 				Modules: model.ModuleList{
 					model.Module{
@@ -1501,7 +1511,8 @@ func TestCheckModules(t *testing.T) {
 					},
 				},
 			}
-			So(len(checkModules(project)), ShouldEqual, 2)
+			cm := checkModules(project)
+			So(len(cm), ShouldEqual, 3)
 		})
 	})
 }
