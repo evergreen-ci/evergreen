@@ -20,6 +20,7 @@ import (
 	"github.com/evergreen-ci/evergreen/model/log"
 	"github.com/evergreen-ci/evergreen/model/task"
 	"github.com/evergreen-ci/evergreen/model/testresult"
+	"github.com/evergreen-ci/evergreen/model/user"
 	"github.com/evergreen-ci/evergreen/plugin"
 	"github.com/evergreen-ci/evergreen/taskoutput"
 	"github.com/evergreen-ci/gimlet"
@@ -591,6 +592,7 @@ func (uis *UIServer) taskLogRaw(w http.ResponseWriter, r *http.Request) {
 	if r.FormValue("text") == "true" || r.Header.Get("Content-Type") == "text/plain" {
 		gimlet.WriteText(w, log.NewLogIteratorReader(it, log.LogIteratorReaderOptions{
 			PrintTime:     true,
+			TimeZone:      getUserTimeZone(MustHaveUser(r)),
 			PrintPriority: r.FormValue("priority") == "true",
 		}))
 	} else {
@@ -600,6 +602,17 @@ func (uis *UIServer) taskLogRaw(w http.ResponseWriter, r *http.Request) {
 		}
 		uis.render.Stream(w, http.StatusOK, data, "base", "task_log.html")
 	}
+}
+
+// getUserTimeZone returns the time zone specified by the user settings.
+// Defaults to UTC.
+func getUserTimeZone(u *user.DBUser) *time.Location {
+	loc, err := time.LoadLocation(u.Settings.Timezone)
+	if err != nil {
+		return time.UTC
+	}
+
+	return loc
 }
 
 func getTaskLogTypeMapping(prefix string) taskoutput.TaskLogType {
@@ -858,6 +871,7 @@ func (uis *UIServer) testLog(w http.ResponseWriter, r *http.Request) {
 		gimlet.WriteText(w, log.NewLogIteratorReader(it, log.LogIteratorReaderOptions{
 			PrintTime:     true,
 			PrintPriority: r.FormValue("priority") == "true",
+			TimeZone:      getUserTimeZone(MustHaveUser(r)),
 		}))
 	} else {
 		data := logData{
