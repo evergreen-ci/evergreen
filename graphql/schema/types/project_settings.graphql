@@ -85,7 +85,7 @@ ProjectSettings models the settings for a given Project.
 type ProjectSettings {
   aliases: [ProjectAlias!]
   githubWebhooksEnabled: Boolean!
-  projectRef: Project
+  projectRef: Project @requireProjectSettingsAccess
   subscriptions: [GeneralSubscription!]
   vars: ProjectVars
 }

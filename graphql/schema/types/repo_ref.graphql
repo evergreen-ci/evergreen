@@ -19,6 +19,7 @@ input RepoRefInput {
   manualPrTestingEnabled: Boolean
   notifyOnBuildFailure: Boolean
   owner: String
+  parsleyFilters: [ParsleyFilterInput!]
   patchingDisabled: Boolean
   patchTriggerAliases: [PatchTriggerAliasInput!]
   perfEnabled: Boolean
@@ -48,43 +49,44 @@ exactly.
 """
 type RepoRef {
   id: String!
-  admins: [String!]! @requireProjectFieldAccess
-  batchTime: Int! @requireProjectFieldAccess
-  buildBaronSettings: BuildBaronSettings! @requireProjectFieldAccess
-  commitQueue: RepoCommitQueueParams! @requireProjectFieldAccess
-  containerSizeDefinitions: [ContainerResources!] @requireProjectFieldAccess
-  deactivatePrevious: Boolean! @requireProjectFieldAccess
-  disabledStatsCache: Boolean! @requireProjectFieldAccess
-  dispatchingDisabled: Boolean! @requireProjectFieldAccess
+  admins: [String!]!
+  batchTime: Int!
+  buildBaronSettings: BuildBaronSettings!
+  commitQueue: RepoCommitQueueParams!
+  containerSizeDefinitions: [ContainerResources!]
+  deactivatePrevious: Boolean!
+  disabledStatsCache: Boolean!
+  dispatchingDisabled: Boolean!
   displayName: String!
   enabled: Boolean!
-  githubChecksEnabled: Boolean! @requireProjectFieldAccess
-  githubTriggerAliases: [String!] @requireProjectFieldAccess
-  gitTagAuthorizedTeams: [String!] @requireProjectFieldAccess
-  gitTagAuthorizedUsers: [String!] @requireProjectFieldAccess
-  gitTagVersionsEnabled: Boolean! @requireProjectFieldAccess
-  manualPrTestingEnabled: Boolean! @requireProjectFieldAccess
-  notifyOnBuildFailure: Boolean! @requireProjectFieldAccess
+  githubChecksEnabled: Boolean!
+  githubTriggerAliases: [String!]
+  gitTagAuthorizedTeams: [String!]
+  gitTagAuthorizedUsers: [String!]
+  gitTagVersionsEnabled: Boolean!
+  manualPrTestingEnabled: Boolean!
+  notifyOnBuildFailure: Boolean!
   owner: String!
-  patchingDisabled: Boolean! @requireProjectFieldAccess
-  patchTriggerAliases: [PatchTriggerAlias!] @requireProjectFieldAccess
-  perfEnabled: Boolean! @requireProjectFieldAccess
-  periodicBuilds: [PeriodicBuild!] @requireProjectFieldAccess
+  parsleyFilters: [ParsleyFilter!]
+  patchingDisabled: Boolean!
+  patchTriggerAliases: [PatchTriggerAlias!]
+  perfEnabled: Boolean!
+  periodicBuilds: [PeriodicBuild!]
   private: Boolean!
-  prTestingEnabled: Boolean! @requireProjectFieldAccess
-  remotePath: String! @requireProjectFieldAccess
+  prTestingEnabled: Boolean!
+  remotePath: String!
   repo: String!
-  repotrackerDisabled: Boolean! @requireProjectFieldAccess
+  repotrackerDisabled: Boolean!
   restricted: Boolean!
   spawnHostScriptPath: String!
-  stepbackDisabled: Boolean! @requireProjectFieldAccess
-  taskAnnotationSettings: TaskAnnotationSettings! @requireProjectFieldAccess
-  taskSync: RepoTaskSyncOptions! @requireProjectFieldAccess
-  tracksPushEvents: Boolean! @requireProjectFieldAccess
-  triggers: [TriggerAlias!]! @requireProjectFieldAccess
-  versionControlEnabled: Boolean! @requireProjectFieldAccess
-  workstationConfig: RepoWorkstationConfig! @requireProjectFieldAccess
-  externalLinks: [ExternalLink!] @requireProjectFieldAccess
+  stepbackDisabled: Boolean!
+  taskAnnotationSettings: TaskAnnotationSettings!
+  taskSync: RepoTaskSyncOptions!
+  tracksPushEvents: Boolean!
+  triggers: [TriggerAlias!]!
+  versionControlEnabled: Boolean!
+  workstationConfig: RepoWorkstationConfig!
+  externalLinks: [ExternalLink!]
 }
 
 type RepoCommitQueueParams {

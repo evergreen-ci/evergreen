@@ -1,0 +1,6 @@
+mutation {
+  abortTask(taskId: "on_commit_queue") {
+    aborted
+    activated
+  }
+}

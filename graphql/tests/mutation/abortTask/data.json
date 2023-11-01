@@ -1,7 +1,7 @@
 {
   "tasks": [
     {
-      "_id": "t1",
+      "_id": "on_commit_queue",
       "display_name": "cq merge",
       "branch": "p1",
       "status": "started",
@@ -10,6 +10,42 @@
       "commit_queue_merge": true,
       "version": "123456789012345678901234",
       "project": "p1"
+    },
+    {
+      "_id": "activated_task",
+      "version": "123456789012345678901234",
+      "branch": "curator",
+      "priority": 5,
+      "activated": true,
+      "execution": 0,
+      "order": 5,
+      "r": "gitter_request",
+      "status": "started",
+      "display_only": false,
+      "build_id": "b2"
+    },
+    {
+      "_id": "completed_task",
+      "version": "version",
+      "branch": "logkeeper",
+      "priority": 5,
+      "activated": true,
+      "execution": 0,
+      "order": 5,
+      "r": "gitter_request",
+      "status": "failed"
+    },
+    {
+      "_id": "fail_commit_queue",
+      "version": "version",
+      "branch": "logkeeper",
+      "priority": 5,
+      "activated": true,
+      "execution": 0,
+      "order": 5,
+      "r": "merge_test",
+      "status": "started",
+      "build_id": "b2"
     }
   ],
   "builds": [
@@ -18,7 +54,28 @@
       "status": "started",
       "build_variant": "commit-queue",
       "display_name": "~ Commit Queue",
-      "tasks": [{ "id": "t1" }]
+      "tasks": [{ "id": "on_commit_queue" }]
+    },
+    {
+      "_id": "b2",
+      "create_time": "2019-07-10T22:05:08.973Z",
+      "start_time": "2019-07-21T00:39:42.274Z",
+      "finish_time": "0001-01-01T00:00:00Z",
+      "version": "5d2661149dbe326298fee2a3",
+      "build_variant": "ubuntu1604-docker",
+      "status": "failed",
+      "display_name": "Ubuntu 16.04 (Docker)",
+      "tasks": [
+        {
+          "id": "activated_task",
+          "d": "dist",
+          "s": "undispatched",
+          "ed": {},
+          "st": "1970-01-01T00:00:00Z",
+          "tt": 0,
+          "a": false
+        }
+      ]
     }
   ],
   "versions": [

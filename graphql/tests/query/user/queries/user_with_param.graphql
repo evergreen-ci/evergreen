@@ -1,0 +1,6 @@
+{
+  user(userId: "bob.smith") {
+    displayName
+    userId
+  }
+}

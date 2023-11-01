@@ -1,0 +1,26 @@
+{
+  "tests": [
+    {
+      "query_file": "patch_trigger_aliases.graphql",
+      "result": {
+        "data": {
+          "patch": {
+            "patchTriggerAliases": [
+              {
+                "alias": "test-alias",
+                "childProjectId": "spruce",
+                "childProjectIdentifier": "spruce",
+                "variantsTasks": [
+                  {
+                    "name": "ubuntu1804",
+                    "tasks": ["compile"]
+                  }
+                ]
+              }
+            ]
+          }
+        }
+      }
+    }
+  ]
+}

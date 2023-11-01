@@ -1,0 +1,161 @@
+{
+  "tests": [
+    {
+      "query_file": "all_params.graphql",
+      "result": {
+        "data": {
+          "project": {
+            "patches": {
+              "patches": [
+                {
+                  "status": "failed",
+                  "id": "5e4ff3abe3c3317e352062e7",
+                  "description": "222",
+                  "alias": "__github"
+                },
+                {
+                  "status": "failed",
+                  "id": "5e4ff3abe3c3317e352062e9",
+                  "description": "222",
+                  "alias": "__github"
+                }
+              ],
+              "filteredPatchCount": 2
+            }
+          }
+        }
+      }
+    },
+    {
+      "query_file": "author_display_name.graphql",
+      "result": {
+        "data": {
+          "project": {
+            "patches": {
+              "patches": [
+                {
+                  "id": "5e4ff3abe3c3317e352062e8",
+                  "author": "testuser",
+                  "authorDisplayName": "testuser"
+                }
+              ],
+              "filteredPatchCount": 6
+            }
+          }
+        }
+      }
+    },
+    {
+      "query_file": "default_params.graphql",
+      "result": {
+        "data": {
+          "project": {
+            "patches": {
+              "patches": [
+                { "id": "5e4ff3abe3c3317e352062e8" },
+                { "id": "5e4ff3abe3c3317e352062e7" },
+                { "id": "5e4ff3abe3c3317e352062e6" },
+                { "id": "5e4ff3abe3c3317e352062e5" },
+                { "id": "5e4ff3abe3c3317e352062e4" },
+                { "id": "5e4ff3abe3c3317e352062e9" }
+              ],
+              "filteredPatchCount": 6
+            }
+          }
+        }
+      }
+    },
+    {
+      "query_file": "nonexistent_user.graphql",
+      "result": {
+        "errors": [
+          {
+            "message": "Error finding project by id not a real project: 404 (Not Found): project 'not a real project' not found",
+            "path": ["project"],
+            "extensions": {
+              "code": "INTERNAL_SERVER_ERROR"
+            }
+          }
+        ],
+        "data": null
+      }
+    },
+    {
+      "query_file": "only_commit_queue.graphql",
+      "result": {
+        "data": {
+          "project": {
+            "patches": {
+              "patches": [
+                { "id": "5e4ff3abe3c3317e352062e6" },
+                { "id": "5e4ff3abe3c3317e352062e5" },
+                { "id": "5e4ff3abe3c3317e352062e4" }
+              ],
+              "filteredPatchCount": 3
+            }
+          }
+        }
+      }
+    },
+    {
+      "query_file": "pagination.graphql",
+      "result": {
+        "data": {
+          "page0": {
+            "patches": {
+              "patches": [
+                { "id": "5e4ff3abe3c3317e352062e8" },
+                { "id": "5e4ff3abe3c3317e352062e7" },
+                { "id": "5e4ff3abe3c3317e352062e6" }
+              ],
+              "filteredPatchCount": 6
+            }
+          },
+          "page1": {
+            "patches": {
+              "patches": [
+                { "id": "5e4ff3abe3c3317e352062e5" },
+                { "id": "5e4ff3abe3c3317e352062e4" },
+                { "id": "5e4ff3abe3c3317e352062e9" }
+              ],
+              "filteredPatchCount": 6
+            }
+          }
+        }
+      }
+    },
+    {
+      "query_file": "patch_name.graphql",
+      "result": {
+        "data": {
+          "project": {
+            "patches": {
+              "patches": [
+                { "id": "5e4ff3abe3c3317e352062e7", "description": "222" },
+                { "id": "5e4ff3abe3c3317e352062e5", "description": "222" },
+                { "id": "5e4ff3abe3c3317e352062e9", "description": "222" }
+              ],
+              "filteredPatchCount": 3
+            }
+          }
+        }
+      }
+    },
+    {
+      "query_file": "statuses.graphql",
+      "result": {
+        "data": {
+          "project": {
+            "patches": {
+              "patches": [
+                { "id": "5e4ff3abe3c3317e352062e7", "status": "failed" },
+                { "id": "5e4ff3abe3c3317e352062e9", "status": "failed" }
+              ],
+              "filteredPatchCount": 2
+            }
+          }
+        }
+      }
+    }
+  ]
+}

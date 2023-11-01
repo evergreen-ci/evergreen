@@ -1,0 +1,27 @@
+{
+  "tests": [
+    {
+      "query_file": "home_volume.graphql",
+      "result": {
+        "data": {
+          "host": {
+            "homeVolume": {
+              "displayName": "a crazy thing",
+              "id": "crazy_volume"
+            }
+          }
+        }
+      }
+    },
+    {
+      "query_file": "home_volume_null.graphql",
+      "result": {
+        "data": {
+          "host": {
+            "homeVolume": null
+          }
+        }
+      }
+    }
+  ]
+}

@@ -16,6 +16,7 @@ import (
 	"github.com/evergreen-ci/evergreen/model/host"
 	"github.com/evergreen-ci/evergreen/model/manifest"
 	"github.com/evergreen-ci/evergreen/model/patch"
+	"github.com/evergreen-ci/evergreen/model/pod"
 	"github.com/evergreen-ci/evergreen/model/task"
 	"github.com/evergreen-ci/evergreen/thirdparty"
 	"github.com/evergreen-ci/gimlet"
@@ -110,7 +111,6 @@ func (h *agentSetup) Run(ctx context.Context) gimlet.Responder {
 		SplunkServerURL:   h.settings.Splunk.SplunkConnectionInfo.ServerURL,
 		SplunkClientToken: h.settings.Splunk.SplunkConnectionInfo.Token,
 		SplunkChannel:     h.settings.Splunk.SplunkConnectionInfo.Channel,
-		Buckets:           h.settings.Buckets,
 		TaskSync:          h.settings.Providers.AWS.TaskSync,
 		EC2Keys:           h.settings.Providers.AWS.EC2Keys,
 	}
@@ -983,13 +983,15 @@ func (h *startTaskHandler) Run(ctx context.Context) gimlet.Responder {
 	}
 
 	var msg string
+	var foundHost *host.Host
+	var foundPod *pod.Pod
 	if h.hostID != "" {
-		host, err := host.FindOneByTaskIdAndExecution(ctx, t.Id, t.Execution)
+		foundHost, err = host.FindOneByTaskIdAndExecution(ctx, t.Id, t.Execution)
 		if err != nil {
 			return gimlet.MakeJSONInternalErrorResponder(errors.Wrapf(err, "finding host running task %s", t.Id))
 		}
 
-		if host == nil {
+		if foundHost == nil {
 			message := fmt.Sprintf("no host found running task %s", t.Id)
 			if t.HostId != "" {
 				message = fmt.Sprintf("no host found running task %s but task is said to be running on %s",
@@ -1002,28 +1004,40 @@ func (h *startTaskHandler) Run(ctx context.Context) gimlet.Responder {
 			})
 		}
 
-		msg = fmt.Sprintf("task %s started on host %s", t.Id, host.Id)
+		msg = fmt.Sprintf("task %s started on host %s", t.Id, foundHost.Id)
 
-		if host.Distro.IsEphemeral() {
-			if err = host.IncTaskCount(); err != nil {
-				return gimlet.MakeJSONInternalErrorResponder(errors.Wrapf(err, "incrementing task count for task '%s' on host '%s'", t.Id, host.Id))
+		if foundHost.Distro.IsEphemeral() {
+			if err = foundHost.IncTaskCount(); err != nil {
+				return gimlet.MakeJSONInternalErrorResponder(errors.Wrapf(err, "incrementing task count for task '%s' on host '%s'", t.Id, foundHost.Id))
 			}
-			if err = host.IncIdleTime(host.WastedComputeTime()); err != nil {
-				return gimlet.MakeJSONInternalErrorResponder(errors.Wrapf(err, "incrementing total idle time on host '%s'", host.Id))
+			if err = foundHost.IncIdleTime(foundHost.WastedComputeTime()); err != nil {
+				return gimlet.MakeJSONInternalErrorResponder(errors.Wrapf(err, "incrementing total idle time on host '%s'", foundHost.Id))
 			}
-			grip.Info(host.TaskStartMessage())
+			grip.Info(foundHost.TaskStartMessage())
 		}
-
-		logTaskStartMessage(host, t)
 	} else {
-		// TODO: EVG-17647 Create job to collect data on idle pods
+		foundPod, err = pod.FindOneByID(h.podID)
+		if err != nil {
+			return gimlet.MakeJSONInternalErrorResponder(errors.Wrapf(err, "finding pod running task %s", t.Id))
+		}
+		if foundPod == nil {
+			message := fmt.Sprintf("no pod found running task %s", t.Id)
+			if t.PodID != "" {
+				message = fmt.Sprintf("no pod found running task %s but task is said to be running on %s",
+					t.Id, t.PodID)
+			}
+			return gimlet.MakeJSONErrorResponder(gimlet.ErrorResponse{
+				StatusCode: http.StatusNotFound,
+				Message:    message,
+			})
+		}
 		msg = fmt.Sprintf("task '%s' started on pod '%s'", t.Id, h.podID)
 	}
-
+	logTaskStartMessage(foundHost, foundPod, t)
 	return gimlet.NewJSONResponse(msg)
 }
 
-func logTaskStartMessage(h *host.Host, t *task.Task) {
+func logTaskStartMessage(h *host.Host, p *pod.Pod, t *task.Task) {
 	msg := message.Fields{
 		"stat":                   "task-start-stats",
 		"task_id":                t.Id,
@@ -1034,14 +1048,10 @@ func logTaskStartMessage(h *host.Host, t *task.Task) {
 		"activated_latency_secs": t.StartTime.Sub(t.ActivatedTime).Seconds(),
 		"scheduled_latency_secs": t.StartTime.Sub(t.ScheduledTime).Seconds(),
 		"started_latency_secs":   t.StartTime.Sub(t.DispatchTime).Seconds(),
-		"distro":                 h.Distro.Id,
 		"generator":              t.GenerateTask,
 		"group":                  t.TaskGroup,
 		"group_max_hosts":        t.TaskGroupMaxHosts,
-		"host_id":                h.Id,
 		"project":                t.Project,
-		"provider":               h.Distro.Provider,
-		"provisioning":           h.Distro.BootstrapSettings.Method,
 		"requester":              t.Requester,
 		"priority":               t.Priority,
 		"task":                   t.DisplayName,
@@ -1053,22 +1063,29 @@ func logTaskStartMessage(h *host.Host, t *task.Task) {
 		msg["dependencies_met_time"] = t.DependenciesMetTime
 	}
 
-	if strings.HasPrefix(h.Distro.Provider, "ec2") {
-		msg["provider"] = "ec2"
-	}
-
 	if t.ActivatedBy != "" {
 		msg["activated_by"] = t.ActivatedBy
 	}
 
-	if h.Provider != evergreen.ProviderNameStatic {
-		msg["host_task_count"] = h.TaskCount
-
-		if h.TaskCount == 1 {
-			msg["host_provision_time"] = h.TotalIdleTime.Seconds()
+	if h != nil {
+		msg["distro"] = h.Distro.Id
+		msg["host_id"] = h.Id
+		msg["provider"] = h.Distro.Provider
+		msg["provisioning"] = h.Distro.BootstrapSettings.Method
+		if strings.HasPrefix(h.Distro.Provider, "ec2") {
+			msg["provider"] = "ec2"
 		}
-	}
+		if h.Provider != evergreen.ProviderNameStatic {
+			msg["host_task_count"] = h.TaskCount
 
+			if h.TaskCount == 1 {
+				msg["host_provision_time"] = h.TotalIdleTime.Seconds()
+			}
+		}
+	} else if p != nil {
+		msg["pod_id"] = p.ID
+		msg["pod_provision_time"] = time.Since(p.TimeInfo.Starting).Seconds()
+	}
 	grip.Info(msg)
 }
 

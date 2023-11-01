@@ -1,0 +1,32 @@
+{
+  "tests": [
+    {
+      "query_file": "patch_time_1.graphql",
+      "result": {
+        "data": {
+          "patch": {
+            "time": {
+              "started": null,
+              "finished": null,
+              "submittedAt": "January 10, 2018, 7:01PM"
+            }
+          }
+        }
+      }
+    },
+    {
+      "query_file": "patch_time_2.graphql",
+      "result": {
+        "data": {
+          "patch": {
+            "time": {
+              "started": "February 13, 2020, 12:42PM",
+              "finished": "February 14, 2020, 1:03PM",
+              "submittedAt": "February 12, 2020, 11:58AM"
+            }
+          }
+        }
+      }
+    }
+  ]
+}
