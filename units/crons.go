@@ -176,7 +176,7 @@ func eventNotifierJobs(ctx context.Context, ts time.Time) ([]amboy.Job, error) {
 
 	var jobs []amboy.Job
 	for _, evt := range events {
-		jobs = append(jobs, NewEventNotifierJob(nil, evt.ID, utility.RoundPartOfMinute(0).Format(TSFormat)))
+		jobs = append(jobs, NewEventNotifierJob(nil, evt.ID, ts.Format(TSFormat)))
 	}
 	return jobs, nil
 }
@@ -210,7 +210,7 @@ func hostTerminationJobs(ctx context.Context, _ time.Time) ([]amboy.Job, error) 
 	if flags.MonitorDisabled {
 		grip.InfoWhen(sometimes.Percent(evergreen.DegradedLoggingPercent), message.Fields{
 			"message": "monitor is disabled",
-			"impact":  "not submitting termination flags for dead/killable hosts",
+			"impact":  "not submitting termination jobs for dead/killable hosts",
 			"mode":    "degraded",
 		})
 		return nil, nil
@@ -281,7 +281,7 @@ func parentDecommissionJobs(ctx context.Context, ts time.Time) ([]amboy.Job, err
 func containerStateJobs(ctx context.Context, ts time.Time) ([]amboy.Job, error) {
 	parents, err := host.FindAllRunningParents(ctx)
 	if err != nil {
-		return nil, errors.Wrap(err, "Error finding parent hosts")
+		return nil, errors.Wrap(err, "finding parent hosts")
 	}
 
 	var jobs []amboy.Job
@@ -596,7 +596,7 @@ func agentMonitorDeployJobs(ctx context.Context, ts time.Time) ([]amboy.Job, err
 	return jobs, nil
 }
 
-// fallbackGenerateTasksJobs populates generate.tasks jobs for tasks that have started running their generate.tasks command.
+// enqueueFallbackGenerateTasksJobs populates generate.tasks jobs for tasks that have started running their generate.tasks command.
 // Since the original generate.tasks request kicks off a job immediately, this function only serves as a fallback in case the
 // original job fails to run. If the original job has already completed, the job will not be created here. If the original job is in flight,
 // the job will be created here, but will no-op unless the original job fails to complete.
