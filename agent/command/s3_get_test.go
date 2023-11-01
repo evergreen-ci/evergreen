@@ -107,6 +107,7 @@ func TestS3GetValidateParams(t *testing.T) {
 					"remote_file": "remote",
 					"bucket":      "bck",
 					"local_file":  "local",
+					"optional":    true,
 				}
 				So(cmd.ParseParams(params), ShouldBeNil)
 				So(cmd.validateParams(), ShouldBeNil)
