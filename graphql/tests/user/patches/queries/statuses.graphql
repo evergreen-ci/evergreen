@@ -1,6 +1,12 @@
 {
   user {
-    patches(patchesInput: { includeCommitQueue: true, statuses: ["failed"] }) {
+    patches(
+      patchesInput: {
+        includeCommitQueue: true
+        statuses: ["failed"]
+        includeHidden: true
+      }
+    ) {
       patches {
         id
         status
