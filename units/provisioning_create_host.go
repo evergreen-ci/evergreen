@@ -495,7 +495,7 @@ func (j *createHostJob) tryHostReplacement(ctx context.Context, cloudMgr cloud.M
 
 func EnqueueHostCreateJobs(ctx context.Context, env evergreen.Environment, hostIntents []host.Host) error {
 	appCtx, _ := env.Context()
-	queue, err := env.RemoteQueueGroup().Get(appCtx, CreateHostQueueGroup)
+	queue, err := env.RemoteQueueGroup().Get(appCtx, createHostQueueGroup)
 	if err != nil {
 		return errors.Wrap(err, "getting host create queue")
 	}

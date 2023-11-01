@@ -3,7 +3,6 @@ package units
 import (
 	"context"
 	"fmt"
-	"time"
 
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/utility"
@@ -74,9 +73,9 @@ func (j *cronsRemoteFifteenSecondJob) Run(ctx context.Context) {
 
 	// Create dedicated queues for pod allocation.
 	appCtx, _ := j.env.Context()
-	catcher.Add(populateQueueGroup(appCtx, j.env, podAllocationQueueGroup, podAllocatorJobs, ts))
-	catcher.Add(populateQueueGroup(appCtx, j.env, podDefinitionCreationQueueGroup, podDefinitionCreationJobs, ts))
-	catcher.Add(populateQueueGroup(appCtx, j.env, podCreationQueueGroup, podCreationJobs, ts))
+	catcher.Add(populateQueueGroup(appCtx, ctx, j.env, podAllocationQueueGroup, podAllocatorJobs, ts))
+	catcher.Add(populateQueueGroup(appCtx, ctx, j.env, podDefinitionCreationQueueGroup, podDefinitionCreationJobs, ts))
+	catcher.Add(populateQueueGroup(appCtx, ctx, j.env, podCreationQueueGroup, podCreationJobs, ts))
 
 	j.ErrorCount = catcher.Len()
 	grip.Error(message.WrapError(catcher.Resolve(), message.Fields{
@@ -84,17 +83,4 @@ func (j *cronsRemoteFifteenSecondJob) Run(ctx context.Context) {
 		"type":  j.Type().Name,
 		"queue": "service",
 	}))
-}
-
-func populateQueueGroup(ctx context.Context, env evergreen.Environment, queueGroupName string, factory cronJobFactory, ts time.Time) error {
-	queueGroup, err := env.RemoteQueueGroup().Get(ctx, queueGroupName)
-	if err != nil {
-		return errors.Wrapf(err, "getting '%s' queue", queueGroupName)
-	}
-	jobs, err := factory(ctx, ts)
-	if err != nil {
-		return errors.Wrapf(err, "getting '%s' jobs", queueGroupName)
-	}
-
-	return errors.Wrapf(amboy.EnqueueManyUniqueJobs(ctx, queueGroup, jobs), "populating '%s' queue", queueGroupName)
 }

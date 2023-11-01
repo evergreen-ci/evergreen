@@ -140,7 +140,7 @@ func (s *cronsEventSuite) TestDegradedMode() {
 
 	// degraded mode shouldn't process events
 	s.NoError(e.Log())
-	s.NoError(PopulateEventNotifierJobs(s.env)(s.ctx, s.env.LocalQueue()))
+	s.NoError(eventNotifierJobs(s.env)(s.ctx, s.env.LocalQueue()))
 
 	out, err := event.FindUnprocessedEvents(-1)
 	s.NoError(err)
@@ -163,7 +163,7 @@ func (s *cronsEventSuite) TestSenderDegradedModeDoesntDispatchJobs() {
 
 	startingStats := s.env.LocalQueue().Stats(ctx)
 
-	s.NoError(dispatchNotifications(ctx, s.n, s.env.LocalQueue(), &flags))
+	s.NoError(notificationJobs(ctx, s.n, s.env.LocalQueue(), &flags))
 
 	out := []notification.Notification{}
 	s.NoError(db.FindAllQ(notification.Collection, db.Q{}, &out))
@@ -294,7 +294,7 @@ func (s *cronsEventSuite) TestEndToEnd() {
 	go httpServer(ln, handler)
 
 	q := s.env.RemoteQueue()
-	s.NoError(PopulateEventNotifierJobs(s.env)(s.ctx, q))
+	s.NoError(eventNotifierJobs(s.env)(s.ctx, q))
 
 	// Wait for event notifier to finish.
 	amboy.WaitInterval(s.ctx, q, 10*time.Millisecond)
