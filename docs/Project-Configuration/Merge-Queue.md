@@ -55,6 +55,14 @@ settings, refer to the [official GitHub documentation](https://docs.github.com/e
 
 ## FAQ
 
+**Q:** I don't see any candidate statuses in the list of possible required
+checks in the branch protection configuration.
+
+**A:** This is probably because you haven't generated any in a while. GitHub only shows
+recent statuses. To get some statuses to choose from, you can retrigger tests on
+an existing PR by typing `evergreen retry`, open an empty PR, or commit an empty
+commit.
+
 **Q:** Is there a plan to have Evergreen send merge notifications? 
 
 **A:** No. We believe it makes more sense for notifications to come from GitHub,
