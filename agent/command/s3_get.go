@@ -62,7 +62,7 @@ type s3get struct {
 func s3GetFactory() Command   { return &s3get{} }
 func (c *s3get) Name() string { return "s3.get" }
 
-// s3get-specific implementation of ParseParams.
+// s3get implementation of ParseParams.
 func (c *s3get) ParseParams(params map[string]interface{}) error {
 	decoder, err := mapstructure.NewDecoder(&mapstructure.DecoderConfig{
 		WeaklyTypedInput: true,
@@ -83,7 +83,7 @@ func (c *s3get) ParseParams(params map[string]interface{}) error {
 	return nil
 }
 
-// Validate that all necessary params are set, and that only one of
+// validateParams that all necessary params are set, and that only one of
 // local_file and extract_to is specified.
 func (c *s3get) validateParams() error {
 	if c.AwsKey == "" {
@@ -144,7 +144,7 @@ func (c *s3get) expandParams(conf *internal.TaskConfig) error {
 	return nil
 }
 
-// Implementation of Execute.  Expands the parameters, and then fetches the
+// Execute expands the parameters, and then fetches the
 // resource from s3.
 func (c *s3get) Execute(ctx context.Context,
 	comm client.Communicator, logger client.LoggerProducer, conf *internal.TaskConfig) error {
@@ -214,7 +214,7 @@ func (c *s3get) Execute(ctx context.Context,
 
 	select {
 	case err := <-errChan:
-		if c.skipMissing {
+		if err != nil && c.skipMissing {
 			logger.Task().Infof("Problem getting file but optional is true, exiting without error (%s).", err.Error())
 			return nil
 		}
