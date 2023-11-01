@@ -36,6 +36,7 @@ type versionCreateHandler struct {
 // @Tags			versions
 // @Param			{object}	body	versionCreateHandler	true	"parameters"
 // @Router			/versions/ [post]
+// @Security	Api-User || Api-Key
 // @Success		200	{object}	model.APIVersion
 func (h *versionCreateHandler) Factory() gimlet.RouteHandler {
 	return &versionCreateHandler{sc: h.sc}

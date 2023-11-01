@@ -31,6 +31,7 @@ func makeFetchKeys() gimlet.RouteHandler {
 // @Description	Fetch the SSH public keys of the current user (as determined by the Api-User and Api-Key headers) as an array of Key objects.
 // @Tags			keys
 // @Router			/keys [get]
+// @Security	Api-User || Api-Key
 // @Success		200	{array}	model.APIPubKey
 func (h *keysGetHandler) Factory() gimlet.RouteHandler                     { return &keysGetHandler{} }
 func (h *keysGetHandler) Parse(ctx context.Context, r *http.Request) error { return nil }
@@ -68,6 +69,7 @@ func makeSetKey() gimlet.RouteHandler {
 // @Description	Add a single public key to the current user (as determined by the Api-User and Api-Key headers) as a Key object. If you attempt to insert a key with a duplicate name, it will fail.
 // @Tags			keys
 // @Router			/keys [post]
+// @Security	Api-User || Api-Key
 // @Param			{object}	body	model.APIPubKey	true	"parameters"
 // @Success		200
 func (h *keysPostHandler) Factory() gimlet.RouteHandler {
@@ -154,6 +156,7 @@ func makeDeleteKeys() gimlet.RouteHandler {
 // @Description	Delete the SSH public key with name {key_name} from the current user (as determined by the Api-User and Api-Key headers).
 // @Tags			keys
 // @Router			/keys [delete]
+// @Security	Api-User || Api-Key
 // @Param			key_name	query	string	true	"the key name"
 // @Success		200
 func (h *keysDeleteHandler) Factory() gimlet.RouteHandler {

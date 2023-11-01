@@ -37,6 +37,7 @@ func makeTasksByProjectAndCommitHandler(parsleyURL, url string) gimlet.RouteHand
 // @Description	List all tasks within a mainline commit of a given project (excludes patch tasks)
 // @Tags			tasks
 // @Router			/projects/{project_name}/revisions/{commit_hash}/tasks [get]
+// @Security	Api-User || Api-Key
 // @Param			project_name	path	string	true	"project name"
 // @Param			commit_hash		path	string	true	"commit hash"
 // @Param			start_at		query	string	false	"The identifier of the task to start at in the pagination"

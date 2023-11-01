@@ -24,6 +24,7 @@ func makeTaskAbortHandler() gimlet.RouteHandler {
 // @Description	Abort the task of the given ID. Can only be performed if the task is in progress.
 // @Tags			tasks
 // @Router			/tasks/{task_id}/abort [post]
+// @Security	Api-User || Api-Key
 // @Param			task_id	path		string	true	"task ID"
 // @Success		200		{object}	model.APITask
 func (t *taskAbortHandler) Factory() gimlet.RouteHandler {

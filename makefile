@@ -381,8 +381,10 @@ gqlgen:
 swaggo-install:
 	go install github.com/swaggo/swag/cmd/swag@latest
 
-swaggo-build:
+swaggo-format:
 	swag fmt -g service/service.go
+
+swaggo-build:
 	swag init -g service/service.go
 
 swaggo-render:

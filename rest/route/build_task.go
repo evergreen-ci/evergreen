@@ -36,6 +36,7 @@ func makeFetchTasksByBuild(parsleyURL, url string) gimlet.RouteHandler {
 // @Description	List all tasks within a specific build.
 // @Tags		tasks
 // @Router		/builds/{build_id}/tasks [get]
+// @Security	Api-User || Api-Key
 // @Param		build_id				path	string	true	"the build ID"
 // @Param		start_at				query	string	false	"The identifier of the task to start at in the pagination"
 // @Param		limit					query	int		false	"The number of tasks to be returned per page of pagination. Defaults to 100"

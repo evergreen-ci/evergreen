@@ -15,6 +15,7 @@ type permissionsGetHandler struct{}
 // @Description	Returns a static list of project and distro permissions that can be granted to users.
 // @Tags			info
 // @Router			/permissions [get]
+// @Security	Api-User || Api-Key
 // @Success		200	{object}	model.APIPermissions
 func (p *permissionsGetHandler) Factory() gimlet.RouteHandler                     { return p }
 func (p *permissionsGetHandler) Parse(ctx context.Context, r *http.Request) error { return nil }

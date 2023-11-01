@@ -33,6 +33,7 @@ func makeTaskRestartHandler() gimlet.RouteHandler {
 // @Description	Restarts the task of the given ID. Can only be performed if the task is finished.
 // @Tags		tasks
 // @Router		/tasks/{task_id}/restart [post]
+// @Security	Api-User || Api-Key
 // @Param		task_id		path		string	true	"task ID"
 // @Param		failed_only	query		string	false	"For a display task, restarts only failed execution tasks. When used with a non-display task, this parameter has no effect."
 // @Success		200			{object}	model.APITask

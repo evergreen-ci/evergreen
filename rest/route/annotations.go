@@ -34,6 +34,7 @@ func makeFetchAnnotationsByBuild() gimlet.RouteHandler {
 // @Description	Fetches the annotations for all the tasks in a build.
 // @Tags		annotations
 // @Router		/tasks/{build_id}/annotations [get]
+// @Security	Api-User || Api-Key
 // @Param		build_id				path	string	true	"build_id"
 // @Param		fetch_all_executions	query	string	false	"Fetches previous executions of the task if they are available"
 // @Success		200						{array}	model.APITaskAnnotation
@@ -80,6 +81,7 @@ func makeFetchAnnotationsByVersion() gimlet.RouteHandler {
 // @Description	Fetches the annotations for all the tasks in a version.
 // @Tags		annotations
 // @Router		/tasks/{version_id}/annotations [get]
+// @Security	Api-User || Api-Key
 // @Param		version_id				path	string	true	"version_id"
 // @Param		fetch_all_executions	query	string	false	"Fetches previous executions of the task if they are available"
 // @Success		200						{array}	model.APITaskAnnotation
@@ -144,6 +146,7 @@ func makeFetchAnnotationsByTask() gimlet.RouteHandler {
 // @Description	Returns a list containing the latest annotation for the given task, or null if there are no annotations.
 // @Tags		annotations
 // @Router		/tasks/{task_id}/annotations [get]
+// @Security	Api-User || Api-Key
 // @Param		task_id					path	string	true	"task ID"
 // @Param		execution				query	int		false	"The 0-based number corresponding to the execution of the task ID. Defaults to the latest execution"
 // @Param		fetch_all_executions	query	string	false	"Fetches previous executions of the task if they are available"
@@ -309,6 +312,7 @@ func makePutAnnotationsByTask() gimlet.RouteHandler {
 // @Description	Creates a task annotation, or updates an existing task annotation, overwriting any existing fields that are included in the update. The annotation is created based on the annotation specified in the request body. Task execution must be provided for this endpoint, either in the request body or set as a url parameter. If no task_execution is specified in the request body or in the url, a bad status error will be returned. Note that usage of this endpoint requires that the requesting user have security to modify task annotations. The user does not need to specify the source, it will be added automatically.
 // @Tags		annotations
 // @Router		/tasks/{task_id}/annotations [put]
+// @Security	Api-User || Api-Key
 // @Param		task_id		path	string					true	"task ID"
 // @Param		execution	query	int						false	"Can be set in lieu of specifying task_execution in the request body."
 // @Param		{object}	body	model.APITaskAnnotation	true	"parameters"
@@ -363,6 +367,7 @@ func (h *annotationByTaskPatchHandler) Factory() gimlet.RouteHandler {
 // @Description	Creates a task annotation, or updates an existing task annotation, appending issues and suspected issues that are included in the update. A new annotation is created based if the annotation exists and if upsert is true. Task execution must be provided for this endpoint, either in the request body or set as a url parameter. If no task_execution is specified in the request body or in the url, a bad status error will be returned. Note that usage of this endpoint requires that the requesting user have security to modify task annotations. The user does not need to specify the source, it will be added automatically.
 // @Tags		annotations
 // @Router		/tasks/{task_id}/annotations [patch]
+// @Security	Api-User || Api-Key
 // @Param		task_id		path	string					true	"task ID"
 // @Param		execution	query	int						false	"Can be set in lieu of specifying task_execution in the request body."
 // @Param		upsert		query	boolean					false	"Will create a new annotation if task annotation isn't found and upsert is true."
@@ -413,6 +418,7 @@ func makeCreatedTicketByTask() gimlet.RouteHandler {
 // @Description	If a file ticket webhook is configured for a project, this endpoint should be used to let evergreen know when a ticket was filed for a task so that it can be stored and displayed to the user. The request body should include the ticket url and issue_key. Note that usage of this endpoint requires that the requesting user have security to modify task annotations. The user does not need to specify the source of the ticket, it will be added automatically.
 // @Tags		annotations
 // @Router		/tasks/{task_id}/created_ticket [put]
+// @Security	Api-User || Api-Key
 // @Param		task_id		path	string				true	"task ID"
 // @Param		{object}	body	model.APIIssueLink	true	"parameters"
 // @Success		200

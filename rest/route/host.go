@@ -45,6 +45,7 @@ func makeChangeHostsStatuses() gimlet.RouteHandler {
 // @Description	Returns a paginated list of all hosts in Evergreen
 // @Tags		hosts
 // @Router		/hosts [get]
+// @Security	Api-User || Api-Key
 // @Param		start_at	query		string	false	"The identifier of the host to start at in the pagination"
 // @Param		limit		query		int		false	"The number of hosts to be returned per page of pagination. Defaults to 100"
 // @Param		status		query		string	false	"A status of host to limit the results to"
@@ -118,6 +119,7 @@ type hostIDGetHandler struct {
 // @Description	Fetches a single host using its ID
 // @Tags		hosts
 // @Router		/hosts/{host_id} [get]
+// @Security	Api-User || Api-Key
 // @Param		host_id	path		string	true	"the host ID"
 // @Success		200		{object}	model.APIHost
 func (h *hostIDGetHandler) Factory() gimlet.RouteHandler {
@@ -184,6 +186,7 @@ type hostGetHandler struct {
 // @Description	Returns a list of hosts spawned by the given user.
 // @Tags		hosts
 // @Router		/users/{user_id}/hosts [get]
+// @Security	Api-User || Api-Key
 // @Param		user_id		path		string	true	"the user ID"
 // @Param		start_at	query		string	false	"The identifier of the host to start at in the pagination"
 // @Param		limit		query		int		false	"The number of hosts to be returned per page of pagination. Defaults to 100"

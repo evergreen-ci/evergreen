@@ -101,6 +101,7 @@ type RequestedPermissions struct {
 // @Description	Grants the user specified by user_id the permissions in the request body.
 // @Tags			users
 // @Router			/users/{user_id}/permissions [post]
+// @Security	Api-User || Api-Key
 // @Param			user_id		path	string					true	"the user's ID"
 // @Param			{object}	body	RequestedPermissions	true	"parameters"
 // @Success		200
@@ -189,6 +190,7 @@ func makeDeleteUserPermissions(rm gimlet.RoleManager) gimlet.RouteHandler {
 // @Description	Deletes all permissions of a given type for a user by deleting their roles of that type for that resource ID. This ignores the Basic Project/Distro Access that is given to all MongoDB employees.
 // @Tags		users
 // @Router		/users/{user_id}/permissions [delete]
+// @Security	Api-User || Api-Key
 // @Param		user_id		path	string						true	"the user's ID"
 // @Param		{object}	body	deletePermissionsRequest	true	"parameters"
 // @Success		200
@@ -308,6 +310,7 @@ func makeGetAllUsersPermissions(rm gimlet.RoleManager) gimlet.RouteHandler {
 // @Description	Retrieves all users with permissions for the resource, and their highest permissions, and returns this as a mapping. This ignores basic permissions that are given to all users.
 // @Tags			users
 // @Router			/users/{user_id}/permissions [get]
+// @Security	Api-User || Api-Key
 // @Param			user_id	path		string	true	"the user's ID"
 // @Param			all		query		boolean	false	"If included, we will not filter out basic permissions"
 // @Success		200		{object}	swaggerUsersPermissionsResult
@@ -403,6 +406,7 @@ func makeGetUserPermissions(rm gimlet.RoleManager) gimlet.RouteHandler {
 // @Description	Retrieves all permissions for the user (ignoring basic permissions that are given to all users, unless all=true is included).
 // @Tags			users
 // @Router			/users/{user_id}/permissions [get]
+// @Security	Api-User || Api-Key
 // @Param			user_id	path	string	true	"the user's ID"
 // @Param			all		query	boolean	false	"If included, we will not filter out basic permissions"
 // @Success		200		{array}	swaggerPermissionSummary

@@ -118,6 +118,16 @@ func GetRouter(as *APIServer, uis *UIServer) (http.Handler, error) {
 	//
 	//	@tag.name					versions
 	//	@tag.description			A version, which corresponds to a vertical slice of tasks on the waterfall, is all tasks for a given commit or patch build.
+	//
+	//	@securitydefinitions.apikey	Api-User
+	//	@in							header
+	//	@name						Api-User
+	//	@description				the `user` field from https://spruce.mongodb.com/preferences/cli
+	//
+	//	@securitydefinitions.apikey	Api-Key
+	//	@in							header
+	//	@name						Api-Key
+	//	@description				the `api-key` field from https://spruce.mongodb.com/preferences/cli
 	apiRestV2 := gimlet.NewApp()
 	apiRestV2.SetPrefix(evergreen.APIRoutePrefix + "/" + evergreen.RestRoutePrefix)
 	opts = route.HandlerOpts{

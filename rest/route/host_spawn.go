@@ -45,6 +45,7 @@ type hostPostHandler struct {
 // @Description	Spawns a host. The host must be of a distro which is spawnable by users.
 // @Tags			hosts
 // @Router			/hosts [post]
+// @Security	Api-User || Api-Key
 // @Param			{object}	body		model.HostRequestOptions	true	"parameters"
 // @Success		200			{object}	model.APIHost
 func (hph *hostPostHandler) Factory() gimlet.RouteHandler {
@@ -951,6 +952,7 @@ func makeTerminateHostRoute() gimlet.RouteHandler {
 // @Description	Immediately terminate a single host with given ID. Users may only terminate hosts which were created by them, unless the user is a super-user.  Hosts which have not been initialised yet will be marked as Terminated.  Trying to terminate a host which has already been terminated will result in an error.  All other host statuses will result in an attempt to terminate using the provider's API A response code of 200 OK indicates that the host was successfully terminated All other response codes indicate errors; the response body can be parsed as a rest.APIError.
 // @Tags			hosts
 // @Router			/hosts/{host_id}/terminate [post]
+// @Security	Api-User || Api-Key
 // @Param			host_id	path	string	true	"the host ID"
 // @Success		200
 func (h *hostTerminateHandler) Factory() gimlet.RouteHandler {
@@ -1022,6 +1024,7 @@ func makeHostChangePassword(env evergreen.Environment) gimlet.RouteHandler {
 // @Description	Immediately changes the RDP password of a Windows host with a given ID. Users may only change passwords for hosts which were created by them, unless the user is a super-user.  A response code of 200 OK indicates that the host's password was successfully terminated Attempting to set the RDP password of a host that is not a Windows host or host that is not running will result in an error.  All other response codes indicate errors; the response body can be parsed as a rest.APIError.
 // @Tags			hosts
 // @Router			/hosts/{host_id}/change_password [post]
+// @Security	Api-User || Api-Key
 // @Param			host_id		path	string						true	"the host ID"
 // @Param			{object}	body	model.APISpawnHostModify	true	"New RDP password; must meet RDP password criteria as provided by Microsoft at: https://technet.microsoft.com/en-us/library/cc786468(v=ws.10).aspx and be between 6 and 255 characters long"
 // @Success		200
@@ -1089,6 +1092,7 @@ func makeExtendHostExpiration() gimlet.RouteHandler {
 // @Description	Extend the expiration time of a host with a given ID. Users may only extend expirations for hosts which were created by them, unless the user is a super-user.  The expiration date of a host may not be more than 1 week in the future. Furthermore, the lifetime of an expirable host can be extended at most 30 days past host creation.  A response code of 200 OK indicates that the host's expiration was successfully extended.  Attempt to extend the expiration time of a terminated host will result in an error All other response codes indicate errors; the response body can be parsed as a rest.APIError
 // @Tags			hosts
 // @Router			/hosts/{host_id}/extend_expiration [post]
+// @Security	Api-User || Api-Key
 // @Param			host_id		path	string						true	"the host ID"
 // @Param			{object}	body	model.APISpawnHostModify	true	"Number of hours to extend expiration; not to exceed 168"
 // @Success		200

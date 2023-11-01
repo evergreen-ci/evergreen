@@ -41,6 +41,7 @@ func makeChangePatchStatus(env evergreen.Environment) gimlet.RouteHandler {
 // @Description	Sets the priority and activation status of a single patch to the input values
 // @Tags			patches
 // @Router			/patchs/{patch_id} [patch]
+// @Security	Api-User || Api-Key
 // @Param			patch_id	path		string						true	"patch ID"
 // @Param			{object}	body		patchChangeStatusHandler	true	"parameters"
 // @Success		200			{object}	model.APIPatch
@@ -112,6 +113,7 @@ func makeFetchPatchByID() gimlet.RouteHandler {
 // @Description	Fetch a single patch using its ID
 // @Tags			patches
 // @Router			/patchs/{patch_id} [get]
+// @Security	Api-User || Api-Key
 // @Param			patch_id	path		string	true	"patch ID"
 // @Param			module		query		string	false	"A module to get the diff for. Returns the empty string when no patch exists for the module."
 // @Success		200			{object}	model.APIPatch
@@ -150,6 +152,7 @@ func makePatchRawHandler() gimlet.RouteHandler {
 // @Description	Fetch the raw diff for a patch
 // @Tags			patches
 // @Router			/patchs/{patch_id}/raw [get]
+// @Security	Api-User || Api-Key
 // @Param			patch_id	path		string	true	"patch ID"
 // @Param			module		query		string	false	"A module to get the diff for. Returns the empty string when no patch exists for the module."
 // @Success		200			{string}	string
@@ -207,6 +210,7 @@ func makeModuleRawHandler() gimlet.RouteHandler {
 // @Description	Fetch the raw diff for a patch along with the module diffs.
 // @Tags			patches
 // @Router			/projects/{patch_id}/raw_modules [get]
+// @Security	Api-User || Api-Key
 // @Param			patcH_id	path		string	true	"the project ID"
 // @Success		200			{object}	model.APIRawPatch
 func (p *moduleRawHandler) Factory() gimlet.RouteHandler {
@@ -245,6 +249,7 @@ func makeUserPatchHandler(url string) gimlet.RouteHandler {
 // @Description	Returns a paginated list of all patches associated with a specific user
 // @Tags			patches
 // @Router			/users/{user_id}/patches [get]
+// @Security	Api-User || Api-Key
 // @Param			project_id	path	string	true	"the project ID"
 // @Param			start_at	query	string	false	"The create_time of the patch to start at in the pagination. Defaults to now"
 // @Param			limit		query	int		false	"The number of patches to be returned per page of pagination. Defaults to 100"
@@ -330,6 +335,7 @@ func makePatchesByProjectRoute(url string) gimlet.RouteHandler {
 // @Description	Returns a paginated list of all patches associated with a specific project
 // @Tags			patches
 // @Router			/projects/{project_id}/patches [get]
+// @Security	Api-User || Api-Key
 // @Param			project_id	path	string	true	"the project ID"
 // @Param			start_at	query	string	false	"The create_time of the patch to start at in the pagination. Defaults to now"
 // @Param			limit		query	int		false	"The number of patches to be returned per page of pagination. Defaults to 100"
@@ -411,6 +417,7 @@ func makeAbortPatch() gimlet.RouteHandler {
 // @Description	Aborts a single patch using its ID and returns the patch
 // @Tags			patches
 // @Router			/patches/{patch_id}/abort [post]
+// @Security	Api-User || Api-Key
 // @Param			patch_id	path		string	true	"the patch ID"
 // @Success		200			{object}	model.APIPatch
 func (p *patchAbortHandler) Factory() gimlet.RouteHandler {
@@ -455,6 +462,7 @@ func makeRestartPatch() gimlet.RouteHandler {
 // @Description	restarts a single patch using its ID and returns the patch
 // @Tags			patches
 // @Router			/patches/{patch_id}/restart [post]
+// @Security	Api-User || Api-Key
 // @Param			patch_id	path		string	true	"the patch ID"
 // @Success		200			{object}	model.APIPatch
 func (p *patchRestartHandler) Factory() gimlet.RouteHandler {
@@ -558,6 +566,7 @@ func makeSchedulePatchHandler(env evergreen.Environment) gimlet.RouteHandler {
 // @Description	Update the list of tasks that the specified patch will run. This works both for initially specifying a patch's tasks, as well as for adding additional tasks to an already-scheduled patch.
 // @Tags			patches
 // @Router			/patches/{patch_id}/configure [post]
+// @Security	Api-User || Api-Key
 // @Param			patch_id	path		string		true	"the patch ID"
 // @Param			{object}	body		patchTasks	true	"parameters"
 // @Success		200			{object}	model.APIVersion
