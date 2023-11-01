@@ -17,6 +17,7 @@ import (
 	"github.com/evergreen-ci/evergreen/model/distro"
 	"github.com/evergreen-ci/evergreen/model/event"
 	"github.com/evergreen-ci/evergreen/model/host"
+	"github.com/evergreen-ci/evergreen/model/log"
 	"github.com/evergreen-ci/evergreen/model/task"
 	"github.com/evergreen-ci/evergreen/model/testresult"
 	"github.com/evergreen-ci/evergreen/plugin"
@@ -587,13 +588,16 @@ func (uis *UIServer) taskLogRaw(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	data := logData{
-		Data: apimodels.StreamFromLogIterator(it),
-		User: gimlet.GetUser(r.Context()),
-	}
 	if r.FormValue("text") == "true" || r.Header.Get("Content-Type") == "text/plain" {
-		uis.renderText.Stream(w, http.StatusOK, data, "base", "task_log_raw.html")
+		gimlet.WriteText(w, log.NewLogIteratorReader(it, log.LogIteratorReaderOptions{
+			PrintTime:     true,
+			PrintPriority: r.FormValue("priority") == "true",
+		}))
 	} else {
+		data := logData{
+			Data: apimodels.StreamFromLogIterator(it),
+			User: gimlet.GetUser(r.Context()),
+		}
 		uis.render.Stream(w, http.StatusOK, data, "base", "task_log.html")
 	}
 }
@@ -850,13 +854,16 @@ func (uis *UIServer) testLog(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	data := logData{
-		Data: apimodels.StreamFromLogIterator(it),
-		User: gimlet.GetUser(r.Context()),
-	}
 	if vals.Get("text") == "true" || r.Header.Get("Content-Type") == "text/plain" {
-		uis.renderText.Stream(w, http.StatusOK, data, "base", "task_log_raw.html")
+		gimlet.WriteText(w, log.NewLogIteratorReader(it, log.LogIteratorReaderOptions{
+			PrintTime:     true,
+			PrintPriority: r.FormValue("priority") == "true",
+		}))
 	} else {
+		data := logData{
+			Data: apimodels.StreamFromLogIterator(it),
+			User: gimlet.GetUser(r.Context()),
+		}
 		uis.render.Stream(w, http.StatusOK, data, "base", "task_log.html")
 	}
 }
