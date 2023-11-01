@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"runtime"
 	"strings"
 	"sync"
 	"time"
@@ -673,9 +674,13 @@ func (a *Agent) runPreAndMain(ctx context.Context, tc *taskContext) (status stri
 		a.jasper,
 		defaultStatsInterval,
 		"uptime",
-		"df -h -i",
+		"df -h",
 		"${ps|ps}",
 	)
+
+	if runtime.GOOS == "linux" || runtime.GOOS == "windows" {
+		statsCollector.Cmds = append(statsCollector.Cmds, "df -h -i")
+	}
 
 	statsCollector.logStats(execTimeoutCtx, tc.taskConfig.Expansions)
 
