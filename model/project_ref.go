@@ -1912,10 +1912,14 @@ func FindProjectRefs(key string, limit int, sortDir int) ([]ProjectRef, error) {
 	return projectRefs, err
 }
 
-// CanEnableRepotracker checks if the project is enabled, currently has it
-// disabled, and the remote path (or config) is not set.
-func (p *ProjectRef) CanEnableRepotracker() bool {
-	return p.Enabled && !p.IsRepotrackerDisabled() && p.RemotePath == ""
+// CanEnableRepotracker checks if the project can enable the repotracker
+// with the current state of their project settings.
+func (p *ProjectRef) ValidateModifiedRepotracker() error {
+	if p.RemotePath == "" {
+		return errors.Errorf("Your project '%s' must have a confguration set to enable repotracker", p.Identifier)
+	}
+	// Maybe an enable check somewhere?
+	return nil
 }
 
 func (p *ProjectRef) CanEnableCommitQueue() (bool, error) {

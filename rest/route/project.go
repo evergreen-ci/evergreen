@@ -338,9 +338,10 @@ func (h *projectIDPatchHandler) Run(ctx context.Context) gimlet.Responder {
 			return gimlet.MakeJSONErrorResponder(errors.Wrap(err, "validating project identifier"))
 		}
 	}
-
-	if h.newProjectRef.CanEnableRepotracker() {
-		return gimlet.MakeJSONErrorResponder(errors.Errorf("project '%s' must have a config set when setting repotracker", h.newProjectRef.Identifier))
+	if !h.newProjectRef.IsRepotrackerDisabled() {
+		if err := h.newProjectRef.ValidateModifiedRepotracker(); err != nil {
+			return gimlet.MakeJSONErrorResponder(errors.Wrap(err, "validating project repotracker"))
+		}
 	}
 
 	before, err := dbModel.GetProjectSettings(h.newProjectRef)

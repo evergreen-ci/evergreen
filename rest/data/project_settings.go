@@ -241,10 +241,12 @@ func SaveProjectSettingsForSection(ctx context.Context, projectId string, change
 			}
 		}
 
-		if mergedSection.CanEnableRepotracker() {
-			return nil, errors.Errorf("project '%s' must have a config set when setting repotracker", mergedSection.Identifier)
-		}
+		if !mergedSection.IsRepotrackerDisabled() {
+			if err = mergedSection.ValidateModifiedRepotracker(); err != nil {
+				return nil, err
+			}
 
+		}
 		// Validate owner/repo if the project is enabled or owner/repo is populated.
 		// This validation is cheap so it makes sense to be strict about this.
 		if mergedSection.Enabled || (mergedSection.Owner != "" && mergedSection.Repo != "") {
