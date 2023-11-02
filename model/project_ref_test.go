@@ -1274,9 +1274,16 @@ func TestGetGitHubProjectConflicts(t *testing.T) {
 		RepoRefId: p9.Id,
 	}
 	require.NoError(p10.Insert())
-	conflicts, err = p10.GetGithubProjectConflicts()
+	// p9 should not have any potential conflicts.
+	conflicts, err = p9.GetGithubProjectConflicts()
 	require.NoError(err)
 	assert.Len(conflicts.PRTestingIdentifiers, 0)
+	assert.Len(conflicts.CommitQueueIdentifiers, 0)
+	assert.Len(conflicts.CommitCheckIdentifiers, 0)
+	// p10 should have a potential conflict because p9 has something enabled.
+	conflicts, err = p10.GetGithubProjectConflicts()
+	require.NoError(err)
+	assert.Len(conflicts.PRTestingIdentifiers, 1)
 	assert.Len(conflicts.CommitQueueIdentifiers, 0)
 	assert.Len(conflicts.CommitCheckIdentifiers, 0)
 }
