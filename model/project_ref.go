@@ -2391,7 +2391,8 @@ func (p *ProjectRef) GetGithubProjectConflicts() (GithubProjectConflicts, error)
 	}
 
 	for _, conflictingRef := range matchingProjects {
-		// If this is the same project ref or this project ref will inherit from it, it is not conflicting.
+		// If this is the same project ref or the potentially conflicting ref is going to inherit
+		// from this ref it is not comflicting.
 		if conflictingRef.Id == p.Id || conflictingRef.RepoRefId == p.Id {
 			continue
 		}
