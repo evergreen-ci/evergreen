@@ -677,7 +677,7 @@ func (a *Agent) runPreAndMain(ctx context.Context, tc *taskContext) (status stri
 		"df -h",
 		"${ps|ps}",
 	)
-	if runtime.GOOS == "linux" || runtime.GOOS == "windows" {
+	if runtime.GOOS == "linux" {
 		statsCollector.Cmds = append(statsCollector.Cmds, "df -h -i")
 	}
 
