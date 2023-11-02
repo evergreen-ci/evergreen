@@ -339,7 +339,7 @@ func (h *projectIDPatchHandler) Run(ctx context.Context) gimlet.Responder {
 		}
 	}
 
-	if !h.newProjectRef.IsRepotrackerDisabled() && h.newProjectRef.RemotePath == "" {
+	if h.newProjectRef.CanEnableRepotracker() {
 		return gimlet.MakeJSONErrorResponder(errors.Errorf("project '%s' must have a config set when setting repotracker", h.newProjectRef.Identifier))
 	}
 

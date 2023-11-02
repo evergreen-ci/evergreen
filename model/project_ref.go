@@ -1912,6 +1912,12 @@ func FindProjectRefs(key string, limit int, sortDir int) ([]ProjectRef, error) {
 	return projectRefs, err
 }
 
+// CanEnableRepotracker checks if the project is enabled, currently has it
+// disabled, and the remote path (or config) is not set.
+func (p *ProjectRef) CanEnableRepotracker() bool {
+	return p.Enabled && !p.IsRepotrackerDisabled() && p.RemotePath == ""
+}
+
 func (p *ProjectRef) CanEnableCommitQueue() (bool, error) {
 	conflicts, err := p.GetGithubProjectConflicts()
 	if err != nil {
