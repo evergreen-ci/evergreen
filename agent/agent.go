@@ -677,6 +677,11 @@ func (a *Agent) runPreAndMain(ctx context.Context, tc *taskContext) (status stri
 		"df -h",
 		"${ps|ps}",
 	)
+	// Running the `df` command on Unix systems displays inode
+	// statistics without the `-i` flag by default. However, we need
+	// to pass the flag explicitly for Linux, hence the conditional.
+	// We do not include Windows in the conditional because running
+	// `df -h -i` on Cygwin does not report these statistics.
 	if runtime.GOOS == "linux" {
 		statsCollector.Cmds = append(statsCollector.Cmds, "df -h -i")
 	}
