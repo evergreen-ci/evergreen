@@ -15,7 +15,7 @@ work.
 
 ## Considered Options
 
-### Auto-generate OpenAPI spec from code and comments
+### Auto-generate OpenAPI spec from code
 
 [go-swagger](https://github.com/go-swagger/go-swagger) supports generating an
 OpenAPI spec from code. It can generate an entire OpenAPI response object from a
