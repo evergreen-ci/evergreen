@@ -605,9 +605,14 @@ func (uis *UIServer) taskLogRaw(w http.ResponseWriter, r *http.Request) {
 }
 
 // getUserTimeZone returns the time zone specified by the user settings.
-// Defaults to UTC.
+// Defaults to `America/New_York`.
 func getUserTimeZone(u *user.DBUser) *time.Location {
-	loc, err := time.LoadLocation(u.Settings.Timezone)
+	tz := u.Settings.Timezone
+	if tz == "" {
+		tz = "America/New_York"
+	}
+
+	loc, err := time.LoadLocation(tz)
 	if err != nil {
 		return time.UTC
 	}

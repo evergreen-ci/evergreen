@@ -21,8 +21,12 @@ type TemplateFunctionOptions struct {
 func MakeTemplateFuncs(fo TemplateFunctionOptions) map[string]interface{} {
 	r := map[string]interface{}{
 		// DateFormat returns a time Formatted to the given layout and
-		// time zone. If the time zone is unset, it defaults to UTC.
+		// time zone. If the time zone is unset, it defaults to
+		// `America/New_York`.
 		"DateFormat": func(when time.Time, layout string, timeZone string) string {
+			if timeZone == "" {
+				timeZone = "America/New_York" // I ♥ NY
+			}
 			loc, err := time.LoadLocation(timeZone)
 			if err != nil {
 				return when.Format(layout)
