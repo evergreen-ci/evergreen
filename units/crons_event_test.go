@@ -35,7 +35,6 @@ type cronsEventSuite struct {
 	n        []notification.Notification
 	suiteCtx context.Context
 	ctx      context.Context
-	env      evergreen.Environment
 }
 
 func TestEventCrons(t *testing.T) {
@@ -55,7 +54,7 @@ func (s *cronsEventSuite) SetupTest() {
 	s.ctx = testutil.TestSpan(s.suiteCtx, s.T())
 
 	s.Require().NoError(env.Configure(s.ctx))
-	s.env = env
+	evergreen.SetEnvironment(env)
 
 	s.Require().NoError(db.ClearCollections(event.EventCollection, evergreen.ConfigCollection, notification.Collection,
 		event.SubscriptionsCollection, patch.Collection, model.ProjectRefCollection))
@@ -167,7 +166,7 @@ func (s *cronsEventSuite) TestSenderDegradedModeDoesntDispatchJobs() {
 	s.NoError(db.FindAllQ(notification.Collection, db.Q{}, &out))
 	s.Len(out, 6)
 	for i := range out {
-		s.Equal("notifications are disabled", out[i].Error)
+		s.Equal("notification is disabled", out[i].Error)
 	}
 }
 
@@ -284,7 +283,7 @@ func (s *cronsEventSuite) TestEndToEnd() {
 
 	go httpServer(ln, handler)
 
-	q := s.env.RemoteQueue()
+	q := evergreen.GetEnvironment().RemoteQueue()
 	jobs, err := eventNotifierJobs(s.ctx, time.Time{})
 	s.NoError(err)
 	s.NoError(q.PutMany(s.ctx, jobs))
