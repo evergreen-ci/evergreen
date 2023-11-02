@@ -38,6 +38,8 @@ A returned object will always contain its complete list of fields. Any
 field that does not have an associated value will be filled with JSON's
 null value.
 
+## Generated API Docs
+
 <ApiDocMdx id="evergreen-openapi" />
 
 ## Deprecated endpoints
@@ -137,9 +139,9 @@ call to the `GET /builds/<build_id>/tasks` endpoint. Page through the
 results task data to produce meaningful statistics like the number of
 task failures or percentage of failures of a given build.
 
-## Find detailed information about the status of a particular tasks and its tests
+### Find detailed information about the status of a particular tasks and its tests
 
-### Endpoints
+#### Endpoints
 
 `GET /tasks/<task_id>`
 
