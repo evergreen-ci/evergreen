@@ -2,7 +2,7 @@
     "versions": [
         {
             "_id": "evergreen_version1",
-            "gitspec": "5e823e1f28baeaa22ae00823d83e03082cd148ab",
+            "gitspec": "revision1",
             "identifier": "evergreen",
             "r": "gitter_request",
             "activated": true,
@@ -12,7 +12,7 @@
         },
         {
             "_id": "evergreen_version2",
-            "gitspec": "5e823e1f28baeaa22ae00823d83e03082cd148ab",
+            "gitspec": "2c9056df66d42fb1908d52eed096750a91f1f089",
             "identifier": "evergreen",
             "r": "gitter_request",
             "activated": true,
@@ -22,7 +22,7 @@
         },
         {
             "_id": "evergreen_version3",
-            "gitspec": "5e823e1f28baeaa22ae00823d83e03082cd148ab",
+            "gitspec": "revision3",
             "identifier": "evergreen",
             "r": "gitter_request",
             "activated": false,
@@ -32,7 +32,7 @@
         },
         {
             "_id": "evergreen_version4",
-            "gitspec": "5e823e1f28baeaa22ae00823d83e03082cd148ab",
+            "gitspec": "revision4",
             "identifier": "evergreen",
             "r": "gitter_request",
             "activated": false,
@@ -42,9 +42,10 @@
         },
         {
             "_id": "evergreen_version5",
-            "gitspec": "5e823e1f28baeaa22ae00823d83e03082cd148ab",
+            "gitspec": "revision5",
             "identifier": "evergreen",
             "r": "gitter_request",
+            "activated": true,
             "author": "mohamed.khelif",
             "status": "created",
             "order": 5
@@ -109,7 +110,8 @@
     ],
     "project_ref": [
         {
-            "_id": "evergreen"
+            "_id": "evergreen",
+            "identifier": "evergreen"
         }
     ],
     "builds": [
