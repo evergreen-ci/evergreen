@@ -1,0 +1,7 @@
+{
+  repoSettings(id: "evergreen") {
+    projectRef {
+      id
+    }
+  }
+}

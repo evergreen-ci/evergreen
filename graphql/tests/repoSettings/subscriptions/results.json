@@ -1,0 +1,127 @@
+{
+  "tests": [
+    {
+      "query_file": "subscriptions.graphql",
+      "result": {
+        "data": {
+          "repoSettings": {
+            "subscriptions": [
+              {
+                "id": "61326406a620e4737f57003e",
+                "resourceType": "VERSION",
+                "trigger": "family-outcome",
+                "selectors": [
+                  {
+                    "type": "project",
+                    "data": "613256a4a620e4737f570038"
+                  },
+                  {
+                    "type": "requester",
+                    "data": "gitter_request"
+                  }
+                ],
+                "regexSelectors": [],
+                "ownerType": "project",
+                "triggerData": {
+                  "requester": "gitter_request"
+                },
+                "subscriber": {
+                  "type": "slack",
+                  "subscriber": {
+                    "githubPRSubscriber": null,
+                    "githubCheckSubscriber": null,
+                    "webhookSubscriber": null,
+                    "jiraIssueSubscriber": null,
+                    "jiraCommentSubscriber": null,
+                    "emailSubscriber": null,
+                    "slackSubscriber": "@me"
+                  }
+                }
+              },
+              {
+                "id": "61326406a620e4737f57003f",
+                "resourceType": "VERSION",
+                "trigger": "failure",
+                "selectors": [
+                  {
+                    "type": "project",
+                    "data": "repo_id"
+                  },
+                  {
+                    "type": "requester",
+                    "data": "patch_request"
+                  }
+                ],
+                "regexSelectors": [],
+                "ownerType": "project",
+                "triggerData": {
+                  "requester": "patch_request"
+                },
+                "subscriber": {
+                  "type": "jira-issue",
+                  "subscriber": {
+                    "jiraIssueSubscriber": {
+                      "project": "EVG",
+                      "issueType": "1212"
+                    },
+                    "githubPRSubscriber": null,
+                    "githubCheckSubscriber": null,
+                    "webhookSubscriber": null,
+                    "jiraCommentSubscriber": null,
+                    "emailSubscriber": null,
+                    "slackSubscriber": null
+                  }
+                }
+              },
+              {
+                "id": "1234",
+                "resourceType": "TASK",
+                "trigger": "exceeds-duration",
+                "selectors": [
+                  {
+                    "type": "project",
+                    "data": "613256a4a620e4737f570038"
+                  },
+                  {
+                    "type": "requester",
+                    "data": "gitter_request"
+                  }
+                ],
+                "regexSelectors": [
+                  {
+                    "type": "display-name",
+                    "data": "abc"
+                  }
+                ],
+                "ownerType": "project",
+                "triggerData": {
+                  "task-duration-secs": "10"
+                },
+                "subscriber": {
+                  "type": "evergreen-webhook",
+                  "subscriber": {
+                    "webhookSubscriber": {
+                      "url": "https://example.com",
+                      "headers": [
+                        {
+                          "key": "key",
+                          "value": "val"
+                        }
+                      ]
+                    },
+                    "githubPRSubscriber": null,
+                    "githubCheckSubscriber": null,
+                    "jiraIssueSubscriber": null,
+                    "jiraCommentSubscriber": null,
+                    "emailSubscriber": null,
+                    "slackSubscriber": null
+                  }
+                }
+              }
+            ]
+          }
+        }
+      }
+    }
+  ]
+}

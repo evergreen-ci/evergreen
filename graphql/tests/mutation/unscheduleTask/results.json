@@ -1,0 +1,14 @@
+{
+  "tests": [
+    {
+      "query_file": "unschedule_task.graphql",
+      "result": {
+        "data": {
+          "unscheduleTask": {
+            "activated": false
+          }
+        }
+      }
+    }
+  ]
+}

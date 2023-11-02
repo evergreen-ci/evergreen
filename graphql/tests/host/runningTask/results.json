@@ -1,0 +1,30 @@
+{
+  "tests": [
+    {
+      "query_file": "running_task_null.graphql",
+      "result": {
+        "data": {
+          "host": {
+            "runningTask": {
+              "id": null,
+              "name": null
+            }
+          }
+        }
+      }
+    },
+    {
+      "query_file": "running_task.graphql",
+      "result": {
+        "data": {
+          "host": {
+            "runningTask": {
+              "id": "mms_package_rpm_ppc_foliage_7f9f33c48eba3790333bc4ed6ac72eba8dd9f459_20_07_20_14_37_05",
+              "name": "foliage"
+            }
+          }
+        }
+      }
+    }
+  ]
+}

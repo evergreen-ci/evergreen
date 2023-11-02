@@ -1,0 +1,184 @@
+{
+  "tasks": [
+    {
+      "_id": "evergreen_lint_generate_lint_5e823e1f28baeaa22ae00823d83e03082cd148ab_20_02_20_20_37_06",
+      "version": "9e4ff3abe3c3317e352062e4",
+      "branch": "evergreen",
+      "gitspec": "5e823e1f28baeaa22ae00823d83e03082cd148ab",
+      "priority": {
+        "$numberLong": "0"
+      },
+      "activated": true,
+      "activated_by": "",
+      "build_id": "evergreen_lint_5e823e1f28baeaa22ae00823d83e03082cd148ab_20_02_20_20_37_06",
+      "build_variant": "lint",
+      "depends_on": [],
+      "display_name": "generate-lint",
+      "display_task_id": "",
+      "host_id": "i-0d1a6ca179e8044b6",
+      "restarts": 0,
+      "execution": 0,
+      "order": 1354,
+      "r": "gitter_request",
+      "status": "success",
+      "time_taken": {
+        "$numberLong": "96946217733"
+      },
+      "generate_task": true
+    }
+  ],
+  "builds": [
+    {
+      "_id": "logkeeper_ubuntu_edd78c1d581bf757a880777b00685321685a8e67_16_10_20_21_58_58",
+      "create_time": {
+        "$date": "2016-10-20T21:58:58.947Z"
+      },
+      "start_time": {
+        "$date": "2016-10-20T22:01:00.194Z"
+      },
+      "finish_time": {
+        "$date": "2017-12-04T21:06:48.822Z"
+      },
+      "version": "evergreen_5e823e1f28baeaa22ae00823d83e03082cd148ab",
+      "branch": "logkeeper",
+      "gitspec": "edd78c1d581bf757a880777b00685321685a8e67",
+      "build_variant": "ubuntu",
+      "build_number": "1",
+      "status": "created",
+      "activated": true,
+      "activated_by": "",
+      "activated_time": {
+        "$date": "2016-10-20T21:59:00.367Z"
+      },
+      "order": 10,
+      "display_name": "Ubuntu",
+      "actual_makespan": 0,
+      "r": "gitter_request",
+      "time_taken": 30000000000000,
+      "predicted_makespan": 70000000000000
+    },
+    {
+      "_id": "sys_perf_linux_3_node_replSet_initialsync_40dc86136f85f88e1782a1c65b49bfba02757009_17_12_05_17_20_27",
+      "create_time": {
+        "$date": "2017-12-05T17:20:27.852Z"
+      },
+      "start_time": {
+        "$date": "2017-12-05T18:58:30.519Z"
+      },
+      "finish_time": {
+        "$date": "2017-12-05T20:56:08.348Z"
+      },
+      "version": "evergreen_5e823e1f28baeaa22ae00823d83e03082cd148ab",
+      "branch": "sys-perf",
+      "gitspec": "40dc86136f85f88e1782a1c65b49bfba02757009",
+      "build_variant": "linux-3-node-replSet-initialsync",
+      "build_number": "7135",
+      "status": "success",
+      "activated": true,
+      "activated_by": "",
+      "activated_time": {
+        "$date": "2017-12-05T17:26:36.283Z"
+      },
+      "order": 1,
+      "time_taken": {
+        "$numberLong": "7057829923014"
+      },
+      "display_name": "Linux 3-Node ReplSet Initial Sync",
+      "predicted_makespan": 0,
+      "actual_makespan": {
+        "$numberLong": "7057665000000"
+      },
+      "r": "gitter_request"
+    },
+    {
+      "_id": "sys_perf_linux_3_node_replSet_852ff9f97b6b92f5c3a88d0e070fe9c0f90ef175_17_11_30_16_44_10",
+      "create_time": {
+        "$date": "2017-11-30T16:44:10.534Z"
+      },
+      "start_time": {
+        "$date": "2017-11-30T19:51:18.605Z"
+      },
+      "finish_time": {
+        "$date": "2017-12-01T03:07:26.230Z"
+      },
+      "version": "evergreen_5e823e1f28baeaa22ae00823d83e03082cd148ab",
+      "branch": "sys-perf",
+      "gitspec": "852ff9f97b6b92f5c3a88d0e070fe9c0f90ef175",
+      "build_variant": "linux-3-node-replSet",
+      "build_number": "13313",
+      "status": "failed",
+      "activated": true,
+      "activated_by": "",
+      "activated_time": {
+        "$date": "2017-11-30T17:20:05.979Z"
+      },
+      "order": 9203,
+      "display_name": "Linux 3-Node ReplSet",
+      "predicted_makespan": 0,
+      "actual_makespan": {
+        "$numberLong": "26167579000000"
+      },
+      "r": "gitter_request"
+    }
+  ],
+  "patches": [
+    {
+      "_id": {
+        "$oid": "9e4ff3abe3c3317e352062e4"
+      },
+      "desc": "'evergreen-ci/spruce' pull request #27 by tgrander: Refactor App + Use Context for global state (https://github.com/evergreen-ci/spruce/pull/27)",
+      "branch": "spruce",
+      "githash": "3b53f9b61226491cd31113c773d66e351957ed29",
+      "patch_number": 20,
+      "author": "trey.granderson",
+      "version": "5dd2e89cd1fe07048e43bb9c",
+      "status": "failed",
+      "create_time": {
+        "$date": "2019-11-18T18:53:15Z"
+      },
+      "start_time": {
+        "$date": "2019-11-18T18:54:15.734Z"
+      },
+      "finish_time": {
+        "$date": "2019-11-18T18:57:15.053Z"
+      },
+      "build_variants": ["ubuntu1804"],
+      "tasks": ["compile", "test", "lint", "coverage"],
+      "variants_tasks": [
+        {
+          "variant": "ubuntu1804",
+          "tasks": ["lint", "coverage", "compile", "test"],
+          "displaytasks": []
+        }
+      ],
+      "activated": true
+    },
+    {
+      "_id": {
+        "$oid": "5e94c8213e8e8651bee37561"
+      },
+      "desc": "'evergreen-ci/spruce' pull request #132 by tgrander: EVG-7795: (patch) change patch success status to `succeeded` (https://github.com/evergreen-ci/spruce/pull/132)",
+      "branch": "spruce",
+      "githash": "6cf2ca4c009f93285cf986b6de0100c1cbe54092",
+      "patch_number": 561,
+      "author": "trey.granderson",
+      "version": "evergreen_5e823e1f28baeaa22ae00823d83e03082cd148ab",
+      "status": "unscheduled",
+      "create_time": {
+        "$date": "2020-04-13T20:12:39Z"
+      },
+      "start_time": null,
+      "finish_time": null,
+      "build_variants": ["ubuntu1604"],
+      "tasks": ["coverage", "e2e_test", "compile", "test", "lint"],
+      "variants_tasks": [
+        {
+          "variant": "ubuntu1604",
+          "tasks": ["coverage", "e2e_test", "compile", "test", "lint"],
+          "displaytasks": []
+        }
+      ],
+      "activated": false
+    }
+  ]
+}

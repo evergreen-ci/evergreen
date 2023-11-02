@@ -171,3 +171,19 @@ index 03362f816..a9ae2024e 100644
 	assert.NotNil(t, summaries)
 	assert.NotNil(t, commitMessages)
 }
+
+func TestParseModuleLocation(t *testing.T) {
+	assert := assert.New(t)
+
+	sshUrl := "git@github.com:evergreen-ci/sample.git"
+	owner, repo, err := ParseModuleLocation(sshUrl)
+	assert.NoError(err)
+	assert.Equal("evergreen-ci", owner)
+	assert.Equal("sample", repo)
+
+	sshUrl = "git@github.com:evergreen-ci"
+	owner, repo, err = ParseGitUrl(sshUrl)
+	assert.Error(err)
+	assert.Equal("", owner)
+	assert.Equal("", repo)
+}

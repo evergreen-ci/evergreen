@@ -1,0 +1,13 @@
+query {
+  user {
+    displayName
+    userId
+    subscriptions {
+      id
+      resourceType
+      subscriber {
+        type
+      }
+    }
+  }
+}

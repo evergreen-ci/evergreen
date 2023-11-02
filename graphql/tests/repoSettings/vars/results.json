@@ -1,0 +1,17 @@
+{
+  "tests": [
+    {
+      "query_file": "vars.graphql",
+      "result": {
+        "data": {
+          "repoSettings": {
+            "vars": {
+              "vars": { "hello": "", "foo": "bar" },
+              "privateVars": ["hello"]
+            }
+          }
+        }
+      }
+    }
+  ]
+}

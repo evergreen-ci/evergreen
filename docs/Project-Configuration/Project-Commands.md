@@ -1052,6 +1052,7 @@ Parameters:
 -   `bucket`: the S3 bucket to use.
 -   `build_variants`: list of buildvariants to run the command for, if
     missing/empty will run for all
+-   `optional`: boolean: if set, won't error if the file isn't found or there's an error with downloading.
 
 ## s3.put
 

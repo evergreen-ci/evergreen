@@ -1,0 +1,23 @@
+{
+  "tests": [
+    {
+      "query_file": "variants_and_tasks.graphql",
+      "result": {
+        "data": {
+          "patch": {
+            "projectIdentifier": "spruce",
+            "project": {
+              "variants": [
+                {
+                  "name": "ubuntu1804",
+                  "displayName": "Ubuntu 18.04",
+                  "tasks": ["compile"]
+                }
+              ]
+            }
+          }
+        }
+      }
+    }
+  ]
+}
