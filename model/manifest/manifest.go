@@ -17,9 +17,9 @@ type Manifest struct {
 	ProjectName string `json:"project" bson:"project"`
 	// The branch of the repository.
 	Branch string `json:"branch" bson:"branch"`
-	// Map from the Github repository name to the module's information.
+	// Map from the GitHub repository name to the module's information.
 	Modules map[string]*Module `json:"modules" bson:"modules"`
-	// 	True if the version is a mainline build.
+	// True if the version is a mainline build.
 	IsBase          bool              `json:"is_base" bson:"is_base"`
 	ModuleOverrides map[string]string `json:"module_overrides,omitempty" bson:"-"`
 }
@@ -31,11 +31,11 @@ type Manifest struct {
 // Owner is the owner of the repository,
 // URL is the url to the GitHub API call to that specific commit.
 type Module struct {
-	// 	The branch of the repository.
+	// The branch of the repository.
 	Branch string `json:"branch" bson:"branch"`
 	// The name of the repository.
 	Repo string `json:"repo" bson:"repo"`
-	// 	The revision of the head of the branch.
+	// The revision of the head of the branch.
 	Revision string `json:"revision" bson:"revision"`
 	// The owner of the repository.
 	Owner string `json:"owner" bson:"owner"`

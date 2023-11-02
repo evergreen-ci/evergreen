@@ -33,7 +33,7 @@ type APIPatch struct {
 	// Incrementing counter of user's patches
 	PatchNumber int  `json:"patch_number"`
 	Hidden      bool `json:"hidden"`
-	// 	Author of the patch
+	// Author of the patch
 	Author  *string `json:"author"`
 	Version *string `json:"version"`
 	// Status of patch (possible values are "created", "started", "success", or "failed")

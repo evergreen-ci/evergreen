@@ -71,9 +71,9 @@ type APITask struct {
 	PodID  *string `json:"pod_id,omitempty"`
 	// The number of the execution of this particular task
 	Execution int `json:"execution"`
-	//  For mainline commits, represents the position in the commit history of
-	//  commit this task is associated with. For patches, this represents the
-	//  number of total patches submitted by the user.
+	// For mainline commits, represents the position in the commit history of
+	// commit this task is associated with. For patches, this represents the
+	// number of total patches submitted by the user.
 	Order int `json:"order"`
 	// The current status of this task (possible values are "undispatched",
 	// "dispatched", "started", "success", and "failed")

@@ -211,7 +211,7 @@ func makeModuleRawHandler() gimlet.RouteHandler {
 // @Tags			patches
 // @Router			/projects/{patch_id}/raw_modules [get]
 // @Security	Api-User || Api-Key
-// @Param			patcH_id	path		string	true	"the project ID"
+// @Param			patch_id	path		string	true	"the project ID"
 // @Success		200			{object}	model.APIRawPatch
 func (p *moduleRawHandler) Factory() gimlet.RouteHandler {
 	return &moduleRawHandler{}

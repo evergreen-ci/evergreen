@@ -40,13 +40,13 @@ type APIBuild struct {
 	BuildVariant *string `json:"build_variant"`
 	// The status of the build (possible values are "created", "started", "success", or "failed")
 	Status *string `json:"status"`
-	// 	Whether this build was manually initiated
+	// Whether this build was manually initiated
 	Activated bool `json:"activated"`
 	// Who initiated the build
 	ActivatedBy *string `json:"activated_by"`
-	// 	When the build was initiated
+	// When the build was initiated
 	ActivatedTime *time.Time `json:"activated_time"`
-	// 	Incrementing counter of project's builds
+	// Incrementing counter of project's builds
 	RevisionOrderNumber int `json:"order"`
 	// Contains a subset of information about tasks for the build; this is not
 	// provided/accurate for most routes (get versions for project is an

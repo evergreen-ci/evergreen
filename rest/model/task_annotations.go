@@ -59,7 +59,7 @@ type APIIssueLink struct {
 	ConfidenceScore *float64 `bson:"confidence_score,omitempty" json:"confidence_score,omitempty"`
 }
 type APIMetadataLink struct {
-	// 	The url of the link
+	// The url of the link
 	URL *string `bson:"url" json:"url"`
 	// Text to be displayed
 	Text *string `bson:"text" json:"text"`

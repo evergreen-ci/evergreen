@@ -74,7 +74,7 @@ func (vh *versionHandler) Run(ctx context.Context) gimlet.Responder {
 
 type versionPatchHandler struct {
 	// Will activate the version if true and deactivate if false.
-	Activated *bool `json:"activated"`
+	Activated *bool `json:"activated" validate:"required"`
 
 	versionId string
 }

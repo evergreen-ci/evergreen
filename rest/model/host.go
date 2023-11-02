@@ -28,7 +28,7 @@ type APIHost struct {
 	User *string `json:"user"`
 	// The current state of the host
 	Status *string `json:"status"`
-	// 	Object containing information about the task the host is currently running
+	// Object containing information about the task the host is currently running
 	RunningTask           TaskInfo    `json:"running_task"`
 	UserHost              bool        `json:"user_host"`
 	NoExpiration          bool        `json:"no_expiration"`

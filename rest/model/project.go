@@ -248,7 +248,7 @@ type APICommitQueueParams struct {
 	Enabled *bool `json:"enabled"`
 	// method of merging (squash, merge, rebase
 	MergeMethod *string `json:"merge_method"`
-	// 	merge queue to use (EVERGREEN or GITHUB)
+	// merge queue to use (EVERGREEN or GITHUB)
 	MergeQueue model.MergeQueue `json:"merge_queue"`
 	Message    *string          `json:"message"`
 }
@@ -531,7 +531,7 @@ type APIProjectRef struct {
 	Branch *string `json:"branch_name"`
 	// Whether evergreen is enabled for this project
 	Enabled *bool `json:"enabled"`
-	// 	A user must be logged in to view private projects
+	// A user must be logged in to view private projects
 	Private *bool `json:"private"`
 	// Unique identifier of a specific patch
 	BatchTime int `json:"batch_time"`
