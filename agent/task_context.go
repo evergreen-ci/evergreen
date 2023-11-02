@@ -19,15 +19,14 @@ import (
 )
 
 type taskContext struct {
-	currentCommand            command.Command
-	logger                    client.LoggerProducer
-	task                      client.TaskData
-	ranSetupGroup             bool
-	taskConfig                *internal.TaskConfig
-	timeout                   timeoutInfo
-	oomTracker                jasper.OOMTracker
-	traceID                   string
-	unsetFunctionVarsDisabled bool
+	currentCommand command.Command
+	logger         client.LoggerProducer
+	task           client.TaskData
+	ranSetupGroup  bool
+	taskConfig     *internal.TaskConfig
+	timeout        timeoutInfo
+	oomTracker     jasper.OOMTracker
+	traceID        string
 	// userEndTaskResp is the end task response that the user can define, which
 	// will overwrite the default end task response.
 	userEndTaskResp *triggerEndTaskResp
