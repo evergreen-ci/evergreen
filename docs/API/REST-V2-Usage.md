@@ -91,37 +91,6 @@ user have security to modify roles. The format of the body is: :
     the user. By default, specifying a user that does not exist will
     error
 
-##### Offboard User
-
-    POST /users/offboard_user
-
-Marks unexpirable volumes and hosts as expirable for the user, and
-removes the user as a project admin for any projects, if applicable.
-This returns the IDs of the hosts/volumes that were unexpirable and
-modified.
-
-This route expects to receive the user in a json body with the following
-format: :
-
-    {
-      "email": "my_user@email.com"
-    }
-
--   email - the email of the user
-
-The format of the response is: :
-
-    {
-      "terminated_hosts": [ "i-12345", "i-abcd" ],
-      "terminated_volumes": ["volume-1"],
-    }
-
-**Query Parameters**
-
-| Name    | Type | Description                                                                          |
-|---------|------|--------------------------------------------------------------------------------------|
-| dry_run | bool | If set to true, route returns the IDs of the hosts/volumes that *would* be modified. |
-
 ## REST V2 Use Case Guide
 
 ### Find all failures of a given build

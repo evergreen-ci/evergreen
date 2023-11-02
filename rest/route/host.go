@@ -329,16 +329,27 @@ type offboardUserHandler struct {
 	env evergreen.Environment
 }
 
+// @Summary		Offboard user
+// @Description	Marks unexpirable volumes and hosts as expirable for the user, and removes the user as a project admin for any projects, if applicable.
+// @Tags		users
+// @Router		/users/offboard_user [post]
+// @Security	Api-User || Api-Key
+// @Param		dry_run 	query 	boolean 			false	"If set to true, route returns the IDs of the hosts/volumes that *would* be modified."
+// @Param		{object}	body	offboardUserEmail	true	"parameters"
+// @Success		200 {object} model.APIOffboardUserResults
 func (ch offboardUserHandler) Factory() gimlet.RouteHandler {
 	return &offboardUserHandler{
 		env: ch.env,
 	}
 }
 
+type offboardUserEmail struct {
+	// the email of the user
+	Email string `json:"email" bson:"email" validate:"required"`
+}
+
 func (ch *offboardUserHandler) Parse(ctx context.Context, r *http.Request) error {
-	input := struct {
-		Email string `json:"email" bson:"email"`
-	}{}
+	input := offboardUserEmail{}
 	err := utility.ReadJSON(r.Body, &input)
 	if err != nil {
 		return errors.Wrap(err, "reading user offboarding information from JSON request body")
