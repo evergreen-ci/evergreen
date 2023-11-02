@@ -67120,6 +67120,9 @@ func (ec *executionContext) unmarshalInputPatchesInput(ctx context.Context, obj 
 	if _, present := asMap["limit"]; !present {
 		asMap["limit"] = 0
 	}
+	if _, present := asMap["includeHidden"]; !present {
+		asMap["includeHidden"] = false
+	}
 	if _, present := asMap["page"]; !present {
 		asMap["page"] = 0
 	}
@@ -67130,7 +67133,7 @@ func (ec *executionContext) unmarshalInputPatchesInput(ctx context.Context, obj 
 		asMap["statuses"] = []interface{}{}
 	}
 
-	fieldsInOrder := [...]string{"includeCommitQueue", "limit", "onlyCommitQueue", "page", "patchName", "statuses"}
+	fieldsInOrder := [...]string{"includeCommitQueue", "limit", "onlyCommitQueue", "includeHidden", "page", "patchName", "statuses"}
 	for _, k := range fieldsInOrder {
 		v, ok := asMap[k]
 		if !ok {
@@ -67164,6 +67167,15 @@ func (ec *executionContext) unmarshalInputPatchesInput(ctx context.Context, obj 
 				return it, err
 			}
 			it.OnlyCommitQueue = data
+		case "includeHidden":
+			var err error
+
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("includeHidden"))
+			data, err := ec.unmarshalOBoolean2ᚖbool(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.IncludeHidden = data
 		case "page":
 			var err error
 
