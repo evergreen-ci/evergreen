@@ -1261,6 +1261,10 @@ func TestGetGitHubProjectConflicts(t *testing.T) {
 		PRTestingEnabled: utility.TruePtr(),
 	}
 	require.NoError(p9.Insert())
+	r9 := &RepoRef{
+		ProjectRef: *p9,
+	}
+	require.NoError(r9.Upsert())
 	p10 := &ProjectRef{
 		Owner:     "mongodb",
 		Repo:      "mci4",
