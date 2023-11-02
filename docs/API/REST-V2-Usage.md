@@ -1,24 +1,8 @@
+import ApiDocMdx from '@theme/ApiDocMdx';
+
 # REST v2 API
 
-Base URL: `http://<EVERGREEN_HOST>/rest/v2/`
-
 ## General Functionality
-
-See [docs generated from the OpenAPI spec](./OpenAPI.md) for information on specific endpoints.
-
-### A note on authentication
-
-Many of the these REST endpoints do not require authentication to
-access, but some do. These will return a 404 if no authentication
-headers are sent, if the username is invalid, or if the API key is
-incorrect. Use the `user` and `api_key` fields from the
-[settings](https://spruce.mongodb.com/preferences/cli) page to set two headers,
-`Api-User` and `Api-Key`.
-
-### Content Type and Communication
-
-The API accepts and returns all results in JSON. Some resources also
-allow URL parameters to provide additional specificity to a request.
 
 ### Errors
 
@@ -54,6 +38,8 @@ A returned object will always contain its complete list of fields. Any
 field that does not have an associated value will be filled with JSON's
 null value.
 
+<ApiDocMdx id="evergreen-openapi" />
+
 ## Deprecated endpoints
 
 ### TaskStats (DEPRECATED)
@@ -64,6 +50,8 @@ null value.
 Create custom notifications for email or Slack issues. 
 
 We are investigating moving this out of Evergreen (EVG-21065) and won't be supporting future work for this. 
+
+## Additional Endpoints
 
 ### Users
 
