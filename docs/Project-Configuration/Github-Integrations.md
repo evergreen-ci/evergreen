@@ -52,8 +52,8 @@ If you used `evergreen keep-definitions`, then `evergreen reset-definitions` wil
 #### Skip CI Testing
 
 Sometimes you may want to avoid having Evergreen create patches (perhaps because the work is in progress, or testing isn't relevant yet). 
-Simply including `[skip-ci]` or `[skip ci]` in your PR title or description will prevent us from creating a patch (both from commits and `evergreen retry` comments) 
-until the label is removed and a new comment or commit is pushed.
+Simply including `[skip-ci]` or `[skip ci]` in the PR title or the first 100 characters of the description will prevent Evergreen from creating a patch (both from commits and `evergreen retry` comments) 
+until the label is removed and a new commit or `evergreen retry` comment is pushed.
 
 
 #### Create a patch for manual testing

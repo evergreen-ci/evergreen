@@ -175,6 +175,7 @@ type MainlineCommitsOptions struct {
 	Limit             *int     `json:"limit,omitempty"`
 	ProjectIdentifier string   `json:"projectIdentifier"`
 	Requesters        []string `json:"requesters,omitempty"`
+	Revision          *string  `json:"revision,omitempty"`
 	ShouldCollapse    *bool    `json:"shouldCollapse,omitempty"`
 	SkipOrderNumber   *int     `json:"skipOrderNumber,omitempty"`
 }
