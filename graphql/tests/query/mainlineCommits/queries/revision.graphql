@@ -1,0 +1,23 @@
+query {
+  mainlineCommits(options: { projectIdentifier: "evergreen", limit: 1, revision: "2c9056df66d42fb1908d52eed096750a91f1f089" }) {
+    versions {
+      version {
+        id
+        author
+        buildVariants(options: {}) {
+          variant
+          displayName
+          tasks {
+            id
+            displayName
+            status
+          }
+        }
+      }
+      rolledUpVersions {
+        id
+        activated
+      }
+    }
+  }
+}

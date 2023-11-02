@@ -13,9 +13,12 @@ import (
 	"github.com/stretchr/testify/assert"
 )
 
-func TestMetadataFromVersion(t *testing.T) {
+func TestMetadataFromArgsWithVersion(t *testing.T) {
 	assert := assert.New(t)
-	assert.NoError(db.ClearCollections(user.Collection))
+	assert.NoError(db.ClearCollections(user.Collection, model.RepositoriesCollection))
+	defer func() {
+		assert.NoError(db.ClearCollections(user.Collection, model.RepositoriesCollection))
+	}()
 	author := user.DBUser{
 		Id: "me",
 		Settings: user.UserSettings{
@@ -34,21 +37,59 @@ func TestMetadataFromVersion(t *testing.T) {
 	ref := model.ProjectRef{
 		Id: "project",
 	}
-	_, err := model.GetNewRevisionOrderNumber(ref.Id)
-	assert.NoError(err)
-	assert.NoError(model.UpdateLastRevision(ref.Id, "def"))
 
 	args := ProcessorArgs{
 		SourceVersion:     &source,
 		DownstreamProject: ref,
+		TriggerType:       model.ProjectTriggerLevelPush,
 	}
-	metadata, err := metadataFromVersion(args)
+	// Without updating the repositories collection, this errors.
+	_, err := getMetadataFromArgs(args)
+	assert.Error(err)
+
+	_, err = model.GetNewRevisionOrderNumber(ref.Id)
+	assert.NoError(err)
+	assert.NoError(model.UpdateLastRevision(ref.Id, "def"))
+
+	metadata, err := getMetadataFromArgs(args)
 	assert.NoError(err)
 	assert.Equal(source.Author, metadata.Revision.Author)
 	assert.Equal(source.CreateTime, metadata.Revision.CreateTime)
 	assert.Equal("def", metadata.Revision.Revision)
 	assert.Equal(123, metadata.Revision.AuthorGithubUID)
+	assert.Empty(metadata.SourceCommit)
 	assert.True(metadata.Activate)
+}
+
+func TestMetadataFromArgsWithoutVersion(t *testing.T) {
+	assert := assert.New(t)
+	assert.NoError(db.Clear(model.RepositoriesCollection))
+	ref := model.ProjectRef{
+		Id: "project",
+	}
+	args := ProcessorArgs{
+		TriggerType:       model.ProjectTriggerLevelPush,
+		DownstreamProject: ref,
+		PushRevision: model.Revision{
+			Revision: "1234",
+			Author:   "me",
+		},
+	}
+
+	// Without updating the repositories collection, this errors.
+	_, err := getMetadataFromArgs(args)
+	assert.Error(err)
+
+	_, err = model.GetNewRevisionOrderNumber(ref.Id)
+	assert.NoError(err)
+	assert.NoError(model.UpdateLastRevision(ref.Id, "def"))
+	metadata, err := getMetadataFromArgs(args)
+	assert.NoError(err)
+	assert.True(metadata.Activate)
+	assert.Equal(args.TriggerType, metadata.TriggerType)
+	// Should equal the downstream project's ref rather than the push revision.
+	assert.Equal("def", metadata.Revision.Revision)
+	assert.Equal(args.PushRevision.Revision, metadata.SourceCommit)
 }
 
 func TestMakeDownstreamConfigFromFile(t *testing.T) {

@@ -40,9 +40,14 @@ const (
 	resetDefinitionsComment = "evergreen reset-definitions"
 
 	refTags = "refs/tags/"
+
+	// skipCIDescriptionCharLimit is the maximum number of characters that will
+	// be scanned in the PR description for a skip CI label.
+	skipCIDescriptionCharLimit = 100
 )
 
-// skipCILabels are a set of labels which will skip creating PR patch if part of the commit description or message.
+// skipCILabels are a set of labels which will skip creating PR patch if part of
+// the PR title or description.
 var skipCILabels = []string{"[skip ci]", "[skip-ci]"}
 
 type githubHookApi struct {
@@ -149,8 +154,9 @@ func (gh *githubHookApi) Run(ctx context.Context) gimlet.Responder {
 			return gimlet.NewJSONErrorResponse(err)
 		}
 
-		if *event.Action == githubActionOpened || *event.Action == githubActionSynchronize ||
-			*event.Action == githubActionReopened {
+		action := utility.FromStringPtr(event.Action)
+		if action == githubActionOpened || action == githubActionSynchronize ||
+			action == githubActionReopened {
 			grip.Info(message.Fields{
 				"source":    "GitHub hook",
 				"msg_id":    gh.msgID,
@@ -167,7 +173,6 @@ func (gh *githubHookApi) Run(ctx context.Context) gimlet.Responder {
 					"source":    "GitHub hook",
 					"msg_id":    gh.msgID,
 					"event":     gh.eventType,
-					"action":    event.Action,
 					"repo":      *event.PullRequest.Base.Repo.FullName,
 					"ref":       *event.PullRequest.Base.Ref,
 					"pr_number": *event.PullRequest.Number,
@@ -176,12 +181,11 @@ func (gh *githubHookApi) Run(ctx context.Context) gimlet.Responder {
 				}))
 				return gimlet.NewJSONInternalErrorResponse(errors.Wrap(err, "adding patch intent"))
 			}
-		} else if *event.Action == githubActionClosed {
+		} else if action == githubActionClosed {
 			grip.Info(message.Fields{
 				"source":  "GitHub hook",
 				"msg_id":  gh.msgID,
 				"event":   gh.eventType,
-				"action":  *event.Action,
 				"message": "pull request closed; aborting patch",
 			})
 
@@ -554,10 +558,14 @@ func (gh *githubHookApi) AddIntentForPR(pr *github.PullRequest, owner, calledBy 
 	if err != nil {
 		return errors.Wrap(err, "creating GitHub patch intent")
 	}
-	// If there are no errors with the PR, verify that we aren't skipping CI before adding the intent (and send a message).
+	// If there are no errors with the PR, verify that we aren't skipping CI before adding the intent.
 	for _, label := range skipCILabels {
-		if strings.Contains(strings.ToLower(pr.GetTitle()), label) ||
-			strings.Contains(strings.ToLower(pr.GetBody()), label) {
+		title := strings.ToLower(pr.GetTitle())
+		limitedDesc := strings.ToLower(pr.GetBody())
+		if len(limitedDesc) >= skipCIDescriptionCharLimit {
+			limitedDesc = limitedDesc[:skipCIDescriptionCharLimit]
+		}
+		if strings.Contains(title, label) || strings.Contains(limitedDesc, label) {
 			grip.Info(message.Fields{
 				"message": "skipping CI on PR",
 				"owner":   pr.Base.User.GetLogin(),
