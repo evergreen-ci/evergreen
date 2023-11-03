@@ -86,6 +86,13 @@ func TestFindMergedProjectRef(t *testing.T) {
 		CommitQueue:       CommitQueueParams{Enabled: nil, Message: "using repo commit queue"},
 		WorkstationConfig: WorkstationConfig{GitClone: utility.TruePtr()},
 		TaskSync:          TaskSyncOptions{ConfigEnabled: utility.FalsePtr()},
+		ParsleyFilters: []ParsleyFilter{
+			{
+				Expression:    "project-filter",
+				CaseSensitive: true,
+				ExactMatch:    false,
+			},
+		},
 	}
 	assert.NoError(t, projectRef.Insert())
 	repoRef := &RepoRef{ProjectRef{
@@ -105,6 +112,13 @@ func TestFindMergedProjectRef(t *testing.T) {
 		TaskSync:          TaskSyncOptions{ConfigEnabled: utility.TruePtr(), PatchEnabled: utility.TruePtr()},
 		CommitQueue:       CommitQueueParams{Enabled: utility.TruePtr()},
 		WorkstationConfig: WorkstationConfig{SetupCommands: []WorkstationSetupCommand{{Command: "my-command"}}},
+		ParsleyFilters: []ParsleyFilter{
+			{
+				Expression:    "repo-filter",
+				CaseSensitive: false,
+				ExactMatch:    true,
+			},
+		},
 	}}
 	assert.NoError(t, repoRef.Upsert())
 
@@ -138,6 +152,7 @@ func TestFindMergedProjectRef(t *testing.T) {
 	assert.True(t, mergedProject.WorkstationConfig.ShouldGitClone())
 	assert.Len(t, mergedProject.WorkstationConfig.SetupCommands, 1)
 	assert.Equal(t, "random2", mergedProject.TaskAnnotationSettings.FileTicketWebhook.Endpoint)
+	assert.Len(t, mergedProject.ParsleyFilters, 2)
 }
 
 func TestGetNumberOfEnabledProjects(t *testing.T) {
