@@ -379,7 +379,8 @@ gqlgen:
 	go run github.com/99designs/gqlgen generate
 
 swaggo: 
-	make swaggo-build && make swaggo-render
+	make swaggo-build
+	make swaggo-render
 
 swaggo-install:
 	go install github.com/swaggo/swag/cmd/swag@latest
@@ -389,9 +390,10 @@ swaggo-format:
 
 swaggo-build:
 	swag init -g service/service.go
+	mv docs/swagger.json docs/swagger.yaml docs/docs.go bin/
 
 swaggo-render:
-	npx @redocly/cli build-docs docs/swagger.json
+	npx @redocly/cli build-docs bin/swagger.json -o bin/redoc-static.html
 
 # sanitizes a json file by hashing string values. Note that this will not work well with
 # string data that only has a subset of valid values
