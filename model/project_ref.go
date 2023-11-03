@@ -1045,9 +1045,7 @@ func mergeParsleyFilters(pRef *ProjectRef, repoRef *RepoRef) {
 		pRef.ParsleyFilters = []ParsleyFilter{}
 	}
 
-	for _, filter := range repoRef.ParsleyFilters {
-		pRef.ParsleyFilters = append(pRef.ParsleyFilters, filter)
-	}
+	pRef.ParsleyFilters = append(pRef.ParsleyFilters, repoRef.ParsleyFilters...)
 }
 
 func setRepoFieldsFromProjects(repoRef *RepoRef, projectRefs []ProjectRef) {
