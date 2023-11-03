@@ -11,16 +11,15 @@ import (
 	"testing"
 	"time"
 
-	"github.com/evergreen-ci/evergreen/model"
-	"github.com/evergreen-ci/evergreen/testutil"
-
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/db"
 	mgobson "github.com/evergreen-ci/evergreen/db/mgo/bson"
 	"github.com/evergreen-ci/evergreen/mock"
+	"github.com/evergreen-ci/evergreen/model"
 	"github.com/evergreen-ci/evergreen/model/event"
 	"github.com/evergreen-ci/evergreen/model/notification"
 	"github.com/evergreen-ci/evergreen/model/patch"
+	"github.com/evergreen-ci/evergreen/testutil"
 	"github.com/evergreen-ci/evergreen/util"
 	"github.com/mongodb/amboy"
 	"github.com/mongodb/grip"
@@ -50,12 +49,7 @@ func (s *cronsEventSuite) TearDownSuite() {
 }
 
 func (s *cronsEventSuite) SetupTest() {
-	env := &mock.Environment{}
 	s.ctx = testutil.TestSpan(s.suiteCtx, s.T())
-
-	s.Require().NoError(env.Configure(s.ctx))
-	evergreen.SetEnvironment(env)
-
 	s.Require().NoError(db.ClearCollections(event.EventCollection, evergreen.ConfigCollection, notification.Collection,
 		event.SubscriptionsCollection, patch.Collection, model.ProjectRefCollection))
 
@@ -202,6 +196,12 @@ func (s *cronsEventSuite) TestNotificationIsEnabled() {
 }
 
 func (s *cronsEventSuite) TestEndToEnd() {
+	defer evergreen.SetEnvironment(evergreen.GetEnvironment())
+
+	env := &mock.Environment{}
+	s.Require().NoError(env.Configure(s.ctx))
+	evergreen.SetEnvironment(env)
+
 	ln, err := net.Listen("tcp", "127.0.0.1:0")
 	s.Require().NoError(err)
 	defer ln.Close()
