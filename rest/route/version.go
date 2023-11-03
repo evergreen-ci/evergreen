@@ -154,9 +154,7 @@ func makeGetVersionBuilds(env evergreen.Environment) gimlet.RouteHandler {
 //	@Description	Fetches a list of builds associated with a version
 //	@Tags			builds
 //	@Router			/versions/{version_id}/builds [get]
-//
 //	@Security		Api-User || Api-Key
-//
 //	@Param			version_id	path	string	true	"the version ID"
 //	@Param			variant		query	string	false	"Only return the build with this variant (using Distro identifier)."
 //	@Success		200			{array}	model.APIBuild
@@ -227,9 +225,7 @@ func makeAbortVersion() gimlet.RouteHandler {
 //	@Description	Aborts a single version using its ID then returns the version
 //	@Tags			versions
 //	@Router			/versions/{version_id}/abort [post]
-//
 //	@Security		Api-User || Api-Key
-//
 //	@Param			version_id	path		string	true	"version ID"
 //	@Success		200			{object}	model.APIVersion
 func (h *versionAbortHandler) Factory() gimlet.RouteHandler {
@@ -289,9 +285,7 @@ func makeRestartVersion() gimlet.RouteHandler {
 //	@Description	Restarts a single version using its ID then returns the version
 //	@Tags			versions
 //	@Router			/versions/{version_id}/restart [post]
-//
 //	@Security		Api-User || Api-Key
-//
 //	@Param			version_id	path		string	true	"version ID"
 //	@Success		200			{object}	model.APIVersion
 func (h *versionRestartHandler) Factory() gimlet.RouteHandler {
