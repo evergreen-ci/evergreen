@@ -621,3 +621,25 @@ func (o *APIContainerOptions) ToService() task.ContainerOptions {
 		WindowsVersion: evergreen.WindowsVersion(utility.FromStringPtr(o.WindowsVersion)),
 	}
 }
+
+// APIGeneratedTaskInfo contains basic information about a generated task.
+type APIGeneratedTaskInfo struct {
+	// The unique identifier of the task
+	TaskID string `json:"task_id"`
+	// The display name of the task
+	TaskName string `json:"task_name"`
+	// The unique identifier of the build
+	BuildID string `json:"build_id"`
+	// The name of the build variant
+	BuildVariant string `json:"build_variant"`
+	// The display name of the build variant
+	BuildVariantDisplayName string `json:"build_variant_display_name"`
+}
+
+func (i *APIGeneratedTaskInfo) BuildFromService(dbInfo task.GeneratedTaskInfo) {
+	i.TaskID = dbInfo.TaskID
+	i.TaskName = dbInfo.TaskName
+	i.BuildID = dbInfo.BuildID
+	i.BuildVariant = dbInfo.BuildVariant
+	i.BuildVariantDisplayName = dbInfo.BuildVariantDisplayName
+}

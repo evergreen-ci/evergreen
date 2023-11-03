@@ -334,7 +334,7 @@ func TestGeneratedTasksGetHandler(t *testing.T) {
 			assert.Equal(t, http.StatusOK, resp.Status())
 			data := resp.Data()
 			require.NotZero(t, data)
-			taskInfos, ok := data.([]task.GeneratedTaskInfo)
+			taskInfos, ok := data.([]model.APIGeneratedTaskInfo)
 			require.True(t, ok)
 
 			require.Len(t, taskInfos, len(generated))
