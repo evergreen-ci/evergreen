@@ -223,14 +223,14 @@ func makeFetchTestCountForTask() gimlet.RouteHandler {
 
 // Factory creates an instance of the handler.
 //
-// @Summary		Get the test count from a task
-// @Description	Returns an integer representing the number of tests that ran as part of the given task.
-// @Tags			tests
-// @Router			/tasks/{task_id}/tests/count [get]
-// @Security		Api-User || Api-Key
-// @Param			task_id		path		string	true	"task ID"
-// @Param			execution	query		int		false	"The 0-based number corresponding to the execution of the task. Defaults to 0, meaning the first time the task was run."
-// @Success		200			{string}	string
+//	@Summary		Get the test count from a task
+//	@Description	Returns an integer representing the number of tests that ran as part of the given task.
+//	@Tags			tests
+//	@Router			/tasks/{task_id}/tests/count [get]
+//	@Security		Api-User || Api-Key
+//	@Param			task_id		path		string	true	"task ID"
+//	@Param			execution	query		int		false	"The 0-based number corresponding to the execution of the task. Defaults to 0, meaning the first time the task was run."
+//	@Success		200			{string}	string
 func (h *testCountGetHandler) Factory() gimlet.RouteHandler {
 	return &testCountGetHandler{}
 }

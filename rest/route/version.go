@@ -87,14 +87,14 @@ func makePatchVersion() gimlet.RouteHandler {
 
 // Factory creates an instance of the handler.
 //
-// @Summary		Activate or deactivate a version
-// @Description	Activate or deactivates a given version. Does not return the version.
-// @Tags			versions
-// @Router			/versions/{version_id} [patch]
-// @Security		Api-User || Api-Key
-// @Param			version_id	path	string				true	"the version ID"
-// @Param			{object}	body	versionPatchHandler	true	"parameters"
-// @Success		200
+//	@Summary		Activate or deactivate a version
+//	@Description	Activate or deactivates a given version. Does not return the version.
+//	@Tags			versions
+//	@Router			/versions/{version_id} [patch]
+//	@Security		Api-User || Api-Key
+//	@Param			version_id	path	string				true	"the version ID"
+//	@Param			{object}	body	versionPatchHandler	true	"parameters"
+//	@Success		200
 func (vh *versionPatchHandler) Factory() gimlet.RouteHandler {
 	return &versionPatchHandler{}
 }

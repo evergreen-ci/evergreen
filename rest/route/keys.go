@@ -69,13 +69,13 @@ func makeSetKey() gimlet.RouteHandler {
 
 // Factory creates an instance of the handler.
 //
-// @Summary		Add a public key to the current user
-// @Description	Add a single public key to the current user (as determined by the Api-User and Api-Key headers) as a Key object. If you attempt to insert a key with a duplicate name, it will fail.
-// @Tags			keys
-// @Router			/keys [post]
-// @Security		Api-User || Api-Key
-// @Param			{object}	body	model.APIPubKey	true	"parameters"
-// @Success		200
+//	@Summary		Add a public key to the current user
+//	@Description	Add a single public key to the current user (as determined by the Api-User and Api-Key headers) as a Key object. If you attempt to insert a key with a duplicate name, it will fail.
+//	@Tags			keys
+//	@Router			/keys [post]
+//	@Security		Api-User || Api-Key
+//	@Param			{object}	body	model.APIPubKey	true	"parameters"
+//	@Success		200
 func (h *keysPostHandler) Factory() gimlet.RouteHandler {
 	return &keysPostHandler{}
 }

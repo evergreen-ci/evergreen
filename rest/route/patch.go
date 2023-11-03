@@ -113,14 +113,14 @@ func makeFetchPatchByID() gimlet.RouteHandler {
 
 // Factory creates an instance of the handler.
 //
-// @Summary		Fetch patch by ID
-// @Description	Fetch a single patch using its ID
-// @Tags			patches
-// @Router			/patchs/{patch_id} [get]
-// @Security		Api-User || Api-Key
-// @Param			patch_id	path		string	true	"patch ID"
-// @Param			module		query		string	false	"A module to get the diff for. Returns the empty string when no patch exists for the module."
-// @Success		200			{object}	model.APIPatch
+//	@Summary		Fetch patch by ID
+//	@Description	Fetch a single patch using its ID
+//	@Tags			patches
+//	@Router			/patchs/{patch_id} [get]
+//	@Security		Api-User || Api-Key
+//	@Param			patch_id	path		string	true	"patch ID"
+//	@Param			module		query		string	false	"A module to get the diff for. Returns the empty string when no patch exists for the module."
+//	@Success		200			{object}	model.APIPatch
 func (p *patchByIdHandler) Factory() gimlet.RouteHandler {
 	return &patchByIdHandler{}
 }
@@ -154,14 +154,14 @@ func makePatchRawHandler() gimlet.RouteHandler {
 
 // Factory creates an instance of the handler.
 //
-// @Summary		Get patch diff
-// @Description	Fetch the raw diff for a patch
-// @Tags			patches
-// @Router			/patchs/{patch_id}/raw [get]
-// @Security		Api-User || Api-Key
-// @Param			patch_id	path		string	true	"patch ID"
-// @Param			module		query		string	false	"A module to get the diff for. Returns the empty string when no patch exists for the module."
-// @Success		200			{string}	string
+//	@Summary		Get patch diff
+//	@Description	Fetch the raw diff for a patch
+//	@Tags			patches
+//	@Router			/patchs/{patch_id}/raw [get]
+//	@Security		Api-User || Api-Key
+//	@Param			patch_id	path		string	true	"patch ID"
+//	@Param			module		query		string	false	"A module to get the diff for. Returns the empty string when no patch exists for the module."
+//	@Success		200			{string}	string
 func (p *patchRawHandler) Factory() gimlet.RouteHandler {
 	return &patchRawHandler{}
 }
@@ -214,13 +214,13 @@ func makeModuleRawHandler() gimlet.RouteHandler {
 
 // Factory creates an instance of the handler.
 //
-// @Summary		Get patch diff with module diffs
-// @Description	Fetch the raw diff for a patch along with the module diffs.
-// @Tags			patches
-// @Router			/projects/{patch_id}/raw_modules [get]
-// @Security		Api-User || Api-Key
-// @Param			patch_id	path		string	true	"the project ID"
-// @Success		200			{object}	model.APIRawPatch
+//	@Summary		Get patch diff with module diffs
+//	@Description	Fetch the raw diff for a patch along with the module diffs.
+//	@Tags			patches
+//	@Router			/projects/{patch_id}/raw_modules [get]
+//	@Security		Api-User || Api-Key
+//	@Param			patch_id	path		string	true	"the project ID"
+//	@Success		200			{object}	model.APIRawPatch
 func (p *moduleRawHandler) Factory() gimlet.RouteHandler {
 	return &moduleRawHandler{}
 }
@@ -255,15 +255,15 @@ func makeUserPatchHandler(url string) gimlet.RouteHandler {
 
 // Factory creates an instance of the handler.
 //
-// @Summary		Fetch patches by user
-// @Description	Returns a paginated list of all patches associated with a specific user
-// @Tags			patches
-// @Router			/users/{user_id}/patches [get]
-// @Security		Api-User || Api-Key
-// @Param			project_id	path	string	true	"the project ID"
-// @Param			start_at	query	string	false	"The create_time of the patch to start at in the pagination. Defaults to now"
-// @Param			limit		query	int		false	"The number of patches to be returned per page of pagination. Defaults to 100"
-// @Success		200			{array}	model.APIPatch
+//	@Summary		Fetch patches by user
+//	@Description	Returns a paginated list of all patches associated with a specific user
+//	@Tags			patches
+//	@Router			/users/{user_id}/patches [get]
+//	@Security		Api-User || Api-Key
+//	@Param			project_id	path	string	true	"the project ID"
+//	@Param			start_at	query	string	false	"The create_time of the patch to start at in the pagination. Defaults to now"
+//	@Param			limit		query	int		false	"The number of patches to be returned per page of pagination. Defaults to 100"
+//	@Success		200			{array}	model.APIPatch
 func (p *patchesByUserHandler) Factory() gimlet.RouteHandler {
 	return &patchesByUserHandler{url: p.url}
 }
@@ -343,15 +343,15 @@ func makePatchesByProjectRoute(url string) gimlet.RouteHandler {
 
 // Factory creates an instance of the handler.
 //
-// @Summary		Fetch patches by project
-// @Description	Returns a paginated list of all patches associated with a specific project
-// @Tags			patches
-// @Router			/projects/{project_id}/patches [get]
-// @Security		Api-User || Api-Key
-// @Param			project_id	path	string	true	"the project ID"
-// @Param			start_at	query	string	false	"The create_time of the patch to start at in the pagination. Defaults to now"
-// @Param			limit		query	int		false	"The number of patches to be returned per page of pagination. Defaults to 100"
-// @Success		200			{array}	model.APIPatch
+//	@Summary		Fetch patches by project
+//	@Description	Returns a paginated list of all patches associated with a specific project
+//	@Tags			patches
+//	@Router			/projects/{project_id}/patches [get]
+//	@Security		Api-User || Api-Key
+//	@Param			project_id	path	string	true	"the project ID"
+//	@Param			start_at	query	string	false	"The create_time of the patch to start at in the pagination. Defaults to now"
+//	@Param			limit		query	int		false	"The number of patches to be returned per page of pagination. Defaults to 100"
+//	@Success		200			{array}	model.APIPatch
 func (p *patchesByProjectHandler) Factory() gimlet.RouteHandler {
 	return &patchesByProjectHandler{url: p.url}
 }
@@ -427,13 +427,13 @@ func makeAbortPatch() gimlet.RouteHandler {
 
 // Factory creates an instance of the handler.
 //
-// @Summary		Abort a patch
-// @Description	Aborts a single patch using its ID and returns the patch
-// @Tags			patches
-// @Router			/patches/{patch_id}/abort [post]
-// @Security		Api-User || Api-Key
-// @Param			patch_id	path		string	true	"the patch ID"
-// @Success		200			{object}	model.APIPatch
+//	@Summary		Abort a patch
+//	@Description	Aborts a single patch using its ID and returns the patch
+//	@Tags			patches
+//	@Router			/patches/{patch_id}/abort [post]
+//	@Security		Api-User || Api-Key
+//	@Param			patch_id	path		string	true	"the patch ID"
+//	@Success		200			{object}	model.APIPatch
 func (p *patchAbortHandler) Factory() gimlet.RouteHandler {
 	return &patchAbortHandler{}
 }
@@ -474,13 +474,13 @@ func makeRestartPatch() gimlet.RouteHandler {
 
 // Factory creates an instance of the handler.
 //
-// @Summary		restart a patch
-// @Description	restarts a single patch using its ID and returns the patch
-// @Tags			patches
-// @Router			/patches/{patch_id}/restart [post]
-// @Security		Api-User || Api-Key
-// @Param			patch_id	path		string	true	"the patch ID"
-// @Success		200			{object}	model.APIPatch
+//	@Summary		restart a patch
+//	@Description	restarts a single patch using its ID and returns the patch
+//	@Tags			patches
+//	@Router			/patches/{patch_id}/restart [post]
+//	@Security		Api-User || Api-Key
+//	@Param			patch_id	path		string	true	"the patch ID"
+//	@Success		200			{object}	model.APIPatch
 func (p *patchRestartHandler) Factory() gimlet.RouteHandler {
 	return &patchRestartHandler{}
 }
@@ -580,14 +580,14 @@ func makeSchedulePatchHandler(env evergreen.Environment) gimlet.RouteHandler {
 
 // Factory creates an instance of the handler.
 //
-// @Summary		Configure/schedule a patch
-// @Description	Update the list of tasks that the specified patch will run. This works both for initially specifying a patch's tasks, as well as for adding additional tasks to an already-scheduled patch.
-// @Tags			patches
-// @Router			/patches/{patch_id}/configure [post]
-// @Security		Api-User || Api-Key
-// @Param			patch_id	path		string		true	"the patch ID"
-// @Param			{object}	body		patchTasks	true	"parameters"
-// @Success		200			{object}	model.APIVersion
+//	@Summary		Configure/schedule a patch
+//	@Description	Update the list of tasks that the specified patch will run. This works both for initially specifying a patch's tasks, as well as for adding additional tasks to an already-scheduled patch.
+//	@Tags			patches
+//	@Router			/patches/{patch_id}/configure [post]
+//	@Security		Api-User || Api-Key
+//	@Param			patch_id	path		string		true	"the patch ID"
+//	@Param			{object}	body		patchTasks	true	"parameters"
+//	@Success		200			{object}	model.APIVersion
 func (p *schedulePatchHandler) Factory() gimlet.RouteHandler {
 	return &schedulePatchHandler{env: p.env}
 }

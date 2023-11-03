@@ -143,13 +143,13 @@ func makeModifyTaskRoute() gimlet.RouteHandler {
 
 // Factory creates an instance of the handler.
 //
-// @Summary		Change a task's execution status
-// @Description	Change the current execution status of a task. Accepts a JSON body with the new task status to be set.
-// @Tags			tasks
-// @Router			/tasks/{task_id} [patch]
-// @Security		Api-User || Api-Key
-// @Param			{object}	body		taskExecutionPatchHandler	true	"parameters"
-// @Success		200			{object}	model.APITask
+//	@Summary		Change a task's execution status
+//	@Description	Change the current execution status of a task. Accepts a JSON body with the new task status to be set.
+//	@Tags			tasks
+//	@Router			/tasks/{task_id} [patch]
+//	@Security		Api-User || Api-Key
+//	@Param			{object}	body		taskExecutionPatchHandler	true	"parameters"
+//	@Success		200			{object}	model.APITask
 func (tep *taskExecutionPatchHandler) Factory() gimlet.RouteHandler {
 	return &taskExecutionPatchHandler{}
 }

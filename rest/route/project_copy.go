@@ -95,14 +95,16 @@ func makeCopyVariables() gimlet.RouteHandler {
 	return &copyVariablesHandler{}
 }
 
-// @Summary		Copy variables to an existing project
-// @Description	Restricted to admins of the source project/repo and the destination project/repo. Copies variables from projectA to projectB.
-// @Tags			projects
-// @Router			/projects/{project_id}/copy/variables [post]
-// @Security		Api-User || Api-Key
-// @Param			project_id	path	string					true	"the project ID"
-// @Param			{object}	body	copyVariablesOptions	false	"parameters"
-// @Success		200
+// Factory creates an instance of the handler.
+//
+//	@Summary		Copy variables to an existing project
+//	@Description	Restricted to admins of the source project/repo and the destination project/repo. Copies variables from projectA to projectB.
+//	@Tags			projects
+//	@Router			/projects/{project_id}/copy/variables [post]
+//	@Security		Api-User || Api-Key
+//	@Param			project_id	path	string					true	"the project ID"
+//	@Param			{object}	body	copyVariablesOptions	false	"parameters"
+//	@Success		200
 func (p *copyVariablesHandler) Factory() gimlet.RouteHandler {
 	return &copyVariablesHandler{}
 }
