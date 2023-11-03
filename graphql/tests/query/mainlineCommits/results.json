@@ -335,6 +335,126 @@
          }
       },
       {
+         "query_file": "revision.graphql",
+         "result": {
+            "data": {
+               "mainlineCommits": {
+                  "versions": [
+                     {
+                        "version": {
+                           "id": "evergreen_version2",
+                           "author": "mohamed.khelif",
+                           "buildVariants": [
+                              {
+                                 "variant": "enterprise-ubuntu1604-64",
+                                 "displayName": "Ubuntu 16.04",
+                                 "tasks": [
+                                    {
+                                       "id": "task_4",
+                                       "displayName": "Some Other Task",
+                                       "status": "success"
+                                    },
+                                    {
+                                       "id": "task_3",
+                                       "displayName": "Some Task",
+                                       "status": "failed"
+                                    }
+                                 ]
+                              }
+                           ]
+                        },
+                        "rolledUpVersions": null
+                     }
+                  ]
+               }
+            }
+         }
+      },
+      {
+         "query_file": "revision_insufficient_len.graphql",
+         "result": {
+            "data": {
+               "mainlineCommits": {
+                  "versions": [
+                     {
+                        "version": {
+                           "id": "evergreen_version5",
+                           "author": "mohamed.khelif",
+                           "buildVariants": [
+                              {
+                                 "variant": "enterprise-ubuntu1604-64",
+                                 "displayName": "Ubuntu 16.04",
+                                 "tasks": [
+                                    {
+                                       "id": "task_5",
+                                       "displayName": "Some Other Task",
+                                       "status": "success"
+                                    }
+                                 ]
+                              }
+                           ]
+                        },
+                        "rolledUpVersions": null
+                     }
+                  ]
+               }
+            },
+            "errors": [
+               {
+                  "message": "at least 7 characters must be provided for the revision",
+                  "path": [
+                     "mainlineCommits"
+                  ],
+                  "extensions": {
+                     "code": "PARTIAL_ERROR"
+                  }
+               }
+            ]
+         }
+      },
+      {
+         "query_file": "revision_not_found.graphql",
+         "result": {
+            "data": {
+               "mainlineCommits": {
+                  "versions": [
+                     {
+                        "version": {
+                           "id": "evergreen_version5",
+                           "author": "mohamed.khelif",
+                           "buildVariants": [
+                              {
+                                 "variant": "enterprise-ubuntu1604-64",
+                                 "displayName": "Ubuntu 16.04",
+                                 "tasks": [
+                                    {
+                                       "id": "task_5",
+                                       "displayName": "Some Other Task",
+                                       "status": "success"
+                                    }
+                                 ]
+                              }
+                           ]
+                        },
+                        "rolledUpVersions": null
+                     }
+                  ]
+               }
+            },
+            "errors": [
+               {
+                  "message": "version with revision 'bad-revision' not found",
+                  "path": [
+                     "mainlineCommits"
+                  ],
+                  "extensions": {
+                     "code": "PARTIAL_ERROR"
+                  }
+               }
+            ]
+         }
+      },
+      {
          "query_file": "task_status_stats_filter.graphql",
          "result": {
             "data": {

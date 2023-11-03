@@ -50,7 +50,8 @@
       },
       "desc": "222",
       "status": "failed",
-      "alias": "__github"
+      "alias": "__github",
+      "hidden": true
     },
     {
       "_id": {
@@ -101,10 +102,7 @@
   "distro": [
     {
       "_id": "rhel71-power8-large",
-      "aliases": [
-        "rhel71-power8",
-        "rhel71-power8-build"
-      ],
+      "aliases": ["rhel71-power8", "rhel71-power8-build"],
       "arch": "linux_ppc64le",
       "work_dir": "/data/mci",
       "provider": "static",
