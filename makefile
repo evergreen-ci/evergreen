@@ -389,11 +389,12 @@ swaggo-format:
 	swag fmt -g service/service.go
 
 swaggo-build:
-	swag init -g service/service.go
-	mv docs/swagger.json docs/swagger.yaml docs/docs.go bin/
+	swag init -g service/service.go -o $(buildDir)
 
 swaggo-render:
-	npx @redocly/cli build-docs bin/swagger.json -o bin/redoc-static.html
+	npx @redocly/cli build-docs $(buildDir)/swagger.json -o $(buildDir)/redoc-static.html
+
+phony += swaggo swaggo-install swaggo-format swaggo-build swaggo-render
 
 # sanitizes a json file by hashing string values. Note that this will not work well with
 # string data that only has a subset of valid values

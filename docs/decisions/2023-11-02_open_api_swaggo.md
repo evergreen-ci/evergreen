@@ -67,8 +67,9 @@ behave. It is also the recommended approach for using OpenAPI: Design your API
 first so that it is clear and correct, and then generate everything else. 
 
 However, this would require rewriting the API by generating stubs from the spec,
-and is therefore a much larger amount of work.  Generate the spec from browser
-behavior
+and is therefore a much larger amount of work.
+
+### Generate the spec from browser behavior
 
 There are ways of bootstrapping the work of writing the spec to make it faster.
 For example, there are ways of using Chrome's Developer tools to generate a
