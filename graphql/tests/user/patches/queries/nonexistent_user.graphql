@@ -1,6 +1,6 @@
 {
   user(userId: "nonexistent user") {
-    patches(patchesInput: {}) {
+    patches(patchesInput: { includeHidden: true }) {
       patches {
         id
       }

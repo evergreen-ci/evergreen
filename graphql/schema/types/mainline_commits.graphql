@@ -18,6 +18,7 @@ input MainlineCommitsOptions {
   limit: Int = 7
   projectIdentifier: String!
   requesters: [String!]
+  revision: String
   shouldCollapse: Boolean = false # used to determine if unmatching active versions should be collapsed
   skipOrderNumber: Int 
 }

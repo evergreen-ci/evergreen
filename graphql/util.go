@@ -37,6 +37,10 @@ import (
 
 // This file should consist only of private utility functions that are specific to graphql resolver use cases.
 
+const (
+	minRevisionLength = 7
+)
+
 // getGroupedFiles returns the files of a Task inside a GroupedFile struct
 func getGroupedFiles(ctx context.Context, name string, taskID string, execution int) (*GroupedFiles, error) {
 	taskFiles, err := artifact.GetAllArtifacts([]artifact.TaskIDAndExecution{{TaskID: taskID, Execution: execution}})
