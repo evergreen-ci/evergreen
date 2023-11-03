@@ -10,6 +10,7 @@ import (
 	"github.com/evergreen-ci/evergreen/apimodels"
 	dbModel "github.com/evergreen-ci/evergreen/model"
 	"github.com/evergreen-ci/evergreen/model/task"
+	"github.com/evergreen-ci/evergreen/rest/data"
 	"github.com/evergreen-ci/evergreen/rest/model"
 	"github.com/evergreen-ci/gimlet"
 	"github.com/evergreen-ci/utility"
@@ -336,4 +337,33 @@ func (rh *taskSyncReadCredentialsGetHandler) Run(ctx context.Context) gimlet.Res
 		return gimlet.MakeJSONErrorResponder(err)
 	}
 	return gimlet.NewJSONResponse(settings.Providers.AWS.TaskSyncRead)
+}
+
+type generatedTasksGetHandler struct {
+	taskID string
+}
+
+func makeGetGeneratedTasks() gimlet.RouteHandler {
+	return &generatedTasksGetHandler{}
+}
+
+// kim: TODO: need swaggo docs
+func (rh *generatedTasksGetHandler) Factory() gimlet.RouteHandler {
+	return rh
+}
+
+func (rh *generatedTasksGetHandler) Parse(ctx context.Context, r *http.Request) error {
+	if rh.taskID = gimlet.GetVars(r)["task_id"]; rh.taskID == "" {
+		return errors.New("missing task ID")
+	}
+	return nil
+}
+
+// kim: TODO: test in staging
+func (rh *generatedTasksGetHandler) Run(ctx context.Context) gimlet.Responder {
+	taskInfos, err := data.FindGeneratedTasksFromID(rh.taskID)
+	if err != nil {
+		return gimlet.MakeJSONInternalErrorResponder(errors.Wrapf(err, "finding tasks generated from ID '%s'", rh.taskID))
+	}
+	return gimlet.NewJSONResponse(taskInfos)
 }
