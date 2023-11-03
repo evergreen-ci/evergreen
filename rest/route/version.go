@@ -27,13 +27,15 @@ func makeGetVersionByID() gimlet.RouteHandler {
 	return &versionHandler{}
 }
 
-// @Summary		Fetch version by ID
-// @Description	Fetches a single version using its ID
-// @Tags			versions
-// @Router			/versions/{version_id} [get]
-// @Security	Api-User || Api-Key
-// @Param			version_id	path		string	true	"version ID"
-// @Success		200			{object}	model.APIVersion
+// Factory creates an instance of the handler.
+//
+//	@Summary		Fetch version by ID
+//	@Description	Fetches a single version using its ID
+//	@Tags			versions
+//	@Router			/versions/{version_id} [get]
+//	@Security		Api-User || Api-Key
+//	@Param			version_id	path		string	true	"version ID"
+//	@Success		200			{object}	model.APIVersion
 func (vh *versionHandler) Factory() gimlet.RouteHandler {
 	return &versionHandler{}
 }
@@ -83,11 +85,13 @@ func makePatchVersion() gimlet.RouteHandler {
 	return &versionPatchHandler{}
 }
 
+// Factory creates an instance of the handler.
+//
 // @Summary		Activate or deactivate a version
 // @Description	Activate or deactivates a given version. Does not return the version.
 // @Tags			versions
 // @Router			/versions/{version_id} [patch]
-// @Security	Api-User || Api-Key
+// @Security		Api-User || Api-Key
 // @Param			version_id	path	string				true	"the version ID"
 // @Param			{object}	body	versionPatchHandler	true	"parameters"
 // @Success		200
@@ -144,14 +148,14 @@ func makeGetVersionBuilds(env evergreen.Environment) gimlet.RouteHandler {
 	return &buildsForVersionHandler{env: env}
 }
 
-// Handler returns a pointer to a new buildsForVersionHandler.
+// Factory creates an instance of the handler.
 //
 //	@Summary		Get builds from a version
 //	@Description	Fetches a list of builds associated with a version
 //	@Tags			builds
 //	@Router			/versions/{version_id}/builds [get]
 //
-// @Security	Api-User || Api-Key
+//	@Security		Api-User || Api-Key
 //
 //	@Param			version_id	path	string	true	"the version ID"
 //	@Param			variant		query	string	false	"Only return the build with this variant (using Distro identifier)."
@@ -217,14 +221,14 @@ func makeAbortVersion() gimlet.RouteHandler {
 	return &versionAbortHandler{}
 }
 
-// Handler returns a pointer to a new versionAbortHandler.
+// Factory creates an instance of the handler.
 //
 //	@Summary		Abort a version
 //	@Description	Aborts a single version using its ID then returns the version
 //	@Tags			versions
 //	@Router			/versions/{version_id}/abort [post]
 //
-// @Security	Api-User || Api-Key
+//	@Security		Api-User || Api-Key
 //
 //	@Param			version_id	path		string	true	"version ID"
 //	@Success		200			{object}	model.APIVersion
@@ -279,14 +283,14 @@ func makeRestartVersion() gimlet.RouteHandler {
 	return &versionRestartHandler{}
 }
 
-// Handler returns a pointer to a new versionRestartHandler.
+// Factory creates an instance of the handler.
 //
 //	@Summary		Restart a version
 //	@Description	Restarts a single version using its ID then returns the version
 //	@Tags			versions
 //	@Router			/versions/{version_id}/restart [post]
 //
-// @Security	Api-User || Api-Key
+//	@Security		Api-User || Api-Key
 //
 //	@Param			version_id	path		string	true	"version ID"
 //	@Success		200			{object}	model.APIVersion

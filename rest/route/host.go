@@ -41,15 +41,17 @@ func makeChangeHostsStatuses() gimlet.RouteHandler {
 	return &hostsChangeStatusesHandler{}
 }
 
-// @Summary		Fetch all hosts
-// @Description	Returns a paginated list of all hosts in Evergreen
-// @Tags		hosts
-// @Router		/hosts [get]
-// @Security	Api-User || Api-Key
-// @Param		start_at	query		string	false	"The identifier of the host to start at in the pagination"
-// @Param		limit		query		int		false	"The number of hosts to be returned per page of pagination. Defaults to 100"
-// @Param		status		query		string	false	"A status of host to limit the results to"
-// @Success		200			{object}	model.APIHost
+// Factory creates an instance of the handler.
+//
+//	@Summary		Fetch all hosts
+//	@Description	Returns a paginated list of all hosts in Evergreen
+//	@Tags			hosts
+//	@Router			/hosts [get]
+//	@Security		Api-User || Api-Key
+//	@Param			start_at	query		string	false	"The identifier of the host to start at in the pagination"
+//	@Param			limit		query		int		false	"The number of hosts to be returned per page of pagination. Defaults to 100"
+//	@Param			status		query		string	false	"A status of host to limit the results to"
+//	@Success		200			{object}	model.APIHost
 func (h *hostsChangeStatusesHandler) Factory() gimlet.RouteHandler {
 	return &hostsChangeStatusesHandler{}
 }
@@ -115,12 +117,14 @@ type hostIDGetHandler struct {
 	hostID string
 }
 
+// Factory creates an instance of the handler.
+//
 // @Summary		Fetch hosts by ID
 // @Description	Fetches a single host using its ID
-// @Tags		hosts
-// @Router		/hosts/{host_id} [get]
-// @Security	Api-User || Api-Key
-// @Param		host_id	path		string	true	"the host ID"
+// @Tags			hosts
+// @Router			/hosts/{host_id} [get]
+// @Security		Api-User || Api-Key
+// @Param			host_id	path		string	true	"the host ID"
 // @Success		200		{object}	model.APIHost
 func (h *hostIDGetHandler) Factory() gimlet.RouteHandler {
 	return &hostIDGetHandler{}
@@ -182,15 +186,17 @@ type hostGetHandler struct {
 	url    string
 }
 
+// Factory creates an instance of the handler.
+//
 // @Summary		Fetch hosts spawned by user
 // @Description	Returns a list of hosts spawned by the given user.
-// @Tags		hosts
-// @Router		/users/{user_id}/hosts [get]
-// @Security	Api-User || Api-Key
-// @Param		user_id		path		string	true	"the user ID"
-// @Param		start_at	query		string	false	"The identifier of the host to start at in the pagination"
-// @Param		limit		query		int		false	"The number of hosts to be returned per page of pagination. Defaults to 100"
-// @Param		status		query		string	false	"A status of host to limit the results to"
+// @Tags			hosts
+// @Router			/users/{user_id}/hosts [get]
+// @Security		Api-User || Api-Key
+// @Param			user_id		path		string	true	"the user ID"
+// @Param			start_at	query		string	false	"The identifier of the host to start at in the pagination"
+// @Param			limit		query		int		false	"The number of hosts to be returned per page of pagination. Defaults to 100"
+// @Param			status		query		string	false	"A status of host to limit the results to"
 // @Success		200			{object}	model.APIHost
 func (hgh *hostGetHandler) Factory() gimlet.RouteHandler {
 	return &hostGetHandler{url: hgh.url}
@@ -329,14 +335,16 @@ type offboardUserHandler struct {
 	env evergreen.Environment
 }
 
+// Factory creates an instance of the handler.
+//
 // @Summary		Offboard user
 // @Description	Marks unexpirable volumes and hosts as expirable for the user, and removes the user as a project admin for any projects, if applicable.
-// @Tags		users
-// @Router		/users/offboard_user [post]
-// @Security	Api-User || Api-Key
-// @Param		dry_run 	query 	boolean 			false	"If set to true, route returns the IDs of the hosts/volumes that *would* be modified."
-// @Param		{object}	body	offboardUserEmail	true	"parameters"
-// @Success		200 {object} model.APIOffboardUserResults
+// @Tags			users
+// @Router			/users/offboard_user [post]
+// @Security		Api-User || Api-Key
+// @Param			dry_run		query		boolean				false	"If set to true, route returns the IDs of the hosts/volumes that *would* be modified."
+// @Param			{object}	body		offboardUserEmail	true	"parameters"
+// @Success		200			{object}	model.APIOffboardUserResults
 func (ch offboardUserHandler) Factory() gimlet.RouteHandler {
 	return &offboardUserHandler{
 		env: ch.env,

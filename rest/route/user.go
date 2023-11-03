@@ -97,14 +97,16 @@ type RequestedPermissions struct {
 	Permissions gimlet.Permissions `json:"permissions"`
 }
 
-// @Summary		Give permissions to user
-// @Description	Grants the user specified by user_id the permissions in the request body.
-// @Tags			users
-// @Router			/users/{user_id}/permissions [post]
-// @Security	Api-User || Api-Key
-// @Param			user_id		path	string					true	"the user's ID"
-// @Param			{object}	body	RequestedPermissions	true	"parameters"
-// @Success		200
+// Factory creates an instance of the handler.
+//
+//	@Summary		Give permissions to user
+//	@Description	Grants the user specified by user_id the permissions in the request body.
+//	@Tags			users
+//	@Router			/users/{user_id}/permissions [post]
+//	@Security		Api-User || Api-Key
+//	@Param			user_id		path	string					true	"the user's ID"
+//	@Param			{object}	body	RequestedPermissions	true	"parameters"
+//	@Success		200
 func makeModifyUserPermissions(rm gimlet.RoleManager) gimlet.RouteHandler {
 	return &userPermissionsPostHandler{
 		rm: rm,
@@ -186,13 +188,15 @@ func makeDeleteUserPermissions(rm gimlet.RoleManager) gimlet.RouteHandler {
 	}
 }
 
+// Factory creates an instance of the handler.
+//
 // @Summary		Delete user permissions
 // @Description	Deletes all permissions of a given type for a user by deleting their roles of that type for that resource ID. This ignores the Basic Project/Distro Access that is given to all MongoDB employees.
-// @Tags		users
-// @Router		/users/{user_id}/permissions [delete]
-// @Security	Api-User || Api-Key
-// @Param		user_id		path	string						true	"the user's ID"
-// @Param		{object}	body	deletePermissionsRequest	true	"parameters"
+// @Tags			users
+// @Router			/users/{user_id}/permissions [delete]
+// @Security		Api-User || Api-Key
+// @Param			user_id		path	string						true	"the user's ID"
+// @Param			{object}	body	deletePermissionsRequest	true	"parameters"
 // @Success		200
 func (h *userPermissionsDeleteHandler) Factory() gimlet.RouteHandler {
 	return &userPermissionsDeleteHandler{
@@ -306,11 +310,13 @@ func makeGetAllUsersPermissions(rm gimlet.RoleManager) gimlet.RouteHandler {
 	}
 }
 
+// Factory creates an instance of the handler.
+//
 // @Summary		Get all user permissions for resource
 // @Description	Retrieves all users with permissions for the resource, and their highest permissions, and returns this as a mapping. This ignores basic permissions that are given to all users.
 // @Tags			users
 // @Router			/users/{user_id}/permissions [get]
-// @Security	Api-User || Api-Key
+// @Security		Api-User || Api-Key
 // @Param			user_id	path		string	true	"the user's ID"
 // @Param			all		query		boolean	false	"If included, we will not filter out basic permissions"
 // @Success		200		{object}	swaggerUsersPermissionsResult
@@ -402,11 +408,13 @@ func makeGetUserPermissions(rm gimlet.RoleManager) gimlet.RouteHandler {
 	}
 }
 
+// Factory creates an instance of the handler.
+//
 // @Summary		Get user permissions
 // @Description	Retrieves all permissions for the user (ignoring basic permissions that are given to all users, unless all=true is included).
 // @Tags			users
 // @Router			/users/{user_id}/permissions [get]
-// @Security	Api-User || Api-Key
+// @Security		Api-User || Api-Key
 // @Param			user_id	path	string	true	"the user's ID"
 // @Param			all		query	boolean	false	"If included, we will not filter out basic permissions"
 // @Success		200		{array}	swaggerPermissionSummary

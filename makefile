@@ -379,6 +379,7 @@ gqlgen:
 	go run github.com/99designs/gqlgen generate
 
 swaggo: 
+	make swaggo-format
 	make swaggo-build
 	make swaggo-render
 

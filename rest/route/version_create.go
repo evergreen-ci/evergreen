@@ -31,13 +31,15 @@ type versionCreateHandler struct {
 	sc data.Connector
 }
 
-// @Summary		Create a new version
-// @Description	Creates a version and optionally runs it, conceptually similar to a patch. The main difference is that the config yml file is provided in the request, rather than retrieved from the repo.
-// @Tags			versions
-// @Param			{object}	body	versionCreateHandler	true	"parameters"
-// @Router			/versions/ [post]
-// @Security	Api-User || Api-Key
-// @Success		200	{object}	model.APIVersion
+// Factory creates an instance of the handler.
+//
+//	@Summary		Create a new version
+//	@Description	Creates a version and optionally runs it, conceptually similar to a patch. The main difference is that the config yml file is provided in the request, rather than retrieved from the repo.
+//	@Tags			versions
+//	@Param			{object}	body	versionCreateHandler	true	"parameters"
+//	@Router			/versions/ [post]
+//	@Security		Api-User || Api-Key
+//	@Success		200	{object}	model.APIVersion
 func (h *versionCreateHandler) Factory() gimlet.RouteHandler {
 	return &versionCreateHandler{sc: h.sc}
 }
