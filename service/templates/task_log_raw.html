@@ -1,2 +1,0 @@
-{{ define "base" }}{{ range $index, $element := .Data }}{{if not $element.Timestamp.IsZero}}{{ DateFormat $element.Timestamp "[2006/01/02 15:04:05.000] " (GetTimezone $.User) }}{{end}}{{$element.Message}}
-{{ end }}{{ end }}

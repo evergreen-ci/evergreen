@@ -32,6 +32,7 @@ import (
 	"github.com/evergreen-ci/evergreen/model/distro"
 	"github.com/evergreen-ci/evergreen/model/host"
 	"github.com/evergreen-ci/evergreen/model/task"
+	"github.com/evergreen-ci/evergreen/model/tasklog"
 	"github.com/evergreen-ci/evergreen/model/user"
 	"github.com/evergreen-ci/gimlet"
 	"github.com/mongodb/grip"
@@ -265,7 +266,7 @@ func MakeTestsInDirectory(state *AtomicGraphQLState, pathToTests string) func(t 
 		if testData[state.TaskLogColl] != nil {
 			logsDb := evergreen.GetEnvironment().Client().Database(state.TaskLogDB)
 			idArr := []string{}
-			var docs []model.TaskLog
+			var docs []tasklog.TaskLog
 			require.NoError(t, bson.UnmarshalExtJSON(testData[state.TaskLogColl], false, &docs))
 			for _, d := range docs {
 				idArr = append(idArr, d.Id)

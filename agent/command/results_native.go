@@ -9,7 +9,7 @@ import (
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/agent/internal"
 	"github.com/evergreen-ci/evergreen/agent/internal/client"
-	"github.com/evergreen-ci/evergreen/model"
+	"github.com/evergreen-ci/evergreen/model/testlog"
 	"github.com/evergreen-ci/evergreen/model/testresult"
 	"github.com/evergreen-ci/utility"
 	"github.com/mitchellh/mapstructure"
@@ -142,7 +142,7 @@ func (c *attachResults) sendTestLogs(ctx context.Context, conf *internal.TaskCon
 		}
 
 		if res.LogRaw != "" {
-			testLogs := &model.TestLog{
+			testLogs := &testlog.TestLog{
 				// When sending test logs to Cedar we need to
 				// use a unique string since there may be
 				// duplicate file names if there are duplicate

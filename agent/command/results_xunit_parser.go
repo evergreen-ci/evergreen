@@ -12,7 +12,7 @@ import (
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/agent/internal"
 	"github.com/evergreen-ci/evergreen/agent/internal/client"
-	"github.com/evergreen-ci/evergreen/model"
+	"github.com/evergreen-ci/evergreen/model/testlog"
 	"github.com/evergreen-ci/evergreen/model/testresult"
 	"github.com/evergreen-ci/evergreen/util"
 	"github.com/evergreen-ci/utility"
@@ -95,10 +95,10 @@ func parseXMLResults(reader io.Reader) ([]testSuite, error) {
 // toModelTestResultAndLog converts an XUnit test case into a test result and
 // test log. Logs are only generated if the test case did not succeed (this is
 // part of the XUnit XML file design).
-func (tc testCase) toModelTestResultAndLog(conf *internal.TaskConfig, logger client.LoggerProducer) (testresult.TestResult, *model.TestLog) {
+func (tc testCase) toModelTestResultAndLog(conf *internal.TaskConfig, logger client.LoggerProducer) (testresult.TestResult, *testlog.TestLog) {
 
 	res := testresult.TestResult{}
-	var log *model.TestLog
+	var log *testlog.TestLog
 
 	if tc.ClassName != "" {
 		res.TestName = fmt.Sprintf("%v.%v", tc.ClassName, tc.Name)
@@ -140,7 +140,7 @@ func (tc testCase) toModelTestResultAndLog(conf *internal.TaskConfig, logger cli
 
 	if systemLogs := constructSystemLogs(tc.SysOut, tc.SysErr); len(systemLogs) > 0 {
 		if log == nil {
-			log = &model.TestLog{}
+			log = &testlog.TestLog{}
 		}
 		log.Lines = append(log.Lines, systemLogs...)
 	}
@@ -158,8 +158,8 @@ func (tc testCase) toModelTestResultAndLog(conf *internal.TaskConfig, logger cli
 	return res, log
 }
 
-func (fd failureDetails) toBasicTestLog(fdType string) *model.TestLog {
-	log := model.TestLog{
+func (fd failureDetails) toBasicTestLog(fdType string) *testlog.TestLog {
+	log := testlog.TestLog{
 		Lines: []string{fmt.Sprintf("%v: %v (%v)", fdType, fd.Message, fd.Type)},
 	}
 	logLines := strings.Split(strings.TrimSpace(fd.Content), "\n")

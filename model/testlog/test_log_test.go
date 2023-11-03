@@ -1,4 +1,4 @@
-package model
+package testlog
 
 import (
 	"testing"
@@ -6,12 +6,17 @@ import (
 
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/db"
+	"github.com/evergreen-ci/evergreen/testutil"
 	. "github.com/smartystreets/goconvey/convey"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"go.mongodb.org/mongo-driver/bson"
 	"go.mongodb.org/mongo-driver/bson/primitive"
 )
+
+func init() {
+	testutil.Setup()
+}
 
 func TestTestLogInsertAndFind(t *testing.T) {
 	Convey("With a test log", t, func() {
