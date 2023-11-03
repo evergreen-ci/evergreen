@@ -717,7 +717,7 @@ func (c *baseCommunicator) SetResultsInfo(ctx context.Context, taskData TaskData
 		method:   http.MethodPost,
 		taskData: &taskData,
 	}
-	info.path = fmt.Sprintf("tasks/%s/set_results_info", taskData.ID)
+	info.path = fmt.Sprintf("task/%s/set_results_info", taskData.ID)
 	resp, err := c.retryRequest(ctx, info, &apimodels.TaskTestResultsInfo{Service: service, Failed: failed})
 	if err != nil {
 		return util.RespErrorf(resp, errors.Wrap(err, "setting results info").Error())
