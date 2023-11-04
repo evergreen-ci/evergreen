@@ -378,6 +378,25 @@ phony += clean
 gqlgen:
 	go run github.com/99designs/gqlgen generate
 
+swaggo: 
+	make swaggo-format
+	make swaggo-build
+	make swaggo-render
+
+swaggo-install:
+	go install github.com/swaggo/swag/cmd/swag@latest
+
+swaggo-format:
+	swag fmt -g service/service.go
+
+swaggo-build:
+	swag init -g service/service.go -o $(buildDir)
+
+swaggo-render:
+	npx @redocly/cli build-docs $(buildDir)/swagger.json -o $(buildDir)/redoc-static.html
+
+phony += swaggo swaggo-install swaggo-format swaggo-build swaggo-render
+
 # sanitizes a json file by hashing string values. Note that this will not work well with
 # string data that only has a subset of valid values
 ifneq (,$(multi))

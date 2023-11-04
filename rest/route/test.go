@@ -41,6 +41,21 @@ func makeFetchTestsForTask(env evergreen.Environment, sc data.Connector) gimlet.
 	}
 }
 
+// Factory creates an instance of the handler.
+//
+//	@Summary		Get tests from a task
+//	@Description	Fetches a paginated list of tests that ran as part of the given task. To filter the tasks, add the following parameters into the query string.
+//	@Tags			tests
+//	@Router			/tasks/{task_id}/tests [get]
+//	@Security		Api-User || Api-Key
+//	@Param			task_id		path	string	true	"task ID"
+//	@Param			start_at	query	string	false	"The identifier of the test to start at in the pagination"
+//	@Param			limit		query	int		false	"The number of tests to be returned per page of pagination. Defaults to 100"
+//	@Param			status		query	string	false	"A status of test to limit the results to."
+//	@Param			execution	query	int		false	"The 0-based number corresponding to the execution of the task. Defaults to 0, meaning the first time the task was run."
+//	@Param			test_name	query	string	false	"Only return the test matching the name."
+//	@Param			latest		query	bool	false	"Return tests from the latest execution. Cannot be used with execution."
+//	@Success		200			{array}	model.APITest
 func (hgh *testGetHandler) Factory() gimlet.RouteHandler {
 	return &testGetHandler{
 		env: hgh.env,
@@ -206,6 +221,16 @@ func makeFetchTestCountForTask() gimlet.RouteHandler {
 	return &testCountGetHandler{}
 }
 
+// Factory creates an instance of the handler.
+//
+//	@Summary		Get the test count from a task
+//	@Description	Returns an integer representing the number of tests that ran as part of the given task.
+//	@Tags			tests
+//	@Router			/tasks/{task_id}/tests/count [get]
+//	@Security		Api-User || Api-Key
+//	@Param			task_id		path		string	true	"task ID"
+//	@Param			execution	query		int		false	"The 0-based number corresponding to the execution of the task. Defaults to 0, meaning the first time the task was run."
+//	@Success		200			{string}	string
 func (h *testCountGetHandler) Factory() gimlet.RouteHandler {
 	return &testCountGetHandler{}
 }
