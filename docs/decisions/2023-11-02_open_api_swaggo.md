@@ -48,7 +48,7 @@ In this approach, instead of relying on a tool that can understand Go code as
 fully as go-swagger, we document the API entirely in comments near the code, and
 then use a tool like [swaggo](https://github.com/swaggo/swag) (also OpenAPI 2)
 to generate an OpenAPI spec from the comments. Note that swaggo does understand
-structs as return types and parameters, and can parse field comments
+structs as return types and parameters, and can parse field comments.
 
 The downside is that the comments are tied to the code only by the developers
 editing them. They can drift from the API code, though they will not drift from
