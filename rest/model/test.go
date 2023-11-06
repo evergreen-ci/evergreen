@@ -12,28 +12,38 @@ import (
 // APITest contains the data to be returned whenever a test is used in the
 // API.
 type APITest struct {
-	ID         *string    `json:"test_id"`
-	TaskID     *string    `json:"task_id"`
-	Execution  int        `json:"execution"`
-	Status     *string    `json:"status"`
-	BaseStatus *string    `json:"base_status,omitempty"`
-	TestFile   *string    `json:"test_file"`
-	GroupID    *string    `json:"group_id,omitempty"`
-	Logs       TestLogs   `json:"logs"`
-	StartTime  *time.Time `json:"start_time"`
-	EndTime    *time.Time `json:"end_time"`
-	Duration   float64    `json:"duration"`
-	ExitCode   int        `json:"-"`
+	ID *string `json:"test_id"`
+	// Identifier of the task this test is a part of
+	TaskID    *string `json:"task_id"`
+	Execution int     `json:"execution"`
+	// Execution status of the test
+	Status     *string `json:"status"`
+	BaseStatus *string `json:"base_status,omitempty"`
+	// Name of the test file that this test was run in
+	TestFile *string `json:"test_file"`
+	GroupID  *string `json:"group_id,omitempty"`
+	// Object containing information about the logs for this test
+	Logs TestLogs `json:"logs"`
+	// Time that this test began execution
+	StartTime *time.Time `json:"start_time"`
+	// Time that this test stopped execution
+	EndTime  *time.Time `json:"end_time"`
+	Duration float64    `json:"duration"`
+	// The exit code of the process that ran this test
+	ExitCode int `json:"-"`
 }
 
 // TestLogs is a struct for storing the information about logs that will be
 // written out as part of an APITest.
 type TestLogs struct {
-	URL        *string `json:"url"`
+	// URL where the log can be fetched
+	URL *string `json:"url"`
+	// URL of the unprocessed version of the logs file for this test
 	URLRaw     *string `json:"url_raw"`
 	URLLobster *string `json:"url_lobster,omitempty"`
 	URLParsley *string `json:"url_parsley,omitempty"`
-	LineNum    int     `json:"line_num"`
+	// Line number in the log file corresponding to information about this test
+	LineNum int `json:"line_num"`
 }
 
 func (at *APITest) BuildFromService(st interface{}) error {

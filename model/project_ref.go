@@ -2851,7 +2851,7 @@ func GetSetupScriptForTask(ctx context.Context, taskId string) (string, error) {
 	return string(fileContents), nil
 }
 
-func (t *TriggerDefinition) Validate(parentProject string) error {
+func (t *TriggerDefinition) Validate(downstreamProject string) error {
 	upstreamProject, err := FindBranchProjectRef(t.Project)
 	if err != nil {
 		return errors.Wrapf(err, "finding upstream project '%s'", t.Project)
@@ -2859,9 +2859,10 @@ func (t *TriggerDefinition) Validate(parentProject string) error {
 	if upstreamProject == nil {
 		return errors.Errorf("project '%s' not found", t.Project)
 	}
-	if upstreamProject.Id == parentProject {
+	if upstreamProject.Id == downstreamProject {
 		return errors.New("a project cannot trigger itself")
 	}
+
 	// should be saved using its ID, in case the user used the project's identifier
 	t.Project = upstreamProject.Id
 	if t.Level != ProjectTriggerLevelBuild && t.Level != ProjectTriggerLevelTask && t.Level != ProjectTriggerLevelPush {

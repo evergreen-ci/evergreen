@@ -13,15 +13,22 @@ import (
 
 // APIHost is the model to be returned by the API whenever hosts are fetched.
 type APIHost struct {
-	Id                    *string     `json:"host_id"`
-	HostURL               *string     `json:"host_url"`
-	Tag                   *string     `json:"tag"`
-	Distro                DistroInfo  `json:"distro"`
-	Provisioned           bool        `json:"provisioned"`
-	StartedBy             *string     `json:"started_by"`
-	Provider              *string     `json:"host_type"`
-	User                  *string     `json:"user"`
-	Status                *string     `json:"status"`
+	// Unique identifier of a specific host
+	Id      *string `json:"host_id"`
+	HostURL *string `json:"host_url"`
+	Tag     *string `json:"tag"`
+	// Object containing information about the distro type of this host
+	Distro      DistroInfo `json:"distro"`
+	Provisioned bool       `json:"provisioned"`
+	// Name of the process or user that started this host
+	StartedBy *string `json:"started_by"`
+	// The instance type requested for the provider, primarily used for ec2 dynamic hosts
+	Provider *string `json:"host_type"`
+	// The user associated with this host. Set if this host was spawned for a specific user
+	User *string `json:"user"`
+	// The current state of the host
+	Status *string `json:"status"`
+	// Object containing information about the task the host is currently running
 	RunningTask           TaskInfo    `json:"running_task"`
 	UserHost              bool        `json:"user_host"`
 	NoExpiration          bool        `json:"no_expiration"`
@@ -61,7 +68,9 @@ type HostRequestOptions struct {
 }
 
 type DistroInfo struct {
-	Id                   *string `json:"distro_id"`
+	// Unique Identifier of this distro. Can be used to fetch more informaiton about this distro
+	Id *string `json:"distro_id"`
+	// The service which provides this type of machine
 	Provider             *string `json:"provider"`
 	ImageId              *string `json:"image_id"`
 	WorkDir              *string `json:"work_dir"`
@@ -72,12 +81,17 @@ type DistroInfo struct {
 }
 
 type TaskInfo struct {
-	Id           *string    `json:"task_id"`
-	Name         *string    `json:"name"`
+	// Unique Identifier of this task. Can be used to fetch more informaiton about this task
+	Id *string `json:"task_id"`
+	// The name of this task
+	Name *string `json:"name"`
+	// Time that this task was dispatched to this host
 	DispatchTime *time.Time `json:"dispatch_time"`
-	VersionId    *string    `json:"version_id"`
-	BuildId      *string    `json:"build_id"`
-	StartTime    *time.Time `json:"start_time"`
+	// Unique identifier for the version of the project that this task is run as part of
+	VersionId *string `json:"version_id"`
+	// Unique identifier for the build of the project that this task is run as part of
+	BuildId   *string    `json:"build_id"`
+	StartTime *time.Time `json:"start_time"`
 }
 
 // BuildFromService converts from service level structs to an APIHost. If a task is given,

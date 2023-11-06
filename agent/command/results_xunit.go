@@ -10,7 +10,7 @@ import (
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/agent/internal"
 	"github.com/evergreen-ci/evergreen/agent/internal/client"
-	"github.com/evergreen-ci/evergreen/model"
+	"github.com/evergreen-ci/evergreen/model/testlog"
 	"github.com/evergreen-ci/evergreen/model/testresult"
 	"github.com/mitchellh/mapstructure"
 	"github.com/mongodb/grip"
@@ -126,7 +126,7 @@ func (c *xunitResults) parseAndUploadResults(ctx context.Context, conf *internal
 
 	cumulative := testcaseAccumulator{
 		tests:           []testresult.TestResult{},
-		logs:            []*model.TestLog{},
+		logs:            []*testlog.TestLog{},
 		logIdxToTestIdx: []int{},
 	}
 
@@ -207,7 +207,7 @@ func (c *xunitResults) parseAndUploadResults(ctx context.Context, conf *internal
 
 type testcaseAccumulator struct {
 	tests           []testresult.TestResult
-	logs            []*model.TestLog
+	logs            []*testlog.TestLog
 	logIdxToTestIdx []int
 }
 

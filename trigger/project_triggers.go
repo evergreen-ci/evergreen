@@ -20,7 +20,7 @@ func TriggerDownstreamVersion(ctx context.Context, args ProcessorArgs) (*model.V
 	}
 
 	// propagate version metadata to the downstream version
-	metadata, err := metadataFromVersion(args)
+	metadata, err := getMetadataFromArgs(args)
 	if err != nil {
 		return nil, err
 	}
@@ -92,7 +92,7 @@ func TriggerDownstreamVersion(ctx context.Context, args ProcessorArgs) (*model.V
 	return v, nil
 }
 
-func metadataFromVersion(args ProcessorArgs) (model.VersionMetadata, error) {
+func getMetadataFromArgs(args ProcessorArgs) (model.VersionMetadata, error) {
 	metadata := model.VersionMetadata{
 		SourceVersion:       args.SourceVersion,
 		Activate:            !args.UnscheduleDownstreamVersions,
@@ -109,28 +109,26 @@ func metadataFromVersion(args ProcessorArgs) (model.VersionMetadata, error) {
 			CreateTime:      args.SourceVersion.CreateTime,
 			RevisionMessage: args.SourceVersion.Message,
 		}
+
+		author, err := user.FindOneById(args.SourceVersion.AuthorID)
+		if err != nil {
+			return metadata, errors.Wrapf(err, "finding version author '%s'", args.SourceVersion.AuthorID)
+		}
+		if author != nil {
+			metadata.Revision.AuthorGithubUID = author.Settings.GithubUser.UID
+		}
 	} else {
 		metadata.Revision = args.PushRevision
 		metadata.SourceCommit = args.PushRevision.Revision
 	}
 	repo, err := model.FindRepository(args.DownstreamProject.Id)
 	if err != nil {
-		return metadata, errors.Wrap(err, "finding most recent revision")
+		return metadata, errors.Wrapf(err, "finding most recent revision for '%s'", args.DownstreamProject.Id)
 	}
 	if repo == nil {
 		return metadata, errors.Errorf("repo '%s' not found", args.DownstreamProject.Id)
 	}
 	metadata.Revision.Revision = repo.LastRevision
-	var author *user.DBUser
-	if args.SourceVersion != nil {
-		author, err = user.FindOneById(args.SourceVersion.AuthorID)
-		if err != nil {
-			return metadata, errors.Wrapf(err, "finding version author '%s'", args.SourceVersion.AuthorID)
-		}
-	}
-	if author != nil {
-		metadata.Revision.AuthorGithubUID = author.Settings.GithubUser.UID
-	}
 
 	return metadata, nil
 }

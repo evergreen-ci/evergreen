@@ -3,7 +3,6 @@ package units
 import (
 	"context"
 	"fmt"
-	"time"
 
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/scheduler"
@@ -40,10 +39,10 @@ func makeDistroSchedulerJob() *distroSchedulerJob {
 	return j
 }
 
-func NewDistroSchedulerJob(env evergreen.Environment, distroID string, ts time.Time) amboy.Job {
+func NewDistroSchedulerJob(distroID string, id string) amboy.Job {
 	j := makeDistroSchedulerJob()
 	j.DistroID = distroID
-	j.SetID(fmt.Sprintf("%s.%s.%s", schedulerJobName, distroID, ts.Format(TSFormat)))
+	j.SetID(fmt.Sprintf("%s.%s.%s", schedulerJobName, distroID, id))
 	j.SetScopes([]string{fmt.Sprintf("%s.%s", schedulerJobName, distroID)})
 	j.SetEnqueueAllScopes(true)
 

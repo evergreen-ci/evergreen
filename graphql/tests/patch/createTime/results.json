@@ -1,0 +1,24 @@
+{
+  "tests": [
+    {
+      "query_file": "create_time_null.graphql",
+      "result": {
+        "data": {
+          "patch": {
+            "createTime": null
+          }
+        }
+      }
+    },
+    {
+      "query_file": "create_time.graphql",
+      "result": {
+        "data": {
+          "patch": {
+            "createTime": "2020-04-13T16:12:39-04:00"
+          }
+        }
+      }
+    }
+  ]
+}

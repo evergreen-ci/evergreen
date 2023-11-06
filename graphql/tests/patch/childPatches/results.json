@@ -1,0 +1,31 @@
+{
+  "tests": [
+    {
+      "query_file": "child_patches_null.graphql",
+      "result": {
+        "data": {
+          "patch": {
+            "id": "5d7288d91f8c8a403bc34a7d",
+            "childPatches": null
+          }
+        }
+      }
+    },
+    {
+      "query_file": "child_patches.graphql",
+      "result": {
+        "data": {
+          "patch": {
+            "id": "5e4ff3abe3c3317e352062e1",
+            "childPatches": [
+              {
+                "id": "5e4ff3abe3c3317e352062e4",
+                "projectID": "evergreen"
+              }
+            ]
+          }
+        }
+      }
+    }
+  ]
+}

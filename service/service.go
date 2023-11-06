@@ -70,6 +70,64 @@ func GetRouter(as *APIServer, uis *UIServer) (http.Handler, error) {
 	// with the "api" prefix, there are many users of restv2, so
 	// we will continue to publish these routes in these
 	// endpoints.
+	//
+	//	@title						Evergreen REST v2 API
+	//	@host						evergreen.mongodb.com
+	//	@BasePath					/rest/v2
+	//	@accept						json
+	//	@produce					json
+	//	@schemes					https
+	//	@externalDocs.description	Click here for information on authentication, pagination, and other details.
+	//	@externalDocs.url			https://docs.devprod.staging.corp.mongodb.com/evergreen/API/REST-V2-Usage/
+	//
+	//	@tag.name					annotations
+	//	@tag.description			Annotations are added by users, usually programmatically, to track known and suspected causes of task failures.
+	//
+	//	@tag.name					builds
+	//	@tag.description			A build is a set of tasks in a single build variant in a single version.
+	//
+	//	@tag.name					distros
+	//	@tag.description			A distro is a set of hosts that runs tasks. A static distro is configured with a list of IP addresses, while a dynamic distro scales with demand.
+	//
+	//	@tag.name					hosts
+	//	@tag.description			A host is an Evergrene-managed EC2 VM, static host, or container.
+	//
+	//	@tag.name					info
+	//	@tag.description			Info is general information about the system.
+	//
+	//	@tag.name					keys
+	//	@tag.description			Keys are SSH keys for users to SSH into spawn hosts.
+	//
+	//	@tag.name					manifests
+	//	@tag.description			A manifest tracks metadata about a version.
+	//
+	//	@tag.name					patches
+	//	@tag.description			A patch build is a version not triggered by a commit to a repository. It either runs tasks on a base commit plus some diff if submitted by the CLI or on a git branch if created by a GitHub pull request.
+	//
+	//	@tag.name					projects
+	//	@tag.description			A project tracks a GitHub repository.
+	//
+	//	@tag.name					tasks
+	//	@tag.description			The fundamental unit of execution is the task. A task corresponds to a box on the waterfall page.
+	//
+	//	@tag.name					tests
+	//	@tag.description			A test is sent to Evergreen in a known format by a command during a task, parsed by Evergreen, and displayed on the task page.
+	//
+	//	@tag.name					users
+	//	@tag.description			A user is an Evergreen user.
+	//
+	//	@tag.name					versions
+	//	@tag.description			A version, which corresponds to a vertical slice of tasks on the waterfall, is all tasks for a given commit or patch build.
+	//
+	//	@securitydefinitions.apikey	Api-User
+	//	@in							header
+	//	@name						Api-User
+	//	@description				the `user` field from https://spruce.mongodb.com/preferences/cli
+	//
+	//	@securitydefinitions.apikey	Api-Key
+	//	@in							header
+	//	@name						Api-Key
+	//	@description				the `api-key` field from https://spruce.mongodb.com/preferences/cli
 	apiRestV2 := gimlet.NewApp()
 	apiRestV2.SetPrefix(evergreen.APIRoutePrefix + "/" + evergreen.RestRoutePrefix)
 	opts = route.HandlerOpts{
