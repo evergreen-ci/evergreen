@@ -600,7 +600,6 @@ tasks:
       - func: get-project-and-modules
       - func: verify-merge-function-update
   - name: test-db-auth
-    patchable: false
     commands:
       - func: get-project-and-modules
       - func: setup-credentials
@@ -613,6 +612,7 @@ tasks:
           RUN_TEST: "TestEnvironmentSuite/TestInitDB"
           MONGO_CREDS_FILE: testdata/test_auth.yml
   - name: generate-api-docs
+    patchable: false
     commands: 
       - func: get-project-and-modules
       - command: shell.exec
