@@ -320,7 +320,7 @@ func makeGetAllUsersPermissions(rm gimlet.RoleManager) gimlet.RouteHandler {
 //	@Router			/users/permissions [get]
 //	@Security		Api-User || Api-Key
 //	@Param			{object}	body		UsersPermissionsInput	true	"parameters"
-//	@Success		200			{object}	swaggerUsersPermissionResult
+//	@Success		200			{object}	swaggerUsersPermissionsResult
 func (h *allUsersPermissionsGetHandler) Factory() gimlet.RouteHandler {
 	return &allUsersPermissionsGetHandler{
 		rm: h.rm,
