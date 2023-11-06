@@ -600,6 +600,7 @@ tasks:
       - func: get-project-and-modules
       - func: verify-merge-function-update
   - name: test-db-auth
+    patchable: false
     commands:
       - func: get-project-and-modules
       - func: setup-credentials
@@ -644,8 +645,6 @@ tasks:
           content_type: application/json
           permissions: public-read
           display_name: swagger.json (latest)
-          # TODO Set this when it's time to merge
-          # patchable: false
 
 
 task_groups:
