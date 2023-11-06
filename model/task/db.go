@@ -2923,6 +2923,7 @@ func findCompletedTasks(ctx context.Context, filter bson.M, taskIDs []string) ([
 	return out, nil
 }
 
+// GeneratedTaskInfo contains basic information about a generated task.
 type GeneratedTaskInfo struct {
 	TaskID                  string
 	TaskName                string
