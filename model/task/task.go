@@ -1557,7 +1557,7 @@ func (t *Task) getTaskOutputSafe() (*taskoutput.TaskOutput, bool) {
 // accessing the task output data.
 func (t *Task) GetTaskOutputWithError() (*taskoutput.TaskOutput, error) {
 	if t.TaskOutputInfo == nil {
-		return nil, errors.New("programmatic error: task output info expected to be set but nil")
+		return nil, errors.New("programmatic error: task output info expected to be set but found nil")
 	}
 
 	return t.TaskOutputInfo, nil
