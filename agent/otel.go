@@ -8,6 +8,7 @@ import (
 	"fmt"
 	"os"
 	"path"
+	"path/filepath"
 	"time"
 
 	"github.com/evergreen-ci/evergreen"
@@ -42,6 +43,7 @@ const (
 	packageName    = "github.com/evergreen-ci/evergreen/agent"
 	traceSuffix    = "build/OTelTraces"
 	maxLineSize    = 1024 * 1024
+	dataMountpoint = "/data"
 
 	cpuTimeInstrumentPrefix = "system.cpu.time"
 	cpuUtilInstrument       = "system.cpu.utilization"
@@ -511,4 +513,17 @@ func getTraceFiles(taskDir string) ([]string, error) {
 	}
 
 	return fileNames, nil
+}
+
+func dataPartition(ctx context.Context) (string, error) {
+	partitions, err := disk.PartitionsWithContext(ctx, false)
+	if err != nil {
+		return "", errors.Wrap(err, "getting partitions")
+	}
+	for _, partition := range partitions {
+		if partition.Mountpoint == dataMountpoint {
+			return filepath.Base(partition.Device), nil
+		}
+	}
+	return "", nil
 }

@@ -67,6 +67,7 @@ type TaskEndDetail struct {
 	OOMTracker      *OOMTrackerInfo `bson:"oom_killer,omitempty" json:"oom_killer,omitempty"`
 	Modules         ModuleCloneInfo `bson:"modules,omitempty" json:"modules,omitempty"`
 	TraceID         string          `bson:"trace_id,omitempty" json:"trace_id,omitempty"`
+	DataDisk        string          `bson:"data_disk,omitempty" json:"data_disk,omitempty"`
 }
 
 type OOMTrackerInfo struct {

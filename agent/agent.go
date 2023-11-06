@@ -602,6 +602,9 @@ func (a *Agent) runTask(ctx context.Context, tcInput *taskContext, nt *apimodels
 	defer span.End()
 	tc.traceID = span.SpanContext().TraceID().String()
 
+	tc.dataDisk, err = dataPartition(ctx)
+	grip.Error(errors.Wrapf(err, "getting device name for '%s' partition", dataMountpoint))
+
 	shutdown, err := a.startMetrics(tskCtx, tc.taskConfig)
 	grip.Error(errors.Wrap(err, "starting metrics collection"))
 	if shutdown != nil {
@@ -1016,6 +1019,7 @@ func (a *Agent) endTaskResponse(ctx context.Context, tc *taskContext, status str
 	detail := &apimodels.TaskEndDetail{
 		OOMTracker: tc.getOomTrackerInfo(),
 		TraceID:    tc.traceID,
+		DataDisk:   tc.dataDisk,
 	}
 	setEndTaskFailureDetails(tc, detail, status, highestPriorityDescription, userDefinedFailureType)
 	if tc.taskConfig != nil {

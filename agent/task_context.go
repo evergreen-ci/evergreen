@@ -27,6 +27,7 @@ type taskContext struct {
 	timeout                   timeoutInfo
 	oomTracker                jasper.OOMTracker
 	traceID                   string
+	dataDisk                  string
 	unsetFunctionVarsDisabled bool
 	// userEndTaskResp is the end task response that the user can define, which
 	// will overwrite the default end task response.
