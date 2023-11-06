@@ -158,11 +158,13 @@ func TestFindMergedProjectRef(t *testing.T) {
 
 	assert.NoError(t, projectRef.Upsert())
 	mergedProject, err = FindMergedProjectRef("ident", "ident", true)
+	assert.NoError(t, err)
 	assert.Len(t, mergedProject.ParsleyFilters, 1)
 
 	projectRef.ParsleyFilters = nil
 	assert.NoError(t, projectRef.Upsert())
 	mergedProject, err = FindMergedProjectRef("ident", "ident", true)
+	assert.NoError(t, err)
 	assert.Len(t, mergedProject.ParsleyFilters, 1)
 }
 
