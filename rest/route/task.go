@@ -367,8 +367,6 @@ func (rh *generatedTasksGetHandler) Parse(ctx context.Context, r *http.Request) 
 	return nil
 }
 
-// kim: TODO: test in staging
-// kim: TODO: need (sparse?) index for generated_by so it is selective enough
 func (rh *generatedTasksGetHandler) Run(ctx context.Context) gimlet.Responder {
 	taskInfos, err := data.FindGeneratedTasksFromID(rh.taskID)
 	if err != nil {

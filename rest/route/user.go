@@ -288,7 +288,9 @@ func (h *userPermissionsDeleteHandler) Run(ctx context.Context) gimlet.Responder
 // GET /users/permissions
 
 type UsersPermissionsInput struct {
-	ResourceId   string `json:"resource_id"`
+	// The resource ID
+	ResourceId string `json:"resource_id"`
+	// The resource type
 	ResourceType string `json:"resource_type"`
 }
 
@@ -315,11 +317,10 @@ func makeGetAllUsersPermissions(rm gimlet.RoleManager) gimlet.RouteHandler {
 //	@Summary		Get all user permissions for resource
 //	@Description	Retrieves all users with permissions for the resource, and their highest permissions, and returns this as a mapping. This ignores basic permissions that are given to all users.
 //	@Tags			users
-//	@Router			/users/{user_id}/permissions [get]
+//	@Router			/users/permissions [get]
 //	@Security		Api-User || Api-Key
-//	@Param			user_id	path		string	true	"the user's ID"
-//	@Param			all		query		boolean	false	"If included, we will not filter out basic permissions"
-//	@Success		200		{object}	swaggerUsersPermissionsResult
+//	@Param			{object}	body		UsersPermissionsInput	true	"parameters"
+//	@Success		200			{object}	swaggerUsersPermissionResult
 func (h *allUsersPermissionsGetHandler) Factory() gimlet.RouteHandler {
 	return &allUsersPermissionsGetHandler{
 		rm: h.rm,
