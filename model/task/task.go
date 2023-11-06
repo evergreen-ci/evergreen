@@ -1591,9 +1591,7 @@ func (t *Task) GetTestLogs(ctx context.Context, env evergreen.Environment, getOp
 		// it has not run yet. Return an empty iterator.
 		return log.EmptyIterator(), nil
 	}
-	if output == nil {
-		return nil, errors.New("task output is nil")
-	}
+
 	taskID := t.Id
 	if t.Archived {
 		taskID = t.OldTaskId
