@@ -768,7 +768,7 @@ func constructManifest(v *Version, projectRef *ProjectRef, moduleList ModuleList
 func getManifestModule(v *Version, projectRef *ProjectRef, token string, module Module) (*manifest.Module, error) {
 	owner, repo, err := module.GetOwnerAndRepo()
 	if err != nil {
-		return nil, errors.Wrapf(err, "error getting owner and repo for '%s'", module.Name)
+		return nil, errors.Wrapf(err, "getting owner and repo for '%s'", module.Name)
 	}
 
 	if module.Ref == "" {

@@ -462,6 +462,9 @@ type Module struct {
 	AutoUpdate bool   `yaml:"auto_update,omitempty" bson:"auto_update"`
 }
 
+// GetOwnerAndRepo returns the owner and repo for a module
+// If the owner is not set, it will attempt to parse the repo URL to get the owner
+// and repo.
 func (m Module) GetOwnerAndRepo() (string, string, error) {
 	if m.Owner == "" {
 		return thirdparty.ParseGitUrl(m.Repo)

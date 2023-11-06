@@ -728,7 +728,7 @@ func (c *gitFetchProject) fetchModuleSource(ctx context.Context,
 	}
 
 	// If the module repo is using the deprecated ssh cloning method, extract the owner
-	// and repo from the string and save it to ops so that the an https cloning link
+	// and repo from the string and save it to clone options so that the an https cloning link
 	// can be constructed manually by opts.setLocation.
 	// This is a temporary workaround which will be removed once users have switched over.
 	owner, repo, err := module.GetOwnerAndRepo()
@@ -739,7 +739,7 @@ func (c *gitFetchProject) fetchModuleSource(ctx context.Context,
 	opts.owner = owner
 	opts.repo = repo
 	if strings.Contains(module.Repo, "git@github.com:") {
-		logger.Task().Infof("ssh cloning is being deprecated. We are manually converting '%s'"+
+		logger.Task().Warningf("ssh cloning is being deprecated. We are manually converting '%s'"+
 			" to https format. Please update your project config.", module.Repo)
 	}
 

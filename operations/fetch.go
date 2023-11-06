@@ -308,7 +308,7 @@ func cloneSource(task *service.RestTask, project *model.ProjectRef, config *mode
 
 		owner, repo, err := module.GetOwnerAndRepo()
 		if err != nil {
-			return errors.Wrapf(err, "error getting owner and repo for '%s'", module.Name)
+			return errors.Wrapf(err, "getting owner and repo for '%s'", module.Name)
 		}
 		err = clone(cloneOptions{
 			owner:      owner,

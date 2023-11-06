@@ -690,7 +690,7 @@ func (p *moduleParams) addModule(ac *legacyClient, rc *legacyClient) error {
 
 	owner, repo, err := module.GetOwnerAndRepo()
 	if err != nil {
-		return errors.Wrapf(err, "error getting owner and repo for '%s'", module.Name)
+		return errors.Wrapf(err, "getting owner and repo for '%s'", module.Name)
 	}
 
 	patch, err := rc.GetPatch(p.patchID)

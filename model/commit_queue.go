@@ -25,7 +25,7 @@ func GetModulesFromPR(ctx context.Context, githubToken string, modules []commitq
 		}
 		owner, repo, err := module.GetOwnerAndRepo()
 		if err != nil {
-			return nil, nil, errors.Wrapf(err, "error getting owner and repo for '%s'", mod.Module)
+			return nil, nil, errors.Wrapf(err, "getting owner and repo for '%s'", mod.Module)
 		}
 
 		prNum, err := strconv.Atoi(mod.Issue)

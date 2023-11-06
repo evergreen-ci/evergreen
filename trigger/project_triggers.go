@@ -70,7 +70,7 @@ func TriggerDownstreamVersion(ctx context.Context, args ProcessorArgs) (*model.V
 	for _, module := range projectInfo.Project.Modules {
 		owner, repo, err := module.GetOwnerAndRepo()
 		if err != nil {
-			return nil, errors.Wrapf(err, "error getting owner and repo for '%s'", module.Name)
+			return nil, errors.Wrapf(err, "getting owner and repo for '%s'", module.Name)
 		}
 
 		if owner == upstreamProject.Owner && repo == upstreamProject.Repo && module.Branch == upstreamProject.Branch {
