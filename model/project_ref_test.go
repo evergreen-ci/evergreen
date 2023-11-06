@@ -154,6 +154,7 @@ func TestFindMergedProjectRef(t *testing.T) {
 	assert.Equal(t, "random2", mergedProject.TaskAnnotationSettings.FileTicketWebhook.Endpoint)
 	assert.Len(t, mergedProject.ParsleyFilters, 2)
 
+	// Assert that mergeParsleyFilters correctly handles projects with repo filters but not project filters.
 	projectRef.ParsleyFilters = []ParsleyFilter{}
 
 	assert.NoError(t, projectRef.Upsert())

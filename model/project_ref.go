@@ -1037,7 +1037,7 @@ func mergeBranchAndRepoSettings(pRef *ProjectRef, repoRef *RepoRef) (*ProjectRef
 }
 
 func mergeParsleyFilters(pRef *ProjectRef, repoRef *RepoRef) {
-	if repoRef.ParsleyFilters == nil || len(repoRef.ParsleyFilters) == 0 {
+	if len(repoRef.ParsleyFilters) == 0 {
 		return
 	}
 
