@@ -2,6 +2,7 @@ package agent
 
 import (
 	"context"
+	"path/filepath"
 	"sync"
 	"time"
 
@@ -16,6 +17,7 @@ import (
 	"github.com/mongodb/grip"
 	"github.com/mongodb/jasper"
 	"github.com/pkg/errors"
+	"github.com/shirou/gopsutil/v3/disk"
 )
 
 type taskContext struct {
@@ -27,7 +29,7 @@ type taskContext struct {
 	timeout                   timeoutInfo
 	oomTracker                jasper.OOMTracker
 	traceID                   string
-	dataDisk                  string
+	diskDevices               []string
 	unsetFunctionVarsDisabled bool
 	// userEndTaskResp is the end task response that the user can define, which
 	// will overwrite the default end task response.
@@ -518,4 +520,17 @@ func (tc *taskContext) getUserEndTaskResponse() *triggerEndTaskResp {
 	defer tc.RUnlock()
 
 	return tc.userEndTaskResp
+}
+
+func (tc *taskContext) deviceNames(ctx context.Context) error {
+	partitions, err := disk.PartitionsWithContext(ctx, false)
+	if err != nil {
+		return errors.Wrap(err, "getting partitions")
+	}
+	for _, partition := range partitions {
+		if utility.StringSliceContains(tc.taskConfig.Distro.GraphableDisks, partition.Mountpoint) {
+			tc.diskDevices = append(tc.diskDevices, filepath.Base(partition.Device))
+		}
+	}
+	return nil
 }

@@ -456,6 +456,8 @@ func (a *Agent) setupTask(agentCtx, setupCtx context.Context, initialTC *taskCon
 	tc.logger.Execution().Info("Execution logger initialized.")
 	tc.logger.System().Info("System logger initialized.")
 
+	tc.logger.Execution().Error(errors.Wrap(tc.deviceNames(setupCtx), "getting device names for disks"))
+
 	if err := setupCtx.Err(); err != nil {
 		return a.handleSetupError(setupCtx, tc, errors.Wrap(err, "making task config"))
 	}
@@ -601,9 +603,6 @@ func (a *Agent) runTask(ctx context.Context, tcInput *taskContext, nt *apimodels
 	tskCtx, span := a.tracer.Start(tskCtx, fmt.Sprintf("task: '%s'", tc.taskConfig.Task.DisplayName))
 	defer span.End()
 	tc.traceID = span.SpanContext().TraceID().String()
-
-	tc.dataDisk, err = dataPartition(ctx)
-	grip.Error(errors.Wrapf(err, "getting device name for '%s' partition", dataMountpoint))
 
 	shutdown, err := a.startMetrics(tskCtx, tc.taskConfig)
 	grip.Error(errors.Wrap(err, "starting metrics collection"))
@@ -1017,9 +1016,9 @@ func (a *Agent) endTaskResponse(ctx context.Context, tc *taskContext, status str
 	}
 
 	detail := &apimodels.TaskEndDetail{
-		OOMTracker: tc.getOomTrackerInfo(),
-		TraceID:    tc.traceID,
-		DataDisk:   tc.dataDisk,
+		OOMTracker:  tc.getOomTrackerInfo(),
+		TraceID:     tc.traceID,
+		DiskDevices: tc.diskDevices,
 	}
 	setEndTaskFailureDetails(tc, detail, status, highestPriorityDescription, userDefinedFailureType)
 	if tc.taskConfig != nil {

@@ -67,7 +67,7 @@ type TaskEndDetail struct {
 	OOMTracker      *OOMTrackerInfo `bson:"oom_killer,omitempty" json:"oom_killer,omitempty"`
 	Modules         ModuleCloneInfo `bson:"modules,omitempty" json:"modules,omitempty"`
 	TraceID         string          `bson:"trace_id,omitempty" json:"trace_id,omitempty"`
-	DataDisk        string          `bson:"data_disk,omitempty" json:"data_disk,omitempty"`
+	DiskDevices     []string        `bson:"data_disk,omitempty" json:"data_disk,omitempty"`
 }
 
 type OOMTrackerInfo struct {
@@ -339,8 +339,9 @@ type GeneratePollResponse struct {
 // DistroView represents the view of data that the agent uses from the distro
 // it is running on.
 type DistroView struct {
-	CloneMethod         string `json:"clone_method"`
-	DisableShallowClone bool   `json:"disable_shallow_clone"`
+	CloneMethod         string   `json:"clone_method"`
+	DisableShallowClone bool     `json:"disable_shallow_clone"`
+	GraphableDisks      []string `json:"graphableDisks"`
 }
 
 // ExpansionsAndVars represents expansions, project variables, and parameters
