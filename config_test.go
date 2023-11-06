@@ -89,17 +89,17 @@ func TestGetGithubSettings(t *testing.T) {
 	}
 	settings.Expansions[githubAppPrivateKey] = ""
 
-	authFields := settings.getGithubAppAuth()
+	authFields := getGithubAppAuth(settings)
 	assert.Nil(authFields)
 
 	settings.AuthConfig.Github = &GithubAuthConfig{
 		AppId: 1234,
 	}
-	authFields = settings.getGithubAppAuth()
+	authFields = getGithubAppAuth(settings)
 	assert.Nil(authFields)
 
 	settings.Expansions[githubAppPrivateKey] = "key"
-	authFields = settings.getGithubAppAuth()
+	authFields = getGithubAppAuth(settings)
 	assert.NotNil(authFields)
 	assert.Equal(int64(1234), authFields.appId)
 	assert.Equal([]byte("key"), authFields.privateKey)
