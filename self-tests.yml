@@ -629,7 +629,7 @@ tasks:
           aws_key: ${aws_key}
           aws_secret: ${aws_secret}
           local_file: evergreen/docs/swagger.json
-          remote_file: evergreen/${task_id}/swagger.json
+          remote_file: evergreen/${task_id}/${execution}/swagger.json
           bucket: mciuploads
           content_type: application/json
           permissions: public-read
@@ -644,8 +644,7 @@ tasks:
           content_type: application/json
           permissions: public-read
           display_name: swagger.json (latest)
-          # TODO Set this when it's time to merge
-          # patchable: false
+          patchable: false
 
 
 task_groups:
