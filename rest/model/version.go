@@ -10,29 +10,46 @@ import (
 
 // APIVersion is the model to be returned by the API whenever versions are fetched.
 type APIVersion struct {
-	Id                 *string        `json:"version_id"`
-	CreateTime         *time.Time     `json:"create_time"`
-	StartTime          *time.Time     `json:"start_time"`
-	FinishTime         *time.Time     `json:"finish_time"`
-	Revision           *string        `json:"revision"`
-	Order              int            `json:"order"`
-	Project            *string        `json:"project"`
-	ProjectIdentifier  *string        `json:"project_identifier"`
-	Author             *string        `json:"author"`
-	AuthorEmail        *string        `json:"author_email"`
-	Message            *string        `json:"message"`
-	Status             *string        `json:"status"`
-	Repo               *string        `json:"repo"`
-	Branch             *string        `json:"branch"`
-	Parameters         []APIParameter `json:"parameters"`
-	BuildVariantStatus []buildDetail  `json:"build_variants_status"`
-	Builds             []APIBuild     `json:"builds,omitempty"`
-	Requester          *string        `json:"requester"`
-	Errors             []*string      `json:"errors"`
-	Activated          *bool          `json:"activated"`
-	Aborted            *bool          `json:"aborted"`
-	GitTags            []APIGitTag    `json:"git_tags"`
-	Ignored            *bool          `json:"ignored"`
+	Id *string `json:"version_id"`
+	// Time that the version was first created
+	CreateTime *time.Time `json:"create_time"`
+	// Time at which tasks associated with this version started running
+	StartTime *time.Time `json:"start_time"`
+	// Time at which tasks associated with this version finished running
+	FinishTime *time.Time `json:"finish_time"`
+	// The version control identifier
+	Revision          *string `json:"revision"`
+	Order             int     `json:"order"`
+	Project           *string `json:"project"`
+	ProjectIdentifier *string `json:"project_identifier"`
+	// Author of the version
+	Author *string `json:"author"`
+	// Email of the author of the version
+	AuthorEmail *string `json:"author_email"`
+	// Message left with the commit
+	Message *string `json:"message"`
+	// The status of the version (possible values are "created", "started", "success", or "failed")
+	Status *string `json:"status"`
+	// The github repository where the commit was made
+	Repo *string `json:"repo"`
+	// The version control branch where the commit was made
+	Branch     *string        `json:"branch"`
+	Parameters []APIParameter `json:"parameters"`
+	// List of documents of the associated build variant and the build id
+	BuildVariantStatus []buildDetail `json:"build_variants_status"`
+	Builds             []APIBuild    `json:"builds,omitempty"`
+	// Version created by one of "patch_request", "github_pull_request",
+	// "gitter_request" (caused by git commit, aka the repotracker requester),
+	// "trigger_request" (Project Trigger versions) , "merge_test" (commit queue
+	// patches), "ad_hoc" (periodic builds)
+	Requester *string   `json:"requester"`
+	Errors    []*string `json:"errors"`
+	// Will be null for versions created before this field was added.
+	Activated *bool       `json:"activated"`
+	Aborted   *bool       `json:"aborted"`
+	GitTags   []APIGitTag `json:"git_tags"`
+	// Indicates if the version was ignored due to only making changes to ignored files.
+	Ignored *bool `json:"ignored"`
 }
 
 type APIGitTag struct {

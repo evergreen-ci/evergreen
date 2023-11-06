@@ -10,8 +10,8 @@ import (
 	"github.com/evergreen-ci/evergreen/agent/internal/client"
 	agentutil "github.com/evergreen-ci/evergreen/agent/internal/testutil"
 	"github.com/evergreen-ci/evergreen/db"
-	"github.com/evergreen-ci/evergreen/model"
 	"github.com/evergreen-ci/evergreen/model/task"
+	"github.com/evergreen-ci/evergreen/model/testlog"
 	"github.com/evergreen-ci/evergreen/model/testresult"
 	modelutil "github.com/evergreen-ci/evergreen/model/testutil"
 	"github.com/evergreen-ci/evergreen/testutil"
@@ -21,7 +21,7 @@ import (
 )
 
 func resetTasks(t *testing.T) {
-	require.NoError(t, db.ClearCollections(task.Collection, model.TestLogCollection))
+	require.NoError(t, db.ClearCollections(task.Collection, testlog.TestLogCollection))
 }
 
 func TestAttachResults(t *testing.T) {

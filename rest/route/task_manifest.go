@@ -19,6 +19,15 @@ func makeGetManifestHandler() gimlet.RouteHandler {
 	return &getManifestHandler{}
 }
 
+// Factory creates an instance of the handler.
+//
+//	@Summary		Get manifest for task
+//	@Description	Fetch the manifest for a task using the task ID.
+//	@Tags			manifests
+//	@Router			/tasks/{task_id}/manifest [get]
+//	@Security		Api-User || Api-Key
+//	@Param			task_id	path		string	true	"task ID"
+//	@Success		200		{object}	manifest.Manifest
 func (h *getManifestHandler) Factory() gimlet.RouteHandler {
 	return &getManifestHandler{}
 }

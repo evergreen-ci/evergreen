@@ -10,10 +10,10 @@ import (
 	"time"
 
 	"github.com/evergreen-ci/evergreen"
-	"github.com/evergreen-ci/evergreen/model"
 	"github.com/evergreen-ci/evergreen/model/host"
 	"github.com/evergreen-ci/evergreen/model/patch"
 	"github.com/evergreen-ci/evergreen/model/task"
+	"github.com/evergreen-ci/evergreen/model/tasklog"
 	"github.com/evergreen-ci/utility"
 	"github.com/mongodb/amboy"
 	"github.com/mongodb/amboy/queue"
@@ -59,7 +59,7 @@ func insertFileDocsToDB(ctx context.Context, fn string, db *mongo.Database, logs
 	collName := strings.Split(filepath.Base(fn), ".")[0]
 	collection := db.Collection(collName)
 	// task_logg collection belongs to the logs db
-	if collName == model.TaskLogCollection {
+	if collName == tasklog.TaskLogCollection {
 		collection = logsDb.Collection(collName)
 	}
 	switch collName {
@@ -91,8 +91,8 @@ func insertFileDocsToDB(ctx context.Context, fn string, db *mongo.Database, logs
 		bytes := scanner.Bytes()
 		// if the current collection is task_logg, delete from the collection the id that
 		// is about to be inserted so we can avoid dropping the collection completely.
-		if collName == model.TaskLogCollection {
-			taskLog := model.TaskLog{}
+		if collName == tasklog.TaskLogCollection {
+			taskLog := tasklog.TaskLog{}
 			if err = bson.UnmarshalExtJSON(bytes, false, &taskLog); err != nil {
 				return errors.Wrapf(err, "reading document #%d from %s into task log", count, fn)
 			}

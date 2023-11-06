@@ -22,36 +22,66 @@ var (
 
 // APIBuild is the model to be returned by the API whenever builds are fetched.
 type APIBuild struct {
-	Id                  *string        `json:"_id"`
-	ProjectId           *string        `json:"project_id"`
-	ProjectIdentifier   *string        `json:"project_identifier"`
-	CreateTime          *time.Time     `json:"create_time"`
-	StartTime           *time.Time     `json:"start_time"`
-	FinishTime          *time.Time     `json:"finish_time"`
-	Version             *string        `json:"version"`
-	Revision            *string        `json:"git_hash"`
-	BuildVariant        *string        `json:"build_variant"`
-	Status              *string        `json:"status"`
-	Activated           bool           `json:"activated"`
-	ActivatedBy         *string        `json:"activated_by"`
-	ActivatedTime       *time.Time     `json:"activated_time"`
-	RevisionOrderNumber int            `json:"order"`
-	TaskCache           []APITaskCache `json:"task_cache,omitempty"`
+	Id *string `json:"_id"`
+	// The identifier of the project this build represents
+	ProjectId         *string `json:"project_id"`
+	ProjectIdentifier *string `json:"project_identifier"`
+	// Time at which build was created
+	CreateTime *time.Time `json:"create_time"`
+	// Time at which build started running tasks
+	StartTime *time.Time `json:"start_time"`
+	// Time at which build finished running all tasks
+	FinishTime *time.Time `json:"finish_time"`
+	// The version this build is running tasks for
+	Version *string `json:"version"`
+	// Hash of the revision on which this build is running
+	Revision *string `json:"git_hash"`
+	// Build distro and architecture information
+	BuildVariant *string `json:"build_variant"`
+	// The status of the build (possible values are "created", "started", "success", or "failed")
+	Status *string `json:"status"`
+	// Whether this build was manually initiated
+	Activated bool `json:"activated"`
+	// Who initiated the build
+	ActivatedBy *string `json:"activated_by"`
+	// When the build was initiated
+	ActivatedTime *time.Time `json:"activated_time"`
+	// Incrementing counter of project's builds
+	RevisionOrderNumber int `json:"order"`
+	// Contains a subset of information about tasks for the build; this is not
+	// provided/accurate for most routes (get versions for project is an
+	// exception).
+	TaskCache []APITaskCache `json:"task_cache,omitempty"`
 	// Tasks is the build's task cache with just the names
-	Tasks             []string             `json:"tasks"`
-	Tags              []*string            `json:"tags,omitempty"`
-	TimeTaken         APIDuration          `json:"time_taken_ms"`
-	DisplayName       *string              `json:"display_name"`
-	PredictedMakespan APIDuration          `json:"predicted_makespan_ms"`
-	ActualMakespan    APIDuration          `json:"actual_makespan_ms"`
-	Origin            *string              `json:"origin"`
-	StatusCounts      task.TaskStatusCount `json:"status_counts,omitempty"`
-	DefinitionInfo    DefinitionInfo       `json:"definition_info"`
+	Tasks []string `json:"tasks"`
+	// List of tags defined for the build variant, if any
+	Tags []*string `json:"tags,omitempty"`
+	// How long the build took to complete all tasks
+	TimeTaken APIDuration `json:"time_taken_ms"`
+	// Displayed title of the build showing version and variant running
+	DisplayName *string `json:"display_name"`
+	// Predicted makespan by the scheduler prior to execution
+	PredictedMakespan APIDuration `json:"predicted_makespan_ms"`
+	// Actual makespan measured during execution
+	ActualMakespan APIDuration `json:"actual_makespan_ms"`
+	// The source of the patch, a commit or a patch
+	Origin *string `json:"origin"`
+	// Contains aggregated data about the statuses of tasks in this build. The
+	// keys of this object are statuses and the values are the number of tasks
+	// within this build in that status. Note that this field provides data that
+	// you can get yourself by querying tasks for this build.
+	StatusCounts task.TaskStatusCount `json:"status_counts,omitempty"`
+	// Some routes will return information about the variant as defined in the
+	// project. Does not expand expansions; they will be returned as written in
+	// the project yaml (i.e. ${syntax})
+	DefinitionInfo DefinitionInfo `json:"definition_info"`
 }
 
 type DefinitionInfo struct {
+	// The cron defined for the variant, if provided, as defined in the project settings
 	CronBatchTime *string `json:"cron,omitempty"`
-	BatchTime     *int    `json:"batchtime,omitempty"`
+	// The batchtime defined for the variant, if provided, as defined in the project settings
+	BatchTime *int `json:"batchtime,omitempty"`
 }
 
 // PopulateDefinitionInfo adds cron/batchtime for the variant, if applicable. Not supported for matrices.
@@ -152,7 +182,7 @@ type APITaskCache struct {
 	Status          string                  `json:"status"`
 	StatusDetails   apimodels.TaskEndDetail `json:"task_end_details"`
 	StartTime       *time.Time              `json:"start_time"`
-	TimeTaken       time.Duration           `json:"time_taken"`
+	TimeTaken       time.Duration           `json:"time_taken" swaggertype:"primitive,integer"`
 	TimeTakenMS     APIDuration             `json:"time_taken_ms"`
 	Activated       bool                    `json:"activated"`
 	FailedTestNames []string                `json:"failed_test_names,omitempty"`

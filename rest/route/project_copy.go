@@ -29,6 +29,16 @@ func makeCopyProject(env evergreen.Environment) gimlet.RouteHandler {
 	}
 }
 
+// Factory creates an instance of the handler.
+//
+//	@Summary		Copy a project
+//	@Description	Restricted to admins of the original project. Create a new project that is identical to indicated project--this project is initially disabled (PR testing and CommitQueue also initially disabled). The unique identifier is passed to the query parameter new_project and is required.  Project variables, aliases, and subscriptions also copied. Returns the new project (but not variables/aliases/subscriptions).
+//	@Tags			projects
+//	@Router			/projects/{project_id}/copy [post]
+//	@Security		Api-User || Api-Key
+//	@Param			project_id	path		string	true	"the project ID"
+//	@Param			new_project	query		string	true	"the new project ID"
+//	@Success		200			{object}	model.APIProjectRef
 func (p *projectCopyHandler) Factory() gimlet.RouteHandler {
 	return &projectCopyHandler{env: p.env}
 }
@@ -64,16 +74,37 @@ type copyVariablesHandler struct {
 }
 
 type copyVariablesOptions struct {
-	CopyTo         string `json:"copy_to"`
-	DryRun         bool   `json:"dry_run"`
-	IncludePrivate bool   `json:"include_private"`
-	Overwrite      bool   `json:"overwrite"`
+	// Required. ProjectID to copy source_project variables to.
+	CopyTo string `json:"copy_to"`
+	// If set to true, route returns the variables from source_project that will
+	// be copied. (If private, the values will be redacted.) If dry_run is set,
+	// then the route does not complete the copy, but returns OK if no project
+	// variables in the source project will be overwritten (this concerns
+	// [all]{.title-ref} variables in the destination project, but only redacted
+	// variables in the source project). Otherwise, an error is given which
+	// includes the project variable keys that overlap.  if dry_run is not set,
+	// the copy is completed, and variables could be overwritten.
+	DryRun bool `json:"dry_run"`
+	// 	If set to true, private variables will also be copied.
+	IncludePrivate bool `json:"include_private"`
+	// If set to true, will remove variables from the copy_to project that are not in source_project.
+	Overwrite bool `json:"overwrite"`
 }
 
 func makeCopyVariables() gimlet.RouteHandler {
 	return &copyVariablesHandler{}
 }
 
+// Factory creates an instance of the handler.
+//
+//	@Summary		Copy variables to an existing project
+//	@Description	Restricted to admins of the source project/repo and the destination project/repo. Copies variables from projectA to projectB.
+//	@Tags			projects
+//	@Router			/projects/{project_id}/copy/variables [post]
+//	@Security		Api-User || Api-Key
+//	@Param			project_id	path	string					true	"the project ID"
+//	@Param			{object}	body	copyVariablesOptions	false	"parameters"
+//	@Success		200
 func (p *copyVariablesHandler) Factory() gimlet.RouteHandler {
 	return &copyVariablesHandler{}
 }

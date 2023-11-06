@@ -113,7 +113,7 @@ func (s *logServiceV0) getLogChunks(ctx context.Context, logNames []string) (map
 
 	for _, chunks := range logChunks {
 		sort.Slice(chunks, func(i, j int) bool {
-			return chunks[i].start > chunks[j].start
+			return chunks[i].start < chunks[j].start
 		})
 	}
 
