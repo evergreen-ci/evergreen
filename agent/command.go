@@ -123,7 +123,7 @@ func (a *Agent) runCommandsInBlock(ctx context.Context, tc *taskContext, cmdBloc
 			block:       cmdBlock.block,
 			canFailTask: cmdBlock.canFailTask,
 		}
-		if err = a.runCommandOrFunc(blockCtx, tc, commandInfo, cmds, runCmdOpts, blockInfo); err != nil {
+		if err = a.runCommandOrFunc(blockCtx, tc, commandInfo, cmds, runCmdOpts); err != nil {
 			return errors.WithStack(err)
 		}
 	}
@@ -163,7 +163,7 @@ func (a *Agent) blockToLegacyName(block command.BlockType) string {
 // either be a single standalone command or a list of sub-commands in a
 // function.
 func (a *Agent) runCommandOrFunc(ctx context.Context, tc *taskContext, commandInfo model.PluginCommandConf,
-	cmds []command.Command, options runCommandsOptions, blockInfo command.BlockInfo) error {
+	cmds []command.Command, options runCommandsOptions) error {
 
 	var err error
 	var logger client.LoggerProducer
@@ -191,28 +191,17 @@ func (a *Agent) runCommandOrFunc(ctx context.Context, tc *taskContext, commandIn
 		defer commandSetSpan.End()
 	}
 
-	for idx, cmd := range cmds {
+	for _, cmd := range cmds {
 		if err := ctx.Err(); err != nil {
 			return errors.Wrap(err, "canceled while running command list")
 		}
 
-		funcInfo := command.FunctionInfo{
-			Function:     commandInfo.Function,
-			SubCmdNum:    idx + 1,
-			TotalSubCmds: len(cmds),
-		}
-		// Avoid using the command's display name here if the user has
-		// explicitly configured it, because the user-defined display name may
-		// be ambiguous (e.g. if the command runs in multiple different blocks
-		// or functions).
-		displayName := command.GetDefaultDisplayName(cmd.Name(), blockInfo, funcInfo)
-
 		if !commandInfo.RunOnVariant(tc.taskConfig.BuildVariant.Name) {
-			tc.logger.Task().Infof("Skipping command %s on variant %s.", displayName, tc.taskConfig.BuildVariant.Name)
+			tc.logger.Task().Infof("Skipping command %s on variant %s.", cmd.FullDisplayName(), tc.taskConfig.BuildVariant.Name)
 			continue
 		}
 
-		tc.logger.Task().Infof("Running command %s.", displayName)
+		tc.logger.Task().Infof("Running command %s.", cmd.FullDisplayName())
 
 		ctx, commandSpan := a.tracer.Start(ctx, cmd.Name(), trace.WithAttributes(
 			attribute.String(commandNameAttribute, cmd.Name()),
@@ -223,7 +212,7 @@ func (a *Agent) runCommandOrFunc(ctx context.Context, tc *taskContext, commandIn
 
 		cmd.SetJasperManager(a.jasper)
 
-		if err := a.runCommand(ctx, tc, logger, commandInfo, cmd, displayName, options); err != nil {
+		if err := a.runCommand(ctx, tc, logger, commandInfo, cmd, options); err != nil {
 			commandSpan.SetStatus(codes.Error, "running command")
 			commandSpan.RecordError(err, trace.WithAttributes(tc.taskConfig.TaskAttributes()...))
 			commandSpan.End()
@@ -237,7 +226,7 @@ func (a *Agent) runCommandOrFunc(ctx context.Context, tc *taskContext, commandIn
 // runCommand runs a single command, which is either a standalone command or a
 // single sub-command within a function.
 func (a *Agent) runCommand(ctx context.Context, tc *taskContext, logger client.LoggerProducer, commandInfo model.PluginCommandConf,
-	cmd command.Command, displayName string, options runCommandsOptions) error {
+	cmd command.Command, options runCommandsOptions) error {
 	prevExp := map[string]string{}
 	for key, val := range commandInfo.Vars {
 		prevVal := tc.taskConfig.Expansions.Get(key)
@@ -277,7 +266,7 @@ func (a *Agent) runCommand(ctx context.Context, tc *taskContext, logger client.L
 
 	start := time.Now()
 	defer func() {
-		tc.logger.Task().Infof("Finished command %s in %s.", displayName, time.Since(start).String())
+		tc.logger.Task().Infof("Finished command %s in %s.", cmd.FullDisplayName(), time.Since(start).String())
 	}()
 
 	// This method must return soon after the context errors (e.g. due to
@@ -290,7 +279,7 @@ func (a *Agent) runCommand(ctx context.Context, tc *taskContext, logger client.L
 	cmdChan := make(chan error, 1)
 	go func() {
 		defer func() {
-			op := fmt.Sprintf("running command %s", displayName)
+			op := fmt.Sprintf("running command %s", cmd.FullDisplayName())
 			pErr := recovery.HandlePanicWithError(recover(), nil, op)
 			if pErr == nil {
 				return
@@ -306,7 +295,7 @@ func (a *Agent) runCommand(ctx context.Context, tc *taskContext, logger client.L
 	select {
 	case err := <-cmdChan:
 		if err != nil {
-			tc.logger.Task().Errorf("Command %s failed: %s.", displayName, err)
+			tc.logger.Task().Errorf("Command %s failed: %s.", cmd.FullDisplayName(), err)
 			if options.canFailTask ||
 				(cmd.Name() == "git.get_project" && tc.taskConfig.Task.Requester == evergreen.MergeTestRequester) {
 				// any git.get_project in the commit queue should fail
@@ -324,7 +313,7 @@ func (a *Agent) runCommand(ctx context.Context, tc *taskContext, logger client.L
 		case <-cmdChan:
 		}
 
-		tc.logger.Task().Errorf("Command %s stopped early: %s.", displayName, ctx.Err())
+		tc.logger.Task().Errorf("Command %s stopped early: %s.", cmd.FullDisplayName(), ctx.Err())
 		return errors.Wrap(ctx.Err(), "command stopped early")
 	}
 
