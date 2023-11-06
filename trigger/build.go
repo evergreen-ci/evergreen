@@ -62,13 +62,13 @@ func (t *buildTriggers) Fetch(ctx context.Context, e *event.EventLogEntry) error
 
 	var tasks []task.Task
 	if e.EventType == event.BuildGithubCheckFinished {
-		query := db.Query(task.ByBuildIdAndGithubChecks(t.build.Id)).WithFields(task.StatusKey, task.DependsOnKey)
+		query := db.Query(task.ByBuildIdAndGithubChecks(t.build.Id))
 		tasks, err = task.FindAll(query)
 		if err != nil {
 			return errors.Wrapf(err, "finding tasks in build '%s' for GitHub check", t.build.Id)
 		}
 	} else {
-		query := db.Query(task.ByBuildId(t.build.Id)).WithFields(task.StatusKey, task.DependsOnKey)
+		query := db.Query(task.ByBuildId(t.build.Id))
 		tasks, err = task.FindAll(query)
 		if err != nil {
 			return errors.Wrapf(err, "finding tasks in build '%s'", t.build.Id)
