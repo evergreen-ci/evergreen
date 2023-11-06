@@ -49,10 +49,9 @@ func makeEventNotifierJob() *eventNotifierJob {
 	return j
 }
 
-func NewEventNotifierJob(env evergreen.Environment, q amboy.Queue, eventID, ts string) amboy.Job {
+func NewEventNotifierJob(env evergreen.Environment, eventID, ts string) amboy.Job {
 	j := makeEventNotifierJob()
 	j.env = env
-	j.q = q
 
 	j.SetID(fmt.Sprintf("%s.%s.%s", eventNotifierName, eventID, ts))
 	j.EventID = eventID
@@ -120,7 +119,10 @@ func (j *eventNotifierJob) processEvent(ctx context.Context, e *event.EventLogEn
 		catcher.AddWhen(shouldLogError, errors.Wrap(err, "bulk inserting notifications"))
 	}
 
-	catcher.Add(dispatchNotifications(ctx, n, j.q, j.flags))
+	jobs, err := notificationJobs(ctx, n, j.flags, utility.RoundPartOfMinute(0))
+	// Continue on error even if some jobs couldn't be marked disabled.
+	catcher.Add(errors.Wrap(err, "getting notification jobs"))
+	catcher.Add(errors.Wrap(j.q.PutMany(ctx, jobs), "enqueueing notification jobs"))
 
 	endTime := time.Now()
 	totalDuration := endTime.Sub(startTime)
@@ -211,20 +213,17 @@ func (j *eventNotifierJob) processEventTriggers(ctx context.Context, e *event.Ev
 	return n, err
 }
 
-func dispatchNotifications(ctx context.Context, notifications []notification.Notification, q amboy.Queue, flags *evergreen.ServiceFlags) error {
+func notificationJobs(ctx context.Context, notifications []notification.Notification, flags *evergreen.ServiceFlags, ts time.Time) ([]amboy.Job, error) {
 	catcher := grip.NewBasicCatcher()
+	var jobs []amboy.Job
 	for i := range notifications {
 		if notificationIsEnabled(flags, &notifications[i]) {
-			if err := q.Put(ctx, NewEventSendJob(notifications[i].ID, utility.RoundPartOfMinute(1).Format(TSFormat))); !amboy.IsDuplicateJobError(err) {
-				catcher.Wrapf(err, "enqueueing event send job for notification '%s'", notifications[i].ID)
-			}
+			jobs = append(jobs, NewEventSendJob(notifications[i].ID, ts.Format(TSFormat)))
 		} else {
-			err := errors.New("notifications are disabled")
-			catcher.Wrapf(notifications[i].MarkError(err), "setting error for notification '%s'", notifications[i].ID)
+			catcher.Wrapf(notifications[i].MarkError(errors.New("notification is disabled")), "setting error for notification '%s'", notifications[i].ID)
 		}
 	}
-
-	return catcher.Resolve()
+	return jobs, catcher.Resolve()
 }
 
 func notificationIsEnabled(flags *evergreen.ServiceFlags, n *notification.Notification) bool {
