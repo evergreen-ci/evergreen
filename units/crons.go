@@ -1227,7 +1227,8 @@ func PopulatePodResourceCleanupJobs() amboy.QueueOperation {
 	}
 }
 
-func populateQueueGroup(appCtx, ctx context.Context, env evergreen.Environment, queueGroupName string, factory cronJobFactory, ts time.Time) error {
+func populateQueueGroup(ctx context.Context, env evergreen.Environment, queueGroupName string, factory cronJobFactory, ts time.Time) error {
+	appCtx, _ := env.Context()
 	queueGroup, err := env.RemoteQueueGroup().Get(appCtx, queueGroupName)
 	if err != nil {
 		return errors.Wrapf(err, "getting '%s' queue", queueGroupName)

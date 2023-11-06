@@ -79,10 +79,9 @@ func (j *cronsRemoteMinuteJob) Run(ctx context.Context) {
 	catcher.Add(enqueueHostSetupJobs(ctx, j.env.RemoteQueue(), ts))
 
 	// Create dedicated queues for host creation, event notifier, and commit queue jobs.
-	appCtx, _ := j.env.Context()
-	catcher.Add(populateQueueGroup(appCtx, ctx, j.env, createHostQueueGroup, hostCreationJobs, ts))
-	catcher.Add(populateQueueGroup(appCtx, ctx, j.env, commitQueueQueueGroup, commitQueueJobs, ts))
-	catcher.Add(populateQueueGroup(appCtx, ctx, j.env, eventNotifierQueueGroup, eventNotifierJobs, ts))
+	catcher.Add(populateQueueGroup(ctx, j.env, createHostQueueGroup, hostCreationJobs, ts))
+	catcher.Add(populateQueueGroup(ctx, j.env, commitQueueQueueGroup, commitQueueJobs, ts))
+	catcher.Add(populateQueueGroup(ctx, j.env, eventNotifierQueueGroup, eventNotifierJobs, ts))
 
 	// Add generate tasks fallbacks to their versions' queues.
 	catcher.Add(enqueueFallbackGenerateTasksJobs(ctx, j.env, ts))
