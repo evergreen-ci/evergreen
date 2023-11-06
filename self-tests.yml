@@ -612,7 +612,6 @@ tasks:
           RUN_TEST: "TestEnvironmentSuite/TestInitDB"
           MONGO_CREDS_FILE: testdata/test_auth.yml
   - name: generate-api-docs
-    patchable: false
     commands: 
       - func: get-project-and-modules
       - command: shell.exec
@@ -630,7 +629,7 @@ tasks:
           aws_key: ${aws_key}
           aws_secret: ${aws_secret}
           local_file: evergreen/docs/swagger.json
-          remote_file: evergreen/${task_id}/swagger.json
+          remote_file: evergreen/${task_id}/${execution}/swagger.json
           bucket: mciuploads
           content_type: application/json
           permissions: public-read
@@ -645,6 +644,7 @@ tasks:
           content_type: application/json
           permissions: public-read
           display_name: swagger.json (latest)
+          patchable: false
 
 
 task_groups:
