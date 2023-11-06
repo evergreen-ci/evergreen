@@ -269,7 +269,7 @@ func parentDecommissionJobs(ctx context.Context, ts time.Time) ([]amboy.Job, err
 	}
 	containerPools := settings.ContainerPools.Pools
 
-	// Create ParentDecommissionJob for each distro
+	// Create a ParentDecommissionJob for each distro.
 	var jobs []amboy.Job
 	for _, c := range containerPools {
 		jobs = append(jobs, NewParentDecommissionJob(ts.Format(TSFormat), c.Distro, c.MaxContainers))
@@ -285,7 +285,7 @@ func containerStateJobs(ctx context.Context, ts time.Time) ([]amboy.Job, error) 
 	}
 
 	var jobs []amboy.Job
-	// create job to check container state consistency for each parent
+	// Create a job to check container state consistency for each parent.
 	for _, p := range parents {
 		jobs = append(jobs, NewHostMonitorContainerStateJob(nil, &p, evergreen.ProviderNameDocker, ts.Format(TSFormat)))
 	}
@@ -299,7 +299,7 @@ func oldestImageRemovalJobs(ctx context.Context, ts time.Time) ([]amboy.Job, err
 	}
 
 	var jobs []amboy.Job
-	// Create oldestImageJob when images take up too much disk space
+	// Create an oldestImageJob when images take up too much disk space.
 	for _, p := range parents {
 		jobs = append(jobs, NewOldestImageRemovalJob(&p, evergreen.ProviderNameDocker, ts.Format(TSFormat)))
 	}
