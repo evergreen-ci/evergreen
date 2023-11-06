@@ -84,6 +84,7 @@ func insertFileDocsToDB(ctx context.Context, fn string, db *mongo.Database) erro
 	for scanner.Scan() {
 		count++
 		bytes := scanner.Bytes()
+
 		var doc bson.D
 		if err := bson.UnmarshalExtJSON(bytes, false, &doc); err != nil {
 			return errors.Wrapf(err, "reading document #%d from file '%s'", count, fn)

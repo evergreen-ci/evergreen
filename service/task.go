@@ -17,8 +17,10 @@ import (
 	"github.com/evergreen-ci/evergreen/model/distro"
 	"github.com/evergreen-ci/evergreen/model/event"
 	"github.com/evergreen-ci/evergreen/model/host"
+	"github.com/evergreen-ci/evergreen/model/log"
 	"github.com/evergreen-ci/evergreen/model/task"
 	"github.com/evergreen-ci/evergreen/model/testresult"
+	"github.com/evergreen-ci/evergreen/model/user"
 	"github.com/evergreen-ci/evergreen/plugin"
 	"github.com/evergreen-ci/evergreen/taskoutput"
 	"github.com/evergreen-ci/gimlet"
@@ -587,15 +589,35 @@ func (uis *UIServer) taskLogRaw(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	data := logData{
-		Data: apimodels.StreamFromLogIterator(it),
-		User: gimlet.GetUser(r.Context()),
-	}
 	if r.FormValue("text") == "true" || r.Header.Get("Content-Type") == "text/plain" {
-		uis.renderText.Stream(w, http.StatusOK, data, "base", "task_log_raw.html")
+		gimlet.WriteText(w, log.NewLogIteratorReader(it, log.LogIteratorReaderOptions{
+			PrintTime:     true,
+			TimeZone:      getUserTimeZone(MustHaveUser(r)),
+			PrintPriority: r.FormValue("priority") == "true",
+		}))
 	} else {
+		data := logData{
+			Data: apimodels.StreamFromLogIterator(it),
+			User: gimlet.GetUser(r.Context()),
+		}
 		uis.render.Stream(w, http.StatusOK, data, "base", "task_log.html")
 	}
+}
+
+// getUserTimeZone returns the time zone specified by the user settings.
+// Defaults to `America/New_York`.
+func getUserTimeZone(u *user.DBUser) *time.Location {
+	tz := u.Settings.Timezone
+	if tz == "" {
+		tz = "America/New_York"
+	}
+
+	loc, err := time.LoadLocation(tz)
+	if err != nil {
+		return time.UTC
+	}
+
+	return loc
 }
 
 func getTaskLogTypeMapping(prefix string) taskoutput.TaskLogType {
@@ -850,13 +872,17 @@ func (uis *UIServer) testLog(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	data := logData{
-		Data: apimodels.StreamFromLogIterator(it),
-		User: gimlet.GetUser(r.Context()),
-	}
 	if vals.Get("text") == "true" || r.Header.Get("Content-Type") == "text/plain" {
-		uis.renderText.Stream(w, http.StatusOK, data, "base", "task_log_raw.html")
+		gimlet.WriteText(w, log.NewLogIteratorReader(it, log.LogIteratorReaderOptions{
+			PrintTime:     true,
+			PrintPriority: r.FormValue("priority") == "true",
+			TimeZone:      getUserTimeZone(MustHaveUser(r)),
+		}))
 	} else {
+		data := logData{
+			Data: apimodels.StreamFromLogIterator(it),
+			User: gimlet.GetUser(r.Context()),
+		}
 		uis.render.Stream(w, http.StatusOK, data, "base", "task_log.html")
 	}
 }

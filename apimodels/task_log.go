@@ -60,6 +60,19 @@ func GetSeverityMapping(s level.Priority) string {
 	}
 }
 
+func getPriority(prefix string) level.Priority {
+	switch prefix {
+	case LogErrorPrefix:
+		return level.Error
+	case LogWarnPrefix:
+		return level.Warning
+	case LogDebugPrefix:
+		return level.Debug
+	default:
+		return level.Info
+	}
+}
+
 // ReadLogToSlice returns a slice of log message pointers from a log iterator.
 func ReadLogToSlice(it log.LogIterator) ([]*LogMessage, error) {
 	var lines []*LogMessage
@@ -68,7 +81,7 @@ func ReadLogToSlice(it log.LogIterator) ([]*LogMessage, error) {
 		lines = append(lines, &LogMessage{
 			Severity:  GetSeverityMapping(item.Priority),
 			Message:   item.Data,
-			Timestamp: time.Unix(0, item.Timestamp).UTC(),
+			Timestamp: time.Unix(0, item.Timestamp),
 		})
 	}
 	if err := it.Err(); err != nil {
@@ -79,8 +92,8 @@ func ReadLogToSlice(it log.LogIterator) ([]*LogMessage, error) {
 }
 
 // StreamFromLogIterator streams log lines from the given iterator to the
-// returned log message channel. It is the responsibility to close the log
-// iterator.
+// returned log message channel. It is the responsibility of the caller to
+// close the log iterator.
 func StreamFromLogIterator(it log.LogIterator) chan LogMessage {
 	lines := make(chan LogMessage)
 	go func() {
@@ -92,7 +105,7 @@ func StreamFromLogIterator(it log.LogIterator) chan LogMessage {
 			lines <- LogMessage{
 				Severity:  GetSeverityMapping(item.Priority),
 				Message:   item.Data,
-				Timestamp: time.Unix(0, item.Timestamp).UTC(),
+				Timestamp: time.Unix(0, item.Timestamp),
 			}
 		}
 
@@ -104,4 +117,49 @@ func StreamFromLogIterator(it log.LogIterator) chan LogMessage {
 	}()
 
 	return lines
+}
+
+type logMessageIterator struct {
+	i         int
+	messages  []LogMessage
+	item      log.LogLine
+	exhausted bool
+	closed    bool
+}
+
+// NewLogMessageIterator returns a new log iterator for the give log messsages.
+// TODO (DEVPROD-57): Remove this once support for DB task logs is removed.
+func NewLogMessageIterator(messages []LogMessage) *logMessageIterator {
+	return &logMessageIterator{messages: messages}
+}
+
+func (it *logMessageIterator) Next() bool {
+	if it.closed || it.exhausted {
+		return false
+	}
+	if it.i >= len(it.messages) {
+		it.exhausted = true
+		return false
+	}
+
+	it.item = log.LogLine{
+		Priority:  getPriority(it.messages[it.i].Severity),
+		Timestamp: it.messages[it.i].Timestamp.UnixNano(),
+		Data:      it.messages[it.i].Message,
+	}
+	it.i++
+
+	return true
+}
+
+func (it *logMessageIterator) Item() log.LogLine { return it.item }
+
+func (it *logMessageIterator) Exhausted() bool { return it.exhausted }
+
+func (it *logMessageIterator) Err() error { return nil }
+
+func (it *logMessageIterator) Close() error {
+	it.closed = true
+
+	return nil
 }

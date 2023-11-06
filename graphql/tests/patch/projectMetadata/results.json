@@ -1,0 +1,19 @@
+{
+  "tests": [
+    {
+      "query_file": "project_metadata.graphql",
+      "result": {
+        "data": {
+          "patch": {
+            "id": "5e4ff3abe3c3317e352062e4",
+            "projectMetadata": {
+              "owner": "evergreen-ci",
+              "repo": "evergreen",
+              "identifier": "evergreenIdentifier"
+            }
+          }
+        }
+      }
+    }
+  ]
+}

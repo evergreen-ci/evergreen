@@ -39,6 +39,10 @@ import (
 
 // This file should consist only of private utility functions that are specific to graphql resolver use cases.
 
+const (
+	minRevisionLength = 7
+)
+
 // getGroupedFiles returns the files of a Task inside a GroupedFile struct
 func getGroupedFiles(ctx context.Context, name string, taskID string, execution int) (*GroupedFiles, error) {
 	taskFiles, err := artifact.GetAllArtifacts([]artifact.TaskIDAndExecution{{TaskID: taskID, Execution: execution}})
@@ -924,7 +928,7 @@ func getProjectMetadata(ctx context.Context, projectId *string, patchId *string)
 func getTaskLogs(ctx context.Context, obj *TaskLogs, logType taskoutput.TaskLogType) ([]*apimodels.LogMessage, error) {
 	dbTask, err := task.FindOneIdAndExecution(obj.TaskID, obj.Execution)
 	if err != nil {
-		return nil, InternalServerError.Send(ctx, fmt.Sprintf("Finding task %s: %s", obj.TaskID, err.Error()))
+		return nil, InternalServerError.Send(ctx, fmt.Sprintf("Finding task '%s': %s", obj.TaskID, err.Error()))
 	}
 	if evergreen.IsUnstartedTaskStatus(dbTask.Status) {
 		return []*apimodels.LogMessage{}, nil

@@ -11,9 +11,9 @@ import (
 
 // RepoTrackerConfig holds settings for polling project repositories.
 type RepoTrackerConfig struct {
-	NumNewRepoRevisionsToFetch int `bson:"revs_to_fetch" json:"revs_to_fetch" yaml:"numnewreporevisionstofetch"`
-	MaxRepoRevisionsToSearch   int `bson:"max_revs_to_search" json:"max_revs_to_search" yaml:"maxreporevisionstosearch"`
-	MaxConcurrentRequests      int `bson:"max_con_requests" json:"max_con_requests" yaml:"maxconcurrentrequests"`
+	NumNewRepoRevisionsToFetch int `bson:"revs_to_fetch" json:"revs_to_fetch" yaml:"revs_to_fetch"`
+	MaxRepoRevisionsToSearch   int `bson:"max_revs_to_search" json:"max_revs_to_search" yaml:"max_revs_to_search"`
+	MaxConcurrentRequests      int `bson:"max_con_requests" json:"max_con_requests" yaml:"max_concurrent_requests"`
 }
 
 func (c *RepoTrackerConfig) SectionId() string { return "repotracker" }

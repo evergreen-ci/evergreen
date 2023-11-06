@@ -1,0 +1,46 @@
+{
+  "tasks": [
+    {
+      "_id": "1",
+      "version": "5e4ff3abe3c3317e352062e4",
+      "display_task_id": ""
+    },
+    {
+      "_id": "2",
+      "version": "5e4ff3abe3c3317e352062e4",
+      "display_task_id": ""
+    },
+    {
+      "_id": "3",
+      "version": "5e4ff3abe3c3317e352062e4",
+      "display_task_id": ""
+    },
+    {
+      "_id": "4",
+      "version": "5e4ff3abe3c3317e352062e4",
+      "display_task_id": ""
+    },
+    {
+      "_id": "5",
+      "version": "5e4ff3abe3c3317e352062e4",
+      "display_task_id": ""
+    },
+    {
+      "_id": "6",
+      "version": "5e4ff3abe3c3317e352062e4",
+      "activated_time": { "$date": "1970-01-01T00:00:00Z" },
+      "display_task_id": ""
+    }
+  ],
+  "patches": [
+    {
+      "_id": {
+        "$oid": "5e4ff3abe3c3317e352062e4"
+      },
+      "branch": "evergreen",
+      "version": "5e4ff3abe3c3317e352062e4",
+      "activated": true,
+      "githash": "5e823e1f28baeaa22ae00823d83e03082cd148ab"
+    }
+  ]
+}

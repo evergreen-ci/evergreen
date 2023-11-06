@@ -1,0 +1,32 @@
+{
+  "tests": [
+    {
+      "query_file": "vars.graphql",
+      "result": {
+        "data": {
+          "projectSettings": {
+            "vars": {
+              "vars": { "admintest": "woo", "hello": "", "foo": "bar" },
+              "privateVars": ["hello"],
+              "adminOnlyVars": ["admintest"]
+            }
+          }
+        }
+      }
+    },
+    {
+      "query_file": "admin_private_vars.graphql",
+      "result": {
+        "data": {
+          "projectSettings": {
+            "vars": {
+              "vars": { "both": "" },
+              "privateVars": ["both"],
+              "adminOnlyVars": ["both"]
+            }
+          }
+        }
+      }
+    }
+  ]
+}

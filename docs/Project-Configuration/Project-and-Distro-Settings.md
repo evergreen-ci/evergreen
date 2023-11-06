@@ -242,9 +242,14 @@ section of the project configuration page. Click "Add Project Trigger".
 Options:
 
 -   Project: The upstream project.
+-   Level: Accepted values are task, build, and push. Task and build levels will trigger
+    based on the completion of either a task or a build in the upstream project. Push level triggers do 
+    not require any upstream build or task to run, but instead trigger a downstream version once
+    a commit is pushed to the upstream project.
+-   Status: Only applicable to build and task level triggers. Specify which status of the upstream 
+    build or task should trigger a downstream version.
 -   Date cutoff: Do not trigger a downstream build if a user manually
     schedules a build older than this number of days.
--   Level: Trigger based on either a task or a build completing.
 -   Variant and task regexes: Trigger based on these variants (if
     build-level) or variants and tasks (if task-level) completing.
 -   Definition file: The path to the downstream project's config file.

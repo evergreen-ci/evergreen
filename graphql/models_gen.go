@@ -175,6 +175,7 @@ type MainlineCommitsOptions struct {
 	Limit             *int     `json:"limit,omitempty"`
 	ProjectIdentifier string   `json:"projectIdentifier"`
 	Requesters        []string `json:"requesters,omitempty"`
+	Revision          *string  `json:"revision,omitempty"`
 	ShouldCollapse    *bool    `json:"shouldCollapse,omitempty"`
 	SkipOrderNumber   *int     `json:"skipOrderNumber,omitempty"`
 }
@@ -240,6 +241,7 @@ type PatchesInput struct {
 	IncludeCommitQueue *bool    `json:"includeCommitQueue,omitempty"`
 	Limit              int      `json:"limit"`
 	OnlyCommitQueue    *bool    `json:"onlyCommitQueue,omitempty"`
+	IncludeHidden      *bool    `json:"includeHidden,omitempty"`
 	Page               int      `json:"page"`
 	PatchName          string   `json:"patchName"`
 	Statuses           []string `json:"statuses"`

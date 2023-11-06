@@ -1,0 +1,17 @@
+{
+  user {
+    patches(
+      patchesInput: {
+        patchName: "22"
+        includeCommitQueue: true
+        includeHidden: true
+      }
+    ) {
+      patches {
+        id
+        description
+      }
+      filteredPatchCount
+    }
+  }
+}

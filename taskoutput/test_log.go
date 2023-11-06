@@ -86,7 +86,7 @@ func (o TestLogOutput) getBuildloggerLogs(ctx context.Context, env evergreen.Env
 		return nil, errors.New("must request exactly one test log from Cedar Buildlogger")
 	}
 
-	opts := apimodels.GetBuildloggerLogsOptions{
+	return apimodels.GetBuildloggerLogs(ctx, apimodels.GetBuildloggerLogsOptions{
 		BaseURL:   env.Settings().Cedar.BaseURL,
 		TaskID:    taskOpts.TaskID,
 		Execution: utility.ToIntPtr(taskOpts.Execution),
@@ -95,7 +95,5 @@ func (o TestLogOutput) getBuildloggerLogs(ctx context.Context, env evergreen.Env
 		End:       getOpts.End,
 		Limit:     getOpts.LineLimit,
 		Tail:      getOpts.TailN,
-	}
-
-	return apimodels.GetBuildloggerLogs(ctx, opts)
+	})
 }

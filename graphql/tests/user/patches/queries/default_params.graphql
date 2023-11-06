@@ -1,0 +1,10 @@
+{
+  user(userId: "testuser") {
+    patches(patchesInput: { includeHidden: true }) {
+      patches {
+        id
+      }
+      filteredPatchCount
+    }
+  }
+}

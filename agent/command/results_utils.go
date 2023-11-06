@@ -8,8 +8,8 @@ import (
 	"github.com/evergreen-ci/evergreen/agent/internal"
 	"github.com/evergreen-ci/evergreen/agent/internal/client"
 	"github.com/evergreen-ci/evergreen/apimodels"
-	"github.com/evergreen-ci/evergreen/model"
 	"github.com/evergreen-ci/evergreen/model/task"
+	"github.com/evergreen-ci/evergreen/model/testlog"
 	"github.com/evergreen-ci/evergreen/model/testresult"
 	"github.com/evergreen-ci/timber/buildlogger"
 	"github.com/evergreen-ci/timber/testresults"
@@ -39,13 +39,13 @@ func sendTestResults(ctx context.Context, comm client.Communicator, logger clien
 }
 
 // sendTestLog sends test logs to the backend logging service.
-func sendTestLog(ctx context.Context, comm client.Communicator, conf *internal.TaskConfig, log *model.TestLog) error {
+func sendTestLog(ctx context.Context, comm client.Communicator, conf *internal.TaskConfig, log *testlog.TestLog) error {
 	return errors.Wrap(sendTestLogToCedar(ctx, &conf.Task, comm, log), "sending test logs to Cedar")
 }
 
 // sendTestLogsAndResults sends the test logs and test results to backend
 // logging results services.
-func sendTestLogsAndResults(ctx context.Context, comm client.Communicator, logger client.LoggerProducer, conf *internal.TaskConfig, logs []model.TestLog, results [][]testresult.TestResult) error {
+func sendTestLogsAndResults(ctx context.Context, comm client.Communicator, logger client.LoggerProducer, conf *internal.TaskConfig, logs []testlog.TestLog, results [][]testresult.TestResult) error {
 	logger.Task().Info("Posting test logs...")
 	var allResults []testresult.TestResult
 	for idx, log := range logs {
@@ -104,7 +104,7 @@ func sendTestResultsToCedar(ctx context.Context, conf *internal.TaskConfig, td c
 	return nil
 }
 
-func sendTestLogToCedar(ctx context.Context, t *task.Task, comm client.Communicator, log *model.TestLog) error {
+func sendTestLogToCedar(ctx context.Context, t *task.Task, comm client.Communicator, log *testlog.TestLog) error {
 	conn, err := comm.GetCedarGRPCConn(ctx)
 	if err != nil {
 		return errors.Wrapf(err, "getting the Cedar gRPC connection for test '%s'", log.Name)

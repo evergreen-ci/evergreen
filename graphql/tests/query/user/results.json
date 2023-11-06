@@ -1,0 +1,42 @@
+{
+  "tests": [
+    {
+      "query_file": "user.graphql",
+      "result": {
+        "data": {
+          "user": {
+            "displayName": "testuser",
+            "userId": "testuser",
+            "emailAddress": "testuser@mongodb.com"
+          }
+        }
+      }
+    },
+    {
+      "query_file": "user_with_param.graphql",
+      "result": {
+        "data": {
+          "user": {
+            "displayName": "Bob Smith",
+            "userId": "bob.smith"
+          }
+        }
+      }
+    },
+    {
+      "query_file": "user_error.graphql",
+      "result": {
+        "errors": [
+          {
+            "message": "Could not find user from user ID",
+            "path": ["user"],
+            "extensions": {
+              "code": "RESOURCE_NOT_FOUND"
+            }
+          }
+        ],
+        "data": null
+      }
+    }
+  ]
+}

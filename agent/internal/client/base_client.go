@@ -19,6 +19,7 @@ import (
 	"github.com/evergreen-ci/evergreen/model/manifest"
 	patchmodel "github.com/evergreen-ci/evergreen/model/patch"
 	"github.com/evergreen-ci/evergreen/model/task"
+	"github.com/evergreen-ci/evergreen/model/testlog"
 	restmodel "github.com/evergreen-ci/evergreen/rest/model"
 	"github.com/evergreen-ci/evergreen/taskoutput"
 	"github.com/evergreen-ci/evergreen/util"
@@ -202,7 +203,7 @@ func (c *baseCommunicator) GetTask(ctx context.Context, taskData TaskData) (*tas
 func (c *baseCommunicator) GetDisplayTaskInfoFromExecution(ctx context.Context, td TaskData) (*apimodels.DisplayTaskInfo, error) {
 	info := requestInfo{
 		method:   http.MethodGet,
-		path:     fmt.Sprintf("tasks/%s/display_task", td.ID),
+		path:     fmt.Sprintf("task/%s/display_task", td.ID),
 		taskData: &td,
 	}
 	resp, err := c.retryRequest(ctx, info, nil)
@@ -650,7 +651,7 @@ func (c *baseCommunicator) GetPatchFile(ctx context.Context, taskData TaskData, 
 
 // SendTestLog is used by the attach plugin to add to the test_logs
 // collection for log data associated with a test.
-func (c *baseCommunicator) SendTestLog(ctx context.Context, taskData TaskData, log *model.TestLog) (string, error) {
+func (c *baseCommunicator) SendTestLog(ctx context.Context, taskData TaskData, log *testlog.TestLog) (string, error) {
 	if log == nil {
 		return "", nil
 	}
@@ -682,7 +683,7 @@ func (c *baseCommunicator) SetResultsInfo(ctx context.Context, taskData TaskData
 		method:   http.MethodPost,
 		taskData: &taskData,
 	}
-	info.path = fmt.Sprintf("tasks/%s/set_results_info", taskData.ID)
+	info.path = fmt.Sprintf("task/%s/set_results_info", taskData.ID)
 	resp, err := c.retryRequest(ctx, info, &apimodels.TaskTestResultsInfo{Service: service, Failed: failed})
 	if err != nil {
 		return util.RespErrorf(resp, errors.Wrap(err, "setting results info").Error())
@@ -815,7 +816,7 @@ func (c *baseCommunicator) GenerateTasks(ctx context.Context, td TaskData, jsonB
 		method:   http.MethodPost,
 		taskData: &td,
 	}
-	info.path = fmt.Sprintf("tasks/%s/generate", td.ID)
+	info.path = fmt.Sprintf("task/%s/generate", td.ID)
 	resp, err := c.retryRequest(ctx, info, jsonBytes)
 	if err != nil {
 		return util.RespErrorf(resp, errors.Wrap(err, "sending generate.tasks request").Error())
@@ -829,7 +830,7 @@ func (c *baseCommunicator) GenerateTasksPoll(ctx context.Context, td TaskData) (
 		method:   http.MethodGet,
 		taskData: &td,
 	}
-	info.path = fmt.Sprintf("tasks/%s/generate", td.ID)
+	info.path = fmt.Sprintf("task/%s/generate", td.ID)
 	resp, err := c.retryRequest(ctx, info, nil)
 	if err != nil {
 		return nil, util.RespErrorf(resp, errors.Wrap(err, "sending generate.tasks poll request").Error())
