@@ -120,6 +120,7 @@ func (j *eventNotifierJob) processEvent(ctx context.Context, e *event.EventLogEn
 	}
 
 	jobs, err := notificationJobs(ctx, n, j.flags, utility.RoundPartOfMinute(0))
+	// Continue on error even if some jobs couldn't be marked disabled.
 	catcher.Add(errors.Wrap(err, "getting notification jobs"))
 	catcher.Add(errors.Wrap(j.q.PutMany(ctx, jobs), "enqueueing notification jobs"))
 

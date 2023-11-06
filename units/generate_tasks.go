@@ -278,12 +278,12 @@ func (j *generateTasksJob) Run(ctx context.Context) {
 
 // CreateAndEnqueueGenerateTasks enqueues a generate.tasks job for each task.
 // Jobs are segregated by task version into separate queues.
-func CreateAndEnqueueGenerateTasks(appCtx, ctx context.Context, env evergreen.Environment, tasks []task.Task, ts string) error {
+func CreateAndEnqueueGenerateTasks(ctx context.Context, env evergreen.Environment, tasks []task.Task, ts string) error {
 	versionTasksMap := make(map[string][]task.Task)
 	for _, t := range tasks {
 		versionTasksMap[t.Version] = append(versionTasksMap[t.Version], t)
 	}
-
+	appCtx, _ := env.Context()
 	for versionID, tasks := range versionTasksMap {
 		var jobs []amboy.Job
 		for _, t := range tasks {

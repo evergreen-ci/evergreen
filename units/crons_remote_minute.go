@@ -85,7 +85,7 @@ func (j *cronsRemoteMinuteJob) Run(ctx context.Context) {
 	catcher.Add(populateQueueGroup(appCtx, ctx, j.env, eventNotifierQueueGroup, eventNotifierJobs, ts))
 
 	// Add generate tasks fallbacks to their versions' queues.
-	catcher.Add(enqueueFallbackGenerateTasksJobs(appCtx, ctx, j.env, ts))
+	catcher.Add(enqueueFallbackGenerateTasksJobs(ctx, j.env, ts))
 
 	j.ErrorCount = catcher.Len()
 

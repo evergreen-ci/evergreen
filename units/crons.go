@@ -600,13 +600,13 @@ func agentMonitorDeployJobs(ctx context.Context, ts time.Time) ([]amboy.Job, err
 // Since the original generate.tasks request kicks off a job immediately, this function only serves as a fallback in case the
 // original job fails to run. If the original job has already completed, the job will not be created here. If the original job is in flight,
 // the job will be created here, but will no-op unless the original job fails to complete.
-func enqueueFallbackGenerateTasksJobs(appCtx, ctx context.Context, env evergreen.Environment, ts time.Time) error {
+func enqueueFallbackGenerateTasksJobs(ctx context.Context, env evergreen.Environment, ts time.Time) error {
 	tasks, err := task.GenerateNotRun()
 	if err != nil {
 		return errors.Wrap(err, "getting tasks that need generators run")
 	}
 
-	return CreateAndEnqueueGenerateTasks(appCtx, ctx, env, tasks, ts.Format(TSFormat))
+	return CreateAndEnqueueGenerateTasks(ctx, env, tasks, ts.Format(TSFormat))
 }
 
 func hostCreationJobs(ctx context.Context, ts time.Time) ([]amboy.Job, error) {
