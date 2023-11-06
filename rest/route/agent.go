@@ -18,6 +18,8 @@ import (
 	"github.com/evergreen-ci/evergreen/model/patch"
 	"github.com/evergreen-ci/evergreen/model/pod"
 	"github.com/evergreen-ci/evergreen/model/task"
+	"github.com/evergreen-ci/evergreen/model/tasklog"
+	"github.com/evergreen-ci/evergreen/model/testlog"
 	"github.com/evergreen-ci/evergreen/thirdparty"
 	"github.com/evergreen-ci/gimlet"
 	"github.com/evergreen-ci/utility"
@@ -702,7 +704,7 @@ func (h *setTaskResultsInfoHandler) Run(ctx context.Context) gimlet.Responder {
 type attachTestLogHandler struct {
 	settings *evergreen.Settings
 	taskID   string
-	log      model.TestLog
+	log      testlog.TestLog
 }
 
 func makeAttachTestLog(settings *evergreen.Settings) gimlet.RouteHandler {
@@ -857,7 +859,7 @@ func (h *fetchTaskHandler) Run(ctx context.Context) gimlet.Responder {
 type appendTaskLogHandler struct {
 	settings *evergreen.Settings
 	taskID   string
-	taskLog  model.TaskLog
+	taskLog  tasklog.TaskLog
 }
 
 func makeAppendTaskLog(settings *evergreen.Settings) gimlet.RouteHandler {

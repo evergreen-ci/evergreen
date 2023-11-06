@@ -603,6 +603,14 @@ func makeDistroRoute() gimlet.RouteHandler {
 	return &distroGetHandler{}
 }
 
+// Factory creates an instance of the handler.
+//
+//	@Summary		Get distros
+//	@Description	Fetches distros defined in the system
+//	@Tags			distros
+//	@Router			/distros [get]
+//	@Security		Api-User || Api-Key
+//	@Success		200	{array}	model.APIDistro
 func (h *distroGetHandler) Factory() gimlet.RouteHandler {
 	return &distroGetHandler{}
 }

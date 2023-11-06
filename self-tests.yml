@@ -516,6 +516,12 @@ tasks:
     name: test-model-manifest
   - <<: *run-go-test-suite-with-mongodb
     tags: ["db", "test"]
+    name: test-model-tasklog
+  - <<: *run-go-test-suite-with-mongodb
+    tags: ["db", "test"]
+    name: test-model-testlog
+  - <<: *run-go-test-suite-with-mongodb
+    tags: ["db", "test"]
     name: test-plugin
   - <<: *run-go-test-suite-with-mongodb
     tags: ["db", "test"]
@@ -604,6 +610,42 @@ tasks:
           AUTH_ENABLED: 1
           RUN_TEST: "TestEnvironmentSuite/TestInitDB"
           MONGO_CREDS_FILE: testdata/test_auth.yml
+  - name: generate-api-docs
+    commands: 
+      - func: get-project-and-modules
+      - command: shell.exec
+        params:
+          shell: bash
+          working_dir: evergreen
+          script: |
+            set -o verbose
+            set -o errexit
+            wget https://github.com/swaggo/swag/releases/download/v1.16.2/swag_1.16.2_Linux_x86_64.tar.gz
+            tar xzvf swag_1.16.2_Linux_x86_64.tar.gz
+            ./swag init -g service/service.go
+      - command: s3.put
+        params:
+          aws_key: ${aws_key}
+          aws_secret: ${aws_secret}
+          local_file: evergreen/docs/swagger.json
+          remote_file: evergreen/${task_id}/swagger.json
+          bucket: mciuploads
+          content_type: application/json
+          permissions: public-read
+          display_name: swagger.json
+      - command: s3.put
+        params:
+          aws_key: ${aws_key}
+          aws_secret: ${aws_secret}
+          local_file: evergreen/docs/swagger.json
+          remote_file: evergreen/latest/swagger.json
+          bucket: mciuploads
+          content_type: application/json
+          permissions: public-read
+          display_name: swagger.json (latest)
+          # TODO Set this when it's time to merge
+          # patchable: false
+
 
 task_groups:
   - name: dist-and-upload-clis
@@ -627,8 +669,8 @@ buildvariants:
       nodebin: /opt/node/bin
       GOROOT: /opt/golang/go1.20
       RUN_EC2_SPECIFIC_TESTS: true
-      mongodb_url: https://fastdl.mongodb.org/linux/mongodb-linux-x86_64-ubuntu2204-6.0.6.tgz
-      mongosh_url: https://downloads.mongodb.com/compass/mongosh-1.9.0-linux-x64.tgz
+      mongodb_url: https://fastdl.mongodb.org/linux/mongodb-linux-x86_64-ubuntu2204-7.0.2.tgz
+      mongosh_url: https://downloads.mongodb.com/compass/mongosh-2.0.2-linux-x64.tgz
       notary_client_url: https://macos-notary-1628249594.s3.amazonaws.com/releases/client/v3.1.2/linux_amd64.zip
       sign_macos: true
     tasks:
@@ -642,6 +684,7 @@ buildvariants:
       - name: test-db-auth
       - name: test-cloud
       - name: "js-test"
+      - name: generate-api-docs
 
   - name: race-detector
     display_name: Race Detector
@@ -651,8 +694,8 @@ buildvariants:
     expansions:
       GOROOT: /opt/golang/go1.20
       RUN_EC2_SPECIFIC_TESTS: true
-      mongodb_url: https://fastdl.mongodb.org/linux/mongodb-linux-x86_64-ubuntu2204-6.0.6.tgz
-      mongosh_url: https://downloads.mongodb.com/compass/mongosh-1.9.0-linux-x64.tgz
+      mongodb_url: https://fastdl.mongodb.org/linux/mongodb-linux-x86_64-ubuntu2204-7.0.2.tgz
+      mongosh_url: https://downloads.mongodb.com/compass/mongosh-2.0.2-linux-x64.tgz
       race_detector: true
       test_timeout: 15m
     tasks:
@@ -668,8 +711,8 @@ buildvariants:
       goarch: amd64
       IS_DOCKER: true
       GOROOT: /usr/local/go
-      mongodb_url: https://fastdl.mongodb.org/linux/mongodb-linux-x86_64-ubuntu2004-6.0.6.tgz
-      mongosh_url: https://downloads.mongodb.com/compass/mongosh-1.9.0-linux-x64.tgz
+      mongodb_url: https://fastdl.mongodb.org/linux/mongodb-linux-x86_64-ubuntu2004-7.0.2.tgz
+      mongosh_url: https://downloads.mongodb.com/compass/mongosh-2.0.2-linux-x64.tgz
       decompress: tar zxvf
     tasks:
       - name: "dist-unsigned"
@@ -699,8 +742,8 @@ buildvariants:
     expansions:
       GOROOT: c:/golang/go1.20
       RUN_EC2_SPECIFIC_TESTS: true
-      mongodb_url: https://fastdl.mongodb.org/windows/mongodb-windows-x86_64-6.0.6.zip
-      mongosh_url: https://downloads.mongodb.com/compass/mongosh-1.9.0-win32-x64.zip
+      mongodb_url: https://fastdl.mongodb.org/windows/mongodb-windows-x86_64-7.0.2.zip
+      mongosh_url: https://downloads.mongodb.com/compass/mongosh-2.0.2-win32-x64.zip
       extension: ".exe"
       archiveExt: ".zip"
     tasks:
@@ -718,8 +761,8 @@ buildvariants:
       goos: linux
       GOROOT: /opt/golang/go1.20
       RUN_EC2_SPECIFIC_TESTS: true
-      mongodb_url: https://fastdl.mongodb.org/linux/mongodb-linux-aarch64-ubuntu2204-6.0.6.tgz
-      mongosh_url: https://downloads.mongodb.com/compass/mongosh-1.9.0-linux-arm64.tgz
+      mongodb_url: https://fastdl.mongodb.org/linux/mongodb-linux-aarch64-ubuntu2204-7.0.2.tgz
+      mongosh_url: https://downloads.mongodb.com/compass/mongosh-2.0.2-linux-arm64.tgz
     tasks:
       - name: ".agent .test"
 
@@ -730,8 +773,8 @@ buildvariants:
       - macos-1100-arm64
     expansions:
       GOROOT: /opt/golang/go1.20
-      mongodb_url: https://fastdl.mongodb.org/osx/mongodb-macos-arm64-6.0.6.tgz
-      mongosh_url: https://downloads.mongodb.com/compass/mongosh-1.9.0-darwin-arm64.zip
+      mongodb_url: https://fastdl.mongodb.org/osx/mongodb-macos-arm64-7.0.2.tgz
+      mongosh_url: https://downloads.mongodb.com/compass/mongosh-2.0.2-darwin-arm64.zip
       mongosh_decompress: unzip
     tasks:
       - name: ".agent .test"

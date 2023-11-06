@@ -16,35 +16,54 @@ import (
 )
 
 type APITaskAnnotation struct {
-	Id              *string           `bson:"_id" json:"id"`
-	TaskId          *string           `bson:"task_id" json:"task_id"`
-	TaskExecution   *int              `bson:"task_execution" json:"task_execution"`
-	Metadata        *birch.Document   `bson:"metadata,omitempty" json:"metadata,omitempty"`
-	Note            *APINote          `bson:"note,omitempty" json:"note,omitempty"`
-	Issues          []APIIssueLink    `bson:"issues,omitempty" json:"issues,omitempty"`
-	SuspectedIssues []APIIssueLink    `bson:"suspected_issues,omitempty" json:"suspected_issues,omitempty"`
-	CreatedIssues   []APIIssueLink    `bson:"created_issues,omitempty" json:"created_issues,omitempty"`
-	MetadataLinks   []APIMetadataLink `bson:"metadata_links,omitempty" json:"metadata_links,omitempty"`
+	Id *string `bson:"_id" json:"id"`
+	// Identifier of the task that this annotation is for
+	TaskId *string `bson:"task_id" json:"task_id"`
+	// The number of the execution of the task that the annotation is for
+	TaskExecution *int `bson:"task_execution" json:"task_execution"`
+	// Structured data about the task. Since this is user-given json data, the structure can differ between annotations
+	Metadata *birch.Document `bson:"metadata,omitempty" json:"metadata,omitempty" swaggertype:"object"`
+	// Comment about the task failure
+	Note *APINote `bson:"note,omitempty" json:"note,omitempty"`
+	// Links to tickets definitely related
+	Issues []APIIssueLink `bson:"issues,omitempty" json:"issues,omitempty"`
+	// Links to tickets possibly related
+	SuspectedIssues []APIIssueLink `bson:"suspected_issues,omitempty" json:"suspected_issues,omitempty"`
+	CreatedIssues   []APIIssueLink `bson:"created_issues,omitempty" json:"created_issues,omitempty"`
+	// List of links associated with a task, to be displayed in the task metadata sidebar, currently limited to 1
+	MetadataLinks []APIMetadataLink `bson:"metadata_links,omitempty" json:"metadata_links,omitempty"`
 }
 
 type APINote struct {
-	Message *string    `bson:"message,omitempty" json:"message,omitempty"`
-	Source  *APISource `bson:"source,omitempty" json:"source,omitempty"`
+	// Comment about the task failure
+	Message *string `bson:"message,omitempty" json:"message,omitempty"`
+	// The source of the note
+	Source *APISource `bson:"source,omitempty" json:"source,omitempty"`
 }
 type APISource struct {
-	Author    *string    `bson:"author,omitempty" json:"author,omitempty"`
-	Time      *time.Time `bson:"time,omitempty" json:"time,omitempty"`
-	Requester *string    `bson:"requester,omitempty" json:"requester,omitempty"`
+	// The author of the edit
+	Author *string `bson:"author,omitempty" json:"author,omitempty"`
+	// The time of the edit
+	Time *time.Time `bson:"time,omitempty" json:"time,omitempty"`
+	// The source of the request (api or ui)
+	Requester *string `bson:"requester,omitempty" json:"requester,omitempty"`
 }
 type APIIssueLink struct {
-	URL             *string    `bson:"url" json:"url"`
-	IssueKey        *string    `bson:"issue_key,omitempty" json:"issue_key,omitempty"`
-	Source          *APISource `bson:"source,omitempty" json:"source,omitempty"`
-	ConfidenceScore *float64   `bson:"confidence_score,omitempty" json:"confidence_score,omitempty"`
+	// The url of the ticket
+	URL *string `bson:"url" json:"url"`
+	// Text to be displayed
+	IssueKey *string `bson:"issue_key,omitempty" json:"issue_key,omitempty"`
+	// The source of the edit
+	Source *APISource `bson:"source,omitempty" json:"source,omitempty"`
+	// The confidence score of the issue
+	ConfidenceScore *float64 `bson:"confidence_score,omitempty" json:"confidence_score,omitempty"`
 }
 type APIMetadataLink struct {
-	URL    *string    `bson:"url" json:"url"`
-	Text   *string    `bson:"text" json:"text"`
+	// The url of the link
+	URL *string `bson:"url" json:"url"`
+	// Text to be displayed
+	Text *string `bson:"text" json:"text"`
+	// The source of the edit
 	Source *APISource `bson:"source,omitempty" json:"source,omitempty"`
 }
 

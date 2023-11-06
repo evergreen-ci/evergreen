@@ -537,8 +537,7 @@ Evergreen - {{Trunc .Task.Revision 10}} / {{.Task.BuildVariantDisplay}} / {{.Tas
     </h3>
     <div class="row">
       <div class="col-lg-12">
-        <pre ng-show="currentLogs != eventLogs && logs.length && !buildlogger"><span ng-repeat="entry in logs.slice().reverse() track by $index" class="severity-[[ entry.severity ]]" ng-bind-html="formatTimestamp(entry, 1) + (entry.message | escapeHtml) + '\n' | linkify | ansi"></span></pre>
-        <pre ng-show="currentLogs != eventLogs && logs.length && buildlogger"><span ng-repeat="element in logs" class="severity-[[ element.s ]]" ng-bind-html="(element.m | escapeHtml) + '\n' | linkify | ansi"></span></pre>
+        <pre ng-show="currentLogs != eventLogs && logs.length"><span ng-repeat="entry in logs track by $index" class="severity-[[ entry.severity ]]" ng-bind-html="formatTimestamp(entry.timestamp) + (entry.message | escapeHtml) + '\n' | linkify | ansi"></span></pre>
         {{if .User}}
         <pre ng-show="(currentLogs == agentLogs || currentLogs == systemLogs) && !logs.length">No logs found.</pre>
         {{else}}

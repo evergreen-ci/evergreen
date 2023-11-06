@@ -59,6 +59,14 @@ func makeFetchAdminBanner() gimlet.RouteHandler {
 type bannerGetHandler struct {
 }
 
+// Factory creates an instance of the handler.
+//
+//	@Summary		Get the banner
+//	@Description	Fetch the text and type of Evergreen's current banner
+//	@Tags			info
+//	@Router			/admin/banner [get]
+//	@Security		Api-User || Api-Key
+//	@Success		200	{object}	model.APIBanner
 func (h *bannerGetHandler) Factory() gimlet.RouteHandler {
 	return &bannerGetHandler{}
 }

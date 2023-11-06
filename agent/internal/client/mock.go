@@ -19,6 +19,7 @@ import (
 	"github.com/evergreen-ci/evergreen/model/patch"
 	patchmodel "github.com/evergreen-ci/evergreen/model/patch"
 	"github.com/evergreen-ci/evergreen/model/task"
+	"github.com/evergreen-ci/evergreen/model/testlog"
 	"github.com/evergreen-ci/evergreen/model/testresult"
 	"github.com/evergreen-ci/evergreen/rest/model"
 	"github.com/evergreen-ci/evergreen/util"
@@ -69,7 +70,7 @@ type Mock struct {
 	LocalTestResults []testresult.TestResult
 	ResultsService   string
 	ResultsFailed    bool
-	TestLogs         []*serviceModel.TestLog
+	TestLogs         []*testlog.TestLog
 	TestLogCount     int
 
 	logMessages map[string][]apimodels.LogMessage
@@ -449,7 +450,7 @@ func (c *Mock) UpdatePushStatus(ctx context.Context, td TaskData, pushLog *servi
 
 // SendTestLog posts a test log for a communicator's task. Is a
 // noop if the test Log is nil.
-func (c *Mock) SendTestLog(ctx context.Context, td TaskData, log *serviceModel.TestLog) (string, error) {
+func (c *Mock) SendTestLog(ctx context.Context, td TaskData, log *testlog.TestLog) (string, error) {
 	c.TestLogs = append(c.TestLogs, log)
 	c.TestLogs[len(c.TestLogs)-1].Id = c.LogID
 	c.TestLogCount += 1

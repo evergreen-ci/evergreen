@@ -40,13 +40,20 @@ type ProjectTaskExecutionResp struct {
 }
 
 type APITriggerDefinition struct {
-	Project                      *string `json:"project"`
-	Level                        *string `json:"level"` //build or task
-	DefinitionID                 *string `json:"definition_id"`
-	BuildVariantRegex            *string `json:"variant_regex"`
-	TaskRegex                    *string `json:"task_regex"`
-	Status                       *string `json:"status"`
-	DateCutoff                   *int    `json:"date_cutoff"`
+	// project ID
+	Project *string `json:"project"`
+	// build or task
+	Level *string `json:"level"`
+	// unique ID
+	DefinitionID *string `json:"definition_id"`
+	// matching variants will trigger a build
+	BuildVariantRegex *string `json:"variant_regex"`
+	// matching tasks will trigger a build
+	TaskRegex *string `json:"task_regex"`
+	// status to trigger for (or "*")
+	Status     *string `json:"status"`
+	DateCutoff *int    `json:"date_cutoff"`
+	// definition file
 	ConfigFile                   *string `json:"config_file"`
 	Alias                        *string `json:"alias"`
 	UnscheduleDownstreamVersions *bool   `json:"unschedule_downstream_versions"`
@@ -237,10 +244,13 @@ func (bd *APIPeriodicBuildDefinition) BuildFromService(params model.PeriodicBuil
 }
 
 type APICommitQueueParams struct {
-	Enabled     *bool            `json:"enabled"`
-	MergeMethod *string          `json:"merge_method"`
-	MergeQueue  model.MergeQueue `json:"merge_queue"`
-	Message     *string          `json:"message"`
+	// Enable/disable the commit queue
+	Enabled *bool `json:"enabled"`
+	// method of merging (squash, merge, rebase
+	MergeMethod *string `json:"merge_method"`
+	// merge queue to use (EVERGREEN or GITHUB)
+	MergeQueue model.MergeQueue `json:"merge_queue"`
+	Message    *string          `json:"message"`
 }
 
 func (cqParams *APICommitQueueParams) BuildFromService(params model.CommitQueueParams) {
@@ -512,55 +522,77 @@ func (c *APIParameterInfo) BuildFromService(info model.ParameterInfo) {
 }
 
 type APIProjectRef struct {
-	Id                          *string                   `json:"id"`
-	Owner                       *string                   `json:"owner_name"`
-	Repo                        *string                   `json:"repo_name"`
-	Branch                      *string                   `json:"branch_name"`
-	Enabled                     *bool                     `json:"enabled"`
-	Private                     *bool                     `json:"private"`
-	BatchTime                   int                       `json:"batch_time"`
-	RemotePath                  *string                   `json:"remote_path"`
-	SpawnHostScriptPath         *string                   `json:"spawn_host_script_path"`
-	Identifier                  *string                   `json:"identifier"`
-	DisplayName                 *string                   `json:"display_name"`
-	DeactivatePrevious          *bool                     `json:"deactivate_previous"`
-	TracksPushEvents            *bool                     `json:"tracks_push_events"`
-	PRTestingEnabled            *bool                     `json:"pr_testing_enabled"`
-	ManualPRTestingEnabled      *bool                     `json:"manual_pr_testing_enabled"`
-	GitTagVersionsEnabled       *bool                     `json:"git_tag_versions_enabled"`
-	GithubChecksEnabled         *bool                     `json:"github_checks_enabled"`
-	UseRepoSettings             *bool                     `json:"use_repo_settings"`
-	RepoRefId                   *string                   `json:"repo_ref_id"`
-	CommitQueue                 APICommitQueueParams      `json:"commit_queue"`
-	TaskSync                    APITaskSyncOptions        `json:"task_sync"`
-	TaskAnnotationSettings      APITaskAnnotationSettings `json:"task_annotation_settings"`
-	BuildBaronSettings          APIBuildBaronSettings     `json:"build_baron_settings"`
-	PerfEnabled                 *bool                     `json:"perf_enabled"`
-	Hidden                      *bool                     `json:"hidden"`
-	PatchingDisabled            *bool                     `json:"patching_disabled"`
-	RepotrackerDisabled         *bool                     `json:"repotracker_disabled"`
-	DispatchingDisabled         *bool                     `json:"dispatching_disabled"`
-	StepbackDisabled            *bool                     `json:"stepback_disabled"`
-	StepbackBisect              *bool                     `json:"stepback_bisect"`
-	VersionControlEnabled       *bool                     `json:"version_control_enabled"`
-	DisabledStatsCache          *bool                     `json:"disabled_stats_cache"`
-	Admins                      []*string                 `json:"admins"`
-	DeleteAdmins                []*string                 `json:"delete_admins,omitempty"`
-	GitTagAuthorizedUsers       []*string                 `json:"git_tag_authorized_users" bson:"git_tag_authorized_users"`
-	DeleteGitTagAuthorizedUsers []*string                 `json:"delete_git_tag_authorized_users,omitempty" bson:"delete_git_tag_authorized_users,omitempty"`
-	GitTagAuthorizedTeams       []*string                 `json:"git_tag_authorized_teams" bson:"git_tag_authorized_teams"`
-	DeleteGitTagAuthorizedTeams []*string                 `json:"delete_git_tag_authorized_teams,omitempty" bson:"delete_git_tag_authorized_teams,omitempty"`
-	NotifyOnBuildFailure        *bool                     `json:"notify_on_failure"`
-	Restricted                  *bool                     `json:"restricted"`
-	Revision                    *string                   `json:"revision"`
-
-	Triggers                 []APITriggerDefinition       `json:"triggers"`
-	GithubTriggerAliases     []*string                    `json:"github_trigger_aliases"`
-	PatchTriggerAliases      []APIPatchTriggerDefinition  `json:"patch_trigger_aliases"`
-	Aliases                  []APIProjectAlias            `json:"aliases"`
-	Variables                APIProjectVars               `json:"variables"`
-	WorkstationConfig        APIWorkstationConfig         `json:"workstation_config"`
-	Subscriptions            []APISubscription            `json:"subscriptions"`
+	Id *string `json:"id"`
+	// Owner of project repository
+	Owner *string `json:"owner_name"`
+	// Repository name
+	Repo *string `json:"repo_name"`
+	// Name of branch
+	Branch *string `json:"branch_name"`
+	// Whether evergreen is enabled for this project
+	Enabled *bool `json:"enabled"`
+	// A user must be logged in to view private projects
+	Private *bool `json:"private"`
+	// Unique identifier of a specific patch
+	BatchTime int `json:"batch_time"`
+	// Path to config file in repo
+	RemotePath          *string `json:"remote_path"`
+	SpawnHostScriptPath *string `json:"spawn_host_script_path"`
+	// Internal evergreen identifier for project
+	Identifier *string `json:"identifier"`
+	// Project name displayed to users
+	DisplayName *string `json:"display_name"`
+	// List of identifiers of tasks used in this patch
+	DeactivatePrevious *bool `json:"deactivate_previous"`
+	// If true, repotracker is run on github push events. If false, repotracker is run periodically every few minutes.
+	TracksPushEvents *bool `json:"tracks_push_events"`
+	// Enable github pull request testing
+	PRTestingEnabled       *bool   `json:"pr_testing_enabled"`
+	ManualPRTestingEnabled *bool   `json:"manual_pr_testing_enabled"`
+	GitTagVersionsEnabled  *bool   `json:"git_tag_versions_enabled"`
+	GithubChecksEnabled    *bool   `json:"github_checks_enabled"`
+	UseRepoSettings        *bool   `json:"use_repo_settings"`
+	RepoRefId              *string `json:"repo_ref_id"`
+	// Options for commit queue
+	CommitQueue            APICommitQueueParams      `json:"commit_queue"`
+	TaskSync               APITaskSyncOptions        `json:"task_sync"`
+	TaskAnnotationSettings APITaskAnnotationSettings `json:"task_annotation_settings"`
+	BuildBaronSettings     APIBuildBaronSettings     `json:"build_baron_settings"`
+	PerfEnabled            *bool                     `json:"perf_enabled"`
+	Hidden                 *bool                     `json:"hidden"`
+	// Disable patching
+	PatchingDisabled      *bool `json:"patching_disabled"`
+	RepotrackerDisabled   *bool `json:"repotracker_disabled"`
+	DispatchingDisabled   *bool `json:"dispatching_disabled"`
+	StepbackDisabled      *bool `json:"stepback_disabled"`
+	StepbackBisect        *bool `json:"stepback_bisect"`
+	VersionControlEnabled *bool `json:"version_control_enabled"`
+	DisabledStatsCache    *bool `json:"disabled_stats_cache"`
+	// Usernames of project admins. Can be null for some projects (EVG-6598).
+	Admins []*string `json:"admins"`
+	// Usernames of project admins to remove
+	DeleteAdmins                []*string `json:"delete_admins,omitempty"`
+	GitTagAuthorizedUsers       []*string `json:"git_tag_authorized_users" bson:"git_tag_authorized_users"`
+	DeleteGitTagAuthorizedUsers []*string `json:"delete_git_tag_authorized_users,omitempty" bson:"delete_git_tag_authorized_users,omitempty"`
+	GitTagAuthorizedTeams       []*string `json:"git_tag_authorized_teams" bson:"git_tag_authorized_teams"`
+	DeleteGitTagAuthorizedTeams []*string `json:"delete_git_tag_authorized_teams,omitempty" bson:"delete_git_tag_authorized_teams,omitempty"`
+	// Notify original committer (or admins) when build fails
+	NotifyOnBuildFailure *bool `json:"notify_on_failure"`
+	Restricted           *bool `json:"restricted"`
+	// Only used when modifying projects to change the base revision and run the repotracker.
+	Revision *string `json:"revision"`
+	// a list of triggers for the project
+	Triggers             []APITriggerDefinition      `json:"triggers"`
+	GithubTriggerAliases []*string                   `json:"github_trigger_aliases"`
+	PatchTriggerAliases  []APIPatchTriggerDefinition `json:"patch_trigger_aliases"`
+	// a list of aliases for the project
+	Aliases []APIProjectAlias `json:"aliases"`
+	// project variables information
+	Variables         APIProjectVars       `json:"variables"`
+	WorkstationConfig APIWorkstationConfig `json:"workstation_config"`
+	// a list of subscriptions for the project
+	Subscriptions []APISubscription `json:"subscriptions"`
+	// subscription IDs. Will delete these subscriptions when given.
 	DeleteSubscriptions      []*string                    `json:"delete_subscriptions,omitempty"`
 	PeriodicBuilds           []APIPeriodicBuildDefinition `json:"periodic_builds,omitempty"`
 	ContainerSizeDefinitions []APIContainerResources      `json:"container_size_definitions"`
