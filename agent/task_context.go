@@ -528,7 +528,7 @@ func (tc *taskContext) deviceNames(ctx context.Context) error {
 		return errors.Wrap(err, "getting partitions")
 	}
 	for _, partition := range partitions {
-		if utility.StringSliceContains(tc.taskConfig.Distro.GraphableDisks, partition.Mountpoint) {
+		if utility.StringSliceContains(tc.taskConfig.Distro.Mountpoints, partition.Mountpoint) {
 			tc.diskDevices = append(tc.diskDevices, filepath.Base(partition.Device))
 		}
 	}

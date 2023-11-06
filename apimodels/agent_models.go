@@ -341,7 +341,7 @@ type GeneratePollResponse struct {
 type DistroView struct {
 	CloneMethod         string   `json:"clone_method"`
 	DisableShallowClone bool     `json:"disable_shallow_clone"`
-	GraphableDisks      []string `json:"graphableDisks"`
+	Mountpoints         []string `json:"mountpoints"`
 }
 
 // ExpansionsAndVars represents expansions, project variables, and parameters
