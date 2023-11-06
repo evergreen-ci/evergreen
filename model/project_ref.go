@@ -1028,10 +1028,10 @@ func mergeBranchAndRepoSettings(pRef *ProjectRef, repoRef *RepoRef) (*ProjectRef
 	reflectedBranch := reflect.ValueOf(pRef).Elem()
 	reflectedRepo := reflect.ValueOf(repoRef).Elem().Field(0) // specifically references the ProjectRef part of RepoRef
 
-	util.RecursivelySetUndefinedFields(reflectedBranch, reflectedRepo)
-
 	// Include Parsley filters defined at repo level alongside project filters.
 	mergeParsleyFilters(pRef, repoRef)
+
+	util.RecursivelySetUndefinedFields(reflectedBranch, reflectedRepo)
 
 	return pRef, err
 }

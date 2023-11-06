@@ -153,6 +153,17 @@ func TestFindMergedProjectRef(t *testing.T) {
 	assert.Len(t, mergedProject.WorkstationConfig.SetupCommands, 1)
 	assert.Equal(t, "random2", mergedProject.TaskAnnotationSettings.FileTicketWebhook.Endpoint)
 	assert.Len(t, mergedProject.ParsleyFilters, 2)
+
+	projectRef.ParsleyFilters = []ParsleyFilter{}
+
+	assert.NoError(t, projectRef.Upsert())
+	mergedProject, err = FindMergedProjectRef("ident", "ident", true)
+	assert.Len(t, mergedProject.ParsleyFilters, 1)
+
+	projectRef.ParsleyFilters = nil
+	assert.NoError(t, projectRef.Upsert())
+	mergedProject, err = FindMergedProjectRef("ident", "ident", true)
+	assert.Len(t, mergedProject.ParsleyFilters, 1)
 }
 
 func TestGetNumberOfEnabledProjects(t *testing.T) {
