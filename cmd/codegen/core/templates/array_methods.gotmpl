@@ -1,8 +1,0 @@
-
-func {{cleanName .FromType .FromHasPtr}}{{cleanName .ToType .ToHasPtr}}(t {{.FromType }}) {{.ToType}} {
-    m := {{.ToType}}{}
-    for _, e := range t{
-    m = append(m, {{.ConversionCode}})
-    }
-    return m
-}

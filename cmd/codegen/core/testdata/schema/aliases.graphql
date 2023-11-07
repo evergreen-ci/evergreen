@@ -1,6 +1,0 @@
-directive @aliases(db: String, json: String) on FIELD_DEFINITION
-
-type Revision {
-  Not_author: String @aliases(db: Author)
-  Uid_number: Int! @aliases(db: AuthorGithubUID, json: something)
-}
