@@ -10,7 +10,8 @@ tasks:
 
 modules:
   - name: evergreen
-    repo: https://github.com/deafgoat/mci_test.git
+    owner: deafgoat
+    repo: mci_test
     prefix: src/mongo/db/modules
     branch: master
 

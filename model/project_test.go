@@ -1671,8 +1671,8 @@ func TestModuleList(t *testing.T) {
 	assert := assert.New(t)
 
 	projModules := ModuleList{
-		{Name: "enterprise", Repo: "git@github.com:something/enterprise.git", Branch: "main"},
-		{Name: "wt", Repo: "git@github.com:else/wt.git", Branch: "develop"},
+		{Name: "enterprise", Owner: "something", Repo: "enterprise", Branch: "main"},
+		{Name: "wt", Owner: "else", Repo: "wt", Branch: "develop"},
 	}
 
 	manifest1 := manifest.Manifest{

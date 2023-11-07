@@ -1162,12 +1162,12 @@ func TestCreateManifest(t *testing.T) {
 		Modules: []model.Module{
 			{
 				Name:   "module1",
-				Repo:   "git@github.com:evergreen-ci/sample.git",
+				Owner:  "evergreen-ci",
+				Repo:   "sample",
 				Branch: "${var1}",
 			},
 		},
 	}
-
 	projRef := &model.ProjectRef{
 		Owner:  "evergreen-ci",
 		Repo:   "evergreen",
@@ -1217,7 +1217,8 @@ func TestCreateManifest(t *testing.T) {
 		Modules: []model.Module{
 			{
 				Name:   "module1",
-				Repo:   "git@github.com:evergreen-ci/sample.git",
+				Owner:  "evergreen-ci",
+				Repo:   "sample",
 				Branch: "main",
 				Ref:    hash,
 			},

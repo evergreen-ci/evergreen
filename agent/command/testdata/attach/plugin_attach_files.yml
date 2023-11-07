@@ -15,7 +15,8 @@ tasks:
 
 modules:
 - name: enterprise
-  repo: git@github.com:10gen/mongo-enterprise-modules.git
+  owner: 10gen
+  repo: mongo-enterprise-modules
   prefix: src/mongo/db/modules
   branch: v2.6
 

@@ -333,13 +333,15 @@ func TestFinalizePatch(t *testing.T) {
 				{
 					Name:       "sandbox",
 					Branch:     "main",
-					Repo:       "git@github.com:evergreen-ci/commit-queue-sandbox.git",
+					Owner:      "evergreen-ci",
+					Repo:       "commit-queue-sandbox",
 					AutoUpdate: true,
 				},
 				{
 					Name:   "evergreen",
 					Branch: "main",
-					Repo:   "git@github.com:evergreen-ci/evergreen.git",
+					Owner:  "evergreen-ci",
+					Repo:   "evergreen",
 				},
 			}
 
@@ -809,7 +811,8 @@ func TestMakeCommitQueueDescription(t *testing.T) {
 			{
 				Name:   "module",
 				Branch: "feature",
-				Repo:   "git@github.com:evergreen-ci/module_repo.git",
+				Owner:  "evergreen-ci",
+				Repo:   "module_repo",
 			},
 		},
 	}
