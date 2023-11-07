@@ -106,7 +106,6 @@ func (a *Agent) runCommandsInBlock(ctx context.Context, tc *taskContext, cmdBloc
 
 	commands := cmdBlock.commands.List()
 	for i, commandInfo := range commands {
-		var cmds []command.Command
 		if err := blockCtx.Err(); err != nil {
 			return errors.Wrap(err, "canceled while running commands")
 		}
@@ -115,7 +114,7 @@ func (a *Agent) runCommandsInBlock(ctx context.Context, tc *taskContext, cmdBloc
 			CmdNum:    i + 1,
 			TotalCmds: len(commands),
 		}
-		cmds, err = command.Render(commandInfo, &tc.taskConfig.Project, blockInfo)
+		cmds, err := command.Render(commandInfo, &tc.taskConfig.Project, blockInfo)
 		if err != nil {
 			return errors.Wrapf(err, "rendering command '%s'", commandInfo.Command)
 		}

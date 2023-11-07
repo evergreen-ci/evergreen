@@ -133,10 +133,8 @@ func (r *commandRegistry) getCommandFactory(name string) (CommandFactory, bool) 
 func (r *commandRegistry) renderCommands(commandInfo model.PluginCommandConf,
 	project *model.Project, blockInfo BlockInfo) ([]Command, error) {
 
-	var (
-		parsed []model.PluginCommandConf
-		out    []Command
-	)
+	var parsed []model.PluginCommandConf
+
 	catcher := grip.NewBasicCatcher()
 
 	if funcName := commandInfo.Function; funcName != "" {
@@ -151,9 +149,13 @@ func (r *commandRegistry) renderCommands(commandInfo model.PluginCommandConf,
 					continue
 				}
 
-				// if no command specific type, use the function's command type
+				// If there's no command-specific type/timeout, use the
+				// function's command type/timeout
 				if c.Type == "" {
 					c.Type = commandInfo.Type
+				}
+				if c.TimeoutSecs == 0 {
+					c.TimeoutSecs = commandInfo.TimeoutSecs
 				}
 
 				funcInfo := FunctionInfo{
@@ -161,24 +163,17 @@ func (r *commandRegistry) renderCommands(commandInfo model.PluginCommandConf,
 					SubCmdNum:    i + 1,
 					TotalSubCmds: len(cmdsInFunc),
 				}
-				// kim: TODO: verify that this DisplayName is only temporary and
-				// is only used for SetDisplayName.
 				c.DisplayName = GetFullDisplayName(c.Command, c.DisplayName, blockInfo, funcInfo)
-
-				if c.TimeoutSecs == 0 {
-					c.TimeoutSecs = commandInfo.TimeoutSecs
-				}
 
 				parsed = append(parsed, c)
 			}
 		}
 	} else {
-		// kim: TODO: verify that this DisplayName is only temporary and
-		// is only used for SetDisplayName.
 		commandInfo.DisplayName = GetFullDisplayName(commandInfo.Command, commandInfo.DisplayName, blockInfo, FunctionInfo{})
 		parsed = append(parsed, commandInfo)
 	}
 
+	var out []Command
 	for _, c := range parsed {
 		factory, ok := r.getCommandFactory(c.Command)
 		if !ok {

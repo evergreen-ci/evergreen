@@ -1029,8 +1029,6 @@ func setEndTaskFailureDetails(tc *taskContext, detail *apimodels.TaskEndDetail, 
 		// If there is no explicit user-defined description or failure type,
 		// infer that information from the last command that ran.
 		if description == "" {
-			// kim: TODO: verify that display name here for failing command
-			// description looks okay with an explicit display name.
 			description = tc.getCurrentCommand().FullDisplayName()
 			isDefaultDescription = true
 		}
