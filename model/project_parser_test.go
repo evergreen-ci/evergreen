@@ -2475,7 +2475,6 @@ func TestMergeUnique(t *testing.T) {
 		PreTimeoutSecs:    utility.ToIntPtr(1),
 		PostTimeoutSecs:   utility.ToIntPtr(1),
 		PreErrorFailsTask: utility.ToBoolPtr(true),
-		UnsetFunctionVars: utility.ToBoolPtr(true),
 		CommandType:       utility.ToStringPtr("type"),
 		CallbackTimeout:   utility.ToIntPtr(1),
 		ExecTimeoutSecs:   utility.ToIntPtr(1),
@@ -2490,7 +2489,6 @@ func TestMergeUnique(t *testing.T) {
 	assert.NotNil(t, main.PreTimeoutSecs)
 	assert.NotNil(t, main.PostTimeoutSecs)
 	assert.NotNil(t, main.PreErrorFailsTask)
-	assert.NotNil(t, main.UnsetFunctionVars)
 	assert.NotNil(t, main.CommandType)
 	assert.NotNil(t, main.CallbackTimeout)
 	assert.NotNil(t, main.ExecTimeoutSecs)
@@ -2504,7 +2502,6 @@ func TestMergeUniqueFail(t *testing.T) {
 		PreTimeoutSecs:    utility.ToIntPtr(1),
 		PostTimeoutSecs:   utility.ToIntPtr(1),
 		PreErrorFailsTask: utility.ToBoolPtr(true),
-		UnsetFunctionVars: utility.ToBoolPtr(true),
 		DisplayName:       utility.ToStringPtr("name"),
 		CommandType:       utility.ToStringPtr("type"),
 		CallbackTimeout:   utility.ToIntPtr(1),
@@ -2518,7 +2515,6 @@ func TestMergeUniqueFail(t *testing.T) {
 		PreTimeoutSecs:    utility.ToIntPtr(1),
 		PostTimeoutSecs:   utility.ToIntPtr(1),
 		PreErrorFailsTask: utility.ToBoolPtr(true),
-		UnsetFunctionVars: utility.ToBoolPtr(true),
 		DisplayName:       utility.ToStringPtr("name"),
 		CommandType:       utility.ToStringPtr("type"),
 		CallbackTimeout:   utility.ToIntPtr(1),
