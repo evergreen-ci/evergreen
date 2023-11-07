@@ -79,18 +79,12 @@ func AttachHandler(app *gimlet.APIApp, opts HandlerOpts) {
 	app.AddRoute("/pods/{pod_id}/agent/next_task").Version(2).Get().Wrap(requirePod).RouteHandler(makePodAgentNextTask(env))
 	app.AddRoute("/pods/{pod_id}/task/{task_id}/end").Version(2).Post().Wrap(requirePod, requireTask).RouteHandler(makePodAgentEndTask(env))
 	app.AddRoute("/task/{task_id}/").Version(2).Get().Wrap(requireTask).RouteHandler(makeFetchTask())
-	// TODO (DEVPROD-1958): remove duplicate "tasks" route
-	app.AddRoute("/tasks/{task_id}/display_task").Version(2).Get().Wrap(requireTask).RouteHandler(makeGetDisplayTaskHandler())
 	app.AddRoute("/task/{task_id}/display_task").Version(2).Get().Wrap(requireTask).RouteHandler(makeGetDisplayTaskHandler())
 	app.AddRoute("/task/{task_id}/distro_view").Version(2).Get().Wrap(requireTask, requirePodOrHost).RouteHandler(makeGetDistroView())
 	app.AddRoute("/task/{task_id}/downstreamParams").Version(2).Post().Wrap(requireTask).RouteHandler(makeSetDownstreamParams())
 	app.AddRoute("/task/{task_id}/expansions_and_vars").Version(2).Get().Wrap(requireTask, requirePodOrHost).RouteHandler(makeGetExpansionsAndVars(settings))
 	app.AddRoute("/task/{task_id}/files").Version(2).Post().Wrap(requireTask, requirePodOrHost).RouteHandler(makeAttachFiles())
-	// TODO (DEVPROD-1958): remove duplicate "tasks" route
-	app.AddRoute("/tasks/{task_id}/generate").Version(2).Post().Wrap(requireTask).RouteHandler(makeGenerateTasksHandler(env))
 	app.AddRoute("/task/{task_id}/generate").Version(2).Post().Wrap(requireTask).RouteHandler(makeGenerateTasksHandler(env))
-	// TODO (DEVPROD-1958): remove duplicate "tasks" route
-	app.AddRoute("/tasks/{task_id}/generate").Version(2).Get().Wrap(requireTask).RouteHandler(makeGenerateTasksPollHandler())
 	app.AddRoute("/task/{task_id}/generate").Version(2).Get().Wrap(requireTask).RouteHandler(makeGenerateTasksPollHandler())
 	app.AddRoute("/task/{task_id}/new_push").Version(2).Post().Wrap(requireTask).RouteHandler(makeNewPush())
 	app.AddRoute("/task/{task_id}/heartbeat").Version(2).Post().Wrap(requireTask, requirePodOrHost).RouteHandler(makeHeartbeat())
@@ -98,8 +92,6 @@ func AttachHandler(app *gimlet.APIApp, opts HandlerOpts) {
 	app.AddRoute("/task/{task_id}/parser_project").Version(2).Get().Wrap(requireTask).RouteHandler(makeGetParserProject(env))
 	app.AddRoute("/task/{task_id}/project_ref").Version(2).Get().Wrap(requireTask).RouteHandler(makeGetProjectRef())
 	app.AddRoute("/task/{task_id}/pull_request").Version(2).Get().Wrap(requireTask).RouteHandler(makeAgentGetPullRequest(settings))
-	// TODO (DEVPROD-1958): remove duplicate "tasks" route
-	app.AddRoute("/tasks/{task_id}/set_results_info").Version(2).Post().Wrap(requireTask).RouteHandler(makeSetTaskResultsInfoHandler())
 	app.AddRoute("/task/{task_id}/set_results_info").Version(2).Post().Wrap(requireTask).RouteHandler(makeSetTaskResultsInfoHandler())
 	app.AddRoute("/task/{task_id}/start").Version(2).Post().Wrap(requireTask, requirePodOrHost).RouteHandler(makeStartTask(env))
 	app.AddRoute("/task/{task_id}/test_logs").Version(2).Post().Wrap(requireTask, requirePodOrHost).RouteHandler(makeAttachTestLog(settings))
