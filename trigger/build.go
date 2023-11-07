@@ -275,7 +275,7 @@ func (t *buildTriggers) buildAttachments(data *commonTemplateData) []message.Sla
 		if attachmentsCount == slackAttachmentsLimit {
 			break
 		}
-		if t.tasks[i].Status == evergreen.TaskSucceeded {
+		if t.tasks[i].Status == evergreen.TaskSucceeded || t.tasks[i].Status == evergreen.TaskUnscheduled {
 			continue
 		}
 		attachments = append(attachments, message.SlackAttachment{
