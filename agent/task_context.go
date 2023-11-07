@@ -522,6 +522,10 @@ func (tc *taskContext) getUserEndTaskResponse() *triggerEndTaskResp {
 }
 
 func (tc *taskContext) deviceNames(ctx context.Context) error {
+	if tc.taskConfig == nil || tc.taskConfig.Distro == nil {
+		return nil
+	}
+
 	partitions, err := disk.PartitionsWithContext(ctx, false)
 	if err != nil {
 		return errors.Wrap(err, "getting partitions")
