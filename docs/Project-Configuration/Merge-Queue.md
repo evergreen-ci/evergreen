@@ -77,6 +77,17 @@ succeed and not yield a merge on GitHub’s side. This makes it difficult to lin
 from Evergreen versions to PRs. Instead, users can use the GitHub UI as the primary
 starting point, and link to Evergreen builds from there.
 
+**Q:** How can I get the commit titles of the PRs in a merge queue version?
+
+**A:** Evergreen doesn't expose these as an expansion, as they aren't available in the
+webhook message. You can use `git` to get them, where `<tracking branch>` is the
+branch your project is tracking, usually main or master, since GitHub squashes
+each PR's commits into a single commit with the PR title as its commit message.
+
+```shell
+git log --pretty=format:"%s" <tracking branch>...HEAD
+```
+
 **Q:** Is it possible to get a notification for a merge?
 
 **A:** You can set up email notifications, but the Slack integration does not
