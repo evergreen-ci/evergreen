@@ -949,10 +949,11 @@ func MakeCommitQueueDescription(patches []patch.ModulePatch, projectRef *Project
 			if err != nil {
 				continue
 			}
-			owner, repo, err = thirdparty.ParseGitUrl(module.Repo)
+			owner, repo, err = module.GetOwnerAndRepo()
 			if err != nil {
 				continue
 			}
+
 			branch = module.Branch
 		}
 

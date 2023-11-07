@@ -401,9 +401,8 @@ func (a *Agent) setupTask(agentCtx, setupCtx context.Context, initialTC *taskCon
 				ID:     nt.TaskId,
 				Secret: nt.TaskSecret,
 			},
-			ranSetupGroup:             !shouldSetupGroup,
-			oomTracker:                jasper.NewOOMTracker(),
-			unsetFunctionVarsDisabled: nt.UnsetFunctionVarsDisabled,
+			ranSetupGroup: !shouldSetupGroup,
+			oomTracker:    jasper.NewOOMTracker(),
 		}
 	} else {
 		tc = initialTC

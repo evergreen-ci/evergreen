@@ -276,19 +276,30 @@ func (j *generateTasksJob) Run(ctx context.Context) {
 	}
 }
 
-// CreateAndEnqueueGenerateTasks returns a job and enqueues it into the generate.tasks queue for the given task.
-func CreateAndEnqueueGenerateTasks(ctx context.Context, env evergreen.Environment, t task.Task, ts string) (amboy.Job, error) {
+// CreateAndEnqueueGenerateTasks enqueues a generate.tasks job for each task.
+// Jobs are segregated by task version into separate queues.
+func CreateAndEnqueueGenerateTasks(ctx context.Context, env evergreen.Environment, tasks []task.Task, ts string) error {
+	versionTasksMap := make(map[string][]task.Task)
+	for _, t := range tasks {
+		versionTasksMap[t.Version] = append(versionTasksMap[t.Version], t)
+	}
 	appCtx, _ := env.Context()
-	j := NewGenerateTasksJob(t.Version, t.Id, ts)
-	queueName := fmt.Sprintf("service.generate.tasks.version.%s", t.Version)
-	queue, err := env.RemoteQueueGroup().Get(appCtx, queueName)
-	if err != nil {
-		return nil, errors.Wrapf(err, "getting generate tasks queue '%s' for version '%s'", queueName, t.Version)
+	for versionID, tasks := range versionTasksMap {
+		var jobs []amboy.Job
+		for _, t := range tasks {
+			jobs = append(jobs, NewGenerateTasksJob(versionID, t.Id, ts))
+		}
+		queueName := fmt.Sprintf("service.generate.tasks.version.%s", versionID)
+		queue, err := env.RemoteQueueGroup().Get(appCtx, queueName)
+		if err != nil {
+			return errors.Wrapf(err, "getting generate tasks queue '%s' for version '%s'", queueName, versionID)
+		}
+		if err = amboy.EnqueueManyUniqueJobs(ctx, queue, jobs); err != nil {
+			return errors.Wrapf(err, "enqueueing generate tasks jobs for version '%s'", versionID)
+		}
 	}
-	if err = amboy.EnqueueUniqueJob(ctx, queue, j); err != nil {
-		return nil, errors.Wrapf(err, "enqueueing generate tasks job '%s' for version '%s'", j.ID(), t.Version)
-	}
-	return j, nil
+
+	return nil
 }
 
 func parseProjectsAsString(ctx context.Context, jsonStrings []string) ([]model.GeneratedProject, error) {

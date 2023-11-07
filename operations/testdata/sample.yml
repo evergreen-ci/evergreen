@@ -95,7 +95,8 @@ tasks:
 
 modules:
 - name: render-module
-  repo: git@github.com:evergreen-ci/render.git
+  owner: evergreen-ci
+  repo: render
   prefix: modules
   branch: main
 

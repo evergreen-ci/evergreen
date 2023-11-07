@@ -112,14 +112,13 @@ type AgentSetupData struct {
 
 // NextTaskResponse represents the response sent back when an agent asks for a next task
 type NextTaskResponse struct {
-	TaskId                    string `json:"task_id,omitempty"`
-	TaskSecret                string `json:"task_secret,omitempty"`
-	TaskGroup                 string `json:"task_group,omitempty"`
-	Version                   string `json:"version,omitempty"`
-	Build                     string `json:"build,omitempty"`
-	ShouldExit                bool   `json:"should_exit,omitempty"`
-	ShouldTeardownGroup       bool   `json:"should_teardown_group,omitempty"`
-	UnsetFunctionVarsDisabled bool   `json:"unset_function_vars_disabled"`
+	TaskId              string `json:"task_id,omitempty"`
+	TaskSecret          string `json:"task_secret,omitempty"`
+	TaskGroup           string `json:"task_group,omitempty"`
+	Version             string `json:"version,omitempty"`
+	Build               string `json:"build,omitempty"`
+	ShouldExit          bool   `json:"should_exit,omitempty"`
+	ShouldTeardownGroup bool   `json:"should_teardown_group,omitempty"`
 }
 
 // EndTaskResponse is what is returned when the task ends

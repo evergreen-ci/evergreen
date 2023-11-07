@@ -245,7 +245,6 @@ func (h *hostAgentNextTask) Run(ctx context.Context) gimlet.Responder {
 	}
 
 	setNextTask(nextTask, &nextTaskResponse)
-	nextTaskResponse.UnsetFunctionVarsDisabled = flags.UnsetFunctionVarsDisabled
 	return gimlet.NewJSONResponse(nextTaskResponse)
 }
 

@@ -105,7 +105,9 @@ func (o TestLogOutput) getBuildloggerLogs(ctx context.Context, env evergreen.Env
 		if err != nil {
 			return nil, errors.Wrap(err, "getting DB test logs")
 		}
-
+		if testLog == nil {
+			return nil, errors.Errorf("no test log found for '%s'", getOpts.LogPaths[0])
+		}
 		messages := make([]apimodels.LogMessage, len(testLog.Lines))
 		for i, line := range testLog.Lines {
 			messages[i] = apimodels.LogMessage{

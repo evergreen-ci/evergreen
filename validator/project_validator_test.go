@@ -1481,30 +1481,27 @@ func TestCheckModules(t *testing.T) {
 					model.Module{
 						Name:   "module-0",
 						Branch: "main",
-						Repo:   "git@github.com:evergreen-ci/evergreen.git",
+						Owner:  "evergreen-ci",
+						Repo:   "evergreen",
 					},
-					model.Module{
-						Name:   "module-1",
-						Branch: "main",
-					},
-					model.Module{
+					model.Module{ // should fail
 						Name:   "module-2",
 						Branch: "main",
-						Repo:   "evergreen-ci/evergreen.git",
+						Owner:  "evergreen-ci",
 					},
-					model.Module{
+					model.Module{ // should fail
 						Name:   "module-3",
 						Branch: "main",
-						Repo:   "git@github.com:/evergreen.git",
+						Repo:   "evergreen",
 					},
 					model.Module{
 						Name:   "module-4",
 						Branch: "main",
-						Repo:   "git@github.com:evergreen-ci/.git",
+						Repo:   "git@github.com:evergreen-ci/evergreen.git",
 					},
 				},
 			}
-			So(len(checkModules(project)), ShouldEqual, 4)
+			So(len(checkModules(project)), ShouldEqual, 2)
 		})
 	})
 }

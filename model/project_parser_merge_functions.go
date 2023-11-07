@@ -170,12 +170,6 @@ func (pp *ParserProject) mergeUnique(toMerge *ParserProject) error {
 		pp.PostErrorFailsTask = toMerge.PostErrorFailsTask
 	}
 
-	if pp.UnsetFunctionVars != nil && toMerge.UnsetFunctionVars != nil {
-		catcher.New("unset function vars can only be defined in one YAML")
-	} else if toMerge.UnsetFunctionVars != nil {
-		pp.UnsetFunctionVars = toMerge.UnsetFunctionVars
-	}
-
 	if pp.OomTracker != nil && toMerge.OomTracker != nil {
 		catcher.New("OOM tracker can only be defined in one YAML")
 	} else if toMerge.OomTracker != nil {
