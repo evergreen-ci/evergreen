@@ -1485,7 +1485,7 @@ func TestCheckModules(t *testing.T) {
 			So(len(cm), ShouldEqual, 2)
 		})
 
-		Convey("An error should be returned when the module's repo is empty, in the deprecated format or invalid", func() {
+		Convey("An error should be returned when the module's repo is empty or invalid", func() {
 			project := &model.Project{
 				Modules: model.ModuleList{
 					model.Module{
@@ -1504,6 +1504,13 @@ func TestCheckModules(t *testing.T) {
 						Branch: "main",
 						Repo:   "evergreen",
 					},
+				},
+			}
+			So(len(checkModules(project)), ShouldEqual, 2)
+		})
+		Convey("An error should be returned when the module's repo is in the deprecated format", func() {
+			project := &model.Project{
+				Modules: model.ModuleList{
 					model.Module{
 						Name:   "module-4",
 						Branch: "main",
@@ -1512,7 +1519,7 @@ func TestCheckModules(t *testing.T) {
 				},
 			}
 			cm := checkModules(project)
-			So(len(cm), ShouldEqual, 3)
+			So(len(cm), ShouldEqual, 1)
 		})
 	})
 }
