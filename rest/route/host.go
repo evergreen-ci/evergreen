@@ -577,7 +577,7 @@ func (rh *hostProvisioningOptionsGetHandler) Run(ctx context.Context) gimlet.Res
 
 // //////////////////////////////////////////////////////////////////////
 //
-// POST /rest/v2/host/{host_id}/disable
+// POST /rest/v2/hosts/{host_id}/disable
 type disableHost struct {
 	env evergreen.Environment
 
