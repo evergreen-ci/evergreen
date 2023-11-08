@@ -19,7 +19,7 @@ import (
 
 const decoHostNotifyJobName = "deco-host-notify"
 const fieldAssignedTeams = "customfield_12751"
-const runtimeEnvironments = "25626"
+const runtimeEnvironmentsId = "25626"
 
 func init() {
 	registry.AddJobType(decoHostNotifyJobName, func() amboy.Job { return makeDecoHostsNotifyJob() })
@@ -138,7 +138,7 @@ func (j *decoHostNotifyJob) Run(_ context.Context) {
 		Description: strings.Join(descParts, "\n"),
 		Components:  []string{"Static Host Management"},
 		Fields: map[string]interface{}{
-			fieldAssignedTeams: []map[string]string{{"id": runtimeEnvironments}}, // Assigned Teams: Runtime Environments
+			fieldAssignedTeams: []map[string]string{{"id": runtimeEnvironmentsId}}, // Assigned Teams: Runtime Environments
 		},
 	}
 
