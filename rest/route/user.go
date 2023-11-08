@@ -483,8 +483,10 @@ func (h *userPermissionsGetHandler) Run(ctx context.Context) gimlet.Responder {
 }
 
 type rolesPostRequest struct {
-	Roles      []string `json:"roles"`
-	CreateUser bool     `json:"create_user"`
+	// the list of roles to add for the user
+	Roles []string `json:"roles"`
+	// if true, will also create a shell user document for the user. By default, specifying a user that does not exist will error
+	CreateUser bool `json:"create_user"`
 }
 
 type userRolesPostHandler struct {
@@ -500,6 +502,16 @@ func makeModifyUserRoles(rm gimlet.RoleManager) gimlet.RouteHandler {
 	}
 }
 
+// Factory creates an instance of the handler.
+//
+//	@Summary		Give roles to user
+//	@Description	Adds the specified roles to the specified user. Attempting to add a duplicate role will result in an error. If you're unsure of what roles you want to add, you probably want to POST To /users/user_id/permissions instead.
+//	@Tags			users
+//	@Router			/users/{user_id}/roles [post]
+//	@Security		Api-User || Api-Key
+//	@Param			user_id		path	string				true	"user ID"
+//	@Param			{object}	body	rolesPostRequest	true	"parameters"
+//	@Success		200
 func (h *userRolesPostHandler) Factory() gimlet.RouteHandler {
 	return &userRolesPostHandler{
 		rm: h.rm,
@@ -585,6 +597,15 @@ func makeGetUsersWithRole() gimlet.RouteHandler {
 	return &usersWithRoleGetHandler{}
 }
 
+// Factory creates an instance of the handler.
+//
+//	@Summary		Get users for role
+//	@Description	Gets a list of users for the specified role
+//	@Tags			users
+//	@Router			/roles/{role_id}/users [get]
+//	@Security		Api-User || Api-Key
+//	@Param			role_id	path		string					true	"role ID"
+//	@Success		200		{object}	UsersWithRoleResponse	"list of users"
 func (h *usersWithRoleGetHandler) Factory() gimlet.RouteHandler {
 	return &usersWithRoleGetHandler{}
 }
