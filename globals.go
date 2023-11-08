@@ -300,7 +300,6 @@ const (
 	FinderVersionPipeline  = "pipeline"
 	FinderVersionAlternate = "alternate"
 
-	HostAllocatorDeficit     = "deficit"
 	HostAllocatorUtilization = "utilization"
 
 	HostAllocatorRoundDown    = "round-down"
