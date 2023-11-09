@@ -1609,6 +1609,59 @@ func TestFindOneProjectRefWithCommitQueueByOwnerRepoAndBranch(t *testing.T) {
 	assert.Nil(projectRef)
 }
 
+func TestValidateEnabledRepotracker(t *testing.T) {
+	assert := assert.New(t)
+	require := require.New(t)
+
+	require.NoError(db.Clear(ProjectRefCollection))
+	// A project that doesn't have repotracker enabled and an invalid config.
+	p1 := &ProjectRef{
+		Owner:               "mongodb",
+		Repo:                "mci",
+		Branch:              "main",
+		Id:                  "p1",
+		Enabled:             true,
+		RepotrackerDisabled: utility.TruePtr(),
+	}
+	require.NoError(p1.Insert())
+	assert.NoError(p1.ValidateEnabledRepotracker())
+	// A project that doesn't have repotracker enabled and a valid config.
+	p2 := &ProjectRef{
+		Owner:               "mongodb",
+		Repo:                "mci",
+		Branch:              "main",
+		Id:                  "p2",
+		Enabled:             true,
+		RepotrackerDisabled: utility.TruePtr(),
+		RemotePath:          "valid!",
+	}
+	require.NoError(p2.Insert())
+	assert.NoError(p2.ValidateEnabledRepotracker())
+	// A project that does have repotracker enabled and a invalid config.
+	p3 := &ProjectRef{
+		Owner:               "mongodb",
+		Repo:                "mci",
+		Branch:              "main",
+		Id:                  "p3",
+		Enabled:             true,
+		RepotrackerDisabled: utility.FalsePtr(),
+	}
+	require.NoError(p3.Insert())
+	assert.Error(p3.ValidateEnabledRepotracker())
+	// A project that does have repotracker enabled and a valid config.
+	p4 := &ProjectRef{
+		Owner:               "mongodb",
+		Repo:                "mci",
+		Branch:              "main",
+		Id:                  "p4",
+		Enabled:             true,
+		RepotrackerDisabled: utility.FalsePtr(),
+		RemotePath:          "valid!",
+	}
+	require.NoError(p4.Insert())
+	assert.NoError(p4.ValidateEnabledRepotracker())
+}
+
 func TestCanEnableCommitQueue(t *testing.T) {
 	assert := assert.New(t)
 	require := require.New(t)

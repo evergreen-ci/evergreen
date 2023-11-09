@@ -49,6 +49,8 @@ type ProjectRef struct {
 	// Identifier must be unique, but is modifiable. Used by users.
 	Identifier string `bson:"identifier" json:"identifier" yaml:"identifier"`
 
+	// RemotePath is the path to the Evergreen config file.
+	RemotePath             string              `bson:"remote_path" json:"remote_path" yaml:"remote_path"`
 	DisplayName            string              `bson:"display_name" json:"display_name,omitempty" yaml:"display_name"`
 	Enabled                bool                `bson:"enabled,omitempty" json:"enabled,omitempty" yaml:"enabled"`
 	Private                *bool               `bson:"private,omitempty" json:"private,omitempty" yaml:"private"`
@@ -56,7 +58,6 @@ type ProjectRef struct {
 	Owner                  string              `bson:"owner_name" json:"owner_name" yaml:"owner"`
 	Repo                   string              `bson:"repo_name" json:"repo_name" yaml:"repo"`
 	Branch                 string              `bson:"branch_name" json:"branch_name" yaml:"branch"`
-	RemotePath             string              `bson:"remote_path" json:"remote_path" yaml:"remote_path"`
 	PatchingDisabled       *bool               `bson:"patching_disabled,omitempty" json:"patching_disabled,omitempty"`
 	RepotrackerDisabled    *bool               `bson:"repotracker_disabled,omitempty" json:"repotracker_disabled,omitempty" yaml:"repotracker_disabled"`
 	DispatchingDisabled    *bool               `bson:"dispatching_disabled,omitempty" json:"dispatching_disabled,omitempty" yaml:"dispatching_disabled"`
@@ -1919,6 +1920,15 @@ func FindProjectRefs(key string, limit int, sortDir int) ([]ProjectRef, error) {
 	err := db.FindAllQ(ProjectRefCollection, q, &projectRefs)
 
 	return projectRefs, err
+}
+
+// ValidateEnabledRepotracker checks if the repotracker is being enabled,
+// and if it is, checks to make sure it can be enabled.
+func (p *ProjectRef) ValidateEnabledRepotracker() error {
+	if !p.IsRepotrackerDisabled() && p.Enabled && p.RemotePath == "" {
+		return errors.Errorf("remote path can't be empty for enabled repotracker project '%s'", p.Identifier)
+	}
+	return nil
 }
 
 func (p *ProjectRef) CanEnableCommitQueue() (bool, error) {
