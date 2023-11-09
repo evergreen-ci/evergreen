@@ -249,23 +249,25 @@ func TestPatchHandlersWithRestricted(t *testing.T) {
 		evergreen.ScopeCollection, evergreen.RoleCollection, evergreen.ConfigCollection, evergreen.GitHubAppCollection))
 
 	independentProject := &dbModel.ProjectRef{
-		Id:         "branch1",
-		Identifier: "branch1_iden",
-		Owner:      "owner",
-		Repo:       "repo",
-		Branch:     "main",
-		Enabled:    true,
-		Restricted: utility.TruePtr(),
-		Admins:     []string{"branch1_admin"},
+		Id:                  "branch1",
+		Identifier:          "branch1_iden",
+		Owner:               "owner",
+		Repo:                "repo",
+		Branch:              "main",
+		Enabled:             true,
+		Restricted:          utility.TruePtr(),
+		Admins:              []string{"branch1_admin"},
+		RepotrackerDisabled: utility.TruePtr(),
 	}
 	branchProject := &dbModel.ProjectRef{
-		Id:         "branch2",
-		Identifier: "branch2_iden",
-		Owner:      "owner",
-		Repo:       "repo",
-		Branch:     "main",
-		Enabled:    true,
-		Admins:     []string{"branch2_admin", "the amazing Annie"},
+		Id:                  "branch2",
+		Identifier:          "branch2_iden",
+		Owner:               "owner",
+		Repo:                "repo",
+		Branch:              "main",
+		Enabled:             true,
+		Admins:              []string{"branch2_admin", "the amazing Annie"},
+		RepotrackerDisabled: utility.TruePtr(),
 	}
 	assert.NoError(t, independentProject.Insert())
 	assert.NoError(t, branchProject.Insert())
