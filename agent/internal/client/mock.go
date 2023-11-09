@@ -343,7 +343,7 @@ func (c *Mock) GetLoggerProducer(ctx context.Context, td TaskData, _ *LoggerConf
 	return NewSingleChannelLogHarness(td.ID, newMockSender("mock", appendLine)), nil
 }
 
-// sendTaskLine appends a task log line to the cache.
+// sendTaskLogLine appends a new log line to the task log cache.
 func (c *Mock) sendTaskLogLine(td TaskData, line log.LogLine) error {
 	c.mu.Lock()
 	defer c.mu.Unlock()

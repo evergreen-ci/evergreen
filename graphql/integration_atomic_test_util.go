@@ -4,11 +4,12 @@ package graphql
 // To add a new test:
 // 1. Add a new directory in the tests directory. Name it after the query/mutation you are testing.
 // 2. Add a data.json file to the dir you created. The data for your tests goes here. See tests/versionTasks/data.json for example.
-// 3. (Optional) Add directory specific test setup within the directorySpecificTestSetup function.
-// 4. (Optional) Add directory specific test cleanup within the directorySpecificTestCleanup function.
-// 5. Add a results.json file to the dir you created. The results that your queries will be asserts against go here. See tests/versionTasks/results.json for example.
-// 6. Create a queries dir in the dir you created. All the queries/mutations for your tests go in this dir.
-// 7. That's all! Start testing.
+// 3. (Optional) Add a task_output_data.json file to the dir you created. The "offline" (not stored in the DB) task output data, such as task and test logs, goes here. See tests/task/taskLogs/task_output_data.json for example.
+// 4. (Optional) Add directory specific test setup within the directorySpecificTestSetup function.
+// 5. (Optional) Add directory specific test cleanup within the directorySpecificTestCleanup function.
+// 6. Add a results.json file to the dir you created. The results that your queries will be asserts against go here. See tests/versionTasks/results.json for example.
+// 7. Create a queries dir in the dir you created. All the queries/mutations for your tests go in this dir.
+// 8. That's all! Start testing.
 
 import (
 	"bytes"
