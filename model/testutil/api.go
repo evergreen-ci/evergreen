@@ -232,10 +232,5 @@ func SetupAPITestData(testConfig *evergreen.Settings, taskDisplayName string, va
 	}
 	modelData.Host = testHost
 
-	session, _, err := db.GetGlobalSessionFactory().GetSession()
-	if err != nil {
-		return nil, errors.Wrap(err, "getting DB session")
-	}
-
 	return modelData, nil
 }
