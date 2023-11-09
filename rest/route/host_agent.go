@@ -1338,10 +1338,6 @@ func (h *hostAgentEndTask) Run(ctx context.Context) gimlet.Responder {
 		endTaskResp.ShouldExit = true
 	}
 
-	// kim: NOTE: this logged for last two execution tasks (3 and 0) for the
-	// display task 'mongodb_mongo_master_enterprise_amazon_linux2_arm64_all_feature_flags_multi_shard_multi_stmt_txn_jscore_passthrough_3_linux_enterprise_patch_c4897c7176a1ba4d913298ba6cc66ddcc819a9f9_65148a43850e619a7947ae6b_23_09_27_20_02_24'
-	// Worth noting that both ran at almost the same time (5:32:07 and 5:32:09),
-	// so they could have raced if they were going at the same time.
 	msg := message.Fields{
 		"message":     "Successfully marked task as finished",
 		"task_id":     t.Id,

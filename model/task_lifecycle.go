@@ -18,7 +18,6 @@ import (
 	"github.com/evergreen-ci/evergreen/model/task"
 	"github.com/evergreen-ci/evergreen/thirdparty"
 	"github.com/evergreen-ci/utility"
-	"github.com/k0kubun/pp"
 	adb "github.com/mongodb/anser/db"
 	"github.com/mongodb/grip"
 	"github.com/mongodb/grip/message"
@@ -2280,19 +2279,18 @@ func ResetTaskOrDisplayTask(ctx context.Context, settings *evergreen.Settings, t
 
 // UpdateDisplayTaskForTask updates the status of the given execution task's display task
 func UpdateDisplayTaskForTask(t *task.Task) error {
-	pp.Println("starting display task update for task", t.Id)
 	if !t.IsPartOfDisplay() {
 		return errors.Errorf("task '%s' is not an execution task", t.Id)
 	}
 
-	// kim: TODO: explain why we need to retry here (i.e. this logic can race
-	// between end tasks, and there's no backup measure that will fix up the
-	// status. There's no exact number of times that this update can fail
-	// theoretically, but number of retries is intentionally small because:
-	// - There are not a lot of different task statuses.
-	// - Status are not frequently updated.
-	// - Once they reach a non-transient state such as finished.
-	// kim: TODO: add basic race test for UpdateDisplayTaskForTask
+	// The display task status update needs to retry in case it temporarily
+	// conflicts with other execution tasks that are updating it at the same
+	// time (e.g. because end task is running for multiple execution tasks in
+	// parallel, so some see it as still running, but some see it as finished).
+	// While there's no exact number of times that this update can fail
+	// theoretically, the number of attempts is kept fairly small because the
+	// likelihood of more than two execution tasks updating the same display
+	// task concurrently is low.
 	const maxUpdateAttempts = 3
 	var (
 		originalDisplayTask *task.Task
@@ -2343,13 +2341,8 @@ func UpdateDisplayTaskForTask(t *task.Task) error {
 		t.DisplayTask = nil
 	}
 
-	pp.Println("updated display task for execution task:", t.Id, updatedDisplayTask.Status)
-
-	// kim: NOTE: it's okay to not set the display task info on the original display
-	// task because it's not an input parameter or a returned output.
 	if !originalDisplayTask.IsFinished() && updatedDisplayTask.IsFinished() {
 		event.LogTaskFinished(originalDisplayTask.Id, originalDisplayTask.Execution, updatedDisplayTask.GetDisplayStatus())
-		// kim: NOTE: this logged at 5:32:07.
 		grip.Info(message.Fields{
 			"message":   "display task finished",
 			"task_id":   originalDisplayTask.Id,
@@ -2439,15 +2432,6 @@ func tryUpdateDisplayTaskAtomically(dt task.Task) (updated *task.Task, err error
 	if err := task.UpdateOne(
 		bson.M{
 			task.IdKey: dt.Id,
-			// kim: NOTE: one solution to the race is to try updating, but only
-			// update if the current DB status is the same as the one it was
-			// based on; if so, then just do the update. If not, then the status
-			// has changed (i.e. another task has updated the display task in
-			// the meantime), so redo the display task calculation from scratch.
-			//
-			// kim: TODO: verify whether allowing an update to the same exact
-			// status is allowed - it may still update to outdated data.
-			//
 			// Require that the status is updated atomically and has not changed
 			// since the status was calculated. If the status has changed in
 			// between when the display task was fetched earlier and when it is

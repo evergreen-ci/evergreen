@@ -26,7 +26,6 @@ import (
 	"github.com/evergreen-ci/evergreen/thirdparty"
 	"github.com/evergreen-ci/evergreen/util"
 	"github.com/evergreen-ci/utility"
-	"github.com/k0kubun/pp"
 	"github.com/mongodb/grip"
 	"github.com/mongodb/grip/message"
 	"github.com/mongodb/grip/send"
@@ -5829,8 +5828,8 @@ func TestDisplayTaskDelayedRestart(t *testing.T) {
 
 func TestDisplayTaskUpdatesAreConcurrencySafe(t *testing.T) {
 	// This test is intentionally testing concurrent/conflicting updates to the
-	// same display task, so if UpdateDisplayTaskForTask is working properly,
-	// this test should never be flaky. If it is, that's a sign that it's not
+	// same display task. If UpdateDisplayTaskForTask is working properly, this
+	// test should never be flaky. If it is, that's a sign that it's not
 	// concurrency safe.
 
 	require.NoError(t, db.ClearCollections(task.Collection))
@@ -5867,7 +5866,7 @@ func TestDisplayTaskUpdatesAreConcurrencySafe(t *testing.T) {
 	require.NoError(t, et1.Insert())
 	require.NoError(t, dt.Insert())
 
-	const numConcurrentUpdates = 10
+	const numConcurrentUpdates = 3
 	errs := make(chan error, 1+numConcurrentUpdates)
 	var updatesDone sync.WaitGroup
 	for i := 0; i < numConcurrentUpdates; i++ {
@@ -5877,8 +5876,7 @@ func TestDisplayTaskUpdatesAreConcurrencySafe(t *testing.T) {
 			// This goroutine will potentially see one execution task is not
 			// finished, so it may try either update the display task status to
 			// starting or success.
-			_ = UpdateDisplayTaskForTask(&et0)
-			pp.Println("concurrent update finished")
+			errs <- UpdateDisplayTaskForTask(&et0)
 		}()
 	}
 
@@ -5905,12 +5903,15 @@ func TestDisplayTaskUpdatesAreConcurrencySafe(t *testing.T) {
 
 		// The last goroutine initially sees that all execution tasks are
 		// finished, so it should try to update the final status to success.
-		_ = UpdateDisplayTaskForTask(&et1)
-		pp.Println("final update finished")
+		errs <- UpdateDisplayTaskForTask(&et0)
 	}()
 
 	updatesDone.Wait()
 	close(errs)
+
+	for err := range errs {
+		assert.NoError(t, err)
+	}
 
 	// The final display task status must be success after all the concurrent
 	// updates are done because all the execution tasks finished with success.

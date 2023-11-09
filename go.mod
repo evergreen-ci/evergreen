@@ -223,8 +223,5 @@ require (
 
 require (
 	github.com/golang-jwt/jwt/v4 v4.5.0 // indirect
-	github.com/k0kubun/pp v3.0.1+incompatible // indirect
-	github.com/mattn/go-colorable v0.1.13 // indirect
-	github.com/mattn/go-isatty v0.0.19 // indirect
 	github.com/sosodev/duration v1.1.0 // indirect
 )
