@@ -928,7 +928,7 @@ func (a *Agent) finishTask(ctx context.Context, tc *taskContext, status string, 
 		tc.logger.Task().Info("Task completed - SUCCESS.")
 		if err := a.runPostTaskCommands(ctx, tc); err != nil {
 			tc.logger.Task().Info("Post task completed - FAILURE. Overall task status changed to FAILED.")
-			setEndTaskFailureDetails(tc, detail, evergreen.TaskFailed, "", "")
+			setEndTaskFailureDetails(tc, detail, evergreen.TaskFailed, "", "", false)
 		}
 		a.runEndTaskSync(ctx, tc, detail)
 	case evergreen.TaskFailed:
@@ -989,15 +989,16 @@ func (a *Agent) finishTask(ctx context.Context, tc *taskContext, status string, 
 func (a *Agent) endTaskResponse(ctx context.Context, tc *taskContext, status string, systemFailureDescription string) *apimodels.TaskEndDetail {
 	highestPriorityDescription := systemFailureDescription
 	var userDefinedFailureType string
+	var retryable bool
 	if userEndTaskResp := tc.getUserEndTaskResponse(); userEndTaskResp != nil {
 		tc.logger.Task().Infof("Task status set to '%s' with HTTP endpoint.", userEndTaskResp.Status)
+		retryable = userEndTaskResp.Retryable
 		if !evergreen.IsValidTaskEndStatus(userEndTaskResp.Status) {
 			tc.logger.Task().Errorf("'%s' is not a valid task status, defaulting to system failure.", userEndTaskResp.Status)
 			status = evergreen.TaskFailed
 			userDefinedFailureType = evergreen.CommandTypeSystem
 		} else {
 			status = userEndTaskResp.Status
-
 			if len(userEndTaskResp.Description) > endTaskMessageLimit {
 				tc.logger.Task().Warningf("Description from endpoint is too long to set (%d character limit), using default description.", endTaskMessageLimit)
 			} else {
@@ -1011,19 +1012,22 @@ func (a *Agent) endTaskResponse(ctx context.Context, tc *taskContext, status str
 			}
 		}
 	}
+	if retryable {
+		tc.logger.Task().Info("Task is marked as retryable, will be automatically rescheduled.")
+	}
 
 	detail := &apimodels.TaskEndDetail{
 		OOMTracker: tc.getOomTrackerInfo(),
 		TraceID:    tc.traceID,
 	}
-	setEndTaskFailureDetails(tc, detail, status, highestPriorityDescription, userDefinedFailureType)
+	setEndTaskFailureDetails(tc, detail, status, highestPriorityDescription, userDefinedFailureType, retryable)
 	if tc.taskConfig != nil {
 		detail.Modules.Prefixes = tc.taskConfig.ModulePaths
 	}
 	return detail
 }
 
-func setEndTaskFailureDetails(tc *taskContext, detail *apimodels.TaskEndDetail, status, description, failureType string) {
+func setEndTaskFailureDetails(tc *taskContext, detail *apimodels.TaskEndDetail, status, description, failureType string, retryable bool) {
 	var isDefaultDescription bool
 	if tc.getCurrentCommand() != nil {
 		// If there is no explicit user-defined description or failure type,
@@ -1038,6 +1042,7 @@ func setEndTaskFailureDetails(tc *taskContext, detail *apimodels.TaskEndDetail, 
 	}
 
 	detail.Status = status
+	detail.Retryable = retryable
 	if status != evergreen.TaskSucceeded {
 		detail.Type = failureType
 		detail.Description = description

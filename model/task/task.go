@@ -245,9 +245,11 @@ type Task struct {
 	// ResetWhenFinished indicates that a task should be reset once it is
 	// finished running. This is typically to deal with tasks that should be
 	// reset but cannot do so yet because they're currently running.
-	ResetWhenFinished       bool  `bson:"reset_when_finished,omitempty" json:"reset_when_finished,omitempty"`
-	ResetFailedWhenFinished bool  `bson:"reset_failed_when_finished,omitempty" json:"reset_failed_when_finished,omitempty"`
-	DisplayTask             *Task `bson:"-" json:"-"` // this is a local pointer from an exec to display task
+	ResetWhenFinished       bool `bson:"reset_when_finished,omitempty" json:"reset_when_finished,omitempty"`
+	ResetFailedWhenFinished bool `bson:"reset_failed_when_finished,omitempty" json:"reset_failed_when_finished,omitempty"`
+	// NumAutomaticResets is the number of times the task has been programmatically reset via the agent status server.
+	NumAutomaticResets int   `bson:"num_automatic_resets,omitempty" json:"num_automatic_resets,omitempty"`
+	DisplayTask        *Task `bson:"-" json:"-"` // this is a local pointer from an exec to display task
 
 	// DisplayTaskId is set to the display task ID if the task is an execution task, the empty string if it's not an execution task,
 	// and is nil if we haven't yet checked whether or not this task has a display task.
@@ -1107,6 +1109,25 @@ func (t *Task) MarkAsContainerAllocated(ctx context.Context, env evergreen.Envir
 	t.ContainerAllocated = true
 	t.ContainerAllocatedTime = allocatedAt
 
+	return nil
+}
+
+// IncNumAutomaticResets increments the number of times a task has been
+// automatically reset.
+func (t *Task) IncNumAutomaticResets() error {
+	err := UpdateOne(
+		bson.M{
+			IdKey: t.Id,
+		},
+		bson.M{
+			"$inc": bson.M{
+				NumAutomaticResetsKey: 1,
+			},
+		})
+	if err != nil {
+		return err
+	}
+	t.NumAutomaticResets = t.NumAutomaticResets + 1
 	return nil
 }
 

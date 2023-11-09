@@ -179,8 +179,10 @@ const (
 	MergeTestFailed    = "failed"
 	EnqueueFailed      = "failed to enqueue"
 
-	// maximum task (zero based) execution number
+	// MaxTaskExecution is the maximum task (zero based) execution number
 	MaxTaskExecution = 9
+	// MaxAutomaticRestarts is the maximum number of automatic restarts allowed for a task
+	MaxAutomaticRestarts = 1
 
 	// maximum task priority
 	MaxTaskPriority = 100

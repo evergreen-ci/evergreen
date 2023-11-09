@@ -62,6 +62,7 @@ type TaskEndDetail struct {
 	Type            string          `bson:"type,omitempty" json:"type,omitempty"`
 	Description     string          `bson:"desc,omitempty" json:"desc,omitempty"`
 	TimedOut        bool            `bson:"timed_out,omitempty" json:"timed_out,omitempty"`
+	Retryable       bool            `bson:"retryable,omitempty" json:"retryable,omitempty"`
 	TimeoutType     string          `bson:"timeout_type,omitempty" json:"timeout_type,omitempty"`
 	TimeoutDuration time.Duration   `bson:"timeout_duration,omitempty" json:"timeout_duration,omitempty" swaggertype:"primitive,integer"`
 	OOMTracker      *OOMTrackerInfo `bson:"oom_killer,omitempty" json:"oom_killer,omitempty"`
