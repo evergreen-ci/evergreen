@@ -1112,25 +1112,6 @@ func (t *Task) MarkAsContainerAllocated(ctx context.Context, env evergreen.Envir
 	return nil
 }
 
-// IncNumAutomaticResets increments the number of times a task has been
-// automatically reset.
-func (t *Task) IncNumAutomaticResets() error {
-	err := UpdateOne(
-		bson.M{
-			IdKey: t.Id,
-		},
-		bson.M{
-			"$inc": bson.M{
-				NumAutomaticResetsKey: 1,
-			},
-		})
-	if err != nil {
-		return err
-	}
-	t.NumAutomaticResets = t.NumAutomaticResets + 1
-	return nil
-}
-
 func containerDeallocatedUpdate() bson.M {
 	return bson.M{
 		"$set": bson.M{
@@ -2804,6 +2785,31 @@ func (t *Task) SetResetWhenFinished() error {
 		bson.M{
 			"$set": bson.M{
 				ResetWhenFinishedKey: true,
+			},
+		},
+	)
+}
+
+// SetResetWhenFinishedWithInc requests that a task (that was marked to
+// automatically reset when finished via the agent status server) reset itself
+// when finished. It will also increment the number of automatic resets the task
+// has performed.
+func (t *Task) SetResetWhenFinishedWithInc() error {
+	if t.ResetWhenFinished {
+		return nil
+	}
+	t.ResetWhenFinished = true
+	t.NumAutomaticResets = t.NumAutomaticResets + 1
+	return UpdateOne(
+		bson.M{
+			IdKey: t.Id,
+		},
+		bson.M{
+			"$set": bson.M{
+				ResetWhenFinishedKey: true,
+			},
+			"$inc": bson.M{
+				NumAutomaticResetsKey: 1,
 			},
 		},
 	)
