@@ -5832,9 +5832,9 @@ func TestDisplayTaskUpdatesAreConcurrencySafe(t *testing.T) {
 	// test should never be flaky. If it is, that's a sign that it's not
 	// concurrency safe.
 
-	require.NoError(t, db.ClearCollections(task.Collection))
+	require.NoError(t, db.ClearCollections(task.Collection, event.EventCollection))
 	defer func() {
-		assert.NoError(t, db.ClearCollections(task.Collection))
+		assert.NoError(t, db.ClearCollections(task.Collection, event.EventCollection))
 	}()
 
 	const displayTaskID = "display_task_id"
@@ -5920,6 +5920,11 @@ func TestDisplayTaskUpdatesAreConcurrencySafe(t *testing.T) {
 	require.NotZero(t, dbDisplayTask)
 
 	assert.Equal(t, evergreen.TaskSucceeded, dbDisplayTask.Status, "final display task status must be success after all concurrent updates finish")
+
+	latestEvents, err := event.Find(event.MostRecentTaskEvents(dt.Id, 1))
+	require.NoError(t, err)
+	require.Len(t, latestEvents, 1)
+	assert.Equal(t, event.TaskFinished, latestEvents[0].EventType, "should have logged event for display task finished")
 }
 
 func TestAbortedTaskDelayedRestart(t *testing.T) {
