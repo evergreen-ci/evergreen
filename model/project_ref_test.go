@@ -1656,6 +1656,7 @@ func TestValidateEnabledRepotracker(t *testing.T) {
 		Id:                  "p4",
 		Enabled:             true,
 		RepotrackerDisabled: utility.FalsePtr(),
+		RemotePath:          "valid!",
 	}
 	require.NoError(p4.Insert())
 	assert.NoError(p4.ValidateEnabledRepotracker())
