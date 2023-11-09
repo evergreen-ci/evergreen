@@ -365,9 +365,7 @@ gqlgen:
 	go run github.com/99designs/gqlgen generate
 
 swaggo: 
-	make swaggo-format
-	make swaggo-build
-	make swaggo-render
+	$(MAKE) swaggo-format swaggo-build swaggo-render
 
 swaggo-install:
 	go install github.com/swaggo/swag/cmd/swag@latest
