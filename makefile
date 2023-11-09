@@ -376,7 +376,7 @@ swaggo-format:
 	swag fmt -g service/service.go
 
 swaggo-build:
-	swag init -g service/service.go -o $(buildDir)
+	swag init -g service/service.go -o $(buildDir) --outputTypes json
 
 swaggo-render:
 	npx @redocly/cli build-docs $(buildDir)/swagger.json -o $(buildDir)/redoc-static.html
