@@ -2298,17 +2298,62 @@ func UpdateDisplayTaskForTask(t *task.Task) error {
 		return errors.Errorf("task '%s' is not a display task", dt.Id)
 	}
 
-	var timeTaken time.Duration
-	var statusTask task.Task
+	// kim: TODO: explain why we need to retry here (i.e. this logic can race
+	// between end tasks, and there's no backup measure that will fix up the
+	// status. There's no exact number of times that this update can fail
+	// theoretically, but number of retries is intentionally small because:
+	// - There are not a lot of different task statuses.
+	// - Status are not frequently updated.
+	// - Once they reach a non-transient state such as finished.
+	// kim: TODO: add basic race test for UpdateDisplayTaskForTask
+	const maxUpdateAttempts = 3
+	var updatedDisplayTask *task.Task
+	for i := 0; i < maxUpdateAttempts; i++ {
+		updatedDisplayTask, err = tryUpdateDisplayTaskAtomically(*dt)
+		if err == nil {
+			break
+		}
+		grip.Debug(message.WrapError(err, message.Fields{
+			"message":                      "failed to update display task due to concurrent update contention",
+			"execution_task":               t.Id,
+			"display_task_id":              dt.Id,
+			"original_display_task_status": dt.Status,
+			"updated_display_task_status":  updatedDisplayTask.Status,
+			"attempt_num":                  i,
+			"ticket":                       "DEVPROD-712",
+		}))
+		if i >= maxUpdateAttempts-1 {
+			return err
+		}
+	}
+
+	// kim: NOTE: it's okay to not set the display task info on the original display
+	// task because it's not an input parameter or a returned output.
+	if !dt.IsFinished() && updatedDisplayTask.IsFinished() {
+		event.LogTaskFinished(dt.Id, dt.Execution, dt.GetDisplayStatus())
+		// kim: NOTE: this logged at 5:32:07.
+		grip.Info(message.Fields{
+			"message":   "display task finished",
+			"task_id":   dt.Id,
+			"status":    dt.Status,
+			"operation": "UpdateDisplayTaskForTask",
+		})
+	}
+
+	return nil
+}
+
+func tryUpdateDisplayTaskAtomically(dt task.Task) (updated *task.Task, err error) {
 	execTasks, err := task.Find(task.ByIds(dt.ExecutionTasks))
 	if err != nil {
-		return errors.Wrap(err, "retrieving execution tasks")
+		return &dt, errors.Wrap(err, "retrieving execution tasks")
 	}
 	hasFinishedTasks := false
 	hasTasksToRun := false
 	startTime := time.Unix(1<<62, 0)
 	endTime := utility.ZeroTime
 	noActiveTasks := true
+	var timeTaken time.Duration
 	for _, execTask := range execTasks {
 		// if any of the execution tasks are scheduled, the display task is too
 		if execTask.Activated {
@@ -2341,7 +2386,7 @@ func UpdateDisplayTaskForTask(t *task.Task) error {
 	}
 
 	sort.Sort(task.ByPriority(execTasks))
-	statusTask = execTasks[0]
+	statusTask := execTasks[0]
 	if hasFinishedTasks && hasTasksToRun {
 		// if an unblocked display task has a mix of finished and unfinished tasks, the display task is still
 		// "started" even if there aren't currently running tasks
@@ -2364,38 +2409,36 @@ func UpdateDisplayTaskForTask(t *task.Task) error {
 		update[task.FinishTimeKey] = endTime
 	}
 
-	// refresh task status from db in case of race
-	taskWithStatus, err := task.FindOneIdWithFields(dt.Id, task.StatusKey)
-	if err != nil {
-		return errors.Wrapf(err, "refreshing task '%s'", dt.Id)
-	}
-	if taskWithStatus == nil {
-		return errors.Errorf("task '%s' not found", dt.Id)
-	}
-	wasFinished := taskWithStatus.IsFinished()
-	err = task.UpdateOne(
+	if err := task.UpdateOne(
 		bson.M{
 			task.IdKey: dt.Id,
+			// kim: NOTE: one solution to the race is to try updating, but only
+			// update if the current DB status is the same as the one it was
+			// based on; if so, then just do the update. If not, then the status
+			// has changed (i.e. another task has updated the display task in
+			// the meantime), so redo the display task calculation from scratch.
+			//
+			// kim: TODO: verify whether allowing an update to the same exact
+			// status is allowed - it may still update to outdated data.
+			//
+			// Require that the status is updated atomically and has not changed
+			// since the status was calculated. If the status has changed in
+			// between when the display task was fetched earlier and when it is
+			// updated here, then this update is potentially invalid because
+			// it's based on outdated data from the execution tasks.
+			task.StatusKey: dt.Status,
 		},
 		bson.M{
 			"$set": update,
-		})
-	if err != nil {
-		return errors.Wrap(err, "updating display task")
+		}); err != nil {
+		return nil, errors.Wrap(err, "updating display task")
 	}
+
 	dt.Status = statusTask.Status
 	dt.Details = statusTask.Details
 	dt.TimeTaken = timeTaken
-	if !wasFinished && dt.IsFinished() {
-		event.LogTaskFinished(dt.Id, dt.Execution, dt.GetDisplayStatus())
-		grip.Info(message.Fields{
-			"message":   "display task finished",
-			"task_id":   dt.Id,
-			"status":    dt.Status,
-			"operation": "UpdateDisplayTaskForTask",
-		})
-	}
-	return nil
+
+	return &dt, nil
 }
 
 // checkResetSingleHostTaskGroup attempts to reset all tasks that are part of
