@@ -357,10 +357,8 @@ func (h *projectIDPatchHandler) Run(ctx context.Context) gimlet.Responder {
 			return gimlet.MakeJSONErrorResponder(errors.Wrap(err, "validating project identifier"))
 		}
 	}
-	if !h.newProjectRef.IsRepotrackerDisabled() {
-		if err := h.newProjectRef.ValidateModifiedRepotracker(); err != nil {
-			return gimlet.MakeJSONErrorResponder(errors.Wrap(err, "validating project repotracker"))
-		}
+	if err := h.newProjectRef.ValidateEnabledRepotracker(); err != nil {
+		return gimlet.MakeJSONErrorResponder(errors.Wrap(err, "validating project repotracker"))
 	}
 
 	before, err := dbModel.GetProjectSettings(h.newProjectRef)

@@ -1923,11 +1923,11 @@ func FindProjectRefs(key string, limit int, sortDir int) ([]ProjectRef, error) {
 	return projectRefs, err
 }
 
-// CanEnableRepotracker checks if the project can enable the repotracker
-// with the current state of their project settings.
-func (p *ProjectRef) ValidateModifiedRepotracker() error {
-	if p.Enabled && p.RemotePath == "" {
-		return errors.Errorf("Your project '%s' must have a confguration set to enable repotracker", p.Identifier)
+// ValidateEnabledRepotracker checks if the repotracker is being enabled,
+// and if it is, checks to make sure it can be enabled.
+func (p *ProjectRef) ValidateEnabledRepotracker() error {
+	if !p.IsRepotrackerDisabled() && p.Enabled && p.RemotePath == "" {
+		return errors.Errorf("remote path can't be empty for enabled repotracker project '%s'", p.Identifier)
 	}
 	return nil
 }
