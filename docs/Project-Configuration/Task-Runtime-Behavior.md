@@ -232,6 +232,7 @@ is set.
 | type            | string  | The failure type. This can be "setup", "system", or "test" (see [project configuration files](Project-Configuration-Files.md#command-failure-colors) for corresponding colors). If not specified, will default to the failure type of the last command that runs. |
 | desc            | string  | Provide details on the task failure. This is limited to 500 characters. If not specified or the message is too long, it will default to the display name of the last command that runs.                                                                           |
 | should_continue | boolean | If set, the task will continue running commands, but the final status will be the one explicitly set. Defaults to false.                                                                                                                                          |
+| retryable       | boolean | If set, the task will automatically restart itself upon completion (this is limited to one restart per task). Defaults to false.                                                                                                                                  |
 
 Example in a command:
 
@@ -241,5 +242,5 @@ Example in a command:
         shell: bash
         # Manually set task end status to setup-failed.
         script: |
-          curl -d '{"status":"failed", "type":"setup", "desc":"this should be set", "should_continue": false}' -H "Content-Type: application/json" -X POST localhost:2285/task_status
+          curl -d '{"status":"failed", "type":"setup", "desc":"this should be set", "should_continue": false, "retryable": true}' -H "Content-Type: application/json" -X POST localhost:2285/task_status
 ```
