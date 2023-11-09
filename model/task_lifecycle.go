@@ -2298,6 +2298,11 @@ func UpdateDisplayTaskForTask(t *task.Task) error {
 		err                 error
 	)
 	for i := 0; i < maxUpdateAttempts; i++ {
+		// Clear the cached display task, if any (e.g. due to a prior
+		// GetDisplayTask). The display task fetched here must always contain
+		// the latest display task data.
+		t.DisplayTask = nil
+
 		originalDisplayTask, err = t.GetDisplayTask()
 		if err != nil {
 			return errors.Wrap(err, "getting display task for task")
@@ -2335,10 +2340,6 @@ func UpdateDisplayTaskForTask(t *task.Task) error {
 		if i >= maxUpdateAttempts-1 {
 			return errors.Wrapf(err, "updating display task '%s' for execution task '%s'", originalDisplayTask.Id, t.Id)
 		}
-
-		// Clear the cached display task because it's outdated. On the next
-		// attempt, it has to fetch the latest display task data.
-		t.DisplayTask = nil
 	}
 
 	if !originalDisplayTask.IsFinished() && updatedDisplayTask.IsFinished() {
