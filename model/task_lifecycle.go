@@ -18,6 +18,7 @@ import (
 	"github.com/evergreen-ci/evergreen/model/task"
 	"github.com/evergreen-ci/evergreen/thirdparty"
 	"github.com/evergreen-ci/utility"
+	"github.com/k0kubun/pp"
 	adb "github.com/mongodb/anser/db"
 	"github.com/mongodb/grip"
 	"github.com/mongodb/grip/message"
@@ -2279,23 +2280,9 @@ func ResetTaskOrDisplayTask(ctx context.Context, settings *evergreen.Settings, t
 
 // UpdateDisplayTaskForTask updates the status of the given execution task's display task
 func UpdateDisplayTaskForTask(t *task.Task) error {
+	pp.Println("starting display task update for task", t.Id)
 	if !t.IsPartOfDisplay() {
 		return errors.Errorf("task '%s' is not an execution task", t.Id)
-	}
-	dt, err := t.GetDisplayTask()
-	if err != nil {
-		return errors.Wrap(err, "getting display task for task")
-	}
-	if dt == nil {
-		grip.Error(message.Fields{
-			"message":         "task may hold a display task that doesn't exist",
-			"task_id":         t.Id,
-			"display_task_id": t.DisplayTaskId,
-		})
-		return errors.Errorf("display task not found for task '%s'", t.Id)
-	}
-	if !dt.DisplayOnly {
-		return errors.Errorf("task '%s' is not a display task", dt.Id)
 	}
 
 	// kim: TODO: explain why we need to retry here (i.e. this logic can race
@@ -2307,35 +2294,66 @@ func UpdateDisplayTaskForTask(t *task.Task) error {
 	// - Once they reach a non-transient state such as finished.
 	// kim: TODO: add basic race test for UpdateDisplayTaskForTask
 	const maxUpdateAttempts = 3
-	var updatedDisplayTask *task.Task
+	var (
+		originalDisplayTask *task.Task
+		updatedDisplayTask  *task.Task
+		err                 error
+	)
 	for i := 0; i < maxUpdateAttempts; i++ {
-		updatedDisplayTask, err = tryUpdateDisplayTaskAtomically(*dt)
+		originalDisplayTask, err = t.GetDisplayTask()
+		if err != nil {
+			return errors.Wrap(err, "getting display task for task")
+		}
+		if originalDisplayTask == nil {
+			grip.Error(message.Fields{
+				"message":         "task may hold a display task that doesn't exist",
+				"task_id":         t.Id,
+				"display_task_id": t.DisplayTaskId,
+			})
+			return errors.Errorf("display task not found for task '%s'", t.Id)
+		}
+		if !originalDisplayTask.DisplayOnly {
+			return errors.Errorf("task '%s' is not a display task", originalDisplayTask.Id)
+		}
+
+		updatedDisplayTask, err = tryUpdateDisplayTaskAtomically(*originalDisplayTask)
 		if err == nil {
 			break
 		}
-		grip.Debug(message.WrapError(err, message.Fields{
+
+		msg := message.Fields{
 			"message":                      "failed to update display task due to concurrent update contention",
 			"execution_task":               t.Id,
-			"display_task_id":              dt.Id,
-			"original_display_task_status": dt.Status,
-			"updated_display_task_status":  updatedDisplayTask.Status,
+			"display_task_id":              originalDisplayTask.Id,
+			"original_display_task_status": originalDisplayTask.Status,
 			"attempt_num":                  i,
 			"ticket":                       "DEVPROD-712",
-		}))
-		if i >= maxUpdateAttempts-1 {
-			return err
 		}
+		if updatedDisplayTask != nil {
+			msg["updated_display_task_status"] = updatedDisplayTask.Status
+		}
+		grip.Debug(message.WrapError(err, msg))
+
+		if i >= maxUpdateAttempts-1 {
+			return errors.Wrapf(err, "updating display task '%s' for execution task '%s'", originalDisplayTask.Id, t.Id)
+		}
+
+		// Clear the cached display task because it's outdated. On the next
+		// attempt, it has to fetch the latest display task data.
+		t.DisplayTask = nil
 	}
+
+	pp.Println("updated display task for execution task:", t.Id, updatedDisplayTask.Status)
 
 	// kim: NOTE: it's okay to not set the display task info on the original display
 	// task because it's not an input parameter or a returned output.
-	if !dt.IsFinished() && updatedDisplayTask.IsFinished() {
-		event.LogTaskFinished(dt.Id, dt.Execution, dt.GetDisplayStatus())
+	if !originalDisplayTask.IsFinished() && updatedDisplayTask.IsFinished() {
+		event.LogTaskFinished(originalDisplayTask.Id, originalDisplayTask.Execution, updatedDisplayTask.GetDisplayStatus())
 		// kim: NOTE: this logged at 5:32:07.
 		grip.Info(message.Fields{
 			"message":   "display task finished",
-			"task_id":   dt.Id,
-			"status":    dt.Status,
+			"task_id":   originalDisplayTask.Id,
+			"status":    originalDisplayTask.Status,
 			"operation": "UpdateDisplayTaskForTask",
 		})
 	}
@@ -2344,10 +2362,13 @@ func UpdateDisplayTaskForTask(t *task.Task) error {
 }
 
 func tryUpdateDisplayTaskAtomically(dt task.Task) (updated *task.Task, err error) {
+	originalStatus := dt.Status
+
 	execTasks, err := task.Find(task.ByIds(dt.ExecutionTasks))
 	if err != nil {
 		return &dt, errors.Wrap(err, "retrieving execution tasks")
 	}
+
 	hasFinishedTasks := false
 	hasTasksToRun := false
 	startTime := time.Unix(1<<62, 0)
@@ -2394,19 +2415,25 @@ func tryUpdateDisplayTaskAtomically(dt task.Task) (updated *task.Task, err error
 		statusTask.Details = apimodels.TaskEndDetail{}
 	}
 
+	dt.Status = statusTask.Status
+	dt.Details = statusTask.Details
+	dt.TimeTaken = timeTaken
+
 	update := bson.M{
-		task.StatusKey:        statusTask.Status,
+		task.StatusKey:        dt.Status,
 		task.ActivatedKey:     dt.Activated,
 		task.ActivatedTimeKey: dt.ActivatedTime,
-		task.TimeTakenKey:     timeTaken,
-		task.DetailsKey:       statusTask.Details,
+		task.TimeTakenKey:     dt.TimeTaken,
+		task.DetailsKey:       dt.Details,
 	}
 
 	if startTime != time.Unix(1<<62, 0) {
-		update[task.StartTimeKey] = startTime
+		dt.StartTime = startTime
+		update[task.StartTimeKey] = dt.StartTime
 	}
 	if endTime != utility.ZeroTime && !hasTasksToRun {
-		update[task.FinishTimeKey] = endTime
+		dt.FinishTime = endTime
+		update[task.FinishTimeKey] = dt.FinishTime
 	}
 
 	if err := task.UpdateOne(
@@ -2426,17 +2453,13 @@ func tryUpdateDisplayTaskAtomically(dt task.Task) (updated *task.Task, err error
 			// between when the display task was fetched earlier and when it is
 			// updated here, then this update is potentially invalid because
 			// it's based on outdated data from the execution tasks.
-			task.StatusKey: dt.Status,
+			task.StatusKey: originalStatus,
 		},
 		bson.M{
 			"$set": update,
 		}); err != nil {
-		return nil, errors.Wrap(err, "updating display task")
+		return &dt, errors.Wrap(err, "updating display task")
 	}
-
-	dt.Status = statusTask.Status
-	dt.Details = statusTask.Details
-	dt.TimeTaken = timeTaken
 
 	return &dt, nil
 }
