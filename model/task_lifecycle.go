@@ -2283,14 +2283,14 @@ func UpdateDisplayTaskForTask(t *task.Task) error {
 		return errors.Errorf("task '%s' is not an execution task", t.Id)
 	}
 
-	// The display task status update needs to retry in case it temporarily
+	// The display task status update can retry in case it temporarily
 	// conflicts with other execution tasks that are updating it at the same
 	// time (e.g. because end task is running for multiple execution tasks in
 	// parallel, so some see it as still running, but some see it as finished).
 	// While there's no exact number of times that this update can fail
-	// theoretically, the number of attempts is kept fairly small because the
-	// likelihood of more than two execution tasks updating the same display
-	// task concurrently is low.
+	// theoretically, the number of attempts is arbitrarily kept small, because
+	// the practical likelihood of an execution task racing more than once in a
+	// row is low.
 	const maxUpdateAttempts = 3
 	var (
 		originalDisplayTask *task.Task
