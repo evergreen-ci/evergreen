@@ -156,9 +156,6 @@ func (s3pc *s3put) validate() error {
 	if s3pc.PreservePath != "" && !s3pc.isMulti() {
 		catcher.New("preserve path can only be used with local files include filter")
 	}
-	if s3pc.skipMissing && s3pc.isMulti() {
-		catcher.New("cannot use optional upload with local files include filter")
-	}
 	if s3pc.RemoteFile == "" {
 		catcher.New("remote file cannot be blank")
 	}
