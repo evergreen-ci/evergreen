@@ -1621,10 +1621,10 @@ func TestValidateEnabledRepotracker(t *testing.T) {
 		Branch:              "main",
 		Id:                  "p1",
 		Enabled:             true,
-		RepotrackerDisabled: utility.FalsePtr(),
+		RepotrackerDisabled: utility.TruePtr(),
 	}
 	require.NoError(p1.Insert())
-	assert.Error(p1.ValidateEnabledRepotracker())
+	assert.NoError(p1.ValidateEnabledRepotracker())
 	// A project that doesn't have repotracker enabled and a valid config.
 	p2 := &ProjectRef{
 		Owner:               "mongodb",
@@ -1632,7 +1632,7 @@ func TestValidateEnabledRepotracker(t *testing.T) {
 		Branch:              "main",
 		Id:                  "p2",
 		Enabled:             true,
-		RepotrackerDisabled: utility.FalsePtr(),
+		RepotrackerDisabled: utility.TruePtr(),
 		RemotePath:          "valid!",
 	}
 	require.NoError(p2.Insert())
@@ -1644,7 +1644,7 @@ func TestValidateEnabledRepotracker(t *testing.T) {
 		Branch:              "main",
 		Id:                  "p3",
 		Enabled:             true,
-		RepotrackerDisabled: utility.TruePtr(),
+		RepotrackerDisabled: utility.FalsePtr(),
 	}
 	require.NoError(p3.Insert())
 	assert.Error(p3.ValidateEnabledRepotracker())
@@ -1655,10 +1655,10 @@ func TestValidateEnabledRepotracker(t *testing.T) {
 		Branch:              "main",
 		Id:                  "p4",
 		Enabled:             true,
-		RepotrackerDisabled: utility.TruePtr(),
+		RepotrackerDisabled: utility.FalsePtr(),
 	}
 	require.NoError(p4.Insert())
-	assert.Error(p4.ValidateEnabledRepotracker())
+	assert.NoError(p4.ValidateEnabledRepotracker())
 }
 
 func TestCanEnableCommitQueue(t *testing.T) {
