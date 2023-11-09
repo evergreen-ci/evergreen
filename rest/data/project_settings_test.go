@@ -647,13 +647,14 @@ func TestSaveProjectSettingsForSection(t *testing.T) {
 		require.NoError(t, db.CreateCollections(evergreen.ScopeCollection))
 
 		pRef := model.ProjectRef{
-			Id:         "myId",
-			Owner:      "evergreen-ci",
-			Repo:       "evergreen",
-			Branch:     "main",
-			Restricted: utility.FalsePtr(),
-			RepoRefId:  "myRepoId",
-			Admins:     []string{"oldAdmin"},
+			Id:                  "myId",
+			Owner:               "evergreen-ci",
+			Repo:                "evergreen",
+			Branch:              "main",
+			Restricted:          utility.FalsePtr(),
+			RepoRefId:           "myRepoId",
+			Admins:              []string{"oldAdmin"},
+			RepotrackerDisabled: utility.TruePtr(),
 		}
 		assert.NoError(t, pRef.Insert())
 		repoRef := model.RepoRef{ProjectRef: model.ProjectRef{
