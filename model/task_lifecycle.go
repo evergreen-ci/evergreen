@@ -586,7 +586,7 @@ func doBisectStepback(ctx context.Context, t *task.Task) error {
 	}
 
 	var s task.StepbackInfo
-	if t.StepbackInfo != nil {
+	if t.StepbackInfo != nil && t.StepbackInfo.LastPassingStepbackTaskId != "" {
 		// Carry over from the last task.
 		s = *t.StepbackInfo
 	} else {
