@@ -88,11 +88,6 @@
         "desc": "description",
         "timed_out": false
       },
-      "display_only": true,
-      "execution_tasks": [
-        "exec1",
-        "exec2"
-      ],
       "generate_task": false,
       "generated_by": "something"
     }

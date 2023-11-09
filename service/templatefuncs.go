@@ -20,13 +20,14 @@ type TemplateFunctionOptions struct {
 // MakeTemplateFuncs creates and registers all of our built-in template functions.
 func MakeTemplateFuncs(fo TemplateFunctionOptions) map[string]interface{} {
 	r := map[string]interface{}{
-		// DateFormat returns a time Formatted to the given layout and timezone.
-		// If the timezone is unset, it defaults to "New_York."
-		"DateFormat": func(when time.Time, layout string, timezone string) string {
-			if len(timezone) == 0 {
-				timezone = "America/New_York" // I ♥ NY
+		// DateFormat returns a time Formatted to the given layout and
+		// time zone. If the time zone is unset, it defaults to
+		// `America/New_York`.
+		"DateFormat": func(when time.Time, layout string, timeZone string) string {
+			if timeZone == "" {
+				timeZone = "America/New_York" // I ♥ NY
 			}
-			loc, err := time.LoadLocation(timezone)
+			loc, err := time.LoadLocation(timeZone)
 			if err != nil {
 				return when.Format(layout)
 			}

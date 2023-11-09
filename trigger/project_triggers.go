@@ -7,7 +7,6 @@ import (
 	"github.com/evergreen-ci/evergreen/model"
 	"github.com/evergreen-ci/evergreen/model/user"
 	"github.com/evergreen-ci/evergreen/repotracker"
-	"github.com/evergreen-ci/evergreen/thirdparty"
 	"github.com/pkg/errors"
 )
 
@@ -20,7 +19,7 @@ func TriggerDownstreamVersion(ctx context.Context, args ProcessorArgs) (*model.V
 	}
 
 	// propagate version metadata to the downstream version
-	metadata, err := metadataFromVersion(args)
+	metadata, err := getMetadataFromArgs(args)
 	if err != nil {
 		return nil, err
 	}
@@ -69,10 +68,11 @@ func TriggerDownstreamVersion(ctx context.Context, args ProcessorArgs) (*model.V
 		return nil, errors.Errorf("upstream project '%s' not found", projectID)
 	}
 	for _, module := range projectInfo.Project.Modules {
-		owner, repo, err := thirdparty.ParseGitUrl(module.Repo)
+		owner, repo, err := module.GetOwnerAndRepo()
 		if err != nil {
-			return nil, errors.Wrapf(err, "parsing git url '%s'", module.Repo)
+			return nil, errors.Wrapf(err, "getting owner and repo for '%s'", module.Name)
 		}
+
 		if owner == upstreamProject.Owner && repo == upstreamProject.Repo && module.Branch == upstreamProject.Branch {
 			_, err = model.CreateManifest(v, projectInfo.Project, upstreamProject, settings)
 			if err != nil {
@@ -92,7 +92,7 @@ func TriggerDownstreamVersion(ctx context.Context, args ProcessorArgs) (*model.V
 	return v, nil
 }
 
-func metadataFromVersion(args ProcessorArgs) (model.VersionMetadata, error) {
+func getMetadataFromArgs(args ProcessorArgs) (model.VersionMetadata, error) {
 	metadata := model.VersionMetadata{
 		SourceVersion:       args.SourceVersion,
 		Activate:            !args.UnscheduleDownstreamVersions,
@@ -109,28 +109,26 @@ func metadataFromVersion(args ProcessorArgs) (model.VersionMetadata, error) {
 			CreateTime:      args.SourceVersion.CreateTime,
 			RevisionMessage: args.SourceVersion.Message,
 		}
+
+		author, err := user.FindOneById(args.SourceVersion.AuthorID)
+		if err != nil {
+			return metadata, errors.Wrapf(err, "finding version author '%s'", args.SourceVersion.AuthorID)
+		}
+		if author != nil {
+			metadata.Revision.AuthorGithubUID = author.Settings.GithubUser.UID
+		}
 	} else {
 		metadata.Revision = args.PushRevision
 		metadata.SourceCommit = args.PushRevision.Revision
 	}
 	repo, err := model.FindRepository(args.DownstreamProject.Id)
 	if err != nil {
-		return metadata, errors.Wrap(err, "finding most recent revision")
+		return metadata, errors.Wrapf(err, "finding most recent revision for '%s'", args.DownstreamProject.Id)
 	}
 	if repo == nil {
 		return metadata, errors.Errorf("repo '%s' not found", args.DownstreamProject.Id)
 	}
 	metadata.Revision.Revision = repo.LastRevision
-	var author *user.DBUser
-	if args.SourceVersion != nil {
-		author, err = user.FindOneById(args.SourceVersion.AuthorID)
-		if err != nil {
-			return metadata, errors.Wrapf(err, "finding version author '%s'", args.SourceVersion.AuthorID)
-		}
-	}
-	if author != nil {
-		metadata.Revision.AuthorGithubUID = author.Settings.GithubUser.UID
-	}
 
 	return metadata, nil
 }

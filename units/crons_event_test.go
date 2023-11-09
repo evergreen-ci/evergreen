@@ -11,16 +11,15 @@ import (
 	"testing"
 	"time"
 
-	"github.com/evergreen-ci/evergreen/model"
-	"github.com/evergreen-ci/evergreen/testutil"
-
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/db"
 	mgobson "github.com/evergreen-ci/evergreen/db/mgo/bson"
 	"github.com/evergreen-ci/evergreen/mock"
+	"github.com/evergreen-ci/evergreen/model"
 	"github.com/evergreen-ci/evergreen/model/event"
 	"github.com/evergreen-ci/evergreen/model/notification"
 	"github.com/evergreen-ci/evergreen/model/patch"
+	"github.com/evergreen-ci/evergreen/testutil"
 	"github.com/evergreen-ci/evergreen/util"
 	"github.com/mongodb/amboy"
 	"github.com/mongodb/grip"
@@ -35,7 +34,6 @@ type cronsEventSuite struct {
 	n        []notification.Notification
 	suiteCtx context.Context
 	ctx      context.Context
-	env      evergreen.Environment
 }
 
 func TestEventCrons(t *testing.T) {
@@ -51,12 +49,7 @@ func (s *cronsEventSuite) TearDownSuite() {
 }
 
 func (s *cronsEventSuite) SetupTest() {
-	env := &mock.Environment{}
 	s.ctx = testutil.TestSpan(s.suiteCtx, s.T())
-
-	s.Require().NoError(env.Configure(s.ctx))
-	s.env = env
-
 	s.Require().NoError(db.ClearCollections(event.EventCollection, evergreen.ConfigCollection, notification.Collection,
 		event.SubscriptionsCollection, patch.Collection, model.ProjectRefCollection))
 
@@ -140,11 +133,9 @@ func (s *cronsEventSuite) TestDegradedMode() {
 
 	// degraded mode shouldn't process events
 	s.NoError(e.Log())
-	s.NoError(PopulateEventNotifierJobs(s.env)(s.ctx, s.env.LocalQueue()))
-
-	out, err := event.FindUnprocessedEvents(-1)
+	jobs, err := eventNotifierJobs(s.ctx, time.Time{})
 	s.NoError(err)
-	s.Len(out, 1)
+	s.Len(jobs, 0)
 }
 
 func (s *cronsEventSuite) TestSenderDegradedModeDoesntDispatchJobs() {
@@ -161,23 +152,16 @@ func (s *cronsEventSuite) TestSenderDegradedModeDoesntDispatchJobs() {
 
 	s.NoError(notification.InsertMany(s.n...))
 
-	startingStats := s.env.LocalQueue().Stats(ctx)
-
-	s.NoError(dispatchNotifications(ctx, s.n, s.env.LocalQueue(), &flags))
+	jobs, err := notificationJobs(ctx, s.n, &flags, time.Time{})
+	s.NoError(err)
+	s.Len(jobs, 0)
 
 	out := []notification.Notification{}
 	s.NoError(db.FindAllQ(notification.Collection, db.Q{}, &out))
 	s.Len(out, 6)
 	for i := range out {
-		s.Equal("notifications are disabled", out[i].Error)
+		s.Equal("notification is disabled", out[i].Error)
 	}
-
-	stats := s.env.LocalQueue().Stats(ctx)
-	s.Equal(startingStats.Running, stats.Running)
-	s.Equal(startingStats.Blocked, stats.Blocked)
-	s.Equal(startingStats.Completed, stats.Completed)
-	s.Equal(startingStats.Pending, stats.Pending)
-	s.Equal(startingStats.Total, stats.Total)
 }
 
 func (s *cronsEventSuite) TestNotificationIsEnabled() {
@@ -212,6 +196,12 @@ func (s *cronsEventSuite) TestNotificationIsEnabled() {
 }
 
 func (s *cronsEventSuite) TestEndToEnd() {
+	defer evergreen.SetEnvironment(evergreen.GetEnvironment())
+
+	env := &mock.Environment{}
+	s.Require().NoError(env.Configure(s.ctx))
+	evergreen.SetEnvironment(env)
+
 	ln, err := net.Listen("tcp", "127.0.0.1:0")
 	s.Require().NoError(err)
 	defer ln.Close()
@@ -293,8 +283,10 @@ func (s *cronsEventSuite) TestEndToEnd() {
 
 	go httpServer(ln, handler)
 
-	q := s.env.RemoteQueue()
-	s.NoError(PopulateEventNotifierJobs(s.env)(s.ctx, q))
+	q := evergreen.GetEnvironment().RemoteQueue()
+	jobs, err := eventNotifierJobs(s.ctx, time.Time{})
+	s.NoError(err)
+	s.NoError(q.PutMany(s.ctx, jobs))
 
 	// Wait for event notifier to finish.
 	amboy.WaitInterval(s.ctx, q, 10*time.Millisecond)
@@ -309,16 +301,12 @@ func (s *cronsEventSuite) TestEndToEnd() {
 	s.Empty(out[0].Error)
 }
 
-func (s *cronsEventSuite) TestDispatchUnprocessedNotifications() {
+func (s *cronsEventSuite) TestSendNotificationJobs() {
 	s.NoError(notification.InsertMany(s.n...))
-	flags, err := evergreen.GetServiceFlags(s.ctx)
+
+	jobs, err := sendNotificationJobs(s.ctx, time.Time{})
 	s.NoError(err)
-	origStats := s.env.LocalQueue().Stats(s.ctx)
-
-	s.NoError(dispatchUnprocessedNotifications(s.ctx, s.env.LocalQueue(), flags))
-
-	stats := s.env.LocalQueue().Stats(s.ctx)
-	s.Equal(origStats.Total+6, stats.Total)
+	s.Len(jobs, 6)
 }
 
 func httpServer(ln net.Listener, handler *mockWebhookHandler) {

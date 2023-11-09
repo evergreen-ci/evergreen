@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"runtime"
 	"strings"
 	"sync"
 	"time"
@@ -400,9 +401,8 @@ func (a *Agent) setupTask(agentCtx, setupCtx context.Context, initialTC *taskCon
 				ID:     nt.TaskId,
 				Secret: nt.TaskSecret,
 			},
-			ranSetupGroup:             !shouldSetupGroup,
-			oomTracker:                jasper.NewOOMTracker(),
-			unsetFunctionVarsDisabled: nt.UnsetFunctionVarsDisabled,
+			ranSetupGroup: !shouldSetupGroup,
+			oomTracker:    jasper.NewOOMTracker(),
 		}
 	} else {
 		tc = initialTC
@@ -676,6 +676,14 @@ func (a *Agent) runPreAndMain(ctx context.Context, tc *taskContext) (status stri
 		"df -h",
 		"${ps|ps}",
 	)
+	// Running the `df` command on Unix systems displays inode
+	// statistics without the `-i` flag by default. However, we need
+	// to pass the flag explicitly for Linux, hence the conditional.
+	// We do not include Windows in the conditional because running
+	// `df -h -i` on Cygwin does not report these statistics.
+	if runtime.GOOS == "linux" {
+		statsCollector.Cmds = append(statsCollector.Cmds, "df -h -i")
+	}
 
 	statsCollector.logStats(execTimeoutCtx, tc.taskConfig.Expansions)
 

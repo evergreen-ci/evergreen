@@ -343,7 +343,7 @@ type APIDistro struct {
 	Aliases               []string                 `json:"aliases"`
 	UserSpawnAllowed      bool                     `json:"user_spawn_allowed"`
 	Provider              *string                  `json:"provider"`
-	ProviderSettingsList  []*birch.Document        `json:"provider_settings"`
+	ProviderSettingsList  []*birch.Document        `json:"provider_settings" swaggertype:"object"`
 	Arch                  *string                  `json:"arch"`
 	WorkDir               *string                  `json:"work_dir"`
 	SetupAsSudo           bool                     `json:"setup_as_sudo"`

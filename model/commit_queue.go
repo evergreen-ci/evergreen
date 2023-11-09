@@ -23,9 +23,9 @@ func GetModulesFromPR(ctx context.Context, githubToken string, modules []commitq
 		if err != nil {
 			return nil, nil, errors.Wrapf(err, "getting module for module name '%s'", mod.Module)
 		}
-		owner, repo, err := thirdparty.ParseGitUrl(module.Repo)
+		owner, repo, err := module.GetOwnerAndRepo()
 		if err != nil {
-			return nil, nil, errors.Wrapf(err, "malformed URL for module '%s'", mod.Module)
+			return nil, nil, errors.Wrapf(err, "getting owner and repo for '%s'", mod.Module)
 		}
 
 		prNum, err := strconv.Atoi(mod.Issue)

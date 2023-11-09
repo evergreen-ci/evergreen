@@ -1029,8 +1029,24 @@ func mergeBranchAndRepoSettings(pRef *ProjectRef, repoRef *RepoRef) (*ProjectRef
 	reflectedBranch := reflect.ValueOf(pRef).Elem()
 	reflectedRepo := reflect.ValueOf(repoRef).Elem().Field(0) // specifically references the ProjectRef part of RepoRef
 
+	// Include Parsley filters defined at repo level alongside project filters.
+	mergeParsleyFilters(pRef, repoRef)
+
 	util.RecursivelySetUndefinedFields(reflectedBranch, reflectedRepo)
+
 	return pRef, err
+}
+
+func mergeParsleyFilters(pRef *ProjectRef, repoRef *RepoRef) {
+	if len(repoRef.ParsleyFilters) == 0 {
+		return
+	}
+
+	if pRef.ParsleyFilters == nil {
+		pRef.ParsleyFilters = []ParsleyFilter{}
+	}
+
+	pRef.ParsleyFilters = append(pRef.ParsleyFilters, repoRef.ParsleyFilters...)
 }
 
 func setRepoFieldsFromProjects(repoRef *RepoRef, projectRefs []ProjectRef) {
@@ -1659,13 +1675,8 @@ func FindOneProjectRefWithCommitQueueByOwnerRepoAndBranch(owner, repo, branch st
 
 // SetTracksPushEvents returns true if the GitHub app is installed on the owner/repo for the given project.
 func SetTracksPushEvents(ctx context.Context, projectRef *ProjectRef) (bool, error) {
-	settings, err := evergreen.GetConfig(ctx)
-	if err != nil {
-		return false, errors.Wrap(err, "finding evergreen settings")
-	}
-
 	// Don't return errors because it could cause the project page to break if GitHub is down.
-	hasApp, err := settings.HasGitHubApp(ctx, projectRef.Owner, projectRef.Repo, nil)
+	hasApp, err := evergreen.GetEnvironment().Settings().HasGitHubApp(ctx, projectRef.Owner, projectRef.Repo)
 	if err != nil {
 		grip.Error(message.WrapError(err, message.Fields{
 			"message":            "Error verifying GitHub app installation",
@@ -1806,7 +1817,7 @@ func GetProjectSettingsById(projectId string, isRepo bool) (*ProjectSettings, er
 func GetProjectSettings(p *ProjectRef) (*ProjectSettings, error) {
 	// Don't error even if there is problem with verifying the GitHub app installation
 	// because a GitHub outage could cause project settings page to not load.
-	hasApp, _ := evergreen.GetEnvironment().Settings().HasGitHubApp(context.Background(), p.Owner, p.Repo, nil)
+	hasApp, _ := evergreen.GetEnvironment().Settings().HasGitHubApp(context.Background(), p.Owner, p.Repo)
 
 	projectVars, err := FindOneProjectVars(p.Id)
 	if err != nil {
@@ -2859,7 +2870,7 @@ func GetSetupScriptForTask(ctx context.Context, taskId string) (string, error) {
 	return string(fileContents), nil
 }
 
-func (t *TriggerDefinition) Validate(parentProject string) error {
+func (t *TriggerDefinition) Validate(downstreamProject string) error {
 	upstreamProject, err := FindBranchProjectRef(t.Project)
 	if err != nil {
 		return errors.Wrapf(err, "finding upstream project '%s'", t.Project)
@@ -2867,9 +2878,10 @@ func (t *TriggerDefinition) Validate(parentProject string) error {
 	if upstreamProject == nil {
 		return errors.Errorf("project '%s' not found", t.Project)
 	}
-	if upstreamProject.Id == parentProject {
+	if upstreamProject.Id == downstreamProject {
 		return errors.New("a project cannot trigger itself")
 	}
+
 	// should be saved using its ID, in case the user used the project's identifier
 	t.Project = upstreamProject.Id
 	if t.Level != ProjectTriggerLevelBuild && t.Level != ProjectTriggerLevelTask && t.Level != ProjectTriggerLevelPush {

@@ -79,7 +79,6 @@ type ParserProject struct {
 
 	// Beginning of ParserProject mergeable fields (this comment is used by the linter).
 	Stepback           *bool                      `yaml:"stepback,omitempty" bson:"stepback,omitempty"`
-	UnsetFunctionVars  *bool                      `yaml:"unset_function_vars,omitempty" bson:"unset_function_vars,omitempty"`
 	PreTimeoutSecs     *int                       `yaml:"pre_timeout_secs,omitempty" bson:"pre_timeout_secs,omitempty"`
 	PostTimeoutSecs    *int                       `yaml:"post_timeout_secs,omitempty" bson:"post_timeout_secs,omitempty"`
 	PreErrorFailsTask  *bool                      `yaml:"pre_error_fails_task,omitempty" bson:"pre_error_fails_task,omitempty"`
@@ -852,9 +851,10 @@ func retrieveFileForModule(ctx context.Context, opts GetProjectOpts, modules Mod
 	if err != nil {
 		return nil, errors.Wrapf(err, "getting module for module name '%s'", moduleName)
 	}
-	repoOwner, repoName, err := thirdparty.ParseGitUrl(module.Repo)
+	repoOwner, repoName, err := module.GetOwnerAndRepo()
 	if err != nil {
-		return nil, errors.Wrapf(err, "parsing git url '%s'", module.Repo)
+		return nil, errors.Wrapf(err, "getting module owner and repo '%s'", module.Name)
+
 	}
 	moduleOpts := GetProjectOpts{
 		Ref: &ProjectRef{
@@ -970,7 +970,6 @@ func TranslateProject(pp *ParserProject) (*Project, error) {
 	// Transfer top level fields
 	proj := &Project{
 		Stepback:           utility.FromBoolPtr(pp.Stepback),
-		UnsetFunctionVars:  utility.FromBoolPtr(pp.UnsetFunctionVars),
 		PreTimeoutSecs:     utility.FromIntPtr(pp.PreTimeoutSecs),
 		PostTimeoutSecs:    utility.FromIntPtr(pp.PostTimeoutSecs),
 		PreErrorFailsTask:  utility.FromBoolPtr(pp.PreErrorFailsTask),

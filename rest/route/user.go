@@ -89,11 +89,24 @@ type userPermissionsPostHandler struct {
 }
 
 type RequestedPermissions struct {
-	ResourceType string             `json:"resource_type"`
-	Resources    []string           `json:"resources"`
-	Permissions  gimlet.Permissions `json:"permissions"`
+	// resource_type - the type of resources for which permission is granted. Must be one of "project", "distro", or "superuser"
+	ResourceType string `json:"resource_type"`
+	// resources - an array of strings representing what resources the access is for. For a resource_type of project, this will be a list of projects. For a resource_type of distro, this will be a list of distros.
+	Resources []string `json:"resources"`
+	// permissions - an object whose keys are the permission keys returned by the /permissions endpoint above, and whose values are the levels of access to grant for that permission (also returned by the /permissions endpoint)
+	Permissions gimlet.Permissions `json:"permissions"`
 }
 
+// Factory creates an instance of the handler.
+//
+//	@Summary		Give permissions to user
+//	@Description	Grants the user specified by user_id the permissions in the request body.
+//	@Tags			users
+//	@Router			/users/{user_id}/permissions [post]
+//	@Security		Api-User || Api-Key
+//	@Param			user_id		path	string					true	"the user's ID"
+//	@Param			{object}	body	RequestedPermissions	true	"parameters"
+//	@Success		200
 func makeModifyUserPermissions(rm gimlet.RoleManager) gimlet.RouteHandler {
 	return &userPermissionsPostHandler{
 		rm: rm,
@@ -151,8 +164,13 @@ func (h *userPermissionsPostHandler) Run(ctx context.Context) gimlet.Responder {
 }
 
 type deletePermissionsRequest struct {
+	//   resource_type - the type of resources for which to delete permissions. Must
+	//   be one of "project", "distro", "superuser", or "all". "all" will revoke all
+	//   permissions for the user.
 	ResourceType string `json:"resource_type"`
-	ResourceId   string `json:"resource_id"`
+	//   resource_id - the resource ID for which to delete permissions.
+	//   Required unless deleting all permissions.
+	ResourceId string `json:"resource_id"`
 }
 
 const allResourceType = "all"
@@ -170,6 +188,16 @@ func makeDeleteUserPermissions(rm gimlet.RoleManager) gimlet.RouteHandler {
 	}
 }
 
+// Factory creates an instance of the handler.
+//
+//	@Summary		Delete user permissions
+//	@Description	Deletes all permissions of a given type for a user by deleting their roles of that type for that resource ID. This ignores the Basic Project/Distro Access that is given to all MongoDB employees.
+//	@Tags			users
+//	@Router			/users/{user_id}/permissions [delete]
+//	@Security		Api-User || Api-Key
+//	@Param			user_id		path	string						true	"the user's ID"
+//	@Param			{object}	body	deletePermissionsRequest	true	"parameters"
+//	@Success		200
 func (h *userPermissionsDeleteHandler) Factory() gimlet.RouteHandler {
 	return &userPermissionsDeleteHandler{
 		rm: h.rm,
@@ -260,12 +288,18 @@ func (h *userPermissionsDeleteHandler) Run(ctx context.Context) gimlet.Responder
 // GET /users/permissions
 
 type UsersPermissionsInput struct {
-	ResourceId   string `json:"resource_id"`
+	// The resource ID
+	ResourceId string `json:"resource_id"`
+	// The resource type
 	ResourceType string `json:"resource_type"`
 }
 
 // UserPermissionsResult is a map from userId to their highest permission for the resource
 type UsersPermissionsResult map[string]gimlet.Permissions
+
+// Swagger-only type, included because this API route returns an external type
+// nolint:all
+type swaggerUsersPermissionsResult map[string]swaggerPermissions
 
 type allUsersPermissionsGetHandler struct {
 	rm    gimlet.RoleManager
@@ -278,6 +312,15 @@ func makeGetAllUsersPermissions(rm gimlet.RoleManager) gimlet.RouteHandler {
 	}
 }
 
+// Factory creates an instance of the handler.
+//
+//	@Summary		Get all user permissions for resource
+//	@Description	Retrieves all users with permissions for the resource, and their highest permissions, and returns this as a mapping. This ignores basic permissions that are given to all users.
+//	@Tags			users
+//	@Router			/users/permissions [get]
+//	@Security		Api-User || Api-Key
+//	@Param			{object}	body		UsersPermissionsInput	true	"parameters"
+//	@Success		200			{object}	swaggerUsersPermissionsResult
 func (h *allUsersPermissionsGetHandler) Factory() gimlet.RouteHandler {
 	return &allUsersPermissionsGetHandler{
 		rm: h.rm,
@@ -366,11 +409,44 @@ func makeGetUserPermissions(rm gimlet.RoleManager) gimlet.RouteHandler {
 	}
 }
 
+// Factory creates an instance of the handler.
+//
+//	@Summary		Get user permissions
+//	@Description	Retrieves all permissions for the user (ignoring basic permissions that are given to all users, unless all=true is included).
+//	@Tags			users
+//	@Router			/users/{user_id}/permissions [get]
+//	@Security		Api-User || Api-Key
+//	@Param			user_id	path	string	true	"the user's ID"
+//	@Param			all		query	boolean	false	"If included, we will not filter out basic permissions"
+//	@Success		200		{array}	swaggerPermissionSummary
 func (h *userPermissionsGetHandler) Factory() gimlet.RouteHandler {
 	return &userPermissionsGetHandler{
 		rm: h.rm,
 	}
 }
+
+// Swagger-only type, included because this API route returns an external type
+// nolint:all
+type swaggerPermissionSummary struct {
+	//   type - the type of resources for which the listed permissions apply.
+	//   Will be "project", "distro", or "superuser"
+	Type string `json:"type"`
+	//   permissions - an object whose keys are the resources for which the user has
+	//   permissions. Note that these objects will often have many keys, since
+	//   logged-in users have basic permissions to every project and distro. The
+	//   values in the keys are objects representing the permissions that the user
+	//   has for that resource, identical to the format of the permissions field in
+	//   the POST /users/\<user_id\>/permissions API.
+	Permissions swaggerPermissionsForResources `json:"permissions"`
+}
+
+// Swagger-only type, included because this API route returns an external type
+// nolint:all
+type swaggerPermissionsForResources map[string]swaggerPermissions
+
+// Swagger-only type, included because this API route returns an external type
+// nolint:all
+type swaggerPermissions map[string]int
 
 func (h *userPermissionsGetHandler) Parse(ctx context.Context, r *http.Request) error {
 	vars := gimlet.GetVars(r)
@@ -408,8 +484,10 @@ func (h *userPermissionsGetHandler) Run(ctx context.Context) gimlet.Responder {
 }
 
 type rolesPostRequest struct {
-	Roles      []string `json:"roles"`
-	CreateUser bool     `json:"create_user"`
+	// the list of roles to add for the user
+	Roles []string `json:"roles"`
+	// if true, will also create a shell user document for the user. By default, specifying a user that does not exist will error
+	CreateUser bool `json:"create_user"`
 }
 
 type userRolesPostHandler struct {
@@ -425,6 +503,16 @@ func makeModifyUserRoles(rm gimlet.RoleManager) gimlet.RouteHandler {
 	}
 }
 
+// Factory creates an instance of the handler.
+//
+//	@Summary		Give roles to user
+//	@Description	Adds the specified roles to the specified user. Attempting to add a duplicate role will result in an error. If you're unsure of what roles you want to add, you probably want to POST To /users/user_id/permissions instead.
+//	@Tags			users
+//	@Router			/users/{user_id}/roles [post]
+//	@Security		Api-User || Api-Key
+//	@Param			user_id		path	string				true	"user ID"
+//	@Param			{object}	body	rolesPostRequest	true	"parameters"
+//	@Success		200
 func (h *userRolesPostHandler) Factory() gimlet.RouteHandler {
 	return &userRolesPostHandler{
 		rm: h.rm,
@@ -510,6 +598,15 @@ func makeGetUsersWithRole() gimlet.RouteHandler {
 	return &usersWithRoleGetHandler{}
 }
 
+// Factory creates an instance of the handler.
+//
+//	@Summary		Get users for role
+//	@Description	Gets a list of users for the specified role
+//	@Tags			users
+//	@Router			/roles/{role_id}/users [get]
+//	@Security		Api-User || Api-Key
+//	@Param			role_id	path		string					true	"role ID"
+//	@Success		200		{object}	UsersWithRoleResponse	"list of users"
 func (h *usersWithRoleGetHandler) Factory() gimlet.RouteHandler {
 	return &usersWithRoleGetHandler{}
 }

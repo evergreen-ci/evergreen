@@ -19,6 +19,7 @@ input RepoRefInput {
   manualPrTestingEnabled: Boolean
   notifyOnBuildFailure: Boolean
   owner: String
+  parsleyFilters: [ParsleyFilterInput!]
   patchingDisabled: Boolean
   patchTriggerAliases: [PatchTriggerAliasInput!]
   perfEnabled: Boolean
@@ -66,6 +67,7 @@ type RepoRef {
   manualPrTestingEnabled: Boolean!
   notifyOnBuildFailure: Boolean!
   owner: String!
+  parsleyFilters: [ParsleyFilter!]
   patchingDisabled: Boolean!
   patchTriggerAliases: [PatchTriggerAlias!]
   perfEnabled: Boolean!

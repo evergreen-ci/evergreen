@@ -62,13 +62,13 @@ func (t *buildTriggers) Fetch(ctx context.Context, e *event.EventLogEntry) error
 
 	var tasks []task.Task
 	if e.EventType == event.BuildGithubCheckFinished {
-		query := db.Query(task.ByBuildIdAndGithubChecks(t.build.Id)).WithFields(task.StatusKey, task.DependsOnKey)
+		query := db.Query(task.ByBuildIdAndGithubChecks(t.build.Id))
 		tasks, err = task.FindAll(query)
 		if err != nil {
 			return errors.Wrapf(err, "finding tasks in build '%s' for GitHub check", t.build.Id)
 		}
 	} else {
-		query := db.Query(task.ByBuildId(t.build.Id)).WithFields(task.StatusKey, task.DependsOnKey)
+		query := db.Query(task.ByBuildId(t.build.Id))
 		tasks, err = task.FindAll(query)
 		if err != nil {
 			return errors.Wrapf(err, "finding tasks in build '%s'", t.build.Id)
@@ -275,7 +275,7 @@ func (t *buildTriggers) buildAttachments(data *commonTemplateData) []message.Sla
 		if attachmentsCount == slackAttachmentsLimit {
 			break
 		}
-		if t.tasks[i].Status == evergreen.TaskSucceeded {
+		if t.tasks[i].Status == evergreen.TaskSucceeded || t.tasks[i].Status == evergreen.TaskUnscheduled {
 			continue
 		}
 		attachments = append(attachments, message.SlackAttachment{
@@ -315,5 +315,5 @@ func taskFormatFromCache(t task.Task) string {
 		return fmt.Sprintf("took %s", t.TimeTaken)
 	}
 
-	return fmt.Sprintf("took %s, the task failed %s", t.TimeTaken, detailStatusToHumanSpeak(t.Details.Status))
+	return fmt.Sprintf("took %s, the task failed %s", t.TimeTaken, detailStatusToHumanSpeak(t.GetDisplayStatus()))
 }

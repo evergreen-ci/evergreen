@@ -24,66 +24,107 @@ const (
 
 // APITask is the model to be returned by the API whenever tasks are fetched.
 type APITask struct {
-	Id                          *string             `json:"task_id"`
-	ProjectId                   *string             `json:"project_id"`
-	ProjectIdentifier           *string             `json:"project_identifier"`
-	CreateTime                  *time.Time          `json:"create_time"`
-	DispatchTime                *time.Time          `json:"dispatch_time"`
-	ScheduledTime               *time.Time          `json:"scheduled_time"`
-	ContainerAllocatedTime      *time.Time          `json:"container_allocated_time"`
-	StartTime                   *time.Time          `json:"start_time"`
-	FinishTime                  *time.Time          `json:"finish_time"`
-	IngestTime                  *time.Time          `json:"ingest_time"`
-	ActivatedTime               *time.Time          `json:"activated_time"`
-	Version                     *string             `json:"version_id"`
-	Revision                    *string             `json:"revision"`
-	Priority                    int64               `json:"priority"`
-	Activated                   bool                `json:"activated"`
-	ActivatedBy                 *string             `json:"activated_by"`
-	ContainerAllocated          bool                `json:"container_allocated"`
-	ContainerAllocationAttempts int                 `json:"container_allocation_attempts"`
-	BuildId                     *string             `json:"build_id"`
-	DistroId                    *string             `json:"distro_id"`
-	Container                   *string             `json:"container"`
-	ContainerOpts               APIContainerOptions `json:"container_options"`
-	BuildVariant                *string             `json:"build_variant"`
-	BuildVariantDisplayName     *string             `json:"build_variant_display_name"`
-	DependsOn                   []APIDependency     `json:"depends_on"`
-	DisplayName                 *string             `json:"display_name"`
-	HostId                      *string             `json:"host_id"`
-	PodID                       *string             `json:"pod_id,omitempty"`
-	Execution                   int                 `json:"execution"`
-	Order                       int                 `json:"order"`
-	Status                      *string             `json:"status"`
-	DisplayStatus               *string             `json:"display_status"`
-	Details                     ApiTaskEndDetail    `json:"status_details"`
-	Logs                        LogLinks            `json:"logs"`
-	ParsleyLogs                 LogLinks            `json:"parsley_logs"`
-	TimeTaken                   APIDuration         `json:"time_taken_ms"`
-	ExpectedDuration            APIDuration         `json:"expected_duration_ms"`
-	EstimatedStart              APIDuration         `json:"est_wait_to_start_ms"`
-	PreviousExecutions          []APITask           `json:"previous_executions,omitempty"`
-	GenerateTask                bool                `json:"generate_task"`
-	GeneratedBy                 string              `json:"generated_by"`
-	Artifacts                   []APIFile           `json:"artifacts"`
-	DisplayOnly                 bool                `json:"display_only"`
-	ParentTaskId                string              `json:"parent_task_id"`
-	ExecutionTasks              []*string           `json:"execution_tasks,omitempty"`
-	Tags                        []*string           `json:"tags,omitempty"`
-	Mainline                    bool                `json:"mainline"`
-	TaskGroup                   string              `json:"task_group,omitempty"`
-	TaskGroupMaxHosts           int                 `json:"task_group_max_hosts,omitempty"`
-	Blocked                     bool                `json:"blocked"`
-	Requester                   *string             `json:"requester"`
-	TestResults                 []APITest           `json:"test_results"`
-	Aborted                     bool                `json:"aborted"`
-	AbortInfo                   APIAbortInfo        `json:"abort_info,omitempty"`
-	CanSync                     bool                `json:"can_sync,omitempty"`
-	SyncAtEndOpts               APISyncAtEndOptions `json:"sync_at_end_opts"`
-	AMI                         *string             `json:"ami"`
-	MustHaveResults             bool                `json:"must_have_test_results"`
-	BaseTask                    APIBaseTaskInfo     `json:"base_task"`
-	ResetWhenFinished           bool                `json:"reset_when_finished"`
+	// Unique identifier of this task
+	Id                *string `json:"task_id"`
+	ProjectId         *string `json:"project_id"`
+	ProjectIdentifier *string `json:"project_identifier"`
+	// Time that this task was first created
+	CreateTime *time.Time `json:"create_time"`
+	// Time that this time was dispatched
+	DispatchTime *time.Time `json:"dispatch_time"`
+	// Time that this task is scheduled to begin
+	ScheduledTime          *time.Time `json:"scheduled_time"`
+	ContainerAllocatedTime *time.Time `json:"container_allocated_time"`
+	// Time that this task began execution
+	StartTime *time.Time `json:"start_time"`
+	// Time that this task finished execution
+	FinishTime    *time.Time `json:"finish_time"`
+	IngestTime    *time.Time `json:"ingest_time"`
+	ActivatedTime *time.Time `json:"activated_time"`
+	// An identifier of this task by its project and commit hash
+	Version *string `json:"version_id"`
+	// The version control identifier associated with this task
+	Revision *string `json:"revision"`
+	// The priority of this task to be run
+	Priority int64 `json:"priority"`
+	// Whether the task is currently active
+	Activated bool `json:"activated"`
+	// Identifier of the process or user that activated this task
+	ActivatedBy                 *string `json:"activated_by"`
+	ContainerAllocated          bool    `json:"container_allocated"`
+	ContainerAllocationAttempts int     `json:"container_allocation_attempts"`
+	// Identifier of the build that this task is part of
+	BuildId *string `json:"build_id"`
+	// Identifier of the distro that this task runs on
+	DistroId      *string             `json:"distro_id"`
+	Container     *string             `json:"container"`
+	ContainerOpts APIContainerOptions `json:"container_options"`
+	// Name of the buildvariant that this task runs on
+	BuildVariant            *string `json:"build_variant"`
+	BuildVariantDisplayName *string `json:"build_variant_display_name"`
+	// List of task_ids of task that this task depends on before beginning
+	DependsOn []APIDependency `json:"depends_on"`
+	// Name of this task displayed in the UI
+	DisplayName *string `json:"display_name"`
+	// The ID of the host this task ran or is running on
+	HostId *string `json:"host_id"`
+	PodID  *string `json:"pod_id,omitempty"`
+	// The number of the execution of this particular task
+	Execution int `json:"execution"`
+	// For mainline commits, represents the position in the commit history of
+	// commit this task is associated with. For patches, this represents the
+	// number of total patches submitted by the user.
+	Order int `json:"order"`
+	// The current status of this task (possible values are "undispatched",
+	// "dispatched", "started", "success", and "failed")
+	Status *string `json:"status"`
+	// The status of this task that is displayed in the UI (possible values are
+	// "will-run", "unscheduled", "blocked", "dispatched", "started", "success",
+	// "failed", "aborted", "system-failed", "system-unresponsive",
+	// "system-timed-out", "task-timed-out")
+	DisplayStatus *string `json:"display_status"`
+	// Object containing additional information about the status
+	Details ApiTaskEndDetail `json:"status_details"`
+	// Object containing raw and event logs for this task
+	Logs LogLinks `json:"logs"`
+	// Object containing parsley logs for this task
+	ParsleyLogs LogLinks `json:"parsley_logs"`
+	// Number of milliseconds this task took during execution
+	TimeTaken APIDuration `json:"time_taken_ms"`
+	// Number of milliseconds expected for this task to execute
+	ExpectedDuration APIDuration `json:"expected_duration_ms"`
+	EstimatedStart   APIDuration `json:"est_wait_to_start_ms"`
+	// Contains previous executions of the task if they were requested, and
+	// available. May be empty
+	PreviousExecutions []APITask `json:"previous_executions,omitempty"`
+	GenerateTask       bool      `json:"generate_task"`
+	GeneratedBy        string    `json:"generated_by"`
+	// The list of artifacts associated with the task.
+	Artifacts   []APIFile `json:"artifacts"`
+	DisplayOnly bool      `json:"display_only"`
+	// The ID of the task's parent display task, if requested and available
+	ParentTaskId   string    `json:"parent_task_id"`
+	ExecutionTasks []*string `json:"execution_tasks,omitempty"`
+	// List of tags defined for the task, if any
+	Tags              []*string `json:"tags,omitempty"`
+	Mainline          bool      `json:"mainline"`
+	TaskGroup         string    `json:"task_group,omitempty"`
+	TaskGroupMaxHosts int       `json:"task_group_max_hosts,omitempty"`
+	Blocked           bool      `json:"blocked"`
+	// Version created by one of patch_request", "github_pull_request",
+	// "gitter_request" (caused by git commit, aka the repotracker requester),
+	// "trigger_request" (Project Trigger versions) , "merge_test" (commit queue
+	// patches), "ad_hoc" (periodic builds)
+	Requester         *string             `json:"requester"`
+	TestResults       []APITest           `json:"test_results"`
+	Aborted           bool                `json:"aborted"`
+	AbortInfo         APIAbortInfo        `json:"abort_info,omitempty"`
+	CanSync           bool                `json:"can_sync,omitempty"`
+	SyncAtEndOpts     APISyncAtEndOptions `json:"sync_at_end_opts"`
+	AMI               *string             `json:"ami"`
+	MustHaveResults   bool                `json:"must_have_test_results"`
+	BaseTask          APIBaseTaskInfo     `json:"base_task"`
+	ResetWhenFinished bool                `json:"reset_when_finished"`
 	// These fields are used by graphql gen, but do not need to be exposed
 	// via Evergreen's user-facing API.
 	OverrideDependencies bool   `json:"-"`
@@ -101,17 +142,25 @@ type APIAbortInfo struct {
 }
 
 type LogLinks struct {
-	AllLogLink    *string `json:"all_log"`
-	TaskLogLink   *string `json:"task_log"`
-	AgentLogLink  *string `json:"agent_log"`
+	// Link to logs containing merged copy of all other logs
+	AllLogLink *string `json:"all_log"`
+	// Link to logs created by the task execution
+	TaskLogLink *string `json:"task_log"`
+	// Link to logs created by the agent process
+	AgentLogLink *string `json:"agent_log"`
+	// Link to logs created by the machine running the task
 	SystemLogLink *string `json:"system_log"`
 	EventLogLink  *string `json:"event_log,omitempty"`
 }
 
 type ApiTaskEndDetail struct {
-	Status      *string           `json:"status"`
-	Type        *string           `json:"type"`
-	Description *string           `json:"desc"`
+	// The status of the completed task
+	Status *string `json:"status"`
+	// The method by which the task failed
+	Type *string `json:"type"`
+	// Description of the final status of this task
+	Description *string `json:"desc"`
+	// Whether this task ended in a timeout
 	TimedOut    bool              `json:"timed_out"`
 	TimeoutType *string           `json:"timeout_type"`
 	OOMTracker  APIOomTrackerInfo `json:"oom_tracker_info"`
@@ -527,7 +576,7 @@ func (at *APITask) getArtifacts() error {
 type APISyncAtEndOptions struct {
 	Enabled  bool          `json:"enabled"`
 	Statuses []string      `json:"statuses"`
-	Timeout  time.Duration `json:"timeout"`
+	Timeout  time.Duration `json:"timeout" swaggertype:"primitive,integer"`
 }
 
 type APIDependency struct {
@@ -571,4 +620,26 @@ func (o *APIContainerOptions) ToService() task.ContainerOptions {
 		Arch:           evergreen.ContainerArch(utility.FromStringPtr(o.Arch)),
 		WindowsVersion: evergreen.WindowsVersion(utility.FromStringPtr(o.WindowsVersion)),
 	}
+}
+
+// APIGeneratedTaskInfo contains basic information about a generated task.
+type APIGeneratedTaskInfo struct {
+	// The unique identifier of the task
+	TaskID string `json:"task_id"`
+	// The display name of the task
+	TaskName string `json:"task_name"`
+	// The unique identifier of the build
+	BuildID string `json:"build_id"`
+	// The name of the build variant
+	BuildVariant string `json:"build_variant"`
+	// The display name of the build variant
+	BuildVariantDisplayName string `json:"build_variant_display_name"`
+}
+
+func (i *APIGeneratedTaskInfo) BuildFromService(dbInfo task.GeneratedTaskInfo) {
+	i.TaskID = dbInfo.TaskID
+	i.TaskName = dbInfo.TaskName
+	i.BuildID = dbInfo.BuildID
+	i.BuildVariant = dbInfo.BuildVariant
+	i.BuildVariantDisplayName = dbInfo.BuildVariantDisplayName
 }

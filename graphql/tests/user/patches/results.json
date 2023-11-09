@@ -49,6 +49,98 @@
       }
     },
     {
+      "query_file": "include_hidden_patches.graphql",
+      "result": {
+        "data": {
+          "user": {
+            "includeHidden": {
+              "patches": [
+                {
+                  "id": "5e4ff3abe3c3317e352062e8",
+                  "hidden": false
+                },
+                {
+                  "id": "5e4ff3abe3c3317e352062e7",
+                  "hidden": true
+                },
+                {
+                  "id": "5e4ff3abe3c3317e352062e6",
+                  "hidden": false
+                },
+                {
+                  "id": "5e4ff3abe3c3317e352062e5",
+                  "hidden": false
+                },
+                {
+                  "id": "5e4ff3abe3c3317e352062e4",
+                  "hidden": false
+                },
+                {
+                  "id": "5e4ff3abe3c3317e352062e9",
+                  "hidden": false
+                }
+              ],
+              "filteredPatchCount": 6
+            },
+            "excludeHidden": {
+              "patches": [
+                {
+                  "id": "5e4ff3abe3c3317e352062e8",
+                  "hidden": false
+                },
+                {
+                  "id": "5e4ff3abe3c3317e352062e6",
+                  "hidden": false
+                },
+                {
+                  "id": "5e4ff3abe3c3317e352062e5",
+                  "hidden": false
+                },
+                {
+                  "id": "5e4ff3abe3c3317e352062e4",
+                  "hidden": false
+                },
+                {
+                  "id": "5e4ff3abe3c3317e352062e9",
+                  "hidden": false
+                }
+              ],
+              "filteredPatchCount": 5
+            },
+            "unsuppliedHidden": {
+              "patches": [
+                {
+                  "id": "5e4ff3abe3c3317e352062e8",
+                  "hidden": false
+                },
+                {
+                  "id": "5e4ff3abe3c3317e352062e7",
+                  "hidden": true
+                },
+                {
+                  "id": "5e4ff3abe3c3317e352062e6",
+                  "hidden": false
+                },
+                {
+                  "id": "5e4ff3abe3c3317e352062e5",
+                  "hidden": false
+                },
+                {
+                  "id": "5e4ff3abe3c3317e352062e4",
+                  "hidden": false
+                },
+                {
+                  "id": "5e4ff3abe3c3317e352062e9",
+                  "hidden": false
+                }
+              ],
+              "filteredPatchCount": 6
+            }
+          }
+        }
+      }
+    },
+    {
       "query_file": "include_commit_queue.graphql",
       "result": {
         "data": {
