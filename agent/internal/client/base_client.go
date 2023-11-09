@@ -375,17 +375,17 @@ func (c *baseCommunicator) GetLoggerProducer(ctx context.Context, td TaskData, c
 	}
 	underlying := []send.Sender{}
 
-	exec, senders, err := c.makeSender(ctx, td, config.Agent, config.SendToGlobalSender, apimodels.AgentLogPrefix, taskoutput.TaskLogTypeAgent)
+	exec, senders, err := c.makeSender(ctx, td, config.Agent, config.SendToGlobalSender, taskoutput.TaskLogTypeAgent)
 	if err != nil {
 		return nil, errors.Wrap(err, "making agent logger")
 	}
 	underlying = append(underlying, senders...)
-	task, senders, err := c.makeSender(ctx, td, config.Task, config.SendToGlobalSender, apimodels.TaskLogPrefix, taskoutput.TaskLogTypeTask)
+	task, senders, err := c.makeSender(ctx, td, config.Task, config.SendToGlobalSender, taskoutput.TaskLogTypeTask)
 	if err != nil {
 		return nil, errors.Wrap(err, "making task logger")
 	}
 	underlying = append(underlying, senders...)
-	system, senders, err := c.makeSender(ctx, td, config.System, config.SendToGlobalSender, apimodels.SystemLogPrefix, taskoutput.TaskLogTypeSystem)
+	system, senders, err := c.makeSender(ctx, td, config.System, config.SendToGlobalSender, taskoutput.TaskLogTypeSystem)
 	if err != nil {
 		return nil, errors.Wrap(err, "making system logger")
 	}
@@ -399,7 +399,7 @@ func (c *baseCommunicator) GetLoggerProducer(ctx context.Context, td TaskData, c
 	}, nil
 }
 
-func (c *baseCommunicator) makeSender(ctx context.Context, td TaskData, opts []LogOpts, sendToGlobalSender bool, prefix string, logType taskoutput.TaskLogType) (send.Sender, []send.Sender, error) {
+func (c *baseCommunicator) makeSender(ctx context.Context, td TaskData, opts []LogOpts, sendToGlobalSender bool, logType taskoutput.TaskLogType) (send.Sender, []send.Sender, error) {
 	levelInfo := send.LevelInfo{Default: level.Info, Threshold: level.Debug}
 	var senders []send.Sender
 	if sendToGlobalSender {
@@ -421,13 +421,13 @@ func (c *baseCommunicator) makeSender(ctx context.Context, td TaskData, opts []L
 		bufferedSenderOpts := send.BufferedSenderOptions{FlushInterval: bufferDuration, BufferSize: bufferSize}
 
 		// Disallow sending system logs to S3 for security reasons.
-		if prefix == apimodels.SystemLogPrefix && opt.Sender == model.FileLogSender {
-			return nil, nil, errors.New("cannot use a file logger for system logs")
+		if logType == taskoutput.TaskLogTypeSystem && opt.Sender == model.FileLogSender {
+			opt.Sender = model.EvergreenLogSender
 		}
 
 		switch opt.Sender {
 		case model.FileLogSender:
-			sender, err = send.NewPlainFileLogger(prefix, opt.Filepath, levelInfo)
+			sender, err = send.NewPlainFileLogger(string(logType), opt.Filepath, levelInfo)
 			if err != nil {
 				return nil, nil, errors.Wrap(err, "creating file logger")
 			}
@@ -442,12 +442,12 @@ func (c *baseCommunicator) makeSender(ctx context.Context, td TaskData, opts []L
 				ServerURL: opt.SplunkServerURL,
 				Token:     opt.SplunkToken,
 			}
-			sender, err = send.NewSplunkLogger(prefix, info, levelInfo)
+			sender, err = send.NewSplunkLogger(string(logType), info, levelInfo)
 			if err != nil {
 				return nil, nil, errors.Wrap(err, "creating Splunk logger")
 			}
 			underlyingBufferedSenders = append(underlyingBufferedSenders, sender)
-			sender, err = send.NewBufferedSender(ctx, newAnnotatedWrapper(td.ID, prefix, sender), bufferedSenderOpts)
+			sender, err = send.NewBufferedSender(ctx, newAnnotatedWrapper(td.ID, string(logType), sender), bufferedSenderOpts)
 			if err != nil {
 				return nil, nil, errors.Wrap(err, "creating buffered Splunk logger")
 			}
@@ -505,7 +505,7 @@ func (c *baseCommunicator) makeSender(ctx context.Context, td TaskData, opts []L
 		}
 
 		grip.Error(sender.SetFormatter(send.MakeDefaultFormatter()))
-		if prefix == apimodels.TaskLogPrefix {
+		if logType == taskoutput.TaskLogTypeTask {
 			sender = makeTimeoutLogSender(sender, c)
 		}
 		senders = append(senders, sender)
