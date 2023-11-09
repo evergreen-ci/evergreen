@@ -247,10 +247,25 @@ func makeHostStopManager(env evergreen.Environment) gimlet.RouteHandler {
 	}
 }
 
+// Factory creates an instance of the handler.
+//
+//	@Summary		Stop host
+//	@Description	Queues a job to stop the host. Optionally sets up a notification to send when stopping is finished.
+//	@Tags			hosts
+//	@Router			/hosts/{host_id}/stop [post]
+//	@Security		Api-User || Api-Key
+//	@Param			host_id		path	string					true	"the host ID"
+//	@Param			{object}	body	hostSubscriptionInfo	false	"subscription_type"
+//	@Success		200
 func (h *hostStopHandler) Factory() gimlet.RouteHandler {
 	return &hostStopHandler{
 		env: h.env,
 	}
+}
+
+type hostSubscriptionInfo struct {
+	// The type of subscription to send when the host is stopped ("slack" or "email")
+	SubscriptionType string `json:"subscription_type"`
 }
 
 func (h *hostStopHandler) Parse(ctx context.Context, r *http.Request) error {
@@ -262,9 +277,8 @@ func (h *hostStopHandler) Parse(ctx context.Context, r *http.Request) error {
 
 	body := utility.NewRequestReader(r)
 	defer body.Close()
-	options := struct {
-		SubscriptionType string `json:"subscription_type"`
-	}{}
+
+	options := hostSubscriptionInfo{}
 	if err := utility.ReadJSON(body, &options); err != nil {
 		h.subscriptionType = ""
 	}
@@ -317,6 +331,16 @@ func makeHostStartManager(env evergreen.Environment) gimlet.RouteHandler {
 	}
 }
 
+// Factory creates an instance of the handler.
+//
+//	@Summary		Start host
+//	@Description	Queues a job to start the host. Optionally sets up a notification to send when starting is finished.
+//	@Tags			hosts
+//	@Router			/hosts/{host_id}/start [post]
+//	@Security		Api-User || Api-Key
+//	@Param			host_id		path	string					true	"the host ID"
+//	@Param			{object}	body	hostSubscriptionInfo	false	"subscription_type"
+//	@Success		200
 func (h *hostStartHandler) Factory() gimlet.RouteHandler {
 	return &hostStartHandler{
 		env: h.env,
@@ -332,9 +356,7 @@ func (h *hostStartHandler) Parse(ctx context.Context, r *http.Request) error {
 
 	body := utility.NewRequestReader(r)
 	defer body.Close()
-	options := struct {
-		SubscriptionType string `json:"subscription_type"`
-	}{}
+	options := hostSubscriptionInfo{}
 	if err := utility.ReadJSON(body, &options); err != nil {
 		h.subscriptionType = ""
 	}
