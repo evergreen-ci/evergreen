@@ -67,8 +67,7 @@ func (s *CommandSuite) SetupTest() {
 			ID:     "mock_task_id",
 			Secret: "mock_task_secret",
 		},
-		oomTracker:                &mock.OOMTracker{},
-		unsetFunctionVarsDisabled: false,
+		oomTracker: &mock.OOMTracker{},
 	}
 }
 
@@ -229,71 +228,6 @@ func (s *CommandSuite) setUpConfigAndProject(projYml string) {
 	s.tc.logger, err = s.mockCommunicator.GetLoggerProducer(s.ctx, s.tc.task, nil)
 	s.NoError(err)
 	s.tc.taskConfig.Project = p
-}
-
-func (s *CommandSuite) TestFunctionVarsUnsetWhenProjectFlagTrue() {
-	s.tc.unsetFunctionVarsDisabled = true
-	projYml := `
-unset_function_vars: true 
-functions:
-  yes:
-    vars: 
-      key1: "functionVar"
-    command: shell.exec
-    params:
-        shell: bash
-        script: |
-          echo "hi"
-`
-
-	s.setUpConfigAndProject(projYml)
-
-	func1 := model.PluginCommandConf{
-		Function:    "yes",
-		DisplayName: "function",
-		Vars:        map[string]string{"key1": "functionVar"},
-	}
-
-	cmdBlock := commandBlock{
-		commands: &model.YAMLCommandSet{SingleCommand: &func1},
-	}
-	err := s.a.runCommandsInBlock(s.ctx, s.tc, cmdBlock)
-	s.NoError(err)
-
-	key1Value := s.tc.taskConfig.Expansions.Get("key1")
-	s.Equal("expansionVar", key1Value, "globalVar should be set back to what it was before the function ran")
-
-}
-
-func (s *CommandSuite) TestFunctionVarsDontUnsetWithoutFlag() {
-	s.tc.unsetFunctionVarsDisabled = true
-
-	projYml := `
-functions:
-  yes:
-    vars: 
-      key1: "functionVar"
-    command: shell.exec
-    params:
-        shell: bash
-        script: |
-          echo "hi"
-`
-	func1 := model.PluginCommandConf{
-		Function:    "yes",
-		DisplayName: "function",
-		Vars:        map[string]string{"key1": "functionVar"},
-	}
-
-	s.setUpConfigAndProject(projYml)
-	cmdBlock := commandBlock{
-		commands: &model.YAMLCommandSet{SingleCommand: &func1},
-	}
-	err := s.a.runCommandsInBlock(s.ctx, s.tc, cmdBlock)
-	s.NoError(err)
-
-	key1Value := s.tc.taskConfig.Expansions.Get("key1")
-	s.Equal("functionVar", key1Value, "globalVar should not be set back to what it was before if it's disabled")
 }
 
 func (s *CommandSuite) TestVarsAreUnsetAfterRunning() {

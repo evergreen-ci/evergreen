@@ -13,6 +13,7 @@ import (
 	"github.com/evergreen-ci/evergreen/model/manifest"
 	"github.com/evergreen-ci/evergreen/model/patch"
 	"github.com/evergreen-ci/evergreen/model/task"
+	"github.com/evergreen-ci/evergreen/model/tasklog"
 	"github.com/evergreen-ci/evergreen/util"
 	"github.com/pkg/errors"
 	"go.mongodb.org/mongo-driver/bson"
@@ -239,7 +240,7 @@ func SetupAPITestData(testConfig *evergreen.Settings, taskDisplayName string, va
 	}
 
 	// Remove any logs for our test task from previous runs.
-	_, err = session.DB(model.TaskLogDB).C(model.TaskLogCollection).
+	_, err = session.DB(tasklog.TaskLogDB).C(tasklog.TaskLogCollection).
 		RemoveAll(bson.M{"t_id": bson.M{"$in": []string{taskOne.Id, taskTwo.Id}}})
 	if err != nil {
 		return nil, errors.Wrap(err, "removing logs")

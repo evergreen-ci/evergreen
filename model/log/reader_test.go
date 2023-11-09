@@ -22,6 +22,9 @@ func TestLogIteratorReader(t *testing.T) {
 	chunks, lines, parser, err := generateTestLog(ctx, bucket, 100, 10)
 	require.NoError(t, err)
 
+	tz, err := time.LoadLocation("America/New_York")
+	require.NoError(t, err)
+
 	for _, test := range []struct {
 		name          string
 		it            LogIterator
@@ -36,12 +39,24 @@ func TestLogIteratorReader(t *testing.T) {
 			expectedLines: lines,
 		},
 		{
-			name:          "PrintTime",
+			name:          "PrintTimeDefaultTimeZone",
 			it:            newChunkIterator(ctx, chunkIteratorOptions{bucket: bucket, chunks: chunks, parser: parser}),
 			opts:          LogIteratorReaderOptions{PrintTime: true},
 			expectedLines: lines,
 			formatLine: func(line LogLine) string {
 				return fmt.Sprintf("[%s] %s\n", time.Unix(0, line.Timestamp).UTC().Format("2006/01/02 15:04:05.000"), line.Data)
+			},
+		},
+		{
+			name: "PrintTimeSpecifiedTimeZone",
+			it:   newChunkIterator(ctx, chunkIteratorOptions{bucket: bucket, chunks: chunks, parser: parser}),
+			opts: LogIteratorReaderOptions{
+				PrintTime: true,
+				TimeZone:  tz,
+			},
+			expectedLines: lines,
+			formatLine: func(line LogLine) string {
+				return fmt.Sprintf("[%s] %s\n", time.Unix(0, line.Timestamp).In(tz).Format("2006/01/02 15:04:05.000"), line.Data)
 			},
 		},
 		{

@@ -3,8 +3,8 @@ name := evergreen
 buildDir := bin
 nodeDir := public
 packages := $(name) agent agent-command agent-util agent-internal agent-internal-client agent-internal-testutil operations cloud cloud-userdata
-packages += db util plugin units graphql thirdparty thirdparty-docker auth scheduler model validator service repotracker cmd-codegen-core mock
-packages += model-annotations model-patch model-artifact model-host model-pod model-pod-definition model-pod-dispatcher model-build model-event model-task model-user model-distro model-manifest model-testresult model-log
+packages += db util plugin units graphql thirdparty thirdparty-docker auth scheduler model validator service repotracker mock
+packages += model-annotations model-patch model-artifact model-host model-pod model-pod-definition model-pod-dispatcher model-build model-event model-task model-user model-distro model-manifest model-testresult model-log model-tasklog model-testlog
 packages += model-commitqueue model-cache
 packages += rest-client rest-data rest-route rest-model migrations trigger model-alertrecord model-notification model-taskstats model-reliability
 packages += taskoutput
@@ -210,17 +210,6 @@ $(buildDir)/generate-lint:cmd/generate-lint/generate-lint.go
 	$(gobin) build -ldflags "-w" -o  $@ $<
 # end generate lint
 
-# generate rest model
-# build-codegen is a special target to build all packages before performing code generation so that goimports can
-# properly locate package imports.
-build-codegen:
-	$(gobin) build $(subst $(name),,$(subst -,/,$(foreach target,$(packages),./$(target))))
-generate-rest-model:$(buildDir)/codegen build-codegen
-	./$(buildDir)/codegen --config "rest/model/schema/type_mapping.yml" --schema "rest/model/schema/rest_model.graphql" --model "rest/model/generated.go" --helper "rest/model/generated_converters.go"
-$(buildDir)/codegen:
-	$(gobin) build -o $(buildDir)/codegen cmd/codegen/entry.go
-# end generate rest model
-
 # parse a host.create file and set expansions
 parse-host-file:$(buildDir)/parse-host-file
 	./$(buildDir)/parse-host-file --file $(HOST_FILE)
@@ -337,9 +326,6 @@ $(buildDir):
 	mkdir -p $@
 $(buildDir)/output.%.test: .FORCE
 	$(testRunEnv) $(gobin) test $(testArgs) ./$(if $(subst $(name),,$*),$(subst -,/,$*),) 2>&1 | tee $@
-# Codegen is special because it requires that the repository be compiled for goimports to resolve imports properly.
-$(buildDir)/output.cmd-codegen-core.test: build-codegen .FORCE
-	$(testRunEnv) $(gobin) test $(testArgs) ./$(if $(subst $(name),,$*),$(subst -,/,$*),) 2>&1 | tee $@
 # test-agent-command is special because it requires that the Evergreen binary be compiled to run some of the tests.
 $(buildDir)/output.agent-command.test: cli .FORCE
 	$(testRunEnv) $(gobin) test $(testArgs) ./agent/command 2>&1 | tee $@
@@ -377,6 +363,25 @@ phony += clean
 
 gqlgen:
 	go run github.com/99designs/gqlgen generate
+
+swaggo: 
+	make swaggo-format
+	make swaggo-build
+	make swaggo-render
+
+swaggo-install:
+	go install github.com/swaggo/swag/cmd/swag@latest
+
+swaggo-format:
+	swag fmt -g service/service.go
+
+swaggo-build:
+	swag init -g service/service.go -o $(buildDir)
+
+swaggo-render:
+	npx @redocly/cli build-docs $(buildDir)/swagger.json -o $(buildDir)/redoc-static.html
+
+phony += swaggo swaggo-install swaggo-format swaggo-build swaggo-render
 
 # sanitizes a json file by hashing string values. Note that this will not work well with
 # string data that only has a subset of valid values

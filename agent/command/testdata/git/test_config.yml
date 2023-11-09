@@ -10,7 +10,8 @@ tasks:
 
 modules:
   - name: sample
-    repo: https://github.com/evergreen-ci/sample.git
+    owner: evergreen-ci
+    repo: sample
     ref: cf46076567e4949f9fc68e0634139d4ac495c89b
     prefix: ${prefixpath}/module
 

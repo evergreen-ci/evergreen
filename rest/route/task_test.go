@@ -318,3 +318,69 @@ func TestGetTaskSyncPath(t *testing.T) {
 	require.True(t, ok)
 	assert.Equal(t, path, expected.S3Path(expected.BuildVariant, expected.DisplayName))
 }
+
+func TestGeneratedTasksGetHandler(t *testing.T) {
+	defer func() {
+		assert.NoError(t, db.ClearCollections(task.Collection))
+	}()
+	for tName, tCase := range map[string]func(ctx context.Context, t *testing.T, rh *generatedTasksGetHandler, generatorID string, generated []task.Task){
+		"ReturnsGeneratedTasks": func(ctx context.Context, t *testing.T, rh *generatedTasksGetHandler, generatorID string, generated []task.Task) {
+			for _, tsk := range generated {
+				require.NoError(t, tsk.Insert())
+			}
+			rh.taskID = generatorID
+
+			resp := rh.Run(ctx)
+			assert.Equal(t, http.StatusOK, resp.Status())
+			data := resp.Data()
+			require.NotZero(t, data)
+			taskInfos, ok := data.([]model.APIGeneratedTaskInfo)
+			require.True(t, ok)
+
+			require.Len(t, taskInfos, len(generated))
+			for i := 0; i < len(generated); i++ {
+				assert.Equal(t, generated[i].Id, taskInfos[i].TaskID)
+				assert.Equal(t, generated[i].DisplayName, taskInfos[i].TaskName)
+				assert.Equal(t, generated[i].BuildId, taskInfos[i].BuildID)
+				assert.Equal(t, generated[i].BuildVariant, taskInfos[i].BuildVariant)
+				assert.Equal(t, generated[i].BuildVariantDisplayName, taskInfos[i].BuildVariantDisplayName)
+			}
+		},
+		"ReturnsErrorWithNoMatches": func(ctx context.Context, t *testing.T, rh *generatedTasksGetHandler, generatorID string, generated []task.Task) {
+			rh.taskID = "nonexistent"
+
+			resp := rh.Run(ctx)
+			assert.Equal(t, http.StatusNotFound, resp.Status())
+		},
+	} {
+		t.Run(tName, func(t *testing.T) {
+			ctx, cancel := context.WithCancel(context.Background())
+			defer cancel()
+
+			require.NoError(t, db.ClearCollections(task.Collection))
+
+			const generatorID = "generator"
+			generated := []task.Task{
+				{
+					Id:                      "generated_task0",
+					GeneratedBy:             generatorID,
+					BuildId:                 "build_id0",
+					BuildVariant:            "build-variant0",
+					BuildVariantDisplayName: "first build variant",
+				},
+				{
+					Id:                      "generated_task1",
+					GeneratedBy:             generatorID,
+					BuildId:                 "build_id1",
+					BuildVariant:            "build-variant1",
+					BuildVariantDisplayName: "second build variant",
+				},
+			}
+
+			rh, ok := makeGetGeneratedTasks().(*generatedTasksGetHandler)
+			require.True(t, ok)
+
+			tCase(ctx, t, rh, generatorID, generated)
+		})
+	}
+}

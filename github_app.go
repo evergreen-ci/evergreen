@@ -1,7 +1,5 @@
 package evergreen
 
-// TODO EVG-21064: Refactor into model package.
-
 import (
 	"context"
 	"net/http"
@@ -16,12 +14,26 @@ import (
 	"github.com/mongodb/grip/message"
 	"github.com/pkg/errors"
 	"go.mongodb.org/mongo-driver/bson"
-	"go.mongodb.org/mongo-driver/mongo"
 	"go.mongodb.org/mongo-driver/mongo/options"
 )
 
 const (
 	GitHubAppCollection = "github_hooks"
+
+	GitHubMaxRetries    = 3
+	GitHubRetryMinDelay = time.Second
+	GitHubRetryMaxDelay = 10 * time.Second
+)
+
+//nolint:megacheck,unused
+var (
+	ownerKey          = bsonutil.MustHaveTag(GitHubAppInstallation{}, "Owner")
+	repoKey           = bsonutil.MustHaveTag(GitHubAppInstallation{}, "Repo")
+	installationIDKey = bsonutil.MustHaveTag(GitHubAppInstallation{}, "InstallationID")
+)
+
+var (
+	gitHubAppNotInstalledError = errors.New("GitHub app is not installed")
 )
 
 type GitHubAppInstallation struct {
@@ -32,14 +44,105 @@ type GitHubAppInstallation struct {
 	InstallationID int64 `bson:"installation_id"`
 }
 
-//nolint:megacheck,unused
-var (
-	ownerKey          = bsonutil.MustHaveTag(GitHubAppInstallation{}, "Owner")
-	repoKey           = bsonutil.MustHaveTag(GitHubAppInstallation{}, "Repo")
-	installationIDKey = bsonutil.MustHaveTag(GitHubAppInstallation{}, "InstallationID")
+type githubAppAuth struct {
+	appId      int64
+	privateKey []byte
+}
 
-	gitHubAppNotInstalledError = errors.New("GitHub app is not installed")
-)
+// getGithubAppAuth returns the app id and app private key if they exist.
+func getGithubAppAuth(s *Settings) *githubAppAuth {
+	if s.AuthConfig.Github == nil || s.AuthConfig.Github.AppId == 0 {
+		return nil
+	}
+
+	key := s.Expansions[githubAppPrivateKey]
+	if key == "" {
+		return nil
+	}
+
+	return &githubAppAuth{
+		appId:      s.AuthConfig.Github.AppId,
+		privateKey: []byte(key),
+	}
+}
+
+// HasGitHubApp returns true if the GitHub app is installed on given owner/repo.
+func (s *Settings) HasGitHubApp(ctx context.Context, owner, repo string) (bool, error) {
+	authFields := getGithubAppAuth(s)
+	if authFields == nil {
+		return false, errors.New("GitHub app is not configured in admin settings")
+	}
+
+	installationID, err := getInstallationID(ctx, authFields, owner, repo)
+	if err != nil {
+		return false, errors.Wrapf(err, "getting installation id for '%s/%s'", owner, repo)
+	}
+
+	return installationID != 0, nil
+}
+
+// CreateInstallationTokenWithDefaultOwnerRepo returns an installation token when we do not care about
+// the owner/repo that we are calling the GitHub function with (i.e. checking rate limit).
+// It will use the default owner/repo specified in the admin settings and error if it's not set.
+func (s *Settings) CreateInstallationTokenWithDefaultOwnerRepo(ctx context.Context, opts *github.InstallationTokenOptions) (string, error) {
+	if s.AuthConfig.Github == nil || s.AuthConfig.Github.DefaultOwner == "" || s.AuthConfig.Github.DefaultRepo == "" {
+		// TODO EVG-19966: Return error here
+		grip.Debug(message.Fields{
+			"message": "no default owner/repo",
+			"ticket":  "EVG-19966",
+		})
+		return "", nil
+	}
+	return s.CreateInstallationToken(ctx, s.AuthConfig.Github.DefaultOwner, s.AuthConfig.Github.DefaultRepo, opts)
+}
+
+// CreateInstallationToken uses the owner/repo information to request an github app installation id
+// and uses that id to create an installation token.
+func (s *Settings) CreateInstallationToken(ctx context.Context, owner, repo string, opts *github.InstallationTokenOptions) (string, error) {
+	authFields := getGithubAppAuth(s)
+	if authFields == nil {
+		return "", errors.New("GitHub app is not configured in admin settings")
+	}
+
+	installationID, err := getInstallationID(ctx, authFields, owner, repo)
+	if err != nil {
+		return "", errors.Wrapf(err, "getting installation id for '%s/%s'", owner, repo)
+	}
+
+	token, err := createInstallationToken(ctx, authFields, installationID, opts)
+	if err != nil {
+		return "", errors.Wrapf(err, "creating installation token for '%s/%s'", owner, repo)
+	}
+
+	return token, nil
+}
+
+func getInstallationID(ctx context.Context, authFields *githubAppAuth, owner, repo string) (int64, error) {
+	cachedID, err := getInstallationIDFromCache(ctx, owner, repo)
+	if err != nil {
+		return 0, errors.Wrapf(err, "getting cached installation id for '%s/%s'", owner, repo)
+	}
+	if cachedID != 0 {
+		return cachedID, nil
+	}
+
+	installationID, err := getInstallationIDFromGitHub(ctx, authFields, owner, repo)
+	if err != nil {
+		return 0, errors.Wrapf(err, "getting installation id for '%s/%s'", owner, repo)
+	}
+
+	cachedInstallation := GitHubAppInstallation{
+		Owner:          owner,
+		Repo:           repo,
+		InstallationID: installationID,
+	}
+	if err := cachedInstallation.Upsert(ctx); err != nil {
+		return 0, errors.Wrapf(err, "caching installation id for '%s/%s'", owner, repo)
+	}
+
+	return installationID, nil
+
+}
 
 func byOwnerRepo(owner, repo string) bson.M {
 	q := bson.M{
@@ -75,8 +178,8 @@ func (h *GitHubAppInstallation) Upsert(ctx context.Context) error {
 	return err
 }
 
-// getInstallationID returns the installation ID for GitHub app if it's installed for the given owner/repo.
-func getInstallationID(ctx context.Context, owner, repo string) (int64, error) {
+// getInstallationID returns the cached installation ID for GitHub app from the database.
+func getInstallationIDFromCache(ctx context.Context, owner, repo string) (int64, error) {
 	if err := validateOwnerRepo(owner, repo); err != nil {
 		return 0, err
 	}
@@ -84,9 +187,6 @@ func getInstallationID(ctx context.Context, owner, repo string) (int64, error) {
 	installation := &GitHubAppInstallation{}
 	res := GetEnvironment().DB().Collection(GitHubAppCollection).FindOne(ctx, byOwnerRepo(owner, repo))
 	if err := res.Err(); err != nil {
-		if err == mongo.ErrNoDocuments {
-			return 0, nil
-		}
 		return 0, errors.Wrapf(err, "finding cached installation ID for '%s/%s", owner, repo)
 	}
 	if err := res.Decode(&installation); err != nil {
@@ -96,99 +196,71 @@ func getInstallationID(ctx context.Context, owner, repo string) (int64, error) {
 	return installation.InstallationID, nil
 }
 
-type githubAppAuth struct {
-	appId      int64
-	privateKey []byte
-}
-
-// getGithubAppAuth returns the app id and app private key if they exist.
-func (s *Settings) getGithubAppAuth() *githubAppAuth {
-	if s.AuthConfig.Github == nil || s.AuthConfig.Github.AppId == 0 {
-		return nil
-	}
-
-	key := s.Expansions[githubAppPrivateKey]
-	if key == "" {
-		return nil
-	}
-
-	return &githubAppAuth{
-		appId:      s.AuthConfig.Github.AppId,
-		privateKey: []byte(key),
-	}
-}
-
-// CreateInstallationToken uses the owner/repo information to request an github app installation id
-// and uses that id to create an installation token.
-func (s *Settings) CreateInstallationToken(ctx context.Context, owner, repo string, opts *github.InstallationTokenOptions) (string, error) {
-	const (
-		maxDelay   = 10 * time.Second
-		minDelay   = time.Second
-		maxRetries = 5
-	)
-
-	if owner == "" || repo == "" {
-		return "", errors.New("no owner/repo specified to create installation token")
-	}
-	authFields := s.getGithubAppAuth()
-	if authFields == nil {
-		return "", errors.New("GitHub app is not configured in admin settings")
-	}
-
+// getGitHubClientForAuth returns a GitHub client with the GitHub app's private key.
+// This function cannot be moved to thirdparty because it is needed to set up the environment.
+func getGitHubClientForAuth(authFields *githubAppAuth) (*github.Client, error) {
 	retryConf := utility.NewDefaultHTTPRetryConf()
-	retryConf.MaxDelay = maxDelay
-	retryConf.BaseDelay = minDelay
-	retryConf.MaxRetries = maxRetries
+	retryConf.MaxDelay = GitHubRetryMaxDelay
+	retryConf.BaseDelay = GitHubRetryMinDelay
+	retryConf.MaxRetries = GitHubMaxRetries
 
 	httpClient := utility.GetHTTPRetryableClient(retryConf)
-	defer utility.PutHTTPClient(httpClient)
 
 	key, err := jwt.ParseRSAPrivateKeyFromPEM(authFields.privateKey)
 	if err != nil {
-		return "", errors.Wrap(err, "parsing private key")
+		return nil, errors.Wrap(err, "parsing private key")
 	}
 
 	itr := ghinstallation.NewAppsTransportFromPrivateKey(httpClient.Transport, authFields.appId, key)
 	httpClient.Transport = itr
 	client := github.NewClient(httpClient)
+	return client, nil
+}
 
-	installationID, err := getInstallationID(ctx, owner, repo)
+// getInstallationIDFromGitHub returns an installation ID from GitHub given an owner and a repo.
+// This function cannot be moved to thirdparty because it is needed to set up the environment.
+func getInstallationIDFromGitHub(ctx context.Context, authFields *githubAppAuth, owner, repo string) (int64, error) {
+	client, err := getGitHubClientForAuth(authFields)
 	if err != nil {
-		return "", errors.Wrapf(err, "getting cached installation id for '%s/%s'", owner, repo)
-	}
-	if installationID == 0 {
-		installation, resp, err := client.Apps.FindRepositoryInstallation(ctx, owner, repo)
-		if err != nil {
-			if resp != nil && resp.StatusCode == http.StatusNotFound {
-				return "", errors.Wrapf(gitHubAppNotInstalledError, "installation id for '%s/%s' not found", owner, repo)
-			}
-			grip.Debug(message.WrapError(err, message.Fields{
-				"message": "error finding installation id",
-				"owner":   owner,
-				"repo":    repo,
-				"appId":   authFields.appId,
-				"ticket":  "EVG-19966",
-			}))
-			return "", errors.Wrapf(err, "finding installation id for '%s/%s'", owner, repo)
-		}
-		if installation == nil {
-			return "", errors.Errorf("Installation id for '%s/%s' not found", owner, repo)
-		}
-
-		installationID = installation.GetID()
-
-		// Cache the installation ID for owner/repo.
-		cachedInstallation := GitHubAppInstallation{
-			Owner:          owner,
-			Repo:           repo,
-			InstallationID: installationID,
-		}
-		if err := cachedInstallation.Upsert(ctx); err != nil {
-			return "", errors.Wrapf(err, "saving installation id for '%s/%s'", owner, repo)
-		}
+		return 0, errors.Wrap(err, "getting GitHub client to get the installation ID")
 	}
 
-	token, _, err := client.Apps.CreateInstallationToken(ctx, installationID, opts)
+	installation, resp, err := client.Apps.FindRepositoryInstallation(ctx, owner, repo)
+	if err != nil {
+		if resp != nil {
+			defer resp.Body.Close()
+		}
+		if resp.StatusCode == http.StatusNotFound {
+			return 0, errors.Wrapf(gitHubAppNotInstalledError, "installation id for '%s/%s' not found", owner, repo)
+		}
+		grip.Debug(message.WrapError(err, message.Fields{
+			"message": "error finding installation id",
+			"owner":   owner,
+			"repo":    repo,
+			"appId":   authFields.appId,
+			"ticket":  "EVG-19966",
+		}))
+		return 0, errors.Wrapf(err, "finding installation id for '%s/%s'", owner, repo)
+	}
+	if installation == nil {
+		return 0, errors.Errorf("Installation id for '%s/%s' not found", owner, repo)
+	}
+
+	return installation.GetID(), nil
+}
+
+// createInstallationToken returns an installation token from GitHub given an installation ID.
+// This function cannot be moved to thirdparty because it is needed to set up the environment.
+func createInstallationToken(ctx context.Context, authFields *githubAppAuth, installationID int64, opts *github.InstallationTokenOptions) (string, error) {
+	client, err := getGitHubClientForAuth(authFields)
+	if err != nil {
+		return "", errors.Wrap(err, "getting GitHub client for token creation")
+	}
+
+	token, resp, err := client.Apps.CreateInstallationToken(ctx, installationID, opts)
+	if resp != nil {
+		defer resp.Body.Close()
+	}
 	if err != nil {
 		return "", errors.Wrapf(err, "creating installation token for installation id: '%d'", installationID)
 	}
@@ -196,42 +268,4 @@ func (s *Settings) CreateInstallationToken(ctx context.Context, owner, repo stri
 		return "", errors.Errorf("Installation token for installation 'id': %d not found", installationID)
 	}
 	return token.GetToken(), nil
-}
-
-// HasGitHubApp returns true if the GitHub app is installed on given owner/repo.
-// Only returns an error if the app is installed.
-func (s *Settings) HasGitHubApp(ctx context.Context, owner, repo string, opts *github.InstallationTokenOptions) (bool, error) {
-	// Check the cache for installation ID first.
-	installationID, err := getInstallationID(ctx, owner, repo)
-	if err != nil {
-		return false, errors.Wrapf(err, "getting cached installation id for '%s/%s'", owner, repo)
-	}
-	if installationID != 0 {
-		return true, nil
-	}
-
-	// TODO EVG-21064 Refactor to only get installation ID from GitHub.
-	token, err := s.CreateInstallationToken(ctx, owner, repo, opts)
-	if err != nil {
-		if errors.Is(err, gitHubAppNotInstalledError) {
-			return false, nil
-		}
-		return false, errors.Wrap(err, "verifying GitHub app installation")
-	}
-	return token != "", nil
-}
-
-// CreateInstallationTokenWithDefaultOwnerRepo returns an installation token when we do not care about
-// the owner/repo that we are calling the GitHub function with (i.e. checking rate limit).
-// It will use the default owner/repo specified in the admin settings and error if it's not set.
-func (s *Settings) CreateInstallationTokenWithDefaultOwnerRepo(ctx context.Context, opts *github.InstallationTokenOptions) (string, error) {
-	if s.AuthConfig.Github == nil || s.AuthConfig.Github.DefaultOwner == "" || s.AuthConfig.Github.DefaultRepo == "" {
-		// TODO EVG-19966: Return error here
-		grip.Debug(message.Fields{
-			"message": "no default owner/repo",
-			"ticket":  "EVG-19966",
-		})
-		return "", nil
-	}
-	return s.CreateInstallationToken(ctx, s.AuthConfig.Github.DefaultOwner, s.AuthConfig.Github.DefaultRepo, opts)
 }

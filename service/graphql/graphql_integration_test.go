@@ -9,7 +9,7 @@ import (
 
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/graphql"
-	"github.com/evergreen-ci/evergreen/model"
+	"github.com/evergreen-ci/evergreen/model/tasklog"
 	"github.com/evergreen-ci/evergreen/model/user"
 	"github.com/evergreen-ci/evergreen/service"
 	"github.com/evergreen-ci/evergreen/testutil"
@@ -44,8 +44,8 @@ func TestAtomicGQLQueries(t *testing.T) {
 				if entry.Name() == "queries" {
 					// The existence of a queries folder suggests that there are old format tests to run.
 					state = graphql.AtomicGraphQLState{
-						TaskLogDB:   model.TaskLogDB,
-						TaskLogColl: model.TaskLogCollection,
+						TaskLogDB:   tasklog.TaskLogDB,
+						TaskLogColl: tasklog.TaskLogCollection,
 						Directory:   dir.Name(),
 						Settings:    settings,
 						ServerURL:   server.URL,
@@ -53,8 +53,8 @@ func TestAtomicGQLQueries(t *testing.T) {
 				} else {
 					// A nested directory that isn't a queries folder suggests that there are new format tests to run.
 					state = graphql.AtomicGraphQLState{
-						TaskLogDB:   model.TaskLogDB,
-						TaskLogColl: model.TaskLogCollection,
+						TaskLogDB:   tasklog.TaskLogDB,
+						TaskLogColl: tasklog.TaskLogCollection,
 						Directory:   filepath.Join(dir.Name(), entry.Name()),
 						Settings:    settings,
 						ServerURL:   server.URL,

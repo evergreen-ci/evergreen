@@ -327,14 +327,25 @@ all teams from sharing the same SSH keys in their containers.
 Instead, modules must be cloned via OAuth over HTTPS. This means
 that if your modules' git clones rely on a host's SSH keys to clone a private
 repository in your existing workflow, the cloning method will need to be
-changed. This can be done by modifying the url format of the module's
-repo, e.g:
+changed. This can be done by specifying an owner and repo instead of a url. e.g:
+instead of: 
 
 ```yaml
 modules:
   - name: evergreen
-    repo: git@github.com:evergreen-ci/evergreen.git → https://github.com/evergreen-ci/evergreen.git
+    repo: git@github.com:evergreen-ci/evergreen.git
 ```
+
+use: 
+```yaml
+modules:
+  - name: evergreen
+    owner: evergreen-ci
+    repo: evergreen
+```
+
+Note: the ssh clone method for modules is being deprecated and shouldn't be used for 
+none container tasks either. 
 
 ### Host.create
 

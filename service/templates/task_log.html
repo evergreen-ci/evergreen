@@ -74,8 +74,6 @@
     <pre>
 {{ range $index, $element := .Data }}<i class="fa fa-link line-link" id='line-link-{{ $index }}'></i> <span class='severity-{{ $element.Severity }} log-line' id='line-{{ $index }}'>{{if not $element.Timestamp.IsZero}}{{ DateFormat $element.Timestamp "[2006/01/02 15:04:05.000] " (GetTimezone $.User) }}{{end}}{{ $element.Message }}</span>
 {{ end }}
-{{ range $index, $element := .Buildlogger }}<i class="fa fa-link line-link" id='line-link-{{ $index }}'></i> <span class='severity-{{ $element.Severity }} log-line' id='line-{{ $index }}'>{{ $element.Message }}</span>
-{{ end }}
     </pre>
 
   </body>

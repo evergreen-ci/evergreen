@@ -45,55 +45,46 @@ func (j *cronsRemoteMinuteJob) Run(ctx context.Context) {
 		j.env = evergreen.GetEnvironment()
 	}
 
-	ops := []amboy.QueueOperation{
-		PopulateHostSetupJobs(j.env),
-		PopulateBackgroundStatsJobs(j.env, 0),
-		PopulateContainerStateJobs(j.env),
-		PopulateEventSendJobs(j.env),
-		PopulateFallbackGenerateTasksJobs(j.env),
-		PopulateHostMonitoring(j.env),
-		PopulateHostTerminationJobs(j.env),
-		PopulateLastContainerFinishTimeJobs(),
-		PopulateOldestImageRemovalJobs(),
-		PopulateParentDecommissionJobs(),
-		PopulatePeriodicNotificationJobs(1),
-		PopulateUserDataDoneJobs(j.env),
-		PopulatePodTerminationJobs(j.env),
+	ops := map[string]cronJobFactory{
+		"host ready":                 hostReadyJob,
+		"background stats":           backgroundStatsJobs,
+		"container state":            containerStateJobs,
+		"event send":                 sendNotificationJobs,
+		"host monitoring":            hostMonitoringJobs,
+		"host termination":           hostTerminationJobs,
+		"last container finish time": lastContainerFinishTimeJobs,
+		"oldest image removal":       oldestImageRemovalJobs,
+		"parent decommission":        parentDecommissionJobs,
+		"periodic notification":      periodicNotificationJobs,
+		"user data done":             userDataDoneJobs,
+		"pod termination":            podTerminationJobs,
 	}
 
+	var allJobs []amboy.Job
 	catcher := grip.NewBasicCatcher()
+	ts := utility.RoundPartOfMinute(0)
 
-	queue := j.env.RemoteQueue()
-	for _, op := range ops {
+	for name, op := range ops {
 		if ctx.Err() != nil {
 			j.AddError(errors.New("operation aborted"))
 		}
-		catcher.Add(op(ctx, queue))
+		jobs, err := op(ctx, ts)
+		if err != nil {
+			catcher.Wrapf(err, "getting '%s' jobs", name)
+			continue
+		}
+		allJobs = append(allJobs, jobs...)
 	}
+	catcher.Wrap(amboy.EnqueueManyUniqueJobs(ctx, j.env.RemoteQueue(), allJobs), "populating main queue")
+	catcher.Add(enqueueHostSetupJobs(ctx, j.env.RemoteQueue(), ts))
 
-	// Create dedicated queues for host creation, event notifier, and commit
-	// queue jobs.
-	appCtx, _ := j.env.Context()
-	hcqueue, err := j.env.RemoteQueueGroup().Get(appCtx, CreateHostQueueGroup)
-	if err != nil {
-		catcher.Wrap(err, "getting host create queue")
-	} else {
-		catcher.Add(PopulateHostCreationJobs(j.env, 0)(ctx, hcqueue))
-	}
+	// Create dedicated queues for host creation, event notifier, and commit queue jobs.
+	catcher.Add(populateQueueGroup(ctx, j.env, createHostQueueGroup, hostCreationJobs, ts))
+	catcher.Add(populateQueueGroup(ctx, j.env, commitQueueQueueGroup, commitQueueJobs, ts))
+	catcher.Add(populateQueueGroup(ctx, j.env, eventNotifierQueueGroup, eventNotifierJobs, ts))
 
-	commitQueueQueue, err := j.env.RemoteQueueGroup().Get(appCtx, commitQueueQueueGroup)
-	if err != nil {
-		catcher.Wrap(err, "getting commit queue queue")
-	} else {
-		catcher.Add(PopulateCommitQueueJobs(j.env)(ctx, commitQueueQueue))
-	}
-
-	eventNotifierQueue, err := j.env.RemoteQueueGroup().Get(appCtx, eventNotifierQueueGroup)
-	if err != nil {
-		catcher.Wrap(err, "getting event notifier queue")
-	} else {
-		catcher.Add(PopulateEventNotifierJobs(j.env)(ctx, eventNotifierQueue))
-	}
+	// Add generate tasks fallbacks to their versions' queues.
+	catcher.Add(enqueueFallbackGenerateTasksJobs(ctx, j.env, ts))
 
 	j.ErrorCount = catcher.Len()
 

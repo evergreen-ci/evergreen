@@ -33,6 +33,7 @@ import (
 // NewExecutableSchema creates an ExecutableSchema from the ResolverRoot interface.
 func NewExecutableSchema(cfg Config) graphql.ExecutableSchema {
 	return &executableSchema{
+		schema:     cfg.Schema,
 		resolvers:  cfg.Resolvers,
 		directives: cfg.Directives,
 		complexity: cfg.Complexity,
@@ -40,6 +41,7 @@ func NewExecutableSchema(cfg Config) graphql.ExecutableSchema {
 }
 
 type Config struct {
+	Schema     *ast.Schema
 	Resolvers  ResolverRoot
 	Directives DirectiveRoot
 	Complexity ComplexityRoot
@@ -1031,6 +1033,7 @@ type ComplexityRoot struct {
 		NotifyOnBuildFailure     func(childComplexity int) int
 		Owner                    func(childComplexity int) int
 		PRTestingEnabled         func(childComplexity int) int
+		ParsleyFilters           func(childComplexity int) int
 		PatchTriggerAliases      func(childComplexity int) int
 		PatchingDisabled         func(childComplexity int) int
 		PerfEnabled              func(childComplexity int) int
@@ -1919,12 +1922,16 @@ type SubscriberInputResolver interface {
 }
 
 type executableSchema struct {
+	schema     *ast.Schema
 	resolvers  ResolverRoot
 	directives DirectiveRoot
 	complexity ComplexityRoot
 }
 
 func (e *executableSchema) Schema() *ast.Schema {
+	if e.schema != nil {
+		return e.schema
+	}
 	return parsedSchema
 }
 
@@ -6776,6 +6783,13 @@ func (e *executableSchema) Complexity(typeName, field string, childComplexity in
 
 		return e.complexity.RepoRef.PRTestingEnabled(childComplexity), true
 
+	case "RepoRef.parsleyFilters":
+		if e.complexity.RepoRef.ParsleyFilters == nil {
+			break
+		}
+
+		return e.complexity.RepoRef.ParsleyFilters(childComplexity), true
+
 	case "RepoRef.patchTriggerAliases":
 		if e.complexity.RepoRef.PatchTriggerAliases == nil {
 			break
@@ -9432,14 +9446,14 @@ func (ec *executionContext) introspectSchema() (*introspection.Schema, error) {
 	if ec.DisableIntrospection {
 		return nil, errors.New("introspection disabled")
 	}
-	return introspection.WrapSchema(parsedSchema), nil
+	return introspection.WrapSchema(ec.Schema()), nil
 }
 
 func (ec *executionContext) introspectType(name string) (*introspection.Type, error) {
 	if ec.DisableIntrospection {
 		return nil, errors.New("introspection disabled")
 	}
-	return introspection.WrapTypeFromDef(parsedSchema, parsedSchema.Types[name]), nil
+	return introspection.WrapTypeFromDef(ec.Schema(), ec.Schema().Types[name]), nil
 }
 
 //go:embed "schema/directives.graphql" "schema/mutation.graphql" "schema/query.graphql" "schema/scalars.graphql" "schema/types/annotation.graphql" "schema/types/commit_queue.graphql" "schema/types/config.graphql" "schema/types/distro.graphql" "schema/types/host.graphql" "schema/types/issue_link.graphql" "schema/types/logkeeper.graphql" "schema/types/mainline_commits.graphql" "schema/types/patch.graphql" "schema/types/permissions.graphql" "schema/types/pod.graphql" "schema/types/project.graphql" "schema/types/project_settings.graphql" "schema/types/project_subscriber.graphql" "schema/types/project_vars.graphql" "schema/types/repo_ref.graphql" "schema/types/repo_settings.graphql" "schema/types/spawn.graphql" "schema/types/subscriptions.graphql" "schema/types/task.graphql" "schema/types/task_logs.graphql" "schema/types/task_queue_item.graphql" "schema/types/ticket_fields.graphql" "schema/types/user.graphql" "schema/types/version.graphql" "schema/types/volume.graphql"
@@ -20300,6 +20314,8 @@ func (ec *executionContext) fieldContext_GroupedProjects_repo(ctx context.Contex
 				return ec.fieldContext_RepoRef_notifyOnBuildFailure(ctx, field)
 			case "owner":
 				return ec.fieldContext_RepoRef_owner(ctx, field)
+			case "parsleyFilters":
+				return ec.fieldContext_RepoRef_parsleyFilters(ctx, field)
 			case "patchingDisabled":
 				return ec.fieldContext_RepoRef_patchingDisabled(ctx, field)
 			case "patchTriggerAliases":
@@ -45615,6 +45631,55 @@ func (ec *executionContext) fieldContext_RepoRef_owner(ctx context.Context, fiel
 	return fc, nil
 }
 
+func (ec *executionContext) _RepoRef_parsleyFilters(ctx context.Context, field graphql.CollectedField, obj *model.APIProjectRef) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_RepoRef_parsleyFilters(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.ParsleyFilters, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		return graphql.Null
+	}
+	res := resTmp.([]model.APIParsleyFilter)
+	fc.Result = res
+	return ec.marshalOParsleyFilter2ᚕgithubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐAPIParsleyFilterᚄ(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_RepoRef_parsleyFilters(ctx context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "RepoRef",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			switch field.Name {
+			case "expression":
+				return ec.fieldContext_ParsleyFilter_expression(ctx, field)
+			case "caseSensitive":
+				return ec.fieldContext_ParsleyFilter_caseSensitive(ctx, field)
+			case "exactMatch":
+				return ec.fieldContext_ParsleyFilter_exactMatch(ctx, field)
+			}
+			return nil, fmt.Errorf("no field named %q was found under type ParsleyFilter", field.Name)
+		},
+	}
+	return fc, nil
+}
+
 func (ec *executionContext) _RepoRef_patchingDisabled(ctx context.Context, field graphql.CollectedField, obj *model.APIProjectRef) (ret graphql.Marshaler) {
 	fc, err := ec.fieldContext_RepoRef_patchingDisabled(ctx, field)
 	if err != nil {
@@ -46721,6 +46786,8 @@ func (ec *executionContext) fieldContext_RepoSettings_projectRef(ctx context.Con
 				return ec.fieldContext_RepoRef_notifyOnBuildFailure(ctx, field)
 			case "owner":
 				return ec.fieldContext_RepoRef_owner(ctx, field)
+			case "parsleyFilters":
+				return ec.fieldContext_RepoRef_parsleyFilters(ctx, field)
 			case "patchingDisabled":
 				return ec.fieldContext_RepoRef_patchingDisabled(ctx, field)
 			case "patchTriggerAliases":
@@ -66594,7 +66661,7 @@ func (ec *executionContext) unmarshalInputMainlineCommitsOptions(ctx context.Con
 		asMap["shouldCollapse"] = false
 	}
 
-	fieldsInOrder := [...]string{"limit", "projectIdentifier", "requesters", "shouldCollapse", "skipOrderNumber"}
+	fieldsInOrder := [...]string{"limit", "projectIdentifier", "requesters", "revision", "shouldCollapse", "skipOrderNumber"}
 	for _, k := range fieldsInOrder {
 		v, ok := asMap[k]
 		if !ok {
@@ -66628,6 +66695,15 @@ func (ec *executionContext) unmarshalInputMainlineCommitsOptions(ctx context.Con
 				return it, err
 			}
 			it.Requesters = data
+		case "revision":
+			var err error
+
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("revision"))
+			data, err := ec.unmarshalOString2ᚖstring(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.Revision = data
 		case "shouldCollapse":
 			var err error
 
@@ -67044,6 +67120,9 @@ func (ec *executionContext) unmarshalInputPatchesInput(ctx context.Context, obj 
 	if _, present := asMap["limit"]; !present {
 		asMap["limit"] = 0
 	}
+	if _, present := asMap["includeHidden"]; !present {
+		asMap["includeHidden"] = false
+	}
 	if _, present := asMap["page"]; !present {
 		asMap["page"] = 0
 	}
@@ -67054,7 +67133,7 @@ func (ec *executionContext) unmarshalInputPatchesInput(ctx context.Context, obj 
 		asMap["statuses"] = []interface{}{}
 	}
 
-	fieldsInOrder := [...]string{"includeCommitQueue", "limit", "onlyCommitQueue", "page", "patchName", "statuses"}
+	fieldsInOrder := [...]string{"includeCommitQueue", "limit", "onlyCommitQueue", "includeHidden", "page", "patchName", "statuses"}
 	for _, k := range fieldsInOrder {
 		v, ok := asMap[k]
 		if !ok {
@@ -67088,6 +67167,15 @@ func (ec *executionContext) unmarshalInputPatchesInput(ctx context.Context, obj 
 				return it, err
 			}
 			it.OnlyCommitQueue = data
+		case "includeHidden":
+			var err error
+
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("includeHidden"))
+			data, err := ec.unmarshalOBoolean2ᚖbool(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.IncludeHidden = data
 		case "page":
 			var err error
 
@@ -68078,7 +68166,7 @@ func (ec *executionContext) unmarshalInputRepoRefInput(ctx context.Context, obj 
 		asMap[k] = v
 	}
 
-	fieldsInOrder := [...]string{"id", "admins", "batchTime", "buildBaronSettings", "commitQueue", "deactivatePrevious", "disabledStatsCache", "dispatchingDisabled", "displayName", "enabled", "externalLinks", "githubChecksEnabled", "githubTriggerAliases", "gitTagAuthorizedTeams", "gitTagAuthorizedUsers", "gitTagVersionsEnabled", "manualPrTestingEnabled", "notifyOnBuildFailure", "owner", "patchingDisabled", "patchTriggerAliases", "perfEnabled", "periodicBuilds", "private", "prTestingEnabled", "remotePath", "repo", "repotrackerDisabled", "restricted", "spawnHostScriptPath", "stepbackDisabled", "taskAnnotationSettings", "taskSync", "tracksPushEvents", "triggers", "versionControlEnabled", "workstationConfig", "containerSizeDefinitions"}
+	fieldsInOrder := [...]string{"id", "admins", "batchTime", "buildBaronSettings", "commitQueue", "deactivatePrevious", "disabledStatsCache", "dispatchingDisabled", "displayName", "enabled", "externalLinks", "githubChecksEnabled", "githubTriggerAliases", "gitTagAuthorizedTeams", "gitTagAuthorizedUsers", "gitTagVersionsEnabled", "manualPrTestingEnabled", "notifyOnBuildFailure", "owner", "parsleyFilters", "patchingDisabled", "patchTriggerAliases", "perfEnabled", "periodicBuilds", "private", "prTestingEnabled", "remotePath", "repo", "repotrackerDisabled", "restricted", "spawnHostScriptPath", "stepbackDisabled", "taskAnnotationSettings", "taskSync", "tracksPushEvents", "triggers", "versionControlEnabled", "workstationConfig", "containerSizeDefinitions"}
 	for _, k := range fieldsInOrder {
 		v, ok := asMap[k]
 		if !ok {
@@ -68275,6 +68363,15 @@ func (ec *executionContext) unmarshalInputRepoRefInput(ctx context.Context, obj 
 				return it, err
 			}
 			it.Owner = data
+		case "parsleyFilters":
+			var err error
+
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("parsleyFilters"))
+			data, err := ec.unmarshalOParsleyFilterInput2ᚕgithubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐAPIParsleyFilterᚄ(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.ParsleyFilters = data
 		case "patchingDisabled":
 			var err error
 
@@ -78649,6 +78746,8 @@ func (ec *executionContext) _RepoRef(ctx context.Context, sel ast.SelectionSet, 
 			if out.Values[i] == graphql.Null {
 				out.Invalids++
 			}
+		case "parsleyFilters":
+			out.Values[i] = ec._RepoRef_parsleyFilters(ctx, field, obj)
 		case "patchingDisabled":
 			out.Values[i] = ec._RepoRef_patchingDisabled(ctx, field, obj)
 			if out.Values[i] == graphql.Null {

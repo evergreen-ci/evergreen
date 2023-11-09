@@ -55,6 +55,14 @@ settings, refer to the [official GitHub documentation](https://docs.github.com/e
 
 ## FAQ
 
+**Q:** I don't see any candidate statuses in the list of possible required
+checks in the branch protection configuration.
+
+**A:** This is probably because you haven't generated any in a while. GitHub only shows
+recent statuses. To get some statuses to choose from, you can retrigger tests on
+an existing PR by typing `evergreen retry`, open an empty PR, or commit an empty
+commit.
+
 **Q:** Is there a plan to have Evergreen send merge notifications? 
 
 **A:** No. We believe it makes more sense for notifications to come from GitHub,
@@ -68,6 +76,17 @@ have multiple versions for the same reason. It’s also possible for a version t
 succeed and not yield a merge on GitHub’s side. This makes it difficult to link back
 from Evergreen versions to PRs. Instead, users can use the GitHub UI as the primary
 starting point, and link to Evergreen builds from there.
+
+**Q:** How can I get the commit titles of the PRs in a merge queue version?
+
+**A:** Evergreen doesn't expose these as an expansion, as they aren't available in the
+webhook message. You can use `git` to get them, where `<tracking branch>` is the
+branch your project is tracking, usually main or master, since GitHub squashes
+each PR's commits into a single commit with the PR title as its commit message.
+
+```shell
+git log --pretty=format:"%s" <tracking branch>...HEAD
+```
 
 **Q:** Is it possible to get a notification for a merge?
 

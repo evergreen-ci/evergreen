@@ -305,9 +305,10 @@ func cloneSource(task *service.RestTask, project *model.ProjectRef, config *mode
 
 		moduleBase := filepath.Join(cloneDir, modulePrefix, module.Name)
 		fmt.Printf("Fetching module %v at %v\n", moduleName, module.Branch)
-		owner, repo, err := thirdparty.ParseGitUrl(module.Repo)
+
+		owner, repo, err := module.GetOwnerAndRepo()
 		if err != nil {
-			return errors.Wrapf(err, "parsing git URL '%s'", module.Repo)
+			return errors.Wrapf(err, "getting owner and repo for '%s'", module.Name)
 		}
 		err = clone(cloneOptions{
 			owner:      owner,

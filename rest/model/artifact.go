@@ -11,10 +11,14 @@ import (
 )
 
 type APIFile struct {
-	Name           *string `json:"name"`
-	Link           *string `json:"url"`
-	URLParsley     *string `json:"url_parsley"`
-	Visibility     *string `json:"visibility"`
+	// Human-readable name of the file
+	Name *string `json:"name"`
+	// Link to the file
+	Link       *string `json:"url"`
+	URLParsley *string `json:"url_parsley"`
+	// Determines who can see the file in the UI
+	Visibility *string `json:"visibility"`
+	// When true, these artifacts are excluded from reproduction
 	IgnoreForFetch bool    `json:"ignore_for_fetch"`
 	ContentType    *string `json:"content_type"`
 }

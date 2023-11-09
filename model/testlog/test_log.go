@@ -1,4 +1,4 @@
-package model
+package testlog
 
 import (
 	"context"

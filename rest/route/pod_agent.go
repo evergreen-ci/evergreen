@@ -282,12 +282,11 @@ func (h *podAgentNextTask) Run(ctx context.Context) gimlet.Responder {
 	}
 
 	return gimlet.NewJSONResponse(&apimodels.NextTaskResponse{
-		TaskId:                    nextTask.Id,
-		TaskSecret:                nextTask.Secret,
-		TaskGroup:                 nextTask.TaskGroup,
-		Version:                   nextTask.Version,
-		Build:                     nextTask.BuildId,
-		UnsetFunctionVarsDisabled: flags.UnsetFunctionVarsDisabled,
+		TaskId:     nextTask.Id,
+		TaskSecret: nextTask.Secret,
+		TaskGroup:  nextTask.TaskGroup,
+		Version:    nextTask.Version,
+		Build:      nextTask.BuildId,
 	})
 }
 

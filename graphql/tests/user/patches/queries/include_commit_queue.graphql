@@ -1,6 +1,6 @@
 {
   user {
-    patches(patchesInput: { includeCommitQueue: true }) {
+    patches(patchesInput: { includeCommitQueue: true, includeHidden: true }) {
       patches {
         id
       }
