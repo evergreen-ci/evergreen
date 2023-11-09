@@ -364,6 +364,11 @@ func TryResetTask(ctx context.Context, settings *evergreen.Settings, taskId, use
 		if err = t.MarkEnd(time.Now(), detail); err != nil {
 			return errors.Wrap(err, "marking task as ended")
 		}
+		if detail.Retryable {
+			if err = t.IncNumAutomaticResets(); err != nil {
+				return errors.Wrapf(err, "incrementing number of automatic resets for task '%s'", t.Id)
+			}
+		}
 	}
 
 	caller := origin
@@ -375,12 +380,6 @@ func TryResetTask(ctx context.Context, settings *evergreen.Settings, taskId, use
 			return errors.Wrap(err, "marking task group for reset")
 		}
 		return errors.Wrap(checkResetSingleHostTaskGroup(ctx, t, caller), "resetting single host task group")
-	}
-
-	if detail.Retryable {
-		if err = t.IncNumAutomaticResets(); err != nil {
-			return errors.Wrapf(err, "incrementing number of automatic resets for task '%s'", t.Id)
-		}
 	}
 
 	return errors.WithStack(resetTask(ctx, t.Id, caller))
