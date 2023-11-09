@@ -22,7 +22,6 @@ import (
 	"github.com/evergreen-ci/evergreen/model/host"
 	"github.com/evergreen-ci/evergreen/model/patch"
 	"github.com/evergreen-ci/evergreen/model/task"
-	"github.com/evergreen-ci/evergreen/model/tasklog"
 	modelutil "github.com/evergreen-ci/evergreen/model/testutil"
 	"github.com/evergreen-ci/evergreen/testutil"
 	"github.com/evergreen-ci/evergreen/thirdparty"
@@ -92,7 +91,7 @@ func (s *GitGetProjectSuite) SetupSuite() {
 
 func (s *GitGetProjectSuite) SetupTest() {
 	s.NoError(db.ClearCollections(patch.Collection, build.Collection, task.Collection,
-		model.VersionCollection, host.Collection, tasklog.TaskLogCollection))
+		model.VersionCollection, host.Collection))
 	var err error
 
 	configPath1 := filepath.Join(testutil.GetDirectoryOfFile(), "testdata", "git", "plugin_clone.yml")
