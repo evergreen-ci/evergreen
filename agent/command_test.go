@@ -67,8 +67,7 @@ func (s *CommandSuite) SetupTest() {
 			ID:     "mock_task_id",
 			Secret: "mock_task_secret",
 		},
-		oomTracker:                &mock.OOMTracker{},
-		unsetFunctionVarsDisabled: false,
+		oomTracker: &mock.OOMTracker{},
 	}
 }
 

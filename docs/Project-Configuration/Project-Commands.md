@@ -357,7 +357,8 @@ by a patch submission.
 ``` yaml
 - modules: 
   - name: example
-    repo: git@github.com:10gen/mongo-example-modules.git
+    owner: 10gen
+    repo: mongo-example-modules
     prefix: src/mongo/db/modules
     ref: 12341a65256ff78b6d15ab79a1c7088443b9abcd
     branch: master
@@ -390,6 +391,7 @@ Parameters:
 The parameters for each module are:
 
 -   `name`: the name of the module
+-   `owner`: the github owner of the module
 -   `repo`: the repo of the module
 -   `prefix`: the subdirectory to clone the repository in. It will be
     the repository name as a top-level directory in `dir` if omitted

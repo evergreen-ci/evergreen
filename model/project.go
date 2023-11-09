@@ -41,7 +41,6 @@ const (
 // the ParserProject.
 type Project struct {
 	Stepback           bool                       `yaml:"stepback,omitempty" bson:"stepback"`
-	UnsetFunctionVars  bool                       `yaml:"unset_function_vars,omitempty" bson:"unset_function_vars,omitempty"`
 	PreTimeoutSecs     int                        `yaml:"pre_timeout_secs,omitempty" bson:"pre_timeout_secs,omitempty"`
 	PostTimeoutSecs    int                        `yaml:"post_timeout_secs,omitempty" bson:"post_timeout_secs,omitempty"`
 	PreErrorFailsTask  bool                       `yaml:"pre_error_fails_task,omitempty" bson:"pre_error_fails_task,omitempty"`
@@ -456,9 +455,20 @@ type Module struct {
 	Name       string `yaml:"name,omitempty" bson:"name" plugin:"expand"`
 	Branch     string `yaml:"branch,omitempty" bson:"branch"  plugin:"expand"`
 	Repo       string `yaml:"repo,omitempty" bson:"repo"  plugin:"expand"`
+	Owner      string `yaml:"owner,omitempty" bson:"owner"  plugin:"expand"`
 	Prefix     string `yaml:"prefix,omitempty" bson:"prefix"  plugin:"expand"`
 	Ref        string `yaml:"ref,omitempty" bson:"ref"  plugin:"expand"`
 	AutoUpdate bool   `yaml:"auto_update,omitempty" bson:"auto_update"`
+}
+
+// GetOwnerAndRepo returns the owner and repo for a module
+// If the owner is not set, it will attempt to parse the repo URL to get the owner
+// and repo.
+func (m Module) GetOwnerAndRepo() (string, string, error) {
+	if m.Owner == "" {
+		return thirdparty.ParseGitUrl(m.Repo)
+	}
+	return m.Owner, m.Repo, nil
 }
 
 type Include struct {
@@ -479,7 +489,7 @@ func (l *ModuleList) IsIdentical(m manifest.Manifest) bool {
 	}
 	projectModules := map[string]manifest.Module{}
 	for _, module := range *l {
-		owner, repo, err := thirdparty.ParseGitUrl(module.Repo)
+		owner, repo, err := module.GetOwnerAndRepo()
 		if err != nil {
 			return false
 		}

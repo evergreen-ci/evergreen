@@ -58,13 +58,10 @@ func (h *generateHandler) Run(ctx context.Context) gimlet.Responder {
 	if t == nil {
 		return gimlet.MakeJSONErrorResponder(errors.Errorf("task '%s' not found", h.taskID))
 	}
-	ts := utility.RoundPartOfMinute(1).Format(units.TSFormat)
-	j, err := units.CreateAndEnqueueGenerateTasks(ctx, h.env, *t, ts)
-	grip.Warning(message.WrapError(err, message.Fields{
+	grip.Warning(message.WrapError(units.CreateAndEnqueueGenerateTasks(ctx, h.env, []task.Task{*t}, utility.RoundPartOfMinute(1).Format(units.TSFormat)), message.Fields{
 		"message": "could not enqueue generate tasks job",
 		"version": t.Version,
 		"task_id": t.Id,
-		"job_id":  j.ID(),
 	}))
 
 	return gimlet.NewJSONResponse(struct{}{})

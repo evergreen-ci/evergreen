@@ -759,7 +759,12 @@ func updatePatch(ctx context.Context, settings *evergreen.Settings, githubToken 
 			return nil, nil, errors.Wrapf(err, "getting module '%s'", mod.ModuleName)
 		}
 
-		sha, err = getBranchCommitHash(ctx, module.Repo, module.Branch, githubToken)
+		owner, repo, err := module.GetOwnerAndRepo()
+		if err != nil {
+			return nil, nil, errors.Wrapf(err, "getting module owner and repo '%s'", module.Name)
+		}
+
+		sha, err = getBranchCommitHash(ctx, owner, repo, module.Branch, githubToken)
 		if err != nil {
 			return nil, nil, errors.Wrapf(err, "getting commit hash for branch '%s'", module.Branch)
 		}
@@ -776,11 +781,7 @@ func updatePatch(ctx context.Context, settings *evergreen.Settings, githubToken 
 }
 
 // getBranchCommitHash retrieves the most recent commit hash for branch for the given repo, module, and branch name.
-func getBranchCommitHash(ctx context.Context, repo, moduleBranch, token string) (string, error) {
-	owner, repo, err := thirdparty.ParseGitUrl(repo)
-	if err != nil {
-		return "", errors.Wrap(err, "repo is misconfigured (malformed URL)")
-	}
+func getBranchCommitHash(ctx context.Context, owner, repo, moduleBranch, token string) (string, error) {
 	branch, err := thirdparty.GetBranchEvent(ctx, token, owner, repo, moduleBranch)
 	if err != nil {
 		return "", errors.Wrap(err, "getting branch")

@@ -1348,7 +1348,8 @@ func authorizedForOrg(ctx context.Context, token, requiredOrganization, name str
 	}
 	githubClient := getGithubClient(token, caller, retryConfig{retry: true})
 
-	opts := &github.ListOptions{PerPage: 100}
+	const numInstallationsLimit = 2000
+	opts := &github.ListOptions{PerPage: numInstallationsLimit}
 	for {
 		installations, resp, err := githubClient.Organizations.ListInstallations(ctx, requiredOrganization, opts)
 		if err != nil {

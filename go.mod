@@ -21,7 +21,7 @@ require (
 	github.com/evergreen-ci/birch v0.0.0-20220401151432-c792c3d8e0eb
 	github.com/evergreen-ci/certdepot v0.0.0-20211117185134-dbedb3d79a10
 	github.com/evergreen-ci/cocoa v0.0.0-20230918160723-69a3ef4b69a0
-	github.com/evergreen-ci/gimlet v0.0.0-20230626223442-f6f16b3a3a98
+	github.com/evergreen-ci/gimlet v0.0.0-20231108203524-e7de42b0623c
 	github.com/evergreen-ci/juniper v0.0.0-20230901183147-c805ea7351aa
 	github.com/evergreen-ci/pail v0.0.0-20220908201135-8a2090a672b7
 	github.com/evergreen-ci/poplar v0.0.0-20220908212406-a5e2aa799def
@@ -72,7 +72,7 @@ require (
 	golang.org/x/crypto v0.14.0
 	golang.org/x/oauth2 v0.13.0
 	golang.org/x/text v0.13.0
-	golang.org/x/tools v0.13.0
+	golang.org/x/tools v0.13.0 // indirect
 	gonum.org/v1/gonum v0.14.0
 	google.golang.org/api v0.126.0
 	google.golang.org/grpc v1.58.2

@@ -2057,3 +2057,66 @@ func TestActivateTasksUpdate(t *testing.T) {
 		assert.EqualValues(t, 0, dbTask.Priority)
 	})
 }
+
+func TestFindGeneratedTasksFromID(t *testing.T) {
+	defer func() {
+		assert.NoError(t, db.ClearCollections(Collection))
+	}()
+	checkGeneratedTaskInfo := func(t *testing.T, expected Task, actual GeneratedTaskInfo) {
+		assert.Equal(t, expected.Id, actual.TaskID)
+		assert.Equal(t, expected.DisplayName, actual.TaskName)
+		assert.Equal(t, expected.BuildId, actual.BuildID)
+		assert.Equal(t, expected.BuildVariant, actual.BuildVariant)
+		assert.Equal(t, expected.BuildVariantDisplayName, actual.BuildVariantDisplayName)
+	}
+	for tName, tCase := range map[string]func(t *testing.T, generatorID string, generated []Task){
+		"ReturnsSingleResult": func(t *testing.T, generatorID string, generated []Task) {
+			require.NoError(t, generated[0].Insert())
+			res, err := FindGeneratedTasksFromID(generatorID)
+			require.NoError(t, err)
+			require.Len(t, res, 1)
+			checkGeneratedTaskInfo(t, generated[0], res[0])
+		},
+		"ReturnsMultipleResults": func(t *testing.T, generatorID string, generated []Task) {
+			for _, tsk := range generated {
+				require.NoError(t, tsk.Insert())
+			}
+			res, err := FindGeneratedTasksFromID(generatorID)
+			require.NoError(t, err)
+			require.Len(t, res, len(generated))
+			for i := 0; i < len(generated); i++ {
+				checkGeneratedTaskInfo(t, generated[i], res[i])
+			}
+		},
+		"ReturnsNoResultsForNoMatch": func(t *testing.T, generatorID string, generated []Task) {
+			for _, tsk := range generated {
+				require.NoError(t, tsk.Insert())
+			}
+			res, err := FindGeneratedTasksFromID("nonexistent")
+			require.NoError(t, err)
+			require.Empty(t, res)
+		},
+	} {
+		t.Run(tName, func(t *testing.T) {
+			require.NoError(t, db.ClearCollections(Collection))
+			const generatorID = "generator"
+			generated := []Task{
+				{
+					Id:                      "generated_task0",
+					GeneratedBy:             generatorID,
+					BuildId:                 "build_id0",
+					BuildVariant:            "build-variant0",
+					BuildVariantDisplayName: "first build variant",
+				},
+				{
+					Id:                      "generated_task1",
+					GeneratedBy:             generatorID,
+					BuildId:                 "build_id1",
+					BuildVariant:            "build-variant1",
+					BuildVariantDisplayName: "second build variant",
+				},
+			}
+			tCase(t, generatorID, generated)
+		})
+	}
+}

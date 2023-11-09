@@ -986,19 +986,35 @@ func checkModules(project *model.Project) ValidationErrors {
 			})
 		}
 
-		// Warn if repo is empty or does not conform to Git URL format
-		owner, repo, err := thirdparty.ParseGitUrl(module.Repo)
-		if err != nil {
+		if module.Owner == "" {
+			// Warn if repo is empty or does not conform to Git URL format
+			owner, repo, err := thirdparty.ParseGitUrl(module.Repo)
+			if err != nil {
+				errs = append(errs, ValidationError{
+					Level:   Warning,
+					Message: errors.Wrapf(err, "module '%s' does not have a valid repo URL format", module.Name).Error(),
+				})
+			} else if owner == "" || repo == "" {
+				errs = append(errs, ValidationError{
+					Level:   Warning,
+					Message: fmt.Sprintf("module '%s' repo '%s' is missing an owner or repo name", module.Name, module.Repo),
+				})
+			}
+		} else if !strings.Contains(module.Repo, "git@github.com:") && module.Owner == "" {
 			errs = append(errs, ValidationError{
 				Level:   Warning,
-				Message: errors.Wrapf(err, "module '%s' does not have a valid repo URL format", module.Name).Error(),
+				Message: fmt.Sprintf("module '%s' is missing an owner", module.Name),
 			})
-		} else if owner == "" || repo == "" {
+
+		}
+
+		if module.Repo == "" {
 			errs = append(errs, ValidationError{
 				Level:   Warning,
-				Message: fmt.Sprintf("module '%s' repo '%s' is missing an owner or repo name", module.Name, module.Repo),
+				Message: fmt.Sprintf("module '%s' should have a set repo", module.Name),
 			})
 		}
+
 	}
 
 	return errs
