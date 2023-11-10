@@ -4576,7 +4576,8 @@ func TestClearAndResetStrandedHostTask(t *testing.T) {
 	require.NoError(t, err)
 	assert.Equal(evergreen.TaskFailed, unschedulableTask.Status)
 
-	dependencyTask, err := task.FindOne(db.Query(task.ById("dependencyTask")))
+	dependencyTask, err := task.FindOneId("dependencyTask")
+	require.NotNil(t, dependencyTask)
 	require.NoError(t, err)
 	assert.True(dependencyTask.DependsOn[0].Unattainable)
 	assert.True(dependencyTask.DependsOn[0].Finished)
@@ -5261,7 +5262,8 @@ func TestResetStaleTask(t *testing.T) {
 			require.NotZero(t, dbVersion)
 			assert.Equal(t, evergreen.VersionCreated, dbVersion.Status, "version status should be updated for restarted task")
 
-			dependencyTask, err := task.FindOne(db.Query(task.ById("dependencyTask")))
+			dependencyTask, err := task.FindOneId("dependencyTask")
+			require.NotNil(t, dependencyTask)
 			require.NoError(t, err)
 			assert.False(t, dependencyTask.DependsOn[0].Unattainable)
 			assert.False(t, dependencyTask.DependsOn[0].Finished)
@@ -5284,7 +5286,8 @@ func TestResetStaleTask(t *testing.T) {
 			assert.False(t, dbTask.ContainerAllocated)
 			assert.Zero(t, dbTask.ContainerAllocatedTime)
 
-			dependencyTask, err := task.FindOne(db.Query(task.ById("dependencyTask")))
+			dependencyTask, err := task.FindOneId("dependencyTask")
+			require.NotNil(t, dependencyTask)
 			require.NoError(t, err)
 			assert.True(t, dependencyTask.DependsOn[0].Unattainable)
 			assert.True(t, dependencyTask.DependsOn[0].Finished)
