@@ -1093,3 +1093,18 @@ func (c *baseCommunicator) CreateInstallationToken(ctx context.Context, td TaskD
 
 	return token.Token, nil
 }
+
+// MarkTaskToRestart
+func (c *baseCommunicator) MarkTaskToRestart(ctx context.Context, td TaskData) error {
+	info := requestInfo{
+		method:   http.MethodPost,
+		taskData: &td,
+	}
+	info.setTaskPathSuffix("reset")
+	resp, err := c.retryRequest(ctx, info, nil)
+	if err != nil {
+		return util.RespErrorf(resp, errors.Wrap(err, "starting task").Error())
+	}
+	defer resp.Body.Close()
+	return nil
+}

@@ -749,10 +749,6 @@ func MarkEnd(ctx context.Context, settings *evergreen.Settings, t *task.Task, ca
 		"execution_platform": t.ExecutionPlatform,
 	})
 
-	if err = handleRetryableTask(detail, t); err != nil {
-		return errors.Wrap(err, "processing retryable task")
-	}
-
 	if t.IsPartOfDisplay() {
 		if err = UpdateDisplayTaskForTask(t); err != nil {
 			return errors.Wrap(err, "updating display task")
@@ -800,26 +796,6 @@ func MarkEnd(ctx context.Context, settings *evergreen.Settings, t *task.Task, ca
 		return TryResetTask(ctx, settings, t.Id, evergreen.APIServerTaskActivator, "", detail)
 	}
 
-	return nil
-}
-
-func handleRetryableTask(detail *apimodels.TaskEndDetail, t *task.Task) error {
-	if detail == nil || !detail.Retryable {
-		return nil
-	}
-	taskToReset := t
-	if t.IsPartOfDisplay() {
-		dt, err := t.GetDisplayTask()
-		if err != nil {
-			return errors.Wrap(err, "getting display task")
-		}
-		taskToReset = dt
-	}
-	if taskToReset.NumAutomaticResets < evergreen.MaxAutomaticRestarts {
-		if err := taskToReset.SetResetWhenFinishedWithInc(); err != nil {
-			return errors.Wrap(err, "setting reset when finished")
-		}
-	}
 	return nil
 }
 

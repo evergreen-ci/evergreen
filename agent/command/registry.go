@@ -25,6 +25,7 @@ func init() {
 		evergreen.AttachResultsCommandName:      attachResultsFactory,
 		evergreen.AttachXUnitResultsCommandName: xunitResultsFactory,
 		evergreen.AttachArtifactsCommandName:    attachArtifactsFactory,
+		"auto.reset":                            autoResetFactory,
 		evergreen.HostCreateCommandName:         createHostFactory,
 		"ec2.assume_role":                       ec2AssumeRoleFactory,
 		"host.list":                             listHostFactory,

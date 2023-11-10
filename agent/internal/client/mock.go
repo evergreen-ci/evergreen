@@ -536,3 +536,7 @@ func (c *Mock) CreateInstallationToken(ctx context.Context, td TaskData, owner, 
 	}
 	return c.CreateInstallationTokenResult, nil
 }
+
+func (c *Mock) MarkTaskToRestart(ctx context.Context, td TaskData) error {
+	return nil
+}

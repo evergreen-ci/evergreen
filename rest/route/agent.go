@@ -318,6 +318,53 @@ func (h *newPushHandler) Run(ctx context.Context) gimlet.Responder {
 	return gimlet.NewJSONResponse(newPushLog)
 }
 
+// POST /task/{task_id}/reset
+type markTaskForResetHandler struct {
+	taskID string
+}
+
+func makeMarkTaskForReset() gimlet.RouteHandler {
+	return &markTaskForResetHandler{}
+}
+
+func (h *markTaskForResetHandler) Factory() gimlet.RouteHandler {
+	return &markTaskForResetHandler{}
+}
+
+func (h *markTaskForResetHandler) Parse(ctx context.Context, r *http.Request) error {
+	if h.taskID = gimlet.GetVars(r)["task_id"]; h.taskID == "" {
+		return errors.New("missing task ID")
+	}
+	return nil
+}
+
+func (h *markTaskForResetHandler) Run(ctx context.Context) gimlet.Responder {
+	t, err := task.FindOneId(h.taskID)
+	if err != nil {
+		return gimlet.MakeJSONInternalErrorResponder(errors.Wrapf(err, "finding task '%s'", h.taskID))
+	}
+	if t == nil {
+		return gimlet.MakeJSONErrorResponder(gimlet.ErrorResponse{
+			StatusCode: http.StatusNotFound,
+			Message:    fmt.Sprintf("task '%s' not found", h.taskID),
+		})
+	}
+	taskToReset := t
+	if t.IsPartOfDisplay() {
+		dt, err := t.GetDisplayTask()
+		if err != nil {
+			return gimlet.MakeJSONInternalErrorResponder(errors.Wrapf(err, "getting display task for execution task '%s'", h.taskID))
+		}
+		taskToReset = dt
+	}
+	if taskToReset.NumAutomaticResets < evergreen.MaxAutomaticRestarts {
+		if err = taskToReset.SetResetWhenFinishedWithInc(); err != nil {
+			return gimlet.MakeJSONInternalErrorResponder(errors.Wrapf(err, "setting reset when finished for task '%s'", h.taskID))
+		}
+	}
+	return gimlet.NewJSONResponse(struct{}{})
+}
+
 // GET /task/{task_id}/expansions_and_vars
 type getExpansionsAndVarsHandler struct {
 	settings *evergreen.Settings
