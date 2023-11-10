@@ -1030,7 +1030,7 @@ func (s *AgentSuite) TestEndTaskResponse() {
 	s.T().Run("TaskFailingWithCurrentCommandOverridesEmptyDescription", func(t *testing.T) {
 		detail := s.a.endTaskResponse(s.ctx, s.tc, evergreen.TaskFailed, "")
 		s.Equal(evergreen.TaskFailed, detail.Status)
-		s.Contains(detail.Description, s.tc.getCurrentCommand().DisplayName())
+		s.Contains(detail.Description, s.tc.getCurrentCommand().FullDisplayName())
 	})
 	s.T().Run("TaskFailingWithCurrentCommandIsOverriddenBySystemFailureDescription", func(t *testing.T) {
 		detail := s.a.endTaskResponse(s.ctx, s.tc, evergreen.TaskFailed, systemFailureDescription)
