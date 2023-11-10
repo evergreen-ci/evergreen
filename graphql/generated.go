@@ -886,6 +886,7 @@ type ComplexityRoot struct {
 		Repo                     func(childComplexity int) int
 		RepoRefId                func(childComplexity int) int
 		RepotrackerDisabled      func(childComplexity int) int
+		RepotrackerError         func(childComplexity int) int
 		Restricted               func(childComplexity int) int
 		SpawnHostScriptPath      func(childComplexity int) int
 		StepbackDisabled         func(childComplexity int) int
@@ -1069,6 +1070,12 @@ type ComplexityRoot struct {
 	RepoWorkstationConfig struct {
 		GitClone      func(childComplexity int) int
 		SetupCommands func(childComplexity int) int
+	}
+
+	RepotrackerError struct {
+		Exists            func(childComplexity int) int
+		InvalidRevision   func(childComplexity int) int
+		MergeBaseRevision func(childComplexity int) int
 	}
 
 	ResourceLimits struct {
@@ -5866,6 +5873,13 @@ func (e *executableSchema) Complexity(typeName, field string, childComplexity in
 
 		return e.complexity.Project.RepotrackerDisabled(childComplexity), true
 
+	case "Project.repotrackerError":
+		if e.complexity.Project.RepotrackerError == nil {
+			break
+		}
+
+		return e.complexity.Project.RepotrackerError(childComplexity), true
+
 	case "Project.restricted":
 		if e.complexity.Project.Restricted == nil {
 			break
@@ -6971,6 +6985,27 @@ func (e *executableSchema) Complexity(typeName, field string, childComplexity in
 		}
 
 		return e.complexity.RepoWorkstationConfig.SetupCommands(childComplexity), true
+
+	case "RepotrackerError.exists":
+		if e.complexity.RepotrackerError.Exists == nil {
+			break
+		}
+
+		return e.complexity.RepotrackerError.Exists(childComplexity), true
+
+	case "RepotrackerError.invalidRevision":
+		if e.complexity.RepotrackerError.InvalidRevision == nil {
+			break
+		}
+
+		return e.complexity.RepotrackerError.InvalidRevision(childComplexity), true
+
+	case "RepotrackerError.mergeBaseRevision":
+		if e.complexity.RepotrackerError.MergeBaseRevision == nil {
+			break
+		}
+
+		return e.complexity.RepotrackerError.MergeBaseRevision(childComplexity), true
 
 	case "ResourceLimits.lockedMemoryKb":
 		if e.complexity.ResourceLimits.LockedMemoryKB == nil {
@@ -20215,6 +20250,8 @@ func (ec *executionContext) fieldContext_GroupedProjects_projects(ctx context.Co
 				return ec.fieldContext_Project_repoRefId(ctx, field)
 			case "repotrackerDisabled":
 				return ec.fieldContext_Project_repotrackerDisabled(ctx, field)
+			case "repotrackerError":
+				return ec.fieldContext_Project_repotrackerError(ctx, field)
 			case "restricted":
 				return ec.fieldContext_Project_restricted(ctx, field)
 			case "spawnHostScriptPath":
@@ -27829,6 +27866,8 @@ func (ec *executionContext) fieldContext_Mutation_addFavoriteProject(ctx context
 				return ec.fieldContext_Project_repoRefId(ctx, field)
 			case "repotrackerDisabled":
 				return ec.fieldContext_Project_repotrackerDisabled(ctx, field)
+			case "repotrackerError":
+				return ec.fieldContext_Project_repotrackerError(ctx, field)
 			case "restricted":
 				return ec.fieldContext_Project_restricted(ctx, field)
 			case "spawnHostScriptPath":
@@ -27980,6 +28019,8 @@ func (ec *executionContext) fieldContext_Mutation_attachProjectToNewRepo(ctx con
 				return ec.fieldContext_Project_repoRefId(ctx, field)
 			case "repotrackerDisabled":
 				return ec.fieldContext_Project_repotrackerDisabled(ctx, field)
+			case "repotrackerError":
+				return ec.fieldContext_Project_repotrackerError(ctx, field)
 			case "restricted":
 				return ec.fieldContext_Project_restricted(ctx, field)
 			case "spawnHostScriptPath":
@@ -28131,6 +28172,8 @@ func (ec *executionContext) fieldContext_Mutation_attachProjectToRepo(ctx contex
 				return ec.fieldContext_Project_repoRefId(ctx, field)
 			case "repotrackerDisabled":
 				return ec.fieldContext_Project_repotrackerDisabled(ctx, field)
+			case "repotrackerError":
+				return ec.fieldContext_Project_repotrackerError(ctx, field)
 			case "restricted":
 				return ec.fieldContext_Project_restricted(ctx, field)
 			case "spawnHostScriptPath":
@@ -28282,6 +28325,8 @@ func (ec *executionContext) fieldContext_Mutation_createProject(ctx context.Cont
 				return ec.fieldContext_Project_repoRefId(ctx, field)
 			case "repotrackerDisabled":
 				return ec.fieldContext_Project_repotrackerDisabled(ctx, field)
+			case "repotrackerError":
+				return ec.fieldContext_Project_repotrackerError(ctx, field)
 			case "restricted":
 				return ec.fieldContext_Project_restricted(ctx, field)
 			case "spawnHostScriptPath":
@@ -28433,6 +28478,8 @@ func (ec *executionContext) fieldContext_Mutation_copyProject(ctx context.Contex
 				return ec.fieldContext_Project_repoRefId(ctx, field)
 			case "repotrackerDisabled":
 				return ec.fieldContext_Project_repotrackerDisabled(ctx, field)
+			case "repotrackerError":
+				return ec.fieldContext_Project_repotrackerError(ctx, field)
 			case "restricted":
 				return ec.fieldContext_Project_restricted(ctx, field)
 			case "spawnHostScriptPath":
@@ -28746,6 +28793,8 @@ func (ec *executionContext) fieldContext_Mutation_detachProjectFromRepo(ctx cont
 				return ec.fieldContext_Project_repoRefId(ctx, field)
 			case "repotrackerDisabled":
 				return ec.fieldContext_Project_repotrackerDisabled(ctx, field)
+			case "repotrackerError":
+				return ec.fieldContext_Project_repotrackerError(ctx, field)
 			case "restricted":
 				return ec.fieldContext_Project_restricted(ctx, field)
 			case "spawnHostScriptPath":
@@ -29007,6 +29056,8 @@ func (ec *executionContext) fieldContext_Mutation_removeFavoriteProject(ctx cont
 				return ec.fieldContext_Project_repoRefId(ctx, field)
 			case "repotrackerDisabled":
 				return ec.fieldContext_Project_repotrackerDisabled(ctx, field)
+			case "repotrackerError":
+				return ec.fieldContext_Project_repotrackerError(ctx, field)
 			case "restricted":
 				return ec.fieldContext_Project_restricted(ctx, field)
 			case "spawnHostScriptPath":
@@ -33768,6 +33819,8 @@ func (ec *executionContext) fieldContext_Patch_projectMetadata(ctx context.Conte
 				return ec.fieldContext_Project_repoRefId(ctx, field)
 			case "repotrackerDisabled":
 				return ec.fieldContext_Project_repotrackerDisabled(ctx, field)
+			case "repotrackerError":
+				return ec.fieldContext_Project_repotrackerError(ctx, field)
 			case "restricted":
 				return ec.fieldContext_Project_restricted(ctx, field)
 			case "spawnHostScriptPath":
@@ -39031,6 +39084,55 @@ func (ec *executionContext) fieldContext_Project_repotrackerDisabled(ctx context
 	return fc, nil
 }
 
+func (ec *executionContext) _Project_repotrackerError(ctx context.Context, field graphql.CollectedField, obj *model.APIProjectRef) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_Project_repotrackerError(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.RepotrackerError, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		return graphql.Null
+	}
+	res := resTmp.(*model.APIRepositoryErrorDetails)
+	fc.Result = res
+	return ec.marshalORepotrackerError2ᚖgithubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐAPIRepositoryErrorDetails(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_Project_repotrackerError(ctx context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "Project",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			switch field.Name {
+			case "exists":
+				return ec.fieldContext_RepotrackerError_exists(ctx, field)
+			case "invalidRevision":
+				return ec.fieldContext_RepotrackerError_invalidRevision(ctx, field)
+			case "mergeBaseRevision":
+				return ec.fieldContext_RepotrackerError_mergeBaseRevision(ctx, field)
+			}
+			return nil, fmt.Errorf("no field named %q was found under type RepotrackerError", field.Name)
+		},
+	}
+	return fc, nil
+}
+
 func (ec *executionContext) _Project_restricted(ctx context.Context, field graphql.CollectedField, obj *model.APIProjectRef) (ret graphql.Marshaler) {
 	fc, err := ec.fieldContext_Project_restricted(ctx, field)
 	if err != nil {
@@ -40526,6 +40628,8 @@ func (ec *executionContext) fieldContext_ProjectEventSettings_projectRef(ctx con
 				return ec.fieldContext_Project_repoRefId(ctx, field)
 			case "repotrackerDisabled":
 				return ec.fieldContext_Project_repotrackerDisabled(ctx, field)
+			case "repotrackerError":
+				return ec.fieldContext_Project_repotrackerError(ctx, field)
 			case "restricted":
 				return ec.fieldContext_Project_restricted(ctx, field)
 			case "spawnHostScriptPath":
@@ -40996,6 +41100,8 @@ func (ec *executionContext) fieldContext_ProjectSettings_projectRef(ctx context.
 				return ec.fieldContext_Project_repoRefId(ctx, field)
 			case "repotrackerDisabled":
 				return ec.fieldContext_Project_repotrackerDisabled(ctx, field)
+			case "repotrackerError":
+				return ec.fieldContext_Project_repotrackerError(ctx, field)
 			case "restricted":
 				return ec.fieldContext_Project_restricted(ctx, field)
 			case "spawnHostScriptPath":
@@ -42720,6 +42826,8 @@ func (ec *executionContext) fieldContext_Query_project(ctx context.Context, fiel
 				return ec.fieldContext_Project_repoRefId(ctx, field)
 			case "repotrackerDisabled":
 				return ec.fieldContext_Project_repotrackerDisabled(ctx, field)
+			case "repotrackerError":
+				return ec.fieldContext_Project_repotrackerError(ctx, field)
 			case "restricted":
 				return ec.fieldContext_Project_restricted(ctx, field)
 			case "spawnHostScriptPath":
@@ -47115,6 +47223,129 @@ func (ec *executionContext) fieldContext_RepoWorkstationConfig_setupCommands(ctx
 				return ec.fieldContext_WorkstationSetupCommand_directory(ctx, field)
 			}
 			return nil, fmt.Errorf("no field named %q was found under type WorkstationSetupCommand", field.Name)
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _RepotrackerError_exists(ctx context.Context, field graphql.CollectedField, obj *model.APIRepositoryErrorDetails) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_RepotrackerError_exists(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.Exists, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		return graphql.Null
+	}
+	res := resTmp.(*bool)
+	fc.Result = res
+	return ec.marshalOBoolean2ᚖbool(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_RepotrackerError_exists(ctx context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "RepotrackerError",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type Boolean does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _RepotrackerError_invalidRevision(ctx context.Context, field graphql.CollectedField, obj *model.APIRepositoryErrorDetails) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_RepotrackerError_invalidRevision(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.InvalidRevision, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		return graphql.Null
+	}
+	res := resTmp.(*string)
+	fc.Result = res
+	return ec.marshalOString2ᚖstring(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_RepotrackerError_invalidRevision(ctx context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "RepotrackerError",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type String does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _RepotrackerError_mergeBaseRevision(ctx context.Context, field graphql.CollectedField, obj *model.APIRepositoryErrorDetails) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_RepotrackerError_mergeBaseRevision(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.MergeBaseRevision, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		return graphql.Null
+	}
+	res := resTmp.(*string)
+	fc.Result = res
+	return ec.marshalOString2ᚖstring(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_RepotrackerError_mergeBaseRevision(ctx context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "RepotrackerError",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type String does not have child fields")
 		},
 	}
 	return fc, nil
@@ -52124,6 +52355,8 @@ func (ec *executionContext) fieldContext_Task_project(ctx context.Context, field
 				return ec.fieldContext_Project_repoRefId(ctx, field)
 			case "repotrackerDisabled":
 				return ec.fieldContext_Project_repotrackerDisabled(ctx, field)
+			case "repotrackerError":
+				return ec.fieldContext_Project_repotrackerError(ctx, field)
 			case "restricted":
 				return ec.fieldContext_Project_restricted(ctx, field)
 			case "spawnHostScriptPath":
@@ -60992,6 +61225,8 @@ func (ec *executionContext) fieldContext_Version_projectMetadata(ctx context.Con
 				return ec.fieldContext_Project_repoRefId(ctx, field)
 			case "repotrackerDisabled":
 				return ec.fieldContext_Project_repotrackerDisabled(ctx, field)
+			case "repotrackerError":
+				return ec.fieldContext_Project_repotrackerError(ctx, field)
 			case "restricted":
 				return ec.fieldContext_Project_restricted(ctx, field)
 			case "spawnHostScriptPath":
@@ -76993,6 +77228,8 @@ func (ec *executionContext) _Project(ctx context.Context, sel ast.SelectionSet, 
 			}
 		case "repotrackerDisabled":
 			out.Values[i] = ec._Project_repotrackerDisabled(ctx, field, obj)
+		case "repotrackerError":
+			out.Values[i] = ec._Project_repotrackerError(ctx, field, obj)
 		case "restricted":
 			out.Values[i] = ec._Project_restricted(ctx, field, obj)
 		case "spawnHostScriptPath":
@@ -79090,6 +79327,46 @@ func (ec *executionContext) _RepoWorkstationConfig(ctx context.Context, sel ast.
 			}
 		case "setupCommands":
 			out.Values[i] = ec._RepoWorkstationConfig_setupCommands(ctx, field, obj)
+		default:
+			panic("unknown field " + strconv.Quote(field.Name))
+		}
+	}
+	out.Dispatch(ctx)
+	if out.Invalids > 0 {
+		return graphql.Null
+	}
+
+	atomic.AddInt32(&ec.deferred, int32(len(deferred)))
+
+	for label, dfs := range deferred {
+		ec.processDeferredGroup(graphql.DeferredGroup{
+			Label:    label,
+			Path:     graphql.GetPath(ctx),
+			FieldSet: dfs,
+			Context:  ctx,
+		})
+	}
+
+	return out
+}
+
+var repotrackerErrorImplementors = []string{"RepotrackerError"}
+
+func (ec *executionContext) _RepotrackerError(ctx context.Context, sel ast.SelectionSet, obj *model.APIRepositoryErrorDetails) graphql.Marshaler {
+	fields := graphql.CollectFields(ec.OperationContext, sel, repotrackerErrorImplementors)
+
+	out := graphql.NewFieldSet(fields)
+	deferred := make(map[string]*graphql.FieldSet)
+	for i, field := range fields {
+		switch field.Name {
+		case "__typename":
+			out.Values[i] = graphql.MarshalString("RepotrackerError")
+		case "exists":
+			out.Values[i] = ec._RepotrackerError_exists(ctx, field, obj)
+		case "invalidRevision":
+			out.Values[i] = ec._RepotrackerError_invalidRevision(ctx, field, obj)
+		case "mergeBaseRevision":
+			out.Values[i] = ec._RepotrackerError_mergeBaseRevision(ctx, field, obj)
 		default:
 			panic("unknown field " + strconv.Quote(field.Name))
 		}
@@ -90533,6 +90810,13 @@ func (ec *executionContext) unmarshalORepoSettingsInput2ᚖgithubᚗcomᚋevergr
 	}
 	res, err := ec.unmarshalInputRepoSettingsInput(ctx, v)
 	return &res, graphql.ErrorOnPath(ctx, err)
+}
+
+func (ec *executionContext) marshalORepotrackerError2ᚖgithubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐAPIRepositoryErrorDetails(ctx context.Context, sel ast.SelectionSet, v *model.APIRepositoryErrorDetails) graphql.Marshaler {
+	if v == nil {
+		return graphql.Null
+	}
+	return ec._RepotrackerError(ctx, sel, v)
 }
 
 func (ec *executionContext) marshalOSearchReturnInfo2ᚖgithubᚗcomᚋevergreenᚑciᚋevergreenᚋthirdpartyᚐSearchReturnInfo(ctx context.Context, sel ast.SelectionSet, v *thirdparty.SearchReturnInfo) graphql.Marshaler {

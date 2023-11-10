@@ -231,6 +231,7 @@ type Project {
   repo: String!
   repoRefId: String!
   repotrackerDisabled: Boolean
+  repotrackerError: RepotrackerError
   restricted: Boolean
   spawnHostScriptPath: String!
   stepbackDisabled: Boolean
@@ -240,6 +241,12 @@ type Project {
   triggers: [TriggerAlias!]
   versionControlEnabled: Boolean
   workstationConfig: WorkstationConfig!
+}
+
+type RepotrackerError {
+	exists: Boolean
+	invalidRevision: String
+	mergeBaseRevision: String
 }
 
 type CommitQueueParams {
