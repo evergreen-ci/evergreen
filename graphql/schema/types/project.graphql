@@ -244,9 +244,9 @@ type Project {
 }
 
 type RepotrackerError {
-	exists: Boolean
-	invalidRevision: String
-	mergeBaseRevision: String
+  exists: Boolean
+  invalidRevision: String
+  mergeBaseRevision: String
 }
 
 type CommitQueueParams {
