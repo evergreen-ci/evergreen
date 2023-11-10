@@ -118,6 +118,7 @@ type ProjectRef struct {
 	ContainerSizeDefinitions []ContainerResources `bson:"container_size_definitions,omitempty" json:"container_size_definitions,omitempty" yaml:"container_size_definitions,omitempty"`
 	ContainerSecrets         []ContainerSecret    `bson:"container_secrets,omitempty" json:"container_secrets,omitempty" yaml:"container_secrets,omitempty"`
 
+	// RepoRefId is the repo ref id that this project ref tracks, if any.
 	RepoRefId string `bson:"repo_ref_id" json:"repo_ref_id" yaml:"repo_ref_id"`
 
 	// The following fields are used by Evergreen and are not discoverable.
@@ -2411,7 +2412,9 @@ func (p *ProjectRef) GetGithubProjectConflicts() (GithubProjectConflicts, error)
 	}
 
 	for _, conflictingRef := range matchingProjects {
-		if conflictingRef.Id == p.Id {
+		// If this is the same project ref or the potentially conflicting ref is going to inherit
+		// from this ref it is not comflicting.
+		if conflictingRef.Id == p.Id || conflictingRef.RepoRefId == p.Id {
 			continue
 		}
 		if conflictingRef.IsPRTestingEnabled() {
