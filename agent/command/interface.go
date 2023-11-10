@@ -34,8 +34,8 @@ type Command interface {
 
 	// FullDisplayName is the full display name for the command. The full
 	// command name includes the command name (including the type of command and
-	// the user-defined display name if anyor the) as well as other relevant
-	// context like the function and block the command runs in.
+	// the user-defined display name if any) as well as other relevant context
+	// like the function and block the command runs in.
 	FullDisplayName() string
 	SetFullDisplayName(string)
 
