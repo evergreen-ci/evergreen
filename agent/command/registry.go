@@ -133,10 +133,8 @@ func (r *commandRegistry) getCommandFactory(name string) (CommandFactory, bool) 
 func (r *commandRegistry) renderCommands(commandInfo model.PluginCommandConf,
 	project *model.Project, blockInfo BlockInfo) ([]Command, error) {
 
-	var (
-		parsed []model.PluginCommandConf
-		out    []Command
-	)
+	var parsed []model.PluginCommandConf
+
 	catcher := grip.NewBasicCatcher()
 
 	if funcName := commandInfo.Function; funcName != "" {
@@ -151,34 +149,31 @@ func (r *commandRegistry) renderCommands(commandInfo model.PluginCommandConf,
 					continue
 				}
 
-				// if no command specific type, use the function's command type
+				// If there's no command-specific type/timeout, use the
+				// function's command type/timeout
 				if c.Type == "" {
 					c.Type = commandInfo.Type
 				}
-
-				if c.DisplayName == "" {
-					funcInfo := FunctionInfo{
-						Function:     funcName,
-						SubCmdNum:    i + 1,
-						TotalSubCmds: len(cmdsInFunc),
-					}
-					c.DisplayName = GetDefaultDisplayName(c.Command, blockInfo, funcInfo)
-				}
-
 				if c.TimeoutSecs == 0 {
 					c.TimeoutSecs = commandInfo.TimeoutSecs
 				}
+
+				funcInfo := FunctionInfo{
+					Function:     funcName,
+					SubCmdNum:    i + 1,
+					TotalSubCmds: len(cmdsInFunc),
+				}
+				c.DisplayName = GetFullDisplayName(c.Command, c.DisplayName, blockInfo, funcInfo)
 
 				parsed = append(parsed, c)
 			}
 		}
 	} else {
-		if commandInfo.DisplayName == "" {
-			commandInfo.DisplayName = GetDefaultDisplayName(commandInfo.Command, blockInfo, FunctionInfo{})
-		}
+		commandInfo.DisplayName = GetFullDisplayName(commandInfo.Command, commandInfo.DisplayName, blockInfo, FunctionInfo{})
 		parsed = append(parsed, commandInfo)
 	}
 
+	var out []Command
 	for _, c := range parsed {
 		factory, ok := r.getCommandFactory(c.Command)
 		if !ok {
@@ -194,7 +189,7 @@ func (r *commandRegistry) renderCommands(commandInfo model.PluginCommandConf,
 			continue
 		}
 		cmd.SetType(c.GetType(project))
-		cmd.SetDisplayName(c.DisplayName)
+		cmd.SetFullDisplayName(c.DisplayName)
 		cmd.SetIdleTimeout(time.Duration(c.TimeoutSecs) * time.Second)
 
 		out = append(out, cmd)
@@ -246,25 +241,30 @@ type FunctionInfo struct {
 	TotalSubCmds int
 }
 
-// GetDefaultDisplayName returns the default display name for a command.
-// cmdNum is command/function number, subCmdNum only applies for subcmds in
-// functions
-func GetDefaultDisplayName(commandName string, blockInfo BlockInfo, funcInfo FunctionInfo) string {
-	displayName := fmt.Sprintf("'%s'", commandName)
+// GetFullDisplayName returns the full, unambiguous display name for a command.
+// cmdName is the type of command (e.g. shell.exec), displayName is the
+// human-readable display name (if specified), or the command name (if no
+// display name is given). blockInfo and funcInfo include contextual information
+// about the block/func that the command is running in.
+func GetFullDisplayName(cmdName, displayName string, blockInfo BlockInfo, funcInfo FunctionInfo) string {
+	fullName := fmt.Sprintf("'%s'", cmdName)
+	if displayName != "" {
+		fullName = fmt.Sprintf("%s ('%s')", fullName, displayName)
+	}
 	if funcInfo.Function != "" {
-		displayName = fmt.Sprintf("%s in function '%s'", displayName, funcInfo.Function)
+		fullName = fmt.Sprintf("%s in function '%s'", fullName, funcInfo.Function)
 	}
 	if blockInfo.CmdNum > 0 && blockInfo.TotalCmds > 0 {
 		if funcInfo.SubCmdNum > 0 && funcInfo.TotalSubCmds > 1 {
 			// Include the function sub-command number only if the function runs
 			// more than one command.
-			displayName = fmt.Sprintf("%s (step %d.%d of %d)", displayName, blockInfo.CmdNum, funcInfo.SubCmdNum, blockInfo.TotalCmds)
+			fullName = fmt.Sprintf("%s (step %d.%d of %d)", fullName, blockInfo.CmdNum, funcInfo.SubCmdNum, blockInfo.TotalCmds)
 		} else {
-			displayName = fmt.Sprintf("%s (step %d of %d)", displayName, blockInfo.CmdNum, blockInfo.TotalCmds)
+			fullName = fmt.Sprintf("%s (step %d of %d)", fullName, blockInfo.CmdNum, blockInfo.TotalCmds)
 		}
 	}
 	if blockInfo.Block != "" {
-		displayName = fmt.Sprintf("%s in block '%s'", displayName, blockInfo.Block)
+		fullName = fmt.Sprintf("%s in block '%s'", fullName, blockInfo.Block)
 	}
-	return displayName
+	return fullName
 }

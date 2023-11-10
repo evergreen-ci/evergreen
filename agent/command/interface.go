@@ -32,12 +32,12 @@ type Command interface {
 	// SetType sets the command's type (e.g. system or test).
 	SetType(string)
 
-	// DisplayName is the user-configurable display name for the command. It can
-	// be set by the user; otherwise, it defaults to displaying information
-	// about the command and other relevant context like the function and block
-	// it runs in.
-	DisplayName() string
-	SetDisplayName(string)
+	// FullDisplayName is the full display name for the command. The full
+	// command name includes the command name (including the type of command and
+	// the user-defined display name if any) as well as other relevant context
+	// like the function and block the command runs in.
+	FullDisplayName() string
+	SetFullDisplayName(string)
 
 	// IdleTimeout is the user-configurable timeout for how long an individual
 	// command can run without writing output to the task logs. If the command
@@ -56,11 +56,11 @@ type Command interface {
 // base contains a basic implementation of functionality that is
 // common to all command implementations.
 type base struct {
-	idleTimeout time.Duration
-	typeName    string
-	displayName string
-	jasper      jasper.Manager
-	mu          sync.RWMutex
+	idleTimeout     time.Duration
+	typeName        string
+	fullDisplayName string
+	jasper          jasper.Manager
+	mu              sync.RWMutex
 }
 
 func (b *base) Type() string {
@@ -77,18 +77,18 @@ func (b *base) SetType(n string) {
 	b.typeName = n
 }
 
-func (b *base) DisplayName() string {
+func (b *base) FullDisplayName() string {
 	b.mu.RLock()
 	defer b.mu.RUnlock()
 
-	return b.displayName
+	return b.fullDisplayName
 }
 
-func (b *base) SetDisplayName(n string) {
+func (b *base) SetFullDisplayName(n string) {
 	b.mu.Lock()
 	defer b.mu.Unlock()
 
-	b.displayName = n
+	b.fullDisplayName = n
 }
 
 func (b *base) SetIdleTimeout(d time.Duration) {
