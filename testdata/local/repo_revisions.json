@@ -1,2 +1,3 @@
 {"_id":"logkeeper","last_commit_number":10,"last_revision":"edd78c1d581bf757a880777b00685321685a8e67"}
-{ "_id" : "spruce", "last_commit_number" : 1239, "last_revision" : "2c9056df66d42fb1908d52eed096750a91f1f089" }
+{"_id":"spruce","last_commit_number":1239,"last_revision":"2c9056df66d42fb1908d52eed096750a91f1f089"}
+{"_id":"mongodb-mongo-test","last_commit_number":9,"last_revision":"c8cb545349671045a6deaf909105113a8f14d6aa"}
