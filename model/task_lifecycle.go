@@ -2083,7 +2083,7 @@ func ClearAndResetStrandedContainerTask(ctx context.Context, settings *evergreen
 		return nil
 	}
 
-	if err := resetSystemFailedTask(ctx, settings, t, evergreen.TaskDescriptionStranded); err != nil {
+	if err := endAndResetSystemFailedTask(ctx, settings, t, evergreen.TaskDescriptionStranded); err != nil {
 		return errors.Wrapf(err, "resetting stranded task '%s'", t.Id)
 	}
 
@@ -2113,16 +2113,11 @@ func ClearAndResetStrandedHostTask(ctx context.Context, settings *evergreen.Sett
 		return nil
 	}
 
-	err = UpdateBlockedDependencies(t)
-	if err != nil {
-		return errors.Wrapf(err, "updating blocked dependencies for task '%s'", t.Id)
-	}
-
 	if err = h.ClearRunningTask(ctx); err != nil {
 		return errors.Wrapf(err, "clearing running task from host '%s'", h.Id)
 	}
 
-	if err := resetSystemFailedTask(ctx, settings, t, evergreen.TaskDescriptionStranded); err != nil {
+	if err := endAndResetSystemFailedTask(ctx, settings, t, evergreen.TaskDescriptionStranded); err != nil {
 		return errors.Wrapf(err, "resetting stranded task '%s'", t.Id)
 	}
 
@@ -2143,10 +2138,6 @@ func ClearAndResetStrandedHostTask(ctx context.Context, settings *evergreen.Sett
 // aborted, the task is reset. If the task was aborted, we do not reset the task
 // and it is just marked as failed alongside other necessary updates to finish the task.
 func FixStaleTask(ctx context.Context, settings *evergreen.Settings, t *task.Task) error {
-	if err := UpdateBlockedDependencies(t); err != nil {
-		return errors.Wrapf(err, "updating blocked dependencies for task '%s'", t.Id)
-	}
-
 	failureDesc := evergreen.TaskDescriptionHeartbeat
 	if t.Aborted {
 		failureDesc = evergreen.TaskDescriptionAborted
@@ -2154,7 +2145,7 @@ func FixStaleTask(ctx context.Context, settings *evergreen.Settings, t *task.Tas
 			return errors.Wrapf(err, "finishing stale aborted task '%s'", t.Id)
 		}
 	} else {
-		if err := resetSystemFailedTask(ctx, settings, t, failureDesc); err != nil {
+		if err := endAndResetSystemFailedTask(ctx, settings, t, failureDesc); err != nil {
 			if !t.IsPartOfDisplay() {
 				return errors.Wrap(err, "resetting heartbeat task")
 			}
@@ -2199,10 +2190,10 @@ func finishStaleAbortedTask(ctx context.Context, settings *evergreen.Settings, t
 	return nil
 }
 
-// resetSystemFailedTask resets a task that has encountered a system failure
+// endAndResetSystemFailedTask finishes and resets a task that has encountered a system failure
 // such as being stranded on a terminated host/container or failing to send a
 // heartbeat.
-func resetSystemFailedTask(ctx context.Context, settings *evergreen.Settings, t *task.Task, description string) error {
+func endAndResetSystemFailedTask(ctx context.Context, settings *evergreen.Settings, t *task.Task, description string) error {
 	if t.IsFinished() {
 		return nil
 	}
