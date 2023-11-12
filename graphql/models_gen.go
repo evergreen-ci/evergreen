@@ -248,11 +248,12 @@ type PatchesInput struct {
 }
 
 type Permissions struct {
-	CanCreateDistro      bool               `json:"canCreateDistro"`
-	CanCreateProject     bool               `json:"canCreateProject"`
-	CanEditAdminSettings bool               `json:"canEditAdminSettings"`
-	DistroPermissions    *DistroPermissions `json:"distroPermissions"`
-	UserID               string             `json:"userId"`
+	CanCreateDistro      bool                `json:"canCreateDistro"`
+	CanCreateProject     bool                `json:"canCreateProject"`
+	CanEditAdminSettings bool                `json:"canEditAdminSettings"`
+	DistroPermissions    *DistroPermissions  `json:"distroPermissions"`
+	ProjectPermissions   *ProjectPermissions `json:"projectPermissions"`
+	UserID               string              `json:"userId"`
 }
 
 // PodEvents is the return value for the events query.
@@ -277,6 +278,15 @@ type ProjectEvents struct {
 	EventLogEntries []*model.APIProjectEvent `json:"eventLogEntries"`
 }
 
+type ProjectPermissions struct {
+	Admin bool `json:"admin"`
+	View  bool `json:"view"`
+}
+
+type ProjectPermissionsOptions struct {
+	ProjectIdentifier string `json:"projectIdentifier"`
+}
+
 // PublicKeyInput is an input to the createPublicKey and updatePublicKey mutations.
 type PublicKeyInput struct {
 	Key  string `json:"key"`
@@ -298,6 +308,17 @@ type SaveDistroInput struct {
 type SaveDistroPayload struct {
 	Distro    *model.APIDistro `json:"distro"`
 	HostCount int              `json:"hostCount"`
+}
+
+// SetLastRevisionInput is the input to the setLastRevision mutation.
+// It contains information used to fix the repotracker error of a project.
+type SetLastRevisionInput struct {
+	ProjectIdentifier string `json:"projectIdentifier"`
+	Revision          string `json:"revision"`
+}
+
+type SetLastRevisionPayload struct {
+	MergeBaseRevision string `json:"mergeBaseRevision"`
 }
 
 // SortOrder[] is an input value for version.tasks. It is used to define whether to sort by ASC/DEC for a given sort key.

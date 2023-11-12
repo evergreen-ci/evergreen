@@ -15,6 +15,10 @@
                 "admin": true,
                 "edit": true,
                 "view": true
+              },
+              "projectPermissions": {
+                "admin": true,
+                "view": true
               }
             }
           }
@@ -33,6 +37,10 @@
               "distroPermissions": {
                 "admin": false,
                 "edit": false,
+                "view": false
+              },
+              "projectPermissions": {
+                "admin": false,
                 "view": false
               }
             }

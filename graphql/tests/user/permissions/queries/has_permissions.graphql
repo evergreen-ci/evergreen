@@ -11,6 +11,10 @@ query {
         edit
         view
       }
+      projectPermissions(options: { projectIdentifier: "sandbox_project_id" }) {
+        admin
+        view
+      }
     }
   }
 }

@@ -1,0 +1,32 @@
+{
+  "tests": [
+    {
+      "query_file": "insufficent_len.graphql",
+      "result": {
+        "data": null,
+        "errors": [
+          {
+            "message": "insufficent characters provided for revision",
+            "path": [
+              "setLastRevision"
+            ],
+            "extensions": {
+              "code": "INTERNAL_SERVER_ERROR"
+            }
+          }
+        ]
+      }
+    },
+    {
+      "query_file": "success.graphql",
+      "result": {
+        "data": {
+          "setLastRevision": {
+            "mergeBaseRevision": "33016573166a36bd5f46b4111151899d5c4e95b1"
+          }
+        }
+      }
+    }
+  ]
+}
+
