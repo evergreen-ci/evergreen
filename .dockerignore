@@ -1,0 +1,18 @@
+*.DS_Store
+bin
+clients
+
+.vscode
+.idea
+
+public/node_modules/
+artifacts-*
+
+creds.yml
+*_test.go
+
+evergreen 
+!cmd/evergreen
+
+# ag and ripgrep ignore file
+.ignore
