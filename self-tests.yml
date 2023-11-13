@@ -551,19 +551,19 @@ tasks:
                 permissions: public-read
                 content_type: ${content_type|application/x-gzip}
                 display_name: test-
-          - command: s3.get
-            params:
-                aws_key: ${aws_key}
-                aws_secret: ${aws_secret}
-                remote_file: evergreen-test/test-1.yml
-                bucket: mciuploads
-                local_file: test-from-s3.yml
-          - command: shell.exec
-            params:
-                script: |
-                    echo "Testing new 10"
-                    echo "test1" > 1.yml
-                    echo "test2" > 2.yml
+          # - command: s3.get
+          #   params:
+          #       aws_key: ${aws_key}
+          #       aws_secret: ${aws_secret}
+          #       remote_file: evergreen-test/test-1.yml
+          #       bucket: mciuploads
+          #       local_file: test-from-s3.yml
+          # - command: shell.exec
+          #   params:
+          #       script: |
+          #           echo "Testing new 10"
+          #           echo "test1" > 1.yml
+          #           echo "test2" > 2.yml
     - name: test-repotracker
       tags: ["db", "test"]
       commands:
