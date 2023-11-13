@@ -46,6 +46,7 @@ func TestS3PutValidateParams(t *testing.T) {
 
 				params := map[string]interface{}{
 					"aws_secret":                 "secret",
+					"aws_key":                    "key",
 					"local_file":                 "local",
 					"local_files_include_filter": []string{"local"},
 					"remote_file":                "remote",
@@ -54,12 +55,13 @@ func TestS3PutValidateParams(t *testing.T) {
 					"content_type":               "application/x-tar",
 					"display_name":               "test_file",
 				}
-				So(cmd.ParseParams(params).Error(), ShouldContainSubstring, "cannot use optional upload with local files include filter")
+				So(cmd.ParseParams(params).Error(), ShouldContainSubstring, "local file and local files include filter cannot both be specified")
 			})
 			Convey("a defined inclusion filter with optional upload should cause an error", func() {
 
 				params := map[string]interface{}{
 					"aws_secret":                 "secret",
+					"aws_key":                    "key",
 					"local_files_include_filter": []string{"local"},
 					"optional":                   true,
 					"remote_file":                "remote",
@@ -75,6 +77,7 @@ func TestS3PutValidateParams(t *testing.T) {
 
 				params := map[string]interface{}{
 					"aws_secret":                 "secret",
+					"aws_key":                    "key",
 					"local_files_include_filter": []string{"local"},
 					"optional":                   "foo",
 					"remote_file":                "remote",
