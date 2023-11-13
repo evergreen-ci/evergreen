@@ -51,7 +51,7 @@ all variants.
 ## Concurrency
 
 Concurrency is on by default for the GitHub merge queue. If there are multiple
-PRs in the queue, your PR might be tested with other commits.  This means that
+PRs in the queue, your PR might be tested with other commits. This means that
 the Evergreen versions on a project patches page might be testing your PR even
 if they have a different commit queue title. This title is the title of the
 HEAD PR of a merge group, but the merge group could contain multiple PRs. Note
