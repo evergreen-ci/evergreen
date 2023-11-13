@@ -5,7 +5,7 @@ ensures that all pull requests pass required tests, rebased on HEAD, and it
 batches pull requests to test them as a unit to increase throughput.
 
 This is an alternative to Evergreen's commit queue, which the Evergreen team
-plans to deprecate in favor of GitHub's merge queue.
+has deprecated in favor of GitHub's merge queue.
 
 Gating every merge on a green build means every commit on the tracked branch had a green build. This way:
 
@@ -47,6 +47,16 @@ By setting this branch protection rule, the "evergreen" status will be required
 to pass before any changes can be merged into the protected branch. Alternative,
 you can require a single or multiple variants to pass before merging, instead of
 all variants.
+
+## Concurrency
+
+Concurrency is on by default for the GitHub merge queue. If there are multiple
+PRs in the queue, your PR might be tested with other commits.  This means that
+the Evergreen versions on a project patches page might be testing your PR even
+if they have a different commit queue title. This title is the title of the
+HEAD PR of a merge group, but the merge group could contain multiple PRs. Note
+that GitHub merges all commits from each PR before adding that PR to a version,
+so a given version has as many commits in it as there are PRs in it.
 
 ## Additional Resources
 
