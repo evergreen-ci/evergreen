@@ -111,7 +111,6 @@ type triggerEndTaskResp struct {
 	Status         string `json:"status,omitempty"`
 	Type           string `json:"type,omitempty"`
 	ShouldContinue bool   `json:"should_continue"`
-	Retryable      bool   `json:"retryable"`
 }
 
 func (a *Agent) endTaskHandler(w http.ResponseWriter, r *http.Request) {
