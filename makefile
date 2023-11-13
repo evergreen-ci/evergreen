@@ -336,7 +336,7 @@ $(buildDir)/output-dlv.%.test: .FORCE
 	$(testRunEnv) dlv test $(testArgs) ./$(if $(subst $(name),,$*),$(subst -,/,$*),) -- $(dlvArgs) 2>&1 | tee $@
 $(buildDir)/output.%.coverage: .FORCE
 	$(testRunEnv) $(gobin) test $(testArgs) ./$(if $(subst $(name),,$*),$(subst -,/,$*),) -covermode=count -coverprofile $@ | tee $(buildDir)/output.$*.test
-	@-[ -f $@ ] && go tool cover -func=$@ | sed 's%$(projectPath)/%%' | column -t
+	@-[ -f $@ ] && $(gobin) tool cover -func=$@ | sed 's%$(projectPath)/%%' | column -t
 #  targets to generate gotest output from the linter.
 ifneq (go,$(gobin))
 # We have to handle the PATH specially for linting in CI, because if the PATH has a different version of the Go
@@ -362,21 +362,19 @@ clean: clean-lobster
 phony += clean
 
 gqlgen:
-	go run github.com/99designs/gqlgen generate
+	$(gobin) run github.com/99designs/gqlgen generate
 
 swaggo: 
-	make swaggo-format
-	make swaggo-build
-	make swaggo-render
+	$(MAKE) swaggo-format swaggo-build swaggo-render
 
 swaggo-install:
-	go install github.com/swaggo/swag/cmd/swag@latest
+	$(gobin) install github.com/swaggo/swag/cmd/swag@latest
 
 swaggo-format:
 	swag fmt -g service/service.go
 
 swaggo-build:
-	swag init -g service/service.go -o $(buildDir)
+	swag init -g service/service.go -o $(buildDir) --outputTypes json
 
 swaggo-render:
 	npx @redocly/cli build-docs $(buildDir)/swagger.json -o $(buildDir)/redoc-static.html

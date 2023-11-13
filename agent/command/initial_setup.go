@@ -18,8 +18,8 @@ type initialSetup struct{}
 func initialSetupFactory() Command                                    { return &initialSetup{} }
 func (*initialSetup) Type() string                                    { return evergreen.CommandTypeSystem }
 func (*initialSetup) SetType(s string)                                {}
-func (*initialSetup) DisplayName() string                             { return "initial task setup" }
-func (*initialSetup) SetDisplayName(s string)                         {}
+func (*initialSetup) FullDisplayName() string                         { return "initial task setup" }
+func (*initialSetup) SetFullDisplayName(s string)                     {}
 func (*initialSetup) Name() string                                    { return "setup.initial" }
 func (*initialSetup) SetIdleTimeout(d time.Duration)                  {}
 func (*initialSetup) IdleTimeout() time.Duration                      { return 0 }

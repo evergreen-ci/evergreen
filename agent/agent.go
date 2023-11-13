@@ -1029,7 +1029,7 @@ func setEndTaskFailureDetails(tc *taskContext, detail *apimodels.TaskEndDetail, 
 		// If there is no explicit user-defined description or failure type,
 		// infer that information from the last command that ran.
 		if description == "" {
-			description = tc.getCurrentCommand().DisplayName()
+			description = tc.getCurrentCommand().FullDisplayName()
 			isDefaultDescription = true
 		}
 		if failureType == "" {

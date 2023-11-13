@@ -1,8 +1,8 @@
-diff --git a/%v b/%v
-index 0000000..1111111 100644
---- a/%v
-+++ b/%v
-@@ -8,11 +8,20 @@ tasks:
+diff --git a/model/testdata/project.yml b/model/testdata/project.yml
+index 7ebfd6453..c262ac2bd 100644
+--- a/model/testdata/project.yml
++++ b/model/testdata/project.yml
+@@ -7,11 +7,20 @@ tasks:
          directory: src
          working_dir: src
          script: echo "lagos"
@@ -20,11 +20,16 @@ index 0000000..1111111 100644
    run_on:
    - d1
 +  - d2
-   expansions:
+   expansions: 
      push_path: linux
      push_bucket: downloads.mongodb.org
-@@ -23,3 +33,4 @@ buildvariants:
+@@ -21,4 +30,5 @@ buildvariants:
+     has_debugsymbols: true
      test_flags: --continue-on-failure
    tasks:
-   - name: taskOne
+-  - name: taskOne
+\ No newline at end of file
++  - name: taskOne
 +  - name: taskTwo
+\ No newline at end of file
+

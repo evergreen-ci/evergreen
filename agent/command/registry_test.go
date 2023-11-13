@@ -111,7 +111,7 @@ func TestRenderCommands(t *testing.T) {
 		})
 		require.NoError(t, err)
 		require.Len(t, cmds, 1)
-		assert.Equal(t, displayName, cmds[0].DisplayName())
+		assert.Equal(t, "'command.mock' ('potato') (step 5 of 8) in block 'pre'", cmds[0].FullDisplayName())
 	})
 	t.Run("CommandHasDefaultDisplayName", func(t *testing.T) {
 		info := model.PluginCommandConf{
@@ -124,7 +124,7 @@ func TestRenderCommands(t *testing.T) {
 		})
 		require.NoError(t, err)
 		require.Len(t, cmds, 1)
-		assert.Equal(t, "'command.mock' (step 5 of 8) in block 'pre'", cmds[0].DisplayName())
+		assert.Equal(t, "'command.mock' (step 5 of 8) in block 'pre'", cmds[0].FullDisplayName())
 	})
 	t.Run("CommandHasDefaultDisplayNameWithNoBlockInfo", func(t *testing.T) {
 		info := model.PluginCommandConf{
@@ -133,7 +133,7 @@ func TestRenderCommands(t *testing.T) {
 		cmds, err := registry.renderCommands(info, &model.Project{}, BlockInfo{})
 		require.NoError(t, err)
 		require.Len(t, cmds, 1)
-		assert.Equal(t, "'command.mock'", cmds[0].DisplayName())
+		assert.Equal(t, "'command.mock'", cmds[0].FullDisplayName())
 	})
 	t.Run("CommandsInFuncHaveExplicitOrDefaultDisplayNames", func(t *testing.T) {
 		info := model.PluginCommandConf{
@@ -164,51 +164,54 @@ func TestRenderCommands(t *testing.T) {
 		})
 		require.NoError(t, err)
 		require.Len(t, cmds, 3)
-		assert.Equal(t, "'command.mock' in function 'my-func' (step 1.1 of 1) in block 'pre'", cmds[0].DisplayName())
-		assert.Equal(t, "'command.mock' in function 'my-func' (step 1.2 of 1) in block 'pre'", cmds[1].DisplayName())
-		assert.Equal(t, "run-a-shell-thing", cmds[2].DisplayName())
+		assert.Equal(t, "'command.mock' in function 'my-func' (step 1.1 of 1) in block 'pre'", cmds[0].FullDisplayName())
+		assert.Equal(t, "'command.mock' in function 'my-func' (step 1.2 of 1) in block 'pre'", cmds[1].FullDisplayName())
+		assert.Equal(t, "'command.mock' ('run-a-shell-thing') in function 'my-func' (step 1.3 of 1) in block 'pre'", cmds[2].FullDisplayName())
 	})
 }
 
-func TestGetDefaultDisplayName(t *testing.T) {
-	t.Run("NoCommandInfoProducesNoDisplayName", func(t *testing.T) {
-		assert.Equal(t, "''", GetDefaultDisplayName("", BlockInfo{}, FunctionInfo{}))
+func TestGetFullDisplayName(t *testing.T) {
+	t.Run("NoCommandInfoProducesNoName", func(t *testing.T) {
+		assert.Equal(t, "''", GetFullDisplayName("", "", BlockInfo{}, FunctionInfo{}))
 	})
 	t.Run("JustCommandName", func(t *testing.T) {
-		assert.Equal(t, "'shell.exec'", GetDefaultDisplayName("shell.exec", BlockInfo{}, FunctionInfo{}))
+		assert.Equal(t, "'shell.exec'", GetFullDisplayName("shell.exec", "", BlockInfo{}, FunctionInfo{}))
+	})
+	t.Run("JustCommandNameAndDisplayName", func(t *testing.T) {
+		assert.Equal(t, "'shell.exec' ('run my script')", GetFullDisplayName("shell.exec", "run my script", BlockInfo{}, FunctionInfo{}))
 	})
 	t.Run("CommandNameAndBlockName", func(t *testing.T) {
-		assert.Equal(t, "'shell.exec' in block 'pre'", GetDefaultDisplayName("shell.exec", BlockInfo{
+		assert.Equal(t, "'shell.exec' in block 'pre'", GetFullDisplayName("shell.exec", "", BlockInfo{
 			Block: PreBlock,
 		}, FunctionInfo{}))
 	})
 	t.Run("CommandNameAndBlockCommandNumber", func(t *testing.T) {
-		assert.Equal(t, "'shell.exec' (step 3 of 5)", GetDefaultDisplayName("shell.exec", BlockInfo{
+		assert.Equal(t, "'shell.exec' (step 3 of 5)", GetFullDisplayName("shell.exec", "", BlockInfo{
 			CmdNum:    3,
 			TotalCmds: 5,
 		}, FunctionInfo{}))
 	})
 	t.Run("CommandNameAndBlockNameAndBlockCommandNumber", func(t *testing.T) {
-		assert.Equal(t, "'shell.exec' (step 3 of 5) in block 'post'", GetDefaultDisplayName("shell.exec", BlockInfo{
+		assert.Equal(t, "'shell.exec' (step 3 of 5) in block 'post'", GetFullDisplayName("shell.exec", "", BlockInfo{
 			Block:     "post",
 			CmdNum:    3,
 			TotalCmds: 5,
 		}, FunctionInfo{}))
 	})
 	t.Run("CommandNameAndBlockNameAndBlockCommandNumberWithOnlyOneCommandInBlock", func(t *testing.T) {
-		assert.Equal(t, "'shell.exec' (step 1 of 1) in block 'post'", GetDefaultDisplayName("shell.exec", BlockInfo{
+		assert.Equal(t, "'shell.exec' (step 1 of 1) in block 'post'", GetFullDisplayName("shell.exec", "", BlockInfo{
 			Block:     "post",
 			CmdNum:    1,
 			TotalCmds: 1,
 		}, FunctionInfo{}))
 	})
 	t.Run("CommandNameAndFunc", func(t *testing.T) {
-		assert.Equal(t, "'shell.exec' in function 'my-func'", GetDefaultDisplayName("shell.exec", BlockInfo{}, FunctionInfo{
+		assert.Equal(t, "'shell.exec' in function 'my-func'", GetFullDisplayName("shell.exec", "", BlockInfo{}, FunctionInfo{
 			Function: "my-func",
 		}))
 	})
 	t.Run("CommandNameAndBlockCommandNumberAndFuncSubcommandNumber", func(t *testing.T) {
-		assert.Equal(t, "'shell.exec' in function 'my-func' (step 5.4 of 12)", GetDefaultDisplayName("shell.exec", BlockInfo{
+		assert.Equal(t, "'shell.exec' in function 'my-func' (step 5.4 of 12)", GetFullDisplayName("shell.exec", "", BlockInfo{
 			CmdNum:    5,
 			TotalCmds: 12,
 		}, FunctionInfo{
@@ -218,7 +221,7 @@ func TestGetDefaultDisplayName(t *testing.T) {
 		}))
 	})
 	t.Run("CommandNameAndBlockCommandNumberAndFuncSubcommandNumberWithOnlyOneSubcommand", func(t *testing.T) {
-		assert.Equal(t, "'shell.exec' in function 'my-func' (step 5 of 12)", GetDefaultDisplayName("shell.exec", BlockInfo{
+		assert.Equal(t, "'shell.exec' in function 'my-func' (step 5 of 12)", GetFullDisplayName("shell.exec", "", BlockInfo{
 			CmdNum:    5,
 			TotalCmds: 12,
 		}, FunctionInfo{
@@ -228,14 +231,14 @@ func TestGetDefaultDisplayName(t *testing.T) {
 		}))
 	})
 	t.Run("CommandNameAndFuncAndFuncSubcommandNumberButNoBlock", func(t *testing.T) {
-		assert.Equal(t, "'shell.exec' in function 'my-func'", GetDefaultDisplayName("shell.exec", BlockInfo{}, FunctionInfo{
+		assert.Equal(t, "'shell.exec' in function 'my-func'", GetFullDisplayName("shell.exec", "", BlockInfo{}, FunctionInfo{
 			Function:     "my-func",
 			SubCmdNum:    4,
 			TotalSubCmds: 10,
 		}))
 	})
-	t.Run("CommandNameAndAllBlockInfoAndAllFuncInfo", func(t *testing.T) {
-		assert.Equal(t, "'shell.exec' in function 'my-func' (step 5.4 of 12) in block 'pre'", GetDefaultDisplayName("shell.exec", BlockInfo{
+	t.Run("CommandNameAndDisplayNameAndAllBlockInfoAndAllFuncInfo", func(t *testing.T) {
+		assert.Equal(t, "'shell.exec' ('run my script') in function 'my-func' (step 5.4 of 12) in block 'pre'", GetFullDisplayName("shell.exec", "run my script", BlockInfo{
 			Block:     "pre",
 			CmdNum:    5,
 			TotalCmds: 12,

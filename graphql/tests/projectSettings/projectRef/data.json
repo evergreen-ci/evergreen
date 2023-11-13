@@ -107,7 +107,12 @@
           "requesters": ["gitter_request", "github_pull_request"],
           "url_template": "https://a-fake-url-for-{version_id}.com/{version_id}"
         }
-      ]
+      ],
+      "repotracker_error": {
+        "exists": true,
+        "invalid_revision": "invalid_revision",
+        "merge_base_revision": ""
+      }
     },
     {
       "_id": "vars_test",
