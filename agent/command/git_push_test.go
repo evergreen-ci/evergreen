@@ -163,8 +163,8 @@ func TestGitPush(t *testing.T) {
 			}
 
 			assert.NoError(t, logger.Close())
-			msgs := comm.GetMockMessages()[""]
-			assert.Equal(t, "The key: [redacted oauth token]", msgs[len(msgs)-1].Message)
+			lines := comm.GetTaskLogs("")
+			assert.Equal(t, "The key: [redacted oauth token]", lines[len(lines)-1].Data)
 		},
 		"RevParse": func(*testing.T) {
 			manager := &mock.Manager{}
