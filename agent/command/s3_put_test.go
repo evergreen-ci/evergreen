@@ -40,7 +40,7 @@ func TestS3PutValidateParams(t *testing.T) {
 					"content_type": "application/x-tar",
 					"display_name": "test_file",
 				}
-				So(cmd.ParseParams(params), ShouldNotBeNil)
+				So(cmd.ParseParams(params).Error(), ShouldContainSubstring, "AWS key cannot be blank")
 			})
 			Convey("a defined local file and inclusion filter should cause an error", func() {
 
@@ -54,7 +54,7 @@ func TestS3PutValidateParams(t *testing.T) {
 					"content_type":               "application/x-tar",
 					"display_name":               "test_file",
 				}
-				So(cmd.ParseParams(params), ShouldNotBeNil)
+				So(cmd.ParseParams(params).Error(), ShouldContainSubstring, "cannot use optional upload with local files include filter")
 			})
 			Convey("a defined inclusion filter with optional upload should cause an error", func() {
 
@@ -68,7 +68,7 @@ func TestS3PutValidateParams(t *testing.T) {
 					"content_type":               "application/x-tar",
 					"display_name":               "test_file",
 				}
-				So(cmd.ParseParams(params), ShouldNotBeNil)
+				So(cmd.ParseParams(params).Error(), ShouldContainSubstring, "cannot use optional upload with local files include filter")
 			})
 
 			Convey("a defined inclusion filter with optional as a string upload should cause an error", func() {
@@ -83,7 +83,7 @@ func TestS3PutValidateParams(t *testing.T) {
 					"content_type":               "application/x-tar",
 					"display_name":               "test_file",
 				}
-				So(cmd.ParseParams(params), ShouldNotBeNil)
+				So(cmd.ParseParams(params).Error(), ShouldContainSubstring, "cannot use optional upload with local files include filter")
 			})
 
 			Convey("a missing aws secret should cause an error", func() {
@@ -97,7 +97,7 @@ func TestS3PutValidateParams(t *testing.T) {
 					"content_type": "application/x-tar",
 					"display_name": "test_file",
 				}
-				So(cmd.ParseParams(params), ShouldNotBeNil)
+				So(cmd.ParseParams(params).Error(), ShouldContainSubstring, "AWS secret cannot be blank")
 			})
 
 			Convey("a missing local file should cause an error", func() {
@@ -111,7 +111,7 @@ func TestS3PutValidateParams(t *testing.T) {
 					"content_type": "application/x-tar",
 					"display_name": "test_file",
 				}
-				So(cmd.ParseParams(params), ShouldNotBeNil)
+				So(cmd.ParseParams(params).Error(), ShouldContainSubstring, "local file and local files include filter cannot both be blank")
 			})
 
 			Convey("a missing remote file should cause an error", func() {
@@ -125,7 +125,7 @@ func TestS3PutValidateParams(t *testing.T) {
 					"content_type": "application/x-tar",
 					"display_name": "test_file",
 				}
-				So(cmd.ParseParams(params), ShouldNotBeNil)
+				So(cmd.ParseParams(params).Error(), ShouldContainSubstring, "remote file cannot be blank")
 			})
 
 			Convey("a missing bucket should cause an error", func() {
@@ -139,7 +139,7 @@ func TestS3PutValidateParams(t *testing.T) {
 					"content_type": "application/x-tar",
 					"display_name": "test_file",
 				}
-				So(cmd.ParseParams(params), ShouldNotBeNil)
+				So(cmd.ParseParams(params).Error(), ShouldContainSubstring, "invalid bucket name")
 			})
 
 			Convey("a missing s3 permission should cause an error", func() {
@@ -153,7 +153,7 @@ func TestS3PutValidateParams(t *testing.T) {
 					"content_type": "application/x-tar",
 					"display_name": "test_file",
 				}
-				So(cmd.ParseParams(params), ShouldNotBeNil)
+				So(cmd.ParseParams(params).Error(), ShouldContainSubstring, "invalid permissions")
 			})
 
 			Convey("an invalid s3 permission should cause an error", func() {
@@ -168,7 +168,7 @@ func TestS3PutValidateParams(t *testing.T) {
 					"content_type": "application/x-tar",
 					"display_name": "test_file",
 				}
-				So(cmd.ParseParams(params), ShouldNotBeNil)
+				So(cmd.ParseParams(params).Error(), ShouldContainSubstring, "invalid permissions")
 			})
 
 			Convey("a missing content type should cause an error", func() {
@@ -182,7 +182,7 @@ func TestS3PutValidateParams(t *testing.T) {
 					"permissions":  "private",
 					"display_name": "test_file",
 				}
-				So(cmd.ParseParams(params), ShouldNotBeNil)
+				So(cmd.ParseParams(params).Error(), ShouldContainSubstring, "content type cannot be blank")
 			})
 
 			Convey("an invalid visibility type should cause an error", func() {
@@ -198,7 +198,7 @@ func TestS3PutValidateParams(t *testing.T) {
 					"display_name": "test_file",
 					"visibility":   "ARGHGHGHGHGH",
 				}
-				So(cmd.ParseParams(params), ShouldNotBeNil)
+				So(cmd.ParseParams(params).Error(), ShouldContainSubstring, "invalid visibility setting")
 			})
 
 			Convey("a valid set of params should not cause an error", func() {
@@ -221,7 +221,6 @@ func TestS3PutValidateParams(t *testing.T) {
 				So(cmd.Bucket, ShouldEqual, params["bucket"])
 				So(cmd.Permissions, ShouldEqual, params["permissions"])
 				So(cmd.ResourceDisplayName, ShouldEqual, params["display_name"])
-
 			})
 		})
 
