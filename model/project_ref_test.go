@@ -1165,6 +1165,158 @@ func TestDefaultRepoBySection(t *testing.T) {
 	}
 }
 
+func TestGetGitHubProjectConflicts(t *testing.T) {
+	assert := assert.New(t)
+	require := require.New(t)
+
+	require.NoError(db.ClearCollections(ProjectRefCollection, RepoRefCollection))
+
+	// Two project refs that are from different repos should never conflict.
+	p1 := &ProjectRef{
+		Owner:   "mongodb",
+		Repo:    "mci1",
+		Branch:  "main",
+		Id:      "p1",
+		Enabled: true,
+	}
+	require.NoError(p1.Insert())
+	p2 := &ProjectRef{
+		Owner:   "mongodb",
+		Repo:    "not-mci1",
+		Branch:  "main",
+		Id:      "p2",
+		Enabled: true,
+	}
+	require.NoError(p2.Insert())
+	conflicts, err := p1.GetGithubProjectConflicts()
+	require.NoError(err)
+	assert.Len(conflicts.PRTestingIdentifiers, 0)
+	assert.Len(conflicts.CommitQueueIdentifiers, 0)
+	assert.Len(conflicts.CommitCheckIdentifiers, 0)
+
+	// Two project refs that are from the same repo but do not have potential conflicting settings.
+	p3 := &ProjectRef{
+		Owner:   "mongodb",
+		Repo:    "mci2",
+		Branch:  "main",
+		Id:      "p3",
+		Enabled: true,
+	}
+	require.NoError(p3.Insert())
+	p4 := &ProjectRef{
+		Owner:   "mongodb",
+		Repo:    "mci2",
+		Branch:  "main",
+		Id:      "p4",
+		Enabled: true,
+	}
+	require.NoError(p4.Insert())
+	conflicts, err = p3.GetGithubProjectConflicts()
+	require.NoError(err)
+	assert.Len(conflicts.PRTestingIdentifiers, 0)
+	assert.Len(conflicts.CommitQueueIdentifiers, 0)
+	assert.Len(conflicts.CommitCheckIdentifiers, 0)
+
+	// Three project refs that do have potential conflicting settings.
+	p5 := &ProjectRef{
+		Owner:            "mongodb",
+		Repo:             "mci3",
+		Branch:           "main",
+		Id:               "p5",
+		Enabled:          true,
+		PRTestingEnabled: utility.TruePtr(),
+	}
+	require.NoError(p5.Insert())
+	p6 := &ProjectRef{
+		Owner:       "mongodb",
+		Repo:        "mci3",
+		Branch:      "main",
+		Id:          "p6",
+		Enabled:     true,
+		CommitQueue: CommitQueueParams{Enabled: utility.TruePtr()},
+	}
+	require.NoError(p6.Insert())
+	p7 := &ProjectRef{
+		Owner:               "mongodb",
+		Repo:                "mci3",
+		Branch:              "main",
+		Id:                  "p7",
+		Enabled:             true,
+		GithubChecksEnabled: utility.TruePtr(),
+	}
+	require.NoError(p7.Insert())
+	p8 := &ProjectRef{
+		Owner:   "mongodb",
+		Repo:    "mci3",
+		Branch:  "main",
+		Id:      "p8",
+		Enabled: true,
+	}
+	require.NoError(p8.Insert())
+	// p5 should have conflicting with commit queue and commit check.
+	conflicts, err = p5.GetGithubProjectConflicts()
+	require.NoError(err)
+	assert.Len(conflicts.PRTestingIdentifiers, 0)
+	assert.Len(conflicts.CommitQueueIdentifiers, 1)
+	assert.Len(conflicts.CommitCheckIdentifiers, 1)
+	// p6 should have conflicting with pr testing and commit check.
+	conflicts, err = p6.GetGithubProjectConflicts()
+	require.NoError(err)
+	assert.Len(conflicts.PRTestingIdentifiers, 1)
+	assert.Len(conflicts.CommitQueueIdentifiers, 0)
+	assert.Len(conflicts.CommitCheckIdentifiers, 1)
+	// p7 should have conflicting with pr testing and commit queue.
+	conflicts, err = p7.GetGithubProjectConflicts()
+	require.NoError(err)
+	assert.Len(conflicts.PRTestingIdentifiers, 1)
+	assert.Len(conflicts.CommitQueueIdentifiers, 1)
+	assert.Len(conflicts.CommitCheckIdentifiers, 0)
+	// p8 should have conflicting with all
+	conflicts, err = p8.GetGithubProjectConflicts()
+	require.NoError(err)
+	assert.Len(conflicts.PRTestingIdentifiers, 1)
+	assert.Len(conflicts.CommitQueueIdentifiers, 1)
+	assert.Len(conflicts.CommitCheckIdentifiers, 1)
+
+	// Two project refs in which one is the 'parent' or repo tracking project while the other is
+	// a branch tracking project that has their RepoRefId set to the 'parent'. And because
+	// the branch tracking project inherits the settings, it should not conflict.
+	p9 := &ProjectRef{
+		Owner:            "mongodb",
+		Repo:             "mci4",
+		Branch:           "main",
+		Id:               "p9",
+		Enabled:          true,
+		PRTestingEnabled: utility.TruePtr(),
+	}
+	require.NoError(p9.Insert())
+	r9 := &RepoRef{
+		ProjectRef: *p9,
+	}
+	require.NoError(r9.Upsert())
+	p10 := &ProjectRef{
+		Owner:     "mongodb",
+		Repo:      "mci4",
+		Branch:    "main",
+		Id:        "p10",
+		Enabled:   true,
+		RepoRefId: p9.Id,
+	}
+	require.NoError(p10.Insert())
+	// p9 should not have any potential conflicts.
+	conflicts, err = p9.GetGithubProjectConflicts()
+	require.NoError(err)
+	assert.Len(conflicts.PRTestingIdentifiers, 0)
+	assert.Len(conflicts.CommitQueueIdentifiers, 0)
+	assert.Len(conflicts.CommitCheckIdentifiers, 0)
+	// p10 should have a potential conflict because p9 has something enabled.
+	conflicts, err = p10.GetGithubProjectConflicts()
+	require.NoError(err)
+	assert.Len(conflicts.PRTestingIdentifiers, 1)
+	assert.Len(conflicts.CommitQueueIdentifiers, 0)
+	assert.Len(conflicts.CommitCheckIdentifiers, 0)
+}
+
 func TestFindProjectRefsByRepoAndBranch(t *testing.T) {
 	assert := assert.New(t)
 	require := require.New(t)
@@ -1607,6 +1759,59 @@ func TestFindOneProjectRefWithCommitQueueByOwnerRepoAndBranch(t *testing.T) {
 	projectRef, err = FindOneProjectRefWithCommitQueueByOwnerRepoAndBranch("mongodb", "mci", "not_main")
 	assert.NoError(err)
 	assert.Nil(projectRef)
+}
+
+func TestValidateEnabledRepotracker(t *testing.T) {
+	assert := assert.New(t)
+	require := require.New(t)
+
+	require.NoError(db.Clear(ProjectRefCollection))
+	// A project that doesn't have repotracker enabled and an invalid config.
+	p1 := &ProjectRef{
+		Owner:               "mongodb",
+		Repo:                "mci",
+		Branch:              "main",
+		Id:                  "p1",
+		Enabled:             true,
+		RepotrackerDisabled: utility.TruePtr(),
+	}
+	require.NoError(p1.Insert())
+	assert.NoError(p1.ValidateEnabledRepotracker())
+	// A project that doesn't have repotracker enabled and a valid config.
+	p2 := &ProjectRef{
+		Owner:               "mongodb",
+		Repo:                "mci",
+		Branch:              "main",
+		Id:                  "p2",
+		Enabled:             true,
+		RepotrackerDisabled: utility.TruePtr(),
+		RemotePath:          "valid!",
+	}
+	require.NoError(p2.Insert())
+	assert.NoError(p2.ValidateEnabledRepotracker())
+	// A project that does have repotracker enabled and a invalid config.
+	p3 := &ProjectRef{
+		Owner:               "mongodb",
+		Repo:                "mci",
+		Branch:              "main",
+		Id:                  "p3",
+		Enabled:             true,
+		RepotrackerDisabled: utility.FalsePtr(),
+	}
+	require.NoError(p3.Insert())
+	assert.Error(p3.ValidateEnabledRepotracker())
+	// A project that does have repotracker enabled and a valid config.
+	p4 := &ProjectRef{
+		Owner:               "mongodb",
+		Repo:                "mci",
+		Branch:              "main",
+		Id:                  "p4",
+		Enabled:             true,
+		RepotrackerDisabled: utility.FalsePtr(),
+		RemotePath:          "valid!",
+	}
+	require.NoError(p4.Insert())
+	assert.NoError(p4.ValidateEnabledRepotracker())
 }
 
 func TestCanEnableCommitQueue(t *testing.T) {
