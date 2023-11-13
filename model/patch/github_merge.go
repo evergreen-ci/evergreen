@@ -90,7 +90,8 @@ func NewGithubMergeIntent(msgDeliveryID string, caller string, mg *github.MergeG
 	}
 
 	// The head commit message is optional, as it's displayed in the UI but not
-	// used to check anything out, so we do not check if it exists.
+	// used when checking out the version or sending notifications, so we do not
+	// check if it exists.
 
 	if catcher.HasErrors() {
 		return nil, catcher.Resolve()
