@@ -7,7 +7,6 @@ import (
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/apimodels"
 	"github.com/evergreen-ci/evergreen/model/log"
-	"github.com/evergreen-ci/evergreen/model/testlog"
 	"github.com/evergreen-ci/utility"
 	"github.com/pkg/errors"
 )
@@ -87,7 +86,7 @@ func (o TestLogOutput) getBuildloggerLogs(ctx context.Context, env evergreen.Env
 		return nil, errors.New("must request exactly one test log from Cedar Buildlogger")
 	}
 
-	opts := apimodels.GetBuildloggerLogsOptions{
+	return apimodels.GetBuildloggerLogs(ctx, apimodels.GetBuildloggerLogsOptions{
 		BaseURL:   env.Settings().Cedar.BaseURL,
 		TaskID:    taskOpts.TaskID,
 		Execution: utility.ToIntPtr(taskOpts.Execution),
@@ -96,28 +95,5 @@ func (o TestLogOutput) getBuildloggerLogs(ctx context.Context, env evergreen.Env
 		End:       getOpts.End,
 		Limit:     getOpts.LineLimit,
 		Tail:      getOpts.TailN,
-	}
-	it, err := apimodels.GetBuildloggerLogs(ctx, opts)
-	if err != nil {
-		// TODO (DEVPROD-57): Remove fallback code once support for DB
-		// test logs is removed.
-		testLog, err := testlog.FindOneTestLog(getOpts.LogPaths[0], taskOpts.TaskID, taskOpts.Execution)
-		if err != nil {
-			return nil, errors.Wrap(err, "getting DB test logs")
-		}
-		if testLog == nil {
-			return nil, errors.Errorf("no test log found for '%s'", getOpts.LogPaths[0])
-		}
-		messages := make([]apimodels.LogMessage, len(testLog.Lines))
-		for i, line := range testLog.Lines {
-			messages[i] = apimodels.LogMessage{
-				Type:     apimodels.TaskLogPrefix,
-				Severity: apimodels.LogInfoPrefix,
-				Message:  line,
-			}
-		}
-		it = apimodels.NewLogMessageIterator(messages)
-	}
-
-	return it, nil
+	})
 }

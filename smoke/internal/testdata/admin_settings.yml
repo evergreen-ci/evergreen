@@ -18,6 +18,12 @@ amboy:
   name: evg.service
   skip_preferred_indexes: true
 
+buckets:
+  log_bucket:
+    name: "logs"
+    type: "gridfs"
+    db_name: "mci_smoke"
+
 domain_name: "evergreen.local"
 configdir: "config_test"
 client_binaries_dir: "clients"

@@ -586,7 +586,7 @@ func doBisectStepback(ctx context.Context, t *task.Task) error {
 	}
 
 	var s task.StepbackInfo
-	if t.StepbackInfo != nil {
+	if t.StepbackInfo != nil && t.StepbackInfo.LastPassingStepbackTaskId != "" {
 		// Carry over from the last task.
 		s = *t.StepbackInfo
 	} else {
@@ -601,6 +601,13 @@ func doBisectStepback(ctx context.Context, t *task.Task) error {
 		s = task.StepbackInfo{
 			LastPassingStepbackTaskId: lastPassing.Id,
 		}
+		grip.Info(message.Fields{
+			"message":                       "starting bisect stepback",
+			"last_passing_stepback_task_id": s.LastPassingStepbackTaskId,
+			"task_id":                       t.Id,
+			"gap":                           t.RevisionOrderNumber - lastPassing.RevisionOrderNumber,
+			"project_id":                    t.Project,
+		})
 	}
 
 	// Depending on the task status, we want to update the
