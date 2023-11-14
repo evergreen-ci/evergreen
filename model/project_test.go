@@ -417,6 +417,7 @@ func TestPopulateExpansions(t *testing.T) {
 			Repo:       "my_merge_repo",
 			HeadBranch: "merge_head_branch",
 			HeadSHA:    "merge_head_sha",
+			HeadCommit: "merge_head_commit",
 		},
 	}
 	require.NoError(t, p.Insert())
