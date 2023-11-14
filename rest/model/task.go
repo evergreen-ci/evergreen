@@ -300,11 +300,6 @@ func (at *APITask) buildTask(t *task.Task) error {
 		MustHaveResults:             t.MustHaveResults,
 		ResetWhenFinished:           t.ResetWhenFinished,
 		ParentTaskId:                utility.FromStringPtr(t.DisplayTaskId),
-		StepbackInfo: &APIStepbackInfo{
-			LastFailingTaskId: t.StepbackInfo.LastFailingStepbackTaskId,
-			LastPassingTaskId: t.StepbackInfo.LastPassingStepbackTaskId,
-			NextTaskId:        t.StepbackInfo.NextStepbackTaskId,
-		},
 		SyncAtEndOpts: APISyncAtEndOptions{
 			Enabled:  t.SyncAtEndOpts.Enabled,
 			Statuses: t.SyncAtEndOpts.Statuses,
@@ -337,6 +332,14 @@ func (at *APITask) buildTask(t *task.Task) error {
 		at.Version = utility.ToStringPtr(t.ParentPatchID)
 		if t.ParentPatchNumber != 0 {
 			at.Order = t.ParentPatchNumber
+		}
+	}
+
+	if t.StepbackInfo != nil {
+		at.StepbackInfo = &APIStepbackInfo{
+			LastFailingTaskId: t.StepbackInfo.LastFailingStepbackTaskId,
+			LastPassingTaskId: t.StepbackInfo.LastPassingStepbackTaskId,
+			NextTaskId:        t.StepbackInfo.NextStepbackTaskId,
 		}
 	}
 
