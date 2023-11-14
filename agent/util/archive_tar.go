@@ -9,8 +9,10 @@ import (
 	"os"
 	"path/filepath"
 	"strings"
+	"time"
 
 	"github.com/mongodb/grip"
+	"github.com/mongodb/grip/message"
 	"github.com/pkg/errors"
 )
 
@@ -19,13 +21,20 @@ import (
 // Returns the number of files that were added to the archive
 func BuildArchive(ctx context.Context, tarWriter *tar.Writer, rootPath string, includes []string,
 	excludes []string, logger grip.Journaler) (int, error) {
-	// kim: TODO: benchmark how long it takes to get the file paths vs. add
-	// them to the tgz archive.
+	// kim: TODO: compare how long it takes to get the file paths vs. add
+	// them to the tgz archive. Also compare how long this command takes vs.
+	// archive.auto_pack.
+	start := time.Now()
 	pathsToAdd, err := streamArchiveContents(ctx, rootPath, includes, []string{})
 	if err != nil {
 		return 0, errors.Wrap(err, "getting archive contents")
 	}
+	logger.Info(message.Fields{
+		"message":       "kim: finished finding files to archive",
+		"duration_secs": time.Since(start).Seconds(),
+	})
 
+	start = time.Now()
 	numFilesArchived := 0
 	processed := map[string]bool{}
 	logger.Infof("Beginning to build archive.")
@@ -115,6 +124,11 @@ FileLoop:
 		logger.Debug(errors.Wrapf(in.Close(), "closing file '%s'", file.Path))
 		logger.Warning(errors.Wrap(tarWriter.Flush(), "flushing tar writer"))
 	}
+
+	logger.Info(message.Fields{
+		"message":       "kim: finished archiving files",
+		"duration_secs": time.Since(start).Seconds(),
+	})
 
 	return numFilesArchived, nil
 }

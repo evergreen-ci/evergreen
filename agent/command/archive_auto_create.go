@@ -2,6 +2,7 @@ package command
 
 import (
 	"context"
+	"time"
 
 	"github.com/evergreen-ci/evergreen/agent/internal"
 	"github.com/evergreen-ci/evergreen/agent/internal/client"
@@ -70,6 +71,7 @@ func (c *autoArchiveCreate) Execute(ctx context.Context,
 	} else {
 		// kim: TODO: benchmark how long it takes to get the file paths vs. add
 		// them to the archive (.tar.gz).
+		start := time.Now()
 		files, err := agentutil.FindContentsToArchive(ctx, c.SourceDir, c.Include, c.ExcludeFiles)
 		if err != nil {
 			return errors.Wrap(err, "finding files to archive")
@@ -79,11 +81,22 @@ func (c *autoArchiveCreate) Execute(ctx context.Context,
 		for idx := range files {
 			filenames[idx] = files[idx].Path
 		}
+		logger.Task().Info(message.Fields{
+			"message":       "kim: finished finding files to archive",
+			"command":       c.Name(),
+			"duration_secs": time.Since(start).Seconds(),
+		})
 	}
 
+	start := time.Now()
 	if err := archiver.Archive(filenames, c.Target); err != nil {
 		return errors.Wrapf(err, "constructing auto archive '%s'", c.Target)
 	}
+	logger.Task().Info(message.Fields{
+		"message":       "kim: finished archiving files",
+		"command":       c.Name(),
+		"duration_secs": time.Since(start).Seconds(),
+	})
 
 	logger.Task().Info(message.Fields{
 		"target":    c.Target,
