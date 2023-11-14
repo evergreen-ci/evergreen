@@ -545,6 +545,9 @@ type PluginCommandConf struct {
 	// Vars defines variables that can be used within commands.
 	Vars map[string]string `yaml:"vars,omitempty" bson:"vars,omitempty"`
 
+	// AutoRetry indicates whether the command should be retried if it fails.
+	AutoRetry bool `yaml:"auto_retry,omitempty" bson:"auto_retry,omitempty"`
+
 	Loggers *LoggerConfig `yaml:"loggers,omitempty" bson:"loggers,omitempty"`
 }
 

@@ -110,6 +110,7 @@ var (
 	ResetWhenFinishedKey        = bsonutil.MustHaveTag(Task{}, "ResetWhenFinished")
 	ResetFailedWhenFinishedKey  = bsonutil.MustHaveTag(Task{}, "ResetFailedWhenFinished")
 	NumAutomaticResetsKey       = bsonutil.MustHaveTag(Task{}, "NumAutomaticResets")
+	IsAutomaticResetKey         = bsonutil.MustHaveTag(Task{}, "IsAutomaticReset")
 	CommitQueueMergeKey         = bsonutil.MustHaveTag(Task{}, "CommitQueueMerge")
 	DisplayStatusKey            = bsonutil.MustHaveTag(Task{}, "DisplayStatus")
 	BaseTaskKey                 = bsonutil.MustHaveTag(Task{}, "BaseTask")

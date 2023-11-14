@@ -248,8 +248,10 @@ type Task struct {
 	ResetWhenFinished       bool `bson:"reset_when_finished,omitempty" json:"reset_when_finished,omitempty"`
 	ResetFailedWhenFinished bool `bson:"reset_failed_when_finished,omitempty" json:"reset_failed_when_finished,omitempty"`
 	// NumAutomaticResets is the number of times the task has been programmatically reset via the agent status server.
-	NumAutomaticResets int   `bson:"num_automatic_resets,omitempty" json:"num_automatic_resets,omitempty"`
-	DisplayTask        *Task `bson:"-" json:"-"` // this is a local pointer from an exec to display task
+	NumAutomaticResets int `bson:"num_automatic_resets,omitempty" json:"num_automatic_resets,omitempty"`
+	// IsAutomaticReset indicates that the task was reset programmatically via an agent command.
+	IsAutomaticReset bool  `bson:"is_automatic_reset,omitempty" json:"is_automatic_reset,omitempty"`
+	DisplayTask      *Task `bson:"-" json:"-"` // this is a local pointer from an exec to display task
 
 	// DisplayTaskId is set to the display task ID if the task is an execution task, the empty string if it's not an execution task,
 	// and is nil if we haven't yet checked whether or not this task has a display task.
@@ -2206,6 +2208,7 @@ func resetTaskUpdate(t *Task) []bson.M {
 		t.OverrideDependencies = false
 		t.ContainerAllocationAttempts = 0
 		t.CanReset = false
+		t.IsAutomaticReset = false
 	}
 	update := []bson.M{
 		{
@@ -2238,6 +2241,7 @@ func resetTaskUpdate(t *Task) []bson.M {
 				ResultsFailedKey,
 				HasCedarResultsKey,
 				ResetWhenFinishedKey,
+				IsAutomaticResetKey,
 				ResetFailedWhenFinishedKey,
 				AgentVersionKey,
 				HostIdKey,
@@ -2817,6 +2821,7 @@ func (t *Task) SetResetWhenFinishedWithInc() error {
 		bson.M{
 			"$set": bson.M{
 				ResetWhenFinishedKey: true,
+				IsAutomaticResetKey:  true,
 			},
 			"$inc": bson.M{
 				NumAutomaticResetsKey: 1,

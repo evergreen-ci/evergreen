@@ -215,6 +215,11 @@ func (a *Agent) runCommandOrFunc(ctx context.Context, tc *taskContext, commandIn
 			commandSpan.SetStatus(codes.Error, "running command")
 			commandSpan.RecordError(err, trace.WithAttributes(tc.taskConfig.TaskAttributes()...))
 			commandSpan.End()
+			if commandInfo.AutoRetry {
+				if err2 := a.comm.MarkTaskToRestart(ctx, tc.task); err2 != nil {
+					return errors.Wrap(err2, "marking task to restart")
+				}
+			}
 			return errors.Wrap(err, "running command")
 		}
 		commandSpan.End()

@@ -627,6 +627,7 @@ const (
 	MergeTestRequester          = "merge_test"           // Evergreen commit queue
 	AdHocRequester              = "ad_hoc"               // periodic build
 	GithubMergeRequester        = "github_merge_request" // GitHub merge queue
+	AutoResetRequester          = "automatic_reset"
 )
 
 var AllRequesterTypes = []string{

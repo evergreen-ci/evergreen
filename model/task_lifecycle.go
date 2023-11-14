@@ -800,7 +800,11 @@ func MarkEnd(ctx context.Context, settings *evergreen.Settings, t *task.Task, ca
 	}
 
 	if (t.ResetWhenFinished || t.ResetFailedWhenFinished) && !t.IsPartOfDisplay() && !t.IsPartOfSingleHostTaskGroup() {
-		return TryResetTask(ctx, settings, t.Id, evergreen.APIServerTaskActivator, "", detail)
+		requester := evergreen.APIServerTaskActivator
+		if t.IsAutomaticReset {
+			requester = evergreen.AutoResetRequester
+		}
+		return TryResetTask(ctx, settings, t.Id, requester, "", detail)
 	}
 
 	return nil
@@ -2412,9 +2416,13 @@ func checkResetSingleHostTaskGroup(ctx context.Context, t *task.Task, caller str
 		return errors.Errorf("no tasks in task group '%s' for task '%s'", t.TaskGroup, t.Id)
 	}
 	shouldReset := false
+	isAutomaticReset := false
 	for _, tgTask := range tasks {
 		if tgTask.ResetWhenFinished {
 			shouldReset = true
+		}
+		if tgTask.IsAutomaticReset {
+			isAutomaticReset = true
 		}
 		if !tgTask.IsFinished() && !tgTask.Blocked() && tgTask.Activated { // task in group still needs to run
 			return nil
@@ -2423,6 +2431,9 @@ func checkResetSingleHostTaskGroup(ctx context.Context, t *task.Task, caller str
 
 	if !shouldReset { // no task in task group has requested a reset
 		return nil
+	}
+	if isAutomaticReset {
+		caller = evergreen.AutoResetRequester
 	}
 
 	return errors.Wrap(resetManyTasks(ctx, tasks, caller), "resetting task group tasks")
@@ -2452,7 +2463,11 @@ func checkResetDisplayTask(ctx context.Context, setting *evergreen.Settings, t *
 			Status: evergreen.TaskFailed,
 		}
 	}
-	return errors.Wrap(TryResetTask(ctx, setting, t.Id, evergreen.User, evergreen.User, details), "resetting display task")
+	requester := evergreen.User
+	if t.IsAutomaticReset {
+		requester = evergreen.AutoResetRequester
+	}
+	return errors.Wrap(TryResetTask(ctx, setting, t.Id, requester, requester, details), "resetting display task")
 }
 
 // MarkUnallocatableContainerTasksSystemFailed marks any container task within
