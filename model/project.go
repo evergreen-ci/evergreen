@@ -576,6 +576,7 @@ func (c *PluginCommandConf) UnmarshalYAML(unmarshal func(interface{}) error) err
 		Params      map[string]interface{} `yaml:"params,omitempty" bson:"params,omitempty"`
 		ParamsYAML  string                 `yaml:"params_yaml,omitempty" bson:"params_yaml,omitempty"`
 		Vars        map[string]string      `yaml:"vars,omitempty" bson:"vars,omitempty"`
+		AutoRetry   bool                   `yaml:"auto_retry,omitempty" bson:"auto_retry,omitempty"`
 		Loggers     *LoggerConfig          `yaml:"loggers,omitempty" bson:"loggers,omitempty"`
 	}{}
 
@@ -592,6 +593,7 @@ func (c *PluginCommandConf) UnmarshalYAML(unmarshal func(interface{}) error) err
 	c.Loggers = temp.Loggers
 	c.ParamsYAML = temp.ParamsYAML
 	c.Params = temp.Params
+	c.AutoRetry = temp.AutoRetry
 	return c.unmarshalParams()
 }
 

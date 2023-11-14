@@ -2816,7 +2816,8 @@ func (t *Task) SetResetWhenFinishedWithInc() error {
 	t.NumAutomaticResets = t.NumAutomaticResets + 1
 	return UpdateOne(
 		bson.M{
-			IdKey: t.Id,
+			IdKey:      t.Id,
+			AbortedKey: bson.M{"$ne": true},
 		},
 		bson.M{
 			"$set": bson.M{
