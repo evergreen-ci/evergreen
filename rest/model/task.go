@@ -49,6 +49,8 @@ type APITask struct {
 	Priority int64 `json:"priority"`
 	// Whether the task is currently active
 	Activated bool `json:"activated"`
+	// The information, if any, about stepback
+	StepbackInfo *APIStepbackInfo `json:"stepback_info"`
 	// Identifier of the process or user that activated this task
 	ActivatedBy                 *string `json:"activated_by"`
 	ContainerAllocated          bool    `json:"container_allocated"`
@@ -132,6 +134,12 @@ type APITask struct {
 	ResultsService       string `json:"-"`
 	HasCedarResults      bool   `json:"-"`
 	ResultsFailed        bool   `json:"-"`
+}
+
+type APIStepbackInfo struct {
+	LastFailingTaskId string `json:"last_failing_task_id"`
+	LastPassingTaskId string `json:"last_passing_task_id"`
+	NextTaskId        string `json:"next_task_id"`
 }
 
 type APIAbortInfo struct {
@@ -292,6 +300,11 @@ func (at *APITask) buildTask(t *task.Task) error {
 		MustHaveResults:             t.MustHaveResults,
 		ResetWhenFinished:           t.ResetWhenFinished,
 		ParentTaskId:                utility.FromStringPtr(t.DisplayTaskId),
+		StepbackInfo: &APIStepbackInfo{
+			LastFailingTaskId: t.StepbackInfo.LastFailingStepbackTaskId,
+			LastPassingTaskId: t.StepbackInfo.LastPassingStepbackTaskId,
+			NextTaskId:        t.StepbackInfo.NextStepbackTaskId,
+		},
 		SyncAtEndOpts: APISyncAtEndOptions{
 			Enabled:  t.SyncAtEndOpts.Enabled,
 			Statuses: t.SyncAtEndOpts.Statuses,
@@ -482,6 +495,11 @@ func (at *APITask) ToService() (*task.Task, error) {
 		HasCedarResults:             at.HasCedarResults,
 		ResultsFailed:               at.ResultsFailed,
 		MustHaveResults:             at.MustHaveResults,
+		StepbackInfo: &task.StepbackInfo{
+			LastFailingStepbackTaskId: at.StepbackInfo.LastFailingTaskId,
+			LastPassingStepbackTaskId: at.StepbackInfo.LastPassingTaskId,
+			NextStepbackTaskId:        at.StepbackInfo.NextTaskId,
+		},
 		SyncAtEndOpts: task.SyncAtEndOptions{
 			Enabled:  at.SyncAtEndOpts.Enabled,
 			Statuses: at.SyncAtEndOpts.Statuses,
