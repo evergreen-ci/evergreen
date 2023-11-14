@@ -42,7 +42,7 @@ type GetBuildloggerLogsOptions struct {
 
 // GetBuildloggerLogs makes request to Cedar for a specifc log and returns a
 // log iterator.
-// TODO (EVG-21010): Remove this once Cedar logs have TTL'ed.
+// TODO (DEVPROD-1681): Remove this once Cedar logs have TTL'ed.
 func GetBuildloggerLogs(ctx context.Context, opts GetBuildloggerLogsOptions) (log.LogIterator, error) {
 	usr := gimlet.GetUser(ctx)
 	if usr == nil {
@@ -82,7 +82,7 @@ func GetBuildloggerLogs(ctx context.Context, opts GetBuildloggerLogsOptions) (lo
 	return newBuildloggerIterator(r), nil
 }
 
-// TODO (EVG-21010): Remove this once Cedar logs have TTL'ed.
+// TODO (DEVPROD-1681): Remove this once Cedar logs have TTL'ed.
 type buildloggerIterator struct {
 	readCloser io.ReadCloser
 	reader     *bufio.Reader

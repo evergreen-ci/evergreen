@@ -1553,6 +1553,16 @@ func (t *Task) getTaskOutputSafe() (*taskoutput.TaskOutput, bool) {
 	return t.TaskOutputInfo, true
 }
 
+// GetTaskOutputInfoWithError is a convenience function to avoid panics when
+// accessing the task output data.
+func (t *Task) GetTaskOutputWithError() (*taskoutput.TaskOutput, error) {
+	if t.TaskOutputInfo == nil {
+		return nil, errors.New("programmatic error: task output info expected to be set but found nil")
+	}
+
+	return t.TaskOutputInfo, nil
+}
+
 // GetTaskLogs returns the task's task logs with the given options.
 func (t *Task) GetTaskLogs(ctx context.Context, env evergreen.Environment, getOpts taskoutput.TaskLogGetOptions) (log.LogIterator, error) {
 	if t.DisplayOnly {

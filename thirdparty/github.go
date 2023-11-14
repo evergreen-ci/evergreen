@@ -153,7 +153,17 @@ type GithubMergeGroup struct {
 	Repo       string `bson:"repo"`
 	BaseBranch string `bson:"base_branch"` // BaseBranch is what GitHub merges to
 	HeadBranch string `bson:"head_branch"` // HeadBranch is the merge group's gh-readonly-queue branch
-	HeadSHA    string `bson:"head_sha"`
+
+	// HeadSHA is the SHA of the commit at the head of the merge group. For each
+	// PR in the merge group, GitHub merges the commits from that PR together,
+	// so there are as many commits as there are PRs in the merge group. This is
+	// only the SHA of the first commit in the merge group.
+	HeadSHA string `bson:"head_sha"`
+	// HeadCommit is the title of the commit at the head of the merge group. For
+	// each PR in the merge group, GitHub merges the commits from that PR
+	// together, so there are as many commits as there are PRs in the merge
+	// group. This is only the title of the first commit in the merge group.
+	HeadCommit string `bson:"head_commit"`
 }
 
 // SendGithubStatusInput is the input to the SendPendingStatusToGithub function and contains

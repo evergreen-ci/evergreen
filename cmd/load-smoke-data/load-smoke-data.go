@@ -13,7 +13,6 @@ import (
 	"github.com/evergreen-ci/evergreen/model/host"
 	"github.com/evergreen-ci/evergreen/model/patch"
 	"github.com/evergreen-ci/evergreen/model/task"
-	"github.com/evergreen-ci/evergreen/model/tasklog"
 	"github.com/evergreen-ci/utility"
 	"github.com/mongodb/amboy"
 	"github.com/mongodb/amboy/queue"
@@ -48,7 +47,7 @@ func getFiles(root string) ([]string, error) {
 	return out, nil
 }
 
-func insertFileDocsToDB(ctx context.Context, fn string, db *mongo.Database, logsDb *mongo.Database) error {
+func insertFileDocsToDB(ctx context.Context, fn string, db *mongo.Database) error {
 	var file *os.File
 	file, err := os.Open(fn)
 	if err != nil {
@@ -56,12 +55,8 @@ func insertFileDocsToDB(ctx context.Context, fn string, db *mongo.Database, logs
 	}
 	defer file.Close()
 
-	collName := strings.Split(filepath.Base(fn), ".")[0]
+	collName := strings.TrimSuffix(filepath.Base(fn), ".json")
 	collection := db.Collection(collName)
-	// task_logg collection belongs to the logs db
-	if collName == tasklog.TaskLogCollection {
-		collection = logsDb.Collection(collName)
-	}
 	switch collName {
 	case task.Collection:
 		if _, err = collection.Indexes().CreateMany(ctx, []mongo.IndexModel{
@@ -89,18 +84,8 @@ func insertFileDocsToDB(ctx context.Context, fn string, db *mongo.Database, logs
 	for scanner.Scan() {
 		count++
 		bytes := scanner.Bytes()
-		// if the current collection is task_logg, delete from the collection the id that
-		// is about to be inserted so we can avoid dropping the collection completely.
-		if collName == tasklog.TaskLogCollection {
-			taskLog := tasklog.TaskLog{}
-			if err = bson.UnmarshalExtJSON(bytes, false, &taskLog); err != nil {
-				return errors.Wrapf(err, "reading document #%d from %s into task log", count, fn)
-			}
-			if _, err := collection.DeleteOne(ctx, bson.M{"_id": taskLog.Id}); err != nil {
-				return errors.Wrapf(err, "deleting task log '%s'", taskLog.Id)
-			}
-		}
-		doc := bson.D{}
+
+		var doc bson.D
 		if err := bson.UnmarshalExtJSON(bytes, false, &doc); err != nil {
 			return errors.Wrapf(err, "reading document #%d from file '%s'", count, fn)
 		}
@@ -134,7 +119,7 @@ func writeDummyGridFSFile(ctx context.Context, db *mongo.Database) error {
 	return nil
 }
 
-func getFilesFromPathAndInsert(ctx context.Context, path string, db *mongo.Database, logsDb *mongo.Database) error {
+func getFilesFromPathAndInsert(ctx context.Context, path string, db *mongo.Database) error {
 	files, err := getFiles(path)
 	if err != nil {
 		return errors.Wrap(err, "getting files")
@@ -146,12 +131,8 @@ func getFilesFromPathAndInsert(ctx context.Context, path string, db *mongo.Datab
 			return errors.Wrapf(err, "getting file info for %s", fn)
 		}
 		switch mode := fileInfo.Mode(); {
-		case mode.IsDir():
-			if err := getFilesFromPathAndInsert(ctx, fn, db, logsDb); err != nil {
-				return errors.Wrapf(err, "recursively adding DB documents from directory '%s'", fn)
-			}
 		case mode.IsRegular():
-			if err := insertFileDocsToDB(ctx, fn, db, logsDb); err != nil {
+			if err := insertFileDocsToDB(ctx, fn, db); err != nil {
 				return errors.Wrapf(err, "adding DB documents from file '%s'", fn)
 			}
 		}
@@ -217,13 +198,11 @@ func main() {
 	var (
 		path        string
 		dbName      string
-		logsDBName  string
 		amboyDBName string
 	)
 
 	flag.StringVar(&path, "path", filepath.Join(wd, "smoke", "internal", "testdata", "db"), "load data from json files from these paths")
 	flag.StringVar(&dbName, "dbName", "mci_smoke", "database name for directory")
-	flag.StringVar(&logsDBName, "logsDBName", "logs", "logs database name for directory")
 	flag.StringVar(&amboyDBName, "amboyDBName", "amboy_smoke", "name of the Amboy DB to use")
 	flag.Parse()
 
@@ -253,15 +232,12 @@ func main() {
 	db := client.Database(dbName)
 	grip.EmergencyFatal(db.Drop(ctx))
 
-	logsDB := client.Database(logsDBName)
-
 	amboyDB := client.Database(amboyDBName)
 	grip.EmergencyFatal(amboyDB.Drop(ctx))
 
 	catcher := grip.NewBasicCatcher()
 	catcher.Wrap(buildAmboyIndexes(ctx, dbURI, amboyDB), "building Amboy indexes")
-
-	catcher.Wrapf(getFilesFromPathAndInsert(ctx, path, db, logsDB), "adding DB documents from file path '%s'", path)
+	catcher.Wrapf(getFilesFromPathAndInsert(ctx, path, db), "adding DB documents from file path '%s'", path)
 	catcher.Wrap(writeDummyGridFSFile(ctx, db), "writing dummy file to GridFS")
 
 	catcher.Add(client.Disconnect(ctx))

@@ -11,7 +11,6 @@ import (
 	"github.com/pkg/errors"
 )
 
-// for the different types of remote logging
 const (
 	SystemLogPrefix  = "S"
 	AgentLogPrefix   = "E"
@@ -24,25 +23,13 @@ const (
 	LogInfoPrefix  = "I"
 )
 
-// Also used in the task_logg collection in the database.
-// The LogMessage type is used by the models package and is stored in
-// the database (inside in the model.TaskLog structure.)
+// The LogMessage type is used by the the GraphQL resolver and HTML logs.
 type LogMessage struct {
 	Type      string    `bson:"t" json:"t"`
 	Severity  string    `bson:"s" json:"s"`
 	Message   string    `bson:"m" json:"m"`
 	Timestamp time.Time `bson:"ts" json:"ts"`
 	Version   int       `bson:"v" json:"v"`
-}
-
-// TaskLog is a group of LogMessages, and mirrors the model.TaskLog
-// type, sans the ObjectID field.
-type TaskLog struct {
-	TaskId       string       `json:"t_id"`
-	Execution    int          `json:"e"`
-	Timestamp    time.Time    `json:"ts"`
-	MessageCount int          `json:"c"`
-	Messages     []LogMessage `json:"m"`
 }
 
 func GetSeverityMapping(s level.Priority) string {
@@ -57,19 +44,6 @@ func GetSeverityMapping(s level.Priority) string {
 		return LogDebugPrefix
 	default:
 		return LogInfoPrefix
-	}
-}
-
-func getPriority(prefix string) level.Priority {
-	switch prefix {
-	case LogErrorPrefix:
-		return level.Error
-	case LogWarnPrefix:
-		return level.Warning
-	case LogDebugPrefix:
-		return level.Debug
-	default:
-		return level.Info
 	}
 }
 
@@ -117,49 +91,4 @@ func StreamFromLogIterator(it log.LogIterator) chan LogMessage {
 	}()
 
 	return lines
-}
-
-type logMessageIterator struct {
-	i         int
-	messages  []LogMessage
-	item      log.LogLine
-	exhausted bool
-	closed    bool
-}
-
-// NewLogMessageIterator returns a new log iterator for the give log messsages.
-// TODO (DEVPROD-57): Remove this once support for DB task logs is removed.
-func NewLogMessageIterator(messages []LogMessage) *logMessageIterator {
-	return &logMessageIterator{messages: messages}
-}
-
-func (it *logMessageIterator) Next() bool {
-	if it.closed || it.exhausted {
-		return false
-	}
-	if it.i >= len(it.messages) {
-		it.exhausted = true
-		return false
-	}
-
-	it.item = log.LogLine{
-		Priority:  getPriority(it.messages[it.i].Severity),
-		Timestamp: it.messages[it.i].Timestamp.UnixNano(),
-		Data:      it.messages[it.i].Message,
-	}
-	it.i++
-
-	return true
-}
-
-func (it *logMessageIterator) Item() log.LogLine { return it.item }
-
-func (it *logMessageIterator) Exhausted() bool { return it.exhausted }
-
-func (it *logMessageIterator) Err() error { return nil }
-
-func (it *logMessageIterator) Close() error {
-	it.closed = true
-
-	return nil
 }
