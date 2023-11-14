@@ -21,6 +21,7 @@ import (
 	"github.com/evergreen-ci/evergreen/thirdparty"
 	"github.com/evergreen-ci/evergreen/util"
 	"github.com/evergreen-ci/utility"
+	"github.com/google/go-github/v29/github"
 	"github.com/mongodb/anser/bsonutil"
 	"github.com/mongodb/grip"
 	"github.com/mongodb/grip/message"
@@ -2295,4 +2296,62 @@ func GetVariantsAndTasksFromPatchProject(ctx context.Context, settings *evergree
 		Project:  *project,
 	}
 	return &variantsAndTasksFromProject, nil
+}
+
+// ReadOutputPath reads the content of a file and parses it into a github.CheckRunOutput struct
+// if it fails validation, it returns an error
+func ReadAndValidateOutputPath(file string) (*github.CheckRunOutput, error) {
+	checkRunOutput := &github.CheckRunOutput{}
+
+	if file == "" {
+		return checkRunOutput, nil
+	}
+
+	if err := utility.ReadJSONFile(file, &checkRunOutput); err != nil {
+		return nil, err
+	}
+
+	return checkRunOutput, validateCheckRuns(checkRunOutput)
+}
+
+func validateCheckRuns(checkRun *github.CheckRunOutput) error {
+	if checkRun == nil {
+		return errors.New("checkRun Output is nil")
+	}
+
+	if checkRun.Title == nil {
+		return errors.New("checkRun has no title")
+	}
+
+	if checkRun.Summary == nil {
+		return errors.New(fmt.Sprintf("the checkRun '%s' has no summary", utility.FromStringPtr(checkRun.Title)))
+	}
+	for _, an := range checkRun.Annotations {
+		annotationErrorMessage := fmt.Sprintf("checkRun '%s' specifies an annotation '%s' with no ", utility.FromStringPtr(checkRun.Title), utility.FromStringPtr(an.Title))
+
+		if an.Path == nil {
+			return errors.New(annotationErrorMessage + "path")
+		}
+		if an.StartLine == nil {
+			return errors.New(annotationErrorMessage + "start line")
+		}
+		if an.EndLine == nil {
+			return errors.New(annotationErrorMessage + "end line")
+		}
+		if an.AnnotationLevel == nil {
+			return errors.New(annotationErrorMessage + "annotation level")
+		}
+		if an.Message == nil {
+			return errors.New(annotationErrorMessage + "message")
+		}
+
+		if an.EndColumn != nil || an.StartColumn != nil {
+			if utility.FromIntPtr(an.StartLine) != utility.FromIntPtr(an.EndLine) {
+				errMessage := fmt.Sprintf("The annotation '%s' in checkRun '%s' should not include a column when start_line and end_line have different values", utility.FromStringPtr(an.Title), utility.FromStringPtr(checkRun.Title))
+				return errors.New(errMessage)
+			}
+		}
+	}
+
+	return nil
 }
