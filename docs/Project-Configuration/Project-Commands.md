@@ -36,16 +36,68 @@ Parameters:
 Parameters:
 
 -   `target`: the tgz file that will be created
--   `source_dir`: the directory to compress
+-   `source_dir`: the directory to archive/compress
 -   `include`: a list of filename
-    [blobs](https://golang.org/pkg/path/filepath/#Match) to include
+    [blobs](https://golang.org/pkg/path/filepath/#Match) to include from the
+    source directory.
 -   `exclude_files`: a list of filename
-    [blobs](https://golang.org/pkg/path/filepath/#Match) to exclude
+    [blobs](https://golang.org/pkg/path/filepath/#Match) to exclude from the
+    source directory.
 
 In addition to the
 [filepath.Match](https://golang.org/pkg/path/filepath/#Match) syntax,
-`archive.targz_pack` supports using \*\* to indicate that
-it should recurse into subdirectories. With only \*, it
+`archive.targz_pack` supports using `**` to indicate that
+it should recurse into subdirectories. With only `*`, it
+will not recurse.
+
+## archive.auto_pack
+
+`archive.auto_pack` creates an archived/compressed file with an arbitrary
+format.
+
+``` yaml
+- command: archive.auto_pack
+  params:
+    target: "jstests.tgz"
+    source_dir: "src/jstestfuzz"
+    include:
+      - "out/*.js"
+```
+
+Parameters:
+
+-   `target`: the output file that will be created. The extension will be used
+    to determine the archiving format. Supported extensions are:
+      - `.tgz`, `.tar.gz` (tarball archive with gzip compression)
+      - `.tbr`, `.tar.br` (tarball archive with brotli compression)
+      - `.tbz2`, `.tar.bz2` (tarball archive with bzip2 compression)
+      - `.tar.lz4`, `.tlz4` (tarball archive with lz4 compression)
+      - `.tsz`, `.tar.sz` (tarball archive with snappy compression)
+      - `.txz`, `.tar.xz` (tarball archive with xz compression)
+      - `.tar.zst` (tarball archive with zstandard compression)
+      - `.rar` (RAR archive)
+      - `.tar` (tarball archive)
+      - `.zip` (ZIP archive)
+      - `.br` (brotli compression)
+      - `.gz` (gzip compression)
+      - `.bz2` (bzip2 compression)
+      - `.lz4` (lz4 compression)
+      - `.sz` (snappy compression)
+      - `.xz` (xz compression)
+      - `.zst` (zstandard compression)
+-   `source_dir`: the directory to archive/compress.
+-   `include`: a list of filename
+    [blobs](https://golang.org/pkg/path/filepath/#Match) to include from the
+    source directory. If not specified, all files will be included by default
+    from the target directory.
+-   `exclude_files`: a list of filename
+    [blobs](https://golang.org/pkg/path/filepath/#Match) to exclude from the
+    source directory.
+
+In addition to the
+[filepath.Match](https://golang.org/pkg/path/filepath/#Match) syntax,
+`archive.auto_pack` supports using `**` to indicate that
+it should recurse into subdirectories. With only `*`, it
 will not recurse.
 
 ## attach.artifacts

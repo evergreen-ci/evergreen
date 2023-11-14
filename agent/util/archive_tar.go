@@ -19,6 +19,8 @@ import (
 // Returns the number of files that were added to the archive
 func BuildArchive(ctx context.Context, tarWriter *tar.Writer, rootPath string, includes []string,
 	excludes []string, logger grip.Journaler) (int, error) {
+	// kim: TODO: benchmark how long it takes to get the file paths vs. add
+	// them to the tgz archive.
 	pathsToAdd, err := streamArchiveContents(ctx, rootPath, includes, []string{})
 	if err != nil {
 		return 0, errors.Wrap(err, "getting archive contents")
