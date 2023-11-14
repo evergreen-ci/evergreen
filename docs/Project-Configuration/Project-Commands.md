@@ -1093,7 +1093,8 @@ Parameters:
 -   `display_name`: the display string for the file in the Evergreen UI
 -   `local_files_include_filter`: used in place of local_file, an array
     of gitignore file globs. All files that are matched - ones that
-    would be ignored by gitignore - are included in the put.
+    would be ignored by gitignore - are included in the put. If no
+    files are found, the task continues execution.
 -   `local_files_include_filter_prefix`: an optional path to start
     processing the LocalFilesIncludeFilter, relative to the working
     directory.
