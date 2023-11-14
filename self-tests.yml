@@ -535,8 +535,8 @@ tasks:
             params:
                 script: |
                     echo "Testing new 10"
-                    # echo "test1" > 1.yml
-                    # echo "test2" > 2.yml
+                    echo "test1" > 1.yml
+                    echo "test2" > 2.yml
           - command: s3.put
             params:
                 aws_key: fake-key
