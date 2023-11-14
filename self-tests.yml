@@ -539,7 +539,7 @@ tasks:
                     # echo "test2" > 2.yml
           - command: s3.put
             params:
-                aws_key: ${aws_key}
+                aws_key: fake-key
                 aws_secret: ${aws_secret}
                 local_files_include_filter:
                     - 1.yml
