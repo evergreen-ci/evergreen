@@ -2812,9 +2812,7 @@ func (t *Task) SetResetWhenFinishedWithInc() error {
 	if t.ResetWhenFinished {
 		return nil
 	}
-	t.ResetWhenFinished = true
-	t.NumAutomaticResets = t.NumAutomaticResets + 1
-	return UpdateOne(
+	err := UpdateOne(
 		bson.M{
 			IdKey:      t.Id,
 			AbortedKey: bson.M{"$ne": true},
@@ -2829,6 +2827,12 @@ func (t *Task) SetResetWhenFinishedWithInc() error {
 			},
 		},
 	)
+	if err != nil {
+		return err
+	}
+	t.ResetWhenFinished = true
+	t.NumAutomaticResets = t.NumAutomaticResets + 1
+	return nil
 }
 
 // SetResetFailedWhenFinished requests that a display task
