@@ -945,8 +945,8 @@ type ComplexityRoot struct {
 	}
 
 	ProjectPermissions struct {
-		Admin func(childComplexity int) int
-		View  func(childComplexity int) int
+		Edit func(childComplexity int) int
+		View func(childComplexity int) int
 	}
 
 	ProjectSettings struct {
@@ -6163,12 +6163,12 @@ func (e *executableSchema) Complexity(typeName, field string, childComplexity in
 
 		return e.complexity.ProjectEvents.EventLogEntries(childComplexity), true
 
-	case "ProjectPermissions.admin":
-		if e.complexity.ProjectPermissions.Admin == nil {
+	case "ProjectPermissions.edit":
+		if e.complexity.ProjectPermissions.Edit == nil {
 			break
 		}
 
-		return e.complexity.ProjectPermissions.Admin(childComplexity), true
+		return e.complexity.ProjectPermissions.Edit(childComplexity), true
 
 	case "ProjectPermissions.view":
 		if e.complexity.ProjectPermissions.View == nil {
@@ -35777,8 +35777,8 @@ func (ec *executionContext) fieldContext_Permissions_projectPermissions(ctx cont
 		IsResolver: true,
 		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
 			switch field.Name {
-			case "admin":
-				return ec.fieldContext_ProjectPermissions_admin(ctx, field)
+			case "edit":
+				return ec.fieldContext_ProjectPermissions_edit(ctx, field)
 			case "view":
 				return ec.fieldContext_ProjectPermissions_view(ctx, field)
 			}
@@ -41102,8 +41102,8 @@ func (ec *executionContext) fieldContext_ProjectEvents_eventLogEntries(ctx conte
 	return fc, nil
 }
 
-func (ec *executionContext) _ProjectPermissions_admin(ctx context.Context, field graphql.CollectedField, obj *ProjectPermissions) (ret graphql.Marshaler) {
-	fc, err := ec.fieldContext_ProjectPermissions_admin(ctx, field)
+func (ec *executionContext) _ProjectPermissions_edit(ctx context.Context, field graphql.CollectedField, obj *ProjectPermissions) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_ProjectPermissions_edit(ctx, field)
 	if err != nil {
 		return graphql.Null
 	}
@@ -41116,7 +41116,7 @@ func (ec *executionContext) _ProjectPermissions_admin(ctx context.Context, field
 	}()
 	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
 		ctx = rctx // use context from middleware stack in children
-		return obj.Admin, nil
+		return obj.Edit, nil
 	})
 	if err != nil {
 		ec.Error(ctx, err)
@@ -41133,7 +41133,7 @@ func (ec *executionContext) _ProjectPermissions_admin(ctx context.Context, field
 	return ec.marshalNBoolean2bool(ctx, field.Selections, res)
 }
 
-func (ec *executionContext) fieldContext_ProjectPermissions_admin(ctx context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+func (ec *executionContext) fieldContext_ProjectPermissions_edit(ctx context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
 	fc = &graphql.FieldContext{
 		Object:     "ProjectPermissions",
 		Field:      field,
@@ -78157,8 +78157,8 @@ func (ec *executionContext) _ProjectPermissions(ctx context.Context, sel ast.Sel
 		switch field.Name {
 		case "__typename":
 			out.Values[i] = graphql.MarshalString("ProjectPermissions")
-		case "admin":
-			out.Values[i] = ec._ProjectPermissions_admin(ctx, field, obj)
+		case "edit":
+			out.Values[i] = ec._ProjectPermissions_edit(ctx, field, obj)
 			if out.Values[i] == graphql.Null {
 				out.Invalids++
 			}

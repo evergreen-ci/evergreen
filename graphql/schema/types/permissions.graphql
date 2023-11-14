@@ -13,7 +13,7 @@ type DistroPermissions {
 }
 
 type ProjectPermissions {
-  admin: Boolean!
+  edit: Boolean!
   view: Boolean!
 }
 

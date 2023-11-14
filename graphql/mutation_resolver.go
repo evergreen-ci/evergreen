@@ -719,7 +719,7 @@ func (r *mutationResolver) SaveRepoSettingsForSection(ctx context.Context, repoS
 // SetLastRevision is the resolver for the setLastRevision field.
 func (r *mutationResolver) SetLastRevision(ctx context.Context, opts SetLastRevisionInput) (*SetLastRevisionPayload, error) {
 	if len(opts.Revision) < gitHashLength {
-		return nil, InternalServerError.Send(ctx, "insufficent characters provided for revision")
+		return nil, InputValidationError.Send(ctx, fmt.Sprintf("insufficient length: must provide %d characters for revision", gitHashLength))
 	}
 
 	project, err := model.FindBranchProjectRef(opts.ProjectIdentifier)
@@ -738,7 +738,7 @@ func (r *mutationResolver) SetLastRevision(ctx context.Context, opts SetLastRevi
 		return nil, InternalServerError.Send(ctx, fmt.Sprintf("clearing repotracker error for '%s': %s", opts.ProjectIdentifier, err.Error()))
 	}
 
-	// Run repotracker again since the last revision for the project has been updated.
+	// Run repotracker job because the last revision for the project has been updated.
 	ts := utility.RoundPartOfHour(1).Format(units.TSFormat)
 	j := units.NewRepotrackerJob(fmt.Sprintf("catchup-%s", ts), project.Id)
 	if err = amboy.EnqueueUniqueJob(ctx, evergreen.GetEnvironment().RemoteQueue(), j); err != nil {

@@ -6,12 +6,12 @@
         "data": null,
         "errors": [
           {
-            "message": "insufficent characters provided for revision",
+            "message": "insufficient length: must provide 40 characters for revision",
             "path": [
               "setLastRevision"
             ],
             "extensions": {
-              "code": "INTERNAL_SERVER_ERROR"
+              "code": "INPUT_VALIDATION_ERROR"
             }
           }
         ]

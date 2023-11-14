@@ -17,7 +17,7 @@
                 "view": true
               },
               "projectPermissions": {
-                "admin": true,
+                "edit": true,
                 "view": true
               }
             }
@@ -40,7 +40,7 @@
                 "view": false
               },
               "projectPermissions": {
-                "admin": false,
+                "edit": false,
                 "view": false
               }
             }

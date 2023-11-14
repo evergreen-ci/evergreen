@@ -84,8 +84,8 @@ func (r *permissionsResolver) ProjectPermissions(ctx context.Context, obj *Permi
 		return nil, ResourceNotFound.Send(ctx, fmt.Sprintf("project '%s' not found", options.ProjectIdentifier))
 	}
 	return &ProjectPermissions{
-		Admin: userHasProjectPermission(usr, project.Id, evergreen.ProjectSettingsEdit.Value),
-		View:  userHasProjectPermission(usr, project.Id, evergreen.ProjectSettingsView.Value),
+		Edit: userHasProjectSettingsPermission(usr, project.Id, evergreen.ProjectSettingsEdit.Value),
+		View: userHasProjectSettingsPermission(usr, project.Id, evergreen.ProjectSettingsView.Value),
 	}, nil
 }
 

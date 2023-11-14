@@ -1091,7 +1091,7 @@ func userHasDistroPermission(u *user.DBUser, distroId string, requiredLevel int)
 	return u.HasPermission(opts)
 }
 
-func userHasProjectPermission(u *user.DBUser, projectId string, requiredLevel int) bool {
+func userHasProjectSettingsPermission(u *user.DBUser, projectId string, requiredLevel int) bool {
 	opts := gimlet.PermissionOpts{
 		Resource:      projectId,
 		ResourceType:  evergreen.ProjectResourceType,

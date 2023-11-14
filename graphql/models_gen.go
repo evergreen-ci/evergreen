@@ -279,8 +279,8 @@ type ProjectEvents struct {
 }
 
 type ProjectPermissions struct {
-	Admin bool `json:"admin"`
-	View  bool `json:"view"`
+	Edit bool `json:"edit"`
+	View bool `json:"view"`
 }
 
 type ProjectPermissionsOptions struct {
