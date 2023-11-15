@@ -6,11 +6,11 @@ Project Commands are the fundamental units of functionality in an Evergreen task
 
 `archive.targz_extract` extracts files from a gzipped tarball.
 
-```yaml
+``` yaml
 - command: archive.targz_extract
   params:
-      path: "jstests.tgz"
-      destination: "src/jstestfuzz"
+    path: "jstests.tgz"
+    destination: "src/jstestfuzz"
 ```
 
 Parameters:
@@ -24,13 +24,13 @@ Parameters:
 
 `archive.targz_pack` creates a gzipped tarball.
 
-```yaml
+``` yaml
 - command: archive.targz_pack
   params:
-      target: "jstests.tgz"
-      source_dir: "src/jstestfuzz"
-      include:
-          - "out/*.js"
+    target: "jstests.tgz"
+    source_dir: "src/jstestfuzz"
+    include:
+      - "out/*.js"
 ```
 
 Parameters:
@@ -56,20 +56,20 @@ file to <https://example.com/this-is-my-file> in your task. For
 instance, you might be using boto in a Python script. You can then add a
 link to the Files element on the task page by:
 
-```yaml
+``` yaml
 - command: attach.artifacts
   params:
-      files:
-          - example.json
+    files:
+      - example.json
 ```
 
-```json
+``` json
 [
-    {
-        "name": "my-file",
-        "link": "https://example.com/this-is-my-file",
-        "visibility": "public"
-    }
+  {
+    "name": "my-file",
+    "link": "https://example.com/this-is-my-file",
+    "visibility": "public"
+  }
 ]
 ```
 
@@ -77,22 +77,22 @@ An additional "ignore_for_fetch" parameter controls whether the file
 will be downloaded when spawning a host from the spawn link on a test
 page.
 
--   `files`: an array of gitignore file globs. All files that are
+- `files`: an array of gitignore file globs. All files that are
     matched - ones that would be ignored by gitignore - are included.
--   `prefix`: an optional path to start processing the files, relative
+- `prefix`: an optional path to start processing the files, relative
     to the working directory.
--   `exact_file_names`: an optional boolean flag which, if set to true,
+- `exact_file_names`: an optional boolean flag which, if set to true,
     indicates to treat the files array as a list of exact filenames to
     match, rather than an array of gitignore file globs.
 
-#### Lifecycle Policy
+#### Lifecycle Policy 
 
 These artifacts are stored in an S3 bucket which has the following lifecycle policy:
 
--   Day 0 - Object uploaded
--   Day 60 - Object moved to Standard-IA
--   Day 365 - Object moved to Deep Glacier Archive
--   Day 1095 - Object expires
+* Day 0 - Object uploaded
+* Day 60 - Object moved to Standard-IA
+* Day 365 - Object moved to Deep Glacier Archive
+* Day 1095 - Object expires
 
 If you would like to download an artifact after it has been moved to Glacier, please create a BUILD ticket requesting download as it will no longer be available via the link under the Files tab on the task page.
 
@@ -106,20 +106,20 @@ Evergreen, which Evergreen will then link from the UI and API.
 
 The format is as follows:
 
-```json
+``` json
 {
-    "results": [
-        {
-            "status": "pass",
-            "test_file": "test_1",
-            "exit_code": 0,
-            "elapsed": 0.32200002670288086, //end-start
-            "start": 1398782500.359, //epoch_time
-            "end": 1398782500.681 //epoch_time
-        },
-        {
-            "etc": "..."
-        }
+    "results":[
+    {
+        "status":"pass",
+        "test_file":"test_1",
+        "exit_code":0,
+        "elapsed":0.32200002670288086, //end-start
+        "start":1398782500.359, //epoch_time
+        "end":1398782500.681 //epoch_time
+    },
+    {
+        "etc":"..."
+    },
     ]
 }
 ```
@@ -141,10 +141,10 @@ logically nonsensical.
 | `task_id`   | string        | The ID of the task with which this test should be associated. The test will appear on the page for the specified task. |
 | `execution` | int           | The execution of the task above with which this test should be associated.                                             |
 
-```yaml
+``` yaml
 - command: attach.results
   params:
-      file_location: src/report.json
+    file_location: src/report.json
 ```
 
 Parameters:
@@ -158,15 +158,15 @@ API server. Use this when you use a library in your programming language
 to generate XUnit results from tests. Evergreen will parse these XML
 files, creating links to individual tests in the test logs in the UI and
 API. (Logs are only generated if the test case did not succeed -- this is
-part of the XUnit XML file design.)
+ part of the XUnit XML file design.)
 
 This command will not error if there are no test results, as XML files can still
 be valid. We will error if no file paths given are valid XML files.
 
-```yaml
+``` yaml
 - command: attach.xunit_results
   params:
-      file: src/results.xml
+    file: src/results.xml
 ```
 
 Parameters:
@@ -190,10 +190,10 @@ See
 [here](https://docs.aws.amazon.com/STS/latest/APIReference/API_AssumeRole.html)
 for more details on the assume role API.
 
-```yaml
+``` yaml
 - command: ec2.assume_role
   params:
-      role_arn: "aws_arn_123"
+    role_arn: "aws_arn_123"
 ```
 
 Parameters:
@@ -208,20 +208,20 @@ Parameters:
 
 ## expansions.update
 
-`expansions.update` updates the task's expansions at runtime.
+`expansions.update` updates the task's expansions at runtime. 
 Any updates to the expansions made with this command will only persist for the duration of the task.
 
-```yaml
+``` yaml
 - command: expansions.update
   params:
-      ignore_missing_file: true
-      file: src/ec2_artifacts.yml
+    ignore_missing_file: true
+    file: src/ec2_artifacts.yml
 
 - command: expansions.update
   params:
-      updates:
-          - key: artifact_url
-            value: http://s3/static-artifacts.tgz
+    updates:
+    - key: artifact_url
+      value: http://s3/static-artifacts.tgz
 ```
 
 Parameters:
@@ -238,10 +238,10 @@ Parameters:
 `AWS_SECRET_ACCESS_KEY`, `AWS_SESSION_TOKEN` are always redacted for
 security reasons.
 
-```yaml
+``` yaml
 - command: expansions.write
   params:
-      file: expansions.yaml
+    file: expansions.yaml
 ```
 
 Parameters:
@@ -283,11 +283,11 @@ Notes:
     #evergreen-users if you aren't sure what to do with a hanging
     generate.tasks.
 
-```yaml
+``` yaml
 - command: generate.tasks
   params:
-      files:
-          - example.json
+    files:
+      - example.json
 ```
 
 Parameters:
@@ -296,7 +296,7 @@ Parameters:
 -   `optional`: default false; if set to true, will not error if the
     file(s) specified are not found
 
-```json
+``` json
 {
     "functions": {
         "echo-hi": {
@@ -330,7 +330,9 @@ Parameters:
                 }
             ],
             "display_name": "Ubuntu 16.04",
-            "run_on": ["ubuntu1604-test"],
+            "run_on": [
+                "ubuntu1604-test"
+            ],
             "name": "ubuntu1604"
         }
     ]
@@ -344,30 +346,30 @@ directory, and checks out the revision associated with the task. Also
 applies patches to the source after cloning it, if the task was created
 by a patch submission.
 
-```yaml
+``` yaml
 - command: git.get_project
   params:
-      directory: src
-      revisions:
-          example: ${example_rev} ## or <hash>
+    directory: src
+    revisions:
+      example: ${example_rev} ## or <hash>
 ```
 
-```yaml
-- modules:
-      - name: example
-        owner: 10gen
-        repo: mongo-example-modules
-        prefix: src/mongo/db/modules
-        ref: 12341a65256ff78b6d15ab79a1c7088443b9abcd
-        branch: master
+``` yaml
+- modules: 
+  - name: example
+    owner: 10gen
+    repo: mongo-example-modules
+    prefix: src/mongo/db/modules
+    ref: 12341a65256ff78b6d15ab79a1c7088443b9abcd
+    branch: master
 ```
 
 Parameters:
 
 -   `dir`: the directory to clone into
 -   `revisions`: For commit builds, each module should be passed as
-    `<module_name> : ${<module_name>_rev}` (these are loaded from the [manifest](../API/REST-V2-Usage.md#manifest)
-    at the beginning of the command).
+    `<module_name> : ${<module_name>_rev}` (these are loaded from the [manifest](../API/REST-V2-Usage.md#manifest) 
+    at the beginning of the command). 
     For patch builds, the hash
     must be passed directly as `<module_name> : <hash>`. Note that this
     means that for patch builds, editing the
@@ -399,12 +401,11 @@ The parameters for each module are:
     accepted_.
 
 More specifically, module hash priority is as follows:
-
--   For commit queue and GitHub merge queue patches, Evergreen always uses the module branch name, to ensure accurate testing.
--   For other patches, the initial default is to the githash in set-module, if specified.
--   For both commits and patches, the next default is to the `<module_name>` set in revisions for the command.
--   For commits, if this is not available, the next default is to ref, and then to branch. _Note that this
-    doesn't work for patches -- hashes will need to be specified in the revisions section of the command._
+* For commit queue and GitHub merge queue patches, Evergreen always uses the module branch name, to ensure accurate testing.
+* For other patches, the initial default is to the githash in set-module, if specified.
+* For both commits and patches, the next default is to the `<module_name>` set in revisions for the command.
+* For commits, if this is not available, the next default is to ref, and then to branch. *Note that this 
+doesn't work for patches -- hashes will need to be specified in the revisions section of the command.*
 
 ## gotest.parse_files
 
@@ -414,10 +415,10 @@ to a file.
 
 E.g. In a preceding shell.exec command, run `go test -v > result.suite`
 
-```yaml
+``` yaml
 - command: gotest.parse_files
   params:
-      files: ["src/*.suite"]
+    files: ["src/*.suite"]
 ```
 
 Parameters:
@@ -430,21 +431,21 @@ Parameters:
 
 `host.create` starts a host from a task.
 
-```yaml
+``` yaml
 - command: host.create
   params:
-      provider: ec2
-      distro: rhel70-small
+    provider: ec2
+    distro: rhel70-small
 ```
 
 Parse From A File:
 
 -   `file` - The name of a file containing all the parameters.
 
-```yaml
+``` yaml
 - command: host.create
   params:
-      file: src/host_params.yml
+    file: src/host_params.yml 
 ```
 
 Agent Parameters:
@@ -476,7 +477,7 @@ EC2 Parameters:
     non-default account. Must set if `aws_access_key_id` is set.
 -   `device_name` - name of EBS device
 -   `distro` - Evergreen distro to start. Must set `ami` or `distro` but
-    must not set both. Note that the distro setup script will not run for
+    must not set both. Note that the distro setup script will not run for 
     hosts spawned by this command, so any required initial setup must be done manually.
 -   `ebs_block_device` - list of the following parameters:
 -   `ebs_iops` - EBS provisioned IOPS.
@@ -531,7 +532,7 @@ Docker Parameters:
     the container command. By default, the container command has no input to
     stdin. Note that if you try to start a spawn host and also choose to start
     containers started by host.create for the task, the running container will
-    _not_ have the stdin file content passed to it.
+    *not* have the stdin file content passed to it.
 -   `stdout_file_name` - The file path to write stdout logs from the
     container. Default is &lt;container_id&gt;.out.log.
 -   `stderr_file_name` - The file path to write stderr logs from the
@@ -563,84 +564,82 @@ of the commands after ssh will execute. To work around this, you can set
 `exec_as_string` on `shell.exec`, or in bash you can wrap curly braces around the
 script to make sure it is read entirely before executing.
 
-```yaml
+``` yaml
 functions:
-    ## Check SSH availability
-    ssh-ready:
-        command: shell.exec
-        params:
-            exec_as_string: true
-            script: |
-                user=${admin_user_name}
-                ## The following hosts.yml file is generated as the output of the host.list command below
-                hostname=$(tr -d '"[]{}' < buildhost-configuration/hosts.yml | cut -d , -f 1 | awk -F : '{print $2}')
-                identity_file=~/.ssh/mcipacker.pem
+  ## Check SSH availability
+  ssh-ready:
+    command: shell.exec
+    params:
+      exec_as_string: true
+      script: |
+        user=${admin_user_name}
+        ## The following hosts.yml file is generated as the output of the host.list command below
+        hostname=$(tr -d '"[]{}' < buildhost-configuration/hosts.yml | cut -d , -f 1 | awk -F : '{print $2}')
+        identity_file=~/.ssh/mcipacker.pem
 
-                attempts=0
-                connection_attempts=${connection_attempts|25}
+        attempts=0
+        connection_attempts=${connection_attempts|25}
 
-                ## Check for remote connectivity
-                while ! ssh \
-                  -i "$identity_file" \
-                  -o ConnectTimeout=10 \
-                  -o ForwardAgent=yes \
-                  -o IdentitiesOnly=yes \
-                  -o StrictHostKeyChecking=no \
-                  "$(printf "%s@%s" "$user" "$hostname")" \
-                  exit
-                do
-                  [ "$attempts" -ge "$connection_attempts" ] && exit 1
-                  ((attempts++))
-                  printf "SSH connection attempt %d/%d failed. Retrying...\n" "$attempts" "$connection_attempts"
-                  ## sleep for Permission denied (publickey) errors
-                  sleep 10
-                done
-            shell: bash
+        ## Check for remote connectivity
+        while ! ssh \
+          -i "$identity_file" \
+          -o ConnectTimeout=10 \
+          -o ForwardAgent=yes \
+          -o IdentitiesOnly=yes \
+          -o StrictHostKeyChecking=no \
+          "$(printf "%s@%s" "$user" "$hostname")" \
+          exit
+        do
+          [ "$attempts" -ge "$connection_attempts" ] && exit 1
+          ((attempts++))
+          printf "SSH connection attempt %d/%d failed. Retrying...\n" "$attempts" "$connection_attempts"
+          ## sleep for Permission denied (publickey) errors
+          sleep 10
+        done
+      shell: bash
 
 tasks:
-    - name: test
-      commands:
-          - command: host.create
-            params:
-                ami: ${ami}
-                aws_access_key_id: ${aws_access_key_id}
-                aws_secret_access_key: ${aws_secret_access_key}
-                instance_type: ${instance_type|m3.medium}
-                key_name: ${key_name}
-                provider: ec2
-                security_group_ids:
-                    - ${security_group_id}
-                subnet_id: ${subnet_id}
-                vpc_id: ${vpc_id}
-          - command: host.list
-            params:
-                num_hosts: 1
-                path: buildhost-configuration/hosts.yml
-                timeout_seconds: 600
-                wait: true
-          - func: ssh-ready
-          - func: other-tasks
+  - name: test
+    commands:
+      - command: host.create
+        params:
+          ami: ${ami}
+          aws_access_key_id: ${aws_access_key_id}
+          aws_secret_access_key: ${aws_secret_access_key}
+          instance_type: ${instance_type|m3.medium}
+          key_name: ${key_name}
+          provider: ec2
+          security_group_ids:
+            - ${security_group_id}
+          subnet_id: ${subnet_id}
+          vpc_id: ${vpc_id}
+      - command: host.list
+        params:
+          num_hosts: 1
+          path: buildhost-configuration/hosts.yml
+          timeout_seconds: 600
+          wait: true
+      - func: ssh-ready
+      - func: other-tasks
 ```
-
 Note:
-
--   The `${admin_user_name}` expansion should be set to the value of the
-    **user** field set for the command's distro, which can be inspected [on Evergreen's distro page](https://evergreen.mongodb.com/distros).
-    This is not a default expansion, so it must be set manually.
--   The mcipacker.pem key file was created by echoing the value of the
-    `${__project_aws_ssh_key_value}` expansion (which gets populated automatically with the ssh public key value) into the file. This
-    expansion is automatically set by Evergreen when the host is spawned.
+- The `${admin_user_name}` expansion should be set to the value of the
+**user** field set for the command's distro, which can be inspected [on Evergreen's distro page](https://evergreen.mongodb.com/distros).
+This is not a default expansion, so it must be set manually.
+- The mcipacker.pem key file was created by echoing the value of the
+`${__project_aws_ssh_key_value}` expansion (which gets populated automatically with the ssh public key value) into the file. This
+expansion is automatically set by Evergreen when the host is spawned.
 
 ## host.list
 
 `host.list` gets information about hosts created by `host.create`.
 
-```yaml
+``` yaml
 - command: host.list
   params:
-      wait: true
-      timeout_seconds: 300
-      num_hosts: 1
+    wait: true
+    timeout_seconds: 300
+    num_hosts: 1
 ```
 
 Parameters:
@@ -688,7 +687,7 @@ host.list in this form:
     (likely only useful for Evergreen team investigations)
 -   `error`: The error returned from host.create for this host
 
-```json
+``` json
 [
     {
         "dns_name": "ec2-52-91-50-29.compute-1.amazonaws.com",
@@ -713,7 +712,7 @@ host.list in this form:
             ]
          }
     }
-]
+] 
 ```
 
 ## json.send
@@ -755,21 +754,21 @@ internal macOS signing and notarization service.
 
 **Note**: This command is maintained by the BUILD team.
 
-```yaml
+``` yaml
 - command: mac.sign
   params:
-      key_id: ${key_id}
-      secret: ${secret}
-      service_url: ${service_url}
-      client_binary: /local/path/to/client_binary
-      local_zip_file: /local/path/to/file_to_be_singed
-      output_zip_file: /local/path/to/output_file
-      artifact_type: binary
-      entitlements_file: /local/path/to/entitlements_file
-      verify: false
-      notarize: true
-      bundle_id: bundle_id_for_notarization
-      working_directory: /local/path/to/working_directory
+    key_id: ${key_id}
+    secret: ${secret}
+    service_url: ${service_url}
+    client_binary: /local/path/to/client_binary
+    local_zip_file: /local/path/to/file_to_be_singed
+    output_zip_file: /local/path/to/output_file
+    artifact_type: binary
+    entitlements_file: /local/path/to/entitlements_file
+    verify: false
+    notarize: true
+    bundle_id: bundle_id_for_notarization
+    working_directory: /local/path/to/working_directory
 ```
 
 Parameters:
@@ -797,20 +796,21 @@ Parameters:
     missing/empty will run for all
 -   `working_directory`: local path to the working directory
 
+
 ## perf.send
 
 This command sends performance test data, as either JSON or YAML, to
 Cedar. Note that if the tests do not contain artifacts, the AWS
 information is not necessary.
 
-```yaml
+``` yaml
 - command: perf.send
   params:
-      aws_key: ${aws_key}
-      aws_secret: ${aws_secret}
-      bucket: mciuploads
-      prefix: perf_reports
-      file: cedar_report.json
+    aws_key: ${aws_key}
+    aws_secret: ${aws_secret}
+    bucket: mciuploads
+    prefix: perf_reports
+    file: cedar_report.json
 ```
 
 Parameters:
@@ -850,7 +850,7 @@ Example dummy content of a test results JSON file containing `test` objects:
             {
                 "name": "ipsum",
                 "type": "PERCENTILE_99TH",
-                "value": 6.7891,
+                "value": 6.78910,
                 "user_submitted": false
             },
             {
@@ -921,12 +921,11 @@ Example dummy content of a test results JSON file containing `test` objects:
                 ],
                 "metrics": [],
                 "sub_tests": []
-            }
+            },
         ]
     }
 ]
 ```
-
 ### test
 
 Each `test` object holds data about a specific test and its
@@ -934,13 +933,13 @@ subtests. It is represented by the
 [`Test` struct](https://pkg.go.dev/github.com/evergreen-ci/poplar#Test),
 and contains these fields:
 
-| Name           | Type   | Description                                                                                                      |
-| -------------- | ------ | ---------------------------------------------------------------------------------------------------------------- |
-| `info`         | object | The test's `info` object, described below.                                                                       |
-| `created_at`   | string | The test's creation timestamp.                                                                                   |
-| `completed_at` | string | The test's completion timestamp.                                                                                 |
-| `artifacts`    | array  | The test's list of `artifact` objects, described below.                                                          |
-| `metrics`      | array  | The test's list of `metric` objects, described below.                                                            |
+| Name           | Type   | Description                                                                                                    |
+| -------------- | ------ | -------------------------------------------------------------------------------------------------------------- |
+| `info`         | object | The test's `info` object, described below.                                                                     |
+| `created_at`   | string | The test's creation timestamp.                                                                                 |
+| `completed_at` | string | The test's completion timestamp.                                                                               |
+| `artifacts`    | array  | The test's list of `artifact` objects, described below.                                                        |
+| `metrics`      | array  | The test's list of `metric` objects, described below.                                                          |
 | `sub_tests`    | array  | The test's list of subtest `test` objects, which recursively have the same format as the parent's `test` object. |
 
 **Note:** Although the `Test` struct includes the `_id` field, you
@@ -1020,10 +1019,10 @@ pairs to child patches. The command takes the key-value pairs written in
 the file and makes them available to the child patches. Note: these
 parameters will be public and viewable on the patch page.
 
-```yaml
+``` yaml
 - command: downstream_expansions.set
   params:
-      file: downstream_expansions.yaml
+    file: downstream_expansions.yaml
 ```
 
 Parameters:
@@ -1034,14 +1033,14 @@ Parameters:
 
 `s3.get` downloads a file from Amazon s3.
 
-```yaml
+``` yaml
 - command: s3.get
   params:
-      aws_key: ${aws_key}
-      aws_secret: ${aws_secret}
-      remote_file: ${mongo_binaries}
-      bucket: mciuploads
-      local_file: src/mongo-binaries.tgz
+    aws_key: ${aws_key}
+    aws_secret: ${aws_secret}
+    remote_file: ${mongo_binaries}
+    bucket: mciuploads
+    local_file: src/mongo-binaries.tgz
 ```
 
 Parameters:
@@ -1062,17 +1061,17 @@ Parameters:
 This command uploads a file to Amazon s3, for use in later tasks or
 distribution. Files uploaded with this command will also be viewable within the Parsley log viewer if the `content_type` is set to `text/plain`, `application/json` or `text/csv`.
 
-```yaml
+``` yaml
 - command: s3.put
   params:
-      aws_key: ${aws_key}
-      aws_secret: ${aws_secret}
-      local_file: src/mongodb-binaries.tgz
-      remote_file: mongodb-mongo-master/${build_variant}/${revision}/binaries/mongo-${build_id}.${ext|tgz}
-      bucket: mciuploads
-      permissions: public-read
-      content_type: ${content_type|application/x-gzip}
-      display_name: Binaries
+    aws_key: ${aws_key}
+    aws_secret: ${aws_secret}
+    local_file: src/mongodb-binaries.tgz
+    remote_file: mongodb-mongo-master/${build_variant}/${revision}/binaries/mongo-${build_id}.${ext|tgz}
+    bucket: mciuploads
+    permissions: public-read
+    content_type: ${content_type|application/x-gzip}
+    display_name: Binaries
 ```
 
 Parameters:
@@ -1088,7 +1087,7 @@ Parameters:
 -   `content_type`: the MIME type of the file. Note it is important that this value accurately reflects the mime type of the file or else the behavior will be unpredictable.
 -   `optional`: boolean to indicate if failure to find or upload this
     file will result in a task failure. This is intended to be used
-    with `local_file`. `local_files_include_filter` be default is
+    with `local_file`. `local_files_include_filter` be default is 
     optional and will not work with this parameter.
 -   `skip_existing`: boolean to indicate that files that already exist
     in s3 should be skipped.
@@ -1098,7 +1097,7 @@ Parameters:
     would be ignored by gitignore - are included in the put. If no
     files are found, the task continues execution.
 -   `local_files_include_filter_prefix`: an optional path to start
-    processing the `local_files_include_filter`, relative to the working
+    processing the LocalFilesIncludeFilter, relative to the working
     directory.
 -   `region`: AWS region for the bucket. We suggest us-east-1, since
     that is where ec2 hosts are located. If you would like to override,
@@ -1119,31 +1118,31 @@ Parameters:
 
 Using the s3.put command in this uploads multiple files to an s3 bucket.
 
-```yaml
+``` yaml
 - command: s3.put
   params:
-      aws_key: ${aws_key}
-      aws_secret: ${aws_secret}
-      local_files_include_filter:
-          - slow_tests/coverage/*.tgz
-          - fast_tests/coverage/*.tgz
-      remote_file: mongodb-mongo-master/test_coverage-
-      preserve_path: true
-      bucket: mciuploads
-      permissions: public-read
-      content_type: ${content_type|application/x-gzip}
-      display_name: coverage-
+    aws_key: ${aws_key}
+    aws_secret: ${aws_secret}
+    local_files_include_filter:
+      - slow_tests/coverage/*.tgz
+      - fast_tests/coverage/*.tgz
+    remote_file: mongodb-mongo-master/test_coverage-
+    preserve_path: true
+    bucket: mciuploads
+    permissions: public-read
+    content_type: ${content_type|application/x-gzip}
+    display_name: coverage-
 ```
 
 Each file is displayed in evergreen as the file's name prefixed with the
 `display_name` field. Each file is uploaded to a path made of the local
 file's name, in this case whatever matches the `*.tgz`, prefixed with
-what is set as the `remote_file` field (or, to preserve the original folder
+what is set as the `remote_file` field (or, to preserve the original folder 
 structure, use the `preserve_path` field). The filter uses the same
 specification as gitignore when matching files. In this way, all files
 that would be marked to be ignored in a gitignore containing the lines
 `slow_tests/coverage/*.tgz` and `fast_tests/coverage/*.tgz` are uploaded
-to the s3 bucket.
+to the s3 bucket. 
 
 ## s3.push
 
@@ -1165,11 +1164,11 @@ The working directory is put in a private S3 bucket shared between all
 projects. Any other logged in user can pull and view the directory
 contents of an s3.push command once it has been uploaded.
 
-```yaml
+``` yaml
 - command: s3.push
   params:
-      exclude: path/to/directory/to/ignore
-      max_retries: 50
+     exclude: path/to/directory/to/ignore
+     max_retries: 50
 ```
 
 Parameters:
@@ -1191,15 +1190,15 @@ This command downloads the task directory from S3 that was uploaded by
 task that runs s3.push first and must explicitly specify the dependency
 using `depends_on`.
 
-```yaml
+``` yaml
 - command: s3.pull
   params:
-      task: my_s3_push_task
-      from_build_variant: some_other_build_variant
-      working_directory: path/to/working/directory
-      delete_on_sync: false
-      exclude: path/to/directory/to/ignore
-      max_retries: 50
+     task: my_s3_push_task
+     from_build_variant: some_other_build_variant
+     working_directory: path/to/working/directory
+     delete_on_sync: false
+     exclude: path/to/directory/to/ignore
+     max_retries: 50
 ```
 
 Parameters:
@@ -1224,25 +1223,14 @@ Parameters:
 
 `s3Copy.copy` copies files from one s3 location to another
 
-```yaml
+``` yaml
 - command: s3Copy.copy
   params:
-      aws_key: ${aws_key}
-      aws_secret: ${aws_secret}
-      s3_copy_files:
-          - {
-                "optional": true,
-                "source":
-                    {
-                        "path": "${push_path}-STAGE/${push_name}/mongodb-${push_name}-${push_arch}-${suffix}-${task_id}.${ext|tgz}",
-                        "bucket": "build-push-testing",
-                    },
-                "destination":
-                    {
-                        "path": "${push_path}/mongodb-${push_name}-${push_arch}-${suffix}.${ext|tgz}",
-                        "bucket": "${push_bucket}",
-                    },
-            }
+    aws_key: ${aws_key}
+    aws_secret: ${aws_secret}
+    s3_copy_files:
+        - {'optional': true, 'source': {'path': '${push_path}-STAGE/${push_name}/mongodb-${push_name}-${push_arch}-${suffix}-${task_id}.${ext|tgz}', 'bucket': 'build-push-testing'},
+           'destination': {'path': '${push_path}/mongodb-${push_name}-${push_arch}-${suffix}.${ext|tgz}', 'bucket': '${push_bucket}'}}
 ```
 
 Parameters:
@@ -1259,27 +1247,27 @@ Parameters:
 
 This command runs a shell script. To follow [Evergreen best practices](Best-Practices.md#subprocessexec), we recommend using [subprocess.exec](#subprocess.exec).
 
-```yaml
+``` yaml
 - command: shell.exec
   params:
-      working_dir: src
-      script: |
-          echo "this is a 2nd command in the function!"
-          ls
+    working_dir: src
+    script: |
+      echo "this is a 2nd command in the function!"
+      ls
 ```
 
 Parameters:
 
 -   `script`: the script to run
 -   `working_dir`: the directory to execute the shell script in
--   `env`: a map of environment variables and their values. In case of
+-   `env`: a map of environment variables and their values.  In case of
     conflicting environment variables defined by `add_expansions_to_env` or
     `include_expansions_in_env`, this has the lowest priority. Unless
     overridden, the following environment variables will be set by default:
-    -   "CI" will be set to "true".
-    -   "GOCACHE" will be set to `${workdir}/.gocache`.
-    -   "EVR_TASK_ID" will be set to the running task's ID.
-    -   "TMP", "TMPDIR", and "TEMP" will be set to `${workdir}/tmp`.
+    - "CI" will be set to "true".
+    - "GOCACHE" will be set to `${workdir}/.gocache`.
+    - "EVR_TASK_ID" will be set to the running task's ID.
+    - "TMP", "TMPDIR", and "TEMP" will be set to `${workdir}/tmp`.
 -   `add_expansions_to_env`: when true, add all expansions to the
     command's environment. In case of conflicting environment variables
     defined by `env` or `include_expansions_in_env`, this has higher
@@ -1291,11 +1279,11 @@ Parameters:
     highest priority.
 -   `background`: if set to true, the script runs in the background
     instead of the foreground. `shell.exec` starts the script but
-    does not wait for the script to exit before running the next command.
+    does not wait for the script to exit before running the next command. 
     If the background script exits with an error while the
     task is still running, the task will continue running.
 -   `silent`: if set to true, does not log any shell output during
-    execution; useful to avoid leaking sensitive info. Note that you should
+    execution; useful to avoid leaking sensitive info. Note that you should 
     not pass secrets as command-line arguments but instead as environment
     variables or from a file, as Evergreen runs `ps` periodically, which
     will log command-line arguments.
@@ -1326,17 +1314,17 @@ you can also run a `#!` script as if it were a binary. To
 get similar behavior on Windows, try `bash.exe -c
 yourScript.sh`.
 
-```yaml
+``` yaml
 - command: subprocess.exec
   params:
-      working_dir: "src"
-      env:
-          FOO: bar
-          BAZ: qux
-      binary: "command"
-      args:
-          - "arg1"
-          - "arg2"
+    working_dir: "src"
+    env:
+      FOO: bar
+      BAZ: qux
+    binary: "command"
+    args:
+      - "arg1"
+      - "arg2"
 ```
 
 Parameters:
@@ -1347,19 +1335,19 @@ Parameters:
     conflicting environment variables defined by `add_expansions_to_env` or
     `include_expansions_in_env`, this has the lowest priority. Unless
     overridden, the following environment variables will be set by default:
-    -   "CI" will be set to "true".
-    -   "GOCACHE" will be set to `${workdir}/.gocache`.
-    -   "EVR_TASK_ID" will be set to the running task's ID.
-    -   "TMP", "TMPDIR", and "TEMP" will be set to `${workdir}/tmp`.
+    - "CI" will be set to "true".
+    - "GOCACHE" will be set to `${workdir}/.gocache`.
+    - "EVR_TASK_ID" will be set to the running task's ID.
+    - "TMP", "TMPDIR", and "TEMP" will be set to `${workdir}/tmp`.
 -   `command`: a command string (cannot use with `binary` or `args`), split
     according to shell rules for use as arguments.
-    -   Note: Expansions will _not_ be split on spaces; each expansion represents
-        its own argument.
-    -   Note: on Windows, the shell splitting rules may not parse the command
-        string as desired (e.g. for Windows paths containing `\`).
+    - Note: Expansions will *not* be split on spaces; each expansion represents
+      its own argument.
+    - Note: on Windows, the shell splitting rules may not parse the command
+      string as desired (e.g. for Windows paths containing `\`).
 -   `background`: if set to true, the process runs in the background
     instead of the foreground. `subprocess.exec` starts the process but
-    does not wait for the process to exit before running the next command.
+    does not wait for the process to exit before running the next command. 
     If the background process exits with an error while the
     task is still running, the task will continue running.
 -   `silent`: do not log output of command. Note that you should
@@ -1388,34 +1376,33 @@ Parameters:
     priority.
 -   `add_to_path`: specify one or more paths to prepend to the command `PATH`,
     which has the following effects:
-    -   If `PATH` is explicitly set in `env`, that `PATH` is ignored.
-    -   The command automatically inherits the runtime environment's `PATH`
-        environment variable. Then, any paths specified in `add_to_path` are
-        prepended in the given order.
-    -   This can be used to specify fallback paths to search for the `binary`
-        executable (see [PATH special case](#path-environment-variable-special-case)).
+    - If `PATH` is explicitly set in `env`, that `PATH` is ignored.
+    - The command automatically inherits the runtime environment's `PATH`
+      environment variable. Then, any paths specified in `add_to_path` are
+      prepended in the given order.
+    - This can be used to specify fallback paths to search for the `binary`
+      executable (see [PATH special case](#path-environment-variable-special-case)).
 
 ### PATH Environment Variable Special Case
-
 The `PATH` environment variable (specified either via explicitly setting `PATH`
 in `env` or via `add_to_path`) is a special variable that has two effects:
 
--   It sets the `PATH` environment variable for the command that runs.
--   It adds fallback paths to search for the command's `binary`. If the `binary`
-    is not found in the default runtime environment's `PATH`, it will try
-    searching for a matching executable `binary` in any of the paths in
-    `add_to_path` or in the `PATH` specified in `env`.
+- It sets the `PATH` environment variable for the command that runs.
+- It adds fallback paths to search for the command's `binary`. If the `binary`
+  is not found in the default runtime environment's `PATH`, it will try
+  searching for a matching executable `binary` in any of the paths in
+  `add_to_path` or in the `PATH` specified in `env`.
 
 ## timeout.update
 
 This command sets `exec_timeout_secs` or `timeout_secs` of a task from
 within that task.
 
-```yaml
+``` yaml
 - command: timeout.update
   params:
-      exec_timeout_secs: ${my_exec_timeout_secs}
-      timeout_secs: ${my_timeout_secs}
+    exec_timeout_secs: ${my_exec_timeout_secs}
+    timeout_secs: ${my_timeout_secs}
 ```
 
 Parameters:
