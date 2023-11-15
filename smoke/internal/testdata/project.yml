@@ -121,13 +121,17 @@ tasks:
           command: "/usr/bin/touch bar"
       - command: archive.targz_pack
         params:
-          target: "archive.tgz"
+          target: archive-tgz.tgz
           source_dir: "archive"
           include:
             - "*_to_archive"
+      - command: archive.auto_pack
+        params:
+          target: archive-auto.tgz
+          source_dir: archive
       - command: archive.targz_extract
         params:
-          path: "archive.tgz"
+          path: archive-tgz.tgz
           destination: "output/targz"
       - command: archive.zip_pack
         params:
@@ -142,11 +146,15 @@ tasks:
       - command: archive.auto_extract
         params:
           path: "archive.zip"
-          destination: "output/zip-auto"
+          destination: output/zip
       - command: archive.auto_extract
         params:
-          path: "archive.tgz"
-          destination: "output/targz-auto"
+          path: archive-tgz.tgz
+          destination: output/targz-auto
+      - command:
+        params:
+          path: archive-auto.tgz
+          destination: output/auto
       - command: attach.results
         params:
           file_location: "src/agent/command/testdata/attach/plugin_attach_results.json"
