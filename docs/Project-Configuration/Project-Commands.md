@@ -60,8 +60,6 @@ format.
   params:
     target: "jstests.tgz"
     source_dir: "src/jstestfuzz"
-    include:
-      - "out/*.js"
 ```
 
 Parameters:
@@ -75,9 +73,9 @@ Parameters:
       - `.tsz`, `.tar.sz` (tarball archive with snappy compression)
       - `.txz`, `.tar.xz` (tarball archive with xz compression)
       - `.tar.zst` (tarball archive with zstandard compression)
-      - `.rar` (RAR archive)
+      - `.rar` (rar archive)
       - `.tar` (tarball archive)
-      - `.zip` (ZIP archive)
+      - `.zip` (zip archive)
       - `.br` (brotli compression)
       - `.gz` (gzip compression)
       - `.bz2` (bzip2 compression)
@@ -89,7 +87,7 @@ Parameters:
 -   `include`: a list of filename
     [blobs](https://golang.org/pkg/path/filepath/#Match) to include from the
     source directory. If not specified, the entire source directory will be
-    included in the archive.
+    archived.
 -   `exclude_files`: a list of filename
     [blobs](https://golang.org/pkg/path/filepath/#Match) to exclude from the
     source directory.
