@@ -167,7 +167,7 @@ $(buildDir)/.load-smoke-data:$(buildDir)/load-smoke-data
 	./$<
 	@touch $@
 $(buildDir)/.load-local-data:$(buildDir)/load-smoke-data
-	./$< -path testdata/local -dbName evergreen_local -amboyDBName amboy_local
+	./$< -path testdata/local -dbName $(if $(DB_NAME),$(DB_NAME),evergreen_local) -amboyDBName amboy_local
 	@touch $@
 local-evergreen:$(localClientBinary) load-local-data
 	./$< service deploy start-local-evergreen
