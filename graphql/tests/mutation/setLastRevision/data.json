@@ -12,7 +12,7 @@
       "admins": ["me"],
       "repotracker_error": {
         "exists": true,
-        "invalid_revision": "invalid_revision",
+        "invalid_revision": "edd78c1d58",
         "merge_base_revision": ""
       }
     }
