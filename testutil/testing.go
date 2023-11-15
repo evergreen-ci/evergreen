@@ -1,6 +1,7 @@
 package testutil
 
 import (
+	"context"
 	"flag"
 	"os"
 	"path/filepath"
@@ -50,6 +51,15 @@ func ConfigureIntegrationTest(t *testing.T, testSettings *evergreen.Settings, te
 	integrationSettings, err := evergreen.NewSettings(*settingsOverride)
 	require.NoError(t, err, "Error opening settings override file '%s'", *settingsOverride)
 
+	// Manually update admin settings in DB for GitHub App credentials.
+	testSettings.AuthConfig = integrationSettings.AuthConfig
+	testSettings.AuthConfig.Set(context.Background())
+	if val, ok := integrationSettings.Expansions[evergreen.GithubAppPrivateKey]; ok {
+		testSettings.Expansions[evergreen.GithubAppPrivateKey] = val
+
+	}
+	testSettings.Set(context.Background())
+
 	// Don't clobber allowed images if it doesn't exist in the override
 	// A longer-term fix will be in EVG-20160
 	allowedImages := testSettings.Providers.AWS.Pod.ECS.AllowedImages
@@ -59,7 +69,6 @@ func ConfigureIntegrationTest(t *testing.T, testSettings *evergreen.Settings, te
 	}
 
 	testSettings.Credentials = integrationSettings.Credentials
-	testSettings.AuthConfig = integrationSettings.AuthConfig
 	testSettings.Plugins = integrationSettings.Plugins
 	testSettings.Jira = integrationSettings.Jira
 	testSettings.GithubPRCreatorOrg = integrationSettings.GithubPRCreatorOrg

@@ -231,10 +231,11 @@ functions:
     command: subprocess.exec
     type: setup
     params:
-      silent: true
+      # silent: true
       working_dir: evergreen
       env:
-        GITHUB_TOKEN: ${github_token}
+        GITHUB_APP_ID: ${staging_github_app_id}
+        GITHUB_APP_KEY: ${staging_github_app_key}
         JIRA_SERVER: ${jiraserver}
         CROWD_SERVER: ${crowdserver}
         AWS_KEY: ${aws_key}

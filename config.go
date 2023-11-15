@@ -587,7 +587,7 @@ func (s *Settings) GetGithubOauthToken() (string, error) {
 
 	oauthString, err := s.GetGithubOauthString()
 	if err != nil {
-		return "", err
+		return "", nil
 	}
 	splitToken := strings.Split(oauthString, " ")
 	if len(splitToken) != 2 || splitToken[0] != "token" {

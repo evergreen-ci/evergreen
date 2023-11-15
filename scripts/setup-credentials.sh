@@ -65,9 +65,19 @@ auth:
       - username: "mci-nonprod"
         password: "change me"
         display_name: "MCI Nonprod"
+    github:
+      app_id: $GITHUB_APP_ID
+      default_owner: "evergreen-ci"
+      default_repo: "evergreen"
 
-plugins:
-  manifest:
-    github_token: "$GITHUB_TOKEN"
 github_pr_creator_org: "10gen"
+
+# Do not edit below this line
+expansions:
+  github_app_key: |
 EOF
+
+echo "$GITHUB_APP_KEY" > app_key.txt
+# Linux and MacOS friendly command to add 4 spaces to the start of each line
+sed -i'' -e 's/^/    /' app_key.txt
+cat app_key.txt >> creds.yml
