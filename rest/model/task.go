@@ -498,11 +498,6 @@ func (at *APITask) ToService() (*task.Task, error) {
 		HasCedarResults:             at.HasCedarResults,
 		ResultsFailed:               at.ResultsFailed,
 		MustHaveResults:             at.MustHaveResults,
-		StepbackInfo: &task.StepbackInfo{
-			LastFailingStepbackTaskId: at.StepbackInfo.LastFailingTaskId,
-			LastPassingStepbackTaskId: at.StepbackInfo.LastPassingTaskId,
-			NextStepbackTaskId:        at.StepbackInfo.NextTaskId,
-		},
 		SyncAtEndOpts: task.SyncAtEndOptions{
 			Enabled:  at.SyncAtEndOpts.Enabled,
 			Statuses: at.SyncAtEndOpts.Statuses,
@@ -539,6 +534,12 @@ func (at *APITask) ToService() (*task.Task, error) {
 	catcher.Add(err)
 	if catcher.HasErrors() {
 		return nil, catcher.Resolve()
+	}
+
+	if at.StepbackInfo != nil {
+		st.StepbackInfo.LastFailingStepbackTaskId = at.StepbackInfo.LastFailingTaskId
+		st.StepbackInfo.LastPassingStepbackTaskId = at.StepbackInfo.LastPassingTaskId
+		st.StepbackInfo.NextStepbackTaskId = at.StepbackInfo.NextTaskId
 	}
 
 	if len(at.ExecutionTasks) > 0 {
