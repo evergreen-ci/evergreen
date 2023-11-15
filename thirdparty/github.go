@@ -1919,7 +1919,7 @@ func GetBranchProtectionRules(ctx context.Context, token, owner, repo, branch st
 	return nil, nil
 }
 
-// createCheckrun creates a checkRun and returns a Github CheckRun object
+// CreateCheckrun creates a checkRun and returns a Github CheckRun object
 func CreateCheckrun(ctx context.Context, owner, repo, name, headSHA string, output *github.CheckRunOutput) (*github.CheckRun, error) {
 	caller := "createCheckrun"
 	ctx, span := tracer.Start(ctx, caller, trace.WithAttributes(
@@ -1948,13 +1948,13 @@ func CreateCheckrun(ctx context.Context, owner, repo, name, headSHA string, outp
 		span.SetAttributes(attribute.Bool(githubCachedAttribute, respFromCache(resp.Response)))
 	}
 	if err != nil {
-		return nil, err
+		return nil, errors.Wrap(err, "creating checkRun")
 	}
 
 	return checkRun, nil
 }
 
-// updateCheckrun updates a checkRun and returns a Github CheckRun object
+// UpdateCheckrun updates a checkRun and returns a Github CheckRun object
 func UpdateCheckrun(ctx context.Context, owner, repo, name string, checkRunID int64, output *github.CheckRunOutput) (*github.CheckRun, error) {
 	caller := "updateCheckrun"
 	ctx, span := tracer.Start(ctx, caller, trace.WithAttributes(
@@ -1982,7 +1982,7 @@ func UpdateCheckrun(ctx context.Context, owner, repo, name string, checkRunID in
 		span.SetAttributes(attribute.Bool(githubCachedAttribute, respFromCache(resp.Response)))
 	}
 	if err != nil {
-		return nil, err
+		return nil, errors.Wrap(err, "updating checkRun")
 	}
 
 	return checkRun, nil
