@@ -650,6 +650,21 @@ tasks:
         params:
           target: evergreen/output-auto.tgz
           source_dir: evergreen/archive-input
+          include:
+            - "**"
+      - command: shell.exec
+        display_name: "Check output"
+        params:
+          script: |
+            sudo apt update
+            sudo apt install tree
+            mkdir -p evergreen/bin/auto evergreen/bin/targz
+            echo "untarring auto archive"
+            tar xvzf evergreen/output-auto.tgz --directory evergreen/bin/auto
+            echo "untarring targz archive"
+            tar xvzf evergreen/output-targz.tgz --directory evergreen/bin/targz
+            echo "resulting output contents:"
+            tree evergreen/bin/
 
 
 task_groups:
