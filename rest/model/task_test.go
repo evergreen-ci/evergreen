@@ -266,7 +266,7 @@ func TestTaskBuildFromService(t *testing.T) {
 				if tc.at.StepbackInfo == nil {
 					So(apiTask.StepbackInfo, ShouldBeNil)
 				} else {
-					So(*apiTask.StepbackInfo, ShouldEqual, *tc.at.StepbackInfo)
+					So(apiTask.StepbackInfo, ShouldEqual, tc.at.StepbackInfo)
 				}
 			}
 		})
