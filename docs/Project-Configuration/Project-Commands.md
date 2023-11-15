@@ -88,8 +88,8 @@ Parameters:
 -   `source_dir`: the directory to archive/compress.
 -   `include`: a list of filename
     [blobs](https://golang.org/pkg/path/filepath/#Match) to include from the
-    source directory. If not specified, all files will be included by default
-    from the target directory.
+    source directory. If not specified, the entire source directory will be
+    included in the archive.
 -   `exclude_files`: a list of filename
     [blobs](https://golang.org/pkg/path/filepath/#Match) to exclude from the
     source directory.

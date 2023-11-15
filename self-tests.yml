@@ -632,39 +632,6 @@ tasks:
           permissions: public-read
           display_name: swagger.json (latest)
           patchable: false
-  - name: test-kim-archive
-    commands:
-      - func: get-project-and-modules
-      - func: setup-mongodb
-      - func: run-make
-        vars:
-          target: test-evergreen
-          RUN_TEST: TestKim
-      - command: archive.targz_pack
-        params:
-          target: evergreen/output-targz.tgz
-          source_dir: evergreen/archive-input
-          include:
-            - "**"
-      - command: archive.auto_pack
-        params:
-          target: evergreen/output-auto.tgz
-          source_dir: evergreen/archive-input
-          include:
-            - "**"
-      - command: shell.exec
-        display_name: "Check output"
-        params:
-          script: |
-            sudo apt update
-            sudo apt install tree
-            mkdir -p evergreen/bin/auto evergreen/bin/targz
-            echo "untarring auto archive"
-            tar xvzf evergreen/output-auto.tgz --directory evergreen/bin/auto
-            echo "untarring targz archive"
-            tar xvzf evergreen/output-targz.tgz --directory evergreen/bin/targz
-            echo "resulting output contents:"
-            tree evergreen/bin/
 
 
 task_groups:
@@ -705,7 +672,6 @@ buildvariants:
       - name: test-cloud
       - name: "js-test"
       - name: generate-api-docs
-      - name: test-kim-archive
 
   - name: race-detector
     display_name: Race Detector
