@@ -400,7 +400,8 @@ The parameters for each module are:
 -   `branch`: must be the name of branch, commit hashes _are not
     accepted_.
 
-More specifically, module hash priority is as follows:
+#### Module Hash Hierarchy
+The hash used for a module during cloning is determined by the following hierarchy:
 * For commit queue and GitHub merge queue patches, Evergreen always uses the module branch name, to ensure accurate testing.
 * For other patches, the initial default is to the githash in set-module, if specified.
 * For both commits and patches, the next default is to the `<module_name>` set in revisions for the command.
@@ -921,7 +922,7 @@ Example dummy content of a test results JSON file containing `test` objects:
                 ],
                 "metrics": [],
                 "sub_tests": []
-            },
+            }
         ]
     }
 ]
