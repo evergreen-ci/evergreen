@@ -2757,11 +2757,10 @@ func TestValidateOutput(t *testing.T) {
 	require.NoError(t, err)
 	defer os.Remove(f.Name())
 
-	// a valid output
+	// an invalid output
 	invalidOutputString := `
 {
         "title": "This is my report",
-        "summary": "We found 6 failures and 2 warnings",
         "text": "It looks like there are some errors on lines 2 and 4.",
         "annotations": [
             {
@@ -2780,5 +2779,7 @@ func TestValidateOutput(t *testing.T) {
 	assert.NoError(t, f.Close())
 
 	_, err = ReadAndValidateOutputPath(f.Name())
-	assert.Equal(t, "checkRun 'This is my report' specifies an annotation 'Error Detector' with no annotation level", err.Error())
+	expectedError := "the checkRun 'This is my report' has no summary\n" +
+		"checkRun 'This is my report' specifies an annotation 'Error Detector' with no annotation level"
+	assert.Equal(t, expectedError, err.Error())
 }

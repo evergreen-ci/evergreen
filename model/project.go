@@ -2319,39 +2319,33 @@ func validateCheckRuns(checkRun *github.CheckRunOutput) error {
 		return errors.New("checkRun Output is nil")
 	}
 
-	if checkRun.Title == nil {
-		return errors.New("checkRun has no title")
-	}
+	catcher := grip.NewBasicCatcher()
 
-	if checkRun.Summary == nil {
-		return errors.New(fmt.Sprintf("the checkRun '%s' has no summary", utility.FromStringPtr(checkRun.Title)))
-	}
+	catcher.NewWhen(checkRun.Title == nil, "checkRun has no title")
+	summaryErrMsg := fmt.Sprintf("the checkRun '%s' has no summary", utility.FromStringPtr(checkRun.Title))
+	catcher.NewWhen(checkRun.Summary == nil, summaryErrMsg)
+
 	for _, an := range checkRun.Annotations {
 		annotationErrorMessage := fmt.Sprintf("checkRun '%s' specifies an annotation '%s' with no ", utility.FromStringPtr(checkRun.Title), utility.FromStringPtr(an.Title))
 
-		if an.Path == nil {
-			return errors.New(annotationErrorMessage + "path")
-		}
-		if an.StartLine == nil {
-			return errors.New(annotationErrorMessage + "start line")
-		}
-		if an.EndLine == nil {
-			return errors.New(annotationErrorMessage + "end line")
-		}
-		if an.AnnotationLevel == nil {
-			return errors.New(annotationErrorMessage + "annotation level")
-		}
-		if an.Message == nil {
-			return errors.New(annotationErrorMessage + "message")
-		}
+		catcher.NewWhen(an.Path == nil, annotationErrorMessage+"path")
+		invalidStart := an.StartLine == nil || utility.FromIntPtr(an.StartLine) < 1
+		catcher.NewWhen(invalidStart, annotationErrorMessage+"start line or a start line < 1")
+
+		invalidEnd := an.EndLine == nil || utility.FromIntPtr(an.EndLine) < 1
+		catcher.NewWhen(invalidEnd, annotationErrorMessage+"end line or an end line < 1")
+
+		catcher.NewWhen(an.AnnotationLevel == nil, annotationErrorMessage+"annotation level")
+
+		catcher.NewWhen(an.Message == nil, annotationErrorMessage+"message")
 
 		if an.EndColumn != nil || an.StartColumn != nil {
 			if utility.FromIntPtr(an.StartLine) != utility.FromIntPtr(an.EndLine) {
-				errMessage := fmt.Sprintf("The annotation '%s' in checkRun '%s' should not include a column when start_line and end_line have different values", utility.FromStringPtr(an.Title), utility.FromStringPtr(checkRun.Title))
-				return errors.New(errMessage)
+				errMessage := fmt.Sprintf("The annotation '%s' in checkRun '%s' should not include a start or end column when start_line and end_line have different values", utility.FromStringPtr(an.Title), utility.FromStringPtr(checkRun.Title))
+				catcher.New(errMessage)
 			}
 		}
 	}
 
-	return nil
+	return catcher.Resolve()
 }
