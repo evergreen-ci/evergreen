@@ -41,6 +41,7 @@ import (
 
 const (
 	minRevisionLength = 7
+	gitHashLength     = 40 // A git hash contains 40 characters.
 )
 
 // getGroupedFiles returns the files of a Task inside a GroupedFile struct
@@ -1085,6 +1086,16 @@ func userHasDistroPermission(u *user.DBUser, distroId string, requiredLevel int)
 		Resource:      distroId,
 		ResourceType:  evergreen.DistroResourceType,
 		Permission:    evergreen.PermissionDistroSettings,
+		RequiredLevel: requiredLevel,
+	}
+	return u.HasPermission(opts)
+}
+
+func userHasProjectSettingsPermission(u *user.DBUser, projectId string, requiredLevel int) bool {
+	opts := gimlet.PermissionOpts{
+		Resource:      projectId,
+		ResourceType:  evergreen.ProjectResourceType,
+		Permission:    evergreen.PermissionProjectSettings,
 		RequiredLevel: requiredLevel,
 	}
 	return u.HasPermission(opts)

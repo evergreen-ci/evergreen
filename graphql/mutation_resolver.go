@@ -716,6 +716,39 @@ func (r *mutationResolver) SaveRepoSettingsForSection(ctx context.Context, repoS
 	return changes, nil
 }
 
+// SetLastRevision is the resolver for the setLastRevision field.
+func (r *mutationResolver) SetLastRevision(ctx context.Context, opts SetLastRevisionInput) (*SetLastRevisionPayload, error) {
+	if len(opts.Revision) < gitHashLength {
+		return nil, InputValidationError.Send(ctx, fmt.Sprintf("insufficient length: must provide %d characters for revision", gitHashLength))
+	}
+
+	project, err := model.FindBranchProjectRef(opts.ProjectIdentifier)
+	if err != nil {
+		return nil, InternalServerError.Send(ctx, fmt.Sprintf("finding project '%s': %s", opts.ProjectIdentifier, err.Error()))
+	}
+	if project == nil {
+		return nil, ResourceNotFound.Send(ctx, fmt.Sprintf("project '%s' not found", opts.ProjectIdentifier))
+	}
+
+	if err = model.UpdateLastRevision(project.Id, opts.Revision); err != nil {
+		return nil, InternalServerError.Send(ctx, fmt.Sprintf("updating last revision for '%s': %s", opts.ProjectIdentifier, err.Error()))
+	}
+
+	if err = project.SetRepotrackerError(&model.RepositoryErrorDetails{}); err != nil {
+		return nil, InternalServerError.Send(ctx, fmt.Sprintf("clearing repotracker error for '%s': %s", opts.ProjectIdentifier, err.Error()))
+	}
+
+	// Run repotracker job because the last revision for the project has been updated.
+	ts := utility.RoundPartOfHour(1).Format(units.TSFormat)
+	j := units.NewRepotrackerJob(fmt.Sprintf("catchup-%s", ts), project.Id)
+	if err = amboy.EnqueueUniqueJob(ctx, evergreen.GetEnvironment().RemoteQueue(), j); err != nil {
+		return nil, InternalServerError.Send(ctx, fmt.Sprintf("creating Repotracker catchup job: %s", err.Error()))
+	}
+	return &SetLastRevisionPayload{
+		MergeBaseRevision: opts.Revision,
+	}, nil
+}
+
 // AttachVolumeToHost is the resolver for the attachVolumeToHost field.
 func (r *mutationResolver) AttachVolumeToHost(ctx context.Context, volumeAndHost VolumeHost) (bool, error) {
 	statusCode, err := cloud.AttachVolume(ctx, volumeAndHost.VolumeID, volumeAndHost.HostID)
