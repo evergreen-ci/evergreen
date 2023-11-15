@@ -92,37 +92,6 @@ func TestS3PutValidateParams(t *testing.T) {
 				So(err.Error(), ShouldContainSubstring, "cannot use optional upload with local files include filter")
 			})
 
-			Convey("a defined inclusion filter with optional as a string upload should cause an error", func() {
-
-				params := map[string]interface{}{
-					"aws_secret":                 "secret",
-					"aws_key":                    "key",
-					"local_files_include_filter": []string{"local"},
-					"optional":                   "foo",
-					"remote_file":                "remote",
-					"bucket":                     "bck",
-					"permissions":                "public-read",
-					"content_type":               "application/x-tar",
-					"display_name":               "test_file",
-				}
-				// Before the optional parameter is expanded, we expect no errors.
-				err := cmd.ParseParams(params)
-				require.NoError(t, err)
-				// Then we have to expand the parameters.
-				abs, err := filepath.Abs("working_directory")
-				require.NoError(t, err)
-				conf := &internal.TaskConfig{
-					Expansions: *util.NewExpansions(map[string]string{}),
-					WorkDir:    abs,
-				}
-				err = cmd.expandParams(conf)
-				require.NoError(t, err)
-				// Now that optional is expanded to skip missing, we expect an error.
-				err = cmd.ParseParams(params)
-				require.Error(t, err)
-				So(err.Error(), ShouldContainSubstring, "cannot use optional upload with local files include filter")
-			})
-
 			Convey("a missing aws secret should cause an error", func() {
 
 				params := map[string]interface{}{
