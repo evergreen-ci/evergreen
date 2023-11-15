@@ -36,8 +36,6 @@ type autoArchiveCreate struct {
 
 func autoArchiveCreateFactory() Command { return &autoArchiveCreate{} }
 
-// kim: TODO: add tests for archive with just dir, archive with includes,
-// archive with excludes.
 func (c *autoArchiveCreate) Name() string { return "archive.auto_pack" }
 
 func (c *autoArchiveCreate) ParseParams(params map[string]interface{}) error {
@@ -69,8 +67,6 @@ func (c *autoArchiveCreate) Execute(ctx context.Context,
 		// matching files.
 		filenames = []string{c.SourceDir}
 	} else {
-		// kim: TODO: benchmark how long it takes to get the file paths vs. add
-		// them to the archive (.tar.gz).
 		start := time.Now()
 		files, err := agentutil.FindContentsToArchive(ctx, c.SourceDir, c.Include, c.ExcludeFiles)
 		if err != nil {
