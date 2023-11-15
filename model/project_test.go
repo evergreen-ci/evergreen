@@ -2,6 +2,7 @@ package model
 
 import (
 	"context"
+	"os"
 	"testing"
 	"time"
 
@@ -2714,4 +2715,71 @@ tasks:
 			tCase(t, p, pp)
 		})
 	}
+}
+
+func TestReadOutput(t *testing.T) {
+	f, err := os.CreateTemp(os.TempDir(), "")
+	require.NoError(t, err)
+	defer os.Remove(f.Name())
+
+	// a valid output
+	outputString := `
+{
+        "title": "This is my report",
+        "summary": "We found 6 failures and 2 warnings",
+        "text": "It looks like there are some errors on lines 2 and 4.",
+        "annotations": [
+            {
+                "path": "README.md",
+                "annotation_level": "warning",
+                "title": "Error Detector",
+                "message": "a message",
+                "raw_details": "Do you mean this other thing?",
+                "start_line": 2,
+                "end_line": 4
+            }
+        ]
+}
+`
+	_, err = f.WriteString(outputString)
+	require.NoError(t, err)
+	assert.NoError(t, f.Close())
+
+	output, err := ReadAndValidateOutputPath(f.Name())
+	require.NoError(t, err)
+	assert.Equal(t, "This is my report", utility.FromStringPtr(output.Title))
+	assert.Len(t, output.Annotations, 1)
+	assert.Equal(t, "a message", utility.FromStringPtr(output.Annotations[0].Message))
+}
+
+func TestValidateOutput(t *testing.T) {
+	f, err := os.CreateTemp(os.TempDir(), "")
+	require.NoError(t, err)
+	defer os.Remove(f.Name())
+
+	// an invalid output
+	invalidOutputString := `
+{
+        "title": "This is my report",
+        "text": "It looks like there are some errors on lines 2 and 4.",
+        "annotations": [
+            {
+                "path": "README.md",
+                "title": "Error Detector",
+                "message": "a message",
+                "raw_details": "Do you mean this other thing?",
+                "start_line": 2,
+                "end_line": 4
+            }
+        ]
+}
+`
+	_, err = f.WriteString(invalidOutputString)
+	require.NoError(t, err)
+	assert.NoError(t, f.Close())
+
+	_, err = ReadAndValidateOutputPath(f.Name())
+	expectedError := "the checkRun 'This is my report' has no summary\n" +
+		"checkRun 'This is my report' specifies an annotation 'Error Detector' with no annotation level"
+	assert.Equal(t, expectedError, err.Error())
 }

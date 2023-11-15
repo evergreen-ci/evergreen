@@ -139,8 +139,7 @@ require (
 	github.com/golang/groupcache v0.0.0-20210331224755-41bb18bfe9da // indirect
 	github.com/golang/protobuf v1.5.3 // indirect
 	github.com/golang/snappy v0.0.4 // indirect
-	github.com/google/go-github/v29 v29.0.2 // indirect
-	github.com/google/go-github/v53 v53.2.0 // indirect
+	github.com/google/go-github/v53 v53.2.0
 	github.com/google/go-querystring v1.1.0 // indirect
 	github.com/google/s2a-go v0.1.4 // indirect
 	github.com/google/uuid v1.3.1 // indirect
@@ -223,5 +222,6 @@ require (
 
 require (
 	github.com/golang-jwt/jwt/v4 v4.5.0 // indirect
+	github.com/google/go-github/v29 v29.0.2 // indirect
 	github.com/sosodev/duration v1.1.0 // indirect
 )
