@@ -1100,18 +1100,6 @@ func generateId(name string, projectIdentifier string, projBV *BuildVariant, rev
 		v.CreateTime.Format(build.IdTimeLayout))
 }
 
-var (
-	// bson fields for the project struct
-	ProjectIdentifierKey    = bsonutil.MustHaveTag(Project{}, "Identifier")
-	ProjectPreKey           = bsonutil.MustHaveTag(Project{}, "Pre")
-	ProjectPostKey          = bsonutil.MustHaveTag(Project{}, "Post")
-	ProjectModulesKey       = bsonutil.MustHaveTag(Project{}, "Modules")
-	ProjectBuildVariantsKey = bsonutil.MustHaveTag(Project{}, "BuildVariants")
-	ProjectFunctionsKey     = bsonutil.MustHaveTag(Project{}, "Functions")
-	ProjectStepbackKey      = bsonutil.MustHaveTag(Project{}, "Stepback")
-	ProjectTasksKey         = bsonutil.MustHaveTag(Project{}, "Tasks")
-)
-
 // PopulateExpansions returns expansions for a task, excluding build variant
 // expansions, project variables, and project/version parameters.
 func PopulateExpansions(t *task.Task, h *host.Host, oauthToken, appToken string) (util.Expansions, error) {
