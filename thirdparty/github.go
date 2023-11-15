@@ -1918,3 +1918,72 @@ func GetBranchProtectionRules(ctx context.Context, token, owner, repo, branch st
 	}
 	return nil, nil
 }
+
+// createCheckrun creates a checkRun and returns a Github CheckRun object
+func CreateCheckrun(ctx context.Context, owner, repo, name, headSHA string, output *github.CheckRunOutput) (*github.CheckRun, error) {
+	caller := "createCheckrun"
+	ctx, span := tracer.Start(ctx, caller, trace.WithAttributes(
+		attribute.String(githubEndpointAttribute, caller),
+		attribute.String(githubOwnerAttribute, owner),
+		attribute.String(githubRepoAttribute, repo),
+	))
+	defer span.End()
+
+	token, err := getInstallationToken(ctx, owner, repo, nil)
+	if err != nil {
+		return nil, errors.Wrap(err, "getting installation token")
+	}
+
+	githubClient := getGithubClient(token, caller, retryConfig{retry: true})
+
+	opts := github.CreateCheckRunOptions{
+		Output:  output,
+		Name:    name,
+		HeadSHA: headSHA,
+	}
+
+	checkRun, resp, err := githubClient.Checks.CreateCheckRun(ctx, owner, repo, opts)
+	if resp != nil {
+		defer resp.Body.Close()
+		span.SetAttributes(attribute.Bool(githubCachedAttribute, respFromCache(resp.Response)))
+	}
+	if err != nil {
+		return nil, err
+	}
+
+	return checkRun, nil
+}
+
+// updateCheckrun updates a checkRun and returns a Github CheckRun object
+func UpdateCheckrun(ctx context.Context, owner, repo, name string, checkRunID int64, output *github.CheckRunOutput) (*github.CheckRun, error) {
+	caller := "updateCheckrun"
+	ctx, span := tracer.Start(ctx, caller, trace.WithAttributes(
+		attribute.String(githubEndpointAttribute, caller),
+		attribute.String(githubOwnerAttribute, owner),
+		attribute.String(githubRepoAttribute, repo),
+	))
+	defer span.End()
+
+	token, err := getInstallationToken(ctx, owner, repo, nil)
+	if err != nil {
+		return nil, errors.Wrap(err, "getting installation token")
+	}
+
+	githubClient := getGithubClient(token, caller, retryConfig{retry: true})
+
+	opts := github.UpdateCheckRunOptions{
+		Output: output,
+		Name:   name,
+	}
+
+	checkRun, resp, err := githubClient.Checks.UpdateCheckRun(ctx, owner, repo, checkRunID, opts)
+	if resp != nil {
+		defer resp.Body.Close()
+		span.SetAttributes(attribute.Bool(githubCachedAttribute, respFromCache(resp.Response)))
+	}
+	if err != nil {
+		return nil, err
+	}
+
+	return checkRun, nil
+}
