@@ -52,6 +52,7 @@ func makeTaskTriggers() eventHandler {
 		event.TriggerFailure:                     t.taskFailure,
 		event.TriggerSuccess:                     t.taskSuccess,
 		event.TriggerExceedsDuration:             t.taskExceedsDuration,
+		event.TriggerSuccessfulExceedsDuration:   t.taskSuccessfulExceedsDuration,
 		event.TriggerRuntimeChangeByPercent:      t.taskRuntimeChange,
 		event.TriggerRegression:                  t.taskRegression,
 		event.TriggerTaskFirstFailureInVersion:   t.taskFirstFailureInVersion,
@@ -663,6 +664,31 @@ func shouldSendTaskRegression(sub *event.Subscription, t *task.Task, previousTas
 		return taskFinishedTwoOrMoreDaysAgo(lastAlerted.TaskId, sub)
 	}
 	return false, nil
+}
+
+func (t *taskTriggers) taskSuccessfulExceedsDuration(sub *event.Subscription) (*notification.Notification, error) {
+	if t.task.IsPartOfDisplay() {
+		return nil, nil
+	}
+
+	if t.task.Status != evergreen.TaskSucceeded {
+		return nil, nil
+	}
+
+	thresholdString, ok := sub.TriggerData[event.TaskDurationKey]
+	if !ok {
+		return nil, errors.Errorf("subscription '%s' has no task time threshold", sub.ID)
+	}
+	threshold, err := strconv.Atoi(thresholdString)
+	if err != nil {
+		return nil, errors.Errorf("subscription '%s' has an invalid time threshold", sub.ID)
+	}
+
+	maxDuration := time.Duration(threshold) * time.Second
+	if !t.task.StartTime.Add(maxDuration).Before(t.task.FinishTime) {
+		return nil, nil
+	}
+	return t.generate(sub, fmt.Sprintf("exceeded %d seconds", threshold), "")
 }
 
 func (t *taskTriggers) taskExceedsDuration(sub *event.Subscription) (*notification.Notification, error) {

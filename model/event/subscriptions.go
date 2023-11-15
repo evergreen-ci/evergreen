@@ -85,6 +85,7 @@ const (
 	TriggerFamilySuccess             = "family-success"
 	TriggerRegression                = "regression"
 	TriggerExceedsDuration           = "exceeds-duration"
+	TriggerSuccessfulExceedsDuration = "successful-exceeds-duration"
 	TriggerRuntimeChangeByPercent    = "runtime-change"
 	TriggerExpiration                = "expiration"
 	TriggerPatchStarted              = "started"

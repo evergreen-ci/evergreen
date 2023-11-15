@@ -1198,6 +1198,25 @@ func (s *taskSuite) TestTaskExceedsTime() {
 	s.Nil(n)
 }
 
+func (s *taskSuite) TestSuccessfulTaskExceedsTime() {
+	// successful task that exceeds time should generate
+	s.t.event = &event.EventLogEntry{
+		EventType: event.TaskFinished,
+	}
+	s.t.data.Status = evergreen.TaskSucceeded
+	s.NoError(db.Update(task.Collection, bson.M{"_id": s.task.Id}, &s.task))
+	n, err := s.t.taskExceedsDuration(&s.subs[3])
+	s.NoError(err)
+	s.NotNil(n)
+
+	// task that is not successful should not generate
+	s.t.data.Status = evergreen.TaskFailed
+	s.NoError(db.Update(task.Collection, bson.M{"_id": s.task.Id}, &s.task))
+	n, err = s.t.taskSuccessfulExceedsDuration(&s.subs[3])
+	s.NoError(err)
+	s.Nil(n)
+}
+
 func (s *taskSuite) TestTaskRuntimeChange() {
 	// no previous task should not generate
 	s.t.event = &event.EventLogEntry{
