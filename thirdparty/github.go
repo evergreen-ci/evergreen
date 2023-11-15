@@ -153,7 +153,17 @@ type GithubMergeGroup struct {
 	Repo       string `bson:"repo"`
 	BaseBranch string `bson:"base_branch"` // BaseBranch is what GitHub merges to
 	HeadBranch string `bson:"head_branch"` // HeadBranch is the merge group's gh-readonly-queue branch
-	HeadSHA    string `bson:"head_sha"`
+
+	// HeadSHA is the SHA of the commit at the head of the merge group. For each
+	// PR in the merge group, GitHub merges the commits from that PR together,
+	// so there are as many commits as there are PRs in the merge group. This is
+	// only the SHA of the first commit in the merge group.
+	HeadSHA string `bson:"head_sha"`
+	// HeadCommit is the title of the commit at the head of the merge group. For
+	// each PR in the merge group, GitHub merges the commits from that PR
+	// together, so there are as many commits as there are PRs in the merge
+	// group. This is only the title of the first commit in the merge group.
+	HeadCommit string `bson:"head_commit"`
 }
 
 // SendGithubStatusInput is the input to the SendPendingStatusToGithub function and contains
@@ -1348,7 +1358,8 @@ func authorizedForOrg(ctx context.Context, token, requiredOrganization, name str
 	}
 	githubClient := getGithubClient(token, caller, retryConfig{retry: true})
 
-	opts := &github.ListOptions{PerPage: 100}
+	const numInstallationsLimit = 2000
+	opts := &github.ListOptions{PerPage: numInstallationsLimit}
 	for {
 		installations, resp, err := githubClient.Organizations.ListInstallations(ctx, requiredOrganization, opts)
 		if err != nil {
@@ -1916,4 +1927,73 @@ func GetBranchProtectionRules(ctx context.Context, token, owner, repo, branch st
 		return checks, nil
 	}
 	return nil, nil
+}
+
+// CreateCheckrun creates a checkRun and returns a Github CheckRun object
+func CreateCheckrun(ctx context.Context, owner, repo, name, headSHA string, output *github.CheckRunOutput) (*github.CheckRun, error) {
+	caller := "createCheckrun"
+	ctx, span := tracer.Start(ctx, caller, trace.WithAttributes(
+		attribute.String(githubEndpointAttribute, caller),
+		attribute.String(githubOwnerAttribute, owner),
+		attribute.String(githubRepoAttribute, repo),
+	))
+	defer span.End()
+
+	token, err := getInstallationToken(ctx, owner, repo, nil)
+	if err != nil {
+		return nil, errors.Wrap(err, "getting installation token")
+	}
+
+	githubClient := getGithubClient(token, caller, retryConfig{retry: true})
+
+	opts := github.CreateCheckRunOptions{
+		Output:  output,
+		Name:    name,
+		HeadSHA: headSHA,
+	}
+
+	checkRun, resp, err := githubClient.Checks.CreateCheckRun(ctx, owner, repo, opts)
+	if resp != nil {
+		defer resp.Body.Close()
+		span.SetAttributes(attribute.Bool(githubCachedAttribute, respFromCache(resp.Response)))
+	}
+	if err != nil {
+		return nil, errors.Wrap(err, "creating checkRun")
+	}
+
+	return checkRun, nil
+}
+
+// UpdateCheckrun updates a checkRun and returns a Github CheckRun object
+func UpdateCheckrun(ctx context.Context, owner, repo, name string, checkRunID int64, output *github.CheckRunOutput) (*github.CheckRun, error) {
+	caller := "updateCheckrun"
+	ctx, span := tracer.Start(ctx, caller, trace.WithAttributes(
+		attribute.String(githubEndpointAttribute, caller),
+		attribute.String(githubOwnerAttribute, owner),
+		attribute.String(githubRepoAttribute, repo),
+	))
+	defer span.End()
+
+	token, err := getInstallationToken(ctx, owner, repo, nil)
+	if err != nil {
+		return nil, errors.Wrap(err, "getting installation token")
+	}
+
+	githubClient := getGithubClient(token, caller, retryConfig{retry: true})
+
+	opts := github.UpdateCheckRunOptions{
+		Output: output,
+		Name:   name,
+	}
+
+	checkRun, resp, err := githubClient.Checks.UpdateCheckRun(ctx, owner, repo, checkRunID, opts)
+	if resp != nil {
+		defer resp.Body.Close()
+		span.SetAttributes(attribute.Bool(githubCachedAttribute, respFromCache(resp.Response)))
+	}
+	if err != nil {
+		return nil, errors.Wrap(err, "updating checkRun")
+	}
+
+	return checkRun, nil
 }

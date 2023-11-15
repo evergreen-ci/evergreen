@@ -1030,7 +1030,7 @@ func (s *AgentSuite) TestEndTaskResponse() {
 	s.T().Run("TaskFailingWithCurrentCommandOverridesEmptyDescription", func(t *testing.T) {
 		detail := s.a.endTaskResponse(s.ctx, s.tc, evergreen.TaskFailed, "")
 		s.Equal(evergreen.TaskFailed, detail.Status)
-		s.Contains(detail.Description, s.tc.getCurrentCommand().DisplayName())
+		s.Contains(detail.Description, s.tc.getCurrentCommand().FullDisplayName())
 	})
 	s.T().Run("TaskFailingWithCurrentCommandIsOverriddenBySystemFailureDescription", func(t *testing.T) {
 		detail := s.a.endTaskResponse(s.ctx, s.tc, evergreen.TaskFailed, systemFailureDescription)
@@ -2303,18 +2303,18 @@ func checkMockLogs(t *testing.T, mc *client.Mock, taskID string, logsToFind []st
 	}
 
 	var allLogs []string
-	for _, msg := range mc.GetMockMessages()[taskID] {
+	for _, line := range mc.GetTaskLogs(taskID) {
 		for log := range expectedLog {
-			if strings.Contains(msg.Message, log) {
+			if strings.Contains(line.Data, log) {
 				expectedLog[log] = true
 			}
 		}
 		for log := range unexpectedLog {
-			if strings.Contains(msg.Message, log) {
+			if strings.Contains(line.Data, log) {
 				unexpectedLog[log] = true
 			}
 		}
-		allLogs = append(allLogs, msg.Message)
+		allLogs = append(allLogs, line.Data)
 	}
 	var displayLogs bool
 	for log, found := range expectedLog {

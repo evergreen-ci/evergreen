@@ -60,14 +60,14 @@
                 {
                   "type": "",
                   "severity": "I",
-                  "message": "      [jar] Building MANIFEST-only jar: C:\\data\\mci\\fd27d777b88be249b1059d842a975a6d\\mms\\server\\build\\classpath.all.jar",
+                  "message": "    [javac] 9 warnings",
                   "timestamp": "2019-12-07T13:31:19.637-05:00",
                   "version": 0
                 },
                 {
                   "type": "",
                   "severity": "I",
-                  "message": "    [javac] 9 warnings",
+                  "message": "      [jar] Building MANIFEST-only jar: C:\\data\\mci\\fd27d777b88be249b1059d842a975a6d\\mms\\server\\build\\classpath.all.jar",
                   "timestamp": "2019-12-07T13:31:19.637-05:00",
                   "version": 0
                 }
@@ -85,8 +85,15 @@
                 {
                   "type": "",
                   "severity": "I",
-                  "message": "      [jar] Building MANIFEST-only jar: C:\\data\\mci\\fd27d777b88be249b1059d842a975a6d\\mms\\server\\build\\classpath.all.jar",
-                  "timestamp": "2019-12-07T13:31:19.637-05:00",
+                  "message": "    [javac]                    ^",
+                  "timestamp": "2019-12-07T13:31:19.393-05:00",
+                  "version": 0
+                },
+                {
+                  "type": "",
+                  "severity": "I",
+                  "message": "    [javac]     protected void finalize() {",
+                  "timestamp": "2019-12-07T13:31:19.393-05:00",
                   "version": 0
                 },
                 {
@@ -99,15 +106,8 @@
                 {
                   "type": "",
                   "severity": "I",
-                  "message": "    [javac]                    ^",
-                  "timestamp": "2019-12-07T13:31:19.393-05:00",
-                  "version": 0
-                },
-                {
-                  "type": "",
-                  "severity": "I",
-                  "message": "    [javac]     protected void finalize() {",
-                  "timestamp": "2019-12-07T13:31:19.393-05:00",
+                  "message": "      [jar] Building MANIFEST-only jar: C:\\data\\mci\\fd27d777b88be249b1059d842a975a6d\\mms\\server\\build\\classpath.all.jar",
+                  "timestamp": "2019-12-07T13:31:19.637-05:00",
                   "version": 0
                 }
               ]

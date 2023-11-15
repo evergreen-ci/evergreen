@@ -1023,6 +1023,8 @@ func detailStatusToHumanSpeak(status string) string {
 		return "because the system was unresponsive"
 	case evergreen.TaskSystemTimedOut:
 		return "because the system timed out"
+	case evergreen.TaskAborted:
+		return "because the task was aborted"
 	default:
 		return fmt.Sprintf("because of something else (%s)", status)
 	}

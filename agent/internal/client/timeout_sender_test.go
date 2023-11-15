@@ -2,55 +2,56 @@ package client
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
 	"io"
 	"math/rand"
+	"net/http"
+	"net/http/httptest"
 	"os"
 	"path/filepath"
-	"strconv"
 	"testing"
 	"time"
 
-	"github.com/evergreen-ci/evergreen/apimodels"
+	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/model"
+	"github.com/evergreen-ci/evergreen/model/log"
+	"github.com/evergreen-ci/evergreen/model/task"
+	"github.com/evergreen-ci/evergreen/taskoutput"
 	"github.com/mongodb/grip/level"
 	"github.com/mongodb/grip/logging"
 	"github.com/mongodb/grip/message"
 	"github.com/mongodb/grip/send"
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 	"github.com/stretchr/testify/suite"
 )
 
 func TestTimeoutSender(t *testing.T) {
-	assert := assert.New(t)
-
-	ctx, cancel := context.WithCancel(context.Background())
-	defer cancel()
-
 	comm := NewMock("url")
 	td := TaskData{ID: "task", Secret: "secret"}
-	sender := newEvergreenLogSender(ctx, comm, "testStream", td, defaultLogBufferSize, defaultLogBufferTime)
-	s, ok := sender.(*evergreenLogSender)
-	assert.True(ok)
-	s.setBufferTime(10 * time.Millisecond)
-	sender = makeTimeoutLogSender(s, comm)
+	ms := newMockSender("test_timeout_sender", func(line log.LogLine) error {
+		return comm.sendTaskLogLine(td, line)
+	})
+	sender := makeTimeoutLogSender(ms, comm)
 
-	// If no messages are sent, the last message time *should not* update
+	// If no messages are sent, the last message time *should not* update.
 	last1 := comm.LastMessageAt()
 	time.Sleep(20 * time.Millisecond)
 	last2 := comm.LastMessageAt()
-	assert.Equal(last1, last2)
+	assert.Equal(t, last1, last2)
 
-	// If a message is sent, the last message time *should* upate
+	// If a message is sent, the last message time *should* update.
 	sender.Send(message.NewDefaultMessage(level.Error, "hello world!!"))
 	time.Sleep(20 * time.Millisecond)
-	assert.NoError(s.Close())
+	require.NoError(t, sender.Close())
 	last3 := comm.LastMessageAt()
-	assert.NotEqual(last2, last3)
+	assert.NotEqual(t, last2, last3)
 }
 
 type logSenderSuite struct {
 	suite.Suite
+	server            *httptest.Server
 	restClient        *hostCommunicator
 	tempDir           string
 	numMessages       int
@@ -63,21 +64,45 @@ func TestLogSenders(t *testing.T) {
 	suite.Run(t, &s)
 }
 
-func (s *logSenderSuite) SetupTest() {
-	s.underlyingSenders = []send.Sender{}
-}
-
 func (s *logSenderSuite) SetupSuite() {
-	s.restClient = NewHostCommunicator("foo", "hostID", "hostSecret").(*hostCommunicator)
+	s.server, _ = newMockServer(func(w http.ResponseWriter, _ *http.Request) {
+		data, err := json.Marshal(&task.Task{
+			Id:      "task",
+			Project: "project",
+			TaskOutputInfo: &taskoutput.TaskOutput{
+				TaskLogs: taskoutput.TaskLogOutput{
+					Version: 1,
+					BucketConfig: evergreen.BucketConfig{
+						Name: s.T().TempDir(),
+						Type: "local",
+					},
+				},
+			},
+		})
+		s.Require().NoError(err)
+
+		_, err = w.Write(data)
+		s.Require().NoError(err)
+	})
+
+	s.restClient = NewHostCommunicator(s.server.URL, "hostID", "hostSecret").(*hostCommunicator)
 	s.tempDir = s.T().TempDir()
 	s.numMessages = 1000
 	s.maxSleep = 10 * time.Millisecond
 	rand.Seed(time.Now().UnixNano())
 }
 
+func (s *logSenderSuite) TearDownSuite() {
+	s.server.Close()
+}
+
+func (s *logSenderSuite) SetupTest() {
+	s.underlyingSenders = []send.Sender{}
+}
+
 func (s *logSenderSuite) TearDownTest() {
 	for _, sender := range s.underlyingSenders {
-		s.Require().NoError(sender.Close())
+		s.NoError(sender.Close())
 	}
 }
 
@@ -89,7 +114,7 @@ func (s *logSenderSuite) randomSleep() {
 
 func (s *logSenderSuite) TestFileLogger() {
 	logFileName := fmt.Sprintf("%s/log", s.tempDir)
-	fileSender, toClose, err := s.restClient.makeSender(context.Background(), TaskData{}, []LogOpts{{Sender: model.FileLogSender, Filepath: logFileName}}, false, "", "")
+	fileSender, toClose, err := s.restClient.makeSender(context.Background(), TaskData{}, []LogOpts{{Sender: model.FileLogSender, Filepath: logFileName}}, false, taskoutput.TaskLogTypeAgent)
 	s.NoError(err)
 	s.underlyingSenders = append(s.underlyingSenders, toClose...)
 	s.NotNil(fileSender)
@@ -112,12 +137,11 @@ func (s *logSenderSuite) TestFileLogger() {
 	}
 	s.Contains(logStr, "p=debug")
 
-	// no file logger for system logs
+	// No file logger for system logs.
 	path := filepath.Join(s.tempDir, "nothere")
-	defaultSender, toClose, err := s.restClient.makeSender(context.Background(), TaskData{}, []LogOpts{{Sender: model.FileLogSender, Filepath: path}}, false, apimodels.SystemLogPrefix, "")
-	s.NoError(err)
+	defaultSender, toClose, err := s.restClient.makeSender(context.Background(), TaskData{Secret: "secret"}, []LogOpts{{Sender: model.FileLogSender, Filepath: path}}, false, taskoutput.TaskLogTypeSystem)
+	s.Require().NoError(err)
 	s.underlyingSenders = append(s.underlyingSenders, toClose...)
-	s.NotNil(defaultSender)
 	logger = logging.MakeGrip(defaultSender)
 	logger.Debug("foo")
 	s.NoError(defaultSender.Close())
@@ -125,31 +149,8 @@ func (s *logSenderSuite) TestFileLogger() {
 	s.True(os.IsNotExist(err))
 }
 
-func (s *logSenderSuite) TestEvergreenLogger() {
-	ctx := context.Background()
-	comm := NewMock("url")
-	td := TaskData{ID: "task", Secret: "secret"}
-	sender := newEvergreenLogSender(ctx, comm, "testStream", td, defaultLogBufferSize, defaultLogBufferTime)
-	e, ok := sender.(*evergreenLogSender)
-	s.True(ok)
-	e.setBufferTime(1 * time.Second)
-	sender = makeTimeoutLogSender(e, comm)
-	logger := logging.MakeGrip(sender)
-
-	for i := 0; i < s.numMessages; i++ {
-		logger.Debug(i)
-		s.randomSleep()
-	}
-	s.NoError(sender.Close())
-
-	msgs := comm.GetMockMessages()[td.ID]
-	for i := 0; i < s.numMessages; i++ {
-		s.Equal(strconv.Itoa(i), msgs[i].Message)
-	}
-}
-
 func (s *logSenderSuite) TestMisconfiguredSender() {
-	sender, toClose, err := s.restClient.makeSender(context.Background(), TaskData{}, []LogOpts{{Sender: model.BuildloggerLogSender}}, false, "", "")
+	sender, toClose, err := s.restClient.makeSender(context.Background(), TaskData{}, []LogOpts{{Sender: model.EvergreenLogSender}}, false, taskoutput.TaskLogTypeAgent)
 	s.underlyingSenders = append(s.underlyingSenders, toClose...)
 	s.Error(err)
 	s.Nil(sender)

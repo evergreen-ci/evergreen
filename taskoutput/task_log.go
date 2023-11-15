@@ -7,8 +7,8 @@ import (
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/apimodels"
 	"github.com/evergreen-ci/evergreen/model/log"
-	"github.com/evergreen-ci/evergreen/model/tasklog"
 	"github.com/evergreen-ci/utility"
+	"github.com/mongodb/grip/send"
 	"github.com/pkg/errors"
 )
 
@@ -22,13 +22,18 @@ const (
 	TaskLogTypeTask   TaskLogType = "task_log"
 )
 
-func (t TaskLogType) validate() error {
+func (t TaskLogType) validate(writing bool) error {
 	switch t {
 	case TaskLogTypeAll, TaskLogTypeAgent, TaskLogTypeSystem, TaskLogTypeTask:
-		return nil
 	default:
 		return errors.Errorf("unrecognized task log type '%s'", t)
 	}
+
+	if writing && t == TaskLogTypeAll {
+		return errors.Errorf("cannot persist task log type '%s'", TaskLogTypeAll)
+	}
+
+	return nil
 }
 
 // TaskLogOutput is the versioned entry point for coordinating persistent
@@ -60,9 +65,41 @@ type TaskLogGetOptions struct {
 	TailN int
 }
 
+// NewSender returns a new task log sender for the given task run.
+func (o TaskLogOutput) NewSender(ctx context.Context, taskOpts TaskOptions, senderOpts EvergreenSenderOptions, logType TaskLogType) (send.Sender, error) {
+	if err := logType.validate(true); err != nil {
+		return nil, err
+	}
+
+	svc, err := o.getLogService(ctx)
+	if err != nil {
+		return nil, errors.Wrap(err, "getting log service")
+	}
+
+	senderOpts.appendLines = func(ctx context.Context, lines []log.LogLine) error {
+		return svc.Append(ctx, o.getLogName(taskOpts, logType), lines)
+	}
+
+	return newEvergreenSender(ctx, fmt.Sprintf("%s-%s", taskOpts.TaskID, logType), senderOpts)
+}
+
+// Append appends log lines to the specified task log for the given task run.
+func (o TaskLogOutput) Append(ctx context.Context, taskOpts TaskOptions, logType TaskLogType, lines []log.LogLine) error {
+	if err := logType.validate(true); err != nil {
+		return err
+	}
+
+	svc, err := o.getLogService(ctx)
+	if err != nil {
+		return errors.Wrap(err, "getting log service")
+	}
+
+	return svc.Append(ctx, o.getLogName(taskOpts, logType), lines)
+}
+
 // Get returns task logs belonging to the specified task run.
 func (o TaskLogOutput) Get(ctx context.Context, env evergreen.Environment, taskOpts TaskOptions, getOpts TaskLogGetOptions) (log.LogIterator, error) {
-	if err := getOpts.LogType.validate(); err != nil {
+	if err := getOpts.LogType.validate(false); err != nil {
 		return nil, err
 	}
 
@@ -131,38 +168,6 @@ func (o TaskLogOutput) getBuildloggerLogs(ctx context.Context, env evergreen.Env
 	} else {
 		opts.Tags = []string{string(getOpts.LogType)}
 	}
-	it, err := apimodels.GetBuildloggerLogs(ctx, opts)
-	if err != nil {
-		// TODO (DEVPROD-57): Remove fallback code once support for DB
-		// task logs is removed.
-		var logTypeFilter []string
-		switch getOpts.LogType {
-		case TaskLogTypeAgent:
-			logTypeFilter = []string{apimodels.AgentLogPrefix}
-		case TaskLogTypeTask:
-			logTypeFilter = []string{apimodels.TaskLogPrefix}
-		case TaskLogTypeSystem:
-			logTypeFilter = []string{apimodels.SystemLogPrefix}
-		}
 
-		var messages []apimodels.LogMessage
-		if getOpts.TailN > 0 {
-			messages, err = tasklog.FindMostRecentLogMessages(taskOpts.TaskID, taskOpts.Execution, getOpts.TailN, nil, logTypeFilter)
-			if err != nil {
-				return nil, errors.Wrap(err, "getting most recent DB task logs")
-			}
-		} else {
-			msgs, err := tasklog.GetRawTaskLogChannel(taskOpts.TaskID, taskOpts.Execution, nil, logTypeFilter)
-			if err != nil {
-				return nil, errors.Wrap(err, "getting DB task logs")
-			}
-
-			for msg := range msgs {
-				messages = append(messages, msg)
-			}
-		}
-		it = apimodels.NewLogMessageIterator(messages)
-	}
-
-	return it, nil
+	return apimodels.GetBuildloggerLogs(ctx, opts)
 }

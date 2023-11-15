@@ -18,6 +18,8 @@ import (
 )
 
 const decoHostNotifyJobName = "deco-host-notify"
+const fieldAssignedTeams = "customfield_12751"
+const runtimeEnvironmentsId = "25626"
 
 func init() {
 	registry.AddJobType(decoHostNotifyJobName, func() amboy.Job { return makeDecoHostsNotifyJob() })
@@ -134,7 +136,10 @@ func (j *decoHostNotifyJob) Run(_ context.Context) {
 		Summary:     fmt.Sprintf("investigate automatically decommissioned host '%s'", j.Host.Id),
 		Type:        "Incident",
 		Description: strings.Join(descParts, "\n"),
-		Components:  []string{"Evergreen"},
+		Components:  []string{"Static Host Management"},
+		Fields: map[string]interface{}{
+			fieldAssignedTeams: []map[string]string{{"id": runtimeEnvironmentsId}}, // Assigned Teams: Runtime Environments
+		},
 	}
 
 	msg := message.MakeJiraMessage(&issue)

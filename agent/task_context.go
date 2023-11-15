@@ -41,7 +41,7 @@ func (tc *taskContext) setCurrentCommand(command command.Command) {
 	defer tc.Unlock()
 	tc.currentCommand = command
 	if tc.logger != nil {
-		tc.logger.Execution().Infof("Current command set to %s (%s).", tc.currentCommand.DisplayName(), tc.currentCommand.Type())
+		tc.logger.Execution().Infof("Current command set to %s (%s).", tc.currentCommand.FullDisplayName(), tc.currentCommand.Type())
 	}
 }
 
@@ -70,7 +70,7 @@ func (tc *taskContext) setCurrentIdleTimeout(cmd command.Command, block command.
 	tc.setIdleTimeout(timeout)
 
 	tc.logger.Execution().Debugf("Set idle timeout for %s (%s) to %s.",
-		cmd.DisplayName(), cmd.Type(), tc.getIdleTimeout())
+		cmd.FullDisplayName(), cmd.Type(), tc.getIdleTimeout())
 }
 
 // getCurrentIdleTimeout returns the idle timeout for the current running

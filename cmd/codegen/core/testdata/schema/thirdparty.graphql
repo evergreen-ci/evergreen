@@ -1,4 +1,0 @@
-type GithubOpts {
-  Account: String!
-  Repo: String!
-}

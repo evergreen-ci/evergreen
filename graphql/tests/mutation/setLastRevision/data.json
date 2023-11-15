@@ -1,0 +1,27 @@
+{
+  "project_ref": [
+    {
+      "_id" : "sandbox_project_id",
+      "identifier" : "sandbox",
+      "display_name" : "Sandbox",
+      "enabled" : null,
+      "owner_name" : "evergreen-ci",
+      "repo_name" : "commit-queue-sandbox",
+      "branch_name" : "main",
+      "repo_ref_id": "repo_id",
+      "admins": ["me"],
+      "repotracker_error": {
+        "exists": true,
+        "invalid_revision": "edd78c1d58",
+        "merge_base_revision": ""
+      }
+    }
+  ],
+  "repo_revisions": [
+    {
+      "_id": "sandbox_project_id",
+      "last_commit_number": 10,
+      "last_revision": "edd78c1d581bf757a880777b00685321685a8e67"
+    }
+  ]
+}

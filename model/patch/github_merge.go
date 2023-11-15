@@ -48,8 +48,11 @@ type githubMergeIntent struct {
 	// HeadRef is the head ref of the merge group. Evergreen clones this.
 	HeadRef string `bson:"base_branch"`
 
-	// HeadHash is the SHA of the head of the merge group. Evergreen checks this out.
+	// HeadSHA is the SHA of the head of the merge group. Evergreen checks this out.
 	HeadSHA string `bson:"head_hash"`
+
+	// HeadCommit is the commit message of the head of the merge group.
+	HeadCommit string `bson:"head_commit"`
 
 	// BaseSHA is the SHA of the base of the merge group.
 	BaseSHA string `bson:"base_hash"`
@@ -85,6 +88,11 @@ func NewGithubMergeIntent(msgDeliveryID string, caller string, mg *github.MergeG
 	if mg.GetMergeGroup().GetBaseSHA() == "" {
 		catcher.Add(errors.New("base SHA cannot be empty"))
 	}
+
+	// The head commit message is optional, as it's displayed in the UI but not
+	// used when checking out the version or sending notifications, so we do not
+	// check if it exists.
+
 	if catcher.HasErrors() {
 		return nil, catcher.Resolve()
 	}
@@ -98,6 +106,7 @@ func NewGithubMergeIntent(msgDeliveryID string, caller string, mg *github.MergeG
 		"Repo":       mg.GetRepo().GetName(),
 		"HeadRef":    mg.GetMergeGroup().GetHeadRef(),
 		"HeadSHA":    mg.GetMergeGroup().GetHeadSHA(),
+		"HeadCommit": mg.GetMergeGroup().GetHeadCommit().GetMessage(),
 		"BaseSHA":    mg.GetMergeGroup().GetBaseSHA(),
 		"CalledBy":   caller,
 	})
@@ -109,6 +118,7 @@ func NewGithubMergeIntent(msgDeliveryID string, caller string, mg *github.MergeG
 		Repo:       mg.GetRepo().GetName(),
 		HeadRef:    mg.GetMergeGroup().GetHeadRef(),
 		HeadSHA:    mg.GetMergeGroup().GetHeadSHA(),
+		HeadCommit: mg.GetMergeGroup().GetHeadCommit().GetMessage(),
 		BaseSHA:    mg.GetMergeGroup().GetBaseSHA(),
 		CalledBy:   caller,
 	}, nil
@@ -209,6 +219,7 @@ func (g *githubMergeIntent) NewPatch() *Patch {
 			BaseBranch: baseBranch,
 			HeadBranch: headBranch,
 			HeadSHA:    g.HeadSHA,
+			HeadCommit: g.HeadCommit,
 		},
 	}
 	return patchDoc

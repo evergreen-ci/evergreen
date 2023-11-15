@@ -1,4 +1,0 @@
-type Revision {
-  Author: String
-  AuthorGithubUID: Int!
-}

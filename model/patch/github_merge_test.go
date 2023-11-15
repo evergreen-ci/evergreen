@@ -105,6 +105,7 @@ func TestGithubMergeIntent(t *testing.T) {
 			assert.Equal(t, evergreen.CommitQueueAlias, p.Alias)
 			assert.Equal(t, *mge.MergeGroup.BaseSHA, p.Githash)
 			assert.Equal(t, *mge.MergeGroup.HeadSHA, p.GithubMergeData.HeadSHA)
+			assert.Equal(t, mge.MergeGroup.GetHeadCommit().GetMessage(), p.GithubMergeData.HeadCommit)
 			assert.Equal(t, *mge.Org.Login, p.GithubMergeData.Org)
 			assert.Equal(t, *mge.Repo.Name, p.GithubMergeData.Repo)
 			assert.Equal(t, "main", p.GithubMergeData.BaseBranch)
@@ -114,6 +115,7 @@ func TestGithubMergeIntent(t *testing.T) {
 		t.Run(tName, func(t *testing.T) {
 			require.NoError(t, db.Clear(IntentCollection))
 			HeadSHA := "a"
+			HeadCommit := "commit message"
 			BaseSHA := "b"
 			HeadRef := "refs/heads/gh-readonly-queue/main/pr-515-9cd8a2532bcddf58369aa82eb66ba88e2323c056"
 			OrgName := "my_org"
@@ -126,6 +128,9 @@ func TestGithubMergeIntent(t *testing.T) {
 			}
 			mg := github.MergeGroup{
 				HeadSHA: &HeadSHA,
+				HeadCommit: &github.Commit{
+					Message: &HeadCommit,
+				},
 				HeadRef: &HeadRef,
 				BaseSHA: &BaseSHA,
 			}

@@ -2,10 +2,15 @@ package client
 
 import (
 	"context"
+	"encoding/json"
+	"net/http"
 	"testing"
 
 	"github.com/evergreen-ci/evergreen"
+	"github.com/evergreen-ci/evergreen/model/task"
+	"github.com/evergreen-ci/evergreen/taskoutput"
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 )
 
 func TestEvergreenCommunicatorConstructor(t *testing.T) {
@@ -22,13 +27,33 @@ func TestEvergreenCommunicatorConstructor(t *testing.T) {
 }
 
 func TestLoggerClose(t *testing.T) {
-	assert := assert.New(t)
-	comm := NewHostCommunicator("www.foo.com", "hostID", "hostSecret")
-	logger, err := comm.GetLoggerProducer(context.Background(), TaskData{}, nil)
-	assert.NoError(err)
-	assert.NotNil(logger)
-	assert.NoError(logger.Close())
-	assert.NotPanics(func() {
-		assert.NoError(logger.Close())
+	server, _ := newMockServer(func(w http.ResponseWriter, _ *http.Request) {
+		data, err := json.Marshal(&task.Task{
+			Id:      "task",
+			Project: "project",
+			TaskOutputInfo: &taskoutput.TaskOutput{
+				TaskLogs: taskoutput.TaskLogOutput{
+					Version: 1,
+					BucketConfig: evergreen.BucketConfig{
+						Name: t.TempDir(),
+						Type: "local",
+					},
+				},
+			},
+		})
+		require.NoError(t, err)
+
+		_, err = w.Write(data)
+		require.NoError(t, err)
+	})
+	defer server.Close()
+
+	comm := NewHostCommunicator(server.URL, "host", "host_secret")
+	logger, err := comm.GetLoggerProducer(context.Background(), TaskData{ID: "task", Secret: "task_secret"}, nil)
+	assert.NoError(t, err)
+	assert.NotNil(t, logger)
+	assert.NoError(t, logger.Close())
+	assert.NotPanics(t, func() {
+		assert.NoError(t, logger.Close())
 	})
 }

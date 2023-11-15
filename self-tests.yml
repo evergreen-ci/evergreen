@@ -516,9 +516,6 @@ tasks:
     name: test-model-manifest
   - <<: *run-go-test-suite-with-mongodb
     tags: ["db", "test"]
-    name: test-model-tasklog
-  - <<: *run-go-test-suite-with-mongodb
-    tags: ["db", "test"]
     name: test-model-testlog
   - <<: *run-go-test-suite-with-mongodb
     tags: ["db", "test"]
@@ -526,15 +523,6 @@ tasks:
   - <<: *run-go-test-suite-with-mongodb
     tags: ["db", "test"]
     name: test-migrations
-  - <<: *run-go-test-suite-with-mongodb
-    tags: ["db", "test"]
-    name: test-cmd-codegen-core
-    commands:
-      - func: get-project-and-modules
-      - func: setup-credentials
-      - func: setup-mongodb
-      - func: run-make
-        vars: { target: "${task_name}" }
   - <<: *run-go-test-suite-with-mongodb-useast
     tags: ["db", "test"]
     name: test-graphql

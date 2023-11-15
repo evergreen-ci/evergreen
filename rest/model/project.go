@@ -521,6 +521,18 @@ func (c *APIParameterInfo) BuildFromService(info model.ParameterInfo) {
 	c.Description = utility.ToStringPtr(info.Description)
 }
 
+type APIRepositoryErrorDetails struct {
+	Exists            *bool   `json:"exists"`
+	InvalidRevision   *string `json:"invalid_revision"`
+	MergeBaseRevision *string `json:"merge_base_revision"`
+}
+
+func (t *APIRepositoryErrorDetails) BuildFromService(h model.RepositoryErrorDetails) {
+	t.Exists = utility.ToBoolPtr(h.Exists)
+	t.InvalidRevision = utility.ToStringPtr(h.InvalidRevision)
+	t.MergeBaseRevision = utility.ToStringPtr(h.MergeBaseRevision)
+}
+
 type APIProjectRef struct {
 	Id *string `json:"id"`
 	// Owner of project repository
@@ -561,13 +573,14 @@ type APIProjectRef struct {
 	PerfEnabled            *bool                     `json:"perf_enabled"`
 	Hidden                 *bool                     `json:"hidden"`
 	// Disable patching
-	PatchingDisabled      *bool `json:"patching_disabled"`
-	RepotrackerDisabled   *bool `json:"repotracker_disabled"`
-	DispatchingDisabled   *bool `json:"dispatching_disabled"`
-	StepbackDisabled      *bool `json:"stepback_disabled"`
-	StepbackBisect        *bool `json:"stepback_bisect"`
-	VersionControlEnabled *bool `json:"version_control_enabled"`
-	DisabledStatsCache    *bool `json:"disabled_stats_cache"`
+	PatchingDisabled      *bool                      `json:"patching_disabled"`
+	RepotrackerDisabled   *bool                      `json:"repotracker_disabled"`
+	RepotrackerError      *APIRepositoryErrorDetails `json:"repotracker_error"`
+	DispatchingDisabled   *bool                      `json:"dispatching_disabled"`
+	StepbackDisabled      *bool                      `json:"stepback_disabled"`
+	StepbackBisect        *bool                      `json:"stepback_bisect"`
+	VersionControlEnabled *bool                      `json:"version_control_enabled"`
+	DisabledStatsCache    *bool                      `json:"disabled_stats_cache"`
 	// Usernames of project admins. Can be null for some projects (EVG-6598).
 	Admins []*string `json:"admins"`
 	// Usernames of project admins to remove
@@ -775,6 +788,12 @@ func (p *APIProjectRef) BuildPublicFields(projectRef model.ProjectRef) error {
 	projectBanner := APIProjectBanner{}
 	projectBanner.BuildFromService(projectRef.Banner)
 	p.Banner = projectBanner
+
+	if projectRef.RepotrackerError != nil {
+		repotrackerErr := APIRepositoryErrorDetails{}
+		repotrackerErr.BuildFromService(*projectRef.RepotrackerError)
+		p.RepotrackerError = &repotrackerErr
+	}
 
 	// Copy triggers
 	if projectRef.Triggers != nil {
