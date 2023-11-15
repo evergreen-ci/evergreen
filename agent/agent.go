@@ -455,7 +455,7 @@ func (a *Agent) setupTask(agentCtx, setupCtx context.Context, initialTC *taskCon
 	tc.logger.Execution().Info("Execution logger initialized.")
 	tc.logger.System().Info("System logger initialized.")
 
-	tc.logger.Execution().Error(errors.Wrap(tc.deviceNames(setupCtx), "getting device names for disks"))
+	tc.logger.Execution().Error(errors.Wrap(tc.getDeviceNames(setupCtx), "getting device names for disks"))
 
 	if err := setupCtx.Err(); err != nil {
 		return a.handleSetupError(setupCtx, tc, errors.Wrap(err, "making task config"))

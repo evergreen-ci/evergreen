@@ -521,8 +521,8 @@ func (tc *taskContext) getUserEndTaskResponse() *triggerEndTaskResp {
 	return tc.userEndTaskResp
 }
 
-func (tc *taskContext) deviceNames(ctx context.Context) error {
-	if tc.taskConfig == nil || tc.taskConfig.Distro == nil {
+func (tc *taskContext) getDeviceNames(ctx context.Context) error {
+	if tc.taskConfig == nil || tc.taskConfig.Distro == nil || len(tc.taskConfig.Distro.Mountpoints) == 0 {
 		return nil
 	}
 
