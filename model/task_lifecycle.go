@@ -2322,19 +2322,6 @@ func UpdateDisplayTaskForTask(t *task.Task) error {
 			break
 		}
 
-		msg := message.Fields{
-			"message":                      "failed to update display task due to concurrent update contention",
-			"execution_task":               t.Id,
-			"display_task_id":              originalDisplayTask.Id,
-			"original_display_task_status": originalDisplayTask.Status,
-			"attempt_num":                  i,
-			"ticket":                       "DEVPROD-712",
-		}
-		if updatedDisplayTask != nil {
-			msg["updated_display_task_status"] = updatedDisplayTask.Status
-		}
-		grip.Debug(message.WrapError(err, msg))
-
 		if i >= maxUpdateAttempts-1 {
 			return errors.Wrapf(err, "updating display task '%s' for execution task '%s'", originalDisplayTask.Id, t.Id)
 		}
@@ -2431,12 +2418,15 @@ func tryUpdateDisplayTaskAtomically(dt task.Task) (updated *task.Task, err error
 	if err := task.UpdateOne(
 		bson.M{
 			task.IdKey: dt.Id,
-			// Require that the status is updated atomically and has not changed
-			// since the status was calculated. If the status has changed in
-			// between when the display task was fetched earlier and when it is
-			// updated here, then this update is potentially invalid because
-			// it's based on outdated data from the execution tasks.
-			task.StatusKey: originalStatus,
+			// Require that the status/activation state is updated atomically.
+			// For the update to succeed, either the status has not changed
+			// since the status was originally calculated, or the updated status
+			// is already reflected in the display task status.
+			// If the status doesn't match the original or updated status, then
+			// then this update is potentially invalid because it's based on
+			// outdated data from the execution tasks.
+			task.StatusKey:    bson.M{"$in": []string{originalStatus, dt.Status}},
+			task.ActivatedKey: dt.Activated,
 		},
 		bson.M{
 			"$set": update,
