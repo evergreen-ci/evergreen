@@ -262,7 +262,12 @@ func TestTaskBuildFromService(t *testing.T) {
 				So(utility.FromStringPtr(apiTask.ContainerOpts.Arch), ShouldEqual, utility.FromStringPtr(tc.at.ContainerOpts.Arch))
 				So(apiTask.ContainerAllocated, ShouldEqual, tc.at.ContainerAllocated)
 				So(apiTask.ContainerAllocationAttempts, ShouldEqual, tc.at.ContainerAllocationAttempts)
-				So(*apiTask.StepbackInfo, ShouldEqual, *tc.at.StepbackInfo)
+
+				if tc.at.StepbackInfo == nil {
+					So(apiTask.StepbackInfo, ShouldBeNil)
+				} else {
+					So(*apiTask.StepbackInfo, ShouldEqual, *tc.at.StepbackInfo)
+				}
 			}
 		})
 	})
