@@ -405,7 +405,9 @@ version manifest will be inherited from its base version. You can change
 the git revision for modules by setting a module manually with 
 [evergreen set-module](../CLI.md#operating-on-existing-patches) or
 by specifying the `auto_update` option (as described below) to use the
-latest revision available for a module.
+latest revision available for a module. The full hierarchy of how
+module revisions are determined is available in the [git.get_project](Project-Commands.md#module-hash-hierarchy)
+docs.
 
 Module fields support the expansion of variables defined in the [Variables](Project-and-Distro-Settings.md#variables)
 tab of the Spruce project settings. These fields are expanded at the time of version creation, at which point 
