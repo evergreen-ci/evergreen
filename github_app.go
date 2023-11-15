@@ -119,7 +119,10 @@ func (s *Settings) CreateInstallationToken(ctx context.Context, owner, repo stri
 
 func getInstallationID(ctx context.Context, authFields *githubAppAuth, owner, repo string) (int64, error) {
 	cachedID, err := getInstallationIDFromCache(ctx, owner, repo)
-	if err == nil && cachedID != 0 {
+	if err != nil {
+		return 0, errors.Wrapf(err, "getting cached installation id for '%s/%s'", owner, repo)
+	}
+	if cachedID != 0 {
 		return cachedID, nil
 	}
 
