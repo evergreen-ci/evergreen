@@ -89,7 +89,7 @@ func TestS3PutValidateParams(t *testing.T) {
 				// Now that optional is expanded to skip missing, we expect an error.
 				err = cmd.ParseParams(params)
 				require.Error(t, err)
-				So(err.Error(), ShouldContainSubstring, "cannot use optional upload with local files include filter")
+				So(err.Error(), ShouldContainSubstring, "cannot use optional with local files include filter as by default it is optional")
 			})
 
 			Convey("a missing aws secret should cause an error", func() {
