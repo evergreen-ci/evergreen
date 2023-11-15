@@ -1097,7 +1097,7 @@ Parameters:
     would be ignored by gitignore - are included in the put. If no
     files are found, the task continues execution.
 -   `local_files_include_filter_prefix`: an optional path to start
-    processing the LocalFilesIncludeFilter, relative to the working
+    processing the `local_files_include_filter`, relative to the working
     directory.
 -   `region`: AWS region for the bucket. We suggest us-east-1, since
     that is where ec2 hosts are located. If you would like to override,
