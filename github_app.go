@@ -14,7 +14,6 @@ import (
 	"github.com/mongodb/grip/message"
 	"github.com/pkg/errors"
 	"go.mongodb.org/mongo-driver/bson"
-	"go.mongodb.org/mongo-driver/mongo"
 	"go.mongodb.org/mongo-driver/mongo/options"
 )
 
@@ -120,10 +119,7 @@ func (s *Settings) CreateInstallationToken(ctx context.Context, owner, repo stri
 
 func getInstallationID(ctx context.Context, authFields *githubAppAuth, owner, repo string) (int64, error) {
 	cachedID, err := getInstallationIDFromCache(ctx, owner, repo)
-	if err != nil {
-		return 0, errors.Wrapf(err, "getting cached installation id for '%s/%s'", owner, repo)
-	}
-	if cachedID != 0 {
+	if err == nil && cachedID != 0 {
 		return cachedID, nil
 	}
 
@@ -188,9 +184,6 @@ func getInstallationIDFromCache(ctx context.Context, owner, repo string) (int64,
 	installation := &GitHubAppInstallation{}
 	res := GetEnvironment().DB().Collection(GitHubAppCollection).FindOne(ctx, byOwnerRepo(owner, repo))
 	if err := res.Err(); err != nil {
-		if err == mongo.ErrNoDocuments {
-			return 0, nil
-		}
 		return 0, errors.Wrapf(err, "finding cached installation ID for '%s/%s", owner, repo)
 	}
 	if err := res.Decode(&installation); err != nil {
