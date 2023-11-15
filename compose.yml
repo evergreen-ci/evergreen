@@ -1,0 +1,28 @@
+version: "3"
+services:
+  evergreen:
+    depends_on: 
+      - mongo
+    ports:
+      - 9090:9090
+    build:
+      dockerfile: Dockerfile
+      target: production
+      args:
+        - GOOS=linux
+        - GOARCH=arm64
+        - MONGO_URL=mongodb://mongo:27017
+  mongo:
+    build:
+      dockerfile: Dockerfile
+      target: seeded-mongo
+      args:
+        - MONGO_URL=mongodb://mongo:27017
+    volumes:
+      - type: volume
+        source: mongo-data
+        target: /data/db
+    ports:
+      - 27017
+volumes:
+  mongo-data:
