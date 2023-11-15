@@ -9,6 +9,7 @@ import (
 	"fmt"
 
 	"github.com/evergreen-ci/evergreen"
+	"github.com/evergreen-ci/evergreen/model"
 	"github.com/evergreen-ci/evergreen/model/user"
 	"github.com/evergreen-ci/gimlet"
 )
@@ -66,6 +67,25 @@ func (r *permissionsResolver) DistroPermissions(ctx context.Context, obj *Permis
 		Admin: userHasDistroPermission(usr, options.DistroID, evergreen.DistroSettingsAdmin.Value),
 		Edit:  userHasDistroPermission(usr, options.DistroID, evergreen.DistroSettingsEdit.Value),
 		View:  userHasDistroPermission(usr, options.DistroID, evergreen.DistroSettingsView.Value),
+	}, nil
+}
+
+// ProjectPermissions is the resolver for the projectPermissions field.
+func (r *permissionsResolver) ProjectPermissions(ctx context.Context, obj *Permissions, options ProjectPermissionsOptions) (*ProjectPermissions, error) {
+	usr, err := user.FindOneById(obj.UserID)
+	if err != nil {
+		return nil, ResourceNotFound.Send(ctx, "user not found")
+	}
+	project, err := model.FindBranchProjectRef(options.ProjectIdentifier)
+	if err != nil {
+		return nil, InternalServerError.Send(ctx, fmt.Sprintf("finding project '%s': %s", options.ProjectIdentifier, err.Error()))
+	}
+	if project == nil {
+		return nil, ResourceNotFound.Send(ctx, fmt.Sprintf("project '%s' not found", options.ProjectIdentifier))
+	}
+	return &ProjectPermissions{
+		Edit: userHasProjectSettingsPermission(usr, project.Id, evergreen.ProjectSettingsEdit.Value),
+		View: userHasProjectSettingsPermission(usr, project.Id, evergreen.ProjectSettingsView.Value),
 	}, nil
 }
 
