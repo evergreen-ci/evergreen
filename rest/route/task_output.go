@@ -99,7 +99,6 @@ func (h *getTaskOutputLogsBaseHandler) parse(ctx context.Context, r *http.Reques
 	h.timeZone = getUserTimeZone(MustHaveUser(ctx))
 	h.softSizeLimit = 10 * 1024 * 1024
 
-	// TODO: find helper func that does this.
 	var count int
 	switch {
 	case h.lineLimit > 0:
