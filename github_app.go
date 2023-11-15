@@ -188,7 +188,7 @@ func getInstallationIDFromCache(ctx context.Context, owner, repo string) (int64,
 	installation := &GitHubAppInstallation{}
 	res := GetEnvironment().DB().Collection(GitHubAppCollection).FindOne(ctx, byOwnerRepo(owner, repo))
 	if err := res.Err(); err != nil {
-		if err == mongo.ErrNoDocuments {
+		if errors.Is(err, mongo.ErrNoDocuments) {
 			return 0, nil
 		}
 		return 0, errors.Wrapf(err, "finding cached installation ID for '%s/%s", owner, repo)
