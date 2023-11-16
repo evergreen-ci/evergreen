@@ -100,14 +100,13 @@ func (h *getTaskOutputLogsBaseHandler) parse(ctx context.Context, r *http.Reques
 	h.softSizeLimit = 10 * 1024 * 1024
 
 	var count int
-	switch {
-	case h.lineLimit > 0:
+	if h.lineLimit > 0 {
 		count++
-		fallthrough
-	case h.tailN > 0:
+	}
+	if h.tailN > 0 {
 		count++
-		fallthrough
-	case h.paginate:
+	}
+	if h.paginate {
 		count++
 	}
 	if count > 1 {
