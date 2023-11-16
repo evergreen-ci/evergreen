@@ -3163,17 +3163,6 @@ func TestSaveProjectPageForSection(t *testing.T) {
 	_, err = SaveProjectPageForSection("iden_", update, ProjectPagePluginSection, false)
 	assert.NoError(err)
 
-	// Test failing external link update
-	update = &ProjectRef{
-		ExternalLinks: []ExternalLink{
-			{URLTemplate: "invalid URL template", DisplayName: "way tooooooooooooooooooooo long display name"},
-		},
-	}
-	_, err = SaveProjectPageForSection("iden_", update, ProjectPagePluginSection, false)
-	assert.Error(err)
-	assert.Contains(err.Error(), "validating external links: link display name, way tooooooooooooooooooooo long display name, must be 40 characters or less")
-	assert.Contains(err.Error(), "parse \"invalid URL template\": invalid URI for request")
-
 	// Test parsley filters and view update
 	update = &ProjectRef{
 		ParsleyFilters: []ParsleyFilter{
@@ -3213,7 +3202,7 @@ func TestSaveProjectPageForSection(t *testing.T) {
 	assert.NoError(err)
 
 	projectRef, err = FindBranchProjectRef("iden_")
-	assert.NoError(err)
+	require.NoError(t, err)
 	assert.NotNil(t, projectRef)
 	assert.Len(projectRef.ParsleyFilters, 1)
 	assert.Equal(projectRef.ProjectHealthView, ProjectHealthViewAll)

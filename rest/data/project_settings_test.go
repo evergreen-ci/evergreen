@@ -323,6 +323,23 @@ func TestSaveProjectSettingsForSection(t *testing.T) {
 			assert.Contains(t, err.Error(), "PR testing (projects: conflicting-project) and commit checks (projects: conflicting-project)")
 			assert.NotContains(t, err.Error(), "the commit queue")
 		},
+		"invalid URL should error when saving": func(t *testing.T, ref model.ProjectRef) {
+			apiProjectRef := restModel.APIProjectRef{
+				ExternalLinks: []restModel.APIExternalLink{
+					{
+						URLTemplate: utility.ToStringPtr("invalid URL template"),
+						DisplayName: utility.ToStringPtr("display name"),
+					},
+				},
+			}
+			apiChanges := &restModel.APIProjectSettings{
+				ProjectRef: apiProjectRef,
+			}
+			settings, err := SaveProjectSettingsForSection(ctx, ref.Id, apiChanges, model.ProjectPageViewsAndFiltersSection, false, "me")
+			require.Error(t, err)
+			assert.Nil(t, settings)
+			assert.Contains(t, err.Error(), "validating external links")
+		},
 		"github conflicts on Commit Queue page when defaulting to repo": func(t *testing.T, ref model.ProjectRef) {
 			conflictingRef := model.ProjectRef{
 				Identifier:          "conflicting-project",
