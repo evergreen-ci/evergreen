@@ -635,6 +635,14 @@ func (m *ec2Manager) ModifyHost(ctx context.Context, h *host.Host, opts host.Hos
 	}
 	defer m.client.Close()
 
+	grip.Info(message.Fields{
+		"message":   "Modifying host",
+		"message 2": "Prevalidate",
+		"hours":     opts.AddHours.String(),
+		"positive:": opts.AddHours > 1*time.Second,
+		"negative:": opts.AddHours < 1*time.Second,
+	})
+
 	// Validate modify options for user errors that should prevent all modifications
 	if err := validateEC2HostModifyOptions(h, opts); err != nil {
 		return errors.Wrap(err, "validating EC2 host modify options")
@@ -654,7 +662,13 @@ func (m *ec2Manager) ModifyHost(ctx context.Context, h *host.Host, opts host.Hos
 	if opts.NoExpiration != nil {
 		catcher.Add(m.setNoExpiration(ctx, h, *opts.NoExpiration))
 	}
-	if opts.AddHours > 0 {
+	grip.Info(message.Fields{
+		"message":   "Modifying host",
+		"hours":     opts.AddHours.String(),
+		"positive:": opts.AddHours > 1*time.Second,
+		"negative:": opts.AddHours < 1*time.Second,
+	})
+	if opts.AddHours != 0 {
 		if err := h.PastMaxExpiration(opts.AddHours); err != nil {
 			catcher.Add(err)
 		} else {
