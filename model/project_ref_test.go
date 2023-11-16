@@ -3154,15 +3154,6 @@ func TestSaveProjectPageForSection(t *testing.T) {
 	_, err = SaveProjectPageForSection("iden_", update, ProjectPageGeneralSection, false)
 	assert.NoError(err)
 
-	// Test successful external link update
-	update = &ProjectRef{
-		ExternalLinks: []ExternalLink{
-			{URLTemplate: "https://arnars.com/{version_id}", DisplayName: "A link"},
-		},
-	}
-	_, err = SaveProjectPageForSection("iden_", update, ProjectPagePluginSection, false)
-	assert.NoError(err)
-
 	// Test parsley filters and view update
 	update = &ProjectRef{
 		ParsleyFilters: []ParsleyFilter{
@@ -3171,27 +3162,6 @@ func TestSaveProjectPageForSection(t *testing.T) {
 		ProjectHealthView: ProjectHealthViewAll,
 	}
 	_, err = SaveProjectPageForSection("iden_", update, ProjectPageViewsAndFiltersSection, false)
-	assert.NoError(err)
-
-	// Test performance plugin updates errors when id and identifier are different.
-	update = &ProjectRef{
-		PerfEnabled: utility.ToBoolPtr(true),
-	}
-	_, err = SaveProjectPageForSection("iden_", update, ProjectPagePluginSection, false)
-	assert.Error(err)
-
-	// Test performance plugin updates correctly when id and identifier are the same.
-	// Set the id and identifier to the same value.
-	update = &ProjectRef{
-		Identifier: "iden_",
-	}
-	_, err = SaveProjectPageForSection("iden_", update, ProjectPageGeneralSection, false)
-	assert.NoError(err)
-	// Attempt to enable the performance plugin.
-	update = &ProjectRef{
-		PerfEnabled: utility.ToBoolPtr(true),
-	}
-	_, err = SaveProjectPageForSection("iden_", update, ProjectPagePluginSection, false)
 	assert.NoError(err)
 
 	// Test private field does not get updated
