@@ -1087,16 +1087,18 @@ Parameters:
     for allowed values.
 -   `content_type`: the MIME type of the file. Note it is important that this value accurately reflects the mime type of the file or else the behavior will be unpredictable.
 -   `optional`: boolean to indicate if failure to find or upload this
-    file will result in a task failure. Not compatible with
-    local_files_include_filter.
+    file will result in a task failure. This is intended to be used
+    with `local_file`. `local_files_include_filter` be default is 
+    optional and will not work with this parameter.
 -   `skip_existing`: boolean to indicate that files that already exist
     in s3 should be skipped.
 -   `display_name`: the display string for the file in the Evergreen UI
 -   `local_files_include_filter`: used in place of local_file, an array
     of gitignore file globs. All files that are matched - ones that
-    would be ignored by gitignore - are included in the put.
+    would be ignored by gitignore - are included in the put. If no
+    files are found, the task continues execution.
 -   `local_files_include_filter_prefix`: an optional path to start
-    processing the LocalFilesIncludeFilter, relative to the working
+    processing the `local_files_include_filter`, relative to the working
     directory.
 -   `region`: AWS region for the bucket. We suggest us-east-1, since
     that is where ec2 hosts are located. If you would like to override,
