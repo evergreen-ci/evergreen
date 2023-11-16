@@ -455,6 +455,8 @@ func (a *Agent) setupTask(agentCtx, setupCtx context.Context, initialTC *taskCon
 	tc.logger.Execution().Info("Execution logger initialized.")
 	tc.logger.System().Info("System logger initialized.")
 
+	tc.logger.Execution().Error(errors.Wrap(tc.getDeviceNames(setupCtx), "getting device names for disks"))
+
 	if err := setupCtx.Err(); err != nil {
 		return a.handleSetupError(setupCtx, tc, errors.Wrap(err, "making task config"))
 	}
@@ -1013,8 +1015,9 @@ func (a *Agent) endTaskResponse(ctx context.Context, tc *taskContext, status str
 	}
 
 	detail := &apimodels.TaskEndDetail{
-		OOMTracker: tc.getOomTrackerInfo(),
-		TraceID:    tc.traceID,
+		OOMTracker:  tc.getOomTrackerInfo(),
+		TraceID:     tc.traceID,
+		DiskDevices: tc.diskDevices,
 	}
 	setEndTaskFailureDetails(tc, detail, status, highestPriorityDescription, userDefinedFailureType)
 	if tc.taskConfig != nil {

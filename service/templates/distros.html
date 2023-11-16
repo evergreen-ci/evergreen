@@ -795,7 +795,27 @@ Evergreen - Distros
             <div class="icon fa fa-warning distro-error" ng-show="form.workDir.$dirty && form.workDir.$error.required || form.workDir.$invalid"> Working
               Directory is required</div>
           </div>
-
+          <div ng-form name="diskMountpointsForm">
+            <label class="distro-label">Disk Mountpoints:</label>
+            <div id="mountpoints-table" class="distro-table-scroll">
+              <table style="margin-left: -8px;" class="table distro-table">
+                <tbody ng-repeat="mountpoint in activeDistro.mountpoints track by $index">
+                  <tr>
+                    <td style="padding-left: 10px;"><input required ng-readonly="readOnly" name="mountpoint" type="text"
+                        ng-model="activeDistro.mountpoints[$index]" class="form-control">
+                    </td>
+                    <td ng-hide="readOnly">
+                      <a ng-click="form.$setDirty();removeMountpoint(mountpoint)">
+                        <i class="fa fa-trash distro-trash-icon"></i>
+                      </a>
+                    </td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+            <div class="icon fa fa-warning distro-error" ng-show="diskMountpointsForm.mountpoint.$dirty && diskMountpointsForm.mountpoint.$error.required">mountpoint cannot be blank<br /></div>
+            <button type="button" class="btn btn-primary" ng-hide="readOnly" ng-disabled="diskMountpointsForm.mountpoint.$dirty && diskMountpointsForm.$invalid || diskMountpointsForm.mountpoint.$error.required"
+              ng-click="form.$setDirty();addMountpoint()"><i class="fa fa-plus"></i>Add Mountpoint</button>
           <div>
             <label class="distro-label">Setup Script:</label>
             <span style="float: right; margin-top: 20px;" class="distro-checkbox checkbox">
