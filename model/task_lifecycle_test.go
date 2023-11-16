@@ -5906,7 +5906,10 @@ func TestDisplayTaskUpdatesAreConcurrencySafe(t *testing.T) {
 			// This goroutine will potentially see one execution task is not
 			// finished, so it may try either update the display task status to
 			// starting or success.
-			errs <- UpdateDisplayTaskForTask(&et0)
+			// The task has to be copied into the goroutine to avoid concurrent
+			// modifications of the in-memory display task.
+			et0Copy := et0
+			errs <- UpdateDisplayTaskForTask(&et0Copy)
 		}()
 	}
 
@@ -5933,7 +5936,10 @@ func TestDisplayTaskUpdatesAreConcurrencySafe(t *testing.T) {
 
 		// The last goroutine initially sees that all execution tasks are
 		// finished, so it should try to update the final status to success.
-		errs <- UpdateDisplayTaskForTask(&et0)
+		// The task has to be copied into the goroutine to avoid concurrent
+		// modifications of the in-memory display task.
+		et0Copy := et0
+		errs <- UpdateDisplayTaskForTask(&et0Copy)
 	}()
 
 	updatesDone.Wait()
