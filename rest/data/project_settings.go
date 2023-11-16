@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"net/http"
+	"net/url"
 	"strings"
 
 	"github.com/evergreen-ci/cocoa"
@@ -296,7 +297,29 @@ func SaveProjectSettingsForSection(ctx context.Context, projectId string, change
 				return nil, errors.Wrap(err, "validating project creation")
 			}
 		}
-
+	case model.ProjectPagePluginSection:
+		catcher := grip.NewSimpleCatcher()
+		for _, link := range mergedSection.ExternalLinks {
+			if link.DisplayName != "" && link.URLTemplate != "" {
+				// check length of link display name
+				if len(link.DisplayName) > 40 {
+					catcher.Add(errors.New(fmt.Sprintf("link display name, %s, must be 40 characters or less", link.DisplayName)))
+				}
+				// validate url template
+				formattedURL := strings.Replace(link.URLTemplate, "{version_id}", "version_id", -1)
+				if _, err := url.ParseRequestURI(formattedURL); err != nil {
+					catcher.Add(err)
+				}
+			}
+		}
+		if catcher.HasErrors() {
+			return nil, errors.Wrapf(catcher.Resolve(), "validating external links")
+		}
+		// If the performance plugin is not currently enabled, and we are trying to
+		// change it to enabled but the id and identifier are different, we error.
+		if !mergedBeforeRef.IsPerfEnabled() && mergedSection.IsPerfEnabled() && mergedSection.Id != mergedSection.Identifier {
+			return nil, errors.Errorf("project '%s' does not have a matching ID and identifier, cannot enable performance plugin", mergedSection.Id)
+		}
 	case model.ProjectPageAccessSection:
 		// For any admins that are only in the original settings, remove access.
 		// For any admins that are only in the updated settings, give them access.
@@ -397,12 +420,11 @@ func SaveProjectSettingsForSection(ctx context.Context, projectId string, change
 		}
 		catcher.Wrapf(DeleteSubscriptions(projectId, toDelete), "deleting subscriptions")
 	case model.ProjectPageContainerSection:
-		for i := range mergedSection.ContainerSizeDefinitions {
-			err = mergedSection.ContainerSizeDefinitions[i].Validate(evergreen.GetEnvironment().Settings().Providers.AWS.Pod.ECS)
-			catcher.Add(err)
+		for _, size := range mergedSection.ContainerSizeDefinitions {
+			catcher.Add(errors.Wrapf(size.Validate(evergreen.GetEnvironment().Settings().Providers.AWS.Pod.ECS), "invalid container size '%s'", size.Name))
 		}
 		if catcher.HasErrors() {
-			return nil, errors.Wrap(catcher.Resolve(), "invalid container size definition")
+			return nil, errors.Wrap(catcher.Resolve(), "invalid container size definitions")
 		}
 	case model.ProjectPagePeriodicBuildsSection:
 		for i := range mergedSection.PeriodicBuilds {
