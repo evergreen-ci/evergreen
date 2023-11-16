@@ -544,9 +544,9 @@ func (s *EC2Suite) TestModifyHost() {
 	s.NoError(err)
 	s.True(found.ExpirationTime.Equal(prevExpirationTime.Add(changes.AddHours)))
 
-	// trying to update host expiration past 14 days should error
+	// trying to update host expiration past 30 days should error
 	changes = host.HostModifyOptions{
-		AddHours: evergreen.MaxSpawnHostExpirationDurationHours,
+		AddHours: time.Hour * 24 * evergreen.HostExpireDays,
 	}
 	s.Error(s.onDemandManager.ModifyHost(ctx, s.h, changes))
 
