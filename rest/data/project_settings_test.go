@@ -335,7 +335,7 @@ func TestSaveProjectSettingsForSection(t *testing.T) {
 			apiChanges := &restModel.APIProjectSettings{
 				ProjectRef: apiProjectRef,
 			}
-			settings, err := SaveProjectSettingsForSection(ctx, ref.Id, apiChanges, model.ProjectPageViewsAndFiltersSection, false, "me")
+			settings, err := SaveProjectSettingsForSection(ctx, ref.Id, apiChanges, model.ProjectPagePluginSection, false, "me")
 			require.Error(t, err)
 			assert.Nil(t, settings)
 			assert.Contains(t, err.Error(), "validating external links")
@@ -352,7 +352,7 @@ func TestSaveProjectSettingsForSection(t *testing.T) {
 			apiChanges := &restModel.APIProjectSettings{
 				ProjectRef: apiProjectRef,
 			}
-			settings, err := SaveProjectSettingsForSection(ctx, ref.Id, apiChanges, model.ProjectPageViewsAndFiltersSection, false, "me")
+			settings, err := SaveProjectSettingsForSection(ctx, ref.Id, apiChanges, model.ProjectPagePluginSection, false, "me")
 			require.NoError(t, err)
 			assert.NotNil(t, settings)
 		},
@@ -364,7 +364,7 @@ func TestSaveProjectSettingsForSection(t *testing.T) {
 			apiChanges := &restModel.APIProjectSettings{
 				ProjectRef: apiProjectRef,
 			}
-			settings, err := SaveProjectSettingsForSection(ctx, ref.Id, apiChanges, model.ProjectPageViewsAndFiltersSection, false, "me")
+			settings, err := SaveProjectSettingsForSection(ctx, ref.Id, apiChanges, model.ProjectPageGeneralSection, false, "me")
 			require.NoError(t, err)
 			assert.NotNil(t, settings)
 
@@ -375,7 +375,7 @@ func TestSaveProjectSettingsForSection(t *testing.T) {
 			apiChanges = &restModel.APIProjectSettings{
 				ProjectRef: apiProjectRef,
 			}
-			settings, err = SaveProjectSettingsForSection(ctx, ref.Id, apiChanges, model.ProjectPageViewsAndFiltersSection, false, "me")
+			settings, err = SaveProjectSettingsForSection(ctx, ref.Id, apiChanges, model.ProjectPagePluginSection, false, "me")
 			require.Error(t, err)
 			assert.Nil(t, settings)
 			assert.Contains(t, err.Error(), "cannot enable performance plugin")
@@ -388,7 +388,7 @@ func TestSaveProjectSettingsForSection(t *testing.T) {
 			apiChanges := &restModel.APIProjectSettings{
 				ProjectRef: apiProjectRef,
 			}
-			settings, err := SaveProjectSettingsForSection(ctx, ref.Id, apiChanges, model.ProjectPageViewsAndFiltersSection, false, "me")
+			settings, err := SaveProjectSettingsForSection(ctx, ref.Id, apiChanges, model.ProjectPageGeneralSection, false, "me")
 			require.NoError(t, err)
 			assert.NotNil(t, settings)
 
@@ -399,7 +399,7 @@ func TestSaveProjectSettingsForSection(t *testing.T) {
 			apiChanges = &restModel.APIProjectSettings{
 				ProjectRef: apiProjectRef,
 			}
-			settings, err = SaveProjectSettingsForSection(ctx, ref.Id, apiChanges, model.ProjectPageViewsAndFiltersSection, false, "me")
+			settings, err = SaveProjectSettingsForSection(ctx, ref.Id, apiChanges, model.ProjectPagePluginSection, false, "me")
 			require.NoError(t, err)
 			assert.NotNil(t, settings)
 		},
