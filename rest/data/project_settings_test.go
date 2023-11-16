@@ -357,7 +357,7 @@ func TestSaveProjectSettingsForSection(t *testing.T) {
 			assert.NotNil(t, settings)
 		},
 		"enabling performance plugin should fail if id and identifier are different": func(t *testing.T, ref model.ProjectRef) {
-			// Set identifer
+			// Set identifier
 			apiProjectRef := restModel.APIProjectRef{
 				Identifier: utility.ToStringPtr("different"),
 			}
@@ -380,8 +380,8 @@ func TestSaveProjectSettingsForSection(t *testing.T) {
 			assert.Nil(t, settings)
 			assert.Contains(t, err.Error(), "cannot enable performance plugin")
 		},
-		"enabling performance plugin should succeed if id and identifer are the same": func(t *testing.T, ref model.ProjectRef) {
-			// Set identifer
+		"enabling performance plugin should succeed if id and identifier are the same": func(t *testing.T, ref model.ProjectRef) {
+			// Set identifier
 			apiProjectRef := restModel.APIProjectRef{
 				Identifier: utility.ToStringPtr("myId"),
 			}
