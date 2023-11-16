@@ -8,7 +8,9 @@ import (
 	"github.com/evergreen-ci/evergreen/apimodels"
 	"github.com/mongodb/jasper"
 	"github.com/mongodb/jasper/mock"
+	"github.com/shirou/gopsutil/v3/disk"
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 )
 
 func TestGetOomTrackerInfo(t *testing.T) {
@@ -45,8 +47,12 @@ func TestGetDeviceNames(t *testing.T) {
 		assert.Len(t, tc.diskDevices, 0)
 	})
 
-	t.Run("RootMountpoint", func(t *testing.T) {
-		tc := taskContext{taskConfig: &internal.TaskConfig{Distro: &apimodels.DistroView{Mountpoints: []string{"/"}}}}
+	t.Run("Mountpoint", func(t *testing.T) {
+		partitions, err := disk.PartitionsWithContext(ctx, false)
+		require.NoError(t, err)
+		require.NotEmpty(t, partitions)
+
+		tc := taskContext{taskConfig: &internal.TaskConfig{Distro: &apimodels.DistroView{Mountpoints: []string{partitions[0].Mountpoint}}}}
 		assert.NoError(t, tc.getDeviceNames(ctx))
 		assert.Len(t, tc.diskDevices, 1)
 	})
