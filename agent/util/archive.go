@@ -43,8 +43,12 @@ func FindContentsToArchive(ctx context.Context, rootPath string, includes, exclu
 	return out, nil
 }
 
+// kim: TODO: return total file size. Unfortunately, this can return duplicates.
+// Would have to deduplicate contents to make it easier.
+// kim: TODO: verify that old implementation included duplicates.
 func streamArchiveContents(ctx context.Context, rootPath string, includes, excludes []string) ([]ArchiveContentFile, error) {
 	archiveContents := []ArchiveContentFile{}
+	seen := map[string]ArchiveContentFile{}
 	catcher := grip.NewCatcher()
 
 	for _, includePattern := range includes {
@@ -69,7 +73,14 @@ func streamArchiveContents(ctx context.Context, rootPath string, includes, exclu
 					}
 				}
 
-				archiveContents = append(archiveContents, ArchiveContentFile{path, info, nil})
+				if _, ok := seen[path]; ok {
+					return nil
+				}
+
+				acf := ArchiveContentFile{Path: path, Info: info}
+				seen[path] = acf
+				archiveContents = append(archiveContents, acf)
+
 				return nil
 			}
 			catcher.Wrapf(filepath.Walk(dir, walk), "matching files included in filter '%s' for path '%s'", filematch, dir)
@@ -83,7 +94,13 @@ func streamArchiveContents(ctx context.Context, rootPath string, includes, exclu
 						}
 					}
 
-					archiveContents = append(archiveContents, ArchiveContentFile{path, info, nil})
+					if _, ok := seen[path]; ok {
+						return nil
+					}
+
+					acf := ArchiveContentFile{Path: path, Info: info}
+					seen[path] = acf
+					archiveContents = append(archiveContents, acf)
 				}
 				return nil
 			}
@@ -103,7 +120,13 @@ func streamArchiveContents(ctx context.Context, rootPath string, includes, exclu
 							}
 						}
 
-						archiveContents = append(archiveContents, ArchiveContentFile{path, info, nil})
+						if _, ok := seen[path]; ok {
+							return nil
+						}
+
+						acf := ArchiveContentFile{Path: path, Info: info}
+						seen[path] = acf
+						archiveContents = append(archiveContents, acf)
 					}
 				}
 				return nil

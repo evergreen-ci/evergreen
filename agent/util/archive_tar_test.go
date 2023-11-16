@@ -9,6 +9,7 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/evergreen-ci/evergreen/testutil"
 	"github.com/evergreen-ci/utility"
 	"github.com/mongodb/grip/logging"
 	. "github.com/smartystreets/goconvey/convey"
@@ -118,5 +119,70 @@ func TestArchiveRoundTrip(t *testing.T) {
 		contents, err := os.ReadFile(filepath.Join(outputDir, "dir1", "dir2", "my_symlink.txt"))
 		So(err, ShouldBeNil)
 		So(strings.Trim(string(contents), "\r\n\t "), ShouldEqual, "Hello, World")
+	})
+}
+
+func TestFindContentsToArchive(t *testing.T) {
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
+	thisDir := testutil.GetDirectoryOfFile()
+	t.Run("FindsFiles", func(t *testing.T) {
+		entries, err := os.ReadDir(thisDir)
+		require.NoError(t, err)
+
+		expectedFiles := map[string]bool{}
+		for _, entry := range entries {
+			if strings.HasSuffix(entry.Name(), ".go") {
+				expectedFiles[entry.Name()] = false
+			}
+		}
+		assert.NotZero(t, len(expectedFiles))
+
+		foundFiles, err := FindContentsToArchive(ctx, thisDir, []string{"*.go"}, nil)
+		require.NoError(t, err)
+		assert.Equal(t, len(foundFiles), len(expectedFiles))
+
+		for _, foundFile := range foundFiles {
+			pathRelativeToDir, err := filepath.Rel(thisDir, foundFile.Path)
+			require.NoError(t, err)
+			_, ok := expectedFiles[pathRelativeToDir]
+			if assert.True(t, ok, "unexpected file '%s' found", pathRelativeToDir) {
+				expectedFiles[pathRelativeToDir] = true
+			}
+		}
+
+		for filename, found := range expectedFiles {
+			assert.True(t, found, "expected file '%s' not found", filename)
+		}
+	})
+	t.Run("DeduplicatesFiles", func(t *testing.T) {
+		entries, err := os.ReadDir(thisDir)
+		require.NoError(t, err)
+
+		expectedFiles := map[string]bool{}
+		for _, entry := range entries {
+			if strings.HasSuffix(entry.Name(), ".go") {
+				expectedFiles[entry.Name()] = false
+			}
+		}
+		assert.NotZero(t, len(expectedFiles))
+
+		foundFiles, err := FindContentsToArchive(ctx, thisDir, []string{"*.go", "*.go"}, nil)
+		require.NoError(t, err)
+
+		for _, foundFile := range foundFiles {
+			pathRelativeToDir, err := filepath.Rel(thisDir, foundFile.Path)
+			require.NoError(t, err)
+			found, ok := expectedFiles[pathRelativeToDir]
+			if assert.True(t, ok, "unexpected file '%s' found", pathRelativeToDir) {
+				expectedFiles[pathRelativeToDir] = true
+			}
+			assert.False(t, found, "found file '%s' multiple times", pathRelativeToDir)
+		}
+
+		for filename, found := range expectedFiles {
+			assert.True(t, found, "expected file '%s' not found", filename)
+		}
 	})
 }

@@ -2,7 +2,6 @@ package util
 
 import (
 	"archive/tar"
-	"compress/gzip"
 	"context"
 	"fmt"
 	"io"
@@ -10,6 +9,7 @@ import (
 	"path/filepath"
 	"strings"
 
+	"github.com/klauspost/pgzip"
 	"github.com/mongodb/grip"
 	"github.com/pkg/errors"
 )
@@ -119,7 +119,9 @@ FileLoop:
 
 func ExtractTarball(ctx context.Context, reader io.Reader, rootPath string, excludes []string) error {
 	// wrap the reader in a gzip reader and a tar reader
-	gzipReader, err := gzip.NewReader(reader)
+	// kim: NOTE: always use pgzip here because it's strictly better at
+	// decompression
+	gzipReader, err := pgzip.NewReader(reader)
 	if err != nil {
 		return errors.Wrap(err, "creating gzip reader")
 	}
@@ -213,7 +215,9 @@ func TarGzReader(path string) (f, gz io.ReadCloser, tarReader *tar.Reader, err e
 	if err != nil {
 		return nil, nil, nil, errors.Wrapf(err, "opening file '%s'", path)
 	}
-	gz, err = gzip.NewReader(f)
+	// kim: NOTE: only use pgzip if it's larger than 1 MB because it performs
+	// worse on small archives and many archives in Evergreen are small.
+	gz, err = pgzip.NewReader(f)
 	if err != nil {
 		defer f.Close()
 		return nil, nil, nil, errors.Wrap(err, "initializing gzip reader")
@@ -225,11 +229,13 @@ func TarGzReader(path string) (f, gz io.ReadCloser, tarReader *tar.Reader, err e
 // TarGzWriter returns a file, gzip writer, and tarWriter for the path.
 // The tar writer wraps the gzip writer, which wraps the file.
 func TarGzWriter(path string) (f, gz io.WriteCloser, tarWriter *tar.Writer, err error) {
+	// kim: NOTE: only use pgzip if it's larger than 1 MB because it performs
+	// worse on small archives and many archives in Evergreen are small.
 	f, err = os.Create(path)
 	if err != nil {
 		return nil, nil, nil, errors.Wrapf(err, "creating file '%s'", path)
 	}
-	gz = gzip.NewWriter(f)
+	gz = pgzip.NewWriter(f)
 	tarWriter = tar.NewWriter(gz)
 	return f, gz, tarWriter, nil
 }
