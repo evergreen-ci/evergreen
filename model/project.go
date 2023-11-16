@@ -545,8 +545,8 @@ type PluginCommandConf struct {
 	// Vars defines variables that can be used within commands.
 	Vars map[string]string `yaml:"vars,omitempty" bson:"vars,omitempty"`
 
-	// AutoRetry indicates whether the command should be retried if it fails.
-	AutoRetry bool `yaml:"auto_retry,omitempty" bson:"auto_retry,omitempty"`
+	// RetryOnFailure indicates whether the task should be retried if this command fails.
+	RetryOnFailure bool `yaml:"retry_on_failure,omitempty" bson:"retry_on_failure,omitempty"`
 
 	Loggers *LoggerConfig `yaml:"loggers,omitempty" bson:"loggers,omitempty"`
 }
@@ -567,17 +567,17 @@ func (c *PluginCommandConf) resolveParams() error {
 
 func (c *PluginCommandConf) UnmarshalYAML(unmarshal func(interface{}) error) error {
 	temp := struct {
-		Function    string                 `yaml:"func,omitempty" bson:"func,omitempty"`
-		Type        string                 `yaml:"type,omitempty" bson:"type,omitempty"`
-		DisplayName string                 `yaml:"display_name,omitempty" bson:"display_name,omitempty"`
-		Command     string                 `yaml:"command,omitempty" bson:"command,omitempty"`
-		Variants    []string               `yaml:"variants,omitempty" bson:"variants,omitempty"`
-		TimeoutSecs int                    `yaml:"timeout_secs,omitempty" bson:"timeout_secs,omitempty"`
-		Params      map[string]interface{} `yaml:"params,omitempty" bson:"params,omitempty"`
-		ParamsYAML  string                 `yaml:"params_yaml,omitempty" bson:"params_yaml,omitempty"`
-		Vars        map[string]string      `yaml:"vars,omitempty" bson:"vars,omitempty"`
-		AutoRetry   bool                   `yaml:"auto_retry,omitempty" bson:"auto_retry,omitempty"`
-		Loggers     *LoggerConfig          `yaml:"loggers,omitempty" bson:"loggers,omitempty"`
+		Function       string                 `yaml:"func,omitempty" bson:"func,omitempty"`
+		Type           string                 `yaml:"type,omitempty" bson:"type,omitempty"`
+		DisplayName    string                 `yaml:"display_name,omitempty" bson:"display_name,omitempty"`
+		Command        string                 `yaml:"command,omitempty" bson:"command,omitempty"`
+		Variants       []string               `yaml:"variants,omitempty" bson:"variants,omitempty"`
+		TimeoutSecs    int                    `yaml:"timeout_secs,omitempty" bson:"timeout_secs,omitempty"`
+		Params         map[string]interface{} `yaml:"params,omitempty" bson:"params,omitempty"`
+		ParamsYAML     string                 `yaml:"params_yaml,omitempty" bson:"params_yaml,omitempty"`
+		Vars           map[string]string      `yaml:"vars,omitempty" bson:"vars,omitempty"`
+		RetryOnFailure bool                   `yaml:"retry_on_failure,omitempty" bson:"retry_on_failure,omitempty"`
+		Loggers        *LoggerConfig          `yaml:"loggers,omitempty" bson:"loggers,omitempty"`
 	}{}
 
 	if err := unmarshal(&temp); err != nil {
@@ -593,7 +593,7 @@ func (c *PluginCommandConf) UnmarshalYAML(unmarshal func(interface{}) error) err
 	c.Loggers = temp.Loggers
 	c.ParamsYAML = temp.ParamsYAML
 	c.Params = temp.Params
-	c.AutoRetry = temp.AutoRetry
+	c.RetryOnFailure = temp.RetryOnFailure
 	return c.unmarshalParams()
 }
 

@@ -348,18 +348,30 @@ func (h *markTaskForResetHandler) Run(ctx context.Context) gimlet.Responder {
 			Message:    fmt.Sprintf("task '%s' not found", h.taskID),
 		})
 	}
-	taskToReset := t
+	taskToRestart := t
 	if t.IsPartOfDisplay() {
 		dt, err := t.GetDisplayTask()
 		if err != nil {
 			return gimlet.MakeJSONInternalErrorResponder(errors.Wrapf(err, "getting display task for execution task '%s'", h.taskID))
 		}
-		taskToReset = dt
+		taskToRestart = dt
 	}
-	if taskToReset.NumAutomaticResets < evergreen.MaxAutomaticRestarts {
-		if err = taskToReset.SetResetWhenFinishedWithInc(); err != nil {
+	// If the task is a display task that has already been marked for an automatic restart
+	// by another execution task, we don't want to mark it for a restart again nor do we
+	// want to error out since the display task has not been automatically restarted yet.
+	if taskToRestart.IsAutomaticRestart {
+		return gimlet.NewJSONResponse(struct{}{})
+	}
+
+	if taskToRestart.NumAutomaticRestarts < evergreen.MaxAutomaticRestarts {
+		if err = taskToRestart.SetResetWhenFinishedWithInc(); err != nil {
 			return gimlet.MakeJSONInternalErrorResponder(errors.Wrapf(err, "setting reset when finished for task '%s'", h.taskID))
 		}
+	} else {
+		return gimlet.MakeJSONErrorResponder(gimlet.ErrorResponse{
+			StatusCode: http.StatusBadRequest,
+			Message:    fmt.Sprintf("task has already reached the maximum (%d) number of automatic restarts", evergreen.MaxAutomaticRestarts),
+		})
 	}
 	return gimlet.NewJSONResponse(struct{}{})
 }

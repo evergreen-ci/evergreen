@@ -1059,8 +1059,8 @@ func (c *baseCommunicator) CreateInstallationToken(ctx context.Context, td TaskD
 	return token.Token, nil
 }
 
-// MarkTaskToRestart
-func (c *baseCommunicator) MarkTaskToRestart(ctx context.Context, td TaskData) error {
+// MarkFailedTaskToRestart will mark the task to be automatically reset upon completion
+func (c *baseCommunicator) MarkFailedTaskToRestart(ctx context.Context, td TaskData) error {
 	info := requestInfo{
 		method:   http.MethodPost,
 		taskData: &td,
@@ -1068,7 +1068,7 @@ func (c *baseCommunicator) MarkTaskToRestart(ctx context.Context, td TaskData) e
 	info.setTaskPathSuffix("reset")
 	resp, err := c.retryRequest(ctx, info, nil)
 	if err != nil {
-		return util.RespErrorf(resp, errors.Wrap(err, "starting task").Error())
+		return util.RespErrorf(resp, errors.Wrap(err, "marking task for restart").Error())
 	}
 	defer resp.Body.Close()
 	return nil

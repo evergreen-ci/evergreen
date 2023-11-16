@@ -247,11 +247,11 @@ type Task struct {
 	// reset but cannot do so yet because they're currently running.
 	ResetWhenFinished       bool `bson:"reset_when_finished,omitempty" json:"reset_when_finished,omitempty"`
 	ResetFailedWhenFinished bool `bson:"reset_failed_when_finished,omitempty" json:"reset_failed_when_finished,omitempty"`
-	// NumAutomaticResets is the number of times the task has been programmatically reset via the agent status server.
-	NumAutomaticResets int `bson:"num_automatic_resets,omitempty" json:"num_automatic_resets,omitempty"`
-	// IsAutomaticReset indicates that the task was reset programmatically via an agent command.
-	IsAutomaticReset bool  `bson:"is_automatic_reset,omitempty" json:"is_automatic_reset,omitempty"`
-	DisplayTask      *Task `bson:"-" json:"-"` // this is a local pointer from an exec to display task
+	// NumAutomaticRestarts is the number of times the task has been programmatically restart via a failed agent command.
+	NumAutomaticRestarts int `bson:"num_automatic_restarts,omitempty" json:"num_automatic_restarts,omitempty"`
+	// IsAutomaticRestart indicates that the task was restarted via a failing agent command that was set to retry on failure.
+	IsAutomaticRestart bool  `bson:"is_automatic_restart,omitempty" json:"is_automatic_restart,omitempty"`
+	DisplayTask        *Task `bson:"-" json:"-"` // this is a local pointer from an exec to display task
 
 	// DisplayTaskId is set to the display task ID if the task is an execution task, the empty string if it's not an execution task,
 	// and is nil if we haven't yet checked whether or not this task has a display task.
@@ -2208,7 +2208,7 @@ func resetTaskUpdate(t *Task) []bson.M {
 		t.OverrideDependencies = false
 		t.ContainerAllocationAttempts = 0
 		t.CanReset = false
-		t.IsAutomaticReset = false
+		t.IsAutomaticRestart = false
 	}
 	update := []bson.M{
 		{
@@ -2241,7 +2241,7 @@ func resetTaskUpdate(t *Task) []bson.M {
 				ResultsFailedKey,
 				HasCedarResultsKey,
 				ResetWhenFinishedKey,
-				IsAutomaticResetKey,
+				IsAutomaticRestartKey,
 				ResetFailedWhenFinishedKey,
 				AgentVersionKey,
 				HostIdKey,
@@ -2814,16 +2814,17 @@ func (t *Task) SetResetWhenFinishedWithInc() error {
 	}
 	err := UpdateOne(
 		bson.M{
-			IdKey:      t.Id,
-			AbortedKey: bson.M{"$ne": true},
+			IdKey:                 t.Id,
+			AbortedKey:            bson.M{"$ne": true},
+			IsAutomaticRestartKey: bson.M{"$ne": true},
 		},
 		bson.M{
 			"$set": bson.M{
-				ResetWhenFinishedKey: true,
-				IsAutomaticResetKey:  true,
+				ResetWhenFinishedKey:  true,
+				IsAutomaticRestartKey: true,
 			},
 			"$inc": bson.M{
-				NumAutomaticResetsKey: 1,
+				NumAutomaticRestartsKey: 1,
 			},
 		},
 	)
@@ -2831,7 +2832,7 @@ func (t *Task) SetResetWhenFinishedWithInc() error {
 		return err
 	}
 	t.ResetWhenFinished = true
-	t.NumAutomaticResets = t.NumAutomaticResets + 1
+	t.NumAutomaticRestarts = t.NumAutomaticRestarts + 1
 	return nil
 }
 

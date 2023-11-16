@@ -794,6 +794,115 @@ post:
 	})
 }
 
+func (s *AgentSuite) TestRetryOnFailure() {
+	projYml := `
+tasks:
+  - name: this_is_a_task_name
+    commands:
+      - command: shell.exec
+        retry_on_failure: true
+        params:
+          script: exit 1
+`
+	s.setupRunTask(projYml)
+
+	nextTask := &apimodels.NextTaskResponse{
+		TaskId:     s.tc.task.ID,
+		TaskSecret: s.tc.task.Secret,
+	}
+	_, _, err := s.a.runTask(s.ctx, s.tc, nextTask, false, s.testTmpDirName)
+
+	s.NoError(err)
+	s.Equal(evergreen.TaskFailed, s.mockCommunicator.EndTaskResult.Detail.Status)
+
+	s.NoError(s.tc.logger.Close())
+	checkMockLogs(s.T(), s.mockCommunicator, s.tc.taskConfig.Task.Id, []string{
+		"Running task commands",
+		"Running command 'shell.exec' (step 1 of 1)",
+		"Running task commands failed",
+		"Command is set to retry on failure, marking task to restart upon completion.",
+	}, []string{
+		panicLog,
+	})
+}
+
+func (s *AgentSuite) TestRetryOnFailureWithPreErrorFailsTask() {
+	projYml := `
+pre_error_fails_task: true
+
+pre:
+  - command: shell.exec
+    retry_on_failure: true
+    params:
+      script: exit 1
+
+tasks:
+  - name: this_is_a_task_name
+    commands:
+      - command: shell.exec
+        params:
+          script: exit 0
+`
+	s.setupRunTask(projYml)
+
+	nextTask := &apimodels.NextTaskResponse{
+		TaskId:     s.tc.task.ID,
+		TaskSecret: s.tc.task.Secret,
+	}
+	_, _, err := s.a.runTask(s.ctx, s.tc, nextTask, false, s.testTmpDirName)
+
+	s.NoError(err)
+	s.Equal(evergreen.TaskFailed, s.mockCommunicator.EndTaskResult.Detail.Status)
+
+	s.NoError(s.tc.logger.Close())
+	checkMockLogs(s.T(), s.mockCommunicator, s.tc.taskConfig.Task.Id, []string{
+		"Running pre-task commands",
+		"Running command 'shell.exec' (step 1 of 1)",
+		"Running pre-task commands failed",
+		"Command is set to retry on failure, marking task to restart upon completion.",
+	}, []string{
+		panicLog,
+	})
+}
+
+func (s *AgentSuite) TestRetryOnFailureWithoutPreErrorFailsTask() {
+	projYml := `
+pre_error_fails_task: false
+
+pre:
+  - command: shell.exec
+    retry_on_failure: true
+    params:
+      script: exit 1
+
+tasks:
+  - name: this_is_a_task_name
+    commands:
+      - command: shell.exec
+        params:
+          script: exit 0
+`
+	s.setupRunTask(projYml)
+
+	nextTask := &apimodels.NextTaskResponse{
+		TaskId:     s.tc.task.ID,
+		TaskSecret: s.tc.task.Secret,
+	}
+	_, _, err := s.a.runTask(s.ctx, s.tc, nextTask, false, s.testTmpDirName)
+
+	s.NoError(err)
+	s.Equal(evergreen.TaskSucceeded, s.mockCommunicator.EndTaskResult.Detail.Status)
+
+	s.NoError(s.tc.logger.Close())
+	checkMockLogs(s.T(), s.mockCommunicator, s.tc.taskConfig.Task.Id, []string{
+		"Running pre-task commands",
+		"Running command 'shell.exec' (step 1 of 1)",
+	}, []string{
+		panicLog,
+		"Command is set to retry on failure, marking task to restart upon completion.",
+	})
+}
+
 func (s *AgentSuite) TestFailingPostDoesNotChangeEndTaskResults() {
 	projYml := `
 buildvariants:

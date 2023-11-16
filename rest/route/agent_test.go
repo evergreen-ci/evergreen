@@ -168,6 +168,123 @@ func TestAgentGetExpansionsAndVars(t *testing.T) {
 	}
 }
 
+func TestMarkTaskForReset(t *testing.T) {
+	for tName, tCase := range map[string]func(ctx context.Context, t *testing.T, rh *markTaskForResetHandler){
+		"FactorySucceeds": func(ctx context.Context, t *testing.T, rh *markTaskForResetHandler) {
+			copied := rh.Factory()
+			assert.NotZero(t, copied)
+			_, ok := copied.(*markTaskForResetHandler)
+			assert.True(t, ok)
+		},
+		"ParseSucceeds": func(ctx context.Context, t *testing.T, rh *markTaskForResetHandler) {
+			req, err := http.NewRequest(http.MethodPost, "https://example.com/rest/v2/agent/task/t1/reset", nil)
+			require.NoError(t, err)
+			req = gimlet.SetURLVars(req, map[string]string{"task_id": "t1"})
+			assert.NoError(t, rh.Parse(ctx, req))
+			assert.Equal(t, rh.taskID, "t1")
+		},
+		"RunSucceeds": func(ctx context.Context, t *testing.T, rh *markTaskForResetHandler) {
+			rh.taskID = "t2"
+			resp := rh.Run(ctx)
+			require.NotZero(t, resp)
+			assert.Equal(t, http.StatusOK, resp.Status())
+
+			foundTask, err := task.FindOneId("t2")
+			require.NoError(t, err)
+			require.NotNil(t, foundTask)
+			assert.True(t, foundTask.ResetWhenFinished)
+			assert.True(t, foundTask.IsAutomaticRestart)
+			assert.Equal(t, 1, foundTask.NumAutomaticRestarts)
+
+			// Should fail if the task resets and tries to auto restart again
+			require.NoError(t, foundTask.MarkEnd(time.Now(), &apimodels.TaskEndDetail{
+				Status: evergreen.TaskFailed,
+			}))
+			require.NoError(t, foundTask.Archive())
+			require.NoError(t, foundTask.Reset(ctx))
+			resp = rh.Run(ctx)
+			require.NotZero(t, resp)
+			assert.Equal(t, http.StatusBadRequest, resp.Status())
+
+			foundTask, err = task.FindOneId("t2")
+			require.NoError(t, err)
+			require.NotNil(t, foundTask)
+			assert.False(t, foundTask.ResetWhenFinished)
+			assert.False(t, foundTask.IsAutomaticRestart)
+			assert.Equal(t, foundTask.Status, evergreen.TaskUndispatched)
+			assert.Equal(t, 1, foundTask.NumAutomaticRestarts)
+		},
+		"RunSucceedsWithDisplayTask": func(ctx context.Context, t *testing.T, rh *markTaskForResetHandler) {
+			rh.taskID = "et1"
+			resp := rh.Run(ctx)
+			require.NotZero(t, resp)
+			assert.Equal(t, http.StatusOK, resp.Status())
+
+			foundTask, err := task.FindOneId("dt")
+			require.NoError(t, err)
+			require.NotNil(t, foundTask)
+			assert.True(t, foundTask.ResetWhenFinished)
+			assert.True(t, foundTask.IsAutomaticRestart)
+			assert.Equal(t, 1, foundTask.NumAutomaticRestarts)
+
+			// Should not error if another execution task tries to mark the display task for restart
+			// before the display task has finished
+			rh.taskID = "et2"
+			resp = rh.Run(ctx)
+			require.NotZero(t, resp)
+			assert.Equal(t, http.StatusOK, resp.Status())
+
+			foundTask, err = task.FindOneId("dt")
+			require.NoError(t, err)
+			require.NotNil(t, foundTask)
+			assert.True(t, foundTask.ResetWhenFinished)
+			assert.True(t, foundTask.IsAutomaticRestart)
+			assert.Equal(t, 1, foundTask.NumAutomaticRestarts)
+		},
+	} {
+		t.Run(tName, func(t *testing.T) {
+			ctx, cancel := context.WithCancel(context.Background())
+			defer cancel()
+
+			env := &mock.Environment{}
+			require.NoError(t, env.Configure(ctx))
+
+			require.NoError(t, db.ClearCollections(task.Collection))
+
+			et1 := task.Task{
+				Id:      "et1",
+				Project: "p1",
+				Version: "aaaaaaaaaaff001122334455",
+			}
+			et2 := task.Task{
+				Id:      "et2",
+				Project: "p1",
+				Version: "aaaaaaaaaaff001122334455",
+			}
+			dt := task.Task{
+				Id:             "dt",
+				Project:        "p1",
+				Version:        "aaaaaaaaaaff001122334455",
+				DisplayOnly:    true,
+				ExecutionTasks: []string{"et1", "et2"},
+			}
+			t2 := task.Task{
+				Id:      "t2",
+				Project: "p1",
+				Version: "aaaaaaaaaaff001122334456",
+			}
+			require.NoError(t, et1.Insert())
+			require.NoError(t, et2.Insert())
+			require.NoError(t, dt.Insert())
+			require.NoError(t, t2.Insert())
+			r, ok := makeMarkTaskForReset().(*markTaskForResetHandler)
+			require.True(t, ok)
+
+			tCase(ctx, t, r)
+		})
+	}
+}
+
 func TestAgentCedarConfig(t *testing.T) {
 	for tName, tCase := range map[string]func(ctx context.Context, t *testing.T, rh *agentCedarConfig, c evergreen.CedarConfig){
 		"FactorySucceeds": func(ctx context.Context, t *testing.T, rh *agentCedarConfig, c evergreen.CedarConfig) {

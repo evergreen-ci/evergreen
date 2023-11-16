@@ -575,6 +575,6 @@ func newMockServer(serve func(http.ResponseWriter, *http.Request)) (*httptest.Se
 	return httptest.NewServer(h), h
 }
 
-func (c *Mock) MarkTaskToRestart(ctx context.Context, td TaskData) error {
+func (c *Mock) MarkFailedTaskToRestart(ctx context.Context, td TaskData) error {
 	return nil
 }

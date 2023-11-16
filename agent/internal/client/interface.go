@@ -122,8 +122,8 @@ type SharedCommunicator interface {
 	// CreateInstallationToken creates an installation token for the given owner and repo if there is a GitHub app installed.
 	CreateInstallationToken(ctx context.Context, td TaskData, owner, repo string) (string, error)
 
-	// MarkTaskToRestart marks the task as needing to be restarted
-	MarkTaskToRestart(ctx context.Context, td TaskData) error
+	// MarkFailedTaskToRestart marks the task as needing to be restarted
+	MarkFailedTaskToRestart(ctx context.Context, td TaskData) error
 }
 
 // TaskData contains the taskData.ID and taskData.Secret. It must be set for
