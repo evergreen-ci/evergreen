@@ -157,6 +157,7 @@ input DistroInput {
   userSpawnAllowed: Boolean!
   validProjects: [String!]!
   workDir: String!
+  mountpoints: [String]!
 }
 
 input BootstrapSettingsInput {

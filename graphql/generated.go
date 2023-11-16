@@ -66418,7 +66418,7 @@ func (ec *executionContext) unmarshalInputDistroInput(ctx context.Context, obj i
 		asMap[k] = v
 	}
 
-	fieldsInOrder := [...]string{"aliases", "arch", "authorizedKeysFile", "bootstrapSettings", "cloneMethod", "containerPool", "disabled", "disableShallowClone", "dispatcherSettings", "expansions", "finderSettings", "homeVolumeSettings", "hostAllocatorSettings", "iceCreamSettings", "isCluster", "isVirtualWorkStation", "name", "note", "plannerSettings", "provider", "providerSettingsList", "setup", "setupAsSudo", "sshKey", "sshOptions", "user", "userSpawnAllowed", "validProjects", "workDir"}
+	fieldsInOrder := [...]string{"aliases", "arch", "authorizedKeysFile", "bootstrapSettings", "cloneMethod", "containerPool", "disabled", "disableShallowClone", "dispatcherSettings", "expansions", "finderSettings", "homeVolumeSettings", "hostAllocatorSettings", "iceCreamSettings", "isCluster", "isVirtualWorkStation", "name", "note", "plannerSettings", "provider", "providerSettingsList", "setup", "setupAsSudo", "sshKey", "sshOptions", "user", "userSpawnAllowed", "validProjects", "workDir", "mountpoints"}
 	for _, k := range fieldsInOrder {
 		v, ok := asMap[k]
 		if !ok {
@@ -66713,6 +66713,15 @@ func (ec *executionContext) unmarshalInputDistroInput(ctx context.Context, obj i
 				return it, err
 			}
 			it.WorkDir = data
+		case "mountpoints":
+			var err error
+
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("mountpoints"))
+			data, err := ec.unmarshalNString2ᚕstring(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.Mountpoints = data
 		}
 	}
 
