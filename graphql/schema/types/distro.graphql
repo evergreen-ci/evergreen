@@ -306,6 +306,7 @@ type Distro {
   userSpawnAllowed: Boolean!
   validProjects: [String]!
   workDir: String!
+  mountpoints: [String]!
 }
 
 type BootstrapSettings {
