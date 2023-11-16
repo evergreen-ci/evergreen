@@ -1,4 +1,5 @@
 command_type: test
+# test change pls ignore~
 stepback: true
 ignore:
   - "*.md" # don't schedule tests if a commit only changes markdown files
