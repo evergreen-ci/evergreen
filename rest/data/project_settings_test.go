@@ -381,14 +381,24 @@ func TestSaveProjectSettingsForSection(t *testing.T) {
 			assert.Contains(t, err.Error(), "cannot enable performance plugin")
 		},
 		"enabling performance plugin should succeed if id and identifier are the same": func(t *testing.T, ref model.ProjectRef) {
-			// Try enabling performance plugin
+			// Set identifier
 			apiProjectRef := restModel.APIProjectRef{
-				PerfEnabled: utility.TruePtr(),
+				Identifier: utility.ToStringPtr("myRepoId"),
 			}
 			apiChanges := &restModel.APIProjectSettings{
 				ProjectRef: apiProjectRef,
 			}
-			settings, err := SaveProjectSettingsForSection(ctx, ref.Id, apiChanges, model.ProjectPagePluginSection, false, "me")
+			settings, err := SaveProjectSettingsForSection(ctx, ref.Id, apiChanges, model.ProjectPageGeneralSection, false, "me")
+			require.NoError(t, err)
+			assert.NotNil(t, settings)
+			// Try enabling performance plugin
+			apiProjectRef = restModel.APIProjectRef{
+				PerfEnabled: utility.TruePtr(),
+			}
+			apiChanges = &restModel.APIProjectSettings{
+				ProjectRef: apiProjectRef,
+			}
+			settings, err = SaveProjectSettingsForSection(ctx, ref.Id, apiChanges, model.ProjectPagePluginSection, false, "me")
 			require.NoError(t, err)
 			assert.NotNil(t, settings)
 		},
