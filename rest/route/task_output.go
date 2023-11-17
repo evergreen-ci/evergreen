@@ -204,7 +204,7 @@ func (h *getTaskLogsHandler) Run(ctx context.Context) gimlet.Responder {
 		TailN:     h.tailN,
 	})
 	if err != nil {
-		return gimlet.MakeJSONErrorResponder(errors.Wrap(err, "getting task logs"))
+		return gimlet.MakeJSONInternalErrorResponder(errors.Wrap(err, "getting task logs"))
 	}
 
 	return h.createResponse(it)
@@ -248,7 +248,7 @@ func (h *getTestLogsHandler) Run(ctx context.Context) gimlet.Responder {
 		TailN:     h.tailN,
 	})
 	if err != nil {
-		return gimlet.MakeJSONErrorResponder(errors.Wrap(err, "getting task logs"))
+		return gimlet.MakeJSONInternalErrorResponder(errors.Wrap(err, "getting task logs"))
 	}
 
 	return h.createResponse(it)
