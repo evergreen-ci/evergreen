@@ -23,7 +23,8 @@ type autoArchiveCreate struct {
 	SourceDir string `mapstructure:"source_dir" plugin:"expand"`
 
 	// Include is a list of filename blobs to include from the source directory,
-	// e.g. "*.tgz", "file.txt", "test_*"
+	// e.g. "*.tgz", "file.txt", "test_*". If not specified, the entire source
+	// directory will be used.
 	Include []string `mapstructure:"include" plugin:"expand"`
 
 	// ExcludeFiles is a list of filename blobs to exclude from the source
