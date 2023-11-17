@@ -79,6 +79,11 @@ func TestTaskBuildFromService(t *testing.T) {
 						SystemLogLink: utility.ToStringPtr("parsley/evergreen/testId/2/system"),
 						AgentLogLink:  utility.ToStringPtr("parsley/evergreen/testId/2/agent"),
 					},
+					StepbackInfo: &APIStepbackInfo{
+						LastFailingTaskId: "last_failing",
+						LastPassingTaskId: "last_passing",
+						NextTaskId:        "next",
+					},
 				},
 				st: task.Task{
 					Id:                          "testId",
@@ -122,6 +127,11 @@ func TestTaskBuildFromService(t *testing.T) {
 					},
 					DisplayName: "testDisplayName",
 					Requester:   evergreen.RepotrackerVersionRequester,
+					StepbackInfo: &task.StepbackInfo{
+						LastFailingStepbackTaskId: "last_failing",
+						LastPassingStepbackTaskId: "last_passing",
+						NextStepbackTaskId:        "next",
+					},
 				},
 			},
 			{
@@ -252,6 +262,12 @@ func TestTaskBuildFromService(t *testing.T) {
 				So(utility.FromStringPtr(apiTask.ContainerOpts.Arch), ShouldEqual, utility.FromStringPtr(tc.at.ContainerOpts.Arch))
 				So(apiTask.ContainerAllocated, ShouldEqual, tc.at.ContainerAllocated)
 				So(apiTask.ContainerAllocationAttempts, ShouldEqual, tc.at.ContainerAllocationAttempts)
+
+				if tc.at.StepbackInfo == nil {
+					So(apiTask.StepbackInfo, ShouldBeNil)
+				} else {
+					So(apiTask.StepbackInfo, ShouldEqual, tc.at.StepbackInfo)
+				}
 			}
 		})
 	})

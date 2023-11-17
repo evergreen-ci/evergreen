@@ -49,6 +49,8 @@ type APITask struct {
 	Priority int64 `json:"priority"`
 	// Whether the task is currently active
 	Activated bool `json:"activated"`
+	// The information, if any, about stepback
+	StepbackInfo *APIStepbackInfo `json:"stepback_info"`
 	// Identifier of the process or user that activated this task
 	ActivatedBy                 *string `json:"activated_by"`
 	ContainerAllocated          bool    `json:"container_allocated"`
@@ -132,6 +134,12 @@ type APITask struct {
 	ResultsService       string `json:"-"`
 	HasCedarResults      bool   `json:"-"`
 	ResultsFailed        bool   `json:"-"`
+}
+
+type APIStepbackInfo struct {
+	LastFailingTaskId string `json:"last_failing_task_id"`
+	LastPassingTaskId string `json:"last_passing_task_id"`
+	NextTaskId        string `json:"next_task_id"`
 }
 
 type APIAbortInfo struct {
@@ -327,6 +335,14 @@ func (at *APITask) buildTask(t *task.Task) error {
 		}
 	}
 
+	if t.StepbackInfo != nil {
+		at.StepbackInfo = &APIStepbackInfo{
+			LastFailingTaskId: t.StepbackInfo.LastFailingStepbackTaskId,
+			LastPassingTaskId: t.StepbackInfo.LastPassingStepbackTaskId,
+			NextTaskId:        t.StepbackInfo.NextStepbackTaskId,
+		}
+	}
+
 	if err := at.Details.BuildFromService(t.Details); err != nil {
 		return errors.Wrap(err, "converting task end details to API model")
 	}
@@ -518,6 +534,12 @@ func (at *APITask) ToService() (*task.Task, error) {
 	catcher.Add(err)
 	if catcher.HasErrors() {
 		return nil, catcher.Resolve()
+	}
+
+	if at.StepbackInfo != nil {
+		st.StepbackInfo.LastFailingStepbackTaskId = at.StepbackInfo.LastFailingTaskId
+		st.StepbackInfo.LastPassingStepbackTaskId = at.StepbackInfo.LastPassingTaskId
+		st.StepbackInfo.NextStepbackTaskId = at.StepbackInfo.NextTaskId
 	}
 
 	if len(at.ExecutionTasks) > 0 {
