@@ -72,7 +72,7 @@ func TestGetGithubSettings(t *testing.T) {
 	assert.Empty(settings.Credentials["github"])
 
 	token, err := settings.GetGithubOauthToken()
-	assert.Error(err)
+	assert.NoError(err)
 	assert.Empty(token)
 
 	settings, err = NewSettings(filepath.Join(FindEvergreenHome(),
@@ -109,7 +109,7 @@ func TestGetGithubSettings(t *testing.T) {
 		assert.Nil(settings.Credentials)
 
 		token, err = settings.GetGithubOauthToken()
-		assert.Error(err)
+		assert.NoError(err)
 		assert.Empty(token)
 	})
 }

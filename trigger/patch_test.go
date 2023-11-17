@@ -271,25 +271,25 @@ func (s *patchSuite) TestRunChildrenOnPatchOutcome() {
 	// there is no token set up in settings, but hitting this error
 	// means it's trying to finalize the patch
 	s.Require().Error(err)
-	s.Contains(err.Error(), "no github token in settings")
+	s.Contains(err.Error(), "finalizing child patch")
 	s.Nil(n)
 
 	s.data.Status = evergreen.VersionFailed
 	n, err = s.t.patchOutcome(&s.subs[1])
 	s.Require().Error(err)
-	s.Contains(err.Error(), "no github token in settings")
+	s.Contains(err.Error(), "finalizing child patch")
 	s.Nil(n)
 
 	s.data.Status = evergreen.VersionSucceeded
 	n, err = s.t.patchOutcome(&s.subs[2])
 	s.Require().Error(err)
-	s.Contains(err.Error(), "no github token in settings")
+	s.Contains(err.Error(), "finalizing child patch")
 	s.Nil(n)
 
 	s.data.Status = evergreen.VersionFailed
 	n, err = s.t.patchOutcome(&s.subs[2])
 	s.Require().Error(err)
-	s.Contains(err.Error(), "no github token in settings")
+	s.Contains(err.Error(), "finalizing child patch")
 	s.Nil(n)
 
 }
