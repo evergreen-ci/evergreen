@@ -1488,11 +1488,18 @@ supported as a space-separated list. For example,
   depends_on:
   - name: test
     variant: "* !E"
+```
 
+Notably, selectors return items that satisfy all of the criteria. That is,
+they return the *set intersection* of each individual criterion. So the below yaml,
+while technically valid, wouldn't match anything given that these are static variant names, so the set 
+intersection will be nothing.
+
+``` yaml
 - name: push
   depends_on:
   - name: test
-    variant: "A B C D"
+    variant: "A B"
 ```
 
 [Task/variant tags](#task-and-variant-tags) 

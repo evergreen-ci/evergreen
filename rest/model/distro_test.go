@@ -32,6 +32,7 @@ func TestDistroBuildFromService(t *testing.T) {
 			SchedulerHost: "host",
 			ConfigPath:    "config_path",
 		},
+		Mountpoints: []string{"/", "/data"},
 	}
 	apiDistro := &APIDistro{}
 	apiDistro.BuildFromService(d)
@@ -47,6 +48,7 @@ func TestDistroBuildFromService(t *testing.T) {
 	assert.Equal(t, d.HomeVolumeSettings.FormatCommand, utility.FromStringPtr(apiDistro.HomeVolumeSettings.FormatCommand))
 	assert.Equal(t, d.IceCreamSettings.SchedulerHost, utility.FromStringPtr(apiDistro.IcecreamSettings.SchedulerHost))
 	assert.Equal(t, d.IceCreamSettings.ConfigPath, utility.FromStringPtr(apiDistro.IcecreamSettings.ConfigPath))
+	assert.Equal(t, d.Mountpoints, apiDistro.Mountpoints)
 }
 
 func TestDistroBuildFromServiceDefaults(t *testing.T) {
@@ -97,6 +99,7 @@ func TestDistroToService(t *testing.T) {
 			SchedulerHost: utility.ToStringPtr("host"),
 			ConfigPath:    utility.ToStringPtr("config_path"),
 		},
+		Mountpoints: []string{"/", "/data"},
 	}
 
 	d := apiDistro.ToService()
@@ -124,6 +127,7 @@ func TestDistroToService(t *testing.T) {
 	assert.Equal(t, utility.FromStringPtr(apiDistro.HomeVolumeSettings.FormatCommand), d.HomeVolumeSettings.FormatCommand)
 	assert.Equal(t, utility.FromStringPtr(apiDistro.IcecreamSettings.SchedulerHost), d.IceCreamSettings.SchedulerHost)
 	assert.Equal(t, utility.FromStringPtr(apiDistro.IcecreamSettings.ConfigPath), d.IceCreamSettings.ConfigPath)
+	assert.Equal(t, apiDistro.Mountpoints, d.Mountpoints)
 }
 
 func TestDistroToServiceDefaults(t *testing.T) {

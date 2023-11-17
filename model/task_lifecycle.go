@@ -2322,19 +2322,6 @@ func UpdateDisplayTaskForTask(t *task.Task) error {
 			break
 		}
 
-		msg := message.Fields{
-			"message":                      "failed to update display task due to concurrent update contention",
-			"execution_task":               t.Id,
-			"display_task_id":              originalDisplayTask.Id,
-			"original_display_task_status": originalDisplayTask.Status,
-			"attempt_num":                  i,
-			"ticket":                       "DEVPROD-712",
-		}
-		if updatedDisplayTask != nil {
-			msg["updated_display_task_status"] = updatedDisplayTask.Status
-		}
-		grip.Debug(message.WrapError(err, msg))
-
 		if i >= maxUpdateAttempts-1 {
 			return errors.Wrapf(err, "updating display task '%s' for execution task '%s'", originalDisplayTask.Id, t.Id)
 		}
@@ -2428,15 +2415,34 @@ func tryUpdateDisplayTaskAtomically(dt task.Task) (updated *task.Task, err error
 		update[task.FinishTimeKey] = dt.FinishTime
 	}
 
+	checkStatuses := []string{originalStatus}
+	if dt.Status != evergreen.TaskUndispatched {
+		// This is a small optimization to reduce update conflicts in the case
+		// where the updated status is the same as the current display task
+		// status.
+		// The display task update is allowed to go through if the display task
+		// status hasn't been changed (i.e. there was no race to update the
+		// status) or the updated status is the same as the current status in
+		// the DB (i.e. there was a race, but the race would ultimately still
+		// set the display task to the same resulting status). The one exception
+		// is if the display task is being updated to undispatched, then it's
+		// not sufficient to just check the status was not updated. In the case
+		// of updating to undispatched, the activation status must be up-to-date
+		// since that determines if it's scheduled to run or will not run.
+		checkStatuses = append(checkStatuses, dt.Status)
+	}
+
 	if err := task.UpdateOne(
 		bson.M{
 			task.IdKey: dt.Id,
-			// Require that the status is updated atomically and has not changed
-			// since the status was calculated. If the status has changed in
-			// between when the display task was fetched earlier and when it is
-			// updated here, then this update is potentially invalid because
-			// it's based on outdated data from the execution tasks.
-			task.StatusKey: originalStatus,
+			// Require that the status/activation state is updated atomically.
+			// For the update to succeed, either the status has not changed
+			// since the status was originally calculated, or the updated status
+			// is already the current display task status.
+			// If the status doesn't match the original or updated status, then
+			// then this update is potentially invalid because it's based on
+			// outdated data from the execution tasks.
+			task.StatusKey: bson.M{"$in": checkStatuses},
 		},
 		bson.M{
 			"$set": update,
