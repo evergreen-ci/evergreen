@@ -364,7 +364,7 @@ func TestSaveProjectSettingsForSection(t *testing.T) {
 			apiChanges := &restModel.APIProjectSettings{
 				ProjectRef: apiProjectRef,
 			}
-			settings, err := SaveProjectSettingsForSection(ctx, ref.RepoRefId, apiChanges, model.ProjectPageGeneralSection, false, "me")
+			settings, err := SaveProjectSettingsForSection(ctx, ref.RepoRefId, apiChanges, model.ProjectPageGeneralSection, true, "me")
 			require.NoError(t, err)
 			assert.NotNil(t, settings)
 
