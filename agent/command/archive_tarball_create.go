@@ -152,7 +152,6 @@ func (c *tarballCreate) makeArchive(ctx context.Context, logger grip.Journaler) 
 		return 0, errors.Wrap(err, "getting archive contents")
 	}
 
-	// kim: TODO: test useParallelGzip
 	useParallelGzip := totalSize > thresholdSizeForParallelGzipCompression
 	f, gz, tarWriter, err := tarGzWriter(c.Target, useParallelGzip)
 	if err != nil {

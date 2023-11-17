@@ -212,8 +212,6 @@ func tarGzReader(path string) (f, gz io.ReadCloser, tarReader *tar.Reader, err e
 	if err != nil {
 		return nil, nil, nil, errors.Wrapf(err, "opening file '%s'", path)
 	}
-	// kim: NOTE: only use pgzip if it's larger than 1 MB because it performs
-	// worse on small archives and many archives in Evergreen are small.
 	gz, err = pgzip.NewReader(f)
 	if err != nil {
 		defer f.Close()
