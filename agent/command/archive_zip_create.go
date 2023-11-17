@@ -71,14 +71,14 @@ func (c *zipArchiveCreate) Execute(ctx context.Context,
 		c.Target = getWorkingDirectory(conf, c.Target)
 	}
 
-	files, _, err := FindContentsToArchive(ctx, c.SourceDir, c.Include, c.ExcludeFiles)
+	files, _, err := findContentsToArchive(ctx, c.SourceDir, c.Include, c.ExcludeFiles)
 	if err != nil {
 		return errors.Wrap(err, "finding files to archive")
 	}
 
 	filenames := make([]string, len(files))
 	for idx := range files {
-		filenames[idx] = files[idx].Path
+		filenames[idx] = files[idx].path
 	}
 
 	if err := archiver.NewZip().Archive(filenames, c.Target); err != nil {

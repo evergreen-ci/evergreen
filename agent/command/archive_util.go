@@ -17,10 +17,10 @@ import (
 	"github.com/pkg/errors"
 )
 
-// BuildArchive reads the rootPath directory into the tar.Writer,
+// buildArchive reads the rootPath directory into the tar.Writer,
 // taking included and excluded strings into account.
 // Returns the number of files that were added to the archive
-func BuildArchive(ctx context.Context, tarWriter *tar.Writer, rootPath string, pathsToAdd []ArchiveContentFile,
+func buildArchive(ctx context.Context, tarWriter *tar.Writer, rootPath string, pathsToAdd []archiveContentFile,
 	excludes []string, logger grip.Journaler) (int, error) {
 
 	numFilesArchived := 0
@@ -36,25 +36,25 @@ FileLoop:
 		// Tarring symlinks doesn't work reliably right now, so if the file is
 		// a symlink, leave intarball path intact but write from the file
 		// underlying the symlink.
-		if file.Info.Mode()&os.ModeSymlink > 0 {
-			symlinkPath, err := filepath.EvalSymlinks(file.Path)
+		if file.info.Mode()&os.ModeSymlink > 0 {
+			symlinkPath, err := filepath.EvalSymlinks(file.path)
 			if err != nil {
-				logger.Warningf("Could not follow symlink '%s', ignoring.", file.Path)
+				logger.Warningf("Could not follow symlink '%s', ignoring.", file.path)
 				continue
 			} else {
-				logger.Infof("Following symlink '%s', got path '%s'.", file.Path, symlinkPath)
+				logger.Infof("Following symlink '%s', got path '%s'.", file.path, symlinkPath)
 				symlinkFileInfo, err := os.Stat(symlinkPath)
 				if err != nil {
-					logger.Warningf("Failed to get underlying file for symlink '%s', ignoring.", file.Path)
+					logger.Warningf("Failed to get underlying file for symlink '%s', ignoring.", file.path)
 					continue
 				}
 
-				intarball = strings.Replace(file.Path, "\\", "/", -1)
-				file.Path = symlinkPath
-				file.Info = symlinkFileInfo
+				intarball = strings.Replace(file.path, "\\", "/", -1)
+				file.path = symlinkPath
+				file.info = symlinkFileInfo
 			}
 		} else {
-			intarball = strings.Replace(file.Path, "\\", "/", -1)
+			intarball = strings.Replace(file.path, "\\", "/", -1)
 		}
 		rootPathPrefix := strings.Replace(rootPath, "\\", "/", -1)
 		intarball = strings.Replace(intarball, "\\", "/", -1)
@@ -71,11 +71,11 @@ FileLoop:
 		} else {
 			processed[intarball] = true
 		}
-		if file.Info.IsDir() {
+		if file.info.IsDir() {
 			continue
 		}
 
-		_, fileName := filepath.Split(file.Path)
+		_, fileName := filepath.Split(file.path)
 		for _, ignore := range excludes {
 			if match, _ := filepath.Match(ignore, fileName); match {
 				continue FileLoop
@@ -84,9 +84,9 @@ FileLoop:
 
 		hdr := new(tar.Header)
 		hdr.Name = strings.TrimPrefix(intarball, rootPathPrefix)
-		hdr.Mode = int64(file.Info.Mode())
-		hdr.Size = file.Info.Size()
-		hdr.ModTime = file.Info.ModTime()
+		hdr.Mode = int64(file.info.Mode())
+		hdr.Size = file.info.Size()
+		hdr.ModTime = file.info.ModTime()
 
 		numFilesArchived++
 		err := tarWriter.WriteHeader(hdr)
@@ -94,32 +94,30 @@ FileLoop:
 			return numFilesArchived, errors.Wrapf(err, "writing tarball header for file '%s'", intarball)
 		}
 
-		in, err := os.Open(file.Path)
+		in, err := os.Open(file.path)
 		if err != nil {
-			return numFilesArchived, errors.Wrapf(err, "opening file '%s'", file.Path)
+			return numFilesArchived, errors.Wrapf(err, "opening file '%s'", file.path)
 		}
 		amountWrote, err := io.Copy(tarWriter, in)
 		if err != nil {
-			logger.Debug(errors.Wrapf(in.Close(), "closing file '%s'", file.Path))
-			return numFilesArchived, errors.Wrapf(err, "copying file '%s' into tarball", file.Path)
+			logger.Debug(errors.Wrapf(in.Close(), "closing file '%s'", file.path))
+			return numFilesArchived, errors.Wrapf(err, "copying file '%s' into tarball", file.path)
 		}
 
 		if amountWrote != hdr.Size {
-			logger.Debug(errors.Wrapf(in.Close(), "closing file '%s'", file.Path))
+			logger.Debug(errors.Wrapf(in.Close(), "closing file '%s'", file.path))
 			return numFilesArchived, errors.Errorf("tarball header size is %d but actually wrote %d", hdr.Size, amountWrote)
 		}
 
-		logger.Debug(errors.Wrapf(in.Close(), "closing file '%s'", file.Path))
+		logger.Debug(errors.Wrapf(in.Close(), "closing file '%s'", file.path))
 		logger.Warning(errors.Wrap(tarWriter.Flush(), "flushing tar writer"))
 	}
 
 	return numFilesArchived, nil
 }
 
-func ExtractTarball(ctx context.Context, reader io.Reader, rootPath string, excludes []string) error {
+func extractTarball(ctx context.Context, reader io.Reader, rootPath string, excludes []string) error {
 	// wrap the reader in a gzip reader and a tar reader
-	// kim: NOTE: always use pgzip here because it's strictly better at
-	// decompression
 	gzipReader, err := pgzip.NewReader(reader)
 	if err != nil {
 		return errors.Wrap(err, "creating gzip reader")
@@ -134,7 +132,7 @@ func ExtractTarball(ctx context.Context, reader io.Reader, rootPath string, excl
 	return nil
 }
 
-// Extract unpacks the tar.Reader into rootPath.
+// extractTarArchive unpacks the tar.Reader into rootPath.
 func extractTarArchive(ctx context.Context, tarReader *tar.Reader, rootPath string, excludes []string) error {
 	for {
 		hdr, err := tarReader.Next()
@@ -207,9 +205,9 @@ func extractTarArchive(ctx context.Context, tarReader *tar.Reader, rootPath stri
 	}
 }
 
-// TarGzReader returns a file, gzip reader, and tar reader for the given path.
+// tarGzReader returns a file, gzip reader, and tar reader for the given path.
 // The tar reader wraps the gzip reader, which wraps the file.
-func TarGzReader(path string) (f, gz io.ReadCloser, tarReader *tar.Reader, err error) {
+func tarGzReader(path string) (f, gz io.ReadCloser, tarReader *tar.Reader, err error) {
 	f, err = os.Open(path)
 	if err != nil {
 		return nil, nil, nil, errors.Wrapf(err, "opening file '%s'", path)
@@ -225,11 +223,9 @@ func TarGzReader(path string) (f, gz io.ReadCloser, tarReader *tar.Reader, err e
 	return f, gz, tarReader, nil
 }
 
-// TarGzWriter returns a file, gzip writer, and tarWriter for the path.
+// tarGzWriter returns a file, gzip writer, and tarWriter for the path.
 // The tar writer wraps the gzip writer, which wraps the file.
-func TarGzWriter(path string, useParallelGzip bool) (f, gz io.WriteCloser, tarWriter *tar.Writer, err error) {
-	// kim: NOTE: only use pgzip if it's larger than 1 MB because it performs
-	// worse on small archives and many archives in Evergreen are small.
+func tarGzWriter(path string, useParallelGzip bool) (f, gz io.WriteCloser, tarWriter *tar.Writer, err error) {
 	f, err = os.Create(path)
 	if err != nil {
 		return nil, nil, nil, errors.Wrapf(err, "creating file '%s'", path)
@@ -243,17 +239,17 @@ func TarGzWriter(path string, useParallelGzip bool) (f, gz io.WriteCloser, tarWr
 	return f, gz, tarWriter, nil
 }
 
-// ArchiveContentFile represents a tar file on disk.
-type ArchiveContentFile struct {
-	Path string
-	Info os.FileInfo
+// archiveContentFile represents a tar file on disk.
+type archiveContentFile struct {
+	path string
+	info os.FileInfo
 	err  error
 }
 
-// FindContentsToArchive finds all files starting from the rootPath with the
+// findContentsToArchive finds all files starting from the rootPath with the
 // given inclusion and exclusion patterns.
-func FindContentsToArchive(ctx context.Context, rootPath string, includes, excludes []string) (files []ArchiveContentFile, totalSize int, err error) {
-	out := []ArchiveContentFile{}
+func findContentsToArchive(ctx context.Context, rootPath string, includes, excludes []string) (files []archiveContentFile, totalSize int, err error) {
+	out := []archiveContentFile{}
 	catcher := grip.NewBasicCatcher()
 	archiveContents, totalSize, err := streamArchiveContents(ctx, rootPath, includes, excludes)
 	if err != nil {
@@ -275,9 +271,9 @@ func FindContentsToArchive(ctx context.Context, rootPath string, includes, exclu
 	return out, totalSize, nil
 }
 
-func streamArchiveContents(ctx context.Context, rootPath string, includes, excludes []string) (files []ArchiveContentFile, totalSize int, err error) {
-	archiveContents := []ArchiveContentFile{}
-	seen := map[string]ArchiveContentFile{}
+func streamArchiveContents(ctx context.Context, rootPath string, includes, excludes []string) (files []archiveContentFile, totalSize int, err error) {
+	archiveContents := []archiveContentFile{}
+	seen := map[string]archiveContentFile{}
 	catcher := grip.NewCatcher()
 
 	addUniqueFile := func(path string, info fs.FileInfo) {
@@ -285,7 +281,7 @@ func streamArchiveContents(ctx context.Context, rootPath string, includes, exclu
 			return
 		}
 
-		acf := ArchiveContentFile{Path: path, Info: info}
+		acf := archiveContentFile{path: path, info: info}
 		seen[path] = acf
 		archiveContents = append(archiveContents, acf)
 		if info.Mode().IsRegular() {
@@ -341,7 +337,7 @@ func streamArchiveContents(ctx context.Context, rootPath string, includes, exclu
 				if filepath.Clean(a) == filepath.Clean(dir) {
 					match, err := filepath.Match(filematch, b)
 					if err != nil {
-						archiveContents = append(archiveContents, ArchiveContentFile{err: err})
+						archiveContents = append(archiveContents, archiveContentFile{err: err})
 					}
 					if match {
 						for _, ignore := range excludes {

@@ -274,7 +274,7 @@ func (c *s3get) get(ctx context.Context) error {
 	if err != nil {
 		return errors.Wrapf(err, "getting reader for remote file '%s'", c.RemoteFile)
 	}
-	if err := ExtractTarball(ctx, reader, c.ExtractTo, []string{}); err != nil {
+	if err := extractTarball(ctx, reader, c.ExtractTo, []string{}); err != nil {
 		return errors.Wrapf(err, "extracting file '%s' from archive to destination '%s'", c.RemoteFile, c.ExtractTo)
 	}
 

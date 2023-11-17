@@ -70,7 +70,7 @@ func (e *tarballExtract) Execute(ctx context.Context,
 		logger.Task().Notice(errors.Wrapf(archive.Close(), "closing file '%s'", e.ArchivePath))
 	}()
 
-	if err := ExtractTarball(ctx, archive, e.TargetDirectory, e.ExcludeFiles); err != nil {
+	if err := extractTarball(ctx, archive, e.TargetDirectory, e.ExcludeFiles); err != nil {
 		return errors.Wrapf(err, "extracting file '%s'", e.ArchivePath)
 	}
 

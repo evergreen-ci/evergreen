@@ -139,19 +139,22 @@ func (c *tarballCreate) Execute(ctx context.Context,
 
 }
 
+// thresholdSizeForParallelGzipCompression is the total size (in bytes) of the
+// files to archive after which using parallel gzip may improve performance
+// compared to regular gzip.
+const thresholdSizeForParallelGzipCompression = 1024 * 1024
+
 // Build the archive.
 // Returns the number of files included in the archive (0 means empty archive).
 func (c *tarballCreate) makeArchive(ctx context.Context, logger grip.Journaler) (int, error) {
-	// kim: TODO: do gnarly refactor to move the archive utils here
 	pathsToAdd, totalSize, err := streamArchiveContents(ctx, c.SourceDir, c.Include, []string{})
 	if err != nil {
 		return 0, errors.Wrap(err, "getting archive contents")
 	}
 
-	useParallelGzip := totalSize > 1024*1024
-	// kim: TODO: pass in total size of files to archive to determine which
-	// writer to use
-	f, gz, tarWriter, err := TarGzWriter(c.Target, useParallelGzip)
+	// kim: TODO: test useParallelGzip
+	useParallelGzip := totalSize > thresholdSizeForParallelGzipCompression
+	f, gz, tarWriter, err := tarGzWriter(c.Target, useParallelGzip)
 	if err != nil {
 		return -1, errors.Wrapf(err, "opening target archive file '%s'", c.Target)
 	}
@@ -162,7 +165,7 @@ func (c *tarballCreate) makeArchive(ctx context.Context, logger grip.Journaler) 
 	}()
 
 	// Build the archive
-	out, err := BuildArchive(ctx, tarWriter, c.SourceDir, pathsToAdd,
+	out, err := buildArchive(ctx, tarWriter, c.SourceDir, pathsToAdd,
 		c.ExcludeFiles, logger)
 
 	return out, errors.WithStack(err)

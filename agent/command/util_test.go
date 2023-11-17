@@ -112,13 +112,13 @@ func TestFindContentsToArchive(t *testing.T) {
 		}
 		assert.NotZero(t, len(expectedFiles))
 
-		foundFiles, totalSize, err := FindContentsToArchive(ctx, thisDir, []string{"*.go"}, nil)
+		foundFiles, totalSize, err := findContentsToArchive(ctx, thisDir, []string{"*.go"}, nil)
 		require.NoError(t, err)
 		assert.Equal(t, expectedFileSize, totalSize)
 		assert.Equal(t, len(foundFiles), len(expectedFiles))
 
 		for _, foundFile := range foundFiles {
-			pathRelativeToDir, err := filepath.Rel(thisDir, foundFile.Path)
+			pathRelativeToDir, err := filepath.Rel(thisDir, foundFile.path)
 			require.NoError(t, err)
 			_, ok := expectedFiles[pathRelativeToDir]
 			if assert.True(t, ok, "unexpected file '%s' found", pathRelativeToDir) {
@@ -146,12 +146,12 @@ func TestFindContentsToArchive(t *testing.T) {
 		}
 		assert.NotZero(t, len(expectedFiles))
 
-		foundFiles, totalSize, err := FindContentsToArchive(ctx, thisDir, []string{"*.go", "*.go"}, nil)
+		foundFiles, totalSize, err := findContentsToArchive(ctx, thisDir, []string{"*.go", "*.go"}, nil)
 		require.NoError(t, err)
 		assert.Equal(t, expectedFileSize, totalSize)
 
 		for _, foundFile := range foundFiles {
-			pathRelativeToDir, err := filepath.Rel(thisDir, foundFile.Path)
+			pathRelativeToDir, err := filepath.Rel(thisDir, foundFile.path)
 			require.NoError(t, err)
 			found, ok := expectedFiles[pathRelativeToDir]
 			if assert.True(t, ok, "unexpected file '%s' found", pathRelativeToDir) {
@@ -178,7 +178,7 @@ func TestArchiveExtract(t *testing.T) {
 		testDir := getDirectoryOfFile()
 		outputDir := t.TempDir()
 
-		f, gz, tarReader, err := TarGzReader(filepath.Join(testDir, "testdata", "artifacts.tar.gz"))
+		f, gz, tarReader, err := tarGzReader(filepath.Join(testDir, "testdata", "artifacts.tar.gz"))
 		require.NoError(t, err)
 		defer f.Close()
 		defer gz.Close()
@@ -209,7 +209,7 @@ func TestMakeArchive(t *testing.T) {
 		}()
 		require.NoError(t, outputFile.Close())
 
-		f, gz, tarWriter, err := TarGzWriter(outputFile.Name())
+		f, gz, tarWriter, err := tarGzWriter(outputFile.Name())
 		require.NoError(t, err)
 		defer f.Close()
 		defer gz.Close()
@@ -218,10 +218,10 @@ func TestMakeArchive(t *testing.T) {
 		ctx, cancel := context.WithCancel(context.Background())
 		defer cancel()
 		rootPath := filepath.Join(testDir, "testdata", "artifacts_in")
-		pathsToAdd, _, err := FindContentsToArchive(ctx, rootPath, includes, []string{})
+		pathsToAdd, _, err := findContentsToArchive(ctx, rootPath, includes, []string{})
 		require.NoError(t, err)
 		excludes := []string{"*.pdb"}
-		_, err = BuildArchive(ctx, tarWriter, rootPath, pathsToAdd, excludes, logger)
+		_, err = buildArchive(ctx, tarWriter, rootPath, pathsToAdd, excludes, logger)
 		So(err, ShouldBeNil)
 	})
 }
@@ -238,7 +238,7 @@ func TestArchiveRoundTrip(t *testing.T) {
 			assert.NoError(t, os.RemoveAll(outputFile.Name()))
 		}()
 
-		f, gz, tarWriter, err := TarGzWriter(outputFile.Name())
+		f, gz, tarWriter, err := tarGzWriter(outputFile.Name())
 		require.NoError(t, err)
 		includes := []string{"dir1/**"}
 		excludes := []string{"*.pdb"}
@@ -246,9 +246,9 @@ func TestArchiveRoundTrip(t *testing.T) {
 		ctx, cancel := context.WithCancel(context.Background())
 		defer cancel()
 		rootPath := filepath.Join(testDir, "testdata", "artifacts_in")
-		pathsToAdd, _, err := FindContentsToArchive(ctx, rootPath, includes, []string{})
+		pathsToAdd, _, err := findContentsToArchive(ctx, rootPath, includes, []string{})
 		require.NoError(t, err)
-		found, err = BuildArchive(ctx, tarWriter, rootPath, pathsToAdd, excludes, logger)
+		found, err = buildArchive(ctx, tarWriter, rootPath, pathsToAdd, excludes, logger)
 		So(err, ShouldBeNil)
 		So(found, ShouldEqual, 2)
 		So(tarWriter.Close(), ShouldBeNil)
@@ -256,7 +256,7 @@ func TestArchiveRoundTrip(t *testing.T) {
 		So(f.Close(), ShouldBeNil)
 
 		outputDir := t.TempDir()
-		f2, gz2, tarReader, err := TarGzReader(outputFile.Name())
+		f2, gz2, tarReader, err := tarGzReader(outputFile.Name())
 		require.NoError(t, err)
 		err = extractTarArchive(context.Background(), tarReader, outputDir, []string{})
 		defer f2.Close()
