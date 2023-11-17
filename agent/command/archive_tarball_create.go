@@ -9,7 +9,6 @@ import (
 
 	"github.com/evergreen-ci/evergreen/agent/internal"
 	"github.com/evergreen-ci/evergreen/agent/internal/client"
-	agentutil "github.com/evergreen-ci/evergreen/agent/util"
 	"github.com/evergreen-ci/evergreen/util"
 	"github.com/mitchellh/mapstructure"
 	"github.com/mongodb/grip"
@@ -143,8 +142,16 @@ func (c *tarballCreate) Execute(ctx context.Context,
 // Build the archive.
 // Returns the number of files included in the archive (0 means empty archive).
 func (c *tarballCreate) makeArchive(ctx context.Context, logger grip.Journaler) (int, error) {
-	// kim: TODO: pass in total size of files to archive
-	f, gz, tarWriter, err := agentutil.TarGzWriter(c.Target)
+	// kim: TODO: do gnarly refactor to move the archive utils here
+	pathsToAdd, totalSize, err := streamArchiveContents(ctx, c.SourceDir, c.Include, []string{})
+	if err != nil {
+		return 0, errors.Wrap(err, "getting archive contents")
+	}
+
+	useParallelGzip := totalSize > 1024*1024
+	// kim: TODO: pass in total size of files to archive to determine which
+	// writer to use
+	f, gz, tarWriter, err := TarGzWriter(c.Target, useParallelGzip)
 	if err != nil {
 		return -1, errors.Wrapf(err, "opening target archive file '%s'", c.Target)
 	}
@@ -155,7 +162,7 @@ func (c *tarballCreate) makeArchive(ctx context.Context, logger grip.Journaler) 
 	}()
 
 	// Build the archive
-	out, err := agentutil.BuildArchive(ctx, tarWriter, c.SourceDir, c.Include,
+	out, err := BuildArchive(ctx, tarWriter, c.SourceDir, pathsToAdd,
 		c.ExcludeFiles, logger)
 
 	return out, errors.WithStack(err)

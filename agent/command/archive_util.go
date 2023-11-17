@@ -1,14 +1,17 @@
-package util
+package command
 
 import (
 	"archive/tar"
+	"compress/gzip"
 	"context"
 	"fmt"
 	"io"
+	"io/fs"
 	"os"
 	"path/filepath"
 	"strings"
 
+	"github.com/evergreen-ci/utility"
 	"github.com/klauspost/pgzip"
 	"github.com/mongodb/grip"
 	"github.com/pkg/errors"
@@ -17,12 +20,8 @@ import (
 // BuildArchive reads the rootPath directory into the tar.Writer,
 // taking included and excluded strings into account.
 // Returns the number of files that were added to the archive
-func BuildArchive(ctx context.Context, tarWriter *tar.Writer, rootPath string, includes []string,
+func BuildArchive(ctx context.Context, tarWriter *tar.Writer, rootPath string, pathsToAdd []ArchiveContentFile,
 	excludes []string, logger grip.Journaler) (int, error) {
-	pathsToAdd, err := streamArchiveContents(ctx, rootPath, includes, []string{})
-	if err != nil {
-		return 0, errors.Wrap(err, "getting archive contents")
-	}
 
 	numFilesArchived := 0
 	processed := map[string]bool{}
@@ -228,14 +227,137 @@ func TarGzReader(path string) (f, gz io.ReadCloser, tarReader *tar.Reader, err e
 
 // TarGzWriter returns a file, gzip writer, and tarWriter for the path.
 // The tar writer wraps the gzip writer, which wraps the file.
-func TarGzWriter(path string) (f, gz io.WriteCloser, tarWriter *tar.Writer, err error) {
+func TarGzWriter(path string, useParallelGzip bool) (f, gz io.WriteCloser, tarWriter *tar.Writer, err error) {
 	// kim: NOTE: only use pgzip if it's larger than 1 MB because it performs
 	// worse on small archives and many archives in Evergreen are small.
 	f, err = os.Create(path)
 	if err != nil {
 		return nil, nil, nil, errors.Wrapf(err, "creating file '%s'", path)
 	}
-	gz = pgzip.NewWriter(f)
+	if useParallelGzip {
+		gz = pgzip.NewWriter(f)
+	} else {
+		gz = gzip.NewWriter(f)
+	}
 	tarWriter = tar.NewWriter(gz)
 	return f, gz, tarWriter, nil
+}
+
+// ArchiveContentFile represents a tar file on disk.
+type ArchiveContentFile struct {
+	Path string
+	Info os.FileInfo
+	err  error
+}
+
+// FindContentsToArchive finds all files starting from the rootPath with the
+// given inclusion and exclusion patterns.
+func FindContentsToArchive(ctx context.Context, rootPath string, includes, excludes []string) (files []ArchiveContentFile, totalSize int, err error) {
+	out := []ArchiveContentFile{}
+	catcher := grip.NewBasicCatcher()
+	archiveContents, totalSize, err := streamArchiveContents(ctx, rootPath, includes, excludes)
+	if err != nil {
+		return nil, 0, errors.Wrap(err, "getting archive contents")
+	}
+	for _, fn := range archiveContents {
+		if fn.err != nil {
+			catcher.Add(fn.err)
+			continue
+		}
+
+		out = append(out, fn)
+	}
+
+	if catcher.HasErrors() {
+		return nil, 0, catcher.Resolve()
+	}
+
+	return out, totalSize, nil
+}
+
+func streamArchiveContents(ctx context.Context, rootPath string, includes, excludes []string) (files []ArchiveContentFile, totalSize int, err error) {
+	archiveContents := []ArchiveContentFile{}
+	seen := map[string]ArchiveContentFile{}
+	catcher := grip.NewCatcher()
+
+	addUniqueFile := func(path string, info fs.FileInfo) {
+		if _, ok := seen[path]; ok {
+			return
+		}
+
+		acf := ArchiveContentFile{Path: path, Info: info}
+		seen[path] = acf
+		archiveContents = append(archiveContents, acf)
+		if info.Mode().IsRegular() {
+			totalSize += int(info.Size())
+		}
+	}
+
+	for _, includePattern := range includes {
+		dir, filematch := filepath.Split(includePattern)
+		dir = filepath.Join(rootPath, dir)
+
+		if !utility.FileExists(dir) {
+			continue
+		}
+
+		if err := ctx.Err(); err != nil {
+			return nil, 0, errors.Wrapf(err, "canceled while streaming archive for include pattern '%s'", includePattern)
+		}
+
+		var walk filepath.WalkFunc
+
+		if filematch == "**" {
+			walk = func(path string, info os.FileInfo, err error) error {
+				for _, ignore := range excludes {
+					if match, _ := filepath.Match(ignore, path); match {
+						return nil
+					}
+				}
+
+				addUniqueFile(path, info)
+
+				return nil
+			}
+			catcher.Wrapf(filepath.Walk(dir, walk), "matching files included in filter '%s' for path '%s'", filematch, dir)
+		} else if strings.Contains(filematch, "**") {
+			globSuffix := filematch[2:]
+			walk = func(path string, info os.FileInfo, err error) error {
+				if strings.HasSuffix(filepath.Base(path), globSuffix) {
+					for _, ignore := range excludes {
+						if match, _ := filepath.Match(ignore, path); match {
+							return nil
+						}
+					}
+
+					addUniqueFile(path, info)
+				}
+				return nil
+			}
+			catcher.Wrapf(filepath.Walk(dir, walk), "matching files included in filter '%s' for path '%s'", filematch, dir)
+		} else {
+			walk = func(path string, info os.FileInfo, err error) error {
+				a, b := filepath.Split(path)
+				if filepath.Clean(a) == filepath.Clean(dir) {
+					match, err := filepath.Match(filematch, b)
+					if err != nil {
+						archiveContents = append(archiveContents, ArchiveContentFile{err: err})
+					}
+					if match {
+						for _, ignore := range excludes {
+							if exmatch, _ := filepath.Match(ignore, path); exmatch {
+								return nil
+							}
+						}
+
+						addUniqueFile(path, info)
+					}
+				}
+				return nil
+			}
+			catcher.Wrapf(filepath.Walk(rootPath, walk), "matching files included in filter '%s' for patch '%s'", filematch, rootPath)
+		}
+	}
+
+	return archiveContents, totalSize, catcher.Resolve()
 }
