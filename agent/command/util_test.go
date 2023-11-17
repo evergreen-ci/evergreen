@@ -107,10 +107,10 @@ func TestFindContentsToArchive(t *testing.T) {
 		for _, entry := range entries {
 			if strings.HasSuffix(entry.Name(), ".go") {
 				expectedFiles[entry.Name()] = false
+				info, err := entry.Info()
+				require.NoError(t, err)
+				expectedFileSize += int(info.Size())
 			}
-			info, err := entry.Info()
-			require.NoError(t, err)
-			expectedFileSize += int(info.Size())
 		}
 		assert.NotZero(t, len(expectedFiles))
 
@@ -141,10 +141,10 @@ func TestFindContentsToArchive(t *testing.T) {
 		for _, entry := range entries {
 			if strings.HasSuffix(entry.Name(), ".go") {
 				expectedFiles[entry.Name()] = false
+				info, err := entry.Info()
+				require.NoError(t, err)
+				expectedFileSize += int(info.Size())
 			}
-			info, err := entry.Info()
-			require.NoError(t, err)
-			expectedFileSize += int(info.Size())
 		}
 		assert.NotZero(t, len(expectedFiles))
 
