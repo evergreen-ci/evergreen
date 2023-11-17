@@ -576,7 +576,7 @@ func (s *Settings) GetGithubOauthString() (string, error) {
 	return "", errors.New("no github token in settings")
 }
 
-// TODO EVG-19966: Delete this function
+// TODO DEVPROD-1429: Delete this function
 func (s *Settings) GetGithubOauthToken() (string, error) {
 	if s == nil {
 		return "", errors.New("not defined")
