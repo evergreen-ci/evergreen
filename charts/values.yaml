@@ -1,8 +1,15 @@
 image:
   repository: 795250896452.dkr.ecr.us-east-1.amazonaws.com/evergreen/evergreen-server
 
+arch: arm64
+
+replicaCount: 1
+
 ingress:
   enabled: true
+  # TODO change to public url
+#  hosts:
+#    - spruce.mongodb.com
 
 defaultAlerts:
   enabled: true
@@ -21,3 +28,18 @@ resources:
   limits:
     cpu: 1000m
     memory: 1Gi
+
+services:
+  - name: http
+    ingress: true
+    port: 80
+    probes: true
+    protocol: TCP
+    targetPort: 9090
+    type: ClusterIP
+
+mesh:
+  enabled: true
+  permissive: false
+  # TODO replace
+  gateway: evergreen-gateway
