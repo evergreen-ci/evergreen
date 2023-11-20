@@ -5,6 +5,12 @@ database:
   write_concern:
     wmode: "majority"
 
+buckets:
+  log_bucket:
+    name: "logs"
+    type: "gridfs"
+    db_name: "mci_test"
+
 domain_name: "evergreen.localhost"
 
 configdir: "config_test"

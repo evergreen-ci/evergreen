@@ -518,9 +518,6 @@ tasks:
     name: test-model-manifest
   - <<: *run-go-test-suite-with-mongodb
     tags: ["db", "test"]
-    name: test-model-tasklog
-  - <<: *run-go-test-suite-with-mongodb
-    tags: ["db", "test"]
     name: test-model-testlog
   - <<: *run-go-test-suite-with-mongodb
     tags: ["db", "test"]

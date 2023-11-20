@@ -31,6 +31,19 @@ input MoveProjectInput {
   projectId: String! @requireProjectAccess(access: EDIT)
 }
 
+"""
+SetLastRevisionInput is the input to the setLastRevision mutation.
+It contains information used to fix the repotracker error of a project.
+"""
+input SetLastRevisionInput {
+  projectIdentifier: String!
+  revision: String!
+}
+
+type SetLastRevisionPayload {
+  mergeBaseRevision: String!
+}
+
 input ProjectAliasInput {
   id: String!
   alias: String!
@@ -231,6 +244,7 @@ type Project {
   repo: String!
   repoRefId: String!
   repotrackerDisabled: Boolean
+  repotrackerError: RepotrackerError
   restricted: Boolean
   spawnHostScriptPath: String!
   stepbackDisabled: Boolean
@@ -240,6 +254,12 @@ type Project {
   triggers: [TriggerAlias!]
   versionControlEnabled: Boolean
   workstationConfig: WorkstationConfig!
+}
+
+type RepotrackerError {
+  exists: Boolean!
+  invalidRevision: String!
+  mergeBaseRevision: String!
 }
 
 type CommitQueueParams {

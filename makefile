@@ -4,7 +4,7 @@ buildDir := bin
 nodeDir := public
 packages := $(name) agent agent-command agent-util agent-internal agent-internal-client agent-internal-testutil operations cloud cloud-userdata
 packages += db util plugin units graphql thirdparty thirdparty-docker auth scheduler model validator service repotracker mock
-packages += model-annotations model-patch model-artifact model-host model-pod model-pod-definition model-pod-dispatcher model-build model-event model-task model-user model-distro model-manifest model-testresult model-log model-tasklog model-testlog
+packages += model-annotations model-patch model-artifact model-host model-pod model-pod-definition model-pod-dispatcher model-build model-event model-task model-user model-distro model-manifest model-testresult model-log model-testlog
 packages += model-commitqueue model-cache
 packages += rest-client rest-data rest-route rest-model migrations trigger model-alertrecord model-notification model-taskstats model-reliability
 packages += taskoutput
@@ -126,12 +126,13 @@ cli:$(localClientBinary)
 clis:$(clientBinaries)
 $(clientBuildDir)/%/$(unixBinaryBasename) $(clientBuildDir)/%/$(windowsBinaryBasename):$(buildDir)/build-cross-compile $(srcFiles) go.mod go.sum
 	./$(buildDir)/build-cross-compile -buildName=$* -ldflags="$(ldFlags)" -gcflags="$(gcFlags)" -goBinary="$(nativeGobin)" -directory=$(clientBuildDir) -source=$(clientSource) -output=$@
+sign-macos:$(foreach platform,$(macOSPlatforms),$(clientBuildDir)/$(platform)/.signed)
 # Targets to upload the CLI binaries to S3.
 $(buildDir)/upload-s3:cmd/upload-s3/upload-s3.go
 	@$(gobin) build -o $@ $<
 upload-clis:$(buildDir)/upload-s3 clis
 	$(buildDir)/upload-s3 -bucket="${BUCKET_NAME}" -local="${LOCAL_PATH}" -remote="${REMOTE_PATH}" -exclude="${EXCLUDE_PATTERN}"
-phony += cli clis upload-clis
+phony += cli clis upload-clis sign-macos
 # end client build directives
 
 
@@ -166,7 +167,7 @@ $(buildDir)/.load-smoke-data:$(buildDir)/load-smoke-data
 	./$<
 	@touch $@
 $(buildDir)/.load-local-data:$(buildDir)/load-smoke-data
-	./$< -path testdata/local -dbName evergreen_local -amboyDBName amboy_local
+	./$< -path testdata/local -dbName $(if $(DB_NAME),$(DB_NAME),evergreen_local) -amboyDBName amboy_local
 	@touch $@
 local-evergreen:$(localClientBinary) load-local-data
 	./$< service deploy start-local-evergreen
@@ -244,7 +245,7 @@ dist-staging:
 dist-unsigned:
 	SIGN_MACOS= $(MAKE) dist
 dist:$(buildDir)/dist.tar.gz
-$(buildDir)/dist.tar.gz:$(buildDir)/make-tarball $(clientBinaries) $(uiFiles) $(if $(SIGN_MACOS),$(foreach platform,$(macOSPlatforms),$(clientBuildDir)/$(platform)/.signed))
+$(buildDir)/dist.tar.gz:$(buildDir)/make-tarball $(clientBinaries) $(uiFiles) $(if $(SIGN_MACOS),sign-macos)
 	./$< --name $@ --prefix $(name) $(foreach item,$(distContents),--item $(item)) --exclude "public/node_modules" --exclude "clients/.cache"
 # end main build
 

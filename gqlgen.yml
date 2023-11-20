@@ -205,6 +205,8 @@ models:
         resolver: true
       distroPermissions:
         resolver: true
+      projectPermissions:
+        resolver: true
   PlannerSettings:
     model: github.com/evergreen-ci/evergreen/rest/model.APIPlannerSettings
   PlannerSettingsInput:
@@ -289,6 +291,8 @@ models:
     model: github.com/evergreen-ci/evergreen/rest/model.APIProjectSettings
   RepoTaskSyncOptions:
     model: github.com/evergreen-ci/evergreen/rest/model.APITaskSyncOptions
+  RepotrackerError:
+    model: github.com/evergreen-ci/evergreen/rest/model.APIRepositoryErrorDetails
   RepoWorkstationConfig:
     model: github.com/evergreen-ci/evergreen/rest/model.APIWorkstationConfig
   ResourceLimits:

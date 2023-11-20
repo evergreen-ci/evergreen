@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"strconv"
+	"sync"
 	"testing"
 	"time"
 
@@ -4576,7 +4577,8 @@ func TestClearAndResetStrandedHostTask(t *testing.T) {
 	require.NoError(t, err)
 	assert.Equal(evergreen.TaskFailed, unschedulableTask.Status)
 
-	dependencyTask, err := task.FindOne(db.Query(task.ById("dependencyTask")))
+	dependencyTask, err := task.FindOneId("dependencyTask")
+	require.NotNil(t, dependencyTask)
 	require.NoError(t, err)
 	assert.True(dependencyTask.DependsOn[0].Unattainable)
 	assert.True(dependencyTask.DependsOn[0].Finished)
@@ -5260,6 +5262,12 @@ func TestResetStaleTask(t *testing.T) {
 			require.NoError(t, err)
 			require.NotZero(t, dbVersion)
 			assert.Equal(t, evergreen.VersionCreated, dbVersion.Status, "version status should be updated for restarted task")
+
+			dependencyTask, err := task.FindOneId("dependencyTask")
+			require.NotNil(t, dependencyTask)
+			require.NoError(t, err)
+			assert.False(t, dependencyTask.DependsOn[0].Unattainable)
+			assert.False(t, dependencyTask.DependsOn[0].Finished)
 		},
 		"SuccessfullySystemFailsAbortedTask": func(t *testing.T, tsk task.Task) {
 			tsk.Aborted = true
@@ -5278,6 +5286,12 @@ func TestResetStaleTask(t *testing.T) {
 			assert.False(t, utility.IsZeroTime(dbTask.FinishTime))
 			assert.False(t, dbTask.ContainerAllocated)
 			assert.Zero(t, dbTask.ContainerAllocatedTime)
+
+			dependencyTask, err := task.FindOneId("dependencyTask")
+			require.NotNil(t, dependencyTask)
+			require.NoError(t, err)
+			assert.True(t, dependencyTask.DependsOn[0].Unattainable)
+			assert.True(t, dependencyTask.DependsOn[0].Finished)
 		},
 		"ResetsParentDisplayTaskForStaleExecutionTask": func(t *testing.T, tsk task.Task) {
 			otherExecTask := task.Task{
@@ -5400,7 +5414,8 @@ func TestResetStaleTask(t *testing.T) {
 			}
 			require.NoError(t, version.Insert())
 			build := build.Build{
-				Id: version.Id,
+				Id:      version.Id,
+				Version: version.Id,
 			}
 			require.NoError(t, build.Insert())
 			parserProject := ParserProject{
@@ -5437,6 +5452,22 @@ func TestResetStaleTask(t *testing.T) {
 				PodID:                  taskPod.ID,
 				HostId:                 host.Id,
 			}
+			depTask := task.Task{
+				Id:            "dependencyTask",
+				Status:        evergreen.TaskUndispatched,
+				Activated:     true,
+				ActivatedTime: time.Now(),
+				BuildId:       build.Id,
+				Version:       version.Id,
+				Project:       projectRef.Identifier,
+				DependsOn: []task.Dependency{
+					{
+						TaskId: "task_id",
+						Status: evergreen.TaskSucceeded,
+					},
+				},
+			}
+			require.NoError(t, depTask.Insert())
 			tCase(t, tsk)
 		})
 	}
@@ -5823,6 +5854,113 @@ func TestDisplayTaskDelayedRestart(t *testing.T) {
 	oldTask, err := task.FindOneOld(task.ById("dt_0"))
 	assert.NoError(err)
 	assert.NotNil(oldTask)
+}
+
+func TestDisplayTaskUpdatesAreConcurrencySafe(t *testing.T) {
+	// This test is intentionally testing concurrent/conflicting updates to the
+	// same display task. If UpdateDisplayTaskForTask is working properly, this
+	// test should never be flaky. If it is, that's a sign that it's not
+	// concurrency safe.
+
+	require.NoError(t, db.ClearCollections(task.Collection, event.EventCollection))
+	defer func() {
+		assert.NoError(t, db.ClearCollections(task.Collection, event.EventCollection))
+	}()
+
+	const displayTaskID = "display_task_id"
+	et0 := task.Task{
+		Id:            "execution_task0",
+		DisplayTaskId: utility.ToStringPtr(displayTaskID),
+		Activated:     true,
+		ActivatedTime: time.Now(),
+		Status:        evergreen.TaskSucceeded,
+		StartTime:     time.Now().Add(-time.Hour),
+		FinishTime:    time.Now(),
+	}
+	et1 := task.Task{
+		Id:            "execution_task1",
+		DisplayTaskId: utility.ToStringPtr(displayTaskID),
+		Activated:     true,
+		ActivatedTime: time.Now(),
+		StartTime:     time.Now().Add(-time.Hour),
+		Status:        evergreen.TaskStarted,
+	}
+	dt := task.Task{
+		Id:             displayTaskID,
+		DisplayOnly:    true,
+		ExecutionTasks: []string{et0.Id, et1.Id},
+		Status:         evergreen.TaskUndispatched,
+		Activated:      false,
+	}
+	require.NoError(t, et0.Insert())
+	require.NoError(t, et1.Insert())
+	require.NoError(t, dt.Insert())
+
+	const numConcurrentUpdates = 3
+	errs := make(chan error, 1+numConcurrentUpdates)
+	var updatesDone sync.WaitGroup
+	for i := 0; i < numConcurrentUpdates; i++ {
+		updatesDone.Add(1)
+		go func() {
+			defer updatesDone.Done()
+			// This goroutine will potentially see one execution task is not
+			// finished, so it may try either update the display task status to
+			// starting or success.
+			// The task has to be copied into the goroutine to avoid concurrent
+			// modifications of the in-memory display task.
+			et0Copy := et0
+			errs <- UpdateDisplayTaskForTask(&et0Copy)
+		}()
+	}
+
+	updatesDone.Add(1)
+	go func() {
+		defer updatesDone.Done()
+
+		// Simulate a condition where some goroutines see the execution task as
+		// still running, while others see it as succeeded.
+		if err := et1.MarkEnd(time.Now(), &apimodels.TaskEndDetail{Status: evergreen.TaskSucceeded}); err != nil {
+			errs <- err
+			return
+		}
+
+		if err := et1.MarkStart(time.Now()); err != nil {
+			errs <- err
+			return
+		}
+
+		if err := et1.MarkEnd(time.Now(), &apimodels.TaskEndDetail{Status: evergreen.TaskSucceeded}); err != nil {
+			errs <- err
+			return
+		}
+
+		// The last goroutine initially sees that all execution tasks are
+		// finished, so it should try to update the final status to success.
+		// The task has to be copied into the goroutine to avoid concurrent
+		// modifications of the in-memory display task.
+		et0Copy := et0
+		errs <- UpdateDisplayTaskForTask(&et0Copy)
+	}()
+
+	updatesDone.Wait()
+	close(errs)
+
+	for err := range errs {
+		assert.NoError(t, err)
+	}
+
+	// The final display task status must be success after all the concurrent
+	// updates are done because all the execution tasks finished with success.
+	dbDisplayTask, err := task.FindOneId(dt.Id)
+	require.NoError(t, err)
+	require.NotZero(t, dbDisplayTask)
+
+	assert.Equal(t, evergreen.TaskSucceeded, dbDisplayTask.Status, "final display task status must be success after all concurrent updates finish")
+
+	latestEvents, err := event.Find(event.MostRecentTaskEvents(dt.Id, 1))
+	require.NoError(t, err)
+	require.Len(t, latestEvents, 1)
+	assert.Equal(t, event.TaskFinished, latestEvents[0].EventType, "should have logged event for display task finished")
 }
 
 func TestAbortedTaskDelayedRestart(t *testing.T) {

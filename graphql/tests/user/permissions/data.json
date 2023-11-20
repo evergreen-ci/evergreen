@@ -13,5 +13,17 @@
         }
       }
     }
+  ],
+  "project_ref": [
+    {
+      "_id" : "sandbox_project_id",
+      "identifier" : "sandbox",
+      "display_name" : "Sandbox",
+      "enabled" : null,
+      "owner_name" : "evergreen-ci",
+      "repo_name" : "commit-queue-sandbox",
+      "branch_name" : "main",
+      "admins": ["me"]
+    }
   ]
 }

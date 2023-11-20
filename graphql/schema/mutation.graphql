@@ -74,6 +74,7 @@ type Mutation {
   removeFavoriteProject(identifier: String!): Project!
   saveProjectSettingsForSection(projectSettings: ProjectSettingsInput, section: ProjectSettingsSection!): ProjectSettings!
   saveRepoSettingsForSection(repoSettings: RepoSettingsInput, section: ProjectSettingsSection!): RepoSettings!
+  setLastRevision(opts: SetLastRevisionInput! @requireProjectAdmin): SetLastRevisionPayload!
 
   # spawn
   attachVolumeToHost(volumeAndHost: VolumeHost!): Boolean!

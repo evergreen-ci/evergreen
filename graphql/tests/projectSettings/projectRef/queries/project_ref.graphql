@@ -25,10 +25,8 @@
         caseSensitive
         exactMatch
       }
-
       gitTagAuthorizedUsers
       gitTagAuthorizedTeams
-
       triggers {
         project
         level
@@ -54,13 +52,11 @@
         bfSuggestionTimeoutSecs
         bfSuggestionUsername
       }
-
       containerSizeDefinitions {
         name
         cpu
         memoryMb
       }
-
       taskAnnotationSettings {
         jiraCustomFields {
           displayText
@@ -71,16 +67,19 @@
           secret
         }
       }
-
       taskSync {
         configEnabled
         patchEnabled
       }
-
       externalLinks {
         displayName
         requesters
         urlTemplate
+      }
+      repotrackerError {
+        exists
+        invalidRevision
+        mergeBaseRevision
       }
     }
   }
