@@ -624,11 +624,7 @@ func CreateVersionFromConfig(ctx context.Context, projectInfo *model.ProjectInfo
 
 	settings := evergreen.GetEnvironment().Settings()
 	// validate the project
-	isConfigDefined := projectInfo.Config != nil
-	verrs := validator.CheckProjectErrors(ctx, projectInfo.Project, true)
-	verrs = append(verrs, validator.CheckProjectSettings(ctx, settings, projectInfo.Project, projectInfo.Ref, isConfigDefined)...)
-	verrs = append(verrs, validator.CheckProjectConfigErrors(projectInfo.Config)...)
-	verrs = append(verrs, validator.CheckProjectWarnings(projectInfo.Project)...)
+	verrs := validator.CheckProject(ctx, projectInfo.Project, projectInfo.Config, projectInfo.Ref, settings, true, true, false)
 	if len(verrs) > 0 || versionErrs != nil {
 		// We have errors in the project.
 		// Format them, as we need to store + display them to the user

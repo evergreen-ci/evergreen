@@ -222,6 +222,60 @@ func getDistrosForProject(ctx context.Context, projectID string) (ids []string, 
 	return ids, aliases, nil
 }
 
+func CheckProject(ctx context.Context, project *model.Project, config *model.ProjectConfig, ref *model.ProjectRef, settings *evergreen.Settings, includeLong, projectRefProvided, projectRefErrored bool) ValidationErrors {
+	isConfigDefined := config != nil
+	verrs := CheckProjectErrors(ctx, project, includeLong)
+	if !projectRefProvided {
+		verrs = append(verrs, ValidationError{
+			Message: "no project specified; validation will proceed without checking project settings",
+			Level:   Warning,
+		})
+		verrs = append(verrs, ValidationError{
+			Message: "no project specified; validation will proceed without checking alias coverage",
+			Level:   Warning,
+		})
+	} else {
+		if ref == nil {
+			if projectRefErrored {
+				verrs = append(verrs, ValidationError{
+					Message: "error finding project; validation will proceed without checking project settings",
+					Level:   Warning,
+				})
+				verrs = append(verrs, ValidationError{
+					Message: "error finding project; validation will proceed without checking alias coverage",
+					Level:   Warning,
+				})
+			} else {
+				verrs = append(verrs, ValidationError{
+					Message: "project does not exist; validation will proceed without checking project settings",
+					Level:   Warning,
+				})
+				verrs = append(verrs, ValidationError{
+					Message: "project does not exist; validation will proceed without checking alias coverage",
+					Level:   Warning,
+				})
+			}
+		} else {
+			verrs = append(verrs, CheckProjectSettings(ctx, settings, project, ref, isConfigDefined)...)
+			// Check project aliases
+			aliases, err := model.ConstructMergedAliasesByPrecedence(ref, config, ref.RepoRefId)
+			if err != nil {
+				verrs = append(verrs, ValidationError{
+					Message: "problem finding aliases; validation will proceed without checking alias coverage",
+					Level:   Warning,
+				})
+			} else {
+				verrs = append(verrs, CheckAliasWarnings(project, aliases)...)
+			}
+		}
+	}
+	if config != nil {
+		verrs = append(verrs, CheckProjectConfigErrors(config)...)
+	}
+	verrs = append(verrs, CheckProjectWarnings(project)...)
+	return verrs
+}
+
 // verify that the project configuration semantics is valid
 func CheckProjectWarnings(project *model.Project) ValidationErrors {
 	validationErrs := ValidationErrors{}
