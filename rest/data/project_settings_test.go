@@ -323,6 +323,75 @@ func TestSaveProjectSettingsForSection(t *testing.T) {
 			assert.Contains(t, err.Error(), "PR testing (projects: conflicting-project) and commit checks (projects: conflicting-project)")
 			assert.NotContains(t, err.Error(), "the commit queue")
 		},
+		"invalid URL should error when saving": func(t *testing.T, ref model.ProjectRef) {
+			apiProjectRef := restModel.APIProjectRef{
+				ExternalLinks: []restModel.APIExternalLink{
+					{
+						URLTemplate: utility.ToStringPtr("invalid URL template"),
+						DisplayName: utility.ToStringPtr("display name"),
+					},
+				},
+			}
+			apiChanges := &restModel.APIProjectSettings{
+				ProjectRef: apiProjectRef,
+			}
+			settings, err := SaveProjectSettingsForSection(ctx, ref.Id, apiChanges, model.ProjectPagePluginSection, false, "me")
+			require.Error(t, err)
+			assert.Nil(t, settings)
+			assert.Contains(t, err.Error(), "validating external links")
+		},
+		"valid URL should succeed when saving": func(t *testing.T, ref model.ProjectRef) {
+			apiProjectRef := restModel.APIProjectRef{
+				ExternalLinks: []restModel.APIExternalLink{
+					{
+						URLTemplate: utility.ToStringPtr("https://arnars.com/{version_id}"),
+						DisplayName: utility.ToStringPtr("A link"),
+					},
+				},
+			}
+			apiChanges := &restModel.APIProjectSettings{
+				ProjectRef: apiProjectRef,
+			}
+			settings, err := SaveProjectSettingsForSection(ctx, ref.Id, apiChanges, model.ProjectPagePluginSection, false, "me")
+			require.NoError(t, err)
+			assert.NotNil(t, settings)
+		},
+		"enabling performance plugin should fail if id and identifier are different": func(t *testing.T, ref model.ProjectRef) {
+			// Set identifier
+			apiProjectRef := restModel.APIProjectRef{
+				Identifier: utility.ToStringPtr("different"),
+			}
+			apiChanges := &restModel.APIProjectSettings{
+				ProjectRef: apiProjectRef,
+			}
+			settings, err := SaveProjectSettingsForSection(ctx, ref.RepoRefId, apiChanges, model.ProjectPageGeneralSection, true, "me")
+			require.NoError(t, err)
+			assert.NotNil(t, settings)
+
+			// Try enabling performance plugin
+			apiProjectRef = restModel.APIProjectRef{
+				PerfEnabled: utility.TruePtr(),
+			}
+			apiChanges = &restModel.APIProjectSettings{
+				ProjectRef: apiProjectRef,
+			}
+			settings, err = SaveProjectSettingsForSection(ctx, ref.Id, apiChanges, model.ProjectPagePluginSection, false, "me")
+			require.Error(t, err)
+			assert.Nil(t, settings)
+			assert.Contains(t, err.Error(), "cannot enable performance plugin")
+		},
+		"enabling performance plugin should succeed if id and identifier are the same": func(t *testing.T, ref model.ProjectRef) {
+			// Try enabling performance plugin
+			apiProjectRef := restModel.APIProjectRef{
+				PerfEnabled: utility.TruePtr(),
+			}
+			apiChanges := &restModel.APIProjectSettings{
+				ProjectRef: apiProjectRef,
+			}
+			settings, err := SaveProjectSettingsForSection(ctx, ref.Id, apiChanges, model.ProjectPagePluginSection, false, "me")
+			require.NoError(t, err)
+			assert.NotNil(t, settings)
+		},
 		"github conflicts on Commit Queue page when defaulting to repo": func(t *testing.T, ref model.ProjectRef) {
 			conflictingRef := model.ProjectRef{
 				Identifier:          "conflicting-project",
@@ -690,6 +759,7 @@ func TestSaveProjectSettingsForSection(t *testing.T) {
 		assert.NoError(t, pRef.Insert())
 		repoRef := model.RepoRef{ProjectRef: model.ProjectRef{
 			Id:               pRef.RepoRefId,
+			Identifier:       "myRepoId",
 			Restricted:       utility.TruePtr(),
 			PRTestingEnabled: utility.TruePtr(),
 		}}
