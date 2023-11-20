@@ -6,6 +6,7 @@ import (
 	"io"
 
 	"github.com/evergreen-ci/pail"
+	"github.com/evergreen-ci/utility"
 	"github.com/mongodb/grip"
 	"github.com/mongodb/grip/recovery"
 	"github.com/pkg/errors"
@@ -35,8 +36,8 @@ type chunkIteratorOptions struct {
 	bucket    pail.Bucket
 	chunks    []chunkInfo
 	parser    LineParser
-	start     int64
-	end       int64
+	start     *int64
+	end       *int64
 	lineLimit int
 	tailN     int
 }
@@ -45,7 +46,7 @@ type chunkIteratorOptions struct {
 // stored as a set of chunks in pail-backed bucket storage.
 func newChunkIterator(ctx context.Context, opts chunkIteratorOptions) *chunkIterator {
 	var lineOffset int
-	if opts.start > 0 || opts.end > 0 {
+	if opts.start != nil || opts.end != nil {
 		opts.chunks = filterChunksByTimeRange(opts.chunks, opts.start, opts.end)
 	}
 	if opts.tailN > 0 {
@@ -123,11 +124,11 @@ func (it *chunkIterator) Next() bool {
 		}
 		it.lineCount++
 
-		if it.opts.end > 0 && item.Timestamp > it.opts.end {
+		if it.opts.end != nil && item.Timestamp > *it.opts.end {
 			it.exhausted = true
 			return false
 		}
-		if item.Timestamp >= it.opts.start {
+		if item.Timestamp >= utility.FromInt64Ptr(it.opts.start) {
 			it.item = item
 			break
 		}
@@ -177,10 +178,10 @@ func (it *chunkIterator) Close() error {
 	return nil
 }
 
-func filterChunksByTimeRange(chunks []chunkInfo, start, end int64) []chunkInfo {
+func filterChunksByTimeRange(chunks []chunkInfo, start, end *int64) []chunkInfo {
 	var filteredChunks []chunkInfo
 	for i := 0; i < len(chunks); i++ {
-		if (end > 0 && end < chunks[i].start) || start > chunks[i].end {
+		if (end != nil && *end < chunks[i].start) || utility.FromInt64Ptr(start) > chunks[i].end {
 			continue
 		}
 		filteredChunks = append(filteredChunks, chunks[i])

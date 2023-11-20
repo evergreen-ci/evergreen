@@ -8,6 +8,7 @@ import (
 	"time"
 
 	"github.com/evergreen-ci/pail"
+	"github.com/evergreen-ci/utility"
 	"github.com/mongodb/grip/level"
 	"github.com/pkg/errors"
 	"github.com/stretchr/testify/assert"
@@ -206,7 +207,7 @@ func TestChunkIterator(t *testing.T) {
 				bucket: bucket,
 				chunks: chunks,
 				parser: parser,
-				start:  chunks[1].start,
+				start:  &chunks[1].start,
 			},
 			test: func(t *testing.T, it *chunkIterator) {
 				offset := chunks[0].numLines
@@ -228,7 +229,7 @@ func TestChunkIterator(t *testing.T) {
 				bucket: bucket,
 				chunks: chunks,
 				parser: parser,
-				end:    chunks[1].start,
+				end:    &chunks[1].start,
 			},
 			test: func(t *testing.T, it *chunkIterator) {
 				var count int
@@ -249,8 +250,8 @@ func TestChunkIterator(t *testing.T) {
 				bucket: bucket,
 				chunks: chunks,
 				parser: parser,
-				start:  chunks[1].start,
-				end:    chunks[len(chunks)-1].end - int64(time.Millisecond),
+				start:  &chunks[1].start,
+				end:    utility.ToInt64Ptr(chunks[len(chunks)-1].end - int64(time.Millisecond)),
 			},
 			test: func(t *testing.T, it *chunkIterator) {
 				offset := chunks[0].numLines
@@ -315,8 +316,8 @@ func TestChunkIterator(t *testing.T) {
 				bucket:    bucket,
 				chunks:    chunks,
 				parser:    parser,
-				start:     chunks[0].start,
-				end:       chunks[1].end,
+				start:     &chunks[0].start,
+				end:       &chunks[1].end,
 				lineLimit: 5,
 				tailN:     20,
 			},

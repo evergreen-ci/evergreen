@@ -42,8 +42,8 @@ type LogIteratorReaderOptions struct {
 }
 
 // NewLogIteratorReader returns a reader that reads the log lines from the
-// iterator with the given options. It is the responsibility of the caller to
-// close the iterator.
+// iterator with the given options. The reader will attempt to close the
+// iterator.
 func NewLogIteratorReader(it LogIterator, opts LogIteratorReaderOptions) *LogIteratorReader {
 	if opts.TimeZone == nil {
 		opts.TimeZone = time.UTC
