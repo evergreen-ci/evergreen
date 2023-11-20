@@ -8,15 +8,12 @@ resources:
     cpu: 1000
     memory: 500MiB
 steps:
-  - environment:
-      GITHUB_OAUTH_TOKEN:
-        from_secret: gh_pr_oauth_token
-    type: BuildAndPushECR
+  - type: BuildAndPushECR
     image: plugins/ecr
     name: publish-evergreen-server
     settings:
       access_key:
-        from_secret: ecr_access_keyserver
+        from_secret: ecr_access_key
       secret_key:
         from_secret: ecr_secret_key
       repo: evergreen-ci/evergreen
