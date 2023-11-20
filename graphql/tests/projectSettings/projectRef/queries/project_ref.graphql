@@ -51,6 +51,7 @@
         bfSuggestionServer
         bfSuggestionTimeoutSecs
         bfSuggestionUsername
+        ticketCreateIssueType
       }
       containerSizeDefinitions {
         name
