@@ -65,6 +65,19 @@ Admins can also set the branch project to inherit values from a
 repo-level project settings configuration. This can be learned about at
 ['Using Repo Level Settings'](Repo-Level-Settings.md).
 
+### Project Flags
+
+Under project flags, admins have a number of options for users to configure what
+runs for their project. For example, prevent projects from creating mainline 
+commits by disabling repotracking (by default, this is enabled. Evergreen occasionally 
+misses commits due to misconfiguration or GitHub outages, in which case admins can 
+Force Repotracker Run to unblock this). 
+
+Admins can also enable the ability to unschedule old tasks if a more recent
+commit passes, or configure tasks to stepback on failure to isolate the cause.
+
+Check out the settings on the page to see more options.
+
 ### Access and Admin Settings
 
 Admins can set a project as private or public. A private project can
@@ -82,11 +95,6 @@ via the REST API. The default for this setting is to allow logged-in
 users basic access to this project. Note this is different from the
 Private/Public setting above, which restricts access for users that are
 not logged in.
-
-### Scheduling Settings
-
-Admins can enable the ability to unschedule old tasks if a more recent
-commit passes.
 
 ### Variables
 
