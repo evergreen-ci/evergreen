@@ -1,3 +1,27 @@
+env:
+  MONGO_URL: ""
+
+replicaCount: 2
+
+probes:
+  enabled: true
+  path: /health
+  headers: {}
+  readiness:
+    initialDelaySeconds: 5
+    periodSeconds: 10
+    timeoutSeconds: 1
+    successThreshold: 1
+    failureThreshold: 3
+
 ingress:
   hosts:
     - evergreen-server.evergreen.prod.corp.mongodb.com
+
+resources:
+  requests:
+    cpu: 1000m
+    memory: 1Gi
+  limits:
+    cpu: 1000m
+    memory: 1Gi

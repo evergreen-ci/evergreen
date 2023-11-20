@@ -1,0 +1,23 @@
+image:
+  repository: 795250896452.dkr.ecr.us-east-1.amazonaws.com/evergreen/evergreen-server
+
+ingress:
+  enabled: true
+
+defaultAlerts:
+  enabled: true
+  email: devprod-infrastructure-team@mongodb.com
+  slack: devprod-infra-alerts
+
+env:
+  GOOS: linux
+  GOARCH: arm64
+  MONGO_URL: ""
+
+resources:
+  requests:
+    cpu: 100m
+    memory: .25Gi
+  limits:
+    cpu: 1000m
+    memory: 1Gi
