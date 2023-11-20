@@ -11,6 +11,7 @@ mutation {
           authorizedKeysFile: "",
           containerPool: "",
           workDir: "/data/mci",
+          mountpoints: ["/"],
           disabled: true,
           provider: EC2_ON_DEMAND,
           providerSettingsList: [
