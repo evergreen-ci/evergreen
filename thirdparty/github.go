@@ -1360,7 +1360,7 @@ func authorizedForOrg(ctx context.Context, token, requiredOrganization, name str
 	githubClient := getGithubClient(token, caller, retryConfig{retry: true})
 
 	// GitHub often appends [bot] to GitHub App usage, but this doesn't match the App slug, so we should check without this.
-	appName := strings.TrimSuffix(name, botSuffix)
+	nameWithoutBotSuffix := strings.TrimSuffix(name, botSuffix)
 	opts := &github.ListOptions{PerPage: 100}
 	for {
 		installations, resp, err := githubClient.Organizations.ListInstallations(ctx, requiredOrganization, opts)
@@ -1372,7 +1372,8 @@ func authorizedForOrg(ctx context.Context, token, requiredOrganization, name str
 		}
 
 		for _, installation := range installations.Installations {
-			if installation.GetAppSlug() == appName {
+			appSlug := installation.GetAppSlug()
+			if appSlug == name || appSlug == nameWithoutBotSuffix {
 				prPermission := installation.GetPermissions().GetPullRequests()
 				if prPermission == githubWrite {
 					return true, nil
