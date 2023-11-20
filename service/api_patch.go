@@ -362,7 +362,7 @@ func (as *APIServer) updatePatchModule(w http.ResponseWriter, r *http.Request) {
 		if err != nil {
 			as.LoggedError(w, r, http.StatusInternalServerError, errors.Errorf("finding project for patch '%s'", p.Id))
 		}
-		if err = p.SetDescription(model.MakeCommitQueueDescription(p.Patches, projectRef, proj, p.IsGithubMergePatch(), p.GithubMergeData.HeadSHA)); err != nil {
+		if err = p.SetDescription(model.MakeCommitQueueDescription(p.Patches, projectRef, proj, p.IsGithubMergePatch(), p.GithubMergeData)); err != nil {
 			as.LoggedError(w, r, http.StatusInternalServerError, err)
 			return
 		}

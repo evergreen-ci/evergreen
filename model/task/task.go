@@ -2063,7 +2063,6 @@ func (t *Task) MarkEnd(finishTime time.Time, detail *apimodels.TaskEndDetail) er
 				ContainerAllocatedTimeKey: 1,
 			},
 		})
-
 }
 
 // GetDisplayStatus finds and sets DisplayStatus to the task. It should reflect

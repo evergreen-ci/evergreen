@@ -124,18 +124,19 @@ func addModuleToPatch(params *patchParams, args cli.Args, conf *ClientSettings,
 		return err
 	}
 
-	if len(diffData.fullPatch) == 0 {
-		grip.Infof("No changes for module '%s', continuing.", module.Name)
-		return nil
-	}
 	if !params.SkipConfirm {
 		grip.Infof("Using branch '%s' for module '%s'.", module.Branch, module.Name)
 		if diffData.patchSummary != "" {
 			fmt.Println(diffData.patchSummary)
 		}
-
-		if !confirm("This is a summary of the module patch to be submitted. Include this module's changes?", true) {
-			return nil
+		if len(diffData.fullPatch) > 0 {
+			if !confirm("This is a summary of the module patch to be submitted. Include this module's changes?", true) {
+				return nil
+			}
+		} else {
+			if !confirm("Patch submission for the module is empty. Continue?", true) {
+				return nil
+			}
 		}
 	}
 	moduleParams := UpdatePatchModuleParams{
@@ -152,7 +153,7 @@ func addModuleToPatch(params *patchParams, args cli.Args, conf *ClientSettings,
 	if err != nil {
 		return err
 	}
-	grip.Infof("Module '%s' updated.", module.Name)
+	grip.Infof("Module '%s' updated, base commit is '%s' (and will override the manifest).", module.Name, diffData.base)
 	return nil
 }
 

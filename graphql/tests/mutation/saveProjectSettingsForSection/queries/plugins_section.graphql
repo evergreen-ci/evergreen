@@ -1,0 +1,43 @@
+mutation {
+  saveProjectSettingsForSection(
+    projectSettings: {
+      projectRef: {
+        id: "sandbox_project_id"
+        patchTriggerAliases: []
+        githubTriggerAliases: []
+        buildBaronSettings: {
+          ticketCreateProject: ""
+          ticketSearchProjects: []
+          ticketCreateIssueType: "Incident"
+        }
+        taskAnnotationSettings: {
+          jiraCustomFields: [{ field: "a field", displayText: "display text" }]
+        }
+        externalLinks: [
+          {
+            requesters: ["github_pull_request"]
+            displayName: "display name"
+            urlTemplate: "https://thingy.com"
+          }
+        ]
+      }
+    }
+    section: PLUGINS
+  ) {
+    projectRef {
+      buildBaronSettings {
+        ticketCreateIssueType
+      }
+      taskAnnotationSettings {
+        jiraCustomFields {
+          displayText
+          field
+        }
+        fileTicketWebhook {
+          endpoint
+          secret
+        }
+      }
+    }
+  }
+}

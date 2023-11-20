@@ -422,6 +422,14 @@ mciModule.controller('DistrosCtrl', function ($scope, $window, $http, $location,
     $scope.scrollElement('#distro-aliases-table');
   }
 
+  $scope.addMountpoint = function () {
+    if ($scope.activeDistro.mountpoints == null) {
+      $scope.activeDistro.mountpoints = [];
+    }
+    $scope.activeDistro.mountpoints.push('');
+    $scope.scrollElement('#mountpoints-table');
+  }
+
   $scope.removeDistroAlias = function (alias_name) {
     var index = $scope.activeDistro.aliases.indexOf(alias_name);
     $scope.activeDistro.aliases.splice(index, 1);
@@ -430,6 +438,11 @@ mciModule.controller('DistrosCtrl', function ($scope, $window, $http, $location,
   $scope.removeSSHOption = function (ssh_option) {
     var index = $scope.activeDistro.ssh_options.indexOf(ssh_option);
     $scope.activeDistro.ssh_options.splice(index, 1);
+  }
+
+  $scope.removeMountpoint = function (mountpoint) {
+    var index = $scope.activeDistro.mountpoints.indexOf(mountpoint);
+    $scope.activeDistro.mountpoints.splice(index, 1);
   }
 
   $scope.addPreconditionScript = function () {
@@ -586,6 +599,7 @@ mciModule.controller('DistrosCtrl', function ($scope, $window, $http, $location,
         'user': $scope.activeDistro.user,
         'ssh_key': $scope.activeDistro.ssh_key,
         'ssh_options': $scope.activeDistro.ssh_options,
+        'mountpoints': $scope.activeDistro.mountpoints,
         'authorized_keys_file': $scope.activeDistro.authorized_keys_file,
         'setup': $scope.activeDistro.setup,
         'spawn_allowed': $scope.activeDistro.spawn_allowed,

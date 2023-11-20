@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"strconv"
+	"sync"
 	"testing"
 	"time"
 
@@ -6046,6 +6047,113 @@ func TestDisplayTaskDelayedRestart(t *testing.T) {
 	oldTask, err := task.FindOneOld(task.ById("dt_0"))
 	assert.NoError(err)
 	assert.NotNil(oldTask)
+}
+
+func TestDisplayTaskUpdatesAreConcurrencySafe(t *testing.T) {
+	// This test is intentionally testing concurrent/conflicting updates to the
+	// same display task. If UpdateDisplayTaskForTask is working properly, this
+	// test should never be flaky. If it is, that's a sign that it's not
+	// concurrency safe.
+
+	require.NoError(t, db.ClearCollections(task.Collection, event.EventCollection))
+	defer func() {
+		assert.NoError(t, db.ClearCollections(task.Collection, event.EventCollection))
+	}()
+
+	const displayTaskID = "display_task_id"
+	et0 := task.Task{
+		Id:            "execution_task0",
+		DisplayTaskId: utility.ToStringPtr(displayTaskID),
+		Activated:     true,
+		ActivatedTime: time.Now(),
+		Status:        evergreen.TaskSucceeded,
+		StartTime:     time.Now().Add(-time.Hour),
+		FinishTime:    time.Now(),
+	}
+	et1 := task.Task{
+		Id:            "execution_task1",
+		DisplayTaskId: utility.ToStringPtr(displayTaskID),
+		Activated:     true,
+		ActivatedTime: time.Now(),
+		StartTime:     time.Now().Add(-time.Hour),
+		Status:        evergreen.TaskStarted,
+	}
+	dt := task.Task{
+		Id:             displayTaskID,
+		DisplayOnly:    true,
+		ExecutionTasks: []string{et0.Id, et1.Id},
+		Status:         evergreen.TaskUndispatched,
+		Activated:      false,
+	}
+	require.NoError(t, et0.Insert())
+	require.NoError(t, et1.Insert())
+	require.NoError(t, dt.Insert())
+
+	const numConcurrentUpdates = 3
+	errs := make(chan error, 1+numConcurrentUpdates)
+	var updatesDone sync.WaitGroup
+	for i := 0; i < numConcurrentUpdates; i++ {
+		updatesDone.Add(1)
+		go func() {
+			defer updatesDone.Done()
+			// This goroutine will potentially see one execution task is not
+			// finished, so it may try either update the display task status to
+			// starting or success.
+			// The task has to be copied into the goroutine to avoid concurrent
+			// modifications of the in-memory display task.
+			et0Copy := et0
+			errs <- UpdateDisplayTaskForTask(&et0Copy)
+		}()
+	}
+
+	updatesDone.Add(1)
+	go func() {
+		defer updatesDone.Done()
+
+		// Simulate a condition where some goroutines see the execution task as
+		// still running, while others see it as succeeded.
+		if err := et1.MarkEnd(time.Now(), &apimodels.TaskEndDetail{Status: evergreen.TaskSucceeded}); err != nil {
+			errs <- err
+			return
+		}
+
+		if err := et1.MarkStart(time.Now()); err != nil {
+			errs <- err
+			return
+		}
+
+		if err := et1.MarkEnd(time.Now(), &apimodels.TaskEndDetail{Status: evergreen.TaskSucceeded}); err != nil {
+			errs <- err
+			return
+		}
+
+		// The last goroutine initially sees that all execution tasks are
+		// finished, so it should try to update the final status to success.
+		// The task has to be copied into the goroutine to avoid concurrent
+		// modifications of the in-memory display task.
+		et0Copy := et0
+		errs <- UpdateDisplayTaskForTask(&et0Copy)
+	}()
+
+	updatesDone.Wait()
+	close(errs)
+
+	for err := range errs {
+		assert.NoError(t, err)
+	}
+
+	// The final display task status must be success after all the concurrent
+	// updates are done because all the execution tasks finished with success.
+	dbDisplayTask, err := task.FindOneId(dt.Id)
+	require.NoError(t, err)
+	require.NotZero(t, dbDisplayTask)
+
+	assert.Equal(t, evergreen.TaskSucceeded, dbDisplayTask.Status, "final display task status must be success after all concurrent updates finish")
+
+	latestEvents, err := event.Find(event.MostRecentTaskEvents(dt.Id, 1))
+	require.NoError(t, err)
+	require.Len(t, latestEvents, 1)
+	assert.Equal(t, event.TaskFinished, latestEvents[0].EventType, "should have logged event for display task finished")
 }
 
 func TestAbortedTaskDelayedRestart(t *testing.T) {

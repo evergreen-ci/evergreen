@@ -405,7 +405,9 @@ version manifest will be inherited from its base version. You can change
 the git revision for modules by setting a module manually with 
 [evergreen set-module](../CLI.md#operating-on-existing-patches) or
 by specifying the `auto_update` option (as described below) to use the
-latest revision available for a module.
+latest revision available for a module. The full hierarchy of how
+module revisions are determined is available in the [git.get_project](Project-Commands.md#module-hash-hierarchy)
+docs.
 
 Module fields support the expansion of variables defined in the [Variables](Project-and-Distro-Settings.md#variables)
 tab of the Spruce project settings. These fields are expanded at the time of version creation, at which point 
@@ -1486,11 +1488,18 @@ supported as a space-separated list. For example,
   depends_on:
   - name: test
     variant: "* !E"
+```
 
+Notably, selectors return items that satisfy all of the criteria. That is,
+they return the *set intersection* of each individual criterion. So the below yaml,
+while technically valid, wouldn't match anything given that these are static variant names, so the set 
+intersection will be nothing.
+
+``` yaml
 - name: push
   depends_on:
   - name: test
-    variant: "A B C D"
+    variant: "A B"
 ```
 
 [Task/variant tags](#task-and-variant-tags) 
