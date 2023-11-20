@@ -32,7 +32,7 @@ require (
 	github.com/google/go-github/v52 v52.0.0
 	github.com/google/shlex v0.0.0-20191202100458-e7afc7fbc510
 	github.com/gophercloud/gophercloud v0.1.0
-	github.com/gorilla/csrf v1.7.1
+	github.com/gorilla/csrf v1.7.2
 	github.com/gorilla/mux v1.8.1
 	github.com/gorilla/sessions v1.2.2
 	github.com/gregjones/httpcache v0.0.0-20190611155906-901d90724c79
