@@ -26,7 +26,8 @@ steps:
   - image: quay.io/mongodb/drone-helm:v3
     name: deploy-evergreen-server
     settings:
-      api_server: https://api.${DRONE_DEPLOY_TO}.corp.mongodb.com
+      api_server:
+        from_secret: kubernetes_api_server
       chart: mongodb/web-app
       chart_version: 4.15.8
       client_only: true
@@ -36,7 +37,7 @@ steps:
       namespace: evergreen
       release: evergreen-server
       tiller_ns: evergreen
-      values: image.tag=git-${DRONE_TAG},ingress.hosts[0]=evergreen-server.evergreen.${DRONE_DEPLOY_TO}.corp.mongodb.com
+      values: image.tag=git-${DRONE_TAG}
       values_files:
         - charts/values.yml
         - charts/${DRONE_DEPLOY_TO}.yml

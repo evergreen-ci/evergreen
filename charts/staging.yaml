@@ -1,0 +1,3 @@
+ingress:
+  hosts:
+    - evergreen-server.evergreen.staging.corp.mongodb.com
