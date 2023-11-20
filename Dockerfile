@@ -39,24 +39,3 @@ FROM public.ecr.aws/docker/library/golang:1.21-bookworm as build-load-initial-da
 WORKDIR /build
 COPY . .
 RUN ["make", "bin/load-smoke-data"]
-
-FROM mongodb/mongodb-community-server:7.0-ubuntu2204 as seeded-mongo
-
-ARG MONGO_URL
-ARG DB_NAME=mci
-
-ENV DB_NAME=${DB_NAME}
-ENV MONGO_URL=${MONGO_URL}
-
-WORKDIR /seed
-COPY --chown=mongodb:mongodb . .
-COPY --chown=mongodb:mongodb --from=build-load-initial-data /build/bin/load-smoke-data ./bin/
-
-COPY <<EOF /docker-entrypoint-initdb.d/01_load-local-data.sh
-cd /seed && make load-local-data
-EOF
-
-COPY <<EOF /docker-entrypoint-initdb.d/02_replace-amboy-url.js
-db = db.getSiblingDB( "${DB_NAME}" );
-db.admin.updateOne({_id:"amboy"}, {"\$set": {"db_connection.url": "mongodb://mongo:27017"}})
-EOF

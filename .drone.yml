@@ -1,0 +1,55 @@
+---
+clone:
+  depth: 1
+kind: pipeline
+name: evergreen-ci
+resources:
+  requests:
+    cpu: 1000
+    memory: 500MiB
+steps:
+  - environment:
+      GITHUB_OAUTH_TOKEN:
+        from_secret: gh_pr_oauth_token
+    type: BuildAndPushECR
+    image: plugins/ecr
+    name: publish-evergreen-server
+    settings:
+      access_key:
+        from_secret: ecr_access_keyserver
+      secret_key:
+        from_secret: ecr_secret_key
+      repo: evergreen-ci/evergreen
+      registry: 795250896452.dkr.ecr.us-east-1.amazonaws.com
+      create_repository: true
+    when:
+      event:
+        exclude:
+          - promote
+  - image: quay.io/mongodb/drone-helm:v3
+    name: deploy-evergreen-server
+    settings:
+      api_server: https://api.${DRONE_DEPLOY_TO}.corp.mongodb.com
+      chart: mongodb/web-app
+      chart_version: 4.15.8
+      client_only: true
+      helm_repos: mongodb=https://10gen.github.io/helm-charts
+      kubernetes_token:
+        from_secret: ${DRONE_DEPLOY_TO}_kubernetes_token
+      namespace: evergreen
+      release: evergreen-server
+      tiller_ns: evergreen
+      values: image.tag=git-${DRONE_TAG},ingress.hosts[0]=evergreen-server.evergreen.${DRONE_DEPLOY_TO}.corp.mongodb.com
+      values_files:
+        - charts/values.yml
+        - charts/${DRONE_DEPLOY_TO}.yml
+    when:
+      event:
+        - promote
+trigger:
+  event:
+    - tag
+    - promote
+  ref:
+    - refs/tags/evergreen-*
+type: kubernetes
