@@ -16,3 +16,7 @@ evergreen
 
 # ag and ripgrep ignore file
 .ignore
+
+Dockerfile
+Dockerfile-seeded-mongo
+compose.yml

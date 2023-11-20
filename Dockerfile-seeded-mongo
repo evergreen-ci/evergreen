@@ -1,4 +1,10 @@
 # syntax=docker/dockerfile:1
+
+FROM public.ecr.aws/docker/library/golang:1.21-bookworm as build-load-initial-data
+WORKDIR /build
+COPY . .
+RUN ["make", "bin/load-smoke-data"]
+
 FROM mongodb/mongodb-community-server:7.0-ubuntu2204 as seeded-mongo
 
 ARG MONGO_URL
