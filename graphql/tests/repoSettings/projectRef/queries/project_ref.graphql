@@ -41,6 +41,7 @@
         bfSuggestionServer
         bfSuggestionTimeoutSecs
         bfSuggestionUsername
+        ticketCreateIssueType
       }
 
       taskAnnotationSettings {
