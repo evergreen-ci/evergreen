@@ -861,8 +861,8 @@ func setupMockHostsConnector(t *testing.T, env evergreen.Environment) {
 			StartedBy:      "user0",
 			Host:           "host1",
 			Status:         evergreen.HostTerminated,
-			CreationTime:   time.Date(2018, 7, 15, 0, 0, 0, 0, time.UTC),
-			ExpirationTime: time.Date(2018, 7, 15, 0, 0, 0, 0, time.UTC).Add(time.Hour),
+			CreationTime:   time.Date(2028, 7, 15, 0, 0, 0, 0, time.UTC),
+			ExpirationTime: time.Date(2028, 7, 15, 0, 0, 0, 0, time.UTC).Add(time.Hour),
 			Distro:         windowsDistro,
 		},
 		{
@@ -870,8 +870,8 @@ func setupMockHostsConnector(t *testing.T, env evergreen.Environment) {
 			StartedBy:      "user0",
 			Host:           "host2",
 			Status:         evergreen.HostRunning,
-			CreationTime:   time.Date(2018, 7, 15, 0, 0, 0, 0, time.UTC),
-			ExpirationTime: time.Date(2018, 7, 15, 0, 0, 0, 0, time.UTC).Add(time.Hour),
+			CreationTime:   time.Date(2028, 7, 15, 0, 0, 0, 0, time.UTC),
+			ExpirationTime: time.Date(2028, 7, 15, 0, 0, 0, 0, time.UTC).Add(time.Hour),
 			Distro:         windowsDistro,
 		},
 		{
@@ -879,8 +879,8 @@ func setupMockHostsConnector(t *testing.T, env evergreen.Environment) {
 			StartedBy:      "user0",
 			Host:           "host3",
 			Status:         evergreen.HostUninitialized,
-			CreationTime:   time.Date(2018, 7, 15, 0, 0, 0, 0, time.UTC),
-			ExpirationTime: time.Date(2018, 7, 15, 0, 0, 0, 0, time.UTC).Add(time.Hour),
+			CreationTime:   time.Date(2028, 7, 15, 0, 0, 0, 0, time.UTC),
+			ExpirationTime: time.Date(2028, 7, 15, 0, 0, 0, 0, time.UTC).Add(time.Hour),
 			Distro:         windowsDistro,
 		},
 		{
@@ -888,8 +888,8 @@ func setupMockHostsConnector(t *testing.T, env evergreen.Environment) {
 			StartedBy:      "user0",
 			Host:           "host4",
 			Status:         evergreen.HostRunning,
-			CreationTime:   time.Date(2018, 7, 15, 0, 0, 0, 0, time.UTC),
-			ExpirationTime: time.Date(2018, 7, 15, 0, 0, 0, 0, time.UTC).Add(time.Hour),
+			CreationTime:   time.Date(2028, 7, 15, 0, 0, 0, 0, time.UTC),
+			ExpirationTime: time.Date(2028, 7, 15, 0, 0, 0, 0, time.UTC).Add(time.Hour),
 			Distro: distro.Distro{
 				Id:       "linux",
 				Arch:     "linux_amd64",
