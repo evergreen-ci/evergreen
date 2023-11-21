@@ -75,11 +75,13 @@ isolate the cause.
 Check out the settings on the page to see more options.
 
 #### Repotracker Settings
-By default, project create mainline commits (also known as waterfall versions or cron builds). 
-Admins can prevent projects from creating mainline commits by disabling repotracking,
+By default, Evergreen creates mainline commits (also known as waterfall versions or 
+cron builds) for enabled projects. 
+
+Admins can prevent projects from creating mainline commits by **disabling repotrackin**g,
 while still allowing for other kinds of versions (periodic builds, patches, etc).
 
-Additionally, admins can Force Repotracker Run to check for new commits if needed 
+Additionally, admins can **Force Repotracker Run** to check for new commits if needed 
 (Evergreen occasionally misses commits due to misconfiguration or GitHub outages).
 
 ### Access and Admin Settings
