@@ -317,27 +317,27 @@ func (h *newPushHandler) Run(ctx context.Context) gimlet.Responder {
 	return gimlet.NewJSONResponse(newPushLog)
 }
 
-// POST /task/{task_id}/reset
-type markTaskForResetHandler struct {
+// POST /task/{task_id}/restart
+type markTaskForRestartHandler struct {
 	taskID string
 }
 
-func makeMarkTaskForReset() gimlet.RouteHandler {
-	return &markTaskForResetHandler{}
+func makeMarkTaskForRestart() gimlet.RouteHandler {
+	return &markTaskForRestartHandler{}
 }
 
-func (h *markTaskForResetHandler) Factory() gimlet.RouteHandler {
-	return &markTaskForResetHandler{}
+func (h *markTaskForRestartHandler) Factory() gimlet.RouteHandler {
+	return &markTaskForRestartHandler{}
 }
 
-func (h *markTaskForResetHandler) Parse(ctx context.Context, r *http.Request) error {
+func (h *markTaskForRestartHandler) Parse(ctx context.Context, r *http.Request) error {
 	if h.taskID = gimlet.GetVars(r)["task_id"]; h.taskID == "" {
 		return errors.New("missing task ID")
 	}
 	return nil
 }
 
-func (h *markTaskForResetHandler) Run(ctx context.Context) gimlet.Responder {
+func (h *markTaskForRestartHandler) Run(ctx context.Context) gimlet.Responder {
 	t, err := task.FindOneId(h.taskID)
 	if err != nil {
 		return gimlet.MakeJSONInternalErrorResponder(errors.Wrapf(err, "finding task '%s'", h.taskID))

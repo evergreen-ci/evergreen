@@ -169,21 +169,21 @@ func TestAgentGetExpansionsAndVars(t *testing.T) {
 }
 
 func TestMarkTaskForReset(t *testing.T) {
-	for tName, tCase := range map[string]func(ctx context.Context, t *testing.T, rh *markTaskForResetHandler){
-		"FactorySucceeds": func(ctx context.Context, t *testing.T, rh *markTaskForResetHandler) {
+	for tName, tCase := range map[string]func(ctx context.Context, t *testing.T, rh *markTaskForRestartHandler){
+		"FactorySucceeds": func(ctx context.Context, t *testing.T, rh *markTaskForRestartHandler) {
 			copied := rh.Factory()
 			assert.NotZero(t, copied)
-			_, ok := copied.(*markTaskForResetHandler)
+			_, ok := copied.(*markTaskForRestartHandler)
 			assert.True(t, ok)
 		},
-		"ParseSucceeds": func(ctx context.Context, t *testing.T, rh *markTaskForResetHandler) {
+		"ParseSucceeds": func(ctx context.Context, t *testing.T, rh *markTaskForRestartHandler) {
 			req, err := http.NewRequest(http.MethodPost, "https://example.com/rest/v2/agent/task/t1/reset", nil)
 			require.NoError(t, err)
 			req = gimlet.SetURLVars(req, map[string]string{"task_id": "t1"})
 			assert.NoError(t, rh.Parse(ctx, req))
 			assert.Equal(t, rh.taskID, "t1")
 		},
-		"RunSucceeds": func(ctx context.Context, t *testing.T, rh *markTaskForResetHandler) {
+		"RunSucceeds": func(ctx context.Context, t *testing.T, rh *markTaskForRestartHandler) {
 			rh.taskID = "t2"
 			resp := rh.Run(ctx)
 			require.NotZero(t, resp)
@@ -214,7 +214,7 @@ func TestMarkTaskForReset(t *testing.T) {
 			assert.Equal(t, foundTask.Status, evergreen.TaskUndispatched)
 			assert.Equal(t, 1, foundTask.NumAutomaticRestarts)
 		},
-		"RunSucceedsWithDisplayTask": func(ctx context.Context, t *testing.T, rh *markTaskForResetHandler) {
+		"RunSucceedsWithDisplayTask": func(ctx context.Context, t *testing.T, rh *markTaskForRestartHandler) {
 			rh.taskID = "et1"
 			resp := rh.Run(ctx)
 			require.NotZero(t, resp)
@@ -277,7 +277,7 @@ func TestMarkTaskForReset(t *testing.T) {
 			require.NoError(t, et2.Insert())
 			require.NoError(t, dt.Insert())
 			require.NoError(t, t2.Insert())
-			r, ok := makeMarkTaskForReset().(*markTaskForResetHandler)
+			r, ok := makeMarkTaskForRestart().(*markTaskForRestartHandler)
 			require.True(t, ok)
 
 			tCase(ctx, t, r)

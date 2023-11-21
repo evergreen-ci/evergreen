@@ -2473,13 +2473,13 @@ func checkResetSingleHostTaskGroup(ctx context.Context, t *task.Task, caller str
 		return errors.Errorf("no tasks in task group '%s' for task '%s'", t.TaskGroup, t.Id)
 	}
 	shouldReset := false
-	isAutomaticReset := false
+	isAutoRestart := false
 	for _, tgTask := range tasks {
 		if tgTask.ResetWhenFinished {
 			shouldReset = true
 		}
 		if tgTask.IsAutomaticRestart {
-			isAutomaticReset = true
+			isAutoRestart = true
 		}
 		if !tgTask.IsFinished() && !tgTask.Blocked() && tgTask.Activated { // task in group still needs to run
 			return nil
@@ -2489,7 +2489,7 @@ func checkResetSingleHostTaskGroup(ctx context.Context, t *task.Task, caller str
 	if !shouldReset { // no task in task group has requested a reset
 		return nil
 	}
-	if isAutomaticReset {
+	if isAutoRestart {
 		caller = evergreen.AutoResetRequester
 	}
 
