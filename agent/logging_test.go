@@ -104,9 +104,9 @@ func TestAgentFileLogging(t *testing.T) {
 	require.NoError(agt.startLogging(ctx, tc))
 	defer func() {
 		agt.removeTaskDirectory(tc)
-		assert.NoError(t, tc.logger.Close())
+		assert.NoError(tc.logger.Close())
 	}()
-	require.NoError(t, agt.runTaskCommands(ctx, tc))
+	require.NoError(agt.runTaskCommands(ctx, tc))
 
 	// Verify log contents.
 	f, err := os.Open(fmt.Sprintf("%s/%s/%s/task.log", tmpDirName, taskLogDirectory, "shell.exec"))
