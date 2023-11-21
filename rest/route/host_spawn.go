@@ -1148,13 +1148,6 @@ func (h *hostExtendExpirationHandler) Parse(ctx context.Context, r *http.Request
 	}
 	h.addHours = time.Duration(addHours) * time.Hour
 
-	if h.addHours <= 0 {
-		return errors.New("must add a positive number of hours to the expiration")
-	}
-	if h.addHours > evergreen.MaxSpawnHostExpirationDurationHours {
-		return errors.Errorf("cannot add more than %s to expiration", evergreen.MaxSpawnHostExpirationDurationHours)
-	}
-
 	return nil
 }
 
