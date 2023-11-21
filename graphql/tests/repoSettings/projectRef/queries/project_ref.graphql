@@ -15,6 +15,7 @@
       patchingDisabled
       prTestingEnabled
       stepbackDisabled
+      stepbackBisection
       batchTime
 
       gitTagAuthorizedUsers
