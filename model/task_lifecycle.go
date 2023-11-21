@@ -802,6 +802,10 @@ func MarkEnd(ctx context.Context, settings *evergreen.Settings, t *task.Task, ca
 	if (t.ResetWhenFinished || t.ResetFailedWhenFinished) && !t.IsPartOfDisplay() && !t.IsPartOfSingleHostTaskGroup() {
 		requester := evergreen.APIServerTaskActivator
 		if t.IsAutomaticRestart {
+			// Do not restart tasks marked for auto restart if they have since been aborted
+			if t.Aborted {
+				return nil
+			}
 			requester = evergreen.AutoResetRequester
 		}
 		return TryResetTask(ctx, settings, t.Id, requester, "", detail)
@@ -2479,6 +2483,11 @@ func checkResetSingleHostTaskGroup(ctx context.Context, t *task.Task, caller str
 			shouldReset = true
 		}
 		if tgTask.IsAutomaticRestart {
+			// Do not restart the task group if it contains a task marked for auto restart
+			// that has since been aborted
+			if tgTask.Aborted {
+				return nil
+			}
 			isAutoRestart = true
 		}
 		if !tgTask.IsFinished() && !tgTask.Blocked() && tgTask.Activated { // task in group still needs to run
@@ -2510,6 +2519,11 @@ func checkResetDisplayTask(ctx context.Context, setting *evergreen.Settings, t *
 	for _, execTask := range execTasks {
 		if !execTask.IsFinished() && !execTask.Blocked() && execTask.Activated {
 			return nil // all tasks not finished
+		}
+		// Do not restart the display task when finished if one of the execution tasks
+		// was marked for auto restart but has since been aborted
+		if t.IsAutomaticRestart && execTask.Aborted {
+			return nil
 		}
 	}
 	details := &t.Details

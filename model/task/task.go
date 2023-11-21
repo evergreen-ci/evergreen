@@ -1369,40 +1369,6 @@ func UnscheduleStaleUnderwaterHostTasks(ctx context.Context, distroID string) (i
 	return info.Updated, nil
 }
 
-// LegacyDeactivateStepbackTasksForProject deactivates and aborts any scheduled/running tasks
-// for this project that were activated by stepback.
-// TODO: remove as part of EVG-17947
-func LegacyDeactivateStepbackTasksForProject(projectId, caller string) error {
-	tasks, err := FindActivatedStepbackTasks(projectId)
-	if err != nil {
-		return errors.Wrap(err, "finding activated stepback tasks")
-	}
-
-	if err = DeactivateTasks(tasks, true, caller); err != nil {
-		return errors.Wrap(err, "deactivating active stepback tasks")
-	}
-
-	grip.InfoWhen(len(tasks) > 0, message.Fields{
-		"message":    "deactivated active stepback tasks",
-		"project_id": projectId,
-		"user":       caller,
-		"num_tasks":  len(tasks),
-	})
-
-	abortTaskIds := []string{}
-	for _, t := range tasks {
-		if t.IsAbortable() {
-			abortTaskIds = append(abortTaskIds, t.Id)
-			event.LogTaskAbortRequest(t.Id, t.Execution, caller)
-		}
-	}
-	if err = SetManyAborted(abortTaskIds, AbortInfo{User: caller}); err != nil {
-		return errors.Wrap(err, "aborting in progress tasks")
-	}
-
-	return nil
-}
-
 // DeactivateStepbackTask deactivates and aborts the matching stepback task.
 func DeactivateStepbackTask(projectId, buildVariantName, taskName, caller string) error {
 	t, err := FindActivatedStepbackTaskByName(projectId, buildVariantName, taskName)
@@ -1478,18 +1444,6 @@ func GetSystemFailureDetails(description string) apimodels.TaskEndDetail {
 		details.TimedOut = true
 	}
 	return details
-}
-
-func SetManyAborted(taskIds []string, reason AbortInfo) error {
-	return UpdateOne(
-		ByIds(taskIds),
-		bson.M{
-			"$set": bson.M{
-				AbortedKey:   true,
-				AbortInfoKey: reason,
-			},
-		},
-	)
 }
 
 // SetAborted sets the abort field of task to aborted

@@ -44,6 +44,7 @@ type Mock struct {
 	// mock behavior
 	NextTaskShouldFail            bool
 	GetPatchFileShouldFail        bool
+	TaskShouldRetryOnFail         bool
 	loggingShouldFail             bool
 	NextTaskResponse              *apimodels.NextTaskResponse
 	NextTaskIsNil                 bool
@@ -576,5 +577,6 @@ func newMockServer(serve func(http.ResponseWriter, *http.Request)) (*httptest.Se
 }
 
 func (c *Mock) MarkFailedTaskToRestart(ctx context.Context, td TaskData) error {
+	c.TaskShouldRetryOnFail = true
 	return nil
 }
