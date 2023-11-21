@@ -2166,6 +2166,9 @@ func (h *Host) PastMaxExpiration(extension time.Duration) error {
 	if h.ExpirationTime.After(maxExpirationTime) || proposedTime.After(maxExpirationTime) {
 		return errors.Errorf("spawn host cannot be extended more than %d days past creation", evergreen.SpawnHostExpireDays)
 	}
+	if time.Now().After(proposedTime) {
+		return errors.New("spawn host cannot be extended before the current time.")
+	}
 	return nil
 }
 
