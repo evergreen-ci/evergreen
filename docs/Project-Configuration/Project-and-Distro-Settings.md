@@ -68,15 +68,19 @@ repo-level project settings configuration. This can be learned about at
 ### Project Flags
 
 Under project flags, admins have a number of options for users to configure what
-runs for their project. For example, prevent projects from creating mainline 
-commits by disabling repotracking (by default, this is enabled. Evergreen occasionally 
-misses commits due to misconfiguration or GitHub outages, in which case admins can 
-Force Repotracker Run to unblock this). 
-
-Admins can also enable the ability to unschedule old tasks if a more recent
-commit passes, or configure tasks to stepback on failure to isolate the cause.
+runs for their project. For example, admins can enable the ability to unschedule old 
+tasks if a more recent commit passes, or configure tasks to stepback on failure to 
+isolate the cause.
 
 Check out the settings on the page to see more options.
+
+#### Repotracker Settings
+By default, project create mainline commits (also known as waterfall versions or cron builds). 
+Admins can prevent projects from creating mainline commits by disabling repotracking,
+while still allowing for other kinds of versions (periodic builds, patches, etc).
+
+Additionally, admins can Force Repotracker Run to check for new commits if needed 
+(Evergreen occasionally misses commits due to misconfiguration or GitHub outages).
 
 ### Access and Admin Settings
 
