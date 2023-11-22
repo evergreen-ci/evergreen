@@ -1164,7 +1164,7 @@ func (h *hostExtendExpirationHandler) Run(ctx context.Context) gimlet.Responder 
 	var newExp time.Time
 	newExp, err = cloud.MakeExtendedSpawnHostExpiration(host, h.addHours)
 	if err != nil {
-		return gimlet.MakeJSONInternalErrorResponder(errors.Wrap(err, "extending cloud host expiration"))
+		return gimlet.MakeJSONErrorResponder(errors.Wrap(err, "extending cloud host expiration"))
 	}
 
 	if err := host.SetExpirationTime(ctx, newExp); err != nil {
