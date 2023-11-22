@@ -828,12 +828,12 @@ func getManifestModule(v *Version, projectRef *ProjectRef, token string, module 
 }
 
 // CreateManifest inserts a newly constructed manifest into the DB.
-func CreateManifest(v *Version, proj *Project, projectRef *ProjectRef, settings *evergreen.Settings) (*manifest.Manifest, error) {
+func CreateManifest(v *Version, modules ModuleList, projectRef *ProjectRef, settings *evergreen.Settings) (*manifest.Manifest, error) {
 	token, err := settings.GetGithubOauthToken()
 	if err != nil {
 		return nil, errors.Wrap(err, "getting GitHub token")
 	}
-	newManifest, err := constructManifest(v, projectRef, proj.Modules, token)
+	newManifest, err := constructManifest(v, projectRef, modules, token)
 	if err != nil {
 		return nil, errors.Wrap(err, "constructing manifest")
 	}
