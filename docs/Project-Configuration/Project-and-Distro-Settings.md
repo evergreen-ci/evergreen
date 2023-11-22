@@ -78,7 +78,7 @@ Check out the settings on the page to see more options.
 By default, Evergreen creates mainline commits (also known as waterfall versions or 
 cron builds) for enabled projects. 
 
-Admins can prevent projects from creating mainline commits by **disabling repotrackin**g,
+Admins can prevent projects from creating mainline commits by **disabling repotracking**,
 while still allowing for other kinds of versions (periodic builds, patches, etc).
 
 Additionally, admins can **Force Repotracker Run** to check for new commits if needed 
