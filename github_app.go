@@ -56,7 +56,7 @@ func getGithubAppAuth(s *Settings) *githubAppAuth {
 		return nil
 	}
 
-	key := s.Expansions[githubAppPrivateKey]
+	key := s.Expansions[GithubAppPrivateKey]
 	if key == "" {
 		return nil
 	}
