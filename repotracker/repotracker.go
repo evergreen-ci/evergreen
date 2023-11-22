@@ -622,9 +622,7 @@ func CreateVersionFromConfig(ctx context.Context, projectInfo *model.ProjectInfo
 	}
 	v.Ignored = ignore
 
-	settings := evergreen.GetEnvironment().Settings()
-	// validate the project
-	verrs := validator.CheckProject(ctx, projectInfo.Project, projectInfo.Config, projectInfo.Ref, settings, true, true, false)
+	verrs := validator.CheckProject(ctx, projectInfo.Project, projectInfo.Config, projectInfo.Ref, true, projectInfo.Ref.Id, nil)
 	if len(verrs) > 0 || versionErrs != nil {
 		// We have errors in the project.
 		// Format them, as we need to store + display them to the user
@@ -645,7 +643,7 @@ func CreateVersionFromConfig(ctx context.Context, projectInfo *model.ProjectInfo
 			v.Errors = append(v.Errors, versionErrs.Errors...)
 		}
 		if len(v.Errors) > 0 {
-			ppStorageMethod, err := model.ParserProjectUpsertOneWithS3Fallback(ctx, settings, evergreen.ProjectStorageMethodDB, projectInfo.IntermediateProject)
+			ppStorageMethod, err := model.ParserProjectUpsertOneWithS3Fallback(ctx, evergreen.GetEnvironment().Settings(), evergreen.ProjectStorageMethodDB, projectInfo.IntermediateProject)
 			if err != nil {
 				return nil, errors.Wrapf(err, "upserting parser project '%s' for version '%s'", projectInfo.IntermediateProject.Id, v.Id)
 			}

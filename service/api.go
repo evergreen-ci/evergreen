@@ -231,7 +231,7 @@ func (as *APIServer) validateProjectConfig(w http.ResponseWriter, r *http.Reques
 	}
 
 	projectRef, err := model.FindMergedProjectRef(input.ProjectID, "", false)
-	errs := validator.CheckProject(ctx, project, projectConfig, projectRef, evergreen.GetEnvironment().Settings(), input.IncludeLong, input.ProjectID != "", err != nil)
+	errs := validator.CheckProject(ctx, project, projectConfig, projectRef, input.IncludeLong, input.ProjectID, err)
 
 	if input.Quiet {
 		errs = errs.AtLevel(validator.Error)

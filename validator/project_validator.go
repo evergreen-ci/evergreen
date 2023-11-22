@@ -222,58 +222,50 @@ func getDistrosForProject(ctx context.Context, projectID string) (ids []string, 
 	return ids, aliases, nil
 }
 
-func CheckProject(ctx context.Context, project *model.Project, config *model.ProjectConfig, ref *model.ProjectRef, settings *evergreen.Settings, includeLong, projectRefProvided, projectRefErrored bool) ValidationErrors {
+// CheckProject calls the validating logic for a Project's configuration.
+// That is, ProjectErrors, ProjectWarnings, ProjectConfigErrors,
+// ProjectSettings, and AliasWarnings. If a respective item is nil,
+// it will not check it (e.g. if the config is nil, it does not check the config).
+// projectRefId is used to determine if there is a project specified and
+// projectRefErr is used to determine if there was a problem retrieving
+// the ref, both output different warnings for the project.
+func CheckProject(ctx context.Context, project *model.Project, config *model.ProjectConfig, ref *model.ProjectRef, includeLong bool, projectRefId string, projectRefErr error) ValidationErrors {
 	isConfigDefined := config != nil
 	verrs := CheckProjectErrors(ctx, project, includeLong)
-	if !projectRefProvided {
-		verrs = append(verrs, ValidationError{
-			Message: "no project specified; validation will proceed without checking project settings",
-			Level:   Warning,
-		})
-		verrs = append(verrs, ValidationError{
-			Message: "no project specified; validation will proceed without checking alias coverage",
-			Level:   Warning,
-		})
-	} else {
-		if ref == nil {
-			if projectRefErrored {
-				verrs = append(verrs, ValidationError{
-					Message: "error finding project; validation will proceed without checking project settings",
-					Level:   Warning,
-				})
-				verrs = append(verrs, ValidationError{
-					Message: "error finding project; validation will proceed without checking alias coverage",
-					Level:   Warning,
-				})
-			} else {
-				verrs = append(verrs, ValidationError{
-					Message: "project does not exist; validation will proceed without checking project settings",
-					Level:   Warning,
-				})
-				verrs = append(verrs, ValidationError{
-					Message: "project does not exist; validation will proceed without checking alias coverage",
-					Level:   Warning,
-				})
-			}
-		} else {
-			verrs = append(verrs, CheckProjectSettings(ctx, settings, project, ref, isConfigDefined)...)
-			// Check project aliases
-			aliases, err := model.ConstructMergedAliasesByPrecedence(ref, config, ref.RepoRefId)
-			if err != nil {
-				verrs = append(verrs, ValidationError{
-					Message: "problem finding aliases; validation will proceed without checking alias coverage",
-					Level:   Warning,
-				})
-			} else {
-				verrs = append(verrs, CheckAliasWarnings(project, aliases)...)
-			}
-		}
-	}
+	verrs = append(verrs, CheckProjectWarnings(project)...)
 	if config != nil {
 		verrs = append(verrs, CheckProjectConfigErrors(config)...)
 	}
-	verrs = append(verrs, CheckProjectWarnings(project)...)
-	return verrs
+
+	if projectRefId == "" {
+		verrs = append(verrs, ValidationError{
+			Message: "no project specified; validation will proceed without checking project settings and alias coverage",
+			Level:   Warning,
+		})
+		return verrs
+	}
+	if ref == nil {
+		if projectRefErr != nil {
+			return append(verrs, ValidationError{
+				Message: "error finding project; validation will proceed without checking project settings and alias coverage",
+				Level:   Warning,
+			})
+		}
+		return append(verrs, ValidationError{
+			Message: "project does not exist; validation will proceed without checking project settings and alias coverage",
+			Level:   Warning,
+		})
+	}
+	verrs = append(verrs, CheckProjectSettings(ctx, evergreen.GetEnvironment().Settings(), project, ref, isConfigDefined)...)
+	// Check project aliases
+	aliases, err := model.ConstructMergedAliasesByPrecedence(ref, config, ref.RepoRefId)
+	if err != nil {
+		return append(verrs, ValidationError{
+			Message: "problem finding aliases; validation will proceed without checking alias coverage",
+			Level:   Warning,
+		})
+	}
+	return append(verrs, CheckAliasWarnings(project, aliases)...)
 }
 
 // verify that the project configuration semantics is valid
