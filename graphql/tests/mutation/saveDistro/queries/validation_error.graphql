@@ -4,7 +4,7 @@ mutation {
         distro: {
           name: "rhel71-power8-large"
           workDir: "",
-
+          mountpoints: ["/"],
           aliases: [
             "new-alias"
           ],

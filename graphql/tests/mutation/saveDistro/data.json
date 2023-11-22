@@ -9,6 +9,7 @@
       "arch": "linux_ppc64le",
       "disabled": false,
       "work_dir": "/data/mci",
+      "mountpoints": ["/"],
       "provider": "static",
       "provider_settings": [
         {
@@ -118,6 +119,7 @@
         ],
         "arch": "linux_ppc64le",
         "work_dir": "/data/mci",
+        "mountpoints": ["/"],
         "provider": "static",
         "provider_settings": [
           {
@@ -220,6 +222,7 @@
         ],
         "arch": "linux_ppc64le",
         "work_dir": "/data/mci",
+        "mountpoints": ["/"],
         "provider": "static",
         "provider_settings": [
           {

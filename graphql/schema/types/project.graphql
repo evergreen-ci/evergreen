@@ -112,6 +112,7 @@ input BuildBaronSettingsInput {
   bfSuggestionUsername: String
   ticketCreateProject: String!
   ticketSearchProjects: [String!]
+  ticketCreateIssueType: String
 }
 
 input TriggerAliasInput {

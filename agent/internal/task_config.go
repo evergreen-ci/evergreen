@@ -190,3 +190,13 @@ func (tc *TaskConfig) TaskAttributes() []attribute.KeyValue {
 
 	return attributes
 }
+
+// createsCheckRun returns a boolean indicating if the current task creates a checkRun
+func (tc *TaskConfig) createsCheckRun() bool {
+	for _, tu := range tc.BuildVariant.Tasks {
+		if tu.Name == tc.Task.DisplayName {
+			return tu.CreateCheckRun != nil
+		}
+	}
+	return false
+}

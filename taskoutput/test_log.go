@@ -25,18 +25,21 @@ func (TestLogOutput) ID() string { return "test_logs" }
 // to a task run.
 type TestLogGetOptions struct {
 	// LogPaths are the paths of the logs to fetch and merge, prefixes may
-	// be specified. At least one name must be specified.
+	// be specified. At least one value must be specified.
 	LogPaths []string
 	// Start is the start time (inclusive) of the time range filter,
-	// represented as a Unix timestamp in nanoseconds. Optional.
-	Start int64
+	// represented as a Unix timestamp in nanoseconds. Defaults to the
+	// first timestamp of the first specified log.
+	Start *int64
 	// End is the end time (inclusive) of the time range filter,
-	// represented as a Unix timestamp in nanoseconds. Optional.
-	End int64
-	// LineLimit limits the number of lines read from the log. Optional.
+	// represented as a Unix timestamp in nanoseconds. Defaults to the last
+	// timestamp of the first specified log.
+	End *int64
+	// LineLimit limits the number of lines read from the log. Ignored if
+	// less than or equal to 0.
 	LineLimit int
 	// TailN is the number of lines to read from the tail of the log.
-	// Optional.
+	// Ignored if less than or equal to 0.
 	TailN int
 }
 
@@ -52,11 +55,12 @@ func (o TestLogOutput) Get(ctx context.Context, env evergreen.Environment, taskO
 	}
 
 	return svc.Get(ctx, log.GetOptions{
-		LogNames:  o.getLogNames(taskOpts, getOpts.LogPaths),
-		Start:     getOpts.Start,
-		End:       getOpts.End,
-		LineLimit: getOpts.LineLimit,
-		TailN:     getOpts.TailN,
+		LogNames:                   o.getLogNames(taskOpts, getOpts.LogPaths),
+		Start:                      getOpts.Start,
+		End:                        getOpts.End,
+		DefaultTimeRangeOfFirstLog: true,
+		LineLimit:                  getOpts.LineLimit,
+		TailN:                      getOpts.TailN,
 	})
 }
 
@@ -91,8 +95,8 @@ func (o TestLogOutput) getBuildloggerLogs(ctx context.Context, env evergreen.Env
 		TaskID:    taskOpts.TaskID,
 		Execution: utility.ToIntPtr(taskOpts.Execution),
 		TestName:  getOpts.LogPaths[0],
-		Start:     getOpts.Start,
-		End:       getOpts.End,
+		Start:     utility.FromInt64Ptr(getOpts.Start),
+		End:       utility.FromInt64Ptr(getOpts.End),
 		Limit:     getOpts.LineLimit,
 		Tail:      getOpts.TailN,
 	})
