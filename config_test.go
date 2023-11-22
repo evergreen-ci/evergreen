@@ -72,7 +72,7 @@ func TestGetGithubSettings(t *testing.T) {
 	assert.Empty(settings.Credentials["github"])
 
 	token, err := settings.GetGithubOauthToken()
-	assert.Error(err)
+	assert.NoError(err)
 	assert.Empty(token)
 
 	settings, err = NewSettings(filepath.Join(FindEvergreenHome(),
@@ -87,7 +87,7 @@ func TestGetGithubSettings(t *testing.T) {
 	settings.AuthConfig.Github = &GithubAuthConfig{
 		AppId: 0,
 	}
-	settings.Expansions[githubAppPrivateKey] = ""
+	settings.Expansions[GithubAppPrivateKey] = ""
 
 	authFields := getGithubAppAuth(settings)
 	assert.Nil(authFields)
@@ -98,7 +98,7 @@ func TestGetGithubSettings(t *testing.T) {
 	authFields = getGithubAppAuth(settings)
 	assert.Nil(authFields)
 
-	settings.Expansions[githubAppPrivateKey] = "key"
+	settings.Expansions[GithubAppPrivateKey] = "key"
 	authFields = getGithubAppAuth(settings)
 	assert.NotNil(authFields)
 	assert.Equal(int64(1234), authFields.appId)
@@ -109,7 +109,7 @@ func TestGetGithubSettings(t *testing.T) {
 		assert.Nil(settings.Credentials)
 
 		token, err = settings.GetGithubOauthToken()
-		assert.Error(err)
+		assert.NoError(err)
 		assert.Empty(token)
 	})
 }
