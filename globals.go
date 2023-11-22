@@ -329,7 +329,7 @@ const (
 	// TODO EVG-19966: Remove GlobalGitHubTokenExpansion
 	GlobalGitHubTokenExpansion = "global_github_oauth_token"
 	GithubAppToken             = "github_app_token"
-	githubAppPrivateKey        = "github_app_key"
+	GithubAppPrivateKey        = "github_app_key"
 
 	// GitHubRetryAttempts is the github client maximum number of attempts.
 	GitHubRetryAttempts = 3
