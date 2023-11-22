@@ -237,6 +237,8 @@ func AttachHandler(app *gimlet.APIApp, opts HandlerOpts) {
 	app.AddRoute("/tasks/{task_id}/tests/count").Version(2).Get().Wrap(addProject, viewTasks).RouteHandler(makeFetchTestCountForTask())
 	app.AddRoute("/tasks/{task_id}/sync_path").Version(2).Get().Wrap(requireUser).RouteHandler(makeTaskSyncPathGetHandler())
 	app.AddRoute("/tasks/{task_id}/generated_tasks").Version(2).Get().Wrap(requireUser, viewTasks).RouteHandler(makeGetGeneratedTasks())
+	app.AddRoute("/tasks/{task_id}/build/task_logs").Version(2).Get().Wrap(requireUser, viewTasks).RouteHandler(makeGetTaskLogs(env, opts.URL))
+	app.AddRoute("/tasks/{task_id}/build/test_logs/{path}").Version(2).Get().Wrap(requireUser, viewTasks).RouteHandler(makeGetTestLogs(env, opts.URL))
 	app.AddRoute("/task/sync_read_credentials").Version(2).Get().Wrap(requireUser).RouteHandler(makeTaskSyncReadCredentialsGetHandler())
 	app.AddRoute("/user/settings").Version(2).Get().Wrap(requireUser).RouteHandler(makeFetchUserConfig())
 	app.AddRoute("/user/settings").Version(2).Post().Wrap(requireUser).RouteHandler(makeSetUserConfig())

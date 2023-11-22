@@ -1,177 +1,195 @@
 {
-    "tests": [
-        {
-            "query_file": "general_section.graphql",
-            "result": {
-                "data": {
-                    "saveProjectSettingsForSection": {
-                        "projectRef": {
-                            "enabled": true,
-                            "remotePath": "my_path_is_new",
-                            "spawnHostScriptPath": ""
-                        },
-                        "vars": {
-                            "vars": {
-                                "hello": "",
-                                "foo": "bar"
-                            }
-                        }
-                    }
-                }
+  "tests": [
+    {
+      "query_file": "general_section.graphql",
+      "result": {
+        "data": {
+          "saveProjectSettingsForSection": {
+            "projectRef": {
+              "enabled": true,
+              "remotePath": "my_path_is_new",
+              "spawnHostScriptPath": ""
+            },
+            "vars": {
+              "vars": {
+                "hello": "",
+                "foo": "bar"
+              }
             }
-        },
-        {
-            "query_file": "commit_queue_section.graphql",
-            "result": {
-                "data": {
-                    "saveProjectSettingsForSection": {
-                        "projectRef": {
-                            "commitQueue": {
-                                "enabled": true
-                            }
-                        },
-                        "vars": {
-                            "vars": {
-                                "hello": "",
-                                "foo": "bar"
-                            }
-                        }
-                    }
-                }
-            }
-        },
-        {
-            "query_file": "vars_section.graphql",
-            "result": {
-                "data": {
-                    "saveProjectSettingsForSection": {
-                        "vars": {
-                            "vars": {
-                                "goodbye": ""
-                            },
-                            "privateVars": [
-                                "goodbye"
-                            ]
-                        }
-                    }
-                }
-            }
-        },
-        {
-            "query_file": "change_identifier.graphql",
-            "result": {
-                "data": null,
-                "errors": [
-                    {
-                        "message": "identifier 'sandbox_project_id' is already being used for another project",
-                        "path": [
-                            "saveProjectSettingsForSection"
-                        ],
-                        "extensions": {
-                            "code": "INTERNAL_SERVER_ERROR"
-                        }
-                    }
-                ]
-            }
-        },
-        {
-            "query_file": "notifications_section.graphql",
-            "result": {
-                "data": {
-                    "saveProjectSettingsForSection": {
-                        "projectRef": {
-                            "id": "sandbox_project_id",
-                            "banner": {
-                                "text": "banner text!!",
-                                "theme": "WARNING"
-                            }
-                        },
-                        "subscriptions": [
-                            {
-                                "subscriber": {
-                                    "subscriber": {
-                                        "webhookSubscriber": {
-                                            "url": "https://fake-website.com",
-                                            "retries": 0,
-                                            "minDelayMs": 0,
-                                            "timeoutMs": 0
-                                        }
-                                    }
-                                }
-                            }
-                        ]
-                    }
-                }
-            }
-        },
-        {
-            "query_file": "views_and_filters_section.graphql",
-            "result": {
-                "data": {
-                    "saveProjectSettingsForSection": {
-                        "projectRef": {
-                            "id": "sandbox_project_id",
-                            "parsleyFilters": [
-                                {
-                                    "expression": "filter_one",
-                                    "caseSensitive": true,
-                                    "exactMatch": false
-                                },
-                                {
-                                    "expression": "filter_two",
-                                    "caseSensitive": false,
-                                    "exactMatch": false
-                                }
-                            ],
-                            "projectHealthView": "FAILED"
-                        }
-                    }
-                }
-            }
-        },
-        {
-            "query_file": "patch_alias_section.graphql",
-            "result": {
-                "data": {
-                    "saveProjectSettingsForSection": {
-                        "aliases": [
-                            {
-                                "id": "5ffe393097b1d3759dd3c1aa",
-                                "alias": "__commit_queue",
-                                "description": "",
-                                "variant": "ubuntu1604",
-                                "variantTags": [],
-                                "task": "unit_tests",
-                                "taskTags": [],
-                                "gitTag": "",
-                                "remotePath": "",
-                                "parameters": []
-                            },
-                            {
-                                "id": "64c80057d1d6f12b0d4c69d0",
-                                "alias": "test",
-                                "description": "alias",
-                                "variant": "",
-                                "variantTags": [
-                                    ".*"
-                                ],
-                                "task": "",
-                                "taskTags": [
-                                    ".*"
-                                ],
-                                "gitTag": "",
-                                "remotePath": "",
-                                "parameters": [
-                                    {
-                                        "key": "test",
-                                        "value": "thing"
-                                    }
-                                ]
-                            }
-                        ]
-                    }
-                }
-            }
+          }
         }
-    ]
+      }
+    },
+    {
+      "query_file": "commit_queue_section.graphql",
+      "result": {
+        "data": {
+          "saveProjectSettingsForSection": {
+            "projectRef": {
+              "commitQueue": {
+                "enabled": true
+              }
+            },
+            "vars": {
+              "vars": {
+                "hello": "",
+                "foo": "bar"
+              }
+            }
+          }
+        }
+      }
+    },
+    {
+      "query_file": "vars_section.graphql",
+      "result": {
+        "data": {
+          "saveProjectSettingsForSection": {
+            "vars": {
+              "vars": {
+                "goodbye": ""
+              },
+              "privateVars": ["goodbye"]
+            }
+          }
+        }
+      }
+    },
+    {
+      "query_file": "change_identifier.graphql",
+      "result": {
+        "data": null,
+        "errors": [
+          {
+            "message": "identifier 'sandbox_project_id' is already being used for another project",
+            "path": ["saveProjectSettingsForSection"],
+            "extensions": {
+              "code": "INTERNAL_SERVER_ERROR"
+            }
+          }
+        ]
+      }
+    },
+    {
+      "query_file": "notifications_section.graphql",
+      "result": {
+        "data": {
+          "saveProjectSettingsForSection": {
+            "projectRef": {
+              "id": "sandbox_project_id",
+              "banner": {
+                "text": "banner text!!",
+                "theme": "WARNING"
+              }
+            },
+            "subscriptions": [
+              {
+                "subscriber": {
+                  "subscriber": {
+                    "webhookSubscriber": {
+                      "url": "https://fake-website.com",
+                      "retries": 0,
+                      "minDelayMs": 0,
+                      "timeoutMs": 0
+                    }
+                  }
+                }
+              }
+            ]
+          }
+        }
+      }
+    },
+    {
+      "query_file": "views_and_filters_section.graphql",
+      "result": {
+        "data": {
+          "saveProjectSettingsForSection": {
+            "projectRef": {
+              "id": "sandbox_project_id",
+              "parsleyFilters": [
+                {
+                  "expression": "filter_one",
+                  "caseSensitive": true,
+                  "exactMatch": false
+                },
+                {
+                  "expression": "filter_two",
+                  "caseSensitive": false,
+                  "exactMatch": false
+                }
+              ],
+              "projectHealthView": "FAILED"
+            }
+          }
+        }
+      }
+    },
+    {
+      "query_file": "patch_alias_section.graphql",
+      "result": {
+        "data": {
+          "saveProjectSettingsForSection": {
+            "aliases": [
+              {
+                "id": "5ffe393097b1d3759dd3c1aa",
+                "alias": "__commit_queue",
+                "description": "",
+                "variant": "ubuntu1604",
+                "variantTags": [],
+                "task": "unit_tests",
+                "taskTags": [],
+                "gitTag": "",
+                "remotePath": "",
+                "parameters": []
+              },
+              {
+                "id": "64c80057d1d6f12b0d4c69d0",
+                "alias": "test",
+                "description": "alias",
+                "variant": "",
+                "variantTags": [".*"],
+                "task": "",
+                "taskTags": [".*"],
+                "gitTag": "",
+                "remotePath": "",
+                "parameters": [
+                  {
+                    "key": "test",
+                    "value": "thing"
+                  }
+                ]
+              }
+            ]
+          }
+        }
+      }
+    },
+    {
+      "query_file": "plugins_section.graphql",
+      "result": {
+        "data": {
+          "saveProjectSettingsForSection": {
+            "projectRef": {
+              "buildBaronSettings": {
+                "ticketCreateIssueType": "Incident"
+              },
+              "taskAnnotationSettings": {
+                "jiraCustomFields": [
+                  {
+                    "displayText": "display text",
+                    "field": "a field"
+                  }
+                ],
+                "fileTicketWebhook": {
+                  "endpoint": "",
+                  "secret": ""
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+  ]
 }

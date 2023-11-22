@@ -22,7 +22,7 @@ const (
 	TaskLogTypeTask   TaskLogType = "task_log"
 )
 
-func (t TaskLogType) validate(writing bool) error {
+func (t TaskLogType) Validate(writing bool) error {
 	switch t {
 	case TaskLogTypeAll, TaskLogTypeAgent, TaskLogTypeSystem, TaskLogTypeTask:
 	default:
@@ -50,24 +50,28 @@ func (TaskLogOutput) ID() string { return "task_logs" }
 // TaskLogGetOptions represents the arguments for fetching task logs belonging
 // to a task run.
 type TaskLogGetOptions struct {
-	// LogType is the type of task log to fetch.
+	// LogType is the type of task log to fetch. Must be a valid task log
+	// type.
 	LogType TaskLogType
 	// Start is the start time (inclusive) of the time range filter,
-	// represented as a Unix timestamp in nanoseconds. Optional.
-	Start int64
+	// represented as a Unix timestamp in nanoseconds. Defaults to
+	// unbounded.
+	Start *int64
 	// End is the end time (inclusive) of the time range filter,
-	// represented as a Unix timestamp in nanoseconds. Optional.
-	End int64
-	// LineLimit limits the number of lines read from the log. Optional.
+	// represented as a Unix timestamp in nanoseconds. Defaults to
+	// unbounded.
+	End *int64
+	// LineLimit limits the number of lines read from the log. Ignored if
+	// less than or equal to 0.
 	LineLimit int
 	// TailN is the number of lines to read from the tail of the log.
-	// Optional.
+	// Ignored if less than or equal to 0.
 	TailN int
 }
 
 // NewSender returns a new task log sender for the given task run.
 func (o TaskLogOutput) NewSender(ctx context.Context, taskOpts TaskOptions, senderOpts EvergreenSenderOptions, logType TaskLogType) (send.Sender, error) {
-	if err := logType.validate(true); err != nil {
+	if err := logType.Validate(true); err != nil {
 		return nil, err
 	}
 
@@ -85,7 +89,7 @@ func (o TaskLogOutput) NewSender(ctx context.Context, taskOpts TaskOptions, send
 
 // Append appends log lines to the specified task log for the given task run.
 func (o TaskLogOutput) Append(ctx context.Context, taskOpts TaskOptions, logType TaskLogType, lines []log.LogLine) error {
-	if err := logType.validate(true); err != nil {
+	if err := logType.Validate(true); err != nil {
 		return err
 	}
 
@@ -99,7 +103,7 @@ func (o TaskLogOutput) Append(ctx context.Context, taskOpts TaskOptions, logType
 
 // Get returns task logs belonging to the specified task run.
 func (o TaskLogOutput) Get(ctx context.Context, env evergreen.Environment, taskOpts TaskOptions, getOpts TaskLogGetOptions) (log.LogIterator, error) {
-	if err := getOpts.LogType.validate(false); err != nil {
+	if err := getOpts.LogType.Validate(false); err != nil {
 		return nil, err
 	}
 
@@ -154,8 +158,8 @@ func (o TaskLogOutput) getBuildloggerLogs(ctx context.Context, env evergreen.Env
 		BaseURL:   env.Settings().Cedar.BaseURL,
 		TaskID:    taskOpts.TaskID,
 		Execution: utility.ToIntPtr(taskOpts.Execution),
-		Start:     getOpts.Start,
-		End:       getOpts.End,
+		Start:     utility.FromInt64Ptr(getOpts.Start),
+		End:       utility.FromInt64Ptr(getOpts.End),
 		Limit:     getOpts.LineLimit,
 		Tail:      getOpts.TailN,
 	}

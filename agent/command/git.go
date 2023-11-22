@@ -743,13 +743,8 @@ func (c *gitFetchProject) fetchModuleSource(ctx context.Context,
 			" to https format. Please update your project config.", module.Repo)
 	}
 
-	// if the repo is an https url, use that as the location
-	if strings.HasPrefix(opts.location, "https://") {
-		opts.location = opts.repo
-	} else {
-		if err := opts.setLocation(); err != nil {
-			return errors.Wrap(err, "setting location to clone from")
-		}
+	if err := opts.setLocation(); err != nil {
+		return errors.Wrap(err, "setting location to clone from")
 	}
 
 	if opts.method == evergreen.CloneMethodOAuth {
