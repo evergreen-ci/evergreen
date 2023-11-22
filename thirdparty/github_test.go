@@ -277,13 +277,13 @@ func (s *githubSuite) TestGithubUserInOrganization() {
 }
 
 func (s *githubSuite) TestGitHubUserPermissionLevel() {
-	permissionLevel, err := GitHubUserPermissionLevel(s.ctx, s.token, "evergreen-ci", "evergreen", "evrg-bot-webhook")
+	hasPermission, err := GitHubUserHasWritePermission(s.ctx, s.token, "evergreen-ci", "evergreen", "evrg-bot-webhook")
 	s.NoError(err)
-	s.Contains([]string{"admin", "write"}, permissionLevel)
+	s.True(hasPermission)
 
-	permissionLevel, err = GitHubUserPermissionLevel(s.ctx, s.token, "evergreen-ci", "evergreen", "octocat")
+	hasPermission, err = GitHubUserHasWritePermission(s.ctx, s.token, "evergreen-ci", "evergreen", "octocat")
 	s.NoError(err)
-	s.Contains([]string{"read", "none"}, permissionLevel)
+	s.False(hasPermission)
 }
 
 func (s *githubSuite) TestGetGithubPullRequestDiff() {
