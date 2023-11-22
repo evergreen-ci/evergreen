@@ -802,11 +802,7 @@ func MarkEnd(ctx context.Context, settings *evergreen.Settings, t *task.Task, ca
 	if (t.ResetWhenFinished || t.ResetFailedWhenFinished) && !t.IsPartOfDisplay() && !t.IsPartOfSingleHostTaskGroup() {
 		requester := evergreen.APIServerTaskActivator
 		if t.IsAutomaticRestart {
-			// Do not restart tasks marked for auto restart if they have since been aborted
-			if t.Aborted {
-				return nil
-			}
-			requester = evergreen.AutoResetRequester
+			requester = evergreen.AutoRestartRequester
 		}
 		return TryResetTask(ctx, settings, t.Id, requester, "", detail)
 	}
@@ -2477,18 +2473,12 @@ func checkResetSingleHostTaskGroup(ctx context.Context, t *task.Task, caller str
 		return errors.Errorf("no tasks in task group '%s' for task '%s'", t.TaskGroup, t.Id)
 	}
 	shouldReset := false
-	isAutoRestart := false
 	for _, tgTask := range tasks {
 		if tgTask.ResetWhenFinished {
 			shouldReset = true
 		}
 		if tgTask.IsAutomaticRestart {
-			// Do not restart the task group if it contains a task marked for auto restart
-			// that has since been aborted
-			if tgTask.Aborted {
-				return nil
-			}
-			isAutoRestart = true
+			caller = evergreen.AutoRestartRequester
 		}
 		if !tgTask.IsFinished() && !tgTask.Blocked() && tgTask.Activated { // task in group still needs to run
 			return nil
@@ -2497,9 +2487,6 @@ func checkResetSingleHostTaskGroup(ctx context.Context, t *task.Task, caller str
 
 	if !shouldReset { // no task in task group has requested a reset
 		return nil
-	}
-	if isAutoRestart {
-		caller = evergreen.AutoResetRequester
 	}
 
 	return errors.Wrap(resetManyTasks(ctx, tasks, caller), "resetting task group tasks")
@@ -2520,11 +2507,6 @@ func checkResetDisplayTask(ctx context.Context, setting *evergreen.Settings, t *
 		if !execTask.IsFinished() && !execTask.Blocked() && execTask.Activated {
 			return nil // all tasks not finished
 		}
-		// Do not restart the display task when finished if one of the execution tasks
-		// was marked for auto restart but has since been aborted
-		if t.IsAutomaticRestart && execTask.Aborted {
-			return nil
-		}
 	}
 	details := &t.Details
 	// Assign task end details to indicate system failure if we receive no valid details
@@ -2536,7 +2518,7 @@ func checkResetDisplayTask(ctx context.Context, setting *evergreen.Settings, t *
 	}
 	requester := evergreen.User
 	if t.IsAutomaticRestart {
-		requester = evergreen.AutoResetRequester
+		requester = evergreen.AutoRestartRequester
 	}
 	return errors.Wrap(TryResetTask(ctx, setting, t.Id, requester, requester, details), "resetting display task")
 }

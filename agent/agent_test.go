@@ -3,6 +3,7 @@ package agent
 import (
 	"context"
 	"encoding/hex"
+	"fmt"
 	"io/fs"
 	"os"
 	"path/filepath"
@@ -820,7 +821,7 @@ tasks:
 		"Running task commands",
 		"Running command 'shell.exec' (step 1 of 1)",
 		"Running task commands failed",
-		"Command is set to retry on failure, marking task to restart upon completion.",
+		fmt.Sprintf("Command is set to automatically restart on completion, this can be done %d total times per task.", evergreen.MaxAutomaticRestarts),
 	}, []string{
 		panicLog,
 	})
@@ -859,7 +860,7 @@ tasks:
 		"Running pre-task commands",
 		"Running command 'shell.exec' (step 1 of 1)",
 		"Running pre-task commands failed",
-		"Command is set to retry on failure, marking task to restart upon completion.",
+		fmt.Sprintf("Command is set to automatically restart on completion, this can be done %d total times per task.", evergreen.MaxAutomaticRestarts),
 	}, []string{
 		panicLog,
 	})
@@ -892,6 +893,7 @@ tasks:
 
 	s.NoError(err)
 	s.Equal(evergreen.TaskSucceeded, s.mockCommunicator.EndTaskResult.Detail.Status)
+	s.False(s.mockCommunicator.TaskShouldRetryOnFail)
 
 	s.NoError(s.tc.logger.Close())
 	checkMockLogs(s.T(), s.mockCommunicator, s.tc.taskConfig.Task.Id, []string{
@@ -899,7 +901,7 @@ tasks:
 		"Running command 'shell.exec' (step 1 of 1)",
 	}, []string{
 		panicLog,
-		"Command is set to retry on failure, marking task to restart upon completion.",
+		fmt.Sprintf("Command is set to automatically restart on completion, this can be done %d total times per task.", evergreen.MaxAutomaticRestarts),
 	})
 }
 

@@ -2882,8 +2882,6 @@ func abortAndMarkResetTasks(ctx context.Context, filter bson.M, taskIDs []string
 			AbortedKey:           true,
 			AbortInfoKey:         AbortInfo{User: caller},
 			ResetWhenFinishedKey: true,
-			// this function should override the automatic restart key if it is set
-			IsAutomaticRestartKey: false,
 		}},
 	)
 

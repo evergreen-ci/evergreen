@@ -363,15 +363,14 @@ func (h *markTaskForRestartHandler) Run(ctx context.Context) gimlet.Responder {
 		return gimlet.NewJSONResponse(struct{}{})
 	}
 
-	if taskToRestart.NumAutomaticRestarts < evergreen.MaxAutomaticRestarts {
-		if err = taskToRestart.SetResetWhenFinishedWithInc(); err != nil {
-			return gimlet.MakeJSONInternalErrorResponder(errors.Wrapf(err, "setting reset when finished for task '%s'", h.taskID))
-		}
-	} else {
+	if taskToRestart.NumAutomaticRestarts >= evergreen.MaxAutomaticRestarts {
 		return gimlet.MakeJSONErrorResponder(gimlet.ErrorResponse{
 			StatusCode: http.StatusBadRequest,
 			Message:    fmt.Sprintf("task has already reached the maximum (%d) number of automatic restarts", evergreen.MaxAutomaticRestarts),
 		})
+	}
+	if err = taskToRestart.SetResetWhenFinishedWithInc(); err != nil {
+		return gimlet.MakeJSONInternalErrorResponder(errors.Wrapf(err, "setting reset when finished for task '%s'", h.taskID))
 	}
 	return gimlet.NewJSONResponse(struct{}{})
 }

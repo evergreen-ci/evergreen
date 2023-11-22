@@ -443,8 +443,10 @@ github.com/evergreen-ci/poplar v0.0.0-20211028171636-d45516ea1ce5/go.mod h1:RHBp
 github.com/evergreen-ci/poplar v0.0.0-20220119144730-b220d71c0330/go.mod h1:O5wGST4cE5G6vO0QATuDAgftApq9tow9avdjZqcSWS8=
 github.com/evergreen-ci/poplar v0.0.0-20220908212406-a5e2aa799def h1:A37I3mgA6TTPbddu4UuEbpc0HMGxYSRwtu42s/9dpAY=
 github.com/evergreen-ci/poplar v0.0.0-20220908212406-a5e2aa799def/go.mod h1:rj0uvK3GWKZmynb6AeZ66eZvorKSQDxvV1mh5lZVkHc=
-github.com/evergreen-ci/shrub v0.0.0-20230511194147-d00fc686c715 h1:JEr1ZoqNceEOpFoto63Mp/3m5OaHsJZsAVVOsmvwFCA=
-github.com/evergreen-ci/shrub v0.0.0-20230511194147-d00fc686c715/go.mod h1:GT+di9PB4Fog3QKJGaNSE69iOATmPorDEZnVRfgR2pY=
+github.com/evergreen-ci/shrub v0.0.0-20231101184002-81cf1911dbc7 h1:fId8HjTdsmnKBXjEOEj6fwdUwvI2zfilo548n67RLzM=
+github.com/evergreen-ci/shrub v0.0.0-20231101184002-81cf1911dbc7/go.mod h1:r6YQr77CR37LMhBdWcFrxqu5V+UhO+SYloHfd9vO1go=
+github.com/evergreen-ci/shrub v0.0.0-20231121224157-600e066f9de6 h1:LfvYiC/yIi91+6ykT8yaDfmzr67vcFUbQCbRg1ZbEj4=
+github.com/evergreen-ci/shrub v0.0.0-20231121224157-600e066f9de6/go.mod h1:r6YQr77CR37LMhBdWcFrxqu5V+UhO+SYloHfd9vO1go=
 github.com/evergreen-ci/tarjan v0.0.0-20170824211642-fcd3f3321826 h1:oViYb1lmJN1k9SExkF87VTess4JVR7Uvwr8AAKzJ864=
 github.com/evergreen-ci/tarjan v0.0.0-20170824211642-fcd3f3321826/go.mod h1:SnQ9F63VSR6kHbC4aFE+f7+iL3yANhjaN9TT9T4skao=
 github.com/evergreen-ci/timber v0.0.0-20230905184025-88c53a14c47b h1:k3Lzqg8FK/OvYsnd7f56QAxLlx7DgMYaVFRjFy6ZClQ=

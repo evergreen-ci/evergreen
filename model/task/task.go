@@ -247,7 +247,7 @@ type Task struct {
 	// reset but cannot do so yet because they're currently running.
 	ResetWhenFinished       bool `bson:"reset_when_finished,omitempty" json:"reset_when_finished,omitempty"`
 	ResetFailedWhenFinished bool `bson:"reset_failed_when_finished,omitempty" json:"reset_failed_when_finished,omitempty"`
-	// NumAutomaticRestarts is the number of times the task has been programmatically restart via a failed agent command.
+	// NumAutomaticRestarts is the number of times the task has been programmatically restarted via a failed agent command.
 	NumAutomaticRestarts int `bson:"num_automatic_restarts,omitempty" json:"num_automatic_restarts,omitempty"`
 	// IsAutomaticRestart indicates that the task was restarted via a failing agent command that was set to retry on failure.
 	IsAutomaticRestart bool  `bson:"is_automatic_restart,omitempty" json:"is_automatic_restart,omitempty"`
@@ -1446,7 +1446,8 @@ func GetSystemFailureDetails(description string) apimodels.TaskEndDetail {
 	return details
 }
 
-// SetAborted sets the abort field of task to aborted
+// SetAborted sets the abort field and abort info of task to aborted
+// and prevents the task from being reset when finished.
 func (t *Task) SetAborted(reason AbortInfo) error {
 	t.Aborted = true
 	return UpdateOne(
@@ -1454,12 +1455,18 @@ func (t *Task) SetAborted(reason AbortInfo) error {
 			IdKey: t.Id,
 		},
 		bson.M{
-			"$set": bson.M{
-				AbortedKey:   true,
-				AbortInfoKey: reason,
-			},
+			"$set": taskAbortUpdate(reason),
 		},
 	)
+}
+
+func taskAbortUpdate(reason AbortInfo) bson.M {
+	return bson.M{
+		AbortedKey:            true,
+		AbortInfoKey:          reason,
+		ResetWhenFinishedKey:  false,
+		IsAutomaticRestartKey: false,
+	}
 }
 
 // SetStepbackInfo adds the StepbackInfo to the task.
@@ -2404,10 +2411,7 @@ func abortTasksByQuery(q bson.M, reason AbortInfo) error {
 	}
 	_, err = UpdateAll(
 		ByIds(ids),
-		bson.M{"$set": bson.M{
-			AbortedKey:   true,
-			AbortInfoKey: reason,
-		}},
+		bson.M{"$set": taskAbortUpdate(reason)},
 	)
 	if err != nil {
 		return errors.Wrap(err, "setting aborted statuses")
@@ -2765,6 +2769,9 @@ func (t *Task) SetResetWhenFinishedWithInc() error {
 	if t.ResetWhenFinished {
 		return nil
 	}
+	if t.Aborted {
+		return errors.New("cannot set reset when finished for aborted task")
+	}
 	err := UpdateOne(
 		bson.M{
 			IdKey:                 t.Id,
@@ -2781,12 +2788,7 @@ func (t *Task) SetResetWhenFinishedWithInc() error {
 			},
 		},
 	)
-	if err != nil {
-		return err
-	}
-	t.ResetWhenFinished = true
-	t.NumAutomaticRestarts = t.NumAutomaticRestarts + 1
-	return nil
+	return err
 }
 
 // SetResetFailedWhenFinished requests that a display task
