@@ -228,7 +228,7 @@ func getDistrosForProject(ctx context.Context, projectID string) (ids []string, 
 // it will not check it (e.g. if the config is nil, it does not check the config).
 // projectRefId is used to determine if there is a project specified and
 // projectRefErr is used to determine if there was a problem retrieving
-// the ref, both output different warnings for the project.
+// the ref; both output different warnings for the project.
 func CheckProject(ctx context.Context, project *model.Project, config *model.ProjectConfig, ref *model.ProjectRef, includeLong bool, projectRefId string, projectRefErr error) ValidationErrors {
 	isConfigDefined := config != nil
 	verrs := CheckProjectErrors(ctx, project, includeLong)
