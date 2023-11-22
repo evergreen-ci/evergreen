@@ -18,6 +18,7 @@
       patchingDisabled
       prTestingEnabled
       stepbackDisabled
+      stepbackBisection
       batchTime
       projectHealthView
       parsleyFilters {
