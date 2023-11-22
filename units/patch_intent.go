@@ -1165,6 +1165,8 @@ func (j *patchIntentProcessor) isUserAuthorized(ctx context.Context, patchDoc *p
 		})
 		return true, nil
 	}
+	// Checking if the GitHub user is in the organization is more permissive than checking permission level
+	// for the owner/repo specified, however this is okay since for the purposes of this check its to run patches.
 	isMember, err := thirdparty.GithubUserInOrganization(ctx, githubOauthToken, requiredOrganization, githubUser)
 	if err != nil {
 		grip.Error(message.WrapError(err, message.Fields{
@@ -1183,11 +1185,11 @@ func (j *patchIntentProcessor) isUserAuthorized(ctx context.Context, patchDoc *p
 		return isMember, nil
 	}
 
-	isInstalledForOrg, err := thirdparty.AppAuthorizedForOrg(ctx, githubOauthToken, requiredOrganization, githubUser)
+	isAuthorizedForOrg, err := thirdparty.AppAuthorizedForOrg(ctx, githubOauthToken, requiredOrganization, githubUser)
 	if err != nil {
 		grip.Error(message.WrapError(err, message.Fields{
 			"job":          j.ID(),
-			"message":      "failed to check if user is an installed app",
+			"message":      "failed to check if user is an authorized app",
 			"source":       "patch intents",
 			"creator":      githubUser,
 			"required_org": requiredOrganization,
@@ -1196,7 +1198,17 @@ func (j *patchIntentProcessor) isUserAuthorized(ctx context.Context, patchDoc *p
 			"pr_number":    patchDoc.GithubPatchData.PRNumber,
 		}))
 	}
-	return isInstalledForOrg, nil
+	if isAuthorizedForOrg {
+		return isAuthorizedForOrg, nil
+	}
+
+	// Verify external collaborators separately.
+	hasWritePermission, err := thirdparty.GitHubUserHasWritePermission(ctx, githubOauthToken,
+		patchDoc.GithubPatchData.HeadOwner, patchDoc.GithubPatchData.HeadRepo, githubUser)
+	if err != nil {
+		return false, errors.Wrap(err, "getting GitHub user permissions")
+	}
+	return hasWritePermission, nil
 }
 
 func (j *patchIntentProcessor) sendGitHubErrorStatus(ctx context.Context, patchDoc *patch.Patch) {

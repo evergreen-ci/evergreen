@@ -34,7 +34,6 @@ const (
 	Github502Error   = "502 Server Error"
 	commitObjectType = "commit"
 	tagObjectType    = "tag"
-	githubWrite      = "write"
 
 	GithubInvestigation = "Github API Limit Investigation"
 )
@@ -57,6 +56,11 @@ var UnblockedGithubStatuses = []string{
 	githubPRHasHooks,
 	githubPRUnknown,
 	githubPRUnstable,
+}
+
+var githubWritePermissions = []string{
+	"admin",
+	"write",
 }
 
 const (
@@ -1375,7 +1379,7 @@ func authorizedForOrg(ctx context.Context, token, requiredOrganization, name str
 			appSlug := installation.GetAppSlug()
 			if appSlug == name || appSlug == nameWithoutBotSuffix {
 				prPermission := installation.GetPermissions().GetPullRequests()
-				if prPermission == githubWrite {
+				if utility.StringSliceContains(githubWritePermissions, prPermission) {
 					return true, nil
 				}
 				return false, errors.Errorf("app '%s' is installed but has pull request permission '%s'", name, prPermission)
@@ -1392,8 +1396,8 @@ func authorizedForOrg(ctx context.Context, token, requiredOrganization, name str
 	return false, nil
 }
 
-func GitHubUserPermissionLevel(ctx context.Context, token, owner, repo, username string) (string, error) {
-	level, err := permissionLevel(ctx, "", owner, repo, username)
+func GitHubUserHasWritePermission(ctx context.Context, token, owner, repo, username string) (bool, error) {
+	level, err := userHasWritePermission(ctx, "", owner, repo, username)
 	if err == nil {
 		return level, nil
 	}
@@ -1406,11 +1410,11 @@ func GitHubUserPermissionLevel(ctx context.Context, token, owner, repo, username
 		"username": username,
 	}))
 
-	return permissionLevel(ctx, token, owner, repo, username)
+	return userHasWritePermission(ctx, token, owner, repo, username)
 }
 
-func permissionLevel(ctx context.Context, token, owner, repo, username string) (string, error) {
-	caller := "GithubUserPermissionLevel"
+func userHasWritePermission(ctx context.Context, token, owner, repo, username string) (bool, error) {
+	caller := "userHasWritePermission"
 	ctx, span := tracer.Start(ctx, caller, trace.WithAttributes(
 		attribute.String(githubEndpointAttribute, caller),
 		attribute.String(githubOwnerAttribute, owner),
@@ -1422,7 +1426,7 @@ func permissionLevel(ctx context.Context, token, owner, repo, username string) (
 		var err error
 		token, err = getInstallationToken(ctx, owner, repo, nil)
 		if err != nil {
-			return "", errors.Wrap(err, "getting installation token")
+			return false, errors.Wrap(err, "getting installation token")
 		}
 	}
 	githubClient := getGithubClient(token, caller, retryConfig{retry404: true})
@@ -1433,14 +1437,14 @@ func permissionLevel(ctx context.Context, token, owner, repo, username string) (
 		span.SetAttributes(attribute.Bool(githubCachedAttribute, respFromCache(resp.Response)))
 	}
 	if err != nil {
-		return "", errors.Wrap(err, "can't get permissions from GitHub")
+		return false, errors.Wrap(err, "can't get permissions from GitHub")
 	}
 
 	if permissionLevel == nil || permissionLevel.Permission == nil {
-		return "", errors.Errorf("GitHub returned an invalid response to request for user permissions for '%s'", username)
+		return false, errors.Errorf("GitHub returned an invalid response to request for user permissions for '%s'", username)
 	}
 
-	return permissionLevel.GetPermission(), nil
+	return utility.StringSliceContains(githubWritePermissions, permissionLevel.GetPermission()), nil
 }
 
 // GetPullRequestMergeBase returns the merge base hash for the given PR.
