@@ -720,7 +720,7 @@ func (s *hostExtendExpirationHandlerSuite) TestExecuteWithLargeExpirationFails()
 	resp := h.Run(ctx)
 	s.NotEqual(http.StatusOK, resp.Status())
 	apiErr := resp.Data().(gimlet.ErrorResponse)
-	s.Equal(http.StatusInternalServerError, apiErr.StatusCode)
+	s.Equal(http.StatusBadRequest, apiErr.StatusCode)
 }
 
 func (s *hostExtendExpirationHandlerSuite) TestExecute() {
