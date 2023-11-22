@@ -261,7 +261,7 @@ func CheckProject(ctx context.Context, project *model.Project, config *model.Pro
 	aliases, err := model.ConstructMergedAliasesByPrecedence(ref, config, ref.RepoRefId)
 	if err != nil {
 		return append(verrs, ValidationError{
-			Message: "problem finding aliases; validation will proceed without checking alias coverage",
+			Message: "problem finding aliases; validation will not check alias coverage",
 			Level:   Warning,
 		})
 	}
