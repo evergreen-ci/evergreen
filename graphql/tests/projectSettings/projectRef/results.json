@@ -20,6 +20,7 @@
               "patchingDisabled": false,
               "prTestingEnabled": true,
               "stepbackDisabled": false,
+              "stepbackBisection": false,
               "batchTime": 2,
               "projectHealthView": "FAILED",
               "parsleyFilters": [

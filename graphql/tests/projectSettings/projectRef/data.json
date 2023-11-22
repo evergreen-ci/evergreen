@@ -13,6 +13,7 @@
       "patching_disabled": false,
       "pr_testing_enabled": true,
       "stepback_disabled": false,
+      "stepback_bisection": false,
       "batch_time": 2,
       "deactivate_previous": true,
       "triggers": [
