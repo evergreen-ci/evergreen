@@ -955,6 +955,18 @@ func (j *patchIntentProcessor) buildGithubPatchDoc(ctx context.Context, patchDoc
 			"intent_id":   j.IntentID,
 		}))
 		return false, err
+	} else if !isMember {
+		grip.Debug(message.Fields{
+			"message":     "user unauthorized to start patch",
+			"user":        patchDoc.GithubPatchData.Author,
+			"source":      "patch intents",
+			"job":         j.ID(),
+			"patch_id":    j.PatchID,
+			"pr_number":   patchDoc.GithubPatchData.PRNumber,
+			"head_repo":   fmt.Sprintf("%s/%s", patchDoc.GithubPatchData.HeadOwner, patchDoc.GithubPatchData.HeadRepo),
+			"intent_type": j.IntentType,
+			"intent_id":   j.IntentID,
+		})
 	}
 
 	patchContent, summaries, err := thirdparty.GetGithubPullRequestDiff(ctx, githubOauthToken, patchDoc.GithubPatchData)
