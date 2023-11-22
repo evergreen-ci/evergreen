@@ -2155,10 +2155,10 @@ func (h *Host) UpdateParentIDs(ctx context.Context) error {
 	return UpdateAll(ctx, query, update)
 }
 
-// ValidExpirationExtension will prevent expirable spawn hosts
+// ValidateExpirationExtension will prevent expirable spawn hosts
 // from being extended past 30 days from its creation and not earlier
 // than the current time.
-func (h *Host) ValidExpirationExtension(extension time.Duration) error {
+func (h *Host) ValidateExpirationExtension(extension time.Duration) error {
 	maxExpirationTime := h.CreationTime.Add(evergreen.SpawnHostExpireDays * time.Hour * 24)
 	proposedTime := h.ExpirationTime.Add(extension)
 

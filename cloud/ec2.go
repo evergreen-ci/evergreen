@@ -655,7 +655,7 @@ func (m *ec2Manager) ModifyHost(ctx context.Context, h *host.Host, opts host.Hos
 		catcher.Add(m.setNoExpiration(ctx, h, *opts.NoExpiration))
 	}
 	if opts.AddHours != 0 {
-		if err := h.ValidExpirationExtension(opts.AddHours); err != nil {
+		if err := h.ValidateExpirationExtension(opts.AddHours); err != nil {
 			catcher.Add(err)
 		} else {
 			catcher.Add(m.extendExpiration(ctx, h, opts.AddHours))
