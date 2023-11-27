@@ -190,8 +190,9 @@ func TestArchiveAutoPackExecute(t *testing.T) {
 			// Fix this test so that exclude_files allows patterns relative to
 			// the source_dir. In other words, this test ought to pass
 			// excludedFile (the path relative to the source dir) here instead
-			// of thisFile (the absolute file path).
-			cmd.ExcludeFiles = []string{thisFile}
+			// of filepath.FromSlash(thisFile) (the absolute file path with
+			// native file separators).
+			cmd.ExcludeFiles = []string{filepath.FromSlash(thisFile)}
 
 			entries, err := os.ReadDir(cmd.SourceDir)
 			require.NoError(t, err)

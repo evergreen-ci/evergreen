@@ -5,7 +5,6 @@ import (
 
 	"github.com/evergreen-ci/evergreen/agent/internal"
 	"github.com/evergreen-ci/evergreen/agent/internal/client"
-	agentutil "github.com/evergreen-ci/evergreen/agent/util"
 	"github.com/evergreen-ci/evergreen/util"
 	"github.com/mholt/archiver/v3"
 	"github.com/mitchellh/mapstructure"
@@ -67,14 +66,14 @@ func (c *autoArchiveCreate) Execute(ctx context.Context,
 		// matching files.
 		filenames = []string{c.SourceDir}
 	} else {
-		files, err := agentutil.FindContentsToArchive(ctx, c.SourceDir, c.Include, c.ExcludeFiles)
+		files, _, err := findContentsToArchive(ctx, c.SourceDir, c.Include, c.ExcludeFiles)
 		if err != nil {
 			return errors.Wrap(err, "finding files to archive")
 		}
 
 		filenames = make([]string, len(files))
 		for idx := range files {
-			filenames[idx] = files[idx].Path
+			filenames[idx] = files[idx].path
 		}
 	}
 
