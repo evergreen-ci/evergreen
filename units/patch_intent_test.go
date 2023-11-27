@@ -1294,17 +1294,15 @@ func (s *PatchIntentUnitsSuite) TestGithubPRTestFromUnknownUserDoesntCreateVersi
 	s.Error(j.Error())
 	filter := patch.ById(patchID)
 	patchDoc, err := patch.FindOne(filter)
-	s.NoError(err)
-	if s.NotNil(patchDoc) {
-		s.Empty(patchDoc.Version)
-	}
+	s.Require().NotNil(patchDoc)
+	s.Empty(patchDoc.Version)
 
 	versionDoc, err := model.VersionFindOne(model.VersionById(patchID.Hex()))
 	s.NoError(err)
 	s.Nil(versionDoc)
 
 	unprocessedIntents, err := patch.FindUnprocessedGithubIntents()
-	s.Require().NoError(err)
+	s.NoError(err)
 	s.Require().Empty(unprocessedIntents)
 }
 
