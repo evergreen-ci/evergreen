@@ -94,7 +94,7 @@ func (s *HostsChangeStatusesSuite) TestParseMissingPayload() {
 func (s *HostsChangeStatusesSuite) TestRunHostsValidStatusesChange() {
 	h := s.route.Factory().(*hostsChangeStatusesHandler)
 	h.HostToStatus = map[string]hostStatus{
-		"host2": hostStatus{Status: "decommissioned"},
+		"host2": {Status: "decommissioned"},
 	}
 
 	ctx, cancel := context.WithCancel(context.Background())
@@ -107,8 +107,8 @@ func (s *HostsChangeStatusesSuite) TestRunHostsValidStatusesChange() {
 func (s *HostsChangeStatusesSuite) TestRunHostNotStartedByUser() {
 	h := s.route.Factory().(*hostsChangeStatusesHandler)
 	h.HostToStatus = map[string]hostStatus{
-		"host3": hostStatus{Status: "decommissioned"},
-		"host4": hostStatus{Status: "terminated"},
+		"host3": {Status: "decommissioned"},
+		"host4": {Status: "terminated"},
 	}
 
 	ctx, cancel := context.WithCancel(context.Background())
@@ -121,7 +121,7 @@ func (s *HostsChangeStatusesSuite) TestRunHostNotStartedByUser() {
 func (s *HostsChangeStatusesSuite) TestRunSuperUserSetStatusAnyHost() {
 	h := s.route.Factory().(*hostsChangeStatusesHandler)
 	h.HostToStatus = map[string]hostStatus{
-		"host3": hostStatus{Status: "decommissioned"},
+		"host3": {Status: "decommissioned"},
 	}
 
 	ctx, cancel := context.WithCancel(context.Background())
@@ -134,7 +134,7 @@ func (s *HostsChangeStatusesSuite) TestRunSuperUserSetStatusAnyHost() {
 func (s *HostsChangeStatusesSuite) TestRunTerminatedOnTerminatedHost() {
 	h := s.route.Factory().(*hostsChangeStatusesHandler)
 	h.HostToStatus = map[string]hostStatus{
-		"host1": hostStatus{Status: "terminated"},
+		"host1": {Status: "terminated"},
 	}
 
 	ctx, cancel := context.WithCancel(context.Background())
@@ -147,7 +147,7 @@ func (s *HostsChangeStatusesSuite) TestRunTerminatedOnTerminatedHost() {
 func (s *HostsChangeStatusesSuite) TestRunHostRunningOnTerminatedHost() {
 	h := s.route.Factory().(*hostsChangeStatusesHandler)
 	h.HostToStatus = map[string]hostStatus{
-		"host1": hostStatus{Status: "running"},
+		"host1": {Status: "running"},
 	}
 
 	ctx, cancel := context.WithCancel(context.Background())
@@ -160,7 +160,7 @@ func (s *HostsChangeStatusesSuite) TestRunHostRunningOnTerminatedHost() {
 func (s *HostsChangeStatusesSuite) TestRunHostQuarantinedOnTerminatedHost() {
 	h := s.route.Factory().(*hostsChangeStatusesHandler)
 	h.HostToStatus = map[string]hostStatus{
-		"host1": hostStatus{Status: "quarantined"},
+		"host1": {Status: "quarantined"},
 	}
 
 	ctx, cancel := context.WithCancel(context.Background())
@@ -173,7 +173,7 @@ func (s *HostsChangeStatusesSuite) TestRunHostQuarantinedOnTerminatedHost() {
 func (s *HostsChangeStatusesSuite) TestRunHostDecommissionedOnTerminatedHost() {
 	h := s.route.Factory().(*hostsChangeStatusesHandler)
 	h.HostToStatus = map[string]hostStatus{
-		"host1": hostStatus{Status: "decommissioned"},
+		"host1": {Status: "decommissioned"},
 	}
 
 	ctx, cancel := context.WithCancel(context.Background())
@@ -186,7 +186,7 @@ func (s *HostsChangeStatusesSuite) TestRunHostDecommissionedOnTerminatedHost() {
 func (s *HostsChangeStatusesSuite) TestRunWithInvalidHost() {
 	h := s.route.Factory().(*hostsChangeStatusesHandler)
 	h.HostToStatus = map[string]hostStatus{
-		"invalid": hostStatus{Status: "decommissioned"},
+		"invalid": {Status: "decommissioned"},
 	}
 
 	ctx, cancel := context.WithCancel(context.Background())
@@ -720,7 +720,7 @@ func (s *hostExtendExpirationHandlerSuite) TestExecuteWithLargeExpirationFails()
 	resp := h.Run(ctx)
 	s.NotEqual(http.StatusOK, resp.Status())
 	apiErr := resp.Data().(gimlet.ErrorResponse)
-	s.Equal(http.StatusInternalServerError, apiErr.StatusCode)
+	s.Equal(http.StatusBadRequest, apiErr.StatusCode)
 }
 
 func (s *hostExtendExpirationHandlerSuite) TestExecute() {
@@ -861,8 +861,8 @@ func setupMockHostsConnector(t *testing.T, env evergreen.Environment) {
 			StartedBy:      "user0",
 			Host:           "host1",
 			Status:         evergreen.HostTerminated,
-			CreationTime:   time.Date(2018, 7, 15, 0, 0, 0, 0, time.UTC),
-			ExpirationTime: time.Date(2018, 7, 15, 0, 0, 0, 0, time.UTC).Add(time.Hour),
+			CreationTime:   time.Date(2028, 7, 15, 0, 0, 0, 0, time.UTC),
+			ExpirationTime: time.Date(2028, 7, 15, 0, 0, 0, 0, time.UTC).Add(time.Hour),
 			Distro:         windowsDistro,
 		},
 		{
@@ -870,8 +870,8 @@ func setupMockHostsConnector(t *testing.T, env evergreen.Environment) {
 			StartedBy:      "user0",
 			Host:           "host2",
 			Status:         evergreen.HostRunning,
-			CreationTime:   time.Date(2018, 7, 15, 0, 0, 0, 0, time.UTC),
-			ExpirationTime: time.Date(2018, 7, 15, 0, 0, 0, 0, time.UTC).Add(time.Hour),
+			CreationTime:   time.Date(2028, 7, 15, 0, 0, 0, 0, time.UTC),
+			ExpirationTime: time.Date(2028, 7, 15, 0, 0, 0, 0, time.UTC).Add(time.Hour),
 			Distro:         windowsDistro,
 		},
 		{
@@ -879,8 +879,8 @@ func setupMockHostsConnector(t *testing.T, env evergreen.Environment) {
 			StartedBy:      "user0",
 			Host:           "host3",
 			Status:         evergreen.HostUninitialized,
-			CreationTime:   time.Date(2018, 7, 15, 0, 0, 0, 0, time.UTC),
-			ExpirationTime: time.Date(2018, 7, 15, 0, 0, 0, 0, time.UTC).Add(time.Hour),
+			CreationTime:   time.Date(2028, 7, 15, 0, 0, 0, 0, time.UTC),
+			ExpirationTime: time.Date(2028, 7, 15, 0, 0, 0, 0, time.UTC).Add(time.Hour),
 			Distro:         windowsDistro,
 		},
 		{
@@ -888,8 +888,8 @@ func setupMockHostsConnector(t *testing.T, env evergreen.Environment) {
 			StartedBy:      "user0",
 			Host:           "host4",
 			Status:         evergreen.HostRunning,
-			CreationTime:   time.Date(2018, 7, 15, 0, 0, 0, 0, time.UTC),
-			ExpirationTime: time.Date(2018, 7, 15, 0, 0, 0, 0, time.UTC).Add(time.Hour),
+			CreationTime:   time.Date(2028, 7, 15, 0, 0, 0, 0, time.UTC),
+			ExpirationTime: time.Date(2028, 7, 15, 0, 0, 0, 0, time.UTC).Add(time.Hour),
 			Distro: distro.Distro{
 				Id:       "linux",
 				Arch:     "linux_amd64",

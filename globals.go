@@ -272,18 +272,18 @@ const (
 	MaxDurationPerDistroHostWithContainers = 2 * time.Minute
 
 	// Spawn hosts
-	SpawnHostExpireDays                 = 30
-	HostExpireDays                      = 10
-	ExpireOnFormat                      = "2006-01-02"
-	DefaultMaxSpawnHostsPerUser         = 3
-	DefaultSpawnHostExpiration          = 24 * time.Hour
-	SpawnHostRespawns                   = 2
-	SpawnHostNoExpirationDuration       = 7 * 24 * time.Hour
-	MaxSpawnHostExpirationDurationHours = 24 * time.Hour * 14
-	UnattachedVolumeExpiration          = 24 * time.Hour * 30
-	DefaultMaxVolumeSizePerUser         = 500
-	DefaultUnexpirableHostsPerUser      = 1
-	DefaultUnexpirableVolumesPerUser    = 1
+	SpawnHostExpireDays              = 30
+	HostExpireDays                   = 10
+	ExpireOnFormat                   = "2006-01-02"
+	DefaultMaxSpawnHostsPerUser      = 3
+	DefaultSpawnHostExpiration       = 24 * time.Hour
+	SpawnHostRespawns                = 2
+	SpawnHostNoExpirationDuration    = 7 * 24 * time.Hour
+	MaxVolumeExpirationDurationHours = 24 * time.Hour * 14
+	UnattachedVolumeExpiration       = 24 * time.Hour * 30
+	DefaultMaxVolumeSizePerUser      = 500
+	DefaultUnexpirableHostsPerUser   = 1
+	DefaultUnexpirableVolumesPerUser = 1
 
 	// host resource tag names
 	TagName             = "name"
