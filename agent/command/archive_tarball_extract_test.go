@@ -94,7 +94,7 @@ func (s *TarballExtractSuite) TestErrorsAndNormalizedPath() {
 func (s *TarballExtractSuite) TestExtractionArchiveDoesNotExist() {
 	s.cmd.TargetDirectory = s.targetLocation
 	s.cmd.ArchivePath = filepath.Join(testutil.GetDirectoryOfFile(),
-		"testdata", "archive", "artifacts.tar.gzip")
+		"testdata", "archive", "nonexistent.tar.gz")
 
 	s.Error(s.cmd.Execute(s.ctx, s.comm, s.logger, s.conf))
 }
