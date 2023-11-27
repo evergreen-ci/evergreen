@@ -1396,6 +1396,8 @@ func authorizedForOrg(ctx context.Context, token, requiredOrganization, name str
 	return false, nil
 }
 
+// GitHubUserHasWritePermission returns true if the given user has write permission for the repo.
+// Returns an error if the user isn't found or the token isn't authed for this repo.
 func GitHubUserHasWritePermission(ctx context.Context, token, owner, repo, username string) (bool, error) {
 	level, err := userHasWritePermission(ctx, "", owner, repo, username)
 	if err == nil {

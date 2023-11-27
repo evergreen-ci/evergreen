@@ -1219,13 +1219,13 @@ func (j *patchIntentProcessor) isUserAuthorized(ctx context.Context, patchDoc *p
 		patchDoc.GithubPatchData.HeadOwner, patchDoc.GithubPatchData.HeadRepo, githubUser)
 	if err != nil {
 		grip.Error(message.WrapError(err, message.Fields{
-			"job":          j.ID(),
-			"message":      "failed to check if user has write permission for repo",
-			"source":       "patch intents",
-			"creator":      githubUser,
-			"head_owner":    fmt.Sprintf("%s/%s", patchDoc.GithubPatchData.BaseOwner, patchDoc.GithubPatchData.HeadOwner),
-			"head_repo":    fmt.Sprintf("%s/%s", patchDoc.GithubPatchData.HeadOwner, patchDoc.GithubPatchData.HeadRepo),
-			"pr_number":    patchDoc.GithubPatchData.PRNumber,
+			"job":        j.ID(),
+			"message":    "failed to check if user has write permission for repo",
+			"source":     "patch intents",
+			"creator":    githubUser,
+			"head_owner": fmt.Sprintf("%s/%s", patchDoc.GithubPatchData.BaseOwner, patchDoc.GithubPatchData.HeadOwner),
+			"head_repo":  fmt.Sprintf("%s/%s", patchDoc.GithubPatchData.HeadOwner, patchDoc.GithubPatchData.HeadRepo),
+			"pr_number":  patchDoc.GithubPatchData.PRNumber,
 		}))
 	}
 	return hasWritePermission, nil
