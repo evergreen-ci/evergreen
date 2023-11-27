@@ -367,7 +367,7 @@ func TryResetTask(ctx context.Context, settings *evergreen.Settings, taskId, use
 	}
 
 	caller := origin
-	if origin == evergreen.UIPackage || origin == evergreen.RESTV2Package {
+	if origin == evergreen.UIPackage || origin == evergreen.RESTV2Package || user == evergreen.AutoRestartActivator {
 		caller = user
 	}
 	if t.IsPartOfSingleHostTaskGroup() {
