@@ -222,6 +222,52 @@ func getDistrosForProject(ctx context.Context, projectID string) (ids []string, 
 	return ids, aliases, nil
 }
 
+// CheckProject calls the validating logic for a Project's configuration.
+// That is, ProjectErrors, ProjectWarnings, ProjectConfigErrors,
+// ProjectSettings, and AliasWarnings. If a respective item is nil,
+// it will not check it (e.g. if the config is nil, it does not check the config).
+// projectRefId is used to determine if there is a project specified and
+// projectRefErr is used to determine if there was a problem retrieving
+// the ref; both output different warnings for the project.
+func CheckProject(ctx context.Context, project *model.Project, config *model.ProjectConfig, ref *model.ProjectRef, includeLong bool, projectRefId string, projectRefErr error) ValidationErrors {
+	isConfigDefined := config != nil
+	verrs := CheckProjectErrors(ctx, project, includeLong)
+	verrs = append(verrs, CheckProjectWarnings(project)...)
+	if config != nil {
+		verrs = append(verrs, CheckProjectConfigErrors(config)...)
+	}
+
+	if projectRefId == "" {
+		verrs = append(verrs, ValidationError{
+			Message: "no project specified; validation will proceed without checking project settings and alias coverage",
+			Level:   Warning,
+		})
+		return verrs
+	}
+	if ref == nil {
+		if projectRefErr != nil {
+			return append(verrs, ValidationError{
+				Message: "error finding project; validation will proceed without checking project settings and alias coverage",
+				Level:   Warning,
+			})
+		}
+		return append(verrs, ValidationError{
+			Message: "project does not exist; validation will proceed without checking project settings and alias coverage",
+			Level:   Warning,
+		})
+	}
+	verrs = append(verrs, CheckProjectSettings(ctx, evergreen.GetEnvironment().Settings(), project, ref, isConfigDefined)...)
+	// Check project aliases
+	aliases, err := model.ConstructMergedAliasesByPrecedence(ref, config, ref.RepoRefId)
+	if err != nil {
+		return append(verrs, ValidationError{
+			Message: "problem finding aliases; validation will not check alias coverage",
+			Level:   Warning,
+		})
+	}
+	return append(verrs, CheckAliasWarnings(project, aliases)...)
+}
+
 // verify that the project configuration semantics is valid
 func CheckProjectWarnings(project *model.Project) ValidationErrors {
 	validationErrs := ValidationErrors{}
