@@ -3,9 +3,6 @@
 FROM public.ecr.aws/docker/library/golang:1.21-bookworm as build-load-initial-data
 WORKDIR /build
 
-COPY go.mod go.sum ./
-RUN  go mod download
-
 COPY . .
 RUN ["make", "bin/load-smoke-data"]
 

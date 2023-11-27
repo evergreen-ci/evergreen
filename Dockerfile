@@ -11,9 +11,6 @@ ARG EVERGREEN_BUNDLE_ID
 
 WORKDIR /build
 
-COPY go.mod go.sum ./
-RUN  go mod download
-
 COPY . .
 RUN ["make", "clis"]
 
@@ -21,7 +18,7 @@ RUN ["make", "clis"]
 RUN if [ -n "$MACOS_NOTARY_SECRET" ]; then make sign-macos; fi
 
 # Production stage with only the necessary files
-FROM gcr.io/distroless/static as production
+FROM public.ecr.aws/debian/debian:bookworm-slim as production
 
 # Build time configuration
 ARG GOOS
