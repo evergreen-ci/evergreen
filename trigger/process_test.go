@@ -575,7 +575,7 @@ func TestProjectTriggerIntegrationForPush(t *testing.T) {
 
 	pushEvent := &github.PushEvent{
 		HeadCommit: &github.HeadCommit{
-			ID:      utility.ToStringPtr("abc"),
+			ID:      utility.ToStringPtr("3585388b1591dfca47ac26a5b9a564ec8f138a5e"),
 			Message: utility.ToStringPtr("message"),
 			Author: &github.CommitAuthor{
 				Email: utility.ToStringPtr("hello@example.com"),
@@ -590,13 +590,13 @@ func TestProjectTriggerIntegrationForPush(t *testing.T) {
 	assert.NoError(err)
 	require.Len(dbVersions, 1)
 	assert.True(utility.FromBoolPtr(dbVersions[0].Activated))
-	assert.Equal("downstream_abc_def1", dbVersions[0].Id)
+	assert.Equal("downstream_3585388b1591dfca47ac26a5b9a564ec8f138a5e_def1", dbVersions[0].Id)
 	assert.Equal(downstreamRevision, dbVersions[0].Revision)
 	assert.Equal(evergreen.VersionCreated, dbVersions[0].Status)
 	assert.Equal(downstreamProjectRef.Id, dbVersions[0].Identifier)
 	assert.Equal(evergreen.TriggerRequester, dbVersions[0].Requester)
 	assert.Equal(model.ProjectTriggerLevelPush, dbVersions[0].TriggerType)
-	assert.Equal("abc", dbVersions[0].TriggerSHA)
+	assert.Equal("3585388b1591dfca47ac26a5b9a564ec8f138a5e", dbVersions[0].TriggerSHA)
 	assert.Equal("upstream", dbVersions[0].TriggerID)
 
 	builds, err := build.Find(build.ByVersion(dbVersions[0].Id))
@@ -626,6 +626,11 @@ func TestProjectTriggerIntegrationForPush(t *testing.T) {
 	require.NotNil(mani)
 	assert.Equal(downstreamProjectRef.Id, mani.ProjectName)
 	assert.Equal(uptreamProjectRef.Branch, mani.Branch)
+	assert.Len(mani.Modules, 1)
+	assert.Equal("3585388b1591dfca47ac26a5b9a564ec8f138a5e", mani.Modules["sample"].Revision)
+	assert.Equal("main", mani.Modules["sample"].Branch)
+	assert.Equal("sample", mani.Modules["sample"].Repo)
+	assert.Equal("evergreen-ci", mani.Modules["sample"].Owner)
 
 	// verify that triggering this version again does nothing
 	assert.NoError(TriggerDownstreamProjectsForPush(ctx, uptreamProjectRef.Id, pushEvent, TriggerDownstreamVersion))
