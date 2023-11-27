@@ -348,26 +348,6 @@ func MockConfig() *evergreen.Settings {
 			Docker: evergreen.DockerConfig{
 				APIVersion: "docker_version",
 			},
-			GCE: evergreen.GCEConfig{
-				ClientEmail:  "gce_email",
-				PrivateKey:   "gce_key",
-				PrivateKeyID: "gce_key_id",
-				TokenURI:     "gce_token",
-			},
-			OpenStack: evergreen.OpenStackConfig{
-				IdentityEndpoint: "endpoint",
-				Username:         "username",
-				Password:         "password",
-				DomainName:       "domain",
-				ProjectName:      "project",
-				ProjectID:        "project_id",
-				Region:           "region",
-			},
-			VSphere: evergreen.VSphereConfig{
-				Host:     "host",
-				Username: "vsphere",
-				Password: "vsphere_pass",
-			},
 		},
 		RepoTracker: evergreen.RepoTrackerConfig{
 			NumNewRepoRevisionsToFetch: 10,

@@ -131,12 +131,6 @@ func GetSettings(provider string) (ProviderSettings, error) {
 		return &MockProviderSettings{}, nil
 	case evergreen.ProviderNameDocker, evergreen.ProviderNameDockerMock:
 		return &dockerSettings{}, nil
-	case evergreen.ProviderNameOpenstack:
-		return &openStackSettings{}, nil
-	case evergreen.ProviderNameGce:
-		return &GCESettings{}, nil
-	case evergreen.ProviderNameVsphere:
-		return &vsphereSettings{}, nil
 	}
 	return nil, errors.Errorf("invalid provider name '%s'", provider)
 }
@@ -175,12 +169,6 @@ func GetManager(ctx context.Context, env evergreen.Environment, mgrOpts ManagerO
 		provider = &dockerManager{env: env}
 	case evergreen.ProviderNameDockerMock:
 		provider = &dockerManager{env: env, client: &dockerClientMock{}}
-	case evergreen.ProviderNameOpenstack:
-		provider = &openStackManager{}
-	case evergreen.ProviderNameGce:
-		provider = &gceManager{}
-	case evergreen.ProviderNameVsphere:
-		provider = &vsphereManager{}
 	default:
 		return nil, errors.Errorf("no known provider '%s'", mgrOpts.Provider)
 	}

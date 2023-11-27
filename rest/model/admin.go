@@ -1338,11 +1338,8 @@ func (a *APIProjectCreationConfig) ToService() (interface{}, error) {
 }
 
 type APICloudProviders struct {
-	AWS       *APIAWSConfig       `json:"aws"`
-	Docker    *APIDockerConfig    `json:"docker"`
-	GCE       *APIGCEConfig       `json:"gce"`
-	OpenStack *APIOpenStackConfig `json:"openstack"`
-	VSphere   *APIVSphereConfig   `json:"vsphere"`
+	AWS    *APIAWSConfig    `json:"aws"`
+	Docker *APIDockerConfig `json:"docker"`
 }
 
 func (a *APICloudProviders) BuildFromService(h interface{}) error {
@@ -1350,22 +1347,10 @@ func (a *APICloudProviders) BuildFromService(h interface{}) error {
 	case evergreen.CloudProviders:
 		a.AWS = &APIAWSConfig{}
 		a.Docker = &APIDockerConfig{}
-		a.GCE = &APIGCEConfig{}
-		a.OpenStack = &APIOpenStackConfig{}
-		a.VSphere = &APIVSphereConfig{}
 		if err := a.AWS.BuildFromService(v.AWS); err != nil {
 			return err
 		}
 		if err := a.Docker.BuildFromService(v.Docker); err != nil {
-			return err
-		}
-		if err := a.GCE.BuildFromService(v.GCE); err != nil {
-			return err
-		}
-		if err := a.OpenStack.BuildFromService(v.OpenStack); err != nil {
-			return err
-		}
-		if err := a.VSphere.BuildFromService(v.VSphere); err != nil {
 			return err
 		}
 	default:
@@ -1383,24 +1368,9 @@ func (a *APICloudProviders) ToService() (interface{}, error) {
 	if err != nil {
 		return nil, err
 	}
-	gce, err := a.GCE.ToService()
-	if err != nil {
-		return nil, err
-	}
-	openstack, err := a.OpenStack.ToService()
-	if err != nil {
-		return nil, err
-	}
-	vsphere, err := a.VSphere.ToService()
-	if err != nil {
-		return nil, err
-	}
 	return evergreen.CloudProviders{
-		AWS:       aws.(evergreen.AWSConfig),
-		Docker:    docker.(evergreen.DockerConfig),
-		GCE:       gce.(evergreen.GCEConfig),
-		OpenStack: openstack.(evergreen.OpenStackConfig),
-		VSphere:   vsphere.(evergreen.VSphereConfig),
+		AWS:    aws.(evergreen.AWSConfig),
+		Docker: docker.(evergreen.DockerConfig),
 	}, nil
 }
 
@@ -2016,102 +1986,6 @@ func (a *APIDockerConfig) ToService() (interface{}, error) {
 	return evergreen.DockerConfig{
 		APIVersion:    utility.FromStringPtr(a.APIVersion),
 		DefaultDistro: utility.FromStringPtr(a.DefaultDistro),
-	}, nil
-}
-
-type APIGCEConfig struct {
-	ClientEmail  *string `json:"client_email"`
-	PrivateKey   *string `json:"private_key"`
-	PrivateKeyID *string `json:"private_key_id"`
-	TokenURI     *string `json:"token_uri"`
-}
-
-func (a *APIGCEConfig) BuildFromService(h interface{}) error {
-	switch v := h.(type) {
-	case evergreen.GCEConfig:
-		a.ClientEmail = utility.ToStringPtr(v.ClientEmail)
-		a.PrivateKey = utility.ToStringPtr(v.PrivateKey)
-		a.PrivateKeyID = utility.ToStringPtr(v.PrivateKeyID)
-		a.TokenURI = utility.ToStringPtr(v.TokenURI)
-	default:
-		return errors.Errorf("programmatic error: expected GCE config but got type %T", h)
-	}
-	return nil
-}
-
-func (a *APIGCEConfig) ToService() (interface{}, error) {
-	return evergreen.GCEConfig{
-		ClientEmail:  utility.FromStringPtr(a.ClientEmail),
-		PrivateKey:   utility.FromStringPtr(a.PrivateKey),
-		PrivateKeyID: utility.FromStringPtr(a.PrivateKeyID),
-		TokenURI:     utility.FromStringPtr(a.TokenURI),
-	}, nil
-}
-
-type APIOpenStackConfig struct {
-	IdentityEndpoint *string `json:"identity_endpoint"`
-
-	Username   *string `json:"username"`
-	Password   *string `json:"password"`
-	DomainName *string `json:"domain_name"`
-
-	ProjectName *string `json:"project_name"`
-	ProjectID   *string `json:"project_id"`
-
-	Region *string `json:"region"`
-}
-
-func (a *APIOpenStackConfig) BuildFromService(h interface{}) error {
-	switch v := h.(type) {
-	case evergreen.OpenStackConfig:
-		a.IdentityEndpoint = utility.ToStringPtr(v.IdentityEndpoint)
-		a.Username = utility.ToStringPtr(v.Username)
-		a.Password = utility.ToStringPtr(v.Password)
-		a.DomainName = utility.ToStringPtr(v.DomainName)
-		a.ProjectName = utility.ToStringPtr(v.ProjectName)
-		a.ProjectID = utility.ToStringPtr(v.ProjectID)
-		a.Region = utility.ToStringPtr(v.Region)
-	default:
-		return errors.Errorf("programmatic error: expected OpenStack config but got type %T", h)
-	}
-	return nil
-}
-
-func (a *APIOpenStackConfig) ToService() (interface{}, error) {
-	return evergreen.OpenStackConfig{
-		IdentityEndpoint: utility.FromStringPtr(a.IdentityEndpoint),
-		Username:         utility.FromStringPtr(a.Username),
-		Password:         utility.FromStringPtr(a.Password),
-		DomainName:       utility.FromStringPtr(a.DomainName),
-		ProjectID:        utility.FromStringPtr(a.ProjectID),
-		ProjectName:      utility.FromStringPtr(a.ProjectName),
-		Region:           utility.FromStringPtr(a.Region),
-	}, nil
-}
-
-type APIVSphereConfig struct {
-	Host     *string `json:"host"`
-	Username *string `json:"username"`
-	Password *string `json:"password"`
-}
-
-func (a *APIVSphereConfig) BuildFromService(h interface{}) error {
-	switch v := h.(type) {
-	case evergreen.VSphereConfig:
-		a.Host = utility.ToStringPtr(v.Host)
-		a.Username = utility.ToStringPtr(v.Username)
-		a.Password = utility.ToStringPtr(v.Password)
-	default:
-		return errors.Errorf("programmatic error: expected VSphere config but got type %T", h)
-	}
-	return nil
-}
-
-func (a *APIVSphereConfig) ToService() (interface{}, error) {
-	return evergreen.VSphereConfig{
-		Host:     utility.FromStringPtr(a.Host),
-		Username: utility.FromStringPtr(a.Username),
-		Password: utility.FromStringPtr(a.Password),
 	}, nil
 }
 

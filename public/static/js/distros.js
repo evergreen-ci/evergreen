@@ -57,15 +57,6 @@ mciModule.controller('DistrosCtrl', function ($scope, $window, $http, $location,
   }, {
     'id': 'docker',
     'display': 'Docker'
-  }, {
-    'id': 'openstack',
-    'display': 'OpenStack'
-  }, {
-    'id': 'gce',
-    'display': 'Google Compute'
-  }, {
-    'id': 'vsphere',
-    'display': 'VMware vSphere'
   }];
 
   $scope.bootstrapMethods = [{

@@ -538,10 +538,7 @@ const (
 	ProviderNameEc2Fleet    = "ec2-fleet"
 	ProviderNameDocker      = "docker"
 	ProviderNameDockerMock  = "docker-mock"
-	ProviderNameGce         = "gce"
 	ProviderNameStatic      = "static"
-	ProviderNameOpenstack   = "openstack"
-	ProviderNameVsphere     = "vsphere"
 	ProviderNameMock        = "mock"
 
 	// DefaultEC2Region is the default region where hosts should be spawned.
@@ -572,9 +569,6 @@ var (
 	ProviderSpawnable = []string{
 		ProviderNameEc2OnDemand,
 		ProviderNameEc2Fleet,
-		ProviderNameGce,
-		ProviderNameOpenstack,
-		ProviderNameVsphere,
 		ProviderNameMock,
 		ProviderNameDocker,
 	}
@@ -585,9 +579,6 @@ var (
 	ProviderUserSpawnable = []string{
 		ProviderNameEc2OnDemand,
 		ProviderNameEc2Fleet,
-		ProviderNameGce,
-		ProviderNameOpenstack,
-		ProviderNameVsphere,
 	}
 
 	ProviderContainer = []string{
