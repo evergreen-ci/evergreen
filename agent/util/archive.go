@@ -111,5 +111,6 @@ func streamArchiveContents(ctx context.Context, rootPath string, includes, exclu
 			catcher.Wrapf(filepath.Walk(rootPath, walk), "matching files included in filter '%s' for patch '%s'", filematch, rootPath)
 		}
 	}
+
 	return archiveContents, catcher.Resolve()
 }
