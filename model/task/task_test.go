@@ -15,6 +15,7 @@ import (
 	"github.com/evergreen-ci/evergreen/model/distro"
 	"github.com/evergreen-ci/evergreen/model/event"
 	"github.com/evergreen-ci/evergreen/model/testresult"
+	"github.com/evergreen-ci/evergreen/taskoutput"
 	"github.com/evergreen-ci/utility"
 	"github.com/pkg/errors"
 	. "github.com/smartystreets/goconvey/convey"
@@ -4689,6 +4690,48 @@ func TestReset(t *testing.T) {
 		dbTask, err := FindOneId(t0.Id)
 		assert.NoError(t, err)
 		assert.False(t, dbTask.UnattainableDependency)
+	})
+
+	t.Run("UnsetsExpectedFields", func(t *testing.T) {
+		require.NoError(t, db.Clear(Collection))
+
+		t0 := Task{
+			Id:                      "t0",
+			Status:                  evergreen.TaskSucceeded,
+			Details:                 apimodels.TaskEndDetail{Status: evergreen.TaskSucceeded},
+			TaskOutputInfo:          &taskoutput.TaskOutput{TaskLogs: taskoutput.TaskLogOutput{Version: 1}},
+			ResultsService:          "r",
+			ResultsFailed:           true,
+			HasCedarResults:         true,
+			ResetWhenFinished:       true,
+			IsAutomaticRestart:      true,
+			ResetFailedWhenFinished: true,
+			OverrideDependencies:    true,
+			CanReset:                true,
+			AgentVersion:            "a1",
+			HostId:                  "h",
+			PodID:                   "p",
+			HostCreateDetails:       []HostCreateDetail{{HostId: "h"}},
+		}
+		assert.NoError(t, t0.Insert())
+
+		assert.NoError(t, t0.Reset(ctx))
+		dbTask, err := FindOneId(t0.Id)
+		assert.NoError(t, err)
+		assert.False(t, dbTask.ResultsFailed)
+		assert.False(t, dbTask.HasCedarResults)
+		assert.False(t, dbTask.ResetWhenFinished)
+		assert.False(t, dbTask.IsAutomaticRestart)
+		assert.False(t, dbTask.ResetFailedWhenFinished)
+		assert.False(t, dbTask.OverrideDependencies)
+		assert.False(t, dbTask.CanReset)
+		assert.Equal(t, "", dbTask.AgentVersion)
+		assert.Equal(t, "", dbTask.HostId)
+		assert.Equal(t, "", dbTask.PodID)
+		assert.Empty(t, dbTask.HostCreateDetails)
+		assert.Empty(t, dbTask.TaskOutputInfo)
+		assert.Empty(t, dbTask.Details)
+
 	})
 
 }

@@ -10,7 +10,6 @@ package main
 
 import (
 	"archive/tar"
-	"compress/gzip"
 	"flag"
 	"fmt"
 	"io"
@@ -18,6 +17,8 @@ import (
 	"path/filepath"
 	"regexp"
 	"strings"
+
+	"github.com/klauspost/pgzip"
 )
 
 // inspired by https://gist.github.com/jonmorehouse/9060515
@@ -107,7 +108,7 @@ func makeTarball(fileName, prefix string, paths []string, exclude []string) erro
 	defer file.Close()
 
 	// set up the  gzip writer
-	gw := gzip.NewWriter(file)
+	gw := pgzip.NewWriter(file)
 	defer gw.Close()
 	tw := tar.NewWriter(gw)
 	defer tw.Close()

@@ -11,7 +11,6 @@ import (
 	"github.com/aws/aws-sdk-go/aws/endpoints"
 	"github.com/evergreen-ci/evergreen/agent/internal"
 	"github.com/evergreen-ci/evergreen/agent/internal/client"
-	agentutil "github.com/evergreen-ci/evergreen/agent/util"
 	"github.com/evergreen-ci/evergreen/util"
 	"github.com/evergreen-ci/pail"
 	"github.com/evergreen-ci/utility"
@@ -275,7 +274,7 @@ func (c *s3get) get(ctx context.Context) error {
 	if err != nil {
 		return errors.Wrapf(err, "getting reader for remote file '%s'", c.RemoteFile)
 	}
-	if err := agentutil.ExtractTarball(ctx, reader, c.ExtractTo, []string{}); err != nil {
+	if err := extractTarball(ctx, reader, c.ExtractTo, []string{}); err != nil {
 		return errors.Wrapf(err, "extracting file '%s' from archive to destination '%s'", c.RemoteFile, c.ExtractTo)
 	}
 
