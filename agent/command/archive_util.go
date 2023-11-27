@@ -222,7 +222,9 @@ func tarGzReader(path string) (f, gz io.ReadCloser, tarReader *tar.Reader, err e
 }
 
 // tarGzWriter returns a file, gzip writer, and tarWriter for the path.
-// The tar writer wraps the gzip writer, which wraps the file.
+// The tar writer wraps the gzip writer, which wraps the file. If
+// useParallelGzip is true, then it will use the parallel gzip algorithm;
+// otherwise, it'll use the standard single-threaded gzip algorithm.
 func tarGzWriter(path string, useParallelGzip bool) (f, gz io.WriteCloser, tarWriter *tar.Writer, err error) {
 	f, err = os.Create(path)
 	if err != nil {
@@ -249,7 +251,7 @@ type archiveContentFile struct {
 func findContentsToArchive(ctx context.Context, rootPath string, includes, excludes []string) (files []archiveContentFile, totalSize int, err error) {
 	out := []archiveContentFile{}
 	catcher := grip.NewBasicCatcher()
-	archiveContents, totalSize, err := streamArchiveContents(ctx, rootPath, includes, excludes)
+	archiveContents, totalSize, err := findArchiveContents(ctx, rootPath, includes, excludes)
 	if err != nil {
 		return nil, 0, errors.Wrap(err, "getting archive contents")
 	}
@@ -269,7 +271,11 @@ func findContentsToArchive(ctx context.Context, rootPath string, includes, exclu
 	return out, totalSize, nil
 }
 
-func streamArchiveContents(ctx context.Context, rootPath string, includes, excludes []string) (files []archiveContentFile, totalSize int, err error) {
+// findArchiveContents returns files to be archived starting at the rootPath. It
+// matches all files that match any of the include filters and are not excluded
+// by one of the exclude filters. At least one include filter must be given for
+// this to return any files.
+func findArchiveContents(ctx context.Context, rootPath string, includes, excludes []string) (files []archiveContentFile, totalSize int, err error) {
 	archiveContents := []archiveContentFile{}
 	seen := map[string]archiveContentFile{}
 	catcher := grip.NewCatcher()

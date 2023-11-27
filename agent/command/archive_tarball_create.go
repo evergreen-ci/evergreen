@@ -147,7 +147,7 @@ const thresholdSizeForParallelGzipCompression = 1024 * 1024
 // Build the archive.
 // Returns the number of files included in the archive (0 means empty archive).
 func (c *tarballCreate) makeArchive(ctx context.Context, logger grip.Journaler) (int, error) {
-	pathsToAdd, totalSize, err := streamArchiveContents(ctx, c.SourceDir, c.Include, []string{})
+	pathsToAdd, totalSize, err := findArchiveContents(ctx, c.SourceDir, c.Include, []string{})
 	if err != nil {
 		return 0, errors.Wrap(err, "getting archive contents")
 	}
