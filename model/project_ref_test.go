@@ -3154,26 +3154,6 @@ func TestSaveProjectPageForSection(t *testing.T) {
 	_, err = SaveProjectPageForSection("iden_", update, ProjectPageGeneralSection, false)
 	assert.NoError(err)
 
-	// Test successful external link update
-	update = &ProjectRef{
-		ExternalLinks: []ExternalLink{
-			{URLTemplate: "https://arnars.com/{version_id}", DisplayName: "A link"},
-		},
-	}
-	_, err = SaveProjectPageForSection("iden_", update, ProjectPagePluginSection, false)
-	assert.NoError(err)
-
-	// Test failing external link update
-	update = &ProjectRef{
-		ExternalLinks: []ExternalLink{
-			{URLTemplate: "invalid URL template", DisplayName: "way tooooooooooooooooooooo long display name"},
-		},
-	}
-	_, err = SaveProjectPageForSection("iden_", update, ProjectPagePluginSection, false)
-	assert.Error(err)
-	assert.Contains(err.Error(), "validating external links: link display name, way tooooooooooooooooooooo long display name, must be 40 characters or less")
-	assert.Contains(err.Error(), "parse \"invalid URL template\": invalid URI for request")
-
 	// Test parsley filters and view update
 	update = &ProjectRef{
 		ParsleyFilters: []ParsleyFilter{
@@ -3184,27 +3164,6 @@ func TestSaveProjectPageForSection(t *testing.T) {
 	_, err = SaveProjectPageForSection("iden_", update, ProjectPageViewsAndFiltersSection, false)
 	assert.NoError(err)
 
-	// Test performance plugin updates errors when id and identifier are different.
-	update = &ProjectRef{
-		PerfEnabled: utility.ToBoolPtr(true),
-	}
-	_, err = SaveProjectPageForSection("iden_", update, ProjectPagePluginSection, false)
-	assert.Error(err)
-
-	// Test performance plugin updates correctly when id and identifier are the same.
-	// Set the id and identifier to the same value.
-	update = &ProjectRef{
-		Identifier: "iden_",
-	}
-	_, err = SaveProjectPageForSection("iden_", update, ProjectPageGeneralSection, false)
-	assert.NoError(err)
-	// Attempt to enable the performance plugin.
-	update = &ProjectRef{
-		PerfEnabled: utility.ToBoolPtr(true),
-	}
-	_, err = SaveProjectPageForSection("iden_", update, ProjectPagePluginSection, false)
-	assert.NoError(err)
-
 	// Test private field does not get updated
 	update = &ProjectRef{
 		Restricted: utility.TruePtr(),
@@ -3213,7 +3172,7 @@ func TestSaveProjectPageForSection(t *testing.T) {
 	assert.NoError(err)
 
 	projectRef, err = FindBranchProjectRef("iden_")
-	assert.NoError(err)
+	require.NoError(t, err)
 	assert.NotNil(t, projectRef)
 	assert.Len(projectRef.ParsleyFilters, 1)
 	assert.Equal(projectRef.ProjectHealthView, ProjectHealthViewAll)

@@ -43,3 +43,30 @@ func TestNewTaskConfig(t *testing.T) {
 	assert.Equal(t, p, &taskConfig.Project)
 	assert.Equal(t, task, &taskConfig.Task)
 }
+
+func TestCreatesCheckRun(t *testing.T) {
+	task := &task.Task{
+		DisplayName:  "some_task",
+		BuildVariant: "bv",
+	}
+
+	p := &model.Project{
+		BuildVariants: []model.BuildVariant{
+			{
+				Name: "bv",
+				Tasks: []model.BuildVariantTaskUnit{
+					{
+						Name: "some_task",
+						CreateCheckRun: &model.CheckRun{
+							PathToOutputs: "",
+						},
+					},
+				},
+			},
+		},
+	}
+
+	tc, err := NewTaskConfig(testutil.GetDirectoryOfFile(), &apimodels.DistroView{}, p, task, &model.ProjectRef{}, &patch.Patch{}, util.Expansions{})
+	assert.NoError(t, err)
+	assert.Equal(t, true, tc.createsCheckRun())
+}

@@ -19,14 +19,21 @@ type GetOptions struct {
 	// be specified. At least one name must be specified.
 	LogNames []string
 	// Start is the start time (inclusive) of the time range filter,
-	// represented as a Unix timestamp in nanoseconds. Optional.
-	Start int64
+	// represented as a Unix timestamp in nanoseconds. Defaults to
+	// unbounded unless DefaultTimeRangeOfFirstLog is set to true.
+	Start *int64
 	// End is the end time (inclusive) of the time range filter,
-	// represented as a Unix timestamp in nanoseconds. Optional.
-	End int64
-	// LineLimit limits the number of lines read from the log. Optional.
+	// represented as a Unix timestamp in nanoseconds. Defaults to
+	// unbounded unless DefaultTimeRangeOfFirstLog is set to true.
+	End *int64
+	// DefaultTimeRangeOfFirstLog defaults the start and end time of the
+	// time range filter to the first and last timestamp, respectively, of
+	// the first specified log in LogNames.
+	DefaultTimeRangeOfFirstLog bool
+	// LineLimit limits the number of lines read from the log. Ignored if
+	// less than or equal to 0.
 	LineLimit int
 	// TailN is the number of lines to read from the tail of the log.
-	// Optional.
+	// Ignored if less than or equal to 0.
 	TailN int
 }

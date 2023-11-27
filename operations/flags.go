@@ -47,6 +47,7 @@ const (
 	uncommittedChangesFlag    = "uncommitted"
 	preserveCommitsFlag       = "preserve-commits"
 	subscriptionTypeFlag      = "subscription-type"
+	errorOnWarningsFlagName   = "error-on-warnings"
 
 	anserDryRunFlagName      = "dry-run"
 	anserLimitFlagName       = "limit"

@@ -52,6 +52,7 @@ func makeTaskTriggers() eventHandler {
 		event.TriggerFailure:                     t.taskFailure,
 		event.TriggerSuccess:                     t.taskSuccess,
 		event.TriggerExceedsDuration:             t.taskExceedsDuration,
+		event.TriggerSuccessfulExceedsDuration:   t.taskSuccessfulExceedsDuration,
 		event.TriggerRuntimeChangeByPercent:      t.taskRuntimeChange,
 		event.TriggerRegression:                  t.taskRegression,
 		event.TriggerTaskFirstFailureInVersion:   t.taskFirstFailureInVersion,
@@ -663,6 +664,14 @@ func shouldSendTaskRegression(sub *event.Subscription, t *task.Task, previousTas
 		return taskFinishedTwoOrMoreDaysAgo(lastAlerted.TaskId, sub)
 	}
 	return false, nil
+}
+
+func (t *taskTriggers) taskSuccessfulExceedsDuration(sub *event.Subscription) (*notification.Notification, error) {
+	if t.task.Status != evergreen.TaskSucceeded {
+		return nil, nil
+	}
+
+	return t.taskExceedsDuration(sub)
 }
 
 func (t *taskTriggers) taskExceedsDuration(sub *event.Subscription) (*notification.Notification, error) {

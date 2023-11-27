@@ -23,7 +23,7 @@ require (
 	github.com/evergreen-ci/cocoa v0.0.0-20230918160723-69a3ef4b69a0
 	github.com/evergreen-ci/gimlet v0.0.0-20231108203524-e7de42b0623c
 	github.com/evergreen-ci/juniper v0.0.0-20230901183147-c805ea7351aa
-	github.com/evergreen-ci/pail v0.0.0-20220908201135-8a2090a672b7
+	github.com/evergreen-ci/pail v0.0.0-20231031153034-c935ae102fea
 	github.com/evergreen-ci/poplar v0.0.0-20220908212406-a5e2aa799def
 	github.com/evergreen-ci/shrub v0.0.0-20230511194147-d00fc686c715
 	github.com/evergreen-ci/timber v0.0.0-20230905184025-88c53a14c47b
@@ -32,7 +32,7 @@ require (
 	github.com/google/go-github/v52 v52.0.0
 	github.com/google/shlex v0.0.0-20191202100458-e7afc7fbc510
 	github.com/gophercloud/gophercloud v0.1.0
-	github.com/gorilla/csrf v1.7.1
+	github.com/gorilla/csrf v1.7.2
 	github.com/gorilla/mux v1.8.1
 	github.com/gorilla/sessions v1.2.2
 	github.com/gregjones/httpcache v0.0.0-20190611155906-901d90724c79
@@ -54,7 +54,7 @@ require (
 	github.com/urfave/cli v1.22.13
 	github.com/vektah/gqlparser/v2 v2.5.10
 	github.com/vmware/govmomi v0.27.1
-	go.mongodb.org/mongo-driver v1.12.1
+	go.mongodb.org/mongo-driver v1.13.0
 	go.opentelemetry.io/contrib/detectors/aws/ec2 v1.17.0
 	go.opentelemetry.io/contrib/detectors/aws/ecs v1.20.0
 	go.opentelemetry.io/contrib/instrumentation/github.com/aws/aws-sdk-go-v2/otelaws v0.45.0

@@ -811,8 +811,8 @@ func (h *modifyVolumeHandler) Run(ctx context.Context) gimlet.Responder {
 		if h.opts.Expiration.Before(volume.Expiration) {
 			return gimlet.MakeJSONErrorResponder(errors.Errorf("cannot make expiration time earlier than current expiration %s", volume.Expiration.Format(time.RFC1123)))
 		}
-		if time.Until(h.opts.Expiration) > evergreen.MaxSpawnHostExpirationDurationHours {
-			return gimlet.MakeJSONErrorResponder(errors.Errorf("cannot extend expiration past max expiration %s", time.Now().Add(evergreen.MaxSpawnHostExpirationDurationHours).Format(time.RFC1123)))
+		if time.Until(h.opts.Expiration) > evergreen.MaxVolumeExpirationDurationHours {
+			return gimlet.MakeJSONErrorResponder(errors.Errorf("cannot extend expiration past max expiration %s", time.Now().Add(evergreen.MaxVolumeExpirationDurationHours).Format(time.RFC1123)))
 		}
 
 		if h.opts.NoExpiration {
@@ -1148,13 +1148,6 @@ func (h *hostExtendExpirationHandler) Parse(ctx context.Context, r *http.Request
 	}
 	h.addHours = time.Duration(addHours) * time.Hour
 
-	if h.addHours <= 0 {
-		return errors.New("must add a positive number of hours to the expiration")
-	}
-	if h.addHours > evergreen.MaxSpawnHostExpirationDurationHours {
-		return errors.Errorf("cannot add more than %s to expiration", evergreen.MaxSpawnHostExpirationDurationHours)
-	}
-
 	return nil
 }
 
@@ -1171,7 +1164,7 @@ func (h *hostExtendExpirationHandler) Run(ctx context.Context) gimlet.Responder 
 	var newExp time.Time
 	newExp, err = cloud.MakeExtendedSpawnHostExpiration(host, h.addHours)
 	if err != nil {
-		return gimlet.MakeJSONInternalErrorResponder(errors.Wrap(err, "extending cloud host expiration"))
+		return gimlet.MakeJSONErrorResponder(errors.Wrap(err, "extending cloud host expiration"))
 	}
 
 	if err := host.SetExpirationTime(ctx, newExp); err != nil {
