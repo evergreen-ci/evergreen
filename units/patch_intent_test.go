@@ -1294,6 +1294,7 @@ func (s *PatchIntentUnitsSuite) TestGithubPRTestFromUnknownUserDoesntCreateVersi
 	s.Error(j.Error())
 	filter := patch.ById(patchID)
 	patchDoc, err := patch.FindOne(filter)
+	s.NoError(err)
 	s.Require().NotNil(patchDoc)
 	s.Empty(patchDoc.Version)
 
