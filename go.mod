@@ -5,7 +5,7 @@ go 1.20
 require (
 	github.com/99designs/gqlgen v0.17.40
 	github.com/PuerkitoBio/rehttp v1.3.0
-	github.com/aws/aws-sdk-go v1.45.26
+	github.com/aws/aws-sdk-go v1.47.9
 	github.com/aws/aws-sdk-go-v2 v1.22.2
 	github.com/aws/aws-sdk-go-v2/config v1.19.1
 	github.com/aws/aws-sdk-go-v2/credentials v1.13.43
@@ -55,19 +55,19 @@ require (
 	github.com/vektah/gqlparser/v2 v2.5.10
 	github.com/vmware/govmomi v0.27.1
 	go.mongodb.org/mongo-driver v1.13.0
-	go.opentelemetry.io/contrib/detectors/aws/ec2 v1.17.0
+	go.opentelemetry.io/contrib/detectors/aws/ec2 v1.21.1
 	go.opentelemetry.io/contrib/detectors/aws/ecs v1.20.0
 	go.opentelemetry.io/contrib/instrumentation/github.com/aws/aws-sdk-go-v2/otelaws v0.45.0
 	go.opentelemetry.io/contrib/instrumentation/github.com/gorilla/mux/otelmux v0.42.0
 	go.opentelemetry.io/contrib/instrumentation/net/http/otelhttp v0.45.0
-	go.opentelemetry.io/otel v1.19.0
+	go.opentelemetry.io/otel v1.21.0
 	go.opentelemetry.io/otel/exporters/otlp/otlpmetric/otlpmetricgrpc v0.40.0
 	go.opentelemetry.io/otel/exporters/otlp/otlptrace v1.19.0
 	go.opentelemetry.io/otel/exporters/otlp/otlptrace/otlptracegrpc v1.19.0
-	go.opentelemetry.io/otel/metric v1.19.0
-	go.opentelemetry.io/otel/sdk v1.19.0
+	go.opentelemetry.io/otel/metric v1.21.0
+	go.opentelemetry.io/otel/sdk v1.21.0
 	go.opentelemetry.io/otel/sdk/metric v1.19.0
-	go.opentelemetry.io/otel/trace v1.19.0
+	go.opentelemetry.io/otel/trace v1.21.0
 	go.opentelemetry.io/proto/otlp v1.0.0
 	golang.org/x/crypto v0.14.0
 	golang.org/x/oauth2 v0.13.0
@@ -130,7 +130,7 @@ require (
 	github.com/fuyufjh/splunk-hec-go v0.4.0 // indirect
 	github.com/go-asn1-ber/asn1-ber v1.5.4 // indirect
 	github.com/go-ldap/ldap/v3 v3.4.4 // indirect
-	github.com/go-logr/logr v1.2.4 // indirect
+	github.com/go-logr/logr v1.3.0 // indirect
 	github.com/go-logr/stdr v1.2.2 // indirect
 	github.com/go-ole/go-ole v1.3.0 // indirect
 	github.com/goccy/go-json v0.9.4 // indirect
@@ -203,7 +203,7 @@ require (
 	golang.org/x/mod v0.12.0 // indirect
 	golang.org/x/net v0.17.0 // indirect
 	golang.org/x/sync v0.3.0 // indirect
-	golang.org/x/sys v0.13.0 // indirect
+	golang.org/x/sys v0.14.0 // indirect
 	google.golang.org/appengine v1.6.8 // indirect
 	google.golang.org/genproto/googleapis/api v0.0.0-20230822172742-b8732ec3820d // indirect
 	google.golang.org/genproto/googleapis/rpc v0.0.0-20230822172742-b8732ec3820d // indirect
