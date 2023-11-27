@@ -6,6 +6,8 @@
 
 ## Context and Problem Statement
 
+Ticket: DEVPROD-998
+
 It was requested to add a feature to Evergreen to allow users to automatically retry tasks that fail due to a transient error. This
 would allow users to avoid having to manually retry these tasks, which can happen at a a semi-common
 rate depending on the task environment.

@@ -1553,7 +1553,7 @@ by setting the `retry_on_failure` field on the command to true. The automatic
 restart will process after the command has failed and the task has completed its
 subsequent post task commands.
 
-The retry will only occur if the task has _not_ been aborted, and that the failing command would have caused the overall task
+The retry will only occur if the task has _not_ been aborted, and if the failing command would have caused the overall task
 to fail. This means the retry will _not_ occur if:
 - The failing command exists in the `pre` or `post` section of the task and `pre_error_fails_task`
     or `post_error_fails_task` are (respectively) unset
@@ -1564,8 +1564,8 @@ Otherwise, once a command with `retry_on_failure` set to true fails, the task wi
 when it completes, regardless of the failure type.
 
 This is only recommended for commands that are known to be flaky, or fail intermittently.
-In order to prevent overuse of this feature, the number of times a single
-task can be automatically restarted on failure is limited to 1 time.
+**In order to prevent overuse of this feature, the number of times a single
+task can be automatically restarted on failure is limited to 1 time.**
 
 An example is:
 
