@@ -10,14 +10,17 @@ ARG MACOS_NOTARY_SECRET
 ARG EVERGREEN_BUNDLE_ID
 
 WORKDIR /build
-COPY . .
 
+COPY go.mod go.sum ./
+RUN  go mod download
+
+COPY . .
 RUN ["make", "clis"]
 
 # Send the macos CLIs to the notary service for signing
 RUN if [ -n "$MACOS_NOTARY_SECRET" ]; then make sign-macos; fi
 
-# Production stage with only the necesssary files
+# Production stage with only the necessary files
 FROM gcr.io/distroless/static as production
 
 # Build time configuration
@@ -25,14 +28,14 @@ ARG GOOS
 ARG GOARCH
 ARG MONGO_URL
 
-ENV GOOS=${GOOS}
-ENV GOARCH=${GOARCH}
 ENV MONGO_URL=${MONGO_URL}
 ENV EVGHOME=/static
 
 # Put static assets where Evergreen expects them
-COPY --from=build /build/clients/${GOOS}_${GOARCH} /
+COPY --from=build /build/clients/ ${EVGHOME}/clients/
 COPY --from=build /build/public/ ${EVGHOME}/public/
 COPY --from=build /build/service/templates/ ${EVGHOME}/service/templates/
 
-ENTRYPOINT ["/evergreen", "service", "web"]
+RUN mkdir -p /srv && ln -s /static/clients/${GOOS}_${GOARCH}/evergreen /srv/evergreen
+
+ENTRYPOINT ["/srv/evergreen", "service", "web"]

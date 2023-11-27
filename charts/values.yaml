@@ -7,9 +7,6 @@ replicaCount: 1
 
 ingress:
   enabled: true
-  # TODO change to public url
-#  hosts:
-#    - spruce.mongodb.com
 
 defaultAlerts:
   enabled: true
@@ -37,9 +34,3 @@ services:
     protocol: TCP
     targetPort: 9090
     type: ClusterIP
-
-mesh:
-  enabled: true
-  permissive: false
-  # TODO replace
-  gateway: evergreen-gateway

@@ -3,5 +3,4 @@ env:
 
 ingress:
   hosts:
-    - evergreen-server.evergreen.staging.corp.mongodb.com
-
+    - evergreen.devprod-evergreen.staging.corp.mongodb.com

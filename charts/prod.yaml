@@ -5,7 +5,7 @@ replicaCount: 2
 
 probes:
   enabled: true
-  path: /health
+  path: /api/status/info
   headers: {}
   readiness:
     initialDelaySeconds: 5
@@ -16,12 +16,12 @@ probes:
 
 ingress:
   hosts:
-    - evergreen-server.evergreen.prod.corp.mongodb.com
+    - evergreen.devprod-evergreen.prod.corp.mongodb.com
 
 resources:
   requests:
-    cpu: 1000m
-    memory: 1Gi
+    cpu: 4
+    memory: 8Gi
   limits:
-    cpu: 1000m
-    memory: 1Gi
+    cpu: 8
+    memory: 16Gi
