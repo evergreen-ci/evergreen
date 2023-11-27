@@ -245,9 +245,13 @@ type Task struct {
 	// ResetWhenFinished indicates that a task should be reset once it is
 	// finished running. This is typically to deal with tasks that should be
 	// reset but cannot do so yet because they're currently running.
-	ResetWhenFinished       bool  `bson:"reset_when_finished,omitempty" json:"reset_when_finished,omitempty"`
-	ResetFailedWhenFinished bool  `bson:"reset_failed_when_finished,omitempty" json:"reset_failed_when_finished,omitempty"`
-	DisplayTask             *Task `bson:"-" json:"-"` // this is a local pointer from an exec to display task
+	ResetWhenFinished       bool `bson:"reset_when_finished,omitempty" json:"reset_when_finished,omitempty"`
+	ResetFailedWhenFinished bool `bson:"reset_failed_when_finished,omitempty" json:"reset_failed_when_finished,omitempty"`
+	// NumAutomaticRestarts is the number of times the task has been programmatically restarted via a failed agent command.
+	NumAutomaticRestarts int `bson:"num_automatic_restarts,omitempty" json:"num_automatic_restarts,omitempty"`
+	// IsAutomaticRestart indicates that the task was restarted via a failing agent command that was set to retry on failure.
+	IsAutomaticRestart bool  `bson:"is_automatic_restart,omitempty" json:"is_automatic_restart,omitempty"`
+	DisplayTask        *Task `bson:"-" json:"-"` // this is a local pointer from an exec to display task
 
 	// DisplayTaskId is set to the display task ID if the task is an execution task, the empty string if it's not an execution task,
 	// and is nil if we haven't yet checked whether or not this task has a display task.
@@ -1365,40 +1369,6 @@ func UnscheduleStaleUnderwaterHostTasks(ctx context.Context, distroID string) (i
 	return info.Updated, nil
 }
 
-// LegacyDeactivateStepbackTasksForProject deactivates and aborts any scheduled/running tasks
-// for this project that were activated by stepback.
-// TODO: remove as part of EVG-17947
-func LegacyDeactivateStepbackTasksForProject(projectId, caller string) error {
-	tasks, err := FindActivatedStepbackTasks(projectId)
-	if err != nil {
-		return errors.Wrap(err, "finding activated stepback tasks")
-	}
-
-	if err = DeactivateTasks(tasks, true, caller); err != nil {
-		return errors.Wrap(err, "deactivating active stepback tasks")
-	}
-
-	grip.InfoWhen(len(tasks) > 0, message.Fields{
-		"message":    "deactivated active stepback tasks",
-		"project_id": projectId,
-		"user":       caller,
-		"num_tasks":  len(tasks),
-	})
-
-	abortTaskIds := []string{}
-	for _, t := range tasks {
-		if t.IsAbortable() {
-			abortTaskIds = append(abortTaskIds, t.Id)
-			event.LogTaskAbortRequest(t.Id, t.Execution, caller)
-		}
-	}
-	if err = SetManyAborted(abortTaskIds, AbortInfo{User: caller}); err != nil {
-		return errors.Wrap(err, "aborting in progress tasks")
-	}
-
-	return nil
-}
-
 // DeactivateStepbackTask deactivates and aborts the matching stepback task.
 func DeactivateStepbackTask(projectId, buildVariantName, taskName, caller string) error {
 	t, err := FindActivatedStepbackTaskByName(projectId, buildVariantName, taskName)
@@ -1476,19 +1446,8 @@ func GetSystemFailureDetails(description string) apimodels.TaskEndDetail {
 	return details
 }
 
-func SetManyAborted(taskIds []string, reason AbortInfo) error {
-	return UpdateOne(
-		ByIds(taskIds),
-		bson.M{
-			"$set": bson.M{
-				AbortedKey:   true,
-				AbortInfoKey: reason,
-			},
-		},
-	)
-}
-
-// SetAborted sets the abort field of task to aborted
+// SetAborted sets the abort field and abort info of task to aborted
+// and prevents the task from being reset when finished.
 func (t *Task) SetAborted(reason AbortInfo) error {
 	t.Aborted = true
 	return UpdateOne(
@@ -1496,12 +1455,18 @@ func (t *Task) SetAborted(reason AbortInfo) error {
 			IdKey: t.Id,
 		},
 		bson.M{
-			"$set": bson.M{
-				AbortedKey:   true,
-				AbortInfoKey: reason,
-			},
+			"$set": taskAbortUpdate(reason),
 		},
 	)
+}
+
+func taskAbortUpdate(reason AbortInfo) bson.M {
+	return bson.M{
+		AbortedKey:            true,
+		AbortInfoKey:          reason,
+		ResetWhenFinishedKey:  false,
+		IsAutomaticRestartKey: false,
+	}
 }
 
 // SetStepbackInfo adds the StepbackInfo to the task.
@@ -2203,6 +2168,7 @@ func resetTaskUpdate(t *Task) []bson.M {
 		t.OverrideDependencies = false
 		t.ContainerAllocationAttempts = 0
 		t.CanReset = false
+		t.IsAutomaticRestart = false
 	}
 	update := []bson.M{
 		{
@@ -2235,6 +2201,7 @@ func resetTaskUpdate(t *Task) []bson.M {
 				ResultsFailedKey,
 				HasCedarResultsKey,
 				ResetWhenFinishedKey,
+				IsAutomaticRestartKey,
 				ResetFailedWhenFinishedKey,
 				AgentVersionKey,
 				HostIdKey,
@@ -2444,10 +2411,7 @@ func abortTasksByQuery(q bson.M, reason AbortInfo) error {
 	}
 	_, err = UpdateAll(
 		ByIds(ids),
-		bson.M{"$set": bson.M{
-			AbortedKey:   true,
-			AbortInfoKey: reason,
-		}},
+		bson.M{"$set": taskAbortUpdate(reason)},
 	)
 	if err != nil {
 		return errors.Wrap(err, "setting aborted statuses")
@@ -2795,6 +2759,36 @@ func (t *Task) SetResetWhenFinished() error {
 			},
 		},
 	)
+}
+
+// SetResetWhenFinishedWithInc requests that a task (that was marked to
+// automatically reset when finished via the agent status server) reset itself
+// when finished. It will also increment the number of automatic resets the task
+// has performed.
+func (t *Task) SetResetWhenFinishedWithInc() error {
+	if t.ResetWhenFinished {
+		return nil
+	}
+	if t.Aborted {
+		return errors.New("cannot set reset when finished for aborted task")
+	}
+	err := UpdateOne(
+		bson.M{
+			IdKey:                 t.Id,
+			AbortedKey:            bson.M{"$ne": true},
+			IsAutomaticRestartKey: bson.M{"$ne": true},
+		},
+		bson.M{
+			"$set": bson.M{
+				ResetWhenFinishedKey:  true,
+				IsAutomaticRestartKey: true,
+			},
+			"$inc": bson.M{
+				NumAutomaticRestartsKey: 1,
+			},
+		},
+	)
+	return err
 }
 
 // SetResetFailedWhenFinished requests that a display task

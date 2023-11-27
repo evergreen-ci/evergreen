@@ -69,7 +69,8 @@
                 "bfSuggestionPassword": "",
                 "bfSuggestionServer": "",
                 "bfSuggestionTimeoutSecs": 0,
-                "bfSuggestionUsername": ""
+                "bfSuggestionUsername": "",
+                "ticketCreateIssueType": ""
               },
               "taskAnnotationSettings": {
                 "jiraCustomFields": [

@@ -5,7 +5,6 @@ import (
 	"encoding/base64"
 	"fmt"
 	"net/http"
-	"net/url"
 	"os"
 	"path/filepath"
 	"reflect"
@@ -2037,36 +2036,6 @@ func SaveProjectPageForSection(projectId string, p *ProjectRef, section ProjectP
 				"$set": setUpdate,
 			})
 	case ProjectPagePluginSection:
-		catcher := grip.NewSimpleCatcher()
-		for _, link := range p.ExternalLinks {
-			if link.DisplayName != "" && link.URLTemplate != "" {
-				// check length of link display name
-				if len(link.DisplayName) > 40 {
-					catcher.Add(errors.New(fmt.Sprintf("link display name, %s, must be 40 characters or less", link.DisplayName)))
-				}
-				// validate url template
-				formattedURL := strings.Replace(link.URLTemplate, "{version_id}", "version_id", -1)
-				if _, err := url.ParseRequestURI(formattedURL); err != nil {
-					catcher.Add(err)
-				}
-			}
-		}
-		if catcher.HasErrors() {
-			return false, errors.Wrapf(catcher.Resolve(), "validating external links")
-		}
-		var pRef *ProjectRef
-		pRef, err = FindBranchProjectRef(projectId)
-		if err != nil {
-			return false, errors.Wrapf(err, "getting project '%s'", projectId)
-		}
-		if pRef == nil {
-			return false, errors.Errorf("project '%s' was not found", projectId)
-		}
-		// If the performance plugin is not currently enabled, and we are trying to
-		// change it to enabled but the id and identifier are different, we error.
-		if !pRef.IsPerfEnabled() && p.IsPerfEnabled() && pRef.Id != pRef.Identifier {
-			return false, errors.Errorf("project '%s' does not have a matching ID and identifier, cannot enable performance plugin", pRef.Id)
-		}
 		err = db.Update(coll,
 			bson.M{ProjectRefIdKey: projectId},
 			bson.M{
@@ -2137,15 +2106,6 @@ func SaveProjectPageForSection(projectId string, p *ProjectRef, section ProjectP
 				"$set": bson.M{projectRefPeriodicBuildsKey: p.PeriodicBuilds},
 			})
 	case ProjectPageContainerSection:
-		catcher := grip.NewSimpleCatcher()
-		for _, size := range p.ContainerSizeDefinitions {
-			if err = size.Validate(evergreen.GetEnvironment().Settings().Providers.AWS.Pod.ECS); err != nil {
-				catcher.Add(errors.Wrapf(err, "validating container size '%s'", size.Name))
-			}
-		}
-		if catcher.HasErrors() {
-			return false, errors.Wrapf(catcher.Resolve(), "validating container size definitions")
-		}
 		err = db.Update(coll,
 			bson.M{ProjectRefIdKey: projectId},
 			bson.M{

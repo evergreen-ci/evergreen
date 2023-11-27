@@ -32,10 +32,10 @@ var (
 	BuildRevision = ""
 
 	// ClientVersion is the commandline version string used to control auto-updating.
-	ClientVersion = "2023-11-13"
+	ClientVersion = "2023-11-20"
 
 	// Agent version to control agent rollover.
-	AgentVersion = "2023-11-16"
+	AgentVersion = "2023-11-28"
 )
 
 // ConfigSection defines a sub-document in the evergreen config
@@ -576,7 +576,7 @@ func (s *Settings) GetGithubOauthString() (string, error) {
 	return "", errors.New("no github token in settings")
 }
 
-// TODO EVG-19966: Delete this function
+// TODO DEVPROD-1429: Delete this function
 func (s *Settings) GetGithubOauthToken() (string, error) {
 	if s == nil {
 		return "", errors.New("not defined")
@@ -587,7 +587,7 @@ func (s *Settings) GetGithubOauthToken() (string, error) {
 
 	oauthString, err := s.GetGithubOauthString()
 	if err != nil {
-		return "", err
+		return "", nil
 	}
 	splitToken := strings.Split(oauthString, " ")
 	if len(splitToken) != 2 || splitToken[0] != "token" {

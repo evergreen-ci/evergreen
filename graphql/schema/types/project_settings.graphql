@@ -135,6 +135,7 @@ type BuildBaronSettings {
   bfSuggestionUsername: String
   ticketCreateProject: String!
   ticketSearchProjects: [String!]
+  ticketCreateIssueType: String!
 }
 
 # shared by Project and RepoRef

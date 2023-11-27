@@ -1058,3 +1058,18 @@ func (c *baseCommunicator) CreateInstallationToken(ctx context.Context, td TaskD
 
 	return token.Token, nil
 }
+
+// MarkFailedTaskToRestart will mark the task to automatically restart upon completion
+func (c *baseCommunicator) MarkFailedTaskToRestart(ctx context.Context, td TaskData) error {
+	info := requestInfo{
+		method:   http.MethodPost,
+		taskData: &td,
+	}
+	info.setTaskPathSuffix("restart")
+	resp, err := c.retryRequest(ctx, info, nil)
+	if err != nil {
+		return util.RespErrorf(resp, errors.Wrap(err, "marking task for restart").Error())
+	}
+	defer resp.Body.Close()
+	return nil
+}
