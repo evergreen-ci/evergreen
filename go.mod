@@ -25,7 +25,7 @@ require (
 	github.com/evergreen-ci/juniper v0.0.0-20230901183147-c805ea7351aa
 	github.com/evergreen-ci/pail v0.0.0-20231031153034-c935ae102fea
 	github.com/evergreen-ci/poplar v0.0.0-20220908212406-a5e2aa799def
-	github.com/evergreen-ci/shrub v0.0.0-20230511194147-d00fc686c715
+	github.com/evergreen-ci/shrub v0.0.0-20231121224157-600e066f9de6
 	github.com/evergreen-ci/timber v0.0.0-20230905184025-88c53a14c47b
 	github.com/evergreen-ci/utility v0.0.0-20231017180358-3a3a0617644d
 	github.com/golang-jwt/jwt v3.2.2+incompatible
@@ -153,7 +153,7 @@ require (
 	github.com/jmespath/go-jmespath v0.4.0 // indirect
 	github.com/jtolds/gls v4.20.0+incompatible // indirect
 	github.com/klauspost/compress v1.13.6 // indirect
-	github.com/klauspost/pgzip v1.2.5 // indirect
+	github.com/klauspost/pgzip v1.2.6
 	github.com/lestrrat-go/backoff/v2 v2.0.8 // indirect
 	github.com/lestrrat-go/blackmagic v1.0.0 // indirect
 	github.com/lestrrat-go/httpcc v1.0.0 // indirect

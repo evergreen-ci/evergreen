@@ -443,8 +443,8 @@ github.com/evergreen-ci/poplar v0.0.0-20211028171636-d45516ea1ce5/go.mod h1:RHBp
 github.com/evergreen-ci/poplar v0.0.0-20220119144730-b220d71c0330/go.mod h1:O5wGST4cE5G6vO0QATuDAgftApq9tow9avdjZqcSWS8=
 github.com/evergreen-ci/poplar v0.0.0-20220908212406-a5e2aa799def h1:A37I3mgA6TTPbddu4UuEbpc0HMGxYSRwtu42s/9dpAY=
 github.com/evergreen-ci/poplar v0.0.0-20220908212406-a5e2aa799def/go.mod h1:rj0uvK3GWKZmynb6AeZ66eZvorKSQDxvV1mh5lZVkHc=
-github.com/evergreen-ci/shrub v0.0.0-20230511194147-d00fc686c715 h1:JEr1ZoqNceEOpFoto63Mp/3m5OaHsJZsAVVOsmvwFCA=
-github.com/evergreen-ci/shrub v0.0.0-20230511194147-d00fc686c715/go.mod h1:GT+di9PB4Fog3QKJGaNSE69iOATmPorDEZnVRfgR2pY=
+github.com/evergreen-ci/shrub v0.0.0-20231121224157-600e066f9de6 h1:LfvYiC/yIi91+6ykT8yaDfmzr67vcFUbQCbRg1ZbEj4=
+github.com/evergreen-ci/shrub v0.0.0-20231121224157-600e066f9de6/go.mod h1:r6YQr77CR37LMhBdWcFrxqu5V+UhO+SYloHfd9vO1go=
 github.com/evergreen-ci/tarjan v0.0.0-20170824211642-fcd3f3321826 h1:oViYb1lmJN1k9SExkF87VTess4JVR7Uvwr8AAKzJ864=
 github.com/evergreen-ci/tarjan v0.0.0-20170824211642-fcd3f3321826/go.mod h1:SnQ9F63VSR6kHbC4aFE+f7+iL3yANhjaN9TT9T4skao=
 github.com/evergreen-ci/timber v0.0.0-20230905184025-88c53a14c47b h1:k3Lzqg8FK/OvYsnd7f56QAxLlx7DgMYaVFRjFy6ZClQ=
@@ -765,8 +765,9 @@ github.com/klauspost/compress v1.11.13/go.mod h1:aoV0uJVorq1K+umq18yTdKaF57EivdY
 github.com/klauspost/compress v1.13.6 h1:P76CopJELS0TiO2mebmnzgWaajssP/EszplttgQxcgc=
 github.com/klauspost/compress v1.13.6/go.mod h1:/3/Vjq9QcHkK5uEr5lBEmyoZ1iFhe47etQ6QUkpK6sk=
 github.com/klauspost/cpuid v1.2.0/go.mod h1:Pj4uuM528wm8OyEC2QMXAi2YiTZ96dNQPGgoMS4s3ek=
-github.com/klauspost/pgzip v1.2.5 h1:qnWYvvKqedOF2ulHpMG72XQol4ILEJ8k2wwRl/Km8oE=
 github.com/klauspost/pgzip v1.2.5/go.mod h1:Ch1tH69qFZu15pkjo5kYi6mth2Zzwzt50oCQKQE9RUs=
+github.com/klauspost/pgzip v1.2.6 h1:8RXeL5crjEUFnR2/Sn6GJNWtSQ3Dk8pq4CL3jvdDyjU=
+github.com/klauspost/pgzip v1.2.6/go.mod h1:Ch1tH69qFZu15pkjo5kYi6mth2Zzwzt50oCQKQE9RUs=
 github.com/konsorten/go-windows-terminal-sequences v1.0.1/go.mod h1:T0+1ngSBFLxvqU3pZ+m/2kptfBszLMUkC4ZK/EgS/cQ=
 github.com/konsorten/go-windows-terminal-sequences v1.0.2/go.mod h1:T0+1ngSBFLxvqU3pZ+m/2kptfBszLMUkC4ZK/EgS/cQ=
 github.com/konsorten/go-windows-terminal-sequences v1.0.3/go.mod h1:T0+1ngSBFLxvqU3pZ+m/2kptfBszLMUkC4ZK/EgS/cQ=
