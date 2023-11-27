@@ -257,9 +257,11 @@ Options:
 
 -   Project: The upstream project.
 -   Level: Accepted values are task, build, and push. Task and build levels will trigger
-    based on the completion of either a task or a build in the upstream project. Push level triggers do 
-    not require any upstream build or task to run, but instead trigger a downstream version once
-    a commit is pushed to the upstream project.
+    based on the completion of either a task or a build in the upstream project. 
+    - Push level triggers do not require any upstream build or task to run, but instead trigger a downstream version once
+        a commit is pushed to the upstream project.
+    - For push level triggers, if the upstream project is a module of the downstream project's YAML,
+    the manifest of the downstream version will use the commit hash of the upstream project's commit.
 -   Status: Only applicable to build and task level triggers. Specify which status of the upstream 
     build or task should trigger a downstream version.
 -   Date cutoff: Do not trigger a downstream build if a user manually
