@@ -230,61 +230,12 @@ func (as *APIServer) validateProjectConfig(w http.ResponseWriter, r *http.Reques
 		return
 	}
 
-	errs := validator.ValidationErrors{}
-	var projectRef *model.ProjectRef
-	if input.ProjectID != "" {
-		projectRef, err = model.FindMergedProjectRef(input.ProjectID, "", false)
-		if err != nil {
-			validationErr = validator.ValidationError{
-				Message: "error finding project; validation will proceed without checking project settings",
-				Level:   validator.Warning,
-			}
-			errs = append(errs, validationErr)
-		} else if projectRef == nil {
-			validationErr = validator.ValidationError{
-				Message: "project does not exist; validation will proceed without checking project settings",
-				Level:   validator.Warning,
-			}
-			errs = append(errs, validationErr)
-		} else {
-			isConfigDefined := projectConfig != nil
-			errs = append(errs, validator.CheckProjectSettings(ctx, evergreen.GetEnvironment().Settings(), project, projectRef, isConfigDefined)...)
-		}
-	} else {
-		validationErr = validator.ValidationError{
-			Message: "no project specified; validation will proceed without checking project settings",
-			Level:   validator.Warning,
-		}
-		errs = append(errs, validationErr)
-	}
-
-	errs = append(errs, validator.CheckProjectErrors(r.Context(), project, input.IncludeLong)...)
-	if projectConfig != nil {
-		errs = append(errs, validator.CheckProjectConfigErrors(projectConfig)...)
-	}
+	projectRef, err := model.FindMergedProjectRef(input.ProjectID, "", false)
+	errs := validator.CheckProject(ctx, project, projectConfig, projectRef, input.IncludeLong, input.ProjectID, err)
 
 	if input.Quiet {
 		errs = errs.AtLevel(validator.Error)
-	} else if projectRef == nil {
-		validationErr = validator.ValidationError{
-			Message: "no project specified; validation will proceed without checking alias coverage",
-			Level:   validator.Warning,
-		}
-		errs = append(errs, validationErr)
-	} else {
-		errs = append(errs, validator.CheckProjectWarnings(project)...)
-		// Check project aliases
-		aliases, err := model.ConstructMergedAliasesByPrecedence(projectRef, projectConfig, projectRef.RepoRefId)
-		if err != nil {
-			errs = append(errs, validator.ValidationError{
-				Message: "problem finding aliases; validation will proceed without checking alias coverage",
-				Level:   validator.Warning,
-			})
-		} else {
-			errs = append(errs, validator.CheckAliasWarnings(project, aliases)...)
-		}
 	}
-
 	if len(errs) > 0 {
 		gimlet.WriteJSONError(w, errs)
 		return
