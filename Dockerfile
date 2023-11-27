@@ -18,7 +18,7 @@ RUN ["make", "clis"]
 RUN if [ -n "$MACOS_NOTARY_SECRET" ]; then make sign-macos; fi
 
 # Production stage with only the necessary files
-FROM public.ecr.aws/debian/debian:bookworm-slim as production
+FROM debian:bookworm-slim as production
 
 # Build time configuration
 ARG GOOS
