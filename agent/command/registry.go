@@ -17,11 +17,12 @@ func init() {
 	evgRegistry = newCommandRegistry()
 
 	cmds := map[string]CommandFactory{
+		"archive.auto_pack":                     autoArchiveCreateFactory,
+		"archive.auto_extract":                  autoExtractFactory,
 		"archive.targz_pack":                    tarballCreateFactory,
 		"archive.targz_extract":                 tarballExtractFactory,
 		"archive.zip_pack":                      zipArchiveCreateFactory,
 		"archive.zip_extract":                   zipExtractFactory,
-		"archive.auto_extract":                  autoExtractFactory,
 		evergreen.AttachResultsCommandName:      attachResultsFactory,
 		evergreen.AttachXUnitResultsCommandName: xunitResultsFactory,
 		evergreen.AttachArtifactsCommandName:    attachArtifactsFactory,

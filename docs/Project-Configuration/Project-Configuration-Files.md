@@ -1546,6 +1546,38 @@ Full gitignore syntax is explained
 be scheduled manually, and their tasks will still be scheduled on
 failure stepback.
 
+### Auto restarting tasks upon failure
+
+A given command can be configured to automatically restart the task upon failure
+by setting the `retry_on_failure` field on the command to true. The automatic
+restart will process after the command has failed and the task has completed its
+subsequent post task commands.
+
+The retry will only occur if the task has _not_ been aborted, and if the failing command would have caused the overall task
+to fail. This means the retry will _not_ occur if:
+- The failing command exists in the `pre` or `post` section of the task and `pre_error_fails_task`
+    or `post_error_fails_task` are (respectively) unset
+- The failing command exists in the `setup_group`, `setup_task`, or `teardown_task` sections of the task
+and `setup_group_can_fail_task`, `setup_task_can_fail_task`, or `teardown_task_can_fail_task` are (respectively) unset
+
+Otherwise, once a command with `retry_on_failure` set to true fails, the task will restart
+when it completes, regardless of the failure type.
+
+This is only recommended for commands that are known to be flaky, or fail intermittently.
+**In order to prevent overuse of this feature, the number of times a single
+task can be automatically restarted on failure is limited to 1 time.**
+
+An example is:
+
+``` yaml
+- command: shell.exec
+  retry_on_failure: true
+  params:
+    working_dir: src
+    script: |
+      exit 1
+```
+
 ### Customizing Logging
 
 By default, tasks will log all output to Cedar buildlogger. You can
