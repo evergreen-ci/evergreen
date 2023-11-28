@@ -15,8 +15,8 @@ import (
 	"github.com/pkg/errors"
 )
 
-// generatedJSONS3Storage implements the GeneratedJSONFileStorage interface to
-// access generated JSON stored in S3.
+// GeneratedJSONS3Storage implements the GeneratedJSONFileStorage interface to
+// access generated JSON files stored in S3.
 type GeneratedJSONS3Storage struct {
 	bucket pail.Bucket
 	client *http.Client
