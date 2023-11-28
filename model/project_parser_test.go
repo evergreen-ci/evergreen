@@ -1955,7 +1955,7 @@ func TestParserProjectStorage(t *testing.T) {
 	}()
 
 	defer func() {
-		assert.NoError(t, db.ClearCollections(Collection))
+		assert.NoError(t, db.ClearCollections(ParserProjectCollection))
 	}()
 
 	for methodName, ppStorageMethod := range map[string]evergreen.ParserProjectStorageMethod{

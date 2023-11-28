@@ -64,24 +64,32 @@ func (s *GeneratedJSONS3Storage) Find(ctx context.Context, t *Task) (GeneratedJS
 	var files GeneratedJSONFiles
 	for it.Next(ctx) {
 		item := it.Item()
-		r, err := item.Get(ctx)
+		file, err := s.downloadFile(ctx, item)
 		if err != nil {
-			return nil, errors.Wrapf(err, "downloading generated JSON file '%s' for task '%s'", item.Name(), t.Id)
+			return nil, errors.Wrapf(err, "downloading file for task '%s'", t.Id)
 		}
-		defer r.Close()
-
-		b, err := io.ReadAll(r)
-		if err != nil {
-			return nil, errors.Wrapf(err, "reading generated JSON file '%s' for task '%s'", item.Name(), t.Id)
-		}
-
-		files = append(files, string(b))
+		files = append(files, file)
 	}
 	if err := it.Err(); err != nil {
 		return nil, errors.Wrapf(err, "downloading generated JSON files from S3")
 	}
 
 	return files, nil
+}
+
+func (s *GeneratedJSONS3Storage) downloadFile(ctx context.Context, item pail.BucketItem) (string, error) {
+	r, err := item.Get(ctx)
+	if err != nil {
+		return "", errors.Wrapf(err, "downloading generated JSON file '%s'", item.Name())
+	}
+	defer r.Close()
+
+	b, err := io.ReadAll(r)
+	if err != nil {
+		return "", errors.Wrapf(err, "reading generated JSON file '%s'", item.Name())
+	}
+
+	return string(b), nil
 }
 
 // Insert inserts all the generated JSON files for the given task and sets the
