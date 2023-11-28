@@ -548,7 +548,6 @@ func ensureHasValidVirtualWorkstationSettings(ctx context.Context, d *distro.Dis
 		})
 	}
 	linuxArchs := []string{
-		evergreen.ArchLinux386,
 		evergreen.ArchLinuxPpc64le,
 		evergreen.ArchLinuxS390x,
 		evergreen.ArchLinuxArm64,

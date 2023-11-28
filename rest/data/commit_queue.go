@@ -283,12 +283,10 @@ func (pc *DBCommitQueueConnector) IsAuthorizedToPatchAndMerge(ctx context.Contex
 	// See: https://help.github.com/articles/repository-permission-levels-for-an-organization/
 	ctxWithCancel, cancel = context.WithTimeout(ctx, 10*time.Second)
 	defer cancel()
-	permission, err := thirdparty.GitHubUserPermissionLevel(ctxWithCancel, token, args.Owner, args.Repo, args.Username)
+	hasPermission, err := thirdparty.GitHubUserHasWritePermission(ctxWithCancel, token, args.Owner, args.Repo, args.Username)
 	if err != nil {
 		return false, errors.Wrap(err, "getting GitHub user permissions")
 	}
-	mergePermissions := []string{"admin", "write"}
-	hasPermission := utility.StringSliceContains(mergePermissions, permission)
 
 	return hasPermission, nil
 }

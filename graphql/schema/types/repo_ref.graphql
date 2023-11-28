@@ -32,6 +32,7 @@ input RepoRefInput {
   restricted: Boolean
   spawnHostScriptPath: String
   stepbackDisabled: Boolean
+  stepbackBisect: Boolean
   taskAnnotationSettings: TaskAnnotationSettingsInput
   taskSync: TaskSyncOptionsInput
   tracksPushEvents: Boolean
@@ -80,6 +81,7 @@ type RepoRef {
   restricted: Boolean!
   spawnHostScriptPath: String!
   stepbackDisabled: Boolean!
+  stepbackBisect: Boolean
   taskAnnotationSettings: TaskAnnotationSettings!
   taskSync: RepoTaskSyncOptions!
   tracksPushEvents: Boolean!

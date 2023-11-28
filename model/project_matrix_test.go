@@ -67,8 +67,8 @@ buildvariants:
 			simple := `
 buildvariants:
 - matrix_name: "test"
-  matrix_spec: {"os": ".linux", "bits":["32", "64"]}
-  exclude_spec: [{"os":"ubuntu", "bits":"32"}]
+  matrix_spec: {"os": ".linux", "bits":[ "64"]}
+  exclude_spec: [{"os":"ubuntu", "bits":"64"}]
 - matrix_name: "test2"
   matrix_spec:
     os: "windows95"
@@ -85,10 +85,10 @@ buildvariants:
 				Id: "test",
 				Spec: matrixDefinition{
 					"os":   []string{".linux"},
-					"bits": []string{"32", "64"},
+					"bits": []string{"64"},
 				},
 				Exclude: []matrixDefinition{
-					{"os": []string{"ubuntu"}, "bits": []string{"32"}},
+					{"os": []string{"ubuntu"}, "bits": []string{"64"}},
 				},
 			})
 			m2 := *p.BuildVariants[1].Matrix

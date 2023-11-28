@@ -816,12 +816,10 @@ func (k SenderKey) String() string {
 const (
 	ArchDarwinAmd64  = "darwin_amd64"
 	ArchDarwinArm64  = "darwin_arm64"
-	ArchLinux386     = "linux_386"
 	ArchLinuxPpc64le = "linux_ppc64le"
 	ArchLinuxS390x   = "linux_s390x"
 	ArchLinuxArm64   = "linux_arm64"
 	ArchLinuxAmd64   = "linux_amd64"
-	ArchWindows386   = "windows_386"
 	ArchWindowsAmd64 = "windows_amd64"
 )
 
@@ -989,11 +987,9 @@ var (
 		ArchLinuxPpc64le: "Linux PowerPC 64-bit",
 		ArchLinuxS390x:   "Linux zSeries",
 		ArchLinuxArm64:   "Linux ARM 64-bit",
-		ArchWindows386:   "Windows 32-bit",
 		ArchDarwinAmd64:  "OSX 64-bit",
 		ArchDarwinArm64:  "OSX ARM 64-bit",
 		ArchLinuxAmd64:   "Linux 64-bit",
-		ArchLinux386:     "Linux 32-bit",
 	}
 
 	// ValidCloneMethods includes all recognized clone methods.
