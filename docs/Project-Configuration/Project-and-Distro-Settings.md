@@ -394,22 +394,37 @@ performance of tasks and tests.
 
 ### Ticket Creation
 
-Configure task Failure Details tab options. 
+Configure task Failure Details tab options.
+
+#### Jira Ticket Search and Create
+
+Specify Jira projects to create and search tickets for.
 
 Options:
--   Ticket Search Projects: JIRA projects for Evergreen to search
+- Ticket Search Projects: Jira projects for Evergreen to search
     in when looking for failures to populate the "Related Tickets 
     from Jira" Failure Details tab section
--   Ticket Create Project: The JIRA project to file tickets for using 
-    the "File Ticket" Failure Details tab button. Additionally, you can configure the issue type.
+- Ticket Create Project: The Jira project to file tickets for using 
+    the "File Ticket" Failure Details tab button. Additionally, you 
+    can configure the issue type.
+
+#### Custom Ticket Creation
+
+Specify the endpoint and secret for a custom webhook to be called when the 
+File Ticket button is clicked on a failing task.
+
+Options:
+- Webhook Endpoint: The endpoint to be called.
+- Webhook Secret: The secret to be used for the given endpoint.
+
 
 ### Task Annotation Settings
 
-Configure custom API integrations when generating build failure tickets.
+Configure custom API integrations when generating failure tickets.
 
 Options:
 
--   Webhook: A custom setup for creating build failure tickets,
+-   Webhook: A custom setup for creating failure tickets,
     specifying an endpoint an optional secret.
 -   JIRA custom fields: Custom field and display test allowing for the
     creation of a specific field when displaying jira links.
