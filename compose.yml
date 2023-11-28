@@ -11,13 +11,14 @@ services:
       args:
         GOOS: linux
         GOARCH: arm64
-        MONGO_URL: mongodb://mongo:27017
+    environment:
+      MONGO_URL: mongodb://mongo:27017
   mongo:
     build:
       dockerfile: Dockerfile-seeded-mongo
       target: seeded-mongo
-      args:
-        MONGO_URL: mongodb://mongo:27017
+    environment:
+      MONGO_URL: mongodb://mongo:27017
     volumes:
       - type: volume
         source: mongo-data

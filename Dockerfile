@@ -23,9 +23,7 @@ FROM debian:bookworm-slim as production
 # Build time configuration
 ARG GOOS
 ARG GOARCH
-ARG MONGO_URL
 
-ENV MONGO_URL=${MONGO_URL}
 ENV EVGHOME=/static
 
 # Put static assets where Evergreen expects them
