@@ -370,7 +370,7 @@
       "_id": "host1",
       "distro": {
         "_id": "localhost1",
-        "provider": "gce",
+        "provider": "ec2-fleet",
         "spawn_allowed": true,
         "provider_settings": [
           {
@@ -413,7 +413,7 @@
       "_id": "host4",
       "distro": {
         "_id": "localhost3",
-        "provider": "gce",
+        "provider": "ec2-fleet",
         "spawn_allowed": false
       }
     },

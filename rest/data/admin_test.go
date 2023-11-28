@@ -150,9 +150,6 @@ func (s *AdminDataSuite) TestSetAndGetSettings() {
 	s.Equal(testSettings.Providers.AWS.ParserProject.Secret, settingsFromConnector.Providers.AWS.ParserProject.Secret)
 	s.Equal(testSettings.Providers.AWS.ParserProject.Bucket, settingsFromConnector.Providers.AWS.ParserProject.Bucket)
 	s.EqualValues(testSettings.Providers.Docker.APIVersion, settingsFromConnector.Providers.Docker.APIVersion)
-	s.EqualValues(testSettings.Providers.GCE.ClientEmail, settingsFromConnector.Providers.GCE.ClientEmail)
-	s.EqualValues(testSettings.Providers.OpenStack.IdentityEndpoint, settingsFromConnector.Providers.OpenStack.IdentityEndpoint)
-	s.EqualValues(testSettings.Providers.VSphere.Host, settingsFromConnector.Providers.VSphere.Host)
 	s.EqualValues(testSettings.RepoTracker.MaxConcurrentRequests, settingsFromConnector.RepoTracker.MaxConcurrentRequests)
 	s.EqualValues(testSettings.Scheduler.TaskFinder, settingsFromConnector.Scheduler.TaskFinder)
 	s.EqualValues(testSettings.ServiceFlags.HostInitDisabled, settingsFromConnector.ServiceFlags.HostInitDisabled)
@@ -191,7 +188,6 @@ func (s *AdminDataSuite) TestSetAndGetSettings() {
 			foundProvidersEvent = true
 			s.Require().True(len(v.AWS.EC2Keys) > 0)
 			s.Equal(testSettings.Providers.AWS.EC2Keys[0].Key, v.AWS.EC2Keys[0].Key)
-			s.Equal(testSettings.Providers.GCE.ClientEmail, v.GCE.ClientEmail)
 		case *evergreen.Settings:
 			foundRootEvent = true
 			s.Equal(testSettings.ClientBinariesDir, v.ClientBinariesDir)
@@ -274,9 +270,6 @@ func (s *AdminDataSuite) TestSetAndGetSettings() {
 	s.Equal(testSettings.Providers.AWS.ParserProject.Secret, settingsFromConnector.Providers.AWS.ParserProject.Secret)
 	s.Equal(testSettings.Providers.AWS.ParserProject.Bucket, settingsFromConnector.Providers.AWS.ParserProject.Bucket)
 	s.EqualValues(testSettings.Providers.Docker.APIVersion, settingsFromConnector.Providers.Docker.APIVersion)
-	s.EqualValues(testSettings.Providers.GCE.ClientEmail, settingsFromConnector.Providers.GCE.ClientEmail)
-	s.EqualValues(testSettings.Providers.OpenStack.IdentityEndpoint, settingsFromConnector.Providers.OpenStack.IdentityEndpoint)
-	s.EqualValues(testSettings.Providers.VSphere.Host, settingsFromConnector.Providers.VSphere.Host)
 	s.EqualValues(testSettings.RepoTracker.MaxConcurrentRequests, settingsFromConnector.RepoTracker.MaxConcurrentRequests)
 	s.EqualValues(testSettings.Scheduler.TaskFinder, settingsFromConnector.Scheduler.TaskFinder)
 	s.EqualValues(testSettings.ServiceFlags.HostInitDisabled, settingsFromConnector.ServiceFlags.HostInitDisabled)
