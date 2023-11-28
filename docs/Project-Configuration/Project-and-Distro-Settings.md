@@ -392,17 +392,16 @@ Options:
 Users can enable the performance plugin for tracking historical
 performance of tasks and tests.
 
-### Build Baron
+### Ticket Creation
 
-Configure the build baron to create build failure tickets under a
-specific project from a list of projects to search for failures.
+Configure task Failure Details tab options. 
 
 Options:
-
--   Ticket Create Project: The JIRA project to create build failure
-    tickets in.
--   Ticket Search Projects: JIRA projects for the build baron to search
-    in when looking for failures.
+-   Ticket Search Projects: JIRA projects for Evergreen to search
+    in when looking for failures to populate the "Related Tickets 
+    from Jira" Failure Details tab section
+-   Ticket Create Project: The JIRA project to file tickets for using 
+    the "File Ticket" Failure Details tab button. Additionally, you can configure the issue type.
 
 ### Task Annotation Settings
 
@@ -605,13 +604,13 @@ task_sync:
    patch_enabled: false
 ```
 
-### Build Baron
+### Ticket Creation
 
 [View setting
-definition](#build-baron)
+definition](#ticket-creation)
 
 ``` yaml
-build_baron_settings:
+build_baron_settings: # This name is a holdover from legacy naming.
   ticket_create_project: EVG
   ticket_search_projects:
     - SERVER
