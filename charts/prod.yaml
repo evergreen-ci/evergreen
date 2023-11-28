@@ -1,6 +1,3 @@
-env:
-  MONGO_URL: ""
-
 replicaCount: 2
 
 probes:

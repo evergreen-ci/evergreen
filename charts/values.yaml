@@ -13,11 +13,6 @@ defaultAlerts:
   email: devprod-infrastructure-team@mongodb.com
   slack: devprod-infra-alerts
 
-env:
-  GOOS: linux
-  GOARCH: arm64
-  MONGO_URL: ""
-
 resources:
   requests:
     cpu: 100m

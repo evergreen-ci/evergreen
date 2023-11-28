@@ -1,6 +1,3 @@
-env:
-  MONGO_URL: ""
-
 ingress:
   hosts:
     - evergreen.devprod-evergreen.staging.corp.mongodb.com
