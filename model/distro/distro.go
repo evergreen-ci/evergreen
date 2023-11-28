@@ -5,7 +5,6 @@ import (
 	"fmt"
 	"math/rand"
 	"path/filepath"
-	"regexp"
 	"strings"
 	"time"
 
@@ -373,23 +372,7 @@ func (d *Distro) GenerateName() string {
 		return fmt.Sprintf("container-%d", rand.New(rand.NewSource(time.Now().UnixNano())).Int())
 	}
 
-	name := fmt.Sprintf("evg-%s-%s-%d", d.Id, time.Now().Format(evergreen.NameTimeFormat), rand.Int())
-
-	if d.Provider == evergreen.ProviderNameGce {
-		// gceMaxNameLength is the maximum length of an instance name permitted by GCE.
-		const gceMaxNameLength = 63
-
-		// Ensure all characters in tags are on the allowlist
-		r, _ := regexp.Compile("[^a-z0-9_-]+")
-		name = string(r.ReplaceAll([]byte(strings.ToLower(name)), []byte("")))
-
-		// Ensure the new name's is no longer than gceMaxNameLength
-		if len(name) > gceMaxNameLength {
-			name = name[:gceMaxNameLength]
-		}
-	}
-
-	return name
+	return fmt.Sprintf("evg-%s-%s-%d", d.Id, time.Now().Format(evergreen.NameTimeFormat), rand.Int())
 }
 
 func (d *Distro) MaxDurationPerHost() time.Duration {
@@ -501,11 +484,7 @@ func (d *Distro) GetImageID() (string, error) {
 		key = "ami"
 	case evergreen.ProviderNameDocker, evergreen.ProviderNameDockerMock:
 		key = "image_url"
-	case evergreen.ProviderNameGce:
-		key = "image_name"
-	case evergreen.ProviderNameVsphere:
-		key = "template"
-	case evergreen.ProviderNameMock, evergreen.ProviderNameStatic, evergreen.ProviderNameOpenstack:
+	case evergreen.ProviderNameMock, evergreen.ProviderNameStatic:
 		return "", nil
 	default:
 		return "", errors.New("unknown provider name")

@@ -437,26 +437,6 @@ func (s *AdminSuite) TestProvidersConfig() {
 		Docker: DockerConfig{
 			APIVersion: "docker_version",
 		},
-		GCE: GCEConfig{
-			ClientEmail:  "gce_email",
-			PrivateKey:   "gce_key",
-			PrivateKeyID: "gce_key_id",
-			TokenURI:     "gce_token",
-		},
-		OpenStack: OpenStackConfig{
-			IdentityEndpoint: "endpoint",
-			Username:         "username",
-			Password:         "password",
-			DomainName:       "domain",
-			ProjectName:      "project",
-			ProjectID:        "project_id",
-			Region:           "region",
-		},
-		VSphere: VSphereConfig{
-			Host:     "host",
-			Username: "vsphere",
-			Password: "vsphere_pass",
-		},
 	}
 
 	err := config.Set(ctx)
