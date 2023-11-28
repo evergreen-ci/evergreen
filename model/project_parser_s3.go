@@ -40,6 +40,7 @@ func NewParserProjectS3Storage(ppConf evergreen.ParserProjectS3Config) (*ParserP
 		Credentials: creds,
 	})
 	if err != nil {
+		utility.PutHTTPClient(c)
 		return nil, errors.Wrap(err, "setting up S3 multipart bucket")
 	}
 	s := ParserProjectS3Storage{
