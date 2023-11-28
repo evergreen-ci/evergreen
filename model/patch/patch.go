@@ -1038,17 +1038,12 @@ func IsMailbox(patchFile string) (bool, error) {
 func CreatePatchSetForSHA(ctx context.Context, settings *evergreen.Settings, owner, repo, sha string) (PatchSet, error) {
 	patchSet := PatchSet{}
 
-	githubToken, err := settings.GetGithubOauthToken()
-	if err != nil {
-		return patchSet, errors.Wrap(err, "getting GitHub auth token")
-	}
-
-	diff, err := thirdparty.GetCommitDiff(ctx, githubToken, owner, repo, sha)
+	diff, err := thirdparty.GetCommitDiff(ctx, owner, repo, sha)
 	if err != nil {
 		return patchSet, errors.Wrapf(err, "getting commit diff for '%s/%s:%s'", owner, repo, sha)
 	}
 
-	commitInfo, err := thirdparty.GetCommitEvent(ctx, githubToken, owner, repo, sha)
+	commitInfo, err := thirdparty.GetCommitEvent(ctx, owner, repo, sha)
 	if err != nil {
 		return patchSet, errors.Wrapf(err, "getting commit info for '%s/%s:%s'", owner, repo, sha)
 	}

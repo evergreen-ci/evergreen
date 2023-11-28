@@ -352,25 +352,7 @@ func getInstallationTokenWithDefaultOwnerRepo(ctx context.Context, opts *github.
 
 // GetGithubCommits returns a slice of GithubCommit objects from
 // the given commitsURL when provided a valid oauth token
-func GetGithubCommits(ctx context.Context, token, owner, repo, ref string, until time.Time, commitPage int) ([]*github.RepositoryCommit, int, error) {
-	commits, nextPage, err := getCommits(ctx, "", owner, repo, ref, until, commitPage)
-	if err == nil {
-		return commits, nextPage, nil
-	}
-	// TODO: (EVG-19966) Remove logging.
-	grip.DebugWhen(!errors.Is(err, missingTokenError), message.WrapError(err, message.Fields{
-		"ticket":  "EVG-19966",
-		"message": "failed to get commits from GitHub",
-		"caller":  "GetGithubCommits",
-		"owner":   owner,
-		"repo":    repo,
-		"ref":     ref,
-	}))
-
-	return getCommits(ctx, token, owner, repo, ref, until, commitPage)
-}
-
-func getCommits(ctx context.Context, token, owner, repo, ref string, until time.Time, commitPage int) ([]*github.RepositoryCommit, int, error) {
+func GetGithubCommits(ctx context.Context, owner, repo, ref string, until time.Time, commitPage int) ([]*github.RepositoryCommit, int, error) {
 	caller := "GetGithubCommits"
 	ctx, span := tracer.Start(ctx, caller, trace.WithAttributes(
 		attribute.String(githubEndpointAttribute, caller),
@@ -380,12 +362,9 @@ func getCommits(ctx context.Context, token, owner, repo, ref string, until time.
 	))
 	defer span.End()
 
-	if token == "" {
-		var err error
-		token, err = getInstallationToken(ctx, owner, repo, nil)
-		if err != nil {
-			return nil, 0, errors.Wrap(err, "getting installation token")
-		}
+	token, err := getInstallationToken(ctx, owner, repo, nil)
+	if err != nil {
+		return nil, 0, errors.Wrap(err, "getting installation token")
 	}
 	githubClient := getGithubClient(token, caller, retryConfig{retry: true})
 
@@ -429,30 +408,11 @@ func parseGithubErrorResponse(resp *github.Response) error {
 
 // GetGithubFile returns a struct that contains the contents of files within
 // a repository as Base64 encoded content. Ref should be the commit hash or branch (defaults to master).
-func GetGithubFile(ctx context.Context, token, owner, repo, path, ref string) (*github.RepositoryContent, error) {
+func GetGithubFile(ctx context.Context, owner, repo, path, ref string) (*github.RepositoryContent, error) {
 	if path == "" {
 		return nil, errors.New("remote repository path cannot be empty")
 	}
 
-	content, err := getFile(ctx, "", owner, repo, path, ref)
-	if err == nil {
-		return content, nil
-	}
-	// TODO: (EVG-19966) Remove logging.
-	grip.DebugWhen(!errors.Is(err, missingTokenError), message.WrapError(err, message.Fields{
-		"ticket":  "EVG-19966",
-		"message": "failed to get a file from GitHub",
-		"caller":  "GetGithubFile",
-		"owner":   owner,
-		"repo":    repo,
-		"path":    path,
-		"ref":     ref,
-	}))
-
-	return getFile(ctx, token, owner, repo, path, ref)
-}
-
-func getFile(ctx context.Context, token, owner, repo, path, ref string) (*github.RepositoryContent, error) {
 	caller := "GetGithubFile"
 	ctx, span := tracer.Start(ctx, caller, trace.WithAttributes(
 		attribute.String(githubEndpointAttribute, caller),
@@ -463,12 +423,9 @@ func getFile(ctx context.Context, token, owner, repo, path, ref string) (*github
 	))
 	defer span.End()
 
-	if token == "" {
-		var err error
-		token, err = getInstallationToken(ctx, owner, repo, nil)
-		if err != nil {
-			return nil, errors.Wrap(err, "getting installation token")
-		}
+	token, err := getInstallationToken(ctx, owner, repo, nil)
+	if err != nil {
+		return nil, errors.Wrap(err, "getting installation token")
 	}
 	githubClient := getGithubClient(token, caller, retryConfig{retry: true})
 
@@ -563,25 +520,7 @@ func SendPendingStatusToGithub(ctx context.Context, input SendGithubStatusInput,
 
 // GetGithubMergeBaseRevision compares baseRevision and currentCommitHash in a
 // GitHub repo and returns the merge base commit's SHA.
-func GetGithubMergeBaseRevision(ctx context.Context, token, owner, repo, baseRevision, currentCommitHash string) (string, error) {
-	mergeBase, err := getMergeBaseRevision(ctx, "", owner, repo, baseRevision, currentCommitHash)
-	if err == nil {
-		return mergeBase, nil
-	}
-	grip.Debug(message.WrapError(err, message.Fields{
-		"ticket":              "EVG-19966",
-		"message":             "failed to get merge-base from GitHub",
-		"caller":              "GetGithubMergeBaseRevision",
-		"owner":               owner,
-		"repo":                repo,
-		"base_revision":       baseRevision,
-		"current_commit_hash": currentCommitHash,
-	}))
-
-	return getMergeBaseRevision(ctx, token, owner, repo, baseRevision, currentCommitHash)
-}
-
-func getMergeBaseRevision(ctx context.Context, token, owner, repo, baseRevision, currentCommitHash string) (string, error) {
+func GetGithubMergeBaseRevision(ctx context.Context, owner, repo, baseRevision, currentCommitHash string) (string, error) {
 	caller := "GetGithubMergeBaseRevision"
 	ctx, span := tracer.Start(ctx, caller, trace.WithAttributes(
 		attribute.String(githubEndpointAttribute, caller),
@@ -590,12 +529,9 @@ func getMergeBaseRevision(ctx context.Context, token, owner, repo, baseRevision,
 	))
 	defer span.End()
 
-	if token == "" {
-		var err error
-		token, err = getInstallationToken(ctx, owner, repo, nil)
-		if err != nil {
-			return "", errors.Wrap(err, "getting installation token")
-		}
+	token, err := getInstallationToken(ctx, owner, repo, nil)
+	if err != nil {
+		return "", errors.Wrap(err, "getting installation token")
 	}
 	githubClient := getGithubClient(token, caller, retryConfig{retry: true})
 
@@ -627,24 +563,7 @@ func getMergeBaseRevision(ctx context.Context, token, owner, repo, baseRevision,
 	return *compare.MergeBaseCommit.SHA, nil
 }
 
-func GetCommitEvent(ctx context.Context, token, owner, repo, githash string) (*github.RepositoryCommit, error) {
-	event, err := commitEvent(ctx, "", owner, repo, githash)
-	if err == nil {
-		return event, nil
-	}
-	// TODO: (EVG-19966) Remove logging.
-	grip.DebugWhen(!errors.Is(err, missingTokenError), message.WrapError(err, message.Fields{
-		"ticket":  "EVG-19966",
-		"message": "failed to get commit event from GitHub",
-		"caller":  "GetCommitEvent",
-		"owner":   owner,
-		"repo":    repo,
-	}))
-
-	return commitEvent(ctx, token, owner, repo, githash)
-}
-
-func commitEvent(ctx context.Context, token, owner, repo, githash string) (*github.RepositoryCommit, error) {
+func GetCommitEvent(ctx context.Context, owner, repo, githash string) (*github.RepositoryCommit, error) {
 	caller := "GetCommitEvent"
 	ctx, span := tracer.Start(ctx, caller, trace.WithAttributes(
 		attribute.String(githubEndpointAttribute, caller),
@@ -654,12 +573,9 @@ func commitEvent(ctx context.Context, token, owner, repo, githash string) (*gith
 	))
 	defer span.End()
 
-	if token == "" {
-		var err error
-		token, err = getInstallationToken(ctx, owner, repo, nil)
-		if err != nil {
-			return nil, errors.Wrap(err, "getting installation token")
-		}
+	token, err := getInstallationToken(ctx, owner, repo, nil)
+	if err != nil {
+		return nil, errors.Wrap(err, "getting installation token")
 	}
 	githubClient := getGithubClient(token, caller, retryConfig{retry: true})
 
@@ -706,25 +622,7 @@ func commitEvent(ctx context.Context, token, owner, repo, githash string) (*gith
 }
 
 // GetCommitDiff gets the diff of the specified commit via an API call to GitHub
-func GetCommitDiff(ctx context.Context, token, owner, repo, sha string) (string, error) {
-	diff, err := commitDiff(ctx, "", owner, repo, sha)
-	if err == nil {
-		return diff, nil
-	}
-	// TODO: (EVG-19966) Remove logging.
-	grip.DebugWhen(!errors.Is(err, missingTokenError), message.WrapError(err, message.Fields{
-		"ticket":  "EVG-19966",
-		"message": "failed to get commit diff from GitHub",
-		"caller":  "GetCommitDiff",
-		"owner":   owner,
-		"repo":    repo,
-		"sha":     sha,
-	}))
-
-	return commitDiff(ctx, token, owner, repo, sha)
-}
-
-func commitDiff(ctx context.Context, token, owner, repo, sha string) (string, error) {
+func GetCommitDiff(ctx context.Context, owner, repo, sha string) (string, error) {
 	caller := "GetCommitDiff"
 	ctx, span := tracer.Start(ctx, caller, trace.WithAttributes(
 		attribute.String(githubEndpointAttribute, caller),
@@ -734,12 +632,9 @@ func commitDiff(ctx context.Context, token, owner, repo, sha string) (string, er
 	))
 	defer span.End()
 
-	if token == "" {
-		var err error
-		token, err = getInstallationToken(ctx, owner, repo, nil)
-		if err != nil {
-			return "", errors.Wrap(err, "getting installation token")
-		}
+	token, err := getInstallationToken(ctx, owner, repo, nil)
+	if err != nil {
+		return "", errors.Wrap(err, "getting installation token")
 	}
 	githubClient := getGithubClient(token, caller, retryConfig{retry: true})
 

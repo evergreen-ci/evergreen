@@ -806,7 +806,7 @@ func (j *patchIntentProcessor) buildCliPatchDoc(ctx context.Context, patchDoc *p
 	ctx, cancel := context.WithTimeout(ctx, 30*time.Second)
 	defer cancel()
 
-	commit, err := thirdparty.GetCommitEvent(ctx, githubOauthToken, projectRef.Owner,
+	commit, err := thirdparty.GetCommitEvent(ctx, projectRef.Owner,
 		projectRef.Repo, patchDoc.Githash)
 	if err != nil {
 		return errors.Wrapf(err, "finding base revision '%s' for project '%s'",

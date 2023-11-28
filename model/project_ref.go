@@ -2809,15 +2809,6 @@ func GetProjectRefForTask(taskId string) (*ProjectRef, error) {
 }
 
 func GetSetupScriptForTask(ctx context.Context, taskId string) (string, error) {
-	conf, err := evergreen.GetConfig(ctx)
-	if err != nil {
-		return "", errors.Wrap(err, "can't get evergreen configuration")
-	}
-	token, err := conf.GetGithubOauthToken()
-	if err != nil {
-		return "", errors.Wrap(err, "getting GitHub token")
-	}
-
 	pRef, err := GetProjectRefForTask(taskId)
 	if err != nil {
 		return "", errors.Wrap(err, "getting project")
@@ -2826,7 +2817,7 @@ func GetSetupScriptForTask(ctx context.Context, taskId string) (string, error) {
 	if pRef.SpawnHostScriptPath == "" {
 		return "", nil
 	}
-	configFile, err := thirdparty.GetGithubFile(ctx, token, pRef.Owner, pRef.Repo, pRef.SpawnHostScriptPath, pRef.Branch)
+	configFile, err := thirdparty.GetGithubFile(ctx, pRef.Owner, pRef.Repo, pRef.SpawnHostScriptPath, pRef.Branch)
 	if err != nil {
 		return "", errors.Wrapf(err,
 			"fetching spawn host script for project '%s' at path '%s'", pRef.Identifier, pRef.SpawnHostScriptPath)

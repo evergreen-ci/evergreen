@@ -148,14 +148,14 @@ func (s *githubSuite) TestCheckGithubAPILimit() {
 }
 
 func (s *githubSuite) TestGetGithubCommits() {
-	githubCommits, _, err := GetGithubCommits(s.ctx, s.token, "evergreen-ci", "sample", "", time.Time{}, 0)
+	githubCommits, _, err := GetGithubCommits(s.ctx, "evergreen-ci", "sample", "", time.Time{}, 0)
 	s.NoError(err)
 	s.Len(githubCommits, 8)
 }
 
 func (s *githubSuite) TestGetGithubCommitsUntil() {
 	until := time.Date(2015, time.January, 1, 0, 0, 0, 0, time.UTC)
-	githubCommits, _, err := GetGithubCommits(s.ctx, s.token, "evergreen-ci", "sample", "", until, 0)
+	githubCommits, _, err := GetGithubCommits(s.ctx, "evergreen-ci", "sample", "", until, 0)
 	s.NoError(err)
 	s.Len(githubCommits, 4)
 }
@@ -184,20 +184,20 @@ func (s *githubSuite) TestGetBranchEvent() {
 }
 
 func (s *githubSuite) TestGithubMergeBaseRevision() {
-	rev, err := GetGithubMergeBaseRevision(s.ctx, s.token, "evergreen-ci", "evergreen",
+	rev, err := GetGithubMergeBaseRevision(s.ctx, "evergreen-ci", "evergreen",
 		"105bbb4b34e7da59c42cb93d92954710b1f101ee", "49bb297759edd1284ef6adee665180e7b7bac299")
 	s.NoError(err)
 	s.Equal("2c282735952d7b15e5af7075f483a896783dc2a4", rev)
 }
 
 func (s *githubSuite) TestGetGithubFile() {
-	_, err := GetGithubFile(s.ctx, s.token, "evergreen-ci", "evergreen",
+	_, err := GetGithubFile(s.ctx, "evergreen-ci", "evergreen",
 		"doesntexist.txt", "105bbb4b34e7da59c42cb93d92954710b1f101ee")
 	s.Error(err)
 	s.IsType(FileNotFoundError{}, err)
 	s.EqualError(err, "Requested file at doesntexist.txt not found")
 
-	file, err := GetGithubFile(s.ctx, s.token, "evergreen-ci", "evergreen",
+	file, err := GetGithubFile(s.ctx, "evergreen-ci", "evergreen",
 		"self-tests.yml", "105bbb4b34e7da59c42cb93d92954710b1f101ee")
 	s.NoError(err)
 	s.NotPanics(func() {
@@ -217,11 +217,11 @@ func (s *githubSuite) TestGetGithubFile() {
 }
 
 func (s *githubSuite) TestGetCommitEvent() {
-	commit, err := GetCommitEvent(s.ctx, s.token, "evergreen-ci", "evergreen", "nope")
+	commit, err := GetCommitEvent(s.ctx, "evergreen-ci", "evergreen", "nope")
 	s.Error(err)
 	s.Nil(commit)
 
-	commit, err = GetCommitEvent(s.ctx, s.token, "evergreen-ci", "evergreen", "ddf48e044c307e3f8734279be95f2d9d7134410f")
+	commit, err = GetCommitEvent(s.ctx, "evergreen-ci", "evergreen", "ddf48e044c307e3f8734279be95f2d9d7134410f")
 	s.NoError(err)
 
 	s.NotPanics(func() {
