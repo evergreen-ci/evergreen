@@ -9,7 +9,7 @@ ingress:
   enabled: true
 
 defaultAlerts:
-  enabled: true
+  enabled: false
   email: devprod-infrastructure-team@mongodb.com
   slack: devprod-infra-alerts
 
