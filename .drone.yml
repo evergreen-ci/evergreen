@@ -1,10 +1,6 @@
 ---
 kind: pipeline
 type: kubernetes
-
-environment:
-  DRONE_TARGET_BRANCH: DEVPROD-2466
-
 name: build-and-publish
 
 trigger:
@@ -28,17 +24,17 @@ resources:
 steps:
   - name: publish-evergreen
     image: plugins/kaniko-ecr
-    tags:
-    - git-${DRONE_COMMIT_SHA:0:7}
-    - latest
-    environment:
-      MONGO_URL:
-        from_secret: mongo_url
     settings:
+      tags:
+        - git-${DRONE_COMMIT_SHA:0:7}
+        - latest
       access_key:
         from_secret: ecr_access_key
       secret_key:
         from_secret: ecr_secret_key
+      build_args:
+        - GOOS=linux
+        - GOARCH=arm64
       repo: devprod-evergreen/${DRONE_REPO_NAME}
       registry: 795250896452.dkr.ecr.us-east-1.amazonaws.com
       create_repository: true
@@ -57,6 +53,9 @@ trigger:
 steps:
   - name: deploy-staging
     image: quay.io/mongodb/drone-helm:v3
+    environment:
+      MONGO_URL:
+        from_secret: staging_mongo_url
     settings:
       api_server: https://api.staging.corp.mongodb.com
       chart: mongodb/web-app
@@ -85,6 +84,9 @@ trigger:
 steps:
   - name: deploy-prod
     image: quay.io/mongodb/drone-helm:v3
+    environment:
+      MONGO_URL:
+        from_secret: prod_mongo_url
     settings:
       api_server: https://api.prod.corp.mongodb.com
       chart: mongodb/web-app
