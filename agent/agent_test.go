@@ -314,7 +314,8 @@ func (s *AgentSuite) TestRunPreAndMainIsPanicSafe() {
 	// still produces a panic since it relies on a lot of taskContext
 	// fields.
 	tc := &taskContext{
-		logger: s.tc.logger,
+		logger:     s.tc.logger,
+		oomTracker: &mock.OOMTracker{},
 	}
 	s.NotPanics(func() {
 		status := s.a.runPreAndMain(s.ctx, tc)
@@ -403,7 +404,8 @@ pre:
       script: exit 0
 `)
 	tcMissingInfo := &taskContext{
-		logger: s.tc.logger,
+		logger:     s.tc.logger,
+		oomTracker: &mock.OOMTracker{},
 	}
 	s.NotPanics(func() {
 		cmdBlock := commandBlock{
@@ -1250,6 +1252,7 @@ func (s *AgentSuite) TestFinishPrevTaskWithoutTaskGroup() {
 			},
 			WorkDir: "task_directory",
 		},
+		oomTracker:    &mock.OOMTracker{},
 		logger:        s.tc.logger,
 		ranSetupGroup: true,
 	}
@@ -1277,6 +1280,7 @@ func (s *AgentSuite) TestFinishPrevTaskAndNextTaskIsInNewTaskGroup() {
 			},
 			WorkDir: "task_directory",
 		},
+		oomTracker:    &mock.OOMTracker{},
 		logger:        s.tc.logger,
 		ranSetupGroup: true,
 	}
@@ -1311,6 +1315,7 @@ func (s *AgentSuite) TestFinishPrevTaskWithSameTaskGroupAndAlreadyRanSetupGroup(
 		},
 		logger:        s.tc.logger,
 		ranSetupGroup: true,
+		oomTracker:    &mock.OOMTracker{},
 	}
 	nextTask := &apimodels.NextTaskResponse{
 		TaskId:    "another_task_id",
@@ -1341,7 +1346,8 @@ func (s *AgentSuite) TestFinishPrevTaskWithSameTaskGroupButDidNotRunSetupGroup()
 			TaskGroup: &model.TaskGroup{Name: taskGroup},
 			WorkDir:   "task_directory",
 		},
-		logger: s.tc.logger,
+		logger:     s.tc.logger,
+		oomTracker: &mock.OOMTracker{},
 	}
 	nextTask := &apimodels.NextTaskResponse{
 		TaskId:    "task_id2",
@@ -1374,6 +1380,7 @@ func (s *AgentSuite) TestFinishPrevTaskWithSameBuildButDifferentTaskGroup() {
 		},
 		logger:        s.tc.logger,
 		ranSetupGroup: true,
+		oomTracker:    &mock.OOMTracker{},
 	}
 	nextTask := &apimodels.NextTaskResponse{
 		TaskId:    "task_id2",
