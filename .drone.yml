@@ -25,10 +25,10 @@ resources:
 steps:
   - name: publish-evergreen
     image: plugins/kaniko-ecr
-    tags:
-      - git-${DRONE_COMMIT_SHA:0:7}
-      - latest
     settings:
+      tags:
+        - git-${DRONE_COMMIT_SHA:0:7}
+        - latest
       access_key:
         from_secret: ecr_access_key
       secret_key:
