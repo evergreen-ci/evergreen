@@ -30,15 +30,15 @@ type GeneratedJSONFileStorage interface {
 func GetGeneratedJSONFileStorage(settings *evergreen.Settings, method evergreen.ParserProjectStorageMethod) (GeneratedJSONFileStorage, error) {
 	switch method {
 	case "", evergreen.ProjectStorageMethodDB:
-		return GeneratedJSONDBStorage{}, nil
+		return generatedJSONDBStorage{}, nil
 	case method:
-		return NewGeneratedJSONS3Storage(settings.Providers.AWS.ParserProject)
+		return newGeneratedJSONS3Storage(settings.Providers.AWS.ParserProject)
 	default:
 		return nil, errors.Errorf("unrecognized generated JSON storage method '%s'", method)
 	}
 }
 
-// GeneratedJSONFindByTaskID is a convenience wrapper to insert all generated
+// GeneratedJSONFind is a convenience wrapper to insert all generated
 // JSON files for the given task to persistent storage.
 func GeneratedJSONFind(ctx context.Context, settings *evergreen.Settings, t *Task) (GeneratedJSONFiles, error) {
 	fileStorage, err := GetGeneratedJSONFileStorage(settings, t.GeneratedJSONStorageMethod)
@@ -51,8 +51,8 @@ func GeneratedJSONFind(ctx context.Context, settings *evergreen.Settings, t *Tas
 
 // GeneratedJSONInsert is a convenience wrapper to insert all generated JSON
 // files for the given task to persistent storage.
-func GeneratedJSONInsert(ctx context.Context, settings *evergreen.Settings, t *Task, files GeneratedJSONFiles) error {
-	fileStorage, err := GetGeneratedJSONFileStorage(settings, t.GeneratedJSONStorageMethod)
+func GeneratedJSONInsert(ctx context.Context, settings *evergreen.Settings, t *Task, files GeneratedJSONFiles, method evergreen.ParserProjectStorageMethod) error {
+	fileStorage, err := GetGeneratedJSONFileStorage(settings, method)
 	if err != nil {
 		return errors.Wrap(err, "getting generated JSON file storage")
 	}
@@ -66,9 +66,8 @@ func GeneratedJSONInsert(ctx context.Context, settings *evergreen.Settings, t *T
 // it. If it succeeds, this returns the actual storage method used to persist
 // the generated JSON files; otherwise, it returns the originally-requested
 // storage method.
-func ParserProjectUpsertOneWithS3Fallback(ctx context.Context, settings *evergreen.Settings, t *Task, files GeneratedJSONFiles) (evergreen.ParserProjectStorageMethod, error) {
-	method := t.GeneratedJSONStorageMethod
-	err := GeneratedJSONInsert(ctx, settings, t, files)
+func GeneratedJSONInsertWithS3Fallback(ctx context.Context, settings *evergreen.Settings, t *Task, files GeneratedJSONFiles, method evergreen.ParserProjectStorageMethod) (evergreen.ParserProjectStorageMethod, error) {
+	err := GeneratedJSONInsert(ctx, settings, t, files, method)
 	if method == evergreen.ProjectStorageMethodS3 {
 		return method, errors.Wrap(err, "inserting generated JSON files into S3")
 	}
@@ -78,9 +77,7 @@ func ParserProjectUpsertOneWithS3Fallback(ctx context.Context, settings *evergre
 	}
 
 	newMethod := evergreen.ProjectStorageMethodS3
-	t.GeneratedJSONStorageMethod = newMethod
-	if err := GeneratedJSONInsert(ctx, settings, t, files); err != nil {
-		t.GeneratedJSONStorageMethod = method
+	if err := GeneratedJSONInsert(ctx, settings, t, files, newMethod); err != nil {
 		return method, errors.Wrap(err, "falling back to generated JSON files into S3")
 	}
 

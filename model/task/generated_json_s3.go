@@ -15,18 +15,18 @@ import (
 	"github.com/pkg/errors"
 )
 
-// GeneratedJSONS3Storage implements the GeneratedJSONFileStorage interface to
+// generatedJSONS3Storage implements the GeneratedJSONFileStorage interface to
 // access generated JSON files stored in S3.
-type GeneratedJSONS3Storage struct {
+type generatedJSONS3Storage struct {
 	bucket pail.Bucket
 	client *http.Client
 	closed bool
 }
 
-// NewGeneratedJSONS3Storage sets up access to generated JSON files stored in
+// newGeneratedJSONS3Storage sets up access to generated JSON files stored in
 // S3. If this returns a non-nil GeneratedJSONFileStorage, callers are expected
 // to call Close when they are finished with it.
-func NewGeneratedJSONS3Storage(ppConf evergreen.ParserProjectS3Config) (*GeneratedJSONS3Storage, error) {
+func newGeneratedJSONS3Storage(ppConf evergreen.ParserProjectS3Config) (*generatedJSONS3Storage, error) {
 	c := utility.GetHTTPClient()
 
 	var creds *credentials.Credentials
@@ -43,7 +43,7 @@ func NewGeneratedJSONS3Storage(ppConf evergreen.ParserProjectS3Config) (*Generat
 		utility.PutHTTPClient(c)
 		return nil, errors.Wrap(err, "setting up S3 multipart bucket")
 	}
-	s := GeneratedJSONS3Storage{
+	s := generatedJSONS3Storage{
 		bucket: b,
 		client: c,
 	}
@@ -51,7 +51,7 @@ func NewGeneratedJSONS3Storage(ppConf evergreen.ParserProjectS3Config) (*Generat
 }
 
 // Find finds the generated JSON files from S3 for the given task.
-func (s *GeneratedJSONS3Storage) Find(ctx context.Context, t *Task) (GeneratedJSONFiles, error) {
+func (s *generatedJSONS3Storage) Find(ctx context.Context, t *Task) (GeneratedJSONFiles, error) {
 	if s.closed {
 		return nil, errors.New("cannot access generated JSON file S3 storage when it is closed")
 	}
@@ -77,7 +77,7 @@ func (s *GeneratedJSONS3Storage) Find(ctx context.Context, t *Task) (GeneratedJS
 	return files, nil
 }
 
-func (s *GeneratedJSONS3Storage) downloadFile(ctx context.Context, item pail.BucketItem) (string, error) {
+func (s *generatedJSONS3Storage) downloadFile(ctx context.Context, item pail.BucketItem) (string, error) {
 	r, err := item.Get(ctx)
 	if err != nil {
 		return "", errors.Wrapf(err, "downloading generated JSON file '%s'", item.Name())
@@ -95,7 +95,7 @@ func (s *GeneratedJSONS3Storage) downloadFile(ctx context.Context, item pail.Buc
 // Insert inserts all the generated JSON files for the given task and sets the
 // task's generated JSON storage method to S3. If the files are already
 // persisted, this will no-op.
-func (s *GeneratedJSONS3Storage) Insert(ctx context.Context, t *Task, files GeneratedJSONFiles) error {
+func (s *generatedJSONS3Storage) Insert(ctx context.Context, t *Task, files GeneratedJSONFiles) error {
 	if s.closed {
 		return errors.New("cannot access generated JSON file S3 storage when it is closed")
 	}
@@ -119,7 +119,7 @@ func (s *GeneratedJSONS3Storage) Insert(ctx context.Context, t *Task, files Gene
 }
 
 // Close returns the HTTP client that is being used back to the client pool.
-func (s *GeneratedJSONS3Storage) Close(ctx context.Context) error {
+func (s *generatedJSONS3Storage) Close(ctx context.Context) error {
 	if s.closed {
 		return nil
 	}

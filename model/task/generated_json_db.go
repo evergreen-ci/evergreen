@@ -4,24 +4,24 @@ import (
 	"context"
 )
 
-// GeneratedJSONDBStorage implements the GeneratedJSONDBStorage interface to
-// access generated JSON files stored in the DB.
-type GeneratedJSONDBStorage struct {
+// generatedJSONDBStorage implements the generatedJSONDBStorage interface to
+// access generated JSON files stored in a task document in the DB.
+type generatedJSONDBStorage struct {
 }
 
 // Find finds the generated JSON from the DB for the given task. This ignores
 // the context parameter.
-func (s GeneratedJSONDBStorage) Find(_ context.Context, t *Task) (GeneratedJSONFiles, error) {
+func (s generatedJSONDBStorage) Find(_ context.Context, t *Task) (GeneratedJSONFiles, error) {
 	return t.GeneratedJSONAsString, nil
 }
 
 // Insert inserts all the generated JSON files for the given task. If the files
 // are already persisted, this will no-op.
-func (s GeneratedJSONDBStorage) Insert(_ context.Context, t *Task, files GeneratedJSONFiles) error {
+func (s generatedJSONDBStorage) Insert(_ context.Context, t *Task, files GeneratedJSONFiles) error {
 	return t.SetGeneratedJSON(files)
 }
 
 // Close is a no-op.
-func (s GeneratedJSONDBStorage) Close(context.Context) error {
+func (s generatedJSONDBStorage) Close(context.Context) error {
 	return nil
 }
