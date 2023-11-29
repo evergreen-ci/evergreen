@@ -451,13 +451,12 @@ func (s *GitGetProjectSuite) TestBuildHTTPCloneCommand() {
 
 	// build clone command to clone by http, main branch with token into 'dir'
 	opts := cloneOpts{
-		method:      evergreen.CloneMethodOAuth,
-		owner:       projectRef.Owner,
-		repo:        projectRef.Repo,
-		branch:      projectRef.Branch,
-		dir:         "dir",
-		token:       projectGitHubToken,
-		cloneParams: "--filter=tree:0 --single-branch",
+		method: evergreen.CloneMethodOAuth,
+		owner:  projectRef.Owner,
+		repo:   projectRef.Repo,
+		branch: projectRef.Branch,
+		dir:    "dir",
+		token:  projectGitHubToken,
 	}
 	s.Require().NoError(opts.setLocation())
 	cmds, err := opts.buildHTTPCloneCommand(false)
@@ -465,8 +464,8 @@ func (s *GitGetProjectSuite) TestBuildHTTPCloneCommand() {
 	s.Require().Len(cmds, 5)
 	s.True(utility.ContainsOrderedSubset(cmds, []string{
 		"set +o xtrace",
-		"echo \"git clone https://[redacted oauth token]:x-oauth-basic@github.com/evergreen-ci/sample.git 'dir' --branch 'main' --filter=tree:0 --single-branch\"",
-		"git clone https://PROJECTTOKEN:x-oauth-basic@github.com/evergreen-ci/sample.git 'dir' --branch 'main' --filter=tree:0 --single-branch",
+		"echo \"git clone https://[redacted oauth token]:x-oauth-basic@github.com/evergreen-ci/sample.git 'dir' --branch 'main'\"",
+		"git clone https://PROJECTTOKEN:x-oauth-basic@github.com/evergreen-ci/sample.git 'dir' --branch 'main'",
 		"set -o xtrace",
 		"cd dir",
 	}))
@@ -477,8 +476,8 @@ func (s *GitGetProjectSuite) TestBuildHTTPCloneCommand() {
 	s.Require().Len(cmds, 5)
 	s.True(utility.ContainsOrderedSubset(cmds, []string{
 		"set +o xtrace",
-		"echo \"git clone https://[redacted oauth token]:x-oauth-basic@github.com/evergreen-ci/sample.git 'dir' --filter=tree:0 --single-branch\"",
-		"git clone https://PROJECTTOKEN:x-oauth-basic@github.com/evergreen-ci/sample.git 'dir' --filter=tree:0 --single-branch",
+		"echo \"git clone https://[redacted oauth token]:x-oauth-basic@github.com/evergreen-ci/sample.git 'dir'\"",
+		"git clone https://PROJECTTOKEN:x-oauth-basic@github.com/evergreen-ci/sample.git 'dir'",
 		"set -o xtrace",
 		"cd dir",
 	}))
@@ -491,8 +490,8 @@ func (s *GitGetProjectSuite) TestBuildHTTPCloneCommand() {
 	s.NoError(err)
 	s.Require().Len(cmds, 5)
 	s.True(utility.ContainsOrderedSubset(cmds, []string{
-		"echo \"git clone https://[redacted oauth token]:x-oauth-basic@github.com/evergreen-ci/sample.git 'dir' --branch 'main' --filter=tree:0 --single-branch\"",
-		"git clone https://PROJECTTOKEN:x-oauth-basic@github.com/evergreen-ci/sample.git 'dir' --branch 'main' --filter=tree:0 --single-branch",
+		"echo \"git clone https://[redacted oauth token]:x-oauth-basic@github.com/evergreen-ci/sample.git 'dir' --branch 'main'\"",
+		"git clone https://PROJECTTOKEN:x-oauth-basic@github.com/evergreen-ci/sample.git 'dir' --branch 'main'",
 	}))
 
 	// ensure that we aren't sending the github oauth token to other
@@ -502,26 +501,25 @@ func (s *GitGetProjectSuite) TestBuildHTTPCloneCommand() {
 	s.NoError(err)
 	s.Require().Len(cmds, 5)
 	s.True(utility.ContainsOrderedSubset(cmds, []string{
-		"echo \"git clone https://[redacted oauth token]:x-oauth-basic@someothergithost.com/evergreen-ci/sample.git 'dir' --branch 'main' --filter=tree:0 --single-branch\"",
-		"git clone https://PROJECTTOKEN:x-oauth-basic@someothergithost.com/evergreen-ci/sample.git 'dir' --branch 'main' --filter=tree:0 --single-branch",
+		"echo \"git clone https://[redacted oauth token]:x-oauth-basic@someothergithost.com/evergreen-ci/sample.git 'dir' --branch 'main'\"",
+		"git clone https://PROJECTTOKEN:x-oauth-basic@someothergithost.com/evergreen-ci/sample.git 'dir' --branch 'main'",
 	}))
 }
 
 func (s *GitGetProjectSuite) TestBuildSSHCloneCommand() {
 	// ssh clone command with branch
 	opts := cloneOpts{
-		method:      evergreen.CloneMethodLegacySSH,
-		owner:       "evergreen-ci",
-		repo:        "sample",
-		branch:      "main",
-		dir:         "dir",
-		cloneParams: "--filter=tree:0 --single-branch",
+		method: evergreen.CloneMethodLegacySSH,
+		owner:  "evergreen-ci",
+		repo:   "sample",
+		branch: "main",
+		dir:    "dir",
 	}
 	s.Require().NoError(opts.setLocation())
 	cmds, err := opts.buildSSHCloneCommand()
 	s.NoError(err)
 	s.Len(cmds, 2)
-	s.Equal("git clone 'git@github.com:evergreen-ci/sample.git' 'dir' --branch 'main' --filter=tree:0 --single-branch", cmds[0])
+	s.Equal("git clone 'git@github.com:evergreen-ci/sample.git' 'dir' --branch 'main'", cmds[0])
 	s.Equal("cd dir", cmds[1])
 
 	// ssh clone command without branch
@@ -529,7 +527,7 @@ func (s *GitGetProjectSuite) TestBuildSSHCloneCommand() {
 	cmds, err = opts.buildSSHCloneCommand()
 	s.NoError(err)
 	s.Len(cmds, 2)
-	s.Equal("git clone 'git@github.com:evergreen-ci/sample.git' 'dir' --filter=tree:0 --single-branch", cmds[0])
+	s.Equal("git clone 'git@github.com:evergreen-ci/sample.git' 'dir'", cmds[0])
 	s.Equal("cd dir", cmds[1])
 }
 
