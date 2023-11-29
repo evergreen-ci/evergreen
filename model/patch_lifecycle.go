@@ -477,6 +477,9 @@ func MakePatchedConfig(ctx context.Context, env evergreen.Environment, p *patch.
 // Creates a manifest based on the Version
 func FinalizePatch(ctx context.Context, p *patch.Patch, requester string, githubOauthToken string) (*Version, error) {
 	settings, err := evergreen.GetConfig(ctx)
+	if err != nil {
+		return nil, errors.Wrap(err, "getting settings")
+	}
 	projectRef, err := FindMergedProjectRef(p.Project, p.Version, true)
 	if err != nil {
 		return nil, errors.Wrapf(err, "finding project '%s'", p.Project)
