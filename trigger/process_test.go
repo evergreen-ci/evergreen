@@ -627,6 +627,7 @@ func TestProjectTriggerIntegrationForPush(t *testing.T) {
 	assert.Equal(downstreamProjectRef.Id, mani.ProjectName)
 	assert.Equal(uptreamProjectRef.Branch, mani.Branch)
 	assert.Len(mani.Modules, 1)
+	require.NotNil(mani.Modules["sample"])
 	assert.Equal("3585388b1591dfca47ac26a5b9a564ec8f138a5e", mani.Modules["sample"].Revision)
 	assert.Equal("main", mani.Modules["sample"].Branch)
 	assert.Equal("sample", mani.Modules["sample"].Repo)
