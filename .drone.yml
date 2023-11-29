@@ -26,16 +26,16 @@ steps:
   - name: publish-evergreen
     image: plugins/kaniko-ecr
     tags:
-    - git-${DRONE_COMMIT_SHA:0:7}
-    - latest
+      - git-${DRONE_COMMIT_SHA:0:7}
+      - latest
     settings:
       access_key:
         from_secret: ecr_access_key
       secret_key:
         from_secret: ecr_secret_key
       build_args:
-      - GOOS=linux
-      - GOARCH=arm64
+        - GOOS=linux
+        - GOARCH=arm64
       repo: devprod-evergreen/${DRONE_REPO_NAME}
       registry: 795250896452.dkr.ecr.us-east-1.amazonaws.com
       create_repository: true
