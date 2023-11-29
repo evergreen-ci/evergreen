@@ -394,25 +394,39 @@ Options:
 Users can enable the performance plugin for tracking historical
 performance of tasks and tests.
 
-### Build Baron
+### Ticket Creation
 
-Configure the build baron to create build failure tickets under a
-specific project from a list of projects to search for failures.
+Configure task Failure Details tab options.
+
+#### Jira Ticket Search and Create
+
+Specify Jira projects to create and search tickets for.
 
 Options:
+- Ticket Search Projects: Jira projects for Evergreen to search
+    in when looking for failures to populate the "Related Tickets 
+    from Jira" Failure Details tab section
+- Ticket Create Project: The Jira project to file tickets for using 
+    the "File Ticket" Failure Details tab button. Additionally, you 
+    can configure the issue type.
 
--   Ticket Create Project: The JIRA project to create build failure
-    tickets in.
--   Ticket Search Projects: JIRA projects for the build baron to search
-    in when looking for failures.
+#### Custom Ticket Creation
+
+Specify the endpoint and secret for a custom webhook to be called when the 
+File Ticket button is clicked on a failing task.
+
+Options:
+- Webhook Endpoint: The endpoint to be called.
+- Webhook Secret: The secret to be used for the given endpoint.
+
 
 ### Task Annotation Settings
 
-Configure custom API integrations when generating build failure tickets.
+Configure custom API integrations when generating failure tickets.
 
 Options:
 
--   Webhook: A custom setup for creating build failure tickets,
+-   Webhook: A custom setup for creating failure tickets,
     specifying an endpoint an optional secret.
 -   JIRA custom fields: Custom field and display test allowing for the
     creation of a specific field when displaying jira links.
@@ -607,13 +621,13 @@ task_sync:
    patch_enabled: false
 ```
 
-### Build Baron
+### Ticket Creation
 
 [View setting
-definition](#build-baron)
+definition](#ticket-creation)
 
 ``` yaml
-build_baron_settings:
+build_baron_settings: # This name is a holdover from legacy naming.
   ticket_create_project: EVG
   ticket_search_projects:
     - SERVER
