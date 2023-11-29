@@ -968,7 +968,7 @@ PIDs. A message with PIDs will also be displayed in the metadata panel in the UI
 To disable the OOM tracker, add the following to the top-level of your yaml.
 
 ``` yaml
-- oom_tracker: false
+oom_tracker: false
 ```
 
 ### Matrix Variant Definition
