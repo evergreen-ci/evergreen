@@ -1205,7 +1205,6 @@ func (s *AgentSuite) TestEndTaskResponse() {
 
 func (s *AgentSuite) TestOOMTracker() {
 	projYml := `
-oom_tracker: true
 buildvariants:
  - name: mock_build_variant
 tasks: 

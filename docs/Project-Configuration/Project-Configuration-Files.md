@@ -959,12 +959,18 @@ task within a specific build variant).
 
 ### Out of memory (OOM) Tracker
 
-This is set to true at the top level if you'd like to enable the OOM Tracker for your project.
+By default, the OOM tracker is enabled. 
 
 If there is an OOM kill, immediately before the post-task starts, there will be
 a task log message saying whether it found any OOM killed processes, with their
 PIDs. A message with PIDs will also be displayed in the metadata panel in the
 UI.
+
+To disable the OOM tracker, add the following to the top-level of your yaml.
+
+``` yaml
+- oom_tracker: false
+```
 
 ### Matrix Variant Definition
 
