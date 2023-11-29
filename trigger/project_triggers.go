@@ -67,14 +67,18 @@ func TriggerDownstreamVersion(ctx context.Context, args ProcessorArgs) (*model.V
 	if upstreamProject == nil {
 		return nil, errors.Errorf("upstream project '%s' not found", projectID)
 	}
-	for _, module := range projectInfo.Project.Modules {
+	moduleList := projectInfo.Project.Modules
+	for i, module := range moduleList {
 		owner, repo, err := module.GetOwnerAndRepo()
 		if err != nil {
 			return nil, errors.Wrapf(err, "getting owner and repo for '%s'", module.Name)
 		}
 
 		if owner == upstreamProject.Owner && repo == upstreamProject.Repo && module.Branch == upstreamProject.Branch {
-			_, err = model.CreateManifest(v, projectInfo.Project, upstreamProject, settings)
+			if args.TriggerType == model.ProjectTriggerLevelPush {
+				moduleList[i].Ref = metadata.SourceCommit
+			}
+			_, err = model.CreateManifest(v, moduleList, upstreamProject, settings)
 			if err != nil {
 				return nil, errors.WithStack(err)
 			}

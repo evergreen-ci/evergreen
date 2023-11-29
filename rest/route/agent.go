@@ -1317,7 +1317,7 @@ func (h *manifestLoadHandler) Run(ctx context.Context) gimlet.Responder {
 	}
 
 	// attempt to insert a manifest after making GitHub API calls
-	manifest, err := model.CreateManifest(v, project, projectRef, h.settings)
+	manifest, err := model.CreateManifest(v, project.Modules, projectRef, h.settings)
 	if err != nil {
 		if apiErr, ok := errors.Cause(err).(thirdparty.APIRequestError); ok && apiErr.StatusCode == http.StatusNotFound {
 			return gimlet.MakeJSONErrorResponder(errors.Wrap(err, "manifest resource not found"))
