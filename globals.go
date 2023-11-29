@@ -198,9 +198,8 @@ const (
 
 	DefaultEvergreenConfig = ".evergreen.yml"
 
-	EvergreenHome   = "EVGHOME"
-	MongodbUrl      = "MONGO_URL"
-	MongodbAuthFile = "MONGO_CREDS_FILE"
+	EvergreenHome = "EVGHOME"
+	MongodbUrl    = "MONGO_URL"
 
 	// localLoggingOverride is a special log path indicating that the app server
 	// should attempt to log to systemd if available, and otherwise fall back to

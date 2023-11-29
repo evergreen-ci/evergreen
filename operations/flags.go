@@ -252,11 +252,6 @@ func addDbSettingsFlags(flags ...cli.Flag) []cli.Flag {
 			Value: evergreen.DefaultDatabaseURL,
 		},
 		cli.StringFlag{
-			Name:   dbCredsFileFlagName,
-			Usage:  "specify a DB credential file location",
-			EnvVar: evergreen.MongodbAuthFile,
-		},
-		cli.StringFlag{
 			Name:  dbNameFlagName,
 			Usage: "Database name",
 			Value: evergreen.DefaultDatabaseName,

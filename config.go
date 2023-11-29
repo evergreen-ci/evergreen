@@ -703,38 +703,6 @@ type DBSettings struct {
 	DB                   string       `yaml:"db"`
 	WriteConcernSettings WriteConcern `yaml:"write_concern"`
 	ReadConcernSettings  ReadConcern  `yaml:"read_concern"`
-	AuthFile             string       `yaml:"auth_file"`
-}
-
-func (dbs *DBSettings) HasAuth() bool {
-	return dbs.AuthFile != ""
-}
-
-type dbCreds struct {
-	DBUser string `yaml:"mdb_database_username"`
-	DBPwd  string `yaml:"mdb_database_password"`
-}
-
-func (dbs *DBSettings) GetAuth() (string, string, error) {
-	return GetAuthFromYAML(dbs.AuthFile)
-}
-
-func GetAuthFromYAML(authFile string) (string, string, error) {
-	creds := &dbCreds{}
-
-	file, err := os.Open(authFile)
-	if err != nil {
-		return "", "", err
-	}
-	defer file.Close()
-
-	decoder := yaml.NewDecoder(file)
-
-	if err := decoder.Decode(&creds); err != nil {
-		return "", "", err
-	}
-
-	return creds.DBUser, creds.DBPwd, nil
 }
 
 // supported banner themes in Evergreen

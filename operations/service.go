@@ -48,7 +48,6 @@ func parseDB(c *cli.Context) *evergreen.DBSettings {
 	if url == evergreen.DefaultDatabaseURL && envUrl != "" {
 		url = envUrl
 	}
-	auth := c.String(dbCredsFileFlagName)
 	return &evergreen.DBSettings{
 		Url: url,
 		DB:  c.String(dbNameFlagName),
@@ -59,7 +58,6 @@ func parseDB(c *cli.Context) *evergreen.DBSettings {
 		ReadConcernSettings: evergreen.ReadConcern{
 			Level: c.String(dbRmodeFlagName),
 		},
-		AuthFile: auth,
 	}
 }
 

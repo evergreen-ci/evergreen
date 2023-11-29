@@ -13,6 +13,7 @@ import (
 	"time"
 
 	"github.com/aws/aws-sdk-go-v2/config"
+	"github.com/aws/aws-sdk-go-v2/credentials/ec2rolecreds"
 	"github.com/evergreen-ci/certdepot"
 	"github.com/evergreen-ci/evergreen/util"
 	"github.com/evergreen-ci/gimlet"
@@ -348,24 +349,12 @@ func (e *envState) initDB(ctx context.Context, settings DBSettings) error {
 		SetConnectTimeout(5 * time.Second).
 		SetMonitor(apm.NewMonitor(apm.WithCommandAttributeDisabled(false), apm.WithCommandAttributeTransformer(redactSensitiveCollections)))
 
-	if settings.HasAuth() {
-		ymlUser, ymlPwd, err := settings.GetAuth()
-		if err != nil {
-			grip.Error(message.WrapError(err, message.Fields{
-				"message": "problem getting auth settings from YAML file, attempting to connect without auth",
-			}))
-		}
-		if err == nil && ymlUser != "" {
-			credential := options.Credential{
-				Username: ymlUser,
-				Password: ymlPwd,
-			}
-
-			opts.SetAuth(credential)
-		}
+	creds, err := dbCreds(ctx)
+	grip.Error(errors.Wrap(err, "getting database credentials"))
+	if err == nil {
+		opts.SetAuth(creds)
 	}
 
-	var err error
 	e.client, err = mongo.Connect(ctx, opts)
 	if err != nil {
 		return errors.Wrap(err, "connecting to the Evergreen DB")
@@ -388,11 +377,10 @@ func (e *envState) createRemoteQueues(ctx context.Context) error {
 		SetWriteConcern(e.settings.Database.WriteConcernSettings.Resolve()).
 		SetMonitor(apm.NewMonitor(apm.WithCommandAttributeDisabled(false)))
 
-	if e.settings.Amboy.DBConnection.Username != "" && e.settings.Amboy.DBConnection.Password != "" {
-		opts.SetAuth(options.Credential{
-			Username: e.settings.Amboy.DBConnection.Username,
-			Password: e.settings.Amboy.DBConnection.Password,
-		})
+	creds, err := dbCreds(ctx)
+	grip.Error(errors.Wrap(err, "getting database credentials"))
+	if err == nil {
+		opts.SetAuth(creds)
 	}
 
 	client, err := mongo.Connect(ctx, opts)
@@ -404,6 +392,20 @@ func (e *envState) createRemoteQueues(ctx context.Context) error {
 	catcher.Add(e.createApplicationQueue(ctx, client))
 	catcher.Add(e.createRemoteQueueGroup(ctx, client))
 	return catcher.Resolve()
+}
+
+func dbCreds(ctx context.Context) (options.Credential, error) {
+	awsCreds, err := ec2rolecreds.New().Retrieve(ctx)
+	if err != nil {
+		return options.Credential{}, errors.Wrap(err, "getting AWS credentials")
+	}
+	return options.Credential{
+		AuthMechanism:           "MONGODB-AWS",
+		AuthMechanismProperties: map[string]string{"AWS_SESSION_TOKEN": awsCreds.SessionToken},
+		AuthSource:              "$external",
+		Username:                awsCreds.AccessKeyID,
+		Password:                awsCreds.SecretAccessKey,
+	}, nil
 }
 
 func (e *envState) Context() (context.Context, context.CancelFunc) {
