@@ -184,7 +184,6 @@ functions:
       binary: make
       args: ["${make_args|}", "${target}"]
       include_expansions_in_env:
-        - AUTH_ENABLED
         - GOROOT
         - MONGO_CREDS_FILE
         - RUN_TEST
@@ -270,15 +269,11 @@ functions:
         background: true
         working_dir: evergreen
         command: make start-mongod
-        env:
-          AUTH_ENABLED: ${with_auth}
     - command: subprocess.exec
       type: setup
       params:
         working_dir: evergreen
         command: make configure-mongod
-        env:
-          AUTH_ENABLED: ${with_auth}
 
   setup-docker-host:
     - command: host.create
@@ -588,18 +583,6 @@ tasks:
     commands:
       - func: get-project-and-modules
       - func: verify-merge-function-update
-  - name: test-db-auth
-    commands:
-      - func: get-project-and-modules
-      - func: setup-credentials
-      - func: setup-mongodb
-        vars: { with_auth: "1" }
-      - func: run-make
-        vars:
-          target: "test-evergreen"
-          AUTH_ENABLED: 1
-          RUN_TEST: "TestEnvironmentSuite/TestInitDB"
-          MONGO_CREDS_FILE: testdata/test_auth.yml
   - name: generate-api-docs
     commands: 
       - func: get-project-and-modules
