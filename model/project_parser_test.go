@@ -1918,6 +1918,35 @@ tasks:
 	assert.Equal("commandLogger", proj.Tasks[0].Commands[0].Loggers.System[0].Type)
 }
 
+func TestParseOomTracker(t *testing.T) {
+	yml := `
+tasks:
+- name: task_1
+  commands:
+  - command: myCommand
+`
+	// Verify that the default is true
+	proj := &Project{}
+	ctx := context.Background()
+	_, err := LoadProjectInto(ctx, []byte(yml), nil, "id", proj)
+	assert.NotNil(t, proj)
+	assert.Nil(t, err)
+	assert.True(t, proj.OomTracker)
+
+	yml = `
+oom_tracker: false
+tasks:
+- name: task_1
+  commands:
+  - command: myCommand
+`
+	proj = &Project{}
+	_, err = LoadProjectInto(ctx, []byte(yml), nil, "id", proj)
+	assert.NotNil(t, proj)
+	assert.Nil(t, err)
+	assert.False(t, proj.OomTracker)
+}
+
 func TestAddBuildVariant(t *testing.T) {
 	pp := ParserProject{
 		Identifier: utility.ToStringPtr("small"),
@@ -2467,7 +2496,7 @@ func TestMergeUnique(t *testing.T) {
 	main := &ParserProject{
 		Stepback:    utility.ToBoolPtr(true),
 		BatchTime:   utility.ToIntPtr(1),
-		OomTracker:  utility.ToBoolPtr(true),
+		OomTracker:  utility.ToBoolPtr(false),
 		DisplayName: utility.ToStringPtr("name"),
 	}
 
