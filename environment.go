@@ -410,7 +410,7 @@ func dbCreds(ctx context.Context) (options.Credential, error) {
 	}
 	return options.Credential{
 		AuthMechanism:           awsAuthMechanism,
-		AuthMechanismProperties: map[string]string{awsAuthMechanism: awsCreds.SessionToken},
+		AuthMechanismProperties: map[string]string{awsSessionToken: awsCreds.SessionToken},
 		AuthSource:              mongoExternalAuthSource,
 		Username:                awsCreds.AccessKeyID,
 		Password:                awsCreds.SecretAccessKey,
