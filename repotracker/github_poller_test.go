@@ -24,10 +24,10 @@ import (
 
 var (
 	testConfig            = testutil.TestConfig()
-	firstRevision         = "99162ee5bc41eb314f5bb01bd12f0c43e9cb5f32"
-	lastRevision          = "d0d878e81b303fd2abbf09331e54af41d6cd0c7d"
-	firstRemoteConfigRef  = "6dbe53d948906ed3e0a355eb25b9d54e5b011209"
-	secondRemoteConfigRef = "9b6c7d7f479da84b767995076b13c31796a5e2bf"
+	firstRevision         = "e4f882f74cc3a3b716acb39fd57c91440480923e"
+	lastRevision          = "3eb235767b3e988a8b4534071916a52a540c1502"
+	firstRemoteConfigRef  = "3c7bfeb82d492dc453e7431be664539c35b5db4b"
+	secondRemoteConfigRef = "88dcc12106a40cb4917f552deab7574ececd9a3e"
 	badRemoteConfigRef    = "276382eb9f5ebcfce2791d1c99ce5e591023146b"
 
 	projectRef    *model.ProjectRef
@@ -64,14 +64,12 @@ func getDistantEVGRevision() (string, error) {
 }
 
 func resetProjectRefs() {
-	// TODO: should use an evergreen-owned repo for the integration tests.
 	projectRef = &model.ProjectRef{
 		Id:          "mci-test",
 		DisplayName: "MCI Test",
-		Owner:       "deafgoat",
-		Repo:        "mci-test",
-		Branch:      "master",
-		RemotePath:  "mci",
+		Owner:       "evergreen-ci",
+		Repo:        "sample",
+		Branch:      "main",
 		Enabled:     true,
 		Private:     utility.FalsePtr(),
 		BatchTime:   60,
@@ -145,12 +143,12 @@ func TestGetRevisionsSince(t *testing.T) {
 
 		Convey("There should be only two revisions since the first revision",
 			func() {
-				// The test repository contains only 3 revisions with revision
-				// 99162ee5bc41eb314f5bb01bd12f0c43e9cb5f32 being the first
+				// The test repository contains only 10 revisions with revision
+				// e4f882f74cc3a3b716acb39fd57c91440480923e being the first
 				// revision
-				revisions, err := ghp.GetRevisionsSince(firstRevision, 10)
+				revisions, err := ghp.GetRevisionsSince(firstRevision, 15)
 				require.NoError(t, err)
-				So(len(revisions), ShouldEqual, 2)
+				So(len(revisions), ShouldEqual, 9)
 
 				// Friday, February 15, 2008 2:59:14 PM GMT-05:00
 				minTime := time.Unix(1203105554, 0)
@@ -214,9 +212,9 @@ func TestGetRemoteConfig(t *testing.T) {
 			ghp.ProjectRef = &model.ProjectRef{
 				Id:          "mci-test",
 				DisplayName: "MCI Test",
-				Owner:       "deafgoat",
-				Repo:        "config",
-				Branch:      "master",
+				Owner:       "evergreen-ci",
+				Repo:        "sample",
+				Branch:      "main",
 				RemotePath:  "random.txt",
 				Enabled:     true,
 				Private:     utility.FalsePtr(),
