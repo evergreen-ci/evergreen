@@ -58,3 +58,6 @@ evergreen
 
 # ag and ripgrep ignore file
 .ignore
+
+# asdf go version manager
+.tool-versions
