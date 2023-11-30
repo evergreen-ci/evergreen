@@ -703,6 +703,7 @@ type DBSettings struct {
 	DB                   string       `yaml:"db"`
 	WriteConcernSettings WriteConcern `yaml:"write_concern"`
 	ReadConcernSettings  ReadConcern  `yaml:"read_concern"`
+	AWSAuthEnabled       bool         `yaml:"aws_auth_enabled"`
 }
 
 // supported banner themes in Evergreen

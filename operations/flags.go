@@ -56,12 +56,12 @@ const (
 	anserPeriodFlagName      = "period"
 	anserMigrationIDFlagName = "id"
 
-	dbUrlFlagName       = "url"
-	dbCredsFileFlagName = "auth-file"
-	dbNameFlagName      = "db"
-	dbWriteNumFlagName  = "w"
-	dbWmodeFlagName     = "wmode"
-	dbRmodeFlagName     = "rmode"
+	dbUrlFlagName      = "url"
+	dbAWSAuthFlagName  = "mongo-aws-auth"
+	dbNameFlagName     = "db"
+	dbWriteNumFlagName = "w"
+	dbWmodeFlagName    = "wmode"
+	dbRmodeFlagName    = "rmode"
 
 	jsonFlagName = "json"
 )
@@ -250,6 +250,11 @@ func addDbSettingsFlags(flags ...cli.Flag) []cli.Flag {
 			Name:  dbUrlFlagName,
 			Usage: "Database URL(s). For a replica set, list all members separated by a comma.",
 			Value: evergreen.DefaultDatabaseURL,
+		},
+		cli.BoolFlag{
+			Name:   dbAWSAuthFlagName,
+			Usage:  "Enable MONGODB_AWS authentication with the database.",
+			EnvVar: evergreen.MongoAWSAuthEnabled,
 		},
 		cli.StringFlag{
 			Name:  dbNameFlagName,

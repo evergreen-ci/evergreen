@@ -353,12 +353,15 @@ func (e *envState) initDB(ctx context.Context, settings DBSettings) error {
 		SetConnectTimeout(5 * time.Second).
 		SetMonitor(apm.NewMonitor(apm.WithCommandAttributeDisabled(false), apm.WithCommandAttributeTransformer(redactSensitiveCollections)))
 
-	creds, err := dbCreds(ctx)
-	grip.Error(errors.Wrap(err, "getting database credentials"))
-	if err == nil {
+	if settings.AWSAuthEnabled {
+		creds, err := dbCreds(ctx)
+		if err != nil {
+			return errors.Wrap(err, "getting database credentials")
+		}
 		opts.SetAuth(creds)
 	}
 
+	var err error
 	e.client, err = mongo.Connect(ctx, opts)
 	if err != nil {
 		return errors.Wrap(err, "connecting to the Evergreen DB")
@@ -381,9 +384,11 @@ func (e *envState) createRemoteQueues(ctx context.Context) error {
 		SetWriteConcern(e.settings.Database.WriteConcernSettings.Resolve()).
 		SetMonitor(apm.NewMonitor(apm.WithCommandAttributeDisabled(false)))
 
-	creds, err := dbCreds(ctx)
-	grip.Error(errors.Wrap(err, "getting database credentials"))
-	if err == nil {
+	if e.settings.Database.AWSAuthEnabled {
+		creds, err := dbCreds(ctx)
+		if err != nil {
+			return errors.Wrap(err, "getting database credentials")
+		}
 		opts.SetAuth(creds)
 	}
 
