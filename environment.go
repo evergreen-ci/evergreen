@@ -62,6 +62,10 @@ const (
 
 	RoleCollection  = "roles"
 	ScopeCollection = "scopes"
+
+	awsAuthMechanism        = "MONGODB-AWS"
+	awsSessionToken         = "AWS_SESSION_TOKEN"
+	mongoExternalAuthSource = "$external"
 )
 
 func init() { globalEnvLock = &sync.RWMutex{} }
@@ -400,9 +404,9 @@ func dbCreds(ctx context.Context) (options.Credential, error) {
 		return options.Credential{}, errors.Wrap(err, "getting AWS credentials")
 	}
 	return options.Credential{
-		AuthMechanism:           "MONGODB-AWS",
-		AuthMechanismProperties: map[string]string{"AWS_SESSION_TOKEN": awsCreds.SessionToken},
-		AuthSource:              "$external",
+		AuthMechanism:           awsAuthMechanism,
+		AuthMechanismProperties: map[string]string{awsAuthMechanism: awsCreds.SessionToken},
+		AuthSource:              mongoExternalAuthSource,
 		Username:                awsCreds.AccessKeyID,
 		Password:                awsCreds.SecretAccessKey,
 	}, nil
