@@ -653,7 +653,6 @@ buildvariants:
       - name: ".smoke"
       - name: ".test"
       - name: ".linter"
-      - name: test-db-auth
       - name: test-cloud
       - name: "js-test"
       - name: generate-api-docs
@@ -672,7 +671,6 @@ buildvariants:
       test_timeout: 15m
     tasks:
       - name: ".test"
-      - name: test-db-auth
 
   - name: ubuntu2004-container
     display_name: Ubuntu 20.04 (Container)
@@ -693,7 +691,6 @@ buildvariants:
       - name: ".test"
       - name: "js-test"
       - name: ".linter"
-      - name: test-db-auth
       - name: "dist-staging"
 
   - name: lint
