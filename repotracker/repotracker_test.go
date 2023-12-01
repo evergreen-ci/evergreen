@@ -73,12 +73,14 @@ func TestFetchRevisions(t *testing.T) {
 
 		Reset(func() {
 			dropTestDB(t)
+			testutil.ConfigureIntegrationTest(t, testConfig, t.Name())
 		})
 	})
 }
 
 func TestStoreRepositoryRevisions(t *testing.T) {
 	dropTestDB(t)
+	testutil.ConfigureIntegrationTest(t, testConfig, t.Name())
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 	Convey("When storing revisions gotten from a repository...", t, func() {
@@ -163,6 +165,7 @@ func TestStoreRepositoryRevisions(t *testing.T) {
 
 		Reset(func() {
 			dropTestDB(t)
+			testutil.ConfigureIntegrationTest(t, testConfig, t.Name())
 		})
 	})
 

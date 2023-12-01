@@ -71,13 +71,13 @@ func (s *PatchIntentUnitsSuite) SetupTest() {
 	s.ctx = testutil.TestSpan(s.suiteCtx, s.T())
 	s.Require().NoError(s.env.Configure(s.ctx))
 
-	testutil.ConfigureIntegrationTest(s.T(), s.env.Settings(), s.T().Name())
-	s.NotNil(s.env.Settings())
-
 	s.NoError(db.ClearCollections(evergreen.ConfigCollection, task.Collection, model.ProjectVarsCollection,
 		model.ParserProjectCollection, model.VersionCollection, user.Collection, model.ProjectRefCollection,
 		model.ProjectAliasCollection, patch.Collection, patch.IntentCollection, event.SubscriptionsCollection, distro.Collection))
 	s.NoError(db.ClearGridCollections(patch.GridFSPrefix))
+
+	testutil.ConfigureIntegrationTest(s.T(), s.env.Settings(), s.T().Name())
+	s.NotNil(s.env.Settings())
 
 	s.NoError((&model.ProjectRef{
 		Owner:            "evergreen-ci",

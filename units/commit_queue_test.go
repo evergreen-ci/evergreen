@@ -60,8 +60,8 @@ func (s *commitQueueSuite) SetupSuite() {
 
 	s.projectRef = &model.ProjectRef{
 		Id:    "mci",
-		Owner: "baxterthehacker",
-		Repo:  "public-repo",
+		Owner: "evergreen-ci",
+		Repo:  "sample",
 		CommitQueue: model.CommitQueueParams{
 			Enabled:     utility.TruePtr(),
 			MergeMethod: "squash",
@@ -360,8 +360,7 @@ func (s *commitQueueSuite) TestSetDefaultNotification() {
 }
 
 func (s *commitQueueSuite) TestUpdatePatch() {
-	githubToken, err := s.settings.GetGithubOauthToken()
-	s.NoError(err)
+	testutil.ConfigureIntegrationTest(s.T(), s.settings, s.T().Name())
 
 	projectRef := &model.ProjectRef{
 		Id:         "evergreen",
@@ -384,7 +383,7 @@ func (s *commitQueueSuite) TestUpdatePatch() {
 		},
 	}
 
-	projectConfig, pp, err := updatePatch(s.ctx, s.settings, githubToken, projectRef, patchDoc)
+	projectConfig, pp, err := updatePatch(s.ctx, s.settings, "", projectRef, patchDoc)
 	s.NoError(err)
 	s.NotEqual("abcdef", patchDoc.Patches[0].Githash)
 	s.NotEqual(model.Project{}, projectConfig)

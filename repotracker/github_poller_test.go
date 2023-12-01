@@ -26,8 +26,8 @@ var (
 	testConfig            = testutil.TestConfig()
 	firstRevision         = "e4f882f74cc3a3b716acb39fd57c91440480923e"
 	lastRevision          = "3eb235767b3e988a8b4534071916a52a540c1502"
-	firstRemoteConfigRef  = "3c7bfeb82d492dc453e7431be664539c35b5db4b"
-	secondRemoteConfigRef = "88dcc12106a40cb4917f552deab7574ececd9a3e"
+	firstRemoteConfigRef  = "3eb235767b3e988a8b4534071916a52a540c1502"
+	secondRemoteConfigRef = "bd4f82954702ca72ad0c8639a72915bb8e771ee3"
 	badRemoteConfigRef    = "276382eb9f5ebcfce2791d1c99ce5e591023146b"
 
 	projectRef    *model.ProjectRef
@@ -227,12 +227,12 @@ func TestGetRemoteConfig(t *testing.T) {
 
 			Convey("The config file at the requested revision should be "+
 				"exactly what is returned", func() {
-				projectInfo, err := ghp.GetRemoteConfig(ctx, firstRevision)
+				projectInfo, err := ghp.GetRemoteConfig(ctx, firstRemoteConfigRef)
 				require.NoError(t, err, "Error fetching github "+
 					"configuration file")
 				So(projectInfo.Project, ShouldNotBeNil)
 				So(len(projectInfo.Project.Tasks), ShouldEqual, 0)
-				projectInfo, err = ghp.GetRemoteConfig(ctx, lastRevision)
+				projectInfo, err = ghp.GetRemoteConfig(ctx, secondRemoteConfigRef)
 				require.NoError(t, err, "Error fetching github "+
 					"configuration file")
 				So(projectInfo.Project, ShouldNotBeNil)
@@ -256,7 +256,7 @@ func TestGetAllRevisions(t *testing.T) {
 	testutil.ConfigureIntegrationTest(t, testConfig, t.Name())
 
 	Convey("When fetching recent github revisions (by count) - from a repo "+
-		"containing 3 commits - given a valid Oauth token...", t, func() {
+		"containing 10 commits - given a valid Oauth token...", t, func() {
 		ghp.ProjectRef = projectRef
 		token, err := testConfig.GetGithubOauthToken()
 		So(err, ShouldBeNil)
@@ -264,12 +264,12 @@ func TestGetAllRevisions(t *testing.T) {
 
 		// Even though we're requesting far more revisions than exists in the
 		// remote repository, we should only get the revisions that actually
-		// exist upstream - a total of 3
+		// exist upstream - a total of 10
 		Convey("There should be only three revisions even if you request more "+
-			"than 3", func() {
+			"than 10", func() {
 			revisions, err := ghp.GetRecentRevisions(123)
 			require.NoError(t, err)
-			So(len(revisions), ShouldEqual, 3)
+			So(len(revisions), ShouldEqual, 10)
 		})
 
 		// Get only one recent revision and ensure it's the right revision

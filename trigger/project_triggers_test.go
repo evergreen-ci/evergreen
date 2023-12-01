@@ -93,13 +93,14 @@ func TestMetadataFromArgsWithoutVersion(t *testing.T) {
 }
 
 func TestMakeDownstreamConfigFromFile(t *testing.T) {
+	assert.NoError(t, db.ClearCollections(evergreen.ConfigCollection))
+
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 
 	assert := assert.New(t)
 	testConfig := testutil.TestConfig()
 	testutil.ConfigureIntegrationTest(t, testConfig, "TestMakeDownstreamConfigFromFile")
-	assert.NoError(db.ClearCollections(evergreen.ConfigCollection))
 	assert.NoError(testConfig.Set(ctx))
 
 	ref := model.ProjectRef{
