@@ -241,7 +241,8 @@ functions:
         CROWD_SERVER: ${crowdserver}
         AWS_KEY: ${aws_key}
         AWS_SECRET: ${aws_secret}
-        PARSER_PROJECT_S3_PREFIX: ${task_id}
+        PARSER_PROJECT_S3_PREFIX: ${task_id}/parser-projects
+        GENERATED_JSON_S3_PREFIX: ${task_id}/generated-json
         JIRA_PRIVATE_KEY: ${jira_private_key}
         JIRA_ACCESS_TOKEN: ${jira_access_token}
         JIRA_TOKEN_SECRET: ${jira_token_secret}

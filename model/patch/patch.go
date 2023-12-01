@@ -165,9 +165,7 @@ type Patch struct {
 	Activated bool `bson:"activated"`
 	// ProjectStorageMethod describes how the parser project is stored for this
 	// patch before it's finalized. This field is only set while the patch is
-	// unfinalized and is cleared once the patch has been finalized. It may also
-	// be empty for old, unfinalized patch documents before this field was
-	// introduced (see PatchedParserProject).
+	// unfinalized and is cleared once the patch has been finalized.
 	ProjectStorageMethod evergreen.ParserProjectStorageMethod `bson:"project_storage_method,omitempty"`
 	PatchedProjectConfig string                               `bson:"patched_project_config"`
 	Alias                string                               `bson:"alias"`

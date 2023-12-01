@@ -116,6 +116,10 @@ func (c *S3Credentials) Validate() error {
 type ParserProjectS3Config struct {
 	S3Credentials `bson:",inline" yaml:",inline"`
 	Prefix        string `bson:"prefix" json:"prefix" yaml:"prefix"`
+	// GeneratedJSONPrefix is the prefix to use for storing intermediate
+	// JSON configuration for generate.tasks, which will update the parser
+	// project.
+	GeneratedJSONPrefix string `bson:"generated_json_prefix" json:"generated_json_prefix" yaml:"generated_json_prefix"`
 }
 
 func (c *ParserProjectS3Config) Validate() error { return nil }

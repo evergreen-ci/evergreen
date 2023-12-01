@@ -2,7 +2,6 @@ package task
 
 import (
 	"context"
-	"encoding/json"
 	"fmt"
 	"regexp"
 	"runtime/debug"
@@ -267,8 +266,15 @@ type Task struct {
 	GeneratedTasks bool `bson:"generated_tasks,omitempty" json:"generated_tasks,omitempty"`
 	// GeneratedBy, if present, is the ID of the task that generated this task.
 	GeneratedBy string `bson:"generated_by,omitempty" json:"generated_by,omitempty"`
-	// GeneratedJSONAsString is the configuration information to create new tasks from.
-	GeneratedJSONAsString []string `bson:"generated_json,omitempty" json:"generated_json,omitempty"`
+	// GeneratedJSONAsString is the configuration information to update the
+	// project YAML for generate.tasks. This is only used to store the
+	// configuration if GeneratedJSONStorageMethod is unset or is explicitly set
+	// to "db".
+	GeneratedJSONAsString GeneratedJSONFiles `bson:"generated_json,omitempty" json:"generated_json,omitempty"`
+	// GeneratedJSONStorageMethod describes how the generated JSON for
+	// generate.tasks is stored for this task before it's merged with the
+	// existing project YAML.
+	GeneratedJSONStorageMethod evergreen.ParserProjectStorageMethod `bson:"generated_json_storage_method,omitempty" json:"generated_json_storage_method,omitempty"`
 	// GenerateTasksError any encountered while generating tasks.
 	GenerateTasksError string `bson:"generate_error,omitempty" json:"generate_error,omitempty"`
 	// GeneratedTasksToActivate is only populated if we want to override activation for these generated tasks, because of stepback.
@@ -292,6 +298,9 @@ type Task struct {
 	// manually scheduled by the user afterwards are not required.
 	IsEssentialToSucceed bool `bson:"is_essential_to_succeed" json:"is_essential_to_succeed"`
 }
+
+// GeneratedJSONFiles represent files used by a task for generate.tasks to update the project YAML.
+type GeneratedJSONFiles []string
 
 // StepbackInfo helps determine which task to bisect to when performing stepback.
 type StepbackInfo struct {
@@ -1220,27 +1229,59 @@ func GenerateNotRun() ([]Task, error) {
 	}))
 }
 
-// SetGeneratedJSON sets JSON data to generate tasks from.
-func (t *Task) SetGeneratedJSON(json []json.RawMessage) error {
-	if len(t.GeneratedJSONAsString) > 0 {
+// SetGeneratedJSON sets JSON data to generate tasks from. If the generated JSON
+// files have already been stored, this is a no-op.
+func (t *Task) SetGeneratedJSON(files GeneratedJSONFiles) error {
+	if len(t.GeneratedJSONAsString) > 0 || t.GeneratedJSONStorageMethod != "" {
 		return nil
 	}
-	s := []string{}
-	for _, j := range json {
-		s = append(s, string(j))
-	}
-	t.GeneratedJSONAsString = s
-	return UpdateOne(
+
+	if err := UpdateOne(
 		bson.M{
-			IdKey:                    t.Id,
-			GeneratedJSONAsStringKey: bson.M{"$exists": false},
+			IdKey:                         t.Id,
+			GeneratedJSONAsStringKey:      bson.M{"$exists": false},
+			GeneratedJSONStorageMethodKey: nil,
 		},
 		bson.M{
 			"$set": bson.M{
-				GeneratedJSONAsStringKey: s,
+				GeneratedJSONAsStringKey:      files,
+				GeneratedJSONStorageMethodKey: evergreen.ProjectStorageMethodDB,
 			},
 		},
-	)
+	); err != nil {
+		return err
+	}
+
+	t.GeneratedJSONAsString = files
+	t.GeneratedJSONStorageMethod = evergreen.ProjectStorageMethodDB
+
+	return nil
+}
+
+// SetGeneratedJSONStorageMethod sets the task's generated JSON file storage
+// method. If it's already been set, this is a no-op.
+func (t *Task) SetGeneratedJSONStorageMethod(method evergreen.ParserProjectStorageMethod) error {
+	if t.GeneratedJSONStorageMethod != "" {
+		return nil
+	}
+
+	if err := UpdateOne(
+		bson.M{
+			IdKey:                         t.Id,
+			GeneratedJSONStorageMethodKey: nil,
+		},
+		bson.M{
+			"$set": bson.M{
+				GeneratedJSONStorageMethodKey: method,
+			},
+		},
+	); err != nil {
+		return err
+	}
+
+	t.GeneratedJSONStorageMethod = method
+
+	return nil
 }
 
 // SetGeneratedTasksToActivate adds a task to stepback after activation
