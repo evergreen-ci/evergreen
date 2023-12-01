@@ -25,7 +25,7 @@ import (
 var (
 	testConfig            = testutil.TestConfig()
 	firstRevision         = "e4f882f74cc3a3b716acb39fd57c91440480923e"
-	lastRevision          = "3eb235767b3e988a8b4534071916a52a540c1502"
+	lastRevision          = "bd4f82954702ca72ad0c8639a72915bb8e771ee3"
 	firstRemoteConfigRef  = "3eb235767b3e988a8b4534071916a52a540c1502"
 	secondRemoteConfigRef = "bd4f82954702ca72ad0c8639a72915bb8e771ee3"
 	badRemoteConfigRef    = "276382eb9f5ebcfce2791d1c99ce5e591023146b"
@@ -135,7 +135,7 @@ func TestGetRevisionsSince(t *testing.T) {
 	require.NoError(t, err)
 
 	Convey("When fetching github revisions (by commit) - from a repo "+
-		"containing 3 commits - given a valid Oauth token...", t, func() {
+		"containing 12 commits - given a valid Oauth token...", t, func() {
 		ghp.ProjectRef = projectRef
 		token, err := testConfig.GetGithubOauthToken()
 		So(err, ShouldBeNil)
@@ -143,12 +143,12 @@ func TestGetRevisionsSince(t *testing.T) {
 
 		Convey("There should be only two revisions since the first revision",
 			func() {
-				// The test repository contains only 10 revisions with revision
+				// The test repository contains only 12 revisions with revision
 				// e4f882f74cc3a3b716acb39fd57c91440480923e being the first
 				// revision
 				revisions, err := ghp.GetRevisionsSince(firstRevision, 15)
 				require.NoError(t, err)
-				So(len(revisions), ShouldEqual, 9)
+				So(len(revisions), ShouldEqual, 11)
 
 				// Friday, February 15, 2008 2:59:14 PM GMT-05:00
 				minTime := time.Unix(1203105554, 0)
@@ -162,18 +162,18 @@ func TestGetRevisionsSince(t *testing.T) {
 			})
 
 		Convey("There should be no revisions since the last revision", func() {
-			// The test repository contains only 3 revisions with revision
-			// d0d878e81b303fd2abbf09331e54af41d6cd0c7d being the last revision
-			revisions, err := ghp.GetRevisionsSince(lastRevision, 10)
+			// The test repository contains only 12 revisions with revision
+			// bd4f82954702ca72ad0c8639a72915bb8e771ee3 being the last revision
+			revisions, err := ghp.GetRevisionsSince(lastRevision, 15)
 			require.NoError(t, err)
 			So(len(revisions), ShouldEqual, 0)
 		})
 
 		Convey("There should be an error returned if the requested revision "+
 			"isn't found", func() {
-			// The test repository contains only 3 revisions with revision
-			// d0d878e81b303fd2abbf09331e54af41d6cd0c7d being the last revision
-			revisions, err := ghp.GetRevisionsSince("lastRevision", 10)
+			// The test repository contains only 12 revisions with revision
+			// bd4f82954702ca72ad0c8639a72915bb8e771ee3 being the last revision
+			revisions, err := ghp.GetRevisionsSince("lastRevision", 15)
 			So(len(revisions), ShouldEqual, 0)
 			So(err, ShouldNotBeNil)
 		})
@@ -183,7 +183,7 @@ func TestGetRevisionsSince(t *testing.T) {
 		})
 		Convey("should limit number of revisions returned and set last repo revision", func() {
 			const maxRevisions = 1
-			// There are supposed to be 3 revisions in the repo in total, so given the maxRevisions limit, the first
+			// There are supposed to be 12 revisions in the repo in total, so given the maxRevisions limit, the first
 			// (i.e. earliest) revisions should not be found. The expected behavior here is that if it cannot find the
 			// given revision, it will search for maxRevisions, then add one revision as the new base revision if
 			// necessary.
@@ -256,7 +256,7 @@ func TestGetAllRevisions(t *testing.T) {
 	testutil.ConfigureIntegrationTest(t, testConfig, t.Name())
 
 	Convey("When fetching recent github revisions (by count) - from a repo "+
-		"containing 10 commits - given a valid Oauth token...", t, func() {
+		"containing 12 commits - given a valid Oauth token...", t, func() {
 		ghp.ProjectRef = projectRef
 		token, err := testConfig.GetGithubOauthToken()
 		So(err, ShouldBeNil)
@@ -264,12 +264,12 @@ func TestGetAllRevisions(t *testing.T) {
 
 		// Even though we're requesting far more revisions than exists in the
 		// remote repository, we should only get the revisions that actually
-		// exist upstream - a total of 10
+		// exist upstream - a total of 12
 		Convey("There should be only three revisions even if you request more "+
 			"than 10", func() {
 			revisions, err := ghp.GetRecentRevisions(123)
 			require.NoError(t, err)
-			So(len(revisions), ShouldEqual, 10)
+			So(len(revisions), ShouldEqual, 12)
 		})
 
 		// Get only one recent revision and ensure it's the right revision
