@@ -6,6 +6,7 @@ import (
 	"testing"
 
 	"github.com/evergreen-ci/evergreen/agent/internal"
+	"github.com/mongodb/jasper/mock"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
@@ -43,6 +44,7 @@ func TestRemoveTaskDirectory(t *testing.T) {
 		taskConfig: &internal.TaskConfig{
 			WorkDir: filepath.Base(tmpDir),
 		},
+		oomTracker: &mock.OOMTracker{},
 	}
 
 	agent.removeTaskDirectory(tc)

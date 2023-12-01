@@ -1,0 +1,31 @@
+image:
+  repository: 795250896452.dkr.ecr.us-east-1.amazonaws.com/evergreen/evergreen-server
+
+arch: arm64
+
+replicaCount: 1
+
+ingress:
+  enabled: true
+
+defaultAlerts:
+  enabled: false
+  email: devprod-infrastructure-team@mongodb.com
+  slack: devprod-infra-alerts
+
+resources:
+  requests:
+    cpu: 100m
+    memory: .25Gi
+  limits:
+    cpu: 1000m
+    memory: 1Gi
+
+services:
+  - name: http
+    ingress: true
+    port: 80
+    probes: true
+    protocol: TCP
+    targetPort: 9090
+    type: ClusterIP

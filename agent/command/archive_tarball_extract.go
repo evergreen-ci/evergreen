@@ -7,7 +7,6 @@ import (
 
 	"github.com/evergreen-ci/evergreen/agent/internal"
 	"github.com/evergreen-ci/evergreen/agent/internal/client"
-	agentutil "github.com/evergreen-ci/evergreen/agent/util"
 	"github.com/evergreen-ci/evergreen/util"
 	"github.com/mitchellh/mapstructure"
 	"github.com/pkg/errors"
@@ -71,7 +70,7 @@ func (e *tarballExtract) Execute(ctx context.Context,
 		logger.Task().Notice(errors.Wrapf(archive.Close(), "closing file '%s'", e.ArchivePath))
 	}()
 
-	if err := agentutil.ExtractTarball(ctx, archive, e.TargetDirectory, e.ExcludeFiles); err != nil {
+	if err := extractTarball(ctx, archive, e.TargetDirectory, e.ExcludeFiles); err != nil {
 		return errors.Wrapf(err, "extracting file '%s'", e.ArchivePath)
 	}
 

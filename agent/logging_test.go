@@ -14,6 +14,7 @@ import (
 	_ "github.com/evergreen-ci/evergreen/testutil"
 	"github.com/evergreen-ci/evergreen/util"
 	"github.com/mongodb/jasper"
+	"github.com/mongodb/jasper/mock"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"go.opentelemetry.io/otel"
@@ -67,6 +68,7 @@ func TestAgentFileLogging(t *testing.T) {
 			Secret: taskSecret,
 		},
 		ranSetupGroup: false,
+		oomTracker:    &mock.OOMTracker{},
 		taskConfig: &internal.TaskConfig{
 			Task:         *task,
 			BuildVariant: model.BuildVariant{Name: "bv"},
@@ -136,6 +138,7 @@ func TestStartLogging(t *testing.T) {
 			ID:     "logging",
 			Secret: "task_secret",
 		},
+		oomTracker: &mock.OOMTracker{},
 	}
 
 	ctx := context.Background()
@@ -180,6 +183,7 @@ func TestDefaultSender(t *testing.T) {
 		DisplayName: "task1",
 	}
 	tc := &taskContext{
+		oomTracker: &mock.OOMTracker{},
 		task: client.TaskData{
 			ID:     taskID,
 			Secret: taskSecret,
@@ -234,6 +238,7 @@ func TestTimberSender(t *testing.T) {
 		DisplayName: "task1",
 	}
 	tc := &taskContext{
+		oomTracker: &mock.OOMTracker{},
 		task: client.TaskData{
 			ID:     taskID,
 			Secret: taskSecret,

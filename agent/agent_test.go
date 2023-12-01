@@ -3,6 +3,7 @@ package agent
 import (
 	"context"
 	"encoding/hex"
+	"fmt"
 	"io/fs"
 	"os"
 	"path/filepath"
@@ -313,7 +314,8 @@ func (s *AgentSuite) TestRunPreAndMainIsPanicSafe() {
 	// still produces a panic since it relies on a lot of taskContext
 	// fields.
 	tc := &taskContext{
-		logger: s.tc.logger,
+		logger:     s.tc.logger,
+		oomTracker: &mock.OOMTracker{},
 	}
 	s.NotPanics(func() {
 		status := s.a.runPreAndMain(s.ctx, tc)
@@ -402,7 +404,8 @@ pre:
       script: exit 0
 `)
 	tcMissingInfo := &taskContext{
-		logger: s.tc.logger,
+		logger:     s.tc.logger,
+		oomTracker: &mock.OOMTracker{},
 	}
 	s.NotPanics(func() {
 		cmdBlock := commandBlock{
@@ -794,6 +797,116 @@ post:
 	})
 }
 
+func (s *AgentSuite) TestRetryOnFailure() {
+	projYml := `
+tasks:
+  - name: this_is_a_task_name
+    commands:
+      - command: shell.exec
+        retry_on_failure: true
+        params:
+          script: exit 1
+`
+	s.setupRunTask(projYml)
+
+	nextTask := &apimodels.NextTaskResponse{
+		TaskId:     s.tc.task.ID,
+		TaskSecret: s.tc.task.Secret,
+	}
+	_, _, err := s.a.runTask(s.ctx, s.tc, nextTask, false, s.testTmpDirName)
+
+	s.NoError(err)
+	s.Equal(evergreen.TaskFailed, s.mockCommunicator.EndTaskResult.Detail.Status)
+	s.True(s.mockCommunicator.TaskShouldRetryOnFail)
+	s.NoError(s.tc.logger.Close())
+	checkMockLogs(s.T(), s.mockCommunicator, s.tc.taskConfig.Task.Id, []string{
+		"Running task commands",
+		"Running command 'shell.exec' (step 1 of 1)",
+		"Running task commands failed",
+		fmt.Sprintf("Command is set to automatically restart on completion, this can be done %d total times per task.", evergreen.MaxAutomaticRestarts),
+	}, []string{
+		panicLog,
+	})
+}
+
+func (s *AgentSuite) TestRetryOnFailureWithPreErrorFailsTask() {
+	projYml := `
+pre_error_fails_task: true
+
+pre:
+  - command: shell.exec
+    retry_on_failure: true
+    params:
+      script: exit 1
+
+tasks:
+  - name: this_is_a_task_name
+    commands:
+      - command: shell.exec
+        params:
+          script: exit 0
+`
+	s.setupRunTask(projYml)
+
+	nextTask := &apimodels.NextTaskResponse{
+		TaskId:     s.tc.task.ID,
+		TaskSecret: s.tc.task.Secret,
+	}
+	_, _, err := s.a.runTask(s.ctx, s.tc, nextTask, false, s.testTmpDirName)
+
+	s.NoError(err)
+	s.Equal(evergreen.TaskFailed, s.mockCommunicator.EndTaskResult.Detail.Status)
+	s.True(s.mockCommunicator.TaskShouldRetryOnFail)
+	s.NoError(s.tc.logger.Close())
+	checkMockLogs(s.T(), s.mockCommunicator, s.tc.taskConfig.Task.Id, []string{
+		"Running pre-task commands",
+		"Running command 'shell.exec' (step 1 of 1)",
+		"Running pre-task commands failed",
+		fmt.Sprintf("Command is set to automatically restart on completion, this can be done %d total times per task.", evergreen.MaxAutomaticRestarts),
+	}, []string{
+		panicLog,
+	})
+}
+
+func (s *AgentSuite) TestRetryOnFailureWithoutPreErrorFailsTask() {
+	projYml := `
+pre_error_fails_task: false
+
+pre:
+  - command: shell.exec
+    retry_on_failure: true
+    params:
+      script: exit 1
+
+tasks:
+  - name: this_is_a_task_name
+    commands:
+      - command: shell.exec
+        params:
+          script: exit 0
+`
+	s.setupRunTask(projYml)
+
+	nextTask := &apimodels.NextTaskResponse{
+		TaskId:     s.tc.task.ID,
+		TaskSecret: s.tc.task.Secret,
+	}
+	_, _, err := s.a.runTask(s.ctx, s.tc, nextTask, false, s.testTmpDirName)
+
+	s.NoError(err)
+	s.Equal(evergreen.TaskSucceeded, s.mockCommunicator.EndTaskResult.Detail.Status)
+	s.False(s.mockCommunicator.TaskShouldRetryOnFail)
+
+	s.NoError(s.tc.logger.Close())
+	checkMockLogs(s.T(), s.mockCommunicator, s.tc.taskConfig.Task.Id, []string{
+		"Running pre-task commands",
+		"Running command 'shell.exec' (step 1 of 1)",
+	}, []string{
+		panicLog,
+		fmt.Sprintf("Command is set to automatically restart on completion, this can be done %d total times per task.", evergreen.MaxAutomaticRestarts),
+	})
+}
+
 func (s *AgentSuite) TestFailingPostDoesNotChangeEndTaskResults() {
 	projYml := `
 buildvariants:
@@ -1094,7 +1207,6 @@ func (s *AgentSuite) TestEndTaskResponse() {
 
 func (s *AgentSuite) TestOOMTracker() {
 	projYml := `
-oom_tracker: true
 buildvariants:
  - name: mock_build_variant
 tasks: 
@@ -1140,6 +1252,7 @@ func (s *AgentSuite) TestFinishPrevTaskWithoutTaskGroup() {
 			},
 			WorkDir: "task_directory",
 		},
+		oomTracker:    &mock.OOMTracker{},
 		logger:        s.tc.logger,
 		ranSetupGroup: true,
 	}
@@ -1167,6 +1280,7 @@ func (s *AgentSuite) TestFinishPrevTaskAndNextTaskIsInNewTaskGroup() {
 			},
 			WorkDir: "task_directory",
 		},
+		oomTracker:    &mock.OOMTracker{},
 		logger:        s.tc.logger,
 		ranSetupGroup: true,
 	}
@@ -1201,6 +1315,7 @@ func (s *AgentSuite) TestFinishPrevTaskWithSameTaskGroupAndAlreadyRanSetupGroup(
 		},
 		logger:        s.tc.logger,
 		ranSetupGroup: true,
+		oomTracker:    &mock.OOMTracker{},
 	}
 	nextTask := &apimodels.NextTaskResponse{
 		TaskId:    "another_task_id",
@@ -1231,7 +1346,8 @@ func (s *AgentSuite) TestFinishPrevTaskWithSameTaskGroupButDidNotRunSetupGroup()
 			TaskGroup: &model.TaskGroup{Name: taskGroup},
 			WorkDir:   "task_directory",
 		},
-		logger: s.tc.logger,
+		logger:     s.tc.logger,
+		oomTracker: &mock.OOMTracker{},
 	}
 	nextTask := &apimodels.NextTaskResponse{
 		TaskId:    "task_id2",
@@ -1264,6 +1380,7 @@ func (s *AgentSuite) TestFinishPrevTaskWithSameBuildButDifferentTaskGroup() {
 		},
 		logger:        s.tc.logger,
 		ranSetupGroup: true,
+		oomTracker:    &mock.OOMTracker{},
 	}
 	nextTask := &apimodels.NextTaskResponse{
 		TaskId:    "task_id2",

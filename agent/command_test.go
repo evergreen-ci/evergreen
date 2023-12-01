@@ -198,7 +198,8 @@ func TestEndTaskSyncCommands(t *testing.T) {
 				taskConfig: &internal.TaskConfig{
 					Task: tsk,
 				},
-				logger: logger,
+				logger:     logger,
+				oomTracker: &mock.OOMTracker{},
 			}
 			detail := &apimodels.TaskEndDetail{}
 			testCase(t, tc, detail)

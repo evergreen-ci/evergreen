@@ -70,6 +70,7 @@ input ProjectInput {
   restricted: Boolean
   spawnHostScriptPath: String
   stepbackDisabled: Boolean
+  stepbackBisect: Boolean
   taskAnnotationSettings: TaskAnnotationSettingsInput
   taskSync: TaskSyncOptionsInput
   tracksPushEvents: Boolean

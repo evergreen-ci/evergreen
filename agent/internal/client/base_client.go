@@ -942,7 +942,7 @@ func (c *baseCommunicator) GetDockerStatus(ctx context.Context, hostID string) (
 	defer resp.Body.Close()
 
 	if resp.StatusCode != http.StatusOK {
-		return nil, util.RespErrorf(resp, errors.Wrapf(err, "getting status for container '%s'", hostID).Error())
+		return nil, util.RespErrorf(resp, "getting status for container '%s'", hostID)
 	}
 	status := cloud.ContainerStatus{}
 	if err := utility.ReadJSON(resp.Body, &status); err != nil {
@@ -1057,4 +1057,19 @@ func (c *baseCommunicator) CreateInstallationToken(ctx context.Context, td TaskD
 	}
 
 	return token.Token, nil
+}
+
+// MarkFailedTaskToRestart will mark the task to automatically restart upon completion
+func (c *baseCommunicator) MarkFailedTaskToRestart(ctx context.Context, td TaskData) error {
+	info := requestInfo{
+		method:   http.MethodPost,
+		taskData: &td,
+	}
+	info.setTaskPathSuffix("restart")
+	resp, err := c.retryRequest(ctx, info, nil)
+	if err != nil {
+		return util.RespErrorf(resp, errors.Wrap(err, "marking task for restart").Error())
+	}
+	defer resp.Body.Close()
+	return nil
 }

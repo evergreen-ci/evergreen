@@ -249,6 +249,7 @@ type Project {
   restricted: Boolean
   spawnHostScriptPath: String!
   stepbackDisabled: Boolean
+  stepbackBisect: Boolean
   taskAnnotationSettings: TaskAnnotationSettings!
   taskSync: TaskSyncOptions!
   tracksPushEvents: Boolean

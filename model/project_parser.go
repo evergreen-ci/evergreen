@@ -974,7 +974,7 @@ func TranslateProject(pp *ParserProject) (*Project, error) {
 		PostTimeoutSecs:    utility.FromIntPtr(pp.PostTimeoutSecs),
 		PreErrorFailsTask:  utility.FromBoolPtr(pp.PreErrorFailsTask),
 		PostErrorFailsTask: utility.FromBoolPtr(pp.PostErrorFailsTask),
-		OomTracker:         utility.FromBoolPtr(pp.OomTracker),
+		OomTracker:         utility.FromBoolTPtr(pp.OomTracker), // oom tracker is true by default
 		BatchTime:          utility.FromIntPtr(pp.BatchTime),
 		Identifier:         utility.FromStringPtr(pp.Identifier),
 		DisplayName:        utility.FromStringPtr(pp.DisplayName),
