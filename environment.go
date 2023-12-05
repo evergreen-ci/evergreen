@@ -13,7 +13,6 @@ import (
 	"time"
 
 	"github.com/aws/aws-sdk-go-v2/config"
-	"github.com/aws/aws-sdk-go-v2/credentials/ec2rolecreds"
 	"github.com/evergreen-ci/certdepot"
 	"github.com/evergreen-ci/evergreen/util"
 	"github.com/evergreen-ci/gimlet"
@@ -354,11 +353,10 @@ func (e *envState) initDB(ctx context.Context, settings DBSettings) error {
 		SetMonitor(apm.NewMonitor(apm.WithCommandAttributeDisabled(false), apm.WithCommandAttributeTransformer(redactSensitiveCollections)))
 
 	if settings.AWSAuthEnabled {
-		creds, err := dbCreds(ctx)
-		if err != nil {
-			return errors.Wrap(err, "getting database credentials")
-		}
-		opts.SetAuth(creds)
+		opts.SetAuth(options.Credential{
+			AuthMechanism: awsAuthMechanism,
+			AuthSource:    mongoExternalAuthSource,
+		})
 	}
 
 	var err error
@@ -385,11 +383,10 @@ func (e *envState) createRemoteQueues(ctx context.Context) error {
 		SetMonitor(apm.NewMonitor(apm.WithCommandAttributeDisabled(false)))
 
 	if e.settings.Database.AWSAuthEnabled {
-		creds, err := dbCreds(ctx)
-		if err != nil {
-			return errors.Wrap(err, "getting database credentials")
-		}
-		opts.SetAuth(creds)
+		opts.SetAuth(options.Credential{
+			AuthMechanism: awsAuthMechanism,
+			AuthSource:    mongoExternalAuthSource,
+		})
 	}
 
 	client, err := mongo.Connect(ctx, opts)
@@ -401,20 +398,6 @@ func (e *envState) createRemoteQueues(ctx context.Context) error {
 	catcher.Add(e.createApplicationQueue(ctx, client))
 	catcher.Add(e.createRemoteQueueGroup(ctx, client))
 	return catcher.Resolve()
-}
-
-func dbCreds(ctx context.Context) (options.Credential, error) {
-	awsCreds, err := ec2rolecreds.New().Retrieve(ctx)
-	if err != nil {
-		return options.Credential{}, errors.Wrap(err, "getting AWS credentials")
-	}
-	return options.Credential{
-		AuthMechanism:           awsAuthMechanism,
-		AuthMechanismProperties: map[string]string{awsSessionToken: awsCreds.SessionToken},
-		AuthSource:              mongoExternalAuthSource,
-		Username:                awsCreds.AccessKeyID,
-		Password:                awsCreds.SecretAccessKey,
-	}, nil
 }
 
 func (e *envState) Context() (context.Context, context.CancelFunc) {
