@@ -168,6 +168,7 @@ type CommitQueueParams struct {
 	Enabled     *bool      `bson:"enabled" json:"enabled" yaml:"enabled"`
 	MergeMethod string     `bson:"merge_method" json:"merge_method" yaml:"merge_method"`
 	MergeQueue  MergeQueue `bson:"merge_queue" json:"merge_queue" yaml:"merge_queue"`
+	CLIOnly     bool       `bson:"cli_only" json:"cli_only" yaml:"cli_only"`
 	Message     string     `bson:"message,omitempty" json:"message,omitempty" yaml:"message"`
 }
 
