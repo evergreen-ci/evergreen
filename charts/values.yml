@@ -23,7 +23,9 @@ resources:
 
 env:
   MONGO_AWS_AUTH: true
-  MONGO_URL: mongodb+srv://evergreen.39ixf.mongodb.net
+
+envSecrets:
+  MONGO_URL: evergreen-secrets
 
 services:
   - name: http
