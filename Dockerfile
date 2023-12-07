@@ -17,7 +17,7 @@ ARG EVERGREEN_BUNDLE_ID
 RUN if [ -n "$MACOS_NOTARY_SECRET" ]; then make clients/darwin_amd64/.signed; fi
 
 # Production stage with only the necessary files
-FROM debian:bookworm-slim as production
+FROM gcr.io/distroless/static as production
 
 # Build time configuration
 ARG GOOS

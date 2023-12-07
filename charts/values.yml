@@ -1,5 +1,5 @@
 image:
-  repository: 795250896452.dkr.ecr.us-east-1.amazonaws.com/evergreen/evergreen-server
+  repository: 795250896452.dkr.ecr.us-east-1.amazonaws.com/devprod-evergreen/evergreen
 
 arch: arm64
 
@@ -20,6 +20,10 @@ resources:
   limits:
     cpu: 1000m
     memory: 1Gi
+
+env:
+  MONGO_AWS_AUTH: true
+  MONGO_URL: mongodb+srv://evergreen.39ixf.mongodb.net
 
 services:
   - name: http
