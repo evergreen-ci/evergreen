@@ -35,3 +35,5 @@ services:
     protocol: TCP
     targetPort: 9090
     type: ClusterIP
+
+replicaCount: 0
