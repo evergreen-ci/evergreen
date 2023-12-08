@@ -406,18 +406,11 @@ get-mongodb:mongodb/.get-mongodb
 get-mongosh: mongodb/.get-mongosh
 	@touch $<
 start-mongod:mongodb/.get-mongodb
-ifdef AUTH_ENABLED
-	echo "replica set key" > ./mongodb/keyfile.txt
-	chmod 600 ./mongodb/keyfile.txt
-endif
-	./mongodb/mongod $(if $(AUTH_ENABLED),--auth --keyFile ./mongodb/keyfile.txt,) --dbpath ./mongodb/db_files --port 27017 --replSet evg --oplogSize 10
+	./mongodb/mongod --dbpath ./mongodb/db_files --port 27017 --replSet evg --oplogSize 10
 configure-mongod:mongodb/.get-mongodb mongodb/.get-mongosh
 	./mongosh/mongosh --nodb ./cmd/init-mongo/wait_for_mongo.js
 	@echo "mongod is up"
 	./mongosh/mongosh --eval 'rs.initiate()'
-ifdef AUTH_ENABLED
-	./mongosh/mongosh ./cmd/init-mongo/create_auth_user.js
-endif
 	@echo "configured mongod"
 # end mongodb targets
 

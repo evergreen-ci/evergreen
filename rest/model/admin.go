@@ -417,8 +417,6 @@ func (a *APIAmboyDBConfig) BuildFromService(h interface{}) error {
 	case evergreen.AmboyDBConfig:
 		a.URL = utility.ToStringPtr(v.URL)
 		a.Database = utility.ToStringPtr(v.Database)
-		a.Username = utility.ToStringPtr(v.Username)
-		a.Password = utility.ToStringPtr(v.Password)
 		return nil
 	default:
 		return errors.Errorf("programmatic error: expected Amboy DB config but got type %T", h)
@@ -429,8 +427,6 @@ func (a *APIAmboyDBConfig) ToService() (interface{}, error) {
 	return evergreen.AmboyDBConfig{
 		URL:      utility.FromStringPtr(a.URL),
 		Database: utility.FromStringPtr(a.Database),
-		Username: utility.FromStringPtr(a.Username),
-		Password: utility.FromStringPtr(a.Password),
 	}, nil
 }
 
