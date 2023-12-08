@@ -91,8 +91,6 @@ func MockConfig() *evergreen.Settings {
 			DBConnection: evergreen.AmboyDBConfig{
 				Database: "db",
 				URL:      "mongodb://localhost:27017",
-				Username: "user",
-				Password: "password",
 			},
 			PoolSizeLocal:                         10,
 			PoolSizeRemote:                        20,
