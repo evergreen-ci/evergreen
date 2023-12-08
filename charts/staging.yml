@@ -5,4 +5,4 @@ serviceAccount:
   enabled: true
   irsa:
     accountId: "119629040606"
-    roleName: serviceaccounts/kanopy/staging/devprod-evergreen/irsa-evergreen-2DH8GLuy
+    roleName: serviceaccounts/kanopy/staging/devprod-evergreen/evergreen-sa-2DH8GLuy

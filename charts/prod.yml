@@ -27,4 +27,4 @@ serviceAccount:
   enabled: true
   irsa:
     accountId: "119629040606"
-    roleName: serviceaccounts/kanopy/default/devprod-evergreen/irsa-evergreen-seMfoQUv
+    roleName: serviceaccounts/kanopy/default/devprod-evergreen/evergreen-sa-seMfoQUv
