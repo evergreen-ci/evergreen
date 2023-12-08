@@ -53,9 +53,6 @@ trigger:
 steps:
   - name: deploy-staging
     image: quay.io/mongodb/drone-helm:v3
-    environment:
-      MONGO_URL:
-        from_secret: staging_mongo_url
     settings:
       api_server: https://api.staging.corp.mongodb.com
       chart: mongodb/web-app
@@ -84,9 +81,6 @@ trigger:
 steps:
   - name: deploy-prod
     image: quay.io/mongodb/drone-helm:v3
-    environment:
-      MONGO_URL:
-        from_secret: prod_mongo_url
     settings:
       api_server: https://api.prod.corp.mongodb.com
       chart: mongodb/web-app

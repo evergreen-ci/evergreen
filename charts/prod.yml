@@ -22,3 +22,9 @@ resources:
   limits:
     cpu: 6
     memory: 16Gi
+
+serviceAccount:
+  enabled: true
+  irsa:
+    accountId: "119629040606"
+    roleName: serviceaccounts/kanopy/default/devprod-evergreen/evergreen-sa-seMfoQUv

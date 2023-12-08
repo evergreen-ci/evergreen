@@ -32,4 +32,7 @@ COPY --from=build /build/clients/ ${EVGHOME}/clients/
 COPY ./public/ ${EVGHOME}/public/
 COPY ./service/templates/ ${EVGHOME}/service/templates/
 
+RUN apt-get update && \
+apt-get install -y ca-certificates
+
 ENTRYPOINT ${EVGHOME}/clients/${GOOS}_${GOARCH}/evergreen service web
