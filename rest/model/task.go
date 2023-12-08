@@ -173,7 +173,7 @@ type ApiTaskEndDetail struct {
 	TimeoutType *string           `json:"timeout_type"`
 	OOMTracker  APIOomTrackerInfo `json:"oom_tracker_info"`
 	TraceID     *string           `json:"trace_id"`
-	DiskDevices []string          `json:disk_devices`
+	DiskDevices []string          `json:"disk_devices"`
 }
 
 func (at *ApiTaskEndDetail) BuildFromService(t apimodels.TaskEndDetail) error {
