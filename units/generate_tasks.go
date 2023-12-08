@@ -79,6 +79,7 @@ func (j *generateTasksJob) generate(ctx context.Context, t *task.Task) error {
 		attribute.String(evergreen.VersionRequesterOtelAttribute, t.Requester)})
 	ctx, span := tracer.Start(ctx, "task-generation")
 	defer span.End()
+
 	if t.GeneratedTasks {
 		return mongo.ErrNoDocuments
 	}

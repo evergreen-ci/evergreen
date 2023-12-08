@@ -4,6 +4,7 @@ import (
 	"context"
 
 	"github.com/evergreen-ci/evergreen"
+	"github.com/evergreen-ci/evergreen/db"
 	"github.com/mongodb/grip"
 	"github.com/mongodb/grip/message"
 	"github.com/pkg/errors"
@@ -30,7 +31,7 @@ func GetGeneratedJSONFileStorage(settings *evergreen.Settings, method evergreen.
 	switch method {
 	case "", evergreen.ProjectStorageMethodDB:
 		return generatedJSONDBStorage{}, nil
-	case method:
+	case evergreen.ProjectStorageMethodS3:
 		return newGeneratedJSONS3Storage(settings.Providers.AWS.ParserProject)
 	default:
 		return nil, errors.Errorf("unrecognized generated JSON storage method '%s'", method)
@@ -71,23 +72,8 @@ func GeneratedJSONInsertWithS3Fallback(ctx context.Context, settings *evergreen.
 		return method, errors.Wrap(err, "inserting generated JSON files into S3")
 	}
 
-	// This is an undesirable workaround, but for some unknown reason, inserting
-	// into the DB may fail due to the 16 MB document size limit, but no error
-	// will be returned. Therefore, checking the insertion error to verify
-	// success/failure is insufficient.
-	// It's unclear why this happens, so to mitigate this, check if the
-	// generated JSON is actually set on the task in the DB. If so, the
-	// insertion was a success; if not, try using S3.
-	checkTask, err := FindOneId(t.Id)
-	if err != nil {
-		return method, errors.Wrapf(err, "getting task '%s' to check generated JSON file", t.Id)
-	}
-	if checkTask == nil {
-		return method, errors.Errorf("task '%s' not found for generated JSON file check", t.Id)
-	}
-
-	if len(checkTask.GeneratedJSONAsString) > 0 {
-		return method, nil
+	if !db.IsDocumentLimit(err) {
+		return method, errors.Wrap(err, "inserting generated JSON files into the DB")
 	}
 
 	newMethod := evergreen.ProjectStorageMethodS3
@@ -96,7 +82,7 @@ func GeneratedJSONInsertWithS3Fallback(ctx context.Context, settings *evergreen.
 	}
 
 	grip.Info(message.Fields{
-		"message":            "successfully upserted generated JSON files into S3 as fallback due to document size limitation",
+		"message":            "successfully inserted generated JSON files into S3 as fallback due to document size limitation",
 		"task_id":            t.Id,
 		"old_storage_method": method,
 		"new_storage_method": newMethod,

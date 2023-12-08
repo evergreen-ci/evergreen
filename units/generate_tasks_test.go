@@ -571,7 +571,7 @@ func TestGenerateTasksWithDifferentGeneratedJSONStorageMethods(t *testing.T) {
 			tasks, err := task.FindAll(db.Query(task.ByVersion("sample_version")))
 			assert.NoError(err)
 			assert.Len(tasks, 4)
-			all_tasks := map[string]bool{
+			allTasks := map[string]bool{
 				"sample_task":     false,
 				"lint-command":    false,
 				"lint-rest-route": false,
@@ -580,12 +580,12 @@ func TestGenerateTasksWithDifferentGeneratedJSONStorageMethods(t *testing.T) {
 			for _, t := range tasks {
 				assert.Equal("sample_version", t.Version)
 				assert.Equal("mci", t.Project)
-				all_tasks[t.DisplayName] = true
+				allTasks[t.DisplayName] = true
 				if t.Version == "my_display_task" {
 					assert.Len(t.ExecutionTasks, 1)
 				}
 			}
-			for _, v := range all_tasks {
+			for _, v := range allTasks {
 				assert.True(v)
 			}
 
