@@ -1263,6 +1263,7 @@ type ComplexityRoot struct {
 
 	TaskEndDetail struct {
 		Description func(childComplexity int) int
+		DiskDevices func(childComplexity int) int
 		OOMTracker  func(childComplexity int) int
 		Status      func(childComplexity int) int
 		TimedOut    func(childComplexity int) int
@@ -7970,6 +7971,13 @@ func (e *executableSchema) Complexity(typeName, field string, childComplexity in
 		}
 
 		return e.complexity.TaskEndDetail.Description(childComplexity), true
+
+	case "TaskEndDetail.diskDevices":
+		if e.complexity.TaskEndDetail.DiskDevices == nil {
+			break
+		}
+
+		return e.complexity.TaskEndDetail.DiskDevices(childComplexity), true
 
 	case "TaskEndDetail.oomTracker":
 		if e.complexity.TaskEndDetail.OOMTracker == nil {
@@ -51330,6 +51338,8 @@ func (ec *executionContext) fieldContext_Task_details(ctx context.Context, field
 				return ec.fieldContext_TaskEndDetail_type(ctx, field)
 			case "traceID":
 				return ec.fieldContext_TaskEndDetail_traceID(ctx, field)
+			case "diskDevices":
+				return ec.fieldContext_TaskEndDetail_diskDevices(ctx, field)
 			}
 			return nil, fmt.Errorf("no field named %q was found under type TaskEndDetail", field.Name)
 		},
@@ -54501,6 +54511,47 @@ func (ec *executionContext) _TaskEndDetail_traceID(ctx context.Context, field gr
 }
 
 func (ec *executionContext) fieldContext_TaskEndDetail_traceID(ctx context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "TaskEndDetail",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type String does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _TaskEndDetail_diskDevices(ctx context.Context, field graphql.CollectedField, obj *model.ApiTaskEndDetail) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_TaskEndDetail_diskDevices(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.DiskDevices, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		return graphql.Null
+	}
+	res := resTmp.([]string)
+	fc.Result = res
+	return ec.marshalOString2ᚕstring(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_TaskEndDetail_diskDevices(ctx context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
 	fc = &graphql.FieldContext{
 		Object:     "TaskEndDetail",
 		Field:      field,
@@ -82557,6 +82608,8 @@ func (ec *executionContext) _TaskEndDetail(ctx context.Context, sel ast.Selectio
 			}
 		case "traceID":
 			out.Values[i] = ec._TaskEndDetail_traceID(ctx, field, obj)
+		case "diskDevices":
+			out.Values[i] = ec._TaskEndDetail_diskDevices(ctx, field, obj)
 		default:
 			panic("unknown field " + strconv.Quote(field.Name))
 		}
