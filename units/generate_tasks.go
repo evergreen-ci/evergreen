@@ -52,9 +52,10 @@ func makeGenerateTaskJob() *generateTasksJob {
 
 // NewGenerateTasksJob returns a job that dynamically updates the project
 // configuration based on the given task's generate.tasks configuration.
-func NewGenerateTasksJob(versionID, taskID string, ts string) amboy.Job {
+func NewGenerateTasksJob(env evergreen.Environment, versionID, taskID string, ts string) amboy.Job {
 	j := makeGenerateTaskJob()
 	j.TaskID = taskID
+	j.env = env
 
 	j.SetID(fmt.Sprintf("%s-%s-%s", generateTasksJobName, taskID, ts))
 	versionScope := fmt.Sprintf("%s.%s", generateTasksJobName, versionID)
@@ -123,8 +124,13 @@ func (j *generateTasksJob) generate(ctx context.Context, t *task.Task) error {
 		return mongo.ErrNoDocuments
 	}
 
+	files, err := task.GeneratedJSONFind(ctx, j.env.Settings(), t)
+	if err != nil {
+		return errors.Wrapf(err, "finding generated JSON for task '%s'", t.Id)
+	}
+
 	var projects []model.GeneratedProject
-	projects, err = parseProjectsAsString(ctx, t.GeneratedJSONAsString)
+	projects, err = parseProjectsAsString(ctx, files)
 	if err != nil {
 		return errors.Wrap(err, "parsing JSON from `generate.tasks`")
 	}
@@ -287,7 +293,7 @@ func CreateAndEnqueueGenerateTasks(ctx context.Context, env evergreen.Environmen
 	for versionID, tasks := range versionTasksMap {
 		var jobs []amboy.Job
 		for _, t := range tasks {
-			jobs = append(jobs, NewGenerateTasksJob(versionID, t.Id, ts))
+			jobs = append(jobs, NewGenerateTasksJob(env, versionID, t.Id, ts))
 		}
 		queueName := fmt.Sprintf("service.generate.tasks.version.%s", versionID)
 		queue, err := env.RemoteQueueGroup().Get(appCtx, queueName)
@@ -302,12 +308,12 @@ func CreateAndEnqueueGenerateTasks(ctx context.Context, env evergreen.Environmen
 	return nil
 }
 
-func parseProjectsAsString(ctx context.Context, jsonStrings []string) ([]model.GeneratedProject, error) {
+func parseProjectsAsString(ctx context.Context, files task.GeneratedJSONFiles) ([]model.GeneratedProject, error) {
 	_, span := tracer.Start(ctx, "parse-projects")
 	defer span.End()
 	catcher := grip.NewBasicCatcher()
 	var projects []model.GeneratedProject
-	for _, f := range jsonStrings {
+	for _, f := range files {
 		p, err := model.ParseProjectFromJSONString(f)
 		if err != nil {
 			catcher.Add(err)
