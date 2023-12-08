@@ -356,7 +356,26 @@ func getInstallationTokenWithDefaultOwnerRepo(ctx context.Context, opts *github.
 
 // GetGithubCommits returns a slice of GithubCommit objects from
 // the given commitsURL when provided a valid oauth token
-func GetGithubCommits(ctx context.Context, owner, repo, ref string, until time.Time, commitPage int) ([]*github.RepositoryCommit, int, error) {
+// TODO DEVPROD-3094: Delete fallback after using GitHub apps for smoke tests.
+func GetGithubCommits(ctx context.Context, token, owner, repo, ref string, until time.Time, commitPage int) ([]*github.RepositoryCommit, int, error) {
+	commits, nextPage, err := getCommits(ctx, "", owner, repo, ref, until, commitPage)
+	if err == nil {
+		return commits, nextPage, nil
+	}
+	// TODO: (EVG-19966) Remove logging.
+	grip.DebugWhen(!errors.Is(err, missingTokenError), message.WrapError(err, message.Fields{
+		"ticket":  "EVG-19966",
+		"message": "failed to get commits from GitHub",
+		"caller":  "GetGithubCommits",
+		"owner":   owner,
+		"repo":    repo,
+		"ref":     ref,
+	}))
+
+	return getCommits(ctx, token, owner, repo, ref, until, commitPage)
+}
+
+func getCommits(ctx context.Context, token, owner, repo, ref string, until time.Time, commitPage int) ([]*github.RepositoryCommit, int, error) {
 	caller := "GetGithubCommits"
 	ctx, span := tracer.Start(ctx, caller, trace.WithAttributes(
 		attribute.String(githubEndpointAttribute, caller),
@@ -366,9 +385,12 @@ func GetGithubCommits(ctx context.Context, owner, repo, ref string, until time.T
 	))
 	defer span.End()
 
-	token, err := getInstallationToken(ctx, owner, repo, nil)
-	if err != nil {
-		return nil, 0, errors.Wrap(err, "getting installation token")
+	if token == "" {
+		var err error
+		token, err = getInstallationToken(ctx, owner, repo, nil)
+		if err != nil {
+			return nil, 0, errors.Wrap(err, "getting installation token")
+		}
 	}
 	githubClient := getGithubClient(token, caller, retryConfig{retry: true})
 

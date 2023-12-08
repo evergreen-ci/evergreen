@@ -113,7 +113,7 @@ func (gRepoPoller *GithubRepositoryPoller) GetRevisionsSince(revision string, ma
 
 	for len(revisions) < maxRevisionsToSearch {
 		var err error
-		commits, commitPage, err = thirdparty.GetGithubCommits(ctx, gRepoPoller.ProjectRef.Owner,
+		commits, commitPage, err = thirdparty.GetGithubCommits(ctx, gRepoPoller.OauthToken, gRepoPoller.ProjectRef.Owner,
 			gRepoPoller.ProjectRef.Repo, gRepoPoller.ProjectRef.Branch, time.Time{}, commitPage)
 		if err != nil {
 			return nil, err
@@ -250,7 +250,7 @@ func (gRepoPoller *GithubRepositoryPoller) GetRecentRevisions(maxRevisions int) 
 	for {
 		var err error
 		var repoCommits []*github.RepositoryCommit
-		repoCommits, commitPage, err = thirdparty.GetGithubCommits(ctx, gRepoPoller.ProjectRef.Owner,
+		repoCommits, commitPage, err = thirdparty.GetGithubCommits(ctx, gRepoPoller.OauthToken, gRepoPoller.ProjectRef.Owner,
 			gRepoPoller.ProjectRef.Repo, gRepoPoller.ProjectRef.Branch,
 			time.Time{}, commitPage)
 		if err != nil {

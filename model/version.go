@@ -789,7 +789,7 @@ func getManifestModule(v *Version, projectRef *ProjectRef, token string, module 
 			revisionTime = commit.Commit.Committer.GetDate().Time
 		}
 
-		branchCommits, _, err := thirdparty.GetGithubCommits(ghCtx, owner, repo, module.Branch, revisionTime, 0)
+		branchCommits, _, err := thirdparty.GetGithubCommits(ghCtx, token, owner, repo, module.Branch, revisionTime, 0)
 		if err != nil {
 			return nil, errors.Wrapf(err, "retrieving git branch for module '%s'", module.Name)
 		}
