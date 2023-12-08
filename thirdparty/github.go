@@ -434,7 +434,31 @@ func parseGithubErrorResponse(resp *github.Response) error {
 
 // GetGithubFile returns a struct that contains the contents of files within
 // a repository as Base64 encoded content. Ref should be the commit hash or branch (defaults to master).
-func GetGithubFile(ctx context.Context, owner, repo, path, ref string) (*github.RepositoryContent, error) {
+// TODO DEVPROD-3094: Delete fallback after using GitHub apps for smoke tests.
+func GetGithubFile(ctx context.Context, token, owner, repo, path, ref string) (*github.RepositoryContent, error) {
+	if path == "" {
+		return nil, errors.New("remote repository path cannot be empty")
+	}
+
+	content, err := getFile(ctx, "", owner, repo, path, ref)
+	if err == nil {
+		return content, nil
+	}
+	// TODO: (EVG-19966) Remove logging.
+	grip.DebugWhen(!errors.Is(err, missingTokenError), message.WrapError(err, message.Fields{
+		"ticket":  "EVG-19966",
+		"message": "failed to get a file from GitHub",
+		"caller":  "GetGithubFile",
+		"owner":   owner,
+		"repo":    repo,
+		"path":    path,
+		"ref":     ref,
+	}))
+
+	return getFile(ctx, token, owner, repo, path, ref)
+}
+
+func getFile(ctx context.Context, token, owner, repo, path, ref string) (*github.RepositoryContent, error) {
 	if path == "" {
 		return nil, errors.New("remote repository path cannot be empty")
 	}
@@ -449,9 +473,12 @@ func GetGithubFile(ctx context.Context, owner, repo, path, ref string) (*github.
 	))
 	defer span.End()
 
-	token, err := getInstallationToken(ctx, owner, repo, nil)
-	if err != nil {
-		return nil, errors.Wrap(err, "getting installation token")
+	if token == "" {
+		var err error
+		token, err = getInstallationToken(ctx, owner, repo, nil)
+		if err != nil {
+			return nil, errors.Wrap(err, "getting installation token")
+		}
 	}
 	githubClient := getGithubClient(token, caller, retryConfig{retry: true})
 

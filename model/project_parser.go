@@ -823,7 +823,7 @@ func retrieveFile(ctx context.Context, opts GetProjectOpts) ([]byte, error) {
 			}
 			opts.Token = ghToken
 		}
-		configFile, err := thirdparty.GetGithubFile(ctx, opts.Ref.Owner, opts.Ref.Repo, opts.RemotePath, opts.Revision)
+		configFile, err := thirdparty.GetGithubFile(ctx, opts.Token, opts.Ref.Owner, opts.Ref.Repo, opts.RemotePath, opts.Revision)
 		if err != nil {
 			return nil, errors.Wrapf(err, "fetching project file for project '%s' at revision '%s'", opts.Identifier, opts.Revision)
 		}
@@ -878,7 +878,7 @@ func getFileForPatchDiff(ctx context.Context, opts GetProjectOpts) ([]byte, erro
 		return nil, errors.New("project not passed in")
 	}
 	var projectFileBytes []byte
-	githubFile, err := thirdparty.GetGithubFile(ctx, opts.Ref.Owner,
+	githubFile, err := thirdparty.GetGithubFile(ctx, opts.Token, opts.Ref.Owner,
 		opts.Ref.Repo, opts.RemotePath, opts.Revision)
 	if err != nil {
 		// if the project file doesn't exist, but our patch includes a project file,
