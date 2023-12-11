@@ -150,7 +150,7 @@ func (s *githubSuite) TestCheckGithubAPILimit() {
 func (s *githubSuite) TestGetGithubCommits() {
 	githubCommits, _, err := GetGithubCommits(s.ctx, s.token, "evergreen-ci", "sample", "", time.Time{}, 0)
 	s.NoError(err)
-	s.Len(githubCommits, 8)
+	s.Len(githubCommits, 12)
 }
 
 func (s *githubSuite) TestGetGithubCommitsUntil() {
