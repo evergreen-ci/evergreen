@@ -84,7 +84,7 @@ func TestGenerateExecuteWithSmallFileInDB(t *testing.T) {
 	dbTask, err := task.FindOneId(tsk.Id)
 	require.NoError(t, err)
 	require.NotZero(t, dbTask)
-	assert.Equal(t, dbTask.GeneratedJSONStorageMethod, evergreen.ProjectStorageMethodDB)
+	assert.Equal(t, evergreen.ProjectStorageMethodDB, dbTask.GeneratedJSONStorageMethod)
 
 	genJSONInDB, err := task.GeneratedJSONFind(ctx, env.Settings(), dbTask)
 	require.NoError(t, err)
@@ -158,12 +158,12 @@ func TestGenerateExecuteWithLargeFileInS3(t *testing.T) {
 	dbTask, err := task.FindOneId(tsk.Id)
 	require.NoError(t, err)
 	require.NotZero(t, dbTask)
-	assert.Equal(t, dbTask.GeneratedJSONStorageMethod, evergreen.ProjectStorageMethodS3)
+	assert.Equal(t, evergreen.ProjectStorageMethodS3, dbTask.GeneratedJSONStorageMethod)
 
 	genJSONInS3, err := task.GeneratedJSONFind(ctx, env.Settings(), dbTask)
 	require.NoError(t, err)
 	require.Len(t, genJSONInS3, len(h.files), "generated JSON in S3 should be non-empty")
-	assert.EqualValues(t, genJSONInS3[0], genJSON.String())
+	assert.EqualValues(t, genJSON.String(), genJSONInS3[0])
 
 	queue, err := env.RemoteQueueGroup().Get(ctx, fmt.Sprintf("service.generate.tasks.version.%s", tsk.Version))
 	require.NoError(t, err)

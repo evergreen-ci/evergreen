@@ -48,10 +48,6 @@ func parseJson(r *http.Request) ([]json.RawMessage, error) {
 }
 
 func (h *generateHandler) Run(ctx context.Context) gimlet.Responder {
-	var totalFileSize int
-	for _, f := range h.files {
-		totalFileSize += len(f)
-	}
 	if err := data.GenerateTasks(ctx, h.env.Settings(), h.taskID, h.files); err != nil {
 		return gimlet.MakeJSONInternalErrorResponder(errors.Wrapf(err, "generating tasks for task '%s'", h.taskID))
 	}
