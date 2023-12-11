@@ -1,5 +1,5 @@
 image:
-  repository: 795250896452.dkr.ecr.us-east-1.amazonaws.com/evergreen/evergreen-server
+  repository: 795250896452.dkr.ecr.us-east-1.amazonaws.com/devprod-evergreen/evergreen
 
 arch: arm64
 
@@ -21,6 +21,12 @@ resources:
     cpu: 1000m
     memory: 1Gi
 
+env:
+  MONGO_AWS_AUTH: true
+
+envSecrets:
+  MONGO_URL: evergreen-secrets
+
 services:
   - name: http
     ingress: true
@@ -29,3 +35,5 @@ services:
     protocol: TCP
     targetPort: 9090
     type: ClusterIP
+
+replicaCount: 0

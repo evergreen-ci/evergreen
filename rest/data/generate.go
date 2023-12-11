@@ -12,7 +12,7 @@ import (
 )
 
 // GenerateTasks parses JSON files for `generate.tasks` and creates the new builds and tasks.
-func GenerateTasks(taskID string, jsonBytes []json.RawMessage) error {
+func GenerateTasks(taskID string, jsonFiles []json.RawMessage) error {
 	t, err := task.FindOneId(taskID)
 	if err != nil {
 		return errors.Wrapf(err, "finding task '%s'", taskID)
@@ -30,7 +30,11 @@ func GenerateTasks(taskID string, jsonBytes []json.RawMessage) error {
 		}
 	}
 
-	if err = t.SetGeneratedJSON(jsonBytes); err != nil {
+	var files task.GeneratedJSONFiles
+	for _, j := range jsonFiles {
+		files = append(files, string(j))
+	}
+	if err = t.SetGeneratedJSON(files); err != nil {
 		return errors.Wrapf(err, "setting generated JSON for task '%s'", t.Id)
 	}
 

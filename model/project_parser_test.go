@@ -1983,6 +1983,10 @@ func TestParserProjectStorage(t *testing.T) {
 		assert.NoError(t, bucket.RemovePrefix(ctx, ppConf.Prefix))
 	}()
 
+	defer func() {
+		assert.NoError(t, db.ClearCollections(ParserProjectCollection))
+	}()
+
 	for methodName, ppStorageMethod := range map[string]evergreen.ParserProjectStorageMethod{
 		"DB": evergreen.ProjectStorageMethodDB,
 		"S3": evergreen.ProjectStorageMethodS3,

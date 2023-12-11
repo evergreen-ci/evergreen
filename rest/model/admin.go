@@ -417,8 +417,6 @@ func (a *APIAmboyDBConfig) BuildFromService(h interface{}) error {
 	case evergreen.AmboyDBConfig:
 		a.URL = utility.ToStringPtr(v.URL)
 		a.Database = utility.ToStringPtr(v.Database)
-		a.Username = utility.ToStringPtr(v.Username)
-		a.Password = utility.ToStringPtr(v.Password)
 		return nil
 	default:
 		return errors.Errorf("programmatic error: expected Amboy DB config but got type %T", h)
@@ -429,8 +427,6 @@ func (a *APIAmboyDBConfig) ToService() (interface{}, error) {
 	return evergreen.AmboyDBConfig{
 		URL:      utility.FromStringPtr(a.URL),
 		Database: utility.FromStringPtr(a.Database),
-		Username: utility.FromStringPtr(a.Username),
-		Password: utility.FromStringPtr(a.Password),
 	}, nil
 }
 
@@ -1712,7 +1708,8 @@ func (a *APIS3Credentials) ToService() (interface{}, error) {
 // accessing parser projects in S3.
 type APIParserProjectS3Config struct {
 	APIS3Credentials
-	Prefix *string `json:"prefix"`
+	Prefix              *string `json:"prefix"`
+	GeneratedJSONPrefix *string `json:"generated_json_prefix"`
 }
 
 func (a *APIParserProjectS3Config) BuildFromService(h interface{}) error {
@@ -1722,6 +1719,7 @@ func (a *APIParserProjectS3Config) BuildFromService(h interface{}) error {
 		a.Secret = utility.ToStringPtr(v.Secret)
 		a.Bucket = utility.ToStringPtr(v.Bucket)
 		a.Prefix = utility.ToStringPtr(v.Prefix)
+		a.GeneratedJSONPrefix = utility.ToStringPtr(v.GeneratedJSONPrefix)
 		return nil
 	default:
 		return errors.Errorf("programmatic error: expected parser project S3 config but got type %T", h)
@@ -1738,7 +1736,8 @@ func (a *APIParserProjectS3Config) ToService() (interface{}, error) {
 			Secret: utility.FromStringPtr(a.Secret),
 			Bucket: utility.FromStringPtr(a.Bucket),
 		},
-		Prefix: utility.FromStringPtr(a.Prefix),
+		Prefix:              utility.FromStringPtr(a.Prefix),
+		GeneratedJSONPrefix: utility.FromStringPtr(a.GeneratedJSONPrefix),
 	}, nil
 }
 

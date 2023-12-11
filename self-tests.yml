@@ -184,7 +184,6 @@ functions:
       binary: make
       args: ["${make_args|}", "${target}"]
       include_expansions_in_env:
-        - AUTH_ENABLED
         - GOROOT
         - MONGO_CREDS_FILE
         - RUN_TEST
@@ -241,7 +240,8 @@ functions:
         CROWD_SERVER: ${crowdserver}
         AWS_KEY: ${aws_key}
         AWS_SECRET: ${aws_secret}
-        PARSER_PROJECT_S3_PREFIX: ${task_id}
+        PARSER_PROJECT_S3_PREFIX: ${task_id}/parser-projects
+        GENERATED_JSON_S3_PREFIX: ${task_id}/generated-json
         JIRA_PRIVATE_KEY: ${jira_private_key}
         JIRA_ACCESS_TOKEN: ${jira_access_token}
         JIRA_TOKEN_SECRET: ${jira_token_secret}
@@ -270,15 +270,11 @@ functions:
         background: true
         working_dir: evergreen
         command: make start-mongod
-        env:
-          AUTH_ENABLED: ${with_auth}
     - command: subprocess.exec
       type: setup
       params:
         working_dir: evergreen
         command: make configure-mongod
-        env:
-          AUTH_ENABLED: ${with_auth}
 
   setup-docker-host:
     - command: host.create
@@ -588,18 +584,6 @@ tasks:
     commands:
       - func: get-project-and-modules
       - func: verify-merge-function-update
-  - name: test-db-auth
-    commands:
-      - func: get-project-and-modules
-      - func: setup-credentials
-      - func: setup-mongodb
-        vars: { with_auth: "1" }
-      - func: run-make
-        vars:
-          target: "test-evergreen"
-          AUTH_ENABLED: 1
-          RUN_TEST: "TestEnvironmentSuite/TestInitDB"
-          MONGO_CREDS_FILE: testdata/test_auth.yml
   - name: generate-api-docs
     commands: 
       - func: get-project-and-modules
@@ -670,7 +654,6 @@ buildvariants:
       - name: ".smoke"
       - name: ".test"
       - name: ".linter"
-      - name: test-db-auth
       - name: test-cloud
       - name: "js-test"
       - name: generate-api-docs
@@ -689,7 +672,6 @@ buildvariants:
       test_timeout: 15m
     tasks:
       - name: ".test"
-      - name: test-db-auth
 
   - name: ubuntu2004-container
     display_name: Ubuntu 20.04 (Container)
@@ -710,7 +692,6 @@ buildvariants:
       - name: ".test"
       - name: "js-test"
       - name: ".linter"
-      - name: test-db-auth
       - name: "dist-staging"
 
   - name: lint
