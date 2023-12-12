@@ -628,7 +628,7 @@ func loadGitData(dir, branch, ref, commits string, format bool, extraArgs ...str
 	// In the case a range is passed, we only need one commit to determine the base, so we use the first commit.
 	// For details see: https://git-scm.com/docs/gitrevisions
 
-	mergeBase, err := gitMergeBase(dir, branch+"@{upstream}", ref, commits)
+	mergeBase, err := gitMergeBase(dir, "upstream/"+branch, ref, commits)
 	if err != nil {
 		return nil, errors.Wrapf(err, "Error getting merge base, "+
 			"may need to create local branch '%s' and have it track upstream", branch)
