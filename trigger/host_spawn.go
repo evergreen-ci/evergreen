@@ -10,7 +10,6 @@ import (
 	"github.com/evergreen-ci/evergreen/model/host"
 	"github.com/evergreen-ci/evergreen/model/notification"
 	"github.com/evergreen-ci/utility"
-	"github.com/mongodb/grip"
 	"github.com/mongodb/grip/message"
 	"github.com/pkg/errors"
 )
@@ -176,31 +175,10 @@ func makeSpawnHostStateChangeTriggers() eventHandler {
 }
 
 func (t *spawnHostStateChangeTriggers) spawnHostStateChangeOutcome(sub *event.Subscription) (*notification.Notification, error) {
-	grip.Info(message.Fields{
-		"message":         "kim: checking if need to send notification",
-		"op":              "spawnHostStateChangeOutcome",
-		"event_id":        t.event.ID,
-		"event_type":      t.event.EventType,
-		"subscription_id": sub.ID,
-	})
 	if !t.host.UserHost {
-		grip.Info(message.Fields{
-			"message":         "kim: do not need to send notification because it is not a spawn host",
-			"op":              "spawnHostStateChangeOutcome",
-			"event_id":        t.event.ID,
-			"event_type":      t.event.EventType,
-			"subscription_id": sub.ID,
-		})
 		return nil, nil
 	}
 	if utility.StringSliceContains([]string{event.EventHostCreated, event.EventHostStarted}, t.event.EventType) && t.data.Successful {
-		grip.Info(message.Fields{
-			"message":         "kim: do not need to send notification because it was success",
-			"event_id":        t.event.ID,
-			"subscription_id": sub.ID,
-			"event_type":      t.event.EventType,
-			"op":              "spawnHostStateChangeOutcome",
-		})
 		// When a spawn host is being created, only send a notification if it
 		// encounters an error. On success, there will be a notification later
 		// on when the host is up and running.
@@ -210,14 +188,6 @@ func (t *spawnHostStateChangeTriggers) spawnHostStateChangeOutcome(sub *event.Su
 	if err != nil {
 		return nil, errors.Wrap(err, "making payload")
 	}
-
-	grip.Info(message.Fields{
-		"message":         "kim: created notification",
-		"event_id":        t.event.ID,
-		"subscription_id": sub.ID,
-		"event_type":      t.event.EventType,
-		"op":              "spawnHostStateChangeOutcome",
-	})
 
 	return notification.New(t.event.ID, sub.Trigger, &sub.Subscriber, payload)
 }

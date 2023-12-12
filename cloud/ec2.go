@@ -454,9 +454,6 @@ func (m *ec2Manager) SpawnHost(ctx context.Context, h *host.Host) (*host.Host, e
 		return nil, errors.Errorf("can't spawn EC2 instance for distro '%s': distro provider is '%s'",
 			h.Distro.Id, h.Distro.Provider)
 	}
-	if h.StartedBy == "kimberly.tao" {
-		return nil, errors.New("kim: some fake host creation error")
-	}
 
 	if err := m.client.Create(ctx, m.credentials, m.region); err != nil {
 		return nil, errors.Wrap(err, "creating client")
