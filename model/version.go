@@ -745,9 +745,10 @@ func constructManifest(v *Version, projectRef *ProjectRef, moduleList ModuleList
 		}
 	}
 
+	isMergePatch := v.Requester == evergreen.MergeTestRequester
 	modules := map[string]*manifest.Module{}
 	for _, module := range moduleList {
-		if isPatch && !module.AutoUpdate && baseManifest != nil {
+		if isPatch && !isMergePatch && !module.AutoUpdate && baseManifest != nil {
 			if baseModule, ok := baseManifest.Modules[module.Name]; ok {
 				modules[module.Name] = baseModule
 				continue
