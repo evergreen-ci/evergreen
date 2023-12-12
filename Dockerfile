@@ -17,22 +17,11 @@ ARG EVERGREEN_BUNDLE_ID
 RUN if [ -n "$MACOS_NOTARY_SECRET" ]; then make clients/darwin_amd64/.signed; fi
 
 # Production stage with only the necessary files
-FROM debian:bookworm-slim as production
+FROM gcr.io/distroless/static as production
 
-# Build time configuration
-ARG GOOS
-ARG GOARCH
-
-ENV GOOS=${GOOS}
-ENV GOARCH=${GOARCH}
 ENV EVGHOME=/srv
 
 # Put static assets where Evergreen expects them
 COPY --from=build /build/clients/ ${EVGHOME}/clients/
 COPY ./public/ ${EVGHOME}/public/
 COPY ./service/templates/ ${EVGHOME}/service/templates/
-
-RUN apt-get update && \
-apt-get install -y ca-certificates
-
-ENTRYPOINT ${EVGHOME}/clients/${GOOS}_${GOARCH}/evergreen service web

@@ -7,6 +7,8 @@ replicaCount: 1
 
 ingress:
   enabled: true
+mesh:
+  enabled: true
 
 defaultAlerts:
   enabled: false
@@ -38,3 +40,8 @@ services:
     type: ClusterIP
 
 replicaCount: 0
+
+command:
+  - ${EVGHOME}/clients/${GOOS}_${GOARCH}/evergreen
+  - service
+  - web

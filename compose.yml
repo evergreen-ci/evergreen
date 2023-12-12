@@ -1,22 +1,18 @@
 version: "3"
 services:
   evergreen:
+    entrypoint: /srv/clients/linux_amd64/evergreen service web
     depends_on: 
       - mongo
     ports:
       - 9090:9090
     build:
       dockerfile: Dockerfile
-      target: production
-      args:
-        GOOS: linux
-        GOARCH: arm64
     environment:
       MONGO_URL: mongodb://mongo:27017
   mongo:
     build:
       dockerfile: Dockerfile-seeded-mongo
-      target: seeded-mongo
     environment:
       MONGO_URL: mongodb://mongo:27017
     volumes:
