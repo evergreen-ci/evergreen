@@ -382,34 +382,12 @@ func (j *commitQueueJob) processGitHubPRItem(ctx context.Context, cq *commitqueu
 		return
 	}
 
-	patchDoc, err := patch.FindOneId(nextItem.PatchId)
+	v, projectConfig, err := updateAndFinalizeCqPatch(ctx, j.env.Settings(), nextItem.PatchId, commitqueue.SourcePullRequest, projectRef, true, githubToken)
 	if err != nil {
-		j.AddError(errors.Wrapf(err, "finding patch '%s'", nextItem.Version))
-		j.AddError(thirdparty.SendCommitQueueGithubStatus(ctx, j.env, pr, message.GithubStateFailure, "no patch found", ""))
-		j.dequeue(ctx, cq, *nextItem, fmt.Sprintf("could not find patch '%s'", nextItem.PatchId))
-		return
-	}
-	if patchDoc == nil {
-		errMsg := fmt.Sprintf("patch '%s' not found", nextItem.Version)
-		j.AddError(errors.New(errMsg))
-		j.AddError(thirdparty.SendCommitQueueGithubStatus(ctx, j.env, pr, message.GithubStateFailure, "no patch found", ""))
-		j.dequeue(ctx, cq, *nextItem, errMsg)
-		return
-	}
-	projectConfig, _, err := model.GetPatchedProject(ctx, j.env.Settings(), patchDoc, githubToken)
-	if err != nil {
-		err = errors.Wrap(err, "getting patched project")
 		j.logError(err, *nextItem)
 		j.dequeue(ctx, cq, *nextItem, err.Error())
-		j.AddError(thirdparty.SendCommitQueueGithubStatus(ctx, j.env, pr, message.GithubStateFailure, "can't get project config", ""))
-	}
-
-	v, err := model.FinalizePatch(ctx, patchDoc, evergreen.MergeTestRequester, githubToken)
-	if err != nil {
-		err = errors.Wrap(err, "finalizing patch")
-		j.logError(err, *nextItem)
-		j.dequeue(ctx, cq, *nextItem, err.Error())
-		j.AddError(thirdparty.SendCommitQueueGithubStatus(ctx, j.env, pr, message.GithubStateFailure, "can't finalize patch", ""))
+		j.AddError(err)
+		j.AddError(thirdparty.SendCommitQueueGithubStatus(ctx, j.env, pr, message.GithubStateFailure, err.Error(), ""))
 		return
 	}
 	nextItem.Version = v.Id
@@ -432,74 +410,15 @@ func (j *commitQueueJob) processGitHubPRItem(ctx context.Context, cq *commitqueu
 		return
 	}
 	for _, modulePR := range modulePRs {
-		j.AddError(thirdparty.SendCommitQueueGithubStatus(ctx, j.env, modulePR, message.GithubStatePending, "preparing to test merge", patchDoc.Id.Hex()))
+		j.AddError(thirdparty.SendCommitQueueGithubStatus(ctx, j.env, modulePR, message.GithubStatePending, "preparing to test merge", v.Id))
 	}
 
 	event.LogCommitQueueStartTestEvent(v.Id)
 }
 
 func (j *commitQueueJob) processCLIPatchItem(ctx context.Context, cq *commitqueue.CommitQueue, nextItem *commitqueue.CommitQueueItem, projectRef *model.ProjectRef, githubToken string) {
-	patchDoc, err := patch.FindOneId(nextItem.Issue)
+	v, _, err := updateAndFinalizeCqPatch(ctx, j.env.Settings(), nextItem.Issue, commitqueue.SourceDiff, projectRef, false, githubToken)
 	if err != nil {
-		err = errors.Wrapf(err, "finding patch '%s'", nextItem.Issue)
-		j.logError(err, *nextItem)
-		event.LogCommitQueueEnqueueFailed(nextItem.Issue, err)
-		j.dequeue(ctx, cq, *nextItem, err.Error())
-		return
-	}
-	if patchDoc == nil {
-		err := errors.Errorf("patch '%s' not found", nextItem.Issue)
-		j.logError(err, *nextItem)
-		event.LogCommitQueueEnqueueFailed(nextItem.Issue, err)
-		j.dequeue(ctx, cq, *nextItem, err.Error())
-		return
-	}
-
-	project, pp, err := updatePatch(ctx, j.env.Settings(), githubToken, projectRef, patchDoc)
-	if err != nil {
-		err = errors.Wrap(err, "updating patch")
-		j.logError(err, *nextItem)
-		event.LogCommitQueueEnqueueFailed(nextItem.Issue, err)
-		j.dequeue(ctx, cq, *nextItem, err.Error())
-		return
-	}
-
-	pp, err = AddMergeTaskAndVariant(ctx, patchDoc, project, projectRef, commitqueue.SourceDiff)
-	if err != nil {
-		err = errors.Wrap(err, "updating patch project config to include merge task")
-		j.logError(err, *nextItem)
-		event.LogCommitQueueEnqueueFailed(nextItem.Issue, err)
-		j.dequeue(ctx, cq, *nextItem, err.Error())
-		return
-	}
-
-	if err = patchDoc.UpdateGithashProjectAndTasks(); err != nil {
-		err = errors.Wrap(err, "updating patch after including merge task")
-		j.logError(err, *nextItem)
-		event.LogCommitQueueEnqueueFailed(nextItem.Issue, err)
-		j.dequeue(ctx, cq, *nextItem, err.Error())
-		return
-	}
-
-	// The parser project is typically created when the patch is created. This
-	// is a special exception where it upserts the parser project right before
-	// it's finalized, because original CLI patch might be very outdated
-	// compared to the latest project configuration. For the commit queue, it's
-	// best to test against the latest project configuration.
-	pp.Init(patchDoc.Id.Hex(), patchDoc.CreateTime)
-	ppStorageMethod, err := model.ParserProjectUpsertOneWithS3Fallback(ctx, j.env.Settings(), evergreen.ProjectStorageMethodDB, pp)
-	if err != nil {
-		err = errors.Wrap(err, "upserting parser project for patch")
-		j.logError(err, *nextItem)
-		event.LogCommitQueueEnqueueFailed(nextItem.Issue, err)
-		j.dequeue(ctx, cq, *nextItem, err.Error())
-		return
-	}
-	patchDoc.ProjectStorageMethod = ppStorageMethod
-
-	v, err := model.FinalizePatch(ctx, patchDoc, evergreen.MergeTestRequester, githubToken)
-	if err != nil {
-		err = errors.Wrap(err, "finalizing patch")
 		j.logError(err, *nextItem)
 		event.LogCommitQueueEnqueueFailed(nextItem.Issue, err)
 		j.dequeue(ctx, cq, *nextItem, err.Error())
@@ -515,11 +434,62 @@ func (j *commitQueueJob) processCLIPatchItem(ctx context.Context, cq *commitqueu
 		return
 	}
 
-	if err = setDefaultNotification(patchDoc.Author); err != nil {
+	if err = setDefaultNotification(v.Author); err != nil {
 		err = errors.Wrap(err, "setting up default commit queue notification")
 		j.logError(err, *nextItem)
 	}
 	event.LogCommitQueueStartTestEvent(v.Id)
+}
+
+func updateAndFinalizeCqPatch(ctx context.Context, settings *evergreen.Settings, patchId, source string, projectRef *model.ProjectRef, returnProjectConfig bool, githubToken string) (*model.Version, *model.Project, error) {
+	patchDoc, err := patch.FindOneId(patchId)
+	if err != nil {
+		return nil, nil, errors.Wrapf(err, "finding patch '%s'", patchId)
+	}
+	if patchDoc == nil {
+		return nil, nil, errors.Errorf("patch '%s' not found", patchId)
+	}
+
+	var projectConfig *model.Project
+	if returnProjectConfig {
+		projectConfig, _, err = model.GetPatchedProject(ctx, settings, patchDoc, githubToken)
+		if err != nil {
+			return nil, nil, errors.Wrap(err, "getting patched project")
+		}
+	}
+
+	project, pp, err := updatePatch(ctx, settings, githubToken, projectRef, patchDoc)
+	if err != nil {
+		return nil, nil, errors.Wrap(err, "updating patch")
+	}
+
+	pp, err = AddMergeTaskAndVariant(ctx, patchDoc, project, projectRef, source)
+	if err != nil {
+		return nil, nil, errors.Wrap(err, "updating patch project config to include merge task")
+	}
+
+	if err = patchDoc.UpdateGithashProjectAndTasks(); err != nil {
+		return nil, nil, errors.Wrap(err, "updating patch after including merge task")
+	}
+
+	// The parser project is typically created when the patch is created. This
+	// is a special exception where it upserts the parser project right before
+	// it's finalized, because original CLI patch might be very outdated
+	// compared to the latest project configuration. For the commit queue, it's
+	// best to test against the latest project configuration.
+	pp.Init(patchDoc.Id.Hex(), patchDoc.CreateTime)
+	ppStorageMethod, err := model.ParserProjectUpsertOneWithS3Fallback(ctx, settings, evergreen.ProjectStorageMethodDB, pp)
+	if err != nil {
+		return nil, nil, errors.Wrap(err, "upserting parser project for patch")
+	}
+	patchDoc.ProjectStorageMethod = ppStorageMethod
+
+	v, err := model.FinalizePatch(ctx, patchDoc, evergreen.MergeTestRequester, githubToken)
+	if err != nil {
+		return nil, nil, errors.Wrap(err, "finalizing patch")
+	}
+
+	return v, projectConfig, nil
 }
 
 func (j *commitQueueJob) logError(err error, item commitqueue.CommitQueueItem) {
