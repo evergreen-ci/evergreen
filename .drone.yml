@@ -8,6 +8,7 @@ trigger:
     - main
   event:
     - push
+    - pull_request
 
 clone:
   depth: 1
