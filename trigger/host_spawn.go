@@ -9,6 +9,8 @@ import (
 	"github.com/evergreen-ci/evergreen/model/event"
 	"github.com/evergreen-ci/evergreen/model/host"
 	"github.com/evergreen-ci/evergreen/model/notification"
+	"github.com/evergreen-ci/utility"
+	"github.com/mongodb/grip"
 	"github.com/mongodb/grip/message"
 	"github.com/pkg/errors"
 )
@@ -16,6 +18,7 @@ import (
 func init() {
 	registry.registerEventHandler(event.ResourceTypeHost, event.EventHostProvisioned, makeSpawnHostProvisioningTriggers)
 	registry.registerEventHandler(event.ResourceTypeHost, event.EventHostProvisionFailed, makeSpawnHostProvisioningTriggers)
+	registry.registerEventHandler(event.ResourceTypeHost, event.EventHostCreated, makeSpawnHostStateChangeTriggers)
 	registry.registerEventHandler(event.ResourceTypeHost, event.EventHostStarted, makeSpawnHostStateChangeTriggers)
 	registry.registerEventHandler(event.ResourceTypeHost, event.EventHostStopped, makeSpawnHostStateChangeTriggers)
 	registry.registerEventHandler(event.ResourceTypeHost, event.EventHostModified, makeSpawnHostStateChangeTriggers)
@@ -48,7 +51,7 @@ func (t *spawnHostProvisioningTriggers) slack() *notification.SlackPayload {
 		TitleLink: spawnHostURL(t.uiConfig.Url),
 		Color:     evergreenFailColor,
 		Fields: []*message.SlackAttachmentField{
-			&message.SlackAttachmentField{
+			{
 				Title: "Distro",
 				Value: t.host.Distro.Id,
 				Short: true,
@@ -173,11 +176,34 @@ func makeSpawnHostStateChangeTriggers() eventHandler {
 }
 
 func (t *spawnHostStateChangeTriggers) spawnHostStateChangeOutcome(sub *event.Subscription) (*notification.Notification, error) {
+	grip.Info(message.Fields{
+		"message":         "kim: checking if need to send notification",
+		"op":              "spawnHostStateChangeOutcome",
+		"event_id":        t.event.ID,
+		"event_type":      t.event.EventType,
+		"subscription_id": sub.ID,
+	})
 	if !t.host.UserHost {
+		grip.Info(message.Fields{
+			"message":         "kim: do not need to send notification because it is not a spawn host",
+			"op":              "spawnHostStateChangeOutcome",
+			"event_id":        t.event.ID,
+			"event_type":      t.event.EventType,
+			"subscription_id": sub.ID,
+		})
 		return nil, nil
 	}
-	if t.event.EventType == event.EventHostStarted && t.data.Successful && !t.host.Provisioned {
-		// we'll send notification when provisioning, so return
+	if utility.StringSliceContains([]string{event.EventHostCreated, event.EventHostStarted}, t.event.EventType) && t.data.Successful {
+		grip.Info(message.Fields{
+			"message":         "kim: do not need to send notification because it was success",
+			"event_id":        t.event.ID,
+			"subscription_id": sub.ID,
+			"event_type":      t.event.EventType,
+			"op":              "spawnHostStateChangeOutcome",
+		})
+		// When a spawn host is being created, only send a notification if it
+		// encounters an error. On success, there will be a notification later
+		// on when the host is up and running.
 		return nil, nil
 	}
 	payload, err := t.makePayload(sub)
@@ -185,12 +211,22 @@ func (t *spawnHostStateChangeTriggers) spawnHostStateChangeOutcome(sub *event.Su
 		return nil, errors.Wrap(err, "making payload")
 	}
 
+	grip.Info(message.Fields{
+		"message":         "kim: created notification",
+		"event_id":        t.event.ID,
+		"subscription_id": sub.ID,
+		"event_type":      t.event.EventType,
+		"op":              "spawnHostStateChangeOutcome",
+	})
+
 	return notification.New(t.event.ID, sub.Trigger, &sub.Subscriber, payload)
 }
 
 func (t *spawnHostStateChangeTriggers) makePayload(sub *event.Subscription) (interface{}, error) {
 	var action string
 	switch t.event.EventType {
+	case event.EventHostCreated:
+		action = "Creating"
 	case event.EventHostStarted:
 		action = "Starting"
 	case event.EventHostStopped:

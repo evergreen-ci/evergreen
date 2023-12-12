@@ -30,6 +30,15 @@ func NotificationsFromEvent(ctx context.Context, e *event.EventLogEntry) ([]noti
 	if h == nil {
 		return nil, errors.Errorf("unknown event resource type '%s' or event type '%s'", e.ResourceType, e.EventType)
 	}
+	if e.EventType == event.EventHostCreated {
+		grip.Info(message.Fields{
+			"message":    "kim: creating notifications for host creation event",
+			"event_id":   e.ID,
+			"r_id":       e.ResourceId,
+			"r_type":     e.ResourceType,
+			"event_type": e.EventType,
+		})
+	}
 
 	if err := h.Fetch(ctx, e); err != nil {
 		return nil, errors.Wrapf(err, "fetching data for event '%s' (resource type: '%s', event type: '%s')", e.ID, e.ResourceType, e.EventType)
@@ -52,6 +61,13 @@ func NotificationsFromEvent(ctx context.Context, e *event.EventLogEntry) ([]noti
 	}
 	grip.Info(msg)
 	if len(subscriptions) == 0 {
+		grip.Info(message.Fields{
+			"message":    "kim: no subscriptions matching resource type",
+			"event_id":   e.ID,
+			"r_id":       e.ResourceId,
+			"r_type":     e.ResourceType,
+			"event_type": e.EventType,
+		})
 		return nil, nil
 	}
 
@@ -59,6 +75,15 @@ func NotificationsFromEvent(ctx context.Context, e *event.EventLogEntry) ([]noti
 
 	catcher := grip.NewSimpleCatcher()
 	for i := range subscriptions {
+		grip.Info(message.Fields{
+			"message":    "kim: found at least one subscription matching resource type",
+			"event_id":   e.ID,
+			"r_id":       e.ResourceId,
+			"r_type":     e.ResourceType,
+			"event_type": e.EventType,
+			"sub_id":     subscriptions[i].ID,
+		})
+
 		n, err := h.Process(&subscriptions[i])
 		msg := message.Fields{
 			"source":              "events-processing",

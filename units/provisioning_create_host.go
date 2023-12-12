@@ -216,9 +216,22 @@ func (j *createHostJob) Run(ctx context.Context) {
 	}
 
 	defer func() {
-		if j.RetryInfo().GetRemainingAttempts() == 0 && j.HasErrors() && (j.host.Status == evergreen.HostUninitialized || j.host.Status == evergreen.HostBuilding) && j.host.SpawnOptions.SpawnedByTask {
-			if err := task.AddHostCreateDetails(j.host.StartedBy, j.host.Id, j.host.SpawnOptions.TaskExecutionNumber, j.Error()); err != nil {
-				j.AddError(errors.Wrapf(err, "adding host create error details"))
+		if j.RetryInfo().GetRemainingAttempts() == 0 && j.HasErrors() && (j.host.Status == evergreen.HostUninitialized || j.host.Status == evergreen.HostBuilding) {
+			if j.host.SpawnOptions.SpawnedByTask {
+				if err := task.AddHostCreateDetails(j.host.StartedBy, j.host.Id, j.host.SpawnOptions.TaskExecutionNumber, j.Error()); err != nil {
+					j.AddError(errors.Wrapf(err, "adding host create error details"))
+				}
+			}
+			if j.host.UserHost {
+				// Terminate spawn hosts immediately if they have no creation
+				// attempts remaining. They will not be able to start up
+				// anyways.
+				terminationJob := NewHostTerminationJob(j.env, j.host, HostTerminationOptions{
+					TerminationReason: j.Error().Error(),
+				})
+				if err := amboy.EnqueueUniqueJob(ctx, j.env.RemoteQueue(), terminationJob); err != nil {
+					j.AddError(errors.Wrap(err, "enqueueing job to terminate spawn host that has run out of creation attempts"))
+				}
 			}
 		}
 	}()

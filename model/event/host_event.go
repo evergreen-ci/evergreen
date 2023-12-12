@@ -16,6 +16,7 @@ func init() {
 	registry.AllowSubscription(ResourceTypeHost, EventVolumeExpirationWarningSent)
 	registry.AllowSubscription(ResourceTypeHost, EventHostProvisioned)
 	registry.AllowSubscription(ResourceTypeHost, EventHostProvisionFailed)
+	registry.AllowSubscription(ResourceTypeHost, EventHostCreated)
 	registry.AllowSubscription(ResourceTypeHost, EventHostStarted)
 	registry.AllowSubscription(ResourceTypeHost, EventHostStopped)
 	registry.AllowSubscription(ResourceTypeHost, EventHostModified)
