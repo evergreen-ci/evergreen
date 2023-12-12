@@ -756,7 +756,6 @@ func MarkStaleBuildingAsFailed(ctx context.Context, distroID string) error {
 	spawnedByTaskKey := bsonutil.GetDottedKeyName(SpawnOptionsKey, SpawnOptionsSpawnedByTaskKey)
 	query := bson.M{
 		distroIDKey:      distroID,
-		UserHostKey:      false,
 		spawnedByTaskKey: bson.M{"$ne": true},
 		ProviderKey:      bson.M{"$in": evergreen.ProviderSpawnable},
 		StatusKey:        evergreen.HostBuilding,
