@@ -392,7 +392,7 @@ The validation step will check for:
 
 ### Modules
 
-For patches that run tests based off of changes across multiple
+For versions that run tests based off of changes across multiple
 projects, the modules field may be defined to specify other git projects
 with configurations specifying the way that changes across them are
 applied within the patch at runtime. If configured correctly, the left
@@ -400,9 +400,12 @@ hand side of the Spruce UI under "Version Manifest" will contain
 details on how the modules were parsed from YAML and which git revisions
 are being used.
 
+For mainline commits and [trigger versions](Project-and-Distro-Settings.md#project-triggers), a new 
+manifest will be created that uses the latest revision available for each module.
+
 For manual patches and GitHub PRs, by default, the git revisions in the
-version manifest will be inherited from its base version. You can change
-the git revision for modules by setting a module manually with 
+version manifest will be inherited from its base version (i.e. the mainline commit version of the patch's base git revision). 
+You can change the git revision for modules by setting a module manually with 
 [evergreen set-module](../CLI.md#operating-on-existing-patches) or
 by specifying the `auto_update` option (as described below) to use the
 latest revision available for a module. The full hierarchy of how
