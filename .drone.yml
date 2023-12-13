@@ -47,6 +47,7 @@ steps:
       build_args:
         - GOOS=linux
         - GOARCH=arm64
+        - from_secret: test_secret
       repo: devprod-evergreen/${DRONE_REPO_NAME}
       registry: 795250896452.dkr.ecr.us-east-1.amazonaws.com
       create_repository: true
