@@ -330,7 +330,7 @@ func TestProjectTriggerIntegration(t *testing.T) {
 	assert.NoError(alias.Upsert())
 	_, err := model.GetNewRevisionOrderNumber(downstreamProjectRef.Id)
 	assert.NoError(err)
-	downstreamRevision := "cf46076567e4949f9fc68e0634139d4ac495c89b"
+	downstreamRevision := "9338711cc1acc94ff75889a3b53a936a00e8c385"
 	assert.NoError(model.UpdateLastRevision(downstreamProjectRef.Id, downstreamRevision))
 
 	downstreamVersions, err := EvalProjectTriggers(ctx, &e, TriggerDownstreamVersion)
@@ -463,7 +463,7 @@ func TestProjectTriggerIntegrationForBuild(t *testing.T) {
 	assert.NoError(alias.Upsert())
 	_, err := model.GetNewRevisionOrderNumber(downstreamProjectRef.Id)
 	assert.NoError(err)
-	downstreamRevision := "cf46076567e4949f9fc68e0634139d4ac495c89b"
+	downstreamRevision := "9338711cc1acc94ff75889a3b53a936a00e8c385"
 	assert.NoError(model.UpdateLastRevision(downstreamProjectRef.Id, downstreamRevision))
 
 	downstreamVersions, err := EvalProjectTriggers(ctx, &e, TriggerDownstreamVersion)

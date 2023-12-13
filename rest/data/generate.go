@@ -12,7 +12,7 @@ import (
 )
 
 // GenerateTasks parses JSON files for `generate.tasks` and creates the new builds and tasks.
-func GenerateTasks(taskID string, jsonFiles []json.RawMessage) error {
+func GenerateTasks(ctx context.Context, settings *evergreen.Settings, taskID string, jsonFiles []json.RawMessage) error {
 	t, err := task.FindOneId(taskID)
 	if err != nil {
 		return errors.Wrapf(err, "finding task '%s'", taskID)
@@ -31,11 +31,11 @@ func GenerateTasks(taskID string, jsonFiles []json.RawMessage) error {
 	}
 
 	var files task.GeneratedJSONFiles
-	for _, j := range jsonFiles {
-		files = append(files, string(j))
+	for _, f := range jsonFiles {
+		files = append(files, string(f))
 	}
-	if err = t.SetGeneratedJSON(files); err != nil {
-		return errors.Wrapf(err, "setting generated JSON for task '%s'", t.Id)
+	if _, err := task.GeneratedJSONInsertWithS3Fallback(ctx, settings, t, files, evergreen.ProjectStorageMethodDB); err != nil {
+		return errors.Wrapf(err, "inserting generated JSON files for task '%s'", t.Id)
 	}
 
 	return nil
