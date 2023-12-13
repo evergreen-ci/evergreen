@@ -528,7 +528,7 @@ EC2 Parameters:
     non-default account. Must set if `aws_access_key_id` is set.
 -   `device_name` - name of EBS device
 -   `distro` - Evergreen distro to start. For the `ec2` provider, must set
-    either `ami` only) or `distro` but must not set both. For the `docker`
+    either `ami` only or `distro` but must not set both. For the `docker`
     provider, `distro` must be set to the distro that will run the container.
     Note that the distro setup script will not run for hosts spawned by this
     command, so any required initial setup must be done manually.
