@@ -331,6 +331,5 @@ const (
 
 // DockerConfig stores auth info for Docker.
 type DockerConfig struct {
-	APIVersion    string `bson:"api_version" json:"api_version" yaml:"api_version"`
-	DefaultDistro string `bson:"default_distro" json:"default_distro" yaml:"default_distro"`
+	APIVersion string `bson:"api_version" json:"api_version" yaml:"api_version"`
 }
