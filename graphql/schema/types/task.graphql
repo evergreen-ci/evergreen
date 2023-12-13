@@ -159,7 +159,7 @@ type TaskEndDetail {
   timeoutType: String
   type: String!
   traceID: String
-  diskDevices: [String]
+  diskDevices: [String!]!
 }
 
 type OomTrackerInfo {
