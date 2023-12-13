@@ -1314,7 +1314,6 @@ func UnsafeReplace(ctx context.Context, env evergreen.Environment, idToRemove st
 		if err := toInsert.InsertWithContext(sessCtx, env); err != nil {
 			return nil, errors.Wrapf(err, "inserting new host '%s'", toInsert.Id)
 		}
-		event.LogHostCreated(toInsert.Id)
 		grip.Info(message.Fields{
 			"message":  "inserted host to replace intent host",
 			"host_id":  toInsert.Id,
