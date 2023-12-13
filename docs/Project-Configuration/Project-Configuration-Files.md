@@ -395,10 +395,11 @@ The validation step will check for:
 For versions that run tests based off of changes across multiple
 projects, the modules field may be defined to specify other git projects
 with configurations specifying the way that changes across them are
-applied within the patch at runtime. If configured correctly, the left
-hand side of the Spruce UI under "Version Manifest" will contain
-details on how the modules were parsed from YAML and which git revisions
-are being used.
+applied within the patch at runtime. If at least one module is defined and it
+is configured correctly, the left hand side of the Spruce UI under "Version
+Manifest" will contain details on how the modules were parsed from YAML and
+which git revisions are being used. If no modules have been defined, the
+"Version Manifest" will not appear at all in the Spruce UI.
 
 For mainline commits and [trigger versions](Project-and-Distro-Settings.md#project-triggers), a new 
 manifest will be created that uses the latest revision available for each module.
