@@ -8,6 +8,7 @@ trigger:
     - main
   event:
     - push
+    - pull_request
 
 clone:
   depth: 1
@@ -24,6 +25,17 @@ resources:
 steps:
   - name: publish-evergreen
     image: plugins/kaniko-ecr
+    environment:
+      NOTARY_SERVER_URL:
+        from_secret: notary_server_url
+      NOTARY_CLIENT_URL:
+        from_secret: notary_client_url
+      MACOS_NOTARY_KEY:
+        from_secret: notary_key
+      MACOS_NOTARY_SECRET:
+        from_secret: notary_secret
+      EVERGREEN_BUNDLE_ID:
+        from_secret: bundle_id
     settings:
       tags:
         - git-${DRONE_COMMIT_SHA:0:7}
