@@ -161,7 +161,6 @@ functions:
       type: setup
       params:
         directory: evergreen
-        token: ${github_token}
         shallow_clone: true
     - command: shell.exec
       type: setup
@@ -233,7 +232,6 @@ functions:
       silent: true
       working_dir: evergreen
       env:
-        GITHUB_TOKEN: ${github_token}
         GITHUB_APP_ID: ${staging_github_app_id}
         GITHUB_APP_KEY: ${staging_github_app_key}
         JIRA_SERVER: ${jiraserver}
@@ -531,7 +529,6 @@ tasks:
         type: setup
         params:
           directory: evergreen
-          token: ${github_token}
           shallow_clone: false
       - func: setup-credentials
       - func: setup-mongodb
@@ -575,7 +572,6 @@ tasks:
         type: setup
         params:
           directory: evergreen
-          token: ${github_token}
       - func: run-make
         vars: { target: "${task_name}" }
   - name: verify-merge-function-update
@@ -585,7 +581,7 @@ tasks:
       - func: get-project-and-modules
       - func: verify-merge-function-update
   - name: generate-api-docs
-    commands: 
+    commands:
       - func: get-project-and-modules
       - command: shell.exec
         params:
@@ -618,7 +614,6 @@ tasks:
           permissions: public-read
           display_name: swagger.json (latest)
           patchable: false
-
 
 task_groups:
   - name: dist-and-upload-clis
