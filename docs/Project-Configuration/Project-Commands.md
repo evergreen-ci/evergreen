@@ -480,7 +480,7 @@ Parameters:
 
 ## host.create
 
-`host.create` starts a host from a task.
+`host.create` starts a host or a Docker container from a task.
 
 ``` yaml
 - command: host.create
@@ -527,9 +527,10 @@ EC2 Parameters:
 -   `aws_secret_access_key` - AWS secret key. May set to use a
     non-default account. Must set if `aws_access_key_id` is set.
 -   `device_name` - name of EBS device
--   `distro` - Evergreen distro to start. Must set `ami` or `distro` but
-    must not set both. Note that the distro setup script will not run for 
-    hosts spawned by this command, so any required initial setup must be done manually.
+-   `distro` - Evergreen distro to start. Must set `ami` (for EC2) or `distro`
+    but must not set both. Note that the distro setup script will not run for
+    hosts spawned by this command, so any required initial setup must be done
+    manually.
 -   `ebs_block_device` - list of the following parameters:
 -   `ebs_iops` - EBS provisioned IOPS.
 -   `ebs_size` - Size of EBS volume in GB.
