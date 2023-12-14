@@ -38,7 +38,6 @@ func init() {
 		"git.push":                              gitPushFactory,
 		"gotest.parse_files":                    goTestFactory,
 		"keyval.inc":                            keyValIncFactory,
-		"mac.sign":                              macSignFactory,
 		"manifest.load":                         manifestLoadFactory,
 		"perf.send":                             perfSendFactory,
 		"downstream_expansions.set":             setExpansionsFactory,
