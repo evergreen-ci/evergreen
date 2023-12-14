@@ -102,6 +102,7 @@ type Settings struct {
 	SSHKeyPairs         []SSHKeyPair            `yaml:"ssh_key_pairs" bson:"ssh_key_pairs" json:"ssh_key_pairs"`
 	Slack               SlackConfig             `yaml:"slack" bson:"slack" json:"slack" id:"slack"`
 	Splunk              SplunkConfig            `yaml:"splunk" bson:"splunk" json:"splunk" id:"splunk"`
+	TaskLimits          TaskLimitsConfig        `yaml:"task_limits" bson:"task_limits" json:"task_limits" id:"task_limits"`
 	Triggers            TriggerConfig           `yaml:"triggers" bson:"triggers" json:"triggers" id:"triggers"`
 	Ui                  UIConfig                `yaml:"ui" bson:"ui" json:"ui" id:"ui"`
 	Spawnhost           SpawnHostConfig         `yaml:"spawnhost" bson:"spawnhost" json:"spawnhost" id:"spawnhost"`

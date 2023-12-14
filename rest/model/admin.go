@@ -40,6 +40,7 @@ func NewConfigModel() *APIAdminSettings {
 		ServiceFlags:      &APIServiceFlags{},
 		Slack:             &APISlackConfig{},
 		Splunk:            &APISplunkConfig{},
+		TaskLimits:        &APITaskLimitsConfig{},
 		Triggers:          &APITriggerConfig{},
 		Ui:                &APIUIConfig{},
 		Spawnhost:         &APISpawnHostConfig{},
@@ -92,6 +93,7 @@ type APIAdminSettings struct {
 	SSHKeyDirectory     *string                           `json:"ssh_key_directory,omitempty"`
 	SSHKeyPairs         []APISSHKeyPair                   `json:"ssh_key_pairs,omitempty"`
 	Splunk              *APISplunkConfig                  `json:"splunk,omitempty"`
+	TaskLimits          *APITaskLimitsConfig              `json:"task_limits,omitempty"`
 	Triggers            *APITriggerConfig                 `json:"triggers,omitempty"`
 	Ui                  *APIUIConfig                      `json:"ui,omitempty"`
 	Spawnhost           *APISpawnHostConfig               `json:"spawnhost,omitempty"`
@@ -2753,4 +2755,24 @@ func (c *APIGitHubCheckRunConfig) ToService() (interface{}, error) {
 	}
 
 	return config, nil
+}
+
+type APITaskLimitsConfig struct {
+	MaxTasksPerVersion *int `json:"max_tasks_per_version"`
+}
+
+func (c *APITaskLimitsConfig) BuildFromService(h interface{}) error {
+	switch v := h.(type) {
+	case evergreen.TaskLimitsConfig:
+		c.MaxTasksPerVersion = utility.ToIntPtr(v.MaxTasksPerVersion)
+		return nil
+	default:
+		return errors.Errorf("programmatic error: expected task limits config but got type %T", h)
+	}
+}
+
+func (c *APITaskLimitsConfig) ToService() (interface{}, error) {
+	return evergreen.TaskLimitsConfig{
+		MaxTasksPerVersion: utility.FromIntPtr(c.MaxTasksPerVersion),
+	}, nil
 }
