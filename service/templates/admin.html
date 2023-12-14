@@ -63,6 +63,7 @@ Admin Settings
 						<li class="link" ng-click="scrollTo('pod_lifecycle')">Pod Lifecycle</li>
 						<li class="link" ng-click="scrollTo('scheduler')">Scheduler</li>
 						<li class="link" ng-click="scrollTo('repotracker')">Repotracker</li>
+						<li class="link" ng-click="scrollTo('task_limits')">Task Limits</li>
 						<div>Web</div>
 						<li class="link" ng-click="scrollTo('api')">API Config</li>
 						<li class="link" ng-click="scrollTo('ui')">UI Config</li>
@@ -750,6 +751,23 @@ Admin Settings
 									<md-input-container class="control" style="width:45%;">
 										<label>Max concurrent requests</label>
 										<input type="number" ng-model="Settings.repotracker.max_con_requests">
+									</md-input-container>
+								</md-card-content>
+							</md-card>
+
+							<md-card flex=50 id="task_limits" style="height:auto">
+								<md-card-title>
+									<md-card-title-text>
+										<span>Task Limits</span>
+									</md-card-title-text>
+									<md-button ng-click="clearSection('task_limits')">
+										<i class="fa fa-trash"></i>
+									</md-button>
+								</md-card-title>
+								<md-card-content>
+									<md-input-container class="control" style="width:45%;">
+										<label>Host</label>
+										<input type="text" ng-model="Settings.task_limits.max_tasks_per_version">
 									</md-input-container>
 								</md-card-content>
 							</md-card>
