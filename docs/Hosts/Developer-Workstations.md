@@ -22,7 +22,7 @@ workstations can use the same configuration as build hosts, but also have:
   subjected to the termination deadline of most spawn hosts. While
   there is a global per-user limit for unexpirable hosts,
   workstations will, by default. 
-  
+
 - Evergreen supports a start/stop mode for spawn hosts. This makes it
   possible for users to change to another instance type, though
   administrators must configure the allowable instance types. Users
@@ -46,16 +46,15 @@ checked out and running on workstations, though this feature is not
 necessarily dependent on workstations, and could be used on local
 systems.
 
-Project configuration include a "Workstation Setup" section where
-administrators declare a number of simple commands (and directory
-contexts) that will run a project's setup. These commands are *not*
-shell interpolated, and are *not* meant to provision the development
-environment (e.g. install system packages or modify configuration
-files in `~/`). Use these commands to clone a repository, generate
-index files, and/or run a test build.
+Project settings include a ["Workstation Setup" section](../Project-Configuration/Project-and-Distro-Settings.md#virtual-workstation-commands)
+where administrators declare a number of simple commands (and directory
+contexts) that will run a project's setup. These commands are *not* shell
+interpolated, and are *not* meant to provision the development environment (e.g.
+install system packages or modify configuration files in `~/`). Use these
+commands to clone a repository, generate index files, and/or run a test build.
 
 As a prerequisite, users of the project setup *must* have configured
-their SSH keys with Github, with access to the Github repositories
+their SSH keys with GitHub, with access to the GitHub repositories
 required for their project. The commands will assemble a clone
 operation for the project's core repository when selected, but
 required modules or other repositories would need to be cloned

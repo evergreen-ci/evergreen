@@ -138,8 +138,7 @@ entire task group is finished.
 The task working directory is removed when a task finishes as part of cleaning
 up the task. Note that _only_ the task directory is cleaned up - if any file is
 written outside the task directory, it will not be cleaned up. As part of
-[Evergreen best
-practices](https://docs.devprod.prod.corp.mongodb.com/evergreen/Project-Configuration/Best-Practices#task-directory),
+[Evergreen best practices](Best-Practices#task-directory),
 writing outside of the task directory is discouraged.
 
 For a task that's not part of a task group, the task will clean up at the end of

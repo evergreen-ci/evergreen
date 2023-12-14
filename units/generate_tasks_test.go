@@ -4,7 +4,6 @@ import (
 	"context"
 	"testing"
 
-	"github.com/aws/aws-sdk-go/aws/endpoints"
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/db"
 	mgobson "github.com/evergreen-ci/evergreen/db/mgo/bson"
@@ -16,8 +15,6 @@ import (
 	"github.com/evergreen-ci/evergreen/model/task"
 	"github.com/evergreen-ci/evergreen/testutil"
 	"github.com/evergreen-ci/evergreen/util"
-	"github.com/evergreen-ci/pail"
-	"github.com/evergreen-ci/utility"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
@@ -467,166 +464,136 @@ var sampleGeneratedProject3 = []string{`
 }
 `}
 
-func TestGenerateTasksWithDifferentGeneratedJSONStorageMethods(t *testing.T) {
+func TestGenerateTasks(t *testing.T) {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 	ctx = testutil.TestSpan(ctx, t)
 
+	assert := assert.New(t)
+	require := require.New(t)
+	require.NoError(db.ClearCollections(model.ProjectRefCollection, model.VersionCollection, build.Collection, task.Collection, distro.Collection, patch.Collection, model.ParserProjectCollection))
+	defer require.NoError(db.ClearCollections(model.ProjectRefCollection, model.VersionCollection, build.Collection, task.Collection, distro.Collection, patch.Collection, model.ParserProjectCollection))
+
 	env := &mock.Environment{}
-	require.NoError(t, env.Configure(ctx))
+	require.NoError(env.Configure(ctx))
 
-	testutil.ConfigureIntegrationTest(t, env.Settings(), t.Name())
-
-	c := utility.GetHTTPClient()
-	defer utility.PutHTTPClient(c)
-
-	ppConf := env.Settings().Providers.AWS.ParserProject
-	bucket, err := pail.NewS3BucketWithHTTPClient(c, pail.S3Options{
-		Name:        ppConf.Bucket,
-		Region:      endpoints.UsEast1RegionID,
-		Credentials: pail.CreateAWSCredentials(ppConf.Key, ppConf.Secret, ""),
-	})
-	require.NoError(t, err)
-	defer func() {
-		assert.NoError(t, bucket.RemovePrefix(ctx, ppConf.Prefix))
-	}()
-
-	for methodName, storageMethod := range map[string]evergreen.ParserProjectStorageMethod{
-		"DB": evergreen.ProjectStorageMethodDB,
-		"S3": evergreen.ProjectStorageMethodS3,
-	} {
-		t.Run(methodName, func(t *testing.T) {
-			assert := assert.New(t)
-			require := require.New(t)
-
-			require.NoError(db.ClearCollections(model.ProjectRefCollection, model.VersionCollection, build.Collection, task.Collection, distro.Collection, patch.Collection, model.ParserProjectCollection))
-			defer require.NoError(db.ClearCollections(model.ProjectRefCollection, model.VersionCollection, build.Collection, task.Collection, distro.Collection, patch.Collection, model.ParserProjectCollection))
-
-			randomVersion := model.Version{
-				Id:         "random_version",
-				Identifier: "mci",
-				BuildIds:   []string{"sample_build_id"},
-			}
-			require.NoError(randomVersion.Insert())
-			randomPatch := patch.Patch{
-				Id:      mgobson.NewObjectId(),
-				Version: randomVersion.Id,
-			}
-			require.NoError(randomPatch.Insert())
-			sampleVersion := model.Version{
-				Id:         "sample_version",
-				Identifier: "mci",
-				BuildIds:   []string{"sample_build_id"},
-			}
-			samplePatch := patch.Patch{
-				Id:      mgobson.NewObjectId(),
-				Version: sampleVersion.Id,
-			}
-			require.NoError(samplePatch.Insert())
-			require.NoError(sampleVersion.Insert())
-			sampleBuild := build.Build{
-				Id:           "sample_build_id",
-				BuildVariant: "race-detector",
-				Version:      "sample_version",
-			}
-			require.NoError(sampleBuild.Insert())
-
-			pp := model.ParserProject{}
-			err := util.UnmarshalYAMLWithFallback([]byte(sampleBaseProject), &pp)
-			require.NoError(err)
-			pp.Id = "sample_version"
-			require.NoError(pp.Insert())
-			pp.Id = "random_version"
-			require.NoError(pp.Insert())
-
-			sampleTask := task.Task{
-				Id:          "sample_task",
-				Version:     "sample_version",
-				BuildId:     "sample_build_id",
-				Project:     "mci",
-				DisplayName: "sample_task",
-				Status:      evergreen.TaskStarted,
-			}
-			require.NoError(sampleTask.Insert())
-
-			require.NoError(task.GeneratedJSONInsert(ctx, env.Settings(), &sampleTask, sampleGeneratedProject, storageMethod))
-
-			sampleDistros := []distro.Distro{
-				{
-					Id: "ubuntu1604-test",
-				},
-				{
-					Id: "archlinux-test",
-				},
-			}
-			for _, d := range sampleDistros {
-				require.NoError(d.Insert(ctx))
-			}
-			projectRef := model.ProjectRef{Id: "mci", Identifier: "mci_identifier"}
-			require.NoError(projectRef.Insert())
-
-			j := NewGenerateTasksJob(env, sampleTask.Version, sampleTask.Id, "1")
-			j.Run(ctx)
-			assert.NoError(j.Error())
-			tasks, err := task.FindAll(db.Query(task.ByVersion("sample_version")))
-			assert.NoError(err)
-			assert.Len(tasks, 4)
-			allTasks := map[string]bool{
-				"sample_task":     false,
-				"lint-command":    false,
-				"lint-rest-route": false,
-				"my_display_task": false,
-			}
-			for _, t := range tasks {
-				assert.Equal("sample_version", t.Version)
-				assert.Equal("mci", t.Project)
-				allTasks[t.DisplayName] = true
-				if t.Version == "my_display_task" {
-					assert.Len(t.ExecutionTasks, 1)
-				}
-			}
-			for _, v := range allTasks {
-				assert.True(v)
-			}
-
-			// Make sure first project was not changed
-			v, err := model.VersionFindOneId("random_version")
-			assert.NoError(err)
-			p, _, err := model.FindAndTranslateProjectForVersion(ctx, env.Settings(), v)
-			assert.NoError(err)
-			require.NotNil(p)
-			assert.Len(p.Tasks, 2)
-			require.Len(p.BuildVariants, 2)
-			assert.Len(p.BuildVariants[0].Tasks, 1)
-			assert.Len(p.BuildVariants[1].Tasks, 2)
-
-			// Verify second project was changed
-			v, err = model.VersionFindOneId("sample_version")
-			assert.NoError(err)
-			p, _, err = model.FindAndTranslateProjectForVersion(ctx, env.Settings(), v)
-			assert.NoError(err)
-			require.NotNil(p)
-			assert.Len(p.Tasks, 6)
-			require.Len(p.BuildVariants, 2)
-			assert.Len(p.BuildVariants[0].Tasks, 1)
-			assert.Len(p.BuildVariants[1].Tasks, 4)
-			require.Len(p.TaskGroups, 1)
-			assert.Len(p.TaskGroups[0].Tasks, 2)
-
-			b, err := build.FindOneId("sample_build_id")
-			assert.NoError(err)
-			assert.Equal("mci_identifier_race_detector_display_my_display_task__01_01_01_00_00_00", b.Tasks[0].Id)
-		})
+	randomVersion := model.Version{
+		Id:         "random_version",
+		Identifier: "mci",
+		BuildIds:   []string{"sample_build_id"},
 	}
+	require.NoError(randomVersion.Insert())
+	randomPatch := patch.Patch{
+		Id:      mgobson.NewObjectId(),
+		Version: randomVersion.Id,
+	}
+	require.NoError(randomPatch.Insert())
+	sampleVersion := model.Version{
+		Id:         "sample_version",
+		Identifier: "mci",
+		BuildIds:   []string{"sample_build_id"},
+	}
+	samplePatch := patch.Patch{
+		Id:      mgobson.NewObjectId(),
+		Version: sampleVersion.Id,
+	}
+	require.NoError(samplePatch.Insert())
+	require.NoError(sampleVersion.Insert())
+	sampleBuild := build.Build{
+		Id:           "sample_build_id",
+		BuildVariant: "race-detector",
+		Version:      "sample_version",
+	}
+	require.NoError(sampleBuild.Insert())
+
+	pp := model.ParserProject{}
+	err := util.UnmarshalYAMLWithFallback([]byte(sampleBaseProject), &pp)
+	require.NoError(err)
+	pp.Id = "sample_version"
+	require.NoError(pp.Insert())
+	pp.Id = "random_version"
+	require.NoError(pp.Insert())
+	sampleTask := task.Task{
+		Id:                    "sample_task",
+		Version:               "sample_version",
+		BuildId:               "sample_build_id",
+		Project:               "mci",
+		DisplayName:           "sample_task",
+		GeneratedJSONAsString: sampleGeneratedProject,
+		Status:                evergreen.TaskStarted,
+	}
+	sampleDistros := []distro.Distro{
+		{
+			Id: "ubuntu1604-test",
+		},
+		{
+			Id: "archlinux-test",
+		},
+	}
+	for _, d := range sampleDistros {
+		require.NoError(d.Insert(ctx))
+	}
+	require.NoError(sampleTask.Insert())
+	projectRef := model.ProjectRef{Id: "mci", Identifier: "mci_identifier"}
+	require.NoError(projectRef.Insert())
+
+	j := NewGenerateTasksJob(sampleTask.Version, sampleTask.Id, "1")
+	j.Run(ctx)
+	assert.NoError(j.Error())
+	tasks, err := task.FindAll(db.Query(task.ByVersion("sample_version")))
+	assert.NoError(err)
+	assert.Len(tasks, 4)
+	all_tasks := map[string]bool{
+		"sample_task":     false,
+		"lint-command":    false,
+		"lint-rest-route": false,
+		"my_display_task": false,
+	}
+	for _, t := range tasks {
+		assert.Equal("sample_version", t.Version)
+		assert.Equal("mci", t.Project)
+		all_tasks[t.DisplayName] = true
+		if t.Version == "my_display_task" {
+			assert.Len(t.ExecutionTasks, 1)
+		}
+	}
+	for _, v := range all_tasks {
+		assert.True(v)
+	}
+
+	// Make sure first project was not changed
+	v, err := model.VersionFindOneId("random_version")
+	assert.NoError(err)
+	p, _, err := model.FindAndTranslateProjectForVersion(ctx, env.Settings(), v)
+	assert.NoError(err)
+	require.NotNil(p)
+	assert.Len(p.Tasks, 2)
+	require.Len(p.BuildVariants, 2)
+	assert.Len(p.BuildVariants[0].Tasks, 1)
+	assert.Len(p.BuildVariants[1].Tasks, 2)
+
+	// Verify second project was changed
+	v, err = model.VersionFindOneId("sample_version")
+	assert.NoError(err)
+	p, _, err = model.FindAndTranslateProjectForVersion(ctx, env.Settings(), v)
+	assert.NoError(err)
+	require.NotNil(p)
+	assert.Len(p.Tasks, 6)
+	require.Len(p.BuildVariants, 2)
+	assert.Len(p.BuildVariants[0].Tasks, 1)
+	assert.Len(p.BuildVariants[1].Tasks, 4)
+	require.Len(p.TaskGroups, 1)
+	assert.Len(p.TaskGroups[0].Tasks, 2)
+
+	b, err := build.FindOneId("sample_build_id")
+	assert.NoError(err)
+	assert.Equal("mci_identifier_race_detector_display_my_display_task__01_01_01_00_00_00", b.Tasks[0].Id)
 }
 
 func TestGeneratedTasksAreNotDependencies(t *testing.T) {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 	ctx = testutil.TestSpan(ctx, t)
-
-	env := &mock.Environment{}
-	require.NoError(t, env.Configure(ctx))
 
 	assert := assert.New(t)
 	require := require.New(t)
@@ -688,7 +655,7 @@ func TestGeneratedTasksAreNotDependencies(t *testing.T) {
 	projectRef := model.ProjectRef{Id: "mci", Identifier: "mci_identifier"}
 	require.NoError(projectRef.Insert())
 
-	j := NewGenerateTasksJob(env, generateTask.Version, generateTask.Id, "1")
+	j := NewGenerateTasksJob(generateTask.Version, generateTask.Id, "1")
 	j.Run(ctx)
 	assert.NoError(j.Error())
 	tasks, err := task.FindAll(db.Query(task.ByVersion("sample_version")))
@@ -728,7 +695,7 @@ func TestGeneratedTasksAreNotDependencies(t *testing.T) {
 		Status:                evergreen.TaskStarted,
 	}
 	require.NoError(generateTaskWithoutFlag.Insert())
-	j = NewGenerateTasksJob(env, generateTask.Version, generateTask.Id, "1")
+	j = NewGenerateTasksJob(generateTask.Version, generateTask.Id, "1")
 	j.Run(ctx)
 	assert.NoError(j.Error())
 	tasks, err = task.FindAll(db.Query(task.ByVersion("sample_version")))
@@ -766,7 +733,7 @@ func TestGeneratedTasksAreNotDependencies(t *testing.T) {
 		Status:                evergreen.TaskStarted,
 	}
 	require.NoError(generateTask.Insert())
-	j = NewGenerateTasksJob(env, generateTask.Version, generateTask.Id, "1")
+	j = NewGenerateTasksJob(generateTask.Version, generateTask.Id, "1")
 	j.Run(ctx)
 	assert.NoError(j.Error())
 	tasks, err = task.FindAll(db.Query(task.ByVersion("sample_version")))
@@ -810,9 +777,6 @@ func TestGenerateSkipsInvalidDependency(t *testing.T) {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 	ctx = testutil.TestSpan(ctx, t)
-
-	env := &mock.Environment{}
-	require.NoError(t, env.Configure(ctx))
 
 	var sampleBaseProject = `
 tasks:
@@ -909,7 +873,7 @@ buildvariants:
 	projectRef := model.ProjectRef{Id: "mci"}
 	require.NoError(projectRef.Insert())
 
-	j := NewGenerateTasksJob(env, sampleTask.Version, sampleTask.Id, "1")
+	j := NewGenerateTasksJob(sampleTask.Version, sampleTask.Id, "1")
 	j.Run(ctx)
 	assert.NoError(j.Error())
 
@@ -931,9 +895,6 @@ func TestMarkGeneratedTasksError(t *testing.T) {
 	defer cancel()
 	ctx = testutil.TestSpan(ctx, t)
 
-	env := &mock.Environment{}
-	require.NoError(t, env.Configure(ctx))
-
 	require.NoError(t, db.ClearCollections(model.ProjectRefCollection, model.VersionCollection, build.Collection, task.Collection, distro.Collection, patch.Collection, model.ParserProjectCollection))
 	sampleTask := task.Task{
 		Id:                    "sample_task",
@@ -946,7 +907,7 @@ func TestMarkGeneratedTasksError(t *testing.T) {
 	}
 	require.NoError(t, sampleTask.Insert())
 
-	j := NewGenerateTasksJob(env, sampleTask.Version, sampleTask.Id, "1")
+	j := NewGenerateTasksJob(sampleTask.Version, sampleTask.Id, "1")
 	j.Run(ctx)
 	assert.Error(t, j.Error())
 	dbTask, err := task.FindOneId(sampleTask.Id)
