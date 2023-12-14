@@ -66,6 +66,7 @@ var (
 
 	// degraded mode flags
 	taskDispatchKey                   = bsonutil.MustHaveTag(ServiceFlags{}, "TaskDispatchDisabled")
+	largeParserProjectsDisabled       = bsonutil.MustHaveTag(ServiceFlags{}, "LargeParserProjectsDisabled")
 	hostInitKey                       = bsonutil.MustHaveTag(ServiceFlags{}, "HostInitDisabled")
 	podInitDisabledKey                = bsonutil.MustHaveTag(ServiceFlags{}, "PodInitDisabled")
 	s3BinaryDownloadsDisabledKey      = bsonutil.MustHaveTag(ServiceFlags{}, "S3BinaryDownloadsDisabled")

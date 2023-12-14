@@ -1994,7 +1994,7 @@ func TestParserProjectStorage(t *testing.T) {
 		t.Run("StorageMethod"+methodName, func(t *testing.T) {
 			for testName, testCase := range map[string]func(ctx context.Context, t *testing.T, env *mock.Environment){
 				"FindOneByIDReturnsNilErrorAndResultForNonexistentParserProject": func(ctx context.Context, t *testing.T, env *mock.Environment) {
-					ppStorage, err := GetParserProjectStorage(env.Settings(), ppStorageMethod)
+					ppStorage, err := GetParserProjectStorage(ctx, env.Settings(), ppStorageMethod)
 					require.NoError(t, err)
 					defer ppStorage.Close(ctx)
 
@@ -2003,7 +2003,7 @@ func TestParserProjectStorage(t *testing.T) {
 					assert.Zero(t, pp)
 				},
 				"FindOneByIDWithFieldsReturnsNilErrorAndResultForNonexistentParserProject": func(ctx context.Context, t *testing.T, env *mock.Environment) {
-					ppStorage, err := GetParserProjectStorage(env.Settings(), ppStorageMethod)
+					ppStorage, err := GetParserProjectStorage(ctx, env.Settings(), ppStorageMethod)
 					require.NoError(t, err)
 					defer ppStorage.Close(ctx)
 
@@ -2016,7 +2016,7 @@ func TestParserProjectStorage(t *testing.T) {
 						Id:    "my-project",
 						Owner: utility.ToStringPtr("me"),
 					}
-					ppStorage, err := GetParserProjectStorage(env.Settings(), ppStorageMethod)
+					ppStorage, err := GetParserProjectStorage(ctx, env.Settings(), ppStorageMethod)
 					require.NoError(t, err)
 					defer ppStorage.Close(ctx)
 
@@ -2032,7 +2032,7 @@ func TestParserProjectStorage(t *testing.T) {
 						Id:    "my-project",
 						Owner: utility.ToStringPtr("me"),
 					}
-					ppStorage, err := GetParserProjectStorage(env.Settings(), ppStorageMethod)
+					ppStorage, err := GetParserProjectStorage(ctx, env.Settings(), ppStorageMethod)
 					require.NoError(t, err)
 					defer ppStorage.Close(ctx)
 
