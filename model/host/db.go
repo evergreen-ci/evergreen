@@ -759,7 +759,7 @@ func MarkStaleBuildingAsFailed(ctx context.Context, distroID string) error {
 		spawnedByTaskKey: bson.M{"$ne": true},
 		ProviderKey:      bson.M{"$in": evergreen.ProviderSpawnable},
 		StatusKey:        evergreen.HostBuilding,
-		CreateTimeKey:    bson.M{"$lt": time.Now().Add(-5 * time.Minute)},
+		CreateTimeKey:    bson.M{"$lt": time.Now().Add(-15 * time.Minute)},
 	}
 
 	if distroID != "" {
