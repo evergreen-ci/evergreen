@@ -2089,6 +2089,7 @@ type APIServiceFlags struct {
 	HostInitDisabled               bool `json:"host_init_disabled"`
 	PodInitDisabled                bool `json:"pod_init_disabled"`
 	S3BinaryDownloadsDisabled      bool `json:"s3_binary_downloads_disabled"`
+	LargeParserProjectsDisabled    bool `json:"large_parser_projects_disabled"`
 	MonitorDisabled                bool `json:"monitor_disabled"`
 	AlertsDisabled                 bool `json:"alerts_disabled"`
 	AgentStartDisabled             bool `json:"agent_start_disabled"`
@@ -2374,6 +2375,7 @@ func (as *APIServiceFlags) BuildFromService(h interface{}) error {
 		as.HostInitDisabled = v.HostInitDisabled
 		as.PodInitDisabled = v.PodInitDisabled
 		as.S3BinaryDownloadsDisabled = v.S3BinaryDownloadsDisabled
+		as.LargeParserProjectsDisabled = v.LargeParserProjectsDisabled
 		as.MonitorDisabled = v.MonitorDisabled
 		as.AlertsDisabled = v.AlertsDisabled
 		as.AgentStartDisabled = v.AgentStartDisabled
@@ -2415,6 +2417,7 @@ func (as *APIServiceFlags) ToService() (interface{}, error) {
 		HostInitDisabled:               as.HostInitDisabled,
 		PodInitDisabled:                as.PodInitDisabled,
 		S3BinaryDownloadsDisabled:      as.S3BinaryDownloadsDisabled,
+		LargeParserProjectsDisabled:    as.LargeParserProjectsDisabled,
 		MonitorDisabled:                as.MonitorDisabled,
 		AlertsDisabled:                 as.AlertsDisabled,
 		AgentStartDisabled:             as.AgentStartDisabled,

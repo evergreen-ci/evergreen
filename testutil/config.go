@@ -357,6 +357,7 @@ func MockConfig() *evergreen.Settings {
 		},
 		ServiceFlags: evergreen.ServiceFlags{
 			TaskDispatchDisabled:           true,
+			LargeParserProjectsDisabled:    true,
 			HostInitDisabled:               true,
 			PodInitDisabled:                true,
 			S3BinaryDownloadsDisabled:      true,

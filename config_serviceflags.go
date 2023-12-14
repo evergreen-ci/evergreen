@@ -15,6 +15,7 @@ type ServiceFlags struct {
 	HostInitDisabled               bool `bson:"host_init_disabled" json:"host_init_disabled"`
 	PodInitDisabled                bool `bson:"pod_init_disabled" json:"pod_init_disabled"`
 	S3BinaryDownloadsDisabled      bool `bson:"s3_binary_downloads_disabled" json:"s3_binary_downloads_disabled"`
+	LargeParserProjectsDisabled    bool `bson:"large_parser_projects_disabled" json:"large_parser_projects_disabled"`
 	MonitorDisabled                bool `bson:"monitor_disabled" json:"monitor_disabled"`
 	AlertsDisabled                 bool `bson:"alerts_disabled" json:"alerts_disabled"`
 	AgentStartDisabled             bool `bson:"agent_start_disabled" json:"agent_start_disabled"`
@@ -72,6 +73,7 @@ func (c *ServiceFlags) Set(ctx context.Context) error {
 			hostInitKey:                       c.HostInitDisabled,
 			podInitDisabledKey:                c.PodInitDisabled,
 			s3BinaryDownloadsDisabledKey:      c.S3BinaryDownloadsDisabled,
+			largeParserProjectsDisabledKey:    c.LargeParserProjectsDisabled,
 			monitorKey:                        c.MonitorDisabled,
 			alertsKey:                         c.AlertsDisabled,
 			agentStartKey:                     c.AgentStartDisabled,
