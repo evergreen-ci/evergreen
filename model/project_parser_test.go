@@ -2796,7 +2796,7 @@ func TestIncludesValidation(t *testing.T) {
 	env.Settings().TaskLimits = evergreen.TaskLimitsConfig{
 		MaxIncludesPerVersion: 1,
 	}
-	env.Settings().TaskLimits.Set(ctx)
+	require.NoError(t, env.Settings().TaskLimits.Set(ctx))
 
 	yml := `
 include:
