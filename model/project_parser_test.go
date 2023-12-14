@@ -2118,7 +2118,7 @@ func checkProjectPersists(ctx context.Context, t *testing.T, env evergreen.Envir
 	pp.Id = "my-project"
 	pp.Identifier = utility.ToStringPtr("old-project-identifier")
 
-	ppStorage, err := GetParserProjectStorage(env.Settings(), ppStorageMethod)
+	ppStorage, err := GetParserProjectStorage(ctx, env.Settings(), ppStorageMethod)
 	require.NoError(t, err)
 	defer ppStorage.Close(ctx)
 
