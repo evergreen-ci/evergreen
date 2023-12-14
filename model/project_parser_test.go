@@ -2786,6 +2786,50 @@ func TestMergeMatrixFail(t *testing.T) {
 	assert.Contains(t, err.Error(), "matrixes can only be defined in one YAML")
 }
 
+func TestIncludesValidation(t *testing.T) {
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
+	env := &mock.Environment{}
+	require.NoError(t, env.Configure(ctx))
+
+	env.Settings().TaskLimits = evergreen.TaskLimitsConfig{
+		MaxIncludesPerVersion: 1,
+	}
+	env.Settings().TaskLimits.Set(ctx)
+
+	yml := `
+include:
+  - filename: toomany.yml
+    module: something_different
+  - filename: somany.yml
+tasks:
+  - name: my_task
+    commands:
+      - func: main_function
+functions:
+  main_function:
+    command: definition_1
+modules:
+- name: "something_different"
+  owner: "foo"
+  repo: "bar"
+  prefix: "src/third_party"
+  branch: "master"
+ignore:
+  - "*.md"
+  - "scripts/*"
+`
+
+	proj := &Project{}
+	opts := &GetProjectOpts{
+		UnmarshalStrict: true,
+	}
+	_, err := LoadProjectInto(ctx, []byte(yml), opts, "id", proj)
+	require.NotNil(t, err)
+	assert.Contains(t, err.Error(), "project's total number of includes (2) exceeds maximum limit (1)")
+}
+
 func TestMergeMultipleProjectConfigs(t *testing.T) {
 	mainYaml := `
 include:

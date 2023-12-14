@@ -679,6 +679,21 @@ func LoadProjectInto(ctx context.Context, data []byte, opts *GetProjectOpts, ide
 			err = errors.New("trying to open include files with empty options")
 			return nil, errors.Wrapf(err, LoadProjectError)
 		}
+
+		// Validate that there are less includes than the limit.
+		settings, err := evergreen.GetConfig(ctx)
+		if err != nil {
+			return nil, errors.Wrap(err, LoadProjectError)
+		}
+		if settings == nil {
+			err = errors.New("no settings found")
+			return nil, errors.Wrap(err, LoadProjectError)
+		}
+		if settings.TaskLimits.MaxIncludesPerVersion > 0 && len(intermediateProject.Include) > settings.TaskLimits.MaxIncludesPerVersion {
+			err = errors.Errorf("project's total number of includes (%d) exceeds maximum limit (%d)", len(intermediateProject.Include), settings.TaskLimits.MaxIncludesPerVersion)
+			return nil, errors.Wrap(err, LoadProjectError)
+		}
+
 		wg := sync.WaitGroup{}
 		outputYAMLs := make(chan yamlTuple, len(intermediateProject.Include))
 		includesToProcess := make(chan Include, len(intermediateProject.Include))
