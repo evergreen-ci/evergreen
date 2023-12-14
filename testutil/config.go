@@ -230,6 +230,9 @@ func MockConfig() *evergreen.Settings {
 			DefaultProject: "proj",
 		},
 		Keys: map[string]string{"k3": "v3"},
+		TaskLimits: evergreen.TaskLimitsConfig{
+			MaxTasksPerVersion: 1000,
+		},
 		LoggerConfig: evergreen.LoggerConfig{
 			Buffer: evergreen.LogBuffering{
 				UseAsync:             true,
@@ -357,6 +360,7 @@ func MockConfig() *evergreen.Settings {
 		},
 		ServiceFlags: evergreen.ServiceFlags{
 			TaskDispatchDisabled:           true,
+			LargeParserProjectsDisabled:    true,
 			HostInitDisabled:               true,
 			PodInitDisabled:                true,
 			S3BinaryDownloadsDisabled:      true,

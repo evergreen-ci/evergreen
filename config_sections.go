@@ -47,6 +47,7 @@ func NewConfigSections() ConfigSections {
 		&UIConfig{},
 		&Settings{},
 		&JIRANotificationsConfig{},
+		&TaskLimitsConfig{},
 		&TriggerConfig{},
 		&SpawnHostConfig{},
 		&TracerConfig{},

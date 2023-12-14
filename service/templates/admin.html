@@ -59,6 +59,7 @@ Admin Settings
 						<li class="link" ng-click="scrollTo('announcements')">Announcements</li>
 						<div>Runners</div>
 						<li class="link" ng-click="scrollTo('notify')">Notify</li>
+						<li class="link" ng-click="scrollTo('task_limits')">Task Limits</li>
 						<li class="link" ng-click="scrollTo('hostinit')">Hostinit</li>
 						<li class="link" ng-click="scrollTo('pod_lifecycle')">Pod Lifecycle</li>
 						<li class="link" ng-click="scrollTo('scheduler')">Scheduler</li>
@@ -138,6 +139,17 @@ Admin Settings
 												<td colspan="2">
 													<md-radio-group
 														data-ng-model="Settings.service_flags.task_dispatch_disabled"
+														layout="row">
+														<md-radio-button data-ng-value="false"></md-radio-button>
+														<md-radio-button data-ng-value="true"></md-radio-button>
+													</md-radio-group>
+												</td>
+											</tr>
+											<tr>
+												<td>Large parser projects</td>
+												<td colspan="2">
+													<md-radio-group
+														data-ng-model="Settings.service_flags.large_parser_projects_disabled"
 														layout="row">
 														<md-radio-button data-ng-value="false"></md-radio-button>
 														<md-radio-button data-ng-value="true"></md-radio-button>
@@ -554,6 +566,23 @@ Admin Settings
 									</md-input-container>
 								</md-card-content>
 							</md-card>
+
+							<md-card flex=50 id="task_limits">
+								<md-card-title>
+									<md-card-title-text>
+										<span>Task Limits</span>
+									</md-card-title-text>
+									<md-button ng-click="clearSection('task_limits')">
+										<i class="fa fa-trash"></i>
+									</md-button>
+								</md-card-title>
+								<md-card-content>
+									<md-input-container class="control" style="width:45%;">
+										<label>Max Tasks per Version</label>
+										<input type="number" ng-model="Settings.task_limits.max_tasks_per_version">
+									</md-input-container>
+								</md-card-content>
+							</md-card>
 						</section>
 
 						<section layout="row" flex>
@@ -729,7 +758,7 @@ Admin Settings
 								</md-card-content>
 							</md-card>
 
-							<md-card flex=50 id="repotracker" style="max-width:49%">
+							<md-card flex=50 id="repotracker">
 								<md-card-title>
 									<md-card-title-text>
 										<span>Repotracker</span>
@@ -753,7 +782,6 @@ Admin Settings
 									</md-input-container>
 								</md-card-content>
 							</md-card>
-
 						</section>
 
 						<section layout="row" flex>
@@ -2463,7 +2491,7 @@ Admin Settings
 											<label>Jira Project to Request S3 Credentials From</label>
 											<input type="text" ng-model="Settings.project_creation.jira_project">
 										</md-input-container>
-									
+
 									</section>
 										<md-card style="margin-bottom:20px;">
 											<md-card-title>

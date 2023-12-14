@@ -122,7 +122,7 @@ GitHub checks, git tag triggers, project triggers, and patch triggers.
 For most aliases, you must define a variant regex or tags, and a task
 regex or tags to match. The matching variants/tasks will be included for the
 alias. If matching by tags, alias tags support a limited set of the [tag
-selector syntax](https://docs.devprod.prod.corp.mongodb.com/evergreen/Project-Configuration/Project-Configuration-Files/#task-and-variant-tags).
+selector syntax](Project-Configuration-Files.md#task-and-variant-tags).
 In particular, it supports tag negation and multiple tag criteria separated by
 spaces to get the set intersection of those tags. For example, when defining
 task tags:
@@ -378,7 +378,7 @@ Options:
 ### Virtual Workstation Commands
 
 Users can specify custom commands to be run when setting up their
-virtual workstation.
+virtual workstation. See more info [here](../Hosts/Developer-Workstations.md#project-setup).
 
 Options:
 

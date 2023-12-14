@@ -321,7 +321,7 @@ func TestCreateVersionFromConfig(t *testing.T) {
 	assert.Equal(1, newVersion.RevisionOrderNumber)
 	assert.Equal(evergreen.AdHocRequester, newVersion.Requester)
 
-	ppStorage, err := model.GetParserProjectStorage(env.Settings(), newVersion.ProjectStorageMethod)
+	ppStorage, err := model.GetParserProjectStorage(ctx, env.Settings(), newVersion.ProjectStorageMethod)
 	require.NoError(t, err)
 	defer ppStorage.Close(ctx)
 
