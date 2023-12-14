@@ -4,6 +4,7 @@ FROM public.ecr.aws/docker/library/golang:1.21-bookworm as build
 WORKDIR /build
 
 COPY . .
+ENV STAGING_ONLY=1
 RUN ["make", "clis"]
 
 # Send the macos CLIs to the notary service for signing
@@ -14,7 +15,7 @@ ARG MACOS_NOTARY_SECRET
 ARG EVERGREEN_BUNDLE_ID
 
 # Send the macos CLIs to the notary service for signing
-RUN if [ -n "$MACOS_NOTARY_SECRET" ]; then make clients/darwin_amd64/.signed; fi
+RUN if [ -n "$MACOS_NOTARY_SECRET" ]; then make sign-macos; fi
 
 # Production stage with only the necessary files
 FROM debian:bookworm-slim as production
