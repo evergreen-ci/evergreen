@@ -756,7 +756,6 @@ func MarkStaleBuildingAsFailed(ctx context.Context, distroID string) error {
 	spawnedByTaskKey := bsonutil.GetDottedKeyName(SpawnOptionsKey, SpawnOptionsSpawnedByTaskKey)
 	query := bson.M{
 		distroIDKey:      distroID,
-		UserHostKey:      false,
 		spawnedByTaskKey: bson.M{"$ne": true},
 		ProviderKey:      bson.M{"$in": evergreen.ProviderSpawnable},
 		StatusKey:        evergreen.HostBuilding,
@@ -1315,6 +1314,12 @@ func UnsafeReplace(ctx context.Context, env evergreen.Environment, idToRemove st
 		if err := toInsert.InsertWithContext(sessCtx, env); err != nil {
 			return nil, errors.Wrapf(err, "inserting new host '%s'", toInsert.Id)
 		}
+		grip.Info(message.Fields{
+			"message":  "inserted host to replace intent host",
+			"host_id":  toInsert.Id,
+			"host_tag": toInsert.Tag,
+			"distro":   toInsert.Distro.Id,
+		})
 		return nil, nil
 	}
 

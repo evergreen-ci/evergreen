@@ -16,6 +16,7 @@ func init() {
 	registry.AllowSubscription(ResourceTypeHost, EventVolumeExpirationWarningSent)
 	registry.AllowSubscription(ResourceTypeHost, EventHostProvisioned)
 	registry.AllowSubscription(ResourceTypeHost, EventHostProvisionFailed)
+	registry.AllowSubscription(ResourceTypeHost, EventHostCreated)
 	registry.AllowSubscription(ResourceTypeHost, EventHostStarted)
 	registry.AllowSubscription(ResourceTypeHost, EventHostStopped)
 	registry.AllowSubscription(ResourceTypeHost, EventHostModified)
@@ -101,6 +102,27 @@ func LogHostEvent(hostId string, eventType string, eventData HostEventData) {
 
 func LogHostCreated(hostId string) {
 	LogHostEvent(hostId, EventHostCreated, HostEventData{Successful: true})
+}
+
+func LogManyHostsCreated(hostIDs []string) {
+	events := make([]EventLogEntry, 0, len(hostIDs))
+	for _, hostID := range hostIDs {
+		e := EventLogEntry{
+			Timestamp:    time.Now(),
+			ResourceId:   hostID,
+			EventType:    EventHostCreated,
+			Data:         HostEventData{Successful: true},
+			ResourceType: ResourceTypeHost,
+		}
+		events = append(events, e)
+	}
+	if err := LogManyEvents(events); err != nil {
+		grip.Error(message.WrapError(err, message.Fields{
+			"resource_type": ResourceTypeHost,
+			"message":       "error logging event",
+			"source":        "event-log-fail",
+		}))
+	}
 }
 
 // LogHostCreationFailed logs an event indicating that the host errored while it
