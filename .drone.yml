@@ -45,9 +45,7 @@ steps:
       secret_key:
         from_secret: ecr_secret_key
       build_args:
-        - GOOS=linux
-        - GOARCH=arm64
-        - from_secret: notary_params
+        from_secret: notary_params
       repo: devprod-evergreen/${DRONE_REPO_NAME}
       registry: 795250896452.dkr.ecr.us-east-1.amazonaws.com
       create_repository: true
