@@ -6,7 +6,6 @@ import (
 	"path/filepath"
 	"testing"
 
-	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/agent/internal"
 	"github.com/evergreen-ci/evergreen/agent/internal/client"
 	"github.com/evergreen-ci/evergreen/apimodels"
@@ -81,7 +80,7 @@ func (s *createHostSuite) TestParseFromFile() {
 	//file for testing parsing from a json file
 	tmpdir := s.T().TempDir()
 	ebsDevice := []map[string]interface{}{
-		map[string]interface{}{
+		{
 			"device_name": "myDevice",
 			"ebs_size":    1,
 		},
@@ -204,24 +203,17 @@ func (s *createHostSuite) TestParamValidation() {
 	s.params["provider"] = apimodels.ProviderDocker
 	s.NoError(s.cmd.ParseParams(s.params))
 	s.params["distro"] = ""
-	originalSettings, err := evergreen.GetConfig(ctx)
-	defer func() {
-		s.NoError(evergreen.UpdateConfig(ctx, originalSettings))
-	}()
-	s.NoError(err)
-	settings := *originalSettings
-	settings.Providers.Docker.DefaultDistro = "my-default-distro"
-	s.NoError(evergreen.UpdateConfig(ctx, &settings))
 
 	err = s.cmd.expandAndValidate(ctx, s.conf)
 	s.Require().Error(err)
 	s.Contains(err.Error(), "Docker image must be set")
+	s.Contains(err.Error(), "must set a distro to run Docker container in")
 	s.Contains(err.Error(), "num hosts cannot be greater than 1")
 
 	s.params["image"] = "my-image"
 	s.params["command"] = "echo hi"
 	s.params["num_hosts"] = 1
-	s.params["distro"] = "my-default-distro"
+	s.params["distro"] = "distro-that-runs-docker"
 	s.NoError(s.cmd.ParseParams(s.params))
 	s.NoError(s.cmd.expandAndValidate(ctx, s.conf))
 

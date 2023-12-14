@@ -1968,15 +1968,13 @@ func (a *APISecretsManagerConfig) ToService() evergreen.SecretsManagerConfig {
 }
 
 type APIDockerConfig struct {
-	APIVersion    *string `json:"api_version"`
-	DefaultDistro *string `json:"default_distro"`
+	APIVersion *string `json:"api_version"`
 }
 
 func (a *APIDockerConfig) BuildFromService(h interface{}) error {
 	switch v := h.(type) {
 	case evergreen.DockerConfig:
 		a.APIVersion = utility.ToStringPtr(v.APIVersion)
-		a.DefaultDistro = utility.ToStringPtr(v.DefaultDistro)
 	default:
 		return errors.Errorf("programmatic error: expected Docker config but got type %T", h)
 	}
@@ -1985,8 +1983,7 @@ func (a *APIDockerConfig) BuildFromService(h interface{}) error {
 
 func (a *APIDockerConfig) ToService() (interface{}, error) {
 	return evergreen.DockerConfig{
-		APIVersion:    utility.FromStringPtr(a.APIVersion),
-		DefaultDistro: utility.FromStringPtr(a.DefaultDistro),
+		APIVersion: utility.FromStringPtr(a.APIVersion),
 	}, nil
 }
 
