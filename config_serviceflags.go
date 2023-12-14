@@ -73,6 +73,7 @@ func (c *ServiceFlags) Set(ctx context.Context) error {
 			hostInitKey:                       c.HostInitDisabled,
 			podInitDisabledKey:                c.PodInitDisabled,
 			s3BinaryDownloadsDisabledKey:      c.S3BinaryDownloadsDisabled,
+			largeParserProjectsDisabledKey:    c.LargeParserProjectsDisabled,
 			monitorKey:                        c.MonitorDisabled,
 			alertsKey:                         c.AlertsDisabled,
 			agentStartKey:                     c.AgentStartDisabled,
