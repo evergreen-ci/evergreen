@@ -166,6 +166,7 @@ var projectSettingsValidators = []projectSettingsValidator{
 	validateVersionControl,
 	validateContainers,
 	validateProjectLimits,
+	validateIncludeLimits,
 }
 
 // These validators have the potential to be very long, and may not be fully run unless specified.
@@ -959,6 +960,17 @@ func checkRunOn(runOnHasDistro, runOnHasContainer bool, runOn []string) []Valida
 		}}
 	}
 	return nil
+}
+
+func validateIncludeLimits(_ context.Context, settings *evergreen.Settings, project *model.Project, _ *model.ProjectRef, _ bool) ValidationErrors {
+	errs := ValidationErrors{}
+	if settings.TaskLimits.MaxIncludesPerVersion > 0 && project.NumIncludes > settings.TaskLimits.MaxIncludesPerVersion {
+		errs = append(errs, ValidationError{
+			Message: fmt.Sprintf("project's total number of includes (%d) exceeds maximum limit (%d)", project.NumIncludes, settings.TaskLimits.MaxIncludesPerVersion),
+			Level:   Error,
+		})
+	}
+	return errs
 }
 
 func validateProjectLimits(_ context.Context, settings *evergreen.Settings, project *model.Project, _ *model.ProjectRef, _ bool) ValidationErrors {

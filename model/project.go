@@ -68,6 +68,9 @@ type Project struct {
 
 	// Flag that indicates a project as requiring user authentication
 	Private bool `yaml:"private,omitempty" bson:"private"`
+
+	// Number of includes in the project cached for validation
+	NumIncludes int
 }
 
 type ProjectInfo struct {
