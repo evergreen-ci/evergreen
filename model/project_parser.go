@@ -680,7 +680,6 @@ func LoadProjectInto(ctx context.Context, data []byte, opts *GetProjectOpts, ide
 			return nil, errors.Wrapf(err, LoadProjectError)
 		}
 
-		// Validate that there are fewer includes than the limit.
 		settings, err := evergreen.GetConfig(ctx)
 		if err != nil {
 			return nil, errors.Wrap(err, LoadProjectError)
