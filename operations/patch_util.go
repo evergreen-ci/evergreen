@@ -625,9 +625,8 @@ func loadGitData(dir, remote, branch, ref, commits string, format bool, extraArg
 	if remote == "" {
 		remote = "upstream"
 	}
-	// branch@{remote} refers to the branch that the branch specified by branchname is set to
-	// build on top of. This allows automatically detecting a branch based on the correct remote,
-	// if the user's repo is a fork, for example. This also works with a commit hash, if given.
+	// remote/branch refers directly to the remote branch and does not require a local branch.
+	// branch@{remote} referes to a local branch that has a tag of a remote branch attached to it.
 	// In the case a range is passed, we only need one commit to determine the base, so we use the first commit.
 	// For details see: https://git-scm.com/docs/gitrevisions
 
