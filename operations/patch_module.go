@@ -103,7 +103,7 @@ func addModuleToPatch(params *patchParams, args cli.Args, conf *ClientSettings,
 	if !params.SkipConfirm {
 		keepGoing, err := confirmUncommittedChanges(modulePath, preserveCommits, params.Uncommitted || conf.UncommittedChanges)
 		if err != nil {
-			return errors.Wrap(err, "confirming uncommitted changes")
+			return errors.Wrap(err, "confi/griprming uncommitted changes")
 		}
 		if !keepGoing {
 			return errors.New("patch aborted")
@@ -116,7 +116,7 @@ func addModuleToPatch(params *patchParams, args cli.Args, conf *ClientSettings,
 	}
 
 	// Diff against the module branch.
-	diffData, err := loadGitData(modulePath, module.Branch, ref, "", preserveCommits, args...)
+	diffData, err := loadGitData(modulePath, "", module.Branch, ref, "", preserveCommits, args...)
 	if err != nil {
 		return err
 	}
