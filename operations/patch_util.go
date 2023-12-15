@@ -686,15 +686,15 @@ func gitGetRemote(dir, owner, repo string) (string, error) {
 	}
 
 	lines := strings.Split(out, "\n")
-	partial := "github.com/" + owner + "/" + repo
+	partial := strings.ToLower("github.com/" + owner + "/" + repo)
 	for _, line := range lines {
 		f := strings.Fields(line) // ["remote-name", "remote-url"]
-		if len(f) > 1 && strings.Contains(f[1], partial) {
+		if len(f) > 1 && strings.Contains(strings.ToLower(f[1]), partial) {
 			return f[0], nil
 		}
 	}
 
-	return "", errors.Wrap(err, "no git remote found")
+	return "", errors.New("no git remote found")
 }
 
 // gitMergeBase runs "git merge-base <branch1> <branch2>" (where branch2 can optionally be a githash)
