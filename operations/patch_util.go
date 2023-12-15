@@ -685,7 +685,7 @@ func gitGetRemote(dir, owner, repo string) (string, error) {
 		return "", errors.Wrap(err, "getting git remotes")
 	}
 
-	lines := strings.Split(string(out), "\n")
+	lines := strings.Split(out, "\n")
 	partial := "github.com/" + owner + "/" + repo
 	for _, line := range lines {
 		f := strings.Fields(line) // ["remote-name", "remote-url"]
