@@ -4,7 +4,8 @@ image:
   tag: latest
 
 arch: arm64
-replicaCount: 0
+
+replicaCount: 1
 
 ingress:
   enabled: true
