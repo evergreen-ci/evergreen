@@ -65,8 +65,8 @@ steps:
       release: evergreen
       values: image.tag=git-${DRONE_COMMIT_SHA:0:7},image.repository=795250896452.dkr.ecr.us-east-1.amazonaws.com/devprod-evergreen/${DRONE_REPO_NAME}
       values_files:
-        - charts/values.yml
-        - charts/staging.yml
+        - helm-charts/values.yaml
+        - helm-charts/staging.yaml
 
 ---
 kind: pipeline
@@ -93,5 +93,5 @@ steps:
       release: evergreen
       values: image.tag=git-${DRONE_COMMIT_SHA:0:7},image.repository=795250896452.dkr.ecr.us-east-1.amazonaws.com/devprod-evergreen/${DRONE_REPO_NAME}
       values_files:
-        - charts/values.yml
-        - charts/prod.yml
+        - helm-charts/values.yaml
+        - helm-charts/prod.yaml

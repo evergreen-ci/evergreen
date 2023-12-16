@@ -1,14 +1,17 @@
+#web-app:
 image:
   repository: 795250896452.dkr.ecr.us-east-1.amazonaws.com/devprod-evergreen/evergreen
+  tag: latest
 
 arch: arm64
-
-replicaCount: 1
+replicaCount: 0
 
 ingress:
   enabled: true
+  path: /
 mesh:
   enabled: true
+  permissive: false
 
 defaultAlerts:
   enabled: false
@@ -38,8 +41,6 @@ services:
     protocol: TCP
     targetPort: 9090
     type: ClusterIP
-
-replicaCount: 0
 
 command:
   - ${EVGHOME}/clients/${GOOS}_${GOARCH}/evergreen

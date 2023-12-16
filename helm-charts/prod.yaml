@@ -1,3 +1,4 @@
+#web-app:
 replicaCount: 2
 
 probes:
