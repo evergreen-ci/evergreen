@@ -59,6 +59,9 @@ steps:
       chart: mongodb/web-app
       chart_version: 4.15.8
       add_repos: [mongodb=https://10gen.github.io/helm-charts]
+      environment:
+        GOOS: linux
+        GOARCH: arm64
       kubernetes_token:
         from_secret: staging_kubernetes_token
       namespace: devprod-evergreen
@@ -87,6 +90,9 @@ steps:
       chart: mongodb/web-app
       chart_version: 4.15.8
       add_repos: [mongodb=https://10gen.github.io/helm-charts]
+      environment:
+        GOOS: linux
+        GOARCH: arm64
       kubernetes_token:
         from_secret: prod_kubernetes_token
       namespace: devprod-evergreen

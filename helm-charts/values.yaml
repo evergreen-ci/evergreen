@@ -44,6 +44,6 @@ services:
     type: ClusterIP
 
 command:
-  - ${EVGHOME}/clients/${GOOS}_${GOARCH}/evergreen
+  - /srv/clients/${GOOS}_${GOARCH}/evergreen
   - service
   - web
