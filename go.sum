@@ -449,8 +449,8 @@ github.com/evergreen-ci/utility v0.0.0-20231017180358-3a3a0617644d/go.mod h1:/9m
 github.com/fatih/color v1.7.0/go.mod h1:Zm6kSWBoL9eyXnKyktHP6abPY2pDugNf5KwzbycvMj4=
 github.com/fatih/structs v1.1.0 h1:Q7juDM0QtcnhCpeyLGQKyg4TOIghuNXrkL32pHAUMxo=
 github.com/fatih/structs v1.1.0/go.mod h1:9NiDSp5zOcgEDl+j00MP/WkGVPOlPRLejGD8Ga6PJ7M=
-github.com/felixge/httpsnoop v1.0.3 h1:s/nj+GCswXYzN5v2DpNMuMQYe+0DDwt5WVCU6CWBdXk=
-github.com/felixge/httpsnoop v1.0.3/go.mod h1:m8KPJKqk1gH5J9DgRY2ASl2lWCfGKXixSwevea8zH2U=
+github.com/felixge/httpsnoop v1.0.4 h1:NFTV2Zj1bL4mc9sqWACXbQFVBBg2W3GPvqp8/ESS2Wg=
+github.com/felixge/httpsnoop v1.0.4/go.mod h1:m8KPJKqk1gH5J9DgRY2ASl2lWCfGKXixSwevea8zH2U=
 github.com/fogleman/gg v1.2.1-0.20190220221249-0403632d5b90/go.mod h1:R/bRT+9gY/C5z7JzPU0zXsXHKM4/ayA+zqcVNZzPa1k=
 github.com/fogleman/gg v1.3.0/go.mod h1:R/bRT+9gY/C5z7JzPU0zXsXHKM4/ayA+zqcVNZzPa1k=
 github.com/form3tech-oss/jwt-go v3.2.2+incompatible/go.mod h1:pbq4aXjuKjdthFRnoDwaVPLA+WlJuPGy+QneDUgJi2k=
@@ -1175,8 +1175,8 @@ go.opentelemetry.io/contrib/detectors/aws/ecs v1.20.0 h1:yK9frTwU6y5ErWFIBt2lW+U
 go.opentelemetry.io/contrib/detectors/aws/ecs v1.20.0/go.mod h1:HhlaqoGmg4NOzPYua9HD/Jyhda3hLAAbj3gbALyGPkg=
 go.opentelemetry.io/contrib/instrumentation/github.com/aws/aws-sdk-go-v2/otelaws v0.46.1 h1:PGmSzEMllKQwBQHe9SERAsCytvgLhsb8OrRLeW+40xw=
 go.opentelemetry.io/contrib/instrumentation/github.com/aws/aws-sdk-go-v2/otelaws v0.46.1/go.mod h1:h0dNRrQsnnlMonPE/+FXrXtDYZEyZSTaIOfs+n8P/RQ=
-go.opentelemetry.io/contrib/instrumentation/github.com/gorilla/mux/otelmux v0.42.0 h1:M21Uhqx97uKzB9NhtPxUGT1EzP/AkLaVHD5vib+qoK4=
-go.opentelemetry.io/contrib/instrumentation/github.com/gorilla/mux/otelmux v0.42.0/go.mod h1:hZGj9DTQYUAszT7dWME6Ls2nWHrJAyyjTtBrBvK6QJw=
+go.opentelemetry.io/contrib/instrumentation/github.com/gorilla/mux/otelmux v0.46.1 h1:Ifzy1lucGMQJh6wPRxusde8bWaDhYjSNOqDyn6Hb4TM=
+go.opentelemetry.io/contrib/instrumentation/github.com/gorilla/mux/otelmux v0.46.1/go.mod h1:YfFNem80G9UZ/mL5zd5GGXZSy95eXK+RhzIWBkLjLSc=
 go.opentelemetry.io/contrib/instrumentation/net/http/otelhttp v0.45.0 h1:x8Z78aZx8cOF0+Kkazoc7lwUNMGy0LrzEMxTm4BbTxg=
 go.opentelemetry.io/contrib/instrumentation/net/http/otelhttp v0.45.0/go.mod h1:62CPTSry9QZtOaSsE3tOzhx6LzDhHnXJ6xHeMNNiM6Q=
 go.opentelemetry.io/otel v1.21.0 h1:hzLeKBZEL7Okw2mGzZ0cc4k/A7Fta0uoPgaJCr8fsFc=
