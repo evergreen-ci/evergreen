@@ -412,19 +412,13 @@ func MakePatchedConfig(ctx context.Context, env evergreen.Environment, p *patch.
 		defer os.Remove(configFilePath) //nolint:evg-lint
 
 		// clean the working directory
-		workingDirectory := filepath.Dir(patchFilePath)
+		workingDirectory := filepath.Join(filepath.Dir(patchFilePath), utility.RandomString())
+		defer os.RemoveAll(workingDirectory)
+
 		localConfigPath := filepath.Join(
 			workingDirectory,
 			remoteConfigPath,
 		)
-		parentDir := strings.Split(
-			remoteConfigPath,
-			string(os.PathSeparator),
-		)[0]
-		err = os.RemoveAll(filepath.Join(workingDirectory, parentDir))
-		if err != nil {
-			return nil, errors.WithStack(err)
-		}
 		if err = os.MkdirAll(filepath.Dir(localConfigPath), 0755); err != nil {
 			return nil, errors.WithStack(err)
 		}
@@ -456,6 +450,15 @@ func MakePatchedConfig(ctx context.Context, env evergreen.Environment, p *patch.
 			}))
 			return nil, errors.Wrap(err, "running patch command (possibly due to merge conflict on evergreen configuration file)")
 		}
+
+		grip.Info(message.Fields{
+			"message":          "MALIK5",
+			"output":           output.String(),
+			"workingDirectory": workingDirectory,
+			"localConfigPath":  localConfigPath,
+			"remoteConfigPath": remoteConfigPath,
+			"configFilePath":   configFilePath,
+		})
 
 		// read in the patched config file
 		data, err := os.ReadFile(localConfigPath)
