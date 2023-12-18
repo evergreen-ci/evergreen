@@ -4,6 +4,8 @@ import (
 	"fmt"
 	"net/http"
 
+	"github.com/evergreen-ci/evergreen"
+	"github.com/evergreen-ci/evergreen/model"
 	"github.com/evergreen-ci/evergreen/model/event"
 	restModel "github.com/evergreen-ci/evergreen/rest/model"
 	"github.com/evergreen-ci/evergreen/trigger"
@@ -11,6 +13,19 @@ import (
 	"github.com/mongodb/grip"
 	"github.com/pkg/errors"
 )
+
+func convertToFamilyTrigger(trigger string) string {
+	switch trigger {
+	case event.TriggerOutcome:
+		return event.TriggerFamilyOutcome
+	case event.TriggerFailure:
+		return event.TriggerFamilyFailure
+	case event.TriggerSuccess:
+		return event.TriggerFamilySuccess
+	default:
+		return trigger
+	}
+}
 
 func SaveSubscriptions(owner string, subscriptions []restModel.APISubscription, isProjectOwner bool) error {
 	dbSubscriptions := []event.Subscription{}
@@ -25,6 +40,44 @@ func SaveSubscriptions(owner string, subscriptions []restModel.APISubscription, 
 		if isProjectOwner {
 			dbSubscription.OwnerType = event.OwnerTypeProject
 			dbSubscription.Owner = owner
+		}
+
+		// There are special requirements for the VERSION resource type. Patch requesters should use family triggers
+		// when possible, while non-patch requesters should use regular triggers. The content of selectors changes based
+		// on the owner type.
+		if dbSubscription.ResourceType == event.ResourceTypeVersion {
+			for _, selector := range dbSubscription.Selectors {
+				// Handle project subscriptions.
+				if dbSubscription.OwnerType == event.OwnerTypeProject && selector.Type == event.SelectorRequester {
+					requester := selector.Data
+					if evergreen.IsPatchRequester(requester) {
+						dbSubscription.Trigger = convertToFamilyTrigger(dbSubscription.Trigger)
+					}
+					break
+				}
+
+				// Handle personal subscriptions.
+				if dbSubscription.OwnerType == event.OwnerTypePerson && selector.Type == event.SelectorID {
+					versionId := selector.Data
+					v, err := model.VersionFindOneId(versionId)
+					if err != nil {
+						return gimlet.ErrorResponse{
+							StatusCode: http.StatusInternalServerError,
+							Message:    fmt.Sprintf("finding version '%s': %s", versionId, err),
+						}
+					}
+					if v == nil {
+						return gimlet.ErrorResponse{
+							StatusCode: http.StatusInternalServerError,
+							Message:    fmt.Sprintf("version '%s' not found", versionId),
+						}
+					}
+					if evergreen.IsPatchRequester(v.Requester) {
+						dbSubscription.Trigger = convertToFamilyTrigger(dbSubscription.Trigger)
+					}
+					break
+				}
+			}
 		}
 
 		if !trigger.ValidateTrigger(dbSubscription.ResourceType, dbSubscription.Trigger) {
