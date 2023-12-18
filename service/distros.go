@@ -29,10 +29,18 @@ func (uis *UIServer) distrosPage(w http.ResponseWriter, r *http.Request) {
 	flags, err := evergreen.GetServiceFlags(r.Context())
 	if err != nil {
 		gimlet.WriteResponse(w, gimlet.MakeJSONInternalErrorResponder(errors.Wrap(err, "retrieving admin settings")))
+		return
 	}
+
+	spruceLink := fmt.Sprintf("%s/distros", uis.Settings.Ui.UIv2Url)
+	newUILink := ""
+	if len(uis.Settings.Ui.UIv2Url) > 0 {
+		newUILink = spruceLink
+	}
+
 	if flags.LegacyUIDistroPageDisabled {
-		newUIProjectsLink := fmt.Sprintf("%s/distros", uis.Settings.Ui.UIv2Url)
-		http.Redirect(w, r, newUIProjectsLink, http.StatusPermanentRedirect)
+		http.Redirect(w, r, spruceLink, http.StatusPermanentRedirect)
+		return
 	}
 
 	permissions, err := rolemanager.HighestPermissionsForRolesAndResourceType(
@@ -84,12 +92,6 @@ func (uis *UIServer) distrosPage(w http.ResponseWriter, r *http.Request) {
 		containerPools = append(containerPools, p)
 		containerPoolDistros = append(containerPoolDistros, p.Distro)
 		containerPoolIds = append(containerPoolIds, p.Id)
-	}
-
-	spruceLink := fmt.Sprintf("%s/distros", uis.Settings.Ui.UIv2Url)
-	newUILink := ""
-	if len(uis.Settings.Ui.UIv2Url) > 0 {
-		newUILink = spruceLink
 	}
 
 	uis.render.WriteResponse(w, http.StatusOK, struct {
