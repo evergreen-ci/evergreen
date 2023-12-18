@@ -184,13 +184,10 @@ func (j *volumeMigrationJob) startNewHost(ctx context.Context) {
 		j.AddError(errors.Wrap(err, "inserting new intent host"))
 		return
 	}
-	event.LogHostCreated(intentHost.Id)
 	grip.Info(message.Fields{
 		"message":        "new intent host created",
 		"job_id":         j.ID(),
 		"intent_host_id": intentHost.Id,
-		"host_tag":       intentHost.Tag,
-		"distro":         intentHost.Distro.Id,
 	})
 }
 
