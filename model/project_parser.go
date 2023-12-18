@@ -697,7 +697,7 @@ func LoadProjectInto(ctx context.Context, data []byte, opts *GetProjectOpts, ide
 		catcher := grip.NewBasicCatcher()
 		numIncludes := len(intermediateProject.Include)
 		if settings.TaskLimits.MaxIncludesPerVersion > 0 && numIncludes > settings.TaskLimits.MaxIncludesPerVersion {
-			catcher.Add(errors.Errorf("project's total number of includes (%d) exceeds maximum limit (%d)", numIncludes, settings.TaskLimits.MaxIncludesPerVersion))
+			catcher.Errorf("project's total number of includes (%d) exceeds maximum limit (%d)", numIncludes, settings.TaskLimits.MaxIncludesPerVersion)
 			numIncludes = settings.TaskLimits.MaxIncludesPerVersion
 		}
 
