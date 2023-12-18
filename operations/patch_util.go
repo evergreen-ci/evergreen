@@ -688,9 +688,12 @@ func gitGetRemote(dir, owner, repo string) (string, error) {
 	}
 
 	lines := strings.Split(out, "\n")
-	partial := strings.ToLower("github.com/" + owner + "/" + repo)
+	partial := strings.ToLower(fmt.Sprintf("github.com/%s/%s", owner, repo))
+
+	// git remote -v has a format of
+	// <remote_name> <url> [fetch|pull]
 	for _, line := range lines {
-		f := strings.Fields(line) // ["remote-name", "remote-url"]
+		f := strings.Fields(line)
 		if len(f) > 1 && strings.Contains(strings.ToLower(f[1]), partial) {
 			return f[0], nil
 		}
