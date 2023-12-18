@@ -632,7 +632,7 @@ func loadGitData(dir, remote, branch, ref, commits string, format bool, extraArg
 
 	mergeBase, err := gitMergeBase(dir, remote+"/"+branch, ref, commits)
 	if err != nil {
-		mergeBase, err = gitMergeBase(dir, branch+"@{"+remote+"}", ref, commits)
+		mergeBase, err = gitMergeBase(dir, branch+"@{upstream}", ref, commits)
 		if err != nil {
 			return nil, errors.Wrapf(err, "Error getting merge base, "+
 				"may need to create local branch '%s' and have it track your Evergreen project", branch)
