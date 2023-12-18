@@ -7,7 +7,6 @@ import (
 
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/cloud"
-	"github.com/evergreen-ci/evergreen/model/event"
 	"github.com/evergreen-ci/evergreen/model/host"
 	"github.com/evergreen-ci/evergreen/model/user"
 	restmodel "github.com/evergreen-ci/evergreen/rest/model"
@@ -56,10 +55,9 @@ func NewIntentHost(ctx context.Context, options *restmodel.HostRequestOptions, u
 	if err := intentHost.Insert(ctx); err != nil {
 		return nil, err
 	}
-	event.LogHostCreated(intentHost.Id)
+
 	grip.Info(message.Fields{
 		"message":  "inserted intent host",
-		"host_id":  intentHost.Id,
 		"host_tag": intentHost.Tag,
 		"distro":   intentHost.Distro.Id,
 		"user":     user.Username(),
