@@ -17,10 +17,15 @@ type TaskLimitsConfig struct {
 	// MaxTasksPerVersion is the maximum number of tasks that a single version
 	// can have.
 	MaxTasksPerVersion int `bson:"max_tasks_per_version" json:"max_tasks_per_version" yaml:"max_tasks_per_version"`
+
+	// MaxIncludesPerVersion is the maximum number of includes that a single
+	// version can have.
+	MaxIncludesPerVersion int `bson:"max_includes_per_version" json:"max_includes_per_version" yaml:"max_includes_per_version"`
 }
 
 var (
-	maxTasksPerVersionKey = bsonutil.MustHaveTag(TaskLimitsConfig{}, "MaxTasksPerVersion")
+	maxTasksPerVersionKey    = bsonutil.MustHaveTag(TaskLimitsConfig{}, "MaxTasksPerVersion")
+	maxIncludesPerVersionKey = bsonutil.MustHaveTag(TaskLimitsConfig{}, "MaxIncludesPerVersion")
 )
 
 func (c *TaskLimitsConfig) SectionId() string { return "task_limits" }
@@ -45,7 +50,8 @@ func (c *TaskLimitsConfig) Get(ctx context.Context) error {
 func (c *TaskLimitsConfig) Set(ctx context.Context) error {
 	_, err := GetEnvironment().DB().Collection(ConfigCollection).UpdateOne(ctx, byId(c.SectionId()), bson.M{
 		"$set": bson.M{
-			maxTasksPerVersionKey: c.MaxTasksPerVersion,
+			maxTasksPerVersionKey:    c.MaxTasksPerVersion,
+			maxIncludesPerVersionKey: c.MaxIncludesPerVersion,
 		},
 	}, options.Update().SetUpsert(true))
 
