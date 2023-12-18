@@ -457,29 +457,31 @@ func (s *Settings) GetSender(ctx context.Context, env Environment) (send.Sender,
 		return nil, errors.Wrap(err, "configuring error fallback logger")
 	}
 
-	// setup the base/default logger (generally direct to systemd
-	// or standard output)
-	switch s.LogPath {
-	case localLoggingOverride:
-		// log directly to systemd if possible, and log to
-		// standard output otherwise.
-		sender = getSystemLogger()
-	case standardOutputLoggingOverride, "":
-		sender = send.MakeNative()
-	default:
-		sender, err = send.MakeFileLogger(s.LogPath)
-		if err != nil {
-			return nil, errors.Wrap(err, "configuring file logger")
+	if _, disableLocalLogging := os.LookupEnv(disableLocalLogging); !disableLocalLogging {
+		// setup the base/default logger (generally direct to systemd
+		// or standard output)
+		switch s.LogPath {
+		case localLoggingOverride:
+			// log directly to systemd if possible, and log to
+			// standard output otherwise.
+			sender = getSystemLogger()
+		case standardOutputLoggingOverride, "":
+			sender = send.MakeNative()
+		default:
+			sender, err = send.MakeFileLogger(s.LogPath)
+			if err != nil {
+				return nil, errors.Wrap(err, "configuring file logger")
+			}
 		}
-	}
 
-	if err = sender.SetLevel(levelInfo); err != nil {
-		return nil, errors.Wrap(err, "setting level")
+		if err = sender.SetLevel(levelInfo); err != nil {
+			return nil, errors.Wrap(err, "setting level")
+		}
+		if err = sender.SetErrorHandler(send.ErrorHandlerFromSender(fallback)); err != nil {
+			return nil, errors.Wrap(err, "setting error handler")
+		}
+		senders = append(senders, sender)
 	}
-	if err = sender.SetErrorHandler(send.ErrorHandlerFromSender(fallback)); err != nil {
-		return nil, errors.Wrap(err, "setting error handler")
-	}
-	senders = append(senders, sender)
 
 	// set up external log aggregation services:
 	//
