@@ -626,7 +626,7 @@ func loadGitData(dir, remote, branch, ref, commits string, format bool, extraArg
 		remote = "upstream"
 	}
 	// remote/branch refers directly to the remote branch and does not require a local branch.
-	// branch@{remote} referes to a local branch that has a tag of a remote branch attached to it.
+	// branch@{remote} referes to the remote branch that "branch" is tracking.
 	// In the case a range is passed, we only need one commit to determine the base, so we use the first commit.
 	// For details see: https://git-scm.com/docs/gitrevisions
 
