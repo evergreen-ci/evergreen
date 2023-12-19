@@ -692,7 +692,7 @@ func gitGetRemote(dir, owner, repo string) (string, error) {
 
 func getRemoteFromOutput(output, owner, repo string) (string, error) {
 	lines := strings.Split(output, "\n")
-	partial := strings.ToLower(fmt.Sprintf("github.com/%s/%s", owner, repo))
+	partial := strings.ToLower(fmt.Sprintf("%s/%s", owner, repo))
 
 	// git remote -v has a format of
 	// <remote_name> <url> [fetch|pull]
