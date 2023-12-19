@@ -428,7 +428,7 @@ func (a *Agent) setupTask(agentCtx, setupCtx context.Context, initialTC *taskCon
 	if err != nil {
 		tc.logger = client.NewSingleChannelLogHarness("agent.error", a.defaultLogger)
 		// When makeTaskConfig errors, we should check if the taskgroup is nil in nextTask and
-		// use that as the killProcsOverride. Because the taskConfig will be nil in this case, killProcs
+		// use that as the killProcsAdditionalCheck. Because the taskConfig will be nil in this case, killProcs
 		// will not be able to use the taskConfig task group to determine if it should kill processes.
 		taskGroupIsNil := nt.TaskGroup == ""
 		if initialTC != nil && initialTC.taskConfig != nil {
@@ -478,13 +478,13 @@ func (a *Agent) setupTask(agentCtx, setupCtx context.Context, initialTC *taskCon
 	return tc, shouldExit, nil
 }
 
-func (a *Agent) handleSetupError(ctx context.Context, tc *taskContext, err error, killProcsOverride bool) (*taskContext, bool, error) {
+func (a *Agent) handleSetupError(ctx context.Context, tc *taskContext, err error, killProcsAdditionalCheck bool) (*taskContext, bool, error) {
 	catcher := grip.NewBasicCatcher()
 	grip.Error(err)
 	catcher.Wrap(err, "handling setup error")
 	tc.logger.Execution().Error(err)
 	grip.Infof("Task complete: '%s'.", tc.task.ID)
-	shouldExit, err := a.handleTaskResponse(ctx, tc, evergreen.TaskSystemFailed, err.Error(), killProcsOverride)
+	shouldExit, err := a.handleTaskResponse(ctx, tc, evergreen.TaskSystemFailed, err.Error(), killProcsAdditionalCheck)
 	catcher.Wrap(err, "handling task response")
 	return tc, shouldExit, catcher.Resolve()
 }
@@ -892,8 +892,8 @@ func (a *Agent) runEndTaskSync(ctx context.Context, tc *taskContext, detail *api
 	_ = a.runCommandsInBlock(ctx, tc, taskSync)
 }
 
-func (a *Agent) handleTaskResponse(ctx context.Context, tc *taskContext, status string, systemFailureDescription string, killProcsOverride bool) (bool, error) {
-	resp, err := a.finishTask(ctx, tc, status, systemFailureDescription, killProcsOverride)
+func (a *Agent) handleTaskResponse(ctx context.Context, tc *taskContext, status string, systemFailureDescription string, killProcsAdditionalCheck bool) (bool, error) {
+	resp, err := a.finishTask(ctx, tc, status, systemFailureDescription, killProcsAdditionalCheck)
 	if err != nil {
 		return false, errors.Wrap(err, "marking task complete")
 	}
@@ -929,7 +929,7 @@ func (a *Agent) handleTimeoutAndOOM(ctx context.Context, tc *taskContext, status
 
 // finishTask finishes up a running task. It runs any post-task command blocks
 // such as timeout and post, then sends the final end task response.
-func (a *Agent) finishTask(ctx context.Context, tc *taskContext, status string, systemFailureDescription string, killProcsOverride bool) (*apimodels.EndTaskResponse, error) {
+func (a *Agent) finishTask(ctx context.Context, tc *taskContext, status string, systemFailureDescription string, killProcsAdditionalCheck bool) (*apimodels.EndTaskResponse, error) {
 	detail := a.endTaskResponse(ctx, tc, status, systemFailureDescription)
 	switch detail.Status {
 	case evergreen.TaskSucceeded:
@@ -971,7 +971,7 @@ func (a *Agent) finishTask(ctx context.Context, tc *taskContext, status string, 
 		}
 	}
 
-	a.killProcs(ctx, tc, false, "task is ending", killProcsOverride)
+	a.killProcs(ctx, tc, false, "task is ending", killProcsAdditionalCheck)
 
 	if tc.logger != nil {
 		tc.logger.Execution().Infof("Sending final task status: '%s'.", detail.Status)
