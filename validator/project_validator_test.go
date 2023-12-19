@@ -2448,7 +2448,7 @@ func TestValidateModuleUsageInGitGetProject(t *testing.T) {
 			p.BuildVariants[1].Tasks = append(p.BuildVariants[1].Tasks, model.BuildVariantTaskUnit{Name: "test"})
 			errs := validateModuleUsageInGitGetProject(p)
 			require.Len(t, errs, 1)
-			assert.Contains(t, errs[0], "bar")
+			assert.Contains(t, errs[0].Message, "bar")
 		},
 		"Unused task": func(t *testing.T, p *model.Project) {
 			p.BuildVariants[0].Tasks = []model.BuildVariantTaskUnit{}
