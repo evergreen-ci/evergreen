@@ -451,15 +451,6 @@ func MakePatchedConfig(ctx context.Context, env evergreen.Environment, p *patch.
 			return nil, errors.Wrap(err, "running patch command (possibly due to merge conflict on evergreen configuration file)")
 		}
 
-		grip.Info(message.Fields{
-			"message":          "MALIK5",
-			"output":           output.String(),
-			"workingDirectory": workingDirectory,
-			"localConfigPath":  localConfigPath,
-			"remoteConfigPath": remoteConfigPath,
-			"configFilePath":   configFilePath,
-		})
-
 		// read in the patched config file
 		data, err := os.ReadFile(localConfigPath)
 		if err != nil {
