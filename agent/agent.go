@@ -1068,13 +1068,13 @@ func setEndTaskFailureDetails(tc *taskContext, detail *apimodels.TaskEndDetail, 
 
 }
 
-func (a *Agent) killProcs(ctx context.Context, tc *taskContext, ignoreTaskGroupCheck bool, reason string, additionalKillOverride bool) {
+func (a *Agent) killProcs(ctx context.Context, tc *taskContext, ignoreTaskGroupCheck bool, reason string, additionalShouldKillCheck bool) {
 	logger := grip.NewJournaler("killProcs")
 	if tc.logger != nil && !tc.logger.Closed() {
 		logger = tc.logger.Execution()
 	}
 
-	if !additionalKillOverride || !a.shouldKill(tc, ignoreTaskGroupCheck) {
+	if !additionalShouldKillCheck || !a.shouldKill(tc, ignoreTaskGroupCheck) {
 		return
 	}
 
