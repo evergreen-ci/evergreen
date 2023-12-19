@@ -6,6 +6,7 @@ import (
 	"os"
 	"path/filepath"
 	"strings"
+	"sync"
 	"testing"
 	"time"
 
@@ -22,7 +23,6 @@ import (
 	"github.com/evergreen-ci/evergreen/testutil"
 	"github.com/evergreen-ci/evergreen/thirdparty"
 	"github.com/evergreen-ci/utility"
-	"github.com/mongodb/grip"
 	. "github.com/smartystreets/goconvey/convey"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -500,72 +500,79 @@ func TestMakePatchedConfig(t *testing.T) {
 	defer cancel()
 
 	env := evergreen.GetEnvironment()
+	cwd := testutil.GetDirectoryOfFile()
 
-	Convey("With calling MakePatchedConfig with a config and remote configuration path", t, func() {
-		cwd := testutil.GetDirectoryOfFile()
-
-		Convey("the config should be patched correctly", func() {
-			remoteConfigPath := filepath.Join("config", "evergreen.yml")
-			fileBytes, err := os.ReadFile(filepath.Join(cwd, "testdata", "patch.diff"))
-			So(err, ShouldBeNil)
-			// update patch with remove config path variable
-			diffString := fmt.Sprintf(string(fileBytes),
-				remoteConfigPath, remoteConfigPath, remoteConfigPath, remoteConfigPath)
-			// the patch adds a new task
-			p := &patch.Patch{
-				Patches: []patch.ModulePatch{{
-					Githash: "revision",
-					PatchSet: patch.PatchSet{
-						Patch: diffString,
-						Summary: []thirdparty.Summary{{
-							Name:      remoteConfigPath,
-							Additions: 3,
-							Deletions: 3,
-						}},
-					},
+	remoteConfigPath := filepath.Join("config", "evergreen.yml")
+	fileBytes, err := os.ReadFile(filepath.Join(cwd, "testdata", "patch.diff"))
+	assert.NoError(t, err)
+	// update patch with remove config path variable
+	diffString := fmt.Sprintf(string(fileBytes),
+		remoteConfigPath, remoteConfigPath, remoteConfigPath, remoteConfigPath)
+	// the patch adds a new task
+	p := &patch.Patch{
+		Patches: []patch.ModulePatch{{
+			Githash: "revision",
+			PatchSet: patch.PatchSet{
+				Patch: diffString,
+				Summary: []thirdparty.Summary{{
+					Name:      remoteConfigPath,
+					Additions: 3,
+					Deletions: 3,
 				}},
-			}
-			projectBytes, err := os.ReadFile(filepath.Join(cwd, "testdata", "project.config"))
-			So(err, ShouldBeNil)
+			},
+		}},
+	}
+	projectBytes, err := os.ReadFile(filepath.Join(cwd, "testdata", "project.config"))
+	assert.NoError(t, err)
+
+	// Test that many goroutines can run MakePatchedConfig at the same time
+	wg := sync.WaitGroup{}
+	for w := 0; w < 10; w++ {
+		wg.Add(1)
+		go func() {
+			defer wg.Done()
 			projectData, err := MakePatchedConfig(ctx, env, p, remoteConfigPath, string(projectBytes))
-			So(err, ShouldBeNil)
-			So(projectData, ShouldNotBeNil)
-
+			assert.NoError(t, err)
+			assert.NotNil(t, projectData)
 			project := &Project{}
 			_, err = LoadProjectInto(ctx, projectData, nil, "", project)
-			So(err, ShouldBeNil)
-			So(len(project.Tasks), ShouldEqual, 2)
-		})
-		Convey("an empty base config should be patched correctly", func() {
-			remoteConfigPath := filepath.Join("model", "testdata", "project2.config")
-			fileBytes, err := os.ReadFile(filepath.Join(cwd, "testdata", "project.diff"))
-			So(err, ShouldBeNil)
-			p := &patch.Patch{
-				Patches: []patch.ModulePatch{{
-					Githash: "revision",
-					PatchSet: patch.PatchSet{
-						Patch:   string(fileBytes),
-						Summary: []thirdparty.Summary{{Name: remoteConfigPath}},
-					},
-				}},
-			}
+			assert.NoError(t, err)
+			assert.Len(t, project.Tasks, 2)
+		}()
+	}
+	wg.Wait()
+}
 
-			projectData, err := MakePatchedConfig(ctx, env, p, remoteConfigPath, "")
-			So(err, ShouldBeNil)
+func TestMakePatchedConfigEmptyBase(t *testing.T) {
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
 
-			project := &Project{}
-			_, err = LoadProjectInto(ctx, projectData, nil, "", project)
-			So(err, ShouldBeNil)
-			So(project, ShouldNotBeNil)
+	env := evergreen.GetEnvironment()
+	cwd := testutil.GetDirectoryOfFile()
 
-			So(len(project.Tasks), ShouldEqual, 1)
-			So(project.Tasks[0].Name, ShouldEqual, "hello")
+	remoteConfigPath := filepath.Join("model", "testdata", "project2.config")
+	fileBytes, err := os.ReadFile(filepath.Join(cwd, "testdata", "project.diff"))
+	assert.NoError(t, err)
+	p := &patch.Patch{
+		Patches: []patch.ModulePatch{{
+			Githash: "revision",
+			PatchSet: patch.PatchSet{
+				Patch:   string(fileBytes),
+				Summary: []thirdparty.Summary{{Name: remoteConfigPath}},
+			},
+		}},
+	}
 
-			Reset(func() {
-				grip.Warning(os.Remove(remoteConfigPath))
-			})
-		})
-	})
+	projectData, err := MakePatchedConfig(ctx, env, p, remoteConfigPath, "")
+	assert.NoError(t, err)
+
+	project := &Project{}
+	_, err = LoadProjectInto(ctx, projectData, nil, "", project)
+	assert.NoError(t, err)
+	assert.NotNil(t, project)
+
+	assert.Len(t, project.Tasks, 1)
+	assert.Equal(t, project.Tasks[0].Name, "hello")
 }
 
 // shouldContainPair returns a blank string if its arguments resemble each other, and returns a
