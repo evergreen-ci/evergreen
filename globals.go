@@ -209,9 +209,9 @@ const (
 	// standardOutputLoggingOverride is a special log path indicating that the
 	// app server should log to stdout.
 	standardOutputLoggingOverride = "STDOUT"
-	// disableLocalLogging is an environment variable to disable all local application logging
+	// disableLocalLoggingEnvVar is an environment variable to disable all local application logging
 	// besides for fallback logging to stderr.
-	disableLocalLogging = "DISABLE_LOCAL_LOGGING"
+	disableLocalLoggingEnvVar = "DISABLE_LOCAL_LOGGING"
 
 	// LegacyTaskActivator is a deprecated legacy activator that used
 	// to be a majority of non-stepback and non-API activations.
