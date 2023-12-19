@@ -253,3 +253,30 @@ func (s *PatchUtilTestSuite) TestNonRepeatedDefaultsLoadsDefaultVariantsAndTasks
 	s.ElementsMatch([]string{"default-bv0", "default-bv1"}, pp.Variants, "variants should be defaulted")
 	s.ElementsMatch([]string{"default-task0", "default-task1"}, pp.Tasks, "tasks should be defaulted")
 }
+
+func (s *PatchUtilTestSuite) TestGetRemoteFromOutput() {
+	out := `
+	origin  git@github.com:ZackarySantana/evergreen.git (fetch)
+	origin  git@github.com:ZackarySantana/evergreen.git (push)
+	upstream        https://github.com/evergreen-ci/evergreen (fetch)
+	upstream        https://github.com/evergreen-ci/evergreen (push)
+	`
+
+	repo, err := getRemoteFromOutput(out, "ZackarySantana", "evergreen")
+	s.Require().NoError(err)
+	s.Equal("origin", repo)
+
+	repo, err = getRemoteFromOutput(out, "evergreen-ci", "evergreen")
+	s.Require().NoError(err)
+	s.Equal("upstream", repo)
+
+	// Case-insensitive search
+	repo, err = getRemoteFromOutput(out, "zackarysantana", "evergreen")
+	s.Require().NoError(err)
+	s.Equal("origin", repo)
+
+	// Case-insensitive search
+	repo, err = getRemoteFromOutput(out, "Evergreen-CI", "evergreen")
+	s.Require().NoError(err)
+	s.Equal("upstream", repo)
+}

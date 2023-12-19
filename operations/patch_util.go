@@ -687,7 +687,11 @@ func gitGetRemote(dir, owner, repo string) (string, error) {
 		return "", errors.Wrap(err, "getting git remotes")
 	}
 
-	lines := strings.Split(out, "\n")
+	return getRemoteFromOutput(out, owner, repo)
+}
+
+func getRemoteFromOutput(output, owner, repo string) (string, error) {
+	lines := strings.Split(output, "\n")
 	partial := strings.ToLower(fmt.Sprintf("github.com/%s/%s", owner, repo))
 
 	// git remote -v has a format of
