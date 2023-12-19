@@ -1515,6 +1515,26 @@ func (p *Project) FindProjectTask(name string) *ProjectTask {
 	return nil
 }
 
+// FindAllProjectTasksWithName finds either the individual task or
+// all tasks associated with a task group.
+func (p *Project) FindAllProjectTasksWithName(name string) []*ProjectTask {
+	tasks := []*ProjectTask{}
+
+	if tg := p.FindTaskGroup(name); tg != nil {
+		for _, t := range tg.Tasks {
+			if pt := p.FindProjectTask(t); pt != nil {
+				tasks = append(tasks, pt)
+			}
+		}
+	}
+
+	if pt := p.FindProjectTask(name); pt != nil {
+		tasks = append(tasks, pt)
+	}
+
+	return tasks
+}
+
 // findMatchingProjectTasks returns a list of tasks in a project that match the given regexp.
 func (p *Project) findMatchingProjectTasks(tRegex *regexp.Regexp) []string {
 	var res []string

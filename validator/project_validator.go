@@ -139,6 +139,7 @@ var projectErrorValidators = []projectValidator{
 	validateHostCreates,
 	validateDuplicateBVTasks,
 	validateGenerateTasks,
+	validateModuleUsageInGitGetProject,
 }
 
 // Functions used to validate the syntax of project configs representing properties found on the project page.
@@ -1949,6 +1950,40 @@ func validateHostCreateTotals(p *model.Project, counts hostCreateCounts) Validat
 func validateGenerateTasks(p *model.Project) ValidationErrors {
 	ts := p.TasksThatCallCommand(evergreen.GenerateTasksCommandName)
 	return validateTimesCalledPerTask(p, ts, evergreen.GenerateTasksCommandName, 1, Error)
+}
+
+func validateModuleUsageInGitGetProject(p *model.Project) ValidationErrors {
+	var errs ValidationErrors
+
+	for _, bv := range p.BuildVariants {
+		for _, t := range bv.Tasks {
+			pts := p.FindAllProjectTasksWithName(t.Name)
+			for _, pt := range pts {
+				for _, cmd := range pt.Commands {
+					if cmd.Command == "git.get_project" {
+						if r, ok := cmd.Params["revisions"].(map[string]interface{}); ok {
+							for m := range r {
+								found := false
+								for _, bvm := range bv.Modules {
+									if m == bvm {
+										found = true
+									}
+								}
+								if !found {
+									errs = append(errs, ValidationError{
+										Message: fmt.Sprintf("build variant '%s' with task '%s' with 'git.get_project' command uses module/revision '%s' that is not present in build variant", bv.Name, t.Name, m),
+										Level:   Error,
+									})
+								}
+							}
+						}
+					}
+				}
+			}
+		}
+	}
+
+	return errs
 }
 
 // validateTaskSyncSettings checks that task sync in the project settings have

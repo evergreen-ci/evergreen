@@ -663,6 +663,15 @@ func (s *projectSuite) SetupTest() {
 					},
 				},
 			},
+			{
+				Name: "bv_3",
+				Tasks: []BuildVariantTaskUnit{
+					{
+						Name:    "g1",
+						Variant: "bv_3",
+					},
+				},
+			},
 		},
 		Tasks: []ProjectTask{
 			{
@@ -724,6 +733,15 @@ func (s *projectSuite) SetupTest() {
 					{
 						Command: "shell.exec",
 					},
+				},
+			},
+		},
+		TaskGroups: []TaskGroup{
+			{
+				Name: "g1",
+				Tasks: []string{
+					"a_task_1",
+					"a_task_2",
 				},
 			},
 		},
@@ -1667,6 +1685,16 @@ func (s *FindProjectsSuite) TestGetProjectSettingsNoRepo() {
 	s.Nil(err)
 	s.NotNil(projectSettingsEvent)
 	s.False(projectSettingsEvent.GithubHooksEnabled)
+}
+
+func (s *projectSuite) TestFindAllProjectTasksWithName() {
+	pts := s.project.FindAllProjectTasksWithName("a_task_1")
+	s.Require().NotNil(pts)
+	s.Len(pts, 1)
+
+	pts = s.project.FindAllProjectTasksWithName("g1")
+	s.Require().NotNil(pts)
+	s.Len(pts, 2)
 }
 
 func TestModuleList(t *testing.T) {

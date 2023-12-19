@@ -2437,6 +2437,65 @@ func TestCheckTaskCommands(t *testing.T) {
 	})
 }
 
+func TestValidateModuleUsageInGitGetProject(t *testing.T) {
+	for testName, testCase := range map[string]func(*testing.T, *model.Project){
+		"Valid git.get_project": func(t *testing.T, p *model.Project) {
+			errs := validateModuleUsageInGitGetProject(p)
+			assert.Len(t, errs, 0)
+		},
+		"Invalid git.get_project": func(t *testing.T, p *model.Project) {
+			// Add the task to a build variant that does not have all the modules needed.
+			p.BuildVariants[1].Tasks = append(p.BuildVariants[1].Tasks, model.BuildVariantTaskUnit{Name: "test"})
+			errs := validateModuleUsageInGitGetProject(p)
+			require.Len(t, errs, 1)
+			assert.Contains(t, errs[0], "bar")
+		},
+		"Unused task": func(t *testing.T, p *model.Project) {
+			p.BuildVariants[0].Tasks = []model.BuildVariantTaskUnit{}
+			errs := validateModuleUsageInGitGetProject(p)
+			assert.Len(t, errs, 0)
+		},
+	} {
+		t.Run(testName, func(t *testing.T) {
+			project := &model.Project{
+				BuildVariants: model.BuildVariants{
+					model.BuildVariant{
+						Name:    "bv1",
+						Modules: []string{"foo", "bar"},
+						Tasks: []model.BuildVariantTaskUnit{
+							{
+								Name: "test",
+							},
+						},
+					},
+					model.BuildVariant{
+						Name:    "bv2",
+						Modules: []string{"foo"},
+						Tasks:   []model.BuildVariantTaskUnit{},
+					},
+				},
+				Tasks: []model.ProjectTask{
+					{
+						Name: "test",
+						Commands: []model.PluginCommandConf{
+							{
+								Command: "git.get_project",
+								Params: map[string]interface{}{
+									"revisions": map[string]interface{}{
+										"foo": "${foo_rev}",
+										"bar": "${bar_rev}",
+									},
+								},
+							},
+						},
+					},
+				},
+			}
+			testCase(t, project)
+		})
+	}
+}
+
 func TestEnsureReferentialIntegrity(t *testing.T) {
 	Convey("When validating a project", t, func() {
 		distroIds := []string{"rhel55"}
