@@ -7,6 +7,7 @@ import (
 	"os"
 	"path/filepath"
 	"reflect"
+	"strconv"
 	"strings"
 	"time"
 
@@ -456,8 +457,7 @@ func (s *Settings) GetSender(ctx context.Context, env Environment) (send.Sender,
 	if err != nil {
 		return nil, errors.Wrap(err, "configuring error fallback logger")
 	}
-
-	if _, disableLocalLogging := os.LookupEnv(disableLocalLogging); !disableLocalLogging {
+	if disableLocalLogging, err := strconv.ParseBool(os.Getenv(disableLocalLogging)); err == nil && !disableLocalLogging {
 		// setup the base/default logger (generally direct to systemd
 		// or standard output)
 		switch s.LogPath {
