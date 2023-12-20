@@ -2111,6 +2111,7 @@ type APIServiceFlags struct {
 	CloudCleanupDisabled           bool `json:"cloud_cleanup_disabled"`
 	LegacyUIPublicAccessDisabled   bool `json:"legacy_ui_public_access_disabled"`
 	GlobalGitHubTokenDisabled      bool `json:"global_github_token_disabled"`
+	LegacyUIDistroPageDisabled     bool `json:"legacy_ui_distro_page_disabled"`
 
 	// Notifications Flags
 	EventProcessingDisabled      bool `json:"event_processing_disabled"`
@@ -2403,6 +2404,7 @@ func (as *APIServiceFlags) BuildFromService(h interface{}) error {
 		as.CloudCleanupDisabled = v.CloudCleanupDisabled
 		as.LegacyUIPublicAccessDisabled = v.LegacyUIPublicAccessDisabled
 		as.GlobalGitHubTokenDisabled = v.GlobalGitHubTokenDisabled
+		as.LegacyUIDistroPageDisabled = v.LegacyUIDistroPageDisabled
 	default:
 		return errors.Errorf("programmatic error: expected service flags config but got type %T", h)
 	}
@@ -2445,6 +2447,7 @@ func (as *APIServiceFlags) ToService() (interface{}, error) {
 		CloudCleanupDisabled:           as.CloudCleanupDisabled,
 		LegacyUIPublicAccessDisabled:   as.LegacyUIPublicAccessDisabled,
 		GlobalGitHubTokenDisabled:      as.GlobalGitHubTokenDisabled,
+		LegacyUIDistroPageDisabled:     as.LegacyUIDistroPageDisabled,
 	}, nil
 }
 
@@ -2755,15 +2758,13 @@ func (c *APIGitHubCheckRunConfig) ToService() (interface{}, error) {
 }
 
 type APITaskLimitsConfig struct {
-	MaxTasksPerVersion    *int `json:"max_tasks_per_version"`
-	MaxIncludesPerVersion *int `json:"max_includes_per_version"`
+	MaxTasksPerVersion *int `json:"max_tasks_per_version"`
 }
 
 func (c *APITaskLimitsConfig) BuildFromService(h interface{}) error {
 	switch v := h.(type) {
 	case evergreen.TaskLimitsConfig:
 		c.MaxTasksPerVersion = utility.ToIntPtr(v.MaxTasksPerVersion)
-		c.MaxIncludesPerVersion = utility.ToIntPtr(v.MaxIncludesPerVersion)
 		return nil
 	default:
 		return errors.Errorf("programmatic error: expected task limits config but got type %T", h)
@@ -2772,7 +2773,6 @@ func (c *APITaskLimitsConfig) BuildFromService(h interface{}) error {
 
 func (c *APITaskLimitsConfig) ToService() (interface{}, error) {
 	return evergreen.TaskLimitsConfig{
-		MaxTasksPerVersion:    utility.FromIntPtr(c.MaxTasksPerVersion),
-		MaxIncludesPerVersion: utility.FromIntPtr(c.MaxIncludesPerVersion),
+		MaxTasksPerVersion: utility.FromIntPtr(c.MaxTasksPerVersion),
 	}, nil
 }

@@ -7,6 +7,7 @@ import (
 	"os"
 	"path/filepath"
 	"reflect"
+	"strconv"
 	"strings"
 	"time"
 
@@ -32,7 +33,7 @@ var (
 	BuildRevision = ""
 
 	// ClientVersion is the commandline version string used to control auto-updating.
-	ClientVersion = "2023-11-30"
+	ClientVersion = "2023-12-14"
 
 	// Agent version to control agent rollover.
 	AgentVersion = "2023-12-14"
@@ -456,30 +457,31 @@ func (s *Settings) GetSender(ctx context.Context, env Environment) (send.Sender,
 	if err != nil {
 		return nil, errors.Wrap(err, "configuring error fallback logger")
 	}
-
-	// setup the base/default logger (generally direct to systemd
-	// or standard output)
-	switch s.LogPath {
-	case localLoggingOverride:
-		// log directly to systemd if possible, and log to
-		// standard output otherwise.
-		sender = getSystemLogger()
-	case standardOutputLoggingOverride, "":
-		sender = send.MakeNative()
-	default:
-		sender, err = send.MakeFileLogger(s.LogPath)
-		if err != nil {
-			return nil, errors.Wrap(err, "configuring file logger")
+	if disableLocalLogging, err := strconv.ParseBool(os.Getenv(disableLocalLoggingEnvVar)); err == nil && !disableLocalLogging {
+		// setup the base/default logger (generally direct to systemd
+		// or standard output)
+		switch s.LogPath {
+		case localLoggingOverride:
+			// log directly to systemd if possible, and log to
+			// standard output otherwise.
+			sender = getSystemLogger()
+		case standardOutputLoggingOverride, "":
+			sender = send.MakeNative()
+		default:
+			sender, err = send.MakeFileLogger(s.LogPath)
+			if err != nil {
+				return nil, errors.Wrap(err, "configuring file logger")
+			}
 		}
-	}
 
-	if err = sender.SetLevel(levelInfo); err != nil {
-		return nil, errors.Wrap(err, "setting level")
+		if err = sender.SetLevel(levelInfo); err != nil {
+			return nil, errors.Wrap(err, "setting level")
+		}
+		if err = sender.SetErrorHandler(send.ErrorHandlerFromSender(fallback)); err != nil {
+			return nil, errors.Wrap(err, "setting error handler")
+		}
+		senders = append(senders, sender)
 	}
-	if err = sender.SetErrorHandler(send.ErrorHandlerFromSender(fallback)); err != nil {
-		return nil, errors.Wrap(err, "setting error handler")
-	}
-	senders = append(senders, sender)
 
 	// set up external log aggregation services:
 	//

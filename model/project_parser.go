@@ -679,30 +679,12 @@ func LoadProjectInto(ctx context.Context, data []byte, opts *GetProjectOpts, ide
 			err = errors.New("trying to open include files with empty options")
 			return nil, errors.Wrapf(err, LoadProjectError)
 		}
-
-		settings, err := evergreen.GetConfig(ctx)
-		if err != nil {
-			return nil, errors.Wrap(err, LoadProjectError)
-		}
-		if settings == nil {
-			err = errors.New("no settings found")
-			return nil, errors.Wrap(err, LoadProjectError)
-		}
-
 		wg := sync.WaitGroup{}
 		outputYAMLs := make(chan yamlTuple, len(intermediateProject.Include))
 		includesToProcess := make(chan Include, len(intermediateProject.Include))
 
-		// Only process includes until max limit is reached.
-		catcher := grip.NewBasicCatcher()
-		numIncludes := len(intermediateProject.Include)
-		if settings.TaskLimits.MaxIncludesPerVersion > 0 && numIncludes > settings.TaskLimits.MaxIncludesPerVersion {
-			catcher.Errorf("project's total number of includes (%d) exceeds maximum limit (%d)", numIncludes, settings.TaskLimits.MaxIncludesPerVersion)
-			numIncludes = settings.TaskLimits.MaxIncludesPerVersion
-		}
-
-		for i := 0; i < numIncludes; i++ {
-			includesToProcess <- intermediateProject.Include[i]
+		for _, path := range intermediateProject.Include {
+			includesToProcess <- path
 		}
 		close(includesToProcess)
 
@@ -726,6 +708,7 @@ func LoadProjectInto(ctx context.Context, data []byte, opts *GetProjectOpts, ide
 		close(outputYAMLs)
 
 		yamlMap := map[string][]byte{}
+		catcher := grip.NewBasicCatcher()
 		for elem := range outputYAMLs {
 			catcher.Add(elem.err)
 			if elem.yaml != nil {

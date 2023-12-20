@@ -98,6 +98,7 @@ var (
 	legacyUIPublicAccessDisabledKey   = bsonutil.MustHaveTag(ServiceFlags{}, "LegacyUIPublicAccessDisabled")
 	globalGitHubTokenDisabledKey      = bsonutil.MustHaveTag(ServiceFlags{}, "GlobalGitHubTokenDisabled")
 	unrecognizedPodCleanupDisabledKey = bsonutil.MustHaveTag(ServiceFlags{}, "UnrecognizedPodCleanupDisabled")
+	legacyUIDistroPageDisabledKey     = bsonutil.MustHaveTag(ServiceFlags{}, "LegacyUIDistroPageDisabled")
 
 	// ContainerPoolsConfig keys
 	poolsKey = bsonutil.MustHaveTag(ContainerPoolsConfig{}, "Pools")
