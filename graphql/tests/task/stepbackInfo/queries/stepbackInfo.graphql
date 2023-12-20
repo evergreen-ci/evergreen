@@ -1,0 +1,11 @@
+{
+  hasStepback: task(taskId: "has_stepback") {
+    canSchedule
+  }
+  hasNextStepback: task(taskId: "has_next_stepback") {
+    canSchedule
+  }
+  noStepback: task(taskId: "no_stepback"){
+    canSchedule
+  }
+}

@@ -119,6 +119,7 @@ type Task {
   timeTaken: Duration
   totalTestCount: Int!
   versionMetadata: Version!
+  stepbackInfo: StepbackInfo
 }
 
 type AbortInfo {
@@ -173,6 +174,12 @@ type TaskLogLinks {
   eventLogLink: String
   systemLogLink: String
   taskLogLink: String
+}
+
+type StepbackInfo {
+  lastFailingStepbackTaskId: String
+  lastPassingStepbackTaskId: String
+  nextStepbackTaskId: String
 }
 
 """

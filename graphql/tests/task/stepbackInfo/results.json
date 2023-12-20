@@ -1,0 +1,32 @@
+{
+  "tests": [
+    {
+      "query_file": "stepbackInfo.graphql",
+      "result": {
+        "data": {
+          "hasStepback": {
+            "stepback_info": {
+              "last_failing_stepback_task_id": "f1",
+              "last_passing_stepback_task_id": "p1",
+              "next_stepback_task_id": ""
+            }
+          },
+          "hasNextStepback": {
+            "stepback_info": {
+              "last_failing_stepback_task_id": "f1",
+              "last_passing_stepback_task_id": "p1",
+              "next_stepback_task_id": "n1"
+            }
+          },
+          "noStepback": {
+            "stepback_info": {
+              "last_failing_stepback_task_id": "",
+              "last_passing_stepback_task_id": "",
+              "next_stepback_task_id": ""
+            }
+          }
+        }
+      }
+    }
+  ]
+}
