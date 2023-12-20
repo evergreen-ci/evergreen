@@ -15,8 +15,8 @@
       "execution": 1,
       "host_id": "host2",
       "stepback_info": {
-        "last_failing_stepback_task_id": "f1",
-        "last_passing_stepback_task_id": "p1"
+        "last_failing_task_id": "f1",
+        "last_passing_task_id": "p1"
       }
     },
     {
@@ -36,9 +36,9 @@
         "execution_task"
       ],
       "stepback_info": {
-        "last_failing_stepback_task_id": "f1",
-        "last_passing_stepback_task_id": "p1",
-        "next_stepback_task_id": "n1"
+        "last_failing_task_id": "f1",
+        "last_passing_task_id": "p1",
+        "next_task_id": "n1"
       }
     },
     {

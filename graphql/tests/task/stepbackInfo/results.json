@@ -8,7 +8,7 @@
             "stepback_info": {
               "last_failing_stepback_task_id": "f1",
               "last_passing_stepback_task_id": "p1",
-              "next_stepback_task_id": ""
+              "next_stepback_task_id": null
             }
           },
           "hasNextStepback": {

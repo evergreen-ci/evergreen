@@ -677,7 +677,29 @@ func (r *taskResolver) VersionMetadata(ctx context.Context, obj *restModel.APITa
 
 // StepbackInfo is the resolver for the stepbackInfo field.
 func (r *taskResolver) StepbackInfo(ctx context.Context, obj *restModel.APITask) (*StepbackInfo, error) {
-	panic(fmt.Errorf("not implemented: StepbackInfo - stepbackInfo"))
+	if obj.StepbackInfo == nil {
+		return nil, nil
+	}
+
+	var lf *string = nil
+	var lp *string = nil
+	var nt *string = nil
+
+	if id := obj.StepbackInfo.LastFailingTaskId; id != "" {
+		lf = &id
+	}
+	if id := obj.StepbackInfo.LastPassingTaskId; id != "" {
+		lp = &id
+	}
+	if id := obj.StepbackInfo.NextTaskId; id != "" {
+		nt = &id
+	}
+
+	return &StepbackInfo{
+		LastFailingStepbackTaskID: lf,
+		LastPassingStepbackTaskID: lp,
+		NextStepbackTaskID:        nt,
+	}, nil
 }
 
 // Task returns TaskResolver implementation.
