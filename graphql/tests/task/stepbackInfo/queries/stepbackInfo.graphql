@@ -1,11 +1,23 @@
 {
   hasStepback: task(taskId: "has_stepback") {
-    canSchedule
+    stepbackInfo {
+      lastFailingStepbackTaskId
+      lastPassingStepbackTaskId
+      nextStepbackTaskId
+    }
   }
   hasNextStepback: task(taskId: "has_next_stepback") {
-    canSchedule
+    stepbackInfo {
+      lastFailingStepbackTaskId
+      lastPassingStepbackTaskId
+      nextStepbackTaskId
+    }
   }
   noStepback: task(taskId: "no_stepback"){
-    canSchedule
+    stepbackInfo {
+      lastFailingStepbackTaskId
+      lastPassingStepbackTaskId
+      nextStepbackTaskId
+    }
   }
 }
