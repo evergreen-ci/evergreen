@@ -103,17 +103,6 @@ func FindAliasesForProjectFromDb(projectID string) ([]ProjectAlias, error) {
 	return out, nil
 }
 
-// GetAliasesMergedWithProjectConfig returns a merged list of project aliases that includes the merged result of aliases defined
-// on the project ref and aliases defined in the project YAML.  Aliases defined on the project ref will take precedence over the
-// project YAML in the case that both are defined.
-func GetAliasesMergedWithProjectConfig(projectID string, dbAliases []ProjectAlias) ([]ProjectAlias, error) {
-	projectConfig, err := FindLastKnownGoodProjectConfig(projectID)
-	if err != nil {
-		return nil, errors.Wrap(err, "finding project config")
-	}
-	return mergeProjectConfigAndAliases(projectConfig, dbAliases), nil
-}
-
 func mergeProjectConfigAndAliases(projectConfig *ProjectConfig, dbAliases []ProjectAlias) []ProjectAlias {
 	if projectConfig == nil {
 		return dbAliases
