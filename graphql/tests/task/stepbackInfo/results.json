@@ -19,11 +19,7 @@
             }
           },
           "noStepback": {
-            "stepback_info": {
-              "last_failing_stepback_task_id": "",
-              "last_passing_stepback_task_id": "",
-              "next_stepback_task_id": ""
-            }
+            "stepback_info": null
           }
         }
       }
