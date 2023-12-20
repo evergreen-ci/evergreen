@@ -43,7 +43,9 @@ type TestLogs struct {
 	URLLobster *string `json:"url_lobster,omitempty"`
 	URLParsley *string `json:"url_parsley,omitempty"`
 	// Line number in the log file corresponding to information about this test
-	LineNum int `json:"line_num"`
+	LineNum       int     `json:"line_num"`
+	RenderingType *string `json:"rendering_type"`
+	Version       int32   `json:"version"`
 }
 
 func (at *APITest) BuildFromService(st interface{}) error {

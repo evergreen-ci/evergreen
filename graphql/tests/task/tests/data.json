@@ -16,6 +16,8 @@
                     "execution": 0,
                     "status": "fail",
                     "line_num": 19,
+                    "rendering_type": "default",
+                    "version": 1,
                     "test_start_time": {
                         "$date": "2020-02-21T15:15:56Z"
                     },
@@ -29,6 +31,8 @@
                     "execution": 0,
                     "status": "fail",
                     "line_num": 12,
+                    "rendering_type": "default",
+                    "version": 1,
                     "test_start_time": {
                         "$date": "2020-02-21T15:15:56Z"
                     },
@@ -42,6 +46,8 @@
                     "execution": 0,
                     "status": "skip",
                     "line_num": 236,
+                    "rendering_type": "default",
+                    "version": 1,
                     "test_start_time": {
                         "$date": "2020-02-21T15:15:56Z"
                     },
@@ -55,6 +61,8 @@
                     "execution": 0,
                     "status": "skip",
                     "line_num": 22,
+                    "rendering_type": "default",
+                    "version": 1,
                     "test_start_time": {
                         "$date": "2020-02-21T15:15:56Z"
                     },
@@ -68,6 +76,8 @@
                     "execution": 0,
                     "status": "pass",
                     "line_num": 36,
+                    "rendering_type": "default",
+                    "version": 1,
                     "group_id": "llama",
                     "test_start_time": {
                         "$date": "2020-02-21T15:15:56Z"
@@ -82,6 +92,8 @@
                     "execution": 0,
                     "status": "pass",
                     "line_num": 41,
+                    "rendering_type": "default",
+                    "version": 1,
                     "test_start_time": {
                         "$date": "2020-02-21T15:15:56Z"
                     },
@@ -95,6 +107,8 @@
                     "execution": 0,
                     "status": "pass",
                     "line_num": 116,
+                    "rendering_type": "default",
+                    "version": 1,
                     "test_start_time": {
                         "$date": "2020-02-21T15:15:56Z"
                     },
@@ -108,6 +122,8 @@
                     "execution": 0,
                     "status": "pass",
                     "line_num": 132,
+                    "rendering_type": "default",
+                    "version": 1,
                     "test_start_time": {
                         "$date": "2020-02-21T15:15:56Z"
                     },
@@ -121,6 +137,8 @@
                     "execution": 0,
                     "status": "pass",
                     "line_num": 152,
+                    "rendering_type": "default",
+                    "version": 1,
                     "test_start_time": {
                         "$date": "2020-02-21T15:15:56Z"
                     },
@@ -134,6 +152,8 @@
                     "execution": 0,
                     "status": "pass",
                     "line_num": 251,
+                    "rendering_type": "default",
+                    "version": 1,
                     "test_start_time": {
                         "$date": "2020-02-21T15:15:56Z"
                     },
@@ -147,6 +167,8 @@
                     "execution": 0,
                     "status": "pass",
                     "line_num": 261,
+                    "rendering_type": "default",
+                    "version": 1,
                     "test_start_time": {
                         "$date": "2020-02-21T15:15:56Z"
                     },
@@ -160,6 +182,8 @@
                     "execution": 0,
                     "status": "pass",
                     "line_num": 285,
+                    "rendering_type": "default",
+                    "version": 1,
                     "test_start_time": {
                         "$date": "2020-02-21T15:15:56Z"
                     },
@@ -173,6 +197,8 @@
                     "execution": 0,
                     "status": "pass",
                     "line_num": 302,
+                    "rendering_type": "default",
+                    "version": 1,
                     "test_start_time": {
                         "$date": "2020-02-21T15:15:56Z"
                     },
@@ -186,6 +212,8 @@
                     "execution": 0,
                     "status": "pass",
                     "line_num": 324,
+                    "rendering_type": "default",
+                    "version": 1,
                     "test_start_time": {
                         "$date": "2020-02-21T15:15:56Z"
                     },
@@ -199,6 +227,8 @@
                     "execution": 0,
                     "status": "pass",
                     "line_num": 32,
+                    "rendering_type": "default",
+                    "version": 1,
                     "test_start_time": {
                         "$date": "2020-02-21T15:15:56Z"
                     },
@@ -212,6 +242,8 @@
                     "execution": 0,
                     "status": "pass",
                     "line_num": 54,
+                    "rendering_type": "default",
+                    "version": 1,
                     "test_start_time": {
                         "$date": "2020-02-21T15:15:56Z"
                     },
@@ -225,6 +257,8 @@
                     "execution": 0,
                     "status": "pass",
                     "line_num": 82,
+                    "rendering_type": "default",
+                    "version": 1,
                     "test_start_time": {
                         "$date": "2020-02-21T15:15:56Z"
                     },
@@ -238,6 +272,8 @@
                     "execution": 0,
                     "status": "pass",
                     "line_num": 107,
+                    "rendering_type": "default",
+                    "version": 1,
                     "test_start_time": {
                         "$date": "2020-02-21T15:15:56Z"
                     },
@@ -251,6 +287,8 @@
                     "execution": 0,
                     "status": "pass",
                     "line_num": 203,
+                    "rendering_type": "default",
+                    "version": 1,
                     "test_start_time": {
                         "$date": "2020-02-21T15:15:56Z"
                     },
@@ -264,6 +302,8 @@
                     "task_id": "evergreen_ubuntu1604_test_model_patch_5e823e1f28baeaa22ae00823d83e03082cd148ab_5e4ff3abe3c3317e352062e4_20_02_21_15_13_48",
                     "execution": 0,
                     "line_num": 219,
+                    "rendering_type": "default",
+                    "version": 1,
                     "test_start_time": {
                         "$date": "2020-02-21T15:15:56Z"
                     },
@@ -289,6 +329,8 @@
                     "execution": 0,
                     "status": "pass",
                     "line_num": 219,
+                    "rendering_type": "default",
+                    "version": 1,
                     "test_start_time": {
                         "$date": "2020-02-21T15:15:56Z"
                     },
@@ -314,6 +356,8 @@
                     "execution": 0,
                     "status": "fail",
                     "line_num": 219,
+                    "rendering_type": "default",
+                    "version": 1,
                     "test_start_time": {
                         "$date": "2020-02-21T15:15:56Z"
                     },
@@ -339,6 +383,8 @@
                     "execution": 0,
                     "status": "skip",
                     "line_num": 219,
+                    "rendering_type": "default",
+                    "version": 1,
                     "test_start_time": {
                         "$date": "2020-02-21T15:15:56Z"
                     },
@@ -364,6 +410,8 @@
                     "execution": 0,
                     "status": "fail",
                     "line_num": 219,
+                    "rendering_type": "default",
+                    "version": 1,
                     "test_start_time": {
                         "$date": "2020-02-21T15:15:56Z"
                     },
@@ -389,6 +437,8 @@
                     "execution": 0,
                     "status": "pass",
                     "line_num": 219,
+                    "rendering_type": "default",
+                    "version": 1,
                     "test_start_time": {
                         "$date": "2020-02-21T15:15:56Z"
                     },
@@ -414,6 +464,8 @@
                     "execution": 0,
                     "status": "skip",
                     "line_num": 219,
+                    "rendering_type": "default",
+                    "version": 1,
                     "test_start_time": {
                         "$date": "2020-02-21T15:15:56Z"
                     },
@@ -439,6 +491,8 @@
                     "execution": 0,
                     "status": "skip",
                     "line_num": 219,
+                    "rendering_type": "default",
+                    "version": 1,
                     "test_start_time": {
                         "$date": "2020-02-21T15:15:56Z"
                     },
@@ -464,6 +518,8 @@
                     "execution": 1,
                     "status": "pass",
                     "line_num": 219,
+                    "rendering_type": "default",
+                    "version": 1,
                     "test_start_time": {
                         "$date": "2020-02-21T15:15:56Z"
                     },
@@ -489,6 +545,8 @@
                     "execution": 1,
                     "status": "success",
                     "line_num": 219,
+                    "rendering_type": "default",
+                    "version": 1,
                     "test_start_time": {
                         "$date": "2020-02-21T15:15:56Z"
                     },
