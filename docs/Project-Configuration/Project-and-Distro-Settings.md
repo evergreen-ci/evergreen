@@ -521,21 +521,35 @@ that all execute independently:
 
 ## Version Control
 
-Enabling version control for configurations on the project page will
-allow a number of the settings detailed above to also be specified in
-the project YAML alongside the settings that are specified in ['Project Configuration Files'](Project-Configuration-Files.md).
-Evergreen will merge the settings in the project page, repo page, then the YAML, in that order. In case of duplicates, like aliases with the same names, the ones defined on the project page will take precedence over those
-defined in the YAML.
+A subset of the above project settings can also be specified in [config YAML](Project-Configuration-Files.md).
+To enable this feature, the "version control" flag must be enabled on the project settings page.
+![container_metadata.png](../images/version_control.png)
 
-Note: [included files](Project-Configuration-Files.md#include) do not currently support version-controlled configurations. Version-controlled configuration must
+Once toggled, the settings specified [below](#available-fields) may be defined in YAML, rather than in the project or repo settings page.
+
+**Note**: [included files](Project-Configuration-Files.md#include) do not currently support version-controlled configurations. Version-controlled configuration must
 be defined in the main YAML file for it to take effect.
 
-Below shows example configurations for these settings that can be
-included within the project YAML and the configuration structure
-associated with each setting.
+### Hierarchical Inheritance
 
-## Aliases
+Since these settings may be defined in either the project settings page, repo settings page, or YAML, there is a hierarchy of inheritance,
+which is as follows:
+1. Project settings page
+2. Repo settings page
+3. YAML
 
+This means that YAML settings are overridden by repo page settings, which are overridden by project page settings. For example,
+if the YAML defines a [field](#available-fields) such as `patch_aliases`, and the project / repo settings page also defines 
+patch aliases, the YAML settings will be ignored until the corresponding project / repo settings are cleared. This
+is applicable for all settings that may be defined in YAML.
+
+
+### Available Fields
+
+The following are example configurations for how to define each setting that may be
+defined in the project YAML, along with a link to its equivalent project setting.
+
+### Project Aliases
 [View setting
 definition](#aliases)
 

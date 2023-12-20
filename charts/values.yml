@@ -23,6 +23,7 @@ resources:
 
 env:
   MONGO_AWS_AUTH: true
+  DISABLE_LOCAL_LOGGING: true
 
 envSecrets:
   MONGO_URL: evergreen-secrets

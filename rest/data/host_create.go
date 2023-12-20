@@ -17,7 +17,6 @@ import (
 	"github.com/evergreen-ci/evergreen/cloud"
 	"github.com/evergreen-ci/evergreen/model"
 	"github.com/evergreen-ci/evergreen/model/distro"
-	"github.com/evergreen-ci/evergreen/model/event"
 	"github.com/evergreen-ci/evergreen/model/host"
 	"github.com/evergreen-ci/evergreen/model/patch"
 	"github.com/evergreen-ci/evergreen/model/task"
@@ -407,13 +406,6 @@ func makeEC2IntentHost(ctx context.Context, env evergreen.Environment, taskID, u
 	if err = intent.Insert(ctx); err != nil {
 		return nil, errors.Wrap(err, "inserting intent host")
 	}
-	event.LogHostCreated(intent.Id)
-	grip.Info(message.Fields{
-		"message":  "intent host created",
-		"host_id":  intent.Id,
-		"host_tag": intent.Tag,
-		"distro":   intent.Distro.Id,
-	})
 
 	if err := units.EnqueueHostCreateJobs(ctx, env, []host.Host{*intent}); err != nil {
 		return nil, errors.Wrapf(err, "enqueueing host create job for '%s'", intent.Id)
