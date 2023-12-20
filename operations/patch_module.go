@@ -116,7 +116,7 @@ func addModuleToPatch(params *patchParams, args cli.Args, conf *ClientSettings,
 	}
 
 	// Diff against the module branch.
-	diffData, err := loadGitData(modulePath, module.Branch, ref, "", preserveCommits, args...)
+	diffData, err := loadGitData(modulePath, "", module.Branch, ref, "", preserveCommits, args...)
 	if err != nil {
 		return err
 	}
