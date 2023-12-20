@@ -630,7 +630,7 @@ func loadGitData(dir, remote, branch, ref, commits string, format bool, extraArg
 	// In the case a range is passed, we only need one commit to determine the base, so we use the first commit.
 	// For details see: https://git-scm.com/docs/gitrevisions
 
-	mergeBase, err := gitMergeBase(dir, remote+"/"+branch, ref, commits)
+	mergeBase, err := gitMergeBase(dir, fmt.Sprintf("%s/%s", remote, branch), ref, commits)
 	if err != nil {
 		mergeBase, err = gitMergeBase(dir, branch+"@{upstream}", ref, commits)
 		if err != nil {
