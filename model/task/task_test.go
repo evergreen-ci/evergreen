@@ -3140,7 +3140,7 @@ func TestSetStepbackInfo(t *testing.T) {
 		NextStepbackTaskId:        "t4",
 	}
 
-	assert.NoError(t, task.SetStepbackInfo(s))
+	assert.NoError(t, SetStepbackInfo(task.Id, s))
 	taskFromDb, err := FindOneId("t1")
 	assert.NoError(t, err)
 	assert.NotNil(t, taskFromDb)

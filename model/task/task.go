@@ -1511,11 +1511,10 @@ func taskAbortUpdate(reason AbortInfo) bson.M {
 }
 
 // SetStepbackInfo adds the StepbackInfo to the task.
-func (t *Task) SetStepbackInfo(s StepbackInfo) error {
-	t.StepbackInfo = &s
+func SetStepbackInfo(taskId string, s StepbackInfo) error {
 	return UpdateOne(
 		bson.M{
-			IdKey: t.Id,
+			IdKey: taskId,
 		},
 		bson.M{
 			"$set": bson.M{

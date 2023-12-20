@@ -628,6 +628,34 @@ func doBisectStepback(ctx context.Context, t *task.Task) error {
 	if nextTask == nil {
 		return errors.Errorf("midway task could not be found for tasks '%s' '%s'", s.LastFailingStepbackTaskId, s.LastPassingStepbackTaskId)
 	}
+	// Log our next task to our last passing and last failing.
+	for _, id := range []string{s.LastFailingStepbackTaskId, s.LastPassingStepbackTaskId} {
+		if t, err := task.FindOneId(id); err != nil {
+			if t.StepbackInfo == nil {
+				grip.Warning(message.Fields{
+					"message":         "task in impossible state while performing bisection stepback",
+					"on_last_passing": id == s.LastPassingStepbackTaskId,
+					"last_passing_id": s.LastPassingStepbackTaskId,
+					"on_last_failing": id == s.LastFailingStepbackTaskId,
+					"last_failing_id": s.LastFailingStepbackTaskId,
+					"current_task":    nextTask.Id,
+				})
+				continue
+			}
+			// If the next task is already set, then this task has been used for stepback before
+			// and should not be updated (e.g. the right bound will have the same next stepback taskid
+			// as the left bound narrows the scope in which stepback happens).
+			if t.StepbackInfo.NextStepbackTaskId != "" {
+				continue
+			}
+			info := *t.StepbackInfo
+			info.NextStepbackTaskId = nextTask.Id
+			if err = task.SetStepbackInfo(s.LastFailingStepbackTaskId, info); err != nil {
+				return errors.Wrapf(err, "setting stepback info for task '%s'", nextTask.Id)
+			}
+		}
+	}
+
 	// If our next task is last passing Id, we have finished stepback.
 	if nextTask.Id == s.LastPassingStepbackTaskId {
 		return nil
@@ -637,12 +665,12 @@ func doBisectStepback(ctx context.Context, t *task.Task) error {
 		return nil
 	}
 
-	// Set the midway task information for future stepback.
-	s.NextStepbackTaskId = nextTask.Id
+	// Set the midway task information for future stepback. It does not know the
+	// next task, so the next task id field should never be set.
 	nextTask.StepbackInfo = &s
 
-	// Set the stepback task info
-	if err = nextTask.SetStepbackInfo(s); err != nil {
+	// Set the stepback task info.
+	if err = task.SetStepbackInfo(nextTask.Id, s); err != nil {
 		return errors.Wrapf(err, "setting stepback info for task '%s'", nextTask.Id)
 	}
 
