@@ -13,6 +13,7 @@ import (
 	"github.com/evergreen-ci/evergreen/model/manifest"
 	"github.com/evergreen-ci/evergreen/model/patch"
 	"github.com/evergreen-ci/evergreen/model/task"
+	"github.com/evergreen-ci/evergreen/taskoutput"
 	"github.com/evergreen-ci/evergreen/util"
 	"github.com/pkg/errors"
 )
@@ -128,16 +129,17 @@ func SetupAPITestData(testConfig *evergreen.Settings, taskDisplayName string, va
 
 	// Create and insert two tasks
 	taskOne := &task.Task{
-		Id:           "testTaskId",
-		BuildId:      "testBuildId",
-		DistroId:     "test-distro-one",
-		BuildVariant: variant,
-		Project:      projectRef.Id,
-		DisplayName:  taskDisplayName,
-		HostId:       "testHost",
-		Secret:       "testTaskSecret",
-		Version:      "testVersionId",
-		Status:       evergreen.TaskDispatched,
+		Id:             "testTaskId",
+		BuildId:        "testBuildId",
+		DistroId:       "test-distro-one",
+		BuildVariant:   variant,
+		Project:        projectRef.Id,
+		DisplayName:    taskDisplayName,
+		HostId:         "testHost",
+		Secret:         "testTaskSecret",
+		Version:        "testVersionId",
+		Status:         evergreen.TaskDispatched,
+		TaskOutputInfo: &taskoutput.TaskOutput{},
 	}
 	if patchMode == NoPatch {
 		taskOne.Requester = evergreen.RepotrackerVersionRequester
@@ -152,18 +154,19 @@ func SetupAPITestData(testConfig *evergreen.Settings, taskDisplayName string, va
 	modelData.Task = taskOne
 
 	taskTwo := &task.Task{
-		Id:           "testTaskIdTwo",
-		BuildId:      "testBuildId",
-		DistroId:     "test-distro-one",
-		BuildVariant: variant,
-		Project:      project.DisplayName,
-		DisplayName:  taskDisplayName,
-		HostId:       "",
-		Secret:       "testTaskSecret",
-		Version:      "testVersionId",
-		Status:       evergreen.TaskUndispatched,
-		Requester:    evergreen.RepotrackerVersionRequester,
-		Activated:    true,
+		Id:             "testTaskIdTwo",
+		BuildId:        "testBuildId",
+		DistroId:       "test-distro-one",
+		BuildVariant:   variant,
+		Project:        project.DisplayName,
+		DisplayName:    taskDisplayName,
+		HostId:         "",
+		Secret:         "testTaskSecret",
+		Version:        "testVersionId",
+		Status:         evergreen.TaskUndispatched,
+		Requester:      evergreen.RepotrackerVersionRequester,
+		Activated:      true,
+		TaskOutputInfo: &taskoutput.TaskOutput{},
 	}
 	if err = taskTwo.Insert(); err != nil {
 		return nil, errors.Wrap(err, "inserting taskTwo")

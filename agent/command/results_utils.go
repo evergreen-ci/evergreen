@@ -7,6 +7,7 @@ import (
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/agent/internal"
 	"github.com/evergreen-ci/evergreen/agent/internal/client"
+	"github.com/evergreen-ci/evergreen/agent/internal/taskoutput"
 	"github.com/evergreen-ci/evergreen/apimodels"
 	"github.com/evergreen-ci/evergreen/model/task"
 	"github.com/evergreen-ci/evergreen/model/testlog"
@@ -38,11 +39,6 @@ func sendTestResults(ctx context.Context, comm client.Communicator, logger clien
 	return nil
 }
 
-// sendTestLog sends test logs to the backend logging service.
-func sendTestLog(ctx context.Context, comm client.Communicator, conf *internal.TaskConfig, log *testlog.TestLog) error {
-	return errors.Wrap(sendTestLogToCedar(ctx, &conf.Task, comm, log), "sending test logs to Cedar")
-}
-
 // sendTestLogsAndResults sends the test logs and test results to backend
 // logging results services.
 func sendTestLogsAndResults(ctx context.Context, comm client.Communicator, logger client.LoggerProducer, conf *internal.TaskConfig, logs []testlog.TestLog, results [][]testresult.TestResult) error {
@@ -53,7 +49,7 @@ func sendTestLogsAndResults(ctx context.Context, comm client.Communicator, logge
 			return errors.Wrap(err, "canceled while sending test logs")
 		}
 
-		if err := sendTestLog(ctx, comm, conf, &log); err != nil {
+		if err := taskoutput.AppendTestLog(ctx, comm, &conf.Task, &log); err != nil {
 			// Continue on error to let the other logs be posted.
 			logger.Task().Error(errors.Wrap(err, "sending test log"))
 		}
