@@ -5,21 +5,21 @@
       "result": {
         "data": {
           "hasStepback": {
-            "stepback_info": {
-              "last_failing_stepback_task_id": "f1",
-              "last_passing_stepback_task_id": "p1",
-              "next_stepback_task_id": null
+            "stepbackInfo": {
+              "lastFailingStepbackTaskId": "f1",
+              "lastPassingStepbackTaskId": "p1",
+              "nextStepbackTaskId": null
             }
           },
           "hasNextStepback": {
-            "stepback_info": {
-              "last_failing_stepback_task_id": "f1",
-              "last_passing_stepback_task_id": "p1",
-              "next_stepback_task_id": "n1"
+            "stepbackInfo": {
+              "lastFailingStepbackTaskId": "f1",
+              "lastPassingStepbackTaskId": "p1",
+              "nextStepbackTaskId": "n1"
             }
           },
           "noStepback": {
-            "stepback_info": null
+            "stepbackInfo": null
           }
         }
       }
