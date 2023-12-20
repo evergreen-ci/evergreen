@@ -2,6 +2,7 @@ package taskoutput
 
 import (
 	"context"
+	"fmt"
 	"io"
 	"os"
 	"path/filepath"
@@ -92,17 +93,14 @@ type testLogDirectoryHandler struct {
 	createSender func(context.Context, string) (send.Sender, error)
 
 	mu sync.Mutex
+	wg sync.WaitGroup
 }
 
-func newTestLogDirectoryHandler(rootDir string, output taskoutput.TestLogOutput, taskOpts taskoutput.TaskOptions, logger client.LoggerProducer) *testLogDirectoryHandler {
+func newTestLogDirectoryHandler(dir string, output taskoutput.TestLogOutput, taskOpts taskoutput.TaskOptions, logger client.LoggerProducer) *testLogDirectoryHandler {
 	h := &testLogDirectoryHandler{
-		dir:    filepath.Join(rootDir, output.ID()),
+		dir:    dir,
 		logger: logger,
 	}
-
-	h.watcher = watcher.New()
-	h.watcher.FilterOps(watcher.Create)
-	h.watcher.AddRecursive(h.dir)
 
 	h.createSender = func(ctx context.Context, logPath string) (send.Sender, error) {
 		return output.NewSender(ctx, taskOpts, taskoutput.EvergreenSenderOptions{
@@ -115,7 +113,25 @@ func newTestLogDirectoryHandler(rootDir string, output taskoutput.TestLogOutput,
 }
 
 func (h *testLogDirectoryHandler) start(ctx context.Context) error {
-	if err := h.watcher.Start(time.Second); err != nil {
+	h.watcher = watcher.New()
+	h.watcher.FilterOps(watcher.Create)
+	h.watcher.AddRecursive(h.dir)
+
+	done := make(chan struct{})
+	go func() {
+		h.watcher.Wait()
+		close(done)
+	}()
+	startErr := make(chan error)
+	go func() {
+		if err := h.watcher.Start(time.Second); err != nil {
+			startErr <- err
+		}
+	}()
+
+	select {
+	case <-done:
+	case err := <-startErr:
 		return errors.Wrap(err, "starting test log directory watcher")
 	}
 
@@ -130,11 +146,15 @@ func (h *testLogDirectoryHandler) watch(ctx context.Context) {
 	}()
 
 	workerCtx, cancel := context.WithCancel(ctx)
-	defer cancel()
+	defer func() {
+		fmt.Println("CANCELING WORKER CTX")
+		cancel()
+	}()
 
 	for {
 		select {
 		case event := <-h.watcher.Event:
+			h.wg.Add(1)
 			go h.followFile(workerCtx, event)
 		case err := <-h.watcher.Error:
 			h.logger.Execution().Critical(errors.Wrap(err, "watching test log directory"))
@@ -175,6 +195,7 @@ func (h *testLogDirectoryHandler) followFile(ctx context.Context, event watcher.
 	defer func() {
 		h.logger.Task().Critical(recovery.HandlePanicWithError(recover(), nil, "test log file follower"))
 	}()
+	defer h.wg.Done()
 
 	if event.IsDir() {
 		return
@@ -182,12 +203,18 @@ func (h *testLogDirectoryHandler) followFile(ctx context.Context, event watcher.
 
 	h.logger.Task().Infof("new test log file '%s' found, initiating automated ingestion", event.Path)
 
+	logPath, err := filepath.Rel(h.dir, event.Path)
+	if err != nil {
+		h.logger.Task().Error(errors.Wrapf(err, "getting relative path for test log file '%s'", event.Path))
+		return
+	}
+
 	if h.spec == nil {
 		h.getSpecFile()
 	}
 
 	t, err := follower.New(event.Path, follower.Config{
-		Whence: io.SeekEnd,
+		Whence: io.SeekStart,
 		Offset: 0,
 		Reopen: true,
 	})
@@ -197,7 +224,7 @@ func (h *testLogDirectoryHandler) followFile(ctx context.Context, event watcher.
 	}
 	defer t.Close()
 
-	sender, err := h.createSender(ctx, event.Path)
+	sender, err := h.createSender(ctx, logPath)
 	if err != nil {
 		h.logger.Task().Error(errors.Wrapf(err, "creating Sender for test log '%s'", event.Path))
 		return
@@ -206,25 +233,25 @@ func (h *testLogDirectoryHandler) followFile(ctx context.Context, event watcher.
 		if err = sender.Close(); err != nil {
 			h.logger.Task().Error(errors.Wrapf(err, "closing Sender for test log '%s'", event.Path))
 		}
+		if err = t.Err(); err != nil {
+			h.logger.Task().Error(errors.Wrapf(err, "following test log file '%s'", event.Path))
+		}
 	}()
 
 	lines := t.Lines()
 	for {
 		select {
+		case <-ctx.Done():
+			return
 		case line := <-lines:
 			sender.Send(message.NewDefaultMessage(level.Info, line.String()))
-		case <-ctx.Done():
-			break
 		}
-	}
-
-	if err := t.Err(); err != nil {
-		h.logger.Task().Error(errors.Wrapf(err, "following test log file '%s'", event.Path))
 	}
 }
 
-func (w *testLogDirectoryHandler) close(_ context.Context) error {
-	w.watcher.Close()
+func (h *testLogDirectoryHandler) close(_ context.Context) error {
+	h.watcher.Close()
+	h.wg.Wait()
 
 	return nil
 }

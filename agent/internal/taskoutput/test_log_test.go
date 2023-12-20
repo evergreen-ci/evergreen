@@ -2,7 +2,11 @@ package taskoutput
 
 import (
 	"context"
+	"fmt"
+	"os"
+	"path/filepath"
 	"strings"
+	"sync"
 	"testing"
 	"time"
 
@@ -14,11 +18,14 @@ import (
 	"github.com/evergreen-ci/evergreen/taskoutput"
 	"github.com/evergreen-ci/timber/buildlogger"
 	timberutil "github.com/evergreen-ci/timber/testutil"
+	"github.com/evergreen-ci/utility"
 	"github.com/mongodb/grip/level"
+	"github.com/mongodb/grip/send"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/credentials/insecure"
+	"gopkg.in/yaml.v2"
 )
 
 func TestAppendTestLog(t *testing.T) {
@@ -126,6 +133,135 @@ func TestAppendTestLog(t *testing.T) {
 			})
 		}
 	})
+}
+
+func TestTestLogDirectoryHandler(t *testing.T) {
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
+	comm := client.NewMock("url")
+	taskOutputInfo := &taskoutput.TaskOutput{
+		TestLogs: taskoutput.TestLogOutput{
+			Version: 1,
+			BucketConfig: evergreen.BucketConfig{
+				Name: t.TempDir(),
+				Type: evergreen.BucketTypeLocal,
+			},
+		},
+	}
+
+	for _, test := range []struct {
+		name string
+		spec *testLogSpec
+	}{
+		{
+			name: "NoSpecFile",
+		},
+	} {
+		t.Run(test.name, func(t *testing.T) {
+			tsk := &task.Task{
+				Project:        "project",
+				Id:             utility.RandomString(),
+				TaskOutputInfo: taskOutputInfo,
+			}
+			logger, err := comm.GetLoggerProducer(ctx, client.TaskData{ID: tsk.Id}, nil)
+			require.NoError(t, err)
+			h := &testLogDirectoryHandler{
+				dir:    t.TempDir(),
+				logger: logger,
+			}
+			h.createSender = func(ctx context.Context, logPath string) (send.Sender, error) {
+				return tsk.TaskOutputInfo.TestLogs.NewSender(ctx,
+					taskoutput.TaskOptions{
+						ProjectID: tsk.Project,
+						TaskID:    tsk.Id,
+						Execution: tsk.Execution,
+					},
+					taskoutput.EvergreenSenderOptions{
+						Local:         logger.Task().GetSender(),
+						FlushInterval: time.Second,
+						Parse:         h.spec.getParser(),
+					},
+					logPath,
+				)
+			}
+			require.NoError(t, h.start(ctx))
+
+			if test.spec != nil {
+				data, err := yaml.Marshal(test.spec)
+				require.NoError(t, err)
+				require.NoError(t, os.WriteFile(filepath.Join(h.dir, "log_spec.yaml"), data, 0777))
+			}
+
+			writerCtx, writerCancel := context.WithCancel(ctx)
+			var wg sync.WaitGroup
+			wg.Add(1)
+			logs := map[string]string{
+				utility.RandomString(): "",
+				utility.RandomString(): "",
+			}
+			files := map[string]*os.File{}
+			for fn := range logs {
+				f, err := os.Create(filepath.Join(h.dir, fn))
+				require.NoError(t, err)
+
+				files[fn] = f
+			}
+
+			go func() {
+				defer func() {
+					for _, f := range files {
+						assert.NoError(t, f.Close())
+					}
+					wg.Done()
+				}()
+
+				for {
+					select {
+					case <-writerCtx.Done():
+						return
+					default:
+						for fn, f := range files {
+							line := fmt.Sprintf("%s\n", utility.RandomString())
+							logs[fn] += line
+
+							_, err := f.WriteString(line)
+							require.NoError(t, err)
+						}
+					}
+				}
+			}()
+
+			// Check that logs are ingested continuously.
+			time.Sleep(5 * time.Second)
+			for logPath := range logs {
+				it, err := tsk.GetTestLogs(ctx, taskoutput.TestLogGetOptions{LogPaths: []string{logPath}})
+				require.NoError(t, err)
+				assert.True(t, it.Next())
+				assert.NoError(t, it.Close())
+			}
+
+			writerCancel()
+			wg.Wait()
+			require.NoError(t, h.close(ctx))
+
+			for logPath, expectedLogData := range logs {
+				it, err := tsk.GetTestLogs(ctx, taskoutput.TestLogGetOptions{LogPaths: []string{logPath}})
+				require.NoError(t, err)
+				defer func() {
+					assert.NoError(t, it.Close())
+				}()
+
+				var actualLogData string
+				for it.Next() {
+					actualLogData += fmt.Sprintf("%s\n", it.Item().Data)
+				}
+				require.NoError(t, it.Err())
+
+				assert.Equal(t, expectedLogData, actualLogData)
+			}
+		})
+	}
 }
 
 func setupCedarServer(ctx context.Context, t *testing.T, comm *client.Mock) *timberutil.MockCedarServer {
