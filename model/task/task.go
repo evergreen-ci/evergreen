@@ -1529,7 +1529,7 @@ func (t *Task) GetTaskOutputWithError() (*taskoutput.TaskOutput, error) {
 }
 
 // GetTaskLogs returns the task's task logs with the given options.
-func (t *Task) GetTaskLogs(ctx context.Context, env evergreen.Environment, getOpts taskoutput.TaskLogGetOptions) (log.LogIterator, error) {
+func (t *Task) GetTaskLogs(ctx context.Context, getOpts taskoutput.TaskLogGetOptions) (log.LogIterator, error) {
 	if t.DisplayOnly {
 		return nil, errors.New("cannot get task logs for a display task")
 	}
@@ -1551,11 +1551,11 @@ func (t *Task) GetTaskLogs(ctx context.Context, env evergreen.Environment, getOp
 		Execution: t.Execution,
 	}
 
-	return output.TaskLogs.Get(ctx, env, taskOpts, getOpts)
+	return output.TaskLogs.Get(ctx, taskOpts, getOpts)
 }
 
 // GetTestLogs returns the task's test logs with the specified options.
-func (t *Task) GetTestLogs(ctx context.Context, env evergreen.Environment, getOpts taskoutput.TestLogGetOptions) (log.LogIterator, error) {
+func (t *Task) GetTestLogs(ctx context.Context, getOpts taskoutput.TestLogGetOptions) (log.LogIterator, error) {
 	if t.DisplayOnly {
 		return nil, errors.New("cannot get test logs for a display task")
 	}
@@ -1577,7 +1577,7 @@ func (t *Task) GetTestLogs(ctx context.Context, env evergreen.Environment, getOp
 		Execution: t.Execution,
 	}
 
-	return output.TestLogs.Get(ctx, env, taskOpts, getOpts)
+	return output.TestLogs.Get(ctx, taskOpts, getOpts)
 }
 
 // SetResultsInfo sets the task's test results info.

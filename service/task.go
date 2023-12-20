@@ -535,7 +535,7 @@ func (uis *UIServer) taskLog(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	it, err := tsk.GetTaskLogs(r.Context(), uis.env, taskoutput.TaskLogGetOptions{
+	it, err := tsk.GetTaskLogs(r.Context(), taskoutput.TaskLogGetOptions{
 		LogType: getTaskLogTypeMapping(logType),
 		TailN:   DefaultLogMessages,
 	})
@@ -583,7 +583,7 @@ func (uis *UIServer) taskLogRaw(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 
-	it, err := tsk.GetTaskLogs(r.Context(), uis.env, taskoutput.TaskLogGetOptions{LogType: getTaskLogTypeMapping(r.FormValue("type"))})
+	it, err := tsk.GetTaskLogs(r.Context(), taskoutput.TaskLogGetOptions{LogType: getTaskLogTypeMapping(r.FormValue("type"))})
 	if err != nil {
 		uis.LoggedError(w, r, http.StatusInternalServerError, err)
 		return
@@ -866,7 +866,7 @@ func (uis *UIServer) testLog(w http.ResponseWriter, r *http.Request) {
 	if testName == "" {
 		testName = vals.Get("test_name")
 	}
-	it, err := tsk.GetTestLogs(r.Context(), uis.env, taskoutput.TestLogGetOptions{LogPaths: []string{testName}})
+	it, err := tsk.GetTestLogs(r.Context(), taskoutput.TestLogGetOptions{LogPaths: []string{testName}})
 	if err != nil {
 		uis.LoggedError(w, r, http.StatusInternalServerError, err)
 		return

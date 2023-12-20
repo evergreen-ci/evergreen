@@ -169,15 +169,15 @@ type getTaskLogsHandler struct {
 	getTaskOutputLogsBaseHandler
 }
 
-func makeGetTaskLogs(env evergreen.Environment, url string) *getTaskLogsHandler {
+func makeGetTaskLogs(url string) *getTaskLogsHandler {
 	return &getTaskLogsHandler{
-		getTaskOutputLogsBaseHandler: getTaskOutputLogsBaseHandler{env: env, url: url},
+		getTaskOutputLogsBaseHandler: getTaskOutputLogsBaseHandler{url: url},
 	}
 }
 
 func (h *getTaskLogsHandler) Factory() gimlet.RouteHandler {
 	return &getTaskLogsHandler{
-		getTaskOutputLogsBaseHandler: getTaskOutputLogsBaseHandler{env: h.env, url: h.url},
+		getTaskOutputLogsBaseHandler: getTaskOutputLogsBaseHandler{url: h.url},
 	}
 }
 
@@ -196,7 +196,7 @@ func (h *getTaskLogsHandler) Parse(ctx context.Context, r *http.Request) error {
 }
 
 func (h *getTaskLogsHandler) Run(ctx context.Context) gimlet.Responder {
-	it, err := h.tsk.GetTaskLogs(ctx, h.env, taskoutput.TaskLogGetOptions{
+	it, err := h.tsk.GetTaskLogs(ctx, taskoutput.TaskLogGetOptions{
 		LogType:   h.logType,
 		Start:     h.start,
 		End:       h.end,
@@ -217,15 +217,15 @@ type getTestLogsHandler struct {
 	getTaskOutputLogsBaseHandler
 }
 
-func makeGetTestLogs(env evergreen.Environment, url string) *getTestLogsHandler {
+func makeGetTestLogs(url string) *getTestLogsHandler {
 	return &getTestLogsHandler{
-		getTaskOutputLogsBaseHandler: getTaskOutputLogsBaseHandler{env: env, url: url},
+		getTaskOutputLogsBaseHandler: getTaskOutputLogsBaseHandler{url: url},
 	}
 }
 
 func (h *getTestLogsHandler) Factory() gimlet.RouteHandler {
 	return &getTestLogsHandler{
-		getTaskOutputLogsBaseHandler: getTaskOutputLogsBaseHandler{env: h.env, url: h.url},
+		getTaskOutputLogsBaseHandler: getTaskOutputLogsBaseHandler{url: h.url},
 	}
 }
 
@@ -240,7 +240,7 @@ func (h *getTestLogsHandler) Parse(ctx context.Context, r *http.Request) error {
 }
 
 func (h *getTestLogsHandler) Run(ctx context.Context) gimlet.Responder {
-	it, err := h.tsk.GetTestLogs(ctx, h.env, taskoutput.TestLogGetOptions{
+	it, err := h.tsk.GetTestLogs(ctx, taskoutput.TestLogGetOptions{
 		LogPaths:  h.logPaths,
 		Start:     h.start,
 		End:       h.end,
