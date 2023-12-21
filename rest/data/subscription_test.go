@@ -76,10 +76,94 @@ func TestGetSubscriptions(t *testing.T) {
 	assert.Len(apiSubs, 0)
 }
 
+func TestConvertVersionSubscription(t *testing.T) {
+	for name, test := range map[string]func(t *testing.T){
+		"ProjectSubscription": func(t *testing.T) {
+			subscription := event.Subscription{
+				ResourceType: event.ResourceTypeVersion,
+				Trigger:      event.TriggerFailure,
+				Owner:        "project",
+				OwnerType:    event.OwnerTypeProject,
+				Selectors: []event.Selector{
+					{
+						Type: event.SelectorRequester,
+						Data: evergreen.PatchVersionRequester,
+					},
+				},
+				Subscriber: event.Subscriber{
+					Type:   event.EmailSubscriberType,
+					Target: "a@domain.invalid",
+				},
+			}
+			assert.NoError(t, convertVersionSubscription(&subscription))
+			assert.Equal(t, subscription.Trigger, event.TriggerFamilyFailure)
+		},
+		"PersonalSubscription": func(t *testing.T) {
+			subscription := event.Subscription{
+				ResourceType: event.ResourceTypeVersion,
+				Trigger:      event.TriggerFailure,
+				Owner:        "me",
+				OwnerType:    event.OwnerTypePerson,
+				Selectors: []event.Selector{
+					{
+						Type: event.SelectorObject,
+						Data: event.ObjectVersion,
+					},
+					{
+						Type: event.SelectorID,
+						Data: "version_id",
+					},
+				},
+				Subscriber: event.Subscriber{
+					Type:   event.EmailSubscriberType,
+					Target: "a@domain.invalid",
+				},
+			}
+			assert.NoError(t, convertVersionSubscription(&subscription))
+			assert.Equal(t, subscription.Trigger, event.TriggerFamilyFailure)
+		},
+		"PersonalSubscriptionVersionNotFound": func(t *testing.T) {
+			subscription := event.Subscription{
+				ResourceType: event.ResourceTypeVersion,
+				Trigger:      event.TriggerFailure,
+				Owner:        "me",
+				OwnerType:    event.OwnerTypePerson,
+				Selectors: []event.Selector{
+					{
+						Type: event.SelectorObject,
+						Data: event.ObjectVersion,
+					},
+					{
+						Type: event.SelectorID,
+						Data: "version_1",
+					},
+				},
+				Subscriber: event.Subscriber{
+					Type:   event.EmailSubscriberType,
+					Target: "a@domain.invalid",
+				},
+			}
+			assert.Error(t, convertVersionSubscription(&subscription))
+		},
+	} {
+		t.Run(name, func(t *testing.T) {
+			assert.NoError(t, db.ClearCollections(event.SubscriptionsCollection, model.VersionCollection))
+
+			v := &model.Version{
+				Id:        "version_id",
+				Requester: evergreen.GithubPRRequester,
+			}
+			require.NoError(t, v.Insert())
+
+			test(t)
+		})
+	}
+}
+
 func TestSaveProjectSubscriptions(t *testing.T) {
 	for name, test := range map[string]func(t *testing.T){
 		"InvalidSubscription": func(t *testing.T) {
-			invalidSubscription := restModel.APISubscription{
+			subscription := restModel.APISubscription{
 				ResourceType: utility.ToStringPtr(event.ResourceTypeTask),
 				Trigger:      utility.ToStringPtr(event.TriggerOutcome),
 				Owner:        utility.ToStringPtr("project"),
@@ -95,10 +179,10 @@ func TestSaveProjectSubscriptions(t *testing.T) {
 					Target: "a@domain.invalid",
 				},
 			}
-			assert.Error(t, SaveSubscriptions(utility.FromStringPtr(invalidSubscription.Owner), []restModel.APISubscription{invalidSubscription}, false))
+			assert.Error(t, SaveSubscriptions(utility.FromStringPtr(subscription.Owner), []restModel.APISubscription{subscription}, false))
 		},
 		"VersionRequesterSubscription": func(t *testing.T) {
-			versionSubscription := restModel.APISubscription{
+			subscription := restModel.APISubscription{
 				ResourceType: utility.ToStringPtr(event.ResourceTypeVersion),
 				Trigger:      utility.ToStringPtr(event.TriggerOutcome),
 				Owner:        utility.ToStringPtr("project"),
@@ -115,17 +199,17 @@ func TestSaveProjectSubscriptions(t *testing.T) {
 				},
 			}
 			assert.NoError(t, SaveSubscriptions(
-				utility.FromStringPtr(versionSubscription.Owner),
-				[]restModel.APISubscription{versionSubscription},
+				utility.FromStringPtr(subscription.Owner),
+				[]restModel.APISubscription{subscription},
 				false))
 
-			dbSubs, err := GetSubscriptions(utility.FromStringPtr(versionSubscription.Owner), event.OwnerTypeProject)
+			dbSubs, err := GetSubscriptions(utility.FromStringPtr(subscription.Owner), event.OwnerTypeProject)
 			assert.NoError(t, err)
 			require.Len(t, dbSubs, 1)
 			require.Equal(t, utility.FromStringPtr(dbSubs[0].Trigger), event.TriggerOutcome)
 		},
 		"PatchRequesterSubscription": func(t *testing.T) {
-			familyVersionSubscription := restModel.APISubscription{
+			subscription := restModel.APISubscription{
 				ResourceType: utility.ToStringPtr(event.ResourceTypeVersion),
 				Trigger:      utility.ToStringPtr(event.TriggerOutcome),
 				Owner:        utility.ToStringPtr("project"),
@@ -142,17 +226,17 @@ func TestSaveProjectSubscriptions(t *testing.T) {
 				},
 			}
 			assert.NoError(t, SaveSubscriptions(
-				utility.FromStringPtr(familyVersionSubscription.Owner),
-				[]restModel.APISubscription{familyVersionSubscription},
+				utility.FromStringPtr(subscription.Owner),
+				[]restModel.APISubscription{subscription},
 				false))
 
-			dbSubs, err := GetSubscriptions(utility.FromStringPtr(familyVersionSubscription.Owner), event.OwnerTypeProject)
+			dbSubs, err := GetSubscriptions(utility.FromStringPtr(subscription.Owner), event.OwnerTypeProject)
 			assert.NoError(t, err)
 			require.Len(t, dbSubs, 1)
 			require.Equal(t, utility.FromStringPtr(dbSubs[0].Trigger), event.TriggerFamilyOutcome)
 		},
 		"ModifyExistingSubscription": func(t *testing.T) {
-			existingSubscription := restModel.APISubscription{
+			subscription := restModel.APISubscription{
 				ResourceType: utility.ToStringPtr(event.ResourceTypeTask),
 				Trigger:      utility.ToStringPtr(event.TriggerOutcome),
 				Owner:        utility.ToStringPtr("project"),
@@ -173,16 +257,16 @@ func TestSaveProjectSubscriptions(t *testing.T) {
 				},
 			}
 			newData := utility.ToStringPtr("5678")
-			existingSubscription.Selectors[0].Data = newData
-			assert.NoError(t, SaveSubscriptions(utility.FromStringPtr(existingSubscription.Owner), []restModel.APISubscription{existingSubscription}, true))
+			subscription.Selectors[0].Data = newData
+			assert.NoError(t, SaveSubscriptions(utility.FromStringPtr(subscription.Owner), []restModel.APISubscription{subscription}, true))
 
-			dbSubs, err := GetSubscriptions(utility.FromStringPtr(existingSubscription.Owner), event.OwnerTypeProject)
+			dbSubs, err := GetSubscriptions(utility.FromStringPtr(subscription.Owner), event.OwnerTypeProject)
 			assert.NoError(t, err)
 			require.Len(t, dbSubs, 1)
 			require.Equal(t, dbSubs[0].Selectors[0].Data, newData)
 		},
 		"DisallowedSubscription": func(t *testing.T) {
-			disallowedSubscription := restModel.APISubscription{
+			subscription := restModel.APISubscription{
 				ResourceType: utility.ToStringPtr(event.ResourceTypeTask),
 				Trigger:      utility.ToStringPtr(event.TriggerOutcome),
 				Owner:        utility.ToStringPtr("project"),
@@ -193,7 +277,7 @@ func TestSaveProjectSubscriptions(t *testing.T) {
 					Target: "ticket",
 				},
 			}
-			assert.Error(t, SaveSubscriptions(utility.FromStringPtr(disallowedSubscription.Owner), []restModel.APISubscription{disallowedSubscription}, false))
+			assert.Error(t, SaveSubscriptions(utility.FromStringPtr(subscription.Owner), []restModel.APISubscription{subscription}, false))
 		},
 	} {
 		t.Run(name, func(t *testing.T) {
@@ -228,7 +312,7 @@ func TestSaveProjectSubscriptions(t *testing.T) {
 func TestSaveTaskSubscriptions(t *testing.T) {
 	for name, test := range map[string]func(t *testing.T){
 		"ValidSubscription": func(t *testing.T) {
-			validSubscription := restModel.APISubscription{
+			subscription := restModel.APISubscription{
 				ResourceType: utility.ToStringPtr(event.ResourceTypeTask),
 				Trigger:      utility.ToStringPtr(event.TriggerOutcome),
 				Owner:        utility.ToStringPtr("me"),
@@ -248,7 +332,7 @@ func TestSaveTaskSubscriptions(t *testing.T) {
 					Target: "a@domain.invalid",
 				},
 			}
-			assert.NoError(t, SaveSubscriptions("me", []restModel.APISubscription{validSubscription}, false))
+			assert.NoError(t, SaveSubscriptions("me", []restModel.APISubscription{subscription}, false))
 		},
 	} {
 		t.Run(name, func(t *testing.T) {
@@ -261,7 +345,7 @@ func TestSaveTaskSubscriptions(t *testing.T) {
 func TestSaveVersionSubscriptions(t *testing.T) {
 	for name, test := range map[string]func(t *testing.T){
 		"VersionRequester": func(t *testing.T) {
-			validSubscription := restModel.APISubscription{
+			subscription := restModel.APISubscription{
 				ResourceType: utility.ToStringPtr(event.ResourceTypeVersion),
 				Trigger:      utility.ToStringPtr(event.TriggerOutcome),
 				Owner:        utility.ToStringPtr("me"),
@@ -281,7 +365,7 @@ func TestSaveVersionSubscriptions(t *testing.T) {
 					Target: "a@domain.invalid",
 				},
 			}
-			assert.NoError(t, SaveSubscriptions("me", []restModel.APISubscription{validSubscription}, false))
+			assert.NoError(t, SaveSubscriptions("me", []restModel.APISubscription{subscription}, false))
 
 			dbSubs, err := GetSubscriptions("me", event.OwnerTypePerson)
 			assert.NoError(t, err)
@@ -289,7 +373,7 @@ func TestSaveVersionSubscriptions(t *testing.T) {
 			require.Equal(t, utility.FromStringPtr(dbSubs[0].Trigger), event.TriggerOutcome)
 		},
 		"PatchRequester": func(t *testing.T) {
-			validSubscription := restModel.APISubscription{
+			subscription := restModel.APISubscription{
 				ResourceType: utility.ToStringPtr(event.ResourceTypeVersion),
 				Trigger:      utility.ToStringPtr(event.TriggerOutcome),
 				Owner:        utility.ToStringPtr("me"),
@@ -309,7 +393,7 @@ func TestSaveVersionSubscriptions(t *testing.T) {
 					Target: "a@domain.invalid",
 				},
 			}
-			assert.NoError(t, SaveSubscriptions("me", []restModel.APISubscription{validSubscription}, false))
+			assert.NoError(t, SaveSubscriptions("me", []restModel.APISubscription{subscription}, false))
 
 			dbSubs, err := GetSubscriptions("me", event.OwnerTypePerson)
 			assert.NoError(t, err)

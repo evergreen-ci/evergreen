@@ -14,17 +14,43 @@ import (
 	"github.com/pkg/errors"
 )
 
-func convertToFamilyTrigger(trigger string) string {
-	switch trigger {
-	case event.TriggerOutcome:
-		return event.TriggerFamilyOutcome
-	case event.TriggerFailure:
-		return event.TriggerFamilyFailure
-	case event.TriggerSuccess:
-		return event.TriggerFamilySuccess
-	default:
-		return trigger
+// There are special requirements for the VERSION resource type. Patch requesters should use family triggers
+// when possible, while non-patch requesters should use regular triggers. The content of selectors changes based
+// on the owner type.
+func convertVersionSubscription(s *event.Subscription) error {
+	var requester string
+
+	// Handle project subscriptions.
+	if s.OwnerType == event.OwnerTypeProject {
+		for _, selector := range s.Selectors {
+			if selector.Type == event.SelectorRequester {
+				requester = selector.Data
+				break
+			}
+		}
 	}
+	// Handle personal subscriptions.
+	if s.OwnerType == event.OwnerTypePerson {
+		for _, selector := range s.Selectors {
+			if selector.Type == event.SelectorID {
+				versionId := selector.Data
+				v, err := model.VersionFindOneId(versionId)
+				if err != nil {
+					return errors.Wrapf(err, "retrieving version '%s'", versionId)
+				}
+				if v == nil {
+					return errors.Errorf("version '%s' not found", versionId)
+				}
+				requester = v.Requester
+				break
+			}
+		}
+	}
+
+	if evergreen.IsPatchRequester(requester) {
+		s.Trigger = trigger.ConvertToFamilyTrigger(s.Trigger)
+	}
+	return nil
 }
 
 func SaveSubscriptions(owner string, subscriptions []restModel.APISubscription, isProjectOwner bool) error {
@@ -42,40 +68,11 @@ func SaveSubscriptions(owner string, subscriptions []restModel.APISubscription, 
 			dbSubscription.Owner = owner
 		}
 
-		// There are special requirements for the VERSION resource type. Patch requesters should use family triggers
-		// when possible, while non-patch requesters should use regular triggers. The content of selectors changes based
-		// on the owner type.
 		if dbSubscription.ResourceType == event.ResourceTypeVersion {
-			for _, selector := range dbSubscription.Selectors {
-				// Handle project subscriptions.
-				if dbSubscription.OwnerType == event.OwnerTypeProject && selector.Type == event.SelectorRequester {
-					requester := selector.Data
-					if evergreen.IsPatchRequester(requester) {
-						dbSubscription.Trigger = convertToFamilyTrigger(dbSubscription.Trigger)
-					}
-					break
-				}
-
-				// Handle personal subscriptions.
-				if dbSubscription.OwnerType == event.OwnerTypePerson && selector.Type == event.SelectorID {
-					versionId := selector.Data
-					v, err := model.VersionFindOneId(versionId)
-					if err != nil {
-						return gimlet.ErrorResponse{
-							StatusCode: http.StatusInternalServerError,
-							Message:    fmt.Sprintf("finding version '%s': %s", versionId, err),
-						}
-					}
-					if v == nil {
-						return gimlet.ErrorResponse{
-							StatusCode: http.StatusInternalServerError,
-							Message:    fmt.Sprintf("version '%s' not found", versionId),
-						}
-					}
-					if evergreen.IsPatchRequester(v.Requester) {
-						dbSubscription.Trigger = convertToFamilyTrigger(dbSubscription.Trigger)
-					}
-					break
+			if err = convertVersionSubscription(&dbSubscription); err != nil {
+				return gimlet.ErrorResponse{
+					StatusCode: http.StatusInternalServerError,
+					Message:    errors.Wrap(err, "converting version subscription").Error(),
 				}
 			}
 		}
