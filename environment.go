@@ -1219,14 +1219,14 @@ func (e *envState) getClientConfig(ctx context.Context) (*ClientConfig, error) {
 	c.LatestRevision = ClientVersion
 
 	bucket, err := pail.NewS3Bucket(pail.S3Options{
-		Name:        s3ClientBucketName,
+		Name:        e.settings.Providers.AWS.BinaryClient.Bucket,
 		Region:      DefaultEC2Region,
 		Credentials: pail.CreateAWSCredentials(e.settings.Providers.AWS.BinaryClient.Key, e.settings.Providers.AWS.BinaryClient.Secret, ""),
 	})
 	if err != nil {
 		return nil, errors.Wrap(err, "constructing pail bucket")
 	}
-	prefix := fmt.Sprintf("%s/%s/", s3ClientBucketPrefix, BuildRevision)
+	prefix := fmt.Sprintf("%s/%s/", e.settings.Providers.AWS.BinaryClient.Prefix, BuildRevision)
 	iter, err := bucket.List(ctx, prefix)
 	if err != nil {
 		return nil, errors.Wrap(err, "listing client bucket")
@@ -1241,8 +1241,8 @@ func (e *envState) getClientConfig(ctx context.Context) (*ClientConfig, error) {
 			osArchParts := strings.Split(name[0], "_")
 			c.ClientBinaries = append(c.ClientBinaries, ClientBinary{
 				URL: strings.Join([]string{
-					strings.TrimSuffix(e.settings.HostInit.S3BaseURL, "/"),
-					BuildRevision,
+					fmt.Sprintf("https://%s.s3.amazonaws.com", e.settings.Providers.AWS.BinaryClient.Bucket),
+					strings.TrimSuffix(prefix, "/"),
 					item,
 				}, "/"),
 				OS:          osArchParts[0],
