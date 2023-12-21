@@ -78,7 +78,7 @@ type AWSConfig struct {
 	Subnets []Subnet `bson:"subnets" json:"subnets" yaml:"subnets"`
 
 	// BinaryClient stores credentials for listing the evergreen client binaries uploaded to S3.
-	BinaryClient S3Credentials `bson:"binary_client" json:"binary_client" yaml:"binary_client"`
+	BinaryClient BinaryClientS3Config `bson:"binary_client" json:"binary_client" yaml:"binary_client"`
 
 	// TaskSync stores credentials for storing task data in S3.
 	TaskSync S3Credentials `bson:"task_sync" json:"task_sync" yaml:"task_sync"`
@@ -104,7 +104,6 @@ type S3Credentials struct {
 	Key    string `bson:"key" json:"key" yaml:"key"`
 	Secret string `bson:"secret" json:"secret" yaml:"secret"`
 	Bucket string `bson:"bucket" json:"bucket" yaml:"bucket"`
-	Prefix string `bson:"prefix" json:"prefix" yaml:"prefix"`
 }
 
 func (c *S3Credentials) Validate() error {
@@ -113,6 +112,13 @@ func (c *S3Credentials) Validate() error {
 	catcher.NewWhen(c.Secret == "", "secret must not be empty")
 	catcher.NewWhen(c.Bucket == "", "bucket must not be empty")
 	return catcher.Resolve()
+}
+
+// BinaryClientS3Config is the configuration options for accessing client binaries
+// in S3.
+type BinaryClientS3Config struct {
+	S3Credentials `bson:",inline" yaml:",inline"`
+	Prefix        string `bson:"prefix" json:"prefix" yaml:"prefix"`
 }
 
 // ParserProjectS3Config is the configuration options for storing and accessing
