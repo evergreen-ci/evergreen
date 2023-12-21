@@ -5,8 +5,6 @@ import (
 	"encoding/gob"
 	"fmt"
 	"math"
-	"os"
-	"path/filepath"
 	"regexp"
 	"strings"
 	"sync"
@@ -17,6 +15,7 @@ import (
 	"github.com/evergreen-ci/evergreen/util"
 	"github.com/evergreen-ci/gimlet"
 	"github.com/evergreen-ci/gimlet/rolemanager"
+	"github.com/evergreen-ci/pail"
 	"github.com/evergreen-ci/utility"
 	"github.com/mitchellh/mapstructure"
 	"github.com/mongodb/amboy"
@@ -680,14 +679,14 @@ func (e *envState) initQueues(ctx context.Context) []error {
 	return catcher.Errors()
 }
 
-func (e *envState) initClientConfig() {
+func (e *envState) initClientConfig(ctx context.Context) {
 	if e.settings == nil {
 		grip.Critical("no settings object, cannot build client configuration")
 		return
 	}
 	var err error
 
-	e.clientConfig, err = getClientConfig(e.settings.Ui.Url, e.settings.HostInit.S3BaseURL)
+	e.clientConfig, err = e.getClientConfig(ctx)
 	if err != nil {
 		grip.Critical(message.WrapError(err, message.Fields{
 			"message": "problem finding local clients",
@@ -982,7 +981,7 @@ func (e *envState) ClientConfig() *ClientConfig {
 	defer e.mu.RUnlock()
 
 	if e.clientConfig == nil {
-		e.initClientConfig()
+		e.initClientConfig(context.Background())
 		if e.clientConfig == nil {
 			return nil
 		}
@@ -1211,57 +1210,49 @@ func (e *envState) Close(ctx context.Context) error {
 
 // getClientConfig should be called once at startup and looks at the
 // current environment and loads all currently available client
-// binaries for use by the API server in presenting the settings page.
+// binaries in S3.
 //
 // If there are no built clients, this returns an empty config
 // version, but does *not* error.
-func getClientConfig(baseURL, s3BaseURL string) (*ClientConfig, error) {
+func (e *envState) getClientConfig(ctx context.Context) (*ClientConfig, error) {
 	c := &ClientConfig{}
 	c.LatestRevision = ClientVersion
-	root := filepath.Join(FindEvergreenHome(), ClientDirectory)
 
-	if _, err := os.Stat(root); os.IsNotExist(err) {
-		grip.Warningf("client directory '%s' does not exist, creating empty "+
-			"directory and continuing with caution", root)
-		grip.Error(os.MkdirAll(root, 0755))
+	bucket, err := pail.NewS3Bucket(pail.S3Options{
+		Name:        s3ClientBucketName,
+		Region:      DefaultEC2Region,
+		Credentials: pail.CreateAWSCredentials(e.settings.Providers.AWS.BinaryClientCredentials.Key, e.settings.Providers.AWS.BinaryClientCredentials.Secret, ""),
+	})
+	if err != nil {
+		return nil, errors.Wrap(err, "constructing pail bucket")
 	}
-
-	err := filepath.Walk(root, func(path string, info os.FileInfo, err error) error {
-		if err != nil {
-			return err
+	prefix := fmt.Sprintf("%s/%s/", s3ClientBucketPrefix, BuildRevision)
+	iter, err := bucket.List(ctx, prefix)
+	if err != nil {
+		return nil, errors.Wrap(err, "listing client bucket")
+	}
+	for iter.Next(ctx) {
+		item := strings.TrimPrefix(iter.Item().Name(), prefix)
+		name := strings.Split(item, "/")
+		if len(name) != 2 || !strings.Contains(name[1], "evergreen") {
+			continue
 		}
-
-		if info.IsDir() || !strings.Contains(info.Name(), "evergreen") {
-			return nil
-		}
-
-		parts := strings.Split(path, string(filepath.Separator))
-		buildInfo := strings.Split(parts[len(parts)-2], "_")
-		displayName := ValidArchDisplayNames[fmt.Sprintf("%s_%s", buildInfo[0], buildInfo[1])]
-		archPath := strings.Join(parts[len(parts)-2:], "/")
-		c.ClientBinaries = append(c.ClientBinaries, ClientBinary{
-			URL:         fmt.Sprintf("%s/%s/%s", baseURL, ClientDirectory, archPath),
-			OS:          buildInfo[0],
-			Arch:        buildInfo[1],
-			DisplayName: displayName,
-		})
-		if s3BaseURL != "" {
-			c.S3ClientBinaries = append(c.S3ClientBinaries, ClientBinary{
+		if displayName, ok := ValidArchDisplayNames[name[0]]; ok {
+			osArchParts := strings.Split(name[0], "_")
+			c.ClientBinaries = append(c.ClientBinaries, ClientBinary{
 				URL: strings.Join([]string{
-					strings.TrimSuffix(s3BaseURL, "/"),
+					strings.TrimSuffix(e.settings.HostInit.S3BaseURL, "/"),
 					BuildRevision,
-					archPath,
+					item,
 				}, "/"),
-				OS:          buildInfo[0],
-				Arch:        buildInfo[1],
+				OS:          osArchParts[0],
+				Arch:        osArchParts[1],
 				DisplayName: displayName,
 			})
 		}
-
-		return nil
-	})
-	if err != nil {
-		return nil, errors.Wrap(err, "finding client binaries")
+	}
+	if err = iter.Err(); err != nil {
+		return nil, errors.Wrap(err, "iterating client bucket contents")
 	}
 
 	return c, nil

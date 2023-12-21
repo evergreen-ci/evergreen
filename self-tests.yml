@@ -555,7 +555,7 @@ tasks:
             BUCKET_NAME: mciuploads
             LOCAL_PATH: clients
             EXCLUDE_PATTERN: .cache
-            REMOTE_PATH: evergreen/clients/${project}/${revision}
+            REMOTE_PATH: evergreen/clients/evergreen/${revision}
   - name: verify-agent-version-update
     tags: ["linter"]
     patch_only: true

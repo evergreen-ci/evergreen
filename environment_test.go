@@ -148,7 +148,7 @@ func (s *EnvironmentSuite) TestGetClientConfig() {
 		}()
 	}
 
-	client, err := getClientConfig("https://example.com", "")
+	client, err := getClientConfig(context.Background(), "")
 	s.Require().NoError(err)
 	s.Require().NotNil(client)
 
@@ -169,7 +169,7 @@ func (s *EnvironmentSuite) TestGetClientConfig() {
 	s.Equal("linux", cb[1].OS)
 	s.Equal("https://example.com/clients/linux_z80_obviouslynottherealone/evergreen", cb[1].URL)
 
-	client, err = getClientConfig("https://example.com", "https://another-example.com")
+	client, err = getClientConfig(context.Background(), "https://another-example.com")
 	s.Require().NoError(err)
 	s.Require().NotNil(client)
 

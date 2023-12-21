@@ -28,9 +28,6 @@ func GetCLIUpdate(ctx context.Context) (*model.APICLIUpdate, error) {
 			Message:    err.Error(),
 		}
 	}
-	if flags.S3BinaryDownloadsDisabled {
-		config.S3ClientBinaries = nil
-	}
 
 	update.BuildFromService(*config)
 	update.IgnoreUpdate = flags.CLIUpdatesDisabled

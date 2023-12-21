@@ -802,6 +802,13 @@ func (k SenderKey) String() string {
 	}
 }
 
+const (
+	// s3ClientBucketName is the S3 bucket client binaries are uploaded to.
+	s3ClientBucketName = "mciuploads"
+	// s3ClientBucketPrefix is the prefix within s3ClientBucketName that client binaries are stored under.
+	s3ClientBucketPrefix = "evergreen/clients/evergreen"
+)
+
 // Recognized Evergreen agent CPU architectures, which should be in the form
 // ${GOOS}_${GOARCH}.
 const (

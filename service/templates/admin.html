@@ -1800,121 +1800,117 @@ Admin Settings
 										<input type="text" ng-model="Settings.providers.aws.ec2_keys[0].secret">
 									</md-input-container>
 									<md-input-container class="control" style="width:45%;">
-										<label>S3 Key</label>
-										<input type="text" ng-model="Settings.providers.aws.s3_credentials.key">
+										<label>Client Binaries S3 Key</label>
+										<input type="text" ng-model="Settings.providers.aws.binary_client_credentials.key">
 									</md-input-container>
 									<md-input-container class="control" style="width:45%; margin-left:50px;">
-										<label>S3 Secret</label>
-										<input type="text" ng-model="Settings.providers.aws.s3_credentials.secret">
+										<label>Client Binaries S3 Secret</label>
+										<input type="text" ng-model="Settings.providers.aws.binary_client_credentials.secret">
 									</md-input-container>
 									<md-input-container class="control" style="width:45%;">
-										<label>S3 Bucket</label>
-										<input type="text" ng-model="Settings.providers.aws.s3_credentials.bucket">
-									</md-input-container>
-									<md-input-container class="control" style="width:45%; margin-left:50px;">
 										<label>Task S3 Key</label>
 										<input type="text" ng-model="Settings.providers.aws.task_sync.key">
 									</md-input-container>
-									<md-input-container class="control" style="width:45%;">
+									<md-input-container class="control" style="width:45%; margin-left:50px;">
 										<label>Task S3 Secret</label>
 										<input type="text" ng-model="Settings.providers.aws.task_sync.secret">
 									</md-input-container>
-									<md-input-container class="control" style="width:45%; margin-left:50px;">
+									<md-input-container class="control" style="width:45%;">
 										<label>Task S3 Bucket</label>
 										<input type="text" ng-model="Settings.providers.aws.task_sync.bucket">
 									</md-input-container>
-									<md-input-container class="control" style="width:45%;">
+									<md-input-container class="control" style="width:45%; margin-left:50px;">
 										<label>Task Read-Only S3 Key</label>
 										<input type="text" ng-model="Settings.providers.aws.task_sync_read.key">
 									</md-input-container>
-									<md-input-container class="control" style="width:45%; margin-left:50px;">
+									<md-input-container class="control" style="width:45%;">
 										<label>Task Read-Only S3 Secret</label>
 										<input type="text" ng-model="Settings.providers.aws.task_sync_read.secret">
 									</md-input-container>
-									<md-input-container class="control" style="width:45%;">
+									<md-input-container class="control" style="width:45%; margin-left:50px;">
 										<label>Task Read-Only S3 Bucket</label>
 										<input type="text" ng-model="Settings.providers.aws.task_sync_read.bucket">
 									</md-input-container>
-									<md-input-container class="control" style="width:45%; margin-left:50px;">
+									<md-input-container class="control" style="width:45%;">
 										<label>Parser Project S3 Key</label>
 										<input type="text" ng-model="Settings.providers.aws.parser_project.key">
 									</md-input-container>
-									<md-input-container class="control" style="width:45%;">
+									<md-input-container class="control" style="width:45%; margin-left:50px;">
 										<label>Parser Project S3 Secret</label>
 										<input type="text" ng-model="Settings.providers.aws.parser_project.secret">
 									</md-input-container>
-									<md-input-container class="control" style="width:45%; margin-left:50px;">
+									<md-input-container class="control" style="width:45%;">
 										<label>Parser Project S3 Bucket</label>
 										<input type="text" ng-model="Settings.providers.aws.parser_project.bucket">
 									</md-input-container>
-									<md-input-container class="control" style="width:45%;">
+									<md-input-container class="control" style="width:45%; margin-left:50px;">
 										<label>Parser Project S3 Prefix</label>
 										<input type="text" ng-model="Settings.providers.aws.parser_project.prefix">
 									</md-input-container>
-									<md-input-container class="control" style="width:45%; margin-left:50px;">
+									<md-input-container class="control" style="width:45%;">
 										<label>Default Security Group</label>
 										<input type="text" ng-model="Settings.providers.aws.default_security_group">
 									</md-input-container>
-									<md-input-container class="control" style="width:45%;">
+									<md-input-container class="control" style="width:45%; margin-left:50px;">
 										<label>Total EBS Volume Size Per User</label>
 										<input type="number" ng-model="Settings.providers.aws.max_volume_size">
 									</md-input-container>
-									<md-input-container class="control" style="width:45%; margin-left:50px;">
+									<md-input-container class="control" style="width:45%;">
 										<label>Allowed Instance Types</label>
 										<textarea ng-model="Settings.providers.aws.allowed_instance_types"
 											ng-list="&#10;" ng-trim="false" rows="3" md-select-on-focus></textarea>
 									</md-input-container>
-									<md-input-container class="control" style="width:45%;">
+									<md-input-container class="control" style="width:45%; margin-left:50px;">
 										<label>Allowed Regions</label>
 										<textarea ng-model="Settings.providers.aws.allowed_regions" ng-list="&#10;"
 											ng-trim="false" rows="3" md-select-on-focus></textarea>
 									</md-input-container>
-									<md-input-container class="control" style="width:45%; margin-left:50px;">
+									<md-input-container class="control" style="width:45%;">
 										<label>Allowed Container Images</label>
 										<textarea ng-model="Settings.providers.aws.pod.ecs.allowed_images" ng-list="&#10;" ng-trim="false" rows="3"
 											md-select-on-focus></textarea>
 									</md-input-container>
-									<md-input-container class="control" style="width:45%;">
+									<md-input-container class="control" style="width:45%; margin-left:50px;">
 										<label>Pod ECS Max CPU Units Per Pod</label>
 										<input type="number" ng-model="Settings.providers.aws.pod.ecs.max_cpu">
 									</md-input-container>
-									<md-input-container class="control" style="width:45%; margin-left:50px;">
+									<md-input-container class="control" style="width:45%;">
 										<label>Pod ECS Max Memory (MB) Per Pod</label>
 										<input type="number" ng-model="Settings.providers.aws.pod.ecs.max_memory_mb">
 									</md-input-container>
-									<md-input-container class="control" style="width:45%;">
+									<md-input-container class="control" style="width:45%; margin-left:50px;">
 										<label>Pod Role</label>
 										<input type="text" ng-model="Settings.providers.aws.pod.role">
 									</md-input-container>
-									<md-input-container class="control" style="width:45%; margin-left:50px;">
+									<md-input-container class="control" style="width:45%;">
 										<label>Pod Region</label>
 										<input type="text" ng-model="Settings.providers.aws.pod.region">
 									</md-input-container>
-									<md-input-container class="control" style="width:45%;">
+									<md-input-container class="control" style="width:45%; margin-left:50px;">
 										<label>Pod Secrets Manager Secret Prefix</label>
 										<input type="text" ng-model="Settings.providers.aws.pod.secrets_manager.secret_prefix">
 									</md-input-container>
-									<md-input-container class="control" style="width:45%; margin-left:50px;">
+									<md-input-container class="control" style="width:45%;">
 										<label>Pod ECS Task Definition Prefix</label>
 										<input type="text" ng-model="Settings.providers.aws.pod.ecs.task_definition_prefix">
 									</md-input-container>
-									<md-input-container class="control" style="width:45%;">
+									<md-input-container class="control" style="width:45%; margin-left:50px;">
 										<label>Pod ECS Task Role</label>
 										<input type="text" ng-model="Settings.providers.aws.pod.ecs.task_role">
 									</md-input-container>
-									<md-input-container class="control" style="width:45%; margin-left:50px;">
+									<md-input-container class="control" style="width:45%;">
 										<label>Pod ECS Execution Role</label>
 										<input type="text" ng-model="Settings.providers.aws.pod.ecs.execution_role">
 									</md-input-container>
-									<md-input-container class="control" style="width:45%;">
+									<md-input-container class="control" style="width:45%; margin-left:50px;">
 										<label>Pod ECS Log Region</label>
 										<input type="text" ng-model="Settings.providers.aws.pod.ecs.log_region">
 									</md-input-container>
-									<md-input-container class="control" style="width:45%; margin-left:50px;">
+									<md-input-container class="control" style="width:45%;">
 										<label>Pod ECS Log Group Name</label>
 										<input type="text" ng-model="Settings.providers.aws.pod.ecs.log_group">
 									</md-input-container>
-									<md-input-container class="control" style="width:45%;">
+									<md-input-container class="control" style="width:45%; margin-left:50px;">
 										<label>Pod ECS Log Stream Prefix</label>
 										<input type="text" ng-model="Settings.providers.aws.pod.ecs.log_stream_prefix">
 									</md-input-container>
