@@ -1522,17 +1522,17 @@ func (a *APISubnet) ToService() (interface{}, error) {
 }
 
 type APIAWSConfig struct {
-	EC2Keys                 []APIEC2Key               `json:"ec2_keys"`
-	Subnets                 []APISubnet               `json:"subnets"`
-	BinaryClientCredentials *APIS3Credentials         `json:"binary_client_credentials"`
-	TaskSync                *APIS3Credentials         `json:"task_sync"`
-	TaskSyncRead            *APIS3Credentials         `json:"task_sync_read"`
-	ParserProject           *APIParserProjectS3Config `json:"parser_project"`
-	DefaultSecurityGroup    *string                   `json:"default_security_group"`
-	AllowedInstanceTypes    []*string                 `json:"allowed_instance_types"`
-	AllowedRegions          []*string                 `json:"allowed_regions"`
-	MaxVolumeSizePerUser    *int                      `json:"max_volume_size"`
-	Pod                     *APIAWSPodConfig          `json:"pod"`
+	EC2Keys              []APIEC2Key               `json:"ec2_keys"`
+	Subnets              []APISubnet               `json:"subnets"`
+	BinaryClient         *APIS3Credentials         `json:"binary_client"`
+	TaskSync             *APIS3Credentials         `json:"task_sync"`
+	TaskSyncRead         *APIS3Credentials         `json:"task_sync_read"`
+	ParserProject        *APIParserProjectS3Config `json:"parser_project"`
+	DefaultSecurityGroup *string                   `json:"default_security_group"`
+	AllowedInstanceTypes []*string                 `json:"allowed_instance_types"`
+	AllowedRegions       []*string                 `json:"allowed_regions"`
+	MaxVolumeSizePerUser *int                      `json:"max_volume_size"`
+	Pod                  *APIAWSPodConfig          `json:"pod"`
 }
 
 func (a *APIAWSConfig) BuildFromService(h interface{}) error {
@@ -1555,10 +1555,10 @@ func (a *APIAWSConfig) BuildFromService(h interface{}) error {
 		}
 
 		clients := &APIS3Credentials{}
-		if err := clients.BuildFromService(v.BinaryClientCredentials); err != nil {
+		if err := clients.BuildFromService(v.BinaryClient); err != nil {
 			return errors.Wrap(err, "converting S3 credentials to API model")
 		}
-		a.TaskSync = clients
+		a.BinaryClient = clients
 
 		taskSync := &APIS3Credentials{}
 		if err := taskSync.BuildFromService(v.TaskSync); err != nil {
@@ -1605,7 +1605,7 @@ func (a *APIAWSConfig) ToService() (interface{}, error) {
 	var err error
 	var ok bool
 
-	i, err = a.BinaryClientCredentials.ToService()
+	i, err = a.BinaryClient.ToService()
 	if err != nil {
 		return nil, errors.Wrap(err, "converting binary client S3 credentials to service model")
 	}
@@ -1616,7 +1616,7 @@ func (a *APIAWSConfig) ToService() (interface{}, error) {
 			return nil, errors.Errorf("expecting binary client S3 credentials but got type %T", i)
 		}
 	}
-	config.BinaryClientCredentials = client
+	config.BinaryClient = client
 
 	i, err = a.TaskSync.ToService()
 	if err != nil {
@@ -1701,6 +1701,7 @@ type APIS3Credentials struct {
 	Key    *string `json:"key"`
 	Secret *string `json:"secret"`
 	Bucket *string `json:"bucket"`
+	Prefix *string `json:"prefix"`
 }
 
 func (a *APIS3Credentials) BuildFromService(h interface{}) error {
@@ -1709,6 +1710,7 @@ func (a *APIS3Credentials) BuildFromService(h interface{}) error {
 		a.Key = utility.ToStringPtr(v.Key)
 		a.Secret = utility.ToStringPtr(v.Secret)
 		a.Bucket = utility.ToStringPtr(v.Bucket)
+		a.Prefix = utility.ToStringPtr(v.Prefix)
 		return nil
 	default:
 		return errors.Errorf("programmatic error: expected S3 credentials but got type %T", h)
@@ -1723,6 +1725,7 @@ func (a *APIS3Credentials) ToService() (interface{}, error) {
 		Key:    utility.FromStringPtr(a.Key),
 		Secret: utility.FromStringPtr(a.Secret),
 		Bucket: utility.FromStringPtr(a.Bucket),
+		Prefix: utility.FromStringPtr(a.Prefix),
 	}, nil
 }
 
