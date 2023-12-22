@@ -12,6 +12,7 @@ import (
 
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/agent/internal/client"
+	"github.com/evergreen-ci/evergreen/model/log"
 	"github.com/evergreen-ci/evergreen/model/task"
 	"github.com/evergreen-ci/evergreen/model/testlog"
 	serviceutil "github.com/evergreen-ci/evergreen/service/testutil"
@@ -20,7 +21,6 @@ import (
 	timberutil "github.com/evergreen-ci/timber/testutil"
 	"github.com/evergreen-ci/utility"
 	"github.com/mongodb/grip/level"
-	"github.com/mongodb/grip/send"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"google.golang.org/grpc"
@@ -135,135 +135,319 @@ func TestAppendTestLog(t *testing.T) {
 	})
 }
 
-func TestTestLogDirectoryHandler(t *testing.T) {
+func TestTestLogDirectoryHandlerFollowFile(t *testing.T) {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 
 	comm := client.NewMock("url")
-	taskOutputInfo := &taskoutput.TaskOutput{
-		TestLogs: taskoutput.TestLogOutput{
-			Version: 1,
-			BucketConfig: evergreen.BucketConfig{
-				Name: t.TempDir(),
-				Type: evergreen.BucketTypeLocal,
-			},
+	tsk, h := setupTestTestLogDirectoryHandler(t, comm)
+	require.NoError(t, h.start(ctx, t.TempDir()))
+
+	// Track files written to the test log directory.
+	type logFile struct {
+		fn       string
+		f        *os.File
+		rawLines []string
+	}
+	var files []logFile
+	for i := 0; i < 2; i++ {
+		var err error
+		file := logFile{fn: utility.RandomString()}
+		file.f, err = os.Create(filepath.Join(h.dir, file.fn))
+		require.NoError(t, err)
+
+		files = append(files, file)
+	}
+
+	// Set up asynchronous test log file writing.
+	writerCtx, writerCancel := context.WithCancel(ctx)
+	var wg sync.WaitGroup
+	wg.Add(1)
+	go func() {
+		defer func() {
+			for _, file := range files {
+				file.f.Close()
+			}
+			wg.Done()
+		}()
+
+		for {
+			select {
+			case <-writerCtx.Done():
+				return
+			default:
+				for i := range files {
+					files[i].rawLines = append(
+						files[i].rawLines,
+						fmt.Sprintf("%s %s.", utility.RandomString(), utility.RandomString()),
+					)
+
+					_, err := files[i].f.WriteString(files[i].rawLines[len(files[i].rawLines)-1] + "\n")
+					require.NoError(t, err)
+				}
+			}
+		}
+	}()
+
+	// Check that logs are ingested continuously.
+	time.Sleep(5 * time.Second)
+	for _, file := range files {
+		it, err := tsk.GetTestLogs(ctx, taskoutput.TestLogGetOptions{LogPaths: []string{file.fn}})
+		require.NoError(t, err)
+		assert.True(t, it.Next())
+		assert.NoError(t, it.Close())
+	}
+
+	// Add a third, nested, test log file.
+	nestedFile := logFile{
+		fn: filepath.Join(utility.RandomString(), utility.RandomString()),
+		rawLines: []string{
+			"This is a small test log.",
+			"With only a few lines.",
+			"In a nested directory.",
 		},
+	}
+	require.NoError(t, os.Mkdir(filepath.Join(h.dir, filepath.Dir(nestedFile.fn)), 0777))
+	require.NoError(t, os.WriteFile(filepath.Join(h.dir, nestedFile.fn), []byte(strings.Join(nestedFile.rawLines, "\n")+"\n"), 0777))
+
+	// Wait for async writing to exit cleanly and close the test log
+	// directory handler.
+	time.Sleep(time.Second)
+	writerCancel()
+	wg.Wait()
+	require.NoError(t, h.close(ctx))
+
+	// Check persisted test logs.
+	for _, file := range append(files, nestedFile) {
+		it, err := tsk.GetTestLogs(ctx, taskoutput.TestLogGetOptions{LogPaths: []string{file.fn}})
+		require.NoError(t, err)
+		defer func() {
+			assert.NoError(t, it.Close())
+		}()
+
+		var persistedRawLines []string
+		for it.Next() {
+			persistedRawLines = append(persistedRawLines, it.Item().Data)
+		}
+		require.NoError(t, it.Err())
+		assert.Equal(t, file.rawLines, persistedRawLines)
+	}
+}
+
+func TestTestLogDirectoryHandlerGetSpecFile(t *testing.T) {
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
+	comm := client.NewMock("url")
+	getRawLinesAndFormatter := func(format testLogFormat) ([]string, func(log.LogLine) string) {
+		rawLines := []string{
+			"This is a log line.",
+			"This is another log line...",
+			"This is the last log line.",
+		}
+
+		var formatLine func(log.LogLine) string
+		switch format {
+		case testLogFormatTextTimestamp:
+			for i := range rawLines {
+				rawLines[i] = fmt.Sprintf("%d %s", time.Now().UnixNano(), rawLines[i])
+			}
+			formatLine = func(line log.LogLine) string { return fmt.Sprintf("%d %s", line.Timestamp, line.Data) }
+		default:
+			formatLine = func(line log.LogLine) string { return line.Data }
+		}
+
+		return rawLines, formatLine
 	}
 
 	for _, test := range []struct {
-		name string
-		spec *testLogSpec
+		name     string
+		specData interface{}
 	}{
+		{
+			name:     "InvalidYAML",
+			specData: []byte("this is not YAML"),
+		},
 		{
 			name: "NoSpecFile",
 		},
+		{
+			name:     "TextFormat",
+			specData: testLogSpec{Format: testLogFormatDefault},
+		},
+		{
+			name:     "TextTimestampFormat",
+			specData: testLogSpec{Format: testLogFormatTextTimestamp},
+		},
 	} {
 		t.Run(test.name, func(t *testing.T) {
-			tsk := &task.Task{
-				Project:        "project",
-				Id:             utility.RandomString(),
-				TaskOutputInfo: taskOutputInfo,
-			}
-			logger, err := comm.GetLoggerProducer(ctx, client.TaskData{ID: tsk.Id}, nil)
-			require.NoError(t, err)
-			h := &testLogDirectoryHandler{
-				dir:    t.TempDir(),
-				logger: logger,
-			}
-			h.createSender = func(ctx context.Context, logPath string) (send.Sender, error) {
-				return tsk.TaskOutputInfo.TestLogs.NewSender(ctx,
-					taskoutput.TaskOptions{
-						ProjectID: tsk.Project,
-						TaskID:    tsk.Id,
-						Execution: tsk.Execution,
-					},
-					taskoutput.EvergreenSenderOptions{
-						Local:         logger.Task().GetSender(),
-						FlushInterval: time.Second,
-						Parse:         h.spec.getParser(),
-					},
-					logPath,
-				)
-			}
-			require.NoError(t, h.start(ctx))
+			tsk, h := setupTestTestLogDirectoryHandler(t, comm)
+			require.NoError(t, h.start(ctx, t.TempDir()))
 
-			if test.spec != nil {
-				data, err := yaml.Marshal(test.spec)
+			// Set the expected test log spec and write spec file
+			// if spec data exists.
+			var (
+				data         []byte
+				expectedSpec testLogSpec
+			)
+			switch v := test.specData.(type) {
+			case []byte:
+				data = v
+			case testLogSpec:
+				var err error
+				data, err = yaml.Marshal(&v)
 				require.NoError(t, err)
-				require.NoError(t, os.WriteFile(filepath.Join(h.dir, "log_spec.yaml"), data, 0777))
+				expectedSpec = v
+			}
+			if data != nil {
+				require.NoError(t, os.WriteFile(filepath.Join(h.dir, testLogSpecFilename), data, 0777))
 			}
 
-			writerCtx, writerCancel := context.WithCancel(ctx)
-			var wg sync.WaitGroup
-			wg.Add(1)
-			logs := map[string]string{
-				utility.RandomString(): "",
-				utility.RandomString(): "",
-			}
-			files := map[string]*os.File{}
-			for fn := range logs {
-				f, err := os.Create(filepath.Join(h.dir, fn))
-				require.NoError(t, err)
+			// Write a log to the empty test log directory to
+			// trigger the handler to look for the spec file.
+			rawLines, formatLine := getRawLinesAndFormatter(expectedSpec.Format)
+			logPath := utility.RandomString()
+			require.NoError(t, os.WriteFile(filepath.Join(h.dir, logPath), []byte(strings.Join(rawLines, "\n")+"\n"), 0777))
 
-				files[fn] = f
-			}
-
-			go func() {
-				defer func() {
-					for _, f := range files {
-						assert.NoError(t, f.Close())
-					}
-					wg.Done()
-				}()
-
-				for {
-					select {
-					case <-writerCtx.Done():
-						return
-					default:
-						for fn, f := range files {
-							line := fmt.Sprintf("%s\n", utility.RandomString())
-							logs[fn] += line
-
-							_, err := f.WriteString(line)
-							require.NoError(t, err)
-						}
-					}
-				}
-			}()
-
-			// Check that logs are ingested continuously.
-			time.Sleep(5 * time.Second)
-			for logPath := range logs {
-				it, err := tsk.GetTestLogs(ctx, taskoutput.TestLogGetOptions{LogPaths: []string{logPath}})
-				require.NoError(t, err)
-				assert.True(t, it.Next())
-				assert.NoError(t, it.Close())
-			}
-
-			writerCancel()
-			wg.Wait()
+			// Sleep before continuing to avoid racing to detect
+			// the new file.
+			time.Sleep(time.Second)
 			require.NoError(t, h.close(ctx))
+			assert.Equal(t, expectedSpec, h.spec)
 
-			for logPath, expectedLogData := range logs {
-				it, err := tsk.GetTestLogs(ctx, taskoutput.TestLogGetOptions{LogPaths: []string{logPath}})
-				require.NoError(t, err)
-				defer func() {
-					assert.NoError(t, it.Close())
-				}()
+			// Check that only log files are followed.
+			assert.Equal(t, 1, h.followFileCount)
 
-				var actualLogData string
-				for it.Next() {
-					actualLogData += fmt.Sprintf("%s\n", it.Item().Data)
-				}
-				require.NoError(t, it.Err())
+			// Check that raw log lines were correctly parsed in
+			// accordance with their format.
+			it, err := tsk.GetTestLogs(ctx, taskoutput.TestLogGetOptions{LogPaths: []string{logPath}})
+			require.NoError(t, err)
+			defer func() {
+				assert.NoError(t, it.Close())
+			}()
+			var persistedRawLines []string
+			for it.Next() {
+				persistedRawLines = append(persistedRawLines, formatLine(it.Item()))
+			}
+			require.NoError(t, it.Err())
+			assert.Equal(t, rawLines, persistedRawLines)
+		})
+	}
+}
 
-				assert.Equal(t, expectedLogData, actualLogData)
+func TestTestLogSpecGetParser(t *testing.T) {
+	for _, test := range []struct {
+		name string
+		spec testLogSpec
+		test func(*testing.T, taskoutput.LogLineParser)
+	}{
+		{
+			name: "DefaultFormat",
+			spec: testLogSpec{},
+			test: func(t *testing.T, parser taskoutput.LogLineParser) {
+				assert.Nil(t, parser)
+			},
+		},
+		{
+			name: "Text",
+			spec: testLogSpec{Format: testLogFormatDefault},
+			test: func(t *testing.T, parser taskoutput.LogLineParser) {
+				assert.Nil(t, parser)
+			},
+		},
+		{
+			name: "TextTimestamp",
+			spec: testLogSpec{Format: testLogFormatTextTimestamp},
+			test: func(t *testing.T, parser taskoutput.LogLineParser) {
+				ts := time.Now().UnixNano()
+				data := "This is a log line."
+
+				t.Run("MalformedLine", func(t *testing.T) {
+					_, err := parser("NoSpaces\n")
+					assert.Error(t, err)
+				})
+				t.Run("InvalidTimestamp", func(t *testing.T) {
+					_, err := parser(fmt.Sprintf("%v %s\n", time.Now(), data))
+					assert.Error(t, err)
+				})
+				t.Run("ParseRawLine", func(t *testing.T) {
+					line, err := parser(fmt.Sprintf("%d %s\n", ts, data))
+					require.NoError(t, err)
+					assert.Zero(t, line.Priority)
+					assert.Equal(t, ts, line.Timestamp)
+					assert.Equal(t, data, line.Data)
+				})
+				t.Run("ParseRawLineWithLeadingWhiteSpace", func(t *testing.T) {
+					line, err := parser(fmt.Sprintf("   %d %s\n", ts, data))
+					require.NoError(t, err)
+					assert.Zero(t, line.Priority)
+					assert.Equal(t, ts, line.Timestamp)
+					assert.Equal(t, data, line.Data)
+				})
+			},
+		},
+	} {
+		t.Run(test.name, func(t *testing.T) {
+			test.test(t, test.spec.getParser())
+		})
+	}
+}
+
+func TestTestLogFormatValidate(t *testing.T) {
+	for _, test := range []struct {
+		name   string
+		format testLogFormat
+		hasErr bool
+	}{
+		{
+			name:   "Text",
+			format: testLogFormatDefault,
+		},
+		{
+			name:   "TextTimestamp",
+			format: testLogFormatTextTimestamp,
+		},
+		{
+			name:   "Invalid",
+			format: testLogFormat("invalid"),
+			hasErr: true,
+		},
+	} {
+		t.Run(test.name, func(t *testing.T) {
+			err := test.format.validate()
+			if test.hasErr {
+				assert.Error(t, err)
+			} else {
+				assert.NoError(t, err)
 			}
 		})
 	}
 }
 
+func setupTestTestLogDirectoryHandler(t *testing.T, comm *client.Mock) (*task.Task, *testLogDirectoryHandler) {
+	tsk := &task.Task{
+		Project: "project",
+		Id:      utility.RandomString(),
+		TaskOutputInfo: &taskoutput.TaskOutput{
+			TestLogs: taskoutput.TestLogOutput{
+				Version: 1,
+				BucketConfig: evergreen.BucketConfig{
+					Name: t.TempDir(),
+					Type: evergreen.BucketTypeLocal,
+				},
+			},
+		},
+	}
+	logger, err := comm.GetLoggerProducer(context.TODO(), client.TaskData{ID: tsk.Id}, nil)
+	require.NoError(t, err)
+	h := newTestLogDirectoryHandler(tsk.TaskOutputInfo.TestLogs, taskoutput.TaskOptions{
+		ProjectID: tsk.Project,
+		TaskID:    tsk.Id,
+		Execution: tsk.Execution,
+	}, logger)
+
+	return tsk, h
+}
 func setupCedarServer(ctx context.Context, t *testing.T, comm *client.Mock) *timberutil.MockCedarServer {
 	srv, err := timberutil.NewMockCedarServer(ctx, serviceutil.NextPort())
 	require.NoError(t, err)

@@ -11,49 +11,45 @@ import (
 	"github.com/evergreen-ci/evergreen/taskoutput"
 	"github.com/mongodb/grip"
 	"github.com/mongodb/grip/recovery"
-	"github.com/pkg/errors"
 )
 
 // Directory is the application representation of a task's reserved output
 // directory. It coordinates asynchronous task output handling, from ingestion
 // to persistence, while the task runs.
 type Directory struct {
-	rootDir  string
+	root     string
 	handlers map[string]directoryHandler
 }
 
 // NewDirectory returns a new task output directory with the specifed root for
 // the given task.
-func NewDirectory(rootDir string, tsk *task.Task, logger client.LoggerProducer) *Directory {
+func NewDirectory(root string, tsk *task.Task, logger client.LoggerProducer) *Directory {
 	output := tsk.TaskOutputInfo
 	taskOpts := taskoutput.TaskOptions{
 		ProjectID: tsk.Project,
 		TaskID:    tsk.Id,
 		Execution: tsk.Execution,
 	}
-	d := &Directory{
-		rootDir:  rootDir,
-		handlers: map[string]directoryHandler{},
+
+	return &Directory{
+		root: root,
+		handlers: map[string]directoryHandler{
+			output.TestLogs.ID(): newTestLogDirectoryHandler(output.TestLogs, taskOpts, logger),
+		},
 	}
-
-	testLogDir := filepath.Join(rootDir, output.TestLogs.ID())
-	d.handlers[testLogDir] = newTestLogDirectoryHandler(testLogDir, output.TestLogs, taskOpts, logger)
-
-	return d
 }
 
 // Start creates the sub-directories and starts all asynchronous directory
 // handlers.
 func (a *Directory) Start(ctx context.Context) error {
-	for dir := range a.handlers {
-		if err := os.MkdirAll(dir, 0777); err != nil {
-			return errors.Wrapf(err, "creating task output directory '%s'", dir)
-		}
-	}
-
 	catcher := grip.NewBasicCatcher()
-	for dir, handler := range a.handlers {
-		catcher.Wrapf(handler.start(ctx), "starting task output directory handler for '%s'", dir)
+	for id, handler := range a.handlers {
+		subDir := filepath.Join(a.root, id)
+		if err := os.MkdirAll(subDir, 0777); err != nil {
+			catcher.Wrapf(err, "creating task output directory '%s'", subDir)
+		} else {
+			catcher.Wrapf(handler.start(ctx, subDir), "starting task output directory handler for '%s'", subDir)
+		}
 	}
 
 	return catcher.Resolve()
@@ -65,25 +61,25 @@ func (a *Directory) Close(ctx context.Context) error {
 	catcher := grip.NewBasicCatcher()
 
 	var wg sync.WaitGroup
-	for dir, handler := range a.handlers {
+	for id, handler := range a.handlers {
 		wg.Add(1)
-		go func() {
+		go func(id string, h directoryHandler) {
 			defer func() {
 				catcher.Add(recovery.HandlePanicWithError(recover(), nil, "task output directory handler closer"))
-				wg.Done()
 			}()
+			defer wg.Done()
 
-			catcher.Wrapf(handler.close(ctx), "closing task output handler for '%s'", dir)
-		}()
+			catcher.Wrapf(h.close(ctx), "closing task output handler for '%s'", id)
+		}(id, handler)
 	}
 	wg.Wait()
 
-	catcher.Wrap(os.RemoveAll(a.rootDir), "removing task output directory")
+	catcher.Wrap(os.RemoveAll(a.root), "removing task output directory")
 
 	return catcher.Resolve()
 }
 
 type directoryHandler interface {
-	start(context.Context) error
+	start(context.Context, string) error
 	close(context.Context) error
 }

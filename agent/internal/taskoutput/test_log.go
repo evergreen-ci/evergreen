@@ -2,7 +2,6 @@ package taskoutput
 
 import (
 	"context"
-	"fmt"
 	"io"
 	"os"
 	"path/filepath"
@@ -86,22 +85,19 @@ func sendTestLogToCedar(ctx context.Context, comm client.Communicator, tsk *task
 }
 
 type testLogDirectoryHandler struct {
-	dir          string
-	logger       client.LoggerProducer
-	watcher      *watcher.Watcher
-	spec         *testLogSpec
-	createSender func(context.Context, string) (send.Sender, error)
+	dir             string
+	logger          client.LoggerProducer
+	watcher         *watcher.Watcher
+	spec            testLogSpec
+	createSender    func(context.Context, string) (send.Sender, error)
+	followFileCount int
 
-	mu sync.Mutex
-	wg sync.WaitGroup
+	once sync.Once
+	wg   sync.WaitGroup
 }
 
-func newTestLogDirectoryHandler(dir string, output taskoutput.TestLogOutput, taskOpts taskoutput.TaskOptions, logger client.LoggerProducer) *testLogDirectoryHandler {
-	h := &testLogDirectoryHandler{
-		dir:    dir,
-		logger: logger,
-	}
-
+func newTestLogDirectoryHandler(output taskoutput.TestLogOutput, taskOpts taskoutput.TaskOptions, logger client.LoggerProducer) *testLogDirectoryHandler {
+	h := &testLogDirectoryHandler{logger: logger}
 	h.createSender = func(ctx context.Context, logPath string) (send.Sender, error) {
 		return output.NewSender(ctx, taskOpts, taskoutput.EvergreenSenderOptions{
 			Local: logger.Task().GetSender(),
@@ -112,25 +108,28 @@ func newTestLogDirectoryHandler(dir string, output taskoutput.TestLogOutput, tas
 	return h
 }
 
-func (h *testLogDirectoryHandler) start(ctx context.Context) error {
+func (h *testLogDirectoryHandler) start(ctx context.Context, dir string) error {
+	h.dir = dir
 	h.watcher = watcher.New()
 	h.watcher.FilterOps(watcher.Create)
 	h.watcher.AddRecursive(h.dir)
+	if err := h.watcher.Ignore(filepath.Join(h.dir, testLogSpecFilename)); err != nil {
+		return errors.Wrap(err, "configuring test log directory watcher")
+	}
 
-	done := make(chan struct{})
+	started := make(chan struct{})
 	go func() {
 		h.watcher.Wait()
-		close(done)
+		close(started)
 	}()
 	startErr := make(chan error)
 	go func() {
-		if err := h.watcher.Start(time.Second); err != nil {
-			startErr <- err
-		}
+		startErr <- h.watcher.Start(time.Millisecond)
+		close(startErr)
 	}()
 
 	select {
-	case <-done:
+	case <-started:
 	case err := <-startErr:
 		return errors.Wrap(err, "starting test log directory watcher")
 	}
@@ -146,14 +145,16 @@ func (h *testLogDirectoryHandler) watch(ctx context.Context) {
 	}()
 
 	workerCtx, cancel := context.WithCancel(ctx)
-	defer func() {
-		fmt.Println("CANCELING WORKER CTX")
-		cancel()
-	}()
+	defer cancel()
 
 	for {
 		select {
 		case event := <-h.watcher.Event:
+			if event.IsDir() {
+				continue
+			}
+
+			h.followFileCount++
 			h.wg.Add(1)
 			go h.followFile(workerCtx, event)
 		case err := <-h.watcher.Error:
@@ -169,19 +170,14 @@ func (h *testLogDirectoryHandler) watch(ctx context.Context) {
 }
 
 func (h *testLogDirectoryHandler) getSpecFile() {
-	if !h.mu.TryLock() {
-		return
-	}
-	defer h.mu.Unlock()
+	h.logger.Task().Infof("detected first test log file, getting test log spec file")
 
-	h.spec = &testLogSpec{}
-
-	data, err := os.ReadFile(filepath.Join(h.dir, "log_spec.yaml"))
+	data, err := os.ReadFile(filepath.Join(h.dir, testLogSpecFilename))
 	if err != nil {
 		h.logger.Task().Warning(errors.Wrap(err, "reading test log spec; falling back to default spec"))
 		return
 	}
-	if err = yaml.Unmarshal(data, h.spec); err != nil {
+	if err = yaml.Unmarshal(data, &h.spec); err != nil {
 		h.logger.Task().Warning(errors.Wrap(err, "unmarshalling test log spec; falling back to default spec"))
 		return
 	}
@@ -197,9 +193,7 @@ func (h *testLogDirectoryHandler) followFile(ctx context.Context, event watcher.
 	}()
 	defer h.wg.Done()
 
-	if event.IsDir() {
-		return
-	}
+	h.once.Do(h.getSpecFile)
 
 	h.logger.Task().Infof("new test log file '%s' found, initiating automated ingestion", event.Path)
 
@@ -207,10 +201,6 @@ func (h *testLogDirectoryHandler) followFile(ctx context.Context, event watcher.
 	if err != nil {
 		h.logger.Task().Error(errors.Wrapf(err, "getting relative path for test log file '%s'", event.Path))
 		return
-	}
-
-	if h.spec == nil {
-		h.getSpecFile()
 	}
 
 	t, err := follower.New(event.Path, follower.Config{
@@ -230,11 +220,11 @@ func (h *testLogDirectoryHandler) followFile(ctx context.Context, event watcher.
 		return
 	}
 	defer func() {
-		if err = sender.Close(); err != nil {
-			h.logger.Task().Error(errors.Wrapf(err, "closing Sender for test log '%s'", event.Path))
-		}
 		if err = t.Err(); err != nil {
 			h.logger.Task().Error(errors.Wrapf(err, "following test log file '%s'", event.Path))
+		}
+		if err = sender.Close(); err != nil {
+			h.logger.Task().Error(errors.Wrapf(err, "closing Sender for test log '%s'", event.Path))
 		}
 	}()
 
@@ -243,7 +233,10 @@ func (h *testLogDirectoryHandler) followFile(ctx context.Context, event watcher.
 		select {
 		case <-ctx.Done():
 			return
-		case line := <-lines:
+		case line, ok := <-lines:
+			if !ok {
+				return
+			}
 			sender.Send(message.NewDefaultMessage(level.Info, line.String()))
 		}
 	}
@@ -261,23 +254,25 @@ type testLogSpec struct {
 	Format        testLogFormat `yaml:"format"`
 }
 
+const testLogSpecFilename = "log_spec.yaml"
+
 func (s testLogSpec) getParser() taskoutput.LogLineParser {
 	switch s.Format {
 	case testLogFormatTextTimestamp:
 		return func(data string) (log.LogLine, error) {
-			lineParts := strings.SplitN(data, " ", 2)
+			lineParts := strings.SplitN(strings.TrimSpace(data), " ", 2)
 			if len(lineParts) != 2 {
 				return log.LogLine{}, errors.New("malformed log line")
 			}
 
-			ts, err := strconv.ParseInt(strings.TrimSpace(lineParts[0]), 10, 64)
+			ts, err := strconv.ParseInt(lineParts[0], 10, 64)
 			if err != nil {
-				return log.LogLine{}, errors.Wrap(err, "malformed log timestamp prefix")
+				return log.LogLine{}, errors.Wrap(err, "invalid log timestamp prefix")
 			}
 
 			return log.LogLine{
 				Timestamp: ts,
-				Data:      strings.TrimSuffix(lineParts[2], "\n"),
+				Data:      strings.TrimSuffix(lineParts[1], "\n"),
 			}, nil
 		}
 	default:
