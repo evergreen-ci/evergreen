@@ -1531,20 +1531,11 @@ func SetLastAndPreviousStepbackIds(taskId string, s StepbackInfo) error {
 	)
 }
 
-// SetNextStepbackId sets the NextStepbackTaskId for a given task only
-// if it does not have it set yet.
+// SetNextStepbackId sets the NextStepbackTaskId for a given task id.
 func SetNextStepbackId(taskId string, s StepbackInfo) error {
 	return UpdateOne(
 		bson.M{
 			IdKey: taskId,
-			"$or": []bson.M{
-				{
-					bsonutil.GetDottedKeyName(StepbackInfoKey, NextStepbackTaskIdKey): bson.M{"$exists": false},
-				},
-				{
-					bsonutil.GetDottedKeyName(StepbackInfoKey, NextStepbackTaskIdKey): "",
-				},
-			},
 		},
 		bson.M{
 			"$set": bson.M{

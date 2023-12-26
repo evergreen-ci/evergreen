@@ -6401,13 +6401,14 @@ tasks:
 			assert.Empty(lastFailing.StepbackInfo.LastPassingStepbackTaskId)
 			assert.Equal(midTask.Id, lastFailing.StepbackInfo.NextStepbackTaskId)
 			assert.Empty(lastFailing.StepbackInfo.PreviousStepbackTaskId)
-			// Check last passing stepback info.
+			// Check last passing stepback info. It should be blank as the chain of stepbacks
+			// only relates to the first failing, not the first passing.
 			lastPassing, err := task.FindOneId(midTask.StepbackInfo.LastPassingStepbackTaskId)
 			require.NoError(err)
 			require.NotNil(lastPassing.StepbackInfo)
 			assert.Empty(lastPassing.StepbackInfo.LastFailingStepbackTaskId)
 			assert.Empty(lastPassing.StepbackInfo.LastPassingStepbackTaskId)
-			assert.Equal(midTask.Id, lastPassing.StepbackInfo.NextStepbackTaskId)
+			assert.Empty(lastPassing.StepbackInfo.NextStepbackTaskId)
 			assert.Empty(lastPassing.StepbackInfo.PreviousStepbackTaskId)
 
 			// 2nd Iteration. Task failed, moving last failing stepback to midtask.
@@ -6439,7 +6440,7 @@ tasks:
 			require.NotNil(lastPassing.StepbackInfo)
 			assert.Empty(lastPassing.StepbackInfo.LastFailingStepbackTaskId)
 			assert.Empty(lastPassing.StepbackInfo.LastPassingStepbackTaskId)
-			assert.Equal(prevTask.Id, lastPassing.StepbackInfo.NextStepbackTaskId)
+			assert.Empty(lastPassing.StepbackInfo.NextStepbackTaskId)
 			assert.Empty(lastPassing.StepbackInfo.PreviousStepbackTaskId)
 		},
 		"PassedTaskInStepback": func(t *testing.T, t10 task.Task) {
@@ -6461,13 +6462,14 @@ tasks:
 			assert.Empty(lastFailing.StepbackInfo.LastPassingStepbackTaskId)
 			assert.Equal(midTask.Id, lastFailing.StepbackInfo.NextStepbackTaskId)
 			assert.Empty(lastFailing.StepbackInfo.PreviousStepbackTaskId)
-			// Check last passing stepback info.
+			// Check last passing stepback info. It should be blank as the chain of stepbacks
+			// only relates to the first failing, not the first passing.
 			lastPassing, err := task.FindOneId(midTask.StepbackInfo.LastPassingStepbackTaskId)
 			require.NoError(err)
 			require.NotNil(lastPassing.StepbackInfo)
 			assert.Empty(lastPassing.StepbackInfo.LastFailingStepbackTaskId)
 			assert.Empty(lastPassing.StepbackInfo.LastPassingStepbackTaskId)
-			assert.Equal(midTask.Id, lastPassing.StepbackInfo.NextStepbackTaskId)
+			assert.Empty(lastPassing.StepbackInfo.NextStepbackTaskId)
 			assert.Empty(lastPassing.StepbackInfo.PreviousStepbackTaskId)
 
 			// 2nd Iteration. Task passed, moving last passing stepback to midtask.
