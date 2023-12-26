@@ -3129,7 +3129,7 @@ func TestSetGeneratedTasksToActivate(t *testing.T) {
 	assert.Equal(t, taskFromDb.GeneratedTasksToActivate["bv3"], []string{"t3"})
 }
 
-func TestSetStepbackInfo(t *testing.T) {
+func TestSetNextStepbackId(t *testing.T) {
 	require.NoError(t, db.ClearCollections(Collection))
 	task := Task{Id: "t1"}
 	assert.NoError(t, task.Insert())
@@ -3140,13 +3140,33 @@ func TestSetStepbackInfo(t *testing.T) {
 		NextStepbackTaskId:        "t4",
 	}
 
-	assert.NoError(t, SetStepbackInfo(task.Id, s))
+	assert.NoError(t, SetNextStepbackId(task.Id, s))
+	taskFromDb, err := FindOneId("t1")
+	assert.NoError(t, err)
+	assert.NotNil(t, taskFromDb)
+	assert.NotEqual(t, "t2", taskFromDb.StepbackInfo.LastFailingStepbackTaskId)
+	assert.NotEqual(t, "t3", taskFromDb.StepbackInfo.LastPassingStepbackTaskId)
+	assert.Equal(t, "t4", taskFromDb.StepbackInfo.NextStepbackTaskId)
+}
+
+func TestSetLastStepbackIds(t *testing.T) {
+	require.NoError(t, db.ClearCollections(Collection))
+	task := Task{Id: "t1"}
+	assert.NoError(t, task.Insert())
+
+	s := StepbackInfo{
+		LastFailingStepbackTaskId: "t2",
+		LastPassingStepbackTaskId: "t3",
+		NextStepbackTaskId:        "t4",
+	}
+
+	assert.NoError(t, SetLastStepbackIds(task.Id, s))
 	taskFromDb, err := FindOneId("t1")
 	assert.NoError(t, err)
 	assert.NotNil(t, taskFromDb)
 	assert.Equal(t, "t2", taskFromDb.StepbackInfo.LastFailingStepbackTaskId)
 	assert.Equal(t, "t3", taskFromDb.StepbackInfo.LastPassingStepbackTaskId)
-	assert.Equal(t, "t4", taskFromDb.StepbackInfo.NextStepbackTaskId)
+	assert.NotEqual(t, "t4", taskFromDb.StepbackInfo.NextStepbackTaskId)
 }
 
 func TestGetLatestExecution(t *testing.T) {
