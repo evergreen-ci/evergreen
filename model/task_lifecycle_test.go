@@ -6413,7 +6413,7 @@ tasks:
 			// 2nd Iteration. Task failed, moving last failing stepback to midtask.
 			prevTask := *midTask
 			midTask.Status = evergreen.TaskFailed
-			require.NoError(midTask.Insert())
+			require.NoError(task.UpdateOne(bson.M{"_id": midTask.Id}, bson.M{"status": evergreen.TaskFailed}))
 			// Activate next stepback
 			require.NoError(evalStepback(ctx, midTask, "", evergreen.TaskFailed, false))
 			midTask, err = task.FindMidwayTaskFromIds(prevTask.Id, "t1")
