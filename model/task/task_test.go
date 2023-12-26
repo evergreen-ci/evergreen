@@ -3165,7 +3165,7 @@ func TestSetLastAndPreviousStepbackIds(t *testing.T) {
 		PreviousStepbackTaskId:    "t5",
 	}
 
-	assert.NoError(SetLastAndPreviousStepbackIds(task.Id, s))
+	require.NoError(t, SetLastAndPreviousStepbackIds(task.Id, s))
 	taskFromDb, err := FindOneId("t1")
 	require.NoError(t, err)
 	require.NotNil(t, taskFromDb)
