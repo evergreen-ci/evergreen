@@ -6353,6 +6353,7 @@ func TestEvalBisectStepback(t *testing.T) {
 	defer cancel()
 
 	assert := assert.New(t)
+	require := require.New(t)
 	yml := `
 stepback: true
 buildvariants:
@@ -6372,20 +6373,39 @@ tasks:
 	for tName, tCase := range map[string]func(t *testing.T, t10 task.Task){
 		"NoPreviousSuccessfulTask": func(t *testing.T, t10 task.Task) {
 			// Set the first task to failed status.
-			assert.NoError(task.UpdateOne(
+			require.NoError(task.UpdateOne(
 				bson.M{"_id": "t1"},
 				bson.M{"$set": bson.M{"status": evergreen.TaskFailed}},
 			))
-			assert.NoError(evalStepback(ctx, &t10, "", evergreen.TaskFailed, false))
+			require.NoError(evalStepback(ctx, &t10, "", evergreen.TaskFailed, false))
 			midTask, err := task.FindMidwayTaskFromIds("t1", "t10")
-			assert.NoError(err)
+			require.NoError(err)
 			assert.False(midTask.Activated)
 		},
 		"SuccessForStepback": func(t *testing.T, t10 task.Task) {
-			assert.NoError(evalStepback(ctx, &t10, "", evergreen.TaskFailed, false))
+			require.NoError(evalStepback(ctx, &t10, "", evergreen.TaskFailed, false))
 			midTask, err := task.FindMidwayTaskFromIds("t1", "t10")
-			assert.NoError(err)
+			require.NoError(err)
 			assert.True(midTask.Activated)
+			// See if the mid task properly has it's last passing and last failing but not
+			// it's next stepback task.
+			require.NotNil(midTask.StepbackInfo)
+			assert.Equal("t10", midTask.StepbackInfo.LastFailingStepbackTaskId)
+			assert.Equal("t1", midTask.StepbackInfo.LastPassingStepbackTaskId)
+			assert.Empty(midTask.StepbackInfo.NextStepbackTaskId)
+			// See if the last failing and last passing correctly point to the
+			// midway task id.
+			lastFailing, err := task.FindOneId("t10")
+			require.NotNil(err)
+			assert.Empty(lastFailing.StepbackInfo.LastFailingStepbackTaskId)
+			assert.Empty(lastFailing.StepbackInfo.LastPassingStepbackTaskId)
+			assert.Equal(midTask.Id, lastFailing.StepbackInfo.NextStepbackTaskId)
+
+			lastPassing, err := task.FindOneId("t1")
+			require.NotNil(err)
+			assert.Empty(lastPassing.StepbackInfo.LastFailingStepbackTaskId)
+			assert.Empty(lastPassing.StepbackInfo.LastPassingStepbackTaskId)
+			assert.Equal(midTask.Id, lastPassing.StepbackInfo.NextStepbackTaskId)
 		},
 		"GeneratedTasksStepbackGenerator": func(t *testing.T, t10 task.Task) {
 			generatedTasks := []task.Task{}
@@ -6407,10 +6427,29 @@ tasks:
 				generatedTasks = append(generatedTasks, generated)
 			}
 			t10Generated := generatedTasks[9]
-			assert.NoError(evalStepback(ctx, &t10Generated, "", evergreen.TaskFailed, false))
+			require.NoError(evalStepback(ctx, &t10Generated, "", evergreen.TaskFailed, false))
 			midTask, err := task.FindMidwayTaskFromIds("t1", "t10")
-			assert.NoError(err)
+			require.NoError(err)
 			assert.True(midTask.Activated)
+			// See if the mid task properly has it's last passing and last failing but not
+			// it's next stepback task.
+			require.NotNil(midTask.StepbackInfo)
+			assert.Equal("t10", midTask.StepbackInfo.LastFailingStepbackTaskId)
+			assert.Equal("t1", midTask.StepbackInfo.LastPassingStepbackTaskId)
+			assert.Empty(midTask.StepbackInfo.NextStepbackTaskId)
+			// See if the last failing and last passing correctly point to the
+			// midway task id.
+			lastFailing, err := task.FindOneId("t10")
+			require.NotNil(err)
+			assert.Empty(lastFailing.StepbackInfo.LastFailingStepbackTaskId)
+			assert.Empty(lastFailing.StepbackInfo.LastPassingStepbackTaskId)
+			assert.Equal(midTask.Id, lastFailing.StepbackInfo.NextStepbackTaskId)
+
+			lastPassing, err := task.FindOneId("t1")
+			require.NotNil(err)
+			assert.Empty(lastPassing.StepbackInfo.LastFailingStepbackTaskId)
+			assert.Empty(lastPassing.StepbackInfo.LastPassingStepbackTaskId)
+			assert.Equal(midTask.Id, lastPassing.StepbackInfo.NextStepbackTaskId)
 		},
 	} {
 		t.Run(tName, func(t *testing.T) {
@@ -6419,16 +6458,16 @@ tasks:
 				Id:             "proj",
 				StepbackBisect: utility.ToBoolPtr(true),
 			}
-			require.NoError(t, proj.Insert())
+			require.NoError(proj.Insert())
 			d := distro.Distro{
 				Id: "distro",
 			}
-			require.NoError(t, d.Insert(ctx))
+			require.NoError(d.Insert(ctx))
 			v := Version{
 				Id:        "sample_version",
 				Requester: evergreen.RepotrackerVersionRequester,
 			}
-			require.NoError(t, v.Insert())
+			require.NoError(v.Insert())
 			pp := &ParserProject{}
 			err := util.UnmarshalYAMLWithFallback([]byte(yml), &pp)
 			assert.NoError(err)
