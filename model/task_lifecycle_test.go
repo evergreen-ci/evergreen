@@ -6382,35 +6382,125 @@ tasks:
 			require.NoError(err)
 			assert.False(midTask.Activated)
 		},
-		"SuccessForStepback": func(t *testing.T, t10 task.Task) {
+		"FailedTaskInStepback": func(t *testing.T, t10 task.Task) {
 			require.NoError(evalStepback(ctx, &t10, "", evergreen.TaskFailed, false))
 			midTask, err := task.FindMidwayTaskFromIds("t1", "t10")
 			require.NoError(err)
 			assert.True(midTask.Activated)
-			// See if the mid task properly has it's last passing, last failing
-			// and previous but not it's next stepback task.
+			// Check mid task stepback info.
 			require.NotNil(midTask.StepbackInfo)
 			assert.Equal("t10", midTask.StepbackInfo.LastFailingStepbackTaskId)
 			assert.Equal("t1", midTask.StepbackInfo.LastPassingStepbackTaskId)
 			assert.Empty(midTask.StepbackInfo.NextStepbackTaskId)
 			assert.Equal("t10", midTask.StepbackInfo.PreviousStepbackTaskId)
-			// See if the last failing, last, and previous passing correctly
-			// point to the midway task id.
-			lastFailing, err := task.FindOneId("t10")
+			// Check last failing stepback info.
+			lastFailing, err := task.FindOneId(midTask.StepbackInfo.LastFailingStepbackTaskId)
 			require.NoError(err)
 			require.NotNil(lastFailing.StepbackInfo)
 			assert.Empty(lastFailing.StepbackInfo.LastFailingStepbackTaskId)
 			assert.Empty(lastFailing.StepbackInfo.LastPassingStepbackTaskId)
 			assert.Equal(midTask.Id, lastFailing.StepbackInfo.NextStepbackTaskId)
 			assert.Empty(lastFailing.StepbackInfo.PreviousStepbackTaskId)
-
-			lastPassing, err := task.FindOneId("t1")
+			// Check last passing stepback info.
+			lastPassing, err := task.FindOneId(midTask.StepbackInfo.LastPassingStepbackTaskId)
 			require.NoError(err)
 			require.NotNil(lastPassing.StepbackInfo)
 			assert.Empty(lastPassing.StepbackInfo.LastFailingStepbackTaskId)
 			assert.Empty(lastPassing.StepbackInfo.LastPassingStepbackTaskId)
 			assert.Equal(midTask.Id, lastPassing.StepbackInfo.NextStepbackTaskId)
 			assert.Empty(lastPassing.StepbackInfo.PreviousStepbackTaskId)
+
+			// 2nd Iteration. Task failed, moving last failing stepback to midtask.
+			prevTask := *midTask
+			midTask.Status = evergreen.TaskFailed
+			require.NoError(midTask.Insert())
+			// Activate next stepback
+			require.NoError(evalStepback(ctx, midTask, "", evergreen.TaskFailed, false))
+			midTask, err = task.FindMidwayTaskFromIds(prevTask.Id, "t1")
+			require.NoError(err)
+			assert.True(midTask.Activated)
+			// Check mid task stepback info.
+			require.NotNil(midTask.StepbackInfo)
+			assert.Equal(prevTask.Id, midTask.StepbackInfo.LastFailingStepbackTaskId)
+			assert.Equal("t1", midTask.StepbackInfo.LastPassingStepbackTaskId)
+			assert.Empty(midTask.StepbackInfo.NextStepbackTaskId)
+			assert.Equal(prevTask.Id, midTask.StepbackInfo.PreviousStepbackTaskId)
+			// Check last failing stepback info.
+			lastFailing, err = task.FindOneId(midTask.StepbackInfo.LastFailingStepbackTaskId)
+			require.NoError(err)
+			require.NotNil(lastFailing.StepbackInfo)
+			assert.Equal("t10", lastFailing.StepbackInfo.LastFailingStepbackTaskId)
+			assert.Equal("t1", lastFailing.StepbackInfo.LastPassingStepbackTaskId)
+			assert.Equal(midTask.Id, lastFailing.StepbackInfo.NextStepbackTaskId)
+			assert.Equal("t10", lastFailing.StepbackInfo.PreviousStepbackTaskId)
+			// Check last passing stepback info.
+			lastPassing, err = task.FindOneId(midTask.StepbackInfo.LastPassingStepbackTaskId)
+			require.NoError(err)
+			require.NotNil(lastPassing.StepbackInfo)
+			assert.Empty(lastPassing.StepbackInfo.LastFailingStepbackTaskId)
+			assert.Empty(lastPassing.StepbackInfo.LastPassingStepbackTaskId)
+			assert.Equal(prevTask.Id, lastPassing.StepbackInfo.NextStepbackTaskId)
+			assert.Empty(lastPassing.StepbackInfo.PreviousStepbackTaskId)
+		},
+		"PassedTaskInStepback": func(t *testing.T, t10 task.Task) {
+			require.NoError(evalStepback(ctx, &t10, "", evergreen.TaskFailed, false))
+			midTask, err := task.FindMidwayTaskFromIds("t1", "t10")
+			require.NoError(err)
+			assert.True(midTask.Activated)
+			// Check mid task stepback info.
+			require.NotNil(midTask.StepbackInfo)
+			assert.Equal("t10", midTask.StepbackInfo.LastFailingStepbackTaskId)
+			assert.Equal("t1", midTask.StepbackInfo.LastPassingStepbackTaskId)
+			assert.Empty(midTask.StepbackInfo.NextStepbackTaskId)
+			assert.Equal("t10", midTask.StepbackInfo.PreviousStepbackTaskId)
+			// Check last failing stepback info.
+			lastFailing, err := task.FindOneId(midTask.StepbackInfo.LastFailingStepbackTaskId)
+			require.NoError(err)
+			require.NotNil(lastFailing.StepbackInfo)
+			assert.Empty(lastFailing.StepbackInfo.LastFailingStepbackTaskId)
+			assert.Empty(lastFailing.StepbackInfo.LastPassingStepbackTaskId)
+			assert.Equal(midTask.Id, lastFailing.StepbackInfo.NextStepbackTaskId)
+			assert.Empty(lastFailing.StepbackInfo.PreviousStepbackTaskId)
+			// Check last passing stepback info.
+			lastPassing, err := task.FindOneId(midTask.StepbackInfo.LastPassingStepbackTaskId)
+			require.NoError(err)
+			require.NotNil(lastPassing.StepbackInfo)
+			assert.Empty(lastPassing.StepbackInfo.LastFailingStepbackTaskId)
+			assert.Empty(lastPassing.StepbackInfo.LastPassingStepbackTaskId)
+			assert.Equal(midTask.Id, lastPassing.StepbackInfo.NextStepbackTaskId)
+			assert.Empty(lastPassing.StepbackInfo.PreviousStepbackTaskId)
+
+			// 2nd Iteration. Task passed, moving last passing stepback to midtask.
+			prevTask := *midTask
+			midTask.Status = evergreen.TaskSucceeded
+			require.NoError(midTask.Insert())
+			// Activate next stepback
+			require.NoError(evalStepback(ctx, midTask, "", evergreen.TaskSucceeded, false))
+			midTask, err = task.FindMidwayTaskFromIds(prevTask.Id, "t1")
+			require.NoError(err)
+			assert.True(midTask.Activated)
+			// Check mid task stepback info.
+			require.NotNil(midTask.StepbackInfo)
+			assert.Equal("t10", midTask.StepbackInfo.LastFailingStepbackTaskId)
+			assert.Equal(prevTask.Id, midTask.StepbackInfo.LastPassingStepbackTaskId)
+			assert.Empty(midTask.StepbackInfo.NextStepbackTaskId)
+			assert.Equal(prevTask.Id, midTask.StepbackInfo.PreviousStepbackTaskId)
+			// Check last failing stepback info.
+			lastFailing, err = task.FindOneId(midTask.StepbackInfo.LastFailingStepbackTaskId)
+			require.NoError(err)
+			require.NotNil(lastFailing.StepbackInfo)
+			assert.Empty(lastFailing.StepbackInfo.LastFailingStepbackTaskId)
+			assert.Empty(lastFailing.StepbackInfo.LastPassingStepbackTaskId)
+			assert.Equal(midTask.Id, lastFailing.StepbackInfo.NextStepbackTaskId)
+			assert.Empty(lastFailing.StepbackInfo.PreviousStepbackTaskId)
+			// Check last passing stepback info.
+			lastPassing, err = task.FindOneId(midTask.StepbackInfo.LastPassingStepbackTaskId)
+			require.NoError(err)
+			require.NotNil(lastPassing.StepbackInfo)
+			assert.Equal("t10", lastPassing.StepbackInfo.LastFailingStepbackTaskId)
+			assert.Equal("t1", lastPassing.StepbackInfo.LastPassingStepbackTaskId)
+			assert.Equal(midTask.Id, lastPassing.StepbackInfo.NextStepbackTaskId)
+			assert.Equal("t10", lastPassing.StepbackInfo.PreviousStepbackTaskId)
 		},
 		"GeneratedTasksStepbackGenerator": func(t *testing.T, t10 task.Task) {
 			generatedTasks := []task.Task{}
@@ -6437,7 +6527,7 @@ tasks:
 			require.NoError(err)
 			assert.True(midTask.Activated)
 			// See if the mid task properly has it's last passing, last failing,
-			// and previous but not it's next stepback task.
+			// and previous but not next stepback task.
 			require.NotNil(midTask.StepbackInfo)
 			assert.Equal("t10", midTask.StepbackInfo.LastFailingStepbackTaskId)
 			assert.Equal("t1", midTask.StepbackInfo.LastPassingStepbackTaskId)
