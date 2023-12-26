@@ -6411,8 +6411,8 @@ tasks:
 			assert.Empty(lastPassing.StepbackInfo.PreviousStepbackTaskId)
 
 			// 2nd Iteration. Task failed, moving last failing stepback to midtask.
-			prevTask := *midTask
 			midTask.Status = evergreen.TaskFailed
+			prevTask := *midTask
 			require.NoError(task.UpdateOne(bson.M{"_id": midTask.Id}, bson.M{"status": evergreen.TaskFailed}))
 			// Activate next stepback
 			require.NoError(evalStepback(ctx, midTask, "", evergreen.TaskFailed, false))
@@ -6471,9 +6471,9 @@ tasks:
 			assert.Empty(lastPassing.StepbackInfo.PreviousStepbackTaskId)
 
 			// 2nd Iteration. Task passed, moving last passing stepback to midtask.
-			prevTask := *midTask
 			midTask.Status = evergreen.TaskSucceeded
-			require.NoError(midTask.Insert())
+			prevTask := *midTask
+			require.NoError(task.UpdateOne(bson.M{"_id": midTask.Id}, bson.M{"status": evergreen.TaskSucceeded}))
 			// Activate next stepback
 			require.NoError(evalStepback(ctx, midTask, "", evergreen.TaskSucceeded, false))
 			midTask, err = task.FindMidwayTaskFromIds(prevTask.Id, "t1")
