@@ -3133,7 +3133,7 @@ func TestSetNextStepbackId(t *testing.T) {
 	assert := assert.New(t)
 	require.NoError(t, db.ClearCollections(Collection))
 	task := Task{Id: "t1"}
-	assert.NoError(task.Insert())
+	require.NoError(t, task.Insert())
 
 	s := StepbackInfo{
 		LastFailingStepbackTaskId: "t2",
@@ -3142,10 +3142,10 @@ func TestSetNextStepbackId(t *testing.T) {
 		PreviousStepbackTaskId:    "t5",
 	}
 
-	assert.NoError(SetNextStepbackId(task.Id, s))
+	require.NoError(t, SetNextStepbackId(task.Id, s))
 	taskFromDb, err := FindOneId("t1")
-	assert.NoError(err)
-	assert.NotNil(taskFromDb)
+	require.NoError(t, err)
+	require.NotNil(t, taskFromDb)
 	assert.NotEqual("t2", taskFromDb.StepbackInfo.LastFailingStepbackTaskId)
 	assert.NotEqual("t3", taskFromDb.StepbackInfo.LastPassingStepbackTaskId)
 	assert.Equal("t4", taskFromDb.StepbackInfo.NextStepbackTaskId)
@@ -3156,7 +3156,7 @@ func TestSetLastAndPreviousStepbackIds(t *testing.T) {
 	assert := assert.New(t)
 	require.NoError(t, db.ClearCollections(Collection))
 	task := Task{Id: "t1"}
-	assert.NoError(task.Insert())
+	require.NoError(t, task.Insert())
 
 	s := StepbackInfo{
 		LastFailingStepbackTaskId: "t2",
@@ -3167,8 +3167,8 @@ func TestSetLastAndPreviousStepbackIds(t *testing.T) {
 
 	assert.NoError(SetLastAndPreviousStepbackIds(task.Id, s))
 	taskFromDb, err := FindOneId("t1")
-	assert.NoError(err)
-	assert.NotNil(taskFromDb)
+	require.NoError(t, err)
+	require.NotNil(t, taskFromDb)
 	assert.Equal("t2", taskFromDb.StepbackInfo.LastFailingStepbackTaskId)
 	assert.Equal("t3", taskFromDb.StepbackInfo.LastPassingStepbackTaskId)
 	assert.NotEqual("t4", taskFromDb.StepbackInfo.NextStepbackTaskId)
