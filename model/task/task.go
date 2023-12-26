@@ -1537,8 +1537,17 @@ func SetNextStepbackId(taskId string, s StepbackInfo) error {
 	return UpdateOne(
 		bson.M{
 			IdKey: taskId,
-			StepbackInfoKey: bson.M{
-				NextStepbackTaskIdKey: bson.M{"$exists": false},
+			"$or": []bson.M{
+				{
+					StepbackInfoKey: bson.M{
+						NextStepbackTaskIdKey: bson.M{"$exists": false},
+					},
+				},
+				{
+					StepbackInfoKey: bson.M{
+						NextStepbackTaskIdKey: "",
+					},
+				},
 			},
 		},
 		bson.M{
