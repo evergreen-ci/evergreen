@@ -6396,13 +6396,13 @@ tasks:
 			// See if the last failing and last passing correctly point to the
 			// midway task id.
 			lastFailing, err := task.FindOneId("t10")
-			require.NotNil(err)
+			require.NoError(err)
 			assert.Empty(lastFailing.StepbackInfo.LastFailingStepbackTaskId)
 			assert.Empty(lastFailing.StepbackInfo.LastPassingStepbackTaskId)
 			assert.Equal(midTask.Id, lastFailing.StepbackInfo.NextStepbackTaskId)
 
 			lastPassing, err := task.FindOneId("t1")
-			require.NotNil(err)
+			require.NoError(err)
 			assert.Empty(lastPassing.StepbackInfo.LastFailingStepbackTaskId)
 			assert.Empty(lastPassing.StepbackInfo.LastPassingStepbackTaskId)
 			assert.Equal(midTask.Id, lastPassing.StepbackInfo.NextStepbackTaskId)
@@ -6440,13 +6440,13 @@ tasks:
 			// See if the last failing and last passing correctly point to the
 			// midway task id.
 			lastFailing, err := task.FindOneId("t10")
-			require.NotNil(err)
+			require.NoError(err)
 			assert.Empty(lastFailing.StepbackInfo.LastFailingStepbackTaskId)
 			assert.Empty(lastFailing.StepbackInfo.LastPassingStepbackTaskId)
 			assert.Equal(midTask.Id, lastFailing.StepbackInfo.NextStepbackTaskId)
 
 			lastPassing, err := task.FindOneId("t1")
-			require.NotNil(err)
+			require.NoError(err)
 			assert.Empty(lastPassing.StepbackInfo.LastFailingStepbackTaskId)
 			assert.Empty(lastPassing.StepbackInfo.LastPassingStepbackTaskId)
 			assert.Equal(midTask.Id, lastPassing.StepbackInfo.NextStepbackTaskId)
