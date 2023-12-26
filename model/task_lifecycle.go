@@ -628,11 +628,14 @@ func doBisectStepback(ctx context.Context, t *task.Task) error {
 	if nextTask == nil {
 		return errors.Errorf("midway task could not be found for tasks '%s' '%s'", s.LastFailingStepbackTaskId, s.LastPassingStepbackTaskId)
 	}
+	s.NextStepbackTaskId = nextTask.Id
 	// Log our next task to our last passing and last failing.
-	for _, id := range []string{s.LastFailingStepbackTaskId, s.LastPassingStepbackTaskId} {
-		if err = task.SetNextStepbackId(id, nextTask.Id); err != nil {
-			return errors.Wrapf(err, "setting stepback info for task '%s'", nextTask.Id)
-		}
+	if err := task.SetNextStepbackId(s.LastFailingStepbackTaskId, s); err != nil {
+		return errors.Wrapf(err, "could not set next stepback task id for last failing task '%s'", s.LastFailingStepbackTaskId)
+	}
+
+	if err := task.SetNextStepbackId(s.LastPassingStepbackTaskId, s); err != nil {
+		return errors.Wrapf(err, "could not set next stepback task id for last passing task '%s'", s.LastPassingStepbackTaskId)
 	}
 
 	// If our next task is last passing Id, we have finished stepback.

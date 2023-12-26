@@ -1528,8 +1528,23 @@ func SetLastStepbackIds(taskId string, s StepbackInfo) error {
 	)
 }
 
-// SetNextStepbackId sets the NextStepbackTaskId for a given task.
-func SetNextStepbackId(taskId, nextStepbackTaskId string) error {
+// SetNextStepbackId sets the NextStepbackTaskId for a given task only
+// if it does not have it set yet.
+func SetNextStepbackId(taskId string, s StepbackInfo) error {
+	t, err := FindOneId(taskId)
+	if err != nil {
+		return err
+	}
+
+	// If the task has a stepback info, then we have to check if the next
+	// task id has been set yet. If the next task is set already, then this
+	// task has been used for stebpack before and should not be updated
+	// (e.g. the right bound will have the same next stepback taskid as
+	// the left bound narrows the scope in which stepback happens).
+	if t.StepbackInfo != nil && t.StepbackInfo.NextStepbackTaskId != "" {
+		return nil
+	}
+
 	return UpdateOne(
 		bson.M{
 			IdKey: taskId,
@@ -1537,7 +1552,7 @@ func SetNextStepbackId(taskId, nextStepbackTaskId string) error {
 		bson.M{
 			"$set": bson.M{
 				StepbackInfoKey: bson.M{
-					NextStepbackTaskIdKey: nextStepbackTaskId,
+					NextStepbackTaskIdKey: s.NextStepbackTaskId,
 				},
 			},
 		},
