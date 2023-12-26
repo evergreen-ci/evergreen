@@ -6557,18 +6557,18 @@ tasks:
 				Id: "distro",
 			}
 			require.NoError(d.Insert(ctx))
-			v := Version{
-				Id:        "sample_version",
-				Requester: evergreen.RepotrackerVersionRequester,
-			}
-			require.NoError(v.Insert())
-			pp := &ParserProject{}
-			err := util.UnmarshalYAMLWithFallback([]byte(yml), &pp)
-			assert.NoError(err)
-			pp.Id = v.Id
-			assert.NoError(pp.Insert())
 			// Tasks 2-9
 			for i := 2; i <= 9; i++ {
+				v := Version{
+					Id:        fmt.Sprintf("v%d", i),
+					Requester: evergreen.RepotrackerVersionRequester,
+				}
+				require.NoError(v.Insert())
+				pp := &ParserProject{}
+				err := util.UnmarshalYAMLWithFallback([]byte(yml), &pp)
+				assert.NoError(err)
+				pp.Id = v.Id
+				assert.NoError(pp.Insert())
 				t := task.Task{
 					Id:                  fmt.Sprintf("t%d", i),
 					BuildId:             fmt.Sprintf("b%d", i),
@@ -6588,6 +6588,16 @@ tasks:
 				}
 				assert.NoError(b.Insert())
 			}
+			v := Version{
+				Id:        "v1",
+				Requester: evergreen.RepotrackerVersionRequester,
+			}
+			require.NoError(v.Insert())
+			pp := &ParserProject{}
+			err := util.UnmarshalYAMLWithFallback([]byte(yml), &pp)
+			assert.NoError(err)
+			pp.Id = v.Id
+			assert.NoError(pp.Insert())
 			// First task (which has passed).
 			t1 := task.Task{
 				Id:                  "t1",
@@ -6608,6 +6618,16 @@ tasks:
 			}
 			assert.NoError(b1.Insert())
 			// Latest task (which has failed).
+			v = Version{
+				Id:        "v10",
+				Requester: evergreen.RepotrackerVersionRequester,
+			}
+			require.NoError(v.Insert())
+			pp = &ParserProject{}
+			err = util.UnmarshalYAMLWithFallback([]byte(yml), &pp)
+			assert.NoError(err)
+			pp.Id = v.Id
+			assert.NoError(pp.Insert())
 			t10 := task.Task{
 				Id:                  "t10",
 				BuildId:             "b10",
