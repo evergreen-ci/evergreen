@@ -1510,17 +1510,38 @@ func taskAbortUpdate(reason AbortInfo) bson.M {
 	}
 }
 
-// SetStepbackInfo adds the StepbackInfo to the task.
-func SetStepbackInfo(taskId string, s StepbackInfo) error {
+// SetLastStepbackIds sets the LastFailingStepbackTaskId and
+// LastPassingStepbackTaskId for a given task id.
+func SetLastStepbackIds(taskId string, s StepbackInfo) error {
 	return UpdateOne(
 		bson.M{
 			IdKey: taskId,
 		},
 		bson.M{
 			"$set": bson.M{
-				StepbackInfoKey: s,
+				StepbackInfoKey: bson.M{
+					LastFailingStepbackTaskIdKey: s.LastFailingStepbackTaskId,
+					LastPassingStepbackTaskIdKey: s.LastPassingStepbackTaskId,
+				},
 			},
-		})
+		},
+	)
+}
+
+// SetNextStepbackId sets the NextStepbackTaskId for a given task.
+func SetNextStepbackId(taskId, nextStepbackTaskId string) error {
+	return UpdateOne(
+		bson.M{
+			IdKey: taskId,
+		},
+		bson.M{
+			"$set": bson.M{
+				StepbackInfoKey: bson.M{
+					NextStepbackTaskIdKey: nextStepbackTaskId,
+				},
+			},
+		},
+	)
 }
 
 // initializeTaskOutputInfo returns the task output information with the most
