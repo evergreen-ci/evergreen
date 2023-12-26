@@ -1161,6 +1161,7 @@ type ComplexityRoot struct {
 		LastFailingStepbackTaskID func(childComplexity int) int
 		LastPassingStepbackTaskID func(childComplexity int) int
 		NextStepbackTaskID        func(childComplexity int) int
+		PreviousStepbackTaskID    func(childComplexity int) int
 	}
 
 	Subscriber struct {
@@ -7365,6 +7366,13 @@ func (e *executableSchema) Complexity(typeName, field string, childComplexity in
 		}
 
 		return e.complexity.StepbackInfo.NextStepbackTaskID(childComplexity), true
+
+	case "StepbackInfo.previousStepbackTaskId":
+		if e.complexity.StepbackInfo.PreviousStepbackTaskID == nil {
+			break
+		}
+
+		return e.complexity.StepbackInfo.PreviousStepbackTaskID(childComplexity), true
 
 	case "Subscriber.emailSubscriber":
 		if e.complexity.Subscriber.EmailSubscriber == nil {
@@ -49741,6 +49749,47 @@ func (ec *executionContext) fieldContext_StepbackInfo_nextStepbackTaskId(ctx con
 	return fc, nil
 }
 
+func (ec *executionContext) _StepbackInfo_previousStepbackTaskId(ctx context.Context, field graphql.CollectedField, obj *StepbackInfo) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_StepbackInfo_previousStepbackTaskId(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.PreviousStepbackTaskID, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		return graphql.Null
+	}
+	res := resTmp.(*string)
+	fc.Result = res
+	return ec.marshalOString2ᚖstring(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_StepbackInfo_previousStepbackTaskId(ctx context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "StepbackInfo",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type String does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
 func (ec *executionContext) _Subscriber_emailSubscriber(ctx context.Context, field graphql.CollectedField, obj *Subscriber) (ret graphql.Marshaler) {
 	fc, err := ec.fieldContext_Subscriber_emailSubscriber(ctx, field)
 	if err != nil {
@@ -54093,6 +54142,8 @@ func (ec *executionContext) fieldContext_Task_stepbackInfo(ctx context.Context, 
 				return ec.fieldContext_StepbackInfo_lastPassingStepbackTaskId(ctx, field)
 			case "nextStepbackTaskId":
 				return ec.fieldContext_StepbackInfo_nextStepbackTaskId(ctx, field)
+			case "previousStepbackTaskId":
+				return ec.fieldContext_StepbackInfo_previousStepbackTaskId(ctx, field)
 			}
 			return nil, fmt.Errorf("no field named %q was found under type StepbackInfo", field.Name)
 		},
@@ -80338,6 +80389,8 @@ func (ec *executionContext) _StepbackInfo(ctx context.Context, sel ast.Selection
 			out.Values[i] = ec._StepbackInfo_lastPassingStepbackTaskId(ctx, field, obj)
 		case "nextStepbackTaskId":
 			out.Values[i] = ec._StepbackInfo_nextStepbackTaskId(ctx, field, obj)
+		case "previousStepbackTaskId":
+			out.Values[i] = ec._StepbackInfo_previousStepbackTaskId(ctx, field, obj)
 		default:
 			panic("unknown field " + strconv.Quote(field.Name))
 		}

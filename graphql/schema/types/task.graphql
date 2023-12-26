@@ -180,6 +180,7 @@ type StepbackInfo {
   lastFailingStepbackTaskId: String
   lastPassingStepbackTaskId: String
   nextStepbackTaskId: String
+  previousStepbackTaskId: String
 }
 
 """

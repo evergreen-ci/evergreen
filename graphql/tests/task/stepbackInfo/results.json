@@ -8,14 +8,16 @@
             "stepbackInfo": {
               "lastFailingStepbackTaskId": "f1",
               "lastPassingStepbackTaskId": "p1",
-              "nextStepbackTaskId": null
+              "nextStepbackTaskId": null,
+              "previousStepbackTaskId": null
             }
           },
           "hasNextStepback": {
             "stepbackInfo": {
               "lastFailingStepbackTaskId": "f1",
               "lastPassingStepbackTaskId": "p1",
-              "nextStepbackTaskId": "n1"
+              "nextStepbackTaskId": "n1",
+              "previousStepbackTaskId": "r1"
             }
           },
           "noStepback": {

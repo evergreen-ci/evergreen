@@ -38,7 +38,8 @@
       "stepback_info": {
         "last_failing_stepback_task_id": "f1",
         "last_passing_stepback_task_id": "p1",
-        "next_stepback_task_id": "n1"
+        "next_stepback_task_id": "n1",
+        "previous_stepback_task_id": "r1"
       }
     },
     {

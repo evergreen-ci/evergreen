@@ -140,6 +140,7 @@ type APIStepbackInfo struct {
 	LastFailingTaskId string `json:"last_failing_task_id"`
 	LastPassingTaskId string `json:"last_passing_task_id"`
 	NextTaskId        string `json:"next_task_id"`
+	PreviousTaskId    string `json:"previous_task_id"`
 }
 
 type APIAbortInfo struct {

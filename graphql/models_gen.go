@@ -363,6 +363,7 @@ type StepbackInfo struct {
 	LastFailingStepbackTaskID *string `json:"lastFailingStepbackTaskId,omitempty"`
 	LastPassingStepbackTaskID *string `json:"lastPassingStepbackTaskId,omitempty"`
 	NextStepbackTaskID        *string `json:"nextStepbackTaskId,omitempty"`
+	PreviousStepbackTaskID    *string `json:"previousStepbackTaskId,omitempty"`
 }
 
 type Subscriber struct {

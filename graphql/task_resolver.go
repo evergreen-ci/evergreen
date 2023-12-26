@@ -684,6 +684,7 @@ func (r *taskResolver) StepbackInfo(ctx context.Context, obj *restModel.APITask)
 	var lf *string = nil
 	var lp *string = nil
 	var nt *string = nil
+	var pt *string = nil
 
 	if id := obj.StepbackInfo.LastFailingTaskId; id != "" {
 		lf = &id
@@ -694,11 +695,15 @@ func (r *taskResolver) StepbackInfo(ctx context.Context, obj *restModel.APITask)
 	if id := obj.StepbackInfo.NextTaskId; id != "" {
 		nt = &id
 	}
+	if id := obj.StepbackInfo.PreviousTaskId; id != "" {
+		pt = &id
+	}
 
 	return &StepbackInfo{
 		LastFailingStepbackTaskID: lf,
 		LastPassingStepbackTaskID: lp,
 		NextStepbackTaskID:        nt,
+		PreviousStepbackTaskID:    pt,
 	}, nil
 }
 

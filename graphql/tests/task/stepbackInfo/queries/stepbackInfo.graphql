@@ -4,6 +4,7 @@
       lastFailingStepbackTaskId
       lastPassingStepbackTaskId
       nextStepbackTaskId
+      previousStepbackTaskId
     }
   }
   hasNextStepback: task(taskId: "has_next_stepback") {
@@ -11,6 +12,7 @@
       lastFailingStepbackTaskId
       lastPassingStepbackTaskId
       nextStepbackTaskId
+      previousStepbackTaskId
     }
   }
   noStepback: task(taskId: "no_stepback"){
@@ -18,6 +20,7 @@
       lastFailingStepbackTaskId
       lastPassingStepbackTaskId
       nextStepbackTaskId
+      previousStepbackTaskId
     }
   }
 }
