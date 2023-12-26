@@ -6385,6 +6385,7 @@ tasks:
 		"FailedTaskInStepback": func(t *testing.T, t10 task.Task) {
 			require.NoError(evalStepback(ctx, &t10, "", evergreen.TaskFailed, false))
 			midTask, err := task.FindMidwayTaskFromIds("t1", "t10")
+			prevTask := *midTask
 			require.NoError(err)
 			assert.True(midTask.Activated)
 			// Check mid task stepback info.
@@ -6408,11 +6409,10 @@ tasks:
 			require.Nil(lastPassing.StepbackInfo)
 
 			// 2nd Iteration. Task failed, moving last failing stepback to midtask.
-			midTask.Status = evergreen.TaskFailed
-			prevTask := *midTask
+			prevTask.Status = evergreen.TaskFailed
 			require.NoError(task.UpdateOne(bson.M{"_id": midTask.Id}, bson.M{"status": evergreen.TaskFailed}))
 			// Activate next stepback
-			require.NoError(evalStepback(ctx, midTask, "", evergreen.TaskFailed, false))
+			require.NoError(evalStepback(ctx, &prevTask, "", evergreen.TaskFailed, false))
 			midTask, err = task.FindMidwayTaskFromIds(prevTask.Id, "t1")
 			require.NoError(err)
 			assert.True(midTask.Activated)
