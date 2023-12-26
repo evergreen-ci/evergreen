@@ -6405,11 +6405,7 @@ tasks:
 			// only relates to the first failing, not the first passing.
 			lastPassing, err := task.FindOneId(midTask.StepbackInfo.LastPassingStepbackTaskId)
 			require.NoError(err)
-			require.NotNil(lastPassing.StepbackInfo)
-			assert.Empty(lastPassing.StepbackInfo.LastFailingStepbackTaskId)
-			assert.Empty(lastPassing.StepbackInfo.LastPassingStepbackTaskId)
-			assert.Empty(lastPassing.StepbackInfo.NextStepbackTaskId)
-			assert.Empty(lastPassing.StepbackInfo.PreviousStepbackTaskId)
+			require.Nil(lastPassing.StepbackInfo)
 
 			// 2nd Iteration. Task failed, moving last failing stepback to midtask.
 			midTask.Status = evergreen.TaskFailed
@@ -6466,11 +6462,7 @@ tasks:
 			// only relates to the first failing, not the first passing.
 			lastPassing, err := task.FindOneId(midTask.StepbackInfo.LastPassingStepbackTaskId)
 			require.NoError(err)
-			require.NotNil(lastPassing.StepbackInfo)
-			assert.Empty(lastPassing.StepbackInfo.LastFailingStepbackTaskId)
-			assert.Empty(lastPassing.StepbackInfo.LastPassingStepbackTaskId)
-			assert.Empty(lastPassing.StepbackInfo.NextStepbackTaskId)
-			assert.Empty(lastPassing.StepbackInfo.PreviousStepbackTaskId)
+			require.Nil(lastPassing.StepbackInfo)
 
 			// 2nd Iteration. Task passed, moving last passing stepback to midtask.
 			midTask.Status = evergreen.TaskSucceeded
