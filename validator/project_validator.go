@@ -1955,27 +1955,45 @@ func validateGenerateTasks(p *model.Project) ValidationErrors {
 func validateModuleUsageInGitGetProject(p *model.Project) ValidationErrors {
 	var errs ValidationErrors
 
-	for _, bv := range p.BuildVariants {
-		for _, t := range bv.Tasks {
-			pts := p.FindAllProjectTasksWithName(t.Name)
-			for _, pt := range pts {
-				for _, cmd := range pt.Commands {
-					if cmd.Command == "git.get_project" {
-						if r, ok := cmd.Params["revisions"].(map[string]interface{}); ok {
-							for m := range r {
-								found := false
-								for _, bvm := range bv.Modules {
-									if m == bvm {
-										found = true
-									}
-								}
-								if !found {
-									errs = append(errs, ValidationError{
-										Message: fmt.Sprintf("build variant '%s' with task '%s' with 'git.get_project' command uses module/revision '%s' that is not present in build variant", bv.Name, t.Name, m),
-										Level:   Error,
-									})
-								}
+	bvs, _, err := bvsWithTasksThatCallCommand(p, "git.get_project")
+	if err != nil {
+		errs = append(errs, ValidationError{
+			Message: fmt.Sprintf("build variants could not be mapped to tasks that contain 'git.get_project' for project %s", p.Identifier),
+			Level:   Error,
+		})
+		return errs
+	}
+
+	for bvName, bv := range bvs {
+		var bvInfo *model.BuildVariant
+		for _, b := range p.BuildVariants {
+			if b.Name == bvName {
+				bvInfo = &b
+				break
+			}
+		}
+		if bvInfo == nil {
+			errs = append(errs, ValidationError{
+				Message: fmt.Sprintf("build variant '%s' was not found", bvName),
+				Level:   Error,
+			})
+			continue
+		}
+		for taskName, task := range bv {
+			for _, cmd := range task {
+				if r, ok := cmd.Params["revisions"].(map[string]interface{}); ok {
+					for m := range r {
+						found := false
+						for _, bvm := range bvInfo.Modules {
+							if m == bvm {
+								found = true
 							}
+						}
+						if !found {
+							errs = append(errs, ValidationError{
+								Message: fmt.Sprintf("build variant '%s' with task '%s' with 'git.get_project' command uses module/revision '%s' that is not present in build variant", bvInfo.Name, taskName, m),
+								Level:   Error,
+							})
 						}
 					}
 				}
