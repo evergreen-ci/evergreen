@@ -609,6 +609,8 @@ func doBisectStepback(ctx context.Context, t *task.Task) error {
 			"project_id":                    t.Project,
 		})
 	}
+	// The previous iteration is the task we are currently processing.
+	s.PreviousStepbackTaskId = t.Id
 
 	// Depending on the task status, we want to update the
 	// last failing or last passing task.
@@ -629,13 +631,16 @@ func doBisectStepback(ctx context.Context, t *task.Task) error {
 		return errors.Errorf("midway task could not be found for tasks '%s' '%s'", s.LastFailingStepbackTaskId, s.LastPassingStepbackTaskId)
 	}
 	s.NextStepbackTaskId = nextTask.Id
-	// Log our next task to our last passing and last failing.
+	// Store our next task to our last passing and last failing.
 	if err := task.SetNextStepbackId(s.LastFailingStepbackTaskId, s); err != nil {
 		return errors.Wrapf(err, "could not set next stepback task id for last failing task '%s'", s.LastFailingStepbackTaskId)
 	}
-
 	if err := task.SetNextStepbackId(s.LastPassingStepbackTaskId, s); err != nil {
 		return errors.Wrapf(err, "could not set next stepback task id for last passing task '%s'", s.LastPassingStepbackTaskId)
+	}
+	// Store our last and previous stepback tasks in our upcoming/next task.
+	if err = task.SetLastAndPreviousStepbackIds(nextTask.Id, s); err != nil {
+		return errors.Wrapf(err, "setting stepback info for task '%s'", nextTask.Id)
 	}
 
 	// If our next task is last passing Id, we have finished stepback.
@@ -645,15 +650,6 @@ func doBisectStepback(ctx context.Context, t *task.Task) error {
 	// If the next task has finished, negative priority, or already activated, no-op.
 	if nextTask.IsFinished() || nextTask.Priority < 0 || nextTask.Activated {
 		return nil
-	}
-
-	// Set the midway task information for future stepback. It does not know the
-	// next task, so the next task id field should never be set.
-	nextTask.StepbackInfo = &s
-
-	// Set the stepback task info.
-	if err = task.SetLastStepbackIds(nextTask.Id, s); err != nil {
-		return errors.Wrapf(err, "setting stepback info for task '%s'", nextTask.Id)
 	}
 
 	grip.Info(message.Fields{

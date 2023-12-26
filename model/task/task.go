@@ -309,8 +309,10 @@ type StepbackInfo struct {
 	// LastPassingStepbackTaskId stores the last passing task while doing stepback.
 	LastPassingStepbackTaskId string `bson:"last_passing_stepback_task_id,omitempty" json:"last_passing_stepback_task_id"`
 	// NextStepbackTaskId stores the next task id to stepback to when doing bisect stepback. This
-	// is the middle of LastFailingStepbackTaskId and LastPassingStepbackTaskId.
+	// is the middle of LastFailingStepbackTaskId and LastPassingStepbackTaskId of the last iteration.
 	NextStepbackTaskId string `bson:"next_stepback_task_id,omitempty" json:"next_stepback_task_id"`
+	// PreviousStepbackTaskId stores the last stepback iteration id.
+	PreviousStepbackTaskId string `bson:"previous_stepback_task_id,omitempty" json:"previous_stepback_task_id"`
 }
 
 // ExecutionPlatform indicates the type of environment that the task runs in.
@@ -1510,9 +1512,9 @@ func taskAbortUpdate(reason AbortInfo) bson.M {
 	}
 }
 
-// SetLastStepbackIds sets the LastFailingStepbackTaskId and
-// LastPassingStepbackTaskId for a given task id.
-func SetLastStepbackIds(taskId string, s StepbackInfo) error {
+// SetLastAndPreviousStepbackIds sets the LastFailingStepbackTaskId,
+// LastPassingStepbackTaskId, and PreviousStepbackTaskId for a given task id.
+func SetLastAndPreviousStepbackIds(taskId string, s StepbackInfo) error {
 	return UpdateOne(
 		bson.M{
 			IdKey: taskId,
@@ -1522,6 +1524,7 @@ func SetLastStepbackIds(taskId string, s StepbackInfo) error {
 				StepbackInfoKey: bson.M{
 					LastFailingStepbackTaskIdKey: s.LastFailingStepbackTaskId,
 					LastPassingStepbackTaskIdKey: s.LastPassingStepbackTaskId,
+					PreviousStepbackTaskIdKey:    s.PreviousStepbackTaskId,
 				},
 			},
 		},
