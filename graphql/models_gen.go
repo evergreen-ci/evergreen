@@ -359,13 +359,6 @@ type SpawnVolumeInput struct {
 	Type             string     `json:"type"`
 }
 
-type StepbackInfo struct {
-	LastFailingStepbackTaskID *string `json:"lastFailingStepbackTaskId,omitempty"`
-	LastPassingStepbackTaskID *string `json:"lastPassingStepbackTaskId,omitempty"`
-	NextStepbackTaskID        *string `json:"nextStepbackTaskId,omitempty"`
-	PreviousStepbackTaskID    *string `json:"previousStepbackTaskId,omitempty"`
-}
-
 type Subscriber struct {
 	EmailSubscriber       *string                         `json:"emailSubscriber,omitempty"`
 	GithubCheckSubscriber *model.APIGithubCheckSubscriber `json:"githubCheckSubscriber,omitempty"`

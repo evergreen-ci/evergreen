@@ -1158,10 +1158,10 @@ type ComplexityRoot struct {
 	}
 
 	StepbackInfo struct {
-		LastFailingStepbackTaskID func(childComplexity int) int
-		LastPassingStepbackTaskID func(childComplexity int) int
-		NextStepbackTaskID        func(childComplexity int) int
-		PreviousStepbackTaskID    func(childComplexity int) int
+		LastFailingStepbackTaskId func(childComplexity int) int
+		LastPassingStepbackTaskId func(childComplexity int) int
+		NextStepbackTaskId        func(childComplexity int) int
+		PreviousStepbackTaskId    func(childComplexity int) int
 	}
 
 	Subscriber struct {
@@ -1859,7 +1859,6 @@ type TaskResolver interface {
 
 	TotalTestCount(ctx context.Context, obj *model.APITask) (int, error)
 	VersionMetadata(ctx context.Context, obj *model.APITask) (*model.APIVersion, error)
-	StepbackInfo(ctx context.Context, obj *model.APITask) (*StepbackInfo, error)
 }
 type TaskContainerCreationOptsResolver interface {
 	Os(ctx context.Context, obj *model.APIPodTaskContainerCreationOptions) (string, error)
@@ -7347,32 +7346,32 @@ func (e *executableSchema) Complexity(typeName, field string, childComplexity in
 		return e.complexity.StatusCount.Status(childComplexity), true
 
 	case "StepbackInfo.lastFailingStepbackTaskId":
-		if e.complexity.StepbackInfo.LastFailingStepbackTaskID == nil {
+		if e.complexity.StepbackInfo.LastFailingStepbackTaskId == nil {
 			break
 		}
 
-		return e.complexity.StepbackInfo.LastFailingStepbackTaskID(childComplexity), true
+		return e.complexity.StepbackInfo.LastFailingStepbackTaskId(childComplexity), true
 
 	case "StepbackInfo.lastPassingStepbackTaskId":
-		if e.complexity.StepbackInfo.LastPassingStepbackTaskID == nil {
+		if e.complexity.StepbackInfo.LastPassingStepbackTaskId == nil {
 			break
 		}
 
-		return e.complexity.StepbackInfo.LastPassingStepbackTaskID(childComplexity), true
+		return e.complexity.StepbackInfo.LastPassingStepbackTaskId(childComplexity), true
 
 	case "StepbackInfo.nextStepbackTaskId":
-		if e.complexity.StepbackInfo.NextStepbackTaskID == nil {
+		if e.complexity.StepbackInfo.NextStepbackTaskId == nil {
 			break
 		}
 
-		return e.complexity.StepbackInfo.NextStepbackTaskID(childComplexity), true
+		return e.complexity.StepbackInfo.NextStepbackTaskId(childComplexity), true
 
 	case "StepbackInfo.previousStepbackTaskId":
-		if e.complexity.StepbackInfo.PreviousStepbackTaskID == nil {
+		if e.complexity.StepbackInfo.PreviousStepbackTaskId == nil {
 			break
 		}
 
-		return e.complexity.StepbackInfo.PreviousStepbackTaskID(childComplexity), true
+		return e.complexity.StepbackInfo.PreviousStepbackTaskId(childComplexity), true
 
 	case "Subscriber.emailSubscriber":
 		if e.complexity.Subscriber.EmailSubscriber == nil {
@@ -49626,7 +49625,7 @@ func (ec *executionContext) fieldContext_StatusCount_status(ctx context.Context,
 	return fc, nil
 }
 
-func (ec *executionContext) _StepbackInfo_lastFailingStepbackTaskId(ctx context.Context, field graphql.CollectedField, obj *StepbackInfo) (ret graphql.Marshaler) {
+func (ec *executionContext) _StepbackInfo_lastFailingStepbackTaskId(ctx context.Context, field graphql.CollectedField, obj *model.APIStepbackInfo) (ret graphql.Marshaler) {
 	fc, err := ec.fieldContext_StepbackInfo_lastFailingStepbackTaskId(ctx, field)
 	if err != nil {
 		return graphql.Null
@@ -49640,7 +49639,7 @@ func (ec *executionContext) _StepbackInfo_lastFailingStepbackTaskId(ctx context.
 	}()
 	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
 		ctx = rctx // use context from middleware stack in children
-		return obj.LastFailingStepbackTaskID, nil
+		return obj.LastFailingStepbackTaskId, nil
 	})
 	if err != nil {
 		ec.Error(ctx, err)
@@ -49649,9 +49648,9 @@ func (ec *executionContext) _StepbackInfo_lastFailingStepbackTaskId(ctx context.
 	if resTmp == nil {
 		return graphql.Null
 	}
-	res := resTmp.(*string)
+	res := resTmp.(string)
 	fc.Result = res
-	return ec.marshalOString2ᚖstring(ctx, field.Selections, res)
+	return ec.marshalOString2string(ctx, field.Selections, res)
 }
 
 func (ec *executionContext) fieldContext_StepbackInfo_lastFailingStepbackTaskId(ctx context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
@@ -49667,7 +49666,7 @@ func (ec *executionContext) fieldContext_StepbackInfo_lastFailingStepbackTaskId(
 	return fc, nil
 }
 
-func (ec *executionContext) _StepbackInfo_lastPassingStepbackTaskId(ctx context.Context, field graphql.CollectedField, obj *StepbackInfo) (ret graphql.Marshaler) {
+func (ec *executionContext) _StepbackInfo_lastPassingStepbackTaskId(ctx context.Context, field graphql.CollectedField, obj *model.APIStepbackInfo) (ret graphql.Marshaler) {
 	fc, err := ec.fieldContext_StepbackInfo_lastPassingStepbackTaskId(ctx, field)
 	if err != nil {
 		return graphql.Null
@@ -49681,7 +49680,7 @@ func (ec *executionContext) _StepbackInfo_lastPassingStepbackTaskId(ctx context.
 	}()
 	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
 		ctx = rctx // use context from middleware stack in children
-		return obj.LastPassingStepbackTaskID, nil
+		return obj.LastPassingStepbackTaskId, nil
 	})
 	if err != nil {
 		ec.Error(ctx, err)
@@ -49690,9 +49689,9 @@ func (ec *executionContext) _StepbackInfo_lastPassingStepbackTaskId(ctx context.
 	if resTmp == nil {
 		return graphql.Null
 	}
-	res := resTmp.(*string)
+	res := resTmp.(string)
 	fc.Result = res
-	return ec.marshalOString2ᚖstring(ctx, field.Selections, res)
+	return ec.marshalOString2string(ctx, field.Selections, res)
 }
 
 func (ec *executionContext) fieldContext_StepbackInfo_lastPassingStepbackTaskId(ctx context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
@@ -49708,7 +49707,7 @@ func (ec *executionContext) fieldContext_StepbackInfo_lastPassingStepbackTaskId(
 	return fc, nil
 }
 
-func (ec *executionContext) _StepbackInfo_nextStepbackTaskId(ctx context.Context, field graphql.CollectedField, obj *StepbackInfo) (ret graphql.Marshaler) {
+func (ec *executionContext) _StepbackInfo_nextStepbackTaskId(ctx context.Context, field graphql.CollectedField, obj *model.APIStepbackInfo) (ret graphql.Marshaler) {
 	fc, err := ec.fieldContext_StepbackInfo_nextStepbackTaskId(ctx, field)
 	if err != nil {
 		return graphql.Null
@@ -49722,7 +49721,7 @@ func (ec *executionContext) _StepbackInfo_nextStepbackTaskId(ctx context.Context
 	}()
 	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
 		ctx = rctx // use context from middleware stack in children
-		return obj.NextStepbackTaskID, nil
+		return obj.NextStepbackTaskId, nil
 	})
 	if err != nil {
 		ec.Error(ctx, err)
@@ -49731,9 +49730,9 @@ func (ec *executionContext) _StepbackInfo_nextStepbackTaskId(ctx context.Context
 	if resTmp == nil {
 		return graphql.Null
 	}
-	res := resTmp.(*string)
+	res := resTmp.(string)
 	fc.Result = res
-	return ec.marshalOString2ᚖstring(ctx, field.Selections, res)
+	return ec.marshalOString2string(ctx, field.Selections, res)
 }
 
 func (ec *executionContext) fieldContext_StepbackInfo_nextStepbackTaskId(ctx context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
@@ -49749,7 +49748,7 @@ func (ec *executionContext) fieldContext_StepbackInfo_nextStepbackTaskId(ctx con
 	return fc, nil
 }
 
-func (ec *executionContext) _StepbackInfo_previousStepbackTaskId(ctx context.Context, field graphql.CollectedField, obj *StepbackInfo) (ret graphql.Marshaler) {
+func (ec *executionContext) _StepbackInfo_previousStepbackTaskId(ctx context.Context, field graphql.CollectedField, obj *model.APIStepbackInfo) (ret graphql.Marshaler) {
 	fc, err := ec.fieldContext_StepbackInfo_previousStepbackTaskId(ctx, field)
 	if err != nil {
 		return graphql.Null
@@ -49763,7 +49762,7 @@ func (ec *executionContext) _StepbackInfo_previousStepbackTaskId(ctx context.Con
 	}()
 	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
 		ctx = rctx // use context from middleware stack in children
-		return obj.PreviousStepbackTaskID, nil
+		return obj.PreviousStepbackTaskId, nil
 	})
 	if err != nil {
 		ec.Error(ctx, err)
@@ -49772,9 +49771,9 @@ func (ec *executionContext) _StepbackInfo_previousStepbackTaskId(ctx context.Con
 	if resTmp == nil {
 		return graphql.Null
 	}
-	res := resTmp.(*string)
+	res := resTmp.(string)
 	fc.Result = res
-	return ec.marshalOString2ᚖstring(ctx, field.Selections, res)
+	return ec.marshalOString2string(ctx, field.Selections, res)
 }
 
 func (ec *executionContext) fieldContext_StepbackInfo_previousStepbackTaskId(ctx context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
@@ -54114,7 +54113,7 @@ func (ec *executionContext) _Task_stepbackInfo(ctx context.Context, field graphq
 	}()
 	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
 		ctx = rctx // use context from middleware stack in children
-		return ec.resolvers.Task().StepbackInfo(rctx, obj)
+		return obj.StepbackInfo, nil
 	})
 	if err != nil {
 		ec.Error(ctx, err)
@@ -54123,17 +54122,17 @@ func (ec *executionContext) _Task_stepbackInfo(ctx context.Context, field graphq
 	if resTmp == nil {
 		return graphql.Null
 	}
-	res := resTmp.(*StepbackInfo)
+	res := resTmp.(*model.APIStepbackInfo)
 	fc.Result = res
-	return ec.marshalOStepbackInfo2ᚖgithubᚗcomᚋevergreenᚑciᚋevergreenᚋgraphqlᚐStepbackInfo(ctx, field.Selections, res)
+	return ec.marshalOStepbackInfo2ᚖgithubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐAPIStepbackInfo(ctx, field.Selections, res)
 }
 
 func (ec *executionContext) fieldContext_Task_stepbackInfo(ctx context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
 	fc = &graphql.FieldContext{
 		Object:     "Task",
 		Field:      field,
-		IsMethod:   true,
-		IsResolver: true,
+		IsMethod:   false,
+		IsResolver: false,
 		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
 			switch field.Name {
 			case "lastFailingStepbackTaskId":
@@ -80374,7 +80373,7 @@ func (ec *executionContext) _StatusCount(ctx context.Context, sel ast.SelectionS
 
 var stepbackInfoImplementors = []string{"StepbackInfo"}
 
-func (ec *executionContext) _StepbackInfo(ctx context.Context, sel ast.SelectionSet, obj *StepbackInfo) graphql.Marshaler {
+func (ec *executionContext) _StepbackInfo(ctx context.Context, sel ast.SelectionSet, obj *model.APIStepbackInfo) graphql.Marshaler {
 	fields := graphql.CollectFields(ec.OperationContext, sel, stepbackInfoImplementors)
 
 	out := graphql.NewFieldSet(fields)
@@ -81911,38 +81910,7 @@ func (ec *executionContext) _Task(ctx context.Context, sel ast.SelectionSet, obj
 
 			out.Concurrently(i, func(ctx context.Context) graphql.Marshaler { return innerFunc(ctx, out) })
 		case "stepbackInfo":
-			field := field
-
-			innerFunc := func(ctx context.Context, fs *graphql.FieldSet) (res graphql.Marshaler) {
-				defer func() {
-					if r := recover(); r != nil {
-						ec.Error(ctx, ec.Recover(ctx, r))
-					}
-				}()
-				res = ec._Task_stepbackInfo(ctx, field, obj)
-				return res
-			}
-
-			if field.Deferrable != nil {
-				dfs, ok := deferred[field.Deferrable.Label]
-				di := 0
-				if ok {
-					dfs.AddField(field)
-					di = len(dfs.Values) - 1
-				} else {
-					dfs = graphql.NewFieldSet([]graphql.CollectedField{field})
-					deferred[field.Deferrable.Label] = dfs
-				}
-				dfs.Concurrently(di, func(ctx context.Context) graphql.Marshaler {
-					return innerFunc(ctx, dfs)
-				})
-
-				// don't run the out.Concurrently() call below
-				out.Values[i] = graphql.Null
-				continue
-			}
-
-			out.Concurrently(i, func(ctx context.Context) graphql.Marshaler { return innerFunc(ctx, out) })
+			out.Values[i] = ec._Task_stepbackInfo(ctx, field, obj)
 		default:
 			panic("unknown field " + strconv.Quote(field.Name))
 		}
@@ -91526,7 +91494,7 @@ func (ec *executionContext) marshalOStatusCount2ᚕgithubᚗcomᚋevergreenᚑci
 	return ret
 }
 
-func (ec *executionContext) marshalOStepbackInfo2ᚖgithubᚗcomᚋevergreenᚑciᚋevergreenᚋgraphqlᚐStepbackInfo(ctx context.Context, sel ast.SelectionSet, v *StepbackInfo) graphql.Marshaler {
+func (ec *executionContext) marshalOStepbackInfo2ᚖgithubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐAPIStepbackInfo(ctx context.Context, sel ast.SelectionSet, v *model.APIStepbackInfo) graphql.Marshaler {
 	if v == nil {
 		return graphql.Null
 	}

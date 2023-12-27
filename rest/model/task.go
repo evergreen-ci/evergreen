@@ -137,10 +137,10 @@ type APITask struct {
 }
 
 type APIStepbackInfo struct {
-	LastFailingTaskId string `json:"last_failing_task_id"`
-	LastPassingTaskId string `json:"last_passing_task_id"`
-	NextTaskId        string `json:"next_task_id"`
-	PreviousTaskId    string `json:"previous_task_id"`
+	LastFailingStepbackTaskId string `json:"last_failing_stepback_task_id"`
+	LastPassingStepbackTaskId string `json:"last_passing_stepback_task_id"`
+	NextStepbackTaskId        string `json:"next_stepback_task_id"`
+	PreviousStepbackTaskId    string `json:"previous_stepback_task_id"`
 }
 
 type APIAbortInfo struct {
@@ -341,10 +341,10 @@ func (at *APITask) buildTask(t *task.Task) error {
 
 	if t.StepbackInfo != nil {
 		at.StepbackInfo = &APIStepbackInfo{
-			LastFailingTaskId: t.StepbackInfo.LastFailingStepbackTaskId,
-			LastPassingTaskId: t.StepbackInfo.LastPassingStepbackTaskId,
-			NextTaskId:        t.StepbackInfo.NextStepbackTaskId,
-			PreviousTaskId:    t.StepbackInfo.PreviousStepbackTaskId,
+			LastFailingStepbackTaskId: t.StepbackInfo.LastFailingStepbackTaskId,
+			LastPassingStepbackTaskId: t.StepbackInfo.LastPassingStepbackTaskId,
+			NextStepbackTaskId:        t.StepbackInfo.NextStepbackTaskId,
+			PreviousStepbackTaskId:    t.StepbackInfo.PreviousStepbackTaskId,
 		}
 	}
 
@@ -543,10 +543,10 @@ func (at *APITask) ToService() (*task.Task, error) {
 
 	if at.StepbackInfo != nil {
 		st.StepbackInfo = &task.StepbackInfo{
-			LastFailingStepbackTaskId: at.StepbackInfo.LastFailingTaskId,
-			LastPassingStepbackTaskId: at.StepbackInfo.LastPassingTaskId,
-			NextStepbackTaskId:        at.StepbackInfo.NextTaskId,
-			PreviousStepbackTaskId:    at.StepbackInfo.PreviousTaskId,
+			LastFailingStepbackTaskId: at.StepbackInfo.LastFailingStepbackTaskId,
+			LastPassingStepbackTaskId: at.StepbackInfo.LastPassingStepbackTaskId,
+			NextStepbackTaskId:        at.StepbackInfo.NextStepbackTaskId,
+			PreviousStepbackTaskId:    at.StepbackInfo.PreviousStepbackTaskId,
 		}
 	}
 

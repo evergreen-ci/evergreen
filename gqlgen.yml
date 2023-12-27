@@ -317,6 +317,8 @@ models:
     model: github.com/evergreen-ci/evergreen/rest/model.APISlackConfig
   StatusCount:
     model: github.com/evergreen-ci/evergreen/model/task.StatusCount
+  StepbackInfo:
+    model: github.com/evergreen-ci/evergreen/rest/model.APIStepbackInfo
   StringMap:
     model: github.com/evergreen-ci/evergreen/graphql.StringMap
   SubscriberInput:
