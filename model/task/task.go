@@ -1350,10 +1350,16 @@ func findMidwayTask(t1, t2 Task) (*Task, error) {
 	if catcher.HasErrors() {
 		return nil, catcher.Resolve()
 	}
-	// If the tasks are sequential or the same order number, return the first given task.
+	// If the tasks are sequential or the same order number, return the
+	// lowest revision order number task (this keeps behavior consistent,
+	// since the mid value below is always truncated and leans towards the
+	// lower revision order number).
 	d := t1.RevisionOrderNumber - t2.RevisionOrderNumber
 	if d == -1 || d == 0 || d == 1 {
-		return &t1, nil
+		if t1.RevisionOrderNumber < t2.RevisionOrderNumber {
+			return &t1, nil
+		}
+		return &t2, nil
 	}
 
 	mid := (t1.RevisionOrderNumber + t2.RevisionOrderNumber) / 2
