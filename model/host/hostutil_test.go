@@ -102,70 +102,34 @@ func TestCurlCommand(t *testing.T) {
 }
 
 func TestCurlCommandWithRetry(t *testing.T) {
-	t.Run("WithoutS3", func(t *testing.T) {
-		settings := &evergreen.Settings{
-			ApiUrl:            "www.example.com",
-			ClientBinariesDir: "clients",
+	settings := &evergreen.Settings{
+		HostInit: evergreen.HostInitConfig{S3BaseURL: "https://foo.com"},
+	}
+	t.Run("Windows", func(t *testing.T) {
+		h := &Host{
+			Distro: distro.Distro{
+				Arch: evergreen.ArchWindowsAmd64,
+				User: "user",
+			},
+			User: "user",
 		}
-		t.Run("Windows", func(t *testing.T) {
-			h := &Host{
-				Distro: distro.Distro{
-					Arch: evergreen.ArchWindowsAmd64,
-					User: "user",
-				},
-				User: "user",
-			}
-			expected := "cd /home/user && curl -fLO www.example.com/clients/windows_amd64/evergreen.exe --retry 5 --retry-max-time 10 && chmod +x evergreen.exe"
-			cmd, err := h.CurlCommandWithRetry(settings, 5, 10)
-			require.NoError(t, err)
-			assert.Equal(t, expected, cmd)
-		})
-		t.Run("Linux", func(t *testing.T) {
-			h := &Host{
-				Distro: distro.Distro{
-					Arch: evergreen.ArchLinuxAmd64,
-					User: "user",
-				},
-				User: "user",
-			}
-			expected := "cd /home/user && curl -fLO www.example.com/clients/linux_amd64/evergreen --retry 5 --retry-max-time 10 && chmod +x evergreen"
-			cmd, err := h.CurlCommandWithRetry(settings, 5, 10)
-			require.NoError(t, err)
-			assert.Equal(t, expected, cmd)
-		})
+		expected := fmt.Sprintf("cd /home/user && curl -fLO https://foo.com/%s/windows_amd64/evergreen.exe --retry 5 --retry-max-time 10 && chmod +x evergreen.exe", evergreen.BuildRevision)
+		cmd, err := h.CurlCommandWithRetry(settings, 5, 10)
+		require.NoError(t, err)
+		assert.Equal(t, expected, cmd)
 	})
-	t.Run("WithS3", func(t *testing.T) {
-		settings := &evergreen.Settings{
-			ApiUrl:            "www.example.com",
-			HostInit:          evergreen.HostInitConfig{S3BaseURL: "https://foo.com"},
-			ClientBinariesDir: "clients",
+	t.Run("Linux", func(t *testing.T) {
+		h := &Host{
+			Distro: distro.Distro{
+				Arch: evergreen.ArchLinuxAmd64,
+				User: "user",
+			},
+			User: "user",
 		}
-		t.Run("Windows", func(t *testing.T) {
-			h := &Host{
-				Distro: distro.Distro{
-					Arch: evergreen.ArchWindowsAmd64,
-					User: "user",
-				},
-				User: "user",
-			}
-			expected := fmt.Sprintf("cd /home/user && (curl -fLO https://foo.com/%s/windows_amd64/evergreen.exe --retry 5 --retry-max-time 10 || curl -fLO www.example.com/clients/windows_amd64/evergreen.exe --retry 5 --retry-max-time 10) && chmod +x evergreen.exe", evergreen.BuildRevision)
-			cmd, err := h.CurlCommandWithRetry(settings, 5, 10)
-			require.NoError(t, err)
-			assert.Equal(t, expected, cmd)
-		})
-		t.Run("Linux", func(t *testing.T) {
-			h := &Host{
-				Distro: distro.Distro{
-					Arch: evergreen.ArchLinuxAmd64,
-					User: "user",
-				},
-				User: "user",
-			}
-			expected := fmt.Sprintf("cd /home/user && (curl -fLO https://foo.com/%s/linux_amd64/evergreen --retry 5 --retry-max-time 10 || curl -fLO www.example.com/clients/linux_amd64/evergreen --retry 5 --retry-max-time 10) && chmod +x evergreen", evergreen.BuildRevision)
-			cmd, err := h.CurlCommandWithRetry(settings, 5, 10)
-			require.NoError(t, err)
-			assert.Equal(t, expected, cmd)
-		})
+		expected := fmt.Sprintf("cd /home/user && curl -fLO https://foo.com/%s/linux_amd64/evergreen --retry 5 --retry-max-time 10 && chmod +x evergreen", evergreen.BuildRevision)
+		cmd, err := h.CurlCommandWithRetry(settings, 5, 10)
+		require.NoError(t, err)
+		assert.Equal(t, expected, cmd)
 	})
 }
 
@@ -981,8 +945,7 @@ func TestStartAgentMonitorRequest(t *testing.T) {
 	require.NoError(t, h.Insert(ctx))
 
 	settings := &evergreen.Settings{
-		ApiUrl:            "www.example0.com",
-		ClientBinariesDir: "dir",
+		ApiUrl: "www.example0.com",
 		LoggerConfig: evergreen.LoggerConfig{
 			LogkeeperURL: "www.example1.com",
 		},

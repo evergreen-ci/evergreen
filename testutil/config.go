@@ -179,7 +179,6 @@ func MockConfig() *evergreen.Settings {
 			User:    "cedar-user",
 			APIKey:  "cedar-key",
 		},
-		ClientBinariesDir: "bin_dir",
 		CommitQueue: evergreen.CommitQueueConfig{
 			MergeTaskDistro: "distro",
 			CommitterName:   "Evergreen Commit Queue",

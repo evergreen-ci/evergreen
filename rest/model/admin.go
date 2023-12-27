@@ -60,7 +60,6 @@ type APIAdminSettings struct {
 	BannerTheme         *string                           `json:"banner_theme,omitempty"`
 	Buckets             *APIBucketsConfig                 `json:"buckets,omitempty"`
 	Cedar               *APICedarConfig                   `json:"cedar,omitempty"`
-	ClientBinariesDir   *string                           `json:"client_binaries_dir,omitempty"`
 	CommitQueue         *APICommitQueueConfig             `json:"commit_queue,omitempty"`
 	ConfigDir           *string                           `json:"configdir,omitempty"`
 	ContainerPools      *APIContainerPoolsConfig          `json:"container_pools,omitempty"`
@@ -134,7 +133,6 @@ func (as *APIAdminSettings) BuildFromService(h interface{}) error {
 		as.Banner = &v.Banner
 		tmp := string(v.BannerTheme)
 		as.BannerTheme = &tmp
-		as.ClientBinariesDir = &v.ClientBinariesDir
 		as.ConfigDir = &v.ConfigDir
 		as.DomainName = utility.ToStringPtr(v.DomainName)
 		as.GithubPRCreatorOrg = &v.GithubPRCreatorOrg
@@ -218,9 +216,6 @@ func (as *APIAdminSettings) ToService() (interface{}, error) {
 	}
 	if as.BannerTheme != nil {
 		settings.BannerTheme = evergreen.BannerTheme(*as.BannerTheme)
-	}
-	if as.ClientBinariesDir != nil {
-		settings.ClientBinariesDir = *as.ClientBinariesDir
 	}
 	if as.ConfigDir != nil {
 		settings.ConfigDir = *as.ConfigDir

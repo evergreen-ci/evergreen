@@ -629,7 +629,6 @@ func TestS3ClientURL(t *testing.T) {
 		HostInit: evergreen.HostInitConfig{
 			S3BaseURL: "https://foo.com",
 		},
-		ClientBinariesDir: "clients",
 	}
 
 	expected := fmt.Sprintf("https://foo.com/%s/windows_amd64/evergreen.exe", evergreen.BuildRevision)
@@ -638,21 +637,6 @@ func TestS3ClientURL(t *testing.T) {
 	d.Arch = evergreen.ArchLinuxAmd64
 	expected = fmt.Sprintf("https://foo.com/%s/linux_amd64/evergreen", evergreen.BuildRevision)
 	assert.Equal(t, expected, d.S3ClientURL(settings))
-}
-
-func TestClientURL(t *testing.T) {
-	d := Distro{Arch: evergreen.ArchWindowsAmd64}
-	settings := &evergreen.Settings{
-		ApiUrl:            "www.example.com",
-		ClientBinariesDir: "clients",
-	}
-
-	expected := "www.example.com/clients/windows_amd64/evergreen.exe"
-	assert.Equal(t, expected, d.ClientURL(settings))
-
-	d.Arch = evergreen.ArchLinuxAmd64
-	expected = "www.example.com/clients/linux_amd64/evergreen"
-	assert.Equal(t, expected, d.ClientURL(settings))
 }
 
 func TestGetAuthorizedKeysFile(t *testing.T) {
