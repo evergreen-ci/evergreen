@@ -80,9 +80,9 @@ func TestTaskBuildFromService(t *testing.T) {
 						AgentLogLink:  utility.ToStringPtr("parsley/evergreen/testId/2/agent"),
 					},
 					StepbackInfo: &APIStepbackInfo{
-						LastFailingTaskId: "last_failing",
-						LastPassingTaskId: "last_passing",
-						NextTaskId:        "next",
+						LastFailingStepbackTaskId: "last_failing",
+						LastPassingStepbackTaskId: "last_passing",
+						NextStepbackTaskId:        "next",
 					},
 				},
 				st: task.Task{
