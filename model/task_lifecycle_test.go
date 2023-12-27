@@ -6523,11 +6523,7 @@ func TestEvalBisectStepback(t *testing.T) {
 
 			lastPassing, err := task.FindOneId("t1")
 			require.NoError(err)
-			require.NotNil(lastPassing.StepbackInfo)
-			assert.Empty(lastPassing.StepbackInfo.LastFailingStepbackTaskId)
-			assert.Empty(lastPassing.StepbackInfo.LastPassingStepbackTaskId)
-			assert.Equal(midTask.Id, lastPassing.StepbackInfo.NextStepbackTaskId)
-			assert.Empty(lastPassing.StepbackInfo.PreviousStepbackTaskId)
+			require.Nil(lastPassing.StepbackInfo)
 		},
 	} {
 		t.Run(tName, func(t *testing.T) {
