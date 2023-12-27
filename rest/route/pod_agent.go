@@ -67,21 +67,14 @@ func (h *podProvisioningScript) Run(ctx context.Context) gimlet.Responder {
 		"secs_since_pod_creation":   time.Since(p.TimeInfo.Starting).Seconds(),
 	})
 
-	flags, err := evergreen.GetServiceFlags(ctx)
-	if err != nil {
-		return gimlet.NewTextInternalErrorResponse(errors.Wrap(err, "getting service flags"))
-	}
-
-	script := h.agentScript(p, !flags.S3BinaryDownloadsDisabled)
-
-	return gimlet.NewTextResponse(script)
+	return gimlet.NewTextResponse(h.agentScript(p))
 }
 
 // agentScript returns the script to provision and run the agent in the pod's
 // container. On Linux, this is a shell script. On Windows, this is a cmd.exe
 // batch script.
-func (h *podProvisioningScript) agentScript(p *pod.Pod, downloadFromS3 bool) string {
-	scriptCmds := []string{h.downloadAgentCommands(p, downloadFromS3)}
+func (h *podProvisioningScript) agentScript(p *pod.Pod) string {
+	scriptCmds := []string{h.downloadAgentCommands(p)}
 	if p.TaskContainerCreationOpts.OS == pod.OSLinux {
 		scriptCmds = append(scriptCmds, fmt.Sprintf("chmod +x %s", h.clientName(p)))
 	}
@@ -124,7 +117,7 @@ func (h *podProvisioningScript) agentCommand(p *pod.Pod) []string {
 
 // downloadAgentCommands returns the commands to download the agent in the pod's
 // container.
-func (h *podProvisioningScript) downloadAgentCommands(p *pod.Pod, downloadFromS3 bool) string {
+func (h *podProvisioningScript) downloadAgentCommands(p *pod.Pod) string {
 	const (
 		curlDefaultNumRetries = 10
 		curlDefaultMaxSecs    = 100
@@ -136,37 +129,7 @@ func (h *podProvisioningScript) downloadAgentCommands(p *pod.Pod, downloadFromS3
 		curlExecutable = curlExecutable + ".exe"
 	}
 
-	if downloadFromS3 && h.settings.PodLifecycle.S3BaseURL != "" {
-		// Attempt to download the agent from S3, but fall back to downloading
-		// from the app server if it fails.
-		// Include -f to return an error code from curl if the HTTP request
-		// fails (e.g. it receives 403 Forbidden or 404 Not Found).
-
-		if p.TaskContainerCreationOpts.OS == pod.OSWindows {
-			// PowerShell supports pipeline chaining operators (like bash's ||
-			// operator) as of PowerShell 7. However, users may not provide a
-			// sufficiently up-to-date version of PowerShell on their images to
-			// use these operators. Therefore, use a PowerShell if-else
-			// statement to produce the equivalent functionality.
-			// Docs: https://docs.microsoft.com/en-us/powershell/module/microsoft.powershell.core/about/about_pipeline_chain_operators
-			return fmt.Sprintf("if (%s -fLO %s %s) {} else { %s -fLO %s %s }", curlExecutable, h.s3ClientURL(p), retryArgs, curlExecutable, h.evergreenClientURL(p), retryArgs)
-		}
-
-		return fmt.Sprintf("(%s -fLO %s %s || %s -fLO %s %s)", curlExecutable, h.s3ClientURL(p), retryArgs, curlExecutable, h.evergreenClientURL(p), retryArgs)
-
-	}
-
-	return fmt.Sprintf("%s -fLO %s %s", curlExecutable, h.evergreenClientURL(p), retryArgs)
-}
-
-// evergreenClientURL returns the URL used to get the latest Evergreen client
-// version directly from the Evergreen server.
-func (h *podProvisioningScript) evergreenClientURL(p *pod.Pod) string {
-	return strings.Join([]string{
-		strings.TrimSuffix(h.settings.ApiUrl, "/"),
-		strings.TrimSuffix(h.settings.ClientBinariesDir, "/"),
-		h.clientURLSubpath(p),
-	}, "/")
+	return fmt.Sprintf("%s -fLO %s %s", curlExecutable, h.s3ClientURL(p), retryArgs)
 }
 
 // s3ClientURL returns the URL in S3 where the Evergreen client version can be

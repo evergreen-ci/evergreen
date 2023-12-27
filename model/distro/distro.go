@@ -830,16 +830,6 @@ func (d *Distro) AbsPathNotCygwinCompatible(path ...string) string {
 	return filepath.Join(append([]string{d.BootstrapSettings.RootDir}, path...)...)
 }
 
-// ClientURL returns the URL used to get the latest Evergreen client version
-// directly from the Evergreen server.
-func (d *Distro) ClientURL(settings *evergreen.Settings) string {
-	return strings.Join([]string{
-		strings.TrimSuffix(settings.ApiUrl, "/"),
-		strings.TrimSuffix(settings.ClientBinariesDir, "/"),
-		d.ExecutableSubPath(),
-	}, "/")
-}
-
 // S3ClientURL returns the URL in S3 where the Evergreen client version can be
 // retrieved for this server's particular Evergreen build version.
 func (d *Distro) S3ClientURL(settings *evergreen.Settings) string {

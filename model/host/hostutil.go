@@ -93,19 +93,9 @@ func (h *Host) CurlCommandWithDefaultRetry(settings *evergreen.Settings) (string
 }
 
 func (h *Host) curlCommands(settings *evergreen.Settings, curlArgs string) ([]string, error) {
-	var curlCmd string
-	if !settings.ServiceFlags.S3BinaryDownloadsDisabled && settings.HostInit.S3BaseURL != "" {
-		// Attempt to download the agent from S3, but fall back to downloading from
-		// the app server if it fails.
-		// Include -f to return an error code from curl if the HTTP request
-		// fails (e.g. it receives 403 Forbidden or 404 Not Found).
-		curlCmd = fmt.Sprintf("(curl -fLO %s%s || curl -fLO %s%s)", h.Distro.S3ClientURL(settings), curlArgs, h.Distro.ClientURL(settings), curlArgs)
-	} else {
-		curlCmd += fmt.Sprintf("curl -fLO %s%s", h.Distro.ClientURL(settings), curlArgs)
-	}
 	return []string{
 		fmt.Sprintf("cd %s", h.Distro.HomeDir()),
-		curlCmd,
+		fmt.Sprintf("curl -fLO %s%s", h.Distro.S3ClientURL(settings), curlArgs),
 		fmt.Sprintf("chmod +x %s", h.Distro.BinaryName()),
 	}, nil
 }

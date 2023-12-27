@@ -887,17 +887,5 @@ func (rh *distroClientURLsGetHandler) Run(ctx context.Context) gimlet.Responder 
 		})
 	}
 
-	flags, err := evergreen.GetServiceFlags(ctx)
-	if err != nil {
-		return gimlet.MakeJSONInternalErrorResponder(errors.Wrap(err, "getting admin settings"))
-	}
-
-	var urls []string
-	settings := rh.env.Settings()
-	if !flags.S3BinaryDownloadsDisabled && settings.HostInit.S3BaseURL != "" {
-		urls = append(urls, d.S3ClientURL(settings))
-	}
-	urls = append(urls, d.ClientURL(settings))
-
-	return gimlet.NewJSONResponse(urls)
+	return gimlet.NewJSONResponse([]string{d.S3ClientURL(rh.env.Settings())})
 }
