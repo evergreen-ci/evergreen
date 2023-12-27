@@ -684,10 +684,7 @@ func (e *envState) initClientConfig(ctx context.Context) {
 		grip.Critical("no settings object, cannot build client configuration")
 		return
 	}
-	var err error
-
-	e.clientConfig, err = e.getClientConfig(ctx)
-	if err != nil {
+	if err := e.populateClientConfig(ctx); err != nil {
 		grip.Critical(message.WrapError(err, message.Fields{
 			"message": "problem finding local clients",
 			"cause":   "infrastructure configuration issue",
@@ -1208,29 +1205,41 @@ func (e *envState) Close(ctx context.Context) error {
 	return catcher.Resolve()
 }
 
-// getClientConfig should be called once at startup and looks at the
+// populateClientConfig should be called once at startup and looks at the
 // current environment and loads all currently available client
 // binaries in S3.
 //
 // If there are no built clients, this returns an empty config
 // version, but does *not* error.
-func (e *envState) getClientConfig(ctx context.Context) (*ClientConfig, error) {
-	c := &ClientConfig{}
-	c.LatestRevision = ClientVersion
-
+func (e *envState) populateClientConfig(ctx context.Context) error {
 	bucket, err := pail.NewS3Bucket(pail.S3Options{
 		Name:        e.settings.Providers.AWS.BinaryClient.Bucket,
 		Region:      DefaultEC2Region,
 		Credentials: pail.CreateAWSCredentials(e.settings.Providers.AWS.BinaryClient.Key, e.settings.Providers.AWS.BinaryClient.Secret, ""),
 	})
 	if err != nil {
-		return nil, errors.Wrap(err, "constructing pail bucket")
+		return errors.Wrap(err, "constructing pail bucket")
 	}
+
+	clientBinaries, err := e.listClientBinaries(ctx, bucket)
+	if err != nil {
+		return errors.Wrap(err, "getting client binaries")
+	}
+	e.clientConfig = &ClientConfig{
+		ClientBinaries: clientBinaries,
+		LatestRevision: ClientVersion,
+	}
+
+	return nil
+}
+
+func (e *envState) listClientBinaries(ctx context.Context, bucket pail.Bucket) ([]ClientBinary, error) {
 	prefix := fmt.Sprintf("%s/%s/", e.settings.Providers.AWS.BinaryClient.Prefix, BuildRevision)
 	iter, err := bucket.List(ctx, prefix)
 	if err != nil {
 		return nil, errors.Wrap(err, "listing client bucket")
 	}
+	var clientBinaries []ClientBinary
 	for iter.Next(ctx) {
 		item := strings.TrimPrefix(iter.Item().Name(), prefix)
 		name := strings.Split(item, "/")
@@ -1239,7 +1248,7 @@ func (e *envState) getClientConfig(ctx context.Context) (*ClientConfig, error) {
 		}
 		if displayName, ok := ValidArchDisplayNames[name[0]]; ok {
 			osArchParts := strings.Split(name[0], "_")
-			c.ClientBinaries = append(c.ClientBinaries, ClientBinary{
+			clientBinaries = append(clientBinaries, ClientBinary{
 				URL: fmt.Sprintf("https://%s.s3.amazonaws.com/%s/%s/%s",
 					e.settings.Providers.AWS.BinaryClient.Bucket,
 					e.settings.Providers.AWS.BinaryClient.Prefix,
@@ -1256,7 +1265,7 @@ func (e *envState) getClientConfig(ctx context.Context) (*ClientConfig, error) {
 		return nil, errors.Wrap(err, "iterating client bucket contents")
 	}
 
-	return c, nil
+	return clientBinaries, nil
 }
 
 func (e *envState) JasperManager() jasper.Manager {

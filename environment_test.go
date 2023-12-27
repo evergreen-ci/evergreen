@@ -4,11 +4,12 @@ import (
 	"context"
 	"fmt"
 	"os"
-	"path/filepath"
+	"path"
 	"strconv"
 	"strings"
 	"testing"
 
+	"github.com/evergreen-ci/pail"
 	"github.com/mongodb/grip"
 	"github.com/mongodb/grip/message"
 	"github.com/mongodb/grip/send"
@@ -126,82 +127,46 @@ func (s *EnvironmentSuite) TestConfigErrorsIfCannotValidateConfig() {
 }
 
 func (s *EnvironmentSuite) TestGetClientConfig() {
-	root := filepath.Join(FindEvergreenHome(), ClientDirectory)
-	if err := os.Mkdir(root, os.ModeDir|os.ModePerm); err != nil {
-		s.True(os.IsExist(err))
+	tmpDir := s.T().TempDir()
+	BuildRevision = "abcdef"
+	prefix := "evergreen/clients/evergreen"
+	platforms := []string{
+		ArchDarwinAmd64,
+		ArchDarwinArm64,
+		ArchLinuxPpc64le,
+		ArchLinuxS390x,
+		ArchLinuxArm64,
+		ArchLinuxAmd64,
+		ArchWindowsAmd64,
+	}
+	for _, platform := range platforms {
+		basePath := path.Join(tmpDir, prefix, BuildRevision, platform)
+		s.Require().NoError(os.MkdirAll(basePath, os.ModeDir|os.ModePerm))
+		executable := "evergreen"
+		if strings.Contains(platform, "windows") {
+			executable += ".exe"
+		}
+		_, err := os.Create(path.Join(basePath, executable))
+		s.Require().NoError(err)
 	}
 
-	folders := []string{
-		"darwin_amd64_obviouslynottherealone",
-		"linux_z80_obviouslynottherealone",
-	}
-	for _, folder := range folders {
-		path := root + "/" + folder
-		s.NoError(os.Mkdir(path, os.ModeDir|os.ModePerm))
-
-		file := path + "/evergreen"
-		_, err := os.OpenFile(file, os.O_RDWR|os.O_CREATE|os.O_EXCL, 0600)
-		s.NoError(err)
-		defer func() { //nolint: evg-lint
-			_ = os.Remove(file)
-			_ = os.Remove(path)
-		}()
-	}
-
-	client, err := getClientConfig(context.Background(), "")
+	bucket, err := pail.NewLocalBucket(pail.LocalOptions{
+		Path: tmpDir,
+	})
 	s.Require().NoError(err)
-	s.Require().NotNil(client)
 
-	s.Equal(ClientVersion, client.LatestRevision)
-
-	cb := []ClientBinary{}
-	for _, b := range client.ClientBinaries {
-		if strings.Contains(b.URL, "_obviouslynottherealone/") {
-			cb = append(cb, b)
-		}
+	e := envState{settings: &Settings{}}
+	e.settings.Providers.AWS.BinaryClient = BinaryClientS3Config{
+		S3Credentials: S3Credentials{Bucket: tmpDir},
+		Prefix:        prefix,
 	}
 
-	s.Require().Len(cb, 2)
-	s.Equal("amd64", cb[0].Arch)
-	s.Equal("darwin", cb[0].OS)
-	s.Equal("https://example.com/clients/darwin_amd64_obviouslynottherealone/evergreen", cb[0].URL)
-	s.Equal("z80", cb[1].Arch)
-	s.Equal("linux", cb[1].OS)
-	s.Equal("https://example.com/clients/linux_z80_obviouslynottherealone/evergreen", cb[1].URL)
-
-	client, err = getClientConfig(context.Background(), "https://another-example.com")
-	s.Require().NoError(err)
-	s.Require().NotNil(client)
-
-	s.Equal(ClientVersion, client.LatestRevision)
-
-	var binaries []ClientBinary
-	for _, b := range client.ClientBinaries {
-		if strings.Contains(b.URL, "_obviouslynottherealone/") {
-			binaries = append(binaries, b)
-		}
+	binaries, err := e.listClientBinaries(context.Background(), bucket)
+	s.NoError(err)
+	s.Len(binaries, len(platforms))
+	for _, binary := range binaries {
+		s.NotEmpty(binary.URL)
+		s.NotEmpty(binary.DisplayName)
+		s.Equal(ValidArchDisplayNames[fmt.Sprintf("%s_%s", binary.OS, binary.Arch)], binary.DisplayName)
 	}
-
-	s.Require().Len(binaries, 2)
-	s.Equal("amd64", binaries[0].Arch)
-	s.Equal("darwin", binaries[0].OS)
-	s.Equal("https://example.com/clients/darwin_amd64_obviouslynottherealone/evergreen", binaries[0].URL)
-	s.Equal("z80", binaries[1].Arch)
-	s.Equal("linux", binaries[1].OS)
-	s.Equal("https://example.com/clients/linux_z80_obviouslynottherealone/evergreen", binaries[1].URL)
-
-	var s3Binaries []ClientBinary
-	for _, b := range client.S3ClientBinaries {
-		if strings.Contains(b.URL, "_obviouslynottherealone/") {
-			s3Binaries = append(s3Binaries, b)
-		}
-	}
-
-	s.Require().Len(s3Binaries, 2)
-	s.Equal("amd64", s3Binaries[0].Arch)
-	s.Equal("darwin", s3Binaries[0].OS)
-	s.Equal(fmt.Sprintf("https://another-example.com/%s/darwin_amd64_obviouslynottherealone/evergreen", BuildRevision), s3Binaries[0].URL)
-	s.Equal("z80", s3Binaries[1].Arch)
-	s.Equal("linux", s3Binaries[1].OS)
-	s.Equal(fmt.Sprintf("https://another-example.com/%s/linux_z80_obviouslynottherealone/evergreen", BuildRevision), s3Binaries[1].URL)
 }
