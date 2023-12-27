@@ -34,70 +34,35 @@ import (
 
 func TestCurlCommand(t *testing.T) {
 	assert := assert.New(t)
-	t.Run("WithoutS3", func(t *testing.T) {
-		settings := &evergreen.Settings{
-			ApiUrl:            "www.example.com",
-			ClientBinariesDir: "clients",
+	settings := &evergreen.Settings{
+		ApiUrl:   "www.example.com",
+		HostInit: evergreen.HostInitConfig{S3BaseURL: "https://foo.com"},
+	}
+	t.Run("Windows", func(t *testing.T) {
+		h := &Host{
+			Distro: distro.Distro{
+				Arch: evergreen.ArchWindowsAmd64,
+				User: "user",
+			},
+			User: "user",
 		}
-		t.Run("Windows", func(t *testing.T) {
-			h := &Host{
-				Distro: distro.Distro{
-					Arch: evergreen.ArchWindowsAmd64,
-					User: "user",
-				},
-				User: "user",
-			}
-			expected := "cd /home/user && curl -fLO www.example.com/clients/windows_amd64/evergreen.exe && chmod +x evergreen.exe"
-			cmd, err := h.CurlCommand(settings)
-			require.NoError(t, err)
-			assert.Equal(expected, cmd)
-		})
-		t.Run("Linux", func(t *testing.T) {
-			h := &Host{
-				Distro: distro.Distro{
-					Arch: evergreen.ArchLinuxAmd64,
-					User: "user",
-				},
-				User: "user",
-			}
-			expected := "cd /home/user && curl -fLO www.example.com/clients/linux_amd64/evergreen && chmod +x evergreen"
-			cmd, err := h.CurlCommand(settings)
-			require.NoError(t, err)
-			assert.Equal(expected, cmd)
-		})
+		expected := fmt.Sprintf("cd /home/user && curl -fLO https://foo.com/%s/windows_amd64/evergreen.exe && chmod +x evergreen.exe", evergreen.BuildRevision)
+		cmd, err := h.CurlCommand(settings)
+		require.NoError(t, err)
+		assert.Equal(expected, cmd)
 	})
-	t.Run("WithS3", func(t *testing.T) {
-		settings := &evergreen.Settings{
-			ApiUrl:            "www.example.com",
-			ClientBinariesDir: "clients",
-			HostInit:          evergreen.HostInitConfig{S3BaseURL: "https://foo.com"},
+	t.Run("Linux", func(t *testing.T) {
+		h := &Host{
+			Distro: distro.Distro{
+				Arch: evergreen.ArchLinuxAmd64,
+				User: "user",
+			},
+			User: "user",
 		}
-		t.Run("Windows", func(t *testing.T) {
-			h := &Host{
-				Distro: distro.Distro{
-					Arch: evergreen.ArchWindowsAmd64,
-					User: "user",
-				},
-				User: "user",
-			}
-			expected := fmt.Sprintf("cd /home/user && (curl -fLO https://foo.com/%s/windows_amd64/evergreen.exe || curl -fLO www.example.com/clients/windows_amd64/evergreen.exe) && chmod +x evergreen.exe", evergreen.BuildRevision)
-			cmd, err := h.CurlCommand(settings)
-			require.NoError(t, err)
-			assert.Equal(expected, cmd)
-		})
-		t.Run("Linux", func(t *testing.T) {
-			h := &Host{
-				Distro: distro.Distro{
-					Arch: evergreen.ArchLinuxAmd64,
-					User: "user",
-				},
-				User: "user",
-			}
-			expected := fmt.Sprintf("cd /home/user && (curl -fLO https://foo.com/%s/linux_amd64/evergreen || curl -fLO www.example.com/clients/linux_amd64/evergreen) && chmod +x evergreen", evergreen.BuildRevision)
-			cmd, err := h.CurlCommand(settings)
-			require.NoError(t, err)
-			assert.Equal(expected, cmd)
-		})
+		expected := fmt.Sprintf("cd /home/user && curl -fLO https://foo.com/%s/linux_amd64/evergreen && chmod +x evergreen", evergreen.BuildRevision)
+		cmd, err := h.CurlCommand(settings)
+		require.NoError(t, err)
+		assert.Equal(expected, cmd)
 	})
 }
 

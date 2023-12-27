@@ -192,7 +192,7 @@ func (s *AdminDataSuite) TestSetAndGetSettings() {
 			s.Equal(testSettings.Providers.AWS.EC2Keys[0].Key, v.AWS.EC2Keys[0].Key)
 		case *evergreen.Settings:
 			foundRootEvent = true
-			s.Equal(testSettings.ClientBinariesDir, v.ClientBinariesDir)
+			s.Equal(testSettings.ApiUrl, v.ApiUrl)
 			s.Equal(testSettings.Credentials, v.Credentials)
 		case *evergreen.UIConfig:
 			foundUiEvent = true
