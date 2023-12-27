@@ -6469,7 +6469,7 @@ func TestEvalBisectStepback(t *testing.T) {
 			require.NotNil(lastFailing.StepbackInfo)
 			assert.Empty(lastFailing.StepbackInfo.LastFailingStepbackTaskId)
 			assert.Empty(lastFailing.StepbackInfo.LastPassingStepbackTaskId)
-			assert.Equal(midTask.Id, lastFailing.StepbackInfo.NextStepbackTaskId)
+			assert.Equal(prevTask.Id, lastFailing.StepbackInfo.NextStepbackTaskId)
 			assert.Empty(lastFailing.StepbackInfo.PreviousStepbackTaskId)
 			// Check last passing stepback info.
 			lastPassing, err = task.FindOneId(midTask.StepbackInfo.LastPassingStepbackTaskId)
