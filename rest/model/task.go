@@ -344,6 +344,7 @@ func (at *APITask) buildTask(t *task.Task) error {
 			LastFailingTaskId: t.StepbackInfo.LastFailingStepbackTaskId,
 			LastPassingTaskId: t.StepbackInfo.LastPassingStepbackTaskId,
 			NextTaskId:        t.StepbackInfo.NextStepbackTaskId,
+			PreviousTaskId:    t.StepbackInfo.PreviousStepbackTaskId,
 		}
 	}
 
@@ -545,6 +546,7 @@ func (at *APITask) ToService() (*task.Task, error) {
 			LastFailingStepbackTaskId: at.StepbackInfo.LastFailingTaskId,
 			LastPassingStepbackTaskId: at.StepbackInfo.LastPassingTaskId,
 			NextStepbackTaskId:        at.StepbackInfo.NextTaskId,
+			PreviousStepbackTaskId:    at.StepbackInfo.PreviousTaskId,
 		}
 	}
 
