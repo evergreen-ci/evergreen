@@ -6454,7 +6454,7 @@ func TestEvalBisectStepback(t *testing.T) {
 				bson.M{"$set": bson.M{"status": evergreen.TaskSucceeded}}))
 			// Activate next stepback
 			require.NoError(evalStepback(ctx, midTask, "", evergreen.TaskSucceeded, false))
-			midTask, err = task.FindMidwayTaskFromIds("t1", prevTask.Id)
+			midTask, err = task.FindMidwayTaskFromIds("t10", prevTask.Id)
 			require.NoError(err)
 			assert.True(midTask.Activated)
 			// Check mid task stepback info.
