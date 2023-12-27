@@ -92,11 +92,11 @@ func checkAndUpdateVersion(conf *ClientSettings, ctx context.Context, doInstall 
 	if err != nil {
 		return err
 	}
-	if !update.needsUpdate || len(update.binaries) == 0 {
+	if !update.needsUpdate || update.binary == nil {
 		return nil
 	}
 
-	updatedBin, err := tryAllPrepareUpdate(update)
+	updatedBin, err := prepareUpdate(update)
 	if err != nil {
 		return err
 	}
@@ -195,33 +195,16 @@ func copyFile(dst, src string) error {
 	return d.Close()
 }
 
-// tryAllPrepareUpdate tries to prepare the binary update with any of the
-// possible client downloads. It returns the first one that succeeds, or an
-// error if none succeed.
-func tryAllPrepareUpdate(update updateStatus) (string, error) {
-	var err error
-	for _, binary := range update.binaries {
-		grip.Infoln("Fetching update from", binary.URL)
-		var updatedBin string
-		updatedBin, err = prepareUpdate(binary.URL, update.newVersion)
-		if err != nil {
-			grip.Error(err)
-			continue
-		}
-		return updatedBin, nil
-	}
-	return "", err
-}
-
 // prepareUpdate fetches the update at the given URL, writes it to a temporary file, and returns
 // the path to the temporary file.
-func prepareUpdate(url, newVersion string) (string, error) {
+func prepareUpdate(update updateStatus) (string, error) {
 	tempFile, err := os.CreateTemp("", "")
 	if err != nil {
 		return "", err
 	}
 
-	response, err := http.Get(url)
+	grip.Infoln("Fetching update from", update.binary.URL)
+	response, err := http.Get(update.binary.URL)
 	if err != nil {
 		grip.Error(tempFile.Close())
 		return "", err
@@ -233,7 +216,7 @@ func prepareUpdate(url, newVersion string) (string, error) {
 
 	if response == nil {
 		grip.Error(tempFile.Close())
-		return "", errors.Errorf("empty response from URL '%s'", url)
+		return "", errors.Errorf("empty response from URL '%s'", update.binary.URL)
 	}
 
 	defer response.Body.Close()
@@ -280,15 +263,15 @@ func prepareUpdate(url, newVersion string) (string, error) {
 	updatedVersion := string(out)
 	updatedVersion = strings.TrimSpace(updatedVersion)
 
-	if updatedVersion != newVersion {
-		return "", errors.Errorf("Update failed - expected new binary to have version '%s', but got '%s' instead", newVersion, updatedVersion)
+	if updatedVersion != update.newVersion {
+		return "", errors.Errorf("Update failed - expected new binary to have version '%s', but got '%s' instead", update.newVersion, updatedVersion)
 	}
 
 	return tempPath, nil
 }
 
 type updateStatus struct {
-	binaries    []evergreen.ClientBinary
+	binary      *evergreen.ClientBinary
 	needsUpdate bool
 	newVersion  string
 }
@@ -302,7 +285,7 @@ func checkUpdate(client client.Communicator, silent bool, force bool) (updateSta
 	}))
 	if err != nil {
 		return updateStatus{
-			binaries:    nil,
+			binary:      nil,
 			needsUpdate: false,
 			newVersion:  "",
 		}, err
@@ -315,21 +298,21 @@ func checkUpdate(client client.Communicator, silent bool, force bool) (updateSta
 			"revision": evergreen.ClientVersion,
 		})
 		return updateStatus{
-			binaries:    nil,
+			binary:      nil,
 			needsUpdate: false,
 			newVersion:  clients.LatestRevision,
 		}, nil
 	}
 
-	binarySources := findClientUpdates(*clients)
-	if len(binarySources) == 0 {
+	binarySource := findClientUpdates(*clients)
+	if binarySource == nil {
 		// Client is out of date but no update available
 		grip.NoticeWhen(!silent, message.WrapError(err, message.Fields{
 			"message":  "Client is out of date but update is unavailable.",
 			"revision": evergreen.ClientVersion,
 		}))
 		return updateStatus{
-			binaries:    nil,
+			binary:      nil,
 			needsUpdate: true,
 			newVersion:  clients.LatestRevision,
 		}, nil
@@ -341,7 +324,7 @@ func checkUpdate(client client.Communicator, silent bool, force bool) (updateSta
 		"new_revision": clients.LatestRevision,
 	}))
 	return updateStatus{
-		binaries:    binarySources,
+		binary:      binarySource,
 		needsUpdate: true,
 		newVersion:  clients.LatestRevision,
 	}, nil
@@ -349,12 +332,11 @@ func checkUpdate(client client.Communicator, silent bool, force bool) (updateSta
 
 // findClientUpdates searches a ClientConfig for all ClientBinaries with
 // non-empty URLs, whose architecture and OS match that of the current system.
-func findClientUpdates(clients evergreen.ClientConfig) []evergreen.ClientBinary {
-	var binaries []evergreen.ClientBinary
+func findClientUpdates(clients evergreen.ClientConfig) *evergreen.ClientBinary {
 	for _, c := range clients.ClientBinaries {
 		if c.Arch == runtime.GOARCH && c.OS == runtime.GOOS && len(c.URL) > 0 {
-			binaries = append(binaries, c)
+			return &c
 		}
 	}
-	return binaries
+	return nil
 }

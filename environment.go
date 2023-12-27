@@ -1240,11 +1240,12 @@ func (e *envState) getClientConfig(ctx context.Context) (*ClientConfig, error) {
 		if displayName, ok := ValidArchDisplayNames[name[0]]; ok {
 			osArchParts := strings.Split(name[0], "_")
 			c.ClientBinaries = append(c.ClientBinaries, ClientBinary{
-				URL: strings.Join([]string{
-					fmt.Sprintf("https://%s.s3.amazonaws.com", e.settings.Providers.AWS.BinaryClient.Bucket),
-					strings.TrimSuffix(prefix, "/"),
+				URL: fmt.Sprintf("https://%s.s3.amazonaws.com/%s/%s/%s",
+					e.settings.Providers.AWS.BinaryClient.Bucket,
+					e.settings.Providers.AWS.BinaryClient.Prefix,
+					BuildRevision,
 					item,
-				}, "/"),
+				),
 				OS:          osArchParts[0],
 				Arch:        osArchParts[1],
 				DisplayName: displayName,
