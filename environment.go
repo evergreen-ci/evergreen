@@ -186,7 +186,7 @@ type Environment interface {
 //
 // NewEnvironment requires that either the path or DB is sent so that
 // if both are specified, the settings are read from the file.
-func NewEnvironment(ctx context.Context, confPath string, db *DBSettings) (Environment, error) {
+func NewEnvironment(ctx context.Context, confPath, versionID string, db *DBSettings) (Environment, error) {
 	ctx, cancel := context.WithCancel(ctx)
 	e := &envState{
 		ctx:                     ctx,
@@ -232,6 +232,7 @@ func NewEnvironment(ctx context.Context, confPath string, db *DBSettings) (Envir
 	catcher.Add(e.createNotificationQueue(ctx))
 	catcher.Add(e.setupRoleManager())
 	catcher.Add(e.initTracer(ctx))
+	catcher.Add(e.initClientConfig(ctx, versionID))
 	catcher.Extend(e.initQueues(ctx))
 
 	if catcher.HasErrors() {
@@ -681,22 +682,19 @@ func (e *envState) initQueues(ctx context.Context) []error {
 	return catcher.Errors()
 }
 
-func (e *envState) initClientConfig(ctx context.Context) {
-	if e.settings == nil {
-		grip.Critical("no settings object, cannot build client configuration")
-		return
-	}
-	var err error
+// initClientConfig should be called once at startup and looks at the
+// current environment and loads all currently available client
+// binaries for use by the API server in presenting the settings page.
+//
+// If versionID is non-empty the ClientConfig will contain links to
+// the version's S3 clients in place of local links. If there are no built clients, this returns an empty config
+// version, but does *not* error.
+func (e *envState) initClientConfig(ctx context.Context, versionID string) error {
 
-	e.clientConfig, err = e.getClientConfig(ctx, e.settings.Ui.Url, e.settings.HostInit.S3BaseURL)
-	if err != nil {
-		grip.Critical(message.WrapError(err, message.Fields{
-			"message": "problem finding local clients",
-			"cause":   "infrastructure configuration issue",
-		}))
-	} else if len(e.clientConfig.ClientBinaries) == 0 {
-		grip.Critical("no clients binaries are available for this server")
+	if versionID != "" {
+		return e.populateS3ClientConfig(ctx, versionID)
 	}
+	return e.populateLocalClientConfig()
 }
 
 func (e *envState) initSenders(ctx context.Context) error {
@@ -982,13 +980,6 @@ func (e *envState) ClientConfig(ctx context.Context) *ClientConfig {
 	e.mu.RLock()
 	defer e.mu.RUnlock()
 
-	if e.clientConfig == nil {
-		e.initClientConfig(ctx)
-		if e.clientConfig == nil {
-			return nil
-		}
-	}
-
 	config := *e.clientConfig
 	return &config
 }
@@ -1210,38 +1201,25 @@ func (e *envState) Close(ctx context.Context) error {
 	return catcher.Resolve()
 }
 
-// getClientConfig should be called once at startup and looks at the
-// current environment and loads all currently available client
-// binaries for use by the API server in presenting the settings page.
-//
-// If there are no built clients, this returns an empty config
-// version, but does *not* error.
-func (e *envState) getClientConfig(ctx context.Context, baseURL, s3BaseURL string) (*ClientConfig, error) {
-	if versionID := os.Getenv(EvergreenVersionID); versionID != "" {
-		return e.getS3ClientConfig(ctx, versionID)
-	}
-	return getLocalClientConfig(baseURL, s3BaseURL)
-}
-
-func (e *envState) getS3ClientConfig(ctx context.Context, versionID string) (*ClientConfig, error) {
+func (e *envState) populateS3ClientConfig(ctx context.Context, versionID string) error {
 	bucket, err := pail.NewS3Bucket(pail.S3Options{
 		Name:        e.settings.Providers.AWS.BinaryClient.Bucket,
 		Region:      DefaultEC2Region,
 		Credentials: pail.CreateAWSCredentials(e.settings.Providers.AWS.BinaryClient.Key, e.settings.Providers.AWS.BinaryClient.Secret, ""),
 	})
 	if err != nil {
-		return nil, errors.Wrap(err, "constructing pail bucket")
+		return errors.Wrap(err, "constructing pail bucket")
 	}
 
 	clientBinaries, err := e.listClientBinaries(ctx, bucket, versionID)
 	if err != nil {
-		return nil, errors.Wrap(err, "getting client binaries")
+		return errors.Wrap(err, "getting client binaries")
 	}
-
-	return &ClientConfig{
+	e.clientConfig = &ClientConfig{
 		ClientBinaries: clientBinaries,
 		LatestRevision: ClientVersion,
-	}, nil
+	}
+	return nil
 }
 
 func (e *envState) listClientBinaries(ctx context.Context, bucket pail.Bucket, versionID string) ([]ClientBinary, error) {
@@ -1279,7 +1257,7 @@ func (e *envState) listClientBinaries(ctx context.Context, bucket pail.Bucket, v
 	return clientBinaries, nil
 }
 
-func getLocalClientConfig(baseURL, s3BaseURL string) (*ClientConfig, error) {
+func (e *envState) populateLocalClientConfig() error {
 	c := &ClientConfig{}
 	c.LatestRevision = ClientVersion
 	root := filepath.Join(FindEvergreenHome(), ClientDirectory)
@@ -1304,15 +1282,15 @@ func getLocalClientConfig(baseURL, s3BaseURL string) (*ClientConfig, error) {
 		displayName := ValidArchDisplayNames[fmt.Sprintf("%s_%s", buildInfo[0], buildInfo[1])]
 		archPath := strings.Join(parts[len(parts)-2:], "/")
 		c.ClientBinaries = append(c.ClientBinaries, ClientBinary{
-			URL:         fmt.Sprintf("%s/%s/%s", baseURL, ClientDirectory, archPath),
+			URL:         fmt.Sprintf("%s/%s/%s", e.settings.Ui.Url, ClientDirectory, archPath),
 			OS:          buildInfo[0],
 			Arch:        buildInfo[1],
 			DisplayName: displayName,
 		})
-		if s3BaseURL != "" {
+		if e.settings.HostInit.S3BaseURL != "" {
 			c.S3ClientBinaries = append(c.S3ClientBinaries, ClientBinary{
 				URL: strings.Join([]string{
-					strings.TrimSuffix(s3BaseURL, "/"),
+					strings.TrimSuffix(e.settings.HostInit.S3BaseURL, "/"),
 					BuildRevision,
 					archPath,
 				}, "/"),
@@ -1325,10 +1303,11 @@ func getLocalClientConfig(baseURL, s3BaseURL string) (*ClientConfig, error) {
 		return nil
 	})
 	if err != nil {
-		return nil, errors.Wrap(err, "finding client binaries")
+		return errors.Wrap(err, "finding client binaries")
 	}
 
-	return c, nil
+	e.clientConfig = c
+	return nil
 }
 
 func (e *envState) JasperManager() jasper.Manager {
