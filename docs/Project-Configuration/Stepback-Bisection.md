@@ -47,3 +47,5 @@ As commit '2' passes, Evergreen will activate the task between '5' and '2'.
 ![stepback-bisection-4.png](../images/stepback-bisection-4.png)
 
 Finally, commit 3 fails, ending stepback and declaring commit labeled '3' as the offending commit.
+
+![stepback-bisection-5.png](../images/stepback-bisection-5.png)
