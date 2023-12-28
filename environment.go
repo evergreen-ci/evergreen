@@ -17,6 +17,7 @@ import (
 	"github.com/evergreen-ci/evergreen/util"
 	"github.com/evergreen-ci/gimlet"
 	"github.com/evergreen-ci/gimlet/rolemanager"
+	"github.com/evergreen-ci/pail"
 	"github.com/evergreen-ci/utility"
 	"github.com/mitchellh/mapstructure"
 	"github.com/mongodb/amboy"
@@ -136,7 +137,7 @@ type Environment interface {
 
 	// ClientConfig provides access to a list of the latest evergreen
 	// clients, that this server can serve to users
-	ClientConfig() *ClientConfig
+	ClientConfig(context.Context) *ClientConfig
 
 	// SaveConfig persists the configuration settings.
 	SaveConfig(context.Context) error
@@ -680,14 +681,14 @@ func (e *envState) initQueues(ctx context.Context) []error {
 	return catcher.Errors()
 }
 
-func (e *envState) initClientConfig() {
+func (e *envState) initClientConfig(ctx context.Context) {
 	if e.settings == nil {
 		grip.Critical("no settings object, cannot build client configuration")
 		return
 	}
 	var err error
 
-	e.clientConfig, err = getClientConfig(e.settings.Ui.Url, e.settings.HostInit.S3BaseURL)
+	e.clientConfig, err = e.getClientConfig(ctx, e.settings.Ui.Url, e.settings.HostInit.S3BaseURL)
 	if err != nil {
 		grip.Critical(message.WrapError(err, message.Fields{
 			"message": "problem finding local clients",
@@ -977,12 +978,12 @@ func (e *envState) Session() db.Session {
 	return db.WrapClient(e.ctx, e.client).Clone()
 }
 
-func (e *envState) ClientConfig() *ClientConfig {
+func (e *envState) ClientConfig(ctx context.Context) *ClientConfig {
 	e.mu.RLock()
 	defer e.mu.RUnlock()
 
 	if e.clientConfig == nil {
-		e.initClientConfig()
+		e.initClientConfig(ctx)
 		if e.clientConfig == nil {
 			return nil
 		}
@@ -1215,7 +1216,70 @@ func (e *envState) Close(ctx context.Context) error {
 //
 // If there are no built clients, this returns an empty config
 // version, but does *not* error.
-func getClientConfig(baseURL, s3BaseURL string) (*ClientConfig, error) {
+func (e *envState) getClientConfig(ctx context.Context, baseURL, s3BaseURL string) (*ClientConfig, error) {
+	if versionID := os.Getenv(EvergreenVersionID); versionID != "" {
+		return e.getS3ClientConfig(ctx, versionID)
+	}
+	return getLocalClientConfig(baseURL, s3BaseURL)
+}
+
+func (e *envState) getS3ClientConfig(ctx context.Context, versionID string) (*ClientConfig, error) {
+	bucket, err := pail.NewS3Bucket(pail.S3Options{
+		Name:        e.settings.Providers.AWS.BinaryClient.Bucket,
+		Region:      DefaultEC2Region,
+		Credentials: pail.CreateAWSCredentials(e.settings.Providers.AWS.BinaryClient.Key, e.settings.Providers.AWS.BinaryClient.Secret, ""),
+	})
+	if err != nil {
+		return nil, errors.Wrap(err, "constructing pail bucket")
+	}
+
+	clientBinaries, err := e.listClientBinaries(ctx, bucket, versionID)
+	if err != nil {
+		return nil, errors.Wrap(err, "getting client binaries")
+	}
+
+	return &ClientConfig{
+		ClientBinaries: clientBinaries,
+		LatestRevision: ClientVersion,
+	}, nil
+}
+
+func (e *envState) listClientBinaries(ctx context.Context, bucket pail.Bucket, versionID string) ([]ClientBinary, error) {
+	prefix := fmt.Sprintf("%s/%s/", e.settings.Providers.AWS.BinaryClient.Prefix, versionID)
+	iter, err := bucket.List(ctx, prefix)
+	if err != nil {
+		return nil, errors.Wrap(err, "listing client bucket")
+	}
+	var clientBinaries []ClientBinary
+	for iter.Next(ctx) {
+		item := strings.TrimPrefix(iter.Item().Name(), prefix)
+		name := strings.Split(item, "/")
+		if len(name) != 2 || !strings.Contains(name[1], "evergreen") {
+			continue
+		}
+		if displayName, ok := ValidArchDisplayNames[name[0]]; ok {
+			osArchParts := strings.Split(name[0], "_")
+			clientBinaries = append(clientBinaries, ClientBinary{
+				URL: fmt.Sprintf("https://%s.s3.amazonaws.com/%s/%s/%s",
+					e.settings.Providers.AWS.BinaryClient.Bucket,
+					e.settings.Providers.AWS.BinaryClient.Prefix,
+					versionID,
+					item,
+				),
+				OS:          osArchParts[0],
+				Arch:        osArchParts[1],
+				DisplayName: displayName,
+			})
+		}
+	}
+	if err = iter.Err(); err != nil {
+		return nil, errors.Wrap(err, "iterating client bucket contents")
+	}
+
+	return clientBinaries, nil
+}
+
+func getLocalClientConfig(baseURL, s3BaseURL string) (*ClientConfig, error) {
 	c := &ClientConfig{}
 	c.LatestRevision = ClientVersion
 	root := filepath.Join(FindEvergreenHome(), ClientDirectory)

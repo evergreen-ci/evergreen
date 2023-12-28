@@ -66,7 +66,7 @@ func (r *queryResolver) AwsRegions(ctx context.Context) ([]string, error) {
 
 // ClientConfig is the resolver for the clientConfig field.
 func (r *queryResolver) ClientConfig(ctx context.Context) (*restModel.APIClientConfig, error) {
-	envClientConfig := evergreen.GetEnvironment().ClientConfig()
+	envClientConfig := evergreen.GetEnvironment().ClientConfig(ctx)
 	clientConfig := restModel.APIClientConfig{}
 	clientConfig.BuildFromService(*envClientConfig)
 	return &clientConfig, nil

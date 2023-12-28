@@ -249,7 +249,7 @@ func (e *Environment) SaveConfig(context.Context) error {
 	return nil
 }
 
-func (e *Environment) ClientConfig() *evergreen.ClientConfig {
+func (e *Environment) ClientConfig(context.Context) *evergreen.ClientConfig {
 	return &evergreen.ClientConfig{
 		LatestRevision: evergreen.ClientVersion,
 		ClientBinaries: []evergreen.ClientBinary{

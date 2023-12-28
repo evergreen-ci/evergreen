@@ -13,7 +13,7 @@ import (
 func GetCLIUpdate(ctx context.Context) (*model.APICLIUpdate, error) {
 	update := &model.APICLIUpdate{}
 	env := evergreen.GetEnvironment()
-	config := env.ClientConfig()
+	config := env.ClientConfig(ctx)
 	if config == nil {
 		return nil, gimlet.ErrorResponse{
 			StatusCode: http.StatusInternalServerError,

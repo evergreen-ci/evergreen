@@ -126,6 +126,9 @@ func (s *EnvironmentSuite) TestConfigErrorsIfCannotValidateConfig() {
 }
 
 func (s *EnvironmentSuite) TestGetClientConfig() {
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
 	root := filepath.Join(FindEvergreenHome(), ClientDirectory)
 	if err := os.Mkdir(root, os.ModeDir|os.ModePerm); err != nil {
 		s.True(os.IsExist(err))
@@ -148,7 +151,8 @@ func (s *EnvironmentSuite) TestGetClientConfig() {
 		}()
 	}
 
-	client, err := getClientConfig("https://example.com", "")
+	e := envState{}
+	client, err := e.getClientConfig(ctx, "https://example.com", "")
 	s.Require().NoError(err)
 	s.Require().NotNil(client)
 
@@ -169,7 +173,7 @@ func (s *EnvironmentSuite) TestGetClientConfig() {
 	s.Equal("linux", cb[1].OS)
 	s.Equal("https://example.com/clients/linux_z80_obviouslynottherealone/evergreen", cb[1].URL)
 
-	client, err = getClientConfig("https://example.com", "https://another-example.com")
+	client, err = e.getClientConfig(ctx, "https://example.com", "https://another-example.com")
 	s.Require().NoError(err)
 	s.Require().NotNil(client)
 
