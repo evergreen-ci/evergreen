@@ -448,6 +448,7 @@ func setupTestTestLogDirectoryHandler(t *testing.T, comm *client.Mock) (*task.Ta
 
 	return tsk, h
 }
+
 func setupCedarServer(ctx context.Context, t *testing.T, comm *client.Mock) *timberutil.MockCedarServer {
 	srv, err := timberutil.NewMockCedarServer(ctx, serviceutil.NextPort())
 	require.NoError(t, err)
