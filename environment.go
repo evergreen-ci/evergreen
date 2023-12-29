@@ -690,7 +690,6 @@ func (e *envState) initQueues(ctx context.Context) []error {
 // the version's S3 clients in place of local links. If there are no built clients, this returns an empty config
 // version, but does *not* error.
 func (e *envState) initClientConfig(ctx context.Context, versionID string) error {
-
 	if versionID != "" {
 		return e.populateS3ClientConfig(ctx, versionID)
 	}
@@ -1217,7 +1216,7 @@ func (e *envState) populateS3ClientConfig(ctx context.Context, versionID string)
 
 	c := &ClientConfig{
 		LatestRevision: ClientVersion,
-		S3URLPrefix: fmt.Sprintf("https://%s.s3.amazonaws.com/%s/%s/",
+		S3URLPrefix: fmt.Sprintf("https://%s.s3.amazonaws.com/%s/%s",
 			e.settings.Providers.AWS.BinaryClient.Bucket,
 			e.settings.Providers.AWS.BinaryClient.Prefix,
 			versionID,
