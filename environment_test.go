@@ -28,7 +28,7 @@ func init() {
 		ctx := context.Background()
 
 		path := testConfigFile()
-		env, err := NewEnvironment(ctx, path, nil)
+		env, err := NewEnvironment(ctx, path, "", nil)
 		grip.EmergencyFatal(message.WrapError(err, message.Fields{
 			"message": "could not initialize test environment",
 			"path":    path,
@@ -88,7 +88,7 @@ func (s *EnvironmentSuite) TestLoadingConfig() {
 
 	originalEnv := GetEnvironment()
 	// first test loading config from a file
-	env, err := NewEnvironment(ctx, s.path, nil)
+	env, err := NewEnvironment(ctx, s.path, "", nil)
 	SetEnvironment(env)
 	defer func() {
 		SetEnvironment(originalEnv)
@@ -106,7 +106,7 @@ func (s *EnvironmentSuite) TestLoadingConfig() {
 	s.NoError(err)
 	db := settings.Database
 
-	env, err = NewEnvironment(ctx, "", &db)
+	env, err = NewEnvironment(ctx, "", "", &db)
 	s.Require().NoError(err)
 	SetEnvironment(env)
 
@@ -125,10 +125,7 @@ func (s *EnvironmentSuite) TestConfigErrorsIfCannotValidateConfig() {
 	s.Contains(err.Error(), "validating settings")
 }
 
-func (s *EnvironmentSuite) TestGetClientConfig() {
-	ctx, cancel := context.WithCancel(context.Background())
-	defer cancel()
-
+func (s *EnvironmentSuite) TestPopulateLocalClientConfig() {
 	root := filepath.Join(FindEvergreenHome(), ClientDirectory)
 	if err := os.Mkdir(root, os.ModeDir|os.ModePerm); err != nil {
 		s.True(os.IsExist(err))
@@ -151,15 +148,19 @@ func (s *EnvironmentSuite) TestGetClientConfig() {
 		}()
 	}
 
-	e := envState{}
-	client, err := e.getClientConfig(ctx, "https://example.com", "")
-	s.Require().NoError(err)
-	s.Require().NotNil(client)
+	e := envState{
+		settings: &Settings{
+			HostInit: HostInitConfig{S3BaseURL: "https://another-example.com"},
+			Ui:       UIConfig{Url: "https://example.com"},
+		},
+	}
+	s.Require().NoError(e.populateLocalClientConfig())
+	s.Require().NotNil(e.clientConfig)
 
-	s.Equal(ClientVersion, client.LatestRevision)
+	s.Equal(ClientVersion, e.clientConfig.LatestRevision)
 
 	cb := []ClientBinary{}
-	for _, b := range client.ClientBinaries {
+	for _, b := range e.clientConfig.ClientBinaries {
 		if strings.Contains(b.URL, "_obviouslynottherealone/") {
 			cb = append(cb, b)
 		}
@@ -173,14 +174,13 @@ func (s *EnvironmentSuite) TestGetClientConfig() {
 	s.Equal("linux", cb[1].OS)
 	s.Equal("https://example.com/clients/linux_z80_obviouslynottherealone/evergreen", cb[1].URL)
 
-	client, err = e.getClientConfig(ctx, "https://example.com", "https://another-example.com")
-	s.Require().NoError(err)
-	s.Require().NotNil(client)
+	s.Require().NoError(e.populateLocalClientConfig())
+	s.Require().NotNil(e.clientConfig)
 
-	s.Equal(ClientVersion, client.LatestRevision)
+	s.Equal(ClientVersion, e.clientConfig.LatestRevision)
 
 	var binaries []ClientBinary
-	for _, b := range client.ClientBinaries {
+	for _, b := range e.clientConfig.ClientBinaries {
 		if strings.Contains(b.URL, "_obviouslynottherealone/") {
 			binaries = append(binaries, b)
 		}
@@ -195,7 +195,7 @@ func (s *EnvironmentSuite) TestGetClientConfig() {
 	s.Equal("https://example.com/clients/linux_z80_obviouslynottherealone/evergreen", binaries[1].URL)
 
 	var s3Binaries []ClientBinary
-	for _, b := range client.S3ClientBinaries {
+	for _, b := range e.clientConfig.S3ClientBinaries {
 		if strings.Contains(b.URL, "_obviouslynottherealone/") {
 			s3Binaries = append(s3Binaries, b)
 		}

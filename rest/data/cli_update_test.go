@@ -6,6 +6,7 @@ import (
 
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/db"
+	"github.com/evergreen-ci/evergreen/mock"
 	"github.com/stretchr/testify/suite"
 )
 
@@ -40,7 +41,7 @@ func (s *cliUpdateConnectorSuite) Test() {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 
-	v, err := GetCLIUpdate(ctx)
+	v, err := GetCLIUpdate(ctx, &mock.Environment{})
 	s.Require().NoError(err)
 	s.Require().NotNil(v)
 	s.NotEmpty(v.ClientConfig.LatestRevision)
@@ -51,7 +52,7 @@ func (s *cliUpdateConnectorSuite) TestDegradedMode() {
 	defer cancel()
 
 	s.degrade()
-	v, err := GetCLIUpdate(ctx)
+	v, err := GetCLIUpdate(ctx, &mock.Environment{})
 	s.NoError(err)
 	s.Require().NotNil(v)
 	s.True(v.IgnoreUpdate)

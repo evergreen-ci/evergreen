@@ -4,7 +4,6 @@ package mock
 import (
 	"context"
 	"math"
-	"runtime"
 	"sync"
 	"time"
 
@@ -47,6 +46,7 @@ type Environment struct {
 	roleManager             gimlet.RoleManager
 	userManager             gimlet.UserManager
 	userManagerInfo         evergreen.UserManagerInfo
+	Clients                 evergreen.ClientConfig
 	shutdownSequenceStarted bool
 }
 
@@ -131,6 +131,10 @@ func (e *Environment) Configure(ctx context.Context) error {
 		return errors.Wrap(err, "creating user manager")
 	}
 	e.userManager = um
+
+	e.Clients = evergreen.ClientConfig{
+		LatestRevision: evergreen.ClientVersion,
+	}
 
 	return nil
 }
@@ -250,16 +254,9 @@ func (e *Environment) SaveConfig(context.Context) error {
 }
 
 func (e *Environment) ClientConfig() *evergreen.ClientConfig {
-	return &evergreen.ClientConfig{
-		LatestRevision: evergreen.ClientVersion,
-		ClientBinaries: []evergreen.ClientBinary{
-			evergreen.ClientBinary{
-				URL:  "https://example.com/clients/evergreen",
-				OS:   runtime.GOOS,
-				Arch: runtime.GOARCH,
-			},
-		},
-	}
+	e.mu.RLock()
+	defer e.mu.RUnlock()
+	return &e.Clients
 }
 
 func (e *Environment) GetGitHubSender(owner, repo string) (send.Sender, error) {
