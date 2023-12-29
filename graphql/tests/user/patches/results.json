@@ -1,0 +1,239 @@
+{
+  "tests": [
+    {
+      "query_file": "all_params.graphql",
+      "result": {
+        "data": {
+          "user": {
+            "patches": {
+              "patches": [
+                {
+                  "status": "failed",
+                  "projectIdentifier": "myProjectIdentifier",
+                  "id": "5e4ff3abe3c3317e352062e7",
+                  "description": "222",
+                  "alias": "__github"
+                },
+                {
+                  "status": "failed",
+                  "projectIdentifier": "myProjectIdentifier",
+                  "id": "5e4ff3abe3c3317e352062e9",
+                  "description": "222",
+                  "alias": "__github"
+                }
+              ],
+              "filteredPatchCount": 2
+            }
+          }
+        }
+      }
+    },
+    {
+      "query_file": "default_params.graphql",
+      "result": {
+        "data": {
+          "user": {
+            "patches": {
+              "patches": [
+                { "id": "5e4ff3abe3c3317e352062e8" },
+                { "id": "5e4ff3abe3c3317e352062e7" },
+                { "id": "5e4ff3abe3c3317e352062e6" },
+                { "id": "5e4ff3abe3c3317e352062e5" },
+                { "id": "5e4ff3abe3c3317e352062e4" },
+                { "id": "5e4ff3abe3c3317e352062e9" }
+              ],
+              "filteredPatchCount": 6
+            }
+          }
+        }
+      }
+    },
+    {
+      "query_file": "include_hidden_patches.graphql",
+      "result": {
+        "data": {
+          "user": {
+            "includeHidden": {
+              "patches": [
+                {
+                  "id": "5e4ff3abe3c3317e352062e8",
+                  "hidden": false
+                },
+                {
+                  "id": "5e4ff3abe3c3317e352062e7",
+                  "hidden": true
+                },
+                {
+                  "id": "5e4ff3abe3c3317e352062e6",
+                  "hidden": false
+                },
+                {
+                  "id": "5e4ff3abe3c3317e352062e5",
+                  "hidden": false
+                },
+                {
+                  "id": "5e4ff3abe3c3317e352062e4",
+                  "hidden": false
+                },
+                {
+                  "id": "5e4ff3abe3c3317e352062e9",
+                  "hidden": false
+                }
+              ],
+              "filteredPatchCount": 6
+            },
+            "excludeHidden": {
+              "patches": [
+                {
+                  "id": "5e4ff3abe3c3317e352062e8",
+                  "hidden": false
+                },
+                {
+                  "id": "5e4ff3abe3c3317e352062e6",
+                  "hidden": false
+                },
+                {
+                  "id": "5e4ff3abe3c3317e352062e5",
+                  "hidden": false
+                },
+                {
+                  "id": "5e4ff3abe3c3317e352062e4",
+                  "hidden": false
+                },
+                {
+                  "id": "5e4ff3abe3c3317e352062e9",
+                  "hidden": false
+                }
+              ],
+              "filteredPatchCount": 5
+            },
+            "unsuppliedHidden": {
+              "patches": [
+                {
+                  "id": "5e4ff3abe3c3317e352062e8",
+                  "hidden": false
+                },
+                {
+                  "id": "5e4ff3abe3c3317e352062e7",
+                  "hidden": true
+                },
+                {
+                  "id": "5e4ff3abe3c3317e352062e6",
+                  "hidden": false
+                },
+                {
+                  "id": "5e4ff3abe3c3317e352062e5",
+                  "hidden": false
+                },
+                {
+                  "id": "5e4ff3abe3c3317e352062e4",
+                  "hidden": false
+                },
+                {
+                  "id": "5e4ff3abe3c3317e352062e9",
+                  "hidden": false
+                }
+              ],
+              "filteredPatchCount": 6
+            }
+          }
+        }
+      }
+    },
+    {
+      "query_file": "include_commit_queue.graphql",
+      "result": {
+        "data": {
+          "user": {
+            "patches": {
+              "patches": [
+                { "id": "5e4ff3abe3c3317e352062e8" },
+                { "id": "5e4ff3abe3c3317e352062e7" },
+                { "id": "5e4ff3abe3c3317e352062e6" },
+                { "id": "5e4ff3abe3c3317e352062e5" },
+                { "id": "5e4ff3abe3c3317e352062e4" },
+                { "id": "5e4ff3abe3c3317e352062e9" }
+              ],
+              "filteredPatchCount": 6
+            }
+          }
+        }
+      }
+    },
+    {
+      "query_file": "nonexistent_user.graphql",
+      "result": {
+        "errors": [
+          {
+            "message": "Could not find user from user ID",
+            "path": ["user"],
+            "extensions": {
+              "code": "RESOURCE_NOT_FOUND"
+            }
+          }
+        ],
+        "data": null
+      }
+    },
+    {
+      "query_file": "pagination.graphql",
+      "result": {
+        "data": {
+          "page0": {
+            "patches": {
+              "patches": [
+                { "id": "5e4ff3abe3c3317e352062e8" },
+                { "id": "5e4ff3abe3c3317e352062e7" },
+                { "id": "5e4ff3abe3c3317e352062e6" }
+              ],
+              "filteredPatchCount": 6
+            }
+          },
+          "page1": {
+            "patches": {
+              "patches": [
+                { "id": "5e4ff3abe3c3317e352062e5" },
+                { "id": "5e4ff3abe3c3317e352062e4" },
+                { "id": "5e4ff3abe3c3317e352062e9" }
+              ],
+              "filteredPatchCount": 6
+            }
+          }
+        }
+      }
+    },
+    {
+      "query_file": "patch_name.graphql",
+      "result": {
+        "data": {
+          "user": {
+            "patches": {
+              "patches": [
+                { "id": "5e4ff3abe3c3317e352062e7", "description": "222" },
+                { "id": "5e4ff3abe3c3317e352062e5", "description": "222" },
+                { "id": "5e4ff3abe3c3317e352062e9", "description": "222" }
+              ],
+              "filteredPatchCount": 3
+            }
+          }
+        }
+      }
+    },
+    {
+      "query_file": "statuses.graphql",
+      "result": {
+        "data": {
+          "user": {
+            "patches": {
+              "patches": [
+                { "id": "5e4ff3abe3c3317e352062e7", "status": "failed" },
+                { "id": "5e4ff3abe3c3317e352062e9", "status": "failed" }
+              ],
+              "filteredPatchCount": 2
+            }
+          }
+        }
+      }
+    }
+  ]
+}

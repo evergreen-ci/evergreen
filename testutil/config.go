@@ -91,8 +91,6 @@ func MockConfig() *evergreen.Settings {
 			DBConnection: evergreen.AmboyDBConfig{
 				Database: "db",
 				URL:      "mongodb://localhost:27017",
-				Username: "user",
-				Password: "password",
 			},
 			PoolSizeLocal:                         10,
 			PoolSizeRemote:                        20,
@@ -169,8 +167,8 @@ func MockConfig() *evergreen.Settings {
 		AWSInstanceRole: "role",
 		Banner:          "banner",
 		BannerTheme:     "important",
-		Buckets: evergreen.BucketConfig{
-			LogBucket: evergreen.Bucket{
+		Buckets: evergreen.BucketsConfig{
+			LogBucket: evergreen.BucketConfig{
 				Name: "logs",
 				Type: evergreen.BucketTypeS3,
 			},
@@ -232,6 +230,9 @@ func MockConfig() *evergreen.Settings {
 			DefaultProject: "proj",
 		},
 		Keys: map[string]string{"k3": "v3"},
+		TaskLimits: evergreen.TaskLimitsConfig{
+			MaxTasksPerVersion: 1000,
+		},
 		LoggerConfig: evergreen.LoggerConfig{
 			Buffer: evergreen.LogBuffering{
 				UseAsync:             true,
@@ -348,26 +349,6 @@ func MockConfig() *evergreen.Settings {
 			Docker: evergreen.DockerConfig{
 				APIVersion: "docker_version",
 			},
-			GCE: evergreen.GCEConfig{
-				ClientEmail:  "gce_email",
-				PrivateKey:   "gce_key",
-				PrivateKeyID: "gce_key_id",
-				TokenURI:     "gce_token",
-			},
-			OpenStack: evergreen.OpenStackConfig{
-				IdentityEndpoint: "endpoint",
-				Username:         "username",
-				Password:         "password",
-				DomainName:       "domain",
-				ProjectName:      "project",
-				ProjectID:        "project_id",
-				Region:           "region",
-			},
-			VSphere: evergreen.VSphereConfig{
-				Host:     "host",
-				Username: "vsphere",
-				Password: "vsphere_pass",
-			},
 		},
 		RepoTracker: evergreen.RepoTrackerConfig{
 			NumNewRepoRevisionsToFetch: 10,
@@ -379,6 +360,7 @@ func MockConfig() *evergreen.Settings {
 		},
 		ServiceFlags: evergreen.ServiceFlags{
 			TaskDispatchDisabled:           true,
+			LargeParserProjectsDisabled:    true,
 			HostInitDisabled:               true,
 			PodInitDisabled:                true,
 			S3BinaryDownloadsDisabled:      true,
@@ -401,7 +383,7 @@ func MockConfig() *evergreen.Settings {
 			UnrecognizedPodCleanupDisabled: true,
 			CloudCleanupDisabled:           true,
 			LegacyUIPublicAccessDisabled:   true,
-			UnsetFunctionVarsDisabled:      true,
+			LegacyUIDistroPageDisabled:     true,
 		},
 		SSHKeyDirectory: "/ssh_key_directory",
 		SSHKeyPairs: []evergreen.SSHKeyPair{

@@ -1,0 +1,18 @@
+query {
+  user(userId: "bob.smith") {
+    displayName
+    userId
+    permissions {
+      canCreateDistro
+      distroPermissions(options: {distroId: "rhel71-power8-large"}) {
+        admin
+        edit
+        view
+      }
+      projectPermissions(options: { projectIdentifier: "sandbox_project_id" }) {
+        edit
+        view
+      }
+    }
+  }
+}

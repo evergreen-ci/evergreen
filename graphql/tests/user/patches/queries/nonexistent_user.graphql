@@ -1,0 +1,10 @@
+{
+  user(userId: "nonexistent user") {
+    patches(patchesInput: { includeHidden: true }) {
+      patches {
+        id
+      }
+      filteredPatchCount
+    }
+  }
+}

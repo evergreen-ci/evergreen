@@ -179,9 +179,6 @@ func (s *AdminRouteSuite) TestAdminRoute() {
 	s.EqualValues(testSettings.PodLifecycle.MaxSecretCleanupRate, settings.PodLifecycle.MaxSecretCleanupRate)
 	s.Equal(len(testSettings.Providers.AWS.EC2Keys), len(settings.Providers.AWS.EC2Keys))
 	s.EqualValues(testSettings.Providers.Docker.APIVersion, settings.Providers.Docker.APIVersion)
-	s.EqualValues(testSettings.Providers.GCE.ClientEmail, settings.Providers.GCE.ClientEmail)
-	s.EqualValues(testSettings.Providers.OpenStack.IdentityEndpoint, settings.Providers.OpenStack.IdentityEndpoint)
-	s.EqualValues(testSettings.Providers.VSphere.Host, settings.Providers.VSphere.Host)
 	s.EqualValues(testSettings.RepoTracker.MaxConcurrentRequests, settings.RepoTracker.MaxConcurrentRequests)
 	s.EqualValues(testSettings.Scheduler.TaskFinder, settings.Scheduler.TaskFinder)
 	s.EqualValues(testSettings.ServiceFlags.HostInitDisabled, settings.ServiceFlags.HostInitDisabled)
@@ -189,11 +186,12 @@ func (s *AdminRouteSuite) TestAdminRoute() {
 	s.EqualValues(testSettings.ServiceFlags.PodAllocatorDisabled, settings.ServiceFlags.PodAllocatorDisabled)
 	s.EqualValues(testSettings.ServiceFlags.UnrecognizedPodCleanupDisabled, settings.ServiceFlags.UnrecognizedPodCleanupDisabled)
 	s.EqualValues(testSettings.ServiceFlags.S3BinaryDownloadsDisabled, settings.ServiceFlags.S3BinaryDownloadsDisabled)
+	s.EqualValues(testSettings.ServiceFlags.LargeParserProjectsDisabled, settings.ServiceFlags.LargeParserProjectsDisabled)
 	s.EqualValues(testSettings.ServiceFlags.CloudCleanupDisabled, settings.ServiceFlags.CloudCleanupDisabled)
-	s.EqualValues(testSettings.ServiceFlags.UnsetFunctionVarsDisabled, settings.ServiceFlags.UnsetFunctionVarsDisabled)
 	s.EqualValues(testSettings.Slack.Level, settings.Slack.Level)
 	s.EqualValues(testSettings.Slack.Options.Channel, settings.Slack.Options.Channel)
 	s.EqualValues(testSettings.Splunk.SplunkConnectionInfo.Channel, settings.Splunk.SplunkConnectionInfo.Channel)
+	s.EqualValues(testSettings.TaskLimits.MaxTasksPerVersion, settings.TaskLimits.MaxTasksPerVersion)
 	s.EqualValues(testSettings.Ui.HttpListenAddr, settings.Ui.HttpListenAddr)
 
 	// test that invalid input errors

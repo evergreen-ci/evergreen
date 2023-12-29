@@ -155,13 +155,17 @@ var projectWarningValidators = []projectValidator{
 	checkTaskRuns,
 	checkModules,
 	checkTasks,
+	checkRequestersForTaskDependencies,
 	checkBuildVariants,
 }
 
+// Functions used to validate a project configuration that requires additional
+// info such as admin settings and project settings.
 var projectSettingsValidators = []projectSettingsValidator{
 	validateTaskSyncSettings,
 	validateVersionControl,
 	validateContainers,
+	validateProjectLimits,
 }
 
 // These validators have the potential to be very long, and may not be fully run unless specified.
@@ -219,6 +223,52 @@ func getDistrosForProject(ctx context.Context, projectID string) (ids []string, 
 		}
 	}
 	return ids, aliases, nil
+}
+
+// CheckProject calls the validating logic for a Project's configuration.
+// That is, ProjectErrors, ProjectWarnings, ProjectConfigErrors,
+// ProjectSettings, and AliasWarnings. If a respective item is nil,
+// it will not check it (e.g. if the config is nil, it does not check the config).
+// projectRefId is used to determine if there is a project specified and
+// projectRefErr is used to determine if there was a problem retrieving
+// the ref; both output different warnings for the project.
+func CheckProject(ctx context.Context, project *model.Project, config *model.ProjectConfig, ref *model.ProjectRef, includeLong bool, projectRefId string, projectRefErr error) ValidationErrors {
+	isConfigDefined := config != nil
+	verrs := CheckProjectErrors(ctx, project, includeLong)
+	verrs = append(verrs, CheckProjectWarnings(project)...)
+	if config != nil {
+		verrs = append(verrs, CheckProjectConfigErrors(config)...)
+	}
+
+	if projectRefId == "" {
+		verrs = append(verrs, ValidationError{
+			Message: "no project specified; validation will proceed without checking project settings and alias coverage",
+			Level:   Warning,
+		})
+		return verrs
+	}
+	if ref == nil {
+		if projectRefErr != nil {
+			return append(verrs, ValidationError{
+				Message: "error finding project; validation will proceed without checking project settings and alias coverage",
+				Level:   Warning,
+			})
+		}
+		return append(verrs, ValidationError{
+			Message: "project does not exist; validation will proceed without checking project settings and alias coverage",
+			Level:   Warning,
+		})
+	}
+	verrs = append(verrs, CheckProjectSettings(ctx, evergreen.GetEnvironment().Settings(), project, ref, isConfigDefined)...)
+	// Check project aliases
+	aliases, err := model.ConstructMergedAliasesByPrecedence(ref, config, ref.RepoRefId)
+	if err != nil {
+		return append(verrs, ValidationError{
+			Message: "problem finding aliases; validation will not check alias coverage",
+			Level:   Warning,
+		})
+	}
+	return append(verrs, CheckAliasWarnings(project, aliases)...)
 }
 
 // verify that the project configuration semantics is valid
@@ -911,6 +961,17 @@ func checkRunOn(runOnHasDistro, runOnHasContainer bool, runOn []string) []Valida
 	return nil
 }
 
+func validateProjectLimits(_ context.Context, settings *evergreen.Settings, project *model.Project, _ *model.ProjectRef, _ bool) ValidationErrors {
+	errs := ValidationErrors{}
+	if settings.TaskLimits.MaxTasksPerVersion > 0 && len(project.Tasks) > settings.TaskLimits.MaxTasksPerVersion {
+		errs = append(errs, ValidationError{
+			Message: fmt.Sprintf("project's total number of tasks (%d) exceeds maximum limit (%d)", len(project.Tasks), settings.TaskLimits.MaxTasksPerVersion),
+			Level:   Error,
+		})
+	}
+	return errs
+}
+
 // validateTaskNames ensures the task names do not contain unauthorized characters.
 func validateTaskNames(project *model.Project) ValidationErrors {
 	unauthorizedTaskCharacters := unauthorizedCharacters + " "
@@ -985,19 +1046,35 @@ func checkModules(project *model.Project) ValidationErrors {
 			})
 		}
 
-		// Warn if repo is empty or does not conform to Git URL format
-		owner, repo, err := thirdparty.ParseGitUrl(module.Repo)
-		if err != nil {
+		if module.Owner == "" {
+			// Warn if repo is empty or does not conform to Git URL format
+			owner, repo, err := thirdparty.ParseGitUrl(module.Repo)
+			if err != nil {
+				errs = append(errs, ValidationError{
+					Level:   Warning,
+					Message: errors.Wrapf(err, "module '%s' does not have a valid repo URL format", module.Name).Error(),
+				})
+			} else if owner == "" || repo == "" {
+				errs = append(errs, ValidationError{
+					Level:   Warning,
+					Message: fmt.Sprintf("module '%s' repo '%s' is missing an owner or repo name", module.Name, module.Repo),
+				})
+			}
+		} else if !strings.Contains(module.Repo, "git@github.com:") && module.Owner == "" {
 			errs = append(errs, ValidationError{
 				Level:   Warning,
-				Message: errors.Wrapf(err, "module '%s' does not have a valid repo URL format", module.Name).Error(),
+				Message: fmt.Sprintf("module '%s' is missing an owner", module.Name),
 			})
-		} else if owner == "" || repo == "" {
+
+		}
+
+		if module.Repo == "" {
 			errs = append(errs, ValidationError{
 				Level:   Warning,
-				Message: fmt.Sprintf("module '%s' repo '%s' is missing an owner or repo name", module.Name, module.Repo),
+				Message: fmt.Sprintf("module '%s' should have a set repo", module.Name),
 			})
 		}
+
 	}
 
 	return errs
@@ -1533,31 +1610,48 @@ func validateTaskDependencies(project *model.Project) ValidationErrors {
 // run for the same requesters. For example, a task that runs in a mainline
 // commit cannot depend on a patch only task since the dependency will only be
 // satisfiable in patches.
-func checkRequestersForTaskDependencies(task *model.ProjectTask, allTasks map[string]model.ProjectTask) ValidationErrors {
-	errs := ValidationErrors{}
+func checkRequestersForTaskDependencies(project *model.Project) ValidationErrors {
+	bvtus := map[model.TVPair]model.BuildVariantTaskUnit{}
+	bvs := map[string]struct{}{}
+	tasks := map[string]struct{}{}
+	for _, bvtu := range project.FindAllBuildVariantTasks() {
+		bvtus[model.TVPair{Variant: bvtu.Variant, TaskName: bvtu.Name}] = bvtu
+		bvs[bvtu.Variant] = struct{}{}
+		tasks[bvtu.Name] = struct{}{}
+	}
 
-	for _, dep := range task.DependsOn {
-		dependent, exists := allTasks[dep.Name]
-		if !exists {
-			continue
-		}
-		if utility.FromBoolPtr(dependent.PatchOnly) && !utility.FromBoolPtr(task.PatchOnly) {
-			errs = append(errs, ValidationError{
-				Level:   Warning,
-				Message: fmt.Sprintf("Task '%s' depends on patch-only task '%s'. Both will only run in patches", task.Name, dep.Name),
-			})
-		}
-		if !utility.FromBoolTPtr(dependent.Patchable) && utility.FromBoolTPtr(task.Patchable) {
-			errs = append(errs, ValidationError{
-				Level:   Warning,
-				Message: fmt.Sprintf("Task '%s' depends on non-patchable task '%s'. Neither will run in patches", task.Name, dep.Name),
-			})
-		}
-		if utility.FromBoolPtr(dependent.GitTagOnly) && !utility.FromBoolPtr(task.GitTagOnly) {
-			errs = append(errs, ValidationError{
-				Level:   Warning,
-				Message: fmt.Sprintf("Task '%s' depends on git-tag-only task '%s'. Both will only run when pushing git tags", task.Name, dep.Name),
-			})
+	var errs ValidationErrors
+	for _, bvtu := range bvtus {
+		for _, d := range bvtu.DependsOn {
+			dep := model.TVPair{Variant: d.Variant, TaskName: d.Name}
+			if dep.Variant == "" {
+				// Implicit build variant - if no build variant is explicitly
+				// stated, the task and dependency should both run in the same
+				// build variant.
+				dep.Variant = bvtu.Variant
+			}
+			dependent := project.FindTaskForVariant(dep.TaskName, dep.Variant)
+			if dependent == nil {
+				continue
+			}
+			if utility.FromBoolPtr(dependent.PatchOnly) && !utility.FromBoolPtr(bvtu.PatchOnly) {
+				errs = append(errs, ValidationError{
+					Level:   Warning,
+					Message: fmt.Sprintf("Task '%s' depends on patch-only task '%s'. Both will only run in patches", bvtu.Name, d.Name),
+				})
+			}
+			if !utility.FromBoolTPtr(dependent.Patchable) && utility.FromBoolTPtr(bvtu.Patchable) {
+				errs = append(errs, ValidationError{
+					Level:   Warning,
+					Message: fmt.Sprintf("Task '%s' depends on non-patchable task '%s'. Neither will run in patches", bvtu.Name, d.Name),
+				})
+			}
+			if utility.FromBoolPtr(dependent.GitTagOnly) && !utility.FromBoolPtr(bvtu.GitTagOnly) {
+				errs = append(errs, ValidationError{
+					Level:   Warning,
+					Message: fmt.Sprintf("Task '%s' depends on git-tag-only task '%s'. Both will only run when pushing git tags", bvtu.Name, d.Name),
+				})
+			}
 		}
 	}
 
@@ -2180,7 +2274,6 @@ func parseS3PullParameters(c model.PluginCommandConf) (task, bv string, err erro
 func checkTasks(project *model.Project) ValidationErrors {
 	errs := ValidationErrors{}
 	execTimeoutWarningAdded := false
-	allTasks := project.FindAllTasksMap()
 	for _, task := range project.Tasks {
 		if len(task.Commands) == 0 {
 			errs = append(errs,
@@ -2203,7 +2296,6 @@ func checkTasks(project *model.Project) ValidationErrors {
 			execTimeoutWarningAdded = true
 		}
 		errs = append(errs, checkLoggerConfig(&task)...)
-		errs = append(errs, checkRequestersForTaskDependencies(&task, allTasks)...)
 		errs = append(errs, checkTaskNames(project, &task)...)
 	}
 	if project.Loggers != nil {

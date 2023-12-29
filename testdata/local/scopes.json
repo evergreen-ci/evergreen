@@ -1,4 +1,4 @@
-{ "_id" : "all_projects", "name" : "all projects", "type" : "project", "resources": ["logkeeper", "evergreen", "sys-perf", "spruce", "mongodb-mongo-master", "602d70a2b2373672ee493184"] }
+{ "_id" : "all_projects", "name" : "all projects", "type" : "project", "resources": ["logkeeper", "evergreen", "sys-perf", "spruce", "mongodb-mongo-master", "602d70a2b2373672ee493184", "mongodb-mongo-test", "performance"] }
 { "_id" : "unrestricted_projects", "name" : "unrestricted projects", "type" : "project", "parent" : "all_projects", "resources": ["logkeeper", "evergreen", "sys-perf"] }
 { "_id" : "restricted_projects", "name" : "restricted projects", "type" : "project", "parent" : "all_projects", "resources": [] }
 { "_id" : "logkeeper", "name" : "logkeeper project", "type" : "project", "resources" : [ "logkeeper" ] }

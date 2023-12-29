@@ -1,0 +1,29 @@
+{
+  "users": [
+    {
+      "_id": "bob.smith",
+      "display_name": "Bob Smith",
+      "first_name": "Bob",
+      "last_name": "Smith",
+      "settings": {
+        "timezone": "America/New_York",
+        "region": "us-west-1",
+        "github_user": {
+          "last_known_as": "bob_smith_1"
+        }
+      }
+    }
+  ],
+  "project_ref": [
+    {
+      "_id" : "sandbox_project_id",
+      "identifier" : "sandbox",
+      "display_name" : "Sandbox",
+      "enabled" : null,
+      "owner_name" : "evergreen-ci",
+      "repo_name" : "commit-queue-sandbox",
+      "branch_name" : "main",
+      "admins": ["me"]
+    }
+  ]
+}

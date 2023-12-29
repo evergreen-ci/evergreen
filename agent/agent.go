@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"runtime"
 	"strings"
 	"sync"
 	"time"
@@ -400,9 +401,8 @@ func (a *Agent) setupTask(agentCtx, setupCtx context.Context, initialTC *taskCon
 				ID:     nt.TaskId,
 				Secret: nt.TaskSecret,
 			},
-			ranSetupGroup:             !shouldSetupGroup,
-			oomTracker:                jasper.NewOOMTracker(),
-			unsetFunctionVarsDisabled: nt.UnsetFunctionVarsDisabled,
+			ranSetupGroup: !shouldSetupGroup,
+			oomTracker:    jasper.NewOOMTracker(),
 		}
 	} else {
 		tc = initialTC
@@ -454,6 +454,8 @@ func (a *Agent) setupTask(agentCtx, setupCtx context.Context, initialTC *taskCon
 	tc.logger.Task().Infof("Task logger initialized (agent version '%s' from Evergreen build revision '%s').", evergreen.AgentVersion, evergreen.BuildRevision)
 	tc.logger.Execution().Info("Execution logger initialized.")
 	tc.logger.System().Info("System logger initialized.")
+
+	tc.logger.Execution().Error(errors.Wrap(tc.getDeviceNames(setupCtx), "getting device names for disks"))
 
 	if err := setupCtx.Err(); err != nil {
 		return a.handleSetupError(setupCtx, tc, errors.Wrap(err, "making task config"))
@@ -676,6 +678,14 @@ func (a *Agent) runPreAndMain(ctx context.Context, tc *taskContext) (status stri
 		"df -h",
 		"${ps|ps}",
 	)
+	// Running the `df` command on Unix systems displays inode
+	// statistics without the `-i` flag by default. However, we need
+	// to pass the flag explicitly for Linux, hence the conditional.
+	// We do not include Windows in the conditional because running
+	// `df -h -i` on Cygwin does not report these statistics.
+	if runtime.GOOS == "linux" {
+		statsCollector.Cmds = append(statsCollector.Cmds, "df -h -i")
+	}
 
 	statsCollector.logStats(execTimeoutCtx, tc.taskConfig.Expansions)
 
@@ -1005,8 +1015,9 @@ func (a *Agent) endTaskResponse(ctx context.Context, tc *taskContext, status str
 	}
 
 	detail := &apimodels.TaskEndDetail{
-		OOMTracker: tc.getOomTrackerInfo(),
-		TraceID:    tc.traceID,
+		OOMTracker:  tc.getOomTrackerInfo(),
+		TraceID:     tc.traceID,
+		DiskDevices: tc.diskDevices,
 	}
 	setEndTaskFailureDetails(tc, detail, status, highestPriorityDescription, userDefinedFailureType)
 	if tc.taskConfig != nil {
@@ -1021,7 +1032,7 @@ func setEndTaskFailureDetails(tc *taskContext, detail *apimodels.TaskEndDetail, 
 		// If there is no explicit user-defined description or failure type,
 		// infer that information from the last command that ran.
 		if description == "" {
-			description = tc.getCurrentCommand().DisplayName()
+			description = tc.getCurrentCommand().FullDisplayName()
 			isDefaultDescription = true
 		}
 		if failureType == "" {

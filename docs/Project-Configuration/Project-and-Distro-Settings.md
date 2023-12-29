@@ -65,6 +65,25 @@ Admins can also set the branch project to inherit values from a
 repo-level project settings configuration. This can be learned about at
 ['Using Repo Level Settings'](Repo-Level-Settings.md).
 
+### Project Flags
+
+Under project flags, admins have a number of options for users to configure what
+runs for their project. For example, admins can enable the ability to unschedule old 
+tasks if a more recent commit passes, or configure tasks to stepback on failure to 
+isolate the cause.
+
+Check out the settings on the page to see more options.
+
+#### Repotracker Settings
+By default, Evergreen creates mainline commits (also known as waterfall versions or 
+cron builds) for enabled projects. 
+
+Admins can prevent projects from creating mainline commits by **disabling repotracking**,
+while still allowing for other kinds of versions (periodic builds, patches, etc).
+
+Additionally, admins can **Force Repotracker Run** to check for new commits if needed 
+(Evergreen occasionally misses commits due to misconfiguration or GitHub outages).
+
 ### Access and Admin Settings
 
 Admins can set a project as private or public. A private project can
@@ -82,11 +101,6 @@ via the REST API. The default for this setting is to allow logged-in
 users basic access to this project. Note this is different from the
 Private/Public setting above, which restricts access for users that are
 not logged in.
-
-### Scheduling Settings
-
-Admins can enable the ability to unschedule old tasks if a more recent
-commit passes.
 
 ### Variables
 
@@ -108,7 +122,7 @@ GitHub checks, git tag triggers, project triggers, and patch triggers.
 For most aliases, you must define a variant regex or tags, and a task
 regex or tags to match. The matching variants/tasks will be included for the
 alias. If matching by tags, alias tags support a limited set of the [tag
-selector syntax](https://docs.devprod.prod.corp.mongodb.com/evergreen/Project-Configuration/Project-Configuration-Files/#task-and-variant-tags).
+selector syntax](Project-Configuration-Files.md#task-and-variant-tags).
 In particular, it supports tag negation and multiple tag criteria separated by
 spaces to get the set intersection of those tags. For example, when defining
 task tags:
@@ -242,9 +256,16 @@ section of the project configuration page. Click "Add Project Trigger".
 Options:
 
 -   Project: The upstream project.
+-   Level: Accepted values are task, build, and push. Task and build levels will trigger
+    based on the completion of either a task or a build in the upstream project. 
+    - Push level triggers do not require any upstream build or task to run, but instead trigger a downstream version once
+    a commit is pushed to the upstream project.
+    - For push level triggers, if the upstream project is a module of the downstream project's YAML,
+    the manifest of the downstream version will use the commit hash of the upstream project's commit.
+-   Status: Only applicable to build and task level triggers. Specify which status of the upstream 
+    build or task should trigger a downstream version.
 -   Date cutoff: Do not trigger a downstream build if a user manually
     schedules a build older than this number of days.
--   Level: Trigger based on either a task or a build completing.
 -   Variant and task regexes: Trigger based on these variants (if
     build-level) or variants and tasks (if task-level) completing.
 -   Definition file: The path to the downstream project's config file.
@@ -357,7 +378,7 @@ Options:
 ### Virtual Workstation Commands
 
 Users can specify custom commands to be run when setting up their
-virtual workstation.
+virtual workstation. See more info [here](../Hosts/Developer-Workstations.md#project-setup).
 
 Options:
 
@@ -373,25 +394,39 @@ Options:
 Users can enable the performance plugin for tracking historical
 performance of tasks and tests.
 
-### Build Baron
+### Ticket Creation
 
-Configure the build baron to create build failure tickets under a
-specific project from a list of projects to search for failures.
+Configure task Failure Details tab options.
+
+#### Jira Ticket Search and Create
+
+Specify Jira projects to create and search tickets for.
 
 Options:
+- Ticket Search Projects: Jira projects for Evergreen to search
+    in when looking for failures to populate the "Related Tickets 
+    from Jira" Failure Details tab section
+- Ticket Create Project: The Jira project to file tickets for using 
+    the "File Ticket" Failure Details tab button. Additionally, you 
+    can configure the issue type.
 
--   Ticket Create Project: The JIRA project to create build failure
-    tickets in.
--   Ticket Search Projects: JIRA projects for the build baron to search
-    in when looking for failures.
+#### Custom Ticket Creation
+
+Specify the endpoint and secret for a custom webhook to be called when the 
+File Ticket button is clicked on a failing task.
+
+Options:
+- Webhook Endpoint: The endpoint to be called.
+- Webhook Secret: The secret to be used for the given endpoint.
+
 
 ### Task Annotation Settings
 
-Configure custom API integrations when generating build failure tickets.
+Configure custom API integrations when generating failure tickets.
 
 Options:
 
--   Webhook: A custom setup for creating build failure tickets,
+-   Webhook: A custom setup for creating failure tickets,
     specifying an endpoint an optional secret.
 -   JIRA custom fields: Custom field and display test allowing for the
     creation of a specific field when displaying jira links.
@@ -418,7 +453,7 @@ configurations to be used by other users.
 Distros describe machine configuration that run tasks as well as the
 worker pools were tasks execute. As a result much of the available
 configuration that controls how tasks execute occurs at the distro
-level.
+level. For more information about available distro choices see [Guidelines around Evergreen distros](https://wiki.corp.mongodb.com/x/CZ7yBg)
 
 ### Scheduler Options
 
@@ -486,21 +521,35 @@ that all execute independently:
 
 ## Version Control
 
-Enabling version control for configurations on the project page will
-allow a number of the settings detailed above to also be specified in
-the project YAML alongside the settings that are specified in ['Project Configuration Files'](Project-Configuration-Files.md).
-Evergreen will merge the settings in the project page, repo page, then the YAML, in that order. In case of duplicates, like aliases with the same names, the ones defined on the project page will take precedence over those
-defined in the YAML.
+A subset of the above project settings can also be specified in [config YAML](Project-Configuration-Files.md).
+To enable this feature, the "version control" flag must be enabled on the project settings page.
+![container_metadata.png](../images/version_control.png)
 
-Note: [included files](Project-Configuration-Files.md#include) do not currently support version-controlled configurations. Version-controlled configuration must
+Once toggled, the settings specified [below](#available-fields) may be defined in YAML, rather than in the project or repo settings page.
+
+**Note**: [included files](Project-Configuration-Files.md#include) do not currently support version-controlled configurations. Version-controlled configuration must
 be defined in the main YAML file for it to take effect.
 
-Below shows example configurations for these settings that can be
-included within the project YAML and the configuration structure
-associated with each setting.
+### Hierarchical Inheritance
 
-## Aliases
+Since these settings may be defined in either the project settings page, repo settings page, or YAML, there is a hierarchy of inheritance,
+which is as follows:
+1. Project settings page
+2. Repo settings page
+3. YAML
 
+This means that YAML settings are overridden by repo page settings, which are overridden by project page settings. For example,
+if the YAML defines a [field](#available-fields) such as `patch_aliases`, and the project / repo settings page also defines 
+patch aliases, the YAML settings will be ignored until the corresponding project / repo settings are cleared. This
+is applicable for all settings that may be defined in YAML.
+
+
+### Available Fields
+
+The following are example configurations for how to define each setting that may be
+defined in the project YAML, along with a link to its equivalent project setting.
+
+### Project Aliases
 [View setting
 definition](#aliases)
 
@@ -586,13 +635,13 @@ task_sync:
    patch_enabled: false
 ```
 
-### Build Baron
+### Ticket Creation
 
 [View setting
-definition](#build-baron)
+definition](#ticket-creation)
 
 ``` yaml
-build_baron_settings:
+build_baron_settings: # This name is a holdover from legacy naming.
   ticket_create_project: EVG
   ticket_search_projects:
     - SERVER

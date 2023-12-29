@@ -61,6 +61,10 @@ const (
 
 	RoleCollection  = "roles"
 	ScopeCollection = "scopes"
+
+	awsAuthMechanism        = "MONGODB-AWS"
+	awsSessionToken         = "AWS_SESSION_TOKEN"
+	mongoExternalAuthSource = "$external"
 )
 
 func init() { globalEnvLock = &sync.RWMutex{} }
@@ -348,21 +352,11 @@ func (e *envState) initDB(ctx context.Context, settings DBSettings) error {
 		SetConnectTimeout(5 * time.Second).
 		SetMonitor(apm.NewMonitor(apm.WithCommandAttributeDisabled(false), apm.WithCommandAttributeTransformer(redactSensitiveCollections)))
 
-	if settings.HasAuth() {
-		ymlUser, ymlPwd, err := settings.GetAuth()
-		if err != nil {
-			grip.Error(message.WrapError(err, message.Fields{
-				"message": "problem getting auth settings from YAML file, attempting to connect without auth",
-			}))
-		}
-		if err == nil && ymlUser != "" {
-			credential := options.Credential{
-				Username: ymlUser,
-				Password: ymlPwd,
-			}
-
-			opts.SetAuth(credential)
-		}
+	if settings.AWSAuthEnabled {
+		opts.SetAuth(options.Credential{
+			AuthMechanism: awsAuthMechanism,
+			AuthSource:    mongoExternalAuthSource,
+		})
 	}
 
 	var err error
@@ -388,10 +382,10 @@ func (e *envState) createRemoteQueues(ctx context.Context) error {
 		SetWriteConcern(e.settings.Database.WriteConcernSettings.Resolve()).
 		SetMonitor(apm.NewMonitor(apm.WithCommandAttributeDisabled(false)))
 
-	if e.settings.Amboy.DBConnection.Username != "" && e.settings.Amboy.DBConnection.Password != "" {
+	if e.settings.Database.AWSAuthEnabled {
 		opts.SetAuth(options.Credential{
-			Username: e.settings.Amboy.DBConnection.Username,
-			Password: e.settings.Amboy.DBConnection.Password,
+			AuthMechanism: awsAuthMechanism,
+			AuthSource:    mongoExternalAuthSource,
 		})
 	}
 
@@ -740,7 +734,9 @@ func (e *envState) initSenders(ctx context.Context) error {
 	if err == nil && len(githubToken) > 0 {
 		// Github Status
 		sender, err = send.NewGithubStatusLogger("evergreen", &send.GithubOptions{
-			Token: githubToken,
+			Token:       githubToken,
+			MinDelay:    GithubRetryMinDelay,
+			MaxAttempts: GitHubRetryAttempts,
 		}, "")
 		if err != nil {
 			return errors.Wrap(err, "setting up GitHub status logger")
@@ -1099,7 +1095,9 @@ func (e *envState) GetGitHubSender(owner, repo string) (send.Sender, error) {
 		return legacySender, nil
 	}
 	sender, err := send.NewGithubStatusLogger("evergreen", &send.GithubOptions{
-		Token: token,
+		Token:       token,
+		MinDelay:    GithubRetryMinDelay,
+		MaxAttempts: GitHubRetryAttempts,
 	}, "")
 	if err != nil {
 		// TODO EVG-19966: Delete fallback to legacy GitHub sender

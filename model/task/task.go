@@ -2,7 +2,6 @@ package task
 
 import (
 	"context"
-	"encoding/json"
 	"fmt"
 	"regexp"
 	"runtime/debug"
@@ -245,9 +244,13 @@ type Task struct {
 	// ResetWhenFinished indicates that a task should be reset once it is
 	// finished running. This is typically to deal with tasks that should be
 	// reset but cannot do so yet because they're currently running.
-	ResetWhenFinished       bool  `bson:"reset_when_finished,omitempty" json:"reset_when_finished,omitempty"`
-	ResetFailedWhenFinished bool  `bson:"reset_failed_when_finished,omitempty" json:"reset_failed_when_finished,omitempty"`
-	DisplayTask             *Task `bson:"-" json:"-"` // this is a local pointer from an exec to display task
+	ResetWhenFinished       bool `bson:"reset_when_finished,omitempty" json:"reset_when_finished,omitempty"`
+	ResetFailedWhenFinished bool `bson:"reset_failed_when_finished,omitempty" json:"reset_failed_when_finished,omitempty"`
+	// NumAutomaticRestarts is the number of times the task has been programmatically restarted via a failed agent command.
+	NumAutomaticRestarts int `bson:"num_automatic_restarts,omitempty" json:"num_automatic_restarts,omitempty"`
+	// IsAutomaticRestart indicates that the task was restarted via a failing agent command that was set to retry on failure.
+	IsAutomaticRestart bool  `bson:"is_automatic_restart,omitempty" json:"is_automatic_restart,omitempty"`
+	DisplayTask        *Task `bson:"-" json:"-"` // this is a local pointer from an exec to display task
 
 	// DisplayTaskId is set to the display task ID if the task is an execution task, the empty string if it's not an execution task,
 	// and is nil if we haven't yet checked whether or not this task has a display task.
@@ -263,8 +266,15 @@ type Task struct {
 	GeneratedTasks bool `bson:"generated_tasks,omitempty" json:"generated_tasks,omitempty"`
 	// GeneratedBy, if present, is the ID of the task that generated this task.
 	GeneratedBy string `bson:"generated_by,omitempty" json:"generated_by,omitempty"`
-	// GeneratedJSONAsString is the configuration information to create new tasks from.
-	GeneratedJSONAsString []string `bson:"generated_json,omitempty" json:"generated_json,omitempty"`
+	// GeneratedJSONAsString is the configuration information to update the
+	// project YAML for generate.tasks. This is only used to store the
+	// configuration if GeneratedJSONStorageMethod is unset or is explicitly set
+	// to "db".
+	GeneratedJSONAsString GeneratedJSONFiles `bson:"generated_json,omitempty" json:"generated_json,omitempty"`
+	// GeneratedJSONStorageMethod describes how the generated JSON for
+	// generate.tasks is stored for this task before it's merged with the
+	// existing project YAML.
+	GeneratedJSONStorageMethod evergreen.ParserProjectStorageMethod `bson:"generated_json_storage_method,omitempty" json:"generated_json_storage_method,omitempty"`
 	// GenerateTasksError any encountered while generating tasks.
 	GenerateTasksError string `bson:"generate_error,omitempty" json:"generate_error,omitempty"`
 	// GeneratedTasksToActivate is only populated if we want to override activation for these generated tasks, because of stepback.
@@ -289,6 +299,9 @@ type Task struct {
 	IsEssentialToSucceed bool `bson:"is_essential_to_succeed" json:"is_essential_to_succeed"`
 }
 
+// GeneratedJSONFiles represent files used by a task for generate.tasks to update the project YAML.
+type GeneratedJSONFiles []string
+
 // StepbackInfo helps determine which task to bisect to when performing stepback.
 type StepbackInfo struct {
 	// LastFailingStepbackTaskId stores the last failing task while doing stepback.
@@ -296,8 +309,10 @@ type StepbackInfo struct {
 	// LastPassingStepbackTaskId stores the last passing task while doing stepback.
 	LastPassingStepbackTaskId string `bson:"last_passing_stepback_task_id,omitempty" json:"last_passing_stepback_task_id"`
 	// NextStepbackTaskId stores the next task id to stepback to when doing bisect stepback. This
-	// is the middle of LastFailingStepbackTaskId and LastPassingStepbackTaskId.
+	// is the middle of LastFailingStepbackTaskId and LastPassingStepbackTaskId of the last iteration.
 	NextStepbackTaskId string `bson:"next_stepback_task_id,omitempty" json:"next_stepback_task_id"`
+	// PreviousStepbackTaskId stores the last stepback iteration id.
+	PreviousStepbackTaskId string `bson:"previous_stepback_task_id,omitempty" json:"previous_stepback_task_id"`
 }
 
 // ExecutionPlatform indicates the type of environment that the task runs in.
@@ -1216,27 +1231,59 @@ func GenerateNotRun() ([]Task, error) {
 	}))
 }
 
-// SetGeneratedJSON sets JSON data to generate tasks from.
-func (t *Task) SetGeneratedJSON(json []json.RawMessage) error {
-	if len(t.GeneratedJSONAsString) > 0 {
+// SetGeneratedJSON sets JSON data to generate tasks from. If the generated JSON
+// files have already been stored, this is a no-op.
+func (t *Task) SetGeneratedJSON(files GeneratedJSONFiles) error {
+	if len(t.GeneratedJSONAsString) > 0 || t.GeneratedJSONStorageMethod != "" {
 		return nil
 	}
-	s := []string{}
-	for _, j := range json {
-		s = append(s, string(j))
-	}
-	t.GeneratedJSONAsString = s
-	return UpdateOne(
+
+	if err := UpdateOne(
 		bson.M{
-			IdKey:                    t.Id,
-			GeneratedJSONAsStringKey: bson.M{"$exists": false},
+			IdKey:                         t.Id,
+			GeneratedJSONAsStringKey:      bson.M{"$exists": false},
+			GeneratedJSONStorageMethodKey: nil,
 		},
 		bson.M{
 			"$set": bson.M{
-				GeneratedJSONAsStringKey: s,
+				GeneratedJSONAsStringKey:      files,
+				GeneratedJSONStorageMethodKey: evergreen.ProjectStorageMethodDB,
 			},
 		},
-	)
+	); err != nil {
+		return err
+	}
+
+	t.GeneratedJSONAsString = files
+	t.GeneratedJSONStorageMethod = evergreen.ProjectStorageMethodDB
+
+	return nil
+}
+
+// SetGeneratedJSONStorageMethod sets the task's generated JSON file storage
+// method. If it's already been set, this is a no-op.
+func (t *Task) SetGeneratedJSONStorageMethod(method evergreen.ParserProjectStorageMethod) error {
+	if t.GeneratedJSONStorageMethod != "" {
+		return nil
+	}
+
+	if err := UpdateOne(
+		bson.M{
+			IdKey:                         t.Id,
+			GeneratedJSONStorageMethodKey: nil,
+		},
+		bson.M{
+			"$set": bson.M{
+				GeneratedJSONStorageMethodKey: method,
+			},
+		},
+	); err != nil {
+		return err
+	}
+
+	t.GeneratedJSONStorageMethod = method
+
+	return nil
 }
 
 // SetGeneratedTasksToActivate adds a task to stepback after activation
@@ -1288,12 +1335,12 @@ func SetTasksScheduledTime(tasks []Task, scheduledTime time.Time) error {
 	return nil
 }
 
-// GetTaskIdBetweenIds gets the task between two task given that they are
+// findMidwayTask gets the task between two task given that they are
 // from the same project, requester, build variant, and display name. The
 // order of the ID's does not matter and if the task passed cannot have a
 // middle (i.e. it is sequential tasks or the same task) it will return the
 // the first task given.
-func FindMidwayTask(t1, t2 Task) (*Task, error) {
+func findMidwayTask(t1, t2 Task) (*Task, error) {
 	// The tasks should be the same build variant, display name, project, and requester.
 	catcher := grip.NewBasicCatcher() // Makes an error accumulator
 	catcher.ErrorfWhen(t1.BuildVariant != t2.BuildVariant, "given tasks have differing build variants '%s' and '%s'", t1.BuildVariant, t2.BuildVariant)
@@ -1303,14 +1350,42 @@ func FindMidwayTask(t1, t2 Task) (*Task, error) {
 	if catcher.HasErrors() {
 		return nil, catcher.Resolve()
 	}
-	// If the tasks are sequential or the same order number, return the first given task.
+	// If the tasks are sequential or the same order number, return the
+	// lowest revision order number task (this keeps behavior consistent,
+	// since the mid value below is always truncated and leans towards the
+	// lower revision order number).
 	d := t1.RevisionOrderNumber - t2.RevisionOrderNumber
 	if d == -1 || d == 0 || d == 1 {
-		return &t1, nil
+		if t1.RevisionOrderNumber < t2.RevisionOrderNumber {
+			return &t1, nil
+		}
+		return &t2, nil
 	}
 
 	mid := (t1.RevisionOrderNumber + t2.RevisionOrderNumber) / 2
 	return FindOne(db.Query(ByRevisionOrderNumber(t1.BuildVariant, t1.DisplayName, t1.Project, t1.Requester, mid)))
+}
+
+// FindMidwayTaskFromIds gets the task between two tasks given that they are
+// from the same project, requester, build variant, and display name. If the tasks
+// passed cannot have a middle (i.e. it is sequential tasks or the same task)
+// it will return the first task given.
+func FindMidwayTaskFromIds(t1Id, t2Id string) (*Task, error) {
+	t1, err := FindOneId(t1Id)
+	if err != nil {
+		return nil, errors.Wrapf(err, "finding task id '%s'", t1Id)
+	}
+	if t1 == nil {
+		return nil, errors.Errorf("could not find task id '%s'", t1Id)
+	}
+	t2, err := FindOneId(t2Id)
+	if err != nil {
+		return nil, errors.Wrapf(err, "finding task id %s", t2Id)
+	}
+	if t2 == nil {
+		return nil, errors.Errorf("could not find task id '%s'", t2Id)
+	}
+	return findMidwayTask(*t1, *t2)
 }
 
 // UnscheduleStaleUnderwaterHostTasks Removes host tasks older than the unscheduable threshold (e.g. one week) from
@@ -1341,40 +1416,6 @@ func UnscheduleStaleUnderwaterHostTasks(ctx context.Context, distroID string) (i
 	}
 
 	return info.Updated, nil
-}
-
-// LegacyDeactivateStepbackTasksForProject deactivates and aborts any scheduled/running tasks
-// for this project that were activated by stepback.
-// TODO: remove as part of EVG-17947
-func LegacyDeactivateStepbackTasksForProject(projectId, caller string) error {
-	tasks, err := FindActivatedStepbackTasks(projectId)
-	if err != nil {
-		return errors.Wrap(err, "finding activated stepback tasks")
-	}
-
-	if err = DeactivateTasks(tasks, true, caller); err != nil {
-		return errors.Wrap(err, "deactivating active stepback tasks")
-	}
-
-	grip.InfoWhen(len(tasks) > 0, message.Fields{
-		"message":    "deactivated active stepback tasks",
-		"project_id": projectId,
-		"user":       caller,
-		"num_tasks":  len(tasks),
-	})
-
-	abortTaskIds := []string{}
-	for _, t := range tasks {
-		if t.IsAbortable() {
-			abortTaskIds = append(abortTaskIds, t.Id)
-			event.LogTaskAbortRequest(t.Id, t.Execution, caller)
-		}
-	}
-	if err = SetManyAborted(abortTaskIds, AbortInfo{User: caller}); err != nil {
-		return errors.Wrap(err, "aborting in progress tasks")
-	}
-
-	return nil
 }
 
 // DeactivateStepbackTask deactivates and aborts the matching stepback task.
@@ -1454,19 +1495,8 @@ func GetSystemFailureDetails(description string) apimodels.TaskEndDetail {
 	return details
 }
 
-func SetManyAborted(taskIds []string, reason AbortInfo) error {
-	return UpdateOne(
-		ByIds(taskIds),
-		bson.M{
-			"$set": bson.M{
-				AbortedKey:   true,
-				AbortInfoKey: reason,
-			},
-		},
-	)
-}
-
-// SetAborted sets the abort field of task to aborted
+// SetAborted sets the abort field and abort info of task to aborted
+// and prevents the task from being reset when finished.
 func (t *Task) SetAborted(reason AbortInfo) error {
 	t.Aborted = true
 	return UpdateOne(
@@ -1474,26 +1504,51 @@ func (t *Task) SetAborted(reason AbortInfo) error {
 			IdKey: t.Id,
 		},
 		bson.M{
+			"$set": taskAbortUpdate(reason),
+		},
+	)
+}
+
+func taskAbortUpdate(reason AbortInfo) bson.M {
+	return bson.M{
+		AbortedKey:            true,
+		AbortInfoKey:          reason,
+		ResetWhenFinishedKey:  false,
+		IsAutomaticRestartKey: false,
+	}
+}
+
+// SetLastAndPreviousStepbackIds sets the LastFailingStepbackTaskId,
+// LastPassingStepbackTaskId, and PreviousStepbackTaskId for a given task id.
+func SetLastAndPreviousStepbackIds(taskId string, s StepbackInfo) error {
+	return UpdateOne(
+		bson.M{
+			IdKey: taskId,
+		},
+		bson.M{
 			"$set": bson.M{
-				AbortedKey:   true,
-				AbortInfoKey: reason,
+				StepbackInfoKey: bson.M{
+					LastFailingStepbackTaskIdKey: s.LastFailingStepbackTaskId,
+					LastPassingStepbackTaskIdKey: s.LastPassingStepbackTaskId,
+					PreviousStepbackTaskIdKey:    s.PreviousStepbackTaskId,
+				},
 			},
 		},
 	)
 }
 
-// SetStepbackInfo adds the StepbackInfo to the task.
-func (t *Task) SetStepbackInfo(s StepbackInfo) error {
-	t.StepbackInfo = &s
+// SetNextStepbackId sets the NextStepbackTaskId for a given task id.
+func SetNextStepbackId(taskId string, s StepbackInfo) error {
 	return UpdateOne(
 		bson.M{
-			IdKey: t.Id,
+			IdKey: taskId,
 		},
 		bson.M{
 			"$set": bson.M{
-				StepbackInfoKey: s,
+				bsonutil.GetDottedKeyName(StepbackInfoKey, NextStepbackTaskIdKey): s.NextStepbackTaskId,
 			},
-		})
+		},
+	)
 }
 
 // initializeTaskOutputInfo returns the task output information with the most
@@ -1529,6 +1584,16 @@ func (t *Task) getTaskOutputSafe() (*taskoutput.TaskOutput, bool) {
 	}
 
 	return t.TaskOutputInfo, true
+}
+
+// GetTaskOutputInfoWithError is a convenience function to avoid panics when
+// accessing the task output data.
+func (t *Task) GetTaskOutputWithError() (*taskoutput.TaskOutput, error) {
+	if t.TaskOutputInfo == nil {
+		return nil, errors.New("programmatic error: task output info expected to be set but found nil")
+	}
+
+	return t.TaskOutputInfo, nil
 }
 
 // GetTaskLogs returns the task's task logs with the given options.
@@ -2027,7 +2092,6 @@ func (t *Task) MarkEnd(finishTime time.Time, detail *apimodels.TaskEndDetail) er
 				ContainerAllocatedTimeKey: 1,
 			},
 		})
-
 }
 
 // GetDisplayStatus finds and sets DisplayStatus to the task. It should reflect
@@ -2172,6 +2236,7 @@ func resetTaskUpdate(t *Task) []bson.M {
 		t.OverrideDependencies = false
 		t.ContainerAllocationAttempts = 0
 		t.CanReset = false
+		t.IsAutomaticRestart = false
 	}
 	update := []bson.M{
 		{
@@ -2204,6 +2269,7 @@ func resetTaskUpdate(t *Task) []bson.M {
 				ResultsFailedKey,
 				HasCedarResultsKey,
 				ResetWhenFinishedKey,
+				IsAutomaticRestartKey,
 				ResetFailedWhenFinishedKey,
 				AgentVersionKey,
 				HostIdKey,
@@ -2413,10 +2479,7 @@ func abortTasksByQuery(q bson.M, reason AbortInfo) error {
 	}
 	_, err = UpdateAll(
 		ByIds(ids),
-		bson.M{"$set": bson.M{
-			AbortedKey:   true,
-			AbortInfoKey: reason,
-		}},
+		bson.M{"$set": taskAbortUpdate(reason)},
 	)
 	if err != nil {
 		return errors.Wrap(err, "setting aborted statuses")
@@ -2764,6 +2827,36 @@ func (t *Task) SetResetWhenFinished() error {
 			},
 		},
 	)
+}
+
+// SetResetWhenFinishedWithInc requests that a task (that was marked to
+// automatically reset when finished via the agent status server) reset itself
+// when finished. It will also increment the number of automatic resets the task
+// has performed.
+func (t *Task) SetResetWhenFinishedWithInc() error {
+	if t.ResetWhenFinished {
+		return nil
+	}
+	if t.Aborted {
+		return errors.New("cannot set reset when finished for aborted task")
+	}
+	err := UpdateOne(
+		bson.M{
+			IdKey:                 t.Id,
+			AbortedKey:            bson.M{"$ne": true},
+			IsAutomaticRestartKey: bson.M{"$ne": true},
+		},
+		bson.M{
+			"$set": bson.M{
+				ResetWhenFinishedKey:  true,
+				IsAutomaticRestartKey: true,
+			},
+			"$inc": bson.M{
+				NumAutomaticRestartsKey: 1,
+			},
+		},
+	)
+	return err
 }
 
 // SetResetFailedWhenFinished requests that a display task

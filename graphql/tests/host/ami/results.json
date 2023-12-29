@@ -1,0 +1,15 @@
+{
+  "tests": [
+    {
+      "query_file": "ami.graphql",
+      "result": {
+        "data": {
+          "host": {
+            "id": "ubuntu1604-ppc-1.pic.build.10gen.cc",
+            "ami": "ami-0b69ea66ff7391e80"
+          }
+        }
+      }
+    }
+  ]
+}

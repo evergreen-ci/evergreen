@@ -69,6 +69,7 @@ var (
 	hostInitKey                       = bsonutil.MustHaveTag(ServiceFlags{}, "HostInitDisabled")
 	podInitDisabledKey                = bsonutil.MustHaveTag(ServiceFlags{}, "PodInitDisabled")
 	s3BinaryDownloadsDisabledKey      = bsonutil.MustHaveTag(ServiceFlags{}, "S3BinaryDownloadsDisabled")
+	largeParserProjectsDisabledKey    = bsonutil.MustHaveTag(ServiceFlags{}, "LargeParserProjectsDisabled")
 	monitorKey                        = bsonutil.MustHaveTag(ServiceFlags{}, "MonitorDisabled")
 	alertsKey                         = bsonutil.MustHaveTag(ServiceFlags{}, "AlertsDisabled")
 	agentStartKey                     = bsonutil.MustHaveTag(ServiceFlags{}, "AgentStartDisabled")
@@ -97,7 +98,7 @@ var (
 	legacyUIPublicAccessDisabledKey   = bsonutil.MustHaveTag(ServiceFlags{}, "LegacyUIPublicAccessDisabled")
 	globalGitHubTokenDisabledKey      = bsonutil.MustHaveTag(ServiceFlags{}, "GlobalGitHubTokenDisabled")
 	unrecognizedPodCleanupDisabledKey = bsonutil.MustHaveTag(ServiceFlags{}, "UnrecognizedPodCleanupDisabled")
-	unsetFunctionVarsDisabledKey      = bsonutil.MustHaveTag(ServiceFlags{}, "UnsetFunctionVarsDisabled")
+	legacyUIDistroPageDisabledKey     = bsonutil.MustHaveTag(ServiceFlags{}, "LegacyUIDistroPageDisabled")
 
 	// ContainerPoolsConfig keys
 	poolsKey = bsonutil.MustHaveTag(ContainerPoolsConfig{}, "Pools")

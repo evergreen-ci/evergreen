@@ -649,21 +649,281 @@ buildvariants:
 }
 
 func TestCheckRequestersForTaskDependencies(t *testing.T) {
-	t.Run("DependingOnNonPatchableTaskGeneratesWarning", func(t *testing.T) {
-		p := model.Project{
-			Tasks: []model.ProjectTask{
-				{Name: "t1", DependsOn: []model.TaskUnitDependency{
-					{Name: "t2", Variant: model.AllVariants},
-				}},
-				{Name: "t2", Patchable: utility.FalsePtr()},
-			},
-		}
-		allTasks := p.FindAllTasksMap()
-		errs := checkRequestersForTaskDependencies(&p.Tasks[0], allTasks)
-		errs = append(errs, checkRequestersForTaskDependencies(&p.Tasks[1], allTasks)...)
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
+	t.Run("SucceedsWithNilDependencySetting", func(t *testing.T) {
+		projYAML := `
+tasks:
+  - name: dep
+    commands:
+      - command: shell.exec
+        params:
+          shell: bash
+          script: |
+            echo "hi"
+
+  - name: task
+    patch_only: true
+    depends_on:
+      - name: dep
+    commands:
+      - command: shell.exec
+        params:
+          shell: bash
+          script: |
+            echo "hi"
+buildvariants:
+  - name: ubuntu2204
+    display_name: Ubuntu 22.04
+    run_on:
+      - localhost
+    tasks:
+      - name: "task"
+      - name: "dep"
+`
+		var p model.Project
+		_, err := model.LoadProjectInto(ctx, []byte(projYAML), nil, "", &p)
+		require.NoError(t, err)
+		errs := checkRequestersForTaskDependencies(&p)
+
+		assert.Empty(t, errs)
+	})
+	t.Run("SucceedsAtTaskLevelMatch", func(t *testing.T) {
+		projYAML := `
+tasks:
+  - name: dep
+    patch_only: true
+    commands:
+      - command: shell.exec
+        params:
+          shell: bash
+          script: |
+            echo "hi"
+
+  - name: task
+    patch_only: true
+    depends_on:
+      - name: dep
+    commands:
+      - command: shell.exec
+        params:
+          shell: bash
+          script: |
+            echo "hi"
+buildvariants:
+  - name: ubuntu2204
+    display_name: Ubuntu 22.04
+    run_on:
+      - localhost
+    tasks:
+      - name: "task"
+      - name: "dep"
+`
+		var p model.Project
+		_, err := model.LoadProjectInto(ctx, []byte(projYAML), nil, "", &p)
+		require.NoError(t, err)
+		errs := checkRequestersForTaskDependencies(&p)
+
+		assert.Empty(t, errs)
+	})
+	t.Run("SucceedsAtBuildVariantLevelMatch", func(t *testing.T) {
+		projYAML := `
+tasks:
+  - name: dep
+    commands:
+      - command: shell.exec
+        params:
+          shell: bash
+          script: |
+            echo "hi"
+
+  - name: task
+    patch_only: true
+    depends_on:
+      - name: dep
+    commands:
+      - command: shell.exec
+        params:
+          shell: bash
+          script: |
+            echo "hi"
+buildvariants:
+  - name: ubuntu2204
+    patch_only: true
+    display_name: Ubuntu 22.04
+    run_on:
+      - localhost
+    tasks:
+      - name: "task"
+      - name: "dep"
+`
+		var p model.Project
+		_, err := model.LoadProjectInto(ctx, []byte(projYAML), nil, "", &p)
+		require.NoError(t, err)
+		errs := checkRequestersForTaskDependencies(&p)
+
+		assert.Empty(t, errs)
+	})
+	t.Run("SucceedsAtBuildVariantTaskLevelMatch", func(t *testing.T) {
+		projYAML := `
+tasks:
+  - name: dep
+    commands:
+      - command: shell.exec
+        params:
+          shell: bash
+          script: |
+            echo "hi"
+
+  - name: task
+    patch_only: true
+    depends_on:
+      - name: dep
+    commands:
+      - command: shell.exec
+        params:
+          shell: bash
+          script: |
+            echo "hi"
+buildvariants:
+  - name: ubuntu2204
+    display_name: Ubuntu 22.04
+    run_on:
+      - localhost
+    tasks:
+      - name: "task"
+      - name: "dep"
+        patch_only: true
+`
+		var p model.Project
+		_, err := model.LoadProjectInto(ctx, []byte(projYAML), nil, "", &p)
+		require.NoError(t, err)
+		errs := checkRequestersForTaskDependencies(&p)
+
+		assert.Empty(t, errs)
+	})
+	t.Run("WarnsWithTaskLevelConflict", func(t *testing.T) {
+		projYAML := `
+tasks:
+  - name: dep
+    patch_only: true
+    commands:
+      - command: shell.exec
+        params:
+          shell: bash
+          script: |
+            echo "hi"
+  - name: task
+    patch_only: false
+    depends_on:
+      - name: dep
+    commands:
+      - command: shell.exec
+        params:
+          shell: bash
+          script: |
+            echo "hi"
+
+buildvariants:
+  - name: ubuntu2204
+    display_name: Ubuntu 22.04
+    run_on:
+      - localhost
+    tasks:
+      - name: "task"
+      - name: "dep"
+`
+		var p model.Project
+		_, err := model.LoadProjectInto(ctx, []byte(projYAML), nil, "", &p)
+		require.NoError(t, err)
+		errs := checkRequestersForTaskDependencies(&p)
+
 		require.Len(t, errs, 1)
-		assert.Equal(t, Warning, errs[0].Level)
-		assert.Contains(t, errs[0].Message, "'t1' depends on non-patchable task 't2'")
+		assert.Equal(t, errs[0].Level, Warning)
+		assert.Contains(t, errs[0].Message, "'task' depends on patch-only task 'dep'")
+	})
+	t.Run("WarnsWithVariantLevelConflict", func(t *testing.T) {
+		projYAML := `
+tasks:
+  - name: dep
+    commands:
+      - command: shell.exec
+        params:
+          shell: bash
+          script: |
+            echo "hi"
+
+  - name: task
+    patch_only: false
+    depends_on:
+      - name: dep
+    commands:
+      - command: shell.exec
+        params:
+          shell: bash
+          script: |
+            echo "hi"
+
+buildvariants:
+  - name: ubuntu2204
+    patch_only: true
+    display_name: Ubuntu 22.04
+    run_on:
+      - localhost
+    tasks:
+      - name: "task"
+      - name: "dep"
+`
+		var p model.Project
+		_, err := model.LoadProjectInto(ctx, []byte(projYAML), nil, "", &p)
+		require.NoError(t, err)
+		errs := checkRequestersForTaskDependencies(&p)
+
+		require.Len(t, errs, 1)
+		assert.Equal(t, errs[0].Level, Warning)
+		assert.Contains(t, errs[0].Message, "'task' depends on patch-only task 'dep'")
+	})
+	t.Run("WarnsWithBuildVariantTaskLevelConflict", func(t *testing.T) {
+		projYAML := `
+tasks:
+  - name: dep
+    commands:
+      - command: shell.exec
+        params:
+          shell: bash
+          script: |
+            echo "hi"
+
+  - name: task
+    patch_only: false
+    depends_on:
+      - name: dep
+    commands:
+      - command: shell.exec
+        params:
+          shell: bash
+          script: |
+            echo "hi"
+
+buildvariants:
+  - name: ubuntu2204
+    display_name: Ubuntu 22.04
+    run_on:
+      - localhost
+    tasks:
+      - name: "task"
+      - name: "dep"
+        patch_only: true
+`
+		var p model.Project
+		_, err := model.LoadProjectInto(ctx, []byte(projYAML), nil, "", &p)
+		require.NoError(t, err)
+		errs := checkRequestersForTaskDependencies(&p)
+
+		require.Len(t, errs, 1)
+		assert.Equal(t, errs[0].Level, Warning)
+		assert.Contains(t, errs[0].Message, "'task' depends on patch-only task 'dep'")
 	})
 }
 
@@ -1113,6 +1373,48 @@ func TestCheckTaskRuns(t *testing.T) {
 	})
 }
 
+func TestValidateProjectLimits(t *testing.T) {
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
+	makeProjectWithNumTasks := func(numTasks int) *model.Project {
+		var project model.Project
+		for i := 0; i < numTasks; i++ {
+			project.Tasks = append(project.Tasks, model.ProjectTask{
+				Name: fmt.Sprintf("task-%d", i),
+			})
+		}
+		return &project
+	}
+
+	t.Run("SucceedsWithNumberOfTasksBelowLimit", func(t *testing.T) {
+		settings := &evergreen.Settings{
+			TaskLimits: evergreen.TaskLimitsConfig{
+				MaxTasksPerVersion: 10,
+			},
+		}
+		project := makeProjectWithNumTasks(5)
+		assert.Empty(t, validateProjectLimits(ctx, settings, project, &model.ProjectRef{}, false))
+	})
+	t.Run("FailsWithTasksExceedingLimit", func(t *testing.T) {
+		settings := &evergreen.Settings{
+			TaskLimits: evergreen.TaskLimitsConfig{
+				MaxTasksPerVersion: 10,
+			},
+		}
+		project := makeProjectWithNumTasks(50)
+		errs := validateProjectLimits(ctx, settings, project, &model.ProjectRef{}, false)
+		require.Len(t, errs, 1)
+		assert.Equal(t, Error, errs[0].Level)
+		assert.Contains(t, "project's total number of tasks (50) exceeds maximum limit (10)", errs[0].Message)
+	})
+	t.Run("SucceedsWithNoMaxTaskLimit", func(t *testing.T) {
+		settings := &evergreen.Settings{}
+		project := makeProjectWithNumTasks(50)
+		assert.Empty(t, validateProjectLimits(ctx, settings, project, &model.ProjectRef{}, false))
+	})
+}
+
 func TestValidateTaskNames(t *testing.T) {
 	Convey("When a task name contains unauthorized characters, an error should be returned", t, func() {
 		project := &model.Project{
@@ -1221,30 +1523,27 @@ func TestCheckModules(t *testing.T) {
 					model.Module{
 						Name:   "module-0",
 						Branch: "main",
-						Repo:   "git@github.com:evergreen-ci/evergreen.git",
+						Owner:  "evergreen-ci",
+						Repo:   "evergreen",
 					},
-					model.Module{
-						Name:   "module-1",
-						Branch: "main",
-					},
-					model.Module{
+					model.Module{ // should fail
 						Name:   "module-2",
 						Branch: "main",
-						Repo:   "evergreen-ci/evergreen.git",
+						Owner:  "evergreen-ci",
 					},
-					model.Module{
+					model.Module{ // should fail
 						Name:   "module-3",
 						Branch: "main",
-						Repo:   "git@github.com:/evergreen.git",
+						Repo:   "evergreen",
 					},
 					model.Module{
 						Name:   "module-4",
 						Branch: "main",
-						Repo:   "git@github.com:evergreen-ci/.git",
+						Repo:   "git@github.com:evergreen-ci/evergreen.git",
 					},
 				},
 			}
-			So(len(checkModules(project)), ShouldEqual, 4)
+			So(len(checkModules(project)), ShouldEqual, 2)
 		})
 	})
 }

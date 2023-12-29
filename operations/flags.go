@@ -47,6 +47,7 @@ const (
 	uncommittedChangesFlag    = "uncommitted"
 	preserveCommitsFlag       = "preserve-commits"
 	subscriptionTypeFlag      = "subscription-type"
+	errorOnWarningsFlagName   = "error-on-warnings"
 
 	anserDryRunFlagName      = "dry-run"
 	anserLimitFlagName       = "limit"
@@ -55,12 +56,12 @@ const (
 	anserPeriodFlagName      = "period"
 	anserMigrationIDFlagName = "id"
 
-	dbUrlFlagName       = "url"
-	dbCredsFileFlagName = "auth-file"
-	dbNameFlagName      = "db"
-	dbWriteNumFlagName  = "w"
-	dbWmodeFlagName     = "wmode"
-	dbRmodeFlagName     = "rmode"
+	dbUrlFlagName      = "url"
+	dbAWSAuthFlagName  = "mongo-aws-auth"
+	dbNameFlagName     = "db"
+	dbWriteNumFlagName = "w"
+	dbWmodeFlagName    = "wmode"
+	dbRmodeFlagName    = "rmode"
 
 	jsonFlagName = "json"
 )
@@ -250,10 +251,10 @@ func addDbSettingsFlags(flags ...cli.Flag) []cli.Flag {
 			Usage: "Database URL(s). For a replica set, list all members separated by a comma.",
 			Value: evergreen.DefaultDatabaseURL,
 		},
-		cli.StringFlag{
-			Name:   dbCredsFileFlagName,
-			Usage:  "specify a DB credential file location",
-			EnvVar: evergreen.MongodbAuthFile,
+		cli.BoolFlag{
+			Name:   dbAWSAuthFlagName,
+			Usage:  "Enable MONGODB_AWS authentication with the database.",
+			EnvVar: evergreen.MongoAWSAuthEnabled,
 		},
 		cli.StringFlag{
 			Name:  dbNameFlagName,

@@ -27,7 +27,7 @@ import (
 
 ////////////////////////////////////////////////////////////////////////
 //
-// POST /rest/v2/hosts/{host_id}
+// POST /rest/v2/hosts
 
 func makeSpawnHostCreateRoute(env evergreen.Environment) gimlet.RouteHandler {
 	return &hostPostHandler{
@@ -41,6 +41,15 @@ type hostPostHandler struct {
 	options *model.HostRequestOptions
 }
 
+// Factory creates an instance of the handler.
+//
+//	@Summary		Spawn a host
+//	@Description	Spawns a host. The host must be of a distro which is spawnable by users.
+//	@Tags			hosts
+//	@Router			/hosts [post]
+//	@Security		Api-User || Api-Key
+//	@Param			{object}	body		model.HostRequestOptions	true	"parameters"
+//	@Success		200			{object}	model.APIHost
 func (hph *hostPostHandler) Factory() gimlet.RouteHandler {
 	return &hostPostHandler{
 		env: hph.env,
@@ -238,10 +247,25 @@ func makeHostStopManager(env evergreen.Environment) gimlet.RouteHandler {
 	}
 }
 
+// Factory creates an instance of the handler.
+//
+//	@Summary		Stop host
+//	@Description	Queues a job to stop the host. Optionally sets up a notification to send when stopping is finished.
+//	@Tags			hosts
+//	@Router			/hosts/{host_id}/stop [post]
+//	@Security		Api-User || Api-Key
+//	@Param			host_id		path	string					true	"the host ID"
+//	@Param			{object}	body	hostSubscriptionInfo	false	"subscription_type"
+//	@Success		200
 func (h *hostStopHandler) Factory() gimlet.RouteHandler {
 	return &hostStopHandler{
 		env: h.env,
 	}
+}
+
+type hostSubscriptionInfo struct {
+	// The type of subscription to send when the host is stopped ("slack" or "email")
+	SubscriptionType string `json:"subscription_type"`
 }
 
 func (h *hostStopHandler) Parse(ctx context.Context, r *http.Request) error {
@@ -253,9 +277,8 @@ func (h *hostStopHandler) Parse(ctx context.Context, r *http.Request) error {
 
 	body := utility.NewRequestReader(r)
 	defer body.Close()
-	options := struct {
-		SubscriptionType string `json:"subscription_type"`
-	}{}
+
+	options := hostSubscriptionInfo{}
 	if err := utility.ReadJSON(body, &options); err != nil {
 		h.subscriptionType = ""
 	}
@@ -308,6 +331,16 @@ func makeHostStartManager(env evergreen.Environment) gimlet.RouteHandler {
 	}
 }
 
+// Factory creates an instance of the handler.
+//
+//	@Summary		Start host
+//	@Description	Queues a job to start the host. Optionally sets up a notification to send when starting is finished.
+//	@Tags			hosts
+//	@Router			/hosts/{host_id}/start [post]
+//	@Security		Api-User || Api-Key
+//	@Param			host_id		path	string					true	"the host ID"
+//	@Param			{object}	body	hostSubscriptionInfo	false	"subscription_type"
+//	@Success		200
 func (h *hostStartHandler) Factory() gimlet.RouteHandler {
 	return &hostStartHandler{
 		env: h.env,
@@ -323,9 +356,7 @@ func (h *hostStartHandler) Parse(ctx context.Context, r *http.Request) error {
 
 	body := utility.NewRequestReader(r)
 	defer body.Close()
-	options := struct {
-		SubscriptionType string `json:"subscription_type"`
-	}{}
+	options := hostSubscriptionInfo{}
 	if err := utility.ReadJSON(body, &options); err != nil {
 		h.subscriptionType = ""
 	}
@@ -780,8 +811,8 @@ func (h *modifyVolumeHandler) Run(ctx context.Context) gimlet.Responder {
 		if h.opts.Expiration.Before(volume.Expiration) {
 			return gimlet.MakeJSONErrorResponder(errors.Errorf("cannot make expiration time earlier than current expiration %s", volume.Expiration.Format(time.RFC1123)))
 		}
-		if time.Until(h.opts.Expiration) > evergreen.MaxSpawnHostExpirationDurationHours {
-			return gimlet.MakeJSONErrorResponder(errors.Errorf("cannot extend expiration past max expiration %s", time.Now().Add(evergreen.MaxSpawnHostExpirationDurationHours).Format(time.RFC1123)))
+		if time.Until(h.opts.Expiration) > evergreen.MaxVolumeExpirationDurationHours {
+			return gimlet.MakeJSONErrorResponder(errors.Errorf("cannot extend expiration past max expiration %s", time.Now().Add(evergreen.MaxVolumeExpirationDurationHours).Format(time.RFC1123)))
 		}
 
 		if h.opts.NoExpiration {
@@ -941,6 +972,15 @@ func makeTerminateHostRoute() gimlet.RouteHandler {
 	return &hostTerminateHandler{}
 }
 
+// Factory creates an instance of the handler.
+//
+//	@Summary		Terminate a host
+//	@Description	Immediately terminate a single host with given ID. Users may only terminate hosts which were created by them, unless the user is a super-user.  Hosts which have not been initialised yet will be marked as Terminated.  Trying to terminate a host which has already been terminated will result in an error.  All other host statuses will result in an attempt to terminate using the provider's API A response code of 200 OK indicates that the host was successfully terminated All other response codes indicate errors; the response body can be parsed as a rest.APIError.
+//	@Tags			hosts
+//	@Router			/hosts/{host_id}/terminate [post]
+//	@Security		Api-User || Api-Key
+//	@Param			host_id	path	string	true	"the host ID"
+//	@Success		200
 func (h *hostTerminateHandler) Factory() gimlet.RouteHandler {
 	return &hostTerminateHandler{}
 }
@@ -1006,6 +1046,16 @@ func makeHostChangePassword(env evergreen.Environment) gimlet.RouteHandler {
 
 }
 
+// Factory creates an instance of the handler.
+//
+//	@Summary		Change RDP password of a host
+//	@Description	Immediately changes the RDP password of a Windows host with a given ID. Users may only change passwords for hosts which were created by them, unless the user is a super-user.  A response code of 200 OK indicates that the host's password was successfully terminated Attempting to set the RDP password of a host that is not a Windows host or host that is not running will result in an error.  All other response codes indicate errors; the response body can be parsed as a rest.APIError.
+//	@Tags			hosts
+//	@Router			/hosts/{host_id}/change_password [post]
+//	@Security		Api-User || Api-Key
+//	@Param			host_id		path	string						true	"the host ID"
+//	@Param			{object}	body	model.APISpawnHostModify	true	"New RDP password; must meet RDP password criteria as provided by Microsoft at: https://technet.microsoft.com/en-us/library/cc786468(v=ws.10).aspx and be between 6 and 255 characters long"
+//	@Success		200
 func (h *hostChangeRDPPasswordHandler) Factory() gimlet.RouteHandler {
 	return &hostChangeRDPPasswordHandler{
 		env: h.env,
@@ -1066,6 +1116,16 @@ func makeExtendHostExpiration() gimlet.RouteHandler {
 	return &hostExtendExpirationHandler{}
 }
 
+// Factory creates an instance of the handler.
+//
+//	@Summary		Extend the expiration of a host
+//	@Description	Extend the expiration time of a host with a given ID. Users may only extend expirations for hosts which were created by them, unless the user is a super-user.  The expiration date of a host may not be more than 1 week in the future. Furthermore, the lifetime of an expirable host can be extended at most 30 days past host creation.  A response code of 200 OK indicates that the host's expiration was successfully extended.  Attempt to extend the expiration time of a terminated host will result in an error All other response codes indicate errors; the response body can be parsed as a rest.APIError
+//	@Tags			hosts
+//	@Router			/hosts/{host_id}/extend_expiration [post]
+//	@Security		Api-User || Api-Key
+//	@Param			host_id		path	string						true	"the host ID"
+//	@Param			{object}	body	model.APISpawnHostModify	true	"Number of hours to extend expiration; not to exceed 168"
+//	@Success		200
 func (h *hostExtendExpirationHandler) Factory() gimlet.RouteHandler {
 	return &hostExtendExpirationHandler{}
 }
@@ -1088,13 +1148,6 @@ func (h *hostExtendExpirationHandler) Parse(ctx context.Context, r *http.Request
 	}
 	h.addHours = time.Duration(addHours) * time.Hour
 
-	if h.addHours <= 0 {
-		return errors.New("must add a positive number of hours to the expiration")
-	}
-	if h.addHours > evergreen.MaxSpawnHostExpirationDurationHours {
-		return errors.Errorf("cannot add more than %s to expiration", evergreen.MaxSpawnHostExpirationDurationHours)
-	}
-
 	return nil
 }
 
@@ -1111,7 +1164,7 @@ func (h *hostExtendExpirationHandler) Run(ctx context.Context) gimlet.Responder 
 	var newExp time.Time
 	newExp, err = cloud.MakeExtendedSpawnHostExpiration(host, h.addHours)
 	if err != nil {
-		return gimlet.MakeJSONInternalErrorResponder(errors.Wrap(err, "extending cloud host expiration"))
+		return gimlet.MakeJSONErrorResponder(errors.Wrap(err, "extending cloud host expiration"))
 	}
 
 	if err := host.SetExpirationTime(ctx, newExp); err != nil {

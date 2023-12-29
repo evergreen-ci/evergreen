@@ -343,7 +343,7 @@ type APIDistro struct {
 	Aliases               []string                 `json:"aliases"`
 	UserSpawnAllowed      bool                     `json:"user_spawn_allowed"`
 	Provider              *string                  `json:"provider"`
-	ProviderSettingsList  []*birch.Document        `json:"provider_settings"`
+	ProviderSettingsList  []*birch.Document        `json:"provider_settings" swaggertype:"object"`
 	Arch                  *string                  `json:"arch"`
 	WorkDir               *string                  `json:"work_dir"`
 	SetupAsSudo           bool                     `json:"setup_as_sudo"`
@@ -368,6 +368,7 @@ type APIDistro struct {
 	IsCluster             bool                     `json:"is_cluster"`
 	Note                  *string                  `json:"note"`
 	ValidProjects         []*string                `json:"valid_projects"`
+	Mountpoints           []string                 `json:"mountpoints"`
 }
 
 // BuildFromService converts from service level distro.Distro to an APIDistro
@@ -395,6 +396,7 @@ func (apiDistro *APIDistro) BuildFromService(d distro.Distro) {
 	apiDistro.DisableShallowClone = d.DisableShallowClone
 	apiDistro.Note = utility.ToStringPtr(d.Note)
 	apiDistro.ValidProjects = utility.ToStringPtrSlice(d.ValidProjects)
+	apiDistro.Mountpoints = d.Mountpoints
 	if d.Expansions != nil {
 		apiDistro.Expansions = []APIExpansion{}
 		for _, e := range d.Expansions {
@@ -455,6 +457,7 @@ func (apiDistro *APIDistro) ToService() *distro.Distro {
 	d.SSHOptions = apiDistro.SSHOptions
 	d.AuthorizedKeysFile = utility.FromStringPtr(apiDistro.AuthorizedKeysFile)
 	d.SpawnAllowed = apiDistro.UserSpawnAllowed
+	d.Mountpoints = apiDistro.Mountpoints
 	d.Expansions = []distro.Expansion{}
 	for _, e := range apiDistro.Expansions {
 		d.Expansions = append(d.Expansions, e.ToService())

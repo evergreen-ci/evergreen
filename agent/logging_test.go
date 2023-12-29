@@ -14,6 +14,7 @@ import (
 	_ "github.com/evergreen-ci/evergreen/testutil"
 	"github.com/evergreen-ci/evergreen/util"
 	"github.com/mongodb/jasper"
+	"github.com/mongodb/jasper/mock"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"go.opentelemetry.io/otel"
@@ -52,10 +53,11 @@ func TestAgentFileLogging(t *testing.T) {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 
-	// run a task with a command logger specified as a file
+	// Run a task with a command logger specified as a file.
 	taskID := "logging"
 	taskSecret := "mock_task_secret"
 	task := &task.Task{
+		Project:     "project",
 		Id:          "t1",
 		Execution:   0,
 		DisplayName: "task1",
@@ -66,6 +68,7 @@ func TestAgentFileLogging(t *testing.T) {
 			Secret: taskSecret,
 		},
 		ranSetupGroup: false,
+		oomTracker:    &mock.OOMTracker{},
 		taskConfig: &internal.TaskConfig{
 			Task:         *task,
 			BuildVariant: model.BuildVariant{Name: "bv"},
@@ -86,6 +89,11 @@ func TestAgentFileLogging(t *testing.T) {
 						},
 					}},
 				},
+				Loggers: &model.LoggerConfig{
+					Agent:  []model.LogOpts{{Type: model.FileLogSender}},
+					System: []model.LogOpts{{Type: model.SplunkLogSender}},
+					Task:   []model.LogOpts{{Type: model.FileLogSender}},
+				},
 				BuildVariants: model.BuildVariants{
 					{Name: "bv", Tasks: []model.BuildVariantTaskUnit{{Name: "task1", Variant: "bv"}}},
 				},
@@ -95,12 +103,14 @@ func TestAgentFileLogging(t *testing.T) {
 			Expansions: *util.NewExpansions(nil),
 		},
 	}
-	assert.NoError(agt.startLogging(ctx, tc))
-	defer agt.removeTaskDirectory(tc)
-	err = agt.runTaskCommands(ctx, tc)
-	require.NoError(err)
+	require.NoError(agt.startLogging(ctx, tc))
+	defer func() {
+		agt.removeTaskDirectory(tc)
+		assert.NoError(tc.logger.Close())
+	}()
+	require.NoError(agt.runTaskCommands(ctx, tc))
 
-	// verify log contents
+	// Verify log contents.
 	f, err := os.Open(fmt.Sprintf("%s/%s/%s/task.log", tmpDirName, taskLogDirectory, "shell.exec"))
 	require.NoError(err)
 	bytes, err := io.ReadAll(f)
@@ -128,6 +138,7 @@ func TestStartLogging(t *testing.T) {
 			ID:     "logging",
 			Secret: "task_secret",
 		},
+		oomTracker: &mock.OOMTracker{},
 	}
 
 	ctx := context.Background()
@@ -144,8 +155,8 @@ func TestStartLogging(t *testing.T) {
 	assert.NoError(agt.startLogging(ctx, tc))
 	tc.logger.Execution().Info("foo")
 	assert.NoError(tc.logger.Close())
-	msgs := agt.comm.(*client.Mock).GetMockMessages()
-	assert.Equal("foo", msgs[tc.task.ID][0].Message)
+	lines := agt.comm.(*client.Mock).GetTaskLogs(tc.task.ID)
+	assert.Equal("foo", lines[0].Data)
 
 	// check that expansions are correctly populated
 	logConfig := agt.prepLogger(tc, project.Loggers, "")
@@ -172,6 +183,7 @@ func TestDefaultSender(t *testing.T) {
 		DisplayName: "task1",
 	}
 	tc := &taskContext{
+		oomTracker: &mock.OOMTracker{},
 		task: client.TaskData{
 			ID:     taskID,
 			Secret: taskSecret,
@@ -226,6 +238,7 @@ func TestTimberSender(t *testing.T) {
 		DisplayName: "task1",
 	}
 	tc := &taskContext{
+		oomTracker: &mock.OOMTracker{},
 		task: client.TaskData{
 			ID:     taskID,
 			Secret: taskSecret,

@@ -403,6 +403,17 @@ func TestTranslateTasks(t *testing.T) {
 					},
 				},
 			},
+			{
+				Name: "bv_with_check_run",
+				Tasks: parserBVTaskUnits{
+					{
+						Name: "a_task_with_no_special_configuration",
+						CreateCheckRun: &CheckRun{
+							PathToOutputs: "path",
+						},
+					},
+				},
+			},
 		},
 		Tasks: []parserTask{
 			{Name: "my_task", PatchOnly: utility.TruePtr(), ExecTimeoutSecs: 15},
@@ -421,7 +432,7 @@ func TestTranslateTasks(t *testing.T) {
 	assert.NoError(t, err)
 	assert.NotNil(t, out)
 	require.Len(t, out.Tasks, 6)
-	require.Len(t, out.BuildVariants, 7)
+	require.Len(t, out.BuildVariants, 8)
 
 	for _, bv := range out.BuildVariants {
 		for _, bvtu := range bv.Tasks {
@@ -521,6 +532,12 @@ func TestTranslateTasks(t *testing.T) {
 	assert.Equal(t, "my_task", disabledBV.Tasks[1].Name)
 	assert.True(t, utility.FromBoolPtr(disabledBV.Tasks[1].PatchOnly))
 	assert.False(t, utility.FromBoolPtr(disabledBV.Tasks[1].Disable))
+
+	checkRunBV := out.BuildVariants[7]
+	assert.Equal(t, "bv_with_check_run", checkRunBV.Name)
+	require.Len(t, checkRunBV.Tasks, 1)
+	assert.NotNil(t, checkRunBV.Tasks[0].CreateCheckRun)
+	assert.Equal(t, "path", checkRunBV.Tasks[0].CreateCheckRun.PathToOutputs)
 }
 
 func TestTranslateDependsOn(t *testing.T) {
@@ -725,6 +742,87 @@ func TestParserTaskSelectorEvaluation(t *testing.T) {
 			})
 		})
 	})
+}
+
+func TestCheckRunParsing(t *testing.T) {
+	assert := assert.New(t)
+	yml := `
+buildvariants:
+- name: "v1"
+  tasks:
+  - name: "t1"
+    create_check_run:
+      path_to_outputs: "path"
+tasks:
+- name: t1
+`
+
+	proj := &Project{}
+	ctx := context.Background()
+	_, err := LoadProjectInto(ctx, []byte(yml), nil, "id", proj)
+	assert.NotNil(proj)
+	assert.Nil(err)
+	require.Len(t, proj.BuildVariants, 1)
+
+	assert.Len(proj.BuildVariants[0].Tasks, 1)
+	cr := proj.BuildVariants[0].Tasks[0].CreateCheckRun
+	assert.NotNil(cr)
+	assert.Equal("path", cr.PathToOutputs)
+
+	ymlWithEmptyString := `
+buildvariants:
+- name: "v1"
+  tasks:
+  - name: "t1"
+    create_check_run:
+      path_to_outputs: ""
+tasks:
+- name: t1
+`
+
+	_, err = LoadProjectInto(ctx, []byte(ymlWithEmptyString), nil, "id", proj)
+	assert.NotNil(proj)
+	assert.Nil(err)
+	require.Len(t, proj.BuildVariants, 1)
+
+	assert.Len(proj.BuildVariants[0].Tasks, 1)
+	cr = proj.BuildVariants[0].Tasks[0].CreateCheckRun
+	assert.NotNil(cr)
+	assert.Equal("", cr.PathToOutputs)
+}
+
+func TestParseModule(t *testing.T) {
+	assert := assert.New(t)
+	yml := `
+modules:
+- name: "something_different"
+  repo: "evergreen"
+  owner: "evergreen-ci"
+  prefix: "src/third_party"
+  branch: "master"
+buildvariants:
+- name: "v1"
+  modules:
+  - something_different
+  tasks:
+  - name: "t1"
+    create_check_run:
+      path_to_outputs: "path"
+tasks:
+- name: t1
+`
+
+	proj := &Project{}
+	ctx := context.Background()
+	_, err := LoadProjectInto(ctx, []byte(yml), nil, "id", proj)
+	assert.NotNil(proj)
+	assert.Nil(err)
+
+	modules := proj.Modules
+	require.NotNil(t, modules)
+	require.Len(t, modules, 1)
+	assert.Equal("evergreen-ci", modules[0].Owner)
+	assert.Equal("evergreen", modules[0].Repo)
 }
 
 func TestDisplayTaskParsing(t *testing.T) {
@@ -1820,6 +1918,35 @@ tasks:
 	assert.Equal("commandLogger", proj.Tasks[0].Commands[0].Loggers.System[0].Type)
 }
 
+func TestParseOomTracker(t *testing.T) {
+	yml := `
+tasks:
+- name: task_1
+  commands:
+  - command: myCommand
+`
+	// Verify that the default is true
+	proj := &Project{}
+	ctx := context.Background()
+	_, err := LoadProjectInto(ctx, []byte(yml), nil, "id", proj)
+	assert.NotNil(t, proj)
+	assert.Nil(t, err)
+	assert.True(t, proj.OomTracker)
+
+	yml = `
+oom_tracker: false
+tasks:
+- name: task_1
+  commands:
+  - command: myCommand
+`
+	proj = &Project{}
+	_, err = LoadProjectInto(ctx, []byte(yml), nil, "id", proj)
+	assert.NotNil(t, proj)
+	assert.Nil(t, err)
+	assert.False(t, proj.OomTracker)
+}
+
 func TestAddBuildVariant(t *testing.T) {
 	pp := ParserProject{
 		Identifier: utility.ToStringPtr("small"),
@@ -1856,6 +1983,10 @@ func TestParserProjectStorage(t *testing.T) {
 		assert.NoError(t, bucket.RemovePrefix(ctx, ppConf.Prefix))
 	}()
 
+	defer func() {
+		assert.NoError(t, db.ClearCollections(ParserProjectCollection))
+	}()
+
 	for methodName, ppStorageMethod := range map[string]evergreen.ParserProjectStorageMethod{
 		"DB": evergreen.ProjectStorageMethodDB,
 		"S3": evergreen.ProjectStorageMethodS3,
@@ -1863,7 +1994,7 @@ func TestParserProjectStorage(t *testing.T) {
 		t.Run("StorageMethod"+methodName, func(t *testing.T) {
 			for testName, testCase := range map[string]func(ctx context.Context, t *testing.T, env *mock.Environment){
 				"FindOneByIDReturnsNilErrorAndResultForNonexistentParserProject": func(ctx context.Context, t *testing.T, env *mock.Environment) {
-					ppStorage, err := GetParserProjectStorage(env.Settings(), ppStorageMethod)
+					ppStorage, err := GetParserProjectStorage(ctx, env.Settings(), ppStorageMethod)
 					require.NoError(t, err)
 					defer ppStorage.Close(ctx)
 
@@ -1872,7 +2003,7 @@ func TestParserProjectStorage(t *testing.T) {
 					assert.Zero(t, pp)
 				},
 				"FindOneByIDWithFieldsReturnsNilErrorAndResultForNonexistentParserProject": func(ctx context.Context, t *testing.T, env *mock.Environment) {
-					ppStorage, err := GetParserProjectStorage(env.Settings(), ppStorageMethod)
+					ppStorage, err := GetParserProjectStorage(ctx, env.Settings(), ppStorageMethod)
 					require.NoError(t, err)
 					defer ppStorage.Close(ctx)
 
@@ -1885,7 +2016,7 @@ func TestParserProjectStorage(t *testing.T) {
 						Id:    "my-project",
 						Owner: utility.ToStringPtr("me"),
 					}
-					ppStorage, err := GetParserProjectStorage(env.Settings(), ppStorageMethod)
+					ppStorage, err := GetParserProjectStorage(ctx, env.Settings(), ppStorageMethod)
 					require.NoError(t, err)
 					defer ppStorage.Close(ctx)
 
@@ -1901,7 +2032,7 @@ func TestParserProjectStorage(t *testing.T) {
 						Id:    "my-project",
 						Owner: utility.ToStringPtr("me"),
 					}
-					ppStorage, err := GetParserProjectStorage(env.Settings(), ppStorageMethod)
+					ppStorage, err := GetParserProjectStorage(ctx, env.Settings(), ppStorageMethod)
 					require.NoError(t, err)
 					defer ppStorage.Close(ctx)
 
@@ -1987,7 +2118,7 @@ func checkProjectPersists(ctx context.Context, t *testing.T, env evergreen.Envir
 	pp.Id = "my-project"
 	pp.Identifier = utility.ToStringPtr("old-project-identifier")
 
-	ppStorage, err := GetParserProjectStorage(env.Settings(), ppStorageMethod)
+	ppStorage, err := GetParserProjectStorage(ctx, env.Settings(), ppStorageMethod)
 	require.NoError(t, err)
 	defer ppStorage.Close(ctx)
 
@@ -2369,7 +2500,7 @@ func TestMergeUnique(t *testing.T) {
 	main := &ParserProject{
 		Stepback:    utility.ToBoolPtr(true),
 		BatchTime:   utility.ToIntPtr(1),
-		OomTracker:  utility.ToBoolPtr(true),
+		OomTracker:  utility.ToBoolPtr(false),
 		DisplayName: utility.ToStringPtr("name"),
 	}
 
@@ -2377,7 +2508,6 @@ func TestMergeUnique(t *testing.T) {
 		PreTimeoutSecs:    utility.ToIntPtr(1),
 		PostTimeoutSecs:   utility.ToIntPtr(1),
 		PreErrorFailsTask: utility.ToBoolPtr(true),
-		UnsetFunctionVars: utility.ToBoolPtr(true),
 		CommandType:       utility.ToStringPtr("type"),
 		CallbackTimeout:   utility.ToIntPtr(1),
 		ExecTimeoutSecs:   utility.ToIntPtr(1),
@@ -2392,7 +2522,6 @@ func TestMergeUnique(t *testing.T) {
 	assert.NotNil(t, main.PreTimeoutSecs)
 	assert.NotNil(t, main.PostTimeoutSecs)
 	assert.NotNil(t, main.PreErrorFailsTask)
-	assert.NotNil(t, main.UnsetFunctionVars)
 	assert.NotNil(t, main.CommandType)
 	assert.NotNil(t, main.CallbackTimeout)
 	assert.NotNil(t, main.ExecTimeoutSecs)
@@ -2406,7 +2535,6 @@ func TestMergeUniqueFail(t *testing.T) {
 		PreTimeoutSecs:    utility.ToIntPtr(1),
 		PostTimeoutSecs:   utility.ToIntPtr(1),
 		PreErrorFailsTask: utility.ToBoolPtr(true),
-		UnsetFunctionVars: utility.ToBoolPtr(true),
 		DisplayName:       utility.ToStringPtr("name"),
 		CommandType:       utility.ToStringPtr("type"),
 		CallbackTimeout:   utility.ToIntPtr(1),
@@ -2420,7 +2548,6 @@ func TestMergeUniqueFail(t *testing.T) {
 		PreTimeoutSecs:    utility.ToIntPtr(1),
 		PostTimeoutSecs:   utility.ToIntPtr(1),
 		PreErrorFailsTask: utility.ToBoolPtr(true),
-		UnsetFunctionVars: utility.ToBoolPtr(true),
 		DisplayName:       utility.ToStringPtr("name"),
 		CommandType:       utility.ToStringPtr("type"),
 		CallbackTimeout:   utility.ToIntPtr(1),
@@ -2675,7 +2802,8 @@ functions:
     command: definition_1
 modules:
 - name: "something_different"
-  repo: "git@github.com:foo/bar.git"
+  owner: "foo"
+  repo: "bar"
   prefix: "src/third_party"
   branch: "master"
 ignore:

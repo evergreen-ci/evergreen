@@ -6,6 +6,7 @@ import (
 	"os"
 	"path/filepath"
 	"strings"
+	"sync"
 	"testing"
 	"time"
 
@@ -22,7 +23,6 @@ import (
 	"github.com/evergreen-ci/evergreen/testutil"
 	"github.com/evergreen-ci/evergreen/thirdparty"
 	"github.com/evergreen-ci/utility"
-	"github.com/mongodb/grip"
 	. "github.com/smartystreets/goconvey/convey"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -32,13 +32,13 @@ import (
 
 var (
 	patchTestConfig = testutil.TestConfig()
-	configFilePath  = "testing/mci.yml"
+	remotePath      = "model/testdata/project.yml"
 	patchedProject  = "mci-config"
-	patchedRevision = "3578f10b95fb82183662387048b268c54fac50fb"
+	patchedRevision = "17746cb296670f53ee326deb83ac8cc4dffe55dd"
 	patchFile       = "testdata/patch2.diff"
-	patchOwner      = "deafgoat"
-	patchRepo       = "config"
-	patchBranch     = "master"
+	patchOwner      = "evergreen-ci"
+	patchRepo       = "evergreen"
+	patchBranch     = "main"
 
 	// newProjectPatchFile is a diff that adds a new project configuration file
 	// located at newConfigFilePath.
@@ -62,7 +62,7 @@ func resetPatchSetup(ctx context.Context, t *testing.T, testPath string) *patch.
 	clearAll(t)
 	projectRef := &ProjectRef{
 		Id:         patchedProject,
-		RemotePath: configFilePath,
+		RemotePath: remotePath,
 		Owner:      patchOwner,
 		Repo:       patchRepo,
 		Branch:     patchBranch,
@@ -105,7 +105,7 @@ func resetPatchSetup(ctx context.Context, t *testing.T, testPath string) *patch.
 				PatchSet: patch.PatchSet{
 					Patch: fmt.Sprintf(string(fileBytes), testPath, testPath, testPath, testPath),
 					Summary: []thirdparty.Summary{
-						{Name: configFilePath, Additions: 4, Deletions: 80},
+						{Name: remotePath, Additions: 4, Deletions: 80},
 						{Name: "random.txt", Additions: 6, Deletions: 0},
 					},
 				},
@@ -202,7 +202,7 @@ func TestGetPatchedProjectAndGetPatchedProjectConfig(t *testing.T) {
 	Convey("With calling GetPatchedProject with a config and remote configuration path",
 		t, func() {
 			Convey("Calling GetPatchedProject returns a valid project given a patch and settings", func() {
-				configPatch := resetPatchSetup(ctx, t, configFilePath)
+				configPatch := resetPatchSetup(ctx, t, remotePath)
 				project, patchConfig, err := GetPatchedProject(ctx, patchTestConfig, configPatch, token)
 				So(err, ShouldBeNil)
 				So(project, ShouldNotBeNil)
@@ -217,7 +217,7 @@ func TestGetPatchedProjectAndGetPatchedProjectConfig(t *testing.T) {
 				})
 
 				Convey("Calling GetPatchedProject with a created but unfinalized patch", func() {
-					configPatch := resetPatchSetup(ctx, t, configFilePath)
+					configPatch := resetPatchSetup(ctx, t, remotePath)
 
 					// Simulate what patch creation does.
 					patchConfig.PatchedParserProject.Id = configPatch.Id.Hex()
@@ -333,13 +333,15 @@ func TestFinalizePatch(t *testing.T) {
 				{
 					Name:       "sandbox",
 					Branch:     "main",
-					Repo:       "git@github.com:evergreen-ci/commit-queue-sandbox.git",
+					Owner:      "evergreen-ci",
+					Repo:       "commit-queue-sandbox",
 					AutoUpdate: true,
 				},
 				{
 					Name:   "evergreen",
 					Branch: "main",
-					Repo:   "git@github.com:evergreen-ci/evergreen.git",
+					Owner:  "evergreen-ci",
+					Repo:   "evergreen",
 				},
 			}
 
@@ -432,7 +434,7 @@ func TestFinalizePatch(t *testing.T) {
 		},
 	} {
 		t.Run(name, func(t *testing.T) {
-			p := resetPatchSetup(ctx, t, configFilePath)
+			p := resetPatchSetup(ctx, t, remotePath)
 
 			project, patchConfig, err := GetPatchedProject(ctx, patchTestConfig, p, token)
 			require.NoError(t, err)
@@ -498,72 +500,79 @@ func TestMakePatchedConfig(t *testing.T) {
 	defer cancel()
 
 	env := evergreen.GetEnvironment()
+	cwd := testutil.GetDirectoryOfFile()
 
-	Convey("With calling MakePatchedConfig with a config and remote configuration path", t, func() {
-		cwd := testutil.GetDirectoryOfFile()
-
-		Convey("the config should be patched correctly", func() {
-			remoteConfigPath := filepath.Join("config", "evergreen.yml")
-			fileBytes, err := os.ReadFile(filepath.Join(cwd, "testdata", "patch.diff"))
-			So(err, ShouldBeNil)
-			// update patch with remove config path variable
-			diffString := fmt.Sprintf(string(fileBytes),
-				remoteConfigPath, remoteConfigPath, remoteConfigPath, remoteConfigPath)
-			// the patch adds a new task
-			p := &patch.Patch{
-				Patches: []patch.ModulePatch{{
-					Githash: "revision",
-					PatchSet: patch.PatchSet{
-						Patch: diffString,
-						Summary: []thirdparty.Summary{{
-							Name:      remoteConfigPath,
-							Additions: 3,
-							Deletions: 3,
-						}},
-					},
+	remoteConfigPath := filepath.Join("config", "evergreen.yml")
+	fileBytes, err := os.ReadFile(filepath.Join(cwd, "testdata", "patch.diff"))
+	assert.NoError(t, err)
+	// update patch with remove config path variable
+	diffString := fmt.Sprintf(string(fileBytes),
+		remoteConfigPath, remoteConfigPath, remoteConfigPath, remoteConfigPath)
+	// the patch adds a new task
+	p := &patch.Patch{
+		Patches: []patch.ModulePatch{{
+			Githash: "revision",
+			PatchSet: patch.PatchSet{
+				Patch: diffString,
+				Summary: []thirdparty.Summary{{
+					Name:      remoteConfigPath,
+					Additions: 3,
+					Deletions: 3,
 				}},
-			}
-			projectBytes, err := os.ReadFile(filepath.Join(cwd, "testdata", "project.config"))
-			So(err, ShouldBeNil)
+			},
+		}},
+	}
+	projectBytes, err := os.ReadFile(filepath.Join(cwd, "testdata", "project.config"))
+	assert.NoError(t, err)
+
+	// Test that many goroutines can run MakePatchedConfig at the same time
+	wg := sync.WaitGroup{}
+	for w := 0; w < 10; w++ {
+		wg.Add(1)
+		go func() {
+			defer wg.Done()
 			projectData, err := MakePatchedConfig(ctx, env, p, remoteConfigPath, string(projectBytes))
-			So(err, ShouldBeNil)
-			So(projectData, ShouldNotBeNil)
-
+			assert.NoError(t, err)
+			assert.NotNil(t, projectData)
 			project := &Project{}
 			_, err = LoadProjectInto(ctx, projectData, nil, "", project)
-			So(err, ShouldBeNil)
-			So(len(project.Tasks), ShouldEqual, 2)
-		})
-		Convey("an empty base config should be patched correctly", func() {
-			remoteConfigPath := filepath.Join("model", "testdata", "project2.config")
-			fileBytes, err := os.ReadFile(filepath.Join(cwd, "testdata", "project.diff"))
-			So(err, ShouldBeNil)
-			p := &patch.Patch{
-				Patches: []patch.ModulePatch{{
-					Githash: "revision",
-					PatchSet: patch.PatchSet{
-						Patch:   string(fileBytes),
-						Summary: []thirdparty.Summary{{Name: remoteConfigPath}},
-					},
-				}},
-			}
+			assert.NoError(t, err)
+			assert.Len(t, project.Tasks, 2)
+		}()
+	}
+	wg.Wait()
+}
 
-			projectData, err := MakePatchedConfig(ctx, env, p, remoteConfigPath, "")
-			So(err, ShouldBeNil)
+func TestMakePatchedConfigEmptyBase(t *testing.T) {
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
 
-			project := &Project{}
-			_, err = LoadProjectInto(ctx, projectData, nil, "", project)
-			So(err, ShouldBeNil)
-			So(project, ShouldNotBeNil)
+	env := evergreen.GetEnvironment()
+	cwd := testutil.GetDirectoryOfFile()
 
-			So(len(project.Tasks), ShouldEqual, 1)
-			So(project.Tasks[0].Name, ShouldEqual, "hello")
+	remoteConfigPath := filepath.Join("model", "testdata", "project2.config")
+	fileBytes, err := os.ReadFile(filepath.Join(cwd, "testdata", "project.diff"))
+	assert.NoError(t, err)
+	p := &patch.Patch{
+		Patches: []patch.ModulePatch{{
+			Githash: "revision",
+			PatchSet: patch.PatchSet{
+				Patch:   string(fileBytes),
+				Summary: []thirdparty.Summary{{Name: remoteConfigPath}},
+			},
+		}},
+	}
 
-			Reset(func() {
-				grip.Warning(os.Remove(remoteConfigPath))
-			})
-		})
-	})
+	projectData, err := MakePatchedConfig(ctx, env, p, remoteConfigPath, "")
+	assert.NoError(t, err)
+
+	project := &Project{}
+	_, err = LoadProjectInto(ctx, projectData, nil, "", project)
+	assert.NoError(t, err)
+	assert.NotNil(t, project)
+
+	assert.Len(t, project.Tasks, 1)
+	assert.Equal(t, project.Tasks[0].Name, "hello")
 }
 
 // shouldContainPair returns a blank string if its arguments resemble each other, and returns a
@@ -692,7 +701,7 @@ func TestAddNewPatch(t *testing.T) {
 	assert.NotNil(dbBuild)
 	assert.Len(dbBuild.Tasks, 2)
 
-	_, err = addNewTasks(context.Background(), creationInfo, []build.Build{*dbBuild}, "")
+	_, err = addNewTasksToExistingBuilds(context.Background(), creationInfo, []build.Build{*dbBuild}, "")
 	assert.NoError(err)
 	dbTasks, err := task.FindAll(db.Query(task.ByBuildId(dbBuild.Id)))
 	assert.NoError(err)
@@ -781,7 +790,7 @@ func TestAddNewPatchWithMissingBaseVersion(t *testing.T) {
 	assert.NotNil(dbBuild)
 	assert.Len(dbBuild.Tasks, 2)
 
-	_, err = addNewTasks(context.Background(), creationInfo, []build.Build{*dbBuild}, "")
+	_, err = addNewTasksToExistingBuilds(context.Background(), creationInfo, []build.Build{*dbBuild}, "")
 	assert.NoError(err)
 	dbTasks, err := task.FindAll(db.Query(task.ByBuildId(dbBuild.Id)))
 	assert.NoError(err)
@@ -809,14 +818,15 @@ func TestMakeCommitQueueDescription(t *testing.T) {
 			{
 				Name:   "module",
 				Branch: "feature",
-				Repo:   "git@github.com:evergreen-ci/module_repo.git",
+				Owner:  "evergreen-ci",
+				Repo:   "module_repo",
 			},
 		},
 	}
 
 	// no commits
 	patches := []patch.ModulePatch{}
-	assert.Equal(t, "Commit Queue Merge: No Commits Added", MakeCommitQueueDescription(patches, projectRef, project, false, ""))
+	assert.Equal(t, "Commit Queue Merge: No Commits Added", MakeCommitQueueDescription(patches, projectRef, project, false, thirdparty.GithubMergeGroup{}))
 
 	// main repo commit
 	patches = []patch.ModulePatch{
@@ -825,9 +835,9 @@ func TestMakeCommitQueueDescription(t *testing.T) {
 			PatchSet:   patch.PatchSet{CommitMessages: []string{"Commit"}},
 		},
 	}
-	assert.Equal(t, "Commit Queue Merge: 'Commit' into 'evergreen-ci/evergreen:main'", MakeCommitQueueDescription(patches, projectRef, project, false, ""))
+	assert.Equal(t, "Commit Queue Merge: 'Commit' into 'evergreen-ci/evergreen:main'", MakeCommitQueueDescription(patches, projectRef, project, false, thirdparty.GithubMergeGroup{}))
 
-	assert.Equal(t, "GitHub Merge Queue: 0e312ff", MakeCommitQueueDescription(patches, projectRef, project, true, "0e312ff6c06bd09eff0aed1bd1f73911a7daa350"))
+	assert.Equal(t, "GitHub Merge Queue: I'm a commit! (0e312ff)", MakeCommitQueueDescription(patches, projectRef, project, true, thirdparty.GithubMergeGroup{HeadSHA: "0e312ffabcdefghijklmnop", HeadCommit: "I'm a commit!"}))
 
 	// main repo + module commits
 	patches = []patch.ModulePatch{
@@ -841,7 +851,7 @@ func TestMakeCommitQueueDescription(t *testing.T) {
 		},
 	}
 
-	assert.Equal(t, "Commit Queue Merge: 'Commit 1 <- Commit 2' into 'evergreen-ci/evergreen:main' || 'Module Commit 1 <- Module Commit 2' into 'evergreen-ci/module_repo:feature'", MakeCommitQueueDescription(patches, projectRef, project, false, ""))
+	assert.Equal(t, "Commit Queue Merge: 'Commit 1 <- Commit 2' into 'evergreen-ci/evergreen:main' || 'Module Commit 1 <- Module Commit 2' into 'evergreen-ci/module_repo:feature'", MakeCommitQueueDescription(patches, projectRef, project, false, thirdparty.GithubMergeGroup{}))
 
 	// module only commits
 	patches = []patch.ModulePatch{
@@ -853,13 +863,13 @@ func TestMakeCommitQueueDescription(t *testing.T) {
 			PatchSet:   patch.PatchSet{CommitMessages: []string{"Module Commit 1", "Module Commit 2"}},
 		},
 	}
-	assert.Equal(t, "Commit Queue Merge: 'Module Commit 1 <- Module Commit 2' into 'evergreen-ci/module_repo:feature'", MakeCommitQueueDescription(patches, projectRef, project, false, ""))
+	assert.Equal(t, "Commit Queue Merge: 'Module Commit 1 <- Module Commit 2' into 'evergreen-ci/module_repo:feature'", MakeCommitQueueDescription(patches, projectRef, project, false, thirdparty.GithubMergeGroup{}))
 }
 
 func TestRetryCommitQueueItems(t *testing.T) {
 	projectRef := &ProjectRef{
 		Id:         patchedProject,
-		RemotePath: configFilePath,
+		RemotePath: remotePath,
 		Owner:      patchOwner,
 		Repo:       patchRepo,
 		Branch:     patchBranch,

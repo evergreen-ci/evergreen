@@ -10,6 +10,7 @@ import (
 
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/api"
+	"github.com/evergreen-ci/evergreen/apimodels"
 	"github.com/evergreen-ci/evergreen/cloud"
 	"github.com/evergreen-ci/evergreen/db"
 	"github.com/evergreen-ci/evergreen/db/mgo/bson"
@@ -24,6 +25,7 @@ import (
 	"github.com/evergreen-ci/evergreen/model/user"
 	"github.com/evergreen-ci/evergreen/rest/data"
 	restModel "github.com/evergreen-ci/evergreen/rest/model"
+	"github.com/evergreen-ci/evergreen/taskoutput"
 	"github.com/evergreen-ci/evergreen/thirdparty"
 	"github.com/evergreen-ci/gimlet"
 	"github.com/evergreen-ci/utility"
@@ -36,6 +38,11 @@ import (
 )
 
 // This file should consist only of private utility functions that are specific to graphql resolver use cases.
+
+const (
+	minRevisionLength = 7
+	gitHashLength     = 40 // A git hash contains 40 characters.
+)
 
 // getGroupedFiles returns the files of a Task inside a GroupedFile struct
 func getGroupedFiles(ctx context.Context, name string, taskID string, execution int) (*GroupedFiles, error) {
@@ -915,6 +922,35 @@ func getProjectMetadata(ctx context.Context, projectId *string, patchId *string)
 	return &apiProjectRef, nil
 }
 
+//////////////////////////////////
+// Helper functions for task logs.
+//////////////////////////////////
+
+func getTaskLogs(ctx context.Context, obj *TaskLogs, logType taskoutput.TaskLogType) ([]*apimodels.LogMessage, error) {
+	dbTask, err := task.FindOneIdAndExecution(obj.TaskID, obj.Execution)
+	if err != nil {
+		return nil, InternalServerError.Send(ctx, fmt.Sprintf("Finding task '%s': %s", obj.TaskID, err.Error()))
+	}
+	if evergreen.IsUnstartedTaskStatus(dbTask.Status) {
+		return []*apimodels.LogMessage{}, nil
+	}
+
+	it, err := dbTask.GetTaskLogs(ctx, evergreen.GetEnvironment(), taskoutput.TaskLogGetOptions{
+		LogType: logType,
+		TailN:   100,
+	})
+	if err != nil {
+		return nil, InternalServerError.Send(ctx, fmt.Sprintf("Getting logs for task '%s': %s", dbTask.Id, err.Error()))
+	}
+
+	lines, err := apimodels.ReadLogToSlice(it)
+	if err != nil {
+		return nil, InternalServerError.Send(ctx, fmt.Sprintf("Reading logs for task '%s': %s", dbTask.Id, err.Error()))
+	}
+
+	return lines, nil
+}
+
 //////////////////////////////////////////
 // Helper functions for task test results.
 //////////////////////////////////////////
@@ -1050,6 +1086,16 @@ func userHasDistroPermission(u *user.DBUser, distroId string, requiredLevel int)
 		Resource:      distroId,
 		ResourceType:  evergreen.DistroResourceType,
 		Permission:    evergreen.PermissionDistroSettings,
+		RequiredLevel: requiredLevel,
+	}
+	return u.HasPermission(opts)
+}
+
+func userHasProjectSettingsPermission(u *user.DBUser, projectId string, requiredLevel int) bool {
+	opts := gimlet.PermissionOpts{
+		Resource:      projectId,
+		ResourceType:  evergreen.ProjectResourceType,
+		Permission:    evergreen.PermissionProjectSettings,
 		RequiredLevel: requiredLevel,
 	}
 	return u.HasPermission(opts)

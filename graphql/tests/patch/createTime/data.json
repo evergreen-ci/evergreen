@@ -1,0 +1,23 @@
+{
+  "patches": [
+    {
+      "_id": {
+        "$oid": "5e94c8213e8e8651bee37561"
+      },
+      "branch": "spruce",
+      "version": "evergreen_5e823e1f28baeaa22ae00823d83e03082cd148ab",
+      "create_time": {
+        "$date": "2020-04-13T20:12:39Z"
+      },
+      "githash": "6cf2ca4c009f93285cf986b6de0100c1cbe54092"
+    },
+    {
+      "_id": {
+        "$oid": "5e4ff3abe3c3317e352062e4"
+      },
+      "branch": "evergreen",
+      "version": "5e4ff3abe3c3317e352062e4",
+      "githash": "5e823e1f28baeaa22ae00823d83e03082cd148ab"
+    }
+  ]
+}

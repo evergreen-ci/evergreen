@@ -323,6 +323,75 @@ func TestSaveProjectSettingsForSection(t *testing.T) {
 			assert.Contains(t, err.Error(), "PR testing (projects: conflicting-project) and commit checks (projects: conflicting-project)")
 			assert.NotContains(t, err.Error(), "the commit queue")
 		},
+		"invalid URL should error when saving": func(t *testing.T, ref model.ProjectRef) {
+			apiProjectRef := restModel.APIProjectRef{
+				ExternalLinks: []restModel.APIExternalLink{
+					{
+						URLTemplate: utility.ToStringPtr("invalid URL template"),
+						DisplayName: utility.ToStringPtr("display name"),
+					},
+				},
+			}
+			apiChanges := &restModel.APIProjectSettings{
+				ProjectRef: apiProjectRef,
+			}
+			settings, err := SaveProjectSettingsForSection(ctx, ref.Id, apiChanges, model.ProjectPagePluginSection, false, "me")
+			require.Error(t, err)
+			assert.Nil(t, settings)
+			assert.Contains(t, err.Error(), "validating external links")
+		},
+		"valid URL should succeed when saving": func(t *testing.T, ref model.ProjectRef) {
+			apiProjectRef := restModel.APIProjectRef{
+				ExternalLinks: []restModel.APIExternalLink{
+					{
+						URLTemplate: utility.ToStringPtr("https://arnars.com/{version_id}"),
+						DisplayName: utility.ToStringPtr("A link"),
+					},
+				},
+			}
+			apiChanges := &restModel.APIProjectSettings{
+				ProjectRef: apiProjectRef,
+			}
+			settings, err := SaveProjectSettingsForSection(ctx, ref.Id, apiChanges, model.ProjectPagePluginSection, false, "me")
+			require.NoError(t, err)
+			assert.NotNil(t, settings)
+		},
+		"enabling performance plugin should fail if id and identifier are different": func(t *testing.T, ref model.ProjectRef) {
+			// Set identifier
+			apiProjectRef := restModel.APIProjectRef{
+				Identifier: utility.ToStringPtr("different"),
+			}
+			apiChanges := &restModel.APIProjectSettings{
+				ProjectRef: apiProjectRef,
+			}
+			settings, err := SaveProjectSettingsForSection(ctx, ref.RepoRefId, apiChanges, model.ProjectPageGeneralSection, true, "me")
+			require.NoError(t, err)
+			assert.NotNil(t, settings)
+
+			// Try enabling performance plugin
+			apiProjectRef = restModel.APIProjectRef{
+				PerfEnabled: utility.TruePtr(),
+			}
+			apiChanges = &restModel.APIProjectSettings{
+				ProjectRef: apiProjectRef,
+			}
+			settings, err = SaveProjectSettingsForSection(ctx, ref.Id, apiChanges, model.ProjectPagePluginSection, false, "me")
+			require.Error(t, err)
+			assert.Nil(t, settings)
+			assert.Contains(t, err.Error(), "cannot enable performance plugin")
+		},
+		"enabling performance plugin should succeed if id and identifier are the same": func(t *testing.T, ref model.ProjectRef) {
+			// Try enabling performance plugin
+			apiProjectRef := restModel.APIProjectRef{
+				PerfEnabled: utility.TruePtr(),
+			}
+			apiChanges := &restModel.APIProjectSettings{
+				ProjectRef: apiProjectRef,
+			}
+			settings, err := SaveProjectSettingsForSection(ctx, ref.Id, apiChanges, model.ProjectPagePluginSection, false, "me")
+			require.NoError(t, err)
+			assert.NotNil(t, settings)
+		},
 		"github conflicts on Commit Queue page when defaulting to repo": func(t *testing.T, ref model.ProjectRef) {
 			conflictingRef := model.ProjectRef{
 				Identifier:          "conflicting-project",
@@ -534,6 +603,36 @@ func TestSaveProjectSettingsForSection(t *testing.T) {
 			require.Len(t, subsFromDb, 1)
 			assert.Equal(t, subsFromDb[0].Trigger, event.TriggerSuccess)
 		},
+		model.ProjectPageTriggersSection: func(t *testing.T, ref model.ProjectRef) {
+			upstreamProject := model.ProjectRef{
+				Id:      "upstreamProject",
+				Enabled: true,
+			}
+			assert.NoError(t, upstreamProject.Insert())
+			apiProjectRef := restModel.APIProjectRef{
+				Triggers: []restModel.APITriggerDefinition{
+					{
+						Project:           utility.ToStringPtr(upstreamProject.Id),
+						Level:             utility.ToStringPtr(model.ProjectTriggerLevelTask),
+						TaskRegex:         utility.ToStringPtr(".*"),
+						BuildVariantRegex: utility.ToStringPtr(".*"),
+						ConfigFile:        utility.ToStringPtr("myConfigFile"),
+					},
+				},
+			}
+			apiChanges := &restModel.APIProjectSettings{
+				ProjectRef: apiProjectRef,
+			}
+			settings, err := SaveProjectSettingsForSection(ctx, ref.Id, apiChanges, model.ProjectPageTriggersSection, false, "me")
+			assert.Error(t, err)
+			assert.Nil(t, settings)
+
+			_, err = model.GetNewRevisionOrderNumber(ref.Id)
+			assert.NoError(t, err)
+			settings, err = SaveProjectSettingsForSection(ctx, ref.Id, apiChanges, model.ProjectPageTriggersSection, false, "me")
+			assert.NoError(t, err)
+			assert.NotNil(t, settings)
+		},
 		model.ProjectPageWorkstationsSection: func(t *testing.T, ref model.ProjectRef) {
 			assert.Nil(t, ref.WorkstationConfig.SetupCommands)
 			apiProjectRef := restModel.APIProjectRef{
@@ -643,21 +742,24 @@ func TestSaveProjectSettingsForSection(t *testing.T) {
 		},
 	} {
 		assert.NoError(t, db.ClearCollections(model.ProjectRefCollection, model.ProjectVarsCollection,
-			event.SubscriptionsCollection, event.EventCollection, evergreen.ScopeCollection, user.Collection, evergreen.ConfigCollection))
+			event.SubscriptionsCollection, event.EventCollection, evergreen.ScopeCollection, user.Collection,
+			model.RepositoriesCollection, evergreen.ConfigCollection))
 		require.NoError(t, db.CreateCollections(evergreen.ScopeCollection))
 
 		pRef := model.ProjectRef{
-			Id:         "myId",
-			Owner:      "evergreen-ci",
-			Repo:       "evergreen",
-			Branch:     "main",
-			Restricted: utility.FalsePtr(),
-			RepoRefId:  "myRepoId",
-			Admins:     []string{"oldAdmin"},
+			Id:                  "myId",
+			Owner:               "evergreen-ci",
+			Repo:                "evergreen",
+			Branch:              "main",
+			Restricted:          utility.FalsePtr(),
+			RepoRefId:           "myRepoId",
+			Admins:              []string{"oldAdmin"},
+			RepotrackerDisabled: utility.TruePtr(),
 		}
 		assert.NoError(t, pRef.Insert())
 		repoRef := model.RepoRef{ProjectRef: model.ProjectRef{
 			Id:               pRef.RepoRefId,
+			Identifier:       "myRepoId",
 			Restricted:       utility.TruePtr(),
 			PRTestingEnabled: utility.TruePtr(),
 		}}

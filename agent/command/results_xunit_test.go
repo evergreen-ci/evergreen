@@ -11,8 +11,8 @@ import (
 	"github.com/evergreen-ci/evergreen/agent/internal/client"
 	agentutil "github.com/evergreen-ci/evergreen/agent/internal/testutil"
 	"github.com/evergreen-ci/evergreen/db"
-	"github.com/evergreen-ci/evergreen/model"
 	"github.com/evergreen-ci/evergreen/model/task"
+	"github.com/evergreen-ci/evergreen/model/testlog"
 	modelutil "github.com/evergreen-ci/evergreen/model/testutil"
 	"github.com/evergreen-ci/evergreen/testutil"
 	timberutil "github.com/evergreen-ci/timber/testutil"
@@ -123,8 +123,8 @@ func dBTestsWildcard(taskId string) {
 
 // dBFindOneTestLog abstracts away some of the common attributes of database
 // verification tests.
-func dBFindOneTestLog(name, taskId string) *model.TestLog {
-	ret, err := model.FindOneTestLog(
+func dBFindOneTestLog(name, taskId string) *testlog.TestLog {
+	ret, err := testlog.FindOneTestLog(
 		name,
 		taskId,
 		0,

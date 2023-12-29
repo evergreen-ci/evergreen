@@ -16,6 +16,7 @@ import (
 	"github.com/evergreen-ci/evergreen/model/host"
 	"github.com/evergreen-ci/evergreen/model/patch"
 	"github.com/evergreen-ci/evergreen/model/task"
+	"github.com/evergreen-ci/evergreen/model/testlog"
 	"github.com/evergreen-ci/evergreen/model/user"
 	"github.com/evergreen-ci/evergreen/rest/data"
 	"github.com/evergreen-ci/evergreen/util"
@@ -660,8 +661,8 @@ func urlVarsToProjectScopes(r *http.Request) ([]string, int, error) {
 
 	testLog := util.CoalesceStrings(query["log_id"], vars["log_id"])
 	if projectID == "" && testLog != "" {
-		var test *model.TestLog
-		test, err = model.FindOneTestLogById(testLog)
+		var test *testlog.TestLog
+		test, err = testlog.FindOneTestLogById(testLog)
 		if err != nil {
 			return nil, http.StatusInternalServerError, errors.Wrapf(err, "finding test log '%s'", testLog)
 		}

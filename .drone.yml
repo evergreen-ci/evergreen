@@ -1,0 +1,96 @@
+---
+kind: pipeline
+type: kubernetes
+name: build-and-publish
+
+trigger:
+  branch:
+    - main
+  event:
+    - push
+
+clone:
+  depth: 1
+
+platform:
+  os: linux
+  arch: arm64
+
+resources:
+  requests:
+    cpu: 1000
+    memory: 500MiB
+
+steps:
+  - name: publish-evergreen
+    image: plugins/kaniko-ecr
+    settings:
+      tags:
+        - git-${DRONE_COMMIT_SHA:0:7}
+        - latest
+      access_key:
+        from_secret: ecr_access_key
+      secret_key:
+        from_secret: ecr_secret_key
+      build_args:
+        - GOOS=linux
+        - GOARCH=arm64
+      repo: devprod-evergreen/${DRONE_REPO_NAME}
+      registry: 795250896452.dkr.ecr.us-east-1.amazonaws.com
+      create_repository: true
+
+---
+kind: pipeline
+type: kubernetes
+name: push-to-staging
+
+trigger:
+  event:
+    - promote
+  target:
+    - staging
+
+steps:
+  - name: deploy-staging
+    image: quay.io/mongodb/drone-helm:v3
+    settings:
+      api_server: https://api.staging.corp.mongodb.com
+      chart: mongodb/web-app
+      chart_version: 4.15.8
+      add_repos: [mongodb=https://10gen.github.io/helm-charts]
+      kubernetes_token:
+        from_secret: staging_kubernetes_token
+      namespace: devprod-evergreen
+      release: evergreen
+      values: image.tag=git-${DRONE_COMMIT_SHA:0:7},image.repository=795250896452.dkr.ecr.us-east-1.amazonaws.com/devprod-evergreen/${DRONE_REPO_NAME}
+      values_files:
+        - charts/values.yml
+        - charts/staging.yml
+
+---
+kind: pipeline
+type: kubernetes
+name: push-to-prod
+
+trigger:
+  event:
+    - promote
+  target:
+    - production
+
+steps:
+  - name: deploy-prod
+    image: quay.io/mongodb/drone-helm:v3
+    settings:
+      api_server: https://api.prod.corp.mongodb.com
+      chart: mongodb/web-app
+      chart_version: 4.15.8
+      add_repos: [mongodb=https://10gen.github.io/helm-charts]
+      kubernetes_token:
+        from_secret: prod_kubernetes_token
+      namespace: devprod-evergreen
+      release: evergreen
+      values: image.tag=git-${DRONE_COMMIT_SHA:0:7},image.repository=795250896452.dkr.ecr.us-east-1.amazonaws.com/devprod-evergreen/${DRONE_REPO_NAME}
+      values_files:
+        - charts/values.yml
+        - charts/prod.yml

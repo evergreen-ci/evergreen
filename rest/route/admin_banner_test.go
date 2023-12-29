@@ -120,28 +120,7 @@ func TestFetchBanner(t *testing.T) {
 				},
 			},
 			Docker: &model.APIDockerConfig{
-				APIVersion:    utility.ToStringPtr(""),
-				DefaultDistro: utility.ToStringPtr(""),
-			},
-			GCE: &model.APIGCEConfig{
-				ClientEmail:  utility.ToStringPtr("gce_email"),
-				PrivateKey:   utility.ToStringPtr("gce_key"),
-				PrivateKeyID: utility.ToStringPtr("gce_key_id"),
-				TokenURI:     utility.ToStringPtr("gce_token"),
-			},
-			OpenStack: &model.APIOpenStackConfig{
-				IdentityEndpoint: utility.ToStringPtr("endpoint"),
-				Username:         utility.ToStringPtr("username"),
-				Password:         utility.ToStringPtr("password"),
-				DomainName:       utility.ToStringPtr("domain"),
-				ProjectName:      utility.ToStringPtr("project"),
-				ProjectID:        utility.ToStringPtr("project_id"),
-				Region:           utility.ToStringPtr("region"),
-			},
-			VSphere: &model.APIVSphereConfig{
-				Host:     utility.ToStringPtr("host"),
-				Username: utility.ToStringPtr("vsphere"),
-				Password: utility.ToStringPtr("vsphere_pass"),
+				APIVersion: utility.ToStringPtr(""),
 			},
 		},
 	}

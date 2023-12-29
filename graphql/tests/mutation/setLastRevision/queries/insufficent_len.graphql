@@ -1,0 +1,5 @@
+mutation {
+  setLastRevision(opts: { projectIdentifier: "sandbox_project_id", revision: "1234" }) {
+    mergeBaseRevision
+  }
+}

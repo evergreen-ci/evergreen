@@ -1,0 +1,214 @@
+{
+  "project_ref": [
+    {
+      "_id": "sandbox_project_id",
+      "identifier": "sandbox",
+      "display_name": "Sandbox",
+      "enabled": null,
+      "restricted": true,
+      "owner_name": "evergreen-ci",
+      "repo_name": "commit-queue-sandbox",
+      "branch_name": "main",
+      "remote_path": "evergreen.yml",
+      "patching_disabled": false,
+      "pr_testing_enabled": true,
+      "stepback_disabled": false,
+      "batch_time": 2,
+      "deactivate_previous": true,
+      "triggers": [
+        {
+          "project": "spruce",
+          "level": "task",
+          "config_file": ".evergreen.yml",
+          "unschedule_downstream_versions": true
+        }
+      ],
+      "patch_trigger_aliases": [
+        {
+          "alias": "my_alias_sandbox",
+          "child_project": "vars_test",
+          "task_specifiers": [
+            {
+              "task_regex": "test-util",
+              "variant_regex": "^ubuntu1604$"
+            }
+          ]
+        }
+      ],
+      "commit_queue": {
+        "enabled": true,
+        "require_signed": false,
+        "merge_method": "squash",
+        "message": "hmmm"
+      },
+      "admins": ["annie.black"],
+      "spawn_host_script_path": "",
+      "tracks_push_events": true,
+      "task_sync": {
+        "config_enabled": false,
+        "patch_enabled": true
+      },
+      "perf_enabled": true,
+      "build_baron_settings": {
+        "ticket_create_project": "EVG",
+        "ticket_search_projects": ["EVG"],
+        "bf_suggestion_server": "",
+        "bf_suggestion_username": "",
+        "bf_suggestion_password": "",
+        "bf_suggestion_timeout_secs": 0,
+        "bf_suggestion_features_url": ""
+      },
+      "task_annotation_settings": {
+        "web_hook": {
+          "endpoint": "endpoint",
+          "secret": "shh"
+        },
+        "jira_custom_fields": [
+          {
+            "display_text": "description",
+            "field": "sample_field"
+          }
+        ]
+      },
+      "container_size_definitions": [
+        {
+          "name": "size1",
+          "cpu": 1,
+          "memory_mb": 1024
+        },
+        {
+          "name": "size2",
+          "cpu": 2,
+          "memory_mb": 2048
+        }
+      ],
+      "parsley_filters": [
+        {
+          "expression": "filter1",
+          "case_sensitive": false,
+          "exact_match": false
+        },
+        {
+          "expression": "filter2",
+          "case_sensitive": true,
+          "exact_match": true
+        }
+      ],
+      "git_tag_authorized_users": ["ablack12"],
+      "workstation_config": {
+        "setup_commands": null,
+        "git_clone": false
+      },
+      "hidden": false,
+      "repo_ref_id": "my_repo",
+      "external_links": [
+        {
+          "display_name": "A link to somewhere",
+          "requesters": ["gitter_request", "github_pull_request"],
+          "url_template": "https://a-fake-url-for-{version_id}.com/{version_id}"
+        }
+      ]
+    },
+    {
+      "_id": "vars_test",
+      "identifier": "varsTest",
+      "display_name": "Vars test"
+    }
+  ],
+  "subscriptions": [
+    {
+      "_id": "61326406a620e4737f57003e",
+      "type": "VERSION",
+      "trigger": "family-outcome",
+      "selectors": [
+        {
+          "type": "project",
+          "data": "613256a4a620e4737f570038"
+        },
+        {
+          "type": "requester",
+          "data": "gitter_request"
+        }
+      ],
+      "regex_selectors": [],
+      "subscriber": {
+        "type": "slack",
+        "target": "@me"
+      },
+      "owner": "sandbox_project_id",
+      "owner_type": "project",
+      "trigger_data": {
+        "requester": "gitter_request"
+      }
+    },
+    {
+      "_id": "61326406a620e4737f57003f",
+      "selectors": [
+        {
+          "type": "project",
+          "data": "sandbox_project_id"
+        },
+        {
+          "type": "requester",
+          "data": "patch_request"
+        }
+      ],
+      "regex_selectors": [],
+      "subscriber": {
+        "type": "jira-issue",
+        "target": {
+          "project": "EVG",
+          "issue_type": "1212"
+        }
+      },
+      "owner": "sandbox_project_id",
+      "owner_type": "project",
+      "trigger_data": {
+        "requester": "patch_request"
+      },
+      "type": "VERSION",
+      "trigger": "failure"
+    },
+    {
+      "_id": "1234",
+      "regex_selectors": [
+        {
+          "type": "display-name",
+          "data": "abc"
+        }
+      ],
+      "subscriber": {
+        "type": "evergreen-webhook",
+        "target": {
+          "url": "https://example.com",
+          "headers": [
+            {
+              "key": "key",
+              "value": "val"
+            }
+          ],
+          "retries": 2,
+          "min_delay_ms": 500,
+          "timeout_ms": 15000
+        }
+      },
+      "owner": "sandbox_project_id",
+      "owner_type": "project",
+      "trigger_data": {
+        "task-duration-secs": "10"
+      },
+      "type": "TASK",
+      "trigger": "exceeds-duration",
+      "selectors": [
+        {
+          "type": "project",
+          "data": "613256a4a620e4737f570038"
+        },
+        {
+          "type": "requester",
+          "data": "gitter_request"
+        }
+      ]
+    }
+  ]
+}

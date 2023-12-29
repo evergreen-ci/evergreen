@@ -5,7 +5,6 @@ import (
 	"fmt"
 	"math/rand"
 	"regexp"
-	"strings"
 	"testing"
 	"time"
 
@@ -89,28 +88,6 @@ func TestGenerateName(t *testing.T) {
 	match, err = regexp.MatchString("evg-test-[0-9]+-[0-9]+", d.GenerateName())
 	assert.NoError(err)
 	assert.True(match)
-}
-
-func TestGenerateGceName(t *testing.T) {
-	assert := assert.New(t)
-
-	r, err := regexp.Compile("(?:[a-z](?:[-a-z0-9]{0,61}[a-z0-9])?)")
-	assert.NoError(err)
-	d := Distro{Id: "name"}
-
-	nameA := d.GenerateName()
-	nameB := d.GenerateName()
-	assert.True(r.Match([]byte(nameA)))
-	assert.True(r.Match([]byte(nameB)))
-	assert.NotEqual(nameA, nameB)
-
-	d.Id = "!nv@lid N@m3*"
-	invalidChars := d.GenerateName()
-	assert.True(r.Match([]byte(invalidChars)))
-
-	d.Id = strings.Repeat("abc", 10)
-	tooManyChars := d.GenerateName()
-	assert.True(r.Match([]byte(tooManyChars)))
 }
 
 func TestIsParent(t *testing.T) {
@@ -280,28 +257,9 @@ func TestGetImageID(t *testing.T) {
 			expectedOutput: "imageID",
 		},
 		{
-			name:           "Gce",
-			provider:       evergreen.ProviderNameGce,
-			key:            "image_name",
-			value:          "imageID",
-			expectedOutput: "imageID",
-		},
-		{
 			name:     "Static",
 			provider: evergreen.ProviderNameStatic,
 			noKey:    true,
-		},
-		{
-			name:     "Openstack",
-			provider: evergreen.ProviderNameOpenstack,
-			noKey:    true,
-		},
-		{
-			name:           "Vsphere",
-			provider:       evergreen.ProviderNameVsphere,
-			key:            "template",
-			value:          "imageID",
-			expectedOutput: "imageID",
 		},
 		{
 			name:     "Mock",

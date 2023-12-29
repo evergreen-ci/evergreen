@@ -37,11 +37,18 @@ type ParserProjectStorage interface {
 // GetParserProjectStorage returns the parser project storage mechanism to
 // access the persistent copy of it. Users of the returned ParserProjectStorage
 // must call Close once they are finished using it.
-func GetParserProjectStorage(settings *evergreen.Settings, method evergreen.ParserProjectStorageMethod) (ParserProjectStorage, error) {
+func GetParserProjectStorage(ctx context.Context, settings *evergreen.Settings, method evergreen.ParserProjectStorageMethod) (ParserProjectStorage, error) {
 	switch method {
 	case "", evergreen.ProjectStorageMethodDB:
 		return ParserProjectDBStorage{}, nil
 	case evergreen.ProjectStorageMethodS3:
+		settingsFromDB, err := evergreen.GetConfig(ctx)
+		if err != nil {
+			return nil, errors.Wrap(err, "getting admin settings")
+		}
+		if settingsFromDB.ServiceFlags.LargeParserProjectsDisabled {
+			return nil, errors.New("large parser projects are disabled")
+		}
 		return NewParserProjectS3Storage(settings.Providers.AWS.ParserProject)
 	default:
 		return nil, errors.Errorf("unrecognized parser project storage method '%s'", method)
@@ -51,7 +58,7 @@ func GetParserProjectStorage(settings *evergreen.Settings, method evergreen.Pars
 // ParserProjectFindOneByID is a convenience wrapper to find one parser project
 // by ID from persistent storage.
 func ParserProjectFindOneByID(ctx context.Context, settings *evergreen.Settings, method evergreen.ParserProjectStorageMethod, id string) (*ParserProject, error) {
-	ppStorage, err := GetParserProjectStorage(settings, method)
+	ppStorage, err := GetParserProjectStorage(ctx, settings, method)
 	if err != nil {
 		return nil, errors.Wrap(err, "getting parser project storage")
 	}
@@ -62,7 +69,7 @@ func ParserProjectFindOneByID(ctx context.Context, settings *evergreen.Settings,
 // ParserProjectFindOneByIDWithFields is a convenience wrapper to find one
 // parser project by ID from persistent storage with the given fields populated.
 func ParserProjectFindOneByIDWithFields(ctx context.Context, settings *evergreen.Settings, method evergreen.ParserProjectStorageMethod, id string, fields ...string) (*ParserProject, error) {
-	ppStorage, err := GetParserProjectStorage(settings, method)
+	ppStorage, err := GetParserProjectStorage(ctx, settings, method)
 	if err != nil {
 		return nil, errors.Wrap(err, "getting parser project storage")
 	}
@@ -73,7 +80,7 @@ func ParserProjectFindOneByIDWithFields(ctx context.Context, settings *evergreen
 // ParserProjectUpsertOne is a convenience wrapper to upsert one parser project
 // to persistent storage.
 func ParserProjectUpsertOne(ctx context.Context, settings *evergreen.Settings, method evergreen.ParserProjectStorageMethod, pp *ParserProject) error {
-	ppStorage, err := GetParserProjectStorage(settings, method)
+	ppStorage, err := GetParserProjectStorage(ctx, settings, method)
 	if err != nil {
 		return errors.Wrap(err, "getting parser project storage")
 	}
@@ -103,7 +110,7 @@ func ParserProjectUpsertOneWithS3Fallback(ctx context.Context, settings *evergre
 	}
 
 	grip.Info(message.Fields{
-		"message":            "successfully upserted parser into S3 as fallback due to document size limitation",
+		"message":            "successfully upserted parser project into S3 as fallback due to document size limitation",
 		"parser_project":     pp.Id,
 		"old_storage_method": method,
 		"new_storage_method": newMethod,

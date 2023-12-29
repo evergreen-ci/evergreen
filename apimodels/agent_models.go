@@ -63,10 +63,11 @@ type TaskEndDetail struct {
 	Description     string          `bson:"desc,omitempty" json:"desc,omitempty"`
 	TimedOut        bool            `bson:"timed_out,omitempty" json:"timed_out,omitempty"`
 	TimeoutType     string          `bson:"timeout_type,omitempty" json:"timeout_type,omitempty"`
-	TimeoutDuration time.Duration   `bson:"timeout_duration,omitempty" json:"timeout_duration,omitempty"`
+	TimeoutDuration time.Duration   `bson:"timeout_duration,omitempty" json:"timeout_duration,omitempty" swaggertype:"primitive,integer"`
 	OOMTracker      *OOMTrackerInfo `bson:"oom_killer,omitempty" json:"oom_killer,omitempty"`
 	Modules         ModuleCloneInfo `bson:"modules,omitempty" json:"modules,omitempty"`
 	TraceID         string          `bson:"trace_id,omitempty" json:"trace_id,omitempty"`
+	DiskDevices     []string        `bson:"disk_devices,omitempty" json:"disk_devices,omitempty"`
 }
 
 type OOMTrackerInfo struct {
@@ -104,7 +105,6 @@ type AgentSetupData struct {
 	SplunkServerURL        string                  `json:"splunk_server_url"`
 	SplunkClientToken      string                  `json:"splunk_client_token"`
 	SplunkChannel          string                  `json:"splunk_channel"`
-	Buckets                evergreen.BucketConfig  `json:"buckets"`
 	TaskSync               evergreen.S3Credentials `json:"task_sync"`
 	EC2Keys                []evergreen.EC2Key      `json:"ec2_keys"`
 	TraceCollectorEndpoint string                  `json:"trace_collector_endpoint"`
@@ -112,14 +112,13 @@ type AgentSetupData struct {
 
 // NextTaskResponse represents the response sent back when an agent asks for a next task
 type NextTaskResponse struct {
-	TaskId                    string `json:"task_id,omitempty"`
-	TaskSecret                string `json:"task_secret,omitempty"`
-	TaskGroup                 string `json:"task_group,omitempty"`
-	Version                   string `json:"version,omitempty"`
-	Build                     string `json:"build,omitempty"`
-	ShouldExit                bool   `json:"should_exit,omitempty"`
-	ShouldTeardownGroup       bool   `json:"should_teardown_group,omitempty"`
-	UnsetFunctionVarsDisabled bool   `json:"unset_function_vars_disabled"`
+	TaskId              string `json:"task_id,omitempty"`
+	TaskSecret          string `json:"task_secret,omitempty"`
+	TaskGroup           string `json:"task_group,omitempty"`
+	Version             string `json:"version,omitempty"`
+	Build               string `json:"build,omitempty"`
+	ShouldExit          bool   `json:"should_exit,omitempty"`
+	ShouldTeardownGroup bool   `json:"should_teardown_group,omitempty"`
 }
 
 // EndTaskResponse is what is returned when the task ends
@@ -197,18 +196,9 @@ func (ch *CreateHost) validateDocker(ctx context.Context) error {
 	catcher.Add(ch.setNumHosts())
 	catcher.Add(ch.validateAgentOptions())
 
-	if ch.Image == "" {
-		catcher.New("Docker image must be set")
-	}
-	if ch.Distro == "" {
-		settings, err := evergreen.GetConfig(ctx)
-		if err != nil {
-			catcher.New("error getting config to set default distro")
-		} else {
-			ch.Distro = settings.Providers.Docker.DefaultDistro
-		}
+	catcher.NewWhen(ch.Image == "", "Docker image must be set")
+	catcher.NewWhen(ch.Distro == "", "must set a distro to run Docker container in")
 
-	}
 	if ch.ContainerWaitTimeoutSecs <= 0 {
 		ch.ContainerWaitTimeoutSecs = DefaultContainerWaitTimeoutSecs
 	} else if ch.ContainerWaitTimeoutSecs >= 3600 || ch.ContainerWaitTimeoutSecs <= 10 {
@@ -339,8 +329,9 @@ type GeneratePollResponse struct {
 // DistroView represents the view of data that the agent uses from the distro
 // it is running on.
 type DistroView struct {
-	CloneMethod         string `json:"clone_method"`
-	DisableShallowClone bool   `json:"disable_shallow_clone"`
+	CloneMethod         string   `json:"clone_method"`
+	DisableShallowClone bool     `json:"disable_shallow_clone"`
+	Mountpoints         []string `json:"mountpoints"`
 }
 
 // ExpansionsAndVars represents expansions, project variables, and parameters

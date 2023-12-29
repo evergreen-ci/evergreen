@@ -282,6 +282,8 @@ func getPatchFromRequest(r *http.Request) (*patch.Patch, error) {
 }
 
 func (as *APIServer) updatePatchModule(w http.ResponseWriter, r *http.Request) {
+	ctx, cancel := context.WithCancel(r.Context())
+	defer cancel()
 	p, err := getPatchFromRequest(r)
 	if err != nil {
 		gimlet.WriteJSONError(w, err.Error())
@@ -311,28 +313,6 @@ func (as *APIServer) updatePatchModule(w http.ResponseWriter, r *http.Request) {
 	}
 
 	moduleName, githash := data.Module, data.Githash
-
-	projectRef, err := model.FindBranchProjectRef(p.Project)
-	if err != nil {
-		as.LoggedError(w, r, http.StatusInternalServerError, errors.Wrapf(err, "Error getting project ref with id %v", p.Project))
-		return
-	}
-	_, project, _, err := model.FindLatestVersionWithValidProject(projectRef.Id)
-	if err != nil {
-		as.LoggedError(w, r, http.StatusInternalServerError, errors.Wrap(err, "Error getting patch"))
-		return
-	}
-	if project == nil {
-		as.LoggedError(w, r, http.StatusNotFound, errors.Errorf("can't find project: %v", p.Project))
-		return
-	}
-
-	module, err := project.GetModuleByName(moduleName)
-	if err != nil || module == nil {
-		as.LoggedError(w, r, http.StatusBadRequest, errors.Errorf("No such module: %s", moduleName))
-		return
-	}
-
 	var summaries []thirdparty.Summary
 	var commitMessages []string
 	if patch.IsMailboxDiff(patchContent) {
@@ -373,7 +353,16 @@ func (as *APIServer) updatePatchModule(w http.ResponseWriter, r *http.Request) {
 	}
 
 	if p.IsCommitQueuePatch() {
-		if err = p.SetDescription(model.MakeCommitQueueDescription(p.Patches, projectRef, project, p.IsGithubMergePatch(), p.GithubMergeData.HeadSHA)); err != nil {
+		projectRef, err := model.FindBranchProjectRef(p.Project)
+		if err != nil {
+			as.LoggedError(w, r, http.StatusInternalServerError, errors.Wrapf(err, "Error getting project ref with id %v", p.Project))
+			return
+		}
+		proj, _, err := model.FindAndTranslateProjectForPatch(ctx, &as.Settings, p)
+		if err != nil {
+			as.LoggedError(w, r, http.StatusInternalServerError, errors.Errorf("finding project for patch '%s'", p.Id))
+		}
+		if err = p.SetDescription(model.MakeCommitQueueDescription(p.Patches, projectRef, proj, p.IsGithubMergePatch(), p.GithubMergeData)); err != nil {
 			as.LoggedError(w, r, http.StatusInternalServerError, err)
 			return
 		}

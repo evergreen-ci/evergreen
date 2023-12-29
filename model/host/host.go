@@ -2155,16 +2155,18 @@ func (h *Host) UpdateParentIDs(ctx context.Context) error {
 	return UpdateAll(ctx, query, update)
 }
 
-// For spawn hosts that have never been set unexpirable, this will
-// prevent spawn hosts from being set further than 30 days.
-// For unexpirable hosts, this will prevent them from being extended any further
-// than the new 30 day expiration (unless it is set to unexpirable again #loophole)
-func (h *Host) PastMaxExpiration(extension time.Duration) error {
+// ValidateExpirationExtension will prevent expirable spawn hosts
+// from being extended past 30 days from its creation and not earlier
+// than the current time.
+func (h *Host) ValidateExpirationExtension(extension time.Duration) error {
 	maxExpirationTime := h.CreationTime.Add(evergreen.SpawnHostExpireDays * time.Hour * 24)
 	proposedTime := h.ExpirationTime.Add(extension)
 
 	if h.ExpirationTime.After(maxExpirationTime) || proposedTime.After(maxExpirationTime) {
 		return errors.Errorf("spawn host cannot be extended more than %d days past creation", evergreen.SpawnHostExpireDays)
+	}
+	if time.Now().After(proposedTime) {
+		return errors.New("spawn host cannot be extended before the current time.")
 	}
 	return nil
 }

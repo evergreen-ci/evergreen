@@ -24,8 +24,6 @@ type HostAllocatorData struct {
 
 func GetHostAllocator(name string) HostAllocator {
 	switch name {
-	case evergreen.HostAllocatorDeficit:
-		return DeficitBasedHostAllocator
 	case evergreen.HostAllocatorUtilization:
 		return UtilizationBasedHostAllocator
 	default:

@@ -29,14 +29,11 @@ import (
 )
 
 const (
-	numGithubAttempts   = 3
-	githubRetryMinDelay = time.Second
-	githubAccessURL     = "https://github.com/login/oauth/access_token"
+	githubAccessURL = "https://github.com/login/oauth/access_token"
 
 	Github502Error   = "502 Server Error"
 	commitObjectType = "commit"
 	tagObjectType    = "tag"
-	githubWrite      = "write"
 
 	GithubInvestigation = "Github API Limit Investigation"
 )
@@ -59,6 +56,11 @@ var UnblockedGithubStatuses = []string{
 	githubPRHasHooks,
 	githubPRUnknown,
 	githubPRUnstable,
+}
+
+var githubWritePermissions = []string{
+	"admin",
+	"write",
 }
 
 const (
@@ -155,7 +157,17 @@ type GithubMergeGroup struct {
 	Repo       string `bson:"repo"`
 	BaseBranch string `bson:"base_branch"` // BaseBranch is what GitHub merges to
 	HeadBranch string `bson:"head_branch"` // HeadBranch is the merge group's gh-readonly-queue branch
-	HeadSHA    string `bson:"head_sha"`
+
+	// HeadSHA is the SHA of the commit at the head of the merge group. For each
+	// PR in the merge group, GitHub merges the commits from that PR together,
+	// so there are as many commits as there are PRs in the merge group. This is
+	// only the SHA of the first commit in the merge group.
+	HeadSHA string `bson:"head_sha"`
+	// HeadCommit is the title of the commit at the head of the merge group. For
+	// each PR in the merge group, GitHub merges the commits from that PR
+	// together, so there are as many commits as there are PRs in the merge
+	// group. This is only the title of the first commit in the merge group.
+	HeadCommit string `bson:"head_commit"`
 }
 
 // SendGithubStatusInput is the input to the SendPendingStatusToGithub function and contains
@@ -192,7 +204,7 @@ func githubShouldRetry(caller string, config retryConfig) utility.HTTPRetryFunct
 			return false
 		}
 
-		if index >= numGithubAttempts {
+		if index >= evergreen.GitHubMaxRetries {
 			return false
 		}
 
@@ -286,8 +298,8 @@ func getGithubClient(token, caller string, config retryConfig) *github.Client {
 		token,
 		githubShouldRetry(caller, config),
 		utility.RetryHTTPDelay(utility.RetryOptions{
-			MaxAttempts: numGithubAttempts,
-			MinDelay:    githubRetryMinDelay,
+			MaxAttempts: evergreen.GitHubMaxRetries,
+			MinDelay:    evergreen.GitHubRetryMinDelay,
 		}),
 		utility.DefaultHttpClient(githubTransport),
 	)
@@ -872,8 +884,8 @@ func tryGithubPost(ctx context.Context, url string, oauthToken string, data inte
 
 		return false, nil
 	}, utility.RetryOptions{
-		MaxAttempts: numGithubAttempts,
-		MinDelay:    githubRetryMinDelay,
+		MaxAttempts: evergreen.GitHubMaxRetries,
+		MinDelay:    evergreen.GitHubRetryMinDelay,
 	})
 
 	if err != nil {
@@ -1336,6 +1348,7 @@ func AppAuthorizedForOrg(ctx context.Context, token, requiredOrganization, name 
 
 func authorizedForOrg(ctx context.Context, token, requiredOrganization, name string) (bool, error) {
 	caller := "AppAuthorizedForOrg"
+	const botSuffix = "[bot]"
 	ctx, span := tracer.Start(ctx, caller, trace.WithAttributes(
 		attribute.String(githubEndpointAttribute, caller),
 	))
@@ -1350,6 +1363,8 @@ func authorizedForOrg(ctx context.Context, token, requiredOrganization, name str
 	}
 	githubClient := getGithubClient(token, caller, retryConfig{retry: true})
 
+	// GitHub often appends [bot] to GitHub App usage, but this doesn't match the App slug, so we should check without this.
+	nameWithoutBotSuffix := strings.TrimSuffix(name, botSuffix)
 	opts := &github.ListOptions{PerPage: 100}
 	for {
 		installations, resp, err := githubClient.Organizations.ListInstallations(ctx, requiredOrganization, opts)
@@ -1361,9 +1376,10 @@ func authorizedForOrg(ctx context.Context, token, requiredOrganization, name str
 		}
 
 		for _, installation := range installations.Installations {
-			if installation.GetAppSlug() == name {
+			appSlug := installation.GetAppSlug()
+			if appSlug == name || appSlug == nameWithoutBotSuffix {
 				prPermission := installation.GetPermissions().GetPullRequests()
-				if prPermission == githubWrite {
+				if utility.StringSliceContains(githubWritePermissions, prPermission) {
 					return true, nil
 				}
 				return false, errors.Errorf("app '%s' is installed but has pull request permission '%s'", name, prPermission)
@@ -1380,8 +1396,10 @@ func authorizedForOrg(ctx context.Context, token, requiredOrganization, name str
 	return false, nil
 }
 
-func GitHubUserPermissionLevel(ctx context.Context, token, owner, repo, username string) (string, error) {
-	level, err := permissionLevel(ctx, "", owner, repo, username)
+// GitHubUserHasWritePermission returns true if the given user has write permission for the repo.
+// Returns an error if the user isn't found or the token isn't authed for this repo.
+func GitHubUserHasWritePermission(ctx context.Context, token, owner, repo, username string) (bool, error) {
+	level, err := userHasWritePermission(ctx, "", owner, repo, username)
 	if err == nil {
 		return level, nil
 	}
@@ -1394,11 +1412,11 @@ func GitHubUserPermissionLevel(ctx context.Context, token, owner, repo, username
 		"username": username,
 	}))
 
-	return permissionLevel(ctx, token, owner, repo, username)
+	return userHasWritePermission(ctx, token, owner, repo, username)
 }
 
-func permissionLevel(ctx context.Context, token, owner, repo, username string) (string, error) {
-	caller := "GithubUserPermissionLevel"
+func userHasWritePermission(ctx context.Context, token, owner, repo, username string) (bool, error) {
+	caller := "userHasWritePermission"
 	ctx, span := tracer.Start(ctx, caller, trace.WithAttributes(
 		attribute.String(githubEndpointAttribute, caller),
 		attribute.String(githubOwnerAttribute, owner),
@@ -1410,7 +1428,7 @@ func permissionLevel(ctx context.Context, token, owner, repo, username string) (
 		var err error
 		token, err = getInstallationToken(ctx, owner, repo, nil)
 		if err != nil {
-			return "", errors.Wrap(err, "getting installation token")
+			return false, errors.Wrap(err, "getting installation token")
 		}
 	}
 	githubClient := getGithubClient(token, caller, retryConfig{retry404: true})
@@ -1421,14 +1439,14 @@ func permissionLevel(ctx context.Context, token, owner, repo, username string) (
 		span.SetAttributes(attribute.Bool(githubCachedAttribute, respFromCache(resp.Response)))
 	}
 	if err != nil {
-		return "", errors.Wrap(err, "can't get permissions from GitHub")
+		return false, errors.Wrap(err, "can't get permissions from GitHub")
 	}
 
 	if permissionLevel == nil || permissionLevel.Permission == nil {
-		return "", errors.Errorf("GitHub returned an invalid response to request for user permissions for '%s'", username)
+		return false, errors.Errorf("GitHub returned an invalid response to request for user permissions for '%s'", username)
 	}
 
-	return permissionLevel.GetPermission(), nil
+	return utility.StringSliceContains(githubWritePermissions, permissionLevel.GetPermission()), nil
 }
 
 // GetPullRequestMergeBase returns the merge base hash for the given PR.
@@ -1918,4 +1936,73 @@ func GetBranchProtectionRules(ctx context.Context, token, owner, repo, branch st
 		return checks, nil
 	}
 	return nil, nil
+}
+
+// CreateCheckrun creates a checkRun and returns a Github CheckRun object
+func CreateCheckrun(ctx context.Context, owner, repo, name, headSHA string, output *github.CheckRunOutput) (*github.CheckRun, error) {
+	caller := "createCheckrun"
+	ctx, span := tracer.Start(ctx, caller, trace.WithAttributes(
+		attribute.String(githubEndpointAttribute, caller),
+		attribute.String(githubOwnerAttribute, owner),
+		attribute.String(githubRepoAttribute, repo),
+	))
+	defer span.End()
+
+	token, err := getInstallationToken(ctx, owner, repo, nil)
+	if err != nil {
+		return nil, errors.Wrap(err, "getting installation token")
+	}
+
+	githubClient := getGithubClient(token, caller, retryConfig{retry: true})
+
+	opts := github.CreateCheckRunOptions{
+		Output:  output,
+		Name:    name,
+		HeadSHA: headSHA,
+	}
+
+	checkRun, resp, err := githubClient.Checks.CreateCheckRun(ctx, owner, repo, opts)
+	if resp != nil {
+		defer resp.Body.Close()
+		span.SetAttributes(attribute.Bool(githubCachedAttribute, respFromCache(resp.Response)))
+	}
+	if err != nil {
+		return nil, errors.Wrap(err, "creating checkRun")
+	}
+
+	return checkRun, nil
+}
+
+// UpdateCheckrun updates a checkRun and returns a Github CheckRun object
+func UpdateCheckrun(ctx context.Context, owner, repo, name string, checkRunID int64, output *github.CheckRunOutput) (*github.CheckRun, error) {
+	caller := "updateCheckrun"
+	ctx, span := tracer.Start(ctx, caller, trace.WithAttributes(
+		attribute.String(githubEndpointAttribute, caller),
+		attribute.String(githubOwnerAttribute, owner),
+		attribute.String(githubRepoAttribute, repo),
+	))
+	defer span.End()
+
+	token, err := getInstallationToken(ctx, owner, repo, nil)
+	if err != nil {
+		return nil, errors.Wrap(err, "getting installation token")
+	}
+
+	githubClient := getGithubClient(token, caller, retryConfig{retry: true})
+
+	opts := github.UpdateCheckRunOptions{
+		Output: output,
+		Name:   name,
+	}
+
+	checkRun, resp, err := githubClient.Checks.UpdateCheckRun(ctx, owner, repo, checkRunID, opts)
+	if resp != nil {
+		defer resp.Body.Close()
+		span.SetAttributes(attribute.Bool(githubCachedAttribute, respFromCache(resp.Response)))
+	}
+	if err != nil {
+		return nil, errors.Wrap(err, "updating checkRun")
+	}
+
+	return checkRun, nil
 }

@@ -1,0 +1,17 @@
+{
+  user {
+    patches(
+      patchesInput: {
+        includeCommitQueue: true
+        statuses: ["failed"]
+        includeHidden: true
+      }
+    ) {
+      patches {
+        id
+        status
+      }
+      filteredPatchCount
+    }
+  }
+}

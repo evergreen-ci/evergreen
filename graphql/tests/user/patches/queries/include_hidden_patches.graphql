@@ -1,0 +1,25 @@
+{
+  user(userId: "testuser") {
+    includeHidden: patches(patchesInput: { includeHidden: true }) {
+      patches {
+        id
+        hidden
+      }
+      filteredPatchCount
+    }
+    excludeHidden: patches(patchesInput: { includeHidden: false }) {
+      patches {
+        id
+        hidden
+      }
+      filteredPatchCount
+    }
+    unsuppliedHidden: patches(patchesInput: { includeHidden: true }) {
+      patches {
+        id
+        hidden
+      }
+      filteredPatchCount
+    }
+  }
+}

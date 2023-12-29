@@ -1,9 +1,0 @@
-type GithubUser {
-  LastKnownAs: String
-  UID: Int!
-}
-
-type UserSettings {
-  Region: String!
-  GithubUser: GithubUser
-}

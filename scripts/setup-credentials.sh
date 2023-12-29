@@ -54,6 +54,7 @@ providers:
       secret: "$AWS_SECRET"
       bucket: "evergreen-projects-testing"
       prefix: "$PARSER_PROJECT_S3_PREFIX"
+      generated_json_prefix: $GENERATED_JSON_S3_PREFIX
     ec2_keys:
       - region: "us-east-1"
         key: "$AWS_KEY"
@@ -65,9 +66,21 @@ auth:
       - username: "mci-nonprod"
         password: "change me"
         display_name: "MCI Nonprod"
+    github:
+      app_id: $GITHUB_APP_ID
+      default_owner: "evergreen-ci"
+      default_repo: "evergreen"
 
-plugins:
-  manifest:
-    github_token: "$GITHUB_TOKEN"
 github_pr_creator_org: "10gen"
+
+# Do not edit below this line
+expansions:
+  github_app_key: |
 EOF
+
+# Write the GitHub app key to a file for easier formatting
+echo "$GITHUB_APP_KEY" > app_key.txt
+# Linux and MacOS friendly command to add 4 spaces to the start of each line
+sed -i'' -e 's/^/    /' app_key.txt
+# Append the formatted GitHub app key to the creds.yml file
+cat app_key.txt >> creds.yml

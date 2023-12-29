@@ -27,6 +27,9 @@ func Validate() cli.Command {
 		}, cli.BoolFlag{
 			Name:  joinFlagNames(longFlagName, "l"),
 			Usage: "include long validation checks (only applies if the check is over some threshold, in which case a warning is issued)",
+		}, cli.BoolFlag{
+			Name:  joinFlagNames(errorOnWarningsFlagName, "w"),
+			Usage: "treat warnings as errors",
 		}, cli.StringSliceFlag{
 			Name:  joinFlagNames(localModulesFlagName, "lm"),
 			Usage: "specify local modules as MODULE_NAME=PATH pairs",
@@ -40,6 +43,7 @@ func Validate() cli.Command {
 			path := c.String(pathFlagName)
 			quiet := c.Bool(quietFlagName)
 			long := c.Bool(longFlagName)
+			errorOnWarnings := c.Bool(errorOnWarningsFlagName)
 			projectID := c.String(projectFlagName)
 			localModulePaths := c.StringSlice(localModulesFlagName)
 			localModuleMap, err := getLocalModulesFromInput(localModulePaths)
@@ -85,12 +89,12 @@ func Validate() cli.Command {
 				}
 				catcher := grip.NewSimpleCatcher()
 				for _, file := range files {
-					catcher.Add(validateFile(filepath.Join(path, file.Name()), ac, quiet, long, localModuleMap, projectID))
+					catcher.Add(validateFile(filepath.Join(path, file.Name()), ac, quiet, long, errorOnWarnings, localModuleMap, projectID))
 				}
 				return catcher.Resolve()
 			}
 
-			return validateFile(path, ac, quiet, long, localModuleMap, projectID)
+			return validateFile(path, ac, quiet, long, errorOnWarnings, localModuleMap, projectID)
 		},
 	}
 }
@@ -108,7 +112,7 @@ func getLocalModulesFromInput(localModulePaths []string) (map[string]string, err
 	return moduleMap, catcher.Resolve()
 }
 
-func validateFile(path string, ac *legacyClient, quiet, includeLong bool, localModuleMap map[string]string, projectID string) error {
+func validateFile(path string, ac *legacyClient, quiet, includeLong, errorOnWarnings bool, localModuleMap map[string]string, projectID string) error {
 	confFile, err := os.ReadFile(path)
 	if err != nil {
 		return errors.Wrapf(err, "reading file '%s'", path)
@@ -147,7 +151,7 @@ func validateFile(path string, ac *legacyClient, quiet, includeLong bool, localM
 	}
 
 	grip.Info(projErrors)
-	if projErrors.HasError() {
+	if projErrors.HasError() || (errorOnWarnings && len(projErrors) > 0) {
 		return errors.Errorf("%s is an invalid configuration", path)
 	} else if len(projErrors) > 0 {
 		grip.Infof("%s is valid with warnings", path)

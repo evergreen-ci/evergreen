@@ -877,7 +877,7 @@ func createTasksForBuild(creationInfo TaskCreationInfo) (task.Tasks, error) {
 	return tasks, nil
 }
 
-// addSingleHostTaskGroupDependencies adds dependencies to tasks in a single-host task group
+// addSingleHostTaskGroupDependencies adds dependencies to any tasks in a single-host task group
 func addSingleHostTaskGroupDependencies(taskMap map[string]*task.Task, p *Project, taskIds TaskIdTable) {
 	for _, t := range taskMap {
 		if t.TaskGroup == "" {
@@ -1514,7 +1514,7 @@ func sortLayer(layer []task.Task, idToDisplayName map[string]string) []task.Task
 func addNewBuilds(ctx context.Context, creationInfo TaskCreationInfo, existingBuilds []build.Build) ([]string, error) {
 	ctx, span := tracer.Start(ctx, "add-new-builds")
 	defer span.End()
-	taskIdTables, err := getTaskIdTables(creationInfo)
+	taskIdTables, err := getTaskIdConfig(creationInfo)
 	if err != nil {
 		return nil, errors.Wrap(err, "making task ID table")
 	}
@@ -1646,7 +1646,7 @@ func addNewBuilds(ctx context.Context, creationInfo TaskCreationInfo, existingBu
 
 // Given a version and set of variant/task pairs, creates any tasks that don't exist yet,
 // within the set of already existing builds. Returns activated task IDs.
-func addNewTasks(ctx context.Context, creationInfo TaskCreationInfo, existingBuilds []build.Build, caller string) ([]string, error) {
+func addNewTasksToExistingBuilds(ctx context.Context, creationInfo TaskCreationInfo, existingBuilds []build.Build, caller string) ([]string, error) {
 	ctx, span := tracer.Start(ctx, "add-new-tasks")
 	defer span.End()
 	if creationInfo.Version.BuildIds == nil {
@@ -1657,7 +1657,7 @@ func addNewTasks(ctx context.Context, creationInfo TaskCreationInfo, existingBui
 		return nil, err
 	}
 
-	taskIdTables, err := getTaskIdTables(creationInfo)
+	taskIdTables, err := getTaskIdConfig(creationInfo)
 	if err != nil {
 		return nil, errors.Wrap(err, "getting table of task IDs")
 	}
@@ -1785,9 +1785,13 @@ func activateExistingInactiveTasks(ctx context.Context, creationInfo TaskCreatio
 	return nil
 }
 
-func getTaskIdTables(creationInfo TaskCreationInfo) (TaskIdConfig, error) {
+// getTaskIdConfig takes the pre-determined set of task IDs and combines it with
+// new task IDs for the task-variant pairs to be created. If there are duplicate
+// task-variant pairs, the new task-variant pairs will overwrite the existing
+// ones.
+func getTaskIdConfig(creationInfo TaskCreationInfo) (TaskIdConfig, error) {
 	// The table should include only new and existing tasks
-	taskIdTable, err := NewPatchTaskIdTable(creationInfo.Project, creationInfo.Version, creationInfo.Pairs, creationInfo.ProjectRef.Identifier)
+	taskIdTable, err := NewTaskIdConfig(creationInfo.Project, creationInfo.Version, creationInfo.Pairs, creationInfo.ProjectRef.Identifier)
 	if err != nil {
 		return TaskIdConfig{}, errors.Wrap(err, "creating patch's task ID table")
 	}
@@ -1803,5 +1807,27 @@ func getTaskIdTables(creationInfo TaskCreationInfo) (TaskIdConfig, error) {
 		}
 	}
 
-	return taskIdTable, nil
+	// Merge the pre-determined task IDs with the new ones that were just
+	// created.
+	mergedTaskIDTable := creationInfo.TaskIDs
+
+	if len(mergedTaskIDTable.ExecutionTasks) == 0 && len(mergedTaskIDTable.DisplayTasks) == 0 {
+		return taskIdTable, nil
+	}
+
+	if len(mergedTaskIDTable.ExecutionTasks) == 0 {
+		mergedTaskIDTable.ExecutionTasks = TaskIdTable{}
+	}
+	if len(mergedTaskIDTable.DisplayTasks) == 0 {
+		mergedTaskIDTable.DisplayTasks = TaskIdTable{}
+	}
+
+	for k, v := range taskIdTable.ExecutionTasks {
+		mergedTaskIDTable.ExecutionTasks.AddId(k.Variant, k.TaskName, v)
+	}
+	for k, v := range taskIdTable.DisplayTasks {
+		mergedTaskIDTable.DisplayTasks.AddId(k.Variant, k.TaskName, v)
+	}
+
+	return mergedTaskIDTable, nil
 }

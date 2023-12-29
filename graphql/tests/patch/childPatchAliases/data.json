@@ -1,0 +1,46 @@
+{
+  "patches": [
+    {
+      "_id": {
+        "$oid": "5e4ff3abe3c3317e352062e4"
+      },
+      "branch": "evergreen",
+      "version": "5e4ff3abe3c3317e352062e4",
+      "activated": true,
+      "githash": "5e823e1f28baeaa22ae00823d83e03082cd148ab"
+    },
+    {
+      "_id": {
+        "$oid": "5e4ff3abe3c3317e352062e1"
+      },
+      "branch": "evergreen",
+      "version": "5e4ff3abe3c3317e352062e1",
+      "activated": true,
+      "githash": "5e823e1f28baeaa22ae00823d83e03082cd148ab",
+      "triggers": {
+        "aliases": ["evergreen_alias"],
+        "child_patches": ["5e4ff3abe3c3317e352062e4"]
+      }
+    }
+  ],
+  "project_ref": [
+    {
+      "_id": "evergreen",
+      "identifier": "evergreenIdentifier",
+      "owner_name": "evergreen-ci",
+      "repo_name": "evergreen",
+      "patch_trigger_aliases": [
+        {
+          "alias": "test-alias",
+          "child_project": "spruce",
+          "task_specifiers": [
+            {
+              "task_regex": ".*",
+              "variant_regex": ".*"
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}

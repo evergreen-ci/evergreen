@@ -1,0 +1,70 @@
+{
+  repoSettings(id: "repo_id") {
+    githubWebhooksEnabled
+    projectRef {
+      id
+      commitQueue {
+        enabled
+        mergeMethod
+      }
+      periodicBuilds {
+        alias
+        message
+      }
+      githubChecksEnabled
+      patchingDisabled
+      prTestingEnabled
+      stepbackDisabled
+      batchTime
+
+      gitTagAuthorizedUsers
+      gitTagAuthorizedTeams
+
+      triggers {
+        project
+        taskRegex
+      }
+      patchTriggerAliases {
+        alias
+        childProjectIdentifier
+        taskSpecifiers {
+          taskRegex
+          variantRegex
+        }
+      }
+      perfEnabled
+      buildBaronSettings {
+        ticketCreateProject
+        ticketSearchProjects
+        bfSuggestionFeaturesURL
+        bfSuggestionPassword
+        bfSuggestionServer
+        bfSuggestionTimeoutSecs
+        bfSuggestionUsername
+        ticketCreateIssueType
+      }
+
+      taskAnnotationSettings {
+        jiraCustomFields {
+          displayText
+          field
+        }
+        fileTicketWebhook {
+          endpoint
+          secret
+        }
+      }
+
+      containerSizeDefinitions {
+        name
+        cpu
+        memoryMb
+      }
+
+      taskSync {
+        configEnabled
+        patchEnabled
+      }
+    }
+  }
+}

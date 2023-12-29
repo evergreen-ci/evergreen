@@ -9,12 +9,11 @@ over task environments is achievable with containers, ensuring that each
 task runs in an isolated, dedicated space with its own specific set of
 software dependencies.
 
-## Warning! Containers are an experimental feature!
+## Warning: Container tasks are new and subject to ongoing changes
 
-Container tasks at this time are still an experimental feature,
-therefore they are subject to change as we iterate further on our
-roadmap. The feature may have bugs that get discovered as we roll it out
-as an initial offering.
+Container tasks at this time are subject to (potentially substantial) change as we iterate further on our
+container roadmap. The feature may have bugs as it is not currently as battle-tested as our host-based infrastructure,
+which should be considered if your goal is to port over a critical workflow to container tasks.
 
 If you have any questions about container tasks or are interested in
 exploring how this feature could benefit your project, we encourage you
@@ -328,14 +327,25 @@ all teams from sharing the same SSH keys in their containers.
 Instead, modules must be cloned via OAuth over HTTPS. This means
 that if your modules' git clones rely on a host's SSH keys to clone a private
 repository in your existing workflow, the cloning method will need to be
-changed. This can be done by modifying the url format of the module's
-repo, e.g:
+changed. This can be done by specifying an owner and repo instead of a url. e.g:
+instead of: 
 
 ```yaml
 modules:
   - name: evergreen
-    repo: git@github.com:evergreen-ci/evergreen.git → https://github.com/evergreen-ci/evergreen.git
+    repo: git@github.com:evergreen-ci/evergreen.git
 ```
+
+use: 
+```yaml
+modules:
+  - name: evergreen
+    owner: evergreen-ci
+    repo: evergreen
+```
+
+Note: the ssh clone method for modules is being deprecated and shouldn't be used for 
+none container tasks either. 
 
 ### Host.create
 

@@ -26,6 +26,9 @@ type LogIteratorReaderOptions struct {
 	// with the line in the following format:
 	//		[2006/01/02 15:04:05.000] This is a log line.
 	PrintTime bool
+	// TimeZone is the time zone to use when printing the timestamp of each
+	// each log line. Optional. Defaults to UTC.
+	TimeZone *time.Location
 	// PrintPriority, when true, prints the priority of each log line along
 	// with the line in the following format:
 	//		[P: 30] This is a log line.
@@ -39,9 +42,13 @@ type LogIteratorReaderOptions struct {
 }
 
 // NewLogIteratorReader returns a reader that reads the log lines from the
-// iterator with the given options. It is the responsibility of the caller to
-// close the iterator.
+// iterator with the given options. The reader will attempt to close the
+// iterator.
 func NewLogIteratorReader(it LogIterator, opts LogIteratorReaderOptions) *LogIteratorReader {
+	if opts.TimeZone == nil {
+		opts.TimeZone = time.UTC
+	}
+
 	return &LogIteratorReader{
 		it:   it,
 		opts: opts,
@@ -79,7 +86,7 @@ func (r *LogIteratorReader) Read(p []byte) (int, error) {
 		r.lastItem = r.it.Item()
 		data := r.it.Item().Data
 		if r.opts.PrintTime {
-			data = fmt.Sprintf("[%s] %s", time.Unix(0, r.it.Item().Timestamp).UTC().Format("2006/01/02 15:04:05.000"), data)
+			data = fmt.Sprintf("[%s] %s", time.Unix(0, r.it.Item().Timestamp).In(r.opts.TimeZone).Format("2006/01/02 15:04:05.000"), data)
 		}
 		if r.opts.PrintPriority {
 			data = fmt.Sprintf("[P:%3d] %s", r.it.Item().Priority, data)

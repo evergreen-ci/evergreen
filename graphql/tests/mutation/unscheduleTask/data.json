@@ -1,0 +1,92 @@
+{
+  "tasks": [
+    {
+      "_id": "activated_task",
+      "create_time": {
+        "$date": "2018-01-11T00:01:36.796Z"
+      },
+      "injest_time": {
+        "$date": "2018-01-11T00:01:36.796Z"
+      },
+      "dispatch_time": {
+        "$date": "2018-01-11T00:01:36.796Z"
+      },
+      "scheduled_time": {
+        "$date": "2018-01-11T00:01:36.796Z"
+      },
+      "start_time": {
+        "$date": "2018-01-11T00:01:36.796Z"
+      },
+      "finish_time": {
+        "$date": "2018-01-11T00:01:36.796Z"
+      },
+      "activated_time": {
+        "$date": "2018-01-11T00:01:36.796Z"
+      },
+      "version": "version_id",
+      "branch": "curator",
+      "gitspec": "revise",
+      "priority": 5,
+      "task_group": "grp",
+      "task_group_max_hosts": 100,
+      "activated": true,
+      "activated_by": "someone",
+      "display_name": "display name",
+      "build_id": "build_id",
+      "execution": 0,
+      "order": 5,
+      "r": "something",
+      "status": "started",
+      "display_only": true,
+      "execution_tasks": [
+        "exec1",
+        "exec2"
+      ],
+      "generate_task": false,
+      "generated_by": "something"
+    }
+  ],
+  "versions": [
+    {
+      "_id": "version_id",
+      "activated": false,
+      "create_time": {
+        "$date": "2018-01-11T00:01:36.796Z"
+      }
+    }
+  ],
+  "builds": [
+    {
+      "_id": "build_id",
+      "create_time": "2019-07-10T22:05:08.973Z",
+      "start_time": "2019-07-21T00:39:42.274Z",
+      "finish_time": "0001-01-01T00:00:00Z",
+      "version": "5d2661149dbe326298fee2a3",
+      "branch": "mci",
+      "gitspec": "",
+      "build_variant": "ubuntu1604-docker",
+      "build_number": "1798",
+      "status": "failed",
+      "activated": false,
+      "activated_by": "",
+      "activated_time": "1970-01-01T00:00:00Z",
+      "order": 4129,
+      "tasks": [
+        {
+          "id": "activated_task",
+          "d": "dist",
+          "s": "undispatched",
+          "ed": {},
+          "st": "1970-01-01T00:00:00Z",
+          "tt": 0,
+          "a": false
+        }
+      ],
+      "time_taken": 0,
+      "display_name": "Ubuntu 16.04 (Docker)",
+      "predicted_makespan": 0,
+      "actual_makespan": 0,
+      "r": "ad_hoc"
+    }
+  ]
+}

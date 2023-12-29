@@ -12,6 +12,7 @@ import (
 	"github.com/evergreen-ci/evergreen/model/manifest"
 	patchmodel "github.com/evergreen-ci/evergreen/model/patch"
 	"github.com/evergreen-ci/evergreen/model/task"
+	"github.com/evergreen-ci/evergreen/model/testlog"
 	restmodel "github.com/evergreen-ci/evergreen/rest/model"
 	"github.com/mongodb/grip"
 	"google.golang.org/grpc"
@@ -87,11 +88,8 @@ type SharedCommunicator interface {
 	GetLoggerProducer(context.Context, TaskData, *LoggerConfig) (LoggerProducer, error)
 	// GetLoggerMetadata() LoggerMetadata
 
-	// SendLogMessages sends a group of log messages to the API Server
-	SendLogMessages(context.Context, TaskData, []apimodels.LogMessage) error
-
 	// The following operations are used by task commands.
-	SendTestLog(context.Context, TaskData, *model.TestLog) (string, error)
+	SendTestLog(context.Context, TaskData, *testlog.TestLog) (string, error)
 	GetTaskPatch(context.Context, TaskData, string) (*patchmodel.Patch, error)
 	GetPatchFile(context.Context, TaskData, string) (string, error)
 
@@ -123,6 +121,9 @@ type SharedCommunicator interface {
 
 	// CreateInstallationToken creates an installation token for the given owner and repo if there is a GitHub app installed.
 	CreateInstallationToken(ctx context.Context, td TaskData, owner, repo string) (string, error)
+
+	// MarkFailedTaskToRestart marks the task as needing to be restarted
+	MarkFailedTaskToRestart(ctx context.Context, td TaskData) error
 }
 
 // TaskData contains the taskData.ID and taskData.Secret. It must be set for

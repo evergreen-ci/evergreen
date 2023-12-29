@@ -12,20 +12,14 @@ import (
 )
 
 var (
-	cloudProvidersAWSKey       = bsonutil.MustHaveTag(CloudProviders{}, "AWS")
-	cloudProvidersDockerKey    = bsonutil.MustHaveTag(CloudProviders{}, "Docker")
-	cloudProvidersGCEKey       = bsonutil.MustHaveTag(CloudProviders{}, "GCE")
-	cloudProvidersOpenStackKey = bsonutil.MustHaveTag(CloudProviders{}, "OpenStack")
-	cloudProvidersVSphereKey   = bsonutil.MustHaveTag(CloudProviders{}, "VSphere")
+	cloudProvidersAWSKey    = bsonutil.MustHaveTag(CloudProviders{}, "AWS")
+	cloudProvidersDockerKey = bsonutil.MustHaveTag(CloudProviders{}, "Docker")
 )
 
 // CloudProviders stores configuration settings for the supported cloud host providers.
 type CloudProviders struct {
-	AWS       AWSConfig       `bson:"aws" json:"aws" yaml:"aws"`
-	Docker    DockerConfig    `bson:"docker" json:"docker" yaml:"docker"`
-	GCE       GCEConfig       `bson:"gce" json:"gce" yaml:"gce"`
-	OpenStack OpenStackConfig `bson:"openstack" json:"openstack" yaml:"openstack"`
-	VSphere   VSphereConfig   `bson:"vsphere" json:"vsphere" yaml:"vsphere"`
+	AWS    AWSConfig    `bson:"aws" json:"aws" yaml:"aws"`
+	Docker DockerConfig `bson:"docker" json:"docker" yaml:"docker"`
 }
 
 func (c *CloudProviders) SectionId() string { return "providers" }
@@ -50,11 +44,8 @@ func (c *CloudProviders) Get(ctx context.Context) error {
 func (c *CloudProviders) Set(ctx context.Context) error {
 	_, err := GetEnvironment().DB().Collection(ConfigCollection).UpdateOne(ctx, byId(c.SectionId()), bson.M{
 		"$set": bson.M{
-			cloudProvidersAWSKey:       c.AWS,
-			cloudProvidersDockerKey:    c.Docker,
-			cloudProvidersGCEKey:       c.GCE,
-			cloudProvidersOpenStackKey: c.OpenStack,
-			cloudProvidersVSphereKey:   c.VSphere,
+			cloudProvidersAWSKey:    c.AWS,
+			cloudProvidersDockerKey: c.Docker,
 		},
 	}, options.Update().SetUpsert(true))
 
@@ -125,6 +116,10 @@ func (c *S3Credentials) Validate() error {
 type ParserProjectS3Config struct {
 	S3Credentials `bson:",inline" yaml:",inline"`
 	Prefix        string `bson:"prefix" json:"prefix" yaml:"prefix"`
+	// GeneratedJSONPrefix is the prefix to use for storing intermediate
+	// JSON configuration for generate.tasks, which will update the parser
+	// project.
+	GeneratedJSONPrefix string `bson:"generated_json_prefix" json:"generated_json_prefix" yaml:"generated_json_prefix"`
 }
 
 func (c *ParserProjectS3Config) Validate() error { return nil }
@@ -336,39 +331,5 @@ const (
 
 // DockerConfig stores auth info for Docker.
 type DockerConfig struct {
-	APIVersion    string `bson:"api_version" json:"api_version" yaml:"api_version"`
-	DefaultDistro string `bson:"default_distro" json:"default_distro" yaml:"default_distro"`
-}
-
-// OpenStackConfig stores auth info for Linaro using Identity V3. All fields required.
-//
-// The config is NOT compatible with Identity V2.
-type OpenStackConfig struct {
-	IdentityEndpoint string `bson:"identity_endpoint" json:"identity_endpoint" yaml:"identity_endpoint"`
-
-	Username   string `bson:"username" json:"username" yaml:"username"`
-	Password   string `bson:"password" json:"password" yaml:"password"`
-	DomainName string `bson:"domain_name" json:"domain_name" yaml:"domain_name"`
-
-	ProjectName string `bson:"project_name" json:"project_name" yaml:"project_name"`
-	ProjectID   string `bson:"project_id" json:"project_id" yaml:"project_id"`
-
-	Region string `bson:"region" json:"region" yaml:"region"`
-}
-
-// GCEConfig stores auth info for Google Compute Engine. Can be retrieved from:
-// https://developers.google.com/identity/protocols/application-default-credentials
-type GCEConfig struct {
-	ClientEmail  string `bson:"client_email" json:"client_email" yaml:"client_email"`
-	PrivateKey   string `bson:"private_key" json:"private_key" yaml:"private_key"`
-	PrivateKeyID string `bson:"private_key_id" json:"private_key_id" yaml:"private_key_id"`
-	TokenURI     string `bson:"token_uri" json:"token_uri" yaml:"token_uri"`
-}
-
-// VSphereConfig stores auth info for VMware vSphere. The config fields refer
-// to your vCenter server, a centralized management tool for the vSphere suite.
-type VSphereConfig struct {
-	Host     string `bson:"host" json:"host" yaml:"host"`
-	Username string `bson:"username" json:"username" yaml:"username"`
-	Password string `bson:"password" json:"password" yaml:"password"`
+	APIVersion string `bson:"api_version" json:"api_version" yaml:"api_version"`
 }

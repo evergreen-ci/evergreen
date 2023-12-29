@@ -100,7 +100,7 @@ func addNewTasksAndBuildsForPatch(ctx context.Context, creationInfo TaskCreation
 	if err != nil {
 		return errors.Wrap(err, "adding new builds")
 	}
-	_, err = addNewTasks(ctx, creationInfo, existingBuilds, caller)
+	_, err = addNewTasksToExistingBuilds(ctx, creationInfo, existingBuilds, caller)
 	if err != nil {
 		return errors.Wrap(err, "adding new tasks")
 	}
@@ -412,19 +412,13 @@ func MakePatchedConfig(ctx context.Context, env evergreen.Environment, p *patch.
 		defer os.Remove(configFilePath) //nolint:evg-lint
 
 		// clean the working directory
-		workingDirectory := filepath.Dir(patchFilePath)
+		workingDirectory := filepath.Join(filepath.Dir(patchFilePath), utility.RandomString())
+		defer os.RemoveAll(workingDirectory)
+
 		localConfigPath := filepath.Join(
 			workingDirectory,
 			remoteConfigPath,
 		)
-		parentDir := strings.Split(
-			remoteConfigPath,
-			string(os.PathSeparator),
-		)[0]
-		err = os.RemoveAll(filepath.Join(workingDirectory, parentDir))
-		if err != nil {
-			return nil, errors.WithStack(err)
-		}
 		if err = os.MkdirAll(filepath.Dir(localConfigPath), 0755); err != nil {
 			return nil, errors.WithStack(err)
 		}
@@ -597,7 +591,7 @@ func FinalizePatch(ctx context.Context, p *patch.Patch, requester string, github
 		}
 		return nil, errors.New("cannot finalize patch with no tasks")
 	}
-	taskIds, err := NewPatchTaskIdTable(project, patchVersion, tasks, projectRef.Identifier)
+	taskIds, err := NewTaskIdConfig(project, patchVersion, tasks, projectRef.Identifier)
 	if err != nil {
 		return nil, errors.Wrap(err, "creating patch's task ID table")
 	}
@@ -933,7 +927,7 @@ func AbortPatchesWithGithubPatchData(ctx context.Context, createdBefore time.Tim
 }
 
 func MakeCommitQueueDescription(patches []patch.ModulePatch, projectRef *ProjectRef, project *Project,
-	githubMergePatch bool, githubMergeSHA string) string {
+	githubMergePatch bool, mergeGroup thirdparty.GithubMergeGroup) string {
 	commitFmtString := "'%s' into '%s/%s:%s'"
 	description := []string{}
 	for _, p := range patches {
@@ -949,10 +943,11 @@ func MakeCommitQueueDescription(patches []patch.ModulePatch, projectRef *Project
 			if err != nil {
 				continue
 			}
-			owner, repo, err = thirdparty.ParseGitUrl(module.Repo)
+			owner, repo, err = module.GetOwnerAndRepo()
 			if err != nil {
 				continue
 			}
+
 			branch = module.Branch
 		}
 
@@ -964,7 +959,7 @@ func MakeCommitQueueDescription(patches []patch.ModulePatch, projectRef *Project
 	}
 
 	if githubMergePatch {
-		return "GitHub Merge Queue: " + githubMergeSHA[0:7]
+		return "GitHub Merge Queue: " + mergeGroup.HeadCommit + " (" + mergeGroup.HeadSHA[0:7] + ")"
 	} else {
 		return "Commit Queue Merge: " + strings.Join(description, " || ")
 	}
@@ -1055,7 +1050,7 @@ func MakeMergePatchFromExisting(ctx context.Context, settings *evergreen.Setting
 		return nil, errors.Wrap(err, "making merge patches from existing patch")
 	}
 	patchDoc.Description = MakeCommitQueueDescription(patchDoc.Patches, projectRef, project,
-		patchDoc.IsGithubMergePatch(), patchDoc.GithubMergeData.HeadSHA)
+		patchDoc.IsGithubMergePatch(), patchDoc.GithubMergeData)
 
 	// verify the commit queue has tasks/variants enabled that match the project
 	project.BuildProjectTVPairs(patchDoc, patchDoc.Alias)

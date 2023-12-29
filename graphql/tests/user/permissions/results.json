@@ -1,0 +1,52 @@
+{
+  "tests": [
+    {
+      "query_file": "has_permissions.graphql",
+      "result": {
+        "data": {
+          "user": {
+            "displayName": "testuser",
+            "userId": "testuser",
+            "permissions": {
+              "canCreateDistro": true,
+              "canCreateProject": true,
+              "canEditAdminSettings": true,
+              "distroPermissions": {
+                "admin": true,
+                "edit": true,
+                "view": true
+              },
+              "projectPermissions": {
+                "edit": true,
+                "view": true
+              }
+            }
+          }
+        }
+      }
+    },
+    {
+      "query_file": "no_permissions.graphql",
+      "result": {
+        "data": {
+          "user": {
+            "displayName": "Bob Smith",
+            "userId": "bob.smith",
+            "permissions": {
+              "canCreateDistro": false,
+              "distroPermissions": {
+                "admin": false,
+                "edit": false,
+                "view": false
+              },
+              "projectPermissions": {
+                "edit": false,
+                "view": false
+              }
+            }
+          }
+        }
+      }
+    }
+  ]
+}

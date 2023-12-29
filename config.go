@@ -7,6 +7,7 @@ import (
 	"os"
 	"path/filepath"
 	"reflect"
+	"strconv"
 	"strings"
 	"time"
 
@@ -32,10 +33,10 @@ var (
 	BuildRevision = ""
 
 	// ClientVersion is the commandline version string used to control auto-updating.
-	ClientVersion = "2023-10-02"
+	ClientVersion = "2023-12-14"
 
 	// Agent version to control agent rollover.
-	AgentVersion = "2023-10-09"
+	AgentVersion = "2023-12-14"
 )
 
 // ConfigSection defines a sub-document in the evergreen config
@@ -62,7 +63,7 @@ type Settings struct {
 	AWSInstanceRole     string                  `yaml:"aws_instance_role" bson:"aws_instance_role" json:"aws_instance_role"`
 	Banner              string                  `bson:"banner" json:"banner" yaml:"banner"`
 	BannerTheme         BannerTheme             `bson:"banner_theme" json:"banner_theme" yaml:"banner_theme"`
-	Buckets             BucketConfig            `bson:"buckets" json:"buckets" yaml:"buckets" id:"buckets"`
+	Buckets             BucketsConfig           `bson:"buckets" json:"buckets" yaml:"buckets" id:"buckets"`
 	Cedar               CedarConfig             `bson:"cedar" json:"cedar" yaml:"cedar" id:"cedar"`
 	ClientBinariesDir   string                  `yaml:"client_binaries_dir" bson:"client_binaries_dir" json:"client_binaries_dir"`
 	CommitQueue         CommitQueueConfig       `yaml:"commit_queue" bson:"commit_queue" json:"commit_queue" id:"commit_queue"`
@@ -102,6 +103,7 @@ type Settings struct {
 	SSHKeyPairs         []SSHKeyPair            `yaml:"ssh_key_pairs" bson:"ssh_key_pairs" json:"ssh_key_pairs"`
 	Slack               SlackConfig             `yaml:"slack" bson:"slack" json:"slack" id:"slack"`
 	Splunk              SplunkConfig            `yaml:"splunk" bson:"splunk" json:"splunk" id:"splunk"`
+	TaskLimits          TaskLimitsConfig        `yaml:"task_limits" bson:"task_limits" json:"task_limits" id:"task_limits"`
 	Triggers            TriggerConfig           `yaml:"triggers" bson:"triggers" json:"triggers" id:"triggers"`
 	Ui                  UIConfig                `yaml:"ui" bson:"ui" json:"ui" id:"ui"`
 	Spawnhost           SpawnHostConfig         `yaml:"spawnhost" bson:"spawnhost" json:"spawnhost" id:"spawnhost"`
@@ -455,30 +457,31 @@ func (s *Settings) GetSender(ctx context.Context, env Environment) (send.Sender,
 	if err != nil {
 		return nil, errors.Wrap(err, "configuring error fallback logger")
 	}
-
-	// setup the base/default logger (generally direct to systemd
-	// or standard output)
-	switch s.LogPath {
-	case localLoggingOverride:
-		// log directly to systemd if possible, and log to
-		// standard output otherwise.
-		sender = getSystemLogger()
-	case standardOutputLoggingOverride, "":
-		sender = send.MakeNative()
-	default:
-		sender, err = send.MakeFileLogger(s.LogPath)
-		if err != nil {
-			return nil, errors.Wrap(err, "configuring file logger")
+	if disableLocalLogging, err := strconv.ParseBool(os.Getenv(disableLocalLoggingEnvVar)); err == nil && !disableLocalLogging {
+		// setup the base/default logger (generally direct to systemd
+		// or standard output)
+		switch s.LogPath {
+		case localLoggingOverride:
+			// log directly to systemd if possible, and log to
+			// standard output otherwise.
+			sender = getSystemLogger()
+		case standardOutputLoggingOverride, "":
+			sender = send.MakeNative()
+		default:
+			sender, err = send.MakeFileLogger(s.LogPath)
+			if err != nil {
+				return nil, errors.Wrap(err, "configuring file logger")
+			}
 		}
-	}
 
-	if err = sender.SetLevel(levelInfo); err != nil {
-		return nil, errors.Wrap(err, "setting level")
+		if err = sender.SetLevel(levelInfo); err != nil {
+			return nil, errors.Wrap(err, "setting level")
+		}
+		if err = sender.SetErrorHandler(send.ErrorHandlerFromSender(fallback)); err != nil {
+			return nil, errors.Wrap(err, "setting error handler")
+		}
+		senders = append(senders, sender)
 	}
-	if err = sender.SetErrorHandler(send.ErrorHandlerFromSender(fallback)); err != nil {
-		return nil, errors.Wrap(err, "setting error handler")
-	}
-	senders = append(senders, sender)
 
 	// set up external log aggregation services:
 	//
@@ -576,7 +579,7 @@ func (s *Settings) GetGithubOauthString() (string, error) {
 	return "", errors.New("no github token in settings")
 }
 
-// TODO EVG-19966: Delete this function
+// TODO DEVPROD-1429: Delete this function
 func (s *Settings) GetGithubOauthToken() (string, error) {
 	if s == nil {
 		return "", errors.New("not defined")
@@ -587,7 +590,7 @@ func (s *Settings) GetGithubOauthToken() (string, error) {
 
 	oauthString, err := s.GetGithubOauthString()
 	if err != nil {
-		return "", err
+		return "", nil
 	}
 	splitToken := strings.Split(oauthString, " ")
 	if len(splitToken) != 2 || splitToken[0] != "token" {
@@ -703,38 +706,7 @@ type DBSettings struct {
 	DB                   string       `yaml:"db"`
 	WriteConcernSettings WriteConcern `yaml:"write_concern"`
 	ReadConcernSettings  ReadConcern  `yaml:"read_concern"`
-	AuthFile             string       `yaml:"auth_file"`
-}
-
-func (dbs *DBSettings) HasAuth() bool {
-	return dbs.AuthFile != ""
-}
-
-type dbCreds struct {
-	DBUser string `yaml:"mdb_database_username"`
-	DBPwd  string `yaml:"mdb_database_password"`
-}
-
-func (dbs *DBSettings) GetAuth() (string, string, error) {
-	return GetAuthFromYAML(dbs.AuthFile)
-}
-
-func GetAuthFromYAML(authFile string) (string, string, error) {
-	creds := &dbCreds{}
-
-	file, err := os.Open(authFile)
-	if err != nil {
-		return "", "", err
-	}
-	defer file.Close()
-
-	decoder := yaml.NewDecoder(file)
-
-	if err := decoder.Decode(&creds); err != nil {
-		return "", "", err
-	}
-
-	return creds.DBUser, creds.DBPwd, nil
+	AWSAuthEnabled       bool         `yaml:"aws_auth_enabled"`
 }
 
 // supported banner themes in Evergreen

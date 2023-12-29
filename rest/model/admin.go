@@ -15,7 +15,7 @@ func NewConfigModel() *APIAdminSettings {
 		Amboy:             &APIAmboyConfig{},
 		Api:               &APIapiConfig{},
 		AuthConfig:        &APIAuthConfig{},
-		Buckets:           &APIBucketConfig{},
+		Buckets:           &APIBucketsConfig{},
 		Cedar:             &APICedarConfig{},
 		CommitQueue:       &APICommitQueueConfig{},
 		ContainerPools:    &APIContainerPoolsConfig{},
@@ -40,6 +40,7 @@ func NewConfigModel() *APIAdminSettings {
 		ServiceFlags:      &APIServiceFlags{},
 		Slack:             &APISlackConfig{},
 		Splunk:            &APISplunkConfig{},
+		TaskLimits:        &APITaskLimitsConfig{},
 		Triggers:          &APITriggerConfig{},
 		Ui:                &APIUIConfig{},
 		Spawnhost:         &APISpawnHostConfig{},
@@ -57,7 +58,7 @@ type APIAdminSettings struct {
 	AuthConfig          *APIAuthConfig                    `json:"auth,omitempty"`
 	Banner              *string                           `json:"banner,omitempty"`
 	BannerTheme         *string                           `json:"banner_theme,omitempty"`
-	Buckets             *APIBucketConfig                  `json:"buckets,omitempty"`
+	Buckets             *APIBucketsConfig                 `json:"buckets,omitempty"`
 	Cedar               *APICedarConfig                   `json:"cedar,omitempty"`
 	ClientBinariesDir   *string                           `json:"client_binaries_dir,omitempty"`
 	CommitQueue         *APICommitQueueConfig             `json:"commit_queue,omitempty"`
@@ -92,6 +93,7 @@ type APIAdminSettings struct {
 	SSHKeyDirectory     *string                           `json:"ssh_key_directory,omitempty"`
 	SSHKeyPairs         []APISSHKeyPair                   `json:"ssh_key_pairs,omitempty"`
 	Splunk              *APISplunkConfig                  `json:"splunk,omitempty"`
+	TaskLimits          *APITaskLimitsConfig              `json:"task_limits,omitempty"`
 	Triggers            *APITriggerConfig                 `json:"triggers,omitempty"`
 	Ui                  *APIUIConfig                      `json:"ui,omitempty"`
 	Spawnhost           *APISpawnHostConfig               `json:"spawnhost,omitempty"`
@@ -417,8 +419,6 @@ func (a *APIAmboyDBConfig) BuildFromService(h interface{}) error {
 	case evergreen.AmboyDBConfig:
 		a.URL = utility.ToStringPtr(v.URL)
 		a.Database = utility.ToStringPtr(v.Database)
-		a.Username = utility.ToStringPtr(v.Username)
-		a.Password = utility.ToStringPtr(v.Password)
 		return nil
 	default:
 		return errors.Errorf("programmatic error: expected Amboy DB config but got type %T", h)
@@ -429,8 +429,6 @@ func (a *APIAmboyDBConfig) ToService() (interface{}, error) {
 	return evergreen.AmboyDBConfig{
 		URL:      utility.FromStringPtr(a.URL),
 		Database: utility.FromStringPtr(a.Database),
-		Username: utility.FromStringPtr(a.Username),
-		Password: utility.FromStringPtr(a.Password),
 	}, nil
 }
 
@@ -646,31 +644,34 @@ func (a *APIAuthConfig) ToService() (interface{}, error) {
 	}, nil
 }
 
+type APIBucketsConfig struct {
+	LogBucket APIBucketConfig `json:"log_bucket"`
+}
+
 type APIBucketConfig struct {
-	LogBucket APIBucket `json:"log_bucket"`
+	Name   *string `json:"name"`
+	Type   *string `json:"type"`
+	DBName *string `json:"db_name"`
 }
 
-type APIBucket struct {
-	Name *string `json:"name"`
-	Type *string `json:"type"`
-}
-
-func (a *APIBucketConfig) BuildFromService(h interface{}) error {
+func (a *APIBucketsConfig) BuildFromService(h interface{}) error {
 	switch v := h.(type) {
-	case evergreen.BucketConfig:
+	case evergreen.BucketsConfig:
 		a.LogBucket.Name = utility.ToStringPtr(v.LogBucket.Name)
-		a.LogBucket.Type = utility.ToStringPtr(v.LogBucket.Type)
+		a.LogBucket.Type = utility.ToStringPtr(string(v.LogBucket.Type))
+		a.LogBucket.DBName = utility.ToStringPtr(v.LogBucket.DBName)
 	default:
 		return errors.Errorf("programmatic error: expected bucket config but got type %T", h)
 	}
 	return nil
 }
 
-func (a *APIBucketConfig) ToService() (interface{}, error) {
-	return evergreen.BucketConfig{
-		LogBucket: evergreen.Bucket{
-			Name: utility.FromStringPtr(a.LogBucket.Name),
-			Type: utility.FromStringPtr(a.LogBucket.Type),
+func (a *APIBucketsConfig) ToService() (interface{}, error) {
+	return evergreen.BucketsConfig{
+		LogBucket: evergreen.BucketConfig{
+			Name:   utility.FromStringPtr(a.LogBucket.Name),
+			Type:   evergreen.BucketType(utility.FromStringPtr(a.LogBucket.Type)),
+			DBName: utility.FromStringPtr(a.LogBucket.DBName),
 		},
 	}, nil
 }
@@ -1335,11 +1336,8 @@ func (a *APIProjectCreationConfig) ToService() (interface{}, error) {
 }
 
 type APICloudProviders struct {
-	AWS       *APIAWSConfig       `json:"aws"`
-	Docker    *APIDockerConfig    `json:"docker"`
-	GCE       *APIGCEConfig       `json:"gce"`
-	OpenStack *APIOpenStackConfig `json:"openstack"`
-	VSphere   *APIVSphereConfig   `json:"vsphere"`
+	AWS    *APIAWSConfig    `json:"aws"`
+	Docker *APIDockerConfig `json:"docker"`
 }
 
 func (a *APICloudProviders) BuildFromService(h interface{}) error {
@@ -1347,22 +1345,10 @@ func (a *APICloudProviders) BuildFromService(h interface{}) error {
 	case evergreen.CloudProviders:
 		a.AWS = &APIAWSConfig{}
 		a.Docker = &APIDockerConfig{}
-		a.GCE = &APIGCEConfig{}
-		a.OpenStack = &APIOpenStackConfig{}
-		a.VSphere = &APIVSphereConfig{}
 		if err := a.AWS.BuildFromService(v.AWS); err != nil {
 			return err
 		}
 		if err := a.Docker.BuildFromService(v.Docker); err != nil {
-			return err
-		}
-		if err := a.GCE.BuildFromService(v.GCE); err != nil {
-			return err
-		}
-		if err := a.OpenStack.BuildFromService(v.OpenStack); err != nil {
-			return err
-		}
-		if err := a.VSphere.BuildFromService(v.VSphere); err != nil {
 			return err
 		}
 	default:
@@ -1380,24 +1366,9 @@ func (a *APICloudProviders) ToService() (interface{}, error) {
 	if err != nil {
 		return nil, err
 	}
-	gce, err := a.GCE.ToService()
-	if err != nil {
-		return nil, err
-	}
-	openstack, err := a.OpenStack.ToService()
-	if err != nil {
-		return nil, err
-	}
-	vsphere, err := a.VSphere.ToService()
-	if err != nil {
-		return nil, err
-	}
 	return evergreen.CloudProviders{
-		AWS:       aws.(evergreen.AWSConfig),
-		Docker:    docker.(evergreen.DockerConfig),
-		GCE:       gce.(evergreen.GCEConfig),
-		OpenStack: openstack.(evergreen.OpenStackConfig),
-		VSphere:   vsphere.(evergreen.VSphereConfig),
+		AWS:    aws.(evergreen.AWSConfig),
+		Docker: docker.(evergreen.DockerConfig),
 	}, nil
 }
 
@@ -1739,7 +1710,8 @@ func (a *APIS3Credentials) ToService() (interface{}, error) {
 // accessing parser projects in S3.
 type APIParserProjectS3Config struct {
 	APIS3Credentials
-	Prefix *string `json:"prefix"`
+	Prefix              *string `json:"prefix"`
+	GeneratedJSONPrefix *string `json:"generated_json_prefix"`
 }
 
 func (a *APIParserProjectS3Config) BuildFromService(h interface{}) error {
@@ -1749,6 +1721,7 @@ func (a *APIParserProjectS3Config) BuildFromService(h interface{}) error {
 		a.Secret = utility.ToStringPtr(v.Secret)
 		a.Bucket = utility.ToStringPtr(v.Bucket)
 		a.Prefix = utility.ToStringPtr(v.Prefix)
+		a.GeneratedJSONPrefix = utility.ToStringPtr(v.GeneratedJSONPrefix)
 		return nil
 	default:
 		return errors.Errorf("programmatic error: expected parser project S3 config but got type %T", h)
@@ -1765,7 +1738,8 @@ func (a *APIParserProjectS3Config) ToService() (interface{}, error) {
 			Secret: utility.FromStringPtr(a.Secret),
 			Bucket: utility.FromStringPtr(a.Bucket),
 		},
-		Prefix: utility.FromStringPtr(a.Prefix),
+		Prefix:              utility.FromStringPtr(a.Prefix),
+		GeneratedJSONPrefix: utility.FromStringPtr(a.GeneratedJSONPrefix),
 	}, nil
 }
 
@@ -1994,15 +1968,13 @@ func (a *APISecretsManagerConfig) ToService() evergreen.SecretsManagerConfig {
 }
 
 type APIDockerConfig struct {
-	APIVersion    *string `json:"api_version"`
-	DefaultDistro *string `json:"default_distro"`
+	APIVersion *string `json:"api_version"`
 }
 
 func (a *APIDockerConfig) BuildFromService(h interface{}) error {
 	switch v := h.(type) {
 	case evergreen.DockerConfig:
 		a.APIVersion = utility.ToStringPtr(v.APIVersion)
-		a.DefaultDistro = utility.ToStringPtr(v.DefaultDistro)
 	default:
 		return errors.Errorf("programmatic error: expected Docker config but got type %T", h)
 	}
@@ -2011,104 +1983,7 @@ func (a *APIDockerConfig) BuildFromService(h interface{}) error {
 
 func (a *APIDockerConfig) ToService() (interface{}, error) {
 	return evergreen.DockerConfig{
-		APIVersion:    utility.FromStringPtr(a.APIVersion),
-		DefaultDistro: utility.FromStringPtr(a.DefaultDistro),
-	}, nil
-}
-
-type APIGCEConfig struct {
-	ClientEmail  *string `json:"client_email"`
-	PrivateKey   *string `json:"private_key"`
-	PrivateKeyID *string `json:"private_key_id"`
-	TokenURI     *string `json:"token_uri"`
-}
-
-func (a *APIGCEConfig) BuildFromService(h interface{}) error {
-	switch v := h.(type) {
-	case evergreen.GCEConfig:
-		a.ClientEmail = utility.ToStringPtr(v.ClientEmail)
-		a.PrivateKey = utility.ToStringPtr(v.PrivateKey)
-		a.PrivateKeyID = utility.ToStringPtr(v.PrivateKeyID)
-		a.TokenURI = utility.ToStringPtr(v.TokenURI)
-	default:
-		return errors.Errorf("programmatic error: expected GCE config but got type %T", h)
-	}
-	return nil
-}
-
-func (a *APIGCEConfig) ToService() (interface{}, error) {
-	return evergreen.GCEConfig{
-		ClientEmail:  utility.FromStringPtr(a.ClientEmail),
-		PrivateKey:   utility.FromStringPtr(a.PrivateKey),
-		PrivateKeyID: utility.FromStringPtr(a.PrivateKeyID),
-		TokenURI:     utility.FromStringPtr(a.TokenURI),
-	}, nil
-}
-
-type APIOpenStackConfig struct {
-	IdentityEndpoint *string `json:"identity_endpoint"`
-
-	Username   *string `json:"username"`
-	Password   *string `json:"password"`
-	DomainName *string `json:"domain_name"`
-
-	ProjectName *string `json:"project_name"`
-	ProjectID   *string `json:"project_id"`
-
-	Region *string `json:"region"`
-}
-
-func (a *APIOpenStackConfig) BuildFromService(h interface{}) error {
-	switch v := h.(type) {
-	case evergreen.OpenStackConfig:
-		a.IdentityEndpoint = utility.ToStringPtr(v.IdentityEndpoint)
-		a.Username = utility.ToStringPtr(v.Username)
-		a.Password = utility.ToStringPtr(v.Password)
-		a.DomainName = utility.ToStringPtr(v.DomainName)
-		a.ProjectName = utility.ToStringPtr(v.ProjectName)
-		a.ProjectID = utility.ToStringPtr(v.ProjectID)
-		a.Region = utility.ToStringPtr(v.Region)
-	default:
-		return errors.Errorf("programmatic error: expected OpenStack config but got type %T", h)
-	}
-	return nil
-}
-
-func (a *APIOpenStackConfig) ToService() (interface{}, error) {
-	return evergreen.OpenStackConfig{
-		IdentityEndpoint: utility.FromStringPtr(a.IdentityEndpoint),
-		Username:         utility.FromStringPtr(a.Username),
-		Password:         utility.FromStringPtr(a.Password),
-		DomainName:       utility.FromStringPtr(a.DomainName),
-		ProjectID:        utility.FromStringPtr(a.ProjectID),
-		ProjectName:      utility.FromStringPtr(a.ProjectName),
-		Region:           utility.FromStringPtr(a.Region),
-	}, nil
-}
-
-type APIVSphereConfig struct {
-	Host     *string `json:"host"`
-	Username *string `json:"username"`
-	Password *string `json:"password"`
-}
-
-func (a *APIVSphereConfig) BuildFromService(h interface{}) error {
-	switch v := h.(type) {
-	case evergreen.VSphereConfig:
-		a.Host = utility.ToStringPtr(v.Host)
-		a.Username = utility.ToStringPtr(v.Username)
-		a.Password = utility.ToStringPtr(v.Password)
-	default:
-		return errors.Errorf("programmatic error: expected VSphere config but got type %T", h)
-	}
-	return nil
-}
-
-func (a *APIVSphereConfig) ToService() (interface{}, error) {
-	return evergreen.VSphereConfig{
-		Host:     utility.FromStringPtr(a.Host),
-		Username: utility.FromStringPtr(a.Username),
-		Password: utility.FromStringPtr(a.Password),
+		APIVersion: utility.FromStringPtr(a.APIVersion),
 	}, nil
 }
 
@@ -2213,6 +2088,7 @@ type APIServiceFlags struct {
 	HostInitDisabled               bool `json:"host_init_disabled"`
 	PodInitDisabled                bool `json:"pod_init_disabled"`
 	S3BinaryDownloadsDisabled      bool `json:"s3_binary_downloads_disabled"`
+	LargeParserProjectsDisabled    bool `json:"large_parser_projects_disabled"`
 	MonitorDisabled                bool `json:"monitor_disabled"`
 	AlertsDisabled                 bool `json:"alerts_disabled"`
 	AgentStartDisabled             bool `json:"agent_start_disabled"`
@@ -2235,7 +2111,7 @@ type APIServiceFlags struct {
 	CloudCleanupDisabled           bool `json:"cloud_cleanup_disabled"`
 	LegacyUIPublicAccessDisabled   bool `json:"legacy_ui_public_access_disabled"`
 	GlobalGitHubTokenDisabled      bool `json:"global_github_token_disabled"`
-	UnsetFunctionVarsDisabled      bool `json:"unset_function_vars_disabled"`
+	LegacyUIDistroPageDisabled     bool `json:"legacy_ui_distro_page_disabled"`
 
 	// Notifications Flags
 	EventProcessingDisabled      bool `json:"event_processing_disabled"`
@@ -2499,6 +2375,7 @@ func (as *APIServiceFlags) BuildFromService(h interface{}) error {
 		as.HostInitDisabled = v.HostInitDisabled
 		as.PodInitDisabled = v.PodInitDisabled
 		as.S3BinaryDownloadsDisabled = v.S3BinaryDownloadsDisabled
+		as.LargeParserProjectsDisabled = v.LargeParserProjectsDisabled
 		as.MonitorDisabled = v.MonitorDisabled
 		as.AlertsDisabled = v.AlertsDisabled
 		as.AgentStartDisabled = v.AgentStartDisabled
@@ -2527,7 +2404,7 @@ func (as *APIServiceFlags) BuildFromService(h interface{}) error {
 		as.CloudCleanupDisabled = v.CloudCleanupDisabled
 		as.LegacyUIPublicAccessDisabled = v.LegacyUIPublicAccessDisabled
 		as.GlobalGitHubTokenDisabled = v.GlobalGitHubTokenDisabled
-		as.UnsetFunctionVarsDisabled = v.UnsetFunctionVarsDisabled
+		as.LegacyUIDistroPageDisabled = v.LegacyUIDistroPageDisabled
 	default:
 		return errors.Errorf("programmatic error: expected service flags config but got type %T", h)
 	}
@@ -2541,6 +2418,7 @@ func (as *APIServiceFlags) ToService() (interface{}, error) {
 		HostInitDisabled:               as.HostInitDisabled,
 		PodInitDisabled:                as.PodInitDisabled,
 		S3BinaryDownloadsDisabled:      as.S3BinaryDownloadsDisabled,
+		LargeParserProjectsDisabled:    as.LargeParserProjectsDisabled,
 		MonitorDisabled:                as.MonitorDisabled,
 		AlertsDisabled:                 as.AlertsDisabled,
 		AgentStartDisabled:             as.AgentStartDisabled,
@@ -2569,7 +2447,7 @@ func (as *APIServiceFlags) ToService() (interface{}, error) {
 		CloudCleanupDisabled:           as.CloudCleanupDisabled,
 		LegacyUIPublicAccessDisabled:   as.LegacyUIPublicAccessDisabled,
 		GlobalGitHubTokenDisabled:      as.GlobalGitHubTokenDisabled,
-		UnsetFunctionVarsDisabled:      as.UnsetFunctionVarsDisabled,
+		LegacyUIDistroPageDisabled:     as.LegacyUIDistroPageDisabled,
 	}, nil
 }
 
@@ -2877,4 +2755,24 @@ func (c *APIGitHubCheckRunConfig) ToService() (interface{}, error) {
 	}
 
 	return config, nil
+}
+
+type APITaskLimitsConfig struct {
+	MaxTasksPerVersion *int `json:"max_tasks_per_version"`
+}
+
+func (c *APITaskLimitsConfig) BuildFromService(h interface{}) error {
+	switch v := h.(type) {
+	case evergreen.TaskLimitsConfig:
+		c.MaxTasksPerVersion = utility.ToIntPtr(v.MaxTasksPerVersion)
+		return nil
+	default:
+		return errors.Errorf("programmatic error: expected task limits config but got type %T", h)
+	}
+}
+
+func (c *APITaskLimitsConfig) ToService() (interface{}, error) {
+	return evergreen.TaskLimitsConfig{
+		MaxTasksPerVersion: utility.FromIntPtr(c.MaxTasksPerVersion),
+	}, nil
 }

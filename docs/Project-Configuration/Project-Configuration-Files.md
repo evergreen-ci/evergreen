@@ -392,20 +392,26 @@ The validation step will check for:
 
 ### Modules
 
-For patches that run tests based off of changes across multiple
+For versions that run tests based off of changes across multiple
 projects, the modules field may be defined to specify other git projects
 with configurations specifying the way that changes across them are
-applied within the patch at runtime. If configured correctly, the left
-hand side of the Spruce UI under "Version Manifest" will contain
-details on how the modules were parsed from YAML and which git revisions
-are being used.
+applied within the patch at runtime. If at least one module is defined and it
+is configured correctly, the left hand side of the Spruce UI under "Version
+Manifest" will contain details on how the modules were parsed from YAML and
+which git revisions are being used. If no modules have been defined, the
+"Version Manifest" will not appear at all in the Spruce UI.
+
+For mainline commits and [trigger versions](Project-and-Distro-Settings.md#project-triggers), a new 
+manifest will be created that uses the latest revision available for each module.
 
 For manual patches and GitHub PRs, by default, the git revisions in the
-version manifest will be inherited from its base version. You can change
-the git revision for modules by setting a module manually with 
+version manifest will be inherited from its base version (i.e. the mainline commit version of the patch's base git revision). 
+You can change the git revision for modules by setting a module manually with 
 [evergreen set-module](../CLI.md#operating-on-existing-patches) or
 by specifying the `auto_update` option (as described below) to use the
-latest revision available for a module.
+latest revision available for a module. The full hierarchy of how
+module revisions are determined is available in the [git.get_project](Project-Commands.md#module-hash-hierarchy)
+docs.
 
 Module fields support the expansion of variables defined in the [Variables](Project-and-Distro-Settings.md#variables)
 tab of the Spruce project settings. These fields are expanded at the time of version creation, at which point 
@@ -957,12 +963,17 @@ task within a specific build variant).
 
 ### Out of memory (OOM) Tracker
 
-This is set to true at the top level if you'd like to enable the OOM Tracker for your project.
+By default, the OOM tracker is enabled. 
 
 If there is an OOM kill, immediately before the post-task starts, there will be
-a task log message saying whether it found any OOM killed processes, with their
-PIDs. A message with PIDs will also be displayed in the metadata panel in the
-UI.
+an agent log message saying whether it found any OOM killed processes, with their
+PIDs. A message with PIDs will also be displayed in the metadata panel in the UI.
+
+To disable the OOM tracker, add the following to the top-level of your yaml.
+
+``` yaml
+oom_tracker: false
+```
 
 ### Matrix Variant Definition
 
@@ -1486,11 +1497,18 @@ supported as a space-separated list. For example,
   depends_on:
   - name: test
     variant: "* !E"
+```
 
+Notably, selectors return items that satisfy all of the criteria. That is,
+they return the *set intersection* of each individual criterion. So the below yaml,
+while technically valid, wouldn't match anything given that these are static variant names, so the set 
+intersection will be nothing.
+
+``` yaml
 - name: push
   depends_on:
   - name: test
-    variant: "A B C D"
+    variant: "A B"
 ```
 
 [Task/variant tags](#task-and-variant-tags) 
@@ -1536,6 +1554,38 @@ Full gitignore syntax is explained
 [here](https://git-scm.com/docs/gitignore). Ignored versions may still
 be scheduled manually, and their tasks will still be scheduled on
 failure stepback.
+
+### Auto restarting tasks upon failure
+
+A given command can be configured to automatically restart the task upon failure
+by setting the `retry_on_failure` field on the command to true. The automatic
+restart will process after the command has failed and the task has completed its
+subsequent post task commands.
+
+The retry will only occur if the task has _not_ been aborted, and if the failing command would have caused the overall task
+to fail. This means the retry will _not_ occur if:
+- The failing command exists in the `pre` or `post` section of the task and `pre_error_fails_task`
+    or `post_error_fails_task` are (respectively) unset
+- The failing command exists in the `setup_group`, `setup_task`, or `teardown_task` sections of the task
+and `setup_group_can_fail_task`, `setup_task_can_fail_task`, or `teardown_task_can_fail_task` are (respectively) unset
+
+Otherwise, once a command with `retry_on_failure` set to true fails, the task will restart
+when it completes, regardless of the failure type.
+
+This is only recommended for commands that are known to be flaky, or fail intermittently.
+**In order to prevent overuse of this feature, the number of times a single
+task can be automatically restarted on failure is limited to 1 time.**
+
+An example is:
+
+``` yaml
+- command: shell.exec
+  retry_on_failure: true
+  params:
+    working_dir: src
+    script: |
+      exit 1
+```
 
 ### Customizing Logging
 

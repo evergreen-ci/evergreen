@@ -4,11 +4,12 @@ package graphql
 // To add a new test:
 // 1. Add a new directory in the tests directory. Name it after the query/mutation you are testing.
 // 2. Add a data.json file to the dir you created. The data for your tests goes here. See tests/versionTasks/data.json for example.
-// 3. (Optional) Add directory specific test setup within the directorySpecificTestSetup function.
-// 4. (Optional) Add directory specific test cleanup within the directorySpecificTestCleanup function.
-// 5. Add a results.json file to the dir you created. The results that your queries will be asserts against go here. See tests/versionTasks/results.json for example.
-// 6. Create a queries dir in the dir you created. All the queries/mutations for your tests go in this dir.
-// 7. That's all! Start testing.
+// 3. (Optional) Add a task_output_data.json file to the dir you created. The "offline" (not stored in the DB) task output data, such as task and test logs, goes here. See tests/task/taskLogs/task_output_data.json for example.
+// 4. (Optional) Add directory specific test setup within the directorySpecificTestSetup function.
+// 5. (Optional) Add directory specific test cleanup within the directorySpecificTestCleanup function.
+// 6. Add a results.json file to the dir you created. The results that your queries will be asserts against go here. See tests/versionTasks/results.json for example.
+// 7. Create a queries dir in the dir you created. All the queries/mutations for your tests go in this dir.
+// 8. That's all! Start testing.
 
 import (
 	"bytes"
@@ -31,32 +32,110 @@ import (
 	"github.com/evergreen-ci/evergreen/model/commitqueue"
 	"github.com/evergreen-ci/evergreen/model/distro"
 	"github.com/evergreen-ci/evergreen/model/host"
+	"github.com/evergreen-ci/evergreen/model/log"
 	"github.com/evergreen-ci/evergreen/model/task"
 	"github.com/evergreen-ci/evergreen/model/user"
+	"github.com/evergreen-ci/evergreen/taskoutput"
 	"github.com/evergreen-ci/gimlet"
+	"github.com/evergreen-ci/utility"
 	"github.com/mongodb/grip"
 	"github.com/pkg/errors"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"go.mongodb.org/mongo-driver/bson"
-	"go.mongodb.org/mongo-driver/mongo"
 )
 
 type AtomicGraphQLState struct {
-	ServerURL   string
-	ApiUser     string
-	ApiKey      string
-	Directory   string
-	TaskLogDB   string
-	TaskLogColl string
-	TestData    map[string]json.RawMessage
-	Settings    *evergreen.Settings
+	ServerURL      string
+	ApiUser        string
+	ApiKey         string
+	Directory      string
+	DBData         map[string]json.RawMessage
+	TaskOutputData map[string]json.RawMessage
+	Settings       *evergreen.Settings
 }
 
 const apiUser = "testuser"
 const apiKey = "testapikey"
 
-func setup(t *testing.T, state *AtomicGraphQLState) {
+func MakeTestsInDirectory(state *AtomicGraphQLState, pathToTests string) func(t *testing.T) {
+	return func(t *testing.T) {
+		ctx, cancel := context.WithCancel(context.Background())
+		defer cancel()
+
+		dbDataFilePath := filepath.Join(pathToTests, "tests", state.Directory, "data.json")
+		data, err := os.ReadFile(dbDataFilePath)
+		require.NoError(t, err, "reading DB data file '%s'", dbDataFilePath)
+		var dbData map[string]json.RawMessage
+		require.NoError(t, json.Unmarshal(data, &dbData), "unmarshalling data file for '%s'", dbDataFilePath)
+		state.DBData = dbData
+
+		taskOutputDataFilePath := filepath.Join(pathToTests, "tests", state.Directory, "task_output_data.json")
+		if _, err = os.Stat(taskOutputDataFilePath); !os.IsNotExist(err) {
+			data, err = os.ReadFile(taskOutputDataFilePath)
+			require.NoError(t, err, "reading task output file '%s'", taskOutputDataFilePath)
+			var taskOutputData map[string]json.RawMessage
+			require.NoError(t, json.Unmarshal(data, &taskOutputData), "unmarshalling task output file for '%s'", taskOutputDataFilePath)
+			state.TaskOutputData = taskOutputData
+		}
+
+		resultsFilePath := filepath.Join(pathToTests, "tests", state.Directory, "results.json")
+		data, err = os.ReadFile(resultsFilePath)
+		require.NoError(t, err, "reading results file '%s'", resultsFilePath)
+		var tests testsCases
+		err = json.Unmarshal(data, &tests)
+		require.NoError(t, errors.Wrapf(err, "unmarshalling results file for %s", resultsFilePath))
+
+		setup(ctx, t, state)
+		for _, testCase := range tests.Tests {
+			singleTest := func(t *testing.T) {
+				f, err := os.ReadFile(filepath.Join(pathToTests, "tests", state.Directory, "queries", testCase.QueryFile))
+				require.NoError(t, err)
+				jsonQuery := fmt.Sprintf(`{"operationName":null,"variables":{},"query":"%s"}`, escapeGQLQuery(string(f)))
+				body := bytes.NewBuffer([]byte(jsonQuery))
+				client := http.Client{}
+				r, err := http.NewRequest(http.MethodPost, fmt.Sprintf("%s/graphql/query", state.ServerURL), body)
+				require.NoError(t, err)
+				r.Header.Add(evergreen.APIKeyHeader, state.ApiKey)
+				r.Header.Add(evergreen.APIUserHeader, state.ApiUser)
+				r.Header.Add("content-type", "application/json")
+				resp, err := client.Do(r)
+				require.NoError(t, err)
+				b, err := io.ReadAll(resp.Body)
+				require.NoError(t, err)
+
+				// Remove apollo tracing data from test responses
+				var bJSON map[string]json.RawMessage
+				err = json.Unmarshal(b, &bJSON)
+				require.NoError(t, err)
+
+				delete(bJSON, "extensions")
+				b, err = json.Marshal(bJSON)
+				require.NoError(t, err)
+
+				pass := assert.JSONEq(t, string(testCase.Result), string(b), "test failure, more details below (whitespace will not line up)")
+				if !pass {
+					var actual bytes.Buffer
+					err = json.Indent(&actual, b, "", "  ")
+					if err != nil {
+						grip.Error(errors.Wrap(err, "actual value was not json"))
+						return
+					}
+					grip.Info("=== expected ===")
+					grip.Info(string(testCase.Result))
+					grip.Info("=== actual ===")
+					grip.Info(actual.Bytes())
+				}
+				additionalChecks(t)
+			}
+
+			t.Run(testCase.QueryFile, singleTest)
+		}
+		directorySpecificTestCleanup(t, state.Directory)
+	}
+}
+
+func setup(ctx context.Context, t *testing.T, state *AtomicGraphQLState) {
 	const slackUsername = "testslackuser"
 	const slackMemberId = "12345member"
 	const email = "testuser@mongodb.com"
@@ -71,7 +150,6 @@ func setup(t *testing.T, state *AtomicGraphQLState) {
 	}
 	systemRoles := []string{"unrestrictedTaskAccess", "modify_host", "modify_project_tasks", "superuser", "project_grumpyCat", "project_happyAbyssinian", "superuser_distro_access"}
 	env := evergreen.GetEnvironment()
-	ctx := context.Background()
 	require.NoError(t, env.DB().Drop(ctx))
 
 	require.NoError(t, db.Clear(user.Collection),
@@ -110,7 +188,8 @@ func setup(t *testing.T, state *AtomicGraphQLState) {
 
 	require.NoError(t, usr.UpdateAPIKey(apiKey))
 
-	require.NoError(t, setupData(*env.DB(), *env.Client().Database(state.TaskLogDB), state.TestData, *state))
+	require.NoError(t, setupDBData(ctx, env, state.DBData, *state))
+	require.NoError(t, setupTaskOutputData(ctx, env, state))
 	roleManager := env.RoleManager()
 
 	roles, err := roleManager.GetAllRoles()
@@ -241,106 +320,69 @@ func escapeGQLQuery(in string) string {
 	return strings.Replace(strings.Replace(in, "\n", "\\n", -1), "\"", "\\\"", -1)
 }
 
-func MakeTestsInDirectory(state *AtomicGraphQLState, pathToTests string) func(t *testing.T) {
-	return func(t *testing.T) {
-		dataFilePath := filepath.Join(pathToTests, "tests", state.Directory, "data.json")
-		dataFile, err := os.ReadFile(filepath.Join(pathToTests, "tests", state.Directory, "data.json"))
-		require.NoError(t, errors.Wrapf(err, "reading data file for %s", dataFilePath))
-
-		resultsFilePath := filepath.Join(pathToTests, "tests", state.Directory, "results.json")
-		resultsFile, err := os.ReadFile(resultsFilePath)
-		require.NoError(t, errors.Wrapf(err, "reading results file for %s", resultsFilePath))
-
-		var testData map[string]json.RawMessage
-		err = json.Unmarshal(dataFile, &testData)
-		require.NoError(t, errors.Wrapf(err, "unmarshalling data file for %s", dataFilePath))
-		state.TestData = testData
-
-		var tests testsCases
-		err = json.Unmarshal(resultsFile, &tests)
-		require.NoError(t, errors.Wrapf(err, "unmarshalling results file for %s", resultsFilePath))
-
-		// Delete exactly the documents added to the task_logg coll instead of dropping task log db
-		// we do this to minimize deleting data that was not added from this test suite
-		if testData[state.TaskLogColl] != nil {
-			logsDb := evergreen.GetEnvironment().Client().Database(state.TaskLogDB)
-			idArr := []string{}
-			var docs []model.TaskLog
-			require.NoError(t, bson.UnmarshalExtJSON(testData[state.TaskLogColl], false, &docs))
-			for _, d := range docs {
-				idArr = append(idArr, d.Id)
-			}
-			_, err := logsDb.Collection(state.TaskLogColl).DeleteMany(context.Background(), bson.M{"_id": bson.M{"$in": idArr}})
-			require.NoError(t, err)
-		}
-
-		setup(t, state)
-		for _, testCase := range tests.Tests {
-			singleTest := func(t *testing.T) {
-				f, err := os.ReadFile(filepath.Join(pathToTests, "tests", state.Directory, "queries", testCase.QueryFile))
-				require.NoError(t, err)
-				jsonQuery := fmt.Sprintf(`{"operationName":null,"variables":{},"query":"%s"}`, escapeGQLQuery(string(f)))
-				body := bytes.NewBuffer([]byte(jsonQuery))
-				client := http.Client{}
-				r, err := http.NewRequest(http.MethodPost, fmt.Sprintf("%s/graphql/query", state.ServerURL), body)
-				require.NoError(t, err)
-				r.Header.Add(evergreen.APIKeyHeader, state.ApiKey)
-				r.Header.Add(evergreen.APIUserHeader, state.ApiUser)
-				r.Header.Add("content-type", "application/json")
-				resp, err := client.Do(r)
-				require.NoError(t, err)
-				b, err := io.ReadAll(resp.Body)
-				require.NoError(t, err)
-
-				// Remove apollo tracing data from test responses
-				var bJSON map[string]json.RawMessage
-				err = json.Unmarshal(b, &bJSON)
-				require.NoError(t, err)
-
-				delete(bJSON, "extensions")
-				b, err = json.Marshal(bJSON)
-				require.NoError(t, err)
-
-				pass := assert.JSONEq(t, string(testCase.Result), string(b), "test failure, more details below (whitespace will not line up)")
-				if !pass {
-					var actual bytes.Buffer
-					err = json.Indent(&actual, b, "", "  ")
-					if err != nil {
-						grip.Error(errors.Wrap(err, "actual value was not json"))
-						return
-					}
-					grip.Info("=== expected ===")
-					grip.Info(string(testCase.Result))
-					grip.Info("=== actual ===")
-					grip.Info(actual.Bytes())
-				}
-				additionalChecks(t)
-			}
-
-			t.Run(testCase.QueryFile, singleTest)
-		}
-		directorySpecificTestCleanup(t, state.Directory)
-	}
-}
-
-func setupData(db mongo.Database, logsDb mongo.Database, data map[string]json.RawMessage, state AtomicGraphQLState) error {
-	ctx := context.Background()
+func setupDBData(ctx context.Context, env evergreen.Environment, data map[string]json.RawMessage, state AtomicGraphQLState) error {
 	catcher := grip.NewBasicCatcher()
+
 	for coll, d := range data {
-		// the docs to insert as part of setup need to be deserialized as extended JSON, whereas the rest of the
-		// test spec is normal JSON
+		// The docs to insert as part of setup need to be deserialized
+		// as extended JSON, whereas the rest of the test spec is
+		// normal JSON.
 		var docs []interface{}
 		catcher.Add(bson.UnmarshalExtJSON(d, false, &docs))
-		if coll == state.TaskLogColl {
-			// task_logg collection belongs to the logs db
-			_, err := logsDb.Collection(coll).InsertMany(ctx, docs)
-			catcher.Add(err)
-		} else {
-			_, err := db.Collection(coll).InsertMany(ctx, docs)
-			catcher.Add(err)
+		_, err := env.DB().Collection(coll).InsertMany(ctx, docs)
+		catcher.Add(err)
+	}
+
+	return catcher.Resolve()
+}
+
+func setupTaskOutputData(ctx context.Context, env evergreen.Environment, state *AtomicGraphQLState) error {
+	for taskOutputType, data := range state.TaskOutputData {
+		switch taskOutputType {
+		case taskoutput.TaskLogOutput{}.ID():
+			if err := setupTaskLogData(ctx, env, data); err != nil {
+				return errors.Wrap(err, "setting up task log data")
+			}
+		default:
+			return errors.Errorf("unsupported task output type '%s'", taskOutputType)
 		}
 	}
-	return catcher.Resolve()
+
+	return nil
+}
+
+func setupTaskLogData(ctx context.Context, env evergreen.Environment, data json.RawMessage) error {
+	taskLogs := []struct {
+		TaskID    string                 `json:"task_id"`
+		Execution int                    `json:"execution"`
+		LogType   taskoutput.TaskLogType `json:"log_type"`
+		Lines     []log.LogLine          `json:"lines"`
+	}{}
+	if err := json.Unmarshal(data, &taskLogs); err != nil {
+		return errors.Wrap(err, "unmarshalling task log data")
+	}
+
+	for _, taskLog := range taskLogs {
+		tsk, err := task.FindByIdExecution(taskLog.TaskID, utility.ToIntPtr(taskLog.Execution))
+		if err != nil {
+			return errors.Wrap(err, "finding task for task log")
+		}
+
+		if tsk.TaskOutputInfo == nil {
+			return errors.New("task missing task output info")
+		}
+
+		taskOpts := taskoutput.TaskOptions{
+			ProjectID: tsk.Project,
+			TaskID:    tsk.Id,
+			Execution: tsk.Execution,
+		}
+		if err := tsk.TaskOutputInfo.TaskLogs.Append(ctx, taskOpts, taskLog.LogType, taskLog.Lines); err != nil {
+			return errors.Wrap(err, "appending task log lines")
+		}
+	}
+
+	return nil
 }
 
 func directorySpecificTestSetup(t *testing.T, state AtomicGraphQLState) {

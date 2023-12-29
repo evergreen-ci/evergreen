@@ -72,7 +72,7 @@ func TestGetGithubSettings(t *testing.T) {
 	assert.Empty(settings.Credentials["github"])
 
 	token, err := settings.GetGithubOauthToken()
-	assert.Error(err)
+	assert.NoError(err)
 	assert.Empty(token)
 
 	settings, err = NewSettings(filepath.Join(FindEvergreenHome(),
@@ -87,19 +87,19 @@ func TestGetGithubSettings(t *testing.T) {
 	settings.AuthConfig.Github = &GithubAuthConfig{
 		AppId: 0,
 	}
-	settings.Expansions[githubAppPrivateKey] = ""
+	settings.Expansions[GithubAppPrivateKey] = ""
 
-	authFields := settings.getGithubAppAuth()
+	authFields := getGithubAppAuth(settings)
 	assert.Nil(authFields)
 
 	settings.AuthConfig.Github = &GithubAuthConfig{
 		AppId: 1234,
 	}
-	authFields = settings.getGithubAppAuth()
+	authFields = getGithubAppAuth(settings)
 	assert.Nil(authFields)
 
-	settings.Expansions[githubAppPrivateKey] = "key"
-	authFields = settings.getGithubAppAuth()
+	settings.Expansions[GithubAppPrivateKey] = "key"
+	authFields = getGithubAppAuth(settings)
 	assert.NotNil(authFields)
 	assert.Equal(int64(1234), authFields.appId)
 	assert.Equal([]byte("key"), authFields.privateKey)
@@ -109,7 +109,7 @@ func TestGetGithubSettings(t *testing.T) {
 		assert.Nil(settings.Credentials)
 
 		token, err = settings.GetGithubOauthToken()
-		assert.Error(err)
+		assert.NoError(err)
 		assert.Empty(token)
 	})
 }
@@ -275,8 +275,6 @@ func (s *AdminSuite) TestAmboyConfig() {
 		DBConnection: AmboyDBConfig{
 			URL:      "mongodb://localhost:27017",
 			Database: "db",
-			Username: "user",
-			Password: "password",
 		},
 		PoolSizeLocal:                         10,
 		PoolSizeRemote:                        20,
@@ -436,26 +434,6 @@ func (s *AdminSuite) TestProvidersConfig() {
 		},
 		Docker: DockerConfig{
 			APIVersion: "docker_version",
-		},
-		GCE: GCEConfig{
-			ClientEmail:  "gce_email",
-			PrivateKey:   "gce_key",
-			PrivateKeyID: "gce_key_id",
-			TokenURI:     "gce_token",
-		},
-		OpenStack: OpenStackConfig{
-			IdentityEndpoint: "endpoint",
-			Username:         "username",
-			Password:         "password",
-			DomainName:       "domain",
-			ProjectName:      "project",
-			ProjectID:        "project_id",
-			Region:           "region",
-		},
-		VSphere: VSphereConfig{
-			Host:     "host",
-			Username: "vsphere",
-			Password: "vsphere_pass",
 		},
 	}
 
@@ -1033,12 +1011,12 @@ func (s *AdminSuite) TestDataPipesConfig() {
 	s.Equal(config, settings.DataPipes)
 }
 
-func (s *AdminSuite) TestBucketConfig() {
+func (s *AdminSuite) TestBucketsConfig() {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 
-	config := BucketConfig{
-		LogBucket: Bucket{
+	config := BucketsConfig{
+		LogBucket: BucketConfig{
 			Name: "logs",
 			Type: "s3",
 		},

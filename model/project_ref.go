@@ -5,7 +5,6 @@ import (
 	"encoding/base64"
 	"fmt"
 	"net/http"
-	"net/url"
 	"os"
 	"path/filepath"
 	"reflect"
@@ -48,6 +47,8 @@ type ProjectRef struct {
 	// Identifier must be unique, but is modifiable. Used by users.
 	Identifier string `bson:"identifier" json:"identifier" yaml:"identifier"`
 
+	// RemotePath is the path to the Evergreen config file.
+	RemotePath             string              `bson:"remote_path" json:"remote_path" yaml:"remote_path"`
 	DisplayName            string              `bson:"display_name" json:"display_name,omitempty" yaml:"display_name"`
 	Enabled                bool                `bson:"enabled,omitempty" json:"enabled,omitempty" yaml:"enabled"`
 	Private                *bool               `bson:"private,omitempty" json:"private,omitempty" yaml:"private"`
@@ -55,7 +56,6 @@ type ProjectRef struct {
 	Owner                  string              `bson:"owner_name" json:"owner_name" yaml:"owner"`
 	Repo                   string              `bson:"repo_name" json:"repo_name" yaml:"repo"`
 	Branch                 string              `bson:"branch_name" json:"branch_name" yaml:"branch"`
-	RemotePath             string              `bson:"remote_path" json:"remote_path" yaml:"remote_path"`
 	PatchingDisabled       *bool               `bson:"patching_disabled,omitempty" json:"patching_disabled,omitempty"`
 	RepotrackerDisabled    *bool               `bson:"repotracker_disabled,omitempty" json:"repotracker_disabled,omitempty" yaml:"repotracker_disabled"`
 	DispatchingDisabled    *bool               `bson:"dispatching_disabled,omitempty" json:"dispatching_disabled,omitempty" yaml:"dispatching_disabled"`
@@ -116,6 +116,7 @@ type ProjectRef struct {
 	ContainerSizeDefinitions []ContainerResources `bson:"container_size_definitions,omitempty" json:"container_size_definitions,omitempty" yaml:"container_size_definitions,omitempty"`
 	ContainerSecrets         []ContainerSecret    `bson:"container_secrets,omitempty" json:"container_secrets,omitempty" yaml:"container_secrets,omitempty"`
 
+	// RepoRefId is the repo ref id that this project ref tracks, if any.
 	RepoRefId string `bson:"repo_ref_id" json:"repo_ref_id" yaml:"repo_ref_id"`
 
 	// The following fields are used by Evergreen and are not discoverable.
@@ -166,6 +167,7 @@ type CommitQueueParams struct {
 	Enabled     *bool      `bson:"enabled" json:"enabled" yaml:"enabled"`
 	MergeMethod string     `bson:"merge_method" json:"merge_method" yaml:"merge_method"`
 	MergeQueue  MergeQueue `bson:"merge_queue" json:"merge_queue" yaml:"merge_queue"`
+	CLIOnly     bool       `bson:"cli_only" json:"cli_only" yaml:"cli_only"`
 	Message     string     `bson:"message,omitempty" json:"message,omitempty" yaml:"message"`
 }
 
@@ -1027,8 +1029,24 @@ func mergeBranchAndRepoSettings(pRef *ProjectRef, repoRef *RepoRef) (*ProjectRef
 	reflectedBranch := reflect.ValueOf(pRef).Elem()
 	reflectedRepo := reflect.ValueOf(repoRef).Elem().Field(0) // specifically references the ProjectRef part of RepoRef
 
+	// Include Parsley filters defined at repo level alongside project filters.
+	mergeParsleyFilters(pRef, repoRef)
+
 	util.RecursivelySetUndefinedFields(reflectedBranch, reflectedRepo)
+
 	return pRef, err
+}
+
+func mergeParsleyFilters(pRef *ProjectRef, repoRef *RepoRef) {
+	if len(repoRef.ParsleyFilters) == 0 {
+		return
+	}
+
+	if pRef.ParsleyFilters == nil {
+		pRef.ParsleyFilters = []ParsleyFilter{}
+	}
+
+	pRef.ParsleyFilters = append(pRef.ParsleyFilters, repoRef.ParsleyFilters...)
 }
 
 func setRepoFieldsFromProjects(repoRef *RepoRef, projectRefs []ProjectRef) {
@@ -1657,13 +1675,8 @@ func FindOneProjectRefWithCommitQueueByOwnerRepoAndBranch(owner, repo, branch st
 
 // SetTracksPushEvents returns true if the GitHub app is installed on the owner/repo for the given project.
 func SetTracksPushEvents(ctx context.Context, projectRef *ProjectRef) (bool, error) {
-	settings, err := evergreen.GetConfig(ctx)
-	if err != nil {
-		return false, errors.Wrap(err, "finding evergreen settings")
-	}
-
 	// Don't return errors because it could cause the project page to break if GitHub is down.
-	hasApp, err := settings.HasGitHubApp(ctx, projectRef.Owner, projectRef.Repo, nil)
+	hasApp, err := evergreen.GetEnvironment().Settings().HasGitHubApp(ctx, projectRef.Owner, projectRef.Repo)
 	if err != nil {
 		grip.Error(message.WrapError(err, message.Fields{
 			"message":            "Error verifying GitHub app installation",
@@ -1804,7 +1817,7 @@ func GetProjectSettingsById(projectId string, isRepo bool) (*ProjectSettings, er
 func GetProjectSettings(p *ProjectRef) (*ProjectSettings, error) {
 	// Don't error even if there is problem with verifying the GitHub app installation
 	// because a GitHub outage could cause project settings page to not load.
-	hasApp, _ := evergreen.GetEnvironment().Settings().HasGitHubApp(context.Background(), p.Owner, p.Repo, nil)
+	hasApp, _ := evergreen.GetEnvironment().Settings().HasGitHubApp(context.Background(), p.Owner, p.Repo)
 
 	projectVars, err := FindOneProjectVars(p.Id)
 	if err != nil {
@@ -1907,6 +1920,15 @@ func FindProjectRefs(key string, limit int, sortDir int) ([]ProjectRef, error) {
 	err := db.FindAllQ(ProjectRefCollection, q, &projectRefs)
 
 	return projectRefs, err
+}
+
+// ValidateEnabledRepotracker checks if the repotracker is being enabled,
+// and if it is, checks to make sure it can be enabled.
+func (p *ProjectRef) ValidateEnabledRepotracker() error {
+	if !p.IsRepotrackerDisabled() && p.Enabled && p.RemotePath == "" {
+		return errors.Errorf("remote path can't be empty for enabled repotracker project '%s'", p.Identifier)
+	}
+	return nil
 }
 
 func (p *ProjectRef) CanEnableCommitQueue() (bool, error) {
@@ -2014,36 +2036,6 @@ func SaveProjectPageForSection(projectId string, p *ProjectRef, section ProjectP
 				"$set": setUpdate,
 			})
 	case ProjectPagePluginSection:
-		catcher := grip.NewSimpleCatcher()
-		for _, link := range p.ExternalLinks {
-			if link.DisplayName != "" && link.URLTemplate != "" {
-				// check length of link display name
-				if len(link.DisplayName) > 40 {
-					catcher.Add(errors.New(fmt.Sprintf("link display name, %s, must be 40 characters or less", link.DisplayName)))
-				}
-				// validate url template
-				formattedURL := strings.Replace(link.URLTemplate, "{version_id}", "version_id", -1)
-				if _, err := url.ParseRequestURI(formattedURL); err != nil {
-					catcher.Add(err)
-				}
-			}
-		}
-		if catcher.HasErrors() {
-			return false, errors.Wrapf(catcher.Resolve(), "validating external links")
-		}
-		var pRef *ProjectRef
-		pRef, err = FindBranchProjectRef(projectId)
-		if err != nil {
-			return false, errors.Wrapf(err, "getting project '%s'", projectId)
-		}
-		if pRef == nil {
-			return false, errors.Errorf("project '%s' was not found", projectId)
-		}
-		// If the performance plugin is not currently enabled, and we are trying to
-		// change it to enabled but the id and identifier are different, we error.
-		if !pRef.IsPerfEnabled() && p.IsPerfEnabled() && pRef.Id != pRef.Identifier {
-			return false, errors.Errorf("project '%s' does not have a matching ID and identifier, cannot enable performance plugin", pRef.Id)
-		}
 		err = db.Update(coll,
 			bson.M{ProjectRefIdKey: projectId},
 			bson.M{
@@ -2114,15 +2106,6 @@ func SaveProjectPageForSection(projectId string, p *ProjectRef, section ProjectP
 				"$set": bson.M{projectRefPeriodicBuildsKey: p.PeriodicBuilds},
 			})
 	case ProjectPageContainerSection:
-		catcher := grip.NewSimpleCatcher()
-		for _, size := range p.ContainerSizeDefinitions {
-			if err = size.Validate(evergreen.GetEnvironment().Settings().Providers.AWS.Pod.ECS); err != nil {
-				catcher.Add(errors.Wrapf(err, "validating container size '%s'", size.Name))
-			}
-		}
-		if catcher.HasErrors() {
-			return false, errors.Wrapf(catcher.Resolve(), "validating container size definitions")
-		}
 		err = db.Update(coll,
 			bson.M{ProjectRefIdKey: projectId},
 			bson.M{
@@ -2360,7 +2343,9 @@ func (p *ProjectRef) GetGithubProjectConflicts() (GithubProjectConflicts, error)
 	}
 
 	for _, conflictingRef := range matchingProjects {
-		if conflictingRef.Id == p.Id {
+		// If this is the same project ref or the potentially conflicting ref is going to inherit
+		// from this ref it is not comflicting.
+		if conflictingRef.Id == p.Id || conflictingRef.RepoRefId == p.Id {
 			continue
 		}
 		if conflictingRef.IsPRTestingEnabled() {
@@ -2826,7 +2811,7 @@ func GetSetupScriptForTask(ctx context.Context, taskId string) (string, error) {
 	return string(fileContents), nil
 }
 
-func (t *TriggerDefinition) Validate(parentProject string) error {
+func (t *TriggerDefinition) Validate(downstreamProject string) error {
 	upstreamProject, err := FindBranchProjectRef(t.Project)
 	if err != nil {
 		return errors.Wrapf(err, "finding upstream project '%s'", t.Project)
@@ -2834,12 +2819,13 @@ func (t *TriggerDefinition) Validate(parentProject string) error {
 	if upstreamProject == nil {
 		return errors.Errorf("project '%s' not found", t.Project)
 	}
-	if upstreamProject.Id == parentProject {
+	if upstreamProject.Id == downstreamProject {
 		return errors.New("a project cannot trigger itself")
 	}
+
 	// should be saved using its ID, in case the user used the project's identifier
 	t.Project = upstreamProject.Id
-	if t.Level != ProjectTriggerLevelBuild && t.Level != ProjectTriggerLevelTask {
+	if t.Level != ProjectTriggerLevelBuild && t.Level != ProjectTriggerLevelTask && t.Level != ProjectTriggerLevelPush {
 		return errors.Errorf("invalid level: %s", t.Level)
 	}
 	if t.Status != "" && t.Status != evergreen.TaskFailed && t.Status != evergreen.TaskSucceeded {

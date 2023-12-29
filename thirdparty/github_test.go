@@ -148,16 +148,16 @@ func (s *githubSuite) TestCheckGithubAPILimit() {
 }
 
 func (s *githubSuite) TestGetGithubCommits() {
-	githubCommits, _, err := GetGithubCommits(s.ctx, s.token, "deafgoat", "mci-test", "", time.Time{}, 0)
+	githubCommits, _, err := GetGithubCommits(s.ctx, s.token, "evergreen-ci", "sample", "", time.Time{}, 0)
 	s.NoError(err)
-	s.Len(githubCommits, 3)
+	s.Len(githubCommits, 18)
 }
 
 func (s *githubSuite) TestGetGithubCommitsUntil() {
-	until := time.Date(2013, time.May, 17, 15, 40, 0, 0, time.UTC)
-	githubCommits, _, err := GetGithubCommits(s.ctx, s.token, "deafgoat", "mci-test", "", until, 0)
+	until := time.Date(2015, time.January, 1, 0, 0, 0, 0, time.UTC)
+	githubCommits, _, err := GetGithubCommits(s.ctx, s.token, "evergreen-ci", "sample", "", until, 0)
 	s.NoError(err)
-	s.Len(githubCommits, 2)
+	s.Len(githubCommits, 4)
 }
 
 func (s *githubSuite) TestGetTaggedCommitFromGithub() {
@@ -277,13 +277,13 @@ func (s *githubSuite) TestGithubUserInOrganization() {
 }
 
 func (s *githubSuite) TestGitHubUserPermissionLevel() {
-	permissionLevel, err := GitHubUserPermissionLevel(s.ctx, s.token, "evergreen-ci", "evergreen", "evrg-bot-webhook")
+	hasPermission, err := GitHubUserHasWritePermission(s.ctx, s.token, "evergreen-ci", "evergreen", "evrg-bot-webhook")
 	s.NoError(err)
-	s.Contains([]string{"admin", "write"}, permissionLevel)
+	s.True(hasPermission)
 
-	permissionLevel, err = GitHubUserPermissionLevel(s.ctx, s.token, "evergreen-ci", "evergreen", "octocat")
+	hasPermission, err = GitHubUserHasWritePermission(s.ctx, s.token, "evergreen-ci", "evergreen", "octocat")
 	s.NoError(err)
-	s.Contains([]string{"read", "none"}, permissionLevel)
+	s.False(hasPermission)
 }
 
 func (s *githubSuite) TestGetGithubPullRequestDiff() {

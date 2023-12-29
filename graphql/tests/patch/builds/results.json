@@ -1,0 +1,46 @@
+{
+  "tests": [
+    {
+      "query_file": "builds_do_not_exist.graphql",
+      "result": {
+        "data": {
+          "patch": {
+            "builds": []
+          }
+        }
+      }
+    },
+    {
+      "query_file": "builds_exist.graphql",
+      "result": {
+        "data": {
+          "patch": {
+            "builds": [
+              {
+                "id": "logkeeper_ubuntu_edd78c1d581bf757a880777b00685321685a8e67_16_10_20_21_58_58",
+                "buildVariant": "ubuntu",
+                "status": "created",
+                "predictedMakespan": 70000000,
+                "actualMakespan": 0
+              },
+              {
+                "id": "sys_perf_linux_3_node_replSet_initialsync_40dc86136f85f88e1782a1c65b49bfba02757009_17_12_05_17_20_27",
+                "buildVariant": "linux-3-node-replSet-initialsync",
+                "status": "success",
+                "predictedMakespan": 0,
+                "actualMakespan": 7057665
+              },
+              {
+                "id": "sys_perf_linux_3_node_replSet_852ff9f97b6b92f5c3a88d0e070fe9c0f90ef175_17_11_30_16_44_10",
+                "buildVariant": "linux-3-node-replSet",
+                "status": "failed",
+                "predictedMakespan": 0,
+                "actualMakespan": 26167579
+              }
+            ]
+          }
+        }
+      }
+    }
+  ]
+}

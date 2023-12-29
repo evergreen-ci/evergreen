@@ -74,10 +74,6 @@ func (s *EnvironmentSuite) TestInitDB() {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 	localEnv := s.env
-	envAuth := os.Getenv(MongodbAuthFile)
-	if envAuth != "" {
-		db.AuthFile = envAuth
-	}
 	err := localEnv.initDB(ctx, *db)
 	s.NoError(err)
 	_, err = localEnv.client.ListDatabases(ctx, bson.M{})

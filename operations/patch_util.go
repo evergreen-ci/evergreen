@@ -621,17 +621,22 @@ Continue?`, uncommittedChangesFlag), true), nil
 // If no dir is provided, we use the current working directory.
 // The branch argument is used to determine where to generate the merge base from, and any extra
 // arguments supplied are passed directly in as additional args to git diff.
-func loadGitData(dir, branch, ref, commits string, format bool, extraArgs ...string) (*localDiff, error) {
-	// branch@{upstream} refers to the branch that the branch specified by branchname is set to
-	// build on top of. This allows automatically detecting a branch based on the correct remote,
-	// if the user's repo is a fork, for example. This also works with a commit hash, if given.
+func loadGitData(dir, remote, branch, ref, commits string, format bool, extraArgs ...string) (*localDiff, error) {
+	if remote == "" {
+		remote = "upstream"
+	}
+	// remote/branch refers directly to the remote branch and does not require a local branch.
+	// branch@{remote} refers to the remote branch that "branch" is tracking.
 	// In the case a range is passed, we only need one commit to determine the base, so we use the first commit.
 	// For details see: https://git-scm.com/docs/gitrevisions
 
-	mergeBase, err := gitMergeBase(dir, branch+"@{upstream}", ref, commits)
+	mergeBase, err := gitMergeBase(dir, fmt.Sprintf("%s/%s", remote, branch), ref, commits)
 	if err != nil {
-		return nil, errors.Wrapf(err, "Error getting merge base, "+
-			"may need to create local branch '%s' and have it track upstream", branch)
+		mergeBase, err = gitMergeBase(dir, branch+"@{upstream}", ref, commits)
+		if err != nil {
+			return nil, errors.Wrapf(err, "Error getting merge base, "+
+				"may need to create local branch '%s' and have it track your Evergreen project", branch)
+		}
 	}
 	statArgs := []string{"--stat"}
 	if len(extraArgs) > 0 {
@@ -674,6 +679,31 @@ func loadGitData(dir, branch, ref, commits string, format bool, extraArgs ...str
 		base:         mergeBase,
 		gitMetadata:  gitMetadata,
 	}, nil
+}
+
+func gitGetRemote(dir, owner, repo string) (string, error) {
+	out, err := gitCmdWithDir("remote", dir, "-v")
+	if err != nil {
+		return "", errors.Wrap(err, "getting git remotes")
+	}
+
+	return getRemoteFromOutput(out, owner, repo)
+}
+
+func getRemoteFromOutput(output, owner, repo string) (string, error) {
+	lines := strings.Split(output, "\n")
+	partial := strings.ToLower(fmt.Sprintf("%s/%s", owner, repo))
+
+	// git remote -v has a format of
+	// <remote_name> <url> [fetch|pull]
+	for _, line := range lines {
+		f := strings.Fields(line)
+		if len(f) > 1 && strings.Contains(strings.ToLower(f[1]), partial) {
+			return f[0], nil
+		}
+	}
+
+	return "", errors.New("no git remote found")
 }
 
 // gitMergeBase runs "git merge-base <branch1> <branch2>" (where branch2 can optionally be a githash)

@@ -21,6 +21,7 @@ import (
 	"github.com/evergreen-ci/evergreen/thirdparty"
 	"github.com/evergreen-ci/evergreen/util"
 	"github.com/evergreen-ci/utility"
+	"github.com/google/go-github/v53/github"
 	"github.com/mongodb/anser/bsonutil"
 	"github.com/mongodb/grip"
 	"github.com/mongodb/grip/message"
@@ -41,7 +42,6 @@ const (
 // the ParserProject.
 type Project struct {
 	Stepback           bool                       `yaml:"stepback,omitempty" bson:"stepback"`
-	UnsetFunctionVars  bool                       `yaml:"unset_function_vars,omitempty" bson:"unset_function_vars,omitempty"`
 	PreTimeoutSecs     int                        `yaml:"pre_timeout_secs,omitempty" bson:"pre_timeout_secs,omitempty"`
 	PostTimeoutSecs    int                        `yaml:"post_timeout_secs,omitempty" bson:"post_timeout_secs,omitempty"`
 	PreErrorFailsTask  bool                       `yaml:"pre_error_fails_task,omitempty" bson:"pre_error_fails_task,omitempty"`
@@ -144,6 +144,9 @@ type BuildVariantTaskUnit struct {
 	Activate *bool `yaml:"activate,omitempty" bson:"activate,omitempty"`
 	// TaskGroup is set if an inline task group is defined on the build variant.
 	TaskGroup *TaskGroup `yaml:"task_group,omitempty" bson:"task_group,omitempty"`
+
+	// CreateCheckRun will create a check run on GitHub if set.
+	CreateCheckRun *CheckRun `yaml:"create_check_run,omitempty" bson:"create_check_run,omitempty"`
 }
 
 func (b BuildVariant) Get(name string) (BuildVariantTaskUnit, error) {
@@ -415,6 +418,12 @@ type BuildVariant struct {
 	DisplayTasks []patch.DisplayTask    `yaml:"display_tasks,omitempty" bson:"display_tasks,omitempty"`
 }
 
+// CheckRun is used to provide information about a github check run.
+type CheckRun struct {
+	// PathToOutputs is a local file path to an output json file for the checkrun.
+	PathToOutputs string `yaml:"path_to_outputs" bson:"path_to_outputs"`
+}
+
 // ParameterInfo is used to provide extra information about a parameter.
 type ParameterInfo struct {
 	patch.Parameter `yaml:",inline" bson:",inline"`
@@ -447,9 +456,20 @@ type Module struct {
 	Name       string `yaml:"name,omitempty" bson:"name" plugin:"expand"`
 	Branch     string `yaml:"branch,omitempty" bson:"branch"  plugin:"expand"`
 	Repo       string `yaml:"repo,omitempty" bson:"repo"  plugin:"expand"`
+	Owner      string `yaml:"owner,omitempty" bson:"owner"  plugin:"expand"`
 	Prefix     string `yaml:"prefix,omitempty" bson:"prefix"  plugin:"expand"`
 	Ref        string `yaml:"ref,omitempty" bson:"ref"  plugin:"expand"`
 	AutoUpdate bool   `yaml:"auto_update,omitempty" bson:"auto_update"`
+}
+
+// GetOwnerAndRepo returns the owner and repo for a module
+// If the owner is not set, it will attempt to parse the repo URL to get the owner
+// and repo.
+func (m Module) GetOwnerAndRepo() (string, string, error) {
+	if m.Owner == "" {
+		return thirdparty.ParseGitUrl(m.Repo)
+	}
+	return m.Owner, m.Repo, nil
 }
 
 type Include struct {
@@ -470,7 +490,7 @@ func (l *ModuleList) IsIdentical(m manifest.Manifest) bool {
 	}
 	projectModules := map[string]manifest.Module{}
 	for _, module := range *l {
-		owner, repo, err := thirdparty.ParseGitUrl(module.Repo)
+		owner, repo, err := module.GetOwnerAndRepo()
 		if err != nil {
 			return false
 		}
@@ -526,6 +546,9 @@ type PluginCommandConf struct {
 	// Vars defines variables that can be used within commands.
 	Vars map[string]string `yaml:"vars,omitempty" bson:"vars,omitempty"`
 
+	// RetryOnFailure indicates whether the task should be retried if this command fails.
+	RetryOnFailure bool `yaml:"retry_on_failure,omitempty" bson:"retry_on_failure,omitempty"`
+
 	Loggers *LoggerConfig `yaml:"loggers,omitempty" bson:"loggers,omitempty"`
 }
 
@@ -545,16 +568,17 @@ func (c *PluginCommandConf) resolveParams() error {
 
 func (c *PluginCommandConf) UnmarshalYAML(unmarshal func(interface{}) error) error {
 	temp := struct {
-		Function    string                 `yaml:"func,omitempty" bson:"func,omitempty"`
-		Type        string                 `yaml:"type,omitempty" bson:"type,omitempty"`
-		DisplayName string                 `yaml:"display_name,omitempty" bson:"display_name,omitempty"`
-		Command     string                 `yaml:"command,omitempty" bson:"command,omitempty"`
-		Variants    []string               `yaml:"variants,omitempty" bson:"variants,omitempty"`
-		TimeoutSecs int                    `yaml:"timeout_secs,omitempty" bson:"timeout_secs,omitempty"`
-		Params      map[string]interface{} `yaml:"params,omitempty" bson:"params,omitempty"`
-		ParamsYAML  string                 `yaml:"params_yaml,omitempty" bson:"params_yaml,omitempty"`
-		Vars        map[string]string      `yaml:"vars,omitempty" bson:"vars,omitempty"`
-		Loggers     *LoggerConfig          `yaml:"loggers,omitempty" bson:"loggers,omitempty"`
+		Function       string                 `yaml:"func,omitempty" bson:"func,omitempty"`
+		Type           string                 `yaml:"type,omitempty" bson:"type,omitempty"`
+		DisplayName    string                 `yaml:"display_name,omitempty" bson:"display_name,omitempty"`
+		Command        string                 `yaml:"command,omitempty" bson:"command,omitempty"`
+		Variants       []string               `yaml:"variants,omitempty" bson:"variants,omitempty"`
+		TimeoutSecs    int                    `yaml:"timeout_secs,omitempty" bson:"timeout_secs,omitempty"`
+		Params         map[string]interface{} `yaml:"params,omitempty" bson:"params,omitempty"`
+		ParamsYAML     string                 `yaml:"params_yaml,omitempty" bson:"params_yaml,omitempty"`
+		Vars           map[string]string      `yaml:"vars,omitempty" bson:"vars,omitempty"`
+		RetryOnFailure bool                   `yaml:"retry_on_failure,omitempty" bson:"retry_on_failure,omitempty"`
+		Loggers        *LoggerConfig          `yaml:"loggers,omitempty" bson:"loggers,omitempty"`
 	}{}
 
 	if err := unmarshal(&temp); err != nil {
@@ -570,6 +594,7 @@ func (c *PluginCommandConf) UnmarshalYAML(unmarshal func(interface{}) error) err
 	c.Loggers = temp.Loggers
 	c.ParamsYAML = temp.ParamsYAML
 	c.Params = temp.Params
+	c.RetryOnFailure = temp.RetryOnFailure
 	return c.unmarshalParams()
 }
 
@@ -819,6 +844,7 @@ var ValidLogSenders = []string{
 // TaskIdTable is a map of [variant, task display name]->[task id].
 type TaskIdTable map[TVPair]string
 
+// TaskIdConfig stores TaskIdTables split by execution and display tasks.
 type TaskIdConfig struct {
 	ExecutionTasks TaskIdTable
 	DisplayTasks   TaskIdTable
@@ -916,8 +942,9 @@ func (tt TaskIdTable) GetIdsForAllTasks() []string {
 	return ids
 }
 
-// TaskIdTable builds a TaskIdTable for the given version and project
-func NewTaskIdTable(p *Project, v *Version, sourceRev, defID string) TaskIdConfig {
+// NewTaskIdConfigForRepotrackerVersion creates a special TaskIdTable for a
+// repotracker version.
+func NewTaskIdConfigForRepotrackerVersion(p *Project, v *Version, sourceRev, defID string) TaskIdConfig {
 	// init the variant map
 	execTable := TaskIdTable{}
 	displayTable := TaskIdTable{}
@@ -969,8 +996,9 @@ func NewTaskIdTable(p *Project, v *Version, sourceRev, defID string) TaskIdConfi
 	return TaskIdConfig{ExecutionTasks: execTable, DisplayTasks: displayTable}
 }
 
-// NewPatchTaskIdTable constructs a new TaskIdTable (map of [variant, task display name]->[task  id])
-func NewPatchTaskIdTable(proj *Project, v *Version, tasks TaskVariantPairs, projectIdentifier string) (TaskIdConfig, error) {
+// NewTaskIdConfig constructs a new set of TaskIdTables (map of [variant, task display name]->[task  id])
+// split by display and execution tasks.
+func NewTaskIdConfig(proj *Project, v *Version, tasks TaskVariantPairs, projectIdentifier string) (TaskIdConfig, error) {
 	config := TaskIdConfig{ExecutionTasks: TaskIdTable{}, DisplayTasks: TaskIdTable{}}
 	processedVariants := map[string]bool{}
 
@@ -1077,18 +1105,6 @@ func generateId(name string, projectIdentifier string, projBV *BuildVariant, rev
 		rev,
 		v.CreateTime.Format(build.IdTimeLayout))
 }
-
-var (
-	// bson fields for the project struct
-	ProjectIdentifierKey    = bsonutil.MustHaveTag(Project{}, "Identifier")
-	ProjectPreKey           = bsonutil.MustHaveTag(Project{}, "Pre")
-	ProjectPostKey          = bsonutil.MustHaveTag(Project{}, "Post")
-	ProjectModulesKey       = bsonutil.MustHaveTag(Project{}, "Modules")
-	ProjectBuildVariantsKey = bsonutil.MustHaveTag(Project{}, "BuildVariants")
-	ProjectFunctionsKey     = bsonutil.MustHaveTag(Project{}, "Functions")
-	ProjectStepbackKey      = bsonutil.MustHaveTag(Project{}, "Stepback")
-	ProjectTasksKey         = bsonutil.MustHaveTag(Project{}, "Tasks")
-)
 
 // PopulateExpansions returns expansions for a task, excluding build variant
 // expansions, project variables, and project/version parameters.
@@ -2273,4 +2289,56 @@ func GetVariantsAndTasksFromPatchProject(ctx context.Context, settings *evergree
 		Project:  *project,
 	}
 	return &variantsAndTasksFromProject, nil
+}
+
+// ReadOutputPath reads the content of a file and parses it into a github.CheckRunOutput struct
+// if it fails validation, it returns an error
+func ReadAndValidateOutputPath(file string) (*github.CheckRunOutput, error) {
+	checkRunOutput := &github.CheckRunOutput{}
+
+	if file == "" {
+		return checkRunOutput, nil
+	}
+
+	if err := utility.ReadJSONFile(file, &checkRunOutput); err != nil {
+		return nil, err
+	}
+
+	return checkRunOutput, validateCheckRuns(checkRunOutput)
+}
+
+func validateCheckRuns(checkRun *github.CheckRunOutput) error {
+	if checkRun == nil {
+		return errors.New("checkRun Output is nil")
+	}
+
+	catcher := grip.NewBasicCatcher()
+
+	catcher.NewWhen(checkRun.Title == nil, "checkRun has no title")
+	summaryErrMsg := fmt.Sprintf("the checkRun '%s' has no summary", utility.FromStringPtr(checkRun.Title))
+	catcher.NewWhen(checkRun.Summary == nil, summaryErrMsg)
+
+	for _, an := range checkRun.Annotations {
+		annotationErrorMessage := fmt.Sprintf("checkRun '%s' specifies an annotation '%s' with no ", utility.FromStringPtr(checkRun.Title), utility.FromStringPtr(an.Title))
+
+		catcher.NewWhen(an.Path == nil, annotationErrorMessage+"path")
+		invalidStart := an.StartLine == nil || utility.FromIntPtr(an.StartLine) < 1
+		catcher.NewWhen(invalidStart, annotationErrorMessage+"start line or a start line < 1")
+
+		invalidEnd := an.EndLine == nil || utility.FromIntPtr(an.EndLine) < 1
+		catcher.NewWhen(invalidEnd, annotationErrorMessage+"end line or an end line < 1")
+
+		catcher.NewWhen(an.AnnotationLevel == nil, annotationErrorMessage+"annotation level")
+
+		catcher.NewWhen(an.Message == nil, annotationErrorMessage+"message")
+
+		if an.EndColumn != nil || an.StartColumn != nil {
+			if utility.FromIntPtr(an.StartLine) != utility.FromIntPtr(an.EndLine) {
+				errMessage := fmt.Sprintf("The annotation '%s' in checkRun '%s' should not include a start or end column when start_line and end_line have different values", utility.FromStringPtr(an.Title), utility.FromStringPtr(checkRun.Title))
+				catcher.New(errMessage)
+			}
+		}
+	}
+
+	return catcher.Resolve()
 }

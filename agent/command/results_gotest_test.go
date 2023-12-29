@@ -9,8 +9,8 @@ import (
 	"github.com/evergreen-ci/evergreen/agent/internal/client"
 	agentutil "github.com/evergreen-ci/evergreen/agent/internal/testutil"
 	"github.com/evergreen-ci/evergreen/db"
-	"github.com/evergreen-ci/evergreen/model"
 	"github.com/evergreen-ci/evergreen/model/task"
+	"github.com/evergreen-ci/evergreen/model/testlog"
 	modelutil "github.com/evergreen-ci/evergreen/model/testutil"
 	"github.com/evergreen-ci/evergreen/testutil"
 	. "github.com/smartystreets/goconvey/convey"
@@ -18,7 +18,7 @@ import (
 )
 
 func reset(t *testing.T) {
-	require.NoError(t, db.ClearCollections(task.Collection, model.TestLogCollection))
+	require.NoError(t, db.ClearCollections(task.Collection, testlog.TestLogCollection))
 }
 
 func TestGotestPluginOnFailingTests(t *testing.T) {
@@ -71,7 +71,7 @@ func TestGotestPluginOnFailingTests(t *testing.T) {
 				So(updatedTask.LocalTestResults[4].Status, ShouldEqual, "fail")
 
 				Convey("with relevant logs present in the DB as well", func() {
-					log, err := model.FindOneTestLog("0_badpkg", "testTaskId", 0)
+					log, err := testlog.FindOneTestLog("0_badpkg", "testTaskId", 0)
 					So(log, ShouldNotBeNil)
 					So(err, ShouldBeNil)
 					So(log.Lines[0], ShouldContainSubstring, "TestFail01")
@@ -137,7 +137,7 @@ func TestGotestPluginOnPassingTests(t *testing.T) {
 					updatedTask.LocalTestResults[1].TestEndTime)
 
 				Convey("with relevant logs present in the DB as well", func() {
-					log, err := model.FindOneTestLog("0_goodpkg", "testTaskId", 0)
+					log, err := testlog.FindOneTestLog("0_goodpkg", "testTaskId", 0)
 					So(log, ShouldNotBeNil)
 					So(err, ShouldBeNil)
 					So(log.Lines[0], ShouldContainSubstring, "TestPass01")

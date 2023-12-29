@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"net/http"
+	"net/url"
 	"strings"
 
 	"github.com/evergreen-ci/cocoa"
@@ -14,9 +15,12 @@ import (
 	"github.com/evergreen-ci/evergreen/model/pod"
 	"github.com/evergreen-ci/evergreen/model/user"
 	restModel "github.com/evergreen-ci/evergreen/rest/model"
+	"github.com/evergreen-ci/evergreen/units"
 	"github.com/evergreen-ci/gimlet"
 	"github.com/evergreen-ci/utility"
+	"github.com/mongodb/amboy"
 	"github.com/mongodb/grip"
+	"github.com/mongodb/grip/message"
 	"github.com/pkg/errors"
 )
 
@@ -241,6 +245,9 @@ func SaveProjectSettingsForSection(ctx context.Context, projectId string, change
 			}
 		}
 
+		if err = mergedSection.ValidateEnabledRepotracker(); err != nil {
+			return nil, err
+		}
 		// Validate owner/repo if the project is enabled or owner/repo is populated.
 		// This validation is cheap so it makes sense to be strict about this.
 		if mergedSection.Enabled || (mergedSection.Owner != "" && mergedSection.Repo != "") {
@@ -290,7 +297,28 @@ func SaveProjectSettingsForSection(ctx context.Context, projectId string, change
 				return nil, errors.Wrap(err, "validating project creation")
 			}
 		}
-
+	case model.ProjectPagePluginSection:
+		for _, link := range mergedSection.ExternalLinks {
+			if link.DisplayName != "" && link.URLTemplate != "" {
+				// check length of link display name
+				if len(link.DisplayName) > 40 {
+					catcher.Add(errors.New(fmt.Sprintf("link display name, %s, must be 40 characters or less", link.DisplayName)))
+				}
+				// validate url template
+				formattedURL := strings.Replace(link.URLTemplate, "{version_id}", "version_id", -1)
+				if _, err := url.ParseRequestURI(formattedURL); err != nil {
+					catcher.Add(err)
+				}
+			}
+		}
+		if catcher.HasErrors() {
+			return nil, errors.Wrapf(catcher.Resolve(), "validating external links")
+		}
+		// If the performance plugin is not currently enabled, and we are trying to
+		// change it to enabled but the id and identifier are different, we error.
+		if !mergedBeforeRef.IsPerfEnabled() && mergedSection.IsPerfEnabled() && mergedSection.Id != mergedSection.Identifier {
+			return nil, errors.Errorf("project '%s' does not have a matching ID and identifier, cannot enable performance plugin", mergedSection.Id)
+		}
 	case model.ProjectPageAccessSection:
 		// For any admins that are only in the original settings, remove access.
 		// For any admins that are only in the updated settings, give them access.
@@ -391,12 +419,11 @@ func SaveProjectSettingsForSection(ctx context.Context, projectId string, change
 		}
 		catcher.Wrapf(DeleteSubscriptions(projectId, toDelete), "deleting subscriptions")
 	case model.ProjectPageContainerSection:
-		for i := range mergedSection.ContainerSizeDefinitions {
-			err = mergedSection.ContainerSizeDefinitions[i].Validate(evergreen.GetEnvironment().Settings().Providers.AWS.Pod.ECS)
-			catcher.Add(err)
+		for _, size := range mergedSection.ContainerSizeDefinitions {
+			catcher.Add(errors.Wrapf(size.Validate(evergreen.GetEnvironment().Settings().Providers.AWS.Pod.ECS), "invalid container size '%s'", size.Name))
 		}
 		if catcher.HasErrors() {
-			return nil, errors.Wrap(catcher.Resolve(), "invalid container size definition")
+			return nil, errors.Wrap(catcher.Resolve(), "invalid container size definitions")
 		}
 	case model.ProjectPagePeriodicBuildsSection:
 		for i := range mergedSection.PeriodicBuilds {
@@ -407,9 +434,18 @@ func SaveProjectSettingsForSection(ctx context.Context, projectId string, change
 			return nil, errors.Wrap(catcher.Resolve(), "invalid periodic build definition")
 		}
 	case model.ProjectPageTriggersSection:
+		if !isRepo { // Check this for project refs only, as repo projects won't have last version information stored.
+			repository, err := model.FindRepository(projectId)
+			if err != nil {
+				return nil, errors.Wrapf(err, "finding repository for project '%s'", projectId)
+			}
+			if repository == nil {
+				catcher.New("project must have existing versions in order to trigger versions")
+			}
+		}
+
 		for i := range mergedSection.Triggers {
-			err = mergedSection.Triggers[i].Validate(projectId)
-			catcher.Add(err)
+			catcher.Add(mergedSection.Triggers[i].Validate(projectId))
 		}
 		if catcher.HasErrors() {
 			return nil, errors.Wrap(catcher.Resolve(), "invalid project trigger")
@@ -436,6 +472,23 @@ func SaveProjectSettingsForSection(ctx context.Context, projectId string, change
 			if err != nil {
 				catcher.Wrapf(err, "converting project settings")
 			}
+		}
+	}
+
+	// If we're just enabled the project, we should run the repotracker to kick things off.
+	if modifiedProjectRef && mergedSection.Enabled && !mergedBeforeRef.Enabled {
+		ts := utility.RoundPartOfHour(1).Format(units.TSFormat)
+		j := units.NewRepotrackerJob(fmt.Sprintf("project-enabled-%s", ts), projectId)
+
+		queue := evergreen.GetEnvironment().RemoteQueue()
+		if err := amboy.EnqueueUniqueJob(ctx, queue, j); err != nil {
+			grip.Warning(message.WrapError(err, message.Fields{
+				"message": "problem enqueueing repotracker job for enabled project",
+				"project": projectId,
+				"owner":   mergedSection.Owner,
+				"repo":    mergedSection.Repo,
+				"branch":  mergedSection.Branch,
+			}))
 		}
 	}
 	return &res, errors.Wrapf(catcher.Resolve(), "saving section '%s'", section)

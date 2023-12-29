@@ -1,0 +1,97 @@
+{
+  "tests": [
+    {
+      "query_file": "project_ref.graphql",
+      "result": {
+        "data": {
+          "repoSettings": {
+            "githubWebhooksEnabled": true,
+            "projectRef": {
+              "id": "repo_id",
+              "commitQueue": {
+                "enabled": true,
+                "mergeMethod": "squash"
+              },
+              "periodicBuilds": null,
+              "githubChecksEnabled": false,
+              "patchingDisabled": false,
+              "prTestingEnabled": true,
+              "stepbackDisabled": false,
+              "batchTime": 2,
+              "gitTagAuthorizedUsers": ["ablack12"],
+              "gitTagAuthorizedTeams": null,
+              "triggers": [],
+              "patchTriggerAliases": [
+                {
+                  "alias": "my_alias_sandbox",
+                  "childProjectIdentifier": "varsTest",
+                  "taskSpecifiers": [
+                    {
+                      "taskRegex": "test-util",
+                      "variantRegex": "^ubuntu1604$"
+                    }
+                  ]
+                }
+              ],
+              "taskSync": {
+                "configEnabled": false,
+                "patchEnabled": true
+              },
+              "perfEnabled": true,
+              "buildBaronSettings": {
+                "ticketCreateProject": "EVG",
+                "ticketSearchProjects": ["EVG"],
+                "bfSuggestionFeaturesURL": "",
+                "bfSuggestionPassword": "",
+                "bfSuggestionServer": "",
+                "bfSuggestionTimeoutSecs": 0,
+                "bfSuggestionUsername": "",
+                "ticketCreateIssueType": ""
+              },
+
+              "taskAnnotationSettings": {
+                "jiraCustomFields": [
+                  {
+                    "displayText": "description",
+                    "field": "sample_field"
+                  }
+                ],
+                "fileTicketWebhook": {
+                  "endpoint": "endpoint",
+                  "secret": "shh"
+                }
+              },
+              "containerSizeDefinitions": [
+                {
+                  "name": "size1",
+                  "cpu": 1,
+                  "memoryMb": 1024
+                },
+                {
+                  "name": "size2",
+                  "cpu": 2,
+                  "memoryMb": 2048
+                }
+              ]
+            }
+          }
+        }
+      }
+    },
+    {
+      "query_file": "nonexistent.graphql",
+      "result": {
+        "data": null,
+        "errors": [
+          {
+            "message": "user testuser does not have permission to access settings for the project evergreen",
+            "path": ["repoSettings", "id"],
+            "extensions": {
+              "code": "FORBIDDEN"
+            }
+          }
+        ]
+      }
+    }
+  ]
+}

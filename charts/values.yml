@@ -1,0 +1,40 @@
+image:
+  repository: 795250896452.dkr.ecr.us-east-1.amazonaws.com/devprod-evergreen/evergreen
+
+arch: arm64
+
+replicaCount: 1
+
+ingress:
+  enabled: true
+
+defaultAlerts:
+  enabled: false
+  email: devprod-infrastructure-team@mongodb.com
+  slack: devprod-infra-alerts
+
+resources:
+  requests:
+    cpu: 100m
+    memory: .25Gi
+  limits:
+    cpu: 1000m
+    memory: 1Gi
+
+env:
+  MONGO_AWS_AUTH: true
+  DISABLE_LOCAL_LOGGING: true
+
+envSecrets:
+  MONGO_URL: evergreen-secrets
+
+services:
+  - name: http
+    ingress: true
+    port: 80
+    probes: true
+    protocol: TCP
+    targetPort: 9090
+    type: ClusterIP
+
+replicaCount: 0

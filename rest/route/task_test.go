@@ -256,28 +256,7 @@ func TestGetTaskSyncReadCredentials(t *testing.T) {
 				TaskSyncRead: &creds,
 			},
 			Docker: &model.APIDockerConfig{
-				APIVersion:    utility.ToStringPtr(""),
-				DefaultDistro: utility.ToStringPtr(""),
-			},
-			GCE: &model.APIGCEConfig{
-				ClientEmail:  utility.ToStringPtr("gce_email"),
-				PrivateKey:   utility.ToStringPtr("gce_key"),
-				PrivateKeyID: utility.ToStringPtr("gce_key_id"),
-				TokenURI:     utility.ToStringPtr("gce_token"),
-			},
-			OpenStack: &model.APIOpenStackConfig{
-				IdentityEndpoint: utility.ToStringPtr("endpoint"),
-				Username:         utility.ToStringPtr("username"),
-				Password:         utility.ToStringPtr("password"),
-				DomainName:       utility.ToStringPtr("domain"),
-				ProjectName:      utility.ToStringPtr("project"),
-				ProjectID:        utility.ToStringPtr("project_id"),
-				Region:           utility.ToStringPtr("region"),
-			},
-			VSphere: &model.APIVSphereConfig{
-				Host:     utility.ToStringPtr("host"),
-				Username: utility.ToStringPtr("vsphere"),
-				Password: utility.ToStringPtr("vsphere_pass"),
+				APIVersion: utility.ToStringPtr(""),
 			},
 		},
 	}
@@ -317,4 +296,70 @@ func TestGetTaskSyncPath(t *testing.T) {
 	path, ok := resp.Data().(string)
 	require.True(t, ok)
 	assert.Equal(t, path, expected.S3Path(expected.BuildVariant, expected.DisplayName))
+}
+
+func TestGeneratedTasksGetHandler(t *testing.T) {
+	defer func() {
+		assert.NoError(t, db.ClearCollections(task.Collection))
+	}()
+	for tName, tCase := range map[string]func(ctx context.Context, t *testing.T, rh *generatedTasksGetHandler, generatorID string, generated []task.Task){
+		"ReturnsGeneratedTasks": func(ctx context.Context, t *testing.T, rh *generatedTasksGetHandler, generatorID string, generated []task.Task) {
+			for _, tsk := range generated {
+				require.NoError(t, tsk.Insert())
+			}
+			rh.taskID = generatorID
+
+			resp := rh.Run(ctx)
+			assert.Equal(t, http.StatusOK, resp.Status())
+			data := resp.Data()
+			require.NotZero(t, data)
+			taskInfos, ok := data.([]model.APIGeneratedTaskInfo)
+			require.True(t, ok)
+
+			require.Len(t, taskInfos, len(generated))
+			for i := 0; i < len(generated); i++ {
+				assert.Equal(t, generated[i].Id, taskInfos[i].TaskID)
+				assert.Equal(t, generated[i].DisplayName, taskInfos[i].TaskName)
+				assert.Equal(t, generated[i].BuildId, taskInfos[i].BuildID)
+				assert.Equal(t, generated[i].BuildVariant, taskInfos[i].BuildVariant)
+				assert.Equal(t, generated[i].BuildVariantDisplayName, taskInfos[i].BuildVariantDisplayName)
+			}
+		},
+		"ReturnsErrorWithNoMatches": func(ctx context.Context, t *testing.T, rh *generatedTasksGetHandler, generatorID string, generated []task.Task) {
+			rh.taskID = "nonexistent"
+
+			resp := rh.Run(ctx)
+			assert.Equal(t, http.StatusNotFound, resp.Status())
+		},
+	} {
+		t.Run(tName, func(t *testing.T) {
+			ctx, cancel := context.WithCancel(context.Background())
+			defer cancel()
+
+			require.NoError(t, db.ClearCollections(task.Collection))
+
+			const generatorID = "generator"
+			generated := []task.Task{
+				{
+					Id:                      "generated_task0",
+					GeneratedBy:             generatorID,
+					BuildId:                 "build_id0",
+					BuildVariant:            "build-variant0",
+					BuildVariantDisplayName: "first build variant",
+				},
+				{
+					Id:                      "generated_task1",
+					GeneratedBy:             generatorID,
+					BuildId:                 "build_id1",
+					BuildVariant:            "build-variant1",
+					BuildVariantDisplayName: "second build variant",
+				},
+			}
+
+			rh, ok := makeGetGeneratedTasks().(*generatedTasksGetHandler)
+			require.True(t, ok)
+
+			tCase(ctx, t, rh, generatorID, generated)
+		})
+	}
 }

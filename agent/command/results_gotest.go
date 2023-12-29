@@ -10,7 +10,7 @@ import (
 
 	"github.com/evergreen-ci/evergreen/agent/internal"
 	"github.com/evergreen-ci/evergreen/agent/internal/client"
-	"github.com/evergreen-ci/evergreen/model"
+	"github.com/evergreen-ci/evergreen/model/testlog"
 	"github.com/evergreen-ci/evergreen/model/testresult"
 	"github.com/evergreen-ci/evergreen/util"
 	"github.com/mitchellh/mapstructure"
@@ -124,36 +124,36 @@ func globFiles(patterns ...string) ([]string, error) {
 }
 
 // parseTestOutput parses the test results and logs from a single output source.
-func parseTestOutput(ctx context.Context, conf *internal.TaskConfig, report io.Reader, suiteName string) (model.TestLog, []testresult.TestResult, error) {
+func parseTestOutput(ctx context.Context, conf *internal.TaskConfig, report io.Reader, suiteName string) (testlog.TestLog, []testresult.TestResult, error) {
 	// parse the output logs
 	parser := &goTestParser{}
 	if err := parser.Parse(report); err != nil {
-		return model.TestLog{}, nil, errors.Wrap(err, "parsing file")
+		return testlog.TestLog{}, nil, errors.Wrap(err, "parsing file")
 	}
 
 	if len(parser.order) == 0 && len(parser.logs) == 0 {
-		return model.TestLog{}, nil, errors.New("no results found")
+		return testlog.TestLog{}, nil, errors.New("no results found")
 	}
 
 	// build up the test logs
 	logLines := parser.Logs()
-	testLog := model.TestLog{
+	logs := testlog.TestLog{
 		Name:          suiteName,
 		Task:          conf.Task.Id,
 		TaskExecution: conf.Task.Execution,
 		Lines:         logLines,
 	}
 
-	return testLog, ToModelTestResults(parser.Results(), suiteName), nil
+	return logs, ToModelTestResults(parser.Results(), suiteName), nil
 }
 
 // parseTestOutputFiles parses all of the files that are passed in, and returns
 // the test logs and test results found within.
 func parseTestOutputFiles(ctx context.Context, logger client.LoggerProducer,
-	conf *internal.TaskConfig, outputFiles []string) ([]model.TestLog, [][]testresult.TestResult, error) {
+	conf *internal.TaskConfig, outputFiles []string) ([]testlog.TestLog, [][]testresult.TestResult, error) {
 
 	var results [][]testresult.TestResult
-	var logs []model.TestLog
+	var logs []testlog.TestLog
 
 	// now, open all the files, and parse the test results
 	for _, outputFile := range outputFiles {

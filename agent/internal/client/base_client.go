@@ -19,7 +19,9 @@ import (
 	"github.com/evergreen-ci/evergreen/model/manifest"
 	patchmodel "github.com/evergreen-ci/evergreen/model/patch"
 	"github.com/evergreen-ci/evergreen/model/task"
+	"github.com/evergreen-ci/evergreen/model/testlog"
 	restmodel "github.com/evergreen-ci/evergreen/rest/model"
+	"github.com/evergreen-ci/evergreen/taskoutput"
 	"github.com/evergreen-ci/evergreen/util"
 	"github.com/evergreen-ci/juniper/gopb"
 	"github.com/evergreen-ci/timber"
@@ -29,7 +31,6 @@ import (
 	"github.com/mongodb/grip/level"
 	"github.com/mongodb/grip/logging"
 	"github.com/mongodb/grip/message"
-	"github.com/mongodb/grip/recovery"
 	"github.com/mongodb/grip/send"
 	"github.com/pkg/errors"
 	"google.golang.org/grpc"
@@ -202,7 +203,7 @@ func (c *baseCommunicator) GetTask(ctx context.Context, taskData TaskData) (*tas
 func (c *baseCommunicator) GetDisplayTaskInfoFromExecution(ctx context.Context, td TaskData) (*apimodels.DisplayTaskInfo, error) {
 	info := requestInfo{
 		method:   http.MethodGet,
-		path:     fmt.Sprintf("tasks/%s/display_task", td.ID),
+		path:     fmt.Sprintf("task/%s/display_task", td.ID),
 		taskData: &td,
 	}
 	resp, err := c.retryRequest(ctx, info, nil)
@@ -374,17 +375,17 @@ func (c *baseCommunicator) GetLoggerProducer(ctx context.Context, td TaskData, c
 	}
 	underlying := []send.Sender{}
 
-	exec, senders, err := c.makeSender(ctx, td, config.Agent, config.SendToGlobalSender, apimodels.AgentLogPrefix, evergreen.LogTypeAgent)
+	exec, senders, err := c.makeSender(ctx, td, config.Agent, config.SendToGlobalSender, taskoutput.TaskLogTypeAgent)
 	if err != nil {
 		return nil, errors.Wrap(err, "making agent logger")
 	}
 	underlying = append(underlying, senders...)
-	task, senders, err := c.makeSender(ctx, td, config.Task, config.SendToGlobalSender, apimodels.TaskLogPrefix, evergreen.LogTypeTask)
+	task, senders, err := c.makeSender(ctx, td, config.Task, config.SendToGlobalSender, taskoutput.TaskLogTypeTask)
 	if err != nil {
 		return nil, errors.Wrap(err, "making task logger")
 	}
 	underlying = append(underlying, senders...)
-	system, senders, err := c.makeSender(ctx, td, config.System, config.SendToGlobalSender, apimodels.SystemLogPrefix, evergreen.LogTypeSystem)
+	system, senders, err := c.makeSender(ctx, td, config.System, config.SendToGlobalSender, taskoutput.TaskLogTypeSystem)
 	if err != nil {
 		return nil, errors.Wrap(err, "making system logger")
 	}
@@ -398,7 +399,7 @@ func (c *baseCommunicator) GetLoggerProducer(ctx context.Context, td TaskData, c
 	}, nil
 }
 
-func (c *baseCommunicator) makeSender(ctx context.Context, td TaskData, opts []LogOpts, sendToGlobalSender bool, prefix string, logType string) (send.Sender, []send.Sender, error) {
+func (c *baseCommunicator) makeSender(ctx context.Context, td TaskData, opts []LogOpts, sendToGlobalSender bool, logType taskoutput.TaskLogType) (send.Sender, []send.Sender, error) {
 	levelInfo := send.LevelInfo{Default: level.Info, Threshold: level.Debug}
 	var senders []send.Sender
 	if sendToGlobalSender {
@@ -419,13 +420,14 @@ func (c *baseCommunicator) makeSender(ctx context.Context, td TaskData, opts []L
 		}
 		bufferedSenderOpts := send.BufferedSenderOptions{FlushInterval: bufferDuration, BufferSize: bufferSize}
 
-		// disallow sending system logs to S3 for security reasons
-		if prefix == apimodels.SystemLogPrefix && opt.Sender == model.FileLogSender {
+		// Disallow sending system logs to S3 for security reasons.
+		if logType == taskoutput.TaskLogTypeSystem && opt.Sender == model.FileLogSender {
 			opt.Sender = model.EvergreenLogSender
 		}
+
 		switch opt.Sender {
 		case model.FileLogSender:
-			sender, err = send.NewPlainFileLogger(prefix, opt.Filepath, levelInfo)
+			sender, err = send.NewPlainFileLogger(string(logType), opt.Filepath, levelInfo)
 			if err != nil {
 				return nil, nil, errors.Wrap(err, "creating file logger")
 			}
@@ -440,12 +442,12 @@ func (c *baseCommunicator) makeSender(ctx context.Context, td TaskData, opts []L
 				ServerURL: opt.SplunkServerURL,
 				Token:     opt.SplunkToken,
 			}
-			sender, err = send.NewSplunkLogger(prefix, info, levelInfo)
+			sender, err = send.NewSplunkLogger(string(logType), info, levelInfo)
 			if err != nil {
 				return nil, nil, errors.Wrap(err, "creating Splunk logger")
 			}
 			underlyingBufferedSenders = append(underlyingBufferedSenders, sender)
-			sender, err = send.NewBufferedSender(ctx, newAnnotatedWrapper(td.ID, prefix, sender), bufferedSenderOpts)
+			sender, err = send.NewBufferedSender(ctx, newAnnotatedWrapper(td.ID, string(logType), sender), bufferedSenderOpts)
 			if err != nil {
 				return nil, nil, errors.Wrap(err, "creating buffered Splunk logger")
 			}
@@ -466,7 +468,7 @@ func (c *baseCommunicator) makeSender(ctx context.Context, td TaskData, opts []L
 				TaskName:      tk.DisplayName,
 				TaskID:        tk.Id,
 				Execution:     int32(tk.Execution),
-				Tags:          append(tk.Tags, logType, utility.RandomString()),
+				Tags:          append(tk.Tags, string(logType), utility.RandomString()),
 				Mainline:      !evergreen.IsPatchRequester(tk.Requester),
 				Storage:       buildlogger.LogStorageS3,
 				MaxBufferSize: opt.BufferSize,
@@ -478,74 +480,38 @@ func (c *baseCommunicator) makeSender(ctx context.Context, td TaskData, opts []L
 				return nil, nil, errors.Wrap(err, "creating Buildlogger logger")
 			}
 		default:
-			sender = newEvergreenLogSender(ctx, c, prefix, td, bufferSize, bufferDuration)
+			tk, err := c.GetTask(ctx, td)
+			if err != nil {
+				return nil, nil, errors.Wrap(err, "getting task")
+			}
+			taskOutput, err := tk.GetTaskOutputWithError()
+			if err != nil {
+				return nil, nil, err
+			}
+
+			taskOpts := taskoutput.TaskOptions{
+				ProjectID: tk.Project,
+				TaskID:    tk.Id,
+				Execution: tk.Execution,
+			}
+			senderOpts := taskoutput.EvergreenSenderOptions{
+				MaxBufferSize: bufferSize,
+				FlushInterval: bufferDuration,
+			}
+			sender, err = taskOutput.TaskLogs.NewSender(ctx, taskOpts, senderOpts, logType)
+			if err != nil {
+				return nil, nil, errors.Wrap(err, "creating Evergreen task log sender")
+			}
 		}
 
 		grip.Error(sender.SetFormatter(send.MakeDefaultFormatter()))
-		if prefix == apimodels.TaskLogPrefix {
+		if logType == taskoutput.TaskLogTypeTask {
 			sender = makeTimeoutLogSender(sender, c)
 		}
 		senders = append(senders, sender)
 	}
 
 	return send.NewConfiguredMultiSender(senders...), underlyingBufferedSenders, nil
-}
-
-// SendLogMessages posts a group of log messages for a task.
-func (c *baseCommunicator) SendLogMessages(ctx context.Context, taskData TaskData, msgs []apimodels.LogMessage) error {
-	if len(msgs) == 0 {
-		return nil
-	}
-
-	payload := apimodels.TaskLog{
-		TaskId:       taskData.ID,
-		Timestamp:    time.Now(),
-		MessageCount: len(msgs),
-		Messages:     msgs,
-	}
-
-	info := requestInfo{
-		method:   http.MethodPost,
-		taskData: &taskData,
-	}
-	info.setTaskPathSuffix("log")
-	var cancel context.CancelFunc
-	now := time.Now()
-	grip.Debugf("sending %d log messages", payload.MessageCount)
-	ctx, cancel = context.WithDeadline(ctx, now.Add(10*time.Minute))
-	defer cancel()
-	backupTimer := time.NewTimer(15 * time.Minute)
-	defer backupTimer.Stop()
-	doneChan := make(chan struct{})
-	defer func() {
-		close(doneChan)
-	}()
-	go func() {
-		defer recovery.LogStackTraceAndExit("backup timer")
-		select {
-		case <-ctx.Done():
-			grip.Infof("Request completed or task ending, stopping backup timer thread: %s.", ctx.Err())
-			return
-		case t := <-backupTimer.C:
-			grip.Alert(message.Fields{
-				"message":  "retryRequest exceeded 15 minutes",
-				"start":    now.String(),
-				"end":      t.String(),
-				"task":     taskData.ID,
-				"messages": msgs,
-			})
-			cancel()
-			return
-		case <-doneChan:
-			return
-		}
-	}()
-	resp, err := c.retryRequest(ctx, info, &payload)
-	if err != nil {
-		return util.RespErrorf(resp, errors.Wrapf(err, "sending %d log messages", len(msgs)).Error())
-	}
-	defer resp.Body.Close()
-	return nil
 }
 
 func (c *baseCommunicator) GetPullRequestInfo(ctx context.Context, taskData TaskData, prNum int, owner, repo string, lastAttempt bool) (*apimodels.PullRequestInfo, error) {
@@ -685,7 +651,7 @@ func (c *baseCommunicator) GetPatchFile(ctx context.Context, taskData TaskData, 
 
 // SendTestLog is used by the attach plugin to add to the test_logs
 // collection for log data associated with a test.
-func (c *baseCommunicator) SendTestLog(ctx context.Context, taskData TaskData, log *model.TestLog) (string, error) {
+func (c *baseCommunicator) SendTestLog(ctx context.Context, taskData TaskData, log *testlog.TestLog) (string, error) {
 	if log == nil {
 		return "", nil
 	}
@@ -717,7 +683,7 @@ func (c *baseCommunicator) SetResultsInfo(ctx context.Context, taskData TaskData
 		method:   http.MethodPost,
 		taskData: &taskData,
 	}
-	info.path = fmt.Sprintf("tasks/%s/set_results_info", taskData.ID)
+	info.path = fmt.Sprintf("task/%s/set_results_info", taskData.ID)
 	resp, err := c.retryRequest(ctx, info, &apimodels.TaskTestResultsInfo{Service: service, Failed: failed})
 	if err != nil {
 		return util.RespErrorf(resp, errors.Wrap(err, "setting results info").Error())
@@ -850,7 +816,7 @@ func (c *baseCommunicator) GenerateTasks(ctx context.Context, td TaskData, jsonB
 		method:   http.MethodPost,
 		taskData: &td,
 	}
-	info.path = fmt.Sprintf("tasks/%s/generate", td.ID)
+	info.path = fmt.Sprintf("task/%s/generate", td.ID)
 	resp, err := c.retryRequest(ctx, info, jsonBytes)
 	if err != nil {
 		return util.RespErrorf(resp, errors.Wrap(err, "sending generate.tasks request").Error())
@@ -864,7 +830,7 @@ func (c *baseCommunicator) GenerateTasksPoll(ctx context.Context, td TaskData) (
 		method:   http.MethodGet,
 		taskData: &td,
 	}
-	info.path = fmt.Sprintf("tasks/%s/generate", td.ID)
+	info.path = fmt.Sprintf("task/%s/generate", td.ID)
 	resp, err := c.retryRequest(ctx, info, nil)
 	if err != nil {
 		return nil, util.RespErrorf(resp, errors.Wrap(err, "sending generate.tasks poll request").Error())
@@ -976,7 +942,7 @@ func (c *baseCommunicator) GetDockerStatus(ctx context.Context, hostID string) (
 	defer resp.Body.Close()
 
 	if resp.StatusCode != http.StatusOK {
-		return nil, util.RespErrorf(resp, errors.Wrapf(err, "getting status for container '%s'", hostID).Error())
+		return nil, util.RespErrorf(resp, "getting status for container '%s'", hostID)
 	}
 	status := cloud.ContainerStatus{}
 	if err := utility.ReadJSON(resp.Body, &status); err != nil {
@@ -1091,4 +1057,19 @@ func (c *baseCommunicator) CreateInstallationToken(ctx context.Context, td TaskD
 	}
 
 	return token.Token, nil
+}
+
+// MarkFailedTaskToRestart will mark the task to automatically restart upon completion
+func (c *baseCommunicator) MarkFailedTaskToRestart(ctx context.Context, td TaskData) error {
+	info := requestInfo{
+		method:   http.MethodPost,
+		taskData: &td,
+	}
+	info.setTaskPathSuffix("restart")
+	resp, err := c.retryRequest(ctx, info, nil)
+	if err != nil {
+		return util.RespErrorf(resp, errors.Wrap(err, "marking task for restart").Error())
+	}
+	defer resp.Body.Close()
+	return nil
 }

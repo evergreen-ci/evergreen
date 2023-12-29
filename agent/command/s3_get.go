@@ -5,12 +5,12 @@ import (
 	"net/http"
 	"os"
 	"path/filepath"
+	"strconv"
 	"time"
 
 	"github.com/aws/aws-sdk-go/aws/endpoints"
 	"github.com/evergreen-ci/evergreen/agent/internal"
 	"github.com/evergreen-ci/evergreen/agent/internal/client"
-	agentutil "github.com/evergreen-ci/evergreen/agent/util"
 	"github.com/evergreen-ci/evergreen/util"
 	"github.com/evergreen-ci/pail"
 	"github.com/evergreen-ci/utility"
@@ -47,7 +47,13 @@ type s3get struct {
 	LocalFile string `mapstructure:"local_file" plugin:"expand"`
 	ExtractTo string `mapstructure:"extract_to" plugin:"expand"`
 
-	bucket pail.Bucket
+	// Optional, when set to true, causes this command to be skipped over without an error when
+	// the path specified in remote_file does not exist. Defaults to false, which triggers errors
+	// for missing files.
+	Optional string `mapstructure:"optional" plugin:"expand"`
+
+	bucket      pail.Bucket
+	skipMissing bool
 
 	base
 }
@@ -55,9 +61,16 @@ type s3get struct {
 func s3GetFactory() Command   { return &s3get{} }
 func (c *s3get) Name() string { return "s3.get" }
 
-// s3get-specific implementation of ParseParams.
+// s3get implementation of ParseParams.
 func (c *s3get) ParseParams(params map[string]interface{}) error {
-	if err := mapstructure.Decode(params, c); err != nil {
+	decoder, err := mapstructure.NewDecoder(&mapstructure.DecoderConfig{
+		WeaklyTypedInput: true,
+		Result:           c,
+	})
+	if err != nil {
+		return errors.Wrap(err, "initializing mapstructure decoder")
+	}
+	if err := decoder.Decode(params); err != nil {
 		return errors.Wrap(err, "decoding mapstructure params")
 	}
 
@@ -69,7 +82,7 @@ func (c *s3get) ParseParams(params map[string]interface{}) error {
 	return nil
 }
 
-// Validate that all necessary params are set, and that only one of
+// validateParams that all necessary params are set, and that only one of
 // local_file and extract_to is specified.
 func (c *s3get) validateParams() error {
 	if c.AwsKey == "" {
@@ -117,17 +130,27 @@ func (c *s3get) shouldRunForVariant(buildVariantName string) bool {
 // Apply the expansions from the relevant task config
 // to all appropriate fields of the s3get.
 func (c *s3get) expandParams(conf *internal.TaskConfig) error {
-	return util.ExpandValues(c, &conf.Expansions)
+	var err error
+	if err = util.ExpandValues(c, &conf.Expansions); err != nil {
+		return errors.Wrap(err, "applying expansions")
+	}
+	if c.Optional != "" {
+		c.skipMissing, err = strconv.ParseBool(c.Optional)
+		if err != nil {
+			return errors.Wrap(err, "parsing optional parameter as a boolean")
+		}
+	}
+	return nil
 }
 
-// Implementation of Execute.  Expands the parameters, and then fetches the
+// Execute expands the parameters, and then fetches the
 // resource from s3.
 func (c *s3get) Execute(ctx context.Context,
 	comm client.Communicator, logger client.LoggerProducer, conf *internal.TaskConfig) error {
 
 	// expand necessary params
 	if err := c.expandParams(conf); err != nil {
-		return errors.Wrap(err, "applying expansions")
+		return errors.Wrap(err, "expanding params")
 	}
 
 	// validate the params
@@ -190,6 +213,10 @@ func (c *s3get) Execute(ctx context.Context,
 
 	select {
 	case err := <-errChan:
+		if err != nil && c.skipMissing {
+			logger.Task().Infof("Problem getting file but optional is true, exiting without error (%s).", err.Error())
+			return nil
+		}
 		return errors.WithStack(err)
 	case <-ctx.Done():
 		logger.Execution().Infof("Canceled while running command '%s': %s", c.Name(), ctx.Err())
@@ -247,7 +274,7 @@ func (c *s3get) get(ctx context.Context) error {
 	if err != nil {
 		return errors.Wrapf(err, "getting reader for remote file '%s'", c.RemoteFile)
 	}
-	if err := agentutil.ExtractTarball(ctx, reader, c.ExtractTo, []string{}); err != nil {
+	if err := extractTarball(ctx, reader, c.ExtractTo, []string{}); err != nil {
 		return errors.Wrapf(err, "extracting file '%s' from archive to destination '%s'", c.RemoteFile, c.ExtractTo)
 	}
 
