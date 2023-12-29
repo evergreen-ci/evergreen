@@ -173,7 +173,6 @@ func (s *AdminRouteSuite) TestAdminRoute() {
 	s.EqualValues(testSettings.LoggerConfig.Buffer.UseAsync, settings.LoggerConfig.Buffer.UseAsync)
 	s.EqualValues(testSettings.LoggerConfig.Buffer.IncomingBufferFactor, settings.LoggerConfig.Buffer.IncomingBufferFactor)
 	s.EqualValues(testSettings.Notify.SES.SenderAddress, settings.Notify.SES.SenderAddress)
-	s.EqualValues(testSettings.PodLifecycle.S3BaseURL, settings.PodLifecycle.S3BaseURL)
 	s.EqualValues(testSettings.PodLifecycle.MaxParallelPodRequests, settings.PodLifecycle.MaxParallelPodRequests)
 	s.EqualValues(testSettings.PodLifecycle.MaxPodDefinitionCleanupRate, settings.PodLifecycle.MaxPodDefinitionCleanupRate)
 	s.EqualValues(testSettings.PodLifecycle.MaxSecretCleanupRate, settings.PodLifecycle.MaxSecretCleanupRate)

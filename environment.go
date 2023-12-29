@@ -137,7 +137,7 @@ type Environment interface {
 
 	// ClientConfig provides access to a list of the latest evergreen
 	// clients, that this server can serve to users
-	ClientConfig(context.Context) *ClientConfig
+	ClientConfig() *ClientConfig
 
 	// SaveConfig persists the configuration settings.
 	SaveConfig(context.Context) error
@@ -976,7 +976,7 @@ func (e *envState) Session() db.Session {
 	return db.WrapClient(e.ctx, e.client).Clone()
 }
 
-func (e *envState) ClientConfig(ctx context.Context) *ClientConfig {
+func (e *envState) ClientConfig() *ClientConfig {
 	e.mu.RLock()
 	defer e.mu.RUnlock()
 
@@ -1203,63 +1203,40 @@ func (e *envState) Close(ctx context.Context) error {
 
 func (e *envState) populateS3ClientConfig(ctx context.Context, versionID string) error {
 	bucket, err := pail.NewS3Bucket(pail.S3Options{
-		Name:        e.settings.Providers.AWS.BinaryClient.Bucket,
-		Region:      DefaultEC2Region,
-		Credentials: pail.CreateAWSCredentials(e.settings.Providers.AWS.BinaryClient.Key, e.settings.Providers.AWS.BinaryClient.Secret, ""),
+		Name:   e.settings.Providers.AWS.BinaryClient.Bucket,
+		Region: DefaultEC2Region,
+		Credentials: pail.CreateAWSCredentials(
+			e.settings.Providers.AWS.BinaryClient.Key,
+			e.settings.Providers.AWS.BinaryClient.Secret,
+			"",
+		),
 	})
 	if err != nil {
 		return errors.Wrap(err, "constructing pail bucket")
 	}
 
-	clientBinaries, err := e.listClientBinaries(ctx, bucket, versionID)
-	if err != nil {
-		return errors.Wrap(err, "getting client binaries")
-	}
-	e.clientConfig = &ClientConfig{
-		ClientBinaries: clientBinaries,
+	c := &ClientConfig{
 		LatestRevision: ClientVersion,
+		S3URLPrefix: fmt.Sprintf("https://%s.s3.amazonaws.com/%s/%s/",
+			e.settings.Providers.AWS.BinaryClient.Bucket,
+			e.settings.Providers.AWS.BinaryClient.Prefix,
+			versionID,
+		),
 	}
+	if err = c.populateClientBinaries(ctx, bucket, fmt.Sprintf("%s/%s/", e.settings.Providers.AWS.BinaryClient.Prefix, versionID)); err != nil {
+		return errors.Wrap(err, "populating client binaries")
+	}
+
+	e.clientConfig = c
 	return nil
 }
 
-func (e *envState) listClientBinaries(ctx context.Context, bucket pail.Bucket, versionID string) ([]ClientBinary, error) {
-	prefix := fmt.Sprintf("%s/%s/", e.settings.Providers.AWS.BinaryClient.Prefix, versionID)
-	iter, err := bucket.List(ctx, prefix)
-	if err != nil {
-		return nil, errors.Wrap(err, "listing client bucket")
-	}
-	var clientBinaries []ClientBinary
-	for iter.Next(ctx) {
-		item := strings.TrimPrefix(iter.Item().Name(), prefix)
-		name := strings.Split(item, "/")
-		if len(name) != 2 || !strings.Contains(name[1], "evergreen") {
-			continue
-		}
-		if displayName, ok := ValidArchDisplayNames[name[0]]; ok {
-			osArchParts := strings.Split(name[0], "_")
-			clientBinaries = append(clientBinaries, ClientBinary{
-				URL: fmt.Sprintf("https://%s.s3.amazonaws.com/%s/%s/%s",
-					e.settings.Providers.AWS.BinaryClient.Bucket,
-					e.settings.Providers.AWS.BinaryClient.Prefix,
-					versionID,
-					item,
-				),
-				OS:          osArchParts[0],
-				Arch:        osArchParts[1],
-				DisplayName: displayName,
-			})
-		}
-	}
-	if err = iter.Err(); err != nil {
-		return nil, errors.Wrap(err, "iterating client bucket contents")
-	}
-
-	return clientBinaries, nil
-}
-
 func (e *envState) populateLocalClientConfig() error {
-	c := &ClientConfig{}
-	c.LatestRevision = ClientVersion
+	c := &ClientConfig{LatestRevision: ClientVersion}
+	if e.settings.HostInit.S3BaseURL != "" {
+		c.S3URLPrefix = fmt.Sprintf("%s/%s", e.settings.HostInit.S3BaseURL, BuildRevision)
+	}
+
 	root := filepath.Join(FindEvergreenHome(), ClientDirectory)
 
 	if _, err := os.Stat(root); os.IsNotExist(err) {
@@ -1287,13 +1264,9 @@ func (e *envState) populateLocalClientConfig() error {
 			Arch:        buildInfo[1],
 			DisplayName: displayName,
 		})
-		if e.settings.HostInit.S3BaseURL != "" {
+		if c.S3URLPrefix != "" {
 			c.S3ClientBinaries = append(c.S3ClientBinaries, ClientBinary{
-				URL: strings.Join([]string{
-					strings.TrimSuffix(e.settings.HostInit.S3BaseURL, "/"),
-					BuildRevision,
-					archPath,
-				}, "/"),
+				URL:         fmt.Sprintf("%s/%s", c.S3URLPrefix, archPath),
 				OS:          buildInfo[0],
 				Arch:        buildInfo[1],
 				DisplayName: displayName,

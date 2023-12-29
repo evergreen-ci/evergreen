@@ -10,10 +10,9 @@ import (
 )
 
 // GetCLIUpdate fetches the current cli version and the urls to download
-func GetCLIUpdate(ctx context.Context) (*model.APICLIUpdate, error) {
+func GetCLIUpdate(ctx context.Context, env evergreen.Environment) (*model.APICLIUpdate, error) {
 	update := &model.APICLIUpdate{}
-	env := evergreen.GetEnvironment()
-	config := env.ClientConfig(ctx)
+	config := env.ClientConfig()
 	if config == nil {
 		return nil, gimlet.ErrorResponse{
 			StatusCode: http.StatusInternalServerError,

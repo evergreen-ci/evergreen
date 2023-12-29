@@ -94,7 +94,7 @@ func (h *Host) CurlCommandWithDefaultRetry(settings *evergreen.Settings) (string
 
 func (h *Host) curlCommands(settings *evergreen.Settings, curlArgs string) ([]string, error) {
 	var curlCmd string
-	if !settings.ServiceFlags.S3BinaryDownloadsDisabled && settings.HostInit.S3BaseURL != "" {
+	if !settings.ServiceFlags.S3BinaryDownloadsDisabled && evergreen.GetEnvironment().ClientConfig().S3URLPrefix != "" {
 		// Attempt to download the agent from S3, but fall back to downloading from
 		// the app server if it fails.
 		// Include -f to return an error code from curl if the HTTP request

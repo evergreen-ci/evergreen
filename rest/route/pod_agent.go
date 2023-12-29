@@ -29,16 +29,16 @@ import (
 // GET /rest/v2/pods/{pod_id}/provisioning_script
 
 type podProvisioningScript struct {
-	settings *evergreen.Settings
-	podID    string
+	env   evergreen.Environment
+	podID string
 }
 
-func makePodProvisioningScript(settings *evergreen.Settings) gimlet.RouteHandler {
-	return &podProvisioningScript{settings: settings}
+func makePodProvisioningScript(env evergreen.Environment) gimlet.RouteHandler {
+	return &podProvisioningScript{env: env}
 }
 
 func (h *podProvisioningScript) Factory() gimlet.RouteHandler {
-	return &podProvisioningScript{settings: h.settings}
+	return &podProvisioningScript{env: h.env}
 }
 
 func (h *podProvisioningScript) Parse(ctx context.Context, r *http.Request) error {
@@ -114,7 +114,7 @@ func (h *podProvisioningScript) agentCommand(p *pod.Pod) []string {
 	return []string{
 		fmt.Sprintf(".%s%s", pathSep, h.clientName(p)),
 		"agent",
-		fmt.Sprintf("--api_server=%s", h.settings.ApiUrl),
+		fmt.Sprintf("--api_server=%s", h.env.Settings().ApiUrl),
 		"--mode=pod",
 		"--log_output=file",
 		fmt.Sprintf("--log_prefix=%s", strings.Join([]string{p.TaskContainerCreationOpts.WorkingDir, "agent"}, "/")),
@@ -136,7 +136,7 @@ func (h *podProvisioningScript) downloadAgentCommands(p *pod.Pod, downloadFromS3
 		curlExecutable = curlExecutable + ".exe"
 	}
 
-	if downloadFromS3 && h.settings.PodLifecycle.S3BaseURL != "" {
+	if downloadFromS3 && h.env.ClientConfig().S3URLPrefix != "" {
 		// Attempt to download the agent from S3, but fall back to downloading
 		// from the app server if it fails.
 		// Include -f to return an error code from curl if the HTTP request
@@ -163,8 +163,8 @@ func (h *podProvisioningScript) downloadAgentCommands(p *pod.Pod, downloadFromS3
 // version directly from the Evergreen server.
 func (h *podProvisioningScript) evergreenClientURL(p *pod.Pod) string {
 	return strings.Join([]string{
-		strings.TrimSuffix(h.settings.ApiUrl, "/"),
-		strings.TrimSuffix(h.settings.ClientBinariesDir, "/"),
+		strings.TrimSuffix(h.env.Settings().ApiUrl, "/"),
+		strings.TrimSuffix(h.env.Settings().ClientBinariesDir, "/"),
 		h.clientURLSubpath(p),
 	}, "/")
 }
@@ -172,11 +172,10 @@ func (h *podProvisioningScript) evergreenClientURL(p *pod.Pod) string {
 // s3ClientURL returns the URL in S3 where the Evergreen client version can be
 // retrieved for this server's particular Evergreen build version.
 func (h *podProvisioningScript) s3ClientURL(p *pod.Pod) string {
-	return strings.Join([]string{
-		strings.TrimSuffix(h.settings.PodLifecycle.S3BaseURL, "/"),
-		evergreen.BuildRevision,
+	return fmt.Sprintf("%s/%s",
+		h.env.ClientConfig().S3URLPrefix,
 		h.clientURLSubpath(p),
-	}, "/")
+	)
 }
 
 // clientURLSubpath returns the URL path to the compiled agent.

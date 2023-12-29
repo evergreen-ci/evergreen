@@ -989,16 +989,14 @@ func (a *APIHostInitConfig) ToService() (interface{}, error) {
 }
 
 type APIPodLifecycleConfig struct {
-	S3BaseURL                   *string `json:"s3_base_url"`
-	MaxParallelPodRequests      int     `json:"max_parallel_pod_requests"`
-	MaxPodDefinitionCleanupRate int     `json:"max_pod_definition_cleanup_rate"`
-	MaxSecretCleanupRate        int     `json:"max_secret_cleanup_rate"`
+	MaxParallelPodRequests      int `json:"max_parallel_pod_requests"`
+	MaxPodDefinitionCleanupRate int `json:"max_pod_definition_cleanup_rate"`
+	MaxSecretCleanupRate        int `json:"max_secret_cleanup_rate"`
 }
 
 func (a *APIPodLifecycleConfig) BuildFromService(h interface{}) error {
 	switch v := h.(type) {
 	case evergreen.PodLifecycleConfig:
-		a.S3BaseURL = utility.ToStringPtr(v.S3BaseURL)
 		a.MaxParallelPodRequests = v.MaxParallelPodRequests
 		a.MaxPodDefinitionCleanupRate = v.MaxPodDefinitionCleanupRate
 		a.MaxSecretCleanupRate = v.MaxSecretCleanupRate
@@ -1010,7 +1008,6 @@ func (a *APIPodLifecycleConfig) BuildFromService(h interface{}) error {
 
 func (a *APIPodLifecycleConfig) ToService() (interface{}, error) {
 	return evergreen.PodLifecycleConfig{
-		S3BaseURL:                   utility.FromStringPtr(a.S3BaseURL),
 		MaxParallelPodRequests:      a.MaxParallelPodRequests,
 		MaxPodDefinitionCleanupRate: a.MaxPodDefinitionCleanupRate,
 		MaxSecretCleanupRate:        a.MaxSecretCleanupRate,

@@ -2,7 +2,10 @@ package evergreen
 
 import (
 	"context"
+	"fmt"
+	"strings"
 
+	"github.com/evergreen-ci/pail"
 	"github.com/pkg/errors"
 	"go.mongodb.org/mongo-driver/bson"
 	"go.mongodb.org/mongo-driver/mongo"
@@ -17,9 +20,38 @@ type ClientBinary struct {
 }
 
 type ClientConfig struct {
-	ClientBinaries   []ClientBinary `yaml:"client_binaries" json:"client_binaries"`
-	S3ClientBinaries []ClientBinary `yaml:"s3_client_binaries" json:"s3_client_binaries"`
-	LatestRevision   string         `yaml:"latest_revision" json:"latest_revision"`
+	ClientBinaries   []ClientBinary
+	S3ClientBinaries []ClientBinary
+	LatestRevision   string
+	S3URLPrefix      string
+}
+
+func (c *ClientConfig) populateClientBinaries(ctx context.Context, bucket pail.Bucket, prefix string) error {
+	iter, err := bucket.List(ctx, prefix)
+	if err != nil {
+		return errors.Wrap(err, "listing client bucket")
+	}
+	for iter.Next(ctx) {
+		item := strings.TrimPrefix(iter.Item().Name(), prefix)
+		name := strings.Split(item, "/")
+		if len(name) != 2 || !strings.Contains(name[1], "evergreen") {
+			continue
+		}
+		if displayName, ok := ValidArchDisplayNames[name[0]]; ok {
+			osArchParts := strings.Split(name[0], "_")
+			c.ClientBinaries = append(c.ClientBinaries, ClientBinary{
+				URL:         fmt.Sprintf("%s/%s", c.S3URLPrefix, item),
+				OS:          osArchParts[0],
+				Arch:        osArchParts[1],
+				DisplayName: displayName,
+			})
+		}
+	}
+	if err = iter.Err(); err != nil {
+		return errors.Wrap(err, "iterating client bucket contents")
+	}
+
+	return nil
 }
 
 // APIConfig holds relevant log and listener settings for the API server.

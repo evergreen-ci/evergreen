@@ -844,8 +844,7 @@ func (d *Distro) ClientURL(settings *evergreen.Settings) string {
 // retrieved for this server's particular Evergreen build version.
 func (d *Distro) S3ClientURL(settings *evergreen.Settings) string {
 	return strings.Join([]string{
-		strings.TrimSuffix(settings.HostInit.S3BaseURL, "/"),
-		evergreen.BuildRevision,
+		evergreen.GetEnvironment().ClientConfig().S3URLPrefix,
 		d.ExecutableSubPath(),
 	}, "/")
 }
