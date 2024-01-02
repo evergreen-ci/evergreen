@@ -16,7 +16,7 @@ func init() {
 	registry.AllowSubscription(ResourceTypeHost, EventVolumeExpirationWarningSent)
 	registry.AllowSubscription(ResourceTypeHost, EventHostProvisioned)
 	registry.AllowSubscription(ResourceTypeHost, EventHostProvisionFailed)
-	registry.AllowSubscription(ResourceTypeHost, EventHostCreated)
+	registry.AllowSubscription(ResourceTypeHost, EventHostCreatedError)
 	registry.AllowSubscription(ResourceTypeHost, EventHostStarted)
 	registry.AllowSubscription(ResourceTypeHost, EventHostStopped)
 	registry.AllowSubscription(ResourceTypeHost, EventHostModified)
@@ -28,6 +28,7 @@ const (
 
 	// event types
 	EventHostCreated                     = "HOST_CREATED"
+	EventHostCreatedError                = "HOST_CREATED_ERROR"
 	EventHostStarted                     = "HOST_STARTED"
 	EventHostStopped                     = "HOST_STOPPED"
 	EventHostModified                    = "HOST_MODIFIED"
@@ -125,10 +126,10 @@ func LogManyHostsCreated(hostIDs []string) {
 	}
 }
 
-// LogHostCreationFailed logs an event indicating that the host errored while it
+// LogHostCreatedError logs an event indicating that the host errored while it
 // was being created.
-func LogHostCreationFailed(hostID, logs string) {
-	LogHostEvent(hostID, EventHostCreated, HostEventData{Successful: false, Logs: logs})
+func LogHostCreatedError(hostID, logs string) {
+	LogHostEvent(hostID, EventHostCreatedError, HostEventData{Successful: false, Logs: logs})
 }
 
 // LogHostStartSucceeded logs an event indicating that the host was successfully

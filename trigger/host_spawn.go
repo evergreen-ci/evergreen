@@ -16,7 +16,7 @@ import (
 func init() {
 	registry.registerEventHandler(event.ResourceTypeHost, event.EventHostProvisioned, makeSpawnHostProvisioningTriggers)
 	registry.registerEventHandler(event.ResourceTypeHost, event.EventHostProvisionFailed, makeSpawnHostProvisioningTriggers)
-	registry.registerEventHandler(event.ResourceTypeHost, event.EventHostCreated, makeSpawnHostStateChangeTriggers)
+	registry.registerEventHandler(event.ResourceTypeHost, event.EventHostCreatedError, makeSpawnHostStateChangeTriggers)
 	registry.registerEventHandler(event.ResourceTypeHost, event.EventHostStarted, makeSpawnHostStateChangeTriggers)
 	registry.registerEventHandler(event.ResourceTypeHost, event.EventHostStopped, makeSpawnHostStateChangeTriggers)
 	registry.registerEventHandler(event.ResourceTypeHost, event.EventHostModified, makeSpawnHostStateChangeTriggers)
@@ -177,12 +177,6 @@ func (t *spawnHostStateChangeTriggers) spawnHostStateChangeOutcome(sub *event.Su
 	if !t.host.UserHost {
 		return nil, nil
 	}
-	if t.event.EventType == event.EventHostCreated && t.data.Successful {
-		// When a spawn host is first created, only send a notification if it
-		// encounters an error. On success, there will be a notification later
-		// on when the host is started.
-		return nil, nil
-	}
 	if t.event.EventType == event.EventHostStarted && t.data.Successful && t.host.Status != evergreen.HostStarting {
 		// When the host is starting up, send a notification only if:
 		// * There was an error starting the host or
@@ -202,7 +196,7 @@ func (t *spawnHostStateChangeTriggers) spawnHostStateChangeOutcome(sub *event.Su
 func (t *spawnHostStateChangeTriggers) makePayload(sub *event.Subscription) (interface{}, error) {
 	var action string
 	switch t.event.EventType {
-	case event.EventHostCreated:
+	case event.EventHostCreatedError:
 		action = "Creating"
 	case event.EventHostStarted:
 		action = "Starting"
