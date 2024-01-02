@@ -261,7 +261,7 @@ func (s *AgentSuite) TestFinishTaskWithNormalCompletedTask() {
 	s.mockCommunicator.EndTaskResponse = &apimodels.EndTaskResponse{}
 
 	for _, status := range evergreen.TaskCompletedStatuses {
-		resp, err := s.a.finishTask(s.ctx, s.tc, status, "")
+		resp, err := s.a.finishTask(s.ctx, s.tc, status, "", false)
 		s.Equal(&apimodels.EndTaskResponse{}, resp)
 		s.NoError(err)
 		s.NoError(s.tc.logger.Close())
@@ -275,7 +275,7 @@ func (s *AgentSuite) TestFinishTaskWithAbnormallyCompletedTask() {
 	s.mockCommunicator.EndTaskResponse = &apimodels.EndTaskResponse{}
 
 	const status = evergreen.TaskSystemFailed
-	resp, err := s.a.finishTask(s.ctx, s.tc, status, "")
+	resp, err := s.a.finishTask(s.ctx, s.tc, status, "", false)
 	s.Equal(&apimodels.EndTaskResponse{}, resp)
 	s.NoError(err)
 
@@ -293,7 +293,7 @@ func (s *AgentSuite) TestFinishTaskWithAbnormallyCompletedTask() {
 
 func (s *AgentSuite) TestFinishTaskEndTaskError() {
 	s.mockCommunicator.EndTaskShouldFail = true
-	resp, err := s.a.finishTask(s.ctx, s.tc, evergreen.TaskSucceeded, "")
+	resp, err := s.a.finishTask(s.ctx, s.tc, evergreen.TaskSucceeded, "", false)
 	s.Nil(resp)
 	s.Error(err)
 }

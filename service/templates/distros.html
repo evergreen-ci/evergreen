@@ -17,7 +17,15 @@
 Evergreen - Distros
 {{end}}
 {{define "content"}}
-<div class="container" ng-controller="DistrosCtrl" style="margin-bottom: 15px; width:110%">
+<div ng-controller="DistrosCtrl">
+  <div id="distro-banner-container" class="banner-container" ng-show="showDistroBanner">
+    <div class="banner-contents">
+      <div class="bannerIcon banner-icon-warning"><i class='fa fa-exclamation-triangle'></i></div>
+      <div class="bannerText banner-text-warning">[[distroBannerText]]</div>
+      <i class="dismiss fa fa-times" tabindex="0" ng-click="dismissDistroBanner()"></i>
+    </div>
+  </div>
+<div class="container" style="margin-bottom: 15px; width:110%">
   <notify-box ng-init="destination='errorHeader'"></notify-box>
   {{template "flash" . }}
   <div ng-show="distroIds.length == 0">
@@ -914,6 +922,7 @@ This will still allow the minimum number of hosts to start.
       </div>
     </div>
   </div>
+</div>
 </div>
 </div>
 {{end}}
