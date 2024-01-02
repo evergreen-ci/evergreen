@@ -2471,11 +2471,10 @@ md-card-title .md-button {
   border-bottom-left-radius: 4px;
 }
 .bannerText {
-  padding-left: 22px;
+  padding-left: 44px;
   padding-top: 12px;
-  overflow: auto;
-  max-height: 45px;
   padding-right: 15px;
+  height: inherit;
 }
 .banner-icon-announcement {
   background-color: rgba(61, 195, 4, 0.62);
@@ -2512,7 +2511,7 @@ md-card-title .md-button {
 .dismiss {
   float: right;
   position: relative;
-  top: -35px;
+  top: -46px;
   left: -4px;
   color: rgba(0, 0, 0, 0.68);
 }
