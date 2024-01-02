@@ -3129,24 +3129,50 @@ func TestSetGeneratedTasksToActivate(t *testing.T) {
 	assert.Equal(t, taskFromDb.GeneratedTasksToActivate["bv3"], []string{"t3"})
 }
 
-func TestSetStepbackInfo(t *testing.T) {
+func TestSetNextStepbackId(t *testing.T) {
+	assert := assert.New(t)
 	require.NoError(t, db.ClearCollections(Collection))
 	task := Task{Id: "t1"}
-	assert.NoError(t, task.Insert())
+	require.NoError(t, task.Insert())
 
 	s := StepbackInfo{
 		LastFailingStepbackTaskId: "t2",
 		LastPassingStepbackTaskId: "t3",
 		NextStepbackTaskId:        "t4",
+		PreviousStepbackTaskId:    "t5",
 	}
 
-	assert.NoError(t, task.SetStepbackInfo(s))
+	require.NoError(t, SetNextStepbackId(task.Id, s))
 	taskFromDb, err := FindOneId("t1")
-	assert.NoError(t, err)
-	assert.NotNil(t, taskFromDb)
-	assert.Equal(t, "t2", taskFromDb.StepbackInfo.LastFailingStepbackTaskId)
-	assert.Equal(t, "t3", taskFromDb.StepbackInfo.LastPassingStepbackTaskId)
-	assert.Equal(t, "t4", taskFromDb.StepbackInfo.NextStepbackTaskId)
+	require.NoError(t, err)
+	require.NotNil(t, taskFromDb)
+	assert.NotEqual("t2", taskFromDb.StepbackInfo.LastFailingStepbackTaskId)
+	assert.NotEqual("t3", taskFromDb.StepbackInfo.LastPassingStepbackTaskId)
+	assert.Equal("t4", taskFromDb.StepbackInfo.NextStepbackTaskId)
+	assert.NotEqual("t5", taskFromDb.StepbackInfo.PreviousStepbackTaskId)
+}
+
+func TestSetLastAndPreviousStepbackIds(t *testing.T) {
+	assert := assert.New(t)
+	require.NoError(t, db.ClearCollections(Collection))
+	task := Task{Id: "t1"}
+	require.NoError(t, task.Insert())
+
+	s := StepbackInfo{
+		LastFailingStepbackTaskId: "t2",
+		LastPassingStepbackTaskId: "t3",
+		NextStepbackTaskId:        "t4",
+		PreviousStepbackTaskId:    "t5",
+	}
+
+	require.NoError(t, SetLastAndPreviousStepbackIds(task.Id, s))
+	taskFromDb, err := FindOneId("t1")
+	require.NoError(t, err)
+	require.NotNil(t, taskFromDb)
+	assert.Equal("t2", taskFromDb.StepbackInfo.LastFailingStepbackTaskId)
+	assert.Equal("t3", taskFromDb.StepbackInfo.LastPassingStepbackTaskId)
+	assert.NotEqual("t4", taskFromDb.StepbackInfo.NextStepbackTaskId)
+	assert.Equal("t5", taskFromDb.StepbackInfo.PreviousStepbackTaskId)
 }
 
 func TestGetLatestExecution(t *testing.T) {

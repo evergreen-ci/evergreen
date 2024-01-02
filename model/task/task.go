@@ -309,8 +309,10 @@ type StepbackInfo struct {
 	// LastPassingStepbackTaskId stores the last passing task while doing stepback.
 	LastPassingStepbackTaskId string `bson:"last_passing_stepback_task_id,omitempty" json:"last_passing_stepback_task_id"`
 	// NextStepbackTaskId stores the next task id to stepback to when doing bisect stepback. This
-	// is the middle of LastFailingStepbackTaskId and LastPassingStepbackTaskId.
+	// is the middle of LastFailingStepbackTaskId and LastPassingStepbackTaskId of the last iteration.
 	NextStepbackTaskId string `bson:"next_stepback_task_id,omitempty" json:"next_stepback_task_id"`
+	// PreviousStepbackTaskId stores the last stepback iteration id.
+	PreviousStepbackTaskId string `bson:"previous_stepback_task_id,omitempty" json:"previous_stepback_task_id"`
 }
 
 // ExecutionPlatform indicates the type of environment that the task runs in.
@@ -1348,10 +1350,16 @@ func findMidwayTask(t1, t2 Task) (*Task, error) {
 	if catcher.HasErrors() {
 		return nil, catcher.Resolve()
 	}
-	// If the tasks are sequential or the same order number, return the first given task.
+	// If the tasks are sequential or the same order number, return the
+	// lowest revision order number task (this keeps behavior consistent,
+	// since the mid value below is always truncated and leans towards the
+	// lower revision order number).
 	d := t1.RevisionOrderNumber - t2.RevisionOrderNumber
 	if d == -1 || d == 0 || d == 1 {
-		return &t1, nil
+		if t1.RevisionOrderNumber < t2.RevisionOrderNumber {
+			return &t1, nil
+		}
+		return &t2, nil
 	}
 
 	mid := (t1.RevisionOrderNumber + t2.RevisionOrderNumber) / 2
@@ -1510,18 +1518,37 @@ func taskAbortUpdate(reason AbortInfo) bson.M {
 	}
 }
 
-// SetStepbackInfo adds the StepbackInfo to the task.
-func (t *Task) SetStepbackInfo(s StepbackInfo) error {
-	t.StepbackInfo = &s
+// SetLastAndPreviousStepbackIds sets the LastFailingStepbackTaskId,
+// LastPassingStepbackTaskId, and PreviousStepbackTaskId for a given task id.
+func SetLastAndPreviousStepbackIds(taskId string, s StepbackInfo) error {
 	return UpdateOne(
 		bson.M{
-			IdKey: t.Id,
+			IdKey: taskId,
 		},
 		bson.M{
 			"$set": bson.M{
-				StepbackInfoKey: s,
+				StepbackInfoKey: bson.M{
+					LastFailingStepbackTaskIdKey: s.LastFailingStepbackTaskId,
+					LastPassingStepbackTaskIdKey: s.LastPassingStepbackTaskId,
+					PreviousStepbackTaskIdKey:    s.PreviousStepbackTaskId,
+				},
 			},
-		})
+		},
+	)
+}
+
+// SetNextStepbackId sets the NextStepbackTaskId for a given task id.
+func SetNextStepbackId(taskId string, s StepbackInfo) error {
+	return UpdateOne(
+		bson.M{
+			IdKey: taskId,
+		},
+		bson.M{
+			"$set": bson.M{
+				bsonutil.GetDottedKeyName(StepbackInfoKey, NextStepbackTaskIdKey): s.NextStepbackTaskId,
+			},
+		},
+	)
 }
 
 // initializeTaskOutputInfo returns the task output information with the most
