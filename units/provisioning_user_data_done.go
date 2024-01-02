@@ -134,7 +134,6 @@ func (j *userDataDoneJob) Run(ctx context.Context) {
 				TerminateIfBusy:   true,
 				TerminationReason: "failed to mount volume",
 			})
-			terminateJob.SetPriority(100)
 			j.AddError(amboy.EnqueueUniqueJob(ctx, j.env.RemoteQueue(), terminateJob))
 
 			return
