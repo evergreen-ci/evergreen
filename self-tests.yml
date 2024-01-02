@@ -152,6 +152,22 @@ variables:
           files:
             - evergreen/bin/generate-lint.json
 
+  - &build-and-push-client
+    name: build-and-push-client
+    commands:
+      - func: get-project-and-modules
+      - func: run-make
+        vars: { target: "${task_name}" }
+      - command: s3.put
+        params:
+          aws_key: ${aws_key}
+          aws_secret: ${aws_secret}
+          local_files_include_filter: evergreen/clients/*/evergreen*
+          remote_file: evergreen/clients/${version_id}/
+          content_type: binary/octet-stream
+          bucket: mciuploads
+          permissions: public-read
+
 #######################################
 #              Functions              #
 #######################################
@@ -352,18 +368,6 @@ functions:
           set -o xtrace
           rm evergreen/bin/output.*
           rm evergreen/bin/jstests/*.xml
-
-  push-client:
-    - command: s3.put
-      params:
-        aws_key: ${aws_key}
-        aws_secret: ${aws_secret}
-        local_file: evergreen/clients/${client}
-        remote_file: evergreen/clients/${version_id}/${client}
-        content_type: binary/octet-stream
-        bucket: mciuploads
-        permissions: public-read
-        display_name: ${client}
 
 #######################################
 #                Tasks                #
@@ -631,66 +635,27 @@ tasks:
           display_name: swagger.json (latest)
           patchable: false
 
-  - name: build-linux_amd64
+  - <<: *build-and-push-client
+    name: build-linux_amd64
+    tags: ["build", "build-staging"]
+  - <<: *build-and-push-client
+    name: build-linux_s390x
     tags: ["build"]
-    commands:
-      - func: get-project-and-modules
-      - func: run-make
-        vars: { target: "clients/linux_amd64/evergreen" }
-      - func: push-client
-        vars: { client: "linux_amd64/evergreen" }
-  - name: build-linux_s390x
+  - <<: *build-and-push-client
+    name: build-linux_arm64
     tags: ["build"]
-    commands:
-      - func: get-project-and-modules
-      - func: run-make
-        vars: { target: "clients/linux_s390x/evergreen" }
-      - func: push-client
-        vars: { client: "linux_s390x/evergreen" }
-  - name: build-linux_arm64
+  - <<: *build-and-push-client
+    name: build-linux_ppc64le
     tags: ["build"]
-    commands:
-      - func: get-project-and-modules
-      - func: run-make
-        vars: { target: "clients/linux_arm64/evergreen" }
-      - func: push-client
-        vars: { client: "linux_arm64/evergreen" }
-  - name: build-linux_ppc64le
+  - <<: *build-and-push-client
+    name: build-windows_amd64
+    tags: ["build", "build-staging"]
+  - <<: *build-and-push-client
+    name: build-darwin_amd64
+    tags: ["build", "build-staging"]
+  - <<: *build-and-push-client
+    name: build-darwin_arm64
     tags: ["build"]
-    commands:
-      - func: get-project-and-modules
-      - func: run-make
-        vars: { target: "clients/linux_ppc64le/evergreen" }
-      - func: push-client
-        vars: { client: "linux_ppc64le/evergreen" }
-  - name: build-windows_amd64
-    tags: ["build"]
-    commands:
-      - func: get-project-and-modules
-      - func: run-make
-        vars: { target: "clients/windows_amd64/evergreen.exe" }
-      - func: push-client
-        vars: { client: "windows_amd64/evergreen.exe" }
-  - name: build-darwin_amd64
-    tags: ["build"]
-    commands:
-      - func: get-project-and-modules
-      - func: run-make
-        vars: { target: "clients/darwin_amd64/evergreen" }
-      - func: run-make
-        vars: { target: "clients/darwin_amd64/.signed" }
-      - func: push-client
-        vars: { client: "darwin_amd64/evergreen" }
-  - name: build-darwin_arm64
-    tags: ["build"]
-    commands:
-      - func: get-project-and-modules
-      - func: run-make
-        vars: { target: "clients/darwin_arm64/evergreen" }
-      - func: run-make
-        vars: { target: "clients/darwin_arm64/.signed" }
-      - func: push-client
-        vars: { client: "darwin_arm64/evergreen" }
 
 
 task_groups:
@@ -730,11 +695,6 @@ buildvariants:
       - name: test-cloud
       - name: "js-test"
       - name: generate-api-docs
-      - name: ".build"
-    display_tasks:
-      - name: build-and-push
-        execution_tasks:
-        - ".build"
 
   - name: race-detector
     display_name: Race Detector
@@ -827,6 +787,19 @@ buildvariants:
     tasks:
       - name: ".agent .test"
       - name: ".cli .test"
+
+  - name: build-and-push
+    display_name: Build and Push
+    tasks:
+      - name: ".build"
+    expansions:
+      GOROOT: /opt/golang/go1.20
+      sign_macos: true
+    display_tasks:
+      - name: build-and-push
+        execution_tasks:
+        - ".build"
+
 
 containers:
   - name: evg-container
