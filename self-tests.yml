@@ -657,7 +657,6 @@ tasks:
     name: build-darwin_arm64
     tags: ["build"]
 
-
 task_groups:
   - name: dist-and-upload-clis
     max_hosts: 1
@@ -790,11 +789,43 @@ buildvariants:
 
   - name: build-and-push
     display_name: Build and Push
+    run_on:
+      - ubuntu2204-small
+    activate: false
     tasks:
       - name: ".build"
     expansions:
       GOROOT: /opt/golang/go1.20
       sign_macos: true
+      notary_client_url: https://macos-notary-1628249594.s3.amazonaws.com/releases/client/v3.1.2/linux_amd64.zip
+    display_tasks:
+      - name: build-and-push
+        execution_tasks:
+        - ".build"
+
+  - name: build-and-push-staging
+    display_name: Build and Push - Staging
+    run_on:
+      - ubuntu2204-small
+    activate: false
+    tasks:
+      - name: ".build-staging"
+    expansions:
+      GOROOT: /opt/golang/go1.20
+    display_tasks:
+      - name: build-and-push
+        execution_tasks:
+        - ".build-staging"
+
+  - name: build-and-push-unsigned
+    run_on:
+      - ubuntu2204-small
+    display_name: Build and Push - Unsigned
+    activate: false
+    tasks:
+      - name: ".build"
+    expansions:
+      GOROOT: /opt/golang/go1.20
     display_tasks:
       - name: build-and-push
         execution_tasks:
