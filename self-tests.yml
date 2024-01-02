@@ -162,11 +162,13 @@ variables:
         params:
           aws_key: ${aws_key}
           aws_secret: ${aws_secret}
-          local_files_include_filter: evergreen/clients/*/evergreen*
+          local_files_include_filter_prefix: evergreen/clients
+          local_files_include_filter: "*_*/evergreen*"
           remote_file: evergreen/clients/${version_id}/
           content_type: binary/octet-stream
           bucket: mciuploads
           permissions: public-read
+          preserve_path: true
 
 #######################################
 #              Functions              #
