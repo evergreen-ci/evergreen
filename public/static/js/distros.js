@@ -8,7 +8,7 @@ mciModule.controller('DistrosCtrl', function ($scope, $window, $http, $location,
   $scope.validHostAllocatorFeedbackRules = $window.validHostAllocatorFeedbackRules;
   $scope.validHostsOverallocatedRules = $window.validHostsOverallocatedRules;
 
-  $scope.distroBannerText = "The legacy UI distros page will be deprecated and redirect to Spruce starting January 29, 2024."
+  $scope.distroBannerText = "The legacy UI distros page will be deprecated and redirect to Spruce starting January 31, 2024."
   $scope.dismissDistroBanner = function() {
     localStorage.setItem("distro-banner-dismissed", md5($scope.distroBannerText));
     $("#distro-banner-container").addClass("nodisp");
