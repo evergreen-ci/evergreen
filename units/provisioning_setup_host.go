@@ -109,16 +109,7 @@ func (j *setupHostJob) Run(ctx context.Context) {
 		j.env = evergreen.GetEnvironment()
 	}
 
-	settings := *j.env.Settings()
-	// Use the latest service flags instead of those cached in the environment.
-	flags, err := evergreen.GetServiceFlags(ctx)
-	if err != nil {
-		j.AddRetryableError(errors.Wrap(err, "getting service flags"))
-		return
-	}
-	settings.ServiceFlags = *flags
-
-	j.AddError(j.setupHost(ctx, &settings))
+	j.AddError(j.setupHost(ctx, j.env.Settings()))
 }
 
 func (j *setupHostJob) setupHost(ctx context.Context, settings *evergreen.Settings) error {
@@ -465,7 +456,7 @@ func (j *setupHostJob) provisionHost(ctx context.Context, settings *evergreen.Se
 
 	// If this is a spawn host
 	if j.host.ProvisionOptions != nil && j.host.UserHost {
-		if err := j.setupSpawnHost(ctx, settings); err != nil {
+		if err := j.setupSpawnHost(ctx, j.env); err != nil {
 			catcher := grip.NewBasicCatcher()
 			catcher.Wrap(err, "setting up spawn host")
 			catcher.Wrap(j.host.SetUnprovisioned(ctx), "setting host unprovisioned after spawn host setup failed")
@@ -551,15 +542,15 @@ func (j *setupHostJob) provisionHost(ctx context.Context, settings *evergreen.Se
 // copy of the user's settings onto the host, and makes the binary appear in the
 // PATH when the user logs in. If the spawn host is loading task data, it is
 // also retrieved.
-func (j *setupHostJob) setupSpawnHost(ctx context.Context, settings *evergreen.Settings) error {
-	script, err := j.host.SpawnHostSetupCommands(settings)
+func (j *setupHostJob) setupSpawnHost(ctx context.Context, env evergreen.Environment) error {
+	script, err := j.host.SpawnHostSetupCommands(env.Settings())
 	if err != nil {
 		return errors.Wrap(err, "creating script to set up spawn host")
 	}
 
 	curlCtx, cancel := context.WithTimeout(ctx, evergreenCurlTimeout)
 	defer cancel()
-	curlCmd, err := j.host.CurlCommand(settings)
+	curlCmd, err := j.host.CurlCommand(env)
 	if err != nil {
 		return errors.Wrap(err, "creating command to curl Evergreen client")
 	}

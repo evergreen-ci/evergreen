@@ -89,22 +89,15 @@ func (j *podDefinitionCleanupJob) populate(ctx context.Context) error {
 		j.env = evergreen.GetEnvironment()
 	}
 
-	// Use the latest service flags instead of those cached in the environment.
-	settings := *j.env.Settings()
-	if err := settings.ServiceFlags.Get(ctx); err != nil {
-		return errors.Wrap(err, "getting service flags")
-	}
-	j.settings = settings
-
 	if j.tagClient == nil {
-		client, err := cloud.MakeTagClient(ctx, &settings)
+		client, err := cloud.MakeTagClient(ctx, j.env.Settings())
 		if err != nil {
 			return errors.Wrap(err, "initializing tag client")
 		}
 		j.tagClient = client
 	}
 	if j.ecsClient == nil {
-		client, err := cloud.MakeECSClient(ctx, &settings)
+		client, err := cloud.MakeECSClient(ctx, j.env.Settings())
 		if err != nil {
 			return errors.Wrap(err, "initializing ECS client")
 		}

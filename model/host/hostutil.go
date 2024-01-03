@@ -65,8 +65,8 @@ func ChmodCommandWithSudo(script string, sudo bool) []string {
 }
 
 // CurlCommand returns the command to curl the evergreen client.
-func (h *Host) CurlCommand(settings *evergreen.Settings) (string, error) {
-	cmds, err := h.curlCommands(settings, "")
+func (h *Host) CurlCommand(env evergreen.Environment) (string, error) {
+	cmds, err := h.curlCommands(env, "")
 	if err != nil {
 		return "", errors.WithStack(err)
 	}
@@ -74,12 +74,12 @@ func (h *Host) CurlCommand(settings *evergreen.Settings) (string, error) {
 }
 
 // CurlCommandWithRetry is the same as CurlCommand but retries the request.
-func (h *Host) CurlCommandWithRetry(settings *evergreen.Settings, numRetries, maxRetrySecs int) (string, error) {
+func (h *Host) CurlCommandWithRetry(env evergreen.Environment, numRetries, maxRetrySecs int) (string, error) {
 	var retryArgs string
 	if numRetries != 0 && maxRetrySecs != 0 {
 		retryArgs = " " + curlRetryArgs(numRetries, maxRetrySecs)
 	}
-	cmds, err := h.curlCommands(settings, retryArgs)
+	cmds, err := h.curlCommands(env, retryArgs)
 	if err != nil {
 		return "", errors.WithStack(err)
 	}
@@ -88,20 +88,20 @@ func (h *Host) CurlCommandWithRetry(settings *evergreen.Settings, numRetries, ma
 
 // CurlCommandWithDefaultRetry is the same as CurlCommandWithRetry using the
 // default retry parameters.
-func (h *Host) CurlCommandWithDefaultRetry(settings *evergreen.Settings) (string, error) {
-	return h.CurlCommandWithRetry(settings, curlDefaultNumRetries, curlDefaultMaxSecs)
+func (h *Host) CurlCommandWithDefaultRetry(env evergreen.Environment) (string, error) {
+	return h.CurlCommandWithRetry(env, curlDefaultNumRetries, curlDefaultMaxSecs)
 }
 
-func (h *Host) curlCommands(settings *evergreen.Settings, curlArgs string) ([]string, error) {
+func (h *Host) curlCommands(env evergreen.Environment, curlArgs string) ([]string, error) {
 	var curlCmd string
-	if !settings.ServiceFlags.S3BinaryDownloadsDisabled && evergreen.GetEnvironment().ClientConfig().S3URLPrefix != "" {
+	if !env.Settings().ServiceFlags.S3BinaryDownloadsDisabled && env.ClientConfig().S3URLPrefix != "" {
 		// Attempt to download the agent from S3, but fall back to downloading from
 		// the app server if it fails.
 		// Include -f to return an error code from curl if the HTTP request
 		// fails (e.g. it receives 403 Forbidden or 404 Not Found).
-		curlCmd = fmt.Sprintf("(curl -fLO %s%s || curl -fLO %s%s)", h.Distro.S3ClientURL(settings), curlArgs, h.Distro.ClientURL(settings), curlArgs)
+		curlCmd = fmt.Sprintf("(curl -fLO %s%s || curl -fLO %s%s)", h.Distro.S3ClientURL(env), curlArgs, h.Distro.ClientURL(env.Settings()), curlArgs)
 	} else {
-		curlCmd += fmt.Sprintf("curl -fLO %s%s", h.Distro.ClientURL(settings), curlArgs)
+		curlCmd += fmt.Sprintf("curl -fLO %s%s", h.Distro.ClientURL(env.Settings()), curlArgs)
 	}
 	return []string{
 		fmt.Sprintf("cd %s", h.Distro.HomeDir()),
@@ -1214,14 +1214,14 @@ func (h *Host) SetUserDataHostProvisioned(ctx context.Context) error {
 
 // GenerateFetchProvisioningScriptUserData creates the user data script to fetch
 // the host provisioning script.
-func (h *Host) GenerateFetchProvisioningScriptUserData(ctx context.Context, settings *evergreen.Settings) (*userdata.Options, error) {
+func (h *Host) GenerateFetchProvisioningScriptUserData(ctx context.Context, env evergreen.Environment) (*userdata.Options, error) {
 	if h.Secret == "" {
 		if err := h.CreateSecret(ctx); err != nil {
 			return nil, errors.Wrap(err, "creating host secret")
 		}
 	}
 
-	fetchClient, err := h.CurlCommandWithDefaultRetry(settings)
+	fetchClient, err := h.CurlCommandWithDefaultRetry(env)
 	if err != nil {
 		return nil, errors.Wrap(err, "creating curl command for evergreen client")
 	}
@@ -1232,7 +1232,7 @@ func (h *Host) GenerateFetchProvisioningScriptUserData(ctx context.Context, sett
 		filepath.Join(h.Distro.HomeDir(), h.Distro.BinaryName()),
 		"host",
 		"provision",
-		fmt.Sprintf("--api_server=%s", settings.ApiUrl),
+		fmt.Sprintf("--api_server=%s", env.Settings().ApiUrl),
 		fmt.Sprintf("--host_id=%s", h.Id),
 		fmt.Sprintf("--host_secret=%s", h.Secret),
 		fmt.Sprintf("--working_dir=%s", h.Distro.AbsPathNotCygwinCompatible(h.Distro.BootstrapSettings.JasperBinaryDir)),

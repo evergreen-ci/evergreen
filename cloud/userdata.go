@@ -226,7 +226,7 @@ func writeUserDataPart(writer *multipart.Writer, u *userData, fileName string) e
 // If mergeParts is true, the provisioning part and the custom part will
 // be combined into a single user data part, so they must be the same type (e.g.
 // if shell scripts, both must be the same shell scripting language).
-func makeUserData(ctx context.Context, settings *evergreen.Settings, h *host.Host, custom string, mergeParts bool) (string, error) {
+func makeUserData(ctx context.Context, env evergreen.Environment, h *host.Host, custom string, mergeParts bool) (string, error) {
 	var err error
 	var customUserData *userData
 	if custom != "" {
@@ -243,7 +243,7 @@ func makeUserData(ctx context.Context, settings *evergreen.Settings, h *host.Hos
 		return "", nil
 	}
 
-	provisionOpts, err := h.GenerateFetchProvisioningScriptUserData(ctx, settings)
+	provisionOpts, err := h.GenerateFetchProvisioningScriptUserData(ctx, env)
 	if err != nil {
 		return "", errors.Wrap(err, "creating user data script to fetch provisioning script")
 	}
