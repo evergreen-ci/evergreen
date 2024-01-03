@@ -152,7 +152,7 @@ func TestCurlCommandWithRetry(t *testing.T) {
 				},
 				User: "user",
 			}
-			expected := "cd /home/user && (curl -fLO https://foo.com/%s/windows_amd64/evergreen.exe --retry 5 --retry-max-time 10 || curl -fLO www.example.com/clients/windows_amd64/evergreen.exe --retry 5 --retry-max-time 10) && chmod +x evergreen.exe"
+			expected := "cd /home/user && (curl -fLO https://foo.com/windows_amd64/evergreen.exe --retry 5 --retry-max-time 10 || curl -fLO www.example.com/clients/windows_amd64/evergreen.exe --retry 5 --retry-max-time 10) && chmod +x evergreen.exe"
 			cmd, err := h.CurlCommandWithRetry(env, 5, 10)
 			require.NoError(t, err)
 			assert.Equal(t, expected, cmd)
@@ -165,7 +165,7 @@ func TestCurlCommandWithRetry(t *testing.T) {
 				},
 				User: "user",
 			}
-			expected := "cd /home/user && (curl -fLO https://foo.com/%s/linux_amd64/evergreen --retry 5 --retry-max-time 10 || curl -fLO www.example.com/clients/linux_amd64/evergreen --retry 5 --retry-max-time 10) && chmod +x evergreen"
+			expected := "cd /home/user && (curl -fLO https://foo.com/linux_amd64/evergreen --retry 5 --retry-max-time 10 || curl -fLO www.example.com/clients/linux_amd64/evergreen --retry 5 --retry-max-time 10) && chmod +x evergreen"
 			cmd, err := h.CurlCommandWithRetry(env, 5, 10)
 			require.NoError(t, err)
 			assert.Equal(t, expected, cmd)
