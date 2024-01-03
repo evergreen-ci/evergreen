@@ -1219,10 +1219,9 @@ func (e *envState) populateS3ClientConfig(ctx context.Context, versionID string)
 	prefix := fmt.Sprintf("%s/%s", s3ClientsPrefix, versionID)
 	c := &ClientConfig{
 		LatestRevision: ClientVersion,
-		S3URLPrefix: fmt.Sprintf("https://%s.s3.amazonaws.com/%s/%s",
+		S3URLPrefix: fmt.Sprintf("https://%s.s3.amazonaws.com/%s",
 			e.settings.Providers.AWS.BinaryClient.Bucket,
 			prefix,
-			versionID,
 		),
 	}
 	if err = c.populateClientBinaries(ctx, bucket, prefix); err != nil {
