@@ -427,26 +427,19 @@ func (a *Agent) setupTask(agentCtx, setupCtx context.Context, initialTC *taskCon
 	taskConfig, err := a.makeTaskConfig(setupCtx, tc)
 	if err != nil {
 		tc.logger = client.NewSingleChannelLogHarness("agent.error", a.defaultLogger)
-		// When makeTaskConfig errors, we should check if the taskgroup is nil in nextTask and
-		// use that as the killProcsAdditionalCheck. Because the taskConfig will be nil in this case, killProcs
-		// will not be able to use the taskConfig task group to determine if it should kill processes.
-		taskGroupIsNil := nt.TaskGroup == ""
-		if initialTC != nil && initialTC.taskConfig != nil {
-			taskGroupIsNil = initialTC.taskConfig.TaskGroup == nil
-		}
-		return a.handleSetupError(setupCtx, tc, errors.Wrap(err, "making task config"), taskGroupIsNil)
+		return a.handleSetupError(setupCtx, tc, errors.Wrap(err, "making task config"))
 	}
 	tc.taskConfig = taskConfig
 
 	if err := a.startLogging(agentCtx, tc); err != nil {
 		tc.logger = client.NewSingleChannelLogHarness("agent.error", a.defaultLogger)
-		return a.handleSetupError(setupCtx, tc, errors.Wrap(err, "setting up logger producer"), false)
+		return a.handleSetupError(setupCtx, tc, errors.Wrap(err, "setting up logger producer"))
 	}
 
 	if !tc.ranSetupGroup {
 		taskDirectory, err = a.createTaskDirectory(tc)
 		if err != nil {
-			return a.handleSetupError(setupCtx, tc, errors.Wrap(err, "creating task directory"), false)
+			return a.handleSetupError(setupCtx, tc, errors.Wrap(err, "creating task directory"))
 		}
 	}
 
@@ -465,7 +458,7 @@ func (a *Agent) setupTask(agentCtx, setupCtx context.Context, initialTC *taskCon
 	tc.logger.Execution().Error(errors.Wrap(tc.getDeviceNames(setupCtx), "getting device names for disks"))
 
 	if err := setupCtx.Err(); err != nil {
-		return a.handleSetupError(setupCtx, tc, errors.Wrap(err, "making task config"), false)
+		return a.handleSetupError(setupCtx, tc, errors.Wrap(err, "making task config"))
 	}
 
 	hostname, err := os.Hostname()
@@ -478,13 +471,13 @@ func (a *Agent) setupTask(agentCtx, setupCtx context.Context, initialTC *taskCon
 	return tc, shouldExit, nil
 }
 
-func (a *Agent) handleSetupError(ctx context.Context, tc *taskContext, err error, killProcsAdditionalCheck bool) (*taskContext, bool, error) {
+func (a *Agent) handleSetupError(ctx context.Context, tc *taskContext, err error) (*taskContext, bool, error) {
 	catcher := grip.NewBasicCatcher()
 	grip.Error(err)
 	catcher.Wrap(err, "handling setup error")
 	tc.logger.Execution().Error(err)
 	grip.Infof("Task complete: '%s'.", tc.task.ID)
-	shouldExit, err := a.handleTaskResponse(ctx, tc, evergreen.TaskSystemFailed, err.Error(), killProcsAdditionalCheck)
+	shouldExit, err := a.handleTaskResponse(ctx, tc, evergreen.TaskSystemFailed, err.Error())
 	catcher.Wrap(err, "handling task response")
 	return tc, shouldExit, catcher.Resolve()
 }
@@ -598,7 +591,7 @@ func (a *Agent) runTask(ctx context.Context, tcInput *taskContext, nt *apimodels
 		return tc, shouldExit, errors.Wrap(err, "setting up task")
 	}
 
-	defer a.killProcs(ctx, tc, false, "task is finished", false)
+	defer a.killProcs(ctx, tc, false, "task is finished")
 
 	grip.Info(message.Fields{
 		"message": "running task",
@@ -625,7 +618,7 @@ func (a *Agent) runTask(ctx context.Context, tcInput *taskContext, nt *apimodels
 	go a.startHeartbeat(tskCtx, preAndMainCancel, tc)
 
 	status := a.runPreAndMain(preAndMainCtx, tc)
-	shouldExit, err = a.handleTaskResponse(tskCtx, tc, status, "", false)
+	shouldExit, err = a.handleTaskResponse(tskCtx, tc, status, "")
 	return tc, shouldExit, err
 }
 
@@ -708,7 +701,7 @@ func (a *Agent) runPreAndMain(ctx context.Context, tc *taskContext) (status stri
 		return evergreen.TaskSystemFailed
 	}
 
-	a.killProcs(execTimeoutCtx, tc, false, "task is starting", false)
+	a.killProcs(execTimeoutCtx, tc, false, "task is starting")
 
 	if err := a.runPreTaskCommands(execTimeoutCtx, tc); err != nil {
 		return evergreen.TaskFailed
@@ -810,8 +803,8 @@ func (a *Agent) runPostTaskCommands(ctx context.Context, tc *taskContext) error 
 	ctx, span := a.tracer.Start(ctx, "post-task-commands")
 	defer span.End()
 
-	a.killProcs(ctx, tc, false, "post task commands are starting", false)
-	defer a.killProcs(ctx, tc, false, "post task commands are finished", false)
+	a.killProcs(ctx, tc, false, "post task commands are starting")
+	defer a.killProcs(ctx, tc, false, "post task commands are finished")
 
 	post, err := tc.getPost()
 	if err != nil {
@@ -836,7 +829,7 @@ func (a *Agent) runTeardownGroupCommands(ctx context.Context, tc *taskContext) {
 	// Only killProcs if tc.taskConfig is not nil. This avoids passing an
 	// empty working directory to killProcs, and is okay because this
 	// killProcs is only for the processes run in runTeardownGroupCommands.
-	defer a.killProcs(ctx, tc, true, "teardown group commands are finished", false)
+	defer a.killProcs(ctx, tc, true, "teardown group commands are finished")
 
 	defer func() {
 		if tc.logger != nil {
@@ -856,7 +849,7 @@ func (a *Agent) runTeardownGroupCommands(ctx context.Context, tc *taskContext) {
 	}
 
 	if teardownGroup.commands != nil {
-		a.killProcs(ctx, tc, true, "teardown group commands are starting", false)
+		a.killProcs(ctx, tc, true, "teardown group commands are starting")
 
 		_ = a.runCommandsInBlock(ctx, tc, *teardownGroup)
 	}
@@ -892,8 +885,8 @@ func (a *Agent) runEndTaskSync(ctx context.Context, tc *taskContext, detail *api
 	_ = a.runCommandsInBlock(ctx, tc, taskSync)
 }
 
-func (a *Agent) handleTaskResponse(ctx context.Context, tc *taskContext, status string, systemFailureDescription string, killProcsAdditionalCheck bool) (bool, error) {
-	resp, err := a.finishTask(ctx, tc, status, systemFailureDescription, killProcsAdditionalCheck)
+func (a *Agent) handleTaskResponse(ctx context.Context, tc *taskContext, status string, systemFailureDescription string) (bool, error) {
+	resp, err := a.finishTask(ctx, tc, status, systemFailureDescription)
 	if err != nil {
 		return false, errors.Wrap(err, "marking task complete")
 	}
@@ -929,7 +922,7 @@ func (a *Agent) handleTimeoutAndOOM(ctx context.Context, tc *taskContext, status
 
 // finishTask finishes up a running task. It runs any post-task command blocks
 // such as timeout and post, then sends the final end task response.
-func (a *Agent) finishTask(ctx context.Context, tc *taskContext, status string, systemFailureDescription string, killProcsAdditionalCheck bool) (*apimodels.EndTaskResponse, error) {
+func (a *Agent) finishTask(ctx context.Context, tc *taskContext, status string, systemFailureDescription string) (*apimodels.EndTaskResponse, error) {
 	detail := a.endTaskResponse(ctx, tc, status, systemFailureDescription)
 	switch detail.Status {
 	case evergreen.TaskSucceeded:
@@ -971,7 +964,7 @@ func (a *Agent) finishTask(ctx context.Context, tc *taskContext, status string, 
 		}
 	}
 
-	a.killProcs(ctx, tc, false, "task is ending", killProcsAdditionalCheck)
+	a.killProcs(ctx, tc, false, "task is ending")
 
 	if tc.logger != nil {
 		tc.logger.Execution().Infof("Sending final task status: '%s'.", detail.Status)
@@ -1068,13 +1061,13 @@ func setEndTaskFailureDetails(tc *taskContext, detail *apimodels.TaskEndDetail, 
 
 }
 
-func (a *Agent) killProcs(ctx context.Context, tc *taskContext, ignoreTaskGroupCheck bool, reason string, additionalShouldKillCheck bool) {
+func (a *Agent) killProcs(ctx context.Context, tc *taskContext, ignoreTaskGroupCheck bool, reason string) {
 	logger := grip.NewJournaler("killProcs")
 	if tc.logger != nil && !tc.logger.Closed() {
 		logger = tc.logger.Execution()
 	}
 
-	if !additionalShouldKillCheck || !a.shouldKill(tc, ignoreTaskGroupCheck) {
+	if !a.shouldKill(tc, ignoreTaskGroupCheck) {
 		return
 	}
 
@@ -1113,7 +1106,7 @@ func (a *Agent) shouldKill(tc *taskContext, ignoreTaskGroupCheck bool) bool {
 		return false
 	}
 	// Kill if the task is not in a task group.
-	if tc.taskConfig != nil && tc.taskConfig.TaskGroup == nil {
+	if tc.taskConfig.TaskGroup == nil {
 		return true
 	}
 	// This is a task group, kill if ignoreTaskGroupCheck is true
@@ -1122,7 +1115,7 @@ func (a *Agent) shouldKill(tc *taskContext, ignoreTaskGroupCheck bool) bool {
 	}
 	// This is a task group, kill if not sharing processes between tasks in the
 	// task group.
-	return tc.taskConfig != nil && !tc.taskConfig.TaskGroup.ShareProcs
+	return !tc.taskConfig.TaskGroup.ShareProcs
 }
 
 // logPanic logs a panic to the task log and returns the panic error, along with
