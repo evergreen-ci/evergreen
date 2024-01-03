@@ -33,7 +33,6 @@ type podDefinitionCleanupJob struct {
 	job.Base `bson:"metadata" json:"metadata" yaml:"metadata"`
 
 	env       evergreen.Environment
-	settings  evergreen.Settings
 	tagClient cocoa.TagClient
 	ecsClient cocoa.ECSClient
 	podDefMgr cocoa.ECSPodDefinitionManager
@@ -72,7 +71,7 @@ func (j *podDefinitionCleanupJob) Run(ctx context.Context) {
 		return
 	}
 
-	cleanupLimit := j.settings.PodLifecycle.MaxPodDefinitionCleanupRate
+	cleanupLimit := j.env.Settings().PodLifecycle.MaxPodDefinitionCleanupRate
 	numDeleted, err := j.cleanupStrandedPodDefinitions(ctx, cleanupLimit)
 	j.AddError(errors.Wrap(err, "cleaning up stranded pod definitions"))
 	cleanupLimit -= numDeleted
