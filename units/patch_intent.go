@@ -1266,6 +1266,7 @@ func (j *patchIntentProcessor) sendGitHubSuccessMessages(ctx context.Context, pa
 		j.AddError(errors.Wrapf(err, "getting branch protection rules for %s/%s/%s", projectRef.Owner, projectRef.Repo, projectRef.Branch))
 		return
 	}
+	// If the base evergreen context is not one of the rules, add it.
 	hasEvergreenContext := false
 	for _, rule := range rules {
 		if rule == evergreenContext {
