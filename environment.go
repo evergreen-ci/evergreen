@@ -1137,6 +1137,7 @@ func (e *envState) GetGitHubSender(owner, repo string) (send.Sender, error) {
 	grip.Error(message.WrapError(e.setSenderErrorHandler(sender, owner), message.Fields{
 		"message": "could not set fallback error handler for GitHub status sender",
 		"owner":   owner,
+		"repo":    repo,
 	}))
 
 	e.githubSenders[owner] = cachedGitHubSender{
