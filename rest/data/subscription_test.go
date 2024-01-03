@@ -237,9 +237,10 @@ func TestSaveProjectSubscriptions(t *testing.T) {
 		},
 		"ModifyExistingSubscription": func(t *testing.T) {
 			subscription := restModel.APISubscription{
+				ID:           utility.ToStringPtr("existing_subscription"),
 				ResourceType: utility.ToStringPtr(event.ResourceTypeTask),
 				Trigger:      utility.ToStringPtr(event.TriggerOutcome),
-				Owner:        utility.ToStringPtr("project"),
+				Owner:        utility.ToStringPtr("existing_subscription_project"),
 				OwnerType:    utility.ToStringPtr(string(event.OwnerTypeProject)),
 				Selectors: []restModel.APISelector{
 					{
@@ -283,8 +284,8 @@ func TestSaveProjectSubscriptions(t *testing.T) {
 		t.Run(name, func(t *testing.T) {
 			assert.NoError(t, db.ClearCollections(event.SubscriptionsCollection))
 			projectSubscription := event.Subscription{
-				ID:           mgobson.NewObjectId().Hex(),
-				Owner:        "project_4",
+				ID:           "existing_subscription",
+				Owner:        "existing_subscription_project",
 				OwnerType:    event.OwnerTypeProject,
 				ResourceType: event.ResourceTypeTask,
 				Trigger:      event.TriggerOutcome,
