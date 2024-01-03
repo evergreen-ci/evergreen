@@ -130,17 +130,19 @@ func (s *EnvironmentSuite) TestInitSenders() {
 	defer cancel()
 
 	s.env.settings = &Settings{
-		Slack: SlackConfig{
-			Token: "token",
+		Notify: NotifyConfig{
+			SES: SESConfig{
+				SenderAddress: "sender_address",
+			},
 		},
 	}
 
 	s.Require().NoError(s.env.initSenders(ctx))
 
-	s.Require().Len(s.env.senders, 1)
-	sender, err := s.env.GetSender(SenderSlack)
-	s.Require().NoError(err, "Slack sender should be set up")
-	s.NotZero(sender.ErrorHandler(), "fallback error handler should be set")
+	s.Require().NotEmpty(s.env.senders, "should have set up at least one sender")
+	for _, sender := range s.env.senders {
+		s.NotZero(sender.ErrorHandler(), "fallback error handler should be set")
+	}
 }
 
 func (s *EnvironmentSuite) TestGetClientConfig() {
