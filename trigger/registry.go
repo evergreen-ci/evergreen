@@ -71,3 +71,17 @@ func ValidateTrigger(resourceType, triggerName string) bool {
 
 	return false
 }
+
+// ConvertToFamilyTrigger takes a trigger and returns its "family-" equivalent, if it exists.
+func ConvertToFamilyTrigger(trigger string) string {
+	switch trigger {
+	case event.TriggerOutcome:
+		return event.TriggerFamilyOutcome
+	case event.TriggerFailure:
+		return event.TriggerFamilyFailure
+	case event.TriggerSuccess:
+		return event.TriggerFamilySuccess
+	default:
+		return trigger
+	}
+}
