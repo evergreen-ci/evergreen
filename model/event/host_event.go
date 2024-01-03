@@ -101,10 +101,12 @@ func LogHostEvent(hostId string, eventType string, eventData HostEventData) {
 	}
 }
 
+// LogHostCreated logs an event indicating that the host was created.
 func LogHostCreated(hostId string) {
 	LogHostEvent(hostId, EventHostCreated, HostEventData{Successful: true})
 }
 
+// LogManyHostsCreated is the same as LogHostCreated but for multiple hosts.
 func LogManyHostsCreated(hostIDs []string) {
 	events := make([]EventLogEntry, 0, len(hostIDs))
 	for _, hostID := range hostIDs {
