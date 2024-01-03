@@ -27,6 +27,10 @@ type ClientConfig struct {
 }
 
 func (c *ClientConfig) populateClientBinaries(ctx context.Context, bucket pail.Bucket, prefix string) error {
+	if !strings.HasSuffix(prefix, "/") {
+		prefix += "/"
+	}
+
 	iter, err := bucket.List(ctx, prefix)
 	if err != nil {
 		return errors.Wrap(err, "listing client bucket")
@@ -37,15 +41,20 @@ func (c *ClientConfig) populateClientBinaries(ctx context.Context, bucket pail.B
 		if len(name) != 2 || !strings.Contains(name[1], "evergreen") {
 			continue
 		}
-		if displayName, ok := ValidArchDisplayNames[name[0]]; ok {
-			osArchParts := strings.Split(name[0], "_")
-			c.ClientBinaries = append(c.ClientBinaries, ClientBinary{
-				URL:         fmt.Sprintf("%s/%s", c.S3URLPrefix, item),
-				OS:          osArchParts[0],
-				Arch:        osArchParts[1],
-				DisplayName: displayName,
-			})
+		displayName, ok := ValidArchDisplayNames[name[0]]
+		if !ok {
+			continue
 		}
+		osArchParts := strings.Split(name[0], "_")
+		if len(osArchParts) != 2 {
+			continue
+		}
+		c.ClientBinaries = append(c.ClientBinaries, ClientBinary{
+			URL:         fmt.Sprintf("%s/%s", c.S3URLPrefix, item),
+			OS:          osArchParts[0],
+			Arch:        osArchParts[1],
+			DisplayName: displayName,
+		})
 	}
 	if err = iter.Err(); err != nil {
 		return errors.Wrap(err, "iterating client bucket contents")

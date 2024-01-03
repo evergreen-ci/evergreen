@@ -180,7 +180,6 @@ func (s *AdminRouteSuite) TestAdminRoute() {
 	s.Equal(len(testSettings.Providers.AWS.BinaryClient.Bucket), len(settings.Providers.AWS.BinaryClient.Bucket))
 	s.Equal(len(testSettings.Providers.AWS.BinaryClient.Key), len(settings.Providers.AWS.BinaryClient.Key))
 	s.Equal(len(testSettings.Providers.AWS.BinaryClient.Secret), len(settings.Providers.AWS.BinaryClient.Secret))
-	s.Equal(len(testSettings.Providers.AWS.BinaryClient.Prefix), len(settings.Providers.AWS.BinaryClient.Prefix))
 	s.EqualValues(testSettings.Providers.Docker.APIVersion, settings.Providers.Docker.APIVersion)
 	s.EqualValues(testSettings.RepoTracker.MaxConcurrentRequests, settings.RepoTracker.MaxConcurrentRequests)
 	s.EqualValues(testSettings.Scheduler.TaskFinder, settings.Scheduler.TaskFinder)

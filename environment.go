@@ -66,6 +66,8 @@ const (
 	awsAuthMechanism        = "MONGODB-AWS"
 	awsSessionToken         = "AWS_SESSION_TOKEN"
 	mongoExternalAuthSource = "$external"
+
+	s3ClientsPrefix = "evergreen/clients"
 )
 
 func init() { globalEnvLock = &sync.RWMutex{} }
@@ -1214,15 +1216,16 @@ func (e *envState) populateS3ClientConfig(ctx context.Context, versionID string)
 		return errors.Wrap(err, "constructing pail bucket")
 	}
 
+	prefix := fmt.Sprintf("%s/%s", s3ClientsPrefix, versionID)
 	c := &ClientConfig{
 		LatestRevision: ClientVersion,
 		S3URLPrefix: fmt.Sprintf("https://%s.s3.amazonaws.com/%s/%s",
 			e.settings.Providers.AWS.BinaryClient.Bucket,
-			e.settings.Providers.AWS.BinaryClient.Prefix,
+			prefix,
 			versionID,
 		),
 	}
-	if err = c.populateClientBinaries(ctx, bucket, fmt.Sprintf("%s/%s/", e.settings.Providers.AWS.BinaryClient.Prefix, versionID)); err != nil {
+	if err = c.populateClientBinaries(ctx, bucket, prefix); err != nil {
 		return errors.Wrap(err, "populating client binaries")
 	}
 

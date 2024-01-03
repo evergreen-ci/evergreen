@@ -1521,7 +1521,7 @@ func (a *APISubnet) ToService() (interface{}, error) {
 type APIAWSConfig struct {
 	EC2Keys              []APIEC2Key               `json:"ec2_keys"`
 	Subnets              []APISubnet               `json:"subnets"`
-	BinaryClient         *APIBinaryClientS3Config  `json:"binary_client"`
+	BinaryClient         *APIS3Credentials         `json:"binary_client"`
 	TaskSync             *APIS3Credentials         `json:"task_sync"`
 	TaskSyncRead         *APIS3Credentials         `json:"task_sync_read"`
 	ParserProject        *APIParserProjectS3Config `json:"parser_project"`
@@ -1551,7 +1551,7 @@ func (a *APIAWSConfig) BuildFromService(h interface{}) error {
 			a.Subnets = append(a.Subnets, apiSubnet)
 		}
 
-		clients := &APIBinaryClientS3Config{}
+		clients := &APIS3Credentials{}
 		if err := clients.BuildFromService(v.BinaryClient); err != nil {
 			return errors.Wrap(err, "converting binary client S3 config to API model")
 		}
@@ -1606,9 +1606,9 @@ func (a *APIAWSConfig) ToService() (interface{}, error) {
 	if err != nil {
 		return nil, errors.Wrap(err, "converting binary client S3 config to service model")
 	}
-	var client evergreen.BinaryClientS3Config
+	var client evergreen.S3Credentials
 	if i != nil {
-		client, ok = i.(evergreen.BinaryClientS3Config)
+		client, ok = i.(evergreen.S3Credentials)
 		if !ok {
 			return nil, errors.Errorf("expecting binary client S3 config but got type %T", i)
 		}
@@ -1720,39 +1720,6 @@ func (a *APIS3Credentials) ToService() (interface{}, error) {
 		Key:    utility.FromStringPtr(a.Key),
 		Secret: utility.FromStringPtr(a.Secret),
 		Bucket: utility.FromStringPtr(a.Bucket),
-	}, nil
-}
-
-// APIBinaryClientS3Config represents configuration options for accessing binary clients in S3.
-type APIBinaryClientS3Config struct {
-	APIS3Credentials
-	Prefix *string `json:"prefix"`
-}
-
-func (a *APIBinaryClientS3Config) BuildFromService(h interface{}) error {
-	switch v := h.(type) {
-	case evergreen.BinaryClientS3Config:
-		a.Key = utility.ToStringPtr(v.Key)
-		a.Secret = utility.ToStringPtr(v.Secret)
-		a.Bucket = utility.ToStringPtr(v.Bucket)
-		a.Prefix = utility.ToStringPtr(v.Prefix)
-		return nil
-	default:
-		return errors.Errorf("programmatic error: expected binary client S3 config but got type %T", h)
-	}
-}
-
-func (a *APIBinaryClientS3Config) ToService() (interface{}, error) {
-	if a == nil {
-		return nil, nil
-	}
-	return evergreen.BinaryClientS3Config{
-		S3Credentials: evergreen.S3Credentials{
-			Key:    utility.FromStringPtr(a.Key),
-			Secret: utility.FromStringPtr(a.Secret),
-			Bucket: utility.FromStringPtr(a.Bucket),
-		},
-		Prefix: utility.FromStringPtr(a.Prefix),
 	}, nil
 }
 
