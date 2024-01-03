@@ -57,7 +57,11 @@ const (
 	// duration of wait time during queue chut down.
 	queueShutdownWaitInterval = 10 * time.Millisecond
 	queueShutdownWaitTimeout  = 10 * time.Second
-	githubTokenTimeout        = 1 * time.Hour
+	// githubTokenTimeout is how long a token is valid in Evergreen before it
+	// needs to be refreshed. GitHub tokens expire after an hour, so this must
+	// be under an hour to prevent a request from using a token that's about to
+	// expire.
+	githubTokenTimeout = 50 * time.Minute
 
 	RoleCollection  = "roles"
 	ScopeCollection = "scopes"
@@ -698,6 +702,10 @@ func (e *envState) initClientConfig() {
 	}
 }
 
+// initSenders initializes the senders that are used to send payloads to
+// external services such as sending GitHub statuses and Jira messages. These
+// are meant to enable specific Evergreen behavior and are distinct from the
+// global application-wide logging system (see (*Settings).GetSender).
 func (e *envState) initSenders(ctx context.Context) error {
 	if e.settings == nil {
 		return errors.New("no settings object, cannot build senders")
@@ -788,21 +796,27 @@ func (e *envState) initSenders(ctx context.Context) error {
 
 	catcher := grip.NewBasicCatcher()
 	for name, s := range e.senders {
-		catcher.Add(s.SetLevel(levelInfo))
-		tempName := name
-		catcher.Add(s.SetErrorHandler(func(err error, m message.Composer) {
-			if err == nil {
-				return
-			}
-			grip.Error(message.WrapError(err, message.Fields{
-				"notification":        m.String(),
-				"message_type":        fmt.Sprintf("%T", m),
-				"notification_target": tempName.String(),
-				"event":               m,
-			}))
-		}))
+		catcher.Wrapf(s.SetLevel(levelInfo), "setting level info for sender '%s'", name.String())
+		catcher.Wrapf(e.setSenderErrorHandler(s, name.String()), "setting fallback error handler for sender '%s'", name.String())
 	}
 	return catcher.Resolve()
+}
+
+// setSenderErrorHandler sets the fallback error handler for senders. Note that
+// for the error handler to work, the global application logging must already be
+// set up (see (*Settings).GetSender).
+func (e *envState) setSenderErrorHandler(s send.Sender, name string) error {
+	return s.SetErrorHandler(func(err error, m message.Composer) {
+		if err == nil {
+			return
+		}
+		grip.Error(message.WrapError(err, message.Fields{
+			"notification":        m.String(),
+			"message_type":        fmt.Sprintf("%T", m),
+			"notification_target": name,
+			"event":               m,
+		}))
+	})
 }
 
 func (e *envState) initJasper() error {
@@ -1078,7 +1092,10 @@ func (e *envState) GetGitHubSender(owner, repo string) (send.Sender, error) {
 	if ok && time.Since(githubSender.time) < githubTokenTimeout {
 		return githubSender.sender, nil
 	}
+
 	// If githubSender does not exist or has expired, create one, add it to the cache, then return it.
+
+	tokenCreatedAt := time.Now()
 	token, err := e.settings.CreateInstallationToken(e.ctx, owner, repo, nil)
 	if err != nil {
 		// TODO EVG-19966: Delete fallback to legacy GitHub sender
@@ -1113,9 +1130,18 @@ func (e *envState) GetGitHubSender(owner, repo string) (send.Sender, error) {
 		}
 		return legacySender, nil
 	}
+
+	// Just log and continue if the GitHub sender fails to set the error
+	// handler. While having the error log is useful for monitoring, it's not
+	// essential for the sender to work.
+	grip.Error(message.WrapError(e.setSenderErrorHandler(sender, owner), message.Fields{
+		"message": "could not set fallback error handler for GitHub status sender",
+		"owner":   owner,
+	}))
+
 	e.githubSenders[owner] = cachedGitHubSender{
 		sender: sender,
-		time:   time.Now(),
+		time:   tokenCreatedAt,
 	}
 	return sender, nil
 }

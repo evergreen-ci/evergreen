@@ -125,6 +125,24 @@ func (s *EnvironmentSuite) TestConfigErrorsIfCannotValidateConfig() {
 	s.Contains(err.Error(), "validating settings")
 }
 
+func (s *EnvironmentSuite) TestInitSenders() {
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
+	s.env.settings = &Settings{
+		Slack: SlackConfig{
+			Token: "token",
+		},
+	}
+
+	s.Require().NoError(s.env.initSenders(ctx))
+
+	s.Require().Len(s.env.senders, 1)
+	sender, err := s.env.GetSender(SenderSlack)
+	s.Require().NoError(err, "Slack sender should be set up")
+	s.NotZero(sender.ErrorHandler(), "fallback error handler should be set")
+}
+
 func (s *EnvironmentSuite) TestGetClientConfig() {
 	root := filepath.Join(FindEvergreenHome(), ClientDirectory)
 	if err := os.Mkdir(root, os.ModeDir|os.ModePerm); err != nil {
