@@ -404,7 +404,7 @@ func TestGetGitHubSender(t *testing.T) {
 	defer cancel()
 
 	env := &mock.Environment{}
-	env.Configure(ctx)
+	require.NoError(t, env.Configure(ctx))
 	testutil.ConfigureIntegrationTest(t, env.Settings(), t.Name())
 
 	sender, err := env.GetGitHubSender("evergreen-ci", "evergreen")
