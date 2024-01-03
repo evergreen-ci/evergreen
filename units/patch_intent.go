@@ -298,7 +298,7 @@ func (j *patchIntentProcessor) finishPatch(ctx context.Context, patchDoc *patch.
 	}
 	// Don't create patches for github PRs if the only changes are in ignored files.
 	if patchDoc.IsGithubPRPatch() && patchedProject.IgnoresAllFiles(patchDoc.FilesChanged()) {
-		j.sendGitHubSuccessMessage(ctx, patchDoc, ignoredFiles)
+		j.sendGitHubSuccessMessages(ctx, patchDoc, pref, ignoredFiles)
 		return nil
 	}
 
@@ -1258,16 +1258,32 @@ func (j *patchIntentProcessor) sendGitHubErrorStatus(ctx context.Context, patchD
 	j.AddError(update.Error())
 }
 
-// sendGitHubSuccessMessage sends a successful status to Github with the given message.
-func (j *patchIntentProcessor) sendGitHubSuccessMessage(ctx context.Context, patchDoc *patch.Patch, msg string) {
-	update := NewGithubStatusUpdateJobWithSuccessMessage(
-		evergreenContext,
-		patchDoc.GithubPatchData.BaseOwner,
-		patchDoc.GithubPatchData.BaseRepo,
-		patchDoc.GithubPatchData.HeadHash,
-		msg,
-	)
-	update.Run(ctx)
-
-	j.AddError(update.Error())
+// sendGitHubSuccessMessages sends a successful status to Github with the given message for all
+// branch protection rules configured for the given project.
+func (j *patchIntentProcessor) sendGitHubSuccessMessages(ctx context.Context, patchDoc *patch.Patch, projectRef *model.ProjectRef, msg string) {
+	rules, err := thirdparty.GetEvergreenBranchProtectionRules(ctx, "", projectRef.Owner, projectRef.Repo, projectRef.Branch)
+	if err != nil {
+		j.AddError(errors.Wrapf(err, "getting branch protection rules for %s/%s/%s", projectRef.Owner, projectRef.Repo, projectRef.Branch))
+		return
+	}
+	hasEvergreenContext := false
+	for _, rule := range rules {
+		if rule == evergreenContext {
+			hasEvergreenContext = true
+		}
+	}
+	if !hasEvergreenContext {
+		rules = append(rules, evergreenContext)
+	}
+	for _, rule := range rules {
+		update := NewGithubStatusUpdateJobWithSuccessMessage(
+			rule,
+			patchDoc.GithubPatchData.BaseOwner,
+			patchDoc.GithubPatchData.BaseRepo,
+			patchDoc.GithubPatchData.HeadHash,
+			msg,
+		)
+		update.Run(ctx)
+		j.AddError(update.Error())
+	}
 }
