@@ -622,7 +622,7 @@ const (
 	RepotrackerVersionRequester = "gitter_request"
 	TriggerRequester            = "trigger_request"
 	MergeTestRequester          = "merge_test"           // Evergreen commit queue
-	AdHocRequester              = "ad_hoc"               // periodic build
+	AdHocRequester              = "ad_hoc"               // periodic build or create version endpoint
 	GithubMergeRequester        = "github_merge_request" // GitHub merge queue
 )
 

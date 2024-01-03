@@ -126,6 +126,11 @@ cli:$(localClientBinary)
 clis:$(clientBinaries)
 $(clientBuildDir)/%/$(unixBinaryBasename) $(clientBuildDir)/%/$(windowsBinaryBasename):$(buildDir)/build-cross-compile $(srcFiles) go.mod go.sum
 	./$(buildDir)/build-cross-compile -buildName=$* -ldflags="$(ldFlags)" -gcflags="$(gcFlags)" -goBinary="$(nativeGobin)" -directory=$(clientBuildDir) -source=$(clientSource) -output=$@
+
+build-linux_%: $(clientBuildDir)/linux_%/$(unixBinaryBasename);
+build-windows_%: $(clientBuildDir)/windows_%/$(windowsBinaryBasename);
+build-darwin_%: $(clientBuildDir)/darwin_%/$(unixBinaryBasename) $(if $(SIGN_MACOS),$(clientBuildDir)/darwin_%/.signed);
+
 sign-macos:$(foreach platform,$(macOSPlatforms),$(clientBuildDir)/$(platform)/.signed)
 # Targets to upload the CLI binaries to S3.
 $(buildDir)/upload-s3:cmd/upload-s3/upload-s3.go
