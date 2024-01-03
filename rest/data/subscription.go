@@ -20,17 +20,14 @@ import (
 func convertVersionSubscription(s *event.Subscription) error {
 	var requester string
 
-	// Handle project subscriptions.
-	if s.OwnerType == event.OwnerTypeProject {
+	if s.OwnerType == event.OwnerTypeProject { // Handle project subscriptions.
 		for _, selector := range s.Selectors {
 			if selector.Type == event.SelectorRequester {
 				requester = selector.Data
 				break
 			}
 		}
-	}
-	// Handle personal subscriptions.
-	if s.OwnerType == event.OwnerTypePerson {
+	} else if s.OwnerType == event.OwnerTypePerson { // Handle personal subscriptions.
 		for _, selector := range s.Selectors {
 			if selector.Type == event.SelectorID {
 				versionId := selector.Data
