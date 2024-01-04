@@ -229,7 +229,7 @@ func NewEnvironment(ctx context.Context, confPath string, db *DBSettings) (Envir
 
 	catcher.Add(e.initJasper())
 	catcher.Add(e.initDepot(ctx))
-	catcher.Add(e.initSenders(ctx))
+	catcher.Add(e.initThirdPartySenders(ctx))
 	catcher.Add(e.createLocalQueue(ctx))
 	catcher.Add(e.createRemoteQueues(ctx))
 	catcher.Add(e.createNotificationQueue(ctx))
@@ -702,11 +702,12 @@ func (e *envState) initClientConfig() {
 	}
 }
 
-// initSenders initializes the senders that are used to send payloads to
-// external services such as sending GitHub statuses and Jira messages. These
-// are meant to enable specific Evergreen behavior and are distinct from the
-// global application-wide logging system (see (*Settings).GetSender).
-func (e *envState) initSenders(ctx context.Context) error {
+// initThirdPartySenders initializes the senders that are used to send payloads
+// to external services such as sending GitHub statuses and Jira messages. These
+// are meant to enable specific Evergreen behaviors like notifications, and are
+// distinct from the global application-wide logging system (see
+// (*Settings).GetSender).
+func (e *envState) initThirdPartySenders(ctx context.Context) error {
 	if e.settings == nil {
 		return errors.New("no settings object, cannot build senders")
 	}

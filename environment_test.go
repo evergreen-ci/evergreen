@@ -137,7 +137,7 @@ func (s *EnvironmentSuite) TestInitSenders() {
 		},
 	}
 
-	s.Require().NoError(s.env.initSenders(ctx))
+	s.Require().NoError(s.env.initThirdPartySenders(ctx))
 
 	s.Require().NotEmpty(s.env.senders, "should have set up at least one sender")
 	for _, sender := range s.env.senders {
