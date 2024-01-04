@@ -745,7 +745,9 @@ func LoadProjectInto(ctx context.Context, data []byte, opts *GetProjectOpts, ide
 	}
 	project.Identifier = identifier
 
-	// Remove includes once the project is translated.
+	// Remove includes once the project is translated since translate project saves number of includes.
+	// Intermediate project is used to save parser project as a YAML so removing the includes verifies that
+	// they have been processed.
 	intermediateProject.Include = nil
 
 	return intermediateProject, errors.Wrapf(err, LoadProjectError)
