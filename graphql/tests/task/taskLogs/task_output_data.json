@@ -7,7 +7,7 @@
       "lines": [
         {
           "priority": 40,
-          "timestamp": 1575743479393000000,
+          "timestamp": 1704085200000000000,
           "data": "    [javac]                    ^"
         }
       ]
@@ -19,12 +19,12 @@
       "lines": [
         {
           "priority": 40,
-          "timestamp": 1575743479637000000,
+          "timestamp": 1704085202000000000,
           "data": "    [javac] 9 warnings"
         },
         {
           "priority": 40,
-          "timestamp": 1575743479637000000,
+          "timestamp": 1704085203000000000,
           "data": "      [jar] Building MANIFEST-only jar: C:\\data\\mci\\fd27d777b88be249b1059d842a975a6d\\mms\\server\\build\\classpath.all.jar"
         }
       ]
@@ -36,7 +36,7 @@
       "lines": [
         {
           "priority": 40,
-          "timestamp": 1575743479393000000,
+          "timestamp": 1704085201000000000,
           "data": "    [javac]     protected void finalize() {"
         }
       ]
