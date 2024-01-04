@@ -745,7 +745,7 @@ func LoadProjectInto(ctx context.Context, data []byte, opts *GetProjectOpts, ide
 	}
 	project.Identifier = identifier
 
-	// Don't remove includes until project is translated.
+	// Remove includes once the project is translated.
 	intermediateProject.Include = nil
 
 	return intermediateProject, errors.Wrapf(err, LoadProjectError)

@@ -70,7 +70,7 @@ type Project struct {
 	Private bool `yaml:"private,omitempty" bson:"private"`
 
 	// Number of includes in the project cached for validation
-	NumIncludes int
+	NumIncludes int `yaml:"-" bson:"-"`
 }
 
 type ProjectInfo struct {
