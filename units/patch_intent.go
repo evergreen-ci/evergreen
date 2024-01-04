@@ -1267,16 +1267,8 @@ func (j *patchIntentProcessor) sendGitHubSuccessMessages(ctx context.Context, pa
 		return
 	}
 	// If the base evergreen context is not one of the rules, add it.
-	hasEvergreenContext := false
-	for _, rule := range rules {
-		if rule == evergreenContext {
-			hasEvergreenContext = true
-		}
-	}
-	if !hasEvergreenContext {
-		rules = append(rules, evergreenContext)
-	}
-	for _, rule := range rules {
+	uniqueRules := utility.UniqueStrings(append(rules, evergreenContext))
+	for _, rule := range uniqueRules {
 		update := NewGithubStatusUpdateJobWithSuccessMessage(
 			rule,
 			patchDoc.GithubPatchData.BaseOwner,
