@@ -125,6 +125,26 @@ func (s *EnvironmentSuite) TestConfigErrorsIfCannotValidateConfig() {
 	s.Contains(err.Error(), "validating settings")
 }
 
+func (s *EnvironmentSuite) TestInitSenders() {
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
+	s.env.settings = &Settings{
+		Notify: NotifyConfig{
+			SES: SESConfig{
+				SenderAddress: "sender_address",
+			},
+		},
+	}
+
+	s.Require().NoError(s.env.initThirdPartySenders(ctx))
+
+	s.Require().NotEmpty(s.env.senders, "should have set up at least one sender")
+	for _, sender := range s.env.senders {
+		s.NotZero(sender.ErrorHandler(), "fallback error handler should be set")
+	}
+}
+
 func (s *EnvironmentSuite) TestGetClientConfig() {
 	root := filepath.Join(FindEvergreenHome(), ClientDirectory)
 	if err := os.Mkdir(root, os.ModeDir|os.ModePerm); err != nil {
