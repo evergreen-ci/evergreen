@@ -1,4 +1,3 @@
-#web-app:
 ingress:
   hosts:
     - evergreen.devprod-evergreen.staging.corp.mongodb.com

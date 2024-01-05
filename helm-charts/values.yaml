@@ -1,7 +1,5 @@
-#web-app:
 image:
   repository: 795250896452.dkr.ecr.us-east-1.amazonaws.com/devprod-evergreen/evergreen
-  tag: latest
 
 arch: arm64
 
