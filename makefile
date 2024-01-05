@@ -252,6 +252,8 @@ dist-unsigned:
 dist:$(buildDir)/dist.tar.gz
 $(buildDir)/dist.tar.gz:$(buildDir)/make-tarball $(clientBinaries) $(uiFiles) $(if $(SIGN_MACOS),sign-macos)
 	./$< --name $@ --prefix $(name) $(foreach item,$(distContents),--item $(item)) --exclude "public/node_modules" --exclude "clients/.cache"
+$(buildDir)/static_assets.tgz:$(buildDir)/make-tarball $(uiFiles)
+	./$< --name $@ --prefix static_assets $(foreach item,$(distArtifacts),--item $(item)) --exclude "public/node_modules" --exclude "clients/.cache"
 # end main build
 
 # userfacing targets for basic build and development operations
