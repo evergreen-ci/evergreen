@@ -1074,7 +1074,7 @@ func (a *Agent) killProcs(ctx context.Context, tc *taskContext, ignoreTaskGroupC
 		logger = tc.logger.Execution()
 	}
 
-	if !additionalShouldKillCheck || !a.shouldKill(tc, ignoreTaskGroupCheck) {
+	if !a.shouldKill(tc, ignoreTaskGroupCheck) && !additionalShouldKillCheck {
 		return
 	}
 
