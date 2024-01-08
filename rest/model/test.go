@@ -68,9 +68,11 @@ func (at *APITest) BuildFromService(st interface{}) error {
 
 		at.TestFile = utility.ToStringPtr(v.GetDisplayTestName())
 		at.Logs = TestLogs{
-			URL:     utility.ToStringPtr(v.GetLogURL(env, evergreen.LogViewerHTML)),
-			URLRaw:  utility.ToStringPtr(v.GetLogURL(env, evergreen.LogViewerRaw)),
-			LineNum: v.LineNum,
+			URL:           utility.ToStringPtr(v.GetLogURL(env, evergreen.LogViewerHTML)),
+			URLRaw:        utility.ToStringPtr(v.GetLogURL(env, evergreen.LogViewerRaw)),
+			LineNum:       v.LineNum,
+			RenderingType: utility.ToStringPtr("resmoke"),
+			Version:       1,
 		}
 		if lobsterURL := v.GetLogURL(env, evergreen.LogViewerLobster); lobsterURL != "" {
 			at.Logs.URLLobster = utility.ToStringPtr(lobsterURL)
