@@ -46,9 +46,6 @@ func (c *ClientConfig) populateClientBinaries(ctx context.Context, bucket pail.B
 			continue
 		}
 		osArchParts := strings.Split(name[0], "_")
-		if len(osArchParts) != 2 {
-			continue
-		}
 		c.ClientBinaries = append(c.ClientBinaries, ClientBinary{
 			URL:         fmt.Sprintf("%s/%s", c.S3URLPrefix, item),
 			OS:          osArchParts[0],
