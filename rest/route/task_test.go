@@ -256,8 +256,7 @@ func TestGetTaskSyncReadCredentials(t *testing.T) {
 				TaskSyncRead: &creds,
 			},
 			Docker: &model.APIDockerConfig{
-				APIVersion:    utility.ToStringPtr(""),
-				DefaultDistro: utility.ToStringPtr(""),
+				APIVersion: utility.ToStringPtr(""),
 			},
 		},
 	}

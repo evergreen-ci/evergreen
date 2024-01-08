@@ -275,8 +275,6 @@ func (s *AdminSuite) TestAmboyConfig() {
 		DBConnection: AmboyDBConfig{
 			URL:      "mongodb://localhost:27017",
 			Database: "db",
-			Username: "user",
-			Password: "password",
 		},
 		PoolSizeLocal:                         10,
 		PoolSizeRemote:                        20,

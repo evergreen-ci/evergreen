@@ -620,7 +620,7 @@ func (p *mergeParams) uploadMergePatch(conf *ClientSettings, ac *legacyClient, u
 		return err
 	}
 
-	diffData, err := loadGitData("", ref.Branch, p.ref, p.commits, true)
+	diffData, err := loadGitData("", "", ref.Branch, p.ref, p.commits, true)
 	if err != nil {
 		return errors.Wrap(err, "generating patches")
 	}
@@ -709,7 +709,7 @@ func (p *moduleParams) addModule(ac *legacyClient, rc *legacyClient) error {
 		message = fmt.Sprintf("%s %s", commitQueuePatchLabel, commits)
 	}
 
-	diffData, err := loadGitData("", module.Branch, p.ref, p.commits, true)
+	diffData, err := loadGitData("", "", module.Branch, p.ref, p.commits, true)
 	if err != nil {
 		return errors.Wrap(err, "getting patch data")
 	}

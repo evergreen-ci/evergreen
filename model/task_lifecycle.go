@@ -609,6 +609,8 @@ func doBisectStepback(ctx context.Context, t *task.Task) error {
 			"project_id":                    t.Project,
 		})
 	}
+	// The previous iteration is the task we are currently processing.
+	s.PreviousStepbackTaskId = t.Id
 
 	// Depending on the task status, we want to update the
 	// last failing or last passing task.
@@ -632,17 +634,17 @@ func doBisectStepback(ctx context.Context, t *task.Task) error {
 	if nextTask.Id == s.LastPassingStepbackTaskId {
 		return nil
 	}
+	s.NextStepbackTaskId = nextTask.Id
+	// Store our next task to our current task.
+	if err := task.SetNextStepbackId(t.Id, s); err != nil {
+		return errors.Wrapf(err, "could not set next stepback task id for stepback task '%s'", t.Id)
+	}
 	// If the next task has finished, negative priority, or already activated, no-op.
 	if nextTask.IsFinished() || nextTask.Priority < 0 || nextTask.Activated {
 		return nil
 	}
-
-	// Set the midway task information for future stepback.
-	s.NextStepbackTaskId = nextTask.Id
-	nextTask.StepbackInfo = &s
-
-	// Set the stepback task info
-	if err = nextTask.SetStepbackInfo(s); err != nil {
+	// Store our last and previous stepback tasks in our upcoming/next task.
+	if err = task.SetLastAndPreviousStepbackIds(nextTask.Id, s); err != nil {
 		return errors.Wrapf(err, "setting stepback info for task '%s'", nextTask.Id)
 	}
 

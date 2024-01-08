@@ -45,7 +45,7 @@ func (t *hostBase) Fetch(ctx context.Context, e *event.EventLogEntry) error {
 		return errors.Errorf("expected host event data, got %T", e.Data)
 	}
 
-	t.host, err = host.FindOneId(ctx, e.ResourceId)
+	t.host, err = host.FindOneByIdOrTag(ctx, e.ResourceId)
 	if err != nil {
 		return errors.Wrapf(err, "finding host '%s'", e.ResourceId)
 	}

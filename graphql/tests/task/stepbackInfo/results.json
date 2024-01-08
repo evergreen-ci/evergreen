@@ -1,0 +1,30 @@
+{
+  "tests": [
+    {
+      "query_file": "stepbackInfo.graphql",
+      "result": {
+        "data": {
+          "hasStepback": {
+            "stepbackInfo": {
+              "lastFailingStepbackTaskId": "f1",
+              "lastPassingStepbackTaskId": "p1",
+              "nextStepbackTaskId": "",
+              "previousStepbackTaskId": ""
+            }
+          },
+          "hasNextStepback": {
+            "stepbackInfo": {
+              "lastFailingStepbackTaskId": "f1",
+              "lastPassingStepbackTaskId": "p1",
+              "nextStepbackTaskId": "n1",
+              "previousStepbackTaskId": "r1"
+            }
+          },
+          "noStepback": {
+            "stepbackInfo": null
+          }
+        }
+      }
+    }
+  ]
+}

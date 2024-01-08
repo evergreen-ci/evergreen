@@ -177,7 +177,10 @@ func (c *createHost) getLogsFromNewDockerHost(ctx context.Context, logger client
 
 func (c *createHost) initializeLogBatchInfo(id string, conf *internal.TaskConfig, startTime time.Time) (*logBatchInfo, error) {
 	const permissions = os.O_APPEND | os.O_CREATE | os.O_WRONLY
-	info := &logBatchInfo{batchStart: startTime}
+	info := &logBatchInfo{
+		batchStart: startTime,
+		hostID:     id,
+	}
 
 	// initialize file names
 	if c.CreateHost.StderrFile == "" {

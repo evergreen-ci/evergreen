@@ -7,6 +7,7 @@ import (
 	"os"
 	"path/filepath"
 	"reflect"
+	"strconv"
 	"strings"
 	"time"
 
@@ -32,7 +33,7 @@ var (
 	BuildRevision = ""
 
 	// ClientVersion is the commandline version string used to control auto-updating.
-	ClientVersion = "2023-11-20"
+	ClientVersion = "2023-12-14"
 
 	// Agent version to control agent rollover.
 	AgentVersion = "2024-01-08"
@@ -102,6 +103,7 @@ type Settings struct {
 	SSHKeyPairs         []SSHKeyPair            `yaml:"ssh_key_pairs" bson:"ssh_key_pairs" json:"ssh_key_pairs"`
 	Slack               SlackConfig             `yaml:"slack" bson:"slack" json:"slack" id:"slack"`
 	Splunk              SplunkConfig            `yaml:"splunk" bson:"splunk" json:"splunk" id:"splunk"`
+	TaskLimits          TaskLimitsConfig        `yaml:"task_limits" bson:"task_limits" json:"task_limits" id:"task_limits"`
 	Triggers            TriggerConfig           `yaml:"triggers" bson:"triggers" json:"triggers" id:"triggers"`
 	Ui                  UIConfig                `yaml:"ui" bson:"ui" json:"ui" id:"ui"`
 	Spawnhost           SpawnHostConfig         `yaml:"spawnhost" bson:"spawnhost" json:"spawnhost" id:"spawnhost"`
@@ -440,6 +442,13 @@ func (settings *Settings) Validate() error {
 	return errors.WithStack(catcher.Resolve())
 }
 
+// GetSender returns the global application-wide loggers. These are special
+// universal loggers (distinct from other senders like the GitHub status sender
+// or email notification sender) and will be used when grip is invoked to log
+// messages in the application (e.g. grip.Info, grip.Error, etc). Because these
+// loggers are the main way to send logs in the application, these are essential
+// to monitoring the application and therefore have to be set up very early
+// during application startup.
 func (s *Settings) GetSender(ctx context.Context, env Environment) (send.Sender, error) {
 	var (
 		sender   send.Sender
@@ -455,30 +464,31 @@ func (s *Settings) GetSender(ctx context.Context, env Environment) (send.Sender,
 	if err != nil {
 		return nil, errors.Wrap(err, "configuring error fallback logger")
 	}
-
-	// setup the base/default logger (generally direct to systemd
-	// or standard output)
-	switch s.LogPath {
-	case localLoggingOverride:
-		// log directly to systemd if possible, and log to
-		// standard output otherwise.
-		sender = getSystemLogger()
-	case standardOutputLoggingOverride, "":
-		sender = send.MakeNative()
-	default:
-		sender, err = send.MakeFileLogger(s.LogPath)
-		if err != nil {
-			return nil, errors.Wrap(err, "configuring file logger")
+	if disableLocalLogging, err := strconv.ParseBool(os.Getenv(disableLocalLoggingEnvVar)); err == nil && !disableLocalLogging {
+		// setup the base/default logger (generally direct to systemd
+		// or standard output)
+		switch s.LogPath {
+		case localLoggingOverride:
+			// log directly to systemd if possible, and log to
+			// standard output otherwise.
+			sender = getSystemLogger()
+		case standardOutputLoggingOverride, "":
+			sender = send.MakeNative()
+		default:
+			sender, err = send.MakeFileLogger(s.LogPath)
+			if err != nil {
+				return nil, errors.Wrap(err, "configuring file logger")
+			}
 		}
-	}
 
-	if err = sender.SetLevel(levelInfo); err != nil {
-		return nil, errors.Wrap(err, "setting level")
+		if err = sender.SetLevel(levelInfo); err != nil {
+			return nil, errors.Wrap(err, "setting level")
+		}
+		if err = sender.SetErrorHandler(send.ErrorHandlerFromSender(fallback)); err != nil {
+			return nil, errors.Wrap(err, "setting error handler")
+		}
+		senders = append(senders, sender)
 	}
-	if err = sender.SetErrorHandler(send.ErrorHandlerFromSender(fallback)); err != nil {
-		return nil, errors.Wrap(err, "setting error handler")
-	}
-	senders = append(senders, sender)
 
 	// set up external log aggregation services:
 	//
@@ -703,38 +713,7 @@ type DBSettings struct {
 	DB                   string       `yaml:"db"`
 	WriteConcernSettings WriteConcern `yaml:"write_concern"`
 	ReadConcernSettings  ReadConcern  `yaml:"read_concern"`
-	AuthFile             string       `yaml:"auth_file"`
-}
-
-func (dbs *DBSettings) HasAuth() bool {
-	return dbs.AuthFile != ""
-}
-
-type dbCreds struct {
-	DBUser string `yaml:"mdb_database_username"`
-	DBPwd  string `yaml:"mdb_database_password"`
-}
-
-func (dbs *DBSettings) GetAuth() (string, string, error) {
-	return GetAuthFromYAML(dbs.AuthFile)
-}
-
-func GetAuthFromYAML(authFile string) (string, string, error) {
-	creds := &dbCreds{}
-
-	file, err := os.Open(authFile)
-	if err != nil {
-		return "", "", err
-	}
-	defer file.Close()
-
-	decoder := yaml.NewDecoder(file)
-
-	if err := decoder.Decode(&creds); err != nil {
-		return "", "", err
-	}
-
-	return creds.DBUser, creds.DBPwd, nil
+	AWSAuthEnabled       bool         `yaml:"aws_auth_enabled"`
 }
 
 // supported banner themes in Evergreen

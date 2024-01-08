@@ -1,0 +1,26 @@
+{
+  hasStepback: task(taskId: "has_stepback") {
+    stepbackInfo {
+      lastFailingStepbackTaskId
+      lastPassingStepbackTaskId
+      nextStepbackTaskId
+      previousStepbackTaskId
+    }
+  }
+  hasNextStepback: task(taskId: "has_next_stepback") {
+    stepbackInfo {
+      lastFailingStepbackTaskId
+      lastPassingStepbackTaskId
+      nextStepbackTaskId
+      previousStepbackTaskId
+    }
+  }
+  noStepback: task(taskId: "no_stepback"){
+    stepbackInfo {
+      lastFailingStepbackTaskId
+      lastPassingStepbackTaskId
+      nextStepbackTaskId
+      previousStepbackTaskId
+    }
+  }
+}

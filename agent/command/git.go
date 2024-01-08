@@ -71,8 +71,6 @@ type gitFetchProject struct {
 
 	CommitterEmail string `mapstructure:"committer_email"`
 
-	CloneParams string `mapstructure:"clone_params"`
-
 	base
 }
 
@@ -84,7 +82,6 @@ type cloneOpts struct {
 	branch                 string
 	dir                    string
 	token                  string
-	cloneParams            string
 	recurseSubmodules      bool
 	useVerbose             bool
 	usePatchMergeCommitSha bool
@@ -240,9 +237,6 @@ func (opts cloneOpts) buildHTTPCloneCommand(forApp bool) ([]string, error) {
 	if opts.branch != "" {
 		clone = fmt.Sprintf("%s --branch '%s'", clone, opts.branch)
 	}
-	if opts.cloneParams != "" {
-		clone = fmt.Sprintf("%s %s", clone, opts.cloneParams)
-	}
 
 	redactedClone := strings.Replace(clone, opts.token, "[redacted oauth token]", -1)
 	return []string{
@@ -267,9 +261,6 @@ func (opts cloneOpts) buildSSHCloneCommand() ([]string, error) {
 	}
 	if opts.branch != "" {
 		cloneCmd = fmt.Sprintf("%s --branch '%s'", cloneCmd, opts.branch)
-	}
-	if opts.cloneParams != "" {
-		cloneCmd = fmt.Sprintf("%s %s", cloneCmd, opts.cloneParams)
 	}
 
 	return []string{
@@ -484,7 +475,6 @@ func (c *gitFetchProject) opts(projectMethod, projectToken string, logger client
 		branch:                 conf.ProjectRef.Branch,
 		dir:                    c.Directory,
 		token:                  projectToken,
-		cloneParams:            c.CloneParams,
 		recurseSubmodules:      c.RecurseSubmodules,
 		usePatchMergeCommitSha: true,
 	}
@@ -888,7 +878,6 @@ func (c *gitFetchProject) fetch(ctx context.Context,
 		err = c.fetchModuleSource(ctx, comm, conf, logger, jpm, td, opts.token, opts.method, p, moduleName)
 		if err != nil {
 			logger.Execution().Error(errors.Wrap(err, "fetching module source"))
-			return err
 		}
 	}
 

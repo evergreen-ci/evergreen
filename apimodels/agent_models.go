@@ -67,7 +67,7 @@ type TaskEndDetail struct {
 	OOMTracker      *OOMTrackerInfo `bson:"oom_killer,omitempty" json:"oom_killer,omitempty"`
 	Modules         ModuleCloneInfo `bson:"modules,omitempty" json:"modules,omitempty"`
 	TraceID         string          `bson:"trace_id,omitempty" json:"trace_id,omitempty"`
-	DiskDevices     []string        `bson:"data_disk,omitempty" json:"data_disk,omitempty"`
+	DiskDevices     []string        `bson:"disk_devices,omitempty" json:"disk_devices,omitempty"`
 }
 
 type OOMTrackerInfo struct {
@@ -196,18 +196,9 @@ func (ch *CreateHost) validateDocker(ctx context.Context) error {
 	catcher.Add(ch.setNumHosts())
 	catcher.Add(ch.validateAgentOptions())
 
-	if ch.Image == "" {
-		catcher.New("Docker image must be set")
-	}
-	if ch.Distro == "" {
-		settings, err := evergreen.GetConfig(ctx)
-		if err != nil {
-			catcher.New("error getting config to set default distro")
-		} else {
-			ch.Distro = settings.Providers.Docker.DefaultDistro
-		}
+	catcher.NewWhen(ch.Image == "", "Docker image must be set")
+	catcher.NewWhen(ch.Distro == "", "must set a distro to run Docker container in")
 
-	}
 	if ch.ContainerWaitTimeoutSecs <= 0 {
 		ch.ContainerWaitTimeoutSecs = DefaultContainerWaitTimeoutSecs
 	} else if ch.ContainerWaitTimeoutSecs >= 3600 || ch.ContainerWaitTimeoutSecs <= 10 {

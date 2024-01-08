@@ -392,17 +392,21 @@ The validation step will check for:
 
 ### Modules
 
-For patches that run tests based off of changes across multiple
+For versions that run tests based off of changes across multiple
 projects, the modules field may be defined to specify other git projects
 with configurations specifying the way that changes across them are
-applied within the patch at runtime. If configured correctly, the left
-hand side of the Spruce UI under "Version Manifest" will contain
-details on how the modules were parsed from YAML and which git revisions
-are being used.
+applied within the patch at runtime. If at least one module is defined and it
+is configured correctly, the left hand side of the Spruce UI under "Version
+Manifest" will contain details on how the modules were parsed from YAML and
+which git revisions are being used. If no modules have been defined, the
+"Version Manifest" will not appear at all in the Spruce UI.
+
+For mainline commits and [trigger versions](Project-and-Distro-Settings.md#project-triggers), a new 
+manifest will be created that uses the latest revision available for each module.
 
 For manual patches and GitHub PRs, by default, the git revisions in the
-version manifest will be inherited from its base version. You can change
-the git revision for modules by setting a module manually with 
+version manifest will be inherited from its base version (i.e. the mainline commit version of the patch's base git revision). 
+You can change the git revision for modules by setting a module manually with 
 [evergreen set-module](../CLI.md#operating-on-existing-patches) or
 by specifying the `auto_update` option (as described below) to use the
 latest revision available for a module. The full hierarchy of how
@@ -959,12 +963,17 @@ task within a specific build variant).
 
 ### Out of memory (OOM) Tracker
 
-This is set to true at the top level if you'd like to enable the OOM Tracker for your project.
+By default, the OOM tracker is enabled. 
 
 If there is an OOM kill, immediately before the post-task starts, there will be
-a task log message saying whether it found any OOM killed processes, with their
-PIDs. A message with PIDs will also be displayed in the metadata panel in the
-UI.
+an agent log message saying whether it found any OOM killed processes, with their
+PIDs. A message with PIDs will also be displayed in the metadata panel in the UI.
+
+To disable the OOM tracker, add the following to the top-level of your yaml.
+
+``` yaml
+oom_tracker: false
+```
 
 ### Matrix Variant Definition
 
@@ -1526,7 +1535,8 @@ builds.
 To address this, project files can define a top-level `ignore`
 list of gitignore-style globs which tell Evergreen to not automatically
 run tasks for commits that only change ignored files, and we will not 
-create PR patches but instead send a successful status. 
+create PR patches but instead send a successful status for all required
+checks as well as the base `evergeen` check. 
 
 ``` yaml
 ignore:

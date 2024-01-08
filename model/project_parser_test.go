@@ -1918,6 +1918,35 @@ tasks:
 	assert.Equal("commandLogger", proj.Tasks[0].Commands[0].Loggers.System[0].Type)
 }
 
+func TestParseOomTracker(t *testing.T) {
+	yml := `
+tasks:
+- name: task_1
+  commands:
+  - command: myCommand
+`
+	// Verify that the default is true
+	proj := &Project{}
+	ctx := context.Background()
+	_, err := LoadProjectInto(ctx, []byte(yml), nil, "id", proj)
+	assert.NotNil(t, proj)
+	assert.Nil(t, err)
+	assert.True(t, proj.OomTracker)
+
+	yml = `
+oom_tracker: false
+tasks:
+- name: task_1
+  commands:
+  - command: myCommand
+`
+	proj = &Project{}
+	_, err = LoadProjectInto(ctx, []byte(yml), nil, "id", proj)
+	assert.NotNil(t, proj)
+	assert.Nil(t, err)
+	assert.False(t, proj.OomTracker)
+}
+
 func TestAddBuildVariant(t *testing.T) {
 	pp := ParserProject{
 		Identifier: utility.ToStringPtr("small"),
@@ -1954,6 +1983,10 @@ func TestParserProjectStorage(t *testing.T) {
 		assert.NoError(t, bucket.RemovePrefix(ctx, ppConf.Prefix))
 	}()
 
+	defer func() {
+		assert.NoError(t, db.ClearCollections(ParserProjectCollection))
+	}()
+
 	for methodName, ppStorageMethod := range map[string]evergreen.ParserProjectStorageMethod{
 		"DB": evergreen.ProjectStorageMethodDB,
 		"S3": evergreen.ProjectStorageMethodS3,
@@ -1961,7 +1994,7 @@ func TestParserProjectStorage(t *testing.T) {
 		t.Run("StorageMethod"+methodName, func(t *testing.T) {
 			for testName, testCase := range map[string]func(ctx context.Context, t *testing.T, env *mock.Environment){
 				"FindOneByIDReturnsNilErrorAndResultForNonexistentParserProject": func(ctx context.Context, t *testing.T, env *mock.Environment) {
-					ppStorage, err := GetParserProjectStorage(env.Settings(), ppStorageMethod)
+					ppStorage, err := GetParserProjectStorage(ctx, env.Settings(), ppStorageMethod)
 					require.NoError(t, err)
 					defer ppStorage.Close(ctx)
 
@@ -1970,7 +2003,7 @@ func TestParserProjectStorage(t *testing.T) {
 					assert.Zero(t, pp)
 				},
 				"FindOneByIDWithFieldsReturnsNilErrorAndResultForNonexistentParserProject": func(ctx context.Context, t *testing.T, env *mock.Environment) {
-					ppStorage, err := GetParserProjectStorage(env.Settings(), ppStorageMethod)
+					ppStorage, err := GetParserProjectStorage(ctx, env.Settings(), ppStorageMethod)
 					require.NoError(t, err)
 					defer ppStorage.Close(ctx)
 
@@ -1983,7 +2016,7 @@ func TestParserProjectStorage(t *testing.T) {
 						Id:    "my-project",
 						Owner: utility.ToStringPtr("me"),
 					}
-					ppStorage, err := GetParserProjectStorage(env.Settings(), ppStorageMethod)
+					ppStorage, err := GetParserProjectStorage(ctx, env.Settings(), ppStorageMethod)
 					require.NoError(t, err)
 					defer ppStorage.Close(ctx)
 
@@ -1999,7 +2032,7 @@ func TestParserProjectStorage(t *testing.T) {
 						Id:    "my-project",
 						Owner: utility.ToStringPtr("me"),
 					}
-					ppStorage, err := GetParserProjectStorage(env.Settings(), ppStorageMethod)
+					ppStorage, err := GetParserProjectStorage(ctx, env.Settings(), ppStorageMethod)
 					require.NoError(t, err)
 					defer ppStorage.Close(ctx)
 
@@ -2085,7 +2118,7 @@ func checkProjectPersists(ctx context.Context, t *testing.T, env evergreen.Envir
 	pp.Id = "my-project"
 	pp.Identifier = utility.ToStringPtr("old-project-identifier")
 
-	ppStorage, err := GetParserProjectStorage(env.Settings(), ppStorageMethod)
+	ppStorage, err := GetParserProjectStorage(ctx, env.Settings(), ppStorageMethod)
 	require.NoError(t, err)
 	defer ppStorage.Close(ctx)
 
@@ -2467,7 +2500,7 @@ func TestMergeUnique(t *testing.T) {
 	main := &ParserProject{
 		Stepback:    utility.ToBoolPtr(true),
 		BatchTime:   utility.ToIntPtr(1),
-		OomTracker:  utility.ToBoolPtr(true),
+		OomTracker:  utility.ToBoolPtr(false),
 		DisplayName: utility.ToStringPtr("name"),
 	}
 

@@ -480,7 +480,7 @@ Parameters:
 
 ## host.create
 
-`host.create` starts a host from a task.
+`host.create` starts a host or a Docker container from a task.
 
 ``` yaml
 - command: host.create
@@ -520,16 +520,18 @@ Agent Parameters:
 
 EC2 Parameters:
 
--   `ami` - EC2 AMI to start. Must set `ami` or `distro` but must not
-    set both.
+-   `ami` - For an `ec2` provider, the AMI to start. Must set `ami` or `distro`
+    but must not set both.
 -   `aws_access_key_id` - AWS access key ID. May set to use a
     non-default account. Must set if `aws_secret_access_key` is set.
 -   `aws_secret_access_key` - AWS secret key. May set to use a
     non-default account. Must set if `aws_access_key_id` is set.
 -   `device_name` - name of EBS device
--   `distro` - Evergreen distro to start. Must set `ami` or `distro` but
-    must not set both. Note that the distro setup script will not run for 
-    hosts spawned by this command, so any required initial setup must be done manually.
+-   `distro` - Evergreen distro to start. For the `ec2` provider, must set
+    either `ami` only or `distro` but must not set both. For the `docker`
+    provider, `distro` must be set to the distro that will run the container.
+    Note that the distro setup script will not run for hosts spawned by this
+    command, so any required initial setup must be done manually.
 -   `ebs_block_device` - list of the following parameters:
 -   `ebs_iops` - EBS provisioned IOPS.
 -   `ebs_size` - Size of EBS volume in GB.
@@ -797,56 +799,6 @@ Parameters:
 -   `key`: name of the value to increment. Evergreen tracks these
     internally.
 -   `destination`: expansion name to save the value to.
-
-## mac.sign
-
-`mac.sign` signs and/or notarizes the mac OS artifacts. It calls
-internal macOS signing and notarization service.
-
-**Note**: This command is maintained by the BUILD team.
-
-``` yaml
-- command: mac.sign
-  params:
-    key_id: ${key_id}
-    secret: ${secret}
-    service_url: ${service_url}
-    client_binary: /local/path/to/client_binary
-    local_zip_file: /local/path/to/file_to_be_singed
-    output_zip_file: /local/path/to/output_file
-    artifact_type: binary
-    entitlements_file: /local/path/to/entitlements_file
-    verify: false
-    notarize: true
-    bundle_id: bundle_id_for_notarization
-    working_directory: /local/path/to/working_directory
-```
-
-Parameters:
-
--   `key_id`: the id of the key needs to be used for signing
--   `secret`: secret associated with the key
--   `service_url`: url of the signing and notarization service
--   `client_binary`: path to the client binary, if not given this value
-    is used - `/usr/local/bin/macnotary`
--   `local_zip_file`: path to the local zip file contains the list of
-    artifacts for signing
--   `output_zip_file`: local path to the file returned by service
--   `artifact_type`: type of the artifact. Either `binary` or `app`. If
-    not given `binary` is taken as a value
--   `entitlements_file`: path to the local entitlements file to be used
-    during signing. This can be omitted for default entitlements
--   `verify`: boolean param defines whether the signing/notarization
-    should be verified. Only supported on macOS. If not given or OS is
-    none mac OS, the `false` value will be taken
--   `notarize`: boolean param defines whether notarization should be
-    performed after signing. The default value is `false`
--   `bundle_id`: bundle id used during notarization. Must be given if
-    notarization requested
--   `build_variants`: list of buildvariants to run the command for, if
-    missing/empty will run for all
--   `working_directory`: local path to the working directory
-
 
 ## perf.send
 

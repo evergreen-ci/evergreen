@@ -1373,6 +1373,81 @@ func TestCheckTaskRuns(t *testing.T) {
 	})
 }
 
+func TestValidateIncludeLimits(t *testing.T) {
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
+	project := &model.Project{
+		NumIncludes: 10,
+	}
+
+	t.Run("SucceedsWithNumberOfIncludesBelowLimit", func(t *testing.T) {
+		settings := &evergreen.Settings{
+			TaskLimits: evergreen.TaskLimitsConfig{
+				MaxIncludesPerVersion: 100,
+			},
+		}
+		assert.Empty(t, validateIncludeLimits(ctx, settings, project, &model.ProjectRef{}, false))
+	})
+	t.Run("FailsWithIncludesExceedingLimit", func(t *testing.T) {
+		settings := &evergreen.Settings{
+			TaskLimits: evergreen.TaskLimitsConfig{
+				MaxIncludesPerVersion: 1,
+			},
+		}
+		errs := validateIncludeLimits(ctx, settings, project, &model.ProjectRef{}, false)
+		require.Len(t, errs, 1)
+		assert.Equal(t, Error, errs[0].Level)
+		assert.Contains(t, "project's total number of includes (10) exceeds maximum limit (1)", errs[0].Message)
+	})
+	t.Run("SucceedsWithNoMaxIncludesLimit", func(t *testing.T) {
+		settings := &evergreen.Settings{}
+		assert.Empty(t, validateIncludeLimits(ctx, settings, project, &model.ProjectRef{}, false))
+	})
+}
+
+func TestValidateProjectLimits(t *testing.T) {
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
+	makeProjectWithNumTasks := func(numTasks int) *model.Project {
+		var project model.Project
+		for i := 0; i < numTasks; i++ {
+			project.Tasks = append(project.Tasks, model.ProjectTask{
+				Name: fmt.Sprintf("task-%d", i),
+			})
+		}
+		return &project
+	}
+
+	t.Run("SucceedsWithNumberOfTasksBelowLimit", func(t *testing.T) {
+		settings := &evergreen.Settings{
+			TaskLimits: evergreen.TaskLimitsConfig{
+				MaxTasksPerVersion: 10,
+			},
+		}
+		project := makeProjectWithNumTasks(5)
+		assert.Empty(t, validateProjectLimits(ctx, settings, project, &model.ProjectRef{}, false))
+	})
+	t.Run("FailsWithTasksExceedingLimit", func(t *testing.T) {
+		settings := &evergreen.Settings{
+			TaskLimits: evergreen.TaskLimitsConfig{
+				MaxTasksPerVersion: 10,
+			},
+		}
+		project := makeProjectWithNumTasks(50)
+		errs := validateProjectLimits(ctx, settings, project, &model.ProjectRef{}, false)
+		require.Len(t, errs, 1)
+		assert.Equal(t, Error, errs[0].Level)
+		assert.Contains(t, "project's total number of tasks (50) exceeds maximum limit (10)", errs[0].Message)
+	})
+	t.Run("SucceedsWithNoMaxTaskLimit", func(t *testing.T) {
+		settings := &evergreen.Settings{}
+		project := makeProjectWithNumTasks(50)
+		assert.Empty(t, validateProjectLimits(ctx, settings, project, &model.ProjectRef{}, false))
+	})
+}
+
 func TestValidateTaskNames(t *testing.T) {
 	Convey("When a task name contains unauthorized characters, an error should be returned", t, func() {
 		project := &model.Project{

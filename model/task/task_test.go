@@ -3129,24 +3129,50 @@ func TestSetGeneratedTasksToActivate(t *testing.T) {
 	assert.Equal(t, taskFromDb.GeneratedTasksToActivate["bv3"], []string{"t3"})
 }
 
-func TestSetStepbackInfo(t *testing.T) {
+func TestSetNextStepbackId(t *testing.T) {
+	assert := assert.New(t)
 	require.NoError(t, db.ClearCollections(Collection))
 	task := Task{Id: "t1"}
-	assert.NoError(t, task.Insert())
+	require.NoError(t, task.Insert())
 
 	s := StepbackInfo{
 		LastFailingStepbackTaskId: "t2",
 		LastPassingStepbackTaskId: "t3",
 		NextStepbackTaskId:        "t4",
+		PreviousStepbackTaskId:    "t5",
 	}
 
-	assert.NoError(t, task.SetStepbackInfo(s))
+	require.NoError(t, SetNextStepbackId(task.Id, s))
 	taskFromDb, err := FindOneId("t1")
-	assert.NoError(t, err)
-	assert.NotNil(t, taskFromDb)
-	assert.Equal(t, "t2", taskFromDb.StepbackInfo.LastFailingStepbackTaskId)
-	assert.Equal(t, "t3", taskFromDb.StepbackInfo.LastPassingStepbackTaskId)
-	assert.Equal(t, "t4", taskFromDb.StepbackInfo.NextStepbackTaskId)
+	require.NoError(t, err)
+	require.NotNil(t, taskFromDb)
+	assert.NotEqual("t2", taskFromDb.StepbackInfo.LastFailingStepbackTaskId)
+	assert.NotEqual("t3", taskFromDb.StepbackInfo.LastPassingStepbackTaskId)
+	assert.Equal("t4", taskFromDb.StepbackInfo.NextStepbackTaskId)
+	assert.NotEqual("t5", taskFromDb.StepbackInfo.PreviousStepbackTaskId)
+}
+
+func TestSetLastAndPreviousStepbackIds(t *testing.T) {
+	assert := assert.New(t)
+	require.NoError(t, db.ClearCollections(Collection))
+	task := Task{Id: "t1"}
+	require.NoError(t, task.Insert())
+
+	s := StepbackInfo{
+		LastFailingStepbackTaskId: "t2",
+		LastPassingStepbackTaskId: "t3",
+		NextStepbackTaskId:        "t4",
+		PreviousStepbackTaskId:    "t5",
+	}
+
+	require.NoError(t, SetLastAndPreviousStepbackIds(task.Id, s))
+	taskFromDb, err := FindOneId("t1")
+	require.NoError(t, err)
+	require.NotNil(t, taskFromDb)
+	assert.Equal("t2", taskFromDb.StepbackInfo.LastFailingStepbackTaskId)
+	assert.Equal("t3", taskFromDb.StepbackInfo.LastPassingStepbackTaskId)
+	assert.NotEqual("t4", taskFromDb.StepbackInfo.NextStepbackTaskId)
+	assert.Equal("t5", taskFromDb.StepbackInfo.PreviousStepbackTaskId)
 }
 
 func TestGetLatestExecution(t *testing.T) {
@@ -4854,6 +4880,124 @@ func TestGenerateNotRun(t *testing.T) {
 				StartTime:             time.Now(),
 				GeneratedTasks:        false,
 				GeneratedJSONAsString: []string{"some_generated_json"},
+			})
+		})
+	}
+}
+
+func TestSetGeneratedJSON(t *testing.T) {
+	defer func() {
+		assert.NoError(t, db.ClearCollections(Collection))
+	}()
+
+	for tName, tCase := range map[string]func(t *testing.T, tsk *Task){
+		"Succeeds": func(t *testing.T, tsk *Task) {
+			files := GeneratedJSONFiles{"generated_json"}
+			require.NoError(t, tsk.Insert())
+
+			require.NoError(t, tsk.SetGeneratedJSON(files))
+
+			dbTask, err := FindOneId(tsk.Id)
+			require.NoError(t, err)
+			require.NotZero(t, dbTask)
+			assert.Equal(t, files, dbTask.GeneratedJSONAsString)
+		},
+		"NoopsForAlreadySetGeneratedJSON": func(t *testing.T, tsk *Task) {
+			originalFiles := GeneratedJSONFiles{"generated_files"}
+			tsk.GeneratedJSONAsString = originalFiles
+			require.NoError(t, tsk.Insert())
+
+			require.NoError(t, tsk.SetGeneratedJSON([]string{"new_generated_json"}))
+
+			dbTask, err := FindOneId(tsk.Id)
+			require.NoError(t, err)
+			require.NotZero(t, dbTask)
+			assert.EqualValues(t, originalFiles, dbTask.GeneratedJSONAsString)
+			assert.Empty(t, dbTask.GeneratedJSONStorageMethod)
+		},
+		"NoopsForAlreadySetGeneratedJSONDBStorage": func(t *testing.T, tsk *Task) {
+			originalFiles := GeneratedJSONFiles{"generated_json"}
+			tsk.GeneratedJSONAsString = originalFiles
+			tsk.GeneratedJSONStorageMethod = evergreen.ProjectStorageMethodDB
+			require.NoError(t, tsk.Insert())
+
+			require.NoError(t, tsk.SetGeneratedJSON(GeneratedJSONFiles{"new_generated_json"}))
+
+			dbTask, err := FindOneId(tsk.Id)
+			require.NoError(t, err)
+			require.NotZero(t, dbTask)
+			assert.Equal(t, originalFiles, dbTask.GeneratedJSONAsString)
+			assert.Equal(t, evergreen.ProjectStorageMethodDB, dbTask.GeneratedJSONStorageMethod)
+		},
+		"NoopsForAlreadySetGeneratedJSONS3Storage": func(t *testing.T, tsk *Task) {
+			tsk.GeneratedJSONStorageMethod = evergreen.ProjectStorageMethodS3
+			require.NoError(t, tsk.Insert())
+
+			require.NoError(t, tsk.SetGeneratedJSON(GeneratedJSONFiles{"new_generated_json"}))
+
+			dbTask, err := FindOneId(tsk.Id)
+			require.NoError(t, err)
+			require.NotZero(t, dbTask)
+			assert.Equal(t, evergreen.ProjectStorageMethodS3, dbTask.GeneratedJSONStorageMethod)
+			assert.Empty(t, dbTask.GeneratedJSONAsString)
+		},
+		"FailsForNonexistentTask": func(t *testing.T, tsk *Task) {
+			assert.Error(t, tsk.SetGeneratedJSON(GeneratedJSONFiles{"generated_json"}))
+			assert.Empty(t, tsk.GeneratedJSONAsString)
+			assert.Empty(t, tsk.GeneratedJSONStorageMethod)
+		},
+	} {
+		t.Run(tName, func(t *testing.T) {
+			require.NoError(t, db.ClearCollections(Collection))
+
+			tCase(t, &Task{
+				Id:        "task_id",
+				Status:    evergreen.TaskStarted,
+				StartTime: time.Now(),
+			})
+		})
+	}
+}
+
+func TestSetGeneratedJSONStorageMethod(t *testing.T) {
+	defer func() {
+		assert.NoError(t, db.ClearCollections(Collection))
+	}()
+
+	for tName, tCase := range map[string]func(t *testing.T, tsk *Task){
+		"Succeeds": func(t *testing.T, tsk *Task) {
+			require.NoError(t, tsk.Insert())
+
+			require.NoError(t, tsk.SetGeneratedJSONStorageMethod(evergreen.ProjectStorageMethodS3))
+
+			dbTask, err := FindOneId(tsk.Id)
+			require.NoError(t, err)
+			require.NotZero(t, dbTask)
+			assert.Equal(t, evergreen.ProjectStorageMethodS3, dbTask.GeneratedJSONStorageMethod)
+		},
+		"NoopsForAlreadySetGeneratedJSONStorageMethod": func(t *testing.T, tsk *Task) {
+			tsk.GeneratedJSONStorageMethod = evergreen.ProjectStorageMethodDB
+			require.NoError(t, tsk.Insert())
+
+			require.NoError(t, tsk.SetGeneratedJSONStorageMethod(evergreen.ProjectStorageMethodS3))
+
+			dbTask, err := FindOneId(tsk.Id)
+			require.NoError(t, err)
+			require.NotZero(t, dbTask)
+			assert.Equal(t, evergreen.ProjectStorageMethodDB, dbTask.GeneratedJSONStorageMethod)
+		},
+		"FailsForNonexistentTask": func(t *testing.T, tsk *Task) {
+			assert.Error(t, tsk.SetGeneratedJSONStorageMethod(evergreen.ProjectStorageMethodDB))
+			assert.Empty(t, tsk.GeneratedJSONStorageMethod)
+		},
+	} {
+		t.Run(tName, func(t *testing.T) {
+			require.NoError(t, db.ClearCollections(Collection))
+
+			tCase(t, &Task{
+				Id:        "task_id",
+				Status:    evergreen.TaskStarted,
+				StartTime: time.Now(),
 			})
 		})
 	}

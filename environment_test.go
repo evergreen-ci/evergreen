@@ -74,10 +74,6 @@ func (s *EnvironmentSuite) TestInitDB() {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 	localEnv := s.env
-	envAuth := os.Getenv(MongodbAuthFile)
-	if envAuth != "" {
-		db.AuthFile = envAuth
-	}
 	err := localEnv.initDB(ctx, *db)
 	s.NoError(err)
 	_, err = localEnv.client.ListDatabases(ctx, bson.M{})
@@ -127,6 +123,26 @@ func (s *EnvironmentSuite) TestConfigErrorsIfCannotValidateConfig() {
 	err := s.env.initSettings(ctx, "")
 	s.Error(err)
 	s.Contains(err.Error(), "validating settings")
+}
+
+func (s *EnvironmentSuite) TestInitSenders() {
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
+	s.env.settings = &Settings{
+		Notify: NotifyConfig{
+			SES: SESConfig{
+				SenderAddress: "sender_address",
+			},
+		},
+	}
+
+	s.Require().NoError(s.env.initThirdPartySenders(ctx))
+
+	s.Require().NotEmpty(s.env.senders, "should have set up at least one sender")
+	for _, sender := range s.env.senders {
+		s.NotZero(sender.ErrorHandler(), "fallback error handler should be set")
+	}
 }
 
 func (s *EnvironmentSuite) TestGetClientConfig() {

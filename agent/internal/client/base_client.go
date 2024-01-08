@@ -942,7 +942,7 @@ func (c *baseCommunicator) GetDockerStatus(ctx context.Context, hostID string) (
 	defer resp.Body.Close()
 
 	if resp.StatusCode != http.StatusOK {
-		return nil, util.RespErrorf(resp, errors.Wrapf(err, "getting status for container '%s'", hostID).Error())
+		return nil, util.RespErrorf(resp, "getting status for container '%s'", hostID)
 	}
 	status := cloud.ContainerStatus{}
 	if err := utility.ReadJSON(resp.Body, &status); err != nil {

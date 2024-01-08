@@ -54,6 +54,7 @@ providers:
       secret: "$AWS_SECRET"
       bucket: "evergreen-projects-testing"
       prefix: "$PARSER_PROJECT_S3_PREFIX"
+      generated_json_prefix: $GENERATED_JSON_S3_PREFIX
     ec2_keys:
       - region: "us-east-1"
         key: "$AWS_KEY"

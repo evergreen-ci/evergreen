@@ -212,20 +212,6 @@ func main() {
 	const dbURI = "mongodb://localhost:27017"
 
 	clientOptions := options.Client().ApplyURI(dbURI).SetConnectTimeout(5 * time.Second)
-	envAuth := os.Getenv(evergreen.MongodbAuthFile)
-	if envAuth != "" {
-		ymlUser, ymlPwd, err := evergreen.GetAuthFromYAML(envAuth)
-		if err != nil {
-			grip.Error(errors.Wrapf(err, "problem getting auth info from %s, trying to connect to db without auth", envAuth))
-		}
-		if err == nil && ymlUser != "" {
-			credential := options.Credential{
-				Username: ymlUser,
-				Password: ymlPwd,
-			}
-			clientOptions.SetAuth(credential)
-		}
-	}
 	client, err := mongo.Connect(ctx, clientOptions)
 	grip.EmergencyFatal(err)
 

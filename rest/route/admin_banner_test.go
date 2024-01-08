@@ -120,8 +120,7 @@ func TestFetchBanner(t *testing.T) {
 				},
 			},
 			Docker: &model.APIDockerConfig{
-				APIVersion:    utility.ToStringPtr(""),
-				DefaultDistro: utility.ToStringPtr(""),
+				APIVersion: utility.ToStringPtr(""),
 			},
 		},
 	}

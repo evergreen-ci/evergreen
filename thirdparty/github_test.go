@@ -15,10 +15,12 @@ import (
 	"time"
 
 	"github.com/evergreen-ci/evergreen"
+	"github.com/evergreen-ci/evergreen/mock"
 	"github.com/evergreen-ci/evergreen/testutil"
 	"github.com/google/go-github/v52/github"
 	"github.com/pkg/errors"
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 	"github.com/stretchr/testify/suite"
 )
 
@@ -150,7 +152,7 @@ func (s *githubSuite) TestCheckGithubAPILimit() {
 func (s *githubSuite) TestGetGithubCommits() {
 	githubCommits, _, err := GetGithubCommits(s.ctx, s.token, "evergreen-ci", "sample", "", time.Time{}, 0)
 	s.NoError(err)
-	s.Len(githubCommits, 8)
+	s.Len(githubCommits, 18)
 }
 
 func (s *githubSuite) TestGetGithubCommitsUntil() {
@@ -395,4 +397,17 @@ func TestGetRulesWithEvergreenPrefix(t *testing.T) {
 	assert.Len(t, rules, 2)
 	assert.Contains(t, rules, "evergreen")
 	assert.Contains(t, rules, "evergreen/foo")
+}
+
+func TestGetGitHubSender(t *testing.T) {
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
+	env := &mock.Environment{}
+	require.NoError(t, env.Configure(ctx))
+	testutil.ConfigureIntegrationTest(t, env.Settings(), t.Name())
+
+	sender, err := env.GetGitHubSender("evergreen-ci", "evergreen")
+	require.NoError(t, err)
+	assert.NotZero(t, sender.ErrorHandler, "fallback error handler should be set")
 }

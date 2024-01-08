@@ -745,9 +745,10 @@ func constructManifest(v *Version, projectRef *ProjectRef, moduleList ModuleList
 		}
 	}
 
+	isMergePatch := evergreen.IsCommitQueueRequester(v.Requester)
 	modules := map[string]*manifest.Module{}
 	for _, module := range moduleList {
-		if isPatch && !module.AutoUpdate && baseManifest != nil {
+		if isPatch && !isMergePatch && !module.AutoUpdate && baseManifest != nil {
 			if baseModule, ok := baseManifest.Modules[module.Name]; ok {
 				modules[module.Name] = baseModule
 				continue
@@ -828,12 +829,12 @@ func getManifestModule(v *Version, projectRef *ProjectRef, token string, module 
 }
 
 // CreateManifest inserts a newly constructed manifest into the DB.
-func CreateManifest(v *Version, proj *Project, projectRef *ProjectRef, settings *evergreen.Settings) (*manifest.Manifest, error) {
+func CreateManifest(v *Version, modules ModuleList, projectRef *ProjectRef, settings *evergreen.Settings) (*manifest.Manifest, error) {
 	token, err := settings.GetGithubOauthToken()
 	if err != nil {
 		return nil, errors.Wrap(err, "getting GitHub token")
 	}
-	newManifest, err := constructManifest(v, projectRef, proj.Modules, token)
+	newManifest, err := constructManifest(v, projectRef, modules, token)
 	if err != nil {
 		return nil, errors.Wrap(err, "constructing manifest")
 	}

@@ -42,8 +42,6 @@ type AmboyConfig struct {
 type AmboyDBConfig struct {
 	URL      string `bson:"url" json:"url" yaml:"url"`
 	Database string `bson:"database" json:"database" yaml:"database"`
-	Username string `bson:"username" json:"username" yaml:"username"`
-	Password string `bson:"password" json:"password" yaml:"password"`
 }
 
 // AmboyRetryConfig represents configuration settings for Amboy's retryability

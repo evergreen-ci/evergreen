@@ -152,6 +152,24 @@ variables:
           files:
             - evergreen/bin/generate-lint.json
 
+  - &build-and-push-client
+    name: build-and-push-client
+    commands:
+      - func: get-project-and-modules
+      - func: run-make
+        vars: { target: "${task_name}" }
+      - command: s3.put
+        params:
+          aws_key: ${aws_key}
+          aws_secret: ${aws_secret}
+          local_files_include_filter_prefix: evergreen/clients
+          local_files_include_filter: "*_*/evergreen*"
+          remote_file: evergreen/clients/${version_id}/
+          content_type: binary/octet-stream
+          bucket: mciuploads
+          permissions: public-read
+          preserve_path: true
+
 #######################################
 #              Functions              #
 #######################################
@@ -184,7 +202,6 @@ functions:
       binary: make
       args: ["${make_args|}", "${target}"]
       include_expansions_in_env:
-        - AUTH_ENABLED
         - GOROOT
         - MONGO_CREDS_FILE
         - RUN_TEST
@@ -241,7 +258,8 @@ functions:
         CROWD_SERVER: ${crowdserver}
         AWS_KEY: ${aws_key}
         AWS_SECRET: ${aws_secret}
-        PARSER_PROJECT_S3_PREFIX: ${task_id}
+        PARSER_PROJECT_S3_PREFIX: ${task_id}/parser-projects
+        GENERATED_JSON_S3_PREFIX: ${task_id}/generated-json
         JIRA_PRIVATE_KEY: ${jira_private_key}
         JIRA_ACCESS_TOKEN: ${jira_access_token}
         JIRA_TOKEN_SECRET: ${jira_token_secret}
@@ -270,15 +288,11 @@ functions:
         background: true
         working_dir: evergreen
         command: make start-mongod
-        env:
-          AUTH_ENABLED: ${with_auth}
     - command: subprocess.exec
       type: setup
       params:
         working_dir: evergreen
         command: make configure-mongod
-        env:
-          AUTH_ENABLED: ${with_auth}
 
   setup-docker-host:
     - command: host.create
@@ -591,18 +605,6 @@ tasks:
     commands:
       - func: get-project-and-modules
       - func: verify-merge-function-update
-  - name: test-db-auth
-    commands:
-      - func: get-project-and-modules
-      - func: setup-credentials
-      - func: setup-mongodb
-        vars: { with_auth: "1" }
-      - func: run-make
-        vars:
-          target: "test-evergreen"
-          AUTH_ENABLED: 1
-          RUN_TEST: "TestEnvironmentSuite/TestInitDB"
-          MONGO_CREDS_FILE: testdata/test_auth.yml
   - name: generate-api-docs
     commands: 
       - func: get-project-and-modules
@@ -638,6 +640,27 @@ tasks:
           display_name: swagger.json (latest)
           patchable: false
 
+  - <<: *build-and-push-client
+    name: build-linux_amd64
+    tags: ["build", "build-staging"]
+  - <<: *build-and-push-client
+    name: build-linux_s390x
+    tags: ["build"]
+  - <<: *build-and-push-client
+    name: build-linux_arm64
+    tags: ["build"]
+  - <<: *build-and-push-client
+    name: build-linux_ppc64le
+    tags: ["build"]
+  - <<: *build-and-push-client
+    name: build-windows_amd64
+    tags: ["build", "build-staging"]
+  - <<: *build-and-push-client
+    name: build-darwin_amd64
+    tags: ["build", "build-staging"]
+  - <<: *build-and-push-client
+    name: build-darwin_arm64
+    tags: ["build"]
 
 task_groups:
   - name: dist-and-upload-clis
@@ -673,7 +696,6 @@ buildvariants:
       - name: ".smoke"
       - name: ".test"
       - name: ".linter"
-      - name: test-db-auth
       - name: test-cloud
       - name: "js-test"
       - name: generate-api-docs
@@ -692,7 +714,6 @@ buildvariants:
       test_timeout: 15m
     tasks:
       - name: ".test"
-      - name: test-db-auth
 
   - name: ubuntu2004-container
     display_name: Ubuntu 20.04 (Container)
@@ -713,7 +734,6 @@ buildvariants:
       - name: ".test"
       - name: "js-test"
       - name: ".linter"
-      - name: test-db-auth
       - name: "dist-staging"
 
   - name: lint
@@ -771,6 +791,51 @@ buildvariants:
     tasks:
       - name: ".agent .test"
       - name: ".cli .test"
+
+  - name: build-and-push
+    display_name: Build and Push
+    run_on:
+      - ubuntu2204-small
+    activate: false
+    tasks:
+      - name: ".build"
+    expansions:
+      GOROOT: /opt/golang/go1.20
+      sign_macos: true
+      notary_client_url: https://macos-notary-1628249594.s3.amazonaws.com/releases/client/v3.1.2/linux_amd64.zip
+    display_tasks:
+      - name: build-and-push
+        execution_tasks:
+        - ".build"
+
+  - name: build-and-push-staging
+    display_name: Build and Push - Staging
+    run_on:
+      - ubuntu2204-small
+    activate: false
+    tasks:
+      - name: ".build-staging"
+    expansions:
+      GOROOT: /opt/golang/go1.20
+    display_tasks:
+      - name: build-and-push
+        execution_tasks:
+        - ".build-staging"
+
+  - name: build-and-push-unsigned
+    run_on:
+      - ubuntu2204-small
+    display_name: Build and Push - Unsigned
+    activate: false
+    tasks:
+      - name: ".build"
+    expansions:
+      GOROOT: /opt/golang/go1.20
+    display_tasks:
+      - name: build-and-push
+        execution_tasks:
+        - ".build"
+
 
 containers:
   - name: evg-container

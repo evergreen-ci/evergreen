@@ -119,6 +119,7 @@ type Task {
   timeTaken: Duration
   totalTestCount: Int!
   versionMetadata: Version!
+  stepbackInfo: StepbackInfo
 }
 
 type AbortInfo {
@@ -159,6 +160,7 @@ type TaskEndDetail {
   timeoutType: String
   type: String!
   traceID: String
+  diskDevices: [String!]!
 }
 
 type OomTrackerInfo {
@@ -172,6 +174,13 @@ type TaskLogLinks {
   eventLogLink: String
   systemLogLink: String
   taskLogLink: String
+}
+
+type StepbackInfo {
+  lastFailingStepbackTaskId: String
+  lastPassingStepbackTaskId: String
+  nextStepbackTaskId: String
+  previousStepbackTaskId: String
 }
 
 """

@@ -679,6 +679,7 @@ func LoadProjectInto(ctx context.Context, data []byte, opts *GetProjectOpts, ide
 			err = errors.New("trying to open include files with empty options")
 			return nil, errors.Wrapf(err, LoadProjectError)
 		}
+
 		wg := sync.WaitGroup{}
 		outputYAMLs := make(chan yamlTuple, len(intermediateProject.Include))
 		includesToProcess := make(chan Include, len(intermediateProject.Include))
@@ -737,14 +738,18 @@ func LoadProjectInto(ctx context.Context, data []byte, opts *GetProjectOpts, ide
 		}
 	}
 
-	intermediateProject.Include = nil
-
-	// return project even with errors
+	// Return project even with errors.
 	p, err := TranslateProject(intermediateProject)
 	if p != nil {
 		*project = *p
 	}
 	project.Identifier = identifier
+
+	// Remove includes once the project is translated since translate project saves number of includes.
+	// Intermediate project is used to save parser project as a YAML so removing the includes verifies that
+	// they have been processed.
+	intermediateProject.Include = nil
+
 	return intermediateProject, errors.Wrapf(err, LoadProjectError)
 }
 
@@ -974,7 +979,7 @@ func TranslateProject(pp *ParserProject) (*Project, error) {
 		PostTimeoutSecs:    utility.FromIntPtr(pp.PostTimeoutSecs),
 		PreErrorFailsTask:  utility.FromBoolPtr(pp.PreErrorFailsTask),
 		PostErrorFailsTask: utility.FromBoolPtr(pp.PostErrorFailsTask),
-		OomTracker:         utility.FromBoolPtr(pp.OomTracker),
+		OomTracker:         utility.FromBoolTPtr(pp.OomTracker), // oom tracker is true by default
 		BatchTime:          utility.FromIntPtr(pp.BatchTime),
 		Identifier:         utility.FromStringPtr(pp.Identifier),
 		DisplayName:        utility.FromStringPtr(pp.DisplayName),
@@ -990,6 +995,7 @@ func TranslateProject(pp *ParserProject) (*Project, error) {
 		Functions:          pp.Functions,
 		ExecTimeoutSecs:    utility.FromIntPtr(pp.ExecTimeoutSecs),
 		Loggers:            pp.Loggers,
+		NumIncludes:        len(pp.Include),
 	}
 	catcher := grip.NewBasicCatcher()
 	tse := NewParserTaskSelectorEvaluator(pp.Tasks)

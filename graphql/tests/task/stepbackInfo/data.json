@@ -1,0 +1,60 @@
+{
+  "tasks": [
+    {
+      "_id": "has_stepback",
+      "version": "5e4ff3abe3c3317e352062e4",
+      "revision": "5e823e1f28baeaa22ae00823d83e03082cd148ab",
+      "build_variant": "ubuntu1604",
+      "display_name": "test-thirdparty-docker",
+      "display_task_id": "display_task",
+      "gitspec": "5e823e1f28baeaa22ae00823d83e03082cd148ab",
+      "r": "github_pull_request",
+      "status": "started",
+      "branch": "spruce",
+      "distro": "macos-1014",
+      "execution": 1,
+      "host_id": "host2",
+      "stepback_info": {
+        "last_failing_stepback_task_id": "f1",
+        "last_passing_stepback_task_id": "p1"
+      }
+    },
+    {
+      "_id": "has_next_stepback",
+      "version": "5e4ff3abe3c3317e352062e4",
+      "revision": "5e823e1f28baeaa22ae00823d83e03082cd148ab",
+      "build_variant": "ubuntu1604",
+      "display_name": "test-thirdparty-docker",
+      "gitspec": "5e823e1f28baeaa22ae00823d83e03082cd148ab",
+      "r": "github_pull_request",
+      "status": "success",
+      "branch": "spruce",
+      "distro": "macos-1014",
+      "execution": 1,
+      "host_id": "host2",
+      "execution_tasks": [
+        "execution_task"
+      ],
+      "stepback_info": {
+        "last_failing_stepback_task_id": "f1",
+        "last_passing_stepback_task_id": "p1",
+        "next_stepback_task_id": "n1",
+        "previous_stepback_task_id": "r1"
+      }
+    },
+    {
+      "_id": "no_stepback",
+      "version": "5e4ff3abe3c3317e352062e4",
+      "revision": "5e823e1f28baeaa22ae00823d83e03082cd148ab",
+      "build_variant": "ubuntu1604",
+      "display_name": "test-thirdparty-docker",
+      "gitspec": "5e823e1f28baeaa22ae00823d83e03082cd148ab",
+      "r": "github_pull_request",
+      "status": "started",
+      "branch": "spruce",
+      "distro": "macos-1014",
+      "execution": 1,
+      "host_id": "host2"
+    }
+  ]
+}

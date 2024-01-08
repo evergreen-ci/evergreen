@@ -2,7 +2,6 @@ package task
 
 import (
 	"context"
-	"encoding/json"
 	"fmt"
 	"regexp"
 	"runtime/debug"
@@ -267,8 +266,15 @@ type Task struct {
 	GeneratedTasks bool `bson:"generated_tasks,omitempty" json:"generated_tasks,omitempty"`
 	// GeneratedBy, if present, is the ID of the task that generated this task.
 	GeneratedBy string `bson:"generated_by,omitempty" json:"generated_by,omitempty"`
-	// GeneratedJSONAsString is the configuration information to create new tasks from.
-	GeneratedJSONAsString []string `bson:"generated_json,omitempty" json:"generated_json,omitempty"`
+	// GeneratedJSONAsString is the configuration information to update the
+	// project YAML for generate.tasks. This is only used to store the
+	// configuration if GeneratedJSONStorageMethod is unset or is explicitly set
+	// to "db".
+	GeneratedJSONAsString GeneratedJSONFiles `bson:"generated_json,omitempty" json:"generated_json,omitempty"`
+	// GeneratedJSONStorageMethod describes how the generated JSON for
+	// generate.tasks is stored for this task before it's merged with the
+	// existing project YAML.
+	GeneratedJSONStorageMethod evergreen.ParserProjectStorageMethod `bson:"generated_json_storage_method,omitempty" json:"generated_json_storage_method,omitempty"`
 	// GenerateTasksError any encountered while generating tasks.
 	GenerateTasksError string `bson:"generate_error,omitempty" json:"generate_error,omitempty"`
 	// GeneratedTasksToActivate is only populated if we want to override activation for these generated tasks, because of stepback.
@@ -293,6 +299,9 @@ type Task struct {
 	IsEssentialToSucceed bool `bson:"is_essential_to_succeed" json:"is_essential_to_succeed"`
 }
 
+// GeneratedJSONFiles represent files used by a task for generate.tasks to update the project YAML.
+type GeneratedJSONFiles []string
+
 // StepbackInfo helps determine which task to bisect to when performing stepback.
 type StepbackInfo struct {
 	// LastFailingStepbackTaskId stores the last failing task while doing stepback.
@@ -300,8 +309,10 @@ type StepbackInfo struct {
 	// LastPassingStepbackTaskId stores the last passing task while doing stepback.
 	LastPassingStepbackTaskId string `bson:"last_passing_stepback_task_id,omitempty" json:"last_passing_stepback_task_id"`
 	// NextStepbackTaskId stores the next task id to stepback to when doing bisect stepback. This
-	// is the middle of LastFailingStepbackTaskId and LastPassingStepbackTaskId.
+	// is the middle of LastFailingStepbackTaskId and LastPassingStepbackTaskId of the last iteration.
 	NextStepbackTaskId string `bson:"next_stepback_task_id,omitempty" json:"next_stepback_task_id"`
+	// PreviousStepbackTaskId stores the last stepback iteration id.
+	PreviousStepbackTaskId string `bson:"previous_stepback_task_id,omitempty" json:"previous_stepback_task_id"`
 }
 
 // ExecutionPlatform indicates the type of environment that the task runs in.
@@ -1220,27 +1231,59 @@ func GenerateNotRun() ([]Task, error) {
 	}))
 }
 
-// SetGeneratedJSON sets JSON data to generate tasks from.
-func (t *Task) SetGeneratedJSON(json []json.RawMessage) error {
-	if len(t.GeneratedJSONAsString) > 0 {
+// SetGeneratedJSON sets JSON data to generate tasks from. If the generated JSON
+// files have already been stored, this is a no-op.
+func (t *Task) SetGeneratedJSON(files GeneratedJSONFiles) error {
+	if len(t.GeneratedJSONAsString) > 0 || t.GeneratedJSONStorageMethod != "" {
 		return nil
 	}
-	s := []string{}
-	for _, j := range json {
-		s = append(s, string(j))
-	}
-	t.GeneratedJSONAsString = s
-	return UpdateOne(
+
+	if err := UpdateOne(
 		bson.M{
-			IdKey:                    t.Id,
-			GeneratedJSONAsStringKey: bson.M{"$exists": false},
+			IdKey:                         t.Id,
+			GeneratedJSONAsStringKey:      bson.M{"$exists": false},
+			GeneratedJSONStorageMethodKey: nil,
 		},
 		bson.M{
 			"$set": bson.M{
-				GeneratedJSONAsStringKey: s,
+				GeneratedJSONAsStringKey:      files,
+				GeneratedJSONStorageMethodKey: evergreen.ProjectStorageMethodDB,
 			},
 		},
-	)
+	); err != nil {
+		return err
+	}
+
+	t.GeneratedJSONAsString = files
+	t.GeneratedJSONStorageMethod = evergreen.ProjectStorageMethodDB
+
+	return nil
+}
+
+// SetGeneratedJSONStorageMethod sets the task's generated JSON file storage
+// method. If it's already been set, this is a no-op.
+func (t *Task) SetGeneratedJSONStorageMethod(method evergreen.ParserProjectStorageMethod) error {
+	if t.GeneratedJSONStorageMethod != "" {
+		return nil
+	}
+
+	if err := UpdateOne(
+		bson.M{
+			IdKey:                         t.Id,
+			GeneratedJSONStorageMethodKey: nil,
+		},
+		bson.M{
+			"$set": bson.M{
+				GeneratedJSONStorageMethodKey: method,
+			},
+		},
+	); err != nil {
+		return err
+	}
+
+	t.GeneratedJSONStorageMethod = method
+
+	return nil
 }
 
 // SetGeneratedTasksToActivate adds a task to stepback after activation
@@ -1307,10 +1350,16 @@ func findMidwayTask(t1, t2 Task) (*Task, error) {
 	if catcher.HasErrors() {
 		return nil, catcher.Resolve()
 	}
-	// If the tasks are sequential or the same order number, return the first given task.
+	// If the tasks are sequential or the same order number, return the
+	// lowest revision order number task (this keeps behavior consistent,
+	// since the mid value below is always truncated and leans towards the
+	// lower revision order number).
 	d := t1.RevisionOrderNumber - t2.RevisionOrderNumber
 	if d == -1 || d == 0 || d == 1 {
-		return &t1, nil
+		if t1.RevisionOrderNumber < t2.RevisionOrderNumber {
+			return &t1, nil
+		}
+		return &t2, nil
 	}
 
 	mid := (t1.RevisionOrderNumber + t2.RevisionOrderNumber) / 2
@@ -1469,18 +1518,37 @@ func taskAbortUpdate(reason AbortInfo) bson.M {
 	}
 }
 
-// SetStepbackInfo adds the StepbackInfo to the task.
-func (t *Task) SetStepbackInfo(s StepbackInfo) error {
-	t.StepbackInfo = &s
+// SetLastAndPreviousStepbackIds sets the LastFailingStepbackTaskId,
+// LastPassingStepbackTaskId, and PreviousStepbackTaskId for a given task id.
+func SetLastAndPreviousStepbackIds(taskId string, s StepbackInfo) error {
 	return UpdateOne(
 		bson.M{
-			IdKey: t.Id,
+			IdKey: taskId,
 		},
 		bson.M{
 			"$set": bson.M{
-				StepbackInfoKey: s,
+				StepbackInfoKey: bson.M{
+					LastFailingStepbackTaskIdKey: s.LastFailingStepbackTaskId,
+					LastPassingStepbackTaskIdKey: s.LastPassingStepbackTaskId,
+					PreviousStepbackTaskIdKey:    s.PreviousStepbackTaskId,
+				},
 			},
-		})
+		},
+	)
+}
+
+// SetNextStepbackId sets the NextStepbackTaskId for a given task id.
+func SetNextStepbackId(taskId string, s StepbackInfo) error {
+	return UpdateOne(
+		bson.M{
+			IdKey: taskId,
+		},
+		bson.M{
+			"$set": bson.M{
+				bsonutil.GetDottedKeyName(StepbackInfoKey, NextStepbackTaskIdKey): s.NextStepbackTaskId,
+			},
+		},
+	)
 }
 
 // initializeTaskOutputInfo returns the task output information with the most

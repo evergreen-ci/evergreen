@@ -51,7 +51,7 @@ func (pc *DBCommitQueueConnector) AddPatchForPR(ctx context.Context, projectRef 
 		return nil, errors.Wrap(err, "making commit queue patch")
 	}
 
-	p, patchSummaries, proj, pp, err := getPatchInfo(ctx, settings, githubToken, patchDoc)
+	p, patchSummaries, proj, _, err := getPatchInfo(ctx, settings, githubToken, patchDoc)
 	if err != nil {
 		return nil, err
 	}
@@ -100,24 +100,12 @@ func (pc *DBCommitQueueConnector) AddPatchForPR(ctx context.Context, projectRef 
 	// populate tasks/variants matching the commitqueue alias
 	proj.BuildProjectTVPairs(patchDoc, patchDoc.Alias)
 
-	pp, err = units.AddMergeTaskAndVariant(ctx, patchDoc, proj, &projectRef, commitqueue.SourcePullRequest)
-	if err != nil {
-		return nil, err
-	}
-
-	env := evergreen.GetEnvironment()
-	pp.Init(patchDoc.Id.Hex(), patchDoc.CreateTime)
-	ppStorageMethod, err := model.ParserProjectUpsertOneWithS3Fallback(ctx, env.Settings(), evergreen.ProjectStorageMethodDB, pp)
-	if err != nil {
-		return nil, errors.Wrapf(err, "upsert parser project '%s' for patch '%s'", pp.Id, patchDoc.Id.Hex())
-	}
-	patchDoc.ProjectStorageMethod = ppStorageMethod
-
 	if err = patchDoc.Insert(); err != nil {
 		return nil, errors.Wrap(err, "inserting patch")
 	}
 
 	catcher = grip.NewBasicCatcher()
+	env := evergreen.GetEnvironment()
 	for _, modulePR := range modulePRs {
 		catcher.Add(thirdparty.SendCommitQueueGithubStatus(ctx, env, modulePR, message.GithubStatePending, "added to queue", patchDoc.Id.Hex()))
 	}
@@ -348,6 +336,9 @@ func getAndEnqueueCommitQueueItemForPR(ctx context.Context, env evergreen.Enviro
 
 	if projectRef.CommitQueue.MergeQueue == model.MergeQueueGitHub {
 		return nil, pr, errors.Wrapf(errors.New("This project is using GitHub merge queue. Click the merge button instead."), "repo '%s:%s', branch '%s'", info.Owner, info.Repo, baseBranch)
+	}
+	if projectRef.CommitQueue.CLIOnly {
+		return nil, pr, errors.Errorf("This project can only use the CLI commit queue. Please use the command `evergreen commit-queue merge -p %s`", projectRef.Identifier)
 	}
 
 	authorized, err := sc.IsAuthorizedToPatchAndMerge(ctx, env.Settings(), NewUserRepoInfo(info))

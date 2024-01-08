@@ -198,9 +198,9 @@ const (
 
 	DefaultEvergreenConfig = ".evergreen.yml"
 
-	EvergreenHome   = "EVGHOME"
-	MongodbUrl      = "MONGO_URL"
-	MongodbAuthFile = "MONGO_CREDS_FILE"
+	EvergreenHome       = "EVGHOME"
+	MongodbUrl          = "MONGO_URL"
+	MongoAWSAuthEnabled = "MONGO_AWS_AUTH"
 
 	// localLoggingOverride is a special log path indicating that the app server
 	// should attempt to log to systemd if available, and otherwise fall back to
@@ -209,6 +209,9 @@ const (
 	// standardOutputLoggingOverride is a special log path indicating that the
 	// app server should log to stdout.
 	standardOutputLoggingOverride = "STDOUT"
+	// disableLocalLoggingEnvVar is an environment variable to disable all local application logging
+	// besides for fallback logging to stderr.
+	disableLocalLoggingEnvVar = "DISABLE_LOCAL_LOGGING"
 
 	// LegacyTaskActivator is a deprecated legacy activator that used
 	// to be a majority of non-stepback and non-API activations.
@@ -619,7 +622,7 @@ const (
 	RepotrackerVersionRequester = "gitter_request"
 	TriggerRequester            = "trigger_request"
 	MergeTestRequester          = "merge_test"           // Evergreen commit queue
-	AdHocRequester              = "ad_hoc"               // periodic build
+	AdHocRequester              = "ad_hoc"               // periodic build or create version endpoint
 	GithubMergeRequester        = "github_merge_request" // GitHub merge queue
 )
 

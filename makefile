@@ -126,6 +126,11 @@ cli:$(localClientBinary)
 clis:$(clientBinaries)
 $(clientBuildDir)/%/$(unixBinaryBasename) $(clientBuildDir)/%/$(windowsBinaryBasename):$(buildDir)/build-cross-compile $(srcFiles) go.mod go.sum
 	./$(buildDir)/build-cross-compile -buildName=$* -ldflags="$(ldFlags)" -gcflags="$(gcFlags)" -goBinary="$(nativeGobin)" -directory=$(clientBuildDir) -source=$(clientSource) -output=$@
+
+build-linux_%: $(clientBuildDir)/linux_%/$(unixBinaryBasename);
+build-windows_%: $(clientBuildDir)/windows_%/$(windowsBinaryBasename);
+build-darwin_%: $(clientBuildDir)/darwin_%/$(unixBinaryBasename) $(if $(SIGN_MACOS),$(clientBuildDir)/darwin_%/.signed);
+
 sign-macos:$(foreach platform,$(macOSPlatforms),$(clientBuildDir)/$(platform)/.signed)
 # Targets to upload the CLI binaries to S3.
 $(buildDir)/upload-s3:cmd/upload-s3/upload-s3.go
@@ -406,18 +411,11 @@ get-mongodb:mongodb/.get-mongodb
 get-mongosh: mongodb/.get-mongosh
 	@touch $<
 start-mongod:mongodb/.get-mongodb
-ifdef AUTH_ENABLED
-	echo "replica set key" > ./mongodb/keyfile.txt
-	chmod 600 ./mongodb/keyfile.txt
-endif
-	./mongodb/mongod $(if $(AUTH_ENABLED),--auth --keyFile ./mongodb/keyfile.txt,) --dbpath ./mongodb/db_files --port 27017 --replSet evg --oplogSize 10
+	./mongodb/mongod --dbpath ./mongodb/db_files --port 27017 --replSet evg --oplogSize 10
 configure-mongod:mongodb/.get-mongodb mongodb/.get-mongosh
 	./mongosh/mongosh --nodb ./cmd/init-mongo/wait_for_mongo.js
 	@echo "mongod is up"
 	./mongosh/mongosh --eval 'rs.initiate()'
-ifdef AUTH_ENABLED
-	./mongosh/mongosh ./cmd/init-mongo/create_auth_user.js
-endif
 	@echo "configured mongod"
 # end mongodb targets
 
