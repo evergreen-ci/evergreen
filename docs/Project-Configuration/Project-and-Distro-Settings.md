@@ -171,10 +171,10 @@ For security reasons, commits by users outside of your organization will
 not automatically be run. A patch will still be created and must be
 manually authorized to run by a logged-in user.
 
-### Github Checks
+### GitHub Checks
 
-This supports Github checks on commits (i.e. to be visible at
-<https://github.com/>\<owner\>/\<repo\>/commits). Task/variant
+This supports GitHub checks on commits (i.e. to be visible at
+`https://github.com/<owner>/<repo>/commits`). Task/variant
 regexes/tags are required, and Github statuses will be sent with only
 the status of those tasks on the mainline commit version.
 
