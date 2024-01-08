@@ -112,9 +112,11 @@ func (h *testLogDirectoryHandler) start(ctx context.Context, dir string) error {
 	h.dir = dir
 	h.watcher = watcher.New()
 	h.watcher.FilterOps(watcher.Create)
-	h.watcher.AddRecursive(h.dir)
+	if err := h.watcher.AddRecursive(h.dir); err != nil {
+		return errors.Wrap(err, "configuring test log directory watcher as recursive")
+	}
 	if err := h.watcher.Ignore(filepath.Join(h.dir, testLogSpecFilename)); err != nil {
-		return errors.Wrap(err, "configuring test log directory watcher")
+		return errors.Wrap(err, "configuring test log directory watcher to ignore the test log spec file")
 	}
 
 	started := make(chan struct{})

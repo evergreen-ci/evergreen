@@ -8,7 +8,6 @@ import (
 	"strings"
 	"time"
 
-	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/model/log"
 	"github.com/evergreen-ci/evergreen/model/task"
 	"github.com/evergreen-ci/evergreen/model/user"
@@ -30,7 +29,6 @@ type getTaskOutputLogsBaseHandler struct {
 	softSizeLimit int
 	timeZone      *time.Location
 
-	env evergreen.Environment
 	url string
 }
 

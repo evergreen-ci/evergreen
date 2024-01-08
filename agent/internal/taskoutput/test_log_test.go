@@ -221,14 +221,12 @@ func TestTestLogDirectoryHandlerFollowFile(t *testing.T) {
 	for _, file := range append(files, nestedFile) {
 		it, err := tsk.GetTestLogs(ctx, taskoutput.TestLogGetOptions{LogPaths: []string{file.fn}})
 		require.NoError(t, err)
-		defer func() {
-			assert.NoError(t, it.Close())
-		}()
 
 		var persistedRawLines []string
 		for it.Next() {
 			persistedRawLines = append(persistedRawLines, it.Item().Data)
 		}
+		assert.NoError(t, it.Close())
 		require.NoError(t, it.Err())
 		assert.Equal(t, file.rawLines, persistedRawLines)
 	}

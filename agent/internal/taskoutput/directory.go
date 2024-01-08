@@ -21,7 +21,7 @@ type Directory struct {
 	handlers map[string]directoryHandler
 }
 
-// NewDirectory returns a new task output directory with the specifed root for
+// NewDirectory returns a new task output directory with the specified root for
 // the given task.
 func NewDirectory(root string, tsk *task.Task, logger client.LoggerProducer) *Directory {
 	output := tsk.TaskOutputInfo
