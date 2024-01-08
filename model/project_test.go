@@ -1687,16 +1687,6 @@ func (s *FindProjectsSuite) TestGetProjectSettingsNoRepo() {
 	s.False(projectSettingsEvent.GithubHooksEnabled)
 }
 
-func (s *projectSuite) TestFindAllProjectTasksWithName() {
-	pts := s.project.FindAllProjectTasksWithName("a_task_1")
-	s.Require().NotNil(pts)
-	s.Len(pts, 1)
-
-	pts = s.project.FindAllProjectTasksWithName("g1")
-	s.Require().NotNil(pts)
-	s.Len(pts, 2)
-}
-
 func TestModuleList(t *testing.T) {
 	assert := assert.New(t)
 
