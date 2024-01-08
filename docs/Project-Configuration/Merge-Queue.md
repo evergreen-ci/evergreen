@@ -35,10 +35,10 @@ To set a branch protection rule for the "evergreen" GitHub status, which is used
 2. Click on the **Branches** tab.
 3. Scroll down to the **Branch protection rules** section and click on the **Add rule** or **Edit rule** button.
 4. Enable the **Require a pull request before merging** option.
-5. Uncheck **Require branches to be up to date before merging** unless you'd
+5. Enable the **Require status checks to pass before merging** option.
+6. Uncheck **Require branches to be up to date before merging** unless you'd
    like to require users to rebase code on the branch. Note, however, that this
    would require users to manually update their PRs.
-6. Enable the **Require status checks to pass before merging** option.
 7. Under the **Status checks** section, select the **evergreen** check from the list of available status checks.
 8. Enable **Require merge queue**.
 9. Save the branch protection rule.

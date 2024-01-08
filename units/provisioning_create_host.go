@@ -250,7 +250,7 @@ func (j *createHostJob) selfThrottle(ctx context.Context, hostInit evergreen.Hos
 	} else if numProv >= hostInit.HostThrottle {
 		reason := "host creation throttle"
 		j.AddError(errors.Wrapf(j.host.SetStatusAtomically(ctx, evergreen.HostBuildingFailed, evergreen.User, reason), "getting rid of intent host '%s' for host creation throttle", j.host.Id))
-		event.LogHostCreationFailed(j.host.Id, reason)
+		event.LogHostCreatedError(j.host.Id, reason)
 		return true
 	}
 
@@ -334,7 +334,7 @@ func (j *createHostJob) createHost(ctx context.Context) error {
 
 	hostReplaced, err := j.spawnAndReplaceHost(ctx, cloudManager)
 	if err != nil {
-		event.LogHostCreationFailed(j.host.Id, err.Error())
+		event.LogHostCreatedError(j.host.Id, err.Error())
 		return errors.Wrapf(err, "spawning and updating host '%s'", j.host.Id)
 	}
 

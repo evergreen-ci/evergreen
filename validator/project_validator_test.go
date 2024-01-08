@@ -1373,6 +1373,39 @@ func TestCheckTaskRuns(t *testing.T) {
 	})
 }
 
+func TestValidateIncludeLimits(t *testing.T) {
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
+	project := &model.Project{
+		NumIncludes: 10,
+	}
+
+	t.Run("SucceedsWithNumberOfIncludesBelowLimit", func(t *testing.T) {
+		settings := &evergreen.Settings{
+			TaskLimits: evergreen.TaskLimitsConfig{
+				MaxIncludesPerVersion: 100,
+			},
+		}
+		assert.Empty(t, validateIncludeLimits(ctx, settings, project, &model.ProjectRef{}, false))
+	})
+	t.Run("FailsWithIncludesExceedingLimit", func(t *testing.T) {
+		settings := &evergreen.Settings{
+			TaskLimits: evergreen.TaskLimitsConfig{
+				MaxIncludesPerVersion: 1,
+			},
+		}
+		errs := validateIncludeLimits(ctx, settings, project, &model.ProjectRef{}, false)
+		require.Len(t, errs, 1)
+		assert.Equal(t, Error, errs[0].Level)
+		assert.Contains(t, "project's total number of includes (10) exceeds maximum limit (1)", errs[0].Message)
+	})
+	t.Run("SucceedsWithNoMaxIncludesLimit", func(t *testing.T) {
+		settings := &evergreen.Settings{}
+		assert.Empty(t, validateIncludeLimits(ctx, settings, project, &model.ProjectRef{}, false))
+	})
+}
+
 func TestValidateProjectLimits(t *testing.T) {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
@@ -2435,6 +2468,122 @@ func TestCheckTaskCommands(t *testing.T) {
 				So(validateProjectTaskNames(project), ShouldResemble, ValidationErrors{})
 			})
 	})
+}
+
+func TestValidateModuleUsageInGitGetProject(t *testing.T) {
+	for testName, testCase := range map[string]func(*testing.T, *model.Project){
+		"Valid git.get_project": func(t *testing.T, p *model.Project) {
+			errs := validateModuleUsageInGitGetProject(p)
+			assert.Len(t, errs, 0)
+		},
+		"Task that uses unused module": func(t *testing.T, p *model.Project) {
+			// Add the task to a build variant that does not have all the modules needed.
+			p.BuildVariants[1].Tasks = append(p.BuildVariants[1].Tasks, model.BuildVariantTaskUnit{Name: "test"})
+			errs := validateModuleUsageInGitGetProject(p)
+			require.Len(t, errs, 1)
+			assert.Contains(t, errs[0].Message, "build variant 'bv2' with task 'test' with 'git.get_project' command uses module/revision 'bar' that is not present in build variant")
+		},
+		"Task that uses unused module in precommand": func(t *testing.T, p *model.Project) {
+			// Add precommand that uses invalid revision. This runs for bv1 and bv2. Bv1 does have the required
+			// modules while bv2 does not.
+			p.Pre = &model.YAMLCommandSet{
+				MultiCommand: []model.PluginCommandConf{
+					{
+						Command: "git.get_project",
+						Params: map[string]interface{}{
+							"revisions": map[string]interface{}{
+								"foo": "${foo_rev}",
+								"bar": "${bar_rev}",
+							},
+						},
+					},
+				},
+			}
+
+			errs := validateModuleUsageInGitGetProject(p)
+			require.Len(t, errs, 1)
+			assert.Contains(t, errs[0].Message, "build variant 'bv2' with task 'test-with-nothing' with 'git.get_project' command uses module/revision 'bar' that is not present in build variant")
+		},
+		"Task that uses unused module in postcommand": func(t *testing.T, p *model.Project) {
+			// Add postcommand that uses invalid revision. This runs for bv1 and bv2. Bv1 does have the required
+			// modules while bv2 does not.
+			p.Post = &model.YAMLCommandSet{
+				MultiCommand: []model.PluginCommandConf{
+					{
+						Command: "git.get_project",
+						Params: map[string]interface{}{
+							"revisions": map[string]interface{}{
+								"foo": "${foo_rev}",
+								"bar": "${bar_rev}",
+							},
+						},
+					},
+				},
+			}
+
+			errs := validateModuleUsageInGitGetProject(p)
+			require.Len(t, errs, 1)
+			assert.Contains(t, errs[0].Message, "build variant 'bv2' with task 'test-with-nothing' with 'git.get_project' command uses module/revision 'bar' that is not present in build variant")
+		},
+		"Unused task that uses module not in bv": func(t *testing.T, p *model.Project) {
+			p.BuildVariants[0].Tasks = []model.BuildVariantTaskUnit{}
+			errs := validateModuleUsageInGitGetProject(p)
+			assert.Len(t, errs, 0)
+		},
+	} {
+		t.Run(testName, func(t *testing.T) {
+			project := &model.Project{
+				BuildVariants: model.BuildVariants{
+					model.BuildVariant{
+						Name:    "bv1",
+						Modules: []string{"foo", "bar"},
+						Tasks: []model.BuildVariantTaskUnit{
+							{
+								Name: "test",
+							},
+							{
+								Name: "test-with-nothing",
+							},
+						},
+					},
+					model.BuildVariant{
+						Name:    "bv2",
+						Modules: []string{"foo"},
+						Tasks: []model.BuildVariantTaskUnit{
+							{
+								Name: "test-with-nothing",
+							},
+						},
+					},
+				},
+				Tasks: []model.ProjectTask{
+					{
+						Name: "test",
+						Commands: []model.PluginCommandConf{
+							{
+								Command: "git.get_project",
+								Params: map[string]interface{}{
+									"revisions": map[string]interface{}{
+										"foo": "${foo_rev}",
+										"bar": "${bar_rev}",
+									},
+								},
+							},
+						},
+					},
+					{
+						Name: "test-with-nothing",
+						Commands: []model.PluginCommandConf{
+							{
+								Command: "git.get_project",
+							},
+						},
+					},
+				},
+			}
+			testCase(t, project)
+		})
+	}
 }
 
 func TestEnsureReferentialIntegrity(t *testing.T) {

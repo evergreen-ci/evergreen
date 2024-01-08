@@ -6,13 +6,13 @@ require (
 	github.com/99designs/gqlgen v0.17.41
 	github.com/PuerkitoBio/rehttp v1.3.0
 	github.com/aws/aws-sdk-go v1.47.9
-	github.com/aws/aws-sdk-go-v2 v1.24.0
-	github.com/aws/aws-sdk-go-v2/config v1.26.1
-	github.com/aws/aws-sdk-go-v2/credentials v1.16.12
-	github.com/aws/aws-sdk-go-v2/service/ec2 v1.141.0
-	github.com/aws/aws-sdk-go-v2/service/ecs v1.35.5
-	github.com/aws/aws-sdk-go-v2/service/resourcegroupstaggingapi v1.19.5
-	github.com/aws/aws-sdk-go-v2/service/secretsmanager v1.25.5
+	github.com/aws/aws-sdk-go-v2 v1.24.1
+	github.com/aws/aws-sdk-go-v2/config v1.26.3
+	github.com/aws/aws-sdk-go-v2/credentials v1.16.14
+	github.com/aws/aws-sdk-go-v2/service/ec2 v1.142.1
+	github.com/aws/aws-sdk-go-v2/service/ecs v1.36.0
+	github.com/aws/aws-sdk-go-v2/service/resourcegroupstaggingapi v1.19.7
+	github.com/aws/aws-sdk-go-v2/service/secretsmanager v1.26.1
 	github.com/aws/smithy-go v1.19.0
 	github.com/cheynewallace/tabby v1.1.1
 	github.com/docker/docker v24.0.7+incompatible
@@ -42,7 +42,7 @@ require (
 	github.com/mitchellh/mapstructure v1.5.0
 	github.com/mongodb/amboy v0.0.0-20231102152510-3523442f5631
 	github.com/mongodb/anser v0.0.0-20231019191251-2a589a5299e6
-	github.com/mongodb/grip v0.0.0-20231010153552-fd9e260891f5
+	github.com/mongodb/grip v0.0.0-20240105215940-ba26701636e9
 	github.com/pkg/errors v0.9.1
 	github.com/ravilushqa/otelgqlgen v0.13.0
 	github.com/robbiet480/go.sns v0.0.0-20210223081447-c7c9eb6836cb
@@ -57,7 +57,7 @@ require (
 	go.opentelemetry.io/contrib/detectors/aws/ecs v1.20.0
 	go.opentelemetry.io/contrib/instrumentation/github.com/aws/aws-sdk-go-v2/otelaws v0.46.1
 	go.opentelemetry.io/contrib/instrumentation/github.com/gorilla/mux/otelmux v0.46.1
-	go.opentelemetry.io/contrib/instrumentation/net/http/otelhttp v0.45.0
+	go.opentelemetry.io/contrib/instrumentation/net/http/otelhttp v0.46.1
 	go.opentelemetry.io/otel v1.21.0
 	go.opentelemetry.io/otel/exporters/otlp/otlpmetric/otlpmetricgrpc v0.40.0
 	go.opentelemetry.io/otel/exporters/otlp/otlptrace v1.21.0
@@ -73,7 +73,7 @@ require (
 	golang.org/x/tools v0.13.0 // indirect
 	gonum.org/v1/gonum v0.14.0
 	google.golang.org/grpc v1.60.1
-	google.golang.org/protobuf v1.31.0
+	google.golang.org/protobuf v1.32.0
 	gopkg.in/yaml.v2 v2.4.0
 )
 
@@ -85,19 +85,19 @@ require (
 	github.com/agnivade/levenshtein v1.1.1 // indirect
 	github.com/andybalholm/brotli v1.0.3 // indirect
 	github.com/andygrunwald/go-jira v1.16.0 // indirect
-	github.com/aws/aws-sdk-go-v2/feature/ec2/imds v1.14.10 // indirect
-	github.com/aws/aws-sdk-go-v2/internal/configsources v1.2.9 // indirect
-	github.com/aws/aws-sdk-go-v2/internal/endpoints/v2 v2.5.9 // indirect
+	github.com/aws/aws-sdk-go-v2/feature/ec2/imds v1.14.11 // indirect
+	github.com/aws/aws-sdk-go-v2/internal/configsources v1.2.10 // indirect
+	github.com/aws/aws-sdk-go-v2/internal/endpoints/v2 v2.5.10 // indirect
 	github.com/aws/aws-sdk-go-v2/internal/ini v1.7.2 // indirect
-	github.com/aws/aws-sdk-go-v2/service/dynamodb v1.25.1 // indirect
+	github.com/aws/aws-sdk-go-v2/service/dynamodb v1.26.8 // indirect
 	github.com/aws/aws-sdk-go-v2/service/internal/accept-encoding v1.10.4 // indirect
-	github.com/aws/aws-sdk-go-v2/service/internal/endpoint-discovery v1.8.2 // indirect
-	github.com/aws/aws-sdk-go-v2/service/internal/presigned-url v1.10.9 // indirect
-	github.com/aws/aws-sdk-go-v2/service/ses v1.16.10 // indirect
-	github.com/aws/aws-sdk-go-v2/service/sqs v1.28.0 // indirect
-	github.com/aws/aws-sdk-go-v2/service/sso v1.18.5 // indirect
-	github.com/aws/aws-sdk-go-v2/service/ssooidc v1.21.5 // indirect
-	github.com/aws/aws-sdk-go-v2/service/sts v1.26.5 // indirect
+	github.com/aws/aws-sdk-go-v2/service/internal/endpoint-discovery v1.8.11 // indirect
+	github.com/aws/aws-sdk-go-v2/service/internal/presigned-url v1.10.10 // indirect
+	github.com/aws/aws-sdk-go-v2/service/ses v1.19.6 // indirect
+	github.com/aws/aws-sdk-go-v2/service/sqs v1.29.7 // indirect
+	github.com/aws/aws-sdk-go-v2/service/sso v1.18.6 // indirect
+	github.com/aws/aws-sdk-go-v2/service/ssooidc v1.21.6 // indirect
+	github.com/aws/aws-sdk-go-v2/service/sts v1.26.7 // indirect
 	github.com/blang/semver v3.5.1+incompatible // indirect
 	github.com/brunoscheufler/aws-ecs-metadata-go v0.0.0-20220812150832-b6b31c6eeeaf // indirect
 	github.com/cenkalti/backoff/v4 v4.2.1 // indirect

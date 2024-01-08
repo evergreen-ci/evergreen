@@ -442,6 +442,13 @@ func (settings *Settings) Validate() error {
 	return errors.WithStack(catcher.Resolve())
 }
 
+// GetSender returns the global application-wide loggers. These are special
+// universal loggers (distinct from other senders like the GitHub status sender
+// or email notification sender) and will be used when grip is invoked to log
+// messages in the application (e.g. grip.Info, grip.Error, etc). Because these
+// loggers are the main way to send logs in the application, these are essential
+// to monitoring the application and therefore have to be set up very early
+// during application startup.
 func (s *Settings) GetSender(ctx context.Context, env Environment) (send.Sender, error) {
 	var (
 		sender   send.Sender

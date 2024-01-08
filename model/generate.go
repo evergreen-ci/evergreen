@@ -533,7 +533,7 @@ func (g *GeneratedProject) findTasksAndVariantsWithSpecificActivations(requester
 	res := newSpecificActivationInfo()
 	for _, bv := range g.BuildVariants {
 		// Only consider batchtime for mainline builds. A task/BV will have
-		// specific activation if activate if it is explicitly set to false;
+		// specific activation if activate is explicitly set to false;
 		// otherwise, if it's explicitly set to true, activate it immediately.
 		if evergreen.ShouldConsiderBatchtime(requester) && bv.hasSpecificActivation() {
 			res.activationVariants = append(res.activationVariants, bv.name())
