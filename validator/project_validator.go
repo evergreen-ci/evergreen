@@ -1955,7 +1955,7 @@ func validateGenerateTasks(p *model.Project) ValidationErrors {
 func validateModuleUsageInGitGetProject(p *model.Project) ValidationErrors {
 	var errs ValidationErrors
 
-	bvs, _, err := bvsWithTasksThatCallCommand(p, "git.get_project")
+	bvsTaskCmds, _, err := bvsWithTasksThatCallCommand(p, "git.get_project")
 	if err != nil {
 		errs = append(errs, ValidationError{
 			Message: fmt.Sprintf("build variants could not be mapped to tasks that contain 'git.get_project' for project %s", p.Identifier),
@@ -1964,7 +1964,7 @@ func validateModuleUsageInGitGetProject(p *model.Project) ValidationErrors {
 		return errs
 	}
 
-	for bvName, bv := range bvs {
+	for bvName, tasksForBv := range bvsTaskCmds {
 		var bvInfo *model.BuildVariant
 		for _, b := range p.BuildVariants {
 			if b.Name == bvName {
@@ -1979,7 +1979,7 @@ func validateModuleUsageInGitGetProject(p *model.Project) ValidationErrors {
 			})
 			continue
 		}
-		for taskName, task := range bv {
+		for taskName, task := range tasksForBv {
 			for _, cmd := range task {
 				if r, ok := cmd.Params["revisions"].(map[string]interface{}); ok {
 					for m := range r {
