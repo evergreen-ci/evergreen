@@ -413,6 +413,9 @@ tasks:
     name: test-agent-internal-client
   - <<: *run-go-test-suite
     tags: ["nodb", "test", "agent"]
+    name: test-agent-internal-taskoutput
+  - <<: *run-go-test-suite
+    tags: ["nodb", "test", "agent"]
     name: test-agent-util
   - <<: *run-go-test-suite-with-mongodb
     tags: ["test", "db", "agent"]
