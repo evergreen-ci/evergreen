@@ -84,7 +84,7 @@ func TestTestBuildFromService(t *testing.T) {
 						URLLobster:    utility.ToStringPtr(input.GetLogURL(env, evergreen.LogViewerLobster)),
 						URLParsley:    utility.ToStringPtr(input.GetLogURL(env, evergreen.LogViewerParsley)),
 						LineNum:       15,
-						RenderingType: utility.ToStringPtr("default"),
+						RenderingType: utility.ToStringPtr("defaultzz"),
 						Version:       1,
 					},
 					StartTime: utility.ToTimePtr(start),

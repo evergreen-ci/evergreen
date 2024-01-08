@@ -675,7 +675,21 @@ func (r *taskResolver) VersionMetadata(ctx context.Context, obj *restModel.APITa
 	return apiVersion, nil
 }
 
+// RenderingType is the resolver for the renderingType field.
+func (r *testLogResolver) RenderingType(ctx context.Context, obj *restModel.TestLogs) (*string, error) {
+	panic(fmt.Errorf("not implemented: RenderingType - renderingType"))
+}
+
+// Version is the resolver for the version field.
+func (r *testLogResolver) Version(ctx context.Context, obj *restModel.TestLogs) (*int, error) {
+	panic(fmt.Errorf("not implemented: Version - version"))
+}
+
 // Task returns TaskResolver implementation.
 func (r *Resolver) Task() TaskResolver { return &taskResolver{r} }
 
+// TestLog returns TestLogResolver implementation.
+func (r *Resolver) TestLog() TestLogResolver { return &testLogResolver{r} }
+
 type taskResolver struct{ *Resolver }
+type testLogResolver struct{ *Resolver }
