@@ -71,7 +71,7 @@ func (at *APITest) BuildFromService(st interface{}) error {
 			URL:           utility.ToStringPtr(v.GetLogURL(env, evergreen.LogViewerHTML)),
 			URLRaw:        utility.ToStringPtr(v.GetLogURL(env, evergreen.LogViewerRaw)),
 			LineNum:       v.LineNum,
-			RenderingType: utility.ToStringPtr("resmoke"),
+			RenderingType: utility.ToStringPtr("default"),
 			Version:       1,
 		}
 		if lobsterURL := v.GetLogURL(env, evergreen.LogViewerLobster); lobsterURL != "" {
