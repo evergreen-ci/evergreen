@@ -658,6 +658,21 @@ tasks:
   - <<: *build-and-push-client
     name: build-darwin_arm64
     tags: ["build"]
+  - name: tar-and-push-static-assets
+    tags: ["build", "build-staging"]
+    commands:
+      - func: get-project-and-modules
+      - func: run-make
+        vars: { target: "bin/static_assets.tgz" }
+      - command: s3.put
+        params:
+          aws_key: ${aws_key}
+          aws_secret: ${aws_secret}
+          local_file: evergreen/bin/static_assets.tgz
+          remote_file: evergreen/clients/${version_id}/static_assets.tgz
+          content_type: application/gzip
+          bucket: mciuploads
+          permissions: public-read
 
 task_groups:
   - name: dist-and-upload-clis
