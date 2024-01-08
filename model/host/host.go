@@ -1737,6 +1737,7 @@ func (h *Host) Insert(ctx context.Context) error {
 	if err := InsertOne(ctx, h); err != nil {
 		return errors.Wrap(err, "inserting host")
 	}
+	h.logHostCreated()
 	return nil
 }
 
@@ -1746,7 +1747,18 @@ func (h *Host) InsertWithContext(ctx context.Context, env evergreen.Environment)
 	if _, err := env.DB().Collection(Collection).InsertOne(ctx, h); err != nil {
 		return errors.Wrap(err, "inserting host")
 	}
+	h.logHostCreated()
 	return nil
+}
+
+func (h *Host) logHostCreated() {
+	event.LogHostCreated(h.Id)
+	grip.Info(message.Fields{
+		"message":  "host created",
+		"host_id":  h.Id,
+		"host_tag": h.Tag,
+		"distro":   h.Distro.Id,
+	})
 }
 
 // Remove removes the host document from the DB.

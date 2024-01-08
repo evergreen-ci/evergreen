@@ -412,19 +412,13 @@ func MakePatchedConfig(ctx context.Context, env evergreen.Environment, p *patch.
 		defer os.Remove(configFilePath) //nolint:evg-lint
 
 		// clean the working directory
-		workingDirectory := filepath.Dir(patchFilePath)
+		workingDirectory := filepath.Join(filepath.Dir(patchFilePath), utility.RandomString())
+		defer os.RemoveAll(workingDirectory)
+
 		localConfigPath := filepath.Join(
 			workingDirectory,
 			remoteConfigPath,
 		)
-		parentDir := strings.Split(
-			remoteConfigPath,
-			string(os.PathSeparator),
-		)[0]
-		err = os.RemoveAll(filepath.Join(workingDirectory, parentDir))
-		if err != nil {
-			return nil, errors.WithStack(err)
-		}
 		if err = os.MkdirAll(filepath.Dir(localConfigPath), 0755); err != nil {
 			return nil, errors.WithStack(err)
 		}

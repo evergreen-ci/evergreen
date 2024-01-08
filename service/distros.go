@@ -25,6 +25,24 @@ import (
 
 func (uis *UIServer) distrosPage(w http.ResponseWriter, r *http.Request) {
 	u := MustHaveUser(r)
+
+	flags, err := evergreen.GetServiceFlags(r.Context())
+	if err != nil {
+		gimlet.WriteResponse(w, gimlet.MakeJSONInternalErrorResponder(errors.Wrap(err, "retrieving admin settings")))
+		return
+	}
+
+	spruceLink := fmt.Sprintf("%s/distros", uis.Settings.Ui.UIv2Url)
+	newUILink := ""
+	if len(uis.Settings.Ui.UIv2Url) > 0 {
+		newUILink = spruceLink
+	}
+
+	if flags.LegacyUIDistroPageDisabled {
+		http.Redirect(w, r, spruceLink, http.StatusPermanentRedirect)
+		return
+	}
+
 	permissions, err := rolemanager.HighestPermissionsForRolesAndResourceType(
 		u.Roles(),
 		evergreen.DistroResourceType,
@@ -88,8 +106,9 @@ func (uis *UIServer) distrosPage(w http.ResponseWriter, r *http.Request) {
 		ValidHostAllocatorRoundingRules []string
 		ValidHostAllocatorFeedbackRules []string
 		ValidHostsOverallocatedRules    []string
+		NewUILink                       string
 	}{createDistro, distroIds, uis.Settings.Keys, evergreen.ValidArchDisplayNames,
-		uis.GetCommonViewData(w, r, false, true), containerPools, containerPoolDistros, containerPoolIds, evergreen.ValidHostAllocatorRoundingRules, evergreen.ValidHostAllocatorFeedbackRules, evergreen.ValidHostsOverallocatedRules},
+		uis.GetCommonViewData(w, r, false, true), containerPools, containerPoolDistros, containerPoolIds, evergreen.ValidHostAllocatorRoundingRules, evergreen.ValidHostAllocatorFeedbackRules, evergreen.ValidHostsOverallocatedRules, newUILink},
 		"base", "distros.html", "base_angular.html", "menu.html")
 }
 
