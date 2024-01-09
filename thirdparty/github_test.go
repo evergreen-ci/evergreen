@@ -269,7 +269,7 @@ func (s *githubSuite) TestGetPullRequestMergeBase() {
 }
 
 func (s *githubSuite) TestGithubUserInOrganization() {
-	isMember, err := GithubUserInOrganization(s.ctx, s.token, "evergreen-ci", "evrg-bot-webhook")
+	isMember, err := GithubUserInOrganization(s.ctx, s.token, "evergreen-ci", "malikchaya2")
 	s.NoError(err)
 	s.True(isMember)
 
