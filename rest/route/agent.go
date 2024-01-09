@@ -449,14 +449,10 @@ func (h *getExpansionsAndVarsHandler) Run(ctx context.Context) gimlet.Responder 
 
 	appToken, err := h.settings.CreateInstallationToken(ctx, pRef.Owner, pRef.Repo, nil)
 	if err != nil {
-		grip.Debug(message.WrapError(err, message.Fields{
-			"ticket":  "EVG-19966",
-			"message": "error creating GitHub app token",
-			"caller":  "getExpansionsAndVarsHandler",
-			"owner":   pRef.Owner,
-			"repo":    pRef.Repo,
-			"task":    t.Id,
-		}))
+		return gimlet.MakeJSONErrorResponder(gimlet.ErrorResponse{
+			StatusCode: http.StatusInternalServerError,
+			Message:    fmt.Sprintf("creating token for %s/%s failed", pRef.Owner, pRef.Repo),
+		})
 	}
 
 	e, err := model.PopulateExpansions(t, foundHost, oauthToken, appToken)

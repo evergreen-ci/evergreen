@@ -10,8 +10,6 @@ import (
 	"github.com/golang-jwt/jwt"
 	"github.com/google/go-github/v52/github"
 	"github.com/mongodb/anser/bsonutil"
-	"github.com/mongodb/grip"
-	"github.com/mongodb/grip/message"
 	"github.com/pkg/errors"
 	"go.mongodb.org/mongo-driver/bson"
 	"go.mongodb.org/mongo-driver/mongo"
@@ -87,12 +85,7 @@ func (s *Settings) HasGitHubApp(ctx context.Context, owner, repo string) (bool, 
 // It will use the default owner/repo specified in the admin settings and error if it's not set.
 func (s *Settings) CreateInstallationTokenWithDefaultOwnerRepo(ctx context.Context, opts *github.InstallationTokenOptions) (string, error) {
 	if s.AuthConfig.Github == nil || s.AuthConfig.Github.DefaultOwner == "" || s.AuthConfig.Github.DefaultRepo == "" {
-		// TODO EVG-19966: Return error here
-		grip.Debug(message.Fields{
-			"message": "no default owner/repo",
-			"ticket":  "EVG-19966",
-		})
-		return "", nil
+		return "", errors.New("no default owner/repo")
 	}
 	return s.CreateInstallationToken(ctx, s.AuthConfig.Github.DefaultOwner, s.AuthConfig.Github.DefaultRepo, opts)
 }
@@ -237,13 +230,6 @@ func getInstallationIDFromGitHub(ctx context.Context, authFields *githubAppAuth,
 		if resp.StatusCode == http.StatusNotFound {
 			return 0, errors.Wrapf(gitHubAppNotInstalledError, "installation id for '%s/%s' not found", owner, repo)
 		}
-		grip.Debug(message.WrapError(err, message.Fields{
-			"message": "error finding installation id",
-			"owner":   owner,
-			"repo":    repo,
-			"appId":   authFields.appId,
-			"ticket":  "EVG-19966",
-		}))
 		return 0, errors.Wrapf(err, "finding installation id for '%s/%s'", owner, repo)
 	}
 	if installation == nil {

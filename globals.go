@@ -334,7 +334,7 @@ const (
 
 	DefaultJasperPort = 2385
 
-	// TODO EVG-19966: Remove GlobalGitHubTokenExpansion
+	// TODO DEVPROD-778: Remove GlobalGitHubTokenExpansion
 	GlobalGitHubTokenExpansion = "global_github_oauth_token"
 	GithubAppToken             = "github_app_token"
 	GithubAppPrivateKey        = "github_app_key"

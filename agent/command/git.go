@@ -745,19 +745,10 @@ func (c *gitFetchProject) fetchModuleSource(ctx context.Context,
 		// Otherwise, create an installation token for to clone the module.
 		// Fallback to the legacy global token if the token cannot be created.
 		appToken, err := comm.CreateInstallationToken(ctx, td, opts.owner, opts.repo)
-		if err == nil {
-			opts.token = appToken
-		} else {
-			// If a token cannot be created, fallback to the legacy global token.
-			opts.method = evergreen.CloneMethodOAuth
-			opts.token = conf.Expansions.Get(evergreen.GlobalGitHubTokenExpansion)
-			logger.Execution().Warning(message.WrapError(err, message.Fields{
-				"message": "failed to create app token, falling back to global token",
-				"ticket":  "EVG-19966",
-				"owner":   opts.owner,
-				"repo":    opts.repo,
-			}))
+		if err != nil {
+			return errors.Wrap(err, "failed to create app token")
 		}
+		opts.token = appToken
 	}
 
 	if err = opts.validate(); err != nil {

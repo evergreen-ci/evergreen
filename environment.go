@@ -737,7 +737,7 @@ func (e *envState) initThirdPartySenders(ctx context.Context) error {
 		e.senders[SenderEmail] = sesSender
 	}
 
-	// TODO EVG-19966: Remove global GitHub status sender
+	// TODO DEVPROD-2923: Remove global GitHub status sender
 	var sender send.Sender
 	githubToken, err := e.settings.GetGithubOauthToken()
 	if err == nil && len(githubToken) > 0 {
@@ -1099,18 +1099,7 @@ func (e *envState) GetGitHubSender(owner, repo string) (send.Sender, error) {
 	tokenCreatedAt := time.Now()
 	token, err := e.settings.CreateInstallationToken(e.ctx, owner, repo, nil)
 	if err != nil {
-		// TODO EVG-19966: Delete fallback to legacy GitHub sender
-		grip.Debug(message.WrapError(err, message.Fields{
-			"message": "error creating installation token for GitHub sender",
-			"owner":   owner,
-			"repo":    repo,
-			"ticket":  "EVG-19966",
-		}))
-		legacySender, ok := e.senders[SenderGithubStatus]
-		if !ok {
-			return nil, errors.Errorf("Legacy GitHub status sender not found")
-		}
-		return legacySender, nil
+		return nil, errors.Wrapf(err, "error creating installation token for GitHub sender")
 	}
 	sender, err := send.NewGithubStatusLogger("evergreen", &send.GithubOptions{
 		Token:       token,
@@ -1118,18 +1107,7 @@ func (e *envState) GetGitHubSender(owner, repo string) (send.Sender, error) {
 		MaxAttempts: GitHubRetryAttempts,
 	}, "")
 	if err != nil {
-		// TODO EVG-19966: Delete fallback to legacy GitHub sender
-		grip.Debug(message.WrapError(err, message.Fields{
-			"message": "error setting up GitHub status logger with GitHub app",
-			"owner":   owner,
-			"repo":    repo,
-			"ticket":  "EVG-19966",
-		}))
-		legacySender, ok := e.senders[SenderGithubStatus]
-		if !ok {
-			return nil, errors.Errorf("Legacy GitHub status sender not found")
-		}
-		return legacySender, nil
+		return nil, errors.Wrapf(err, "error setting up GitHub status logger with GitHub app")
 	}
 
 	// Just log and continue if the GitHub sender fails to set the error
