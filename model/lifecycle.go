@@ -537,6 +537,9 @@ func addTasksToBuild(ctx context.Context, creationInfo TaskCreationInfo) (*build
 			continue
 		}
 		bvtu := creationInfo.Project.FindTaskForVariant(t.DisplayName, creationInfo.Build.BuildVariant)
+		if bvtu.HasCheckRun() {
+			t.HasCheckRun = true
+		}
 		if !bvtu.HasSpecificActivation() {
 			continue
 		}
