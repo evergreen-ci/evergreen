@@ -407,10 +407,10 @@ manifest will be created that uses the latest revision available for each module
 For manual patches and GitHub PRs, by default, the git revisions in the
 version manifest will be inherited from its base version (i.e. the mainline commit version of the patch's base git revision). 
 You can change the git revision for modules by setting a module manually with 
-[evergreen set-module](../CLI.md#operating-on-existing-patches) or
+[evergreen set-module](../CLI/#operating-on-existing-patches) or
 by specifying the `auto_update` option (as described below) to use the
 latest revision available for a module. The full hierarchy of how
-module revisions are determined is available in the [git.get_project](Project-Commands.md#module-hash-hierarchy)
+module revisions are determined is available in the [git.get_project](Project-Commands/#module-hash-hierarchy)
 docs.
 
 Module fields support the expansion of variables defined in the [Variables](Project-and-Distro-Settings.md#variables)
