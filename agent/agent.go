@@ -1106,7 +1106,7 @@ func (a *Agent) shouldKill(tc *taskContext, ignoreTaskGroupCheck bool) bool {
 		return false
 	}
 	// Kill if the task is not in a task group.
-	if tc.taskConfig.TaskGroup == nil {
+	if tc.taskConfig != nil && tc.taskConfig.TaskGroup == nil {
 		return true
 	}
 	// This is a task group, kill if ignoreTaskGroupCheck is true
@@ -1115,7 +1115,7 @@ func (a *Agent) shouldKill(tc *taskContext, ignoreTaskGroupCheck bool) bool {
 	}
 	// This is a task group, kill if not sharing processes between tasks in the
 	// task group.
-	return !tc.taskConfig.TaskGroup.ShareProcs
+	return tc.taskConfig != nil && !tc.taskConfig.TaskGroup.ShareProcs
 }
 
 // logPanic logs a panic to the task log and returns the panic error, along with
