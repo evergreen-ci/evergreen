@@ -696,9 +696,13 @@ func (e *envState) initQueues(ctx context.Context) []error {
 // the version's S3 clients in place of local links. If there are no built clients, this returns an empty config
 // version, but does *not* error.
 func (e *envState) initClientConfig(ctx context.Context, versionID string) error {
+	// In k8s the versionID will be set to a versionID corresponding to a version in the Evergreen project
+	// that pushed clients to S3 under a versionID prefix. There will be no local clients on the images.
 	if versionID != "" {
 		return e.populateS3ClientConfig(ctx, versionID)
 	}
+	// Outside of k8s versionID won't be set. We enumerate the local clients and their corresponding S3 copies
+	// under a prefix corresponding to the BuildRevision.
 	return e.populateLocalClientConfig()
 }
 

@@ -37,10 +37,13 @@ func (c *ClientConfig) populateClientBinaries(ctx context.Context, bucket pail.B
 	}
 	for iter.Next(ctx) {
 		item := strings.TrimPrefix(iter.Item().Name(), prefix)
+		// The item is expected to be of the form <os>_<arch>/evergreen{.exe}
 		name := strings.Split(item, "/")
+		// Skip files that either don't conform to the expected form or aren't the evergreen executable (e.g. .signed).
 		if len(name) != 2 || !strings.Contains(name[1], "evergreen") {
 			continue
 		}
+		// Skip files for invalid platforms.
 		displayName, ok := ValidArchDisplayNames[name[0]]
 		if !ok {
 			continue
