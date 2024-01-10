@@ -6,15 +6,14 @@ import (
 
 // LogService is the interface for Evergreen log services.
 type LogService interface {
+	// Get returns a log iterator with the given options.
 	Get(context.Context, GetOptions) (LogIterator, error)
+	// Append appends given lines to the specified log.
 	Append(context.Context, string, []LogLine) error
 }
 
 // GetOptions represents the arguments for fetching Evergreen logs.
 type GetOptions struct {
-	// Version is the version of the underlying log service with which the
-	// specified logs were stored.
-	Version int
 	// LogNames are the names of the logs to fetch and merge, prefixes may
 	// be specified. At least one name must be specified.
 	LogNames []string
