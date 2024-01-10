@@ -55,6 +55,7 @@ func (i *mergingIterator) Next() bool {
 		i.catcher.Add(it.Err())
 		i.catcher.Add(it.Close())
 		if i.catcher.HasErrors() {
+			i.iteratorHeap = &logIteratorHeap{}
 			return false
 		}
 	}

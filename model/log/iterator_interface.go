@@ -29,17 +29,17 @@ type LogIterator interface {
 // Only call this function with log iterators that do not support tailing
 // natively.
 func newTailIterator(it LogIterator, n int) (*basicIterator, error) {
-	tailIt := &basicIterator{}
-	catcher := grip.NewBasicCatcher()
+	var items []LogLine
 	for it.Next() {
-		tailIt.items = append(tailIt.items, it.Item())
+		items = append(items, it.Item())
 	}
+	catcher := grip.NewBasicCatcher()
 	catcher.Add(it.Err())
 	catcher.Add(it.Close())
 
-	if len(tailIt.items) > n {
-		tailIt.items = tailIt.items[len(tailIt.items)-n-1:]
+	if len(items) > n {
+		items = items[len(items)-n:]
 	}
 
-	return tailIt, errors.Wrap(catcher.Resolve(), "creating new log tail iterator")
+	return newBasicIterator(items), errors.Wrap(catcher.Resolve(), "creating new log tail iterator")
 }
