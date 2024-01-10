@@ -1167,8 +1167,8 @@ go.opentelemetry.io/contrib v1.21.1 h1:/U05KZ31iqMqAowhtW10cDPAViNY0tnpAacUgYBmu
 go.opentelemetry.io/contrib v1.21.1/go.mod h1:usW9bPlrjHiJFbK0a6yK/M5wNHs3nLmtrT3vzhoD3co=
 go.opentelemetry.io/contrib/detectors/aws/ec2 v1.21.1 h1:CUYilK1UkIUpdtYrku1Rb6t2e7AJeIcCs37/fTTs+HI=
 go.opentelemetry.io/contrib/detectors/aws/ec2 v1.21.1/go.mod h1:8X6bRmDQ4PMy7iVK7qor/eHnI00S2+q4BM0ukcMEl0s=
-go.opentelemetry.io/contrib/detectors/aws/ecs v1.20.0 h1:yK9frTwU6y5ErWFIBt2lW+U9z/hTPijO5RUiB8c75Ck=
-go.opentelemetry.io/contrib/detectors/aws/ecs v1.20.0/go.mod h1:HhlaqoGmg4NOzPYua9HD/Jyhda3hLAAbj3gbALyGPkg=
+go.opentelemetry.io/contrib/detectors/aws/ecs v1.21.1 h1:dFXbiLSr2NMG/Rqj2u9go799AHbCohQx2kplNcDtysQ=
+go.opentelemetry.io/contrib/detectors/aws/ecs v1.21.1/go.mod h1:PgdaTLOTeKMoBgYRRkskLgH5rtQyWWf50HpU/CvhYwM=
 go.opentelemetry.io/contrib/instrumentation/github.com/aws/aws-sdk-go-v2/otelaws v0.46.1 h1:PGmSzEMllKQwBQHe9SERAsCytvgLhsb8OrRLeW+40xw=
 go.opentelemetry.io/contrib/instrumentation/github.com/aws/aws-sdk-go-v2/otelaws v0.46.1/go.mod h1:h0dNRrQsnnlMonPE/+FXrXtDYZEyZSTaIOfs+n8P/RQ=
 go.opentelemetry.io/contrib/instrumentation/github.com/gorilla/mux/otelmux v0.46.1 h1:Ifzy1lucGMQJh6wPRxusde8bWaDhYjSNOqDyn6Hb4TM=
