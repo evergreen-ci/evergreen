@@ -34,6 +34,10 @@ const (
 	githubActionSynchronize     = "synchronize"
 	githubActionReopened        = "reopened"
 	githubActionChecksRequested = "checks_requested"
+	githubActionCreated         = "created"
+	githubActionCompleted       = "completed"
+	githubActionRerequested     = "rerequested"
+	githubActionRequestedAction = "requested_action"
 
 	// pull request comments
 	retryComment            = "evergreen retry"
@@ -262,6 +266,15 @@ func (gh *githubHookApi) Run(ctx context.Context) gimlet.Responder {
 		}
 		if event.GetAction() == githubActionChecksRequested {
 			return gh.handleMergeGroupChecksRequested(event)
+		}
+
+	case *github.CheckRunEvent:
+		fromApp := event.GetInstallation() != nil
+		if gh.shouldSkipWebhook(ctx, event.Repo.Owner.GetLogin(), event.Repo.GetName(), fromApp) {
+			break
+		}
+		if err := gh.handleCheckRun(ctx, event); err != nil {
+			return gimlet.MakeJSONInternalErrorResponder(err)
 		}
 	}
 
@@ -988,6 +1001,34 @@ func unauthorizedGitTagEmail(tag, user, gitTagSettingsUrl string) (string, strin
 	</html>
 	`, tag, user, gitTagSettingsUrl)
 	return subject, body
+func (gh *githubHookApi) handleCheckRun(ctx context.Context, event *github.CheckRunEvent) error {
+	if event.GetAction() != githubActionCreated {
+		grip.Info(message.Fields{
+			"bynnbynn": "created",
+		})
+		return nil
+	}
+	if event.GetAction() != githubActionCompleted {
+		grip.Info(message.Fields{
+			"bynnbynn": "created",
+		})
+		return nil
+	}
+
+	if event.GetAction() != githubActionRerequested {
+		grip.Info(message.Fields{
+			"bynnbynn": "created",
+		})
+		return nil
+	}
+
+	if event.GetAction() != githubActionRequestedAction {
+		grip.Info(message.Fields{
+			"bynnbynn": "created",
+		})
+		return nil
+	}
+	return nil
 }
 
 func validatePushTagEvent(event *github.PushEvent) error {
