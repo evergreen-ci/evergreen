@@ -98,7 +98,7 @@ func TestLogService(t *testing.T) {
 						LogName:   log0,
 						Priority:  level.Info,
 						Timestamp: ts + int64(30*time.Second),
-						Data:      "Another lonley log line.",
+						Data:      "Another lonely log line.",
 					},
 				}
 				require.NoError(t, svc.Append(ctx, log0, lines0))
