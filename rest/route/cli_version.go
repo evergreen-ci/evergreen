@@ -4,15 +4,18 @@ import (
 	"context"
 	"net/http"
 
+	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/rest/data"
 	"github.com/evergreen-ci/gimlet"
 	"github.com/pkg/errors"
 )
 
-type cliVersion struct{}
+type cliVersion struct {
+	env evergreen.Environment
+}
 
-func makeFetchCLIVersionRoute() gimlet.RouteHandler {
-	return &cliVersion{}
+func makeFetchCLIVersionRoute(env evergreen.Environment) gimlet.RouteHandler {
+	return &cliVersion{env: env}
 }
 
 // Factory creates an instance of the handler.
@@ -24,7 +27,7 @@ func makeFetchCLIVersionRoute() gimlet.RouteHandler {
 //	@Security		Api-User || Api-Key
 //	@Success		200	{object}	model.APICLIUpdate
 func (gh *cliVersion) Factory() gimlet.RouteHandler {
-	return &cliVersion{}
+	return &cliVersion{env: gh.env}
 }
 
 func (gh *cliVersion) Parse(ctx context.Context, r *http.Request) error {
@@ -32,7 +35,7 @@ func (gh *cliVersion) Parse(ctx context.Context, r *http.Request) error {
 }
 
 func (gh *cliVersion) Run(ctx context.Context) gimlet.Responder {
-	version, err := data.GetCLIUpdate(ctx)
+	version, err := data.GetCLIUpdate(ctx, gh.env)
 	if err != nil {
 		return gimlet.MakeJSONInternalErrorResponder(errors.Wrap(err, "getting CLI updates"))
 	}

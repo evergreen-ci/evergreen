@@ -31,10 +31,11 @@ func startWebService() cli.Command {
 		Flags: mergeFlagSlices(serviceConfigFlags(), addDbSettingsFlags()),
 		Action: func(c *cli.Context) error {
 			confPath := c.String(confFlagName)
+			versionID := c.String(versionIDFlagName)
 			db := parseDB(c)
 			ctx, cancel := context.WithCancel(context.Background())
 
-			env, err := evergreen.NewEnvironment(ctx, confPath, db)
+			env, err := evergreen.NewEnvironment(ctx, confPath, versionID, db)
 			grip.EmergencyFatal(errors.Wrap(err, "configuring application environment"))
 			evergreen.SetEnvironment(env)
 			if c.Bool(overwriteConfFlagName) {

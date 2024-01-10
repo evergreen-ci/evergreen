@@ -139,15 +139,8 @@ func (j *podDefinitionCreationJob) populateIfUnset(ctx context.Context) error {
 		j.env = evergreen.GetEnvironment()
 	}
 
-	// Use the latest service flags instead of those cached in the environment.
-	settings := *j.env.Settings()
-	if err := settings.ServiceFlags.Get(ctx); err != nil {
-		return errors.Wrap(err, "getting service flags")
-	}
-	j.settings = settings
-
 	if j.ecsClient == nil {
-		client, err := cloud.MakeECSClient(ctx, &settings)
+		client, err := cloud.MakeECSClient(ctx, j.env.Settings())
 		if err != nil {
 			return errors.Wrap(err, "initializing ECS client")
 		}

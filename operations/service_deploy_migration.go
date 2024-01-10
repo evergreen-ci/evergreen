@@ -25,7 +25,7 @@ func deployMigration() cli.Command {
 			defer cancel()
 
 			db := parseDB(c)
-			env, err := evergreen.NewEnvironment(ctx, c.String(confFlagName), db)
+			env, err := evergreen.NewEnvironment(ctx, c.String(confFlagName), "", db)
 			grip.EmergencyFatal(errors.Wrap(err, "configuring application environment"))
 			evergreen.SetEnvironment(env)
 			settings := env.Settings()
@@ -77,7 +77,7 @@ func deployDataTransforms() cli.Command {
 			defer cancel()
 
 			db := parseDB(c)
-			env, err := evergreen.NewEnvironment(ctx, confPath, db)
+			env, err := evergreen.NewEnvironment(ctx, confPath, "", db)
 			grip.EmergencyFatal(errors.Wrap(err, "configuring application environment"))
 			evergreen.SetEnvironment(env)
 			settings := env.Settings()

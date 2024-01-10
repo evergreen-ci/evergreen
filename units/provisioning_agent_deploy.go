@@ -141,11 +141,7 @@ func (j *agentDeployJob) Run(ctx context.Context) {
 		}
 	}()
 
-	settings := *j.env.Settings()
-	// Use the latest service flags instead of those cached in the environment.
-	settings.ServiceFlags = *flags
-
-	if err := j.startAgentOnHost(ctx, &settings); err != nil {
+	if err := j.startAgentOnHost(ctx, j.env.Settings()); err != nil {
 		if j.host.Status == evergreen.HostRunning {
 			j.AddRetryableError(err)
 		} else {
@@ -189,7 +185,7 @@ func (j *agentDeployJob) getHostMessage() message.Fields {
 // preparation on the remote machine, then kicks off the agent process on the
 // machine. Returns an error if any step along the way fails.
 func (j *agentDeployJob) startAgentOnHost(ctx context.Context, settings *evergreen.Settings) error {
-	if err := j.prepRemoteHost(ctx, settings); err != nil {
+	if err := j.prepRemoteHost(ctx); err != nil {
 		return errors.Wrap(err, "prepping remote host")
 	}
 
@@ -244,11 +240,11 @@ const (
 )
 
 // Prepare the remote machine to run a task.
-func (j *agentDeployJob) prepRemoteHost(ctx context.Context, settings *evergreen.Settings) error {
+func (j *agentDeployJob) prepRemoteHost(ctx context.Context) error {
 	// copy over the correct agent binary to the remote host
 	curlCtx, cancel := context.WithTimeout(ctx, evergreenCurlTimeout)
 	defer cancel()
-	curlCmd, err := j.host.CurlCommand(settings)
+	curlCmd, err := j.host.CurlCommand(j.env)
 	if err != nil {
 		return errors.Wrap(err, "creating command to curl agent binary")
 	}

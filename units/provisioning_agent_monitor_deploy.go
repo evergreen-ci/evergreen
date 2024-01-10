@@ -166,7 +166,7 @@ func (j *agentMonitorDeployJob) Run(ctx context.Context) {
 	settings := *j.env.Settings()
 	settings.ServiceFlags = *flags
 
-	if err = j.fetchClient(ctx, &settings); err != nil {
+	if err = j.fetchClient(ctx); err != nil {
 		j.AddRetryableError(err)
 		return
 	}
@@ -220,7 +220,7 @@ func (j *agentMonitorDeployJob) checkAgentMonitor(ctx context.Context) (bool, er
 }
 
 // fetchClient fetches the client on the host through the host's Jasper service.
-func (j *agentMonitorDeployJob) fetchClient(ctx context.Context, settings *evergreen.Settings) error {
+func (j *agentMonitorDeployJob) fetchClient(ctx context.Context) error {
 	grip.Info(message.Fields{
 		"message":       "fetching latest Evergreen binary for agent monitor",
 		"host_id":       j.host.Id,
@@ -229,7 +229,7 @@ func (j *agentMonitorDeployJob) fetchClient(ctx context.Context, settings *everg
 		"job":           j.ID(),
 	})
 
-	cmd, err := j.host.CurlCommand(settings)
+	cmd, err := j.host.CurlCommand(j.env)
 	if err != nil {
 		return errors.Wrap(err, "creating command to curl agent monitor binary")
 	}

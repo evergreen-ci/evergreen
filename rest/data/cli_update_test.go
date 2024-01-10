@@ -6,6 +6,7 @@ import (
 
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/db"
+	"github.com/evergreen-ci/evergreen/mock"
 	"github.com/stretchr/testify/suite"
 )
 
@@ -40,10 +41,15 @@ func (s *cliUpdateConnectorSuite) Test() {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 
-	v, err := GetCLIUpdate(ctx)
+	latestRevision := "abcdef"
+	env := &mock.Environment{}
+	env.Clients.LatestRevision = latestRevision
+
+	v, err := GetCLIUpdate(ctx, env)
 	s.Require().NoError(err)
 	s.Require().NotNil(v)
-	s.NotEmpty(v.ClientConfig.LatestRevision)
+	s.Require().NotNil(v.ClientConfig.LatestRevision)
+	s.Equal(latestRevision, *v.ClientConfig.LatestRevision)
 }
 
 func (s *cliUpdateConnectorSuite) TestDegradedMode() {
@@ -51,9 +57,15 @@ func (s *cliUpdateConnectorSuite) TestDegradedMode() {
 	defer cancel()
 
 	s.degrade()
-	v, err := GetCLIUpdate(ctx)
+
+	latestRevision := "abcdef"
+	env := &mock.Environment{}
+	env.Clients.LatestRevision = latestRevision
+
+	v, err := GetCLIUpdate(ctx, env)
 	s.NoError(err)
 	s.Require().NotNil(v)
 	s.True(v.IgnoreUpdate)
-	s.NotEmpty(v.ClientConfig.LatestRevision)
+	s.Require().NotNil(v.ClientConfig.LatestRevision)
+	s.Equal(latestRevision, *v.ClientConfig.LatestRevision)
 }

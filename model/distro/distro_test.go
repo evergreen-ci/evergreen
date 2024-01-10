@@ -12,6 +12,7 @@ import (
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/db"
 	"github.com/evergreen-ci/evergreen/db/mgo/bson"
+	"github.com/evergreen-ci/evergreen/mock"
 	"github.com/evergreen-ci/evergreen/model/event"
 	"github.com/evergreen-ci/evergreen/model/user"
 	"github.com/evergreen-ci/evergreen/testutil"
@@ -624,20 +625,13 @@ func TestLogDistroModifiedWithDistroData(t *testing.T) {
 }
 
 func TestS3ClientURL(t *testing.T) {
-	d := Distro{Arch: evergreen.ArchWindowsAmd64}
-	settings := &evergreen.Settings{
-		HostInit: evergreen.HostInitConfig{
-			S3BaseURL: "https://foo.com",
-		},
-		ClientBinariesDir: "clients",
-	}
+	env := &mock.Environment{Clients: evergreen.ClientConfig{S3URLPrefix: "https://foo.com"}}
 
-	expected := fmt.Sprintf("https://foo.com/%s/windows_amd64/evergreen.exe", evergreen.BuildRevision)
-	assert.Equal(t, expected, d.S3ClientURL(settings))
+	d := Distro{Arch: evergreen.ArchWindowsAmd64}
+	assert.Equal(t, "https://foo.com/windows_amd64/evergreen.exe", d.S3ClientURL(env))
 
 	d.Arch = evergreen.ArchLinuxAmd64
-	expected = fmt.Sprintf("https://foo.com/%s/linux_amd64/evergreen", evergreen.BuildRevision)
-	assert.Equal(t, expected, d.S3ClientURL(settings))
+	assert.Equal(t, "https://foo.com/linux_amd64/evergreen", d.S3ClientURL(env))
 }
 
 func TestClientURL(t *testing.T) {
