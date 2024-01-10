@@ -42,11 +42,13 @@ func (s *logServiceV0) Get(ctx context.Context, getOpts GetOptions) (LogIterator
 	var its []LogIterator
 	for _, chunks := range allLogChunks {
 		its = append(its, newChunkIterator(ctx, chunkIteratorOptions{
-			bucket: s.bucket,
-			chunks: chunks.chunks,
-			parser: s.getParser(chunks.name),
-			start:  start,
-			end:    end,
+			bucket:    s.bucket,
+			chunks:    chunks.chunks,
+			parser:    s.getParser(chunks.name),
+			start:     start,
+			end:       end,
+			lineLimit: getOpts.LineLimit,
+			tailN:     getOpts.TailN,
 		}))
 	}
 

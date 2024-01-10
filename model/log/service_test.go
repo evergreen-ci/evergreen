@@ -36,11 +36,7 @@ func TestLogService(t *testing.T) {
 		t.Run(impl.name, func(t *testing.T) {
 			svc := impl.constructor(t)
 
-			t.Run("LogDNE", func(t *testing.T) {
-				lines := readLogLines(t, svc, ctx, GetOptions{LogNames: []string{"DNE"}})
-				assert.Empty(t, lines)
-			})
-			t.Run("RoundTripSingleLog", func(t *testing.T) {
+			t.Run("Append", func(t *testing.T) {
 				logName := utility.RandomString()
 				lines := []LogLine{
 					{
@@ -84,7 +80,7 @@ func TestLogService(t *testing.T) {
 					assert.Equal(t, strings.TrimRight(lines[i].Data, "\n"), foundLines[i].Data)
 				}
 			})
-			t.Run("RoundTripMultipleLogs", func(t *testing.T) {
+			t.Run("Get", func(t *testing.T) {
 				ts := time.Now().UnixNano()
 				log0 := "lonely/alone.log"
 				lines0 := []LogLine{
@@ -141,70 +137,193 @@ func TestLogService(t *testing.T) {
 				}
 				require.NoError(t, svc.Append(ctx, log2, lines2))
 
-				t.Run("CommonPrefix", func(t *testing.T) {
-					expectedLines := []LogLine{
-						lines1[0],
-						lines0[0],
-						lines2[0],
-						lines2[1],
-						lines0[1],
-						lines1[1],
-						lines2[2],
-					}
-					actualLines := readLogLines(t, svc, ctx, GetOptions{LogNames: []string{log0, "common"}})
-					assert.Equal(t, expectedLines, actualLines)
-				})
-				t.Run("DefaultTimeRangeOfFirstLog", func(t *testing.T) {
-					expectedLines := []LogLine{
-						lines1[0],
-						lines0[0],
-						lines0[1],
-					}
-					actualLines := readLogLines(t, svc, ctx, GetOptions{
-						LogNames:                   []string{log0, log1},
-						DefaultTimeRangeOfFirstLog: true,
+				for _, test := range []struct {
+					name          string
+					opts          GetOptions
+					expectedLines []LogLine
+				}{
+					{
+						name: "LogDNE",
+						opts: GetOptions{LogNames: []string{"DNE"}},
+					},
+					{
+						name: "CommonPrefix",
+						opts: GetOptions{LogNames: []string{log0, "common"}},
+						expectedLines: []LogLine{
+							lines1[0],
+							lines0[0],
+							lines2[0],
+							lines2[1],
+							lines0[1],
+							lines1[1],
+							lines2[2],
+						},
+					},
+					{
+						name: "DefaultTimeRangeOfFirstLog",
+						opts: GetOptions{
+							LogNames:                   []string{log0, log1},
+							DefaultTimeRangeOfFirstLog: true,
+						},
+						expectedLines: []LogLine{
+							lines1[0],
+							lines0[0],
+							lines0[1],
+						},
+					},
+					{
+						name: "DefaultTimeRangeOfFirstLogWithStart",
+						opts: GetOptions{
+							LogNames:                   []string{log2, log1},
+							Start:                      utility.ToInt64Ptr(ts + int64(time.Second)),
+							DefaultTimeRangeOfFirstLog: true,
+						},
+						expectedLines: []LogLine{
+							lines2[0],
+							lines2[1],
+							lines1[1],
+							lines2[2],
+						},
+					},
+					{
+						name: "DefaultTimeRangeOfFirstLogWithEnd",
+						opts: GetOptions{
+							LogNames:                   []string{log2, log1},
+							End:                        utility.ToInt64Ptr(ts + int64(time.Minute)),
+							DefaultTimeRangeOfFirstLog: true,
+						},
+						expectedLines: []LogLine{
+							lines2[0],
+							lines2[1],
+							lines1[1],
+						},
+					},
+					{
+						name: "StartSingleLog",
+						opts: GetOptions{
+							LogNames: []string{log1},
+							Start:    utility.ToInt64Ptr(ts + int64(time.Second)),
+						},
+						expectedLines: []LogLine{lines1[1]},
+					},
+					{
+						name: "StartMultipleLogs",
+						opts: GetOptions{
+							LogNames: []string{log0, "common"},
+							Start:    utility.ToInt64Ptr(ts + int64(time.Second)),
+						},
+						expectedLines: []LogLine{
+							lines2[0],
+							lines2[1],
+							lines0[1],
+							lines1[1],
+							lines2[2],
+						},
+					},
+					{
+						name: "EndSingleLog",
+						opts: GetOptions{
+							LogNames: []string{log2},
+							End:      utility.ToInt64Ptr(ts + int64(time.Minute)),
+						},
+						expectedLines: []LogLine{
+							lines2[0],
+							lines2[1],
+						},
+					},
+					{
+						name: "EndMultipleLogs",
+						opts: GetOptions{
+							LogNames: []string{log0, "common"},
+							End:      utility.ToInt64Ptr(ts + int64(time.Second)),
+						},
+						expectedLines: []LogLine{
+							lines1[0],
+							lines0[0],
+							lines2[0],
+							lines2[1],
+						},
+					},
+					{
+						name: "StartAndEndSingleLog",
+						opts: GetOptions{
+							LogNames:                   []string{log2},
+							Start:                      utility.ToInt64Ptr(ts + int64(time.Second)),
+							End:                        utility.ToInt64Ptr(ts + int64(time.Minute)),
+							DefaultTimeRangeOfFirstLog: true, // Should get ignored.
+						},
+						expectedLines: []LogLine{
+							lines2[0],
+							lines2[1],
+						},
+					},
+					{
+						name: "StartAndEndMultipleLogs",
+						opts: GetOptions{
+							LogNames:                   []string{log1, log2},
+							Start:                      utility.ToInt64Ptr(ts + int64(time.Second)),
+							End:                        utility.ToInt64Ptr(ts + int64(time.Minute)),
+							DefaultTimeRangeOfFirstLog: true, // Should get ignored.
+						},
+						expectedLines: []LogLine{
+							lines2[0],
+							lines2[1],
+							lines1[1],
+						},
+					},
+					{
+						name: "LineLimitSingleLog",
+						opts: GetOptions{
+							LogNames:  []string{log2},
+							LineLimit: 2,
+						},
+						expectedLines: []LogLine{
+							lines2[0],
+							lines2[1],
+						},
+					},
+					{
+						name: "LineLimitMultipleLogs",
+						opts: GetOptions{
+							LogNames:  []string{log0, "common"},
+							LineLimit: 4,
+						},
+						expectedLines: []LogLine{
+							lines1[0],
+							lines0[0],
+							lines2[0],
+							lines2[1],
+						},
+					},
+					{
+						name: "TailNSingleLog",
+						opts: GetOptions{
+							LogNames: []string{log2},
+							TailN:    2,
+						},
+						expectedLines: []LogLine{
+							lines2[1],
+							lines2[2],
+						},
+					},
+					{
+						name: "TailNMultipleLogs",
+						opts: GetOptions{
+							LogNames: []string{log0, "common"},
+							TailN:    3,
+						},
+						expectedLines: []LogLine{
+							lines0[1],
+							lines1[1],
+							lines2[2],
+						},
+					},
+				} {
+					t.Run(test.name, func(t *testing.T) {
+						actualLines := readLogLines(t, svc, ctx, test.opts)
+						assert.Equal(t, test.expectedLines, actualLines)
 					})
-					assert.Equal(t, expectedLines, actualLines)
-				})
-				t.Run("StartAndEnd", func(t *testing.T) {
-					expectedLines := []LogLine{
-						lines2[0],
-						lines2[1],
-						lines1[1],
-					}
-					actualLines := readLogLines(t, svc, ctx, GetOptions{
-						LogNames:                   []string{log1, log2},
-						Start:                      utility.ToInt64Ptr(ts + int64(time.Second)),
-						End:                        utility.ToInt64Ptr(ts + int64(time.Minute)),
-						DefaultTimeRangeOfFirstLog: true,
-					})
-					assert.Equal(t, expectedLines, actualLines)
-				})
-				t.Run("LineLimit", func(t *testing.T) {
-					expectedLines := []LogLine{
-						lines1[0],
-						lines0[0],
-						lines2[0],
-						lines2[1],
-					}
-					actualLines := readLogLines(t, svc, ctx, GetOptions{
-						LogNames:  []string{log0, "common"},
-						LineLimit: 4,
-					})
-					assert.Equal(t, expectedLines, actualLines)
-				})
-				t.Run("TailN", func(t *testing.T) {
-					expectedLines := []LogLine{
-						lines0[1],
-						lines1[1],
-						lines2[2],
-					}
-					actualLines := readLogLines(t, svc, ctx, GetOptions{
-						LogNames: []string{log0, "common"},
-						TailN:    3,
-					})
-					assert.Equal(t, expectedLines, actualLines)
-				})
+				}
 			})
 		})
 	}
