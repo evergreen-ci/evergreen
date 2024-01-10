@@ -120,12 +120,16 @@ func (h *testLogDirectoryHandler) start(ctx context.Context, dir string) error {
 	}
 
 	started := make(chan struct{})
+	startErr := make(chan error)
 	go func() {
 		h.watcher.Wait()
 		close(started)
 	}()
-	startErr := make(chan error)
 	go func() {
+		defer func() {
+			h.logger.Execution().Critical(recovery.HandlePanicWithError(recover(), nil, "test log directory watcher start"))
+		}()
+
 		startErr <- h.watcher.Start(time.Millisecond)
 		close(startErr)
 	}()
