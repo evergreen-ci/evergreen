@@ -25,6 +25,7 @@ import (
 
 type Distro struct {
 	Id                    string                `bson:"_id" json:"_id,omitempty" mapstructure:"_id,omitempty"`
+	AdminOnly             bool                  `bson:"admin_only,omitempty" json:"admin_only,omitempty" mapstructure:"admin_only,omitempty"`
 	Aliases               []string              `bson:"aliases,omitempty" json:"aliases,omitempty" mapstructure:"aliases,omitempty"`
 	Arch                  string                `bson:"arch" json:"arch,omitempty" mapstructure:"arch,omitempty"`
 	WorkDir               string                `bson:"work_dir" json:"work_dir,omitempty" mapstructure:"work_dir,omitempty"`
