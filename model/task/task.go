@@ -176,6 +176,9 @@ type Task struct {
 	// Set to true if the task should be considered for mainline github checks
 	IsGithubCheck bool `bson:"is_github_check,omitempty" json:"is_github_check,omitempty"`
 
+	// Set to true if the task creates a github checkrun
+	HasCheckRun bool `bson:"has_checkrun,omitempty" json:"has_checkrun,omitempty"`
+
 	// CanReset indicates that the task has successfully archived and is in a valid state to be reset.
 	CanReset bool `bson:"can_reset,omitempty" json:"can_reset,omitempty"`
 

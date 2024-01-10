@@ -1379,11 +1379,13 @@ type ComplexityRoot struct {
 	}
 
 	TestLog struct {
-		LineNum    func(childComplexity int) int
-		URL        func(childComplexity int) int
-		URLLobster func(childComplexity int) int
-		URLParsley func(childComplexity int) int
-		URLRaw     func(childComplexity int) int
+		LineNum       func(childComplexity int) int
+		RenderingType func(childComplexity int) int
+		URL           func(childComplexity int) int
+		URLLobster    func(childComplexity int) int
+		URLParsley    func(childComplexity int) int
+		URLRaw        func(childComplexity int) int
+		Version       func(childComplexity int) int
 	}
 
 	TestResult struct {
@@ -8484,6 +8486,13 @@ func (e *executableSchema) Complexity(typeName, field string, childComplexity in
 
 		return e.complexity.TestLog.LineNum(childComplexity), true
 
+	case "TestLog.renderingType":
+		if e.complexity.TestLog.RenderingType == nil {
+			break
+		}
+
+		return e.complexity.TestLog.RenderingType(childComplexity), true
+
 	case "TestLog.url":
 		if e.complexity.TestLog.URL == nil {
 			break
@@ -8511,6 +8520,13 @@ func (e *executableSchema) Complexity(typeName, field string, childComplexity in
 		}
 
 		return e.complexity.TestLog.URLRaw(childComplexity), true
+
+	case "TestLog.version":
+		if e.complexity.TestLog.Version == nil {
+			break
+		}
+
+		return e.complexity.TestLog.Version(childComplexity), true
 
 	case "TestResult.baseStatus":
 		if e.complexity.TestResult.BaseStatus == nil {
@@ -57719,6 +57735,88 @@ func (ec *executionContext) fieldContext_TestLog_urlRaw(ctx context.Context, fie
 	return fc, nil
 }
 
+func (ec *executionContext) _TestLog_renderingType(ctx context.Context, field graphql.CollectedField, obj *model.TestLogs) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_TestLog_renderingType(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.RenderingType, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		return graphql.Null
+	}
+	res := resTmp.(*string)
+	fc.Result = res
+	return ec.marshalOString2ᚖstring(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_TestLog_renderingType(ctx context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "TestLog",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type String does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _TestLog_version(ctx context.Context, field graphql.CollectedField, obj *model.TestLogs) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_TestLog_version(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.Version, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		return graphql.Null
+	}
+	res := resTmp.(int32)
+	fc.Result = res
+	return ec.marshalOInt2int32(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_TestLog_version(ctx context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "TestLog",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type Int does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
 func (ec *executionContext) _TestResult_id(ctx context.Context, field graphql.CollectedField, obj *model.APITest) (ret graphql.Marshaler) {
 	fc, err := ec.fieldContext_TestResult_id(ctx, field)
 	if err != nil {
@@ -58058,6 +58156,10 @@ func (ec *executionContext) fieldContext_TestResult_logs(ctx context.Context, fi
 				return ec.fieldContext_TestLog_urlParsley(ctx, field)
 			case "urlRaw":
 				return ec.fieldContext_TestLog_urlRaw(ctx, field)
+			case "renderingType":
+				return ec.fieldContext_TestLog_renderingType(ctx, field)
+			case "version":
+				return ec.fieldContext_TestLog_version(ctx, field)
 			}
 			return nil, fmt.Errorf("no field named %q was found under type TestLog", field.Name)
 		},
@@ -83044,6 +83146,10 @@ func (ec *executionContext) _TestLog(ctx context.Context, sel ast.SelectionSet, 
 			out.Values[i] = ec._TestLog_urlParsley(ctx, field, obj)
 		case "urlRaw":
 			out.Values[i] = ec._TestLog_urlRaw(ctx, field, obj)
+		case "renderingType":
+			out.Values[i] = ec._TestLog_renderingType(ctx, field, obj)
+		case "version":
+			out.Values[i] = ec._TestLog_version(ctx, field, obj)
 		default:
 			panic("unknown field " + strconv.Quote(field.Name))
 		}
@@ -90470,6 +90576,16 @@ func (ec *executionContext) unmarshalOInt2int(ctx context.Context, v interface{}
 
 func (ec *executionContext) marshalOInt2int(ctx context.Context, sel ast.SelectionSet, v int) graphql.Marshaler {
 	res := graphql.MarshalInt(v)
+	return res
+}
+
+func (ec *executionContext) unmarshalOInt2int32(ctx context.Context, v interface{}) (int32, error) {
+	res, err := graphql.UnmarshalInt32(v)
+	return res, graphql.ErrorOnPath(ctx, err)
+}
+
+func (ec *executionContext) marshalOInt2int32(ctx context.Context, sel ast.SelectionSet, v int32) graphql.Marshaler {
+	res := graphql.MarshalInt32(v)
 	return res
 }
 
