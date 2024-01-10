@@ -14,6 +14,7 @@ import (
 	"github.com/pkg/errors"
 )
 
+// logServiceV0 implements a pail-backed log service for Evergreen.
 type logServiceV0 struct {
 	bucket pail.Bucket
 }
@@ -77,16 +78,9 @@ func (s *logServiceV0) Append(ctx context.Context, logName string, lines []LogLi
 	return errors.Wrap(s.bucket.Put(ctx, key, bytes.NewReader(rawLines)), "writing log chunk to bucket")
 }
 
-type logChunks struct {
-	name   string
-	chunks []chunkInfo
-}
-
 // getLogChunks maps each logical log to its chunk files stored in pail-backed
 // bucket storage for the given prefix.
-func (s *logServiceV0) getLogChunks(ctx context.Context, logNames []string) ([]*logChunks, int64, int64, error) {
-	var allLogChunks []*logChunks
-
+func (s *logServiceV0) getLogChunks(ctx context.Context, logNames []string) ([]chunkGroup, int64, int64, error) {
 	// To reduce potentially expensive list calls, use the LCP of the
 	// given log names when calling `bucket.List`. Key names that do not
 	// have one of the log names as a prefix will get filtered out.
@@ -105,7 +99,9 @@ func (s *logServiceV0) getLogChunks(ctx context.Context, logNames []string) ([]*
 	if err != nil {
 		return nil, 0, 0, errors.Wrap(err, "listing log chunks")
 	}
-	logChunksByName := map[string]*logChunks{}
+
+	var orderedLogNames []string
+	logChunks := map[string][]chunkInfo{}
 	for it.Next(ctx) {
 		logName := prefix
 		chunkKey := it.Item().Name()
@@ -127,44 +123,55 @@ func (s *logServiceV0) getLogChunks(ctx context.Context, logNames []string) ([]*
 			return nil, 0, 0, errors.Wrapf(err, "parsing chunk key '%s'", chunkKey)
 		}
 
-		chunks, ok := logChunksByName[logName]
-		if !ok {
-			chunks = &logChunks{name: logName}
-			allLogChunks = append(allLogChunks, chunks)
-			logChunksByName[logName] = chunks
+		if _, ok := logChunks[logName]; !ok {
+			orderedLogNames = append(orderedLogNames, logName)
 		}
-		chunks.chunks = append(chunks.chunks, chunk)
+		logChunks[logName] = append(logChunks[logName], chunk)
 	}
 	if err = it.Err(); err != nil {
 		return nil, 0, 0, errors.Wrap(err, "iterating log chunks")
 	}
 
 	var start, end int64
-	for _, chunks := range allLogChunks {
-		sort.Slice(chunks.chunks, func(i, j int) bool {
-			return chunks.chunks[i].start < chunks.chunks[j].start
+	for name, chunks := range logChunks {
+		// Sort each set of chunks by start order for log iterating and
+		// find the first specified log's time range.
+		sort.Slice(chunks, func(i, j int) bool {
+			return chunks[i].start < chunks[j].start
 		})
-		if strings.HasPrefix(chunks.name, logNames[0]) {
-			if start == 0 || (start > 0 && start > chunks.chunks[0].start) {
-				start = chunks.chunks[0].start
+		if strings.HasPrefix(name, logNames[0]) {
+			if start == 0 || (start > 0 && start > chunks[0].start) {
+				start = chunks[0].start
 			}
-			if end < chunks.chunks[len(chunks.chunks)-1].end {
-				end = chunks.chunks[len(chunks.chunks)-1].end
+			if end < chunks[len(chunks)-1].end {
+				end = chunks[len(chunks)-1].end
 			}
 		}
 	}
 
-	return allLogChunks, start, end, nil
+	// Preserve the order that pail returns the log names to ensure a
+	// deterministic merge order.
+	chunkGroups := make([]chunkGroup, 0, len(logNames))
+	for _, name := range orderedLogNames {
+		chunkGroups = append(chunkGroups, chunkGroup{
+			name:   name,
+			chunks: logChunks[name],
+		})
+	}
+
+	return chunkGroups, start, end, nil
 }
 
 // createChunkKey returns a pail-backed bucket storage key that encodes the
-// given log chunk information. This is used primarily for fetching logs.
+// given log chunk information.
+//
+// The chunk key is encoded with the chunk info metadata to optimize storage
+// and lookup performance.
 func (s *logServiceV0) createChunkKey(start, end int64, numLines int) string {
 	return fmt.Sprintf("%d_%d_%d", start, end, numLines)
 }
 
-// parseChunkKey returns a chunkInfo object with the information encoded in the
-// given key.
+// parseChunkKey returns the chunk info encoded in the given key.
 func (s *logServiceV0) parseChunkKey(prefix, key string) (chunkInfo, error) {
 	parsedKey := strings.Split(key, "_")
 	if len(parsedKey) != 3 {
@@ -201,8 +208,8 @@ func (s *logServiceV0) formatRawLine(line LogLine) string {
 	return fmt.Sprintf("%d %d %s", line.Priority, line.Timestamp, line.Data)
 }
 
-// getParser returns a function that parses a raw v0 log line into a LogLine
-// struct.
+// getParser returns a function that parses a raw line into the service
+// representation of a log line.
 func (s *logServiceV0) getParser(logName string) LineParser {
 	return func(data string) (LogLine, error) {
 		lineParts := strings.SplitN(data, " ", 3)
