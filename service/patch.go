@@ -45,6 +45,11 @@ func (uis *UIServer) patchPage(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, fmt.Sprintf("error loading patch: %v", err), http.StatusInternalServerError)
 		return
 	}
+	if projCtx.Patch == nil {
+		http.Error(w, fmt.Sprintf("could not find patch '%s' for projCtx", projCtx.Patch.Id),
+			http.StatusInternalServerError)
+		return
+	}
 
 	// Unmarshall project and get project variants and tasks
 	variantsAndTasksFromProject, err := model.GetVariantsAndTasksFromPatchProject(r.Context(), uis.env.Settings(), projCtx.Patch)
