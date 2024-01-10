@@ -1002,32 +1002,36 @@ func unauthorizedGitTagEmail(tag, user, gitTagSettingsUrl string) (string, strin
 	`, tag, user, gitTagSettingsUrl)
 	return subject, body
 func (gh *githubHookApi) handleCheckRun(ctx context.Context, event *github.CheckRunEvent) error {
-	if event.GetAction() != githubActionCreated {
-		grip.Info(message.Fields{
-			"bynnbynn": "created",
-		})
-		return nil
-	}
-	if event.GetAction() != githubActionCompleted {
-		grip.Info(message.Fields{
-			"bynnbynn": "created",
-		})
-		return nil
-	}
+	grip.Info(message.Fields{
+		"bynnbynn": event.GetAction(),
+		"repo":     event.GetRepo().GetFullName(),
+	})
+	// if event.GetAction() == githubActionCreated {
+	// 	grip.Info(message.Fields{
+	// 		"bynnbynn": "created",
+	// 	})
+	// 	return nil
+	// }
+	// if event.GetAction() == githubActionCompleted {
+	// 	grip.Info(message.Fields{
+	// 		"bynnbynn": "completed",
+	// 	})
+	// 	return nil
+	// }
 
-	if event.GetAction() != githubActionRerequested {
-		grip.Info(message.Fields{
-			"bynnbynn": "created",
-		})
-		return nil
-	}
+	// if event.GetAction() == githubActionRerequested {
+	// 	grip.Info(message.Fields{
+	// 		"bynnbynn": "rerequested",
+	// 	})
+	// 	return nil
+	// }
 
-	if event.GetAction() != githubActionRequestedAction {
-		grip.Info(message.Fields{
-			"bynnbynn": "created",
-		})
-		return nil
-	}
+	// if event.GetAction() == githubActionRequestedAction {
+	// 	grip.Info(message.Fields{
+	// 		"bynnbynn": "requested action",
+	// 	})
+	// 	return nil
+	// }
 	return nil
 }
 
