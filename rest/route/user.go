@@ -639,6 +639,15 @@ func makeUpdateServiceUser() gimlet.RouteHandler {
 	}
 }
 
+// Factory creates an instance of the handler.
+//
+//	@Summary		Create or update service user
+//	@Description	Fetches a single build using its ID
+//	@Tags			admin
+//	@Router			/admin/service_users [post]
+//	@Security		Api-User || Api-Key
+//	@Param			build_id	path		string	true	"the build ID"
+//	@Success		200
 func (h *serviceUserPostHandler) Factory() gimlet.RouteHandler {
 	return &serviceUserPostHandler{
 		u: &model.APIDBUser{},
@@ -675,6 +684,15 @@ func makeDeleteServiceUser() gimlet.RouteHandler {
 	return &serviceUserDeleteHandler{}
 }
 
+// Factory creates an instance of the handler.
+//
+//	@Summary		Delete service user
+//	@Description	Deletes a service user by its ID
+//	@Tags			admin
+//	@Router			/admin/service_users [delete]
+//	@Security		Api-User || Api-Key
+//	@Param			build_id	path		string	true	"the build ID"
+//	@Success		200
 func (h *serviceUserDeleteHandler) Factory() gimlet.RouteHandler {
 	return &serviceUserDeleteHandler{}
 }
@@ -704,6 +722,15 @@ func makeGetServiceUsers() gimlet.RouteHandler {
 	return &serviceUsersGetHandler{}
 }
 
+// Factory creates an instance of the handler.
+//
+//	@Summary		Get service user
+//	@Description	Fetches a service user using its ID
+//	@Tags			admin
+//	@Router			/admin/service_users [get]
+//	@Security		Api-User || Api-Key
+//	@Param			build_id	path		string	true	"the build ID"
+//	@Success		200			{object}	[]model.APIDBUser
 func (h *serviceUsersGetHandler) Factory() gimlet.RouteHandler {
 	return &serviceUsersGetHandler{}
 }
