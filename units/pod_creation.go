@@ -99,18 +99,9 @@ func (j *podCreationJob) Run(ctx context.Context) {
 		return
 	}
 
-	settings := *j.env.Settings()
-	// Use the latest service flags instead of those cached in the environment.
-	flags, err := evergreen.GetServiceFlags(ctx)
-	if err != nil {
-		j.AddRetryableError(errors.Wrap(err, "getting service flags"))
-		return
-	}
-	settings.ServiceFlags = *flags
-
 	switch j.pod.Status {
 	case pod.StatusInitializing:
-		execOpts, err := cloud.ExportECSPodExecutionOptions(settings.Providers.AWS.Pod.ECS, j.pod.TaskContainerCreationOpts)
+		execOpts, err := cloud.ExportECSPodExecutionOptions(j.env.Settings().Providers.AWS.Pod.ECS, j.pod.TaskContainerCreationOpts)
 		if err != nil {
 			j.AddError(errors.Wrap(err, "getting pod execution options"))
 			return

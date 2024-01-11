@@ -4,6 +4,8 @@ import (
 	"fmt"
 	"net/http"
 
+	"github.com/evergreen-ci/evergreen"
+	"github.com/evergreen-ci/evergreen/model"
 	"github.com/evergreen-ci/evergreen/model/event"
 	restModel "github.com/evergreen-ci/evergreen/rest/model"
 	"github.com/evergreen-ci/evergreen/trigger"
@@ -11,6 +13,42 @@ import (
 	"github.com/mongodb/grip"
 	"github.com/pkg/errors"
 )
+
+// There are special requirements for the VERSION resource type. Patch requesters should use family triggers
+// when possible, while non-patch requesters should use regular triggers. The content of selectors changes based
+// on the owner type.
+func convertVersionSubscription(s *event.Subscription) error {
+	var requester string
+
+	if s.OwnerType == event.OwnerTypeProject { // Handle project subscriptions.
+		for _, selector := range s.Selectors {
+			if selector.Type == event.SelectorRequester {
+				requester = selector.Data
+				break
+			}
+		}
+	} else if s.OwnerType == event.OwnerTypePerson { // Handle personal subscriptions.
+		for _, selector := range s.Selectors {
+			if selector.Type == event.SelectorID {
+				versionId := selector.Data
+				v, err := model.VersionFindOneId(versionId)
+				if err != nil {
+					return errors.Wrapf(err, "retrieving version '%s'", versionId)
+				}
+				if v == nil {
+					return errors.Errorf("version '%s' not found", versionId)
+				}
+				requester = v.Requester
+				break
+			}
+		}
+	}
+
+	if evergreen.IsPatchRequester(requester) {
+		s.Trigger = trigger.ConvertToFamilyTrigger(s.Trigger)
+	}
+	return nil
+}
 
 func SaveSubscriptions(owner string, subscriptions []restModel.APISubscription, isProjectOwner bool) error {
 	dbSubscriptions := []event.Subscription{}
@@ -25,6 +63,15 @@ func SaveSubscriptions(owner string, subscriptions []restModel.APISubscription, 
 		if isProjectOwner {
 			dbSubscription.OwnerType = event.OwnerTypeProject
 			dbSubscription.Owner = owner
+		}
+
+		if dbSubscription.ResourceType == event.ResourceTypeVersion {
+			if err = convertVersionSubscription(&dbSubscription); err != nil {
+				return gimlet.ErrorResponse{
+					StatusCode: http.StatusInternalServerError,
+					Message:    errors.Wrap(err, "converting version subscription").Error(),
+				}
+			}
 		}
 
 		if !trigger.ValidateTrigger(dbSubscription.ResourceType, dbSubscription.Trigger) {

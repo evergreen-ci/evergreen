@@ -17,6 +17,7 @@ import (
 	"github.com/evergreen-ci/evergreen/util"
 	"github.com/evergreen-ci/gimlet"
 	"github.com/evergreen-ci/gimlet/rolemanager"
+	"github.com/evergreen-ci/pail"
 	"github.com/evergreen-ci/utility"
 	"github.com/mitchellh/mapstructure"
 	"github.com/mongodb/amboy"
@@ -57,7 +58,11 @@ const (
 	// duration of wait time during queue chut down.
 	queueShutdownWaitInterval = 10 * time.Millisecond
 	queueShutdownWaitTimeout  = 10 * time.Second
-	githubTokenTimeout        = 1 * time.Hour
+	// githubTokenTimeout is how long a token is valid in Evergreen before it
+	// needs to be refreshed. GitHub tokens expire after an hour, so this must
+	// be under an hour to prevent a request from using a token that's about to
+	// expire.
+	githubTokenTimeout = 50 * time.Minute
 
 	RoleCollection  = "roles"
 	ScopeCollection = "scopes"
@@ -65,6 +70,8 @@ const (
 	awsAuthMechanism        = "MONGODB-AWS"
 	awsSessionToken         = "AWS_SESSION_TOKEN"
 	mongoExternalAuthSource = "$external"
+
+	s3ClientsPrefix = "evergreen/clients"
 )
 
 func init() { globalEnvLock = &sync.RWMutex{} }
@@ -185,7 +192,7 @@ type Environment interface {
 //
 // NewEnvironment requires that either the path or DB is sent so that
 // if both are specified, the settings are read from the file.
-func NewEnvironment(ctx context.Context, confPath string, db *DBSettings) (Environment, error) {
+func NewEnvironment(ctx context.Context, confPath, versionID string, db *DBSettings) (Environment, error) {
 	ctx, cancel := context.WithCancel(ctx)
 	e := &envState{
 		ctx:                     ctx,
@@ -225,12 +232,13 @@ func NewEnvironment(ctx context.Context, confPath string, db *DBSettings) (Envir
 
 	catcher.Add(e.initJasper())
 	catcher.Add(e.initDepot(ctx))
-	catcher.Add(e.initSenders(ctx))
+	catcher.Add(e.initThirdPartySenders(ctx))
 	catcher.Add(e.createLocalQueue(ctx))
 	catcher.Add(e.createRemoteQueues(ctx))
 	catcher.Add(e.createNotificationQueue(ctx))
 	catcher.Add(e.setupRoleManager())
 	catcher.Add(e.initTracer(ctx))
+	catcher.Add(e.initClientConfig(ctx, versionID))
 	catcher.Extend(e.initQueues(ctx))
 
 	if catcher.HasErrors() {
@@ -680,25 +688,30 @@ func (e *envState) initQueues(ctx context.Context) []error {
 	return catcher.Errors()
 }
 
-func (e *envState) initClientConfig() {
-	if e.settings == nil {
-		grip.Critical("no settings object, cannot build client configuration")
-		return
+// initClientConfig should be called once at startup and looks at the
+// current environment and loads all currently available client
+// binaries for use by the API server in presenting the settings page.
+//
+// If versionID is non-empty the ClientConfig will contain links to
+// the version's S3 clients in place of local links. If there are no built clients, this returns an empty config
+// version, but does *not* error.
+func (e *envState) initClientConfig(ctx context.Context, versionID string) error {
+	// In k8s the versionID will be set to a versionID corresponding to a version in the Evergreen project
+	// that pushed clients to S3 under a versionID prefix. There will be no local clients on the images.
+	if versionID != "" {
+		return e.populateS3ClientConfig(ctx, versionID)
 	}
-	var err error
-
-	e.clientConfig, err = getClientConfig(e.settings.Ui.Url, e.settings.HostInit.S3BaseURL)
-	if err != nil {
-		grip.Critical(message.WrapError(err, message.Fields{
-			"message": "problem finding local clients",
-			"cause":   "infrastructure configuration issue",
-		}))
-	} else if len(e.clientConfig.ClientBinaries) == 0 {
-		grip.Critical("no clients binaries are available for this server")
-	}
+	// Outside of k8s versionID won't be set. We enumerate the local clients and their corresponding S3 copies
+	// under a prefix corresponding to the BuildRevision.
+	return e.populateLocalClientConfig()
 }
 
-func (e *envState) initSenders(ctx context.Context) error {
+// initThirdPartySenders initializes the senders that are used to send payloads
+// to external services such as sending GitHub statuses and Jira messages. These
+// are meant to enable specific Evergreen behaviors like notifications, and are
+// distinct from the global application-wide logging system (see
+// (*Settings).GetSender).
+func (e *envState) initThirdPartySenders(ctx context.Context) error {
 	if e.settings == nil {
 		return errors.New("no settings object, cannot build senders")
 	}
@@ -788,21 +801,27 @@ func (e *envState) initSenders(ctx context.Context) error {
 
 	catcher := grip.NewBasicCatcher()
 	for name, s := range e.senders {
-		catcher.Add(s.SetLevel(levelInfo))
-		tempName := name
-		catcher.Add(s.SetErrorHandler(func(err error, m message.Composer) {
-			if err == nil {
-				return
-			}
-			grip.Error(message.WrapError(err, message.Fields{
-				"notification":        m.String(),
-				"message_type":        fmt.Sprintf("%T", m),
-				"notification_target": tempName.String(),
-				"event":               m,
-			}))
-		}))
+		catcher.Wrapf(s.SetLevel(levelInfo), "setting level info for sender '%s'", name.String())
+		catcher.Wrapf(e.setSenderErrorHandler(s, name.String()), "setting fallback error handler for sender '%s'", name.String())
 	}
 	return catcher.Resolve()
+}
+
+// setSenderErrorHandler sets the fallback error handler for senders. Note that
+// for the error handler to work, the global application logging must already be
+// set up (see (*Settings).GetSender).
+func (e *envState) setSenderErrorHandler(s send.Sender, name string) error {
+	return s.SetErrorHandler(func(err error, m message.Composer) {
+		if err == nil {
+			return
+		}
+		grip.Error(message.WrapError(err, message.Fields{
+			"notification":        m.String(),
+			"message_type":        fmt.Sprintf("%T", m),
+			"notification_target": name,
+			"event":               m,
+		}))
+	})
 }
 
 func (e *envState) initJasper() error {
@@ -981,13 +1000,6 @@ func (e *envState) ClientConfig() *ClientConfig {
 	e.mu.RLock()
 	defer e.mu.RUnlock()
 
-	if e.clientConfig == nil {
-		e.initClientConfig()
-		if e.clientConfig == nil {
-			return nil
-		}
-	}
-
 	config := *e.clientConfig
 	return &config
 }
@@ -1078,7 +1090,10 @@ func (e *envState) GetGitHubSender(owner, repo string) (send.Sender, error) {
 	if ok && time.Since(githubSender.time) < githubTokenTimeout {
 		return githubSender.sender, nil
 	}
+
 	// If githubSender does not exist or has expired, create one, add it to the cache, then return it.
+
+	tokenCreatedAt := time.Now()
 	token, err := e.settings.CreateInstallationToken(e.ctx, owner, repo, nil)
 	if err != nil {
 		// TODO EVG-19966: Delete fallback to legacy GitHub sender
@@ -1113,9 +1128,19 @@ func (e *envState) GetGitHubSender(owner, repo string) (send.Sender, error) {
 		}
 		return legacySender, nil
 	}
+
+	// Just log and continue if the GitHub sender fails to set the error
+	// handler. While having the error log is useful for monitoring, it's not
+	// essential for the sender to work.
+	grip.Error(message.WrapError(e.setSenderErrorHandler(sender, owner), message.Fields{
+		"message": "could not set fallback error handler for GitHub status sender",
+		"owner":   owner,
+		"repo":    repo,
+	}))
+
 	e.githubSenders[owner] = cachedGitHubSender{
 		sender: sender,
-		time:   time.Now(),
+		time:   tokenCreatedAt,
 	}
 	return sender, nil
 }
@@ -1209,15 +1234,42 @@ func (e *envState) Close(ctx context.Context) error {
 	return catcher.Resolve()
 }
 
-// getClientConfig should be called once at startup and looks at the
-// current environment and loads all currently available client
-// binaries for use by the API server in presenting the settings page.
-//
-// If there are no built clients, this returns an empty config
-// version, but does *not* error.
-func getClientConfig(baseURL, s3BaseURL string) (*ClientConfig, error) {
-	c := &ClientConfig{}
-	c.LatestRevision = ClientVersion
+func (e *envState) populateS3ClientConfig(ctx context.Context, versionID string) error {
+	bucket, err := pail.NewS3Bucket(pail.S3Options{
+		Name:   e.settings.Providers.AWS.BinaryClient.Bucket,
+		Region: DefaultEC2Region,
+		Credentials: pail.CreateAWSCredentials(
+			e.settings.Providers.AWS.BinaryClient.Key,
+			e.settings.Providers.AWS.BinaryClient.Secret,
+			"",
+		),
+	})
+	if err != nil {
+		return errors.Wrap(err, "constructing pail bucket")
+	}
+
+	prefix := fmt.Sprintf("%s/%s", s3ClientsPrefix, versionID)
+	c := &ClientConfig{
+		LatestRevision: ClientVersion,
+		S3URLPrefix: fmt.Sprintf("https://%s.s3.amazonaws.com/%s",
+			e.settings.Providers.AWS.BinaryClient.Bucket,
+			prefix,
+		),
+	}
+	if err = c.populateClientBinaries(ctx, bucket, prefix); err != nil {
+		return errors.Wrap(err, "populating client binaries")
+	}
+
+	e.clientConfig = c
+	return nil
+}
+
+func (e *envState) populateLocalClientConfig() error {
+	c := &ClientConfig{LatestRevision: ClientVersion}
+	if e.settings.HostInit.S3BaseURL != "" {
+		c.S3URLPrefix = fmt.Sprintf("%s/%s", e.settings.HostInit.S3BaseURL, BuildRevision)
+	}
+
 	root := filepath.Join(FindEvergreenHome(), ClientDirectory)
 
 	if _, err := os.Stat(root); os.IsNotExist(err) {
@@ -1240,18 +1292,14 @@ func getClientConfig(baseURL, s3BaseURL string) (*ClientConfig, error) {
 		displayName := ValidArchDisplayNames[fmt.Sprintf("%s_%s", buildInfo[0], buildInfo[1])]
 		archPath := strings.Join(parts[len(parts)-2:], "/")
 		c.ClientBinaries = append(c.ClientBinaries, ClientBinary{
-			URL:         fmt.Sprintf("%s/%s/%s", baseURL, ClientDirectory, archPath),
+			URL:         fmt.Sprintf("%s/%s/%s", e.settings.Ui.Url, ClientDirectory, archPath),
 			OS:          buildInfo[0],
 			Arch:        buildInfo[1],
 			DisplayName: displayName,
 		})
-		if s3BaseURL != "" {
+		if c.S3URLPrefix != "" {
 			c.S3ClientBinaries = append(c.S3ClientBinaries, ClientBinary{
-				URL: strings.Join([]string{
-					strings.TrimSuffix(s3BaseURL, "/"),
-					BuildRevision,
-					archPath,
-				}, "/"),
+				URL:         fmt.Sprintf("%s/%s", c.S3URLPrefix, archPath),
 				OS:          buildInfo[0],
 				Arch:        buildInfo[1],
 				DisplayName: displayName,
@@ -1261,10 +1309,11 @@ func getClientConfig(baseURL, s3BaseURL string) (*ClientConfig, error) {
 		return nil
 	})
 	if err != nil {
-		return nil, errors.Wrap(err, "finding client binaries")
+		return errors.Wrap(err, "finding client binaries")
 	}
 
-	return c, nil
+	e.clientConfig = c
+	return nil
 }
 
 func (e *envState) JasperManager() jasper.Manager {

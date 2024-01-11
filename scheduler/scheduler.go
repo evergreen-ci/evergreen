@@ -7,6 +7,7 @@ import (
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/model"
 	"github.com/evergreen-ci/evergreen/model/distro"
+	"github.com/evergreen-ci/evergreen/model/event"
 	"github.com/evergreen-ci/evergreen/model/host"
 	"github.com/evergreen-ci/evergreen/model/task"
 	"github.com/mongodb/grip"
@@ -278,6 +279,12 @@ func SpawnHosts(ctx context.Context, d distro.Distro, newHostsNeeded int, pool *
 	if err := host.InsertMany(ctx, hostsSpawned); err != nil {
 		return nil, errors.Wrap(err, "inserting intent host documents")
 	}
+
+	hostIDs := make([]string, 0, len(hostsSpawned))
+	for _, h := range hostsSpawned {
+		hostIDs = append(hostIDs, h.Id)
+	}
+	event.LogManyHostsCreated(hostIDs)
 
 	grip.Info(message.Fields{
 		"runner":        RunnerName,

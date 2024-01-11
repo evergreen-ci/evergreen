@@ -16,6 +16,7 @@ func init() {
 	registry.AllowSubscription(ResourceTypeHost, EventVolumeExpirationWarningSent)
 	registry.AllowSubscription(ResourceTypeHost, EventHostProvisioned)
 	registry.AllowSubscription(ResourceTypeHost, EventHostProvisionFailed)
+	registry.AllowSubscription(ResourceTypeHost, EventHostCreatedError)
 	registry.AllowSubscription(ResourceTypeHost, EventHostStarted)
 	registry.AllowSubscription(ResourceTypeHost, EventHostStopped)
 	registry.AllowSubscription(ResourceTypeHost, EventHostModified)
@@ -27,6 +28,7 @@ const (
 
 	// event types
 	EventHostCreated                     = "HOST_CREATED"
+	EventHostCreatedError                = "HOST_CREATED_ERROR"
 	EventHostStarted                     = "HOST_STARTED"
 	EventHostStopped                     = "HOST_STOPPED"
 	EventHostModified                    = "HOST_MODIFIED"
@@ -99,14 +101,37 @@ func LogHostEvent(hostId string, eventType string, eventData HostEventData) {
 	}
 }
 
+// LogHostCreated logs an event indicating that the host was created.
 func LogHostCreated(hostId string) {
 	LogHostEvent(hostId, EventHostCreated, HostEventData{Successful: true})
 }
 
-// LogHostCreationFailed logs an event indicating that the host errored while it
+// LogManyHostsCreated is the same as LogHostCreated but for multiple hosts.
+func LogManyHostsCreated(hostIDs []string) {
+	events := make([]EventLogEntry, 0, len(hostIDs))
+	for _, hostID := range hostIDs {
+		e := EventLogEntry{
+			Timestamp:    time.Now(),
+			ResourceId:   hostID,
+			EventType:    EventHostCreated,
+			Data:         HostEventData{Successful: true},
+			ResourceType: ResourceTypeHost,
+		}
+		events = append(events, e)
+	}
+	if err := LogManyEvents(events); err != nil {
+		grip.Error(message.WrapError(err, message.Fields{
+			"resource_type": ResourceTypeHost,
+			"message":       "error logging event",
+			"source":        "event-log-fail",
+		}))
+	}
+}
+
+// LogHostCreatedError logs an event indicating that the host errored while it
 // was being created.
-func LogHostCreationFailed(hostID, logs string) {
-	LogHostEvent(hostID, EventHostCreated, HostEventData{Successful: false, Logs: logs})
+func LogHostCreatedError(hostID, logs string) {
+	LogHostEvent(hostID, EventHostCreatedError, HostEventData{Successful: false, Logs: logs})
 }
 
 // LogHostStartSucceeded logs an event indicating that the host was successfully

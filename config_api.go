@@ -2,7 +2,10 @@ package evergreen
 
 import (
 	"context"
+	"fmt"
+	"strings"
 
+	"github.com/evergreen-ci/pail"
 	"github.com/pkg/errors"
 	"go.mongodb.org/mongo-driver/bson"
 	"go.mongodb.org/mongo-driver/mongo"
@@ -17,9 +20,47 @@ type ClientBinary struct {
 }
 
 type ClientConfig struct {
-	ClientBinaries   []ClientBinary `yaml:"client_binaries" json:"client_binaries"`
-	S3ClientBinaries []ClientBinary `yaml:"s3_client_binaries" json:"s3_client_binaries"`
-	LatestRevision   string         `yaml:"latest_revision" json:"latest_revision"`
+	ClientBinaries   []ClientBinary
+	S3ClientBinaries []ClientBinary
+	LatestRevision   string
+	S3URLPrefix      string
+}
+
+func (c *ClientConfig) populateClientBinaries(ctx context.Context, bucket pail.Bucket, prefix string) error {
+	if !strings.HasSuffix(prefix, "/") {
+		prefix += "/"
+	}
+
+	iter, err := bucket.List(ctx, prefix)
+	if err != nil {
+		return errors.Wrap(err, "listing client bucket")
+	}
+	for iter.Next(ctx) {
+		item := strings.TrimPrefix(iter.Item().Name(), prefix)
+		// The item is expected to be of the form <os>_<arch>/evergreen{.exe}
+		name := strings.Split(item, "/")
+		// Skip files that either don't conform to the expected form or aren't the evergreen executable (e.g. .signed).
+		if len(name) != 2 || !strings.Contains(name[1], "evergreen") {
+			continue
+		}
+		// Skip files for invalid platforms.
+		displayName, ok := ValidArchDisplayNames[name[0]]
+		if !ok {
+			continue
+		}
+		osArchParts := strings.Split(name[0], "_")
+		c.ClientBinaries = append(c.ClientBinaries, ClientBinary{
+			URL:         fmt.Sprintf("%s/%s", c.S3URLPrefix, item),
+			OS:          osArchParts[0],
+			Arch:        osArchParts[1],
+			DisplayName: displayName,
+		})
+	}
+	if err = iter.Err(); err != nil {
+		return errors.Wrap(err, "iterating client bucket contents")
+	}
+
+	return nil
 }
 
 // APIConfig holds relevant log and listener settings for the API server.

@@ -1373,6 +1373,39 @@ func TestCheckTaskRuns(t *testing.T) {
 	})
 }
 
+func TestValidateIncludeLimits(t *testing.T) {
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
+	project := &model.Project{
+		NumIncludes: 10,
+	}
+
+	t.Run("SucceedsWithNumberOfIncludesBelowLimit", func(t *testing.T) {
+		settings := &evergreen.Settings{
+			TaskLimits: evergreen.TaskLimitsConfig{
+				MaxIncludesPerVersion: 100,
+			},
+		}
+		assert.Empty(t, validateIncludeLimits(ctx, settings, project, &model.ProjectRef{}, false))
+	})
+	t.Run("FailsWithIncludesExceedingLimit", func(t *testing.T) {
+		settings := &evergreen.Settings{
+			TaskLimits: evergreen.TaskLimitsConfig{
+				MaxIncludesPerVersion: 1,
+			},
+		}
+		errs := validateIncludeLimits(ctx, settings, project, &model.ProjectRef{}, false)
+		require.Len(t, errs, 1)
+		assert.Equal(t, Error, errs[0].Level)
+		assert.Contains(t, "project's total number of includes (10) exceeds maximum limit (1)", errs[0].Message)
+	})
+	t.Run("SucceedsWithNoMaxIncludesLimit", func(t *testing.T) {
+		settings := &evergreen.Settings{}
+		assert.Empty(t, validateIncludeLimits(ctx, settings, project, &model.ProjectRef{}, false))
+	})
+}
+
 func TestValidateProjectLimits(t *testing.T) {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()

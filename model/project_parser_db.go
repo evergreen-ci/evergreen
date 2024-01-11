@@ -15,7 +15,6 @@ const (
 
 var (
 	ParserProjectIdKey                = bsonutil.MustHaveTag(ParserProject{}, "Id")
-	ParserProjectEnabledKey           = bsonutil.MustHaveTag(ParserProject{}, "Enabled")
 	ParserProjectStepbackKey          = bsonutil.MustHaveTag(ParserProject{}, "Stepback")
 	ParserProjectPreErrorFailsTaskKey = bsonutil.MustHaveTag(ParserProject{}, "PreErrorFailsTask")
 	ParserProjectOomTracker           = bsonutil.MustHaveTag(ParserProject{}, "OomTracker")

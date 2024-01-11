@@ -22,7 +22,7 @@ Evergreen username to the list of Administrators, that user will be able
 to access the Project Settings page for that project only and modify
 repository information, access settings, alerts, and keys.
 
-### Permissions Requested with Mana
+### Permissions Requested with MANA
 
 Functionality has been added to Mana to make permission requests more
 granular. Mana Entitlements can specify whether the user should have
@@ -30,7 +30,17 @@ read or write (or no) access to project settings, logs, task
 annotations, and more. These can be requested for specific members or
 for entire guilds. The project admins (or Evergreen admins, if no
 project admins exist) are then able to approve/reject requested access
-for their project.
+for their project. 
+
+In order to access this functionality, you must look up the the MANA resource 
+with the type `Evergreen Project` with the name of the project that
+permissions need to be requested for on [MANA](https://mana.corp.mongodbgov.com/). 
+Using the filter icon to only view resources of type `Evergreen Project` makes this easier.
+Once the project is selected, click on  the `Request Access` button and fill out the 
+`Requesting for` field to see the specific types of permissions that can be 
+requested on Evergreen as pictured below.
+
+![update_mana_permission.png](../images/update_mana_permission.png)
 
 If you'd like to use Entitlements for entire teams, then the team
 should be part of a Guild, as this is refreshed every day and better
@@ -171,10 +181,10 @@ For security reasons, commits by users outside of your organization will
 not automatically be run. A patch will still be created and must be
 manually authorized to run by a logged-in user.
 
-### Github Checks
+### GitHub Checks
 
-This supports Github checks on commits (i.e. to be visible at
-<https://github.com/>\<owner\>/\<repo\>/commits). Task/variant
+This supports GitHub checks on commits (i.e. to be visible at
+`https://github.com/<owner>/<repo>/commits`). Task/variant
 regexes/tags are required, and Github statuses will be sent with only
 the status of those tasks on the mainline commit version.
 
@@ -190,8 +200,8 @@ This allows for versions to be created from pushed git tags.
 -   Versions are displayed on the waterfall page.
 -   The author of the version matches the author from the original
     waterfall version.
--   The version is titled "Triggered From Git Tag '\<git tag\>':
-    \<commit message for this revision\>"
+-   The version is titled "Triggered From Git Tag '`<`git tag`>`':
+    `<`commit message for this revision`>`"
 -   The expansion `${triggered_by_git_tag}` is set to the git tag that
     was pushed.
 -   If the revision exists for multiple projects, it will check if a
@@ -256,6 +266,9 @@ section of the project configuration page. Click "Add Project Trigger".
 Options:
 
 -   **Project**: The upstream project identifier to listen to for commits.
+-   **Config file**: The path to the downstream project's config file.
+    This may be the same as the main project configuration file but does
+    not have to be.
 -   **Level**: Accepted values are task, build, and push. Task and build levels will trigger
     based on the completion of either a task or a build in the upstream project. 
     - Push level triggers do not require any upstream build or task to run, but instead trigger a downstream version once
@@ -268,9 +281,6 @@ Options:
     schedules a build older than this number of days.
 -   **Variant and task regexes**: Trigger based on these variants (if
     build-level) or variants and tasks (if task-level) completing.
--   Definition file: The path to the downstream project's config file.
-    This may be the same as the main project configuration file but does
-    not have to be.
 -   **Alias**: Run a subset of downstream tasks by specifying an alias. Otherwise, all
     tasks run. Aliases are defined on the Patch Aliases section.
 -   **Unschedule Downstream Versions**: If toggled, all tasks in the triggered 
@@ -414,6 +424,30 @@ Options:
 
 Users can enable the performance plugin for tracking historical
 performance of tasks and tests.
+
+
+### Project-Level Notifications
+
+Project admins can set up notifications for when some events happen within the project. Admins can set up events when:
+
+- Any version/build/task finishes/fails - these can be filtered by build initiator (commit, patch, PR, commit queue,
+  periodic build).
+- First failure occurs in a version, for each build or for each task name - these can be filtered by build initiator
+  (commit, patch, PR, commit queue, periodic build).
+- A previously-passing task fails - these can be filtered by failure type (any, test, system, setup). Furthermore, to
+  reduce the amount of notifications received, the re-notification interval can be explicitly set.
+- A previously-passing test fails - these can be filtered by test name and failure type (any, test, system, setup).
+  Furthermore, to reduce the amount of notifications received, the re-notification interval can be explicitly set.
+- The runtime for any/failed task exceeds some duration (in seconds).
+- The runtime for a successful task changes by a percentage.
+
+When the event happens, the notification can be delivered via:
+
+- Jira comment under a specific Jira issue.
+- New Jira issue - must specify a Jira project and issue type.
+- Slack channel or user.
+- Email address.
+- Webhook URL - admins can configure the behavior for resending notifications in case of failure.
 
 ### Ticket Creation
 

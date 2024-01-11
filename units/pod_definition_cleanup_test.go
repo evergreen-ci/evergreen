@@ -102,6 +102,7 @@ func TestPodDefinitionCleanupJob(t *testing.T) {
 			require.True(t, ok)
 			const cleanupLimit = 2
 			mockEnv.EvergreenSettings.PodLifecycle.MaxPodDefinitionCleanupRate = cleanupLimit
+			j.env = mockEnv
 
 			var podDefIDs []string
 			for i := 0; i < 5; i++ {
@@ -236,7 +237,6 @@ func TestPodDefinitionCleanupJob(t *testing.T) {
 			require.True(t, ok)
 
 			j.env = env
-			j.settings = *env.Settings()
 
 			j.ecsClient = &cocoaMock.ECSClient{}
 			defer func() {

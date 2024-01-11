@@ -536,9 +536,11 @@ func addTasksToBuild(ctx context.Context, creationInfo TaskCreationInfo) (*build
 		if !utility.StringSliceContains(tasksWithActivationTime, t.DisplayName) {
 			continue
 		}
-		activateTaskAt, err := creationInfo.ProjectRef.GetActivationTimeForTask(
-			creationInfo.Project.FindTaskForVariant(t.DisplayName, creationInfo.Build.BuildVariant),
-			t.Id)
+		bvtu := creationInfo.Project.FindTaskForVariant(t.DisplayName, creationInfo.Build.BuildVariant)
+		if !bvtu.HasSpecificActivation() {
+			continue
+		}
+		activateTaskAt, err := creationInfo.ProjectRef.GetActivationTimeForTask(bvtu)
 		batchTimeCatcher.Wrapf(err, "getting activation time for task '%s'", t.DisplayName)
 		batchTimeTaskStatuses = append(batchTimeTaskStatuses, BatchTimeTaskStatus{
 			TaskName: t.DisplayName,
@@ -1191,6 +1193,7 @@ func createOneTask(id string, creationInfo TaskCreationInfo, buildVarTask BuildV
 		IsGithubCheck:           isGithubCheck,
 		DisplayTaskId:           utility.ToStringPtr(""), // this will be overridden if the task is an execution task
 		IsEssentialToSucceed:    creationInfo.ActivatedTasksAreEssentialToSucceed && activateTask,
+		HasCheckRun:             buildVarTask.HasCheckRun(),
 	}
 
 	projectTask := creationInfo.Project.FindProjectTask(buildVarTask.Name)
@@ -1602,7 +1605,7 @@ func addNewBuilds(ctx context.Context, creationInfo TaskCreationInfo, existingBu
 		}
 		for taskName, id := range batchTimeTasksToIds {
 			activateTaskAt, err := creationInfo.ProjectRef.GetActivationTimeForTask(
-				creationInfo.Project.FindTaskForVariant(taskName, pair.Variant), id)
+				creationInfo.Project.FindTaskForVariant(taskName, pair.Variant))
 			batchTimeCatcher.Wrapf(err, "getting activation time for task '%s' in variant '%s'", taskName, pair.Variant)
 			batchTimeTaskStatuses = append(batchTimeTaskStatuses, BatchTimeTaskStatus{
 				TaskId:   id,

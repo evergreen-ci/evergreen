@@ -756,7 +756,6 @@ func MarkStaleBuildingAsFailed(ctx context.Context, distroID string) error {
 	spawnedByTaskKey := bsonutil.GetDottedKeyName(SpawnOptionsKey, SpawnOptionsSpawnedByTaskKey)
 	query := bson.M{
 		distroIDKey:      distroID,
-		UserHostKey:      false,
 		spawnedByTaskKey: bson.M{"$ne": true},
 		ProviderKey:      bson.M{"$in": evergreen.ProviderSpawnable},
 		StatusKey:        evergreen.HostBuilding,
@@ -787,7 +786,7 @@ func MarkStaleBuildingAsFailed(ctx context.Context, distroID string) error {
 	}
 
 	for _, id := range ids {
-		event.LogHostCreationFailed(id, "stale building host took too long to start")
+		event.LogHostCreatedError(id, "stale building host took too long to start")
 		grip.Info(message.Fields{
 			"message": "stale building host took too long to start",
 			"host_id": id,
@@ -1315,6 +1314,12 @@ func UnsafeReplace(ctx context.Context, env evergreen.Environment, idToRemove st
 		if err := toInsert.InsertWithContext(sessCtx, env); err != nil {
 			return nil, errors.Wrapf(err, "inserting new host '%s'", toInsert.Id)
 		}
+		grip.Info(message.Fields{
+			"message":  "inserted host to replace intent host",
+			"host_id":  toInsert.Id,
+			"host_tag": toInsert.Tag,
+			"distro":   toInsert.Distro.Id,
+		})
 		return nil, nil
 	}
 
