@@ -22,7 +22,7 @@ Evergreen username to the list of Administrators, that user will be able
 to access the Project Settings page for that project only and modify
 repository information, access settings, alerts, and keys.
 
-### Permissions Requested with Mana
+### Permissions Requested with MANA
 
 Functionality has been added to Mana to make permission requests more
 granular. Mana Entitlements can specify whether the user should have
@@ -30,7 +30,17 @@ read or write (or no) access to project settings, logs, task
 annotations, and more. These can be requested for specific members or
 for entire guilds. The project admins (or Evergreen admins, if no
 project admins exist) are then able to approve/reject requested access
-for their project.
+for their project. 
+
+In order to access this functionality, you must look up the the MANA resource 
+with the type `Evergreen Project` with the name of the project that
+permissions need to be requested for on [MANA](https://mana.corp.mongodbgov.com/). 
+Using the filter icon to only view resources of type `Evergreen Project` makes this easier.
+Once the project is selected, click on  the `Request Access` button and fill out the 
+`Requesting for` field to see the specific types of permissions that can be 
+requested on Evergreen as pictured below.
+
+![update_mana_permission.png](../images/update_mana_permission.png)
 
 If you'd like to use Entitlements for entire teams, then the team
 should be part of a Guild, as this is refreshed every day and better
