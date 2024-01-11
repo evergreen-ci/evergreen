@@ -282,8 +282,8 @@ a configuration like this could be added to **Spruce's project page:**
 
 ![project-trigger-example.png](../images/project-trigger-example.png)
 
-In this example, notice that Spruce tasks matching the e2e alias will trigger _only if_ the Evergreen dist task succeeds, and by default the Spruce tasks are unscheduled. 
-(This is helpful if you only want these tasks to be available for manual scheduling or stepback).
+In this example, notice that Spruce tasks matching the e2e alias will trigger _only if_ the Evergreen dist task succeeds (and is less than one day old, per the date cutoff), and by default the Spruce tasks are unscheduled. 
+(This is helpful if you only want these tasks to be available for manual scheduling or stepback.)
 
 ### Patch Trigger Aliases
 
@@ -324,13 +324,11 @@ a configuration like this could be added to **Evergreen's project page:**
 ![patch_trigger_alias_example.png](../images/patch-trigger-alias-example.png)
 
 This makes it possible to optionally add tasks matching the defined regex to any patch, and because 
-"Add to GitHub Trigger Alias" is checked, meaning that these tasks will be included as part of PR patches. You can also see what Project Trigger Aliases are configured to run on PRs
+"Add to GitHub Trigger Alias" is checked, these tasks will be included as part of PR patches. 
 
-and because "evergreen" is defined as a module in the yaml (pictured below), the Spruce tasks will incorporate the patch changes.  
+Additionally, because "evergreen" is defined as a module in the yaml (pictured below), the Spruce tasks will incorporate the patch changes.  
 
 ![module_example.png](../images/module-example.png)
-
-
 
 ### Periodic Builds
 
