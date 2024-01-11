@@ -962,8 +962,9 @@ func (s *AdminSuite) TestTracerConfig() {
 	defer cancel()
 
 	config := TracerConfig{
-		Enabled:           true,
-		CollectorEndpoint: "localhost:4316",
+		Enabled:                   true,
+		CollectorEndpoint:         "localhost:4316",
+		CollectorInternalEndpoint: "svc.cluster.local:4317",
 	}
 
 	err := config.Set(ctx)

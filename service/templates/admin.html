@@ -2459,13 +2459,17 @@ Admin Settings
 								</md-card-title>
 								<md-card-content>
 									<md-input-container class="control" style="width:45%;">
+										<label>Collector Endpoint</label>
+										<input type="string" ng-model="Settings.tracer.collector_endpoint">
+									</md-input-container>
+									<md-input-container class="control" style="width:45%;">
+										<label>Collector Internal Endpoint</label>
+										<input type="string" ng-model="Settings.tracer.collector_internal_endpoint">
+									</md-input-container>
+									<md-input-container class="control" style="width:45%;">
 										<md-checkbox ng-model="Settings.tracer.enabled">
 											Enabled
 										</md-checkbox>
-									</md-input-container>
-									<md-input-container class="control" style="width:45%;">
-										<label>Collector Endpoint</label>
-										<input type="string" ng-model="Settings.tracer.collector_endpoint">
 									</md-input-container>
 								</md-card-content>
 							</md-card>
