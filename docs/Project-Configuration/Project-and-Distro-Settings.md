@@ -22,7 +22,7 @@ Evergreen username to the list of Administrators, that user will be able
 to access the Project Settings page for that project only and modify
 repository information, access settings, alerts, and keys.
 
-### Permissions Requested with Mana
+### Permissions Requested with MANA
 
 Functionality has been added to Mana to make permission requests more
 granular. Mana Entitlements can specify whether the user should have
@@ -34,9 +34,11 @@ for their project.
 
 In order to access this functionality, you must look up the the MANA resource 
 with the type `Evergreen Project` with the name of the project that
-permissions need to be requested for. Once the project is selected, click on 
-the `Request Access` button and fill out the `Requesting for` field to see
-the specific types of permissions that can be requested on Evergreen as pictured below.
+permissions need to be requested for on [MANA](https://mana.corp.mongodbgov.com/). 
+Using the filter icon to only view resources of type `Evergreen Project` makes this easier.
+Once the project is selected, click on  the `Request Access` button and fill out the 
+`Requesting for` field to see the specific types of permissions that can be 
+requested on Evergreen as pictured below.
 
 ![update_mana_permission.png](../images/update_mana_permission.png)
 
