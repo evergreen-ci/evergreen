@@ -432,8 +432,9 @@ func MockConfig() *evergreen.Settings {
 			UnexpirableVolumesPerUser: 2,
 		},
 		Tracer: evergreen.TracerConfig{
-			Enabled:           true,
-			CollectorEndpoint: "localhost:4317",
+			Enabled:                   true,
+			CollectorEndpoint:         "www.example.com:443",
+			CollectorInternalEndpoint: "svc.cluster.local:4317",
 		},
 		GitHubCheckRun: evergreen.GitHubCheckRunConfig{
 			CheckRunLimit: 0,
