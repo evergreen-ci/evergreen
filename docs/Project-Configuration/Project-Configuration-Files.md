@@ -1117,7 +1117,7 @@ axes. There are some important things to note here:
 
 *ONE:* The `variables` and `tags` fields are *not* overwritten by later
 values. Instead, when a later axis value adds new tags or variables,
-those values are *merged* into the previous defintions. If axis 1
+those values are *merged* into the previous definition. If axis 1
 defines tag "windows" and axis 2 defines tag "64-bit", the resulting
 variant would have both "windows" and "64-bit" as tags.
 
