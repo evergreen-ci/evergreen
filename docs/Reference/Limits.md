@@ -2,13 +2,13 @@
 
 Evergreen has different kinds of limits in place. The ones that users are likely to encounter are listed here.
 
-## Non-expirable Hosts
+## Never Expiring Hosts
 
-Evergreen limits users to two unexpirable spawn hosts at a time.
+Evergreen limits users to two never expiring spawn hosts at a time.
 
 #### Can an exception be requested?
 
-Exceptions can be requested on a case by case which will be granted based on [our policy](https://mongodb.stackenterprise.co/questions/1122).
+Exceptions can be requested on a case-by-case which will be granted based on [our policy](https://mongodb.stackenterprise.co/questions/1122).
 
 ## Task Limits
 
@@ -16,7 +16,7 @@ Evergreen limits tasks per version to 40,000.
 
 ## Task Timeout Max
 
-Evergreen does not have a max on how large task timeouts can be.
+Evergreen does not have a limit on how large task timeouts can be. For different default timeouts that evergreen has in place, see [pre and post](../Project-Configuration-Files/#pre-and-post) and [timout handler](../Project-Configuration-Files/#timeout-handler).
 
 ## Include Limits
 
@@ -24,7 +24,7 @@ There is an [investigation](https://jira.mongodb.org/browse/DEVPROD-3509) to fig
 
 ## YAML configuration size
 
-ELarge parser projects are disabled, which means that Evergreen limits YAML project configuration sizes to 16MB. This includes configurations that get added with generate tasks.
+Large parser projects are disabled, which means that Evergreen limits YAML project configuration sizes to 16MB. This includes configurations that get added with generate tasks.
 
 #### Can an exception be requested?
 
@@ -32,8 +32,7 @@ This cannot be lifted because Evergreen cannot safely handle larger file sizes f
 
 ## Patch size
 
-Evergreen has no limits on patch size (the number of files changed or the diff size for the changes). In order to submit patches that are larger than 16MB from the cli, the --large
-flag needs to be used. While we don’t block large patches, they may hit the CLI’s one minute timeout. To work around that, users can open a PR and run the patch from there.
+Evergreen has no limits on patch size (the number of files changed or the diff size for the changes). In order to submit patches that are larger than 16MB from the CLI, the `--large` flag needs to be used. While we don’t block large patches, they may hit the CLI’s one minute timeout. To work around that, users can open a PR and run the patch from there.
 
 ## What is the largest file size I can upload to Parsley?
 
