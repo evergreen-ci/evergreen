@@ -250,7 +250,7 @@ Ambiguous behavior is outlined here:
 
 Users can specify that commits to another project (the "upstream"
 project) will trigger builds in their current project (the "downstream"
-project). Configure triggers in the downstream project from the Project Triggers
+project). Configure triggers **in the downstream project** from the Project Triggers
 section of the project configuration page. Click "Add Project Trigger".
 
 Options:
@@ -277,7 +277,7 @@ Options:
     downstream version will be unscheduled by default, requiring manual scheduling or stepback. 
     Otherwise, all tasks will be immediately scheduled once the downstream version is created.
 
-**Example:** to have new Evergreen commits trigger end-to-end tests in Spruce, 
+**Example:** to have new commits for the Evergreen project trigger end-to-end tests in Spruce, 
 a configuration like this could be added to **Spruce's project page:**
 
 ![project-trigger-example.png](../images/project-trigger-example.png)
@@ -289,20 +289,21 @@ In this example, notice that Spruce tasks matching the e2e alias will trigger _o
 
 Users can create aliases that can be used in patch builds (in the
 "upstream" project) to kick off a child patch (in the "downstream"
-project). Create aliases in the upstream project in the Patch
+project). Create aliases **in the upstream project** in the Patch
 Aliases section of the project configuration page. Click "Add Patch Trigger
 Alias".
 
 Options:
 
--   Alias: The name of the alias.
--   Project: The downstream project.
--   Module: Optionally specify a module to apply changes to.
--   Wait on: You can have the child patch wait on a complete(success or
-    failed), success, or failed status from the parent. Otherwise the
-    child patch will run immediately. If the patch depends on parent
+- **Alias**: The name of the alias.
+- **Project**: The downstream project identifier.
+- **Module**: If you want tests to include the upstream project's changes, 
+add the parent project as a module in the downstream project yaml, and specify that module name here.
+- **Wait on**: You can have the child patch wait on a complete (success or
+    failed), success, or failed status from the parent. Otherwise, the
+    child patch will run immediately. If the patch depends on the parent
     status, at least one parent task must be scheduled.
--   Patch alias, variant and task regexes: Run a subset of tasks in the
+- **Patch alias, variant and task regexes**: Run a subset of tasks in the
     downstream project by specifying an alias or by specifying task and
     variant regexes.
 
@@ -316,6 +317,20 @@ repository as well as each subsequent push to each pull request.
 
 To pass information from the upstream patch to the downstream patch use
 [downstream_expansions.set](Project-Commands.md#downstream_expansionsset)
+
+**Example**:  to allow testing Spruce tasks as part of patches for the Evergreen project,  
+a configuration like this could be added to **Evergreen's project page:**
+
+![patch_trigger_alias_example.png](../images/patch-trigger-alias-example.png)
+
+This makes it possible to optionally add tasks matching the defined regex to any patch, and because 
+"Add to GitHub Trigger Alias" is checked, meaning that these tasks will be included as part of PR patches. You can also see what Project Trigger Aliases are configured to run on PRs
+
+and because "evergreen" is defined as a module in the yaml (pictured below), the Spruce tasks will incorporate the patch changes.  
+
+![module_example.png](../images/module-example.png)
+
+
 
 ### Periodic Builds
 
