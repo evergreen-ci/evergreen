@@ -36,11 +36,11 @@ type APIProjectSettings struct {
 }
 
 type APIProjectVars struct {
-	// Regular project variables and their values.
+	// Regular project variable names and their values.
 	Vars map[string]string `json:"vars"`
-	// Private variables.
+	// Private variable names.
 	PrivateVars map[string]bool `json:"private_vars"`
-	// Admin-only variables.
+	// Admin-only variable names.
 	AdminOnlyVars map[string]bool `json:"admin_only_vars"`
 	// Names of project variables to delete.
 	VarsToDelete []string `json:"vars_to_delete,omitempty"`
@@ -63,9 +63,9 @@ type APIProjectAlias struct {
 	Task *string `json:"task"`
 	// Path to project config file to use.
 	RemotePath *string `json:"remote_path"`
-	// Build variant tags to match.
+	// Build variant tags selectors to match.
 	VariantTags []*string `json:"variant_tags,omitempty"`
-	// Task tags to match.
+	// Task tag selectors to match.
 	TaskTags []*string `json:"tags,omitempty"`
 	// If set, deletes the project alias by name.
 	Delete bool `json:"delete,omitempty"`

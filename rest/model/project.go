@@ -419,11 +419,17 @@ type APIWorkstationConfig struct {
 }
 
 type APIContainerSecret struct {
-	Name         *string `json:"name"`
+	// Name of the container secret.
+	Name *string `json:"name"`
+	// External name of the container secrets. Cannot be modified by users.
 	ExternalName *string `json:"external_name"`
-	ExternalID   *string `json:"external_id"`
-	Type         *string `json:"type"`
-	Value        *string `json:"value"`
+	// External identifier for the container secret. Cannot be modified by
+	// users.
+	ExternalID *string `json:"external_id"`
+	// Type of container secret.
+	Type *string `json:"type"`
+	// Container secret value to set.
+	Value *string `json:"value"`
 	// ShouldRotate indicates that the user requested the pod secret to be
 	// rotated to a new value. This only applies to the project's pod secret.
 	ShouldRotate *bool `json:"should_rotate"`
