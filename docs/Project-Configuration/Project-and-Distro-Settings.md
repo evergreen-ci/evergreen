@@ -190,8 +190,8 @@ This allows for versions to be created from pushed git tags.
 -   Versions are displayed on the waterfall page.
 -   The author of the version matches the author from the original
     waterfall version.
--   The version is titled "Triggered From Git Tag '\<git tag\>':
-    \<commit message for this revision\>"
+-   The version is titled "Triggered From Git Tag '`<`git tag`>`':
+    `<`commit message for this revision`>`"
 -   The expansion `${triggered_by_git_tag}` is set to the git tag that
     was pushed.
 -   If the revision exists for multiple projects, it will check if a
