@@ -180,7 +180,7 @@ Specify the tasks to run in the backport patch.
 
 * `--commit-sha, -s`, `--existing-patch, -e` (mutually exclusive)
 
-Specify changes to backport. `--commit-sha` specifies a single commit to cherry-pick on top of the target project's tracked branch. `--existing-patch` is the id of an existing commit queue patch in another project to pull changes from.
+Specify changes to backport. `--commit-sha` specifies a single commit to cherry-pick on top of the target project's tracked branch (this is from the same repository as the project). `--existing-patch` is the id of an existing commit queue patch in another project to pull changes from.
 
 ## FAQ
 > The merge test for a PR failed.  How do I resubmit?
