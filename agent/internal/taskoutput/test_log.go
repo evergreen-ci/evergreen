@@ -2,7 +2,7 @@ package taskoutput
 
 import (
 	"context"
-	"io"
+	"io/fs"
 	"os"
 	"path/filepath"
 	"strconv"
@@ -20,9 +20,8 @@ import (
 	"github.com/mongodb/grip/message"
 	"github.com/mongodb/grip/recovery"
 	"github.com/mongodb/grip/send"
-	"github.com/papertrail/go-tail/follower"
+	"github.com/nxadm/tail"
 	"github.com/pkg/errors"
-	"github.com/radovskyb/watcher"
 	"gopkg.in/yaml.v2"
 )
 
@@ -89,9 +88,9 @@ func sendTestLogToCedar(ctx context.Context, comm client.Communicator, tsk *task
 type testLogDirectoryHandler struct {
 	dir             string
 	logger          client.LoggerProducer
-	watcher         *watcher.Watcher
 	spec            testLogSpec
 	createSender    func(context.Context, string) (send.Sender, error)
+	cancel          context.CancelFunc
 	followFileCount int
 
 	once sync.Once
@@ -114,38 +113,10 @@ func newTestLogDirectoryHandler(output taskoutput.TestLogOutput, taskOpts taskou
 
 func (h *testLogDirectoryHandler) start(ctx context.Context, dir string) error {
 	h.dir = dir
-	h.watcher = watcher.New()
-	h.watcher.FilterOps(watcher.Create)
-	if err := h.watcher.AddRecursive(h.dir); err != nil {
-		return errors.Wrap(err, "configuring test log directory watcher as recursive")
-	}
-	if err := h.watcher.Ignore(filepath.Join(h.dir, testLogSpecFilename)); err != nil {
-		return errors.Wrap(err, "configuring test log directory watcher to ignore the test log spec file")
-	}
 
-	started := make(chan struct{})
-	startErr := make(chan error)
-	go func() {
-		h.watcher.Wait()
-		close(started)
-	}()
-	go func() {
-		defer func() {
-			h.logger.Execution().Critical(recovery.HandlePanicWithError(recover(), nil, "test log directory watcher start"))
-		}()
-
-		if err := h.watcher.Start(time.Millisecond); err != nil {
-			startErr <- err
-		}
-	}()
-
-	select {
-	case <-started:
-	case err := <-startErr:
-		return errors.Wrap(err, "starting test log directory watcher")
-	}
-
-	go h.watch(ctx)
+	watcherCtx, cancel := context.WithCancel(ctx)
+	h.cancel = cancel
+	go h.watch(watcherCtx)
 
 	return nil
 }
@@ -162,23 +133,31 @@ func (h *testLogDirectoryHandler) watch(ctx context.Context) {
 	workerCtx, cancel := context.WithCancel(ctx)
 	defer cancel()
 
+	seenFiles := map[string]bool{}
 	for {
-		select {
-		case event := <-h.watcher.Event:
-			if event.IsDir() {
-				continue
+		err := filepath.WalkDir(h.dir, func(path string, info fs.DirEntry, err error) error {
+			if err != nil {
+				h.logger.Execution().Warning(errors.Wrap(err, "watching the test log directory, continuing watching"))
+				return nil
+			}
+			if ctx.Err() != nil {
+				return ctx.Err()
+			}
+			if info.IsDir() {
+				return nil
 			}
 
-			h.followFileCount++
-			h.wg.Add(1)
-			go h.followFile(workerCtx, event)
-		case err := <-h.watcher.Error:
-			h.logger.Execution().Critical(errors.Wrap(err, "watching test log directory"))
-			return
-		case <-ctx.Done():
-			h.logger.Execution().Warning("context canceled, exiting test log directory watcher")
-			return
-		case <-h.watcher.Closed:
+			if !seenFiles[path] {
+				seenFiles[path] = true
+				h.followFileCount++
+				h.wg.Add(1)
+				go h.followFile(workerCtx, path)
+			}
+
+			return nil
+		})
+		if err != nil {
+			h.logger.Execution().Debug("context canceled, exiting test log directory watcher")
 			return
 		}
 	}
@@ -210,7 +189,7 @@ func (h *testLogDirectoryHandler) getSpecFile() {
 
 // followFile tails a test log file for the duration of a task, ingesting and
 // persisting log lines as they are written.
-func (h *testLogDirectoryHandler) followFile(ctx context.Context, event watcher.Event) {
+func (h *testLogDirectoryHandler) followFile(ctx context.Context, path string) {
 	defer func() {
 		h.logger.Task().Critical(recovery.HandlePanicWithError(recover(), nil, "test log file follower"))
 	}()
@@ -218,56 +197,74 @@ func (h *testLogDirectoryHandler) followFile(ctx context.Context, event watcher.
 
 	h.once.Do(h.getSpecFile)
 
-	h.logger.Task().Infof("new test log file '%s' found, initiating automated ingestion", event.Path)
+	h.logger.Task().Infof("new test log file '%s' found, initiating automated ingestion", path)
 
 	// The persisted log path should be relative to the reserved directory.
-	logPath, err := filepath.Rel(h.dir, event.Path)
+	logPath, err := filepath.Rel(h.dir, path)
 	if err != nil {
-		h.logger.Task().Error(errors.Wrapf(err, "getting relative path for test log file '%s'", event.Path))
+		h.logger.Task().Error(errors.Wrapf(err, "getting relative path for test log file '%s'", path))
 		return
 	}
 
-	t, err := follower.New(event.Path, follower.Config{
-		Whence: io.SeekStart,
-		Offset: 0,
-		Reopen: true,
+	t, err := tail.TailFile(path, tail.Config{
+		ReOpen:    true,
+		MustExist: true,
+		Follow:    true,
+		// Setting this field may lead to some data loss in the case of
+		// non-atomic line writes: if the last read line does not
+		// terminate with a newline character (e.g., the follower
+		// exits early or the test process crashes), it will not get
+		// returned. This is ok because the complete line must be read
+		// to guarantee proper line format for the parser (assumming
+		// the complete line has the expected format).
+		CompleteLines: true,
 	})
 	if err != nil {
-		h.logger.Task().Error(errors.Wrapf(err, "creating follower for test log file '%s'", event.Path))
+		h.logger.Task().Error(errors.Wrapf(err, "creating follower for test log file '%s'", path))
 		return
 	}
-	defer t.Close()
+	defer func() {
+		if err := t.Stop(); err != nil {
+			h.logger.Task().Error(errors.Wrapf(err, "following test log file '%s'", path))
+		}
+	}()
 
 	sender, err := h.createSender(ctx, logPath)
 	if err != nil {
-		h.logger.Task().Error(errors.Wrapf(err, "creating Sender for test log '%s'", event.Path))
+		h.logger.Task().Error(errors.Wrapf(err, "creating Sender for test log '%s'", path))
 		return
 	}
 	defer func() {
 		if err = t.Err(); err != nil {
-			h.logger.Task().Error(errors.Wrapf(err, "following test log file '%s'", event.Path))
+			h.logger.Task().Error(errors.Wrapf(err, "following test log file '%s'", path))
 		}
 		if err = sender.Close(); err != nil {
-			h.logger.Task().Error(errors.Wrapf(err, "closing Sender for test log '%s'", event.Path))
+			h.logger.Task().Error(errors.Wrapf(err, "closing Sender for test log '%s'", path))
 		}
 	}()
 
-	lines := t.Lines()
 	for {
 		select {
 		case <-ctx.Done():
 			return
-		case line, ok := <-lines:
-			if !ok {
-				return
+		case line := <-t.Lines:
+			if line.Err != nil {
+				// If there is a line error it is safe to
+				// continue because the follower maintains the
+				// seek position and will pick up where it left
+				// off. These errors usually occur when rate
+				// limiting is configured and a cool down
+				// period is taking place.
+				h.logger.Task().Debug(errors.Wrapf(err, "reading lines from test log file '%s'", path))
+			} else {
+				sender.Send(message.NewDefaultMessage(level.Info, line.Text))
 			}
-			sender.Send(message.NewDefaultMessage(level.Info, line.String()))
 		}
 	}
 }
 
 func (h *testLogDirectoryHandler) close(_ context.Context) error {
-	h.watcher.Close()
+	h.cancel()
 	h.wg.Wait()
 
 	return nil

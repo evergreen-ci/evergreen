@@ -135,7 +135,7 @@ func TestAppendTestLog(t *testing.T) {
 	})
 }
 
-func TestTestLogDirectoryHandlerFollowFile(t *testing.T) {
+func TestTestLogDirectoryHandler(t *testing.T) {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 
@@ -161,7 +161,10 @@ func TestTestLogDirectoryHandlerFollowFile(t *testing.T) {
 
 	// Set up asynchronous test log file writing.
 	writerCtx, writerCancel := context.WithCancel(ctx)
-	var wg sync.WaitGroup
+	var (
+		mu sync.Mutex
+		wg sync.WaitGroup
+	)
 	wg.Add(1)
 	go func() {
 		defer func() {
@@ -176,6 +179,7 @@ func TestTestLogDirectoryHandlerFollowFile(t *testing.T) {
 			case <-writerCtx.Done():
 				return
 			default:
+				mu.Lock()
 				for i := range files {
 					files[i].rawLines = append(
 						files[i].rawLines,
@@ -185,18 +189,21 @@ func TestTestLogDirectoryHandlerFollowFile(t *testing.T) {
 					_, err := files[i].f.WriteString(files[i].rawLines[len(files[i].rawLines)-1] + "\n")
 					require.NoError(t, err)
 				}
+				mu.Unlock()
 			}
 		}
 	}()
 
 	// Check that logs are ingested continuously.
 	time.Sleep(5 * time.Second)
+	mu.Lock()
 	for _, file := range files {
 		it, err := tsk.GetTestLogs(ctx, taskoutput.TestLogGetOptions{LogPaths: []string{file.fn}})
 		require.NoError(t, err)
 		assert.True(t, it.Next())
 		assert.NoError(t, it.Close())
 	}
+	mu.Unlock()
 
 	// Add a third, nested, test log file.
 	nestedFile := logFile{
@@ -208,7 +215,22 @@ func TestTestLogDirectoryHandlerFollowFile(t *testing.T) {
 		},
 	}
 	require.NoError(t, os.Mkdir(filepath.Join(h.dir, filepath.Dir(nestedFile.fn)), 0777))
-	require.NoError(t, os.WriteFile(filepath.Join(h.dir, nestedFile.fn), []byte(strings.Join(nestedFile.rawLines, "\n")+"\n"), 0777))
+	//require.NoError(t, os.WriteFile(filepath.Join(h.dir, nestedFile.fn), []byte(strings.Join(nestedFile.rawLines, "\n")+"\n"), 0777))
+	var err error
+	nestedFile.f, err = os.Create(filepath.Join(h.dir, nestedFile.fn))
+	require.NoError(t, err)
+	_, err = nestedFile.f.WriteString(strings.Join(nestedFile.rawLines, "\n") + "\n")
+	require.NoError(t, err)
+
+	// Non-atomic line write.
+	firstPart := "This is the first part of the line, "
+	_, err = nestedFile.f.WriteString(firstPart)
+	require.NoError(t, err)
+	time.Sleep(time.Second)
+	secondPart := "this is the second part of the line."
+	_, err = nestedFile.f.WriteString(secondPart + "\n")
+	require.NoError(t, err)
+	nestedFile.rawLines = append(nestedFile.rawLines, firstPart+secondPart)
 
 	// Wait for async writing to exit cleanly and close the test log
 	// directory handler.
