@@ -249,33 +249,41 @@ Ambiguous behavior is outlined here:
 ### Project Triggers
 
 Users can specify that commits to another project (the "upstream"
-project) will trigger builds in their project (the "downstream"
+project) will trigger builds in their current project (the "downstream"
 project). Configure triggers in the downstream project from the Project Triggers
 section of the project configuration page. Click "Add Project Trigger".
 
 Options:
 
--   Project: The upstream project.
--   Level: Accepted values are task, build, and push. Task and build levels will trigger
+-   **Project**: The upstream project.
+-   **Level**: Accepted values are task, build, and push. Task and build levels will trigger
     based on the completion of either a task or a build in the upstream project. 
     - Push level triggers do not require any upstream build or task to run, but instead trigger a downstream version once
-    a commit is pushed to the upstream project.
+    a commit is pushed to the upstream project. This is helpful if the upstream project doesn't regularly run or create commit tasks.
     - For push level triggers, if the upstream project is a module of the downstream project's YAML,
     the manifest of the downstream version will use the commit hash of the upstream project's commit.
--   Status: Only applicable to build and task level triggers. Specify which status of the upstream 
-    build or task should trigger a downstream version.
--   Date cutoff: Do not trigger a downstream build if a user manually
+-   **Status**: Specify which status of the upstream build or task should trigger a downstream version.
+    (Only applicable to build and task level triggers.)
+-   **Date cutoff**: Do not trigger a downstream build if a user manually
     schedules a build older than this number of days.
--   Variant and task regexes: Trigger based on these variants (if
+-   **Variant and task regexes**: Trigger based on these variants (if
     build-level) or variants and tasks (if task-level) completing.
 -   Definition file: The path to the downstream project's config file.
     This may be the same as the main project configuration file but does
     not have to be.
--   Alias: Run a subset of tasks by specifying an alias. Otherwise, all
-    tasks run.
--   Unschedule Downstream Versions: If toggled, all tasks in the triggered 
-    downstream version will be unscheduled by default, requiring manual scheduling. 
-    Otherwise, all tasks will immediately scheduled once the downstream version is created.
+-   **Alias**: Run a subset of downstream tasks by specifying an alias. Otherwise, all
+    tasks run. Aliases are defined on the Patch Aliases section.
+-   **Unschedule Downstream Versions**: If toggled, all tasks in the triggered 
+    downstream version will be unscheduled by default, requiring manual scheduling or stepback. 
+    Otherwise, all tasks will be immediately scheduled once the downstream version is created.
+
+**Example:** to have new Evergreen commits trigger end-to-end tests in Spruce, 
+a configuration like this could be added to **Spruce's project page:**
+
+![project-trigger-example.png](../images/project-trigger-example.png)
+
+In this example, notice that Spruce tasks matching the e2e alias will trigger _only if_ the Evergreen dist task succeeds, and by default the Spruce tasks are unscheduled. 
+(This is helpful if you only want these tasks to be available for manual scheduling or stepback).
 
 ### Patch Trigger Aliases
 
