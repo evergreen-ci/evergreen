@@ -1,7 +1,7 @@
 # Version Page
 
 ## Overview
-The version page contains the run details for a given patch or mainline commit it contains metadata about the run. It also contains the task runs that were created by the version. The page is divided into several sections.
+The version page contains the run details for a given patch or mainline commit as well as metadata about the run. It also contains the task runs that were created by the version. The page is divided into several sections.
 
 ![Version Page](../images/version_page.png)
 
