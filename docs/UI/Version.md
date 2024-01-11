@@ -10,6 +10,8 @@ The version page contains the run details for a given patch or mainline commit a
 
 #### Tasks
 The Tasks tab contains a table of all of the tasks that ran in the version. 
+
+The table is comprised of the following columns:
 * The Task name and a link to the [task page](./Task.md). 
 * The Task status. 
 * The Base Task status. For mainline commits this is the status of the task on the previous commit. For Patches this is the status of the task on the base commit.
