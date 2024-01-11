@@ -16,7 +16,7 @@ Evergreen limits tasks per version to 40,000.
 
 ## Task Timeout Max
 
-Evergreen does not have a limit on how large task timeouts can be. For different default timeouts that evergreen has in place, see [pre and post](../Project-Configuration-Files/#pre-and-post) and [timout handler](../Project-Configuration-Files/#timeout-handler).
+Evergreen does not have a limit on how large task timeouts can be. For different default timeouts that evergreen has in place, see [pre and post](../Project-Configuration/Project-Configuration-Files/#pre-and-post) and [timout handler](../Project-Configuration/Project-Configuration-Files/#timeout-handler).
 
 ## Include Limits
 
