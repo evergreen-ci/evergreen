@@ -362,7 +362,7 @@ func backport() cli.Command {
 				},
 				cli.StringFlag{
 					Name:  joinFlagNames(existingPatchFlag, "e"),
-					Usage: "existing commit queue patch from another repository",
+					Usage: "existing commit queue patch from another project",
 				},
 				cli.StringFlag{
 					Name:  joinFlagNames(commitShaFlag, "s"),
