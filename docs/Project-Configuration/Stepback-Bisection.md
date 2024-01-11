@@ -1,20 +1,33 @@
 # Stepback Bisection
-Evergreen's stepback bisection performs stepback by continuously reducing the amount of commits needed to test by half. To enable it, go to the project settings 'general' tab.
+Evergreen's stepback bisection performs stepback by continuously reducing the amount of commits needed to test by half. To enable it, go to the project settings 'general' tab and enable the 'Stepback Bisection' flag. Note that the 'Stepback' flag has to be enabled as well for bisection to take place.
 
 ## Motivation
 Traditionally, Evergreen performed linear stepback only. This is tasking each previous commit one by one. If stepback bisection is enabled, Evergreen will use bisection instead of linear.
-Evergreen performs linear stepback by default, which takes O(n) tasks at worst to find the offending commit. With bisection, Evergreen performs binary search on the remaining tasks, cutting down the worst time to O(logn).
+Evergreen performs linear stepback by default, which takes O(n) steps in the worst case to find the offending commit. With bisection, Evergreen performs binary search on the remaining tasks, cutting down the worst time to O(logn) steps.
 
 ## Definitions
-'Last Passing Stepback Task' is the last known task that passes.
-'Last Failing Stepback Task' is the task of the recent commit that causes stepback, the failing mainline commit.
-'Next Stepback Task' and 'Previous Stepback Task' helps navigation on Spruce to track the path of stepback.
+The following are all task-specific fields that populate separately for every task. Only tasks that are in the middle or have finished the bisection process will have these fields.
+'Last Passing Stepback Task' is the last task that is known to pass (related to a mainline commit).
+'Last Failing Stepback Task' is the failing mainline commit.
+'Next Stepback Task' is the task that comes next in stepback (i.e. the current task is either a last passing/failing and bisection has picked the next task).
+'Previous Stepback Task' is the task that happened before the current stepback task (i.e. the previous last passing/failing that caused this stepback task to activate)
+
+All of these fields are populated as Evergreen does stepback bisection.
 
 ## Strategy
-Bisection takes the failed commit that triggers it and the last known passing commit for that task. It then gets the version in the middle and activates the same task. If it passes, Evergreen knows that the offending commit is between the same failed commit and this new recent passing commit. If it fails, Evergreen knows the offending commit is between the same last known passing commit and this new recent failing commit. Evergreen stops when the next task to activate is the same as the last passing task.
+Bisection starts with the failed commit that triggers it and the last known passing commit for that task. It then gets the version in the middle and activates the same task. This can be broken down to the following cases.
+
+- If the task passes, Evergreen knows the offending commit is between the same failing commit and the task that just passed.
+    - Evergreen activates the task (current) between the same failing commit and the task that just passed.
+- If the task fails, Evergreen knows the offending commit is between the same passing commit and the task that just failed.
+    - Evergreen activates the task (current) between the same passing commit and the task that just failed.
+- Then in both cases:
+    - The 'current' task's previous stepback task is set to the task that activated this step in stepback.
+    - The task that activated this step in Stepback is updated to point their 'Next Stepback Task' to the 'current' task.
+    - Once this task fails or passes, repeats the case that applies (with 'Previous' being the 'current' task).
 
 ## Navigation
-Tasks involved in stepback bisection will have 'Last Failing Stepback Task', 'Last Passing Stepback Task', 'Previous Stepback Task', and 'Next Stepback Task' when applicable on their task metadata.
+Tasks involved in stepback will have corresponding data in their task metadata when selecting the task. To access it, click on the version (or mainline commit) that failed and activated stepback, then go to the task(s) that failed and view the task metadata.
 
 ## Example
 Below is an example where there is a last known passing commit 'Passing commit'. 10 inactive commits labeled 1-10. A failing mainline commit 'Latest commit'. The commit '3' is the offending commit bisection stepback is finding.
