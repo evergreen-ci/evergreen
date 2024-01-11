@@ -16,7 +16,7 @@ However, note that these properties can overlap in complex ways.
 - Stepped back tasks are prioritized over non-stepped back tasks.
 - Tasks with more dependencies are prioritized over tasks with fewer dependencies.
 - Tasks with longer runtimes are prioritized over tasks with shorter runtimes.
-- Tasks with higher user priorities are prioritized over tasks that.
+- Tasks with higher priorities set by users are prioritized over tasks with lower priorities.
 
 It is possible for a user to change the priority of their task, which affects
 one part of the sum. The default priority is 0. Valid priorities are 0-100 for
