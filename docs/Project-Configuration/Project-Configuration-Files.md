@@ -420,15 +420,18 @@ the "Version Manifest" shown in the Spruce UI should show module configurations 
 ``` yaml
 modules:
 - name: evergreen
-  repo: https://github.com/deafgoat/mci_test.git
+  owner: deafgoat
+  repo: mci_test
   prefix: src/mongo/db/modules
   branch: ${project_variable}
 - name: sandbox
-  repo: https://github.com/deafgoat/sandbox.git
+  owner: deafgoat
+  repo: sandbox
   branch: main
   ref: <some_hash>
 - name: mci
-  repo: https://github.com/deafgoat/mci.git
+  owner: deafgoat
+  repo: mci
   branch: main
   auto_update: true
 ```
