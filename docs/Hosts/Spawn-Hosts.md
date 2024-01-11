@@ -20,7 +20,7 @@ If you are having trouble connecting to a spawn host:
 
 ## Making a distro "spawnable"
 
-Evergreen administrators can choose to make a distro available to users for spawning by checking the box on the distro configuration panel labeled *"Allow users to spawn these hosts for personal use"*
+Evergreen administrators can choose to make a distro available to users for spawning by checking the box on the distro configuration panel labeled _"Allow users to spawn these hosts for personal use"_
 
 Only distros backed by a provider that supports dynamically spinning up new hosts (static hosts, of course, do not) allow this option.
 
@@ -30,7 +30,7 @@ Visit `/spawn` to view the spawn hosts control panel. Click on "Spawn Host" and 
 
 ## Spawning a Host From a Task
 
-Alternately, for a task that ran on a distro where spawning is enabled, you will see a "Spawn..." or "Spawn Host" link on its task page. 
+Alternately, for a task that ran on a distro where spawning is enabled, you will see a "Spawn..." or "Spawn Host" link on its task page.
 
 ![task_page_spawn_host.png](../images/task_page_spawn_host.png)
 
@@ -40,9 +40,9 @@ Clicking it will pre-populate the spawn host page with a request to spawn a host
 
 Fetching artifacts can also be performed manually; see [fetch](../CLI.md#fetch) in the Evergreen command line tool documentation.
 
-Artifacts are placed in /data/mci. Note that you will likely be able to ssh into the host before the artifacts are finished fetching. 
+Artifacts are placed in /data/mci. Note that you will likely be able to ssh into the host before the artifacts are finished fetching.
 
-If your project has a project setup script defined at the admin level, you can also check "Use project-specific setup script defined at ..." before creating the spawn host. You can check if there are errors fetching artifacts or running this script on the host page: ``https://spruce.mongodb.com/host/<host_id>``.
+If your project has a project setup script defined at the admin level, you can also check "Use project-specific setup script defined at ..." before creating the spawn host. You can check if there are errors fetching artifacts or running this script on the host page: `https://spruce.mongodb.com/host/<host_id>`.
 
 EC2 spawn hosts can be stopped/started and modified from the Spawn Host page, or via the command line, which is documented in [Basic Host Usage](../CLI.md#basic-host-usage) in the Evergreen command line tool documentation.
 
@@ -71,4 +71,4 @@ The spruce hosts page shows all hosts and offers three batch actions applicable 
    Try forcing the Evergreen agent (which runs in a system process called Jasper) to start back up in a way that's less disruptive than just rebooting the computer.
 
 3. Reprovision
-   Hosts need to have a few starter files and stuff on the file system before they can run tasks, and pressing that button gives them the files they need if they're a static host(because there's no way to auto-populate them with the stuff they need). This option is useful for static hosts that get extremely borked (like the file system is corrupted it loses all the data).
+   Hosts need to have a few starter files and stuff on the file system before they can run tasks, and pressing that button gives them the files they need if they're a static host(because there's no way to auto-populate them with the stuff they need). This option is useful for static hosts that get extremely borked (like the file system is corrupted and it loses all the data).
