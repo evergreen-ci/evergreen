@@ -24,8 +24,8 @@ standard users, and higher for project admins. -1 will prevent a task from being
 scheduled, e.g., by stepback.
 
 Please be conservative when setting high priorities, as this will deprioritize
-other users' tasks.
+other users' tasks relative to yours.
 
 Priority can be set in the UI on the version and task pages from the three dots
-menu -> set priority. It can also be set with the
+menu -> Set priority. It can also be set with the
 [API](../API/REST-V2-Usage.md).
