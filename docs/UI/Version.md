@@ -17,13 +17,18 @@ The Tasks tab contains a table of all of the tasks that ran in the version.
 
 #### Task Duration
 The Task Duration tab contains a list of all of the tasks that ran in the version and how long they took to run.
+
 ![Task Duration table](../images/Task_Duration.png)
 
  
  #### Changes
- The Changes tab contains a list of all of the files that were changed in the patch. Note: This tab is only visible on patch versions and not mainline commits.
-    ![Changes table](../images/changes_table.png)
+ The Changes tab contains a list of all of the files and their diffs that were changed in the patch. 
+
+ *Note: This tab is only visible on patch versions and not mainline commits.*
+
+![Changes table](../images/changes_table.png)
 
 #### Downstream Projects
 The Downstream Projects tab contains a list of all of the projects that were triggered by the version. Note: This tab is only visible if you have [project triggers configured](../Project-Configuration/Project-and-Distro-Settings.md#project-triggers).
+
 ![Downstream Projects table](../images/downstream_projects.png)
