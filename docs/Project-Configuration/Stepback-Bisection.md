@@ -12,8 +12,6 @@ The following are all task-specific fields that populate separately for every ta
 'Next Stepback Task' is the task that comes next in stepback (i.e. the current task is either a last passing/failing and bisection has picked the next task).
 'Previous Stepback Task' is the task that happened before the current stepback task (i.e. the previous last passing/failing that caused this stepback task to activate)
 
-All of these fields are populated as Evergreen does stepback bisection.
-
 ## Strategy
 Bisection starts with the failed commit that triggers it and the last known passing commit for that task. It then gets the version in the middle and activates the same task. This can be broken down to the following cases.
 
