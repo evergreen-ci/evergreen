@@ -259,52 +259,61 @@ Ambiguous behavior is outlined here:
 ### Project Triggers
 
 Users can specify that commits to another project (the "upstream"
-project) will trigger builds in their project (the "downstream"
-project). Configure triggers in the downstream project from the Project Triggers
+project) will trigger builds in their current project (the "downstream"
+project). Configure triggers **in the downstream project** from the Project Triggers
 section of the project configuration page. Click "Add Project Trigger".
 
 Options:
 
--   Project: The upstream project.
--   Config file: The path to the downstream project's config file.
+-   **Project**: The upstream project identifier to listen to for commits.
+-   **Config file**: The path to the downstream project's config file.
     This may be the same as the main project configuration file but does
     not have to be.
--   Level: Accepted values are task, build, and push. Task and build levels will trigger
+-   **Level**: Accepted values are task, build, and push. Task and build levels will trigger
     based on the completion of either a task or a build in the upstream project. 
     - Push level triggers do not require any upstream build or task to run, but instead trigger a downstream version once
-    a commit is pushed to the upstream project.
+    a commit is pushed to the upstream project. This is helpful if the upstream project doesn't regularly run or create commit tasks.
     - For push level triggers, if the upstream project is a module of the downstream project's YAML,
     the manifest of the downstream version will use the commit hash of the upstream project's commit.
--   Status: Only applicable to build and task level triggers. Specify which status of the upstream 
-    build or task should trigger a downstream version.
--   Date cutoff: Do not trigger a downstream build if a user manually
+-   **Status**: Specify which status of the upstream build or task should trigger a downstream version.
+    (Only applicable to build and task level triggers.)
+-   **Date cutoff**: Do not trigger a downstream build if a user manually
     schedules a build older than this number of days.
--   Variant and task regexes: Trigger based on these variants (if
+-   **Variant and task regexes**: Trigger based on these variants (if
     build-level) or variants and tasks (if task-level) completing.
--   Alias: Run a subset of tasks by specifying an alias. Otherwise, all
-    tasks run.
--   Unschedule Downstream Versions: If toggled, all tasks in the triggered 
-    downstream version will be unscheduled by default, requiring manual scheduling. 
-    Otherwise, all tasks will immediately scheduled once the downstream version is created.
+-   **Alias**: Run a subset of downstream tasks by specifying an alias. Otherwise, all
+    tasks run. Aliases are defined on the Patch Aliases section.
+-   **Unschedule Downstream Versions**: If toggled, all tasks in the triggered 
+    downstream version will be unscheduled by default, requiring manual scheduling or stepback. 
+    Otherwise, all tasks will be immediately scheduled once the downstream version is created.
+
+**Example:** to have new commits for the Evergreen project trigger end-to-end tests in Spruce, 
+a configuration like this could be added to **Spruce's project page:**
+
+![project-trigger-example.png](../images/project-trigger-example.png)
+
+In this example, notice that Spruce tasks matching the e2e alias will trigger _only if_ the Evergreen dist task succeeds (and is less than one day old, per the date cutoff), and by default the Spruce tasks are unscheduled. 
+(This is helpful if you only want these tasks to be available for manual scheduling or stepback.)
 
 ### Patch Trigger Aliases
 
 Users can create aliases that can be used in patch builds (in the
 "upstream" project) to kick off a child patch (in the "downstream"
-project). Create aliases in the upstream project in the Patch
+project). Create aliases **in the upstream project** in the Patch
 Aliases section of the project configuration page. Click "Add Patch Trigger
 Alias".
 
 Options:
 
--   Alias: The name of the alias.
--   Project: The downstream project.
--   Module: Optionally specify a module to apply changes to.
--   Wait on: You can have the child patch wait on a complete(success or
-    failed), success, or failed status from the parent. Otherwise the
-    child patch will run immediately. If the patch depends on parent
+- **Alias**: The name of the alias.
+- **Project**: The downstream project identifier.
+- **Module**: If you want tests to include the upstream project's changes, 
+add the upstream project as a module in the downstream project yaml, and specify that module name here.
+- **Wait on**: You can have the child patch wait on a complete (success or
+    failed), success, or failed status from the parent. Otherwise, the
+    child patch will run immediately. If the patch depends on the parent
     status, at least one parent task must be scheduled.
--   Patch alias, variant and task regexes: Run a subset of tasks in the
+- **Patch alias, variant and task regexes**: Run a subset of tasks in the
     downstream project by specifying an alias or by specifying task and
     variant regexes.
 
@@ -318,6 +327,18 @@ repository as well as each subsequent push to each pull request.
 
 To pass information from the upstream patch to the downstream patch use
 [downstream_expansions.set](Project-Commands.md#downstream_expansionsset)
+
+**Example**:  to allow testing Spruce tasks as part of patches for the Evergreen project,  
+a configuration like this could be added to **Evergreen's project page:**
+
+![patch_trigger_alias_example.png](../images/patch-trigger-alias-example.png)
+
+This makes it possible to optionally add tasks matching the defined regex to any patch, and because 
+"Add to GitHub Trigger Alias" is checked, these tasks will be included as part of PR patches. 
+
+Additionally, because "evergreen" is defined as a module in the yaml (pictured below), the Spruce tasks will incorporate the patch changes.  
+
+![module_example.png](../images/module-example.png)
 
 ### Periodic Builds
 
