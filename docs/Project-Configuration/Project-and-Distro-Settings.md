@@ -298,7 +298,7 @@ Options:
 - **Alias**: The name of the alias.
 - **Project**: The downstream project identifier.
 - **Module**: If you want tests to include the upstream project's changes, 
-add the parent project as a module in the downstream project yaml, and specify that module name here.
+add the upstream project as a module in the downstream project yaml, and specify that module name here.
 - **Wait on**: You can have the child patch wait on a complete (success or
     failed), success, or failed status from the parent. Otherwise, the
     child patch will run immediately. If the patch depends on the parent
