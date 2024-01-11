@@ -6,7 +6,7 @@ Traditionally, Evergreen performed linear stepback which activates each previous
 Evergreen performs linear stepback by default, which takes O(n) steps in the worst case to find the offending commit. With bisection, Evergreen performs binary search on the remaining tasks, cutting down the worst time to O(logn) steps.
 
 ## Definitions
-The following are all task-specific fields that populate separately for every task. Only tasks that are in the middle or have finished the bisection process will have these fields.
+The following are all task-specific fields that populate separately for every task.
 'Last Passing Stepback Task' is the last task that is known to pass (related to a mainline commit).
 'Last Failing Stepback Task' is the failing mainline commit.
 'Next Stepback Task' is the task that comes next in stepback (i.e. the current task is either a last passing/failing and bisection has picked the next task).
