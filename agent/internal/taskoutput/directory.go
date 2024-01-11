@@ -94,8 +94,8 @@ func (a *Directory) Close(ctx context.Context) error {
 	return catcher.Resolve()
 }
 
-// directoryHandler abstracts automatic and asynchronous task output handling
-// for individual subdirectories.
+// directoryHandler abstracts the automatic and asynchronous handling of task
+// output for individual subdirectories.
 type directoryHandler interface {
 	// start starts asynchronous handling of the given directory.
 	start(context.Context, string) error
