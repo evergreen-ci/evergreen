@@ -263,7 +263,7 @@ func ExportECSPodDefinitionOptions(settings *evergreen.Settings, opts pod.TaskCo
 }
 
 // exportECSPodContainerDef exports the ECS pod container definition into the
-// equivalent cocoa.ECSContainerDefintion.
+// equivalent cocoa.ECSContainerDefinition.
 func exportECSPodContainerDef(settings *evergreen.Settings, opts pod.TaskContainerCreationOptions) (*cocoa.ECSContainerDefinition, error) {
 	ecsConf := settings.Providers.AWS.Pod.ECS
 	def := cocoa.NewECSContainerDefinition().
