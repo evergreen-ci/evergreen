@@ -128,6 +128,10 @@ input SaveDistroInput {
 }
 
 input DistroInput {
+  """
+  TODO: require adminOnly field upon completion of DEVPROD-3533
+  """
+  adminOnly: Boolean
   aliases: [String!]!
   arch: Arch!
   authorizedKeysFile: String!
@@ -278,6 +282,7 @@ type SaveDistroPayload {
 Distro models an environment configuration for a host.
 """
 type Distro {
+  adminOnly: Boolean!
   aliases: [String!]!
   arch: Arch!
   authorizedKeysFile: String!

@@ -4,6 +4,7 @@ mutation {
         distro: {
           name: "fake"
 
+          adminOnly: false,
           aliases: [
             "new-alias"
           ],

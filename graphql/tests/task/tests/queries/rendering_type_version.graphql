@@ -1,0 +1,14 @@
+{
+  task(taskId: "commit_task", execution: 0) {
+    id
+    execution
+    tests(opts: {limit: 1,  statuses: ["skip"]}) {
+      testResults {
+        logs {
+            renderingType
+            version
+        }
+      }
+    }
+  }
+}

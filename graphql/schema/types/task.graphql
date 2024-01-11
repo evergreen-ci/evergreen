@@ -238,6 +238,8 @@ type TestLog {
   urlLobster: String @deprecated(reason: "Use urlParsley instead")
   urlParsley: String
   urlRaw: String
+  renderingType: String
+  version: Int
 }
 
 """

@@ -263,6 +263,27 @@
       }
     },
     {
+      "query_file": "rendering_type_version.graphql",
+      "result": {
+        "data": {
+          "task": {
+            "id": "commit_task",
+            "execution": 0,
+            "tests": {
+              "testResults": [
+                {
+                  "logs": {
+                    "renderingType": "default",
+                    "version": 1
+                  }
+                }
+              ]
+            }
+          }
+        }
+      }
+    },
+    {
       "query_file": "sort_by_duration_desc.graphql",
       "result": {
         "data": {

@@ -340,6 +340,7 @@ func (s *APIIceCreamSettings) ToService() distro.IceCreamSettings {
 
 type APIDistro struct {
 	Name                  *string                  `json:"name"`
+	AdminOnly             bool                     `json:"admin_only"`
 	Aliases               []string                 `json:"aliases"`
 	UserSpawnAllowed      bool                     `json:"user_spawn_allowed"`
 	Provider              *string                  `json:"provider"`
@@ -374,6 +375,7 @@ type APIDistro struct {
 // BuildFromService converts from service level distro.Distro to an APIDistro
 func (apiDistro *APIDistro) BuildFromService(d distro.Distro) {
 	apiDistro.Name = utility.ToStringPtr(d.Id)
+	apiDistro.AdminOnly = d.AdminOnly
 	apiDistro.Aliases = d.Aliases
 	apiDistro.UserSpawnAllowed = d.SpawnAllowed
 	apiDistro.Provider = utility.ToStringPtr(d.Provider)
@@ -440,6 +442,7 @@ func (apiDistro *APIDistro) BuildFromService(d distro.Distro) {
 func (apiDistro *APIDistro) ToService() *distro.Distro {
 	d := distro.Distro{}
 	d.Id = utility.FromStringPtr(apiDistro.Name)
+	d.AdminOnly = apiDistro.AdminOnly
 	d.Aliases = apiDistro.Aliases
 	d.Arch = utility.FromStringPtr(apiDistro.Arch)
 	d.WorkDir = utility.FromStringPtr(apiDistro.WorkDir)
