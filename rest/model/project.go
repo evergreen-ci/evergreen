@@ -100,9 +100,13 @@ type APIPatchTriggerDefinition struct {
 	// List of task specifiers.
 	TaskSpecifiers []APITaskSpecifier `json:"task_specifiers"`
 	// Status for the parent patch to conditionally kick off the child patch.
-	Status         *string       `json:"status,omitempty"`
-	ParentAsModule *string       `json:"parent_as_module,omitempty"`
-	VariantsTasks  []VariantTask `json:"variants_tasks,omitempty"`
+	Status *string `json:"status,omitempty"`
+	// Name of the module corresponding to the upstream project in the
+	// downstream project's YAML.
+	ParentAsModule *string `json:"parent_as_module,omitempty"`
+	// The list of variants/tasks from the alias that will run in the downstream
+	// project.
+	VariantsTasks []VariantTask `json:"variants_tasks,omitempty"`
 }
 
 func (t *APIPatchTriggerDefinition) BuildFromService(def patch.PatchTriggerDefinition) error {
@@ -615,7 +619,7 @@ type APIProjectRef struct {
 	PRTestingEnabled *bool `json:"pr_testing_enabled"`
 	// Enable GitHub manual pull request testing.
 	ManualPRTestingEnabled *bool `json:"manual_pr_testing_enabled"`
-	// Enable testing when git tag are pushed.
+	// Enable testing when git tags are pushed.
 	GitTagVersionsEnabled *bool `json:"git_tag_versions_enabled"`
 	// Enable GitHub checks.
 	GithubChecksEnabled *bool `json:"github_checks_enabled"`
