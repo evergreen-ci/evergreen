@@ -84,6 +84,8 @@ func sendTestLogToCedar(ctx context.Context, comm client.Communicator, tsk *task
 	return nil
 }
 
+// testLogDirectoryHandler implements automatic and asynchronous task output
+// handling for the reserved test log directory.
 type testLogDirectoryHandler struct {
 	dir             string
 	logger          client.LoggerProducer
@@ -96,6 +98,8 @@ type testLogDirectoryHandler struct {
 	wg   sync.WaitGroup
 }
 
+// newTestLogDirectoryHandler returns a new test log directory handler for the
+// specified task.
 func newTestLogDirectoryHandler(output taskoutput.TestLogOutput, taskOpts taskoutput.TaskOptions, logger client.LoggerProducer) *testLogDirectoryHandler {
 	h := &testLogDirectoryHandler{logger: logger}
 	h.createSender = func(ctx context.Context, logPath string) (send.Sender, error) {
@@ -145,6 +149,10 @@ func (h *testLogDirectoryHandler) start(ctx context.Context, dir string) error {
 	return nil
 }
 
+// watch recursively watches the reserved test log directory for newly created
+// log files. When a new file is detected, an asynchronous file follower is
+// created to ingest the log data as it is written for the duration of the
+// task.
 func (h *testLogDirectoryHandler) watch(ctx context.Context) {
 	defer func() {
 		h.logger.Execution().Critical(recovery.HandlePanicWithError(recover(), nil, "test log directory watcher"))
@@ -175,6 +183,12 @@ func (h *testLogDirectoryHandler) watch(ctx context.Context) {
 	}
 }
 
+// getSpecFile looks for the test log specification file in the top level of
+// the reserved test log directory. If the spec file cannot be read for any
+// reason, an error is logged and the handler uses the default spec.
+//
+// Called once per task run immediately after the first log file is detected
+// and before any data is ingested.
 func (h *testLogDirectoryHandler) getSpecFile() {
 	h.logger.Task().Infof("detected first test log file, getting test log spec file")
 
@@ -193,6 +207,8 @@ func (h *testLogDirectoryHandler) getSpecFile() {
 	}
 }
 
+// followFile tails a test log file for the duration of a task, ingesting and
+// persisting log lines as they are written.
 func (h *testLogDirectoryHandler) followFile(ctx context.Context, event watcher.Event) {
 	defer func() {
 		h.logger.Task().Critical(recovery.HandlePanicWithError(recover(), nil, "test log file follower"))
@@ -255,6 +271,11 @@ func (h *testLogDirectoryHandler) close(_ context.Context) error {
 	return nil
 }
 
+// testLogSpec represents the test log specification file written at the top
+// level of the reserved test log directory.
+//
+// The spec file enables schema versioning, robust log parsing, and richer
+// feature development.
 type testLogSpec struct {
 	SchemaVersion string        `yaml:"schema_version"`
 	Format        testLogFormat `yaml:"format"`
@@ -282,14 +303,21 @@ func (s testLogSpec) getParser() taskoutput.LogLineParser {
 			}, nil
 		}
 	default:
+		// Use the default log line parser.
 		return nil
 	}
 }
 
+// testLogFormat specifies the expected format of log lines written to files in
+// the test log directory. The format maps to a log line parser.
 type testLogFormat string
 
 const (
-	testLogFormatDefault       testLogFormat = "text"
+	// testLogFormatDefault is a plain text string.
+	testLogFormatDefault testLogFormat = "text"
+	// testLogFormatTextWithTimestamp is a plain text string prefixed by a
+	// Unix timestamp in nanoseconds and one or more whitespace characters.
+	// 		1575743479637000000 This is a log line.
 	testLogFormatTextTimestamp testLogFormat = "text-timestamp"
 )
 

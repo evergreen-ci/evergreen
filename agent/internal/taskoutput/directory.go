@@ -14,8 +14,8 @@ import (
 )
 
 // Directory is the application representation of a task's reserved output
-// directory. It coordinates asynchronous task output handling, from ingestion
-// to persistence, while the task runs.
+// directory. It coordinates the automated and asynchronous handling of task
+// output written to the reserved directory while a task runs.
 type Directory struct {
 	root     string
 	handlers map[string]directoryHandler
@@ -39,7 +39,7 @@ func NewDirectory(root string, tsk *task.Task, logger client.LoggerProducer) *Di
 	}
 }
 
-// Start creates the sub-directories and starts all asynchronous directory
+// Start creates the subdirectories and starts all asynchronous directory
 // handlers.
 func (a *Directory) Start(ctx context.Context) error {
 	catcher := grip.NewBasicCatcher()
@@ -79,7 +79,12 @@ func (a *Directory) Close(ctx context.Context) error {
 	return catcher.Resolve()
 }
 
+// directoryHandler abstracts automatic and asynchronous task output handling
+// for individual subdirectories.
 type directoryHandler interface {
+	// start starts asynchronous handling of the given directory.
 	start(context.Context, string) error
+	// close gracefully concludes any asynchronous processes and executes
+	// any handling logic designated for the end of a task run.
 	close(context.Context) error
 }
