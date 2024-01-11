@@ -28,7 +28,14 @@ Bisection starts with the failed commit that triggers it and the last known pass
 Tasks involved in stepback will have corresponding data in their task metadata when selecting the task. To access it, click on the version (or mainline commit) that failed and activated stepback, then go to the task(s) that failed and view the task metadata.
 
 ## Example
-Below is an example where there is a last known passing commit 'Passing commit'. 10 inactive commits labeled 1-10. A failing mainline commit 'Latest commit'. The commit '3' is the offending commit bisection stepback is finding.
+Below is an example with:
+- A passing commit labeled 'Passing commit'.
+- Commits 1 - 10 (1 first, 10 last) labeled '1', '2', ... that are inactive.
+- A failing commit labeled 'Latest commit'.
+
+(i.e. x ? ? ? ? ? ? ? * ? ? ✔️ where x is the latest commit, * is the offending commit, and ✔️ is the latest passing).
+
+Stepback bisection is turned on and attempting to find the commit '3'.
 
 ![stepback-bisection-1.png](../images/stepback-bisection-1.png)
 
