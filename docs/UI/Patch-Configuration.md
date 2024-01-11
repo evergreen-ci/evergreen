@@ -12,9 +12,7 @@ The left side panel contains the build variants that are available for the proje
 ![Task Selector](../images/task_selector.png)
  There are tabs at the top that allow you to switch between the different sections of the page. The tabs are: 
  
- **Configure** the default which contains the tasks that are selectable for the variant. A search bar which allows you to search for tasks by name. A button to **Select All** visible tasks and a button to **Deselect All** visible tasks.
- 
-  **Changes** which shows the files that have been changed in the patch
-  
-   **Parameters** which allows you to specify [custom parameters](../Project-Configuration/Parameterized-Builds.md) to pass into your patch build.
+- **Configure:** the default which contains the tasks that are selectable for the variant, a search bar which allows you to search for tasks by name, a button to **Select All** visible tasks, and a button to **Deselect All** visible tasks.
+- **Changes** which shows the files that have been changed in the patch
+- **Parameters** which allows you to specify [custom parameters](../Project-Configuration/Parameterized-Builds.md) to pass into your patch build.
 
