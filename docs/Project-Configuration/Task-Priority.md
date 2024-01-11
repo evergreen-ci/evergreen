@@ -24,7 +24,8 @@ standard users, and higher for project admins. -1 will prevent a task from being
 scheduled, e.g., by stepback.
 
 Please be conservative when setting high priorities, as this will deprioritize
-other users' tasks relative to yours.
+other users' tasks relative to yours. Please stay below 50 if the change is not
+high priority.
 
 Priority can be set in the UI on the version and task pages from the three dots
 menu -> Set priority. 
