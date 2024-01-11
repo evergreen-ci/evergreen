@@ -1,0 +1,31 @@
+# Task Priority
+
+Evergreen orders its task queues by taking into account a number of properties
+of a task. These properties are given weights and are summed. Evergreen orders
+the queues according to this sum. Weights are editable by Evergreen admins.
+This process means that it's not possible for an Evergreen user or admin to
+easily reason about the relative positions of specific tasks in the queue.
+
+Properties of tasks that can influence their order include the following.
+However, note that these properties can overlap in complex ways.
+
+- Tasks that generate tasks are prioritized over tasks that do not.
+- Patches are prioritized over mainline commits.
+- Commit queue patches are prioritized over patches and mainline.
+- Newer mainline builds are prioritized over older mainline builds.
+- Stepped back tasks are prioritized over non-stepped back tasks.
+- Tasks with more dependencies are prioritized over tasks with fewer dependencies.
+- Tasks with longer runtimes are prioritized with tasks over shorter runtimes.
+- Tasks with higher user priorities are prioritized over tasks that 
+
+It is possible for a user to change the priority of their task, which affects
+one part of the sum. The default priority is 0. Valid priorities are 0-100 for
+standard users, and higher for project admins. -1 will prevent a task from being
+scheduled, e.g., by stepback.
+
+Please be conservative when setting high priorities, as this will deprioritize
+other users' tasks.
+
+Priority can be set in the UI on the version and task pages from the three dots
+menu -> set priority. It can also be set with the
+[API](../API/REST-V2-Usage.md).
