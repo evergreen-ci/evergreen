@@ -394,6 +394,30 @@ Options:
 Users can enable the performance plugin for tracking historical
 performance of tasks and tests.
 
+
+### Project-Level Notifications
+
+Project admins can set up notifications for when some events happen within the project. Admins can set up events when:
+
+- Any version/build/task finishes/fails - these can be filtered by build initiator (commit, patch, PR, commit queue,
+  periodic build).
+- First failure occurs in a version, for each build or for each task name - these can be filtered by build initiator
+  (commit, patch, PR, commit queue, periodic build).
+- A previously-passing task fails - these can be filtered by failure type (any, test, system, setup). Furthermore, to
+  reduce the amount of notifications received, the re-notification interval can be explicitly set.
+- A previously-passing test fails - these can be filtered by test name and failure type (any, test, system, setup).
+  Furthermore, to reduce the amount of notifications received, the re-notification interval can be explicitly set.
+- The runtime for any/failed task exceeds some duration (in seconds).
+- The runtime for a successful task changes by a percentage.
+
+When the event happens, the notification can be delivered via:
+
+- Jira comment under a specific Jira issue.
+- New Jira issue - must specify a Jira project and issue type.
+- Slack channel or user.
+- Email address.
+- Webhook URL - admins can configure the behavior for resending notifications in case of failure.
+
 ### Ticket Creation
 
 Configure task Failure Details tab options.
