@@ -249,12 +249,13 @@ for more details on the assume role API.
 Parameters:
 
 -   `role_arn`: string ARN of the role you want to assume. (required)
--   `external_id`: string of external ID that can be specified in the
-    role.
 -   `policy`: string in JSON format that you want to use as an inline
     session policy.
 -   `duration_seconds`: int in seconds of how long the returned
     credentials will be valid. (default 900)
+
+This command will also send an external ID in the form
+`<project_id>-<requester>`. This cannot be modified by the user.
 
 ## expansions.update
 
