@@ -256,6 +256,9 @@ section of the project configuration page. Click "Add Project Trigger".
 Options:
 
 -   Project: The upstream project.
+-   Config file: The path to the downstream project's config file.
+    This may be the same as the main project configuration file but does
+    not have to be.
 -   Level: Accepted values are task, build, and push. Task and build levels will trigger
     based on the completion of either a task or a build in the upstream project. 
     - Push level triggers do not require any upstream build or task to run, but instead trigger a downstream version once
@@ -268,9 +271,6 @@ Options:
     schedules a build older than this number of days.
 -   Variant and task regexes: Trigger based on these variants (if
     build-level) or variants and tasks (if task-level) completing.
--   Definition file: The path to the downstream project's config file.
-    This may be the same as the main project configuration file but does
-    not have to be.
 -   Alias: Run a subset of tasks by specifying an alias. Otherwise, all
     tasks run.
 -   Unschedule Downstream Versions: If toggled, all tasks in the triggered 
