@@ -44,6 +44,8 @@ import (
 	"go.opentelemetry.io/otel/sdk/resource"
 	"go.opentelemetry.io/otel/sdk/trace"
 	semconv "go.opentelemetry.io/otel/semconv/v1.20.0"
+	"google.golang.org/grpc"
+	"google.golang.org/grpc/credentials"
 )
 
 var (
@@ -895,6 +897,7 @@ func (e *envState) initTracer(ctx context.Context) error {
 
 	client := otlptracegrpc.NewClient(
 		otlptracegrpc.WithEndpoint(e.settings.Tracer.CollectorEndpoint),
+		otlptracegrpc.WithDialOption(grpc.WithTransportCredentials(credentials.NewTLS(nil))),
 	)
 	exp, err := otlptrace.New(ctx, client)
 	if err != nil {
