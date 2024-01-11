@@ -219,6 +219,7 @@ func (h *testLogDirectoryHandler) followFile(ctx context.Context, event watcher.
 
 	h.logger.Task().Infof("new test log file '%s' found, initiating automated ingestion", event.Path)
 
+	// The persisted log path should be relative to the reserved directory.
 	logPath, err := filepath.Rel(h.dir, event.Path)
 	if err != nil {
 		h.logger.Task().Error(errors.Wrapf(err, "getting relative path for test log file '%s'", event.Path))
