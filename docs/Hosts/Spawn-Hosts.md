@@ -54,3 +54,21 @@ lifetime up to 30 days past host creation.
 
 If you'd like to get a notification before a host expires, you can [set up a
 notification](../Project-Configuration/Notifications.md#spawn-host-expiration) for it.
+
+## Hosts Page
+
+The spruce hosts page shows all hosts and offers three batch actions applicable to hosts:
+
+1. Update Status
+   You can force a state change to these statuses:
+   -Decomissioned: Terminate a host running tasks after it's done running its current task.
+   -Quarantined: Stop a host from running tasks without terminating it or shutting it down.
+   -Terminate: Actually terminate the host.
+   -Stopped: Stop it.
+   -Runnning: Start it back up.
+
+2. Restart Jasper
+   Try forcing the Evergreen agent (which runs in a system process called Jasper) to start back up in a way that's less disruptive than just rebooting the computer.
+
+3. Reprovision
+   Hosts need to have a few starter files and stuff on the file system before they can run tasks, and pressing that button gives them the files they need if they're a static host(because there's no way to auto-populate them with the stuff they need). This option is useful for static hosts that get extremely borked (like the file system is corrupted it loses all the data).
