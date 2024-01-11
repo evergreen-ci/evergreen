@@ -134,8 +134,9 @@ func (h *testLogDirectoryHandler) start(ctx context.Context, dir string) error {
 			h.logger.Execution().Critical(recovery.HandlePanicWithError(recover(), nil, "test log directory watcher start"))
 		}()
 
-		startErr <- h.watcher.Start(time.Millisecond)
-		close(startErr)
+		if err := h.watcher.Start(time.Millisecond); err != nil {
+			startErr <- err
+		}
 	}()
 
 	select {
