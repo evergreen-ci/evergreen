@@ -134,8 +134,6 @@ func (j *eventNotifierJob) processEvent(ctx context.Context, e *event.EventLogEn
 		"message":       "event-stats",
 		"event_id":      e.ID,
 		"event_type":    e.EventType,
-		"resource_id":   e.ResourceId,
-		"resource_type": e.ResourceType,
 		"start_time":    startTime.String(),
 		"end_time":      endTime.String(),
 		"duration_secs": totalDuration.Seconds(),
@@ -196,7 +194,7 @@ func (j *eventNotifierJob) processEventTriggers(ctx context.Context, e *event.Ev
 	}))
 
 	v, err := trigger.EvalProjectTriggers(ctx, e, trigger.TriggerDownstreamVersion)
-	grip.Info(message.Fields{
+	grip.InfoWhen(len(v) > 0, message.Fields{
 		"job_id":        j.ID(),
 		"job_type":      j.Type().Name,
 		"source":        "events-processing",
