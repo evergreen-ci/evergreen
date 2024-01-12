@@ -31,7 +31,10 @@ func newBucket(ctx context.Context, config evergreen.BucketConfig) (pail.Bucket,
 			Database: config.DBName,
 		})
 	case evergreen.BucketTypeLocal:
-		return pail.NewLocalBucket(pail.LocalOptions{Path: config.Name})
+		return pail.NewLocalBucket(pail.LocalOptions{
+			Path:     config.Name,
+			UseSlash: true,
+		})
 	default:
 		return nil, errors.Errorf("unrecognized bucket type '%s'", config.Type)
 	}
