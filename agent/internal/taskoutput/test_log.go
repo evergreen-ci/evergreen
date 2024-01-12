@@ -132,9 +132,6 @@ func (h *testLogDirectoryHandler) watch(ctx context.Context) {
 		h.logger.Execution().Critical(recovery.HandlePanicWithError(recover(), nil, "test log directory watcher"))
 	}()
 
-	workerCtx, cancel := context.WithCancel(ctx)
-	defer cancel()
-
 	ignore := filepath.Join(h.dir, testLogSpecFilename)
 	seenFiles := map[string]bool{}
 	for {
@@ -157,7 +154,7 @@ func (h *testLogDirectoryHandler) watch(ctx context.Context) {
 				seenFiles[path] = true
 				h.followFileCount++
 				h.wg.Add(1)
-				go h.followFile(workerCtx, path)
+				go h.followFile(ctx, path)
 			}
 
 			return nil

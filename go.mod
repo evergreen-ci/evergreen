@@ -204,6 +204,7 @@ require (
 	github.com/evergreen-ci/evg-lint v0.0.0-20211115144425-3b19c8e83a57
 	github.com/evergreen-ci/plank v0.0.0-20230207190607-5f47f8a30da1
 	github.com/evergreen-ci/tarjan v0.0.0-20170824211642-fcd3f3321826
+	github.com/fortytw2/leaktest v1.3.0
 	github.com/mongodb/jasper v0.0.0-20220214215554-82e5a72cff6b
 	github.com/nxadm/tail v1.4.11
 	github.com/shirou/gopsutil/v3 v3.23.11

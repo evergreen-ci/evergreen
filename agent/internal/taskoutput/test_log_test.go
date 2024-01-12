@@ -20,6 +20,7 @@ import (
 	"github.com/evergreen-ci/timber/buildlogger"
 	timberutil "github.com/evergreen-ci/timber/testutil"
 	"github.com/evergreen-ci/utility"
+	"github.com/fortytw2/leaktest"
 	"github.com/mongodb/grip/level"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -136,11 +137,16 @@ func TestAppendTestLog(t *testing.T) {
 }
 
 func TestTestLogDirectoryHandler(t *testing.T) {
+	// Check for leaked goroutines.
+	defer leaktest.Check(t)()
+
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 
 	comm := client.NewMock("url")
 	tsk, h := setupTestTestLogDirectoryHandler(t, comm)
+	// Set a small buffer so lines are flushed to the backend logger
+	// quickly.
 	h.maxBufferSize = 100
 	require.NoError(t, h.start(ctx, t.TempDir()))
 
