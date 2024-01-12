@@ -691,7 +691,7 @@ func makeDeleteServiceUser() gimlet.RouteHandler {
 //	@Tags			admin
 //	@Router			/admin/service_users [delete]
 //	@Security		Api-User || Api-Key
-//	@Param			id	query		string	true	"the user ID"
+//	@Param			id	query	string	true	"the user ID"
 //	@Success		200
 func (h *serviceUserDeleteHandler) Factory() gimlet.RouteHandler {
 	return &serviceUserDeleteHandler{}
@@ -729,7 +729,7 @@ func makeGetServiceUsers() gimlet.RouteHandler {
 //	@Tags			admin
 //	@Router			/admin/service_users [get]
 //	@Security		Api-User || Api-Key
-//	@Success		200			{object}	[]model.APIDBUser
+//	@Success		200	{object}	[]model.APIDBUser
 func (h *serviceUsersGetHandler) Factory() gimlet.RouteHandler {
 	return &serviceUsersGetHandler{}
 }
