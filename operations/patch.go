@@ -196,7 +196,8 @@ func Patch() cli.Command {
 
 			remote, err := gitGetRemote("", ref.Owner, ref.Repo)
 			if err != nil {
-				return errors.Errorf("you do not have a remote tracking your Evergreen project. The project to track is https://github.com/%s/%s", ref.Owner, ref.Repo)
+				// TODO: DEVPROD-3740 Change this back to an error
+				grip.Warningf("warning - you do not have a remote tracking your Evergreen project. The project to track is https://github.com/%s/%s", ref.Owner, ref.Repo)
 			}
 
 			diffData, err := loadGitData("", remote, ref.Branch, params.Ref, "", params.PreserveCommits, args...)
