@@ -100,7 +100,7 @@ func (r *ec2AssumeRole) Execute(ctx context.Context,
 
 	creds := stscreds.NewCredentials(session1, r.RoleARN, func(arp *stscreds.AssumeRoleProvider) {
 		arp.RoleSessionName = strconv.Itoa(int(time.Now().Unix()))
-		// External ID formatted as requested by build.
+		// External ID is a combination of project ID and requester, since mainline commits might have higher trust
 		arp.ExternalID = utility.ToStringPtr(fmt.Sprintf("%s-%s", conf.ProjectRef.Id, conf.Task.Requester))
 		if r.Policy != "" {
 			arp.Policy = utility.ToStringPtr(r.Policy)

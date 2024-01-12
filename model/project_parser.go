@@ -75,7 +75,6 @@ type ParserProject struct {
 	UpdatedByGenerators []string `yaml:"updated_by_generators,omitempty" bson:"updated_by_generators,omitempty"`
 	// List of yamls to merge
 	Include []Include `yaml:"include,omitempty" bson:"include,omitempty"`
-	Enabled *bool     `yaml:"enabled,omitempty" bson:"enabled,omitempty"`
 
 	// Beginning of ParserProject mergeable fields (this comment is used by the linter).
 	Stepback           *bool                      `yaml:"stepback,omitempty" bson:"stepback,omitempty"`

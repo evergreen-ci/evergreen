@@ -6,6 +6,7 @@
         "data": {
           "saveDistro": {
             "distro": {
+              "adminOnly": true,
               "aliases": [
                 "new-alias"
               ],

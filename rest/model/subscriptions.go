@@ -12,15 +12,24 @@ type APISelector struct {
 }
 
 type APISubscription struct {
-	ID             *string           `json:"id"`
-	ResourceType   *string           `json:"resource_type"`
-	Trigger        *string           `json:"trigger"`
-	Selectors      []APISelector     `json:"selectors"`
-	RegexSelectors []APISelector     `json:"regex_selectors"`
-	Subscriber     APISubscriber     `json:"subscriber"`
-	OwnerType      *string           `json:"owner_type"`
-	Owner          *string           `json:"owner"`
-	TriggerData    map[string]string `json:"trigger_data,omitempty"`
+	// Identifier for the subscription.
+	ID *string `json:"id"`
+	// Type of resource to subscribe to.
+	ResourceType *string `json:"resource_type"`
+	// Type of trigger for the subscription.
+	Trigger *string `json:"trigger"`
+	// List of resource selectors.
+	Selectors []APISelector `json:"selectors"`
+	// List of resource regex selectors.
+	RegexSelectors []APISelector `json:"regex_selectors"`
+	// Options for the subscriber.
+	Subscriber APISubscriber `json:"subscriber"`
+	// Type of subscription owner.
+	OwnerType *string `json:"owner_type"`
+	// The subscription owner.
+	Owner *string `json:"owner"`
+	// Data for the particular condition that triggers the subscription.
+	TriggerData map[string]string `json:"trigger_data,omitempty"`
 }
 
 func (s *APISelector) BuildFromService(selector event.Selector) {

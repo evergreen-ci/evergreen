@@ -8,17 +8,21 @@ import (
 
 type mergingIterator struct {
 	iterators    []LogIterator
+	lineLimit    int
+	lineCount    int
 	iteratorHeap *logIteratorHeap
 	currentItem  LogLine
 	catcher      grip.Catcher
 	started      bool
+	exhausted    bool
 }
 
 // newMergeIterator returns a LogIterator that merges N logs, passed in as
 // iterators, respecting the order of each line's timestamp.
-func newMergingIterator(iterators ...LogIterator) *mergingIterator {
+func newMergingIterator(lineLimit int, iterators ...LogIterator) *mergingIterator {
 	return &mergingIterator{
 		iterators:    iterators,
+		lineLimit:    lineLimit,
 		iteratorHeap: &logIteratorHeap{},
 		catcher:      grip.NewBasicCatcher(),
 	}
@@ -29,11 +33,21 @@ func (i *mergingIterator) Next() bool {
 		i.init()
 	}
 
+	if i.exhausted {
+		return false
+	}
+
+	if i.lineLimit > 0 && i.lineLimit == i.lineCount {
+		i.exhausted = true
+		return false
+	}
+
 	it := i.iteratorHeap.SafePop()
 	if it == nil {
 		return false
 	}
 	i.currentItem = it.Item()
+	i.lineCount++
 
 	if it.Next() {
 		i.iteratorHeap.SafePush(it)
@@ -41,6 +55,7 @@ func (i *mergingIterator) Next() bool {
 		i.catcher.Add(it.Err())
 		i.catcher.Add(it.Close())
 		if i.catcher.HasErrors() {
+			i.iteratorHeap = &logIteratorHeap{}
 			return false
 		}
 	}
@@ -49,12 +64,15 @@ func (i *mergingIterator) Next() bool {
 }
 
 func (i *mergingIterator) Exhausted() bool {
+	if i.exhausted {
+		return true
+	}
+
 	for _, it := range i.iterators {
 		if !it.Exhausted() {
 			return false
 		}
 	}
-
 	return true
 }
 

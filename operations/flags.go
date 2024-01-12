@@ -11,6 +11,7 @@ import (
 
 const (
 	confFlagName              = "conf"
+	versionIDFlagName         = "version_id"
 	overwriteConfFlagName     = "overwrite"
 	pathFlagName              = "path"
 	projectFlagName           = "project"
@@ -80,6 +81,11 @@ func serviceConfigFlags(flags ...cli.Flag) []cli.Flag {
 		cli.StringFlag{
 			Name:  joinFlagNames(confFlagName, "config", "c"),
 			Usage: "path to the service configuration file",
+		},
+		cli.StringFlag{
+			Name:   versionIDFlagName,
+			Usage:  "version ID of the client build to link to",
+			EnvVar: evergreen.EvergreenVersionID,
 		},
 		cli.BoolFlag{
 			Name:  overwriteConfFlagName,

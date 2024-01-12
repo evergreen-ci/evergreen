@@ -250,6 +250,7 @@ type ComplexityRoot struct {
 	}
 
 	Distro struct {
+		AdminOnly             func(childComplexity int) int
 		Aliases               func(childComplexity int) int
 		Arch                  func(childComplexity int) int
 		AuthorizedKeysFile    func(childComplexity int) int
@@ -2577,6 +2578,13 @@ func (e *executableSchema) Complexity(typeName, field string, childComplexity in
 		}
 
 		return e.complexity.DispatcherSettings.Version(childComplexity), true
+
+	case "Distro.adminOnly":
+		if e.complexity.Distro.AdminOnly == nil {
+			break
+		}
+
+		return e.complexity.Distro.AdminOnly(childComplexity), true
 
 	case "Distro.aliases":
 		if e.complexity.Distro.Aliases == nil {
@@ -15953,6 +15961,50 @@ func (ec *executionContext) fieldContext_DispatcherSettings_version(ctx context.
 		IsResolver: true,
 		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
 			return nil, errors.New("field of type DispatcherVersion does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _Distro_adminOnly(ctx context.Context, field graphql.CollectedField, obj *model.APIDistro) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_Distro_adminOnly(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.AdminOnly, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.(bool)
+	fc.Result = res
+	return ec.marshalNBoolean2bool(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_Distro_adminOnly(ctx context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "Distro",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type Boolean does not have child fields")
 		},
 	}
 	return fc, nil
@@ -42453,6 +42505,8 @@ func (ec *executionContext) fieldContext_Query_distro(ctx context.Context, field
 		IsResolver: true,
 		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
 			switch field.Name {
+			case "adminOnly":
+				return ec.fieldContext_Distro_adminOnly(ctx, field)
 			case "aliases":
 				return ec.fieldContext_Distro_aliases(ctx, field)
 			case "arch":
@@ -42631,6 +42685,8 @@ func (ec *executionContext) fieldContext_Query_distros(ctx context.Context, fiel
 		IsResolver: true,
 		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
 			switch field.Name {
+			case "adminOnly":
+				return ec.fieldContext_Distro_adminOnly(ctx, field)
 			case "aliases":
 				return ec.fieldContext_Distro_aliases(ctx, field)
 			case "arch":
@@ -48366,6 +48422,8 @@ func (ec *executionContext) fieldContext_SaveDistroPayload_distro(ctx context.Co
 		IsResolver: false,
 		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
 			switch field.Name {
+			case "adminOnly":
+				return ec.fieldContext_Distro_adminOnly(ctx, field)
 			case "aliases":
 				return ec.fieldContext_Distro_aliases(ctx, field)
 			case "arch":
@@ -66964,13 +67022,20 @@ func (ec *executionContext) unmarshalInputDistroInput(ctx context.Context, obj i
 		asMap[k] = v
 	}
 
-	fieldsInOrder := [...]string{"aliases", "arch", "authorizedKeysFile", "bootstrapSettings", "cloneMethod", "containerPool", "disabled", "disableShallowClone", "dispatcherSettings", "expansions", "finderSettings", "homeVolumeSettings", "hostAllocatorSettings", "iceCreamSettings", "isCluster", "isVirtualWorkStation", "name", "note", "plannerSettings", "provider", "providerSettingsList", "setup", "setupAsSudo", "sshKey", "sshOptions", "user", "userSpawnAllowed", "validProjects", "workDir", "mountpoints"}
+	fieldsInOrder := [...]string{"adminOnly", "aliases", "arch", "authorizedKeysFile", "bootstrapSettings", "cloneMethod", "containerPool", "disabled", "disableShallowClone", "dispatcherSettings", "expansions", "finderSettings", "homeVolumeSettings", "hostAllocatorSettings", "iceCreamSettings", "isCluster", "isVirtualWorkStation", "name", "note", "plannerSettings", "provider", "providerSettingsList", "setup", "setupAsSudo", "sshKey", "sshOptions", "user", "userSpawnAllowed", "validProjects", "workDir", "mountpoints"}
 	for _, k := range fieldsInOrder {
 		v, ok := asMap[k]
 		if !ok {
 			continue
 		}
 		switch k {
+		case "adminOnly":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("adminOnly"))
+			data, err := ec.unmarshalOBoolean2bool(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.AdminOnly = data
 		case "aliases":
 			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("aliases"))
 			data, err := ec.unmarshalNString2ᚕstringᚄ(ctx, v)
@@ -72152,6 +72217,11 @@ func (ec *executionContext) _Distro(ctx context.Context, sel ast.SelectionSet, o
 		switch field.Name {
 		case "__typename":
 			out.Values[i] = graphql.MarshalString("Distro")
+		case "adminOnly":
+			out.Values[i] = ec._Distro_adminOnly(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				atomic.AddUint32(&out.Invalids, 1)
+			}
 		case "aliases":
 			out.Values[i] = ec._Distro_aliases(ctx, field, obj)
 			if out.Values[i] == graphql.Null {

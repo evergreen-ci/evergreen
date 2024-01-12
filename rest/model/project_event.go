@@ -36,10 +36,14 @@ type APIProjectSettings struct {
 }
 
 type APIProjectVars struct {
-	Vars          map[string]string `json:"vars"`
-	PrivateVars   map[string]bool   `json:"private_vars"`
-	AdminOnlyVars map[string]bool   `json:"admin_only_vars"`
-	VarsToDelete  []string          `json:"vars_to_delete,omitempty"`
+	// Regular project variable names and their values.
+	Vars map[string]string `json:"vars"`
+	// Private variable names.
+	PrivateVars map[string]bool `json:"private_vars"`
+	// Admin-only variable names.
+	AdminOnlyVars map[string]bool `json:"admin_only_vars"`
+	// Names of project variables to delete.
+	VarsToDelete []string `json:"vars_to_delete,omitempty"`
 
 	// to use for the UI
 	PrivateVarsList   []string `json:"-"`
@@ -47,17 +51,28 @@ type APIProjectVars struct {
 }
 
 type APIProjectAlias struct {
-	Alias       *string         `json:"alias"`
-	GitTag      *string         `json:"git_tag"`
-	Variant     *string         `json:"variant"`
-	Description *string         `json:"description"`
-	Task        *string         `json:"task"`
-	RemotePath  *string         `json:"remote_path"`
-	VariantTags []*string       `json:"variant_tags,omitempty"`
-	TaskTags    []*string       `json:"tags,omitempty"`
-	Delete      bool            `json:"delete,omitempty"`
-	ID          *string         `json:"_id,omitempty"`
-	Parameters  []*APIParameter `json:"parameters,omitempty"`
+	// Name of the alias.
+	Alias *string `json:"alias"`
+	// Regex for matching git tags to run git tag versions.
+	GitTag *string `json:"git_tag"`
+	// Regex for build variants to match.
+	Variant *string `json:"variant"`
+	// Human-friendly description for the alias.
+	Description *string `json:"description"`
+	// Regex for tasks to match.
+	Task *string `json:"task"`
+	// Path to project config file to use.
+	RemotePath *string `json:"remote_path"`
+	// Build variant tags selectors to match.
+	VariantTags []*string `json:"variant_tags,omitempty"`
+	// Task tag selectors to match.
+	TaskTags []*string `json:"tags,omitempty"`
+	// If set, deletes the project alias by name.
+	Delete bool `json:"delete,omitempty"`
+	// Identifier for the project alias.
+	ID *string `json:"_id,omitempty"`
+	// List of allowed parameters to the alias.
+	Parameters []*APIParameter `json:"parameters,omitempty"`
 }
 
 func (e *APIProjectEvent) BuildFromService(entry model.ProjectChangeEventEntry) error {

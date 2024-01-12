@@ -5,6 +5,7 @@
             "result": {
                 "data": {
                     "distro": {
+                        "adminOnly": false,
                         "bootstrapSettings": {
                             "communication": "LEGACY_SSH",
                             "resourceLimits": {

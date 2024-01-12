@@ -201,6 +201,7 @@ const (
 	EvergreenHome       = "EVGHOME"
 	MongodbUrl          = "MONGO_URL"
 	MongoAWSAuthEnabled = "MONGO_AWS_AUTH"
+	EvergreenVersionID  = "EVG_VERSION_ID"
 
 	// localLoggingOverride is a special log path indicating that the app server
 	// should attempt to log to systemd if available, and otherwise fall back to
