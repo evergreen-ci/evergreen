@@ -818,6 +818,9 @@ func finalizeOrSubscribeChildPatch(ctx context.Context, childPatchId string, par
 		if err != nil {
 			return errors.Wrap(err, "fetching child patch")
 		}
+		if childPatchDoc == nil {
+			return errors.Errorf("could not find child patch '%s'", childPatchId)
+		}
 		if _, err := FinalizePatch(ctx, childPatchDoc, requester, githubOauthToken); err != nil {
 			grip.Error(message.WrapError(err, message.Fields{
 				"message":       "Failed to finalize child patch document",
