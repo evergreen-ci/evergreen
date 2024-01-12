@@ -20,7 +20,7 @@ The table is comprised of the following columns:
 #### Task Duration
 The Task Duration tab contains a list of all of the tasks that ran in the version and how long they took to run.
 
-![Task Duration table](../images/Task_Duration.png)
+![Task Duration table](../images/task_duration.png)
 
  
  #### Changes
