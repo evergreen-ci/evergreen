@@ -819,7 +819,7 @@ func finalizeOrSubscribeChildPatch(ctx context.Context, childPatchId string, par
 			return errors.Wrap(err, "fetching child patch")
 		}
 		if childPatchDoc == nil {
-			return errors.Errorf("child patch '%s' does not exist", childPatchId)
+			return errors.Errorf("could not find child patch '%s'", childPatchId)
 		}
 		if _, err := FinalizePatch(ctx, childPatchDoc, requester, githubOauthToken); err != nil {
 			grip.Error(message.WrapError(err, message.Fields{
