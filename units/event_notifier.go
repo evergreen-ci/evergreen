@@ -161,7 +161,6 @@ func (j *eventNotifierJob) processEventTriggers(ctx context.Context, e *event.Ev
 				"event_type":    e.EventType,
 				"resource_id":   e.ResourceId,
 				"resource_type": e.ResourceType,
-				"panic_value":   r,
 			}))
 		}
 	}()
