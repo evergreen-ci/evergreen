@@ -30,8 +30,9 @@ const largePatchThreshold = 1024 * 1024 * 16
 // This is the template used to render a patch's summary in a human-readable output format.
 var patchDisplayTemplate = template.Must(template.New("patch").Parse(`
          ID : {{.Patch.Id.Hex}}
+    Project : {{.Patch.Project}}
     Created : {{.Patch.CreateTime}}
-    Description : {{if .Patch.Description}}{{.Patch.Description}}{{else}}<none>{{end}}
+Description : {{if .Patch.Description}}{{.Patch.Description}}{{else}}<none>{{end}}
       Build : {{.Link}}
      Status : {{.Patch.Status}}
 {{if .ShowFinalized}}      Finalized : {{if .Patch.Activated}}Yes{{else}}No{{end}}{{end}}
