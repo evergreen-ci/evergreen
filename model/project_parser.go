@@ -1346,7 +1346,7 @@ func evaluateBVTasks(tse *taskSelectorEvaluator, tgse *tagSelectorEvaluator, vse
 				// it's already in the new list, so we check to make sure the status definitions match.
 				if !reflect.DeepEqual(t, old) {
 					evalErrs = append(evalErrs, errors.Errorf(
-						"conflicting definitions of task '%s' listed under build variant '%s': %#v != %#v", name, pbvt.Name, t, old))
+						"conflicting definitions of task '%s' listed under build variant '%s': %#v != %#v", name, pbv.Name, t, old))
 					continue
 				}
 			}
