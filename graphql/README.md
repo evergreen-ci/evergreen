@@ -1,16 +1,16 @@
-## GraphQL Developer Guide
+# GraphQL Developer Guide
 
 ### Modifying the GraphQL Schema
 
 #### Fields
 
-You can add fields to the .graphql files in the `/schema` folder. When you run `make gqlgen`, these changes will be processed and a resolver will be generated for you.
+Add fields to .graphql files in the `schema/` folder. When you run `make gqlgen`, these changes will be processed and a resolver will be generated.
 
-You can also add models in `gqlgen.yml`. If a GraphQL object has a corresponding model definition in `gqlgen.yml`, then a resolver will not be generated. Instead you may have to edit the API models which are located in the `rest/model` folder.
+You can also add models in `gqlgen.yml`. If a GraphQL object has a corresponding model definition in `gqlgen.yml`, then a resolver will not be generated. Instead you may have to edit the API models which are located in the `rest/model/` folder.
 
 #### Directives
 
-We have custom directives to control access to certain mutations and queries. They are defined in `schema/directives.graphql` but their corresponding functions are not generated through `make gqlgen`. You will have to manually add or edit the directive functions in `resolver.go`.
+Directives control access to certain mutations and queries. They are defined in `schema/directives.graphql` but their corresponding functions are not generated through `make gqlgen`. You will have to manually add or edit the directive functions in `resolver.go`.
 
 ### Best Practices for GraphQL
 
@@ -20,7 +20,7 @@ When designing mutations, the input and payload should be objects. We often have
 
 In practice, this means you should prefer
 
-```
+```graphql
   abortTask(opts: AbortTaskInput!): AbortTaskPayload!
 
   AbortTaskInput {
@@ -34,7 +34,7 @@ In practice, this means you should prefer
 
 over
 
-```
+```graphql
   abortTask(taskId: String!): Task!
 ```
 
@@ -46,15 +46,15 @@ Nullability is controlled via the exclamation mark (!). If you put an exclamatio
 
 In general, you can reference this [guide](https://yelp.github.io/graphql-guidelines/nullability.html#summary) for nullability. Some callouts from this guide:
 
-- Items contained within lists should not be null.
 - Lists should not be null.
-- Booleans should not be null. If you have a third state to represent, consider using an enum.
+- Items contained within lists should not be null.
+- Booleans should not be null. If you have a third state to represent, consider using an enum. You may also want to consider if the boolean field has the potential to evolve into something more complex, such as in the example described [here](https://www.teamten.com/lawrence/programming/prefer-enums-over-booleans.html).
 
 These principles apply generally, but you may encounter situations where you'll want to deviate from these rules. Think carefully about marking fields as non-nullable, because if we query for a non-nullable field and get null as a response it will break parts of the application.
 
 ### Writing GraphQL tests
 
-You can add tests to the `/tests` directory. The folder is structured as the following:
+You can add tests to the `tests/` directory. The folder is structured as the following:
 
 ```
 .
@@ -69,6 +69,6 @@ You can add tests to the `/tests` directory. The folder is structured as the fol
 
 The tests run via the test runner defined in `integration_atomic_test_util.go`. If you see some behavior in your tests that can't be explained by what you've added, it's a good idea to check the setup functions defined in this file.
 
-Note: Do not add anything to the `/testdata` directory. These tests will eventually be deprecated. They run via the test runner defined in `integration_test_util.go`.
+Note: Do not add anything to the `testdata/` directory. These tests will eventually be deprecated. They run via the test runner defined in `integration_test_util.go`.
 
 Note: Tests for directives are located in `directive_test.go`.
