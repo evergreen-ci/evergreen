@@ -185,6 +185,7 @@ func TestTestLogDirectoryHandler(t *testing.T) {
 
 				f, err := os.Create(filepath.Join(h.dir, info.logPath))
 				require.NoError(t, err)
+				defer f.Close()
 
 				firstPart := "This is the first part of the line, "
 				_, err = f.WriteString(firstPart)
@@ -261,7 +262,7 @@ func TestTestLogDirectoryHandler(t *testing.T) {
 							}
 							mu.Unlock()
 
-							time.Sleep(time.Millisecond)
+							time.Sleep(time.Second)
 						}
 					}
 				}()
