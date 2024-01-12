@@ -141,6 +141,7 @@ func TestTestLogDirectoryHandler(t *testing.T) {
 
 	comm := client.NewMock("url")
 	tsk, h := setupTestTestLogDirectoryHandler(t, comm)
+	h.maxBufferSize = 100
 	require.NoError(t, h.start(ctx, t.TempDir()))
 
 	// Track files written to the test log directory.
@@ -190,6 +191,8 @@ func TestTestLogDirectoryHandler(t *testing.T) {
 					require.NoError(t, err)
 				}
 				mu.Unlock()
+
+				time.Sleep(time.Millisecond)
 			}
 		}
 	}()
@@ -215,7 +218,6 @@ func TestTestLogDirectoryHandler(t *testing.T) {
 		},
 	}
 	require.NoError(t, os.Mkdir(filepath.Join(h.dir, filepath.Dir(nestedFile.fn)), 0777))
-	//require.NoError(t, os.WriteFile(filepath.Join(h.dir, nestedFile.fn), []byte(strings.Join(nestedFile.rawLines, "\n")+"\n"), 0777))
 	var err error
 	nestedFile.f, err = os.Create(filepath.Join(h.dir, nestedFile.fn))
 	require.NoError(t, err)
@@ -234,9 +236,9 @@ func TestTestLogDirectoryHandler(t *testing.T) {
 
 	// Wait for async writing to exit cleanly and close the test log
 	// directory handler.
-	time.Sleep(time.Second)
 	writerCancel()
 	wg.Wait()
+	time.Sleep(time.Second)
 	require.NoError(t, h.close(ctx))
 
 	// Check persisted test logs.

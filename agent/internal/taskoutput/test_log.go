@@ -89,6 +89,7 @@ type testLogDirectoryHandler struct {
 	dir             string
 	logger          client.LoggerProducer
 	spec            testLogSpec
+	maxBufferSize   int
 	createSender    func(context.Context, string) (send.Sender, error)
 	cancel          context.CancelFunc
 	followFileCount int
@@ -103,8 +104,9 @@ func newTestLogDirectoryHandler(output taskoutput.TestLogOutput, taskOpts taskou
 	h := &testLogDirectoryHandler{logger: logger}
 	h.createSender = func(ctx context.Context, logPath string) (send.Sender, error) {
 		return output.NewSender(ctx, taskOpts, taskoutput.EvergreenSenderOptions{
-			Local: logger.Task().GetSender(),
-			Parse: h.spec.getParser(),
+			Local:         logger.Task().GetSender(),
+			MaxBufferSize: h.maxBufferSize,
+			Parse:         h.spec.getParser(),
 		}, logPath)
 	}
 
@@ -133,6 +135,7 @@ func (h *testLogDirectoryHandler) watch(ctx context.Context) {
 	workerCtx, cancel := context.WithCancel(ctx)
 	defer cancel()
 
+	ignore := filepath.Join(h.dir, testLogSpecFilename)
 	seenFiles := map[string]bool{}
 	for {
 		err := filepath.WalkDir(h.dir, func(path string, info fs.DirEntry, err error) error {
@@ -144,6 +147,9 @@ func (h *testLogDirectoryHandler) watch(ctx context.Context) {
 				return ctx.Err()
 			}
 			if info.IsDir() {
+				return nil
+			}
+			if path == ignore {
 				return nil
 			}
 
@@ -160,6 +166,8 @@ func (h *testLogDirectoryHandler) watch(ctx context.Context) {
 			h.logger.Execution().Debug("context canceled, exiting test log directory watcher")
 			return
 		}
+
+		time.Sleep(time.Millisecond)
 	}
 }
 
@@ -209,6 +217,7 @@ func (h *testLogDirectoryHandler) followFile(ctx context.Context, path string) {
 	t, err := tail.TailFile(path, tail.Config{
 		ReOpen:    true,
 		MustExist: true,
+		Poll:      true,
 		Follow:    true,
 		// Setting this field may lead to some data loss in the case of
 		// non-atomic line writes: if the last read line does not
@@ -262,7 +271,6 @@ func (h *testLogDirectoryHandler) followFile(ctx context.Context, path string) {
 		}
 	}
 }
-
 func (h *testLogDirectoryHandler) close(_ context.Context) error {
 	h.cancel()
 	h.wg.Wait()
