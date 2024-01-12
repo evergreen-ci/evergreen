@@ -5,7 +5,9 @@ The Patch Configure page is where you can configure your patch builds. It is acc
 
 ### Build Variant Selector
 The left side panel contains the build variants that are available for the project. You can can select any combination of build variants using `Cmd` + click and `Shift` + click. If you have a task name that is reused across multiple build variants it will automatically be deduplicated in the task panel.
+
 ![Build Variant Selector](../images/build_variant_selector.png)
+
  The right side panel contains the tasks that are available for the selected build variant. You are able to select any combination of tasks that meet your testing requirements.
 
 ### Configuration tabs
