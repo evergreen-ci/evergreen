@@ -8,6 +8,7 @@ import (
 	"github.com/evergreen-ci/evergreen/apimodels"
 	"github.com/evergreen-ci/evergreen/model/log"
 	"github.com/evergreen-ci/utility"
+	"github.com/mongodb/grip/send"
 	"github.com/pkg/errors"
 )
 
@@ -43,10 +44,34 @@ type TestLogGetOptions struct {
 	TailN int
 }
 
+// NewSender returns a new test log sender for the given task run.
+func (o TestLogOutput) NewSender(ctx context.Context, taskOpts TaskOptions, senderOpts EvergreenSenderOptions, logPath string) (send.Sender, error) {
+	svc, err := o.getLogService(ctx)
+	if err != nil {
+		return nil, errors.Wrap(err, "getting log service")
+	}
+
+	senderOpts.appendLines = func(ctx context.Context, lines []log.LogLine) error {
+		return svc.Append(ctx, o.getLogNames(taskOpts, []string{logPath})[0], lines)
+	}
+
+	return newEvergreenSender(ctx, fmt.Sprintf("%s-%s", taskOpts.TaskID, logPath), senderOpts)
+}
+
+// Append appends log lines to the specified test log for the given task run.
+func (o TestLogOutput) Append(ctx context.Context, taskOpts TaskOptions, logPath string, lines []log.LogLine) error {
+	svc, err := o.getLogService(ctx)
+	if err != nil {
+		return errors.Wrap(err, "getting log service")
+	}
+
+	return svc.Append(ctx, o.getLogNames(taskOpts, []string{logPath})[0], lines)
+}
+
 // Get returns test logs belonging to the specified task run.
-func (o TestLogOutput) Get(ctx context.Context, env evergreen.Environment, taskOpts TaskOptions, getOpts TestLogGetOptions) (log.LogIterator, error) {
+func (o TestLogOutput) Get(ctx context.Context, taskOpts TaskOptions, getOpts TestLogGetOptions) (log.LogIterator, error) {
 	if o.Version == 0 {
-		return o.getBuildloggerLogs(ctx, env, taskOpts, getOpts)
+		return o.getBuildloggerLogs(ctx, taskOpts, getOpts)
 	}
 
 	svc, err := o.getLogService(ctx)
@@ -85,13 +110,13 @@ func (o TestLogOutput) getLogService(ctx context.Context) (log.LogService, error
 }
 
 // getBuildloggerLogs makes request to Cedar Buildlogger for logs.
-func (o TestLogOutput) getBuildloggerLogs(ctx context.Context, env evergreen.Environment, taskOpts TaskOptions, getOpts TestLogGetOptions) (log.LogIterator, error) {
+func (o TestLogOutput) getBuildloggerLogs(ctx context.Context, taskOpts TaskOptions, getOpts TestLogGetOptions) (log.LogIterator, error) {
 	if len(getOpts.LogPaths) != 1 {
 		return nil, errors.New("must request exactly one test log from Cedar Buildlogger")
 	}
 
 	return apimodels.GetBuildloggerLogs(ctx, apimodels.GetBuildloggerLogsOptions{
-		BaseURL:   env.Settings().Cedar.BaseURL,
+		BaseURL:   evergreen.GetEnvironment().Settings().Cedar.BaseURL,
 		TaskID:    taskOpts.TaskID,
 		Execution: utility.ToIntPtr(taskOpts.Execution),
 		TestName:  getOpts.LogPaths[0],

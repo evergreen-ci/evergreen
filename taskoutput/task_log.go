@@ -102,13 +102,13 @@ func (o TaskLogOutput) Append(ctx context.Context, taskOpts TaskOptions, logType
 }
 
 // Get returns task logs belonging to the specified task run.
-func (o TaskLogOutput) Get(ctx context.Context, env evergreen.Environment, taskOpts TaskOptions, getOpts TaskLogGetOptions) (log.LogIterator, error) {
+func (o TaskLogOutput) Get(ctx context.Context, taskOpts TaskOptions, getOpts TaskLogGetOptions) (log.LogIterator, error) {
 	if err := getOpts.LogType.Validate(false); err != nil {
 		return nil, err
 	}
 
 	if o.Version == 0 {
-		return o.getBuildloggerLogs(ctx, env, taskOpts, getOpts)
+		return o.getBuildloggerLogs(ctx, taskOpts, getOpts)
 	}
 
 	svc, err := o.getLogService(ctx)
@@ -153,9 +153,9 @@ func (o TaskLogOutput) getLogService(ctx context.Context) (log.LogService, error
 }
 
 // getBuildloggerLogs makes request to Cedar Buildlogger for logs.
-func (o TaskLogOutput) getBuildloggerLogs(ctx context.Context, env evergreen.Environment, taskOpts TaskOptions, getOpts TaskLogGetOptions) (log.LogIterator, error) {
+func (o TaskLogOutput) getBuildloggerLogs(ctx context.Context, taskOpts TaskOptions, getOpts TaskLogGetOptions) (log.LogIterator, error) {
 	opts := apimodels.GetBuildloggerLogsOptions{
-		BaseURL:   env.Settings().Cedar.BaseURL,
+		BaseURL:   evergreen.GetEnvironment().Settings().Cedar.BaseURL,
 		TaskID:    taskOpts.TaskID,
 		Execution: utility.ToIntPtr(taskOpts.Execution),
 		Start:     utility.FromInt64Ptr(getOpts.Start),

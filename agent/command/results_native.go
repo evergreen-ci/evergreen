@@ -9,6 +9,7 @@ import (
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/agent/internal"
 	"github.com/evergreen-ci/evergreen/agent/internal/client"
+	"github.com/evergreen-ci/evergreen/agent/internal/taskoutput"
 	"github.com/evergreen-ci/evergreen/model/testlog"
 	"github.com/evergreen-ci/evergreen/model/testresult"
 	"github.com/evergreen-ci/utility"
@@ -142,23 +143,22 @@ func (c *attachResults) sendTestLogs(ctx context.Context, conf *internal.TaskCon
 		}
 
 		if res.LogRaw != "" {
-			testLogs := &testlog.TestLog{
-				// When sending test logs to Cedar we need to
-				// use a unique string since there may be
-				// duplicate file names if there are duplicate
-				// test names.
+			testLog := &testlog.TestLog{
+				// When sending test logs we need to use a
+				// unique string since there may be duplicate
+				// log paths if there are duplicate test names.
 				Name:          utility.RandomString(),
 				Task:          conf.Task.Id,
 				TaskExecution: conf.Task.Execution,
 				Lines:         strings.Split(res.LogRaw, "\n"),
 			}
 
-			if err := sendTestLog(ctx, comm, conf, testLogs); err != nil {
+			if err := taskoutput.AppendTestLog(ctx, comm, &conf.Task, testLog); err != nil {
 				// Continue on error to let other logs be
 				// posted.
 				logger.Execution().Error(errors.Wrap(err, "sending test logs"))
 			} else {
-				results.Results[i].logTestName = testLogs.Name
+				results.Results[i].logTestName = testLog.Name
 			}
 		}
 	}
