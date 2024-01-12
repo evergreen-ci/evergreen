@@ -40,7 +40,7 @@ Once the project is selected, click on  the `Request Access` button and fill out
 `Requesting for` field to see the specific types of permissions that can be 
 requested on Evergreen as pictured below.
 
-![update_mana_permission.png](../images/update_mana_permission.png)
+![update_mana_permission.png](../images/update-mana-permission.png)
 
 If you'd like to use Entitlements for entire teams, then the team
 should be part of a Guild, as this is refreshed every day and better
