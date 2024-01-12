@@ -204,12 +204,14 @@ func (h *testLogDirectoryHandler) followFile(ctx context.Context, path string) {
 
 	h.logger.Task().Infof("new test log file '%s' found, initiating automated ingestion", path)
 
-	// The persisted log path should be relative to the reserved directory.
+	// The persisted log path should be relative to the reserved directory
+	// and contain only slash ('/') separators.
 	logPath, err := filepath.Rel(h.dir, path)
 	if err != nil {
 		h.logger.Task().Error(errors.Wrapf(err, "getting relative path for test log file '%s'", path))
 		return
 	}
+	logPath = filepath.ToSlash(logPath)
 
 	t, err := tail.TailFile(path, tail.Config{
 		ReOpen:    true,
