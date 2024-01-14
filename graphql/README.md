@@ -21,34 +21,34 @@ When designing mutations, the input and payload should be objects. We often have
 In practice, this means you should prefer
 
 ```graphql
-  abortTask(opts: AbortTaskInput!): AbortTaskPayload!
+  abortTask(opts: AbortTaskInput!): AbortTaskPayload
 
   AbortTaskInput {
     taskId: String!
   }
 
   AbortTaskPayload {
-    task: Task!
+    task: Task
   }
 ```
 
 over
 
 ```graphql
-  abortTask(taskId: String!): Task!
+  abortTask(taskId: String!): Task
 ```
 
 See the Apollo GraphQL [blogpost](https://www.apollographql.com/blog/designing-graphql-mutations) from which this was referenced.
 
 #### Nullability
 
-Nullability is controlled via the exclamation mark (!). If you put an exclamation mark on a field, it means that the field cannot be null.
+Nullability is controlled via the exclamation mark (`!`). If you put an exclamation mark on a field, it means that the field cannot be null.
 
 In general, you can reference this [guide](https://yelp.github.io/graphql-guidelines/nullability.html#summary) for nullability. Some callouts from this guide:
 
-- Lists should not be null.
-- Items contained within lists should not be null.
-- Booleans should not be null. If you have a third state to represent, consider using an enum. You may also want to consider if the boolean field has the potential to evolve into something more complex, such as in the example described [here](https://www.teamten.com/lawrence/programming/prefer-enums-over-booleans.html).
+- Complex objects should be nullable due to the "bubbling up" effect.
+- Lists should be non-nullable, and items contained within lists should be non-nullable.
+- Booleans should be non-nullable. If you have a third state to represent, consider using an enum. You may also want to consider if the boolean field has the potential to evolve into an enum, such as in the example described [here](https://www.teamten.com/lawrence/programming/prefer-enums-over-booleans.html).
 
 These principles apply generally, but you may encounter situations where you'll want to deviate from these rules. Think carefully about marking fields as non-nullable, because if we query for a non-nullable field and get null as a response it will break parts of the application.
 
