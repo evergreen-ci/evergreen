@@ -207,7 +207,7 @@ require (
 	github.com/fortytw2/leaktest v1.3.0
 	github.com/mongodb/jasper v0.0.0-20220214215554-82e5a72cff6b
 	github.com/nxadm/tail v1.4.11
-	github.com/shirou/gopsutil/v3 v3.23.11
+	github.com/shirou/gopsutil/v3 v3.23.12
 	gopkg.in/yaml.v3 v3.0.1
 )
 
