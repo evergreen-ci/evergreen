@@ -754,7 +754,7 @@ func (gh *githubHookApi) createVersionForTag(ctx context.Context, pRef model.Pro
 	}
 
 	if !pRef.AuthorizedForGitTag(ctx, tag.Pusher, token, pRef.Owner, pRef.Repo) {
-		grip.Debug(message.Fields{
+		grip.Error(message.Fields{
 			"source":             "GitHub hook",
 			"msg_id":             gh.msgID,
 			"event":              gh.eventType,
@@ -763,7 +763,7 @@ func (gh *githubHookApi) createVersionForTag(ctx context.Context, pRef model.Pro
 			"tag":                tag,
 			"message":            "user not authorized for git tag version",
 		})
-		return nil, nil
+		return nil, errors.Errorf("user '%s' not authorized to create git tag versions for project '%s'", tag.Pusher, pRef.Id)
 	}
 	hasAliases, remotePath, err := model.HasMatchingGitTagAliasAndRemotePath(pRef.Id, tag.Tag)
 	if err != nil {

@@ -199,14 +199,13 @@ the status of those tasks on the mainline commit version.
 
 This allows for versions to be created from pushed git tags.
 
--   The tag must be pushed after the commit has been merged to ensure
+- The author of the version must match the author from the original waterfall version.  
+- The tag must be pushed after the commit has been merged to ensure
     that the waterfall version has already been created for the
     revision.
     -   It is possible to push the tag on the same line as the commit
         using `&&` but this is recommended for low-risk commits only.
 -   Versions are displayed on the waterfall page.
--   The author of the version matches the author from the original
-    waterfall version.
 -   The version is titled "Triggered From Git Tag '`<`git tag`>`':
     `<`commit message for this revision`>`"
 -   The expansion `${triggered_by_git_tag}` is set to the git tag that
@@ -218,7 +217,7 @@ This allows for versions to be created from pushed git tags.
     git tags for the project.**
 
 You can define this in a list on the project settings page. For users,
-these should be Github users or bot names. For teams, this should be the
+these should be GitHub users or bot names. For teams, this should be the
 slug for the team (for example, the team Evergreen Users would be
 evergreen-users), and any member in the team is authorized. Both teams
 and individual users can be configured.
