@@ -44,8 +44,6 @@ import (
 	"go.opentelemetry.io/otel/sdk/resource"
 	"go.opentelemetry.io/otel/sdk/trace"
 	semconv "go.opentelemetry.io/otel/semconv/v1.20.0"
-	"google.golang.org/grpc"
-	"google.golang.org/grpc/credentials"
 )
 
 var (
@@ -895,15 +893,14 @@ func (e *envState) initTracer(ctx context.Context, useInternalDNS bool) error {
 		return errors.Wrap(err, "making otel resource")
 	}
 
-	endpoint := e.settings.Tracer.CollectorEndpoint
+	var opts []otlptracegrpc.Option
 	if useInternalDNS {
-		endpoint = e.settings.Tracer.CollectorInternalEndpoint
+		opts = append(opts, otlptracegrpc.WithEndpoint(e.settings.Tracer.CollectorInternalEndpoint))
+		opts = append(opts, otlptracegrpc.WithInsecure())
+	} else {
+		opts = append(opts, otlptracegrpc.WithEndpoint(e.settings.Tracer.CollectorEndpoint))
 	}
-
-	client := otlptracegrpc.NewClient(
-		otlptracegrpc.WithEndpoint(endpoint),
-		otlptracegrpc.WithDialOption(grpc.WithTransportCredentials(credentials.NewTLS(nil))),
-	)
+	client := otlptracegrpc.NewClient(opts...)
 	exp, err := otlptrace.New(ctx, client)
 	if err != nil {
 		return errors.Wrap(err, "initializing otel exporter")
