@@ -116,6 +116,9 @@ func SetPatchActivated(ctx context.Context, patchId string, user string, activat
 	if err != nil {
 		return err
 	}
+	if p == nil {
+		return errors.Errorf("could not find patch '%s'", patchId)
+	}
 	err = p.SetActivation(activated)
 	if err != nil {
 		return err

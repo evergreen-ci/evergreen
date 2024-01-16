@@ -12,10 +12,12 @@ When an error is encountered during a request, the API returns a JSON
 object with the HTTP status code and a message describing the error of
 the form:
 
-    {
-     "status": <http_status_code>,
-     "error": <error message>
-    }
+```
+{
+ "status": <http_status_code>,
+ "error": <error message>
+}
+```
 
 ### Pagination
 
@@ -25,9 +27,11 @@ additional results for the query, access to them is populated in a [Link
 HTTP header](https://www.w3.org/wiki/LinkHeader). This header has the
 form:
 
-    "Link" : <http://<EVERGREEN_HOST>/rest/v2/path/to/resource?start_at=<pagination_key>&limit=<objects_per_page>; rel="next"
+```
+"Link" : <http://<EVERGREEN_HOST>/rest/v2/path/to/resource?start_at=<pagination_key>&limit=<objects_per_page>; rel="next"
 
-    <http://<EVERGREEN_HOST>/rest/v2/path/to/resource?start_at=<pagination_key>&limit=<objects_per_page>; rel="prev"
+<http://<EVERGREEN_HOST>/rest/v2/path/to/resource?start_at=<pagination_key>&limit=<objects_per_page>; rel="prev"
+```
 
 ### Dates
 

@@ -40,23 +40,26 @@ type ProjectTaskExecutionResp struct {
 }
 
 type APITriggerDefinition struct {
-	// project ID
+	// Identifier of project to watch.
 	Project *string `json:"project"`
-	// build or task
+	// Trigger on build, task, or push.
 	Level *string `json:"level"`
-	// unique ID
+	// Identifier for the definition.
 	DefinitionID *string `json:"definition_id"`
-	// matching variants will trigger a build
+	// Build variant regex to match.
 	BuildVariantRegex *string `json:"variant_regex"`
-	// matching tasks will trigger a build
+	// Task regex to match.
 	TaskRegex *string `json:"task_regex"`
-	// status to trigger for (or "*")
-	Status     *string `json:"status"`
-	DateCutoff *int    `json:"date_cutoff"`
-	// definition file
-	ConfigFile                   *string `json:"config_file"`
-	Alias                        *string `json:"alias"`
-	UnscheduleDownstreamVersions *bool   `json:"unschedule_downstream_versions"`
+	// Task status to trigger for (or "*" for all).
+	Status *string `json:"status"`
+	// Number of days after commit when the trigger cannot run.
+	DateCutoff *int `json:"date_cutoff"`
+	// Project configuration file for the trigger.
+	ConfigFile *string `json:"config_file"`
+	// Alias to run for the trigger.
+	Alias *string `json:"alias"`
+	// Deactivate downstream versions created by this trigger.
+	UnscheduleDownstreamVersions *bool `json:"unschedule_downstream_versions"`
 }
 
 func (t *APITriggerDefinition) ToService() model.TriggerDefinition {
@@ -88,13 +91,22 @@ func (t *APITriggerDefinition) BuildFromService(triggerDef model.TriggerDefiniti
 }
 
 type APIPatchTriggerDefinition struct {
-	Alias                  *string            `json:"alias"`
-	ChildProjectId         *string            `json:"child_project_id"`
-	ChildProjectIdentifier *string            `json:"child_project_identifier"`
-	TaskSpecifiers         []APITaskSpecifier `json:"task_specifiers"`
-	Status                 *string            `json:"status,omitempty"`
-	ParentAsModule         *string            `json:"parent_as_module,omitempty"`
-	VariantsTasks          []VariantTask      `json:"variants_tasks,omitempty"`
+	// Alias to run in the downstream project.
+	Alias *string `json:"alias"`
+	// ID of the downstream project.
+	ChildProjectId *string `json:"child_project_id"`
+	// Identifier of the downstream project.
+	ChildProjectIdentifier *string `json:"child_project_identifier"`
+	// List of task specifiers.
+	TaskSpecifiers []APITaskSpecifier `json:"task_specifiers"`
+	// Status for the parent patch to conditionally kick off the child patch.
+	Status *string `json:"status,omitempty"`
+	// Name of the module corresponding to the upstream project in the
+	// downstream project's YAML.
+	ParentAsModule *string `json:"parent_as_module,omitempty"`
+	// The list of variants/tasks from the alias that will run in the downstream
+	// project.
+	VariantsTasks []VariantTask `json:"variants_tasks,omitempty"`
 }
 
 func (t *APIPatchTriggerDefinition) BuildFromService(def patch.PatchTriggerDefinition) error {
@@ -134,8 +146,11 @@ func (t *APIPatchTriggerDefinition) ToService() patch.PatchTriggerDefinition {
 }
 
 type APITaskSpecifier struct {
-	PatchAlias   *string `json:"patch_alias,omitempty"`
-	TaskRegex    *string `json:"task_regex,omitempty"`
+	// Patch alias to run.
+	PatchAlias *string `json:"patch_alias,omitempty"`
+	// Regex matching tasks to run.
+	TaskRegex *string `json:"task_regex,omitempty"`
+	// Regex matching build variants to run.
 	VariantRegex *string `json:"variant_regex,omitempty"`
 }
 
@@ -155,19 +170,29 @@ func (t *APITaskSpecifier) ToService() patch.TaskSpecifier {
 }
 
 type APIPeriodicBuildDefinition struct {
-	ID            *string    `json:"id"`
-	ConfigFile    *string    `json:"config_file"`
-	IntervalHours *int       `json:"interval_hours"`
-	Cron          *string    `json:"cron"`
-	Alias         *string    `json:"alias,omitempty"`
-	Message       *string    `json:"message,omitempty"`
-	NextRunTime   *time.Time `json:"next_run_time,omitempty"`
+	// Identifier for the periodic build.
+	ID *string `json:"id"`
+	// Project config file to use for the periodic build.
+	ConfigFile *string `json:"config_file"`
+	// Interval (in hours) between periodic build runs.
+	IntervalHours *int `json:"interval_hours"`
+	// Cron specification for when to run periodic builds.
+	Cron *string `json:"cron"`
+	// Alias to run for the periodic build.
+	Alias *string `json:"alias,omitempty"`
+	// Message to display in the version metadata.
+	Message *string `json:"message,omitempty"`
+	// Next time that the periodic build will run.
+	NextRunTime *time.Time `json:"next_run_time,omitempty"`
 }
 
 type APIParsleyFilter struct {
-	Expression    *string `json:"expression"`
-	CaseSensitive *bool   `json:"case_sensitive"`
-	ExactMatch    *bool   `json:"exact_match"`
+	// Regex to match in Parsley.
+	Expression *string `json:"expression"`
+	// Whether the filter is case sensitive.
+	CaseSensitive *bool `json:"case_sensitive"`
+	// Whether the filter must be an exact match.
+	ExactMatch *bool `json:"exact_match"`
 }
 
 func (t *APIParsleyFilter) ToService() model.ParsleyFilter {
@@ -185,9 +210,12 @@ func (t *APIParsleyFilter) BuildFromService(h model.ParsleyFilter) {
 }
 
 type APIExternalLink struct {
-	DisplayName *string   `json:"display_name"`
-	Requesters  []*string `json:"requesters"`
-	URLTemplate *string   `json:"url_template"`
+	// Display name for the URL.
+	DisplayName *string `json:"display_name"`
+	// Requester filter for when to display the link.
+	Requesters []*string `json:"requesters"`
+	// URL format to add to the version metadata panel.
+	URLTemplate *string `json:"url_template"`
 }
 
 func (t *APIExternalLink) ToService() model.ExternalLink {
@@ -205,8 +233,10 @@ func (t *APIExternalLink) BuildFromService(h model.ExternalLink) {
 }
 
 type APIProjectBanner struct {
+	// Banner theme.
 	Theme evergreen.BannerTheme `json:"theme"`
-	Text  *string               `json:"text"`
+	// Banner text.
+	Text *string `json:"text"`
 }
 
 func (t *APIProjectBanner) ToService() model.ProjectBanner {
@@ -244,13 +274,14 @@ func (bd *APIPeriodicBuildDefinition) BuildFromService(params model.PeriodicBuil
 }
 
 type APICommitQueueParams struct {
-	// Enable/disable the commit queue
+	// Enable/disable the commit queue.
 	Enabled *bool `json:"enabled"`
-	// method of merging (squash, merge, rebase
+	// Method of merging (squash, merge, or rebase).
 	MergeMethod *string `json:"merge_method"`
-	// merge queue to use (EVERGREEN or GITHUB)
+	// Merge queue to use (EVERGREEN or GITHUB).
 	MergeQueue model.MergeQueue `json:"merge_queue"`
-	Message    *string          `json:"message"`
+	// Message to display when users interact with the commit queue.
+	Message *string `json:"message"`
 }
 
 func (cqParams *APICommitQueueParams) BuildFromService(params model.CommitQueueParams) {
@@ -279,8 +310,11 @@ func (cqParams *APICommitQueueParams) ToService() model.CommitQueueParams {
 }
 
 type APIBuildBaronSettings struct {
-	TicketCreateProject     *string   `bson:"ticket_create_project" json:"ticket_create_project"`
-	TicketCreateIssueType   *string   `bson:"ticket_create_issue_type" json:"ticket_create_issue_type"`
+	// Jira project where tickets should be created.
+	TicketCreateProject *string `bson:"ticket_create_project" json:"ticket_create_project"`
+	// Type of ticket to create.
+	TicketCreateIssueType *string `bson:"ticket_create_issue_type" json:"ticket_create_issue_type"`
+	// Jira project to search for tickets.
 	TicketSearchProjects    []*string `bson:"ticket_search_projects" json:"ticket_search_projects"`
 	BFSuggestionServer      *string   `bson:"bf_suggestion_server" json:"bf_suggestion_server"`
 	BFSuggestionUsername    *string   `bson:"bf_suggestion_username" json:"bf_suggestion_username"`
@@ -314,17 +348,23 @@ func (bb *APIBuildBaronSettings) ToService() evergreen.BuildBaronSettings {
 }
 
 type APITaskAnnotationSettings struct {
-	JiraCustomFields  []APIJiraField `bson:"jira_custom_fields" json:"jira_custom_fields"`
-	FileTicketWebhook APIWebHook     `bson:"web_hook" json:"web_hook"`
+	// Options for custom Jira fields to populate.
+	JiraCustomFields []APIJiraField `bson:"jira_custom_fields" json:"jira_custom_fields"`
+	// Options for webhooks.
+	FileTicketWebhook APIWebHook `bson:"web_hook" json:"web_hook"`
 }
 
 type APIWebHook struct {
+	// Webhook endpoint
 	Endpoint *string `bson:"endpoint" json:"endpoint"`
-	Secret   *string `bson:"secret" json:"secret"`
+	// Webhook secret
+	Secret *string `bson:"secret" json:"secret"`
 }
 
 type APIJiraField struct {
-	Field       *string `bson:"field" json:"field"`
+	// Jira field to populate.
+	Field *string `bson:"field" json:"field"`
+	// Text for the Jira field.
 	DisplayText *string `bson:"display_text" json:"display_text"`
 }
 
@@ -357,8 +397,10 @@ func (ta *APITaskAnnotationSettings) BuildFromService(config evergreen.Annotatio
 }
 
 type APITaskSyncOptions struct {
+	// Enable task sync in project configs.
 	ConfigEnabled *bool `json:"config_enabled"`
-	PatchEnabled  *bool `json:"patch_enabled"`
+	// Enable task sync in patches.
+	PatchEnabled *bool `json:"patch_enabled"`
 }
 
 func (opts *APITaskSyncOptions) BuildFromService(in model.TaskSyncOptions) {
@@ -374,16 +416,24 @@ func (opts *APITaskSyncOptions) ToService() model.TaskSyncOptions {
 }
 
 type APIWorkstationConfig struct {
+	// List of setup commands to run.
 	SetupCommands []APIWorkstationSetupCommand `bson:"setup_commands" json:"setup_commands"`
-	GitClone      *bool                        `bson:"git_clone" json:"git_clone"`
+	// Git clone the project in the workstation.
+	GitClone *bool `bson:"git_clone" json:"git_clone"`
 }
 
 type APIContainerSecret struct {
-	Name         *string `json:"name"`
+	// Name of the container secret.
+	Name *string `json:"name"`
+	// External name of the container secrets. Cannot be modified by users.
 	ExternalName *string `json:"external_name"`
-	ExternalID   *string `json:"external_id"`
-	Type         *string `json:"type"`
-	Value        *string `json:"value"`
+	// External identifier for the container secret. Cannot be modified by
+	// users.
+	ExternalID *string `json:"external_id"`
+	// Type of container secret.
+	Type *string `json:"type"`
+	// Container secret value to set.
+	Value *string `json:"value"`
 	// ShouldRotate indicates that the user requested the pod secret to be
 	// rotated to a new value. This only applies to the project's pod secret.
 	ShouldRotate *bool `json:"should_rotate"`
@@ -449,9 +499,12 @@ func (cr *APIContainerSecret) ToService() (*model.ContainerSecret, error) {
 }
 
 type APIContainerResources struct {
-	Name     *string `bson:"name" json:"name"`
-	MemoryMB *int    `bson:"memory_mb" json:"memory_mb"`
-	CPU      *int    `bson:"cpu" json:"cpu"`
+	// Name for container resource definition.
+	Name *string `bson:"name" json:"name"`
+	// Memory (in MB) for the container.
+	MemoryMB *int `bson:"memory_mb" json:"memory_mb"`
+	// CPU (1024 CPU = 1 vCPU) for the container.
+	CPU *int `bson:"cpu" json:"cpu"`
 }
 
 func (cr *APIContainerResources) BuildFromService(h model.ContainerResources) {
@@ -469,7 +522,9 @@ func (cr *APIContainerResources) ToService() model.ContainerResources {
 }
 
 type APIWorkstationSetupCommand struct {
-	Command   *string `bson:"command" json:"command"`
+	// Command to run in the workstation.
+	Command *string `bson:"command" json:"command"`
+	// Directory where the command runs.
 	Directory *string `bson:"directory" json:"directory"`
 }
 
@@ -535,87 +590,123 @@ func (t *APIRepositoryErrorDetails) BuildFromService(h model.RepositoryErrorDeta
 
 type APIProjectRef struct {
 	Id *string `json:"id"`
-	// Owner of project repository
+	// Owner of project repository.
 	Owner *string `json:"owner_name"`
-	// Repository name
+	// Repository name.
 	Repo *string `json:"repo_name"`
-	// Name of branch
+	// Name of tracking branch.
 	Branch *string `json:"branch_name"`
-	// Whether evergreen is enabled for this project
+	// Whether evergreen is enabled for this project.
 	Enabled *bool `json:"enabled"`
-	// A user must be logged in to view private projects
+	// A user must be logged in to view private projects.
 	Private *bool `json:"private"`
-	// Unique identifier of a specific patch
+	// Time interval between commits for Evergreen to activate.
 	BatchTime int `json:"batch_time"`
-	// Path to config file in repo
-	RemotePath          *string `json:"remote_path"`
+	// Path to config file in repo.
+	RemotePath *string `json:"remote_path"`
+	// File path to script that users can run on spawn hosts loaded with task
+	// data.
 	SpawnHostScriptPath *string `json:"spawn_host_script_path"`
-	// Internal evergreen identifier for project
+	// Internal evergreen identifier for project.
 	Identifier *string `json:"identifier"`
-	// Project name displayed to users
+	// Project name displayed to users.
 	DisplayName *string `json:"display_name"`
-	// List of identifiers of tasks used in this patch
+	// List of identifiers of tasks used in this patch.
 	DeactivatePrevious *bool `json:"deactivate_previous"`
 	// If true, repotracker is run on github push events. If false, repotracker is run periodically every few minutes.
 	TracksPushEvents *bool `json:"tracks_push_events"`
-	// Enable github pull request testing
-	PRTestingEnabled       *bool   `json:"pr_testing_enabled"`
-	ManualPRTestingEnabled *bool   `json:"manual_pr_testing_enabled"`
-	GitTagVersionsEnabled  *bool   `json:"git_tag_versions_enabled"`
-	GithubChecksEnabled    *bool   `json:"github_checks_enabled"`
-	UseRepoSettings        *bool   `json:"use_repo_settings"`
-	RepoRefId              *string `json:"repo_ref_id"`
-	// Options for commit queue
-	CommitQueue            APICommitQueueParams      `json:"commit_queue"`
-	TaskSync               APITaskSyncOptions        `json:"task_sync"`
+	// Enable GitHub automated pull request testing.
+	PRTestingEnabled *bool `json:"pr_testing_enabled"`
+	// Enable GitHub manual pull request testing.
+	ManualPRTestingEnabled *bool `json:"manual_pr_testing_enabled"`
+	// Enable testing when git tags are pushed.
+	GitTagVersionsEnabled *bool `json:"git_tag_versions_enabled"`
+	// Enable GitHub checks.
+	GithubChecksEnabled *bool `json:"github_checks_enabled"`
+	// Whether or not to default to using repo settings.
+	UseRepoSettings *bool `json:"use_repo_settings"`
+	// Identifier of the attached repo ref. Cannot be modified by users.
+	RepoRefId *string `json:"repo_ref_id"`
+	// Options for commit queue.
+	CommitQueue APICommitQueueParams `json:"commit_queue"`
+	// Options for task sync.
+	TaskSync APITaskSyncOptions `json:"task_sync"`
+	// Options for task annotations.
 	TaskAnnotationSettings APITaskAnnotationSettings `json:"task_annotation_settings"`
-	BuildBaronSettings     APIBuildBaronSettings     `json:"build_baron_settings"`
-	PerfEnabled            *bool                     `json:"perf_enabled"`
-	Hidden                 *bool                     `json:"hidden"`
-	// Disable patching
-	PatchingDisabled      *bool                      `json:"patching_disabled"`
-	RepotrackerDisabled   *bool                      `json:"repotracker_disabled"`
-	RepotrackerError      *APIRepositoryErrorDetails `json:"repotracker_error"`
-	DispatchingDisabled   *bool                      `json:"dispatching_disabled"`
-	StepbackDisabled      *bool                      `json:"stepback_disabled"`
-	StepbackBisect        *bool                      `json:"stepback_bisect"`
-	VersionControlEnabled *bool                      `json:"version_control_enabled"`
-	DisabledStatsCache    *bool                      `json:"disabled_stats_cache"`
+	// Options for Build Baron.
+	BuildBaronSettings APIBuildBaronSettings `json:"build_baron_settings"`
+	// Enable the performance plugin.
+	PerfEnabled *bool `json:"perf_enabled"`
+	// Whether or not the project can be seen in the UI. Cannot be modified by
+	// users.
+	Hidden *bool `json:"hidden"`
+	// Disable patching.
+	PatchingDisabled *bool `json:"patching_disabled"`
+	// Disable the repotracker.
+	RepotrackerDisabled *bool `json:"repotracker_disabled"`
+	// Error from the repotracker, if any. Cannot be modified by users.
+	RepotrackerError *APIRepositoryErrorDetails `json:"repotracker_error"`
+	// Disable task dispatching.
+	DispatchingDisabled *bool `json:"dispatching_disabled"`
+	// Disable stepback.
+	StepbackDisabled *bool `json:"stepback_disabled"`
+	// Use bisect stepback instead of linear.
+	StepbackBisect *bool `json:"stepback_bisect"`
+	// Enable setting project aliases from version-controlled project configs.
+	VersionControlEnabled *bool `json:"version_control_enabled"`
+	// Disable stats caching.
+	DisabledStatsCache *bool `json:"disabled_stats_cache"`
 	// Usernames of project admins. Can be null for some projects (EVG-6598).
 	Admins []*string `json:"admins"`
-	// Usernames of project admins to remove
-	DeleteAdmins                []*string `json:"delete_admins,omitempty"`
-	GitTagAuthorizedUsers       []*string `json:"git_tag_authorized_users" bson:"git_tag_authorized_users"`
+	// Usernames of project admins to remove.
+	DeleteAdmins []*string `json:"delete_admins,omitempty"`
+	// Usernames authorized to submit git tag versions.
+	GitTagAuthorizedUsers []*string `json:"git_tag_authorized_users" bson:"git_tag_authorized_users"`
+	// Usernames of git tag-authorized users to remove.
 	DeleteGitTagAuthorizedUsers []*string `json:"delete_git_tag_authorized_users,omitempty" bson:"delete_git_tag_authorized_users,omitempty"`
-	GitTagAuthorizedTeams       []*string `json:"git_tag_authorized_teams" bson:"git_tag_authorized_teams"`
+	// Names of GitHub teams authorized to submit git tag versions.
+	GitTagAuthorizedTeams []*string `json:"git_tag_authorized_teams" bson:"git_tag_authorized_teams"`
+	// Names of GitHub teams authorized to submit git tag versions to remove.
 	DeleteGitTagAuthorizedTeams []*string `json:"delete_git_tag_authorized_teams,omitempty" bson:"delete_git_tag_authorized_teams,omitempty"`
-	// Notify original committer (or admins) when build fails
+	// Notify original committer (or admins) when build fails.
 	NotifyOnBuildFailure *bool `json:"notify_on_failure"`
-	Restricted           *bool `json:"restricted"`
+	// Prevent users from being able to view this project unless explicitly
+	// granted access.
+	Restricted *bool `json:"restricted"`
 	// Only used when modifying projects to change the base revision and run the repotracker.
 	Revision *string `json:"revision"`
-	// a list of triggers for the project
-	Triggers             []APITriggerDefinition      `json:"triggers"`
-	GithubTriggerAliases []*string                   `json:"github_trigger_aliases"`
-	PatchTriggerAliases  []APIPatchTriggerDefinition `json:"patch_trigger_aliases"`
-	// a list of aliases for the project
+	// List of triggers for the project.
+	Triggers []APITriggerDefinition `json:"triggers"`
+	// List of GitHub trigger aliases.
+	GithubTriggerAliases []*string `json:"github_trigger_aliases"`
+	// List of patch trigger aliases.
+	PatchTriggerAliases []APIPatchTriggerDefinition `json:"patch_trigger_aliases"`
+	// List of aliases for the project.
 	Aliases []APIProjectAlias `json:"aliases"`
-	// project variables information
-	Variables         APIProjectVars       `json:"variables"`
+	// Project variables information
+	Variables APIProjectVars `json:"variables"`
+	// Options for workstations.
 	WorkstationConfig APIWorkstationConfig `json:"workstation_config"`
-	// a list of subscriptions for the project
+	// List of subscriptions for the project.
 	Subscriptions []APISubscription `json:"subscriptions"`
-	// subscription IDs. Will delete these subscriptions when given.
-	DeleteSubscriptions      []*string                    `json:"delete_subscriptions,omitempty"`
-	PeriodicBuilds           []APIPeriodicBuildDefinition `json:"periodic_builds,omitempty"`
-	ContainerSizeDefinitions []APIContainerResources      `json:"container_size_definitions"`
-	ContainerSecrets         []APIContainerSecret         `json:"container_secrets,omitempty"`
-	// DeleteContainerSecrets contains names of container secrets to be deleted.
-	DeleteContainerSecrets []string                `json:"delete_container_secrets,omitempty"`
-	ExternalLinks          []APIExternalLink       `json:"external_links"`
-	Banner                 APIProjectBanner        `json:"banner"`
-	ParsleyFilters         []APIParsleyFilter      `json:"parsley_filters"`
-	ProjectHealthView      model.ProjectHealthView `json:"project_health_view"`
+	// IDs of subscriptions to delete.
+	DeleteSubscriptions []*string `json:"delete_subscriptions,omitempty"`
+	// List of periodic build definitions.
+	PeriodicBuilds []APIPeriodicBuildDefinition `json:"periodic_builds,omitempty"`
+	// List of container size definitions
+	ContainerSizeDefinitions []APIContainerResources `json:"container_size_definitions"`
+	// List of container secrets.
+	ContainerSecrets []APIContainerSecret `json:"container_secrets,omitempty"`
+	// Names of container secrets to be deleted.
+	DeleteContainerSecrets []string `json:"delete_container_secrets,omitempty"`
+	// List of external links in the version metadata.
+	ExternalLinks []APIExternalLink `json:"external_links"`
+	// Options for banner to display for the project.
+	Banner APIProjectBanner `json:"banner"`
+	// List of custom Parsley filters.
+	ParsleyFilters []APIParsleyFilter `json:"parsley_filters"`
+	// Default project health view.
+	ProjectHealthView model.ProjectHealthView `json:"project_health_view"`
 }
 
 // ToService returns a service layer ProjectRef using the data from APIProjectRef

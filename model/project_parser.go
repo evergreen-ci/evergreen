@@ -75,7 +75,6 @@ type ParserProject struct {
 	UpdatedByGenerators []string `yaml:"updated_by_generators,omitempty" bson:"updated_by_generators,omitempty"`
 	// List of yamls to merge
 	Include []Include `yaml:"include,omitempty" bson:"include,omitempty"`
-	Enabled *bool     `yaml:"enabled,omitempty" bson:"enabled,omitempty"`
 
 	// Beginning of ParserProject mergeable fields (this comment is used by the linter).
 	Stepback           *bool                      `yaml:"stepback,omitempty" bson:"stepback,omitempty"`
@@ -1347,7 +1346,7 @@ func evaluateBVTasks(tse *taskSelectorEvaluator, tgse *tagSelectorEvaluator, vse
 				// it's already in the new list, so we check to make sure the status definitions match.
 				if !reflect.DeepEqual(t, old) {
 					evalErrs = append(evalErrs, errors.Errorf(
-						"conflicting definitions of task '%s' listed under build variant '%s': %#v != %#v", name, pbvt.Name, t, old))
+						"conflicting definitions of task '%s' listed under build variant '%s': %#v != %#v", name, pbv.Name, t, old))
 					continue
 				}
 			}

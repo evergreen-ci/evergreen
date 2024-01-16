@@ -30,7 +30,7 @@ high priority.
 Priority can be set in the UI on the version and task pages from the three dots
 menu -> Set priority. 
 
-![set priority](https://private-user-images.githubusercontent.com/624531/295986802-cd5ecf2d-c7f8-484e-943c-c8ad2cc3370c.png?jwt=eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJnaXRodWIuY29tIiwiYXVkIjoicmF3LmdpdGh1YnVzZXJjb250ZW50LmNvbSIsImtleSI6ImtleTUiLCJleHAiOjE3MDQ5OTE3MDQsIm5iZiI6MTcwNDk5MTQwNCwicGF0aCI6Ii82MjQ1MzEvMjk1OTg2ODAyLWNkNWVjZjJkLWM3ZjgtNDg0ZS05NDNjLWM4YWQyY2MzMzcwYy5wbmc_WC1BbXotQWxnb3JpdGhtPUFXUzQtSE1BQy1TSEEyNTYmWC1BbXotQ3JlZGVudGlhbD1BS0lBVkNPRFlMU0E1M1BRSzRaQSUyRjIwMjQwMTExJTJGdXMtZWFzdC0xJTJGczMlMkZhd3M0X3JlcXVlc3QmWC1BbXotRGF0ZT0yMDI0MDExMVQxNjQzMjRaJlgtQW16LUV4cGlyZXM9MzAwJlgtQW16LVNpZ25hdHVyZT1lNTY5ZDkwYTgyZTQxMGQzZmVlNjRiYTA3MjU3MDg1ZWE4ZGRjOTAzMGVmOGMwMTlkZDI2YzhkMmI0OWQxZThlJlgtQW16LVNpZ25lZEhlYWRlcnM9aG9zdCZhY3Rvcl9pZD0wJmtleV9pZD0wJnJlcG9faWQ9MCJ9.t66CQdsEc-HHN2EsMrAFgrSbPrqYOlocPEklWHAI1FU)
+![set priority](../images/priority.png)
 
 It can also be set with the
 [API](../API/REST-V2-Usage.md).

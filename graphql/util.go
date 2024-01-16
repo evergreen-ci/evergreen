@@ -935,7 +935,7 @@ func getTaskLogs(ctx context.Context, obj *TaskLogs, logType taskoutput.TaskLogT
 		return []*apimodels.LogMessage{}, nil
 	}
 
-	it, err := dbTask.GetTaskLogs(ctx, evergreen.GetEnvironment(), taskoutput.TaskLogGetOptions{
+	it, err := dbTask.GetTaskLogs(ctx, taskoutput.TaskLogGetOptions{
 		LogType: logType,
 		TailN:   100,
 	})

@@ -22,7 +22,7 @@ func TestSend(t *testing.T) {
 
 	t.Run("ParseError", func(t *testing.T) {
 		mock := newSenderTestMock(ctx)
-		mock.sender.opts.parse = func(rawLine string) (log.LogLine, error) {
+		mock.sender.opts.Parse = func(rawLine string) (log.LogLine, error) {
 			return log.LogLine{}, errors.New("parse error")
 		}
 
@@ -35,7 +35,7 @@ func TestSend(t *testing.T) {
 	})
 	t.Run("InvalidLogLinePriority", func(t *testing.T) {
 		mock := newSenderTestMock(ctx)
-		mock.sender.opts.parse = func(rawLine string) (log.LogLine, error) {
+		mock.sender.opts.Parse = func(rawLine string) (log.LogLine, error) {
 			return log.LogLine{
 				Priority:  -1,
 				Timestamp: time.Now().UnixNano(),
@@ -52,7 +52,7 @@ func TestSend(t *testing.T) {
 	})
 	t.Run("InvalidLogLineTimestamp", func(t *testing.T) {
 		mock := newSenderTestMock(ctx)
-		mock.sender.opts.parse = func(rawLine string) (log.LogLine, error) {
+		mock.sender.opts.Parse = func(rawLine string) (log.LogLine, error) {
 			return log.LogLine{
 				Priority:  level.Info,
 				Timestamp: -1,
@@ -93,7 +93,7 @@ func TestSend(t *testing.T) {
 	t.Run("SplitsAndParsesData", func(t *testing.T) {
 		mock := newSenderTestMock(ctx)
 		ts := time.Now().UnixNano()
-		mock.sender.opts.parse = func(rawLine string) (log.LogLine, error) {
+		mock.sender.opts.Parse = func(rawLine string) (log.LogLine, error) {
 			return log.LogLine{
 				Priority:  level.Error,
 				Timestamp: ts,
@@ -135,7 +135,7 @@ func TestSend(t *testing.T) {
 	})
 	t.Run("SetsDefaultLogLineTimestamp", func(t *testing.T) {
 		mock := newSenderTestMock(ctx)
-		mock.sender.opts.parse = func(rawLine string) (log.LogLine, error) {
+		mock.sender.opts.Parse = func(rawLine string) (log.LogLine, error) {
 			return log.LogLine{
 				Priority: level.Info,
 				Data:     rawLine,
@@ -243,7 +243,7 @@ func TestFlush(t *testing.T) {
 	t.Run("PersistsParsedData", func(t *testing.T) {
 		mock := newSenderTestMock(ctx)
 		ts := time.Now().UnixNano()
-		mock.sender.opts.parse = func(rawLine string) (log.LogLine, error) {
+		mock.sender.opts.Parse = func(rawLine string) (log.LogLine, error) {
 			return log.LogLine{
 				Timestamp: ts,
 				Data:      rawLine,
@@ -337,7 +337,7 @@ func newSenderTestMock(ctx context.Context) *senderTestMock {
 			opts: EvergreenSenderOptions{
 				Local:         local,
 				MaxBufferSize: 4096,
-				parse: func(rawLine string) (log.LogLine, error) {
+				Parse: func(rawLine string) (log.LogLine, error) {
 					return log.LogLine{Data: rawLine}, nil
 				},
 				appendLines: func(ctx context.Context, lines []log.LogLine) error {

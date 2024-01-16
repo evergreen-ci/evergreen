@@ -2,6 +2,7 @@ command_type: test
 stepback: true
 ignore:
   - "*.md" # don't schedule tests if a commit only changes markdown files
+  - "*.mdx"
   - ".github/*" # github CODEOWNERS configuration
 
 post:
@@ -427,6 +428,9 @@ tasks:
     name: test-agent-internal-client
   - <<: *run-go-test-suite
     tags: ["nodb", "test", "agent"]
+    name: test-agent-internal-taskoutput
+  - <<: *run-go-test-suite
+    tags: ["nodb", "test", "agent"]
     name: test-agent-util
   - <<: *run-go-test-suite-with-mongodb
     tags: ["test", "db", "agent"]
@@ -645,7 +649,7 @@ tasks:
     tags: ["build"]
   - <<: *build-and-push-client
     name: build-linux_arm64
-    tags: ["build"]
+    tags: ["build", "build-staging"]
   - <<: *build-and-push-client
     name: build-linux_ppc64le
     tags: ["build"]

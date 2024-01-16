@@ -6,6 +6,7 @@ import (
 	"sync"
 
 	"github.com/evergreen-ci/evergreen"
+	"github.com/evergreen-ci/evergreen/agent/internal/taskoutput"
 	"github.com/evergreen-ci/evergreen/apimodels"
 	"github.com/evergreen-ci/evergreen/model"
 	"github.com/evergreen-ci/evergreen/model/patch"
@@ -28,6 +29,7 @@ type TaskConfig struct {
 	DynamicExpansions  util.Expansions
 	Redacted           map[string]bool
 	WorkDir            string
+	TaskOutputDir      *taskoutput.Directory
 	GithubPatchData    thirdparty.GithubPatch
 	GithubMergeData    thirdparty.GithubMergeGroup
 	Timeout            Timeout
