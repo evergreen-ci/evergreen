@@ -1,5 +1,5 @@
 # Stepback Bisection
-Evergreen's stepback bisection performs stepback by continuously reducing the amount of commits needed to test by half. To enable it, go to the project settings 'general' tab and enable the 'Stepback Bisection' flag. Note that the 'Stepback' flag has to be enabled as well for bisection to take place.
+Evergreen's stepback bisection performs stepback by continuously reducing the amount of commits needed to test by half. To enable it, go to the Project Settings page "General" tab and enable the 'Stepback Bisection' flag. For this flag to work, the 'Stepback' flag will also need to be enabled.
 
 ## Motivation
 Traditionally, Evergreen performed linear stepback which activates each previous inactive commit. If stepback bisection is enabled, Evergreen will use bisection instead of linear.
