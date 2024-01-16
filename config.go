@@ -464,7 +464,7 @@ func (s *Settings) GetSender(ctx context.Context, env Environment) (send.Sender,
 	if err != nil {
 		return nil, errors.Wrap(err, "configuring error fallback logger")
 	}
-	if disableLocalLogging, err := strconv.ParseBool(os.Getenv(disableLocalLoggingEnvVar)); err != nil || !disableLocalLogging {
+	if disableLocalLogging, err := strconv.ParseBool(os.Getenv(disableLocalLoggingEnvVar)); err == nil && !disableLocalLogging {
 		// setup the base/default logger (generally direct to systemd
 		// or standard output)
 		switch s.LogPath {
