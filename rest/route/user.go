@@ -639,6 +639,15 @@ func makeUpdateServiceUser() gimlet.RouteHandler {
 	}
 }
 
+// Factory creates an instance of the handler.
+//
+//	@Summary		Create or update service user
+//	@Description	Creates a new service user or updates an existing one (restricted to Evergreen admins).
+//	@Tags			admin
+//	@Router			/admin/service_users [post]
+//	@Security		Api-User || Api-Key
+//	@Param			{object}	body	model.APIDBUser	true	"parameters"
+//	@Success		200
 func (h *serviceUserPostHandler) Factory() gimlet.RouteHandler {
 	return &serviceUserPostHandler{
 		u: &model.APIDBUser{},
@@ -675,6 +684,15 @@ func makeDeleteServiceUser() gimlet.RouteHandler {
 	return &serviceUserDeleteHandler{}
 }
 
+// Factory creates an instance of the handler.
+//
+//	@Summary		Delete service user
+//	@Description	Deletes a service user by its ID (restricted to Evergreen admins).
+//	@Tags			admin
+//	@Router			/admin/service_users [delete]
+//	@Security		Api-User || Api-Key
+//	@Param			id	query	string	true	"the user ID"
+//	@Success		200
 func (h *serviceUserDeleteHandler) Factory() gimlet.RouteHandler {
 	return &serviceUserDeleteHandler{}
 }
@@ -704,6 +722,14 @@ func makeGetServiceUsers() gimlet.RouteHandler {
 	return &serviceUsersGetHandler{}
 }
 
+// Factory creates an instance of the handler.
+//
+//	@Summary		Get all service users
+//	@Description	Fetches all service users (restricted to Evergreen admins).
+//	@Tags			admin
+//	@Router			/admin/service_users [get]
+//	@Security		Api-User || Api-Key
+//	@Success		200	{object}	[]model.APIDBUser
 func (h *serviceUsersGetHandler) Factory() gimlet.RouteHandler {
 	return &serviceUsersGetHandler{}
 }
