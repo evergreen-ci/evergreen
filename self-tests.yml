@@ -649,7 +649,7 @@ tasks:
     tags: ["build"]
   - <<: *build-and-push-client
     name: build-linux_arm64
-    tags: ["build"]
+    tags: ["build", "build-staging"]
   - <<: *build-and-push-client
     name: build-linux_ppc64le
     tags: ["build"]
