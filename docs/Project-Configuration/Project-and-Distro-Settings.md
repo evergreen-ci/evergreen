@@ -80,9 +80,16 @@ repo-level project settings configuration. This can be learned about at
 Under project flags, admins have a number of options for users to configure what
 runs for their project. For example, admins can enable the ability to unschedule old 
 tasks if a more recent commit passes, or configure tasks to stepback on failure to 
-isolate the cause.
+isolate the cause.  
 
 Check out the settings on the page to see more options.
+
+#### Stepback Bisection
+By default, Evergreen does linear stepback which attempts to find out where a
+task failed by activating previous commits as needed.
+
+Admins can enable Stepback Bisection which recursively divides the commits
+in half to reduce the tasks taken from O(n) to O(logn).
 
 #### Repotracker Settings
 By default, Evergreen creates mainline commits (also known as waterfall versions or 
