@@ -4958,7 +4958,7 @@ func TestRemoveAndReplace(t *testing.T) {
 		Id:     "host2",
 		Status: evergreen.HostRunning,
 	}
-	assert.NoError(t, h2.Replace())
+	assert.NoError(t, h2.Replace(ctx))
 	dbHost, err = FindOneId(ctx, h2.Id)
 	assert.NoError(t, err)
 	assert.NotNil(t, dbHost)

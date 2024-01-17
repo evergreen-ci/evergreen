@@ -343,6 +343,9 @@ func TestAnnotationByTaskGetHandlerRun(t *testing.T) {
 }
 
 func TestAnnotationByTaskPutHandlerParse(t *testing.T) {
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
 	assert.NoError(t, db.ClearCollections(annotations.Collection, task.Collection, task.OldCollection))
 	tasks := []task.Task{
 		{Id: "TaskFailedId", Execution: 1, Status: evergreen.TaskFailed},
@@ -366,7 +369,7 @@ func TestAnnotationByTaskPutHandlerParse(t *testing.T) {
 
 	for _, each := range old_tasks {
 		assert.NoError(t, each.Insert())
-		assert.NoError(t, each.Archive())
+		assert.NoError(t, each.Archive(ctx))
 	}
 
 	h := &annotationByTaskPutHandler{}
