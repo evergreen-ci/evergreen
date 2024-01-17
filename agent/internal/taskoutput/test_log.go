@@ -132,39 +132,47 @@ func (h *testLogDirectoryHandler) watch(ctx context.Context) {
 		h.logger.Execution().Critical(recovery.HandlePanicWithError(recover(), nil, "test log directory watcher"))
 	}()
 
+	timer := time.NewTimer(0)
+	defer timer.Stop()
 	ignore := filepath.Join(h.dir, testLogSpecFilename)
 	seenFiles := map[string]bool{}
 	for {
-		err := filepath.WalkDir(h.dir, func(path string, info fs.DirEntry, err error) error {
+		select {
+		case <-timer.C:
+			err := filepath.WalkDir(h.dir, func(path string, info fs.DirEntry, err error) error {
+				if err != nil {
+					h.logger.Execution().Warning(errors.Wrap(err, "watching the test log directory, continuing watching"))
+					return nil
+				}
+				if ctx.Err() != nil {
+					return ctx.Err()
+				}
+				if info.IsDir() {
+					return nil
+				}
+				if path == ignore {
+					return nil
+				}
+
+				if !seenFiles[path] {
+					seenFiles[path] = true
+					h.followFileCount++
+					h.wg.Add(1)
+					go h.followFile(ctx, path)
+				}
+
+				return nil
+			})
 			if err != nil {
-				h.logger.Execution().Warning(errors.Wrap(err, "watching the test log directory, continuing watching"))
-				return nil
-			}
-			if ctx.Err() != nil {
-				return ctx.Err()
-			}
-			if info.IsDir() {
-				return nil
-			}
-			if path == ignore {
-				return nil
+				h.logger.Execution().Debug("context canceled, exiting test log directory watcher")
+				return
 			}
 
-			if !seenFiles[path] {
-				seenFiles[path] = true
-				h.followFileCount++
-				h.wg.Add(1)
-				go h.followFile(ctx, path)
-			}
-
-			return nil
-		})
-		if err != nil {
+			timer.Reset(time.Millisecond)
+		case <-ctx.Done():
 			h.logger.Execution().Debug("context canceled, exiting test log directory watcher")
 			return
 		}
-
-		time.Sleep(time.Millisecond)
 	}
 }
 
