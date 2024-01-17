@@ -4947,7 +4947,7 @@ func TestRemoveAndReplace(t *testing.T) {
 	assert.NoError(t, h.Insert(ctx))
 
 	h.DockerOptions.Command = "hello world"
-	assert.NoError(t, h.Replace())
+	assert.NoError(t, h.Replace(ctx))
 	dbHost, err := FindOneId(ctx, h.Id)
 	assert.NoError(t, err)
 	assert.Equal(t, evergreen.HostUninitialized, dbHost.Status)

@@ -592,6 +592,9 @@ func (s *UserTestSuite) TestFindNeedsReauthorization() {
 }
 
 func TestServiceUserOperations(t *testing.T) {
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
 	require.NoError(t, db.Clear(Collection))
 	u := DBUser{
 		Id:          "u",
@@ -623,9 +626,9 @@ func TestServiceUserOperations(t *testing.T) {
 	assert.NoError(t, err)
 	assert.Len(t, users, 1)
 
-	err = DeleteServiceUser("doesntexist")
+	err = DeleteServiceUser(ctx, "doesntexist")
 	assert.EqualError(t, err, "service user 'doesntexist' not found")
-	err = DeleteServiceUser(u.Id)
+	err = DeleteServiceUser(ctx, u.Id)
 	assert.NoError(t, err)
 	dbUser, err = FindOneById(u.Id)
 	assert.NoError(t, err)

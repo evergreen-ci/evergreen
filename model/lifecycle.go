@@ -367,7 +367,7 @@ func restartTasks(ctx context.Context, allFinishedTasks []task.Task, caller, ver
 			toArchive = append(toArchive, t)
 		}
 	}
-	if err := task.ArchiveMany(toArchive); err != nil {
+	if err := task.ArchiveMany(ctx, toArchive); err != nil {
 		return errors.Wrap(err, "archiving tasks")
 	}
 
@@ -1017,11 +1017,9 @@ func setNumDepsRec(t *task.Task, idToTasks map[string]*task.Task, seen map[strin
 	}
 }
 
-func RecomputeNumDependents(t task.Task) error {
+func RecomputeNumDependents(ctx context.Context, t task.Task) error {
 	pipelineDown := getAllNodesInDepGraph(t.Id, bsonutil.GetDottedKeyName(task.DependsOnKey, task.DependencyTaskIdKey), task.IdKey)
 	env := evergreen.GetEnvironment()
-	ctx, cancel := env.Context()
-	defer cancel()
 	cursor, err := env.DB().Collection(task.Collection).Aggregate(ctx, pipelineDown)
 	if err != nil {
 		return err

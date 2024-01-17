@@ -1772,9 +1772,7 @@ func RemoveStrict(ctx context.Context, env evergreen.Environment, id string) err
 }
 
 // Replace overwrites an existing host document with a new one. If no existing host is found, the new one will be inserted anyway.
-func (h *Host) Replace() error {
-	ctx, cancel := evergreen.GetEnvironment().Context()
-	defer cancel()
+func (h *Host) Replace(ctx context.Context) error {
 	result := evergreen.GetEnvironment().DB().Collection(Collection).FindOneAndReplace(ctx, bson.M{IdKey: h.Id}, h, options.FindOneAndReplace().SetUpsert(true))
 	err := result.Err()
 	if errors.Cause(err) == mongo.ErrNoDocuments {
