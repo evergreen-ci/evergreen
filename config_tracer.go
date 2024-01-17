@@ -11,8 +11,9 @@ import (
 
 // TracerConfig configures the OpenTelemetry tracer provider. If not enabled traces will not be sent.
 type TracerConfig struct {
-	Enabled           bool   `yaml:"enabled" bson:"enabled" json:"enabled"`
-	CollectorEndpoint string `yaml:"collector_endpoint" bson:"collector_endpoint" json:"collector_endpoint"`
+	Enabled                   bool   `yaml:"enabled" bson:"enabled" json:"enabled"`
+	CollectorEndpoint         string `yaml:"collector_endpoint" bson:"collector_endpoint" json:"collector_endpoint"`
+	CollectorInternalEndpoint string `yaml:"collector_internal_endpoint" bson:"collector_internal_endpoint" json:"collector_internal_endpoint"`
 }
 
 // SectionId returns the ID of this config section.
@@ -40,8 +41,9 @@ func (c *TracerConfig) Get(ctx context.Context) error {
 func (c *TracerConfig) Set(ctx context.Context) error {
 	_, err := GetEnvironment().DB().Collection(ConfigCollection).UpdateOne(ctx, byId(c.SectionId()), bson.M{
 		"$set": bson.M{
-			tracerEnabledKey:        c.Enabled,
-			tracerCollectorEndpoint: c.CollectorEndpoint,
+			tracerEnabledKey:                   c.Enabled,
+			tracerCollectorEndpointKey:         c.CollectorEndpoint,
+			tracerCollectorInternalEndpointKey: c.CollectorInternalEndpoint,
 		},
 	}, options.Update().SetUpsert(true))
 	return errors.Wrapf(err, "updating config section '%s'", c.SectionId())
