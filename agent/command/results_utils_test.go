@@ -52,7 +52,7 @@ func TestSendTestResults(t *testing.T) {
 	comm := client.NewMock("url")
 	displayTaskInfo, err := comm.GetDisplayTaskInfoFromExecution(ctx, td)
 	require.NoError(t, err)
-	logger, err := comm.GetLoggerProducer(ctx, td, nil)
+	logger, err := comm.GetLoggerProducer(ctx, &conf.Task, nil)
 	require.NoError(t, err)
 	defer func() {
 		assert.NoError(t, logger.Close())

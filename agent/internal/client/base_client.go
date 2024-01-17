@@ -365,7 +365,7 @@ func (c *baseCommunicator) GetCedarGRPCConn(ctx context.Context) (*grpc.ClientCo
 	return c.cedarGRPCClient, nil
 }
 
-func (c *baseCommunicator) GetLoggerProducer(ctx context.Context, td TaskData, config *LoggerConfig) (LoggerProducer, error) {
+func (c *baseCommunicator) GetLoggerProducer(ctx context.Context, tsk *task.Task, config *LoggerConfig) (LoggerProducer, error) {
 	if config == nil {
 		config = &LoggerConfig{
 			Agent:  []LogOpts{{Sender: model.EvergreenLogSender}},
@@ -375,17 +375,17 @@ func (c *baseCommunicator) GetLoggerProducer(ctx context.Context, td TaskData, c
 	}
 	underlying := []send.Sender{}
 
-	exec, senders, err := c.makeSender(ctx, td, config.Agent, config.SendToGlobalSender, taskoutput.TaskLogTypeAgent)
+	exec, senders, err := c.makeSender(ctx, tsk, config.Agent, config.SendToGlobalSender, taskoutput.TaskLogTypeAgent)
 	if err != nil {
 		return nil, errors.Wrap(err, "making agent logger")
 	}
 	underlying = append(underlying, senders...)
-	task, senders, err := c.makeSender(ctx, td, config.Task, config.SendToGlobalSender, taskoutput.TaskLogTypeTask)
+	task, senders, err := c.makeSender(ctx, tsk, config.Task, config.SendToGlobalSender, taskoutput.TaskLogTypeTask)
 	if err != nil {
 		return nil, errors.Wrap(err, "making task logger")
 	}
 	underlying = append(underlying, senders...)
-	system, senders, err := c.makeSender(ctx, td, config.System, config.SendToGlobalSender, taskoutput.TaskLogTypeSystem)
+	system, senders, err := c.makeSender(ctx, tsk, config.System, config.SendToGlobalSender, taskoutput.TaskLogTypeSystem)
 	if err != nil {
 		return nil, errors.Wrap(err, "making system logger")
 	}
@@ -399,7 +399,7 @@ func (c *baseCommunicator) GetLoggerProducer(ctx context.Context, td TaskData, c
 	}, nil
 }
 
-func (c *baseCommunicator) makeSender(ctx context.Context, td TaskData, opts []LogOpts, sendToGlobalSender bool, logType taskoutput.TaskLogType) (send.Sender, []send.Sender, error) {
+func (c *baseCommunicator) makeSender(ctx context.Context, tsk *task.Task, opts []LogOpts, sendToGlobalSender bool, logType taskoutput.TaskLogType) (send.Sender, []send.Sender, error) {
 	levelInfo := send.LevelInfo{Default: level.Info, Threshold: level.Debug}
 	var senders []send.Sender
 	if sendToGlobalSender {
@@ -447,29 +447,24 @@ func (c *baseCommunicator) makeSender(ctx context.Context, td TaskData, opts []L
 				return nil, nil, errors.Wrap(err, "creating Splunk logger")
 			}
 			underlyingBufferedSenders = append(underlyingBufferedSenders, sender)
-			sender, err = send.NewBufferedSender(ctx, newAnnotatedWrapper(td.ID, string(logType), sender), bufferedSenderOpts)
+			sender, err = send.NewBufferedSender(ctx, newAnnotatedWrapper(tsk.Id, string(logType), sender), bufferedSenderOpts)
 			if err != nil {
 				return nil, nil, errors.Wrap(err, "creating buffered Splunk logger")
 			}
 		case model.BuildloggerLogSender:
-			tk, err := c.GetTask(ctx, td)
-			if err != nil {
-				return nil, nil, errors.Wrap(err, "setting up Buildlogger sender")
-			}
-
 			if err = c.createCedarGRPCConn(ctx); err != nil {
 				return nil, nil, errors.Wrap(err, "setting up Cedar gRPC connection")
 			}
 
 			timberOpts := &buildlogger.LoggerOptions{
-				Project:       tk.Project,
-				Version:       tk.Version,
-				Variant:       tk.BuildVariant,
-				TaskName:      tk.DisplayName,
-				TaskID:        tk.Id,
-				Execution:     int32(tk.Execution),
-				Tags:          append(tk.Tags, string(logType), utility.RandomString()),
-				Mainline:      !evergreen.IsPatchRequester(tk.Requester),
+				Project:       tsk.Project,
+				Version:       tsk.Version,
+				Variant:       tsk.BuildVariant,
+				TaskName:      tsk.DisplayName,
+				TaskID:        tsk.Id,
+				Execution:     int32(tsk.Execution),
+				Tags:          append(tsk.Tags, string(logType), utility.RandomString()),
+				Mainline:      !evergreen.IsPatchRequester(tsk.Requester),
 				Storage:       buildlogger.LogStorageS3,
 				MaxBufferSize: opt.BufferSize,
 				FlushInterval: opt.BufferDuration,
@@ -480,25 +475,16 @@ func (c *baseCommunicator) makeSender(ctx context.Context, td TaskData, opts []L
 				return nil, nil, errors.Wrap(err, "creating Buildlogger logger")
 			}
 		default:
-			tk, err := c.GetTask(ctx, td)
-			if err != nil {
-				return nil, nil, errors.Wrap(err, "getting task")
-			}
-			taskOutput, err := tk.GetTaskOutputWithError()
-			if err != nil {
-				return nil, nil, err
-			}
-
 			taskOpts := taskoutput.TaskOptions{
-				ProjectID: tk.Project,
-				TaskID:    tk.Id,
-				Execution: tk.Execution,
+				ProjectID: tsk.Project,
+				TaskID:    tsk.Id,
+				Execution: tsk.Execution,
 			}
 			senderOpts := taskoutput.EvergreenSenderOptions{
 				MaxBufferSize: bufferSize,
 				FlushInterval: bufferDuration,
 			}
-			sender, err = taskOutput.TaskLogs.NewSender(ctx, taskOpts, senderOpts, logType)
+			sender, err = tsk.TaskOutputInfo.TaskLogs.NewSender(ctx, taskOpts, senderOpts, logType)
 			if err != nil {
 				return nil, nil, errors.Wrap(err, "creating Evergreen task log sender")
 			}

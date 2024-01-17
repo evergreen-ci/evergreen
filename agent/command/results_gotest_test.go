@@ -38,8 +38,8 @@ func TestGotestPluginOnFailingTests(t *testing.T) {
 		require.NoError(t, err)
 		conf, err := agentutil.MakeTaskConfigFromModelData(ctx, testConfig, modelData)
 		require.NoError(t, err)
-		logger, err := comm.GetLoggerProducer(ctx, client.TaskData{ID: conf.Task.Id, Secret: conf.Task.Secret}, nil)
-		So(err, ShouldBeNil)
+		logger, err := comm.GetLoggerProducer(ctx, &conf.Task, nil)
+		require.NoError(t, err)
 
 		Convey("all commands in test project should execute successfully", func() {
 			curWD, err := os.Getwd()
@@ -100,8 +100,8 @@ func TestGotestPluginOnPassingTests(t *testing.T) {
 		require.NoError(t, err)
 		comm := client.NewMock("http://localhost.com")
 
-		logger, err := comm.GetLoggerProducer(ctx, client.TaskData{ID: conf.Task.Id, Secret: conf.Task.Secret}, nil)
-		So(err, ShouldBeNil)
+		logger, err := comm.GetLoggerProducer(ctx, &conf.Task, nil)
+		require.NoError(t, err)
 
 		Convey("all commands in test project should execute successfully", func() {
 			curWD, err := os.Getwd()
