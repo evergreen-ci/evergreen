@@ -2929,7 +2929,7 @@ func (h *Host) IsSubjectToHostCreationThrottle() bool {
 
 // GetHostByIdOrTagWithTask finds a host by ID or tag and includes the full
 // running task with the host.
-func GetHostByIdOrTagWithTask(hostID string) (*Host, error) {
+func GetHostByIdOrTagWithTask(ctx context.Context, hostID string) (*Host, error) {
 	pipeline := []bson.M{
 		{
 			"$match": bson.M{
@@ -2954,12 +2954,8 @@ func GetHostByIdOrTagWithTask(hostID string) (*Host, error) {
 		},
 	}
 
-	env := evergreen.GetEnvironment()
-	ctx, cancel := env.Context()
-	defer cancel()
-
 	hosts := []Host{}
-	cursor, err := env.DB().Collection(Collection).Aggregate(ctx, pipeline)
+	cursor, err := evergreen.GetEnvironment().DB().Collection(Collection).Aggregate(ctx, pipeline)
 	if err != nil {
 		return nil, errors.Wrap(err, "aggregating host by ID or tag with task")
 	}

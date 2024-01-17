@@ -1820,11 +1820,8 @@ func UpdateAll(query interface{}, update interface{}) (*adb.ChangeInfo, error) {
 	)
 }
 
-func UpdateAllWithHint(query interface{}, update interface{}, hint interface{}) (*adb.ChangeInfo, error) {
-	env := evergreen.GetEnvironment()
-	ctx, cancel := env.Context()
-	defer cancel()
-	res, err := env.DB().Collection(Collection).UpdateMany(ctx, query, update, options.Update().SetHint(hint))
+func UpdateAllWithHint(ctx context.Context, query interface{}, update interface{}, hint interface{}) (*adb.ChangeInfo, error) {
+	res, err := evergreen.GetEnvironment().DB().Collection(Collection).UpdateMany(ctx, query, update, options.Update().SetHint(hint))
 	if err != nil {
 		return nil, errors.WithStack(err)
 	}

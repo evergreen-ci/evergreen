@@ -1,6 +1,7 @@
 package user
 
 import (
+	"context"
 	"strconv"
 	"testing"
 	"time"
@@ -748,7 +749,11 @@ func TestGeneralSubscriptionIDs(t *testing.T) {
 }
 
 func TestViewableProjectSettings(t *testing.T) {
-	rm := evergreen.GetEnvironment().RoleManager()
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+	env := testutil.NewEnvironment(ctx, t)
+	rm := env.RoleManager()
+
 	assert.NoError(t, db.ClearCollections(evergreen.RoleCollection, evergreen.ScopeCollection, Collection))
 	editScope := gimlet.Scope{
 		ID:        "edit_scope",
@@ -802,7 +807,7 @@ func TestViewableProjectSettings(t *testing.T) {
 	assert.NoError(t, myUser.AddRole(otherRole.ID))
 
 	// assert that viewable projects contains the edit projects and the view projects
-	projects, err := myUser.GetViewableProjectSettings()
+	projects, err := myUser.GetViewableProjectSettings(ctx)
 	assert.NoError(t, err)
 	assert.Len(t, projects, 3)
 	assert.Contains(t, projects, "edit1")

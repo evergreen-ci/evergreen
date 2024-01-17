@@ -860,18 +860,14 @@ func (t *Task) AllDependenciesSatisfied(cache map[string]Task) (bool, error) {
 
 // MarkDependenciesFinished updates all direct dependencies on this task to
 // cache whether or not this task has finished running.
-func (t *Task) MarkDependenciesFinished(finished bool) error {
+func (t *Task) MarkDependenciesFinished(ctx context.Context, finished bool) error {
 	if t.DisplayOnly {
 		// This update can be skipped for display tasks since tasks are not
 		// allowed to have dependencies on display tasks.
 		return nil
 	}
 
-	env := evergreen.GetEnvironment()
-	ctx, cancel := env.Context()
-	defer cancel()
-
-	_, err := env.DB().Collection(Collection).UpdateMany(ctx,
+	_, err := evergreen.GetEnvironment().DB().Collection(Collection).UpdateMany(ctx,
 		bson.M{
 			DependsOnKey: bson.M{"$elemMatch": bson.M{
 				DependencyTaskIdKey: t.Id,
@@ -1413,7 +1409,7 @@ func UnscheduleStaleUnderwaterHostTasks(ctx context.Context, distroID string) (i
 
 	// Force the query to use 'distro_1_status_1_activated_1_priority_1_override_dependencies_1_unattainable_dependency_1'
 	// instead of defaulting to 'status_1_depends_on.status_1_depends_on.unattainable_1'.
-	info, err := UpdateAllWithHint(query, update, ActivatedTasksByDistroIndex)
+	info, err := UpdateAllWithHint(ctx, query, update, ActivatedTasksByDistroIndex)
 	if err != nil {
 		return 0, errors.Wrap(err, "unscheduling stale underwater tasks")
 	}

@@ -539,6 +539,9 @@ func TestBlockedOnDeactivatedDependency(t *testing.T) {
 }
 
 func TestMarkDependenciesFinished(t *testing.T) {
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
 	defer func() {
 		assert.NoError(t, db.Clear(Collection))
 	}()
@@ -562,7 +565,7 @@ func TestMarkDependenciesFinished(t *testing.T) {
 			require.NoError(t, t1.Insert())
 			require.NoError(t, t2.Insert())
 
-			require.NoError(t, t0.MarkDependenciesFinished(true))
+			require.NoError(t, t0.MarkDependenciesFinished(ctx, true))
 
 			dbTask2, err := FindOneId(t2.Id)
 			require.NoError(t, err)
@@ -587,7 +590,7 @@ func TestMarkDependenciesFinished(t *testing.T) {
 			require.NoError(t, t0.Insert())
 			require.NoError(t, t1.Insert())
 
-			require.NoError(t, t0.MarkDependenciesFinished(true))
+			require.NoError(t, t0.MarkDependenciesFinished(ctx, true))
 
 			dbTask1, err := FindOneId(t1.Id)
 			require.NoError(t, err)
@@ -612,7 +615,7 @@ func TestMarkDependenciesFinished(t *testing.T) {
 			require.NoError(t, t0.Insert())
 			require.NoError(t, t1.Insert())
 
-			require.NoError(t, t0.MarkDependenciesFinished(true))
+			require.NoError(t, t0.MarkDependenciesFinished(ctx, true))
 
 			dbTask1, err := FindOneId(t1.Id)
 			require.NoError(t, err)
@@ -640,7 +643,7 @@ func TestMarkDependenciesFinished(t *testing.T) {
 			require.NoError(t, t0.Insert())
 			require.NoError(t, t1.Insert())
 
-			require.NoError(t, t0.MarkDependenciesFinished(true))
+			require.NoError(t, t0.MarkDependenciesFinished(ctx, true))
 
 			dbTask1, err := FindOneId(t1.Id)
 			require.NoError(t, err)
@@ -672,7 +675,7 @@ func TestMarkDependenciesFinished(t *testing.T) {
 			require.NoError(t, t1.Insert())
 			require.NoError(t, t2.Insert())
 
-			require.NoError(t, t0.MarkDependenciesFinished(true))
+			require.NoError(t, t0.MarkDependenciesFinished(ctx, true))
 
 			dbTask1, err := FindOneId(t1.Id)
 			require.NoError(t, err)
@@ -703,7 +706,7 @@ func TestMarkDependenciesFinished(t *testing.T) {
 			require.NoError(t, t0.Insert())
 			require.NoError(t, t1.Insert())
 
-			require.NoError(t, t0.MarkDependenciesFinished(false))
+			require.NoError(t, t0.MarkDependenciesFinished(ctx, false))
 
 			dbTask1, err := FindOneId(t1.Id)
 			require.NoError(t, err)

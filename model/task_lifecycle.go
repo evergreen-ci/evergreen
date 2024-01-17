@@ -731,7 +731,7 @@ func MarkEnd(ctx context.Context, settings *evergreen.Settings, t *task.Task, ca
 		return errors.Wrap(err, "updating blocked dependencies")
 	}
 
-	if err = t.MarkDependenciesFinished(true); err != nil {
+	if err = t.MarkDependenciesFinished(ctx, true); err != nil {
 		return errors.Wrap(err, "updating dependency met status")
 	}
 
@@ -1898,7 +1898,7 @@ func MarkHostTaskDispatched(t *task.Task, h *host.Host) error {
 func MarkOneTaskReset(ctx context.Context, t *task.Task) error {
 	if t.DisplayOnly {
 		if !t.ResetFailedWhenFinished {
-			if err := MarkTasksReset(t.ExecutionTasks); err != nil {
+			if err := MarkTasksReset(ctx, t.ExecutionTasks); err != nil {
 				return errors.Wrap(err, "resetting execution tasks")
 			}
 		} else {
@@ -1910,7 +1910,7 @@ func MarkOneTaskReset(ctx context.Context, t *task.Task) error {
 			for _, et := range failedExecTasks {
 				failedExecTaskIds = append(failedExecTaskIds, et.Id)
 			}
-			if err := MarkTasksReset(failedExecTaskIds); err != nil {
+			if err := MarkTasksReset(ctx, failedExecTaskIds); err != nil {
 				return errors.Wrap(err, "resetting failed execution tasks")
 			}
 		}
@@ -1924,7 +1924,7 @@ func MarkOneTaskReset(ctx context.Context, t *task.Task) error {
 		return errors.Wrap(err, "clearing unattainable dependencies")
 	}
 
-	if err := t.MarkDependenciesFinished(false); err != nil {
+	if err := t.MarkDependenciesFinished(ctx, false); err != nil {
 		return errors.Wrap(err, "marking direct dependencies unfinished")
 	}
 
@@ -1933,7 +1933,7 @@ func MarkOneTaskReset(ctx context.Context, t *task.Task) error {
 
 // MarkTasksReset resets many tasks by their IDs. For execution tasks, this also
 // resets their parent display tasks.
-func MarkTasksReset(taskIds []string) error {
+func MarkTasksReset(ctx context.Context, taskIds []string) error {
 	tasks, err := task.FindAll(db.Query(task.ByIds(taskIds)))
 	if err != nil {
 		return errors.WithStack(err)
@@ -1950,7 +1950,7 @@ func MarkTasksReset(taskIds []string) error {
 	catcher := grip.NewBasicCatcher()
 	for _, t := range tasks {
 		catcher.Wrapf(UpdateUnblockedDependencies(&t), "clearing unattainable dependencies for task '%s'", t.Id)
-		catcher.Wrapf(t.MarkDependenciesFinished(false), "marking direct dependencies unfinished for task '%s'", t.Id)
+		catcher.Wrapf(t.MarkDependenciesFinished(ctx, false), "marking direct dependencies unfinished for task '%s'", t.Id)
 	}
 
 	return catcher.Resolve()
