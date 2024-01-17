@@ -5,14 +5,12 @@ import (
 	"time"
 
 	"github.com/evergreen-ci/birch"
-	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/db"
 	"github.com/evergreen-ci/evergreen/util"
 	"github.com/mongodb/anser/bsonutil"
 	"github.com/mongodb/grip"
 	"github.com/pkg/errors"
 	"go.mongodb.org/mongo-driver/bson"
-	"go.mongodb.org/mongo-driver/mongo"
 )
 
 type TaskAnnotation struct {
@@ -91,7 +89,7 @@ func MoveIssueToSuspectedIssue(taskId string, taskExecution int, issue IssueLink
 	q := ByTaskIdAndExecution(taskId, taskExecution)
 	q[bsonutil.GetDottedKeyName(IssuesKey, IssueLinkIssueKey)] = issue.IssueKey
 	return db.Update(
-		Collection,
+		TaskAnnotationsCollection,
 		q,
 		bson.M{
 			"$pull": bson.M{IssuesKey: bson.M{IssueLinkIssueKey: issue.IssueKey}},
@@ -106,7 +104,7 @@ func MoveSuspectedIssueToIssue(taskId string, taskExecution int, issue IssueLink
 	q := ByTaskIdAndExecution(taskId, taskExecution)
 	q[bsonutil.GetDottedKeyName(SuspectedIssuesKey, IssueLinkIssueKey)] = issue.IssueKey
 	return db.Update(
-		Collection,
+		TaskAnnotationsCollection,
 		q,
 		bson.M{
 			"$pull": bson.M{SuspectedIssuesKey: bson.M{IssueLinkIssueKey: issue.IssueKey}},
@@ -130,7 +128,7 @@ func UpdateAnnotationNote(taskId string, execution int, originalMessage, newMess
 		return errors.New("note is out of sync, please try again")
 	}
 	_, err = db.Upsert(
-		Collection,
+		TaskAnnotationsCollection,
 		ByTaskIdAndExecution(taskId, execution),
 		bson.M{
 			"$set": bson.M{NoteKey: note},
@@ -151,7 +149,7 @@ func SetAnnotationMetadataLinks(ctx context.Context, taskId string, execution in
 	}
 
 	_, err := db.Upsert(
-		Collection,
+		TaskAnnotationsCollection,
 		ByTaskIdAndExecution(taskId, execution),
 		bson.M{
 			"$set": bson.M{MetadataLinksKey: metadataLinks},
@@ -168,7 +166,7 @@ func AddIssueToAnnotation(taskId string, execution int, issue IssueLink, usernam
 	}
 
 	_, err := db.Upsert(
-		Collection,
+		TaskAnnotationsCollection,
 		ByTaskIdAndExecution(taskId, execution),
 		bson.M{
 			"$push": bson.M{IssuesKey: issue},
@@ -185,7 +183,7 @@ func AddSuspectedIssueToAnnotation(taskId string, execution int, issue IssueLink
 	}
 
 	_, err := db.Upsert(
-		Collection,
+		TaskAnnotationsCollection,
 		ByTaskIdAndExecution(taskId, execution),
 		bson.M{
 			"$push": bson.M{SuspectedIssuesKey: issue},
@@ -196,7 +194,7 @@ func AddSuspectedIssueToAnnotation(taskId string, execution int, issue IssueLink
 
 func RemoveIssueFromAnnotation(taskId string, execution int, issue IssueLink) error {
 	return db.Update(
-		Collection,
+		TaskAnnotationsCollection,
 		ByTaskIdAndExecution(taskId, execution),
 		bson.M{"$pull": bson.M{IssuesKey: issue}},
 	)
@@ -204,13 +202,14 @@ func RemoveIssueFromAnnotation(taskId string, execution int, issue IssueLink) er
 
 func RemoveSuspectedIssueFromAnnotation(taskId string, execution int, issue IssueLink) error {
 	return db.Update(
-		Collection,
+		TaskAnnotationsCollection,
 		ByTaskIdAndExecution(taskId, execution),
 		bson.M{"$pull": bson.M{SuspectedIssuesKey: issue}},
 	)
 }
 
-func UpdateAnnotation(a *TaskAnnotation, userDisplayName string) error {
+// UpsertAnnotation upserts a task annotation.
+func UpsertAnnotation(a *TaskAnnotation, userDisplayName string) error {
 	source := &Source{
 		Author:    userDisplayName,
 		Time:      time.Now(),
@@ -247,36 +246,13 @@ func UpdateAnnotation(a *TaskAnnotation, userDisplayName string) error {
 		return nil
 	}
 	_, err := db.Upsert(
-		Collection,
+		TaskAnnotationsCollection,
 		ByTaskIdAndExecution(a.TaskId, a.TaskExecution),
 		bson.M{
 			"$set": update,
 		},
 	)
 	return errors.Wrapf(err, "adding task annotation for task '%s'", a.TaskId)
-}
-
-// InsertManyAnnotations updates the source for a list of task annotations and their issues and then inserts them into the DB.
-func InsertManyAnnotations(updates []TaskUpdate) error {
-	env := evergreen.GetEnvironment()
-	ctx, cancel := env.Context()
-	defer cancel()
-	for _, u := range updates {
-		update := createAnnotationUpdate(&u.Annotation, "")
-		ops := make([]mongo.WriteModel, len(u.TaskData))
-		for idx := 0; idx < len(u.TaskData); idx++ {
-			ops[idx] = mongo.NewUpdateOneModel().
-				SetUpsert(true).
-				SetFilter(ByTaskIdAndExecution(u.TaskData[idx].TaskId, u.TaskData[idx].Execution)).
-				SetUpdate(bson.M{"$push": update})
-		}
-		_, err := env.DB().Collection(Collection).BulkWrite(ctx, ops, nil)
-
-		if err != nil {
-			return errors.Wrap(err, "bulk inserting annotations")
-		}
-	}
-	return nil
 }
 
 func createAnnotationUpdate(annotation *TaskAnnotation, userDisplayName string) bson.M {
@@ -317,7 +293,7 @@ func PatchAnnotation(a *TaskAnnotation, userDisplayName string, upsert bool) err
 		if !upsert {
 			return errors.Errorf("annotation for task '%s' and execution %d not found", a.TaskId, a.TaskExecution)
 		} else {
-			return UpdateAnnotation(a, userDisplayName)
+			return UpsertAnnotation(a, userDisplayName)
 		}
 	}
 
@@ -335,7 +311,7 @@ func PatchAnnotation(a *TaskAnnotation, userDisplayName string, upsert bool) err
 	}
 
 	err = db.Update(
-		Collection,
+		TaskAnnotationsCollection,
 		ByTaskIdAndExecution(a.TaskId, a.TaskExecution),
 		bson.M{
 			"$push": update,
@@ -352,7 +328,7 @@ func AddCreatedTicket(taskId string, execution int, ticket IssueLink, userDispla
 	}
 	ticket.Source = source
 	_, err := db.Upsert(
-		Collection,
+		TaskAnnotationsCollection,
 		ByTaskIdAndExecution(taskId, execution),
 		bson.M{
 			"$push": bson.M{CreatedIssuesKey: ticket},

@@ -117,6 +117,7 @@ var (
 	BaseTaskKey                   = bsonutil.MustHaveTag(Task{}, "BaseTask")
 	BuildVariantDisplayNameKey    = bsonutil.MustHaveTag(Task{}, "BuildVariantDisplayName")
 	IsEssentialToSucceedKey       = bsonutil.MustHaveTag(Task{}, "IsEssentialToSucceed")
+	HasAnnotationsKey             = bsonutil.MustHaveTag(Task{}, "HasAnnotations")
 )
 
 var (
@@ -292,11 +293,15 @@ var (
 	AddAnnotations = []bson.M{
 		{
 			"$facet": bson.M{
-				// We skip annotation lookup for non-failed tasks, because these can't have annotations
+				// We skip annotation lookup for non-failed tasks, because these can't have annotations,
+				// and lookup is not necessary for tasks that already have HasAnnotationsKey set
 				"not_failed": []bson.M{
 					{
 						"$match": bson.M{
-							StatusKey: bson.M{"$nin": evergreen.TaskFailureStatuses},
+							"$or": []bson.M{
+								{HasAnnotationsKey: true},
+								{StatusKey: bson.M{"$nin": evergreen.TaskFailureStatuses}},
+							},
 						},
 					},
 				},
@@ -309,7 +314,7 @@ var (
 					},
 					{
 						"$lookup": bson.M{
-							"from": annotations.Collection,
+							"from": annotations.TaskAnnotationsCollection,
 							"let":  bson.M{"task_annotation_id": "$" + IdKey, "task_annotation_execution": "$" + ExecutionKey},
 							"pipeline": []bson.M{
 								{
@@ -351,7 +356,7 @@ var (
 	AddAnnotationsSlowLookup = []bson.M{
 		{
 			"$lookup": bson.M{
-				"from": annotations.Collection,
+				"from": annotations.TaskAnnotationsCollection,
 				"let":  bson.M{"task_annotation_id": "$" + IdKey, "task_annotation_execution": "$" + ExecutionKey},
 				"pipeline": []bson.M{
 					{

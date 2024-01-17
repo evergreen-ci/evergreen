@@ -979,7 +979,7 @@ func TestGetTasksByVersionIncludeNeverActivatedTasks(t *testing.T) {
 }
 
 func TestGetTasksByVersionAnnotations(t *testing.T) {
-	require.NoError(t, db.ClearCollections(Collection, annotations.Collection))
+	require.NoError(t, db.ClearCollections(Collection, annotations.TaskAnnotationsCollection))
 	t1 := Task{
 		Id:            "t1",
 		Version:       "v1",

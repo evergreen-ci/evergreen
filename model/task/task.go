@@ -300,6 +300,9 @@ type Task struct {
 	// before its build or version can be reported as successful, but tasks
 	// manually scheduled by the user afterwards are not required.
 	IsEssentialToSucceed bool `bson:"is_essential_to_succeed" json:"is_essential_to_succeed"`
+	// HasAnnotations indicates whether there exist task annotations with this task's
+	// execution and id that have a populated Issues key
+	HasAnnotations bool `bson:"has_annotations" json:"has_annotations"`
 }
 
 // GeneratedJSONFiles represent files used by a task for generate.tasks to update the project YAML.

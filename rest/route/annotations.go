@@ -343,7 +343,7 @@ func (h *annotationByTaskPutHandler) Parse(ctx context.Context, r *http.Request)
 }
 
 func (h *annotationByTaskPutHandler) Run(ctx context.Context) gimlet.Responder {
-	err := annotations.UpdateAnnotation(restModel.APITaskAnnotationToService(*h.annotation), h.user.DisplayName())
+	err := annotations.UpsertAnnotation(restModel.APITaskAnnotationToService(*h.annotation), h.user.DisplayName())
 	if err != nil {
 		return gimlet.NewJSONInternalErrorResponse(errors.Wrap(err, "updating annotation"))
 	}
