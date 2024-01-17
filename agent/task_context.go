@@ -263,10 +263,6 @@ type commandBlock struct {
 
 // getPre returns a command block containing the pre task commands.
 func (tc *taskContext) getPre() (*commandBlock, error) {
-	if err := tc.taskConfig.Validate(); err != nil {
-		return nil, err
-	}
-
 	tg := tc.taskConfig.TaskGroup
 	if tg == nil {
 		return &commandBlock{
@@ -289,10 +285,6 @@ func (tc *taskContext) getPre() (*commandBlock, error) {
 
 // getPost returns a command block containing the post task commands.
 func (tc *taskContext) getPost() (*commandBlock, error) {
-	if err := tc.taskConfig.Validate(); err != nil {
-		return nil, err
-	}
-
 	tg := tc.taskConfig.TaskGroup
 	if tg == nil {
 		return &commandBlock{
@@ -317,10 +309,6 @@ func (tc *taskContext) getPost() (*commandBlock, error) {
 
 // getSetupGroup returns the setup group for a task group task.
 func (tc *taskContext) getSetupGroup() (*commandBlock, error) {
-	if err := tc.taskConfig.Validate(); err != nil {
-		return nil, err
-	}
-
 	tg := tc.taskConfig.TaskGroup
 	if tg == nil {
 		return &commandBlock{}, nil
@@ -340,10 +328,6 @@ func (tc *taskContext) getSetupGroup() (*commandBlock, error) {
 
 // getTeardownGroup returns the teardown group for a task group task.
 func (tc *taskContext) getTeardownGroup() (*commandBlock, error) {
-	if err := tc.taskConfig.Validate(); err != nil {
-		return nil, err
-	}
-
 	tg := tc.taskConfig.TaskGroup
 	if tg == nil {
 		return &commandBlock{}, nil
@@ -363,10 +347,6 @@ func (tc *taskContext) getTeardownGroup() (*commandBlock, error) {
 
 // getTimeout returns a command block containing the timeout handler commands.
 func (tc *taskContext) getTimeout() (*commandBlock, error) {
-	if err := tc.taskConfig.Validate(); err != nil {
-		return nil, err
-	}
-
 	tg := tc.taskConfig.TaskGroup
 	if tg == nil {
 		return &commandBlock{

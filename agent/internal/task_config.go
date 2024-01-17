@@ -134,24 +134,6 @@ func (c *TaskConfig) GetCloneMethod() string {
 	return evergreen.CloneMethodOAuth
 }
 
-// Validate validates that the task config is populated with the data required
-// for a task to run.
-// Note that this is here only as legacy code. These checks are not sufficient
-// to indicate that the TaskConfig has all the necessary information to run a
-// task.
-func (tc *TaskConfig) Validate() error {
-	if tc == nil {
-		return errors.New("unable to get task setup because task config is nil")
-	}
-	if tc.Task.Id == "" {
-		return errors.New("unable to get task setup because task ID is nil")
-	}
-	if tc.Task.Version == "" {
-		return errors.New("task has no version")
-	}
-	return nil
-}
-
 func (tc *TaskConfig) TaskAttributeMap() map[string]string {
 	return map[string]string{
 		evergreen.TaskIDOtelAttribute:            tc.Task.Id,
