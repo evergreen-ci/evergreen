@@ -249,6 +249,7 @@ func annotationByTaskPutOrPatchParser(ctx context.Context, r *http.Request) (str
 		return "", nil, errors.Wrap(err, "reading annotation from JSON request body")
 	}
 
+	annotation.TaskId = &taskId
 	if taskExecutionsAsString != "" {
 		taskExecution, err := strconv.Atoi(taskExecutionsAsString)
 		if err != nil {
@@ -343,7 +344,7 @@ func (h *annotationByTaskPutHandler) Parse(ctx context.Context, r *http.Request)
 }
 
 func (h *annotationByTaskPutHandler) Run(ctx context.Context) gimlet.Responder {
-	err := annotations.UpsertAnnotation(restModel.APITaskAnnotationToService(*h.annotation), h.user.DisplayName())
+	err := task.UpsertAnnotation(restModel.APITaskAnnotationToService(*h.annotation), h.user.DisplayName())
 	if err != nil {
 		return gimlet.NewJSONInternalErrorResponse(errors.Wrap(err, "updating annotation"))
 	}
@@ -398,7 +399,7 @@ func (h *annotationByTaskPatchHandler) Parse(ctx context.Context, r *http.Reques
 }
 
 func (h *annotationByTaskPatchHandler) Run(ctx context.Context) gimlet.Responder {
-	err := annotations.PatchAnnotation(restModel.APITaskAnnotationToService(*h.annotation), h.user.DisplayName(), h.upsert)
+	err := task.PatchAnnotation(restModel.APITaskAnnotationToService(*h.annotation), h.user.DisplayName(), h.upsert)
 	if err != nil {
 		gimlet.NewJSONInternalErrorResponse(err)
 	}

@@ -403,6 +403,14 @@ func ById(id string) bson.M {
 	}
 }
 
+// ByIdAndExecution creates a query that finds a task by its _id and execution.
+func ByIdAndExecution(id string, execution int) bson.M {
+	return bson.M{
+		IdKey:        id,
+		ExecutionKey: execution,
+	}
+}
+
 func ByOldTaskID(id string) bson.M {
 	return bson.M{
 		OldTaskIdKey: id,
@@ -1945,10 +1953,7 @@ func AddHostCreateDetails(taskId, hostId string, execution int, hostCreateError 
 		return nil
 	}
 	err := UpdateOne(
-		bson.M{
-			IdKey:        taskId,
-			ExecutionKey: execution,
-		},
+		ByIdAndExecution(taskId, execution),
 		bson.M{"$push": bson.M{
 			HostCreateDetailsKey: HostCreateDetail{HostId: hostId, Error: hostCreateError.Error()},
 		}})
@@ -2815,6 +2820,30 @@ func enableDisabledTasks(taskIDs []string) error {
 			},
 		})
 	return err
+}
+
+// SetHasAnnotation sets a task's HasAnnotation flag, indicating
+// that there are annotations with populated IssuesKey for its
+// id / execution pair.
+func SetHasAnnotation(taskId string, execution int) error {
+	err := UpdateOne(
+		ByIdAndExecution(taskId, execution),
+		bson.M{"$set": bson.M{
+			HasAnnotationsKey: true,
+		}})
+	return errors.Wrapf(err, "marking task '%s' as having annotations", taskId)
+}
+
+// UnsetHasAnnotation unsets a task's HasAnnotation flag, indicating
+// that there are no longer any annotations with populated IssuesKey for its
+// id / execution pair.
+func UnsetHasAnnotation(taskId string, execution int) error {
+	err := UpdateOne(
+		ByIdAndExecution(taskId, execution),
+		bson.M{"$set": bson.M{
+			HasAnnotationsKey: false,
+		}})
+	return errors.Wrapf(err, "marking task '%s' as having no annotations", taskId)
 }
 
 type NumExecutionsForIntervalInput struct {

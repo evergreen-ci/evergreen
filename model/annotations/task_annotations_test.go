@@ -2,6 +2,7 @@ package annotations
 
 import (
 	"context"
+	"github.com/evergreen-ci/evergreen/model/task"
 	"testing"
 
 	"github.com/evergreen-ci/birch"
@@ -46,7 +47,7 @@ func TestGetLatestExecutions(t *testing.T) {
 func TestAddIssueToAnnotation(t *testing.T) {
 	assert.NoError(t, db.Clear(TaskAnnotationsCollection))
 	issue := IssueLink{URL: "https://issuelink.com", IssueKey: "EVG-1234", ConfidenceScore: float64(91.23)}
-	assert.NoError(t, AddIssueToAnnotation("t1", 0, issue, "annie.black"))
+	assert.NoError(t, task.AddIssueToAnnotation("t1", 0, issue, "annie.black"))
 
 	annotation, err := FindOneByTaskIdAndExecution("t1", 0)
 	assert.NoError(t, err)
@@ -58,7 +59,7 @@ func TestAddIssueToAnnotation(t *testing.T) {
 	assert.Equal(t, "annie.black", annotation.Issues[0].Source.Author)
 	assert.Equal(t, float64(91.23), annotation.Issues[0].ConfidenceScore)
 
-	assert.NoError(t, AddIssueToAnnotation("t1", 0, issue, "not.annie.black"))
+	assert.NoError(t, task.AddIssueToAnnotation("t1", 0, issue, "not.annie.black"))
 	annotation, err = FindOneByTaskIdAndExecution("t1", 0)
 	assert.NoError(t, err)
 	assert.NotNil(t, annotation)
@@ -75,7 +76,7 @@ func TestRemoveIssueFromAnnotation(t *testing.T) {
 	a := TaskAnnotation{TaskId: "t1", Issues: []IssueLink{issue1, issue2}}
 	assert.NoError(t, a.Upsert())
 
-	assert.NoError(t, RemoveIssueFromAnnotation("t1", 0, issue1))
+	assert.NoError(t, task.RemoveIssueFromAnnotation("t1", 0, issue1))
 	annotationFromDB, err := FindOneByTaskIdAndExecution("t1", 0)
 	assert.NoError(t, err)
 	assert.NotNil(t, annotationFromDB)
@@ -157,7 +158,7 @@ func TestMoveIssueToSuspectedIssue(t *testing.T) {
 	a := TaskAnnotation{TaskId: "t1", Issues: []IssueLink{issue1, issue2}, SuspectedIssues: []IssueLink{issue3}}
 	assert.NoError(t, a.Upsert())
 
-	assert.NoError(t, MoveIssueToSuspectedIssue(a.TaskId, a.TaskExecution, issue1, "someone new"))
+	assert.NoError(t, task.MoveIssueToSuspectedIssue(a.TaskId, a.TaskExecution, issue1, "someone new"))
 	annotationFromDB, err := FindOneByTaskIdAndExecution(a.TaskId, a.TaskExecution)
 	assert.NoError(t, err)
 	assert.NotNil(t, annotationFromDB)
@@ -178,7 +179,7 @@ func TestMoveSuspectedIssueToIssue(t *testing.T) {
 	a := TaskAnnotation{TaskId: "t1", SuspectedIssues: []IssueLink{issue1, issue2}, Issues: []IssueLink{issue3}}
 	assert.NoError(t, a.Upsert())
 
-	assert.NoError(t, MoveSuspectedIssueToIssue(a.TaskId, a.TaskExecution, issue1, "someone new"))
+	assert.NoError(t, task.MoveSuspectedIssueToIssue(a.TaskId, a.TaskExecution, issue1, "someone new"))
 	annotationFromDB, err := FindOneByTaskIdAndExecution("t1", 0)
 	assert.NoError(t, err)
 	assert.NotNil(t, annotationFromDB)
@@ -192,10 +193,10 @@ func TestMoveSuspectedIssueToIssue(t *testing.T) {
 func TestPatchIssue(t *testing.T) {
 	assert.NoError(t, db.Clear(TaskAnnotationsCollection))
 	issue1 := IssueLink{URL: "https://issuelink.com", IssueKey: "EVG-1234", ConfidenceScore: float64(91.23)}
-	assert.NoError(t, AddIssueToAnnotation("t1", 0, issue1, "bynn.lee"))
+	assert.NoError(t, task.AddIssueToAnnotation("t1", 0, issue1, "bynn.lee"))
 	issue2 := IssueLink{URL: "https://issuelink.com", IssueKey: "EVG-2345"}
 	a := TaskAnnotation{TaskId: "t1", TaskExecution: 0, SuspectedIssues: []IssueLink{issue2}}
-	assert.NoError(t, PatchAnnotation(&a, "not bynn", true))
+	assert.NoError(t, task.PatchAnnotation(&a, "not bynn", true))
 
 	annotation, err := FindOneByTaskIdAndExecution(a.TaskId, a.TaskExecution)
 	assert.NoError(t, err)
@@ -215,7 +216,7 @@ func TestPatchIssue(t *testing.T) {
 
 	issue3 := IssueLink{URL: "https://issuelink.com", IssueKey: "EVG-3456"}
 	insert := TaskAnnotation{TaskId: "t1", TaskExecution: 1, SuspectedIssues: []IssueLink{issue3}}
-	assert.NoError(t, PatchAnnotation(&insert, "insert", true))
+	assert.NoError(t, task.PatchAnnotation(&insert, "insert", true))
 	annotation, err = FindOneByTaskIdAndExecution(insert.TaskId, insert.TaskExecution)
 	assert.NoError(t, err)
 	assert.NotNil(t, annotation)
@@ -227,7 +228,7 @@ func TestPatchIssue(t *testing.T) {
 	assert.Equal(t, "EVG-3456", annotation.SuspectedIssues[0].IssueKey)
 
 	upsert := TaskAnnotation{TaskId: "t1", TaskExecution: 2, Note: &Note{Message: "should work"}, SuspectedIssues: []IssueLink{issue3}}
-	assert.NoError(t, PatchAnnotation(&upsert, "upsert", true))
+	assert.NoError(t, task.PatchAnnotation(&upsert, "upsert", true))
 	annotation, err = FindOneByTaskIdAndExecution(upsert.TaskId, upsert.TaskExecution)
 	assert.NoError(t, err)
 	assert.NotNil(t, annotation)
@@ -241,8 +242,8 @@ func TestPatchIssue(t *testing.T) {
 	assert.Equal(t, "should work", annotation.Note.Message)
 
 	badInsert := TaskAnnotation{TaskId: "t1", TaskExecution: 1, Note: &Note{Message: "shouldn't work"}}
-	assert.Error(t, PatchAnnotation(&badInsert, "error out ", true))
+	assert.Error(t, task.PatchAnnotation(&badInsert, "error out ", true))
 
 	badInsert2 := TaskAnnotation{TaskId: "t1", TaskExecution: 1, Metadata: &birch.Document{}}
-	assert.Error(t, PatchAnnotation(&badInsert2, "error out ", false))
+	assert.Error(t, task.PatchAnnotation(&badInsert2, "error out ", false))
 }
