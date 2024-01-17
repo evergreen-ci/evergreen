@@ -343,9 +343,6 @@ func TestAnnotationByTaskGetHandlerRun(t *testing.T) {
 }
 
 func TestAnnotationByTaskPutHandlerParse(t *testing.T) {
-	ctx, cancel := context.WithCancel(context.Background())
-	defer cancel()
-
 	assert.NoError(t, db.ClearCollections(annotations.Collection, task.Collection, task.OldCollection))
 	tasks := []task.Task{
 		{Id: "TaskFailedId", Execution: 1, Status: evergreen.TaskFailed},
@@ -363,6 +360,8 @@ func TestAnnotationByTaskPutHandlerParse(t *testing.T) {
 		{Id: "t2_0", Execution: 0, Status: evergreen.TaskFailed},
 	}
 
+	ctx := gimlet.AttachUser(context.Background(), &user.DBUser{Id: "test_annotation_user"})
+
 	for _, each := range tasks {
 		assert.NoError(t, each.Insert())
 	}
@@ -373,8 +372,6 @@ func TestAnnotationByTaskPutHandlerParse(t *testing.T) {
 	}
 
 	h := &annotationByTaskPutHandler{}
-
-	ctx := gimlet.AttachUser(context.Background(), &user.DBUser{Id: "test_annotation_user"})
 
 	execution0 := 0
 	execution1 := 1
