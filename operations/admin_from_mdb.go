@@ -267,7 +267,9 @@ func processCollection(ctx context.Context, collBuf *bytes.Buffer, client *mongo
 	if err != nil {
 		return errors.Wrap(err, "finding documents")
 	}
-	defer grip.Error(cursor.Close(ctx))
+	defer func() {
+		grip.Error(cursor.Close(ctx))
+	}()
 
 	count := 0
 
