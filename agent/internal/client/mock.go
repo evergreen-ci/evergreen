@@ -167,9 +167,18 @@ func (c *Mock) GetTask(ctx context.Context, td TaskData) (*task.Task, error) {
 	if c.GetTaskResponse != nil {
 		return c.GetTaskResponse, nil
 	}
+
+	var id, secret string
+	if id = td.ID; id == "" {
+		id = "mock_task_id"
+	}
+	if secret = td.Secret; secret == "" {
+		secret = "mock_task_secret"
+	}
+
 	return &task.Task{
-		Id:             "mock_task_id",
-		Secret:         "mock_task_secret",
+		Id:             id,
+		Secret:         secret,
 		BuildVariant:   "mock_build_variant",
 		DisplayName:    "build",
 		Execution:      c.TaskExecution,
