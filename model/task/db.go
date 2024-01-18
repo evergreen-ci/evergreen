@@ -198,10 +198,13 @@ var (
 			"branches": []bson.M{
 				{
 					"case": bson.M{
-						"$ne": []interface{}{
-							bson.M{
-								"$size": bson.M{"$ifNull": []interface{}{"$annotation_docs", []bson.M{}}},
-							}, 0,
+						"$or": []bson.M{
+							{"$eq": []interface{}{"$" + HasAnnotationsKey, true}},
+							{"$ne": []interface{}{
+								bson.M{
+									"$size": bson.M{"$ifNull": []interface{}{"$annotation_docs", []bson.M{}}},
+								}, 0,
+							}},
 						},
 					},
 					"then": evergreen.TaskKnownIssue,
