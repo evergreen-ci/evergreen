@@ -481,8 +481,8 @@ func (c *baseCommunicator) makeSender(ctx context.Context, tsk *task.Task, opts 
 				Execution: tsk.Execution,
 			}
 			senderOpts := taskoutput.EvergreenSenderOptions{
-				MaxBufferSize: bufferSize,
-				FlushInterval: bufferDuration,
+				LevelInfo:     levelInfo,
+				FlushInterval: time.Minute,
 			}
 			sender, err = tsk.TaskOutputInfo.TaskLogs.NewSender(ctx, taskOpts, senderOpts, logType)
 			if err != nil {
