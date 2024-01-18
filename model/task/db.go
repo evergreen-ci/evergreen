@@ -25,6 +25,8 @@ const (
 	OldCollection = "old_tasks"
 )
 
+var annotationLookupDeprecationTime = time.Date(2024, time.January, 18, 23, 0, 0, 0, time.UTC)
+
 var (
 	ActivatedTasksByDistroIndex = bson.D{
 		{Key: DistroIdKey, Value: 1},
@@ -2629,11 +2631,20 @@ func getTasksByVersionPipeline(versionID string, opts GetTasksByVersionOptions) 
 			},
 		})
 	}
-
-	if opts.UseSlowAnnotationsLookup {
-		pipeline = append(pipeline, AddAnnotationsSlowLookup...)
-	} else {
-		pipeline = append(pipeline, AddAnnotations...)
+	// TODO: DEVPROD-___ Remove this conditional and annotation lookup pipelines
+	// Pull one task, any task associated with this versionID. A task's CreateTime is
+	// derived from the version commit time or the patch creation time, allowing us to treat it
+	// as a proxy for the version creation time.
+	dbTask, err := FindOne(db.Query(bson.M{VersionKey: versionID}))
+	if err != nil {
+		return nil, errors.Wrapf(err, "finding one task from version '%s'", versionID)
+	}
+	if dbTask.CreateTime.Before(annotationLookupDeprecationTime) {
+		if opts.UseSlowAnnotationsLookup {
+			pipeline = append(pipeline, AddAnnotationsSlowLookup...)
+		} else {
+			pipeline = append(pipeline, AddAnnotations...)
+		}
 	}
 	pipeline = append(pipeline,
 		// Add a field for the display status of each task
