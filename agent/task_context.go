@@ -13,6 +13,7 @@ import (
 	"github.com/evergreen-ci/evergreen/apimodels"
 	"github.com/evergreen-ci/evergreen/model"
 	"github.com/evergreen-ci/evergreen/model/patch"
+	"github.com/evergreen-ci/pail"
 	"github.com/evergreen-ci/utility"
 	"github.com/mongodb/grip"
 	"github.com/mongodb/jasper"
@@ -248,6 +249,11 @@ func (a *Agent) makeTaskConfig(ctx context.Context, tc *taskContext) (*internal.
 	taskConfig.TaskSync = a.opts.SetupData.TaskSync
 	taskConfig.EC2Keys = a.opts.SetupData.EC2Keys
 
+	// Set AWS credentials for task output buckets.
+	awsCreds := pail.CreateAWSCredentials(taskConfig.TaskSync.Key, taskConfig.TaskSync.Secret, "")
+	taskConfig.Task.TaskOutputInfo.TaskLogs.AWSCredentials = awsCreds
+	taskConfig.Task.TaskOutputInfo.TestLogs.AWSCredentials = awsCreds
+
 	return taskConfig, nil
 }
 
@@ -263,10 +269,6 @@ type commandBlock struct {
 
 // getPre returns a command block containing the pre task commands.
 func (tc *taskContext) getPre() (*commandBlock, error) {
-	if err := tc.taskConfig.Validate(); err != nil {
-		return nil, err
-	}
-
 	tg := tc.taskConfig.TaskGroup
 	if tg == nil {
 		return &commandBlock{
@@ -289,10 +291,6 @@ func (tc *taskContext) getPre() (*commandBlock, error) {
 
 // getPost returns a command block containing the post task commands.
 func (tc *taskContext) getPost() (*commandBlock, error) {
-	if err := tc.taskConfig.Validate(); err != nil {
-		return nil, err
-	}
-
 	tg := tc.taskConfig.TaskGroup
 	if tg == nil {
 		return &commandBlock{
@@ -317,10 +315,6 @@ func (tc *taskContext) getPost() (*commandBlock, error) {
 
 // getSetupGroup returns the setup group for a task group task.
 func (tc *taskContext) getSetupGroup() (*commandBlock, error) {
-	if err := tc.taskConfig.Validate(); err != nil {
-		return nil, err
-	}
-
 	tg := tc.taskConfig.TaskGroup
 	if tg == nil {
 		return &commandBlock{}, nil
@@ -340,10 +334,6 @@ func (tc *taskContext) getSetupGroup() (*commandBlock, error) {
 
 // getTeardownGroup returns the teardown group for a task group task.
 func (tc *taskContext) getTeardownGroup() (*commandBlock, error) {
-	if err := tc.taskConfig.Validate(); err != nil {
-		return nil, err
-	}
-
 	tg := tc.taskConfig.TaskGroup
 	if tg == nil {
 		return &commandBlock{}, nil
@@ -363,10 +353,6 @@ func (tc *taskContext) getTeardownGroup() (*commandBlock, error) {
 
 // getTimeout returns a command block containing the timeout handler commands.
 func (tc *taskContext) getTimeout() (*commandBlock, error) {
-	if err := tc.taskConfig.Validate(); err != nil {
-		return nil, err
-	}
-
 	tg := tc.taskConfig.TaskGroup
 	if tg == nil {
 		return &commandBlock{

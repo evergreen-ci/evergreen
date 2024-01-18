@@ -48,8 +48,8 @@ func TestAttachResults(t *testing.T) {
 		conf.WorkDir = "."
 
 		Convey("all commands in test project should execute successfully", func() {
-			logger, err := comm.GetLoggerProducer(ctx, client.TaskData{ID: conf.Task.Id, Secret: conf.Task.Secret}, nil)
-			So(err, ShouldBeNil)
+			logger, err := comm.GetLoggerProducer(ctx, &conf.Task, nil)
+			require.NoError(t, err)
 
 			for _, projTask := range conf.Project.Tasks {
 				So(len(projTask.Commands), ShouldNotEqual, 0)
@@ -100,8 +100,8 @@ func TestAttachRawResults(t *testing.T) {
 		conf, err := agentutil.MakeTaskConfigFromModelData(ctx, testConfig, modelData)
 		require.NoError(t, err)
 		conf.WorkDir = "."
-		logger, err := comm.GetLoggerProducer(ctx, client.TaskData{ID: conf.Task.Id, Secret: conf.Task.Secret}, nil)
-		So(err, ShouldBeNil)
+		logger, err := comm.GetLoggerProducer(ctx, &conf.Task, nil)
+		require.NoError(t, err)
 
 		Convey("when attaching a raw log ", func() {
 			for _, projTask := range conf.Project.Tasks {

@@ -4,8 +4,6 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
-	"net/http"
-	"net/http/httptest"
 	"os"
 	"path/filepath"
 	"runtime"
@@ -25,6 +23,7 @@ import (
 	"github.com/evergreen-ci/evergreen/model/testlog"
 	"github.com/evergreen-ci/evergreen/model/testresult"
 	"github.com/evergreen-ci/evergreen/rest/model"
+	"github.com/evergreen-ci/evergreen/taskoutput"
 	"github.com/evergreen-ci/evergreen/util"
 	"github.com/evergreen-ci/utility"
 	"github.com/mongodb/grip"
@@ -168,13 +167,23 @@ func (c *Mock) GetTask(ctx context.Context, td TaskData) (*task.Task, error) {
 	if c.GetTaskResponse != nil {
 		return c.GetTaskResponse, nil
 	}
+
+	var id, secret string
+	if id = td.ID; id == "" {
+		id = "mock_task_id"
+	}
+	if secret = td.Secret; secret == "" {
+		secret = "mock_task_secret"
+	}
+
 	return &task.Task{
-		Id:           "mock_task_id",
-		Secret:       "mock_task_secret",
-		BuildVariant: "mock_build_variant",
-		DisplayName:  "build",
-		Execution:    c.TaskExecution,
-		Version:      "mock_version_id",
+		Id:             id,
+		Secret:         secret,
+		BuildVariant:   "mock_build_variant",
+		DisplayName:    "build",
+		Execution:      c.TaskExecution,
+		Version:        "mock_version_id",
+		TaskOutputInfo: &taskoutput.TaskOutput{},
 	}, nil
 }
 
@@ -332,20 +341,20 @@ func (c *Mock) GetDataPipesConfig(ctx context.Context) (*apimodels.DataPipesConf
 }
 
 // GetLoggerProducer constructs a single channel log producer.
-func (c *Mock) GetLoggerProducer(ctx context.Context, td TaskData, _ *LoggerConfig) (LoggerProducer, error) {
+func (c *Mock) GetLoggerProducer(ctx context.Context, tsk *task.Task, _ *LoggerConfig) (LoggerProducer, error) {
 	if c.GetLoggerProducerShouldFail {
 		return nil, errors.New("operation run in fail mode.")
 	}
 
 	appendLine := func(line log.LogLine) error {
-		return c.sendTaskLogLine(td, line)
+		return c.sendTaskLogLine(tsk, line)
 	}
 
-	return NewSingleChannelLogHarness(td.ID, newMockSender("mock", appendLine)), nil
+	return NewSingleChannelLogHarness(tsk.Id, newMockSender("mock", appendLine)), nil
 }
 
 // sendTaskLogLine appends a new log line to the task log cache.
-func (c *Mock) sendTaskLogLine(td TaskData, line log.LogLine) error {
+func (c *Mock) sendTaskLogLine(tsk *task.Task, line log.LogLine) error {
 	c.mu.Lock()
 	defer c.mu.Unlock()
 
@@ -353,7 +362,7 @@ func (c *Mock) sendTaskLogLine(td TaskData, line log.LogLine) error {
 		return errors.New("logging failed")
 	}
 
-	c.taskLogs[td.ID] = append(c.taskLogs[td.ID], line)
+	c.taskLogs[tsk.Id] = append(c.taskLogs[tsk.Id], line)
 
 	return nil
 }
@@ -532,6 +541,11 @@ func (c *Mock) CreateInstallationToken(ctx context.Context, td TaskData, owner, 
 	return c.CreateInstallationTokenResult, nil
 }
 
+func (c *Mock) MarkFailedTaskToRestart(ctx context.Context, td TaskData) error {
+	c.TaskShouldRetryOnFail = true
+	return nil
+}
+
 type mockSender struct {
 	appendLine func(log.LogLine) error
 	lastErr    error
@@ -562,21 +576,3 @@ func (s *mockSender) Send(m message.Composer) {
 }
 
 func (s *mockSender) Flush(_ context.Context) error { return nil }
-
-type mockHandler struct {
-	serve func(http.ResponseWriter, *http.Request)
-}
-
-func (h *mockHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) { h.serve(w, r) }
-
-func newMockServer(serve func(http.ResponseWriter, *http.Request)) (*httptest.Server, *mockHandler) {
-	h := &mockHandler{
-		serve: serve,
-	}
-	return httptest.NewServer(h), h
-}
-
-func (c *Mock) MarkFailedTaskToRestart(ctx context.Context, td TaskData) error {
-	c.TaskShouldRetryOnFail = true
-	return nil
-}

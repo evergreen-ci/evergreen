@@ -179,8 +179,9 @@ func (s *GitGetProjectSuite) TestBuildCloneCommandUsesHTTPS() {
 		Token:     projectGitHubToken,
 	}
 	conf := s.taskConfig1
-	logger, err := s.comm.GetLoggerProducer(s.ctx, client.TaskData{ID: conf.Task.Id, Secret: conf.Task.Secret}, nil)
-	s.NoError(err)
+	logger, err := s.comm.GetLoggerProducer(s.ctx, &conf.Task, nil)
+	s.Require().NoError(err)
+
 	opts := cloneOpts{
 		method: evergreen.CloneMethodOAuth,
 		owner:  conf.ProjectRef.Owner,
@@ -199,8 +200,8 @@ func (s *GitGetProjectSuite) TestBuildCloneCommandWithHTTPSNeedsToken() {
 		Directory: "dir",
 	}
 	conf := s.taskConfig1
-	logger, err := s.comm.GetLoggerProducer(s.ctx, client.TaskData{ID: conf.Task.Id, Secret: conf.Task.Secret}, nil)
-	s.NoError(err)
+	logger, err := s.comm.GetLoggerProducer(s.ctx, &conf.Task, nil)
+	s.Require().NoError(err)
 
 	opts := cloneOpts{
 		method: evergreen.CloneMethodOAuth,
@@ -221,8 +222,8 @@ func (s *GitGetProjectSuite) TestBuildCloneCommandUsesSSH() {
 		Token:     "",
 	}
 	conf := s.taskConfig2
-	logger, err := s.comm.GetLoggerProducer(s.ctx, client.TaskData{ID: conf.Task.Id, Secret: conf.Task.Secret}, nil)
-	s.NoError(err)
+	logger, err := s.comm.GetLoggerProducer(s.ctx, &conf.Task, nil)
+	s.Require().NoError(err)
 
 	opts := cloneOpts{
 		method: evergreen.CloneMethodLegacySSH,
@@ -242,8 +243,8 @@ func (s *GitGetProjectSuite) TestBuildCloneCommandDefaultCloneMethodUsesSSH() {
 		Directory: "dir",
 	}
 	conf := s.taskConfig2
-	logger, err := s.comm.GetLoggerProducer(s.ctx, client.TaskData{ID: conf.Task.Id, Secret: conf.Task.Secret}, nil)
-	s.NoError(err)
+	logger, err := s.comm.GetLoggerProducer(s.ctx, &conf.Task, nil)
+	s.Require().NoError(err)
 
 	opts := cloneOpts{
 		owner:  conf.ProjectRef.Owner,
@@ -262,8 +263,8 @@ func (s *GitGetProjectSuite) TestBuildCloneCommandCloneDepth() {
 		Directory: "dir",
 	}
 	conf := s.taskConfig2
-	logger, err := s.comm.GetLoggerProducer(s.ctx, client.TaskData{ID: conf.Task.Id, Secret: conf.Task.Secret}, nil)
-	s.NoError(err)
+	logger, err := s.comm.GetLoggerProducer(s.ctx, &conf.Task, nil)
+	s.Require().NoError(err)
 
 	opts := cloneOpts{
 		owner:      conf.ProjectRef.Owner,
@@ -282,8 +283,8 @@ func (s *GitGetProjectSuite) TestBuildCloneCommandCloneDepth() {
 
 func (s *GitGetProjectSuite) TestGitPlugin() {
 	conf := s.taskConfig1
-	logger, err := s.comm.GetLoggerProducer(s.ctx, client.TaskData{ID: conf.Task.Id, Secret: conf.Task.Secret}, nil)
-	s.NoError(err)
+	logger, err := s.comm.GetLoggerProducer(s.ctx, &conf.Task, nil)
+	s.Require().NoError(err)
 	token, err := s.settings.GetGithubOauthToken()
 	s.Require().NoError(err)
 	conf.Expansions.Put("github", token)
@@ -312,8 +313,8 @@ func (s *GitGetProjectSuite) TestGitFetchRetries() {
 
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
-	logger, err := s.comm.GetLoggerProducer(ctx, client.TaskData{ID: conf.Task.Id, Secret: conf.Task.Secret}, nil)
-	s.NoError(err)
+	logger, err := s.comm.GetLoggerProducer(s.ctx, &conf.Task, nil)
+	s.Require().NoError(err)
 
 	err = c.Execute(ctx, s.comm, logger, conf)
 	s.Error(err)
@@ -321,6 +322,8 @@ func (s *GitGetProjectSuite) TestGitFetchRetries() {
 
 func (s *GitGetProjectSuite) TestTokenScrubbedFromLogger() {
 	conf := s.taskConfig1
+	logger, err := s.comm.GetLoggerProducer(s.ctx, &conf.Task, nil)
+	s.Require().NoError(err)
 	conf.ProjectRef.Repo = "invalidRepo"
 	conf.Distro = nil
 	s.comm.CreateInstallationTokenFail = true
@@ -329,9 +332,6 @@ func (s *GitGetProjectSuite) TestTokenScrubbedFromLogger() {
 	conf.Expansions.Put(evergreen.GlobalGitHubTokenExpansion, token)
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
-
-	logger, err := s.comm.GetLoggerProducer(ctx, client.TaskData{ID: conf.Task.Id, Secret: conf.Task.Secret}, nil)
-	s.NoError(err)
 
 	for _, task := range conf.Project.Tasks {
 		s.NotEqual(len(task.Commands), 0)
@@ -368,13 +368,13 @@ func (s *GitGetProjectSuite) TestStdErrLogged() {
 		s.T().Skip("TestStdErrLogged will not run on docker since it requires a SSH key")
 	}
 	conf := s.taskConfig5
+	logger, err := s.comm.GetLoggerProducer(s.ctx, &conf.Task, nil)
+	s.Require().NoError(err)
 	conf.ProjectRef.Repo = "invalidRepo"
 	conf.Distro.CloneMethod = evergreen.CloneMethodLegacySSH
 	s.comm.CreateInstallationTokenFail = true
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
-	logger, err := s.comm.GetLoggerProducer(ctx, client.TaskData{ID: conf.Task.Id, Secret: conf.Task.Secret}, nil)
-	s.NoError(err)
 
 	for _, task := range conf.Project.Tasks {
 		s.NotEqual(len(task.Commands), 0)
@@ -411,14 +411,14 @@ func (s *GitGetProjectSuite) TestValidateGitCommands() {
 	const refToCompare = "cf46076567e4949f9fc68e0634139d4ac495c89b" // Note: also defined in test_config.yml
 
 	conf := s.taskConfig2
+	logger, err := s.comm.GetLoggerProducer(s.ctx, &conf.Task, nil)
+	s.Require().NoError(err)
 	conf.Distro.CloneMethod = evergreen.CloneMethodOAuth
 	token, err := s.settings.GetGithubOauthToken()
 	s.Require().NoError(err)
 	conf.Expansions.Put(evergreen.GlobalGitHubTokenExpansion, token)
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
-	logger, err := s.comm.GetLoggerProducer(ctx, client.TaskData{ID: conf.Task.Id, Secret: conf.Task.Secret}, nil)
-	s.NoError(err)
 	var pluginCmds []Command
 
 	for _, task := range conf.Project.Tasks {
@@ -533,8 +533,8 @@ func (s *GitGetProjectSuite) TestBuildSSHCloneCommand() {
 
 func (s *GitGetProjectSuite) TestBuildCommand() {
 	conf := s.taskConfig1
-	logger, err := s.comm.GetLoggerProducer(s.ctx, client.TaskData{ID: conf.Task.Id, Secret: conf.Task.Secret}, nil)
-	s.NoError(err)
+	logger, err := s.comm.GetLoggerProducer(s.ctx, &conf.Task, nil)
+	s.Require().NoError(err)
 
 	c := gitFetchProject{
 		Directory: "dir",
@@ -590,8 +590,8 @@ func (s *GitGetProjectSuite) TestBuildCommand() {
 
 func (s *GitGetProjectSuite) TestBuildCommandForPullRequests() {
 	conf := s.taskConfig3
-	logger, err := s.comm.GetLoggerProducer(s.ctx, client.TaskData{ID: conf.Task.Id, Secret: conf.Task.Secret}, nil)
-	s.NoError(err)
+	logger, err := s.comm.GetLoggerProducer(s.ctx, &conf.Task, nil)
+	s.Require().NoError(err)
 
 	c := gitFetchProject{
 		Directory: "dir",
@@ -618,8 +618,8 @@ func (s *GitGetProjectSuite) TestBuildCommandForPullRequests() {
 }
 func (s *GitGetProjectSuite) TestBuildCommandForGitHubMergeQueue() {
 	conf := s.taskConfig7
-	logger, err := s.comm.GetLoggerProducer(s.ctx, client.TaskData{ID: conf.Task.Id, Secret: conf.Task.Secret}, nil)
-	s.NoError(err)
+	logger, err := s.comm.GetLoggerProducer(s.ctx, &conf.Task, nil)
+	s.Require().NoError(err)
 
 	c := gitFetchProject{
 		Directory: "dir",
@@ -647,8 +647,8 @@ func (s *GitGetProjectSuite) TestBuildCommandForGitHubMergeQueue() {
 
 func (s *GitGetProjectSuite) TestBuildCommandForCLIMergeTests() {
 	conf := s.taskConfig2
-	logger, err := s.comm.GetLoggerProducer(s.ctx, client.TaskData{ID: conf.Task.Id, Secret: conf.Task.Secret}, nil)
-	s.NoError(err)
+	logger, err := s.comm.GetLoggerProducer(s.ctx, &conf.Task, nil)
+	s.Require().NoError(err)
 
 	c := gitFetchProject{
 		Directory: "dir",
@@ -784,6 +784,8 @@ func (s *GitGetProjectSuite) TestGetApplyCommand() {
 func (s *GitGetProjectSuite) TestCorrectModuleRevisionSetModule() {
 	const correctHash = "b27779f856b211ffaf97cbc124b7082a20ea8bc0"
 	conf := s.taskConfig2
+	logger, err := s.comm.GetLoggerProducer(s.ctx, &conf.Task, nil)
+	s.Require().NoError(err)
 	s.modelData2.Task.Requester = evergreen.PatchVersionRequester
 	s.taskConfig2.Task.Requester = evergreen.PatchVersionRequester
 	s.comm.GetTaskPatchResponse = &patch.Patch{
@@ -796,8 +798,6 @@ func (s *GitGetProjectSuite) TestCorrectModuleRevisionSetModule() {
 	}
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
-	logger, err := s.comm.GetLoggerProducer(ctx, client.TaskData{ID: conf.Task.Id, Secret: conf.Task.Secret}, nil)
-	s.NoError(err)
 
 	for _, task := range conf.Project.Tasks {
 		s.NotEqual(len(task.Commands), 0)
@@ -835,9 +835,9 @@ func (s *GitGetProjectSuite) TestCorrectModuleRevisionSetModule() {
 func (s *GitGetProjectSuite) TestCorrectModuleRevisionManifest() {
 	const correctHash = "3585388b1591dfca47ac26a5b9a564ec8f138a5e"
 	conf := s.taskConfig2
+	logger, err := s.comm.GetLoggerProducer(s.ctx, &conf.Task, nil)
+	s.Require().NoError(err)
 	conf.Expansions.Put(moduleRevExpansionName("sample"), correctHash)
-	logger, err := s.comm.GetLoggerProducer(s.ctx, client.TaskData{ID: conf.Task.Id, Secret: conf.Task.Secret}, nil)
-	s.NoError(err)
 
 	for _, task := range conf.Project.Tasks {
 		s.NotEqual(len(task.Commands), 0)

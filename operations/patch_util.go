@@ -30,8 +30,9 @@ const largePatchThreshold = 1024 * 1024 * 16
 // This is the template used to render a patch's summary in a human-readable output format.
 var patchDisplayTemplate = template.Must(template.New("patch").Parse(`
          ID : {{.Patch.Id.Hex}}
+    Project : {{.ProjectIdentifier}}
     Created : {{.Patch.CreateTime}}
-    Description : {{if .Patch.Description}}{{.Patch.Description}}{{else}}<none>{{end}}
+Description : {{if .Patch.Description}}{{.Patch.Description}}{{else}}<none>{{end}}
       Build : {{.Link}}
      Status : {{.Patch.Status}}
 {{if .ShowFinalized}}      Finalized : {{if .Patch.Activated}}Yes{{else}}No{{end}}{{end}}
@@ -173,8 +174,8 @@ func (p *patchParams) validateSubmission(diffData *localDiff) error {
 	return nil
 }
 
-func (p *patchParams) displayPatch(newPatch *patch.Patch, uiHost string, isCommitQueuePatch bool) error {
-	patchDisp, err := getPatchDisplay(newPatch, p.ShowSummary, uiHost, isCommitQueuePatch)
+func (p *patchParams) displayPatch(ac *legacyClient, newPatch *patch.Patch, uiHost string, isCommitQueuePatch bool) error {
+	patchDisp, err := getPatchDisplay(ac, newPatch, p.ShowSummary, uiHost, isCommitQueuePatch)
 	if err != nil {
 		return err
 	}
@@ -525,7 +526,7 @@ func validatePatchSize(diff *localDiff, allowLarge bool) error {
 
 // getPatchDisplay returns a human-readable summary representation of a patch object
 // which can be written to the terminal.
-func getPatchDisplay(p *patch.Patch, summarize bool, uiHost string, isCommitQueuePatch bool) (string, error) {
+func getPatchDisplay(ac *legacyClient, p *patch.Patch, summarize bool, uiHost string, isCommitQueuePatch bool) (string, error) {
 	var out bytes.Buffer
 	var link string
 	if isCommitQueuePatch {
@@ -534,16 +535,26 @@ func getPatchDisplay(p *patch.Patch, summarize bool, uiHost string, isCommitQueu
 		link = p.GetURL(uiHost)
 	}
 
-	err := patchDisplayTemplate.Execute(&out, struct {
-		Patch         *patch.Patch
-		ShowSummary   bool
-		ShowFinalized bool
-		Link          string
+	proj, err := ac.GetProjectRef(p.Project)
+	if err != nil {
+		return "", errors.Wrapf(err, "getting project ref for '%s'", p.Project)
+	}
+	if proj == nil {
+		return "", errors.Errorf("project ref not found for '%s'", p.Project)
+	}
+
+	err = patchDisplayTemplate.Execute(&out, struct {
+		Patch             *patch.Patch
+		ShowSummary       bool
+		ShowFinalized     bool
+		Link              string
+		ProjectIdentifier string
 	}{
-		Patch:         p,
-		ShowSummary:   summarize,
-		ShowFinalized: p.IsCommitQueuePatch(),
-		Link:          link,
+		Patch:             p,
+		ShowSummary:       summarize,
+		ShowFinalized:     p.IsCommitQueuePatch(),
+		Link:              link,
+		ProjectIdentifier: proj.Identifier,
 	})
 	if err != nil {
 		return "", err

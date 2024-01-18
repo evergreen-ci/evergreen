@@ -512,7 +512,7 @@ func setupTestTestLogDirectoryHandler(t *testing.T, comm *client.Mock) (*task.Ta
 			},
 		},
 	}
-	logger, err := comm.GetLoggerProducer(context.TODO(), client.TaskData{ID: tsk.Id}, nil)
+	logger, err := comm.GetLoggerProducer(context.TODO(), tsk, nil)
 	require.NoError(t, err)
 	h := newTestLogDirectoryHandler(tsk.TaskOutputInfo.TestLogs, taskoutput.TaskOptions{
 		ProjectID: tsk.Project,

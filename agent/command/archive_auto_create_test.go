@@ -249,7 +249,7 @@ func TestArchiveAutoPackExecute(t *testing.T) {
 			)
 			require.NoError(t, err)
 			comm := client.NewMock("url")
-			logger, err := comm.GetLoggerProducer(ctx, client.TaskData{}, nil)
+			logger, err := comm.GetLoggerProducer(ctx, &conf.Task, nil)
 			require.NoError(t, err)
 
 			tCase(ctx, t, &autoArchiveCreate{
