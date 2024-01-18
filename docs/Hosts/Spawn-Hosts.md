@@ -60,6 +60,7 @@ notification](../Project-Configuration/Notifications.md#spawn-host-expiration) f
 The Spruce hosts page offers three batch actions applicable to hosts:
 
 1. Update Status
+
    You can force a state change to these statuses:
    - Decommissioned: Terminate a host after it's done running its current task.
    -Quarantined: Stop a host from running tasks without terminating it or shutting it down.
