@@ -1975,7 +1975,7 @@ func validateModuleUsageInGitGetProject(p *model.Project) ValidationErrors {
 		if bvInfo == nil {
 			errs = append(errs, ValidationError{
 				Message: fmt.Sprintf("build variant '%s' was not found", bvName),
-				Level:   Error,
+				Level:   Warning,
 			})
 			continue
 		}
@@ -1992,7 +1992,7 @@ func validateModuleUsageInGitGetProject(p *model.Project) ValidationErrors {
 						if !found {
 							errs = append(errs, ValidationError{
 								Message: fmt.Sprintf("build variant '%s' with task '%s' with 'git.get_project' command uses module/revision '%s' that is not present in build variant", bvInfo.Name, taskName, m),
-								Level:   Error,
+								Level:   Warning,
 							})
 						}
 					}
