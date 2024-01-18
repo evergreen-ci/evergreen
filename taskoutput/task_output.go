@@ -24,15 +24,14 @@ type TaskOptions struct {
 func InitializeTaskOutput(env evergreen.Environment, opts TaskOptions) *TaskOutput {
 	settings := env.Settings()
 
-	output := &TaskOutput{}
-	// TODO (DEVPROD-1723): Remove special logic for the evergreen project
-	// once we set the global default logger to "evergreen".
-	if settings.LoggerConfig.DefaultLogger != "buildlogger" || opts.ProjectID == "evergreen" {
-		output.TaskLogs.Version = 1
-		output.TaskLogs.BucketConfig = settings.Buckets.LogBucket
-		output.TestLogs.Version = 1
-		output.TestLogs.BucketConfig = settings.Buckets.LogBucket
+	return &TaskOutput{
+		TaskLogs: TaskLogOutput{
+			Version:      1,
+			BucketConfig: settings.Buckets.LogBucket,
+		},
+		TestLogs: TestLogOutput{
+			Version:      1,
+			BucketConfig: settings.Buckets.LogBucket,
+		},
 	}
-
-	return output
 }
