@@ -73,4 +73,5 @@ The Spruce hosts page offers three batch actions applicable to hosts:
    This option will try forcing the Evergreen agent (which runs in a system process called Jasper) to start back up in a way that's less disruptive than just rebooting the host.
 
 3. Reprovision
-   Hosts need to have a few starter files on the file system before they can run tasks, and pressing that button gives them the files they need if they're a static host(because there's no way to auto-populate them with the files they need). This option is useful for static hosts that get extremely borked (like the file system is corrupted and it loses all the data).
+
+   Hosts need to have a few starter files on the file system before they can run tasks. Sometimes static hosts can get into bad states (e.g. the file system is corrupted) and stop functioning correctly. Reprovisioning a host will repopulate these files for static hosts.
