@@ -64,7 +64,7 @@ The Spruce hosts page offers three batch actions applicable to hosts:
    - Decommissioned: Terminate a host after it's done running its current task.
    -Quarantined: Stop a host from running tasks without terminating it or shutting it down.
    -Terminate: Actually terminate the host.
-   -Stopped: Stop it.
+   - Stopped: Stop the host.
    -Runnning: Start it back up.
 
 2. Restart Jasper
