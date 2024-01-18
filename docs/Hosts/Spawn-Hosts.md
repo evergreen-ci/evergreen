@@ -57,7 +57,7 @@ notification](../Project-Configuration/Notifications.md#spawn-host-expiration) f
 
 ## Hosts Page
 
-The spruce hosts page shows all hosts and offers three batch actions applicable to hosts:
+The Spruce hosts page offers three batch actions applicable to hosts:
 
 1. Update Status
    You can force a state change to these statuses:
