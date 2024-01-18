@@ -241,6 +241,7 @@ func fromMdbForLocal() cli.Command {
 				if err != nil {
 					return errors.Wrap(err, "finding documents")
 				}
+				defer grip.Error(cursor.Close(ctx))
 
 				count := 0
 
@@ -270,7 +271,6 @@ func fromMdbForLocal() cli.Command {
 					return errors.Wrap(err, "writing buffer to tarball")
 				}
 
-				grip.Error(cursor.Close(ctx))
 			}
 
 			return f.Close()

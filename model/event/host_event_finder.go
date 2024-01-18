@@ -50,22 +50,16 @@ func getRecentStatusesForHost(hostId string, n int) (int, []string) {
 		return 0, []string{}
 	}
 
-	out := []hostStatusDistro{}
-	for cursor.Next(ctx) {
-		doc := hostStatusDistro{}
-		if err := cursor.Decode(&doc); err != nil {
-			grip.Warning(err)
-			continue
-		}
-		out = append(out, doc)
-	}
-	grip.Warning(cursor.Close(ctx))
-
-	if len(out) != 1 {
+	hostStatusDistros := []hostStatusDistro{}
+	if err := cursor.All(ctx, &hostStatusDistros); err != nil {
 		return 0, []string{}
 	}
 
-	return out[0].Count, out[0].Status
+	if len(hostStatusDistros) != 1 {
+		return 0, []string{}
+	}
+
+	return hostStatusDistros[0].Count, hostStatusDistros[0].Status
 }
 
 func AllRecentHostEventsMatchStatus(hostId string, n int, status string) bool {

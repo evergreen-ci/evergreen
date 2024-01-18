@@ -42,6 +42,7 @@ import (
 	"github.com/evergreen-ci/utility"
 	"github.com/mongodb/anser/bsonutil"
 	adb "github.com/mongodb/anser/db"
+	"github.com/mongodb/grip"
 	"github.com/pkg/errors"
 	"go.mongodb.org/mongo-driver/bson"
 	"go.mongodb.org/mongo-driver/mongo"
@@ -581,6 +582,7 @@ func aggregateIntoCollection(ctx context.Context, collection string, pipeline []
 	if err != nil {
 		return errors.Wrap(err, "running aggregation")
 	}
+	defer grip.Error(cursor.Close(ctx))
 
 	buf := make([]mongo.WriteModel, 0, bulkSize)
 	for cursor.Next(ctx) {
@@ -607,10 +609,6 @@ func aggregateIntoCollection(ctx context.Context, collection string, pipeline []
 
 	if err = cursor.Err(); err != nil {
 		return errors.Wrap(err, "running aggregation")
-	}
-
-	if err = cursor.Close(ctx); err != nil {
-		return errors.Wrap(err, "closing cursor")
 	}
 
 	if err = doBulkWrite(ctx, env, outputCollection, buf); err != nil {

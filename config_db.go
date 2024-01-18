@@ -4,6 +4,7 @@ import (
 	"context"
 
 	"github.com/mongodb/anser/bsonutil"
+	"github.com/mongodb/grip"
 	"github.com/pkg/errors"
 	"go.mongodb.org/mongo-driver/bson"
 	"go.mongodb.org/mongo-driver/mongo/options"
@@ -138,7 +139,7 @@ func getSectionsBSON(ctx context.Context, ids []string) ([]bson.Raw, error) {
 	if err != nil {
 		return nil, errors.Wrap(err, "finding configuration sections")
 	}
-	defer cur.Close(ctx)
+	defer grip.Error(cur.Close(ctx))
 
 	var docs = make([]bson.Raw, 0, len(ids))
 	for cur.Next(ctx) {
