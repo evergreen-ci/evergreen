@@ -66,7 +66,7 @@ The Spruce hosts page offers three batch actions applicable to hosts:
    -Quarantined: Stop a host from running tasks without terminating it or shutting it down.
    - Terminate: Shut down the host.
    - Stopped: Stop the host.
-   -Runnning: Start it back up.
+   - Running: Start the host.
 
 2. Restart Jasper
 
