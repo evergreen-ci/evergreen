@@ -200,7 +200,7 @@ func TestSend(t *testing.T) {
 		mock.sender.mu.Lock()
 		require.NotEmpty(t, mock.sender.buffer)
 		mock.sender.mu.Unlock()
-		time.Sleep(3 * time.Second)
+		time.Sleep(5 * time.Second)
 		mock.sender.mu.Lock()
 		require.Empty(t, mock.sender.buffer)
 		mock.sender.mu.Unlock()

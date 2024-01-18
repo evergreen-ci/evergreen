@@ -57,10 +57,11 @@ func TestAgentFileLogging(t *testing.T) {
 	taskID := "logging"
 	taskSecret := "mock_task_secret"
 	task := &task.Task{
-		Project:     "project",
-		Id:          "t1",
-		Execution:   0,
-		DisplayName: "task1",
+		Project:        "project",
+		Id:             "t1",
+		Execution:      0,
+		DisplayName:    "task1",
+		TaskOutputInfo: initializeTaskOutput(t),
 	}
 	tc := &taskContext{
 		task: client.TaskData{
@@ -83,7 +84,7 @@ func TestAgentFileLogging(t *testing.T) {
 							},
 							Loggers: &model.LoggerConfig{
 								Agent:  []model.LogOpts{{Type: model.FileLogSender}},
-								System: []model.LogOpts{{Type: model.SplunkLogSender}},
+								System: []model.LogOpts{{Type: model.FileLogSender}},
 								Task:   []model.LogOpts{{Type: model.FileLogSender}},
 							},
 						},
@@ -91,7 +92,7 @@ func TestAgentFileLogging(t *testing.T) {
 				},
 				Loggers: &model.LoggerConfig{
 					Agent:  []model.LogOpts{{Type: model.FileLogSender}},
-					System: []model.LogOpts{{Type: model.SplunkLogSender}},
+					System: []model.LogOpts{{Type: model.FileLogSender}},
 					Task:   []model.LogOpts{{Type: model.FileLogSender}},
 				},
 				BuildVariants: model.BuildVariants{
@@ -120,7 +121,6 @@ func TestAgentFileLogging(t *testing.T) {
 }
 
 func TestStartLogging(t *testing.T) {
-	assert := assert.New(t)
 	tmpDirName := t.TempDir()
 	agt := &Agent{
 		opts: Options{
@@ -143,24 +143,23 @@ func TestStartLogging(t *testing.T) {
 
 	ctx := context.Background()
 	config, err := agt.makeTaskConfig(ctx, tc)
-	assert.NoError(err)
+	require.NoError(t, err)
 	tc.taskConfig = config
 
-	project := tc.taskConfig.Project
+	assert.EqualValues(t, model.EvergreenLogSender, tc.taskConfig.Project.Loggers.Agent[0].Type)
+	assert.EqualValues(t, model.SplunkLogSender, tc.taskConfig.Project.Loggers.System[0].Type)
+	assert.EqualValues(t, model.FileLogSender, tc.taskConfig.Project.Loggers.Task[0].Type)
 
-	assert.EqualValues(model.EvergreenLogSender, project.Loggers.Agent[0].Type)
-	assert.EqualValues(model.SplunkLogSender, project.Loggers.System[0].Type)
-	assert.EqualValues(model.FileLogSender, project.Loggers.Task[0].Type)
-
-	assert.NoError(agt.startLogging(ctx, tc))
+	require.NoError(t, agt.startLogging(ctx, tc))
 	tc.logger.Execution().Info("foo")
-	assert.NoError(tc.logger.Close())
-	lines := agt.comm.(*client.Mock).GetTaskLogs(tc.task.ID)
-	assert.Equal("foo", lines[0].Data)
+	assert.NoError(t, tc.logger.Close())
+	lines := agt.comm.(*client.Mock).GetTaskLogs(tc.taskConfig.Task.Id)
+	require.Len(t, lines, 1)
+	assert.Equal(t, "foo", lines[0].Data)
 
-	// check that expansions are correctly populated
-	logConfig := agt.prepLogger(tc, project.Loggers, "")
-	assert.Equal("bar", logConfig.System[0].SplunkToken)
+	// Check that expansions are correctly populated.
+	logConfig := agt.prepLogger(tc, tc.taskConfig.Project.Loggers, "")
+	assert.Equal(t, "bar", logConfig.System[0].SplunkToken)
 }
 
 func TestDefaultSender(t *testing.T) {

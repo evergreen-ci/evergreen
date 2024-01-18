@@ -45,7 +45,7 @@ func (s *ZipExtractSuite) SetupTest() {
 		Project:    model.Project{},
 		WorkDir:    s.targetLocation,
 	}
-	s.logger, err = s.comm.GetLoggerProducer(s.ctx, client.TaskData{ID: s.conf.Task.Id, Secret: s.conf.Task.Secret}, nil)
+	s.logger, err = s.comm.GetLoggerProducer(s.ctx, &s.conf.Task, nil)
 	s.NoError(err)
 
 	s.cmd = &zipExtract{}

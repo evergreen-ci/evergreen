@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 
+	"github.com/aws/aws-sdk-go/aws/credentials"
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/apimodels"
 	"github.com/evergreen-ci/evergreen/model/log"
@@ -17,6 +18,8 @@ import (
 type TestLogOutput struct {
 	Version      int                    `bson:"version" json:"version"`
 	BucketConfig evergreen.BucketConfig `bson:"bucket_config" json:"bucket_config"`
+
+	AWSCredentials *credentials.Credentials `bson:"-" json:"-"`
 }
 
 // ID returns the unique identifier of the test log output type.
@@ -101,7 +104,7 @@ func (o TestLogOutput) getLogNames(taskOpts TaskOptions, logPaths []string) []st
 }
 
 func (o TestLogOutput) getLogService(ctx context.Context) (log.LogService, error) {
-	b, err := newBucket(ctx, o.BucketConfig)
+	b, err := newBucket(ctx, o.BucketConfig, o.AWSCredentials)
 	if err != nil {
 		return nil, err
 	}

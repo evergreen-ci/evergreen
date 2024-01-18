@@ -41,8 +41,8 @@ func (s *generateSuite) SetupTest() {
 		Expansions: util.Expansions{},
 		Task:       task.Task{Id: "mock_id", Secret: "mock_secret"},
 		Project:    model.Project{}}
-	s.logger, err = s.comm.GetLoggerProducer(s.ctx, client.TaskData{ID: s.conf.Task.Id, Secret: s.conf.Task.Secret}, nil)
-	s.NoError(err)
+	s.logger, err = s.comm.GetLoggerProducer(s.ctx, &s.conf.Task, nil)
+	s.Require().NoError(err)
 	s.g = &generateTask{}
 	s.tmpDirName = s.T().TempDir()
 	s.conf.WorkDir = s.tmpDirName

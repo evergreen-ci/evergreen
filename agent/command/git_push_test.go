@@ -37,7 +37,7 @@ func TestGitPush(t *testing.T) {
 		ProjectRef: model.ProjectRef{Branch: "main"},
 		Expansions: util.Expansions{},
 	}
-	logger, err := comm.GetLoggerProducer(context.Background(), client.TaskData{}, nil)
+	logger, err := comm.GetLoggerProducer(context.Background(), &conf.Task, nil)
 	require.NoError(t, err)
 
 	assert.Equal(t, conf.GetCloneMethod(), evergreen.CloneMethodOAuth)

@@ -352,7 +352,7 @@ func TestSignedUrlVisibility(t *testing.T) {
 			Project:      model.Project{},
 			BuildVariant: model.BuildVariant{},
 		}
-		logger, err := comm.GetLoggerProducer(ctx, client.TaskData{ID: conf.Task.Id, Secret: conf.Task.Secret}, nil)
+		logger, err := comm.GetLoggerProducer(ctx, &conf.Task, nil)
 		require.NoError(t, err)
 
 		localFiles := []string{"file1", "file2"}
@@ -399,7 +399,7 @@ func TestContentTypeSaved(t *testing.T) {
 		BuildVariant: model.BuildVariant{},
 	}
 	s.taskdata = client.TaskData{ID: conf.Task.Id, Secret: conf.Task.Secret}
-	logger, err := comm.GetLoggerProducer(ctx, client.TaskData{ID: conf.Task.Id, Secret: conf.Task.Secret}, nil)
+	logger, err := comm.GetLoggerProducer(ctx, &conf.Task, nil)
 	require.NoError(t, err)
 
 	localFiles := []string{"file1", "file2"}
@@ -465,7 +465,7 @@ func TestS3LocalFilesIncludeFilterPrefix(t *testing.T) {
 				WorkDir:      dir,
 				BuildVariant: model.BuildVariant{},
 			}
-			logger, err := comm.GetLoggerProducer(ctx, client.TaskData{ID: conf.Task.Id, Secret: conf.Task.Secret}, nil)
+			logger, err := comm.GetLoggerProducer(ctx, &conf.Task, nil)
 			require.NoError(t, err)
 
 			require.NoError(t, s.Execute(ctx, comm, logger, conf))
@@ -526,7 +526,7 @@ func TestFileUploadNaming(t *testing.T) {
 		WorkDir:      dir,
 		BuildVariant: model.BuildVariant{},
 	}
-	logger, err := comm.GetLoggerProducer(ctx, client.TaskData{ID: conf.Task.Id, Secret: conf.Task.Secret}, nil)
+	logger, err := comm.GetLoggerProducer(ctx, &conf.Task, nil)
 	require.NoError(t, err)
 
 	require.NoError(t, s.Execute(ctx, comm, logger, conf))
@@ -606,7 +606,7 @@ func TestPreservePath(t *testing.T) {
 		WorkDir:      dir,
 		BuildVariant: model.BuildVariant{},
 	}
-	logger, err := comm.GetLoggerProducer(ctx, client.TaskData{ID: conf.Task.Id, Secret: conf.Task.Secret}, nil)
+	logger, err := comm.GetLoggerProducer(ctx, &conf.Task, nil)
 	require.NoError(t, err)
 
 	require.NoError(t, s.Execute(ctx, comm, logger, conf))

@@ -13,6 +13,7 @@ import (
 	"github.com/evergreen-ci/evergreen/apimodels"
 	"github.com/evergreen-ci/evergreen/model"
 	"github.com/evergreen-ci/evergreen/model/patch"
+	"github.com/evergreen-ci/pail"
 	"github.com/evergreen-ci/utility"
 	"github.com/mongodb/grip"
 	"github.com/mongodb/jasper"
@@ -247,6 +248,11 @@ func (a *Agent) makeTaskConfig(ctx context.Context, tc *taskContext) (*internal.
 	taskConfig.Redacted = redacted
 	taskConfig.TaskSync = a.opts.SetupData.TaskSync
 	taskConfig.EC2Keys = a.opts.SetupData.EC2Keys
+
+	// Set AWS credentials for task output buckets.
+	awsCreds := pail.CreateAWSCredentials(taskConfig.TaskSync.Key, taskConfig.TaskSync.Secret, "")
+	taskConfig.Task.TaskOutputInfo.TaskLogs.AWSCredentials = awsCreds
+	taskConfig.Task.TaskOutputInfo.TestLogs.AWSCredentials = awsCreds
 
 	return taskConfig, nil
 }

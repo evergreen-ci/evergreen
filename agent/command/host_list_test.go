@@ -33,8 +33,8 @@ func (s *HostListSuite) SetupTest() {
 
 	s.comm = client.NewMock("http://localhost.com")
 	s.conf = &internal.TaskConfig{Expansions: util.Expansions{"foo": "3"}, Task: task.Task{}, Project: model.Project{}}
-	s.logger, err = s.comm.GetLoggerProducer(s.ctx, client.TaskData{ID: s.conf.Task.Id, Secret: s.conf.Task.Secret}, nil)
-	s.NoError(err)
+	s.logger, err = s.comm.GetLoggerProducer(s.ctx, &s.conf.Task, nil)
+	s.Require().NoError(err)
 	s.cmd = listHostFactory().(*listHosts)
 }
 
