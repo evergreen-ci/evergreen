@@ -249,7 +249,6 @@ func annotationByTaskPutOrPatchParser(ctx context.Context, r *http.Request) (str
 		return "", nil, errors.Wrap(err, "reading annotation from JSON request body")
 	}
 
-	annotation.TaskId = &taskId
 	if taskExecutionsAsString != "" {
 		taskExecution, err := strconv.Atoi(taskExecutionsAsString)
 		if err != nil {
