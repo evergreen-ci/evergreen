@@ -142,11 +142,8 @@ func getSectionsBSON(ctx context.Context, ids []string) ([]bson.Raw, error) {
 	defer grip.Error(cur.Close(ctx))
 
 	var docs = make([]bson.Raw, 0, len(ids))
-	for cur.Next(ctx) {
-		docs = append(docs, cur.Current)
-	}
-	if cur.Err() != nil {
-		return nil, errors.Wrap(err, "getting configuration sections")
+	if err := cur.All(ctx, &docs); err != nil {
+		return nil, err
 	}
 
 	return docs, nil
