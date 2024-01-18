@@ -25,10 +25,9 @@ func InitializeTaskOutput(env evergreen.Environment, opts TaskOptions) *TaskOutp
 	settings := env.Settings()
 
 	output := &TaskOutput{}
-	// TODO (DEVPROD-1723): Once Evergreen logging works for the evergreen
-	// project, remove this conditional logic here and turn it on for all
-	// projects.
-	if settings.LoggerConfig.DefaultLogger != "buildlogger" || opts.ProjectID == "evergreen" {
+	// TODO (DEVPROD-1723): Remove special logic for the evergreen project
+	// once we set the global default logger to "evergreen".
+	if settings.LoggerConfig.DefaultLogger != "buildlogger" || opts.ProjectID == "mci" {
 		output.TaskLogs.Version = 1
 		output.TaskLogs.BucketConfig = settings.Buckets.LogBucket
 		output.TestLogs.Version = 1
