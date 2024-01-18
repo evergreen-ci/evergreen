@@ -604,7 +604,7 @@ var (
 )
 
 const (
-	DefaultServiceConfigurationFileName = "/etc/mci_settings.yml"
+	DefaultServiceConfigurationFileName = "/etc/mci_settings.yml" // Unused
 	DefaultDatabaseURL                  = "mongodb://localhost:27017"
 	DefaultDatabaseName                 = "mci"
 	DefaultDatabaseWriteMode            = "majority"
@@ -613,7 +613,7 @@ const (
 	DefaultAmboyDatabaseURL = "mongodb://localhost:27017"
 
 	// database and config directory, set to the testing version by default for safety
-	NotificationsFile = "mci-notifications.yml"
+	NotificationsFile = "mci-notifications.yml" // Unused
 	ClientDirectory   = "clients"
 
 	// version requester types
