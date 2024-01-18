@@ -143,7 +143,7 @@ func getSectionsBSON(ctx context.Context, ids []string) ([]bson.Raw, error) {
 
 	var docs = make([]bson.Raw, 0, len(ids))
 	if err := cur.All(ctx, &docs); err != nil {
-		return nil, err
+		return nil, errors.Wrap(err, "getting configuration sections")
 	}
 
 	return docs, nil
