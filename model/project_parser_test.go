@@ -2400,9 +2400,9 @@ func TestMergeUnordered(t *testing.T) {
 			"a",
 		},
 		Loggers: &LoggerConfig{
-			Agent:  []LogOpts{{Type: BuildloggerLogSender}},
-			System: []LogOpts{{Type: BuildloggerLogSender}},
-			Task:   []LogOpts{{Type: BuildloggerLogSender}},
+			Agent:  []LogOpts{{Type: EvergreenLogSender}},
+			System: []LogOpts{{Type: EvergreenLogSender}},
+			Task:   []LogOpts{{Type: EvergreenLogSender}},
 		},
 	}
 
