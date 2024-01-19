@@ -496,14 +496,16 @@ Options:
 
 ### Metadata Links
 
-Customize additional links to specify for your project under the Plugins section
-of the project page, by specifying a link and title. 
+Customize additional links to show on patch metadata under the Plugins section
+of the project page. Projects can specify a maximum of 5 different metadata links.
 
 Special Fields:
-* `{version_id}` -- if this is included in the metadata link, we will sub in the ID when rendering the link
 
-This may also be added to individual tasks using `metadata_links` 
-for [task annotations](https://docs.devprod.prod.corp.mongodb.com/evergreen/API/REST-V2-Usage#task-annotations). 
+- `{requesters}` — defines what kind of patches to show the metadata link on (e.g. only show the link on periodic builds)
+- `{version_id}` — if this is included in the metadata link, we will sub in the ID when rendering the link
+
+This may also be added to individual tasks using `metadata_links`
+for [task annotations](https://docs.devprod.prod.corp.mongodb.com/evergreen/API/REST-V2-Usage#task-annotations).
 
 
 ## Distro Settings
