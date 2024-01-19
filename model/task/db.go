@@ -2642,7 +2642,7 @@ func getTasksByVersionPipeline(versionID string, opts GetTasksByVersionOptions) 
 	if err != nil {
 		return nil, errors.Wrapf(err, "finding one task from version '%s'", versionID)
 	}
-	if dbTask.CreateTime.Before(annotationLookupDeprecationTime) {
+	if dbTask != nil && dbTask.CreateTime.Before(annotationLookupDeprecationTime) {
 		if opts.UseSlowAnnotationsLookup {
 			pipeline = append(pipeline, AddAnnotationsSlowLookup...)
 		} else {
