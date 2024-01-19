@@ -17,7 +17,6 @@ type LoggerConfig struct {
 	DefaultLevel   string       `bson:"default_level" json:"default_level" yaml:"default_level"`
 	ThresholdLevel string       `bson:"threshold_level" json:"threshold_level" yaml:"threshold_level"`
 	LogkeeperURL   string       `bson:"logkeeper_url" json:"logkeeper_url" yaml:"logkeeper_url"`
-	DefaultLogger  string       `bson:"default_logger" json:"default_logger" yaml:"default_logger"`
 }
 
 func (c LoggerConfig) Info() send.LevelInfo {
@@ -53,7 +52,6 @@ func (c *LoggerConfig) Set(ctx context.Context) error {
 			"default_level":   c.DefaultLevel,
 			"threshold_level": c.ThresholdLevel,
 			"logkeeper_url":   c.LogkeeperURL,
-			"default_logger":  c.DefaultLogger,
 		},
 	}, options.Update().SetUpsert(true))
 

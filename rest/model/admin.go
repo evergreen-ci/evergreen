@@ -1157,7 +1157,6 @@ type APILoggerConfig struct {
 	DefaultLevel   *string          `json:"default_level"`
 	ThresholdLevel *string          `json:"threshold_level"`
 	LogkeeperURL   *string          `json:"logkeeper_url"`
-	DefaultLogger  *string          `json:"default_logger"`
 }
 
 func (a *APILoggerConfig) BuildFromService(h interface{}) error {
@@ -1166,7 +1165,6 @@ func (a *APILoggerConfig) BuildFromService(h interface{}) error {
 		a.DefaultLevel = utility.ToStringPtr(v.DefaultLevel)
 		a.ThresholdLevel = utility.ToStringPtr(v.ThresholdLevel)
 		a.LogkeeperURL = utility.ToStringPtr(v.LogkeeperURL)
-		a.DefaultLogger = utility.ToStringPtr(v.DefaultLogger)
 		a.Buffer = &APILogBuffering{}
 		if err := a.Buffer.BuildFromService(v.Buffer); err != nil {
 			return err
@@ -1182,7 +1180,6 @@ func (a *APILoggerConfig) ToService() (interface{}, error) {
 		DefaultLevel:   utility.FromStringPtr(a.DefaultLevel),
 		ThresholdLevel: utility.FromStringPtr(a.ThresholdLevel),
 		LogkeeperURL:   utility.FromStringPtr(a.LogkeeperURL),
-		DefaultLogger:  utility.FromStringPtr(a.DefaultLogger),
 	}
 	i, err := a.Buffer.ToService()
 	if err != nil {

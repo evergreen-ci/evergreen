@@ -121,8 +121,7 @@ type ProjectRef struct {
 
 	// The following fields are used by Evergreen and are not discoverable.
 	// Hidden determines whether or not the project is discoverable/tracked in the UI
-	Hidden        *bool  `bson:"hidden,omitempty" json:"hidden,omitempty"`
-	DefaultLogger string `bson:"default_logger,omitempty" json:"default_logger,omitempty"`
+	Hidden *bool `bson:"hidden,omitempty" json:"hidden,omitempty"`
 
 	ExternalLinks []ExternalLink `bson:"external_links,omitempty" json:"external_links,omitempty" yaml:"external_links,omitempty"`
 	Banner        ProjectBanner  `bson:"banner,omitempty" json:"banner,omitempty" yaml:"banner,omitempty"`
