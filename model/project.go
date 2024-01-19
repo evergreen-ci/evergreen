@@ -813,10 +813,9 @@ func mergeAllLogs(main, add *LoggerConfig) *LoggerConfig {
 }
 
 const (
-	EvergreenLogSender   = "evergreen"
-	FileLogSender        = "file"
-	BuildloggerLogSender = "buildlogger"
-	SplunkLogSender      = "splunk"
+	EvergreenLogSender = "evergreen"
+	FileLogSender      = "file"
+	SplunkLogSender    = "splunk"
 )
 
 // IsValidDefaultLogger returns whether the given logger, set either globally
@@ -832,16 +831,12 @@ func IsValidDefaultLogger(logger string) bool {
 	return false
 }
 
-var ValidDefaultLoggers = []string{
-	EvergreenLogSender,
-	BuildloggerLogSender,
-}
+var ValidDefaultLoggers = []string{EvergreenLogSender}
 
 var ValidLogSenders = []string{
 	EvergreenLogSender,
 	FileLogSender,
 	SplunkLogSender,
-	BuildloggerLogSender,
 }
 
 // TaskIdTable is a map of [variant, task display name]->[task id].
