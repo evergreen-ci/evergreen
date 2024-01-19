@@ -25,7 +25,6 @@ import (
 	"github.com/evergreen-ci/evergreen/util"
 	"github.com/evergreen-ci/juniper/gopb"
 	"github.com/evergreen-ci/timber"
-	"github.com/evergreen-ci/timber/buildlogger"
 	"github.com/evergreen-ci/utility"
 	"github.com/mongodb/grip"
 	"github.com/mongodb/grip/level"
@@ -400,31 +399,23 @@ func (c *baseCommunicator) GetLoggerProducer(ctx context.Context, tsk *task.Task
 }
 
 func (c *baseCommunicator) makeSender(ctx context.Context, tsk *task.Task, opts []LogOpts, sendToGlobalSender bool, logType taskoutput.TaskLogType) (send.Sender, []send.Sender, error) {
-	levelInfo := send.LevelInfo{Default: level.Info, Threshold: level.Debug}
-	var senders []send.Sender
+	var senders, underlyingBufferedSenders []send.Sender
 	if sendToGlobalSender {
 		senders = append(senders, grip.GetSender())
 	}
-	underlyingBufferedSenders := []send.Sender{}
 
+	levelInfo := send.LevelInfo{Default: level.Info, Threshold: level.Debug}
+	bufferedSenderOpts := send.BufferedSenderOptions{FlushInterval: defaultLogBufferTime, BufferSize: defaultLogBufferSize}
 	for _, opt := range opts {
-		var sender send.Sender
-		var err error
-		bufferDuration := defaultLogBufferTime
-		if opt.BufferDuration > 0 {
-			bufferDuration = opt.BufferDuration
-		}
-		bufferSize := defaultLogBufferSize
-		if opt.BufferSize > 0 {
-			bufferSize = opt.BufferSize
-		}
-		bufferedSenderOpts := send.BufferedSenderOptions{FlushInterval: bufferDuration, BufferSize: bufferSize}
-
 		// Disallow sending system logs to S3 for security reasons.
 		if logType == taskoutput.TaskLogTypeSystem && opt.Sender == model.FileLogSender {
 			opt.Sender = model.EvergreenLogSender
 		}
 
+		var (
+			sender send.Sender
+			err    error
+		)
 		switch opt.Sender {
 		case model.FileLogSender:
 			sender, err = send.NewPlainFileLogger(string(logType), opt.Filepath, levelInfo)
@@ -451,39 +442,13 @@ func (c *baseCommunicator) makeSender(ctx context.Context, tsk *task.Task, opts 
 			if err != nil {
 				return nil, nil, errors.Wrap(err, "creating buffered Splunk logger")
 			}
-		case model.BuildloggerLogSender:
-			if err = c.createCedarGRPCConn(ctx); err != nil {
-				return nil, nil, errors.Wrap(err, "setting up Cedar gRPC connection")
-			}
-
-			timberOpts := &buildlogger.LoggerOptions{
-				Project:       tsk.Project,
-				Version:       tsk.Version,
-				Variant:       tsk.BuildVariant,
-				TaskName:      tsk.DisplayName,
-				TaskID:        tsk.Id,
-				Execution:     int32(tsk.Execution),
-				Tags:          append(tsk.Tags, string(logType), utility.RandomString()),
-				Mainline:      !evergreen.IsPatchRequester(tsk.Requester),
-				Storage:       buildlogger.LogStorageS3,
-				MaxBufferSize: opt.BufferSize,
-				FlushInterval: opt.BufferDuration,
-				ClientConn:    c.cedarGRPCClient,
-			}
-			sender, err = buildlogger.NewLoggerWithContext(ctx, opt.BuilderID, levelInfo, timberOpts)
-			if err != nil {
-				return nil, nil, errors.Wrap(err, "creating Buildlogger logger")
-			}
 		default:
 			taskOpts := taskoutput.TaskOptions{
 				ProjectID: tsk.Project,
 				TaskID:    tsk.Id,
 				Execution: tsk.Execution,
 			}
-			senderOpts := taskoutput.EvergreenSenderOptions{
-				MaxBufferSize: bufferSize,
-				FlushInterval: bufferDuration,
-			}
+			senderOpts := taskoutput.EvergreenSenderOptions{FlushInterval: time.Minute}
 			sender, err = tsk.TaskOutputInfo.TaskLogs.NewSender(ctx, taskOpts, senderOpts, logType)
 			if err != nil {
 				return nil, nil, errors.Wrap(err, "creating Evergreen task log sender")
