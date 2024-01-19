@@ -4,9 +4,13 @@ import (
 	"context"
 	"fmt"
 	"net/http"
+	"strings"
 	"time"
 
 	"github.com/evergreen-ci/evergreen"
+	serviceModel "github.com/evergreen-ci/evergreen/model"
+	"github.com/evergreen-ci/evergreen/model/host"
+	"github.com/evergreen-ci/evergreen/model/patch"
 	"github.com/evergreen-ci/evergreen/model/user"
 	"github.com/evergreen-ci/evergreen/rest/data"
 	"github.com/evergreen-ci/evergreen/rest/model"
@@ -745,4 +749,265 @@ func (h *serviceUsersGetHandler) Run(ctx context.Context) gimlet.Responder {
 	}
 
 	return gimlet.NewJSONResponse(users)
+}
+
+////////////////////////////////////////////////////////////////////////
+//
+// POST /users/rename_user
+
+func makeRenameUser(env evergreen.Environment) gimlet.RouteHandler {
+	return &renameUserHandler{
+		env: env,
+	}
+}
+
+type renameUserHandler struct {
+	oldUsr   *user.DBUser
+	newEmail string
+	env      evergreen.Environment
+}
+
+// Factory creates an instance of the handler.
+//
+//	@Summary		Rename user
+//	@Description	.
+//	@Tags			users
+//	@Router			/users/rename_user [post]
+//	@Security		Api-User || Api-Key
+//	@Param			{object}	body		renameUserInfo	true	"parameters"
+//	@Success		200
+func (h renameUserHandler) Factory() gimlet.RouteHandler {
+	return &renameUserHandler{
+		env: h.env,
+	}
+}
+
+type renameUserInfo struct {
+	// the email of the user
+	Email string `json:"email" bson:"email" validate:"required"`
+
+	NewEmail string `json:"new_email" bson:"new_email" validate:"required"`
+}
+
+func (h *renameUserHandler) Parse(ctx context.Context, r *http.Request) error {
+	input := renameUserInfo{}
+	err := utility.ReadJSON(r.Body, &input)
+	if err != nil {
+		return errors.Wrap(err, "reading user offboarding information from JSON request body")
+	}
+	if len(input.Email) == 0 {
+		return errors.New("missing email")
+	}
+	splitString := strings.Split(input.Email, "@")
+	if len(splitString) == 1 {
+		return errors.New("email address is missing '@'")
+	}
+	username := splitString[0]
+	if username == "" {
+		return errors.New("no user could be parsed from the email address")
+	}
+	h.oldUsr, err = user.FindOneById(username)
+	if err != nil {
+		return gimlet.ErrorResponse{
+			Message:    errors.Wrapf(err, "finding user '%s'", username).Error(),
+			StatusCode: http.StatusInternalServerError,
+		}
+	}
+	if h.oldUsr == nil {
+		return gimlet.ErrorResponse{
+			Message:    fmt.Sprintf("user '%s' not found", username),
+			StatusCode: http.StatusNotFound,
+		}
+	}
+	h.newEmail = input.NewEmail
+	return nil
+}
+
+func (h *renameUserHandler) Run(ctx context.Context) gimlet.Responder {
+	// First, upsert the new user. If this doesn't work, there's no reason to continue.
+	newUsr, err := user.UpsertOneFromExisting(h.oldUsr, h.newEmail)
+	if err != nil {
+		return gimlet.NewJSONInternalErrorResponse(err)
+	}
+
+	// Next, remove the old user, consolidate patches, update the host, and handle the error.
+	catcher := grip.NewBasicCatcher()
+	catcher.Add(user.ClearUser(h.oldUsr.Id))
+	catcher.Add(h.oldUsr.UpdateAPIKey("")) // Unset API key to avoid duplicates.
+	catcher.Add(patch.ConsolidatePatchesForUser(h.oldUsr.Id, newUsr))
+	catcher.Add(host.ConsolidateHostsForUser(ctx, h.oldUsr.Id, newUsr.Id))
+
+	if catcher.HasErrors() {
+		err := catcher.Resolve()
+		grip.Error(message.WrapError(err, message.Fields{
+			"message":  "users not fully consolidated",
+			"old_user": h.oldUsr.Id,
+			"new_user": newUsr.Id,
+		}))
+		return gimlet.NewJSONInternalErrorResponse(errors.Wrapf(err, "consolidating new user '%s' with old user '%s'",
+			newUsr.Id, h.oldUsr.Id))
+	}
+	return gimlet.NewJSONResponse(struct{}{})
+}
+
+////////////////////////////////////////////////////////////////////////
+//
+// POST /users/offboard_user
+
+func makeOffboardUser(env evergreen.Environment) gimlet.RouteHandler {
+	return &offboardUserHandler{
+		env: env,
+	}
+}
+
+type offboardUserHandler struct {
+	user   string
+	dryRun bool
+
+	env evergreen.Environment
+}
+
+// Factory creates an instance of the handler.
+//
+//	@Summary		Offboard user
+//	@Description	Marks unexpirable volumes and hosts as expirable for the user, and removes the user as a project admin for any projects, if applicable.
+//	@Tags			users
+//	@Router			/users/offboard_user [post]
+//	@Security		Api-User || Api-Key
+//	@Param			dry_run		query		boolean				false	"If set to true, route returns the IDs of the hosts/volumes that *would* be modified."
+//	@Param			{object}	body		offboardUserEmail	true	"parameters"
+//	@Success		200			{object}	model.APIOffboardUserResults
+func (ch offboardUserHandler) Factory() gimlet.RouteHandler {
+	return &offboardUserHandler{
+		env: ch.env,
+	}
+}
+
+type offboardUserEmail struct {
+	// the email of the user
+	Email string `json:"email" bson:"email" validate:"required"`
+}
+
+func (ch *offboardUserHandler) Parse(ctx context.Context, r *http.Request) error {
+	input := offboardUserEmail{}
+	err := utility.ReadJSON(r.Body, &input)
+	if err != nil {
+		return errors.Wrap(err, "reading user offboarding information from JSON request body")
+	}
+	if len(input.Email) == 0 {
+		return errors.New("missing email")
+	}
+	splitString := strings.Split(input.Email, "@")
+	if len(splitString) == 1 {
+		return errors.New("email address is missing '@'")
+	}
+	ch.user = splitString[0]
+	if ch.user == "" {
+		return errors.New("no user could be parsed from the email address")
+	}
+	u, err := user.FindOneById(ch.user)
+	if err != nil {
+		return gimlet.ErrorResponse{
+			Message:    errors.Wrapf(err, "finding user '%s'", ch.user).Error(),
+			StatusCode: http.StatusInternalServerError,
+		}
+	}
+	if u == nil {
+		return gimlet.ErrorResponse{
+			Message:    fmt.Sprintf("user '%s' not found", ch.user),
+			StatusCode: http.StatusNotFound,
+		}
+	}
+
+	vals := r.URL.Query()
+	ch.dryRun = vals.Get("dry_run") == "true"
+
+	return nil
+}
+
+func (ch *offboardUserHandler) Run(ctx context.Context) gimlet.Responder {
+	opts := model.APIHostParams{
+		UserSpawned: true,
+	}
+	hosts, err := data.FindHostsInRange(ctx, opts, ch.user)
+	if err != nil {
+		return gimlet.NewJSONInternalErrorResponse(errors.Wrap(err, "getting user hosts from options"))
+	}
+
+	volumes, err := host.FindVolumesByUser(ch.user)
+	if err != nil {
+		return gimlet.NewJSONInternalErrorResponse(errors.Wrap(err, "finding user volumes"))
+	}
+
+	toTerminate := model.APIOffboardUserResults{
+		TerminatedHosts:   []string{},
+		TerminatedVolumes: []string{},
+	}
+
+	catcher := grip.NewBasicCatcher()
+	for _, h := range hosts {
+		if h.NoExpiration {
+			if !ch.dryRun {
+				catcher.Wrapf(h.MarkShouldExpire(ctx, ""), "marking host '%s' expirable", h.Id)
+			}
+			toTerminate.TerminatedHosts = append(toTerminate.TerminatedHosts, h.Id)
+		}
+	}
+
+	for _, v := range volumes {
+		if v.NoExpiration {
+			if !ch.dryRun {
+				catcher.Wrapf(v.SetNoExpiration(false), "marking volume '%s' expirable", v.ID)
+			}
+			toTerminate.TerminatedVolumes = append(toTerminate.TerminatedVolumes, v.ID)
+		}
+	}
+
+	if !ch.dryRun {
+		grip.Info(message.Fields{
+			"message":            "executing user offboarding",
+			"user":               ch.user,
+			"terminated_hosts":   toTerminate.TerminatedHosts,
+			"terminated_volumes": toTerminate.TerminatedVolumes,
+		})
+
+		grip.Error(message.WrapError(serviceModel.RemoveAdminFromProjects(ch.user), message.Fields{
+			"message": "could not remove user as an admin",
+			"context": "user offboarding",
+			"user":    ch.user,
+		}))
+
+		grip.Error(message.WrapError(ch.clearLogin(), message.Fields{
+			"message": "could not clear login token",
+			"context": "user offboarding",
+			"user":    ch.user,
+		}))
+		err = user.ClearUser(ch.user)
+		catcher.Wrapf(err, "clearing user '%s'", ch.user)
+	}
+
+	if catcher.HasErrors() {
+		err := catcher.Resolve()
+		grip.CriticalWhen(!ch.dryRun, message.WrapError(err, message.Fields{
+			"message": "the user did not offboard fully",
+			"context": "user offboarding",
+			"user":    ch.user,
+		}))
+		return gimlet.NewJSONInternalErrorResponse(errors.Wrapf(err, "offboarding user '%s'", ch.user))
+	}
+
+	return gimlet.NewJSONResponse(toTerminate)
+}
+
+// clearLogin invalidates the user's login session.
+func (ch *offboardUserHandler) clearLogin() error {
+	usrMngr := ch.env.UserManager()
+	if usrMngr == nil {
+		return errors.New("no user manager found in environment")
+	}
+	usr, err := usrMngr.GetUserByID(ch.user)
+	if err != nil {
+		return errors.Wrap(err, "finding user")
+	}
+	return errors.Wrap(usrMngr.ClearUser(usr, false), "clearing login cache")
 }

@@ -9,6 +9,7 @@ import (
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/db"
 	"github.com/evergreen-ci/evergreen/db/mgo/bson"
+	"github.com/evergreen-ci/evergreen/model/user"
 	"github.com/evergreen-ci/evergreen/thirdparty"
 	"github.com/evergreen-ci/utility"
 	"github.com/stretchr/testify/assert"
@@ -222,4 +223,50 @@ func TestLatestGithubPRPatch(t *testing.T) {
 	assert.NoError(t, err)
 	require.NotNil(t, p)
 	assert.Equal(t, p.Id.Hex(), patch2.Id.Hex())
+}
+
+func TestConsolidatePatchesForUser(t *testing.T) {
+	assert.NoError(t, db.ClearCollections(Collection, user.Collection))
+	p1 := Patch{
+		Id:          bson.NewObjectId(),
+		Author:      "me",
+		PatchNumber: 6,
+	}
+	p2 := Patch{
+		Id:          bson.NewObjectId(),
+		Author:      "me",
+		PatchNumber: 7,
+	}
+	pNew := Patch{
+		Id:          bson.NewObjectId(),
+		Author:      "new_me",
+		PatchNumber: 1,
+	}
+	assert.NoError(t, db.InsertMany(Collection, p1, p2, pNew))
+
+	newUsr := &user.DBUser{
+		Id:          "new_me",
+		PatchNumber: 7,
+	}
+	assert.NoError(t, db.Insert(user.Collection, newUsr))
+	assert.NoError(t, ConsolidatePatchesForUser("me", newUsr))
+
+	patchFromDB, err := FindOneId(p1.Id.Hex())
+	assert.NoError(t, err)
+	assert.Equal(t, "new_me", patchFromDB.Author)
+	assert.Equal(t, p1.PatchNumber, patchFromDB.PatchNumber)
+
+	patchFromDB, err = FindOneId(p2.Id.Hex())
+	assert.NoError(t, err)
+	assert.Equal(t, "new_me", patchFromDB.Author)
+	assert.Equal(t, p2.PatchNumber, patchFromDB.PatchNumber)
+
+	patchFromDB, err = FindOneId(pNew.Id.Hex())
+	assert.NoError(t, err)
+	assert.Equal(t, "new_me", patchFromDB.Author)
+	assert.Equal(t, 8, patchFromDB.PatchNumber)
+
+	usr, err := user.FindOneById("new_me")
+	assert.NoError(t, err)
+	assert.Equal(t, 8, usr.PatchNumber)
 }

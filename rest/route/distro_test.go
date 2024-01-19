@@ -1349,11 +1349,11 @@ func (s *DistroPatchByIDSuite) TestValidFindAndReplaceFullDocument() {
 				"bootstrap_settings": {
 					"method": "legacy-ssh",
 					"communication": "legacy-ssh",
-					"jasper_binary_dir": "/usr/local/bin",
+					"jasper_binary_dir": "/oldUsr/local/bin",
 					"jasper_credentials_path": "/etc/credentials",
-					"client_dir": "/usr/bin",
+					"client_dir": "/oldUsr/bin",
 					"service_user": "service_user",
-					"shell_path": "/usr/bin/bash",
+					"shell_path": "/oldUsr/bin/bash",
 					"root_dir" : "/new/root/dir",
 					"env": [{"key": "envKey", "value": "envValue"}],
 					"resource_limits": {
@@ -1429,11 +1429,11 @@ func (s *DistroPatchByIDSuite) TestValidFindAndReplaceFullDocument() {
 	s.Equal(utility.ToStringPtr(distro.BootstrapMethodLegacySSH), apiDistro.BootstrapSettings.Method)
 	s.Equal(utility.ToStringPtr(distro.CommunicationMethodLegacySSH), apiDistro.BootstrapSettings.Communication)
 	s.Equal(utility.ToStringPtr(evergreen.CloneMethodLegacySSH), apiDistro.CloneMethod)
-	s.Equal(utility.ToStringPtr("/usr/bin"), apiDistro.BootstrapSettings.ClientDir)
-	s.Equal(utility.ToStringPtr("/usr/local/bin"), apiDistro.BootstrapSettings.JasperBinaryDir)
+	s.Equal(utility.ToStringPtr("/oldUsr/bin"), apiDistro.BootstrapSettings.ClientDir)
+	s.Equal(utility.ToStringPtr("/oldUsr/local/bin"), apiDistro.BootstrapSettings.JasperBinaryDir)
 	s.Equal(utility.ToStringPtr("/etc/credentials"), apiDistro.BootstrapSettings.JasperCredentialsPath)
 	s.Equal(utility.ToStringPtr("service_user"), apiDistro.BootstrapSettings.ServiceUser)
-	s.Equal(utility.ToStringPtr("/usr/bin/bash"), apiDistro.BootstrapSettings.ShellPath)
+	s.Equal(utility.ToStringPtr("/oldUsr/bin/bash"), apiDistro.BootstrapSettings.ShellPath)
 	s.Equal(utility.ToStringPtr("/new/root/dir"), apiDistro.BootstrapSettings.RootDir)
 	s.Equal([]restModel.APIEnvVar{{Key: utility.ToStringPtr("envKey"), Value: utility.ToStringPtr("envValue")}}, apiDistro.BootstrapSettings.Env)
 	s.Equal(1, apiDistro.BootstrapSettings.ResourceLimits.NumFiles)

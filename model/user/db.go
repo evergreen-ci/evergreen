@@ -1,6 +1,7 @@
 package user
 
 import (
+	"strings"
 	"time"
 
 	"github.com/evergreen-ci/evergreen"
@@ -494,6 +495,7 @@ func ClearUser(userId string) error {
 			SettingsKey:   1,
 			RolesKey:      1,
 			LoginCacheKey: 1,
+			PubKeysKey:    1,
 		},
 	}
 	query := bson.M{IdKey: userId}
@@ -521,4 +523,38 @@ func ClearAllLoginCaches() error {
 		return errors.Wrap(err, "updating user cache")
 	}
 	return nil
+}
+
+// UpsertOneFromExisting creates a new user with the same necessary data as oldUsr.
+func UpsertOneFromExisting(oldUsr *DBUser, newEmail string) (*DBUser, error) {
+	splitString := strings.Split(newEmail, "@")
+	if len(splitString) == 1 {
+		return nil, errors.New("email address is missing '@'")
+	}
+	newUsername := splitString[0]
+	if newUsername == "" {
+		return nil, errors.New("no user could be parsed from the email address")
+	}
+	newUsr := &DBUser{
+		Id:               newUsername,
+		EmailAddress:     newEmail,
+		FavoriteProjects: oldUsr.FavoriteProjects,
+		PatchNumber:      oldUsr.PatchNumber,
+		Settings:         oldUsr.Settings,
+		SystemRoles:      oldUsr.Roles(),
+		APIKey:           oldUsr.GetAPIKey(),
+		PubKeys:          oldUsr.PublicKeys(),
+	}
+
+	_, err := UpsertOne(bson.M{IdKey: newUsername}, bson.M{"$set": bson.M{
+		EmailAddressKey:     newUsr.Email(),
+		FavoriteProjectsKey: newUsr.FavoriteProjects,
+		PatchNumberKey:      newUsr.PatchNumber,
+		SettingsKey:         newUsr.Settings,
+		RolesKey:            newUsr.Roles(),
+		APIKeyKey:           newUsr.GetAPIKey(),
+		PubKeysKey:          newUsr.PublicKeys(),
+	}})
+
+	return newUsr, errors.Wrapf(err, "unable to insert new user '%s'", newUsername)
 }

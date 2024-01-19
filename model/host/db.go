@@ -1339,3 +1339,9 @@ func UnsafeReplace(ctx context.Context, env evergreen.Environment, idToRemove st
 
 	return nil
 }
+
+// ConsolidateHostsForUser moves any unterminated hosts owned by oldUser to be assigned to the newUser.
+func ConsolidateHostsForUser(ctx context.Context, oldUser, newUser string) error {
+	update := bson.M{"$set": bson.M{StartedByKey: newUser}}
+	return UpdateAll(ctx, ByUserWithUnterminatedStatus(oldUser), update)
+}
