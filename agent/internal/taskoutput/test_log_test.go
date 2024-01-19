@@ -15,16 +15,12 @@ import (
 	"github.com/evergreen-ci/evergreen/model/log"
 	"github.com/evergreen-ci/evergreen/model/task"
 	"github.com/evergreen-ci/evergreen/model/testlog"
-	serviceutil "github.com/evergreen-ci/evergreen/service/testutil"
 	"github.com/evergreen-ci/evergreen/taskoutput"
-	timberutil "github.com/evergreen-ci/timber/testutil"
 	"github.com/evergreen-ci/utility"
 	"github.com/fortytw2/leaktest"
 	"github.com/mongodb/grip/level"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
-	"google.golang.org/grpc"
-	"google.golang.org/grpc/credentials/insecure"
 	"gopkg.in/yaml.v2"
 )
 
@@ -457,14 +453,4 @@ func setupTestTestLogDirectoryHandler(t *testing.T, comm *client.Mock) (*task.Ta
 	}, logger)
 
 	return tsk, h
-}
-
-func setupCedarServer(ctx context.Context, t *testing.T, comm *client.Mock) *timberutil.MockCedarServer {
-	srv, err := timberutil.NewMockCedarServer(ctx, serviceutil.NextPort())
-	require.NoError(t, err)
-
-	conn, err := grpc.DialContext(ctx, srv.Address(), grpc.WithTransportCredentials(insecure.NewCredentials()))
-	require.NoError(t, err)
-	comm.CedarGRPCConn = conn
-	return srv
 }
