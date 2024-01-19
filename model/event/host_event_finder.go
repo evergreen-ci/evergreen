@@ -52,6 +52,7 @@ func getRecentStatusesForHost(hostId string, n int) (int, []string) {
 
 	hostStatusDistros := []hostStatusDistro{}
 	if err := cursor.All(ctx, &hostStatusDistros); err != nil {
+		grip.Warning(err)
 		return 0, []string{}
 	}
 
