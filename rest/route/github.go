@@ -763,7 +763,7 @@ func (gh *githubHookApi) createVersionForTag(ctx context.Context, pRef model.Pro
 			"tag":                tag,
 			"message":            "user not authorized for git tag version",
 		})
-		return nil, errors.Errorf("user '%s' not authorized to create git tag versions for project '%s'", tag.Pusher, pRef.Id)
+		return nil, nil
 	}
 	hasAliases, remotePath, err := model.HasMatchingGitTagAliasAndRemotePath(pRef.Id, tag.Tag)
 	if err != nil {
