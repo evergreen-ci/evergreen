@@ -547,14 +547,6 @@ func (h *getProjectRefHandler) Run(ctx context.Context) gimlet.Responder {
 		})
 	}
 
-	// TODO (DEVPROD-1723): Remove special logic for the evergreen project
-	// once we set the global default logger to "evergreen".
-	if p.DefaultLogger == "" && p.Id != "evergreen" {
-		// If the default logger is not set at the project level, use
-		// the global default logger.
-		p.DefaultLogger = evergreen.GetEnvironment().Settings().LoggerConfig.DefaultLogger
-	}
-
 	return gimlet.NewJSONResponse(p)
 }
 

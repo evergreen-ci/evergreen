@@ -594,7 +594,6 @@ func TestAgentGetProjectRef(t *testing.T) {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 
-	evergreen.GetEnvironment().Settings().LoggerConfig.DefaultLogger = "buildlogger"
 	require.NoError(t, db.ClearCollections(task.Collection, model.ProjectRefCollection))
 	defer func() {
 		assert.NoError(t, db.ClearCollections(task.Collection, model.ProjectRefCollection))
@@ -607,17 +606,13 @@ func TestAgentGetProjectRef(t *testing.T) {
 	projRef1 := &model.ProjectRef{Id: "project1"}
 	require.NoError(t, task1.Insert())
 	require.NoError(t, projRef1.Insert())
-	// Set the default logger after inserting into the DB since this should
-	// be set dynamically by the route handler when not set.
-	projRef1.DefaultLogger = "buildlogger"
 
 	task2 := &task.Task{
 		Id:      "task2",
 		Project: "project2",
 	}
 	projRef2 := &model.ProjectRef{
-		Id:            "project2",
-		DefaultLogger: "evergreen",
+		Id: "project2",
 	}
 	require.NoError(t, task2.Insert())
 	require.NoError(t, projRef2.Insert())
