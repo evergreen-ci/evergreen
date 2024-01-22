@@ -346,15 +346,19 @@ func (c *Mock) GetLoggerProducer(ctx context.Context, tsk *task.Task, _ *LoggerC
 		return nil, errors.New("operation run in fail mode.")
 	}
 
+	// Set task ID here to avoid data race with the passed in task pointer
+	// in tests, otherwise the append line function will try to access the
+	// task ID in the task pointer every time `sendTaskLogLine` is called.
+	taskID := tsk.Id
 	appendLine := func(line log.LogLine) error {
-		return c.sendTaskLogLine(tsk, line)
+		return c.sendTaskLogLine(taskID, line)
 	}
 
-	return NewSingleChannelLogHarness(tsk.Id, newMockSender("mock", appendLine)), nil
+	return NewSingleChannelLogHarness(taskID, newMockSender("mock", appendLine)), nil
 }
 
 // sendTaskLogLine appends a new log line to the task log cache.
-func (c *Mock) sendTaskLogLine(tsk *task.Task, line log.LogLine) error {
+func (c *Mock) sendTaskLogLine(taskID string, line log.LogLine) error {
 	c.mu.Lock()
 	defer c.mu.Unlock()
 
@@ -362,7 +366,7 @@ func (c *Mock) sendTaskLogLine(tsk *task.Task, line log.LogLine) error {
 		return errors.New("logging failed")
 	}
 
-	c.taskLogs[tsk.Id] = append(c.taskLogs[tsk.Id], line)
+	c.taskLogs[taskID] = append(c.taskLogs[taskID], line)
 
 	return nil
 }
