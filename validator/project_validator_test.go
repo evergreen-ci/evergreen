@@ -4403,14 +4403,12 @@ func TestTVToTaskUnit(t *testing.T) {
 		"MapsTasksAndPopulates": {
 			expectedTVToTaskUnit: map[model.TVPair]model.BuildVariantTaskUnit{
 				{TaskName: "setup", Variant: "rhel"}: {
-					Name:            "setup",
-					Variant:         "rhel",
-					Priority:        20,
-					ExecTimeoutSecs: 20,
+					Name:     "setup",
+					Variant:  "rhel",
+					Priority: 20,
 				}, {TaskName: "compile", Variant: "ubuntu"}: {
 					Name:             "compile",
 					Variant:          "ubuntu",
-					ExecTimeoutSecs:  10,
 					CommitQueueMerge: true,
 					DependsOn: []model.TaskUnitDependency{
 						{
@@ -4419,9 +4417,8 @@ func TestTVToTaskUnit(t *testing.T) {
 						},
 					},
 				}, {TaskName: "compile", Variant: "suse"}: {
-					Name:            "compile",
-					Variant:         "suse",
-					ExecTimeoutSecs: 10,
+					Name:    "compile",
+					Variant: "suse",
 					DependsOn: []model.TaskUnitDependency{
 						{
 							Name:    "setup",
@@ -4452,10 +4449,9 @@ func TestTVToTaskUnit(t *testing.T) {
 						Name: "rhel",
 						Tasks: []model.BuildVariantTaskUnit{
 							{
-								Name:            "setup",
-								Variant:         "rhel",
-								Priority:        20,
-								ExecTimeoutSecs: 20,
+								Name:     "setup",
+								Variant:  "rhel",
+								Priority: 20,
 							},
 						},
 					}, {
@@ -4465,7 +4461,6 @@ func TestTVToTaskUnit(t *testing.T) {
 								Name:             "compile",
 								Variant:          "ubuntu",
 								CommitQueueMerge: true,
-								ExecTimeoutSecs:  10,
 								DependsOn: []model.TaskUnitDependency{
 									{
 										Name:    "setup",
@@ -4478,9 +4473,8 @@ func TestTVToTaskUnit(t *testing.T) {
 						Name: "suse",
 						Tasks: []model.BuildVariantTaskUnit{
 							{
-								Name:            "compile",
-								Variant:         "suse",
-								ExecTimeoutSecs: 10,
+								Name:    "compile",
+								Variant: "suse",
 								DependsOn: []model.TaskUnitDependency{
 									{
 										Name:    "setup",
@@ -4496,16 +4490,14 @@ func TestTVToTaskUnit(t *testing.T) {
 		"MapsTaskGroupTasksAndPopulates": {
 			expectedTVToTaskUnit: map[model.TVPair]model.BuildVariantTaskUnit{
 				{TaskName: "setup", Variant: "rhel"}: {
-					Name:            "setup",
-					Variant:         "rhel",
-					Priority:        20,
-					ExecTimeoutSecs: 20,
+					Name:     "setup",
+					Variant:  "rhel",
+					Priority: 20,
 				}, {TaskName: "compile", Variant: "ubuntu"}: {
 					Name:             "compile",
 					Variant:          "ubuntu",
 					IsPartOfGroup:    true,
 					GroupName:        "compile_group",
-					ExecTimeoutSecs:  10,
 					CommitQueueMerge: true,
 					DependsOn: []model.TaskUnitDependency{
 						{
@@ -4514,11 +4506,10 @@ func TestTVToTaskUnit(t *testing.T) {
 						},
 					},
 				}, {TaskName: "compile", Variant: "suse"}: {
-					Name:            "compile",
-					Variant:         "suse",
-					IsPartOfGroup:   true,
-					GroupName:       "compile_group",
-					ExecTimeoutSecs: 10,
+					Name:          "compile",
+					Variant:       "suse",
+					IsPartOfGroup: true,
+					GroupName:     "compile_group",
 					DependsOn: []model.TaskUnitDependency{
 						{
 							Name:    "setup",
@@ -4555,10 +4546,9 @@ func TestTVToTaskUnit(t *testing.T) {
 						Name: "rhel",
 						Tasks: []model.BuildVariantTaskUnit{
 							{
-								Name:            "setup",
-								Variant:         "rhel",
-								Priority:        20,
-								ExecTimeoutSecs: 20,
+								Name:     "setup",
+								Variant:  "rhel",
+								Priority: 20,
 							},
 						},
 					}, {
@@ -4604,7 +4594,6 @@ func TestTVToTaskUnit(t *testing.T) {
 				for _, dep := range expectedTaskUnit.DependsOn {
 					assert.Contains(t, taskUnit.DependsOn, dep)
 				}
-				assert.Equal(t, expectedTaskUnit.ExecTimeoutSecs, taskUnit.ExecTimeoutSecs)
 				assert.Equal(t, expectedTaskUnit.Stepback, taskUnit.Stepback)
 				assert.Equal(t, expectedTaskUnit.CommitQueueMerge, taskUnit.CommitQueueMerge, fmt.Sprintf("%s/%s", expectedTaskUnit.Variant, expectedTaskUnit.Name))
 				assert.Equal(t, expectedTaskUnit.Variant, taskUnit.Variant)
