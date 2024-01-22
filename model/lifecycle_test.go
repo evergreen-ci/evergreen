@@ -2865,6 +2865,9 @@ func TestAddNewTasks(t *testing.T) {
 }
 
 func TestRecomputeNumDependents(t *testing.T) {
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
 	assert.NoError(t, db.Clear(task.Collection))
 	t1 := task.Task{
 		Id: "1",
@@ -2904,14 +2907,14 @@ func TestRecomputeNumDependents(t *testing.T) {
 	}
 	assert.NoError(t, t5.Insert())
 
-	assert.NoError(t, RecomputeNumDependents(t3))
+	assert.NoError(t, RecomputeNumDependents(ctx, t3))
 	tasks, err := task.Find(task.ByVersion(t1.Version))
 	assert.NoError(t, err)
 	for i, dbTask := range tasks {
 		assert.Equal(t, i, dbTask.NumDependents)
 	}
 
-	assert.NoError(t, RecomputeNumDependents(t5))
+	assert.NoError(t, RecomputeNumDependents(ctx, t5))
 	tasks, err = task.Find(task.ByVersion(t1.Version))
 	assert.NoError(t, err)
 	for i, dbTask := range tasks {
@@ -2948,7 +2951,7 @@ func TestRecomputeNumDependents(t *testing.T) {
 	}
 	assert.NoError(t, t9.Insert())
 
-	assert.NoError(t, RecomputeNumDependents(t8))
+	assert.NoError(t, RecomputeNumDependents(ctx, t8))
 	tasks, err = task.Find(task.ByVersion(t6.Version))
 	assert.NoError(t, err)
 	expected := map[string]int{

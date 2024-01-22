@@ -1737,7 +1737,7 @@ func TestUpdateBuildAndVersionStatusForTaskAbort(t *testing.T) {
 	assert.Equal(t, true, dbVersion.Aborted)
 
 	// restart aborted task
-	assert.NoError(t, testTask.Archive())
+	assert.NoError(t, testTask.Archive(ctx))
 	assert.NoError(t, testTask.MarkUnscheduled())
 	assert.NoError(t, UpdateBuildAndVersionStatusForTask(ctx, &testTask))
 	dbBuild1, err = build.FindOneId(b1.Id)
@@ -2983,6 +2983,9 @@ func TestAbortTask(t *testing.T) {
 
 }
 func TestTryDequeueAndAbortBlockedCommitQueueItem(t *testing.T) {
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
 	assert.NoError(t, db.ClearCollections(patch.Collection, VersionCollection, task.Collection, build.Collection, commitqueue.Collection))
 	patchID := "aabbccddeeff001122334455"
 	v := &Version{
@@ -3024,7 +3027,7 @@ func TestTryDequeueAndAbortBlockedCommitQueueItem(t *testing.T) {
 	assert.NoError(t, t1.Insert())
 	assert.NoError(t, commitqueue.InsertQueue(cq))
 
-	removed, err := tryDequeueAndAbortCommitQueueItem(p, *cq, t1.Id, "some merge error", evergreen.User)
+	removed, err := tryDequeueAndAbortCommitQueueItem(ctx, p, *cq, t1.Id, "some merge error", evergreen.User)
 	assert.NoError(t, err)
 	require.NotZero(t, removed)
 	assert.Equal(t, p.Id.Hex(), removed.PatchId)
@@ -3044,6 +3047,9 @@ func TestTryDequeueAndAbortBlockedCommitQueueItem(t *testing.T) {
 }
 
 func TestTryDequeueAndAbortCommitQueueItem(t *testing.T) {
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
 	assert.NoError(t, db.ClearCollections(patch.Collection, VersionCollection, task.Collection, build.Collection, commitqueue.Collection))
 
 	versionId := bson.NewObjectId()
@@ -3112,7 +3118,7 @@ func TestTryDequeueAndAbortCommitQueueItem(t *testing.T) {
 	assert.NoError(t, m.Insert())
 	assert.NoError(t, commitqueue.InsertQueue(cq))
 
-	removed, err := tryDequeueAndAbortCommitQueueItem(p, *cq, t1.Id, "some merge error", evergreen.User)
+	removed, err := tryDequeueAndAbortCommitQueueItem(ctx, p, *cq, t1.Id, "some merge error", evergreen.User)
 	assert.NoError(t, err)
 	require.NotZero(t, removed)
 	assert.Equal(t, p.Id.Hex(), removed.PatchId)
@@ -6996,6 +7002,9 @@ func TestEvalStepbackTaskGroup(t *testing.T) {
 }
 
 func TestUpdateBlockedDependencies(t *testing.T) {
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
 	assert := assert.New(t)
 	require := require.New(t)
 	require.NoError(db.ClearCollections(VersionCollection, task.Collection, build.Collection, event.EventCollection))
@@ -7105,7 +7114,7 @@ func TestUpdateBlockedDependencies(t *testing.T) {
 	}
 	assert.NoError(execTask.Insert())
 
-	assert.NoError(UpdateBlockedDependencies(&tasks[0]))
+	assert.NoError(UpdateBlockedDependencies(ctx, &tasks[0]))
 
 	dbTask1, err := task.FindOneId(tasks[1].Id)
 	assert.NoError(err)
@@ -7159,6 +7168,9 @@ func TestUpdateBlockedDependencies(t *testing.T) {
 }
 
 func TestUpdateUnblockedDependencies(t *testing.T) {
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
 	assert := assert.New(t)
 	assert.NoError(db.ClearCollections(task.Collection, build.Collection, VersionCollection))
 	v := Version{Id: "v"}
@@ -7247,7 +7259,7 @@ func TestUpdateUnblockedDependencies(t *testing.T) {
 	assert.NoError(b.Insert())
 	assert.NoError(b2.Insert())
 
-	assert.NoError(UpdateUnblockedDependencies(&tasks[0]))
+	assert.NoError(UpdateUnblockedDependencies(ctx, &tasks[0]))
 
 	// this task should still be marked blocked because t1 is unattainable
 	dbTask2, err := task.FindOneId(tasks[2].Id)

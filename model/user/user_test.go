@@ -1,6 +1,7 @@
 package user
 
 import (
+	"context"
 	"strconv"
 	"testing"
 	"time"
@@ -591,6 +592,9 @@ func (s *UserTestSuite) TestFindNeedsReauthorization() {
 }
 
 func TestServiceUserOperations(t *testing.T) {
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
 	require.NoError(t, db.Clear(Collection))
 	u := DBUser{
 		Id:          "u",
@@ -622,9 +626,9 @@ func TestServiceUserOperations(t *testing.T) {
 	assert.NoError(t, err)
 	assert.Len(t, users, 1)
 
-	err = DeleteServiceUser("doesntexist")
+	err = DeleteServiceUser(ctx, "doesntexist")
 	assert.EqualError(t, err, "service user 'doesntexist' not found")
-	err = DeleteServiceUser(u.Id)
+	err = DeleteServiceUser(ctx, u.Id)
 	assert.NoError(t, err)
 	dbUser, err = FindOneById(u.Id)
 	assert.NoError(t, err)
@@ -748,7 +752,11 @@ func TestGeneralSubscriptionIDs(t *testing.T) {
 }
 
 func TestViewableProjectSettings(t *testing.T) {
-	rm := evergreen.GetEnvironment().RoleManager()
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+	env := testutil.NewEnvironment(ctx, t)
+	rm := env.RoleManager()
+
 	assert.NoError(t, db.ClearCollections(evergreen.RoleCollection, evergreen.ScopeCollection, Collection))
 	editScope := gimlet.Scope{
 		ID:        "edit_scope",
@@ -802,7 +810,7 @@ func TestViewableProjectSettings(t *testing.T) {
 	assert.NoError(t, myUser.AddRole(otherRole.ID))
 
 	// assert that viewable projects contains the edit projects and the view projects
-	projects, err := myUser.GetViewableProjectSettings()
+	projects, err := myUser.GetViewableProjectSettings(ctx)
 	assert.NoError(t, err)
 	assert.Len(t, projects, 3)
 	assert.Contains(t, projects, "edit1")
