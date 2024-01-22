@@ -654,9 +654,9 @@ func (gh *githubHookApi) AddIntentForPR(ctx context.Context, pr *github.PullRequ
 			// Below is solely commenting on the different PR's for user visability. If any fail
 			// we do not want to stop execution (later is creating a patch as intended).
 			var errs []error
-			overriddenPatchComment := fmt.Sprintf("Another [PR](%s) with the same head SHA has ran 'evergreen retry' and overriden this PR's patch. This PR's patch will be canceled and the status reported will be in the context of the other PR.", createGitHubPRLink(pr.Base.User.GetLogin(), pr.Base.Repo.GetName(), pr.GetNumber()))
+			overridenPatchComment := fmt.Sprintf("Another [PR](%s) with the same head SHA has ran 'evergreen retry' and overriden this PR's patch. This PR's patch will be canceled and the status reported will be in the context of the other PR.", createGitHubPRLink(pr.Base.User.GetLogin(), pr.Base.Repo.GetName(), pr.GetNumber()))
 			for _, p := range patches {
-				err := gh.sc.AddCommentToPR(ctx, p.GithubPatchData.BaseOwner, p.GithubPatchData.BaseRepo, p.GithubPatchData.PRNumber, overriddenPatchComment)
+				err := gh.sc.AddCommentToPR(ctx, p.GithubPatchData.BaseOwner, p.GithubPatchData.BaseRepo, p.GithubPatchData.PRNumber, overridenPatchComment)
 				if err != nil {
 					errs = append(errs, err)
 				}
@@ -903,10 +903,6 @@ func (gh *githubHookApi) createVersionForTag(ctx context.Context, pRef model.Pro
 	}
 	projectInfo.Ref = &pRef
 	return gh.sc.CreateVersionFromConfig(ctx, &projectInfo, metadata)
-}
-
-func (gh *githubHookApi) createPatchLink(patch patch.Patch) string {
-	return fmt.Sprintf("%s/%s", gh.settings.Ui.UIv2Url, patch.Id.Hex())
 }
 
 func createGitHubPRLink(owner, repo string, prNum int) string {
