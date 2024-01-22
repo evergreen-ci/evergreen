@@ -300,6 +300,7 @@ var (
 			"$facet": bson.M{
 				// We skip annotation lookup for non-failed tasks, because these can't have annotations,
 				// and lookup is not necessary for tasks that already have HasAnnotationsKey set
+				// TODO: DEVPROD-___ simplify this step to only check HasAnnotationsKey
 				"not_failed": []bson.M{
 					{
 						"$match": bson.M{

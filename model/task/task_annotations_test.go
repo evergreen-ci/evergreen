@@ -1,6 +1,7 @@
 package task
 
 import (
+	"github.com/evergreen-ci/evergreen/testutil"
 	"testing"
 
 	"github.com/evergreen-ci/birch"
@@ -9,6 +10,8 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
+
+func init() { testutil.Setup() }
 
 func TestAddIssueToAnnotation(t *testing.T) {
 	assert.NoError(t, db.ClearCollections(annotations.TaskAnnotationsCollection, Collection))
@@ -35,41 +38,84 @@ func TestAddIssueToAnnotation(t *testing.T) {
 	assert.NotNil(t, annotation.Issues[1].Source)
 	assert.Equal(t, float64(91.23), annotation.Issues[0].ConfidenceScore)
 	assert.Equal(t, "not.annie.black", annotation.Issues[1].Source.Author)
+	dbTask, err := FindOneId("t1")
+	require.NoError(t, err)
+	require.NotNil(t, dbTask)
+	assert.True(t, dbTask.HasAnnotations)
 }
 
 func TestRemoveIssueFromAnnotation(t *testing.T) {
 	issue1 := annotations.IssueLink{URL: "https://issuelink.com", IssueKey: "EVG-1234", Source: &annotations.Source{Author: "annie.black"}}
 	issue2 := annotations.IssueLink{URL: "https://issuelink.com", IssueKey: "EVG-1234", Source: &annotations.Source{Author: "not.annie.black"}}
-	assert.NoError(t, db.Clear(annotations.TaskAnnotationsCollection))
+	assert.NoError(t, db.ClearCollections(annotations.TaskAnnotationsCollection, Collection))
 	a := annotations.TaskAnnotation{TaskId: "t1", Issues: []annotations.IssueLink{issue1, issue2}}
 	assert.NoError(t, a.Upsert())
+	task := Task{Id: "t1", HasAnnotations: true}
+	assert.NoError(t, task.Insert())
 
+	// Task should still have annotations key set after first issue is removed
 	assert.NoError(t, RemoveIssueFromAnnotation("t1", 0, issue1))
 	annotationFromDB, err := annotations.FindOneByTaskIdAndExecution("t1", 0)
 	assert.NoError(t, err)
 	assert.NotNil(t, annotationFromDB)
 	assert.Len(t, annotationFromDB.Issues, 1)
 	assert.Equal(t, "not.annie.black", annotationFromDB.Issues[0].Source.Author)
+	dbTask, err := FindOneId("t1")
+	require.NoError(t, err)
+	require.NotNil(t, dbTask)
+	assert.True(t, dbTask.HasAnnotations)
+
+	// Removing the second issue should mark the task as no longer having annotations
+	assert.NoError(t, RemoveIssueFromAnnotation("t1", 0, issue2))
+	annotationFromDB, err = annotations.FindOneByTaskIdAndExecution("t1", 0)
+	assert.NoError(t, err)
+	assert.NotNil(t, annotationFromDB)
+	assert.Len(t, annotationFromDB.Issues, 0)
+	dbTask, err = FindOneId("t1")
+	require.NoError(t, err)
+	require.NotNil(t, dbTask)
+	assert.False(t, dbTask.HasAnnotations)
 }
 
 func TestMoveIssueToSuspectedIssue(t *testing.T) {
 	issue1 := annotations.IssueLink{URL: "https://issuelink.com", IssueKey: "EVG-1234", Source: &annotations.Source{Author: "this will be overridden"}}
 	issue2 := annotations.IssueLink{URL: "https://issuelink.com", IssueKey: "EVG-2345", Source: &annotations.Source{Author: "evergreen user"}}
 	issue3 := annotations.IssueLink{URL: "https://issuelink.com", IssueKey: "EVG-3456", Source: &annotations.Source{Author: "different user"}}
-	assert.NoError(t, db.Clear(annotations.TaskAnnotationsCollection))
+	assert.NoError(t, db.ClearCollections(annotations.TaskAnnotationsCollection, Collection))
 	a := annotations.TaskAnnotation{TaskId: "t1", Issues: []annotations.IssueLink{issue1, issue2}, SuspectedIssues: []annotations.IssueLink{issue3}}
 	assert.NoError(t, a.Upsert())
+	task := Task{Id: "t1", HasAnnotations: true}
+	assert.NoError(t, task.Insert())
 
 	assert.NoError(t, MoveIssueToSuspectedIssue(a.TaskId, a.TaskExecution, issue1, "someone new"))
 	annotationFromDB, err := annotations.FindOneByTaskIdAndExecution(a.TaskId, a.TaskExecution)
 	assert.NoError(t, err)
 	assert.NotNil(t, annotationFromDB)
-
+	// Task should still have annotations key set after first issue is removed
 	assert.Len(t, annotationFromDB.Issues, 1)
 	assert.Equal(t, "evergreen user", annotationFromDB.Issues[0].Source.Author)
 	require.Len(t, annotationFromDB.SuspectedIssues, 2)
 	assert.Equal(t, "different user", annotationFromDB.SuspectedIssues[0].Source.Author)
 	assert.Equal(t, "someone new", annotationFromDB.SuspectedIssues[1].Source.Author)
+	dbTask, err := FindOneId("t1")
+	require.NoError(t, err)
+	require.NotNil(t, dbTask)
+	assert.True(t, dbTask.HasAnnotations)
+
+	// Removing the second issue should mark the task as no longer having annotations
+	assert.NoError(t, MoveIssueToSuspectedIssue(a.TaskId, a.TaskExecution, issue2, "someone else new"))
+	annotationFromDB, err = annotations.FindOneByTaskIdAndExecution(a.TaskId, a.TaskExecution)
+	assert.NoError(t, err)
+	assert.NotNil(t, annotationFromDB)
+	assert.Len(t, annotationFromDB.Issues, 0)
+	require.Len(t, annotationFromDB.SuspectedIssues, 3)
+	assert.Equal(t, "different user", annotationFromDB.SuspectedIssues[0].Source.Author)
+	assert.Equal(t, "someone new", annotationFromDB.SuspectedIssues[1].Source.Author)
+	assert.Equal(t, "someone else new", annotationFromDB.SuspectedIssues[2].Source.Author)
+	dbTask, err = FindOneId("t1")
+	require.NoError(t, err)
+	require.NotNil(t, dbTask)
+	assert.False(t, dbTask.HasAnnotations)
 }
 
 func TestMoveSuspectedIssueToIssue(t *testing.T) {
@@ -92,6 +138,10 @@ func TestMoveSuspectedIssueToIssue(t *testing.T) {
 	require.Len(t, annotationFromDB.Issues, 2)
 	assert.Equal(t, "different user", annotationFromDB.Issues[0].Source.Author)
 	assert.Equal(t, "someone new", annotationFromDB.Issues[1].Source.Author)
+	dbTask, err := FindOneId("t1")
+	require.NoError(t, err)
+	require.NotNil(t, dbTask)
+	assert.True(t, dbTask.HasAnnotations)
 }
 
 func TestPatchIssue(t *testing.T) {

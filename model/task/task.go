@@ -3662,7 +3662,7 @@ func UpsertAnnotation(a *annotations.TaskAnnotation, userDisplayName string) err
 	); err != nil {
 		return errors.Wrapf(err, "adding task annotation for task '%s'", a.TaskId)
 	}
-	if a.Issues != nil {
+	if a.Issues != nil && len(a.Issues) > 0 {
 		return SetHasAnnotation(a.TaskId, a.TaskExecution)
 	}
 	return nil
@@ -3705,7 +3705,7 @@ func PatchAnnotation(a *annotations.TaskAnnotation, userDisplayName string, upse
 	); err != nil {
 		return errors.Wrapf(err, "updating task annotation for '%s'", a.TaskId)
 	}
-	if a.Issues != nil {
+	if a.Issues != nil && len(a.Issues) > 0 {
 		return SetHasAnnotation(a.TaskId, a.TaskExecution)
 	}
 	return nil
