@@ -6451,7 +6451,7 @@ func TestEvalBisectStepback(t *testing.T) {
 			require.Nil(lastPassing.StepbackInfo)
 
 			// 2nd Iteration. Task failed, moving last failing stepback to midtask.
-			prevTask.Status = evergreen.TaskFailed
+			prevTask.Status = evergreen.TaskSystemFailed
 			require.NoError(task.UpdateOne(bson.M{"_id": midTask.Id},
 				bson.M{"$set": bson.M{"status": evergreen.TaskSystemFailed}}))
 			// Activate next stepback
