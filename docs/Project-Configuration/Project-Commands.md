@@ -50,6 +50,23 @@ In addition to the
 it should recurse into subdirectories. With only `*`, it
 will not recurse.
 
+## archive.auto_extract
+
+`archive.auto_extract` extracts an archived/compressed file with an arbitrary
+format based on its file extension.
+
+``` yaml
+- command: archive.targz_extract
+  params:
+    path: "jstests.tgz"
+    destination: "src/jstestfuzz"
+```
+
+Parameters:
+
+-   `path`: the path to the file to extract.
+-   `destination`: the target directory.
+
 ## archive.auto_pack
 
 `archive.auto_pack` creates an archived/compressed file with an arbitrary
@@ -95,6 +112,52 @@ Parameters:
 In addition to the
 [filepath.Match](https://golang.org/pkg/path/filepath/#Match) syntax,
 `archive.auto_pack` supports using `**` to indicate that
+it should recurse into subdirectories. With only `*`, it
+will not recurse.
+
+## archive.zip_extract
+
+`archive.zip_extract` extracts files from a zip file.
+
+``` yaml
+- command: archive.targz_extract
+  params:
+    path: "jstests.zip"
+    destination: "src/jstestfuzz"
+```
+
+Parameters:
+
+-   `path`: the path to the zip file.
+-   `destination`: the target directory.
+
+## archive.zip_pack
+
+`archive.zip_pack` creates a zip file.
+
+``` yaml
+- command: archive.zip_pack
+  params:
+    target: "jstests.zip"
+    source_dir: "src/jstestfuzz"
+    include:
+      - "out/*.js"
+```
+
+Parameters:
+
+-   `target`: the zip file that will be created.
+-   `source_dir`: the directory to archive/compress.
+-   `include`: a list of filename
+    [blobs](https://golang.org/pkg/path/filepath/#Match) to include from the
+    source directory.
+-   `exclude_files`: a list of filename
+    [blobs](https://golang.org/pkg/path/filepath/#Match) to exclude from the
+    source directory.
+
+In addition to the
+[filepath.Match](https://golang.org/pkg/path/filepath/#Match) syntax,
+`archive.zip_pack` supports using `**` to indicate that
 it should recurse into subdirectories. With only `*`, it
 will not recurse.
 
