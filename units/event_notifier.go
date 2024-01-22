@@ -132,7 +132,8 @@ func (j *eventNotifierJob) processEvent(ctx context.Context, e *event.EventLogEn
 		"job_type":      j.Type().Name,
 		"operation":     "events-processing",
 		"message":       "event-stats",
-		"event_id":      j.EventID,
+		"event_id":      e.ID,
+		"event_type":    e.EventType,
 		"start_time":    startTime.String(),
 		"end_time":      endTime.String(),
 		"duration_secs": totalDuration.Seconds(),
@@ -153,12 +154,13 @@ func (j *eventNotifierJob) processEventTriggers(ctx context.Context, e *event.Ev
 			n = nil
 			err = errors.Errorf("panicked while processing event '%s'", e.ID)
 			grip.Alert(message.WrapError(err, message.Fields{
-				"job_id":      j.ID(),
-				"job_type":    j.Type().Name,
-				"source":      "events-processing",
-				"event_id":    e.ID,
-				"event_type":  e.ResourceType,
-				"panic_value": r,
+				"job_id":        j.ID(),
+				"job_type":      j.Type().Name,
+				"source":        "events-processing",
+				"event_id":      e.ID,
+				"event_type":    e.EventType,
+				"resource_id":   e.ResourceId,
+				"resource_type": e.ResourceType,
 			}))
 		}
 	}()
@@ -171,29 +173,35 @@ func (j *eventNotifierJob) processEventTriggers(ctx context.Context, e *event.Ev
 		"source":        "events-processing",
 		"message":       "event processed",
 		"event_id":      e.ID,
-		"event_type":    e.ResourceType,
+		"event_type":    e.EventType,
+		"resource_id":   e.ResourceId,
+		"resource_type": e.ResourceType,
 		"notifications": len(n),
 		"duration_secs": time.Since(startDebug).Seconds(),
 		"stat":          "notifications-from-event",
 	})
 
 	grip.Error(message.WrapError(err, message.Fields{
-		"job_id":     j.ID(),
-		"job_type":   j.Type().Name,
-		"source":     "events-processing",
-		"message":    "errors processing triggers for event",
-		"event_id":   e.ID,
-		"event_type": e.ResourceType,
+		"job_id":        j.ID(),
+		"job_type":      j.Type().Name,
+		"source":        "events-processing",
+		"message":       "errors processing triggers for event",
+		"event_id":      e.ID,
+		"event_type":    e.EventType,
+		"resource_id":   e.ResourceId,
+		"resource_type": e.ResourceType,
 	}))
 
 	v, err := trigger.EvalProjectTriggers(ctx, e, trigger.TriggerDownstreamVersion)
-	grip.Info(message.Fields{
+	grip.InfoWhen(len(v) > 0, message.Fields{
 		"job_id":        j.ID(),
 		"job_type":      j.Type().Name,
 		"source":        "events-processing",
 		"message":       "project triggers evaluated",
 		"event_id":      e.ID,
-		"event_type":    e.ResourceType,
+		"event_type":    e.EventType,
+		"resource_id":   e.ResourceId,
+		"resource_type": e.ResourceType,
 		"duration_secs": time.Since(startDebug).Seconds(),
 		"stat":          "eval-project-triggers",
 	})
@@ -202,12 +210,15 @@ func (j *eventNotifierJob) processEventTriggers(ctx context.Context, e *event.Ev
 		versions = append(versions, version.Id)
 	}
 	grip.InfoWhen(len(versions) > 0, message.Fields{
-		"job_id":   j.ID(),
-		"job_type": j.Type().Name,
-		"source":   "events-processing",
-		"message":  "triggering downstream builds",
-		"event_id": e.ID,
-		"versions": versions,
+		"job_id":        j.ID(),
+		"job_type":      j.Type().Name,
+		"source":        "events-processing",
+		"message":       "triggering downstream builds",
+		"event_id":      e.ID,
+		"event_type":    e.EventType,
+		"resource_id":   e.ResourceId,
+		"resource_type": e.ResourceType,
+		"versions":      versions,
 	})
 
 	return n, err

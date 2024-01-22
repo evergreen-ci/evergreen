@@ -35,8 +35,9 @@ func TestIncKey(t *testing.T) {
 		require.NoError(t, err)
 
 		Convey("Inc command should increment a key successfully", func() {
-			logger, err := comm.GetLoggerProducer(ctx, client.TaskData{ID: conf.Task.Id, Secret: conf.Task.Secret}, nil)
-			So(err, ShouldBeNil)
+			logger, err := comm.GetLoggerProducer(ctx, &conf.Task, nil)
+			require.NoError(t, err)
+
 			for _, task := range conf.Project.Tasks {
 				So(len(task.Commands), ShouldNotEqual, 0)
 				for _, command := range task.Commands {

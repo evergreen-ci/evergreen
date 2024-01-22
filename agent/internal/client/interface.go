@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"time"
 
+	"github.com/aws/aws-sdk-go/aws/credentials"
 	"github.com/evergreen-ci/evergreen/apimodels"
 	"github.com/evergreen-ci/evergreen/cloud"
 	"github.com/evergreen-ci/evergreen/model"
@@ -84,8 +85,9 @@ type SharedCommunicator interface {
 	// DisableHost signals to the app server that the host should be disabled.
 	DisableHost(context.Context, string, apimodels.DisableInfo) error
 
+	// TODO: Pass in task OR move this out.
 	// GetLoggerProducer constructs a new LogProducer instance for use by tasks.
-	GetLoggerProducer(context.Context, TaskData, *LoggerConfig) (LoggerProducer, error)
+	GetLoggerProducer(context.Context, *task.Task, *LoggerConfig) (LoggerProducer, error)
 	// GetLoggerMetadata() LoggerMetadata
 
 	// The following operations are used by task commands.
@@ -139,10 +141,12 @@ type LoggerConfig struct {
 	Agent              []LogOpts
 	Task               []LogOpts
 	SendToGlobalSender bool
+	AWSCredentials     *credentials.Credentials
 }
 
 type LogOpts struct {
 	Sender          string
+	AWSCredentials  *credentials.Credentials
 	SplunkServerURL string
 	SplunkToken     string
 	Filepath        string

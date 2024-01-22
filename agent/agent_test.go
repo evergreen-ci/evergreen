@@ -20,6 +20,7 @@ import (
 	"github.com/evergreen-ci/evergreen/model"
 	"github.com/evergreen-ci/evergreen/model/patch"
 	"github.com/evergreen-ci/evergreen/model/task"
+	"github.com/evergreen-ci/evergreen/taskoutput"
 	"github.com/evergreen-ci/evergreen/util"
 	"github.com/evergreen-ci/utility"
 	"github.com/mongodb/grip"
@@ -117,10 +118,11 @@ func (s *AgentSuite) SetupTest() {
 	const versionID = "v1"
 	const bvName = "mock_build_variant"
 	s.task = task.Task{
-		Id:           "task_id",
-		DisplayName:  "this_is_a_task_name",
-		BuildVariant: bvName,
-		Version:      versionID,
+		Id:             "task_id",
+		DisplayName:    "this_is_a_task_name",
+		BuildVariant:   bvName,
+		Version:        versionID,
+		TaskOutputInfo: initializeTaskOutput(s.T()),
 	}
 	s.mockCommunicator.GetTaskResponse = &s.task
 
@@ -149,7 +151,7 @@ func (s *AgentSuite) SetupTest() {
 	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
 	s.canceler = cancel
 	s.ctx = ctx
-	s.tc.logger, err = s.mockCommunicator.GetLoggerProducer(ctx, s.tc.task, nil)
+	s.tc.logger, err = s.mockCommunicator.GetLoggerProducer(ctx, &s.task, nil)
 	s.NoError(err)
 
 	factory, ok := command.GetCommandFactory("setup.initial")
@@ -1246,9 +1248,10 @@ func (s *AgentSuite) TestFinishPrevTaskWithoutTaskGroup() {
 	tc := &taskContext{
 		taskConfig: &internal.TaskConfig{
 			Task: task.Task{
-				Id:      "some_task_id",
-				BuildId: buildID,
-				Version: versionID,
+				Id:             "some_task_id",
+				BuildId:        buildID,
+				Version:        versionID,
+				TaskOutputInfo: initializeTaskOutput(s.T()),
 			},
 			WorkDir: "task_directory",
 		},
@@ -1274,9 +1277,10 @@ func (s *AgentSuite) TestFinishPrevTaskAndNextTaskIsInNewTaskGroup() {
 	tc := &taskContext{
 		taskConfig: &internal.TaskConfig{
 			Task: task.Task{
-				Id:      "some_task_id",
-				BuildId: buildID,
-				Version: versionID,
+				Id:             "some_task_id",
+				BuildId:        buildID,
+				Version:        versionID,
+				TaskOutputInfo: initializeTaskOutput(s.T()),
 			},
 			WorkDir: "task_directory",
 		},
@@ -1305,10 +1309,11 @@ func (s *AgentSuite) TestFinishPrevTaskWithSameTaskGroupAndAlreadyRanSetupGroup(
 	tc := &taskContext{
 		taskConfig: &internal.TaskConfig{
 			Task: task.Task{
-				Id:        "some_task_id",
-				TaskGroup: taskGroup,
-				BuildId:   buildID,
-				Version:   versionID,
+				Id:             "some_task_id",
+				TaskGroup:      taskGroup,
+				BuildId:        buildID,
+				Version:        versionID,
+				TaskOutputInfo: initializeTaskOutput(s.T()),
 			},
 			TaskGroup: &model.TaskGroup{Name: taskGroup},
 			WorkDir:   "task_directory",
@@ -1338,10 +1343,11 @@ func (s *AgentSuite) TestFinishPrevTaskWithSameTaskGroupButDidNotRunSetupGroup()
 	tc := &taskContext{
 		taskConfig: &internal.TaskConfig{
 			Task: task.Task{
-				Id:        "task_id1",
-				TaskGroup: taskGroup,
-				Version:   versionID,
-				BuildId:   buildID,
+				Id:             "task_id1",
+				TaskGroup:      taskGroup,
+				Version:        versionID,
+				BuildId:        buildID,
+				TaskOutputInfo: initializeTaskOutput(s.T()),
 			},
 			TaskGroup: &model.TaskGroup{Name: taskGroup},
 			WorkDir:   "task_directory",
@@ -1370,10 +1376,11 @@ func (s *AgentSuite) TestFinishPrevTaskWithSameBuildButDifferentTaskGroup() {
 	tc := &taskContext{
 		taskConfig: &internal.TaskConfig{
 			Task: task.Task{
-				Id:        "task_id1",
-				TaskGroup: taskGroup1,
-				Version:   versionID,
-				BuildId:   buildID,
+				Id:             "task_id1",
+				TaskGroup:      taskGroup1,
+				Version:        versionID,
+				BuildId:        buildID,
+				TaskOutputInfo: initializeTaskOutput(s.T()),
 			},
 			TaskGroup: &model.TaskGroup{Name: taskGroup1},
 			WorkDir:   "task_directory",
@@ -1528,12 +1535,13 @@ func (s *AgentSuite) TestSetupInitialWithTaskDataLoadingErrorResultsInSystemFail
 		versionID  = "version_id"
 	)
 	s.mockCommunicator.GetTaskResponse = &task.Task{
-		Id:           taskID,
-		DisplayName:  taskName,
-		Secret:       taskSecret,
-		BuildVariant: "nonexistent_bv",
-		BuildId:      buildID,
-		Version:      versionID,
+		Id:             taskID,
+		DisplayName:    taskName,
+		Secret:         taskSecret,
+		BuildVariant:   "nonexistent_bv",
+		BuildId:        buildID,
+		Version:        versionID,
+		TaskOutputInfo: initializeTaskOutput(s.T()),
 	}
 	s.mockCommunicator.GetProjectResponse = &model.Project{
 		Tasks: []model.ProjectTask{
@@ -2447,5 +2455,24 @@ func checkMockLogs(t *testing.T, mc *client.Mock, taskID string, logsToFind []st
 
 	if displayLogs {
 		grip.Infof("Logs for task '%s':\n%s\n", taskID, strings.Join(allLogs, "\n"))
+	}
+}
+
+func initializeTaskOutput(t *testing.T) *taskoutput.TaskOutput {
+	return &taskoutput.TaskOutput{
+		TaskLogs: taskoutput.TaskLogOutput{
+			Version: 1,
+			BucketConfig: evergreen.BucketConfig{
+				Name: t.TempDir(),
+				Type: evergreen.BucketTypeLocal,
+			},
+		},
+		TestLogs: taskoutput.TestLogOutput{
+			Version: 1,
+			BucketConfig: evergreen.BucketConfig{
+				Name: t.TempDir(),
+				Type: evergreen.BucketTypeLocal,
+			},
+		},
 	}
 }

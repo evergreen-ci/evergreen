@@ -428,6 +428,9 @@ tasks:
     name: test-agent-internal-client
   - <<: *run-go-test-suite
     tags: ["nodb", "test", "agent"]
+    name: test-agent-internal-taskoutput
+  - <<: *run-go-test-suite
+    tags: ["nodb", "test", "agent"]
     name: test-agent-util
   - <<: *run-go-test-suite-with-mongodb
     tags: ["test", "db", "agent"]
@@ -459,6 +462,9 @@ tasks:
   - <<: *run-go-test-suite-with-mongodb
     tags: ["db", "test"]
     name: test-evergreen
+  - <<: *run-go-test-suite-with-mongodb
+    tags: ["db", "test"]
+    name: test-taskoutput
   - <<: *run-go-test-suite-with-mongodb
     tags: ["db", "test"]
     name: test-thirdparty
@@ -646,7 +652,7 @@ tasks:
     tags: ["build"]
   - <<: *build-and-push-client
     name: build-linux_arm64
-    tags: ["build"]
+    tags: ["build", "build-staging"]
   - <<: *build-and-push-client
     name: build-linux_ppc64le
     tags: ["build"]

@@ -432,6 +432,10 @@ func (s *PatchConnectorChangeStatusSuite) TestSetActivation() {
 	p, err = FindPatchById(s.obj_ids[0])
 	s.NoError(err)
 	s.False(p.Activated)
+
+	err = SetPatchActivated(context.Background(), "aabbcccceeee001122334456", "user1", true, settings)
+	s.Error(err)
+	s.Contains(err.Error(), "could not find patch")
 }
 
 ////////////////////////////////////////////////////////////////////////

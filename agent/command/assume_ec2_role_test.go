@@ -42,10 +42,7 @@ func TestEc2AssumeRoleExecute(t *testing.T) {
 		},
 	}
 	comm := client.NewMock("localhost")
-	logger, err := comm.GetLoggerProducer(ctx, client.TaskData{
-		ID:     conf.Task.Id,
-		Secret: conf.Task.Secret,
-	}, nil)
+	logger, err := comm.GetLoggerProducer(ctx, &conf.Task, nil)
 	require.NoError(t, err)
 	for testName, testCase := range map[string]func(ctx context.Context, t *testing.T, comm *client.Mock, logger client.LoggerProducer, conf *internal.TaskConfig){
 		"FailsWithNoARN": func(ctx context.Context, t *testing.T, comm *client.Mock, logger client.LoggerProducer, conf *internal.TaskConfig) {

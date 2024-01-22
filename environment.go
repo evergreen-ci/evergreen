@@ -237,7 +237,7 @@ func NewEnvironment(ctx context.Context, confPath, versionID string, db *DBSetti
 	catcher.Add(e.createRemoteQueues(ctx))
 	catcher.Add(e.createNotificationQueue(ctx))
 	catcher.Add(e.setupRoleManager())
-	catcher.Add(e.initTracer(ctx))
+	catcher.Add(e.initTracer(ctx, versionID != ""))
 	catcher.Add(e.initClientConfig(ctx, versionID))
 	catcher.Extend(e.initQueues(ctx))
 
@@ -879,7 +879,7 @@ func (e *envState) initDepot(ctx context.Context) error {
 	return nil
 }
 
-func (e *envState) initTracer(ctx context.Context) error {
+func (e *envState) initTracer(ctx context.Context, useInternalDNS bool) error {
 	if !e.settings.Tracer.Enabled {
 		return nil
 	}
@@ -893,9 +893,14 @@ func (e *envState) initTracer(ctx context.Context) error {
 		return errors.Wrap(err, "making otel resource")
 	}
 
-	client := otlptracegrpc.NewClient(
-		otlptracegrpc.WithEndpoint(e.settings.Tracer.CollectorEndpoint),
-	)
+	var opts []otlptracegrpc.Option
+	if useInternalDNS {
+		opts = append(opts, otlptracegrpc.WithEndpoint(e.settings.Tracer.CollectorInternalEndpoint))
+		opts = append(opts, otlptracegrpc.WithInsecure())
+	} else {
+		opts = append(opts, otlptracegrpc.WithEndpoint(e.settings.Tracer.CollectorEndpoint))
+	}
+	client := otlptracegrpc.NewClient(opts...)
 	exp, err := otlptrace.New(ctx, client)
 	if err != nil {
 		return errors.Wrap(err, "initializing otel exporter")

@@ -15,6 +15,7 @@ import (
 	"github.com/pkg/errors"
 	"github.com/urfave/cli"
 	"go.mongodb.org/mongo-driver/bson"
+	"go.mongodb.org/mongo-driver/bson/primitive"
 	"go.mongodb.org/mongo-driver/mongo"
 	"go.mongodb.org/mongo-driver/mongo/options"
 )
@@ -227,36 +228,13 @@ func fromMdbForLocal() cli.Command {
 			tw := tar.NewWriter(gw)
 			defer tw.Close()
 			var collBuf *bytes.Buffer
-			var filter bson.M
-			var ok bool
 
 			for _, collection := range collections {
 				collBuf = &bytes.Buffer{}
-
-				coll := client.Database(dbName).Collection(collection)
-				if filter, ok = filters[collection]; !ok {
-					filter = bson.M{}
-				}
-				cursor, err := coll.Find(ctx, filter)
+				err := processCollection(ctx, collBuf, client, filters, dbName, collection)
 				if err != nil {
-					return errors.Wrap(err, "finding documents")
+					return err
 				}
-
-				count := 0
-
-				for cursor.Next(ctx) {
-					_, err := collBuf.Write(cursor.Current)
-					if err != nil {
-						return errors.Wrap(err, "writing document")
-					}
-					count++
-				}
-
-				grip.Info(message.Fields{
-					"count":      count,
-					"collection": collection,
-					"database":   dbName,
-				})
 
 				hdr := &tar.Header{
 					Name: collection,
@@ -270,10 +248,44 @@ func fromMdbForLocal() cli.Command {
 					return errors.Wrap(err, "writing buffer to tarball")
 				}
 
-				grip.Error(cursor.Close(ctx))
 			}
 
 			return f.Close()
 		},
 	}
+}
+
+func processCollection(ctx context.Context, collBuf *bytes.Buffer, client *mongo.Client, filters map[string]primitive.M, dbName, collection string) error {
+	var filter bson.M
+	var ok bool
+
+	coll := client.Database(dbName).Collection(collection)
+	if filter, ok = filters[collection]; !ok {
+		filter = bson.M{}
+	}
+	cursor, err := coll.Find(ctx, filter)
+	if err != nil {
+		return errors.Wrap(err, "finding documents")
+	}
+	defer func() {
+		grip.Error(cursor.Close(ctx))
+	}()
+
+	count := 0
+
+	for cursor.Next(ctx) {
+		_, err := collBuf.Write(cursor.Current)
+		if err != nil {
+			return errors.Wrap(err, "writing document")
+		}
+		count++
+	}
+
+	grip.Info(message.Fields{
+		"count":      count,
+		"collection": collection,
+		"database":   dbName,
+	})
+
+	return nil
 }

@@ -33,10 +33,10 @@ var (
 	BuildRevision = ""
 
 	// ClientVersion is the commandline version string used to control auto-updating.
-	ClientVersion = "2024-01-03"
+	ClientVersion = "2024-01-18"
 
 	// Agent version to control agent rollover.
-	AgentVersion = "2024-01-10a"
+	AgentVersion = "2024-01-18-a"
 )
 
 // ConfigSection defines a sub-document in the evergreen config
@@ -464,7 +464,7 @@ func (s *Settings) GetSender(ctx context.Context, env Environment) (send.Sender,
 	if err != nil {
 		return nil, errors.Wrap(err, "configuring error fallback logger")
 	}
-	if disableLocalLogging, err := strconv.ParseBool(os.Getenv(disableLocalLoggingEnvVar)); err == nil && !disableLocalLogging {
+	if disableLocalLogging, err := strconv.ParseBool(os.Getenv(disableLocalLoggingEnvVar)); err != nil || !disableLocalLogging {
 		// setup the base/default logger (generally direct to systemd
 		// or standard output)
 		switch s.LogPath {
