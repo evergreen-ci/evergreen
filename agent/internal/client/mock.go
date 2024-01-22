@@ -580,3 +580,7 @@ func (s *mockSender) Send(m message.Composer) {
 }
 
 func (s *mockSender) Flush(_ context.Context) error { return nil }
+
+func (c *Mock) UpsertCheckRun(ctx context.Context, td TaskData, checkRunOutput apimodels.CheckRunOutput) error {
+	return nil
+}

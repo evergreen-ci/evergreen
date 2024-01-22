@@ -21,7 +21,6 @@ import (
 	"github.com/evergreen-ci/evergreen/thirdparty"
 	"github.com/evergreen-ci/evergreen/util"
 	"github.com/evergreen-ci/utility"
-	"github.com/google/go-github/v53/github"
 	"github.com/mongodb/anser/bsonutil"
 	"github.com/mongodb/grip"
 	"github.com/mongodb/grip/message"
@@ -2297,56 +2296,4 @@ func GetVariantsAndTasksFromPatchProject(ctx context.Context, settings *evergree
 		Project:  *project,
 	}
 	return &variantsAndTasksFromProject, nil
-}
-
-// ReadOutputPath reads the content of a file and parses it into a github.CheckRunOutput struct
-// if it fails validation, it returns an error
-func ReadAndValidateOutputPath(file string) (*github.CheckRunOutput, error) {
-	checkRunOutput := &github.CheckRunOutput{}
-
-	if file == "" {
-		return checkRunOutput, nil
-	}
-
-	if err := utility.ReadJSONFile(file, &checkRunOutput); err != nil {
-		return nil, err
-	}
-
-	return checkRunOutput, validateCheckRuns(checkRunOutput)
-}
-
-func validateCheckRuns(checkRun *github.CheckRunOutput) error {
-	if checkRun == nil {
-		return errors.New("checkRun Output is nil")
-	}
-
-	catcher := grip.NewBasicCatcher()
-
-	catcher.NewWhen(checkRun.Title == nil, "checkRun has no title")
-	summaryErrMsg := fmt.Sprintf("the checkRun '%s' has no summary", utility.FromStringPtr(checkRun.Title))
-	catcher.NewWhen(checkRun.Summary == nil, summaryErrMsg)
-
-	for _, an := range checkRun.Annotations {
-		annotationErrorMessage := fmt.Sprintf("checkRun '%s' specifies an annotation '%s' with no ", utility.FromStringPtr(checkRun.Title), utility.FromStringPtr(an.Title))
-
-		catcher.NewWhen(an.Path == nil, annotationErrorMessage+"path")
-		invalidStart := an.StartLine == nil || utility.FromIntPtr(an.StartLine) < 1
-		catcher.NewWhen(invalidStart, annotationErrorMessage+"start line or a start line < 1")
-
-		invalidEnd := an.EndLine == nil || utility.FromIntPtr(an.EndLine) < 1
-		catcher.NewWhen(invalidEnd, annotationErrorMessage+"end line or an end line < 1")
-
-		catcher.NewWhen(an.AnnotationLevel == nil, annotationErrorMessage+"annotation level")
-
-		catcher.NewWhen(an.Message == nil, annotationErrorMessage+"message")
-
-		if an.EndColumn != nil || an.StartColumn != nil {
-			if utility.FromIntPtr(an.StartLine) != utility.FromIntPtr(an.EndLine) {
-				errMessage := fmt.Sprintf("The annotation '%s' in checkRun '%s' should not include a start or end column when start_line and end_line have different values", utility.FromStringPtr(an.Title), utility.FromStringPtr(checkRun.Title))
-				catcher.New(errMessage)
-			}
-		}
-	}
-
-	return catcher.Resolve()
 }

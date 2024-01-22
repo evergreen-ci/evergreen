@@ -101,6 +101,7 @@ func AttachHandler(app *gimlet.APIApp, opts HandlerOpts) {
 	app.AddRoute("/task/{task_id}/manifest/load").Version(2).Get().Wrap(requireTask).RouteHandler(makeManifestLoad(settings))
 	app.AddRoute("/task/{task_id}/update_push_status").Version(2).Post().Wrap(requireTask).RouteHandler(makeUpdatePushStatus())
 	app.AddRoute("/task/{task_id}/restart").Version(2).Post().Wrap(requireTask).RouteHandler(makeMarkTaskForRestart())
+	app.AddRoute("/task/{task_id}/upsert_check_run").Version(2).Post().Wrap(requireTask).RouteHandler(makeUpsertCheckRun())
 
 	// REST v2 API Routes
 	app.AddRoute("/").Version(2).Get().Wrap(requireUser).RouteHandler(makePlaceHolder())

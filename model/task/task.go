@@ -176,8 +176,8 @@ type Task struct {
 	// Set to true if the task should be considered for mainline github checks
 	IsGithubCheck bool `bson:"is_github_check,omitempty" json:"is_github_check,omitempty"`
 
-	// Set to true if the task creates a github checkrun
-	HasCheckRun bool `bson:"has_checkrun,omitempty" json:"has_checkrun,omitempty"`
+	// CheckRunPath is a local file path to an output json file for the checkrun.
+	CheckRunPath string `yaml:"check_run_path" bson:"check_run_path"`
 
 	// CanReset indicates that the task has successfully archived and is in a valid state to be reset.
 	CanReset bool `bson:"can_reset,omitempty" json:"can_reset,omitempty"`
@@ -2925,6 +2925,10 @@ func FindHostSchedulableForAlias(ctx context.Context, id string) ([]Task, error)
 
 func (t *Task) IsPartOfSingleHostTaskGroup() bool {
 	return t.TaskGroup != "" && t.TaskGroupMaxHosts == 1
+}
+
+func (t *Task) HasCheckRun() bool {
+	return t.CheckRunPath != ""
 }
 
 func (t *Task) IsPartOfDisplay() bool {

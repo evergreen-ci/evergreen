@@ -1938,7 +1938,7 @@ func GetBranchProtectionRules(ctx context.Context, token, owner, repo, branch st
 	return nil, nil
 }
 
-// CreateCheckrun creates a checkRun and returns a Github CheckRun object
+// createCheckrun creates a checkRun and returns a Github CheckRun object
 func CreateCheckrun(ctx context.Context, owner, repo, name, headSHA string, output *github.CheckRunOutput) (*github.CheckRun, error) {
 	caller := "createCheckrun"
 	ctx, span := tracer.Start(ctx, caller, trace.WithAttributes(
@@ -2005,4 +2005,40 @@ func UpdateCheckrun(ctx context.Context, owner, repo, name string, checkRunID in
 	}
 
 	return checkRun, nil
+}
+
+func ValidateCheckRun(checkRun *github.CheckRunOutput) error {
+	if checkRun == nil {
+		return errors.New("checkRun Output is nil")
+	}
+
+	catcher := grip.NewBasicCatcher()
+
+	catcher.NewWhen(checkRun.Title == nil, "checkRun has no title")
+	summaryErrMsg := fmt.Sprintf("the checkRun '%s' has no summary", utility.FromStringPtr(checkRun.Title))
+	catcher.NewWhen(checkRun.Summary == nil, summaryErrMsg)
+
+	for _, an := range checkRun.Annotations {
+		annotationErrorMessage := fmt.Sprintf("checkRun '%s' specifies an annotation '%s' with no ", utility.FromStringPtr(checkRun.Title), utility.FromStringPtr(an.Title))
+
+		catcher.NewWhen(an.Path == nil, annotationErrorMessage+"path")
+		invalidStart := an.StartLine == nil || utility.FromIntPtr(an.StartLine) < 1
+		catcher.NewWhen(invalidStart, annotationErrorMessage+"start line or a start line < 1")
+
+		invalidEnd := an.EndLine == nil || utility.FromIntPtr(an.EndLine) < 1
+		catcher.NewWhen(invalidEnd, annotationErrorMessage+"end line or an end line < 1")
+
+		catcher.NewWhen(an.AnnotationLevel == nil, annotationErrorMessage+"annotation level")
+
+		catcher.NewWhen(an.Message == nil, annotationErrorMessage+"message")
+
+		if an.EndColumn != nil || an.StartColumn != nil {
+			if utility.FromIntPtr(an.StartLine) != utility.FromIntPtr(an.EndLine) {
+				errMessage := fmt.Sprintf("The annotation '%s' in checkRun '%s' should not include a start or end column when start_line and end_line have different values", utility.FromStringPtr(an.Title), utility.FromStringPtr(checkRun.Title))
+				catcher.New(errMessage)
+			}
+		}
+	}
+
+	return catcher.Resolve()
 }

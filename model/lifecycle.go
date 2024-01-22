@@ -1191,7 +1191,7 @@ func createOneTask(id string, creationInfo TaskCreationInfo, buildVarTask BuildV
 		IsGithubCheck:           isGithubCheck,
 		DisplayTaskId:           utility.ToStringPtr(""), // this will be overridden if the task is an execution task
 		IsEssentialToSucceed:    creationInfo.ActivatedTasksAreEssentialToSucceed && activateTask,
-		HasCheckRun:             buildVarTask.HasCheckRun(),
+		CheckRunPath:            buildVarTask.CreateCheckRun.PathToOutputs,
 	}
 
 	projectTask := creationInfo.Project.FindProjectTask(buildVarTask.Name)

@@ -124,6 +124,9 @@ type SharedCommunicator interface {
 
 	// MarkFailedTaskToRestart marks the task as needing to be restarted
 	MarkFailedTaskToRestart(ctx context.Context, td TaskData) error
+
+	// UpsertCheckRun upserts a checkrun for a task
+	UpsertCheckRun(ctx context.Context, td TaskData, checkRunOutput apimodels.CheckRunOutput) error
 }
 
 // TaskData contains the taskData.ID and taskData.Secret. It must be set for

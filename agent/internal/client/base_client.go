@@ -1059,3 +1059,19 @@ func (c *baseCommunicator) MarkFailedTaskToRestart(ctx context.Context, td TaskD
 	defer resp.Body.Close()
 	return nil
 }
+
+// UpsertCheckRun upserts a checkrun for a task
+func (c *baseCommunicator) UpsertCheckRun(ctx context.Context, td TaskData, checkRunOutput apimodels.CheckRunOutput) error {
+	info := requestInfo{
+		method:   http.MethodPost,
+		taskData: &td,
+	}
+	info.setTaskPathSuffix("upsert_check_run")
+	resp, err := c.retryRequest(ctx, info, &checkRunOutput)
+	if err != nil {
+		return util.RespErrorf(resp, errors.Wrap(err, "upserting checkRun").Error())
+	}
+
+	defer resp.Body.Close()
+	return nil
+}
