@@ -616,7 +616,7 @@ func doBisectStepback(ctx context.Context, t *task.Task) error {
 	// last failing or last passing task.
 	if t.Status == evergreen.TaskSucceeded {
 		s.LastPassingStepbackTaskId = t.Id
-	} else if t.Status == evergreen.TaskFailed {
+	} else if evergreen.IsFailedTaskStatus(t.Status) {
 		s.LastFailingStepbackTaskId = t.Id
 	} else {
 		return errors.Errorf("stopping task stepback due to status '%s'", t.Status)
