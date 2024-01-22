@@ -1,7 +1,6 @@
 package task
 
 import (
-	"github.com/evergreen-ci/evergreen/testutil"
 	"testing"
 
 	"github.com/evergreen-ci/birch"
@@ -10,8 +9,6 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
-
-func init() { testutil.Setup() }
 
 func TestAddIssueToAnnotation(t *testing.T) {
 	assert.NoError(t, db.ClearCollections(annotations.TaskAnnotationsCollection, Collection))
