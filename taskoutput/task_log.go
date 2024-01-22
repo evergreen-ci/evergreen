@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 
+	"github.com/aws/aws-sdk-go/aws/credentials"
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/apimodels"
 	"github.com/evergreen-ci/evergreen/model/log"
@@ -41,6 +42,8 @@ func (t TaskLogType) Validate(writing bool) error {
 type TaskLogOutput struct {
 	Version      int                    `bson:"version" json:"version"`
 	BucketConfig evergreen.BucketConfig `bson:"bucket_config" json:"bucket_config"`
+
+	AWSCredentials *credentials.Credentials `bson:"-" json:"-"`
 }
 
 // ID returns the unique identifier of the task log output type.
@@ -144,7 +147,7 @@ func (o TaskLogOutput) getLogName(taskOpts TaskOptions, logType TaskLogType) str
 }
 
 func (o TaskLogOutput) getLogService(ctx context.Context) (log.LogService, error) {
-	b, err := newBucket(ctx, o.BucketConfig)
+	b, err := newBucket(ctx, o.BucketConfig, o.AWSCredentials)
 	if err != nil {
 		return nil, err
 	}

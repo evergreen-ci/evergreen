@@ -200,7 +200,7 @@ func TestMarkTaskForReset(t *testing.T) {
 			require.NoError(t, foundTask.MarkEnd(time.Now(), &apimodels.TaskEndDetail{
 				Status: evergreen.TaskFailed,
 			}))
-			require.NoError(t, foundTask.Archive())
+			require.NoError(t, foundTask.Archive(ctx))
 			require.NoError(t, foundTask.Reset(ctx))
 			resp = rh.Run(ctx)
 			require.NotZero(t, resp)

@@ -30,8 +30,9 @@ const largePatchThreshold = 1024 * 1024 * 16
 // This is the template used to render a patch's summary in a human-readable output format.
 var patchDisplayTemplate = template.Must(template.New("patch").Parse(`
          ID : {{.Patch.Id.Hex}}
+    Project : {{.ProjectIdentifier}}
     Created : {{.Patch.CreateTime}}
-    Description : {{if .Patch.Description}}{{.Patch.Description}}{{else}}<none>{{end}}
+Description : {{if .Patch.Description}}{{.Patch.Description}}{{else}}<none>{{end}}
       Build : {{.Link}}
      Status : {{.Patch.Status}}
 {{if .ShowFinalized}}      Finalized : {{if .Patch.Activated}}Yes{{else}}No{{end}}{{end}}
@@ -173,8 +174,8 @@ func (p *patchParams) validateSubmission(diffData *localDiff) error {
 	return nil
 }
 
-func (p *patchParams) displayPatch(newPatch *patch.Patch, uiHost string, isCommitQueuePatch bool) error {
-	patchDisp, err := getPatchDisplay(newPatch, p.ShowSummary, uiHost, isCommitQueuePatch)
+func (p *patchParams) displayPatch(ac *legacyClient, newPatch *patch.Patch, uiHost string, isCommitQueuePatch bool) error {
+	patchDisp, err := getPatchDisplay(ac, newPatch, p.ShowSummary, uiHost, isCommitQueuePatch)
 	if err != nil {
 		return err
 	}
@@ -525,7 +526,7 @@ func validatePatchSize(diff *localDiff, allowLarge bool) error {
 
 // getPatchDisplay returns a human-readable summary representation of a patch object
 // which can be written to the terminal.
-func getPatchDisplay(p *patch.Patch, summarize bool, uiHost string, isCommitQueuePatch bool) (string, error) {
+func getPatchDisplay(ac *legacyClient, p *patch.Patch, summarize bool, uiHost string, isCommitQueuePatch bool) (string, error) {
 	var out bytes.Buffer
 	var link string
 	if isCommitQueuePatch {
@@ -534,16 +535,26 @@ func getPatchDisplay(p *patch.Patch, summarize bool, uiHost string, isCommitQueu
 		link = p.GetURL(uiHost)
 	}
 
-	err := patchDisplayTemplate.Execute(&out, struct {
-		Patch         *patch.Patch
-		ShowSummary   bool
-		ShowFinalized bool
-		Link          string
+	proj, err := ac.GetProjectRef(p.Project)
+	if err != nil {
+		return "", errors.Wrapf(err, "getting project ref for '%s'", p.Project)
+	}
+	if proj == nil {
+		return "", errors.Errorf("project ref not found for '%s'", p.Project)
+	}
+
+	err = patchDisplayTemplate.Execute(&out, struct {
+		Patch             *patch.Patch
+		ShowSummary       bool
+		ShowFinalized     bool
+		Link              string
+		ProjectIdentifier string
 	}{
-		Patch:         p,
-		ShowSummary:   summarize,
-		ShowFinalized: p.IsCommitQueuePatch(),
-		Link:          link,
+		Patch:             p,
+		ShowSummary:       summarize,
+		ShowFinalized:     p.IsCommitQueuePatch(),
+		Link:              link,
+		ProjectIdentifier: proj.Identifier,
 	})
 	if err != nil {
 		return "", err
@@ -621,22 +632,18 @@ Continue?`, uncommittedChangesFlag), true), nil
 // If no dir is provided, we use the current working directory.
 // The branch argument is used to determine where to generate the merge base from, and any extra
 // arguments supplied are passed directly in as additional args to git diff.
+// TODO: DEVPROD-3740 Re-implement the changes for this function from https://github.com/evergreen-ci/evergreen/pull/7311
 func loadGitData(dir, remote, branch, ref, commits string, format bool, extraArgs ...string) (*localDiff, error) {
-	if remote == "" {
-		remote = "upstream"
-	}
-	// remote/branch refers directly to the remote branch and does not require a local branch.
-	// branch@{remote} refers to the remote branch that "branch" is tracking.
+	// branch@{upstream} refers to the branch that the branch specified by branchname is set to
+	// build on top of. For example, if a user's repo is a fork, this allows automatic detection
+	// of a branch based on the correct remote. This also works with a commit hash, if given.
 	// In the case a range is passed, we only need one commit to determine the base, so we use the first commit.
 	// For details see: https://git-scm.com/docs/gitrevisions
 
-	mergeBase, err := gitMergeBase(dir, fmt.Sprintf("%s/%s", remote, branch), ref, commits)
+	mergeBase, err := gitMergeBase(dir, branch+"@{upstream}", ref, commits)
 	if err != nil {
-		mergeBase, err = gitMergeBase(dir, branch+"@{upstream}", ref, commits)
-		if err != nil {
-			return nil, errors.Wrapf(err, "Error getting merge base, "+
-				"may need to create local branch '%s' and have it track your Evergreen project", branch)
-		}
+		return nil, errors.Wrapf(err, "Error getting merge base, "+
+			"may need to create local branch '%s' and have it track upstream", branch)
 	}
 	statArgs := []string{"--stat"}
 	if len(extraArgs) > 0 {

@@ -539,6 +539,9 @@ func TestBlockedOnDeactivatedDependency(t *testing.T) {
 }
 
 func TestMarkDependenciesFinished(t *testing.T) {
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
 	defer func() {
 		assert.NoError(t, db.Clear(Collection))
 	}()
@@ -562,7 +565,7 @@ func TestMarkDependenciesFinished(t *testing.T) {
 			require.NoError(t, t1.Insert())
 			require.NoError(t, t2.Insert())
 
-			require.NoError(t, t0.MarkDependenciesFinished(true))
+			require.NoError(t, t0.MarkDependenciesFinished(ctx, true))
 
 			dbTask2, err := FindOneId(t2.Id)
 			require.NoError(t, err)
@@ -587,7 +590,7 @@ func TestMarkDependenciesFinished(t *testing.T) {
 			require.NoError(t, t0.Insert())
 			require.NoError(t, t1.Insert())
 
-			require.NoError(t, t0.MarkDependenciesFinished(true))
+			require.NoError(t, t0.MarkDependenciesFinished(ctx, true))
 
 			dbTask1, err := FindOneId(t1.Id)
 			require.NoError(t, err)
@@ -612,7 +615,7 @@ func TestMarkDependenciesFinished(t *testing.T) {
 			require.NoError(t, t0.Insert())
 			require.NoError(t, t1.Insert())
 
-			require.NoError(t, t0.MarkDependenciesFinished(true))
+			require.NoError(t, t0.MarkDependenciesFinished(ctx, true))
 
 			dbTask1, err := FindOneId(t1.Id)
 			require.NoError(t, err)
@@ -640,7 +643,7 @@ func TestMarkDependenciesFinished(t *testing.T) {
 			require.NoError(t, t0.Insert())
 			require.NoError(t, t1.Insert())
 
-			require.NoError(t, t0.MarkDependenciesFinished(true))
+			require.NoError(t, t0.MarkDependenciesFinished(ctx, true))
 
 			dbTask1, err := FindOneId(t1.Id)
 			require.NoError(t, err)
@@ -672,7 +675,7 @@ func TestMarkDependenciesFinished(t *testing.T) {
 			require.NoError(t, t1.Insert())
 			require.NoError(t, t2.Insert())
 
-			require.NoError(t, t0.MarkDependenciesFinished(true))
+			require.NoError(t, t0.MarkDependenciesFinished(ctx, true))
 
 			dbTask1, err := FindOneId(t1.Id)
 			require.NoError(t, err)
@@ -703,7 +706,7 @@ func TestMarkDependenciesFinished(t *testing.T) {
 			require.NoError(t, t0.Insert())
 			require.NoError(t, t1.Insert())
 
-			require.NoError(t, t0.MarkDependenciesFinished(false))
+			require.NoError(t, t0.MarkDependenciesFinished(ctx, false))
 
 			dbTask1, err := FindOneId(t1.Id)
 			require.NoError(t, err)
@@ -1644,12 +1647,15 @@ func TestFindVariantsWithTask(t *testing.T) {
 }
 
 func TestAddDependency(t *testing.T) {
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
 	defer func() {
 		assert.NoError(t, db.ClearCollections(Collection))
 	}()
 	for tName, tCase := range map[string]func(t *testing.T, tsk *Task){
 		"AddingDuplicateDependencyIsNoop": func(t *testing.T, tsk *Task) {
-			assert.NoError(t, tsk.AddDependency(depTaskIds[0]))
+			assert.NoError(t, tsk.AddDependency(ctx, depTaskIds[0]))
 
 			updated, err := FindOneId(tsk.Id)
 			assert.NoError(t, err)
@@ -1658,7 +1664,7 @@ func TestAddDependency(t *testing.T) {
 			assert.Len(t, updated.DependsOn, len(depTaskIds))
 		},
 		"UpdatesDuplicateDependencyForUnattainability": func(t *testing.T, tsk *Task) {
-			assert.NoError(t, tsk.AddDependency(Dependency{
+			assert.NoError(t, tsk.AddDependency(ctx, Dependency{
 				TaskId:       depTaskIds[0].TaskId,
 				Status:       evergreen.TaskSucceeded,
 				Unattainable: true,
@@ -1671,7 +1677,7 @@ func TestAddDependency(t *testing.T) {
 			assert.True(t, updated.DependsOn[0].Unattainable)
 		},
 		"AddsDependencyForSameTaskButDifferentStatus": func(t *testing.T, tsk *Task) {
-			assert.NoError(t, tsk.AddDependency(Dependency{
+			assert.NoError(t, tsk.AddDependency(ctx, Dependency{
 				TaskId: depTaskIds[0].TaskId,
 				Status: evergreen.TaskFailed,
 			}))
@@ -1682,7 +1688,7 @@ func TestAddDependency(t *testing.T) {
 			assert.Len(t, updated.DependsOn, len(depTaskIds)+1)
 		},
 		"AddingSelfDependencyShouldNoop": func(t *testing.T, tsk *Task) {
-			assert.NoError(t, tsk.AddDependency(Dependency{
+			assert.NoError(t, tsk.AddDependency(ctx, Dependency{
 				TaskId: tsk.Id,
 			}))
 
@@ -2916,6 +2922,9 @@ func getTaskThatNeedsContainerAllocation() Task {
 }
 
 func TestMarkUnattainableDependency(t *testing.T) {
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
 	defer func() {
 		assert.NoError(t, db.Clear(Collection))
 	}()
@@ -2938,7 +2947,7 @@ func TestMarkUnattainableDependency(t *testing.T) {
 		}
 		require.NoError(t, dependentTask.Insert())
 
-		assert.NoError(t, dependentTask.MarkUnattainableDependency("t1", true))
+		assert.NoError(t, dependentTask.MarkUnattainableDependency(ctx, "t1", true))
 		assert.True(t, dependentTask.Blocked())
 		assert.True(t, dependentTask.UnattainableDependency)
 		require.Len(t, dependentTask.DependsOn, 2)
@@ -2972,7 +2981,7 @@ func TestMarkUnattainableDependency(t *testing.T) {
 		}
 		require.NoError(t, dependentTask.Insert())
 
-		assert.NoError(t, dependentTask.MarkUnattainableDependency("t3", true))
+		assert.NoError(t, dependentTask.MarkUnattainableDependency(ctx, "t3", true))
 		assert.False(t, dependentTask.Blocked())
 		assert.False(t, dependentTask.UnattainableDependency)
 		require.Len(t, dependentTask.DependsOn, 2)
@@ -3006,7 +3015,7 @@ func TestMarkUnattainableDependency(t *testing.T) {
 		}
 		require.NoError(t, dependentTask.Insert())
 
-		assert.NoError(t, dependentTask.MarkUnattainableDependency("t1", false))
+		assert.NoError(t, dependentTask.MarkUnattainableDependency(ctx, "t1", false))
 		assert.True(t, dependentTask.Blocked())
 		assert.True(t, dependentTask.UnattainableDependency)
 		require.Len(t, dependentTask.DependsOn, 2)
@@ -3040,7 +3049,7 @@ func TestMarkUnattainableDependency(t *testing.T) {
 		}
 		require.NoError(t, dependentTask.Insert())
 
-		assert.NoError(t, dependentTask.MarkUnattainableDependency("t1", false))
+		assert.NoError(t, dependentTask.MarkUnattainableDependency(ctx, "t1", false))
 		assert.False(t, dependentTask.Blocked())
 		assert.False(t, dependentTask.UnattainableDependency)
 		require.Len(t, dependentTask.DependsOn, 2)
@@ -3076,7 +3085,7 @@ func TestMarkUnattainableDependency(t *testing.T) {
 
 		dependentTask.DependsOn[1].Unattainable = true
 
-		assert.NoError(t, dependentTask.MarkUnattainableDependency("t1", false))
+		assert.NoError(t, dependentTask.MarkUnattainableDependency(ctx, "t1", false))
 
 		assert.False(t, dependentTask.Blocked())
 		assert.False(t, dependentTask.UnattainableDependency)
@@ -3191,6 +3200,9 @@ func TestGetLatestExecution(t *testing.T) {
 }
 
 func TestArchiveMany(t *testing.T) {
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
 	require.NoError(t, db.ClearCollections(Collection, OldCollection))
 	t1 := Task{
 		Id:      "t1",
@@ -3222,7 +3234,7 @@ func TestArchiveMany(t *testing.T) {
 	assert.NoError(t, dt.Insert())
 
 	tasks := []Task{t1, t2, dt}
-	err := ArchiveMany(tasks)
+	err := ArchiveMany(ctx, tasks)
 	assert.NoError(t, err)
 	currentTasks, err := FindAll(db.Query(ByVersion("v")))
 	assert.NoError(t, err)
@@ -3241,6 +3253,9 @@ func TestArchiveMany(t *testing.T) {
 }
 
 func TestArchiveManyAfterFailedOnly(t *testing.T) {
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
 	require.NoError(t, db.ClearCollections(Collection, OldCollection))
 	et1 := Task{
 		Id:                    "et1",
@@ -3313,7 +3328,7 @@ func TestArchiveManyAfterFailedOnly(t *testing.T) {
 		Version:                 "v",
 	}
 	assert.NoError(t, t3.Insert())
-	assert.NoError(t, t3.Archive()) // Failed only is true
+	assert.NoError(t, t3.Archive(ctx)) // Failed only is true
 	currentTasks, err := FindAll(db.Query(ByVersion("v")))
 	assert.NoError(t, err)
 	for _, task := range currentTasks {
@@ -3351,7 +3366,7 @@ func TestArchiveManyAfterFailedOnly(t *testing.T) {
 	t3Pointer, err := FindByIdExecution(t3.Id, nil)
 	assert.NoError(t, err)
 	t3Pointer.ResetFailedWhenFinished = false
-	assert.NoError(t, ArchiveMany([]Task{t1, t2, *t3Pointer, t4}))
+	assert.NoError(t, ArchiveMany(ctx, []Task{t1, t2, *t3Pointer, t4}))
 
 	// Before ArchiveMany:
 	// t1: et1, et2 (execution 2)
@@ -3541,6 +3556,9 @@ func TestAbortVersionTasks(t *testing.T) {
 }
 
 func TestArchive(t *testing.T) {
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
 	defer func() {
 		assert.NoError(t, db.ClearCollections(Collection, OldCollection, event.EventCollection))
 	}()
@@ -3581,7 +3599,7 @@ func TestArchive(t *testing.T) {
 			event.LogHostRunningTaskSet(hostID, tsk.Id, 0)
 			event.LogHostRunningTaskCleared(hostID, tsk.Id, 0)
 
-			require.NoError(t, tsk.Archive())
+			require.NoError(t, tsk.Archive(ctx))
 
 			checkTaskIsArchived(t, archivedTaskID)
 			checkEventLogHostTaskExecutions(t, hostID, archivedTaskID, archivedExecution)
@@ -3605,7 +3623,7 @@ func TestArchive(t *testing.T) {
 			archivedDisplayTaskID := MakeOldID(dt.Id, dt.Execution)
 			require.NoError(t, dt.Insert())
 
-			require.NoError(t, dt.Archive())
+			require.NoError(t, dt.Archive(ctx))
 
 			checkTaskIsArchived(t, archivedExecTaskID)
 			checkTaskIsArchived(t, archivedDisplayTaskID)
@@ -3617,7 +3635,7 @@ func TestArchive(t *testing.T) {
 			tsk.ExecutionPlatform = ExecutionPlatformContainer
 			require.NoError(t, tsk.Insert())
 
-			require.NoError(t, tsk.Archive())
+			require.NoError(t, tsk.Archive(ctx))
 			checkTaskIsArchived(t, archivedTaskID)
 		},
 	} {
@@ -3633,6 +3651,9 @@ func TestArchive(t *testing.T) {
 }
 
 func TestArchiveFailedOnly(t *testing.T) {
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
 	defer func() {
 		assert.NoError(t, db.ClearCollections(Collection, OldCollection, event.EventCollection))
 	}()
@@ -3718,7 +3739,7 @@ func TestArchiveFailedOnly(t *testing.T) {
 		// Verifies the execution before and after calling Archive
 		archivedDisplayTaskID := MakeOldID(dt.Id, dt.Execution)
 		require.Equal(t, 0, dt.Execution)
-		require.NoError(t, dt.Archive())
+		require.NoError(t, dt.Archive(ctx))
 		dt, err = FindOneId(dt.Id)
 		require.NoError(t, err)
 		require.Equal(t, 1, dt.Execution)
@@ -3769,7 +3790,7 @@ func TestArchiveFailedOnly(t *testing.T) {
 
 		// Verifies the display task is archived after calling archive
 		archivedDisplayTaskID := MakeOldID(dt.Id, dt.Execution)
-		require.NoError(t, dt.Archive())
+		require.NoError(t, dt.Archive(ctx))
 		dt, err = FindOneId(dt.Id)
 		require.NoError(t, err)
 		require.Equal(t, 2, dt.Execution)
@@ -4010,6 +4031,9 @@ func (s *TaskConnectorFetchByIdSuite) TestFindById() {
 }
 
 func (s *TaskConnectorFetchByIdSuite) TestFindByIdAndExecution() {
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
 	s.Require().NoError(db.ClearCollections(Collection, OldCollection))
 	testTask1 := &Task{
 		Id:        "task_1",
@@ -4019,7 +4043,7 @@ func (s *TaskConnectorFetchByIdSuite) TestFindByIdAndExecution() {
 	}
 	s.NoError(testTask1.Insert())
 	for i := 0; i < 10; i++ {
-		s.NoError(testTask1.Archive())
+		s.NoError(testTask1.Archive(ctx))
 		err := UpdateOne(
 			bson.M{IdKey: "task_1"},
 			bson.M{CanResetKey: false},
@@ -4109,6 +4133,9 @@ func (s *TaskConnectorFetchByIdSuite) TestFindByVersion() {
 }
 
 func (s *TaskConnectorFetchByIdSuite) TestFindOldTasksByIDWithDisplayTasks() {
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
 	s.Require().NoError(db.ClearCollections(Collection, OldCollection))
 	testTask1 := &Task{
 		Id:            "task_1",
@@ -4128,9 +4155,9 @@ func (s *TaskConnectorFetchByIdSuite) TestFindOldTasksByIDWithDisplayTasks() {
 	}
 	s.NoError(testTask2.Insert())
 	for i := 0; i < 10; i++ {
-		s.NoError(testTask1.Archive())
+		s.NoError(testTask1.Archive(ctx))
 		testTask1.Execution += 1
-		s.NoError(testTask2.Archive())
+		s.NoError(testTask2.Archive(ctx))
 		testTask2.Execution += 1
 	}
 	tasks, err := FindOldWithDisplayTasks(ByOldTaskID("task_1"))

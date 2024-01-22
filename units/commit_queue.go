@@ -178,7 +178,7 @@ func (j *commitQueueJob) Run(ctx context.Context) {
 				"queue":   cq.ProjectID,
 				"item":    nextItem.Version,
 			})
-			j.AddError(j.addMergeTaskDependencies(*cq))
+			j.AddError(j.addMergeTaskDependencies(ctx, *cq))
 			return
 		}
 		// create a version with the item and subscribe to its completion
@@ -209,10 +209,10 @@ func (j *commitQueueJob) Run(ctx context.Context) {
 		"message":              "finished processing batch of commit queue items",
 		"processing_time_secs": time.Since(beginBatchProcessingTime).Seconds(),
 	})
-	j.AddError(j.addMergeTaskDependencies(*cq))
+	j.AddError(j.addMergeTaskDependencies(ctx, *cq))
 }
 
-func (j *commitQueueJob) addMergeTaskDependencies(cq commitqueue.CommitQueue) error {
+func (j *commitQueueJob) addMergeTaskDependencies(ctx context.Context, cq commitqueue.CommitQueue) error {
 	var prevMergeTask string
 	for i, currentItem := range cq.Queue {
 		if currentItem.Version == "" {
@@ -233,7 +233,7 @@ func (j *commitQueueJob) addMergeTaskDependencies(cq commitqueue.CommitQueue) er
 		if i == 0 {
 			continue
 		}
-		err = mergeTask.AddDependency(dependency)
+		err = mergeTask.AddDependency(ctx, dependency)
 		if err != nil {
 			return errors.Wrapf(err, "adding dependency of merge task '%s' on previous merge task '%s'", mergeTask.Id, dependency.TaskId)
 		}
@@ -241,7 +241,7 @@ func (j *commitQueueJob) addMergeTaskDependencies(cq commitqueue.CommitQueue) er
 		if err != nil {
 			return errors.Wrapf(err, "updating tasks depending on merge task '%s' to also depend on previous merge task '%s'", mergeTask.Id, dependency.TaskId)
 		}
-		err = model.RecomputeNumDependents(*mergeTask)
+		err = model.RecomputeNumDependents(ctx, *mergeTask)
 		if err != nil {
 			return errors.Wrapf(err, "recomputing number of dependencies for merge task '%s'", mergeTask.Id)
 		}

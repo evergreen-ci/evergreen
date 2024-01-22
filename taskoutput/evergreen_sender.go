@@ -21,13 +21,20 @@ const defaultMaxBufferSize = 1e7
 // Parsers need not set the log name or, in most cases, the priority.
 type LogLineParser func(string) (log.LogLine, error)
 
+var defaultLogLineParser = func(rawLine string) (log.LogLine, error) {
+	return log.LogLine{Data: rawLine}, nil
+}
+
 // logLineAppender appends a chunk of lines to the underlying log store.
 type logLineAppender func(context.Context, []log.LogLine) error
 
 // EvergreenSenderOptions support the use and creation of an Evergreen sender.
 type EvergreenSenderOptions struct {
+	// LevelInfo configures the sender's log levels. Defaults the default
+	// and threshold log levels to "trace".
+	LevelInfo send.LevelInfo
 	// Local is the sender for "fallback" operations and to collect any
-	// logger error output.
+	// logger error output. Defaults to stdout.
 	Local send.Sender
 	// MaxBufferSize is the maximum number of bytes to buffer before
 	// persisting log data. Defaults to 10MB.
@@ -51,9 +58,14 @@ func (opts *EvergreenSenderOptions) validate() error {
 	catcher.NewWhen(opts.FlushInterval < 0, "flush interval cannot be negative")
 
 	if opts.Parse == nil {
-		opts.Parse = func(rawLine string) (log.LogLine, error) {
-			return log.LogLine{Data: rawLine}, nil
-		}
+		opts.Parse = defaultLogLineParser
+	}
+
+	if opts.LevelInfo.Default == 0 {
+		opts.LevelInfo.Default = level.Trace
+	}
+	if opts.LevelInfo.Threshold == 0 {
+		opts.LevelInfo.Threshold = level.Trace
 	}
 
 	if opts.Local == nil {
@@ -94,6 +106,10 @@ func newEvergreenSender(ctx context.Context, name string, opts EvergreenSenderOp
 		cancel: cancel,
 		opts:   opts,
 		Base:   send.NewBase(name),
+	}
+
+	if err := s.SetLevel(s.opts.LevelInfo); err != nil {
+		return nil, errors.Wrap(err, "setting log levels")
 	}
 
 	if err := s.SetErrorHandler(send.ErrorHandlerFromSender(s.opts.Local)); err != nil {
