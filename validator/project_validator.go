@@ -139,7 +139,6 @@ var projectErrorValidators = []projectValidator{
 	validateHostCreates,
 	validateDuplicateBVTasks,
 	validateGenerateTasks,
-	validateModuleUsageInGitGetProject,
 }
 
 // Functions used to validate the syntax of project configs representing properties found on the project page.
@@ -158,6 +157,7 @@ var projectWarningValidators = []projectValidator{
 	checkTasks,
 	checkRequestersForTaskDependencies,
 	checkBuildVariants,
+	validateModuleUsageInGitGetProject,
 }
 
 // Functions used to validate a project configuration that requires additional
@@ -1959,7 +1959,7 @@ func validateModuleUsageInGitGetProject(p *model.Project) ValidationErrors {
 	if err != nil {
 		errs = append(errs, ValidationError{
 			Message: fmt.Sprintf("build variants could not be mapped to tasks that contain 'git.get_project' for project %s", p.Identifier),
-			Level:   Error,
+			Level:   Warning,
 		})
 		return errs
 	}
