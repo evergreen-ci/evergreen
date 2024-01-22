@@ -99,6 +99,7 @@ var (
 	globalGitHubTokenDisabledKey      = bsonutil.MustHaveTag(ServiceFlags{}, "GlobalGitHubTokenDisabled")
 	unrecognizedPodCleanupDisabledKey = bsonutil.MustHaveTag(ServiceFlags{}, "UnrecognizedPodCleanupDisabled")
 	legacyUIDistroPageDisabledKey     = bsonutil.MustHaveTag(ServiceFlags{}, "LegacyUIDistroPageDisabled")
+	sleepScheduleDisabledKey          = bsonutil.MustHaveTag(ServiceFlags{}, "SleepScheduleDisabled")
 
 	// ContainerPoolsConfig keys
 	poolsKey = bsonutil.MustHaveTag(ContainerPoolsConfig{}, "Pools")
