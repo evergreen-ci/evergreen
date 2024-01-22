@@ -1309,8 +1309,8 @@ func evalBisectStepback(ctx context.Context, t *task.Task, caller string, stepba
 	// If the stepback info is nil but we reached this point, this must be the first
 	// iteration of stepback.
 	newStepback := t.StepbackInfo == nil && evergreen.IsFailedTaskStatus(t.Status)
-	// If the stepback is not nil, this is an ongoing stepback.
-	existingStepback := t.StepbackInfo != nil
+	// If the stepback is not nil and it's values are not empty, this is an ongoing stepback.
+	existingStepback := t.StepbackInfo != nil && t.StepbackInfo.LastPassingStepbackTaskId != ""
 	if newStepback || existingStepback {
 		return errors.Wrap(doBisectStepback(ctx, t), "performing bisect stepback")
 	}
