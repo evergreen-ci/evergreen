@@ -73,14 +73,6 @@ auth:
 
 github_pr_creator_org: "10gen"
 
-# Do not edit below this line
 expansions:
-  github_app_key: |
+  github_app_key: "$GITHUB_APP_KEY"
 EOF
-
-# Write the GitHub app key to a file for easier formatting
-echo "$GITHUB_APP_KEY" > app_key.txt
-# Linux and MacOS friendly command to add 4 spaces to the start of each line
-sed -i'' -e 's/^/    /' app_key.txt
-# Append the formatted GitHub app key to the creds.yml file
-cat app_key.txt >> creds.yml
