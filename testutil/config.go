@@ -89,8 +89,9 @@ func MockConfig() *evergreen.Settings {
 			Name:       "amboy",
 			SingleName: "single",
 			DBConnection: evergreen.AmboyDBConfig{
-				Database: "db",
-				URL:      "mongodb://localhost:27017",
+				Database:  "db",
+				URL:       "mongodb://localhost:27017",
+				KanopyURL: "mongodb://localhost:27018",
 			},
 			PoolSizeLocal:                         10,
 			PoolSizeRemote:                        20,
