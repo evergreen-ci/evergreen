@@ -1312,7 +1312,7 @@ func evalBisectStepback(ctx context.Context, t *task.Task, caller string, stepba
 
 	// Stepback should happen when it is a failing task.
 	// This could be a new stepback, or possibly a continuing one.
-	potentialNewStepback := t.Status == evergreen.TaskFailed
+	potentialNewStepback := t.Status == evergreen.TaskFailed && !t.Aborted
 	// Or if there is stepback info, we should continue stepback.
 	existingStepback := !t.StepbackInfo.IsZero() && caller == evergreen.StepbackTaskActivator
 	if potentialNewStepback || existingStepback {
