@@ -53,7 +53,7 @@ func updateTestDepTasks(t *testing.T) {
 }
 
 func TestGetDisplayStatusAndColorSort(t *testing.T) {
-	require.NoError(t, db.ClearCollections(Collection, annotations.TaskAnnotationsCollection))
+	require.NoError(t, db.ClearCollections(Collection, annotations.Collection))
 	t1 := Task{
 		Id:            "t1",
 		Version:       "v1",
@@ -4060,7 +4060,7 @@ func (s *TaskConnectorFetchByIdSuite) TestFindByIdAndExecution() {
 }
 
 func (s *TaskConnectorFetchByIdSuite) TestFindByVersion() {
-	s.Require().NoError(db.ClearCollections(Collection, OldCollection, annotations.TaskAnnotationsCollection))
+	s.Require().NoError(db.ClearCollections(Collection, OldCollection, annotations.Collection))
 	taskKnown2 := &Task{
 		Id:            "task_known",
 		Execution:     2,

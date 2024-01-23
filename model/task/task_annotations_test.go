@@ -11,7 +11,7 @@ import (
 )
 
 func TestAddIssueToAnnotation(t *testing.T) {
-	assert.NoError(t, db.ClearCollections(annotations.TaskAnnotationsCollection, Collection))
+	assert.NoError(t, db.ClearCollections(annotations.Collection, Collection))
 	task := Task{Id: "t1"}
 	assert.NoError(t, task.Insert())
 	issue := annotations.IssueLink{URL: "https://issuelink.com", IssueKey: "EVG-1234", ConfidenceScore: float64(91.23)}
@@ -44,7 +44,7 @@ func TestAddIssueToAnnotation(t *testing.T) {
 func TestRemoveIssueFromAnnotation(t *testing.T) {
 	issue1 := annotations.IssueLink{URL: "https://issuelink.com", IssueKey: "EVG-1234", Source: &annotations.Source{Author: "annie.black"}}
 	issue2 := annotations.IssueLink{URL: "https://issuelink.com", IssueKey: "EVG-1234", Source: &annotations.Source{Author: "not.annie.black"}}
-	assert.NoError(t, db.ClearCollections(annotations.TaskAnnotationsCollection, Collection))
+	assert.NoError(t, db.ClearCollections(annotations.Collection, Collection))
 	a := annotations.TaskAnnotation{TaskId: "t1", Issues: []annotations.IssueLink{issue1, issue2}}
 	assert.NoError(t, a.Upsert())
 	task := Task{Id: "t1", HasAnnotations: true}
@@ -78,7 +78,7 @@ func TestMoveIssueToSuspectedIssue(t *testing.T) {
 	issue1 := annotations.IssueLink{URL: "https://issuelink.com", IssueKey: "EVG-1234", Source: &annotations.Source{Author: "this will be overridden"}}
 	issue2 := annotations.IssueLink{URL: "https://issuelink.com", IssueKey: "EVG-2345", Source: &annotations.Source{Author: "evergreen user"}}
 	issue3 := annotations.IssueLink{URL: "https://issuelink.com", IssueKey: "EVG-3456", Source: &annotations.Source{Author: "different user"}}
-	assert.NoError(t, db.ClearCollections(annotations.TaskAnnotationsCollection, Collection))
+	assert.NoError(t, db.ClearCollections(annotations.Collection, Collection))
 	a := annotations.TaskAnnotation{TaskId: "t1", Issues: []annotations.IssueLink{issue1, issue2}, SuspectedIssues: []annotations.IssueLink{issue3}}
 	assert.NoError(t, a.Upsert())
 	task := Task{Id: "t1", HasAnnotations: true}
@@ -120,7 +120,7 @@ func TestMoveSuspectedIssueToIssue(t *testing.T) {
 	issue2 := annotations.IssueLink{URL: "https://issuelink.com", IssueKey: "EVG-2345", Source: &annotations.Source{Author: "evergreen user"}}
 	issue3 := annotations.IssueLink{URL: "https://issuelink.com", IssueKey: "EVG-3456", Source: &annotations.Source{Author: "different user"}}
 
-	assert.NoError(t, db.ClearCollections(annotations.TaskAnnotationsCollection, Collection))
+	assert.NoError(t, db.ClearCollections(annotations.Collection, Collection))
 	task := Task{Id: "t1"}
 	assert.NoError(t, task.Insert())
 	a := annotations.TaskAnnotation{TaskId: "t1", SuspectedIssues: []annotations.IssueLink{issue1, issue2}, Issues: []annotations.IssueLink{issue3}}
@@ -142,7 +142,7 @@ func TestMoveSuspectedIssueToIssue(t *testing.T) {
 }
 
 func TestPatchIssue(t *testing.T) {
-	assert.NoError(t, db.ClearCollections(annotations.TaskAnnotationsCollection, Collection))
+	assert.NoError(t, db.ClearCollections(annotations.Collection, Collection))
 	task := Task{Id: "t1"}
 	assert.NoError(t, task.Insert())
 	issue1 := annotations.IssueLink{URL: "https://issuelink.com", IssueKey: "EVG-1234", ConfidenceScore: float64(91.23)}

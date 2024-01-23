@@ -13,7 +13,7 @@ func TestGetLatestExecutions(t *testing.T) {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 	testutil.NewEnvironment(ctx, t)
-	assert.NoError(t, db.Clear(TaskAnnotationsCollection))
+	assert.NoError(t, db.Clear(Collection))
 	taskAnnotations := []TaskAnnotation{
 		{
 			TaskId:        "t1",
@@ -44,7 +44,7 @@ func TestGetLatestExecutions(t *testing.T) {
 func TestSetAnnotationMetadataLinks(t *testing.T) {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
-	assert.NoError(t, db.Clear(TaskAnnotationsCollection))
+	assert.NoError(t, db.Clear(Collection))
 	taskLink := MetadataLink{URL: "https://issuelink.com", Text: "Hello World"}
 	assert.NoError(t, SetAnnotationMetadataLinks(ctx, "t1", 0, "usr", taskLink))
 
@@ -70,7 +70,7 @@ func TestSetAnnotationMetadataLinks(t *testing.T) {
 }
 
 func TestAddSuspectedIssueToAnnotation(t *testing.T) {
-	assert.NoError(t, db.Clear(TaskAnnotationsCollection))
+	assert.NoError(t, db.Clear(Collection))
 	issue := IssueLink{URL: "https://issuelink.com", IssueKey: "EVG-1234"}
 	assert.NoError(t, AddSuspectedIssueToAnnotation("t1", 0, issue, "annie.black"))
 
@@ -95,7 +95,7 @@ func TestAddSuspectedIssueToAnnotation(t *testing.T) {
 func TestRemoveSuspectedIssueFromAnnotation(t *testing.T) {
 	issue1 := IssueLink{URL: "https://issuelink.com", IssueKey: "EVG-1234", Source: &Source{Author: "annie.black"}}
 	issue2 := IssueLink{URL: "https://issuelink.com", IssueKey: "EVG-1234", Source: &Source{Author: "not.annie.black"}}
-	assert.NoError(t, db.Clear(TaskAnnotationsCollection))
+	assert.NoError(t, db.Clear(Collection))
 	a := TaskAnnotation{TaskId: "t1", SuspectedIssues: []IssueLink{issue1, issue2}}
 	assert.NoError(t, a.Upsert())
 

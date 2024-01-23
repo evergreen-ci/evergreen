@@ -25,7 +25,7 @@ const (
 	OldCollection = "old_tasks"
 )
 
-var annotationLookupDeprecationTime = time.Date(2024, time.January, 18, 23, 0, 0, 0, time.UTC)
+var annotationLookupDeprecationTime = time.Date(2024, time.January, 23, 23, 0, 0, 0, time.UTC)
 
 var (
 	ActivatedTasksByDistroIndex = bson.D{
@@ -200,6 +200,7 @@ var (
 					"case": bson.M{
 						"$or": []bson.M{
 							{"$eq": []interface{}{"$" + HasAnnotationsKey, true}},
+							// TODO: DEVPROD-3994 remove this case
 							{"$ne": []interface{}{
 								bson.M{
 									"$size": bson.M{"$ifNull": []interface{}{"$annotation_docs", []bson.M{}}},
@@ -295,19 +296,15 @@ var (
 	}
 
 	// AddAnnotations adds the annotations to the task document.
+	// TODO: DEVPROD-3994 remove this pipeline
 	AddAnnotations = []bson.M{
 		{
 			"$facet": bson.M{
-				// We skip annotation lookup for non-failed tasks, because these can't have annotations,
-				// and lookup is not necessary for tasks that already have HasAnnotationsKey set
-				// TODO: DEVPROD-___ simplify this step to only check HasAnnotationsKey
+				// We skip annotation lookup for non-failed tasks, because these can't have annotations
 				"not_failed": []bson.M{
 					{
 						"$match": bson.M{
-							"$or": []bson.M{
-								{HasAnnotationsKey: true},
-								{StatusKey: bson.M{"$nin": evergreen.TaskFailureStatuses}},
-							},
+							StatusKey: bson.M{"$nin": evergreen.TaskFailureStatuses},
 						},
 					},
 				},
@@ -320,7 +317,7 @@ var (
 					},
 					{
 						"$lookup": bson.M{
-							"from": annotations.TaskAnnotationsCollection,
+							"from": annotations.Collection,
 							"let":  bson.M{"task_annotation_id": "$" + IdKey, "task_annotation_execution": "$" + ExecutionKey},
 							"pipeline": []bson.M{
 								{
@@ -359,10 +356,11 @@ var (
 	}
 
 	// AddAnnotationsSlowLookup adds the annotations to the task document. This is a slower version of AddAnnotations that does not use a facet and does not run into the 104mb pipeline stage limit.
+	// TODO: DEVPROD-3994 remove this pipeline
 	AddAnnotationsSlowLookup = []bson.M{
 		{
 			"$lookup": bson.M{
-				"from": annotations.TaskAnnotationsCollection,
+				"from": annotations.Collection,
 				"let":  bson.M{"task_annotation_id": "$" + IdKey, "task_annotation_execution": "$" + ExecutionKey},
 				"pipeline": []bson.M{
 					{
@@ -2128,6 +2126,7 @@ func GetTasksByVersion(ctx context.Context, versionID string, opts GetTasksByVer
 	env := evergreen.GetEnvironment()
 	cursor, err := env.DB().Collection(Collection).Aggregate(ctx, pipeline)
 
+	// TODO: DEVPROD-3994 Remove this case
 	if err != nil {
 		// If the pipeline stage is too large we should use the slow annotations lookup
 		if db.IsErrorCode(err, db.FacetPipelineStageTooLargeCode) && !opts.UseSlowAnnotationsLookup {
@@ -2628,11 +2627,11 @@ func getTasksByVersionPipeline(versionID string, opts GetTasksByVersionOptions) 
 			},
 		})
 	}
-	// TODO: DEVPROD-___ Remove this conditional and annotation lookup pipelines
+	// TODO: DEVPROD-3994 Remove this conditional and annotation lookup pipelines
 	// Pull one task, any task associated with this versionID. A task's CreateTime is
 	// derived from the version commit time or the patch creation time, allowing us to treat it
 	// as a proxy for the version creation time.
-	dbTask, err := FindOne(db.Query(bson.M{VersionKey: versionID}))
+	dbTask, err := FindOne(db.Query(bson.M{VersionKey: versionID}).WithFields(CreateTimeKey))
 	if err != nil {
 		return nil, errors.Wrapf(err, "finding one task from version '%s'", versionID)
 	}
@@ -2830,10 +2829,10 @@ func enableDisabledTasks(taskIDs []string) error {
 	return err
 }
 
-// SetHasAnnotation sets a task's HasAnnotation flag, indicating
+// SetHasAnnotations sets a task's HasAnnotations flag, indicating
 // that there are annotations with populated IssuesKey for its
 // id / execution pair.
-func SetHasAnnotation(taskId string, execution int) error {
+func SetHasAnnotations(taskId string, execution int) error {
 	err := UpdateOne(
 		ByIdAndExecution(taskId, execution),
 		bson.M{"$set": bson.M{
@@ -2842,10 +2841,10 @@ func SetHasAnnotation(taskId string, execution int) error {
 	return errors.Wrapf(err, "marking task '%s' as having annotations", taskId)
 }
 
-// UnsetHasAnnotation unsets a task's HasAnnotation flag, indicating
+// UnsetHasAnnotations unsets a task's HasAnnotations flag, indicating
 // that there are no longer any annotations with populated IssuesKey for its
 // id / execution pair.
-func UnsetHasAnnotation(taskId string, execution int) error {
+func UnsetHasAnnotations(taskId string, execution int) error {
 	err := UpdateOne(
 		ByIdAndExecution(taskId, execution),
 		bson.M{"$set": bson.M{

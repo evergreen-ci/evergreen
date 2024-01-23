@@ -97,7 +97,7 @@ func UpdateAnnotationNote(taskId string, execution int, originalMessage, newMess
 		return errors.New("note is out of sync, please try again")
 	}
 	_, err = db.Upsert(
-		TaskAnnotationsCollection,
+		Collection,
 		ByTaskIdAndExecution(taskId, execution),
 		bson.M{
 			"$set": bson.M{NoteKey: note},
@@ -118,7 +118,7 @@ func SetAnnotationMetadataLinks(ctx context.Context, taskId string, execution in
 	}
 
 	_, err := db.Upsert(
-		TaskAnnotationsCollection,
+		Collection,
 		ByTaskIdAndExecution(taskId, execution),
 		bson.M{
 			"$set": bson.M{MetadataLinksKey: metadataLinks},
@@ -135,7 +135,7 @@ func AddSuspectedIssueToAnnotation(taskId string, execution int, issue IssueLink
 	}
 
 	_, err := db.Upsert(
-		TaskAnnotationsCollection,
+		Collection,
 		ByTaskIdAndExecution(taskId, execution),
 		bson.M{
 			"$push": bson.M{SuspectedIssuesKey: issue},
@@ -146,12 +146,13 @@ func AddSuspectedIssueToAnnotation(taskId string, execution int, issue IssueLink
 
 func RemoveSuspectedIssueFromAnnotation(taskId string, execution int, issue IssueLink) error {
 	return db.Update(
-		TaskAnnotationsCollection,
+		Collection,
 		ByTaskIdAndExecution(taskId, execution),
 		bson.M{"$pull": bson.M{SuspectedIssuesKey: issue}},
 	)
 }
 
+// CreateAnnotationUpdate constructs a DB update to modify an existing task annotation.
 func CreateAnnotationUpdate(annotation *TaskAnnotation, userDisplayName string) bson.M {
 	source := &Source{
 		Author:    userDisplayName,
@@ -188,7 +189,7 @@ func AddCreatedTicket(taskId string, execution int, ticket IssueLink, userDispla
 	}
 	ticket.Source = source
 	_, err := db.Upsert(
-		TaskAnnotationsCollection,
+		Collection,
 		ByTaskIdAndExecution(taskId, execution),
 		bson.M{
 			"$push": bson.M{CreatedIssuesKey: ticket},

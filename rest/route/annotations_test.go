@@ -21,7 +21,7 @@ import (
 )
 
 func TestAnnotationsByBuildHandlerParse(t *testing.T) {
-	assert.NoError(t, db.ClearCollections(annotations.TaskAnnotationsCollection))
+	assert.NoError(t, db.ClearCollections(annotations.Collection))
 	h := &annotationsByBuildHandler{}
 	r, err := http.NewRequest(http.MethodGet, "/builds/b1/annotations", nil)
 	assert.NoError(t, err)
@@ -41,7 +41,7 @@ func TestAnnotationsByBuildHandlerParse(t *testing.T) {
 }
 
 func TestAnnotationsByBuildHandlerRun(t *testing.T) {
-	assert.NoError(t, db.ClearCollections(annotations.TaskAnnotationsCollection, task.Collection))
+	assert.NoError(t, db.ClearCollections(annotations.Collection, task.Collection))
 	tasks := []task.Task{
 		{Id: "task-with-many-executions", BuildId: "b1"},
 		{Id: "other-task", BuildId: "b1"},
@@ -112,7 +112,7 @@ func TestAnnotationsByBuildHandlerRun(t *testing.T) {
 }
 
 func TestAnnotationsByVersionHandlerParse(t *testing.T) {
-	assert.NoError(t, db.ClearCollections(annotations.TaskAnnotationsCollection))
+	assert.NoError(t, db.ClearCollections(annotations.Collection))
 	h := &annotationsByVersionHandler{}
 	r, err := http.NewRequest(http.MethodGet, "/versions/v1/annotations", nil)
 	assert.NoError(t, err)
@@ -132,7 +132,7 @@ func TestAnnotationsByVersionHandlerParse(t *testing.T) {
 }
 
 func TestAnnotationsByVersionHandlerRun(t *testing.T) {
-	assert.NoError(t, db.ClearCollections(annotations.TaskAnnotationsCollection, task.Collection))
+	assert.NoError(t, db.ClearCollections(annotations.Collection, task.Collection))
 	tasks := []task.Task{
 		{Id: "task-with-many-executions", Version: "v1"},
 		{Id: "other-task", Version: "v1"},
@@ -203,7 +203,7 @@ func TestAnnotationsByVersionHandlerRun(t *testing.T) {
 }
 
 func TestAnnotationByTaskGetHandlerParse(t *testing.T) {
-	assert.NoError(t, db.ClearCollections(annotations.TaskAnnotationsCollection))
+	assert.NoError(t, db.ClearCollections(annotations.Collection))
 	h := &annotationByTaskGetHandler{}
 	r, err := http.NewRequest(http.MethodGet, "/task/t1/annotations", nil)
 	assert.NoError(t, err)
@@ -247,7 +247,7 @@ func TestAnnotationByTaskGetHandlerParse(t *testing.T) {
 }
 
 func TestAnnotationByTaskGetHandlerRun(t *testing.T) {
-	assert.NoError(t, db.ClearCollections(annotations.TaskAnnotationsCollection))
+	assert.NoError(t, db.ClearCollections(annotations.Collection))
 	h := &annotationByTaskGetHandler{
 		taskId:             "task-1",
 		execution:          -1, //unspecified
@@ -343,7 +343,7 @@ func TestAnnotationByTaskGetHandlerRun(t *testing.T) {
 }
 
 func TestAnnotationByTaskPutHandlerParse(t *testing.T) {
-	assert.NoError(t, db.ClearCollections(annotations.TaskAnnotationsCollection, task.Collection, task.OldCollection))
+	assert.NoError(t, db.ClearCollections(annotations.Collection, task.Collection, task.OldCollection))
 	tasks := []task.Task{
 		{Id: "TaskFailedId", Execution: 1, Status: evergreen.TaskFailed},
 		{Id: "TaskSystemUnresponseId", Execution: 1, Status: evergreen.TaskSystemUnresponse},
@@ -635,7 +635,7 @@ func TestAnnotationByTaskPutHandlerParse(t *testing.T) {
 }
 
 func TestAnnotationByTaskPutHandlerRun(t *testing.T) {
-	assert.NoError(t, db.ClearCollections(annotations.TaskAnnotationsCollection, task.Collection))
+	assert.NoError(t, db.ClearCollections(annotations.Collection, task.Collection))
 	t1 := task.Task{Id: "t1"}
 	require.NoError(t, t1.Insert())
 	execution0 := 0
@@ -729,7 +729,7 @@ func TestAnnotationByTaskPutHandlerRun(t *testing.T) {
 
 // test created tickets route
 func TestCreatedTicketByTaskPutHandlerParse(t *testing.T) {
-	assert.NoError(t, db.ClearCollections(annotations.TaskAnnotationsCollection, task.Collection, task.OldCollection, model.ProjectRefCollection))
+	assert.NoError(t, db.ClearCollections(annotations.Collection, task.Collection, task.OldCollection, model.ProjectRefCollection))
 	testProject := "testProject"
 	p := model.ProjectRef{
 		Identifier: testProject,
@@ -794,7 +794,7 @@ func TestCreatedTicketByTaskPutHandlerParse(t *testing.T) {
 }
 
 func TestCreatedTicketByTaskPutHandlerRun(t *testing.T) {
-	assert.NoError(t, db.ClearCollections(annotations.TaskAnnotationsCollection))
+	assert.NoError(t, db.ClearCollections(annotations.Collection))
 
 	ticket := &restModel.APIIssueLink{
 		URL:      utility.ToStringPtr("https://issuelink1.com"),

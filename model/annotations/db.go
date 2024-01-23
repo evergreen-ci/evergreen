@@ -23,18 +23,18 @@ var (
 )
 
 const (
-	TaskAnnotationsCollection = "task_annotations"
-	UIRequester               = "ui"
-	APIRequester              = "api"
-	WebhookRequester          = "webhook"
-	MaxMetadataLinks          = 1
-	MaxMetadataTextLength     = 40
+	Collection            = "task_annotations"
+	UIRequester           = "ui"
+	APIRequester          = "api"
+	WebhookRequester      = "webhook"
+	MaxMetadataLinks      = 1
+	MaxMetadataTextLength = 40
 )
 
 // FindOne gets one TaskAnnotation for the given query.
 func FindOne(query db.Q) (*TaskAnnotation, error) {
 	annotation := &TaskAnnotation{}
-	err := db.FindOneQ(TaskAnnotationsCollection, query, annotation)
+	err := db.FindOneQ(Collection, query, annotation)
 	if adb.ResultsNotFound(err) {
 		return nil, nil
 	}
@@ -44,7 +44,7 @@ func FindOne(query db.Q) (*TaskAnnotation, error) {
 // Find gets every TaskAnnotation matching the given query.
 func Find(query db.Q) ([]TaskAnnotation, error) {
 	annotations := []TaskAnnotation{}
-	err := db.FindAllQ(TaskAnnotationsCollection, query, &annotations)
+	err := db.FindAllQ(Collection, query, &annotations)
 	if adb.ResultsNotFound(err) {
 		return nil, nil
 	}
@@ -80,7 +80,7 @@ func (a *TaskAnnotation) Upsert() error {
 		set[MetadataKey] = a.Metadata
 	}
 	_, err := db.Upsert(
-		TaskAnnotationsCollection,
+		Collection,
 		ByTaskIdAndExecution(a.TaskId, a.TaskExecution),
 		bson.M{
 			"$set": set,
