@@ -195,43 +195,50 @@ This supports GitHub checks on commits (i.e. to be visible at
 regexes/tags are required, and Github statuses will be sent with only
 the status of those tasks on the mainline commit version.
 
-### Trigger Versions With Git Tags
+### Triggering Versions With Git Tags
 
-This allows for versions to be created from pushed git tags.
+This allows for versions to be created automatically from pushed git tags,
+and these versions will have the following properties:
 
--   The tag must be pushed after the commit has been merged to ensure
+- The author of the version will match the author from the original waterfall version.  
+- The tag must be pushed after the commit has been merged to ensure
     that the waterfall version has already been created for the
     revision.
     -   It is possible to push the tag on the same line as the commit
         using `&&` but this is recommended for low-risk commits only.
--   Versions are displayed on the waterfall page.
--   The author of the version matches the author from the original
-    waterfall version.
+-   Versions are displayed on the waterfall and project health page.
 -   The version is titled "Triggered From Git Tag '`<`git tag`>`':
     `<`commit message for this revision`>`"
 -   The expansion `${triggered_by_git_tag}` is set to the git tag that
     was pushed.
--   If the revision exists for multiple projects, it will check if a
-    version should be created for each project.
+-   If the same revision exists for multiple projects, Evergreen will check 
+    each project to determine if a git tag version should be created.
+
+#### How to Configure Git Tag Versions
+The following are the **required** steps needed to create versions from a
+git tag:
 
 1.  **Configure what users/teams are authorized to trigger versions with
     git tags for the project.**
 
-You can define this in a list on the project settings page. For users,
-these should be Github users or bot names. For teams, this should be the
+![authorized_git_tags.png](../images/authorized_git_tags.png)
+
+This must be defined in a list on the project settings page. For users,
+these should be GitHub users or bot names. For teams, this should be the
 slug for the team (for example, the team Evergreen Users would be
 evergreen-users), and any member in the team is authorized. Both teams
 and individual users can be configured.
 
 Alternatively, you can use Mana to give users permission to trigger git
-tag versions for the project; however the user will need to add their
-Github username to their [settings
+tag versions for a project; however the user will need to add their
+GitHub username to their [settings
 page](https://evergreen.mongodb.com/settings) in order for us to connect
 the Github user to an Evergreen user.
 
-If the person who pushed the tag is not authorized, then the tag will
-still be added to the existing version but no new version will be
-triggered.
+**NOTE**: If the person who pushed the tag is not part of the authorized users or
+authorized teams, no version will be created. **If git tag versions are not being
+created as you expect them to**, please first check that the tag pusher is part of
+one of the above fields.
 
 2.  **Add aliases to determine what tasks will run.**
 
@@ -244,6 +251,9 @@ There are two options for aliases:
 -   Use the default config file, and **define task/variant regexes or
     tags** to use with the existing project configuration (as you would
     for other aliases).
+
+Example:
+![git_tag_aliases.png](../images/git_tag_aliases.png)
 
 If you choose to use the project's existing project config file, you
 can set `git_tag_only` to true for tasks you only want running on
