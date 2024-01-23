@@ -788,14 +788,11 @@ func MarkEnd(ctx context.Context, settings *evergreen.Settings, t *task.Task, ca
 		} else {
 			err = evalStepback(ctx, t, caller, status, deactivatePrevious)
 		}
-		if err != nil {
-			grip.Error(message.Fields{
-				"message":    "failed stepback",
-				"task_id":    t.Id,
-				"project_id": t.Project,
-				"err":        err.Error(),
-			})
-		}
+		grip.Error(message.WrapError(err, message.Fields{
+			"message": "evaluating stepback",
+			"project": t.Project,
+			"task_id": t.Id,
+		}))
 	}
 
 	if err = UpdateBuildAndVersionStatusForTask(ctx, t); err != nil {
