@@ -15,10 +15,9 @@ var podLifecycleConfigKey = bsonutil.MustHaveTag(Settings{}, "PodLifecycle") //n
 
 // PodLifecycleConfig holds logging settings for the pod init process.
 type PodLifecycleConfig struct {
-	S3BaseURL                   string `bson:"s3_base_url" json:"s3_base_url" yaml:"s3_base_url"`
-	MaxParallelPodRequests      int    `bson:"max_parallel_pod_requests" json:"max_parallel_pod_requests" yaml:"max_parallel_pod_requests"`
-	MaxPodDefinitionCleanupRate int    `bson:"max_pod_definition_cleanup_rate" json:"max_pod_definition_cleanup_rate" yam:"max_pod_definition_cleanup_rate"`
-	MaxSecretCleanupRate        int    `bson:"max_secret_cleanup_rate" json:"max_secret_cleanup_rate" yaml:"max_secret_cleanup_rate"`
+	MaxParallelPodRequests      int `bson:"max_parallel_pod_requests" json:"max_parallel_pod_requests" yaml:"max_parallel_pod_requests"`
+	MaxPodDefinitionCleanupRate int `bson:"max_pod_definition_cleanup_rate" json:"max_pod_definition_cleanup_rate" yam:"max_pod_definition_cleanup_rate"`
+	MaxSecretCleanupRate        int `bson:"max_secret_cleanup_rate" json:"max_secret_cleanup_rate" yaml:"max_secret_cleanup_rate"`
 }
 
 func (c *PodLifecycleConfig) SectionId() string { return "pod_lifecycle" }

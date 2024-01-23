@@ -75,7 +75,6 @@ type ParserProject struct {
 	UpdatedByGenerators []string `yaml:"updated_by_generators,omitempty" bson:"updated_by_generators,omitempty"`
 	// List of yamls to merge
 	Include []Include `yaml:"include,omitempty" bson:"include,omitempty"`
-	Enabled *bool     `yaml:"enabled,omitempty" bson:"enabled,omitempty"`
 
 	// Beginning of ParserProject mergeable fields (this comment is used by the linter).
 	Stepback           *bool                      `yaml:"stepback,omitempty" bson:"stepback,omitempty"`
@@ -679,6 +678,7 @@ func LoadProjectInto(ctx context.Context, data []byte, opts *GetProjectOpts, ide
 			err = errors.New("trying to open include files with empty options")
 			return nil, errors.Wrapf(err, LoadProjectError)
 		}
+
 		wg := sync.WaitGroup{}
 		outputYAMLs := make(chan yamlTuple, len(intermediateProject.Include))
 		includesToProcess := make(chan Include, len(intermediateProject.Include))
@@ -737,14 +737,18 @@ func LoadProjectInto(ctx context.Context, data []byte, opts *GetProjectOpts, ide
 		}
 	}
 
-	intermediateProject.Include = nil
-
-	// return project even with errors
+	// Return project even with errors.
 	p, err := TranslateProject(intermediateProject)
 	if p != nil {
 		*project = *p
 	}
 	project.Identifier = identifier
+
+	// Remove includes once the project is translated since translate project saves number of includes.
+	// Intermediate project is used to save parser project as a YAML so removing the includes verifies that
+	// they have been processed.
+	intermediateProject.Include = nil
+
 	return intermediateProject, errors.Wrapf(err, LoadProjectError)
 }
 
@@ -990,6 +994,7 @@ func TranslateProject(pp *ParserProject) (*Project, error) {
 		Functions:          pp.Functions,
 		ExecTimeoutSecs:    utility.FromIntPtr(pp.ExecTimeoutSecs),
 		Loggers:            pp.Loggers,
+		NumIncludes:        len(pp.Include),
 	}
 	catcher := grip.NewBasicCatcher()
 	tse := NewParserTaskSelectorEvaluator(pp.Tasks)
@@ -1341,7 +1346,7 @@ func evaluateBVTasks(tse *taskSelectorEvaluator, tgse *tagSelectorEvaluator, vse
 				// it's already in the new list, so we check to make sure the status definitions match.
 				if !reflect.DeepEqual(t, old) {
 					evalErrs = append(evalErrs, errors.Errorf(
-						"conflicting definitions of task '%s' listed under build variant '%s': %#v != %#v", name, pbvt.Name, t, old))
+						"conflicting definitions of task '%s' listed under build variant '%s': %#v != %#v", name, pbv.Name, t, old))
 					continue
 				}
 			}

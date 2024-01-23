@@ -2,7 +2,7 @@
 name := evergreen
 buildDir := bin
 nodeDir := public
-packages := $(name) agent agent-command agent-util agent-internal agent-internal-client agent-internal-testutil operations cloud cloud-userdata
+packages := $(name) agent agent-command agent-util agent-internal agent-internal-client agent-internal-taskoutput agent-internal-testutil operations cloud cloud-userdata
 packages += db util plugin units graphql thirdparty thirdparty-docker auth scheduler model validator service repotracker mock
 packages += model-annotations model-patch model-artifact model-host model-pod model-pod-definition model-pod-dispatcher model-build model-event model-task model-user model-distro model-manifest model-testresult model-log model-testlog
 packages += model-commitqueue model-cache
@@ -126,6 +126,11 @@ cli:$(localClientBinary)
 clis:$(clientBinaries)
 $(clientBuildDir)/%/$(unixBinaryBasename) $(clientBuildDir)/%/$(windowsBinaryBasename):$(buildDir)/build-cross-compile $(srcFiles) go.mod go.sum
 	./$(buildDir)/build-cross-compile -buildName=$* -ldflags="$(ldFlags)" -gcflags="$(gcFlags)" -goBinary="$(nativeGobin)" -directory=$(clientBuildDir) -source=$(clientSource) -output=$@
+
+build-linux_%: $(clientBuildDir)/linux_%/$(unixBinaryBasename);
+build-windows_%: $(clientBuildDir)/windows_%/$(windowsBinaryBasename);
+build-darwin_%: $(clientBuildDir)/darwin_%/$(unixBinaryBasename) $(if $(SIGN_MACOS),$(clientBuildDir)/darwin_%/.signed);
+
 sign-macos:$(foreach platform,$(macOSPlatforms),$(clientBuildDir)/$(platform)/.signed)
 # Targets to upload the CLI binaries to S3.
 $(buildDir)/upload-s3:cmd/upload-s3/upload-s3.go
@@ -247,6 +252,8 @@ dist-unsigned:
 dist:$(buildDir)/dist.tar.gz
 $(buildDir)/dist.tar.gz:$(buildDir)/make-tarball $(clientBinaries) $(uiFiles) $(if $(SIGN_MACOS),sign-macos)
 	./$< --name $@ --prefix $(name) $(foreach item,$(distContents),--item $(item)) --exclude "public/node_modules" --exclude "clients/.cache"
+$(buildDir)/static_assets.tgz:$(buildDir)/make-tarball $(uiFiles)
+	./$< --name $@ --prefix static_assets $(foreach item,$(distArtifacts),--item $(item)) --exclude "public/node_modules" --exclude "clients/.cache"
 # end main build
 
 # userfacing targets for basic build and development operations

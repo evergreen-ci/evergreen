@@ -22,7 +22,7 @@ Evergreen username to the list of Administrators, that user will be able
 to access the Project Settings page for that project only and modify
 repository information, access settings, alerts, and keys.
 
-### Permissions Requested with Mana
+### Permissions Requested with MANA
 
 Functionality has been added to Mana to make permission requests more
 granular. Mana Entitlements can specify whether the user should have
@@ -30,7 +30,17 @@ read or write (or no) access to project settings, logs, task
 annotations, and more. These can be requested for specific members or
 for entire guilds. The project admins (or Evergreen admins, if no
 project admins exist) are then able to approve/reject requested access
-for their project.
+for their project. 
+
+In order to access this functionality, you must look up the the MANA resource 
+with the type `Evergreen Project` with the name of the project that
+permissions need to be requested for on [MANA](https://mana.corp.mongodbgov.com/). 
+Using the filter icon to only view resources of type `Evergreen Project` makes this easier.
+Once the project is selected, click on  the `Request Access` button and fill out the 
+`Requesting for` field to see the specific types of permissions that can be 
+requested on Evergreen as pictured below.
+
+![update_mana_permission.png](../images/update-mana-permission.png)
 
 If you'd like to use Entitlements for entire teams, then the team
 should be part of a Guild, as this is refreshed every day and better
@@ -70,9 +80,16 @@ repo-level project settings configuration. This can be learned about at
 Under project flags, admins have a number of options for users to configure what
 runs for their project. For example, admins can enable the ability to unschedule old 
 tasks if a more recent commit passes, or configure tasks to stepback on failure to 
-isolate the cause.
+isolate the cause.  
 
 Check out the settings on the page to see more options.
+
+#### Stepback Bisection
+By default, Evergreen does linear stepback which attempts to find out where a
+task failed by activating previous commits as needed.
+
+Admins can enable Stepback Bisection which recursively divides the commits
+in half to reduce the tasks taken from O(n) to O(logn).
 
 #### Repotracker Settings
 By default, Evergreen creates mainline commits (also known as waterfall versions or 
@@ -171,50 +188,57 @@ For security reasons, commits by users outside of your organization will
 not automatically be run. A patch will still be created and must be
 manually authorized to run by a logged-in user.
 
-### Github Checks
+### GitHub Checks
 
-This supports Github checks on commits (i.e. to be visible at
-<https://github.com/>\<owner\>/\<repo\>/commits). Task/variant
+This supports GitHub checks on commits (i.e. to be visible at
+`https://github.com/<owner>/<repo>/commits`). Task/variant
 regexes/tags are required, and Github statuses will be sent with only
 the status of those tasks on the mainline commit version.
 
-### Trigger Versions With Git Tags
+### Triggering Versions With Git Tags
 
-This allows for versions to be created from pushed git tags.
+This allows for versions to be created automatically from pushed git tags,
+and these versions will have the following properties:
 
--   The tag must be pushed after the commit has been merged to ensure
+- The author of the version will match the author from the original waterfall version.  
+- The tag must be pushed after the commit has been merged to ensure
     that the waterfall version has already been created for the
     revision.
     -   It is possible to push the tag on the same line as the commit
         using `&&` but this is recommended for low-risk commits only.
--   Versions are displayed on the waterfall page.
--   The author of the version matches the author from the original
-    waterfall version.
--   The version is titled "Triggered From Git Tag '\<git tag\>':
-    \<commit message for this revision\>"
+-   Versions are displayed on the waterfall and project health page.
+-   The version is titled "Triggered From Git Tag '`<`git tag`>`':
+    `<`commit message for this revision`>`"
 -   The expansion `${triggered_by_git_tag}` is set to the git tag that
     was pushed.
--   If the revision exists for multiple projects, it will check if a
-    version should be created for each project.
+-   If the same revision exists for multiple projects, Evergreen will check 
+    each project to determine if a git tag version should be created.
+
+#### How to Configure Git Tag Versions
+The following are the **required** steps needed to create versions from a
+git tag:
 
 1.  **Configure what users/teams are authorized to trigger versions with
     git tags for the project.**
 
-You can define this in a list on the project settings page. For users,
-these should be Github users or bot names. For teams, this should be the
+![authorized_git_tags.png](../images/authorized_git_tags.png)
+
+This must be defined in a list on the project settings page. For users,
+these should be GitHub users or bot names. For teams, this should be the
 slug for the team (for example, the team Evergreen Users would be
 evergreen-users), and any member in the team is authorized. Both teams
 and individual users can be configured.
 
 Alternatively, you can use Mana to give users permission to trigger git
-tag versions for the project; however the user will need to add their
-Github username to their [settings
+tag versions for a project; however the user will need to add their
+GitHub username to their [settings
 page](https://evergreen.mongodb.com/settings) in order for us to connect
 the Github user to an Evergreen user.
 
-If the person who pushed the tag is not authorized, then the tag will
-still be added to the existing version but no new version will be
-triggered.
+**NOTE**: If the person who pushed the tag is not part of the authorized users or
+authorized teams, no version will be created. **If git tag versions are not being
+created as you expect them to**, please first check that the tag pusher is part of
+one of the above fields.
 
 2.  **Add aliases to determine what tasks will run.**
 
@@ -227,6 +251,9 @@ There are two options for aliases:
 -   Use the default config file, and **define task/variant regexes or
     tags** to use with the existing project configuration (as you would
     for other aliases).
+
+Example:
+![git_tag_aliases.png](../images/git_tag_aliases.png)
 
 If you choose to use the project's existing project config file, you
 can set `git_tag_only` to true for tasks you only want running on
@@ -249,52 +276,61 @@ Ambiguous behavior is outlined here:
 ### Project Triggers
 
 Users can specify that commits to another project (the "upstream"
-project) will trigger builds in their project (the "downstream"
-project). Configure triggers in the downstream project from the Project Triggers
+project) will trigger builds in their current project (the "downstream"
+project). Configure triggers **in the downstream project** from the Project Triggers
 section of the project configuration page. Click "Add Project Trigger".
 
 Options:
 
--   Project: The upstream project.
--   Level: Accepted values are task, build, and push. Task and build levels will trigger
-    based on the completion of either a task or a build in the upstream project. 
-    - Push level triggers do not require any upstream build or task to run, but instead trigger a downstream version once
-    a commit is pushed to the upstream project.
-    - For push level triggers, if the upstream project is a module of the downstream project's YAML,
-    the manifest of the downstream version will use the commit hash of the upstream project's commit.
--   Status: Only applicable to build and task level triggers. Specify which status of the upstream 
-    build or task should trigger a downstream version.
--   Date cutoff: Do not trigger a downstream build if a user manually
-    schedules a build older than this number of days.
--   Variant and task regexes: Trigger based on these variants (if
-    build-level) or variants and tasks (if task-level) completing.
--   Definition file: The path to the downstream project's config file.
+-   **Project**: The upstream project identifier to listen to for commits.
+-   **Config file**: The path to the downstream project's config file.
     This may be the same as the main project configuration file but does
     not have to be.
--   Alias: Run a subset of tasks by specifying an alias. Otherwise, all
-    tasks run.
--   Unschedule Downstream Versions: If toggled, all tasks in the triggered 
-    downstream version will be unscheduled by default, requiring manual scheduling. 
-    Otherwise, all tasks will immediately scheduled once the downstream version is created.
+-   **Level**: Accepted values are task, build, and push. Task and build levels will trigger
+    based on the completion of either a task or a build in the upstream project. 
+    - Push level triggers do not require any upstream build or task to run, but instead trigger a downstream version once
+    a commit is pushed to the upstream project. This is helpful if the upstream project doesn't regularly run or create commit tasks.
+    - For push level triggers, if the upstream project is a module of the downstream project's YAML,
+    the manifest of the downstream version will use the commit hash of the upstream project's commit.
+-   **Status**: Specify which status of the upstream build or task should trigger a downstream version.
+    (Only applicable to build and task level triggers.)
+-   **Date cutoff**: Do not trigger a downstream build if a user manually
+    schedules a build older than this number of days.
+-   **Variant and task regexes**: Trigger based on these variants (if
+    build-level) or variants and tasks (if task-level) completing.
+-   **Alias**: Run a subset of downstream tasks by specifying an alias. Otherwise, all
+    tasks run. Aliases are defined on the Patch Aliases section.
+-   **Unschedule Downstream Versions**: If toggled, all tasks in the triggered 
+    downstream version will be unscheduled by default, requiring manual scheduling or stepback. 
+    Otherwise, all tasks will be immediately scheduled once the downstream version is created.
+
+**Example:** to have new commits for the Evergreen project trigger end-to-end tests in Spruce, 
+a configuration like this could be added to **Spruce's project page:**
+
+![project-trigger-example.png](../images/project-trigger-example.png)
+
+In this example, notice that Spruce tasks matching the e2e alias will trigger _only if_ the Evergreen dist task succeeds (and is less than one day old, per the date cutoff), and by default the Spruce tasks are unscheduled. 
+(This is helpful if you only want these tasks to be available for manual scheduling or stepback.)
 
 ### Patch Trigger Aliases
 
 Users can create aliases that can be used in patch builds (in the
 "upstream" project) to kick off a child patch (in the "downstream"
-project). Create aliases in the upstream project in the Patch
+project). Create aliases **in the upstream project** in the Patch
 Aliases section of the project configuration page. Click "Add Patch Trigger
 Alias".
 
 Options:
 
--   Alias: The name of the alias.
--   Project: The downstream project.
--   Module: Optionally specify a module to apply changes to.
--   Wait on: You can have the child patch wait on a complete(success or
-    failed), success, or failed status from the parent. Otherwise the
-    child patch will run immediately. If the patch depends on parent
+- **Alias**: The name of the alias.
+- **Project**: The downstream project identifier.
+- **Module**: If you want tests to include the upstream project's changes, 
+add the upstream project as a module in the downstream project yaml, and specify that module name here.
+- **Wait on**: You can have the child patch wait on a complete (success or
+    failed), success, or failed status from the parent. Otherwise, the
+    child patch will run immediately. If the patch depends on the parent
     status, at least one parent task must be scheduled.
--   Patch alias, variant and task regexes: Run a subset of tasks in the
+- **Patch alias, variant and task regexes**: Run a subset of tasks in the
     downstream project by specifying an alias or by specifying task and
     variant regexes.
 
@@ -308,6 +344,18 @@ repository as well as each subsequent push to each pull request.
 
 To pass information from the upstream patch to the downstream patch use
 [downstream_expansions.set](Project-Commands.md#downstream_expansionsset)
+
+**Example**:  to allow testing Spruce tasks as part of patches for the Evergreen project,  
+a configuration like this could be added to **Evergreen's project page:**
+
+![patch_trigger_alias_example.png](../images/patch-trigger-alias-example.png)
+
+This makes it possible to optionally add tasks matching the defined regex to any patch, and because 
+"Add to GitHub Trigger Alias" is checked, these tasks will be included as part of PR patches. 
+
+Additionally, because "evergreen" is defined as a module in the yaml (pictured below), the Spruce tasks will incorporate the patch changes.  
+
+![module_example.png](../images/module-example.png)
 
 ### Periodic Builds
 
@@ -394,6 +442,30 @@ Options:
 Users can enable the performance plugin for tracking historical
 performance of tasks and tests.
 
+
+### Project-Level Notifications
+
+Project admins can set up notifications for when some events happen within the project. Admins can set up events when:
+
+- Any version/build/task finishes/fails - these can be filtered by build initiator (commit, patch, PR, commit queue,
+  periodic build).
+- First failure occurs in a version, for each build or for each task name - these can be filtered by build initiator
+  (commit, patch, PR, commit queue, periodic build).
+- A previously-passing task fails - these can be filtered by failure type (any, test, system, setup). Furthermore, to
+  reduce the amount of notifications received, the re-notification interval can be explicitly set.
+- A previously-passing test fails - these can be filtered by test name and failure type (any, test, system, setup).
+  Furthermore, to reduce the amount of notifications received, the re-notification interval can be explicitly set.
+- The runtime for any/failed task exceeds some duration (in seconds).
+- The runtime for a successful task changes by a percentage.
+
+When the event happens, the notification can be delivered via:
+
+- Jira comment under a specific Jira issue.
+- New Jira issue - must specify a Jira project and issue type.
+- Slack channel or user.
+- Email address.
+- Webhook URL - admins can configure the behavior for resending notifications in case of failure.
+
 ### Ticket Creation
 
 Configure task Failure Details tab options.
@@ -434,14 +506,16 @@ Options:
 
 ### Metadata Links
 
-Customize additional links to specify for your project under the Plugins section
-of the project page, by specifying a link and title. 
+Customize additional links to show on patch metadata under the Plugins section
+of the project page. Projects can specify a maximum of 5 different metadata links.
 
 Special Fields:
-* `{version_id}` -- if this is included in the metadata link, we will sub in the ID when rendering the link
 
-This may also be added to individual tasks using `metadata_links` 
-for [task annotations](https://docs.devprod.prod.corp.mongodb.com/evergreen/API/REST-V2-Usage#task-annotations). 
+- `{requesters}` — defines what kind of patches to show the metadata link on (e.g. only show the link on periodic builds)
+- `{version_id}` — if this is included in the metadata link, we will sub in the ID when rendering the link
+
+This may also be added to individual tasks using `metadata_links`
+for [task annotations](https://docs.devprod.prod.corp.mongodb.com/evergreen/API/REST-V2-Usage#task-annotations).
 
 
 ## Distro Settings

@@ -68,6 +68,9 @@ type Project struct {
 
 	// Flag that indicates a project as requiring user authentication
 	Private bool `yaml:"private,omitempty" bson:"private"`
+
+	// Number of includes in the project cached for validation
+	NumIncludes int `yaml:"-" bson:"-"`
 }
 
 type ProjectInfo struct {
@@ -1408,6 +1411,11 @@ func FindLatestVersionWithValidProject(projectId string) (*Version, *Project, *P
 // overrides the default, such as cron/batchtime, disabling the task, or explicitly activating it.
 func (bvt *BuildVariantTaskUnit) HasSpecificActivation() bool {
 	return bvt.CronBatchTime != "" || bvt.BatchTime != nil || bvt.Activate != nil || bvt.IsDisabled()
+}
+
+// HasCheckRun returns if the build variant task specifies a checkrun
+func (bvt *BuildVariantTaskUnit) HasCheckRun() bool {
+	return bvt.CreateCheckRun != nil
 }
 
 // FindTaskForVariant returns the build variant task unit for a matching task or

@@ -191,8 +191,7 @@ func TestEndTaskSyncCommands(t *testing.T) {
 				Id:            taskID,
 				SyncAtEndOpts: task.SyncAtEndOptions{Enabled: true},
 			}
-			td := client.TaskData{ID: taskID, Secret: "secret"}
-			logger, err := comm.GetLoggerProducer(ctx, td, nil)
+			logger, err := comm.GetLoggerProducer(ctx, &tsk, nil)
 			require.NoError(t, err)
 			tc := &taskContext{
 				taskConfig: &internal.TaskConfig{
@@ -226,7 +225,7 @@ func (s *CommandSuite) setUpConfigAndProject(projYml string) {
 	s.NoError(err)
 	s.tc.taskConfig.Project = p
 
-	s.tc.logger, err = s.mockCommunicator.GetLoggerProducer(s.ctx, s.tc.task, nil)
+	s.tc.logger, err = s.mockCommunicator.GetLoggerProducer(s.ctx, &config.Task, nil)
 	s.NoError(err)
 	s.tc.taskConfig.Project = p
 }

@@ -151,10 +151,7 @@ func TestS3PullExecute(t *testing.T) {
 				},
 			}
 			comm := client.NewMock("localhost")
-			logger, err := comm.GetLoggerProducer(ctx, client.TaskData{
-				ID:     conf.Task.Id,
-				Secret: conf.Task.Secret,
-			}, nil)
+			logger, err := comm.GetLoggerProducer(ctx, &conf.Task, nil)
 			require.NoError(t, err)
 			tmpDir := t.TempDir()
 			c := &s3Pull{Task: "task", FromBuildVariant: "from_build_variant"}

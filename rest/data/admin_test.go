@@ -133,7 +133,6 @@ func (s *AdminDataSuite) TestSetAndGetSettings() {
 	s.EqualValues(testSettings.HostInit.CloudStatusBatchSize, settingsFromConnector.HostInit.CloudStatusBatchSize)
 	s.EqualValues(testSettings.HostInit.MaxTotalDynamicHosts, settingsFromConnector.HostInit.MaxTotalDynamicHosts)
 	s.EqualValues(testSettings.HostInit.S3BaseURL, settingsFromConnector.HostInit.S3BaseURL)
-	s.EqualValues(testSettings.PodLifecycle.S3BaseURL, settingsFromConnector.PodLifecycle.S3BaseURL)
 	s.EqualValues(testSettings.PodLifecycle.MaxParallelPodRequests, settingsFromConnector.PodLifecycle.MaxParallelPodRequests)
 	s.EqualValues(testSettings.PodLifecycle.MaxPodDefinitionCleanupRate, settingsFromConnector.PodLifecycle.MaxPodDefinitionCleanupRate)
 	s.EqualValues(testSettings.PodLifecycle.MaxSecretCleanupRate, settingsFromConnector.PodLifecycle.MaxSecretCleanupRate)
@@ -146,6 +145,9 @@ func (s *AdminDataSuite) TestSetAndGetSettings() {
 	s.EqualValues(testSettings.LoggerConfig.Buffer.UseAsync, settingsFromConnector.LoggerConfig.Buffer.UseAsync)
 	s.EqualValues(testSettings.Notify.SES.SenderAddress, settingsFromConnector.Notify.SES.SenderAddress)
 	s.Equal(len(testSettings.Providers.AWS.EC2Keys), len(settingsFromConnector.Providers.AWS.EC2Keys))
+	s.Equal(testSettings.Providers.AWS.BinaryClient.Key, settingsFromConnector.Providers.AWS.BinaryClient.Key)
+	s.Equal(testSettings.Providers.AWS.BinaryClient.Secret, settingsFromConnector.Providers.AWS.BinaryClient.Secret)
+	s.Equal(testSettings.Providers.AWS.BinaryClient.Bucket, settingsFromConnector.Providers.AWS.BinaryClient.Bucket)
 	s.Equal(testSettings.Providers.AWS.ParserProject.Key, settingsFromConnector.Providers.AWS.ParserProject.Key)
 	s.Equal(testSettings.Providers.AWS.ParserProject.Secret, settingsFromConnector.Providers.AWS.ParserProject.Secret)
 	s.Equal(testSettings.Providers.AWS.ParserProject.Bucket, settingsFromConnector.Providers.AWS.ParserProject.Bucket)
@@ -167,6 +169,7 @@ func (s *AdminDataSuite) TestSetAndGetSettings() {
 	s.EqualValues(testSettings.Ui.HttpListenAddr, settingsFromConnector.Ui.HttpListenAddr)
 	s.EqualValues(testSettings.Tracer.Enabled, settingsFromConnector.Tracer.Enabled)
 	s.EqualValues(testSettings.Tracer.CollectorEndpoint, settingsFromConnector.Tracer.CollectorEndpoint)
+	s.EqualValues(testSettings.Tracer.CollectorInternalEndpoint, settingsFromConnector.Tracer.CollectorInternalEndpoint)
 
 	// spot check events in the event log
 	events, err := event.FindAdmin(event.RecentAdminEvents(1000))
@@ -269,6 +272,9 @@ func (s *AdminDataSuite) TestSetAndGetSettings() {
 	s.EqualValues(testSettings.LoggerConfig.Buffer.UseAsync, settingsFromConnector.LoggerConfig.Buffer.UseAsync)
 	s.EqualValues(testSettings.Notify.SES.SenderAddress, settingsFromConnector.Notify.SES.SenderAddress)
 	s.Equal(len(testSettings.Providers.AWS.EC2Keys), len(settingsFromConnector.Providers.AWS.EC2Keys))
+	s.Equal(testSettings.Providers.AWS.BinaryClient.Key, settingsFromConnector.Providers.AWS.BinaryClient.Key)
+	s.Equal(testSettings.Providers.AWS.BinaryClient.Secret, settingsFromConnector.Providers.AWS.BinaryClient.Secret)
+	s.Equal(testSettings.Providers.AWS.BinaryClient.Bucket, settingsFromConnector.Providers.AWS.BinaryClient.Bucket)
 	s.Equal(testSettings.Providers.AWS.ParserProject.Key, settingsFromConnector.Providers.AWS.ParserProject.Key)
 	s.Equal(testSettings.Providers.AWS.ParserProject.Secret, settingsFromConnector.Providers.AWS.ParserProject.Secret)
 	s.Equal(testSettings.Providers.AWS.ParserProject.Bucket, settingsFromConnector.Providers.AWS.ParserProject.Bucket)
@@ -291,6 +297,7 @@ func (s *AdminDataSuite) TestSetAndGetSettings() {
 	s.EqualValues(testSettings.Ui.HttpListenAddr, settingsFromConnector.Ui.HttpListenAddr)
 	s.EqualValues(testSettings.Tracer.Enabled, settingsFromConnector.Tracer.Enabled)
 	s.EqualValues(testSettings.Tracer.CollectorEndpoint, settingsFromConnector.Tracer.CollectorEndpoint)
+	s.EqualValues(testSettings.Tracer.CollectorInternalEndpoint, settingsFromConnector.Tracer.CollectorInternalEndpoint)
 }
 
 func (s *AdminDataSuite) TestRestart() {

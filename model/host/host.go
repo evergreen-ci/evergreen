@@ -1737,7 +1737,6 @@ func (h *Host) Insert(ctx context.Context) error {
 	if err := InsertOne(ctx, h); err != nil {
 		return errors.Wrap(err, "inserting host")
 	}
-	h.logHostCreated()
 	return nil
 }
 
@@ -1747,18 +1746,7 @@ func (h *Host) InsertWithContext(ctx context.Context, env evergreen.Environment)
 	if _, err := env.DB().Collection(Collection).InsertOne(ctx, h); err != nil {
 		return errors.Wrap(err, "inserting host")
 	}
-	h.logHostCreated()
 	return nil
-}
-
-func (h *Host) logHostCreated() {
-	event.LogHostCreated(h.Id)
-	grip.Info(message.Fields{
-		"message":  "host created",
-		"host_id":  h.Id,
-		"host_tag": h.Tag,
-		"distro":   h.Distro.Id,
-	})
 }
 
 // Remove removes the host document from the DB.
@@ -1784,9 +1772,7 @@ func RemoveStrict(ctx context.Context, env evergreen.Environment, id string) err
 }
 
 // Replace overwrites an existing host document with a new one. If no existing host is found, the new one will be inserted anyway.
-func (h *Host) Replace() error {
-	ctx, cancel := evergreen.GetEnvironment().Context()
-	defer cancel()
+func (h *Host) Replace(ctx context.Context) error {
 	result := evergreen.GetEnvironment().DB().Collection(Collection).FindOneAndReplace(ctx, bson.M{IdKey: h.Id}, h, options.FindOneAndReplace().SetUpsert(true))
 	err := result.Err()
 	if errors.Cause(err) == mongo.ErrNoDocuments {
@@ -2941,7 +2927,7 @@ func (h *Host) IsSubjectToHostCreationThrottle() bool {
 
 // GetHostByIdOrTagWithTask finds a host by ID or tag and includes the full
 // running task with the host.
-func GetHostByIdOrTagWithTask(hostID string) (*Host, error) {
+func GetHostByIdOrTagWithTask(ctx context.Context, hostID string) (*Host, error) {
 	pipeline := []bson.M{
 		{
 			"$match": bson.M{
@@ -2966,12 +2952,8 @@ func GetHostByIdOrTagWithTask(hostID string) (*Host, error) {
 		},
 	}
 
-	env := evergreen.GetEnvironment()
-	ctx, cancel := env.Context()
-	defer cancel()
-
 	hosts := []Host{}
-	cursor, err := env.DB().Collection(Collection).Aggregate(ctx, pipeline)
+	cursor, err := evergreen.GetEnvironment().DB().Collection(Collection).Aggregate(ctx, pipeline)
 	if err != nil {
 		return nil, errors.Wrap(err, "aggregating host by ID or tag with task")
 	}

@@ -3878,17 +3878,33 @@ func TestMarkStaleBuildingAsFailed(t *testing.T) {
 		{
 			Id:           "host7",
 			Distro:       distro2,
+			Status:       evergreen.HostBuilding,
+			CreationTime: now.Add(-30 * time.Minute),
+			UserHost:     true,
+			Provider:     evergreen.ProviderNameEc2Fleet,
+		},
+		{
+			Id:           "host8",
+			Distro:       distro2,
 			Status:       evergreen.HostRunning,
 			CreationTime: now.Add(-30 * time.Minute),
 			UserHost:     false,
 			Provider:     evergreen.ProviderNameEc2Fleet,
 		},
 		{
-			Id:           "host8",
+			Id:           "host9",
 			Distro:       distro2,
 			Status:       evergreen.HostBuilding,
 			CreationTime: now.Add(-30 * time.Minute),
 			UserHost:     false,
+			Provider:     evergreen.ProviderNameEc2Fleet,
+		},
+		{
+			Id:           "host10",
+			Distro:       distro2,
+			Status:       evergreen.HostBuilding,
+			CreationTime: now.Add(-30 * time.Minute),
+			UserHost:     true,
 			Provider:     evergreen.ProviderNameEc2Fleet,
 		},
 	}
@@ -3906,15 +3922,15 @@ func TestMarkStaleBuildingAsFailed(t *testing.T) {
 		assert.Equal(t, dbHost.Status, expectedStatus)
 	}
 
-	for _, h := range append([]Host{hosts[0]}, hosts[2:6]...) {
+	for _, h := range append([]Host{hosts[0]}, hosts[2:]...) {
 		checkStatus(t, h, h.Status)
 	}
 	checkStatus(t, hosts[1], evergreen.HostBuildingFailed)
 
 	require.NoError(t, MarkStaleBuildingAsFailed(ctx, distro2.Id))
 
-	checkStatus(t, hosts[6], hosts[6].Status)
-	checkStatus(t, hosts[7], evergreen.HostBuildingFailed)
+	checkStatus(t, hosts[6], evergreen.HostBuildingFailed)
+	checkStatus(t, hosts[8], evergreen.HostBuildingFailed)
 }
 
 func TestNumNewParentsNeeded(t *testing.T) {
@@ -4931,7 +4947,7 @@ func TestRemoveAndReplace(t *testing.T) {
 	assert.NoError(t, h.Insert(ctx))
 
 	h.DockerOptions.Command = "hello world"
-	assert.NoError(t, h.Replace())
+	assert.NoError(t, h.Replace(ctx))
 	dbHost, err := FindOneId(ctx, h.Id)
 	assert.NoError(t, err)
 	assert.Equal(t, evergreen.HostUninitialized, dbHost.Status)
@@ -4942,7 +4958,7 @@ func TestRemoveAndReplace(t *testing.T) {
 		Id:     "host2",
 		Status: evergreen.HostRunning,
 	}
-	assert.NoError(t, h2.Replace())
+	assert.NoError(t, h2.Replace(ctx))
 	dbHost, err = FindOneId(ctx, h2.Id)
 	assert.NoError(t, err)
 	assert.NotNil(t, dbHost)

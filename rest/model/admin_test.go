@@ -152,7 +152,6 @@ func TestModelConversion(t *testing.T) {
 	assert.EqualValues(testSettings.LoggerConfig.Buffer.UseAsync, apiSettings.LoggerConfig.Buffer.UseAsync)
 	assert.EqualValues(testSettings.LoggerConfig.Buffer.IncomingBufferFactor, apiSettings.LoggerConfig.Buffer.IncomingBufferFactor)
 	assert.EqualValues(testSettings.Notify.SES.SenderAddress, utility.FromStringPtr(apiSettings.Notify.SES.SenderAddress))
-	assert.EqualValues(testSettings.PodLifecycle.S3BaseURL, utility.FromStringPtr(apiSettings.PodLifecycle.S3BaseURL))
 	assert.EqualValues(testSettings.PodLifecycle.MaxParallelPodRequests, apiSettings.PodLifecycle.MaxParallelPodRequests)
 	assert.EqualValues(testSettings.PodLifecycle.MaxPodDefinitionCleanupRate, apiSettings.PodLifecycle.MaxPodDefinitionCleanupRate)
 	assert.EqualValues(testSettings.PodLifecycle.MaxSecretCleanupRate, apiSettings.PodLifecycle.MaxSecretCleanupRate)
@@ -166,6 +165,9 @@ func TestModelConversion(t *testing.T) {
 	assert.EqualValues(testSettings.Providers.AWS.EC2Keys[0].Secret, utility.FromStringPtr(apiSettings.Providers.AWS.EC2Keys[0].Secret))
 	assert.EqualValues(testSettings.Providers.AWS.DefaultSecurityGroup, utility.FromStringPtr(apiSettings.Providers.AWS.DefaultSecurityGroup))
 	assert.EqualValues(testSettings.Providers.AWS.MaxVolumeSizePerUser, *apiSettings.Providers.AWS.MaxVolumeSizePerUser)
+	assert.EqualValues(testSettings.Providers.AWS.BinaryClient.Key, utility.FromStringPtr(apiSettings.Providers.AWS.BinaryClient.Key))
+	assert.EqualValues(testSettings.Providers.AWS.BinaryClient.Secret, utility.FromStringPtr(apiSettings.Providers.AWS.BinaryClient.Secret))
+	assert.EqualValues(testSettings.Providers.AWS.BinaryClient.Bucket, utility.FromStringPtr(apiSettings.Providers.AWS.BinaryClient.Bucket))
 	assert.EqualValues(testSettings.Providers.AWS.TaskSync.Key, utility.FromStringPtr(apiSettings.Providers.AWS.TaskSync.Key))
 	assert.EqualValues(testSettings.Providers.AWS.TaskSync.Secret, utility.FromStringPtr(apiSettings.Providers.AWS.TaskSync.Secret))
 	assert.EqualValues(testSettings.Providers.AWS.TaskSync.Bucket, utility.FromStringPtr(apiSettings.Providers.AWS.TaskSync.Bucket))
@@ -222,6 +224,7 @@ func TestModelConversion(t *testing.T) {
 	assert.Equal(testSettings.Spawnhost.UnexpirableVolumesPerUser, *apiSettings.Spawnhost.UnexpirableVolumesPerUser)
 	assert.Equal(testSettings.Tracer.Enabled, *apiSettings.Tracer.Enabled)
 	assert.Equal(testSettings.Tracer.CollectorEndpoint, *apiSettings.Tracer.CollectorEndpoint)
+	assert.Equal(testSettings.Tracer.CollectorInternalEndpoint, *apiSettings.Tracer.CollectorInternalEndpoint)
 	assert.Equal(testSettings.GitHubCheckRun.CheckRunLimit, *apiSettings.GitHubCheckRun.CheckRunLimit)
 
 	// test converting from the API model back to a DB model
@@ -279,7 +282,6 @@ func TestModelConversion(t *testing.T) {
 	assert.EqualValues(testSettings.LoggerConfig.Buffer.UseAsync, dbSettings.LoggerConfig.Buffer.UseAsync)
 	assert.EqualValues(testSettings.LoggerConfig.Buffer.IncomingBufferFactor, dbSettings.LoggerConfig.Buffer.IncomingBufferFactor)
 	assert.EqualValues(testSettings.Notify.SES.SenderAddress, dbSettings.Notify.SES.SenderAddress)
-	assert.EqualValues(testSettings.PodLifecycle.S3BaseURL, dbSettings.PodLifecycle.S3BaseURL)
 	assert.EqualValues(testSettings.PodLifecycle.MaxParallelPodRequests, dbSettings.PodLifecycle.MaxParallelPodRequests)
 	assert.EqualValues(testSettings.PodLifecycle.MaxPodDefinitionCleanupRate, dbSettings.PodLifecycle.MaxPodDefinitionCleanupRate)
 	assert.EqualValues(testSettings.PodLifecycle.MaxSecretCleanupRate, dbSettings.PodLifecycle.MaxSecretCleanupRate)
@@ -293,6 +295,9 @@ func TestModelConversion(t *testing.T) {
 	assert.EqualValues(testSettings.Providers.AWS.EC2Keys[0].Secret, dbSettings.Providers.AWS.EC2Keys[0].Secret)
 	assert.EqualValues(testSettings.Providers.AWS.DefaultSecurityGroup, dbSettings.Providers.AWS.DefaultSecurityGroup)
 	assert.EqualValues(testSettings.Providers.AWS.MaxVolumeSizePerUser, dbSettings.Providers.AWS.MaxVolumeSizePerUser)
+	assert.EqualValues(testSettings.Providers.AWS.BinaryClient.Key, dbSettings.Providers.AWS.BinaryClient.Key)
+	assert.EqualValues(testSettings.Providers.AWS.BinaryClient.Secret, dbSettings.Providers.AWS.BinaryClient.Secret)
+	assert.EqualValues(testSettings.Providers.AWS.BinaryClient.Bucket, dbSettings.Providers.AWS.BinaryClient.Bucket)
 	assert.EqualValues(testSettings.Providers.AWS.TaskSync.Key, dbSettings.Providers.AWS.TaskSync.Key)
 	assert.EqualValues(testSettings.Providers.AWS.TaskSync.Secret, dbSettings.Providers.AWS.TaskSync.Secret)
 	assert.EqualValues(testSettings.Providers.AWS.TaskSync.Bucket, dbSettings.Providers.AWS.TaskSync.Bucket)
@@ -331,6 +336,7 @@ func TestModelConversion(t *testing.T) {
 	assert.EqualValues(testSettings.Spawnhost.UnexpirableVolumesPerUser, dbSettings.Spawnhost.UnexpirableVolumesPerUser)
 	assert.EqualValues(testSettings.Tracer.Enabled, dbSettings.Tracer.Enabled)
 	assert.EqualValues(testSettings.Tracer.CollectorEndpoint, dbSettings.Tracer.CollectorEndpoint)
+	assert.EqualValues(testSettings.Tracer.CollectorInternalEndpoint, dbSettings.Tracer.CollectorInternalEndpoint)
 	assert.EqualValues(testSettings.GitHubCheckRun.CheckRunLimit, dbSettings.GitHubCheckRun.CheckRunLimit)
 }
 

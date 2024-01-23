@@ -399,6 +399,9 @@ func (s *commitQueueSuite) TestUpdatePatch() {
 }
 
 func TestAddMergeTaskDependencies(t *testing.T) {
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
 	assert.NoError(t, db.ClearCollections(task.Collection))
 	j := commitQueueJob{}
 	mergeTask1 := task.Task{
@@ -436,7 +439,7 @@ func TestAddMergeTaskDependencies(t *testing.T) {
 		},
 	}
 
-	assert.NoError(t, j.addMergeTaskDependencies(cq))
+	assert.NoError(t, j.addMergeTaskDependencies(ctx, cq))
 	dbTask1, err := task.FindOneId(mergeTask1.Id)
 	assert.NoError(t, err)
 	assert.Equal(t, 2, dbTask1.NumDependents)

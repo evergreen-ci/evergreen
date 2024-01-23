@@ -117,8 +117,9 @@ var (
 	unexpirableVolumesPerUserKey = bsonutil.MustHaveTag(SpawnHostConfig{}, "UnexpirableVolumesPerUser")
 	spawnhostsPerUserKey         = bsonutil.MustHaveTag(SpawnHostConfig{}, "SpawnHostsPerUser")
 
-	tracerEnabledKey        = bsonutil.MustHaveTag(TracerConfig{}, "Enabled")
-	tracerCollectorEndpoint = bsonutil.MustHaveTag(TracerConfig{}, "CollectorEndpoint")
+	tracerEnabledKey                   = bsonutil.MustHaveTag(TracerConfig{}, "Enabled")
+	tracerCollectorEndpointKey         = bsonutil.MustHaveTag(TracerConfig{}, "CollectorEndpoint")
+	tracerCollectorInternalEndpointKey = bsonutil.MustHaveTag(TracerConfig{}, "CollectorInternalEndpoint")
 
 	// GithubCheckRun keys
 	checkRunLimitKey = bsonutil.MustHaveTag(GitHubCheckRunConfig{}, "CheckRunLimit")
@@ -139,10 +140,7 @@ func getSectionsBSON(ctx context.Context, ids []string) ([]bson.Raw, error) {
 	}
 
 	var docs = make([]bson.Raw, 0, len(ids))
-	for cur.Next(ctx) {
-		docs = append(docs, cur.Current)
-	}
-	if cur.Err() != nil {
+	if err := cur.All(ctx, &docs); err != nil {
 		return nil, errors.Wrap(err, "getting configuration sections")
 	}
 

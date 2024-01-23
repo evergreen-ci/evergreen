@@ -2,19 +2,15 @@ package command
 
 import (
 	"context"
-	"strings"
 	"testing"
 	"time"
 
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/agent/internal"
 	"github.com/evergreen-ci/evergreen/agent/internal/client"
-	"github.com/evergreen-ci/evergreen/model"
 	"github.com/evergreen-ci/evergreen/model/task"
-	"github.com/evergreen-ci/evergreen/model/testlog"
 	"github.com/evergreen-ci/evergreen/model/testresult"
 	serviceutil "github.com/evergreen-ci/evergreen/service/testutil"
-	"github.com/evergreen-ci/timber/buildlogger"
 	timberutil "github.com/evergreen-ci/timber/testutil"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -56,7 +52,7 @@ func TestSendTestResults(t *testing.T) {
 	comm := client.NewMock("url")
 	displayTaskInfo, err := comm.GetDisplayTaskInfoFromExecution(ctx, td)
 	require.NoError(t, err)
-	logger, err := comm.GetLoggerProducer(ctx, td, nil)
+	logger, err := comm.GetLoggerProducer(ctx, &conf.Task, nil)
 	require.NoError(t, err)
 	defer func() {
 		assert.NoError(t, logger.Close())
@@ -181,89 +177,6 @@ func TestSendTestResults(t *testing.T) {
 				comm.ResultsService = ""
 				comm.ResultsFailed = false
 				testCase(ctx, t, srv.TestResults, comm)
-			})
-		}
-	})
-}
-
-func TestSendTestLog(t *testing.T) {
-	ctx := context.TODO()
-	conf := &internal.TaskConfig{
-		Task: task.Task{
-			Id:           "id",
-			Project:      "project",
-			Version:      "version",
-			BuildVariant: "build_variant",
-			Execution:    5,
-			Requester:    evergreen.GithubPRRequester,
-		},
-		ProjectRef: model.ProjectRef{},
-	}
-	log := &testlog.TestLog{
-		Id:            "id",
-		Name:          "test",
-		Task:          "task",
-		TaskExecution: 5,
-		Lines:         []string{"log line 1", "log line 2"},
-	}
-	comm := client.NewMock("url")
-
-	t.Run("ToCedar", func(t *testing.T) {
-		for _, test := range []struct {
-			name     string
-			testCase func(*testing.T, *timberutil.MockBuildloggerServer)
-		}{
-			{
-				name: "CreateSenderFails",
-				testCase: func(t *testing.T, srv *timberutil.MockBuildloggerServer) {
-					srv.CreateErr = true
-					assert.Error(t, sendTestLog(ctx, comm, conf, log))
-				},
-			},
-			{
-				name: "SendFails",
-				testCase: func(t *testing.T, srv *timberutil.MockBuildloggerServer) {
-					srv.AppendErr = true
-					assert.Error(t, sendTestLog(ctx, comm, conf, log))
-				},
-			},
-			{
-				name: "CloseSenderFails",
-				testCase: func(t *testing.T, srv *timberutil.MockBuildloggerServer) {
-					srv.CloseErr = true
-					assert.Error(t, sendTestLog(ctx, comm, conf, log))
-				},
-			},
-			{
-				name: "SendSucceeds",
-				testCase: func(t *testing.T, srv *timberutil.MockBuildloggerServer) {
-					require.NoError(t, sendTestLog(ctx, comm, conf, log))
-
-					require.NotEmpty(t, srv.Create)
-					assert.Equal(t, conf.Task.Project, srv.Create.Info.Project)
-					assert.Equal(t, conf.Task.Version, srv.Create.Info.Version)
-					assert.Equal(t, conf.Task.BuildVariant, srv.Create.Info.Variant)
-					assert.Equal(t, conf.Task.DisplayName, srv.Create.Info.TaskName)
-					assert.Equal(t, conf.Task.Id, srv.Create.Info.TaskId)
-					assert.Equal(t, int32(conf.Task.Execution), srv.Create.Info.Execution)
-					assert.Equal(t, log.Name, srv.Create.Info.TestName)
-					assert.Equal(t, !conf.Task.IsPatchRequest(), srv.Create.Info.Mainline)
-					assert.Equal(t, buildlogger.LogStorageS3, buildlogger.LogStorage(srv.Create.Storage))
-
-					require.Len(t, srv.Data, 1)
-					for _, data := range srv.Data {
-						require.Len(t, data, 1)
-						require.Len(t, data[0].Lines, 2)
-						assert.EqualValues(t, strings.Trim(log.Lines[0], "\n"), data[0].Lines[0].Data)
-						assert.EqualValues(t, strings.Trim(log.Lines[1], "\n"), data[0].Lines[1].Data)
-					}
-
-				},
-			},
-		} {
-			t.Run(test.name, func(t *testing.T) {
-				srv := setupCedarServer(ctx, t, comm)
-				test.testCase(t, srv.Buildlogger)
 			})
 		}
 	})

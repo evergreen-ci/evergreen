@@ -1,5 +1,6 @@
 query {
   distro(distroId: "rhel71-power8-large") {
+    adminOnly
     bootstrapSettings {
       communication
       resourceLimits {

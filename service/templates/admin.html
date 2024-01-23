@@ -590,6 +590,10 @@ Admin Settings
 										<label>Max Tasks per Version</label>
 										<input type="number" ng-model="Settings.task_limits.max_tasks_per_version">
 									</md-input-container>
+									<md-input-container class="control" style="width:45%;">
+										<label>Max Includes per Version</label>
+										<input type="number" ng-model="Settings.task_limits.max_includes_per_version">
+									</md-input-container>
 								</md-card-content>
 							</md-card>
 						</section>
@@ -638,10 +642,6 @@ Admin Settings
 									</md-button>
 								</md-card-title>
 								<md-card-content>
-									<md-input-container class="control" style="width:45%;">
-										<label>S3 Download Base URL</label>
-										<input type="text" ng-model="Settings.pod_lifecycle.s3_base_url">
-									</md-input-container>
 									<md-input-container class="control" style="width:45%;">
 										<label>Max Parallel Pod Requests</label>
 										<input type="number" ng-model="Settings.pod_lifecycle.max_parallel_pod_requests">
@@ -1805,16 +1805,16 @@ Admin Settings
 										<input type="text" ng-model="Settings.providers.aws.ec2_keys[0].secret">
 									</md-input-container>
 									<md-input-container class="control" style="width:45%;">
-										<label>S3 Key</label>
-										<input type="text" ng-model="Settings.providers.aws.s3_credentials.key">
+										<label>Client Binaries S3 Key</label>
+										<input type="text" ng-model="Settings.providers.aws.binary_client.key">
 									</md-input-container>
 									<md-input-container class="control" style="width:45%; margin-left:50px;">
-										<label>S3 Secret</label>
-										<input type="text" ng-model="Settings.providers.aws.s3_credentials.secret">
+										<label>Client Binaries S3 Secret</label>
+										<input type="text" ng-model="Settings.providers.aws.binary_client.secret">
 									</md-input-container>
 									<md-input-container class="control" style="width:45%;">
-										<label>S3 Bucket</label>
-										<input type="text" ng-model="Settings.providers.aws.s3_credentials.bucket">
+										<label>Client Binaries S3 Bucket</label>
+										<input type="text" ng-model="Settings.providers.aws.binary_client.bucket">
 									</md-input-container>
 									<md-input-container class="control" style="width:45%; margin-left:50px;">
 										<label>Task S3 Key</label>
@@ -2459,13 +2459,17 @@ Admin Settings
 								</md-card-title>
 								<md-card-content>
 									<md-input-container class="control" style="width:45%;">
+										<label>Collector Endpoint</label>
+										<input type="string" ng-model="Settings.tracer.collector_endpoint">
+									</md-input-container>
+									<md-input-container class="control" style="width:45%;">
+										<label>Collector Internal Endpoint</label>
+										<input type="string" ng-model="Settings.tracer.collector_internal_endpoint">
+									</md-input-container>
+									<md-input-container class="control" style="width:45%;">
 										<md-checkbox ng-model="Settings.tracer.enabled">
 											Enabled
 										</md-checkbox>
-									</md-input-container>
-									<md-input-container class="control" style="width:45%;">
-										<label>Collector Endpoint</label>
-										<input type="string" ng-model="Settings.tracer.collector_endpoint">
 									</md-input-container>
 								</md-card-content>
 							</md-card>

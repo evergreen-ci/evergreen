@@ -989,16 +989,14 @@ func (a *APIHostInitConfig) ToService() (interface{}, error) {
 }
 
 type APIPodLifecycleConfig struct {
-	S3BaseURL                   *string `json:"s3_base_url"`
-	MaxParallelPodRequests      int     `json:"max_parallel_pod_requests"`
-	MaxPodDefinitionCleanupRate int     `json:"max_pod_definition_cleanup_rate"`
-	MaxSecretCleanupRate        int     `json:"max_secret_cleanup_rate"`
+	MaxParallelPodRequests      int `json:"max_parallel_pod_requests"`
+	MaxPodDefinitionCleanupRate int `json:"max_pod_definition_cleanup_rate"`
+	MaxSecretCleanupRate        int `json:"max_secret_cleanup_rate"`
 }
 
 func (a *APIPodLifecycleConfig) BuildFromService(h interface{}) error {
 	switch v := h.(type) {
 	case evergreen.PodLifecycleConfig:
-		a.S3BaseURL = utility.ToStringPtr(v.S3BaseURL)
 		a.MaxParallelPodRequests = v.MaxParallelPodRequests
 		a.MaxPodDefinitionCleanupRate = v.MaxPodDefinitionCleanupRate
 		a.MaxSecretCleanupRate = v.MaxSecretCleanupRate
@@ -1010,7 +1008,6 @@ func (a *APIPodLifecycleConfig) BuildFromService(h interface{}) error {
 
 func (a *APIPodLifecycleConfig) ToService() (interface{}, error) {
 	return evergreen.PodLifecycleConfig{
-		S3BaseURL:                   utility.FromStringPtr(a.S3BaseURL),
 		MaxParallelPodRequests:      a.MaxParallelPodRequests,
 		MaxPodDefinitionCleanupRate: a.MaxPodDefinitionCleanupRate,
 		MaxSecretCleanupRate:        a.MaxSecretCleanupRate,
@@ -1524,6 +1521,7 @@ func (a *APISubnet) ToService() (interface{}, error) {
 type APIAWSConfig struct {
 	EC2Keys              []APIEC2Key               `json:"ec2_keys"`
 	Subnets              []APISubnet               `json:"subnets"`
+	BinaryClient         *APIS3Credentials         `json:"binary_client"`
 	TaskSync             *APIS3Credentials         `json:"task_sync"`
 	TaskSyncRead         *APIS3Credentials         `json:"task_sync_read"`
 	ParserProject        *APIParserProjectS3Config `json:"parser_project"`
@@ -1552,6 +1550,12 @@ func (a *APIAWSConfig) BuildFromService(h interface{}) error {
 			}
 			a.Subnets = append(a.Subnets, apiSubnet)
 		}
+
+		clients := &APIS3Credentials{}
+		if err := clients.BuildFromService(v.BinaryClient); err != nil {
+			return errors.Wrap(err, "converting binary client S3 config to API model")
+		}
+		a.BinaryClient = clients
 
 		taskSync := &APIS3Credentials{}
 		if err := taskSync.BuildFromService(v.TaskSync); err != nil {
@@ -1597,6 +1601,19 @@ func (a *APIAWSConfig) ToService() (interface{}, error) {
 	var i interface{}
 	var err error
 	var ok bool
+
+	i, err = a.BinaryClient.ToService()
+	if err != nil {
+		return nil, errors.Wrap(err, "converting binary client S3 config to service model")
+	}
+	var client evergreen.S3Credentials
+	if i != nil {
+		client, ok = i.(evergreen.S3Credentials)
+		if !ok {
+			return nil, errors.Errorf("expecting binary client S3 config but got type %T", i)
+		}
+	}
+	config.BinaryClient = client
 
 	i, err = a.TaskSync.ToService()
 	if err != nil {
@@ -2678,8 +2695,9 @@ func (c *APISpawnHostConfig) ToService() (interface{}, error) {
 }
 
 type APITracerSettings struct {
-	Enabled           *bool   `json:"enabled"`
-	CollectorEndpoint *string `json:"collector_endpoint"`
+	Enabled                   *bool   `json:"enabled"`
+	CollectorEndpoint         *string `json:"collector_endpoint"`
+	CollectorInternalEndpoint *string `json:"collector_internal_endpoint"`
 }
 
 func (c *APITracerSettings) BuildFromService(h interface{}) error {
@@ -2687,6 +2705,7 @@ func (c *APITracerSettings) BuildFromService(h interface{}) error {
 	case evergreen.TracerConfig:
 		c.Enabled = &v.Enabled
 		c.CollectorEndpoint = &v.CollectorEndpoint
+		c.CollectorInternalEndpoint = &v.CollectorInternalEndpoint
 	default:
 		return errors.Errorf("programmatic error: expected tracer config but got type %T", h)
 	}
@@ -2695,8 +2714,9 @@ func (c *APITracerSettings) BuildFromService(h interface{}) error {
 
 func (c *APITracerSettings) ToService() (interface{}, error) {
 	config := evergreen.TracerConfig{
-		Enabled:           utility.FromBoolPtr(c.Enabled),
-		CollectorEndpoint: utility.FromStringPtr(c.CollectorEndpoint),
+		Enabled:                   utility.FromBoolPtr(c.Enabled),
+		CollectorEndpoint:         utility.FromStringPtr(c.CollectorEndpoint),
+		CollectorInternalEndpoint: utility.FromStringPtr(c.CollectorInternalEndpoint),
 	}
 
 	return config, nil
@@ -2758,13 +2778,15 @@ func (c *APIGitHubCheckRunConfig) ToService() (interface{}, error) {
 }
 
 type APITaskLimitsConfig struct {
-	MaxTasksPerVersion *int `json:"max_tasks_per_version"`
+	MaxTasksPerVersion    *int `json:"max_tasks_per_version"`
+	MaxIncludesPerVersion *int `json:"max_includes_per_version"`
 }
 
 func (c *APITaskLimitsConfig) BuildFromService(h interface{}) error {
 	switch v := h.(type) {
 	case evergreen.TaskLimitsConfig:
 		c.MaxTasksPerVersion = utility.ToIntPtr(v.MaxTasksPerVersion)
+		c.MaxIncludesPerVersion = utility.ToIntPtr(v.MaxIncludesPerVersion)
 		return nil
 	default:
 		return errors.Errorf("programmatic error: expected task limits config but got type %T", h)
@@ -2773,6 +2795,7 @@ func (c *APITaskLimitsConfig) BuildFromService(h interface{}) error {
 
 func (c *APITaskLimitsConfig) ToService() (interface{}, error) {
 	return evergreen.TaskLimitsConfig{
-		MaxTasksPerVersion: utility.FromIntPtr(c.MaxTasksPerVersion),
+		MaxTasksPerVersion:    utility.FromIntPtr(c.MaxTasksPerVersion),
+		MaxIncludesPerVersion: utility.FromIntPtr(c.MaxIncludesPerVersion),
 	}, nil
 }

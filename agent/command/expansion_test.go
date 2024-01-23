@@ -54,7 +54,8 @@ func TestExpansionsPluginWExecution(t *testing.T) {
 	defer cancel()
 	comm := client.NewMock("http://localhost.com")
 	conf := &internal.TaskConfig{Expansions: util.Expansions{}, Task: task.Task{}, Project: model.Project{}}
-	logger, _ := comm.GetLoggerProducer(ctx, client.TaskData{ID: conf.Task.Id, Secret: conf.Task.Secret}, nil)
+	logger, err := comm.GetLoggerProducer(ctx, &conf.Task, nil)
+	require.NoError(t, err)
 
 	Convey("When running Update commands", t, func() {
 		Convey("if there is no expansion, the file name is not changed", func() {
@@ -74,13 +75,11 @@ func TestExpansionsPluginWExecution(t *testing.T) {
 }
 
 func TestExpansionWriter(t *testing.T) {
-	require := require.New(t)
-	assert := assert.New(t)
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 	comm := client.NewMock("http://localhost.com")
-	logger, err := comm.GetLoggerProducer(ctx, client.TaskData{ID: "id", Secret: "secret"}, nil)
-	assert.NoError(err)
+	logger, err := comm.GetLoggerProducer(ctx, &task.Task{}, nil)
+	require.NoError(t, err)
 	tc := &internal.TaskConfig{
 		Expansions: util.Expansions{
 			"foo":                                "bar",
@@ -93,20 +92,20 @@ func TestExpansionWriter(t *testing.T) {
 		},
 	}
 	f, err := os.CreateTemp("", t.Name())
-	require.NoError(err)
+	require.NoError(t, err)
 	defer os.Remove(f.Name())
 
 	writer := &expansionsWriter{File: f.Name()}
 	err = writer.Execute(ctx, comm, logger, tc)
-	assert.NoError(err)
+	assert.NoError(t, err)
 	out, err := os.ReadFile(f.Name())
-	assert.NoError(err)
-	assert.Equal("baz: qux\nfoo: bar\n", string(out))
+	assert.NoError(t, err)
+	assert.Equal(t, "baz: qux\nfoo: bar\n", string(out))
 
 	writer = &expansionsWriter{File: f.Name(), Redacted: true}
 	err = writer.Execute(ctx, comm, logger, tc)
-	assert.NoError(err)
+	assert.NoError(t, err)
 	out, err = os.ReadFile(f.Name())
-	assert.NoError(err)
-	assert.Equal("baz: qux\nfoo: bar\npassword: hunter2\n", string(out))
+	assert.NoError(t, err)
+	assert.Equal(t, "baz: qux\nfoo: bar\npassword: hunter2\n", string(out))
 }

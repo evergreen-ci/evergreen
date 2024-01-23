@@ -321,7 +321,7 @@ func enqueuePatch() cli.Command {
 			if err != nil {
 				return errors.Wrap(err, "getting UI v2 URL")
 			}
-			patchDisp, err := getAPICommitQueuePatchDisplay(mergePatch, false, uiV2)
+			patchDisp, err := getAPICommitQueuePatchDisplay(ac, mergePatch, false, uiV2)
 			if err != nil {
 				grip.Errorf("can't print patch display for new patch '%s'", mergePatch.Id)
 			}
@@ -362,11 +362,11 @@ func backport() cli.Command {
 				},
 				cli.StringFlag{
 					Name:  joinFlagNames(existingPatchFlag, "e"),
-					Usage: "existing commit queue patch",
+					Usage: "existing commit queue patch usually from another project or branch",
 				},
 				cli.StringFlag{
 					Name:  joinFlagNames(commitShaFlag, "s"),
-					Usage: "existing commit SHA to backport",
+					Usage: "existing commit SHA from the same repository to backport",
 				},
 				cli.StringFlag{
 					Name:  joinFlagNames(backportProjectFlag, "b"),
@@ -448,7 +448,7 @@ func backport() cli.Command {
 				return errors.Wrap(err, "uploading backport patch")
 			}
 
-			if err = patchParams.displayPatch(backportPatch, uiV2, false); err != nil {
+			if err = patchParams.displayPatch(ac, backportPatch, uiV2, false); err != nil {
 				return errors.Wrap(err, "getting result display")
 			}
 
@@ -513,7 +513,7 @@ func listCLICommitQueueItem(item restModel.APICommitQueueItem, ac *legacyClient,
 	if p.Author != "" {
 		grip.Infof("Author: %s", p.Author)
 	}
-	disp, err := getPatchDisplay(p, false, uiServerHost, false)
+	disp, err := getPatchDisplay(ac, p, false, uiServerHost, false)
 	if err != nil {
 		grip.Error(errors.Wrapf(err, "getting patch display summary for patch '%s'", p.Id.Hex()))
 		return
@@ -643,7 +643,7 @@ func (p *mergeParams) uploadMergePatch(conf *ClientSettings, ac *legacyClient, u
 	if err != nil {
 		return err
 	}
-	if err = patchParams.displayPatch(patch, uiV2Url, true); err != nil {
+	if err = patchParams.displayPatch(ac, patch, uiV2Url, true); err != nil {
 		grip.Error("Patch information cannot be displayed.")
 	}
 
@@ -754,11 +754,11 @@ func showCQMessageForPatch(ctx context.Context, comm client.Communicator, patchI
 	}
 }
 
-func getAPICommitQueuePatchDisplay(apiPatch *restModel.APIPatch, summarize bool, uiHost string) (string, error) {
+func getAPICommitQueuePatchDisplay(ac *legacyClient, apiPatch *restModel.APIPatch, summarize bool, uiHost string) (string, error) {
 	servicePatch, err := apiPatch.ToService()
 	if err != nil {
 		return "", errors.Wrap(err, "converting patch to service model")
 	}
 
-	return getPatchDisplay(&servicePatch, summarize, uiHost, true)
+	return getPatchDisplay(ac, &servicePatch, summarize, uiHost, true)
 }

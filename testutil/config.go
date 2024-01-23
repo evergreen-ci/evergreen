@@ -42,7 +42,7 @@ func Setup() {
 		ctx := context.Background()
 
 		path := filepath.Join(evergreen.FindEvergreenHome(), TestDir, TestSettings)
-		env, err := evergreen.NewEnvironment(ctx, path, nil)
+		env, err := evergreen.NewEnvironment(ctx, path, "", nil)
 
 		grip.EmergencyPanic(message.WrapError(err, message.Fields{
 			"message": "could not initialize test environment",
@@ -54,7 +54,7 @@ func Setup() {
 }
 
 func NewEnvironment(ctx context.Context, t *testing.T) evergreen.Environment {
-	env, err := evergreen.NewEnvironment(ctx, filepath.Join(evergreen.FindEvergreenHome(), TestDir, TestSettings), nil)
+	env, err := evergreen.NewEnvironment(ctx, filepath.Join(evergreen.FindEvergreenHome(), TestDir, TestSettings), "", nil)
 	require.NoError(t, err)
 	return env
 }
@@ -255,7 +255,6 @@ func MockConfig() *evergreen.Settings {
 		},
 		Plugins: map[string]map[string]interface{}{"k4": {"k5": "v5"}},
 		PodLifecycle: evergreen.PodLifecycleConfig{
-			S3BaseURL:                   "s3_base_url",
 			MaxParallelPodRequests:      2000,
 			MaxPodDefinitionCleanupRate: 100,
 			MaxSecretCleanupRate:        200,
@@ -283,6 +282,11 @@ func MockConfig() *evergreen.Settings {
 				},
 				DefaultSecurityGroup: "test_security_group",
 				MaxVolumeSizePerUser: 200,
+				BinaryClient: evergreen.S3Credentials{
+					Key:    "client_key",
+					Secret: "client_secret",
+					Bucket: "client_bucket",
+				},
 				ParserProject: evergreen.ParserProjectS3Config{
 					S3Credentials: evergreen.S3Credentials{
 						Key:    "parser_project_key",
@@ -428,8 +432,9 @@ func MockConfig() *evergreen.Settings {
 			UnexpirableVolumesPerUser: 2,
 		},
 		Tracer: evergreen.TracerConfig{
-			Enabled:           true,
-			CollectorEndpoint: "localhost:4317",
+			Enabled:                   true,
+			CollectorEndpoint:         "www.example.com:443",
+			CollectorInternalEndpoint: "svc.cluster.local:4317",
 		},
 		GitHubCheckRun: evergreen.GitHubCheckRunConfig{
 			CheckRunLimit: 0,

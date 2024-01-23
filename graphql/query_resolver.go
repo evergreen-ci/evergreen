@@ -198,7 +198,7 @@ func (r *queryResolver) DistroTaskQueue(ctx context.Context, distroID string) ([
 
 // Host is the resolver for the host field.
 func (r *queryResolver) Host(ctx context.Context, hostID string) (*restModel.APIHost, error) {
-	host, err := host.GetHostByIdOrTagWithTask(hostID)
+	host, err := host.GetHostByIdOrTagWithTask(ctx, hostID)
 	if err != nil {
 		return nil, InternalServerError.Send(ctx, fmt.Sprintf("Error Fetching host: %s", err.Error()))
 	}
@@ -527,7 +527,7 @@ func (r *queryResolver) RepoSettings(ctx context.Context, id string) (*restModel
 // ViewableProjectRefs is the resolver for the viewableProjectRefs field.
 func (r *queryResolver) ViewableProjectRefs(ctx context.Context) ([]*GroupedProjects, error) {
 	usr := mustHaveUser(ctx)
-	projectIds, err := usr.GetViewableProjectSettings()
+	projectIds, err := usr.GetViewableProjectSettings(ctx)
 	if err != nil {
 		return nil, InternalServerError.Send(ctx, fmt.Sprintf("error getting viewable projects for '%s': '%s'", usr.DispName, err.Error()))
 	}

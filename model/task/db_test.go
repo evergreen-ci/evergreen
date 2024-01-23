@@ -303,6 +303,7 @@ func TestFindTasksByBuildIdAndGithubChecks(t *testing.T) {
 }
 
 func TestFindOneIdAndExecutionWithDisplayStatus(t *testing.T) {
+	ctx := context.TODO()
 	assert := assert.New(t)
 	assert.NoError(db.ClearCollections(Collection, OldCollection))
 	taskDoc := Task{
@@ -317,7 +318,7 @@ func TestFindOneIdAndExecutionWithDisplayStatus(t *testing.T) {
 	assert.Equal(task.DisplayStatus, evergreen.TaskSucceeded)
 
 	// Should fetch tasks from the old collection
-	assert.NoError(taskDoc.Archive())
+	assert.NoError(taskDoc.Archive(ctx))
 	task, err = FindOneOldByIdAndExecution(taskDoc.Id, 0)
 	assert.NoError(err)
 	assert.NotNil(task)
@@ -346,6 +347,7 @@ func TestFindOneIdAndExecutionWithDisplayStatus(t *testing.T) {
 }
 
 func TestFindOldTasksByID(t *testing.T) {
+	ctx := context.TODO()
 	assert := assert.New(t)
 	assert.NoError(db.ClearCollections(Collection, OldCollection))
 
@@ -354,9 +356,9 @@ func TestFindOldTasksByID(t *testing.T) {
 		Status: evergreen.TaskSucceeded,
 	}
 	assert.NoError(taskDoc.Insert())
-	assert.NoError(taskDoc.Archive())
+	assert.NoError(taskDoc.Archive(ctx))
 	taskDoc.Execution += 1
-	assert.NoError(taskDoc.Archive())
+	assert.NoError(taskDoc.Archive(ctx))
 	taskDoc.Execution += 1
 
 	tasks, err := FindOld(ByOldTaskID("task"))
@@ -394,6 +396,7 @@ func TestFindAllFirstExecution(t *testing.T) {
 }
 
 func TestFindOneIdOldOrNew(t *testing.T) {
+	ctx := context.TODO()
 	assert := assert.New(t)
 	require := require.New(t)
 
@@ -404,7 +407,7 @@ func TestFindOneIdOldOrNew(t *testing.T) {
 		Status: evergreen.TaskSucceeded,
 	}
 	require.NoError(taskDoc.Insert())
-	require.NoError(taskDoc.Archive())
+	require.NoError(taskDoc.Archive(ctx))
 
 	task00, err := FindOneIdOldOrNew("task", 0)
 	assert.NoError(err)

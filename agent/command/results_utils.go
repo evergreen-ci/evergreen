@@ -2,21 +2,17 @@ package command
 
 import (
 	"context"
-	"strings"
 
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/agent/internal"
 	"github.com/evergreen-ci/evergreen/agent/internal/client"
+	"github.com/evergreen-ci/evergreen/agent/internal/taskoutput"
 	"github.com/evergreen-ci/evergreen/apimodels"
 	"github.com/evergreen-ci/evergreen/model/task"
 	"github.com/evergreen-ci/evergreen/model/testlog"
 	"github.com/evergreen-ci/evergreen/model/testresult"
-	"github.com/evergreen-ci/timber/buildlogger"
 	"github.com/evergreen-ci/timber/testresults"
 	"github.com/evergreen-ci/utility"
-	"github.com/mongodb/grip/level"
-	"github.com/mongodb/grip/message"
-	"github.com/mongodb/grip/send"
 	"github.com/pkg/errors"
 )
 
@@ -38,11 +34,6 @@ func sendTestResults(ctx context.Context, comm client.Communicator, logger clien
 	return nil
 }
 
-// sendTestLog sends test logs to the backend logging service.
-func sendTestLog(ctx context.Context, comm client.Communicator, conf *internal.TaskConfig, log *testlog.TestLog) error {
-	return errors.Wrap(sendTestLogToCedar(ctx, &conf.Task, comm, log), "sending test logs to Cedar")
-}
-
 // sendTestLogsAndResults sends the test logs and test results to backend
 // logging results services.
 func sendTestLogsAndResults(ctx context.Context, comm client.Communicator, logger client.LoggerProducer, conf *internal.TaskConfig, logs []testlog.TestLog, results [][]testresult.TestResult) error {
@@ -53,7 +44,7 @@ func sendTestLogsAndResults(ctx context.Context, comm client.Communicator, logge
 			return errors.Wrap(err, "canceled while sending test logs")
 		}
 
-		if err := sendTestLog(ctx, comm, conf, &log); err != nil {
+		if err := taskoutput.AppendTestLog(ctx, comm, &conf.Task, &log); err != nil {
 			// Continue on error to let the other logs be posted.
 			logger.Task().Error(errors.Wrap(err, "sending test log"))
 		}
@@ -99,38 +90,6 @@ func sendTestResultsToCedar(ctx context.Context, conf *internal.TaskConfig, td c
 
 	if err := comm.SetResultsInfo(ctx, td, testresult.TestResultsServiceCedar, failed); err != nil {
 		return errors.Wrap(err, "setting results info in the task")
-	}
-
-	return nil
-}
-
-func sendTestLogToCedar(ctx context.Context, t *task.Task, comm client.Communicator, log *testlog.TestLog) error {
-	conn, err := comm.GetCedarGRPCConn(ctx)
-	if err != nil {
-		return errors.Wrapf(err, "getting the Cedar gRPC connection for test '%s'", log.Name)
-	}
-
-	timberOpts := &buildlogger.LoggerOptions{
-		Project:    t.Project,
-		Version:    t.Version,
-		Variant:    t.BuildVariant,
-		TaskName:   t.DisplayName,
-		TaskID:     t.Id,
-		Execution:  int32(t.Execution),
-		TestName:   log.Name,
-		Mainline:   !t.IsPatchRequest(),
-		Storage:    buildlogger.LogStorageS3,
-		ClientConn: conn,
-	}
-	levelInfo := send.LevelInfo{Default: level.Info, Threshold: level.Debug}
-	sender, err := buildlogger.NewLoggerWithContext(ctx, log.Name, levelInfo, timberOpts)
-	if err != nil {
-		return errors.Wrapf(err, "creating buildlogger logger for test result '%s'", log.Name)
-	}
-
-	sender.Send(message.ConvertToComposer(level.Info, strings.Join(log.Lines, "\n")))
-	if err = sender.Close(); err != nil {
-		return errors.Wrapf(err, "closing buildlogger logger for test result '%s'", log.Name)
 	}
 
 	return nil

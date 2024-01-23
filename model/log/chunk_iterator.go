@@ -12,13 +12,6 @@ import (
 	"github.com/pkg/errors"
 )
 
-type chunkInfo struct {
-	key      string
-	numLines int
-	start    int64
-	end      int64
-}
-
 type chunkIterator struct {
 	opts           chunkIteratorOptions
 	lineOffset     int

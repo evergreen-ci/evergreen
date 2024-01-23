@@ -25,6 +25,7 @@ import (
 
 type Distro struct {
 	Id                    string                `bson:"_id" json:"_id,omitempty" mapstructure:"_id,omitempty"`
+	AdminOnly             bool                  `bson:"admin_only,omitempty" json:"admin_only,omitempty" mapstructure:"admin_only,omitempty"`
 	Aliases               []string              `bson:"aliases,omitempty" json:"aliases,omitempty" mapstructure:"aliases,omitempty"`
 	Arch                  string                `bson:"arch" json:"arch,omitempty" mapstructure:"arch,omitempty"`
 	WorkDir               string                `bson:"work_dir" json:"work_dir,omitempty" mapstructure:"work_dir,omitempty"`
@@ -842,10 +843,9 @@ func (d *Distro) ClientURL(settings *evergreen.Settings) string {
 
 // S3ClientURL returns the URL in S3 where the Evergreen client version can be
 // retrieved for this server's particular Evergreen build version.
-func (d *Distro) S3ClientURL(settings *evergreen.Settings) string {
+func (d *Distro) S3ClientURL(env evergreen.Environment) string {
 	return strings.Join([]string{
-		strings.TrimSuffix(settings.HostInit.S3BaseURL, "/"),
-		evergreen.BuildRevision,
+		env.ClientConfig().S3URLPrefix,
 		d.ExecutableSubPath(),
 	}, "/")
 }

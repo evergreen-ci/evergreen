@@ -1,10 +1,12 @@
 # Notifications
 
+These are for setting up personal user notifications. For project-level notifications, see [project settings](Project-and-Distro-Settings.md#project-level-notifications).
+
 Evergreen has the ability to issue notifications based on events that happen in the system.
 
 ## Notifications Setup
 Evergreen can notify you based on the outcome of your patches. To enable these, go to your [user profile](https://evergreen.mongodb.com/settings) and:
-1. Enter your Github Username (so we can identify which commits you make)
+1. Enter your GitHub Username (so we can identify which commits you make)
 2. Optionally, enter your Slack username (if you want to be notified on Slack). Your Slack username is available from https://YOUR_ORGANIZATION.slack.com/account/settings#username (This is NOT your slack display name.)
 3. Under Notification Settings, select the Slack or Email next to the notifications you'd like.
 4. Click save!
@@ -12,7 +14,7 @@ Evergreen can notify you based on the outcome of your patches. To enable these, 
 ## Options for Notifications
 
 ### Patch Finish
-For all new patches you create in the future (including Github Pull Requests), you'll receive an email or slack message when the patch has completed.
+For all new patches you create in the future (including GitHub Pull Requests), you'll receive an email or slack message when the patch has completed.
 
 ### Tasks
 For new tasks that fit the desired requester and finish type, you'll receive a notification. Note that for system unresponsive tasks, we only send a notification on the last execution, since we auto-retry these.

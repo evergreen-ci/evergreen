@@ -81,6 +81,7 @@ func TestLogIteratorReader(t *testing.T) {
 		{
 			name: "SoftSizeLimit",
 			it: newMergingIterator(
+				0,
 				newChunkIterator(ctx, chunkIteratorOptions{bucket: bucket, chunks: chunks, parser: parser}),
 				newChunkIterator(ctx, chunkIteratorOptions{bucket: bucket, chunks: chunks, parser: parser}),
 				newChunkIterator(ctx, chunkIteratorOptions{bucket: bucket, chunks: chunks, parser: parser}),

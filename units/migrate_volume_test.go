@@ -120,9 +120,8 @@ func TestVolumeMigrateJob(t *testing.T) {
 
 			events, err := event.FindAllByResourceID(h.Id)
 			assert.NoError(t, err)
-			assert.Len(t, events, 2)
-			assert.Equal(t, events[0].EventType, event.EventHostCreated)
-			assert.Equal(t, events[1].EventType, event.EventVolumeMigrationFailed)
+			require.Len(t, events, 1)
+			assert.Equal(t, events[0].EventType, event.EventVolumeMigrationFailed)
 		},
 		"NewHostFailsToStart": func(ctx context.Context, t *testing.T, env *mock.Environment, h *host.Host, v *host.Volume, d *distro.Distro, spawnOptions cloud.SpawnOptions) {
 			// Invalid public key will prevent new host from spinning up
@@ -164,7 +163,7 @@ func TestVolumeMigrateJob(t *testing.T) {
 
 			events, err := event.FindAllByResourceID(h.Id)
 			assert.NoError(t, err)
-			assert.Len(t, events, 4)
+			assert.Len(t, events, 3)
 		},
 		"DetachedVolumeMigrates": func(ctx context.Context, t *testing.T, env *mock.Environment, h *host.Host, v *host.Volume, d *distro.Distro, spawnOptions cloud.SpawnOptions) {
 			// Spoof documents after a virtual workstation is terminated.

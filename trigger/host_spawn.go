@@ -16,6 +16,7 @@ import (
 func init() {
 	registry.registerEventHandler(event.ResourceTypeHost, event.EventHostProvisioned, makeSpawnHostProvisioningTriggers)
 	registry.registerEventHandler(event.ResourceTypeHost, event.EventHostProvisionFailed, makeSpawnHostProvisioningTriggers)
+	registry.registerEventHandler(event.ResourceTypeHost, event.EventHostCreatedError, makeSpawnHostStateChangeTriggers)
 	registry.registerEventHandler(event.ResourceTypeHost, event.EventHostStarted, makeSpawnHostStateChangeTriggers)
 	registry.registerEventHandler(event.ResourceTypeHost, event.EventHostStopped, makeSpawnHostStateChangeTriggers)
 	registry.registerEventHandler(event.ResourceTypeHost, event.EventHostModified, makeSpawnHostStateChangeTriggers)
@@ -48,7 +49,7 @@ func (t *spawnHostProvisioningTriggers) slack() *notification.SlackPayload {
 		TitleLink: spawnHostURL(t.uiConfig.Url),
 		Color:     evergreenFailColor,
 		Fields: []*message.SlackAttachmentField{
-			&message.SlackAttachmentField{
+			{
 				Title: "Distro",
 				Value: t.host.Distro.Id,
 				Short: true,
@@ -176,8 +177,12 @@ func (t *spawnHostStateChangeTriggers) spawnHostStateChangeOutcome(sub *event.Su
 	if !t.host.UserHost {
 		return nil, nil
 	}
-	if t.event.EventType == event.EventHostStarted && t.data.Successful && !t.host.Provisioned {
-		// we'll send notification when provisioning, so return
+	if t.event.EventType == event.EventHostStarted && t.data.Successful && t.host.Status != evergreen.HostStarting {
+		// When the host is starting up, send a notification only if:
+		// * There was an error starting the host or
+		// * If it successfully started the host and it's still starting up now.
+		//   There will be a notification later on when the host is up and
+		//   running.
 		return nil, nil
 	}
 	payload, err := t.makePayload(sub)
@@ -191,6 +196,8 @@ func (t *spawnHostStateChangeTriggers) spawnHostStateChangeOutcome(sub *event.Su
 func (t *spawnHostStateChangeTriggers) makePayload(sub *event.Subscription) (interface{}, error) {
 	var action string
 	switch t.event.EventType {
+	case event.EventHostCreatedError:
+		action = "Creating"
 	case event.EventHostStarted:
 		action = "Starting"
 	case event.EventHostStopped:

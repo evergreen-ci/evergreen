@@ -192,7 +192,7 @@ func (uis *UIServer) userSettingsPage(w http.ResponseWriter, r *http.Request) {
 		CanClearTokens bool
 		NewUILink      string
 		ViewData
-	}{settingsData, exampleConf, uis.clientConfig.ClientBinaries, currentUser.Settings.GithubUser.LastKnownAs,
+	}{settingsData, exampleConf, uis.env.ClientConfig().ClientBinaries, currentUser.Settings.GithubUser.LastKnownAs,
 		currentUser.Settings.GithubUser.UID, uis.env.UserManagerInfo().CanClearTokens, newUILink, uis.GetCommonViewData(w, r, true, true)},
 		"base", "settings.html", "base_angular.html", "menu.html")
 }

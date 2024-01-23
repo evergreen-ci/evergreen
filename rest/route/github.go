@@ -535,6 +535,9 @@ func resetPRPatchDefinition(owner, repo string, prNumber int) error {
 	if err != nil {
 		return errors.Wrap(err, "getting most recent patch for pr")
 	}
+	if p == nil {
+		return errors.Errorf("couldn't find patch for PR '%s/%s:%d'", owner, repo, prNumber)
+	}
 	return p.UpdateRepeatPatchId("")
 }
 

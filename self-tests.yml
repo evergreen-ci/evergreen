@@ -2,6 +2,7 @@ command_type: test
 stepback: true
 ignore:
   - "*.md" # don't schedule tests if a commit only changes markdown files
+  - "*.mdx"
   - ".github/*" # github CODEOWNERS configuration
 
 post:
@@ -151,6 +152,24 @@ variables:
         params:
           files:
             - evergreen/bin/generate-lint.json
+
+  - &build-and-push-client
+    name: build-and-push-client
+    commands:
+      - func: get-project-and-modules
+      - func: run-make
+        vars: { target: "${task_name}" }
+      - command: s3.put
+        params:
+          aws_key: ${aws_key}
+          aws_secret: ${aws_secret}
+          local_files_include_filter_prefix: evergreen/clients
+          local_files_include_filter: "*_*/evergreen*"
+          remote_file: evergreen/clients/${version_id}/
+          content_type: binary/octet-stream
+          bucket: mciuploads
+          permissions: public-read
+          preserve_path: true
 
 #######################################
 #              Functions              #
@@ -409,6 +428,9 @@ tasks:
     name: test-agent-internal-client
   - <<: *run-go-test-suite
     tags: ["nodb", "test", "agent"]
+    name: test-agent-internal-taskoutput
+  - <<: *run-go-test-suite
+    tags: ["nodb", "test", "agent"]
     name: test-agent-util
   - <<: *run-go-test-suite-with-mongodb
     tags: ["test", "db", "agent"]
@@ -440,6 +462,9 @@ tasks:
   - <<: *run-go-test-suite-with-mongodb
     tags: ["db", "test"]
     name: test-evergreen
+  - <<: *run-go-test-suite-with-mongodb
+    tags: ["db", "test"]
+    name: test-taskoutput
   - <<: *run-go-test-suite-with-mongodb
     tags: ["db", "test"]
     name: test-thirdparty
@@ -619,6 +644,42 @@ tasks:
           display_name: swagger.json (latest)
           patchable: false
 
+  - <<: *build-and-push-client
+    name: build-linux_amd64
+    tags: ["build", "build-staging"]
+  - <<: *build-and-push-client
+    name: build-linux_s390x
+    tags: ["build"]
+  - <<: *build-and-push-client
+    name: build-linux_arm64
+    tags: ["build", "build-staging"]
+  - <<: *build-and-push-client
+    name: build-linux_ppc64le
+    tags: ["build"]
+  - <<: *build-and-push-client
+    name: build-windows_amd64
+    tags: ["build", "build-staging"]
+  - <<: *build-and-push-client
+    name: build-darwin_amd64
+    tags: ["build", "build-staging"]
+  - <<: *build-and-push-client
+    name: build-darwin_arm64
+    tags: ["build"]
+  - name: tar-and-push-static-assets
+    tags: ["build", "build-staging"]
+    commands:
+      - func: get-project-and-modules
+      - func: run-make
+        vars: { target: "bin/static_assets.tgz" }
+      - command: s3.put
+        params:
+          aws_key: ${aws_key}
+          aws_secret: ${aws_secret}
+          local_file: evergreen/bin/static_assets.tgz
+          remote_file: evergreen/clients/${version_id}/static_assets.tgz
+          content_type: application/gzip
+          bucket: mciuploads
+          permissions: public-read
 
 task_groups:
   - name: dist-and-upload-clis
@@ -749,6 +810,51 @@ buildvariants:
     tasks:
       - name: ".agent .test"
       - name: ".cli .test"
+
+  - name: build-and-push
+    display_name: Build and Push
+    run_on:
+      - ubuntu2204-small
+    activate: false
+    tasks:
+      - name: ".build"
+    expansions:
+      GOROOT: /opt/golang/go1.20
+      sign_macos: true
+      notary_client_url: https://macos-notary-1628249594.s3.amazonaws.com/releases/client/v3.1.2/linux_amd64.zip
+    display_tasks:
+      - name: build-and-push
+        execution_tasks:
+        - ".build"
+
+  - name: build-and-push-staging
+    display_name: Build and Push - Staging
+    run_on:
+      - ubuntu2204-small
+    activate: false
+    tasks:
+      - name: ".build-staging"
+    expansions:
+      GOROOT: /opt/golang/go1.20
+    display_tasks:
+      - name: build-and-push
+        execution_tasks:
+        - ".build-staging"
+
+  - name: build-and-push-unsigned
+    run_on:
+      - ubuntu2204-small
+    display_name: Build and Push - Unsigned
+    activate: false
+    tasks:
+      - name: ".build"
+    expansions:
+      GOROOT: /opt/golang/go1.20
+    display_tasks:
+      - name: build-and-push
+        execution_tasks:
+        - ".build"
+
 
 containers:
   - name: evg-container

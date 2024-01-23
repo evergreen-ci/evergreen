@@ -43,7 +43,9 @@ type TestLogs struct {
 	URLLobster *string `json:"url_lobster,omitempty"`
 	URLParsley *string `json:"url_parsley,omitempty"`
 	// Line number in the log file corresponding to information about this test
-	LineNum int `json:"line_num"`
+	LineNum       int     `json:"line_num"`
+	RenderingType *string `json:"rendering_type"`
+	Version       int32   `json:"version"`
 }
 
 func (at *APITest) BuildFromService(st interface{}) error {
@@ -66,9 +68,11 @@ func (at *APITest) BuildFromService(st interface{}) error {
 
 		at.TestFile = utility.ToStringPtr(v.GetDisplayTestName())
 		at.Logs = TestLogs{
-			URL:     utility.ToStringPtr(v.GetLogURL(env, evergreen.LogViewerHTML)),
-			URLRaw:  utility.ToStringPtr(v.GetLogURL(env, evergreen.LogViewerRaw)),
-			LineNum: v.LineNum,
+			URL:           utility.ToStringPtr(v.GetLogURL(env, evergreen.LogViewerHTML)),
+			URLRaw:        utility.ToStringPtr(v.GetLogURL(env, evergreen.LogViewerRaw)),
+			LineNum:       v.LineNum,
+			RenderingType: utility.ToStringPtr("default"),
+			Version:       1,
 		}
 		if lobsterURL := v.GetLogURL(env, evergreen.LogViewerLobster); lobsterURL != "" {
 			at.Logs.URLLobster = utility.ToStringPtr(lobsterURL)

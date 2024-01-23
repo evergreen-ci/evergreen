@@ -287,7 +287,8 @@ func makePatchProjectByID(settings *evergreen.Settings) gimlet.RouteHandler {
 //	@Tags			projects
 //	@Router			/projects/{project_id} [patch]
 //	@Security		Api-User || Api-Key
-//	@Param			project_id	path		string	true	"the project ID"
+//	@Param			project_id	path		string				true	"the project ID"
+//	@Param			{object}	body		model.APIProjectRef	true	"parameters"
 //	@Success		200			{object}	model.APIProjectRef
 func (h *projectIDPatchHandler) Factory() gimlet.RouteHandler {
 	return &projectIDPatchHandler{

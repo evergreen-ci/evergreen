@@ -4,19 +4,26 @@ import (
 	"context"
 )
 
-// LogService is the interface for Evergreen log services.
+// LogService is a simple abstraction bridging the logical representation of an
+// Evergreen log with its physical storage. Namely, it supports writing and
+// retrieving logs directly to and from an underlying storage service. Any more
+// sophisticated business logic pertaining to log handling (e.g., collection,
+// logical organization, retrieval patterns) should be implemented on top of
+// this interface in separate layers of the application.
 type LogService interface {
+	// Get returns a log iterator with the given options.
 	Get(context.Context, GetOptions) (LogIterator, error)
+	// Append appends given lines to the specified log.
 	Append(context.Context, string, []LogLine) error
 }
 
 // GetOptions represents the arguments for fetching Evergreen logs.
 type GetOptions struct {
-	// Version is the version of the underlying log service with which the
-	// specified logs were stored.
-	Version int
 	// LogNames are the names of the logs to fetch and merge, prefixes may
 	// be specified. At least one name must be specified.
+	//
+	// Log lines from multiple logs are always merged in a deterministic
+	// order by timestamp.
 	LogNames []string
 	// Start is the start time (inclusive) of the time range filter,
 	// represented as a Unix timestamp in nanoseconds. Defaults to

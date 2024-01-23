@@ -150,10 +150,7 @@ func TestS3PushExecute(t *testing.T) {
 				},
 			}
 			comm := client.NewMock("localhost")
-			logger, err := comm.GetLoggerProducer(ctx, client.TaskData{
-				ID:     conf.Task.Id,
-				Secret: conf.Task.Secret,
-			}, nil)
+			logger, err := comm.GetLoggerProducer(ctx, &conf.Task, nil)
 			require.NoError(t, err)
 			c := &s3Push{}
 			c.bucket, err = pail.NewLocalBucket(pail.LocalOptions{
