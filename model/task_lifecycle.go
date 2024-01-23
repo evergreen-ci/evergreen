@@ -789,7 +789,12 @@ func MarkEnd(ctx context.Context, settings *evergreen.Settings, t *task.Task, ca
 			err = evalStepback(ctx, t, caller, status, deactivatePrevious)
 		}
 		if err != nil {
-			return errors.Wrap(err, "evaluating stepback")
+			grip.Error(message.Fields{
+				"message":    "failed bisect stepback",
+				"task_id":    t.Id,
+				"project_id": t.Project,
+				"err":        err.Error(),
+			})
 		}
 	}
 
