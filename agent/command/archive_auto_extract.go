@@ -18,9 +18,6 @@ type autoExtract struct {
 
 	TargetDirectory string `mapstructure:"destination" plugin:"expand"`
 
-	// a list of filename blobs to exclude when extracting
-	ExcludeFiles []string `mapstructure:"exclude_files" plugin:"expand"`
-
 	base
 }
 
@@ -29,10 +26,6 @@ func (e *autoExtract) Name() string { return "archive.auto_extract" }
 func (e *autoExtract) ParseParams(params map[string]interface{}) error {
 	if err := mapstructure.Decode(params, e); err != nil {
 		return errors.Wrap(err, "decoding mapstructure params")
-	}
-
-	if len(e.ExcludeFiles) != 0 {
-		return errors.New("auto extraction does not support excluded files")
 	}
 
 	if e.ArchivePath == "" {
