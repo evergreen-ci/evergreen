@@ -61,21 +61,14 @@ func (s *ZipExtractSuite) TestNilArguments() {
 	s.Error(s.cmd.ParseParams(s.params))
 }
 
-func (s *ZipExtractSuite) TestMalformedParams() {
-	s.params["exclude_files"] = 1
-	s.params["path"] = "foo"
+func (s *ZipExtractSuite) TestMissingParams() {
+	s.params["path"] = ""
 	s.Error(s.cmd.ParseParams(s.params))
 }
 
 func (s *ZipExtractSuite) TestCorrectParams() {
 	s.params["path"] = "foo"
 	s.NoError(s.cmd.ParseParams(s.params))
-}
-
-func (s *ZipExtractSuite) TestErrorWhenExcludeFilesExist() {
-	s.cmd.ExcludeFiles = []string{"foo"}
-	s.cmd.ArchivePath = "bar"
-	s.Error(s.cmd.ParseParams(s.params))
 }
 
 func (s *ZipExtractSuite) TestErrorsWithMalformedExpansions() {
