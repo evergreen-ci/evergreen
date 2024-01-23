@@ -607,6 +607,9 @@ func TestAgentGetProjectRef(t *testing.T) {
 	projRef1 := &model.ProjectRef{Id: "project1"}
 	require.NoError(t, task1.Insert())
 	require.NoError(t, projRef1.Insert())
+	// Set the default logger after inserting into the DB since this should
+	// be set dynamically by the route handler.
+	projRef1.DefaultLogger = "buildlogger"
 
 	task3 := &task.Task{
 		Id:      "task3",
@@ -631,7 +634,7 @@ func TestAgentGetProjectRef(t *testing.T) {
 			expectedStatus: http.StatusNotFound,
 		},
 		{
-			name:           "GlobalLogger",
+			name:           "ProjectRef",
 			taskID:         task1.Id,
 			expectedStatus: http.StatusOK,
 			expectedData:   projRef1,
