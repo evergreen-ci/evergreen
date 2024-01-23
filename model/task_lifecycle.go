@@ -790,7 +790,7 @@ func MarkEnd(ctx context.Context, settings *evergreen.Settings, t *task.Task, ca
 		}
 		if err != nil {
 			grip.Error(message.Fields{
-				"message":    "failed bisect stepback",
+				"message":    "failed stepback",
 				"task_id":    t.Id,
 				"project_id": t.Project,
 				"err":        err.Error(),
@@ -1314,7 +1314,7 @@ func evalBisectStepback(ctx context.Context, t *task.Task, caller string, stepba
 	// This could be a new stepback, or possibly a continuing one.
 	potentialNewStepback := t.Status == evergreen.TaskFailed && !t.Aborted
 	// Or if there is stepback info, we should continue stepback.
-	existingStepback := !t.StepbackInfo.IsZero() && caller == evergreen.StepbackTaskActivator
+	existingStepback := !t.StepbackInfo.IsZero() && t.ActivatedBy == evergreen.StepbackTaskActivator
 	if potentialNewStepback || existingStepback {
 		return errors.Wrap(doBisectStepback(ctx, t), "performing bisect stepback")
 	}
