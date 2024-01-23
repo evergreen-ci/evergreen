@@ -784,9 +784,9 @@ func MarkEnd(ctx context.Context, settings *evergreen.Settings, t *task.Task, ca
 			if err != nil {
 				return errors.Wrap(err, "getting display task")
 			}
-			err = evalStepback(ctx, t.DisplayTask, caller, deactivatePrevious)
+			err = evalStepback(ctx, t.DisplayTask, caller, status, deactivatePrevious)
 		} else {
-			err = evalStepback(ctx, t, caller, deactivatePrevious)
+			err = evalStepback(ctx, t, caller, status, deactivatePrevious)
 		}
 		if err != nil {
 			grip.Error(message.Fields{
@@ -1256,7 +1256,7 @@ func removeNextMergeTaskDependency(cq commitqueue.CommitQueue, currentIssue stri
 }
 
 // evalStepback runs linear or bisect stepback depending on project, build variant, and task settings.
-func evalStepback(ctx context.Context, t *task.Task, caller string, deactivatePrevious bool) error {
+func evalStepback(ctx context.Context, t *task.Task, caller, status string, deactivatePrevious bool) error {
 	s, err := getStepback(t.Id)
 	if err != nil {
 		return errors.WithStack(err)
@@ -1264,13 +1264,14 @@ func evalStepback(ctx context.Context, t *task.Task, caller string, deactivatePr
 	if s.bisect {
 		return evalBisectStepback(ctx, t, caller, s.shouldStepback, deactivatePrevious)
 	}
-	return evalLinearStepback(ctx, t, caller, s.shouldStepback, deactivatePrevious)
+	return evalLinearStepback(ctx, t, caller, status, s.shouldStepback, deactivatePrevious)
 }
 
 // evalLinearStepback performs linear stepback on the task or cleans up after previous iterations of lienar
 // stepback.
-func evalLinearStepback(ctx context.Context, t *task.Task, caller string, stepback, deactivatePrevious bool) error {
-	if t.Status == evergreen.TaskFailed && (!t.Aborted || t.ActivatedBy == evergreen.StepbackTaskActivator) {
+func evalLinearStepback(ctx context.Context, t *task.Task, caller, status string, stepback, deactivatePrevious bool) error {
+	if (status == evergreen.TaskFailed && !t.Aborted) ||
+		(evergreen.IsFailedTaskStatus(status) && t.ActivatedBy == evergreen.StepbackTaskActivator) {
 		if !stepback {
 			return nil
 		}
