@@ -81,6 +81,9 @@ func (s *TaskAbortSuite) TestAbort() {
 }
 
 func TestFetchArtifacts(t *testing.T) {
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
 	assert := assert.New(t)
 	require := require.New(t)
 
@@ -91,7 +94,7 @@ func TestFetchArtifacts(t *testing.T) {
 		Execution: 0,
 	}
 	assert.NoError(task1.Insert())
-	assert.NoError(task1.Archive())
+	assert.NoError(task1.Archive(ctx))
 	entry := artifact.Entry{
 		TaskId:          task1.Id,
 		TaskDisplayName: "task",
@@ -119,7 +122,7 @@ func TestFetchArtifacts(t *testing.T) {
 		Status:      evergreen.TaskSucceeded,
 	}
 	assert.NoError(task2.Insert())
-	assert.NoError(task2.Archive())
+	assert.NoError(task2.Archive(ctx))
 
 	taskGet := taskGetHandler{taskID: task1.Id}
 	resp := taskGet.Run(context.Background())

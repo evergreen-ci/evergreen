@@ -1,6 +1,7 @@
 package model
 
 import (
+	"context"
 	"testing"
 
 	"github.com/evergreen-ci/evergreen/db"
@@ -10,6 +11,9 @@ import (
 )
 
 func TestLoadContext(t *testing.T) {
+	backgroundCtx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
 	require.NoError(t, db.ClearCollections(task.Collection, task.OldCollection, ProjectRefCollection))
 
 	assert := assert.New(t)
@@ -25,7 +29,7 @@ func TestLoadContext(t *testing.T) {
 	}
 	assert.NoError(newTask.Insert())
 	assert.NoError(oldTask.Insert())
-	assert.NoError(oldTask.Archive())
+	assert.NoError(oldTask.Archive(backgroundCtx))
 
 	// test that current tasks are loaded correctly
 	ctx, err := LoadContext(newTask.Id, "", "", "", myProject.Id)

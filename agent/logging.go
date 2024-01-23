@@ -8,6 +8,7 @@ import (
 
 	"github.com/evergreen-ci/evergreen/agent/internal/client"
 	"github.com/evergreen-ci/evergreen/model"
+	"github.com/evergreen-ci/pail"
 	"github.com/mongodb/grip"
 	"github.com/mongodb/grip/level"
 	"github.com/mongodb/grip/send"
@@ -96,7 +97,7 @@ func (a *Agent) SetDefaultLogger(sender send.Sender) {
 func (a *Agent) makeLoggerProducer(ctx context.Context, tc *taskContext, c *model.LoggerConfig, commandName string) (client.LoggerProducer, error) {
 	config := a.prepLogger(tc, c, commandName)
 
-	logger, err := a.comm.GetLoggerProducer(ctx, tc.task, &config)
+	logger, err := a.comm.GetLoggerProducer(ctx, &tc.taskConfig.Task, &config)
 	if err != nil {
 		return nil, err
 	}
@@ -113,6 +114,7 @@ func (a *Agent) prepLogger(tc *taskContext, c *model.LoggerConfig, commandName s
 	}
 	config := client.LoggerConfig{
 		SendToGlobalSender: a.opts.SendTaskLogsToGlobalSender,
+		AWSCredentials:     pail.CreateAWSCredentials(tc.taskConfig.TaskSync.Key, tc.taskConfig.TaskSync.Secret, ""),
 	}
 
 	defaultLogger := tc.taskConfig.ProjectRef.DefaultLogger

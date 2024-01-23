@@ -257,10 +257,7 @@ func UpdateAnnotation(a *TaskAnnotation, userDisplayName string) error {
 }
 
 // InsertManyAnnotations updates the source for a list of task annotations and their issues and then inserts them into the DB.
-func InsertManyAnnotations(updates []TaskUpdate) error {
-	env := evergreen.GetEnvironment()
-	ctx, cancel := env.Context()
-	defer cancel()
+func InsertManyAnnotations(ctx context.Context, updates []TaskUpdate) error {
 	for _, u := range updates {
 		update := createAnnotationUpdate(&u.Annotation, "")
 		ops := make([]mongo.WriteModel, len(u.TaskData))
@@ -270,7 +267,7 @@ func InsertManyAnnotations(updates []TaskUpdate) error {
 				SetFilter(ByTaskIdAndExecution(u.TaskData[idx].TaskId, u.TaskData[idx].Execution)).
 				SetUpdate(bson.M{"$push": update})
 		}
-		_, err := env.DB().Collection(Collection).BulkWrite(ctx, ops, nil)
+		_, err := evergreen.GetEnvironment().DB().Collection(Collection).BulkWrite(ctx, ops, nil)
 
 		if err != nil {
 			return errors.Wrap(err, "bulk inserting annotations")

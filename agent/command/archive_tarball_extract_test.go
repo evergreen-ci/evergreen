@@ -45,8 +45,8 @@ func (s *TarballExtractSuite) SetupTest() {
 		Project:    model.Project{},
 		WorkDir:    s.targetLocation,
 	}
-	s.logger, err = s.comm.GetLoggerProducer(s.ctx, client.TaskData{ID: s.conf.Task.Id, Secret: s.conf.Task.Secret}, nil)
-	s.NoError(err)
+	s.logger, err = s.comm.GetLoggerProducer(s.ctx, &s.conf.Task, nil)
+	s.Require().NoError(err)
 
 	s.cmd = &tarballExtract{}
 	s.params = map[string]interface{}{}
