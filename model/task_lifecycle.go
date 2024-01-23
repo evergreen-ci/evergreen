@@ -1256,24 +1256,26 @@ func removeNextMergeTaskDependency(cq commitqueue.CommitQueue, currentIssue stri
 }
 
 // evalStepback runs linear or bisect stepback depending on project, build variant, and task settings.
+// The status passed in is a display status, initially stepback only activates if the task
+// has failed but not on system failure.
 func evalStepback(ctx context.Context, t *task.Task, caller, status string, deactivatePrevious bool) error {
 	s, err := getStepback(t.Id)
 	if err != nil {
 		return errors.WithStack(err)
 	}
+	// A new stepback happens when the display status is failed (not system failure)
+	// and it is not aborted.
+	newStepback := status == evergreen.TaskFailed && !t.Aborted
 	if s.bisect {
-		return evalBisectStepback(ctx, t, caller, s.shouldStepback, deactivatePrevious)
+		return evalBisectStepback(ctx, t, caller, newStepback, s.shouldStepback, deactivatePrevious)
 	}
-	return evalLinearStepback(ctx, t, caller, status, s.shouldStepback, deactivatePrevious)
+	return evalLinearStepback(ctx, t, caller, newStepback, s.shouldStepback, deactivatePrevious)
 }
 
 // evalLinearStepback performs linear stepback on the task or cleans up after previous iterations of lienar
 // stepback.
-func evalLinearStepback(ctx context.Context, t *task.Task, caller, status string, stepback, deactivatePrevious bool) error {
-	// Stepback should happen if the task has failed and isn't aborted.
-	newStepback := status == evergreen.TaskFailed && !t.Aborted
-	// Or if it is a system failure and stepback is already happening.
-	existingStepback := evergreen.IsFailedTaskStatus(status) && t.ActivatedBy == evergreen.StepbackTaskActivator
+func evalLinearStepback(ctx context.Context, t *task.Task, caller string, newStepback, stepback, deactivatePrevious bool) error {
+	existingStepback := t.Status == evergreen.TaskFailed && t.ActivatedBy == evergreen.StepbackTaskActivator
 	if newStepback || existingStepback {
 		if !stepback {
 			return nil
@@ -1308,17 +1310,14 @@ func evalLinearStepback(ctx context.Context, t *task.Task, caller, status string
 }
 
 // evalBisectStepback performs bisect stepback on the task.
-func evalBisectStepback(ctx context.Context, t *task.Task, caller string, stepback, deactivatePrevious bool) error {
+func evalBisectStepback(ctx context.Context, t *task.Task, caller string, newStepback, stepback, deactivatePrevious bool) error {
 	// If the task is aborted or stepback is disabled then no-op.
 	if t.Aborted || !stepback {
 		return nil
 	}
 
-	// Stepback should happen when it is a failing task.
-	// This could be a new stepback, or possibly a continuing one.
-	newOrExistingStepback := t.Status == evergreen.TaskFailed && !t.Aborted
 	existingStepback := !t.StepbackInfo.IsZero() && t.ActivatedBy == evergreen.StepbackTaskActivator
-	if newOrExistingStepback || existingStepback {
+	if newStepback || existingStepback {
 		return errors.Wrap(doBisectStepback(ctx, t), "performing bisect stepback")
 	}
 
