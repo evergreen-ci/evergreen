@@ -1102,19 +1102,6 @@ func (e *envState) GetGitHubSender(owner, repo string) (send.Sender, error) {
 	tokenCreatedAt := time.Now()
 	token, err := e.settings.CreateInstallationToken(e.ctx, owner, repo, nil)
 	if err != nil {
-		// kim: TODO: remove, no Splunk logs found
-		// // TODO EVG-19966: Delete fallback to legacy GitHub sender
-		// grip.Debug(message.WrapError(err, message.Fields{
-		//     "message": "error creating installation token for GitHub sender",
-		//     "owner":   owner,
-		//     "repo":    repo,
-		//     "ticket":  "EVG-19966",
-		// }))
-		// legacySender, ok := e.senders[SenderGithubStatus]
-		// if !ok {
-		//     return nil, errors.Errorf("Legacy GitHub status sender not found")
-		// }
-		// return legacySender, nil
 		return nil, errors.Wrap(err, "getting installation token")
 	}
 	sender, err := send.NewGithubStatusLogger("evergreen", &send.GithubOptions{
@@ -1123,19 +1110,6 @@ func (e *envState) GetGitHubSender(owner, repo string) (send.Sender, error) {
 		MaxAttempts: GitHubRetryAttempts,
 	}, "")
 	if err != nil {
-		// // kim: TODO: remove, no Splunk logs found
-		// // TODO EVG-19966: Delete fallback to legacy GitHub sender
-		// grip.Debug(message.WrapError(err, message.Fields{
-		//     "message": "error setting up GitHub status logger with GitHub app",
-		//     "owner":   owner,
-		//     "repo":    repo,
-		//     "ticket":  "EVG-19966",
-		// }))
-		// legacySender, ok := e.senders[SenderGithubStatus]
-		// if !ok {
-		//     return nil, errors.Errorf("Legacy GitHub status sender not found")
-		// }
-		// return legacySender, nil
 		return nil, errors.Wrap(err, "creating GitHub status logger")
 	}
 

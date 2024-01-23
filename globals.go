@@ -766,8 +766,6 @@ var AttachCommands = []string{
 type SenderKey int
 
 const (
-	// kim: TODO: have to remove usages of SenderGithubStatus in places it would
-	// result in using the legacy GitHub token.
 	// SenderGithubStatus sends messages to GitHub like PR status updates. This
 	// sender key logically represents all GitHub senders collectively, of which
 	// there is one per GitHub org.
