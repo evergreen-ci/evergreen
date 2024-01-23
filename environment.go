@@ -741,24 +741,10 @@ func (e *envState) initThirdPartySenders(ctx context.Context) error {
 		e.senders[SenderEmail] = sesSender
 	}
 
-	var sender send.Sender
-	var err error
-	// TODO EVG-19966: Remove global GitHub status sender
-	// githubToken, err := e.settings.GetGithubOauthToken()
-	// if err == nil && len(githubToken) > 0 {
-	//     // Github Status
-	//     sender, err = send.NewGithubStatusLogger("evergreen", &send.GithubOptions{
-	//         Token:       githubToken,
-	//         MinDelay:    GithubRetryMinDelay,
-	//         MaxAttempts: GitHubRetryAttempts,
-	//     }, "")
-	//     if err != nil {
-	//         return errors.Wrap(err, "setting up GitHub status logger")
-	//     }
-	//     e.senders[SenderGithubStatus] = sender
-	// }
 	e.githubSenders = make(map[string]cachedGitHubSender)
 
+	var sender send.Sender
+	var err error
 	if jira := &e.settings.Jira; len(jira.GetHostURL()) != 0 {
 		sender, err = send.NewJiraLogger(ctx, jira.Export(), levelInfo)
 		if err != nil {
