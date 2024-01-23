@@ -586,7 +586,7 @@ func doBisectStepback(ctx context.Context, t *task.Task) error {
 	}
 
 	var s task.StepbackInfo
-	if t.StepbackInfo != nil && t.StepbackInfo.LastPassingStepbackTaskId != "" {
+	if !t.StepbackInfo.IsZero() {
 		// Carry over from the last task.
 		s = *t.StepbackInfo
 	} else {
@@ -616,7 +616,7 @@ func doBisectStepback(ctx context.Context, t *task.Task) error {
 	// last failing or last passing task.
 	if t.Status == evergreen.TaskSucceeded {
 		s.LastPassingStepbackTaskId = t.Id
-	} else if evergreen.IsFailedTaskStatus(t.Status) {
+	} else if t.Status == evergreen.TaskFailed {
 		s.LastFailingStepbackTaskId = t.Id
 	} else {
 		return errors.Errorf("stopping task stepback due to status '%s'", t.Status)
@@ -1306,12 +1306,12 @@ func evalBisectStepback(ctx context.Context, t *task.Task, caller string, stepba
 		return nil
 	}
 
-	// If the stepback info is nil but we reached this point, this must be the first
-	// iteration of stepback.
-	newStepback := t.StepbackInfo == nil && evergreen.IsFailedTaskStatus(t.Status)
-	// If the stepback is not nil and it's values are not empty, this is an ongoing stepback.
-	existingStepback := t.StepbackInfo != nil && t.StepbackInfo.LastPassingStepbackTaskId != ""
-	if newStepback || existingStepback {
+	// Stepback should happen when it is a failing task.
+	// This could be a new stepback, or possibly a continuing one.
+	potentialNewStepback := t.Status == evergreen.TaskFailed
+	// Or if there is stepback info, we should continue stepback.
+	existingStepback := !t.StepbackInfo.IsZero()
+	if potentialNewStepback || existingStepback {
 		return errors.Wrap(doBisectStepback(ctx, t), "performing bisect stepback")
 	}
 
