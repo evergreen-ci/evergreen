@@ -40,8 +40,9 @@ type AmboyConfig struct {
 
 // AmboyDBConfig configures Amboy's database connection.
 type AmboyDBConfig struct {
-	URL      string `bson:"url" json:"url" yaml:"url"`
-	Database string `bson:"database" json:"database" yaml:"database"`
+	URL       string `bson:"url" json:"url" yaml:"url"`
+	KanopyURL string `bson:"kanopy_url" json:"kanopy_url" yaml:"kanopy_url"`
+	Database  string `bson:"database" json:"database" yaml:"database"`
 }
 
 // AmboyRetryConfig represents configuration settings for Amboy's retryability
