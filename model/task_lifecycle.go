@@ -784,9 +784,9 @@ func MarkEnd(ctx context.Context, settings *evergreen.Settings, t *task.Task, ca
 			if err != nil {
 				return errors.Wrap(err, "getting display task")
 			}
-			err = evalStepback(ctx, t.DisplayTask, caller, t.DisplayTask.Status, deactivatePrevious)
+			err = evalStepback(ctx, t.DisplayTask, caller, deactivatePrevious)
 		} else {
-			err = evalStepback(ctx, t, caller, status, deactivatePrevious)
+			err = evalStepback(ctx, t, caller, deactivatePrevious)
 		}
 		if err != nil {
 			grip.Error(message.Fields{
@@ -1256,7 +1256,7 @@ func removeNextMergeTaskDependency(cq commitqueue.CommitQueue, currentIssue stri
 }
 
 // evalStepback runs linear or bisect stepback depending on project, build variant, and task settings.
-func evalStepback(ctx context.Context, t *task.Task, caller, status string, deactivatePrevious bool) error {
+func evalStepback(ctx context.Context, t *task.Task, caller string, deactivatePrevious bool) error {
 	s, err := getStepback(t.Id)
 	if err != nil {
 		return errors.WithStack(err)
@@ -1264,14 +1264,13 @@ func evalStepback(ctx context.Context, t *task.Task, caller, status string, deac
 	if s.bisect {
 		return evalBisectStepback(ctx, t, caller, s.shouldStepback, deactivatePrevious)
 	}
-	return evalLinearStepback(ctx, t, caller, status, s.shouldStepback, deactivatePrevious)
+	return evalLinearStepback(ctx, t, caller, s.shouldStepback, deactivatePrevious)
 }
 
 // evalLinearStepback performs linear stepback on the task or cleans up after previous iterations of lienar
 // stepback.
-func evalLinearStepback(ctx context.Context, t *task.Task, caller, status string, stepback, deactivatePrevious bool) error {
-	if (status == evergreen.TaskFailed && !t.Aborted) ||
-		(evergreen.IsFailedTaskStatus(status) && t.ActivatedBy == evergreen.StepbackTaskActivator) {
+func evalLinearStepback(ctx context.Context, t *task.Task, caller string, stepback, deactivatePrevious bool) error {
+	if t.Status == evergreen.TaskFailed && (!t.Aborted || t.ActivatedBy == evergreen.StepbackTaskActivator) {
 		if !stepback {
 			return nil
 		}
@@ -1296,7 +1295,7 @@ func evalLinearStepback(ctx context.Context, t *task.Task, caller, status string
 			return catcher.Resolve()
 		}
 		return errors.Wrap(doLinearStepback(ctx, t), "performing linear stepback")
-	} else if status == evergreen.TaskSucceeded && deactivatePrevious && t.Requester == evergreen.RepotrackerVersionRequester {
+	} else if t.Status == evergreen.TaskSucceeded && deactivatePrevious && t.Requester == evergreen.RepotrackerVersionRequester {
 		// When stepback finishes (the task is successful), and stepback was done on mainline commits,
 		// ignore running previous activated tasks for this build variant.
 		return errors.Wrap(DeactivatePreviousTasks(ctx, t, caller), "deactivating previous tasks")
@@ -1315,7 +1314,7 @@ func evalBisectStepback(ctx context.Context, t *task.Task, caller string, stepba
 	// This could be a new stepback, or possibly a continuing one.
 	potentialNewStepback := t.Status == evergreen.TaskFailed
 	// Or if there is stepback info, we should continue stepback.
-	existingStepback := !t.StepbackInfo.IsZero()
+	existingStepback := !t.StepbackInfo.IsZero() && caller == evergreen.StepbackTaskActivator
 	if potentialNewStepback || existingStepback {
 		return errors.Wrap(doBisectStepback(ctx, t), "performing bisect stepback")
 	}
