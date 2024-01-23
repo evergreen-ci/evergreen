@@ -1267,17 +1267,17 @@ func evalStepback(ctx context.Context, t *task.Task, caller, status string, deac
 	// and it is not aborted.
 	newStepback := status == evergreen.TaskFailed && !t.Aborted
 	if s.bisect {
-		return evalBisectStepback(ctx, t, caller, newStepback, s.shouldStepback, deactivatePrevious)
+		return evalBisectStepback(ctx, t, caller, newStepback, s.shouldStepback)
 	}
 	return evalLinearStepback(ctx, t, caller, newStepback, s.shouldStepback, deactivatePrevious)
 }
 
 // evalLinearStepback performs linear stepback on the task or cleans up after previous iterations of lienar
 // stepback.
-func evalLinearStepback(ctx context.Context, t *task.Task, caller string, newStepback, stepback, deactivatePrevious bool) error {
+func evalLinearStepback(ctx context.Context, t *task.Task, caller string, newStepback, shouldStepback, deactivatePrevious bool) error {
 	existingStepback := t.Status == evergreen.TaskFailed && t.ActivatedBy == evergreen.StepbackTaskActivator
 	if newStepback || existingStepback {
-		if !stepback {
+		if !shouldStepback {
 			return nil
 		}
 
@@ -1310,9 +1310,9 @@ func evalLinearStepback(ctx context.Context, t *task.Task, caller string, newSte
 }
 
 // evalBisectStepback performs bisect stepback on the task.
-func evalBisectStepback(ctx context.Context, t *task.Task, caller string, newStepback, stepback, deactivatePrevious bool) error {
+func evalBisectStepback(ctx context.Context, t *task.Task, caller string, newStepback, shouldStepback bool) error {
 	// If the task is aborted or stepback is disabled then no-op.
-	if t.Aborted || !stepback {
+	if t.Aborted || !shouldStepback {
 		return nil
 	}
 
