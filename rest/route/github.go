@@ -3,6 +3,8 @@ package route
 import (
 	"context"
 	"fmt"
+	"github.com/evergreen-ci/evergreen/model/user"
+	"github.com/mongodb/grip/level"
 	"net/http"
 	"strings"
 	"time"
@@ -763,6 +765,26 @@ func (gh *githubHookApi) createVersionForTag(ctx context.Context, pRef model.Pro
 			"tag":                tag,
 			"message":            "user not authorized for git tag version",
 		})
+		userDoc, err := user.FindByGithubName(tag.Pusher)
+		if err != nil {
+			return nil, errors.Wrapf(err, "finding user '%s'", tag.Pusher)
+		}
+		if userDoc != nil {
+			sender, err := evergreen.GetEnvironment().GetSender(evergreen.SenderEmail)
+			if err != nil {
+				return nil, errors.Wrap(err, "getting email sender")
+			}
+
+			subject, body := unauthorizedGitTagEmail(tag.Tag, tag.Pusher, fmt.Sprintf("https://spruce.mongodb.com/project/%s/settings/github-commitqueue", pRef.Identifier))
+			email := message.Email{
+				Recipients:        []string{userDoc.EmailAddress},
+				PlainTextContents: false,
+				Subject:           subject,
+				Body:              body,
+			}
+			composer := message.NewEmailMessage(level.Notice, email)
+			sender.Send(composer)
+		}
 		return nil, nil
 	}
 	hasAliases, remotePath, err := model.HasMatchingGitTagAliasAndRemotePath(pRef.Id, tag.Tag)
@@ -801,6 +823,22 @@ func (gh *githubHookApi) createVersionForTag(ctx context.Context, pRef model.Pro
 	}
 	projectInfo.Ref = &pRef
 	return gh.sc.CreateVersionFromConfig(ctx, &projectInfo, metadata)
+}
+
+func unauthorizedGitTagEmail(tag, user, gitTagSettingsUrl string) (string, string) {
+	subject := fmt.Sprintf("Creating Evergreen version for tag '%s' has failed!", tag)
+	body := fmt.Sprintf(`<html>
+	<head>
+	</head>
+	<body>
+	<p>Version creation for git tag '%s' has failed.</p>
+	<p>User '%s' is not authorized to create an Evergreen git tag version</p>
+	<p>Manage your git tag authorization <a href="%s">here</a> in the project settings.</p>
+
+	</body>
+	</html>
+	`, tag, user, gitTagSettingsUrl)
+	return subject, body
 }
 
 func validatePushTagEvent(event *github.PushEvent) error {
