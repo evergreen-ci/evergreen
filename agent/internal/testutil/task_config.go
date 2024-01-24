@@ -32,7 +32,7 @@ func MakeTaskConfigFromModelData(ctx context.Context, settings *evergreen.Settin
 			CloneMethod: data.Host.Distro.CloneMethod,
 		}
 	}
-	config, err := internal.NewTaskConfig(data.Host.Distro.WorkDir, dv, data.Project, data.Task, data.ProjectRef, nil, exp)
+	config, err := internal.NewTaskConfig(data.Host.Distro.WorkDir, dv, data.Project, data.Task, data.ProjectRef, nil, &apimodels.ExpansionsAndVars{Expansions: exp})
 	if err != nil {
 		return nil, errors.Wrap(err, "making task config from test model data")
 	}

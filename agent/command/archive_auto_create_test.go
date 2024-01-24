@@ -16,7 +16,6 @@ import (
 	"github.com/evergreen-ci/evergreen/model/patch"
 	"github.com/evergreen-ci/evergreen/model/task"
 	"github.com/evergreen-ci/evergreen/testutil"
-	"github.com/evergreen-ci/evergreen/util"
 	"github.com/mholt/archiver/v3"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -245,7 +244,7 @@ func TestArchiveAutoPackExecute(t *testing.T) {
 				&task.Task{BuildVariant: "bv"},
 				&model.ProjectRef{},
 				&patch.Patch{},
-				util.Expansions{},
+				&apimodels.ExpansionsAndVars{},
 			)
 			require.NoError(t, err)
 			comm := client.NewMock("url")

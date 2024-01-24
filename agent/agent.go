@@ -18,7 +18,6 @@ import (
 	"github.com/evergreen-ci/evergreen/model"
 	"github.com/evergreen-ci/evergreen/model/task"
 	"github.com/evergreen-ci/evergreen/thirdparty/docker"
-	"github.com/evergreen-ci/evergreen/util"
 	"github.com/evergreen-ci/utility"
 	"github.com/mongodb/grip"
 	"github.com/mongodb/grip/message"
@@ -499,20 +498,20 @@ func shouldRunSetupGroup(nextTask *apimodels.NextTaskResponse, tc *taskContext) 
 	return false
 }
 
-func (a *Agent) fetchTaskInfo(ctx context.Context, tc *taskContext) (*task.Task, *model.Project, util.Expansions, map[string]bool, error) {
+func (a *Agent) fetchTaskInfo(ctx context.Context, tc *taskContext) (*task.Task, *model.Project, *apimodels.ExpansionsAndVars, error) {
 	project, err := a.comm.GetProject(ctx, tc.task)
 	if err != nil {
-		return nil, nil, nil, nil, errors.Wrap(err, "getting project")
+		return nil, nil, nil, errors.Wrap(err, "getting project")
 	}
 
 	taskModel, err := a.comm.GetTask(ctx, tc.task)
 	if err != nil {
-		return nil, nil, nil, nil, errors.Wrap(err, "getting task")
+		return nil, nil, nil, errors.Wrap(err, "getting task")
 	}
 
 	expAndVars, err := a.comm.GetExpansionsAndVars(ctx, tc.task)
 	if err != nil {
-		return nil, nil, nil, nil, errors.Wrap(err, "getting expansions and variables")
+		return nil, nil, nil, errors.Wrap(err, "getting expansions and variables")
 	}
 
 	// GetExpansionsAndVars does not include build variant expansions or project
@@ -536,7 +535,7 @@ func (a *Agent) fetchTaskInfo(ctx context.Context, tc *taskContext) (*task.Task,
 	// user-specified.
 	expAndVars.Expansions.Update(expAndVars.Parameters)
 
-	return taskModel, project, expAndVars.Expansions, expAndVars.PrivateVars, nil
+	return taskModel, project, expAndVars, nil
 }
 
 func (a *Agent) startLogging(ctx context.Context, tc *taskContext) error {

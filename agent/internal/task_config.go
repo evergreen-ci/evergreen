@@ -27,6 +27,7 @@ type TaskConfig struct {
 	BuildVariant       model.BuildVariant
 	Expansions         util.Expansions
 	DynamicExpansions  util.Expansions
+	ProjectVars        map[string]string
 	Redacted           map[string]bool
 	WorkDir            string
 	TaskOutputDir      *taskoutput.Directory
@@ -84,7 +85,7 @@ func (t *TaskConfig) GetExecTimeout() int {
 // NewTaskConfig validates that the required inputs are given and populates the
 // information necessary for a task to run. It is generally preferred to use
 // this function over initializing the TaskConfig struct manually.
-func NewTaskConfig(workDir string, d *apimodels.DistroView, p *model.Project, t *task.Task, r *model.ProjectRef, patchDoc *patch.Patch, e util.Expansions) (*TaskConfig, error) {
+func NewTaskConfig(workDir string, d *apimodels.DistroView, p *model.Project, t *task.Task, r *model.ProjectRef, patchDoc *patch.Patch, e *apimodels.ExpansionsAndVars) (*TaskConfig, error) {
 	if p == nil {
 		return nil, errors.Errorf("project '%s' is nil", t.Project)
 	}
@@ -114,8 +115,10 @@ func NewTaskConfig(workDir string, d *apimodels.DistroView, p *model.Project, t 
 		Project:           *p,
 		Task:              *t,
 		BuildVariant:      *bv,
-		Expansions:        e,
+		Expansions:        e.Expansions,
 		DynamicExpansions: util.Expansions{},
+		ProjectVars:       e.Vars,
+		Redacted:          e.PrivateVars,
 		WorkDir:           workDir,
 		TaskGroup:         taskGroup,
 	}

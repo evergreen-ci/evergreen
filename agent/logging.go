@@ -115,6 +115,7 @@ func (a *Agent) prepLogger(tc *taskContext, c *model.LoggerConfig, commandName s
 	config := client.LoggerConfig{
 		SendToGlobalSender: a.opts.SendTaskLogsToGlobalSender,
 		AWSCredentials:     pail.CreateAWSCredentials(tc.taskConfig.TaskSync.Key, tc.taskConfig.TaskSync.Secret, ""),
+		ProjectVars:        tc.taskConfig.ProjectVars,
 	}
 
 	defaultLogger := tc.taskConfig.ProjectRef.DefaultLogger

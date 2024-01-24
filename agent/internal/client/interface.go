@@ -140,6 +140,7 @@ type LoggerConfig struct {
 	Task               []LogOpts
 	SendToGlobalSender bool
 	AWSCredentials     *credentials.Credentials
+	ProjectVars        map[string]string
 }
 
 type LogOpts struct {

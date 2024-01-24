@@ -8,6 +8,7 @@ import (
 	"net/http"
 	"os"
 	"strconv"
+	"strings"
 	"sync"
 	"time"
 
@@ -35,6 +36,8 @@ import (
 	"github.com/pkg/errors"
 	"google.golang.org/grpc"
 )
+
+const redactedVariableTemplate = "<redacted:%s>"
 
 // baseCommunicator provides common methods for Communicator functionality but
 // does not implement the entire interface.
@@ -375,17 +378,17 @@ func (c *baseCommunicator) GetLoggerProducer(ctx context.Context, tsk *task.Task
 	}
 	underlying := []send.Sender{}
 
-	exec, senders, err := c.makeSender(ctx, tsk, config.Agent, config.SendToGlobalSender, taskoutput.TaskLogTypeAgent)
+	exec, senders, err := c.makeSender(ctx, tsk, config.Agent, config.SendToGlobalSender, config.ProjectVars, taskoutput.TaskLogTypeAgent)
 	if err != nil {
 		return nil, errors.Wrap(err, "making agent logger")
 	}
 	underlying = append(underlying, senders...)
-	task, senders, err := c.makeSender(ctx, tsk, config.Task, config.SendToGlobalSender, taskoutput.TaskLogTypeTask)
+	task, senders, err := c.makeSender(ctx, tsk, config.Task, config.SendToGlobalSender, config.ProjectVars, taskoutput.TaskLogTypeTask)
 	if err != nil {
 		return nil, errors.Wrap(err, "making task logger")
 	}
 	underlying = append(underlying, senders...)
-	system, senders, err := c.makeSender(ctx, tsk, config.System, config.SendToGlobalSender, taskoutput.TaskLogTypeSystem)
+	system, senders, err := c.makeSender(ctx, tsk, config.System, config.SendToGlobalSender, config.ProjectVars, taskoutput.TaskLogTypeSystem)
 	if err != nil {
 		return nil, errors.Wrap(err, "making system logger")
 	}
@@ -399,7 +402,7 @@ func (c *baseCommunicator) GetLoggerProducer(ctx context.Context, tsk *task.Task
 	}, nil
 }
 
-func (c *baseCommunicator) makeSender(ctx context.Context, tsk *task.Task, opts []LogOpts, sendToGlobalSender bool, logType taskoutput.TaskLogType) (send.Sender, []send.Sender, error) {
+func (c *baseCommunicator) makeSender(ctx context.Context, tsk *task.Task, opts []LogOpts, sendToGlobalSender bool, projectVars map[string]string, logType taskoutput.TaskLogType) (send.Sender, []send.Sender, error) {
 	levelInfo := send.LevelInfo{Default: level.Info, Threshold: level.Debug}
 	var senders []send.Sender
 	if sendToGlobalSender {
@@ -490,7 +493,7 @@ func (c *baseCommunicator) makeSender(ctx context.Context, tsk *task.Task, opts 
 			}
 		}
 
-		grip.Error(sender.SetFormatter(send.MakeDefaultFormatter()))
+		grip.Error(sender.SetFormatter(redactingFormatter(projectVars)))
 		if logType == taskoutput.TaskLogTypeTask {
 			sender = makeTimeoutLogSender(sender, c)
 		}
@@ -498,6 +501,16 @@ func (c *baseCommunicator) makeSender(ctx context.Context, tsk *task.Task, opts 
 	}
 
 	return send.NewConfiguredMultiSender(senders...), underlyingBufferedSenders, nil
+}
+
+func redactingFormatter(vars map[string]string) send.MessageFormatter {
+	return func(c message.Composer) (string, error) {
+		messageString := c.String()
+		for key, val := range vars {
+			messageString = strings.ReplaceAll(messageString, val, fmt.Sprintf(redactedVariableTemplate, key))
+		}
+		return send.MakeDefaultFormatter()(message.NewDefaultMessage(c.Priority(), messageString))
+	}
 }
 
 func (c *baseCommunicator) GetPullRequestInfo(ctx context.Context, taskData TaskData, prNum int, owner, repo string, lastAttempt bool) (*apimodels.PullRequestInfo, error) {

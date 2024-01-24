@@ -21,7 +21,6 @@ import (
 	"github.com/evergreen-ci/evergreen/model/patch"
 	"github.com/evergreen-ci/evergreen/model/task"
 	"github.com/evergreen-ci/evergreen/taskoutput"
-	"github.com/evergreen-ci/evergreen/util"
 	"github.com/evergreen-ci/utility"
 	"github.com/mongodb/grip"
 	"github.com/mongodb/jasper"
@@ -137,7 +136,7 @@ func (s *AgentSuite) SetupTest() {
 	taskConfig, err := internal.NewTaskConfig(s.testTmpDirName, &apimodels.DistroView{}, project, &s.task, &model.ProjectRef{
 		Id:         "project_id",
 		Identifier: "project_identifier",
-	}, &patch.Patch{}, util.Expansions{})
+	}, &patch.Patch{}, &apimodels.ExpansionsAndVars{})
 	s.Require().NoError(err)
 
 	s.tc = &taskContext{
@@ -2288,16 +2287,16 @@ func (s *AgentSuite) TestFetchTaskInfo() {
 		Identifier: "some_cool_project",
 	}
 
-	_, project, expansions, pv, err := s.a.fetchTaskInfo(s.ctx, s.tc)
+	_, project, expansionsAndVars, err := s.a.fetchTaskInfo(s.ctx, s.tc)
 	s.NoError(err)
 
 	s.Require().NotZero(s.tc.taskConfig.Project)
 	s.Equal(s.mockCommunicator.GetProjectResponse.Identifier, project.Identifier)
-	s.Require().NotZero(expansions)
-	s.Equal("bar", expansions["foo"], "should include mock communicator expansions")
-	s.Equal("new-parameter-value", expansions["overwrite-this-parameter"], "user-specified parameter should overwrite any other conflicting expansion")
-	s.Require().NotZero(pv)
-	s.True(pv["some_private_var"], "should include mock communicator private variables")
+	s.Require().NotZero(expansionsAndVars.Expansions)
+	s.Equal("bar", expansionsAndVars.Expansions["foo"], "should include mock communicator expansions")
+	s.Equal("new-parameter-value", expansionsAndVars.Expansions["overwrite-this-parameter"], "user-specified parameter should overwrite any other conflicting expansion")
+	s.Require().NotZero(expansionsAndVars.PrivateVars)
+	s.True(expansionsAndVars.PrivateVars["some_private_var"], "should include mock communicator private variables")
 }
 
 func (s *AgentSuite) TestAbortExitsMainAndRunsPost() {
