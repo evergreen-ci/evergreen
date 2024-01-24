@@ -295,6 +295,10 @@ func MockConfig() *evergreen.Settings {
 					},
 					Prefix: "parser_project_prefix",
 				},
+				PersistentDNS: evergreen.PersistentDNSConfig{
+					HostedZoneID: "hosted_zone_id",
+					Domain:       "example.com",
+				},
 				TaskSync: evergreen.S3Credentials{
 					Key:    "task_sync_key",
 					Secret: "task_sync_secret",

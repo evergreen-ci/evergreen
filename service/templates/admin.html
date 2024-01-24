@@ -1868,6 +1868,14 @@ Admin Settings
 										<input type="text" ng-model="Settings.providers.aws.parser_project.prefix">
 									</md-input-container>
 									<md-input-container class="control" style="width:45%; margin-left:50px;">
+										<label>Persistent DNS Hosted Zone ID</label>
+										<input type="text" ng-model="Settings.providers.aws.persistent_dns.hosted_zone_id">
+									</md-input-container>
+									<md-input-container class="control" style="width:45%;">
+										<label>Persistent DNS Domain Name</label>
+										<input type="text" ng-model="Settings.providers.aws.persistent_dns.domain">
+									</md-input-container>
+									<md-input-container class="control" style="width:45%; margin-left:50px;">
 										<label>Default Security Group</label>
 										<input type="text" ng-model="Settings.providers.aws.default_security_group">
 									</md-input-container>
