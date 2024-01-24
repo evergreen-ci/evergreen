@@ -1,6 +1,7 @@
 package user
 
 import (
+	"context"
 	"strings"
 	"time"
 
@@ -210,6 +211,31 @@ func FindByRole(role string) ([]DBUser, error) {
 	return res, errors.Wrapf(err, "finding users with role '%s'", role)
 }
 
+// AddOrUpdateServiceUser upserts a service user by ID. If it's a new user, it
+// generates a new API key for the user.
+func AddOrUpdateServiceUser(u DBUser) error {
+	if !u.OnlyAPI {
+		return errors.New("cannot update a non-service user")
+	}
+	query := bson.M{
+		IdKey: u.Id,
+	}
+	apiKey := u.APIKey
+	if apiKey == "" {
+		apiKey = utility.RandomString()
+	}
+	update := bson.M{
+		"$set": bson.M{
+			DispNameKey: u.DispName,
+			RolesKey:    u.SystemRoles,
+			OnlyAPIKey:  true,
+			APIKeyKey:   apiKey,
+		},
+	}
+	_, err := UpsertOne(query, update)
+	return err
+}
+
 // FindHumanUsersByRoles returns human users that have any of the given roles.
 func FindHumanUsersByRoles(roles []string) ([]DBUser, error) {
 	res := []DBUser{}
@@ -253,35 +279,8 @@ func GetPatchUser(gitHubUID int) (*DBUser, error) {
 	return u, nil
 }
 
-// AddOrUpdateServiceUser upserts a service user by ID. If it's a new user, it
-// generates a new API key for the user.
-func AddOrUpdateServiceUser(u DBUser) error {
-	if !u.OnlyAPI {
-		return errors.New("cannot update a non-service user")
-	}
-	query := bson.M{
-		IdKey: u.Id,
-	}
-	apiKey := u.APIKey
-	if apiKey == "" {
-		apiKey = utility.RandomString()
-	}
-	update := bson.M{
-		"$set": bson.M{
-			DispNameKey: u.DispName,
-			RolesKey:    u.SystemRoles,
-			OnlyAPIKey:  true,
-			APIKeyKey:   apiKey,
-		},
-	}
-	_, err := UpsertOne(query, update)
-	return err
-}
-
 // DeleteServiceUser deletes a service user by ID.
-func DeleteServiceUser(id string) error {
-	ctx, cancel := evergreen.GetEnvironment().Context()
-	defer cancel()
+func DeleteServiceUser(ctx context.Context, id string) error {
 	query := bson.M{
 		IdKey:      id,
 		OnlyAPIKey: true,

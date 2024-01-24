@@ -1,6 +1,8 @@
 package event
 
 import (
+	"context"
+
 	"github.com/evergreen-ci/evergreen"
 	mgobson "github.com/evergreen-ci/evergreen/db/mgo/bson"
 	"github.com/mongodb/anser/bsonutil"
@@ -18,7 +20,7 @@ type hostStatusDistro struct {
 func (s *hostStatusDistro) MarshalBSON() ([]byte, error)  { return mgobson.Marshal(s) }
 func (s *hostStatusDistro) UnmarshalBSON(in []byte) error { return mgobson.Unmarshal(in, s) }
 
-func getRecentStatusesForHost(hostId string, n int) (int, []string) {
+func getRecentStatusesForHost(ctx context.Context, hostId string, n int) (int, []string) {
 	or := ResourceTypeKeyIs(ResourceTypeHost)
 	or[TypeKey] = EventHostTaskFinished
 	or[ResourceIdKey] = hostId
@@ -37,10 +39,7 @@ func getRecentStatusesForHost(hostId string, n int) (int, []string) {
 			"status": 1}},
 	}
 
-	env := evergreen.GetEnvironment()
-	ctx, cancel := env.Context()
-	defer cancel()
-	cursor, err := env.DB().Collection(EventCollection).Aggregate(ctx, pipeline, options.Aggregate().SetAllowDiskUse(true))
+	cursor, err := evergreen.GetEnvironment().DB().Collection(EventCollection).Aggregate(ctx, pipeline, options.Aggregate().SetAllowDiskUse(true))
 	if err != nil {
 		grip.Warning(message.WrapError(err, message.Fields{
 			"message": "could not get recent host statuses",
@@ -50,30 +49,25 @@ func getRecentStatusesForHost(hostId string, n int) (int, []string) {
 		return 0, []string{}
 	}
 
-	out := []hostStatusDistro{}
-	for cursor.Next(ctx) {
-		doc := hostStatusDistro{}
-		if err := cursor.Decode(&doc); err != nil {
-			grip.Warning(err)
-			continue
-		}
-		out = append(out, doc)
-	}
-	grip.Warning(cursor.Close(ctx))
-
-	if len(out) != 1 {
+	hostStatusDistros := []hostStatusDistro{}
+	if err := cursor.All(ctx, &hostStatusDistros); err != nil {
+		grip.Warning(err)
 		return 0, []string{}
 	}
 
-	return out[0].Count, out[0].Status
+	if len(hostStatusDistros) != 1 {
+		return 0, []string{}
+	}
+
+	return hostStatusDistros[0].Count, hostStatusDistros[0].Status
 }
 
-func AllRecentHostEventsMatchStatus(hostId string, n int, status string) bool {
+func AllRecentHostEventsMatchStatus(ctx context.Context, hostId string, n int, status string) bool {
 	if n == 0 {
 		return false
 	}
 
-	count, statuses := getRecentStatusesForHost(hostId, n)
+	count, statuses := getRecentStatusesForHost(ctx, hostId, n)
 	if count == 0 {
 		return false
 	}

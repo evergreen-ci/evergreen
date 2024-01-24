@@ -28,7 +28,7 @@ func TestTimeoutSender(t *testing.T) {
 	comm := NewMock("url")
 	tsk := &task.Task{Id: "task"}
 	ms := newMockSender("test_timeout_sender", func(line log.LogLine) error {
-		return comm.sendTaskLogLine(tsk, line)
+		return comm.sendTaskLogLine(tsk.Id, line)
 	})
 	sender := makeTimeoutLogSender(ms, comm)
 

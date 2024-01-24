@@ -711,7 +711,7 @@ func (h *serviceUserDeleteHandler) Parse(ctx context.Context, r *http.Request) e
 }
 
 func (h *serviceUserDeleteHandler) Run(ctx context.Context) gimlet.Responder {
-	err := user.DeleteServiceUser(h.username)
+	err := user.DeleteServiceUser(ctx, h.username)
 	if err != nil {
 		return gimlet.MakeJSONInternalErrorResponder(errors.Wrapf(err, "deleting service user '%s'", h.username))
 	}

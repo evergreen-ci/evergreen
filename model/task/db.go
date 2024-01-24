@@ -1820,11 +1820,8 @@ func UpdateAll(query interface{}, update interface{}) (*adb.ChangeInfo, error) {
 	)
 }
 
-func UpdateAllWithHint(query interface{}, update interface{}, hint interface{}) (*adb.ChangeInfo, error) {
-	env := evergreen.GetEnvironment()
-	ctx, cancel := env.Context()
-	defer cancel()
-	res, err := env.DB().Collection(Collection).UpdateMany(ctx, query, update, options.Update().SetHint(hint))
+func UpdateAllWithHint(ctx context.Context, query interface{}, update interface{}, hint interface{}) (*adb.ChangeInfo, error) {
+	res, err := evergreen.GetEnvironment().DB().Collection(Collection).UpdateMany(ctx, query, update, options.Update().SetHint(hint))
 	if err != nil {
 		return nil, errors.WithStack(err)
 	}
@@ -1864,15 +1861,11 @@ func FindProjectForTask(taskID string) (string, error) {
 	return t.Project, nil
 }
 
-func (t *Task) updateAllMatchingDependenciesForTask(dependencyID string, unattainable bool) error {
-	env := evergreen.GetEnvironment()
-	ctx, cancel := env.Context()
-	defer cancel()
-
+func (t *Task) updateAllMatchingDependenciesForTask(ctx context.Context, dependencyID string, unattainable bool) error {
 	// Update the matching dependencies in the DependsOn array and the UnattainableDependency field that caches
 	// whether any of the dependencies are blocked. Combining both these updates in a single update operation makes it
 	// impervious to races because updates to single documents are atomic.
-	res := env.DB().Collection(Collection).FindOneAndUpdate(ctx,
+	res := evergreen.GetEnvironment().DB().Collection(Collection).FindOneAndUpdate(ctx,
 		bson.M{
 			IdKey: t.Id,
 		},

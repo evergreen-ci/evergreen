@@ -421,7 +421,7 @@ func (j *createHostJob) spawnAndReplaceHost(ctx context.Context, cloudMgr cloud.
 	if j.HostID == j.host.Id {
 		// Spawning the host did not change the ID, so we can replace the old
 		// host with the new one (e.g. for Docker containers).
-		if err = j.host.Replace(); err != nil {
+		if err = j.host.Replace(ctx); err != nil {
 			return false, errors.Wrapf(err, "replacing host '%s'", j.host.Id)
 		}
 		return true, nil

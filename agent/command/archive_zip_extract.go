@@ -18,9 +18,6 @@ type zipExtract struct {
 
 	TargetDirectory string `mapstructure:"destination" plugin:"expand"`
 
-	// a list of filename blobs to exclude when extracting
-	ExcludeFiles []string `mapstructure:"exclude_files" plugin:"expand"`
-
 	base
 }
 
@@ -29,10 +26,6 @@ func (e *zipExtract) Name() string { return "archive.zip_extract" }
 func (e *zipExtract) ParseParams(params map[string]interface{}) error {
 	if err := mapstructure.Decode(params, e); err != nil {
 		return errors.Wrapf(err, "decoding mapstructure params")
-	}
-
-	if len(e.ExcludeFiles) != 0 {
-		return errors.New("zip extraction does not support excluded files")
 	}
 
 	if e.ArchivePath == "" {
