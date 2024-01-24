@@ -25,6 +25,11 @@ func TestIncKey(t *testing.T) {
 		require.NoError(t, err)
 
 		testConfig := testutil.TestConfig()
+		// These test don't actually need the integration test settings, but
+		// MakeTaskConfigFromModelData needs it to create an (unused) GitHub app
+		// token.
+		testutil.ConfigureIntegrationTest(t, testConfig, t.Name())
+
 		configPath := filepath.Join(testutil.GetDirectoryOfFile(), "testdata", "plugin_keyval.yml")
 
 		comm := client.NewMock("http://localhost.com")
