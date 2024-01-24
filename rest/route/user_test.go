@@ -10,7 +10,12 @@ import (
 
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/db"
+	"github.com/evergreen-ci/evergreen/db/mgo/bson"
+	"github.com/evergreen-ci/evergreen/mock"
 	"github.com/evergreen-ci/evergreen/model"
+	"github.com/evergreen-ci/evergreen/model/distro"
+	"github.com/evergreen-ci/evergreen/model/host"
+	"github.com/evergreen-ci/evergreen/model/patch"
 	"github.com/evergreen-ci/evergreen/model/user"
 	restModel "github.com/evergreen-ci/evergreen/rest/model"
 	serviceutil "github.com/evergreen-ci/evergreen/service/testutil"
@@ -647,5 +652,279 @@ func TestGetUsersForResourceId(t *testing.T) {
 			testCase(t)
 		})
 	}
+}
 
+func TestRenameUser(t *testing.T) {
+	body := []byte(`{"email": "me@awesome.com", "new_email":"new_me@still_awesome.com"}`)
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+	env := testutil.NewEnvironment(ctx, t)
+
+	for testName, testCase := range map[string]func(t *testing.T){
+		"user_already_exists": func(t *testing.T) {
+			// Insert additional testing to cover the case of the user already being created.
+			pNew := patch.Patch{
+				Id:          bson.NewObjectId(),
+				Author:      "new_me",
+				PatchNumber: 1,
+			}
+			assert.NoError(t, pNew.Insert())
+			newUsr := user.DBUser{
+				Id:           "new_me",
+				EmailAddress: "new_me@still_awesome.com",
+				APIKey:       "my_original_key",
+				PatchNumber:  1,
+			}
+			assert.NoError(t, newUsr.Insert())
+			req, err := http.NewRequest(http.MethodPost, "http://example.com/api/rest/v2/users/rename_user", bytes.NewBuffer(body))
+			require.NoError(t, err)
+			handler := makeRenameUser(env)
+			assert.NoError(t, handler.Parse(ctx, req))
+			assert.Equal(t, handler.(*renameUserHandler).newEmail, "new_me@still_awesome.com")
+			require.NotNil(t, handler.(*renameUserHandler).oldUsr)
+			assert.Equal(t, handler.(*renameUserHandler).oldUsr.Id, "me")
+			resp := handler.Run(ctx)
+			assert.Equal(t, resp.Status(), http.StatusOK)
+
+			newUsrFromDb, err := user.FindOneById("new_me")
+			assert.NoError(t, err)
+			assert.NotNil(t, newUsrFromDb)
+			assert.NotEqual(t, newUsr.APIKey, newUsrFromDb.GetAPIKey())
+			assert.Equal(t, "new_me@still_awesome.com", newUsrFromDb.Email())
+			assert.Equal(t, newUsrFromDb.PatchNumber, 8)
+
+			hosts, err := host.Find(ctx, host.ByUserWithUnterminatedStatus("new_me"))
+			assert.NoError(t, err)
+			assert.Len(t, hosts, 1)
+
+			volumes, err := host.FindVolumesByUser("new_me")
+			assert.NoError(t, err)
+			assert.Len(t, volumes, 1)
+
+			patches, err := patch.Find(db.Query(bson.M{patch.AuthorKey: "new_me"}))
+			assert.NoError(t, err)
+			assert.Len(t, patches, 3)
+			for _, p := range patches {
+				// Verify the newest patch had the number updated.
+				if p.Id == pNew.Id {
+					assert.Equal(t, p.PatchNumber, 8)
+				}
+			}
+		},
+		"user_doesn't_already_exist": func(t *testing.T) {
+			req, err := http.NewRequest(http.MethodPost, "http://example.com/api/rest/v2/users/rename_user", bytes.NewBuffer(body))
+			require.NoError(t, err)
+			handler := makeRenameUser(env)
+			assert.NoError(t, handler.Parse(ctx, req))
+			assert.Equal(t, handler.(*renameUserHandler).newEmail, "new_me@still_awesome.com")
+			require.NotNil(t, handler.(*renameUserHandler).oldUsr)
+			assert.Equal(t, handler.(*renameUserHandler).oldUsr.Id, "me")
+			resp := handler.Run(ctx)
+			assert.Equal(t, resp.Status(), http.StatusOK)
+
+			newUsrFromDb, err := user.FindOneById("new_me")
+			assert.NoError(t, err)
+			assert.NotNil(t, newUsrFromDb)
+			assert.NotEmpty(t, newUsrFromDb.GetAPIKey())
+			assert.Equal(t, "new_me@still_awesome.com", newUsrFromDb.Email())
+			assert.Equal(t, newUsrFromDb.PatchNumber, 7)
+
+			hosts, err := host.Find(ctx, host.ByUserWithUnterminatedStatus("new_me"))
+			assert.NoError(t, err)
+			assert.Len(t, hosts, 1)
+
+			volumes, err := host.FindVolumesByUser("new_me")
+			assert.NoError(t, err)
+			assert.Len(t, volumes, 1)
+
+			patches, err := patch.Find(db.Query(bson.M{patch.AuthorKey: "new_me"}))
+			assert.NoError(t, err)
+			assert.Len(t, patches, 2)
+		},
+	} {
+		t.Run(testName, func(t *testing.T) {
+			assert.NoError(t, db.ClearCollections(user.Collection, host.Collection, host.VolumesCollection, patch.Collection))
+
+			h1 := host.Host{
+				Id:        "h1",
+				StartedBy: "me",
+				UserHost:  true,
+				Status:    evergreen.HostTerminated,
+			}
+			h2 := host.Host{
+				Id:        "h2",
+				StartedBy: "me",
+				UserHost:  true,
+				Status:    evergreen.HostRunning,
+			}
+			h3 := host.Host{
+				Id:        "h3",
+				StartedBy: "you",
+				UserHost:  true,
+				Status:    evergreen.HostRunning,
+			}
+			assert.NoError(t, db.InsertMany(host.Collection, h1, h2, h3))
+
+			v1 := host.Volume{
+				ID:        "v1",
+				CreatedBy: "me",
+			}
+			v2 := host.Volume{
+				ID:        "v2",
+				CreatedBy: "you",
+			}
+			assert.NoError(t, db.InsertMany(host.VolumesCollection, v1, v2))
+
+			p1 := patch.Patch{
+				Id:          bson.NewObjectId(),
+				Author:      "me",
+				PatchNumber: 6,
+			}
+			p2 := patch.Patch{
+				Id:          bson.NewObjectId(),
+				Author:      "me",
+				PatchNumber: 7,
+			}
+			assert.NoError(t, db.InsertMany(patch.Collection, p1, p2))
+
+			oldUsr := user.DBUser{
+				Id:           "me",
+				EmailAddress: "me@awesome.com",
+				APIKey:       "my_key",
+				PatchNumber:  7,
+			}
+			assert.NoError(t, oldUsr.Insert())
+			testCase(t)
+		})
+	}
+}
+
+func TestOffboardUserHandlerHosts(t *testing.T) {
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
+	assert.NoError(t, db.ClearCollections(host.Collection, host.VolumesCollection, user.Collection))
+	h0 := host.Host{
+		Id:           "h0",
+		StartedBy:    "user0",
+		UserHost:     true,
+		Status:       evergreen.HostTerminated,
+		CreationTime: time.Date(2018, 7, 15, 0, 0, 0, 0, time.UTC),
+		Distro:       distro.Distro{Id: "ubuntu-1604", Provider: evergreen.ProviderNameMock},
+	}
+	h1 := host.Host{
+		Id:           "h1",
+		StartedBy:    "user0",
+		UserHost:     true,
+		Status:       evergreen.HostRunning,
+		CreationTime: time.Date(2018, 7, 15, 0, 0, 0, 0, time.UTC),
+		NoExpiration: true,
+		Distro:       distro.Distro{Id: "ubuntu-1604", Provider: evergreen.ProviderNameMock},
+	}
+	h2 := host.Host{
+		Id:           "h2",
+		StartedBy:    "user0",
+		UserHost:     true,
+		Status:       evergreen.HostRunning,
+		CreationTime: time.Date(2018, 7, 15, 0, 0, 0, 0, time.UTC),
+		Distro:       distro.Distro{Id: "ubuntu-1604", Provider: evergreen.ProviderNameMock},
+	}
+	h3 := host.Host{
+		Id:           "h3",
+		StartedBy:    "user0",
+		UserHost:     true,
+		Status:       evergreen.HostTerminated,
+		CreationTime: time.Date(2018, 7, 15, 0, 0, 0, 0, time.UTC),
+		Distro:       distro.Distro{Id: "ubuntu-1804", Provider: evergreen.ProviderNameMock},
+	}
+	v1 := host.Volume{
+		ID:           "v1",
+		CreatedBy:    "user0",
+		NoExpiration: true,
+	}
+	assert.NoError(t, h0.Insert(ctx))
+	assert.NoError(t, h1.Insert(ctx))
+	assert.NoError(t, h2.Insert(ctx))
+	assert.NoError(t, h3.Insert(ctx))
+	assert.NoError(t, v1.Insert())
+
+	handler := offboardUserHandler{}
+	json := []byte(`{"email": "user0@mongodb.com"}`)
+	ctx = gimlet.AttachUser(ctx, &user.DBUser{Id: "root"})
+	req, _ := http.NewRequest(http.MethodPatch, "http://example.com/api/rest/v2/users/offboard_user?dry_run=true", bytes.NewBuffer(json))
+	assert.Error(t, handler.Parse(ctx, req)) // user not inserted
+
+	u := user.DBUser{Id: "user0"}
+	assert.NoError(t, u.Insert())
+	req, _ = http.NewRequest(http.MethodPatch, "http://example.com/api/rest/v2/users/offboard_user?dry_run=true", bytes.NewBuffer(json))
+	assert.NoError(t, handler.Parse(ctx, req))
+	assert.Equal(t, "user0", handler.user)
+	assert.True(t, handler.dryRun)
+
+	resp := handler.Run(ctx)
+	require.Equal(t, http.StatusOK, resp.Status())
+	res, ok := resp.Data().(restModel.APIOffboardUserResults)
+	assert.True(t, ok)
+	require.Len(t, res.TerminatedHosts, 1)
+	assert.Equal(t, "h1", res.TerminatedHosts[0])
+	require.Len(t, res.TerminatedVolumes, 1)
+	assert.Equal(t, "v1", res.TerminatedVolumes[0])
+	hostFromDB, err := host.FindOneByIdOrTag(ctx, h1.Id)
+	assert.NoError(t, err)
+	assert.NotNil(t, hostFromDB)
+	assert.True(t, hostFromDB.NoExpiration)
+}
+
+func TestOffboardUserHandlerAdminis(t *testing.T) {
+	assert.NoError(t, db.ClearCollections(host.Collection, host.VolumesCollection, model.ProjectRefCollection))
+	projectRef0 := &model.ProjectRef{
+		Owner:     "mongodb",
+		Repo:      "test_repo0",
+		Branch:    "main",
+		Enabled:   true,
+		BatchTime: 10,
+		Id:        "test0",
+		Admins:    []string{"user1", "user0"},
+	}
+	projectRef1 := &model.ProjectRef{
+		Owner:     "mongodb",
+		Repo:      "test_repo1",
+		Branch:    "main",
+		Enabled:   true,
+		BatchTime: 10,
+		Id:        "test1",
+		Admins:    []string{"user1", "user2"},
+	}
+
+	assert.NoError(t, projectRef0.Insert())
+	assert.NoError(t, projectRef1.Insert())
+
+	offboardedUser := "user0"
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+	env := &mock.Environment{}
+	require.NoError(t, env.Configure(ctx))
+	userManager := env.UserManager()
+
+	handler := offboardUserHandler{
+		dryRun: true,
+		env:    env,
+		user:   offboardedUser,
+	}
+	resp := handler.Run(gimlet.AttachUser(context.Background(), &user.DBUser{Id: "root"}))
+	require.Equal(t, http.StatusOK, resp.Status())
+	assert.Contains(t, projectRef0.Admins, offboardedUser)
+
+	handler.dryRun = false
+	handler.env.SetUserManager(serviceutil.MockUserManager{})
+	resp = handler.Run(gimlet.AttachUser(context.Background(), &user.DBUser{Id: "root"}))
+	require.Equal(t, http.StatusOK, resp.Status())
+	env.SetUserManager(userManager)
+
+	projectRefs, err := model.FindAllMergedProjectRefs()
+	assert.NoError(t, err)
+	require.Len(t, projectRefs, 2)
+	for _, projRef := range projectRefs {
+		assert.NotContains(t, projRef.Admins, offboardedUser)
+	}
 }

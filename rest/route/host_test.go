@@ -13,12 +13,10 @@ import (
 	"github.com/evergreen-ci/evergreen/cloud"
 	"github.com/evergreen-ci/evergreen/db"
 	"github.com/evergreen-ci/evergreen/mock"
-	dbModel "github.com/evergreen-ci/evergreen/model"
 	"github.com/evergreen-ci/evergreen/model/distro"
 	"github.com/evergreen-ci/evergreen/model/host"
 	"github.com/evergreen-ci/evergreen/model/user"
 	"github.com/evergreen-ci/evergreen/rest/model"
-	serviceutil "github.com/evergreen-ci/evergreen/service/testutil"
 	"github.com/evergreen-ci/gimlet"
 	"github.com/evergreen-ci/utility"
 	"github.com/mongodb/grip"
@@ -918,136 +916,6 @@ func setupMockHostsConnector(t *testing.T, env evergreen.Environment) {
 			evergreen.PermissionDistroSettings: evergreen.DistroSettingsAdmin.Value,
 		},
 	}))
-}
-
-func TestClearHostsHandler(t *testing.T) {
-	ctx, cancel := context.WithCancel(context.Background())
-	defer cancel()
-
-	assert.NoError(t, db.ClearCollections(host.Collection, host.VolumesCollection, user.Collection))
-	h0 := host.Host{
-		Id:           "h0",
-		StartedBy:    "user0",
-		UserHost:     true,
-		Status:       evergreen.HostTerminated,
-		CreationTime: time.Date(2018, 7, 15, 0, 0, 0, 0, time.UTC),
-		Distro:       distro.Distro{Id: "ubuntu-1604", Provider: evergreen.ProviderNameMock},
-	}
-	h1 := host.Host{
-		Id:           "h1",
-		StartedBy:    "user0",
-		UserHost:     true,
-		Status:       evergreen.HostRunning,
-		CreationTime: time.Date(2018, 7, 15, 0, 0, 0, 0, time.UTC),
-		NoExpiration: true,
-		Distro:       distro.Distro{Id: "ubuntu-1604", Provider: evergreen.ProviderNameMock},
-	}
-	h2 := host.Host{
-		Id:           "h2",
-		StartedBy:    "user0",
-		UserHost:     true,
-		Status:       evergreen.HostRunning,
-		CreationTime: time.Date(2018, 7, 15, 0, 0, 0, 0, time.UTC),
-		Distro:       distro.Distro{Id: "ubuntu-1604", Provider: evergreen.ProviderNameMock},
-	}
-	h3 := host.Host{
-		Id:           "h3",
-		StartedBy:    "user0",
-		UserHost:     true,
-		Status:       evergreen.HostTerminated,
-		CreationTime: time.Date(2018, 7, 15, 0, 0, 0, 0, time.UTC),
-		Distro:       distro.Distro{Id: "ubuntu-1804", Provider: evergreen.ProviderNameMock},
-	}
-	v1 := host.Volume{
-		ID:           "v1",
-		CreatedBy:    "user0",
-		NoExpiration: true,
-	}
-	assert.NoError(t, h0.Insert(ctx))
-	assert.NoError(t, h1.Insert(ctx))
-	assert.NoError(t, h2.Insert(ctx))
-	assert.NoError(t, h3.Insert(ctx))
-	assert.NoError(t, v1.Insert())
-
-	handler := offboardUserHandler{}
-	json := []byte(`{"email": "user0@mongodb.com"}`)
-	ctx = gimlet.AttachUser(ctx, &user.DBUser{Id: "root"})
-	req, _ := http.NewRequest(http.MethodPatch, "http://example.com/api/rest/v2/users/offboard_user?dry_run=true", bytes.NewBuffer(json))
-	assert.Error(t, handler.Parse(ctx, req)) // user not inserted
-
-	u := user.DBUser{Id: "user0"}
-	assert.NoError(t, u.Insert())
-	req, _ = http.NewRequest(http.MethodPatch, "http://example.com/api/rest/v2/users/offboard_user?dry_run=true", bytes.NewBuffer(json))
-	assert.NoError(t, handler.Parse(ctx, req))
-	assert.Equal(t, "user0", handler.user)
-	assert.True(t, handler.dryRun)
-
-	resp := handler.Run(ctx)
-	require.Equal(t, http.StatusOK, resp.Status())
-	res, ok := resp.Data().(model.APIOffboardUserResults)
-	assert.True(t, ok)
-	require.Len(t, res.TerminatedHosts, 1)
-	assert.Equal(t, "h1", res.TerminatedHosts[0])
-	require.Len(t, res.TerminatedVolumes, 1)
-	assert.Equal(t, "v1", res.TerminatedVolumes[0])
-	hostFromDB, err := host.FindOneByIdOrTag(ctx, h1.Id)
-	assert.NoError(t, err)
-	assert.NotNil(t, hostFromDB)
-	assert.True(t, hostFromDB.NoExpiration)
-}
-
-func TestRemoveAdminHandler(t *testing.T) {
-	assert.NoError(t, db.ClearCollections(host.Collection, host.VolumesCollection, dbModel.ProjectRefCollection))
-	projectRef0 := &dbModel.ProjectRef{
-		Owner:     "mongodb",
-		Repo:      "test_repo0",
-		Branch:    "main",
-		Enabled:   true,
-		BatchTime: 10,
-		Id:        "test0",
-		Admins:    []string{"user1", "user0"},
-	}
-	projectRef1 := &dbModel.ProjectRef{
-		Owner:     "mongodb",
-		Repo:      "test_repo1",
-		Branch:    "main",
-		Enabled:   true,
-		BatchTime: 10,
-		Id:        "test1",
-		Admins:    []string{"user1", "user2"},
-	}
-
-	assert.NoError(t, projectRef0.Insert())
-	assert.NoError(t, projectRef1.Insert())
-
-	offboardedUser := "user0"
-	ctx, cancel := context.WithCancel(context.Background())
-	defer cancel()
-	env := &mock.Environment{}
-	require.NoError(t, env.Configure(ctx))
-	userManager := env.UserManager()
-
-	handler := offboardUserHandler{
-		dryRun: true,
-		env:    env,
-		user:   offboardedUser,
-	}
-	resp := handler.Run(gimlet.AttachUser(context.Background(), &user.DBUser{Id: "root"}))
-	require.Equal(t, http.StatusOK, resp.Status())
-	assert.Contains(t, projectRef0.Admins, offboardedUser)
-
-	handler.dryRun = false
-	handler.env.SetUserManager(serviceutil.MockUserManager{})
-	resp = handler.Run(gimlet.AttachUser(context.Background(), &user.DBUser{Id: "root"}))
-	require.Equal(t, http.StatusOK, resp.Status())
-	env.SetUserManager(userManager)
-
-	projectRefs, err := dbModel.FindAllMergedProjectRefs()
-	assert.NoError(t, err)
-	require.Len(t, projectRefs, 2)
-	for _, projRef := range projectRefs {
-		assert.NotContains(t, projRef.Admins, offboardedUser)
-	}
 }
 
 func TestHostFilterGetHandler(t *testing.T) {
