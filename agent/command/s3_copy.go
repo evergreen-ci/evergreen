@@ -31,8 +31,9 @@ const (
 type s3copy struct {
 	// AwsKey and AwsSecret are the user's credentials for
 	// authenticating interactions with s3.
-	AwsKey    string `mapstructure:"aws_key" plugin:"expand"`
-	AwsSecret string `mapstructure:"aws_secret" plugin:"expand"`
+	AwsKey          string `mapstructure:"aws_key" plugin:"expand"`
+	AwsSecret       string `mapstructure:"aws_secret" plugin:"expand"`
+	AwsSessionToken string `mapstructure:"aws_session_token" plugin:"expand"`
 	// An array of file copy configurations
 	S3CopyFiles []*s3CopyFile `mapstructure:"s3_copy_files" plugin:"expand"`
 
@@ -229,11 +230,8 @@ func (c *s3copy) copyWithRetry(ctx context.Context,
 			continue
 		}
 
-		s3CopyReq.AwsKey = c.AwsKey
-		s3CopyReq.AwsSecret = c.AwsSecret
-
 		srcOpts := pail.S3Options{
-			Credentials: pail.CreateAWSCredentials(s3CopyReq.AwsKey, s3CopyReq.AwsSecret, ""),
+			Credentials: pail.CreateAWSCredentials(c.AwsKey, c.AwsSecret, c.AwsSessionToken),
 			Region:      s3CopyReq.S3SourceRegion,
 			Name:        s3CopyReq.S3SourceBucket,
 			Permissions: pail.S3Permissions(s3CopyReq.S3Permissions),
@@ -260,7 +258,7 @@ func (c *s3copy) copyWithRetry(ctx context.Context,
 			return catcher.Resolve()
 		}
 		destOpts := pail.S3Options{
-			Credentials: pail.CreateAWSCredentials(s3CopyReq.AwsKey, s3CopyReq.AwsSecret, ""),
+			Credentials: pail.CreateAWSCredentials(c.AwsKey, c.AwsSecret, c.AwsSessionToken),
 			Region:      s3CopyReq.S3DestinationRegion,
 			Name:        s3CopyReq.S3DestinationBucket,
 			Permissions: pail.S3Permissions(s3CopyReq.S3Permissions),
