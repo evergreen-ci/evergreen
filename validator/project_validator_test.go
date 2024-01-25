@@ -2470,6 +2470,122 @@ func TestCheckTaskCommands(t *testing.T) {
 	})
 }
 
+func TestValidateModuleUsageInGitGetProject(t *testing.T) {
+	for testName, testCase := range map[string]func(*testing.T, *model.Project){
+		"Valid git.get_project": func(t *testing.T, p *model.Project) {
+			errs := validateModuleUsageInGitGetProject(p)
+			assert.Len(t, errs, 0)
+		},
+		"Task that uses unused module": func(t *testing.T, p *model.Project) {
+			// Add the task to a build variant that does not have all the modules needed.
+			p.BuildVariants[1].Tasks = append(p.BuildVariants[1].Tasks, model.BuildVariantTaskUnit{Name: "test"})
+			errs := validateModuleUsageInGitGetProject(p)
+			require.Len(t, errs, 1)
+			assert.Contains(t, errs[0].Message, "build variant 'bv2' with task 'test' with 'git.get_project' command uses module/revision 'bar' that is not present in build variant")
+		},
+		"Task that uses unused module in precommand": func(t *testing.T, p *model.Project) {
+			// Add precommand that uses invalid revision. This runs for bv1 and bv2. Bv1 does have the required
+			// modules while bv2 does not.
+			p.Pre = &model.YAMLCommandSet{
+				MultiCommand: []model.PluginCommandConf{
+					{
+						Command: "git.get_project",
+						Params: map[string]interface{}{
+							"revisions": map[string]interface{}{
+								"foo": "${foo_rev}",
+								"bar": "${bar_rev}",
+							},
+						},
+					},
+				},
+			}
+
+			errs := validateModuleUsageInGitGetProject(p)
+			require.Len(t, errs, 1)
+			assert.Contains(t, errs[0].Message, "build variant 'bv2' with task 'test-with-nothing' with 'git.get_project' command uses module/revision 'bar' that is not present in build variant")
+		},
+		"Task that uses unused module in postcommand": func(t *testing.T, p *model.Project) {
+			// Add postcommand that uses invalid revision. This runs for bv1 and bv2. Bv1 does have the required
+			// modules while bv2 does not.
+			p.Post = &model.YAMLCommandSet{
+				MultiCommand: []model.PluginCommandConf{
+					{
+						Command: "git.get_project",
+						Params: map[string]interface{}{
+							"revisions": map[string]interface{}{
+								"foo": "${foo_rev}",
+								"bar": "${bar_rev}",
+							},
+						},
+					},
+				},
+			}
+
+			errs := validateModuleUsageInGitGetProject(p)
+			require.Len(t, errs, 1)
+			assert.Contains(t, errs[0].Message, "build variant 'bv2' with task 'test-with-nothing' with 'git.get_project' command uses module/revision 'bar' that is not present in build variant")
+		},
+		"Unused task that uses module not in bv": func(t *testing.T, p *model.Project) {
+			p.BuildVariants[0].Tasks = []model.BuildVariantTaskUnit{}
+			errs := validateModuleUsageInGitGetProject(p)
+			assert.Len(t, errs, 0)
+		},
+	} {
+		t.Run(testName, func(t *testing.T) {
+			project := &model.Project{
+				BuildVariants: model.BuildVariants{
+					model.BuildVariant{
+						Name:    "bv1",
+						Modules: []string{"foo", "bar"},
+						Tasks: []model.BuildVariantTaskUnit{
+							{
+								Name: "test",
+							},
+							{
+								Name: "test-with-nothing",
+							},
+						},
+					},
+					model.BuildVariant{
+						Name:    "bv2",
+						Modules: []string{"foo"},
+						Tasks: []model.BuildVariantTaskUnit{
+							{
+								Name: "test-with-nothing",
+							},
+						},
+					},
+				},
+				Tasks: []model.ProjectTask{
+					{
+						Name: "test",
+						Commands: []model.PluginCommandConf{
+							{
+								Command: "git.get_project",
+								Params: map[string]interface{}{
+									"revisions": map[string]interface{}{
+										"foo": "${foo_rev}",
+										"bar": "${bar_rev}",
+									},
+								},
+							},
+						},
+					},
+					{
+						Name: "test-with-nothing",
+						Commands: []model.PluginCommandConf{
+							{
+								Command: "git.get_project",
+							},
+						},
+					},
+				},
+			}
+			testCase(t, project)
+		})
+	}
+}
+
 func TestEnsureReferentialIntegrity(t *testing.T) {
 	Convey("When validating a project", t, func() {
 		distroIds := []string{"rhel55"}
@@ -4403,14 +4519,12 @@ func TestTVToTaskUnit(t *testing.T) {
 		"MapsTasksAndPopulates": {
 			expectedTVToTaskUnit: map[model.TVPair]model.BuildVariantTaskUnit{
 				{TaskName: "setup", Variant: "rhel"}: {
-					Name:            "setup",
-					Variant:         "rhel",
-					Priority:        20,
-					ExecTimeoutSecs: 20,
+					Name:     "setup",
+					Variant:  "rhel",
+					Priority: 20,
 				}, {TaskName: "compile", Variant: "ubuntu"}: {
 					Name:             "compile",
 					Variant:          "ubuntu",
-					ExecTimeoutSecs:  10,
 					CommitQueueMerge: true,
 					DependsOn: []model.TaskUnitDependency{
 						{
@@ -4419,9 +4533,8 @@ func TestTVToTaskUnit(t *testing.T) {
 						},
 					},
 				}, {TaskName: "compile", Variant: "suse"}: {
-					Name:            "compile",
-					Variant:         "suse",
-					ExecTimeoutSecs: 10,
+					Name:    "compile",
+					Variant: "suse",
 					DependsOn: []model.TaskUnitDependency{
 						{
 							Name:    "setup",
@@ -4452,10 +4565,9 @@ func TestTVToTaskUnit(t *testing.T) {
 						Name: "rhel",
 						Tasks: []model.BuildVariantTaskUnit{
 							{
-								Name:            "setup",
-								Variant:         "rhel",
-								Priority:        20,
-								ExecTimeoutSecs: 20,
+								Name:     "setup",
+								Variant:  "rhel",
+								Priority: 20,
 							},
 						},
 					}, {
@@ -4465,7 +4577,6 @@ func TestTVToTaskUnit(t *testing.T) {
 								Name:             "compile",
 								Variant:          "ubuntu",
 								CommitQueueMerge: true,
-								ExecTimeoutSecs:  10,
 								DependsOn: []model.TaskUnitDependency{
 									{
 										Name:    "setup",
@@ -4478,9 +4589,8 @@ func TestTVToTaskUnit(t *testing.T) {
 						Name: "suse",
 						Tasks: []model.BuildVariantTaskUnit{
 							{
-								Name:            "compile",
-								Variant:         "suse",
-								ExecTimeoutSecs: 10,
+								Name:    "compile",
+								Variant: "suse",
 								DependsOn: []model.TaskUnitDependency{
 									{
 										Name:    "setup",
@@ -4496,16 +4606,14 @@ func TestTVToTaskUnit(t *testing.T) {
 		"MapsTaskGroupTasksAndPopulates": {
 			expectedTVToTaskUnit: map[model.TVPair]model.BuildVariantTaskUnit{
 				{TaskName: "setup", Variant: "rhel"}: {
-					Name:            "setup",
-					Variant:         "rhel",
-					Priority:        20,
-					ExecTimeoutSecs: 20,
+					Name:     "setup",
+					Variant:  "rhel",
+					Priority: 20,
 				}, {TaskName: "compile", Variant: "ubuntu"}: {
 					Name:             "compile",
 					Variant:          "ubuntu",
 					IsPartOfGroup:    true,
 					GroupName:        "compile_group",
-					ExecTimeoutSecs:  10,
 					CommitQueueMerge: true,
 					DependsOn: []model.TaskUnitDependency{
 						{
@@ -4514,11 +4622,10 @@ func TestTVToTaskUnit(t *testing.T) {
 						},
 					},
 				}, {TaskName: "compile", Variant: "suse"}: {
-					Name:            "compile",
-					Variant:         "suse",
-					IsPartOfGroup:   true,
-					GroupName:       "compile_group",
-					ExecTimeoutSecs: 10,
+					Name:          "compile",
+					Variant:       "suse",
+					IsPartOfGroup: true,
+					GroupName:     "compile_group",
 					DependsOn: []model.TaskUnitDependency{
 						{
 							Name:    "setup",
@@ -4555,10 +4662,9 @@ func TestTVToTaskUnit(t *testing.T) {
 						Name: "rhel",
 						Tasks: []model.BuildVariantTaskUnit{
 							{
-								Name:            "setup",
-								Variant:         "rhel",
-								Priority:        20,
-								ExecTimeoutSecs: 20,
+								Name:     "setup",
+								Variant:  "rhel",
+								Priority: 20,
 							},
 						},
 					}, {
@@ -4604,7 +4710,6 @@ func TestTVToTaskUnit(t *testing.T) {
 				for _, dep := range expectedTaskUnit.DependsOn {
 					assert.Contains(t, taskUnit.DependsOn, dep)
 				}
-				assert.Equal(t, expectedTaskUnit.ExecTimeoutSecs, taskUnit.ExecTimeoutSecs)
 				assert.Equal(t, expectedTaskUnit.Stepback, taskUnit.Stepback)
 				assert.Equal(t, expectedTaskUnit.CommitQueueMerge, taskUnit.CommitQueueMerge, fmt.Sprintf("%s/%s", expectedTaskUnit.Variant, expectedTaskUnit.Name))
 				assert.Equal(t, expectedTaskUnit.Variant, taskUnit.Variant)

@@ -335,10 +335,11 @@ const (
 
 	DefaultJasperPort = 2385
 
-	// TODO EVG-19966: Remove GlobalGitHubTokenExpansion
+	// TODO (DEVPROD-778): Remove GlobalGitHubTokenExpansion
 	GlobalGitHubTokenExpansion = "global_github_oauth_token"
 	GithubAppToken             = "github_app_token"
 	GithubAppPrivateKey        = "github_app_key"
+	GithubKnownHosts           = "github_known_hosts"
 
 	// GitHubRetryAttempts is the github client maximum number of attempts.
 	GitHubRetryAttempts = 3
@@ -766,6 +767,9 @@ var AttachCommands = []string{
 type SenderKey int
 
 const (
+	// SenderGithubStatus sends messages to GitHub like PR status updates. This
+	// sender key logically represents all GitHub senders collectively, of which
+	// there is one per GitHub org.
 	SenderGithubStatus = SenderKey(iota)
 	SenderEvergreenWebhook
 	SenderSlack

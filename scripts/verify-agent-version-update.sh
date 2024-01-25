@@ -10,7 +10,7 @@ fi
 # have changed in the agent or its subpackages.
 common_ancestor=$(git merge-base ${BRANCH_NAME}@{upstream} HEAD);
 # Include the agent CLI command and all agent source files, but exclude test files.
-files_changed="$(git diff --name-only "${common_ancestor}" -- 'operations/agent.go' apimodels/agent_models.go 'agent/**.go' ':!agent/**_test.go')"
+files_changed="$(git diff --name-only "${common_ancestor}" -- 'operations/agent.go' apimodels/agent_models.go 'agent/**.go' ':!agent/**_test.go' ':!agent/internal/testutil/**.go')"
 if [[ "${files_changed}" == "" ]]; then
     exit 0;
 fi

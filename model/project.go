@@ -129,10 +129,8 @@ type BuildVariantTaskUnit struct {
 	DependsOn         []TaskUnitDependency      `yaml:"depends_on,omitempty" bson:"depends_on"`
 
 	// the distros that the task can be run on
-	RunOn []string `yaml:"run_on,omitempty" bson:"run_on"`
-	// currently unsupported (TODO EVG-578)
-	ExecTimeoutSecs int   `yaml:"exec_timeout_secs,omitempty" bson:"exec_timeout_secs"`
-	Stepback        *bool `yaml:"stepback,omitempty" bson:"stepback,omitempty"`
+	RunOn    []string `yaml:"run_on,omitempty" bson:"run_on"`
+	Stepback *bool    `yaml:"stepback,omitempty" bson:"stepback,omitempty"`
 
 	CommitQueueMerge bool `yaml:"commit_queue_merge,omitempty" bson:"commit_queue_merge"`
 
@@ -222,10 +220,6 @@ func (bvt *BuildVariantTaskUnit) Populate(pt ProjectTask, bv BuildVariant) {
 	}
 	if len(bvt.AllowedRequesters) == 0 {
 		bvt.AllowedRequesters = pt.AllowedRequesters
-	}
-	// TODO these are copied but unused until EVG-578 is completed
-	if bvt.ExecTimeoutSecs == 0 {
-		bvt.ExecTimeoutSecs = pt.ExecTimeoutSecs
 	}
 	if bvt.Stepback == nil {
 		bvt.Stepback = pt.Stepback
@@ -1091,7 +1085,7 @@ func generateId(name string, projectIdentifier string, projBV *BuildVariant, rev
 
 // PopulateExpansions returns expansions for a task, excluding build variant
 // expansions, project variables, and project/version parameters.
-func PopulateExpansions(t *task.Task, h *host.Host, oauthToken, appToken string) (util.Expansions, error) {
+func PopulateExpansions(t *task.Task, h *host.Host, oauthToken, appToken, knownHosts string) (util.Expansions, error) {
 	if t == nil {
 		return nil, errors.New("task cannot be nil")
 	}
@@ -1110,6 +1104,7 @@ func PopulateExpansions(t *task.Task, h *host.Host, oauthToken, appToken string)
 	expansions.Put("build_variant", t.BuildVariant)
 	expansions.Put("revision", t.Revision)
 	expansions.Put("github_commit", t.Revision)
+	expansions.Put(evergreen.GithubKnownHosts, knownHosts)
 	expansions.Put(evergreen.GlobalGitHubTokenExpansion, oauthToken)
 	expansions.Put(evergreen.GithubAppToken, appToken)
 	expansions.Put("project", projectRef.Identifier)
@@ -1639,7 +1634,6 @@ func (p *Project) tasksFromGroup(bvTaskGroup BuildVariantTaskUnit) []BuildVarian
 			Priority:          bvTaskGroup.Priority,
 			DependsOn:         bvTaskGroup.DependsOn,
 			RunOn:             bvTaskGroup.RunOn,
-			ExecTimeoutSecs:   bvTaskGroup.ExecTimeoutSecs,
 			Stepback:          bvTaskGroup.Stepback,
 			Activate:          bvTaskGroup.Activate,
 			CommitQueueMerge:  bvTaskGroup.CommitQueueMerge,

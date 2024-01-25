@@ -85,10 +85,8 @@ type SharedCommunicator interface {
 	// DisableHost signals to the app server that the host should be disabled.
 	DisableHost(context.Context, string, apimodels.DisableInfo) error
 
-	// TODO: Pass in task OR move this out.
 	// GetLoggerProducer constructs a new LogProducer instance for use by tasks.
 	GetLoggerProducer(context.Context, *task.Task, *LoggerConfig) (LoggerProducer, error)
-	// GetLoggerMetadata() LoggerMetadata
 
 	// The following operations are used by task commands.
 	SendTestLog(context.Context, TaskData, *testlog.TestLog) (string, error)

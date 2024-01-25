@@ -50,7 +50,7 @@ func TestAppendTestLog(t *testing.T) {
 		Name:          "test",
 		Task:          "task",
 		TaskExecution: 5,
-		Lines:         []string{"log line 1\nlog line 2", "log line 3"},
+		Lines:         []string{"log line 1\nlog line 2", "log line 3\n", "log line 4"},
 	}
 	comm := client.NewMock("url")
 
@@ -58,14 +58,15 @@ func TestAppendTestLog(t *testing.T) {
 	it, err := tsk.GetTestLogs(ctx, taskoutput.TestLogGetOptions{LogPaths: []string{testLog.Name}})
 	require.NoError(t, err)
 
-	var lines []string
+	var actual string
 	for it.Next() {
 		line := it.Item()
 		assert.Equal(t, level.Info, line.Priority)
 		assert.WithinDuration(t, time.Now(), time.Unix(0, line.Timestamp), time.Second)
-		lines = append(lines, line.Data)
+		actual += line.Data + "\n"
 	}
-	assert.Equal(t, strings.Join(testLog.Lines, "\n"), strings.Join(lines, "\n"))
+	expectedLines := "log line 1\nlog line 2\nlog line 3\nlog line 4\n"
+	assert.Equal(t, expectedLines, actual)
 }
 
 func TestTestLogDirectoryHandler(t *testing.T) {

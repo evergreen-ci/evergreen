@@ -1,6 +1,7 @@
 package user
 
 import (
+	"context"
 	"time"
 
 	"github.com/evergreen-ci/evergreen"
@@ -278,9 +279,7 @@ func AddOrUpdateServiceUser(u DBUser) error {
 }
 
 // DeleteServiceUser deletes a service user by ID.
-func DeleteServiceUser(id string) error {
-	ctx, cancel := evergreen.GetEnvironment().Context()
-	defer cancel()
+func DeleteServiceUser(ctx context.Context, id string) error {
 	query := bson.M{
 		IdKey:      id,
 		OnlyAPIKey: true,

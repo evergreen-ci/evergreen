@@ -24,7 +24,8 @@ There is an [investigation](https://jira.mongodb.org/browse/DEVPROD-3509) to fig
 
 ## YAML configuration size
 
-Large parser projects are disabled, which means that Evergreen limits YAML project configuration sizes to 16MB. This includes configurations that get added with generate tasks.
+Large parser projects are disabled, which means that Evergreen limits YAML project configuration sizes to 16MB.
+The 16 MB limit is on the sum of the size of the generate.tasks input file and the size of the project configuration YAML. If the YAML length > 16 MB after task generators have tacked on their configuration to the project configuration YAML, the task will fail.
 
 #### Can an exception be requested?
 

@@ -1,6 +1,8 @@
 package taskoutput
 
-import "github.com/evergreen-ci/evergreen"
+import (
+	"github.com/evergreen-ci/evergreen"
+)
 
 // TaskOutput is the versioned entry point for coordinating persistent storage
 // of a task run's output data.

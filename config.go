@@ -32,11 +32,13 @@ var (
 	// BuildRevision should be specified with -ldflags at build time
 	BuildRevision = ""
 
-	// ClientVersion is the commandline version string used to control auto-updating.
-	ClientVersion = "2024-01-12"
+	// ClientVersion is the commandline version string used to control updating
+	// the CLI. The format is the calendar date (YYYY-MM-DD).
+	ClientVersion = "2024-01-18"
 
-	// Agent version to control agent rollover.
-	AgentVersion = "2024-01-18"
+	// Agent version to control agent rollover. The format is the calendar date
+	// (YYYY-MM-DD).
+	AgentVersion = "2024-01-23-a"
 )
 
 // ConfigSection defines a sub-document in the evergreen config

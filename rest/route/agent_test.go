@@ -200,7 +200,7 @@ func TestMarkTaskForReset(t *testing.T) {
 			require.NoError(t, foundTask.MarkEnd(time.Now(), &apimodels.TaskEndDetail{
 				Status: evergreen.TaskFailed,
 			}))
-			require.NoError(t, foundTask.Archive())
+			require.NoError(t, foundTask.Archive(ctx))
 			require.NoError(t, foundTask.Reset(ctx))
 			resp = rh.Run(ctx)
 			require.NotZero(t, resp)
@@ -611,17 +611,7 @@ func TestAgentGetProjectRef(t *testing.T) {
 		Id:      "task2",
 		Project: "project2",
 	}
-	projRef2 := &model.ProjectRef{
-		Id: "project2",
-	}
 	require.NoError(t, task2.Insert())
-	require.NoError(t, projRef2.Insert())
-
-	task3 := &task.Task{
-		Id:      "task3",
-		Project: "project3",
-	}
-	require.NoError(t, task3.Insert())
 
 	for _, test := range []struct {
 		name           string
@@ -636,20 +626,14 @@ func TestAgentGetProjectRef(t *testing.T) {
 		},
 		{
 			name:           "ProjectRefDNE",
-			taskID:         task3.Id,
+			taskID:         task2.Id,
 			expectedStatus: http.StatusNotFound,
 		},
 		{
-			name:           "GlobalLogger",
+			name:           "ProjectRef",
 			taskID:         task1.Id,
 			expectedStatus: http.StatusOK,
 			expectedData:   projRef1,
-		},
-		{
-			name:           "ProjectLogger",
-			taskID:         task2.Id,
-			expectedStatus: http.StatusOK,
-			expectedData:   projRef2,
 		},
 	} {
 		t.Run(test.name, func(t *testing.T) {

@@ -1,6 +1,7 @@
 package user
 
 import (
+	"context"
 	"time"
 
 	"github.com/evergreen-ci/evergreen"
@@ -336,14 +337,11 @@ func (u *DBUser) RemoveRole(role string) error {
 }
 
 // GetViewableProjects returns the lists of projects/repos the user can view.
-func (u *DBUser) GetViewableProjectSettings() ([]string, error) {
+func (u *DBUser) GetViewableProjectSettings(ctx context.Context) ([]string, error) {
 	if evergreen.PermissionsDisabledForTests() {
 		return nil, nil
 	}
-	env := evergreen.GetEnvironment()
-	roleManager := env.RoleManager()
-	ctx, cancel := env.Context()
-	defer cancel()
+	roleManager := evergreen.GetEnvironment().RoleManager()
 
 	viewProjects, err := rolemanager.FindAllowedResources(ctx, roleManager, u.Roles(), evergreen.ProjectResourceType, evergreen.PermissionProjectSettings, evergreen.ProjectSettingsView.Value)
 	if err != nil {

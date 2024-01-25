@@ -27,12 +27,17 @@ import (
 // AppendTestLog appends log lines to the specified test log for the given task
 // run.
 func AppendTestLog(ctx context.Context, comm client.Communicator, tsk *task.Task, testLog *testlog.TestLog) error {
+	ts := time.Now().UnixNano()
 	var lines []log.LogLine
 	for i := range testLog.Lines {
 		for _, line := range strings.Split(testLog.Lines[i], "\n") {
+			if line == "" {
+				continue
+			}
+
 			lines = append(lines, log.LogLine{
 				Priority:  level.Info,
-				Timestamp: time.Now().UnixNano(),
+				Timestamp: ts,
 				Data:      line,
 			})
 		}
