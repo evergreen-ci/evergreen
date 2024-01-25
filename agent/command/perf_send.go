@@ -92,7 +92,6 @@ func (c *perfSend) addEvgData(report *poplar.Report, conf *internal.TaskConfig) 
 	report.TaskID = conf.Task.Id
 	report.Execution = conf.Task.Execution
 	report.Mainline = conf.Task.Requester == evergreen.RepotrackerVersionRequester
-	report.Requester = conf.Task.Requester
 
 	report.BucketConf.APIKey = c.AWSKey
 	report.BucketConf.APISecret = c.AWSSecret
