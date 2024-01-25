@@ -224,7 +224,6 @@ buildvariants:
     - name: compile
     - name: passing_test
       variant: osx-108
-    exec_timeout_secs: 20
     priority: 10
     batchtime: 20 // overrides build variant batchtime of 60
   - name: failing_test
@@ -755,6 +754,7 @@ Every task has some expansions available by default:
     commit queue item appears
 -   `${github_author}` is the GitHub username of the creator of a PR
     or PR triggered commit queue item
+-   `${github_known_hosts}` is GitHub's SSH key fingerprint
 -   `${triggered_by_git_tag}` is the name of the tag that triggered this
     version, if applicable
 -   `${is_commit_queue}` is the string "true" if this is a commit
