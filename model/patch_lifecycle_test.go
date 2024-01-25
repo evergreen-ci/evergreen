@@ -531,7 +531,7 @@ func TestMakePatchedConfig(t *testing.T) {
 		wg.Add(1)
 		go func() {
 			defer wg.Done()
-			projectData, err := MakePatchedConfig(ctx, env, p, remoteConfigPath, string(projectBytes))
+			projectData, err := MakePatchedConfig(ctx, GetProjectOpts{}, env, p, remoteConfigPath, string(projectBytes))
 			assert.NoError(t, err)
 			assert.NotNil(t, projectData)
 			project := &Project{}
@@ -563,7 +563,7 @@ func TestMakePatchedConfigEmptyBase(t *testing.T) {
 		}},
 	}
 
-	projectData, err := MakePatchedConfig(ctx, env, p, remoteConfigPath, "")
+	projectData, err := MakePatchedConfig(ctx, GetProjectOpts{}, env, p, remoteConfigPath, "")
 	assert.NoError(t, err)
 
 	project := &Project{}
@@ -573,6 +573,30 @@ func TestMakePatchedConfigEmptyBase(t *testing.T) {
 
 	assert.Len(t, project.Tasks, 1)
 	assert.Equal(t, project.Tasks[0].Name, "hello")
+}
+
+func TestParseRenamedFile(t *testing.T) {
+	patchContents := `
+diff --git a/evergreen.yml b/evergreen.yml
+index a45dff8..83a8f81 100644
+--- a/evergreen.yml
++++ b/evergreen.yml
+@@ -5,7 +5,7 @@ stepback: true
+ 
+ include:
+   - filename: include1.yml
+-  - filename: include2.yml
++  - filename: rename2.yml
+   - filename: include3.yml
+   - filename: include4.yml
+   - filename: include5.yml
+diff --git a/include2.yml b/rename2.yml
+similarity index 100%
+rename from include2.yml
+rename to rename2.yml
+`
+	renamedFile := parseRenamedFile(patchContents, "rename2.yml")
+	assert.Equal(t, renamedFile, "include2.yml")
 }
 
 // shouldContainPair returns a blank string if its arguments resemble each other, and returns a

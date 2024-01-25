@@ -810,7 +810,7 @@ func retrieveFile(ctx context.Context, opts GetProjectOpts) ([]byte, error) {
 		if err != nil {
 			return nil, errors.Wrap(err, "fetching remote configuration file")
 		}
-		fileContents, err := MakePatchedConfig(ctx, opts.PatchOpts.env, opts.PatchOpts.patch, opts.RemotePath, string(originalConfig))
+		fileContents, err := MakePatchedConfig(ctx, opts, opts.PatchOpts.env, opts.PatchOpts.patch, opts.RemotePath, string(originalConfig))
 		if err != nil {
 			return nil, errors.Wrap(err, "patching remote configuration file")
 		}

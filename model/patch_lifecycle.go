@@ -238,7 +238,7 @@ func getPatchedProjectYAML(ctx context.Context, projectRef *ProjectRef, opts *Ge
 	// apply remote configuration patch if needed
 	if p.ShouldPatchFileWithDiff(path) {
 		opts.ReadFileFrom = ReadFromPatchDiff
-		projectFileBytes, err = MakePatchedConfig(ctx, opts.PatchOpts.env, p, opts.RemotePath, string(projectFileBytes))
+		projectFileBytes, err = MakePatchedConfig(ctx, *opts, opts.PatchOpts.env, p, opts.RemotePath, string(projectFileBytes))
 		if err != nil {
 			return nil, errors.Wrap(err, "patching remote configuration file")
 		}
@@ -377,14 +377,14 @@ func getProjectConfigYAML(p *patch.Patch, projectFileBytes []byte) (string, erro
 // project YAML configuration and a stringified version of the project YAML
 // configuration, and returns an unmarshalled version of the project with the
 // patch applied.
-func MakePatchedConfig(ctx context.Context, env evergreen.Environment, p *patch.Patch, remoteConfigPath, projectConfig string) ([]byte, error) {
+func MakePatchedConfig(ctx context.Context, opts GetProjectOpts, env evergreen.Environment, p *patch.Patch, remoteConfigPath, projectConfig string) ([]byte, error) {
 	for _, patchPart := range p.Patches {
 		// we only need to patch the main project and not any other modules
 		if patchPart.ModuleName != "" {
 			continue
 		}
 
-		var patchFilePath string
+		var patchFilePath, localConfigPath, renamedFilePath string
 		var err error
 		if patchPart.PatchSet.Patch == "" {
 			var patchContents string
@@ -392,6 +392,7 @@ func MakePatchedConfig(ctx context.Context, env evergreen.Environment, p *patch.
 			if err != nil {
 				return nil, errors.Wrap(err, "fetching patch contents")
 			}
+			renamedFilePath = parseRenamedFile(patchContents, remoteConfigPath)
 			patchFilePath, err = util.WriteToTempFile(patchContents)
 			if err != nil {
 				return nil, errors.Wrap(err, "writing temporary patch file")
@@ -404,6 +405,29 @@ func MakePatchedConfig(ctx context.Context, env evergreen.Environment, p *patch.
 		}
 
 		defer os.Remove(patchFilePath) //nolint:evg-lint
+
+		// clean the working directory
+		workingDirectory := filepath.Join(filepath.Dir(patchFilePath), utility.RandomString())
+		defer os.RemoveAll(workingDirectory)
+
+		var renamedProjectConfig []byte
+		if renamedFilePath != "" {
+			opts.RemotePath = renamedFilePath
+			renamedProjectConfig, err = getFileForPatchDiff(ctx, opts)
+			if err != nil {
+				return nil, errors.Wrapf(err, "retrieving renamed file '%s'", renamedFilePath)
+			}
+			projectConfig = string(renamedProjectConfig)
+			localConfigPath = filepath.Join(
+				workingDirectory,
+				renamedFilePath,
+			)
+		} else {
+			localConfigPath = filepath.Join(
+				workingDirectory,
+				remoteConfigPath,
+			)
+		}
 		// write project configuration
 		configFilePath, err := util.WriteToTempFile(projectConfig)
 		if err != nil {
@@ -411,48 +435,12 @@ func MakePatchedConfig(ctx context.Context, env evergreen.Environment, p *patch.
 		}
 		defer os.Remove(configFilePath) //nolint:evg-lint
 
-		// clean the working directory
-		workingDirectory := filepath.Join(filepath.Dir(patchFilePath), utility.RandomString())
-		defer os.RemoveAll(workingDirectory)
-
-		localConfigPath := filepath.Join(
-			workingDirectory,
-			remoteConfigPath,
-		)
 		if err = os.MkdirAll(filepath.Dir(localConfigPath), 0755); err != nil {
 			return nil, errors.WithStack(err)
 		}
-		checkRenamedCommandStrings := []string{
-			"set -o errexit",
-			fmt.Sprintf("grep -B 1 'rename to %s' '%s' | grep 'rename from' | cut -d ' ' -f3  | tr -d '\n'", remoteConfigPath, patchFilePath),
-		}
-		grip.Info(message.Fields{
-			"message":         "MALIK3.25",
-			"command":         checkRenamedCommandStrings,
-			"localConfigPath": localConfigPath,
-		})
-		renamedFileOutput := util.NewMBCappedWriter()
-		err = env.JasperManager().CreateCommand(ctx).Add([]string{"bash", "-c", strings.Join(checkRenamedCommandStrings, "\n")}).
-			Directory(workingDirectory).SetCombinedWriter(renamedFileOutput).Run(ctx)
-		if err != nil {
-			grip.Error(message.WrapError(err, message.Fields{
-				"message":        "error grepping patch file for renamed file",
-				"patch_id":       p.Id.Hex(),
-				"output":         renamedFileOutput.String(),
-				"rename_command": checkRenamedCommandStrings,
-			}))
-			return nil, errors.Wrap(err, "searching for renamed files in patch file")
-		}
-		prevFilePath := strings.TrimSpace(renamedFileOutput.String())
-		if prevFilePath != "" {
-			localConfigPath = filepath.Join(
-				workingDirectory,
-				prevFilePath,
-			)
-		}
 		// rename the temporary config file name to the remote config
 		// file path if we are patching an existing remote config
-		if prevFilePath != "" || len(projectConfig) > 0 {
+		if renamedFilePath != "" || len(projectConfig) > 0 {
 			if err = os.Rename(configFilePath, localConfigPath); err != nil {
 				return nil, errors.Wrapf(err, "renaming file '%s' to '%s'", configFilePath, localConfigPath)
 			}
@@ -480,7 +468,15 @@ func MakePatchedConfig(ctx context.Context, env evergreen.Environment, p *patch.
 		}
 
 		// read in the patched config file
-		data, err := os.ReadFile(localConfigPath)
+		readPath := localConfigPath
+		if renamedFilePath != "" {
+			readPath = filepath.Join(
+				workingDirectory,
+				remoteConfigPath,
+			)
+			defer os.Remove(readPath)
+		}
+		data, err := os.ReadFile(readPath)
 		if err != nil {
 			return nil, errors.Wrap(err, "reading patched config file")
 		}
@@ -490,6 +486,27 @@ func MakePatchedConfig(ctx context.Context, env evergreen.Environment, p *patch.
 		return data, nil
 	}
 	return nil, errors.New("no patch on project")
+}
+
+func parseRenamedFile(patchContents, filename string) string {
+	lines := strings.Split(patchContents, "\n")
+	var renameFrom, renameTo string
+	isRenamed := false
+	for _, line := range lines {
+		if strings.HasPrefix(line, "rename from ") {
+			renameFrom = strings.TrimPrefix(line, "rename from ")
+		} else if strings.HasPrefix(line, "rename to ") {
+			renameTo = strings.TrimPrefix(line, "rename to ")
+			if renameTo == filename {
+				isRenamed = true
+				break
+			}
+		}
+	}
+	if isRenamed {
+		return renameFrom
+	}
+	return ""
 }
 
 // FinalizePatch finalizes a patch:
