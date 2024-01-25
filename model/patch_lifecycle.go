@@ -238,7 +238,7 @@ func getPatchedProjectYAML(ctx context.Context, projectRef *ProjectRef, opts *Ge
 	// apply remote configuration patch if needed
 	if p.ShouldPatchFileWithDiff(path) {
 		opts.ReadFileFrom = ReadFromPatchDiff
-		projectFileBytes, err = MakePatchedConfig(ctx, *opts, opts.PatchOpts.env, p, opts.RemotePath, string(projectFileBytes))
+		projectFileBytes, err = MakePatchedConfig(ctx, *opts, string(projectFileBytes))
 		if err != nil {
 			return nil, errors.Wrap(err, "patching remote configuration file")
 		}
@@ -377,32 +377,34 @@ func getProjectConfigYAML(p *patch.Patch, projectFileBytes []byte) (string, erro
 // project YAML configuration and a stringified version of the project YAML
 // configuration, and returns an unmarshalled version of the project with the
 // patch applied.
-func MakePatchedConfig(ctx context.Context, opts GetProjectOpts, env evergreen.Environment, p *patch.Patch, remoteConfigPath, projectConfig string) ([]byte, error) {
+func MakePatchedConfig(ctx context.Context, opts GetProjectOpts, projectConfig string) ([]byte, error) {
+	p := opts.PatchOpts.patch
+	remoteConfigPath := opts.RemotePath
 	for _, patchPart := range p.Patches {
 		// we only need to patch the main project and not any other modules
 		if patchPart.ModuleName != "" {
 			continue
 		}
 
-		var patchFilePath, localConfigPath, renamedFilePath string
+		var patchFilePath, localConfigPath, renamedFilePath, patchContents string
 		var err error
 		if patchPart.PatchSet.Patch == "" {
-			var patchContents string
 			patchContents, err = patch.FetchPatchContents(patchPart.PatchSet.PatchFileId)
 			if err != nil {
 				return nil, errors.Wrap(err, "fetching patch contents")
 			}
-			renamedFilePath = parseRenamedFile(patchContents, remoteConfigPath)
 			patchFilePath, err = util.WriteToTempFile(patchContents)
 			if err != nil {
 				return nil, errors.Wrap(err, "writing temporary patch file")
 			}
 		} else {
-			patchFilePath, err = util.WriteToTempFile(patchPart.PatchSet.Patch)
+			patchContents = patchPart.PatchSet.Patch
+			patchFilePath, err = util.WriteToTempFile(patchContents)
 			if err != nil {
 				return nil, errors.Wrap(err, "writing to temporary patch file")
 			}
 		}
+		renamedFilePath = parseRenamedFile(patchContents, remoteConfigPath)
 
 		defer os.Remove(patchFilePath) //nolint:evg-lint
 
@@ -411,13 +413,17 @@ func MakePatchedConfig(ctx context.Context, opts GetProjectOpts, env evergreen.E
 		defer os.RemoveAll(workingDirectory)
 
 		var renamedProjectConfig []byte
+		// If this is a renamed include file, retrieve the bytes of the file before it
+		// was renamed and use it as our local config.
 		if renamedFilePath != "" {
 			opts.RemotePath = renamedFilePath
-			renamedProjectConfig, err = getFileForPatchDiff(ctx, opts)
-			if err != nil {
-				return nil, errors.Wrapf(err, "retrieving renamed file '%s'", renamedFilePath)
+			if projectConfig == "" {
+				renamedProjectConfig, err = getFileForPatchDiff(ctx, opts)
+				if err != nil {
+					return nil, errors.Wrapf(err, "retrieving renamed file '%s'", renamedFilePath)
+				}
+				projectConfig = string(renamedProjectConfig)
 			}
-			projectConfig = string(renamedProjectConfig)
 			localConfigPath = filepath.Join(
 				workingDirectory,
 				renamedFilePath,
@@ -455,7 +461,7 @@ func MakePatchedConfig(ctx context.Context, opts GetProjectOpts, env evergreen.E
 		}
 
 		output := util.NewMBCappedWriter()
-		err = env.JasperManager().CreateCommand(ctx).Add([]string{"bash", "-c", strings.Join(patchCommandStrings, "\n")}).
+		err = opts.PatchOpts.env.JasperManager().CreateCommand(ctx).Add([]string{"bash", "-c", strings.Join(patchCommandStrings, "\n")}).
 			Directory(workingDirectory).SetCombinedWriter(output).Run(ctx)
 		if err != nil {
 			grip.Error(message.WrapError(err, message.Fields{
@@ -467,16 +473,17 @@ func MakePatchedConfig(ctx context.Context, opts GetProjectOpts, env evergreen.E
 			return nil, errors.Wrap(err, "running patch command (possibly due to merge conflict on evergreen configuration file)")
 		}
 
-		// read in the patched config file
-		readPath := localConfigPath
+		// Read in the patched config file. If the patched config file has been renamed as
+		// part of the git apply, read from the new renamed location.
+		patchedConfigPath := localConfigPath
 		if renamedFilePath != "" {
-			readPath = filepath.Join(
+			patchedConfigPath = filepath.Join(
 				workingDirectory,
 				remoteConfigPath,
 			)
-			defer os.Remove(readPath)
+			defer os.Remove(patchedConfigPath)
 		}
-		data, err := os.ReadFile(readPath)
+		data, err := os.ReadFile(patchedConfigPath)
 		if err != nil {
 			return nil, errors.Wrap(err, "reading patched config file")
 		}
@@ -488,6 +495,8 @@ func MakePatchedConfig(ctx context.Context, opts GetProjectOpts, env evergreen.E
 	return nil, errors.New("no patch on project")
 }
 
+// parseRenamedFile takes a patch contents and retrieves the old file name,
+// if any, that the input filename was renamed from.
 func parseRenamedFile(patchContents, filename string) string {
 	lines := strings.Split(patchContents, "\n")
 	var renameFrom, renameTo string

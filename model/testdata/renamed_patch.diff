@@ -1,0 +1,28 @@
+diff --git a/evergreen.yml b/evergreen.yml
+index bd66c6e..b671f40 100644
+--- a/evergreen.yml
++++ b/evergreen.yml
+@@ -4,7 +4,7 @@ ignore:
+ stepback: true
+ 
+ includes:
+-  - include1.yml
++  - renamed.yml
+ 
+ pre_error_fails_task: true
+ pre: &pre
+diff --git a/include1.yml b/renamed.yml
+similarity index 65%
+rename from include1.yml
+rename to renamed.yml
+index 748e345..7e70f15 100644
+--- a/include1.yml
++++ b/renamed.yml
+@@ -1,6 +1,6 @@
+ buildvariants:
+   - name: included-variant
+-    display_name: "Included variant"
++    display_name: "Included variant!!!"
+     batchtime: 0
+     activate: true
+     run_on:

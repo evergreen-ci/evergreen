@@ -531,7 +531,14 @@ func TestMakePatchedConfig(t *testing.T) {
 		wg.Add(1)
 		go func() {
 			defer wg.Done()
-			projectData, err := MakePatchedConfig(ctx, GetProjectOpts{}, env, p, remoteConfigPath, string(projectBytes))
+			opts := GetProjectOpts{
+				RemotePath: remoteConfigPath,
+				PatchOpts: &PatchOpts{
+					env:   env,
+					patch: p,
+				},
+			}
+			projectData, err := MakePatchedConfig(ctx, opts, string(projectBytes))
 			assert.NoError(t, err)
 			assert.NotNil(t, projectData)
 			project := &Project{}
@@ -563,7 +570,14 @@ func TestMakePatchedConfigEmptyBase(t *testing.T) {
 		}},
 	}
 
-	projectData, err := MakePatchedConfig(ctx, GetProjectOpts{}, env, p, remoteConfigPath, "")
+	opts := GetProjectOpts{
+		RemotePath: remoteConfigPath,
+		PatchOpts: &PatchOpts{
+			env:   env,
+			patch: p,
+		},
+	}
+	projectData, err := MakePatchedConfig(ctx, opts, "")
 	assert.NoError(t, err)
 
 	project := &Project{}
@@ -573,6 +587,54 @@ func TestMakePatchedConfigEmptyBase(t *testing.T) {
 
 	assert.Len(t, project.Tasks, 1)
 	assert.Equal(t, project.Tasks[0].Name, "hello")
+}
+
+func TestMakePatchedConfigRenamed(t *testing.T) {
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
+	env := evergreen.GetEnvironment()
+	cwd := testutil.GetDirectoryOfFile()
+
+	// Confirm that renaming a file as part of a patch diff applies without error
+	// and returns the expected patched config.
+	remoteConfigPath := filepath.Join("config", "evergreen.yml")
+	fileBytes, err := os.ReadFile(filepath.Join(cwd, "testdata", "renamed_patch.diff"))
+	assert.NoError(t, err)
+	diffString := string(fileBytes)
+	p := &patch.Patch{
+		Patches: []patch.ModulePatch{{
+			Githash: "revision",
+			PatchSet: patch.PatchSet{
+				Patch: diffString,
+				Summary: []thirdparty.Summary{{
+					Name:      remoteConfigPath,
+					Additions: 3,
+					Deletions: 3,
+				}},
+			},
+		}},
+	}
+	projectBytes, err := os.ReadFile(filepath.Join(cwd, "testdata", "include1.yml"))
+	assert.NoError(t, err)
+
+	opts := GetProjectOpts{
+		Ref:        &ProjectRef{},
+		RemotePath: "renamed.yml",
+		PatchOpts: &PatchOpts{
+			env:   env,
+			patch: p,
+		},
+	}
+	projectData, err := MakePatchedConfig(ctx, opts, string(projectBytes))
+	assert.NoError(t, err)
+	assert.NotNil(t, projectData)
+
+	intermediateProject, err := createIntermediateProject(projectData, false)
+	assert.NoError(t, err)
+	assert.NotNil(t, intermediateProject)
+	require.Len(t, intermediateProject.BuildVariants, 1)
+	assert.Equal(t, intermediateProject.BuildVariants[0].DisplayName, "Included variant!!!")
 }
 
 func TestParseRenamedFile(t *testing.T) {
@@ -597,6 +659,56 @@ rename to rename2.yml
 `
 	renamedFile := parseRenamedFile(patchContents, "rename2.yml")
 	assert.Equal(t, renamedFile, "include2.yml")
+
+	patchContents = `
+diff --git a/include1.yml b/include1.yml
+index 865a6ec..990824f 100644
+--- a/include1.yml
++++ b/include1.yml
+@@ -1,6 +1,6 @@
+ buildvariants:
+   - name: generate-tasks-for-version1
+-    display_name: "Generate tasks for evergreen version"
++    display_name: "Generate tasks for evergreen version!!"
+     batchtime: 0
+     activate: true
+     run_on:`
+
+	renamedFile = parseRenamedFile(patchContents, "include1.yml")
+	assert.Equal(t, renamedFile, "")
+
+	patchContents = `
+diff --git a/evergreen.yml b/evergreen.yml
+index bd66c6e..b671f40 100644
+--- a/evergreen.yml
++++ b/evergreen.yml
+@@ -4,7 +4,7 @@ ignore:
+ stepback: true
+ 
+ includes:
+-  - include1.yml
++  - renamed.yml
+ 
+ pre_error_fails_task: true
+ pre: &pre
+diff --git a/include1.yml b/renamed.yml
+similarity index 65%
+rename from include1.yml
+rename to renamed.yml
+index 748e345..7e70f15 100644
+--- a/include1.yml
++++ b/renamed.yml
+@@ -1,6 +1,6 @@
+ buildvariants:
+   - name: included-variant
+-    display_name: "Included variant"
++    display_name: "Included variant!!!"
+     batchtime: 0
+     activate: true
+     run_on:`
+
+	renamedFile = parseRenamedFile(patchContents, "renamed.yml")
+	assert.Equal(t, renamedFile, "include1.yml")
 }
 
 // shouldContainPair returns a blank string if its arguments resemble each other, and returns a
