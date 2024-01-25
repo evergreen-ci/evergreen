@@ -8,7 +8,7 @@ import (
 	"github.com/mongodb/grip/send"
 )
 
-const redactedVariableTemplate = "<redacted:%s>"
+const redactedVariableTemplate = "<REDACTED:%s>"
 
 type redactingSender struct {
 	send.Sender
