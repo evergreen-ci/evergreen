@@ -224,7 +224,6 @@ buildvariants:
     - name: compile
     - name: passing_test
       variant: osx-108
-    exec_timeout_secs: 20
     priority: 10
     batchtime: 20 // overrides build variant batchtime of 60
   - name: failing_test
