@@ -1373,7 +1373,6 @@ func getParserBuildVariantTaskUnit(name string, pt parserTask, bvt parserBVTaskU
 		AllowForGitTag:   bvt.AllowForGitTag,
 		GitTagOnly:       bvt.GitTagOnly,
 		Priority:         bvt.Priority,
-		ExecTimeoutSecs:  bvt.ExecTimeoutSecs,
 		Stepback:         bvt.Stepback,
 		RunOn:            bvt.RunOn,
 		CommitQueueMerge: bvt.CommitQueueMerge,
@@ -1429,9 +1428,6 @@ func getParserBuildVariantTaskUnit(name string, pt parserTask, bvt parserBVTaskU
 	}
 	if len(res.AllowedRequesters) == 0 {
 		res.AllowedRequesters = pt.AllowedRequesters
-	}
-	if res.ExecTimeoutSecs == 0 {
-		res.ExecTimeoutSecs = pt.ExecTimeoutSecs
 	}
 	if res.Stepback == nil {
 		res.Stepback = pt.Stepback
