@@ -238,7 +238,7 @@ func getPatchedProjectYAML(ctx context.Context, projectRef *ProjectRef, opts *Ge
 	// apply remote configuration patch if needed
 	if p.ShouldPatchFileWithDiff(path) {
 		opts.ReadFileFrom = ReadFromPatchDiff
-		projectFileBytes, err = MakePatchedConfig(ctx, env, p, path, string(projectFileBytes))
+		projectFileBytes, err = MakePatchedConfig(ctx, opts.PatchOpts.env, p, opts.RemotePath, string(projectFileBytes))
 		if err != nil {
 			return nil, errors.Wrap(err, "patching remote configuration file")
 		}
@@ -422,9 +422,37 @@ func MakePatchedConfig(ctx context.Context, env evergreen.Environment, p *patch.
 		if err = os.MkdirAll(filepath.Dir(localConfigPath), 0755); err != nil {
 			return nil, errors.WithStack(err)
 		}
+		checkRenamedCommandStrings := []string{
+			"set -o errexit",
+			fmt.Sprintf("grep -B 1 'rename to %s' '%s' | grep 'rename from' | cut -d ' ' -f3  | tr -d '\n'", remoteConfigPath, patchFilePath),
+		}
+		grip.Info(message.Fields{
+			"message":         "MALIK3.25",
+			"command":         checkRenamedCommandStrings,
+			"localConfigPath": localConfigPath,
+		})
+		renamedFileOutput := util.NewMBCappedWriter()
+		err = env.JasperManager().CreateCommand(ctx).Add([]string{"bash", "-c", strings.Join(checkRenamedCommandStrings, "\n")}).
+			Directory(workingDirectory).SetCombinedWriter(renamedFileOutput).Run(ctx)
+		if err != nil {
+			grip.Error(message.WrapError(err, message.Fields{
+				"message":        "error grepping patch file for renamed file",
+				"patch_id":       p.Id.Hex(),
+				"output":         renamedFileOutput.String(),
+				"rename_command": checkRenamedCommandStrings,
+			}))
+			return nil, errors.Wrap(err, "searching for renamed files in patch file")
+		}
+		prevFilePath := strings.TrimSpace(renamedFileOutput.String())
+		if prevFilePath != "" {
+			localConfigPath = filepath.Join(
+				workingDirectory,
+				prevFilePath,
+			)
+		}
 		// rename the temporary config file name to the remote config
 		// file path if we are patching an existing remote config
-		if len(projectConfig) > 0 {
+		if prevFilePath != "" || len(projectConfig) > 0 {
 			if err = os.Rename(configFilePath, localConfigPath); err != nil {
 				return nil, errors.Wrapf(err, "renaming file '%s' to '%s'", configFilePath, localConfigPath)
 			}
