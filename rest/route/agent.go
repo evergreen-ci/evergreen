@@ -459,7 +459,8 @@ func (h *getExpansionsAndVarsHandler) Run(ctx context.Context) gimlet.Responder 
 		}))
 	}
 
-	e, err := model.PopulateExpansions(t, foundHost, oauthToken, appToken)
+	knownHosts := h.settings.Expansions[evergreen.GithubKnownHosts]
+	e, err := model.PopulateExpansions(t, foundHost, oauthToken, appToken, knownHosts)
 	if err != nil {
 		return gimlet.NewJSONInternalErrorResponse(errors.Wrap(err, "populating expansions"))
 	}
@@ -544,10 +545,11 @@ func (h *getProjectRefHandler) Run(ctx context.Context) gimlet.Responder {
 		})
 	}
 
-	if p.DefaultLogger == "" {
-		// If the default logger is not set at the project level, use
-		// the global default logger.
-		p.DefaultLogger = evergreen.GetEnvironment().Settings().LoggerConfig.DefaultLogger
+	settings := evergreen.GetEnvironment().Settings()
+	if utility.StringSliceContains(settings.LoggerConfig.EvergreenLoggerProjects, p.Id) {
+		p.DefaultLogger = model.EvergreenLogSender
+	} else {
+		p.DefaultLogger = settings.LoggerConfig.DefaultLogger
 	}
 
 	return gimlet.NewJSONResponse(p)
