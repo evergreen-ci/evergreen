@@ -565,8 +565,8 @@ func (gh *githubHookApi) refreshPatchStatus(ctx context.Context, owner, repo str
 // AddIntentForPR takes a pr and checks if that pr is applicable for CI and if it is, does one of two things.
 // If overrideExisting is false, it only creates a PR if no PR has the same head sha. If any exist, it
 // comments on the PR and no-ops.
-// If overrideExisting is true, it always creates a PR and cancels any other ones if they exist, commenting
-// on the PR's that they were canceled in favor of the new one.
+// If overrideExisting is true, it always creates a PR and aborts any other ones if they exist, commenting
+// on the PR's that they were aborted in favor of the new one.
 func (gh *githubHookApi) AddIntentForPR(ctx context.Context, pr *github.PullRequest, owner, calledBy string, overrideExisting bool) error {
 	ghi, err := patch.NewGithubIntent(gh.msgID, owner, calledBy, pr)
 	if err != nil {
@@ -592,9 +592,9 @@ func (gh *githubHookApi) AddIntentForPR(ctx context.Context, pr *github.PullRequ
 		}
 	}
 
-	patches, err := getOtherPatchesWithHash(pr.Head.GetSHA(), *pr.Number)
+	conflictingPatches, err := getOtherPatchesWithHash(pr.Head.GetSHA(), *pr.Number)
 	if err != nil {
-		grip.Info(message.Fields{
+		grip.Error(message.Fields{
 			"message":           "error getting same hash patches",
 			"owner":             pr.Base.User.GetLogin(),
 			"repo":              pr.Base.Repo.GetName(),
@@ -608,7 +608,7 @@ func (gh *githubHookApi) AddIntentForPR(ctx context.Context, pr *github.PullRequ
 	}
 
 	// If no conflicting patches exist, we can create the patch
-	if len(patches) == 0 {
+	if len(conflictingPatches) == 0 {
 		return errors.Wrap(data.AddPatchIntent(ghi, gh.queue), "saving GitHub patch intent")
 	}
 
@@ -616,17 +616,19 @@ func (gh *githubHookApi) AddIntentForPR(ctx context.Context, pr *github.PullRequ
 	if !overrideExisting {
 		// We want to comment on explaining why a new patch will not be ran.
 		grip.Info(message.Fields{
-			"message": "skipping CI on PR due to patch already existing",
-			"owner":   pr.Base.User.GetLogin(),
-			"repo":    pr.Base.Repo.GetName(),
-			"ref":     pr.Head.GetRef(),
-			"pr_num":  pr.GetNumber(),
+			"message":         "skipping CI on PR due to patch already existing",
+			"owner":           pr.Base.User.GetLogin(),
+			"repo":            pr.Base.Repo.GetName(),
+			"ref":             pr.Head.GetRef(),
+			"pr_num":          pr.GetNumber(),
+			"head_sha":        pr.Head.GetSHA(),
+			"conflicting_prs": gh.comments.getLinksForPRPatches(conflictingPatches),
 		})
-		return gh.sc.AddCommentToPR(ctx, pr.Base.User.GetLogin(), pr.Base.Repo.GetName(), pr.GetNumber(), gh.comments.existingPatches(patches))
+		return gh.sc.AddCommentToPR(ctx, pr.Base.User.GetLogin(), pr.Base.Repo.GetName(), pr.GetNumber(), gh.comments.existingPatches(conflictingPatches))
 	}
 
 	// If we do want to override any existing patches, we override them and then create a new patch.
-	err = gh.overrideOtherPRs(ctx, pr, ghi, patches)
+	err = gh.overrideOtherPRs(ctx, pr, ghi, conflictingPatches)
 	if err != nil {
 		return errors.Wrap(err, "overriding other PRs")
 	}
@@ -634,21 +636,22 @@ func (gh *githubHookApi) AddIntentForPR(ctx context.Context, pr *github.PullRequ
 	return errors.Wrap(data.AddPatchIntent(ghi, gh.queue), "saving GitHub patch intent")
 }
 
-// overrideOtherPRs cancels all the patches in the list and comments on the PR's that they were canceled.
+// overrideOtherPRs aborts all the patches in the list and comments on the PR's that they were aborted.
 // As well as comments on the given PR that it is overriding the other patches.
-func (gh *githubHookApi) overrideOtherPRs(ctx context.Context, pr *github.PullRequest, intent patch.Intent, patches []patch.Patch) error {
-	// If we want to override existing patches, we need to cancel them and create a new patch.
-	// While informing all the PR's that their patch was canceled in favor of the new one.
+func (gh *githubHookApi) overrideOtherPRs(ctx context.Context, pr *github.PullRequest, intent patch.Intent, conflictingPatches []patch.Patch) error {
+	// If we want to override existing patches, we need to abort them and create a new patch.
+	// While informing all the PR's that their patch was aborted in favor of the new one.
 	grip.Info(message.Fields{
-		"message": "cancelling existing CI on same SHA patches",
-		"owner":   pr.Base.User.GetLogin(),
-		"repo":    pr.Base.Repo.GetName(),
-		"ref":     pr.Head.GetRef(),
-		"pr_num":  pr.GetNumber(),
+		"message":         "aborting existing CI on same SHA patches",
+		"owner":           pr.Base.User.GetLogin(),
+		"repo":            pr.Base.Repo.GetName(),
+		"ref":             pr.Head.GetRef(),
+		"pr_num":          pr.GetNumber(),
+		"conflicting_prs": gh.comments.getLinksForPRPatches(conflictingPatches),
 	})
 
-	// Cancel patches, and if any fail, comment on the PR to inform the user and no-op.
-	for _, p := range patches {
+	// Abort patches, and if any fail, comment on the PR to inform the user and no-op.
+	for _, p := range conflictingPatches {
 		err := model.CancelPatch(&p, task.AbortInfo{User: evergreen.GithubPatchUser, NewVersion: "", PRClosed: false})
 		if err == nil {
 			continue
@@ -665,17 +668,17 @@ func (gh *githubHookApi) overrideOtherPRs(ctx context.Context, pr *github.PullRe
 			"pr_num":  pr.GetNumber(),
 			"err":     err.Error(),
 		})
-		return errors.Wrapf(err, "cancelling patch '%s' for repo '%s/%s' at PR '%d'", p.Id, pr.Base.User.GetLogin(), pr.Base.Repo.GetName(), pr.GetNumber())
+		return errors.Wrapf(err, "aborting patch '%s' for repo '%s/%s' at PR '%d'", p.Id, pr.Base.User.GetLogin(), pr.Base.Repo.GetName(), pr.GetNumber())
 	}
 
-	// Now comment on the PR's that were canceled.
-	// If these error, we should should still continue and create a patch as the others were cancelled.
+	// Now comment on the PR's that were aborted.
+	// If these error, we should should still continue and create a patch as the others were aborted.
 	catcher := grip.NewBasicCatcher()
-	for _, p := range patches {
+	for _, p := range conflictingPatches {
 		catcher.Add(gh.sc.AddCommentToPR(ctx, p.GithubPatchData.BaseOwner, p.GithubPatchData.BaseRepo, p.GithubPatchData.PRNumber, gh.comments.overriddenPR(pr)))
 	}
 
-	catcher.Add(gh.sc.AddCommentToPR(ctx, pr.Base.User.GetLogin(), pr.Base.Repo.GetName(), pr.GetNumber(), gh.comments.overriddingPR(patches)))
+	catcher.Add(gh.sc.AddCommentToPR(ctx, pr.Base.User.GetLogin(), pr.Base.Repo.GetName(), pr.GetNumber(), gh.comments.overriddingPR(conflictingPatches)))
 	grip.Error(message.WrapError(catcher.Resolve(), message.Fields{
 		"message": "error informing user(s) that aborting other patches failed",
 		"owner":   pr.Base.User.GetLogin(),
@@ -906,7 +909,7 @@ func getOtherPatchesWithHash(githash string, prNum int) ([]patch.Patch, error) {
 		return nil, errors.Wrapf(err, "getting same hash patches")
 	}
 	// Remove a patch associated with this PR if applicable.
-	var filtered = []patch.Patch{}
+	filtered := []patch.Patch{}
 	for _, p := range patches {
 		if p.GithubPatchData.PRNumber != prNum {
 			filtered = append(filtered, p)
