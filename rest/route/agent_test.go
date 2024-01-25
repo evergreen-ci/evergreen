@@ -200,7 +200,7 @@ func TestMarkTaskForReset(t *testing.T) {
 			require.NoError(t, foundTask.MarkEnd(time.Now(), &apimodels.TaskEndDetail{
 				Status: evergreen.TaskFailed,
 			}))
-			require.NoError(t, foundTask.Archive())
+			require.NoError(t, foundTask.Archive(ctx))
 			require.NoError(t, foundTask.Reset(ctx))
 			resp = rh.Run(ctx)
 			require.NotZero(t, resp)
@@ -608,19 +608,8 @@ func TestAgentGetProjectRef(t *testing.T) {
 	require.NoError(t, task1.Insert())
 	require.NoError(t, projRef1.Insert())
 	// Set the default logger after inserting into the DB since this should
-	// be set dynamically by the route handler when not set.
+	// be set dynamically by the route handler.
 	projRef1.DefaultLogger = "buildlogger"
-
-	task2 := &task.Task{
-		Id:      "task2",
-		Project: "project2",
-	}
-	projRef2 := &model.ProjectRef{
-		Id:            "project2",
-		DefaultLogger: "evergreen",
-	}
-	require.NoError(t, task2.Insert())
-	require.NoError(t, projRef2.Insert())
 
 	task3 := &task.Task{
 		Id:      "task3",
@@ -645,16 +634,10 @@ func TestAgentGetProjectRef(t *testing.T) {
 			expectedStatus: http.StatusNotFound,
 		},
 		{
-			name:           "GlobalLogger",
+			name:           "ProjectRef",
 			taskID:         task1.Id,
 			expectedStatus: http.StatusOK,
 			expectedData:   projRef1,
-		},
-		{
-			name:           "ProjectLogger",
-			taskID:         task2.Id,
-			expectedStatus: http.StatusOK,
-			expectedData:   projRef2,
 		},
 	} {
 		t.Run(test.name, func(t *testing.T) {

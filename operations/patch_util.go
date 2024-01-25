@@ -632,22 +632,18 @@ Continue?`, uncommittedChangesFlag), true), nil
 // If no dir is provided, we use the current working directory.
 // The branch argument is used to determine where to generate the merge base from, and any extra
 // arguments supplied are passed directly in as additional args to git diff.
+// TODO: DEVPROD-3740 Re-implement the changes for this function from https://github.com/evergreen-ci/evergreen/pull/7311
 func loadGitData(dir, remote, branch, ref, commits string, format bool, extraArgs ...string) (*localDiff, error) {
-	if remote == "" {
-		remote = "upstream"
-	}
-	// remote/branch refers directly to the remote branch and does not require a local branch.
-	// branch@{remote} refers to the remote branch that "branch" is tracking.
+	// branch@{upstream} refers to the branch that the branch specified by branchname is set to
+	// build on top of. For example, if a user's repo is a fork, this allows automatic detection
+	// of a branch based on the correct remote. This also works with a commit hash, if given.
 	// In the case a range is passed, we only need one commit to determine the base, so we use the first commit.
 	// For details see: https://git-scm.com/docs/gitrevisions
 
-	mergeBase, err := gitMergeBase(dir, fmt.Sprintf("%s/%s", remote, branch), ref, commits)
+	mergeBase, err := gitMergeBase(dir, branch+"@{upstream}", ref, commits)
 	if err != nil {
-		mergeBase, err = gitMergeBase(dir, branch+"@{upstream}", ref, commits)
-		if err != nil {
-			return nil, errors.Wrapf(err, "Error getting merge base, "+
-				"may need to create local branch '%s' and have it track your Evergreen project", branch)
-		}
+		return nil, errors.Wrapf(err, "Error getting merge base, "+
+			"may need to create local branch '%s' and have it track upstream", branch)
 	}
 	statArgs := []string{"--stat"}
 	if len(extraArgs) > 0 {

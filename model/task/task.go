@@ -633,7 +633,7 @@ func (t *Task) SetOverrideDependencies(userID string) error {
 	)
 }
 
-func (t *Task) AddDependency(d Dependency) error {
+func (t *Task) AddDependency(ctx context.Context, d Dependency) error {
 	// ensure the dependency doesn't already exist
 	for _, existingDependency := range t.DependsOn {
 		if d.TaskId == t.Id {
@@ -648,7 +648,7 @@ func (t *Task) AddDependency(d Dependency) error {
 			if existingDependency.Unattainable == d.Unattainable {
 				return nil // nothing to be done
 			}
-			return errors.Wrapf(t.MarkUnattainableDependency(existingDependency.TaskId, d.Unattainable),
+			return errors.Wrapf(t.MarkUnattainableDependency(ctx, existingDependency.TaskId, d.Unattainable),
 				"updating matching dependency '%s' for task '%s'", existingDependency.TaskId, t.Id)
 		}
 	}
@@ -871,18 +871,14 @@ func (t *Task) AllDependenciesSatisfied(cache map[string]Task) (bool, error) {
 
 // MarkDependenciesFinished updates all direct dependencies on this task to
 // cache whether or not this task has finished running.
-func (t *Task) MarkDependenciesFinished(finished bool) error {
+func (t *Task) MarkDependenciesFinished(ctx context.Context, finished bool) error {
 	if t.DisplayOnly {
 		// This update can be skipped for display tasks since tasks are not
 		// allowed to have dependencies on display tasks.
 		return nil
 	}
 
-	env := evergreen.GetEnvironment()
-	ctx, cancel := env.Context()
-	defer cancel()
-
-	_, err := env.DB().Collection(Collection).UpdateMany(ctx,
+	_, err := evergreen.GetEnvironment().DB().Collection(Collection).UpdateMany(ctx,
 		bson.M{
 			DependsOnKey: bson.M{"$elemMatch": bson.M{
 				DependencyTaskIdKey: t.Id,
@@ -1424,7 +1420,7 @@ func UnscheduleStaleUnderwaterHostTasks(ctx context.Context, distroID string) (i
 
 	// Force the query to use 'distro_1_status_1_activated_1_priority_1_override_dependencies_1_unattainable_dependency_1'
 	// instead of defaulting to 'status_1_depends_on.status_1_depends_on.unattainable_1'.
-	info, err := UpdateAllWithHint(query, update, ActivatedTasksByDistroIndex)
+	info, err := UpdateAllWithHint(ctx, query, update, ActivatedTasksByDistroIndex)
 	if err != nil {
 		return 0, errors.Wrap(err, "unscheduling stale underwater tasks")
 	}
@@ -2445,9 +2441,9 @@ func (t *Task) MarkUnscheduled() error {
 
 // MarkUnattainableDependency updates the unattainable field for the dependency in the task's dependency list,
 // and logs if the task is newly blocked.
-func (t *Task) MarkUnattainableDependency(dependencyId string, unattainable bool) error {
+func (t *Task) MarkUnattainableDependency(ctx context.Context, dependencyId string, unattainable bool) error {
 	wasBlocked := t.Blocked()
-	if err := t.updateAllMatchingDependenciesForTask(dependencyId, unattainable); err != nil {
+	if err := t.updateAllMatchingDependenciesForTask(ctx, dependencyId, unattainable); err != nil {
 		return errors.Wrapf(err, "updating matching dependencies for task '%s'", t.Id)
 	}
 
@@ -2529,12 +2525,12 @@ func (t *Task) Insert() error {
 // considered the latest execution. This task execution is inserted
 // into the old_tasks collection. If this is a display task, its execution tasks
 // are also archived.
-func (t *Task) Archive() error {
+func (t *Task) Archive(ctx context.Context) error {
 	if !utility.StringSliceContains(evergreen.TaskCompletedStatuses, t.Status) {
 		return nil
 	}
 	if t.DisplayOnly && len(t.ExecutionTasks) > 0 {
-		return errors.Wrapf(ArchiveMany([]Task{*t}), "archiving display task '%s'", t.Id)
+		return errors.Wrapf(ArchiveMany(ctx, []Task{*t}), "archiving display task '%s'", t.Id)
 	} else {
 		// Archiving a single task.
 		archiveTask := t.makeArchivedTask()
@@ -2570,7 +2566,7 @@ func (t *Task) Archive() error {
 // expects that each one is going to be archived and progressed to the next execution.
 // For execution tasks in display tasks, it will properly account for archiving
 // only tasks that should be if failed.
-func ArchiveMany(tasks []Task) error {
+func ArchiveMany(ctx context.Context, tasks []Task) error {
 	allTaskIds := []string{}          // Contains all tasks and display tasks IDs
 	execTaskIds := []string{}         // Contains all exec tasks IDs
 	toUpdateExecTaskIds := []string{} // Contains all exec tasks IDs that should update and have new execution
@@ -2612,7 +2608,7 @@ func ArchiveMany(tasks []Task) error {
 		}
 	}
 
-	return archiveAll(allTaskIds, execTaskIds, toUpdateExecTaskIds, archivedTasks)
+	return archiveAll(ctx, allTaskIds, execTaskIds, toUpdateExecTaskIds, archivedTasks)
 }
 
 // archiveAll takes in:
@@ -2620,10 +2616,8 @@ func ArchiveMany(tasks []Task) error {
 // - execTaskIds            : All execution task IDs
 // - toRestartExecTaskIds   : All execution task IDs for execution tasks that will be archived/restarted
 // - archivedTasks          : All archived tasks created by Task.makeArchivedTask()
-func archiveAll(taskIds, execTaskIds, toRestartExecTaskIds []string, archivedTasks []interface{}) error {
+func archiveAll(ctx context.Context, taskIds, execTaskIds, toRestartExecTaskIds []string, archivedTasks []interface{}) error {
 	mongoClient := evergreen.GetEnvironment().Client()
-	ctx, cancel := evergreen.GetEnvironment().Context()
-	defer cancel()
 	session, err := mongoClient.StartSession()
 	if err != nil {
 		return errors.Wrap(err, "starting DB session")

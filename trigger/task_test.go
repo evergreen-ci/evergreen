@@ -439,6 +439,9 @@ func (s *taskSuite) TestAllTriggers() {
 }
 
 func (s *taskSuite) TestAbortedTaskDoesNotNotify() {
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
 	n, err := NotificationsFromEvent(s.ctx, &s.event)
 	s.NoError(err)
 	s.NotEmpty(n)
@@ -447,7 +450,7 @@ func (s *taskSuite) TestAbortedTaskDoesNotNotify() {
 	s.NoError(db.Update(task.Collection, bson.M{"_id": s.task.Id}, &s.task))
 
 	// works even if the task is archived
-	s.NoError(s.task.Archive())
+	s.NoError(s.task.Archive(ctx))
 
 	n, err = NotificationsFromEvent(s.ctx, &s.event)
 	s.NoError(err)
@@ -919,7 +922,7 @@ func (s *taskSuite) TestRegressionByTestWithReruns() {
 
 	// now simulate a rerun of task18 failing
 	s.task = task18
-	s.NoError(s.task.Archive())
+	s.NoError(s.task.Archive(ctx))
 	s.task.Status = evergreen.TaskFailed
 	s.task.Execution = 1
 	s.event.ResourceId = s.task.Id
@@ -930,7 +933,7 @@ func (s *taskSuite) TestRegressionByTestWithReruns() {
 	s.tryDoubleTrigger(true)
 
 	// make it fail again; it shouldn't generate
-	s.NoError(s.task.Archive())
+	s.NoError(s.task.Archive(ctx))
 	s.task.Status = evergreen.TaskFailed
 	s.task.Execution = 2
 	s.event.ResourceId = s.task.Id

@@ -143,9 +143,15 @@ func TestAttachXUnitWildcardResults(t *testing.T) {
 }
 
 func TestXUnitParseAndUpload(t *testing.T) {
-	testConfig := testutil.TestConfig()
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
+
+	testConfig := testutil.TestConfig()
+	// These test don't actually need the integration test settings, but
+	// MakeTaskConfigFromModelData needs it to create an (unused) GitHub app
+	// token.
+	testutil.ConfigureIntegrationTest(t, testConfig, t.Name())
+
 	comm := client.NewMock("/dev/null")
 	modelData, err := modelutil.SetupAPITestData(testConfig, "aggregation", "rhel55", WildcardConfig, modelutil.NoPatch)
 	require.NoError(t, err)

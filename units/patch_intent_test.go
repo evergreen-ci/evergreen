@@ -31,11 +31,13 @@ import (
 )
 
 type PatchIntentUnitsSuite struct {
-	sender   *send.InternalSender
-	env      *mock.Environment
-	suiteCtx context.Context
-	cancel   context.CancelFunc
-	ctx      context.Context
+	sender         *send.InternalSender
+	env            *mock.Environment
+	originalEnv    evergreen.Environment
+	originalConfig *evergreen.Settings
+	suiteCtx       context.Context
+	cancel         context.CancelFunc
+	ctx            context.Context
 
 	repo            string
 	headRepo        string
@@ -64,6 +66,11 @@ func (s *PatchIntentUnitsSuite) TearDownSuite() {
 	s.cancel()
 }
 
+func (s *PatchIntentUnitsSuite) TearDownTest() {
+	evergreen.SetEnvironment(s.originalEnv)
+	s.NoError(evergreen.UpdateConfig(s.ctx, s.originalConfig))
+}
+
 func (s *PatchIntentUnitsSuite) SetupTest() {
 	s.sender = send.MakeInternalLogger()
 	s.env = &mock.Environment{}
@@ -73,6 +80,23 @@ func (s *PatchIntentUnitsSuite) SetupTest() {
 
 	testutil.ConfigureIntegrationTest(s.T(), s.env.Settings(), s.T().Name())
 	s.NotNil(s.env.Settings())
+
+	// This setup has to both:
+	// 1. update the admin settings in the DB and
+	// 2. set the global environment.
+	//
+	// Both are necessary because deep down in the logic to set up GitHub merge
+	// queue subscriptions, it ignores the job's environment and instead:
+	// 1. loads the GitHub app settings directly from the DB to check branch
+	//       protection settings (so it's using the DB settings) and
+	// 2. calls evergreen.GetEnvironment directly to send a pending status to
+	//       GitHub (so it's using the global testing environment).
+	s.originalEnv = evergreen.GetEnvironment()
+	originalConfig, err := evergreen.GetConfig(s.ctx)
+	s.Require().NoError(err)
+	s.originalConfig = originalConfig
+	evergreen.SetEnvironment(s.env)
+	s.NoError(evergreen.UpdateConfig(s.ctx, s.env.Settings()))
 
 	s.NoError(db.ClearCollections(evergreen.ConfigCollection, task.Collection, model.ProjectVarsCollection,
 		model.ParserProjectCollection, model.VersionCollection, user.Collection, model.ProjectRefCollection,
@@ -934,7 +958,6 @@ func (s *PatchIntentUnitsSuite) TestBuildTasksAndVariantsWithReusePatchId() {
 }
 
 func (s *PatchIntentUnitsSuite) TestProcessMergeGroupIntent() {
-	s.NoError(evergreen.UpdateConfig(s.ctx, testutil.TestConfig()))
 	headRef := "refs/heads/gh-readonly-queue/main/pr-515-9cd8a2532bcddf58369aa82eb66ba88e2323c056"
 	orgName := "evergreen-ci"
 	repoName := "commit-queue-sandbox"
@@ -963,7 +986,6 @@ func (s *PatchIntentUnitsSuite) TestProcessMergeGroupIntent() {
 	s.NoError(intent.Insert())
 
 	j := NewPatchIntentProcessor(s.env, mgobson.NewObjectId(), intent).(*patchIntentProcessor)
-	j.env = s.env
 
 	patchDoc := intent.NewPatch()
 	s.NoError(j.finishPatch(s.ctx, patchDoc))

@@ -198,6 +198,9 @@ type MoveProjectInput struct {
 	ProjectID string `json:"projectId"`
 }
 
+type Mutation struct {
+}
+
 // Return type representing whether a distro was created and any validation errors
 type NewDistroPayload struct {
 	NewDistroID string `json:"newDistroId"`
@@ -291,6 +294,9 @@ type ProjectPermissionsOptions struct {
 type PublicKeyInput struct {
 	Key  string `json:"key"`
 	Name string `json:"name"`
+}
+
+type Query struct {
 }
 
 type SSHKey struct {

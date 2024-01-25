@@ -428,6 +428,17 @@ Admin Settings
 												</td>
 											</tr>
 											<tr>
+												<td>Unexpirable host sleep schedule</td>
+												<td colspan="2">
+													<md-radio-group
+														data-ng-model="Settings.service_flags.sleep_schedule_disabled"
+														layout="row">
+														<md-radio-button data-ng-value="false"></md-radio-button>
+														<md-radio-button data-ng-value="true"></md-radio-button>
+													</md-radio-group>
+												</td>
+											</tr>
+											<tr>
 												<td>&nbsp;</td>
 											</tr>
 											<tr>
@@ -1855,6 +1866,14 @@ Admin Settings
 									<md-input-container class="control" style="width:45%;">
 										<label>Parser Project S3 Prefix</label>
 										<input type="text" ng-model="Settings.providers.aws.parser_project.prefix">
+									</md-input-container>
+									<md-input-container class="control" style="width:45%; margin-left:50px;">
+										<label>Persistent DNS Hosted Zone ID</label>
+										<input type="text" ng-model="Settings.providers.aws.persistent_dns.hosted_zone_id">
+									</md-input-container>
+									<md-input-container class="control" style="width:45%;">
+										<label>Persistent DNS Domain Name</label>
+										<input type="text" ng-model="Settings.providers.aws.persistent_dns.domain">
 									</md-input-container>
 									<md-input-container class="control" style="width:45%; margin-left:50px;">
 										<label>Default Security Group</label>

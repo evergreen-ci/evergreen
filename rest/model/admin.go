@@ -1525,6 +1525,7 @@ type APIAWSConfig struct {
 	TaskSync             *APIS3Credentials         `json:"task_sync"`
 	TaskSyncRead         *APIS3Credentials         `json:"task_sync_read"`
 	ParserProject        *APIParserProjectS3Config `json:"parser_project"`
+	PersistentDNS        *APIPersistentDNSConfig   `json:"persistent_dns"`
 	DefaultSecurityGroup *string                   `json:"default_security_group"`
 	AllowedInstanceTypes []*string                 `json:"allowed_instance_types"`
 	AllowedRegions       []*string                 `json:"allowed_regions"`
@@ -1574,6 +1575,12 @@ func (a *APIAWSConfig) BuildFromService(h interface{}) error {
 			return errors.Wrap(err, "converting parser project S3 config to API model")
 		}
 		a.ParserProject = parserProject
+
+		persistentDNS := &APIPersistentDNSConfig{}
+		if err := persistentDNS.BuildFromService(v.PersistentDNS); err != nil {
+			return errors.Wrap(err, "converting persistent DNS config to API model")
+		}
+		a.PersistentDNS = persistentDNS
 
 		a.DefaultSecurityGroup = utility.ToStringPtr(v.DefaultSecurityGroup)
 		a.MaxVolumeSizePerUser = &v.MaxVolumeSizePerUser
@@ -1653,6 +1660,19 @@ func (a *APIAWSConfig) ToService() (interface{}, error) {
 		}
 	}
 	config.ParserProject = parserProject
+
+	i, err = a.PersistentDNS.ToService()
+	if err != nil {
+		return nil, errors.Wrap(err, "converting persistent DNS config to service model")
+	}
+	var persistentDNS evergreen.PersistentDNSConfig
+	if i != nil {
+		persistentDNS, ok = i.(evergreen.PersistentDNSConfig)
+		if !ok {
+			return nil, errors.Errorf("programmatic error: expected parser project S3 config but got type %T", i)
+		}
+	}
+	config.PersistentDNS = persistentDNS
 
 	if a.MaxVolumeSizePerUser != nil {
 		config.MaxVolumeSizePerUser = *a.MaxVolumeSizePerUser
@@ -1757,6 +1777,34 @@ func (a *APIParserProjectS3Config) ToService() (interface{}, error) {
 		},
 		Prefix:              utility.FromStringPtr(a.Prefix),
 		GeneratedJSONPrefix: utility.FromStringPtr(a.GeneratedJSONPrefix),
+	}, nil
+}
+
+// APIPersistentDNSConfig represents configuration options for supporting
+// persistent DNS names for hosts.
+type APIPersistentDNSConfig struct {
+	HostedZoneID *string `json:"hosted_zone_id"`
+	Domain       *string `json:"domain"`
+}
+
+func (a *APIPersistentDNSConfig) BuildFromService(h interface{}) error {
+	switch v := h.(type) {
+	case evergreen.PersistentDNSConfig:
+		a.HostedZoneID = utility.ToStringPtr(v.HostedZoneID)
+		a.Domain = utility.ToStringPtr(v.Domain)
+		return nil
+	default:
+		return errors.Errorf("programmatic error: expected parser project S3 config but got type %T", h)
+	}
+}
+
+func (a *APIPersistentDNSConfig) ToService() (interface{}, error) {
+	if a == nil {
+		return nil, nil
+	}
+	return evergreen.PersistentDNSConfig{
+		HostedZoneID: utility.FromStringPtr(a.HostedZoneID),
+		Domain:       utility.FromStringPtr(a.Domain),
 	}, nil
 }
 
@@ -2129,6 +2177,7 @@ type APIServiceFlags struct {
 	LegacyUIPublicAccessDisabled   bool `json:"legacy_ui_public_access_disabled"`
 	GlobalGitHubTokenDisabled      bool `json:"global_github_token_disabled"`
 	LegacyUIDistroPageDisabled     bool `json:"legacy_ui_distro_page_disabled"`
+	SleepScheduleDisabled          bool `json:"sleep_schedule_disabled"`
 
 	// Notifications Flags
 	EventProcessingDisabled      bool `json:"event_processing_disabled"`
@@ -2422,6 +2471,7 @@ func (as *APIServiceFlags) BuildFromService(h interface{}) error {
 		as.LegacyUIPublicAccessDisabled = v.LegacyUIPublicAccessDisabled
 		as.GlobalGitHubTokenDisabled = v.GlobalGitHubTokenDisabled
 		as.LegacyUIDistroPageDisabled = v.LegacyUIDistroPageDisabled
+		as.SleepScheduleDisabled = v.SleepScheduleDisabled
 	default:
 		return errors.Errorf("programmatic error: expected service flags config but got type %T", h)
 	}
@@ -2465,6 +2515,7 @@ func (as *APIServiceFlags) ToService() (interface{}, error) {
 		LegacyUIPublicAccessDisabled:   as.LegacyUIPublicAccessDisabled,
 		GlobalGitHubTokenDisabled:      as.GlobalGitHubTokenDisabled,
 		LegacyUIDistroPageDisabled:     as.LegacyUIDistroPageDisabled,
+		SleepScheduleDisabled:          as.SleepScheduleDisabled,
 	}, nil
 }
 

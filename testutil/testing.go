@@ -58,7 +58,6 @@ func ConfigureIntegrationTest(t *testing.T, testSettings *evergreen.Settings, te
 
 	if val, ok := integrationSettings.Expansions[evergreen.GithubAppPrivateKey]; ok {
 		testSettings.Expansions[evergreen.GithubAppPrivateKey] = val
-
 	}
 	err = testSettings.Set(context.Background())
 	require.NoError(t, err, "Error updating admin settings in DB")
