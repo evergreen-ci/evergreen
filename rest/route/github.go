@@ -638,7 +638,7 @@ func (gh *githubHookApi) AddIntentForPR(ctx context.Context, pr *github.PullRequ
 
 // overrideOtherPRs aborts all the patches in the list and comments on the PR's that they were aborted.
 // As well as comments on the given PR that it is overriding the other patches.
-func (gh *githubHookApi) overrideOtherPRs(ctx context.Context, pr *github.PullRequest, intent patch.Intent, conflictingPatches []patch.Patch) error {
+func (gh *githubHookApi) overrideOtherPRs(ctx context.Context, pr *github.PullRequest, intent patch.Intent, patches []patch.Patch) error {
 	// If we want to override existing patches, we need to abort them and create a new patch.
 	// While informing all the PR's that their patch was aborted in favor of the new one.
 	grip.Info(message.Fields{
@@ -647,38 +647,17 @@ func (gh *githubHookApi) overrideOtherPRs(ctx context.Context, pr *github.PullRe
 		"repo":            pr.Base.Repo.GetName(),
 		"ref":             pr.Head.GetRef(),
 		"pr_num":          pr.GetNumber(),
-		"conflicting_prs": gh.comments.getLinksForPRPatches(conflictingPatches),
+		"conflicting_prs": gh.comments.getLinksForPRPatches(patches),
 	})
 
-	// Abort patches, and if any fail, comment on the PR to inform the user and no-op.
-	for _, p := range conflictingPatches {
-		err := model.CancelPatch(&p, task.AbortInfo{User: evergreen.GithubPatchUser, NewVersion: "", PRClosed: false})
-		if err == nil {
-			continue
-		}
-		err = gh.sc.AddCommentToPR(ctx, pr.Base.User.GetLogin(), pr.Base.Repo.GetName(), pr.GetNumber(), "There was an issue aborting the other patches, please try 'evergreen retry' again.")
-		if err == nil {
-			continue
-		}
-		grip.Error(message.Fields{
-			"message": "error informing user that aborting other patches failed",
-			"owner":   pr.Base.User.GetLogin(),
-			"repo":    pr.Base.Repo.GetName(),
-			"ref":     pr.Head.GetRef(),
-			"pr_num":  pr.GetNumber(),
-			"err":     err.Error(),
-		})
-		return errors.Wrapf(err, "aborting patch '%s' for repo '%s/%s' at PR '%d'", p.Id, pr.Base.User.GetLogin(), pr.Base.Repo.GetName(), pr.GetNumber())
-	}
-
-	// Now comment on the PR's that were aborted.
+	// Comment on the PR's that were aborted and then abort them.
 	// If these error, we should should still continue and create a patch as the others were aborted.
 	catcher := grip.NewBasicCatcher()
-	for _, p := range conflictingPatches {
+	for _, p := range patches {
 		catcher.Add(gh.sc.AddCommentToPR(ctx, p.GithubPatchData.BaseOwner, p.GithubPatchData.BaseRepo, p.GithubPatchData.PRNumber, gh.comments.overriddenPR(pr)))
 	}
 
-	catcher.Add(gh.sc.AddCommentToPR(ctx, pr.Base.User.GetLogin(), pr.Base.Repo.GetName(), pr.GetNumber(), gh.comments.overriddingPR(conflictingPatches)))
+	catcher.Add(gh.sc.AddCommentToPR(ctx, pr.Base.User.GetLogin(), pr.Base.Repo.GetName(), pr.GetNumber(), gh.comments.overriddingPR(patches)))
 	grip.Error(message.WrapError(catcher.Resolve(), message.Fields{
 		"message": "error informing user(s) that aborting other patches failed",
 		"owner":   pr.Base.User.GetLogin(),
@@ -686,6 +665,25 @@ func (gh *githubHookApi) overrideOtherPRs(ctx context.Context, pr *github.PullRe
 		"ref":     pr.Head.GetRef(),
 		"pr_num":  pr.GetNumber(),
 	}))
+
+	// Abort patches, and if any fail, comment on the PR to inform the user and no-op.
+	for _, p := range patches {
+		err := model.CancelPatch(&p, task.AbortInfo{User: evergreen.GithubPatchUser, NewVersion: "", PRClosed: false})
+		if err == nil {
+			continue
+		}
+		commentErr := gh.sc.AddCommentToPR(ctx, pr.Base.User.GetLogin(), pr.Base.Repo.GetName(), pr.GetNumber(), "There was an issue aborting the other patches, please try 'evergreen retry' again.")
+		grip.Error(message.Fields{
+			"message":     "error informing user that aborting other patches failed",
+			"owner":       pr.Base.User.GetLogin(),
+			"repo":        pr.Base.Repo.GetName(),
+			"ref":         pr.Head.GetRef(),
+			"pr_num":      pr.GetNumber(),
+			"err":         err.Error(),
+			"comment_err": commentErr.Error(),
+		})
+		return errors.Wrapf(err, "aborting patch '%s' for repo '%s/%s' at PR '%d'", p.Id, pr.Base.User.GetLogin(), pr.Base.Repo.GetName(), pr.GetNumber())
+	}
 
 	return nil
 }
