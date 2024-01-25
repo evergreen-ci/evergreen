@@ -8,7 +8,6 @@ import (
 	"net/http"
 	"os"
 	"strconv"
-	"strings"
 	"sync"
 	"time"
 
@@ -36,8 +35,6 @@ import (
 	"github.com/pkg/errors"
 	"google.golang.org/grpc"
 )
-
-const redactedVariableTemplate = "<redacted:%s>"
 
 // baseCommunicator provides common methods for Communicator functionality but
 // does not implement the entire interface.
@@ -440,6 +437,7 @@ func (c *baseCommunicator) makeSender(ctx context.Context, tsk *task.Task, opts 
 			if err != nil {
 				return nil, nil, errors.Wrap(err, "creating buffered file logger")
 			}
+			grip.Error(sender.SetFormatter(send.MakeDefaultFormatter()))
 		case model.SplunkLogSender:
 			info := send.SplunkConnectionInfo{
 				ServerURL: opt.SplunkServerURL,
@@ -493,7 +491,7 @@ func (c *baseCommunicator) makeSender(ctx context.Context, tsk *task.Task, opts 
 			}
 		}
 
-		grip.Error(sender.SetFormatter(redactingFormatter(projectVars)))
+		sender = newRedactingSender(sender, projectVars)
 		if logType == taskoutput.TaskLogTypeTask {
 			sender = makeTimeoutLogSender(sender, c)
 		}
@@ -501,16 +499,6 @@ func (c *baseCommunicator) makeSender(ctx context.Context, tsk *task.Task, opts 
 	}
 
 	return send.NewConfiguredMultiSender(senders...), underlyingBufferedSenders, nil
-}
-
-func redactingFormatter(vars map[string]string) send.MessageFormatter {
-	return func(c message.Composer) (string, error) {
-		messageString := c.String()
-		for key, val := range vars {
-			messageString = strings.ReplaceAll(messageString, val, fmt.Sprintf(redactedVariableTemplate, key))
-		}
-		return send.MakeDefaultFormatter()(message.NewDefaultMessage(c.Priority(), messageString))
-	}
 }
 
 func (c *baseCommunicator) GetPullRequestInfo(ctx context.Context, taskData TaskData, prNum int, owner, repo string, lastAttempt bool) (*apimodels.PullRequestInfo, error) {
