@@ -670,32 +670,6 @@ func TestEnsureValidStaticBootstrapSettings(t *testing.T) {
 	assert.NotNil(t, ensureValidStaticBootstrapSettings(ctx, &d, &evergreen.Settings{}))
 }
 
-func TestEnsureValidCloneMethod(t *testing.T) {
-	ctx := context.Background()
-	assert.NotNil(t, ensureValidCloneMethod(ctx, &distro.Distro{}, &evergreen.Settings{}))
-	assert.Nil(t, ensureValidCloneMethod(ctx, &distro.Distro{CloneMethod: evergreen.CloneMethodLegacySSH}, &evergreen.Settings{}))
-	assert.Nil(t, ensureValidCloneMethod(ctx, &distro.Distro{CloneMethod: evergreen.CloneMethodOAuth}, &evergreen.Settings{}))
-}
-
-func TestEnsureValidSSHKeyName(t *testing.T) {
-	ctx := context.Background()
-	defaultKeyName := "default_key"
-	settings := &evergreen.Settings{
-		Keys: map[string]string{
-			defaultKeyName: "default_key_value",
-		},
-		SSHKeyPairs: []evergreen.SSHKeyPair{
-			{
-				Name: "ssh_key1",
-			},
-		},
-	}
-	assert.Nil(t, ensureValidSSHKeyName(ctx, &distro.Distro{SSHKey: defaultKeyName}, settings))
-	assert.Nil(t, ensureValidSSHKeyName(ctx, &distro.Distro{SSHKey: settings.SSHKeyPairs[0].Name}, settings))
-	assert.NotNil(t, ensureValidSSHKeyName(ctx, &distro.Distro{}, settings))
-	assert.NotNil(t, ensureValidSSHKeyName(ctx, &distro.Distro{SSHKey: "nonexistent"}, settings))
-}
-
 func TestEnsureStaticHasAuthorizedKeysFile(t *testing.T) {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()

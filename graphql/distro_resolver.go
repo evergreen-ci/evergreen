@@ -312,8 +312,14 @@ func (r *distroInputResolver) Arch(ctx context.Context, obj *model.APIDistro, da
 }
 
 // CloneMethod is the resolver for the cloneMethod field.
-func (r *distroInputResolver) CloneMethod(ctx context.Context, obj *model.APIDistro, data CloneMethod) error {
-	switch data {
+func (r *distroInputResolver) CloneMethod(ctx context.Context, obj *model.APIDistro, data *CloneMethod) error {
+	// If clone method is nil, just set an arbitrary clone method since it does not matter. This resolver will be
+	// deleted in future PRs.
+	if data == nil {
+		obj.CloneMethod = utility.ToStringPtr(evergreen.CloneMethodOAuth)
+		return nil
+	}
+	switch *data {
 	case CloneMethodLegacySSH:
 		obj.CloneMethod = utility.ToStringPtr(evergreen.CloneMethodLegacySSH)
 	case CloneMethodOauth:
