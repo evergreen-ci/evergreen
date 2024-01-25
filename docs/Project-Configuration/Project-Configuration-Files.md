@@ -648,6 +648,9 @@ level on the project configuration page or on a build variant level
 within the project. They can be used **as inputs to commands**,
 including shell scripts.
 
+Expansion values defined on the project configurations page are redacted from task logs
+and replaced with \<redacted:expansion_key\>
+
 Expansions cannot be used recursively. In other words, you can't define an
 expansion whose value uses another expansion.
 
