@@ -29,7 +29,7 @@ const (
 // The S3CopyPlugin consists of zero or more files that are to be copied
 // from one location in S3 to the other.
 type s3copy struct {
-	// AwsKey and AwsSecret are the user's credentials for
+	// AwsKey, AwsSecret, and AwsSessionToken are the user's credentials for
 	// authenticating interactions with s3.
 	AwsKey          string `mapstructure:"aws_key" plugin:"expand"`
 	AwsSecret       string `mapstructure:"aws_secret" plugin:"expand"`
