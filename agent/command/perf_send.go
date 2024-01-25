@@ -68,26 +68,17 @@ func (c *perfSend) Execute(ctx context.Context, comm client.Communicator, logger
 	}
 	c.addEvgData(report, conf)
 
-	// Send data to the Cedar and Data-Pipes services.
+	// Send data to the Cedar service.
 	conn, err := comm.GetCedarGRPCConn(ctx)
 	if err != nil {
 		return errors.Wrap(err, "connecting to Cedar")
 	}
-	dataPipes, err := comm.GetDataPipesConfig(ctx)
-	if err != nil {
-		return errors.Wrap(err, "getting the Data-Pipes config")
-	}
+
 	httpClient := utility.GetDefaultHTTPRetryableClient()
 	defer utility.PutHTTPClient(httpClient)
 	opts := rpc.UploadReportOptions{
-		Report:              report,
-		ClientConn:          conn,
-		DataPipesHost:       dataPipes.Host,
-		DataPipesRegion:     dataPipes.Region,
-		AWSAccessKey:        dataPipes.AWSAccessKey,
-		AWSSecretKey:        dataPipes.AWSSecretKey,
-		AWSToken:            dataPipes.AWSToken,
-		DataPipesHTTPClient: httpClient,
+		Report:     report,
+		ClientConn: conn,
 	}
 	return errors.Wrap(rpc.UploadReport(ctx, opts), "uploading report to Cedar")
 }
