@@ -49,6 +49,16 @@ func TestLogService(t *testing.T) {
 						Timestamp: time.Now().UnixNano(),
 						Data:      "The new line at the end of this line should be handled properly.\n",
 					},
+					{
+						Priority:  level.Info,
+						Timestamp: time.Now().UnixNano(),
+						Data:      "",
+					},
+					{
+						Priority:  level.Info,
+						Timestamp: time.Now().UnixNano(),
+						Data:      "\n",
+					},
 				}
 				require.NoError(t, svc.Append(ctx, logName, lines))
 
