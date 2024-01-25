@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"strings"
 
+	"github.com/evergreen-ci/evergreen/util"
 	"github.com/mongodb/grip/message"
 	"github.com/mongodb/grip/send"
 )
@@ -12,21 +13,24 @@ const redactedVariableTemplate = "<REDACTED:%s>"
 
 type redactingSender struct {
 	send.Sender
-	replacer *strings.Replacer
+	expansions         util.Expansions
+	expansionsToRedact []string
 }
 
 func (r *redactingSender) Send(m message.Composer) {
-	r.Sender.Send(message.NewDefaultMessage(m.Priority(), r.replacer.Replace(m.String())))
+	msg := m.String()
+	for _, expansion := range r.expansionsToRedact {
+		if val := r.expansions.Get(expansion); val != "" {
+			msg = strings.ReplaceAll(msg, val, fmt.Sprintf(redactedVariableTemplate, expansion))
+		}
+	}
+	r.Sender.Send(message.NewDefaultMessage(m.Priority(), msg))
 }
 
-func newRedactingSender(sender send.Sender, substitutions map[string]string) send.Sender {
-	replacements := make([]string, 0, len(substitutions))
-	for key, val := range substitutions {
-		replacements = append(replacements, val, fmt.Sprintf(redactedVariableTemplate, key))
-	}
-	replacer := strings.NewReplacer(replacements...)
+func newRedactingSender(sender send.Sender, expansions util.Expansions, expansionsToRedact []string) send.Sender {
 	return &redactingSender{
-		Sender:   sender,
-		replacer: replacer,
+		Sender:             sender,
+		expansions:         expansions,
+		expansionsToRedact: expansionsToRedact,
 	}
 }

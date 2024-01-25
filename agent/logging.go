@@ -6,6 +6,7 @@ import (
 	"os"
 	"path/filepath"
 
+	"github.com/evergreen-ci/evergreen/agent/command"
 	"github.com/evergreen-ci/evergreen/agent/internal/client"
 	"github.com/evergreen-ci/evergreen/model"
 	"github.com/evergreen-ci/pail"
@@ -115,8 +116,9 @@ func (a *Agent) prepLogger(tc *taskContext, c *model.LoggerConfig, commandName s
 	config := client.LoggerConfig{
 		SendToGlobalSender: a.opts.SendTaskLogsToGlobalSender,
 		AWSCredentials:     pail.CreateAWSCredentials(tc.taskConfig.TaskSync.Key, tc.taskConfig.TaskSync.Secret, ""),
-		ProjectVars:        tc.taskConfig.ProjectVars,
 	}
+	config.Expansions = tc.taskConfig.Expansions
+	config.ExpansionsToRedact = redactList(tc.taskConfig.ProjectVars)
 
 	defaultLogger := tc.taskConfig.ProjectRef.DefaultLogger
 
@@ -167,4 +169,14 @@ func (a *Agent) prepSingleLogger(tc *taskContext, in model.LogOpts, logDir, file
 		SplunkToken:     splunkToken,
 		Filepath:        filepath.Join(logDir, fileName),
 	}
+}
+
+func redactList(projectVars map[string]string) []string {
+	var redact []string
+	for key := range projectVars {
+		redact = append(redact, key)
+	}
+	redact = append(redact, command.ExpansionsToRedact...)
+
+	return redact
 }

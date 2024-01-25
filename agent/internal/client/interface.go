@@ -15,6 +15,7 @@ import (
 	"github.com/evergreen-ci/evergreen/model/task"
 	"github.com/evergreen-ci/evergreen/model/testlog"
 	restmodel "github.com/evergreen-ci/evergreen/rest/model"
+	"github.com/evergreen-ci/evergreen/util"
 	"github.com/mongodb/grip"
 	"google.golang.org/grpc"
 )
@@ -140,7 +141,8 @@ type LoggerConfig struct {
 	Task               []LogOpts
 	SendToGlobalSender bool
 	AWSCredentials     *credentials.Credentials
-	ProjectVars        map[string]string
+	Expansions         util.Expansions
+	ExpansionsToRedact []string
 }
 
 type LogOpts struct {
