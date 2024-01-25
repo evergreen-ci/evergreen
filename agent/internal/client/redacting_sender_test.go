@@ -1,6 +1,7 @@
 package client
 
 import (
+	"fmt"
 	"testing"
 
 	"github.com/mongodb/grip/level"
@@ -21,7 +22,7 @@ func TestRedactingSender(t *testing.T) {
 				"secret_key": "secret_val",
 			},
 			inputString: "secret_val secret_val",
-			expected:    "<redacted:secret_key> <redacted:secret_key>",
+			expected:    fmt.Sprintf("%s %s", fmt.Sprintf(redactedVariableTemplate, "secret_key"), fmt.Sprintf(redactedVariableTemplate, "secret_key")),
 		},
 		"MultipleValues": {
 			substitutions: map[string]string{
@@ -29,14 +30,14 @@ func TestRedactingSender(t *testing.T) {
 				"secret_key2": "secret_val2",
 			},
 			inputString: "secret_val2 secret_val1",
-			expected:    "<redacted:secret_key2> <redacted:secret_key1>",
+			expected:    fmt.Sprintf("%s %s", fmt.Sprintf(redactedVariableTemplate, "secret_key2"), fmt.Sprintf(redactedVariableTemplate, "secret_key1")),
 		},
 		"OverlappingSubstitutions": {
 			substitutions: map[string]string{
 				"secret_key": "cryptic",
 			},
 			inputString: "crypticryptic",
-			expected:    "<redacted:secret_key>ryptic",
+			expected:    fmt.Sprintf("%sryptic", fmt.Sprintf(redactedVariableTemplate, "secret_key")),
 		},
 		"MultipleInstancesOfVal": {
 			substitutions: map[string]string{
@@ -44,7 +45,7 @@ func TestRedactingSender(t *testing.T) {
 				"secret_key2": "secret_val",
 			},
 			inputString: "secret_val",
-			expected:    "<redacted:secret_key1>",
+			expected:    fmt.Sprintf(redactedVariableTemplate, "secret_key1"),
 		},
 	} {
 		t.Run(name, func(t *testing.T) {
