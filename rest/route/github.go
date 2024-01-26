@@ -3,7 +3,6 @@ package route
 import (
 	"context"
 	"fmt"
-	"github.com/evergreen-ci/evergreen/model/user"
 	"github.com/mongodb/grip/level"
 	"net/http"
 	"strings"
@@ -12,7 +11,10 @@ import (
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/model"
 	"github.com/evergreen-ci/evergreen/model/commitqueue"
+	"github.com/evergreen-ci/evergreen/model/event"
 	"github.com/evergreen-ci/evergreen/model/patch"
+	"github.com/evergreen-ci/evergreen/model/user"
+	"github.com/evergreen-ci/evergreen/repotracker"
 	"github.com/evergreen-ci/evergreen/rest/data"
 	"github.com/evergreen-ci/evergreen/thirdparty"
 	"github.com/evergreen-ci/evergreen/units"
@@ -765,6 +767,30 @@ func (gh *githubHookApi) createVersionForTag(ctx context.Context, pRef model.Pro
 			"tag":                tag,
 			"message":            "user not authorized for git tag version",
 		})
+		metadata := model.VersionMetadata{
+			Revision: revision,
+			GitTag:   tag,
+		}
+		stubVersion, dbErr := repotracker.ShellVersionFromRevision(ctx, &pRef, metadata)
+		if dbErr != nil {
+			grip.Error(message.WrapError(dbErr, message.Fields{
+				"message":            "error creating shell version",
+				"project":            pRef.Id,
+				"project_identifier": pRef.Identifier,
+				"revision":           revision,
+			}))
+		}
+		stubVersion.Errors = []string{errors.Errorf("user '%s' not authorized for git tag version", tag.Pusher).Error()}
+		err := stubVersion.Insert()
+		if err != nil {
+			grip.Error(message.WrapError(err, message.Fields{
+				"message":            "error inserting stub version for failed git tag version",
+				"project":            pRef.Id,
+				"project_identifier": pRef.Identifier,
+				"revision":           revision,
+			}))
+		}
+		event.LogVersionStateChangeEvent(stubVersion.Id, evergreen.VersionFailed)
 		userDoc, err := user.FindByGithubName(tag.Pusher)
 		if err != nil {
 			return nil, errors.Wrapf(err, "finding user '%s'", tag.Pusher)
