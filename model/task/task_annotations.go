@@ -6,6 +6,7 @@ import (
 	"github.com/evergreen-ci/evergreen/db"
 	"github.com/evergreen-ci/evergreen/model/annotations"
 	"github.com/mongodb/anser/bsonutil"
+	adb "github.com/mongodb/anser/db"
 	"github.com/pkg/errors"
 	"go.mongodb.org/mongo-driver/bson"
 )
@@ -18,19 +19,22 @@ func MoveIssueToSuspectedIssue(taskId string, taskExecution int, issue annotatio
 	newIssue.Source = &annotations.Source{Requester: annotations.UIRequester, Author: username, Time: time.Now()}
 	q := annotations.ByTaskIdAndExecution(taskId, taskExecution)
 	q[bsonutil.GetDottedKeyName(annotations.IssuesKey, annotations.IssueLinkIssueKey)] = issue.IssueKey
-	if err := db.Update(
+	annotation := &annotations.TaskAnnotation{}
+	_, err := db.FindAndModify(
 		annotations.Collection,
 		q,
-		bson.M{
-			"$pull": bson.M{annotations.IssuesKey: bson.M{annotations.IssueLinkIssueKey: issue.IssueKey}},
-			"$push": bson.M{annotations.SuspectedIssuesKey: newIssue},
+		nil,
+		adb.Change{
+			Update: bson.M{
+				"$pull": bson.M{annotations.IssuesKey: bson.M{annotations.IssueLinkIssueKey: issue.IssueKey}},
+				"$push": bson.M{annotations.SuspectedIssuesKey: newIssue},
+			},
+			ReturnNew: true,
 		},
-	); err != nil {
-		return err
-	}
-	annotation, err := annotations.FindOneByTaskIdAndExecution(taskId, taskExecution)
+		annotation,
+	)
 	if err != nil {
-		return errors.Wrapf(err, "finding task annotation for execution %d of task '%s'", taskExecution, taskId)
+		return errors.Wrapf(err, "finding and modifying task annotation for execution %d of task '%s'", taskExecution, taskId)
 	}
 	if annotation != nil && len(annotation.Issues) == 0 {
 		return UnsetHasAnnotations(taskId, taskExecution)
@@ -81,16 +85,19 @@ func AddIssueToAnnotation(taskId string, execution int, issue annotations.IssueL
 // RemoveIssueFromAnnotation removes an issue from an existing annotation, and unsets its
 // associated task document as having annotations if this was the last issue removed from the annotation.
 func RemoveIssueFromAnnotation(taskId string, execution int, issue annotations.IssueLink) error {
-	if err := db.Update(
+	annotation := &annotations.TaskAnnotation{}
+	_, err := db.FindAndModify(
 		annotations.Collection,
 		annotations.ByTaskIdAndExecution(taskId, execution),
-		bson.M{"$pull": bson.M{annotations.IssuesKey: issue}},
-	); err != nil {
-		return err
-	}
-	annotation, err := annotations.FindOneByTaskIdAndExecution(taskId, execution)
+		nil,
+		adb.Change{
+			Update:    bson.M{"$pull": bson.M{annotations.IssuesKey: issue}},
+			ReturnNew: true,
+		},
+		annotation,
+	)
 	if err != nil {
-		return errors.Wrapf(err, "finding task annotation for execution %d of task '%s'", execution, taskId)
+		return errors.Wrapf(err, "finding and removing issue for task annotation for execution %d of task '%s'", execution, taskId)
 	}
 	if annotation != nil && len(annotation.Issues) == 0 {
 		return UnsetHasAnnotations(taskId, execution)
