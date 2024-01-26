@@ -106,7 +106,7 @@ func (r *distroResolver) CloneMethod(ctx context.Context, obj *model.APIDistro) 
 		return CloneMethodLegacySSH, nil
 	case evergreen.CloneMethodOAuth:
 		return CloneMethodOauth, nil
-	// If clone method is nil, just set an arbitrary clone method since it does not matter. This resolver will be
+	// If clone method is nil, just return an arbitrary clone method since it does not matter. This resolver will be
 	// deleted in future PRs.
 	default:
 		return CloneMethodOauth, nil

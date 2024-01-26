@@ -522,6 +522,7 @@ func (s *DistroPutSuite) TestRunNewWithInvalidEntity() {
 		"work_dir": "/data/mci",
 		"ssh_key": "",
 		"bootstrap_settings": {"method": "foo", "communication": "bar"},
+		"clone_method": "bat",
 		"provider": "mock",
 		"user": "tibor",
 		"planner_settings": {"version": "invalid"}
@@ -538,6 +539,7 @@ func (s *DistroPutSuite) TestRunNewWithInvalidEntity() {
 	s.Contains(err.Message, "ERROR: distro 'ssh_key' cannot be blank")
 	s.Contains(err.Message, "'foo' is not a valid bootstrap method")
 	s.Contains(err.Message, "'bar' is not a valid communication method")
+	s.Contains(err.Message, "'bat' is not a valid clone method")
 	s.Contains(err.Message, "ERROR: invalid planner_settings.version 'invalid' for distro 'distro4'")
 }
 
@@ -1273,6 +1275,36 @@ func (s *DistroPatchByIDSuite) TestRunValidNonLegacyBootstrapSettings() {
 	s.Equal(utility.ToStringPtr("/jasper_credentials_path"), apiDistro.BootstrapSettings.JasperCredentialsPath)
 	s.Equal(utility.ToStringPtr("/shell_path"), apiDistro.BootstrapSettings.ShellPath)
 	s.Equal(utility.ToStringPtr("/root_dir"), apiDistro.BootstrapSettings.RootDir)
+}
+
+func (s *DistroPatchByIDSuite) TestRunValidCloneMethod() {
+	ctx := context.Background()
+	ctx = gimlet.AttachUser(ctx, &user.DBUser{Id: "me"})
+	json := []byte(fmt.Sprintf(`{"clone_method": "%s"}`, evergreen.CloneMethodLegacySSH))
+	h := s.rm.(*distroIDPatchHandler)
+	h.distroID = "fedora8"
+	h.body = json
+
+	resp := s.rm.Run(ctx)
+	s.NotNil(resp.Data())
+	s.Equal(resp.Status(), http.StatusOK)
+
+	apiDistro, ok := (resp.Data()).(*restModel.APIDistro)
+	s.Require().True(ok)
+	s.Equal(utility.ToStringPtr(evergreen.CloneMethodLegacySSH), apiDistro.CloneMethod)
+}
+
+func (s *DistroPatchByIDSuite) TestRunInvalidCloneMethod() {
+	ctx := context.Background()
+	ctx = gimlet.AttachUser(ctx, &user.DBUser{Id: "me"})
+	json := []byte(`{"clone_method": "foobar"}`)
+	h := s.rm.(*distroIDPatchHandler)
+	h.distroID = "fedora8"
+	h.body = json
+
+	resp := s.rm.Run(ctx)
+	s.NotNil(resp.Data())
+	s.Equal(http.StatusBadRequest, resp.Status())
 }
 
 func (s *DistroPatchByIDSuite) TestValidFindAndReplaceFullDocument() {
