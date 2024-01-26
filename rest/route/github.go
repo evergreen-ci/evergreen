@@ -3,7 +3,6 @@ package route
 import (
 	"context"
 	"fmt"
-	"github.com/mongodb/grip/level"
 	"net/http"
 	"strings"
 	"time"
@@ -23,6 +22,7 @@ import (
 	"github.com/google/go-github/v52/github"
 	"github.com/mongodb/amboy"
 	"github.com/mongodb/grip"
+	"github.com/mongodb/grip/level"
 	"github.com/mongodb/grip/message"
 	"github.com/pkg/errors"
 )
