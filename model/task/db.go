@@ -25,7 +25,7 @@ const (
 	OldCollection = "old_tasks"
 )
 
-var annotationLookupDeprecationTime = time.Date(2024, time.January, 23, 23, 0, 0, 0, time.UTC)
+var annotationLookupDeprecationTime = time.Date(2024, time.January, 28, 23, 0, 0, 0, time.UTC)
 
 var (
 	ActivatedTasksByDistroIndex = bson.D{
