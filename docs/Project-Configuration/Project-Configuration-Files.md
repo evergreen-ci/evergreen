@@ -647,8 +647,10 @@ level on the project configuration page or on a build variant level
 within the project. They can be used **as inputs to commands**,
 including shell scripts.
 
-Expansion values defined on the project configurations page are redacted from task logs
-and replaced with \<REDACTED:expansion_key\>
+Expansion values defined on the project configurations page that
+    (1) are marked as private OR
+    (2) with key names containing any of the following case-insensitive patterns: `key`, `pass`, `pw`, `token`, `auth`, `private`
+are redacted from task logs and replaced with \<REDACTED:expansion_key\>.
 
 Expansions cannot be used recursively. In other words, you can't define an
 expansion whose value uses another expansion.
