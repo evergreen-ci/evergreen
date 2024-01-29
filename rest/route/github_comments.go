@@ -11,8 +11,8 @@ type githubComments struct {
 	baseURL string
 }
 
-func newGithubComments(baseURL string) *githubComments {
-	return &githubComments{baseURL}
+func newGithubComments(baseURL string) githubComments {
+	return githubComments{baseURL}
 }
 
 // existingPatches returns a comment that is posted when there are existing patches for a commit SHA and
