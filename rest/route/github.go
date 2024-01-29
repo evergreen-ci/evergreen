@@ -562,11 +562,15 @@ func (gh *githubHookApi) refreshPatchStatus(ctx context.Context, owner, repo str
 	return nil
 }
 
-// AddIntentForPR takes a pr and checks if that pr is applicable for CI and if it is, does one of two things.
-// If overrideExisting is false, it only creates a PR if no PR has the same head sha. If any exist, it
-// comments on the PR and no-ops.
-// If overrideExisting is true, it always creates a PR and aborts any other ones if they exist, commenting
-// on the PR's that they were aborted in favor of the new one.
+// AddIntentForPR processes a PR and decides whether to create a patch for it or not. It does this by checking a
+// few things:
+// - If the PR has any skip CI labels in the title or description, it will skip creating a patch.
+// - If overrideExisting is false, it will only create a patch if no other patch exists with the same head sha.
+// - If overrideExisting is true, it will abort any other patches with the same head sha and create a new patch.
+// GitHub checks only allow one check per head sha, so we need to abort any other patches with the same head sha
+// before creating a new one. For example, if multiple patches with the same head sha exist, the PR(s) will get
+// both updates from patches and be in a race condition for which one GitHub checks shows last- so we want
+// to avoid this state when possible.
 func (gh *githubHookApi) AddIntentForPR(ctx context.Context, pr *github.PullRequest, owner, calledBy string, overrideExisting bool) error {
 	ghi, err := patch.NewGithubIntent(gh.msgID, owner, calledBy, pr)
 	if err != nil {
