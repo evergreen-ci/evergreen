@@ -21,6 +21,7 @@ import (
 	"github.com/evergreen-ci/evergreen/model/patch"
 	"github.com/evergreen-ci/evergreen/model/task"
 	"github.com/evergreen-ci/evergreen/taskoutput"
+	"github.com/evergreen-ci/evergreen/util"
 	"github.com/evergreen-ci/utility"
 	"github.com/mongodb/grip"
 	"github.com/mongodb/jasper"
@@ -136,7 +137,7 @@ func (s *AgentSuite) SetupTest() {
 	taskConfig, err := internal.NewTaskConfig(s.testTmpDirName, &apimodels.DistroView{}, project, &s.task, &model.ProjectRef{
 		Id:         "project_id",
 		Identifier: "project_identifier",
-	}, &patch.Patch{}, &apimodels.ExpansionsAndVars{})
+	}, &patch.Patch{}, &apimodels.ExpansionsAndVars{Expansions: util.Expansions{}})
 	s.Require().NoError(err)
 
 	s.tc = &taskContext{
