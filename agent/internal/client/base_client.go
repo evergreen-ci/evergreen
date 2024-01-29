@@ -592,26 +592,6 @@ func (c *baseCommunicator) GetAgentSetupData(ctx context.Context) (*apimodels.Ag
 	return &data, nil
 }
 
-// GetDataPipesConfig returns the Data-Pipes service configuration.
-func (c *baseCommunicator) GetDataPipesConfig(ctx context.Context) (*apimodels.DataPipesConfig, error) {
-	info := requestInfo{
-		method: http.MethodGet,
-		path:   "agent/data_pipes_config",
-	}
-
-	resp, err := c.retryRequest(ctx, info, nil)
-	if err != nil {
-		return nil, util.RespErrorf(resp, errors.Wrap(err, "getting the Data-Pipes config").Error())
-	}
-
-	config := &apimodels.DataPipesConfig{}
-	if err := utility.ReadJSON(resp.Body, config); err != nil {
-		return nil, errors.Wrap(err, "reading the Data-Pipes config from response")
-	}
-
-	return config, nil
-}
-
 // GetPatchFiles is used by the git.get_project plugin and fetches
 // patches from the database, used in patch builds.
 func (c *baseCommunicator) GetPatchFile(ctx context.Context, taskData TaskData, patchFileID string) (string, error) {

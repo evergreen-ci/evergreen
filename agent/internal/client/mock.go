@@ -330,16 +330,6 @@ func (c *Mock) GetCedarGRPCConn(ctx context.Context) (*grpc.ClientConn, error) {
 	return c.CedarGRPCConn, nil
 }
 
-// GetDataPipesConfig returns a mock Data-Pipes service configuration.
-func (c *Mock) GetDataPipesConfig(ctx context.Context) (*apimodels.DataPipesConfig, error) {
-	return &apimodels.DataPipesConfig{
-		Host:         "url",
-		Region:       "us-east-1",
-		AWSAccessKey: "access",
-		AWSSecretKey: "secret",
-	}, nil
-}
-
 // GetLoggerProducer constructs a single channel log producer.
 func (c *Mock) GetLoggerProducer(ctx context.Context, tsk *task.Task, _ *LoggerConfig) (LoggerProducer, error) {
 	if c.GetLoggerProducerShouldFail {

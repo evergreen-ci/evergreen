@@ -300,6 +300,9 @@ type Task struct {
 	// before its build or version can be reported as successful, but tasks
 	// manually scheduled by the user afterwards are not required.
 	IsEssentialToSucceed bool `bson:"is_essential_to_succeed" json:"is_essential_to_succeed"`
+	// HasAnnotations indicates whether there exist task annotations with this task's
+	// execution and id that have a populated Issues key
+	HasAnnotations bool `bson:"has_annotations" json:"has_annotations"`
 }
 
 // GeneratedJSONFiles represent files used by a task for generate.tasks to update the project YAML.
@@ -316,6 +319,17 @@ type StepbackInfo struct {
 	NextStepbackTaskId string `bson:"next_stepback_task_id,omitempty" json:"next_stepback_task_id"`
 	// PreviousStepbackTaskId stores the last stepback iteration id.
 	PreviousStepbackTaskId string `bson:"previous_stepback_task_id,omitempty" json:"previous_stepback_task_id"`
+}
+
+func (s *StepbackInfo) IsZero() bool {
+	if s == nil {
+		return true
+	}
+	if s.LastFailingStepbackTaskId != "" && s.LastPassingStepbackTaskId != "" {
+		return false
+	}
+	// If the other fields are set but not the ones above, the struct should be considered empty.
+	return true
 }
 
 // ExecutionPlatform indicates the type of environment that the task runs in.

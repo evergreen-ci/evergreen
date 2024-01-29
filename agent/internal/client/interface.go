@@ -76,8 +76,6 @@ type SharedCommunicator interface {
 	GetCedarGRPCConn(context.Context) (*grpc.ClientConn, error)
 	// SetResultsInfo sets the test results information in the task.
 	SetResultsInfo(context.Context, TaskData, string, bool) error
-	// GetDataPipesConfig returns the Data-Pipes service configuration.
-	GetDataPipesConfig(context.Context) (*apimodels.DataPipesConfig, error)
 
 	// GetPullRequestInfo takes in a PR number, owner, and repo and returns information from the corresponding pull request.
 	GetPullRequestInfo(context.Context, TaskData, int, string, string, bool) (*apimodels.PullRequestInfo, error)

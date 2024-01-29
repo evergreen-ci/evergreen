@@ -2450,13 +2450,12 @@ func TestCreateTasksFromGroup(t *testing.T) {
 	const tgName = "name"
 	const bvName = "first_build_variant"
 	in := BuildVariantTaskUnit{
-		Name:            tgName,
-		IsGroup:         true,
-		Variant:         bvName,
-		Priority:        0,
-		DependsOn:       []TaskUnitDependency{{Name: "new_dependency"}},
-		RunOn:           []string{},
-		ExecTimeoutSecs: 0,
+		Name:      tgName,
+		IsGroup:   true,
+		Variant:   bvName,
+		Priority:  0,
+		DependsOn: []TaskUnitDependency{{Name: "new_dependency"}},
+		RunOn:     []string{},
 	}
 	p := &Project{
 		BuildVariants: []BuildVariant{
