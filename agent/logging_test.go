@@ -10,6 +10,7 @@ import (
 	"github.com/evergreen-ci/evergreen/agent/command"
 	"github.com/evergreen-ci/evergreen/agent/internal"
 	"github.com/evergreen-ci/evergreen/agent/internal/client"
+	agentutil "github.com/evergreen-ci/evergreen/agent/util"
 	"github.com/evergreen-ci/evergreen/model"
 	"github.com/evergreen-ci/evergreen/model/task"
 	_ "github.com/evergreen-ci/evergreen/testutil"
@@ -100,9 +101,9 @@ func TestAgentFileLogging(t *testing.T) {
 					{Name: "bv", Tasks: []model.BuildVariantTaskUnit{{Name: "task1", Variant: "bv"}}},
 				},
 			},
-			Timeout:    internal.Timeout{IdleTimeoutSecs: 15, ExecTimeoutSecs: 15},
-			WorkDir:    tmpDirName,
-			Expansions: *util.NewExpansions(nil),
+			Timeout:       internal.Timeout{IdleTimeoutSecs: 15, ExecTimeoutSecs: 15},
+			WorkDir:       tmpDirName,
+			NewExpansions: agentutil.NewDynamicExpansions(util.Expansions{}),
 		},
 	}
 	require.NoError(agt.startLogging(ctx, tc))
