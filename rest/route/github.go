@@ -69,7 +69,7 @@ func makeGithubHooksRoute(sc data.Connector, queue amboy.Queue, secret []byte, s
 		settings: settings,
 		queue:    queue,
 		secret:   secret,
-		comments: *newGithubComments(settings.Ui.UIv2Url),
+		comments: newGithubComments(settings.Ui.UIv2Url),
 	}
 }
 
@@ -79,7 +79,7 @@ func (gh *githubHookApi) Factory() gimlet.RouteHandler {
 		secret:   gh.secret,
 		sc:       gh.sc,
 		settings: gh.settings,
-		comments: *newGithubComments(gh.settings.Ui.UIv2Url),
+		comments: newGithubComments(gh.settings.Ui.UIv2Url),
 	}
 }
 
@@ -632,8 +632,7 @@ func (gh *githubHookApi) AddIntentForPR(ctx context.Context, pr *github.PullRequ
 	}
 
 	// If we do want to override any existing patches, we override them and then create a new patch.
-	err = gh.overrideOtherPRs(ctx, pr, ghi, conflictingPatches)
-	if err != nil {
+	if gh.overrideOtherPRs(ctx, pr, ghi, conflictingPatches); err != nil {
 		return errors.Wrap(err, "overriding other PRs")
 	}
 
@@ -658,37 +657,27 @@ func (gh *githubHookApi) overrideOtherPRs(ctx context.Context, pr *github.PullRe
 	// If these error, we should should still continue and create a patch as the others were aborted.
 	catcher := grip.NewBasicCatcher()
 	for _, p := range patches {
-		catcher.Add(gh.sc.AddCommentToPR(ctx, p.GithubPatchData.BaseOwner, p.GithubPatchData.BaseRepo, p.GithubPatchData.PRNumber, gh.comments.overridenPR(pr)))
-	}
-
-	catcher.Add(gh.sc.AddCommentToPR(ctx, pr.Base.User.GetLogin(), pr.Base.Repo.GetName(), pr.GetNumber(), gh.comments.overridingPR(patches)))
-	grip.Error(message.WrapError(catcher.Resolve(), message.Fields{
-		"message": "error informing user(s) that aborting other patches failed",
-		"owner":   pr.Base.User.GetLogin(),
-		"repo":    pr.Base.Repo.GetName(),
-		"ref":     pr.Head.GetRef(),
-		"pr_num":  pr.GetNumber(),
-	}))
-
-	// Abort patches, and if any fail, comment on the PR to inform the user and no-op.
-	for _, p := range patches {
+		catcher.Wrap(gh.sc.AddCommentToPR(ctx, p.GithubPatchData.BaseOwner, p.GithubPatchData.BaseRepo, p.GithubPatchData.PRNumber, gh.comments.overridenPR(pr)), "adding comment to overridden PR")
 		err := model.CancelPatch(&p, task.AbortInfo{User: evergreen.GithubPatchUser, NewVersion: "", PRClosed: false})
 		if err == nil {
 			continue
 		}
-		commentErr := gh.sc.AddCommentToPR(ctx, pr.Base.User.GetLogin(), pr.Base.Repo.GetName(), pr.GetNumber(), "There was an issue aborting the other patches, please try 'evergreen retry' again.")
-		grip.Error(message.WrapError(err, message.Fields{
-			"message":     "error canceling other patches",
-			"owner":       pr.Base.User.GetLogin(),
-			"repo":        pr.Base.Repo.GetName(),
-			"ref":         pr.Head.GetRef(),
-			"pr_num":      pr.GetNumber(),
-			"comment_err": commentErr,
-		}))
-		return errors.Wrapf(err, "aborting patch '%s' for repo '%s/%s' at PR '%d'", p.Id, pr.Base.User.GetLogin(), pr.Base.Repo.GetName(), pr.GetNumber())
+		catcher.Wrap(err, "canceling patch")
+		catcher.Wrap(gh.sc.AddCommentToPR(ctx, pr.Base.User.GetLogin(), pr.Base.Repo.GetName(), pr.GetNumber(), "There was an issue aborting the other patches, please try 'evergreen retry' again."), "adding comment to overriding PR when error")
 	}
 
-	return nil
+	if catcher.HasErrors() {
+		grip.Error(message.WrapError(catcher.Resolve(), message.Fields{
+			"message": "cancelling patches with same hash",
+			"owner":   pr.Base.User.GetLogin(),
+			"repo":    pr.Base.Repo.GetName(),
+			"ref":     pr.Head.GetRef(),
+			"pr_num":  pr.GetNumber(),
+		}))
+		return errors.Wrap(catcher.Resolve(), "aborting overriden patches")
+	}
+
+	return errors.Wrap(gh.sc.AddCommentToPR(ctx, pr.Base.User.GetLogin(), pr.Base.Repo.GetName(), pr.GetNumber(), gh.comments.overridingPR(patches)), "adding comment to overriding PR")
 }
 
 // handleGitTag adds the tag to the version it was pushed to, and triggers a new version if applicable
