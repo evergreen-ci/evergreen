@@ -604,17 +604,15 @@ var (
 )
 
 const (
-	DefaultServiceConfigurationFileName = "/etc/mci_settings.yml" // Unused
-	DefaultDatabaseURL                  = "mongodb://localhost:27017"
-	DefaultDatabaseName                 = "mci"
-	DefaultDatabaseWriteMode            = "majority"
-	DefaultDatabaseReadMode             = "majority"
+	DefaultDatabaseURL       = "mongodb://localhost:27017"
+	DefaultDatabaseName      = "mci"
+	DefaultDatabaseWriteMode = "majority"
+	DefaultDatabaseReadMode  = "majority"
 
 	DefaultAmboyDatabaseURL = "mongodb://localhost:27017"
 
 	// database and config directory, set to the testing version by default for safety
-	NotificationsFile = "mci-notifications.yml" // Unused
-	ClientDirectory   = "clients"
+	ClientDirectory = "clients"
 
 	// version requester types
 	PatchVersionRequester       = "patch_request"
