@@ -644,8 +644,6 @@ func (gh *githubHookApi) AddIntentForPR(ctx context.Context, pr *github.PullRequ
 // and ignore them. If any errors from aborting patches occur, we comment again to inform the user that there was
 // an error and to retry- and we fail the entire operation.
 func (gh *githubHookApi) overrideOtherPRs(ctx context.Context, pr *github.PullRequest, patches []patch.Patch) error {
-	// If we want to override existing patches, we need to abort them and create a new patch.
-	// While informing all the PR's that their patch was aborted in favor of the new one.
 	grip.Info(message.Fields{
 		"message":         "aborting existing CI on same SHA patches",
 		"owner":           pr.Base.User.GetLogin(),
@@ -667,7 +665,7 @@ func (gh *githubHookApi) overrideOtherPRs(ctx context.Context, pr *github.PullRe
 		commentsCatcher.Wrap(gh.sc.AddCommentToPR(ctx, pr.Base.User.GetLogin(), pr.Base.Repo.GetName(), pr.GetNumber(), "There was an issue aborting the other patches, please try 'evergreen retry' again."), "adding comment to overriding PR when error")
 	}
 
-	grip.Error(message.WrapError(commentsCatcher.Resolve(), message.Fields{
+	grip.Warning(message.WrapError(commentsCatcher.Resolve(), message.Fields{
 		"message": "commenting on patches with same hash to cancel",
 		"owner":   pr.Base.User.GetLogin(),
 		"repo":    pr.Base.Repo.GetName(),
