@@ -7,6 +7,7 @@ import (
 
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/agent/internal/taskoutput"
+	agentutil "github.com/evergreen-ci/evergreen/agent/util"
 	"github.com/evergreen-ci/evergreen/apimodels"
 	"github.com/evergreen-ci/evergreen/model"
 	"github.com/evergreen-ci/evergreen/model/patch"
@@ -26,6 +27,7 @@ type TaskConfig struct {
 	Task               task.Task
 	BuildVariant       model.BuildVariant
 	Expansions         util.Expansions
+	NewExpansions      *agentutil.DynamicExpansions
 	DynamicExpansions  util.Expansions
 	ProjectVars        map[string]string
 	Redacted           map[string]bool
@@ -116,6 +118,7 @@ func NewTaskConfig(workDir string, d *apimodels.DistroView, p *model.Project, t 
 		Task:              *t,
 		BuildVariant:      *bv,
 		Expansions:        e.Expansions,
+		NewExpansions:     agentutil.NewDynamicExpansions(e.Expansions),
 		DynamicExpansions: util.Expansions{},
 		ProjectVars:       e.Vars,
 		Redacted:          e.PrivateVars,

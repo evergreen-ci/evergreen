@@ -7,6 +7,7 @@ import (
 	"os"
 	"testing"
 
+	"github.com/evergreen-ci/evergreen/agent/command"
 	"github.com/evergreen-ci/evergreen/agent/internal"
 	"github.com/evergreen-ci/evergreen/agent/internal/client"
 	"github.com/evergreen-ci/evergreen/model"
@@ -256,4 +257,95 @@ func TestTimberSender(t *testing.T) {
 		},
 	}
 	assert.NoError(t, agt.startLogging(ctx, tc))
+}
+
+func TestRedactList(t *testing.T) {
+	for _, test := range []struct {
+		name        string
+		projectVars map[string]string
+		redacted    map[string]bool
+		expected    []string
+	}{
+		{
+			name: "Defaults",
+		},
+		{
+			name: "SuspiciousPatterns",
+			projectVars: map[string]string{
+				"not_suspicious":  "",
+				"num_hosts":       "",
+				"aws_key":         "",
+				"my_secret":       "",
+				"my_SECRET":       "",
+				"aws_token":       "",
+				"AWSTOKEN":        "",
+				"my_password":     "",
+				"servicePassword": "",
+				"srv_pass":        "",
+				"my_PASS":         "",
+				"mypw":            "",
+				"myPW":            "",
+				"private_key":     "",
+				"Some_Auth":       "",
+			},
+			expected: []string{
+				"aws_key",
+				"my_secret",
+				"my_SECRET",
+				"aws_token",
+				"AWSTOKEN",
+				"my_password",
+				"servicePassword",
+				"srv_pass",
+				"my_PASS",
+				"mypw",
+				"myPW",
+				"private_key",
+				"Some_Auth",
+			},
+		},
+		{
+			name: "Redacted",
+			projectVars: map[string]string{
+				"not_suspicious": "",
+				"num_hosts":      "",
+				"aws_token":      "",
+				"my_secret":      "",
+			},
+			redacted: map[string]bool{
+				"aws_token": true,
+				"my_secret": true,
+			},
+			expected: []string{
+				"aws_token",
+				"my_secret",
+			},
+		},
+		{
+			name: "SuspiciousPatternsAndRedacted",
+			projectVars: map[string]string{
+				"not_suspicious": "",
+				"num_hosts":      "",
+				"aws_token":      "",
+				"my_secret":      "",
+				"svc_PASSWORD":   "",
+			},
+			redacted: map[string]bool{
+				"aws_token": true,
+				"my_secret": true,
+			},
+			expected: []string{
+				"aws_token",
+				"my_secret",
+				"svc_PASSWORD",
+			},
+		},
+	} {
+		t.Run(test.name, func(t *testing.T) {
+			test.expected = append(test.expected, command.ExpansionsToRedact...)
+
+			actual := redactList(test.projectVars, test.redacted)
+			assert.ElementsMatch(t, test.expected, actual)
+		})
+	}
 }

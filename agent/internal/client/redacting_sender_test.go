@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"testing"
 
+	"github.com/evergreen-ci/evergreen/agent/util"
 	"github.com/mongodb/grip/level"
 	"github.com/mongodb/grip/message"
 	"github.com/mongodb/grip/send"
@@ -73,7 +74,7 @@ func TestRedactingSender(t *testing.T) {
 			wrappedSender, err := send.NewInternalLogger("", send.LevelInfo{Threshold: level.Info, Default: level.Info})
 			require.NoError(t, err)
 
-			newRedactingSender(wrappedSender, test.expansions, test.expansionsToRedact).Send(message.NewDefaultMessage(level.Info, test.inputString))
+			newRedactingSender(wrappedSender, util.NewDynamicExpansions(test.expansions), test.expansionsToRedact).Send(message.NewDefaultMessage(level.Info, test.inputString))
 			assert.Equal(t, test.expected, wrappedSender.GetMessage().Message.String())
 		})
 	}
