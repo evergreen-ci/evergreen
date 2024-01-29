@@ -321,6 +321,17 @@ type StepbackInfo struct {
 	PreviousStepbackTaskId string `bson:"previous_stepback_task_id,omitempty" json:"previous_stepback_task_id"`
 }
 
+func (s *StepbackInfo) IsZero() bool {
+	if s == nil {
+		return true
+	}
+	if s.LastFailingStepbackTaskId != "" && s.LastPassingStepbackTaskId != "" {
+		return false
+	}
+	// If the other fields are set but not the ones above, the struct should be considered empty.
+	return true
+}
+
 // ExecutionPlatform indicates the type of environment that the task runs in.
 type ExecutionPlatform string
 
