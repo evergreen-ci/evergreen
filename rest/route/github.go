@@ -632,16 +632,18 @@ func (gh *githubHookApi) AddIntentForPR(ctx context.Context, pr *github.PullRequ
 	}
 
 	// If we do want to override any existing patches, we override them and then create a new patch.
-	if gh.overrideOtherPRs(ctx, pr, ghi, conflictingPatches); err != nil {
+	if gh.overrideOtherPRs(ctx, pr, conflictingPatches); err != nil {
 		return errors.Wrap(err, "overriding other PRs")
 	}
 
 	return errors.Wrap(data.AddPatchIntent(ghi, gh.queue), "saving GitHub patch intent")
 }
 
-// overrideOtherPRs aborts all the patches in the list and comments on the PR's that they were aborted.
-// As well as comments on the given PR that it is overriding the other patches.
-func (gh *githubHookApi) overrideOtherPRs(ctx context.Context, pr *github.PullRequest, intent patch.Intent, patches []patch.Patch) error {
+// overrideOtherPRs aborts the given patches and comments on each patch's PR to inform the user that their patch
+// was aborted in favor of the new one. If any errors from commenting occur, we still abort the patches, log them,
+// and ignore them. If any errors from aborting patches occur, we comment again to inform the user that there was
+// an error and to retry- and we fail the entire operation.
+func (gh *githubHookApi) overrideOtherPRs(ctx context.Context, pr *github.PullRequest, patches []patch.Patch) error {
 	// If we want to override existing patches, we need to abort them and create a new patch.
 	// While informing all the PR's that their patch was aborted in favor of the new one.
 	grip.Info(message.Fields{
@@ -653,31 +655,40 @@ func (gh *githubHookApi) overrideOtherPRs(ctx context.Context, pr *github.PullRe
 		"conflicting_prs": gh.comments.getLinksForPRPatches(patches),
 	})
 
-	// Comment on the PR's that were aborted and then abort them.
-	// If these error, we should should still continue and create a patch as the others were aborted.
-	catcher := grip.NewBasicCatcher()
+	commentsCatcher := grip.NewBasicCatcher()
+	cancelCatcher := grip.NewBasicCatcher()
 	for _, p := range patches {
-		catcher.Wrap(gh.sc.AddCommentToPR(ctx, p.GithubPatchData.BaseOwner, p.GithubPatchData.BaseRepo, p.GithubPatchData.PRNumber, gh.comments.overridenPR(pr)), "adding comment to overridden PR")
+		commentsCatcher.Wrap(gh.sc.AddCommentToPR(ctx, p.GithubPatchData.BaseOwner, p.GithubPatchData.BaseRepo, p.GithubPatchData.PRNumber, gh.comments.overridenPR(pr)), "adding comment to overridden PR")
 		err := model.CancelPatch(&p, task.AbortInfo{User: evergreen.GithubPatchUser, NewVersion: "", PRClosed: false})
 		if err == nil {
 			continue
 		}
-		catcher.Wrap(err, "canceling patch")
-		catcher.Wrap(gh.sc.AddCommentToPR(ctx, pr.Base.User.GetLogin(), pr.Base.Repo.GetName(), pr.GetNumber(), "There was an issue aborting the other patches, please try 'evergreen retry' again."), "adding comment to overriding PR when error")
+		cancelCatcher.Wrap(err, "canceling patch")
+		commentsCatcher.Wrap(gh.sc.AddCommentToPR(ctx, pr.Base.User.GetLogin(), pr.Base.Repo.GetName(), pr.GetNumber(), "There was an issue aborting the other patches, please try 'evergreen retry' again."), "adding comment to overriding PR when error")
 	}
 
-	if catcher.HasErrors() {
-		grip.Error(message.WrapError(catcher.Resolve(), message.Fields{
-			"message": "cancelling patches with same hash",
-			"owner":   pr.Base.User.GetLogin(),
-			"repo":    pr.Base.Repo.GetName(),
-			"ref":     pr.Head.GetRef(),
-			"pr_num":  pr.GetNumber(),
-		}))
-		return errors.Wrap(catcher.Resolve(), "aborting overriden patches")
+	grip.Error(message.WrapError(commentsCatcher.Resolve(), message.Fields{
+		"message": "commenting on patches with same hash to cancel",
+		"owner":   pr.Base.User.GetLogin(),
+		"repo":    pr.Base.Repo.GetName(),
+		"ref":     pr.Head.GetRef(),
+		"pr_num":  pr.GetNumber(),
+	}))
+	grip.Error(message.WrapError(cancelCatcher.Resolve(), message.Fields{
+		"message": "cancelling patches with same hash",
+		"owner":   pr.Base.User.GetLogin(),
+		"repo":    pr.Base.Repo.GetName(),
+		"ref":     pr.Head.GetRef(),
+		"pr_num":  pr.GetNumber(),
+	}))
+
+	if !cancelCatcher.HasErrors() {
+		return errors.Wrap(gh.sc.AddCommentToPR(ctx, pr.Base.User.GetLogin(), pr.Base.Repo.GetName(), pr.GetNumber(), gh.comments.overridingPR(patches)), "adding comment to overriding PR")
 	}
 
-	return errors.Wrap(gh.sc.AddCommentToPR(ctx, pr.Base.User.GetLogin(), pr.Base.Repo.GetName(), pr.GetNumber(), gh.comments.overridingPR(patches)), "adding comment to overriding PR")
+	cancelCatcher.Add(errors.Wrap(commentsCatcher.Resolve(), "commenting on patches with same hash to cancel"))
+	return errors.Wrap(cancelCatcher.Resolve(), "aborting overriden patches")
+
 }
 
 // handleGitTag adds the tag to the version it was pushed to, and triggers a new version if applicable
