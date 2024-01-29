@@ -9,7 +9,6 @@ import (
 	"github.com/evergreen-ci/evergreen/util"
 	"github.com/evergreen-ci/poplar"
 	"github.com/evergreen-ci/poplar/rpc"
-	"github.com/evergreen-ci/utility"
 	"github.com/mitchellh/mapstructure"
 	"github.com/pkg/errors"
 )
@@ -68,14 +67,11 @@ func (c *perfSend) Execute(ctx context.Context, comm client.Communicator, logger
 	}
 	c.addEvgData(report, conf)
 
-	// Send data to the Cedar service.
+	// Send data to the Cedar performance results service.
 	conn, err := comm.GetCedarGRPCConn(ctx)
 	if err != nil {
 		return errors.Wrap(err, "connecting to Cedar")
 	}
-
-	httpClient := utility.GetDefaultHTTPRetryableClient()
-	defer utility.PutHTTPClient(httpClient)
 	opts := rpc.UploadReportOptions{
 		Report:     report,
 		ClientConn: conn,

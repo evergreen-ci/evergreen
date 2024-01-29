@@ -18,6 +18,7 @@ import (
 	"github.com/evergreen-ci/evergreen/model/host"
 	"github.com/evergreen-ci/evergreen/model/patch"
 	"github.com/evergreen-ci/evergreen/model/task"
+	"github.com/evergreen-ci/evergreen/testutil"
 	"github.com/evergreen-ci/evergreen/thirdparty"
 	"github.com/evergreen-ci/gimlet"
 	"github.com/mongodb/amboy/queue"
@@ -89,6 +90,8 @@ func TestAgentGetExpansionsAndVars(t *testing.T) {
 			env := &mock.Environment{}
 			require.NoError(t, env.Configure(ctx))
 
+			testutil.ConfigureIntegrationTest(t, env.Settings(), t.Name())
+
 			require.NoError(t, db.ClearCollections(host.Collection, task.Collection, model.ProjectRefCollection, model.ProjectVarsCollection, model.VersionCollection, model.ParserProjectCollection))
 
 			const hostID = "host_id"
@@ -104,7 +107,9 @@ func TestAgentGetExpansionsAndVars(t *testing.T) {
 				Version: "aaaaaaaaaaff001122334456",
 			}
 			pRef := model.ProjectRef{
-				Id: "p1",
+				Id:    "p1",
+				Owner: "evergreen-ci",
+				Repo:  "sample",
 			}
 			vars := &model.ProjectVars{
 				Id:          "p1",

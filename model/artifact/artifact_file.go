@@ -12,7 +12,6 @@ import (
 )
 
 const Collection = "artifact_files"
-const PresignExpireTime = 24 * time.Hour
 
 const (
 	// strings for setting visibility

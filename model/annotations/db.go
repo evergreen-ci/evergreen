@@ -89,16 +89,6 @@ func (a *TaskAnnotation) Upsert() error {
 	return err
 }
 
-// Update updates one task_annotation.
-func (a *TaskAnnotation) Update() error {
-	return db.UpdateId(Collection, a.Id, a)
-}
-
-// Remove removes one task_annotation.
-func Remove(id string) error {
-	return db.Remove(Collection, bson.M{IdKey: id})
-}
-
 // ByTaskId returns the query for a given Task Id
 func ByTaskId(id string) bson.M {
 	return bson.M{TaskIdKey: id}

@@ -1,0 +1,9 @@
+buildvariants:
+  - name: included-variant
+    display_name: "Included variant"
+    batchtime: 0
+    activate: true
+    run_on:
+      - ubuntu2004
+    tasks:
+      - name: unit_tests
