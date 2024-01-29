@@ -711,6 +711,9 @@ func LoadProjectInto(ctx context.Context, data []byte, opts *GetProjectOpts, ide
 		catcher := grip.NewBasicCatcher()
 		for elem := range outputYAMLs {
 			catcher.Add(elem.err)
+			if thirdparty.IsFileNotFound(errors.Cause(elem.err)) {
+				return intermediateProject, errors.Wrap(elem.err, "getting includes")
+			}
 			if elem.yaml != nil {
 				yamlMap[elem.name] = elem.yaml
 			}
