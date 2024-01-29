@@ -1934,7 +1934,7 @@ type DispatcherSettingsInputResolver interface {
 type DistroInputResolver interface {
 	Arch(ctx context.Context, obj *model.APIDistro, data Arch) error
 
-	CloneMethod(ctx context.Context, obj *model.APIDistro, data CloneMethod) error
+	CloneMethod(ctx context.Context, obj *model.APIDistro, data *CloneMethod) error
 
 	Provider(ctx context.Context, obj *model.APIDistro, data Provider) error
 	ProviderSettingsList(ctx context.Context, obj *model.APIDistro, data []map[string]interface{}) error
@@ -67156,7 +67156,7 @@ func (ec *executionContext) unmarshalInputDistroInput(ctx context.Context, obj i
 			it.BootstrapSettings = data
 		case "cloneMethod":
 			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("cloneMethod"))
-			data, err := ec.unmarshalNCloneMethod2githubᚗcomᚋevergreenᚑciᚋevergreenᚋgraphqlᚐCloneMethod(ctx, v)
+			data, err := ec.unmarshalOCloneMethod2ᚖgithubᚗcomᚋevergreenᚑciᚋevergreenᚋgraphqlᚐCloneMethod(ctx, v)
 			if err != nil {
 				return it, err
 			}
@@ -90027,6 +90027,22 @@ func (ec *executionContext) marshalOClientConfig2ᚖgithubᚗcomᚋevergreenᚑc
 		return graphql.Null
 	}
 	return ec._ClientConfig(ctx, sel, v)
+}
+
+func (ec *executionContext) unmarshalOCloneMethod2ᚖgithubᚗcomᚋevergreenᚑciᚋevergreenᚋgraphqlᚐCloneMethod(ctx context.Context, v interface{}) (*CloneMethod, error) {
+	if v == nil {
+		return nil, nil
+	}
+	var res = new(CloneMethod)
+	err := res.UnmarshalGQL(v)
+	return res, graphql.ErrorOnPath(ctx, err)
+}
+
+func (ec *executionContext) marshalOCloneMethod2ᚖgithubᚗcomᚋevergreenᚑciᚋevergreenᚋgraphqlᚐCloneMethod(ctx context.Context, sel ast.SelectionSet, v *CloneMethod) graphql.Marshaler {
+	if v == nil {
+		return graphql.Null
+	}
+	return v
 }
 
 func (ec *executionContext) marshalOCloudProviderConfig2ᚖgithubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐAPICloudProviders(ctx context.Context, sel ast.SelectionSet, v *model.APICloudProviders) graphql.Marshaler {

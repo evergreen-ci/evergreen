@@ -193,14 +193,7 @@ func makeProjectAndExpansionsFromTask(ctx context.Context, settings *evergreen.S
 
 	appToken, err := settings.CreateInstallationToken(ctx, pRef.Owner, pRef.Repo, nil)
 	if err != nil {
-		grip.Debug(message.WrapError(err, message.Fields{
-			"ticket":  "EVG-19966",
-			"message": "error creating GitHub app token",
-			"caller":  "makeProjectAndExpansionsFromTask",
-			"owner":   pRef.Owner,
-			"repo":    pRef.Repo,
-			"task":    t.Id,
-		}))
+		return nil, nil, errors.Wrap(err, "creating GitHub app token")
 	}
 
 	knownHosts := settings.Expansions[evergreen.GithubKnownHosts]

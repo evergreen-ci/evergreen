@@ -46,19 +46,6 @@ notify:
 runner:
   intervalseconds: 10
 
-auth:
-  naive:
-    users:
-      - username: "admin"
-        password: "password"
-        display_name: "Evergreen Admin"
-      - username: "privileged"
-        password: "password"
-        display_name: "Privileged User"
-      - username: "regular"
-        password: "password"
-        display_name: "Regular User"
-
 plugins:
   perf:
     projects: ["sys-perf", "performance"]

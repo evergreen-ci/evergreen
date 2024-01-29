@@ -20,6 +20,8 @@ func TestLoadUserManager(t *testing.T) {
 	github := evergreen.GithubAuthConfig{
 		ClientId:     "client_id",
 		ClientSecret: "client_secret",
+		Organization: "organization",
+		Users:        []string{"user"},
 	}
 	naive := evergreen.NaiveAuthConfig{}
 	okta := evergreen.OktaConfig{

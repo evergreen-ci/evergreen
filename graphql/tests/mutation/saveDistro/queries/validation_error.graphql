@@ -1,131 +1,107 @@
 mutation {
-    saveDistro(
-      opts: {
-        distro: {
-          name: "rhel71-power8-large"
-          workDir: "",
-          mountpoints: ["/"],
-          aliases: [
-            "new-alias"
-          ],
-          arch: LINUX_PPC_64_BIT,
-          authorizedKeysFile: "",
-          containerPool: "",
-          disabled: true,
-          provider: EC2_ON_DEMAND,
-          providerSettingsList: [
-            {
-              ami: "who-ami",
-              instance_type: "m4.4xlarge",
-              is_vpc: true,
-              region: "us-east-1",
-              security_group_ids: ["1"],
-              subnet_id: "subnet-123"
-            },
-            {
-              ami: "who-ami-2",
-              instance_type: "m4.2xlarge",
-              is_vpc: false,
-              region: "us-west-1",
-              security_group_ids: ["2"]
-            }
-          ]
-          user: "mci-exec",
-          bootstrapSettings: {
-            clientDir: "/home/mci-exec/evergreen_provisioning",
-            communication: RPC,
-            env: [
-              {
-                key: "foo",
-                value: "bar"
-              }
-            ],
-            jasperBinaryDir: "/home/mci-exec/evergreen_provisioning",
-            jasperCredentialsPath: "/home/mci-exec/evergreen_provisioning/jasper_credentials.json",
-            method: SSH,
-            preconditionScripts: [],
-            resourceLimits: {
-              lockedMemoryKb: -1,
-              numFiles: 66000,
-              numProcesses: -1,
-              numTasks: 0,
-              virtualMemoryKb: -1
-            },
-            rootDir: "C:/cygwin",
-            serviceUser: "",
-            shellPath: "/bin/fish"
+  saveDistro(
+    opts: {
+      distro: {
+        name: "rhel71-power8-large"
+        workDir: ""
+        mountpoints: ["/"]
+        aliases: ["new-alias"]
+        arch: LINUX_PPC_64_BIT
+        authorizedKeysFile: ""
+        containerPool: ""
+        disabled: true
+        provider: EC2_ON_DEMAND
+        providerSettingsList: [
+          {
+            ami: "who-ami"
+            instance_type: "m4.4xlarge"
+            is_vpc: true
+            region: "us-east-1"
+            security_group_ids: ["1"]
+            subnet_id: "subnet-123"
           }
-          cloneMethod: LEGACY_SSH,
-          sshKey: "mci",
-          sshOptions: [
-            "StrictHostKeyChecking=no",
-            "BatchMode=yes",
-            "ConnectTimeout=10"
-          ],
-          userSpawnAllowed: false,
-          expansions: [
-            {
-              key: "decompress",
-              value: "tar xzvf"
-            },
-            {
-              key: "ps",
-              value: "ps aux"
-            }
-          ],
-          finderSettings: {
-            version: LEGACY
-          },
-          plannerSettings: {
-            commitQueueFactor: 0,
-            expectedRuntimeFactor: 0,
-            generateTaskFactor: 0,
-            groupVersions: false,
-            mainlineTimeInQueueFactor: 0,
-            patchFactor: 0,
-            patchTimeInQueueFactor: 0,
-            targetTime: 0,
-            version: TUNABLE
-          },
-          dispatcherSettings: {
-            version: REVISED_WITH_DEPENDENCIES
-          },
-          hostAllocatorSettings: {
-            acceptableHostIdleTime: 30000000000,
-            feedbackRule: DEFAULT,
-            futureHostFraction: 0,
-            hostsOverallocatedRule: DEFAULT,
-            maximumHosts: 0,
-            minimumHosts: 0,
-            roundingRule: DEFAULT,
-            version: UTILIZATION,
-          },
-          disableShallowClone: true,
-          note: "This is an updated note"
-          isVirtualWorkStation: false,
-          isCluster: true,
-          homeVolumeSettings: {
-            formatCommand: ""
-          },
-          iceCreamSettings: {
-            configPath: "",
-            schedulerHost: ""
-          },
-          setup: "ls -alF",
-          setupAsSudo: true,
-          validProjects: []
-        },
-        onSave: DECOMMISSION
+          {
+            ami: "who-ami-2"
+            instance_type: "m4.2xlarge"
+            is_vpc: false
+            region: "us-west-1"
+            security_group_ids: ["2"]
+          }
+        ]
+        user: "mci-exec"
+        bootstrapSettings: {
+          clientDir: "/home/mci-exec/evergreen_provisioning"
+          communication: RPC
+          env: [{ key: "foo", value: "bar" }]
+          jasperBinaryDir: "/home/mci-exec/evergreen_provisioning"
+          jasperCredentialsPath: "/home/mci-exec/evergreen_provisioning/jasper_credentials.json"
+          method: SSH
+          preconditionScripts: []
+          resourceLimits: {
+            lockedMemoryKb: -1
+            numFiles: 66000
+            numProcesses: -1
+            numTasks: 0
+            virtualMemoryKb: -1
+          }
+          rootDir: "C:/cygwin"
+          serviceUser: ""
+          shellPath: "/bin/fish"
+        }
+        sshKey: "mci"
+        sshOptions: [
+          "StrictHostKeyChecking=no"
+          "BatchMode=yes"
+          "ConnectTimeout=10"
+        ]
+        userSpawnAllowed: false
+        expansions: [
+          { key: "decompress", value: "tar xzvf" }
+          { key: "ps", value: "ps aux" }
+        ]
+        finderSettings: { version: LEGACY }
+        plannerSettings: {
+          commitQueueFactor: 0
+          expectedRuntimeFactor: 0
+          generateTaskFactor: 0
+          groupVersions: false
+          mainlineTimeInQueueFactor: 0
+          patchFactor: 0
+          patchTimeInQueueFactor: 0
+          targetTime: 0
+          version: TUNABLE
+        }
+        dispatcherSettings: { version: REVISED_WITH_DEPENDENCIES }
+        hostAllocatorSettings: {
+          acceptableHostIdleTime: 30000000000
+          feedbackRule: DEFAULT
+          futureHostFraction: 0
+          hostsOverallocatedRule: DEFAULT
+          maximumHosts: 0
+          minimumHosts: 0
+          roundingRule: DEFAULT
+          version: UTILIZATION
+        }
+        disableShallowClone: true
+        note: "This is an updated note"
+        isVirtualWorkStation: false
+        isCluster: true
+        homeVolumeSettings: { formatCommand: "" }
+        iceCreamSettings: { configPath: "", schedulerHost: "" }
+        setup: "ls -alF"
+        setupAsSudo: true
+        validProjects: []
       }
-    ) 
-    {
-      distro {
-        aliases
-        disableShallowClone
-        isCluster
-        name
-        note
-      }
-      hostCount
+      onSave: DECOMMISSION
     }
+  ) {
+    distro {
+      aliases
+      disableShallowClone
+      isCluster
+      name
+      note
+    }
+    hostCount
+  }
 }
