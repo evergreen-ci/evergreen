@@ -1938,7 +1938,7 @@ func GetBranchProtectionRules(ctx context.Context, token, owner, repo, branch st
 	return nil, nil
 }
 
-// createCheckrun creates a checkRun and returns a Github CheckRun object
+// CreateCheckrun creates a checkRun and returns a Github CheckRun object
 func CreateCheckrun(ctx context.Context, owner, repo, name, headSHA string, output *github.CheckRunOutput) (*github.CheckRun, error) {
 	caller := "createCheckrun"
 	ctx, span := tracer.Start(ctx, caller, trace.WithAttributes(
@@ -2019,18 +2019,18 @@ func ValidateCheckRun(checkRun *github.CheckRunOutput) error {
 	catcher.NewWhen(checkRun.Summary == nil, summaryErrMsg)
 
 	for _, an := range checkRun.Annotations {
-		annotationErrorMessage := fmt.Sprintf("checkRun '%s' specifies an annotation '%s' with no ", utility.FromStringPtr(checkRun.Title), utility.FromStringPtr(an.Title))
+		annotationErrorMessage := fmt.Sprintf("checkRun '%s' specifies an annotation '%s' with no", utility.FromStringPtr(checkRun.Title), utility.FromStringPtr(an.Title))
 
-		catcher.NewWhen(an.Path == nil, annotationErrorMessage+"path")
+		catcher.NewWhen(an.Path == nil, fmt.Sprintf("%s path", annotationErrorMessage))
 		invalidStart := an.StartLine == nil || utility.FromIntPtr(an.StartLine) < 1
-		catcher.NewWhen(invalidStart, annotationErrorMessage+"start line or a start line < 1")
+		catcher.NewWhen(invalidStart, fmt.Sprintf("%s start line or a start line < 1", annotationErrorMessage))
 
 		invalidEnd := an.EndLine == nil || utility.FromIntPtr(an.EndLine) < 1
-		catcher.NewWhen(invalidEnd, annotationErrorMessage+"end line or an end line < 1")
+		catcher.NewWhen(invalidEnd, fmt.Sprintf("%s end line or an end line < 1", annotationErrorMessage))
 
-		catcher.NewWhen(an.AnnotationLevel == nil, annotationErrorMessage+"annotation level")
+		catcher.NewWhen(an.AnnotationLevel == nil, fmt.Sprintf("%s annotation level", annotationErrorMessage))
 
-		catcher.NewWhen(an.Message == nil, annotationErrorMessage+"message")
+		catcher.NewWhen(an.Message == nil, fmt.Sprintf("%s message", annotationErrorMessage))
 
 		if an.EndColumn != nil || an.StartColumn != nil {
 			if utility.FromIntPtr(an.StartLine) != utility.FromIntPtr(an.EndLine) {

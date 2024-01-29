@@ -177,7 +177,7 @@ type Task struct {
 	IsGithubCheck bool `bson:"is_github_check,omitempty" json:"is_github_check,omitempty"`
 
 	// CheckRunPath is a local file path to an output json file for the checkrun.
-	CheckRunPath string `yaml:"check_run_path" bson:"check_run_path"`
+	CheckRunPath string `bson:"check_run_path" json:"check_run_path"`
 
 	// CanReset indicates that the task has successfully archived and is in a valid state to be reset.
 	CanReset bool `bson:"can_reset,omitempty" json:"can_reset,omitempty"`
@@ -2927,6 +2927,7 @@ func (t *Task) IsPartOfSingleHostTaskGroup() bool {
 	return t.TaskGroup != "" && t.TaskGroupMaxHosts == 1
 }
 
+// HasCheckRun retruns true if the task specifies a check run path.
 func (t *Task) HasCheckRun() bool {
 	return t.CheckRunPath != ""
 }

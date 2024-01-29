@@ -1475,7 +1475,7 @@ func (h *upsertCheckRunHandler) Parse(ctx context.Context, r *http.Request) erro
 
 	err := utility.ReadJSON(r.Body, &h.checkRunOutput)
 	if err != nil {
-		errorMessage := fmt.Sprintf("reading checkRun for task %s", h.taskID)
+		errorMessage := fmt.Sprintf("reading checkRun for task '%s'", h.taskID)
 		grip.Error(message.Fields{
 			"message": errorMessage,
 			"task_id": h.taskID,
@@ -1485,7 +1485,7 @@ func (h *upsertCheckRunHandler) Parse(ctx context.Context, r *http.Request) erro
 
 	err = thirdparty.ValidateCheckRun(&h.checkRunOutput)
 	if err != nil {
-		errorMessage := fmt.Sprintf("validating checkRun for task %s", h.taskID)
+		errorMessage := fmt.Sprintf("validating checkRun for task '%s'", h.taskID)
 		grip.Error(message.Fields{
 			"message": errorMessage,
 			"task_id": h.taskID,
