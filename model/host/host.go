@@ -345,9 +345,10 @@ type SleepScheduleInfo struct {
 	// NextStartTime is the next time that the host should start for its sleep
 	// schedule.
 	NextStartTime time.Time `bson:"next_start_time" json:"next_start_time"`
-	// TemporarilyExemptUntil stores when a user's temporary exemption ends. The
-	// sleep schedule will not take effect until this timestamp passes.
-	TemporarilyExemptUntil time.Time `bson:"temporarily_exempt_until" json:"temporarily_exempt_until"`
+	// TemporarilyExemptUntil stores when a user's temporary exemption ends, if
+	// any has been set. The sleep schedule will not take effect until
+	// this timestamp passes.
+	TemporarilyExemptUntil time.Time `bson:"temporarily_exempt_until,omitempty" json:"temporarily_exempt_until,omitempty"`
 }
 
 // IsZero implements the bsoncodec.Zeroer interface for the sake of defining the
