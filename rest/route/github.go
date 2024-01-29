@@ -658,10 +658,10 @@ func (gh *githubHookApi) overrideOtherPRs(ctx context.Context, pr *github.PullRe
 	// If these error, we should should still continue and create a patch as the others were aborted.
 	catcher := grip.NewBasicCatcher()
 	for _, p := range patches {
-		catcher.Add(gh.sc.AddCommentToPR(ctx, p.GithubPatchData.BaseOwner, p.GithubPatchData.BaseRepo, p.GithubPatchData.PRNumber, gh.comments.overriddenPR(pr)))
+		catcher.Add(gh.sc.AddCommentToPR(ctx, p.GithubPatchData.BaseOwner, p.GithubPatchData.BaseRepo, p.GithubPatchData.PRNumber, gh.comments.overridenPR(pr)))
 	}
 
-	catcher.Add(gh.sc.AddCommentToPR(ctx, pr.Base.User.GetLogin(), pr.Base.Repo.GetName(), pr.GetNumber(), gh.comments.overriddingPR(patches)))
+	catcher.Add(gh.sc.AddCommentToPR(ctx, pr.Base.User.GetLogin(), pr.Base.Repo.GetName(), pr.GetNumber(), gh.comments.overridingPR(patches)))
 	grip.Error(message.WrapError(catcher.Resolve(), message.Fields{
 		"message": "error informing user(s) that aborting other patches failed",
 		"owner":   pr.Base.User.GetLogin(),
@@ -677,15 +677,14 @@ func (gh *githubHookApi) overrideOtherPRs(ctx context.Context, pr *github.PullRe
 			continue
 		}
 		commentErr := gh.sc.AddCommentToPR(ctx, pr.Base.User.GetLogin(), pr.Base.Repo.GetName(), pr.GetNumber(), "There was an issue aborting the other patches, please try 'evergreen retry' again.")
-		grip.Error(message.Fields{
-			"message":     "error informing user that aborting other patches failed",
+		grip.Error(message.WrapError(err, message.Fields{
+			"message":     "error canceling other patches",
 			"owner":       pr.Base.User.GetLogin(),
 			"repo":        pr.Base.Repo.GetName(),
 			"ref":         pr.Head.GetRef(),
 			"pr_num":      pr.GetNumber(),
-			"err":         err.Error(),
-			"comment_err": commentErr.Error(),
-		})
+			"comment_err": commentErr,
+		}))
 		return errors.Wrapf(err, "aborting patch '%s' for repo '%s/%s' at PR '%d'", p.Id, pr.Base.User.GetLogin(), pr.Base.Repo.GetName(), pr.GetNumber())
 	}
 
