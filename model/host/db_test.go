@@ -64,13 +64,16 @@ func TestConsolidateHostsForUser(t *testing.T) {
 	assert.NotEqual(t, "new_me", hostFromDB.StartedBy)
 
 	volumes, err := FindVolumesByUser("me")
+	assert.NoError(t, err)
 	assert.Len(t, volumes, 0)
 
 	volumes, err = FindVolumesByUser("new_me")
+	assert.NoError(t, err)
 	require.Len(t, volumes, 1)
 	assert.Equal(t, volumes[0].ID, "v1")
 
 	volumes, err = FindVolumesByUser("NOT me")
+	assert.NoError(t, err)
 	require.Len(t, volumes, 1)
 	assert.Equal(t, volumes[0].ID, "v2")
 
