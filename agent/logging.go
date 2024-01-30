@@ -174,13 +174,12 @@ func (a *Agent) prepSingleLogger(tc *taskContext, in model.LogOpts, logDir, file
 
 func redactList(projectVars map[string]string, redacted map[string]bool) []string {
 	suspiciousPatterns := []string{
-		"key",
-		"secret",
 		"auth",
-		"token",
-		"private",
 		"pass",
+		"private",
 		"pw",
+		"secret",
+		"token",
 	}
 
 	var redactedKeys []string

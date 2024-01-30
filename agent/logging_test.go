@@ -273,9 +273,9 @@ func TestRedactList(t *testing.T) {
 		{
 			name: "SuspiciousPatterns",
 			projectVars: map[string]string{
-				"not_suspicious":  "",
 				"num_hosts":       "",
 				"aws_key":         "",
+				"aws_secret_key":  "",
 				"my_secret":       "",
 				"my_SECRET":       "",
 				"aws_token":       "",
@@ -290,7 +290,7 @@ func TestRedactList(t *testing.T) {
 				"Some_Auth":       "",
 			},
 			expected: []string{
-				"aws_key",
+				"aws_secret_key",
 				"my_secret",
 				"my_SECRET",
 				"aws_token",
@@ -308,10 +308,10 @@ func TestRedactList(t *testing.T) {
 		{
 			name: "Redacted",
 			projectVars: map[string]string{
-				"not_suspicious": "",
-				"num_hosts":      "",
-				"aws_token":      "",
-				"my_secret":      "",
+				"num_hosts": "",
+				"aws_key":   "",
+				"aws_token": "",
+				"my_secret": "",
 			},
 			redacted: map[string]bool{
 				"aws_token": true,
@@ -325,11 +325,11 @@ func TestRedactList(t *testing.T) {
 		{
 			name: "SuspiciousPatternsAndRedacted",
 			projectVars: map[string]string{
-				"not_suspicious": "",
-				"num_hosts":      "",
-				"aws_token":      "",
-				"my_secret":      "",
-				"svc_PASSWORD":   "",
+				"num_hosts":    "",
+				"aws_key":      "",
+				"aws_token":    "",
+				"my_secret":    "",
+				"svc_PASSWORD": "",
 			},
 			redacted: map[string]bool{
 				"aws_token": true,
