@@ -22,6 +22,7 @@ import (
 	"github.com/evergreen-ci/evergreen/thirdparty"
 	"github.com/evergreen-ci/gimlet"
 	"github.com/evergreen-ci/utility"
+	"github.com/google/go-github/v52/github"
 	"github.com/mongodb/grip"
 	"github.com/mongodb/grip/message"
 	"github.com/pkg/errors"
@@ -1446,4 +1447,89 @@ func (g *createInstallationToken) Run(ctx context.Context) gimlet.Responder {
 	return gimlet.NewJSONResponse(&apimodels.InstallationToken{
 		Token: token,
 	})
+}
+
+// POST /task/{task_id}/upsert_check_run
+type upsertCheckRunHandler struct {
+	taskID         string
+	checkRunOutput github.CheckRunOutput
+}
+
+func makeUpsertCheckRun() gimlet.RouteHandler {
+	return &upsertCheckRunHandler{}
+}
+
+func (h *upsertCheckRunHandler) Factory() gimlet.RouteHandler {
+	return &upsertCheckRunHandler{}
+}
+
+func (h *upsertCheckRunHandler) Parse(ctx context.Context, r *http.Request) error {
+	if h.taskID = gimlet.GetVars(r)["task_id"]; h.taskID == "" {
+		return errors.New("missing task ID")
+	}
+
+	err := utility.ReadJSON(r.Body, &h.checkRunOutput)
+	if err != nil {
+		errorMessage := fmt.Sprintf("reading checkRun for task '%s'", h.taskID)
+		grip.Error(message.Fields{
+			"message": errorMessage,
+			"task_id": h.taskID,
+		})
+		return errors.Wrapf(err, errorMessage)
+	}
+
+	err = thirdparty.ValidateCheckRun(&h.checkRunOutput)
+	if err != nil {
+		errorMessage := fmt.Sprintf("validating checkRun for task '%s'", h.taskID)
+		grip.Error(message.Fields{
+			"message": errorMessage,
+			"task_id": h.taskID,
+		})
+		return errors.Wrapf(err, errorMessage)
+	}
+
+	return nil
+}
+
+func (h *upsertCheckRunHandler) Run(ctx context.Context) gimlet.Responder {
+	t, err := task.FindOneId(h.taskID)
+	if err != nil {
+		return gimlet.MakeJSONInternalErrorResponder(errors.Wrapf(err, "finding task '%s'", h.taskID))
+	}
+	if t == nil {
+		return gimlet.MakeJSONErrorResponder(gimlet.ErrorResponse{
+			StatusCode: http.StatusNotFound,
+			Message:    fmt.Sprintf("task '%s' not found", h.taskID),
+		})
+	}
+
+	if !evergreen.IsGitHubPatchRequester(t.Requester) {
+		return gimlet.NewJSONResponse(fmt.Sprintf("checkRun not upserted for '%s', task requester is not a github patch", t.Id))
+
+	}
+
+	p, err := patch.FindOneId(t.Version)
+	if err != nil {
+		return gimlet.MakeJSONInternalErrorResponder(err)
+	}
+	if p == nil {
+		return gimlet.MakeJSONErrorResponder(gimlet.ErrorResponse{
+			StatusCode: http.StatusNotFound,
+			Message:    "empty patch for task",
+		})
+	}
+
+	gh := p.GithubPatchData
+	_, err = thirdparty.CreateCheckrun(ctx, gh.HeadOwner, gh.HeadRepo, *h.checkRunOutput.Title, gh.HeadHash, &h.checkRunOutput)
+
+	if err != nil {
+		errorMessage := fmt.Sprintf("upserting checkRun: %s", err.Error())
+		grip.Error(message.Fields{
+			"message": errorMessage,
+			"task_id": t.Id,
+		})
+		return gimlet.MakeJSONInternalErrorResponder(errors.Wrap(err, "setting patch parameters"))
+	}
+
+	return gimlet.NewJSONResponse(fmt.Sprintf("Successfully upserted checkRun for  %v ", t.Id))
 }

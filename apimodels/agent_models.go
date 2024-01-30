@@ -346,3 +346,26 @@ type ExpansionsAndVars struct {
 	// PrivateVars contain the project private variables.
 	PrivateVars map[string]bool `json:"private_vars"`
 }
+
+// CheckRunOutput represents the output for a CheckRun.
+type CheckRunOutput struct {
+	Title            string                `json:"title,omitempty" plugin:"expand"`
+	Summary          string                `json:"summary,omitempty" plugin:"expand"`
+	Text             string                `json:"text,omitempty" plugin:"expand"`
+	AnnotationsCount *int                  `json:"annotations_count,omitempty"`
+	AnnotationsURL   string                `json:"annotations_url,omitempty" plugin:"expand"`
+	Annotations      []*CheckRunAnnotation `json:"annotations,omitempty" plugin:"expand"`
+}
+
+// CheckRunAnnotation represents an annotation object for a CheckRun output.
+type CheckRunAnnotation struct {
+	Path            string `json:"path,omitempty" plugin:"expand"`
+	StartLine       *int   `json:"start_line,omitempty" `
+	EndLine         *int   `json:"end_line,omitempty" `
+	StartColumn     *int   `json:"start_column,omitempty"`
+	EndColumn       *int   `json:"end_column,omitempty" `
+	AnnotationLevel string `json:"annotation_level,omitempty" plugin:"expand"`
+	Message         string `json:"message,omitempty" plugin:"expand"`
+	Title           string `json:"title,omitempty" plugin:"expand"`
+	RawDetails      string `json:"raw_details,omitempty" plugin:"expand"`
+}
