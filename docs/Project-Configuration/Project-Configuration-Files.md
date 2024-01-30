@@ -647,10 +647,15 @@ level on the project configuration page or on a build variant level
 within the project. They can be used **as inputs to commands**,
 including shell scripts.
 
-Expansion values defined on the project configurations page that
-    (1) are marked as private OR
-    (2) with key names containing any of the following case-insensitive patterns: `key`, `pass`, `pw`, `token`, `auth`, `private`
-are redacted from task logs and replaced with \<REDACTED:expansion_key\>.
+Expansion values defined on the project configurations page are redacted from
+task logs and replaced with `\<REDACTED:expansion\_key\>` if they meet one of
+the following criteria:
+- the project variable is marked as private
+- the project variable key contains any of the following case-insensitive
+  patterns: `key`, `pass`, `pw`, `token`, `auth`, `private`
+Please note that this is the last line of defense against leaking secrets and
+task workflows should always follow best practices for securing sensitive
+information from reaching logs.
 
 Expansions cannot be used recursively. In other words, you can't define an
 expansion whose value uses another expansion.
