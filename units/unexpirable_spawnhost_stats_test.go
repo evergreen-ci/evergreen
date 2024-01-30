@@ -48,6 +48,7 @@ func TestUnexpirableSpawnHostStatsJob(t *testing.T) {
 							birch.NewDocument(birch.EC.String("instance_type", "m5.xlarge")),
 						},
 					},
+					InstanceType: "m5.xlarge",
 				},
 				{
 					Id: "h1",
@@ -58,6 +59,7 @@ func TestUnexpirableSpawnHostStatsJob(t *testing.T) {
 							birch.NewDocument(birch.EC.String("instance_type", "m5.xlarge")),
 						},
 					},
+					InstanceType: "m5.xlarge",
 				},
 				{
 					Id: "h2",
@@ -68,6 +70,7 @@ func TestUnexpirableSpawnHostStatsJob(t *testing.T) {
 							birch.NewDocument(birch.EC.String("instance_type", "m5.xlarge")),
 						},
 					},
+					InstanceType: "m5.xlarge",
 				},
 				{
 					Id: "h3",
@@ -78,6 +81,7 @@ func TestUnexpirableSpawnHostStatsJob(t *testing.T) {
 							birch.NewDocument(birch.EC.String("instance_type", "c5.xlarge")),
 						},
 					},
+					InstanceType: "c5.xlarge",
 				},
 				{
 					Id: "h4",
@@ -88,6 +92,7 @@ func TestUnexpirableSpawnHostStatsJob(t *testing.T) {
 							birch.NewDocument(birch.EC.String("instance_type", "m5.xlarge")),
 						},
 					},
+					InstanceType: "m5.xlarge",
 				},
 				{
 					Id: "h5",
@@ -98,6 +103,7 @@ func TestUnexpirableSpawnHostStatsJob(t *testing.T) {
 							birch.NewDocument(birch.EC.String("instance_type", "m5.xlarge")),
 						},
 					},
+					InstanceType: "m5.xlarge",
 				},
 			}
 
