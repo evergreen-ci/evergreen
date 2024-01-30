@@ -99,11 +99,8 @@ func (j *unexpirableSpawnHostStatsJob) getStats(hosts []host.Host) unexpirableSp
 		totalUptime += dailyUptimePerHost
 		uptimeByDistro[h.Distro.Id] += int(dailyUptimePerHost.Seconds())
 		if evergreen.IsEc2Provider(h.Distro.Provider) {
-			if len(h.Distro.ProviderSettingsList) == 0 {
-				continue
-			}
-			instanceType, ok := h.Distro.ProviderSettingsList[0].Lookup("instance_type").StringValueOK()
-			if !ok {
+			instanceType := h.InstanceType
+			if instanceType == "" {
 				continue
 			}
 			uptimeByInstanceType[instanceType] += int(dailyUptimePerHost.Seconds())
