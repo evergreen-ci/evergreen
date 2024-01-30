@@ -28,6 +28,7 @@ import (
 	"github.com/mongodb/grip/recovery"
 )
 
+/*
 // Directory is the application representation of a task's reserved output
 // directory. It coordinates the automated and asynchronous handling of task
 // output written to the reserved directory while a task runs.
@@ -102,4 +103,64 @@ type directoryHandler interface {
 	// close gracefully concludes any asynchronous processes and executes
 	// any handling logic designated for the end of a task run.
 	close(context.Context) error
+}
+*/
+
+type Directory struct {
+	root     string
+	handlers map[string]directoryHandler
+}
+
+func NewDirectory(root string, tsk *task.Task, logger client.LoggerProducer) *Directory {
+	output := tsk.TaskOutputInfo
+	taskOpts := taskoutput.TaskOptions{
+		ProjectID: tsk.Project,
+		TaskID:    tsk.Id,
+		Execution: tsk.Execution,
+	}
+
+	return &Directory{
+		root: root,
+		handlers: map[string]directoryHandler{
+			output.TestLogs.ID(): newTestLogDirectoryHandler(output.TestLogs, taskOpts, logger),
+		},
+	}
+}
+
+func (d *Directory) Setup(ctx context.Context) error {
+	catcher := grip.NewBasicCatcher()
+	for id := range d.handlers {
+		subDir := filepath.Join(d.root, id)
+		if err := os.MkdirAll(subDir, 0777); err != nil {
+			catcher.Wrapf(err, "creating task output directory '%s'", subDir)
+		}
+	}
+
+	return catcher.Resolve()
+}
+
+func (d *Directory) Sweep(ctx context.Context) error {
+	catcher := grip.NewBasicCatcher()
+
+	var wg sync.WaitGroup
+	for id, handler := range d.handlers {
+		wg.Add(1)
+		go func(id string, h directoryHandler) {
+			defer func() {
+				catcher.Add(recovery.HandlePanicWithError(recover(), nil, "task output directory handler sweeper"))
+			}()
+			defer wg.Done()
+
+			catcher.Wrapf(h.sweep(ctx), "sweeping task output for '%s'", id)
+		}(id, handler)
+	}
+	wg.Wait()
+
+	catcher.Wrap(os.RemoveAll(d.root), "removing task output directory")
+
+	return catcher.Resolve()
+}
+
+type directoryHandler interface {
+	sweep(ctx context.Context) error
 }
