@@ -224,7 +224,6 @@ buildvariants:
     - name: compile
     - name: passing_test
       variant: osx-108
-    exec_timeout_secs: 20
     priority: 10
     batchtime: 20 // overrides build variant batchtime of 60
   - name: failing_test
@@ -755,6 +754,7 @@ Every task has some expansions available by default:
     commit queue item appears
 -   `${github_author}` is the GitHub username of the creator of a PR
     or PR triggered commit queue item
+-   `${github_known_hosts}` is GitHub's SSH key fingerprint
 -   `${triggered_by_git_tag}` is the name of the tag that triggered this
     version, if applicable
 -   `${is_commit_queue}` is the string "true" if this is a commit
@@ -963,10 +963,10 @@ must be present in the `tasks` array.
 
 ### Stepback
 
-Stepback is set to true if you want to stepback and test earlier commits
-in the case of a failing task. This can be set or unset at the
-top-level, at the build variant level, and for individual tasks (in the task definition or for the
-task within a specific build variant).
+Stepback is set to true if you want to stepback and test earlier commits in the case
+of a normally failing task (a normally failing task does not include system failed, setup failed, timed out, etc.).
+This can be set or unset at the top-level, at the build variant level, and for individual tasks
+(in the task definition or for the task within a specific build variant).
 
 ### Out of memory (OOM) Tracker
 

@@ -16,6 +16,7 @@ import (
 	"github.com/evergreen-ci/evergreen/model/host"
 	"github.com/evergreen-ci/evergreen/model/task"
 	"github.com/evergreen-ci/evergreen/model/user"
+	"github.com/evergreen-ci/evergreen/testutil"
 	"github.com/evergreen-ci/evergreen/util"
 	"github.com/mongodb/amboy"
 	"github.com/mongodb/amboy/queue"
@@ -102,7 +103,20 @@ func TestListHostsForTask(t *testing.T) {
 func TestCreateHostsFromTask(t *testing.T) {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
-	assert.NoError(t, db.ClearCollections(task.Collection, model.VersionCollection, distro.Collection, model.ProjectRefCollection, model.ProjectVarsCollection, host.Collection, model.ParserProjectCollection))
+
+	require.NoError(t, db.ClearCollections(task.Collection, model.VersionCollection, distro.Collection, model.ProjectRefCollection, model.ProjectVarsCollection, host.Collection, model.ParserProjectCollection))
+
+	env := &mock.Environment{}
+	require.NoError(t, env.Configure(ctx))
+	testutil.ConfigureIntegrationTest(t, env.Settings(), t.Name())
+
+	var err error
+	env.RemoteGroup, err = queue.NewLocalQueueGroup(ctx, queue.LocalQueueGroupOptions{
+		DefaultQueue: queue.LocalQueueOptions{Constructor: func(context.Context) (amboy.Queue, error) {
+			return queue.NewLocalLimitedSize(2, 1048), nil
+		}}})
+	require.NoError(t, err)
+
 	settingsList := []*birch.Document{birch.NewDocument(
 		birch.EC.String("region", "us-east-1"),
 		birch.EC.String("ami", "ami-123456"),
@@ -119,23 +133,15 @@ func TestCreateHostsFromTask(t *testing.T) {
 	}
 	assert.NoError(t, d.Insert(ctx))
 	p := model.ProjectRef{
-		Id: "p",
+		Id:    "p",
+		Owner: "evergreen-ci",
+		Repo:  "sample",
 	}
 	assert.NoError(t, p.Insert())
 	pvars := model.ProjectVars{
 		Id: "p",
 	}
 	assert.NoError(t, pvars.Insert())
-
-	env := &mock.Environment{}
-	assert.NoError(t, env.Configure(ctx))
-	env.EvergreenSettings.Credentials = map[string]string{"github": "token globalGitHubOauthToken"}
-	var err error
-	env.RemoteGroup, err = queue.NewLocalQueueGroup(ctx, queue.LocalQueueGroupOptions{
-		DefaultQueue: queue.LocalQueueOptions{Constructor: func(context.Context) (amboy.Queue, error) {
-			return queue.NewLocalLimitedSize(2, 1048), nil
-		}}})
-	assert.NoError(t, err)
 
 	// Run tests
 	t.Run("Classic", func(t *testing.T) {
@@ -416,8 +422,22 @@ func TestCreateContainerFromTask(t *testing.T) {
 	defer cancel()
 	assert := assert.New(t)
 	require := require.New(t)
-	assert.NoError(db.ClearCollections(task.Collection, model.VersionCollection, distro.Collection, model.ProjectRefCollection,
+
+	require.NoError(db.ClearCollections(task.Collection, model.VersionCollection, distro.Collection, model.ProjectRefCollection,
 		model.ProjectVarsCollection, host.Collection, model.ParserProjectCollection))
+
+	env := &mock.Environment{}
+	require.NoError(env.Configure(ctx))
+	testutil.ConfigureIntegrationTest(t, env.Settings(), t.Name())
+
+	pool := evergreen.ContainerPool{Distro: "parent-distro", Id: "test-pool", MaxContainers: 2}
+	env.EvergreenSettings.ContainerPools = evergreen.ContainerPoolsConfig{Pools: []evergreen.ContainerPool{pool}}
+	var err error
+	env.RemoteGroup, err = queue.NewLocalQueueGroup(ctx, queue.LocalQueueGroupOptions{
+		DefaultQueue: queue.LocalQueueOptions{Constructor: func(context.Context) (amboy.Queue, error) {
+			return queue.NewLocalLimitedSize(2, 1048), nil
+		}}})
+	require.NoError(err)
 
 	t1 := task.Task{
 		Id:           "t1",
@@ -462,8 +482,7 @@ buildvariants:
 	}
 	assert.NoError(h1.Insert(ctx))
 	pp := model.ParserProject{}
-	err := util.UnmarshalYAMLWithFallback([]byte(versionYaml), &pp)
-	require.NoError(err)
+	require.NoError(util.UnmarshalYAMLWithFallback([]byte(versionYaml), &pp))
 	pp.Id = "v1"
 	require.NoError(pp.Insert())
 
@@ -475,18 +494,6 @@ buildvariants:
 		},
 	}
 	require.NoError(parent.Insert(ctx))
-
-	pool := evergreen.ContainerPool{Distro: "parent-distro", Id: "test-pool", MaxContainers: 2}
-
-	env := &mock.Environment{}
-	assert.NoError(env.Configure(ctx))
-	env.EvergreenSettings.ContainerPools = evergreen.ContainerPoolsConfig{Pools: []evergreen.ContainerPool{pool}}
-	env.EvergreenSettings.Credentials = map[string]string{"github": "token globalGitHubOauthToken"}
-	env.RemoteGroup, err = queue.NewLocalQueueGroup(ctx, queue.LocalQueueGroupOptions{
-		DefaultQueue: queue.LocalQueueOptions{Constructor: func(context.Context) (amboy.Queue, error) {
-			return queue.NewLocalLimitedSize(2, 1048), nil
-		}}})
-	assert.NoError(err)
 
 	parentHost := &host.Host{
 		Id:                    "host1",
@@ -507,7 +514,9 @@ buildvariants:
 	require.NoError(d.Insert(ctx))
 
 	p := model.ProjectRef{
-		Id: "p",
+		Id:    "p",
+		Owner: "evergreen-ci",
+		Repo:  "sample",
 	}
 	assert.NoError(p.Insert())
 	pvars := model.ProjectVars{

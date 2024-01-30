@@ -2627,8 +2627,7 @@ func (p *ProjectRef) GetProjectSetupCommands(opts apimodels.WorkstationSetupComm
 	cmds := []*jasper.Command{}
 
 	if p.WorkstationConfig.ShouldGitClone() {
-		args := []string{"git", "clone", "-b", p.Branch, fmt.Sprintf("git@github.com:%s/%s.git", p.Owner, p.Repo), opts.Directory}
-
+		args := []string{"git", "clone", "-b", p.Branch, fmt.Sprintf("https://github.com/%s/%s.git", p.Owner, p.Repo), opts.Directory}
 		cmd := jasper.NewCommand().Add(args).
 			SetErrorWriter(utility.NopWriteCloser(os.Stderr)).
 			Prerequisite(func() bool {

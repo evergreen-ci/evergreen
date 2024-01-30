@@ -234,7 +234,7 @@ func NewEnvironment(ctx context.Context, confPath, versionID string, db *DBSetti
 	catcher.Add(e.initDepot(ctx))
 	catcher.Add(e.initThirdPartySenders(ctx))
 	catcher.Add(e.createLocalQueue(ctx))
-	catcher.Add(e.createRemoteQueues(ctx))
+	catcher.Add(e.createRemoteQueues(ctx, versionID != ""))
 	catcher.Add(e.createNotificationQueue(ctx))
 	catcher.Add(e.setupRoleManager())
 	catcher.Add(e.initTracer(ctx, versionID != ""))
@@ -376,8 +376,13 @@ func (e *envState) initDB(ctx context.Context, settings DBSettings) error {
 	return nil
 }
 
-func (e *envState) createRemoteQueues(ctx context.Context) error {
-	url := e.settings.Amboy.DBConnection.URL
+func (e *envState) createRemoteQueues(ctx context.Context, inKanopy bool) error {
+	var url string
+	if inKanopy {
+		url = e.settings.Amboy.DBConnection.KanopyURL
+	} else {
+		url = e.settings.Amboy.DBConnection.URL
+	}
 	if url == "" {
 		url = DefaultAmboyDatabaseURL
 	}
@@ -741,23 +746,10 @@ func (e *envState) initThirdPartySenders(ctx context.Context) error {
 		e.senders[SenderEmail] = sesSender
 	}
 
-	// TODO EVG-19966: Remove global GitHub status sender
-	var sender send.Sender
-	githubToken, err := e.settings.GetGithubOauthToken()
-	if err == nil && len(githubToken) > 0 {
-		// Github Status
-		sender, err = send.NewGithubStatusLogger("evergreen", &send.GithubOptions{
-			Token:       githubToken,
-			MinDelay:    GithubRetryMinDelay,
-			MaxAttempts: GitHubRetryAttempts,
-		}, "")
-		if err != nil {
-			return errors.Wrap(err, "setting up GitHub status logger")
-		}
-		e.senders[SenderGithubStatus] = sender
-	}
 	e.githubSenders = make(map[string]cachedGitHubSender)
 
+	var sender send.Sender
+	var err error
 	if jira := &e.settings.Jira; len(jira.GetHostURL()) != 0 {
 		sender, err = send.NewJiraLogger(ctx, jira.Export(), levelInfo)
 		if err != nil {
@@ -1101,18 +1093,7 @@ func (e *envState) GetGitHubSender(owner, repo string) (send.Sender, error) {
 	tokenCreatedAt := time.Now()
 	token, err := e.settings.CreateInstallationToken(e.ctx, owner, repo, nil)
 	if err != nil {
-		// TODO EVG-19966: Delete fallback to legacy GitHub sender
-		grip.Debug(message.WrapError(err, message.Fields{
-			"message": "error creating installation token for GitHub sender",
-			"owner":   owner,
-			"repo":    repo,
-			"ticket":  "EVG-19966",
-		}))
-		legacySender, ok := e.senders[SenderGithubStatus]
-		if !ok {
-			return nil, errors.Errorf("Legacy GitHub status sender not found")
-		}
-		return legacySender, nil
+		return nil, errors.Wrap(err, "getting installation token")
 	}
 	sender, err := send.NewGithubStatusLogger("evergreen", &send.GithubOptions{
 		Token:       token,
@@ -1120,18 +1101,7 @@ func (e *envState) GetGitHubSender(owner, repo string) (send.Sender, error) {
 		MaxAttempts: GitHubRetryAttempts,
 	}, "")
 	if err != nil {
-		// TODO EVG-19966: Delete fallback to legacy GitHub sender
-		grip.Debug(message.WrapError(err, message.Fields{
-			"message": "error setting up GitHub status logger with GitHub app",
-			"owner":   owner,
-			"repo":    repo,
-			"ticket":  "EVG-19966",
-		}))
-		legacySender, ok := e.senders[SenderGithubStatus]
-		if !ok {
-			return nil, errors.Errorf("Legacy GitHub status sender not found")
-		}
-		return legacySender, nil
+		return nil, errors.Wrap(err, "creating GitHub status logger")
 	}
 
 	// Just log and continue if the GitHub sender fails to set the error

@@ -61,6 +61,9 @@
             "build_variant": "enterprise-ubuntu1604-64",
             "build_variant_display_name": "Ubuntu 16.04",
             "build_id": "evergreen_version1_build",
+            "create_time": {
+                "$date": "2020-01-01T00:00:05Z"
+            },
             "display_task_id": ""
         },
         {
@@ -72,6 +75,9 @@
             "build_variant": "enterprise-ubuntu1604-64",
             "build_variant_display_name": "Ubuntu 16.04",
             "build_id": "evergreen_version1_build",
+            "create_time": {
+                "$date": "2020-01-01T00:00:05Z"
+            },
             "display_task_id": ""
         },
         {
@@ -83,6 +89,9 @@
             "build_variant": "enterprise-ubuntu1604-64",
             "build_variant_display_name": "Ubuntu 16.04",
             "build_id": "evergreen_version2_build",
+            "create_time": {
+                "$date": "2020-01-01T00:00:05Z"
+            },
             "display_task_id": ""
         },
         {
@@ -94,6 +103,9 @@
             "build_variant": "enterprise-ubuntu1604-64",
             "build_variant_display_name": "Ubuntu 16.04",
             "build_id": "evergreen_version2_build",
+            "create_time": {
+                "$date": "2020-01-01T00:00:05Z"
+            },
             "display_task_id": ""
         },
         {
@@ -105,6 +117,9 @@
             "build_variant": "enterprise-ubuntu1604-64",
             "build_variant_display_name": "Ubuntu 16.04",
             "build_id": "evergreen_version5_build",
+            "create_time": {
+                "$date": "2020-01-01T00:00:05Z"
+            },
             "display_task_id": ""
         }
     ],

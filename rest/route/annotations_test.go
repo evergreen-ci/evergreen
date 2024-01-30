@@ -635,7 +635,9 @@ func TestAnnotationByTaskPutHandlerParse(t *testing.T) {
 }
 
 func TestAnnotationByTaskPutHandlerRun(t *testing.T) {
-	assert.NoError(t, db.ClearCollections(annotations.Collection))
+	assert.NoError(t, db.ClearCollections(annotations.Collection, task.Collection))
+	t1 := task.Task{Id: "t1"}
+	require.NoError(t, t1.Insert())
 	execution0 := 0
 	execution1 := 1
 	a := restModel.APITaskAnnotation{
