@@ -55,10 +55,7 @@ func (exp *Expansions) Put(expansion string, value string) {
 // Get a single value from the expansions.
 // Return the value, or the empty string if the value is not present.
 func (exp *Expansions) Get(expansion string) string {
-	if exp.Exists(expansion) {
-		return (*exp)[expansion]
-	}
-	return ""
+	return (*exp)[expansion]
 }
 
 // Check if a value is present in the expansions.

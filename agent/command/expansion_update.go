@@ -71,21 +71,21 @@ func (c *update) ExecuteUpdates(ctx context.Context, conf *internal.TaskConfig) 
 		}
 
 		if update.Concat == "" {
-			newValue, err := conf.Expansions.ExpandString(update.Value)
+			newValue, err := conf.NewExpansions.ExpandString(update.Value)
 
 			if err != nil {
 				return errors.WithStack(err)
 			}
-			conf.Expansions.Put(update.Key, newValue)
+			conf.NewExpansions.Put(update.Key, newValue)
 			conf.DynamicExpansions.Put(update.Key, newValue)
 		} else {
-			newValue, err := conf.Expansions.ExpandString(update.Concat)
+			newValue, err := conf.NewExpansions.ExpandString(update.Concat)
 			if err != nil {
 				return errors.WithStack(err)
 			}
 
-			oldValue := conf.Expansions.Get(update.Key)
-			conf.Expansions.Put(update.Key, oldValue+newValue)
+			oldValue := conf.NewExpansions.Get(update.Key)
+			conf.NewExpansions.Put(update.Key, oldValue+newValue)
 			conf.DynamicExpansions.Put(update.Key, oldValue+newValue)
 		}
 	}
@@ -103,7 +103,7 @@ func (c *update) Execute(ctx context.Context,
 	}
 
 	if c.YamlFile != "" {
-		c.YamlFile, err = conf.Expansions.ExpandString(c.YamlFile)
+		c.YamlFile, err = conf.NewExpansions.ExpandString(c.YamlFile)
 		if err != nil {
 			return errors.WithStack(err)
 		}
@@ -119,7 +119,7 @@ func (c *update) Execute(ctx context.Context,
 		}
 
 		logger.Task().Infof("Updating expansions with keys from file '%s'.", filename)
-		err := conf.Expansions.UpdateFromYaml(filename)
+		err := conf.NewExpansions.UpdateFromYaml(filename)
 		if err != nil {
 			return errors.WithStack(err)
 		}

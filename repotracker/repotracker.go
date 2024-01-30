@@ -741,19 +741,6 @@ func ShellVersionFromRevision(ctx context.Context, ref *model.ProjectRef, metada
 		if !ref.IsGitTagVersionsEnabled() {
 			return nil, errors.Errorf("git tag versions are not enabled for project '%s'", ref.Id)
 		}
-		settings, err := evergreen.GetConfig(ctx)
-		if err != nil {
-			return nil, errors.Wrap(err, "error getting settings")
-		}
-		token, err := settings.GetGithubOauthToken()
-		if err != nil {
-			return nil, errors.Wrap(err, "error getting github token")
-		}
-
-		if !ref.AuthorizedForGitTag(ctx, metadata.GitTag.Pusher, token, ref.Owner, ref.Repo) {
-			return nil, errors.Errorf("user '%s' not authorized to create git tag versions for project '%s'",
-				metadata.GitTag.Pusher, ref.Id)
-		}
 		v.Id = makeVersionIdWithTag(ref.Identifier, metadata.GitTag.Tag, mgobson.NewObjectId().Hex())
 		v.Requester = evergreen.GitTagRequester
 		v.CreateTime = time.Now()

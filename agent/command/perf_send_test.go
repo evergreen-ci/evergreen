@@ -69,7 +69,6 @@ func TestPerfSendAddEvgData(t *testing.T) {
 		TaskID:    conf.Task.Id,
 		Execution: conf.Task.Execution,
 		Mainline:  true,
-		Requester: evergreen.RepotrackerVersionRequester,
 		BucketConf: poplar.BucketConfiguration{
 			APIKey:    cmd.AWSKey,
 			APISecret: cmd.AWSSecret,

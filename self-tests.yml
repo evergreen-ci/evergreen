@@ -118,7 +118,11 @@ variables:
         params:
           silent: true
           working_dir: evergreen
-          command: bash scripts/setup-smoke-config.sh ${github_token}
+          env:
+            GITHUB_APP_ID: ${staging_github_app_id}
+            GITHUB_APP_KEY: ${staging_github_app_key}
+            GITHUB_TOKEN: ${github_token}
+          command: bash scripts/setup-smoke-config.sh
       - func: run-make
         vars:
           target: set-smoke-vars

@@ -89,6 +89,9 @@ type AWSConfig struct {
 	// in S3.
 	ParserProject ParserProjectS3Config `bson:"parser_project" json:"parser_project" yaml:"parser_project"`
 
+	// PersistentDNS is AWS configuration for maintaining persistent DNS names for hosts.
+	PersistentDNS PersistentDNSConfig `bson:"persistent_dns" json:"persistent_dns" yaml:"persistent_dns"`
+
 	DefaultSecurityGroup string `bson:"default_security_group" json:"default_security_group" yaml:"default_security_group"`
 
 	AllowedRegions []string `bson:"allowed_regions" json:"allowed_regions" yaml:"allowed_regions"`
@@ -126,6 +129,16 @@ type ParserProjectS3Config struct {
 }
 
 func (c *ParserProjectS3Config) Validate() error { return nil }
+
+// PersistentDNSConfig is the configuration options to support persistent DNS
+// names for hosts.
+type PersistentDNSConfig struct {
+	// HostedZoneID is the ID of the hosted zone in Route 53 where DNS names are
+	// managed.
+	HostedZoneID string `bson:"hosted_zone_id" json:"hosted_zone_id" yaml:"hosted_zone_id"`
+	// Domain is the domain name of persistent DNS names.
+	Domain string `bson:"domain" json:"domain" yaml:"domain"`
+}
 
 // AWSPodConfig represents configuration for using pods backed by AWS.
 type AWSPodConfig struct {

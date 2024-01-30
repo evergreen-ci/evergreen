@@ -89,8 +89,9 @@ func MockConfig() *evergreen.Settings {
 			Name:       "amboy",
 			SingleName: "single",
 			DBConnection: evergreen.AmboyDBConfig{
-				Database: "db",
-				URL:      "mongodb://localhost:27017",
+				Database:  "db",
+				URL:       "mongodb://localhost:27017",
+				KanopyURL: "mongodb://localhost:27018",
 			},
 			PoolSizeLocal:                         10,
 			PoolSizeRemote:                        20,
@@ -294,6 +295,10 @@ func MockConfig() *evergreen.Settings {
 						Bucket: "parser_project_bucket",
 					},
 					Prefix: "parser_project_prefix",
+				},
+				PersistentDNS: evergreen.PersistentDNSConfig{
+					HostedZoneID: "hosted_zone_id",
+					Domain:       "example.com",
 				},
 				TaskSync: evergreen.S3Credentials{
 					Key:    "task_sync_key",

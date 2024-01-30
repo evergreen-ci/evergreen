@@ -22,7 +22,8 @@ func MakeTaskConfigFromModelData(ctx context.Context, settings *evergreen.Settin
 	if err != nil {
 		return nil, errors.Wrap(err, "creating GitHub app token")
 	}
-	exp, err := model.PopulateExpansions(data.Task, data.Host, oauthToken, appToken)
+	knownHosts := settings.Expansions[evergreen.GithubKnownHosts]
+	exp, err := model.PopulateExpansions(data.Task, data.Host, oauthToken, appToken, knownHosts)
 	if err != nil {
 		return nil, errors.Wrap(err, "populating expansions")
 	}
@@ -32,7 +33,7 @@ func MakeTaskConfigFromModelData(ctx context.Context, settings *evergreen.Settin
 			CloneMethod: data.Host.Distro.CloneMethod,
 		}
 	}
-	config, err := internal.NewTaskConfig(data.Host.Distro.WorkDir, dv, data.Project, data.Task, data.ProjectRef, nil, exp)
+	config, err := internal.NewTaskConfig(data.Host.Distro.WorkDir, dv, data.Project, data.Task, data.ProjectRef, nil, &apimodels.ExpansionsAndVars{Expansions: exp})
 	if err != nil {
 		return nil, errors.Wrap(err, "making task config from test model data")
 	}

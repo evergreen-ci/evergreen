@@ -32,12 +32,17 @@ func AppendTestLog(ctx context.Context, comm client.Communicator, tsk *task.Task
 		return sendTestLogToCedar(ctx, comm, tsk, testLog)
 	}
 
+	ts := time.Now().UnixNano()
 	var lines []log.LogLine
 	for i := range testLog.Lines {
 		for _, line := range strings.Split(testLog.Lines[i], "\n") {
+			if line == "" {
+				continue
+			}
+
 			lines = append(lines, log.LogLine{
 				Priority:  level.Info,
-				Timestamp: time.Now().UnixNano(),
+				Timestamp: ts,
 				Data:      line,
 			})
 		}

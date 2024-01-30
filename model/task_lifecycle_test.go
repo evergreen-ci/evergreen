@@ -6325,7 +6325,7 @@ func TestEvalStepbackDeactivatePrevious(t *testing.T) {
 	finishedTask := task.Task{
 		Id:                  "t3",
 		BuildId:             "b3",
-		Status:              evergreen.TaskUndispatched,
+		Status:              evergreen.TaskSucceeded,
 		BuildVariant:        "bv",
 		DisplayName:         "task",
 		Project:             "proj",

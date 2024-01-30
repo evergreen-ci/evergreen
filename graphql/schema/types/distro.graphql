@@ -136,7 +136,7 @@ input DistroInput {
   arch: Arch!
   authorizedKeysFile: String!
   bootstrapSettings: BootstrapSettingsInput!
-  cloneMethod: CloneMethod!
+  cloneMethod: CloneMethod
   containerPool: String!
   disabled: Boolean!
   disableShallowClone: Boolean!
@@ -255,7 +255,6 @@ Return type representing whether a distro was deleted.
 type DeleteDistroPayload {
   deletedDistroId: String!
 }
-
 
 type DistroEvent {
   after: Map
@@ -391,4 +390,3 @@ type ResourceLimits {
   numTasks: Int!
   virtualMemoryKb: Int!
 }
-

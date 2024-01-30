@@ -21,10 +21,11 @@ import (
 // s3get is a command to fetch a resource from an S3 bucket and download it to
 // the local machine.
 type s3get struct {
-	// AwsKey and AwsSecret are the user's credentials for
+	// AwsKey, AwsSecret, and AwsSessionToken are the user's credentials for
 	// authenticating interactions with s3.
-	AwsKey    string `mapstructure:"aws_key" plugin:"expand"`
-	AwsSecret string `mapstructure:"aws_secret" plugin:"expand"`
+	AwsKey          string `mapstructure:"aws_key" plugin:"expand"`
+	AwsSecret       string `mapstructure:"aws_secret" plugin:"expand"`
+	AwsSessionToken string `mapstructure:"aws_session_token" plugin:"expand"`
 
 	// RemoteFile is the file path of the file to get, within its bucket.
 	RemoteFile string `mapstructure:"remote_file" plugin:"expand"`
@@ -283,7 +284,7 @@ func (c *s3get) get(ctx context.Context) error {
 
 func (c *s3get) createPailBucket(httpClient *http.Client) error {
 	opts := pail.S3Options{
-		Credentials: pail.CreateAWSCredentials(c.AwsKey, c.AwsSecret, ""),
+		Credentials: pail.CreateAWSCredentials(c.AwsKey, c.AwsSecret, c.AwsSessionToken),
 		Region:      c.Region,
 		Name:        c.Bucket,
 	}

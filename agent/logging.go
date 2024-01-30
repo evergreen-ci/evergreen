@@ -5,7 +5,9 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"strings"
 
+	"github.com/evergreen-ci/evergreen/agent/command"
 	"github.com/evergreen-ci/evergreen/agent/internal/client"
 	"github.com/evergreen-ci/evergreen/model"
 	"github.com/evergreen-ci/pail"
@@ -116,6 +118,8 @@ func (a *Agent) prepLogger(tc *taskContext, c *model.LoggerConfig, commandName s
 		SendToGlobalSender: a.opts.SendTaskLogsToGlobalSender,
 		AWSCredentials:     pail.CreateAWSCredentials(tc.taskConfig.TaskSync.Key, tc.taskConfig.TaskSync.Secret, ""),
 	}
+	config.Expansions = tc.taskConfig.NewExpansions
+	config.ExpansionsToRedact = redactList(tc.taskConfig.ProjectVars, tc.taskConfig.Redacted)
 
 	defaultLogger := tc.taskConfig.ProjectRef.DefaultLogger
 
@@ -166,4 +170,37 @@ func (a *Agent) prepSingleLogger(tc *taskContext, in model.LogOpts, logDir, file
 		SplunkToken:     splunkToken,
 		Filepath:        filepath.Join(logDir, fileName),
 	}
+}
+
+func redactList(projectVars map[string]string, redacted map[string]bool) []string {
+	suspiciousPatterns := []string{
+		"key",
+		"secret",
+		"auth",
+		"token",
+		"private",
+		"pass",
+		"pw",
+	}
+
+	var redactedKeys []string
+	for key := range projectVars {
+		if _, ok := redacted[key]; ok {
+			// Skip since the key is already in the redacted list.
+			continue
+		}
+
+		for _, pattern := range suspiciousPatterns {
+			if strings.Contains(strings.ToLower(key), pattern) {
+				redactedKeys = append(redactedKeys, key)
+				break
+			}
+		}
+	}
+	for key := range redacted {
+		redactedKeys = append(redactedKeys, key)
+	}
+	redactedKeys = append(redactedKeys, command.ExpansionsToRedact...)
+
+	return redactedKeys
 }
