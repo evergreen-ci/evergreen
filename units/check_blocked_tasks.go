@@ -118,7 +118,7 @@ func (j *checkBlockedTasksJob) getContainerTasksToCheck() []task.Task {
 	return tasksToCheck
 }
 
-// checkUnmarkedBlockingTasks tests if the task is blocked by any of its dependencies.
+// checkUnmarkedBlockingTasks checks if the task is blocked by any of its dependencies.
 // If it is blocked, it gets the blocking tasks and updates their dependencies.
 // For blocking tasks that are finished/blocked, it updates their blocked status.
 // For blocking tasks that are deactivated and not finished, it deactivates their dependencies.
