@@ -49,6 +49,9 @@ const (
 	// skipCIDescriptionCharLimit is the maximum number of characters that will
 	// be scanned in the PR description for a skip CI label.
 	skipCIDescriptionCharLimit = 100
+
+	// githubWebhookTimeout is the maximum timeout for processing a GitHub webhook.
+	githubWebhookTimeout = 60 * time.Second
 )
 
 // skipCILabels are a set of labels which will skip creating PR patch if part of
@@ -126,6 +129,12 @@ func (gh *githubHookApi) shouldSkipWebhook(ctx context.Context, owner, repo stri
 }
 
 func (gh *githubHookApi) Run(ctx context.Context) gimlet.Responder {
+	// GitHub occasionally aborts requests early before we are able to complete the full operation
+	// (for example enqueueing a PR to the commit queue). We therefore want to use a custom context
+	// instead of using the request context.
+	ctx, cancel := context.WithTimeout(context.Background(), githubWebhookTimeout)
+	defer cancel()
+
 	switch event := gh.event.(type) {
 	case *github.PingEvent:
 		fromApp := event.GetInstallation() != nil
