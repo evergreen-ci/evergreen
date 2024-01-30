@@ -69,7 +69,7 @@ func (j *unexpirableSpawnHostStatsJob) Run(ctx context.Context) {
 	stats := j.getStats(hosts)
 
 	grip.Info(message.Fields{
-		"message":                      "unexpirable spawn host stats total (in seconds)",
+		"message":                      "unexpirable spawn host stats",
 		"job_id":                       j.ID(),
 		"total_uptime_secs":            stats.totalUptime.Seconds(),
 		"uptime_secs_by_distro":        stats.uptimeSecsByDistro,

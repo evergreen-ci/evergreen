@@ -102,15 +102,19 @@ func TestUnexpirableSpawnHostStatsJob(t *testing.T) {
 			}
 
 			stats := j.getStats(hosts)
+
+			const day = 24 * time.Hour
+			daySecs := int(day.Seconds())
 			assert.Equal(t, time.Duration(len(hosts))*24*time.Hour, stats.totalUptime)
+
 			assert.Len(t, stats.uptimeSecsByDistro, 3)
-			day := int(time.Duration(24 * time.Hour).Seconds())
-			assert.Equal(t, 4*day, stats.uptimeSecsByDistro["distro0"])
-			assert.Equal(t, day, stats.uptimeSecsByDistro["distro1"])
-			assert.Equal(t, day, stats.uptimeSecsByDistro["distro2"])
+			assert.Equal(t, 4*daySecs, stats.uptimeSecsByDistro["distro0"])
+			assert.Equal(t, daySecs, stats.uptimeSecsByDistro["distro1"])
+			assert.Equal(t, daySecs, stats.uptimeSecsByDistro["distro2"])
+
 			assert.Len(t, stats.uptimeSecsByInstanceType, 2)
-			assert.Equal(t, 5*day, stats.uptimeSecsByInstanceType["m5.xlarge"])
-			assert.Equal(t, day, stats.uptimeSecsByInstanceType["c5.xlarge"])
+			assert.Equal(t, 5*daySecs, stats.uptimeSecsByInstanceType["m5.xlarge"])
+			assert.Equal(t, daySecs, stats.uptimeSecsByInstanceType["c5.xlarge"])
 		},
 	} {
 		t.Run(tName, func(t *testing.T) {
