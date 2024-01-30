@@ -648,8 +648,8 @@ within the project. They can be used **as inputs to commands**,
 including shell scripts.
 
 Expansion values defined on the project configurations page are redacted from
-task logs and replaced with `\<REDACTED:expansion\_key\>` if they meet one of
-the following criteria:
+task logs and replaced with `<REDACTED:expansion_key>` if they meet one of the
+following criteria:
 - the project variable is marked as private
 - the project variable key contains any of the following case-insensitive
   patterns: `auth`, `key`, `pass`, `private`, `pw`, `token`
