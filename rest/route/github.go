@@ -632,7 +632,7 @@ func (gh *githubHookApi) AddIntentForPR(ctx context.Context, pr *github.PullRequ
 	}
 
 	// If we do want to override any existing patches, we override them and then create a new patch.
-	if gh.overrideOtherPRs(ctx, pr, conflictingPatches); err != nil {
+	if err = gh.overrideOtherPRs(ctx, pr, conflictingPatches); err != nil {
 		return errors.Wrap(err, "overriding other PRs")
 	}
 
@@ -656,7 +656,7 @@ func (gh *githubHookApi) overrideOtherPRs(ctx context.Context, pr *github.PullRe
 	commentsCatcher := grip.NewBasicCatcher()
 	cancelCatcher := grip.NewBasicCatcher()
 	for _, p := range patches {
-		commentsCatcher.Wrap(gh.sc.AddCommentToPR(ctx, p.GithubPatchData.BaseOwner, p.GithubPatchData.BaseRepo, p.GithubPatchData.PRNumber, gh.comments.overridenPR(pr)), "adding comment to overridden PR")
+		commentsCatcher.Wrap(gh.sc.AddCommentToPR(ctx, p.GithubPatchData.BaseOwner, p.GithubPatchData.BaseRepo, p.GithubPatchData.PRNumber, gh.comments.overriddenPR(pr)), "adding comment to overridden PR")
 		err := model.CancelPatch(&p, task.AbortInfo{User: evergreen.GithubPatchUser, NewVersion: "", PRClosed: false})
 		if err == nil {
 			continue
@@ -685,7 +685,7 @@ func (gh *githubHookApi) overrideOtherPRs(ctx context.Context, pr *github.PullRe
 	}
 
 	cancelCatcher.Add(errors.Wrap(commentsCatcher.Resolve(), "commenting on patches with same hash to cancel"))
-	return errors.Wrap(cancelCatcher.Resolve(), "aborting overriden patches")
+	return errors.Wrap(cancelCatcher.Resolve(), "aborting overridden patches")
 
 }
 

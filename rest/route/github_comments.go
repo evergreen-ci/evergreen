@@ -27,9 +27,9 @@ func (g *githubComments) overridingPR(patches []patch.Patch) string {
 	return fmt.Sprintf("There is an existing patch(es) for this commit SHA that will be aborted:\n%s\n\nThe status reported will be corresponding to this PR rather than the previous existing ones. If you would like a patch to run for another PR and to abort this one, comment 'evergreen retry' on the corresponding PR.", g.getLinksForPRPatches(patches))
 }
 
-// overridenPR returns a comment that is posted when a PR's patch is aborted (or changed) in
+// overriddenPR returns a comment that is posted when a PR's patch is aborted (or changed) in
 // favor of anther patch in a different PR context.
-func (g *githubComments) overridenPR(pr *github.PullRequest) string {
+func (g *githubComments) overriddenPR(pr *github.PullRequest) string {
 	return fmt.Sprintf("Another [PR](%s) with the same head SHA has ran 'evergreen retry' and overridden this PR's patch. This PR's patch will be aborted and the status reported will be in the context of the other PR.", createGitHubPRLink(pr.Base.User.GetLogin(), pr.Base.Repo.GetName(), pr.GetNumber()))
 }
 
