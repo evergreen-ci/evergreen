@@ -121,6 +121,9 @@ func (gh *githubHookApi) shouldSkipWebhook(ctx context.Context, owner, repo stri
 }
 
 func (gh *githubHookApi) Run(ctx context.Context) gimlet.Responder {
+	// GitHub occasionally aborts requests early before we are able to complete the full operation
+	// (for example enqueueing a PR to the commit queue). We therefore want to use a custom context
+	// instead of using the request context.
 	ctx, cancel := context.WithTimeout(context.Background(), githubWebhookTimeout)
 	defer cancel()
 
