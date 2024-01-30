@@ -131,7 +131,7 @@ input DistroInput {
   """
   TODO: require adminOnly field upon completion of DEVPROD-3533
   """
-  adminOnly: Boolean
+  adminOnly: Boolean!
   aliases: [String!]!
   arch: Arch!
   authorizedKeysFile: String!

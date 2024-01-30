@@ -2,6 +2,7 @@
   "distro": [
     {
       "_id": "localhost",
+      "admin_only": true,
       "arch": "linux_amd64",
       "work_dir": "/home/ubuntu/smoke",
       "provider": "static",
