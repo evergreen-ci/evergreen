@@ -906,7 +906,8 @@ func UpdateBlockedDependencies(ctx context.Context, t *task.Task) error {
 		return errors.Wrapf(err, "getting tasks depending on task '%s'", t.Id)
 	}
 
-	buildIDsSet := make(map[string]struct{})
+	// buildIDsSet := make(map[string]struct{})
+	buildIDsSet := []string{}
 	for _, dependentTask := range dependentTasks {
 		if err = dependentTask.MarkUnattainableDependency(ctx, t.Id, true); err != nil {
 			return errors.Wrap(err, "marking dependency unattainable")
@@ -914,11 +915,11 @@ func UpdateBlockedDependencies(ctx context.Context, t *task.Task) error {
 		if err = UpdateBlockedDependencies(ctx, &dependentTask); err != nil {
 			return errors.Wrapf(err, "updating blocked dependencies for '%s'", t.Id)
 		}
-		buildIDsSet[dependentTask.BuildId] = struct{}{}
+		buildIDsSet = append(buildIDsSet, dependentTask.BuildId)
 	}
 
 	var buildIDs []string
-	for buildID := range buildIDsSet {
+	for _, buildID := range buildIDsSet {
 		buildIDs = append(buildIDs, buildID)
 	}
 	if err = UpdateVersionAndPatchStatusForBuilds(buildIDs); err != nil {

@@ -697,19 +697,11 @@ func (t *Task) DependenciesMet(depCaches map[string]Task) (bool, error) {
 	}
 
 	for _, dependency := range t.DependsOn {
-		depTask, exists := depCaches[dependency.TaskId]
-		if !exists {
-			foundTask, err := FindOneId(dependency.TaskId)
-			if err != nil {
-				return false, errors.Wrap(err, "finding dependency")
-			}
-			if foundTask == nil {
-				return false, errors.Errorf("dependency '%s' not found", dependency.TaskId)
-			}
-			depTask = *foundTask
-			depCaches[depTask.Id] = depTask
+		depTask, err := populateDependencyTaskCacheSingular(depCaches, dependency.TaskId)
+		if err != nil {
+			return false, err
 		}
-		if !t.SatisfiesDependency(&depTask) {
+		if !t.SatisfiesDependency(depTask) {
 			return false, nil
 		}
 	}
@@ -727,6 +719,7 @@ func (t *Task) DependenciesMet(depCaches map[string]Task) (bool, error) {
 	return true, nil
 }
 
+// populateDependencyTaskCache ensures that all the dependencies for the task are in the cache.
 func (t *Task) populateDependencyTaskCache(depCache map[string]Task) ([]Task, error) {
 	var deps []Task
 	depIdsToQueryFor := make([]string, 0, len(t.DependsOn))
@@ -754,10 +747,8 @@ func (t *Task) populateDependencyTaskCache(depCache map[string]Task) ([]Task, er
 	return deps, nil
 }
 
-// RefreshBlockedDependencies manually rechecks first degree dependencies
-// when a task isn't marked as blocked. It returns a slice of this task's dependencies that
-// need to recursively update their dependencies
-func (t *Task) RefreshBlockedDependencies(depCache map[string]Task) ([]Task, error) {
+// GetFinishedBlockingDependencies gets all blocking tasks that are finished or blocked.
+func (t *Task) GetFinishedBlockingDependencies(depCache map[string]Task) ([]Task, error) {
 	if len(t.DependsOn) == 0 || t.OverrideDependencies {
 		return nil, nil
 	}
@@ -780,7 +771,11 @@ func (t *Task) RefreshBlockedDependencies(depCache map[string]Task) ([]Task, err
 		if !ok {
 			return nil, errors.Errorf("task '%s' is not in the cache", dep.TaskId)
 		}
-		if !t.SatisfiesDependency(&depTask) && (depTask.IsFinished() || depTask.Blocked()) {
+		if t.SatisfiesDependency(&depTask) {
+			continue
+		}
+		// If it is finished and did not statisfy the dependency, it is blocked.
+		if depTask.IsFinished() || depTask.Blocked() {
 			blockedDeps = append(blockedDeps, depTask)
 		}
 	}
@@ -788,7 +783,9 @@ func (t *Task) RefreshBlockedDependencies(depCache map[string]Task) ([]Task, err
 	return blockedDeps, nil
 }
 
-func (t *Task) BlockedOnDeactivatedDependency(depCache map[string]Task) ([]string, error) {
+// GetDeactivatedBlockingDependencies gets all blocking tasks that are not finished and are not activated.
+// These tasks are not going to run unless they are manually activated.
+func (t *Task) GetDeactivatedBlockingDependencies(depCache map[string]Task) ([]string, error) {
 	_, err := t.populateDependencyTaskCache(depCache)
 	if err != nil {
 		return nil, errors.WithStack(err)
@@ -796,17 +793,9 @@ func (t *Task) BlockedOnDeactivatedDependency(depCache map[string]Task) ([]strin
 
 	blockingDeps := []string{}
 	for _, dep := range t.DependsOn {
-		depTask, exists := depCache[dep.TaskId]
-		if !exists {
-			foundTask, err := FindOneId(dep.TaskId)
-			if err != nil {
-				return nil, errors.Wrap(err, "finding dependency")
-			}
-			if foundTask == nil {
-				return nil, errors.Errorf("dependency '%s' not found", depTask.Id)
-			}
-			depTask = *foundTask
-			depCache[depTask.Id] = depTask
+		depTask, err := populateDependencyTaskCacheSingular(depCache, dep.TaskId)
+		if err != nil {
+			return nil, err
 		}
 		if !depTask.IsFinished() && !depTask.Activated {
 			blockingDeps = append(blockingDeps, depTask.Id)
@@ -814,6 +803,21 @@ func (t *Task) BlockedOnDeactivatedDependency(depCache map[string]Task) ([]strin
 	}
 
 	return blockingDeps, nil
+}
+
+func populateDependencyTaskCacheSingular(depCache map[string]Task, depId string) (*Task, error) {
+	if depTask, ok := depCache[depId]; ok {
+		return &depTask, nil
+	}
+	foundTask, err := FindOneId(depId)
+	if err != nil {
+		return nil, errors.Wrap(err, "finding dependency")
+	}
+	if foundTask == nil {
+		return nil, errors.Errorf("dependency '%s' not found", depId)
+	}
+	depCache[foundTask.Id] = *foundTask
+	return foundTask, nil
 }
 
 // AllDependenciesSatisfied inspects the tasks first-order
@@ -830,19 +834,11 @@ func (t *Task) AllDependenciesSatisfied(cache map[string]Task) (bool, error) {
 	catcher := grip.NewBasicCatcher()
 	deps := []Task{}
 	for _, dep := range t.DependsOn {
-		cachedDep, ok := cache[dep.TaskId]
-		if !ok {
-			foundTask, err := FindOneId(dep.TaskId)
-			if err != nil {
-				return false, errors.Wrap(err, "finding dependency")
-			}
-			if foundTask == nil {
-				return false, errors.Errorf("dependency '%s' not found", dep.TaskId)
-			}
-			cachedDep = *foundTask
-			cache[dep.TaskId] = cachedDep
+		cachedDep, err := populateDependencyTaskCacheSingular(cache, dep.TaskId)
+		if err != nil {
+			return false, err
 		}
-		deps = append(deps, cachedDep)
+		deps = append(deps, *cachedDep)
 	}
 
 	if catcher.HasErrors() {
@@ -1987,6 +1983,8 @@ func DeactivateTasks(tasks []Task, updateDependencies bool, caller string) error
 	return nil
 }
 
+// DeactivateDependencies gets all tasks that are blocked by the given tasks (this could be 1st level
+// or recursive) and deactivates them. Then it sends out the event logs for the deactivation.
 func DeactivateDependencies(tasks []string, caller string) error {
 	tasksDependingOnTheseTasks, err := getRecursiveDependenciesDown(tasks, nil)
 	if err != nil {

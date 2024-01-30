@@ -118,6 +118,10 @@ func (j *checkBlockedTasksJob) getContainerTasksToCheck() []task.Task {
 	return tasksToCheck
 }
 
+// checkUnmarkedBlockingTasks tests if the task is blocked by any of its dependencies.
+// If it is blocked, it gets the blocking tasks and updates their dependencies.
+// For blocking tasks that are finished/blocked, it updates their blocked status.
+// For blocking tasks that are deactivated and not finished, it deactivates their dependencies.
 func checkUnmarkedBlockingTasks(ctx context.Context, t *task.Task, dependencyCaches map[string]task.Task) error {
 	catcher := grip.NewBasicCatcher()
 
@@ -135,21 +139,21 @@ func checkUnmarkedBlockingTasks(ctx context.Context, t *task.Task, dependencyCac
 		return nil
 	}
 
-	blockingTasks, err := t.RefreshBlockedDependencies(dependencyCaches)
+	finishedBlockingTasks, err := t.GetFinishedBlockingDependencies(dependencyCaches)
 	catcher.Wrap(err, "getting blocking tasks")
 	blockingTaskIds := []string{}
 	if err == nil {
-		for _, blockingTask := range blockingTasks {
+		for _, blockingTask := range finishedBlockingTasks {
 			blockingTaskIds = append(blockingTaskIds, blockingTask.Id)
 			err = model.UpdateBlockedDependencies(ctx, &blockingTask)
 			catcher.Wrapf(err, "updating blocked dependencies for '%s'", blockingTask.Id)
 		}
 	}
 
-	blockingDeactivatedTasks, err := t.BlockedOnDeactivatedDependency(dependencyCaches)
+	deactivatedBlockingTasks, err := t.GetDeactivatedBlockingDependencies(dependencyCaches)
 	catcher.Wrap(err, "getting blocked status")
-	if err == nil && len(blockingDeactivatedTasks) > 0 {
-		err = task.DeactivateDependencies(blockingDeactivatedTasks, evergreen.CheckBlockedTasksActivator)
+	if err == nil && len(deactivatedBlockingTasks) > 0 {
+		err = task.DeactivateDependencies(deactivatedBlockingTasks, evergreen.CheckBlockedTasksActivator)
 		catcher.Add(err)
 	}
 
@@ -158,11 +162,11 @@ func checkUnmarkedBlockingTasks(ctx context.Context, t *task.Task, dependencyCac
 		catcher.Add(model.UpdateDisplayTaskForTask(t))
 	}
 
-	numModified := len(blockingTasks) + len(blockingDeactivatedTasks)
+	numModified := len(finishedBlockingTasks) + len(deactivatedBlockingTasks)
 	grip.DebugWhen(numModified > 0, message.Fields{
 		"message":                            "checked unmarked blocking tasks",
-		"blocking_tasks_updated":             len(blockingTasks),
-		"blocking_deactivated_tasks_updated": len(blockingDeactivatedTasks),
+		"blocking_finished_tasks_updated":    len(finishedBlockingTasks),
+		"blocking_deactivated_tasks_updated": len(deactivatedBlockingTasks),
 		"blocking_task_ids":                  blockingTaskIds,
 		"exec_task":                          t.IsPartOfDisplay(),
 		"source":                             checkBlockedTasks,
