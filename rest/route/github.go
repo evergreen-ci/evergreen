@@ -10,7 +10,10 @@ import (
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/model"
 	"github.com/evergreen-ci/evergreen/model/commitqueue"
+	"github.com/evergreen-ci/evergreen/model/event"
 	"github.com/evergreen-ci/evergreen/model/patch"
+	"github.com/evergreen-ci/evergreen/model/user"
+	"github.com/evergreen-ci/evergreen/repotracker"
 	"github.com/evergreen-ci/evergreen/rest/data"
 	"github.com/evergreen-ci/evergreen/thirdparty"
 	"github.com/evergreen-ci/evergreen/units"
@@ -19,6 +22,7 @@ import (
 	"github.com/google/go-github/v52/github"
 	"github.com/mongodb/amboy"
 	"github.com/mongodb/grip"
+	"github.com/mongodb/grip/level"
 	"github.com/mongodb/grip/message"
 	"github.com/pkg/errors"
 )
@@ -763,6 +767,50 @@ func (gh *githubHookApi) createVersionForTag(ctx context.Context, pRef model.Pro
 			"tag":                tag,
 			"message":            "user not authorized for git tag version",
 		})
+		metadata := model.VersionMetadata{
+			Revision: revision,
+			GitTag:   tag,
+		}
+		stubVersion, dbErr := repotracker.ShellVersionFromRevision(ctx, &pRef, metadata)
+		if dbErr != nil {
+			grip.Error(message.WrapError(dbErr, message.Fields{
+				"message":            "error creating shell version",
+				"project":            pRef.Id,
+				"project_identifier": pRef.Identifier,
+				"revision":           revision,
+			}))
+		}
+		stubVersion.Errors = []string{errors.Errorf("user '%s' not authorized for git tag version", tag.Pusher).Error()}
+		err := stubVersion.Insert()
+		if err != nil {
+			grip.Error(message.WrapError(err, message.Fields{
+				"message":            "error inserting stub version for failed git tag version",
+				"project":            pRef.Id,
+				"project_identifier": pRef.Identifier,
+				"revision":           revision,
+			}))
+		}
+		event.LogVersionStateChangeEvent(stubVersion.Id, evergreen.VersionFailed)
+		userDoc, err := user.FindByGithubName(tag.Pusher)
+		if err != nil {
+			return nil, errors.Wrapf(err, "finding user '%s'", tag.Pusher)
+		}
+		if userDoc != nil {
+			sender, err := evergreen.GetEnvironment().GetSender(evergreen.SenderEmail)
+			if err != nil {
+				return nil, errors.Wrap(err, "getting email sender")
+			}
+
+			subject, body := unauthorizedGitTagEmail(tag.Tag, tag.Pusher, fmt.Sprintf("https://spruce.mongodb.com/project/%s/settings/github-commitqueue", pRef.Identifier))
+			email := message.Email{
+				Recipients:        []string{userDoc.EmailAddress},
+				PlainTextContents: false,
+				Subject:           subject,
+				Body:              body,
+			}
+			composer := message.NewEmailMessage(level.Notice, email)
+			sender.Send(composer)
+		}
 		return nil, nil
 	}
 	hasAliases, remotePath, err := model.HasMatchingGitTagAliasAndRemotePath(pRef.Id, tag.Tag)
@@ -801,6 +849,22 @@ func (gh *githubHookApi) createVersionForTag(ctx context.Context, pRef model.Pro
 	}
 	projectInfo.Ref = &pRef
 	return gh.sc.CreateVersionFromConfig(ctx, &projectInfo, metadata)
+}
+
+func unauthorizedGitTagEmail(tag, user, gitTagSettingsUrl string) (string, string) {
+	subject := fmt.Sprintf("Creating Evergreen version for tag '%s' has failed!", tag)
+	body := fmt.Sprintf(`<html>
+	<head>
+	</head>
+	<body>
+	<p>Version creation for git tag '%s' has failed.</p>
+	<p>User '%s' is not authorized to create an Evergreen git tag version</p>
+	<p>Manage your git tag authorization <a href="%s">here</a> in the project settings.</p>
+
+	</body>
+	</html>
+	`, tag, user, gitTagSettingsUrl)
+	return subject, body
 }
 
 func validatePushTagEvent(event *github.PushEvent) error {
