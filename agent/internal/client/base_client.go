@@ -375,17 +375,17 @@ func (c *baseCommunicator) GetLoggerProducer(ctx context.Context, tsk *task.Task
 	}
 	underlying := []send.Sender{}
 
-	exec, senders, err := c.makeSender(ctx, tsk, config.Agent, config.SendToGlobalSender, taskoutput.TaskLogTypeAgent)
+	exec, senders, err := c.makeSender(ctx, tsk, config.Agent, config, taskoutput.TaskLogTypeAgent)
 	if err != nil {
 		return nil, errors.Wrap(err, "making agent logger")
 	}
 	underlying = append(underlying, senders...)
-	task, senders, err := c.makeSender(ctx, tsk, config.Task, config.SendToGlobalSender, taskoutput.TaskLogTypeTask)
+	task, senders, err := c.makeSender(ctx, tsk, config.Task, config, taskoutput.TaskLogTypeTask)
 	if err != nil {
 		return nil, errors.Wrap(err, "making task logger")
 	}
 	underlying = append(underlying, senders...)
-	system, senders, err := c.makeSender(ctx, tsk, config.System, config.SendToGlobalSender, taskoutput.TaskLogTypeSystem)
+	system, senders, err := c.makeSender(ctx, tsk, config.System, config, taskoutput.TaskLogTypeSystem)
 	if err != nil {
 		return nil, errors.Wrap(err, "making system logger")
 	}
@@ -399,10 +399,10 @@ func (c *baseCommunicator) GetLoggerProducer(ctx context.Context, tsk *task.Task
 	}, nil
 }
 
-func (c *baseCommunicator) makeSender(ctx context.Context, tsk *task.Task, opts []LogOpts, sendToGlobalSender bool, logType taskoutput.TaskLogType) (send.Sender, []send.Sender, error) {
+func (c *baseCommunicator) makeSender(ctx context.Context, tsk *task.Task, opts []LogOpts, config *LoggerConfig, logType taskoutput.TaskLogType) (send.Sender, []send.Sender, error) {
 	levelInfo := send.LevelInfo{Default: level.Info, Threshold: level.Debug}
 	var senders []send.Sender
-	if sendToGlobalSender {
+	if config.SendToGlobalSender {
 		senders = append(senders, grip.GetSender())
 	}
 	underlyingBufferedSenders := []send.Sender{}
@@ -437,6 +437,7 @@ func (c *baseCommunicator) makeSender(ctx context.Context, tsk *task.Task, opts 
 			if err != nil {
 				return nil, nil, errors.Wrap(err, "creating buffered file logger")
 			}
+			grip.Error(sender.SetFormatter(send.MakeDefaultFormatter()))
 		case model.SplunkLogSender:
 			info := send.SplunkConnectionInfo{
 				ServerURL: opt.SplunkServerURL,
@@ -490,7 +491,7 @@ func (c *baseCommunicator) makeSender(ctx context.Context, tsk *task.Task, opts 
 			}
 		}
 
-		grip.Error(sender.SetFormatter(send.MakeDefaultFormatter()))
+		sender = newRedactingSender(sender, config.Expansions, config.ExpansionsToRedact)
 		if logType == taskoutput.TaskLogTypeTask {
 			sender = makeTimeoutLogSender(sender, c)
 		}

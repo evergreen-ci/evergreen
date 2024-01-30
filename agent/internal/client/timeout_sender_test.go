@@ -100,7 +100,7 @@ func (s *logSenderSuite) TestFileLogger() {
 	}
 
 	logFileName := fmt.Sprintf("%s/log", s.tempDir)
-	fileSender, toClose, err := s.restClient.makeSender(context.Background(), tsk, []LogOpts{{Sender: model.FileLogSender, Filepath: logFileName}}, false, taskoutput.TaskLogTypeAgent)
+	fileSender, toClose, err := s.restClient.makeSender(context.Background(), tsk, []LogOpts{{Sender: model.FileLogSender, Filepath: logFileName}}, &LoggerConfig{}, taskoutput.TaskLogTypeAgent)
 	s.NoError(err)
 	s.underlyingSenders = append(s.underlyingSenders, toClose...)
 	s.NotNil(fileSender)
@@ -125,7 +125,7 @@ func (s *logSenderSuite) TestFileLogger() {
 
 	// No file logger for system logs.
 	path := filepath.Join(s.tempDir, "nothere")
-	defaultSender, toClose, err := s.restClient.makeSender(context.Background(), tsk, []LogOpts{{Sender: model.FileLogSender, Filepath: path}}, false, taskoutput.TaskLogTypeSystem)
+	defaultSender, toClose, err := s.restClient.makeSender(context.Background(), tsk, []LogOpts{{Sender: model.FileLogSender, Filepath: path}}, &LoggerConfig{}, taskoutput.TaskLogTypeSystem)
 	s.Require().NoError(err)
 	s.underlyingSenders = append(s.underlyingSenders, toClose...)
 	logger = logging.MakeGrip(defaultSender)
@@ -149,7 +149,7 @@ func (s *logSenderSuite) TestMisconfiguredSender() {
 			},
 		},
 	}
-	sender, toClose, err := s.restClient.makeSender(context.Background(), tsk, []LogOpts{{Sender: model.EvergreenLogSender}}, false, taskoutput.TaskLogTypeAgent)
+	sender, toClose, err := s.restClient.makeSender(context.Background(), tsk, []LogOpts{{Sender: model.EvergreenLogSender}}, &LoggerConfig{}, taskoutput.TaskLogTypeAgent)
 	s.underlyingSenders = append(s.underlyingSenders, toClose...)
 	s.Error(err)
 	s.Nil(sender)

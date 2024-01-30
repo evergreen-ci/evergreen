@@ -14,7 +14,7 @@ import (
 )
 
 var (
-	expansionsToRedact = []string{
+	ExpansionsToRedact = []string{
 		evergreen.GlobalGitHubTokenExpansion,
 		evergreen.GithubAppToken,
 		AWSAccessKeyId,
@@ -51,7 +51,7 @@ func (c *expansionsWriter) Execute(ctx context.Context,
 		// Users should not be able to use the global github token expansion
 		// as it can result in the breaching of Evergreen's GitHub API limit.
 		// Likewise with AWS expansions.
-		if (ok && !c.Redacted) || utility.StringSliceContains(expansionsToRedact, k) {
+		if (ok && !c.Redacted) || utility.StringSliceContains(ExpansionsToRedact, k) {
 			continue
 		}
 		expansions[k] = v
