@@ -34,8 +34,8 @@ func TestUnexpirableSpawnHostStatsJob(t *testing.T) {
 		"ReturnsZeroStatsForNoHosts": func(ctx context.Context, t *testing.T, j *unexpirableSpawnHostStatsJob) {
 			stats := j.getStats(nil)
 			assert.Zero(t, stats.totalUptime)
-			assert.Empty(t, stats.uptimeByDistro)
-			assert.Empty(t, stats.uptimeByInstanceType)
+			assert.Empty(t, stats.uptimeSecsByDistro)
+			assert.Empty(t, stats.uptimeSecsByInstanceType)
 		},
 		"ReturnsStatsForHosts": func(ctx context.Context, t *testing.T, j *unexpirableSpawnHostStatsJob) {
 			hosts := []host.Host{
@@ -103,14 +103,14 @@ func TestUnexpirableSpawnHostStatsJob(t *testing.T) {
 
 			stats := j.getStats(hosts)
 			assert.Equal(t, time.Duration(len(hosts))*24*time.Hour, stats.totalUptime)
-			assert.Len(t, stats.uptimeByDistro, 3)
-			const day = 24 * time.Hour
-			assert.Equal(t, 4*day, stats.uptimeByDistro["distro0"])
-			assert.Equal(t, day, stats.uptimeByDistro["distro1"])
-			assert.Equal(t, day, stats.uptimeByDistro["distro2"])
-			assert.Len(t, stats.uptimeByInstanceType, 2)
-			assert.Equal(t, 5*day, stats.uptimeByInstanceType["m5.xlarge"])
-			assert.Equal(t, day, stats.uptimeByInstanceType["c5.xlarge"])
+			assert.Len(t, stats.uptimeSecsByDistro, 3)
+			day := int(time.Duration(24 * time.Hour).Seconds())
+			assert.Equal(t, 4*day, stats.uptimeSecsByDistro["distro0"])
+			assert.Equal(t, day, stats.uptimeSecsByDistro["distro1"])
+			assert.Equal(t, day, stats.uptimeSecsByDistro["distro2"])
+			assert.Len(t, stats.uptimeSecsByInstanceType, 2)
+			assert.Equal(t, 5*day, stats.uptimeSecsByInstanceType["m5.xlarge"])
+			assert.Equal(t, day, stats.uptimeSecsByInstanceType["c5.xlarge"])
 		},
 	} {
 		t.Run(tName, func(t *testing.T) {

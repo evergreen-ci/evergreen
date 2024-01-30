@@ -35,7 +35,7 @@ func makeUnexpirableSpawnHostStatsJob() *unexpirableSpawnHostStatsJob {
 	j := &unexpirableSpawnHostStatsJob{
 		Base: job.Base{
 			JobType: amboy.JobType{
-				Name:    podDefinitionCreationJobName,
+				Name:    unexpirableSpawnHostStatsJobName,
 				Version: 0,
 			},
 		},
@@ -69,37 +69,35 @@ func (j *unexpirableSpawnHostStatsJob) Run(ctx context.Context) {
 	stats := j.getStats(hosts)
 
 	grip.Info(message.Fields{
-		"message":                 "unexpirable spawn host stats",
-		"job_id":                  j.ID(),
-		"job_type":                j.Type(),
-		"total_uptime":            stats.totalUptime,
-		"uptime_by_distro":        stats.uptimeByDistro,
-		"uptime_by_instance_type": stats.uptimeByInstanceType,
+		"message":                      "unexpirable spawn host stats total (in seconds)",
+		"job_id":                       j.ID(),
+		"total_uptime_secs":            stats.totalUptime.Seconds(),
+		"uptime_secs_by_distro":        stats.uptimeSecsByDistro,
+		"uptime_secs_by_instance_type": stats.uptimeSecsByInstanceType,
 	})
 }
 
 type unexpirableSpawnHostStats struct {
-	totalUptime          time.Duration
-	uptimeByDistro       map[string]time.Duration
-	uptimeByInstanceType map[string]time.Duration
+	totalUptime              time.Duration
+	uptimeSecsByDistro       map[string]int
+	uptimeSecsByInstanceType map[string]int
 }
 
-// getStats returns the estimated host uptime stats for the day. These are not
-// perfectly accurate, but give a sufficient ballpark estimate of spawn host
-// uptime. For example, it's assumed for simplicity that users don't stop their
-// hosts randomly throughout the day, so if the host is on, it's likely been on
-// the entire day.
+// getStats returns the estimated host uptime stats for the entire day. These
+// are not perfectly accurate, but give a sufficient ballpark estimate of spawn
+// host uptime. For example, it's assumed for simplicity that users don't stop
+// their hosts throughout the day, so if the host is on, it's likely been on the
+// entire day.
 func (j *unexpirableSpawnHostStatsJob) getStats(hosts []host.Host) unexpirableSpawnHostStats {
-
 	var totalUptime time.Duration
-	uptimeByDistro := map[string]time.Duration{}
-	uptimeByInstanceType := map[string]time.Duration{}
+	uptimeByDistro := map[string]int{}
+	uptimeByInstanceType := map[string]int{}
 
 	for _, h := range hosts {
 		// Estimate that if the host is up now, it's been up all day.
 		const dailyUptimePerHost = 24 * time.Hour
 		totalUptime += dailyUptimePerHost
-		uptimeByDistro[h.Distro.Id] += dailyUptimePerHost
+		uptimeByDistro[h.Distro.Id] += int(dailyUptimePerHost.Seconds())
 		if evergreen.IsEc2Provider(h.Distro.Provider) {
 			if len(h.Distro.ProviderSettingsList) == 0 {
 				continue
@@ -108,13 +106,13 @@ func (j *unexpirableSpawnHostStatsJob) getStats(hosts []host.Host) unexpirableSp
 			if !ok {
 				continue
 			}
-			uptimeByInstanceType[instanceType] += dailyUptimePerHost
+			uptimeByInstanceType[instanceType] += int(dailyUptimePerHost.Seconds())
 		}
 	}
 
 	return unexpirableSpawnHostStats{
-		totalUptime:          totalUptime,
-		uptimeByDistro:       uptimeByDistro,
-		uptimeByInstanceType: uptimeByInstanceType,
+		totalUptime:              totalUptime,
+		uptimeSecsByDistro:       uptimeByDistro,
+		uptimeSecsByInstanceType: uptimeByInstanceType,
 	}
 }
