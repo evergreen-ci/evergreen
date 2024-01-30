@@ -8,29 +8,34 @@ import (
 	"github.com/evergreen-ci/evergreen/cloud"
 	"github.com/evergreen-ci/evergreen/model/event"
 	"github.com/evergreen-ci/evergreen/model/host"
+	"github.com/evergreen-ci/utility"
 	"github.com/mongodb/amboy"
 	"github.com/mongodb/amboy/job"
 	"github.com/mongodb/amboy/registry"
 	"github.com/mongodb/grip"
 	"github.com/mongodb/grip/message"
 	"github.com/pkg/errors"
+	"go.opentelemetry.io/otel/attribute"
 )
 
 const (
 	spawnHostStatusChangeScopeName = "spawn-host-status-change"
+
+	spawnHostModifyOtelAttributePrefix = "evergreen.spawn_host_modify"
 )
 
 // CloudHostModification is a helper to perform cloud manager operations on
 // a single host.
 type CloudHostModification struct {
-	HostID string `bson:"host_id" json:"host_id" yaml:"host_id"`
-	UserID string `bson:"user_id" json:"user_id" yaml:"user_id"`
+	HostID string                          `bson:"host_id" json:"host_id" yaml:"host_id"`
+	UserID string                          `bson:"user_id" json:"user_id" yaml:"user_id"`
+	Source evergreen.ModifySpawnHostSource `bson:"source" json:"source" yaml:"source"`
 
 	host *host.Host
 	env  evergreen.Environment
 }
 
-func (m *CloudHostModification) modifyHost(ctx context.Context, op func(mgr cloud.Manager, h *host.Host, user string) error) error {
+func (m *CloudHostModification) modifyHost(ctx context.Context, op func(ctx context.Context, mgr cloud.Manager, h *host.Host, user string) error) error {
 	if m.env == nil {
 		m.env = evergreen.GetEnvironment()
 	}
@@ -46,6 +51,8 @@ func (m *CloudHostModification) modifyHost(ctx context.Context, op func(mgr clou
 		}
 	}
 
+	ctx = utility.ContextWithAttributes(ctx, m.hostAttributes(m.host))
+
 	mgrOpts, err := cloud.GetManagerOptions(m.host.Distro)
 	if err != nil {
 		return errors.Wrap(err, "getting cloud manager options")
@@ -55,7 +62,18 @@ func (m *CloudHostModification) modifyHost(ctx context.Context, op func(mgr clou
 		return errors.Wrap(err, "getting cloud manager")
 	}
 
-	return op(cloudManager, m.host, m.UserID)
+	return op(ctx, cloudManager, m.host, m.UserID)
+}
+
+func (m *CloudHostModification) hostAttributes(h *host.Host) []attribute.KeyValue {
+	return []attribute.KeyValue{
+		attribute.String(evergreen.HostIDOtelAttribute, h.Id),
+		attribute.String(evergreen.DistroIDOtelAttribute, h.Distro.Id),
+		attribute.String(evergreen.HostStartedByOtelAttribute, h.StartedBy),
+		attribute.Bool(evergreen.HostNoExpirationOtelAttribute, h.NoExpiration),
+		attribute.String(evergreen.HostInstanceTypeOtelAttribute, h.InstanceType),
+		attribute.String(fmt.Sprintf("%s.source", spawnHostModifyOtelAttributePrefix), string(m.Source)),
+	}
 }
 
 const (
@@ -97,7 +115,7 @@ func NewSpawnhostModifyJob(h *host.Host, changes host.HostModifyOptions, ts stri
 func (j *spawnhostModifyJob) Run(ctx context.Context) {
 	defer j.MarkComplete()
 
-	modifyCloudHost := func(mgr cloud.Manager, h *host.Host, user string) error {
+	modifyCloudHost := func(ctx context.Context, mgr cloud.Manager, h *host.Host, user string) error {
 		if err := mgr.ModifyHost(ctx, h, j.ModifyOptions); err != nil {
 			event.LogHostModifyError(h.Id, err.Error())
 			grip.Error(message.WrapError(err, message.Fields{

@@ -15,6 +15,8 @@ import (
 	"github.com/mongodb/grip"
 	"github.com/mongodb/grip/message"
 	"github.com/pkg/errors"
+	"go.opentelemetry.io/otel/codes"
+	"go.opentelemetry.io/otel/trace"
 )
 
 const (
@@ -64,9 +66,14 @@ func NewSpawnhostStopJob(h *host.Host, user, ts string) amboy.Job {
 func (j *spawnhostStopJob) Run(ctx context.Context) {
 	defer j.MarkComplete()
 
-	stopCloudHost := func(mgr cloud.Manager, h *host.Host, user string) error {
+	stopCloudHost := func(ctx context.Context, mgr cloud.Manager, h *host.Host, user string) error {
+		ctx, span := tracer.Start(ctx, "stop-spawn-host")
+		defer span.End()
+
 		if err := mgr.StopInstance(ctx, h, user); err != nil {
 			event.LogHostStopError(h.Id, err.Error())
+			span.SetStatus(codes.Error, "error stopping host")
+			span.RecordError(err, trace.WithAttributes(j.hostAttributes(h)...), trace.WithStackTrace(true))
 			grip.Error(message.WrapError(err, message.Fields{
 				"message":  "error stopping spawn host",
 				"host_id":  h.Id,
