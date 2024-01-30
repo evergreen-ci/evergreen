@@ -13,11 +13,6 @@ enum DistroOnSaveOperation {
   NONE
 }
 
-enum CloneMethod {
-  LEGACY_SSH
-  OAUTH
-}
-
 enum FinderVersion {
   LEGACY
   PARALLEL
@@ -136,7 +131,6 @@ input DistroInput {
   arch: Arch!
   authorizedKeysFile: String!
   bootstrapSettings: BootstrapSettingsInput!
-  cloneMethod: CloneMethod
   containerPool: String!
   disabled: Boolean!
   disableShallowClone: Boolean!
@@ -286,7 +280,6 @@ type Distro {
   arch: Arch!
   authorizedKeysFile: String!
   bootstrapSettings: BootstrapSettings!
-  cloneMethod: CloneMethod!
   containerPool: String!
   disabled: Boolean!
   disableShallowClone: Boolean!

@@ -522,7 +522,6 @@ func (s *DistroPutSuite) TestRunNewWithInvalidEntity() {
 		"work_dir": "/data/mci",
 		"ssh_key": "",
 		"bootstrap_settings": {"method": "foo", "communication": "bar"},
-		"clone_method": "bat",
 		"provider": "mock",
 		"user": "tibor",
 		"planner_settings": {"version": "invalid"}
@@ -539,7 +538,6 @@ func (s *DistroPutSuite) TestRunNewWithInvalidEntity() {
 	s.Contains(err.Message, "ERROR: distro 'ssh_key' cannot be blank")
 	s.Contains(err.Message, "'foo' is not a valid bootstrap method")
 	s.Contains(err.Message, "'bar' is not a valid communication method")
-	s.Contains(err.Message, "'bat' is not a valid clone method")
 	s.Contains(err.Message, "ERROR: invalid planner_settings.version 'invalid' for distro 'distro4'")
 }
 
@@ -1292,19 +1290,6 @@ func (s *DistroPatchByIDSuite) TestRunValidCloneMethod() {
 	apiDistro, ok := (resp.Data()).(*restModel.APIDistro)
 	s.Require().True(ok)
 	s.Equal(utility.ToStringPtr(evergreen.CloneMethodLegacySSH), apiDistro.CloneMethod)
-}
-
-func (s *DistroPatchByIDSuite) TestRunInvalidCloneMethod() {
-	ctx := context.Background()
-	ctx = gimlet.AttachUser(ctx, &user.DBUser{Id: "me"})
-	json := []byte(`{"clone_method": "foobar"}`)
-	h := s.rm.(*distroIDPatchHandler)
-	h.distroID = "fedora8"
-	h.body = json
-
-	resp := s.rm.Run(ctx)
-	s.NotNil(resp.Data())
-	s.Equal(http.StatusBadRequest, resp.Status())
 }
 
 func (s *DistroPatchByIDSuite) TestValidFindAndReplaceFullDocument() {
