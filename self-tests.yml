@@ -596,7 +596,6 @@ tasks:
             EXCLUDE_PATTERN: .cache
             REMOTE_PATH: evergreen/clients/${project}/${revision}
   - name: swaggo-lint
-    tags: ["linter"]
     commands:
       - func: get-project-and-modules
       - func: get-swaggo
