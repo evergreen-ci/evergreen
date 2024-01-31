@@ -118,7 +118,7 @@ func (a *Agent) prepLogger(tc *taskContext, c *model.LoggerConfig, commandName s
 		AWSCredentials:     pail.CreateAWSCredentials(tc.taskConfig.TaskSync.Key, tc.taskConfig.TaskSync.Secret, ""),
 	}
 	config.Expansions = tc.taskConfig.NewExpansions
-	config.ExpansionsToRedact = redactList(tc.taskConfig.Redacted)
+	config.ExpansionsToRedact = getExpansionsToRedact(tc.taskConfig.Redacted)
 
 	defaultLogger := tc.taskConfig.ProjectRef.DefaultLogger
 
@@ -171,12 +171,14 @@ func (a *Agent) prepSingleLogger(tc *taskContext, in model.LogOpts, logDir, file
 	}
 }
 
-func redactList(redacted map[string]bool) []string {
-	var redactedKeys []string
+// getExpansionsToRedact returns the full list of expansion keys whose values
+// should get redacted from task logs.
+func getExpansionsToRedact(redacted map[string]bool) []string {
+	var expansionsToRedact []string
 	for key := range redacted {
-		redactedKeys = append(redactedKeys, key)
+		expansionsToRedact = append(expansionsToRedact, key)
 	}
-	redactedKeys = append(redactedKeys, command.ExpansionsToRedact...)
+	expansionsToRedact = append(expansionsToRedact, command.ExpansionsToRedact...)
 
-	return redactedKeys
+	return expansionsToRedact
 }

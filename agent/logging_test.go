@@ -260,7 +260,7 @@ func TestTimberSender(t *testing.T) {
 	assert.NoError(t, agt.startLogging(ctx, tc))
 }
 
-func TestRedactList(t *testing.T) {
+func TestGetExpansionsToRedact(t *testing.T) {
 	for _, test := range []struct {
 		name     string
 		redacted map[string]bool
@@ -284,7 +284,7 @@ func TestRedactList(t *testing.T) {
 		t.Run(test.name, func(t *testing.T) {
 			test.expected = append(test.expected, command.ExpansionsToRedact...)
 
-			actual := redactList(test.redacted)
+			actual := getExpansionsToRedact(test.redacted)
 			assert.ElementsMatch(t, test.expected, actual)
 		})
 	}
