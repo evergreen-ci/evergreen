@@ -609,7 +609,7 @@ tasks:
             if git diff --exit-code; then
                 exit 0
             else
-                echo "Please run `swaggo fmt` in your local environment to fix the lint errors."
+                echo "Please run 'swaggo fmt' in your local environment to fix the lint errors."
                 exit 1
             fi
   - name: verify-agent-version-update
