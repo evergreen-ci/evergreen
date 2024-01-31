@@ -74,7 +74,6 @@ type Settings struct {
 	Credentials         map[string]string       `yaml:"credentials" bson:"credentials" json:"credentials"`
 	CredentialsNew      util.KeyValuePairSlice  `yaml:"credentials_new" bson:"credentials_new" json:"credentials_new"`
 	Database            DBSettings              `yaml:"database" json:"database" bson:"database"`
-	DataPipes           DataPipesConfig         `yaml:"data_pipes" json:"data_pipes" bson:"data_pipes" id:"data_pipes"`
 	DomainName          string                  `yaml:"domain_name" bson:"domain_name" json:"domain_name"`
 	Expansions          map[string]string       `yaml:"expansions" bson:"expansions" json:"expansions"`
 	ExpansionsNew       util.KeyValuePairSlice  `yaml:"expansions_new" bson:"expansions_new" json:"expansions_new"`
