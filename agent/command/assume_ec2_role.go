@@ -120,9 +120,9 @@ func (r *ec2AssumeRole) Execute(ctx context.Context,
 		return errors.WithStack(err)
 	}
 
-	conf.Expansions.Put(AWSAccessKeyId, credValues.AccessKeyID)
-	conf.Expansions.Put(AWSSecretAccessKey, credValues.SecretAccessKey)
-	conf.Expansions.Put(AWSSessionToken, credValues.SessionToken)
-	conf.Expansions.Put(AWSRoleExpiration, expTime.String())
+	conf.NewExpansions.Put(AWSAccessKeyId, credValues.AccessKeyID)
+	conf.NewExpansions.Put(AWSSecretAccessKey, credValues.SecretAccessKey)
+	conf.NewExpansions.Put(AWSSessionToken, credValues.SessionToken)
+	conf.NewExpansions.Put(AWSRoleExpiration, expTime.String())
 	return nil
 }

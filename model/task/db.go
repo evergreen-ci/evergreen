@@ -2602,7 +2602,16 @@ func getTasksByVersionPipeline(versionID string, opts GetTasksByVersionOptions) 
 		{"$project": projectOut},
 		{"$match": match},
 	}
-
+	if !opts.IncludeExecutionTasks {
+		pipeline = append(pipeline, bson.M{
+			"$match": bson.M{
+				"$or": []bson.M{
+					{DisplayTaskIdKey: ""},
+					{DisplayOnlyKey: true},
+				},
+			},
+		})
+	}
 	// Filter on Build Variants matching on display name or variant name if it exists
 	nonEmptyVariants := utility.FilterSlice(opts.Variants, func(s string) bool { return s != "" })
 	if len(nonEmptyVariants) > 0 {
@@ -2617,16 +2626,6 @@ func getTasksByVersionPipeline(versionID string, opts GetTasksByVersionOptions) 
 		pipeline = append(pipeline, bson.M{"$match": match})
 	}
 
-	if !opts.IncludeExecutionTasks {
-		pipeline = append(pipeline, bson.M{
-			"$match": bson.M{
-				"$or": []bson.M{
-					{DisplayTaskIdKey: ""},
-					{DisplayOnlyKey: true},
-				},
-			},
-		})
-	}
 	// TODO: DEVPROD-3994 Remove this conditional and annotation lookup pipelines
 	// Pull one task, any task associated with this versionID. A task's CreateTime is
 	// derived from the version commit time or the patch creation time, allowing us to treat it

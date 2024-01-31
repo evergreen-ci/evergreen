@@ -16,13 +16,7 @@ func (r *permissionsResolver) CanCreateDistro(ctx context.Context, obj *Permissi
 	if err != nil {
 		return false, ResourceNotFound.Send(ctx, "user not found")
 	}
-	opts := gimlet.PermissionOpts{
-		Resource:      evergreen.SuperUserPermissionsID,
-		ResourceType:  evergreen.SuperUserResourceType,
-		Permission:    evergreen.PermissionDistroCreate,
-		RequiredLevel: evergreen.DistroCreate.Value,
-	}
-	return usr.HasPermission(opts), nil
+	return userHasDistroCreatePermission(usr), nil
 }
 
 // CanCreateProject is the resolver for the canCreateProject field.
