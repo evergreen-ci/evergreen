@@ -212,9 +212,8 @@ func TestPodDefinitionCreationJob(t *testing.T) {
 
 			j, ok := NewPodDefinitionCreationJob(ecsConf, p.TaskContainerCreationOpts, utility.RoundPartOfMinute(0).Format(TSFormat)).(*podDefinitionCreationJob)
 			require.True(t, ok)
-
 			j.env = env
-			j.settings = *env.Settings()
+			require.NoError(t, evergreen.UpdateConfig(ctx, env.Settings()))
 
 			j.ecsClient = &cocoaMock.ECSClient{}
 			defer func() {
