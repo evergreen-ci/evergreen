@@ -3,6 +3,7 @@ package internal
 import (
 	"context"
 	"strconv"
+	"strings"
 	"sync"
 
 	"github.com/evergreen-ci/evergreen"
@@ -31,6 +32,7 @@ type TaskConfig struct {
 	DynamicExpansions  util.Expansions
 	ProjectVars        map[string]string
 	Redacted           map[string]bool
+	RedactKeys         []string
 	WorkDir            string
 	TaskOutputDir      *taskoutput.Directory
 	GithubPatchData    thirdparty.GithubPatch
@@ -108,6 +110,21 @@ func NewTaskConfig(workDir string, d *apimodels.DistroView, p *model.Project, t 
 		taskGroup = p.FindTaskGroup(t.TaskGroup)
 		if taskGroup == nil {
 			return nil, errors.Errorf("task is part of task group '%s' but no such task group is defined in the project", t.TaskGroup)
+		}
+	}
+
+	// Add keys matching redact patterns to private vars.
+	for key := range e.Vars {
+		if ok := e.PrivateVars[key]; ok {
+			// Skip since the key is already private.
+			continue
+		}
+
+		for _, pattern := range e.RedactKeys {
+			if strings.Contains(strings.ToLower(key), pattern) {
+				e.PrivateVars[key] = true
+				break
+			}
 		}
 	}
 
