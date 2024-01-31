@@ -209,7 +209,8 @@ functions:
         set -o verbose
         set -o errexit
         wget https://github.com/swaggo/swag/releases/download/v1.16.2/swag_1.16.2_Linux_x86_64.tar.gz
-        tar xzvf swag_1.16.2_Linux_x86_64.tar.gz --strip-components=1 swag
+        tar xzvf swag_1.16.2_Linux_x86_64.tar.gz swag
+        rm swag_1.16.2_Linux_x86_64.tar.gz
   run-make:
     command: subprocess.exec
     params:
@@ -604,7 +605,7 @@ tasks:
           shell: bash
           working_dir: evergreen
           script: |
-            make swaggo-format
+            ./swag fmt -g service/service.go
             if git diff --exit-code --diff-filter=M; then
                 exit 0
             else
