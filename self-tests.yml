@@ -209,7 +209,7 @@ functions:
         set -o verbose
         set -o errexit
         wget https://github.com/swaggo/swag/releases/download/v1.16.2/swag_1.16.2_Linux_x86_64.tar.gz
-        tar xzvf swag_1.16.2_Linux_x86_64.tar.gz
+        tar xzvf swag_1.16.2_Linux_x86_64.tar.gz --strip-components=1 swag
   run-make:
     command: subprocess.exec
     params:
