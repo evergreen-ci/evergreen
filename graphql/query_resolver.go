@@ -25,7 +25,6 @@ import (
 	"github.com/evergreen-ci/evergreen/rest/data"
 	restModel "github.com/evergreen-ci/evergreen/rest/model"
 	"github.com/evergreen-ci/evergreen/thirdparty"
-	"github.com/evergreen-ci/gimlet"
 	"github.com/evergreen-ci/plank"
 	"github.com/evergreen-ci/utility"
 	"github.com/mongodb/anser/bsonutil"
@@ -170,16 +169,11 @@ func (r *queryResolver) Distros(ctx context.Context, onlySpawnable bool) ([]*res
 		distros = d
 	}
 
-	userHasDistroCreatePermissions := usr.HasPermission(gimlet.PermissionOpts{
-		Resource:      evergreen.SuperUserPermissionsID,
-		ResourceType:  evergreen.SuperUserResourceType,
-		Permission:    evergreen.PermissionDistroCreate,
-		RequiredLevel: evergreen.DistroCreate.Value,
-	})
+	userHasDistroCreatePermission := userHasDistroCreatePermission(usr)
 
 	for _, d := range distros {
 		// Omit admin-only distros if user lacks permissions
-		if d.AdminOnly && !userHasDistroCreatePermissions {
+		if d.AdminOnly && !userHasDistroCreatePermission {
 			continue
 		}
 
