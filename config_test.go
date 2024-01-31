@@ -984,34 +984,6 @@ func (s *AdminSuite) TestTracerConfig() {
 	s.Equal(config, settings.Tracer)
 }
 
-func (s *AdminSuite) TestDataPipesConfig() {
-	ctx, cancel := context.WithCancel(context.Background())
-	defer cancel()
-
-	config := DataPipesConfig{
-		Host:         "https://url.com",
-		Region:       "us-east-1",
-		AWSAccessKey: "access",
-		AWSSecretKey: "secret",
-		AWSToken:     "token",
-	}
-
-	err := config.Set(ctx)
-	s.NoError(err)
-	settings, err := GetConfig(ctx)
-	s.NoError(err)
-	s.NotNil(settings)
-	s.Equal(config, settings.DataPipes)
-
-	config.Region = "us-west-1"
-	s.NoError(config.Set(ctx))
-
-	settings, err = GetConfig(ctx)
-	s.NoError(err)
-	s.NotNil(settings)
-	s.Equal(config, settings.DataPipes)
-}
-
 func (s *AdminSuite) TestBucketsConfig() {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()

@@ -18,6 +18,7 @@ import (
 	"github.com/evergreen-ci/evergreen/model"
 	"github.com/evergreen-ci/evergreen/model/task"
 	"github.com/evergreen-ci/evergreen/thirdparty/docker"
+	"github.com/evergreen-ci/evergreen/util"
 	"github.com/evergreen-ci/utility"
 	"github.com/mongodb/grip"
 	"github.com/mongodb/grip/message"
@@ -971,6 +972,7 @@ func (a *Agent) finishTask(ctx context.Context, tc *taskContext, status string, 
 		defer cancel()
 		grip.Error(errors.Wrap(tc.logger.Flush(flushCtx), "flushing logs"))
 	}
+
 	grip.Infof("Sending final task status: '%s'.", detail.Status)
 	resp, err := a.comm.EndTask(ctx, detail, tc.task)
 	if err != nil {
@@ -985,6 +987,46 @@ func (a *Agent) finishTask(ctx context.Context, tc *taskContext, status string, 
 	}
 
 	return resp, nil
+}
+
+//nolint:unused
+func (a *Agent) upsertCheckRun(ctx context.Context, tc *taskContext) error {
+	checkRunOutput, err := buildCheckRun(ctx, tc)
+	if err != nil {
+		return err
+	}
+	if checkRunOutput == nil {
+		return nil
+	}
+
+	return a.comm.UpsertCheckRun(ctx, tc.task, *checkRunOutput)
+}
+
+func buildCheckRun(ctx context.Context, tc *taskContext) (*apimodels.CheckRunOutput, error) {
+	fileName := tc.taskConfig.Task.CheckRunPath
+	// no checkRun specified
+	if fileName == "" || !evergreen.IsGitHubPatchRequester(tc.taskConfig.Task.Requester) {
+		return nil, nil
+	}
+	_, err := os.Stat(fileName)
+	if os.IsNotExist(err) {
+		return nil, errors.Errorf("file '%s' does not exist", fileName)
+	}
+
+	checkRunOutput := apimodels.CheckRunOutput{}
+	err = utility.ReadJSONFile(fileName, &checkRunOutput)
+	if err != nil {
+		return nil, err
+	}
+
+	if err := util.ExpandValues(&checkRunOutput, &tc.taskConfig.Expansions); err != nil {
+		return nil, errors.Wrap(err, "applying expansions")
+	}
+
+	tc.logger.Task().Infof("Upserting checkRun: %s.", checkRunOutput.Title)
+
+	return &checkRunOutput, nil
+
 }
 
 func (a *Agent) endTaskResponse(ctx context.Context, tc *taskContext, status string, systemFailureDescription string) *apimodels.TaskEndDetail {

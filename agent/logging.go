@@ -5,7 +5,6 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
-	"strings"
 
 	"github.com/evergreen-ci/evergreen/agent/command"
 	"github.com/evergreen-ci/evergreen/agent/internal/client"
@@ -119,7 +118,7 @@ func (a *Agent) prepLogger(tc *taskContext, c *model.LoggerConfig, commandName s
 		AWSCredentials:     pail.CreateAWSCredentials(tc.taskConfig.TaskSync.Key, tc.taskConfig.TaskSync.Secret, ""),
 	}
 	config.Expansions = tc.taskConfig.NewExpansions
-	config.ExpansionsToRedact = redactList(tc.taskConfig.ProjectVars, tc.taskConfig.Redacted)
+	config.ExpansionsToRedact = getExpansionsToRedact(tc.taskConfig.Redacted)
 
 	defaultLogger := tc.taskConfig.ProjectRef.DefaultLogger
 
@@ -172,35 +171,14 @@ func (a *Agent) prepSingleLogger(tc *taskContext, in model.LogOpts, logDir, file
 	}
 }
 
-func redactList(projectVars map[string]string, redacted map[string]bool) []string {
-	suspiciousPatterns := []string{
-		"key",
-		"secret",
-		"auth",
-		"token",
-		"private",
-		"pass",
-		"pw",
-	}
-
-	var redactedKeys []string
-	for key := range projectVars {
-		if _, ok := redacted[key]; ok {
-			// Skip since the key is already in the redacted list.
-			continue
-		}
-
-		for _, pattern := range suspiciousPatterns {
-			if strings.Contains(strings.ToLower(key), pattern) {
-				redactedKeys = append(redactedKeys, key)
-				break
-			}
-		}
-	}
+// getExpansionsToRedact returns the full list of expansion keys whose values
+// should get redacted from task logs.
+func getExpansionsToRedact(redacted map[string]bool) []string {
+	var expansionsToRedact []string
 	for key := range redacted {
-		redactedKeys = append(redactedKeys, key)
+		expansionsToRedact = append(expansionsToRedact, key)
 	}
-	redactedKeys = append(redactedKeys, command.ExpansionsToRedact...)
+	expansionsToRedact = append(expansionsToRedact, command.ExpansionsToRedact...)
 
-	return redactedKeys
+	return expansionsToRedact
 }
