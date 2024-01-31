@@ -345,6 +345,9 @@ type ExpansionsAndVars struct {
 	Vars map[string]string `json:"vars"`
 	// PrivateVars contain the project private variables.
 	PrivateVars map[string]bool `json:"private_vars"`
+	// Redact keys contain patterns to match against expansion keys for
+	// redaction in logs.
+	RedactKeys []string `json:"redact_keys"`
 }
 
 // CheckRunOutput represents the output for a CheckRun.

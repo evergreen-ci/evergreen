@@ -435,6 +435,7 @@ func (h *getExpansionsAndVarsHandler) Run(ctx context.Context) gimlet.Responder 
 		Parameters:  map[string]string{},
 		Vars:        map[string]string{},
 		PrivateVars: map[string]bool{},
+		RedactKeys:  h.settings.LoggerConfig.RedactKeys,
 	}
 
 	projectVars, err := model.FindMergedProjectVars(t.Project)
