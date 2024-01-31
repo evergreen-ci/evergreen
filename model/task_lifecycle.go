@@ -2216,14 +2216,8 @@ func endAndResetSystemFailedTask(ctx context.Context, settings *evergreen.Settin
 	}
 
 	unschedulableTask := time.Since(t.ActivatedTime) > task.UnschedulableThreshold
-	maxExecutionTask := t.Execution >= evergreen.MaxTaskExecution
-
-	if evergreen.IsCommitQueueRequester(t.Requester) && evergreen.IsSystemFailedTaskStatus(t.Status) {
-		maxSystemFailedTaskRetries := settings.CommitQueue.MaxSystemFailedTaskRetries
-		if maxSystemFailedTaskRetries > 0 {
-			maxExecutionTask = t.Execution >= maxSystemFailedTaskRetries
-		}
-	}
+	// TODO: DEVPROD-4220 respects the commit queue retries for all tasks. Further clean up will just remove this logic.
+	maxExecutionTask := t.Execution >= settings.CommitQueue.MaxSystemFailedTaskRetries
 
 	if unschedulableTask || maxExecutionTask {
 		failureDetails := task.GetSystemFailureDetails(description)
