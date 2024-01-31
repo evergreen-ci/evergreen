@@ -604,8 +604,8 @@ tasks:
           shell: bash
           working_dir: evergreen
           script: |
-            ./swag fmt -g service/service.go
-            if git diff --exit-code; then
+            make swaggo-format
+            if git diff --exit-code --diff-filter=M; then
                 exit 0
             else
                 echo "Please run 'make swaggo-format' in your local environment to fix the lint errors."
