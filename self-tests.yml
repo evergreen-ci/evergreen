@@ -200,6 +200,16 @@ functions:
             make mod-tidy;
             [[ $? -eq 0 ]] && break;
           done
+  get-swaggo:
+    command: shell.exec
+    params:
+      shell: bash
+      working_dir: evergreen
+      script: |
+        set -o verbose
+        set -o errexit
+        wget https://github.com/swaggo/swag/releases/download/v1.16.2/swag_1.16.2_Linux_x86_64.tar.gz
+        tar xzvf swag_1.16.2_Linux_x86_64.tar.gz
   run-make:
     command: subprocess.exec
     params:
@@ -590,13 +600,13 @@ tasks:
     patch_only: true
     commands:
       - func: get-project-and-modules
+      - func: get-swaggo
       - command: shell.exec
         params:
           shell: bash
           working_dir: evergreen
           script: |
-            make swaggo-install
-            make swaggo-lint
+            make swaggo-format
             if git diff --exit-code; then
                 exit 0
             else
@@ -634,6 +644,7 @@ tasks:
   - name: generate-api-docs
     commands: 
       - func: get-project-and-modules
+      - func: get-swaggo
       - command: shell.exec
         params:
           shell: bash
@@ -641,8 +652,6 @@ tasks:
           script: |
             set -o verbose
             set -o errexit
-            wget https://github.com/swaggo/swag/releases/download/v1.16.2/swag_1.16.2_Linux_x86_64.tar.gz
-            tar xzvf swag_1.16.2_Linux_x86_64.tar.gz
             ./swag init -g service/service.go
       - command: s3.put
         params:
