@@ -597,7 +597,6 @@ tasks:
             REMOTE_PATH: evergreen/clients/${project}/${revision}
   - name: swaggo-lint
     tags: ["linter"]
-    patch_only: true
     commands:
       - func: get-project-and-modules
       - func: get-swaggo
