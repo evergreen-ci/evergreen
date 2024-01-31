@@ -179,8 +179,10 @@ func (r *mutationResolver) SaveDistro(ctx context.Context, opts SaveDistroInput)
 		return nil, ResourceNotFound.Send(ctx, fmt.Sprintf("could not find distro '%s'", d.Id))
 	}
 
-	var settings *evergreen.Settings
-	settings, err = evergreen.GetConfig(ctx)
+	settings, err := evergreen.GetConfig(ctx)
+	if err != nil {
+		return nil, InternalServerError.Send(ctx, fmt.Sprintf("getting settings: %s", err.Error()))
+	}
 	validationErrs, err := validator.CheckDistro(ctx, d, settings, false)
 	if err != nil {
 		return nil, InternalServerError.Send(ctx, err.Error())
