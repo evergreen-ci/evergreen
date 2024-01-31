@@ -585,6 +585,24 @@ tasks:
             LOCAL_PATH: clients
             EXCLUDE_PATTERN: .cache
             REMOTE_PATH: evergreen/clients/${project}/${revision}
+  - name: swaggo-lint
+    tags: ["linter"]
+    patch_only: true
+    commands:
+      - func: get-project-and-modules
+      - command: shell.exec
+        params:
+          shell: bash
+          working_dir: evergreen
+          script: |
+            make swaggo-install
+            make swaggo-lint
+            if git diff --exit-code; then
+                exit 0
+            else
+                echo "Please run `swaggo fmt` in your local environment to fix the lint errors."
+                exit 1
+            fi
   - name: verify-agent-version-update
     tags: ["linter"]
     patch_only: true
@@ -768,6 +786,7 @@ buildvariants:
       GOROOT: /opt/golang/go1.20
     tasks:
       - name: generate-lint
+      - name: swaggo-lint
 
   - name: windows
     display_name: Windows
