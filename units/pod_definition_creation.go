@@ -154,6 +154,12 @@ func (j *podDefinitionCreationJob) populateIfUnset(ctx context.Context) error {
 		}
 		j.podDefMgr = podDefMgr
 	}
+	// Retrieve the latest settings rather than the cached ones.
+	settings, err := evergreen.GetConfig(ctx)
+	if err != nil {
+		return errors.Wrap(err, "getting admin settings")
+	}
+	j.settings = *settings
 
 	return nil
 }
