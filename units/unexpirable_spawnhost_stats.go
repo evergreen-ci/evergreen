@@ -83,27 +83,27 @@ type unexpirableSpawnHostStats struct {
 	uptimeSecsByInstanceType map[string]int
 }
 
-// getStats returns the estimated host uptime stats for the entire day. These
-// are not perfectly accurate, but give a sufficient ballpark estimate of spawn
-// host uptime. For example, it's assumed for simplicity that users don't stop
-// their hosts throughout the day, so if the host is on, it's likely been on the
-// entire day.
+// getStats returns the estimated host uptime stats for the hour. These are not
+// perfectly accurate, but give a sufficient ballpark estimate of spawn host
+// uptime. It's assumed for simplicity that users don't stop/start their hosts
+// many times per day, which would alter the accuracy of the stats.
 func (j *unexpirableSpawnHostStatsJob) getStats(hosts []host.Host) unexpirableSpawnHostStats {
 	var totalUptime time.Duration
 	uptimeByDistro := map[string]int{}
 	uptimeByInstanceType := map[string]int{}
 
 	for _, h := range hosts {
-		// Estimate that if the host is up now, it's been up all day.
-		const dailyUptimePerHost = 24 * time.Hour
-		totalUptime += dailyUptimePerHost
-		uptimeByDistro[h.Distro.Id] += int(dailyUptimePerHost.Seconds())
+		// This job runs once per hour. If the host is up now, estimate that
+		// it's been up for the past hour.
+		const hourlyUptimePerHost = time.Hour
+		totalUptime += hourlyUptimePerHost
+		uptimeByDistro[h.Distro.Id] += int(hourlyUptimePerHost.Seconds())
 		if evergreen.IsEc2Provider(h.Distro.Provider) {
 			instanceType := h.InstanceType
 			if instanceType == "" {
 				continue
 			}
-			uptimeByInstanceType[instanceType] += int(dailyUptimePerHost.Seconds())
+			uptimeByInstanceType[instanceType] += int(hourlyUptimePerHost.Seconds())
 		}
 	}
 

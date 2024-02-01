@@ -1231,7 +1231,7 @@ func PopulatePodResourceCleanupJobs() amboy.QueueOperation {
 // unexpirable spawn host usage.
 func PopulateUnexpirableSpawnHostStatsJob() amboy.QueueOperation {
 	return func(ctx context.Context, queue amboy.Queue) error {
-		return amboy.EnqueueUniqueJob(ctx, queue, NewUnexpirableSpawnHostStatsJob(utility.RoundPartOfDay(0).Format(TSFormat)))
+		return amboy.EnqueueUniqueJob(ctx, queue, NewUnexpirableSpawnHostStatsJob(utility.RoundPartOfHour(0).Format(TSFormat)))
 	}
 }
 
