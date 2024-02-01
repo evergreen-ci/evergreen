@@ -37,13 +37,13 @@ func NotificationsFromEvent(ctx context.Context, e *event.EventLogEntry) ([]noti
 
 	subscriptions, err := event.FindSubscriptionsByAttributes(e.ResourceType, h.Attributes())
 	msg := message.Fields{
-		"source":            "events-processing",
-		"message":           "processing event",
-		"event_id":          e.ID,
-		"event_type":        e.EventType,
-		"resource_id":       e.ResourceId,
-		"resource_type":     e.ResourceType,
-		"num_subscriptions": len(subscriptions),
+		"source":              "events-processing",
+		"message":             "processing event",
+		"event_id":            e.ID,
+		"event_type":          e.EventType,
+		"event_resource_type": e.ResourceType,
+		"event_resource":      e.ResourceId,
+		"num_subscriptions":   len(subscriptions),
 	}
 	if err != nil {
 		err = errors.Wrapf(err, "fetching subscriptions for event '%s' (resource type: '%s', event type: '%s')", e.ID, e.ResourceType, e.EventType)
