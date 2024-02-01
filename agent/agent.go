@@ -344,7 +344,7 @@ func (a *Agent) processNextTask(ctx context.Context, nt *apimodels.NextTaskRespo
 	if nt.TaskSecret == "" {
 		msg := "task response missing secret"
 		span.SetStatus(codes.Error, msg)
-		span.RecordError(errors.New(msg), trace.WithAttributes(attribute.String("task_id", tc.task.ID)))
+		span.RecordError(errors.New(msg), trace.WithAttributes(attribute.String("task.id", tc.task.ID)))
 		grip.Critical(message.Fields{
 			"message": msg,
 			"task":    tc.task.ID,
@@ -358,7 +358,7 @@ func (a *Agent) processNextTask(ctx context.Context, nt *apimodels.NextTaskRespo
 	tc, shouldExit, err := a.runTask(ctx, nil, nt, shouldSetupGroup, taskDirectory)
 	if err != nil {
 		span.SetStatus(codes.Error, "error running task")
-		span.RecordError(err, trace.WithAttributes(attribute.String("task_id", tc.task.ID)), trace.WithStackTrace(true))
+		span.RecordError(err, trace.WithAttributes(attribute.String("task.id", tc.task.ID)), trace.WithStackTrace(true))
 		grip.Critical(message.WrapError(err, message.Fields{
 			"message": "error running task",
 			"task":    tc.task.ID,
