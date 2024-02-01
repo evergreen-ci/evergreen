@@ -1275,23 +1275,6 @@ func (s *DistroPatchByIDSuite) TestRunValidNonLegacyBootstrapSettings() {
 	s.Equal(utility.ToStringPtr("/root_dir"), apiDistro.BootstrapSettings.RootDir)
 }
 
-func (s *DistroPatchByIDSuite) TestRunValidCloneMethod() {
-	ctx := context.Background()
-	ctx = gimlet.AttachUser(ctx, &user.DBUser{Id: "me"})
-	json := []byte(fmt.Sprintf(`{"clone_method": "%s"}`, evergreen.CloneMethodLegacySSH))
-	h := s.rm.(*distroIDPatchHandler)
-	h.distroID = "fedora8"
-	h.body = json
-
-	resp := s.rm.Run(ctx)
-	s.NotNil(resp.Data())
-	s.Equal(resp.Status(), http.StatusOK)
-
-	apiDistro, ok := (resp.Data()).(*restModel.APIDistro)
-	s.Require().True(ok)
-	s.Equal(utility.ToStringPtr(evergreen.CloneMethodLegacySSH), apiDistro.CloneMethod)
-}
-
 func (s *DistroPatchByIDSuite) TestValidFindAndReplaceFullDocument() {
 	ctx := context.Background()
 	ctx = gimlet.AttachUser(ctx, &user.DBUser{Id: "me"})
