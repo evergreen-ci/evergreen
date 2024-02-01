@@ -910,7 +910,7 @@ func (r *queryResolver) MainlineCommits(ctx context.Context, options MainlineCom
 
 			if !utility.FromBoolPtr(v.Activated) {
 				collapseCommit(ctx, mainlineCommits, &mainlineCommitVersion, apiVersion)
-			} else if hasFilters && hasMatchingTasksMap[v.Id] == false {
+			} else if hasFilters && !hasMatchingTasksMap[v.Id] {
 				collapseCommit(ctx, mainlineCommits, &mainlineCommitVersion, apiVersion)
 			} else {
 				matchingVersionCount += 1
