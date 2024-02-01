@@ -30,7 +30,6 @@ func NewConfigSections() ConfigSections {
 		&CloudProviders{},
 		&CommitQueueConfig{},
 		&ContainerPoolsConfig{},
-		&DataPipesConfig{},
 		&HostInitConfig{},
 		&HostJasperConfig{},
 		&JiraConfig{},

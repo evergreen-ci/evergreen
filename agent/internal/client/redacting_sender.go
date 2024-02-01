@@ -20,6 +20,10 @@ type redactingSender struct {
 }
 
 func (r *redactingSender) Send(m message.Composer) {
+	if !m.Loggable() {
+		return
+	}
+
 	msg := m.String()
 	for _, expansion := range r.expansionsToRedact {
 		if val := r.expansions.Get(expansion); val != "" {

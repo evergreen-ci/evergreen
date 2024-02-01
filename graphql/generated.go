@@ -67057,7 +67057,7 @@ func (ec *executionContext) unmarshalInputDistroInput(ctx context.Context, obj i
 		switch k {
 		case "adminOnly":
 			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("adminOnly"))
-			data, err := ec.unmarshalOBoolean2bool(ctx, v)
+			data, err := ec.unmarshalNBoolean2bool(ctx, v)
 			if err != nil {
 				return it, err
 			}
