@@ -10,7 +10,6 @@ import (
 	"strconv"
 	"strings"
 	"sync"
-	"time"
 
 	"github.com/evergreen-ci/evergreen/agent/internal/client"
 	"github.com/evergreen-ci/evergreen/model/log"
@@ -33,27 +32,13 @@ func AppendTestLog(ctx context.Context, comm client.Communicator, tsk *task.Task
 		return sendTestLogToCedar(ctx, comm, tsk, testLog)
 	}
 
-	ts := time.Now().UnixNano()
-	var lines []log.LogLine
-	for i := range testLog.Lines {
-		for _, line := range strings.Split(testLog.Lines[i], "\n") {
-			if line == "" {
-				continue
-			}
-
-			lines = append(lines, log.LogLine{
-				Priority:  level.Info,
-				Timestamp: ts,
-				Data:      line,
-			})
-		}
+	sender, err := tsk.TaskOutputInfo.TestLogs.NewSender(ctx, taskOpts, taskoutput.EvergreenSenderOptions{}, testLog.Name)
+	if err != nil {
+		return errors.Wrap(err, "creating Evergreen logger for test log '%s'", testLog.Name)
 	}
+	sender.Send(message.ConvertToComposer(level.Info, strings.Join(testLog.Lines, "\n")))
 
-	return tsk.TaskOutputInfo.TestLogs.Append(ctx, taskoutput.TaskOptions{
-		ProjectID: tsk.Project,
-		TaskID:    tsk.Id,
-		Execution: tsk.Execution,
-	}, testLog.Name, lines)
+	return errors.Wrapf(sender.Close(), "closing Evergreen logger for test result '%s'", testLog.Name)
 }
 
 // TODO (DEVPROD-75): Remove this logic once we cut over to Evergreen logs.
@@ -101,7 +86,7 @@ type testLogDirectoryHandler struct {
 
 // newTestLogDirectoryHandler returns a new test log directory handler for the
 // specified task.
-func newTestLogDirectoryHandler(output taskoutput.TestLogOutput, taskOpts taskoutput.TaskOptions, logger client.LoggerProducer) *testLogDirectoryHandler {
+func newTestLogDirectoryHandler(dir string, output taskoutput.TestLogOutput, taskOpts taskoutput.TaskOptions, logger client.LoggerProducer) *testLogDirectoryHandler {
 	h := &testLogDirectoryHandler{
 		dir:    dir,
 		logger: logger,

@@ -108,10 +108,10 @@ type directoryHandler interface {
 
 type Directory struct {
 	root     string
-	handlers map[string]directoryHandler
+	handlers []directoryHandler
 }
 
-func NewDirectory(root string, tsk *task.Task, logger client.LoggerProducer) *Directory {
+func NewDirectory(root string, tsk *task.Task, logger client.LoggerProducer) (*Directory, error) {
 	output := tsk.TaskOutputInfo
 	taskOpts := taskoutput.TaskOptions{
 		ProjectID: tsk.Project,
@@ -121,8 +121,8 @@ func NewDirectory(root string, tsk *task.Task, logger client.LoggerProducer) *Di
 
 	return &Directory{
 		root: root,
-		handlers: map[string]directoryHandler{
-			output.TestLogs.ID(): newTestLogDirectoryHandler(output.TestLogs, taskOpts, logger),
+		handlers: []directoryHandler{
+			newTestLogDirectoryHandler(output.TestLogs, taskOpts, logger),
 		},
 	}
 }
