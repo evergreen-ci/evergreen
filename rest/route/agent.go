@@ -58,35 +58,6 @@ func (h *agentCedarConfig) Run(ctx context.Context) gimlet.Responder {
 	})
 }
 
-// GET /rest/v2/agent/data_pipes_config
-type agentDataPipesConfig struct {
-	config evergreen.DataPipesConfig
-}
-
-func makeAgentDataPipesConfig(config evergreen.DataPipesConfig) *agentDataPipesConfig {
-	return &agentDataPipesConfig{
-		config: config,
-	}
-}
-
-func (h *agentDataPipesConfig) Factory() gimlet.RouteHandler {
-	return &agentDataPipesConfig{
-		config: h.config,
-	}
-}
-
-func (*agentDataPipesConfig) Parse(_ context.Context, _ *http.Request) error { return nil }
-
-func (h *agentDataPipesConfig) Run(ctx context.Context) gimlet.Responder {
-	return gimlet.NewJSONResponse(apimodels.DataPipesConfig{
-		Host:         h.config.Host,
-		Region:       h.config.Region,
-		AWSAccessKey: h.config.AWSAccessKey,
-		AWSSecretKey: h.config.AWSSecretKey,
-		AWSToken:     h.config.AWSToken,
-	})
-}
-
 // GET /rest/v2/agent/setup
 type agentSetup struct {
 	settings *evergreen.Settings
@@ -464,6 +435,7 @@ func (h *getExpansionsAndVarsHandler) Run(ctx context.Context) gimlet.Responder 
 		Parameters:  map[string]string{},
 		Vars:        map[string]string{},
 		PrivateVars: map[string]bool{},
+		RedactKeys:  h.settings.LoggerConfig.RedactKeys,
 	}
 
 	projectVars, err := model.FindMergedProjectVars(t.Project)

@@ -64,7 +64,6 @@ func AttachHandler(app *gimlet.APIApp, opts HandlerOpts) {
 
 	// Agent protocol routes
 	app.AddRoute("/agent/cedar_config").Version(2).Get().Wrap(requirePodOrHost).RouteHandler(makeAgentCedarConfig(settings.Cedar))
-	app.AddRoute("/agent/data_pipes_config").Version(2).Get().Wrap(requirePodOrHost).RouteHandler(makeAgentDataPipesConfig(settings.DataPipes))
 	app.AddRoute("/agent/setup").Version(2).Get().Wrap(requirePodOrHost).RouteHandler(makeAgentSetup(settings))
 	app.AddRoute("/commit_queue/{patch_id}/additional").Version(2).Get().Wrap(requireTask).RouteHandler(makeCommitQueueAdditionalPatches())
 	app.AddRoute("/commit_queue/{patch_id}/conclude_merge").Version(2).Post().Wrap(requireTask).RouteHandler(makeCommitQueueConcludeMerge())
