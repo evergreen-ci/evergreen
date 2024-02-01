@@ -167,11 +167,11 @@ func (j *eventNotifierJob) processEventTriggers(ctx context.Context, e *event.Ev
 
 	startDebug := time.Now()
 	n, err = trigger.NotificationsFromEvent(ctx, e)
-	grip.Info(message.Fields{
+	grip.InfoWhen(len(n) > 0, message.Fields{
 		"job_id":        j.ID(),
 		"job_type":      j.Type().Name,
 		"source":        "events-processing",
-		"message":       "event processed",
+		"message":       "event processed and created notifications",
 		"event_id":      e.ID,
 		"event_type":    e.EventType,
 		"resource_id":   e.ResourceId,
