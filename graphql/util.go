@@ -6,6 +6,7 @@ import (
 	"net/http"
 	"sort"
 	"strings"
+	"sync"
 	"time"
 
 	"github.com/evergreen-ci/evergreen"
@@ -27,6 +28,7 @@ import (
 	restModel "github.com/evergreen-ci/evergreen/rest/model"
 	"github.com/evergreen-ci/evergreen/taskoutput"
 	"github.com/evergreen-ci/evergreen/thirdparty"
+	"github.com/evergreen-ci/evergreen/util"
 	"github.com/evergreen-ci/gimlet"
 	"github.com/evergreen-ci/utility"
 	"github.com/mongodb/grip"
@@ -1162,4 +1164,66 @@ func interfaceToMap(ctx context.Context, data interface{}) (map[string]interface
 	}
 
 	return mapField, nil
+}
+
+type HasMatchingTasks struct {
+	Id       string
+	HasTasks bool
+}
+
+func concurrentlyBuildHasMatchingTasksMap(ctx context.Context, versions []model.Version, opts task.HasMatchingTasksOptions, hasMatchingTasksMap map[string]bool) error {
+	wg := sync.WaitGroup{}
+	input := make(chan model.Version, len(versions))
+	output := make(chan HasMatchingTasks, len(versions))
+	catcher := grip.NewBasicCatcher()
+
+	for _, v := range versions {
+		input <- v
+	}
+	close(input)
+
+	// Limit number of parallel requests to the DB.
+	const maxParallel = 20
+	workers := util.Min(maxParallel, len(versions))
+	for i := 0; i < workers; i++ {
+		wg.Add(1)
+		go func() {
+			defer wg.Done()
+			for i := range input {
+				hasTasks, err := task.HasMatchingTasks(ctx, i.Id, opts)
+				if err != nil {
+					catcher.Add(err)
+					continue
+				}
+				output <- HasMatchingTasks{Id: i.Id, HasTasks: hasTasks}
+			}
+		}()
+	}
+	wg.Wait()
+	close(output)
+
+	if catcher.HasErrors() {
+		return werrors.Wrap(catcher.Resolve(), "finding matching tasks")
+	}
+
+	// Maps are reference types so this will be updated correctly in the parent function.
+	for item := range output {
+		hasMatchingTasksMap[item.Id] = item.HasTasks
+	}
+
+	return nil
+}
+
+func collapseCommit(ctx context.Context, mainlineCommits MainlineCommits, mainlineCommitVersion *MainlineCommitVersion, apiVersion restModel.APIVersion) {
+	if len(mainlineCommits.Versions) > 0 {
+		lastMainlineCommit := mainlineCommits.Versions[len(mainlineCommits.Versions)-1]
+		// If the previous mainlineCommit contains rolled up unactivated versions append the latest RolledUp unactivated version
+		if lastMainlineCommit.RolledUpVersions != nil {
+			lastMainlineCommit.RolledUpVersions = append(lastMainlineCommit.RolledUpVersions, &apiVersion)
+		} else {
+			mainlineCommitVersion.RolledUpVersions = []*restModel.APIVersion{&apiVersion}
+		}
+	} else {
+		mainlineCommitVersion.RolledUpVersions = []*restModel.APIVersion{&apiVersion}
+	}
 }
