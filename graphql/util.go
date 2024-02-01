@@ -34,7 +34,6 @@ import (
 	"github.com/mongodb/grip"
 	"github.com/mongodb/grip/message"
 	"github.com/pkg/errors"
-	werrors "github.com/pkg/errors"
 	"github.com/vektah/gqlparser/v2/gqlerror"
 	"golang.org/x/crypto/ssh"
 )
@@ -300,7 +299,7 @@ func getTask(ctx context.Context, taskID string, execution *int, apiURL string) 
 		return nil, ResourceNotFound.Send(ctx, err.Error())
 	}
 	if dbTask == nil {
-		return nil, werrors.Errorf("unable to find task %s", taskID)
+		return nil, errors.Errorf("unable to find task %s", taskID)
 	}
 	apiTask, err := getAPITaskFromTask(ctx, apiURL, *dbTask)
 	if err != nil {
@@ -1203,7 +1202,7 @@ func concurrentlyBuildHasMatchingTasksMap(ctx context.Context, versions []model.
 	close(output)
 
 	if catcher.HasErrors() {
-		return werrors.Wrap(catcher.Resolve(), "finding matching tasks")
+		return errors.Wrap(catcher.Resolve(), "finding matching tasks")
 	}
 
 	// Maps are reference types so this will be updated correctly in the parent function.
