@@ -1170,7 +1170,7 @@ type HasMatchingTasks struct {
 	HasTasks bool
 }
 
-func concurrentlyBuildHasMatchingTasksMap(ctx context.Context, versions []model.Version, opts task.HasMatchingTasksOptions, hasMatchingTasksMap map[string]bool) error {
+func concurrentlyBuildHasMatchingTasksMap(ctx context.Context, versions []model.Version, opts task.HasMatchingTasksOptions) (map[string]bool, error) {
 	wg := sync.WaitGroup{}
 	input := make(chan model.Version, len(versions))
 	output := make(chan HasMatchingTasks, len(versions))
@@ -1180,6 +1180,8 @@ func concurrentlyBuildHasMatchingTasksMap(ctx context.Context, versions []model.
 		input <- v
 	}
 	close(input)
+
+	hasMatchingTasksMap := map[string]bool{}
 
 	// Limit number of parallel requests to the DB.
 	const maxParallel = 20
@@ -1202,7 +1204,7 @@ func concurrentlyBuildHasMatchingTasksMap(ctx context.Context, versions []model.
 	close(output)
 
 	if catcher.HasErrors() {
-		return errors.Wrap(catcher.Resolve(), "finding matching tasks")
+		return nil, errors.Wrap(catcher.Resolve(), "finding matching tasks")
 	}
 
 	// Maps are reference types so this will be updated correctly in the parent function.
@@ -1210,7 +1212,7 @@ func concurrentlyBuildHasMatchingTasksMap(ctx context.Context, versions []model.
 		hasMatchingTasksMap[item.Id] = item.HasTasks
 	}
 
-	return nil
+	return hasMatchingTasksMap, nil
 }
 
 func collapseCommit(ctx context.Context, mainlineCommits MainlineCommits, mainlineCommitVersion *MainlineCommitVersion, apiVersion restModel.APIVersion) {

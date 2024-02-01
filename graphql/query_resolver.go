@@ -887,7 +887,7 @@ func (r *queryResolver) MainlineCommits(ctx context.Context, options MainlineCom
 			break
 		}
 
-		hasMatchingTasksMap := map[string]bool{}
+		var hasMatchingTasksMap map[string]bool
 		if hasFilters {
 			activeVersions := utility.FilterSlice(versions, func(s model.Version) bool { return utility.FromBoolPtr(s.Activated) })
 			opts := task.HasMatchingTasksOptions{
@@ -896,7 +896,7 @@ func (r *queryResolver) MainlineCommits(ctx context.Context, options MainlineCom
 				Statuses:                   getValidTaskStatusesFilter(buildVariantOptions.Statuses),
 				IncludeNeverActivatedTasks: true,
 			}
-			if err := concurrentlyBuildHasMatchingTasksMap(ctx, activeVersions, opts, hasMatchingTasksMap); err != nil {
+			if hasMatchingTasksMap, err = concurrentlyBuildHasMatchingTasksMap(ctx, activeVersions, opts); err != nil {
 				return nil, InternalServerError.Send(ctx, err.Error())
 			}
 		}
