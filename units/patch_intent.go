@@ -107,17 +107,30 @@ func (j *patchIntentProcessor) Run(ctx context.Context) {
 			j.AddError(errors.New("cannot search for an empty project"))
 			return
 		}
-		p, err := model.FindBranchProjectRef(patchDoc.Project)
+		childProject, err := model.FindBranchProjectRef(patchDoc.Project)
 		if err != nil {
 			j.AddError(errors.Wrapf(err, "finding project '%s'", patchDoc.Project))
 			return
 		}
-		if p == nil {
-			j.AddError(errors.Errorf("project '%s' not found", patchDoc.Project))
+		if childProject == nil {
+			j.AddError(errors.Errorf("child project '%s' not found", patchDoc.Project))
 			return
 		}
-		patchDoc.GithubPatchData.BaseOwner = p.Owner
-		patchDoc.GithubPatchData.BaseRepo = p.Repo
+		parentProject, err := model.FindBranchProjectRef(patchDoc.Triggers.ParentPatch)
+		if err != nil {
+			j.AddError(errors.Wrapf(err, "finding project '%s'", patchDoc.Project))
+			return
+		}
+		if parentProject == nil {
+			j.AddError(errors.Errorf("parent project '%s' not found", patchDoc.Triggers.ParentPatch))
+			return
+		}
+		if childProject.Owner == parentProject.Owner && childProject.Repo == parentProject.Repo &&
+			childProject.Branch == parentProject.Branch {
+			patchDoc.Triggers.SameBranchAsParent = true
+		}
+		patchDoc.GithubPatchData.BaseOwner = childProject.Owner
+		patchDoc.GithubPatchData.BaseRepo = childProject.Repo
 	}
 
 	if err = j.finishPatch(ctx, patchDoc); err != nil {
@@ -1047,8 +1060,7 @@ func (j *patchIntentProcessor) buildTriggerPatchDoc(patchDoc *patch.Patch) (*mod
 	if !ok {
 		return nil, nil, errors.Errorf("programmatic error: expected intent '%s' to be a trigger intent type but instead got '%T'", j.IntentID, j.intent)
 	}
-
-	v, project, pp, err := model.FindLatestVersionWithValidProject(patchDoc.Project)
+	v, project, pp, err := model.FindLatestVersionWithValidProject(patchDoc.Project, true)
 	if err != nil {
 		return nil, nil, errors.Wrapf(err, "getting latest version for project '%s'", patchDoc.Project)
 	}
@@ -1065,8 +1077,7 @@ func (j *patchIntentProcessor) buildTriggerPatchDoc(patchDoc *patch.Patch) (*mod
 	}
 
 	patchDoc.VariantsTasks = matchingTasks
-
-	if intent.ParentAsModule != "" {
+	if intent.ParentAsModule != "" || patchDoc.Triggers.SameBranchAsParent {
 		parentPatch, err := patch.FindOneId(patchDoc.Triggers.ParentPatch)
 		if err != nil {
 			return nil, nil, errors.Wrapf(err, "getting parent patch '%s'", patchDoc.Triggers.ParentPatch)
@@ -1076,8 +1087,12 @@ func (j *patchIntentProcessor) buildTriggerPatchDoc(patchDoc *patch.Patch) (*mod
 		}
 		for _, p := range parentPatch.Patches {
 			if p.ModuleName == "" {
+				moduleName := intent.ParentAsModule
+				if patchDoc.Triggers.SameBranchAsParent {
+					moduleName = ""
+				}
 				patchDoc.Patches = append(patchDoc.Patches, patch.ModulePatch{
-					ModuleName: intent.ParentAsModule,
+					ModuleName: moduleName,
 					PatchSet:   p.PatchSet,
 					Githash:    parentPatch.Githash,
 				})

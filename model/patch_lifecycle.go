@@ -765,9 +765,9 @@ func FinalizePatch(ctx context.Context, p *patch.Patch, requester string, github
 	}
 
 	if p.IsParent() {
-		//finalize child patches or subscribe on parent outcome based on parentStatus
-		for _, childPatch := range p.Triggers.ChildPatches {
-			err = finalizeOrSubscribeChildPatch(ctx, childPatch, p, requester, githubOauthToken)
+		// finalize child patches or subscribe on parent outcome based on parentStatus
+		for _, childPatchId := range p.Triggers.ChildPatches {
+			err = finalizeOrSubscribeChildPatch(ctx, childPatchId, p, requester, githubOauthToken)
 			if err != nil {
 				return nil, errors.Wrap(err, "finalizing child patch")
 			}

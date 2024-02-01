@@ -1354,7 +1354,7 @@ func (p *Project) FindDistroNameForTask(t *task.Task) (string, error) {
 // FindLatestVersionWithValidProject returns the latest mainline version that
 // has a valid project configuration. It also returns the intermediate and final
 // project configurations.
-func FindLatestVersionWithValidProject(projectId string) (*Version, *Project, *ParserProject, error) {
+func FindLatestVersionWithValidProject(projectId string, preGeneration bool) (*Version, *Project, *ParserProject, error) {
 	const retryCount = 5
 	if projectId == "" {
 		return nil, nil, nil, errors.New("cannot pass empty projectId to FindLatestVersionWithValidParserProject")
@@ -1380,6 +1380,9 @@ func FindLatestVersionWithValidProject(projectId string) (*Version, *Project, *P
 		}
 
 		env := evergreen.GetEnvironment()
+		if preGeneration {
+			lastGoodVersion.Id = fmt.Sprintf("%s_%s", "pre_generation", lastGoodVersion.Id)
+		}
 		project, pp, err = FindAndTranslateProjectForVersion(ctx, env.Settings(), lastGoodVersion)
 		if err != nil {
 			grip.Critical(message.WrapError(err, message.Fields{
