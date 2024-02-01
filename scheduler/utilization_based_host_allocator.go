@@ -120,19 +120,6 @@ func UtilizationBasedHostAllocator(ctx context.Context, hostAllocatorData *HostA
 	}
 	numNewHostsToRequest := numNewHostsRequired + numAdditionalHostsToMeetMinimum
 
-	grip.Info(message.Fields{
-		"runner":                               RunnerName,
-		"message":                              "requesting new hosts",
-		"distro":                               distro.Id,
-		"group_dur_secs":                       taskGroupingDuration.Seconds(),
-		"group_num":                            len(taskGroupDatas),
-		"minimum_hosts_for_distro":             minimumHostsThreshold,
-		"num_existing_hosts":                   numExistingHosts,
-		"num_new_hosts_required:":              numNewHostsRequired,
-		"num_additional_hosts_to_meet_minimum": numAdditionalHostsToMeetMinimum,
-		"total_new_hosts_to_request":           numNewHostsToRequest,
-	})
-
 	return numNewHostsToRequest, numFreeApprox, nil
 }
 
@@ -217,23 +204,6 @@ func evalHostUtilization(ctx context.Context, d distro.Distro, taskGroupData Tas
 	}
 	avgMakespan := scheduledDuration / time.Duration(maxHosts)
 	grip.AlertWhen(avgMakespan > dynamicDistroRuntimeAlertThreshold, underWaterAlert)
-
-	grip.Info(message.Fields{
-		"message":                      "queue state report",
-		"runner":                       RunnerName,
-		"provider":                     d.Provider,
-		"distro":                       d.Id,
-		"pool_size":                    d.HostAllocatorSettings.MaximumHosts,
-		"new_hosts_needed":             numNewHosts,
-		"num_existing_hosts":           len(existingHosts),
-		"num_free_hosts_approx":        numFreeHosts,
-		"queue_length":                 taskGroupInfo.Count,
-		"long_tasks":                   numLongTasks,
-		"scheduled_tasks_runtime":      int64(scheduledDuration),
-		"scheduled_tasks_runtime_span": scheduledDuration.String(),
-		"op_dur_free_host_secs":        freeHostDur.Seconds(),
-		"op_dur_total_secs":            time.Since(evalStartAt).Seconds(),
-	})
 
 	return numNewHosts, numFreeHosts, nil
 }
