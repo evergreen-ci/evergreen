@@ -87,6 +87,7 @@ type Task {
   generatedBy: String
   generatedByName: String
   generateTask: Boolean
+  hasCedarResults: Boolean!
   hostId: String
   ingestTime: Time
   isPerfPluginEnabled: Boolean!

@@ -61,7 +61,7 @@ func (j *checkBlockedTasksJob) Run(ctx context.Context) {
 	}
 	dependencyCache := map[string]task.Task{}
 	for _, t := range tasksToCheck {
-		j.AddError(errors.Wrapf(checkUnmarkedBlockingTasks(&t, dependencyCache), "checking task '%s'", t.Id))
+		j.AddError(errors.Wrapf(checkUnmarkedBlockingTasks(ctx, &t, dependencyCache), "checking task '%s'", t.Id))
 	}
 }
 
@@ -118,7 +118,7 @@ func (j *checkBlockedTasksJob) getContainerTasksToCheck() []task.Task {
 	return tasksToCheck
 }
 
-func checkUnmarkedBlockingTasks(t *task.Task, dependencyCaches map[string]task.Task) error {
+func checkUnmarkedBlockingTasks(ctx context.Context, t *task.Task, dependencyCaches map[string]task.Task) error {
 	catcher := grip.NewBasicCatcher()
 
 	dependenciesMet, err := t.DependenciesMet(dependencyCaches)
@@ -141,7 +141,7 @@ func checkUnmarkedBlockingTasks(t *task.Task, dependencyCaches map[string]task.T
 	if err == nil {
 		for _, blockingTask := range blockingTasks {
 			blockingTaskIds = append(blockingTaskIds, blockingTask.Id)
-			err = model.UpdateBlockedDependencies(&blockingTask)
+			err = model.UpdateBlockedDependencies(ctx, &blockingTask)
 			catcher.Wrapf(err, "updating blocked dependencies for '%s'", blockingTask.Id)
 		}
 	}

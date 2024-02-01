@@ -390,7 +390,7 @@ func resetTask(ctx context.Context, taskId, caller string) error {
 	if t.IsPartOfDisplay() {
 		return errors.Errorf("cannot restart execution task '%s' because it is part of a display task", t.Id)
 	}
-	if err = t.Archive(); err != nil {
+	if err = t.Archive(ctx); err != nil {
 		return errors.Wrap(err, "can't restart task because it can't be archived")
 	}
 
@@ -586,7 +586,7 @@ func doBisectStepback(ctx context.Context, t *task.Task) error {
 	}
 
 	var s task.StepbackInfo
-	if t.StepbackInfo != nil && t.StepbackInfo.LastPassingStepbackTaskId != "" {
+	if !t.StepbackInfo.IsZero() {
 		// Carry over from the last task.
 		s = *t.StepbackInfo
 	} else {
@@ -727,11 +727,11 @@ func MarkEnd(ctx context.Context, settings *evergreen.Settings, t *task.Task, ca
 		return errors.Wrap(err, "marking task finished")
 	}
 
-	if err = UpdateBlockedDependencies(t); err != nil {
+	if err = UpdateBlockedDependencies(ctx, t); err != nil {
 		return errors.Wrap(err, "updating blocked dependencies")
 	}
 
-	if err = t.MarkDependenciesFinished(true); err != nil {
+	if err = t.MarkDependenciesFinished(ctx, true); err != nil {
 		return errors.Wrap(err, "updating dependency met status")
 	}
 
@@ -784,13 +784,15 @@ func MarkEnd(ctx context.Context, settings *evergreen.Settings, t *task.Task, ca
 			if err != nil {
 				return errors.Wrap(err, "getting display task")
 			}
-			err = evalStepback(ctx, t.DisplayTask, caller, t.DisplayTask.Status, deactivatePrevious)
+			err = evalStepback(ctx, t.DisplayTask, caller, status, deactivatePrevious)
 		} else {
 			err = evalStepback(ctx, t, caller, status, deactivatePrevious)
 		}
-		if err != nil {
-			return errors.Wrap(err, "evaluating stepback")
-		}
+		grip.Error(message.WrapError(err, message.Fields{
+			"message": "evaluating stepback",
+			"project": t.Project,
+			"task_id": t.Id,
+		}))
 	}
 
 	if err = UpdateBuildAndVersionStatusForTask(ctx, t); err != nil {
@@ -900,7 +902,7 @@ func logTaskEndStats(ctx context.Context, t *task.Task) error {
 // UpdateBlockedDependencies traverses the dependency graph and recursively sets
 // each parent dependency as unattainable in depending tasks. It updates the
 // status of builds as well, in case they change due to blocking dependencies.
-func UpdateBlockedDependencies(t *task.Task) error {
+func UpdateBlockedDependencies(ctx context.Context, t *task.Task) error {
 	dependentTasks, err := t.FindAllUnmarkedBlockedDependencies()
 	if err != nil {
 		return errors.Wrapf(err, "getting tasks depending on task '%s'", t.Id)
@@ -908,10 +910,10 @@ func UpdateBlockedDependencies(t *task.Task) error {
 
 	buildIDsSet := make(map[string]struct{})
 	for _, dependentTask := range dependentTasks {
-		if err = dependentTask.MarkUnattainableDependency(t.Id, true); err != nil {
+		if err = dependentTask.MarkUnattainableDependency(ctx, t.Id, true); err != nil {
 			return errors.Wrap(err, "marking dependency unattainable")
 		}
-		if err = UpdateBlockedDependencies(&dependentTask); err != nil {
+		if err = UpdateBlockedDependencies(ctx, &dependentTask); err != nil {
 			return errors.Wrapf(err, "updating blocked dependencies for '%s'", t.Id)
 		}
 		buildIDsSet[dependentTask.BuildId] = struct{}{}
@@ -929,7 +931,7 @@ func UpdateBlockedDependencies(t *task.Task) error {
 }
 
 // UpdateUnblockedDependencies recursively marks all unattainable dependencies as attainable.
-func UpdateUnblockedDependencies(t *task.Task) error {
+func UpdateUnblockedDependencies(ctx context.Context, t *task.Task) error {
 	blockedTasks, err := t.FindAllMarkedUnattainableDependencies()
 	if err != nil {
 		return errors.Wrap(err, "getting dependencies marked unattainable")
@@ -937,11 +939,11 @@ func UpdateUnblockedDependencies(t *task.Task) error {
 
 	buildsToUpdate := make(map[string]bool)
 	for _, blockedTask := range blockedTasks {
-		if err = blockedTask.MarkUnattainableDependency(t.Id, false); err != nil {
+		if err = blockedTask.MarkUnattainableDependency(ctx, t.Id, false); err != nil {
 			return errors.Wrap(err, "marking dependency attainable")
 		}
 
-		if err := UpdateUnblockedDependencies(&blockedTask); err != nil {
+		if err := UpdateUnblockedDependencies(ctx, &blockedTask); err != nil {
 			return errors.WithStack(err)
 		}
 
@@ -1069,7 +1071,7 @@ func dequeueAndRestartItem(ctx context.Context, opts dequeueAndRestartOptions) (
 		return nil, errors.Errorf("patch '%s' not found", opts.itemVersionID)
 	}
 
-	removed, err := tryDequeueAndAbortCommitQueueItem(p, *opts.cq, opts.taskID, opts.mergeErrMsg, opts.caller)
+	removed, err := tryDequeueAndAbortCommitQueueItem(ctx, p, *opts.cq, opts.taskID, opts.mergeErrMsg, opts.caller)
 	if err != nil {
 		return nil, errors.Wrapf(err, "dequeueing and aborting commit queue item '%s'", opts.itemVersionID)
 	}
@@ -1167,9 +1169,9 @@ func dequeueAndRestartWithStepback(ctx context.Context, cq *commitqueue.CommitQu
 	return DequeueAndRestartForTask(ctx, cq, t, message.GithubStateFailure, caller, reason)
 }
 
-func tryDequeueAndAbortCommitQueueItem(p *patch.Patch, cq commitqueue.CommitQueue, taskID, mergeErrMsg string, caller string) (*commitqueue.CommitQueueItem, error) {
+func tryDequeueAndAbortCommitQueueItem(ctx context.Context, p *patch.Patch, cq commitqueue.CommitQueue, taskID, mergeErrMsg string, caller string) (*commitqueue.CommitQueueItem, error) {
 	issue := p.Id.Hex()
-	err := removeNextMergeTaskDependency(cq, issue)
+	err := removeNextMergeTaskDependency(ctx, cq, issue)
 	grip.Error(message.WrapError(err, message.Fields{
 		"message": "error removing dependency",
 		"patch":   issue,
@@ -1201,7 +1203,7 @@ func tryDequeueAndAbortCommitQueueItem(p *patch.Patch, cq commitqueue.CommitQueu
 // removeNextMergeTaskDependency basically removes the given merge task from a linked list of
 // merge task dependencies. It makes the next merge not depend on the current one and also makes
 // the next merge depend on the previous one, if there is one
-func removeNextMergeTaskDependency(cq commitqueue.CommitQueue, currentIssue string) error {
+func removeNextMergeTaskDependency(ctx context.Context, cq commitqueue.CommitQueue, currentIssue string) error {
 	currentIndex := cq.FindItem(currentIssue)
 	if currentIndex < 0 {
 		return errors.New("commit queue item not found")
@@ -1242,7 +1244,7 @@ func removeNextMergeTaskDependency(cq commitqueue.CommitQueue, currentIssue stri
 			TaskId: prevMerge.Id,
 			Status: AllStatuses,
 		}
-		if err = nextMerge.AddDependency(d); err != nil {
+		if err = nextMerge.AddDependency(ctx, d); err != nil {
 			return errors.Wrap(err, "adding dependency")
 		}
 	}
@@ -1251,23 +1253,28 @@ func removeNextMergeTaskDependency(cq commitqueue.CommitQueue, currentIssue stri
 }
 
 // evalStepback runs linear or bisect stepback depending on project, build variant, and task settings.
+// The status passed in is a display status, initially stepback only activates if the task
+// has failed but not on system failure.
 func evalStepback(ctx context.Context, t *task.Task, caller, status string, deactivatePrevious bool) error {
 	s, err := getStepback(t.Id)
 	if err != nil {
 		return errors.WithStack(err)
 	}
+	// A new stepback happens when the display status is failed (not system failure)
+	// and it is not aborted.
+	newStepback := status == evergreen.TaskFailed && !t.Aborted
 	if s.bisect {
-		return evalBisectStepback(ctx, t, caller, s.shouldStepback, deactivatePrevious)
+		return evalBisectStepback(ctx, t, caller, newStepback, s.shouldStepback)
 	}
-	return evalLinearStepback(ctx, t, caller, status, s.shouldStepback, deactivatePrevious)
+	return evalLinearStepback(ctx, t, caller, newStepback, s.shouldStepback, deactivatePrevious)
 }
 
 // evalLinearStepback performs linear stepback on the task or cleans up after previous iterations of lienar
 // stepback.
-func evalLinearStepback(ctx context.Context, t *task.Task, caller, status string, stepback, deactivatePrevious bool) error {
-	if (status == evergreen.TaskFailed && !t.Aborted) ||
-		(evergreen.IsFailedTaskStatus(status) && t.ActivatedBy == evergreen.StepbackTaskActivator) {
-		if !stepback {
+func evalLinearStepback(ctx context.Context, t *task.Task, caller string, newStepback, shouldStepback, deactivatePrevious bool) error {
+	existingStepback := t.Status == evergreen.TaskFailed && t.ActivatedBy == evergreen.StepbackTaskActivator
+	if newStepback || existingStepback {
+		if !shouldStepback {
 			return nil
 		}
 
@@ -1291,7 +1298,7 @@ func evalLinearStepback(ctx context.Context, t *task.Task, caller, status string
 			return catcher.Resolve()
 		}
 		return errors.Wrap(doLinearStepback(ctx, t), "performing linear stepback")
-	} else if status == evergreen.TaskSucceeded && deactivatePrevious && t.Requester == evergreen.RepotrackerVersionRequester {
+	} else if t.Status == evergreen.TaskSucceeded && deactivatePrevious && t.Requester == evergreen.RepotrackerVersionRequester {
 		// When stepback finishes (the task is successful), and stepback was done on mainline commits,
 		// ignore running previous activated tasks for this build variant.
 		return errors.Wrap(DeactivatePreviousTasks(ctx, t, caller), "deactivating previous tasks")
@@ -1300,17 +1307,13 @@ func evalLinearStepback(ctx context.Context, t *task.Task, caller, status string
 }
 
 // evalBisectStepback performs bisect stepback on the task.
-func evalBisectStepback(ctx context.Context, t *task.Task, caller string, stepback, deactivatePrevious bool) error {
+func evalBisectStepback(ctx context.Context, t *task.Task, caller string, newStepback, shouldStepback bool) error {
 	// If the task is aborted or stepback is disabled then no-op.
-	if t.Aborted || !stepback {
+	if t.Aborted || !shouldStepback {
 		return nil
 	}
 
-	// If the stepback info is nil but we reached this point, this must be the first
-	// iteration of stepback.
-	newStepback := t.StepbackInfo == nil && evergreen.IsFailedTaskStatus(t.Status)
-	// If the stepback is not nil, this is an ongoing stepback.
-	existingStepback := t.StepbackInfo != nil
+	existingStepback := !t.StepbackInfo.IsZero() && t.ActivatedBy == evergreen.StepbackTaskActivator
 	if newStepback || existingStepback {
 		return errors.Wrap(doBisectStepback(ctx, t), "performing bisect stepback")
 	}
@@ -1898,7 +1901,7 @@ func MarkHostTaskDispatched(t *task.Task, h *host.Host) error {
 func MarkOneTaskReset(ctx context.Context, t *task.Task) error {
 	if t.DisplayOnly {
 		if !t.ResetFailedWhenFinished {
-			if err := MarkTasksReset(t.ExecutionTasks); err != nil {
+			if err := MarkTasksReset(ctx, t.ExecutionTasks); err != nil {
 				return errors.Wrap(err, "resetting execution tasks")
 			}
 		} else {
@@ -1910,7 +1913,7 @@ func MarkOneTaskReset(ctx context.Context, t *task.Task) error {
 			for _, et := range failedExecTasks {
 				failedExecTaskIds = append(failedExecTaskIds, et.Id)
 			}
-			if err := MarkTasksReset(failedExecTaskIds); err != nil {
+			if err := MarkTasksReset(ctx, failedExecTaskIds); err != nil {
 				return errors.Wrap(err, "resetting failed execution tasks")
 			}
 		}
@@ -1920,11 +1923,11 @@ func MarkOneTaskReset(ctx context.Context, t *task.Task) error {
 		return errors.Wrap(err, "resetting task in database")
 	}
 
-	if err := UpdateUnblockedDependencies(t); err != nil {
+	if err := UpdateUnblockedDependencies(ctx, t); err != nil {
 		return errors.Wrap(err, "clearing unattainable dependencies")
 	}
 
-	if err := t.MarkDependenciesFinished(false); err != nil {
+	if err := t.MarkDependenciesFinished(ctx, false); err != nil {
 		return errors.Wrap(err, "marking direct dependencies unfinished")
 	}
 
@@ -1933,7 +1936,7 @@ func MarkOneTaskReset(ctx context.Context, t *task.Task) error {
 
 // MarkTasksReset resets many tasks by their IDs. For execution tasks, this also
 // resets their parent display tasks.
-func MarkTasksReset(taskIds []string) error {
+func MarkTasksReset(ctx context.Context, taskIds []string) error {
 	tasks, err := task.FindAll(db.Query(task.ByIds(taskIds)))
 	if err != nil {
 		return errors.WithStack(err)
@@ -1949,8 +1952,8 @@ func MarkTasksReset(taskIds []string) error {
 
 	catcher := grip.NewBasicCatcher()
 	for _, t := range tasks {
-		catcher.Wrapf(UpdateUnblockedDependencies(&t), "clearing unattainable dependencies for task '%s'", t.Id)
-		catcher.Wrapf(t.MarkDependenciesFinished(false), "marking direct dependencies unfinished for task '%s'", t.Id)
+		catcher.Wrapf(UpdateUnblockedDependencies(ctx, &t), "clearing unattainable dependencies for task '%s'", t.Id)
+		catcher.Wrapf(t.MarkDependenciesFinished(ctx, false), "marking direct dependencies unfinished for task '%s'", t.Id)
 	}
 
 	return catcher.Resolve()
@@ -2213,14 +2216,8 @@ func endAndResetSystemFailedTask(ctx context.Context, settings *evergreen.Settin
 	}
 
 	unschedulableTask := time.Since(t.ActivatedTime) > task.UnschedulableThreshold
-	maxExecutionTask := t.Execution >= evergreen.MaxTaskExecution
-
-	if evergreen.IsCommitQueueRequester(t.Requester) && evergreen.IsSystemFailedTaskStatus(t.Status) {
-		maxSystemFailedTaskRetries := settings.CommitQueue.MaxSystemFailedTaskRetries
-		if maxSystemFailedTaskRetries > 0 {
-			maxExecutionTask = t.Execution >= maxSystemFailedTaskRetries
-		}
-	}
+	// TODO: DEVPROD-4220 respects the commit queue retries for all tasks. Further clean up will just remove this logic.
+	maxExecutionTask := t.Execution >= settings.CommitQueue.MaxSystemFailedTaskRetries
 
 	if unschedulableTask || maxExecutionTask {
 		failureDetails := task.GetSystemFailureDetails(description)

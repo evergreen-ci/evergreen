@@ -284,10 +284,10 @@ func (c *gitFetchProject) manifestLoad(ctx context.Context,
 
 	for moduleName := range manifest.Modules {
 		// put the url for the module in the expansions
-		conf.Expansions.Put(moduleRevExpansionName(moduleName), manifest.Modules[moduleName].Revision)
-		conf.Expansions.Put(fmt.Sprintf("%s_branch", moduleName), manifest.Modules[moduleName].Branch)
-		conf.Expansions.Put(fmt.Sprintf("%s_repo", moduleName), manifest.Modules[moduleName].Repo)
-		conf.Expansions.Put(fmt.Sprintf("%s_owner", moduleName), manifest.Modules[moduleName].Owner)
+		conf.NewExpansions.Put(moduleRevExpansionName(moduleName), manifest.Modules[moduleName].Revision)
+		conf.NewExpansions.Put(fmt.Sprintf("%s_branch", moduleName), manifest.Modules[moduleName].Branch)
+		conf.NewExpansions.Put(fmt.Sprintf("%s_repo", moduleName), manifest.Modules[moduleName].Repo)
+		conf.NewExpansions.Put(fmt.Sprintf("%s_owner", moduleName), manifest.Modules[moduleName].Owner)
 	}
 
 	logger.Execution().Info("Manifest loaded successfully.")
@@ -877,7 +877,7 @@ func (c *gitFetchProject) fetch(ctx context.Context,
 		}
 		err = c.fetchModuleSource(ctx, comm, conf, logger, jpm, td, opts.token, opts.method, p, moduleName)
 		if err != nil {
-			logger.Execution().Error(errors.Wrap(err, "fetching module source"))
+			return errors.Wrapf(err, "fetching module source '%s'", moduleName)
 		}
 	}
 

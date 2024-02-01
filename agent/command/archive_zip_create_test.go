@@ -42,8 +42,8 @@ func (s *ZipCreateSuite) SetupTest() {
 	s.ctx, s.cancel = context.WithCancel(context.Background())
 	s.comm = client.NewMock("http://localhost.com")
 	s.conf = &internal.TaskConfig{Expansions: util.Expansions{}, Task: task.Task{}, Project: model.Project{}}
-	s.logger, err = s.comm.GetLoggerProducer(s.ctx, client.TaskData{ID: s.conf.Task.Id, Secret: s.conf.Task.Secret}, nil)
-	s.NoError(err)
+	s.logger, err = s.comm.GetLoggerProducer(s.ctx, &s.conf.Task, nil)
+	s.Require().NoError(err)
 
 	s.cmd = &zipArchiveCreate{}
 	s.params = map[string]interface{}{}

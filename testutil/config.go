@@ -89,8 +89,9 @@ func MockConfig() *evergreen.Settings {
 			Name:       "amboy",
 			SingleName: "single",
 			DBConnection: evergreen.AmboyDBConfig{
-				Database: "db",
-				URL:      "mongodb://localhost:27017",
+				Database:  "db",
+				URL:       "mongodb://localhost:27017",
+				KanopyURL: "mongodb://localhost:27018",
 			},
 			PoolSizeLocal:                         10,
 			PoolSizeRemote:                        20,
@@ -196,14 +197,7 @@ func MockConfig() *evergreen.Settings {
 				},
 			},
 		},
-		Credentials: map[string]string{"k1": "v1"},
-		DataPipes: evergreen.DataPipesConfig{
-			Host:         "url",
-			Region:       "us-east-1",
-			AWSAccessKey: "access",
-			AWSSecretKey: "secret",
-			AWSToken:     "token",
-		},
+		Credentials:        map[string]string{"k1": "v1"},
 		DomainName:         "example.com",
 		Expansions:         map[string]string{"k2": "v2"},
 		GithubPRCreatorOrg: "org",
@@ -294,6 +288,10 @@ func MockConfig() *evergreen.Settings {
 						Bucket: "parser_project_bucket",
 					},
 					Prefix: "parser_project_prefix",
+				},
+				PersistentDNS: evergreen.PersistentDNSConfig{
+					HostedZoneID: "hosted_zone_id",
+					Domain:       "example.com",
 				},
 				TaskSync: evergreen.S3Credentials{
 					Key:    "task_sync_key",
@@ -388,6 +386,7 @@ func MockConfig() *evergreen.Settings {
 			CloudCleanupDisabled:           true,
 			LegacyUIPublicAccessDisabled:   true,
 			LegacyUIDistroPageDisabled:     true,
+			SleepScheduleDisabled:          true,
 		},
 		SSHKeyDirectory: "/ssh_key_directory",
 		SSHKeyPairs: []evergreen.SSHKeyPair{

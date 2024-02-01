@@ -12,6 +12,7 @@ import (
 	"github.com/evergreen-ci/evergreen/testutil"
 	"github.com/evergreen-ci/evergreen/util"
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 )
 
 func TestDownstreamExpansions(t *testing.T) {
@@ -43,7 +44,8 @@ func TestDownstreamExpansions(t *testing.T) {
 				defer cancel()
 				comm := client.NewMock("http://localhost.com")
 				conf := &internal.TaskConfig{Expansions: util.Expansions{}, Task: task.Task{Requester: "patch_request"}, Project: model.Project{}}
-				logger, _ := comm.GetLoggerProducer(ctx, client.TaskData{ID: conf.Task.Id, Secret: conf.Task.Secret}, nil)
+				logger, err := comm.GetLoggerProducer(ctx, &conf.Task, nil)
+				require.NoError(t, err)
 				cwd := testutil.GetDirectoryOfFile()
 				path := filepath.Join(cwd, "testdata", "git", "test_expansions.yml")
 				testCase(t, ctx, comm, conf, logger, path)
@@ -55,7 +57,8 @@ func TestDownstreamExpansions(t *testing.T) {
 			defer cancel()
 			comm := client.NewMock("http://localhost.com")
 			conf := &internal.TaskConfig{Expansions: util.Expansions{}, Task: task.Task{Requester: "gitter_request"}, Project: model.Project{}}
-			logger, _ := comm.GetLoggerProducer(ctx, client.TaskData{ID: conf.Task.Id, Secret: conf.Task.Secret}, nil)
+			logger, err := comm.GetLoggerProducer(ctx, &conf.Task, nil)
+			require.NoError(t, err)
 			cwd := testutil.GetDirectoryOfFile()
 			path := filepath.Join(cwd, "testdata", "git", "test_expansions.yml")
 

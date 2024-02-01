@@ -335,10 +335,11 @@ const (
 
 	DefaultJasperPort = 2385
 
-	// TODO EVG-19966: Remove GlobalGitHubTokenExpansion
+	// TODO (DEVPROD-778): Remove GlobalGitHubTokenExpansion
 	GlobalGitHubTokenExpansion = "global_github_oauth_token"
 	GithubAppToken             = "github_app_token"
 	GithubAppPrivateKey        = "github_app_key"
+	GithubKnownHosts           = "github_known_hosts"
 
 	// GitHubRetryAttempts is the github client maximum number of attempts.
 	GitHubRetryAttempts = 3
@@ -604,17 +605,15 @@ var (
 )
 
 const (
-	DefaultServiceConfigurationFileName = "/etc/mci_settings.yml"
-	DefaultDatabaseURL                  = "mongodb://localhost:27017"
-	DefaultDatabaseName                 = "mci"
-	DefaultDatabaseWriteMode            = "majority"
-	DefaultDatabaseReadMode             = "majority"
+	DefaultDatabaseURL       = "mongodb://localhost:27017"
+	DefaultDatabaseName      = "mci"
+	DefaultDatabaseWriteMode = "majority"
+	DefaultDatabaseReadMode  = "majority"
 
 	DefaultAmboyDatabaseURL = "mongodb://localhost:27017"
 
 	// database and config directory, set to the testing version by default for safety
-	NotificationsFile = "mci-notifications.yml"
-	ClientDirectory   = "clients"
+	ClientDirectory = "clients"
 
 	// version requester types
 	PatchVersionRequester       = "patch_request"
@@ -766,6 +765,9 @@ var AttachCommands = []string{
 type SenderKey int
 
 const (
+	// SenderGithubStatus sends messages to GitHub like PR status updates. This
+	// sender key logically represents all GitHub senders collectively, of which
+	// there is one per GitHub org.
 	SenderGithubStatus = SenderKey(iota)
 	SenderEvergreenWebhook
 	SenderSlack

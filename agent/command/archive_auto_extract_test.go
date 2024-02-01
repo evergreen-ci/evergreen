@@ -49,8 +49,8 @@ func (s *AutoExtractSuite) SetupTest() {
 		Project:    model.Project{},
 		WorkDir:    s.targetLocation,
 	}
-	s.logger, err = s.comm.GetLoggerProducer(s.ctx, client.TaskData{ID: s.conf.Task.Id, Secret: s.conf.Task.Secret}, nil)
-	s.NoError(err)
+	s.logger, err = s.comm.GetLoggerProducer(s.ctx, &s.conf.Task, nil)
+	s.Require().NoError(err)
 
 	s.cmd = &autoExtract{}
 	s.params = map[string]interface{}{}
@@ -65,21 +65,14 @@ func (s *AutoExtractSuite) TestNilArguments() {
 	s.Error(s.cmd.ParseParams(s.params))
 }
 
-func (s *AutoExtractSuite) TestMalformedParams() {
-	s.params["exclude_files"] = 1
-	s.params["path"] = "foo"
+func (s *AutoExtractSuite) TestMissingParams() {
+	s.params["path"] = ""
 	s.Error(s.cmd.ParseParams(s.params))
 }
 
 func (s *AutoExtractSuite) TestCorrectParams() {
 	s.params["path"] = "foo"
 	s.NoError(s.cmd.ParseParams(s.params))
-}
-
-func (s *AutoExtractSuite) TestErrorWhenExcludeFilesExist() {
-	s.cmd.ExcludeFiles = []string{"foo"}
-	s.cmd.ArchivePath = "bar"
-	s.Error(s.cmd.ParseParams(s.params))
 }
 
 func (s *AutoExtractSuite) TestErrorsWithMalformedExpansions() {

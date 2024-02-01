@@ -198,6 +198,9 @@ type MoveProjectInput struct {
 	ProjectID string `json:"projectId"`
 }
 
+type Mutation struct {
+}
+
 // Return type representing whether a distro was created and any validation errors
 type NewDistroPayload struct {
 	NewDistroID string `json:"newDistroId"`
@@ -291,6 +294,9 @@ type ProjectPermissionsOptions struct {
 type PublicKeyInput struct {
 	Key  string `json:"key"`
 	Name string `json:"name"`
+}
+
+type Query struct {
 }
 
 type SSHKey struct {
@@ -599,47 +605,6 @@ func (e *BootstrapMethod) UnmarshalGQL(v interface{}) error {
 }
 
 func (e BootstrapMethod) MarshalGQL(w io.Writer) {
-	fmt.Fprint(w, strconv.Quote(e.String()))
-}
-
-type CloneMethod string
-
-const (
-	CloneMethodLegacySSH CloneMethod = "LEGACY_SSH"
-	CloneMethodOauth     CloneMethod = "OAUTH"
-)
-
-var AllCloneMethod = []CloneMethod{
-	CloneMethodLegacySSH,
-	CloneMethodOauth,
-}
-
-func (e CloneMethod) IsValid() bool {
-	switch e {
-	case CloneMethodLegacySSH, CloneMethodOauth:
-		return true
-	}
-	return false
-}
-
-func (e CloneMethod) String() string {
-	return string(e)
-}
-
-func (e *CloneMethod) UnmarshalGQL(v interface{}) error {
-	str, ok := v.(string)
-	if !ok {
-		return fmt.Errorf("enums must be strings")
-	}
-
-	*e = CloneMethod(str)
-	if !e.IsValid() {
-		return fmt.Errorf("%s is not a valid CloneMethod", str)
-	}
-	return nil
-}
-
-func (e CloneMethod) MarshalGQL(w io.Writer) {
 	fmt.Fprint(w, strconv.Quote(e.String()))
 }
 

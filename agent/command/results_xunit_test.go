@@ -45,8 +45,8 @@ func runTest(t *testing.T, configPath string, customTests func(string)) {
 		conf, err := agentutil.MakeTaskConfigFromModelData(ctx, testConfig, modelData)
 		require.NoError(t, err)
 		conf.WorkDir = "."
-		logger, err := comm.GetLoggerProducer(ctx, client.TaskData{ID: conf.Task.Id, Secret: conf.Task.Secret}, nil)
-		So(err, ShouldBeNil)
+		logger, err := comm.GetLoggerProducer(ctx, &conf.Task, nil)
+		require.NoError(t, err)
 
 		Convey("all commands in test project should execute successfully", func() {
 			for _, projTask := range conf.Project.Tasks {
@@ -143,9 +143,15 @@ func TestAttachXUnitWildcardResults(t *testing.T) {
 }
 
 func TestXUnitParseAndUpload(t *testing.T) {
-	testConfig := testutil.TestConfig()
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
+
+	testConfig := testutil.TestConfig()
+	// These test don't actually need the integration test settings, but
+	// MakeTaskConfigFromModelData needs it to create an (unused) GitHub app
+	// token.
+	testutil.ConfigureIntegrationTest(t, testConfig, t.Name())
+
 	comm := client.NewMock("/dev/null")
 	modelData, err := modelutil.SetupAPITestData(testConfig, "aggregation", "rhel55", WildcardConfig, modelutil.NoPatch)
 	require.NoError(t, err)
@@ -229,7 +235,7 @@ func TestXUnitParseAndUpload(t *testing.T) {
 			require.NoError(t, err)
 			conf.WorkDir = filepath.Join(testutil.GetDirectoryOfFile(), "testdata", "xunit")
 
-			logger, err := comm.GetLoggerProducer(ctx, client.TaskData{ID: conf.Task.Id, Secret: conf.Task.Secret}, nil)
+			logger, err := comm.GetLoggerProducer(ctx, &conf.Task, nil)
 			require.NoError(t, err)
 
 			tCase(tctx, t, cedarSrv, conf, logger)

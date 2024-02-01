@@ -1081,6 +1081,15 @@ func handleDistroOnSaveOperation(ctx context.Context, distroID string, onSave Di
 	return len(hosts), nil
 }
 
+func userHasDistroCreatePermission(u *user.DBUser) bool {
+	return u.HasPermission(gimlet.PermissionOpts{
+		Resource:      evergreen.SuperUserPermissionsID,
+		ResourceType:  evergreen.SuperUserResourceType,
+		Permission:    evergreen.PermissionDistroCreate,
+		RequiredLevel: evergreen.DistroCreate.Value,
+	})
+}
+
 func userHasDistroPermission(u *user.DBUser, distroId string, requiredLevel int) bool {
 	opts := gimlet.PermissionOpts{
 		Resource:      distroId,

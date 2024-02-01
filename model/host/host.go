@@ -155,6 +155,9 @@ type Host struct {
 	// HomeVolumeSize is the size of the home volume in GB
 	HomeVolumeSize int    `bson:"home_volume_size" json:"home_volume_size"`
 	HomeVolumeID   string `bson:"home_volume_id" json:"home_volume_id"`
+
+	// SleepSchedule stores host sleep schedule information.
+	SleepSchedule SleepScheduleInfo `bson:"sleep_schedule,omitempty" json:"sleep_schedule,omitempty"`
 }
 
 type Tag struct {
@@ -316,6 +319,49 @@ type SpawnOptions struct {
 
 	// SpawnedByTask indicates that this host has been spawned by a task.
 	SpawnedByTask bool `bson:"spawned_by_task,omitempty" json:"spawned_by_task,omitempty"`
+}
+
+// SleepScheduleInfo stores information about a host's sleep schedule and
+// related bookkeeping information.
+type SleepScheduleInfo struct {
+	// WholeWeekdaysOff represents whole weekdays for the host to sleep.
+	WholeWeekdaysOff []time.Weekday `bson:"whole_weekdays_off" json:"whole_weekdays_off"`
+	// DailyStartTime and DailyStopTime represent a daily schedule for when to
+	// start a stopped host back up. The format is HH:MM:SS.
+	DailyStartTime string `bson:"daily_sleep_start_time" json:"daily_sleep_start_time"`
+	// DailyStopTime represents a daily schedule for when to stop a host. The
+	// format is HH:MM:SS.
+	DailyStopTime string `bson:"daily_sleep_stop_time" json:"daily_sleep_stop_time"`
+	// TimeZone is the time zone for this host's sleep schedule.
+	TimeZone string `bson:"time_zone" json:"time_zone"`
+	// ShouldKeepOff indicates if the host should be kept off, regardless of the
+	// other sleep schedule settings. This exists to permit a host to remain off
+	// indefinitely until the host's owner is ready to turn it on and resume its
+	// usual sleep schedule.
+	ShouldKeepOff bool `bson:"should_keep_off" json:"should_keep_off"`
+	// NextStopTime is the next time that the host should stop for its sleep
+	// schedule.
+	NextStopTime time.Time `bson:"next_stop_time" json:"next_stop_time"`
+	// NextStartTime is the next time that the host should start for its sleep
+	// schedule.
+	NextStartTime time.Time `bson:"next_start_time" json:"next_start_time"`
+	// TemporarilyExemptUntil stores when a user's temporary exemption ends, if
+	// any has been set. The sleep schedule will not take effect until
+	// this timestamp passes.
+	TemporarilyExemptUntil time.Time `bson:"temporarily_exempt_until,omitempty" json:"temporarily_exempt_until,omitempty"`
+}
+
+// IsZero implements the bsoncodec.Zeroer interface for the sake of defining the
+// zero value for BSON marshalling.
+func (i SleepScheduleInfo) IsZero() bool {
+	return len(i.WholeWeekdaysOff) == 0 &&
+		i.DailyStartTime == "" &&
+		i.DailyStopTime == "" &&
+		i.TimeZone == "" &&
+		!i.ShouldKeepOff &&
+		utility.IsZeroTime(i.NextStopTime) &&
+		utility.IsZeroTime(i.NextStartTime) &&
+		utility.IsZeroTime(i.TemporarilyExemptUntil)
 }
 
 type newParentsNeededParams struct {
@@ -1772,9 +1818,7 @@ func RemoveStrict(ctx context.Context, env evergreen.Environment, id string) err
 }
 
 // Replace overwrites an existing host document with a new one. If no existing host is found, the new one will be inserted anyway.
-func (h *Host) Replace() error {
-	ctx, cancel := evergreen.GetEnvironment().Context()
-	defer cancel()
+func (h *Host) Replace(ctx context.Context) error {
 	result := evergreen.GetEnvironment().DB().Collection(Collection).FindOneAndReplace(ctx, bson.M{IdKey: h.Id}, h, options.FindOneAndReplace().SetUpsert(true))
 	err := result.Err()
 	if errors.Cause(err) == mongo.ErrNoDocuments {
@@ -2929,7 +2973,7 @@ func (h *Host) IsSubjectToHostCreationThrottle() bool {
 
 // GetHostByIdOrTagWithTask finds a host by ID or tag and includes the full
 // running task with the host.
-func GetHostByIdOrTagWithTask(hostID string) (*Host, error) {
+func GetHostByIdOrTagWithTask(ctx context.Context, hostID string) (*Host, error) {
 	pipeline := []bson.M{
 		{
 			"$match": bson.M{
@@ -2954,12 +2998,8 @@ func GetHostByIdOrTagWithTask(hostID string) (*Host, error) {
 		},
 	}
 
-	env := evergreen.GetEnvironment()
-	ctx, cancel := env.Context()
-	defer cancel()
-
 	hosts := []Host{}
-	cursor, err := env.DB().Collection(Collection).Aggregate(ctx, pipeline)
+	cursor, err := evergreen.GetEnvironment().DB().Collection(Collection).Aggregate(ctx, pipeline)
 	if err != nil {
 		return nil, errors.Wrap(err, "aggregating host by ID or tag with task")
 	}

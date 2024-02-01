@@ -25,6 +25,11 @@ func TestIncKey(t *testing.T) {
 		require.NoError(t, err)
 
 		testConfig := testutil.TestConfig()
+		// These test don't actually need the integration test settings, but
+		// MakeTaskConfigFromModelData needs it to create an (unused) GitHub app
+		// token.
+		testutil.ConfigureIntegrationTest(t, testConfig, t.Name())
+
 		configPath := filepath.Join(testutil.GetDirectoryOfFile(), "testdata", "plugin_keyval.yml")
 
 		comm := client.NewMock("http://localhost.com")
@@ -35,8 +40,9 @@ func TestIncKey(t *testing.T) {
 		require.NoError(t, err)
 
 		Convey("Inc command should increment a key successfully", func() {
-			logger, err := comm.GetLoggerProducer(ctx, client.TaskData{ID: conf.Task.Id, Secret: conf.Task.Secret}, nil)
-			So(err, ShouldBeNil)
+			logger, err := comm.GetLoggerProducer(ctx, &conf.Task, nil)
+			require.NoError(t, err)
+
 			for _, task := range conf.Project.Tasks {
 				So(len(task.Commands), ShouldNotEqual, 0)
 				for _, command := range task.Commands {

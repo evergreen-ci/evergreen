@@ -451,7 +451,7 @@ func (a *Agent) setupTask(agentCtx, setupCtx context.Context, initialTC *taskCon
 	}
 
 	tc.taskConfig.WorkDir = taskDirectory
-	tc.taskConfig.Expansions.Put("workdir", tc.taskConfig.WorkDir)
+	tc.taskConfig.NewExpansions.Put("workdir", tc.taskConfig.WorkDir)
 
 	// We are only calling this again to get the log for the current command after logging has been set up.
 	if factory != nil {
@@ -506,20 +506,20 @@ func shouldRunSetupGroup(nextTask *apimodels.NextTaskResponse, tc *taskContext) 
 	return false
 }
 
-func (a *Agent) fetchTaskInfo(ctx context.Context, tc *taskContext) (*task.Task, *model.Project, util.Expansions, map[string]bool, error) {
+func (a *Agent) fetchTaskInfo(ctx context.Context, tc *taskContext) (*task.Task, *model.Project, *apimodels.ExpansionsAndVars, error) {
 	project, err := a.comm.GetProject(ctx, tc.task)
 	if err != nil {
-		return nil, nil, nil, nil, errors.Wrap(err, "getting project")
+		return nil, nil, nil, errors.Wrap(err, "getting project")
 	}
 
 	taskModel, err := a.comm.GetTask(ctx, tc.task)
 	if err != nil {
-		return nil, nil, nil, nil, errors.Wrap(err, "getting task")
+		return nil, nil, nil, errors.Wrap(err, "getting task")
 	}
 
 	expAndVars, err := a.comm.GetExpansionsAndVars(ctx, tc.task)
 	if err != nil {
-		return nil, nil, nil, nil, errors.Wrap(err, "getting expansions and variables")
+		return nil, nil, nil, errors.Wrap(err, "getting expansions and variables")
 	}
 
 	// GetExpansionsAndVars does not include build variant expansions or project
@@ -543,7 +543,7 @@ func (a *Agent) fetchTaskInfo(ctx context.Context, tc *taskContext) (*task.Task,
 	// user-specified.
 	expAndVars.Expansions.Update(expAndVars.Parameters)
 
-	return taskModel, project, expAndVars.Expansions, expAndVars.PrivateVars, nil
+	return taskModel, project, expAndVars, nil
 }
 
 func (a *Agent) startLogging(ctx context.Context, tc *taskContext) error {
@@ -979,6 +979,7 @@ func (a *Agent) finishTask(ctx context.Context, tc *taskContext, status string, 
 		defer cancel()
 		grip.Error(errors.Wrap(tc.logger.Flush(flushCtx), "flushing logs"))
 	}
+
 	grip.Infof("Sending final task status: '%s'.", detail.Status)
 	resp, err := a.comm.EndTask(ctx, detail, tc.task)
 	if err != nil {
@@ -993,6 +994,46 @@ func (a *Agent) finishTask(ctx context.Context, tc *taskContext, status string, 
 	}
 
 	return resp, nil
+}
+
+//nolint:unused
+func (a *Agent) upsertCheckRun(ctx context.Context, tc *taskContext) error {
+	checkRunOutput, err := buildCheckRun(ctx, tc)
+	if err != nil {
+		return err
+	}
+	if checkRunOutput == nil {
+		return nil
+	}
+
+	return a.comm.UpsertCheckRun(ctx, tc.task, *checkRunOutput)
+}
+
+func buildCheckRun(ctx context.Context, tc *taskContext) (*apimodels.CheckRunOutput, error) {
+	fileName := tc.taskConfig.Task.CheckRunPath
+	// no checkRun specified
+	if fileName == "" || !evergreen.IsGitHubPatchRequester(tc.taskConfig.Task.Requester) {
+		return nil, nil
+	}
+	_, err := os.Stat(fileName)
+	if os.IsNotExist(err) {
+		return nil, errors.Errorf("file '%s' does not exist", fileName)
+	}
+
+	checkRunOutput := apimodels.CheckRunOutput{}
+	err = utility.ReadJSONFile(fileName, &checkRunOutput)
+	if err != nil {
+		return nil, err
+	}
+
+	if err := util.ExpandValues(&checkRunOutput, &tc.taskConfig.Expansions); err != nil {
+		return nil, errors.Wrap(err, "applying expansions")
+	}
+
+	tc.logger.Task().Infof("Upserting checkRun: %s.", checkRunOutput.Title)
+
+	return &checkRunOutput, nil
+
 }
 
 func (a *Agent) endTaskResponse(ctx context.Context, tc *taskContext, status string, systemFailureDescription string) *apimodels.TaskEndDetail {

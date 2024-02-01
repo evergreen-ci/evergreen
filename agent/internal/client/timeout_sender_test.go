@@ -2,12 +2,9 @@ package client
 
 import (
 	"context"
-	"encoding/json"
 	"fmt"
 	"io"
 	"math/rand"
-	"net/http"
-	"net/http/httptest"
 	"os"
 	"path/filepath"
 	"testing"
@@ -29,9 +26,9 @@ import (
 
 func TestTimeoutSender(t *testing.T) {
 	comm := NewMock("url")
-	td := TaskData{ID: "task", Secret: "secret"}
+	tsk := &task.Task{Id: "task"}
 	ms := newMockSender("test_timeout_sender", func(line log.LogLine) error {
-		return comm.sendTaskLogLine(td, line)
+		return comm.sendTaskLogLine(tsk.Id, line)
 	})
 	sender := makeTimeoutLogSender(ms, comm)
 
@@ -51,7 +48,6 @@ func TestTimeoutSender(t *testing.T) {
 
 type logSenderSuite struct {
 	suite.Suite
-	server            *httptest.Server
 	restClient        *hostCommunicator
 	tempDir           string
 	numMessages       int
@@ -65,35 +61,11 @@ func TestLogSenders(t *testing.T) {
 }
 
 func (s *logSenderSuite) SetupSuite() {
-	s.server, _ = newMockServer(func(w http.ResponseWriter, _ *http.Request) {
-		data, err := json.Marshal(&task.Task{
-			Id:      "task",
-			Project: "project",
-			TaskOutputInfo: &taskoutput.TaskOutput{
-				TaskLogs: taskoutput.TaskLogOutput{
-					Version: 1,
-					BucketConfig: evergreen.BucketConfig{
-						Name: s.T().TempDir(),
-						Type: "local",
-					},
-				},
-			},
-		})
-		s.Require().NoError(err)
-
-		_, err = w.Write(data)
-		s.Require().NoError(err)
-	})
-
-	s.restClient = NewHostCommunicator(s.server.URL, "hostID", "hostSecret").(*hostCommunicator)
+	s.restClient = NewHostCommunicator("url", "hostID", "hostSecret").(*hostCommunicator)
 	s.tempDir = s.T().TempDir()
 	s.numMessages = 1000
 	s.maxSleep = 10 * time.Millisecond
 	rand.Seed(time.Now().UnixNano())
-}
-
-func (s *logSenderSuite) TearDownSuite() {
-	s.server.Close()
 }
 
 func (s *logSenderSuite) SetupTest() {
@@ -113,8 +85,22 @@ func (s *logSenderSuite) randomSleep() {
 }
 
 func (s *logSenderSuite) TestFileLogger() {
+	tsk := &task.Task{
+		Id:      "task",
+		Project: "project",
+		TaskOutputInfo: &taskoutput.TaskOutput{
+			TaskLogs: taskoutput.TaskLogOutput{
+				Version: 1,
+				BucketConfig: evergreen.BucketConfig{
+					Name: s.T().TempDir(),
+					Type: evergreen.BucketTypeLocal,
+				},
+			},
+		},
+	}
+
 	logFileName := fmt.Sprintf("%s/log", s.tempDir)
-	fileSender, toClose, err := s.restClient.makeSender(context.Background(), TaskData{}, []LogOpts{{Sender: model.FileLogSender, Filepath: logFileName}}, false, taskoutput.TaskLogTypeAgent)
+	fileSender, toClose, err := s.restClient.makeSender(context.Background(), tsk, []LogOpts{{Sender: model.FileLogSender, Filepath: logFileName}}, &LoggerConfig{}, taskoutput.TaskLogTypeAgent)
 	s.NoError(err)
 	s.underlyingSenders = append(s.underlyingSenders, toClose...)
 	s.NotNil(fileSender)
@@ -139,7 +125,7 @@ func (s *logSenderSuite) TestFileLogger() {
 
 	// No file logger for system logs.
 	path := filepath.Join(s.tempDir, "nothere")
-	defaultSender, toClose, err := s.restClient.makeSender(context.Background(), TaskData{Secret: "secret"}, []LogOpts{{Sender: model.FileLogSender, Filepath: path}}, false, taskoutput.TaskLogTypeSystem)
+	defaultSender, toClose, err := s.restClient.makeSender(context.Background(), tsk, []LogOpts{{Sender: model.FileLogSender, Filepath: path}}, &LoggerConfig{}, taskoutput.TaskLogTypeSystem)
 	s.Require().NoError(err)
 	s.underlyingSenders = append(s.underlyingSenders, toClose...)
 	logger = logging.MakeGrip(defaultSender)
@@ -150,7 +136,20 @@ func (s *logSenderSuite) TestFileLogger() {
 }
 
 func (s *logSenderSuite) TestMisconfiguredSender() {
-	sender, toClose, err := s.restClient.makeSender(context.Background(), TaskData{}, []LogOpts{{Sender: model.EvergreenLogSender}}, false, taskoutput.TaskLogTypeAgent)
+	tsk := &task.Task{
+		Id:      "task",
+		Project: "project",
+		TaskOutputInfo: &taskoutput.TaskOutput{
+			TaskLogs: taskoutput.TaskLogOutput{
+				Version: 1,
+				BucketConfig: evergreen.BucketConfig{
+					Name: "misconfigured-invalid-bucket-type",
+					Type: "invalid",
+				},
+			},
+		},
+	}
+	sender, toClose, err := s.restClient.makeSender(context.Background(), tsk, []LogOpts{{Sender: model.EvergreenLogSender}}, &LoggerConfig{}, taskoutput.TaskLogTypeAgent)
 	s.underlyingSenders = append(s.underlyingSenders, toClose...)
 	s.Error(err)
 	s.Nil(sender)

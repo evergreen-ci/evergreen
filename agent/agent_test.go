@@ -20,6 +20,7 @@ import (
 	"github.com/evergreen-ci/evergreen/model"
 	"github.com/evergreen-ci/evergreen/model/patch"
 	"github.com/evergreen-ci/evergreen/model/task"
+	"github.com/evergreen-ci/evergreen/taskoutput"
 	"github.com/evergreen-ci/evergreen/util"
 	"github.com/evergreen-ci/utility"
 	"github.com/mongodb/grip"
@@ -117,10 +118,11 @@ func (s *AgentSuite) SetupTest() {
 	const versionID = "v1"
 	const bvName = "mock_build_variant"
 	s.task = task.Task{
-		Id:           "task_id",
-		DisplayName:  "this_is_a_task_name",
-		BuildVariant: bvName,
-		Version:      versionID,
+		Id:             "task_id",
+		DisplayName:    "this_is_a_task_name",
+		BuildVariant:   bvName,
+		Version:        versionID,
+		TaskOutputInfo: initializeTaskOutput(s.T()),
 	}
 	s.mockCommunicator.GetTaskResponse = &s.task
 
@@ -135,7 +137,7 @@ func (s *AgentSuite) SetupTest() {
 	taskConfig, err := internal.NewTaskConfig(s.testTmpDirName, &apimodels.DistroView{}, project, &s.task, &model.ProjectRef{
 		Id:         "project_id",
 		Identifier: "project_identifier",
-	}, &patch.Patch{}, util.Expansions{})
+	}, &patch.Patch{}, &apimodels.ExpansionsAndVars{Expansions: util.Expansions{}})
 	s.Require().NoError(err)
 
 	s.tc = &taskContext{
@@ -149,7 +151,7 @@ func (s *AgentSuite) SetupTest() {
 	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
 	s.canceler = cancel
 	s.ctx = ctx
-	s.tc.logger, err = s.mockCommunicator.GetLoggerProducer(ctx, s.tc.task, nil)
+	s.tc.logger, err = s.mockCommunicator.GetLoggerProducer(ctx, &s.task, nil)
 	s.NoError(err)
 
 	factory, ok := command.GetCommandFactory("setup.initial")
@@ -1246,9 +1248,10 @@ func (s *AgentSuite) TestFinishPrevTaskWithoutTaskGroup() {
 	tc := &taskContext{
 		taskConfig: &internal.TaskConfig{
 			Task: task.Task{
-				Id:      "some_task_id",
-				BuildId: buildID,
-				Version: versionID,
+				Id:             "some_task_id",
+				BuildId:        buildID,
+				Version:        versionID,
+				TaskOutputInfo: initializeTaskOutput(s.T()),
 			},
 			WorkDir: "task_directory",
 		},
@@ -1274,9 +1277,10 @@ func (s *AgentSuite) TestFinishPrevTaskAndNextTaskIsInNewTaskGroup() {
 	tc := &taskContext{
 		taskConfig: &internal.TaskConfig{
 			Task: task.Task{
-				Id:      "some_task_id",
-				BuildId: buildID,
-				Version: versionID,
+				Id:             "some_task_id",
+				BuildId:        buildID,
+				Version:        versionID,
+				TaskOutputInfo: initializeTaskOutput(s.T()),
 			},
 			WorkDir: "task_directory",
 		},
@@ -1305,10 +1309,11 @@ func (s *AgentSuite) TestFinishPrevTaskWithSameTaskGroupAndAlreadyRanSetupGroup(
 	tc := &taskContext{
 		taskConfig: &internal.TaskConfig{
 			Task: task.Task{
-				Id:        "some_task_id",
-				TaskGroup: taskGroup,
-				BuildId:   buildID,
-				Version:   versionID,
+				Id:             "some_task_id",
+				TaskGroup:      taskGroup,
+				BuildId:        buildID,
+				Version:        versionID,
+				TaskOutputInfo: initializeTaskOutput(s.T()),
 			},
 			TaskGroup: &model.TaskGroup{Name: taskGroup},
 			WorkDir:   "task_directory",
@@ -1338,10 +1343,11 @@ func (s *AgentSuite) TestFinishPrevTaskWithSameTaskGroupButDidNotRunSetupGroup()
 	tc := &taskContext{
 		taskConfig: &internal.TaskConfig{
 			Task: task.Task{
-				Id:        "task_id1",
-				TaskGroup: taskGroup,
-				Version:   versionID,
-				BuildId:   buildID,
+				Id:             "task_id1",
+				TaskGroup:      taskGroup,
+				Version:        versionID,
+				BuildId:        buildID,
+				TaskOutputInfo: initializeTaskOutput(s.T()),
 			},
 			TaskGroup: &model.TaskGroup{Name: taskGroup},
 			WorkDir:   "task_directory",
@@ -1370,10 +1376,11 @@ func (s *AgentSuite) TestFinishPrevTaskWithSameBuildButDifferentTaskGroup() {
 	tc := &taskContext{
 		taskConfig: &internal.TaskConfig{
 			Task: task.Task{
-				Id:        "task_id1",
-				TaskGroup: taskGroup1,
-				Version:   versionID,
-				BuildId:   buildID,
+				Id:             "task_id1",
+				TaskGroup:      taskGroup1,
+				Version:        versionID,
+				BuildId:        buildID,
+				TaskOutputInfo: initializeTaskOutput(s.T()),
 			},
 			TaskGroup: &model.TaskGroup{Name: taskGroup1},
 			WorkDir:   "task_directory",
@@ -1527,13 +1534,15 @@ func (s *AgentSuite) TestSetupInitialWithTaskDataLoadingErrorResultsInSystemFail
 		buildID    = "build_id"
 		versionID  = "version_id"
 	)
+
 	s.mockCommunicator.GetTaskResponse = &task.Task{
-		Id:           taskID,
-		DisplayName:  taskName,
-		Secret:       taskSecret,
-		BuildVariant: "nonexistent_bv",
-		BuildId:      buildID,
-		Version:      versionID,
+		Id:             taskID,
+		DisplayName:    taskName,
+		Secret:         taskSecret,
+		BuildVariant:   "nonexistent_bv",
+		BuildId:        buildID,
+		Version:        versionID,
+		TaskOutputInfo: initializeTaskOutput(s.T()),
 	}
 	s.mockCommunicator.GetProjectResponse = &model.Project{
 		Tasks: []model.ProjectTask{
@@ -2280,16 +2289,16 @@ func (s *AgentSuite) TestFetchTaskInfo() {
 		Identifier: "some_cool_project",
 	}
 
-	_, project, expansions, pv, err := s.a.fetchTaskInfo(s.ctx, s.tc)
+	_, project, expansionsAndVars, err := s.a.fetchTaskInfo(s.ctx, s.tc)
 	s.NoError(err)
 
 	s.Require().NotZero(s.tc.taskConfig.Project)
 	s.Equal(s.mockCommunicator.GetProjectResponse.Identifier, project.Identifier)
-	s.Require().NotZero(expansions)
-	s.Equal("bar", expansions["foo"], "should include mock communicator expansions")
-	s.Equal("new-parameter-value", expansions["overwrite-this-parameter"], "user-specified parameter should overwrite any other conflicting expansion")
-	s.Require().NotZero(pv)
-	s.True(pv["some_private_var"], "should include mock communicator private variables")
+	s.Require().NotZero(expansionsAndVars.Expansions)
+	s.Equal("bar", expansionsAndVars.Expansions["foo"], "should include mock communicator expansions")
+	s.Equal("new-parameter-value", expansionsAndVars.Expansions["overwrite-this-parameter"], "user-specified parameter should overwrite any other conflicting expansion")
+	s.Require().NotZero(expansionsAndVars.PrivateVars)
+	s.True(expansionsAndVars.PrivateVars["some_private_var"], "should include mock communicator private variables")
 }
 
 func (s *AgentSuite) TestAbortExitsMainAndRunsPost() {
@@ -2406,6 +2415,49 @@ timeout:
 	})
 }
 
+func (s *AgentSuite) TestUpsertCheckRun() {
+	s.setupRunTask(defaultProjYml)
+
+	f, err := os.CreateTemp(os.TempDir(), "")
+	s.NoError(err)
+	defer os.Remove(f.Name())
+
+	outputString := `
+	{
+	        "title": "This is my report ${checkRun_key}",
+	        "summary": "We found 6 failures and 2 warnings",
+	        "text": "It looks like there are some errors on lines 2 and 4.",
+	        "annotations": [
+	            {
+	                "path": "README.md",
+	                "annotation_level": "warning",
+	                "title": "Error Detector",
+	                "message": "message",
+	                "raw_details": "Do you mean this other thing?",
+	                "start_line": 2,
+	                "end_line": 4
+	            }
+	        ]
+	}
+	`
+	_, err = f.WriteString(outputString)
+	s.NoError(err)
+	s.NoError(f.Close())
+
+	s.tc.taskConfig.Task.CheckRunPath = f.Name()
+	s.tc.taskConfig.Task.Requester = evergreen.GithubPRRequester
+
+	s.tc.taskConfig.Expansions.Put("checkRun_key", "checkRun_value")
+	checkRunOutput, err := buildCheckRun(s.ctx, s.tc)
+	s.NoError(err)
+	s.NotNil(checkRunOutput)
+
+	s.NoError(s.tc.logger.Close())
+	checkMockLogs(s.T(), s.mockCommunicator, s.tc.taskConfig.Task.Id, []string{
+		"Upserting checkRun: This is my report checkRun_value",
+	}, []string{panicLog})
+}
+
 // checkMockLogs checks the mock communicator's received task logs. Note that
 // callers should flush the task logs before checking them to ensure that they
 // are up-to-date.
@@ -2447,5 +2499,24 @@ func checkMockLogs(t *testing.T, mc *client.Mock, taskID string, logsToFind []st
 
 	if displayLogs {
 		grip.Infof("Logs for task '%s':\n%s\n", taskID, strings.Join(allLogs, "\n"))
+	}
+}
+
+func initializeTaskOutput(t *testing.T) *taskoutput.TaskOutput {
+	return &taskoutput.TaskOutput{
+		TaskLogs: taskoutput.TaskLogOutput{
+			Version: 1,
+			BucketConfig: evergreen.BucketConfig{
+				Name: t.TempDir(),
+				Type: evergreen.BucketTypeLocal,
+			},
+		},
+		TestLogs: taskoutput.TestLogOutput{
+			Version: 1,
+			BucketConfig: evergreen.BucketConfig{
+				Name: t.TempDir(),
+				Type: evergreen.BucketTypeLocal,
+			},
+		},
 	}
 }

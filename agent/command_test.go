@@ -9,6 +9,7 @@ import (
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/agent/internal"
 	"github.com/evergreen-ci/evergreen/agent/internal/client"
+	agentutil "github.com/evergreen-ci/evergreen/agent/util"
 	"github.com/evergreen-ci/evergreen/apimodels"
 	"github.com/evergreen-ci/evergreen/model"
 	"github.com/evergreen-ci/evergreen/model/task"
@@ -191,8 +192,7 @@ func TestEndTaskSyncCommands(t *testing.T) {
 				Id:            taskID,
 				SyncAtEndOpts: task.SyncAtEndOptions{Enabled: true},
 			}
-			td := client.TaskData{ID: taskID, Secret: "secret"}
-			logger, err := comm.GetLoggerProducer(ctx, td, nil)
+			logger, err := comm.GetLoggerProducer(ctx, &tsk, nil)
 			require.NoError(t, err)
 			tc := &taskContext{
 				taskConfig: &internal.TaskConfig{
@@ -208,8 +208,10 @@ func TestEndTaskSyncCommands(t *testing.T) {
 }
 
 func (s *CommandSuite) setUpConfigAndProject(projYml string) {
+	expansions := util.Expansions{"key1": "expansionVar", "key2": "expansionVar2", "key3": "expansionVar3"}
 	config := &internal.TaskConfig{
-		Expansions: util.Expansions{"key1": "expansionVar", "key2": "expansionVar2", "key3": "expansionVar3"},
+		Expansions:    expansions,
+		NewExpansions: agentutil.NewDynamicExpansions(expansions),
 		BuildVariant: model.BuildVariant{
 			Name: "some_build_variant",
 		},
@@ -226,7 +228,7 @@ func (s *CommandSuite) setUpConfigAndProject(projYml string) {
 	s.NoError(err)
 	s.tc.taskConfig.Project = p
 
-	s.tc.logger, err = s.mockCommunicator.GetLoggerProducer(s.ctx, s.tc.task, nil)
+	s.tc.logger, err = s.mockCommunicator.GetLoggerProducer(s.ctx, &config.Task, nil)
 	s.NoError(err)
 	s.tc.taskConfig.Project = p
 }
