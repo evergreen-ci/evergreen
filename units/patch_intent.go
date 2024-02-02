@@ -107,30 +107,32 @@ func (j *patchIntentProcessor) Run(ctx context.Context) {
 			j.AddError(errors.New("cannot search for an empty project"))
 			return
 		}
-		childProject, err := model.FindBranchProjectRef(patchDoc.Project)
+		p, err := model.FindBranchProjectRef(patchDoc.Project)
 		if err != nil {
 			j.AddError(errors.Wrapf(err, "finding project '%s'", patchDoc.Project))
 			return
 		}
-		if childProject == nil {
+		if p == nil {
 			j.AddError(errors.Errorf("child project '%s' not found", patchDoc.Project))
 			return
 		}
-		parentProject, err := model.FindBranchProjectRef(patchDoc.Triggers.ParentPatch)
-		if err != nil {
-			j.AddError(errors.Wrapf(err, "finding project '%s'", patchDoc.Project))
-			return
+		if j.IntentType == patch.TriggerIntentType {
+			parentProject, err := model.FindBranchProjectRef(patchDoc.Triggers.ParentProjectID)
+			if err != nil {
+				j.AddError(errors.Wrapf(err, "finding project '%s'", patchDoc.Project))
+				return
+			}
+			if parentProject == nil {
+				j.AddError(errors.Errorf("parent project '%s' not found", patchDoc.Triggers.ParentPatch))
+				return
+			}
+			if p.Owner == parentProject.Owner && p.Repo == parentProject.Repo &&
+				p.Branch == parentProject.Branch {
+				patchDoc.Triggers.SameBranchAsParent = true
+			}
 		}
-		if parentProject == nil {
-			j.AddError(errors.Errorf("parent project '%s' not found", patchDoc.Triggers.ParentPatch))
-			return
-		}
-		if childProject.Owner == parentProject.Owner && childProject.Repo == parentProject.Repo &&
-			childProject.Branch == parentProject.Branch {
-			patchDoc.Triggers.SameBranchAsParent = true
-		}
-		patchDoc.GithubPatchData.BaseOwner = childProject.Owner
-		patchDoc.GithubPatchData.BaseRepo = childProject.Repo
+		patchDoc.GithubPatchData.BaseOwner = p.Owner
+		patchDoc.GithubPatchData.BaseRepo = p.Repo
 	}
 
 	if err = j.finishPatch(ctx, patchDoc); err != nil {
@@ -748,13 +750,14 @@ func ProcessTriggerAliases(ctx context.Context, p *patch.Patch, projectRef *mode
 	triggerIntents := make([]patch.Intent, 0, len(aliasGroups))
 	for group, definitions := range aliasGroups {
 		triggerIntent := patch.NewTriggerIntent(patch.TriggerIntentOptions{
-			ParentID:       p.Id.Hex(),
-			ParentStatus:   group.status,
-			ProjectID:      group.project,
-			ParentAsModule: group.parentAsModule,
-			Requester:      p.GetRequester(),
-			Author:         p.Author,
-			Definitions:    definitions,
+			ParentID:        p.Id.Hex(),
+			ParentProjectID: p.Project,
+			ParentStatus:    group.status,
+			ProjectID:       group.project,
+			ParentAsModule:  group.parentAsModule,
+			Requester:       p.GetRequester(),
+			Author:          p.Author,
+			Definitions:     definitions,
 		})
 
 		if err := triggerIntent.Insert(); err != nil {

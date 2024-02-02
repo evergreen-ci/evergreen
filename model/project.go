@@ -1381,7 +1381,14 @@ func FindLatestVersionWithValidProject(projectId string, preGeneration bool) (*V
 
 		env := evergreen.GetEnvironment()
 		if preGeneration {
-			lastGoodVersion.Id = fmt.Sprintf("%s_%s", "pre_generation", lastGoodVersion.Id)
+			preGeneratedId := fmt.Sprintf("%s_%s", "pre_generation", lastGoodVersion.Id)
+			pp, err = ParserProjectFindOneByID(ctx, env.Settings(), lastGoodVersion.ProjectStorageMethod, fmt.Sprintf("%s_%s", "pre_generation", lastGoodVersion.Id))
+			if err != nil {
+				return nil, nil, nil, errors.Wrapf(err, "finding parser project '%s'", preGeneratedId)
+			}
+			if pp != nil {
+				lastGoodVersion.Id = preGeneratedId
+			}
 		}
 		project, pp, err = FindAndTranslateProjectForVersion(ctx, env.Settings(), lastGoodVersion)
 		if err != nil {

@@ -207,6 +207,7 @@ type PatchSet struct {
 type TriggerInfo struct {
 	Aliases              []string    `bson:"aliases,omitempty"`
 	ParentPatch          string      `bson:"parent_patch,omitempty"`
+	ParentProjectID      string      `bson:"parent_project_id,omitempty"`
 	SameBranchAsParent   bool        `bson:"same_branch_as_parent"`
 	ChildPatches         []string    `bson:"child_patches,omitempty"`
 	DownstreamParameters []Parameter `bson:"downstream_parameters,omitempty"`
