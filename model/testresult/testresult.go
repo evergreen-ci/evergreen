@@ -119,26 +119,6 @@ func (tr TestResult) GetLogURL(env evergreen.Environment, viewer evergreen.LogVi
 			url.QueryEscape(tr.GroupID),
 			tr.LineNum,
 		)
-	case evergreen.LogViewerLobster:
-		// Evergreen-hosted lobster does not support external logs.
-		if tr.LogURL != "" || tr.RawLogURL != "" {
-			for _, url := range deprecatedLobsterURLs {
-				if strings.Contains(tr.LogURL, url) {
-					return strings.Replace(tr.LogURL, url, root+"/lobster", 1)
-				}
-			}
-			return ""
-
-		}
-
-		return fmt.Sprintf("%s/lobster/evergreen/test/%s/%d/%s/%s#shareLine=%d",
-			root,
-			url.PathEscape(tr.TaskID),
-			tr.Execution,
-			url.QueryEscape(tr.GetLogTestName()),
-			url.QueryEscape(tr.GroupID),
-			tr.LineNum,
-		)
 	case evergreen.LogViewerParsley:
 		if parsleyURL == "" {
 			return ""
