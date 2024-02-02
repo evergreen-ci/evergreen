@@ -294,9 +294,6 @@ func (uis *UIServer) GetServiceApp() *gimlet.APIApp {
 		))
 	}
 
-	// Lobster
-	app.AddPrefixRoute("/lobster").Wrap(needsLogin).Handler(uis.lobsterPage).Get()
-
 	// GraphQL
 	app.AddRoute("/graphql").Wrap(allowsCORS, needsLogin).Handler(playground.ApolloSandboxHandler("GraphQL playground", "/graphql/query")).Get()
 	app.AddRoute("/graphql/query").Wrap(allowsCORS, needsLoginNoRedirect).Handler(graphql.Handler(uis.Settings.ApiUrl)).Post().Get()
