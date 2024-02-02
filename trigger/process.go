@@ -36,6 +36,10 @@ func NotificationsFromEvent(ctx context.Context, e *event.EventLogEntry) ([]noti
 	}
 
 	subscriptions, err := event.FindSubscriptionsByAttributes(e.ResourceType, h.Attributes())
+	subIDs := make([]string, 0, len(subscriptions))
+	for _, sub := range subscriptions {
+		subIDs = append(subIDs, sub.ID)
+	}
 	msg := message.Fields{
 		"source":            "events-processing",
 		"message":           "processing event",
@@ -44,16 +48,17 @@ func NotificationsFromEvent(ctx context.Context, e *event.EventLogEntry) ([]noti
 		"resource_id":       e.ResourceId,
 		"resource_type":     e.ResourceType,
 		"num_subscriptions": len(subscriptions),
+		"subscription_ids":  subIDs,
 	}
 	if err != nil {
 		err = errors.Wrapf(err, "fetching subscriptions for event '%s' (resource type: '%s', event type: '%s')", e.ID, e.ResourceType, e.EventType)
 		grip.Error(message.WrapError(err, msg))
 		return nil, err
 	}
-	grip.Info(msg)
 	if len(subscriptions) == 0 {
 		return nil, nil
 	}
+	grip.Info(msg)
 
 	notifications := make([]notification.Notification, 0, len(subscriptions))
 
@@ -62,23 +67,22 @@ func NotificationsFromEvent(ctx context.Context, e *event.EventLogEntry) ([]noti
 		n, err := h.Process(&subscriptions[i])
 		msg := message.Fields{
 			"source":              "events-processing",
-			"message":             "processing subscription",
+			"message":             "processed subscription and created notifications",
 			"event_id":            e.ID,
 			"event_type":          e.EventType,
 			"event_resource_type": e.ResourceType,
 			"event_resource":      e.ResourceId,
 			"subscription_id":     subscriptions[i].ID,
-			"notification_is_nil": n == nil,
 		}
 		if n != nil {
 			msg["notification_id"] = n.ID
 		}
 		catcher.Add(err)
 		grip.Error(message.WrapError(err, msg))
-		grip.InfoWhen(err == nil, msg)
 		if n == nil {
 			continue
 		}
+		grip.Info(msg)
 
 		notifications = append(notifications, *n)
 	}
