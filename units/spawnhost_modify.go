@@ -8,7 +8,6 @@ import (
 	"github.com/evergreen-ci/evergreen/cloud"
 	"github.com/evergreen-ci/evergreen/model/event"
 	"github.com/evergreen-ci/evergreen/model/host"
-	"github.com/evergreen-ci/utility"
 	"github.com/mongodb/amboy"
 	"github.com/mongodb/amboy/job"
 	"github.com/mongodb/amboy/registry"
@@ -16,6 +15,7 @@ import (
 	"github.com/mongodb/grip/message"
 	"github.com/pkg/errors"
 	"go.opentelemetry.io/otel/attribute"
+	"go.opentelemetry.io/otel/trace"
 )
 
 const (
@@ -51,7 +51,8 @@ func (m *CloudHostModification) modifyHost(ctx context.Context, op func(ctx cont
 		}
 	}
 
-	ctx = utility.ContextWithAttributes(ctx, m.hostAttributes(m.host))
+	span := trace.SpanFromContext(ctx)
+	span.SetAttributes(m.hostAttributes(m.host)...)
 
 	mgrOpts, err := cloud.GetManagerOptions(m.host.Distro)
 	if err != nil {
@@ -67,11 +68,11 @@ func (m *CloudHostModification) modifyHost(ctx context.Context, op func(ctx cont
 
 func (m *CloudHostModification) hostAttributes(h *host.Host) []attribute.KeyValue {
 	return []attribute.KeyValue{
-		attribute.String(evergreen.HostIDOtelAttribute, h.Id),
-		attribute.String(evergreen.DistroIDOtelAttribute, h.Distro.Id),
-		attribute.String(evergreen.HostStartedByOtelAttribute, h.StartedBy),
-		attribute.Bool(evergreen.HostNoExpirationOtelAttribute, h.NoExpiration),
-		attribute.String(evergreen.HostInstanceTypeOtelAttribute, h.InstanceType),
+		attribute.String(evergreen.HostIDOtelAttribute, m.host.Id),
+		attribute.String(evergreen.DistroIDOtelAttribute, m.host.Distro.Id),
+		attribute.String(evergreen.HostStartedByOtelAttribute, m.host.StartedBy),
+		attribute.Bool(evergreen.HostNoExpirationOtelAttribute, m.host.NoExpiration),
+		attribute.String(evergreen.HostInstanceTypeOtelAttribute, m.host.InstanceType),
 		attribute.String(fmt.Sprintf("%s.source", spawnHostModifyOtelAttributePrefix), string(m.Source)),
 	}
 }
@@ -109,6 +110,7 @@ func NewSpawnhostModifyJob(h *host.Host, changes host.HostModifyOptions, ts stri
 	j.SetID(fmt.Sprintf("%s.%s.%s", spawnhostModifyName, h.Id, ts))
 	j.ModifyOptions = changes
 	j.CloudHostModification.HostID = h.Id
+	j.CloudHostModification.Source = evergreen.ModifySpawnHostManual
 	return j
 }
 

@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 
+	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/cloud"
 	"github.com/evergreen-ci/evergreen/model/host"
 	"github.com/mongodb/amboy"
@@ -44,6 +45,7 @@ func NewSpawnHostTerminationJob(h *host.Host, user, ts string) amboy.Job {
 	j.SetEnqueueAllScopes(true)
 	j.CloudHostModification.HostID = h.Id
 	j.CloudHostModification.UserID = user
+	j.CloudHostModification.Source = evergreen.ModifySpawnHostManual
 	return j
 }
 
