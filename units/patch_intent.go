@@ -1090,9 +1090,9 @@ func (j *patchIntentProcessor) buildTriggerPatchDoc(patchDoc *patch.Patch) (*mod
 		}
 		for _, p := range parentPatch.Patches {
 			if p.ModuleName == "" {
-				patchDoc.Githash = parentPatch.Githash
 				moduleName := intent.ParentAsModule
 				if patchDoc.Triggers.SameBranchAsParent {
+					patchDoc.Githash = parentPatch.Githash
 					moduleName = ""
 				}
 				patchDoc.Patches = append(patchDoc.Patches, patch.ModulePatch{
