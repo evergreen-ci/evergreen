@@ -157,6 +157,8 @@ Aliases can also be defined locally as shown [here](../CLI.md#local-aliases).
 
 ### GitHub Pull Request Testing
 
+Definitions for this section exist under the "Github & Commit Queue" tab.
+
 Enabling "Automated Testing" will have Evergreen automatically create a patch for
 each pull request opened in the repository as well as each subsequent
 push to each pull request. In order for this to work, you must fill out
@@ -188,7 +190,9 @@ For security reasons, commits by users outside of your organization will
 not automatically be run. A patch will still be created and must be
 manually authorized to run by a logged-in user.
 
-### GitHub Checks
+### GitHub Commit Checks
+
+Definitions for this section exist under the "Github & Commit Queue" tab.
 
 This supports GitHub checks on commits (i.e. to be visible at
 `https://github.com/<owner>/<repo>/commits`). Task/variant
@@ -196,6 +200,8 @@ regexes/tags are required, and Github statuses will be sent with only
 the status of those tasks on the mainline commit version.
 
 ### Triggering Versions With Git Tags
+
+Definitions for this section exist under the "Github & Commit Queue" tab.
 
 This allows for versions to be created automatically from pushed git tags,
 and these versions will have the following properties:
