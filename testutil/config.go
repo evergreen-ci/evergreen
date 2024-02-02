@@ -385,7 +385,6 @@ func MockConfig() *evergreen.Settings {
 			UnrecognizedPodCleanupDisabled: true,
 			CloudCleanupDisabled:           true,
 			LegacyUIPublicAccessDisabled:   true,
-			LegacyUIDistroPageDisabled:     true,
 			SleepScheduleDisabled:          true,
 		},
 		SSHKeyDirectory: "/ssh_key_directory",

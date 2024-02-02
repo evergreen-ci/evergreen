@@ -12,7 +12,6 @@ import (
 
 func TestLoggingDistroEvents(t *testing.T) {
 	Convey("When logging distro events, ", t, func() {
-
 		So(db.Clear(EventCollection), ShouldBeNil)
 
 		Convey("logged events should be stored and queryable in sorted order", func() {
@@ -52,20 +51,12 @@ func TestLoggingDistroEvents(t *testing.T) {
 			eventData, ok = event.Data.(*DistroEventData)
 			So(ok, ShouldBeTrue)
 			So(event.ResourceType, ShouldEqual, ResourceTypeDistro)
-			So(eventData.UserId, ShouldEqual, userId)
 			So(eventData.User, ShouldEqual, userId)
 
-			// Check legacy data field
-			doc := birch.NewDocument()
-			doc.ExtendInterface(eventData.Data)
-			ami, ok := doc.Lookup("ami").StringValueOK()
-			So(ok, ShouldBeTrue)
-			So(ami, ShouldEqual, "ami-123456")
-
 			// Check before field
-			doc = birch.NewDocument()
+			doc := birch.NewDocument()
 			doc.ExtendInterface(eventData.Before)
-			ami, ok = doc.Lookup("ami").StringValueOK()
+			ami, ok := doc.Lookup("ami").StringValueOK()
 			So(ok, ShouldBeTrue)
 			So(ami, ShouldEqual, "ami-0")
 
