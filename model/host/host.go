@@ -112,7 +112,8 @@ type Host struct {
 	// for non-legacy hosts.
 	JasperCredentialsID string `bson:"jasper_credentials_id" json:"jasper_credentials_id"`
 
-	// for ec2 dynamic hosts, the instance type requested
+	// InstanceType is the EC2 host's requested instance type. This is kept
+	// up-to-date even if the instance type is changed.
 	InstanceType string `bson:"instance_type" json:"instance_type,omitempty"`
 	// The volumeID and device name for each volume attached to the host
 	Volumes []VolumeAttachment `bson:"volumes,omitempty" json:"volumes,omitempty"`
