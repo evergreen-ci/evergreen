@@ -304,7 +304,7 @@ type processNextResponse struct {
 }
 
 func (a *Agent) processNextTask(ctx context.Context, nt *apimodels.NextTaskResponse, tc *taskContext, needTeardownGroup bool) (processNextResponse, error) {
-	processNextTaskCtx, span := a.tracer.Start(ctx, "process-next-task")
+	_, span := a.tracer.Start(ctx, "process-next-task")
 	defer span.End()
 	if nt.ShouldExit {
 		grip.Notice("Next task response indicates agent should exit.")
@@ -312,7 +312,7 @@ func (a *Agent) processNextTask(ctx context.Context, nt *apimodels.NextTaskRespo
 	}
 	if nt.ShouldTeardownGroup {
 		// Tear down the task group if the task group is finished.
-		a.runTeardownGroupCommands(processNextTaskCtx, tc)
+		a.runTeardownGroupCommands(ctx, tc)
 		return processNextResponse{
 			// Running the teardown group commands implies exiting the group, so
 			// destroy prior task information.
@@ -325,7 +325,7 @@ func (a *Agent) processNextTask(ctx context.Context, nt *apimodels.NextTaskRespo
 		// Tear down the task group if there's no next task to run (i.e. there's
 		// no more tasks in the task group), and the agent just finished a task
 		// or task group.
-		a.runTeardownGroupCommands(processNextTaskCtx, tc)
+		a.runTeardownGroupCommands(ctx, tc)
 		return processNextResponse{
 			needTeardownGroup: false,
 			// Running the teardown group commands implies exiting the group, so
