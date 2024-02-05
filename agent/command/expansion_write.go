@@ -49,12 +49,12 @@ func (c *expansionsWriter) Execute(ctx context.Context,
 	expansions := map[string]string{}
 	for k, v := range conf.Expansions.Map() {
 		_, ok := conf.Redacted[k]
-		// Users should not be able to use the global github token
-		// expansion as it can result in the breaching of Evergreen's
-		// GitHub API limit. Likewise with AWS expansions.
+		// Redact private variables unless redacted set to true. Always
+		// redact the global GitHub and AWS expansions.
 		if (ok && !c.Redacted && !isPerfProject(conf)) || utility.StringSliceContains(ExpansionsToRedact, k) {
 			continue
 		}
+
 		expansions[k] = v
 	}
 	out, err := yaml.Marshal(expansions)
