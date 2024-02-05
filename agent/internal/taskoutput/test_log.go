@@ -32,9 +32,14 @@ func AppendTestLog(ctx context.Context, comm client.Communicator, tsk *task.Task
 		return sendTestLogToCedar(ctx, comm, tsk, testLog)
 	}
 
+	taskOpts := taskoutput.TaskOptions{
+		ProjectID: tsk.Project,
+		TaskID:    tsk.Id,
+		Execution: tsk.Execution,
+	}
 	sender, err := tsk.TaskOutputInfo.TestLogs.NewSender(ctx, taskOpts, taskoutput.EvergreenSenderOptions{}, testLog.Name)
 	if err != nil {
-		return errors.Wrap(err, "creating Evergreen logger for test log '%s'", testLog.Name)
+		return errors.Wrapf(err, "creating Evergreen logger for test log '%s'", testLog.Name)
 	}
 	sender.Send(message.ConvertToComposer(level.Info, strings.Join(testLog.Lines, "\n")))
 
@@ -77,39 +82,38 @@ func sendTestLogToCedar(ctx context.Context, comm client.Communicator, tsk *task
 // testLogDirectoryHandler implements automatic task output handling for the
 // reserved test log directory.
 type testLogDirectoryHandler struct {
-	logger          client.LoggerProducer
-	spec            testLogSpec
-	maxBufferSize   int
-	createSender    func(context.Context, string) (send.Sender, error)
-	followFileCount int
+	dir          string
+	logger       client.LoggerProducer
+	spec         testLogSpec
+	createSender func(context.Context, string) (send.Sender, error)
+	logFileCount int
 }
 
 // newTestLogDirectoryHandler returns a new test log directory handler for the
 // specified task.
-func newTestLogDirectoryHandler(dir string, output taskoutput.TestLogOutput, taskOpts taskoutput.TaskOptions, logger client.LoggerProducer) *testLogDirectoryHandler {
+func newTestLogDirectoryHandler(dir string, output *taskoutput.TaskOutput, taskOpts taskoutput.TaskOptions, logger client.LoggerProducer) directoryHandler {
 	h := &testLogDirectoryHandler{
 		dir:    dir,
 		logger: logger,
 	}
 	h.createSender = func(ctx context.Context, logPath string) (send.Sender, error) {
-		return output.NewSender(ctx, taskOpts, taskoutput.EvergreenSenderOptions{
-			Local:         logger.Task().GetSender(),
-			MaxBufferSize: h.maxBufferSize,
-			Parse:         h.spec.getParser(),
+		return output.TestLogs.NewSender(ctx, taskOpts, taskoutput.EvergreenSenderOptions{
+			Local: logger.Task().GetSender(),
+			Parse: h.spec.getParser(),
 		}, logPath)
 	}
 
 	return h
 }
 
-func (h *testLogDirectoryHandler) sweep(ctx context.Context, dir string) error {
+func (h *testLogDirectoryHandler) run(ctx context.Context) error {
 	h.getSpecFile()
 
 	var wg sync.WaitGroup
 	ignore := filepath.Join(h.dir, testLogSpecFilename)
 	err := filepath.WalkDir(h.dir, func(path string, info fs.DirEntry, err error) error {
 		if err != nil {
-			h.logger.Execution().Warning(errors.Wrap(err, "sweeping"))
+			h.logger.Execution().Warning(errors.Wrap(err, "walking test log directory"))
 			return nil
 		}
 		if ctx.Err() != nil {
@@ -122,7 +126,7 @@ func (h *testLogDirectoryHandler) sweep(ctx context.Context, dir string) error {
 			return nil
 		}
 
-		h.followFileCount++
+		h.logFileCount++
 		wg.Add(1)
 		go func() {
 			defer func() {
@@ -130,7 +134,7 @@ func (h *testLogDirectoryHandler) sweep(ctx context.Context, dir string) error {
 			}()
 			defer wg.Done()
 
-			h.ingest(ctx, path)
+			h.ingest(ctx, h.dir, path)
 		}()
 
 		return nil
@@ -164,7 +168,7 @@ func (h *testLogDirectoryHandler) getSpecFile() {
 }
 
 // ingest reads and ships a test log file.
-func (h *testLogDirectoryHandler) ingest(ctx context.Context, path string) {
+func (h *testLogDirectoryHandler) ingest(ctx context.Context, dir, path string) {
 	h.logger.Task().Infof("new test log file '%s' found, initiating automated ingestion", path)
 
 	// The persisted log path should be relative to the reserved directory
