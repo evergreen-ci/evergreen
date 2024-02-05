@@ -4,16 +4,23 @@
 
 swaggo="swag"
 
-# Test if swaggo is installed as a binary.
+echo $GOROOT
+echo $GOBIN
+echo $GOPATH
+
+# Test if swaggo is installed as a binary or a go module.
 if command -v swag &> /dev/null; then
     swaggo=$(command -v swag)
 elif [ -n "$GOROOT" ] && [ -f "$GOROOT/bin/swag" ]; then
-    # Test if swaggo is installed as a go module.
     swaggo="$GOROOT/bin/swag"
+elif [ -n "$GOPATH" ] && [ -f "$GOPATH/bin/swag" ]; then
+    swaggo="$GOPATH/bin/swag"
+elif [ -n "$GOBIN" ] && [ -f "$GOBIN/swag" ]; then
+    swaggo="$GOBIN/swag"
 fi
 
 # If swaggo is not installed, exit with an error.
-if [ ! -f "$swaggo" ]; then
+if ! command -v "$swaggo" &> /dev/null; then
     echo "swaggo is not installed."
     exit 1
 fi
