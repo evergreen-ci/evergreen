@@ -3,6 +3,7 @@ package command
 import (
 	"context"
 	"os"
+	"strings"
 
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/agent/internal"
@@ -48,10 +49,10 @@ func (c *expansionsWriter) Execute(ctx context.Context,
 	expansions := map[string]string{}
 	for k, v := range conf.Expansions.Map() {
 		_, ok := conf.Redacted[k]
-		// Users should not be able to use the global github token expansion
-		// as it can result in the breaching of Evergreen's GitHub API limit.
-		// Likewise with AWS expansions.
-		if (ok && !c.Redacted) || utility.StringSliceContains(ExpansionsToRedact, k) {
+		// Users should not be able to use the global github token
+		// expansion as it can result in the breaching of Evergreen's
+		// GitHub API limit. Likewise with AWS expansions.
+		if (ok && !c.Redacted && !isPerfProject(conf)) || utility.StringSliceContains(ExpansionsToRedact, k) {
 			continue
 		}
 		expansions[k] = v
@@ -66,4 +67,10 @@ func (c *expansionsWriter) Execute(ctx context.Context,
 	}
 	logger.Task().Infof("Expansions written to file '%s'.", fn)
 	return nil
+}
+
+// TODO (DEVPROD-4483): Remove this special logic for sys-perf projects after
+// March 1.
+func isPerfProject(conf *internal.TaskConfig) bool {
+	return strings.HasPrefix(conf.Project.Identifier, "sys-perf")
 }

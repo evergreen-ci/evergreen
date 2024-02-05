@@ -89,6 +89,10 @@ func TestExpansionWriter(t *testing.T) {
 			"baz":                                "qux",
 			"password":                           "hunter2",
 			evergreen.GlobalGitHubTokenExpansion: "sample_token",
+			evergreen.GithubAppToken:             "app_token",
+			AWSAccessKeyId:                       "aws_key_id",
+			AWSSecretAccessKey:                   "aws_secret_key",
+			AWSSessionToken:                      "aws_token",
 		},
 		Redacted: map[string]bool{
 			"password": true,
@@ -111,4 +115,15 @@ func TestExpansionWriter(t *testing.T) {
 	out, err = os.ReadFile(f.Name())
 	assert.NoError(t, err)
 	assert.Equal(t, "baz: qux\nfoo: bar\npassword: hunter2\n", string(out))
+
+	// Check sys-perf projects vars are never redacted.
+	// TODO (DEVPROD-4483): Remove this after March 1.
+	tc.Project.Identifier = "sys-perf-4.4"
+	writer = &expansionsWriter{File: f.Name()}
+	err = writer.Execute(ctx, comm, logger, tc)
+	assert.NoError(t, err)
+	out, err = os.ReadFile(f.Name())
+	assert.NoError(t, err)
+	assert.Equal(t, "baz: qux\nfoo: bar\npassword: hunter2\n", string(out))
+
 }
