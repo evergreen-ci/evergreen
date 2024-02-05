@@ -1425,10 +1425,13 @@ func (g *createInstallationToken) Run(ctx context.Context) gimlet.Responder {
 type upsertCheckRunHandler struct {
 	taskID         string
 	checkRunOutput github.CheckRunOutput
+	settings       *evergreen.Settings
 }
 
-func makeUpsertCheckRun() gimlet.RouteHandler {
-	return &upsertCheckRunHandler{}
+func makeUpsertCheckRun(settings *evergreen.Settings) gimlet.RouteHandler {
+	return &upsertCheckRunHandler{
+		settings: settings,
+	}
 }
 
 func (h *upsertCheckRunHandler) Factory() gimlet.RouteHandler {
@@ -1464,6 +1467,10 @@ func (h *upsertCheckRunHandler) Parse(ctx context.Context, r *http.Request) erro
 }
 
 func (h *upsertCheckRunHandler) Run(ctx context.Context) gimlet.Responder {
+	if h.settings.GitHubCheckRun.CheckRunLimit < 10 {
+		return nil
+	}
+
 	t, err := task.FindOneId(h.taskID)
 	if err != nil {
 		return gimlet.MakeJSONInternalErrorResponder(errors.Wrapf(err, "finding task '%s'", h.taskID))
