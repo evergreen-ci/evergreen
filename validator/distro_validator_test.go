@@ -670,13 +670,6 @@ func TestEnsureValidStaticBootstrapSettings(t *testing.T) {
 	assert.NotNil(t, ensureValidStaticBootstrapSettings(ctx, &d, &evergreen.Settings{}))
 }
 
-func TestEnsureValidCloneMethod(t *testing.T) {
-	ctx := context.Background()
-	assert.NotNil(t, ensureValidCloneMethod(ctx, &distro.Distro{}, &evergreen.Settings{}))
-	assert.Nil(t, ensureValidCloneMethod(ctx, &distro.Distro{CloneMethod: evergreen.CloneMethodLegacySSH}, &evergreen.Settings{}))
-	assert.Nil(t, ensureValidCloneMethod(ctx, &distro.Distro{CloneMethod: evergreen.CloneMethodOAuth}, &evergreen.Settings{}))
-}
-
 func TestEnsureValidSSHKeyName(t *testing.T) {
 	ctx := context.Background()
 	defaultKeyName := "default_key"

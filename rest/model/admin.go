@@ -20,7 +20,6 @@ func NewConfigModel() *APIAdminSettings {
 		CommitQueue:       &APICommitQueueConfig{},
 		ContainerPools:    &APIContainerPoolsConfig{},
 		Credentials:       map[string]string{},
-		DataPipes:         &APIDataPipesConfig{},
 		Expansions:        map[string]string{},
 		HostInit:          &APIHostInitConfig{},
 		HostJasper:        &APIHostJasperConfig{},
@@ -66,7 +65,6 @@ type APIAdminSettings struct {
 	ContainerPools      *APIContainerPoolsConfig          `json:"container_pools,omitempty"`
 	Credentials         map[string]string                 `json:"credentials,omitempty"`
 	DomainName          *string                           `json:"domain_name,omitempty"`
-	DataPipes           *APIDataPipesConfig               `json:"data_pipes,omitempty"`
 	Expansions          map[string]string                 `json:"expansions,omitempty"`
 	GithubPRCreatorOrg  *string                           `json:"github_pr_creator_org,omitempty"`
 	GithubOrgs          []string                          `json:"github_orgs,omitempty"`
@@ -2774,39 +2772,6 @@ func (c *APITracerSettings) ToService() (interface{}, error) {
 	}
 
 	return config, nil
-}
-
-type APIDataPipesConfig struct {
-	Host         *string `json:"host"`
-	Region       *string `json:"region"`
-	AWSAccessKey *string `json:"aws_access_key"`
-	AWSSecretKey *string `json:"aws_secret_key"`
-	AWSToken     *string `json:"aws_token"`
-}
-
-func (c *APIDataPipesConfig) BuildFromService(h interface{}) error {
-	switch v := h.(type) {
-	case evergreen.DataPipesConfig:
-		c.Host = utility.ToStringPtr(v.Host)
-		c.Region = utility.ToStringPtr(v.Region)
-		c.AWSAccessKey = utility.ToStringPtr(v.AWSAccessKey)
-		c.AWSSecretKey = utility.ToStringPtr(v.AWSSecretKey)
-		c.AWSToken = utility.ToStringPtr(v.AWSToken)
-	default:
-		return errors.Errorf("programmatic error: expected Data-Pipes config but got type %T", h)
-	}
-
-	return nil
-}
-
-func (c *APIDataPipesConfig) ToService() (interface{}, error) {
-	return evergreen.DataPipesConfig{
-		Host:         utility.FromStringPtr(c.Host),
-		Region:       utility.FromStringPtr(c.Region),
-		AWSAccessKey: utility.FromStringPtr(c.AWSAccessKey),
-		AWSSecretKey: utility.FromStringPtr(c.AWSSecretKey),
-		AWSToken:     utility.FromStringPtr(c.AWSToken),
-	}, nil
 }
 
 type APIGitHubCheckRunConfig struct {

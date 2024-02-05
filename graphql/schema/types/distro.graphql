@@ -13,11 +13,6 @@ enum DistroOnSaveOperation {
   NONE
 }
 
-enum CloneMethod {
-  LEGACY_SSH
-  OAUTH
-}
-
 enum FinderVersion {
   LEGACY
   PARALLEL
@@ -128,15 +123,11 @@ input SaveDistroInput {
 }
 
 input DistroInput {
-  """
-  TODO: require adminOnly field upon completion of DEVPROD-3533
-  """
-  adminOnly: Boolean
+  adminOnly: Boolean!
   aliases: [String!]!
   arch: Arch!
   authorizedKeysFile: String!
   bootstrapSettings: BootstrapSettingsInput!
-  cloneMethod: CloneMethod
   containerPool: String!
   disabled: Boolean!
   disableShallowClone: Boolean!
@@ -286,7 +277,6 @@ type Distro {
   arch: Arch!
   authorizedKeysFile: String!
   bootstrapSettings: BootstrapSettings!
-  cloneMethod: CloneMethod!
   containerPool: String!
   disabled: Boolean!
   disableShallowClone: Boolean!

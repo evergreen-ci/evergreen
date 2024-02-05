@@ -99,7 +99,6 @@ mutation {
     distro {
       adminOnly
       aliases
-      cloneMethod
       disableShallowClone
       isCluster
       name

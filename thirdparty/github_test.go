@@ -17,6 +17,7 @@ import (
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/mock"
 	"github.com/evergreen-ci/evergreen/testutil"
+	"github.com/evergreen-ci/utility"
 	"github.com/google/go-github/v52/github"
 	"github.com/pkg/errors"
 	"github.com/stretchr/testify/assert"
@@ -406,4 +407,41 @@ func TestGetGitHubSender(t *testing.T) {
 	sender, err := env.GetGitHubSender("evergreen-ci", "evergreen")
 	require.NoError(t, err)
 	assert.NotZero(t, sender.ErrorHandler, "fallback error handler should be set")
+}
+
+func TestValidateCheckRun(t *testing.T) {
+	f, err := os.CreateTemp(os.TempDir(), "")
+	require.NoError(t, err)
+	defer os.Remove(f.Name())
+
+	// an invalid output
+	invalidOutputString := `
+{
+        "title": "This is my report",
+        "text": "It looks like there are some errors on lines 2 and 4.",
+        "annotations": [
+            {
+                "path": "README.md",
+                "title": "Error Detector",
+                "message": "a message",
+                "raw_details": "Do you mean this other thing?",
+                "start_line": 2,
+                "end_line": 4
+            }
+        ]
+}
+`
+	_, err = f.WriteString(invalidOutputString)
+	require.NoError(t, err)
+	assert.NoError(t, f.Close())
+
+	checkRunOutput := &github.CheckRunOutput{}
+
+	err = utility.ReadJSONFile(f.Name(), &checkRunOutput)
+	require.NoError(t, err)
+	err = ValidateCheckRun(checkRunOutput)
+
+	expectedError := "the checkRun 'This is my report' has no summary\n" +
+		"checkRun 'This is my report' specifies an annotation 'Error Detector' with no annotation level"
+	assert.Equal(t, expectedError, err.Error())
 }
