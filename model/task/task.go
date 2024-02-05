@@ -2445,14 +2445,14 @@ func (t *Task) MarkUnscheduled() error {
 // MarkUnattainableDependency updates the unattainable field for the dependency in the task's dependency list,
 // and logs if the task is newly blocked.
 func (t *Task) MarkUnattainableDependency(ctx context.Context, dependencyId string, unattainable bool) error {
-	wasBlocked := t.Blocked()
+	wasBlocked, blockedOn := t.blockedDeps()
 	if err := t.updateAllMatchingDependenciesForTask(ctx, dependencyId, unattainable); err != nil {
 		return errors.Wrapf(err, "updating matching dependencies for task '%s'", t.Id)
 	}
 
 	// Only want to log the task as blocked if it wasn't already blocked, and if we're not overriding dependencies.
 	if !wasBlocked && unattainable && !t.OverrideDependencies {
-		event.LogTaskBlocked(t.Id, t.Execution)
+		event.LogTaskBlocked(t.Id, t.Execution, blockedOn)
 	}
 	return nil
 }
@@ -3197,6 +3197,20 @@ func (t *Task) Blocked() bool {
 		}
 	}
 	return false
+}
+
+func (t *Task) blockedDeps() (bool, []string) {
+	blockedDeps := []string{}
+	if t.OverrideDependencies {
+		return false, blockedDeps
+	}
+
+	for _, dependency := range t.DependsOn {
+		if dependency.Unattainable {
+			blockedDeps = append(blockedDeps, dependency.TaskId)
+		}
+	}
+	return len(blockedDeps) > 0, nil
 }
 
 // WillRun returns true if the task will run eventually, but has not started
