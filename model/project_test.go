@@ -111,6 +111,32 @@ func TestFindProject(t *testing.T) {
 			So(p, ShouldNotBeNil)
 			So(v.Id, ShouldEqual, "good_version")
 		})
+		Convey("if a pre generation parser project exists, it should be pulled", func() {
+			So(db.ClearCollections(VersionCollection, ParserProjectCollection), ShouldBeNil)
+			goodVersion := &Version{
+				Id:                  "good_version",
+				Owner:               "fakeowner",
+				Repo:                "fakerepo",
+				Branch:              "fakebranch",
+				Identifier:          "project_test",
+				Requester:           evergreen.RepotrackerVersionRequester,
+				RevisionOrderNumber: 8,
+			}
+			pp := &ParserProject{}
+			err := util.UnmarshalYAMLWithFallback([]byte("owner: fakeowner\nrepo: fakerepo\nbranch: fakebranch"), &pp)
+			So(err, ShouldBeNil)
+			pp.Id = "good_version"
+			So(goodVersion.Insert(), ShouldBeNil)
+			So(pp.Insert(), ShouldBeNil)
+			pp.Id = "pre_generation_good_version"
+			So(pp.Insert(), ShouldBeNil)
+			v, p, pp, err := FindLatestVersionWithValidProject("project_test", true)
+			So(err, ShouldBeNil)
+			So(pp, ShouldNotBeNil)
+			So(pp.Id, ShouldEqual, "pre_generation_good_version")
+			So(p, ShouldNotBeNil)
+			So(v.Id, ShouldEqual, "pre_generation_good_version")
+		})
 		Convey("error if no version exists", func() {
 			So(db.ClearCollections(VersionCollection, ParserProjectCollection), ShouldBeNil)
 			_, _, _, err := FindLatestVersionWithValidProject("project_test", false)
