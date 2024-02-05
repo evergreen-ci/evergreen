@@ -341,6 +341,7 @@ functions:
         args: ["scripts/verify-swaggo-fmt.sh"]
         include_expansions_in_env:
           - GOROOT
+          - GOPATH
 
   verify-client-version-update:
     - command: subprocess.exec
@@ -777,6 +778,7 @@ buildvariants:
       - ubuntu2204-large
     expansions:
       GOROOT: /opt/golang/go1.20
+      GOPATH: /home/ubuntu/go
     tasks:
       - name: generate-lint
       - name: verify-swaggo-fmt
