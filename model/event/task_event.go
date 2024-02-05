@@ -170,7 +170,7 @@ func LogTaskRestarted(taskId string, execution int, userId string) {
 }
 
 func LogTaskBlocked(taskId string, execution int, blockedOn []string) {
-	logTaskEvent(taskId, TaskBlocked, TaskEventData{Execution: execution})
+	logTaskEvent(taskId, TaskBlocked, TaskEventData{Execution: execution, BlockedOn: blockedOn})
 }
 
 func LogTaskActivated(taskId string, execution int, userId string) {
