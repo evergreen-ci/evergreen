@@ -339,6 +339,8 @@ functions:
         working_dir: evergreen
         binary: bash
         args: ["scripts/verify-swaggo-fmt.sh"]
+        include_expansions_in_env:
+          - GOROOT
 
   verify-client-version-update:
     - command: subprocess.exec
