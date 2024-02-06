@@ -162,5 +162,8 @@ func EscapeFiles(files []File) []File {
 func escapeFile(path string) string {
 	base := filepath.Base(path)
 	i := strings.LastIndex(path, base)
+	if i < 0 {
+		return path
+	}
 	return path[:i] + strings.Replace(path[i:], base, url.QueryEscape(base), 1)
 }
