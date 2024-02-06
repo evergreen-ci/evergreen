@@ -6,7 +6,6 @@ It contains the logs for a given task on a given execution.
 type TaskLogs {
   agentLogs: [LogMessage!]!
   allLogs: [LogMessage!]!
-  defaultLogger: String!
   eventLogs: [TaskEventLogEntry!]!
   execution: Int!
   systemLogs: [LogMessage!]!
