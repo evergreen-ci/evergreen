@@ -343,6 +343,7 @@ const (
 	GithubAppToken             = "github_app_token"
 	GithubAppPrivateKey        = "github_app_key"
 	GithubKnownHosts           = "github_known_hosts"
+	GithubCheckRun             = "github_check_run"
 
 	// GitHubRetryAttempts is the github client maximum number of attempts.
 	GitHubRetryAttempts = 3

@@ -29,6 +29,8 @@ import (
 )
 
 const (
+	githubCheckRun = "GITHUB_CHECK_RUN"
+
 	githubActionClosed          = "closed"
 	githubActionOpened          = "opened"
 	githubActionSynchronize     = "synchronize"
@@ -269,16 +271,42 @@ func (gh *githubHookApi) Run(ctx context.Context) gimlet.Responder {
 		}
 
 	case *github.CheckRunEvent:
-		fromApp := event.GetInstallation() != nil
-		if gh.shouldSkipWebhook(ctx, event.Repo.Owner.GetLogin(), event.Repo.GetName(), fromApp) {
-			break
-		}
-		if err := gh.handleCheckRun(ctx, event); err != nil {
-			return gimlet.MakeJSONInternalErrorResponder(err)
+		if event.GetAction() == githubActionRerequested {
+			return gh.handleCheckRunRerequested(ctx, event)
 		}
 	}
 
 	return gimlet.NewJSONResponse(struct{}{})
+}
+
+func (gh *githubHookApi) handleCheckRunRerequested(ctx context.Context, event *github.CheckRunEvent) gimlet.Responder {
+	grip.Info(message.Fields{
+		"source":   "GitHub hook",
+		"bynnbynn": *event,
+	})
+
+	checkRun := event.GetCheckRun()
+	if checkRun == nil {
+		return gimlet.NewJSONInternalErrorResponse(errors.New("check run not sent from GitHub event"))
+	}
+	checkRunTask := checkRun.GetExternalID()
+	if checkRunTask == "" {
+		return gimlet.NewJSONInternalErrorResponse(errors.New("check run doesn't carry task"))
+	}
+
+	taskToRestart, err := data.FindTask(checkRunTask)
+	if err != nil {
+		return gimlet.NewJSONInternalErrorResponse(errors.Wrapf(err, "finding task '%s'", checkRunTask))
+	}
+	githubUser, err := user.FindByGithubUID(int(event.GetSender().GetID()))
+	if err != nil {
+		return gimlet.NewJSONInternalErrorResponse(errors.Wrapf(err, "finding user by GitHub ID '%d'", event.GetSender().GetID()))
+	}
+	if err := model.ResetTaskOrDisplayTask(ctx, gh.settings, taskToRestart, githubUser.Id, evergreen.GithubCheckRun, false, nil); err != nil {
+		return gimlet.NewJSONInternalErrorResponse(errors.Wrap(err, "resetting task"))
+	}
+
+	return nil
 }
 
 func (gh *githubHookApi) handleMergeGroupChecksRequested(event *github.MergeGroupEvent) gimlet.Responder {
@@ -1001,38 +1029,6 @@ func unauthorizedGitTagEmail(tag, user, gitTagSettingsUrl string) (string, strin
 	</html>
 	`, tag, user, gitTagSettingsUrl)
 	return subject, body
-func (gh *githubHookApi) handleCheckRun(ctx context.Context, event *github.CheckRunEvent) error {
-	grip.Info(message.Fields{
-		"bynnbynn": event.GetAction(),
-		"repo":     event.GetRepo().GetFullName(),
-	})
-	// if event.GetAction() == githubActionCreated {
-	// 	grip.Info(message.Fields{
-	// 		"bynnbynn": "created",
-	// 	})
-	// 	return nil
-	// }
-	// if event.GetAction() == githubActionCompleted {
-	// 	grip.Info(message.Fields{
-	// 		"bynnbynn": "completed",
-	// 	})
-	// 	return nil
-	// }
-
-	// if event.GetAction() == githubActionRerequested {
-	// 	grip.Info(message.Fields{
-	// 		"bynnbynn": "rerequested",
-	// 	})
-	// 	return nil
-	// }
-
-	// if event.GetAction() == githubActionRequestedAction {
-	// 	grip.Info(message.Fields{
-	// 		"bynnbynn": "requested action",
-	// 	})
-	// 	return nil
-	// }
-	return nil
 }
 
 func validatePushTagEvent(event *github.PushEvent) error {
