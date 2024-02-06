@@ -6,6 +6,7 @@ import (
 	"os"
 	"path/filepath"
 
+	"github.com/evergreen-ci/evergreen/agent/command"
 	"github.com/evergreen-ci/evergreen/agent/internal/client"
 	"github.com/evergreen-ci/evergreen/model"
 	"github.com/evergreen-ci/pail"
@@ -116,6 +117,8 @@ func (a *Agent) prepLogger(tc *taskContext, c *model.LoggerConfig, commandName s
 		SendToGlobalSender: a.opts.SendTaskLogsToGlobalSender,
 		AWSCredentials:     pail.CreateAWSCredentials(tc.taskConfig.TaskSync.Key, tc.taskConfig.TaskSync.Secret, ""),
 	}
+	config.Expansions = tc.taskConfig.NewExpansions
+	config.ExpansionsToRedact = getExpansionsToRedact(tc.taskConfig.Redacted)
 
 	defaultLogger := model.EvergreenLogSender
 	if len(c.Agent) == 0 {
@@ -160,4 +163,16 @@ func (a *Agent) prepSingleLogger(tc *taskContext, in model.LogOpts, logDir, file
 		SplunkToken:     splunkToken,
 		Filepath:        filepath.Join(logDir, fileName),
 	}
+}
+
+// getExpansionsToRedact returns the full list of expansion keys whose values
+// should get redacted from task logs.
+func getExpansionsToRedact(redacted map[string]bool) []string {
+	var expansionsToRedact []string
+	for key := range redacted {
+		expansionsToRedact = append(expansionsToRedact, key)
+	}
+	expansionsToRedact = append(expansionsToRedact, command.ExpansionsToRedact...)
+
+	return expansionsToRedact
 }

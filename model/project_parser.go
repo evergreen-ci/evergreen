@@ -711,6 +711,9 @@ func LoadProjectInto(ctx context.Context, data []byte, opts *GetProjectOpts, ide
 		catcher := grip.NewBasicCatcher()
 		for elem := range outputYAMLs {
 			catcher.Add(elem.err)
+			if thirdparty.IsFileNotFound(errors.Cause(elem.err)) {
+				return intermediateProject, errors.Wrap(elem.err, "getting includes")
+			}
 			if elem.yaml != nil {
 				yamlMap[elem.name] = elem.yaml
 			}
@@ -810,7 +813,7 @@ func retrieveFile(ctx context.Context, opts GetProjectOpts) ([]byte, error) {
 		if err != nil {
 			return nil, errors.Wrap(err, "fetching remote configuration file")
 		}
-		fileContents, err := MakePatchedConfig(ctx, opts.PatchOpts.env, opts.PatchOpts.patch, opts.RemotePath, string(originalConfig))
+		fileContents, err := MakePatchedConfig(ctx, opts, string(originalConfig))
 		if err != nil {
 			return nil, errors.Wrap(err, "patching remote configuration file")
 		}

@@ -6,6 +6,7 @@ import (
 	"time"
 
 	"github.com/aws/aws-sdk-go/aws/credentials"
+	"github.com/evergreen-ci/evergreen/agent/util"
 	"github.com/evergreen-ci/evergreen/apimodels"
 	"github.com/evergreen-ci/evergreen/cloud"
 	"github.com/evergreen-ci/evergreen/model"
@@ -76,8 +77,6 @@ type SharedCommunicator interface {
 	GetCedarGRPCConn(context.Context) (*grpc.ClientConn, error)
 	// SetResultsInfo sets the test results information in the task.
 	SetResultsInfo(context.Context, TaskData, string, bool) error
-	// GetDataPipesConfig returns the Data-Pipes service configuration.
-	GetDataPipesConfig(context.Context) (*apimodels.DataPipesConfig, error)
 
 	// GetPullRequestInfo takes in a PR number, owner, and repo and returns information from the corresponding pull request.
 	GetPullRequestInfo(context.Context, TaskData, int, string, string, bool) (*apimodels.PullRequestInfo, error)
@@ -124,6 +123,9 @@ type SharedCommunicator interface {
 
 	// MarkFailedTaskToRestart marks the task as needing to be restarted
 	MarkFailedTaskToRestart(ctx context.Context, td TaskData) error
+
+	// UpsertCheckRun upserts a checkrun for a task
+	UpsertCheckRun(ctx context.Context, td TaskData, checkRunOutput apimodels.CheckRunOutput) error
 }
 
 // TaskData contains the taskData.ID and taskData.Secret. It must be set for
@@ -140,6 +142,8 @@ type LoggerConfig struct {
 	Task               []LogOpts
 	SendToGlobalSender bool
 	AWSCredentials     *credentials.Credentials
+	Expansions         *util.DynamicExpansions
+	ExpansionsToRedact []string
 }
 
 type LogOpts struct {
@@ -147,6 +151,8 @@ type LogOpts struct {
 	SplunkServerURL string
 	SplunkToken     string
 	Filepath        string
+	BufferDuration  time.Duration
+	BufferSize      int
 }
 
 // LoggerProducer provides a mechanism for agents (and command plugins) to access the

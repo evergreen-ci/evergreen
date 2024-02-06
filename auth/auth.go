@@ -42,7 +42,7 @@ func LoadUserManager(settings *evergreen.Settings) (gimlet.UserManager, evergree
 	if authConfig.Naive != nil {
 		return makeNaiveManager(authConfig.Naive)
 	}
-	if authConfig.Github != nil {
+	if authConfig.Github != nil && authConfig.Github.ClientId != "" && authConfig.Github.ClientSecret != "" && authConfig.Github.Organization != "" && len(authConfig.Github.Users) > 0 {
 		return makeGithubManager(settings, authConfig.Github)
 	}
 	if authConfig.AllowServiceUsers {

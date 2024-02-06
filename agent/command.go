@@ -205,9 +205,9 @@ func (a *Agent) runCommandOrFunc(ctx context.Context, tc *taskContext, commandIn
 		ctx, commandSpan := a.tracer.Start(ctx, cmd.Name(), trace.WithAttributes(
 			attribute.String(commandNameAttribute, cmd.Name()),
 		))
-		tc.taskConfig.Expansions.Put(otelTraceIDExpansion, commandSpan.SpanContext().TraceID().String())
-		tc.taskConfig.Expansions.Put(otelParentIDExpansion, commandSpan.SpanContext().SpanID().String())
-		tc.taskConfig.Expansions.Put(otelCollectorEndpointExpansion, a.opts.TraceCollectorEndpoint)
+		tc.taskConfig.NewExpansions.Put(otelTraceIDExpansion, commandSpan.SpanContext().TraceID().String())
+		tc.taskConfig.NewExpansions.Put(otelParentIDExpansion, commandSpan.SpanContext().SpanID().String())
+		tc.taskConfig.NewExpansions.Put(otelCollectorEndpointExpansion, a.opts.TraceCollectorEndpoint)
 
 		cmd.SetJasperManager(a.jasper)
 
@@ -241,7 +241,7 @@ func (a *Agent) runCommand(ctx context.Context, tc *taskContext, logger client.L
 		if err != nil {
 			return errors.Wrapf(err, "expanding '%s'", val)
 		}
-		tc.taskConfig.Expansions.Put(key, newVal)
+		tc.taskConfig.NewExpansions.Put(key, newVal)
 	}
 	defer func() {
 		// This defer ensures that the function vars do not persist in the expansions after the function is over
@@ -255,7 +255,7 @@ func (a *Agent) runCommand(ctx context.Context, tc *taskContext, logger client.L
 				}
 			}
 		}
-		tc.taskConfig.Expansions.Update(prevExp)
+		tc.taskConfig.NewExpansions.Update(prevExp)
 		tc.taskConfig.DynamicExpansions = *util.NewExpansions(map[string]string{})
 	}()
 

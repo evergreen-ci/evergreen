@@ -374,17 +374,17 @@ func (c *baseCommunicator) GetLoggerProducer(ctx context.Context, tsk *task.Task
 	}
 	underlying := []send.Sender{}
 
-	exec, senders, err := c.makeSender(ctx, tsk, config.Agent, config.SendToGlobalSender, taskoutput.TaskLogTypeAgent)
+	exec, senders, err := c.makeSender(ctx, tsk, config.Agent, config, taskoutput.TaskLogTypeAgent)
 	if err != nil {
 		return nil, errors.Wrap(err, "making agent logger")
 	}
 	underlying = append(underlying, senders...)
-	task, senders, err := c.makeSender(ctx, tsk, config.Task, config.SendToGlobalSender, taskoutput.TaskLogTypeTask)
+	task, senders, err := c.makeSender(ctx, tsk, config.Task, config, taskoutput.TaskLogTypeTask)
 	if err != nil {
 		return nil, errors.Wrap(err, "making task logger")
 	}
 	underlying = append(underlying, senders...)
-	system, senders, err := c.makeSender(ctx, tsk, config.System, config.SendToGlobalSender, taskoutput.TaskLogTypeSystem)
+	system, senders, err := c.makeSender(ctx, tsk, config.System, config, taskoutput.TaskLogTypeSystem)
 	if err != nil {
 		return nil, errors.Wrap(err, "making system logger")
 	}
@@ -398,24 +398,32 @@ func (c *baseCommunicator) GetLoggerProducer(ctx context.Context, tsk *task.Task
 	}, nil
 }
 
-func (c *baseCommunicator) makeSender(ctx context.Context, tsk *task.Task, opts []LogOpts, sendToGlobalSender bool, logType taskoutput.TaskLogType) (send.Sender, []send.Sender, error) {
-	var senders, underlyingBufferedSenders []send.Sender
-	if sendToGlobalSender {
+func (c *baseCommunicator) makeSender(ctx context.Context, tsk *task.Task, opts []LogOpts, config *LoggerConfig, logType taskoutput.TaskLogType) (send.Sender, []send.Sender, error) {
+	levelInfo := send.LevelInfo{Default: level.Info, Threshold: level.Debug}
+	var senders []send.Sender
+	if config.SendToGlobalSender {
 		senders = append(senders, grip.GetSender())
 	}
+	underlyingBufferedSenders := []send.Sender{}
 
-	levelInfo := send.LevelInfo{Default: level.Info, Threshold: level.Debug}
-	bufferedSenderOpts := send.BufferedSenderOptions{FlushInterval: defaultLogBufferTime, BufferSize: defaultLogBufferSize}
 	for _, opt := range opts {
+		var sender send.Sender
+		var err error
+		bufferDuration := defaultLogBufferTime
+		if opt.BufferDuration > 0 {
+			bufferDuration = opt.BufferDuration
+		}
+		bufferSize := defaultLogBufferSize
+		if opt.BufferSize > 0 {
+			bufferSize = opt.BufferSize
+		}
+		bufferedSenderOpts := send.BufferedSenderOptions{FlushInterval: bufferDuration, BufferSize: bufferSize}
+
 		// Disallow sending system logs to S3 for security reasons.
 		if logType == taskoutput.TaskLogTypeSystem && opt.Sender == model.FileLogSender {
 			opt.Sender = model.EvergreenLogSender
 		}
 
-		var (
-			sender send.Sender
-			err    error
-		)
 		switch opt.Sender {
 		case model.FileLogSender:
 			sender, err = send.NewPlainFileLogger(string(logType), opt.Filepath, levelInfo)
@@ -428,6 +436,7 @@ func (c *baseCommunicator) makeSender(ctx context.Context, tsk *task.Task, opts 
 			if err != nil {
 				return nil, nil, errors.Wrap(err, "creating buffered file logger")
 			}
+			grip.Error(sender.SetFormatter(send.MakeDefaultFormatter()))
 		case model.SplunkLogSender:
 			info := send.SplunkConnectionInfo{
 				ServerURL: opt.SplunkServerURL,
@@ -458,7 +467,7 @@ func (c *baseCommunicator) makeSender(ctx context.Context, tsk *task.Task, opts 
 			}
 		}
 
-		grip.Error(sender.SetFormatter(send.MakeDefaultFormatter()))
+		sender = newRedactingSender(sender, config.Expansions, config.ExpansionsToRedact)
 		if logType == taskoutput.TaskLogTypeTask {
 			sender = makeTimeoutLogSender(sender, c)
 		}
@@ -558,26 +567,6 @@ func (c *baseCommunicator) GetAgentSetupData(ctx context.Context) (*apimodels.Ag
 	}
 
 	return &data, nil
-}
-
-// GetDataPipesConfig returns the Data-Pipes service configuration.
-func (c *baseCommunicator) GetDataPipesConfig(ctx context.Context) (*apimodels.DataPipesConfig, error) {
-	info := requestInfo{
-		method: http.MethodGet,
-		path:   "agent/data_pipes_config",
-	}
-
-	resp, err := c.retryRequest(ctx, info, nil)
-	if err != nil {
-		return nil, util.RespErrorf(resp, errors.Wrap(err, "getting the Data-Pipes config").Error())
-	}
-
-	config := &apimodels.DataPipesConfig{}
-	if err := utility.ReadJSON(resp.Body, config); err != nil {
-		return nil, errors.Wrap(err, "reading the Data-Pipes config from response")
-	}
-
-	return config, nil
 }
 
 // GetPatchFiles is used by the git.get_project plugin and fetches
@@ -1024,6 +1013,22 @@ func (c *baseCommunicator) MarkFailedTaskToRestart(ctx context.Context, td TaskD
 	if err != nil {
 		return util.RespErrorf(resp, errors.Wrap(err, "marking task for restart").Error())
 	}
+	defer resp.Body.Close()
+	return nil
+}
+
+// UpsertCheckRun upserts a checkrun for a task
+func (c *baseCommunicator) UpsertCheckRun(ctx context.Context, td TaskData, checkRunOutput apimodels.CheckRunOutput) error {
+	info := requestInfo{
+		method:   http.MethodPost,
+		taskData: &td,
+	}
+	info.setTaskPathSuffix("upsert_check_run")
+	resp, err := c.retryRequest(ctx, info, &checkRunOutput)
+	if err != nil {
+		return util.RespErrorf(resp, errors.Wrap(err, "upserting checkRun").Error())
+	}
+
 	defer resp.Body.Close()
 	return nil
 }

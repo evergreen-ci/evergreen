@@ -3,10 +3,12 @@ package internal
 import (
 	"context"
 	"strconv"
+	"strings"
 	"sync"
 
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/agent/internal/taskoutput"
+	agentutil "github.com/evergreen-ci/evergreen/agent/util"
 	"github.com/evergreen-ci/evergreen/apimodels"
 	"github.com/evergreen-ci/evergreen/model"
 	"github.com/evergreen-ci/evergreen/model/patch"
@@ -26,8 +28,11 @@ type TaskConfig struct {
 	Task               task.Task
 	BuildVariant       model.BuildVariant
 	Expansions         util.Expansions
+	NewExpansions      *agentutil.DynamicExpansions
 	DynamicExpansions  util.Expansions
+	ProjectVars        map[string]string
 	Redacted           map[string]bool
+	RedactKeys         []string
 	WorkDir            string
 	TaskOutputDir      *taskoutput.Directory
 	GithubPatchData    thirdparty.GithubPatch
@@ -84,7 +89,7 @@ func (t *TaskConfig) GetExecTimeout() int {
 // NewTaskConfig validates that the required inputs are given and populates the
 // information necessary for a task to run. It is generally preferred to use
 // this function over initializing the TaskConfig struct manually.
-func NewTaskConfig(workDir string, d *apimodels.DistroView, p *model.Project, t *task.Task, r *model.ProjectRef, patchDoc *patch.Patch, e util.Expansions) (*TaskConfig, error) {
+func NewTaskConfig(workDir string, d *apimodels.DistroView, p *model.Project, t *task.Task, r *model.ProjectRef, patchDoc *patch.Patch, e *apimodels.ExpansionsAndVars) (*TaskConfig, error) {
 	if p == nil {
 		return nil, errors.Errorf("project '%s' is nil", t.Project)
 	}
@@ -108,14 +113,32 @@ func NewTaskConfig(workDir string, d *apimodels.DistroView, p *model.Project, t 
 		}
 	}
 
+	// Add keys matching redact patterns to private vars.
+	for key := range e.Vars {
+		if ok := e.PrivateVars[key]; ok {
+			// Skip since the key is already private.
+			continue
+		}
+
+		for _, pattern := range e.RedactKeys {
+			if strings.Contains(strings.ToLower(key), pattern) {
+				e.PrivateVars[key] = true
+				break
+			}
+		}
+	}
+
 	taskConfig := &TaskConfig{
 		Distro:            d,
 		ProjectRef:        *r,
 		Project:           *p,
 		Task:              *t,
 		BuildVariant:      *bv,
-		Expansions:        e,
+		Expansions:        e.Expansions,
+		NewExpansions:     agentutil.NewDynamicExpansions(e.Expansions),
 		DynamicExpansions: util.Expansions{},
+		ProjectVars:       e.Vars,
+		Redacted:          e.PrivateVars,
 		WorkDir:           workDir,
 		TaskGroup:         taskGroup,
 	}

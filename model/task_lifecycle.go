@@ -586,7 +586,7 @@ func doBisectStepback(ctx context.Context, t *task.Task) error {
 	}
 
 	var s task.StepbackInfo
-	if t.StepbackInfo != nil && t.StepbackInfo.LastPassingStepbackTaskId != "" {
+	if !t.StepbackInfo.IsZero() {
 		// Carry over from the last task.
 		s = *t.StepbackInfo
 	} else {
@@ -784,13 +784,15 @@ func MarkEnd(ctx context.Context, settings *evergreen.Settings, t *task.Task, ca
 			if err != nil {
 				return errors.Wrap(err, "getting display task")
 			}
-			err = evalStepback(ctx, t.DisplayTask, caller, t.DisplayTask.Status, deactivatePrevious)
+			err = evalStepback(ctx, t.DisplayTask, caller, status, deactivatePrevious)
 		} else {
 			err = evalStepback(ctx, t, caller, status, deactivatePrevious)
 		}
-		if err != nil {
-			return errors.Wrap(err, "evaluating stepback")
-		}
+		grip.Error(message.WrapError(err, message.Fields{
+			"message": "evaluating stepback",
+			"project": t.Project,
+			"task_id": t.Id,
+		}))
 	}
 
 	if err = UpdateBuildAndVersionStatusForTask(ctx, t); err != nil {
@@ -1251,23 +1253,28 @@ func removeNextMergeTaskDependency(ctx context.Context, cq commitqueue.CommitQue
 }
 
 // evalStepback runs linear or bisect stepback depending on project, build variant, and task settings.
+// The status passed in is a display status, initially stepback only activates if the task
+// has failed but not on system failure.
 func evalStepback(ctx context.Context, t *task.Task, caller, status string, deactivatePrevious bool) error {
 	s, err := getStepback(t.Id)
 	if err != nil {
 		return errors.WithStack(err)
 	}
+	// A new stepback happens when the display status is failed (not system failure)
+	// and it is not aborted.
+	newStepback := status == evergreen.TaskFailed && !t.Aborted
 	if s.bisect {
-		return evalBisectStepback(ctx, t, caller, s.shouldStepback, deactivatePrevious)
+		return evalBisectStepback(ctx, t, caller, newStepback, s.shouldStepback)
 	}
-	return evalLinearStepback(ctx, t, caller, status, s.shouldStepback, deactivatePrevious)
+	return evalLinearStepback(ctx, t, caller, newStepback, s.shouldStepback, deactivatePrevious)
 }
 
 // evalLinearStepback performs linear stepback on the task or cleans up after previous iterations of lienar
 // stepback.
-func evalLinearStepback(ctx context.Context, t *task.Task, caller, status string, stepback, deactivatePrevious bool) error {
-	if (status == evergreen.TaskFailed && !t.Aborted) ||
-		(evergreen.IsFailedTaskStatus(status) && t.ActivatedBy == evergreen.StepbackTaskActivator) {
-		if !stepback {
+func evalLinearStepback(ctx context.Context, t *task.Task, caller string, newStepback, shouldStepback, deactivatePrevious bool) error {
+	existingStepback := t.Status == evergreen.TaskFailed && t.ActivatedBy == evergreen.StepbackTaskActivator
+	if newStepback || existingStepback {
+		if !shouldStepback {
 			return nil
 		}
 
@@ -1291,7 +1298,7 @@ func evalLinearStepback(ctx context.Context, t *task.Task, caller, status string
 			return catcher.Resolve()
 		}
 		return errors.Wrap(doLinearStepback(ctx, t), "performing linear stepback")
-	} else if status == evergreen.TaskSucceeded && deactivatePrevious && t.Requester == evergreen.RepotrackerVersionRequester {
+	} else if t.Status == evergreen.TaskSucceeded && deactivatePrevious && t.Requester == evergreen.RepotrackerVersionRequester {
 		// When stepback finishes (the task is successful), and stepback was done on mainline commits,
 		// ignore running previous activated tasks for this build variant.
 		return errors.Wrap(DeactivatePreviousTasks(ctx, t, caller), "deactivating previous tasks")
@@ -1300,17 +1307,13 @@ func evalLinearStepback(ctx context.Context, t *task.Task, caller, status string
 }
 
 // evalBisectStepback performs bisect stepback on the task.
-func evalBisectStepback(ctx context.Context, t *task.Task, caller string, stepback, deactivatePrevious bool) error {
+func evalBisectStepback(ctx context.Context, t *task.Task, caller string, newStepback, shouldStepback bool) error {
 	// If the task is aborted or stepback is disabled then no-op.
-	if t.Aborted || !stepback {
+	if t.Aborted || !shouldStepback {
 		return nil
 	}
 
-	// If the stepback info is nil but we reached this point, this must be the first
-	// iteration of stepback.
-	newStepback := t.StepbackInfo == nil && evergreen.IsFailedTaskStatus(t.Status)
-	// If the stepback is not nil, this is an ongoing stepback.
-	existingStepback := t.StepbackInfo != nil
+	existingStepback := !t.StepbackInfo.IsZero() && t.ActivatedBy == evergreen.StepbackTaskActivator
 	if newStepback || existingStepback {
 		return errors.Wrap(doBisectStepback(ctx, t), "performing bisect stepback")
 	}
@@ -2213,14 +2216,8 @@ func endAndResetSystemFailedTask(ctx context.Context, settings *evergreen.Settin
 	}
 
 	unschedulableTask := time.Since(t.ActivatedTime) > task.UnschedulableThreshold
-	maxExecutionTask := t.Execution >= evergreen.MaxTaskExecution
-
-	if evergreen.IsCommitQueueRequester(t.Requester) && evergreen.IsSystemFailedTaskStatus(t.Status) {
-		maxSystemFailedTaskRetries := settings.CommitQueue.MaxSystemFailedTaskRetries
-		if maxSystemFailedTaskRetries > 0 {
-			maxExecutionTask = t.Execution >= maxSystemFailedTaskRetries
-		}
-	}
+	// TODO: DEVPROD-4220 respects the commit queue retries for all tasks. Further clean up will just remove this logic.
+	maxExecutionTask := t.Execution >= settings.CommitQueue.MaxSystemFailedTaskRetries
 
 	if unschedulableTask || maxExecutionTask {
 		failureDetails := task.GetSystemFailureDetails(description)

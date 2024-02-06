@@ -647,6 +647,17 @@ level on the project configuration page or on a build variant level
 within the project. They can be used **as inputs to commands**,
 including shell scripts.
 
+Expansion values defined on the project configurations page are redacted from
+task logs and replaced with `<REDACTED:expansion_key>` if they meet one of the
+following criteria:
+- the project variable is marked as private
+- the project variable key contains any of the following case-insensitive
+  patterns: `auth`, `key`, `pass`, `private`, `pw`, `token`
+
+Please note that this is the last line of defense against leaking secrets and
+task workflows should always follow best practices for securing sensitive
+information from reaching logs.
+
 Expansions cannot be used recursively. In other words, you can't define an
 expansion whose value uses another expansion.
 
@@ -963,10 +974,10 @@ must be present in the `tasks` array.
 
 ### Stepback
 
-Stepback is set to true if you want to stepback and test earlier commits
-in the case of a failing task. This can be set or unset at the
-top-level, at the build variant level, and for individual tasks (in the task definition or for the
-task within a specific build variant).
+Stepback is set to true if you want to stepback and test earlier commits in the case
+of a normally failing task (a normally failing task does not include system failed, setup failed, timed out, etc.).
+This can be set or unset at the top-level, at the build variant level, and for individual tasks
+(in the task definition or for the task within a specific build variant).
 
 ### Out of memory (OOM) Tracker
 

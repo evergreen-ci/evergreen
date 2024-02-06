@@ -8,6 +8,7 @@ import (
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/agent/internal"
 	"github.com/evergreen-ci/evergreen/agent/internal/client"
+	agentutil "github.com/evergreen-ci/evergreen/agent/util"
 	"github.com/evergreen-ci/evergreen/model"
 	"github.com/evergreen-ci/evergreen/model/task"
 	"github.com/evergreen-ci/evergreen/util"
@@ -38,7 +39,8 @@ func TestExpansionsPlugin(t *testing.T) {
 		expansions.Put("topping", "bacon")
 
 		taskConfig := internal.TaskConfig{
-			Expansions: expansions,
+			Expansions:    expansions,
+			NewExpansions: agentutil.NewDynamicExpansions(expansions),
 		}
 
 		So(updateCommand.ExecuteUpdates(ctx, &taskConfig), ShouldBeNil)
@@ -54,6 +56,7 @@ func TestExpansionsPluginWExecution(t *testing.T) {
 	defer cancel()
 	comm := client.NewMock("http://localhost.com")
 	conf := &internal.TaskConfig{Expansions: util.Expansions{}, Task: task.Task{}, Project: model.Project{}}
+	conf.NewExpansions = agentutil.NewDynamicExpansions(conf.Expansions)
 	logger, err := comm.GetLoggerProducer(ctx, &conf.Task, nil)
 	require.NoError(t, err)
 
@@ -66,7 +69,7 @@ func TestExpansionsPluginWExecution(t *testing.T) {
 		})
 
 		Convey("With an Expansion, the file name is expanded", func() {
-			conf.Expansions = *util.NewExpansions(map[string]string{"foo": "bar"})
+			conf.NewExpansions.Put("foo", "bar")
 			cmd := &update{YamlFile: "${foo}"}
 			So(cmd.Execute(ctx, comm, logger, conf), ShouldNotBeNil)
 			So(cmd.YamlFile, ShouldEqual, "bar")
@@ -86,6 +89,10 @@ func TestExpansionWriter(t *testing.T) {
 			"baz":                                "qux",
 			"password":                           "hunter2",
 			evergreen.GlobalGitHubTokenExpansion: "sample_token",
+			evergreen.GithubAppToken:             "app_token",
+			AWSAccessKeyId:                       "aws_key_id",
+			AWSSecretAccessKey:                   "aws_secret_key",
+			AWSSessionToken:                      "aws_token",
 		},
 		Redacted: map[string]bool{
 			"password": true,
@@ -108,4 +115,15 @@ func TestExpansionWriter(t *testing.T) {
 	out, err = os.ReadFile(f.Name())
 	assert.NoError(t, err)
 	assert.Equal(t, "baz: qux\nfoo: bar\npassword: hunter2\n", string(out))
+
+	// Check sys-perf projects vars are never redacted.
+	// TODO (DEVPROD-4483): Remove this after March 1.
+	tc.Project.Identifier = "sys-perf-4.4"
+	writer = &expansionsWriter{File: f.Name()}
+	err = writer.Execute(ctx, comm, logger, tc)
+	assert.NoError(t, err)
+	out, err = os.ReadFile(f.Name())
+	assert.NoError(t, err)
+	assert.Equal(t, "baz: qux\nfoo: bar\npassword: hunter2\n", string(out))
+
 }

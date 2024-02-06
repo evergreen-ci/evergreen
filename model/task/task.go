@@ -176,8 +176,8 @@ type Task struct {
 	// Set to true if the task should be considered for mainline github checks
 	IsGithubCheck bool `bson:"is_github_check,omitempty" json:"is_github_check,omitempty"`
 
-	// Set to true if the task creates a github checkrun
-	HasCheckRun bool `bson:"has_checkrun,omitempty" json:"has_checkrun,omitempty"`
+	// CheckRunPath is a local file path to an output json file for the checkrun.
+	CheckRunPath string `bson:"check_run_path" json:"check_run_path"`
 
 	// CanReset indicates that the task has successfully archived and is in a valid state to be reset.
 	CanReset bool `bson:"can_reset,omitempty" json:"can_reset,omitempty"`
@@ -300,6 +300,9 @@ type Task struct {
 	// before its build or version can be reported as successful, but tasks
 	// manually scheduled by the user afterwards are not required.
 	IsEssentialToSucceed bool `bson:"is_essential_to_succeed" json:"is_essential_to_succeed"`
+	// HasAnnotations indicates whether there exist task annotations with this task's
+	// execution and id that have a populated Issues key
+	HasAnnotations bool `bson:"has_annotations" json:"has_annotations"`
 }
 
 // GeneratedJSONFiles represent files used by a task for generate.tasks to update the project YAML.
@@ -316,6 +319,17 @@ type StepbackInfo struct {
 	NextStepbackTaskId string `bson:"next_stepback_task_id,omitempty" json:"next_stepback_task_id"`
 	// PreviousStepbackTaskId stores the last stepback iteration id.
 	PreviousStepbackTaskId string `bson:"previous_stepback_task_id,omitempty" json:"previous_stepback_task_id"`
+}
+
+func (s *StepbackInfo) IsZero() bool {
+	if s == nil {
+		return true
+	}
+	if s.LastFailingStepbackTaskId != "" && s.LastPassingStepbackTaskId != "" {
+		return false
+	}
+	// If the other fields are set but not the ones above, the struct should be considered empty.
+	return true
 }
 
 // ExecutionPlatform indicates the type of environment that the task runs in.
@@ -2925,6 +2939,11 @@ func FindHostSchedulableForAlias(ctx context.Context, id string) ([]Task, error)
 
 func (t *Task) IsPartOfSingleHostTaskGroup() bool {
 	return t.TaskGroup != "" && t.TaskGroupMaxHosts == 1
+}
+
+// HasCheckRun retruns true if the task specifies a check run path.
+func (t *Task) HasCheckRun() bool {
+	return t.CheckRunPath != ""
 }
 
 func (t *Task) IsPartOfDisplay() bool {

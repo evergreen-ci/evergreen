@@ -318,13 +318,6 @@ func (m *ec2Manager) spawnOnDemandHost(ctx context.Context, h *host.Host, ec2Set
 		input.UserData = &userData
 	}
 
-	grip.Debug(message.Fields{
-		"message":       "starting on-demand instance",
-		"args":          input,
-		"host_id":       h.Id,
-		"host_provider": h.Distro.Provider,
-		"distro":        h.Distro.Id,
-	})
 	reservation, err := m.client.RunInstances(ctx, input)
 	if err != nil || reservation == nil {
 		if err == EC2InsufficientCapacityError {
@@ -393,12 +386,6 @@ func (m *ec2Manager) spawnOnDemandHost(ctx context.Context, h *host.Host, ec2Set
 	}
 
 	instance := reservation.Instances[0]
-	grip.Debug(message.Fields{
-		"message":       "started ec2 instance",
-		"host_id":       *instance.InstanceId,
-		"distro":        h.Distro.Id,
-		"host_provider": h.Distro.Provider,
-	})
 	h.Id = *instance.InstanceId
 
 	return nil

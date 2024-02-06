@@ -221,6 +221,7 @@ func TestPodTerminationJob(t *testing.T) {
 
 			dbArchivedTask, err := task.FindOneOldByIdAndExecution(tsk.Id, 1)
 			require.NoError(t, err)
+			require.NotNil(t, dbArchivedTask)
 			assert.Equal(t, evergreen.TaskFailed, dbArchivedTask.Status, "stranded task should have failed")
 
 			dbTask, err := task.FindOneId(tsk.Id)
@@ -377,6 +378,12 @@ func TestPodTerminationJob(t *testing.T) {
 			j.PodID = p.ID
 			env := &mock.Environment{}
 			require.NoError(t, env.Configure(tctx))
+			env.EvergreenSettings = &evergreen.Settings{
+				CommitQueue: evergreen.CommitQueueConfig{
+					MaxSystemFailedTaskRetries: 2,
+				},
+			}
+
 			j.env = env
 			j.ecsClient = &cocoaMock.ECSClient{}
 			defer func() {

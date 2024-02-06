@@ -64,7 +64,6 @@ func AttachHandler(app *gimlet.APIApp, opts HandlerOpts) {
 
 	// Agent protocol routes
 	app.AddRoute("/agent/cedar_config").Version(2).Get().Wrap(requirePodOrHost).RouteHandler(makeAgentCedarConfig(settings.Cedar))
-	app.AddRoute("/agent/data_pipes_config").Version(2).Get().Wrap(requirePodOrHost).RouteHandler(makeAgentDataPipesConfig(settings.DataPipes))
 	app.AddRoute("/agent/setup").Version(2).Get().Wrap(requirePodOrHost).RouteHandler(makeAgentSetup(settings))
 	app.AddRoute("/commit_queue/{patch_id}/additional").Version(2).Get().Wrap(requireTask).RouteHandler(makeCommitQueueAdditionalPatches())
 	app.AddRoute("/commit_queue/{patch_id}/conclude_merge").Version(2).Post().Wrap(requireTask).RouteHandler(makeCommitQueueConcludeMerge())
@@ -101,6 +100,7 @@ func AttachHandler(app *gimlet.APIApp, opts HandlerOpts) {
 	app.AddRoute("/task/{task_id}/manifest/load").Version(2).Get().Wrap(requireTask).RouteHandler(makeManifestLoad(settings))
 	app.AddRoute("/task/{task_id}/update_push_status").Version(2).Post().Wrap(requireTask).RouteHandler(makeUpdatePushStatus())
 	app.AddRoute("/task/{task_id}/restart").Version(2).Post().Wrap(requireTask).RouteHandler(makeMarkTaskForRestart())
+	app.AddRoute("/task/{task_id}/upsert_check_run").Version(2).Post().Wrap(requireTask).RouteHandler(makeUpsertCheckRun())
 
 	// REST v2 API Routes
 	app.AddRoute("/").Version(2).Get().Wrap(requireUser).RouteHandler(makePlaceHolder())

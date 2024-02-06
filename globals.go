@@ -605,17 +605,15 @@ var (
 )
 
 const (
-	DefaultServiceConfigurationFileName = "/etc/mci_settings.yml"
-	DefaultDatabaseURL                  = "mongodb://localhost:27017"
-	DefaultDatabaseName                 = "mci"
-	DefaultDatabaseWriteMode            = "majority"
-	DefaultDatabaseReadMode             = "majority"
+	DefaultDatabaseURL       = "mongodb://localhost:27017"
+	DefaultDatabaseName      = "mci"
+	DefaultDatabaseWriteMode = "majority"
+	DefaultDatabaseReadMode  = "majority"
 
 	DefaultAmboyDatabaseURL = "mongodb://localhost:27017"
 
 	// database and config directory, set to the testing version by default for safety
-	NotificationsFile = "mci-notifications.yml"
-	ClientDirectory   = "clients"
+	ClientDirectory = "clients"
 
 	// version requester types
 	PatchVersionRequester       = "patch_request"
@@ -1432,7 +1430,7 @@ var validKeyTypes = []string{
 	publicKeyECDSA,
 }
 
-var sensitiveCollections = []string{"project_vars"}
+var sensitiveCollections = []string{"project_vars", "events"}
 
 // ValidateSSHKey errors if the given key does not start with one of the allowed prefixes.
 func ValidateSSHKey(key string) error {

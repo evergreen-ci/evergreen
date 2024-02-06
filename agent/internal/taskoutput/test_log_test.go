@@ -6,7 +6,6 @@ import (
 	"os"
 	"path/filepath"
 	"strings"
-	"sync"
 	"testing"
 	"time"
 
@@ -17,7 +16,6 @@ import (
 	"github.com/evergreen-ci/evergreen/model/testlog"
 	"github.com/evergreen-ci/evergreen/taskoutput"
 	"github.com/evergreen-ci/utility"
-	"github.com/fortytw2/leaktest"
 	"github.com/mongodb/grip/level"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -69,18 +67,11 @@ func TestAppendTestLog(t *testing.T) {
 	assert.Equal(t, expectedLines, actual)
 }
 
-func TestTestLogDirectoryHandler(t *testing.T) {
-	// Check for leaked goroutines.
-	defer leaktest.Check(t)()
-
+func TestTestLogDirectoryHandlerRun(t *testing.T) {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 
 	comm := client.NewMock("url")
-	tsk, h := setupTestTestLogDirectoryHandler(t, comm)
-	// Set a small buffer so lines are flushed to the
-	// underlying log service quickly.
-	h.maxBufferSize = 100
 
 	type logInfo struct {
 		logPath       string
@@ -89,145 +80,64 @@ func TestTestLogDirectoryHandler(t *testing.T) {
 
 	for _, test := range []struct {
 		name string
-		run  func(*testing.T) []logInfo
+		logs []logInfo
 	}{
 		{
-			name: "NestedFile",
-			run: func(t *testing.T) []logInfo {
-				info := logInfo{
-					logPath: "nested/log.log",
+			name: "RecursiveDirectoryWalk",
+			logs: []logInfo{
+				{
+					logPath: "log0.log",
 					expectedLines: []string{
 						"This is a small test log.",
 						"With only a few lines.",
-						"In a nested directory.",
 					},
-				}
-
-				require.NoError(t, os.Mkdir(filepath.Join(h.dir, filepath.Dir(info.logPath)), 0777))
-				require.NoError(t, os.WriteFile(filepath.Join(h.dir, info.logPath), []byte(strings.Join(info.expectedLines, "\n")+"\n"), 0777))
-
-				return []logInfo{info}
-			},
-		},
-		{
-			name: "NonAtomicLineWrite",
-			run: func(t *testing.T) []logInfo {
-				info := logInfo{
-					logPath: "non_atomic_line_writes.log",
-				}
-
-				f, err := os.Create(filepath.Join(h.dir, info.logPath))
-				require.NoError(t, err)
-				defer f.Close()
-
-				firstPart := "This is the first part of the line, "
-				_, err = f.WriteString(firstPart)
-				require.NoError(t, err)
-				time.Sleep(time.Second)
-				secondPart := "this is the second part of the line."
-				_, err = f.WriteString(secondPart + "\n")
-				require.NoError(t, err)
-				info.expectedLines = append(info.expectedLines, firstPart+secondPart)
-
-				return []logInfo{info}
-			},
-		},
-		{
-			name: "IgnorePartialLines",
-			run: func(t *testing.T) []logInfo {
-				rawLines := []string{
-					"This is a small test log.",
-					"The last line should get ignored.",
-					"Because it does not end in a newline character...",
-				}
-				info := logInfo{
-					logPath:       "parital_line.log",
-					expectedLines: rawLines[:len(rawLines)-1],
-				}
-				require.NoError(t, os.WriteFile(filepath.Join(h.dir, info.logPath), []byte(strings.Join(rawLines, "\n")), 0777))
-
-				return []logInfo{info}
-			},
-		},
-		{
-			name: "ReadLinesContinuously",
-			run: func(t *testing.T) []logInfo {
-				var (
-					logs  []logInfo
-					files []*os.File
-				)
-				for i := 0; i < 2; i++ {
-					logs = append(logs, logInfo{logPath: utility.RandomString()})
-
-					f, err := os.Create(filepath.Join(h.dir, logs[len(logs)-1].logPath))
-					require.NoError(t, err)
-					files = append(files, f)
-				}
-
-				// Set up asynchronous test log file writing.
-				writerCtx, writerCancel := context.WithCancel(ctx)
-				var (
-					mu sync.Mutex
-					wg sync.WaitGroup
-				)
-				wg.Add(1)
-				go func() {
-					defer func() {
-						for _, f := range files {
-							f.Close()
-						}
-						wg.Done()
-					}()
-
-					for {
-						select {
-						case <-writerCtx.Done():
-							return
-						default:
-							mu.Lock()
-							for i := range files {
-								line := fmt.Sprintf("%s %s.", utility.RandomString(), utility.RandomString())
-
-								_, err := files[i].WriteString(line + "\n")
-								require.NoError(t, err)
-
-								logs[i].expectedLines = append(logs[i].expectedLines, line)
-							}
-							mu.Unlock()
-
-							time.Sleep(time.Second)
-						}
-					}
-				}()
-
-				// Check that logs are ingested continuously.
-				time.Sleep(5 * time.Second)
-				mu.Lock()
-				for _, l := range logs {
-					it, err := tsk.GetTestLogs(ctx, taskoutput.TestLogGetOptions{LogPaths: []string{l.logPath}})
-					require.NoError(t, err)
-					assert.True(t, it.Next())
-					assert.NoError(t, it.Close())
-				}
-				mu.Unlock()
-
-				// Wait for async writing to exit cleanly and
-				// close the test log directory handler.
-				writerCancel()
-				wg.Wait()
-
-				return logs
+				},
+				{
+					logPath: "log1.log",
+					expectedLines: []string{
+						"This is a another small test log.",
+						"With only a few lines.",
+						"But it should get there.",
+					},
+				},
+				{
+					logPath: "nested/log2.log",
+					expectedLines: []string{
+						"This is a another small test log.",
+						"With only a few lines.",
+						"But this time it is in nested directory.",
+					},
+				},
+				{
+					logPath: "nested/nested/log3.log",
+					expectedLines: []string{
+						"This is a small test log, again.",
+						"In an an even more nested directory.",
+						"With some a friend!",
+					},
+				},
+				{
+					logPath: "nested/nested/log4.log",
+					expectedLines: []string{
+						"This is the last test log.",
+						"Blah blah blah blah.",
+						"Something something something.",
+						"We are done here.",
+					},
+				},
 			},
 		},
 	} {
 		t.Run(test.name, func(t *testing.T) {
-			require.NoError(t, h.start(ctx, t.TempDir()))
-			logs := test.run(t)
-			time.Sleep(5 * time.Second)
-			require.NoError(t, h.close(ctx))
+			tsk, h := setupTestTestLogDirectoryHandler(t, comm)
+			for _, li := range test.logs {
+				require.NoError(t, os.MkdirAll(filepath.Join(h.dir, filepath.Dir(li.logPath)), 0777))
+				require.NoError(t, os.WriteFile(filepath.Join(h.dir, li.logPath), []byte(strings.Join(li.expectedLines, "\n")+"\n"), 0777))
+			}
 
-			for _, l := range logs {
-				it, err := tsk.GetTestLogs(ctx, taskoutput.TestLogGetOptions{LogPaths: []string{l.logPath}})
+			require.NoError(t, h.run(ctx))
+			for _, li := range test.logs {
+				it, err := tsk.GetTestLogs(ctx, taskoutput.TestLogGetOptions{LogPaths: []string{li.logPath}})
 				require.NoError(t, err)
 				var persistedRawLines []string
 				for it.Next() {
@@ -235,7 +145,7 @@ func TestTestLogDirectoryHandler(t *testing.T) {
 				}
 				assert.NoError(t, it.Close())
 				require.NoError(t, it.Err())
-				assert.Equal(t, l.expectedLines, persistedRawLines)
+				assert.Equal(t, li.expectedLines, persistedRawLines)
 			}
 		})
 	}
@@ -289,7 +199,6 @@ func TestTestLogDirectoryHandlerGetSpecFile(t *testing.T) {
 	} {
 		t.Run(test.name, func(t *testing.T) {
 			tsk, h := setupTestTestLogDirectoryHandler(t, comm)
-			require.NoError(t, h.start(ctx, t.TempDir()))
 
 			// Set the expected test log spec and write spec file
 			// if spec data exists.
@@ -315,15 +224,12 @@ func TestTestLogDirectoryHandlerGetSpecFile(t *testing.T) {
 			rawLines, formatLine := getRawLinesAndFormatter(expectedSpec.Format)
 			logPath := utility.RandomString()
 			require.NoError(t, os.WriteFile(filepath.Join(h.dir, logPath), []byte(strings.Join(rawLines, "\n")+"\n"), 0777))
+			require.NoError(t, h.run(ctx))
 
-			// Sleep before continuing to avoid racing to detect
-			// the new file.
-			time.Sleep(time.Second)
-			require.NoError(t, h.close(ctx))
 			assert.Equal(t, expectedSpec, h.spec)
 
-			// Check that only log files are followed.
-			assert.Equal(t, 1, h.followFileCount)
+			// Check that only log files are handled.
+			assert.Equal(t, 1, h.logFileCount)
 
 			// Check that raw log lines were correctly parsed in
 			// accordance with their format.
@@ -447,11 +353,11 @@ func setupTestTestLogDirectoryHandler(t *testing.T, comm *client.Mock) (*task.Ta
 	}
 	logger, err := comm.GetLoggerProducer(context.TODO(), tsk, nil)
 	require.NoError(t, err)
-	h := newTestLogDirectoryHandler(tsk.TaskOutputInfo.TestLogs, taskoutput.TaskOptions{
+	h := newTestLogDirectoryHandler(t.TempDir(), tsk.TaskOutputInfo, taskoutput.TaskOptions{
 		ProjectID: tsk.Project,
 		TaskID:    tsk.Id,
 		Execution: tsk.Execution,
 	}, logger)
 
-	return tsk, h
+	return tsk, h.(*testLogDirectoryHandler)
 }

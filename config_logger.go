@@ -17,6 +17,7 @@ type LoggerConfig struct {
 	DefaultLevel   string       `bson:"default_level" json:"default_level" yaml:"default_level"`
 	ThresholdLevel string       `bson:"threshold_level" json:"threshold_level" yaml:"threshold_level"`
 	LogkeeperURL   string       `bson:"logkeeper_url" json:"logkeeper_url" yaml:"logkeeper_url"`
+	RedactKeys     []string     `bson:"redact_keys" json:"redact_keys" yaml:"redact_keys"`
 }
 
 func (c LoggerConfig) Info() send.LevelInfo {

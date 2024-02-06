@@ -1,14 +1,15 @@
 package taskoutput
 
 import (
+	"bufio"
 	"context"
+	"io"
 	"io/fs"
 	"os"
 	"path/filepath"
 	"strconv"
 	"strings"
 	"sync"
-	"time"
 
 	"github.com/evergreen-ci/evergreen/agent/internal/client"
 	"github.com/evergreen-ci/evergreen/model/log"
@@ -19,7 +20,6 @@ import (
 	"github.com/mongodb/grip/message"
 	"github.com/mongodb/grip/recovery"
 	"github.com/mongodb/grip/send"
-	"github.com/nxadm/tail"
 	"github.com/pkg/errors"
 	"gopkg.in/yaml.v2"
 )
@@ -27,128 +27,90 @@ import (
 // AppendTestLog appends log lines to the specified test log for the given task
 // run.
 func AppendTestLog(ctx context.Context, comm client.Communicator, tsk *task.Task, testLog *testlog.TestLog) error {
-	ts := time.Now().UnixNano()
-	var lines []log.LogLine
-	for i := range testLog.Lines {
-		for _, line := range strings.Split(testLog.Lines[i], "\n") {
-			if line == "" {
-				continue
-			}
-
-			lines = append(lines, log.LogLine{
-				Priority:  level.Info,
-				Timestamp: ts,
-				Data:      line,
-			})
-		}
-	}
-
-	return tsk.TaskOutputInfo.TestLogs.Append(ctx, taskoutput.TaskOptions{
+	taskOpts := taskoutput.TaskOptions{
 		ProjectID: tsk.Project,
 		TaskID:    tsk.Id,
 		Execution: tsk.Execution,
-	}, testLog.Name, lines)
+	}
+	sender, err := tsk.TaskOutputInfo.TestLogs.NewSender(ctx, taskOpts, taskoutput.EvergreenSenderOptions{}, testLog.Name)
+	if err != nil {
+		return errors.Wrapf(err, "creating Evergreen logger for test log '%s'", testLog.Name)
+	}
+	sender.Send(message.ConvertToComposer(level.Info, strings.Join(testLog.Lines, "\n")))
+
+	return errors.Wrapf(sender.Close(), "closing Evergreen logger for test result '%s'", testLog.Name)
 }
 
-// testLogDirectoryHandler implements automatic and asynchronous task output
-// handling for the reserved test log directory.
+// testLogDirectoryHandler implements automatic task output handling for the
+// reserved test log directory.
 type testLogDirectoryHandler struct {
-	dir             string
-	logger          client.LoggerProducer
-	spec            testLogSpec
-	maxBufferSize   int
-	createSender    func(context.Context, string) (send.Sender, error)
-	cancel          context.CancelFunc
-	followFileCount int
-
-	once sync.Once
-	wg   sync.WaitGroup
+	dir          string
+	logger       client.LoggerProducer
+	spec         testLogSpec
+	createSender func(context.Context, string) (send.Sender, error)
+	logFileCount int
 }
 
 // newTestLogDirectoryHandler returns a new test log directory handler for the
 // specified task.
-func newTestLogDirectoryHandler(output taskoutput.TestLogOutput, taskOpts taskoutput.TaskOptions, logger client.LoggerProducer) *testLogDirectoryHandler {
-	h := &testLogDirectoryHandler{logger: logger}
+func newTestLogDirectoryHandler(dir string, output *taskoutput.TaskOutput, taskOpts taskoutput.TaskOptions, logger client.LoggerProducer) directoryHandler {
+	h := &testLogDirectoryHandler{
+		dir:    dir,
+		logger: logger,
+	}
 	h.createSender = func(ctx context.Context, logPath string) (send.Sender, error) {
-		return output.NewSender(ctx, taskOpts, taskoutput.EvergreenSenderOptions{
-			Local:         logger.Task().GetSender(),
-			MaxBufferSize: h.maxBufferSize,
-			Parse:         h.spec.getParser(),
+		return output.TestLogs.NewSender(ctx, taskOpts, taskoutput.EvergreenSenderOptions{
+			Local: logger.Task().GetSender(),
+			Parse: h.spec.getParser(),
 		}, logPath)
 	}
 
 	return h
 }
 
-func (h *testLogDirectoryHandler) start(ctx context.Context, dir string) error {
-	h.dir = dir
+func (h *testLogDirectoryHandler) run(ctx context.Context) error {
+	h.getSpecFile()
 
-	watcherCtx, cancel := context.WithCancel(ctx)
-	h.cancel = cancel
-	go h.watch(watcherCtx)
-
-	return nil
-}
-
-// watch recursively watches the reserved test log directory for newly created
-// log files. When a new file is detected, an asynchronous file follower is
-// created to ingest the log data as it is written for the duration of the
-// task.
-func (h *testLogDirectoryHandler) watch(ctx context.Context) {
-	defer func() {
-		h.logger.Execution().Critical(recovery.HandlePanicWithError(recover(), nil, "test log directory watcher"))
-	}()
-
-	timer := time.NewTimer(0)
-	defer timer.Stop()
+	var wg sync.WaitGroup
 	ignore := filepath.Join(h.dir, testLogSpecFilename)
-	seenFiles := map[string]bool{}
-	for {
-		select {
-		case <-timer.C:
-			err := filepath.WalkDir(h.dir, func(path string, info fs.DirEntry, err error) error {
-				if err != nil {
-					h.logger.Execution().Warning(errors.Wrap(err, "watching the test log directory, continuing watching"))
-					return nil
-				}
-				if ctx.Err() != nil {
-					return ctx.Err()
-				}
-				if info.IsDir() {
-					return nil
-				}
-				if path == ignore {
-					return nil
-				}
-
-				if !seenFiles[path] {
-					seenFiles[path] = true
-					h.followFileCount++
-					h.wg.Add(1)
-					go h.followFile(ctx, path)
-				}
-
-				return nil
-			})
-			if err != nil {
-				h.logger.Execution().Debug("context canceled, exiting test log directory watcher")
-				return
-			}
-
-			timer.Reset(time.Millisecond)
-		case <-ctx.Done():
-			h.logger.Execution().Debug("context canceled, exiting test log directory watcher")
-			return
+	err := filepath.WalkDir(h.dir, func(path string, info fs.DirEntry, err error) error {
+		if err != nil {
+			h.logger.Execution().Warning(errors.Wrap(err, "walking test log directory"))
+			return nil
 		}
-	}
+		if ctx.Err() != nil {
+			return ctx.Err()
+		}
+		if info.IsDir() {
+			return nil
+		}
+		if path == ignore {
+			return nil
+		}
+
+		h.logFileCount++
+		wg.Add(1)
+		go func() {
+			defer func() {
+				h.logger.Task().Critical(recovery.HandlePanicWithError(recover(), nil, "ingesting test log"))
+			}()
+			defer wg.Done()
+
+			h.ingest(ctx, h.dir, path)
+		}()
+
+		return nil
+	})
+	wg.Wait()
+
+	return err
 }
 
 // getSpecFile looks for the test log specification file in the top level of
 // the reserved test log directory. If the spec file cannot be read for any
 // reason, an error is logged and the handler uses the default spec.
 //
-// Called once per task run immediately after the first log file is detected
-// and before any data is ingested.
+// Called once per task run before sweeping the directory for test log files.
 func (h *testLogDirectoryHandler) getSpecFile() {
 	h.logger.Task().Infof("detected first test log file, getting test log spec file")
 
@@ -167,16 +129,8 @@ func (h *testLogDirectoryHandler) getSpecFile() {
 	}
 }
 
-// followFile tails a test log file for the duration of a task, ingesting and
-// persisting log lines as they are written.
-func (h *testLogDirectoryHandler) followFile(ctx context.Context, path string) {
-	defer func() {
-		h.logger.Task().Critical(recovery.HandlePanicWithError(recover(), nil, "test log file follower"))
-	}()
-	defer h.wg.Done()
-
-	h.once.Do(h.getSpecFile)
-
+// ingest reads and ships a test log file.
+func (h *testLogDirectoryHandler) ingest(ctx context.Context, dir, path string) {
 	h.logger.Task().Infof("new test log file '%s' found, initiating automated ingestion", path)
 
 	// The persisted log path should be relative to the reserved directory
@@ -188,27 +142,14 @@ func (h *testLogDirectoryHandler) followFile(ctx context.Context, path string) {
 	}
 	logPath = filepath.ToSlash(logPath)
 
-	t, err := tail.TailFile(path, tail.Config{
-		ReOpen:    true,
-		MustExist: true,
-		Poll:      true,
-		Follow:    true,
-		// Setting this field may lead to some data loss in the case of
-		// non-atomic line writes: if the last read line does not
-		// terminate with a newline character (e.g., the follower
-		// exits early or the test process crashes), it will not get
-		// returned. This is ok because the complete line must be read
-		// to guarantee proper line format for the parser (assumming
-		// the complete line has the expected format).
-		CompleteLines: true,
-	})
+	f, err := os.Open(path)
 	if err != nil {
-		h.logger.Task().Error(errors.Wrapf(err, "creating follower for test log file '%s'", path))
+		h.logger.Task().Error(errors.Wrapf(err, "opening test log file '%s'", path))
 		return
 	}
 	defer func() {
-		if err := t.Stop(); err != nil {
-			h.logger.Task().Error(errors.Wrapf(err, "following test log file '%s'", path))
+		if err := f.Close(); err != nil {
+			h.logger.Task().Error(errors.Wrapf(err, "closing test log file '%s'", path))
 		}
 	}()
 
@@ -217,39 +158,23 @@ func (h *testLogDirectoryHandler) followFile(ctx context.Context, path string) {
 		h.logger.Task().Error(errors.Wrapf(err, "creating Sender for test log '%s'", path))
 		return
 	}
-	defer func() {
-		if err = t.Err(); err != nil {
-			h.logger.Task().Error(errors.Wrapf(err, "following test log file '%s'", path))
-		}
-		if err = sender.Close(); err != nil {
-			h.logger.Task().Error(errors.Wrapf(err, "closing Sender for test log '%s'", path))
-		}
-	}()
 
+	r := bufio.NewReader(f)
 	for {
-		select {
-		case <-ctx.Done():
-			return
-		case line := <-t.Lines:
-			if line.Err != nil {
-				// If there is a line error it is safe to
-				// continue because the follower maintains the
-				// seek position and will pick up where it left
-				// off. These errors usually occur when rate
-				// limiting is configured and a cool down
-				// period is taking place.
-				h.logger.Task().Debug(errors.Wrapf(err, "reading lines from test log file '%s'", path))
-			} else {
-				sender.Send(message.NewDefaultMessage(level.Info, line.Text))
-			}
+		line, err := r.ReadString('\n')
+		if err == io.EOF {
+			break
 		}
-	}
-}
-func (h *testLogDirectoryHandler) close(_ context.Context) error {
-	h.cancel()
-	h.wg.Wait()
+		if err != nil {
+			h.logger.Task().Error(errors.Wrapf(err, "reading test log '%s'", path))
+			return
+		}
 
-	return nil
+		sender.Send(message.NewDefaultMessage(level.Info, line))
+	}
+	if err = sender.Close(); err != nil {
+		h.logger.Task().Error(errors.Wrapf(err, "closing Sender for test log '%s'", path))
+	}
 }
 
 // testLogSpec represents the test log specification file written at the top
