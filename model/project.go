@@ -1508,6 +1508,42 @@ func (p *Project) findMatchingProjectTasks(tRegex *regexp.Regexp) []string {
 	return res
 }
 
+func (p *Project) GetNumCheckRunsFromVariantTasks(variantTasks []patch.VariantTasks) int {
+	numCheckRuns := 0
+	for _, variant := range variantTasks {
+		for _, t := range variant.Tasks {
+			numCheckRuns += p.getNumCheckRuns(t, variant.Variant)
+		}
+
+		for _, dt := range variant.DisplayTasks {
+			for _, t := range dt.ExecTasks {
+				numCheckRuns += p.getNumCheckRuns(t, variant.Variant)
+			}
+		}
+	}
+	return numCheckRuns
+}
+
+func (p *Project) GetNumCheckRunsFromTaskVariantPairs(variantTasks *TaskVariantPairs) int {
+	numCheckRuns := 0
+	for _, variant := range variantTasks.DisplayTasks {
+		numCheckRuns += p.getNumCheckRuns(variant.TaskName, variant.Variant)
+	}
+	for _, variant := range variantTasks.ExecTasks {
+		numCheckRuns += p.getNumCheckRuns(variant.TaskName, variant.Variant)
+	}
+	return numCheckRuns
+}
+
+func (p *Project) getNumCheckRuns(taskName, variantName string) int {
+	if bvtu := p.FindTaskForVariant(taskName, variantName); bvtu != nil {
+		if bvtu.HasCheckRun() {
+			return 1
+		}
+	}
+	return 0
+}
+
 func (p *Project) findProjectTasksWithTag(tags []string) []string {
 	var res []string
 	for _, t := range p.Tasks {
