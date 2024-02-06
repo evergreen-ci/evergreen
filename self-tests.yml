@@ -636,6 +636,7 @@ tasks:
         params:
           shell: bash
           working_dir: evergreen
+          include_expansions_in_env: ["GOPATH"]
           script: |
             set -o verbose
             set -o errexit
