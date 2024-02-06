@@ -1282,6 +1282,7 @@ type ComplexityRoot struct {
 	}
 
 	TaskEventLogData struct {
+		BlockedOn func(childComplexity int) int
 		HostId    func(childComplexity int) int
 		JiraIssue func(childComplexity int) int
 		JiraLink  func(childComplexity int) int
@@ -8069,6 +8070,13 @@ func (e *executableSchema) Complexity(typeName, field string, childComplexity in
 		}
 
 		return e.complexity.TaskEndDetail.Type(childComplexity), true
+
+	case "TaskEventLogData.blockedOn":
+		if e.complexity.TaskEventLogData.BlockedOn == nil {
+			break
+		}
+
+		return e.complexity.TaskEventLogData.BlockedOn(childComplexity), true
 
 	case "TaskEventLogData.hostId":
 		if e.complexity.TaskEventLogData.HostId == nil {
@@ -55281,6 +55289,47 @@ func (ec *executionContext) fieldContext_TaskEventLogData_userId(ctx context.Con
 	return fc, nil
 }
 
+func (ec *executionContext) _TaskEventLogData_blockedOn(ctx context.Context, field graphql.CollectedField, obj *model.TaskEventData) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_TaskEventLogData_blockedOn(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.BlockedOn, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		return graphql.Null
+	}
+	res := resTmp.(*string)
+	fc.Result = res
+	return ec.marshalOString2ᚖstring(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_TaskEventLogData_blockedOn(ctx context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "TaskEventLogData",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type String does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
 func (ec *executionContext) _TaskEventLogEntry_id(ctx context.Context, field graphql.CollectedField, obj *model.TaskAPIEventLogEntry) (ret graphql.Marshaler) {
 	fc, err := ec.fieldContext_TaskEventLogEntry_id(ctx, field)
 	if err != nil {
@@ -55380,6 +55429,8 @@ func (ec *executionContext) fieldContext_TaskEventLogEntry_data(ctx context.Cont
 				return ec.fieldContext_TaskEventLogData_timestamp(ctx, field)
 			case "userId":
 				return ec.fieldContext_TaskEventLogData_userId(ctx, field)
+			case "blockedOn":
+				return ec.fieldContext_TaskEventLogData_blockedOn(ctx, field)
 			}
 			return nil, fmt.Errorf("no field named %q was found under type TaskEventLogData", field.Name)
 		},
@@ -82348,6 +82399,8 @@ func (ec *executionContext) _TaskEventLogData(ctx context.Context, sel ast.Selec
 			out.Values[i] = ec._TaskEventLogData_timestamp(ctx, field, obj)
 		case "userId":
 			out.Values[i] = ec._TaskEventLogData_userId(ctx, field, obj)
+		case "blockedOn":
+			out.Values[i] = ec._TaskEventLogData_blockedOn(ctx, field, obj)
 		default:
 			panic("unknown field " + strconv.Quote(field.Name))
 		}
