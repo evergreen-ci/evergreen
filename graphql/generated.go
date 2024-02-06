@@ -255,7 +255,6 @@ type ComplexityRoot struct {
 		Arch                  func(childComplexity int) int
 		AuthorizedKeysFile    func(childComplexity int) int
 		BootstrapSettings     func(childComplexity int) int
-		CloneMethod           func(childComplexity int) int
 		ContainerPool         func(childComplexity int) int
 		DisableShallowClone   func(childComplexity int) int
 		Disabled              func(childComplexity int) int
@@ -1597,8 +1596,6 @@ type DispatcherSettingsResolver interface {
 type DistroResolver interface {
 	Arch(ctx context.Context, obj *model.APIDistro) (Arch, error)
 
-	CloneMethod(ctx context.Context, obj *model.APIDistro) (CloneMethod, error)
-
 	Provider(ctx context.Context, obj *model.APIDistro) (Provider, error)
 	ProviderSettingsList(ctx context.Context, obj *model.APIDistro) ([]map[string]interface{}, error)
 }
@@ -1933,8 +1930,6 @@ type DispatcherSettingsInputResolver interface {
 }
 type DistroInputResolver interface {
 	Arch(ctx context.Context, obj *model.APIDistro, data Arch) error
-
-	CloneMethod(ctx context.Context, obj *model.APIDistro, data *CloneMethod) error
 
 	Provider(ctx context.Context, obj *model.APIDistro, data Provider) error
 	ProviderSettingsList(ctx context.Context, obj *model.APIDistro, data []map[string]interface{}) error
@@ -2614,13 +2609,6 @@ func (e *executableSchema) Complexity(typeName, field string, childComplexity in
 		}
 
 		return e.complexity.Distro.BootstrapSettings(childComplexity), true
-
-	case "Distro.cloneMethod":
-		if e.complexity.Distro.CloneMethod == nil {
-			break
-		}
-
-		return e.complexity.Distro.CloneMethod(childComplexity), true
 
 	case "Distro.containerPool":
 		if e.complexity.Distro.ContainerPool == nil {
@@ -16213,50 +16201,6 @@ func (ec *executionContext) fieldContext_Distro_bootstrapSettings(ctx context.Co
 				return ec.fieldContext_BootstrapSettings_shellPath(ctx, field)
 			}
 			return nil, fmt.Errorf("no field named %q was found under type BootstrapSettings", field.Name)
-		},
-	}
-	return fc, nil
-}
-
-func (ec *executionContext) _Distro_cloneMethod(ctx context.Context, field graphql.CollectedField, obj *model.APIDistro) (ret graphql.Marshaler) {
-	fc, err := ec.fieldContext_Distro_cloneMethod(ctx, field)
-	if err != nil {
-		return graphql.Null
-	}
-	ctx = graphql.WithFieldContext(ctx, fc)
-	defer func() {
-		if r := recover(); r != nil {
-			ec.Error(ctx, ec.Recover(ctx, r))
-			ret = graphql.Null
-		}
-	}()
-	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
-		ctx = rctx // use context from middleware stack in children
-		return ec.resolvers.Distro().CloneMethod(rctx, obj)
-	})
-	if err != nil {
-		ec.Error(ctx, err)
-		return graphql.Null
-	}
-	if resTmp == nil {
-		if !graphql.HasFieldError(ctx, fc) {
-			ec.Errorf(ctx, "must not be null")
-		}
-		return graphql.Null
-	}
-	res := resTmp.(CloneMethod)
-	fc.Result = res
-	return ec.marshalNCloneMethod2githubᚗcomᚋevergreenᚑciᚋevergreenᚋgraphqlᚐCloneMethod(ctx, field.Selections, res)
-}
-
-func (ec *executionContext) fieldContext_Distro_cloneMethod(ctx context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
-	fc = &graphql.FieldContext{
-		Object:     "Distro",
-		Field:      field,
-		IsMethod:   true,
-		IsResolver: true,
-		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
-			return nil, errors.New("field of type CloneMethod does not have child fields")
 		},
 	}
 	return fc, nil
@@ -42545,8 +42489,6 @@ func (ec *executionContext) fieldContext_Query_distro(ctx context.Context, field
 				return ec.fieldContext_Distro_authorizedKeysFile(ctx, field)
 			case "bootstrapSettings":
 				return ec.fieldContext_Distro_bootstrapSettings(ctx, field)
-			case "cloneMethod":
-				return ec.fieldContext_Distro_cloneMethod(ctx, field)
 			case "containerPool":
 				return ec.fieldContext_Distro_containerPool(ctx, field)
 			case "disabled":
@@ -42725,8 +42667,6 @@ func (ec *executionContext) fieldContext_Query_distros(ctx context.Context, fiel
 				return ec.fieldContext_Distro_authorizedKeysFile(ctx, field)
 			case "bootstrapSettings":
 				return ec.fieldContext_Distro_bootstrapSettings(ctx, field)
-			case "cloneMethod":
-				return ec.fieldContext_Distro_cloneMethod(ctx, field)
 			case "containerPool":
 				return ec.fieldContext_Distro_containerPool(ctx, field)
 			case "disabled":
@@ -48466,8 +48406,6 @@ func (ec *executionContext) fieldContext_SaveDistroPayload_distro(ctx context.Co
 				return ec.fieldContext_Distro_authorizedKeysFile(ctx, field)
 			case "bootstrapSettings":
 				return ec.fieldContext_Distro_bootstrapSettings(ctx, field)
-			case "cloneMethod":
-				return ec.fieldContext_Distro_cloneMethod(ctx, field)
 			case "containerPool":
 				return ec.fieldContext_Distro_containerPool(ctx, field)
 			case "disabled":
@@ -67110,7 +67048,7 @@ func (ec *executionContext) unmarshalInputDistroInput(ctx context.Context, obj i
 		asMap[k] = v
 	}
 
-	fieldsInOrder := [...]string{"adminOnly", "aliases", "arch", "authorizedKeysFile", "bootstrapSettings", "cloneMethod", "containerPool", "disabled", "disableShallowClone", "dispatcherSettings", "expansions", "finderSettings", "homeVolumeSettings", "hostAllocatorSettings", "iceCreamSettings", "isCluster", "isVirtualWorkStation", "name", "note", "plannerSettings", "provider", "providerSettingsList", "setup", "setupAsSudo", "sshKey", "sshOptions", "user", "userSpawnAllowed", "validProjects", "workDir", "mountpoints"}
+	fieldsInOrder := [...]string{"adminOnly", "aliases", "arch", "authorizedKeysFile", "bootstrapSettings", "containerPool", "disabled", "disableShallowClone", "dispatcherSettings", "expansions", "finderSettings", "homeVolumeSettings", "hostAllocatorSettings", "iceCreamSettings", "isCluster", "isVirtualWorkStation", "name", "note", "plannerSettings", "provider", "providerSettingsList", "setup", "setupAsSudo", "sshKey", "sshOptions", "user", "userSpawnAllowed", "validProjects", "workDir", "mountpoints"}
 	for _, k := range fieldsInOrder {
 		v, ok := asMap[k]
 		if !ok {
@@ -67119,7 +67057,7 @@ func (ec *executionContext) unmarshalInputDistroInput(ctx context.Context, obj i
 		switch k {
 		case "adminOnly":
 			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("adminOnly"))
-			data, err := ec.unmarshalOBoolean2bool(ctx, v)
+			data, err := ec.unmarshalNBoolean2bool(ctx, v)
 			if err != nil {
 				return it, err
 			}
@@ -67154,15 +67092,6 @@ func (ec *executionContext) unmarshalInputDistroInput(ctx context.Context, obj i
 				return it, err
 			}
 			it.BootstrapSettings = data
-		case "cloneMethod":
-			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("cloneMethod"))
-			data, err := ec.unmarshalOCloneMethod2ᚖgithubᚗcomᚋevergreenᚑciᚋevergreenᚋgraphqlᚐCloneMethod(ctx, v)
-			if err != nil {
-				return it, err
-			}
-			if err = ec.resolvers.DistroInput().CloneMethod(ctx, &it, data); err != nil {
-				return it, err
-			}
 		case "containerPool":
 			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("containerPool"))
 			data, err := ec.unmarshalNString2ᚖstring(ctx, v)
@@ -72361,42 +72290,6 @@ func (ec *executionContext) _Distro(ctx context.Context, sel ast.SelectionSet, o
 			if out.Values[i] == graphql.Null {
 				atomic.AddUint32(&out.Invalids, 1)
 			}
-		case "cloneMethod":
-			field := field
-
-			innerFunc := func(ctx context.Context, fs *graphql.FieldSet) (res graphql.Marshaler) {
-				defer func() {
-					if r := recover(); r != nil {
-						ec.Error(ctx, ec.Recover(ctx, r))
-					}
-				}()
-				res = ec._Distro_cloneMethod(ctx, field, obj)
-				if res == graphql.Null {
-					atomic.AddUint32(&fs.Invalids, 1)
-				}
-				return res
-			}
-
-			if field.Deferrable != nil {
-				dfs, ok := deferred[field.Deferrable.Label]
-				di := 0
-				if ok {
-					dfs.AddField(field)
-					di = len(dfs.Values) - 1
-				} else {
-					dfs = graphql.NewFieldSet([]graphql.CollectedField{field})
-					deferred[field.Deferrable.Label] = dfs
-				}
-				dfs.Concurrently(di, func(ctx context.Context) graphql.Marshaler {
-					return innerFunc(ctx, dfs)
-				})
-
-				// don't run the out.Concurrently() call below
-				out.Values[i] = graphql.Null
-				continue
-			}
-
-			out.Concurrently(i, func(ctx context.Context) graphql.Marshaler { return innerFunc(ctx, out) })
 		case "containerPool":
 			out.Values[i] = ec._Distro_containerPool(ctx, field, obj)
 			if out.Values[i] == graphql.Null {
@@ -85784,16 +85677,6 @@ func (ec *executionContext) marshalNClientBinary2githubᚗcomᚋevergreenᚑci�
 	return ec._ClientBinary(ctx, sel, &v)
 }
 
-func (ec *executionContext) unmarshalNCloneMethod2githubᚗcomᚋevergreenᚑciᚋevergreenᚋgraphqlᚐCloneMethod(ctx context.Context, v interface{}) (CloneMethod, error) {
-	var res CloneMethod
-	err := res.UnmarshalGQL(v)
-	return res, graphql.ErrorOnPath(ctx, err)
-}
-
-func (ec *executionContext) marshalNCloneMethod2githubᚗcomᚋevergreenᚑciᚋevergreenᚋgraphqlᚐCloneMethod(ctx context.Context, sel ast.SelectionSet, v CloneMethod) graphql.Marshaler {
-	return v
-}
-
 func (ec *executionContext) marshalNCommitQueue2githubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐAPICommitQueue(ctx context.Context, sel ast.SelectionSet, v model.APICommitQueue) graphql.Marshaler {
 	return ec._CommitQueue(ctx, sel, &v)
 }
@@ -90027,22 +89910,6 @@ func (ec *executionContext) marshalOClientConfig2ᚖgithubᚗcomᚋevergreenᚑc
 		return graphql.Null
 	}
 	return ec._ClientConfig(ctx, sel, v)
-}
-
-func (ec *executionContext) unmarshalOCloneMethod2ᚖgithubᚗcomᚋevergreenᚑciᚋevergreenᚋgraphqlᚐCloneMethod(ctx context.Context, v interface{}) (*CloneMethod, error) {
-	if v == nil {
-		return nil, nil
-	}
-	var res = new(CloneMethod)
-	err := res.UnmarshalGQL(v)
-	return res, graphql.ErrorOnPath(ctx, err)
-}
-
-func (ec *executionContext) marshalOCloneMethod2ᚖgithubᚗcomᚋevergreenᚑciᚋevergreenᚋgraphqlᚐCloneMethod(ctx context.Context, sel ast.SelectionSet, v *CloneMethod) graphql.Marshaler {
-	if v == nil {
-		return graphql.Null
-	}
-	return v
 }
 
 func (ec *executionContext) marshalOCloudProviderConfig2ᚖgithubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐAPICloudProviders(ctx context.Context, sel ast.SelectionSet, v *model.APICloudProviders) graphql.Marshaler {

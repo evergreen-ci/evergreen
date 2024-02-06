@@ -304,6 +304,8 @@ type processNextResponse struct {
 }
 
 func (a *Agent) processNextTask(ctx context.Context, nt *apimodels.NextTaskResponse, tc *taskContext, needTeardownGroup bool) (processNextResponse, error) {
+	_, span := a.tracer.Start(ctx, "process-next-task")
+	defer span.End()
 	if nt.ShouldExit {
 		grip.Notice("Next task response indicates agent should exit.")
 		return processNextResponse{shouldExit: true}, nil
@@ -340,8 +342,11 @@ func (a *Agent) processNextTask(ctx context.Context, nt *apimodels.NextTaskRespo
 	}
 
 	if nt.TaskSecret == "" {
+		msg := "task response missing secret"
+		span.SetStatus(codes.Error, msg)
+		span.RecordError(errors.New(msg), trace.WithAttributes(attribute.String("task.id", tc.task.ID)))
 		grip.Critical(message.Fields{
-			"message": "task response missing secret",
+			"message": msg,
 			"task":    tc.task.ID,
 		})
 		return processNextResponse{
@@ -352,6 +357,8 @@ func (a *Agent) processNextTask(ctx context.Context, nt *apimodels.NextTaskRespo
 
 	tc, shouldExit, err := a.runTask(ctx, nil, nt, shouldSetupGroup, taskDirectory)
 	if err != nil {
+		span.SetStatus(codes.Error, "error running task")
+		span.RecordError(err, trace.WithAttributes(attribute.String("task.id", tc.task.ID)), trace.WithStackTrace(true))
 		grip.Critical(message.WrapError(err, message.Fields{
 			"message": "error running task",
 			"task":    tc.task.ID,

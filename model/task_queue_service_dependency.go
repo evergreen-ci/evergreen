@@ -47,18 +47,6 @@ func newDistroTaskDAGDispatchService(taskQueue TaskQueue, ttl time.Duration) (*b
 		}
 	}
 
-	grip.Debug(message.Fields{
-		"dispatcher":                DAGDispatcher,
-		"function":                  "newDistroTaskDAGDispatchService",
-		"message":                   "initializing new basicCachedDAGDispatcherImpl for a distro",
-		"distro_id":                 d.distroID,
-		"ttl":                       d.ttl,
-		"last_updated":              d.lastUpdated,
-		"num_task_groups":           len(d.taskGroups),
-		"num_taskqueueitems":        taskQueue.Length(),
-		"sorted_num_taskqueueitems": len(d.sorted),
-	})
-
 	return d, nil
 }
 
@@ -89,17 +77,6 @@ func (d *basicCachedDAGDispatcherImpl) Refresh() error {
 	if err := d.rebuild(taskQueueItems); err != nil {
 		return errors.Wrapf(err, "building the directed graph for distro '%s'", d.distroID)
 	}
-
-	grip.Debug(message.Fields{
-		"dispatcher":                 DAGDispatcher,
-		"function":                   "Refresh",
-		"message":                    "refresh was successful",
-		"distro_id":                  d.distroID,
-		"num_task_groups":            len(d.taskGroups),
-		"initial_num_taskqueueitems": len(taskQueueItems),
-		"sorted_num_taskqueueitems":  len(d.sorted),
-		"refreshed_at:":              time.Now(),
-	})
 
 	return nil
 }
@@ -272,19 +249,6 @@ func (d *basicCachedDAGDispatcherImpl) FindNextTask(ctx context.Context, spec Ta
 		}
 		// If the task group is not present in the TaskGroups map, then all its tasks are considered dispatched.
 		// Fall through to get a task that's not in this task group.
-
-		grip.Debug(message.Fields{
-			"dispatcher":               DAGDispatcher,
-			"function":                 "FindNextTask",
-			"message":                  "basicCachedDAGDispatcherImpl.taskGroupTasks[key] was not found - assuming it has been dispatched; falling through to try and get a task not in the current task group",
-			"key":                      taskGroupID,
-			"taskspec_group":           spec.Group,
-			"taskspec_build_variant":   spec.BuildVariant,
-			"taskspec_version":         spec.Version,
-			"taskspec_project":         spec.Project,
-			"taskspec_group_max_hosts": spec.GroupMaxHosts,
-			"distro_id":                d.distroID,
-		})
 	}
 
 	dependencyCaches := make(map[string]task.Task)
