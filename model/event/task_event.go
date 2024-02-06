@@ -40,13 +40,13 @@ const (
 
 // implements Data
 type TaskEventData struct {
-	Execution int      `bson:"execution" json:"execution"`
-	HostId    string   `bson:"h_id,omitempty" json:"host_id,omitempty"`
-	PodID     string   `bson:"pod_id,omitempty" json:"pod_id,omitempty"`
-	UserId    string   `bson:"u_id,omitempty" json:"user_id,omitempty"`
-	Status    string   `bson:"s,omitempty" json:"status,omitempty"`
-	JiraIssue string   `bson:"jira,omitempty" json:"jira,omitempty"`
-	BlockedOn []string `bson:"blocked_on" json:"blocked_on" yaml:"blocked_on"`
+	Execution int    `bson:"execution" json:"execution"`
+	HostId    string `bson:"h_id,omitempty" json:"host_id,omitempty"`
+	PodID     string `bson:"pod_id,omitempty" json:"pod_id,omitempty"`
+	UserId    string `bson:"u_id,omitempty" json:"user_id,omitempty"`
+	Status    string `bson:"s,omitempty" json:"status,omitempty"`
+	JiraIssue string `bson:"jira,omitempty" json:"jira,omitempty"`
+	BlockedOn string `bson:"blocked_on" json:"blocked_on" yaml:"blocked_on"`
 
 	Timestamp time.Time `bson:"ts,omitempty" json:"timestamp,omitempty"`
 	Priority  int64     `bson:"pri,omitempty" json:"priority,omitempty"`
@@ -169,7 +169,7 @@ func LogTaskRestarted(taskId string, execution int, userId string) {
 	logTaskEvent(taskId, TaskRestarted, TaskEventData{Execution: execution, UserId: userId})
 }
 
-func LogTaskBlocked(taskId string, execution int, blockedOn []string) {
+func LogTaskBlocked(taskId string, execution int, blockedOn string) {
 	logTaskEvent(taskId, TaskBlocked, TaskEventData{Execution: execution, BlockedOn: blockedOn})
 }
 
