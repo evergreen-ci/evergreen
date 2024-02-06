@@ -841,6 +841,10 @@ func (s *projectSuite) TestCheckRunCount() {
 				Variant:  "bv_1",
 				TaskName: "a_task_2",
 			},
+			TVPair{
+				Variant:  "bv_1",
+				TaskName: "a_task_3",
+			},
 		},
 	}
 
@@ -850,7 +854,7 @@ func (s *projectSuite) TestCheckRunCount() {
 	variantTasks := []patch.VariantTasks{
 		{
 			Variant: "bv_1",
-			Tasks:   []string{"a_task_1", "a_task_2"},
+			Tasks:   []string{"a_task_1", "a_task_2", "a_task_3"},
 		},
 	}
 	checkRunCount = s.project.GetNumCheckRunsFromVariantTasks(variantTasks)
