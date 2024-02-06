@@ -33,6 +33,7 @@ type TaskEventLogData {
   status: String
   timestamp: Time
   userId: String
+  blockedOn: String
 }
 
 type LogMessage {
