@@ -3245,7 +3245,7 @@ func (h *Host) ClearDockerStdinData(ctx context.Context) error {
 }
 
 // nonAlphanumericRegexp matches any character that is not an alphanumeric
-// character ([0-9A-Za-z]).
+// character ([0-9A-Za-z]) or a dash ("-").
 var nonAlphanumericRegexp = regexp.MustCompile("[[:^alnum:]]+")
 
 // GeneratePersistentDNSName returns the host's persistent DNS name, or
@@ -3257,13 +3257,13 @@ func (h *Host) GeneratePersistentDNSName(ctx context.Context, domain string) (st
 
 	// Replace dots in usernames and clean out all other non-alphanumeric
 	// characters since DNS doesn't handle them very well.
-	startedBy := nonAlphanumericRegexp.ReplaceAllString(strings.ReplaceAll(h.StartedBy, ".", "-"), "")
+	startedBy := nonAlphanumericRegexp.ReplaceAllString(h.StartedBy, "")
 
 	const numAttempts = 5
 	for i := 0; i < numAttempts; i++ {
 		const maxRandLen = 5
 		random := utility.RandomString()[:maxRandLen]
-		candidate := fmt.Sprintf("%s-%s.%s", startedBy, random, domain)
+		candidate := fmt.Sprintf("%s-%s.%s", startedBy, random, strings.TrimPrefix(domain, "."))
 
 		// Ensure no other host is using this name. Since the random portion is
 		// very short, it's unlikely but still possible that there's a conflict.
@@ -3274,4 +3274,15 @@ func (h *Host) GeneratePersistentDNSName(ctx context.Context, domain string) (st
 	}
 
 	return "", errors.Errorf("could not generate a new persistent DNS name after %d attempts", numAttempts)
+}
+
+// SetPersistentDNSName sets the host's persistent DNS name.
+func (h *Host) SetPersistentDNSName(ctx context.Context, dnsName string) error {
+	return UpdateOne(ctx, bson.M{
+		IdKey: h.Id,
+	}, bson.M{
+		"$set": bson.M{
+			PersistentDNSNameKey: dnsName,
+		},
+	})
 }

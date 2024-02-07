@@ -347,6 +347,11 @@ func setHostPersistentDNSName(ctx context.Context, h *host.Host, instance *types
 	if err != nil {
 		return errors.Wrap(err, "getting host's persistent DNS name")
 	}
+	grip.Info(message.Fields{
+		"message":             "kim: creating persistent DNS name record",
+		"persistent_dns_name": dnsName,
+		"host_id":             h.Id,
+	})
 	in := route53.ChangeResourceRecordSetsInput{
 		HostedZoneId: aws.String(settings.Providers.AWS.PersistentDNS.HostedZoneID),
 		ChangeBatch: &r53Types.ChangeBatch{
@@ -367,7 +372,10 @@ func setHostPersistentDNSName(ctx context.Context, h *host.Host, instance *types
 		},
 	}
 	if _, err := client.ChangeResourceRecordSets(ctx, &in); err != nil {
-		return errors.Wrapf(err, "upserting persistent DNS name '%s'", dnsName)
+		return errors.Wrapf(err, "upserting persistent DNS name '%s' into Route 53", dnsName)
+	}
+	if err := h.SetPersistentDNSName(ctx, dnsName); err != nil {
+		return errors.Wrap(err, "setting host's persistent DNS name")
 	}
 
 	return nil
