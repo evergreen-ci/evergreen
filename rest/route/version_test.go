@@ -200,9 +200,9 @@ func (s *VersionSuite) TestFindAllBuildsForVersion() {
 
 func (s *VersionSuite) TestFindAllBuildsForVersionWithTaskStatuses() {
 	handler := &buildsForVersionHandler{
-		versionId:    "versionId",
-		env:          s.env,
-		includeTasks: true,
+		versionId:       "versionId",
+		env:             s.env,
+		includeTaskInfo: true,
 	}
 	res := handler.Run(s.ctx)
 	s.Equal(http.StatusOK, res.Status())
