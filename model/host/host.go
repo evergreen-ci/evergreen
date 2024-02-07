@@ -3284,6 +3284,7 @@ func (h *Host) GeneratePersistentDNSName(ctx context.Context, domain string) (st
 }
 
 // SetPersistentDNSName sets the host's persistent DNS name.
+// kim: TODO: test
 func (h *Host) SetPersistentDNSName(ctx context.Context, dnsName string) error {
 	return UpdateOne(ctx, bson.M{
 		IdKey: h.Id,
