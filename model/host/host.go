@@ -3250,20 +3250,27 @@ var nonAlphanumericRegexp = regexp.MustCompile("[[:^alnum:]]+")
 
 // GeneratePersistentDNSName returns the host's persistent DNS name, or
 // generates a new one if it doesn't have one currently assigned.
+// kim: TODO: test
 func (h *Host) GeneratePersistentDNSName(ctx context.Context, domain string) (string, error) {
 	if h.PersistentDNSName != "" {
 		return h.PersistentDNSName, nil
 	}
 
-	// Replace dots in usernames and clean out all other non-alphanumeric
-	// characters since DNS doesn't handle them very well.
-	startedBy := nonAlphanumericRegexp.ReplaceAllString(h.StartedBy, "")
+	// DNS doesn't handle non-alphanumeric characters very well, so replace dots
+	// in usernames with dashes and remove all other non-alphanumeric
+	// characters.
+	userParts := strings.Split(h.StartedBy, ".")
+	cleanedParts := make([]string, 0, len(userParts))
+	for _, part := range userParts {
+		cleanedParts = append(cleanedParts, nonAlphanumericRegexp.ReplaceAllString(part, ""))
+	}
+	user := strings.Join(cleanedParts, "-")
 
 	const numAttempts = 5
 	for i := 0; i < numAttempts; i++ {
 		const maxRandLen = 5
 		random := utility.RandomString()[:maxRandLen]
-		candidate := fmt.Sprintf("%s-%s.%s", startedBy, random, strings.TrimPrefix(domain, "."))
+		candidate := fmt.Sprintf("%s-%s.%s", user, random, strings.TrimPrefix(domain, "."))
 
 		// Ensure no other host is using this name. Since the random portion is
 		// very short, it's unlikely but still possible that there's a conflict.
