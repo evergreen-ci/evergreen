@@ -486,13 +486,13 @@ type ModifySpawnHostSource string
 const (
 	// ModifySpawnHostManual means the spawn host is being modified manually
 	// because a user requested it.
-	ModifySpawnHostManual = "manual"
+	ModifySpawnHostManual ModifySpawnHostSource = "manual"
 	// ModifySpawnHostManual means the spawn host is being modified by the
 	// automatic sleep schedule.
-	ModifySpawnHostSleepSchedule = "sleep_schedule"
+	ModifySpawnHostSleepSchedule ModifySpawnHostSource = "sleep_schedule"
 	// ModifySpawnHostManual means the spawn host is being modified by a
 	// user-owned sleep script.
-	ModifySpawnHostScript = "script"
+	ModifySpawnHostScript ModifySpawnHostSource = "script"
 )
 
 // Common OTEL constants and attribute keys
