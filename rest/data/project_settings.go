@@ -314,10 +314,17 @@ func SaveProjectSettingsForSection(ctx context.Context, projectId string, change
 		if catcher.HasErrors() {
 			return nil, errors.Wrapf(catcher.Resolve(), "validating external links")
 		}
-		// If the performance plugin is not currently enabled, and we are trying to
-		// change it to enabled but the id and identifier are different, we error.
-		if !mergedBeforeRef.IsPerfEnabled() && mergedSection.IsPerfEnabled() && mergedSection.Id != mergedSection.Identifier {
-			return nil, errors.Errorf("project '%s' does not have a matching ID and identifier, cannot enable performance plugin", mergedSection.Id)
+
+		// If we are trying to enable the performance plugin but the project's id and identifier are
+		// different, we should error. The performance plugin requires matching id and identifier.
+		if !mergedBeforeRef.IsPerfEnabled() && mergedSection.IsPerfEnabled() {
+			identifier, err := model.GetIdentifierForProject(projectId)
+			if err != nil {
+				return nil, errors.Wrapf(err, "finding project identifier for project '%s'", projectId)
+			}
+			if projectId != identifier {
+				return nil, errors.Errorf("project '%s' does not have a matching ID and identifier, cannot enable performance plugin", identifier)
+			}
 		}
 	case model.ProjectPageAccessSection:
 		// For any admins that are only in the original settings, remove access.
