@@ -41,13 +41,11 @@ func TestTestBuildFromService(t *testing.T) {
 					Status:    utility.ToStringPtr(input.Status),
 					TestFile:  utility.ToStringPtr(input.TestName),
 					Logs: TestLogs{
-						URL:           utility.ToStringPtr(input.GetLogURL(env, evergreen.LogViewerHTML)),
-						URLRaw:        utility.ToStringPtr(input.GetLogURL(env, evergreen.LogViewerRaw)),
-						URLLobster:    utility.ToStringPtr(input.GetLogURL(env, evergreen.LogViewerLobster)),
-						URLParsley:    utility.ToStringPtr(input.GetLogURL(env, evergreen.LogViewerParsley)),
-						LineNum:       15,
-						RenderingType: utility.ToStringPtr("default"),
-						Version:       1,
+						URL:        utility.ToStringPtr(input.GetLogURL(env, evergreen.LogViewerHTML)),
+						URLRaw:     utility.ToStringPtr(input.GetLogURL(env, evergreen.LogViewerRaw)),
+						URLLobster: utility.ToStringPtr(input.GetLogURL(env, evergreen.LogViewerLobster)),
+						URLParsley: utility.ToStringPtr(input.GetLogURL(env, evergreen.LogViewerParsley)),
+						LineNum:    input.LineNum,
 					},
 					StartTime: utility.ToTimePtr(start),
 					EndTime:   utility.ToTimePtr(end),
@@ -70,6 +68,11 @@ func TestTestBuildFromService(t *testing.T) {
 					LineNum:         15,
 					TestStartTime:   start,
 					TestEndTime:     end,
+					LogInfo: &testresult.TestLogInfo{
+						LineNum:       20,
+						RenderingType: utility.ToStringPtr("resmoke"),
+						Version:       1,
+					},
 				}
 
 				output := &APITest{
@@ -83,9 +86,9 @@ func TestTestBuildFromService(t *testing.T) {
 						URLRaw:        utility.ToStringPtr(input.GetLogURL(env, evergreen.LogViewerRaw)),
 						URLLobster:    utility.ToStringPtr(input.GetLogURL(env, evergreen.LogViewerLobster)),
 						URLParsley:    utility.ToStringPtr(input.GetLogURL(env, evergreen.LogViewerParsley)),
-						LineNum:       15,
-						RenderingType: utility.ToStringPtr("default"),
-						Version:       1,
+						LineNum:       int(input.LogInfo.LineNum),
+						RenderingType: input.LogInfo.RenderingType,
+						Version:       input.LogInfo.Version,
 					},
 					StartTime: utility.ToTimePtr(start),
 					EndTime:   utility.ToTimePtr(end),

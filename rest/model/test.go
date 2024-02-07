@@ -68,11 +68,9 @@ func (at *APITest) BuildFromService(st interface{}) error {
 
 		at.TestFile = utility.ToStringPtr(v.GetDisplayTestName())
 		at.Logs = TestLogs{
-			URL:           utility.ToStringPtr(v.GetLogURL(env, evergreen.LogViewerHTML)),
-			URLRaw:        utility.ToStringPtr(v.GetLogURL(env, evergreen.LogViewerRaw)),
-			LineNum:       v.LineNum,
-			RenderingType: utility.ToStringPtr("default"),
-			Version:       1,
+			URL:     utility.ToStringPtr(v.GetLogURL(env, evergreen.LogViewerHTML)),
+			URLRaw:  utility.ToStringPtr(v.GetLogURL(env, evergreen.LogViewerRaw)),
+			LineNum: v.LineNum,
 		}
 		if lobsterURL := v.GetLogURL(env, evergreen.LogViewerLobster); lobsterURL != "" {
 			at.Logs.URLLobster = utility.ToStringPtr(lobsterURL)
@@ -80,7 +78,11 @@ func (at *APITest) BuildFromService(st interface{}) error {
 		if parsleyURL := v.GetLogURL(env, evergreen.LogViewerParsley); parsleyURL != "" {
 			at.Logs.URLParsley = utility.ToStringPtr(parsleyURL)
 		}
-
+		if v.LogInfo != nil {
+			at.Logs.RenderingType = v.LogInfo.RenderingType
+			at.Logs.Version = v.LogInfo.Version
+			at.Logs.LineNum = int(v.LogInfo.LineNum)
+		}
 	case string:
 		at.TaskID = utility.ToStringPtr(v)
 	default:
