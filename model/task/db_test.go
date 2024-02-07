@@ -229,6 +229,73 @@ func TestFailedTasksByVersion(t *testing.T) {
 	})
 }
 
+// use asserts and requires
+func TestPotentiallyBlockedTasksByIds(t *testing.T) {
+	assert.NoError(t, db.Clear(Collection))
+	tasks := []Task{
+		{ // Can't be blocked
+			Id:                   "t1",
+			OverrideDependencies: true,
+		},
+		{ // Can't be blocked (no dependences)
+			Id:                   "t2",
+			OverrideDependencies: false,
+		},
+		{ // Can be blocked
+			Id:                   "t3",
+			OverrideDependencies: false,
+			DependsOn: []Dependency{
+				{
+					TaskId: "t1",
+				},
+			},
+		},
+		{ // Can't be blocked
+			Id:                   "t4",
+			OverrideDependencies: false,
+			DependsOn:            []Dependency{},
+		},
+		{ // Can't be blocked
+			Id:                   "t5",
+			OverrideDependencies: true,
+			DependsOn: []Dependency{
+				{
+					TaskId: "t1",
+				},
+			},
+		},
+		{ // Can be blocked
+			Id:                   "t6",
+			OverrideDependencies: false,
+			DependsOn: []Dependency{
+				{
+					TaskId: "t1",
+				},
+			},
+			DependenciesMetTime: utility.ZeroTime,
+		},
+		{ // Can't be blocked
+			Id:                   "t6",
+			OverrideDependencies: false,
+			DependsOn: []Dependency{
+				{
+					TaskId: "t1",
+				},
+			},
+			DependenciesMetTime: time.Now(),
+		},
+	}
+	for _, task := range tasks {
+		require.NoError(t, task.Insert())
+	}
+
+	dbTasks, err := Find(PotentiallyBlockedTasksByIds([]string{"t3", "t6"}))
+	require.NoError(t, err)
+	require.Len(t, dbTasks, 2)
+	assert.Contains(t, []string{"t3", "t6"}, dbTasks[0].Id)
+	assert.Contains(t, []string{"t3", "t6"}, dbTasks[2].Id)
+}
+
 func TestFindTasksByVersionWithChildTasks(t *testing.T) {
 	assert.NoError(t, db.ClearCollections(Collection))
 	mainVersion := "main_version"
