@@ -821,7 +821,6 @@ buildvariants:
       - ubuntu2204-small
     tasks:
       - name: ".build"
-        priority: 100
     expansions:
       GOROOT: /opt/golang/go1.20
       sign_macos: true
@@ -838,6 +837,7 @@ buildvariants:
     activate: false
     tasks:
       - name: ".build-staging"
+        priority: 100
     expansions:
       GOROOT: /opt/golang/go1.20
     display_tasks:
