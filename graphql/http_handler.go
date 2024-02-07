@@ -88,6 +88,7 @@ func Handler(apiURL string) func(w http.ResponseWriter, r *http.Request) {
 			queryPath = fieldCtx.Path().String()
 			args = fieldCtx.Args
 		}
+		RedactFieldsInMap(args)
 		if err != nil && !strings.HasSuffix(err.Error(), context.Canceled.Error()) {
 			grip.Error(message.WrapError(err, message.Fields{
 				"path":    "/graphql/query",

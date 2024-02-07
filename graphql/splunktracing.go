@@ -4,6 +4,7 @@ import (
 	"context"
 
 	"github.com/99designs/gqlgen/graphql"
+	"github.com/evergreen-ci/evergreen/util"
 	"github.com/evergreen-ci/gimlet"
 	"github.com/mongodb/grip"
 	"github.com/mongodb/grip/message"
@@ -42,11 +43,22 @@ func (SplunkTracing) InterceptResponse(ctx context.Context, next graphql.Respons
 		end := graphql.Now()
 
 		duration := end.Sub(start)
+		// Deep clone the request variables to avoid modifying the original map.
+		redactedRequestVariables := map[string]interface{}{}
+		registeredTypes := []interface{}{
+			map[string]interface{}{},
+		}
+		err := util.DeepCopy(rc.Variables, &redactedRequestVariables, registeredTypes)
+		if err != nil {
+			grip.Error(message.WrapError(err, message.Fields{
+				"message": "failed to deep copy request variables",
+			}))
+		}
 		grip.Info(message.Fields{
 			"message":     "graphql.tracing",
 			"query":       rc.Operation.Name,
 			"operation":   rc.Operation.Operation,
-			"variables":   rc.Variables,
+			"variables":   redactedRequestVariables,
 			"duration_ms": duration.Milliseconds(),
 			"request":     gimlet.GetRequestID(ctx),
 			"start":       start,
