@@ -29,8 +29,9 @@ const (
 )
 
 var (
-	commandNameAttribute  = fmt.Sprintf("%s.command_name", commandsAttribute)
-	functionNameAttribute = fmt.Sprintf("%s.function_name", commandsAttribute)
+	commandNameAttribute        = fmt.Sprintf("%s.command_name", commandsAttribute)
+	commandDisplayNameAttribute = fmt.Sprintf("%s.command_display_name", commandsAttribute)
+	functionNameAttribute       = fmt.Sprintf("%s.function_name", commandsAttribute)
 )
 
 type runCommandsOptions struct {
@@ -204,6 +205,7 @@ func (a *Agent) runCommandOrFunc(ctx context.Context, tc *taskContext, commandIn
 
 		ctx, commandSpan := a.tracer.Start(ctx, cmd.Name(), trace.WithAttributes(
 			attribute.String(commandNameAttribute, cmd.Name()),
+			attribute.String(commandDisplayNameAttribute, cmd.FullDisplayName()),
 		))
 		tc.taskConfig.NewExpansions.Put(otelTraceIDExpansion, commandSpan.SpanContext().TraceID().String())
 		tc.taskConfig.NewExpansions.Put(otelParentIDExpansion, commandSpan.SpanContext().SpanID().String())
