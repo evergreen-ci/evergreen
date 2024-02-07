@@ -819,9 +819,9 @@ buildvariants:
     display_name: Build and Push
     run_on:
       - ubuntu2204-small
-    activate: false
     tasks:
       - name: ".build"
+        priority: 100
     expansions:
       GOROOT: /opt/golang/go1.20
       sign_macos: true
