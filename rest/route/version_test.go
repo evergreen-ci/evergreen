@@ -20,7 +20,8 @@ import (
 
 // VersionSuite enables testing for version related routes.
 type VersionSuite struct {
-	bv, bi []string // build variants and build indices for testing
+	bv, bi []string            // build variants and build indices for testing
+	btc    [][]build.TaskCache // build task caches for testing
 	env    evergreen.Environment
 	ctx    context.Context
 	cancel context.CancelFunc
@@ -58,6 +59,10 @@ func (s *VersionSuite) SetupSuite() {
 	s.NoError(db.ClearCollections(task.Collection, serviceModel.VersionCollection, build.Collection))
 	s.bv = append(s.bv, "buildvariant1", "buildvariant2")
 	s.bi = append(s.bi, "buildId1", "buildId2")
+	s.btc = [][]build.TaskCache{
+		{{Id: "task1"}, {Id: "task3"}},
+		{{Id: "task2"}},
+	}
 
 	// Initialize fields for a test model.Version
 	buildVariants := []serviceModel.VersionBuildStatus{
@@ -87,17 +92,19 @@ func (s *VersionSuite) SetupSuite() {
 		Id:           s.bi[0],
 		Version:      versionId,
 		BuildVariant: s.bv[0],
+		Tasks:        s.btc[0],
 	}
 	testBuild2 := build.Build{
 		Id:           s.bi[1],
 		Version:      versionId,
 		BuildVariant: s.bv[1],
+		Tasks:        s.btc[1],
 	}
 	versions := []serviceModel.Version{testVersion1}
 
 	tasks := []task.Task{
-		{Id: "task1", Version: versionId, Aborted: false, Status: evergreen.TaskStarted},
-		{Id: "task2", Version: versionId, Aborted: false, Status: evergreen.TaskDispatched},
+		{Id: "task1", Version: versionId, Aborted: false, Status: evergreen.TaskStarted, BuildId: testBuild1.Id},
+		{Id: "task2", Version: versionId, Aborted: false, Status: evergreen.TaskDispatched, BuildId: testBuild2.Id},
 		{Id: "task3", Version: versionId, Aborted: false, Status: evergreen.TaskUndispatched, BuildId: testBuild1.Id},
 	}
 
@@ -121,7 +128,7 @@ func (s *VersionSuite) TearDownSuite() {
 // TestFindByVersionId tests the route for finding version by its ID.
 func (s *VersionSuite) TestFindByVersionId() {
 	handler := &versionHandler{versionId: "versionId"}
-	res := handler.Run(context.TODO())
+	res := handler.Run(s.ctx)
 	s.NotNil(res)
 	s.Equal(http.StatusOK, res.Status())
 
@@ -139,8 +146,7 @@ func (s *VersionSuite) TestFindByVersionId() {
 }
 
 func (s *VersionSuite) TestPatchVersionVersion() {
-	ctx := context.Background()
-	ctx = gimlet.AttachUser(ctx, &user.DBUser{Id: "caller1"})
+	ctx := gimlet.AttachUser(s.ctx, &user.DBUser{Id: "caller1"})
 	handler := &versionPatchHandler{
 		versionId: versionId,
 		Activated: utility.TruePtr(),
@@ -174,20 +180,47 @@ func (s *VersionSuite) TestFindAllBuildsForVersion() {
 		versionId: "versionId",
 		env:       s.env,
 	}
-	res := handler.Run(context.TODO())
+	res := handler.Run(s.ctx)
 	s.Equal(http.StatusOK, res.Status())
-	s.NotNil(res)
+	s.Require().NotNil(res)
 
 	builds, ok := res.Data().([]model.APIBuild)
-	s.True(ok)
+	s.Require().True(ok)
 
-	s.Len(builds, 2)
+	s.Require().Len(builds, 2)
 
 	for idx, b := range builds {
 		s.Equal(utility.ToStringPtr(s.bi[idx]), b.Id)
 		s.Equal(utility.ToStringPtr(versionId), b.Version)
 		s.Equal(utility.ToStringPtr(s.bv[idx]), b.BuildVariant)
+		s.Zero(b.TaskCache, "task info should not be populated by default")
+		s.Zero(b.StatusCounts, "task info should not be populated by default")
 	}
+}
+
+func (s *VersionSuite) TestFindAllBuildsForVersionWithTaskStatuses() {
+	handler := &buildsForVersionHandler{
+		versionId:    "versionId",
+		env:          s.env,
+		includeTasks: true,
+	}
+	res := handler.Run(s.ctx)
+	s.Equal(http.StatusOK, res.Status())
+	s.Require().NotNil(res)
+
+	builds, ok := res.Data().([]model.APIBuild)
+	s.Require().True(ok)
+
+	s.Require().Len(builds, 2)
+
+	for idx, b := range builds {
+		s.Equal(utility.ToStringPtr(s.bi[idx]), b.Id)
+		s.Equal(utility.ToStringPtr(versionId), b.Version)
+		s.Equal(utility.ToStringPtr(s.bv[idx]), b.BuildVariant)
+		s.Require().Len(b.TaskCache, len(s.btc[idx]))
+	}
+	s.Equal(task.TaskStatusCount{Started: 1, Undispatched: 1}, builds[0].StatusCounts)
+	s.Equal(task.TaskStatusCount{Started: 1}, builds[1].StatusCounts)
 }
 
 func (s *VersionSuite) TestFindBuildsForVersionByVariant() {
@@ -218,7 +251,7 @@ func (s *VersionSuite) TestAbortVersion() {
 
 	// Check that Execute runs without error and returns
 	// the correct Version.
-	res := handler.Run(context.TODO())
+	res := handler.Run(s.ctx)
 	s.NotNil(res)
 	s.Equal(http.StatusOK, res.Status())
 	version := res.Data()
@@ -240,8 +273,7 @@ func (s *VersionSuite) TestAbortVersion() {
 
 // TestRestartVersion tests the route for restarting a version.
 func (s *VersionSuite) TestRestartVersion() {
-	ctx := context.Background()
-	ctx = gimlet.AttachUser(ctx, &user.DBUser{Id: "caller1"})
+	ctx := gimlet.AttachUser(s.ctx, &user.DBUser{Id: "caller1"})
 
 	handler := &versionRestartHandler{versionId: "versionId"}
 
