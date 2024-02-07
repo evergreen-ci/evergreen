@@ -1320,7 +1320,7 @@ Parameters:
 
 ## shell.exec
 
-This command runs a shell script. To follow [Evergreen best practices](Best-Practices.md#subprocessexec), we recommend using [subprocess.exec](#subprocess.exec).
+This command runs a shell script. To follow [Evergreen best practices](Best-Practices.md#subprocessexec), we recommend using [subprocess.exec](#subprocess.exec). Note that unless the `silent` parameter is set to `true`, all lines defined within a shell.exec block will be logged to Evergreen's system logs with all expansion values filled in. Using a shell log restriction mechanism like `set +x` will only prevent logging to Evergreen's task logs. See shell.exec best practices[Best-Practices.md#shell.exec] for more details.
 
 ``` yaml
 - command: shell.exec

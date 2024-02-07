@@ -23,6 +23,71 @@ The reasons to prefer subprocess.exec include:
 
 You can pass environment variables to subprocess.exec if you'd like to pass expansions. It's a good idea to avoid shell.exec as much as possible.
 
+
+## shell.exec
+
+While subprocess.exec is a safer option that we recommend you use instead, it's important to understand Evergeen's behavior and expectations if you do need to use shell.exec.
+
+### Unsafe expansion use
+
+Please ensure you have tested your tasks (including by checking the Agent Logs tab) to ensure that you are not accidentally leaking a sensitive expansion via shell.exec
+
+```yml
+  functions:
+    "publish":
+    	- command: shell.exec
+    	   params:
+        	script: |
+        	  set +x
+            AWS_SECRET=${aws_token}
+            set -x
+```
+
+The above Evergreen configuration snippet is unsafe because all lines in a shell.exec snippet will be logged to Evergreen’s system logs with their expansions populated. Note that even using shell settings like +x/-x does not prevent Evergreen from logging these lines. There are a few ways to make the above block safe, listed below.
+
+#### Set the “silent: true” shell.exec parameter
+
+```yml
+  functions:
+    "publish":
+    	- command: shell.exec
+    	   params:
+          silent: true
+        	script: |
+        	  set +x
+            AWS_SECRET=${aws_token}
+            set -x
+```
+
+This prevents Evergreen from automatically capturing all shell.exec lines
+
+#### Move the shell.exec script to a dedicated file
+
+```sh
+$ cat ./dedicated-file.sh
+set +x
+AWS_SECRET=${aws_token}
+set -x
+```
+
+```yml
+  functions:
+    "publish":
+    	 - command: shell.exec
+    	   params:
+         # any of the following three parameters will fix this problem
+         env:
+           "aws_token": ${aws_token}
+         include_expansions_in_env:
+          - "aws_token"
+         add_expansions_to_env: true
+  	     script: |
+           ./dedicated-file.sh
+```
+
+Evergreen will only log the line that invokes the script, not the lines of the dedicated script.
+You could replace the inline script with only a call to “./dedicated-file.sh”. Expansions are not accessible to scripts invoked this way by default, but setting the “env”, “add_expansions_to_env”, or “include_expansions_in_env” parameters appropriately can fix this.
+
 ## Task Tags
 
 Use [task tags](Project-Configuration-Files.md#task-and-variant-tags) to reduce repetition in your Evergreen configuration file.
