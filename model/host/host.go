@@ -2,6 +2,7 @@ package host
 
 import (
 	"context"
+	"encoding/hex"
 	"fmt"
 	"math"
 	"net"
@@ -33,14 +34,17 @@ import (
 
 type Host struct {
 	Id string `bson:"_id" json:"id"`
-	// Host is the DNS name of the host.
-	Host            string        `bson:"host_id" json:"host"`
-	User            string        `bson:"user" json:"user"`
-	Secret          string        `bson:"secret" json:"secret"`
-	ServicePassword string        `bson:"service_password,omitempty" json:"service_password,omitempty" mapstructure:"service_password,omitempty"`
-	Tag             string        `bson:"tag" json:"tag"`
-	Distro          distro.Distro `bson:"distro" json:"distro"`
-	Provider        string        `bson:"host_type" json:"host_type"`
+	// Host is the ephemeral DNS name of the host.
+	Host string `bson:"host_id" json:"host"`
+	// PersistentDNSName is the long-lived DNS name of the host, which should
+	// never change once set.
+	PersistentDNSName string        `bson:"persistent_dns_name,omitempty" json:"persistent_dns_name,omitempty"`
+	User              string        `bson:"user" json:"user"`
+	Secret            string        `bson:"secret" json:"secret"`
+	ServicePassword   string        `bson:"service_password,omitempty" json:"service_password,omitempty" mapstructure:"service_password,omitempty"`
+	Tag               string        `bson:"tag" json:"tag"`
+	Distro            distro.Distro `bson:"distro" json:"distro"`
+	Provider          string        `bson:"host_type" json:"host_type"`
 	// IP holds the ipv6 address when applicable
 	IP   string `bson:"ip_address" json:"ip_address"`
 	IPv4 string `bson:"ipv4_address" json:"ipv4_address"`
@@ -3238,4 +3242,20 @@ func (h *Host) ClearDockerStdinData(ctx context.Context) error {
 	h.DockerOptions.StdinData = nil
 
 	return nil
+}
+
+// GetPersistentDNSName returns the host's persistent DNS name, or generates a
+// new one if it doesn't have one currently assigned.
+func (h *Host) GetPersistentDNSName(domain string) string {
+	if h.PersistentDNSName != "" {
+		return h.PersistentDNSName
+	}
+
+	hexID := hex.EncodeToString([]byte(h.Id))
+	// Shorten to at most 5 characters.
+	// kim: TODO: need to eventually deal with unlikely possibility that there's
+	// a conflict.
+	hexID = hexID[:5]
+
+	return fmt.Sprintf("%s-%s.%s", strings.ReplaceAll(h.StartedBy, ".", "-"), hexID, domain)
 }

@@ -13,6 +13,8 @@ import (
 	"github.com/aws/aws-sdk-go-v2/aws"
 	"github.com/aws/aws-sdk-go-v2/service/ec2"
 	"github.com/aws/aws-sdk-go-v2/service/ec2/types"
+	"github.com/aws/aws-sdk-go-v2/service/route53"
+	r53Types "github.com/aws/aws-sdk-go-v2/service/route53/types"
 	"github.com/aws/smithy-go"
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/model/distro"
@@ -277,6 +279,7 @@ func validateUserDataSize(userData, distroID string) error {
 	return errors.WithStack(err)
 }
 
+// cacheHostData caches host information received from AWS about the instance.
 func cacheHostData(ctx context.Context, h *host.Host, instance *types.Instance, client AWSClient) error {
 	if instance.Placement == nil || instance.Placement.AvailabilityZone == nil {
 		return errors.New("instance missing availability zone")
@@ -308,6 +311,60 @@ func cacheHostData(ctx context.Context, h *host.Host, instance *types.Instance, 
 			}
 			break
 		}
+	}
+
+	if h.NoExpiration {
+		// kim: TODO: add some kind of alert + dashboard to see if this ever
+		// errors.
+		grip.Error(message.WrapError(setHostPersistentDNSName(ctx, h, instance, client), message.Fields{
+			"message":    "could not update host's persistent DNS name, it may go out of sync",
+			"host_id":    h.Id,
+			"started_by": h.StartedBy,
+		}))
+	}
+
+	return nil
+}
+
+func setHostPersistentDNSName(ctx context.Context, h *host.Host, instance *types.Instance, client AWSClient) error {
+	if utility.FromStringPtr(instance.PublicIpAddress) == "" {
+		return errors.New("instance did not include an IP address")
+	}
+
+	settings, err := evergreen.GetConfig(ctx)
+	if err != nil {
+		return errors.Wrap(err, "getting Evergreen settings")
+	}
+
+	if settings.Providers.AWS.PersistentDNS.Domain == "" || settings.Providers.AWS.PersistentDNS.HostedZoneID == "" {
+		// TODO (DEVPROD-4040): once all unexpirable hosts have a persistent DNS
+		// name assigned, this should return an error because not having these
+		// settings will prevent persistent DNS names from updating properly.
+		return nil
+	}
+
+	dnsName := h.GetPersistentDNSName(settings.Providers.AWS.PersistentDNS.Domain)
+	in := route53.ChangeResourceRecordSetsInput{
+		HostedZoneId: aws.String(settings.Providers.AWS.PersistentDNS.HostedZoneID),
+		ChangeBatch: &r53Types.ChangeBatch{
+			Changes: []r53Types.Change{
+				{
+					Action: r53Types.ChangeActionUpsert,
+					ResourceRecordSet: &r53Types.ResourceRecordSet{
+						Name: aws.String(dnsName),
+						Type: r53Types.RRTypeA,
+						ResourceRecords: []r53Types.ResourceRecord{
+							{Value: instance.PublicIpAddress},
+						},
+						TTL: aws.Int64(1),
+					},
+				},
+			},
+			Comment: aws.String("kim: TODO: test"),
+		},
+	}
+	if _, err := client.ChangeResourceRecordSets(ctx, &in); err != nil {
+		return errors.Wrapf(err, "upserting persistent DNS name '%s'", dnsName)
 	}
 
 	return nil

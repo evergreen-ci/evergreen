@@ -209,6 +209,7 @@ require (
 )
 
 require (
+	github.com/aws/aws-sdk-go-v2/service/route53 v1.37.1 // indirect
 	github.com/golang-jwt/jwt/v4 v4.5.0 // indirect
 	github.com/google/go-github/v29 v29.0.2 // indirect
 	github.com/papertrail/go-tail v0.0.0-20180509224916-973c153b0431 // indirect
