@@ -40,6 +40,7 @@ func Handler(apiURL string) func(w http.ResponseWriter, r *http.Request) {
 				registeredTypes := []interface{}{
 					map[string]interface{}{},
 				}
+				// We need to deep copy the request variables to avoid modifying the original map. Since it is passed on to the next middleware.
 				err := util.DeepCopy(requestVariables, &redactedRequestVariables, registeredTypes)
 				if err != nil {
 					grip.Error(message.WrapError(err, message.Fields{
