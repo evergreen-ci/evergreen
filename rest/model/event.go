@@ -91,7 +91,7 @@ func (el *TaskEventData) BuildFromService(ctx context.Context, v *event.TaskEven
 	jiraHost := settings.Jira.GetHostURL()
 	jiraLink := ""
 	if len(v.JiraIssue) != 0 {
-		jiraLink = "https://" + jiraHost + "/browse/" + v.JiraIssue
+		jiraLink = jiraHost + "/browse/" + v.JiraIssue
 	}
 	el.Execution = v.Execution
 	el.HostId = utility.ToStringPtr(v.HostId)
