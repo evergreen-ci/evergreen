@@ -99,7 +99,8 @@ func (j *checkBlockedTasksJob) getDistroTasksToCheck() []task.Task {
 		return nil
 	}
 
-	tasksToCheck, err := task.Find(task.ByIds(taskIds))
+	// if len(t.DependsOn) == 0 || t.OverrideDependencies || !utility.IsZeroTime(t.DependenciesMetTime) {
+	tasksToCheck, err := task.Find(task.PotentiallyBlockedTasksByIds(taskIds))
 	if err != nil {
 		j.AddError(errors.Wrapf(err, "getting tasks to check in distro '%s'", j.DistroId))
 		return nil
