@@ -371,6 +371,7 @@ phony += clean
 
 gqlgen:
 	$(gobin) run github.com/99designs/gqlgen generate
+	$(gobin) run cmd/gqlgen/generate.go
 
 swaggo: 
 	$(MAKE) swaggo-format swaggo-build swaggo-render
