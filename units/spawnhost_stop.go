@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"time"
 
+	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/cloud"
 	"github.com/evergreen-ci/evergreen/model/event"
 	"github.com/evergreen-ci/evergreen/model/host"
@@ -53,6 +54,7 @@ func NewSpawnhostStopJob(h *host.Host, user, ts string) amboy.Job {
 	j.SetEnqueueAllScopes(true)
 	j.CloudHostModification.HostID = h.Id
 	j.CloudHostModification.UserID = user
+	j.CloudHostModification.Source = evergreen.ModifySpawnHostManual
 	j.UpdateRetryInfo(amboy.JobRetryOptions{
 		Retryable:   utility.TruePtr(),
 		MaxAttempts: utility.ToIntPtr(spawnHostStopRetryLimit),
@@ -64,7 +66,7 @@ func NewSpawnhostStopJob(h *host.Host, user, ts string) amboy.Job {
 func (j *spawnhostStopJob) Run(ctx context.Context) {
 	defer j.MarkComplete()
 
-	stopCloudHost := func(mgr cloud.Manager, h *host.Host, user string) error {
+	stopCloudHost := func(ctx context.Context, mgr cloud.Manager, h *host.Host, user string) error {
 		if err := mgr.StopInstance(ctx, h, user); err != nil {
 			event.LogHostStopError(h.Id, err.Error())
 			grip.Error(message.WrapError(err, message.Fields{
@@ -88,6 +90,7 @@ func (j *spawnhostStopJob) Run(ctx context.Context) {
 
 		return nil
 	}
+
 	if err := j.CloudHostModification.modifyHost(ctx, stopCloudHost); err != nil {
 		j.AddError(err)
 		return

@@ -482,6 +482,22 @@ func IsSuccessfulVersionStatus(status string) bool {
 
 type ModificationAction string
 
+// ModifySpawnHostSource determines the originating source of a spawn host
+// modification.
+type ModifySpawnHostSource string
+
+const (
+	// ModifySpawnHostManual means the spawn host is being modified manually
+	// because a user requested it.
+	ModifySpawnHostManual ModifySpawnHostSource = "manual"
+	// ModifySpawnHostManual means the spawn host is being modified by the
+	// automatic sleep schedule.
+	ModifySpawnHostSleepSchedule ModifySpawnHostSource = "sleep_schedule"
+	// ModifySpawnHostManual means the spawn host is being modified by a
+	// user-owned sleep script.
+	ModifySpawnHostScript ModifySpawnHostSource = "script"
+)
+
 // Common OTEL constants and attribute keys
 const (
 	PackageName = "github.com/evergreen-ci/evergreen"
@@ -500,6 +516,9 @@ const (
 	ProjectIDOtelAttribute         = "evergreen.project.id"
 	DistroIDOtelAttribute          = "evergreen.distro.id"
 	HostIDOtelAttribute            = "evergreen.host.id"
+	HostStartedByOtelAttribute     = "evergreen.host.started_by"
+	HostNoExpirationOtelAttribute  = "evergreen.host.no_expiration"
+	HostInstanceTypeOtelAttribute  = "evergreen.host.instance_type"
 	AggregationNameOtelAttribute   = "db.aggregationName"
 )
 
