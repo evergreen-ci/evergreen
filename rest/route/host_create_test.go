@@ -182,8 +182,6 @@ func TestMakeHost(t *testing.T) {
 		Scope:               "task",
 		SetupTimeoutSecs:    600,
 		TeardownTimeoutSecs: 21600,
-		AWSKeyID:            "my_aws_key",
-		AWSSecret:           "my_secret_key",
 		Subnet:              "subnet-123456",
 	}
 	handler.createHost = c
@@ -202,8 +200,6 @@ func TestMakeHost(t *testing.T) {
 	require.Len(h.Distro.ProviderSettingsList, 1)
 	assert.NoError(ec2Settings.FromDistroSettings(h.Distro, ""))
 	assert.Equal("ami-123456", ec2Settings.AMI)
-	assert.Equal("my_aws_key", ec2Settings.AWSKeyID)
-	assert.Equal("my_secret_key", ec2Settings.AWSSecret)
 	assert.Equal("subnet-123456", ec2Settings.SubnetId)
 	assert.Equal(true, ec2Settings.IsVpc)
 
@@ -211,8 +207,6 @@ func TestMakeHost(t *testing.T) {
 	require.Len(h.Distro.ProviderSettingsList, 1)
 	assert.NoError(ec2Settings2.FromDistroSettings(h.Distro, ""))
 	assert.Equal("ami-123456", ec2Settings2.AMI)
-	assert.Equal("my_aws_key", ec2Settings2.AWSKeyID)
-	assert.Equal("my_secret_key", ec2Settings2.AWSSecret)
 	assert.Equal("subnet-123456", ec2Settings2.SubnetId)
 	assert.Equal(true, ec2Settings2.IsVpc)
 
@@ -224,8 +218,6 @@ func TestMakeHost(t *testing.T) {
 		Scope:               "task",
 		SetupTimeoutSecs:    600,
 		TeardownTimeoutSecs: 21600,
-		AWSKeyID:            "my_aws_key",
-		AWSSecret:           "my_secret_key",
 		InstanceType:        "t1.micro",
 		Subnet:              "subnet-123456",
 		SecurityGroups:      []string{"1234"},
@@ -246,8 +238,6 @@ func TestMakeHost(t *testing.T) {
 	require.Len(h.Distro.ProviderSettingsList, 1)
 	assert.NoError(ec2Settings2.FromDistroSettings(h.Distro, ""))
 	assert.Equal("ami-654321", ec2Settings2.AMI)
-	assert.Equal("my_aws_key", ec2Settings2.AWSKeyID)
-	assert.Equal("my_secret_key", ec2Settings2.AWSSecret)
 	assert.Equal("subnet-123456", ec2Settings2.SubnetId)
 	assert.Equal(true, ec2Settings2.IsVpc)
 

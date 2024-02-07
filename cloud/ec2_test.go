@@ -272,25 +272,20 @@ func (s *EC2Suite) TestConfigure() {
 	err := s.onDemandManager.Configure(ctx, settings)
 	s.Error(err)
 
-	// No region specified
-	settings.Providers.AWS.EC2Keys = []evergreen.EC2Key{
-		{Key: "default-key", Secret: "default-secret"},
-	}
-	err = s.onDemandManager.Configure(ctx, settings)
-	s.NoError(err)
+	// No region specified.
+	s.Require().NoError(s.onDemandManager.Configure(ctx, settings))
 	ec2m, ok := s.onDemandManager.(*ec2Manager)
-	s.True(ok)
-	creds, err := ec2m.credentials.Retrieve(ctx)
-	s.NoError(err)
-	s.Equal("default-key", creds.AccessKeyID)
-	s.Equal("default-secret", creds.SecretAccessKey)
+	s.Require().True(ok)
+	s.Equal(evergreen.DefaultEC2Region, ec2m.region)
 
-	// config missing key or secret
+	// Region specified.
 	settings.Providers.AWS.EC2Keys = []evergreen.EC2Key{
 		{Key: "test-key", Secret: ""},
 	}
-	err = s.onDemandWithRegionManager.Configure(ctx, settings)
-	s.Error(err)
+	s.Require().NoError(s.onDemandWithRegionManager.Configure(ctx, settings))
+	ec2m, ok = s.onDemandWithRegionManager.(*ec2Manager)
+	s.Require().True(ok)
+	s.Equal(s.onDemandWithRegionOpts.region, ec2m.region)
 }
 
 func (s *EC2Suite) TestSpawnHostInvalidInput() {
@@ -1124,8 +1119,6 @@ func (s *EC2Suite) TestFromDistroSettings() {
 		InstanceType:          "other_instance",
 		SecurityGroupIDs:      []string{"ghijkl"},
 		IAMInstanceProfileARN: "a_beautiful_profile",
-		AWSKeyID:              "other_key_id",
-		KeyName:               "other_key",
 	}
 	bytes, err := bson.Marshal(ec2Settings)
 	s.NoError(err)
@@ -1157,28 +1150,6 @@ func (s *EC2Suite) TestGetEC2ManagerOptions() {
 	managerOpts, err := GetManagerOptions(d1)
 	s.NoError(err)
 	s.Equal(evergreen.DefaultEC2Region, managerOpts.Region)
-	s.Equal("key", managerOpts.ProviderKey)
-	s.Equal("secret", managerOpts.ProviderSecret)
-}
-
-func (s *EC2Suite) TestGetEC2Key() {
-	settings := &evergreen.Settings{
-		Providers: evergreen.CloudProviders{
-			AWS: evergreen.AWSConfig{},
-		},
-	}
-	key, secret, err := GetEC2Key(settings)
-	s.Empty(key)
-	s.Empty(secret)
-	s.EqualError(err, "no EC2 keys in config")
-
-	settings.Providers.AWS.EC2Keys = []evergreen.EC2Key{
-		{Key: "test-key", Secret: "test-secret"},
-	}
-	key, secret, err = GetEC2Key(settings)
-	s.Equal("test-key", key)
-	s.Equal("test-secret", secret)
-	s.NoError(err)
 }
 
 func (s *EC2Suite) TestSetNextSubnet() {

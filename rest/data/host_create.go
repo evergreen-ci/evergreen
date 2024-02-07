@@ -345,10 +345,6 @@ func makeEC2IntentHost(ctx context.Context, env evergreen.Environment, taskID, u
 	if createHost.AMI != "" {
 		ec2Settings.AMI = createHost.AMI
 	}
-	if createHost.AWSKeyID != "" {
-		ec2Settings.AWSKeyID = createHost.AWSKeyID
-		ec2Settings.AWSSecret = createHost.AWSSecret
-	}
 
 	for _, mount := range createHost.EBSDevices {
 		ec2Settings.MountPoints = append(ec2Settings.MountPoints, cloud.MountPoint{
