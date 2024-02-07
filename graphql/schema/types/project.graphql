@@ -101,7 +101,7 @@ input JiraFieldInput {
 
 input WebhookInput {
   endpoint: String!
-  secret: String!
+  secret: String! @redactSecrets
 }
 
 input BuildBaronSettingsInput {

@@ -89,6 +89,7 @@ type ResolverRoot interface {
 }
 
 type DirectiveRoot struct {
+	RedactSecrets                func(ctx context.Context, obj interface{}, next graphql.Resolver) (res interface{}, err error)
 	RequireCommitQueueItemOwner  func(ctx context.Context, obj interface{}, next graphql.Resolver) (res interface{}, err error)
 	RequireDistroAccess          func(ctx context.Context, obj interface{}, next graphql.Resolver, access DistroSettingsAccess) (res interface{}, err error)
 	RequireProjectAccess         func(ctx context.Context, obj interface{}, next graphql.Resolver, access ProjectSettingsAccess) (res interface{}, err error)
@@ -67388,11 +67389,28 @@ func (ec *executionContext) unmarshalInputEditSpawnHostInput(ctx context.Context
 			it.NoExpiration = data
 		case "publicKey":
 			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("publicKey"))
-			data, err := ec.unmarshalOPublicKeyInput2ᚖgithubᚗcomᚋevergreenᚑciᚋevergreenᚋgraphqlᚐPublicKeyInput(ctx, v)
-			if err != nil {
-				return it, err
+			directive0 := func(ctx context.Context) (interface{}, error) {
+				return ec.unmarshalOPublicKeyInput2ᚖgithubᚗcomᚋevergreenᚑciᚋevergreenᚋgraphqlᚐPublicKeyInput(ctx, v)
 			}
-			it.PublicKey = data
+			directive1 := func(ctx context.Context) (interface{}, error) {
+				if ec.directives.RedactSecrets == nil {
+					return nil, errors.New("directive redactSecrets is not implemented")
+				}
+				return ec.directives.RedactSecrets(ctx, obj, directive0)
+			}
+
+			tmp, err := directive1(ctx)
+			if err != nil {
+				return it, graphql.ErrorOnPath(ctx, err)
+			}
+			if data, ok := tmp.(*PublicKeyInput); ok {
+				it.PublicKey = data
+			} else if tmp == nil {
+				it.PublicKey = nil
+			} else {
+				err := fmt.Errorf(`unexpected type %T from directive, should be *github.com/evergreen-ci/evergreen/graphql.PublicKeyInput`, tmp)
+				return it, graphql.ErrorOnPath(ctx, err)
+			}
 		case "savePublicKey":
 			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("savePublicKey"))
 			data, err := ec.unmarshalOBoolean2ᚖbool(ctx, v)
@@ -67402,11 +67420,26 @@ func (ec *executionContext) unmarshalInputEditSpawnHostInput(ctx context.Context
 			it.SavePublicKey = data
 		case "servicePassword":
 			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("servicePassword"))
-			data, err := ec.unmarshalOString2ᚖstring(ctx, v)
-			if err != nil {
-				return it, err
+			directive0 := func(ctx context.Context) (interface{}, error) { return ec.unmarshalOString2ᚖstring(ctx, v) }
+			directive1 := func(ctx context.Context) (interface{}, error) {
+				if ec.directives.RedactSecrets == nil {
+					return nil, errors.New("directive redactSecrets is not implemented")
+				}
+				return ec.directives.RedactSecrets(ctx, obj, directive0)
 			}
-			it.ServicePassword = data
+
+			tmp, err := directive1(ctx)
+			if err != nil {
+				return it, graphql.ErrorOnPath(ctx, err)
+			}
+			if data, ok := tmp.(*string); ok {
+				it.ServicePassword = data
+			} else if tmp == nil {
+				it.ServicePassword = nil
+			} else {
+				err := fmt.Errorf(`unexpected type %T from directive, should be *string`, tmp)
+				return it, graphql.ErrorOnPath(ctx, err)
+			}
 		case "volume":
 			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("volume"))
 			data, err := ec.unmarshalOString2ᚖstring(ctx, v)
@@ -69093,11 +69126,26 @@ func (ec *executionContext) unmarshalInputProjectSettingsInput(ctx context.Conte
 			it.Subscriptions = data
 		case "vars":
 			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("vars"))
-			data, err := ec.unmarshalOProjectVarsInput2githubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐAPIProjectVars(ctx, v)
-			if err != nil {
-				return it, err
+			directive0 := func(ctx context.Context) (interface{}, error) {
+				return ec.unmarshalOProjectVarsInput2githubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐAPIProjectVars(ctx, v)
 			}
-			it.Vars = data
+			directive1 := func(ctx context.Context) (interface{}, error) {
+				if ec.directives.RedactSecrets == nil {
+					return nil, errors.New("directive redactSecrets is not implemented")
+				}
+				return ec.directives.RedactSecrets(ctx, obj, directive0)
+			}
+
+			tmp, err := directive1(ctx)
+			if err != nil {
+				return it, graphql.ErrorOnPath(ctx, err)
+			}
+			if data, ok := tmp.(model.APIProjectVars); ok {
+				it.Vars = data
+			} else {
+				err := fmt.Errorf(`unexpected type %T from directive, should be github.com/evergreen-ci/evergreen/rest/model.APIProjectVars`, tmp)
+				return it, graphql.ErrorOnPath(ctx, err)
+			}
 		}
 	}
 
@@ -69542,11 +69590,26 @@ func (ec *executionContext) unmarshalInputRepoSettingsInput(ctx context.Context,
 			it.Subscriptions = data
 		case "vars":
 			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("vars"))
-			data, err := ec.unmarshalOProjectVarsInput2githubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐAPIProjectVars(ctx, v)
-			if err != nil {
-				return it, err
+			directive0 := func(ctx context.Context) (interface{}, error) {
+				return ec.unmarshalOProjectVarsInput2githubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐAPIProjectVars(ctx, v)
 			}
-			it.Vars = data
+			directive1 := func(ctx context.Context) (interface{}, error) {
+				if ec.directives.RedactSecrets == nil {
+					return nil, errors.New("directive redactSecrets is not implemented")
+				}
+				return ec.directives.RedactSecrets(ctx, obj, directive0)
+			}
+
+			tmp, err := directive1(ctx)
+			if err != nil {
+				return it, graphql.ErrorOnPath(ctx, err)
+			}
+			if data, ok := tmp.(model.APIProjectVars); ok {
+				it.Vars = data
+			} else {
+				err := fmt.Errorf(`unexpected type %T from directive, should be github.com/evergreen-ci/evergreen/rest/model.APIProjectVars`, tmp)
+				return it, graphql.ErrorOnPath(ctx, err)
+			}
 		}
 	}
 
@@ -70833,11 +70896,26 @@ func (ec *executionContext) unmarshalInputWebhookInput(ctx context.Context, obj 
 			it.Endpoint = data
 		case "secret":
 			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("secret"))
-			data, err := ec.unmarshalNString2ᚖstring(ctx, v)
-			if err != nil {
-				return it, err
+			directive0 := func(ctx context.Context) (interface{}, error) { return ec.unmarshalNString2ᚖstring(ctx, v) }
+			directive1 := func(ctx context.Context) (interface{}, error) {
+				if ec.directives.RedactSecrets == nil {
+					return nil, errors.New("directive redactSecrets is not implemented")
+				}
+				return ec.directives.RedactSecrets(ctx, obj, directive0)
 			}
-			it.Secret = data
+
+			tmp, err := directive1(ctx)
+			if err != nil {
+				return it, graphql.ErrorOnPath(ctx, err)
+			}
+			if data, ok := tmp.(*string); ok {
+				it.Secret = data
+			} else if tmp == nil {
+				it.Secret = nil
+			} else {
+				err := fmt.Errorf(`unexpected type %T from directive, should be *string`, tmp)
+				return it, graphql.ErrorOnPath(ctx, err)
+			}
 		}
 	}
 
@@ -70877,11 +70955,26 @@ func (ec *executionContext) unmarshalInputWebhookSubscriberInput(ctx context.Con
 			it.Headers = data
 		case "secret":
 			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("secret"))
-			data, err := ec.unmarshalNString2ᚖstring(ctx, v)
-			if err != nil {
-				return it, err
+			directive0 := func(ctx context.Context) (interface{}, error) { return ec.unmarshalNString2ᚖstring(ctx, v) }
+			directive1 := func(ctx context.Context) (interface{}, error) {
+				if ec.directives.RedactSecrets == nil {
+					return nil, errors.New("directive redactSecrets is not implemented")
+				}
+				return ec.directives.RedactSecrets(ctx, obj, directive0)
 			}
-			it.Secret = data
+
+			tmp, err := directive1(ctx)
+			if err != nil {
+				return it, graphql.ErrorOnPath(ctx, err)
+			}
+			if data, ok := tmp.(*string); ok {
+				it.Secret = data
+			} else if tmp == nil {
+				it.Secret = nil
+			} else {
+				err := fmt.Errorf(`unexpected type %T from directive, should be *string`, tmp)
+				return it, graphql.ErrorOnPath(ctx, err)
+			}
 		case "url":
 			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("url"))
 			data, err := ec.unmarshalNString2ᚖstring(ctx, v)

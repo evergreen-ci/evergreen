@@ -9,7 +9,7 @@ input RepoSettingsInput {
   githubWebhooksEnabled: Boolean
   projectRef: RepoRefInput ## use the repo ref here in order to have stronger types
   subscriptions: [SubscriptionInput!]
-  vars: ProjectVarsInput
+  vars: ProjectVarsInput @redactSecrets
 }
 
 ###### TYPES ######
