@@ -31,6 +31,7 @@ const (
 var (
 	IdKey                              = bsonutil.MustHaveTag(Host{}, "Id")
 	DNSKey                             = bsonutil.MustHaveTag(Host{}, "Host")
+	PersistentDNSNameKey               = bsonutil.MustHaveTag(Host{}, "PersistentDNSName")
 	SecretKey                          = bsonutil.MustHaveTag(Host{}, "Secret")
 	UserKey                            = bsonutil.MustHaveTag(Host{}, "User")
 	ServicePasswordKey                 = bsonutil.MustHaveTag(Host{}, "ServicePassword")
@@ -1350,4 +1351,12 @@ func FindUnexpirableRunning() ([]Host, error) {
 		NoExpirationKey: true,
 	}
 	return hosts, db.FindAllQ(Collection, db.Query(q), &hosts)
+}
+
+// FindOneByPersistentDNSName returns hosts that have a matching persistent DNS
+// name.
+func FindOneByPersistentDNSName(ctx context.Context, dnsName string) (*Host, error) {
+	return FindOne(ctx, bson.M{
+		PersistentDNSNameKey: dnsName,
+	})
 }

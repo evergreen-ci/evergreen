@@ -2,10 +2,10 @@ package host
 
 import (
 	"context"
-	"encoding/hex"
 	"fmt"
 	"math"
 	"net"
+	"regexp"
 	"strings"
 	"time"
 
@@ -3244,18 +3244,34 @@ func (h *Host) ClearDockerStdinData(ctx context.Context) error {
 	return nil
 }
 
-// GetPersistentDNSName returns the host's persistent DNS name, or generates a
-// new one if it doesn't have one currently assigned.
-func (h *Host) GetPersistentDNSName(domain string) string {
+// nonAlphanumericRegexp matches any character that is not an alphanumeric
+// character ([0-9A-Za-z]).
+var nonAlphanumericRegexp = regexp.MustCompile("[[:^alnum:]]+")
+
+// GeneratePersistentDNSName returns the host's persistent DNS name, or
+// generates a new one if it doesn't have one currently assigned.
+func (h *Host) GeneratePersistentDNSName(ctx context.Context, domain string) (string, error) {
 	if h.PersistentDNSName != "" {
-		return h.PersistentDNSName
+		return h.PersistentDNSName, nil
 	}
 
-	hexID := hex.EncodeToString([]byte(h.Id))
-	// Shorten to at most 5 characters.
-	// kim: TODO: need to eventually deal with unlikely possibility that there's
-	// a conflict.
-	hexID = hexID[:5]
+	// Replace dots in usernames and clean out all other non-alphanumeric
+	// characters since DNS doesn't handle them very well.
+	startedBy := nonAlphanumericRegexp.ReplaceAllString(strings.ReplaceAll(h.StartedBy, ".", "-"), "")
 
-	return fmt.Sprintf("%s-%s.%s", strings.ReplaceAll(h.StartedBy, ".", "-"), hexID, domain)
+	const numAttempts = 5
+	for i := 0; i < numAttempts; i++ {
+		const maxRandLen = 5
+		random := utility.RandomString()[:maxRandLen]
+		candidate := fmt.Sprintf("%s-%s.%s", startedBy, random, domain)
+
+		// Ensure no other host is using this name. Since the random portion is
+		// very short, it's unlikely but still possible that there's a conflict.
+		conflicting, _ := FindOneByPersistentDNSName(ctx, candidate)
+		if conflicting == nil || conflicting.Id == h.Id {
+			return candidate, nil
+		}
+	}
+
+	return "", errors.Errorf("could not generate a new persistent DNS name after %d attempts", numAttempts)
 }

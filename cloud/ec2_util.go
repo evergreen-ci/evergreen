@@ -343,7 +343,10 @@ func setHostPersistentDNSName(ctx context.Context, h *host.Host, instance *types
 		return nil
 	}
 
-	dnsName := h.GetPersistentDNSName(settings.Providers.AWS.PersistentDNS.Domain)
+	dnsName, err := h.GeneratePersistentDNSName(ctx, settings.Providers.AWS.PersistentDNS.Domain)
+	if err != nil {
+		return errors.Wrap(err, "getting host's persistent DNS name")
+	}
 	in := route53.ChangeResourceRecordSetsInput{
 		HostedZoneId: aws.String(settings.Providers.AWS.PersistentDNS.HostedZoneID),
 		ChangeBatch: &r53Types.ChangeBatch{
