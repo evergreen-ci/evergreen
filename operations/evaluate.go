@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"os"
+	"sort"
 
 	"github.com/evergreen-ci/evergreen/model"
 	"github.com/pkg/errors"
@@ -50,6 +51,7 @@ func Evaluate() cli.Command {
 			if err != nil {
 				return errors.Wrap(err, "loading project")
 			}
+			sort.Sort(p.BuildVariants)
 
 			var out interface{}
 			if showTasks || showVariants {
