@@ -35,6 +35,8 @@ const (
 	EC2VolumeNotFound       = "InvalidVolume.NotFound"
 	EC2VolumeResizeRate     = "VolumeModificationRateExceeded"
 	ec2TemplateNameExists   = "InvalidLaunchTemplateName.AlreadyExistsException"
+
+	r53InvalidInput = "InvalidInput"
 )
 
 var (

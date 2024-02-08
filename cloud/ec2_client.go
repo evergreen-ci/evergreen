@@ -1010,6 +1010,9 @@ func (c *awsClientImpl) ChangeResourceRecordSets(ctx context.Context, input *rou
 				var apiErr smithy.APIError
 				if errors.As(err, &apiErr) {
 					grip.Debug(message.WrapError(apiErr, msg))
+					if strings.Contains(apiErr.Error(), r53InvalidInput) {
+						return false, err
+					}
 				}
 				return true, err
 			}
