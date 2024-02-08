@@ -28,5 +28,7 @@ if [ "$before" = "$after" ]; then
     exit 0
 else
     echo "Please run 'make swaggo-format' in your local environment to fix the lint errors. If this is your local environment, please commit the changes this command made."
+    version=$($swaggo --version)
+    echo "Currently using swaggo version: $version"
     exit 1
 fi
