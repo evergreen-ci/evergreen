@@ -1357,7 +1357,6 @@ type LogViewer string
 const (
 	LogViewerRaw     LogViewer = "raw"
 	LogViewerHTML    LogViewer = "html"
-	LogViewerLobster LogViewer = "lobster"
 	LogViewerParsley LogViewer = "parsley"
 )
 

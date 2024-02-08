@@ -60,7 +60,6 @@ You can start an Evergreen patch from other CI systems.
   This is used for executing processes on app servers as well as on hosts.
 * [juniper](https://github.com/evergreen-ci/juniper) is a library that contains
   gRPC protobuf files for Cedar.
-* [lobster](https://github.com/evergreen-ci/lobster) is React-based log viewer.
 * [mrpc](https://github.com/evergreen-ci/mrpc) a mongodb rpc protocol implementation
   for producing arbitrary services that mongodb clients can use.
 * [pail](https://github.com/evergreen-ci/pail) is a library for interacting
@@ -74,6 +73,7 @@ You can start an Evergreen patch from other CI systems.
   Evergreen configuration files.
 * [spruce](https://github.com/evergreen-ci/spruce) is Evergreen's new
   React-based UI.
+* [parsley](https://github.com/evergreen-ci/parsley) is Evergreen's React-based log viewer.
 * [timber](https://github.com/evergreen-ci/timber) is the client library for
   cedar. It gives agents the ability to send task data somewhere for processing.
 
