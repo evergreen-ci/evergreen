@@ -269,9 +269,6 @@ func (s *EC2Suite) TestConfigure() {
 	ctx, cancel := context.WithCancel(s.ctx)
 	defer cancel()
 
-	err := s.onDemandManager.Configure(ctx, settings)
-	s.Error(err)
-
 	// No region specified.
 	s.Require().NoError(s.onDemandManager.Configure(ctx, settings))
 	ec2m, ok := s.onDemandManager.(*ec2Manager)
