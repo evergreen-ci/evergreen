@@ -598,6 +598,7 @@ tasks:
       - func: get-project-and-modules
       - func: run-make
         vars: { target: "swaggo-install" }
+        include_expansions_in_env: ["GOPATH"]
       - func: verify-swaggo-fmt
   - name: verify-agent-version-update
     tags: ["linter"]
@@ -632,6 +633,7 @@ tasks:
       - func: get-project-and-modules
       - func: run-make
         vars: { target: "swaggo-install" }
+        include_expansions_in_env: ["GOPATH"]
       - command: shell.exec
         params:
           shell: bash
@@ -720,7 +722,7 @@ buildvariants:
       goarch: amd64
       nodebin: /opt/node/bin
       GOROOT: /opt/golang/go1.20
-      GOPATH: /home/ubuntu/go
+      GOPATH: ${workdir}/gopath
       RUN_EC2_SPECIFIC_TESTS: true
       mongodb_url: https://fastdl.mongodb.org/linux/mongodb-linux-x86_64-ubuntu2204-7.0.2.tgz
       mongosh_url: https://downloads.mongodb.com/compass/mongosh-2.0.2-linux-x64.tgz
@@ -781,7 +783,7 @@ buildvariants:
       - ubuntu2204-large
     expansions:
       GOROOT: /opt/golang/go1.20
-      GOPATH: /home/ubuntu/go
+      GOPATH: ${workdir}/gopath
     tasks:
       - name: generate-lint
 
