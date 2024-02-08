@@ -819,7 +819,6 @@ buildvariants:
     display_name: Build and Push
     run_on:
       - ubuntu2204-small
-    activate: false
     tasks:
       - name: ".build"
     expansions:
@@ -838,6 +837,7 @@ buildvariants:
     activate: false
     tasks:
       - name: ".build-staging"
+        priority: 100
     expansions:
       GOROOT: /opt/golang/go1.20
     display_tasks:

@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 
+	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/cloud"
 	"github.com/evergreen-ci/evergreen/model/host"
 	"github.com/mongodb/amboy"
@@ -44,13 +45,14 @@ func NewSpawnHostTerminationJob(h *host.Host, user, ts string) amboy.Job {
 	j.SetEnqueueAllScopes(true)
 	j.CloudHostModification.HostID = h.Id
 	j.CloudHostModification.UserID = user
+	j.CloudHostModification.Source = evergreen.ModifySpawnHostManual
 	return j
 }
 
 func (j *spawnHostTerminationJob) Run(ctx context.Context) {
 	defer j.MarkComplete()
 
-	terminateCloudHost := func(mgr cloud.Manager, h *host.Host, user string) error {
+	terminateCloudHost := func(ctx context.Context, mgr cloud.Manager, h *host.Host, user string) error {
 		if err := mgr.TerminateInstance(ctx, h, user, "user requested spawn host termination"); err != nil {
 			return err
 		}

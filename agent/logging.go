@@ -120,12 +120,7 @@ func (a *Agent) prepLogger(tc *taskContext, c *model.LoggerConfig, commandName s
 	config.Expansions = tc.taskConfig.NewExpansions
 	config.ExpansionsToRedact = getExpansionsToRedact(tc.taskConfig.Redacted)
 
-	defaultLogger := tc.taskConfig.ProjectRef.DefaultLogger
-
-	if !model.IsValidDefaultLogger(defaultLogger) {
-		grip.Warningf("Default logger '%s' is not valid, setting Evergreen logger as default.", defaultLogger)
-		defaultLogger = model.EvergreenLogSender
-	}
+	defaultLogger := model.EvergreenLogSender
 	if len(c.Agent) == 0 {
 		c.Agent = []model.LogOpts{{Type: defaultLogger}}
 	}
@@ -163,7 +158,6 @@ func (a *Agent) prepSingleLogger(tc *taskContext, in model.LogOpts, logDir, file
 		logDir = in.LogDirectory
 	}
 	return client.LogOpts{
-		BuilderID:       tc.taskConfig.Task.Id,
 		Sender:          in.Type,
 		SplunkServerURL: splunkServer,
 		SplunkToken:     splunkToken,

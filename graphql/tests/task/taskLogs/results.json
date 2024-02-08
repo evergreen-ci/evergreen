@@ -35,7 +35,7 @@
                   "data": {
                     "hostId": "hostid",
                     "jiraIssue": "an_issue",
-                    "jiraLink": "https://https://jira.mongodb.org/browse/an_issue",
+                    "jiraLink": "https://jira.mongodb.org/browse/an_issue",
                     "priority": 55,
                     "status": "success",
                     "timestamp": "2020-03-03T10:45:27.83-05:00",
