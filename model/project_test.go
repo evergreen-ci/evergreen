@@ -582,10 +582,16 @@ func (s *projectSuite) SetupTest() {
 					{
 						Name:    "a_task_1",
 						Variant: "bv_1",
+						CreateCheckRun: &CheckRun{
+							PathToOutputs: "",
+						},
 					},
 					{
 						Name:    "a_task_2",
 						Variant: "bv_1",
+						CreateCheckRun: &CheckRun{
+							PathToOutputs: "",
+						},
 					},
 					{
 						Name:    "b_task_1",
@@ -824,6 +830,37 @@ func (s *projectSuite) TestAliasResolution() {
 	s.Empty(displayTaskPairs)
 }
 
+func (s *projectSuite) TestCheckRunCount() {
+	pairs := TaskVariantPairs{
+		ExecTasks: TVPairSet{
+			TVPair{
+				Variant:  "bv_1",
+				TaskName: "a_task_1",
+			},
+			TVPair{
+				Variant:  "bv_1",
+				TaskName: "a_task_2",
+			},
+			TVPair{
+				Variant:  "bv_1",
+				TaskName: "a_task_3",
+			},
+		},
+	}
+
+	checkRunCount := s.project.GetNumCheckRunsFromTaskVariantPairs(&pairs)
+	s.Equal(2, checkRunCount)
+
+	variantTasks := []patch.VariantTasks{
+		{
+			Variant: "bv_1",
+			Tasks:   []string{"a_task_1", "a_task_2", "a_task_3"},
+		},
+	}
+	checkRunCount = s.project.GetNumCheckRunsFromVariantTasks(variantTasks)
+	s.Equal(2, checkRunCount)
+
+}
 func (s *projectSuite) TestBuildProjectTVPairs() {
 	// test all expansions
 	patchDoc := patch.Patch{
@@ -1750,9 +1787,9 @@ func TestLoggerMerge(t *testing.T) {
 
 	var config1 *LoggerConfig
 	config2 := &LoggerConfig{
-		Agent:  []LogOpts{{Type: BuildloggerLogSender}},
-		System: []LogOpts{{Type: BuildloggerLogSender}},
-		Task:   []LogOpts{{Type: BuildloggerLogSender}},
+		Agent:  []LogOpts{{Type: EvergreenLogSender}},
+		System: []LogOpts{{Type: EvergreenLogSender}},
+		Task:   []LogOpts{{Type: EvergreenLogSender}},
 	}
 
 	assert.Nil(mergeAllLogs(config1, config1))

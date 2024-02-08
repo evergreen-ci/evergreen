@@ -2,7 +2,6 @@ package taskoutput
 
 import (
 	"github.com/evergreen-ci/evergreen"
-	"github.com/evergreen-ci/utility"
 )
 
 // TaskOutput is the versioned entry point for coordinating persistent storage
@@ -27,13 +26,14 @@ type TaskOptions struct {
 func InitializeTaskOutput(env evergreen.Environment, opts TaskOptions) *TaskOutput {
 	settings := env.Settings()
 
-	output := &TaskOutput{}
-	if settings.LoggerConfig.DefaultLogger != "buildlogger" || utility.StringSliceContains(settings.LoggerConfig.EvergreenLoggerProjects, opts.ProjectID) {
-		output.TaskLogs.Version = 1
-		output.TaskLogs.BucketConfig = settings.Buckets.LogBucket
-		output.TestLogs.Version = 1
-		output.TestLogs.BucketConfig = settings.Buckets.LogBucket
+	return &TaskOutput{
+		TaskLogs: TaskLogOutput{
+			Version:      1,
+			BucketConfig: settings.Buckets.LogBucket,
+		},
+		TestLogs: TestLogOutput{
+			Version:      1,
+			BucketConfig: settings.Buckets.LogBucket,
+		},
 	}
-
-	return output
 }

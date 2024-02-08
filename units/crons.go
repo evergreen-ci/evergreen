@@ -1227,6 +1227,14 @@ func PopulatePodResourceCleanupJobs() amboy.QueueOperation {
 	}
 }
 
+// PopulateUnexpirableSpawnHostStatsJob populates jobs to collect statistics on
+// unexpirable spawn host usage.
+func PopulateUnexpirableSpawnHostStatsJob() amboy.QueueOperation {
+	return func(ctx context.Context, queue amboy.Queue) error {
+		return amboy.EnqueueUniqueJob(ctx, queue, NewUnexpirableSpawnHostStatsJob(utility.RoundPartOfHour(0).Format(TSFormat)))
+	}
+}
+
 func populateQueueGroup(ctx context.Context, env evergreen.Environment, queueGroupName string, factory cronJobFactory, ts time.Time) error {
 	appCtx, _ := env.Context()
 	queueGroup, err := env.RemoteQueueGroup().Get(appCtx, queueGroupName)

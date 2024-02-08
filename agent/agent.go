@@ -606,7 +606,7 @@ func (a *Agent) runTask(ctx context.Context, tcInput *taskContext, nt *apimodels
 	})
 
 	tskCtx = utility.ContextWithAttributes(tskCtx, tc.taskConfig.TaskAttributes())
-	tskCtx, span := a.tracer.Start(tskCtx, fmt.Sprintf("task: '%s'", tc.taskConfig.Task.DisplayName))
+	tskCtx, span := a.tracer.Start(tskCtx, "task")
 	defer span.End()
 	tc.traceID = span.SpanContext().TraceID().String()
 

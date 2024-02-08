@@ -2532,7 +2532,7 @@ func HasMatchingTasks(ctx context.Context, versionID string, opts HasMatchingTas
 	if err != nil {
 		return false, errors.Wrap(err, "getting tasks by version pipeline")
 	}
-	pipeline = append(pipeline, bson.M{"$count": "count"})
+	pipeline = append(pipeline, bson.M{"$limit": 1})
 	env := evergreen.GetEnvironment()
 	cursor, err := env.DB().Collection(Collection).Aggregate(ctx, pipeline)
 	if err != nil {
@@ -2544,18 +2544,17 @@ func HasMatchingTasks(ctx context.Context, versionID string, opts HasMatchingTas
 		return false, err
 	}
 
-	type Count struct {
-		Count int `bson:"count"`
+	type hasMatchingTasksResult struct {
+		Task Task `bson:"task"`
 	}
-	count := []*Count{}
-	err = cursor.All(ctx, &count)
+	result := []*hasMatchingTasksResult{}
+	err = cursor.All(ctx, &result)
+
 	if err != nil {
 		return false, err
 	}
-	if len(count) == 0 {
-		return false, nil
-	}
-	return count[0].Count > 0, nil
+
+	return len(result) > 0, nil
 }
 
 type GetTasksByVersionOptions struct {

@@ -16,7 +16,6 @@ import (
 	"github.com/evergreen-ci/evergreen/model/task"
 	"github.com/evergreen-ci/evergreen/model/testlog"
 	"github.com/evergreen-ci/evergreen/taskoutput"
-	"github.com/evergreen-ci/timber/buildlogger"
 	"github.com/mongodb/grip/level"
 	"github.com/mongodb/grip/message"
 	"github.com/mongodb/grip/recovery"
@@ -28,10 +27,6 @@ import (
 // AppendTestLog appends log lines to the specified test log for the given task
 // run.
 func AppendTestLog(ctx context.Context, comm client.Communicator, tsk *task.Task, testLog *testlog.TestLog) error {
-	if tsk.TaskOutputInfo.TestLogs.Version == 0 {
-		return sendTestLogToCedar(ctx, comm, tsk, testLog)
-	}
-
 	taskOpts := taskoutput.TaskOptions{
 		ProjectID: tsk.Project,
 		TaskID:    tsk.Id,
@@ -44,39 +39,6 @@ func AppendTestLog(ctx context.Context, comm client.Communicator, tsk *task.Task
 	sender.Send(message.ConvertToComposer(level.Info, strings.Join(testLog.Lines, "\n")))
 
 	return errors.Wrapf(sender.Close(), "closing Evergreen logger for test result '%s'", testLog.Name)
-}
-
-// TODO (DEVPROD-75): Remove this logic once we cut over to Evergreen logs.
-func sendTestLogToCedar(ctx context.Context, comm client.Communicator, tsk *task.Task, testLog *testlog.TestLog) error {
-	conn, err := comm.GetCedarGRPCConn(ctx)
-	if err != nil {
-		return errors.Wrapf(err, "getting the Cedar gRPC connection for test '%s'", testLog.Name)
-	}
-
-	timberOpts := &buildlogger.LoggerOptions{
-		Project:    tsk.Project,
-		Version:    tsk.Version,
-		Variant:    tsk.BuildVariant,
-		TaskName:   tsk.DisplayName,
-		TaskID:     tsk.Id,
-		Execution:  int32(tsk.Execution),
-		TestName:   testLog.Name,
-		Mainline:   !tsk.IsPatchRequest(),
-		Storage:    buildlogger.LogStorageS3,
-		ClientConn: conn,
-	}
-	levelInfo := send.LevelInfo{Default: level.Info, Threshold: level.Debug}
-	sender, err := buildlogger.NewLoggerWithContext(ctx, testLog.Name, levelInfo, timberOpts)
-	if err != nil {
-		return errors.Wrapf(err, "creating buildlogger logger for test result '%s'", testLog.Name)
-	}
-
-	sender.Send(message.ConvertToComposer(level.Info, strings.Join(testLog.Lines, "\n")))
-	if err = sender.Close(); err != nil {
-		return errors.Wrapf(err, "closing buildlogger logger for test result '%s'", testLog.Name)
-	}
-
-	return nil
 }
 
 // testLogDirectoryHandler implements automatic task output handling for the
