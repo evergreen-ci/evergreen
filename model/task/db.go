@@ -523,7 +523,10 @@ func PotentiallyBlockedTasksByIds(taskIds []string) bson.M {
 	return bson.M{
 		IdKey: bson.M{"$in": taskIds},
 		"$and": []bson.M{
-			{DependsOnKey: bson.M{"$size": bson.M{"$gt": 0}}},
+			{DependsOnKey: bson.M{
+				"$exists": true,
+				"$not":    bson.M{"$size": 0},
+			}},
 			{OverrideDependenciesKey: false},
 			{DependenciesMetTimeKey: utility.ZeroTime},
 		},
