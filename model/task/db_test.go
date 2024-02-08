@@ -293,7 +293,7 @@ func TestPotentiallyBlockedTasksByIds(t *testing.T) {
 	require.NoError(t, err)
 	require.Len(t, dbTasks, 2)
 	assert.Contains(t, []string{"t3", "t6"}, dbTasks[0].Id)
-	assert.Contains(t, []string{"t3", "t6"}, dbTasks[2].Id)
+	assert.Contains(t, []string{"t3", "t6"}, dbTasks[1].Id)
 }
 
 func TestFindTasksByVersionWithChildTasks(t *testing.T) {
