@@ -717,7 +717,7 @@ func (m *ec2Manager) GetInstanceStatuses(ctx context.Context, hosts []host.Host)
 			status := ec2StatusToEvergreenStatus(instance.State.Name)
 			if status == StatusRunning {
 				// cache instance information so we can make fewer calls to AWS's API
-				if err = cacheHostData(ctx, instanceIdToHostMap[hostsToCheck[i]], &instance, m.client); err != nil {
+				if err = cacheHostData(ctx, m.env, instanceIdToHostMap[hostsToCheck[i]], &instance, m.client); err != nil {
 					return nil, errors.Wrapf(err, "caching EC2 host data for host '%s'", hostsToCheck[i])
 				}
 			}
@@ -754,7 +754,7 @@ func (m *ec2Manager) GetInstanceStatus(ctx context.Context, h *host.Host) (Cloud
 
 	if status == StatusRunning {
 		// cache instance information so we can make fewer calls to AWS's API
-		if err = cacheHostData(ctx, h, instance, m.client); err != nil {
+		if err = cacheHostData(ctx, m.env, h, instance, m.client); err != nil {
 			return status, errors.Wrapf(err, "caching EC2 host data for host '%s'", h.Id)
 		}
 	}
@@ -792,7 +792,7 @@ func (m *ec2Manager) TerminateInstance(ctx context.Context, h *host.Host, user, 
 
 	if h.NoExpiration {
 		// Clean up remaining DNS records for unexpirable hosts.
-		grip.Error(message.WrapError(deleteHostPersistentDNSName(ctx, h, m.client), message.Fields{
+		grip.Error(message.WrapError(deleteHostPersistentDNSName(ctx, m.env, h, m.client), message.Fields{
 			"message":    "could not delete host's persistent DNS name",
 			"op":         "delete",
 			"dashboard":  "evergreen sleep schedule health",
@@ -981,7 +981,7 @@ func (m *ec2Manager) StartInstance(ctx context.Context, h *host.Host, user strin
 		return errors.Wrap(err, "checking if spawn host started")
 	}
 
-	if err = cacheHostData(ctx, h, instance, m.client); err != nil {
+	if err = cacheHostData(ctx, m.env, h, instance, m.client); err != nil {
 		return errors.Wrapf(err, "cache EC2 host data for host '%s'", h.Id)
 	}
 

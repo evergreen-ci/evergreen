@@ -211,7 +211,7 @@ func (m *ec2FleetManager) GetInstanceStatuses(ctx context.Context, hosts []host.
 		}
 		if status == StatusRunning {
 			// cache instance information so we can make fewer calls to AWS's API
-			grip.Error(message.WrapError(cacheHostData(ctx, &h, instanceMap[h.Id], m.client), message.Fields{
+			grip.Error(message.WrapError(cacheHostData(ctx, m.env, &h, instanceMap[h.Id], m.client), message.Fields{
 				"message": "can't update host cached data",
 				"host_id": h.Id,
 			}))
@@ -249,7 +249,7 @@ func (m *ec2FleetManager) GetInstanceStatus(ctx context.Context, h *host.Host) (
 	status = ec2StatusToEvergreenStatus(instance.State.Name)
 	if status == StatusRunning {
 		// cache instance information so we can make fewer calls to AWS's API
-		grip.Error(message.WrapError(cacheHostData(ctx, h, instance, m.client), message.Fields{
+		grip.Error(message.WrapError(cacheHostData(ctx, m.env, h, instance, m.client), message.Fields{
 			"message": "can't update host cached data",
 			"host_id": h.Id,
 		}))

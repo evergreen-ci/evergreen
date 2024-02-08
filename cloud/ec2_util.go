@@ -282,7 +282,7 @@ func validateUserDataSize(userData, distroID string) error {
 }
 
 // cacheHostData caches host information received from AWS about the instance.
-func cacheHostData(ctx context.Context, h *host.Host, instance *types.Instance, client AWSClient) error {
+func cacheHostData(ctx context.Context, env evergreen.Environment, h *host.Host, instance *types.Instance, client AWSClient) error {
 	if instance.Placement == nil || instance.Placement.AvailabilityZone == nil {
 		return errors.New("instance missing availability zone")
 	}
@@ -316,7 +316,7 @@ func cacheHostData(ctx context.Context, h *host.Host, instance *types.Instance, 
 	}
 
 	if h.NoExpiration {
-		grip.Error(message.WrapError(setHostPersistentDNSName(ctx, h, instance, client), message.Fields{
+		grip.Error(message.WrapError(setHostPersistentDNSName(ctx, env, h, instance, client), message.Fields{
 			"message":    "could not update host's persistent DNS name",
 			"op":         "upsert",
 			"dashboard":  "evergreen sleep schedule health",
@@ -336,17 +336,13 @@ const persistentDNSRecordTTLSecs = 1
 // setHostPersistentDNSName sets a host's persistent DNS record with its
 // associated IP address and sets it on the host.
 // kim: TODO: test with mock AWS client
-func setHostPersistentDNSName(ctx context.Context, h *host.Host, instance *types.Instance, client AWSClient) error {
+func setHostPersistentDNSName(ctx context.Context, env evergreen.Environment, h *host.Host, instance *types.Instance, client AWSClient) error {
 	ipAddr := utility.FromStringPtr(instance.PublicIpAddress)
 	if ipAddr == "" {
 		return errors.New("instance did not include an IP address")
 	}
 
-	settings, err := evergreen.GetConfig(ctx)
-	if err != nil {
-		return errors.Wrap(err, "getting Evergreen settings")
-	}
-
+	settings := env.Settings()
 	if settings.Providers.AWS.PersistentDNS.Domain == "" || settings.Providers.AWS.PersistentDNS.HostedZoneID == "" {
 		// TODO (DEVPROD-4040): once all unexpirable hosts have a persistent DNS
 		// name assigned, this should return an error because not having these
@@ -389,15 +385,12 @@ func setHostPersistentDNSName(ctx context.Context, h *host.Host, instance *types
 // deleteHostPersistentDNSName deletes a host's persistent DNS record and unsets
 // it from the host.
 // kim: TODO: test with mock AWS client
-func deleteHostPersistentDNSName(ctx context.Context, h *host.Host, client AWSClient) error {
+func deleteHostPersistentDNSName(ctx context.Context, env evergreen.Environment, h *host.Host, client AWSClient) error {
 	if h.PersistentDNSName == "" || h.PublicIPv4 == "" {
 		return nil
 	}
 
-	settings, err := evergreen.GetConfig(ctx)
-	if err != nil {
-		return errors.Wrap(err, "getting Evergreen settings")
-	}
+	settings := env.Settings()
 	if settings.Providers.AWS.PersistentDNS.Domain == "" || settings.Providers.AWS.PersistentDNS.HostedZoneID == "" {
 		// TODO (DEVPROD-4040): once all unexpirable hosts have a persistent DNS
 		// name assigned, this should return an error because not having these
