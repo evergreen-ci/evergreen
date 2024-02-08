@@ -45,8 +45,7 @@ variables:
     commands:
       - func: get-project-and-modules
       - func: run-make
-        vars:
-          target: "${task_name}"
+        vars: { target: "${task_name}" }
       - command: s3.put
         type: system
         params:
@@ -124,14 +123,11 @@ variables:
             GITHUB_TOKEN: ${github_token}
           command: bash scripts/setup-smoke-config.sh
       - func: run-make
-        vars:
-          target: set-smoke-vars
+        vars: { target: "set-smoke-vars" }
       - func: run-make
-        vars:
-          target: set-smoke-git-config
+        vars: { target: "set-smoke-git-config" }
       - func: run-make
-        vars:
-          target: "${task_name}"
+        vars: { target: "${task_name}" }
 
   - &version-constants
     nodejs_version: "6.11.1"
@@ -230,6 +226,7 @@ functions:
         EVERGREEN_ALL: "true"
         GOARCH: ${goarch}
         GOOS: ${goos}
+        GOPATH: ${workdir}/gopath
         KARMA_REPORTER: junit
         NODE_BIN_PATH: ${nodebin}
         RACE_DETECTOR: ${race_detector}
@@ -336,6 +333,15 @@ functions:
         args: ["scripts/verify-agent-version-update.sh"]
         env:
           BRANCH_NAME: ${branch_name}
+  
+  verify-swaggo-fmt:
+    - command: subprocess.exec
+      params:
+        working_dir: evergreen
+        binary: bash
+        args: ["scripts/verify-swaggo-fmt.sh"]
+        env:
+          GOPATH: ${workdir}/gopath
 
   verify-client-version-update:
     - command: subprocess.exec
@@ -585,6 +591,13 @@ tasks:
             LOCAL_PATH: clients
             EXCLUDE_PATTERN: .cache
             REMOTE_PATH: evergreen/clients/${project}/${revision}
+  - name: verify-swaggo-fmt
+    tags: ["linter"]
+    commands:
+      - func: get-project-and-modules
+      - func: run-make
+        vars: { target: "swaggo-install" }
+      - func: verify-swaggo-fmt
   - name: verify-agent-version-update
     tags: ["linter"]
     patch_only: true
@@ -616,16 +629,18 @@ tasks:
   - name: generate-api-docs
     commands: 
       - func: get-project-and-modules
+      - func: run-make
+        vars: { target: "swaggo-install" }
       - command: shell.exec
         params:
           shell: bash
           working_dir: evergreen
+          env:
+            GOPATH: ${workdir}/gopath
           script: |
             set -o verbose
             set -o errexit
-            wget https://github.com/swaggo/swag/releases/download/v1.16.2/swag_1.16.2_Linux_x86_64.tar.gz
-            tar xzvf swag_1.16.2_Linux_x86_64.tar.gz
-            ./swag init -g service/service.go
+            $GOPATH/bin/swag init -g service/service.go
       - command: s3.put
         params:
           aws_key: ${aws_key}
@@ -647,7 +662,6 @@ tasks:
           permissions: public-read
           display_name: swagger.json (latest)
           patchable: false
-
   - <<: *build-and-push-client
     name: build-linux_amd64
     tags: ["build", "build-staging"]
