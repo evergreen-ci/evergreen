@@ -226,7 +226,6 @@ functions:
         EVERGREEN_ALL: "true"
         GOARCH: ${goarch}
         GOOS: ${goos}
-        GOPATH: ${workdir}/gopath
         KARMA_REPORTER: junit
         NODE_BIN_PATH: ${nodebin}
         RACE_DETECTOR: ${race_detector}
@@ -597,6 +596,9 @@ tasks:
       - func: get-project-and-modules
       - func: run-make
         vars: { target: "swaggo-install" }
+        params:
+          env: 
+            GOPATH: ${workdir}/gopath
       - func: verify-swaggo-fmt
   - name: verify-agent-version-update
     tags: ["linter"]
@@ -631,6 +633,9 @@ tasks:
       - func: get-project-and-modules
       - func: run-make
         vars: { target: "swaggo-install" }
+        params:
+          env: 
+            GOPATH: ${workdir}/gopath
       - command: shell.exec
         params:
           shell: bash
