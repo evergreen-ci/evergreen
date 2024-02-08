@@ -49,6 +49,7 @@ func (SplunkTracing) InterceptResponse(ctx context.Context, next graphql.Respons
 			map[string]interface{}{},
 		}
 		err := util.DeepCopy(rc.Variables, &redactedRequestVariables, registeredTypes)
+		RedactFieldsInMap(redactedRequestVariables)
 		if err != nil {
 			grip.Error(message.WrapError(err, message.Fields{
 				"message": "failed to deep copy request variables",
