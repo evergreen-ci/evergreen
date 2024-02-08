@@ -29,8 +29,6 @@ import (
 )
 
 const (
-	githubCheckRun = "GITHUB_CHECK_RUN"
-
 	githubActionClosed          = "closed"
 	githubActionOpened          = "opened"
 	githubActionSynchronize     = "synchronize"
