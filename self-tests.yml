@@ -601,6 +601,8 @@ tasks:
           working_dir: evergreen
           env:
             GOPATH: ${workdir}/gopath
+          include_expansions_in_env:
+            - GOROOT
       - func: verify-swaggo-fmt
   - name: verify-agent-version-update
     tags: ["linter"]
@@ -640,6 +642,8 @@ tasks:
           working_dir: evergreen
           env:
             GOPATH: ${workdir}/gopath
+          include_expansions_in_env:
+            - GOROOT
       - command: shell.exec
         params:
           shell: bash
