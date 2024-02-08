@@ -285,11 +285,13 @@ func TestPotentiallyBlockedTasksByIds(t *testing.T) {
 			DependenciesMetTime: time.Now(),
 		},
 	}
+	ids := make([]string, 0, len(tasks))
 	for _, task := range tasks {
 		require.NoError(t, task.Insert())
+		ids = append(ids, task.Id)
 	}
 
-	dbTasks, err := Find(PotentiallyBlockedTasksByIds([]string{"t3", "t6"}))
+	dbTasks, err := Find(PotentiallyBlockedTasksByIds(ids))
 	require.NoError(t, err)
 	require.Len(t, dbTasks, 2)
 	assert.Contains(t, []string{"t3", "t6"}, dbTasks[0].Id)
