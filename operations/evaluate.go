@@ -16,6 +16,7 @@ func Evaluate() cli.Command {
 	const (
 		taskFlagName     = "tasks"
 		variantsFlagName = "variants"
+		diffableFlagName = "diffable"
 	)
 
 	return cli.Command{
@@ -30,12 +31,17 @@ func Evaluate() cli.Command {
 				Name:  variantsFlagName,
 				Usage: "only show variant definitions",
 			},
+			cli.BoolFlag{
+				Name:  diffableFlagName,
+				Usage: "show the project configuration in an ordered, diff-friendly format",
+			},
 		),
 		Before: mergeBeforeFuncs(requirePathFlag),
 		Action: func(c *cli.Context) error {
 			path := c.String(pathFlagName)
 			showTasks := c.Bool(taskFlagName)
 			showVariants := c.Bool(variantsFlagName)
+			diffable := c.Bool(diffableFlagName)
 
 			configBytes, err := os.ReadFile(path)
 			if err != nil {
@@ -51,7 +57,12 @@ func Evaluate() cli.Command {
 			if err != nil {
 				return errors.Wrap(err, "loading project")
 			}
-			sort.Sort(p.BuildVariants)
+			if diffable {
+				sortTasksByName := model.ProjectTasksByName(p.Tasks)
+				sort.Sort(sortTasksByName)
+				p.Tasks = sortTasksByName
+				sort.Sort(p.BuildVariants)
+			}
 
 			var out interface{}
 			if showTasks || showVariants {
