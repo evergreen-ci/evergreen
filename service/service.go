@@ -80,7 +80,7 @@ func GetRouter(as *APIServer, uis *UIServer) (http.Handler, error) {
 	//	@externalDocs.description	Click here for information on authentication, pagination, and other details.
 	//	@externalDocs.url			https://docs.devprod.staging.corp.mongodb.com/evergreen/API/REST-V2-Usage/
 	//
-	//	@tag.name			admin
+	//	@tag.name		admin
 	//	@tag.description			Admins are users with high-level permissions within Evergreen.
 	//
 	//	@tag.name					annotations
