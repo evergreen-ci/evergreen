@@ -2,6 +2,26 @@
 
 Project Commands are the fundamental units of functionality in an Evergreen task.
 
+# Basic Command Structure
+
+```yaml
+- command: shell.exec
+  display_name: run my cool script ## optional 
+  type: system ## optional
+  timeout_secs: 10 ## optional
+  params:
+    script: echo "my script"
+```
+Explanation:
+
+-   `command`: a command name predefined by evergreen
+-   `display_name`: an optional user defined display name for the command. This will show up in logs and in the UI
+     with more details, for example: 'shell.exec' ('run my cool script') (step 1 of 1)
+-   `type`: an optional command type. This will affect the [failure colors](../Project-Configuration/Project-Configuration-Files.md#command-failure-colors)
+-   `timeout_secs`: an optional timeout. This will force this command to fail if it stays "idle" for 10 seconds or more
+-   `params`: values for the pre defined set of parameters the command can take. Available parameters vary per command.
+
+
 ## archive.targz_extract
 
 `archive.targz_extract` extracts files from a gzipped tarball.
