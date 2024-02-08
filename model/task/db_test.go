@@ -275,7 +275,7 @@ func TestPotentiallyBlockedTasksByIds(t *testing.T) {
 			DependenciesMetTime: utility.ZeroTime,
 		},
 		{ // Can't be blocked
-			Id:                   "t6",
+			Id:                   "t7",
 			OverrideDependencies: false,
 			DependsOn: []Dependency{
 				{
