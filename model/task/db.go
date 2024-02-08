@@ -522,10 +522,10 @@ func FailedTasksByVersionAndBV(version string, variant string) bson.M {
 func PotentiallyBlockedTasksByIds(taskIds []string) bson.M {
 	return bson.M{
 		IdKey: bson.M{"$in": taskIds},
-		"$or": []bson.M{
-			{DependsOnKey: bson.M{"$size": 0}},
-			{OverrideDependenciesKey: true},
-			{DependenciesMetTimeKey: bson.M{"$ne": utility.ZeroTime}},
+		"$and": []bson.M{
+			{DependsOnKey: bson.M{"$size": bson.M{"$gt": 0}}},
+			{OverrideDependenciesKey: false},
+			{DependenciesMetTimeKey: utility.ZeroTime},
 		},
 	}
 }
