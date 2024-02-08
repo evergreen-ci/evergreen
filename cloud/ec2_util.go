@@ -36,7 +36,8 @@ const (
 	EC2VolumeResizeRate     = "VolumeModificationRateExceeded"
 	ec2TemplateNameExists   = "InvalidLaunchTemplateName.AlreadyExistsException"
 
-	r53InvalidInput = "InvalidInput"
+	r53InvalidInput       = "InvalidInput"
+	r53InvalidChangeBatch = "InvalidChangeBatch"
 )
 
 var (
@@ -403,6 +404,9 @@ func deleteHostPersistentDNSName(ctx context.Context, env evergreen.Environment,
 				{
 					Action: r53Types.ChangeActionDelete,
 					ResourceRecordSet: &r53Types.ResourceRecordSet{
+						// The record name, value, type, and TTL must match the
+						// one in Route 53 exactly or else this will not be able
+						// to delete.
 						Name: aws.String(h.PersistentDNSName),
 						Type: r53Types.RRTypeA,
 						ResourceRecords: []r53Types.ResourceRecord{

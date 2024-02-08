@@ -1013,6 +1013,11 @@ func (c *awsClientImpl) ChangeResourceRecordSets(ctx context.Context, input *rou
 					if strings.Contains(apiErr.Error(), r53InvalidInput) {
 						return false, err
 					}
+					if strings.Contains(apiErr.Error(), r53InvalidChangeBatch) {
+						// Deleting a record that's already deleted means it
+						// already succeeded.
+						return false, nil
+					}
 				}
 				return true, err
 			}
