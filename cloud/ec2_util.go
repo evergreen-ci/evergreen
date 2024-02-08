@@ -314,10 +314,10 @@ func cacheHostData(ctx context.Context, h *host.Host, instance *types.Instance, 
 	}
 
 	if h.NoExpiration {
-		// kim: TODO: add some kind of alert + dashboard to see if this ever
-		// errors.
 		grip.Error(message.WrapError(setHostPersistentDNSName(ctx, h, instance, client), message.Fields{
-			"message":    "could not update host's persistent DNS name, it may go out of sync",
+			"message":    "could not update host's persistent DNS name",
+			"op":         "upsert",
+			"dashboard":  "evergreen sleep schedule health",
 			"host_id":    h.Id,
 			"started_by": h.StartedBy,
 		}))
@@ -326,8 +326,17 @@ func cacheHostData(ctx context.Context, h *host.Host, instance *types.Instance, 
 	return nil
 }
 
+// persistentDNSRecordTTLSecs is the number of seconds that a DNS record can be
+// cached. It's intentionally very low so that changes to the DNS name's IP
+// address propagate quickly to users.
+const persistentDNSRecordTTLSecs = 1
+
+// setHostPersistentDNSName sets a host's persistent DNS record with its
+// associated IP address and sets it on the host.
+// kim: TODO: test with mock AWS client
 func setHostPersistentDNSName(ctx context.Context, h *host.Host, instance *types.Instance, client AWSClient) error {
-	if utility.FromStringPtr(instance.PublicIpAddress) == "" {
+	ipAddr := utility.FromStringPtr(instance.PublicIpAddress)
+	if ipAddr == "" {
 		return errors.New("instance did not include an IP address")
 	}
 
@@ -357,20 +366,65 @@ func setHostPersistentDNSName(ctx context.Context, h *host.Host, instance *types
 						Name: aws.String(dnsName),
 						Type: r53Types.RRTypeA,
 						ResourceRecords: []r53Types.ResourceRecord{
-							{Value: instance.PublicIpAddress},
+							{Value: aws.String(ipAddr)},
 						},
-						// Set the TTL very low so that changes to the DNS
-						// name's IP address propagate quickly to users.
-						TTL: aws.Int64(1),
+						TTL: aws.Int64(persistentDNSRecordTTLSecs),
 					},
 				},
 			},
 		},
 	}
 	if _, err := client.ChangeResourceRecordSets(ctx, &in); err != nil {
-		return errors.Wrapf(err, "upserting persistent DNS name '%s' into Route 53", dnsName)
+		return errors.Wrapf(err, "upserting persistent DNS name '%s' for host '%s' into Route 53", dnsName, h.Id)
 	}
-	if err := h.SetPersistentDNSName(ctx, dnsName); err != nil {
+	if err := h.SetPersistentDNSInfo(ctx, dnsName, ipAddr); err != nil {
+		return errors.Wrap(err, "setting host's persistent DNS name")
+	}
+
+	return nil
+}
+
+// deleteHostPersistentDNSName deletes a host's persistent DNS record and unsets
+// it from the host.
+// kim: TODO: test with mock AWS client
+func deleteHostPersistentDNSName(ctx context.Context, h *host.Host, client AWSClient) error {
+	if h.PersistentDNSName == "" || h.PublicIPv4 == "" {
+		return nil
+	}
+
+	settings, err := evergreen.GetConfig(ctx)
+	if err != nil {
+		return errors.Wrap(err, "getting Evergreen settings")
+	}
+	if settings.Providers.AWS.PersistentDNS.Domain == "" || settings.Providers.AWS.PersistentDNS.HostedZoneID == "" {
+		// TODO (DEVPROD-4040): once all unexpirable hosts have a persistent DNS
+		// name assigned, this should return an error because not having these
+		// settings will prevent persistent DNS names from updating properly.
+		return nil
+	}
+
+	in := route53.ChangeResourceRecordSetsInput{
+		HostedZoneId: aws.String(settings.Providers.AWS.PersistentDNS.HostedZoneID),
+		ChangeBatch: &r53Types.ChangeBatch{
+			Changes: []r53Types.Change{
+				{
+					Action: r53Types.ChangeActionDelete,
+					ResourceRecordSet: &r53Types.ResourceRecordSet{
+						Name: aws.String(h.PersistentDNSName),
+						Type: r53Types.RRTypeA,
+						ResourceRecords: []r53Types.ResourceRecord{
+							{Value: aws.String(h.PublicIPv4)},
+						},
+						TTL: aws.Int64(persistentDNSRecordTTLSecs),
+					},
+				},
+			},
+		},
+	}
+	if _, err := client.ChangeResourceRecordSets(ctx, &in); err != nil {
+		return errors.Wrapf(err, "deleting persistent DNS name '%s' for host '%s' in Route 53", h.PersistentDNSName, h.Id)
+	}
+	if err := h.UnsetPersistentDNSInfo(ctx); err != nil {
 		return errors.Wrap(err, "setting host's persistent DNS name")
 	}
 

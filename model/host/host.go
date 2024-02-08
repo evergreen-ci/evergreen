@@ -35,19 +35,22 @@ import (
 type Host struct {
 	Id string `bson:"_id" json:"id"`
 	// Host is the ephemeral DNS name of the host.
-	Host string `bson:"host_id" json:"host"`
+	Host            string        `bson:"host_id" json:"host"`
+	User            string        `bson:"user" json:"user"`
+	Secret          string        `bson:"secret" json:"secret"`
+	ServicePassword string        `bson:"service_password,omitempty" json:"service_password,omitempty" mapstructure:"service_password,omitempty"`
+	Tag             string        `bson:"tag" json:"tag"`
+	Distro          distro.Distro `bson:"distro" json:"distro"`
+	Provider        string        `bson:"host_type" json:"host_type"`
+	// IP holds the IPv6 address when applicable.
+	IP string `bson:"ip_address" json:"ip_address"`
+	// IPv4 is the host's private IPv4 address.
+	IPv4 string `bson:"ipv4_address" json:"ipv4_address"`
 	// PersistentDNSName is the long-lived DNS name of the host, which should
 	// never change once set.
-	PersistentDNSName string        `bson:"persistent_dns_name,omitempty" json:"persistent_dns_name,omitempty"`
-	User              string        `bson:"user" json:"user"`
-	Secret            string        `bson:"secret" json:"secret"`
-	ServicePassword   string        `bson:"service_password,omitempty" json:"service_password,omitempty" mapstructure:"service_password,omitempty"`
-	Tag               string        `bson:"tag" json:"tag"`
-	Distro            distro.Distro `bson:"distro" json:"distro"`
-	Provider          string        `bson:"host_type" json:"host_type"`
-	// IP holds the ipv6 address when applicable
-	IP   string `bson:"ip_address" json:"ip_address"`
-	IPv4 string `bson:"ipv4_address" json:"ipv4_address"`
+	PersistentDNSName string `bson:"persistent_dns_name,omitempty" json:"persistent_dns_name,omitempty"`
+	// PublicIPv4 is the host's IPv4 address.
+	PublicIPv4 string `bson:"public_ipv4_address,omitempty" json:"public_ipv4_address,omitempty"`
 
 	// secondary (external) identifier for the host
 	ExternalIdentifier string `bson:"ext_identifier" json:"ext_identifier"`
@@ -3283,14 +3286,30 @@ func (h *Host) GeneratePersistentDNSName(ctx context.Context, domain string) (st
 	return "", errors.Errorf("could not generate a new persistent DNS name after %d attempts", numAttempts)
 }
 
-// SetPersistentDNSName sets the host's persistent DNS name.
+// SetPersistentDNSInfo sets the host's persistent DNS name and the associated
+// IP address.
 // kim: TODO: test
-func (h *Host) SetPersistentDNSName(ctx context.Context, dnsName string) error {
+func (h *Host) SetPersistentDNSInfo(ctx context.Context, dnsName, ipAddr string) error {
 	return UpdateOne(ctx, bson.M{
 		IdKey: h.Id,
 	}, bson.M{
 		"$set": bson.M{
 			PersistentDNSNameKey: dnsName,
+			PublicIPv4Key:        ipAddr,
+		},
+	})
+}
+
+// UnsetPersistentDNSInfo unsets the host's persistent DNS name and the
+// associated IP address.
+// kim: TODO: test
+func (h *Host) UnsetPersistentDNSInfo(ctx context.Context) error {
+	return UpdateOne(ctx, bson.M{
+		IdKey: h.Id,
+	}, bson.M{
+		"$unset": bson.M{
+			PersistentDNSNameKey: 1,
+			PublicIPv4Key:        1,
 		},
 	})
 }

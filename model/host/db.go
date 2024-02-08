@@ -31,7 +31,6 @@ const (
 var (
 	IdKey                              = bsonutil.MustHaveTag(Host{}, "Id")
 	DNSKey                             = bsonutil.MustHaveTag(Host{}, "Host")
-	PersistentDNSNameKey               = bsonutil.MustHaveTag(Host{}, "PersistentDNSName")
 	SecretKey                          = bsonutil.MustHaveTag(Host{}, "Secret")
 	UserKey                            = bsonutil.MustHaveTag(Host{}, "User")
 	ServicePasswordKey                 = bsonutil.MustHaveTag(Host{}, "ServicePassword")
@@ -40,6 +39,8 @@ var (
 	ProviderKey                        = bsonutil.MustHaveTag(Host{}, "Provider")
 	IPKey                              = bsonutil.MustHaveTag(Host{}, "IP")
 	IPv4Key                            = bsonutil.MustHaveTag(Host{}, "IPv4")
+	PersistentDNSNameKey               = bsonutil.MustHaveTag(Host{}, "PersistentDNSName")
+	PublicIPv4Key                      = bsonutil.MustHaveTag(Host{}, "PublicIPv4")
 	ProvisionedKey                     = bsonutil.MustHaveTag(Host{}, "Provisioned")
 	ProvisionTimeKey                   = bsonutil.MustHaveTag(Host{}, "ProvisionTime")
 	ExtIdKey                           = bsonutil.MustHaveTag(Host{}, "ExternalIdentifier")
