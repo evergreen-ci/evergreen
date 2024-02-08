@@ -3248,7 +3248,7 @@ func (h *Host) ClearDockerStdinData(ctx context.Context) error {
 }
 
 // nonAlphanumericRegexp matches any character that is not an alphanumeric
-// character ([0-9A-Za-z]) or a dash ("-").
+// character ([0-9A-Za-z]).
 var nonAlphanumericRegexp = regexp.MustCompile("[[:^alnum:]]+")
 
 // GeneratePersistentDNSName returns the host's persistent DNS name, or
