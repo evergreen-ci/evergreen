@@ -61,7 +61,10 @@ func Evaluate() cli.Command {
 				sortTasksByName := model.ProjectTasksByName(p.Tasks)
 				sort.Sort(sortTasksByName)
 				p.Tasks = sortTasksByName
-				sort.Sort(p.BuildVariants)
+
+				sortBuildVariantsByName := model.BuildVariantsByName(p.BuildVariants)
+				sort.Sort(sortBuildVariantsByName)
+				p.BuildVariants = model.BuildVariants(sortBuildVariantsByName)
 			}
 
 			var out interface{}
