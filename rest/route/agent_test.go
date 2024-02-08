@@ -696,7 +696,7 @@ func TestUpsertCheckRunParse(t *testing.T) {
 	}
 	require.NoError(t, task1.Insert())
 
-	r, ok := makeUpsertCheckRun().(*upsertCheckRunHandler)
+	r, ok := makeUpsertCheckRun(&evergreen.Settings{}).(*upsertCheckRunHandler)
 	require.True(t, ok)
 	jsonCheckrun := `
 	{
