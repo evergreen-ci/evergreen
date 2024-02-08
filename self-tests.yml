@@ -226,6 +226,7 @@ functions:
         EVERGREEN_ALL: "true"
         GOARCH: ${goarch}
         GOOS: ${goos}
+        GOPATH: ${workdir}/gopath
         KARMA_REPORTER: junit
         NODE_BIN_PATH: ${nodebin}
         RACE_DETECTOR: ${race_detector}
@@ -339,9 +340,8 @@ functions:
         working_dir: evergreen
         binary: bash
         args: ["scripts/verify-swaggo-fmt.sh"]
-        params:
-          env:
-            GOPATH: ${workdir}/gopath
+        env:
+          GOPATH: ${workdir}/gopath
 
   verify-client-version-update:
     - command: subprocess.exec
@@ -597,9 +597,6 @@ tasks:
       - func: get-project-and-modules
       - func: run-make
         vars: { target: "swaggo-install" }
-        params:
-          env:
-            GOPATH: ${workdir}/gopath
       - func: verify-swaggo-fmt
   - name: verify-agent-version-update
     tags: ["linter"]
@@ -634,16 +631,12 @@ tasks:
       - func: get-project-and-modules
       - func: run-make
         vars: { target: "swaggo-install" }
-        params:
-          env:
-            GOPATH: ${workdir}/gopath
       - command: shell.exec
         params:
           shell: bash
           working_dir: evergreen
-          params:
-            env:
-              GOPATH: ${workdir}/gopath
+          env:
+            GOPATH: ${workdir}/gopath
           script: |
             set -o verbose
             set -o errexit
