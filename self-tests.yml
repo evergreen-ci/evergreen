@@ -594,10 +594,12 @@ tasks:
     tags: ["linter"]
     commands:
       - func: get-project-and-modules
-      - func: run-make
-        vars: { target: "swaggo-install" }
+      - command: subprocess.exec
         params:
-          env: 
+          binary: make
+          args: ["swaggo-install"]
+          working_dir: evergreen
+          env:
             GOPATH: ${workdir}/gopath
       - func: verify-swaggo-fmt
   - name: verify-agent-version-update
@@ -631,10 +633,12 @@ tasks:
   - name: generate-api-docs
     commands: 
       - func: get-project-and-modules
-      - func: run-make
-        vars: { target: "swaggo-install" }
+      - command: subprocess.exec
         params:
-          env: 
+          binary: make
+          args: ["swaggo-install"]
+          working_dir: evergreen
+          env:
             GOPATH: ${workdir}/gopath
       - command: shell.exec
         params:
