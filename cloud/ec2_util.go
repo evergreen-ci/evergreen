@@ -335,7 +335,6 @@ const persistentDNSRecordTTLSecs = 1
 
 // setHostPersistentDNSName sets a host's persistent DNS record with its
 // associated IP address and sets it on the host.
-// kim: TODO: test with mock AWS client
 func setHostPersistentDNSName(ctx context.Context, env evergreen.Environment, h *host.Host, instance *types.Instance, client AWSClient) error {
 	ipAddr := utility.FromStringPtr(instance.PublicIpAddress)
 	if ipAddr == "" {
@@ -384,7 +383,6 @@ func setHostPersistentDNSName(ctx context.Context, env evergreen.Environment, h 
 
 // deleteHostPersistentDNSName deletes a host's persistent DNS record and unsets
 // it from the host.
-// kim: TODO: test with mock AWS client
 func deleteHostPersistentDNSName(ctx context.Context, env evergreen.Environment, h *host.Host, client AWSClient) error {
 	if h.PersistentDNSName == "" || h.PublicIPv4 == "" {
 		return nil

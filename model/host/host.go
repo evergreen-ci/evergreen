@@ -3253,7 +3253,6 @@ var nonAlphanumericRegexp = regexp.MustCompile("[[:^alnum:]]+")
 
 // GeneratePersistentDNSName returns the host's persistent DNS name, or
 // generates a new one if it doesn't have one currently assigned.
-// kim: TODO: test
 func (h *Host) GeneratePersistentDNSName(ctx context.Context, domain string) (string, error) {
 	if h.PersistentDNSName != "" {
 		return h.PersistentDNSName, nil
@@ -3288,28 +3287,48 @@ func (h *Host) GeneratePersistentDNSName(ctx context.Context, domain string) (st
 
 // SetPersistentDNSInfo sets the host's persistent DNS name and the associated
 // IP address.
-// kim: TODO: test
-func (h *Host) SetPersistentDNSInfo(ctx context.Context, dnsName, ipAddr string) error {
-	return UpdateOne(ctx, bson.M{
+func (h *Host) SetPersistentDNSInfo(ctx context.Context, dnsName, ipv4Addr string) error {
+	if dnsName == "" || ipv4Addr == "" {
+		return errors.New("cannot set empty DNS name or IPv4 address")
+	}
+
+	if err := UpdateOne(ctx, bson.M{
 		IdKey: h.Id,
 	}, bson.M{
 		"$set": bson.M{
 			PersistentDNSNameKey: dnsName,
-			PublicIPv4Key:        ipAddr,
+			PublicIPv4Key:        ipv4Addr,
 		},
-	})
+	}); err != nil {
+		return err
+	}
+
+	h.PersistentDNSName = dnsName
+	h.PublicIPv4 = ipv4Addr
+
+	return nil
 }
 
 // UnsetPersistentDNSInfo unsets the host's persistent DNS name and the
 // associated IP address.
-// kim: TODO: test
 func (h *Host) UnsetPersistentDNSInfo(ctx context.Context) error {
-	return UpdateOne(ctx, bson.M{
+	if h.PersistentDNSName == "" && h.PublicIPv4 == "" {
+		return nil
+	}
+
+	if err := UpdateOne(ctx, bson.M{
 		IdKey: h.Id,
 	}, bson.M{
 		"$unset": bson.M{
 			PersistentDNSNameKey: 1,
 			PublicIPv4Key:        1,
 		},
-	})
+	}); err != nil {
+		return err
+	}
+
+	h.PersistentDNSName = ""
+	h.PublicIPv4 = ""
+
+	return nil
 }

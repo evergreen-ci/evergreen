@@ -16,9 +16,7 @@ type APIHost struct {
 	// Unique identifier of a specific host
 	Id      *string `json:"host_id"`
 	HostURL *string `json:"host_url"`
-	// kim: TODO: test round trip between service-API models
-	PersistentDNSName *string `json:"persistent_dns_name"`
-	Tag               *string `json:"tag"`
+	Tag     *string `json:"tag"`
 	// Object containing information about the distro type of this host
 	Distro      DistroInfo `json:"distro"`
 	Provisioned bool       `json:"provisioned"`
@@ -118,7 +116,6 @@ func (apiHost *APIHost) buildFromHostStruct(h *host.Host) {
 	}
 	apiHost.Id = utility.ToStringPtr(h.Id)
 	apiHost.HostURL = utility.ToStringPtr(h.Host)
-	apiHost.PersistentDNSName = utility.ToStringPtr(h.PersistentDNSName)
 	apiHost.Tag = utility.ToStringPtr(h.Tag)
 	apiHost.Provisioned = h.Provisioned
 	apiHost.StartedBy = utility.ToStringPtr(h.StartedBy)
@@ -167,7 +164,6 @@ func (apiHost *APIHost) buildFromHostStruct(h *host.Host) {
 func (apiHost *APIHost) ToService() host.Host {
 	return host.Host{
 		Id:                    utility.FromStringPtr(apiHost.Id),
-		PersistentDNSName:     utility.FromStringPtr(apiHost.PersistentDNSName),
 		Tag:                   utility.FromStringPtr(apiHost.Tag),
 		Provisioned:           apiHost.Provisioned,
 		NoExpiration:          apiHost.NoExpiration,

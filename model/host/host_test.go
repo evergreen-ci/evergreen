@@ -5977,3 +5977,122 @@ func TestClearDockerStdinData(t *testing.T) {
 	require.NotZero(t, dbHost)
 	assert.Empty(t, dbHost.DockerOptions.StdinData)
 }
+
+func TestGeneratePersistentDNSName(t *testing.T) {
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+	const domain = "example.com"
+	t.Run("ReturnsAlreadySetPersistentDNSName", func(t *testing.T) {
+		h := Host{
+			Id:                "host_id",
+			PersistentDNSName: fmt.Sprintf("hello.%s", domain),
+		}
+		dnsName, err := h.GeneratePersistentDNSName(ctx, domain)
+		require.NoError(t, err)
+		assert.Equal(t, h.PersistentDNSName, dnsName)
+	})
+	t.Run("ReturnsNewPersistentDNSName", func(t *testing.T) {
+		h := Host{
+			Id: "host_id",
+		}
+		dnsName, err := h.GeneratePersistentDNSName(ctx, domain)
+		require.NoError(t, err)
+		assert.Zero(t, h.PersistentDNSName, "generated DNS name should not be set")
+		assert.NotEmpty(t, dnsName)
+		assert.True(t, strings.HasSuffix(dnsName, domain), "DNS name should include domain")
+	})
+}
+
+func TestSetPersistentDNSInfo(t *testing.T) {
+	const dnsName = "hello.example.com"
+	const ipv4Addr = "127.0.0.1"
+	defer func() {
+		assert.NoError(t, db.ClearCollections(Collection))
+	}()
+	for tName, tCase := range map[string]func(ctx context.Context, t *testing.T, h *Host){
+		"SetsPersistentDNSInfo": func(ctx context.Context, t *testing.T, h *Host) {
+			require.NoError(t, h.Insert(ctx))
+			h.SetPersistentDNSInfo(ctx, dnsName, ipv4Addr)
+		},
+		"OverwritesExistingPersistentDNSInfo": func(ctx context.Context, t *testing.T, h *Host) {
+			h.PersistentDNSName = "bye.example.com"
+			h.PublicIPv4 = "0.0.0.0"
+			require.NoError(t, h.Insert(ctx))
+
+			require.NoError(t, h.SetPersistentDNSInfo(ctx, dnsName, ipv4Addr))
+
+			dbHost, err := FindOneId(ctx, h.Id)
+			require.NoError(t, err)
+			require.NotZero(t, dbHost)
+			assert.Equal(t, dnsName, dbHost.PersistentDNSName)
+			assert.Equal(t, ipv4Addr, dbHost.PublicIPv4)
+		},
+		"FailsWithEmptyDNSName": func(ctx context.Context, t *testing.T, h *Host) {
+			require.NoError(t, h.Insert(ctx))
+			assert.Error(t, h.SetPersistentDNSInfo(ctx, "", ipv4Addr))
+		},
+		"FailsWithEmptyIPv4Address": func(ctx context.Context, t *testing.T, h *Host) {
+			require.NoError(t, h.Insert(ctx))
+			assert.Error(t, h.SetPersistentDNSInfo(ctx, dnsName, ""))
+		},
+	} {
+		t.Run(tName, func(t *testing.T) {
+			ctx, cancel := context.WithCancel(context.Background())
+			defer cancel()
+
+			require.NoError(t, db.ClearCollections(Collection))
+			h := &Host{
+				Id: "host_id",
+			}
+
+			tCase(ctx, t, h)
+		})
+	}
+}
+
+func TestUnsetPersistentDNSInfo(t *testing.T) {
+	defer func() {
+		assert.NoError(t, db.ClearCollections(Collection))
+	}()
+	for tName, tCase := range map[string]func(ctx context.Context, t *testing.T, h *Host){
+		"Succeeds": func(ctx context.Context, t *testing.T, h *Host) {
+			require.NoError(t, h.Insert(ctx))
+
+			require.NoError(t, h.UnsetPersistentDNSInfo(ctx))
+			assert.Zero(t, h.PersistentDNSName)
+			assert.Zero(t, h.PublicIPv4)
+
+			dbHost, err := FindOneId(ctx, h.Id)
+			require.NoError(t, err)
+			require.NotZero(t, dbHost)
+			assert.Zero(t, dbHost.PersistentDNSName)
+			assert.Zero(t, dbHost.PublicIPv4)
+		},
+		"NoopsForNonexistentPersistentDNSInfo": func(ctx context.Context, t *testing.T, h *Host) {
+			h.PersistentDNSName = ""
+			h.PublicIPv4 = ""
+			require.NoError(t, h.Insert(ctx))
+			assert.NoError(t, h.UnsetPersistentDNSInfo(ctx))
+
+			dbHost, err := FindOneId(ctx, h.Id)
+			require.NoError(t, err)
+			require.NotZero(t, dbHost)
+			assert.Zero(t, dbHost.PersistentDNSName)
+			assert.Zero(t, dbHost.PublicIPv4)
+		},
+	} {
+		t.Run(tName, func(t *testing.T) {
+			ctx, cancel := context.WithCancel(context.Background())
+			defer cancel()
+
+			require.NoError(t, db.ClearCollections(Collection))
+			h := &Host{
+				Id:                "host_id",
+				PersistentDNSName: "hello.example.com",
+				PublicIPv4:        "0.0.0.0",
+			}
+
+			tCase(ctx, t, h)
+		})
+	}
+}
