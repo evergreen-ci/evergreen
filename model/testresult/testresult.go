@@ -91,13 +91,13 @@ func (tr TestResult) Duration() time.Duration {
 func (tr TestResult) GetLogURL(env evergreen.Environment, viewer evergreen.LogViewer) string {
 	root := env.Settings().ApiUrl
 	parsleyURL := env.Settings().Ui.ParsleyUrl
-	deprecatedLobsterURLs := []string{"https://logkeeper.mongodb.org", "https://logkeeper2.build.10gen.cc"}
+	deprecatedLogkeeperURLs := []string{"https://logkeeper.mongodb.org", "https://logkeeper2.build.10gen.cc"}
 
 	switch viewer {
 	case evergreen.LogViewerHTML:
 		// Return an empty string for logkeeper URLS.
 		if tr.LogURL != "" {
-			for _, url := range deprecatedLobsterURLs {
+			for _, url := range deprecatedLogkeeperURLs {
 				if strings.Contains(tr.LogURL, url) {
 					return ""
 				}
@@ -124,7 +124,7 @@ func (tr TestResult) GetLogURL(env evergreen.Environment, viewer evergreen.LogVi
 			return ""
 		}
 
-		for _, url := range deprecatedLobsterURLs {
+		for _, url := range deprecatedLogkeeperURLs {
 			if strings.Contains(tr.LogURL, url) {
 				updatedResmokeParsleyURL := strings.Replace(tr.LogURL, fmt.Sprintf("%s/build", url), parsleyURL+"/resmoke", 1)
 				return fmt.Sprintf("%s?shareLine=%d", updatedResmokeParsleyURL, tr.LineNum)
