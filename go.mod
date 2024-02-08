@@ -204,9 +204,7 @@ require (
 	github.com/evergreen-ci/evg-lint v0.0.0-20211115144425-3b19c8e83a57
 	github.com/evergreen-ci/plank v0.0.0-20230207190607-5f47f8a30da1
 	github.com/evergreen-ci/tarjan v0.0.0-20170824211642-fcd3f3321826
-	github.com/fortytw2/leaktest v1.3.0
 	github.com/mongodb/jasper v0.0.0-20220214215554-82e5a72cff6b
-	github.com/nxadm/tail v1.4.11
 	github.com/shirou/gopsutil/v3 v3.23.12
 	gopkg.in/yaml.v3 v3.0.1
 )
@@ -216,5 +214,4 @@ require (
 	github.com/google/go-github/v29 v29.0.2 // indirect
 	github.com/papertrail/go-tail v0.0.0-20180509224916-973c153b0431 // indirect
 	github.com/sosodev/duration v1.2.0 // indirect
-	gopkg.in/tomb.v1 v1.0.0-20141024135613-dd632973f1e7 // indirect
 )

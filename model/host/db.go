@@ -1339,3 +1339,15 @@ func UnsafeReplace(ctx context.Context, env evergreen.Environment, idToRemove st
 
 	return nil
 }
+
+// FindUnexpirableRunning returns all unexpirable spawn hosts that are
+// currently running.
+func FindUnexpirableRunning() ([]Host, error) {
+	hosts := []Host{}
+	q := bson.M{
+		StatusKey:       evergreen.HostRunning,
+		StartedByKey:    bson.M{"$ne": evergreen.User},
+		NoExpirationKey: true,
+	}
+	return hosts, db.FindAllQ(Collection, db.Query(q), &hosts)
+}

@@ -1282,6 +1282,7 @@ type ComplexityRoot struct {
 	}
 
 	TaskEventLogData struct {
+		BlockedOn func(childComplexity int) int
 		HostId    func(childComplexity int) int
 		JiraIssue func(childComplexity int) int
 		JiraLink  func(childComplexity int) int
@@ -1321,14 +1322,13 @@ type ComplexityRoot struct {
 	}
 
 	TaskLogs struct {
-		AgentLogs     func(childComplexity int) int
-		AllLogs       func(childComplexity int) int
-		DefaultLogger func(childComplexity int) int
-		EventLogs     func(childComplexity int) int
-		Execution     func(childComplexity int) int
-		SystemLogs    func(childComplexity int) int
-		TaskID        func(childComplexity int) int
-		TaskLogs      func(childComplexity int) int
+		AgentLogs  func(childComplexity int) int
+		AllLogs    func(childComplexity int) int
+		EventLogs  func(childComplexity int) int
+		Execution  func(childComplexity int) int
+		SystemLogs func(childComplexity int) int
+		TaskID     func(childComplexity int) int
+		TaskLogs   func(childComplexity int) int
 	}
 
 	TaskQueueDistro struct {
@@ -1867,7 +1867,6 @@ type TaskContainerCreationOptsResolver interface {
 type TaskLogsResolver interface {
 	AgentLogs(ctx context.Context, obj *TaskLogs) ([]*apimodels.LogMessage, error)
 	AllLogs(ctx context.Context, obj *TaskLogs) ([]*apimodels.LogMessage, error)
-
 	EventLogs(ctx context.Context, obj *TaskLogs) ([]*model.TaskAPIEventLogEntry, error)
 
 	SystemLogs(ctx context.Context, obj *TaskLogs) ([]*apimodels.LogMessage, error)
@@ -8069,6 +8068,13 @@ func (e *executableSchema) Complexity(typeName, field string, childComplexity in
 
 		return e.complexity.TaskEndDetail.Type(childComplexity), true
 
+	case "TaskEventLogData.blockedOn":
+		if e.complexity.TaskEventLogData.BlockedOn == nil {
+			break
+		}
+
+		return e.complexity.TaskEventLogData.BlockedOn(childComplexity), true
+
 	case "TaskEventLogData.hostId":
 		if e.complexity.TaskEventLogData.HostId == nil {
 			break
@@ -8250,13 +8256,6 @@ func (e *executableSchema) Complexity(typeName, field string, childComplexity in
 		}
 
 		return e.complexity.TaskLogs.AllLogs(childComplexity), true
-
-	case "TaskLogs.defaultLogger":
-		if e.complexity.TaskLogs.DefaultLogger == nil {
-			break
-		}
-
-		return e.complexity.TaskLogs.DefaultLogger(childComplexity), true
 
 	case "TaskLogs.eventLogs":
 		if e.complexity.TaskLogs.EventLogs == nil {
@@ -53898,8 +53897,6 @@ func (ec *executionContext) fieldContext_Task_taskLogs(ctx context.Context, fiel
 				return ec.fieldContext_TaskLogs_agentLogs(ctx, field)
 			case "allLogs":
 				return ec.fieldContext_TaskLogs_allLogs(ctx, field)
-			case "defaultLogger":
-				return ec.fieldContext_TaskLogs_defaultLogger(ctx, field)
 			case "eventLogs":
 				return ec.fieldContext_TaskLogs_eventLogs(ctx, field)
 			case "execution":
@@ -55273,6 +55270,47 @@ func (ec *executionContext) fieldContext_TaskEventLogData_userId(ctx context.Con
 	return fc, nil
 }
 
+func (ec *executionContext) _TaskEventLogData_blockedOn(ctx context.Context, field graphql.CollectedField, obj *model.TaskEventData) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_TaskEventLogData_blockedOn(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.BlockedOn, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		return graphql.Null
+	}
+	res := resTmp.(*string)
+	fc.Result = res
+	return ec.marshalOString2ᚖstring(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_TaskEventLogData_blockedOn(ctx context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "TaskEventLogData",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type String does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
 func (ec *executionContext) _TaskEventLogEntry_id(ctx context.Context, field graphql.CollectedField, obj *model.TaskAPIEventLogEntry) (ret graphql.Marshaler) {
 	fc, err := ec.fieldContext_TaskEventLogEntry_id(ctx, field)
 	if err != nil {
@@ -55372,6 +55410,8 @@ func (ec *executionContext) fieldContext_TaskEventLogEntry_data(ctx context.Cont
 				return ec.fieldContext_TaskEventLogData_timestamp(ctx, field)
 			case "userId":
 				return ec.fieldContext_TaskEventLogData_userId(ctx, field)
+			case "blockedOn":
+				return ec.fieldContext_TaskEventLogData_blockedOn(ctx, field)
 			}
 			return nil, fmt.Errorf("no field named %q was found under type TaskEventLogData", field.Name)
 		},
@@ -56085,50 +56125,6 @@ func (ec *executionContext) fieldContext_TaskLogs_allLogs(ctx context.Context, f
 				return ec.fieldContext_LogMessage_version(ctx, field)
 			}
 			return nil, fmt.Errorf("no field named %q was found under type LogMessage", field.Name)
-		},
-	}
-	return fc, nil
-}
-
-func (ec *executionContext) _TaskLogs_defaultLogger(ctx context.Context, field graphql.CollectedField, obj *TaskLogs) (ret graphql.Marshaler) {
-	fc, err := ec.fieldContext_TaskLogs_defaultLogger(ctx, field)
-	if err != nil {
-		return graphql.Null
-	}
-	ctx = graphql.WithFieldContext(ctx, fc)
-	defer func() {
-		if r := recover(); r != nil {
-			ec.Error(ctx, ec.Recover(ctx, r))
-			ret = graphql.Null
-		}
-	}()
-	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
-		ctx = rctx // use context from middleware stack in children
-		return obj.DefaultLogger, nil
-	})
-	if err != nil {
-		ec.Error(ctx, err)
-		return graphql.Null
-	}
-	if resTmp == nil {
-		if !graphql.HasFieldError(ctx, fc) {
-			ec.Errorf(ctx, "must not be null")
-		}
-		return graphql.Null
-	}
-	res := resTmp.(string)
-	fc.Result = res
-	return ec.marshalNString2string(ctx, field.Selections, res)
-}
-
-func (ec *executionContext) fieldContext_TaskLogs_defaultLogger(ctx context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
-	fc = &graphql.FieldContext{
-		Object:     "TaskLogs",
-		Field:      field,
-		IsMethod:   false,
-		IsResolver: false,
-		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
-			return nil, errors.New("field of type String does not have child fields")
 		},
 	}
 	return fc, nil
@@ -82297,6 +82293,8 @@ func (ec *executionContext) _TaskEventLogData(ctx context.Context, sel ast.Selec
 			out.Values[i] = ec._TaskEventLogData_timestamp(ctx, field, obj)
 		case "userId":
 			out.Values[i] = ec._TaskEventLogData_userId(ctx, field, obj)
+		case "blockedOn":
+			out.Values[i] = ec._TaskEventLogData_blockedOn(ctx, field, obj)
 		default:
 			panic("unknown field " + strconv.Quote(field.Name))
 		}
@@ -82592,11 +82590,6 @@ func (ec *executionContext) _TaskLogs(ctx context.Context, sel ast.SelectionSet,
 			}
 
 			out.Concurrently(i, func(ctx context.Context) graphql.Marshaler { return innerFunc(ctx, out) })
-		case "defaultLogger":
-			out.Values[i] = ec._TaskLogs_defaultLogger(ctx, field, obj)
-			if out.Values[i] == graphql.Null {
-				atomic.AddUint32(&out.Invalids, 1)
-			}
 		case "eventLogs":
 			field := field
 

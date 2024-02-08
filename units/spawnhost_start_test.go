@@ -13,6 +13,7 @@ import (
 	"github.com/evergreen-ci/evergreen/testutil"
 	"github.com/evergreen-ci/utility"
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 )
 
 func TestSpawnhostStartJob(t *testing.T) {
@@ -22,6 +23,22 @@ func TestSpawnhostStartJob(t *testing.T) {
 
 	assert.NoError(t, db.ClearCollections(host.Collection, event.EventCollection))
 	mock := cloud.GetMockProvider()
+	t.Run("NewSpawnhostStartJobSetsExpectedFields", func(t *testing.T) {
+		ts := utility.RoundPartOfMinute(1).Format(TSFormat)
+		h := host.Host{
+			Id:       "host_id",
+			Status:   evergreen.HostRunning,
+			Provider: evergreen.ProviderNameMock,
+			Distro:   distro.Distro{Provider: evergreen.ProviderNameMock},
+		}
+		j, ok := NewSpawnhostStartJob(&h, "user", ts).(*spawnhostStartJob)
+		require.True(t, ok)
+
+		assert.NotZero(t, j.RetryInfo().GetMaxAttempts(), "job should retry")
+		assert.Equal(t, h.Id, j.HostID)
+		assert.Equal(t, "user", j.UserID)
+		assert.Equal(t, evergreen.ModifySpawnHostManual, j.Source)
+	})
 	t.Run("NewSpawnhostStartJobHostNotStopped", func(t *testing.T) {
 		tctx := testutil.TestSpan(ctx, t)
 		h := host.Host{

@@ -3,14 +3,16 @@ package taskoutput
 import (
 	"context"
 	"os"
+	"path/filepath"
 	"testing"
 
 	"github.com/evergreen-ci/utility"
 	"github.com/pkg/errors"
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 )
 
-func TestDirectory(t *testing.T) {
+func TestDirectoryRun(t *testing.T) {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 
@@ -20,16 +22,16 @@ func TestDirectory(t *testing.T) {
 		hasErr   bool
 	}{
 		{
-			name: "StartAndCloseWithHandlerError",
+			name: "RunWithHandlerError",
 			handlers: []*mockDirectoryHandler{
 				&mockDirectoryHandler{},
 				&mockDirectoryHandler{},
-				&mockDirectoryHandler{startErr: true, closeErr: true},
+				&mockDirectoryHandler{runErr: true},
 			},
 			hasErr: true,
 		},
 		{
-			name: "StartAndClose",
+			name: "Run",
 			handlers: []*mockDirectoryHandler{
 				&mockDirectoryHandler{},
 				&mockDirectoryHandler{},
@@ -43,64 +45,44 @@ func TestDirectory(t *testing.T) {
 				handlers: map[string]directoryHandler{},
 			}
 			for _, handler := range test.handlers {
-				d.handlers[utility.RandomString()] = handler
+				d.handlers[filepath.Join(d.root, utility.RandomString())] = handler
 			}
 
-			err := d.Start(ctx)
+			require.NoError(t, d.Setup())
+			for dir := range d.handlers {
+				_, err := os.Stat(dir)
+				assert.NoError(t, err)
+			}
+
+			err := d.Run(ctx)
 			if test.hasErr {
 				assert.Error(t, err)
 			} else {
 				assert.NoError(t, err)
 			}
 			for _, handler := range test.handlers {
-				assert.True(t, handler.started)
-				_, err = os.Stat(handler.dir)
-				assert.NoError(t, err)
-			}
-
-			err = d.Close(ctx)
-			if test.hasErr {
-				assert.Error(t, err)
-			} else {
-				assert.NoError(t, err)
+				assert.True(t, handler.ran)
 			}
 			_, err = os.Stat(d.root)
 			assert.Error(t, err)
-			for _, handler := range test.handlers {
-				assert.True(t, handler.closed)
-				_, err = os.Stat(handler.dir)
-				assert.Error(t, err)
-			}
 		})
 	}
 }
 
 type mockDirectoryHandler struct {
-	dir      string
-	startErr bool
-	started  bool
-	closeErr bool
-	closed   bool
+	runErr bool
+	ran    bool
 }
 
-func (m *mockDirectoryHandler) start(_ context.Context, dir string) error {
-	if m.started {
-		return errors.New("already called start")
+func (m *mockDirectoryHandler) run(_ context.Context) error {
+	if m.ran {
+		return errors.New("already called run")
 	}
-	m.dir = dir
-	m.started = true
+	m.ran = true
 
-	if m.startErr {
-		return errors.New("start error")
+	if m.runErr {
+		return errors.New("run error")
 	}
-	return nil
-}
 
-func (m *mockDirectoryHandler) close(_ context.Context) error {
-	m.closed = true
-
-	if m.closeErr {
-		return errors.New("start error")
-	}
 	return nil
 }

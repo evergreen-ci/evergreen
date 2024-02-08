@@ -398,14 +398,13 @@ type TaskFilterOptions struct {
 // TaskLogs is the return value for the task.taskLogs query.
 // It contains the logs for a given task on a given execution.
 type TaskLogs struct {
-	AgentLogs     []*apimodels.LogMessage       `json:"agentLogs"`
-	AllLogs       []*apimodels.LogMessage       `json:"allLogs"`
-	DefaultLogger string                        `json:"defaultLogger"`
-	EventLogs     []*model.TaskAPIEventLogEntry `json:"eventLogs"`
-	Execution     int                           `json:"execution"`
-	SystemLogs    []*apimodels.LogMessage       `json:"systemLogs"`
-	TaskID        string                        `json:"taskId"`
-	TaskLogs      []*apimodels.LogMessage       `json:"taskLogs"`
+	AgentLogs  []*apimodels.LogMessage       `json:"agentLogs"`
+	AllLogs    []*apimodels.LogMessage       `json:"allLogs"`
+	EventLogs  []*model.TaskAPIEventLogEntry `json:"eventLogs"`
+	Execution  int                           `json:"execution"`
+	SystemLogs []*apimodels.LogMessage       `json:"systemLogs"`
+	TaskID     string                        `json:"taskId"`
+	TaskLogs   []*apimodels.LogMessage       `json:"taskLogs"`
 }
 
 // TaskQueueDistro[] is the return value for the taskQueueDistros query.
