@@ -1004,6 +1004,10 @@ func (a *Agent) finishTask(ctx context.Context, tc *taskContext, status string, 
 
 //nolint:unused
 func (a *Agent) upsertCheckRun(ctx context.Context, tc *taskContext) error {
+	if tc.taskConfig == nil {
+		return nil
+	}
+
 	checkRunOutput, err := buildCheckRun(ctx, tc)
 	if err != nil {
 		return err
