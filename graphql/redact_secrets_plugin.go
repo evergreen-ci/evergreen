@@ -3,6 +3,7 @@ package graphql
 import (
 	"fmt"
 	"os"
+	"sort"
 
 	"github.com/99designs/gqlgen/codegen/config"
 )
@@ -23,6 +24,9 @@ func GenerateSecretFields(cfg *config.Config) error {
 	for field := range redactedFields {
 		fields = append(fields, field)
 	}
+
+	// Sort the fields to ensure consistent output.
+	sort.Sort(sort.StringSlice(fields))
 
 	return generateRedactedFieldsFile(fields)
 }

@@ -6,10 +6,10 @@ import (
 )
 
 var RedactedFields = []string{
-	"vars",
-	"secret",
 	"publicKey",
+	"secret",
 	"servicePassword",
+	"vars",
 }
 
 func IsFieldRedacted(fieldName string) bool {
