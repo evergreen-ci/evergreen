@@ -185,6 +185,8 @@ func updateParserProject(ctx context.Context, settings *evergreen.Settings, v *V
 		return nil
 	}
 
+	// If this is the first time the parser project has been updated by a generator, cache a copy of
+	// the parser project representing its state before any generators updated it.
 	if len(pp.UpdatedByGenerators) == 0 {
 		oldPP, err := ParserProjectFindOneByID(ctx, settings, v.ProjectStorageMethod, v.Id)
 		if err != nil {
