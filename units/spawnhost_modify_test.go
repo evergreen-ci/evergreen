@@ -62,6 +62,9 @@ func TestSpawnhostModifyJob(t *testing.T) {
 		assert.Equal(t, j.ModifyOptions, modifyOpts)
 		assert.Equal(t, evergreen.ModifySpawnHostManual, j.Source)
 	})
+	// kim: TODO: add tests for:
+	// * expirable -> unexpirable
+	// * unexpirable -> expirable
 	t.Run("ModifiesHost", func(t *testing.T) {
 		assert.NoError(t, db.ClearCollections(host.Collection, event.EventCollection))
 		mock := cloud.GetMockProvider()

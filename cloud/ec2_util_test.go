@@ -5,8 +5,6 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/aws/aws-sdk-go-v2/aws"
-	"github.com/aws/aws-sdk-go-v2/service/ec2/types"
 	r53Types "github.com/aws/aws-sdk-go-v2/service/route53/types"
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/db"
@@ -86,14 +84,15 @@ func TestSetHostPersistentDNSName(t *testing.T) {
 	defer func() {
 		assert.NoError(t, db.ClearCollections(host.Collection))
 	}()
-	for tName, tCase := range map[string]func(ctx context.Context, t *testing.T, env *mock.Environment, h *host.Host, instance *types.Instance, client *awsClientMock){
-		"Succeeds": func(ctx context.Context, t *testing.T, env *mock.Environment, h *host.Host, instance *types.Instance, client *awsClientMock) {
+	const ipv4Addr = "127.0.0.1"
+	for tName, tCase := range map[string]func(ctx context.Context, t *testing.T, env *mock.Environment, h *host.Host, client *awsClientMock){
+		"Succeeds": func(ctx context.Context, t *testing.T, env *mock.Environment, h *host.Host, client *awsClientMock) {
 			require.NoError(t, h.Insert(ctx))
-			require.NoError(t, setHostPersistentDNSName(ctx, env, h, instance, client))
+			require.NoError(t, setHostPersistentDNSName(ctx, env, h, ipv4Addr, client))
 
 			assert.NotZero(t, h.PersistentDNSName)
 			assert.True(t, strings.HasSuffix(h.PersistentDNSName, env.Settings().Providers.AWS.PersistentDNS.Domain))
-			assert.Equal(t, utility.FromStringPtr(instance.PublicIpAddress), h.PublicIPv4)
+			assert.Equal(t, ipv4Addr, h.PublicIPv4)
 
 			require.NotZero(t, client.ChangeResourceRecordSetsInput)
 			require.NotZero(t, client.ChangeResourceRecordSetsInput.ChangeBatch)
@@ -111,10 +110,9 @@ func TestSetHostPersistentDNSName(t *testing.T) {
 			assert.Equal(t, h.PersistentDNSName, dbHost.PersistentDNSName)
 			assert.Equal(t, h.PublicIPv4, dbHost.PublicIPv4)
 		},
-		"FailsForInstanceWithoutIPv4Address": func(ctx context.Context, t *testing.T, env *mock.Environment, h *host.Host, instance *types.Instance, client *awsClientMock) {
-			instance.PublicIpAddress = nil
+		"FailsForEmptyIPv4Address": func(ctx context.Context, t *testing.T, env *mock.Environment, h *host.Host, client *awsClientMock) {
 			require.NoError(t, h.Insert(ctx))
-			assert.Error(t, setHostPersistentDNSName(ctx, env, h, instance, client))
+			assert.Error(t, setHostPersistentDNSName(ctx, env, h, "", client))
 
 			assert.Zero(t, h.PersistentDNSName)
 			assert.Zero(t, h.PublicIPv4)
@@ -145,12 +143,8 @@ func TestSetHostPersistentDNSName(t *testing.T) {
 				Id:        hostID,
 				StartedBy: "some.user",
 			}
-			instance := &types.Instance{
-				InstanceId:      aws.String(hostID),
-				PublicIpAddress: aws.String("127.0.0.1"),
-			}
 
-			tCase(ctx, t, env, h, instance, &awsClientMock{})
+			tCase(ctx, t, env, h, &awsClientMock{})
 		})
 	}
 }
