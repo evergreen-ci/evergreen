@@ -594,33 +594,14 @@ func validateEc2DescribeInstancesOutput(describeInstancesResponse *ec2.DescribeI
 	return catcher.Resolve()
 }
 
-// Get EC2 key and secret from the AWS configuration
-func GetEC2Key(s *evergreen.Settings) (string, string, error) {
-	if len(s.Providers.AWS.EC2Keys) == 0 {
-		return "", "", errors.New("no EC2 keys in config")
-	}
-
-	key := s.Providers.AWS.EC2Keys[0].Key
-	secret := s.Providers.AWS.EC2Keys[0].Secret
-
-	// Error if key or secret are blank
-	if key == "" || secret == "" {
-		return "", "", errors.New("AWS key and secret must not be blank")
-	}
-
-	return key, secret, nil
-}
-
 func getEC2ManagerOptionsFromSettings(provider string, settings *EC2ProviderSettings) ManagerOpts {
 	region := settings.Region
 	if region == "" {
 		region = evergreen.DefaultEC2Region
 	}
 	return ManagerOpts{
-		Provider:       provider,
-		Region:         region,
-		ProviderKey:    settings.AWSKeyID,
-		ProviderSecret: settings.AWSSecret,
+		Provider: provider,
+		Region:   region,
 	}
 }
 
