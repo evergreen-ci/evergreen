@@ -6012,7 +6012,14 @@ func TestSetPersistentDNSInfo(t *testing.T) {
 	for tName, tCase := range map[string]func(ctx context.Context, t *testing.T, h *Host){
 		"SetsPersistentDNSInfo": func(ctx context.Context, t *testing.T, h *Host) {
 			require.NoError(t, h.Insert(ctx))
-			h.SetPersistentDNSInfo(ctx, dnsName, ipv4Addr)
+
+			require.NoError(t, h.SetPersistentDNSInfo(ctx, dnsName, ipv4Addr))
+
+			dbHost, err := FindOneId(ctx, h.Id)
+			require.NoError(t, err)
+			require.NotZero(t, dbHost)
+			assert.Equal(t, dnsName, dbHost.PersistentDNSName)
+			assert.Equal(t, ipv4Addr, dbHost.PublicIPv4)
 		},
 		"OverwritesExistingPersistentDNSInfo": func(ctx context.Context, t *testing.T, h *Host) {
 			h.PersistentDNSName = "bye.example.com"
