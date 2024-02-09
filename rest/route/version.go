@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"net/http"
+	"strconv"
 
 	"github.com/evergreen-ci/evergreen"
 	dbModel "github.com/evergreen-ci/evergreen/model"
@@ -139,9 +140,10 @@ func (vh *versionPatchHandler) Run(ctx context.Context) gimlet.Responder {
 
 // buildsForVersionHandler is a RequestHandler for fetching all builds for a version
 type buildsForVersionHandler struct {
-	versionId string
-	variant   string
-	env       evergreen.Environment
+	versionId       string
+	variant         string
+	includeTaskInfo bool
+	env             evergreen.Environment
 }
 
 func makeGetVersionBuilds(env evergreen.Environment) gimlet.RouteHandler {
@@ -155,9 +157,10 @@ func makeGetVersionBuilds(env evergreen.Environment) gimlet.RouteHandler {
 //	@Tags			builds
 //	@Router			/versions/{version_id}/builds [get]
 //	@Security		Api-User || Api-Key
-//	@Param			version_id	path	string	true	"the version ID"
-//	@Param			variant		query	string	false	"Only return the build with this variant (using Distro identifier)."
-//	@Success		200			{array}	model.APIBuild
+//	@Param			version_id			path	string	true	"the version ID"
+//	@Param			variant				query	string	false	"Only return the build with this variant (using Distro identifier)."
+//	@Param			include_task_info	query	string	false	"if set, include additional information about tasks in each build (this is expensive)"
+//	@Success		200					{array}	model.APIBuild
 func (h *buildsForVersionHandler) Factory() gimlet.RouteHandler {
 	return &buildsForVersionHandler{env: h.env}
 }
@@ -171,6 +174,14 @@ func (h *buildsForVersionHandler) Parse(ctx context.Context, r *http.Request) er
 	}
 	vars := r.URL.Query()
 	h.variant = vars.Get("variant")
+	includeTaskInfoStr := vars.Get("include_task_info")
+	if includeTaskInfoStr != "" {
+		includeTaskInfo, err := strconv.ParseBool(includeTaskInfoStr)
+		if err != nil {
+			return errors.Wrap(err, "invalid include_task_info parameter")
+		}
+		h.includeTaskInfo = includeTaskInfo
+	}
 	return nil
 }
 
@@ -204,6 +215,11 @@ func (h *buildsForVersionHandler) Run(ctx context.Context) gimlet.Responder {
 	for _, b := range builds {
 		buildModel := model.APIBuild{}
 		buildModel.BuildFromService(b, pp)
+		if h.includeTaskInfo {
+			if err := setBuildTaskCache(&b, &buildModel); err != nil {
+				return gimlet.NewJSONInternalErrorResponse(errors.Wrapf(err, "setting task cache for build '%s'", b.Id))
+			}
+		}
 		buildModels = append(buildModels, buildModel)
 	}
 	return gimlet.NewJSONResponse(buildModels)

@@ -398,14 +398,13 @@ type TaskFilterOptions struct {
 // TaskLogs is the return value for the task.taskLogs query.
 // It contains the logs for a given task on a given execution.
 type TaskLogs struct {
-	AgentLogs     []*apimodels.LogMessage       `json:"agentLogs"`
-	AllLogs       []*apimodels.LogMessage       `json:"allLogs"`
-	DefaultLogger string                        `json:"defaultLogger"`
-	EventLogs     []*model.TaskAPIEventLogEntry `json:"eventLogs"`
-	Execution     int                           `json:"execution"`
-	SystemLogs    []*apimodels.LogMessage       `json:"systemLogs"`
-	TaskID        string                        `json:"taskId"`
-	TaskLogs      []*apimodels.LogMessage       `json:"taskLogs"`
+	AgentLogs  []*apimodels.LogMessage       `json:"agentLogs"`
+	AllLogs    []*apimodels.LogMessage       `json:"allLogs"`
+	EventLogs  []*model.TaskAPIEventLogEntry `json:"eventLogs"`
+	Execution  int                           `json:"execution"`
+	SystemLogs []*apimodels.LogMessage       `json:"systemLogs"`
+	TaskID     string                        `json:"taskId"`
+	TaskLogs   []*apimodels.LogMessage       `json:"taskLogs"`
 }
 
 // TaskQueueDistro[] is the return value for the taskQueueDistros query.
@@ -605,47 +604,6 @@ func (e *BootstrapMethod) UnmarshalGQL(v interface{}) error {
 }
 
 func (e BootstrapMethod) MarshalGQL(w io.Writer) {
-	fmt.Fprint(w, strconv.Quote(e.String()))
-}
-
-type CloneMethod string
-
-const (
-	CloneMethodLegacySSH CloneMethod = "LEGACY_SSH"
-	CloneMethodOauth     CloneMethod = "OAUTH"
-)
-
-var AllCloneMethod = []CloneMethod{
-	CloneMethodLegacySSH,
-	CloneMethodOauth,
-}
-
-func (e CloneMethod) IsValid() bool {
-	switch e {
-	case CloneMethodLegacySSH, CloneMethodOauth:
-		return true
-	}
-	return false
-}
-
-func (e CloneMethod) String() string {
-	return string(e)
-}
-
-func (e *CloneMethod) UnmarshalGQL(v interface{}) error {
-	str, ok := v.(string)
-	if !ok {
-		return fmt.Errorf("enums must be strings")
-	}
-
-	*e = CloneMethod(str)
-	if !e.IsValid() {
-		return fmt.Errorf("%s is not a valid CloneMethod", str)
-	}
-	return nil
-}
-
-func (e CloneMethod) MarshalGQL(w io.Writer) {
 	fmt.Fprint(w, strconv.Quote(e.String()))
 }
 

@@ -304,6 +304,7 @@ func (j *patchIntentProcessor) finishPatch(ctx context.Context, patchDoc *patch.
 	if errs := validator.CheckProjectSettings(ctx, j.env.Settings(), patchedProject, pref, false).AtLevel(validator.Error); len(errs) != 0 {
 		validationCatcher.Errorf("invalid patched config for current project settings: %s", validator.ValidationErrorsToString(errs))
 	}
+
 	if errs := validator.CheckPatchedProjectConfigErrors(patchedProjectConfig).AtLevel(validator.Error); len(errs) != 0 {
 		validationCatcher.Errorf("invalid patched project config syntax: %s", validator.ValidationErrorsToString(errs))
 	}
@@ -406,8 +407,14 @@ func (j *patchIntentProcessor) finishPatch(ctx context.Context, patchDoc *patch.
 	}
 
 	if patchDoc.IsGithubPRPatch() {
+		numCheckRuns := patchedProject.GetNumCheckRunsFromVariantTasks(patchDoc.VariantsTasks)
+		checkRunLimit := j.env.Settings().GitHubCheckRun.CheckRunLimit
+		if numCheckRuns > checkRunLimit {
+			return errors.Errorf("total number of checkRuns (%d) exceeds maximum limit (%d)", numCheckRuns, checkRunLimit)
+		}
 		catcher.Wrap(j.createGitHubSubscriptions(patchDoc), "creating GitHub PR patch subscriptions")
 	}
+
 	if patchDoc.IsGithubMergePatch() {
 		catcher.Wrap(j.createGitHubMergeSubscription(ctx, patchDoc), "creating GitHub merge queue subscriptions")
 	}

@@ -806,35 +806,15 @@ func mergeAllLogs(main, add *LoggerConfig) *LoggerConfig {
 }
 
 const (
-	EvergreenLogSender   = "evergreen"
-	FileLogSender        = "file"
-	BuildloggerLogSender = "buildlogger"
-	SplunkLogSender      = "splunk"
+	EvergreenLogSender = "evergreen"
+	FileLogSender      = "file"
+	SplunkLogSender    = "splunk"
 )
-
-// IsValidDefaultLogger returns whether the given logger, set either globally
-// or at the project level, is a valid default logger. Default loggers must be
-// configured globally or not require configuration and must be valid for use
-// with system logs.
-func IsValidDefaultLogger(logger string) bool {
-	for _, validLogger := range ValidDefaultLoggers {
-		if logger == validLogger {
-			return true
-		}
-	}
-	return false
-}
-
-var ValidDefaultLoggers = []string{
-	EvergreenLogSender,
-	BuildloggerLogSender,
-}
 
 var ValidLogSenders = []string{
 	EvergreenLogSender,
 	FileLogSender,
 	SplunkLogSender,
-	BuildloggerLogSender,
 }
 
 // TaskIdTable is a map of [variant, task display name]->[task id].
@@ -1536,6 +1516,42 @@ func (p *Project) findMatchingProjectTasks(tRegex *regexp.Regexp) []string {
 		}
 	}
 	return res
+}
+
+func (p *Project) GetNumCheckRunsFromVariantTasks(variantTasks []patch.VariantTasks) int {
+	numCheckRuns := 0
+	for _, variant := range variantTasks {
+		for _, t := range variant.Tasks {
+			numCheckRuns += p.getNumCheckRuns(t, variant.Variant)
+		}
+
+		for _, dt := range variant.DisplayTasks {
+			for _, t := range dt.ExecTasks {
+				numCheckRuns += p.getNumCheckRuns(t, variant.Variant)
+			}
+		}
+	}
+	return numCheckRuns
+}
+
+func (p *Project) GetNumCheckRunsFromTaskVariantPairs(variantTasks *TaskVariantPairs) int {
+	numCheckRuns := 0
+	for _, variant := range variantTasks.DisplayTasks {
+		numCheckRuns += p.getNumCheckRuns(variant.TaskName, variant.Variant)
+	}
+	for _, variant := range variantTasks.ExecTasks {
+		numCheckRuns += p.getNumCheckRuns(variant.TaskName, variant.Variant)
+	}
+	return numCheckRuns
+}
+
+func (p *Project) getNumCheckRuns(taskName, variantName string) int {
+	if bvtu := p.FindTaskForVariant(taskName, variantName); bvtu != nil {
+		if bvtu.HasCheckRun() {
+			return 1
+		}
+	}
+	return 0
 }
 
 func (p *Project) findProjectTasksWithTag(tags []string) []string {

@@ -158,7 +158,6 @@ func TestCopyDistro(t *testing.T) {
 			assert.Equal(t, len(events), 0)
 		},
 		"Fails when distro to copy does not exist": func(t *testing.T, ctx context.Context, u user.DBUser) {
-
 			opts := CopyDistroOpts{
 				DistroIdToCopy: "my-distro",
 				NewDistroId:    "new-distro",
@@ -173,7 +172,6 @@ func TestCopyDistro(t *testing.T) {
 		},
 	} {
 		t.Run(tName, func(t *testing.T) {
-
 			tctx, tcancel := context.WithCancel(ctx)
 			defer tcancel()
 
@@ -186,7 +184,6 @@ func TestCopyDistro(t *testing.T) {
 				BootstrapSettings: distro.BootstrapSettings{
 					Method: distro.BootstrapMethodNone,
 				},
-				CloneMethod: evergreen.CloneMethodLegacySSH,
 				DispatcherSettings: distro.DispatcherSettings{
 					Version: evergreen.DispatcherVersionRevised,
 				},
@@ -255,7 +252,6 @@ func TestCreateDistro(t *testing.T) {
 		},
 	} {
 		t.Run(tName, func(t *testing.T) {
-
 			tctx, tcancel := context.WithCancel(ctx)
 			defer tcancel()
 
@@ -273,7 +269,6 @@ func TestCreateDistro(t *testing.T) {
 				BootstrapSettings: distro.BootstrapSettings{
 					Method: distro.BootstrapMethodNone,
 				},
-				CloneMethod: evergreen.CloneMethodLegacySSH,
 				DispatcherSettings: distro.DispatcherSettings{
 					Version: evergreen.DispatcherVersionRevised,
 				},

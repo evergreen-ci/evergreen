@@ -17,7 +17,6 @@ evghome := $(abspath .)
 ifeq ($(OS),Windows_NT)
 	evghome := $(shell cygpath -m $(evghome))
 endif
-lobsterTempDir := $(abspath $(buildDir))/lobster-temp
 # end project configuration
 
 # start go runtime settings
@@ -357,17 +356,6 @@ $(buildDir)/output.%.coverage.html:$(buildDir)/output.%.coverage
 	$(gobin) tool cover -html=$< -o $@
 # end test and coverage artifacts
 
-clean-lobster:
-	rm -rf $(lobsterTempDir)
-phony += clean-lobster
-
-update-lobster: clean-lobster
-	EVGHOME=$(evghome) LOBSTER_TEMP_DIR=$(lobsterTempDir) scripts/update-lobster.sh
-
-# clean and other utility targets
-clean: clean-lobster
-	rm -rf $(buildDir) $(clientBuildDir)
-phony += clean
 
 gqlgen:
 	$(gobin) run github.com/99designs/gqlgen generate

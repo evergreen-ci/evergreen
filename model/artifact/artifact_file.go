@@ -150,6 +150,9 @@ func RotateSecrets(toReplace, replacement string, dryRun bool) (map[TaskIDAndExe
 	return changes, catcher.Resolve()
 }
 
+// EscapeFiles escapes the base of the file link to avoid issues opening links
+// with special characters in the UI.
+// For example, "url.com/something/file#1.tar.gz" will be escaped to "url.com/something/file%231.tar.gz
 func EscapeFiles(files []File) []File {
 	var escapedFiles []File
 	for _, file := range files {
@@ -162,5 +165,8 @@ func EscapeFiles(files []File) []File {
 func escapeFile(path string) string {
 	base := filepath.Base(path)
 	i := strings.LastIndex(path, base)
+	if i < 0 {
+		return path
+	}
 	return path[:i] + strings.Replace(path[i:], base, url.QueryEscape(base), 1)
 }
