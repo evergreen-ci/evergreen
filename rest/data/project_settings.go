@@ -320,10 +320,10 @@ func SaveProjectSettingsForSection(ctx context.Context, projectId string, change
 		if !mergedBeforeRef.IsPerfEnabled() && mergedSection.IsPerfEnabled() {
 			identifier, err := model.GetIdentifierForProject(projectId)
 			if err != nil {
-				return nil, errors.Wrapf(err, "finding project identifier for project '%s'", projectId)
+				return nil, errors.Wrapf(err, "finding identifier for project '%s'", projectId)
 			}
 			if projectId != identifier {
-				return nil, errors.Errorf("project '%s' does not have a matching ID and identifier, cannot enable performance plugin", identifier)
+				return nil, errors.Errorf("cannot enable performance plugin for project '%s' because project ID and identifier do not match", identifier)
 			}
 		}
 	case model.ProjectPageAccessSection:
