@@ -236,7 +236,6 @@ type TestResult {
 type TestLog {
   lineNum: Int
   url: String
-  urlLobster: String @deprecated(reason: "Use urlParsley instead")
   urlParsley: String
   urlRaw: String
   renderingType: String

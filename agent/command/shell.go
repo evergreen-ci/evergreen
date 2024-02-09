@@ -117,6 +117,15 @@ func (c *shellExec) ParseParams(params map[string]interface{}) error {
 func (c *shellExec) Execute(ctx context.Context, _ client.Communicator, logger client.LoggerProducer, conf *internal.TaskConfig) error {
 	logger.Execution().Debug("Preparing script...")
 
+	// We do this before expanding expansions so that expansions are not logged.
+	if c.Silent {
+		logger.Execution().Infof("Executing script with shell '%s' (source hidden)...",
+			c.Shell)
+	} else {
+		logger.Execution().Infof("Executing script with shell '%s':\n%s",
+			c.Shell, c.Script)
+	}
+
 	var err error
 	if err = c.doExpansions(&conf.Expansions); err != nil {
 		return errors.WithStack(err)
@@ -211,14 +220,6 @@ func (c *shellExec) Execute(ctx context.Context, _ client.Communicator, logger c
 		} else {
 			cmd.SetErrorSender(level.Error, logger.Task().GetSender())
 		}
-	}
-
-	if c.Silent {
-		logger.Execution().Infof("Executing script with shell '%s' (source hidden)...",
-			c.Shell)
-	} else {
-		logger.Execution().Infof("Executing script with shell '%s':\n%s",
-			c.Shell, c.Script)
 	}
 
 	err = cmd.Run(ctx)

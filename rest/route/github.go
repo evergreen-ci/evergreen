@@ -12,7 +12,6 @@ import (
 	"github.com/evergreen-ci/evergreen/model/commitqueue"
 	"github.com/evergreen-ci/evergreen/model/event"
 	"github.com/evergreen-ci/evergreen/model/patch"
-	"github.com/evergreen-ci/evergreen/model/task"
 	"github.com/evergreen-ci/evergreen/model/user"
 	"github.com/evergreen-ci/evergreen/repotracker"
 	"github.com/evergreen-ci/evergreen/rest/data"
@@ -67,7 +66,6 @@ type githubHookApi struct {
 	msgID     string
 	sc        data.Connector
 	settings  *evergreen.Settings
-	comments  githubComments
 }
 
 func makeGithubHooksRoute(sc data.Connector, queue amboy.Queue, secret []byte, settings *evergreen.Settings) gimlet.RouteHandler {
@@ -76,7 +74,6 @@ func makeGithubHooksRoute(sc data.Connector, queue amboy.Queue, secret []byte, s
 		settings: settings,
 		queue:    queue,
 		secret:   secret,
-		comments: newGithubComments(settings.Ui.UIv2Url),
 	}
 }
 
@@ -86,7 +83,6 @@ func (gh *githubHookApi) Factory() gimlet.RouteHandler {
 		secret:   gh.secret,
 		sc:       gh.sc,
 		settings: gh.settings,
-		comments: newGithubComments(gh.settings.Ui.UIv2Url),
 	}
 }
 
@@ -187,7 +183,7 @@ func (gh *githubHookApi) Run(ctx context.Context) gimlet.Responder {
 				"user":      *event.Sender.Login,
 				"message":   "PR accepted, attempting to queue",
 			})
-			if err := gh.AddIntentForPR(ctx, event.PullRequest, event.Sender.GetLogin(), patch.AutomatedCaller, false); err != nil {
+			if err := gh.AddIntentForPR(event.PullRequest, event.Sender.GetLogin(), patch.AutomatedCaller); err != nil {
 				grip.Error(message.WrapError(err, message.Fields{
 					"source":    "GitHub hook",
 					"msg_id":    gh.msgID,
@@ -532,7 +528,7 @@ func (gh *githubHookApi) createPRPatch(ctx context.Context, owner, repo, calledB
 		return errors.Wrapf(err, "getting PR for repo '%s:%s', PR #%d", owner, repo, prNumber)
 	}
 
-	return gh.AddIntentForPR(ctx, pr, pr.User.GetLogin(), calledBy, true)
+	return gh.AddIntentForPR(pr, pr.User.GetLogin(), calledBy)
 }
 
 // keepPRPatchDefinition looks for the most recent patch created for the pr number and updates the
@@ -575,16 +571,7 @@ func (gh *githubHookApi) refreshPatchStatus(ctx context.Context, owner, repo str
 	return nil
 }
 
-// AddIntentForPR processes a PR and decides whether to create a patch for it or not. It does this by checking a
-// few things:
-// - If the PR has any skip CI labels in the title or description, it will skip creating a patch.
-// - If overrideExisting is false, it will only create a patch if no other patch exists with the same head sha.
-// - If overrideExisting is true, it will abort any other patches with the same head sha and create a new patch.
-// GitHub checks only allow one check per head sha, so we need to abort any other patches with the same head sha
-// before creating a new one. For example, if multiple patches with the same head sha exist, the PR(s) will get
-// both updates from patches and be in a race condition for which one GitHub checks shows last- so we want
-// to avoid this state when possible.
-func (gh *githubHookApi) AddIntentForPR(ctx context.Context, pr *github.PullRequest, owner, calledBy string, overrideExisting bool) error {
+func (gh *githubHookApi) AddIntentForPR(pr *github.PullRequest, owner, calledBy string) error {
 	ghi, err := patch.NewGithubIntent(gh.msgID, owner, calledBy, pr)
 	if err != nil {
 		return errors.Wrap(err, "creating GitHub patch intent")
@@ -598,7 +585,7 @@ func (gh *githubHookApi) AddIntentForPR(ctx context.Context, pr *github.PullRequ
 		}
 		if strings.Contains(title, label) || strings.Contains(limitedDesc, label) {
 			grip.Info(message.Fields{
-				"message": "skipping CI on PR due to skip label in title/description",
+				"message": "skipping CI on PR",
 				"owner":   pr.Base.User.GetLogin(),
 				"repo":    pr.Base.Repo.GetName(),
 				"ref":     pr.Head.GetRef(),
@@ -609,97 +596,11 @@ func (gh *githubHookApi) AddIntentForPR(ctx context.Context, pr *github.PullRequ
 		}
 	}
 
-	conflictingPatches, err := getOtherPatchesWithHash(pr.Head.GetSHA(), pr.GetNumber())
-	if err != nil {
-		grip.Error(message.WrapError(err, message.Fields{
-			"message": "error getting same hash patches",
-			"owner":   pr.Base.User.GetLogin(),
-
-			"repo":              pr.Base.Repo.GetName(),
-			"ref":               pr.Head.GetRef(),
-			"pr_num":            pr.GetNumber(),
-			"hash":              pr.Head.GetSHA(),
-			"override_existing": overrideExisting,
-		}))
-		return errors.Wrapf(err, "getting same hash patches")
+	if err := data.AddPatchIntent(ghi, gh.queue); err != nil {
+		return errors.Wrap(err, "saving GitHub patch intent")
 	}
 
-	// If no conflicting patches exist, we can create the patch
-	if len(conflictingPatches) == 0 {
-		return errors.Wrap(data.AddPatchIntent(ghi, gh.queue), "saving GitHub patch intent")
-	}
-
-	// If we don't want to override any existing patches, comment to inform the user and no-op.
-	if !overrideExisting {
-		// We want to comment on explaining why a new patch will not be ran.
-		grip.Info(message.Fields{
-			"message":         "skipping CI on PR due to patch already existing",
-			"owner":           pr.Base.User.GetLogin(),
-			"repo":            pr.Base.Repo.GetName(),
-			"ref":             pr.Head.GetRef(),
-			"pr_num":          pr.GetNumber(),
-			"head_sha":        pr.Head.GetSHA(),
-			"conflicting_prs": gh.comments.getLinksForPRPatches(conflictingPatches),
-		})
-		return gh.sc.AddCommentToPR(ctx, pr.Base.User.GetLogin(), pr.Base.Repo.GetName(), pr.GetNumber(), gh.comments.existingPatches(conflictingPatches))
-	}
-
-	// If we do want to override any existing patches, we override them and then create a new patch.
-	if err = gh.overrideOtherPRs(ctx, pr, conflictingPatches); err != nil {
-		return errors.Wrap(err, "overriding other PRs")
-	}
-
-	return errors.Wrap(data.AddPatchIntent(ghi, gh.queue), "saving GitHub patch intent")
-}
-
-// overrideOtherPRs aborts the given patches and comments on each patch's PR to inform the user that their patch
-// was aborted in favor of the new one. If any errors from commenting occur, we still abort the patches, log them,
-// and ignore them. If any errors from aborting patches occur, we comment again to inform the user that there was
-// an error and to retry- and we fail the entire operation.
-func (gh *githubHookApi) overrideOtherPRs(ctx context.Context, pr *github.PullRequest, patches []patch.Patch) error {
-	grip.Info(message.Fields{
-		"message":         "aborting existing CI on same SHA patches",
-		"owner":           pr.Base.User.GetLogin(),
-		"repo":            pr.Base.Repo.GetName(),
-		"ref":             pr.Head.GetRef(),
-		"pr_num":          pr.GetNumber(),
-		"conflicting_prs": gh.comments.getLinksForPRPatches(patches),
-	})
-
-	commentsCatcher := grip.NewBasicCatcher()
-	cancelCatcher := grip.NewBasicCatcher()
-	for _, p := range patches {
-		commentsCatcher.Wrap(gh.sc.AddCommentToPR(ctx, p.GithubPatchData.BaseOwner, p.GithubPatchData.BaseRepo, p.GithubPatchData.PRNumber, gh.comments.overriddenPR(pr)), "adding comment to overridden PR")
-		err := model.CancelPatch(&p, task.AbortInfo{User: evergreen.GithubPatchUser, NewVersion: "", PRClosed: false})
-		if err == nil {
-			continue
-		}
-		cancelCatcher.Wrap(err, "canceling patch")
-		commentsCatcher.Wrap(gh.sc.AddCommentToPR(ctx, pr.Base.User.GetLogin(), pr.Base.Repo.GetName(), pr.GetNumber(), "There was an issue aborting the other patches, please try 'evergreen retry' again."), "adding comment to overriding PR when error")
-	}
-
-	grip.Warning(message.WrapError(commentsCatcher.Resolve(), message.Fields{
-		"message": "commenting on patches with same hash to cancel",
-		"owner":   pr.Base.User.GetLogin(),
-		"repo":    pr.Base.Repo.GetName(),
-		"ref":     pr.Head.GetRef(),
-		"pr_num":  pr.GetNumber(),
-	}))
-	grip.Error(message.WrapError(cancelCatcher.Resolve(), message.Fields{
-		"message": "cancelling patches with same hash",
-		"owner":   pr.Base.User.GetLogin(),
-		"repo":    pr.Base.Repo.GetName(),
-		"ref":     pr.Head.GetRef(),
-		"pr_num":  pr.GetNumber(),
-	}))
-
-	if !cancelCatcher.HasErrors() {
-		return errors.Wrap(gh.sc.AddCommentToPR(ctx, pr.Base.User.GetLogin(), pr.Base.Repo.GetName(), pr.GetNumber(), gh.comments.overridingPR(patches)), "adding comment to overriding PR")
-	}
-
-	cancelCatcher.Add(errors.Wrap(commentsCatcher.Resolve(), "commenting on patches with same hash to cancel"))
-	return errors.Wrap(cancelCatcher.Resolve(), "aborting overridden patches")
-
+	return nil
 }
 
 // handleGitTag adds the tag to the version it was pushed to, and triggers a new version if applicable
@@ -957,21 +858,6 @@ func (gh *githubHookApi) createVersionForTag(ctx context.Context, pRef model.Pro
 	}
 	projectInfo.Ref = &pRef
 	return gh.sc.CreateVersionFromConfig(ctx, &projectInfo, metadata)
-}
-
-func getOtherPatchesWithHash(githash string, prNum int) ([]patch.Patch, error) {
-	patches, err := patch.Find(patch.ByGithash(githash))
-	if err != nil {
-		return nil, errors.Wrapf(err, "getting same hash patches")
-	}
-	// Remove a patch associated with this PR if applicable.
-	filtered := []patch.Patch{}
-	for _, p := range patches {
-		if p.GithubPatchData.PRNumber != prNum {
-			filtered = append(filtered, p)
-		}
-	}
-	return filtered, nil
 }
 
 func unauthorizedGitTagEmail(tag, user, gitTagSettingsUrl string) (string, string) {

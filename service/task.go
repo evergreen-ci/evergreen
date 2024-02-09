@@ -134,7 +134,6 @@ type uiTestResult struct {
 	TaskName   string                `json:"task_name"`
 	URL        string                `json:"url"`
 	URLRaw     string                `json:"url_raw"`
-	URLLobster string                `json:"url_lobster"`
 	URLParsley string                `json:"url_parsley"`
 }
 
@@ -942,7 +941,6 @@ func (uis *UIServer) getTestResults(projCtx projectContext, uiTask *uiTaskData) 
 				TaskName:   execTaskDisplayNameMap[tr.TaskID],
 				URL:        tr.GetLogURL(uis.env, evergreen.LogViewerHTML),
 				URLRaw:     tr.GetLogURL(uis.env, evergreen.LogViewerRaw),
-				URLLobster: tr.GetLogURL(uis.env, evergreen.LogViewerLobster),
 				URLParsley: tr.GetLogURL(uis.env, evergreen.LogViewerParsley),
 			})
 		}
@@ -953,7 +951,6 @@ func (uis *UIServer) getTestResults(projCtx projectContext, uiTask *uiTaskData) 
 				TaskId:     tr.TaskID,
 				URL:        tr.GetLogURL(uis.env, evergreen.LogViewerHTML),
 				URLRaw:     tr.GetLogURL(uis.env, evergreen.LogViewerRaw),
-				URLLobster: tr.GetLogURL(uis.env, evergreen.LogViewerLobster),
 				URLParsley: tr.GetLogURL(uis.env, evergreen.LogViewerParsley),
 			})
 		}
