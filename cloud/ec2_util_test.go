@@ -191,7 +191,7 @@ func TestDeleteHostPersistentDNSName(t *testing.T) {
 			require.NoError(t, h.Insert(ctx))
 			assert.NoError(t, deleteHostPersistentDNSName(ctx, env, h, client))
 
-			assert.NotZero(t, h.PersistentDNSName)
+			assert.Zero(t, h.PersistentDNSName)
 			assert.Zero(t, h.PublicIPv4)
 
 			assert.Zero(t, client.ChangeResourceRecordSetsInput)
@@ -199,7 +199,7 @@ func TestDeleteHostPersistentDNSName(t *testing.T) {
 			dbHost, err := host.FindOneId(ctx, h.Id)
 			require.NoError(t, err)
 			require.NotZero(t, dbHost)
-			assert.NotZero(t, dbHost.PersistentDNSName)
+			assert.Zero(t, dbHost.PersistentDNSName)
 			assert.Zero(t, dbHost.PublicIPv4)
 		},
 	} {
