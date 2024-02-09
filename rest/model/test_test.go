@@ -43,7 +43,6 @@ func TestTestBuildFromService(t *testing.T) {
 					Logs: TestLogs{
 						URL:        utility.ToStringPtr(input.GetLogURL(env, evergreen.LogViewerHTML)),
 						URLRaw:     utility.ToStringPtr(input.GetLogURL(env, evergreen.LogViewerRaw)),
-						URLLobster: utility.ToStringPtr(input.GetLogURL(env, evergreen.LogViewerLobster)),
 						URLParsley: utility.ToStringPtr(input.GetLogURL(env, evergreen.LogViewerParsley)),
 						LineNum:    input.LineNum,
 					},
@@ -84,7 +83,6 @@ func TestTestBuildFromService(t *testing.T) {
 					Logs: TestLogs{
 						URL:           utility.ToStringPtr(input.GetLogURL(env, evergreen.LogViewerHTML)),
 						URLRaw:        utility.ToStringPtr(input.GetLogURL(env, evergreen.LogViewerRaw)),
-						URLLobster:    utility.ToStringPtr(input.GetLogURL(env, evergreen.LogViewerLobster)),
 						URLParsley:    utility.ToStringPtr(input.GetLogURL(env, evergreen.LogViewerParsley)),
 						LineNum:       int(input.LogInfo.LineNum),
 						RenderingType: input.LogInfo.RenderingType,

@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"os"
+	"sort"
 
 	"github.com/evergreen-ci/evergreen/model"
 	"github.com/pkg/errors"
@@ -15,6 +16,7 @@ func Evaluate() cli.Command {
 	const (
 		taskFlagName     = "tasks"
 		variantsFlagName = "variants"
+		diffableFlagName = "diffable"
 	)
 
 	return cli.Command{
@@ -29,12 +31,17 @@ func Evaluate() cli.Command {
 				Name:  variantsFlagName,
 				Usage: "only show variant definitions",
 			},
+			cli.BoolFlag{
+				Name:  diffableFlagName,
+				Usage: "show the project configuration in an ordered, diff-friendly format",
+			},
 		),
 		Before: mergeBeforeFuncs(requirePathFlag),
 		Action: func(c *cli.Context) error {
 			path := c.String(pathFlagName)
 			showTasks := c.Bool(taskFlagName)
 			showVariants := c.Bool(variantsFlagName)
+			diffable := c.Bool(diffableFlagName)
 
 			configBytes, err := os.ReadFile(path)
 			if err != nil {
@@ -49,6 +56,15 @@ func Evaluate() cli.Command {
 			_, err = model.LoadProjectInto(ctx, configBytes, opts, "", p)
 			if err != nil {
 				return errors.Wrap(err, "loading project")
+			}
+			if diffable {
+				sortTasksByName := model.ProjectTasksByName(p.Tasks)
+				sort.Sort(sortTasksByName)
+				p.Tasks = sortTasksByName
+
+				sortBuildVariantsByName := model.BuildVariantsByName(p.BuildVariants)
+				sort.Sort(sortBuildVariantsByName)
+				p.BuildVariants = model.BuildVariants(sortBuildVariantsByName)
 			}
 
 			var out interface{}
