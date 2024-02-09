@@ -2,23 +2,27 @@
 
 Project Commands are the fundamental units of functionality in an Evergreen task.
 
-# Basic Command Structure
+## Basic Command Structure
 
 ```yaml
 - command: shell.exec
   display_name: run my cool script ## optional 
   type: system ## optional
   timeout_secs: 10 ## optional
+  retry_on_failure: true ## optional
   params:
     script: echo "my script"
 ```
 Explanation:
 
--   `command`: a command name predefined by evergreen
+-   `command`: a command name from the predefined set of commands documented below.
 -   `display_name`: an optional user defined display name for the command. This will show up in logs and in the UI
-     with more details, for example: 'shell.exec' ('run my cool script') (step 1 of 1)
--   `type`: an optional command type. This will affect the [failure colors](../Project-Configuration/Project-Configuration-Files.md#command-failure-colors)
--   `timeout_secs`: an optional timeout. This will force this command to fail if it stays "idle" for 10 seconds or more
+     with more details, for example: ~'shell.exec' ('run my cool script') (step 1 of 1)~
+-   `type`: an optional command type. This will affect the [failure colors](../Project-Configuration-Files/#command-failure-colors)
+-   `timeout_secs`: an optional timeout that will force the command to fail if it stays "idle" for more than a specified number of 
+    seconds.
+-   `retry_on_failure`: an optional field. If set to true, it will automatically restart the task upon failure. The 
+     automatic restart will process after the command has failed and the task has completed its subsequent post task commands.
 -   `params`: values for the pre defined set of parameters the command can take. Available parameters vary per command.
 
 
