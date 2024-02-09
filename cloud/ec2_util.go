@@ -13,6 +13,8 @@ import (
 	"github.com/aws/aws-sdk-go-v2/aws"
 	"github.com/aws/aws-sdk-go-v2/service/ec2"
 	"github.com/aws/aws-sdk-go-v2/service/ec2/types"
+	"github.com/aws/aws-sdk-go-v2/service/route53"
+	r53Types "github.com/aws/aws-sdk-go-v2/service/route53/types"
 	"github.com/aws/smithy-go"
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/model/distro"
@@ -33,6 +35,9 @@ const (
 	EC2VolumeNotFound       = "InvalidVolume.NotFound"
 	EC2VolumeResizeRate     = "VolumeModificationRateExceeded"
 	ec2TemplateNameExists   = "InvalidLaunchTemplateName.AlreadyExistsException"
+
+	r53InvalidInput       = "InvalidInput"
+	r53InvalidChangeBatch = "InvalidChangeBatch"
 )
 
 var (
@@ -277,7 +282,8 @@ func validateUserDataSize(userData, distroID string) error {
 	return errors.WithStack(err)
 }
 
-func cacheHostData(ctx context.Context, h *host.Host, instance *types.Instance, client AWSClient) error {
+// cacheHostData caches host information received from AWS about the instance.
+func cacheHostData(ctx context.Context, env evergreen.Environment, h *host.Host, instance *types.Instance, client AWSClient) error {
 	if instance.Placement == nil || instance.Placement.AvailabilityZone == nil {
 		return errors.New("instance missing availability zone")
 	}
@@ -308,6 +314,115 @@ func cacheHostData(ctx context.Context, h *host.Host, instance *types.Instance, 
 			}
 			break
 		}
+	}
+
+	if h.NoExpiration {
+		grip.Error(message.WrapError(setHostPersistentDNSName(ctx, env, h, instance, client), message.Fields{
+			"message":    "could not update host's persistent DNS name",
+			"op":         "upsert",
+			"dashboard":  "evergreen sleep schedule health",
+			"host_id":    h.Id,
+			"started_by": h.StartedBy,
+		}))
+	}
+
+	return nil
+}
+
+// persistentDNSRecordTTLSecs is the number of seconds that a DNS record can be
+// cached. It's intentionally very low so that changes to the DNS name's IP
+// address propagate quickly to users.
+const persistentDNSRecordTTLSecs = 1
+
+// setHostPersistentDNSName sets a host's persistent DNS record with its
+// associated IP address and sets it on the host.
+func setHostPersistentDNSName(ctx context.Context, env evergreen.Environment, h *host.Host, instance *types.Instance, client AWSClient) error {
+	ipAddr := utility.FromStringPtr(instance.PublicIpAddress)
+	if ipAddr == "" {
+		return errors.New("instance did not include an IP address")
+	}
+
+	settings := env.Settings()
+	if settings.Providers.AWS.PersistentDNS.Domain == "" || settings.Providers.AWS.PersistentDNS.HostedZoneID == "" {
+		// TODO (DEVPROD-4040): once all unexpirable hosts have a persistent DNS
+		// name assigned, this should return an error because not having these
+		// settings will prevent persistent DNS names from updating properly.
+		return nil
+	}
+
+	dnsName, err := h.GeneratePersistentDNSName(ctx, settings.Providers.AWS.PersistentDNS.Domain)
+	if err != nil {
+		return errors.Wrap(err, "getting host's persistent DNS name")
+	}
+	in := route53.ChangeResourceRecordSetsInput{
+		HostedZoneId: aws.String(settings.Providers.AWS.PersistentDNS.HostedZoneID),
+		ChangeBatch: &r53Types.ChangeBatch{
+			Changes: []r53Types.Change{
+				{
+					Action: r53Types.ChangeActionUpsert,
+					ResourceRecordSet: &r53Types.ResourceRecordSet{
+						Name: aws.String(dnsName),
+						Type: r53Types.RRTypeA,
+						ResourceRecords: []r53Types.ResourceRecord{
+							{Value: aws.String(ipAddr)},
+						},
+						TTL: aws.Int64(persistentDNSRecordTTLSecs),
+					},
+				},
+			},
+		},
+	}
+	if _, err := client.ChangeResourceRecordSets(ctx, &in); err != nil {
+		return errors.Wrapf(err, "upserting persistent DNS name '%s' for host '%s' into Route 53", dnsName, h.Id)
+	}
+	if err := h.SetPersistentDNSInfo(ctx, dnsName, ipAddr); err != nil {
+		return errors.Wrap(err, "setting host's persistent DNS name")
+	}
+
+	return nil
+}
+
+// deleteHostPersistentDNSName deletes a host's persistent DNS record and unsets
+// it from the host.
+func deleteHostPersistentDNSName(ctx context.Context, env evergreen.Environment, h *host.Host, client AWSClient) error {
+	if h.PersistentDNSName == "" || h.PublicIPv4 == "" {
+		return nil
+	}
+
+	settings := env.Settings()
+	if settings.Providers.AWS.PersistentDNS.Domain == "" || settings.Providers.AWS.PersistentDNS.HostedZoneID == "" {
+		// TODO (DEVPROD-4040): once all unexpirable hosts have a persistent DNS
+		// name assigned, this should return an error because not having these
+		// settings will prevent persistent DNS names from updating properly.
+		return nil
+	}
+
+	in := route53.ChangeResourceRecordSetsInput{
+		HostedZoneId: aws.String(settings.Providers.AWS.PersistentDNS.HostedZoneID),
+		ChangeBatch: &r53Types.ChangeBatch{
+			Changes: []r53Types.Change{
+				{
+					Action: r53Types.ChangeActionDelete,
+					ResourceRecordSet: &r53Types.ResourceRecordSet{
+						// The record name, value, type, and TTL must match the
+						// one in Route 53 exactly or else this will not be able
+						// to delete.
+						Name: aws.String(h.PersistentDNSName),
+						Type: r53Types.RRTypeA,
+						ResourceRecords: []r53Types.ResourceRecord{
+							{Value: aws.String(h.PublicIPv4)},
+						},
+						TTL: aws.Int64(persistentDNSRecordTTLSecs),
+					},
+				},
+			},
+		},
+	}
+	if _, err := client.ChangeResourceRecordSets(ctx, &in); err != nil {
+		return errors.Wrapf(err, "deleting persistent DNS name '%s' for host '%s' in Route 53", h.PersistentDNSName, h.Id)
+	}
+	if err := h.UnsetPersistentDNSInfo(ctx); err != nil {
+		return errors.Wrap(err, "setting host's persistent DNS name")
 	}
 
 	return nil
