@@ -11,6 +11,7 @@ import (
 	"github.com/aws/aws-sdk-go-v2/config"
 	"github.com/aws/aws-sdk-go-v2/service/ec2"
 	"github.com/aws/aws-sdk-go-v2/service/ec2/types"
+	"github.com/aws/aws-sdk-go-v2/service/route53"
 	"github.com/aws/smithy-go"
 	"github.com/evergreen-ci/evergreen/model"
 	"github.com/evergreen-ci/evergreen/model/host"
@@ -120,6 +121,9 @@ type AWSClient interface {
 	GetVolumeIDs(context.Context, *host.Host) ([]string, error)
 
 	GetPublicDNSName(ctx context.Context, h *host.Host) (string, error)
+
+	// ChangeResourceRecordSets is a wrapper for route53.ChangeResourceRecordSets.
+	ChangeResourceRecordSets(context.Context, *route53.ChangeResourceRecordSetsInput) (*route53.ChangeResourceRecordSetsOutput, error)
 }
 
 // awsClientImpl wraps ec2.EC2.
@@ -127,6 +131,7 @@ type awsClientImpl struct { //nolint:all
 	config     *aws.Config
 	httpClient *http.Client
 	client     *ec2.Client
+	r53Client  *route53.Client
 }
 
 type generateDeviceNameOptions struct {
@@ -169,6 +174,7 @@ func (c *awsClientImpl) Create(ctx context.Context, creds aws.CredentialsProvide
 		c.config = &config
 	}
 	c.client = ec2.NewFromConfig(*c.config)
+	c.r53Client = route53.NewFromConfig(*c.config)
 	return nil
 }
 
@@ -991,6 +997,39 @@ func (c *awsClientImpl) GetPublicDNSName(ctx context.Context, h *host.Host) (str
 	return *instance.PublicDnsName, nil
 }
 
+func (c *awsClientImpl) ChangeResourceRecordSets(ctx context.Context, input *route53.ChangeResourceRecordSetsInput) (*route53.ChangeResourceRecordSetsOutput, error) {
+	var output *route53.ChangeResourceRecordSetsOutput
+	var err error
+
+	err = utility.Retry(
+		ctx,
+		func() (bool, error) {
+			msg := makeAWSLogMessage("ChangeResourceRecordSets", fmt.Sprintf("%T", c), input)
+			output, err = c.r53Client.ChangeResourceRecordSets(ctx, input)
+			if err != nil {
+				var apiErr smithy.APIError
+				if errors.As(err, &apiErr) {
+					grip.Debug(message.WrapError(apiErr, msg))
+					if strings.Contains(apiErr.Error(), r53InvalidInput) {
+						return false, err
+					}
+					if strings.Contains(apiErr.Error(), r53InvalidChangeBatch) {
+						// This error means the record has already been deleted,
+						// so the delete operation was already successful.
+						return false, nil
+					}
+				}
+				return true, err
+			}
+			grip.Info(msg)
+			return false, nil
+		}, awsClientDefaultRetryOptions())
+	if err != nil {
+		return nil, err
+	}
+	return output, nil
+}
+
 // awsClientMock mocks ec2.EC2.
 type awsClientMock struct { //nolint
 	*ec2.RunInstancesInput
@@ -1023,6 +1062,9 @@ type awsClientMock struct { //nolint
 	*ec2.DescribeInstanceTypeOfferingsOutput
 
 	launchTemplates []types.LaunchTemplate
+
+	*route53.ChangeResourceRecordSetsInput
+	*route53.ChangeResourceRecordSetsOutput
 }
 
 // Create a new mock client.
@@ -1376,6 +1418,11 @@ func (c *awsClientMock) GetPublicDNSName(ctx context.Context, h *host.Host) (str
 	}
 
 	return "public_dns_name", nil
+}
+
+func (c *awsClientMock) ChangeResourceRecordSets(ctx context.Context, input *route53.ChangeResourceRecordSetsInput) (*route53.ChangeResourceRecordSetsOutput, error) {
+	c.ChangeResourceRecordSetsInput = input
+	return c.ChangeResourceRecordSetsOutput, nil
 }
 
 func makeAWSLogMessage(name, client string, args interface{}) message.Fields {

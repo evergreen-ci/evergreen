@@ -1282,6 +1282,7 @@ type ComplexityRoot struct {
 	}
 
 	TaskEventLogData struct {
+		BlockedOn func(childComplexity int) int
 		HostId    func(childComplexity int) int
 		JiraIssue func(childComplexity int) int
 		JiraLink  func(childComplexity int) int
@@ -1382,7 +1383,6 @@ type ComplexityRoot struct {
 		LineNum       func(childComplexity int) int
 		RenderingType func(childComplexity int) int
 		URL           func(childComplexity int) int
-		URLLobster    func(childComplexity int) int
 		URLParsley    func(childComplexity int) int
 		URLRaw        func(childComplexity int) int
 		Version       func(childComplexity int) int
@@ -8068,6 +8068,13 @@ func (e *executableSchema) Complexity(typeName, field string, childComplexity in
 
 		return e.complexity.TaskEndDetail.Type(childComplexity), true
 
+	case "TaskEventLogData.blockedOn":
+		if e.complexity.TaskEventLogData.BlockedOn == nil {
+			break
+		}
+
+		return e.complexity.TaskEventLogData.BlockedOn(childComplexity), true
+
 	case "TaskEventLogData.hostId":
 		if e.complexity.TaskEventLogData.HostId == nil {
 			break
@@ -8494,13 +8501,6 @@ func (e *executableSchema) Complexity(typeName, field string, childComplexity in
 		}
 
 		return e.complexity.TestLog.URL(childComplexity), true
-
-	case "TestLog.urlLobster":
-		if e.complexity.TestLog.URLLobster == nil {
-			break
-		}
-
-		return e.complexity.TestLog.URLLobster(childComplexity), true
 
 	case "TestLog.urlParsley":
 		if e.complexity.TestLog.URLParsley == nil {
@@ -55270,6 +55270,47 @@ func (ec *executionContext) fieldContext_TaskEventLogData_userId(ctx context.Con
 	return fc, nil
 }
 
+func (ec *executionContext) _TaskEventLogData_blockedOn(ctx context.Context, field graphql.CollectedField, obj *model.TaskEventData) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_TaskEventLogData_blockedOn(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.BlockedOn, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		return graphql.Null
+	}
+	res := resTmp.(*string)
+	fc.Result = res
+	return ec.marshalOString2ᚖstring(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_TaskEventLogData_blockedOn(ctx context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "TaskEventLogData",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type String does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
 func (ec *executionContext) _TaskEventLogEntry_id(ctx context.Context, field graphql.CollectedField, obj *model.TaskAPIEventLogEntry) (ret graphql.Marshaler) {
 	fc, err := ec.fieldContext_TaskEventLogEntry_id(ctx, field)
 	if err != nil {
@@ -55369,6 +55410,8 @@ func (ec *executionContext) fieldContext_TaskEventLogEntry_data(ctx context.Cont
 				return ec.fieldContext_TaskEventLogData_timestamp(ctx, field)
 			case "userId":
 				return ec.fieldContext_TaskEventLogData_userId(ctx, field)
+			case "blockedOn":
+				return ec.fieldContext_TaskEventLogData_blockedOn(ctx, field)
 			}
 			return nil, fmt.Errorf("no field named %q was found under type TaskEventLogData", field.Name)
 		},
@@ -57637,47 +57680,6 @@ func (ec *executionContext) fieldContext_TestLog_url(ctx context.Context, field 
 	return fc, nil
 }
 
-func (ec *executionContext) _TestLog_urlLobster(ctx context.Context, field graphql.CollectedField, obj *model.TestLogs) (ret graphql.Marshaler) {
-	fc, err := ec.fieldContext_TestLog_urlLobster(ctx, field)
-	if err != nil {
-		return graphql.Null
-	}
-	ctx = graphql.WithFieldContext(ctx, fc)
-	defer func() {
-		if r := recover(); r != nil {
-			ec.Error(ctx, ec.Recover(ctx, r))
-			ret = graphql.Null
-		}
-	}()
-	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
-		ctx = rctx // use context from middleware stack in children
-		return obj.URLLobster, nil
-	})
-	if err != nil {
-		ec.Error(ctx, err)
-		return graphql.Null
-	}
-	if resTmp == nil {
-		return graphql.Null
-	}
-	res := resTmp.(*string)
-	fc.Result = res
-	return ec.marshalOString2ᚖstring(ctx, field.Selections, res)
-}
-
-func (ec *executionContext) fieldContext_TestLog_urlLobster(ctx context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
-	fc = &graphql.FieldContext{
-		Object:     "TestLog",
-		Field:      field,
-		IsMethod:   false,
-		IsResolver: false,
-		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
-			return nil, errors.New("field of type String does not have child fields")
-		},
-	}
-	return fc, nil
-}
-
 func (ec *executionContext) _TestLog_urlParsley(ctx context.Context, field graphql.CollectedField, obj *model.TestLogs) (ret graphql.Marshaler) {
 	fc, err := ec.fieldContext_TestLog_urlParsley(ctx, field)
 	if err != nil {
@@ -58175,8 +58177,6 @@ func (ec *executionContext) fieldContext_TestResult_logs(ctx context.Context, fi
 				return ec.fieldContext_TestLog_lineNum(ctx, field)
 			case "url":
 				return ec.fieldContext_TestLog_url(ctx, field)
-			case "urlLobster":
-				return ec.fieldContext_TestLog_urlLobster(ctx, field)
 			case "urlParsley":
 				return ec.fieldContext_TestLog_urlParsley(ctx, field)
 			case "urlRaw":
@@ -82293,6 +82293,8 @@ func (ec *executionContext) _TaskEventLogData(ctx context.Context, sel ast.Selec
 			out.Values[i] = ec._TaskEventLogData_timestamp(ctx, field, obj)
 		case "userId":
 			out.Values[i] = ec._TaskEventLogData_userId(ctx, field, obj)
+		case "blockedOn":
+			out.Values[i] = ec._TaskEventLogData_blockedOn(ctx, field, obj)
 		default:
 			panic("unknown field " + strconv.Quote(field.Name))
 		}
@@ -83136,8 +83138,6 @@ func (ec *executionContext) _TestLog(ctx context.Context, sel ast.SelectionSet, 
 			out.Values[i] = ec._TestLog_lineNum(ctx, field, obj)
 		case "url":
 			out.Values[i] = ec._TestLog_url(ctx, field, obj)
-		case "urlLobster":
-			out.Values[i] = ec._TestLog_urlLobster(ctx, field, obj)
 		case "urlParsley":
 			out.Values[i] = ec._TestLog_urlParsley(ctx, field, obj)
 		case "urlRaw":

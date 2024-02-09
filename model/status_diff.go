@@ -1,10 +1,10 @@
 package model
 
 import (
-	"fmt"
 	"path"
 	"strings"
 
+	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/apimodels"
 	"github.com/evergreen-ci/evergreen/db"
 	"github.com/evergreen-ci/evergreen/model/build"
@@ -115,66 +115,11 @@ func StatusDiffBuilds(original, patch *build.Build) (BuildStatusDiff, error) {
 	return diff, nil
 }
 
-// getTestUrl returns the correct relative URL to a test log, given a
-// TestResult structure
-func getTestUrl(tr *testresult.TestResult) string {
-	if tr.LogURL != "" {
-		return tr.LogURL
-	}
-	if tr.TaskID != "" && tr.GetLogTestName() != "" {
-		return fmt.Sprintf("%s%s/%d/%s?group_id=%s", TestLogPath, tr.TaskID, tr.Execution, tr.GetLogTestName(), tr.GroupID)
-	}
-
-	return ""
-}
-
-// StatusDiffTasks takes two tasks and returns a diff of their results
-// for easy comparison and analysis.
-func StatusDiffTasks(original *task.Task, patch *task.Task) TaskStatusDiff {
-	// return an empty diff if one of tasks is nonexistant
-	// this is likely to occur after adding a new buildvariant or task
-	if original == nil || patch == nil {
-		return TaskStatusDiff{}
-	}
-
-	diff := TaskStatusDiff{
-		Name:     original.DisplayName,
-		Original: original.Id,
-		Patch:    patch.Id,
-		Diff:     StatusDetailsDiff{original.Details, patch.Details},
-	}
-
-	if original.LocalTestResults == nil || patch.LocalTestResults == nil {
-		return diff
-	}
-
-	// build maps of test statuses, for matching
-	originalTests := make(map[string]testresult.TestResult)
-	for _, test := range original.LocalTestResults {
-		originalTests[test.TestName] = test
-	}
-
-	// iterate through all patch tests and create diffs
-	for _, test := range patch.LocalTestResults {
-		baseTest := originalTests[test.TestName]
-
-		// get the base name for windows/non-windows paths
-		testName := path.Base(strings.Replace(test.TestName, "\\", "/", -1))
-		diff.Tests = append(diff.Tests,
-			TestStatusDiff{
-				Name:     testName,
-				Diff:     StatusDiff{baseTest.Status, test.Status},
-				Original: getTestUrl(&baseTest),
-				Patch:    getTestUrl(&test),
-			})
-	}
-
-	return diff
-}
-
 // StatusDiffTests takes two sets of tests and returns a diff of their results
 // for easy comparison and analysis.
 func StatusDiffTests(original, patch []testresult.TestResult) []TestStatusDiff {
+	env := evergreen.GetEnvironment()
+
 	diff := []TestStatusDiff{}
 	if len(original) == 0 || len(patch) == 0 {
 		return diff
@@ -193,8 +138,8 @@ func StatusDiffTests(original, patch []testresult.TestResult) []TestStatusDiff {
 		diff = append(diff, TestStatusDiff{
 			Name:     testName,
 			Diff:     StatusDiff{baseTest.Status, test.Status},
-			Original: getTestUrl(&baseTest),
-			Patch:    getTestUrl(&test),
+			Original: baseTest.GetLogURL(env, evergreen.LogViewerHTML),
+			Patch:    test.GetLogURL(env, evergreen.LogViewerHTML),
 		})
 	}
 
