@@ -57,10 +57,13 @@ type TestLogInfo struct {
 	Version       int32     `json:"version" bson:"version"`
 }
 
-// GetLogTestName returns the name of the test in the logging backend. This is
+// getLogTestName returns the name of the test in the logging backend. This is
 // used for test logs where the name of the test in the logging service may
 // differ from that in the test results service.
-func (tr TestResult) GetLogTestName() string {
+func (tr TestResult) getLogTestName() string {
+	if tr.LogInfo != nil && tr.LogInfo.LogName != "" {
+		return tr.LogInfo.LogName
+	}
 	if tr.LogTestName != "" {
 		return tr.LogTestName
 	}
@@ -115,7 +118,7 @@ func (tr TestResult) GetLogURL(env evergreen.Environment, viewer evergreen.LogVi
 			root,
 			url.PathEscape(tr.TaskID),
 			tr.Execution,
-			url.QueryEscape(tr.GetLogTestName()),
+			url.QueryEscape(tr.getLogTestName()),
 			url.QueryEscape(tr.GroupID),
 			tr.LineNum,
 		)
@@ -135,7 +138,7 @@ func (tr TestResult) GetLogURL(env evergreen.Environment, viewer evergreen.LogVi
 			root,
 			url.PathEscape(tr.TaskID),
 			tr.Execution,
-			url.QueryEscape(tr.GetLogTestName()),
+			url.QueryEscape(tr.getLogTestName()),
 			url.QueryEscape(tr.GroupID),
 			tr.LineNum,
 		)
@@ -167,7 +170,7 @@ func (tr TestResult) GetLogURL(env evergreen.Environment, viewer evergreen.LogVi
 			root,
 			url.PathEscape(tr.TaskID),
 			tr.Execution,
-			url.QueryEscape(tr.GetLogTestName()),
+			url.QueryEscape(tr.getLogTestName()),
 			url.QueryEscape(tr.GroupID),
 		)
 	}
