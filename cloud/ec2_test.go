@@ -13,13 +13,14 @@ import (
 	"github.com/evergreen-ci/birch"
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/db"
+	"github.com/evergreen-ci/evergreen/mock"
 	"github.com/evergreen-ci/evergreen/model"
 	"github.com/evergreen-ci/evergreen/model/distro"
 	"github.com/evergreen-ci/evergreen/model/host"
 	"github.com/evergreen-ci/evergreen/model/task"
 	"github.com/evergreen-ci/evergreen/model/user"
 	restmodel "github.com/evergreen-ci/evergreen/rest/model"
-	"github.com/evergreen-ci/evergreen/testutil"
+	"github.com/evergreen-ci/utility"
 	"github.com/stretchr/testify/suite"
 	"go.mongodb.org/mongo-driver/bson"
 )
@@ -41,22 +42,33 @@ type EC2Suite struct {
 	distro                    distro.Distro
 	volume                    *host.Volume
 
-	env evergreen.Environment
-	ctx context.Context
+	env    evergreen.Environment
+	ctx    context.Context
+	cancel context.CancelFunc
 }
 
 func TestEC2Suite(t *testing.T) {
-	ctx, cancel := context.WithCancel(context.Background())
-	defer cancel()
-
-	s := &EC2Suite{
-		env: testutil.NewEnvironment(ctx, t),
-		ctx: ctx,
-	}
+	s := &EC2Suite{}
 	suite.Run(t, s)
 }
 
+func (s *EC2Suite) TearDownTest() {
+	s.cancel()
+}
+
 func (s *EC2Suite) SetupTest() {
+	ctx, cancel := context.WithCancel(context.Background())
+	s.ctx = ctx
+	s.cancel = cancel
+
+	mockEnv := &mock.Environment{}
+	s.Require().NoError(mockEnv.Configure(s.ctx))
+	mockEnv.EvergreenSettings.Providers.AWS.PersistentDNS = evergreen.PersistentDNSConfig{
+		HostedZoneID: "hosted_zone_id",
+		Domain:       "example.com",
+	}
+	s.env = mockEnv
+
 	s.Require().NoError(db.ClearCollections(host.Collection, host.VolumesCollection, task.Collection, model.ProjectVarsCollection))
 	s.onDemandOpts = &EC2ManagerOptions{
 		client: &awsClientMock{},
@@ -557,12 +569,24 @@ func (s *EC2Suite) TestModifyHost() {
 	s.Error(s.onDemandManager.ModifyHost(ctx, s.h, changes))
 
 	// modifying host to have no expiration
-	noExpiration := true
-	changes = host.HostModifyOptions{NoExpiration: &noExpiration}
+	changes = host.HostModifyOptions{NoExpiration: utility.TruePtr()}
 	s.NoError(s.onDemandManager.ModifyHost(ctx, s.h, changes))
 	found, err = host.FindOne(ctx, host.ById(s.h.Id))
 	s.NoError(err)
+	s.Require().NotZero(found)
 	s.True(found.NoExpiration)
+	s.NotZero(found.PersistentDNSName, "persistent DNS name should be assigned once host is unexpirable")
+	s.NotZero(found.PublicIPv4)
+
+	// reverting a host back to having an expiration
+	changes = host.HostModifyOptions{NoExpiration: utility.FalsePtr()}
+	s.NoError(s.onDemandManager.ModifyHost(ctx, s.h, changes))
+	found, err = host.FindOne(ctx, host.ById(s.h.Id))
+	s.NoError(err)
+	s.Require().NotZero(found)
+	s.False(found.NoExpiration)
+	s.Zero(found.PersistentDNSName, "persistent DNS name should be removed once host is expirable")
+	s.Zero(found.PublicIPv4)
 
 	// attaching a volume to host
 	volumeToMount := host.Volume{

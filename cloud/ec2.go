@@ -587,7 +587,7 @@ func (m *ec2Manager) setNoExpiration(ctx context.Context, h *host.Host, noExpira
 			Resources: resources,
 			Tags: []types.Tag{
 				{
-					Key:   aws.String("expire-on"),
+					Key:   aws.String(evergreen.TagExpireOn),
 					Value: aws.String(expireOnValue),
 				},
 			},
@@ -607,11 +607,12 @@ func (m *ec2Manager) setNoExpiration(ctx context.Context, h *host.Host, noExpira
 		}))
 		if instance != nil {
 			grip.Error(message.WrapError(setHostPersistentDNSName(ctx, m.env, h, utility.FromStringPtr(instance.PublicIpAddress), m.client), message.Fields{
-				"message":    "could not update host's persistent DNS name",
-				"op":         "upsert",
-				"dashboard":  "evergreen sleep schedule health",
-				"host_id":    h.Id,
-				"started_by": h.StartedBy,
+				"message":         "could not update host's persistent DNS name",
+				"op":              "upsert",
+				"dashboard":       "evergreen sleep schedule health",
+				"host_id":         h.Id,
+				"started_by":      h.StartedBy,
+				"instance_status": ec2StatusToEvergreenStatus(instance.State.Name),
 			}))
 		}
 
