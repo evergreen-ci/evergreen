@@ -18,7 +18,7 @@ Explanation:
 -   `command`: a command name from the predefined set of commands documented below.
 -   `display_name`: an optional user defined display name for the command. This will show up in logs and in the UI
      with more details, for example:`'shell.exec' ('run my cool script') (step 1 of 1)` 
--   `type`: an optional command type. This will affect the [failure colors](../Project-Configuration-Files/#command-failure-colors)
+-   `type`: an optional command type. This will affect the [failure colors](Project-Configuration-Files/#command-failure-colors)
 -   `timeout_secs`: an optional timeout that will force the command to fail if it stays "idle" for more than a specified number of 
     seconds.
 -   `retry_on_failure`: an optional field. If set to true, it will automatically restart the task upon failure. The 
