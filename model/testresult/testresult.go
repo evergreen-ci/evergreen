@@ -57,20 +57,6 @@ type TestLogInfo struct {
 	Version       int32     `json:"version" bson:"version"`
 }
 
-// getLogTestName returns the name of the test in the logging backend. This is
-// used for test logs where the name of the test in the logging service may
-// differ from that in the test results service.
-func (tr TestResult) getLogTestName() string {
-	if tr.LogInfo != nil && tr.LogInfo.LogName != "" {
-		return tr.LogInfo.LogName
-	}
-	if tr.LogTestName != "" {
-		return tr.LogTestName
-	}
-
-	return tr.TestName
-}
-
 // GetDisplayTestName returns the name of the test that should be displayed in
 // the UI. In most cases, this will just be TestName.
 func (tr TestResult) GetDisplayTestName() string {
@@ -154,6 +140,20 @@ func (tr TestResult) GetLogURL(env evergreen.Environment, viewer evergreen.LogVi
 			url.QueryEscape(tr.GroupID),
 		)
 	}
+}
+
+// getLogTestName returns the name of the test in the logging backend. This is
+// used for test logs where the name of the test in the logging service may
+// differ from that in the test results service.
+func (tr TestResult) getLogTestName() string {
+	if tr.LogInfo != nil && tr.LogInfo.LogName != "" {
+		return tr.LogInfo.LogName
+	}
+	if tr.LogTestName != "" {
+		return tr.LogTestName
+	}
+
+	return tr.TestName
 }
 
 // TaskTestResultsFailedSample represents a sample of failed test names from
