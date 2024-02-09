@@ -3302,8 +3302,11 @@ func (h *Host) GeneratePersistentDNSName(ctx context.Context, domain string) (st
 		return candidate, nil
 	}
 
-	// If that can't produce a unique ID, then fall back to using a random
-	// string to produce a unique DNS name.
+	// If the host ID can't be mapped to a unique DNS name, then fall back to
+	// using a random string to produce a unique DNS name. This is less
+	// preferable because it's randomly-generated, but it does handle the very
+	// tiny edge case where the DNS name generated above conflicts with an
+	// existing one.
 	const numAttempts = 5
 	for i := 0; i < numAttempts; i++ {
 		random := utility.RandomString()[:maxRandLen]
