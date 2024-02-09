@@ -52,18 +52,17 @@ type UIServer struct {
 
 // ViewData contains common data that is provided to all Evergreen pages
 type ViewData struct {
-	User                *user.DBUser
-	ProjectData         projectContext
-	Project             model.Project
-	Flashes             []interface{}
-	Banner              string
-	BannerTheme         string
-	Csrf                htmlTemplate.HTML
-	JiraHost            string
-	NewRelic            evergreen.NewRelicConfig
-	IsAdmin             bool
-	NewUILink           string
-	ValidDefaultLoggers []string
+	User        *user.DBUser
+	ProjectData projectContext
+	Project     model.Project
+	Flashes     []interface{}
+	Banner      string
+	BannerTheme string
+	Csrf        htmlTemplate.HTML
+	JiraHost    string
+	NewRelic    evergreen.NewRelicConfig
+	IsAdmin     bool
+	NewUILink   string
 }
 
 const hostCacheTTL = 30 * time.Second
@@ -233,7 +232,6 @@ func (uis *UIServer) GetCommonViewData(w http.ResponseWriter, r *http.Request, n
 	viewData.Csrf = csrf.TemplateField(r)
 	viewData.JiraHost = uis.Settings.Jira.Host
 	viewData.NewRelic = settings.NewRelic
-	viewData.ValidDefaultLoggers = []string{model.EvergreenLogSender, model.BuildloggerLogSender}
 	return viewData
 }
 
@@ -289,9 +287,6 @@ func (uis *UIServer) GetServiceApp() *gimlet.APIApp {
 			csrf.Protect([]byte(uis.Settings.Ui.CsrfKey), csrf.ErrorHandler(http.HandlerFunc(ForbiddenHandler))),
 		))
 	}
-
-	// Lobster
-	app.AddPrefixRoute("/lobster").Wrap(needsLogin).Handler(uis.lobsterPage).Get()
 
 	// GraphQL
 	app.AddRoute("/graphql").Wrap(allowsCORS, needsLogin).Handler(playground.ApolloSandboxHandler("GraphQL playground", "/graphql/query")).Get()

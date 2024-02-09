@@ -18,11 +18,6 @@ type LoggerConfig struct {
 	ThresholdLevel string       `bson:"threshold_level" json:"threshold_level" yaml:"threshold_level"`
 	LogkeeperURL   string       `bson:"logkeeper_url" json:"logkeeper_url" yaml:"logkeeper_url"`
 	RedactKeys     []string     `bson:"redact_keys" json:"redact_keys" yaml:"redact_keys"`
-
-	// TODO (DEVPROD-3886): Remove these fields once we stop supporting
-	// sending logs to Cedar Buildlogger.
-	DefaultLogger           string   `bson:"default_logger" json:"default_logger" yaml:"default_logger"`
-	EvergreenLoggerProjects []string `bson:"evergreen_logger_projects" json:"evergreen_logger_projects" yaml:"evergreen_logger_projects"`
 }
 
 func (c LoggerConfig) Info() send.LevelInfo {
@@ -58,7 +53,6 @@ func (c *LoggerConfig) Set(ctx context.Context) error {
 			"default_level":   c.DefaultLevel,
 			"threshold_level": c.ThresholdLevel,
 			"logkeeper_url":   c.LogkeeperURL,
-			"default_logger":  c.DefaultLogger,
 		},
 	}, options.Update().SetUpsert(true))
 

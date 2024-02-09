@@ -26,11 +26,16 @@ import (
 	"github.com/evergreen-ci/evergreen/taskoutput"
 	"github.com/mongodb/grip"
 	"github.com/mongodb/grip/recovery"
+	"github.com/pkg/errors"
 )
 
+var directoryHandlerFactories = map[string]directoryHandlerFactory{
+	"TestLogs": newTestLogDirectoryHandler,
+}
+
 // Directory is the application representation of a task's reserved output
-// directory. It coordinates the automated and asynchronous handling of task
-// output written to the reserved directory while a task runs.
+// directory. It coordinates the automated handling of task output written to
+// the reserved directory while a task runs.
 type Directory struct {
 	root     string
 	handlers map[string]directoryHandler
@@ -38,7 +43,7 @@ type Directory struct {
 
 // NewDirectory returns a new task output directory with the specified root for
 // the given task.
-func NewDirectory(root string, tsk *task.Task, logger client.LoggerProducer) *Directory {
+func NewDirectory(root string, tsk *task.Task, logger client.LoggerProducer) (*Directory, error) {
 	output := tsk.TaskOutputInfo
 	taskOpts := taskoutput.TaskOptions{
 		ProjectID: tsk.Project,
@@ -46,60 +51,58 @@ func NewDirectory(root string, tsk *task.Task, logger client.LoggerProducer) *Di
 		Execution: tsk.Execution,
 	}
 
-	return &Directory{
-		root: root,
-		handlers: map[string]directoryHandler{
-			output.TestLogs.ID(): newTestLogDirectoryHandler(output.TestLogs, taskOpts, logger),
-		},
+	handlers := map[string]directoryHandler{}
+	for name, factory := range directoryHandlerFactories {
+		dir := filepath.Join(root, name)
+		handlers[dir] = factory(dir, output, taskOpts, logger)
 	}
+
+	return &Directory{
+		root:     root,
+		handlers: handlers,
+	}, nil
 }
 
-// Start creates the subdirectories and starts all asynchronous directory
-// handlers.
-func (a *Directory) Start(ctx context.Context) error {
-	catcher := grip.NewBasicCatcher()
-	for id, handler := range a.handlers {
-		subDir := filepath.Join(a.root, id)
-		if err := os.MkdirAll(subDir, 0777); err != nil {
-			catcher.Wrapf(err, "creating task output directory '%s'", subDir)
-		} else {
-			catcher.Wrapf(handler.start(ctx, subDir), "starting task output directory handler for '%s'", subDir)
+// Setup creates the subdirectories for each handler and should be called
+// during task set up.
+func (d *Directory) Setup() error {
+	for dir := range d.handlers {
+		if err := os.MkdirAll(dir, 0777); err != nil {
+			return errors.Wrapf(err, "creating task output directory '%s'", dir)
 		}
 	}
 
-	return catcher.Resolve()
+	return nil
 }
 
-// Close closes all asynchronous directory handlers and removes the task output
-// directory.
-func (a *Directory) Close(ctx context.Context) error {
+// Run runs each directory handler and removes the task output directory.
+func (d *Directory) Run(ctx context.Context) error {
 	catcher := grip.NewBasicCatcher()
 
 	var wg sync.WaitGroup
-	for id, handler := range a.handlers {
+	for id, handler := range d.handlers {
 		wg.Add(1)
 		go func(id string, h directoryHandler) {
 			defer func() {
-				catcher.Add(recovery.HandlePanicWithError(recover(), nil, "task output directory handler closer"))
+				catcher.Add(recovery.HandlePanicWithError(recover(), nil, "task output directory handler runner"))
 			}()
 			defer wg.Done()
 
-			catcher.Wrapf(h.close(ctx), "closing task output handler for '%s'", id)
+			catcher.Wrapf(h.run(ctx), "running task output for '%s'", id)
 		}(id, handler)
 	}
 	wg.Wait()
 
-	catcher.Wrap(os.RemoveAll(a.root), "removing task output directory")
+	catcher.Wrap(os.RemoveAll(d.root), "removing task output directory")
 
 	return catcher.Resolve()
 }
 
-// directoryHandler abstracts the automatic and asynchronous handling of task
-// output for individual subdirectories.
+// directoryHandler abstracts the automatic handling of task output for
+// individual subdirectories.
 type directoryHandler interface {
-	// start starts asynchronous handling of the given directory.
-	start(context.Context, string) error
-	// close gracefully concludes any asynchronous processes and executes
-	// any handling logic designated for the end of a task run.
-	close(context.Context) error
+	run(ctx context.Context) error
 }
+
+// directoryHandlerFactory abstracts the creation of a directory handler.
+type directoryHandlerFactory func(string, *taskoutput.TaskOutput, taskoutput.TaskOptions, client.LoggerProducer) directoryHandler

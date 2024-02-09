@@ -46,6 +46,7 @@ type TaskEventData struct {
 	UserId    string `bson:"u_id,omitempty" json:"user_id,omitempty"`
 	Status    string `bson:"s,omitempty" json:"status,omitempty"`
 	JiraIssue string `bson:"jira,omitempty" json:"jira,omitempty"`
+	BlockedOn string `bson:"blocked_on,omitempty" json:"blocked_on,omitempty"`
 
 	Timestamp time.Time `bson:"ts,omitempty" json:"timestamp,omitempty"`
 	Priority  int64     `bson:"pri,omitempty" json:"priority,omitempty"`
@@ -164,55 +165,67 @@ func LogContainerTaskFinished(taskID string, execution int, podID, status string
 	}
 }
 
+// LogTaskRestarted updates the DB with a task restarted event.
 func LogTaskRestarted(taskId string, execution int, userId string) {
 	logTaskEvent(taskId, TaskRestarted, TaskEventData{Execution: execution, UserId: userId})
 }
 
-func LogTaskBlocked(taskId string, execution int) {
-	logTaskEvent(taskId, TaskBlocked, TaskEventData{Execution: execution})
+// LogTaskBlocked updates the DB with a task blocked event.
+func LogTaskBlocked(taskId string, execution int, blockedOn string) {
+	logTaskEvent(taskId, TaskBlocked, TaskEventData{Execution: execution, BlockedOn: blockedOn})
 }
 
+// LogTaskActivated updates the DB with a task activated event.
 func LogTaskActivated(taskId string, execution int, userId string) {
 	logTaskEvent(taskId, TaskActivated, TaskEventData{Execution: execution, UserId: userId})
 }
 
+// GetTaskActivatedEvent retrieves the task activated event.
 func GetTaskActivatedEvent(taskId string, execution int, userId string) EventLogEntry {
 	return getTaskEvent(taskId, TaskActivated, TaskEventData{Execution: execution, UserId: userId})
 }
 
+// LogTaskDeactivated updates the DB with a task deactivated event.
 func LogTaskDeactivated(taskId string, execution int, userId string) {
 	logTaskEvent(taskId, TaskDeactivated, TaskEventData{Execution: execution, UserId: userId})
 }
 
+// GetTaskDeactivatedEvent retrieves the task deactivated event.
 func GetTaskDeactivatedEvent(taskId string, execution int, userId string) EventLogEntry {
 	return getTaskEvent(taskId, TaskDeactivated, TaskEventData{Execution: execution, UserId: userId})
 }
 
+// LogTaskAbortRequest updates the DB with a task abort request event.
 func LogTaskAbortRequest(taskId string, execution int, userId string) {
 	logTaskEvent(taskId, TaskAbortRequest,
 		TaskEventData{Execution: execution, UserId: userId})
 }
 
+// LogManyTaskAbortRequests updates the DB with task abort request events.
 func LogManyTaskAbortRequests(taskIds []string, userId string) {
 	logManyTaskEvents(taskIds, TaskAbortRequest,
 		TaskEventData{UserId: userId})
 }
 
+// LogManyTaskPriority updates the DB with a task started events.
 func LogManyTaskPriority(taskIds []string, userId string, priority int64) {
 	logManyTaskEvents(taskIds, TaskPriorityChanged,
 		TaskEventData{UserId: userId, Priority: priority})
 }
 
+// LogTaskContainerAllocated updates the DB with a container allocated event.
 func LogTaskContainerAllocated(taskId string, execution int, containerAllocatedTime time.Time) {
 	logTaskEvent(taskId, ContainerAllocated,
 		TaskEventData{Execution: execution, Timestamp: containerAllocatedTime})
 }
 
+// LogTaskDependenciesOverridden updates the DB with a task dependencies overridden event.
 func LogTaskDependenciesOverridden(taskId string, execution int, userID string) {
 	logTaskEvent(taskId, TaskDependenciesOverridden,
 		TaskEventData{Execution: execution, UserId: userID})
 }
 
+// LogMergeTaskUnscheduled updates the DB with a merge task unscheduled event.
 func LogMergeTaskUnscheduled(taskId string, execution int, userID string) {
 	logTaskEvent(taskId, MergeTaskUnscheduled,
 		TaskEventData{Execution: execution, UserId: userID})

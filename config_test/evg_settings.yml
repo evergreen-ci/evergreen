@@ -175,3 +175,6 @@ shutdown_wait_seconds: 10
 project_creation:
   total_project_limit: 20
   repo_project_limit: 5
+
+github_check_run:
+  check_run_limit: 1

@@ -1,6 +1,5 @@
 {{define "scripts"}}
 <script>
-	window.validDefaultLoggers = {{.ValidDefaultLoggers }};
 	window.validDefaultHostAllocatorRoundingRules = {{.ValidDefaultHostAllocatorRoundingRules}};
 	window.validDefaultHostAllocatorFeedbackRules = {{.ValidDefaultHostAllocatorFeedbackRules}};
 	window.validDefaultHostsOverallocatedRules = {{.ValidDefaultHostsOverallocatedRules}};
@@ -1611,13 +1610,6 @@ Admin Settings
 									</md-button>
 								</md-card-title>
 								<md-card-content>
-									<md-input-container class="control" style="width:60%;">
-										<label>Default logger</label>
-										<md-select ng-model="Settings.logger_config.default_logger">
-											<md-option ng-repeat="logger in validDefaultLoggers" value="[[logger]]">
-												[[logger]]</md-option>
-										</md-select>
-									</md-input-container>
 									<md-input-container class="control" style="width:45%;">
 										<label>Default level</label>
 										<input type="text" ng-model="Settings.logger_config.default_level">
