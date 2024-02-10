@@ -359,12 +359,12 @@ func TestSaveProjectSettingsForSection(t *testing.T) {
 		"enabling performance plugin should fail if id and identifier are different": func(t *testing.T, ref model.ProjectRef) {
 			// Set identifier
 			apiProjectRef := restModel.APIProjectRef{
-				Identifier: utility.ToStringPtr("different"),
+				Identifier: utility.ToStringPtr("different identifier"),
 			}
 			apiChanges := &restModel.APIProjectSettings{
 				ProjectRef: apiProjectRef,
 			}
-			settings, err := SaveProjectSettingsForSection(ctx, ref.RepoRefId, apiChanges, model.ProjectPageGeneralSection, true, "me")
+			settings, err := SaveProjectSettingsForSection(ctx, ref.Id, apiChanges, model.ProjectPageGeneralSection, false, "me")
 			require.NoError(t, err)
 			assert.NotNil(t, settings)
 
@@ -748,6 +748,7 @@ func TestSaveProjectSettingsForSection(t *testing.T) {
 
 		pRef := model.ProjectRef{
 			Id:                  "myId",
+			Identifier:          "myId",
 			Owner:               "evergreen-ci",
 			Repo:                "evergreen",
 			Branch:              "main",
@@ -757,9 +758,9 @@ func TestSaveProjectSettingsForSection(t *testing.T) {
 			RepotrackerDisabled: utility.TruePtr(),
 		}
 		assert.NoError(t, pRef.Insert())
+
 		repoRef := model.RepoRef{ProjectRef: model.ProjectRef{
 			Id:               pRef.RepoRefId,
-			Identifier:       "myRepoId",
 			Restricted:       utility.TruePtr(),
 			PRTestingEnabled: utility.TruePtr(),
 		}}
