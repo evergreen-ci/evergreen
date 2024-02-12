@@ -531,7 +531,10 @@ func PotentiallyBlockedTasksByIds(taskIds []string) bson.M {
 				"$exists": true,
 				"$not":    bson.M{"$size": 0},
 			}},
-			{OverrideDependenciesKey: false},
+			{"$or": []bson.M{
+				{OverrideDependenciesKey: bson.M{"$exists": false}},
+				{OverrideDependenciesKey: false},
+			}},
 			{"$or": []bson.M{
 				{DependenciesMetTimeKey: bson.M{"$exists": false}},
 				{DependenciesMetTimeKey: bson.M{"$eq": utility.ZeroTime}},
