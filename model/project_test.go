@@ -582,10 +582,16 @@ func (s *projectSuite) SetupTest() {
 					{
 						Name:    "a_task_1",
 						Variant: "bv_1",
+						CreateCheckRun: &CheckRun{
+							PathToOutputs: "",
+						},
 					},
 					{
 						Name:    "a_task_2",
 						Variant: "bv_1",
+						CreateCheckRun: &CheckRun{
+							PathToOutputs: "",
+						},
 					},
 					{
 						Name:    "b_task_1",
@@ -824,6 +830,37 @@ func (s *projectSuite) TestAliasResolution() {
 	s.Empty(displayTaskPairs)
 }
 
+func (s *projectSuite) TestCheckRunCount() {
+	pairs := TaskVariantPairs{
+		ExecTasks: TVPairSet{
+			TVPair{
+				Variant:  "bv_1",
+				TaskName: "a_task_1",
+			},
+			TVPair{
+				Variant:  "bv_1",
+				TaskName: "a_task_2",
+			},
+			TVPair{
+				Variant:  "bv_1",
+				TaskName: "a_task_3",
+			},
+		},
+	}
+
+	checkRunCount := s.project.GetNumCheckRunsFromTaskVariantPairs(&pairs)
+	s.Equal(2, checkRunCount)
+
+	variantTasks := []patch.VariantTasks{
+		{
+			Variant: "bv_1",
+			Tasks:   []string{"a_task_1", "a_task_2", "a_task_3"},
+		},
+	}
+	checkRunCount = s.project.GetNumCheckRunsFromVariantTasks(variantTasks)
+	s.Equal(2, checkRunCount)
+
+}
 func (s *projectSuite) TestBuildProjectTVPairs() {
 	// test all expansions
 	patchDoc := patch.Patch{
@@ -1750,9 +1787,9 @@ func TestLoggerMerge(t *testing.T) {
 
 	var config1 *LoggerConfig
 	config2 := &LoggerConfig{
-		Agent:  []LogOpts{{Type: BuildloggerLogSender}},
-		System: []LogOpts{{Type: BuildloggerLogSender}},
-		Task:   []LogOpts{{Type: BuildloggerLogSender}},
+		Agent:  []LogOpts{{Type: EvergreenLogSender}},
+		System: []LogOpts{{Type: EvergreenLogSender}},
+		Task:   []LogOpts{{Type: EvergreenLogSender}},
 	}
 
 	assert.Nil(mergeAllLogs(config1, config1))
@@ -2728,5 +2765,85 @@ tasks:
 
 			tCase(t, p, pp)
 		})
+	}
+}
+func (s *projectSuite) TestTagNegation() {
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+	const projYml = `
+tasks:
+  - name: performance-test
+    commands:
+      - command: shell.exec
+        params:
+          script: echo "performance test"
+  - name: other
+    commands:
+      - command: shell.exec
+        params:
+          script: echo "other"
+  - name: print
+    commands:
+      - command: shell.exec
+        params:
+          script: echo "print"
+buildvariants:
+  - name: performance-variant
+    tags: ["performance"]
+    display_name: performance-variant
+    run_on:
+      - ubuntu1604-small
+    tasks:
+      - name: performance-test
+  - name: other-variant
+    tags: ["other"]
+    display_name: other-variant
+    run_on:
+      - ubuntu1604-small
+    tasks:
+      - name: other
+  - name: print-variant
+    tags: ["print"]
+    display_name: print-variant
+    run_on:
+      - ubuntu1604-small
+    tasks:
+      - name: print
+
+patch_aliases:
+  - alias: "my alias"
+    # Do not run variants tagged with performance or other
+    variant_tags: ["!performance !other"]
+    task: ".*"
+`
+
+	p := &Project{}
+	_, err := LoadProjectInto(ctx, []byte(projYml), nil, "", p)
+	s.Require().NoError(err)
+
+	pc, err := CreateProjectConfig([]byte(projYml), "")
+	s.NoError(err)
+	s.NotNil(pc)
+
+	alias := pc.PatchAliases[0]
+	pairs, _, err := p.BuildProjectTVPairsWithAlias([]ProjectAlias{alias}, evergreen.PatchVersionRequester)
+	s.NoError(err)
+	s.Len(pairs, 1)
+	for _, pair := range pairs {
+		a := pair.Variant
+		b := pair.TaskName
+		print(a, b)
+	}
+
+	pairStrs := make([]string, len(pairs))
+	for i, p := range pairs {
+		pairStrs[i] = p.String()
+	}
+
+	s.Contains(pairStrs, "print-variant/print")
+
+	for _, pair := range pairs {
+		s.NotEqual("performance-variant", pair.Variant)
+		s.NotEqual("other-variant", pair.Variant)
 	}
 }

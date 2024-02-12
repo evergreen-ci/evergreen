@@ -555,17 +555,6 @@ func FindAllTaskQueues() ([]TaskQueue, error) {
 func FindDistroTaskQueue(distroID string) (TaskQueue, error) {
 	queue := TaskQueue{}
 	err := db.FindOneQ(TaskQueuesCollection, db.Query(bson.M{taskQueueDistroKey: distroID}), &queue)
-
-	grip.DebugWhen(err == nil, message.Fields{
-		"message":                              "fetched the distro's task queue items to create its task queue",
-		"distro":                               distroID,
-		"task_queue_generated_at":              queue.GeneratedAt,
-		"num_task_queue_items":                 len(queue.Queue),
-		"distro_queue_info_length":             queue.DistroQueueInfo.Length,
-		"distro_queue_info_expected_duration":  queue.DistroQueueInfo.ExpectedDuration,
-		"num_distro_queue_info_taskgroupinfos": len(queue.DistroQueueInfo.TaskGroupInfos),
-	})
-
 	return queue, errors.WithStack(err)
 }
 

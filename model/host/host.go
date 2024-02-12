@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"math"
 	"net"
+	"regexp"
 	"strings"
 	"time"
 
@@ -33,7 +34,7 @@ import (
 
 type Host struct {
 	Id string `bson:"_id" json:"id"`
-	// Host is the DNS name of the host.
+	// Host is the ephemeral DNS name of the host.
 	Host            string        `bson:"host_id" json:"host"`
 	User            string        `bson:"user" json:"user"`
 	Secret          string        `bson:"secret" json:"secret"`
@@ -41,9 +42,15 @@ type Host struct {
 	Tag             string        `bson:"tag" json:"tag"`
 	Distro          distro.Distro `bson:"distro" json:"distro"`
 	Provider        string        `bson:"host_type" json:"host_type"`
-	// IP holds the ipv6 address when applicable
-	IP   string `bson:"ip_address" json:"ip_address"`
+	// IP holds the IPv6 address when applicable.
+	IP string `bson:"ip_address" json:"ip_address"`
+	// IPv4 is the host's private IPv4 address.
 	IPv4 string `bson:"ipv4_address" json:"ipv4_address"`
+	// PersistentDNSName is the long-lived DNS name of the host, which should
+	// never change once set.
+	PersistentDNSName string `bson:"persistent_dns_name,omitempty" json:"persistent_dns_name,omitempty"`
+	// PublicIPv4 is the host's IPv4 address.
+	PublicIPv4 string `bson:"public_ipv4_address,omitempty" json:"public_ipv4_address,omitempty"`
 
 	// secondary (external) identifier for the host
 	ExternalIdentifier string `bson:"ext_identifier" json:"ext_identifier"`
@@ -112,7 +119,8 @@ type Host struct {
 	// for non-legacy hosts.
 	JasperCredentialsID string `bson:"jasper_credentials_id" json:"jasper_credentials_id"`
 
-	// for ec2 dynamic hosts, the instance type requested
+	// InstanceType is the EC2 host's requested instance type. This is kept
+	// up-to-date even if the instance type is changed.
 	InstanceType string `bson:"instance_type" json:"instance_type,omitempty"`
 	// The volumeID and device name for each volume attached to the host
 	Volumes []VolumeAttachment `bson:"volumes,omitempty" json:"volumes,omitempty"`
@@ -3235,6 +3243,92 @@ func (h *Host) ClearDockerStdinData(ctx context.Context) error {
 	}
 
 	h.DockerOptions.StdinData = nil
+
+	return nil
+}
+
+// nonAlphanumericRegexp matches any character that is not an alphanumeric
+// character ([0-9A-Za-z]).
+var nonAlphanumericRegexp = regexp.MustCompile("[[:^alnum:]]+")
+
+// GeneratePersistentDNSName returns the host's persistent DNS name, or
+// generates a new one if it doesn't have one currently assigned.
+func (h *Host) GeneratePersistentDNSName(ctx context.Context, domain string) (string, error) {
+	if h.PersistentDNSName != "" {
+		return h.PersistentDNSName, nil
+	}
+
+	// DNS doesn't handle non-alphanumeric characters very well, so replace dots
+	// in usernames with dashes and remove all other non-alphanumeric
+	// characters.
+	userParts := strings.Split(h.StartedBy, ".")
+	cleanedParts := make([]string, 0, len(userParts))
+	for _, part := range userParts {
+		cleanedParts = append(cleanedParts, nonAlphanumericRegexp.ReplaceAllString(part, ""))
+	}
+	user := strings.Join(cleanedParts, "-")
+
+	const numAttempts = 5
+	for i := 0; i < numAttempts; i++ {
+		const maxRandLen = 5
+		random := utility.RandomString()[:maxRandLen]
+		candidate := fmt.Sprintf("%s-%s.%s", user, random, strings.TrimPrefix(domain, "."))
+
+		// Ensure no other host is using this name. Since the random portion is
+		// very short, it's unlikely but still possible that there's a conflict.
+		conflicting, _ := FindOneByPersistentDNSName(ctx, candidate)
+		if conflicting == nil || conflicting.Id == h.Id {
+			return candidate, nil
+		}
+	}
+
+	return "", errors.Errorf("could not generate a new persistent DNS name after %d attempts", numAttempts)
+}
+
+// SetPersistentDNSInfo sets the host's persistent DNS name and the associated
+// IP address.
+func (h *Host) SetPersistentDNSInfo(ctx context.Context, dnsName, ipv4Addr string) error {
+	if dnsName == "" || ipv4Addr == "" {
+		return errors.New("cannot set empty DNS name or IPv4 address")
+	}
+
+	if err := UpdateOne(ctx, bson.M{
+		IdKey: h.Id,
+	}, bson.M{
+		"$set": bson.M{
+			PersistentDNSNameKey: dnsName,
+			PublicIPv4Key:        ipv4Addr,
+		},
+	}); err != nil {
+		return err
+	}
+
+	h.PersistentDNSName = dnsName
+	h.PublicIPv4 = ipv4Addr
+
+	return nil
+}
+
+// UnsetPersistentDNSInfo unsets the host's persistent DNS name and the
+// associated IP address.
+func (h *Host) UnsetPersistentDNSInfo(ctx context.Context) error {
+	if h.PersistentDNSName == "" && h.PublicIPv4 == "" {
+		return nil
+	}
+
+	if err := UpdateOne(ctx, bson.M{
+		IdKey: h.Id,
+	}, bson.M{
+		"$unset": bson.M{
+			PersistentDNSNameKey: 1,
+			PublicIPv4Key:        1,
+		},
+	}); err != nil {
+		return err
+	}
+
+	h.PersistentDNSName = ""
+	h.PublicIPv4 = ""
 
 	return nil
 }

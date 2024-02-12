@@ -1158,7 +1158,6 @@ type APILoggerConfig struct {
 	DefaultLevel   *string          `json:"default_level"`
 	ThresholdLevel *string          `json:"threshold_level"`
 	LogkeeperURL   *string          `json:"logkeeper_url"`
-	DefaultLogger  *string          `json:"default_logger"`
 }
 
 func (a *APILoggerConfig) BuildFromService(h interface{}) error {
@@ -1167,7 +1166,6 @@ func (a *APILoggerConfig) BuildFromService(h interface{}) error {
 		a.DefaultLevel = utility.ToStringPtr(v.DefaultLevel)
 		a.ThresholdLevel = utility.ToStringPtr(v.ThresholdLevel)
 		a.LogkeeperURL = utility.ToStringPtr(v.LogkeeperURL)
-		a.DefaultLogger = utility.ToStringPtr(v.DefaultLogger)
 		a.Buffer = &APILogBuffering{}
 		if err := a.Buffer.BuildFromService(v.Buffer); err != nil {
 			return err
@@ -1183,7 +1181,6 @@ func (a *APILoggerConfig) ToService() (interface{}, error) {
 		DefaultLevel:   utility.FromStringPtr(a.DefaultLevel),
 		ThresholdLevel: utility.FromStringPtr(a.ThresholdLevel),
 		LogkeeperURL:   utility.FromStringPtr(a.LogkeeperURL),
-		DefaultLogger:  utility.FromStringPtr(a.DefaultLogger),
 	}
 	i, err := a.Buffer.ToService()
 	if err != nil {
@@ -2177,7 +2174,6 @@ type APIServiceFlags struct {
 	CloudCleanupDisabled           bool `json:"cloud_cleanup_disabled"`
 	LegacyUIPublicAccessDisabled   bool `json:"legacy_ui_public_access_disabled"`
 	GlobalGitHubTokenDisabled      bool `json:"global_github_token_disabled"`
-	LegacyUIDistroPageDisabled     bool `json:"legacy_ui_distro_page_disabled"`
 	SleepScheduleDisabled          bool `json:"sleep_schedule_disabled"`
 
 	// Notifications Flags
@@ -2471,7 +2467,6 @@ func (as *APIServiceFlags) BuildFromService(h interface{}) error {
 		as.CloudCleanupDisabled = v.CloudCleanupDisabled
 		as.LegacyUIPublicAccessDisabled = v.LegacyUIPublicAccessDisabled
 		as.GlobalGitHubTokenDisabled = v.GlobalGitHubTokenDisabled
-		as.LegacyUIDistroPageDisabled = v.LegacyUIDistroPageDisabled
 		as.SleepScheduleDisabled = v.SleepScheduleDisabled
 	default:
 		return errors.Errorf("programmatic error: expected service flags config but got type %T", h)
@@ -2515,7 +2510,6 @@ func (as *APIServiceFlags) ToService() (interface{}, error) {
 		CloudCleanupDisabled:           as.CloudCleanupDisabled,
 		LegacyUIPublicAccessDisabled:   as.LegacyUIPublicAccessDisabled,
 		GlobalGitHubTokenDisabled:      as.GlobalGitHubTokenDisabled,
-		LegacyUIDistroPageDisabled:     as.LegacyUIDistroPageDisabled,
 		SleepScheduleDisabled:          as.SleepScheduleDisabled,
 	}, nil
 }

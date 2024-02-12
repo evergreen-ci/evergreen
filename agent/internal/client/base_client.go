@@ -25,7 +25,6 @@ import (
 	"github.com/evergreen-ci/evergreen/util"
 	"github.com/evergreen-ci/juniper/gopb"
 	"github.com/evergreen-ci/timber"
-	"github.com/evergreen-ci/timber/buildlogger"
 	"github.com/evergreen-ci/utility"
 	"github.com/mongodb/grip"
 	"github.com/mongodb/grip/level"
@@ -451,29 +450,6 @@ func (c *baseCommunicator) makeSender(ctx context.Context, tsk *task.Task, opts 
 			sender, err = send.NewBufferedSender(ctx, newAnnotatedWrapper(tsk.Id, string(logType), sender), bufferedSenderOpts)
 			if err != nil {
 				return nil, nil, errors.Wrap(err, "creating buffered Splunk logger")
-			}
-		case model.BuildloggerLogSender:
-			if err = c.createCedarGRPCConn(ctx); err != nil {
-				return nil, nil, errors.Wrap(err, "setting up Cedar gRPC connection")
-			}
-
-			timberOpts := &buildlogger.LoggerOptions{
-				Project:       tsk.Project,
-				Version:       tsk.Version,
-				Variant:       tsk.BuildVariant,
-				TaskName:      tsk.DisplayName,
-				TaskID:        tsk.Id,
-				Execution:     int32(tsk.Execution),
-				Tags:          append(tsk.Tags, string(logType), utility.RandomString()),
-				Mainline:      !evergreen.IsPatchRequester(tsk.Requester),
-				Storage:       buildlogger.LogStorageS3,
-				MaxBufferSize: opt.BufferSize,
-				FlushInterval: opt.BufferDuration,
-				ClientConn:    c.cedarGRPCClient,
-			}
-			sender, err = buildlogger.NewLoggerWithContext(ctx, opt.BuilderID, levelInfo, timberOpts)
-			if err != nil {
-				return nil, nil, errors.Wrap(err, "creating Buildlogger logger")
 			}
 		default:
 			taskOpts := taskoutput.TaskOptions{

@@ -2452,7 +2452,7 @@ func (t *Task) MarkUnattainableDependency(ctx context.Context, dependencyId stri
 
 	// Only want to log the task as blocked if it wasn't already blocked, and if we're not overriding dependencies.
 	if !wasBlocked && unattainable && !t.OverrideDependencies {
-		event.LogTaskBlocked(t.Id, t.Execution)
+		event.LogTaskBlocked(t.Id, t.Execution, dependencyId)
 	}
 	return nil
 }

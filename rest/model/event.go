@@ -28,6 +28,7 @@ type TaskEventData struct {
 	Status    *string    `bson:"s,omitempty" json:"status,omitempty"`
 	JiraIssue *string    `bson:"jira,omitempty" json:"jira,omitempty"`
 	JiraLink  *string    `bson:"jira_link,omitempty" json:"jira_link,omitempty"`
+	BlockedOn *string    `bson:"blocked_on,omitempty" json:"blocked_on,omitempty"`
 	Timestamp *time.Time `bson:"ts,omitempty" json:"timestamp,omitempty"`
 	Priority  int64      `bson:"pri,omitempty" json:"priority,omitempty"`
 }
@@ -90,7 +91,7 @@ func (el *TaskEventData) BuildFromService(ctx context.Context, v *event.TaskEven
 	jiraHost := settings.Jira.GetHostURL()
 	jiraLink := ""
 	if len(v.JiraIssue) != 0 {
-		jiraLink = "https://" + jiraHost + "/browse/" + v.JiraIssue
+		jiraLink = jiraHost + "/browse/" + v.JiraIssue
 	}
 	el.Execution = v.Execution
 	el.HostId = utility.ToStringPtr(v.HostId)
@@ -99,6 +100,7 @@ func (el *TaskEventData) BuildFromService(ctx context.Context, v *event.TaskEven
 	el.JiraIssue = utility.ToStringPtr(v.JiraIssue)
 	el.JiraLink = utility.ToStringPtr(jiraLink)
 	el.Status = utility.ToStringPtr(v.Status)
+	el.BlockedOn = utility.ToStringPtr(v.BlockedOn)
 	el.Timestamp = ToTimePtr(v.Timestamp)
 	el.Priority = v.Priority
 	return nil

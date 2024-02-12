@@ -170,7 +170,7 @@ func (g *GeneratedProject) Save(ctx context.Context, settings *evergreen.Setting
 		return errors.WithStack(err)
 	}
 
-	if err := g.saveNewBuildsAndTasks(ctx, v, p); err != nil {
+	if err := g.saveNewBuildsAndTasks(ctx, settings, v, p); err != nil {
 		return errors.Wrap(err, "saving new builds and tasks")
 	}
 	return nil
@@ -216,7 +216,7 @@ func cacheProjectData(p *Project) projectMaps {
 }
 
 // saveNewBuildsAndTasks saves new builds and tasks to the db.
-func (g *GeneratedProject) saveNewBuildsAndTasks(ctx context.Context, v *Version, p *Project) error {
+func (g *GeneratedProject) saveNewBuildsAndTasks(ctx context.Context, settings *evergreen.Settings, v *Version, p *Project) error {
 	ctx, span := tracer.Start(ctx, "save-builds-and-tasks")
 	defer span.End()
 	// Inherit priority from the parent generator task.
@@ -236,6 +236,15 @@ func (g *GeneratedProject) saveNewBuildsAndTasks(ctx context.Context, v *Version
 	}
 
 	newTVPairs, activationInfo := g.GetNewTasksAndActivationInfo(ctx, v, p)
+
+	if v.Requester == evergreen.GithubPRRequester {
+		numCheckRuns := p.GetNumCheckRunsFromTaskVariantPairs(newTVPairs)
+		checkRunLimit := settings.GitHubCheckRun.CheckRunLimit
+		if numCheckRuns > checkRunLimit {
+			return errors.Errorf("total number of checkRuns (%d) exceeds maximum limit (%d)", numCheckRuns, checkRunLimit)
+		}
+	}
+
 	// Group into new builds and new tasks for existing builds.
 	newTVPairsForExistingVariants := TaskVariantPairs{}
 	newTVPairsForNewVariants := TaskVariantPairs{}

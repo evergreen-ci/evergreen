@@ -514,13 +514,6 @@ func (h *getProjectRefHandler) Run(ctx context.Context) gimlet.Responder {
 		})
 	}
 
-	settings := evergreen.GetEnvironment().Settings()
-	if utility.StringSliceContains(settings.LoggerConfig.EvergreenLoggerProjects, p.Id) {
-		p.DefaultLogger = model.EvergreenLogSender
-	} else {
-		p.DefaultLogger = settings.LoggerConfig.DefaultLogger
-	}
-
 	return gimlet.NewJSONResponse(p)
 }
 

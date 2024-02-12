@@ -148,11 +148,9 @@ type LoggerConfig struct {
 
 type LogOpts struct {
 	Sender          string
-	AWSCredentials  *credentials.Credentials
 	SplunkServerURL string
 	SplunkToken     string
 	Filepath        string
-	BuilderID       string
 	BufferDuration  time.Duration
 	BufferSize      int
 }
