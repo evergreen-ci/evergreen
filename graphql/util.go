@@ -1175,14 +1175,13 @@ func concurrentlyBuildHasMatchingTasksMap(ctx context.Context, versions []model.
 	input := make(chan model.Version, len(versions))
 	output := make(chan versionsMatchingTasks, len(versions))
 	catcher := grip.NewBasicCatcher()
+	versionsMatchingTasksMap := map[string]bool{}
 
-	// Create an input channel that all of the goroutines can read from.
+	// Create an input channel that the goroutines can read from.
 	for _, v := range versions {
 		input <- v
 	}
 	close(input)
-
-	versionsMatchingTasksMap := map[string]bool{}
 
 	// Limit number of parallel requests to the DB.
 	const maxParallel = 20
@@ -1192,12 +1191,12 @@ func concurrentlyBuildHasMatchingTasksMap(ctx context.Context, versions []model.
 		go func() {
 			defer wg.Done()
 			for i := range input {
-				HasMatchingTasks, err := task.HasMatchingTasks(ctx, i.Id, opts)
+				hasMatchingTasks, err := task.HasMatchingTasks(ctx, i.Id, opts)
 				if err != nil {
 					catcher.Add(err)
 					continue
 				}
-				output <- versionsMatchingTasks{Id: i.Id, HasMatchingTasks: HasMatchingTasks}
+				output <- versionsMatchingTasks{Id: i.Id, HasMatchingTasks: hasMatchingTasks}
 			}
 		}()
 	}
