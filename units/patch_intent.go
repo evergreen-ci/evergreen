@@ -1099,6 +1099,8 @@ func (j *patchIntentProcessor) buildTriggerPatchDoc(patchDoc *patch.Patch) (*mod
 			if p.ModuleName == "" {
 				moduleName := intent.ParentAsModule
 				if patchDoc.Triggers.SameBranchAsParent {
+					// If the parent patch uses the same repo and branch as the child project,
+					// make the child patch use the same revision and patches as the parent patch.
 					patchDoc.Githash = parentPatch.Githash
 					moduleName = ""
 				}
