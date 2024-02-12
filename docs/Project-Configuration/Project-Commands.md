@@ -586,6 +586,10 @@ EC2 Parameters:
 
 -   `ami` - For an `ec2` provider, the AMI to start. Must set `ami` or `distro`
     but must not set both.
+-   `aws_access_key_id` - AWS access key ID. May set to use a
+    non-default account. Must set if `aws_secret_access_key` is set.
+-   `aws_secret_access_key` - AWS secret key. May set to use a
+    non-default account. Must set if `aws_access_key_id` is set.
 -   `device_name` - name of EBS device
 -   `distro` - Evergreen distro to start. For the `ec2` provider, must set
     either `ami` only or `distro` but must not set both. For the `docker`
@@ -601,6 +605,8 @@ EC2 Parameters:
     distro configuration.
 -   `ipv6`- Set to true if instance should have _only_ an
     IPv6 address, rather than a public IPv4 address.
+-   `key_name` - EC2 Key name. Must set if `aws_access_key_id` or
+    `aws_secret_access_key` is set. Must not set otherwise.
 -   `region` - EC2 region. Default is the same as Evergreen's default.
 -   `security_group_ids` - List of security groups. Must set if `ami` is
     set. May set if `distro` is set, which will override the value from

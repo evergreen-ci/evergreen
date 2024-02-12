@@ -164,6 +164,15 @@ func (s *createHostSuite) TestParamValidation() {
 	s.NoError(s.cmd.ParseParams(s.params))
 	s.NoError(s.cmd.expandAndValidate(ctx, s.conf))
 
+	// having a key id but nothing else is an error
+	s.params["aws_access_key_id"] = "keyid"
+	s.NoError(s.cmd.ParseParams(s.params))
+	s.Contains(s.cmd.expandAndValidate(ctx, s.conf).Error(), "AWS access key ID, AWS secret access key, and key name must all be set or unset")
+	s.params["aws_secret_access_key"] = "secret"
+	s.params["key_name"] = "key"
+	s.NoError(s.cmd.ParseParams(s.params))
+	s.NoError(s.cmd.expandAndValidate(ctx, s.conf))
+
 	// verify errors for things controlled by the agent
 	s.params["num_hosts"] = "11"
 	s.NoError(s.cmd.ParseParams(s.params))

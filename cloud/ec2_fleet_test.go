@@ -6,6 +6,7 @@ import (
 	"time"
 
 	"github.com/aws/aws-sdk-go-v2/aws"
+	"github.com/aws/aws-sdk-go-v2/credentials"
 	"github.com/aws/aws-sdk-go-v2/service/ec2"
 	"github.com/aws/aws-sdk-go-v2/service/ec2/types"
 	"github.com/aws/smithy-go"
@@ -161,6 +162,7 @@ func TestFleet(t *testing.T) {
 				client: &awsClientMock{},
 				region: "test-region",
 			},
+			credentials: credentials.NewStaticCredentialsProvider("key", "secret", ""),
 			settings: &evergreen.Settings{
 				Providers: evergreen.CloudProviders{
 					AWS: evergreen.AWSConfig{

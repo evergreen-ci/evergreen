@@ -244,36 +244,28 @@ functions:
         OTEL_COLLECTOR_ENDPOINT: ${otel_collector_endpoint}
         OTEL_TRACE_ID: ${otel_trace_id}
         OTEL_PARENT_ID: ${otel_parent_id}
-        AWS_ACCESS_KEY_ID: ${AWS_ACCESS_KEY_ID}
-        AWS_SECRET_ACCESS_KEY: ${AWS_SECRET_ACCESS_KEY}
-        AWS_SESSION_TOKEN: ${AWS_SESSION_TOKEN}
 
   setup-credentials:
-    - command: ec2.assume_role
-      type: setup
-      params:
-        role_arn: ${assume_role_arn}
-    - command: subprocess.exec
-      type: setup
-      params:
-        silent: true
-        working_dir: evergreen
-        env:
-          GITHUB_TOKEN: ${github_token}
-          GITHUB_APP_ID: ${staging_github_app_id}
-          GITHUB_APP_KEY: ${staging_github_app_key}
-          JIRA_SERVER: ${jiraserver}
-          CROWD_SERVER: ${crowdserver}
-          AWS_KEY: ${aws_key}
-          AWS_SECRET: ${aws_secret}
-          PARSER_PROJECT_S3_PREFIX: ${task_id}/parser-projects
-          GENERATED_JSON_S3_PREFIX: ${task_id}/generated-json
-          JIRA_PRIVATE_KEY: ${jira_private_key}
-          JIRA_ACCESS_TOKEN: ${jira_access_token}
-          JIRA_TOKEN_SECRET: ${jira_token_secret}
-          JIRA_CONSUMER_KEY: ${jira_consumer_key}
-        command: bash scripts/setup-credentials.sh
-
+    command: subprocess.exec
+    type: setup
+    params:
+      silent: true
+      working_dir: evergreen
+      env:
+        GITHUB_TOKEN: ${github_token}
+        GITHUB_APP_ID: ${staging_github_app_id}
+        GITHUB_APP_KEY: ${staging_github_app_key}
+        JIRA_SERVER: ${jiraserver}
+        CROWD_SERVER: ${crowdserver}
+        AWS_KEY: ${aws_key}
+        AWS_SECRET: ${aws_secret}
+        PARSER_PROJECT_S3_PREFIX: ${task_id}/parser-projects
+        GENERATED_JSON_S3_PREFIX: ${task_id}/generated-json
+        JIRA_PRIVATE_KEY: ${jira_private_key}
+        JIRA_ACCESS_TOKEN: ${jira_access_token}
+        JIRA_TOKEN_SECRET: ${jira_token_secret}
+        JIRA_CONSUMER_KEY: ${jira_consumer_key}
+      command: bash scripts/setup-credentials.sh
   setup-mongodb:
     - command: subprocess.exec
       type: setup

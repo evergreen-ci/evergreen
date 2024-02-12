@@ -6,6 +6,7 @@ import (
 	"time"
 
 	"github.com/aws/aws-sdk-go-v2/aws"
+	"github.com/aws/aws-sdk-go-v2/credentials"
 	"github.com/aws/aws-sdk-go-v2/service/ec2"
 	"github.com/aws/aws-sdk-go-v2/service/ec2/types"
 	"github.com/evergreen-ci/evergreen"
@@ -86,8 +87,9 @@ type EC2FleetManagerOptions struct {
 
 type ec2FleetManager struct {
 	*EC2FleetManagerOptions
-	settings *evergreen.Settings
-	env      evergreen.Environment
+	credentials aws.CredentialsProvider
+	settings    *evergreen.Settings
+	env         evergreen.Environment
 }
 
 func (m *ec2FleetManager) Configure(ctx context.Context, settings *evergreen.Settings) error {
@@ -97,6 +99,16 @@ func (m *ec2FleetManager) Configure(ctx context.Context, settings *evergreen.Set
 		m.region = evergreen.DefaultEC2Region
 	}
 
+	var err error
+	m.providerKey, m.providerSecret, err = GetEC2Key(settings)
+	if err != nil {
+		return errors.Wrap(err, "getting EC2 keys")
+	}
+	if m.providerKey == "" || m.providerSecret == "" {
+		return errors.New("provider key/secret can't be empty")
+	}
+
+	m.credentials = credentials.NewStaticCredentialsProvider(m.providerKey, m.providerSecret, "")
 	return nil
 }
 
@@ -105,7 +117,7 @@ func (m *ec2FleetManager) SpawnHost(ctx context.Context, h *host.Host) (*host.Ho
 		return nil, errors.Errorf("can't spawn instance for distro '%s': distro provider is '%s'", h.Distro.Id, h.Distro.Provider)
 	}
 
-	if err := m.client.Create(ctx, m.region); err != nil {
+	if err := m.client.Create(ctx, m.credentials, m.region); err != nil {
 		return nil, errors.Wrap(err, "creating client")
 	}
 	defer m.client.Close()
@@ -159,7 +171,7 @@ func (m *ec2FleetManager) GetInstanceStatuses(ctx context.Context, hosts []host.
 		instanceIDs = append(instanceIDs, h.Id)
 	}
 
-	if err := m.client.Create(ctx, m.region); err != nil {
+	if err := m.client.Create(ctx, m.credentials, m.region); err != nil {
 		return nil, errors.Wrap(err, "creating client")
 	}
 	defer m.client.Close()
@@ -212,7 +224,7 @@ func (m *ec2FleetManager) GetInstanceStatuses(ctx context.Context, hosts []host.
 func (m *ec2FleetManager) GetInstanceStatus(ctx context.Context, h *host.Host) (CloudStatus, error) {
 	status := StatusUnknown
 
-	if err := m.client.Create(ctx, m.region); err != nil {
+	if err := m.client.Create(ctx, m.credentials, m.region); err != nil {
 		return status, errors.Wrap(err, "creating client")
 	}
 	defer m.client.Close()
@@ -251,7 +263,7 @@ func (m *ec2FleetManager) SetPortMappings(context.Context, *host.Host, *host.Hos
 }
 
 func (m *ec2FleetManager) CheckInstanceType(ctx context.Context, instanceType string) error {
-	if err := m.client.Create(ctx, m.region); err != nil {
+	if err := m.client.Create(ctx, m.credentials, m.region); err != nil {
 		return errors.Wrap(err, "creating client")
 	}
 	defer m.client.Close()
@@ -273,7 +285,7 @@ func (m *ec2FleetManager) TerminateInstance(ctx context.Context, h *host.Host, u
 	if h.Status == evergreen.HostTerminated {
 		return errors.Errorf("cannot terminate host '%s' because it's already marked as terminated", h.Id)
 	}
-	if err := m.client.Create(ctx, m.region); err != nil {
+	if err := m.client.Create(ctx, m.credentials, m.region); err != nil {
 		return errors.Wrap(err, "creating client")
 	}
 	defer m.client.Close()
@@ -327,7 +339,7 @@ func (m *ec2FleetManager) StartInstance(context.Context, *host.Host, string) err
 }
 
 func (m *ec2FleetManager) Cleanup(ctx context.Context) error {
-	if err := m.client.Create(ctx, m.region); err != nil {
+	if err := m.client.Create(ctx, m.credentials, m.region); err != nil {
 		return errors.Wrap(err, "creating client")
 	}
 	defer m.client.Close()
@@ -388,7 +400,7 @@ func (m *ec2FleetManager) GetVolumeAttachment(context.Context, string) (*VolumeA
 }
 
 func (m *ec2FleetManager) GetDNSName(ctx context.Context, h *host.Host) (string, error) {
-	if err := m.client.Create(ctx, m.region); err != nil {
+	if err := m.client.Create(ctx, m.credentials, m.region); err != nil {
 		return "", errors.Wrap(err, "creating client")
 	}
 	defer m.client.Close()
@@ -562,7 +574,7 @@ func (m *ec2FleetManager) makeOverrides(ctx context.Context, ec2Settings *EC2Pro
 }
 
 func (m *ec2FleetManager) AddSSHKey(ctx context.Context, pair evergreen.SSHKeyPair) error {
-	if err := m.client.Create(ctx, m.region); err != nil {
+	if err := m.client.Create(ctx, m.credentials, m.region); err != nil {
 		return errors.Wrap(err, "creating client")
 	}
 	defer m.client.Close()
