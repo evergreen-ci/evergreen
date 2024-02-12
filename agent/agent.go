@@ -984,7 +984,7 @@ func (a *Agent) finishTask(ctx context.Context, tc *taskContext, status string, 
 	if err != nil {
 		grip.Error(errors.Wrap(err, "upserting checkrun"))
 	}
-	grip.Info("Successfully upserted checkRun.")
+	tc.logger.Task().Infof("Successfully upserted checkRun.")
 
 	grip.Infof("Sending final task status: '%s'.", detail.Status)
 	resp, err := a.comm.EndTask(ctx, detail, tc.task)
