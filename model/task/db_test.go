@@ -232,7 +232,7 @@ func TestFailedTasksByVersion(t *testing.T) {
 func TestPotentiallyBlockedTasksByIds(t *testing.T) {
 	assert.NoError(t, db.Clear(Collection))
 	tasks := []Task{
-		{ // Can't be blocked
+		{ // Can't be blocked (override dependencies)
 			Id:                   "t1",
 			OverrideDependencies: true,
 		},
@@ -249,12 +249,12 @@ func TestPotentiallyBlockedTasksByIds(t *testing.T) {
 				},
 			},
 		},
-		{ // Can't be blocked
+		{ // Can't be blocked (no dependencies)
 			Id:                   "t4",
 			OverrideDependencies: false,
 			DependsOn:            []Dependency{},
 		},
-		{ // Can't be blocked
+		{ // Can't be blocked (override dependencies)
 			Id:                   "t5",
 			OverrideDependencies: true,
 			DependsOn: []Dependency{
@@ -273,7 +273,7 @@ func TestPotentiallyBlockedTasksByIds(t *testing.T) {
 			},
 			DependenciesMetTime: utility.ZeroTime,
 		},
-		{ // Can't be blocked
+		{ // Can't be blocked (dependencies met)
 			Id:                   "t7",
 			OverrideDependencies: false,
 			DependsOn: []Dependency{
@@ -282,6 +282,14 @@ func TestPotentiallyBlockedTasksByIds(t *testing.T) {
 				},
 			},
 			DependenciesMetTime: time.Now(),
+		},
+		{ // Can be blocked
+			Id: "t8",
+			DependsOn: []Dependency{
+				{
+					TaskId: "t1",
+				},
+			},
 		},
 	}
 	ids := make([]string, 0, len(tasks))
@@ -292,9 +300,10 @@ func TestPotentiallyBlockedTasksByIds(t *testing.T) {
 
 	dbTasks, err := Find(PotentiallyBlockedTasksByIds(ids))
 	require.NoError(t, err)
-	require.Len(t, dbTasks, 2)
-	assert.Contains(t, []string{"t3", "t6"}, dbTasks[0].Id)
-	assert.Contains(t, []string{"t3", "t6"}, dbTasks[1].Id)
+	require.Len(t, dbTasks, 3)
+	assert.Contains(t, []string{"t3", "t6", "t8"}, dbTasks[0].Id)
+	assert.Contains(t, []string{"t3", "t6", "t8"}, dbTasks[1].Id)
+	assert.Contains(t, []string{"t3", "t6", "t8"}, dbTasks[2].Id)
 }
 
 func TestFindTasksByVersionWithChildTasks(t *testing.T) {
