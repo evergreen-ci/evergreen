@@ -7,7 +7,6 @@ import (
 	"time"
 
 	"github.com/aws/aws-sdk-go-v2/aws"
-	"github.com/aws/aws-sdk-go-v2/credentials"
 	"github.com/aws/aws-sdk-go-v2/service/ec2"
 	"github.com/aws/aws-sdk-go-v2/service/ec2/types"
 	"github.com/evergreen-ci/birch"
@@ -31,12 +30,6 @@ type EC2ProviderSettings struct {
 
 	// AMI is the AMI ID.
 	AMI string `mapstructure:"ami" json:"ami,omitempty" bson:"ami,omitempty"`
-
-	// If set, overrides key from credentials
-	AWSKeyID string `mapstructure:"aws_access_key_id" json:"aws_access_key_id,omitempty" bson:"aws_access_key_id,omitempty"`
-
-	// If set, overrides secret from credentials
-	AWSSecret string `mapstructure:"aws_secret_access_key" json:"aws_access_key,omitempty" bson:"aws_secret_access_key,omitempty"`
 
 	// InstanceType is the EC2 instance type.
 	InstanceType string `mapstructure:"instance_type" json:"instance_type,omitempty" bson:"instance_type,omitempty"`
@@ -237,29 +230,17 @@ type EC2ManagerOptions struct {
 // ec2Manager starts and configures instances in EC2.
 type ec2Manager struct {
 	*EC2ManagerOptions
-	credentials aws.CredentialsProvider
-	env         evergreen.Environment
-	settings    *evergreen.Settings
+	env      evergreen.Environment
+	settings *evergreen.Settings
 }
 
-// Configure loads credentials or other settings from the config file.
+// Configure loads settings from the config file.
 func (m *ec2Manager) Configure(ctx context.Context, settings *evergreen.Settings) error {
 	m.settings = settings
 
 	if m.region == "" {
 		m.region = evergreen.DefaultEC2Region
 	}
-
-	var err error
-	m.providerKey, m.providerSecret, err = GetEC2Key(settings)
-	if err != nil {
-		return errors.Wrap(err, "getting EC2 keys")
-	}
-	if m.providerKey == "" || m.providerSecret == "" {
-		return errors.New("provider key/secret can't be empty")
-	}
-
-	m.credentials = credentials.NewStaticCredentialsProvider(m.providerKey, m.providerSecret, "")
 
 	return nil
 }
@@ -435,7 +416,7 @@ func (m *ec2Manager) SpawnHost(ctx context.Context, h *host.Host) (*host.Host, e
 			h.Distro.Id, h.Distro.Provider)
 	}
 
-	if err := m.client.Create(ctx, m.credentials, m.region); err != nil {
+	if err := m.client.Create(ctx, m.region); err != nil {
 		return nil, errors.Wrap(err, "creating client")
 	}
 	defer m.client.Close()
@@ -559,7 +540,7 @@ func (m *ec2Manager) setInstanceType(ctx context.Context, h *host.Host, instance
 }
 
 func (m *ec2Manager) CheckInstanceType(ctx context.Context, instanceType string) error {
-	if err := m.client.Create(ctx, m.credentials, m.region); err != nil {
+	if err := m.client.Create(ctx, m.region); err != nil {
 		return errors.Wrap(err, "creating client")
 	}
 	defer m.client.Close()
@@ -610,7 +591,7 @@ func (m *ec2Manager) extendExpiration(ctx context.Context, h *host.Host, extensi
 
 // ModifyHost modifies a spawn host according to the changes specified by a HostModifyOptions struct.
 func (m *ec2Manager) ModifyHost(ctx context.Context, h *host.Host, opts host.HostModifyOptions) error {
-	if err := m.client.Create(ctx, m.credentials, m.region); err != nil {
+	if err := m.client.Create(ctx, m.region); err != nil {
 		return errors.Wrap(err, "creating client")
 	}
 	defer m.client.Close()
@@ -679,7 +660,7 @@ func addPublicKey(ctx context.Context, h *host.Host, key string) error {
 
 // GetInstanceStatuses returns the current status of a slice of EC2 instances.
 func (m *ec2Manager) GetInstanceStatuses(ctx context.Context, hosts []host.Host) (map[string]CloudStatus, error) {
-	if err := m.client.Create(ctx, m.credentials, m.region); err != nil {
+	if err := m.client.Create(ctx, m.region); err != nil {
 		return nil, errors.Wrap(err, "creating client")
 	}
 	defer m.client.Close()
@@ -732,7 +713,7 @@ func (m *ec2Manager) GetInstanceStatuses(ctx context.Context, hosts []host.Host)
 func (m *ec2Manager) GetInstanceStatus(ctx context.Context, h *host.Host) (CloudStatus, error) {
 	status := StatusUnknown
 
-	if err := m.client.Create(ctx, m.credentials, m.region); err != nil {
+	if err := m.client.Create(ctx, m.region); err != nil {
 		return status, errors.Wrap(err, "creating client")
 	}
 	defer m.client.Close()
@@ -781,7 +762,7 @@ func (m *ec2Manager) TerminateInstance(ctx context.Context, h *host.Host, user, 
 		}))
 	}
 
-	if err := m.client.Create(ctx, m.credentials, m.region); err != nil {
+	if err := m.client.Create(ctx, m.region); err != nil {
 		return errors.Wrap(err, "creating client")
 	}
 	defer m.client.Close()
@@ -868,7 +849,7 @@ func (m *ec2Manager) StopInstance(ctx context.Context, h *host.Host, user string
 		return errors.Errorf("cannot stop host '%s' because its status ('%s') is not a stoppable state", h.Id, h.Status)
 	}
 
-	if err := m.client.Create(ctx, m.credentials, m.region); err != nil {
+	if err := m.client.Create(ctx, m.region); err != nil {
 		return errors.Wrap(err, "creating client")
 	}
 	defer m.client.Close()
@@ -945,7 +926,7 @@ func (m *ec2Manager) StartInstance(ctx context.Context, h *host.Host, user strin
 		return errors.Errorf("cannot start host '%s' because its status is '%s'", h.Id, h.Status)
 	}
 
-	if err := m.client.Create(ctx, m.credentials, m.region); err != nil {
+	if err := m.client.Create(ctx, m.region); err != nil {
 		return errors.Wrap(err, "creating client")
 	}
 	defer m.client.Close()
@@ -997,7 +978,7 @@ func (m *ec2Manager) StartInstance(ctx context.Context, h *host.Host, user strin
 }
 
 func (m *ec2Manager) AttachVolume(ctx context.Context, h *host.Host, attachment *host.VolumeAttachment) error {
-	if err := m.client.Create(ctx, m.credentials, m.region); err != nil {
+	if err := m.client.Create(ctx, m.region); err != nil {
 		return errors.Wrap(err, "creating client")
 	}
 	defer m.client.Close()
@@ -1038,7 +1019,7 @@ func (m *ec2Manager) DetachVolume(ctx context.Context, h *host.Host, volumeID st
 		return errors.Errorf("volume '%s' not found", volumeID)
 	}
 
-	if err = m.client.Create(ctx, m.credentials, m.region); err != nil {
+	if err = m.client.Create(ctx, m.region); err != nil {
 		return errors.Wrap(err, "creating client")
 	}
 	defer m.client.Close()
@@ -1061,7 +1042,7 @@ func (m *ec2Manager) DetachVolume(ctx context.Context, h *host.Host, volumeID st
 }
 
 func (m *ec2Manager) CreateVolume(ctx context.Context, volume *host.Volume) (*host.Volume, error) {
-	if err := m.client.Create(ctx, m.credentials, m.region); err != nil {
+	if err := m.client.Create(ctx, m.region); err != nil {
 		return nil, errors.Wrap(err, "creating client")
 	}
 	defer m.client.Close()
@@ -1108,7 +1089,7 @@ func (m *ec2Manager) CreateVolume(ctx context.Context, volume *host.Volume) (*ho
 }
 
 func (m *ec2Manager) DeleteVolume(ctx context.Context, volume *host.Volume) error {
-	if err := m.client.Create(ctx, m.credentials, m.region); err != nil {
+	if err := m.client.Create(ctx, m.region); err != nil {
 		return errors.Wrap(err, "creating client")
 	}
 	defer m.client.Close()
@@ -1124,7 +1105,7 @@ func (m *ec2Manager) DeleteVolume(ctx context.Context, volume *host.Volume) erro
 }
 
 func (m *ec2Manager) GetVolumeAttachment(ctx context.Context, volumeID string) (*VolumeAttachment, error) {
-	if err := m.client.Create(ctx, m.credentials, m.region); err != nil {
+	if err := m.client.Create(ctx, m.region); err != nil {
 		return nil, errors.Wrap(err, "creating client")
 	}
 	defer m.client.Close()
@@ -1180,7 +1161,7 @@ func (m *ec2Manager) modifyVolumeExpiration(ctx context.Context, volume *host.Vo
 }
 
 func (m *ec2Manager) ModifyVolume(ctx context.Context, volume *host.Volume, opts *model.VolumeModifyOptions) error {
-	if err := m.client.Create(ctx, m.credentials, m.region); err != nil {
+	if err := m.client.Create(ctx, m.region); err != nil {
 		return errors.Wrap(err, "creating client")
 	}
 	defer m.client.Close()
@@ -1236,7 +1217,7 @@ func (m *ec2Manager) ModifyVolume(ctx context.Context, volume *host.Volume, opts
 
 // GetDNSName returns the DNS name for the host.
 func (m *ec2Manager) GetDNSName(ctx context.Context, h *host.Host) (string, error) {
-	if err := m.client.Create(ctx, m.credentials, m.region); err != nil {
+	if err := m.client.Create(ctx, m.region); err != nil {
 		return "", errors.Wrap(err, "creating client")
 	}
 	defer m.client.Close()
@@ -1255,7 +1236,7 @@ func (m *ec2Manager) Cleanup(context.Context) error {
 }
 
 func (m *ec2Manager) AddSSHKey(ctx context.Context, pair evergreen.SSHKeyPair) error {
-	if err := m.client.Create(ctx, m.credentials, m.region); err != nil {
+	if err := m.client.Create(ctx, m.region); err != nil {
 		return errors.Wrap(err, "creating client")
 	}
 	defer m.client.Close()

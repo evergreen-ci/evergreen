@@ -1213,11 +1213,6 @@ func (e *envState) populateS3ClientConfig(ctx context.Context, versionID string)
 	bucket, err := pail.NewS3Bucket(pail.S3Options{
 		Name:   e.settings.Providers.AWS.BinaryClient.Bucket,
 		Region: DefaultEC2Region,
-		Credentials: pail.CreateAWSCredentials(
-			e.settings.Providers.AWS.BinaryClient.Key,
-			e.settings.Providers.AWS.BinaryClient.Secret,
-			"",
-		),
 	})
 	if err != nil {
 		return errors.Wrap(err, "constructing pail bucket")

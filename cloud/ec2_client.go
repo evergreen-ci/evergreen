@@ -32,7 +32,7 @@ var noReservationError = errors.New("no reservation returned for instance")
 // AWSClient is a wrapper for aws-sdk-go so we can use a mock in testing.
 type AWSClient interface {
 	// Create a new aws-sdk-client or mock if one does not exist, otherwise no-op.
-	Create(context.Context, aws.CredentialsProvider, string) error
+	Create(context.Context, string) error
 
 	// Close an aws-sdk-client or mock.
 	Close()
@@ -152,10 +152,7 @@ func awsClientDefaultRetryOptions() utility.RetryOptions {
 }
 
 // Create a new aws-sdk-client if one does not exist, otherwise no-op.
-func (c *awsClientImpl) Create(ctx context.Context, creds aws.CredentialsProvider, region string) error {
-	if creds == nil {
-		return errors.New("creds must not be nil")
-	}
+func (c *awsClientImpl) Create(ctx context.Context, region string) error {
 	if region == "" {
 		return errors.New("region must not be empty")
 	}
@@ -164,7 +161,6 @@ func (c *awsClientImpl) Create(ctx context.Context, creds aws.CredentialsProvide
 		config, err := config.LoadDefaultConfig(ctx,
 			config.WithRegion(region),
 			config.WithHTTPClient(c.httpClient),
-			config.WithCredentialsProvider(creds),
 		)
 		if err != nil {
 			return errors.Wrap(err, "loading config")
@@ -1068,7 +1064,7 @@ type awsClientMock struct { //nolint
 }
 
 // Create a new mock client.
-func (c *awsClientMock) Create(ctx context.Context, creds aws.CredentialsProvider, region string) error {
+func (c *awsClientMock) Create(ctx context.Context, region string) error {
 	return nil
 }
 
