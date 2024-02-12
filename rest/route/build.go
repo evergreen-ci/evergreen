@@ -60,17 +60,6 @@ func (b *buildGetHandler) Run(ctx context.Context) gimlet.Responder {
 			Message:    fmt.Sprintf("build '%s' not found", b.buildId),
 		})
 	}
-	taskIDs := make([]string, 0, len(foundBuild.Tasks))
-	for _, t := range foundBuild.Tasks {
-		taskIDs = append(taskIDs, t.Id)
-	}
-	var tasks []task.Task
-	if len(taskIDs) > 0 {
-		tasks, err = task.FindAll(db.Query(task.ByIds(taskIDs)))
-		if err != nil {
-			return gimlet.MakeJSONInternalErrorResponder(errors.Wrapf(err, "finding tasks in build '%s'", b.buildId))
-		}
-	}
 
 	v, err := serviceModel.VersionFindOneId(foundBuild.Version)
 	if err != nil {
@@ -90,9 +79,33 @@ func (b *buildGetHandler) Run(ctx context.Context) gimlet.Responder {
 
 	buildModel := &model.APIBuild{}
 	buildModel.BuildFromService(*foundBuild, pp)
-	buildModel.SetTaskCache(tasks)
+	if err := setBuildTaskCache(foundBuild, buildModel); err != nil {
+		return gimlet.NewJSONInternalErrorResponse(errors.Wrap(err, "setting task cache for build"))
+	}
 
 	return gimlet.NewJSONResponse(buildModel)
+}
+
+func setBuildTaskCache(b *build.Build, apiBuild *model.APIBuild) error {
+	taskIDs := make([]string, 0, len(b.Tasks))
+	for _, t := range b.Tasks {
+		taskIDs = append(taskIDs, t.Id)
+	}
+	if len(taskIDs) == 0 {
+		return nil
+	}
+
+	tasks, err := task.FindAll(db.Query(task.ByIds(taskIDs)))
+	if err != nil {
+		return gimlet.ErrorResponse{
+			StatusCode: http.StatusInternalServerError,
+			Message:    errors.Wrapf(err, "finding tasks").Error(),
+		}
+	}
+
+	apiBuild.SetTaskCache(tasks)
+
+	return nil
 }
 
 ////////////////////////////////////////////////////////////////////////

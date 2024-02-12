@@ -578,28 +578,13 @@ func TestLogDistroModifiedWithDistroData(t *testing.T) {
 	require.Len(t, eventsForDistro, 1)
 	eventData, ok := eventsForDistro[0].Data.(*event.DistroEventData)
 	assert.True(t, ok)
-	assert.Equal(t, "user1", eventData.UserId)
 	assert.Equal(t, "user1", eventData.User)
-	assert.NotNil(t, eventData.Data)
 	assert.NotNil(t, eventData.Before)
 	assert.NotNil(t, eventData.After)
 
-	// Test legacy Data field
-	data := DistroData{}
-	body, err := bson.Marshal(eventData.Data)
-	assert.NoError(t, err)
-	assert.NoError(t, bson.Unmarshal(body, &data))
-	require.NotNil(t, data)
-	assert.Equal(t, d.Id, data.Distro.Id)
-	assert.Equal(t, d.Provider, data.Distro.Provider)
-	assert.Nil(t, data.Distro.ProviderSettingsList)
-	require.Len(t, data.ProviderSettingsMap, 2)
-	assert.EqualValues(t, d.ProviderSettingsList[0].ExportMap(), data.ProviderSettingsMap[0])
-	assert.EqualValues(t, d.ProviderSettingsList[1].ExportMap(), data.ProviderSettingsMap[1])
-
 	// Test Before field
-	data = DistroData{}
-	body, err = bson.Marshal(eventData.Before)
+	data := DistroData{}
+	body, err := bson.Marshal(eventData.Before)
 	assert.NoError(t, err)
 	assert.NoError(t, bson.Unmarshal(body, &data))
 	require.NotNil(t, data)

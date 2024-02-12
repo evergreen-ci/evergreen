@@ -226,7 +226,6 @@ functions:
         EVERGREEN_ALL: "true"
         GOARCH: ${goarch}
         GOOS: ${goos}
-        GOPATH: ${workdir}/gopath
         KARMA_REPORTER: junit
         NODE_BIN_PATH: ${nodebin}
         RACE_DETECTOR: ${race_detector}
@@ -245,28 +244,36 @@ functions:
         OTEL_COLLECTOR_ENDPOINT: ${otel_collector_endpoint}
         OTEL_TRACE_ID: ${otel_trace_id}
         OTEL_PARENT_ID: ${otel_parent_id}
+        AWS_ACCESS_KEY_ID: ${AWS_ACCESS_KEY_ID}
+        AWS_SECRET_ACCESS_KEY: ${AWS_SECRET_ACCESS_KEY}
+        AWS_SESSION_TOKEN: ${AWS_SESSION_TOKEN}
 
   setup-credentials:
-    command: subprocess.exec
-    type: setup
-    params:
-      silent: true
-      working_dir: evergreen
-      env:
-        GITHUB_TOKEN: ${github_token}
-        GITHUB_APP_ID: ${staging_github_app_id}
-        GITHUB_APP_KEY: ${staging_github_app_key}
-        JIRA_SERVER: ${jiraserver}
-        CROWD_SERVER: ${crowdserver}
-        AWS_KEY: ${aws_key}
-        AWS_SECRET: ${aws_secret}
-        PARSER_PROJECT_S3_PREFIX: ${task_id}/parser-projects
-        GENERATED_JSON_S3_PREFIX: ${task_id}/generated-json
-        JIRA_PRIVATE_KEY: ${jira_private_key}
-        JIRA_ACCESS_TOKEN: ${jira_access_token}
-        JIRA_TOKEN_SECRET: ${jira_token_secret}
-        JIRA_CONSUMER_KEY: ${jira_consumer_key}
-      command: bash scripts/setup-credentials.sh
+    - command: ec2.assume_role
+      type: setup
+      params:
+        role_arn: ${assume_role_arn}
+    - command: subprocess.exec
+      type: setup
+      params:
+        silent: true
+        working_dir: evergreen
+        env:
+          GITHUB_TOKEN: ${github_token}
+          GITHUB_APP_ID: ${staging_github_app_id}
+          GITHUB_APP_KEY: ${staging_github_app_key}
+          JIRA_SERVER: ${jiraserver}
+          CROWD_SERVER: ${crowdserver}
+          AWS_KEY: ${aws_key}
+          AWS_SECRET: ${aws_secret}
+          PARSER_PROJECT_S3_PREFIX: ${task_id}/parser-projects
+          GENERATED_JSON_S3_PREFIX: ${task_id}/generated-json
+          JIRA_PRIVATE_KEY: ${jira_private_key}
+          JIRA_ACCESS_TOKEN: ${jira_access_token}
+          JIRA_TOKEN_SECRET: ${jira_token_secret}
+          JIRA_CONSUMER_KEY: ${jira_consumer_key}
+        command: bash scripts/setup-credentials.sh
+
   setup-mongodb:
     - command: subprocess.exec
       type: setup
@@ -595,8 +602,15 @@ tasks:
     tags: ["linter"]
     commands:
       - func: get-project-and-modules
-      - func: run-make
-        vars: { target: "swaggo-install" }
+      - command: subprocess.exec
+        params:
+          binary: make
+          args: ["swaggo-install"]
+          working_dir: evergreen
+          env:
+            GOPATH: ${workdir}/gopath
+          include_expansions_in_env:
+            - GOROOT
       - func: verify-swaggo-fmt
   - name: verify-agent-version-update
     tags: ["linter"]
@@ -629,8 +643,15 @@ tasks:
   - name: generate-api-docs
     commands: 
       - func: get-project-and-modules
-      - func: run-make
-        vars: { target: "swaggo-install" }
+      - command: subprocess.exec
+        params:
+          binary: make
+          args: ["swaggo-install"]
+          working_dir: evergreen
+          env:
+            GOPATH: ${workdir}/gopath
+          include_expansions_in_env:
+            - GOROOT
       - command: shell.exec
         params:
           shell: bash
@@ -670,7 +691,7 @@ tasks:
     tags: ["build"]
   - <<: *build-and-push-client
     name: build-linux_arm64
-    tags: ["build", "build-staging"]
+    tags: ["build"]
   - <<: *build-and-push-client
     name: build-linux_ppc64le
     tags: ["build"]

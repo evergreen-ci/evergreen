@@ -75,13 +75,24 @@ func TestSpawnEC2InstanceOnDemand(t *testing.T) {
 
 	m := &ec2Manager{env: env, EC2ManagerOptions: opts}
 	require.NoError(m.Configure(ctx, testConfig))
-	require.NoError(m.client.Create(ctx, m.credentials, evergreen.DefaultEC2Region))
+	require.NoError(m.client.Create(ctx, evergreen.DefaultEC2Region))
 
 	d := fetchTestDistro()
 	h := host.NewIntent(host.CreateOptions{
 		Distro:   d,
 		UserName: evergreen.User,
 		UserHost: false,
+		// The assumed role used for this integration test requires
+		// a specific resource tag to be set in order to perform
+		// certain actions (e.g., terminate a host). This means that
+		// the resource must have the tag or the action cannot be
+		// performed against it.
+		InstanceTags: []host.Tag{
+			{
+				Key:   "evergreen-integration-testing",
+				Value: "true",
+			},
+		},
 	})
 	h, err := m.SpawnHost(ctx, h)
 	assert.NoError(err)

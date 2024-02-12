@@ -6,7 +6,6 @@ import (
 	"io"
 	"net/http"
 
-	"github.com/aws/aws-sdk-go/aws/credentials"
 	"github.com/aws/aws-sdk-go/aws/endpoints"
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/pail"
@@ -29,15 +28,10 @@ type ParserProjectS3Storage struct {
 func NewParserProjectS3Storage(ppConf evergreen.ParserProjectS3Config) (*ParserProjectS3Storage, error) {
 	c := utility.GetHTTPClient()
 
-	var creds *credentials.Credentials
-	if ppConf.Key != "" && ppConf.Secret != "" {
-		creds = pail.CreateAWSCredentials(ppConf.Key, ppConf.Secret, "")
-	}
 	b, err := pail.NewS3MultiPartBucketWithHTTPClient(c, pail.S3Options{
-		Name:        ppConf.Bucket,
-		Prefix:      ppConf.Prefix,
-		Region:      endpoints.UsEast1RegionID,
-		Credentials: creds,
+		Name:   ppConf.Bucket,
+		Prefix: ppConf.Prefix,
+		Region: endpoints.UsEast1RegionID,
 	})
 	if err != nil {
 		utility.PutHTTPClient(c)

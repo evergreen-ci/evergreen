@@ -627,17 +627,15 @@ var (
 )
 
 const (
-	DefaultServiceConfigurationFileName = "/etc/mci_settings.yml"
-	DefaultDatabaseURL                  = "mongodb://localhost:27017"
-	DefaultDatabaseName                 = "mci"
-	DefaultDatabaseWriteMode            = "majority"
-	DefaultDatabaseReadMode             = "majority"
+	DefaultDatabaseURL       = "mongodb://localhost:27017"
+	DefaultDatabaseName      = "mci"
+	DefaultDatabaseWriteMode = "majority"
+	DefaultDatabaseReadMode  = "majority"
 
 	DefaultAmboyDatabaseURL = "mongodb://localhost:27017"
 
 	// database and config directory, set to the testing version by default for safety
-	NotificationsFile = "mci-notifications.yml"
-	ClientDirectory   = "clients"
+	ClientDirectory = "clients"
 
 	// version requester types
 	PatchVersionRequester       = "patch_request"
@@ -1357,7 +1355,6 @@ type LogViewer string
 const (
 	LogViewerRaw     LogViewer = "raw"
 	LogViewerHTML    LogViewer = "html"
-	LogViewerLobster LogViewer = "lobster"
 	LogViewerParsley LogViewer = "parsley"
 )
 

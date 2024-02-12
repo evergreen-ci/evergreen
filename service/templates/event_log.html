@@ -27,9 +27,6 @@ mciModule.controller('LogController', function($scope, $window) {
         <div ng-show="event.resource_type === 'TASK' || event.data.resource_type === 'TASK'">
           <taskevent event="event" tz="userTz" jira="jiraHost"></taskevent>
         </div>
-        <div ng-show="event.resource_type === 'DISTRO' || event.data.resource_type === 'DISTRO'">
-          <distroevent event="event" tz="userTz"></distroevent>
-        </div>
         <div ng-show="event.resource_type === 'ADMIN' || event.data.resource_type === 'ADMIN'">
           <adminevent event="event" tz="userTz"></adminevent>
         </div>
