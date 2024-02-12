@@ -1165,23 +1165,24 @@ func interfaceToMap(ctx context.Context, data interface{}) (map[string]interface
 	return mapField, nil
 }
 
-type HasMatchingTasks struct {
-	Id       string
-	HasTasks bool
+type versionsMatchingTasks struct {
+	Id               string
+	HasMatchingTasks bool
 }
 
 func concurrentlyBuildHasMatchingTasksMap(ctx context.Context, versions []model.Version, opts task.HasMatchingTasksOptions) (map[string]bool, error) {
 	wg := sync.WaitGroup{}
 	input := make(chan model.Version, len(versions))
-	output := make(chan HasMatchingTasks, len(versions))
+	output := make(chan versionsMatchingTasks, len(versions))
 	catcher := grip.NewBasicCatcher()
 
+	// Create an input channel that all of the goroutines can read from.
 	for _, v := range versions {
 		input <- v
 	}
 	close(input)
 
-	hasMatchingTasksMap := map[string]bool{}
+	versionsMatchingTasksMap := map[string]bool{}
 
 	// Limit number of parallel requests to the DB.
 	const maxParallel = 20
@@ -1191,12 +1192,12 @@ func concurrentlyBuildHasMatchingTasksMap(ctx context.Context, versions []model.
 		go func() {
 			defer wg.Done()
 			for i := range input {
-				hasTasks, err := task.HasMatchingTasks(ctx, i.Id, opts)
+				HasMatchingTasks, err := task.HasMatchingTasks(ctx, i.Id, opts)
 				if err != nil {
 					catcher.Add(err)
 					continue
 				}
-				output <- HasMatchingTasks{Id: i.Id, HasTasks: hasTasks}
+				output <- versionsMatchingTasks{Id: i.Id, HasMatchingTasks: HasMatchingTasks}
 			}
 		}()
 	}
@@ -1207,12 +1208,11 @@ func concurrentlyBuildHasMatchingTasksMap(ctx context.Context, versions []model.
 		return nil, errors.Wrap(catcher.Resolve(), "finding matching tasks")
 	}
 
-	// Maps are reference types so this will be updated correctly in the parent function.
 	for item := range output {
-		hasMatchingTasksMap[item.Id] = item.HasTasks
+		versionsMatchingTasksMap[item.Id] = item.HasMatchingTasks
 	}
 
-	return hasMatchingTasksMap, nil
+	return versionsMatchingTasksMap, nil
 }
 
 func collapseCommit(ctx context.Context, mainlineCommits MainlineCommits, mainlineCommitVersion *MainlineCommitVersion, apiVersion restModel.APIVersion) {

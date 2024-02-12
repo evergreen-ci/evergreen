@@ -906,14 +906,14 @@ func (r *queryResolver) MainlineCommits(ctx context.Context, options MainlineCom
 			mainlineCommitVersion := MainlineCommitVersion{}
 			apiVersion := restModel.APIVersion{}
 			apiVersion.BuildFromService(v)
-			versionsCheckedCount += 1
+			versionsCheckedCount++
 
 			if !utility.FromBoolPtr(v.Activated) {
 				collapseCommit(ctx, mainlineCommits, &mainlineCommitVersion, apiVersion)
 			} else if hasFilters && !hasMatchingTasksMap[v.Id] {
 				collapseCommit(ctx, mainlineCommits, &mainlineCommitVersion, apiVersion)
 			} else {
-				matchingVersionCount += 1
+				matchingVersionCount++
 				mainlineCommits.NextPageOrderNumber = utility.ToIntPtr(v.RevisionOrderNumber)
 				mainlineCommitVersion.Version = &apiVersion
 			}
