@@ -229,7 +229,6 @@ func TestFailedTasksByVersion(t *testing.T) {
 	})
 }
 
-// use asserts and requires
 func TestPotentiallyBlockedTasksByIds(t *testing.T) {
 	assert.NoError(t, db.Clear(Collection))
 	tasks := []Task{

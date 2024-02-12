@@ -805,6 +805,8 @@ func (t *Task) GetDeactivatedBlockingDependencies(depCache map[string]Task) ([]s
 	return blockingDeps, nil
 }
 
+// populateDependencyTaskCacheSingular ensures that a single dependency for the task is in the cache.
+// And if it is not, it queries the database for it.
 func populateDependencyTaskCacheSingular(depCache map[string]Task, depId string) (*Task, error) {
 	if depTask, ok := depCache[depId]; ok {
 		return &depTask, nil
