@@ -288,12 +288,18 @@ Fields:
     settings page. This can also be set for individual tasks. Only applies to
     tasks from mainline commits.
 -   `cron`: define with [cron syntax](https://crontab.guru/) (i.e. Min \| Hour \| DayOfMonth \|
-    Month \| DayOfWeekOptional) when (in UTC) a task or variant should be activated
-    (cannot be combined with batchtime). This also accepts descriptors
-    such as `@daily` (reference
-    [cron](https://godoc.org/github.com/robfig/cron) for more example),
-    but does not accept intervals. (i.e.
-    `@every <duration>`). Only applies to tasks from mainline commits.
+    Month \| DayOfWeekOptional) when (in UTC) a task or variant in a mainline
+    commit should be activated (cannot be combined with batchtime). This also
+    accepts descriptors such as `@daily` (reference
+    [cron](https://godoc.org/github.com/robfig/cron) for more example), but does
+    not accept intervals. (i.e. `@every <duration>`). Note that `cron` doesn't
+    actually create any new tasks, it only activates existing tasks in mainline
+    commits. For example, if you specify a task with `cron: '@daily'`, Evergreen
+    will check that task once per day. If the most recent mainline commit is
+    inactive, Evergreen will activate it. In this way, cron is tied more closely
+    to project commit activity. To run something on a regular schedule
+    regardless of commit activity, consider using [periodic builds](Project-and-Distro-Settings.md#periodic-builds)
+    instead.
 -   `task_group`: a [task
     group](#task-groups)
     may be defined directly inline or using YAML aliases on a build
