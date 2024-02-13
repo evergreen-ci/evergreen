@@ -1,11 +1,11 @@
-{ "_id" : "logkeeper", "name" : "logkeeper_role", "scope" : "logkeeper", "permissions" : { "project_settings": 20, "project_variables": 20, "project_tasks": 30, "project_patches": 10,  "project_logs": 10} }
-{ "_id" : "evergreen", "name" : "evergreen_role", "scope" : "evergreen", "permissions" : { "project_logs": 10, "project_settings": 20, "project_tasks": 30, "project_patches":10} }
-{ "_id" : "sys-perf", "name" : "sys-perf_role", "scope" : "sys-perf", "permissions" : { "project_logs": 10, "project_tasks": 20} }
-{ "_id" : "localhostRemove", "name" : "localhost_role", "scope" : "localhost", "permissions" : { "distro_settings": 30, "distro_hosts": 10} }
-{ "_id" : "localhostEdit", "name" : "localhost_role", "scope" : "localhost", "permissions" : { "distro_settings": 20, "distro_hosts": 10} }
-{ "_id" : "localhost2", "name" : "localhost2_role", "scope" : "localhost2", "permissions" : { "distro_settings": 10} }
-{ "_id" : "superuser", "name" : "project_create", "scope" : "super", "permissions" : { "project_create": 10,  "admin_settings": 10, "distro_create": 10} }
-{"_id": "superuser_distro_access","name":"admin access","scope":"all_distros","permissions":{"distro_settings":30,"distro_hosts":20}}
-{ "_id" : "annotations_evergreen", "name" : "project_task_annotations", "scope" : "evergreen", "permissions" : { "project_task_annotations": 20} }
-{ "_id":"admin_project_access","name":"project_settings","scope":"all_projects","permissions":{"project_logs":10,"project_patches":10,"project_tasks":30,"project_settings":20}}
-{ "_id":"basic_distro_access","name":"basic access","scope":"all_distros","permissions":{"distro_settings":10,"distro_hosts":10}}
+{"_id":"logkeeper","name":"logkeeper_role","scope":"logkeeper","permissions":{"project_settings":20,"project_variables":20,"project_tasks":30,"project_patches":10, "project_logs":10}}
+{"_id":"evergreen","name":"evergreen_role","scope":"evergreen","permissions":{"project_logs":10,"project_settings":20,"project_tasks":30,"project_patches":10}}
+{"_id":"sys-perf","name":"sys-perf_role","scope":"sys-perf","permissions":{"project_logs":10,"project_tasks":20}}
+{"_id":"localhostRemove","name":"localhost_role","scope":"localhost","permissions":{"distro_settings":30, "distro_hosts":10}}
+{"_id":"localhostEdit","name":"localhost_role","scope":"localhost","permissions":{"distro_settings":20,"distro_hosts":10}}
+{"_id":"localhost2","name":"localhost2_role","scope":"localhost2","permissions":{"distro_settings":10}}
+{"_id":"superuser","name":"project_create","scope":"super","permissions":{"project_create":10,"admin_settings":10,"distro_create":10}}
+{"_id":"superuser_distro_access","name":"admin access","scope":"all_distros","permissions":{"distro_settings":30,"distro_hosts":20}}
+{"_id":"annotations_evergreen","name":"project_task_annotations","scope":"evergreen","permissions":{"project_task_annotations": 20}}
+{"_id":"admin_project_access","name":"project_settings","scope":"all_projects","permissions":{"project_logs":10,"project_patches":10,"project_tasks":30,"project_settings":20}}
+{"_id":"basic_distro_access","name":"basic access","scope":"all_distros","permissions":{"distro_settings":10,"distro_hosts":10}}
