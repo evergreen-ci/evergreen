@@ -47,7 +47,7 @@ import (
 	"reflect"
 )
 
-var RedactedFields = []string{
+var redactedFields = []string{
 `)
 	if err != nil {
 		return err
@@ -67,8 +67,8 @@ var RedactedFields = []string{
 
 	_, err = file.WriteString(
 		`
-func IsFieldRedacted(fieldName string) bool {
-	for _, field := range RedactedFields {
+func isFieldRedacted(fieldName string) bool {
+	for _, field := range redactedFields {
 		if field == fieldName {
 			return true
 		}
@@ -81,7 +81,7 @@ func IsFieldRedacted(fieldName string) bool {
 func RedactFieldsInMap(data map[string]interface{}) {
 	for key, value := range data {
 		// If the current key matches a field that should be redacted, redact it.
-		if IsFieldRedacted(key) {
+		if isFieldRedacted(key) {
 			data[key] = "REDACTED"
 			continue
 		}
