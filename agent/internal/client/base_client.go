@@ -1023,7 +1023,7 @@ func (c *baseCommunicator) UpsertCheckRun(ctx context.Context, td TaskData, chec
 		method:   http.MethodPost,
 		taskData: &td,
 	}
-	info.setTaskPathSuffix("upsert_check_run")
+	info.setTaskPathSuffix("check_run")
 	resp, err := c.retryRequest(ctx, info, &checkRunOutput)
 	if err != nil {
 		return util.RespErrorf(resp, errors.Wrap(err, "upserting checkRun").Error())
