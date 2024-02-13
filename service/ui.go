@@ -247,16 +247,12 @@ func (uis *UIServer) GetServiceApp() *gimlet.APIApp {
 	ownsHost := gimlet.WrapperMiddleware(uis.ownsHost)
 	vsCodeRunning := gimlet.WrapperMiddleware(uis.vsCodeRunning)
 	adminSettings := route.RequiresSuperUserPermission(evergreen.PermissionAdminSettings, evergreen.AdminSettingsEdit)
-	createDistro := route.RequiresSuperUserPermission(evergreen.PermissionDistroCreate, evergreen.DistroCreate)
 	viewTasks := route.RequiresProjectPermission(evergreen.PermissionTasks, evergreen.TasksView)
 	editTasks := route.RequiresProjectPermission(evergreen.PermissionTasks, evergreen.TasksBasic)
 	viewLogs := route.RequiresProjectPermission(evergreen.PermissionLogs, evergreen.LogsView)
 	submitPatches := route.RequiresProjectPermission(evergreen.PermissionPatches, evergreen.PatchSubmit)
 	viewProjectSettings := route.RequiresProjectPermission(evergreen.PermissionProjectSettings, evergreen.ProjectSettingsView)
 	editProjectSettings := route.RequiresProjectPermission(evergreen.PermissionProjectSettings, evergreen.ProjectSettingsEdit)
-	viewDistroSettings := route.RequiresDistroPermission(evergreen.PermissionDistroSettings, evergreen.DistroSettingsView)
-	editDistroSettings := route.RequiresDistroPermission(evergreen.PermissionDistroSettings, evergreen.DistroSettingsEdit)
-	removeDistroSettings := route.RequiresDistroPermission(evergreen.PermissionDistroSettings, evergreen.DistroSettingsAdmin)
 	viewHosts := route.RequiresDistroPermission(evergreen.PermissionHosts, evergreen.HostsView)
 	editHosts := route.RequiresDistroPermission(evergreen.PermissionHosts, evergreen.HostsEdit)
 
@@ -291,9 +287,6 @@ func (uis *UIServer) GetServiceApp() *gimlet.APIApp {
 			csrf.Protect([]byte(uis.Settings.Ui.CsrfKey), csrf.ErrorHandler(http.HandlerFunc(ForbiddenHandler))),
 		))
 	}
-
-	// Lobster
-	app.AddPrefixRoute("/lobster").Wrap(needsLogin).Handler(uis.lobsterPage).Get()
 
 	// GraphQL
 	app.AddRoute("/graphql").Wrap(allowsCORS, needsLogin).Handler(playground.ApolloSandboxHandler("GraphQL playground", "/graphql/query")).Get()
@@ -352,11 +345,6 @@ func (uis *UIServer) GetServiceApp() *gimlet.APIApp {
 
 	// Distros
 	app.AddRoute("/distros").Wrap(needsLogin, needsContext).Handler(uis.distrosPage).Get()
-	app.AddRoute("/distros").Wrap(needsLogin, needsContext, createDistro).Handler(uis.addDistro).Put()
-	app.AddRoute("/distros/{distro_id}").Wrap(needsLogin, needsContext, viewDistroSettings).Handler(uis.getDistro).Get()
-	app.AddRoute("/distros/{distro_id}").Wrap(needsLogin, needsContext, createDistro).Handler(uis.addDistro).Put()
-	app.AddRoute("/distros/{distro_id}").Wrap(needsLogin, needsContext, editDistroSettings).Handler(uis.modifyDistro).Post()
-	app.AddRoute("/distros/{distro_id}").Wrap(needsLogin, needsContext, removeDistroSettings).Handler(uis.removeDistro).Delete()
 
 	// TODO (EVG-17986): route should require pod-specific permissions.
 	app.AddRoute("/pod/{pod_id}").Wrap(needsLogin).Handler(uis.podPage).Get()

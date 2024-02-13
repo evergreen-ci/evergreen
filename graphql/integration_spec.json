@@ -688,8 +688,12 @@
             "line_num": 126,
             "log_url": "https://logkeeper.mongodb.org/build/59ef7a2097b1d3148d0004f1/test/123",
             "raw_log_url": "https://logkeeper.mongodb.org/build/59ef7a2097b1d3148d0004f1/test/123?raw=true",
-            "test_start_time":  { "$date": "2020-02-14T22:22:24Z" },
-            "test_end_time":  { "$date": "2020-02-14T22:22:44Z" }
+            "test_start_time": {
+              "$date": "2020-02-14T22:22:24Z"
+            },
+            "test_end_time": {
+              "$date": "2020-02-14T22:22:44Z"
+            }
           },
           {
             "test_name": "apple",
@@ -699,8 +703,12 @@
             "line_num": 126,
             "url": "",
             "url_raw": "",
-            "test_start_time":  { "$date": "2020-02-14T22:22:44Z" },
-            "test_end_time":  { "$date": "2020-02-14T22:22:54Z" }
+            "test_start_time": {
+              "$date": "2020-02-14T22:22:44Z"
+            },
+            "test_end_time": {
+              "$date": "2020-02-14T22:22:54Z"
+            }
           },
           {
             "test_name": "d",
@@ -710,8 +718,12 @@
             "line_num": 126,
             "url": "",
             "url_raw": "",
-            "test_start_time":  { "$date": "2020-02-14T22:22:54Z" },
-            "test_end_time":  { "$date": "2020-02-14T22:23:34Z" }
+            "test_start_time": {
+              "$date": "2020-02-14T22:22:54Z"
+            },
+            "test_end_time": {
+              "$date": "2020-02-14T22:23:34Z"
+            }
           },
           {
             "test_name": "c",
@@ -721,8 +733,12 @@
             "line_num": 126,
             "url": "/url/without/scheme/host",
             "url_raw": "/raw/url/without/scheme/host",
-            "test_start_time":  { "$date": "2020-02-14T22:23:34Z" },
-            "test_end_time":  { "$date": "2020-02-14T22:24:04Z" }
+            "test_start_time": {
+              "$date": "2020-02-14T22:23:34Z"
+            },
+            "test_end_time": {
+              "$date": "2020-02-14T22:24:04Z"
+            }
           }
         ]
       }
@@ -2048,7 +2064,6 @@
                   "logs": {
                     "url": "https://localhost:8443/test_log/exec1/0?test_name=apple&group_id=#L126",
                     "urlRaw": "https://localhost:8443/test_log/exec1/0?test_name=apple&group_id=&text=true",
-                    "urlLobster": "https://localhost:8443/lobster/evergreen/test/exec1/0/apple/#shareLine=126",
                     "urlParsley": "https://localhost:4173/test/exec1/0/apple?shareLine=126"
                   },
                   "id": "apple"
@@ -2070,7 +2085,6 @@
                   "logs": {
                     "url": "",
                     "urlRaw": "https://logkeeper.mongodb.org/build/59ef7a2097b1d3148d0004f1/test/123?raw=true",
-                    "urlLobster": "https://localhost:8443/lobster/build/59ef7a2097b1d3148d0004f1/test/123",
                     "urlParsley": "https://localhost:4173/resmoke/59ef7a2097b1d3148d0004f1/test/123?shareLine=126"
                   },
                   "id": "b"
@@ -2137,7 +2151,9 @@
         "errors": [
           {
             "message": "task not found",
-            "path": ["task"],
+            "path": [
+              "task"
+            ],
             "extensions": {
               "code": "RESOURCE_NOT_FOUND"
             }

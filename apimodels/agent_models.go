@@ -146,9 +146,6 @@ type CreateHost struct {
 	Subnet          string      `mapstructure:"subnet_id" json:"subnet_id" yaml:"subnet_id" plugin:"expand"`
 	UserdataFile    string      `mapstructure:"userdata_file" json:"userdata_file" yaml:"userdata_file" plugin:"expand"`
 	UserdataCommand string      `json:"userdata_command" yaml:"userdata_command" plugin:"expand"`
-	AWSKeyID        string      `mapstructure:"aws_access_key_id" json:"aws_access_key_id" yaml:"aws_access_key_id" plugin:"expand"`
-	AWSSecret       string      `mapstructure:"aws_secret_access_key" json:"aws_secret_access_key" yaml:"aws_secret_access_key" plugin:"expand"`
-	KeyName         string      `mapstructure:"key_name" json:"key_name" yaml:"key_name" plugin:"expand"`
 
 	// docker-related settings
 	Image                    string           `mapstructure:"image" json:"image" yaml:"image" plugin:"expand"`
@@ -245,11 +242,6 @@ func (ch *CreateHost) validateEC2() error {
 		if ch.Subnet == "" {
 			catcher.New("subnet ID must be set if AMI is set")
 		}
-	}
-
-	if !(ch.AWSKeyID == "" && ch.AWSSecret == "" && ch.KeyName == "") &&
-		!(ch.AWSKeyID != "" && ch.AWSSecret != "" && ch.KeyName != "") {
-		catcher.New("AWS access key ID, AWS secret access key, and key name must all be set or unset")
 	}
 
 	return catcher.Resolve()

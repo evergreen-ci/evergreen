@@ -692,7 +692,7 @@ func TestUpsertCheckRunParse(t *testing.T) {
 	}
 	require.NoError(t, task1.Insert())
 
-	r, ok := makeUpsertCheckRun().(*upsertCheckRunHandler)
+	r, ok := makeCheckRun(&evergreen.Settings{}).(*checkRunHandler)
 	require.True(t, ok)
 	jsonCheckrun := `
 	{
@@ -715,7 +715,7 @@ func TestUpsertCheckRunParse(t *testing.T) {
 	gh := github.CheckRunOutput{}
 	assert.NoError(t, json.Unmarshal([]byte(jsonCheckrun), &gh))
 
-	request, err := http.NewRequest(http.MethodPost, "/task/{task_id}/upsert_check_run", bytes.NewReader([]byte(jsonCheckrun)))
+	request, err := http.NewRequest(http.MethodPost, "/task/{task_id}/check_run", bytes.NewReader([]byte(jsonCheckrun)))
 	assert.NoError(t, err)
 	request = gimlet.SetURLVars(request, map[string]string{"task_id": "task1"})
 
