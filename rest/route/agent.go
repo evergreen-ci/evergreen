@@ -657,7 +657,6 @@ func (h *attachFilesHandler) Run(ctx context.Context) gimlet.Responder {
 			Message:    fmt.Sprintf("task '%s' not found", h.taskID),
 		})
 	}
-	grip.Infoln("Attaching files to task:", t.Id)
 
 	entry := &artifact.Entry{
 		TaskId:          t.Id,
