@@ -4,8 +4,6 @@ package apimodels
 // complete an S3 copy request; namely, an S3 key/secret, a source and
 // a destination path
 type S3CopyRequest struct {
-	AwsKey              string `json:"aws_key"`
-	AwsSecret           string `json:"aws_secret"`
 	S3SourceRegion      string `json:"s3_source_region"`
 	S3SourceBucket      string `json:"s3_source_bucket"`
 	S3SourcePath        string `json:"s3_source_path"`

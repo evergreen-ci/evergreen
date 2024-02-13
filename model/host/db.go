@@ -39,6 +39,8 @@ var (
 	ProviderKey                        = bsonutil.MustHaveTag(Host{}, "Provider")
 	IPKey                              = bsonutil.MustHaveTag(Host{}, "IP")
 	IPv4Key                            = bsonutil.MustHaveTag(Host{}, "IPv4")
+	PersistentDNSNameKey               = bsonutil.MustHaveTag(Host{}, "PersistentDNSName")
+	PublicIPv4Key                      = bsonutil.MustHaveTag(Host{}, "PublicIPv4")
 	ProvisionedKey                     = bsonutil.MustHaveTag(Host{}, "Provisioned")
 	ProvisionTimeKey                   = bsonutil.MustHaveTag(Host{}, "ProvisionTime")
 	ExtIdKey                           = bsonutil.MustHaveTag(Host{}, "ExternalIdentifier")
@@ -1338,4 +1340,24 @@ func UnsafeReplace(ctx context.Context, env evergreen.Environment, idToRemove st
 	})
 
 	return nil
+}
+
+// FindUnexpirableRunning returns all unexpirable spawn hosts that are
+// currently running.
+func FindUnexpirableRunning() ([]Host, error) {
+	hosts := []Host{}
+	q := bson.M{
+		StatusKey:       evergreen.HostRunning,
+		StartedByKey:    bson.M{"$ne": evergreen.User},
+		NoExpirationKey: true,
+	}
+	return hosts, db.FindAllQ(Collection, db.Query(q), &hosts)
+}
+
+// FindOneByPersistentDNSName returns hosts that have a matching persistent DNS
+// name.
+func FindOneByPersistentDNSName(ctx context.Context, dnsName string) (*Host, error) {
+	return FindOne(ctx, bson.M{
+		PersistentDNSNameKey: dnsName,
+	})
 }

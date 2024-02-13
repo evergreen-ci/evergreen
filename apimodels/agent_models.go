@@ -146,9 +146,6 @@ type CreateHost struct {
 	Subnet          string      `mapstructure:"subnet_id" json:"subnet_id" yaml:"subnet_id" plugin:"expand"`
 	UserdataFile    string      `mapstructure:"userdata_file" json:"userdata_file" yaml:"userdata_file" plugin:"expand"`
 	UserdataCommand string      `json:"userdata_command" yaml:"userdata_command" plugin:"expand"`
-	AWSKeyID        string      `mapstructure:"aws_access_key_id" json:"aws_access_key_id" yaml:"aws_access_key_id" plugin:"expand"`
-	AWSSecret       string      `mapstructure:"aws_secret_access_key" json:"aws_secret_access_key" yaml:"aws_secret_access_key" plugin:"expand"`
-	KeyName         string      `mapstructure:"key_name" json:"key_name" yaml:"key_name" plugin:"expand"`
 
 	// docker-related settings
 	Image                    string           `mapstructure:"image" json:"image" yaml:"image" plugin:"expand"`
@@ -247,11 +244,6 @@ func (ch *CreateHost) validateEC2() error {
 		}
 	}
 
-	if !(ch.AWSKeyID == "" && ch.AWSSecret == "" && ch.KeyName == "") &&
-		!(ch.AWSKeyID != "" && ch.AWSSecret != "" && ch.KeyName != "") {
-		catcher.New("AWS access key ID, AWS secret access key, and key name must all be set or unset")
-	}
-
 	return catcher.Resolve()
 }
 
@@ -345,4 +337,30 @@ type ExpansionsAndVars struct {
 	Vars map[string]string `json:"vars"`
 	// PrivateVars contain the project private variables.
 	PrivateVars map[string]bool `json:"private_vars"`
+	// Redact keys contain patterns to match against expansion keys for
+	// redaction in logs.
+	RedactKeys []string `json:"redact_keys"`
+}
+
+// CheckRunOutput represents the output for a CheckRun.
+type CheckRunOutput struct {
+	Title            string                `json:"title,omitempty" plugin:"expand"`
+	Summary          string                `json:"summary,omitempty" plugin:"expand"`
+	Text             string                `json:"text,omitempty" plugin:"expand"`
+	AnnotationsCount *int                  `json:"annotations_count,omitempty"`
+	AnnotationsURL   string                `json:"annotations_url,omitempty" plugin:"expand"`
+	Annotations      []*CheckRunAnnotation `json:"annotations,omitempty" plugin:"expand"`
+}
+
+// CheckRunAnnotation represents an annotation object for a CheckRun output.
+type CheckRunAnnotation struct {
+	Path            string `json:"path,omitempty" plugin:"expand"`
+	StartLine       *int   `json:"start_line,omitempty" `
+	EndLine         *int   `json:"end_line,omitempty" `
+	StartColumn     *int   `json:"start_column,omitempty"`
+	EndColumn       *int   `json:"end_column,omitempty" `
+	AnnotationLevel string `json:"annotation_level,omitempty" plugin:"expand"`
+	Message         string `json:"message,omitempty" plugin:"expand"`
+	Title           string `json:"title,omitempty" plugin:"expand"`
+	RawDetails      string `json:"raw_details,omitempty" plugin:"expand"`
 }

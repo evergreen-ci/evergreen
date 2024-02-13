@@ -2,7 +2,7 @@
 #
 # Refer to https://gqlgen.com/config/
 # for detailed .gqlgen.yml documentation.
-
+omit_gqlgen_file_notice: true
 schema:
   - graphql/schema/**/*.graphql
 exec:

@@ -44,57 +44,77 @@ func TestSpawnhostModifyJob(t *testing.T) {
 	defer cancel()
 	ctx = testutil.TestSpan(ctx, t)
 
-	assert.NoError(t, db.ClearCollections(host.Collection, event.EventCollection))
-	mock := cloud.GetMockProvider()
-	h := host.Host{
-		Id:       "hostID",
-		Provider: evergreen.ProviderNameMock,
-		InstanceTags: []host.Tag{
-			host.Tag{
-				Key:           "key1",
-				Value:         "value1",
-				CanBeModified: true,
-			},
-		},
-		InstanceType: "instance-type-1",
-		Distro:       distro.Distro{Provider: evergreen.ProviderNameMock},
-	}
-	assert.NoError(t, h.Insert(ctx))
-	mock.Set(h.Id, cloud.MockInstance{
-		Status: cloud.StatusRunning,
-		Tags: []host.Tag{
-			host.Tag{
-				Key:           "key1",
-				Value:         "value1",
-				CanBeModified: true,
-			},
-		},
-		Type: "instance-type-1",
+	t.Run("NewSpawnhostModifyJobSetsExpectedFields", func(t *testing.T) {
+		ts := utility.RoundPartOfMinute(1).Format(TSFormat)
+		h := host.Host{
+			Id:       "host_id",
+			Status:   evergreen.HostRunning,
+			Provider: evergreen.ProviderNameMock,
+			Distro:   distro.Distro{Provider: evergreen.ProviderNameMock},
+		}
+		modifyOpts := host.HostModifyOptions{
+			InstanceType: "m4.4xlarge",
+		}
+		j, ok := NewSpawnhostModifyJob(&h, modifyOpts, ts).(*spawnhostModifyJob)
+		require.True(t, ok)
+
+		assert.Equal(t, h.Id, j.HostID)
+		assert.Equal(t, j.ModifyOptions, modifyOpts)
+		assert.Equal(t, evergreen.ModifySpawnHostManual, j.Source)
 	})
-
-	changes := host.HostModifyOptions{
-		AddInstanceTags: []host.Tag{
-			host.Tag{
-				Key:           "key2",
-				Value:         "value2",
-				CanBeModified: true,
+	t.Run("ModifiesHost", func(t *testing.T) {
+		assert.NoError(t, db.ClearCollections(host.Collection, event.EventCollection))
+		mock := cloud.GetMockProvider()
+		h := host.Host{
+			Id:       "hostID",
+			Provider: evergreen.ProviderNameMock,
+			InstanceTags: []host.Tag{
+				{
+					Key:           "key1",
+					Value:         "value1",
+					CanBeModified: true,
+				},
 			},
-		},
-		DeleteInstanceTags: []string{"key1"},
-		InstanceType:       "instance-type-2",
-	}
+			InstanceType: "instance-type-1",
+			Distro:       distro.Distro{Provider: evergreen.ProviderNameMock},
+		}
+		assert.NoError(t, h.Insert(ctx))
+		mock.Set(h.Id, cloud.MockInstance{
+			Status: cloud.StatusRunning,
+			Tags: []host.Tag{
+				{
+					Key:           "key1",
+					Value:         "value1",
+					CanBeModified: true,
+				},
+			},
+			Type: "instance-type-1",
+		})
 
-	ts := utility.RoundPartOfMinute(1).Format(TSFormat)
-	j := NewSpawnhostModifyJob(&h, changes, ts)
+		changes := host.HostModifyOptions{
+			AddInstanceTags: []host.Tag{
+				{
+					Key:           "key2",
+					Value:         "value2",
+					CanBeModified: true,
+				},
+			},
+			DeleteInstanceTags: []string{"key1"},
+			InstanceType:       "instance-type-2",
+		}
 
-	j.Run(context.Background())
-	assert.NoError(t, j.Error())
-	assert.True(t, j.Status().Completed)
+		ts := utility.RoundPartOfMinute(1).Format(TSFormat)
+		j := NewSpawnhostModifyJob(&h, changes, ts)
 
-	modifiedHost, err := host.FindOneId(ctx, h.Id)
-	assert.NoError(t, err)
-	assert.Equal(t, []host.Tag{host.Tag{Key: "key2", Value: "value2", CanBeModified: true}}, modifiedHost.InstanceTags)
-	assert.Equal(t, "instance-type-2", modifiedHost.InstanceType)
+		j.Run(context.Background())
+		assert.NoError(t, j.Error())
+		assert.True(t, j.Status().Completed)
 
-	checkSpawnHostModificationEvent(t, h.Id, event.EventHostModified, true)
+		modifiedHost, err := host.FindOneId(ctx, h.Id)
+		assert.NoError(t, err)
+		assert.Equal(t, []host.Tag{{Key: "key2", Value: "value2", CanBeModified: true}}, modifiedHost.InstanceTags)
+		assert.Equal(t, "instance-type-2", modifiedHost.InstanceType)
+
+		checkSpawnHostModificationEvent(t, h.Id, event.EventHostModified, true)
+	})
 }

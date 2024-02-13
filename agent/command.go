@@ -29,8 +29,9 @@ const (
 )
 
 var (
-	commandNameAttribute  = fmt.Sprintf("%s.command_name", commandsAttribute)
-	functionNameAttribute = fmt.Sprintf("%s.function_name", commandsAttribute)
+	commandNameAttribute        = fmt.Sprintf("%s.command_name", commandsAttribute)
+	commandDisplayNameAttribute = fmt.Sprintf("%s.command_display_name", commandsAttribute)
+	functionNameAttribute       = fmt.Sprintf("%s.function_name", commandsAttribute)
 )
 
 type runCommandsOptions struct {
@@ -184,7 +185,7 @@ func (a *Agent) runCommandOrFunc(ctx context.Context, tc *taskContext, commandIn
 
 	if commandInfo.Function != "" {
 		var commandSetSpan trace.Span
-		ctx, commandSetSpan = a.tracer.Start(ctx, fmt.Sprintf("function: '%s'", commandInfo.Function), trace.WithAttributes(
+		ctx, commandSetSpan = a.tracer.Start(ctx, "function", trace.WithAttributes(
 			attribute.String(functionNameAttribute, commandInfo.Function),
 		))
 		defer commandSetSpan.End()
@@ -204,10 +205,11 @@ func (a *Agent) runCommandOrFunc(ctx context.Context, tc *taskContext, commandIn
 
 		ctx, commandSpan := a.tracer.Start(ctx, cmd.Name(), trace.WithAttributes(
 			attribute.String(commandNameAttribute, cmd.Name()),
+			attribute.String(commandDisplayNameAttribute, cmd.FullDisplayName()),
 		))
-		tc.taskConfig.Expansions.Put(otelTraceIDExpansion, commandSpan.SpanContext().TraceID().String())
-		tc.taskConfig.Expansions.Put(otelParentIDExpansion, commandSpan.SpanContext().SpanID().String())
-		tc.taskConfig.Expansions.Put(otelCollectorEndpointExpansion, a.opts.TraceCollectorEndpoint)
+		tc.taskConfig.NewExpansions.Put(otelTraceIDExpansion, commandSpan.SpanContext().TraceID().String())
+		tc.taskConfig.NewExpansions.Put(otelParentIDExpansion, commandSpan.SpanContext().SpanID().String())
+		tc.taskConfig.NewExpansions.Put(otelCollectorEndpointExpansion, a.opts.TraceCollectorEndpoint)
 
 		cmd.SetJasperManager(a.jasper)
 
@@ -241,7 +243,7 @@ func (a *Agent) runCommand(ctx context.Context, tc *taskContext, logger client.L
 		if err != nil {
 			return errors.Wrapf(err, "expanding '%s'", val)
 		}
-		tc.taskConfig.Expansions.Put(key, newVal)
+		tc.taskConfig.NewExpansions.Put(key, newVal)
 	}
 	defer func() {
 		// This defer ensures that the function vars do not persist in the expansions after the function is over
@@ -255,7 +257,7 @@ func (a *Agent) runCommand(ctx context.Context, tc *taskContext, logger client.L
 				}
 			}
 		}
-		tc.taskConfig.Expansions.Update(prevExp)
+		tc.taskConfig.NewExpansions.Update(prevExp)
 		tc.taskConfig.DynamicExpansions = *util.NewExpansions(map[string]string{})
 	}()
 

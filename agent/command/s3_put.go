@@ -28,10 +28,11 @@ import (
 // s3pc is a command to put a resource to an S3 bucket and download it to
 // the local machine.
 type s3put struct {
-	// AwsKey and AwsSecret are the user's credentials for
+	// AwsKey, AwsSecret, and AwsSessionToken are the user's credentials for
 	// authenticating interactions with S3.
-	AwsKey    string `mapstructure:"aws_key" plugin:"expand"`
-	AwsSecret string `mapstructure:"aws_secret" plugin:"expand"`
+	AwsKey          string `mapstructure:"aws_key" plugin:"expand"`
+	AwsSecret       string `mapstructure:"aws_secret" plugin:"expand"`
+	AwsSessionToken string `mapstructure:"aws_session_token" plugin:"expand"`
 
 	// LocalFile is the local filepath to the file the user
 	// wishes to store in S3.
@@ -147,6 +148,7 @@ func (s3pc *s3put) validate() error {
 	if s3pc.AwsSecret == "" {
 		catcher.New("AWS secret cannot be blank")
 	}
+	catcher.NewWhen(s3pc.AwsSessionToken != "" && s3pc.Visibility == artifact.Signed, "cannot use temporary AWS credentials with signed link visibility")
 	if s3pc.LocalFile == "" && !s3pc.isMulti() {
 		catcher.New("local file and local files include filter cannot both be blank")
 	}
@@ -199,6 +201,10 @@ func (s3pc *s3put) expandParams(conf *internal.TaskConfig) error {
 	var err error
 	if err = util.ExpandValues(s3pc, &conf.Expansions); err != nil {
 		return errors.Wrap(err, "applying expansions")
+	}
+
+	if s3pc.AwsSessionToken != "" && s3pc.Visibility == artifact.Signed {
+		return errors.New("cannot use temporary AWS credentials with a signed link visibility")
 	}
 
 	s3pc.workDir = conf.WorkDir
@@ -533,7 +539,7 @@ func (s3pc *s3put) createPailBucket(httpClient *http.Client) error {
 		return nil
 	}
 	opts := pail.S3Options{
-		Credentials: pail.CreateAWSCredentials(s3pc.AwsKey, s3pc.AwsSecret, ""),
+		Credentials: pail.CreateAWSCredentials(s3pc.AwsKey, s3pc.AwsSecret, s3pc.AwsSessionToken),
 		Region:      s3pc.Region,
 		Name:        s3pc.Bucket,
 		Permissions: pail.S3Permissions(s3pc.Permissions),
@@ -558,11 +564,12 @@ func (s3pc *s3put) isPublic() bool {
 
 func (s3pc *s3put) remoteFileExists(remoteName string) (bool, error) {
 	requestParams := pail.PreSignRequestParams{
-		Bucket:    s3pc.Bucket,
-		FileKey:   remoteName,
-		AwsKey:    s3pc.AwsKey,
-		AwsSecret: s3pc.AwsSecret,
-		Region:    s3pc.Region,
+		Bucket:          s3pc.Bucket,
+		FileKey:         remoteName,
+		AwsKey:          s3pc.AwsKey,
+		AwsSecret:       s3pc.AwsSecret,
+		AwsSessionToken: s3pc.AwsSessionToken,
+		Region:          s3pc.Region,
 	}
 	_, err := pail.GetHeadObject(requestParams)
 	if err != nil {

@@ -3,6 +3,7 @@ package route
 import (
 	"bytes"
 	"context"
+	"encoding/json"
 	"fmt"
 	"net/http"
 	"testing"
@@ -18,8 +19,11 @@ import (
 	"github.com/evergreen-ci/evergreen/model/host"
 	"github.com/evergreen-ci/evergreen/model/patch"
 	"github.com/evergreen-ci/evergreen/model/task"
+	"github.com/evergreen-ci/evergreen/testutil"
 	"github.com/evergreen-ci/evergreen/thirdparty"
 	"github.com/evergreen-ci/gimlet"
+	"github.com/evergreen-ci/utility"
+	"github.com/google/go-github/v52/github"
 	"github.com/mongodb/amboy/queue"
 	"github.com/mongodb/grip/send"
 	"github.com/stretchr/testify/assert"
@@ -55,8 +59,9 @@ func TestAgentGetExpansionsAndVars(t *testing.T) {
 			data, ok := resp.Data().(apimodels.ExpansionsAndVars)
 			require.True(t, ok)
 			assert.Equal(t, rh.taskID, data.Expansions.Get("task_id"))
-			assert.Equal(t, data.PrivateVars, map[string]bool{"b": true})
 			assert.Equal(t, data.Vars, map[string]string{"a": "1", "b": "3"})
+			assert.Equal(t, data.PrivateVars, map[string]bool{"b": true})
+			assert.Equal(t, data.RedactKeys, []string{"pass", "secret"})
 		},
 		"RunSucceedsWithParamsSetOnVersion": func(ctx context.Context, t *testing.T, rh *getExpansionsAndVarsHandler) {
 			rh.taskID = "t1"
@@ -65,8 +70,9 @@ func TestAgentGetExpansionsAndVars(t *testing.T) {
 			assert.Equal(t, http.StatusOK, resp.Status())
 			data, ok := resp.Data().(apimodels.ExpansionsAndVars)
 			require.True(t, ok)
-			assert.Equal(t, data.PrivateVars, map[string]bool{"b": true})
 			assert.Equal(t, data.Vars, map[string]string{"a": "4", "b": "3"})
+			assert.Equal(t, data.PrivateVars, map[string]bool{"b": true})
+			assert.Equal(t, data.RedactKeys, []string{"pass", "secret"})
 		},
 		"RunSucceedsWithHostDistroExpansions": func(ctx context.Context, t *testing.T, rh *getExpansionsAndVarsHandler) {
 			rh.taskID = "t1"
@@ -78,8 +84,9 @@ func TestAgentGetExpansionsAndVars(t *testing.T) {
 			require.True(t, ok)
 			assert.Equal(t, rh.taskID, data.Expansions.Get("task_id"))
 			assert.Equal(t, "distro_expansion_value", data.Expansions.Get("distro_expansion_key"))
-			assert.Equal(t, data.PrivateVars, map[string]bool{"b": true})
 			assert.Equal(t, data.Vars, map[string]string{"a": "4", "b": "3"})
+			assert.Equal(t, data.PrivateVars, map[string]bool{"b": true})
+			assert.Equal(t, data.RedactKeys, []string{"pass", "secret"})
 		},
 	} {
 		t.Run(tName, func(t *testing.T) {
@@ -88,6 +95,9 @@ func TestAgentGetExpansionsAndVars(t *testing.T) {
 
 			env := &mock.Environment{}
 			require.NoError(t, env.Configure(ctx))
+			env.Settings().LoggerConfig.RedactKeys = []string{"pass", "secret"}
+
+			testutil.ConfigureIntegrationTest(t, env.Settings(), t.Name())
 
 			require.NoError(t, db.ClearCollections(host.Collection, task.Collection, model.ProjectRefCollection, model.ProjectVarsCollection, model.VersionCollection, model.ParserProjectCollection))
 
@@ -104,7 +114,9 @@ func TestAgentGetExpansionsAndVars(t *testing.T) {
 				Version: "aaaaaaaaaaff001122334456",
 			}
 			pRef := model.ProjectRef{
-				Id: "p1",
+				Id:    "p1",
+				Owner: "evergreen-ci",
+				Repo:  "sample",
 			}
 			vars := &model.ProjectVars{
 				Id:          "p1",
@@ -338,61 +350,6 @@ func TestAgentCedarConfig(t *testing.T) {
 	}
 }
 
-func TestAgentDataPipesConfig(t *testing.T) {
-	for tName, tCase := range map[string]func(ctx context.Context, t *testing.T, rh *agentDataPipesConfig, c evergreen.DataPipesConfig){
-		"FactorySucceeds": func(ctx context.Context, t *testing.T, rh *agentDataPipesConfig, _ evergreen.DataPipesConfig) {
-			copied := rh.Factory()
-			assert.NotZero(t, copied)
-			_, ok := copied.(*agentDataPipesConfig)
-			assert.True(t, ok)
-		},
-		"ParseSucceeds": func(ctx context.Context, t *testing.T, rh *agentDataPipesConfig, _ evergreen.DataPipesConfig) {
-			req, err := http.NewRequest(http.MethodGet, "https://example.com/rest/v2/agent/data_pipes_config", nil)
-			require.NoError(t, err)
-			assert.NoError(t, rh.Parse(ctx, req))
-		},
-		"RunSucceeds": func(ctx context.Context, t *testing.T, rh *agentDataPipesConfig, c evergreen.DataPipesConfig) {
-			resp := rh.Run(ctx)
-			require.NotZero(t, resp)
-			assert.Equal(t, http.StatusOK, resp.Status())
-
-			data, ok := resp.Data().(apimodels.DataPipesConfig)
-			require.True(t, ok)
-			assert.Equal(t, data.Host, c.Host)
-			assert.Equal(t, data.Region, c.Region)
-			assert.Equal(t, data.AWSAccessKey, c.AWSAccessKey)
-			assert.Equal(t, data.AWSSecretKey, c.AWSSecretKey)
-			assert.Equal(t, data.AWSToken, c.AWSToken)
-		},
-		"ReturnsEmpty": func(ctx context.Context, t *testing.T, rh *agentDataPipesConfig, _ evergreen.DataPipesConfig) {
-			rh.config = evergreen.DataPipesConfig{}
-			resp := rh.Run(ctx)
-			require.NotZero(t, resp)
-			assert.Equal(t, http.StatusOK, resp.Status())
-
-			data, ok := resp.Data().(apimodels.DataPipesConfig)
-			require.True(t, ok)
-			assert.Zero(t, data)
-		},
-	} {
-		t.Run(tName, func(t *testing.T) {
-			ctx, cancel := context.WithCancel(context.Background())
-			defer cancel()
-
-			c := evergreen.DataPipesConfig{
-				Host:         "https://url.com",
-				Region:       "us-east-1",
-				AWSAccessKey: "access",
-				AWSSecretKey: "secret",
-				AWSToken:     "token",
-			}
-			r := makeAgentDataPipesConfig(c)
-
-			tCase(ctx, t, r, c)
-		})
-	}
-}
-
 func TestAgentSetup(t *testing.T) {
 	for tName, tCase := range map[string]func(ctx context.Context, t *testing.T, rh *agentSetup, s *evergreen.Settings){
 		"FactorySucceeds": func(ctx context.Context, t *testing.T, rh *agentSetup, s *evergreen.Settings) {
@@ -594,7 +551,6 @@ func TestAgentGetProjectRef(t *testing.T) {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 
-	evergreen.GetEnvironment().Settings().LoggerConfig.DefaultLogger = "buildlogger"
 	require.NoError(t, db.ClearCollections(task.Collection, model.ProjectRefCollection))
 	defer func() {
 		assert.NoError(t, db.ClearCollections(task.Collection, model.ProjectRefCollection))
@@ -607,15 +563,12 @@ func TestAgentGetProjectRef(t *testing.T) {
 	projRef1 := &model.ProjectRef{Id: "project1"}
 	require.NoError(t, task1.Insert())
 	require.NoError(t, projRef1.Insert())
-	// Set the default logger after inserting into the DB since this should
-	// be set dynamically by the route handler.
-	projRef1.DefaultLogger = "buildlogger"
 
-	task3 := &task.Task{
-		Id:      "task3",
-		Project: "project3",
+	task2 := &task.Task{
+		Id:      "task2",
+		Project: "project2",
 	}
-	require.NoError(t, task3.Insert())
+	require.NoError(t, task2.Insert())
 
 	for _, test := range []struct {
 		name           string
@@ -630,7 +583,7 @@ func TestAgentGetProjectRef(t *testing.T) {
 		},
 		{
 			name:           "ProjectRefDNE",
-			taskID:         task3.Id,
+			taskID:         task2.Id,
 			expectedStatus: http.StatusNotFound,
 		},
 		{
@@ -711,4 +664,64 @@ func TestCreateInstallationToken(t *testing.T) {
 			tCase(ctx, t, r, env)
 		})
 	}
+}
+
+func TestUpsertCheckRunParse(t *testing.T) {
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
+	require.NoError(t, db.ClearCollections(task.Collection, patch.Collection))
+
+	versionId := "aaaaaaaaaaff001122334455"
+	patch := patch.Patch{
+		Id:      patch.NewId(versionId),
+		Version: versionId,
+	}
+	require.NoError(t, patch.Insert())
+
+	task1 := task.Task{
+		Id:        "task1",
+		Status:    evergreen.TaskStarted,
+		Activated: true,
+		HostId:    "h1",
+		Secret:    taskSecret,
+		Project:   "proj",
+		BuildId:   "b1",
+		Version:   versionId,
+		Requester: evergreen.GithubPRRequester,
+	}
+	require.NoError(t, task1.Insert())
+
+	r, ok := makeCheckRun(&evergreen.Settings{}).(*checkRunHandler)
+	require.True(t, ok)
+	jsonCheckrun := `
+	{
+	        "title": "This is my report",
+	        "summary": "We found 6 failures and 2 warnings",
+	        "text": "It looks like there are some errors on lines 2 and 4.",
+	        "annotations": [
+	            {
+	                "path": "README.md",
+	                "annotation_level": "warning",
+	                "title": "Error Detector",
+	                "message": "message",
+	                "raw_details": "Do you mean this other thing?",
+	                "start_line": 2,
+	                "end_line": 4
+	            }
+	        ]
+	}
+	`
+	gh := github.CheckRunOutput{}
+	assert.NoError(t, json.Unmarshal([]byte(jsonCheckrun), &gh))
+
+	request, err := http.NewRequest(http.MethodPost, "/task/{task_id}/check_run", bytes.NewReader([]byte(jsonCheckrun)))
+	assert.NoError(t, err)
+	request = gimlet.SetURLVars(request, map[string]string{"task_id": "task1"})
+
+	assert.NoError(t, r.Parse(ctx, request))
+	assert.Equal(t, r.taskID, "task1")
+
+	assert.Equal(t, utility.FromStringPtr(r.checkRunOutput.Title), "This is my report")
+	assert.Equal(t, len(r.checkRunOutput.Annotations), 1)
 }

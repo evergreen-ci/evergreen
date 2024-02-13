@@ -67,9 +67,7 @@ func UtilizationBasedHostAllocator(ctx context.Context, hostAllocatorData *HostA
 	}
 
 	// split tasks/hosts by task group (including those with no group) and find # of hosts needed for each
-	taskGroupingBeginsAt := time.Now()
 	taskGroupDatas := groupByTaskGroup(hostAllocatorData.ExistingHosts, hostAllocatorData.DistroQueueInfo)
-	taskGroupingDuration := time.Since(taskGroupingBeginsAt)
 
 	numNewHostsRequired := 0
 	numFreeApprox := 0
@@ -120,19 +118,6 @@ func UtilizationBasedHostAllocator(ctx context.Context, hostAllocatorData *HostA
 	}
 	numNewHostsToRequest := numNewHostsRequired + numAdditionalHostsToMeetMinimum
 
-	grip.Info(message.Fields{
-		"runner":                               RunnerName,
-		"message":                              "requesting new hosts",
-		"distro":                               distro.Id,
-		"group_dur_secs":                       taskGroupingDuration.Seconds(),
-		"group_num":                            len(taskGroupDatas),
-		"minimum_hosts_for_distro":             minimumHostsThreshold,
-		"num_existing_hosts":                   numExistingHosts,
-		"num_new_hosts_required:":              numNewHostsRequired,
-		"num_additional_hosts_to_meet_minimum": numAdditionalHostsToMeetMinimum,
-		"total_new_hosts_to_request":           numNewHostsToRequest,
-	})
-
 	return numNewHostsToRequest, numFreeApprox, nil
 }
 
@@ -140,7 +125,6 @@ func UtilizationBasedHostAllocator(ctx context.Context, hostAllocatorData *HostA
 // and dividing it by the target duration. Request however many hosts are needed to
 // achieve that minus the number of free hosts
 func evalHostUtilization(ctx context.Context, d distro.Distro, taskGroupData TaskGroupData, futureHostFraction float64, containerPool *evergreen.ContainerPool, maxDurationThreshold time.Duration, maxHosts int) (int, int, error) {
-	evalStartAt := time.Now()
 	existingHosts := taskGroupData.Hosts
 	taskGroupInfo := taskGroupData.Info
 	numLongTasks := taskGroupInfo.CountDurationOverThreshold
@@ -168,12 +152,10 @@ func evalHostUtilization(ctx context.Context, d distro.Distro, taskGroupData Tas
 	}
 
 	// determine how many free hosts we have that are already up
-	startAt := time.Now()
 	numFreeHosts, err := calcExistingFreeHosts(existingHosts, futureHostFraction, maxDurationThreshold)
 	if err != nil {
 		return numNewHosts, numFreeHosts, err
 	}
-	freeHostDur := time.Since(startAt)
 
 	roundDown := true
 	if d.HostAllocatorSettings.RoundingRule == evergreen.HostAllocatorRoundUp {
@@ -217,23 +199,6 @@ func evalHostUtilization(ctx context.Context, d distro.Distro, taskGroupData Tas
 	}
 	avgMakespan := scheduledDuration / time.Duration(maxHosts)
 	grip.AlertWhen(avgMakespan > dynamicDistroRuntimeAlertThreshold, underWaterAlert)
-
-	grip.Info(message.Fields{
-		"message":                      "queue state report",
-		"runner":                       RunnerName,
-		"provider":                     d.Provider,
-		"distro":                       d.Id,
-		"pool_size":                    d.HostAllocatorSettings.MaximumHosts,
-		"new_hosts_needed":             numNewHosts,
-		"num_existing_hosts":           len(existingHosts),
-		"num_free_hosts_approx":        numFreeHosts,
-		"queue_length":                 taskGroupInfo.Count,
-		"long_tasks":                   numLongTasks,
-		"scheduled_tasks_runtime":      int64(scheduledDuration),
-		"scheduled_tasks_runtime_span": scheduledDuration.String(),
-		"op_dur_free_host_secs":        freeHostDur.Seconds(),
-		"op_dur_total_secs":            time.Since(evalStartAt).Seconds(),
-	})
 
 	return numNewHosts, numFreeHosts, nil
 }

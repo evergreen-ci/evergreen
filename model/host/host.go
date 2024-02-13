@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"math"
 	"net"
+	"regexp"
 	"strings"
 	"time"
 
@@ -33,7 +34,7 @@ import (
 
 type Host struct {
 	Id string `bson:"_id" json:"id"`
-	// Host is the DNS name of the host.
+	// Host is the ephemeral DNS name of the host.
 	Host            string        `bson:"host_id" json:"host"`
 	User            string        `bson:"user" json:"user"`
 	Secret          string        `bson:"secret" json:"secret"`
@@ -41,9 +42,15 @@ type Host struct {
 	Tag             string        `bson:"tag" json:"tag"`
 	Distro          distro.Distro `bson:"distro" json:"distro"`
 	Provider        string        `bson:"host_type" json:"host_type"`
-	// IP holds the ipv6 address when applicable
-	IP   string `bson:"ip_address" json:"ip_address"`
+	// IP holds the IPv6 address when applicable.
+	IP string `bson:"ip_address" json:"ip_address"`
+	// IPv4 is the host's private IPv4 address.
 	IPv4 string `bson:"ipv4_address" json:"ipv4_address"`
+	// PersistentDNSName is the long-lived DNS name of the host, which should
+	// never change once set.
+	PersistentDNSName string `bson:"persistent_dns_name,omitempty" json:"persistent_dns_name,omitempty"`
+	// PublicIPv4 is the host's IPv4 address.
+	PublicIPv4 string `bson:"public_ipv4_address,omitempty" json:"public_ipv4_address,omitempty"`
 
 	// secondary (external) identifier for the host
 	ExternalIdentifier string `bson:"ext_identifier" json:"ext_identifier"`
@@ -112,7 +119,8 @@ type Host struct {
 	// for non-legacy hosts.
 	JasperCredentialsID string `bson:"jasper_credentials_id" json:"jasper_credentials_id"`
 
-	// for ec2 dynamic hosts, the instance type requested
+	// InstanceType is the EC2 host's requested instance type. This is kept
+	// up-to-date even if the instance type is changed.
 	InstanceType string `bson:"instance_type" json:"instance_type,omitempty"`
 	// The volumeID and device name for each volume attached to the host
 	Volumes []VolumeAttachment `bson:"volumes,omitempty" json:"volumes,omitempty"`
@@ -155,6 +163,9 @@ type Host struct {
 	// HomeVolumeSize is the size of the home volume in GB
 	HomeVolumeSize int    `bson:"home_volume_size" json:"home_volume_size"`
 	HomeVolumeID   string `bson:"home_volume_id" json:"home_volume_id"`
+
+	// SleepSchedule stores host sleep schedule information.
+	SleepSchedule SleepScheduleInfo `bson:"sleep_schedule,omitempty" json:"sleep_schedule,omitempty"`
 }
 
 type Tag struct {
@@ -316,6 +327,49 @@ type SpawnOptions struct {
 
 	// SpawnedByTask indicates that this host has been spawned by a task.
 	SpawnedByTask bool `bson:"spawned_by_task,omitempty" json:"spawned_by_task,omitempty"`
+}
+
+// SleepScheduleInfo stores information about a host's sleep schedule and
+// related bookkeeping information.
+type SleepScheduleInfo struct {
+	// WholeWeekdaysOff represents whole weekdays for the host to sleep.
+	WholeWeekdaysOff []time.Weekday `bson:"whole_weekdays_off" json:"whole_weekdays_off"`
+	// DailyStartTime and DailyStopTime represent a daily schedule for when to
+	// start a stopped host back up. The format is HH:MM:SS.
+	DailyStartTime string `bson:"daily_sleep_start_time" json:"daily_sleep_start_time"`
+	// DailyStopTime represents a daily schedule for when to stop a host. The
+	// format is HH:MM:SS.
+	DailyStopTime string `bson:"daily_sleep_stop_time" json:"daily_sleep_stop_time"`
+	// TimeZone is the time zone for this host's sleep schedule.
+	TimeZone string `bson:"time_zone" json:"time_zone"`
+	// ShouldKeepOff indicates if the host should be kept off, regardless of the
+	// other sleep schedule settings. This exists to permit a host to remain off
+	// indefinitely until the host's owner is ready to turn it on and resume its
+	// usual sleep schedule.
+	ShouldKeepOff bool `bson:"should_keep_off" json:"should_keep_off"`
+	// NextStopTime is the next time that the host should stop for its sleep
+	// schedule.
+	NextStopTime time.Time `bson:"next_stop_time" json:"next_stop_time"`
+	// NextStartTime is the next time that the host should start for its sleep
+	// schedule.
+	NextStartTime time.Time `bson:"next_start_time" json:"next_start_time"`
+	// TemporarilyExemptUntil stores when a user's temporary exemption ends, if
+	// any has been set. The sleep schedule will not take effect until
+	// this timestamp passes.
+	TemporarilyExemptUntil time.Time `bson:"temporarily_exempt_until,omitempty" json:"temporarily_exempt_until,omitempty"`
+}
+
+// IsZero implements the bsoncodec.Zeroer interface for the sake of defining the
+// zero value for BSON marshalling.
+func (i SleepScheduleInfo) IsZero() bool {
+	return len(i.WholeWeekdaysOff) == 0 &&
+		i.DailyStartTime == "" &&
+		i.DailyStopTime == "" &&
+		i.TimeZone == "" &&
+		!i.ShouldKeepOff &&
+		utility.IsZeroTime(i.NextStopTime) &&
+		utility.IsZeroTime(i.NextStartTime) &&
+		utility.IsZeroTime(i.TemporarilyExemptUntil)
 }
 
 type newParentsNeededParams struct {
@@ -3189,6 +3243,92 @@ func (h *Host) ClearDockerStdinData(ctx context.Context) error {
 	}
 
 	h.DockerOptions.StdinData = nil
+
+	return nil
+}
+
+// nonAlphanumericRegexp matches any character that is not an alphanumeric
+// character ([0-9A-Za-z]).
+var nonAlphanumericRegexp = regexp.MustCompile("[[:^alnum:]]+")
+
+// GeneratePersistentDNSName returns the host's persistent DNS name, or
+// generates a new one if it doesn't have one currently assigned.
+func (h *Host) GeneratePersistentDNSName(ctx context.Context, domain string) (string, error) {
+	if h.PersistentDNSName != "" {
+		return h.PersistentDNSName, nil
+	}
+
+	// DNS doesn't handle non-alphanumeric characters very well, so replace dots
+	// in usernames with dashes and remove all other non-alphanumeric
+	// characters.
+	userParts := strings.Split(h.StartedBy, ".")
+	cleanedParts := make([]string, 0, len(userParts))
+	for _, part := range userParts {
+		cleanedParts = append(cleanedParts, nonAlphanumericRegexp.ReplaceAllString(part, ""))
+	}
+	user := strings.Join(cleanedParts, "-")
+
+	const numAttempts = 5
+	for i := 0; i < numAttempts; i++ {
+		const maxRandLen = 5
+		random := utility.RandomString()[:maxRandLen]
+		candidate := fmt.Sprintf("%s-%s.%s", user, random, strings.TrimPrefix(domain, "."))
+
+		// Ensure no other host is using this name. Since the random portion is
+		// very short, it's unlikely but still possible that there's a conflict.
+		conflicting, _ := FindOneByPersistentDNSName(ctx, candidate)
+		if conflicting == nil || conflicting.Id == h.Id {
+			return candidate, nil
+		}
+	}
+
+	return "", errors.Errorf("could not generate a new persistent DNS name after %d attempts", numAttempts)
+}
+
+// SetPersistentDNSInfo sets the host's persistent DNS name and the associated
+// IP address.
+func (h *Host) SetPersistentDNSInfo(ctx context.Context, dnsName, ipv4Addr string) error {
+	if dnsName == "" || ipv4Addr == "" {
+		return errors.New("cannot set empty DNS name or IPv4 address")
+	}
+
+	if err := UpdateOne(ctx, bson.M{
+		IdKey: h.Id,
+	}, bson.M{
+		"$set": bson.M{
+			PersistentDNSNameKey: dnsName,
+			PublicIPv4Key:        ipv4Addr,
+		},
+	}); err != nil {
+		return err
+	}
+
+	h.PersistentDNSName = dnsName
+	h.PublicIPv4 = ipv4Addr
+
+	return nil
+}
+
+// UnsetPersistentDNSInfo unsets the host's persistent DNS name and the
+// associated IP address.
+func (h *Host) UnsetPersistentDNSInfo(ctx context.Context) error {
+	if h.PersistentDNSName == "" && h.PublicIPv4 == "" {
+		return nil
+	}
+
+	if err := UpdateOne(ctx, bson.M{
+		IdKey: h.Id,
+	}, bson.M{
+		"$unset": bson.M{
+			PersistentDNSNameKey: 1,
+			PublicIPv4Key:        1,
+		},
+	}); err != nil {
+		return err
+	}
+
+	h.PersistentDNSName = ""
+	h.PublicIPv4 = ""
 
 	return nil
 }

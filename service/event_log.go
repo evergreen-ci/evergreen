@@ -10,7 +10,6 @@ import (
 	"github.com/evergreen-ci/evergreen/model/event"
 	"github.com/evergreen-ci/evergreen/model/host"
 	"github.com/evergreen-ci/gimlet"
-	"github.com/evergreen-ci/utility"
 	"github.com/pkg/errors"
 )
 
@@ -42,12 +41,6 @@ func (uis *UIServer) fullEventLogs(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 		loggedEvents, err = event.Find(event.MostRecentHostEvents(h.Id, h.Tag, 5000))
-	case event.ResourceTypeDistro:
-		if u == nil {
-			uis.RedirectToLogin(w, r)
-			return
-		}
-		loggedEvents, err = event.FindLatestPrimaryDistroEvents(resourceID, 200, utility.ZeroTime)
 	case event.ResourceTypeAdmin:
 		if u == nil {
 			uis.RedirectToLogin(w, r)

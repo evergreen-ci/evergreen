@@ -121,8 +121,7 @@ type ProjectRef struct {
 
 	// The following fields are used by Evergreen and are not discoverable.
 	// Hidden determines whether or not the project is discoverable/tracked in the UI
-	Hidden        *bool  `bson:"hidden,omitempty" json:"hidden,omitempty"`
-	DefaultLogger string `bson:"default_logger,omitempty" json:"default_logger,omitempty"`
+	Hidden *bool `bson:"hidden,omitempty" json:"hidden,omitempty"`
 
 	ExternalLinks []ExternalLink `bson:"external_links,omitempty" json:"external_links,omitempty" yaml:"external_links,omitempty"`
 	Banner        ProjectBanner  `bson:"banner,omitempty" json:"banner,omitempty" yaml:"banner,omitempty"`
@@ -2627,8 +2626,7 @@ func (p *ProjectRef) GetProjectSetupCommands(opts apimodels.WorkstationSetupComm
 	cmds := []*jasper.Command{}
 
 	if p.WorkstationConfig.ShouldGitClone() {
-		args := []string{"git", "clone", "-b", p.Branch, fmt.Sprintf("git@github.com:%s/%s.git", p.Owner, p.Repo), opts.Directory}
-
+		args := []string{"git", "clone", "-b", p.Branch, fmt.Sprintf("https://github.com/%s/%s.git", p.Owner, p.Repo), opts.Directory}
 		cmd := jasper.NewCommand().Add(args).
 			SetErrorWriter(utility.NopWriteCloser(os.Stderr)).
 			Prerequisite(func() bool {

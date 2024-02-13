@@ -120,7 +120,6 @@ func CreateDistro(ctx context.Context, u *user.DBUser, newDistroId string) error
 			Method:        distro.BootstrapMethodLegacySSH,
 			Communication: distro.CommunicationMethodLegacySSH,
 		},
-		CloneMethod: evergreen.CloneMethodLegacySSH,
 		DispatcherSettings: distro.DispatcherSettings{
 			Version: evergreen.DispatcherVersionRevisedWithDependencies,
 		},

@@ -57,17 +57,6 @@ type TestLogInfo struct {
 	Version       int32     `json:"version" bson:"version"`
 }
 
-// GetLogTestName returns the name of the test in the logging backend. This is
-// used for test logs where the name of the test in the logging service may
-// differ from that in the test results service.
-func (tr TestResult) GetLogTestName() string {
-	if tr.LogTestName != "" {
-		return tr.LogTestName
-	}
-
-	return tr.TestName
-}
-
 // GetDisplayTestName returns the name of the test that should be displayed in
 // the UI. In most cases, this will just be TestName.
 func (tr TestResult) GetDisplayTestName() string {
@@ -91,13 +80,13 @@ func (tr TestResult) Duration() time.Duration {
 func (tr TestResult) GetLogURL(env evergreen.Environment, viewer evergreen.LogViewer) string {
 	root := env.Settings().ApiUrl
 	parsleyURL := env.Settings().Ui.ParsleyUrl
-	deprecatedLobsterURLs := []string{"https://logkeeper.mongodb.org", "https://logkeeper2.build.10gen.cc"}
+	deprecatedLogkeeperURLs := []string{"https://logkeeper.mongodb.org", "https://logkeeper2.build.10gen.cc"}
 
 	switch viewer {
 	case evergreen.LogViewerHTML:
 		// Return an empty string for logkeeper URLS.
 		if tr.LogURL != "" {
-			for _, url := range deprecatedLobsterURLs {
+			for _, url := range deprecatedLogkeeperURLs {
 				if strings.Contains(tr.LogURL, url) {
 					return ""
 				}
@@ -115,27 +104,7 @@ func (tr TestResult) GetLogURL(env evergreen.Environment, viewer evergreen.LogVi
 			root,
 			url.PathEscape(tr.TaskID),
 			tr.Execution,
-			url.QueryEscape(tr.GetLogTestName()),
-			url.QueryEscape(tr.GroupID),
-			tr.LineNum,
-		)
-	case evergreen.LogViewerLobster:
-		// Evergreen-hosted lobster does not support external logs.
-		if tr.LogURL != "" || tr.RawLogURL != "" {
-			for _, url := range deprecatedLobsterURLs {
-				if strings.Contains(tr.LogURL, url) {
-					return strings.Replace(tr.LogURL, url, root+"/lobster", 1)
-				}
-			}
-			return ""
-
-		}
-
-		return fmt.Sprintf("%s/lobster/evergreen/test/%s/%d/%s/%s#shareLine=%d",
-			root,
-			url.PathEscape(tr.TaskID),
-			tr.Execution,
-			url.QueryEscape(tr.GetLogTestName()),
+			url.QueryEscape(tr.getLogTestName()),
 			url.QueryEscape(tr.GroupID),
 			tr.LineNum,
 		)
@@ -144,7 +113,7 @@ func (tr TestResult) GetLogURL(env evergreen.Environment, viewer evergreen.LogVi
 			return ""
 		}
 
-		for _, url := range deprecatedLobsterURLs {
+		for _, url := range deprecatedLogkeeperURLs {
 			if strings.Contains(tr.LogURL, url) {
 				updatedResmokeParsleyURL := strings.Replace(tr.LogURL, fmt.Sprintf("%s/build", url), parsleyURL+"/resmoke", 1)
 				return fmt.Sprintf("%s?shareLine=%d", updatedResmokeParsleyURL, tr.LineNum)
@@ -167,10 +136,24 @@ func (tr TestResult) GetLogURL(env evergreen.Environment, viewer evergreen.LogVi
 			root,
 			url.PathEscape(tr.TaskID),
 			tr.Execution,
-			url.QueryEscape(tr.GetLogTestName()),
+			url.QueryEscape(tr.getLogTestName()),
 			url.QueryEscape(tr.GroupID),
 		)
 	}
+}
+
+// getLogTestName returns the name of the test in the logging backend. This is
+// used for test logs where the name of the test in the logging service may
+// differ from that in the test results service.
+func (tr TestResult) getLogTestName() string {
+	if tr.LogInfo != nil && tr.LogInfo.LogName != "" {
+		return tr.LogInfo.LogName
+	}
+	if tr.LogTestName != "" {
+		return tr.LogTestName
+	}
+
+	return tr.TestName
 }
 
 // TaskTestResultsFailedSample represents a sample of failed test names from

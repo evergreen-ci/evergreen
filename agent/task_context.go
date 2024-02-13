@@ -207,7 +207,7 @@ func (a *Agent) makeTaskConfig(ctx context.Context, tc *taskContext) (*internal.
 	}
 
 	grip.Info("Fetching task info.")
-	tsk, project, expansions, redacted, err := a.fetchTaskInfo(ctx, tc)
+	tsk, project, expansionsAndVars, err := a.fetchTaskInfo(ctx, tc)
 	if err != nil {
 		return nil, errors.Wrap(err, "fetching task info")
 	}
@@ -241,11 +241,10 @@ func (a *Agent) makeTaskConfig(ctx context.Context, tc *taskContext) (*internal.
 	}
 
 	grip.Info("Constructing task config.")
-	taskConfig, err := internal.NewTaskConfig(a.opts.WorkingDirectory, confDistro, project, tsk, confRef, confPatch, expansions)
+	taskConfig, err := internal.NewTaskConfig(a.opts.WorkingDirectory, confDistro, project, tsk, confRef, confPatch, expansionsAndVars)
 	if err != nil {
 		return nil, err
 	}
-	taskConfig.Redacted = redacted
 	taskConfig.TaskSync = a.opts.SetupData.TaskSync
 	taskConfig.EC2Keys = a.opts.SetupData.EC2Keys
 

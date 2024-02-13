@@ -37,13 +37,7 @@ func New(apiURL string) Config {
 
 		// If directive is checking for create permissions, no distro ID is required.
 		if access == DistroSettingsAccessCreate {
-			opts := gimlet.PermissionOpts{
-				Resource:      evergreen.SuperUserPermissionsID,
-				ResourceType:  evergreen.SuperUserResourceType,
-				Permission:    evergreen.PermissionDistroCreate,
-				RequiredLevel: evergreen.DistroCreate.Value,
-			}
-			if user.HasPermission(opts) {
+			if userHasDistroCreatePermission(user) {
 				return next(ctx)
 			}
 			return nil, Forbidden.Send(ctx, fmt.Sprintf("user '%s' does not have create distro permissions", user.Username()))

@@ -45,8 +45,7 @@ variables:
     commands:
       - func: get-project-and-modules
       - func: run-make
-        vars:
-          target: "${task_name}"
+        vars: { target: "${task_name}" }
       - command: s3.put
         type: system
         params:
@@ -118,16 +117,17 @@ variables:
         params:
           silent: true
           working_dir: evergreen
-          command: bash scripts/setup-smoke-config.sh ${github_token}
+          env:
+            GITHUB_APP_ID: ${staging_github_app_id}
+            GITHUB_APP_KEY: ${staging_github_app_key}
+            GITHUB_TOKEN: ${github_token}
+          command: bash scripts/setup-smoke-config.sh
       - func: run-make
-        vars:
-          target: set-smoke-vars
+        vars: { target: "set-smoke-vars" }
       - func: run-make
-        vars:
-          target: set-smoke-git-config
+        vars: { target: "set-smoke-git-config" }
       - func: run-make
-        vars:
-          target: "${task_name}"
+        vars: { target: "${task_name}" }
 
   - &version-constants
     nodejs_version: "6.11.1"
@@ -244,28 +244,36 @@ functions:
         OTEL_COLLECTOR_ENDPOINT: ${otel_collector_endpoint}
         OTEL_TRACE_ID: ${otel_trace_id}
         OTEL_PARENT_ID: ${otel_parent_id}
+        AWS_ACCESS_KEY_ID: ${AWS_ACCESS_KEY_ID}
+        AWS_SECRET_ACCESS_KEY: ${AWS_SECRET_ACCESS_KEY}
+        AWS_SESSION_TOKEN: ${AWS_SESSION_TOKEN}
 
   setup-credentials:
-    command: subprocess.exec
-    type: setup
-    params:
-      silent: true
-      working_dir: evergreen
-      env:
-        GITHUB_TOKEN: ${github_token}
-        GITHUB_APP_ID: ${staging_github_app_id}
-        GITHUB_APP_KEY: ${staging_github_app_key}
-        JIRA_SERVER: ${jiraserver}
-        CROWD_SERVER: ${crowdserver}
-        AWS_KEY: ${aws_key}
-        AWS_SECRET: ${aws_secret}
-        PARSER_PROJECT_S3_PREFIX: ${task_id}/parser-projects
-        GENERATED_JSON_S3_PREFIX: ${task_id}/generated-json
-        JIRA_PRIVATE_KEY: ${jira_private_key}
-        JIRA_ACCESS_TOKEN: ${jira_access_token}
-        JIRA_TOKEN_SECRET: ${jira_token_secret}
-        JIRA_CONSUMER_KEY: ${jira_consumer_key}
-      command: bash scripts/setup-credentials.sh
+    - command: ec2.assume_role
+      type: setup
+      params:
+        role_arn: ${assume_role_arn}
+    - command: subprocess.exec
+      type: setup
+      params:
+        silent: true
+        working_dir: evergreen
+        env:
+          GITHUB_TOKEN: ${github_token}
+          GITHUB_APP_ID: ${staging_github_app_id}
+          GITHUB_APP_KEY: ${staging_github_app_key}
+          JIRA_SERVER: ${jiraserver}
+          CROWD_SERVER: ${crowdserver}
+          AWS_KEY: ${aws_key}
+          AWS_SECRET: ${aws_secret}
+          PARSER_PROJECT_S3_PREFIX: ${task_id}/parser-projects
+          GENERATED_JSON_S3_PREFIX: ${task_id}/generated-json
+          JIRA_PRIVATE_KEY: ${jira_private_key}
+          JIRA_ACCESS_TOKEN: ${jira_access_token}
+          JIRA_TOKEN_SECRET: ${jira_token_secret}
+          JIRA_CONSUMER_KEY: ${jira_consumer_key}
+        command: bash scripts/setup-credentials.sh
+
   setup-mongodb:
     - command: subprocess.exec
       type: setup
@@ -332,6 +340,15 @@ functions:
         args: ["scripts/verify-agent-version-update.sh"]
         env:
           BRANCH_NAME: ${branch_name}
+  
+  verify-swaggo-fmt:
+    - command: subprocess.exec
+      params:
+        working_dir: evergreen
+        binary: bash
+        args: ["scripts/verify-swaggo-fmt.sh"]
+        env:
+          GOPATH: ${workdir}/gopath
 
   verify-client-version-update:
     - command: subprocess.exec
@@ -581,6 +598,20 @@ tasks:
             LOCAL_PATH: clients
             EXCLUDE_PATTERN: .cache
             REMOTE_PATH: evergreen/clients/${project}/${revision}
+  - name: verify-swaggo-fmt
+    tags: ["linter"]
+    commands:
+      - func: get-project-and-modules
+      - command: subprocess.exec
+        params:
+          binary: make
+          args: ["swaggo-install"]
+          working_dir: evergreen
+          env:
+            GOPATH: ${workdir}/gopath
+          include_expansions_in_env:
+            - GOROOT
+      - func: verify-swaggo-fmt
   - name: verify-agent-version-update
     tags: ["linter"]
     patch_only: true
@@ -612,16 +643,25 @@ tasks:
   - name: generate-api-docs
     commands: 
       - func: get-project-and-modules
+      - command: subprocess.exec
+        params:
+          binary: make
+          args: ["swaggo-install"]
+          working_dir: evergreen
+          env:
+            GOPATH: ${workdir}/gopath
+          include_expansions_in_env:
+            - GOROOT
       - command: shell.exec
         params:
           shell: bash
           working_dir: evergreen
+          env:
+            GOPATH: ${workdir}/gopath
           script: |
             set -o verbose
             set -o errexit
-            wget https://github.com/swaggo/swag/releases/download/v1.16.2/swag_1.16.2_Linux_x86_64.tar.gz
-            tar xzvf swag_1.16.2_Linux_x86_64.tar.gz
-            ./swag init -g service/service.go
+            $GOPATH/bin/swag init -g service/service.go
       - command: s3.put
         params:
           aws_key: ${aws_key}
@@ -643,7 +683,6 @@ tasks:
           permissions: public-read
           display_name: swagger.json (latest)
           patchable: false
-
   - <<: *build-and-push-client
     name: build-linux_amd64
     tags: ["build", "build-staging"]
@@ -652,7 +691,7 @@ tasks:
     tags: ["build"]
   - <<: *build-and-push-client
     name: build-linux_arm64
-    tags: ["build", "build-staging"]
+    tags: ["build"]
   - <<: *build-and-push-client
     name: build-linux_ppc64le
     tags: ["build"]
@@ -815,7 +854,6 @@ buildvariants:
     display_name: Build and Push
     run_on:
       - ubuntu2204-small
-    activate: false
     tasks:
       - name: ".build"
     expansions:
@@ -834,6 +872,7 @@ buildvariants:
     activate: false
     tasks:
       - name: ".build-staging"
+        priority: 100
     expansions:
       GOROOT: /opt/golang/go1.20
     display_tasks:

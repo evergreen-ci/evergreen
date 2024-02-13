@@ -586,10 +586,6 @@ EC2 Parameters:
 
 -   `ami` - For an `ec2` provider, the AMI to start. Must set `ami` or `distro`
     but must not set both.
--   `aws_access_key_id` - AWS access key ID. May set to use a
-    non-default account. Must set if `aws_secret_access_key` is set.
--   `aws_secret_access_key` - AWS secret key. May set to use a
-    non-default account. Must set if `aws_access_key_id` is set.
 -   `device_name` - name of EBS device
 -   `distro` - Evergreen distro to start. For the `ec2` provider, must set
     either `ami` only or `distro` but must not set both. For the `docker`
@@ -605,8 +601,6 @@ EC2 Parameters:
     distro configuration.
 -   `ipv6`- Set to true if instance should have _only_ an
     IPv6 address, rather than a public IPv4 address.
--   `key_name` - EC2 Key name. Must set if `aws_access_key_id` or
-    `aws_secret_access_key` is set. Must not set otherwise.
 -   `region` - EC2 region. Default is the same as Evergreen's default.
 -   `security_group_ids` - List of security groups. Must set if `ami` is
     set. May set if `distro` is set, which will override the value from
@@ -1105,6 +1099,7 @@ Parameters:
   params:
     aws_key: ${aws_key}
     aws_secret: ${aws_secret}
+    aws_session_token: ${aws_session_token}
     remote_file: ${mongo_binaries}
     bucket: mciuploads
     local_file: src/mongo-binaries.tgz
@@ -1112,8 +1107,9 @@ Parameters:
 
 Parameters:
 
--   `aws_key`: your AWS key (use expansions to keep this a secret)
--   `aws_secret`: your AWS secret (use expansions to keep this a secret)
+-   `aws_key`: your AWS key (use expansions to keep this a secret).
+-   `aws_secret`: your AWS secret (use expansions to keep this a secret).
+-   `aws_session_token`: your temporary AWS session token (use expansions to keep this a secret).
 -   `local_file`: the local file to save, do not use with `extract_to`
 -   `extract_to`: the local directory to extract to, do not use with
     `local_file`
@@ -1133,6 +1129,7 @@ distribution. Files uploaded with this command will also be viewable within the 
   params:
     aws_key: ${aws_key}
     aws_secret: ${aws_secret}
+    aws_session_token: ${aws_session_token}
     local_file: src/mongodb-binaries.tgz
     remote_file: mongodb-mongo-master/${build_variant}/${revision}/binaries/mongo-${build_id}.${ext|tgz}
     bucket: mciuploads
@@ -1143,8 +1140,10 @@ distribution. Files uploaded with this command will also be viewable within the 
 
 Parameters:
 
--   `aws_key`: your AWS key (use expansions to keep this a secret)
--   `aws_secret`: your AWS secret (use expansions to keep this a secret)
+-   `aws_key`: your AWS key (use expansions to keep this a secret).
+-   `aws_secret`: your AWS secret (use expansions to keep this a secret).
+-   `aws_session_token`: your temporary AWS session token (use expansions to keep this a secret). This cannot be used
+    with `visibility: signed`.
 -   `local_file`: the local file to post
 -   `remote_file`: the S3 path to post the file to
 -   `bucket`: the S3 bucket to use. Note: buckets created after Sept.
@@ -1190,6 +1189,7 @@ Using the s3.put command in this uploads multiple files to an s3 bucket.
   params:
     aws_key: ${aws_key}
     aws_secret: ${aws_secret}
+    aws_session_token: ${aws_session_token}
     local_files_include_filter:
       - slow_tests/coverage/*.tgz
       - fast_tests/coverage/*.tgz
@@ -1295,6 +1295,7 @@ Parameters:
   params:
     aws_key: ${aws_key}
     aws_secret: ${aws_secret}
+    aws_session_token: ${aws_session_token}
     s3_copy_files:
         - {'optional': true, 'source': {'path': '${push_path}-STAGE/${push_name}/mongodb-${push_name}-${push_arch}-${suffix}-${task_id}.${ext|tgz}', 'bucket': 'build-push-testing'},
            'destination': {'path': '${push_path}/mongodb-${push_name}-${push_arch}-${suffix}.${ext|tgz}', 'bucket': '${push_bucket}'}}
@@ -1302,8 +1303,9 @@ Parameters:
 
 Parameters:
 
--   `aws_key`: your AWS key (use expansions to keep this a secret)
--   `aws_secret`: your AWS secret (use expansions to keep this a secret)
+-   `aws_key`: your AWS key (use expansions to keep this a secret).
+-   `aws_secret`: your AWS secret (use expansions to keep this a secret).
+-   `aws_session_token`: your temporary AWS session token (use expansions to keep this a secret).
 -   `s3_copy_files`: a map of `source` (`bucket` and `path`),
     `destination`, `build_variants` (a list of strings), `display_name`,
     and `optional` (suppresses errors). Note: destination buckets

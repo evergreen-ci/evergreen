@@ -20,7 +20,6 @@ func NewConfigModel() *APIAdminSettings {
 		CommitQueue:       &APICommitQueueConfig{},
 		ContainerPools:    &APIContainerPoolsConfig{},
 		Credentials:       map[string]string{},
-		DataPipes:         &APIDataPipesConfig{},
 		Expansions:        map[string]string{},
 		HostInit:          &APIHostInitConfig{},
 		HostJasper:        &APIHostJasperConfig{},
@@ -66,7 +65,6 @@ type APIAdminSettings struct {
 	ContainerPools      *APIContainerPoolsConfig          `json:"container_pools,omitempty"`
 	Credentials         map[string]string                 `json:"credentials,omitempty"`
 	DomainName          *string                           `json:"domain_name,omitempty"`
-	DataPipes           *APIDataPipesConfig               `json:"data_pipes,omitempty"`
 	Expansions          map[string]string                 `json:"expansions,omitempty"`
 	GithubPRCreatorOrg  *string                           `json:"github_pr_creator_org,omitempty"`
 	GithubOrgs          []string                          `json:"github_orgs,omitempty"`
@@ -408,16 +406,18 @@ func (a *APIAmboyConfig) ToService() (interface{}, error) {
 }
 
 type APIAmboyDBConfig struct {
-	URL      *string `json:"url"`
-	Database *string `json:"database"`
-	Username *string `json:"username"`
-	Password *string `json:"password"`
+	URL       *string `json:"url"`
+	KanopyURL *string `json:"kanopy_url"`
+	Database  *string `json:"database"`
+	Username  *string `json:"username"`
+	Password  *string `json:"password"`
 }
 
 func (a *APIAmboyDBConfig) BuildFromService(h interface{}) error {
 	switch v := h.(type) {
 	case evergreen.AmboyDBConfig:
 		a.URL = utility.ToStringPtr(v.URL)
+		a.KanopyURL = utility.ToStringPtr(v.KanopyURL)
 		a.Database = utility.ToStringPtr(v.Database)
 		return nil
 	default:
@@ -427,8 +427,9 @@ func (a *APIAmboyDBConfig) BuildFromService(h interface{}) error {
 
 func (a *APIAmboyDBConfig) ToService() (interface{}, error) {
 	return evergreen.AmboyDBConfig{
-		URL:      utility.FromStringPtr(a.URL),
-		Database: utility.FromStringPtr(a.Database),
+		URL:       utility.FromStringPtr(a.URL),
+		KanopyURL: utility.FromStringPtr(a.KanopyURL),
+		Database:  utility.FromStringPtr(a.Database),
 	}, nil
 }
 
@@ -1157,7 +1158,6 @@ type APILoggerConfig struct {
 	DefaultLevel   *string          `json:"default_level"`
 	ThresholdLevel *string          `json:"threshold_level"`
 	LogkeeperURL   *string          `json:"logkeeper_url"`
-	DefaultLogger  *string          `json:"default_logger"`
 }
 
 func (a *APILoggerConfig) BuildFromService(h interface{}) error {
@@ -1166,7 +1166,6 @@ func (a *APILoggerConfig) BuildFromService(h interface{}) error {
 		a.DefaultLevel = utility.ToStringPtr(v.DefaultLevel)
 		a.ThresholdLevel = utility.ToStringPtr(v.ThresholdLevel)
 		a.LogkeeperURL = utility.ToStringPtr(v.LogkeeperURL)
-		a.DefaultLogger = utility.ToStringPtr(v.DefaultLogger)
 		a.Buffer = &APILogBuffering{}
 		if err := a.Buffer.BuildFromService(v.Buffer); err != nil {
 			return err
@@ -1182,7 +1181,6 @@ func (a *APILoggerConfig) ToService() (interface{}, error) {
 		DefaultLevel:   utility.FromStringPtr(a.DefaultLevel),
 		ThresholdLevel: utility.FromStringPtr(a.ThresholdLevel),
 		LogkeeperURL:   utility.FromStringPtr(a.LogkeeperURL),
-		DefaultLogger:  utility.FromStringPtr(a.DefaultLogger),
 	}
 	i, err := a.Buffer.ToService()
 	if err != nil {
@@ -2176,7 +2174,6 @@ type APIServiceFlags struct {
 	CloudCleanupDisabled           bool `json:"cloud_cleanup_disabled"`
 	LegacyUIPublicAccessDisabled   bool `json:"legacy_ui_public_access_disabled"`
 	GlobalGitHubTokenDisabled      bool `json:"global_github_token_disabled"`
-	LegacyUIDistroPageDisabled     bool `json:"legacy_ui_distro_page_disabled"`
 	SleepScheduleDisabled          bool `json:"sleep_schedule_disabled"`
 
 	// Notifications Flags
@@ -2470,7 +2467,6 @@ func (as *APIServiceFlags) BuildFromService(h interface{}) error {
 		as.CloudCleanupDisabled = v.CloudCleanupDisabled
 		as.LegacyUIPublicAccessDisabled = v.LegacyUIPublicAccessDisabled
 		as.GlobalGitHubTokenDisabled = v.GlobalGitHubTokenDisabled
-		as.LegacyUIDistroPageDisabled = v.LegacyUIDistroPageDisabled
 		as.SleepScheduleDisabled = v.SleepScheduleDisabled
 	default:
 		return errors.Errorf("programmatic error: expected service flags config but got type %T", h)
@@ -2514,7 +2510,6 @@ func (as *APIServiceFlags) ToService() (interface{}, error) {
 		CloudCleanupDisabled:           as.CloudCleanupDisabled,
 		LegacyUIPublicAccessDisabled:   as.LegacyUIPublicAccessDisabled,
 		GlobalGitHubTokenDisabled:      as.GlobalGitHubTokenDisabled,
-		LegacyUIDistroPageDisabled:     as.LegacyUIDistroPageDisabled,
 		SleepScheduleDisabled:          as.SleepScheduleDisabled,
 	}, nil
 }
@@ -2771,39 +2766,6 @@ func (c *APITracerSettings) ToService() (interface{}, error) {
 	}
 
 	return config, nil
-}
-
-type APIDataPipesConfig struct {
-	Host         *string `json:"host"`
-	Region       *string `json:"region"`
-	AWSAccessKey *string `json:"aws_access_key"`
-	AWSSecretKey *string `json:"aws_secret_key"`
-	AWSToken     *string `json:"aws_token"`
-}
-
-func (c *APIDataPipesConfig) BuildFromService(h interface{}) error {
-	switch v := h.(type) {
-	case evergreen.DataPipesConfig:
-		c.Host = utility.ToStringPtr(v.Host)
-		c.Region = utility.ToStringPtr(v.Region)
-		c.AWSAccessKey = utility.ToStringPtr(v.AWSAccessKey)
-		c.AWSSecretKey = utility.ToStringPtr(v.AWSSecretKey)
-		c.AWSToken = utility.ToStringPtr(v.AWSToken)
-	default:
-		return errors.Errorf("programmatic error: expected Data-Pipes config but got type %T", h)
-	}
-
-	return nil
-}
-
-func (c *APIDataPipesConfig) ToService() (interface{}, error) {
-	return evergreen.DataPipesConfig{
-		Host:         utility.FromStringPtr(c.Host),
-		Region:       utility.FromStringPtr(c.Region),
-		AWSAccessKey: utility.FromStringPtr(c.AWSAccessKey),
-		AWSSecretKey: utility.FromStringPtr(c.AWSSecretKey),
-		AWSToken:     utility.FromStringPtr(c.AWSToken),
-	}, nil
 }
 
 type APIGitHubCheckRunConfig struct {
