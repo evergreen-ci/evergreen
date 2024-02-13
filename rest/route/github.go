@@ -274,6 +274,8 @@ func (gh *githubHookApi) Run(ctx context.Context) gimlet.Responder {
 	return gimlet.NewJSONResponse(struct{}{})
 }
 
+// handleCheckRunRerequested restarts the task associated with the check run that was rerequested to be re-run and
+// updates the check run to indicate that the task has been restarted.
 func (gh *githubHookApi) handleCheckRunRerequested(ctx context.Context, event *github.CheckRunEvent) gimlet.Responder {
 	owner := event.Repo.Owner.GetLogin()
 	repo := event.Repo.GetName()
