@@ -893,9 +893,11 @@ func (e *envState) initTracer(ctx context.Context, useInternalDNS bool) error {
 		opts = append(opts, otlptracegrpc.WithInsecure())
 	} else {
 		opts = append(opts, otlptracegrpc.WithEndpoint(e.settings.Tracer.CollectorEndpoint))
-		opts = append(opts, otlptracegrpc.WithHeaders(map[string]string{
-			honeycombCollectorHeader: e.settings.Tracer.CollectorAPIKey,
-		}))
+		if e.settings.Tracer.CollectorAPIKey != "" {
+			opts = append(opts, otlptracegrpc.WithHeaders(map[string]string{
+				honeycombCollectorHeader: e.settings.Tracer.CollectorAPIKey,
+			}))
+		}
 	}
 	client := otlptracegrpc.NewClient(opts...)
 	exp, err := otlptrace.New(ctx, client)
