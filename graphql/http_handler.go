@@ -47,7 +47,7 @@ func Handler(apiURL string) func(w http.ResponseWriter, r *http.Request) {
 					}))
 					return nil
 				}
-				RedactFieldsInMap(redactedRequestVariables)
+				RedactFieldsInMap(redactedRequestVariables, redactedFields)
 				variables := make([]attribute.KeyValue, 0, len(redactedRequestVariables))
 
 				for k, v := range redactedRequestVariables {
@@ -88,7 +88,7 @@ func Handler(apiURL string) func(w http.ResponseWriter, r *http.Request) {
 			queryPath = fieldCtx.Path().String()
 			args = fieldCtx.Args
 		}
-		RedactFieldsInMap(args)
+		RedactFieldsInMap(args, redactedFields)
 		if err != nil && !strings.HasSuffix(err.Error(), context.Canceled.Error()) {
 			grip.Error(message.WrapError(err, message.Fields{
 				"path":    "/graphql/query",

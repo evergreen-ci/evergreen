@@ -25,7 +25,7 @@ func (r *spruceConfigResolver) Keys(ctx context.Context, obj *model.APIAdminSett
 
 // SecretFields is the resolver for the secretFields field.
 func (r *spruceConfigResolver) SecretFields(ctx context.Context, obj *model.APIAdminSettings) ([]string, error) {
-	return RedactedFields, nil
+	return redactedFields, nil
 }
 
 // ContainerPool returns ContainerPoolResolver implementation.

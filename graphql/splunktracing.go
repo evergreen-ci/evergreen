@@ -53,7 +53,7 @@ func (SplunkTracing) InterceptResponse(ctx context.Context, next graphql.Respons
 				"message": "failed to deep copy request variables",
 			}))
 		}
-		RedactFieldsInMap(redactedRequestVariables)
+		RedactFieldsInMap(redactedRequestVariables, redactedFields)
 		grip.Info(message.Fields{
 			"message":     "graphql.tracing",
 			"query":       rc.Operation.Name,
