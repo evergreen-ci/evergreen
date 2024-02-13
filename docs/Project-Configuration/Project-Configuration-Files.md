@@ -32,11 +32,11 @@ For example, a couple of tasks might look like:
 ``` yaml
 tasks:
 - name: compile
+  exec_timeout_secs: 20
   commands:
     - command: git.get_project
       params:
         directory: src
-        exec_timeout_secs: 20
     - func: "compile and upload to s3"
 - name: passing_test
   run_on: my_other_distro
