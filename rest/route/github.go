@@ -34,10 +34,7 @@ const (
 	githubActionSynchronize     = "synchronize"
 	githubActionReopened        = "reopened"
 	githubActionChecksRequested = "checks_requested"
-	githubActionCreated         = "created"
-	githubActionCompleted       = "completed"
 	githubActionRerequested     = "rerequested"
-	githubActionRequestedAction = "requested_action"
 
 	// pull request comments
 	retryComment            = "evergreen retry"
@@ -278,11 +275,6 @@ func (gh *githubHookApi) Run(ctx context.Context) gimlet.Responder {
 }
 
 func (gh *githubHookApi) handleCheckRunRerequested(ctx context.Context, event *github.CheckRunEvent) gimlet.Responder {
-	grip.Info(message.Fields{
-		"source":   "GitHub hook",
-		"bynnbynn": *event,
-	})
-
 	owner := event.Repo.Owner.GetLogin()
 	repo := event.Repo.GetName()
 
@@ -321,7 +313,7 @@ func (gh *githubHookApi) handleCheckRunRerequested(ctx context.Context, event *g
 			"task":    checkRunTask,
 			"message": "finding task",
 		})
-		return gimlet.NewJSONInternalErrorResponse(errors.Wrapf(taskErr, "finding task '%s'", checkRunTask))
+		return gimlet.NewJSONInternalErrorResponse(errors.Wrapf(taskErr, "finding task '%s' for check run", checkRunTask))
 	}
 	githubUser, err := user.FindByGithubUID(int(event.GetSender().GetID()))
 	if err != nil {
@@ -350,14 +342,13 @@ func (gh *githubHookApi) handleCheckRunRerequested(ctx context.Context, event *g
 	}
 
 	opts := &github.UpdateCheckRunOptions{
-		Name:   checkRun.GetName(),
-		Status: utility.ToStringPtr(thirdparty.GithubCheckRunStarted),
+		Name: checkRun.GetName(),
 		Output: &github.CheckRunOutput{
 			Title:   utility.ToStringPtr("Task restarted"),
 			Summary: utility.ToStringPtr("Please wait for task to complete"),
 		},
 	}
-	_, err = thirdparty.UpdateCheckrun(ctx, owner, repo, checkRun.GetName(), checkRun.GetID(), opts)
+	_, err = thirdparty.UpdateCheckRun(ctx, owner, repo, checkRun.GetID(), opts)
 	if err != nil {
 		grip.Error(message.WrapError(err, message.Fields{
 			"source":    "GitHub hook",

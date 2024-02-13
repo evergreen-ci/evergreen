@@ -81,12 +81,6 @@ const (
 	githubPRUnstable = "unstable"
 )
 
-const (
-	GithubCheckRunQueued   = "queued"
-	GithubCheckRunStarted  = "in_progress"
-	GithubCheckRunFinished = "completed"
-)
-
 var (
 	githubTransport http.RoundTripper
 	cacheTransport  *httpcache.Transport
@@ -1944,8 +1938,8 @@ func GetBranchProtectionRules(ctx context.Context, token, owner, repo, branch st
 	return nil, nil
 }
 
-// CreateCheckrun creates a checkRun and returns a Github CheckRun object
-func CreateCheckrun(ctx context.Context, owner, repo, name, headSHA string, output *github.CheckRunOutput) (*github.CheckRun, error) {
+// CreateCheckRun creates a checkRun and returns a Github CheckRun object
+func CreateCheckRun(ctx context.Context, owner, repo, name, headSHA string, output *github.CheckRunOutput) (*github.CheckRun, error) {
 	caller := "createCheckrun"
 	ctx, span := tracer.Start(ctx, caller, trace.WithAttributes(
 		attribute.String(githubEndpointAttribute, caller),
@@ -1979,9 +1973,9 @@ func CreateCheckrun(ctx context.Context, owner, repo, name, headSHA string, outp
 	return checkRun, nil
 }
 
-// UpdateCheckrun updates a checkRun and returns a Github CheckRun object
+// UpdateCheckRun updates a checkRun and returns a Github CheckRun object
 // UpdateCheckRunOptions must specify a name for the check run
-func UpdateCheckrun(ctx context.Context, owner, repo, name string, checkRunID int64, opts *github.UpdateCheckRunOptions) (*github.CheckRun, error) {
+func UpdateCheckRun(ctx context.Context, owner, repo string, checkRunID int64, opts *github.UpdateCheckRunOptions) (*github.CheckRun, error) {
 	if opts == nil {
 		return nil, errors.New("Options for updating check run must not be nil")
 	}
