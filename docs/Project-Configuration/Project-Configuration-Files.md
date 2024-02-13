@@ -32,6 +32,7 @@ For example, a couple of tasks might look like:
 ``` yaml
 tasks:
 - name: compile
+  exec_timeout_secs: 20
   commands:
     - command: git.get_project
       params:
@@ -533,7 +534,8 @@ or task to the maximum allowed length of execution time. Exec timeout only
 applies to commands that run in `pre`, `setup_group`, `setup_task`, and the main
 task commands; it does not apply to the `post`, `teardown_task`, and
 `teardown_group` blocks. This timeout defaults to 6 hours. `exec_timeout_secs`
-can only be set on the project or on a task. It cannot be set on functions.
+can only be set on the project or on a task as seen in below example. 
+It cannot be set on functions or build variant tasks.
 
 You can also set `exec_timeout_secs` using [timeout.update](Project-Commands.md#timeoutupdate).
 
@@ -568,6 +570,7 @@ tasks:
   commands:
     - command: shell.exec
       timeout_secs: 10 ## force this command to fail if it stays "idle" for 10 seconds or more
+      exec_timeout_secs: 20 ## will override the project level exec_timeout defined above for this task
       params:
         script: |
           sleep 1000
