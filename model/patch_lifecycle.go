@@ -413,7 +413,7 @@ func MakePatchedConfig(ctx context.Context, opts GetProjectOpts, projectConfig s
 				return nil, errors.Wrap(err, "writing to temporary patch file")
 			}
 		}
-		renamedFilePath = parseRenamedFile(patchContents, remoteConfigPath)
+		renamedFilePath = parseRenamedOrCopiedFile(patchContents, remoteConfigPath)
 
 		defer os.Remove(patchFilePath) //nolint:evg-lint
 
@@ -504,12 +504,13 @@ func MakePatchedConfig(ctx context.Context, opts GetProjectOpts, projectConfig s
 	return nil, errors.New("no patch on project")
 }
 
-// parseRenamedFile takes a patch contents and retrieves the old file name,
-// if any, that the input filename was renamed from.
-func parseRenamedFile(patchContents, filename string) string {
+// parseRenamedOrCopiedFile takes a patch contents and retrieves the old file name,
+// if any, that the input filename was renamed or copied from.
+func parseRenamedOrCopiedFile(patchContents, filename string) string {
 	lines := strings.Split(patchContents, "\n")
-	var renameFrom, renameTo string
+	var renameFrom, renameTo, copyFrom, copyTo string
 	isRenamed := false
+	isCopied := false
 	for _, line := range lines {
 		if strings.HasPrefix(line, "rename from ") {
 			renameFrom = strings.TrimPrefix(line, "rename from ")
@@ -520,9 +521,22 @@ func parseRenamedFile(patchContents, filename string) string {
 				break
 			}
 		}
+
+		if strings.HasPrefix(line, "copy from ") {
+			copyFrom = strings.TrimPrefix(line, "copy from ")
+		} else if strings.HasPrefix(line, "copy to ") {
+			copyTo = strings.TrimPrefix(line, "copy to ")
+			if copyTo == filename {
+				isCopied = true
+				break
+			}
+		}
 	}
 	if isRenamed {
 		return renameFrom
+	}
+	if isCopied {
+		return copyFrom
 	}
 	return ""
 }

@@ -637,8 +637,13 @@ func TestMakePatchedConfigRenamed(t *testing.T) {
 	assert.Equal(t, intermediateProject.BuildVariants[0].DisplayName, "Included variant!!!")
 }
 
-func TestParseRenamedFile(t *testing.T) {
+func TestParseRenamedOrCopiedFile(t *testing.T) {
 	patchContents := `
+diff --git a/include2.yml b/copiedInclude.yml
+similarity index 100%
+copy from include2.yml
+copy to copiedInclude.yml
+
 diff --git a/evergreen.yml b/evergreen.yml
 index a45dff8..83a8f81 100644
 --- a/evergreen.yml
@@ -657,7 +662,10 @@ similarity index 100%
 rename from include2.yml
 rename to rename2.yml
 `
-	renamedFile := parseRenamedFile(patchContents, "rename2.yml")
+	renamedFile := parseRenamedOrCopiedFile(patchContents, "rename2.yml")
+	assert.Equal(t, renamedFile, "include2.yml")
+
+	renamedFile = parseRenamedOrCopiedFile(patchContents, "copiedInclude.yml")
 	assert.Equal(t, renamedFile, "include2.yml")
 
 	patchContents = `
@@ -674,7 +682,7 @@ index 865a6ec..990824f 100644
      activate: true
      run_on:`
 
-	renamedFile = parseRenamedFile(patchContents, "include1.yml")
+	renamedFile = parseRenamedOrCopiedFile(patchContents, "include1.yml")
 	assert.Equal(t, renamedFile, "")
 
 	patchContents = `
@@ -707,7 +715,7 @@ index 748e345..7e70f15 100644
      activate: true
      run_on:`
 
-	renamedFile = parseRenamedFile(patchContents, "renamed.yml")
+	renamedFile = parseRenamedOrCopiedFile(patchContents, "renamed.yml")
 	assert.Equal(t, renamedFile, "include1.yml")
 }
 
