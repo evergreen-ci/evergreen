@@ -148,6 +148,8 @@ func ConfigurePatch(ctx context.Context, settings *evergreen.Settings, p *patch.
 	}
 
 	patchVariantTasks := tasks.TVPairsToVariantTasks()
+	// kim: NOTE: e2e_nds_local_serverless_backup is missing from patch's stored
+	// variant tasks list, meaning it got lost somewhere along the way.
 	if len(patchVariantTasks) > 0 {
 		if err = p.SetVariantsTasks(patchVariantTasks); err != nil {
 			return http.StatusInternalServerError, errors.Wrap(err, "setting description")

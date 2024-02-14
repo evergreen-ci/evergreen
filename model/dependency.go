@@ -2,6 +2,7 @@ package model
 
 import (
 	"github.com/mongodb/grip"
+	"github.com/mongodb/grip/message"
 	"github.com/pkg/errors"
 )
 
@@ -79,10 +80,34 @@ func (di *dependencyIncluder) handle(pair TVPair, activationInfo *specificActiva
 	if tg := di.Project.FindTaskGroup(pair.TaskName); tg != nil {
 		for _, t := range tg.Tasks {
 			ok, err := di.handle(TVPair{TaskName: t, Variant: pair.Variant}, activationInfo, generatedVariants, false)
+
+			// if !ok {
+			//     di.included[pair] = false
+			//     return false, errors.Wrapf(err, "task group '%s' in variant '%s' contains unschedulable task '%s'", pair.TaskName, pair.Variant, t)
+			// }
+
+			// If there are some tasks in the task group that cannot be
+			// scheduled but others can, add only those tasks within task group
+			// that are schedulable (but not the entire task group).
+			di.included[TVPair{TaskName: t, Variant: pair.Variant}] = ok
 			if !ok {
+				// kim: TODO: verify that it's okay to not error out here for
+				// ok=false and no error.
 				di.included[pair] = false
+			}
+			if err != nil {
 				return false, errors.Wrapf(err, "task group '%s' in variant '%s' contains unschedulable task '%s'", pair.TaskName, pair.Variant, t)
 			}
+			// TODO (DEVPROD-4739): delete this debug log after confirming that
+			// it doesn't cause issues.
+			grip.DebugWhen(!ok && err == nil, message.Fields{
+				"message":              "a task in a task group is disabled",
+				"ticket":               "DEVPROD-4739",
+				"task_group_task_name": t,
+				"build_variant":        pair.Variant,
+				"task_group":           tg.Name,
+				"project_identifier":   di.Project.Identifier,
+			})
 		}
 		return true, nil
 	}
@@ -97,13 +122,25 @@ func (di *dependencyIncluder) handle(pair TVPair, activationInfo *specificActiva
 	}
 
 	if bvt.SkipOnRequester(di.requester) {
+		// TODO (DEVPROD-XXX): it seems like this should not include the task,
+		// but should not error either. When checking dependencies, it simply
+		// skips tasks whose requester doesn't apply, so tasks should be treated
+		// much the same.
 		di.included[pair] = false
 		return false, errors.Errorf("task '%s' in variant '%s' cannot be run for a '%s'", pair.TaskName, pair.Variant, di.requester)
 	}
 
 	if bvt.IsDisabled() {
 		di.included[pair] = false
-		return false, errors.Errorf("task '%s' in variant '%s' has been disabled", pair.TaskName, pair.Variant)
+		// kim: NOTE: this is the error line because some of the tasks in the
+		// task group are disabled. This should be allowed, but we need to
+		// verify that returning no error here is okay. Need to make sure this
+		// isn't causing a conflict with something else.
+		// return false, errors.Errorf("task '%s' in variant '%s' has been disabled", pair.TaskName, pair.Variant)
+
+		// kim: NOTE: If a task is disabled, don't include it but it's also not
+		// an error.
+		return false, nil
 	}
 
 	di.included[pair] = true

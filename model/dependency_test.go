@@ -63,6 +63,10 @@ func TestDependencyBSON(t *testing.T) {
 	})
 }
 
+// kim: TODO: add test for IncludeDependencies when a task group has a mix of
+// vanilla and disabled tasks.
+// kim: TODO: add test for IncludeDependencies when a task group has a mix of
+// vanilla and patch_only tasks.
 func TestIncludeDependencies(t *testing.T) {
 	Convey("With a project task config with cross-variant dependencies", t, func() {
 		parserProject := &ParserProject{

@@ -968,6 +968,9 @@ func TestSchedulePatchActivatesInactiveTasks(t *testing.T) {
         {
           "name": "shouldDependOnVersionGen",
           "activate": false
+        },
+        {
+          "name": "some_task_group",
         }
       ],
       "activate": false
@@ -1022,6 +1025,50 @@ func TestSchedulePatchActivatesInactiveTasks(t *testing.T) {
           "name": "dependencyTask"
         }
       ]
+    },
+    {
+      "name": "tg_task1",
+	  "tags": ["tg_task"],
+	  "disable": true,
+      "commands": [
+        {
+          "command": "shell.exec",
+          "params": {
+            "script": "echo noop"
+          }
+        }
+      ]
+	},
+    {
+      "name": "tg_task2",
+	  "tags": ["tg_task"],
+      "commands": [
+        {
+          "command": "shell.exec",
+          "params": {
+            "script": "echo noop"
+          }
+        }
+      ]
+    },
+    {
+      "name": "tg_task333",
+	  "tags": ["tg_task"],
+      "commands": [
+        {
+          "command": "shell.exec",
+          "params": {
+            "script": "echo noop"
+          }
+        }
+      ]
+	}
+  ],
+  "task_groups": [
+    {
+	  "name": "some_task_group",
+      "max_hosts": 2,
+      "tasks": [".tg_task"]
     }
   ]
 }
@@ -1201,7 +1248,9 @@ tasks:
 	// this task has two dependencies which should also be activated
 	handler = makeSchedulePatchHandler(env).(*schedulePatchHandler)
 	body = patchTasks{
-		Variants: []variant{{Id: "testBV4", Tasks: []string{"dependencyTask"}}},
+		Variants: []variant{
+			{Id: "testBV4", Tasks: []string{"dependencyTask"}},
+		},
 	}
 	jsonBody, err = json.Marshal(&body)
 	assert.NoError(t, err)
@@ -1221,4 +1270,33 @@ tasks:
 			assert.True(t, foundTask.Activated)
 		}
 	}
+
+	// Check that scheduling a task group works.
+	handler = makeSchedulePatchHandler(env).(*schedulePatchHandler)
+	body = patchTasks{
+		Variants: []variant{
+			{Id: "testBV1", Tasks: []string{"some_task_group"}},
+		},
+	}
+	jsonBody, err = json.Marshal(&body)
+	assert.NoError(t, err)
+	req, err = http.NewRequest(http.MethodPost, "", bytes.NewBuffer(jsonBody))
+	req = gimlet.SetURLVars(req, map[string]string{"patch_id": unfinalized.Id.Hex()})
+	assert.NoError(t, err)
+	assert.NoError(t, handler.Parse(ctx, req))
+	resp = handler.Run(ctx)
+
+	respVersion = resp.Data().(model.APIVersion)
+	assert.Equal(t, unfinalized.Id.Hex(), *respVersion.Id)
+	assert.Equal(t, description, *respVersion.Message)
+	tasks, err = task.Find(task.ByVersion(*respVersion.Id))
+	assert.NoError(t, err)
+	numTGTasksScheduled := 0
+	for _, foundTask := range tasks {
+		if foundTask.BuildVariant == "testBV1" && foundTask.TaskGroup == "some_task_group" {
+			assert.True(t, foundTask.Activated)
+			numTGTasksScheduled++
+		}
+	}
+	assert.Equal(t, 2, numTGTasksScheduled, "should have scheduled all task group tasks, except not the disabled one")
 }
