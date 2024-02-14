@@ -1274,6 +1274,7 @@ func (c *awsClientMock) GetInstanceInfo(ctx context.Context, id string) (*types.
 	instance.InstanceType = "m3.4xlarge"
 	instance.LaunchTime = aws.Time(time.Now())
 	instance.PublicDnsName = aws.String("public_dns_name")
+	instance.PublicIpAddress = aws.String("127.0.0.1")
 	instance.PrivateIpAddress = aws.String(MockIPV4)
 	ipv6 := types.InstanceIpv6Address{}
 	ipv6.Ipv6Address = aws.String(MockIPV6)

@@ -568,7 +568,7 @@ func (m *ec2Manager) setNoExpiration(ctx context.Context, h *host.Host, noExpira
 			Resources: resources,
 			Tags: []types.Tag{
 				{
-					Key:   aws.String("expire-on"),
+					Key:   aws.String(evergreen.TagExpireOn),
 					Value: aws.String(expireOnValue),
 				},
 			},
@@ -579,8 +579,35 @@ func (m *ec2Manager) setNoExpiration(ctx context.Context, h *host.Host, noExpira
 	}
 
 	if noExpiration {
+		instance, err := m.client.GetInstanceInfo(ctx, h.Id)
+		grip.Error(message.WrapError(err, message.Fields{
+			"message":    "could not get instance info for assigning persistent DNS name",
+			"dashboard":  "evergreen sleep schedule health",
+			"host_id":    h.Id,
+			"started_by": h.StartedBy,
+		}))
+		if instance != nil {
+			grip.Error(message.WrapError(setHostPersistentDNSName(ctx, m.env, h, utility.FromStringPtr(instance.PublicIpAddress), m.client), message.Fields{
+				"message":         "could not update host's persistent DNS name",
+				"op":              "upsert",
+				"dashboard":       "evergreen sleep schedule health",
+				"host_id":         h.Id,
+				"started_by":      h.StartedBy,
+				"instance_status": ec2StatusToEvergreenStatus(instance.State.Name),
+			}))
+		}
+
 		return errors.Wrapf(h.MarkShouldNotExpire(ctx, expireOnValue), "marking host should not expire in DB for host '%s'", h.Id)
 	}
+
+	grip.Error(message.WrapError(deleteHostPersistentDNSName(ctx, m.env, h, m.client), message.Fields{
+		"message":    "could not delete host's persistent DNS name",
+		"op":         "delete",
+		"dashboard":  "evergreen sleep schedule health",
+		"host_id":    h.Id,
+		"started_by": h.StartedBy,
+	}))
+
 	return errors.Wrapf(h.MarkShouldExpire(ctx, expireOnValue), "marking host should in DB for host '%s'", h.Id)
 }
 
