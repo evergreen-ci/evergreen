@@ -88,7 +88,7 @@ func (di *dependencyIncluder) handle(pair TVPair, activationInfo *specificActiva
 
 			// If there are some tasks in the task group that cannot be
 			// scheduled but others can, add only those tasks within task group
-			// that are schedulable (but not the entire task group).
+			// that are schedulable.
 			di.included[TVPair{TaskName: t, Variant: pair.Variant}] = ok
 			if !ok {
 				// kim: TODO: verify that it's okay to not error out here for

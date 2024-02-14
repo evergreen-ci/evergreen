@@ -303,4 +303,45 @@ func TestIncludeDependencies(t *testing.T) {
 		So(pairs, ShouldHaveLength, 2)
 		So(initDep, ShouldBeIn, pairs)
 	})
+	Convey("With a disabled task", t, func() {
+		parserProject := &ParserProject{
+			Tasks: []parserTask{
+				{Name: "a", Disable: utility.TruePtr()},
+			},
+			BuildVariants: []parserBV{
+				{Name: "bv", Tasks: []parserBVTaskUnit{{Name: "a"}}},
+			},
+		}
+		p, err := TranslateProject(parserProject)
+		So(err, ShouldBeNil)
+		So(p, ShouldNotBeNil)
+
+		pair := TVPair{TaskName: "a", Variant: "bv"}
+		pairs, _ := IncludeDependencies(p, []TVPair{pair}, evergreen.PatchVersionRequester, nil)
+		So(pairs, ShouldBeEmpty)
+	})
+	Convey("With a task group that has a subset of its tasks disabled", t, func() {
+		parserProject := &ParserProject{
+			Tasks: []parserTask{
+				{Name: "a"},
+				{Name: "b"},
+				{Name: "c", Disable: utility.TruePtr()},
+			},
+			TaskGroups: []parserTaskGroup{
+				{Name: "task-group", MaxHosts: 2, Tasks: []string{"a", "b", "c"}},
+			},
+			BuildVariants: []parserBV{
+				{Name: "bv-with-group", Tasks: []parserBVTaskUnit{{Name: "task-group"}}},
+			},
+		}
+		p, err := TranslateProject(parserProject)
+		So(err, ShouldBeNil)
+		So(p, ShouldNotBeNil)
+
+		tgTaskPair := TVPair{TaskName: "task-group", Variant: "bv-with-group"}
+		pairs, _ := IncludeDependencies(p, []TVPair{tgTaskPair}, evergreen.PatchVersionRequester, nil)
+		So(pairs, ShouldHaveLength, 2)
+		So(pairs, ShouldNotContain, tgTaskPair)
+		So(pairs, ShouldEqual, []TVPair{{TaskName: "a", Variant: "bv-with-group"}, {TaskName: "b", Variant: "bv-with-group"}})
+	})
 }
