@@ -84,6 +84,10 @@ func RedactFieldsInMap(data map[string]interface{}, fieldsToRedact []string) {
 			continue
 		}
 
+		// Handle nil values.
+		if value == nil {
+			continue
+		}
 		// If the value is a map, recursively redact fields within it.
 		if reflect.TypeOf(value).Kind() == reflect.Map {
 			if subMap, ok := value.(map[string]interface{}); ok {
