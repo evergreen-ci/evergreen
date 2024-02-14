@@ -27,7 +27,7 @@ func GenerateSecretFields(cfg *config.Config) error {
 	}
 
 	// Sort the fields to ensure consistent output.
-	sort.Sort(sort.StringSlice(fields))
+	sort.Strings(fields)
 
 	return generateRedactedFieldsFile(fields)
 }
