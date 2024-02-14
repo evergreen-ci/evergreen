@@ -2100,7 +2100,7 @@ func ClearAndResetStrandedContainerTask(ctx context.Context, settings *evergreen
 		return nil
 	}
 
-	if err := endAndResetSystemFailedTask(ctx, settings, t, evergreen.TaskDescriptionStranded); err != nil {
+	if err := EndAndResetSystemFailedTask(ctx, settings, t, evergreen.TaskDescriptionStranded); err != nil {
 		return errors.Wrapf(err, "resetting stranded task '%s'", t.Id)
 	}
 
@@ -2134,7 +2134,7 @@ func ClearAndResetStrandedHostTask(ctx context.Context, settings *evergreen.Sett
 		return errors.Wrapf(err, "clearing running task from host '%s'", h.Id)
 	}
 
-	if err := endAndResetSystemFailedTask(ctx, settings, t, evergreen.TaskDescriptionStranded); err != nil {
+	if err := EndAndResetSystemFailedTask(ctx, settings, t, evergreen.TaskDescriptionStranded); err != nil {
 		return errors.Wrapf(err, "resetting stranded task '%s'", t.Id)
 	}
 
@@ -2162,7 +2162,7 @@ func FixStaleTask(ctx context.Context, settings *evergreen.Settings, t *task.Tas
 			return errors.Wrapf(err, "finishing stale aborted task '%s'", t.Id)
 		}
 	} else {
-		if err := endAndResetSystemFailedTask(ctx, settings, t, failureDesc); err != nil {
+		if err := EndAndResetSystemFailedTask(ctx, settings, t, failureDesc); err != nil {
 			if !t.IsPartOfDisplay() {
 				return errors.Wrap(err, "resetting heartbeat task")
 			}
@@ -2207,10 +2207,10 @@ func finishStaleAbortedTask(ctx context.Context, settings *evergreen.Settings, t
 	return nil
 }
 
-// endAndResetSystemFailedTask finishes and resets a task that has encountered a system failure
+// EndAndResetSystemFailedTask finishes and resets a task that has encountered a system failure
 // such as being stranded on a terminated host/container or failing to send a
 // heartbeat.
-func endAndResetSystemFailedTask(ctx context.Context, settings *evergreen.Settings, t *task.Task, description string) error {
+func EndAndResetSystemFailedTask(ctx context.Context, settings *evergreen.Settings, t *task.Task, description string) error {
 	if t.IsFinished() {
 		return nil
 	}
@@ -2219,7 +2219,7 @@ func endAndResetSystemFailedTask(ctx context.Context, settings *evergreen.Settin
 	// TODO: DEVPROD-4220 respects the commit queue retries for all tasks. Further clean up will just remove this logic.
 	maxExecutionTask := t.Execution >= settings.CommitQueue.MaxSystemFailedTaskRetries
 
-	if unschedulableTask || maxExecutionTask {
+	if unschedulableTask || maxExecutionTask || t.IsStuckTask() {
 		failureDetails := task.GetSystemFailureDetails(description)
 		// If the task has already exceeded the unschedulable threshold, we
 		// don't want to restart it, so just mark it as finished.

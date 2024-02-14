@@ -836,7 +836,7 @@ func TestAssignNextAvailableTaskWithDispatcherSettingsVersionLegacy(t *testing.T
 			Version: evergreen.DispatcherVersionLegacy,
 		}
 
-		colls := []string{distro.Collection, host.Collection, task.Collection, model.TaskQueuesCollection, model.ProjectRefCollection}
+		colls := []string{distro.Collection, host.Collection, task.Collection, model.TaskQueuesCollection, model.ProjectRefCollection, build.Collection, model.VersionCollection}
 		require.NoError(t, db.ClearCollections(colls...))
 		defer func() {
 			assert.NoError(t, db.ClearCollections(colls...))
@@ -989,6 +989,65 @@ func TestAssignNextAvailableTaskWithDispatcherSettingsVersionLegacy(t *testing.T
 		Convey("a tasks queue with a task that does not exist should continue", func() {
 			taskQueue.Queue = []model.TaskQueueItem{{Id: "notatask"}}
 			So(taskQueue.Save(), ShouldBeNil)
+			t, shouldTeardown, err := assignNextAvailableTask(ctx, env, taskQueue, model.NewTaskDispatchService(time.Minute), &theHostWhoCanBoastTheMostRoast, details)
+			So(err, ShouldBeNil)
+			So(shouldTeardown, ShouldBeFalse)
+			So(t, ShouldBeNil)
+		})
+		Convey("a task's NumNextTaskDispatches should be increased by 1", func() {
+			taskQueue.Queue = []model.TaskQueueItem{{Id: "stillOkayTask"}}
+			So(taskQueue.Save(), ShouldBeNil)
+			stillOkayTask := task.Task{
+				Id:                    "stillOkayTask",
+				Status:                evergreen.TaskUndispatched,
+				Activated:             true,
+				NumNextTaskDispatches: 4,
+				BuildId:               "b1",
+				Version:               versionId,
+				HostId:                theHostWhoCanBoastTheMostRoast.Id,
+			}
+			So(stillOkayTask.Insert(), ShouldBeNil)
+			testBuild := build.Build{
+				Id:      "b1",
+				Version: versionId,
+			}
+			require.NoError(t, testBuild.Insert())
+
+			testVersion := model.Version{
+				Id: versionId,
+			}
+			require.NoError(t, testVersion.Insert())
+			t, shouldTeardown, err := assignNextAvailableTask(ctx, env, taskQueue, model.NewTaskDispatchService(time.Minute), &theHostWhoCanBoastTheMostRoast, details)
+			So(err, ShouldBeNil)
+			So(shouldTeardown, ShouldBeFalse)
+			So(t, ShouldNotBeNil)
+			taskBFromDb, err := task.FindOneId(stillOkayTask.Id)
+			So(err, ShouldBeNil)
+			So(taskBFromDb, ShouldNotBeNil)
+			So(taskBFromDb.IsStuckTask(), ShouldBeTrue)
+		})
+		Convey("a stuck tasks should not error", func() {
+			taskQueue.Queue = []model.TaskQueueItem{{Id: "stuckTask"}}
+			So(taskQueue.Save(), ShouldBeNil)
+			stuckTask := task.Task{
+				Id:                    "stuckTask",
+				Status:                evergreen.TaskUndispatched,
+				NumNextTaskDispatches: 5,
+				BuildId:               "b1",
+				Version:               versionId,
+				HostId:                theHostWhoCanBoastTheMostRoast.Id,
+			}
+			So(stuckTask.Insert(), ShouldBeNil)
+			testBuild := build.Build{
+				Id:      "b1",
+				Version: versionId,
+			}
+			require.NoError(t, testBuild.Insert())
+
+			testVersion := model.Version{
+				Id: versionId,
+			}
+			require.NoError(t, testVersion.Insert())
 			t, shouldTeardown, err := assignNextAvailableTask(ctx, env, taskQueue, model.NewTaskDispatchService(time.Minute), &theHostWhoCanBoastTheMostRoast, details)
 			So(err, ShouldBeNil)
 			So(shouldTeardown, ShouldBeFalse)

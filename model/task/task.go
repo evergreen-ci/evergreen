@@ -303,6 +303,10 @@ type Task struct {
 	// HasAnnotations indicates whether there exist task annotations with this task's
 	// execution and id that have a populated Issues key
 	HasAnnotations bool `bson:"has_annotations" json:"has_annotations"`
+
+	// NumNextTaskDispatches is the number of times the task has been dispatched to run on a
+	// host or in a container. This is used to determine if the task seems to be stuck.
+	NumNextTaskDispatches int `bson:"num_next_task_dispatches" json:"num_next_task_dispatches"`
 }
 
 // GeneratedJSONFiles represent files used by a task for generate.tasks to update the project YAML.
@@ -499,12 +503,17 @@ func (t *Task) IsDispatchable() bool {
 // IsHostDispatchable returns true if the task should run on a host and can be
 // dispatched.
 func (t *Task) IsHostDispatchable() bool {
-	return t.IsHostTask() && t.WillRun()
+	return t.IsHostTask() && t.WillRun() && !t.IsStuckTask()
 }
 
 // IsHostTask returns true if it's a task that runs on hosts.
 func (t *Task) IsHostTask() bool {
 	return (t.ExecutionPlatform == "" || t.ExecutionPlatform == ExecutionPlatformHost) && !t.DisplayOnly
+}
+
+// IsStuckTask returns true if the task has been dispatched over a set number of times.
+func (t *Task) IsStuckTask() bool {
+	return t.NumNextTaskDispatches >= evergreen.MaxTaskDispatchAttempts
 }
 
 // IsContainerTask returns true if it's a task that runs on containers.

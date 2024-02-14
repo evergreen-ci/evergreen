@@ -120,6 +120,7 @@ var (
 	BuildVariantDisplayNameKey    = bsonutil.MustHaveTag(Task{}, "BuildVariantDisplayName")
 	IsEssentialToSucceedKey       = bsonutil.MustHaveTag(Task{}, "IsEssentialToSucceed")
 	HasAnnotationsKey             = bsonutil.MustHaveTag(Task{}, "HasAnnotations")
+	NumNextTaskDispatchesKey      = bsonutil.MustHaveTag(Task{}, "NumNextTaskDispatches")
 )
 
 var (
@@ -2837,6 +2838,16 @@ func SetHasAnnotations(taskId string, execution int) error {
 			HasAnnotationsKey: true,
 		}})
 	return errors.Wrapf(err, "marking task '%s' as having annotations", taskId)
+}
+
+// SetNumNextTaskDispatches sets the next task count for a task.
+func SetNumNextTaskDispatches(taskId string, execution int, count int) error {
+	err := UpdateOne(
+		ByIdAndExecution(taskId, execution),
+		bson.M{"$set": bson.M{
+			NumNextTaskDispatchesKey: count,
+		}})
+	return errors.Wrapf(err, "setting next task count for task '%s'", taskId)
 }
 
 // UnsetHasAnnotations unsets a task's HasAnnotations flag, indicating

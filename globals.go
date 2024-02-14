@@ -130,7 +130,8 @@ const (
 	// TaskDescriptionStranded indicates that a task failed because its
 	// underlying runtime environment (i.e. container or host) encountered an
 	// issue. For example, if a host is terminated while the task is still
-	// running, the task is considered stranded.
+	// running, or if the agent and keeps requesting the same task over and over
+	// again, the task is considered stranded.
 	TaskDescriptionStranded = "stranded"
 	// TaskDescriptionNoResults indicates that a task failed because it did not
 	// post any test results.
@@ -186,6 +187,10 @@ const (
 	MaxTaskExecution = 9
 	// MaxAutomaticRestarts is the maximum number of automatic restarts allowed for a task
 	MaxAutomaticRestarts = 1
+
+	// MaxTaskDispatchAttempts is the maximum number of times a task can be
+	// dispatched before it is considered to be in a bad state.
+	MaxTaskDispatchAttempts = 5
 
 	// maximum task priority
 	MaxTaskPriority = 100
