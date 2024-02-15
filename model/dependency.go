@@ -112,10 +112,10 @@ func (di *dependencyIncluder) handle(pair TVPair, activationInfo *specificActiva
 	}
 
 	if bvt.SkipOnRequester(di.requester) {
-		// TODO (DEVPROD-XXX): it seems like this should not include the task,
+		// TODO (DEVPROD-4776): it seems like this should not include the task,
 		// but should not error either. When checking dependencies, it simply
-		// skips tasks whose requester doesn't apply, so tasks should be treated
-		// much the same.
+		// skips tasks whose requester doesn't apply, so it should probably just
+		// return false and no error here.
 		di.included[pair] = false
 		return false, errors.Errorf("task '%s' in variant '%s' cannot be run for a '%s'", pair.TaskName, pair.Variant, di.requester)
 	}
