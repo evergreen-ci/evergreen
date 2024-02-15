@@ -68,13 +68,9 @@ var redactedFields = []string{
 	return err
 }
 
-func isFieldRedacted(fieldName string, fieldsToRedact []string) bool {
-	for _, field := range fieldsToRedact {
-		if field == fieldName {
-			return true
-		}
-	}
-	return false
+func isFieldRedacted(fieldName string, fieldsToRedact map[string]bool) bool {
+	_, ok := fieldsToRedact[fieldName]
+	return ok
 }
 
 // RedactFieldsInMap recursively searches for and redacts fields in a map.
@@ -88,6 +84,13 @@ func RedactFieldsInMap(data map[string]interface{}, fieldsToRedact []string) map
 		[]util.KeyValuePair{},
 	}
 	err := util.DeepCopy(data, &dataCopy, registeredTypes)
+
+	// Transform fieldsToRedact into a map for faster lookups.
+	fieldsToRedactMap := make(map[string]bool)
+	for _, field := range fieldsToRedact {
+		fieldsToRedactMap[field] = true
+	}
+
 	if err != nil {
 		// If theres an error copying the data, log it and return an empty map.
 		grip.Error(message.WrapError(err, message.Fields{
@@ -95,12 +98,12 @@ func RedactFieldsInMap(data map[string]interface{}, fieldsToRedact []string) map
 		}))
 		return dataCopy
 	}
-	recursivelyRedactFieldsInMap(dataCopy, fieldsToRedact)
+	recursivelyRedactFieldsInMap(dataCopy, fieldsToRedactMap)
 
 	return dataCopy
 }
 
-func recursivelyRedactFieldsInMap(data map[string]interface{}, fieldsToRedact []string) {
+func recursivelyRedactFieldsInMap(data map[string]interface{}, fieldsToRedact map[string]bool) {
 	for key, value := range data {
 		// If the current key matches a field that should be redacted, redact it.
 		if isFieldRedacted(key, fieldsToRedact) {
