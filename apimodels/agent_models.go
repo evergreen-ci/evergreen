@@ -144,9 +144,8 @@ type CreateHost struct {
 	Region         string      `mapstructure:"region" json:"region" yaml:"region" plugin:"expand"`
 	SecurityGroups []string    `mapstructure:"security_group_ids" json:"security_group_ids" yaml:"security_group_ids" plugin:"expand"`
 	Subnet         string      `mapstructure:"subnet_id" json:"subnet_id" yaml:"subnet_id" plugin:"expand"`
-	// kim: TODO: test
-	Tenancy      string `mapstructure:"tenancy" json:"tenancy" yaml:"tenancy" plugin:"expand"`
-	UserdataFile string `mapstructure:"userdata_file" json:"userdata_file" yaml:"userdata_file" plugin:"expand"`
+	Tenancy        string      `mapstructure:"tenancy" json:"tenancy" yaml:"tenancy" plugin:"expand"`
+	UserdataFile   string      `mapstructure:"userdata_file" json:"userdata_file" yaml:"userdata_file" plugin:"expand"`
 	// UserdataCommand is the content of the userdata file. Users can't actually
 	// set this directly, instead they pass in a userdata file.
 	UserdataCommand string `json:"userdata_command" yaml:"userdata_command" plugin:"expand"`
