@@ -7,6 +7,9 @@ import (
 	"sort"
 
 	"github.com/99designs/gqlgen/codegen/config"
+	"github.com/evergreen-ci/evergreen/util"
+	"github.com/mongodb/grip"
+	"github.com/mongodb/grip/message"
 )
 
 // GenerateSecretFields generates a file that contains a list of fields that should be redacted in logs.
@@ -76,7 +79,28 @@ func isFieldRedacted(fieldName string, fieldsToRedact []string) bool {
 
 // RedactFieldsInMap recursively searches for and redacts fields in a map.
 // Assumes map structure like map[string]interface{} where interface{} can be another map, a slice, or a basic datatype.
-func RedactFieldsInMap(data map[string]interface{}, fieldsToRedact []string) {
+func RedactFieldsInMap(data map[string]interface{}, fieldsToRedact []string) map[string]interface{} {
+	dataCopy := map[string]interface{}{}
+	registeredTypes := []interface{}{
+		map[interface{}]interface{}{},
+		map[string]interface{}{},
+		[]interface{}{},
+		[]util.KeyValuePair{},
+	}
+	err := util.DeepCopy(data, &dataCopy, registeredTypes)
+	if err != nil {
+		// If theres an error copying the data, log it and return an empty map.
+		grip.Error(message.WrapError(err, message.Fields{
+			"message": "failed to deep copy request variables",
+		}))
+		return dataCopy
+	}
+	recursivelyRedactFieldsInMap(dataCopy, fieldsToRedact)
+
+	return dataCopy
+}
+
+func recursivelyRedactFieldsInMap(data map[string]interface{}, fieldsToRedact []string) {
 	for key, value := range data {
 		// If the current key matches a field that should be redacted, redact it.
 		if isFieldRedacted(key, fieldsToRedact) {
@@ -91,7 +115,7 @@ func RedactFieldsInMap(data map[string]interface{}, fieldsToRedact []string) {
 		// If the value is a map, recursively redact fields within it.
 		if reflect.TypeOf(value).Kind() == reflect.Map {
 			if subMap, ok := value.(map[string]interface{}); ok {
-				RedactFieldsInMap(subMap, fieldsToRedact)
+				recursivelyRedactFieldsInMap(subMap, fieldsToRedact)
 			}
 		}
 
@@ -102,7 +126,7 @@ func RedactFieldsInMap(data map[string]interface{}, fieldsToRedact []string) {
 				elem := sliceVal.Index(i).Interface()
 				if reflect.TypeOf(elem).Kind() == reflect.Map {
 					if elemMap, ok := elem.(map[string]interface{}); ok {
-						RedactFieldsInMap(elemMap, fieldsToRedact)
+						recursivelyRedactFieldsInMap(elemMap, fieldsToRedact)
 					}
 				}
 			}

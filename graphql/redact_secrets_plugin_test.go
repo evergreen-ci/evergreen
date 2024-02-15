@@ -14,8 +14,8 @@ func TestRedactFieldsInMap(t *testing.T) {
 			"servicePassword": "servicePassword",
 			"vars":            "vars",
 		}
-		RedactFieldsInMap(fields, []string{})
-		for _, value := range fields {
+		redactedFields := RedactFieldsInMap(fields, []string{})
+		for _, value := range redactedFields {
 			require.NotEqual(t, "REDACTED", value, "Expected no fields to be redacted")
 		}
 	})
@@ -26,15 +26,15 @@ func TestRedactFieldsInMap(t *testing.T) {
 			"servicePassword": "someServicePassword",
 			"someOtherField":  "someOtherField",
 		}
-		RedactFieldsInMap(fields, []string{
+		redactedFields := RedactFieldsInMap(fields, []string{
 			"publicKey",
 			"secret",
 			"servicePassword",
 		})
-		require.Equal(t, "REDACTED", fields["publicKey"], "Expected publicKey to be redacted")
-		require.Equal(t, "REDACTED", fields["secret"], "Expected secret to be redacted")
-		require.Equal(t, "REDACTED", fields["servicePassword"], "Expected servicePassword to be redacted")
-		require.Equal(t, "someOtherField", fields["someOtherField"], "Expected someOtherField to be unchanged")
+		require.Equal(t, "REDACTED", redactedFields["publicKey"], "Expected publicKey to be redacted")
+		require.Equal(t, "REDACTED", redactedFields["secret"], "Expected secret to be redacted")
+		require.Equal(t, "REDACTED", redactedFields["servicePassword"], "Expected servicePassword to be redacted")
+		require.Equal(t, "someOtherField", redactedFields["someOtherField"], "Expected someOtherField to be unchanged")
 	})
 	t.Run("RedactedFieldsInNestedMap", func(t *testing.T) {
 		fields := map[string]interface{}{
@@ -44,11 +44,11 @@ func TestRedactFieldsInMap(t *testing.T) {
 				"service": "someService",
 			},
 		}
-		RedactFieldsInMap(fields, []string{
+		redactedFields := RedactFieldsInMap(fields, []string{
 			"secret",
 		})
-		require.Equal(t, "somePublicKey", fields["publicKey"], "Expected publicKey to be unchanged")
-		innerStruct := fields["someInnerStruct"].(map[string]interface{})
+		require.Equal(t, "somePublicKey", redactedFields["publicKey"], "Expected publicKey to be unchanged")
+		innerStruct := redactedFields["someInnerStruct"].(map[string]interface{})
 		require.NotNil(t, innerStruct, "Expected someInnerStruct to be not nil")
 		require.Equal(t, "REDACTED", innerStruct["secret"], "Expected secret to be redacted")
 		require.Equal(t, "someService", innerStruct["service"], "Expected service to be unchanged")
@@ -65,11 +65,11 @@ func TestRedactFieldsInMap(t *testing.T) {
 				},
 			},
 		}
-		RedactFieldsInMap(fields, []string{
+		redactedFields := RedactFieldsInMap(fields, []string{
 			"secret",
 		})
-		require.Equal(t, "somePublicKey", fields["publicKey"], "Expected publicKey to be unchanged")
-		someSlice := fields["someSlice"].([]interface{})
+		require.Equal(t, "somePublicKey", redactedFields["publicKey"], "Expected publicKey to be unchanged")
+		someSlice := redactedFields["someSlice"].([]interface{})
 		require.NotNil(t, someSlice, "Expected someSlice to be not nil")
 		value1 := someSlice[0].(map[string]interface{})
 		require.Equal(t, "REDACTED", value1["secret"], "Expected secret to be redacted")

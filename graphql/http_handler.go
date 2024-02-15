@@ -10,7 +10,6 @@ import (
 
 	"github.com/99designs/gqlgen/graphql"
 	"github.com/99designs/gqlgen/graphql/handler"
-	"github.com/evergreen-ci/evergreen/util"
 	"github.com/evergreen-ci/gimlet"
 	"github.com/mongodb/grip"
 	"github.com/mongodb/grip/message"
@@ -35,19 +34,7 @@ func Handler(apiURL string) func(w http.ResponseWriter, r *http.Request) {
 		}),
 		otelgqlgen.WithRequestVariablesAttributesBuilder(
 			otelgqlgen.RequestVariablesBuilderFunc(func(requestVariables map[string]interface{}) []attribute.KeyValue {
-				// Deep clone the request variables to avoid modifying the original map.
-				redactedRequestVariables := map[string]interface{}{}
-				registeredTypes := []interface{}{
-					map[string]interface{}{},
-				}
-				// We need to deep copy the request variables to avoid modifying the original map. Since it is passed on to the next middleware.
-				if err := util.DeepCopy(requestVariables, &redactedRequestVariables, registeredTypes); err != nil {
-					grip.Error(message.WrapError(err, message.Fields{
-						"message": "failed to deep copy request variables",
-					}))
-					return nil
-				}
-				RedactFieldsInMap(redactedRequestVariables, redactedFields)
+				redactedRequestVariables := RedactFieldsInMap(requestVariables, redactedFields)
 				variables := make([]attribute.KeyValue, 0, len(redactedRequestVariables))
 
 				for k, v := range redactedRequestVariables {
@@ -88,7 +75,7 @@ func Handler(apiURL string) func(w http.ResponseWriter, r *http.Request) {
 			queryPath = fieldCtx.Path().String()
 			args = fieldCtx.Args
 		}
-		RedactFieldsInMap(args, redactedFields)
+		args = RedactFieldsInMap(args, redactedFields)
 		if err != nil && !strings.HasSuffix(err.Error(), context.Canceled.Error()) {
 			grip.Error(message.WrapError(err, message.Fields{
 				"path":    "/graphql/query",
