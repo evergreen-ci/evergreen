@@ -3,7 +3,6 @@ package graphql
 import (
 	"context"
 	"errors"
-	"fmt"
 	"net/http"
 	"runtime/debug"
 	"strings"
@@ -35,13 +34,7 @@ func Handler(apiURL string) func(w http.ResponseWriter, r *http.Request) {
 		otelgqlgen.WithRequestVariablesAttributesBuilder(
 			otelgqlgen.RequestVariablesBuilderFunc(func(requestVariables map[string]interface{}) []attribute.KeyValue {
 				redactedRequestVariables := RedactFieldsInMap(requestVariables, redactedFields)
-				variables := make([]attribute.KeyValue, 0, len(redactedRequestVariables))
-
-				for k, v := range redactedRequestVariables {
-					variables = append(variables, attribute.String(fmt.Sprintf("%s.%s", requestVariablesPrefix, k), fmt.Sprintf("%+v", v)))
-
-				}
-				return variables
+				return otelgqlgen.RequestVariables(redactedRequestVariables)
 			}),
 		),
 	))
