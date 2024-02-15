@@ -178,7 +178,7 @@ type ProjectEventSettings {
   githubWebhooksEnabled: Boolean!
   projectRef: Project
   subscriptions: [GeneralSubscription!]
-  vars: ProjectVars 
+  vars: ProjectVars
 }
 
 type ProjectAlias {
