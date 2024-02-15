@@ -375,6 +375,10 @@ func makeEC2IntentHost(ctx context.Context, env evergreen.Environment, taskID, u
 		ec2Settings.SecurityGroupIDs = append(ec2Settings.SecurityGroupIDs, evergreen.GetEnvironment().Settings().Providers.AWS.DefaultSecurityGroup)
 	}
 
+	if createHost.Tenancy != "" {
+		ec2Settings.Tenancy = createHost.Tenancy
+	}
+
 	ec2Settings.IPv6 = createHost.IPv6
 	ec2Settings.IsVpc = true // task-spawned hosts do not support ec2 classic
 

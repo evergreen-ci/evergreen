@@ -16,10 +16,6 @@ import (
 	"github.com/stretchr/testify/suite"
 )
 
-const (
-	userdataFileName = "TestPopulateUserdata.sh"
-)
-
 type createHostSuite struct {
 	params map[string]interface{}
 	cmd    createHost
@@ -38,9 +34,12 @@ func (s *createHostSuite) SetupSuite() {
 	var err error
 	s.comm = client.NewMock("http://localhost.com")
 	s.conf = &internal.TaskConfig{
-		Expansions: util.Expansions{"subnet_id": "subnet-123456"},
-		Task:       task.Task{Id: "mock_id", Secret: "mock_secret"},
-		Project:    model.Project{}}
+		Expansions: util.Expansions{
+			"subnet_id": "subnet-123456",
+			"tenancy":   "dedicated",
+		},
+		Task:    task.Task{Id: "mock_id", Secret: "mock_secret"},
+		Project: model.Project{}}
 	s.logger, err = s.comm.GetLoggerProducer(context.Background(), &s.conf.Task, nil)
 	s.Require().NoError(err)
 }
@@ -50,6 +49,7 @@ func (s *createHostSuite) SetupTest() {
 		"distro":    "myDistro",
 		"scope":     "task",
 		"subnet_id": "${subnet_id}",
+		"tenancy":   "${tenancy}",
 	}
 	s.cmd = createHost{}
 }
@@ -86,11 +86,13 @@ func (s *createHostSuite) TestParseFromFile() {
 		},
 	}
 	path := filepath.Join(tmpdir, "example.json")
+	const tenancy = "dedicated"
 	fileContent := map[string]interface{}{
 		"distro":           "myDistro",
 		"scope":            "task",
 		"subnet_id":        "${subnet_id}",
 		"ebs_block_device": ebsDevice,
+		"tenancy":          "${tenancy}",
 	}
 	//parse from JSON file
 	s.NoError(utility.WriteJSONFile(path, fileContent))
@@ -106,6 +108,7 @@ func (s *createHostSuite) TestParseFromFile() {
 	s.Equal("myDistro", s.cmd.CreateHost.Distro)
 	s.Equal("task", s.cmd.CreateHost.Scope)
 	s.Equal("subnet-123456", s.cmd.CreateHost.Subnet)
+	s.Equal("dedicated", s.cmd.CreateHost.Tenancy)
 	s.Equal("myDevice", s.cmd.CreateHost.EBSDevices[0].DeviceName)
 
 	//parse from YAML file
@@ -123,6 +126,7 @@ func (s *createHostSuite) TestParseFromFile() {
 	s.Equal("myDistro", s.cmd.CreateHost.Distro)
 	s.Equal("task", s.cmd.CreateHost.Scope)
 	s.Equal("subnet-123456", s.cmd.CreateHost.Subnet)
+	s.Equal("dedicated", s.cmd.CreateHost.Tenancy)
 	s.Equal("myDevice", s.cmd.CreateHost.EBSDevices[0].DeviceName)
 
 	//test with both file and other params
@@ -216,6 +220,7 @@ func (s *createHostSuite) TestParamValidation() {
 }
 
 func (s *createHostSuite) TestPopulateUserdata() {
+	const userdataFileName = "TestPopulateUserdata.sh"
 	defer os.RemoveAll(userdataFileName)
 	userdataFile := []byte("#!/bin/bash\nsome commands")
 	s.NoError(os.WriteFile(userdataFileName, userdataFile, 0644))
