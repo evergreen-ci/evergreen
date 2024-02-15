@@ -63,10 +63,6 @@ func TestDependencyBSON(t *testing.T) {
 	})
 }
 
-// kim: TODO: add test for IncludeDependencies when a task group has a mix of
-// vanilla and disabled tasks.
-// kim: TODO: add test for IncludeDependencies when a task group has a mix of
-// vanilla and patch_only tasks.
 func TestIncludeDependencies(t *testing.T) {
 	Convey("With a project task config with cross-variant dependencies", t, func() {
 		parserProject := &ParserProject{
@@ -302,6 +298,7 @@ func TestIncludeDependencies(t *testing.T) {
 		pairs, _ := IncludeDependencies(p, []TVPair{initDep}, evergreen.PatchVersionRequester, nil)
 		So(pairs, ShouldHaveLength, 2)
 		So(initDep, ShouldBeIn, pairs)
+		So(TVPair{TaskName: "b", Variant: "variant-with-group"}, ShouldBeIn, pairs)
 	})
 	Convey("With a disabled task", t, func() {
 		parserProject := &ParserProject{
@@ -342,6 +339,7 @@ func TestIncludeDependencies(t *testing.T) {
 		pairs, _ := IncludeDependencies(p, []TVPair{tgTaskPair}, evergreen.PatchVersionRequester, nil)
 		So(pairs, ShouldHaveLength, 2)
 		So(pairs, ShouldNotContain, tgTaskPair)
+		So(pairs, ShouldNotContain, TVPair{TaskName: "c", Variant: "bv-with-group"})
 		So(pairs, ShouldEqual, []TVPair{{TaskName: "a", Variant: "bv-with-group"}, {TaskName: "b", Variant: "bv-with-group"}})
 	})
 }

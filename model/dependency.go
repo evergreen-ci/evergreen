@@ -89,19 +89,17 @@ func (di *dependencyIncluder) handle(pair TVPair, activationInfo *specificActiva
 			// If there are some tasks in the task group that cannot be
 			// scheduled but others can, add only those tasks within task group
 			// that are schedulable.
-			di.included[TVPair{TaskName: t, Variant: pair.Variant}] = ok
-			if !ok {
-				// kim: TODO: verify that it's okay to not error out here for
-				// ok=false and no error.
-				di.included[pair] = false
-			}
+			// di.included[TVPair{TaskName: t, Variant: pair.Variant}] = ok
+			// if !ok {
+			//     di.included[pair] = false
+			// }
 			if err != nil {
 				return false, errors.Wrapf(err, "task group '%s' in variant '%s' contains unschedulable task '%s'", pair.TaskName, pair.Variant, t)
 			}
 			// TODO (DEVPROD-4739): delete this debug log after confirming that
 			// it doesn't cause issues.
 			grip.DebugWhen(!ok && err == nil, message.Fields{
-				"message":              "a task in a task group is disabled",
+				"message":              "not including a task in a task group that's disabled",
 				"ticket":               "DEVPROD-4739",
 				"task_group_task_name": t,
 				"build_variant":        pair.Variant,
@@ -132,14 +130,6 @@ func (di *dependencyIncluder) handle(pair TVPair, activationInfo *specificActiva
 
 	if bvt.IsDisabled() {
 		di.included[pair] = false
-		// kim: NOTE: this is the error line because some of the tasks in the
-		// task group are disabled. This should be allowed, but we need to
-		// verify that returning no error here is okay. Need to make sure this
-		// isn't causing a conflict with something else.
-		// return false, errors.Errorf("task '%s' in variant '%s' has been disabled", pair.TaskName, pair.Variant)
-
-		// kim: NOTE: If a task is disabled, don't include it but it's also not
-		// an error.
 		return false, nil
 	}
 
