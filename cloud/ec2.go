@@ -54,7 +54,7 @@ type EC2ProviderSettings struct {
 
 	// Tenancy, if set, determines how EC2 instances are distributed across
 	// physical hardware.
-	Tenancy string `mapstructure:"tenancy" json:"tenancy,omitempty" bson:"tenancy,omitempty"`
+	Tenancy evergreen.EC2Tenancy `mapstructure:"tenancy" json:"tenancy,omitempty" bson:"tenancy,omitempty"`
 
 	// VpcName is used to get the subnet ID automatically. Either subnet id or vpc name must set.
 	VpcName string `mapstructure:"vpc_name" json:"vpc_name,omitempty" bson:"vpc_name,omitempty"`
@@ -97,7 +97,7 @@ func (s *EC2ProviderSettings) Validate() error {
 	}
 
 	if s.Tenancy != "" {
-		catcher.NewWhen(s.Tenancy != "default" && s.Tenancy != "dedicated" && s.Tenancy != "host", "if set, tenancy must be 'default', 'shared', or dedicated'")
+		catcher.ErrorfWhen(!evergreen.IsValidEC2Tenancy(s.Tenancy), "invalid tenancy '%s', allowed values are: %s", s.Tenancy, evergreen.ValidEC2Tenancies)
 	}
 
 	_, err := makeBlockDeviceMappings(s.MountPoints)

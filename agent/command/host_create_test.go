@@ -6,6 +6,7 @@ import (
 	"path/filepath"
 	"testing"
 
+	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/agent/internal"
 	"github.com/evergreen-ci/evergreen/agent/internal/client"
 	"github.com/evergreen-ci/evergreen/apimodels"
@@ -36,7 +37,7 @@ func (s *createHostSuite) SetupSuite() {
 	s.conf = &internal.TaskConfig{
 		Expansions: util.Expansions{
 			"subnet_id": "subnet-123456",
-			"tenancy":   "dedicated",
+			"tenancy":   string(evergreen.EC2TenancyDedicated),
 		},
 		Task:    task.Task{Id: "mock_id", Secret: "mock_secret"},
 		Project: model.Project{}}
@@ -107,7 +108,7 @@ func (s *createHostSuite) TestParseFromFile() {
 	s.Equal("myDistro", s.cmd.CreateHost.Distro)
 	s.Equal("task", s.cmd.CreateHost.Scope)
 	s.Equal("subnet-123456", s.cmd.CreateHost.Subnet)
-	s.Equal("dedicated", s.cmd.CreateHost.Tenancy)
+	s.Equal(evergreen.EC2TenancyDedicated, s.cmd.CreateHost.Tenancy)
 	s.Equal("myDevice", s.cmd.CreateHost.EBSDevices[0].DeviceName)
 
 	//parse from YAML file
@@ -125,7 +126,7 @@ func (s *createHostSuite) TestParseFromFile() {
 	s.Equal("myDistro", s.cmd.CreateHost.Distro)
 	s.Equal("task", s.cmd.CreateHost.Scope)
 	s.Equal("subnet-123456", s.cmd.CreateHost.Subnet)
-	s.Equal("dedicated", s.cmd.CreateHost.Tenancy)
+	s.Equal(evergreen.EC2TenancyDedicated, s.cmd.CreateHost.Tenancy)
 	s.Equal("myDevice", s.cmd.CreateHost.EBSDevices[0].DeviceName)
 
 	//test with both file and other params
