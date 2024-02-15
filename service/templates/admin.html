@@ -2529,6 +2529,9 @@ Admin Settings
 									</md-button>
 								</md-card-title>
 								<md-card-content>
+										<div class="small" style="height:25px;">
+											This is being used as a feature flag. Do not set to 10 or above unless you are sure you want to enable this feature.
+										</div>
 									<md-input-container class="control" style="width:45%;">
 										<label>Check Run Limit per Patch</label>
 										<input type="number" ng-model="Settings.github_check_run.check_run_limit">

@@ -980,6 +980,12 @@ func (a *Agent) finishTask(ctx context.Context, tc *taskContext, status string, 
 		grip.Error(errors.Wrap(tc.logger.Flush(flushCtx), "flushing logs"))
 	}
 
+	err := a.upsertCheckRun(ctx, tc)
+	if err != nil {
+		grip.Error(errors.Wrap(err, "upserting checkrun"))
+	}
+	tc.logger.Task().Infof("Successfully upserted checkRun.")
+
 	grip.Infof("Sending final task status: '%s'.", detail.Status)
 	resp, err := a.comm.EndTask(ctx, detail, tc.task)
 	if err != nil {
@@ -998,6 +1004,10 @@ func (a *Agent) finishTask(ctx context.Context, tc *taskContext, status string, 
 
 //nolint:unused
 func (a *Agent) upsertCheckRun(ctx context.Context, tc *taskContext) error {
+	if tc.taskConfig == nil {
+		return nil
+	}
+
 	checkRunOutput, err := buildCheckRun(ctx, tc)
 	if err != nil {
 		return err

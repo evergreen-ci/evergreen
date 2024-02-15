@@ -3,6 +3,7 @@ package host
 import (
 	"context"
 	"fmt"
+	"regexp"
 	"strings"
 	"testing"
 	"time"
@@ -5982,6 +5983,9 @@ func TestGeneratePersistentDNSName(t *testing.T) {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 	const domain = "example.com"
+	const usernameWithSpecialChars = "it's-a.me,mario!!!🌲"
+	validDNSNameRegexp := regexp.MustCompile("[^a-zA-Z0-9.-]")
+
 	t.Run("ReturnsAlreadySetPersistentDNSName", func(t *testing.T) {
 		h := Host{
 			Id:                "host_id",
@@ -5991,15 +5995,84 @@ func TestGeneratePersistentDNSName(t *testing.T) {
 		require.NoError(t, err)
 		assert.Equal(t, h.PersistentDNSName, dnsName)
 	})
-	t.Run("ReturnsNewPersistentDNSName", func(t *testing.T) {
+	t.Run("ReturnsNewPersistentDNSNameDeterministically", func(t *testing.T) {
 		h := Host{
-			Id: "host_id",
+			Id:        "host_id",
+			StartedBy: usernameWithSpecialChars,
 		}
 		dnsName, err := h.GeneratePersistentDNSName(ctx, domain)
 		require.NoError(t, err)
-		assert.Zero(t, h.PersistentDNSName, "generated DNS name should not be set")
 		assert.NotEmpty(t, dnsName)
 		assert.True(t, strings.HasSuffix(dnsName, domain), "DNS name should include domain")
+		assert.False(t, validDNSNameRegexp.MatchString(dnsName), "generated DNS name should only contain periods, dashes, and alphanumeric characters")
+		assert.Zero(t, h.PersistentDNSName, "generated DNS name should not be set")
+		// If working properly, the generated DNS name output should always be
+		// the same when given the same inputs (i.e. same host ID and host
+		// owner) no matter how many times this test runs.
+		assert.Equal(t, fmt.Sprintf("itsa-memario-QPGzx.%s", domain), dnsName, "should produce DNS name deterministically if there's no other host with the same DNS name")
+	})
+	t.Run("AlwaysReturnsSameStringForSameHostID", func(t *testing.T) {
+		h := Host{
+			Id:        "host_id",
+			StartedBy: usernameWithSpecialChars,
+		}
+		originalDNSName, err := h.GeneratePersistentDNSName(ctx, domain)
+		require.NoError(t, err)
+		assert.Zero(t, h.PersistentDNSName, "generated DNS name should not be set")
+		assert.False(t, validDNSNameRegexp.MatchString(originalDNSName), "generated DNS name should only contain periods, dashes, and alphanumeric characters")
+
+		for i := 0; i < 10; i++ {
+			newDNSName, err := h.GeneratePersistentDNSName(ctx, domain)
+			require.NoError(t, err)
+			assert.Equal(t, originalDNSName, newDNSName, "should always produce the same generated DNS name")
+			assert.Zero(t, h.PersistentDNSName, "generated DNS name should not be set")
+		}
+	})
+	t.Run("ReturnsUniqueStringsForDifferentHostIDs", func(t *testing.T) {
+		dnsNames := make(map[string]struct{})
+		for i := 0; i < 10; i++ {
+			h := Host{
+				Id:        utility.RandomString(),
+				StartedBy: usernameWithSpecialChars,
+			}
+			dnsName, err := h.GeneratePersistentDNSName(ctx, domain)
+			require.NoError(t, err)
+			assert.NotContains(t, dnsNames, dnsName, "generated DNS name should be unique")
+			assert.False(t, validDNSNameRegexp.MatchString(dnsName), "generated DNS name should only contain periods, dashes, and alphanumeric characters")
+			dnsNames[dnsName] = struct{}{}
+		}
+	})
+	t.Run("ReturnsUniquePersistentDNSNameEvenIfThereIsAnIdenticalOneAlreadyAssignedToADifferentHost", func(t *testing.T) {
+		require.NoError(t, db.ClearCollections(Collection))
+		defer func() {
+			assert.NoError(t, db.ClearCollections(Collection))
+		}()
+		h := Host{
+			Id:        "host_id",
+			StartedBy: usernameWithSpecialChars,
+		}
+
+		// Get the DNS name that the host would produce in the absence of
+		// collisions.
+		originalDNSName, err := h.GeneratePersistentDNSName(ctx, domain)
+		require.NoError(t, err)
+		assert.NotEmpty(t, originalDNSName)
+
+		// Another host is using that DNS name, so it should generate a
+		// different unique one instead.
+		conflictingHost := Host{
+			Id:                "other_host_id",
+			StartedBy:         usernameWithSpecialChars,
+			PersistentDNSName: originalDNSName,
+		}
+		require.NoError(t, conflictingHost.Insert(ctx))
+
+		nonConflictingDNSName, err := h.GeneratePersistentDNSName(ctx, domain)
+		require.NoError(t, err)
+		assert.NotEmpty(t, nonConflictingDNSName)
+		assert.True(t, strings.HasSuffix(nonConflictingDNSName, domain), "DNS name should include domain")
+		assert.NotEqual(t, nonConflictingDNSName, conflictingHost.PersistentDNSName, "generated DNS name should not conflict with existing DNS name")
+		assert.NotEqual(t, originalDNSName, nonConflictingDNSName, "new DNS name should not be the same as the original one due to conflicting host")
 	})
 }
 
