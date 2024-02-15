@@ -86,7 +86,6 @@ func (s *createHostSuite) TestParseFromFile() {
 		},
 	}
 	path := filepath.Join(tmpdir, "example.json")
-	const tenancy = "dedicated"
 	fileContent := map[string]interface{}{
 		"distro":           "myDistro",
 		"scope":            "task",
