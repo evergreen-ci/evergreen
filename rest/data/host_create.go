@@ -359,7 +359,7 @@ func makeEC2IntentHost(ctx context.Context, env evergreen.Environment, taskID, u
 		ec2Settings.InstanceType = createHost.InstanceType
 	}
 	if userID == "" {
-		ec2Settings.KeyName = "" // never use the distro's key
+		ec2Settings.KeyName = createHost.KeyName // never use the distro's key
 	}
 	if createHost.Subnet != "" {
 		ec2Settings.SubnetId = createHost.Subnet
