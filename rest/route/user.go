@@ -799,7 +799,7 @@ func (h *renameUserHandler) Parse(ctx context.Context, r *http.Request) error {
 		return errors.New("missing email")
 	}
 	splitString := strings.Split(input.Email, "@")
-	if len(splitString) == 1 {
+	if len(splitString) != 2 {
 		return errors.New("email address is missing '@'")
 	}
 	username := splitString[0]
@@ -898,7 +898,7 @@ func (ch *offboardUserHandler) Parse(ctx context.Context, r *http.Request) error
 		return errors.New("missing email")
 	}
 	splitString := strings.Split(input.Email, "@")
-	if len(splitString) == 1 {
+	if len(splitString) != 2 {
 		return errors.New("email address is missing '@'")
 	}
 	ch.user = splitString[0]

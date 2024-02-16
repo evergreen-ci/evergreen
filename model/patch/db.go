@@ -381,11 +381,11 @@ func ConsolidatePatchesForUser(oldAuthor string, newUsr *user.DBUser) error {
 		return errors.Wrapf(err, "finding existing patches for '%s'", newUsr.Id)
 	}
 	if len(patchesForNewAuthor) > 0 {
-		patchNum, err := newUsr.IncPatchNumber()
-		if err != nil {
-			return errors.Wrap(err, "incrementing patch number to resolve existing patches")
-		}
 		for _, p := range patchesForNewAuthor {
+			patchNum, err := newUsr.IncPatchNumber()
+			if err != nil {
+				return errors.Wrap(err, "incrementing patch number to resolve existing patches")
+			}
 			update := bson.M{"$set": bson.M{NumberKey: patchNum}}
 			if err := UpdateOne(bson.M{IdKey: p.Id}, update); err != nil {
 				return errors.Wrap(err, "updating patch number")
