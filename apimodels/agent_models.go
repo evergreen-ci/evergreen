@@ -136,16 +136,19 @@ type CreateHost struct {
 	Retries             int    `mapstructure:"retries" json:"retries" yaml:"retries"`
 
 	// EC2-related settings
-	AMI             string      `mapstructure:"ami" json:"ami" yaml:"ami" plugin:"expand"`
-	Distro          string      `mapstructure:"distro" json:"distro" yaml:"distro" plugin:"expand"`
-	EBSDevices      []EbsDevice `mapstructure:"ebs_block_device" json:"ebs_block_device" yaml:"ebs_block_device" plugin:"expand"`
-	InstanceType    string      `mapstructure:"instance_type" json:"instance_type" yaml:"instance_type" plugin:"expand"`
-	IPv6            bool        `mapstructure:"ipv6" json:"ipv6" yaml:"ipv6"`
-	Region          string      `mapstructure:"region" json:"region" yaml:"region" plugin:"expand"`
-	SecurityGroups  []string    `mapstructure:"security_group_ids" json:"security_group_ids" yaml:"security_group_ids" plugin:"expand"`
-	Subnet          string      `mapstructure:"subnet_id" json:"subnet_id" yaml:"subnet_id" plugin:"expand"`
-	UserdataFile    string      `mapstructure:"userdata_file" json:"userdata_file" yaml:"userdata_file" plugin:"expand"`
-	UserdataCommand string      `json:"userdata_command" yaml:"userdata_command" plugin:"expand"`
+	AMI            string               `mapstructure:"ami" json:"ami" yaml:"ami" plugin:"expand"`
+	Distro         string               `mapstructure:"distro" json:"distro" yaml:"distro" plugin:"expand"`
+	EBSDevices     []EbsDevice          `mapstructure:"ebs_block_device" json:"ebs_block_device" yaml:"ebs_block_device" plugin:"expand"`
+	InstanceType   string               `mapstructure:"instance_type" json:"instance_type" yaml:"instance_type" plugin:"expand"`
+	IPv6           bool                 `mapstructure:"ipv6" json:"ipv6" yaml:"ipv6"`
+	Region         string               `mapstructure:"region" json:"region" yaml:"region" plugin:"expand"`
+	SecurityGroups []string             `mapstructure:"security_group_ids" json:"security_group_ids" yaml:"security_group_ids" plugin:"expand"`
+	Subnet         string               `mapstructure:"subnet_id" json:"subnet_id" yaml:"subnet_id" plugin:"expand"`
+	Tenancy        evergreen.EC2Tenancy `mapstructure:"tenancy" json:"tenancy" yaml:"tenancy" plugin:"expand"`
+	UserdataFile   string               `mapstructure:"userdata_file" json:"userdata_file" yaml:"userdata_file" plugin:"expand"`
+	// UserdataCommand is the content of the userdata file. Users can't actually
+	// set this directly, instead they pass in a userdata file.
+	UserdataCommand string `json:"userdata_command" yaml:"userdata_command" plugin:"expand"`
 
 	// docker-related settings
 	Image                    string           `mapstructure:"image" json:"image" yaml:"image" plugin:"expand"`
@@ -242,6 +245,9 @@ func (ch *CreateHost) validateEC2() error {
 		if ch.Subnet == "" {
 			catcher.New("subnet ID must be set if AMI is set")
 		}
+	}
+	if ch.Tenancy != "" {
+		catcher.ErrorfWhen(!evergreen.IsValidEC2Tenancy(ch.Tenancy), "invalid tenancy '%s', allowed values are: %s", ch.Tenancy, evergreen.ValidEC2Tenancies)
 	}
 
 	return catcher.Resolve()

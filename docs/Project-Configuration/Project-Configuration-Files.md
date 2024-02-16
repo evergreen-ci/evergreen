@@ -32,6 +32,7 @@ For example, a couple of tasks might look like:
 ``` yaml
 tasks:
 - name: compile
+  exec_timeout_secs: 20
   commands:
     - command: git.get_project
       params:
@@ -288,12 +289,18 @@ Fields:
     settings page. This can also be set for individual tasks. Only applies to
     tasks from mainline commits.
 -   `cron`: define with [cron syntax](https://crontab.guru/) (i.e. Min \| Hour \| DayOfMonth \|
-    Month \| DayOfWeekOptional) when (in UTC) a task or variant should be activated
-    (cannot be combined with batchtime). This also accepts descriptors
-    such as `@daily` (reference
-    [cron](https://godoc.org/github.com/robfig/cron) for more example),
-    but does not accept intervals. (i.e.
-    `@every <duration>`). Only applies to tasks from mainline commits.
+    Month \| DayOfWeekOptional) when (in UTC) a task or variant in a mainline
+    commit should be activated (cannot be combined with batchtime). This also
+    accepts descriptors such as `@daily` (reference
+    [cron](https://godoc.org/github.com/robfig/cron) for more example), but does
+    not accept intervals. (i.e. `@every <duration>`). Note that `cron` doesn't
+    actually create any new tasks, it only activates existing tasks in mainline
+    commits. For example, if you specify a task with `cron: '@daily'`, Evergreen
+    will check that task once per day. If the most recent mainline commit is
+    inactive, Evergreen will activate it. In this way, cron is tied more closely
+    to project commit activity. To run something on a regular schedule
+    regardless of commit activity, consider using [periodic builds](Project-and-Distro-Settings.md#periodic-builds)
+    instead.
 -   `task_group`: a [task
     group](#task-groups)
     may be defined directly inline or using YAML aliases on a build
@@ -527,7 +534,8 @@ or task to the maximum allowed length of execution time. Exec timeout only
 applies to commands that run in `pre`, `setup_group`, `setup_task`, and the main
 task commands; it does not apply to the `post`, `teardown_task`, and
 `teardown_group` blocks. This timeout defaults to 6 hours. `exec_timeout_secs`
-can only be set on the project or on a task. It cannot be set on functions.
+can only be set on the project or on a task as seen in below example. 
+It cannot be set on functions or build variant tasks.
 
 You can also set `exec_timeout_secs` using [timeout.update](Project-Commands.md#timeoutupdate).
 
@@ -562,6 +570,7 @@ tasks:
   commands:
     - command: shell.exec
       timeout_secs: 10 ## force this command to fail if it stays "idle" for 10 seconds or more
+      exec_timeout_secs: 20 ## will override the project level exec_timeout defined above for this task
       params:
         script: |
           sleep 1000

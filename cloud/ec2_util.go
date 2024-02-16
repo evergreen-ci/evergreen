@@ -317,7 +317,7 @@ func cacheHostData(ctx context.Context, env evergreen.Environment, h *host.Host,
 	}
 
 	if h.NoExpiration {
-		grip.Error(message.WrapError(setHostPersistentDNSName(ctx, env, h, instance, client), message.Fields{
+		grip.Error(message.WrapError(setHostPersistentDNSName(ctx, env, h, utility.FromStringPtr(instance.PublicIpAddress), client), message.Fields{
 			"message":    "could not update host's persistent DNS name",
 			"op":         "upsert",
 			"dashboard":  "evergreen sleep schedule health",
@@ -336,9 +336,8 @@ const persistentDNSRecordTTLSecs = 1
 
 // setHostPersistentDNSName sets a host's persistent DNS record with its
 // associated IP address and sets it on the host.
-func setHostPersistentDNSName(ctx context.Context, env evergreen.Environment, h *host.Host, instance *types.Instance, client AWSClient) error {
-	ipAddr := utility.FromStringPtr(instance.PublicIpAddress)
-	if ipAddr == "" {
+func setHostPersistentDNSName(ctx context.Context, env evergreen.Environment, h *host.Host, ipv4Addr string, client AWSClient) error {
+	if ipv4Addr == "" {
 		return errors.New("instance did not include an IP address")
 	}
 
@@ -364,7 +363,7 @@ func setHostPersistentDNSName(ctx context.Context, env evergreen.Environment, h 
 						Name: aws.String(dnsName),
 						Type: r53Types.RRTypeA,
 						ResourceRecords: []r53Types.ResourceRecord{
-							{Value: aws.String(ipAddr)},
+							{Value: aws.String(ipv4Addr)},
 						},
 						TTL: aws.Int64(persistentDNSRecordTTLSecs),
 					},
@@ -375,7 +374,7 @@ func setHostPersistentDNSName(ctx context.Context, env evergreen.Environment, h 
 	if _, err := client.ChangeResourceRecordSets(ctx, &in); err != nil {
 		return errors.Wrapf(err, "upserting persistent DNS name '%s' for host '%s' into Route 53", dnsName, h.Id)
 	}
-	if err := h.SetPersistentDNSInfo(ctx, dnsName, ipAddr); err != nil {
+	if err := h.SetPersistentDNSInfo(ctx, dnsName, ipv4Addr); err != nil {
 		return errors.Wrap(err, "setting host's persistent DNS name")
 	}
 

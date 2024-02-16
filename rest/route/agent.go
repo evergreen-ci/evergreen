@@ -657,7 +657,6 @@ func (h *attachFilesHandler) Run(ctx context.Context) gimlet.Responder {
 			Message:    fmt.Sprintf("task '%s' not found", h.taskID),
 		})
 	}
-	grip.Infoln("Attaching files to task:", t.Id)
 
 	entry := &artifact.Entry{
 		TaskId:          t.Id,
@@ -1414,21 +1413,24 @@ func (g *createInstallationToken) Run(ctx context.Context) gimlet.Responder {
 	})
 }
 
-// POST /task/{task_id}/upsert_check_run
-type upsertCheckRunHandler struct {
+// POST /task/{task_id}/check_run
+type checkRunHandler struct {
 	taskID         string
 	checkRunOutput github.CheckRunOutput
+	settings       *evergreen.Settings
 }
 
-func makeUpsertCheckRun() gimlet.RouteHandler {
-	return &upsertCheckRunHandler{}
+func makeCheckRun(settings *evergreen.Settings) gimlet.RouteHandler {
+	return &checkRunHandler{
+		settings: settings,
+	}
 }
 
-func (h *upsertCheckRunHandler) Factory() gimlet.RouteHandler {
-	return &upsertCheckRunHandler{}
+func (h *checkRunHandler) Factory() gimlet.RouteHandler {
+	return &checkRunHandler{}
 }
 
-func (h *upsertCheckRunHandler) Parse(ctx context.Context, r *http.Request) error {
+func (h *checkRunHandler) Parse(ctx context.Context, r *http.Request) error {
 	if h.taskID = gimlet.GetVars(r)["task_id"]; h.taskID == "" {
 		return errors.New("missing task ID")
 	}
@@ -1456,7 +1458,11 @@ func (h *upsertCheckRunHandler) Parse(ctx context.Context, r *http.Request) erro
 	return nil
 }
 
-func (h *upsertCheckRunHandler) Run(ctx context.Context) gimlet.Responder {
+func (h *checkRunHandler) Run(ctx context.Context) gimlet.Responder {
+	if h.settings.GitHubCheckRun.CheckRunLimit <= 0 {
+		return nil
+	}
+
 	t, err := task.FindOneId(h.taskID)
 	if err != nil {
 		return gimlet.MakeJSONInternalErrorResponder(errors.Wrapf(err, "finding task '%s'", h.taskID))
@@ -1485,7 +1491,7 @@ func (h *upsertCheckRunHandler) Run(ctx context.Context) gimlet.Responder {
 	}
 
 	gh := p.GithubPatchData
-	_, err = thirdparty.CreateCheckrun(ctx, gh.HeadOwner, gh.HeadRepo, *h.checkRunOutput.Title, gh.HeadHash, &h.checkRunOutput)
+	_, err = thirdparty.CreateCheckRun(ctx, gh.HeadOwner, gh.HeadRepo, *h.checkRunOutput.Title, gh.HeadHash, &h.checkRunOutput)
 
 	if err != nil {
 		errorMessage := fmt.Sprintf("upserting checkRun: %s", err.Error())
