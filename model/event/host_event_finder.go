@@ -2,9 +2,9 @@ package event
 
 import (
 	"context"
-	"github.com/evergreen-ci/evergreen/db"
 
 	"github.com/evergreen-ci/evergreen"
+	"github.com/evergreen-ci/evergreen/db"
 	mgobson "github.com/evergreen-ci/evergreen/db/mgo/bson"
 	"github.com/mongodb/anser/bsonutil"
 	"github.com/mongodb/grip"
