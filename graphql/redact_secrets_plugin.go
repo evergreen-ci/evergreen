@@ -82,14 +82,12 @@ func RedactFieldsInMap(data map[string]interface{}, fieldsToRedact map[string]bo
 		[]interface{}{},
 		[]util.KeyValuePair{},
 	}
-	err := util.DeepCopy(data, &dataCopy, registeredTypes)
-
-	if err != nil {
+	if err := util.DeepCopy(data, &dataCopy, registeredTypes); err != nil {
 		// If theres an error copying the data, log it and return an empty map.
 		grip.Error(message.WrapError(err, message.Fields{
 			"message": "failed to deep copy request variables",
 		}))
-		return dataCopy
+		return map[string]interface{}{}
 	}
 	recursivelyRedactFieldsInMap(dataCopy, fieldsToRedact)
 
