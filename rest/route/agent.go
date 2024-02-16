@@ -1490,8 +1490,10 @@ func (h *checkRunHandler) Run(ctx context.Context) gimlet.Responder {
 		})
 	}
 
+	//todo: if it's the second execution of the same task, we should
+	// update the checkrun instead of creating a new one
 	gh := p.GithubPatchData
-	_, err = thirdparty.CreateCheckRun(ctx, gh.HeadOwner, gh.HeadRepo, *h.checkRunOutput.Title, gh.HeadHash, &h.checkRunOutput)
+	checkRun, err := thirdparty.CreateCheckRun(ctx, gh.HeadOwner, gh.HeadRepo, *h.checkRunOutput.Title, gh.HeadHash, &h.checkRunOutput)
 
 	if err != nil {
 		errorMessage := fmt.Sprintf("upserting checkRun: %s", err.Error())
@@ -1501,6 +1503,9 @@ func (h *checkRunHandler) Run(ctx context.Context) gimlet.Responder {
 		})
 		return gimlet.MakeJSONInternalErrorResponder(errors.Wrap(err, "setting patch parameters"))
 	}
+
+	checkRunInt := int(utility.FromInt64Ptr(checkRun.ID))
+	err = t.SetCheckRunId(checkRunInt)
 
 	return gimlet.NewJSONResponse(fmt.Sprintf("Successfully upserted checkRun for  %v ", t.Id))
 }
