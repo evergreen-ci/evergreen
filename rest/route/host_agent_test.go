@@ -23,6 +23,7 @@ import (
 	modelUtil "github.com/evergreen-ci/evergreen/model/testutil"
 	"github.com/evergreen-ci/utility"
 	"github.com/mongodb/amboy/queue"
+	"github.com/pkg/errors"
 	. "github.com/smartystreets/goconvey/convey"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -274,6 +275,32 @@ func TestHostNextTask(t *testing.T) {
 					require.NoError(t, err)
 					assert.NotNil(t, realHost)
 					assert.Equal(t, realHost.Status, evergreen.HostDecommissioned)
+				},
+				"ClearsSecretOfUnresponsiveQuarantinedHost": func(ctx context.Context, t *testing.T, handler hostAgentNextTask) {
+					intentHost, err := host.FindOneId(ctx, "intentHost")
+					require.NoError(t, err)
+					require.NoError(t, intentHost.SetStatus(ctx, evergreen.HostQuarantined, evergreen.User, ""))
+					for i := 0; i < 10; i++ {
+						event.LogHostScriptExecuteFailed(intentHost.Id, errors.New("test error"))
+					}
+					intentHost.NeedsReprovision = host.ReprovisionToLegacy
+					rh.host = intentHost
+					rh.details = &apimodels.GetNextTaskDetails{
+						AgentRevision: evergreen.AgentVersion,
+					}
+					resp := rh.Run(ctx)
+
+					assert.NotNil(t, resp)
+					assert.Equal(t, resp.Status(), http.StatusOK)
+					taskResp, ok := resp.Data().(apimodels.NextTaskResponse)
+					require.True(t, ok, resp.Data())
+					assert.True(t, taskResp.ShouldExit)
+					assert.Empty(t, taskResp.TaskId)
+
+					dbHost, err := host.FindOneId(ctx, "intentHost")
+					require.NoError(t, err)
+					assert.NotNil(t, dbHost)
+					assert.Equal(t, dbHost.Secret, "")
 				},
 			} {
 				t.Run(testName, func(t *testing.T) {
@@ -536,7 +563,7 @@ func TestHostNextTask(t *testing.T) {
 			ctx, cancel := context.WithCancel(context.Background())
 			defer cancel()
 
-			colls := []string{model.ProjectRefCollection, host.Collection, task.Collection, model.TaskQueuesCollection, build.Collection, evergreen.ConfigCollection}
+			colls := []string{model.ProjectRefCollection, host.Collection, task.Collection, model.TaskQueuesCollection, build.Collection, evergreen.ConfigCollection, event.EventCollection}
 			require.NoError(t, db.ClearCollections(colls...))
 			defer func() {
 				assert.NoError(t, db.ClearCollections(colls...))
