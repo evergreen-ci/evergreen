@@ -293,21 +293,17 @@ func TryResetTask(ctx context.Context, settings *evergreen.Settings, taskId, use
 
 	maxExecution := evergreen.MaxTaskExecution
 
-	if evergreen.IsCommitQueueRequester(t.Requester) && evergreen.IsSystemFailedTaskStatus(t.Status) {
-		maxSystemFailedTaskRetries := settings.CommitQueue.MaxSystemFailedTaskRetries
-		if maxSystemFailedTaskRetries > 0 {
-			maxExecution = maxSystemFailedTaskRetries
-		}
+	// For system failures, we restart once for tasks on their first execution, if configured.
+	if evergreen.IsSystemFailedTaskStatus(t.Status) && t.Execution == 0 &&
+		settings.ServiceFlags.SystemFailedTaskRestartDisabled {
+		maxExecution = 1
 	}
-	// if we've reached the max number of executions for this task, mark it as finished and failed
-	if t.Execution >= maxExecution {
-		// restarting from the UI bypasses the restart cap
-		msg := fmt.Sprintf("task '%s' reached max execution %d: ", t.Id, maxExecution)
-		if origin == evergreen.UIPackage || origin == evergreen.RESTV2Package || origin == evergreen.GithubCheckRun {
-			grip.Debugln(msg, "allowing exception for", user)
-		} else if !t.IsFinished() {
+
+	// If we've reached the max number of executions for this task, mark it as finished and failed.
+	// Restarting from the UI/API bypasses the restart cap.
+	if t.Execution >= maxExecution && !utility.StringSliceContains(evergreen.UserTriggeredOrigins, origin) {
+		if !t.IsFinished() {
 			if detail != nil {
-				grip.Debugln(msg, "marking as failed")
 				if t.DisplayOnly {
 					for _, etId := range t.ExecutionTasks {
 						execTask, err = task.FindOneId(etId)
@@ -336,7 +332,7 @@ func TryResetTask(ctx context.Context, settings *evergreen.Settings, taskId, use
 	// only allow re-execution for failed or successful tasks
 	if !t.IsFinished() {
 		// this is to disallow terminating running tasks via the UI
-		if origin == evergreen.UIPackage || origin == evergreen.RESTV2Package {
+		if utility.StringSliceContains(evergreen.UserTriggeredOrigins, origin) {
 			grip.Debugf("Unsatisfiable '%s' reset request on '%s' (status: '%s')",
 				user, t.Id, t.Status)
 			if t.DisplayOnly {
@@ -367,7 +363,7 @@ func TryResetTask(ctx context.Context, settings *evergreen.Settings, taskId, use
 	}
 
 	caller := origin
-	if origin == evergreen.UIPackage || origin == evergreen.RESTV2Package || user == evergreen.AutoRestartActivator {
+	if utility.StringSliceContains(evergreen.UserTriggeredOrigins, origin) || user == evergreen.AutoRestartActivator {
 		caller = user
 	}
 	if t.IsPartOfSingleHostTaskGroup() {
@@ -2219,10 +2215,10 @@ func endAndResetSystemFailedTask(ctx context.Context, settings *evergreen.Settin
 	}
 
 	unschedulableTask := time.Since(t.ActivatedTime) > task.UnschedulableThreshold
-	// TODO: DEVPROD-4220 respects the commit queue retries for all tasks. Further clean up will just remove this logic.
-	maxExecutionTask := t.Execution >= settings.CommitQueue.MaxSystemFailedTaskRetries
 
-	if unschedulableTask || maxExecutionTask {
+	// Mark the task as finished (without restarting) if restarts are disabled, or the task isn't on its first execution.
+	shouldSkipRetry := settings.ServiceFlags.SystemFailedTaskRestartDisabled || t.Execution > 0
+	if unschedulableTask || shouldSkipRetry {
 		failureDetails := task.GetSystemFailureDetails(description)
 		// If the task has already exceeded the unschedulable threshold, we
 		// don't want to restart it, so just mark it as finished.

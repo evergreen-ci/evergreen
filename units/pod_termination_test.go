@@ -378,12 +378,6 @@ func TestPodTerminationJob(t *testing.T) {
 			j.PodID = p.ID
 			env := &mock.Environment{}
 			require.NoError(t, env.Configure(tctx))
-			env.EvergreenSettings = &evergreen.Settings{
-				CommitQueue: evergreen.CommitQueueConfig{
-					MaxSystemFailedTaskRetries: 2,
-				},
-			}
-
 			j.env = env
 			j.ecsClient = &cocoaMock.ECSClient{}
 			defer func() {

@@ -212,6 +212,7 @@ func TestModelConversion(t *testing.T) {
 	assert.EqualValues(testSettings.ServiceFlags.S3BinaryDownloadsDisabled, apiSettings.ServiceFlags.S3BinaryDownloadsDisabled)
 	assert.EqualValues(testSettings.ServiceFlags.LargeParserProjectsDisabled, apiSettings.ServiceFlags.LargeParserProjectsDisabled)
 	assert.EqualValues(testSettings.ServiceFlags.SleepScheduleDisabled, apiSettings.ServiceFlags.SleepScheduleDisabled)
+	assert.EqualValues(testSettings.ServiceFlags.SystemFailedTaskRestartDisabled, apiSettings.ServiceFlags.SystemFailedTaskRestartDisabled)
 	assert.EqualValues(testSettings.Slack.Level, utility.FromStringPtr(apiSettings.Slack.Level))
 	assert.EqualValues(testSettings.Slack.Options.Channel, utility.FromStringPtr(apiSettings.Slack.Options.Channel))
 	assert.EqualValues(testSettings.Splunk.SplunkConnectionInfo.Channel, utility.FromStringPtr(apiSettings.Splunk.SplunkConnectionInfo.Channel))
@@ -316,6 +317,7 @@ func TestModelConversion(t *testing.T) {
 	assert.EqualValues(testSettings.ServiceFlags.CloudCleanupDisabled, dbSettings.ServiceFlags.CloudCleanupDisabled)
 	assert.EqualValues(testSettings.ServiceFlags.UnrecognizedPodCleanupDisabled, dbSettings.ServiceFlags.UnrecognizedPodCleanupDisabled)
 	assert.EqualValues(testSettings.ServiceFlags.SleepScheduleDisabled, dbSettings.ServiceFlags.SleepScheduleDisabled)
+	assert.EqualValues(testSettings.ServiceFlags.SystemFailedTaskRestartDisabled, apiSettings.ServiceFlags.SystemFailedTaskRestartDisabled)
 	require.Len(dbSettings.SSHKeyPairs, len(testSettings.SSHKeyPairs))
 	for i := 0; i < len(testSettings.SSHKeyPairs); i++ {
 		assert.Equal(dbSettings.SSHKeyPairs[i].Name, testSettings.SSHKeyPairs[i].Name)
@@ -426,20 +428,20 @@ func TestAPIJIRANotificationsConfig(t *testing.T) {
 
 	api = APIJIRANotificationsConfig{
 		CustomFields: map[string]APIJIRANotificationsProject{
-			"EVG": APIJIRANotificationsProject{
+			"EVG": {
 				Fields: map[string]string{
 					"customfield_12345": "{{.Something}}",
 					"customfield_12346": "{{.SomethingElse}}",
 				},
 				Components: []string{"component0", "component1"},
-			},
-			"GVE": APIJIRANotificationsProject{
+						},
+			"GVE": {
 				Fields: map[string]string{
 					"customfield_54321": "{{.SomethingElser}}",
 					"customfield_54322": "{{.SomethingEvenElser}}",
 				},
 				Labels: []string{"label0", "label1"},
-			},
+						},
 		},
 	}
 

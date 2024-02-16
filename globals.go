@@ -537,6 +537,8 @@ const (
 	MonitorPackage = "EVERGREEN_MONITOR"
 )
 
+var UserTriggeredOrigins = []string{UIPackage, RESTV2Package}
+
 const (
 	AuthTokenCookie     = "mci-token"
 	TaskHeader          = "Task-Id"
@@ -666,17 +668,6 @@ const (
 	GithubMergeRequester        = "github_merge_request" // GitHub merge queue
 )
 
-var AllRequesterTypes = []string{
-	PatchVersionRequester,
-	GithubPRRequester,
-	GitTagRequester,
-	RepotrackerVersionRequester,
-	TriggerRequester,
-	MergeTestRequester,
-	AdHocRequester,
-	GithubMergeRequester,
-}
-
 // Constants related to requester types.
 var (
 	SystemVersionRequesterTypes = []string{
@@ -684,6 +675,16 @@ var (
 		TriggerRequester,
 		GitTagRequester,
 		AdHocRequester,
+	}
+	AllRequesterTypes = []string{
+		PatchVersionRequester,
+		GithubPRRequester,
+		GitTagRequester,
+		RepotrackerVersionRequester,
+		TriggerRequester,
+		MergeTestRequester,
+		AdHocRequester,
+		GithubMergeRequester,
 	}
 )
 

@@ -10,6 +10,7 @@ import (
 	"github.com/evergreen-ci/evergreen/model/build"
 	"github.com/evergreen-ci/evergreen/model/patch"
 	"github.com/evergreen-ci/evergreen/model/task"
+	"github.com/evergreen-ci/evergreen/testutil"
 	"github.com/evergreen-ci/utility"
 	. "github.com/smartystreets/goconvey/convey"
 	"github.com/stretchr/testify/assert"
@@ -800,14 +801,14 @@ func TestCreateBuildFromVersion(t *testing.T) {
 				{Name: "taskA"}, {Name: "taskB"}, {Name: "taskC"}, {Name: "taskD"},
 			},
 			DisplayTasks: []displayTask{
-				displayTask{
+				{
 					Name: "bv1DisplayTask1",
 					ExecutionTasks: []string{
 						"taskA",
 						"taskB",
 					},
 				},
-				displayTask{
+				{
 					Name: "bv1DisplayTask2",
 					ExecutionTasks: []string{
 						"taskC",
@@ -2261,11 +2262,7 @@ func TestDisplayTaskRestart(t *testing.T) {
 
 	// test that execution tasks cannot be restarted
 	assert.NoError(resetTaskData())
-	settings := &evergreen.Settings{
-		CommitQueue: evergreen.CommitQueueConfig{
-			MaxSystemFailedTaskRetries: 2,
-		},
-	}
+	settings := &evergreen.Settings{}
 	assert.Error(TryResetTask(ctx, settings, "task5", "", "", nil))
 
 	// trying to restart execution tasks should restart the entire display task, if it's done
@@ -2284,11 +2281,7 @@ func TestResetTaskOrDisplayTask(t *testing.T) {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 
-	settings := &evergreen.Settings{
-		CommitQueue: evergreen.CommitQueueConfig{
-			MaxSystemFailedTaskRetries: 2,
-		},
-	}
+	settings := testutil.TestConfig()
 	assert.NoError(t, resetTaskData())
 	et, err := task.FindOneId("task5")
 	assert.NoError(t, err)
