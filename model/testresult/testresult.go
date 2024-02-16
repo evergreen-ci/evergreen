@@ -33,7 +33,6 @@ type TestResult struct {
 	Execution       int          `json:"execution" bson:"execution"`
 	TestName        string       `json:"test_name" bson:"test_name"`
 	DisplayTestName string       `json:"display_test_name" bson:"display_test_name"`
-	GroupID         string       `json:"group_id" bson:"group_id"`
 	Status          string       `json:"status" bson:"status"`
 	BaseStatus      string       `json:"base_status" bson:"base_status"`
 	LogInfo         *TestLogInfo `json:"log_info" bson:"log_info"`
@@ -41,6 +40,8 @@ type TestResult struct {
 	TestEndTime     time.Time    `json:"test_end_time" bson:"test_end_time"`
 
 	// Legacy test log fields.
+	// TODO: Check if we ever actually use group ID anywhere (can use Trino).
+	GroupID     string `json:"group_id" bson:"group_id"`
 	LogTestName string `json:"log_test_name" bson:"log_test_name"`
 	LogURL      string `json:"log_url" bson:"log_url"`
 	RawLogURL   string `json:"raw_log_url" bson:"raw_log_url"`

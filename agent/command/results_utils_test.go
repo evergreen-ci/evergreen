@@ -12,6 +12,7 @@ import (
 	"github.com/evergreen-ci/evergreen/model/testresult"
 	serviceutil "github.com/evergreen-ci/evergreen/service/testutil"
 	timberutil "github.com/evergreen-ci/timber/testutil"
+	"github.com/evergreen-ci/utility"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"google.golang.org/grpc"
@@ -25,14 +26,23 @@ func TestSendTestResults(t *testing.T) {
 		{
 			TestName:        "test",
 			DisplayTestName: "display",
-			GroupID:         "group",
 			Status:          "pass",
-			LogURL:          "https://url.com",
-			RawLogURL:       "https://rawurl.com",
-			LogTestName:     "log_test_name",
-			LineNum:         123,
-			TestStartTime:   time.Now().Add(-time.Hour).UTC(),
-			TestEndTime:     time.Now().UTC(),
+			LogInfo: &testresult.TestLogInfo{
+				LogName: "name.log",
+				LogsToMerge: []*string{
+					utility.ToStringPtr("background.log"),
+					utility.ToStringPtr("process.log"),
+				},
+				LineNum:       456,
+				RenderingType: utility.ToStringPtr("resmoke"),
+				Version:       1,
+			},
+			GroupID:       "group",
+			LogURL:        "https://url.com",
+			RawLogURL:     "https://rawurl.com",
+			LineNum:       123,
+			TestStartTime: time.Now().Add(-time.Hour).UTC(),
+			TestEndTime:   time.Now().UTC(),
 		},
 	}
 	conf := &internal.TaskConfig{
@@ -86,17 +96,23 @@ func TestSendTestResults(t *testing.T) {
 					assert.Equal(t, results[0].TestName, res[0].Results[0].DisplayTestName)
 				}
 				assert.Equal(t, results[0].Status, res[0].Results[0].Status)
-				assert.Equal(t, results[0].GroupID, res[0].Results[0].GroupId)
-				if results[0].LogTestName != "" {
-					assert.Equal(t, results[0].LogTestName, res[0].Results[0].LogTestName)
-				} else {
-					assert.Equal(t, results[0].TestName, res[0].Results[0].LogTestName)
+				assert.Equal(t, results[0].LogInfo.LogName, res[0].Results[0].LogInfo.LogName)
+				require.Len(t, res[0].Results[0].LogInfo.LogsToMerge, len(results[0].LogInfo.LogsToMerge))
+				for i, logName := range results[0].LogInfo.LogsToMerge {
+					assert.Equal(t, *logName, res[0].Results[0].LogInfo.LogsToMerge[i])
 				}
+				assert.Equal(t, results[0].LogInfo.LineNum, res[0].Results[0].LogInfo.LineNum)
+				assert.Equal(t, results[0].LogInfo.RenderingType, res[0].Results[0].LogInfo.RenderingType)
+				assert.Equal(t, results[0].LogInfo.Version, res[0].Results[0].LogInfo.Version)
+				assert.Equal(t, results[0].TestStartTime, res[0].Results[0].TestStartTime.AsTime())
+				assert.Equal(t, results[0].TestEndTime, res[0].Results[0].TestEndTime.AsTime())
+
+				// Legacy test log fields.
+				assert.Equal(t, results[0].GroupID, res[0].Results[0].GroupId)
+				assert.Empty(t, res[0].Results[0].LogTestName)
 				assert.Equal(t, results[0].LogURL, res[0].Results[0].LogUrl)
 				assert.Equal(t, results[0].RawLogURL, res[0].Results[0].RawLogUrl)
 				assert.EqualValues(t, results[0].LineNum, res[0].Results[0].LineNum)
-				assert.Equal(t, results[0].TestStartTime, res[0].Results[0].TestStartTime.AsTime())
-				assert.Equal(t, results[0].TestEndTime, res[0].Results[0].TestEndTime.AsTime())
 			}
 		}
 
@@ -133,19 +149,6 @@ func TestSendTestResults(t *testing.T) {
 				assert.Equal(t, testresult.TestResultsServiceCedar, comm.ResultsService)
 				assert.False(t, comm.ResultsFailed)
 				results[0].DisplayTestName = displayTestName
-			},
-			"SucceedsNoLogTestName": func(ctx context.Context, t *testing.T, srv *timberutil.MockTestResultsServer, comm *client.Mock) {
-				logTestName := results[0].LogTestName
-				results[0].LogTestName = ""
-				require.NoError(t, sendTestResults(ctx, comm, logger, conf, results))
-
-				assert.Equal(t, srv.Close.TestResultsRecordId, conf.CedarTestResultsID)
-				checkRecord(t, srv)
-				checkResults(t, srv)
-				assert.NotZero(t, srv.Close.TestResultsRecordId)
-				assert.Equal(t, testresult.TestResultsServiceCedar, comm.ResultsService)
-				assert.False(t, comm.ResultsFailed)
-				results[0].LogTestName = logTestName
 			},
 			"FailsIfCreatingRecordFails": func(ctx context.Context, t *testing.T, srv *timberutil.MockTestResultsServer, comm *client.Mock) {
 				srv.CreateErr = true

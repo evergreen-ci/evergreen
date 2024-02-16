@@ -2458,6 +2458,34 @@ func (s *AgentSuite) TestUpsertCheckRun() {
 	}, []string{panicLog})
 }
 
+func (s *AgentSuite) TestTaskOutputDirectoryTestLogs() {
+	projYml := `
+tasks:
+  - name: this_is_a_task_name
+    commands:
+      - command: shell.exec
+        params:
+          script: echo "I am test log.\nI should get ingested automatically by the agent.\n" > ${workdir}/build/TestLogs/test.log
+`
+	s.setupRunTask(projYml)
+	nextTask := &apimodels.NextTaskResponse{
+		TaskId:     s.tc.task.ID,
+		TaskSecret: s.tc.task.Secret,
+	}
+	_, _, err := s.a.runTask(s.ctx, s.tc, nextTask, false, s.testTmpDirName)
+	s.Require().NoError(err)
+
+	it, err := s.task.GetTestLogs(s.ctx, taskoutput.TestLogGetOptions{LogPaths: []string{"test.log"}})
+	s.Require().NoError(err)
+
+	var actualLines string
+	for it.Next() {
+		actualLines += it.Item().Data + "\n"
+	}
+	expectedLines := "I am test log.\nI should get ingested automatically by the agent.\n"
+	s.Equal(expectedLines, actualLines)
+}
+
 // checkMockLogs checks the mock communicator's received task logs. Note that
 // callers should flush the task logs before checking them to ensure that they
 // are up-to-date.

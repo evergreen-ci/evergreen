@@ -13,6 +13,7 @@ import (
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/agent/command"
 	"github.com/evergreen-ci/evergreen/agent/internal/client"
+	"github.com/evergreen-ci/evergreen/agent/internal/taskoutput"
 	agentutil "github.com/evergreen-ci/evergreen/agent/util"
 	"github.com/evergreen-ci/evergreen/apimodels"
 	"github.com/evergreen-ci/evergreen/model"
@@ -449,9 +450,17 @@ func (a *Agent) setupTask(agentCtx, setupCtx context.Context, initialTC *taskCon
 			return a.handleSetupError(setupCtx, tc, errors.Wrap(err, "creating task directory"))
 		}
 	}
-
 	tc.taskConfig.WorkDir = taskDirectory
 	tc.taskConfig.NewExpansions.Put("workdir", tc.taskConfig.WorkDir)
+
+	// Set up a new task output directory regardless if the task is part of
+	// a task group.
+	tc.taskConfig.TaskOutputDir = taskoutput.NewDirectory(tc.taskConfig.WorkDir, &tc.taskConfig.Task, tc.logger)
+	if err := tc.taskConfig.TaskOutputDir.Setup(); err != nil {
+		if err != nil {
+			return a.handleSetupError(setupCtx, tc, errors.Wrap(err, "creating task output directory"))
+		}
+	}
 
 	// We are only calling this again to get the log for the current command after logging has been set up.
 	if factory != nil {
@@ -721,6 +730,12 @@ func (a *Agent) runPreAndMain(ctx context.Context, tc *taskContext) (status stri
 		}
 	}
 
+	defer func() {
+		// TODO: figure out which context to use here
+		if err := tc.taskConfig.TaskOutputDir.Run(ctx); err != nil {
+			tc.logger.Execution().Error(errors.Wrap(err, "ingesting task output"))
+		}
+	}()
 	if err := a.runTaskCommands(execTimeoutCtx, tc); err != nil {
 		return evergreen.TaskFailed
 	}
