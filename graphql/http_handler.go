@@ -17,10 +17,6 @@ import (
 	"go.opentelemetry.io/otel/attribute"
 )
 
-const (
-	requestVariablesPrefix = "gql.request.variables"
-)
-
 // Handler returns a gimlet http handler func used as the gql route handler
 func Handler(apiURL string) func(w http.ResponseWriter, r *http.Request) {
 	srv := handler.NewDefaultServer(NewExecutableSchema(New(apiURL)))
