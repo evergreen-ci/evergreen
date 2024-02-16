@@ -2601,6 +2601,7 @@ func getTasksByVersionPipeline(versionID string, opts GetTasksByVersionOptions) 
 		{"$project": projectOut},
 		{"$match": match},
 	}
+
 	if !opts.IncludeExecutionTasks {
 		pipeline = append(pipeline, bson.M{
 			"$match": bson.M{
@@ -2640,18 +2641,12 @@ func getTasksByVersionPipeline(versionID string, opts GetTasksByVersionOptions) 
 			pipeline = append(pipeline, AddAnnotations...)
 		}
 	}
+
+	// Add a field for the display status of each task
 	pipeline = append(pipeline,
-		// Add a field for the display status of each task
 		addDisplayStatus,
 	)
-	// Filter on the computed display status before continuing to add additional fields.
-	if len(opts.Statuses) > 0 {
-		pipeline = append(pipeline, bson.M{
-			"$match": bson.M{
-				DisplayStatusKey: bson.M{"$in": opts.Statuses},
-			},
-		})
-	}
+
 	if shouldPopulateBaseTask {
 		// First group by variant and task name to group all tasks and their base tasks together
 		pipeline = append(pipeline, bson.M{
@@ -2689,7 +2684,7 @@ func getTasksByVersionPipeline(versionID string, opts GetTasksByVersionOptions) 
 			},
 		})
 
-		// Project out the the tasks array since they are no longer needed
+		// Project out the the tasks array since it is no longer needed
 		pipeline = append(pipeline, bson.M{
 			"$project": bson.M{
 				"tasks": 0,
@@ -2744,6 +2739,14 @@ func getTasksByVersionPipeline(versionID string, opts GetTasksByVersionOptions) 
 		pipeline = append(pipeline, bson.M{
 			"$sort": bson.M{
 				"_id": 1,
+			},
+		})
+	}
+
+	if len(opts.Statuses) > 0 {
+		pipeline = append(pipeline, bson.M{
+			"$match": bson.M{
+				DisplayStatusKey: bson.M{"$in": opts.Statuses},
 			},
 		})
 	}

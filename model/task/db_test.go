@@ -1056,7 +1056,6 @@ func TestGetTasksByVersionBaseTasks(t *testing.T) {
 		Revision:      "abc123",
 		DisplayTaskId: utility.ToStringPtr(""),
 	}
-
 	t3 := Task{
 		Id:                  "t3",
 		Version:             "v3",
@@ -1069,7 +1068,19 @@ func TestGetTasksByVersionBaseTasks(t *testing.T) {
 		Revision:            "abc125",
 		DisplayTaskId:       utility.ToStringPtr(""),
 	}
-	assert.NoError(t, db.InsertMany(Collection, t1, t2, t3))
+	t4 := Task{
+		Id:            "t4",
+		Version:       "v4",
+		BuildVariant:  "bv",
+		DisplayName:   "displayName",
+		Execution:     0,
+		Status:        evergreen.TaskUndispatched,
+		Activated:     true,
+		Requester:     evergreen.GithubPRRequester,
+		Revision:      "def123",
+		DisplayTaskId: utility.ToStringPtr(""),
+	}
+	assert.NoError(t, db.InsertMany(Collection, t1, t2, t3, t4))
 
 	ctx := context.TODO()
 
@@ -1080,6 +1091,7 @@ func TestGetTasksByVersionBaseTasks(t *testing.T) {
 	tasks, count, err := GetTasksByVersion(ctx, "v2", opts)
 	assert.NoError(t, err)
 	assert.Equal(t, 1, count)
+	assert.Len(t, tasks, 1)
 	assert.Equal(t, "t2", tasks[0].Id)
 	assert.Equal(t, evergreen.TaskFailed, tasks[0].DisplayStatus)
 	assert.NotNil(t, tasks[0].BaseTask)
@@ -1093,11 +1105,29 @@ func TestGetTasksByVersionBaseTasks(t *testing.T) {
 	tasks, count, err = GetTasksByVersion(ctx, "v3", opts)
 	assert.NoError(t, err)
 	assert.Equal(t, 1, count)
+	assert.Len(t, tasks, 1)
 	assert.Equal(t, "t3", tasks[0].Id)
 	assert.Equal(t, evergreen.TaskFailed, tasks[0].DisplayStatus)
 	assert.NotNil(t, tasks[0].BaseTask)
 	assert.Equal(t, "t1", tasks[0].BaseTask.Id)
 	assert.Equal(t, t1.Status, tasks[0].BaseTask.Status)
+
+	// With status & base status filters.
+	opts = GetTasksByVersionOptions{
+		BaseVersionID: "v1",
+		BaseStatuses:  []string{evergreen.TaskSucceeded},
+		Statuses:      []string{evergreen.TaskWillRun},
+	}
+	tasks, count, err = GetTasksByVersion(ctx, "v4", opts)
+	assert.NoError(t, err)
+	assert.Equal(t, 1, count)
+	assert.Len(t, tasks, 1)
+	assert.Equal(t, "t4", tasks[0].Id)
+	assert.Equal(t, evergreen.TaskWillRun, tasks[0].DisplayStatus)
+	assert.NotNil(t, tasks[0].BaseTask)
+	assert.Equal(t, "t1", tasks[0].BaseTask.Id)
+	assert.Equal(t, t1.Status, tasks[0].BaseTask.Status)
+
 }
 
 func TestGetTasksByVersionErrorHandling(t *testing.T) {
