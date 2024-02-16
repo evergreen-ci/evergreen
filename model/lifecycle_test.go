@@ -2262,7 +2262,7 @@ func TestDisplayTaskRestart(t *testing.T) {
 
 	// test that execution tasks cannot be restarted
 	assert.NoError(resetTaskData())
-	settings := &evergreen.Settings{}
+	settings := testutil.TestConfig()
 	assert.Error(TryResetTask(ctx, settings, "task5", "", "", nil))
 
 	// trying to restart execution tasks should restart the entire display task, if it's done

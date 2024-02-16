@@ -1954,7 +1954,7 @@ func TestTaskStatusImpactedByFailedTest(t *testing.T) {
 		Id: "p1",
 	}
 	assert.NoError(t, projRef.Insert())
-
+	settings := testutil.TestConfig()
 	Convey("With a successful task one failed test should result in a task failure", t, func() {
 		displayName := "testName"
 
@@ -5095,7 +5095,7 @@ func TestClearAndResetStrandedContainerTask(t *testing.T) {
 			require.NoError(t, p.Insert())
 			require.NoError(t, tsk.Insert())
 
-			require.NoError(t, ClearAndResetStrandedContainerTask(ctx, testConfig, &p))
+			require.NoError(t, ClearAndResetStrandedContainerTask(ctx, settings, &p))
 
 			dbPod, err := pod.FindOneByID(p.ID)
 			require.NoError(t, err)
