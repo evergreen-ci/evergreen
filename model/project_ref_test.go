@@ -14,6 +14,7 @@ import (
 	mgobson "github.com/evergreen-ci/evergreen/db/mgo/bson"
 	"github.com/evergreen-ci/evergreen/model/commitqueue"
 	"github.com/evergreen-ci/evergreen/model/event"
+	"github.com/evergreen-ci/evergreen/model/parsley"
 	"github.com/evergreen-ci/evergreen/model/patch"
 	"github.com/evergreen-ci/evergreen/model/task"
 	"github.com/evergreen-ci/evergreen/model/user"
@@ -86,7 +87,7 @@ func TestFindMergedProjectRef(t *testing.T) {
 		CommitQueue:       CommitQueueParams{Enabled: nil, Message: "using repo commit queue"},
 		WorkstationConfig: WorkstationConfig{GitClone: utility.TruePtr()},
 		TaskSync:          TaskSyncOptions{ConfigEnabled: utility.FalsePtr()},
-		ParsleyFilters: []ParsleyFilter{
+		ParsleyFilters: []parsley.ParsleyFilter{
 			{
 				Expression:    "project-filter",
 				CaseSensitive: true,
@@ -112,7 +113,7 @@ func TestFindMergedProjectRef(t *testing.T) {
 		TaskSync:          TaskSyncOptions{ConfigEnabled: utility.TruePtr(), PatchEnabled: utility.TruePtr()},
 		CommitQueue:       CommitQueueParams{Enabled: utility.TruePtr()},
 		WorkstationConfig: WorkstationConfig{SetupCommands: []WorkstationSetupCommand{{Command: "my-command"}}},
-		ParsleyFilters: []ParsleyFilter{
+		ParsleyFilters: []parsley.ParsleyFilter{
 			{
 				Expression:    "repo-filter",
 				CaseSensitive: false,
@@ -155,7 +156,7 @@ func TestFindMergedProjectRef(t *testing.T) {
 	assert.Len(t, mergedProject.ParsleyFilters, 2)
 
 	// Assert that mergeParsleyFilters correctly handles projects with repo filters but not project filters.
-	projectRef.ParsleyFilters = []ParsleyFilter{}
+	projectRef.ParsleyFilters = []parsley.ParsleyFilter{}
 
 	assert.NoError(t, projectRef.Upsert())
 	mergedProject, err = FindMergedProjectRef("ident", "ident", true)
@@ -3156,7 +3157,7 @@ func TestSaveProjectPageForSection(t *testing.T) {
 
 	// Test parsley filters and view update
 	update = &ProjectRef{
-		ParsleyFilters: []ParsleyFilter{
+		ParsleyFilters: []parsley.ParsleyFilter{
 			{Expression: "filter", CaseSensitive: false, ExactMatch: true},
 		},
 		ProjectHealthView: ProjectHealthViewAll,

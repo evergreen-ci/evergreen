@@ -43,6 +43,7 @@ var (
 	PubKeyKey                 = bsonutil.MustHaveTag(PubKey{}, "Key")
 	PubKeyNCreatedAtKey       = bsonutil.MustHaveTag(PubKey{}, "CreatedAt")
 	FavoriteProjectsKey       = bsonutil.MustHaveTag(DBUser{}, "FavoriteProjects")
+	ParsleyFiltersKey         = bsonutil.MustHaveTag(DBUser{}, "ParsleyFilters")
 )
 
 //nolint:megacheck,unused

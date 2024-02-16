@@ -1,0 +1,39 @@
+{
+  "users": [
+    {
+      "_id": "bob.smith",
+      "display_name": "Bob Smith",
+      "first_name": "Bob",
+      "last_name": "Smith",
+      "settings": {
+        "timezone": "America/New_York",
+        "region": "us-west-1",
+        "github_user": {
+          "last_known_as": "bob_smith_1"
+        }
+      },
+      "parsley_filters": [
+        {
+          "expression": "abc",
+          "exact_match": true,
+          "case_sensitive": true
+        },
+        {
+          "expression": "def",
+          "exact_match": false,
+          "case_sensitive": false
+        }
+      ]
+    },
+    {
+      "_id": "jane.smith",
+      "display_name": "Jane Smith",
+      "first_name": "Jane",
+      "last_name": "Smith",
+      "settings": {
+        "timezone": "America/New_York",
+        "region": "us-west-1"
+      }
+    }
+  ]
+}

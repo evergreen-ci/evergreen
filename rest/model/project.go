@@ -8,6 +8,7 @@ import (
 
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/model"
+	"github.com/evergreen-ci/evergreen/model/parsley"
 	"github.com/evergreen-ci/evergreen/model/patch"
 	"github.com/evergreen-ci/evergreen/util"
 	"github.com/evergreen-ci/utility"
@@ -195,15 +196,15 @@ type APIParsleyFilter struct {
 	ExactMatch *bool `json:"exact_match"`
 }
 
-func (t *APIParsleyFilter) ToService() model.ParsleyFilter {
-	return model.ParsleyFilter{
+func (t *APIParsleyFilter) ToService() parsley.ParsleyFilter {
+	return parsley.ParsleyFilter{
 		Expression:    utility.FromStringPtr(t.Expression),
 		CaseSensitive: utility.FromBoolPtr(t.CaseSensitive),
 		ExactMatch:    utility.FromBoolPtr(t.ExactMatch),
 	}
 }
 
-func (t *APIParsleyFilter) BuildFromService(h model.ParsleyFilter) {
+func (t *APIParsleyFilter) BuildFromService(h parsley.ParsleyFilter) {
 	t.Expression = utility.ToStringPtr(h.Expression)
 	t.CaseSensitive = utility.ToBoolPtr(h.CaseSensitive)
 	t.ExactMatch = utility.ToBoolPtr(h.ExactMatch)
@@ -787,7 +788,7 @@ func (p *APIProjectRef) ToService() (*model.ProjectRef, error) {
 
 	// Copy Parsley filters
 	if p.ParsleyFilters != nil {
-		parsleyFilters := []model.ParsleyFilter{}
+		parsleyFilters := []parsley.ParsleyFilter{}
 		for _, f := range p.ParsleyFilters {
 			parsleyFilters = append(parsleyFilters, f.ToService())
 		}
