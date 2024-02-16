@@ -536,6 +536,30 @@ func FailedTasksByVersionAndBV(version string, variant string) bson.M {
 	}
 }
 
+// PotentiallyBlockedTasksByIds finds tasks with the given task ids
+// that have dependencies (these could be completed or not), do not have
+// override dependencies set to true, and the dependencies met time has not
+// been set.
+func PotentiallyBlockedTasksByIds(taskIds []string) bson.M {
+	return bson.M{
+		IdKey: bson.M{"$in": taskIds},
+		"$and": []bson.M{
+			{DependsOnKey: bson.M{
+				"$exists": true,
+				"$not":    bson.M{"$size": 0},
+			}},
+			{"$or": []bson.M{
+				{OverrideDependenciesKey: bson.M{"$exists": false}},
+				{OverrideDependenciesKey: false},
+			}},
+			{"$or": []bson.M{
+				{DependenciesMetTimeKey: bson.M{"$exists": false}},
+				{DependenciesMetTimeKey: bson.M{"$eq": utility.ZeroTime}},
+			}},
+		},
+	}
+}
+
 func FailedTasksByIds(taskIds []string) bson.M {
 	return bson.M{
 		IdKey:     bson.M{"$in": taskIds},
