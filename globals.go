@@ -343,6 +343,7 @@ const (
 	GithubAppToken             = "github_app_token"
 	GithubAppPrivateKey        = "github_app_key"
 	GithubKnownHosts           = "github_known_hosts"
+	GithubCheckRun             = "github_check_run"
 
 	// GitHubRetryAttempts is the github client maximum number of attempts.
 	GitHubRetryAttempts = 3
@@ -587,6 +588,23 @@ func IsEc2Provider(provider string) bool {
 func IsDockerProvider(provider string) bool {
 	return provider == ProviderNameDocker ||
 		provider == ProviderNameDockerMock
+}
+
+// EC2Tenancy represents the physical hardware tenancy for EC2 hosts.
+type EC2Tenancy string
+
+const (
+	EC2TenancyDefault   EC2Tenancy = "default"
+	EC2TenancyDedicated EC2Tenancy = "dedicated"
+	EC2TenancyHost      EC2Tenancy = "host"
+)
+
+// ValidEC2Tenancies represents valid EC2 tenancy values.
+var ValidEC2Tenancies = []EC2Tenancy{EC2TenancyDefault, EC2TenancyDedicated, EC2TenancyHost}
+
+// IsValidEC2Tenancy returns if the given EC2 tenancy is valid.
+func IsValidEC2Tenancy(tenancy EC2Tenancy) bool {
+	return len(utility.FilterSlice(ValidEC2Tenancies, func(t EC2Tenancy) bool { return t == tenancy })) > 0
 }
 
 var (

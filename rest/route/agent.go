@@ -657,7 +657,6 @@ func (h *attachFilesHandler) Run(ctx context.Context) gimlet.Responder {
 			Message:    fmt.Sprintf("task '%s' not found", h.taskID),
 		})
 	}
-	grip.Infoln("Attaching files to task:", t.Id)
 
 	entry := &artifact.Entry{
 		TaskId:          t.Id,
@@ -1492,7 +1491,7 @@ func (h *checkRunHandler) Run(ctx context.Context) gimlet.Responder {
 	}
 
 	gh := p.GithubPatchData
-	_, err = thirdparty.CreateCheckrun(ctx, gh.HeadOwner, gh.HeadRepo, *h.checkRunOutput.Title, gh.HeadHash, &h.checkRunOutput)
+	_, err = thirdparty.CreateCheckRun(ctx, gh.HeadOwner, gh.HeadRepo, *h.checkRunOutput.Title, gh.HeadHash, &h.checkRunOutput)
 
 	if err != nil {
 		errorMessage := fmt.Sprintf("upserting checkRun: %s", err.Error())

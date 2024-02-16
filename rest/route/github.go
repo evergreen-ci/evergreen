@@ -34,6 +34,7 @@ const (
 	githubActionSynchronize     = "synchronize"
 	githubActionReopened        = "reopened"
 	githubActionChecksRequested = "checks_requested"
+	githubActionRerequested     = "rerequested"
 
 	// pull request comments
 	retryComment            = "evergreen retry"
@@ -263,9 +264,107 @@ func (gh *githubHookApi) Run(ctx context.Context) gimlet.Responder {
 		if event.GetAction() == githubActionChecksRequested {
 			return gh.handleMergeGroupChecksRequested(event)
 		}
+
+	case *github.CheckRunEvent:
+		if event.GetAction() == githubActionRerequested {
+			return gh.handleCheckRunRerequested(ctx, event)
+		}
 	}
 
 	return gimlet.NewJSONResponse(struct{}{})
+}
+
+// handleCheckRunRerequested restarts the task associated with the check run that was rerequested to be re-run and
+// updates the check run to indicate that the task has been restarted.
+func (gh *githubHookApi) handleCheckRunRerequested(ctx context.Context, event *github.CheckRunEvent) gimlet.Responder {
+	owner := event.Repo.Owner.GetLogin()
+	repo := event.Repo.GetName()
+
+	checkRun := event.GetCheckRun()
+	if checkRun == nil {
+		grip.Error(message.Fields{
+			"source":  "GitHub hook",
+			"msg_id":  gh.msgID,
+			"event":   gh.eventType,
+			"owner":   owner,
+			"repo":    repo,
+			"message": "unable to find check run in event",
+		})
+		return gimlet.NewJSONInternalErrorResponse(errors.New("check run not sent from GitHub event"))
+	}
+	checkRunTask := checkRun.GetExternalID()
+	if checkRunTask == "" {
+		grip.Error(message.Fields{
+			"source":  "GitHub hook",
+			"msg_id":  gh.msgID,
+			"event":   gh.eventType,
+			"owner":   owner,
+			"repo":    repo,
+			"message": "check run doesn't carry task",
+		})
+		return gimlet.NewJSONInternalErrorResponse(errors.New("check run doesn't carry task"))
+	}
+	taskToRestart, taskErr := data.FindTask(checkRunTask)
+	if taskErr != nil {
+		grip.Error(message.Fields{
+			"source":  "GitHub hook",
+			"msg_id":  gh.msgID,
+			"event":   gh.eventType,
+			"owner":   owner,
+			"repo":    repo,
+			"task":    checkRunTask,
+			"message": "finding task",
+		})
+		return gimlet.NewJSONInternalErrorResponse(errors.Wrapf(taskErr, "finding task '%s' for check run", checkRunTask))
+	}
+	githubUser, err := user.FindByGithubUID(int(event.GetSender().GetID()))
+	if err != nil {
+		grip.Error(message.WrapError(err, message.Fields{
+			"source":  "GitHub hook",
+			"msg_id":  gh.msgID,
+			"event":   gh.eventType,
+			"owner":   owner,
+			"repo":    repo,
+			"user":    event.GetSender().GetID(),
+			"message": "finding user by GitHub ID",
+		}))
+		return gimlet.NewJSONInternalErrorResponse(errors.Wrapf(err, "finding user by GitHub ID '%d'", event.GetSender().GetID()))
+	}
+	if err := model.ResetTaskOrDisplayTask(ctx, gh.settings, taskToRestart, githubUser.Id, evergreen.GithubCheckRun, false, nil); err != nil {
+		grip.Error(message.WrapError(err, message.Fields{
+			"source":  "GitHub hook",
+			"msg_id":  gh.msgID,
+			"event":   gh.eventType,
+			"owner":   owner,
+			"repo":    repo,
+			"task":    checkRunTask,
+			"message": "restarting task",
+		}))
+		return gimlet.NewJSONInternalErrorResponse(errors.Wrap(err, "resetting task"))
+	}
+
+	opts := &github.UpdateCheckRunOptions{
+		Name: checkRun.GetName(),
+		Output: &github.CheckRunOutput{
+			Title:   utility.ToStringPtr("Task restarted"),
+			Summary: utility.ToStringPtr("Please wait for task to complete"),
+		},
+	}
+	_, err = thirdparty.UpdateCheckRun(ctx, owner, repo, checkRun.GetID(), opts)
+	if err != nil {
+		grip.Error(message.WrapError(err, message.Fields{
+			"source":    "GitHub hook",
+			"msg_id":    gh.msgID,
+			"event":     gh.eventType,
+			"owner":     owner,
+			"repo":      repo,
+			"check_run": checkRun.GetName(),
+			"message":   "updating check run",
+		}))
+		return gimlet.NewJSONInternalErrorResponse(err)
+	}
+
+	return nil
 }
 
 func (gh *githubHookApi) handleMergeGroupChecksRequested(event *github.MergeGroupEvent) gimlet.Responder {

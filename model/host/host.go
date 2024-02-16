@@ -2,6 +2,8 @@ package host
 
 import (
 	"context"
+	"crypto/sha256"
+	"encoding/base64"
 	"fmt"
 	"math"
 	"net"
@@ -3251,6 +3253,9 @@ func (h *Host) ClearDockerStdinData(ctx context.Context) error {
 // character ([0-9A-Za-z]).
 var nonAlphanumericRegexp = regexp.MustCompile("[[:^alnum:]]+")
 
+// alphanumericChars contains all alphanumeric characters.
+const alphanumericChars = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789"
+
 // GeneratePersistentDNSName returns the host's persistent DNS name, or
 // generates a new one if it doesn't have one currently assigned.
 func (h *Host) GeneratePersistentDNSName(ctx context.Context, domain string) (string, error) {
@@ -3268,9 +3273,42 @@ func (h *Host) GeneratePersistentDNSName(ctx context.Context, domain string) (st
 	}
 	user := strings.Join(cleanedParts, "-")
 
+	const maxRandLen = 5
+
+	// Since each user can own multiple unexpirable hosts, just using their
+	// username is not sufficient to make a unique persistent DNS name. Try
+	// first generating a persistent DNS name that:
+	// 1. contains only alphanumeric characters so it's more memorable, and
+	// 2. is derived from the host ID.
+	//
+	// This is slightly preferable to a random alphanumeric string, because a
+	// host with a particular ID will have a more short and memorable
+	// alphabet-only string.
+
+	idBasedHash := sha256.Sum256([]byte(h.Id))
+	encoder := base64.RawURLEncoding
+	idBasedEncoding := make([]byte, encoder.EncodedLen(len(idBasedHash[:])))
+	encoder.Encode(idBasedEncoding, idBasedHash[:])
+
+	// Shorten the string and map encoding to only alphabet characters so it's
+	// more memorable.
+	idBasedRandom := make([]byte, maxRandLen)
+	for i := range idBasedRandom {
+		idBasedRandom[i] = alphanumericChars[idBasedEncoding[i]%byte(len(alphanumericChars))]
+	}
+	candidate := fmt.Sprintf("%s-%s.%s", user, string(idBasedRandom), strings.TrimPrefix(domain, "."))
+	conflicting, _ := FindOneByPersistentDNSName(ctx, candidate)
+	if conflicting == nil || conflicting.Id == h.Id {
+		return candidate, nil
+	}
+
+	// If the host ID can't be mapped to a unique DNS name, then fall back to
+	// using a random string to produce a unique DNS name. This is less
+	// preferable because it's randomly-generated, but it does handle the very
+	// tiny edge case where the DNS name generated above conflicts with an
+	// existing one.
 	const numAttempts = 5
 	for i := 0; i < numAttempts; i++ {
-		const maxRandLen = 5
 		random := utility.RandomString()[:maxRandLen]
 		candidate := fmt.Sprintf("%s-%s.%s", user, random, strings.TrimPrefix(domain, "."))
 

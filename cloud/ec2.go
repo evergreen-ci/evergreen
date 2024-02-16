@@ -52,6 +52,10 @@ type EC2ProviderSettings struct {
 	// SubnetId is only set in a VPC. Either subnet id or vpc name must set.
 	SubnetId string `mapstructure:"subnet_id" json:"subnet_id,omitempty" bson:"subnet_id,omitempty"`
 
+	// Tenancy, if set, determines how EC2 instances are distributed across
+	// physical hardware.
+	Tenancy evergreen.EC2Tenancy `mapstructure:"tenancy" json:"tenancy,omitempty" bson:"tenancy,omitempty"`
+
 	// VpcName is used to get the subnet ID automatically. Either subnet id or vpc name must set.
 	VpcName string `mapstructure:"vpc_name" json:"vpc_name,omitempty" bson:"vpc_name,omitempty"`
 
@@ -90,6 +94,10 @@ func (s *EC2ProviderSettings) Validate() error {
 
 	if s.IsVpc && s.SubnetId == "" {
 		catcher.New("must set a default subnet for a VPC")
+	}
+
+	if s.Tenancy != "" {
+		catcher.ErrorfWhen(!evergreen.IsValidEC2Tenancy(s.Tenancy), "invalid tenancy '%s', allowed values are: %s", s.Tenancy, evergreen.ValidEC2Tenancies)
 	}
 
 	_, err := makeBlockDeviceMappings(s.MountPoints)
@@ -275,6 +283,9 @@ func (m *ec2Manager) spawnOnDemandHost(ctx context.Context, h *host.Host, ec2Set
 		}
 	} else {
 		input.SecurityGroups = ec2Settings.SecurityGroupIDs
+	}
+	if ec2Settings.Tenancy != "" {
+		input.Placement = &types.Placement{Tenancy: types.Tenancy(ec2Settings.Tenancy)}
 	}
 
 	if ec2Settings.UserData != "" {
@@ -568,7 +579,7 @@ func (m *ec2Manager) setNoExpiration(ctx context.Context, h *host.Host, noExpira
 			Resources: resources,
 			Tags: []types.Tag{
 				{
-					Key:   aws.String("expire-on"),
+					Key:   aws.String(evergreen.TagExpireOn),
 					Value: aws.String(expireOnValue),
 				},
 			},
@@ -579,8 +590,35 @@ func (m *ec2Manager) setNoExpiration(ctx context.Context, h *host.Host, noExpira
 	}
 
 	if noExpiration {
+		instance, err := m.client.GetInstanceInfo(ctx, h.Id)
+		grip.Error(message.WrapError(err, message.Fields{
+			"message":    "could not get instance info for assigning persistent DNS name",
+			"dashboard":  "evergreen sleep schedule health",
+			"host_id":    h.Id,
+			"started_by": h.StartedBy,
+		}))
+		if instance != nil {
+			grip.Error(message.WrapError(setHostPersistentDNSName(ctx, m.env, h, utility.FromStringPtr(instance.PublicIpAddress), m.client), message.Fields{
+				"message":         "could not update host's persistent DNS name",
+				"op":              "upsert",
+				"dashboard":       "evergreen sleep schedule health",
+				"host_id":         h.Id,
+				"started_by":      h.StartedBy,
+				"instance_status": ec2StatusToEvergreenStatus(instance.State.Name),
+			}))
+		}
+
 		return errors.Wrapf(h.MarkShouldNotExpire(ctx, expireOnValue), "marking host should not expire in DB for host '%s'", h.Id)
 	}
+
+	grip.Error(message.WrapError(deleteHostPersistentDNSName(ctx, m.env, h, m.client), message.Fields{
+		"message":    "could not delete host's persistent DNS name",
+		"op":         "delete",
+		"dashboard":  "evergreen sleep schedule health",
+		"host_id":    h.Id,
+		"started_by": h.StartedBy,
+	}))
+
 	return errors.Wrapf(h.MarkShouldExpire(ctx, expireOnValue), "marking host should in DB for host '%s'", h.Id)
 }
 
