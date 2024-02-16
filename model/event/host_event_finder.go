@@ -2,6 +2,7 @@ package event
 
 import (
 	"context"
+	"github.com/evergreen-ci/evergreen/db"
 
 	"github.com/evergreen-ci/evergreen"
 	mgobson "github.com/evergreen-ci/evergreen/db/mgo/bson"
@@ -84,4 +85,16 @@ func AllRecentHostEventsMatchStatus(ctx context.Context, hostId string, n int, s
 
 	return true
 
+}
+
+// CountFailedExecuteEvents counts the number of failed execute script events
+// for a host
+func CountFailedExecuteEvents(id string) (int, error) {
+	filter := ResourceTypeKeyIs(ResourceTypeHost)
+	filter[ResourceIdKey] = id
+	filter[TypeKey] = EventHostScriptExecuteFailed
+
+	num, err := db.CountQ(EventCollection, db.Query(filter))
+
+	return num, err
 }

@@ -882,7 +882,7 @@ func (h *Host) setupScriptCommands(settings *evergreen.Settings) (string, error)
 // yet.
 func (h *Host) StartAgentMonitorRequest(ctx context.Context, settings *evergreen.Settings) (string, error) {
 	if h.Secret == "" {
-		if err := h.CreateSecret(ctx); err != nil {
+		if err := h.CreateSecret(ctx, false); err != nil {
 			return "", errors.Wrap(err, "creating host secret")
 		}
 	}
@@ -1216,7 +1216,7 @@ func (h *Host) SetUserDataHostProvisioned(ctx context.Context) error {
 // the host provisioning script.
 func (h *Host) GenerateFetchProvisioningScriptUserData(ctx context.Context, env evergreen.Environment) (*userdata.Options, error) {
 	if h.Secret == "" {
-		if err := h.CreateSecret(ctx); err != nil {
+		if err := h.CreateSecret(ctx, false); err != nil {
 			return nil, errors.Wrap(err, "creating host secret")
 		}
 	}

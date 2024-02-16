@@ -799,9 +799,13 @@ func (h *Host) SetQuarantined(ctx context.Context, user string, logs string) err
 }
 
 // CreateSecret generates a host secret and updates the host both locally
-// and in the database.
-func (h *Host) CreateSecret(ctx context.Context) error {
+// and in the database, with the option to clear the secret rather than
+// set a new one.
+func (h *Host) CreateSecret(ctx context.Context, clear bool) error {
 	secret := utility.RandomString()
+	if clear {
+		secret = ""
+	}
 	err := UpdateOne(
 		ctx,
 		bson.M{IdKey: h.Id},
