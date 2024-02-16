@@ -21,7 +21,6 @@ import (
 	"github.com/evergreen-ci/evergreen/thirdparty"
 	"github.com/evergreen-ci/evergreen/util"
 	"github.com/evergreen-ci/utility"
-	"github.com/google/go-github/v53/github"
 	"github.com/mongodb/anser/bsonutil"
 	"github.com/mongodb/grip"
 	"github.com/mongodb/grip/message"
@@ -129,10 +128,8 @@ type BuildVariantTaskUnit struct {
 	DependsOn         []TaskUnitDependency      `yaml:"depends_on,omitempty" bson:"depends_on"`
 
 	// the distros that the task can be run on
-	RunOn []string `yaml:"run_on,omitempty" bson:"run_on"`
-	// currently unsupported (TODO EVG-578)
-	ExecTimeoutSecs int   `yaml:"exec_timeout_secs,omitempty" bson:"exec_timeout_secs"`
-	Stepback        *bool `yaml:"stepback,omitempty" bson:"stepback,omitempty"`
+	RunOn    []string `yaml:"run_on,omitempty" bson:"run_on"`
+	Stepback *bool    `yaml:"stepback,omitempty" bson:"stepback,omitempty"`
 
 	CommitQueueMerge bool `yaml:"commit_queue_merge,omitempty" bson:"commit_queue_merge"`
 
@@ -222,10 +219,6 @@ func (bvt *BuildVariantTaskUnit) Populate(pt ProjectTask, bv BuildVariant) {
 	}
 	if len(bvt.AllowedRequesters) == 0 {
 		bvt.AllowedRequesters = pt.AllowedRequesters
-	}
-	// TODO these are copied but unused until EVG-578 is completed
-	if bvt.ExecTimeoutSecs == 0 {
-		bvt.ExecTimeoutSecs = pt.ExecTimeoutSecs
 	}
 	if bvt.Stepback == nil {
 		bvt.Stepback = pt.Stepback
@@ -813,35 +806,15 @@ func mergeAllLogs(main, add *LoggerConfig) *LoggerConfig {
 }
 
 const (
-	EvergreenLogSender   = "evergreen"
-	FileLogSender        = "file"
-	BuildloggerLogSender = "buildlogger"
-	SplunkLogSender      = "splunk"
+	EvergreenLogSender = "evergreen"
+	FileLogSender      = "file"
+	SplunkLogSender    = "splunk"
 )
-
-// IsValidDefaultLogger returns whether the given logger, set either globally
-// or at the project level, is a valid default logger. Default loggers must be
-// configured globally or not require configuration and must be valid for use
-// with system logs.
-func IsValidDefaultLogger(logger string) bool {
-	for _, validLogger := range ValidDefaultLoggers {
-		if logger == validLogger {
-			return true
-		}
-	}
-	return false
-}
-
-var ValidDefaultLoggers = []string{
-	EvergreenLogSender,
-	BuildloggerLogSender,
-}
 
 var ValidLogSenders = []string{
 	EvergreenLogSender,
 	FileLogSender,
 	SplunkLogSender,
-	BuildloggerLogSender,
 }
 
 // TaskIdTable is a map of [variant, task display name]->[task id].
@@ -1111,7 +1084,7 @@ func generateId(name string, projectIdentifier string, projBV *BuildVariant, rev
 
 // PopulateExpansions returns expansions for a task, excluding build variant
 // expansions, project variables, and project/version parameters.
-func PopulateExpansions(t *task.Task, h *host.Host, oauthToken, appToken string) (util.Expansions, error) {
+func PopulateExpansions(t *task.Task, h *host.Host, oauthToken, appToken, knownHosts string) (util.Expansions, error) {
 	if t == nil {
 		return nil, errors.New("task cannot be nil")
 	}
@@ -1130,6 +1103,7 @@ func PopulateExpansions(t *task.Task, h *host.Host, oauthToken, appToken string)
 	expansions.Put("build_variant", t.BuildVariant)
 	expansions.Put("revision", t.Revision)
 	expansions.Put("github_commit", t.Revision)
+	expansions.Put(evergreen.GithubKnownHosts, knownHosts)
 	expansions.Put(evergreen.GlobalGitHubTokenExpansion, oauthToken)
 	expansions.Put(evergreen.GithubAppToken, appToken)
 	expansions.Put("project", projectRef.Identifier)
@@ -1486,10 +1460,11 @@ func (p *Project) findMatchingBuildVariants(bvRegex *regexp.Regexp) []string {
 func (p *Project) findBuildVariantsWithTag(tags []string) []string {
 	var res []string
 	for _, b := range p.BuildVariants {
-		if len(utility.StringSliceIntersection(b.Tags, tags)) > 0 {
+		if isValidRegexOrTag(b.Name, b.Tags, tags, nil) {
 			res = append(res, b.Name)
 		}
 	}
+
 	return res
 }
 
@@ -1534,10 +1509,46 @@ func (p *Project) findMatchingProjectTasks(tRegex *regexp.Regexp) []string {
 	return res
 }
 
+func (p *Project) GetNumCheckRunsFromVariantTasks(variantTasks []patch.VariantTasks) int {
+	numCheckRuns := 0
+	for _, variant := range variantTasks {
+		for _, t := range variant.Tasks {
+			numCheckRuns += p.getNumCheckRuns(t, variant.Variant)
+		}
+
+		for _, dt := range variant.DisplayTasks {
+			for _, t := range dt.ExecTasks {
+				numCheckRuns += p.getNumCheckRuns(t, variant.Variant)
+			}
+		}
+	}
+	return numCheckRuns
+}
+
+func (p *Project) GetNumCheckRunsFromTaskVariantPairs(variantTasks *TaskVariantPairs) int {
+	numCheckRuns := 0
+	for _, variant := range variantTasks.DisplayTasks {
+		numCheckRuns += p.getNumCheckRuns(variant.TaskName, variant.Variant)
+	}
+	for _, variant := range variantTasks.ExecTasks {
+		numCheckRuns += p.getNumCheckRuns(variant.TaskName, variant.Variant)
+	}
+	return numCheckRuns
+}
+
+func (p *Project) getNumCheckRuns(taskName, variantName string) int {
+	if bvtu := p.FindTaskForVariant(taskName, variantName); bvtu != nil {
+		if bvtu.HasCheckRun() {
+			return 1
+		}
+	}
+	return 0
+}
+
 func (p *Project) findProjectTasksWithTag(tags []string) []string {
 	var res []string
 	for _, t := range p.Tasks {
-		if len(utility.StringSliceIntersection(t.Tags, tags)) > 0 {
+		if isValidRegexOrTag(t.Name, t.Tags, tags, nil) {
 			res = append(res, t.Name)
 		}
 	}
@@ -1659,7 +1670,6 @@ func (p *Project) tasksFromGroup(bvTaskGroup BuildVariantTaskUnit) []BuildVarian
 			Priority:          bvTaskGroup.Priority,
 			DependsOn:         bvTaskGroup.DependsOn,
 			RunOn:             bvTaskGroup.RunOn,
-			ExecTimeoutSecs:   bvTaskGroup.ExecTimeoutSecs,
 			Stepback:          bvTaskGroup.Stepback,
 			Activate:          bvTaskGroup.Activate,
 			CommitQueueMerge:  bvTaskGroup.CommitQueueMerge,
@@ -2297,56 +2307,4 @@ func GetVariantsAndTasksFromPatchProject(ctx context.Context, settings *evergree
 		Project:  *project,
 	}
 	return &variantsAndTasksFromProject, nil
-}
-
-// ReadOutputPath reads the content of a file and parses it into a github.CheckRunOutput struct
-// if it fails validation, it returns an error
-func ReadAndValidateOutputPath(file string) (*github.CheckRunOutput, error) {
-	checkRunOutput := &github.CheckRunOutput{}
-
-	if file == "" {
-		return checkRunOutput, nil
-	}
-
-	if err := utility.ReadJSONFile(file, &checkRunOutput); err != nil {
-		return nil, err
-	}
-
-	return checkRunOutput, validateCheckRuns(checkRunOutput)
-}
-
-func validateCheckRuns(checkRun *github.CheckRunOutput) error {
-	if checkRun == nil {
-		return errors.New("checkRun Output is nil")
-	}
-
-	catcher := grip.NewBasicCatcher()
-
-	catcher.NewWhen(checkRun.Title == nil, "checkRun has no title")
-	summaryErrMsg := fmt.Sprintf("the checkRun '%s' has no summary", utility.FromStringPtr(checkRun.Title))
-	catcher.NewWhen(checkRun.Summary == nil, summaryErrMsg)
-
-	for _, an := range checkRun.Annotations {
-		annotationErrorMessage := fmt.Sprintf("checkRun '%s' specifies an annotation '%s' with no ", utility.FromStringPtr(checkRun.Title), utility.FromStringPtr(an.Title))
-
-		catcher.NewWhen(an.Path == nil, annotationErrorMessage+"path")
-		invalidStart := an.StartLine == nil || utility.FromIntPtr(an.StartLine) < 1
-		catcher.NewWhen(invalidStart, annotationErrorMessage+"start line or a start line < 1")
-
-		invalidEnd := an.EndLine == nil || utility.FromIntPtr(an.EndLine) < 1
-		catcher.NewWhen(invalidEnd, annotationErrorMessage+"end line or an end line < 1")
-
-		catcher.NewWhen(an.AnnotationLevel == nil, annotationErrorMessage+"annotation level")
-
-		catcher.NewWhen(an.Message == nil, annotationErrorMessage+"message")
-
-		if an.EndColumn != nil || an.StartColumn != nil {
-			if utility.FromIntPtr(an.StartLine) != utility.FromIntPtr(an.EndLine) {
-				errMessage := fmt.Sprintf("The annotation '%s' in checkRun '%s' should not include a start or end column when start_line and end_line have different values", utility.FromStringPtr(an.Title), utility.FromStringPtr(checkRun.Title))
-				catcher.New(errMessage)
-			}
-		}
-	}
-
-	return catcher.Resolve()
 }

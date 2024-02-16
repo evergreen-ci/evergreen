@@ -304,6 +304,8 @@ type processNextResponse struct {
 }
 
 func (a *Agent) processNextTask(ctx context.Context, nt *apimodels.NextTaskResponse, tc *taskContext, needTeardownGroup bool) (processNextResponse, error) {
+	_, span := a.tracer.Start(ctx, "process-next-task")
+	defer span.End()
 	if nt.ShouldExit {
 		grip.Notice("Next task response indicates agent should exit.")
 		return processNextResponse{shouldExit: true}, nil
@@ -340,8 +342,11 @@ func (a *Agent) processNextTask(ctx context.Context, nt *apimodels.NextTaskRespo
 	}
 
 	if nt.TaskSecret == "" {
+		msg := "task response missing secret"
+		span.SetStatus(codes.Error, msg)
+		span.RecordError(errors.New(msg), trace.WithAttributes(attribute.String("task.id", tc.task.ID)))
 		grip.Critical(message.Fields{
-			"message": "task response missing secret",
+			"message": msg,
 			"task":    tc.task.ID,
 		})
 		return processNextResponse{
@@ -352,6 +357,8 @@ func (a *Agent) processNextTask(ctx context.Context, nt *apimodels.NextTaskRespo
 
 	tc, shouldExit, err := a.runTask(ctx, nil, nt, shouldSetupGroup, taskDirectory)
 	if err != nil {
+		span.SetStatus(codes.Error, "error running task")
+		span.RecordError(err, trace.WithAttributes(attribute.String("task.id", tc.task.ID)), trace.WithStackTrace(true))
 		grip.Critical(message.WrapError(err, message.Fields{
 			"message": "error running task",
 			"task":    tc.task.ID,
@@ -444,7 +451,7 @@ func (a *Agent) setupTask(agentCtx, setupCtx context.Context, initialTC *taskCon
 	}
 
 	tc.taskConfig.WorkDir = taskDirectory
-	tc.taskConfig.Expansions.Put("workdir", tc.taskConfig.WorkDir)
+	tc.taskConfig.NewExpansions.Put("workdir", tc.taskConfig.WorkDir)
 
 	// We are only calling this again to get the log for the current command after logging has been set up.
 	if factory != nil {
@@ -499,20 +506,20 @@ func shouldRunSetupGroup(nextTask *apimodels.NextTaskResponse, tc *taskContext) 
 	return false
 }
 
-func (a *Agent) fetchTaskInfo(ctx context.Context, tc *taskContext) (*task.Task, *model.Project, util.Expansions, map[string]bool, error) {
+func (a *Agent) fetchTaskInfo(ctx context.Context, tc *taskContext) (*task.Task, *model.Project, *apimodels.ExpansionsAndVars, error) {
 	project, err := a.comm.GetProject(ctx, tc.task)
 	if err != nil {
-		return nil, nil, nil, nil, errors.Wrap(err, "getting project")
+		return nil, nil, nil, errors.Wrap(err, "getting project")
 	}
 
 	taskModel, err := a.comm.GetTask(ctx, tc.task)
 	if err != nil {
-		return nil, nil, nil, nil, errors.Wrap(err, "getting task")
+		return nil, nil, nil, errors.Wrap(err, "getting task")
 	}
 
 	expAndVars, err := a.comm.GetExpansionsAndVars(ctx, tc.task)
 	if err != nil {
-		return nil, nil, nil, nil, errors.Wrap(err, "getting expansions and variables")
+		return nil, nil, nil, errors.Wrap(err, "getting expansions and variables")
 	}
 
 	// GetExpansionsAndVars does not include build variant expansions or project
@@ -536,7 +543,7 @@ func (a *Agent) fetchTaskInfo(ctx context.Context, tc *taskContext) (*task.Task,
 	// user-specified.
 	expAndVars.Expansions.Update(expAndVars.Parameters)
 
-	return taskModel, project, expAndVars.Expansions, expAndVars.PrivateVars, nil
+	return taskModel, project, expAndVars, nil
 }
 
 func (a *Agent) startLogging(ctx context.Context, tc *taskContext) error {
@@ -599,7 +606,7 @@ func (a *Agent) runTask(ctx context.Context, tcInput *taskContext, nt *apimodels
 	})
 
 	tskCtx = utility.ContextWithAttributes(tskCtx, tc.taskConfig.TaskAttributes())
-	tskCtx, span := a.tracer.Start(tskCtx, fmt.Sprintf("task: '%s'", tc.taskConfig.Task.DisplayName))
+	tskCtx, span := a.tracer.Start(tskCtx, "task")
 	defer span.End()
 	tc.traceID = span.SpanContext().TraceID().String()
 
@@ -972,6 +979,13 @@ func (a *Agent) finishTask(ctx context.Context, tc *taskContext, status string, 
 		defer cancel()
 		grip.Error(errors.Wrap(tc.logger.Flush(flushCtx), "flushing logs"))
 	}
+
+	err := a.upsertCheckRun(ctx, tc)
+	if err != nil {
+		grip.Error(errors.Wrap(err, "upserting checkrun"))
+	}
+	tc.logger.Task().Infof("Successfully upserted checkRun.")
+
 	grip.Infof("Sending final task status: '%s'.", detail.Status)
 	resp, err := a.comm.EndTask(ctx, detail, tc.task)
 	if err != nil {
@@ -986,6 +1000,50 @@ func (a *Agent) finishTask(ctx context.Context, tc *taskContext, status string, 
 	}
 
 	return resp, nil
+}
+
+//nolint:unused
+func (a *Agent) upsertCheckRun(ctx context.Context, tc *taskContext) error {
+	if tc.taskConfig == nil {
+		return nil
+	}
+
+	checkRunOutput, err := buildCheckRun(ctx, tc)
+	if err != nil {
+		return err
+	}
+	if checkRunOutput == nil {
+		return nil
+	}
+
+	return a.comm.UpsertCheckRun(ctx, tc.task, *checkRunOutput)
+}
+
+func buildCheckRun(ctx context.Context, tc *taskContext) (*apimodels.CheckRunOutput, error) {
+	fileName := tc.taskConfig.Task.CheckRunPath
+	// no checkRun specified
+	if fileName == "" || !evergreen.IsGitHubPatchRequester(tc.taskConfig.Task.Requester) {
+		return nil, nil
+	}
+	_, err := os.Stat(fileName)
+	if os.IsNotExist(err) {
+		return nil, errors.Errorf("file '%s' does not exist", fileName)
+	}
+
+	checkRunOutput := apimodels.CheckRunOutput{}
+	err = utility.ReadJSONFile(fileName, &checkRunOutput)
+	if err != nil {
+		return nil, err
+	}
+
+	if err := util.ExpandValues(&checkRunOutput, &tc.taskConfig.Expansions); err != nil {
+		return nil, errors.Wrap(err, "applying expansions")
+	}
+
+	tc.logger.Task().Infof("Upserting checkRun: %s.", checkRunOutput.Title)
+
+	return &checkRunOutput, nil
+
 }
 
 func (a *Agent) endTaskResponse(ctx context.Context, tc *taskContext, status string, systemFailureDescription string) *apimodels.TaskEndDetail {

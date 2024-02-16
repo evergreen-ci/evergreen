@@ -57,6 +57,7 @@ func (j *cronsRemoteHourJob) Run(ctx context.Context) {
 		PopulateSSHKeyUpdates(j.env),
 		PopulateDuplicateTaskCheckJobs(),
 		PopulatePodResourceCleanupJobs(),
+		PopulateUnexpirableSpawnHostStatsJob(),
 	}
 
 	queue := j.env.RemoteQueue()

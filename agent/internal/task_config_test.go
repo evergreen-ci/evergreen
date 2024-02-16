@@ -8,7 +8,6 @@ import (
 	"github.com/evergreen-ci/evergreen/model/patch"
 	"github.com/evergreen-ci/evergreen/model/task"
 	"github.com/evergreen-ci/evergreen/testutil"
-	"github.com/evergreen-ci/evergreen/util"
 	"github.com/stretchr/testify/assert"
 )
 
@@ -34,11 +33,31 @@ func TestNewTaskConfig(t *testing.T) {
 	taskConfig, err := NewTaskConfig(curdir, &apimodels.DistroView{}, p, task, &model.ProjectRef{
 		Id:         "project_id",
 		Identifier: "project_identifier",
-	}, &patch.Patch{}, util.Expansions{})
+	}, &patch.Patch{}, &apimodels.ExpansionsAndVars{
+		Vars: map[string]string{
+			"num_hosts":      "",
+			"aws_token":      "",
+			"my_pass_secret": "",
+			"myPASSWORD":     "",
+			"mySecret":       "",
+			"git_token":      "",
+		},
+		PrivateVars: map[string]bool{
+			"aws_token": true,
+		},
+		RedactKeys: []string{"pass", "secret", "token"},
+	})
 	assert.NoError(t, err)
 
-	assert.Equal(t, util.Expansions{}, taskConfig.DynamicExpansions)
-	assert.Equal(t, util.Expansions{}, taskConfig.Expansions)
+	assert.Empty(t, taskConfig.DynamicExpansions)
+	assert.Empty(t, taskConfig.Expansions)
+	assert.Equal(t, map[string]bool{
+		"aws_token":      true,
+		"my_pass_secret": true,
+		"myPASSWORD":     true,
+		"mySecret":       true,
+		"git_token":      true,
+	}, taskConfig.Redacted)
 	assert.Equal(t, &apimodels.DistroView{}, taskConfig.Distro)
 	assert.Equal(t, p, &taskConfig.Project)
 	assert.Equal(t, task, &taskConfig.Task)
@@ -66,7 +85,7 @@ func TestCreatesCheckRun(t *testing.T) {
 		},
 	}
 
-	tc, err := NewTaskConfig(testutil.GetDirectoryOfFile(), &apimodels.DistroView{}, p, task, &model.ProjectRef{}, &patch.Patch{}, util.Expansions{})
+	tc, err := NewTaskConfig(testutil.GetDirectoryOfFile(), &apimodels.DistroView{}, p, task, &model.ProjectRef{}, &patch.Patch{}, &apimodels.ExpansionsAndVars{})
 	assert.NoError(t, err)
 	assert.Equal(t, true, tc.createsCheckRun())
 }

@@ -443,7 +443,6 @@ func TestTranslateTasks(t *testing.T) {
 	assert.Equal(t, "bv0", out.BuildVariants[0].Name)
 	require.Len(t, out.BuildVariants[0].Tasks, 3)
 	assert.Equal(t, "my_task", out.BuildVariants[0].Tasks[0].Name)
-	assert.Equal(t, 30, out.BuildVariants[0].Tasks[0].ExecTimeoutSecs)
 	assert.True(t, utility.FromBoolPtr(out.BuildVariants[0].Tasks[0].PatchOnly))
 	assert.Equal(t, "your_task", out.BuildVariants[0].Tasks[1].Name)
 	assert.True(t, utility.FromBoolPtr(out.BuildVariants[0].Tasks[1].GitTagOnly))
@@ -456,7 +455,6 @@ func TestTranslateTasks(t *testing.T) {
 	assert.Equal(t, "my_tg", bvt.Name)
 	assert.Nil(t, bvt.PatchOnly)
 	assert.Contains(t, bvt.RunOn, "my_distro")
-	assert.Equal(t, 20, bvt.ExecTimeoutSecs)
 	assert.True(t, bvt.IsGroup)
 	assert.False(t, bvt.IsPartOfGroup)
 	assert.Zero(t, bvt.GroupName)
@@ -1974,9 +1972,8 @@ func TestParserProjectStorage(t *testing.T) {
 
 	ppConf := env.Settings().Providers.AWS.ParserProject
 	bucket, err := pail.NewS3BucketWithHTTPClient(c, pail.S3Options{
-		Name:        ppConf.Bucket,
-		Region:      endpoints.UsEast1RegionID,
-		Credentials: pail.CreateAWSCredentials(ppConf.Key, ppConf.Secret, ""),
+		Name:   ppConf.Bucket,
+		Region: endpoints.UsEast1RegionID,
 	})
 	require.NoError(t, err)
 	defer func() {
@@ -2400,9 +2397,9 @@ func TestMergeUnordered(t *testing.T) {
 			"a",
 		},
 		Loggers: &LoggerConfig{
-			Agent:  []LogOpts{{Type: BuildloggerLogSender}},
-			System: []LogOpts{{Type: BuildloggerLogSender}},
-			Task:   []LogOpts{{Type: BuildloggerLogSender}},
+			Agent:  []LogOpts{{Type: EvergreenLogSender}},
+			System: []LogOpts{{Type: EvergreenLogSender}},
+			Task:   []LogOpts{{Type: EvergreenLogSender}},
 		},
 	}
 

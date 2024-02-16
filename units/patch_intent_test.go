@@ -67,8 +67,12 @@ func (s *PatchIntentUnitsSuite) TearDownSuite() {
 }
 
 func (s *PatchIntentUnitsSuite) TearDownTest() {
-	evergreen.SetEnvironment(s.originalEnv)
-	s.NoError(evergreen.UpdateConfig(s.ctx, s.originalConfig))
+	if s.originalEnv != nil {
+		evergreen.SetEnvironment(s.originalEnv)
+	}
+	if s.originalConfig != nil {
+		s.NoError(evergreen.UpdateConfig(s.ctx, s.originalConfig))
+	}
 }
 
 func (s *PatchIntentUnitsSuite) SetupTest() {

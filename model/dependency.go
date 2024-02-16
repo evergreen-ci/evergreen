@@ -2,6 +2,7 @@ package model
 
 import (
 	"github.com/mongodb/grip"
+	"github.com/mongodb/grip/message"
 	"github.com/pkg/errors"
 )
 
@@ -75,15 +76,29 @@ func (di *dependencyIncluder) handle(pair TVPair, activationInfo *specificActiva
 		return included, nil
 	}
 
-	// if the given task is a task group, recurse on each task
+	// For a task group, recurse on each task and add those tasks that should be
+	// included.
 	if tg := di.Project.FindTaskGroup(pair.TaskName); tg != nil {
+		catcher := grip.NewBasicCatcher()
 		for _, t := range tg.Tasks {
 			ok, err := di.handle(TVPair{TaskName: t, Variant: pair.Variant}, activationInfo, generatedVariants, false)
-			if !ok {
-				di.included[pair] = false
-				return false, errors.Wrapf(err, "task group '%s' in variant '%s' contains unschedulable task '%s'", pair.TaskName, pair.Variant, t)
-			}
+			catcher.Wrapf(err, "task group '%s' in variant '%s' contains unschedulable task '%s'", pair.TaskName, pair.Variant, t)
+			// TODO (DEVPROD-4739): delete this debug log after confirming that
+			// this change doesn't cause other patch scheduling issues.
+			grip.DebugWhen(!ok && err == nil, message.Fields{
+				"message":              "not including a task in a task group that's disabled",
+				"ticket":               "DEVPROD-4739",
+				"task_group_task_name": t,
+				"build_variant":        pair.Variant,
+				"task_group":           tg.Name,
+				"project_identifier":   di.Project.Identifier,
+			})
 		}
+
+		if catcher.HasErrors() {
+			return false, catcher.Resolve()
+		}
+
 		return true, nil
 	}
 
@@ -97,13 +112,17 @@ func (di *dependencyIncluder) handle(pair TVPair, activationInfo *specificActiva
 	}
 
 	if bvt.SkipOnRequester(di.requester) {
+		// TODO (DEVPROD-4776): it seems like this should not include the task,
+		// but should not error either. When checking dependencies, it simply
+		// skips tasks whose requester doesn't apply, so it should probably just
+		// return false and no error here.
 		di.included[pair] = false
 		return false, errors.Errorf("task '%s' in variant '%s' cannot be run for a '%s'", pair.TaskName, pair.Variant, di.requester)
 	}
 
 	if bvt.IsDisabled() {
 		di.included[pair] = false
-		return false, errors.Errorf("task '%s' in variant '%s' has been disabled", pair.TaskName, pair.Variant)
+		return false, nil
 	}
 
 	di.included[pair] = true
@@ -116,6 +135,7 @@ func (di *dependencyIncluder) handle(pair TVPair, activationInfo *specificActiva
 	// If all the task / variant pairs that spawn these dependencies are inactive, we
 	// also mark this newly generated dependency as inactive.
 	pairSpecifiesActivation := activationInfo.taskOrVariantHasSpecificActivation(pair.Variant, pair.TaskName)
+	catcher := grip.NewBasicCatcher()
 	for _, dep := range deps {
 		// Since the only tasks that have activation info set are the initial unexpanded dependencies, we only need
 		// to propagate the deactivateGeneratedDeps for those tasks, which only exist at the root level of each recursion.
@@ -126,8 +146,12 @@ func (di *dependencyIncluder) handle(pair TVPair, activationInfo *specificActiva
 		ok, err := di.handle(dep, activationInfo, generatedVariants, false)
 		if !ok {
 			di.included[pair] = false
-			return false, errors.Wrapf(err, "task '%s' in variant '%s' has an unschedulable dependency", pair.TaskName, pair.Variant)
+			catcher.Wrapf(err, "task '%s' in variant '%s' has an unschedulable dependency", pair.TaskName, pair.Variant)
 		}
+	}
+
+	if catcher.HasErrors() {
+		return false, catcher.Resolve()
 	}
 
 	// we've reached a point where we know it is safe to include the current task

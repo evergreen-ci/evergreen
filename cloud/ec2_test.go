@@ -13,13 +13,14 @@ import (
 	"github.com/evergreen-ci/birch"
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/db"
+	"github.com/evergreen-ci/evergreen/mock"
 	"github.com/evergreen-ci/evergreen/model"
 	"github.com/evergreen-ci/evergreen/model/distro"
 	"github.com/evergreen-ci/evergreen/model/host"
 	"github.com/evergreen-ci/evergreen/model/task"
 	"github.com/evergreen-ci/evergreen/model/user"
 	restmodel "github.com/evergreen-ci/evergreen/rest/model"
-	"github.com/evergreen-ci/evergreen/testutil"
+	"github.com/evergreen-ci/utility"
 	"github.com/stretchr/testify/suite"
 	"go.mongodb.org/mongo-driver/bson"
 )
@@ -41,22 +42,33 @@ type EC2Suite struct {
 	distro                    distro.Distro
 	volume                    *host.Volume
 
-	env evergreen.Environment
-	ctx context.Context
+	env    evergreen.Environment
+	ctx    context.Context
+	cancel context.CancelFunc
 }
 
 func TestEC2Suite(t *testing.T) {
-	ctx, cancel := context.WithCancel(context.Background())
-	defer cancel()
-
-	s := &EC2Suite{
-		env: testutil.NewEnvironment(ctx, t),
-		ctx: ctx,
-	}
+	s := &EC2Suite{}
 	suite.Run(t, s)
 }
 
+func (s *EC2Suite) TearDownTest() {
+	s.cancel()
+}
+
 func (s *EC2Suite) SetupTest() {
+	ctx, cancel := context.WithCancel(context.Background())
+	s.ctx = ctx
+	s.cancel = cancel
+
+	mockEnv := &mock.Environment{}
+	s.Require().NoError(mockEnv.Configure(s.ctx))
+	mockEnv.EvergreenSettings.Providers.AWS.PersistentDNS = evergreen.PersistentDNSConfig{
+		HostedZoneID: "hosted_zone_id",
+		Domain:       "example.com",
+	}
+	s.env = mockEnv
+
 	s.Require().NoError(db.ClearCollections(host.Collection, host.VolumesCollection, task.Collection, model.ProjectVarsCollection))
 	s.onDemandOpts = &EC2ManagerOptions{
 		client: &awsClientMock{},
@@ -269,28 +281,20 @@ func (s *EC2Suite) TestConfigure() {
 	ctx, cancel := context.WithCancel(s.ctx)
 	defer cancel()
 
-	err := s.onDemandManager.Configure(ctx, settings)
-	s.Error(err)
-
-	// No region specified
-	settings.Providers.AWS.EC2Keys = []evergreen.EC2Key{
-		{Key: "default-key", Secret: "default-secret"},
-	}
-	err = s.onDemandManager.Configure(ctx, settings)
-	s.NoError(err)
+	// No region specified.
+	s.Require().NoError(s.onDemandManager.Configure(ctx, settings))
 	ec2m, ok := s.onDemandManager.(*ec2Manager)
-	s.True(ok)
-	creds, err := ec2m.credentials.Retrieve(ctx)
-	s.NoError(err)
-	s.Equal("default-key", creds.AccessKeyID)
-	s.Equal("default-secret", creds.SecretAccessKey)
+	s.Require().True(ok)
+	s.Equal(evergreen.DefaultEC2Region, ec2m.region)
 
-	// config missing key or secret
+	// Region specified.
 	settings.Providers.AWS.EC2Keys = []evergreen.EC2Key{
 		{Key: "test-key", Secret: ""},
 	}
-	err = s.onDemandWithRegionManager.Configure(ctx, settings)
-	s.Error(err)
+	s.Require().NoError(s.onDemandWithRegionManager.Configure(ctx, settings))
+	ec2m, ok = s.onDemandWithRegionManager.(*ec2Manager)
+	s.Require().True(ok)
+	s.Equal(s.onDemandWithRegionOpts.region, ec2m.region)
 }
 
 func (s *EC2Suite) TestSpawnHostInvalidInput() {
@@ -557,12 +561,24 @@ func (s *EC2Suite) TestModifyHost() {
 	s.Error(s.onDemandManager.ModifyHost(ctx, s.h, changes))
 
 	// modifying host to have no expiration
-	noExpiration := true
-	changes = host.HostModifyOptions{NoExpiration: &noExpiration}
+	changes = host.HostModifyOptions{NoExpiration: utility.TruePtr()}
 	s.NoError(s.onDemandManager.ModifyHost(ctx, s.h, changes))
 	found, err = host.FindOne(ctx, host.ById(s.h.Id))
 	s.NoError(err)
+	s.Require().NotZero(found)
 	s.True(found.NoExpiration)
+	s.NotZero(found.PersistentDNSName, "persistent DNS name should be assigned once host is unexpirable")
+	s.NotZero(found.PublicIPv4)
+
+	// reverting a host back to having an expiration
+	changes = host.HostModifyOptions{NoExpiration: utility.FalsePtr()}
+	s.NoError(s.onDemandManager.ModifyHost(ctx, s.h, changes))
+	found, err = host.FindOne(ctx, host.ById(s.h.Id))
+	s.NoError(err)
+	s.Require().NotZero(found)
+	s.False(found.NoExpiration)
+	s.Zero(found.PersistentDNSName, "persistent DNS name should be removed once host is expirable")
+	s.Zero(found.PublicIPv4)
 
 	// attaching a volume to host
 	volumeToMount := host.Volume{
@@ -1066,7 +1082,7 @@ func (s *EC2Suite) TestCacheHostData() {
 	instance.PublicDnsName = aws.String("public_dns_name")
 	instance.PrivateIpAddress = aws.String("12.34.56.78")
 
-	s.NoError(cacheHostData(s.ctx, s.h, instance, ec2m.client))
+	s.NoError(cacheHostData(s.ctx, s.env, s.h, instance, ec2m.client))
 
 	s.Equal(*instance.Placement.AvailabilityZone, s.h.Zone)
 	s.True(instance.LaunchTime.Equal(s.h.StartTime))
@@ -1124,8 +1140,6 @@ func (s *EC2Suite) TestFromDistroSettings() {
 		InstanceType:          "other_instance",
 		SecurityGroupIDs:      []string{"ghijkl"},
 		IAMInstanceProfileARN: "a_beautiful_profile",
-		AWSKeyID:              "other_key_id",
-		KeyName:               "other_key",
 	}
 	bytes, err := bson.Marshal(ec2Settings)
 	s.NoError(err)
@@ -1157,28 +1171,6 @@ func (s *EC2Suite) TestGetEC2ManagerOptions() {
 	managerOpts, err := GetManagerOptions(d1)
 	s.NoError(err)
 	s.Equal(evergreen.DefaultEC2Region, managerOpts.Region)
-	s.Equal("key", managerOpts.ProviderKey)
-	s.Equal("secret", managerOpts.ProviderSecret)
-}
-
-func (s *EC2Suite) TestGetEC2Key() {
-	settings := &evergreen.Settings{
-		Providers: evergreen.CloudProviders{
-			AWS: evergreen.AWSConfig{},
-		},
-	}
-	key, secret, err := GetEC2Key(settings)
-	s.Empty(key)
-	s.Empty(secret)
-	s.EqualError(err, "no EC2 keys in config")
-
-	settings.Providers.AWS.EC2Keys = []evergreen.EC2Key{
-		{Key: "test-key", Secret: "test-secret"},
-	}
-	key, secret, err = GetEC2Key(settings)
-	s.Equal("test-key", key)
-	s.Equal("test-secret", secret)
-	s.NoError(err)
 }
 
 func (s *EC2Suite) TestSetNextSubnet() {

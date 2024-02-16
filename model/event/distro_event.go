@@ -76,9 +76,7 @@ func LogDistroModified(distroId, userId string, before, after interface{}) {
 	}
 
 	data := DistroEventData{
-		UserId: userId,
 		User:   userId,
-		Data:   after,
 		Before: before,
 		After:  after,
 	}

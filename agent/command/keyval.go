@@ -52,6 +52,6 @@ func (c *keyValInc) Execute(ctx context.Context,
 		return errors.Wrapf(err, "incrementing key '%s'", c.Key)
 	}
 
-	conf.Expansions.Put(c.Destination, strconv.FormatInt(keyVal.Value, 10))
+	conf.NewExpansions.Put(c.Destination, strconv.FormatInt(keyVal.Value, 10))
 	return nil
 }

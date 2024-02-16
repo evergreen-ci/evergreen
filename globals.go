@@ -11,6 +11,9 @@ import (
 )
 
 const (
+	// User is the generic user representing the Evergreen application as a
+	// whole entity. If there's a more specific user performing an operation,
+	// prefer to use that instead.
 	User            = "mci"
 	GithubPatchUser = "github_pull_request"
 	GithubMergeUser = "github_merge_queue"
@@ -339,6 +342,8 @@ const (
 	GlobalGitHubTokenExpansion = "global_github_oauth_token"
 	GithubAppToken             = "github_app_token"
 	GithubAppPrivateKey        = "github_app_key"
+	GithubKnownHosts           = "github_known_hosts"
+	GithubCheckRun             = "github_check_run"
 
 	// GitHubRetryAttempts is the github client maximum number of attempts.
 	GitHubRetryAttempts = 3
@@ -478,6 +483,22 @@ func IsSuccessfulVersionStatus(status string) bool {
 
 type ModificationAction string
 
+// ModifySpawnHostSource determines the originating source of a spawn host
+// modification.
+type ModifySpawnHostSource string
+
+const (
+	// ModifySpawnHostManual means the spawn host is being modified manually
+	// because a user requested it.
+	ModifySpawnHostManual ModifySpawnHostSource = "manual"
+	// ModifySpawnHostManual means the spawn host is being modified by the
+	// automatic sleep schedule.
+	ModifySpawnHostSleepSchedule ModifySpawnHostSource = "sleep_schedule"
+	// ModifySpawnHostManual means the spawn host is being modified by a
+	// user-owned sleep script.
+	ModifySpawnHostScript ModifySpawnHostSource = "script"
+)
+
 // Common OTEL constants and attribute keys
 const (
 	PackageName = "github.com/evergreen-ci/evergreen"
@@ -496,6 +517,9 @@ const (
 	ProjectIDOtelAttribute         = "evergreen.project.id"
 	DistroIDOtelAttribute          = "evergreen.distro.id"
 	HostIDOtelAttribute            = "evergreen.host.id"
+	HostStartedByOtelAttribute     = "evergreen.host.started_by"
+	HostNoExpirationOtelAttribute  = "evergreen.host.no_expiration"
+	HostInstanceTypeOtelAttribute  = "evergreen.host.instance_type"
 	AggregationNameOtelAttribute   = "db.aggregationName"
 )
 
@@ -566,6 +590,23 @@ func IsDockerProvider(provider string) bool {
 		provider == ProviderNameDockerMock
 }
 
+// EC2Tenancy represents the physical hardware tenancy for EC2 hosts.
+type EC2Tenancy string
+
+const (
+	EC2TenancyDefault   EC2Tenancy = "default"
+	EC2TenancyDedicated EC2Tenancy = "dedicated"
+	EC2TenancyHost      EC2Tenancy = "host"
+)
+
+// ValidEC2Tenancies represents valid EC2 tenancy values.
+var ValidEC2Tenancies = []EC2Tenancy{EC2TenancyDefault, EC2TenancyDedicated, EC2TenancyHost}
+
+// IsValidEC2Tenancy returns if the given EC2 tenancy is valid.
+func IsValidEC2Tenancy(tenancy EC2Tenancy) bool {
+	return len(utility.FilterSlice(ValidEC2Tenancies, func(t EC2Tenancy) bool { return t == tenancy })) > 0
+}
+
 var (
 	// ProviderSpawnable includes all cloud provider types where hosts can be
 	// dynamically created and terminated according to need. This has no
@@ -604,17 +645,15 @@ var (
 )
 
 const (
-	DefaultServiceConfigurationFileName = "/etc/mci_settings.yml"
-	DefaultDatabaseURL                  = "mongodb://localhost:27017"
-	DefaultDatabaseName                 = "mci"
-	DefaultDatabaseWriteMode            = "majority"
-	DefaultDatabaseReadMode             = "majority"
+	DefaultDatabaseURL       = "mongodb://localhost:27017"
+	DefaultDatabaseName      = "mci"
+	DefaultDatabaseWriteMode = "majority"
+	DefaultDatabaseReadMode  = "majority"
 
 	DefaultAmboyDatabaseURL = "mongodb://localhost:27017"
 
 	// database and config directory, set to the testing version by default for safety
-	NotificationsFile = "mci-notifications.yml"
-	ClientDirectory   = "clients"
+	ClientDirectory = "clients"
 
 	// version requester types
 	PatchVersionRequester       = "patch_request"
@@ -1334,7 +1373,6 @@ type LogViewer string
 const (
 	LogViewerRaw     LogViewer = "raw"
 	LogViewerHTML    LogViewer = "html"
-	LogViewerLobster LogViewer = "lobster"
 	LogViewerParsley LogViewer = "parsley"
 )
 
@@ -1431,7 +1469,7 @@ var validKeyTypes = []string{
 	publicKeyECDSA,
 }
 
-var sensitiveCollections = []string{"project_vars"}
+var sensitiveCollections = []string{"project_vars", "events"}
 
 // ValidateSSHKey errors if the given key does not start with one of the allowed prefixes.
 func ValidateSSHKey(key string) error {

@@ -1,6 +1,8 @@
 package taskoutput
 
-import "github.com/evergreen-ci/evergreen"
+import (
+	"github.com/evergreen-ci/evergreen"
+)
 
 // TaskOutput is the versioned entry point for coordinating persistent storage
 // of a task run's output data.
@@ -24,13 +26,14 @@ type TaskOptions struct {
 func InitializeTaskOutput(env evergreen.Environment, opts TaskOptions) *TaskOutput {
 	settings := env.Settings()
 
-	output := &TaskOutput{}
-	if settings.LoggerConfig.DefaultLogger != "buildlogger" {
-		output.TaskLogs.Version = 1
-		output.TaskLogs.BucketConfig = settings.Buckets.LogBucket
-		output.TestLogs.Version = 1
-		output.TestLogs.BucketConfig = settings.Buckets.LogBucket
+	return &TaskOutput{
+		TaskLogs: TaskLogOutput{
+			Version:      1,
+			BucketConfig: settings.Buckets.LogBucket,
+		},
+		TestLogs: TestLogOutput{
+			Version:      1,
+			BucketConfig: settings.Buckets.LogBucket,
+		},
 	}
-
-	return output
 }

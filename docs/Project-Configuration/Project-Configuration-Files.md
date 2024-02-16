@@ -32,6 +32,7 @@ For example, a couple of tasks might look like:
 ``` yaml
 tasks:
 - name: compile
+  exec_timeout_secs: 20
   commands:
     - command: git.get_project
       params:
@@ -224,7 +225,6 @@ buildvariants:
     - name: compile
     - name: passing_test
       variant: osx-108
-    exec_timeout_secs: 20
     priority: 10
     batchtime: 20 // overrides build variant batchtime of 60
   - name: failing_test
@@ -289,12 +289,18 @@ Fields:
     settings page. This can also be set for individual tasks. Only applies to
     tasks from mainline commits.
 -   `cron`: define with [cron syntax](https://crontab.guru/) (i.e. Min \| Hour \| DayOfMonth \|
-    Month \| DayOfWeekOptional) when (in UTC) a task or variant should be activated
-    (cannot be combined with batchtime). This also accepts descriptors
-    such as `@daily` (reference
-    [cron](https://godoc.org/github.com/robfig/cron) for more example),
-    but does not accept intervals. (i.e.
-    `@every <duration>`). Only applies to tasks from mainline commits.
+    Month \| DayOfWeekOptional) when (in UTC) a task or variant in a mainline
+    commit should be activated (cannot be combined with batchtime). This also
+    accepts descriptors such as `@daily` (reference
+    [cron](https://godoc.org/github.com/robfig/cron) for more example), but does
+    not accept intervals. (i.e. `@every <duration>`). Note that `cron` doesn't
+    actually create any new tasks, it only activates existing tasks in mainline
+    commits. For example, if you specify a task with `cron: '@daily'`, Evergreen
+    will check that task once per day. If the most recent mainline commit is
+    inactive, Evergreen will activate it. In this way, cron is tied more closely
+    to project commit activity. To run something on a regular schedule
+    regardless of commit activity, consider using [periodic builds](Project-and-Distro-Settings.md#periodic-builds)
+    instead.
 -   `task_group`: a [task
     group](#task-groups)
     may be defined directly inline or using YAML aliases on a build
@@ -528,7 +534,8 @@ or task to the maximum allowed length of execution time. Exec timeout only
 applies to commands that run in `pre`, `setup_group`, `setup_task`, and the main
 task commands; it does not apply to the `post`, `teardown_task`, and
 `teardown_group` blocks. This timeout defaults to 6 hours. `exec_timeout_secs`
-can only be set on the project or on a task. It cannot be set on functions.
+can only be set on the project or on a task as seen in below example. 
+It cannot be set on functions or build variant tasks.
 
 You can also set `exec_timeout_secs` using [timeout.update](Project-Commands.md#timeoutupdate).
 
@@ -563,6 +570,7 @@ tasks:
   commands:
     - command: shell.exec
       timeout_secs: 10 ## force this command to fail if it stays "idle" for 10 seconds or more
+      exec_timeout_secs: 20 ## will override the project level exec_timeout defined above for this task
       params:
         script: |
           sleep 1000
@@ -647,6 +655,17 @@ Expansions are variables within your config file. They take the form
 level on the project configuration page or on a build variant level
 within the project. They can be used **as inputs to commands**,
 including shell scripts.
+
+Expansion values defined on the project configurations page are redacted from
+task logs and replaced with `<REDACTED:expansion_key>` if they meet one of the
+following criteria:
+- the project variable is marked as private
+- the project variable key contains any of the following case-insensitive
+  patterns: `auth`, `key`, `pass`, `private`, `pw`, `secret`, `token`
+
+Please note that this is the last line of defense against leaking secrets and
+task workflows should always follow best practices for securing sensitive
+information from reaching logs.
 
 Expansions cannot be used recursively. In other words, you can't define an
 expansion whose value uses another expansion.
@@ -755,6 +774,7 @@ Every task has some expansions available by default:
     commit queue item appears
 -   `${github_author}` is the GitHub username of the creator of a PR
     or PR triggered commit queue item
+-   `${github_known_hosts}` is GitHub's SSH key fingerprint
 -   `${triggered_by_git_tag}` is the name of the tag that triggered this
     version, if applicable
 -   `${is_commit_queue}` is the string "true" if this is a commit
@@ -963,10 +983,10 @@ must be present in the `tasks` array.
 
 ### Stepback
 
-Stepback is set to true if you want to stepback and test earlier commits
-in the case of a failing task. This can be set or unset at the
-top-level, at the build variant level, and for individual tasks (in the task definition or for the
-task within a specific build variant).
+Stepback is set to true if you want to stepback and test earlier commits in the case
+of a normally failing task (a normally failing task does not include system failed, setup failed, timed out, etc.).
+This can be set or unset at the top-level, at the build variant level, and for individual tasks
+(in the task definition or for the task within a specific build variant).
 
 ### Out of memory (OOM) Tracker
 

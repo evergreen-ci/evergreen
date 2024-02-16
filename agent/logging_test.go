@@ -7,8 +7,10 @@ import (
 	"os"
 	"testing"
 
+	"github.com/evergreen-ci/evergreen/agent/command"
 	"github.com/evergreen-ci/evergreen/agent/internal"
 	"github.com/evergreen-ci/evergreen/agent/internal/client"
+	agentutil "github.com/evergreen-ci/evergreen/agent/util"
 	"github.com/evergreen-ci/evergreen/model"
 	"github.com/evergreen-ci/evergreen/model/task"
 	_ "github.com/evergreen-ci/evergreen/testutil"
@@ -99,9 +101,9 @@ func TestAgentFileLogging(t *testing.T) {
 					{Name: "bv", Tasks: []model.BuildVariantTaskUnit{{Name: "task1", Variant: "bv"}}},
 				},
 			},
-			Timeout:    internal.Timeout{IdleTimeoutSecs: 15, ExecTimeoutSecs: 15},
-			WorkDir:    tmpDirName,
-			Expansions: *util.NewExpansions(nil),
+			Timeout:       internal.Timeout{IdleTimeoutSecs: 15, ExecTimeoutSecs: 15},
+			WorkDir:       tmpDirName,
+			NewExpansions: agentutil.NewDynamicExpansions(util.Expansions{}),
 		},
 	}
 	require.NoError(agt.startLogging(ctx, tc))
@@ -162,98 +164,32 @@ func TestStartLogging(t *testing.T) {
 	assert.Equal(t, "bar", logConfig.System[0].SplunkToken)
 }
 
-func TestDefaultSender(t *testing.T) {
-	agt := &Agent{
-		opts: Options{
-			HostID:     "host",
-			HostSecret: "secret",
-			StatusPort: 2286,
-			LogOutput:  LogOutputStdout,
-			LogPrefix:  "agent",
+func TestGetExpansionsToRedact(t *testing.T) {
+	for _, test := range []struct {
+		name     string
+		redacted map[string]bool
+		expected []string
+	}{
+		{
+			name: "Defaults",
 		},
-		comm: client.NewMock("mock"),
-	}
-	ctx, cancel := context.WithCancel(context.Background())
-	defer cancel()
-
-	taskID := "logging"
-	taskSecret := "mock_task_secret"
-	task := task.Task{
-		DisplayName: "task1",
-	}
-	tc := &taskContext{
-		oomTracker: &mock.OOMTracker{},
-		task: client.TaskData{
-			ID:     taskID,
-			Secret: taskSecret,
-		},
-		taskConfig: &internal.TaskConfig{
-			Task:         task,
-			BuildVariant: model.BuildVariant{Name: "bv"},
-			Timeout:      internal.Timeout{IdleTimeoutSecs: 15, ExecTimeoutSecs: 15},
-			Project:      model.Project{},
-		},
-	}
-
-	t.Run("Valid", func(t *testing.T) {
-		tc.taskConfig.Project.Loggers = &model.LoggerConfig{}
-		tc.taskConfig.ProjectRef = model.ProjectRef{DefaultLogger: model.BuildloggerLogSender}
-
-		assert.NoError(t, agt.startLogging(ctx, tc))
-		expectedLogOpts := []model.LogOpts{{Type: model.BuildloggerLogSender}}
-		assert.Equal(t, expectedLogOpts, tc.taskConfig.Project.Loggers.Agent)
-		assert.Equal(t, expectedLogOpts, tc.taskConfig.Project.Loggers.System)
-		assert.Equal(t, expectedLogOpts, tc.taskConfig.Project.Loggers.Task)
-	})
-	t.Run("Invalid", func(t *testing.T) {
-		tc.taskConfig.Project.Loggers = &model.LoggerConfig{}
-		tc.taskConfig.ProjectRef = model.ProjectRef{DefaultLogger: model.SplunkLogSender}
-
-		assert.NoError(t, agt.startLogging(ctx, tc))
-		expectedLogOpts := []model.LogOpts{{Type: model.EvergreenLogSender}}
-		assert.Equal(t, expectedLogOpts, tc.taskConfig.Project.Loggers.Agent)
-		assert.Equal(t, expectedLogOpts, tc.taskConfig.Project.Loggers.System)
-		assert.Equal(t, expectedLogOpts, tc.taskConfig.Project.Loggers.Task)
-	})
-}
-
-func TestTimberSender(t *testing.T) {
-	agt := &Agent{
-		opts: Options{
-			HostID:     "host",
-			HostSecret: "secret",
-			StatusPort: 2286,
-			LogOutput:  LogOutputStdout,
-			LogPrefix:  "agent",
-		},
-		comm: client.NewMock("mock"),
-	}
-	ctx, cancel := context.WithCancel(context.Background())
-	defer cancel()
-
-	taskID := "logging"
-	taskSecret := "mock_task_secret"
-	task := &task.Task{
-		DisplayName: "task1",
-	}
-	tc := &taskContext{
-		oomTracker: &mock.OOMTracker{},
-		task: client.TaskData{
-			ID:     taskID,
-			Secret: taskSecret,
-		},
-		taskConfig: &internal.TaskConfig{
-			Task:         *task,
-			BuildVariant: model.BuildVariant{Name: "bv"},
-			Timeout:      internal.Timeout{IdleTimeoutSecs: 15, ExecTimeoutSecs: 15},
-			Project: model.Project{
-				Loggers: &model.LoggerConfig{
-					Agent:  []model.LogOpts{{Type: model.BuildloggerLogSender}},
-					System: []model.LogOpts{{Type: model.BuildloggerLogSender}},
-					Task:   []model.LogOpts{{Type: model.BuildloggerLogSender}},
-				},
+		{
+			name: "Redacted",
+			redacted: map[string]bool{
+				"aws_token": true,
+				"my_secret": true,
+			},
+			expected: []string{
+				"aws_token",
+				"my_secret",
 			},
 		},
+	} {
+		t.Run(test.name, func(t *testing.T) {
+			test.expected = append(test.expected, command.ExpansionsToRedact...)
+
+			actual := getExpansionsToRedact(test.redacted)
+			assert.ElementsMatch(t, test.expected, actual)
+		})
 	}
-	assert.NoError(t, agt.startLogging(ctx, tc))
 }

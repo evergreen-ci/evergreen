@@ -133,6 +133,10 @@ func ByUserAndCommitQueue(user string, filterCommitQueue bool) db.Q {
 	return db.Query(q)
 }
 
+func ByGithash(githash string) db.Q {
+	return db.Query(bson.M{bsonutil.GetDottedKeyName(githubPatchDataKey, headHashKey): githash})
+}
+
 type ByPatchNameStatusesCommitQueuePaginatedOptions struct {
 	Author             *string
 	Project            *string

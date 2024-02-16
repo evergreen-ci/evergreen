@@ -226,6 +226,8 @@ func getInstallationIDFromGitHub(ctx context.Context, authFields *githubAppAuth,
 	if err != nil {
 		if resp != nil {
 			defer resp.Body.Close()
+		} else {
+			return 0, errors.Wrapf(err, "finding installation id for '%s/%s'", owner, repo)
 		}
 		if resp.StatusCode == http.StatusNotFound {
 			return 0, errors.Wrapf(gitHubAppNotInstalledError, "installation id for '%s/%s' not found", owner, repo)

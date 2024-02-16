@@ -6,7 +6,6 @@ import (
 	"os"
 	"path/filepath"
 	"strings"
-	"sync"
 	"testing"
 	"time"
 
@@ -15,17 +14,11 @@ import (
 	"github.com/evergreen-ci/evergreen/model/log"
 	"github.com/evergreen-ci/evergreen/model/task"
 	"github.com/evergreen-ci/evergreen/model/testlog"
-	serviceutil "github.com/evergreen-ci/evergreen/service/testutil"
 	"github.com/evergreen-ci/evergreen/taskoutput"
-	"github.com/evergreen-ci/timber/buildlogger"
-	timberutil "github.com/evergreen-ci/timber/testutil"
 	"github.com/evergreen-ci/utility"
-	"github.com/fortytw2/leaktest"
 	"github.com/mongodb/grip/level"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
-	"google.golang.org/grpc"
-	"google.golang.org/grpc/credentials/insecure"
 	"gopkg.in/yaml.v2"
 )
 
@@ -34,25 +27,13 @@ func TestAppendTestLog(t *testing.T) {
 	defer cancel()
 
 	tsk := &task.Task{
-		Id:             "id",
-		Project:        "project",
-		Version:        "version",
-		BuildVariant:   "build_variant",
-		Execution:      5,
-		Requester:      evergreen.GithubPRRequester,
-		TaskOutputInfo: &taskoutput.TaskOutput{},
-	}
-	testLog := &testlog.TestLog{
-		Id:            "id",
-		Name:          "test",
-		Task:          "task",
-		TaskExecution: 5,
-		Lines:         []string{"log line 1\nlog line 2", "log line 3"},
-	}
-	comm := client.NewMock("url")
-
-	t.Run("RoundTrip", func(t *testing.T) {
-		tsk.TaskOutputInfo = &taskoutput.TaskOutput{
+		Id:           "id",
+		Project:      "project",
+		Version:      "version",
+		BuildVariant: "build_variant",
+		Execution:    5,
+		Requester:    evergreen.GithubPRRequester,
+		TaskOutputInfo: &taskoutput.TaskOutput{
 			TestLogs: taskoutput.TestLogOutput{
 				Version: 1,
 				BucketConfig: evergreen.BucketConfig{
@@ -60,94 +41,37 @@ func TestAppendTestLog(t *testing.T) {
 					Type: evergreen.BucketTypeLocal,
 				},
 			},
-		}
+		},
+	}
+	testLog := &testlog.TestLog{
+		Id:            "id",
+		Name:          "test",
+		Task:          "task",
+		TaskExecution: 5,
+		Lines:         []string{"log line 1\nlog line 2", "log line 3\n", "log line 4"},
+	}
+	comm := client.NewMock("url")
 
-		require.NoError(t, AppendTestLog(ctx, comm, tsk, testLog))
-		it, err := tsk.GetTestLogs(ctx, taskoutput.TestLogGetOptions{LogPaths: []string{testLog.Name}})
-		require.NoError(t, err)
+	require.NoError(t, AppendTestLog(ctx, comm, tsk, testLog))
+	it, err := tsk.GetTestLogs(ctx, taskoutput.TestLogGetOptions{LogPaths: []string{testLog.Name}})
+	require.NoError(t, err)
 
-		var lines []string
-		for it.Next() {
-			line := it.Item()
-			assert.Equal(t, level.Info, line.Priority)
-			assert.WithinDuration(t, time.Now(), time.Unix(0, line.Timestamp), time.Second)
-			lines = append(lines, line.Data)
-		}
-		assert.Equal(t, strings.Join(testLog.Lines, "\n"), strings.Join(lines, "\n"))
-	})
-	t.Run("ToCedar", func(t *testing.T) {
-		tsk.TaskOutputInfo = &taskoutput.TaskOutput{}
-
-		for _, test := range []struct {
-			name     string
-			testCase func(*testing.T, *timberutil.MockBuildloggerServer)
-		}{
-			{
-				name: "CreateSenderFails",
-				testCase: func(t *testing.T, srv *timberutil.MockBuildloggerServer) {
-					srv.CreateErr = true
-					assert.Error(t, AppendTestLog(ctx, comm, tsk, testLog))
-				},
-			},
-			{
-				name: "SendFails",
-				testCase: func(t *testing.T, srv *timberutil.MockBuildloggerServer) {
-					srv.AppendErr = true
-					assert.Error(t, AppendTestLog(ctx, comm, tsk, testLog))
-				},
-			},
-			{
-				name: "CloseSenderFails",
-				testCase: func(t *testing.T, srv *timberutil.MockBuildloggerServer) {
-					srv.CloseErr = true
-					assert.Error(t, AppendTestLog(ctx, comm, tsk, testLog))
-				},
-			},
-			{
-				name: "SendSucceeds",
-				testCase: func(t *testing.T, srv *timberutil.MockBuildloggerServer) {
-					require.NoError(t, AppendTestLog(ctx, comm, tsk, testLog))
-
-					require.NotEmpty(t, srv.Create)
-					assert.Equal(t, tsk.Project, srv.Create.Info.Project)
-					assert.Equal(t, tsk.Version, srv.Create.Info.Version)
-					assert.Equal(t, tsk.BuildVariant, srv.Create.Info.Variant)
-					assert.Equal(t, tsk.DisplayName, srv.Create.Info.TaskName)
-					assert.Equal(t, tsk.Id, srv.Create.Info.TaskId)
-					assert.Equal(t, int32(tsk.Execution), srv.Create.Info.Execution)
-					assert.Equal(t, testLog.Name, srv.Create.Info.TestName)
-					assert.Equal(t, !tsk.IsPatchRequest(), srv.Create.Info.Mainline)
-					assert.Equal(t, buildlogger.LogStorageS3, buildlogger.LogStorage(srv.Create.Storage))
-
-					require.Len(t, srv.Data, 1)
-					for _, data := range srv.Data {
-						require.Len(t, data, 1)
-						require.Len(t, data[0].Lines, 3)
-					}
-
-				},
-			},
-		} {
-			t.Run(test.name, func(t *testing.T) {
-				srv := setupCedarServer(ctx, t, comm)
-				test.testCase(t, srv.Buildlogger)
-			})
-		}
-	})
+	var actual string
+	for it.Next() {
+		line := it.Item()
+		assert.Equal(t, level.Info, line.Priority)
+		assert.WithinDuration(t, time.Now(), time.Unix(0, line.Timestamp), time.Second)
+		actual += line.Data + "\n"
+	}
+	expectedLines := "log line 1\nlog line 2\nlog line 3\nlog line 4\n"
+	assert.Equal(t, expectedLines, actual)
 }
 
-func TestTestLogDirectoryHandler(t *testing.T) {
-	// Check for leaked goroutines.
-	defer leaktest.Check(t)()
-
+func TestTestLogDirectoryHandlerRun(t *testing.T) {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 
 	comm := client.NewMock("url")
-	tsk, h := setupTestTestLogDirectoryHandler(t, comm)
-	// Set a small buffer so lines are flushed to the
-	// underlying log service quickly.
-	h.maxBufferSize = 100
 
 	type logInfo struct {
 		logPath       string
@@ -156,145 +80,64 @@ func TestTestLogDirectoryHandler(t *testing.T) {
 
 	for _, test := range []struct {
 		name string
-		run  func(*testing.T) []logInfo
+		logs []logInfo
 	}{
 		{
-			name: "NestedFile",
-			run: func(t *testing.T) []logInfo {
-				info := logInfo{
-					logPath: "nested/log.log",
+			name: "RecursiveDirectoryWalk",
+			logs: []logInfo{
+				{
+					logPath: "log0.log",
 					expectedLines: []string{
 						"This is a small test log.",
 						"With only a few lines.",
-						"In a nested directory.",
 					},
-				}
-
-				require.NoError(t, os.Mkdir(filepath.Join(h.dir, filepath.Dir(info.logPath)), 0777))
-				require.NoError(t, os.WriteFile(filepath.Join(h.dir, info.logPath), []byte(strings.Join(info.expectedLines, "\n")+"\n"), 0777))
-
-				return []logInfo{info}
-			},
-		},
-		{
-			name: "NonAtomicLineWrite",
-			run: func(t *testing.T) []logInfo {
-				info := logInfo{
-					logPath: "non_atomic_line_writes.log",
-				}
-
-				f, err := os.Create(filepath.Join(h.dir, info.logPath))
-				require.NoError(t, err)
-				defer f.Close()
-
-				firstPart := "This is the first part of the line, "
-				_, err = f.WriteString(firstPart)
-				require.NoError(t, err)
-				time.Sleep(time.Second)
-				secondPart := "this is the second part of the line."
-				_, err = f.WriteString(secondPart + "\n")
-				require.NoError(t, err)
-				info.expectedLines = append(info.expectedLines, firstPart+secondPart)
-
-				return []logInfo{info}
-			},
-		},
-		{
-			name: "IgnorePartialLines",
-			run: func(t *testing.T) []logInfo {
-				rawLines := []string{
-					"This is a small test log.",
-					"The last line should get ignored.",
-					"Because it does not end in a newline character...",
-				}
-				info := logInfo{
-					logPath:       "parital_line.log",
-					expectedLines: rawLines[:len(rawLines)-1],
-				}
-				require.NoError(t, os.WriteFile(filepath.Join(h.dir, info.logPath), []byte(strings.Join(rawLines, "\n")), 0777))
-
-				return []logInfo{info}
-			},
-		},
-		{
-			name: "ReadLinesContinuously",
-			run: func(t *testing.T) []logInfo {
-				var (
-					logs  []logInfo
-					files []*os.File
-				)
-				for i := 0; i < 2; i++ {
-					logs = append(logs, logInfo{logPath: utility.RandomString()})
-
-					f, err := os.Create(filepath.Join(h.dir, logs[len(logs)-1].logPath))
-					require.NoError(t, err)
-					files = append(files, f)
-				}
-
-				// Set up asynchronous test log file writing.
-				writerCtx, writerCancel := context.WithCancel(ctx)
-				var (
-					mu sync.Mutex
-					wg sync.WaitGroup
-				)
-				wg.Add(1)
-				go func() {
-					defer func() {
-						for _, f := range files {
-							f.Close()
-						}
-						wg.Done()
-					}()
-
-					for {
-						select {
-						case <-writerCtx.Done():
-							return
-						default:
-							mu.Lock()
-							for i := range files {
-								line := fmt.Sprintf("%s %s.", utility.RandomString(), utility.RandomString())
-
-								_, err := files[i].WriteString(line + "\n")
-								require.NoError(t, err)
-
-								logs[i].expectedLines = append(logs[i].expectedLines, line)
-							}
-							mu.Unlock()
-
-							time.Sleep(time.Second)
-						}
-					}
-				}()
-
-				// Check that logs are ingested continuously.
-				time.Sleep(5 * time.Second)
-				mu.Lock()
-				for _, l := range logs {
-					it, err := tsk.GetTestLogs(ctx, taskoutput.TestLogGetOptions{LogPaths: []string{l.logPath}})
-					require.NoError(t, err)
-					assert.True(t, it.Next())
-					assert.NoError(t, it.Close())
-				}
-				mu.Unlock()
-
-				// Wait for async writing to exit cleanly and
-				// close the test log directory handler.
-				writerCancel()
-				wg.Wait()
-
-				return logs
+				},
+				{
+					logPath: "log1.log",
+					expectedLines: []string{
+						"This is a another small test log.",
+						"With only a few lines.",
+						"But it should get there.",
+					},
+				},
+				{
+					logPath: "nested/log2.log",
+					expectedLines: []string{
+						"This is a another small test log.",
+						"With only a few lines.",
+						"But this time it is in nested directory.",
+					},
+				},
+				{
+					logPath: "nested/nested/log3.log",
+					expectedLines: []string{
+						"This is a small test log, again.",
+						"In an an even more nested directory.",
+						"With some a friend!",
+					},
+				},
+				{
+					logPath: "nested/nested/log4.log",
+					expectedLines: []string{
+						"This is the last test log.",
+						"Blah blah blah blah.",
+						"Something something something.",
+						"We are done here.",
+					},
+				},
 			},
 		},
 	} {
 		t.Run(test.name, func(t *testing.T) {
-			require.NoError(t, h.start(ctx, t.TempDir()))
-			logs := test.run(t)
-			time.Sleep(5 * time.Second)
-			require.NoError(t, h.close(ctx))
+			tsk, h := setupTestTestLogDirectoryHandler(t, comm)
+			for _, li := range test.logs {
+				require.NoError(t, os.MkdirAll(filepath.Join(h.dir, filepath.Dir(li.logPath)), 0777))
+				require.NoError(t, os.WriteFile(filepath.Join(h.dir, li.logPath), []byte(strings.Join(li.expectedLines, "\n")+"\n"), 0777))
+			}
 
-			for _, l := range logs {
-				it, err := tsk.GetTestLogs(ctx, taskoutput.TestLogGetOptions{LogPaths: []string{l.logPath}})
+			require.NoError(t, h.run(ctx))
+			for _, li := range test.logs {
+				it, err := tsk.GetTestLogs(ctx, taskoutput.TestLogGetOptions{LogPaths: []string{li.logPath}})
 				require.NoError(t, err)
 				var persistedRawLines []string
 				for it.Next() {
@@ -302,7 +145,7 @@ func TestTestLogDirectoryHandler(t *testing.T) {
 				}
 				assert.NoError(t, it.Close())
 				require.NoError(t, it.Err())
-				assert.Equal(t, l.expectedLines, persistedRawLines)
+				assert.Equal(t, li.expectedLines, persistedRawLines)
 			}
 		})
 	}
@@ -356,7 +199,6 @@ func TestTestLogDirectoryHandlerGetSpecFile(t *testing.T) {
 	} {
 		t.Run(test.name, func(t *testing.T) {
 			tsk, h := setupTestTestLogDirectoryHandler(t, comm)
-			require.NoError(t, h.start(ctx, t.TempDir()))
 
 			// Set the expected test log spec and write spec file
 			// if spec data exists.
@@ -382,15 +224,12 @@ func TestTestLogDirectoryHandlerGetSpecFile(t *testing.T) {
 			rawLines, formatLine := getRawLinesAndFormatter(expectedSpec.Format)
 			logPath := utility.RandomString()
 			require.NoError(t, os.WriteFile(filepath.Join(h.dir, logPath), []byte(strings.Join(rawLines, "\n")+"\n"), 0777))
+			require.NoError(t, h.run(ctx))
 
-			// Sleep before continuing to avoid racing to detect
-			// the new file.
-			time.Sleep(time.Second)
-			require.NoError(t, h.close(ctx))
 			assert.Equal(t, expectedSpec, h.spec)
 
-			// Check that only log files are followed.
-			assert.Equal(t, 1, h.followFileCount)
+			// Check that only log files are handled.
+			assert.Equal(t, 1, h.logFileCount)
 
 			// Check that raw log lines were correctly parsed in
 			// accordance with their format.
@@ -514,21 +353,11 @@ func setupTestTestLogDirectoryHandler(t *testing.T, comm *client.Mock) (*task.Ta
 	}
 	logger, err := comm.GetLoggerProducer(context.TODO(), tsk, nil)
 	require.NoError(t, err)
-	h := newTestLogDirectoryHandler(tsk.TaskOutputInfo.TestLogs, taskoutput.TaskOptions{
+	h := newTestLogDirectoryHandler(t.TempDir(), tsk.TaskOutputInfo, taskoutput.TaskOptions{
 		ProjectID: tsk.Project,
 		TaskID:    tsk.Id,
 		Execution: tsk.Execution,
 	}, logger)
 
-	return tsk, h
-}
-
-func setupCedarServer(ctx context.Context, t *testing.T, comm *client.Mock) *timberutil.MockCedarServer {
-	srv, err := timberutil.NewMockCedarServer(ctx, serviceutil.NextPort())
-	require.NoError(t, err)
-
-	conn, err := grpc.DialContext(ctx, srv.Address(), grpc.WithTransportCredentials(insecure.NewCredentials()))
-	require.NoError(t, err)
-	comm.CedarGRPCConn = conn
-	return srv
+	return tsk, h.(*testLogDirectoryHandler)
 }

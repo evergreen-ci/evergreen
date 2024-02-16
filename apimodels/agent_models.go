@@ -136,19 +136,19 @@ type CreateHost struct {
 	Retries             int    `mapstructure:"retries" json:"retries" yaml:"retries"`
 
 	// EC2-related settings
-	AMI             string      `mapstructure:"ami" json:"ami" yaml:"ami" plugin:"expand"`
-	Distro          string      `mapstructure:"distro" json:"distro" yaml:"distro" plugin:"expand"`
-	EBSDevices      []EbsDevice `mapstructure:"ebs_block_device" json:"ebs_block_device" yaml:"ebs_block_device" plugin:"expand"`
-	InstanceType    string      `mapstructure:"instance_type" json:"instance_type" yaml:"instance_type" plugin:"expand"`
-	IPv6            bool        `mapstructure:"ipv6" json:"ipv6" yaml:"ipv6"`
-	Region          string      `mapstructure:"region" json:"region" yaml:"region" plugin:"expand"`
-	SecurityGroups  []string    `mapstructure:"security_group_ids" json:"security_group_ids" yaml:"security_group_ids" plugin:"expand"`
-	Subnet          string      `mapstructure:"subnet_id" json:"subnet_id" yaml:"subnet_id" plugin:"expand"`
-	UserdataFile    string      `mapstructure:"userdata_file" json:"userdata_file" yaml:"userdata_file" plugin:"expand"`
-	UserdataCommand string      `json:"userdata_command" yaml:"userdata_command" plugin:"expand"`
-	AWSKeyID        string      `mapstructure:"aws_access_key_id" json:"aws_access_key_id" yaml:"aws_access_key_id" plugin:"expand"`
-	AWSSecret       string      `mapstructure:"aws_secret_access_key" json:"aws_secret_access_key" yaml:"aws_secret_access_key" plugin:"expand"`
-	KeyName         string      `mapstructure:"key_name" json:"key_name" yaml:"key_name" plugin:"expand"`
+	AMI            string               `mapstructure:"ami" json:"ami" yaml:"ami" plugin:"expand"`
+	Distro         string               `mapstructure:"distro" json:"distro" yaml:"distro" plugin:"expand"`
+	EBSDevices     []EbsDevice          `mapstructure:"ebs_block_device" json:"ebs_block_device" yaml:"ebs_block_device" plugin:"expand"`
+	InstanceType   string               `mapstructure:"instance_type" json:"instance_type" yaml:"instance_type" plugin:"expand"`
+	IPv6           bool                 `mapstructure:"ipv6" json:"ipv6" yaml:"ipv6"`
+	Region         string               `mapstructure:"region" json:"region" yaml:"region" plugin:"expand"`
+	SecurityGroups []string             `mapstructure:"security_group_ids" json:"security_group_ids" yaml:"security_group_ids" plugin:"expand"`
+	Subnet         string               `mapstructure:"subnet_id" json:"subnet_id" yaml:"subnet_id" plugin:"expand"`
+	Tenancy        evergreen.EC2Tenancy `mapstructure:"tenancy" json:"tenancy" yaml:"tenancy" plugin:"expand"`
+	UserdataFile   string               `mapstructure:"userdata_file" json:"userdata_file" yaml:"userdata_file" plugin:"expand"`
+	// UserdataCommand is the content of the userdata file. Users can't actually
+	// set this directly, instead they pass in a userdata file.
+	UserdataCommand string `json:"userdata_command" yaml:"userdata_command" plugin:"expand"`
 
 	// docker-related settings
 	Image                    string           `mapstructure:"image" json:"image" yaml:"image" plugin:"expand"`
@@ -246,10 +246,8 @@ func (ch *CreateHost) validateEC2() error {
 			catcher.New("subnet ID must be set if AMI is set")
 		}
 	}
-
-	if !(ch.AWSKeyID == "" && ch.AWSSecret == "" && ch.KeyName == "") &&
-		!(ch.AWSKeyID != "" && ch.AWSSecret != "" && ch.KeyName != "") {
-		catcher.New("AWS access key ID, AWS secret access key, and key name must all be set or unset")
+	if ch.Tenancy != "" {
+		catcher.ErrorfWhen(!evergreen.IsValidEC2Tenancy(ch.Tenancy), "invalid tenancy '%s', allowed values are: %s", ch.Tenancy, evergreen.ValidEC2Tenancies)
 	}
 
 	return catcher.Resolve()
@@ -345,4 +343,30 @@ type ExpansionsAndVars struct {
 	Vars map[string]string `json:"vars"`
 	// PrivateVars contain the project private variables.
 	PrivateVars map[string]bool `json:"private_vars"`
+	// Redact keys contain patterns to match against expansion keys for
+	// redaction in logs.
+	RedactKeys []string `json:"redact_keys"`
+}
+
+// CheckRunOutput represents the output for a CheckRun.
+type CheckRunOutput struct {
+	Title            string                `json:"title,omitempty" plugin:"expand"`
+	Summary          string                `json:"summary,omitempty" plugin:"expand"`
+	Text             string                `json:"text,omitempty" plugin:"expand"`
+	AnnotationsCount *int                  `json:"annotations_count,omitempty"`
+	AnnotationsURL   string                `json:"annotations_url,omitempty" plugin:"expand"`
+	Annotations      []*CheckRunAnnotation `json:"annotations,omitempty" plugin:"expand"`
+}
+
+// CheckRunAnnotation represents an annotation object for a CheckRun output.
+type CheckRunAnnotation struct {
+	Path            string `json:"path,omitempty" plugin:"expand"`
+	StartLine       *int   `json:"start_line,omitempty" `
+	EndLine         *int   `json:"end_line,omitempty" `
+	StartColumn     *int   `json:"start_column,omitempty"`
+	EndColumn       *int   `json:"end_column,omitempty" `
+	AnnotationLevel string `json:"annotation_level,omitempty" plugin:"expand"`
+	Message         string `json:"message,omitempty" plugin:"expand"`
+	Title           string `json:"title,omitempty" plugin:"expand"`
+	RawDetails      string `json:"raw_details,omitempty" plugin:"expand"`
 }

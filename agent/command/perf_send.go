@@ -9,7 +9,6 @@ import (
 	"github.com/evergreen-ci/evergreen/util"
 	"github.com/evergreen-ci/poplar"
 	"github.com/evergreen-ci/poplar/rpc"
-	"github.com/evergreen-ci/utility"
 	"github.com/mitchellh/mapstructure"
 	"github.com/pkg/errors"
 )
@@ -68,26 +67,14 @@ func (c *perfSend) Execute(ctx context.Context, comm client.Communicator, logger
 	}
 	c.addEvgData(report, conf)
 
-	// Send data to the Cedar and Data-Pipes services.
+	// Send data to the Cedar performance results service.
 	conn, err := comm.GetCedarGRPCConn(ctx)
 	if err != nil {
 		return errors.Wrap(err, "connecting to Cedar")
 	}
-	dataPipes, err := comm.GetDataPipesConfig(ctx)
-	if err != nil {
-		return errors.Wrap(err, "getting the Data-Pipes config")
-	}
-	httpClient := utility.GetDefaultHTTPRetryableClient()
-	defer utility.PutHTTPClient(httpClient)
 	opts := rpc.UploadReportOptions{
-		Report:              report,
-		ClientConn:          conn,
-		DataPipesHost:       dataPipes.Host,
-		DataPipesRegion:     dataPipes.Region,
-		AWSAccessKey:        dataPipes.AWSAccessKey,
-		AWSSecretKey:        dataPipes.AWSSecretKey,
-		AWSToken:            dataPipes.AWSToken,
-		DataPipesHTTPClient: httpClient,
+		Report:     report,
+		ClientConn: conn,
 	}
 	return errors.Wrap(rpc.UploadReport(ctx, opts), "uploading report to Cedar")
 }
@@ -101,7 +88,6 @@ func (c *perfSend) addEvgData(report *poplar.Report, conf *internal.TaskConfig) 
 	report.TaskID = conf.Task.Id
 	report.Execution = conf.Task.Execution
 	report.Mainline = conf.Task.Requester == evergreen.RepotrackerVersionRequester
-	report.Requester = conf.Task.Requester
 
 	report.BucketConf.APIKey = c.AWSKey
 	report.BucketConf.APISecret = c.AWSSecret

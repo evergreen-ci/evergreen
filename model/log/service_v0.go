@@ -200,7 +200,9 @@ func (s *logServiceV0) parseChunkKey(prefix, key string) (chunkInfo, error) {
 
 // formatRawLine formats a log line for storage.
 func (s *logServiceV0) formatRawLine(line LogLine) string {
-	if line.Data[len(line.Data)-1] != '\n' {
+	if line.Data == "" {
+		line.Data = "\n"
+	} else if line.Data[len(line.Data)-1] != '\n' {
 		line.Data += "\n"
 	}
 
