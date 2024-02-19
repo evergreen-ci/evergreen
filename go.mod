@@ -54,7 +54,7 @@ require (
 	github.com/vektah/gqlparser/v2 v2.5.10
 	go.mongodb.org/mongo-driver v1.13.1
 	go.opentelemetry.io/contrib/detectors/aws/ec2 v1.21.1
-	go.opentelemetry.io/contrib/detectors/aws/ecs v1.21.1
+	go.opentelemetry.io/contrib/detectors/aws/ecs v1.23.0
 	go.opentelemetry.io/contrib/instrumentation/github.com/aws/aws-sdk-go-v2/otelaws v0.46.1
 	go.opentelemetry.io/contrib/instrumentation/github.com/gorilla/mux/otelmux v0.47.0
 	go.opentelemetry.io/contrib/instrumentation/net/http/otelhttp v0.46.1
