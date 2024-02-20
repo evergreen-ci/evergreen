@@ -73,9 +73,9 @@ input EditSpawnHostInput {
   hostId: String!
   instanceType: String
   noExpiration: Boolean
-  publicKey: PublicKeyInput
+  publicKey: PublicKeyInput @redactSecrets
   savePublicKey: Boolean
-  servicePassword: String
+  servicePassword: String @redactSecrets
   volume: String
 }
 
