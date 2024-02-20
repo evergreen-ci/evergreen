@@ -4291,7 +4291,7 @@ func TestValidateContainers(t *testing.T) {
 	}
 	assert.NoError(t, evergreen.UpdateConfig(ctx, testutil.TestConfig()))
 	defer func() {
-		assert.NoError(t, db.Clear(model.ProjectRefCollection))
+		assert.NoError(t, db.ClearCollections(model.ProjectRefCollection, model.ProjectVarsCollection))
 	}()
 	for tName, tCase := range map[string]func(t *testing.T, p *model.Project, ref *model.ProjectRef){
 		"SucceedsWithValidProjectAndRef": func(t *testing.T, p *model.Project, ref *model.ProjectRef) {
@@ -4394,6 +4394,7 @@ func TestValidateContainers(t *testing.T) {
 			}
 
 			ref := &model.ProjectRef{
+				Id:         "proj",
 				Identifier: "proj",
 				ContainerSizeDefinitions: []model.ContainerResources{
 					{
@@ -4416,6 +4417,7 @@ func TestValidateContainers(t *testing.T) {
 				},
 			}
 
+			require.NoError(t, ref.Upsert())
 			tCase(t, p, ref)
 		})
 	}
