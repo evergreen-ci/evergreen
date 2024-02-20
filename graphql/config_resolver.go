@@ -2,7 +2,6 @@ package graphql
 
 import (
 	"context"
-	"sort"
 
 	"github.com/evergreen-ci/evergreen/rest/model"
 )
@@ -22,18 +21,6 @@ func (r *spruceConfigResolver) Keys(ctx context.Context, obj *model.APIAdminSett
 		})
 	}
 	return sshKeys, nil
-}
-
-// SecretFields is the resolver for the secretFields field.
-func (r *spruceConfigResolver) SecretFields(ctx context.Context, obj *model.APIAdminSettings) ([]string, error) {
-	redactedFieldsAsSlice := []string{}
-	for field := range redactedFields {
-		redactedFieldsAsSlice = append(redactedFieldsAsSlice, field)
-	}
-
-	sort.Strings(redactedFieldsAsSlice)
-
-	return redactedFieldsAsSlice, nil
 }
 
 // ContainerPool returns ContainerPoolResolver implementation.

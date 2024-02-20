@@ -58,7 +58,7 @@ type JiraIssueSubscriber {
 
 input WebhookSubscriberInput {
   headers: [WebhookHeaderInput]!
-  secret: String! @redactSecrets
+  secret: String!
   url: String!
   retries: Int = 0
   minDelayMs: Int = 0

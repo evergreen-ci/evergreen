@@ -14,7 +14,6 @@ type SpruceConfig {
   slack: SlackConfig
   spawnHost: SpawnHostConfig!
   ui: UIConfig
-  secretFields: [String!]!
 }
 
 type ContainerPoolsConfig {

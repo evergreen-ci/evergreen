@@ -89,7 +89,6 @@ type ResolverRoot interface {
 }
 
 type DirectiveRoot struct {
-	RedactSecrets                func(ctx context.Context, obj interface{}, next graphql.Resolver) (res interface{}, err error)
 	RequireCommitQueueItemOwner  func(ctx context.Context, obj interface{}, next graphql.Resolver) (res interface{}, err error)
 	RequireDistroAccess          func(ctx context.Context, obj interface{}, next graphql.Resolver, access DistroSettingsAccess) (res interface{}, err error)
 	RequireProjectAccess         func(ctx context.Context, obj interface{}, next graphql.Resolver, access ProjectSettingsAccess) (res interface{}, err error)
@@ -1148,7 +1147,6 @@ type ComplexityRoot struct {
 		Jira           func(childComplexity int) int
 		Keys           func(childComplexity int) int
 		Providers      func(childComplexity int) int
-		SecretFields   func(childComplexity int) int
 		Slack          func(childComplexity int) int
 		Spawnhost      func(childComplexity int) int
 		Ui             func(childComplexity int) int
@@ -1801,8 +1799,6 @@ type RepoSettingsResolver interface {
 }
 type SpruceConfigResolver interface {
 	Keys(ctx context.Context, obj *model.APIAdminSettings) ([]*SSHKey, error)
-
-	SecretFields(ctx context.Context, obj *model.APIAdminSettings) ([]string, error)
 }
 type SubscriberWrapperResolver interface {
 	Subscriber(ctx context.Context, obj *model.APISubscriber) (*Subscriber, error)
@@ -7310,13 +7306,6 @@ func (e *executableSchema) Complexity(typeName, field string, childComplexity in
 		}
 
 		return e.complexity.SpruceConfig.Providers(childComplexity), true
-
-	case "SpruceConfig.secretFields":
-		if e.complexity.SpruceConfig.SecretFields == nil {
-			break
-		}
-
-		return e.complexity.SpruceConfig.SecretFields(childComplexity), true
 
 	case "SpruceConfig.slack":
 		if e.complexity.SpruceConfig.Slack == nil {
@@ -42394,8 +42383,6 @@ func (ec *executionContext) fieldContext_Query_spruceConfig(ctx context.Context,
 				return ec.fieldContext_SpruceConfig_spawnHost(ctx, field)
 			case "ui":
 				return ec.fieldContext_SpruceConfig_ui(ctx, field)
-			case "secretFields":
-				return ec.fieldContext_SpruceConfig_secretFields(ctx, field)
 			}
 			return nil, fmt.Errorf("no field named %q was found under type SpruceConfig", field.Name)
 		},
@@ -49582,50 +49569,6 @@ func (ec *executionContext) fieldContext_SpruceConfig_ui(ctx context.Context, fi
 				return ec.fieldContext_UIConfig_userVoice(ctx, field)
 			}
 			return nil, fmt.Errorf("no field named %q was found under type UIConfig", field.Name)
-		},
-	}
-	return fc, nil
-}
-
-func (ec *executionContext) _SpruceConfig_secretFields(ctx context.Context, field graphql.CollectedField, obj *model.APIAdminSettings) (ret graphql.Marshaler) {
-	fc, err := ec.fieldContext_SpruceConfig_secretFields(ctx, field)
-	if err != nil {
-		return graphql.Null
-	}
-	ctx = graphql.WithFieldContext(ctx, fc)
-	defer func() {
-		if r := recover(); r != nil {
-			ec.Error(ctx, ec.Recover(ctx, r))
-			ret = graphql.Null
-		}
-	}()
-	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
-		ctx = rctx // use context from middleware stack in children
-		return ec.resolvers.SpruceConfig().SecretFields(rctx, obj)
-	})
-	if err != nil {
-		ec.Error(ctx, err)
-		return graphql.Null
-	}
-	if resTmp == nil {
-		if !graphql.HasFieldError(ctx, fc) {
-			ec.Errorf(ctx, "must not be null")
-		}
-		return graphql.Null
-	}
-	res := resTmp.([]string)
-	fc.Result = res
-	return ec.marshalNString2ᚕstringᚄ(ctx, field.Selections, res)
-}
-
-func (ec *executionContext) fieldContext_SpruceConfig_secretFields(ctx context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
-	fc = &graphql.FieldContext{
-		Object:     "SpruceConfig",
-		Field:      field,
-		IsMethod:   true,
-		IsResolver: true,
-		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
-			return nil, errors.New("field of type String does not have child fields")
 		},
 	}
 	return fc, nil
@@ -67390,28 +67333,11 @@ func (ec *executionContext) unmarshalInputEditSpawnHostInput(ctx context.Context
 			it.NoExpiration = data
 		case "publicKey":
 			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("publicKey"))
-			directive0 := func(ctx context.Context) (interface{}, error) {
-				return ec.unmarshalOPublicKeyInput2ᚖgithubᚗcomᚋevergreenᚑciᚋevergreenᚋgraphqlᚐPublicKeyInput(ctx, v)
-			}
-			directive1 := func(ctx context.Context) (interface{}, error) {
-				if ec.directives.RedactSecrets == nil {
-					return nil, errors.New("directive redactSecrets is not implemented")
-				}
-				return ec.directives.RedactSecrets(ctx, obj, directive0)
-			}
-
-			tmp, err := directive1(ctx)
+			data, err := ec.unmarshalOPublicKeyInput2ᚖgithubᚗcomᚋevergreenᚑciᚋevergreenᚋgraphqlᚐPublicKeyInput(ctx, v)
 			if err != nil {
-				return it, graphql.ErrorOnPath(ctx, err)
+				return it, err
 			}
-			if data, ok := tmp.(*PublicKeyInput); ok {
-				it.PublicKey = data
-			} else if tmp == nil {
-				it.PublicKey = nil
-			} else {
-				err := fmt.Errorf(`unexpected type %T from directive, should be *github.com/evergreen-ci/evergreen/graphql.PublicKeyInput`, tmp)
-				return it, graphql.ErrorOnPath(ctx, err)
-			}
+			it.PublicKey = data
 		case "savePublicKey":
 			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("savePublicKey"))
 			data, err := ec.unmarshalOBoolean2ᚖbool(ctx, v)
@@ -67421,26 +67347,11 @@ func (ec *executionContext) unmarshalInputEditSpawnHostInput(ctx context.Context
 			it.SavePublicKey = data
 		case "servicePassword":
 			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("servicePassword"))
-			directive0 := func(ctx context.Context) (interface{}, error) { return ec.unmarshalOString2ᚖstring(ctx, v) }
-			directive1 := func(ctx context.Context) (interface{}, error) {
-				if ec.directives.RedactSecrets == nil {
-					return nil, errors.New("directive redactSecrets is not implemented")
-				}
-				return ec.directives.RedactSecrets(ctx, obj, directive0)
-			}
-
-			tmp, err := directive1(ctx)
+			data, err := ec.unmarshalOString2ᚖstring(ctx, v)
 			if err != nil {
-				return it, graphql.ErrorOnPath(ctx, err)
+				return it, err
 			}
-			if data, ok := tmp.(*string); ok {
-				it.ServicePassword = data
-			} else if tmp == nil {
-				it.ServicePassword = nil
-			} else {
-				err := fmt.Errorf(`unexpected type %T from directive, should be *string`, tmp)
-				return it, graphql.ErrorOnPath(ctx, err)
-			}
+			it.ServicePassword = data
 		case "volume":
 			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("volume"))
 			data, err := ec.unmarshalOString2ᚖstring(ctx, v)
@@ -69127,26 +69038,11 @@ func (ec *executionContext) unmarshalInputProjectSettingsInput(ctx context.Conte
 			it.Subscriptions = data
 		case "vars":
 			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("vars"))
-			directive0 := func(ctx context.Context) (interface{}, error) {
-				return ec.unmarshalOProjectVarsInput2githubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐAPIProjectVars(ctx, v)
-			}
-			directive1 := func(ctx context.Context) (interface{}, error) {
-				if ec.directives.RedactSecrets == nil {
-					return nil, errors.New("directive redactSecrets is not implemented")
-				}
-				return ec.directives.RedactSecrets(ctx, obj, directive0)
-			}
-
-			tmp, err := directive1(ctx)
+			data, err := ec.unmarshalOProjectVarsInput2githubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐAPIProjectVars(ctx, v)
 			if err != nil {
-				return it, graphql.ErrorOnPath(ctx, err)
+				return it, err
 			}
-			if data, ok := tmp.(model.APIProjectVars); ok {
-				it.Vars = data
-			} else {
-				err := fmt.Errorf(`unexpected type %T from directive, should be github.com/evergreen-ci/evergreen/rest/model.APIProjectVars`, tmp)
-				return it, graphql.ErrorOnPath(ctx, err)
-			}
+			it.Vars = data
 		}
 	}
 
@@ -69591,26 +69487,11 @@ func (ec *executionContext) unmarshalInputRepoSettingsInput(ctx context.Context,
 			it.Subscriptions = data
 		case "vars":
 			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("vars"))
-			directive0 := func(ctx context.Context) (interface{}, error) {
-				return ec.unmarshalOProjectVarsInput2githubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐAPIProjectVars(ctx, v)
-			}
-			directive1 := func(ctx context.Context) (interface{}, error) {
-				if ec.directives.RedactSecrets == nil {
-					return nil, errors.New("directive redactSecrets is not implemented")
-				}
-				return ec.directives.RedactSecrets(ctx, obj, directive0)
-			}
-
-			tmp, err := directive1(ctx)
+			data, err := ec.unmarshalOProjectVarsInput2githubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐAPIProjectVars(ctx, v)
 			if err != nil {
-				return it, graphql.ErrorOnPath(ctx, err)
+				return it, err
 			}
-			if data, ok := tmp.(model.APIProjectVars); ok {
-				it.Vars = data
-			} else {
-				err := fmt.Errorf(`unexpected type %T from directive, should be github.com/evergreen-ci/evergreen/rest/model.APIProjectVars`, tmp)
-				return it, graphql.ErrorOnPath(ctx, err)
-			}
+			it.Vars = data
 		}
 	}
 
@@ -70897,26 +70778,11 @@ func (ec *executionContext) unmarshalInputWebhookInput(ctx context.Context, obj 
 			it.Endpoint = data
 		case "secret":
 			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("secret"))
-			directive0 := func(ctx context.Context) (interface{}, error) { return ec.unmarshalNString2ᚖstring(ctx, v) }
-			directive1 := func(ctx context.Context) (interface{}, error) {
-				if ec.directives.RedactSecrets == nil {
-					return nil, errors.New("directive redactSecrets is not implemented")
-				}
-				return ec.directives.RedactSecrets(ctx, obj, directive0)
-			}
-
-			tmp, err := directive1(ctx)
+			data, err := ec.unmarshalNString2ᚖstring(ctx, v)
 			if err != nil {
-				return it, graphql.ErrorOnPath(ctx, err)
+				return it, err
 			}
-			if data, ok := tmp.(*string); ok {
-				it.Secret = data
-			} else if tmp == nil {
-				it.Secret = nil
-			} else {
-				err := fmt.Errorf(`unexpected type %T from directive, should be *string`, tmp)
-				return it, graphql.ErrorOnPath(ctx, err)
-			}
+			it.Secret = data
 		}
 	}
 
@@ -70956,26 +70822,11 @@ func (ec *executionContext) unmarshalInputWebhookSubscriberInput(ctx context.Con
 			it.Headers = data
 		case "secret":
 			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("secret"))
-			directive0 := func(ctx context.Context) (interface{}, error) { return ec.unmarshalNString2ᚖstring(ctx, v) }
-			directive1 := func(ctx context.Context) (interface{}, error) {
-				if ec.directives.RedactSecrets == nil {
-					return nil, errors.New("directive redactSecrets is not implemented")
-				}
-				return ec.directives.RedactSecrets(ctx, obj, directive0)
-			}
-
-			tmp, err := directive1(ctx)
+			data, err := ec.unmarshalNString2ᚖstring(ctx, v)
 			if err != nil {
-				return it, graphql.ErrorOnPath(ctx, err)
+				return it, err
 			}
-			if data, ok := tmp.(*string); ok {
-				it.Secret = data
-			} else if tmp == nil {
-				it.Secret = nil
-			} else {
-				err := fmt.Errorf(`unexpected type %T from directive, should be *string`, tmp)
-				return it, graphql.ErrorOnPath(ctx, err)
-			}
+			it.Secret = data
 		case "url":
 			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("url"))
 			data, err := ec.unmarshalNString2ᚖstring(ctx, v)
@@ -80551,42 +80402,6 @@ func (ec *executionContext) _SpruceConfig(ctx context.Context, sel ast.Selection
 			}
 		case "ui":
 			out.Values[i] = ec._SpruceConfig_ui(ctx, field, obj)
-		case "secretFields":
-			field := field
-
-			innerFunc := func(ctx context.Context, fs *graphql.FieldSet) (res graphql.Marshaler) {
-				defer func() {
-					if r := recover(); r != nil {
-						ec.Error(ctx, ec.Recover(ctx, r))
-					}
-				}()
-				res = ec._SpruceConfig_secretFields(ctx, field, obj)
-				if res == graphql.Null {
-					atomic.AddUint32(&fs.Invalids, 1)
-				}
-				return res
-			}
-
-			if field.Deferrable != nil {
-				dfs, ok := deferred[field.Deferrable.Label]
-				di := 0
-				if ok {
-					dfs.AddField(field)
-					di = len(dfs.Values) - 1
-				} else {
-					dfs = graphql.NewFieldSet([]graphql.CollectedField{field})
-					deferred[field.Deferrable.Label] = dfs
-				}
-				dfs.Concurrently(di, func(ctx context.Context) graphql.Marshaler {
-					return innerFunc(ctx, dfs)
-				})
-
-				// don't run the out.Concurrently() call below
-				out.Values[i] = graphql.Null
-				continue
-			}
-
-			out.Concurrently(i, func(ctx context.Context) graphql.Marshaler { return innerFunc(ctx, out) })
 		default:
 			panic("unknown field " + strconv.Quote(field.Name))
 		}

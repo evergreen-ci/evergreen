@@ -13,7 +13,6 @@ import (
 type TracerConfig struct {
 	Enabled                   bool   `yaml:"enabled" bson:"enabled" json:"enabled"`
 	CollectorEndpoint         string `yaml:"collector_endpoint" bson:"collector_endpoint" json:"collector_endpoint"`
-	CollectorAPIKey           string `yaml:"collector_api_key" bson:"collector_api_key" json:"collector_api_key"`
 	CollectorInternalEndpoint string `yaml:"collector_internal_endpoint" bson:"collector_internal_endpoint" json:"collector_internal_endpoint"`
 }
 
@@ -45,7 +44,6 @@ func (c *TracerConfig) Set(ctx context.Context) error {
 			tracerEnabledKey:                   c.Enabled,
 			tracerCollectorEndpointKey:         c.CollectorEndpoint,
 			tracerCollectorInternalEndpointKey: c.CollectorInternalEndpoint,
-			tracerCollectorAPIKeyKey:           c.CollectorAPIKey,
 		},
 	}, options.Update().SetUpsert(true))
 	return errors.Wrapf(err, "updating config section '%s'", c.SectionId())
