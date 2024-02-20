@@ -1105,6 +1105,8 @@ func (j *patchIntentProcessor) buildTriggerPatchDoc(patchDoc *patch.Patch) (*mod
 					moduleName = ""
 				}
 				patchDoc.Patches = append(patchDoc.Patches, patch.ModulePatch{
+					// Apply the parent patch's changes if both child and parent are using the
+					// same repo/project/branch
 					ModuleName: moduleName,
 					PatchSet:   p.PatchSet,
 					Githash:    parentPatch.Githash,
