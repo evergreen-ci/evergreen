@@ -585,7 +585,7 @@ func TestMakePatchedConfigEmptyBase(t *testing.T) {
 	assert.NoError(t, err)
 	assert.NotNil(t, project)
 
-	assert.Len(t, project.Tasks, 1)
+	require.Len(t, project.Tasks, 1)
 	assert.Equal(t, project.Tasks[0].Name, "hello")
 }
 

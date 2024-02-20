@@ -75,6 +75,7 @@ func TestMakeHost(t *testing.T) {
 		Scope:               "task",
 		SetupTimeoutSecs:    600,
 		TeardownTimeoutSecs: 21600,
+		KeyName:             "mock_key",
 	}
 	handler.createHost = c
 	handler.taskID = "task-id"
@@ -94,7 +95,7 @@ func TestMakeHost(t *testing.T) {
 	require.Len(h.Distro.ProviderSettingsList, 1)
 	assert.NoError(ec2Settings.FromDistroSettings(h.Distro, ""))
 	assert.Equal("ami-123456", ec2Settings.AMI)
-	assert.Empty(ec2Settings.KeyName)
+	assert.Equal("mock_key", ec2Settings.KeyName)
 	assert.Equal(true, ec2Settings.IsVpc)
 
 	// test roundtripping
@@ -105,7 +106,7 @@ func TestMakeHost(t *testing.T) {
 	require.Len(h.Distro.ProviderSettingsList, 1)
 	assert.NoError(ec2Settings2.FromDistroSettings(h.Distro, ""))
 	assert.Equal("ami-123456", ec2Settings2.AMI)
-	assert.Empty(ec2Settings2.KeyName)
+	assert.Equal("mock_key", ec2Settings.KeyName)
 	assert.Equal(true, ec2Settings2.IsVpc)
 
 	// scope to build
@@ -122,6 +123,7 @@ func TestMakeHost(t *testing.T) {
 		Scope:               "build",
 		SetupTimeoutSecs:    600,
 		TeardownTimeoutSecs: 21600,
+		KeyName:             "mock_key",
 	}
 	handler.createHost = c
 	handler.taskID = "task-id"
@@ -133,7 +135,7 @@ func TestMakeHost(t *testing.T) {
 	ec2Settings = &cloud.EC2ProviderSettings{}
 	assert.NoError(ec2Settings.FromDistroSettings(h.Distro, ""))
 	assert.Equal("build-id", h.SpawnOptions.BuildID)
-	assert.Empty(ec2Settings.KeyName)
+	assert.Equal("mock_key", ec2Settings.KeyName)
 	assert.Equal(true, ec2Settings.IsVpc)
 
 	assert.Equal("archlinux-test", h.Distro.Id)
@@ -149,6 +151,7 @@ func TestMakeHost(t *testing.T) {
 		Scope:               "task",
 		SetupTimeoutSecs:    600,
 		TeardownTimeoutSecs: 21600,
+		KeyName:             "mock_key",
 	}
 	handler.createHost = c
 	handler.taskID = "task-id"
@@ -168,7 +171,7 @@ func TestMakeHost(t *testing.T) {
 	require.Len(h.Distro.ProviderSettingsList, 1)
 	assert.NoError(ec2Settings.FromDistroSettings(h.Distro, ""))
 	assert.Equal("ami-123456", ec2Settings.AMI)
-	assert.Empty(ec2Settings.KeyName)
+	assert.Equal("mock_key", ec2Settings.KeyName)
 	assert.Equal(true, ec2Settings.IsVpc)
 
 	// override some evergreen distro settings
@@ -180,6 +183,7 @@ func TestMakeHost(t *testing.T) {
 		SetupTimeoutSecs:    600,
 		TeardownTimeoutSecs: 21600,
 		Subnet:              "subnet-123456",
+		Tenancy:             evergreen.EC2TenancyDedicated,
 	}
 	handler.createHost = c
 	foundDistro, err = distro.GetHostCreateDistro(ctx, c)
@@ -197,6 +201,7 @@ func TestMakeHost(t *testing.T) {
 	require.Len(h.Distro.ProviderSettingsList, 1)
 	assert.NoError(ec2Settings.FromDistroSettings(h.Distro, ""))
 	assert.Equal("ami-123456", ec2Settings.AMI)
+	assert.Equal(evergreen.EC2TenancyDedicated, ec2Settings.Tenancy)
 	assert.Equal("subnet-123456", ec2Settings.SubnetId)
 	assert.Equal(true, ec2Settings.IsVpc)
 
@@ -205,6 +210,7 @@ func TestMakeHost(t *testing.T) {
 	assert.NoError(ec2Settings2.FromDistroSettings(h.Distro, ""))
 	assert.Equal("ami-123456", ec2Settings2.AMI)
 	assert.Equal("subnet-123456", ec2Settings2.SubnetId)
+	assert.Equal(evergreen.EC2TenancyDedicated, ec2Settings2.Tenancy)
 	assert.Equal(true, ec2Settings2.IsVpc)
 
 	// bring your own ami
@@ -218,6 +224,7 @@ func TestMakeHost(t *testing.T) {
 		InstanceType:        "t1.micro",
 		Subnet:              "subnet-123456",
 		SecurityGroups:      []string{"1234"},
+		Tenancy:             evergreen.EC2TenancyDedicated,
 	}
 	handler.createHost = c
 	foundDistro, err = distro.GetHostCreateDistro(ctx, c)
@@ -236,6 +243,7 @@ func TestMakeHost(t *testing.T) {
 	assert.NoError(ec2Settings2.FromDistroSettings(h.Distro, ""))
 	assert.Equal("ami-654321", ec2Settings2.AMI)
 	assert.Equal("subnet-123456", ec2Settings2.SubnetId)
+	assert.Equal(evergreen.EC2TenancyDedicated, ec2Settings.Tenancy)
 	assert.Equal(true, ec2Settings2.IsVpc)
 
 	// with multiple regions

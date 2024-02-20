@@ -52,6 +52,10 @@ type EC2ProviderSettings struct {
 	// SubnetId is only set in a VPC. Either subnet id or vpc name must set.
 	SubnetId string `mapstructure:"subnet_id" json:"subnet_id,omitempty" bson:"subnet_id,omitempty"`
 
+	// Tenancy, if set, determines how EC2 instances are distributed across
+	// physical hardware.
+	Tenancy evergreen.EC2Tenancy `mapstructure:"tenancy" json:"tenancy,omitempty" bson:"tenancy,omitempty"`
+
 	// VpcName is used to get the subnet ID automatically. Either subnet id or vpc name must set.
 	VpcName string `mapstructure:"vpc_name" json:"vpc_name,omitempty" bson:"vpc_name,omitempty"`
 
@@ -90,6 +94,10 @@ func (s *EC2ProviderSettings) Validate() error {
 
 	if s.IsVpc && s.SubnetId == "" {
 		catcher.New("must set a default subnet for a VPC")
+	}
+
+	if s.Tenancy != "" {
+		catcher.ErrorfWhen(!evergreen.IsValidEC2Tenancy(s.Tenancy), "invalid tenancy '%s', allowed values are: %s", s.Tenancy, evergreen.ValidEC2Tenancies)
 	}
 
 	_, err := makeBlockDeviceMappings(s.MountPoints)
@@ -275,6 +283,9 @@ func (m *ec2Manager) spawnOnDemandHost(ctx context.Context, h *host.Host, ec2Set
 		}
 	} else {
 		input.SecurityGroups = ec2Settings.SecurityGroupIDs
+	}
+	if ec2Settings.Tenancy != "" {
+		input.Placement = &types.Placement{Tenancy: types.Tenancy(ec2Settings.Tenancy)}
 	}
 
 	if ec2Settings.UserData != "" {
