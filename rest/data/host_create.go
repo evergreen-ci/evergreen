@@ -359,7 +359,7 @@ func makeEC2IntentHost(ctx context.Context, env evergreen.Environment, taskID, u
 		ec2Settings.InstanceType = createHost.InstanceType
 	}
 	if userID == "" {
-		ec2Settings.KeyName = "" // never use the distro's key
+		ec2Settings.KeyName = createHost.KeyName // never use the distro's key
 	}
 	if createHost.Subnet != "" {
 		ec2Settings.SubnetId = createHost.Subnet
@@ -373,6 +373,10 @@ func makeEC2IntentHost(ctx context.Context, env evergreen.Environment, taskID, u
 		ec2Settings.SecurityGroupIDs = createHost.SecurityGroups
 	} else {
 		ec2Settings.SecurityGroupIDs = append(ec2Settings.SecurityGroupIDs, evergreen.GetEnvironment().Settings().Providers.AWS.DefaultSecurityGroup)
+	}
+
+	if createHost.Tenancy != "" {
+		ec2Settings.Tenancy = createHost.Tenancy
 	}
 
 	ec2Settings.IPv6 = createHost.IPv6

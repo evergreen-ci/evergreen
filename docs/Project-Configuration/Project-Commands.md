@@ -2,6 +2,30 @@
 
 Project Commands are the fundamental units of functionality in an Evergreen task.
 
+## Basic Command Structure
+
+```yaml
+- command: shell.exec
+  display_name: run my cool script ## optional 
+  type: system ## optional
+  timeout_secs: 10 ## optional
+  retry_on_failure: true ## optional
+  params:
+    script: echo "my script"
+```
+Explanation:
+
+-   `command`: a command name from the predefined set of commands documented below.
+-   `display_name`: an optional user defined display name for the command. This will show up in logs and in the UI
+     with more details, for example:`'shell.exec' ('run my cool script') (step 1 of 1)` 
+-   `type`: an optional command type. This will affect the [failure colors](Project-Configuration-Files/#command-failure-colors)
+-   `timeout_secs`: an optional timeout that will force the command to fail if it stays "idle" for more than a specified number of 
+    seconds.
+-   `retry_on_failure`: an optional field. If set to true, it will automatically restart the task upon failure. The 
+     automatic restart will process after the command has failed and the task has completed its subsequent post task commands.
+-   `params`: values for the pre defined set of parameters the command can take. Available parameters vary per command.
+
+
 ## archive.targz_extract
 
 `archive.targz_extract` extracts files from a gzipped tarball.
@@ -601,11 +625,15 @@ EC2 Parameters:
     distro configuration.
 -   `ipv6`- Set to true if instance should have _only_ an
     IPv6 address, rather than a public IPv4 address.
+-   `key_name` - EC2 key name.
 -   `region` - EC2 region. Default is the same as Evergreen's default.
 -   `security_group_ids` - List of security groups. Must set if `ami` is
     set. May set if `distro` is set, which will override the value from
     the distro configuration.
 -   `subnet_id` - Subnet ID for the VPC. Must be set if `ami` is set.
+-   `tenancy` - If set, defines how the hosts are distributed across
+    physical hardware. Can be set to `default`, `dedicated`, or `host`. If not
+    set, it uses the `default` (i.e. shared) tenancy.
 -   `userdata_file` - Path to file to load as EC2 user data on boot. May
     set if `distro` is set, which will override the value from the
     distro configuration. May set if distro is not set.

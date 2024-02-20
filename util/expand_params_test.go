@@ -76,6 +76,21 @@ func TestExpandValues(t *testing.T) {
 
 		})
 
+		Convey("if any field of the input struct has a custom string type and has the appropriate tag, it should be expanded", func() {
+
+			type customType string
+			type s struct {
+				FieldOne customType `plugin:"expand"`
+			}
+
+			s1 := &s{
+				FieldOne: "yo ${exp2|yo}",
+			}
+
+			So(ExpandValues(s1, expansions), ShouldBeNil)
+			So(string(s1.FieldOne), ShouldEqual, "yo yo")
+		})
+
 		Convey("any nested structs tagged as expandable should have their"+
 			" fields expanded appropriately", func() {
 

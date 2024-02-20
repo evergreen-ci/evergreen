@@ -1460,10 +1460,11 @@ func (p *Project) findMatchingBuildVariants(bvRegex *regexp.Regexp) []string {
 func (p *Project) findBuildVariantsWithTag(tags []string) []string {
 	var res []string
 	for _, b := range p.BuildVariants {
-		if len(utility.StringSliceIntersection(b.Tags, tags)) > 0 {
+		if isValidRegexOrTag(b.Name, b.Tags, tags, nil) {
 			res = append(res, b.Name)
 		}
 	}
+
 	return res
 }
 
@@ -1547,7 +1548,7 @@ func (p *Project) getNumCheckRuns(taskName, variantName string) int {
 func (p *Project) findProjectTasksWithTag(tags []string) []string {
 	var res []string
 	for _, t := range p.Tasks {
-		if len(utility.StringSliceIntersection(t.Tags, tags)) > 0 {
+		if isValidRegexOrTag(t.Name, t.Tags, tags, nil) {
 			res = append(res, t.Name)
 		}
 	}
