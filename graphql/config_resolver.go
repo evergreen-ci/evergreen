@@ -2,6 +2,7 @@ package graphql
 
 import (
 	"context"
+	"sort"
 
 	"github.com/evergreen-ci/evergreen/rest/model"
 )
@@ -29,6 +30,9 @@ func (r *spruceConfigResolver) SecretFields(ctx context.Context, obj *model.APIA
 	for field := range redactedFields {
 		redactedFieldsAsSlice = append(redactedFieldsAsSlice, field)
 	}
+
+	sort.Strings(redactedFieldsAsSlice)
+
 	return redactedFieldsAsSlice, nil
 }
 
