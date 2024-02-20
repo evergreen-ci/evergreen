@@ -3507,9 +3507,10 @@ func TestSetCheckRunId(t *testing.T) {
 
 	var err error
 	t1, err = FindOneId(t1.Id)
+	require.NotNil(t, t1)
 	assert.NoError(t, err)
 
-	assert.Equal(t, t1.CheckRunId, utility.ToIntPtr(12345))
+	assert.Equal(t, 12345, utility.FromIntPtr(t1.CheckRunId))
 
 }
 

@@ -1507,13 +1507,13 @@ func (h *checkRunHandler) Run(ctx context.Context) gimlet.Responder {
 
 	checkRunInt := int(utility.FromInt64Ptr(checkRun.ID))
 	if err = t.SetCheckRunId(checkRunInt); err != nil {
-		errorMessage := fmt.Sprintf("setting checkRun ID on task: %s", t.Id)
-		grip.Error(message.Fields{
-			"message": errorMessage,
+
+		err = errors.Wrap(err, "setting check run ID on task")
+		grip.Error(message.WrapError(err, message.Fields{"message": errorMessage,
 			"error":   err.Error(),
-			"task_id": t.Id,
-		})
-		return gimlet.MakeJSONInternalErrorResponder(errors.Wrap(err, "setting check run ID on task"))
+			"task_id": t.Id}))
+
+		return gimlet.MakeJSONInternalErrorResponder(err)
 	}
 
 	return gimlet.NewJSONResponse(fmt.Sprintf("Successfully upserted checkRun for  %v ", t.Id))
