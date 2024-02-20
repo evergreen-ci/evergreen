@@ -625,7 +625,8 @@ EC2 Parameters:
     distro configuration.
 -   `ipv6`- Set to true if instance should have _only_ an
     IPv6 address, rather than a public IPv4 address.
--   `key_name` - EC2 key name.
+-   `key_name` - EC2 key name. The key must exist in the default Evergreen AWS
+     account.
 -   `region` - EC2 region. Default is the same as Evergreen's default.
 -   `security_group_ids` - List of security groups. Must set if `ami` is
     set. May set if `distro` is set, which will override the value from
