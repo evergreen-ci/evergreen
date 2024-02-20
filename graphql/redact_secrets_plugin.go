@@ -60,7 +60,7 @@ var redactedFields = map[string]bool{
 		}
 	}
 
-	_, err = file.WriteString("}\n\n")
+	_, err = file.WriteString("}\n")
 	if err != nil {
 		return err
 	}
