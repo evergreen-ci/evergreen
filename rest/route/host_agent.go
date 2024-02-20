@@ -683,14 +683,12 @@ func assignNextAvailableTask(ctx context.Context, env evergreen.Environment, tas
 			continue
 		}
 
-		err = task.SetNumNextTaskDispatches(nextTask.Id, nextTask.Execution, nextTask.NumNextTaskDispatches+1)
-		if err != nil {
-			grip.Error(message.WrapError(err, message.Fields{
-				"message": "problem updating the number of times the task has been dispatched",
-				"task_id": nextTask.Id,
-				"host_id": currentHost.Id,
-			}))
-		}
+		grip.Error(message.WrapError(nextTask.SetNumNextTaskDispatches(), message.Fields{
+			"message":        "problem updating the number of times the task has been dispatched",
+			"task_id":        nextTask.Id,
+			"task_execution": nextTask.Execution,
+			"host_id":        currentHost.Id,
+		}))
 
 		return nextTask, false, nil
 	}
