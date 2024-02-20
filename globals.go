@@ -130,8 +130,7 @@ const (
 	// TaskDescriptionStranded indicates that a task failed because its
 	// underlying runtime environment (i.e. container or host) encountered an
 	// issue. For example, if a host is terminated while the task is still
-	// running, or if the agent and keeps requesting the same task over and over
-	// again, the task is considered stranded.
+	// running, the task is considered stranded.
 	TaskDescriptionStranded = "stranded"
 	// TaskDescriptionNoResults indicates that a task failed because it did not
 	// post any test results.

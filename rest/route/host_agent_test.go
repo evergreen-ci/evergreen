@@ -428,6 +428,7 @@ func TestHostNextTask(t *testing.T) {
 					nextTask, err := task.FindOne(db.Query(task.ById(taskResp.TaskId)))
 					require.NoError(t, err)
 					assert.Equal(t, nextTask.Status, evergreen.TaskDispatched)
+					assert.Equal(t, nextTask.NumNextTaskDispatches, 1)
 				},
 				"WithAnUndispatchedTaskButAHostThatHasThatTaskAsARunningTask": func(ctx context.Context, t *testing.T, handler hostAgentNextTask) {
 					t1 := task.Task{
