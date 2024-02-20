@@ -1189,7 +1189,9 @@ func (a *Agent) logPanic(logger client.LoggerProducer, pErr, originalErr error, 
 		logMsg := message.Fields{
 			"message":   "programmatic error: Evergreen agent hit panic",
 			"operation": op,
-			"host_id":   a.ec2InstanceID,
+			"host_id":   a.opts.HostID,
+			"pod_id":    a.opts.PodID,
+			"ec2_id":    a.ec2InstanceID,
 		}
 		logger.Task().Error(logMsg)
 	}
