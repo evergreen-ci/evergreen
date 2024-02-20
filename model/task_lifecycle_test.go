@@ -5103,7 +5103,7 @@ func TestClearAndResetStrandedContainerTask(t *testing.T) {
 			assert.Zero(t, dbPod.TaskRuntimeInfo.RunningTaskID)
 			assert.Zero(t, dbPod.TaskRuntimeInfo.RunningTaskExecution)
 
-			dbArchivedTask, err := task.FindOneOldByIdAndExecution(tsk.Id, 1)
+			dbArchivedTask, err := task.FindOneOldByIdAndExecution(tsk.Id, 0)
 			require.NoError(t, err)
 			require.NotZero(t, dbArchivedTask, "should have archived the old task execution")
 			assert.Equal(t, evergreen.TaskFailed, dbArchivedTask.Status)
@@ -5163,7 +5163,7 @@ func TestClearAndResetStrandedContainerTask(t *testing.T) {
 			dbTask, err := task.FindOneId(tsk.Id)
 			require.NoError(t, err)
 			require.NotZero(t, dbTask)
-			assert.Equal(t, 1, dbTask.Execution, "current task execution should still be the stranded one")
+			assert.Equal(t, 0, dbTask.Execution, "current task execution should still be the stranded one")
 			assert.Equal(t, evergreen.TaskFailed, dbTask.Status)
 			assert.Equal(t, evergreen.CommandTypeSystem, dbTask.Details.Type)
 			assert.Equal(t, evergreen.TaskDescriptionStranded, dbTask.Details.Description)
@@ -5241,7 +5241,7 @@ func TestClearAndResetStrandedContainerTask(t *testing.T) {
 
 			dbTask, err := task.FindOneId(tsk.Id)
 			require.NoError(t, err)
-			assert.Equal(t, 1, dbTask.Execution, "current task execution should still be the stranded one")
+			assert.Equal(t, 0, dbTask.Execution, "current task execution should still be the stranded one")
 			assert.Equal(t, evergreen.TaskFailed, dbTask.Status)
 			assert.Equal(t, evergreen.CommandTypeSystem, dbTask.Details.Type)
 			assert.Equal(t, evergreen.TaskDescriptionStranded, dbTask.Details.Description)
@@ -5264,7 +5264,7 @@ func TestClearAndResetStrandedContainerTask(t *testing.T) {
 			// assert.Equal(t, evergreen.VersionFailed, dbVersion.Status, "version status should be updated for unrestartable stranded task")
 		},
 		"FailsTaskThatHitsMaxExecutionRestartsWithoutRestartingIt": func(t *testing.T, p pod.Pod, tsk task.Task) {
-			const execNum = evergreen.MaxTaskExecution + 1
+			const execNum = 1 // we only restart stranded tasks automatically once
 			tsk.Execution = execNum
 			p.TaskRuntimeInfo.RunningTaskExecution = execNum
 			require.NoError(t, p.Insert())
@@ -5285,22 +5285,6 @@ func TestClearAndResetStrandedContainerTask(t *testing.T) {
 			assert.Equal(t, evergreen.CommandTypeSystem, dbTask.Details.Type)
 			assert.Equal(t, evergreen.TaskDescriptionStranded, dbTask.Details.Description)
 			assert.False(t, utility.IsZeroTime(dbTask.FinishTime))
-
-			// TODO (EVG-17033): if a stranded task hits the max execution, it
-			// should refuse to restart the task, but the build and version
-			// statuses should still be updated to reflect the stranded task.
-			// The portion of the test below this checking the updated build and
-			// version should pass.
-
-			// dbBuild, err := build.FindOneId(tsk.BuildId)
-			// require.NoError(t, err)
-			// require.NotZero(t, dbBuild)
-			// assert.Equal(t, evergreen.BuildFailed, dbBuild.Status, "build status should be updated for unrestartable stranded task")
-			//
-			// dbVersion, err := VersionFindOneId(tsk.Version)
-			// require.NoError(t, err)
-			// require.NotZero(t, dbVersion)
-			// assert.Equal(t, evergreen.VersionFailed, dbVersion.Status, "version status should be updated for unrestartable stranded task")
 		},
 	} {
 		t.Run(tName, func(t *testing.T) {
@@ -5336,7 +5320,7 @@ func TestClearAndResetStrandedContainerTask(t *testing.T) {
 
 			tsk := task.Task{
 				Id:                     "task_id",
-				Execution:              1,
+				Execution:              0,
 				ExecutionPlatform:      task.ExecutionPlatformContainer,
 				ContainerAllocated:     true,
 				ContainerAllocatedTime: time.Now(),
@@ -5376,7 +5360,7 @@ func TestResetStaleTask(t *testing.T) {
 
 			require.NoError(t, FixStaleTask(ctx, settings, &tsk))
 
-			dbArchivedTask, err := task.FindOneOldByIdAndExecution(tsk.Id, 1)
+			dbArchivedTask, err := task.FindOneOldByIdAndExecution(tsk.Id, 0)
 			require.NoError(t, err)
 			require.NotZero(t, dbArchivedTask, "should have archived the old task execution")
 			assert.Equal(t, evergreen.TaskFailed, dbArchivedTask.Status)
@@ -5414,7 +5398,7 @@ func TestResetStaleTask(t *testing.T) {
 			require.NoError(t, tsk.Insert())
 			require.NoError(t, FixStaleTask(ctx, settings, &tsk))
 
-			dbArchivedTask, err := task.FindOneOldByIdAndExecution(tsk.Id, 1)
+			dbArchivedTask, err := task.FindOneOldByIdAndExecution(tsk.Id, 0)
 			require.NoError(t, err)
 			require.Zero(t, dbArchivedTask, "should not have archived the aborted task")
 
@@ -5459,14 +5443,14 @@ func TestResetStaleTask(t *testing.T) {
 			require.NotZero(t, dbDisplayTask)
 			assert.True(t, dbDisplayTask.ResetFailedWhenFinished, "display task should reset failed when other exec task finishes running")
 
-			dbArchivedTask, err := task.FindOneOldByIdAndExecution(tsk.Id, 1)
+			dbArchivedTask, err := task.FindOneOldByIdAndExecution(tsk.Id, 0)
 			assert.NoError(t, err)
 			assert.Zero(t, dbArchivedTask, "execution task should not be archived until display task can reset")
 
 			dbTask, err := task.FindOneId(tsk.Id)
 			require.NoError(t, err)
 			require.NotZero(t, dbTask)
-			assert.Equal(t, 1, dbTask.Execution, "current task execution should still be the stranded one")
+			assert.Equal(t, 0, dbTask.Execution, "current task execution should still be the stranded one")
 			assert.Equal(t, evergreen.TaskFailed, dbTask.Status)
 			assert.Equal(t, evergreen.CommandTypeSystem, dbTask.Details.Type)
 			assert.Equal(t, evergreen.TaskDescriptionHeartbeat, dbTask.Details.Description)
@@ -5486,28 +5470,12 @@ func TestResetStaleTask(t *testing.T) {
 
 			dbTask, err := task.FindOneId(tsk.Id)
 			require.NoError(t, err)
-			assert.Equal(t, 1, dbTask.Execution, "current task execution should still be the stranded one")
+			assert.Equal(t, 0, dbTask.Execution, "current task execution should still be the stranded one")
 			assert.Equal(t, evergreen.TaskFailed, dbTask.Status)
 			assert.Equal(t, evergreen.CommandTypeSystem, dbTask.Details.Type)
 			assert.Equal(t, evergreen.TaskDescriptionHeartbeat, dbTask.Details.Description)
 			assert.True(t, dbTask.Details.TimedOut)
 			assert.False(t, utility.IsZeroTime(dbTask.FinishTime))
-
-			// TODO (EVG-17033): if a stale task hits the unschedulable
-			// threshold, it should refuse to restart the task, but the build
-			// and version statuses should still be updated to reflect the
-			// stranded task. The portion of the test below this checking the
-			// updated build and version should pass.
-
-			// dbBuild, err := build.FindOneId(tsk.BuildId)
-			// require.NoError(t, err)
-			// require.NotZero(t, dbBuild)
-			// assert.Equal(t, evergreen.BuildFailed, dbBuild.Status, "build status should be updated for unrestartable stale task")
-			//
-			// dbVersion, err := VersionFindOneId(tsk.Version)
-			// require.NoError(t, err)
-			// require.NotZero(t, dbVersion)
-			// assert.Equal(t, evergreen.VersionFailed, dbVersion.Status, "version status should be updated for unrestartable stale task")
 		},
 		"FailsStaleTaskThatHitsMaxExecutionRestartsWithoutRestartingIt": func(t *testing.T, tsk task.Task) {
 			const execNum = evergreen.MaxTaskExecution + 1
@@ -5524,22 +5492,6 @@ func TestResetStaleTask(t *testing.T) {
 			assert.Equal(t, evergreen.TaskDescriptionHeartbeat, dbTask.Details.Description)
 			assert.True(t, dbTask.Details.TimedOut)
 			assert.False(t, utility.IsZeroTime(dbTask.FinishTime))
-
-			// TODO (EVG-17033): if a stale task hits the max execution, it
-			// should refuse to restart the task, but the build and version
-			// statuses should still be updated to reflect the stranded task.
-			// The portion of the test below this checking the updated build and
-			// version should pass.
-
-			// dbBuild, err := build.FindOneId(tsk.BuildId)
-			// require.NoError(t, err)
-			// require.NotZero(t, dbBuild)
-			// assert.Equal(t, evergreen.BuildFailed, dbBuild.Status, "build status should be updated for unrestartable stale task")
-			//
-			// dbVersion, err := VersionFindOneId(tsk.Version)
-			// require.NoError(t, err)
-			// require.NotZero(t, dbVersion)
-			// assert.Equal(t, evergreen.VersionFailed, dbVersion.Status, "version status should be updated for unrestartable stale task")
 		},
 	} {
 		t.Run(tName, func(t *testing.T) {
@@ -5578,7 +5530,7 @@ func TestResetStaleTask(t *testing.T) {
 			require.NoError(t, taskPod.Insert())
 			tsk := task.Task{
 				Id:                     "task_id",
-				Execution:              1,
+				Execution:              0,
 				ExecutionPlatform:      task.ExecutionPlatformContainer,
 				ContainerAllocated:     true,
 				ContainerAllocatedTime: time.Now(),
