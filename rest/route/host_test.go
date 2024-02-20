@@ -919,6 +919,7 @@ func setupMockHostsConnector(t *testing.T, env evergreen.Environment) {
 }
 
 func TestHostFilterGetHandler(t *testing.T) {
+	assert.NoError(t, db.ClearCollections(host.Collection))
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 
