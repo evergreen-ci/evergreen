@@ -503,7 +503,7 @@ func (t *Task) IsDispatchable() bool {
 // IsHostDispatchable returns true if the task should run on a host and can be
 // dispatched.
 func (t *Task) IsHostDispatchable() bool {
-	return t.IsHostTask() && t.WillRun() && !t.IsStuckTask()
+	return t.IsHostTask() && t.WillRun()
 }
 
 // IsHostTask returns true if it's a task that runs on hosts.
