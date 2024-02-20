@@ -144,7 +144,7 @@ func (tr TestResult) GetLogURL(env evergreen.Environment, viewer evergreen.LogVi
 			url.PathEscape(tr.TaskID),
 			url.QueryEscape(tr.getLogTestName()),
 			tr.Execution,
-			strings.Join(logsToMerge, ","),
+			strings.Join(logsToMerge, "&"),
 		)
 	}
 }
