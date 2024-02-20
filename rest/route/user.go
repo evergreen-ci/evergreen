@@ -774,7 +774,7 @@ type renameUserHandler struct {
 //	@Tags			users
 //	@Router			/users/rename_user [post]
 //	@Security		Api-User || Api-Key
-//	@Param			{object}	body		renameUserInfo	true	"parameters"
+//	@Param			{object}	body	renameUserInfo	true	"parameters"
 //	@Success		200
 func (h renameUserHandler) Factory() gimlet.RouteHandler {
 	return &renameUserHandler{
