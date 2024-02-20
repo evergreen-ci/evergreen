@@ -1379,3 +1379,15 @@ func FindOneByPersistentDNSName(ctx context.Context, dnsName string) (*Host, err
 		PersistentDNSNameKey: dnsName,
 	})
 }
+
+// FindUnexpirableRunningWithoutPersistentDNSName finds unexpirable hosts that
+// are currently running and do not have a persistent DNS name assigned to
+// them.
+func FindUnexpirableRunningWithoutPersistentDNSName(ctx context.Context, limit int) ([]Host, error) {
+	return Find(ctx, bson.M{
+		StatusKey:            evergreen.HostRunning,
+		StartedByKey:         bson.M{"$ne": evergreen.User},
+		NoExpirationKey:      true,
+		PersistentDNSNameKey: nil,
+	}, options.Find().SetLimit(int64(limit)))
+}
