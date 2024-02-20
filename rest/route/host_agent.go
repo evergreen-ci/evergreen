@@ -524,27 +524,6 @@ func assignNextAvailableTask(ctx context.Context, env evergreen.Environment, tas
 				"task_id":   nextTask.Id,
 				"host_id":   currentHost.Id,
 			}))
-
-			if nextTask.IsStuckTask() {
-				if err := model.EndAndResetSystemFailedTask(ctx, env.Settings(), nextTask, evergreen.TaskDescriptionStranded); err != nil {
-					return nil, false, errors.Wrap(err, "ending and resetting system failed task")
-				}
-				// The agent requesting the same task over and over again is a sign that the agent may have hit a panic
-				// and is caught up in an endless loop. This doesn't shut down the host because when starting over again
-				// in that case it will likely cause the same panic again. This resets the task and logs so that the task
-				// doesn't have to  be manually unstuck and an alert can be set up that alerts engineers who can manually
-				// intervene and fix the agent -- likely via a revert.
-				msg := fmt.Sprintf("The agent has re-requested the same task '%d' times.", evergreen.MaxTaskDispatchAttempts)
-				msg += " It's possible that the agent hit a panic and is in a bad state."
-
-				grip.Error(message.Fields{
-					"message":   msg,
-					"distro_id": d.Id,
-					"task_id":   nextTask.Id,
-					"host_id":   currentHost.Id,
-				})
-			}
-
 			continue
 		}
 
@@ -1112,6 +1091,25 @@ func sendBackRunningTask(ctx context.Context, env evergreen.Environment, h *host
 		return gimlet.MakeJSONInternalErrorResponder(err)
 	}
 
+	if t.IsStuckTask() {
+		if err := model.ClearAndResetStrandedHostTask(ctx, env.Settings(), h); err != nil {
+			grip.Error(message.WrapError(err, getMessage("ending and resetting system failed task")))
+			return gimlet.MakeJSONInternalErrorResponder(err)
+		}
+		// The agent is expected to run the task once it's been assigned it. If it's requesting the same
+		// task over and over again is a sign that something is wrong.
+		msg := fmt.Sprintf("The agent has re-requested the same task '%d' times.", evergreen.MaxTaskDispatchAttempts)
+		msg += " It's possible that the agent is in a bad state."
+
+		grip.Error(message.Fields{
+			"message":        msg,
+			"task_id":        t.Id,
+			"task_execution": t.Execution,
+			"host_id":        h.Id,
+			"agent_version":  evergreen.AgentVersion,
+		})
+	}
+
 	if isTaskGroupNewToHost(h, t) {
 		if err := checkHostTaskGroupAfterDispatch(ctx, h, t); err != nil {
 			if err := undoHostTaskDispatchAtomically(ctx, env, h, t); err != nil {
@@ -1132,6 +1130,12 @@ func sendBackRunningTask(ctx context.Context, env evergreen.Environment, h *host
 	}
 
 	if t.Activated {
+		grip.Error(message.WrapError(t.SetNumNextTaskDispatches(), message.Fields{
+			"message":        "problem updating the number of times the task has been dispatched",
+			"task_id":        t.Id,
+			"task_execution": t.Execution,
+			"host_id":        h.Id,
+		}))
 		setNextTask(t, &response)
 		return gimlet.NewJSONResponse(response)
 	}

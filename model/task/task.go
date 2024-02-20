@@ -511,7 +511,7 @@ func (t *Task) IsHostTask() bool {
 	return (t.ExecutionPlatform == "" || t.ExecutionPlatform == ExecutionPlatformHost) && !t.DisplayOnly
 }
 
-// IsStuckTask returns true if the task has been dispatched over a set number of times.
+// IsStuckTask returns true if the task has been dispatched over the system limit
 func (t *Task) IsStuckTask() bool {
 	return t.NumNextTaskDispatches >= evergreen.MaxTaskDispatchAttempts
 }
