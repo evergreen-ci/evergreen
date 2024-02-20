@@ -1507,10 +1507,8 @@ func (h *checkRunHandler) Run(ctx context.Context) gimlet.Responder {
 
 	checkRunInt := int(utility.FromInt64Ptr(checkRun.ID))
 	if err = t.SetCheckRunId(checkRunInt); err != nil {
-
 		err = errors.Wrap(err, "setting check run ID on task")
-		grip.Error(message.WrapError(err, message.Fields{"message": errorMessage,
-			"error":   err.Error(),
+		grip.Error(message.WrapError(err, message.Fields{
 			"task_id": t.Id}))
 
 		return gimlet.MakeJSONInternalErrorResponder(err)
