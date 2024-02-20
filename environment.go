@@ -72,6 +72,8 @@ const (
 	mongoExternalAuthSource = "$external"
 
 	s3ClientsPrefix = "evergreen/clients"
+
+	honeycombCollectorHeader = "x-honeycomb-team"
 )
 
 func init() { globalEnvLock = &sync.RWMutex{} }
@@ -891,6 +893,11 @@ func (e *envState) initTracer(ctx context.Context, useInternalDNS bool) error {
 		opts = append(opts, otlptracegrpc.WithInsecure())
 	} else {
 		opts = append(opts, otlptracegrpc.WithEndpoint(e.settings.Tracer.CollectorEndpoint))
+		if e.settings.Tracer.CollectorAPIKey != "" {
+			opts = append(opts, otlptracegrpc.WithHeaders(map[string]string{
+				honeycombCollectorHeader: e.settings.Tracer.CollectorAPIKey,
+			}))
+		}
 	}
 	client := otlptracegrpc.NewClient(opts...)
 	exp, err := otlptrace.New(ctx, client)

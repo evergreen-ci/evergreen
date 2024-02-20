@@ -227,5 +227,9 @@ func New(apiURL string) Config {
 		}
 		return next(ctx)
 	}
+
+	c.Directives.RedactSecrets = func(ctx context.Context, obj interface{}, next graphql.Resolver) (res interface{}, err error) {
+		return next(ctx)
+	}
 	return c
 }
