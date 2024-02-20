@@ -107,7 +107,7 @@ func (as *APIServer) requireProject(next http.HandlerFunc) http.HandlerFunc {
 			return
 		}
 
-		_, p, _, err := model.FindLatestVersionWithValidProject(projectRef.Id)
+		_, p, _, err := model.FindLatestVersionWithValidProject(projectRef.Id, false)
 		if err != nil {
 			as.LoggedError(w, r, http.StatusInternalServerError,
 				errors.Wrap(err, "Error getting patch"))

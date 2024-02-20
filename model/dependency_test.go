@@ -340,6 +340,7 @@ func TestIncludeDependencies(t *testing.T) {
 		So(pairs, ShouldHaveLength, 2)
 		So(pairs, ShouldNotContain, tgTaskPair)
 		So(pairs, ShouldNotContain, TVPair{TaskName: "c", Variant: "bv-with-group"})
-		So(pairs, ShouldEqual, []TVPair{{TaskName: "a", Variant: "bv-with-group"}, {TaskName: "b", Variant: "bv-with-group"}})
+		So(pairs, ShouldContain, TVPair{TaskName: "a", Variant: "bv-with-group"})
+		So(pairs, ShouldContain, TVPair{TaskName: "b", Variant: "bv-with-group"})
 	})
 }

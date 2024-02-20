@@ -29,7 +29,7 @@ input ProjectSettingsInput {
   githubWebhooksEnabled: Boolean
   projectRef: ProjectInput
   subscriptions: [SubscriptionInput!]
-  vars: ProjectVarsInput
+  vars: ProjectVarsInput @redactSecrets
 }
 
 input ProjectInput {
