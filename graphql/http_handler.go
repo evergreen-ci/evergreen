@@ -14,6 +14,7 @@ import (
 	"github.com/mongodb/grip/message"
 	"github.com/ravilushqa/otelgqlgen"
 	"github.com/vektah/gqlparser/v2/gqlerror"
+	"go.opentelemetry.io/otel/attribute"
 )
 
 // Handler returns a gimlet http handler func used as the gql route handler
@@ -23,7 +24,15 @@ func Handler(apiURL string) func(w http.ResponseWriter, r *http.Request) {
 	// Send OTEL traces for each request.
 	// Only create spans for resolved fields.
 	srv.Use(otelgqlgen.Middleware(
-		otelgqlgen.WithCreateSpanFromFields(func(fieldCtx *graphql.FieldContext) bool { return fieldCtx.IsResolver }),
+		otelgqlgen.WithCreateSpanFromFields(func(fieldCtx *graphql.FieldContext) bool {
+			return fieldCtx.IsMethod
+		}),
+		otelgqlgen.WithRequestVariablesAttributesBuilder(
+			otelgqlgen.RequestVariablesBuilderFunc(func(requestVariables map[string]interface{}) []attribute.KeyValue {
+				redactedRequestVariables := RedactFieldsInMap(requestVariables, redactedFields)
+				return otelgqlgen.RequestVariables(redactedRequestVariables)
+			}),
+		),
 	))
 
 	// Log graphql requests to splunk
@@ -55,6 +64,7 @@ func Handler(apiURL string) func(w http.ResponseWriter, r *http.Request) {
 			queryPath = fieldCtx.Path().String()
 			args = fieldCtx.Args
 		}
+		args = RedactFieldsInMap(args, redactedFields)
 		if err != nil && !strings.HasSuffix(err.Error(), context.Canceled.Error()) {
 			grip.Error(message.WrapError(err, message.Fields{
 				"path":    "/graphql/query",
