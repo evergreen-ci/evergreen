@@ -12,6 +12,7 @@ import (
 	"github.com/evergreen-ci/evergreen/model/pod"
 	"github.com/evergreen-ci/evergreen/model/pod/dispatcher"
 	"github.com/evergreen-ci/evergreen/model/task"
+	"github.com/evergreen-ci/evergreen/util"
 	"github.com/evergreen-ci/utility"
 	"github.com/mongodb/amboy"
 	"github.com/mongodb/amboy/job"
@@ -33,12 +34,13 @@ type podAllocatorJob struct {
 	TaskID   string `bson:"task_id" json:"task_id"`
 	job.Base `bson:"job_base" json:"job_base"`
 
-	task     *task.Task
-	pRef     *model.ProjectRef
-	env      evergreen.Environment
-	settings evergreen.Settings
-	smClient cocoa.SecretsManagerClient
-	vault    cocoa.Vault
+	task       *task.Task
+	pRef       *model.ProjectRef
+	expansions *util.Expansions
+	env        evergreen.Environment
+	settings   evergreen.Settings
+	smClient   cocoa.SecretsManagerClient
+	vault      cocoa.Vault
 }
 
 func makePodAllocatorJob() *podAllocatorJob {
@@ -231,6 +233,16 @@ func (j *podAllocatorJob) populate(ctx context.Context) error {
 		j.pRef = pRef
 	}
 
+	if j.expansions == nil {
+		projVars, err := model.FindMergedProjectVars(j.pRef.Id)
+		if err != nil {
+			return errors.Wrapf(err, "getting project vars for project '%s'", j.pRef.Id)
+		}
+		if projVars != nil {
+			j.expansions = util.NewExpansions(projVars.Vars)
+		}
+	}
+
 	if j.smClient == nil {
 		client, err := cloud.MakeSecretsManagerClient(ctx, &j.settings)
 		if err != nil {
@@ -288,13 +300,20 @@ func (j *podAllocatorJob) getIntentPodOptions(ctx context.Context) (*pod.TaskInt
 			return nil, errors.Wrap(err, "importing Windows version")
 		}
 	}
+	image := j.task.ContainerOpts.Image
+	if j.expansions != nil {
+		image, err = j.expansions.ExpandString(j.task.ContainerOpts.Image)
+		if err != nil {
+			return nil, errors.Wrap(err, "expanding container image")
+		}
+	}
 	return &pod.TaskIntentPodOptions{
 		CPU:                 j.task.ContainerOpts.CPU,
 		MemoryMB:            j.task.ContainerOpts.MemoryMB,
 		OS:                  os,
 		Arch:                arch,
 		WindowsVersion:      winVer,
-		Image:               j.task.ContainerOpts.Image,
+		Image:               image,
 		RepoCredsExternalID: repoCredsExternalID,
 		WorkingDir:          j.task.ContainerOpts.WorkingDir,
 		PodSecretExternalID: podSecretExternalID,
