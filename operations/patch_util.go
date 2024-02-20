@@ -3,6 +3,7 @@ package operations
 import (
 	"bytes"
 	"context"
+	"encoding/json"
 	"fmt"
 	"net/http"
 	"os"
@@ -18,6 +19,7 @@ import (
 	"github.com/evergreen-ci/evergreen/model"
 	"github.com/evergreen-ci/evergreen/model/patch"
 	"github.com/evergreen-ci/evergreen/rest/client"
+	restModel "github.com/evergreen-ci/evergreen/rest/model"
 	"github.com/evergreen-ci/utility"
 	"github.com/mongodb/grip"
 	"github.com/mongodb/grip/message"
@@ -174,13 +176,15 @@ func (p *patchParams) validateSubmission(diffData *localDiff) error {
 	return nil
 }
 
-func (p *patchParams) displayPatch(ac *legacyClient, newPatch *patch.Patch, uiHost string, isCommitQueuePatch bool) error {
-	patchDisp, err := getPatchDisplay(ac, newPatch, p.ShowSummary, uiHost, isCommitQueuePatch)
+func (p *patchParams) displayPatch(ac *legacyClient, o outputPatchParams) error {
+	patchDisp, err := getPatchDisplay(ac, o)
 	if err != nil {
 		return err
 	}
 
-	grip.Info("Patch successfully created.")
+	if !o.outputJSON {
+		grip.Info("Patch successfully created.")
+	}
 	grip.Info(patchDisp)
 
 	if p.Browse {
@@ -189,9 +193,9 @@ func (p *patchParams) displayPatch(ac *legacyClient, newPatch *patch.Patch, uiHo
 			grip.Warning(errors.Wrap(err, "finding browser command"))
 			return nil
 		}
-		url := newPatch.GetURL(uiHost)
-		if isCommitQueuePatch {
-			url = newPatch.GetCommitQueueURL(uiHost)
+		url := o.patch.GetURL(o.uiHost)
+		if o.patch.IsCommitQueuePatch() {
+			url = o.patch.GetCommitQueueURL(o.uiHost)
 		}
 		browserCmd = append(browserCmd, url)
 		cmd := exec.Command(browserCmd[0], browserCmd[1:]...)
@@ -524,23 +528,74 @@ func validatePatchSize(diff *localDiff, allowLarge bool) error {
 	return nil
 }
 
-// getPatchDisplay returns a human-readable summary representation of a patch object
-// which can be written to the terminal.
-func getPatchDisplay(ac *legacyClient, p *patch.Patch, summarize bool, uiHost string, isCommitQueuePatch bool) (string, error) {
-	var out bytes.Buffer
-	var link string
-	if isCommitQueuePatch {
-		link = p.GetCommitQueueURL(uiHost)
-	} else {
-		link = p.GetURL(uiHost)
+type outputPatchParams struct {
+	patches []patch.Patch
+	patch   *patch.Patch
+	uiHost  string
+
+	summarize  bool
+	outputJSON bool
+}
+
+// getPatchesDisplay returns a human-readable summary representation of a list of
+// patch objects which can be written to the terminal.
+func getPatchesDisplay(ac *legacyClient, o outputPatchParams) (string, error) {
+	if o.outputJSON {
+		display := []restModel.APIPatch{}
+		for _, p := range o.patches {
+			api := restModel.APIPatch{}
+			err := api.BuildFromService(p, nil)
+			if err != nil {
+				return "", errors.Wrap(err, "converting patch to API model")
+			}
+			display = append(display, api)
+		}
+		b, err := json.MarshalIndent(display, "", "\t")
+		if err != nil {
+			return "", err
+		}
+		return string(b), nil
 	}
 
-	proj, err := ac.GetProjectRef(p.Project)
+	var out string
+	for _, p := range o.patches {
+		o.patch = &p
+		s, err := getPatchDisplay(ac, o)
+		if err != nil {
+			return "", err
+		}
+		out += s
+	}
+	return out, nil
+}
+
+// getPatchDisplay returns a human-readable summary representation of a patch object
+// which can be written to the terminal.
+func getPatchDisplay(ac *legacyClient, o outputPatchParams) (string, error) {
+	var out bytes.Buffer
+	var link string
+	if o.patch.IsCommitQueuePatch() {
+		link = o.patch.GetCommitQueueURL(o.uiHost)
+	} else {
+		link = o.patch.GetURL(o.uiHost)
+	}
+
+	proj, err := ac.GetProjectRef(o.patch.Project)
 	if err != nil {
-		return "", errors.Wrapf(err, "getting project ref for '%s'", p.Project)
+		return "", errors.Wrapf(err, "getting project ref for '%s'", o.patch.Project)
 	}
 	if proj == nil {
-		return "", errors.Errorf("project ref not found for '%s'", p.Project)
+		return "", errors.Errorf("project ref not found for '%s'", o.patch.Project)
+	}
+
+	if o.outputJSON {
+		display := restModel.APIPatch{}
+		err := display.BuildFromService(*o.patch, nil)
+		if err != nil {
+			return "", errors.Wrap(err, "converting patch to API model")
+		}
+		output, err := json.MarshalIndent(display, "", "\t")
+		return string(output), err
 	}
 
 	err = patchDisplayTemplate.Execute(&out, struct {
@@ -550,9 +605,9 @@ func getPatchDisplay(ac *legacyClient, p *patch.Patch, summarize bool, uiHost st
 		Link              string
 		ProjectIdentifier string
 	}{
-		Patch:             p,
-		ShowSummary:       summarize,
-		ShowFinalized:     p.IsCommitQueuePatch(),
+		Patch:             o.patch,
+		ShowSummary:       o.summarize,
+		ShowFinalized:     o.patch.IsCommitQueuePatch(),
 		Link:              link,
 		ProjectIdentifier: proj.Identifier,
 	})

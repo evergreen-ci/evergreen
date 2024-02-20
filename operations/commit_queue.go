@@ -448,7 +448,12 @@ func backport() cli.Command {
 				return errors.Wrap(err, "uploading backport patch")
 			}
 
-			if err = patchParams.displayPatch(ac, backportPatch, uiV2, false); err != nil {
+			o := outputPatchParams{
+				patch:  backportPatch,
+				uiHost: uiV2,
+			}
+
+			if err = patchParams.displayPatch(ac, o); err != nil {
 				return errors.Wrap(err, "getting result display")
 			}
 
@@ -513,7 +518,11 @@ func listCLICommitQueueItem(item restModel.APICommitQueueItem, ac *legacyClient,
 	if p.Author != "" {
 		grip.Infof("Author: %s", p.Author)
 	}
-	disp, err := getPatchDisplay(ac, p, false, uiServerHost, false)
+	o := outputPatchParams{
+		patch:  p,
+		uiHost: uiServerHost,
+	}
+	disp, err := getPatchDisplay(ac, o)
 	if err != nil {
 		grip.Error(errors.Wrapf(err, "getting patch display summary for patch '%s'", p.Id.Hex()))
 		return
@@ -643,7 +652,11 @@ func (p *mergeParams) uploadMergePatch(conf *ClientSettings, ac *legacyClient, u
 	if err != nil {
 		return err
 	}
-	if err = patchParams.displayPatch(ac, patch, uiV2Url, true); err != nil {
+	o := outputPatchParams{
+		patch:  patch,
+		uiHost: uiV2Url,
+	}
+	if err = patchParams.displayPatch(ac, o); err != nil {
 		grip.Error("Patch information cannot be displayed.")
 	}
 
@@ -760,5 +773,10 @@ func getAPICommitQueuePatchDisplay(ac *legacyClient, apiPatch *restModel.APIPatc
 		return "", errors.Wrap(err, "converting patch to service model")
 	}
 
-	return getPatchDisplay(ac, &servicePatch, summarize, uiHost, true)
+	o := outputPatchParams{
+		patch:     &servicePatch,
+		summarize: summarize,
+		uiHost:    uiHost,
+	}
+	return getPatchDisplay(ac, o)
 }

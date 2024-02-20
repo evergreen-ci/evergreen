@@ -41,6 +41,7 @@ func getPatchFlags(flags ...cli.Flag) []cli.Flag {
 		addRefFlag(),
 		addUncommittedChangesFlag(),
 		addReuseFlags(),
+		addJSONOutputFlag(),
 		addPreserveCommitsFlag(
 			cli.StringSliceFlag{
 				Name:  joinFlagNames(tasksFlagName, "t"),
@@ -89,8 +90,8 @@ func Patch() cli.Command {
 			setPlainLogger,
 			mutuallyExclusiveArgs(false, patchDescriptionFlagName, autoDescriptionFlag),
 			mutuallyExclusiveArgs(false, preserveCommitsFlag, uncommittedChangesFlag),
-			mutuallyExclusiveArgs(false, repeatDefinitionFlag, repeatPatchIdFlag,
-				repeatFailedDefinitionFlag),
+			mutuallyExclusiveArgs(false, repeatDefinitionFlag, repeatPatchIdFlag, repeatFailedDefinitionFlag),
+			conditionallyRequiredArgs(jsonFlagName, skipConfirmFlagName),
 			func(c *cli.Context) error {
 				catcher := grip.NewBasicCatcher()
 				for _, status := range utility.SplitCommas(c.StringSlice(syncStatusesFlagName)) {
@@ -111,6 +112,7 @@ func Patch() cli.Command {
 		),
 		Action: func(c *cli.Context) error {
 			confPath := c.Parent().String(confFlagName)
+			outputJSON := c.Bool(jsonFlagName)
 			args := c.Args()
 			params := &patchParams{
 				Project:           c.String(projectFlagName),
@@ -135,10 +137,12 @@ func Patch() cli.Command {
 				Uncommitted:       c.Bool(uncommittedChangesFlag),
 				PreserveCommits:   c.Bool(preserveCommitsFlag),
 				TriggerAliases:    utility.SplitCommas(c.StringSlice(patchTriggerAliasFlag)),
+				RepeatPatchId:     c.String(repeatPatchIdFlag),
+				RepeatDefinition:  c.Bool(repeatDefinitionFlag) || c.String(repeatPatchIdFlag) != "",
+				RepeatFailed:      c.Bool(repeatFailedDefinitionFlag),
 			}
 
 			var err error
-			params.addReuseFlags(c)
 			includeModules := c.Bool(includeModulesFlag)
 			paramsPairs := c.StringSlice(parameterFlagName)
 			params.Parameters, err = getParametersFromInput(paramsPairs)
@@ -169,7 +173,7 @@ func Patch() cli.Command {
 				}
 			}
 
-			comm, err := conf.setupRestCommunicator(ctx, true)
+			comm, err := conf.setupRestCommunicator(ctx, !outputJSON)
 			if err != nil {
 				return errors.Wrap(err, "setting up REST communicator")
 			}
@@ -197,7 +201,9 @@ func Patch() cli.Command {
 			remote, err := gitGetRemote("", ref.Owner, ref.Repo)
 			if err != nil {
 				// TODO: DEVPROD-3740 Change this back to an error
-				grip.Warningf("warning - you do not have a remote tracking your Evergreen project. The project to track is https://github.com/%s/%s", ref.Owner, ref.Repo)
+				if !outputJSON {
+					grip.Warningf("warning - you do not have a remote tracking your Evergreen project. The project to track is https://github.com/%s/%s", ref.Owner, ref.Repo)
+				}
 			}
 
 			diffData, err := loadGitData("", remote, ref.Branch, params.Ref, "", params.PreserveCommits, args...)
@@ -232,7 +238,9 @@ func Patch() cli.Command {
 						continue
 					}
 					if err = addModuleToPatch(params, args, conf, newPatch, &module, modulePath); err != nil {
-						grip.Errorf("Error adding module '%s' to patch: %s", module.Name, err)
+						if !outputJSON {
+							grip.Errorf("Error adding module '%s' to patch: %s", module.Name, err)
+						}
 					}
 				}
 			}
@@ -243,19 +251,18 @@ func Patch() cli.Command {
 				}
 			}
 
-			if err = params.displayPatch(ac, newPatch, conf.UIServerHost, false); err != nil {
+			o := outputPatchParams{
+				patch:      newPatch,
+				uiHost:     conf.UIServerHost,
+				outputJSON: outputJSON,
+			}
+			if err = params.displayPatch(ac, o); err != nil {
 				grip.Error(err)
 			}
 			params.setDefaultProject(conf)
 			return nil
 		},
 	}
-}
-
-func (p *patchParams) addReuseFlags(c *cli.Context) {
-	p.RepeatPatchId = c.String(repeatPatchIdFlag)
-	p.RepeatDefinition = c.Bool(repeatDefinitionFlag) || p.RepeatPatchId != ""
-	p.RepeatFailed = c.Bool(repeatFailedDefinitionFlag)
 }
 
 func getParametersFromInput(params []string) ([]patch.Parameter, error) {
@@ -410,7 +417,13 @@ func PatchFile() cli.Command {
 				}
 			}
 
-			return params.displayPatch(ac, newPatch, conf.UIServerHost, false)
+			o := outputPatchParams{
+				patch:      newPatch,
+				uiHost:     conf.UIServerHost,
+				outputJSON: c.Bool(jsonFlagName),
+			}
+
+			return params.displayPatch(ac, o)
 		},
 	}
 }
