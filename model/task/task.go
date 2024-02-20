@@ -3454,8 +3454,7 @@ func (t *Task) SetDisplayTaskID(id string) error {
 
 // SetCheckRunId sets the checkRunId for the task
 func (t *Task) SetCheckRunId(checkRunId int) error {
-	t.CheckRunId = utility.ToIntPtr(checkRunId)
-	return UpdateOne(
+	if err := UpdateOne(
 		bson.M{
 			IdKey: t.Id,
 		},
@@ -3464,7 +3463,11 @@ func (t *Task) SetCheckRunId(checkRunId int) error {
 				CheckRunIdKey: checkRunId,
 			},
 		},
-	)
+	); err != nil {
+		return err
+	}
+	t.CheckRunId = utility.ToIntPtr(checkRunId)
+	return nil
 }
 
 func (t *Task) SetNumDependents() error {

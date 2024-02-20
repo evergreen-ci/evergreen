@@ -1496,16 +1496,25 @@ func (h *checkRunHandler) Run(ctx context.Context) gimlet.Responder {
 	checkRun, err := thirdparty.CreateCheckRun(ctx, gh.HeadOwner, gh.HeadRepo, *h.checkRunOutput.Title, gh.HeadHash, &h.checkRunOutput)
 
 	if err != nil {
-		errorMessage := fmt.Sprintf("upserting checkRun: %s", err.Error())
+		errorMessage := fmt.Sprintf("creating checkRun for task: %s", t.Id)
 		grip.Error(message.Fields{
 			"message": errorMessage,
+			"error":   err.Error(),
 			"task_id": t.Id,
 		})
-		return gimlet.MakeJSONInternalErrorResponder(errors.Wrap(err, "setting patch parameters"))
+		return gimlet.MakeJSONInternalErrorResponder(errors.Wrap(err, "creating check run"))
 	}
 
 	checkRunInt := int(utility.FromInt64Ptr(checkRun.ID))
-	err = t.SetCheckRunId(checkRunInt)
+	if err = t.SetCheckRunId(checkRunInt); err != nil {
+		errorMessage := fmt.Sprintf("setting checkRun ID on task: %s", t.Id)
+		grip.Error(message.Fields{
+			"message": errorMessage,
+			"error":   err.Error(),
+			"task_id": t.Id,
+		})
+		return gimlet.MakeJSONInternalErrorResponder(errors.Wrap(err, "setting check run ID on task"))
+	}
 
 	return gimlet.NewJSONResponse(fmt.Sprintf("Successfully upserted checkRun for  %v ", t.Id))
 }

@@ -3496,6 +3496,23 @@ func TestAddParentDisplayTasks(t *testing.T) {
 	assert.Equal(t, dt2.Id, tasks[3].DisplayTask.Id)
 }
 
+func TestSetCheckRunId(t *testing.T) {
+	require.NoError(t, db.Clear(Collection))
+	t1 := &Task{
+		Id: "t1",
+	}
+
+	assert.NoError(t, t1.Insert())
+	assert.NoError(t, t1.SetCheckRunId(12345))
+
+	var err error
+	t1, err = FindOneId(t1.Id)
+	assert.NoError(t, err)
+
+	assert.Equal(t, t1.CheckRunId, utility.ToIntPtr(12345))
+
+}
+
 func TestAddDisplayTaskIdToExecTasks(t *testing.T) {
 	require.NoError(t, db.Clear(Collection))
 	t1 := &Task{
