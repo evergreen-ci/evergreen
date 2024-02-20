@@ -1196,6 +1196,12 @@ func FindOneVolume(query interface{}) (*Volume, error) {
 	return v, err
 }
 
+// updateAllVolumes updates all volumes.
+func updateAllVolumes(ctx context.Context, query bson.M, update bson.M) error {
+	_, err := evergreen.GetEnvironment().DB().Collection(VolumesCollection).UpdateMany(ctx, query, update)
+	return errors.Wrap(err, "updating volumes")
+}
+
 func FindDistroForHost(ctx context.Context, hostID string) (string, error) {
 	h, err := FindOne(ctx, ById(hostID))
 	if err != nil {
@@ -1340,6 +1346,18 @@ func UnsafeReplace(ctx context.Context, env evergreen.Environment, idToRemove st
 	})
 
 	return nil
+}
+
+// ConsolidateHostsForUser moves any unterminated hosts/volumes owned by oldUser to be assigned to the newUser.
+func ConsolidateHostsForUser(ctx context.Context, oldUser, newUser string) error {
+	catcher := grip.NewBasicCatcher()
+	catcher.Add(UpdateAll(ctx, ByUserWithUnterminatedStatus(oldUser),
+		bson.M{"$set": bson.M{StartedByKey: newUser}},
+	))
+	catcher.Add(updateAllVolumes(ctx, bson.M{VolumeCreatedByKey: oldUser},
+		bson.M{"$set": bson.M{VolumeCreatedByKey: newUser}},
+	))
+	return catcher.Resolve()
 }
 
 // FindUnexpirableRunning returns all unexpirable spawn hosts that are

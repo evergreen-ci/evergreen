@@ -246,6 +246,7 @@ func AttachHandler(app *gimlet.APIApp, opts HandlerOpts) {
 	app.AddRoute("/users/{user_id}/hosts").Version(2).Get().Wrap(requireUser).RouteHandler(makeFetchHosts(opts.URL))
 	app.AddRoute("/users/{user_id}/patches").Version(2).Get().Wrap(requireUser).RouteHandler(makeUserPatchHandler(opts.URL))
 	app.AddRoute("/users/offboard_user").Version(2).Post().Wrap(requireUser, editRoles).RouteHandler(makeOffboardUser(env))
+	app.AddRoute("/users/rename_user").Version(2).Post().Wrap(requireUser, editRoles).RouteHandler(makeRenameUser(env))
 	app.AddRoute("/users/{user_id}/permissions").Version(2).Get().Wrap(requireUser).RouteHandler(makeGetUserPermissions(env.RoleManager()))
 	app.AddRoute("/users/{user_id}/permissions").Version(2).Post().Wrap(requireUser, editRoles).RouteHandler(makeModifyUserPermissions(env.RoleManager()))
 	app.AddRoute("/users/{user_id}/permissions").Version(2).Delete().Wrap(requireUser, editRoles).RouteHandler(makeDeleteUserPermissions(env.RoleManager()))
