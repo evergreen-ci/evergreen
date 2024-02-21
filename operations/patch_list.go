@@ -18,21 +18,20 @@ func PatchList() cli.Command {
 	return cli.Command{
 		Name:  "list-patches",
 		Usage: "show existing patches",
-		Flags: mergeFlagSlices(
-			addPatchIDFlag(
-				cli.BoolFlag{
-					Name:  joinFlagNames(jsonFlagName, "j"),
-					Usage: "output the patches as a JSON array",
-				},
-				cli.IntFlag{
-					Name:  joinFlagNames(numberFlagName, "n"),
-					Usage: "number of patches to show (0 for all patches)",
-					Value: 5,
-				},
-				cli.BoolFlag{
-					Name:  joinFlagNames(showSummaryFlagName, "s"),
-					Usage: "show a summary of the diff for each patch",
-				})),
+		Flags: mergeFlagSlices(addPatchIDFlag(
+			cli.BoolFlag{
+				Name:  joinFlagNames(jsonFlagName, "j"),
+				Usage: "output the patches as a JSON array",
+			},
+			cli.IntFlag{
+				Name:  joinFlagNames(numberFlagName, "n"),
+				Usage: "number of patches to show (0 for all patches)",
+				Value: 5,
+			},
+			cli.BoolFlag{
+				Name:  joinFlagNames(showSummaryFlagName, "s"),
+				Usage: "show a summary of the diff for each patch",
+			})),
 		Action: func(c *cli.Context) error {
 			confPath := c.Parent().String(confFlagName)
 			number := c.Int(numberFlagName)
