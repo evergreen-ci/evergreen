@@ -67,6 +67,7 @@ var (
 	AgentRevisionKey                   = bsonutil.MustHaveTag(Host{}, "AgentRevision")
 	NeedsNewAgentKey                   = bsonutil.MustHaveTag(Host{}, "NeedsNewAgent")
 	NeedsNewAgentMonitorKey            = bsonutil.MustHaveTag(Host{}, "NeedsNewAgentMonitor")
+	NumAgentCleanupFailuresKey         = bsonutil.MustHaveTag(Host{}, "NumAgentCleanupFailures")
 	JasperCredentialsIDKey             = bsonutil.MustHaveTag(Host{}, "JasperCredentialsID")
 	NeedsReprovisionKey                = bsonutil.MustHaveTag(Host{}, "NeedsReprovision")
 	StartedByKey                       = bsonutil.MustHaveTag(Host{}, "StartedBy")
@@ -1360,4 +1361,21 @@ func FindOneByPersistentDNSName(ctx context.Context, dnsName string) (*Host, err
 	return FindOne(ctx, bson.M{
 		PersistentDNSNameKey: dnsName,
 	})
+}
+
+// IncrementNumAgentCleanupFailures will increment the NumAgentCleanupFailures field by 1.
+func (h *Host) IncrementNumAgentCleanupFailures(ctx context.Context) error {
+	h.NumAgentCleanupFailures = h.NumAgentCleanupFailures + 1
+	err := UpdateOne(
+		ctx,
+		bson.M{
+			IdKey: h.Id,
+		},
+		bson.M{
+			"$inc": bson.M{
+				NumAgentCleanupFailuresKey: 1,
+			},
+		},
+	)
+	return errors.Wrapf(err, "incrementing number of agent cleanup failures for host '%s'", h.Id)
 }

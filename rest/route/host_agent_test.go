@@ -23,7 +23,6 @@ import (
 	modelUtil "github.com/evergreen-ci/evergreen/model/testutil"
 	"github.com/evergreen-ci/utility"
 	"github.com/mongodb/amboy/queue"
-	"github.com/pkg/errors"
 	. "github.com/smartystreets/goconvey/convey"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -280,10 +279,8 @@ func TestHostNextTask(t *testing.T) {
 					intentHost, err := host.FindOneId(ctx, "intentHost")
 					require.NoError(t, err)
 					require.NoError(t, intentHost.SetStatus(ctx, evergreen.HostQuarantined, evergreen.User, ""))
-					for i := 0; i < 10; i++ {
-						event.LogHostScriptExecuteFailed(intentHost.Id, errors.New("test error"))
-					}
 					intentHost.NeedsReprovision = host.ReprovisionToLegacy
+					intentHost.NumAgentCleanupFailures = 10
 					rh.host = intentHost
 					rh.details = &apimodels.GetNextTaskDetails{
 						AgentRevision: evergreen.AgentVersion,
@@ -563,7 +560,7 @@ func TestHostNextTask(t *testing.T) {
 			ctx, cancel := context.WithCancel(context.Background())
 			defer cancel()
 
-			colls := []string{model.ProjectRefCollection, host.Collection, task.Collection, model.TaskQueuesCollection, build.Collection, evergreen.ConfigCollection, event.EventCollection}
+			colls := []string{model.ProjectRefCollection, host.Collection, task.Collection, model.TaskQueuesCollection, build.Collection, evergreen.ConfigCollection}
 			require.NoError(t, db.ClearCollections(colls...))
 			defer func() {
 				assert.NoError(t, db.ClearCollections(colls...))

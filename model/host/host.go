@@ -108,10 +108,11 @@ type Host struct {
 	Status    string `bson:"status" json:"status"`
 	StartedBy string `bson:"started_by" json:"started_by"`
 	// True if this host was created manually by a user (i.e. with spawnhost)
-	UserHost             bool   `bson:"user_host" json:"user_host"`
-	AgentRevision        string `bson:"agent_revision" json:"agent_revision"`
-	NeedsNewAgent        bool   `bson:"needs_agent" json:"needs_agent"`
-	NeedsNewAgentMonitor bool   `bson:"needs_agent_monitor" json:"needs_agent_monitor"`
+	UserHost                bool   `bson:"user_host" json:"user_host"`
+	AgentRevision           string `bson:"agent_revision" json:"agent_revision"`
+	NeedsNewAgent           bool   `bson:"needs_agent" json:"needs_agent"`
+	NeedsNewAgentMonitor    bool   `bson:"needs_agent_monitor" json:"needs_agent_monitor"`
+	NumAgentCleanupFailures int    `bson:"num_agent_cleanup_failures" json:"num_agent_cleanup_failures"`
 
 	// NeedsReprovision is set if the host needs to be reprovisioned.
 	// These fields must be unset if no provisioning is needed anymore.
@@ -1457,6 +1458,7 @@ func (h *Host) ClearRunningAndSetLastTask(ctx context.Context, t *task.Task) err
 				RunningTaskBuildVariantKey: 1,
 				RunningTaskVersionKey:      1,
 				RunningTaskProjectKey:      1,
+				NumAgentCleanupFailuresKey: 1,
 			},
 		})
 
@@ -1542,6 +1544,7 @@ func (h *Host) clearRunningTaskWithFunc(doUpdate func(update bson.M) error) erro
 			RunningTaskBuildVariantKey: 1,
 			RunningTaskVersionKey:      1,
 			RunningTaskProjectKey:      1,
+			NumAgentCleanupFailuresKey: 1,
 		},
 	}
 	if err := doUpdate(update); err != nil {

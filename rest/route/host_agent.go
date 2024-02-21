@@ -28,7 +28,7 @@ import (
 // if a host encounters more than this number of system failures, then it should be disabled.
 const consecutiveSystemFailureThreshold = 3
 
-// if we fail to execute a script on a host more than this number of times, we can consider the
+// if we fail to clean up the agent on a quarantined host more than this number of times, we can consider the
 // host unreachable and clear its secret.
 const hostUnreachableEventThreshold = 10
 
@@ -157,14 +157,11 @@ func (h *hostAgentNextTask) Run(ctx context.Context) gimlet.Responder {
 				"agent":         evergreen.AgentVersion,
 				"current_agent": h.host.AgentRevision,
 			}))
-			event.LogHostScriptExecuteFailed(h.host.Id, err)
-			numExecuteFailedEvents, err := event.CountFailedExecuteEvents(h.host.Id)
-			if err != nil {
+			if err = h.host.IncrementNumAgentCleanupFailures(ctx); err != nil {
 				return gimlet.MakeJSONInternalErrorResponder(err)
 			}
-			if numExecuteFailedEvents > hostUnreachableEventThreshold {
-				err = h.host.CreateSecret(ctx, true)
-				if err != nil {
+			if h.host.NumAgentCleanupFailures > hostUnreachableEventThreshold {
+				if err = h.host.CreateSecret(ctx, true); err != nil {
 					return gimlet.MakeJSONInternalErrorResponder(err)
 				}
 			}
