@@ -3301,7 +3301,7 @@ func TestCheckProjectWarnings(t *testing.T) {
 
 			require.NoError(t, pp.Insert())
 			require.NoError(t, v.Insert(), "failed to insert test version: %v", v)
-			_, project, _, err := model.FindLatestVersionWithValidProject(projectRef.Id, false)
+			_, project, _, err := model.FindLatestVersionWithValidProject(projectRef.Id)
 			So(err, ShouldBeNil)
 			So(CheckProjectWarnings(project), ShouldResemble, ValidationErrors{})
 		})
