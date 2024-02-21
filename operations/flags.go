@@ -158,13 +158,6 @@ func addSyncStatusesFlag(flags ...cli.Flag) []cli.Flag {
 	})
 }
 
-func addJSONOutputFlag(flags ...cli.Flag) []cli.Flag {
-	return append(flags, cli.BoolFlag{
-		Name:  joinFlagNames(jsonFlagName, "j"),
-		Usage: "output JSON instead of text",
-	})
-}
-
 func addVariantsFlag(flags ...cli.Flag) []cli.Flag {
 	return append(flags, cli.StringSliceFlag{
 		Name:  joinFlagNames(variantsFlagName, "v"),

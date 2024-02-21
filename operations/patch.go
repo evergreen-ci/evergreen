@@ -2,6 +2,7 @@ package operations
 
 import (
 	"context"
+	"fmt"
 	"os"
 	"strings"
 
@@ -41,8 +42,11 @@ func getPatchFlags(flags ...cli.Flag) []cli.Flag {
 		addRefFlag(),
 		addUncommittedChangesFlag(),
 		addReuseFlags(),
-		addJSONOutputFlag(),
 		addPreserveCommitsFlag(
+			cli.BoolFlag{
+				Name:  joinFlagNames(jsonFlagName, "j"),
+				Usage: "outputs the patch as a JSON object and surpresses warnings, must be used with --skip-confirm",
+			},
 			cli.StringSliceFlag{
 				Name:  joinFlagNames(tasksFlagName, "t"),
 				Usage: "task names (\"all\" for all tasks)",
@@ -238,9 +242,7 @@ func Patch() cli.Command {
 						continue
 					}
 					if err = addModuleToPatch(params, args, conf, newPatch, &module, modulePath); err != nil {
-						if !outputJSON {
-							grip.Errorf("Error adding module '%s' to patch: %s", module.Name, err)
-						}
+						grip.ErrorWhen(!outputJSON, fmt.Sprintf("Error adding module '%s' to patch: %s", module.Name, err))
 					}
 				}
 			}
@@ -251,12 +253,12 @@ func Patch() cli.Command {
 				}
 			}
 
-			o := outputPatchParams{
-				patch:      newPatch,
+			outputParams := outputPatchParams{
+				patches:    []patch.Patch{*newPatch},
 				uiHost:     conf.UIServerHost,
 				outputJSON: outputJSON,
 			}
-			if err = params.displayPatch(ac, o); err != nil {
+			if err = params.displayPatch(ac, outputParams); err != nil {
 				grip.Error(err)
 			}
 			params.setDefaultProject(conf)
@@ -417,13 +419,13 @@ func PatchFile() cli.Command {
 				}
 			}
 
-			o := outputPatchParams{
-				patch:      newPatch,
+			outputParams := outputPatchParams{
+				patches:    []patch.Patch{*newPatch},
 				uiHost:     conf.UIServerHost,
 				outputJSON: c.Bool(jsonFlagName),
 			}
 
-			return params.displayPatch(ac, o)
+			return params.displayPatch(ac, outputParams)
 		},
 	}
 }

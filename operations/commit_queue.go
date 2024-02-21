@@ -448,12 +448,12 @@ func backport() cli.Command {
 				return errors.Wrap(err, "uploading backport patch")
 			}
 
-			o := outputPatchParams{
-				patch:  backportPatch,
-				uiHost: uiV2,
+			params := outputPatchParams{
+				patches: []patch.Patch{*backportPatch},
+				uiHost:  uiV2,
 			}
 
-			if err = patchParams.displayPatch(ac, o); err != nil {
+			if err = patchParams.displayPatch(ac, params); err != nil {
 				return errors.Wrap(err, "getting result display")
 			}
 
@@ -518,11 +518,11 @@ func listCLICommitQueueItem(item restModel.APICommitQueueItem, ac *legacyClient,
 	if p.Author != "" {
 		grip.Infof("Author: %s", p.Author)
 	}
-	o := outputPatchParams{
-		patch:  p,
-		uiHost: uiServerHost,
+	params := outputPatchParams{
+		patches: []patch.Patch{*p},
+		uiHost:  uiServerHost,
 	}
-	disp, err := getPatchDisplay(ac, o)
+	disp, err := getPatchDisplay(ac, params)
 	if err != nil {
 		grip.Error(errors.Wrapf(err, "getting patch display summary for patch '%s'", p.Id.Hex()))
 		return
@@ -648,19 +648,19 @@ func (p *mergeParams) uploadMergePatch(conf *ClientSettings, ac *legacyClient, u
 	if err = patchParams.validateSubmission(diffData); err != nil {
 		return err
 	}
-	patch, err := patchParams.createPatch(ac, diffData)
+	newPatch, err := patchParams.createPatch(ac, diffData)
 	if err != nil {
 		return err
 	}
-	o := outputPatchParams{
-		patch:  patch,
-		uiHost: uiV2Url,
+	params := outputPatchParams{
+		patches: []patch.Patch{*newPatch},
+		uiHost:  uiV2Url,
 	}
-	if err = patchParams.displayPatch(ac, o); err != nil {
+	if err = patchParams.displayPatch(ac, params); err != nil {
 		grip.Error("Patch information cannot be displayed.")
 	}
 
-	p.id = patch.Id.Hex()
+	p.id = newPatch.Id.Hex()
 	patchParams.setDefaultProject(conf)
 
 	return nil
@@ -773,10 +773,10 @@ func getAPICommitQueuePatchDisplay(ac *legacyClient, apiPatch *restModel.APIPatc
 		return "", errors.Wrap(err, "converting patch to service model")
 	}
 
-	o := outputPatchParams{
-		patch:     &servicePatch,
+	params := outputPatchParams{
+		patches:   []patch.Patch{servicePatch},
 		summarize: summarize,
 		uiHost:    uiHost,
 	}
-	return getPatchDisplay(ac, o)
+	return getPatchDisplay(ac, params)
 }

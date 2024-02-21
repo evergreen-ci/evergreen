@@ -19,8 +19,11 @@ func PatchList() cli.Command {
 		Name:  "list-patches",
 		Usage: "show existing patches",
 		Flags: mergeFlagSlices(
-			addPatchIDFlag(),
-			addJSONOutputFlag(
+			addPatchIDFlag(
+				cli.BoolFlag{
+					Name:  joinFlagNames(jsonFlagName, "j"),
+					Usage: "output the patches as a JSON array",
+				},
 				cli.IntFlag{
 					Name:  joinFlagNames(numberFlagName, "n"),
 					Usage: "number of patches to show (0 for all patches)",
@@ -77,7 +80,7 @@ func PatchList() cli.Command {
 				outputJSON: outputJSON,
 			}
 
-			disp, err := getPatchesDisplay(ac, o)
+			disp, err := getPatchDisplay(ac, o)
 			if err != nil {
 				return err
 			}
