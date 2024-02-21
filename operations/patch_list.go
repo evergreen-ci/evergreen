@@ -19,14 +19,14 @@ func PatchList() cli.Command {
 		Name:  "list-patches",
 		Usage: "show existing patches",
 		Flags: mergeFlagSlices(addPatchIDFlag(
-			cli.BoolFlag{
-				Name:  joinFlagNames(jsonFlagName, "j"),
-				Usage: "output the patches as a JSON array",
-			},
 			cli.IntFlag{
 				Name:  joinFlagNames(numberFlagName, "n"),
 				Usage: "number of patches to show (0 for all patches)",
 				Value: 5,
+			},
+			cli.BoolFlag{
+				Name:  joinFlagNames(jsonFlagName, "j"),
+				Usage: "output the patches as a JSON array",
 			},
 			cli.BoolFlag{
 				Name:  joinFlagNames(showSummaryFlagName, "s"),
