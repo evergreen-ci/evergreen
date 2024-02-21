@@ -72,14 +72,14 @@ func PatchList() cli.Command {
 				}
 			}
 
-			o := outputPatchParams{
+			params := outputPatchParams{
 				patches:    patches,
 				summarize:  showSummary,
 				uiHost:     conf.UIServerHost,
 				outputJSON: outputJSON,
 			}
 
-			disp, err := getPatchDisplay(ac, o)
+			disp, err := getPatchDisplay(ac, params)
 			if err != nil {
 				return err
 			}
