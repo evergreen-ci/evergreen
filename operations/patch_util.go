@@ -187,21 +187,19 @@ func (p *patchParams) displayPatch(ac *legacyClient, o outputPatchParams) error 
 	grip.InfoWhen(!o.outputJSON, "Patch successfully created.")
 	grip.Info(patchDisp)
 
-	if len(o.patches) == 1 {
-		if p.Browse {
-			browserCmd, err := findBrowserCommand()
-			if err != nil {
-				grip.Warning(errors.Wrap(err, "finding browser command"))
-				return nil
-			}
-			url := o.patches[0].GetURL(o.uiHost)
-			if o.patches[0].IsCommitQueuePatch() {
-				url = o.patches[0].GetCommitQueueURL(o.uiHost)
-			}
-			browserCmd = append(browserCmd, url)
-			cmd := exec.Command(browserCmd[0], browserCmd[1:]...)
-			return cmd.Run()
+	if len(o.patches) == 1 && p.Browse {
+		browserCmd, err := findBrowserCommand()
+		if err != nil {
+			grip.Warning(errors.Wrap(err, "finding browser command"))
+			return nil
 		}
+		url := o.patches[0].GetURL(o.uiHost)
+		if o.patches[0].IsCommitQueuePatch() {
+			url = o.patches[0].GetCommitQueueURL(o.uiHost)
+		}
+		browserCmd = append(browserCmd, url)
+		cmd := exec.Command(browserCmd[0], browserCmd[1:]...)
+		return cmd.Run()
 	}
 
 	return nil
