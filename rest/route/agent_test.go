@@ -70,8 +70,8 @@ func TestAgentGetExpansionsAndVars(t *testing.T) {
 			assert.Equal(t, http.StatusOK, resp.Status())
 			data, ok := resp.Data().(apimodels.ExpansionsAndVars)
 			require.True(t, ok)
-			assert.Equal(t, data.Vars, map[string]string{"a": "4", "b": "3"})
-			assert.Equal(t, data.PrivateVars, map[string]bool{"b": true})
+			assert.Equal(t, data.Vars, map[string]string{"a": "4", "b": "3", evergreen.HostServicePasswordExpansion: "password"})
+			assert.Equal(t, data.PrivateVars, map[string]bool{"b": true, evergreen.HostServicePasswordExpansion: true})
 			assert.Equal(t, data.RedactKeys, []string{"pass", "secret"})
 		},
 		"RunSucceedsWithHostDistroExpansions": func(ctx context.Context, t *testing.T, rh *getExpansionsAndVarsHandler) {
@@ -84,8 +84,8 @@ func TestAgentGetExpansionsAndVars(t *testing.T) {
 			require.True(t, ok)
 			assert.Equal(t, rh.taskID, data.Expansions.Get("task_id"))
 			assert.Equal(t, "distro_expansion_value", data.Expansions.Get("distro_expansion_key"))
-			assert.Equal(t, data.Vars, map[string]string{"a": "4", "b": "3"})
-			assert.Equal(t, data.PrivateVars, map[string]bool{"b": true})
+			assert.Equal(t, data.Vars, map[string]string{"a": "4", "b": "3", evergreen.HostServicePasswordExpansion: "password"})
+			assert.Equal(t, data.PrivateVars, map[string]bool{"b": true, evergreen.HostServicePasswordExpansion: true})
 			assert.Equal(t, data.RedactKeys, []string{"pass", "secret"})
 		},
 	} {
@@ -161,6 +161,7 @@ func TestAgentGetExpansionsAndVars(t *testing.T) {
 						},
 					},
 				},
+				ServicePassword: "password",
 			}
 			require.NoError(t, t1.Insert())
 			require.NoError(t, t2.Insert())
