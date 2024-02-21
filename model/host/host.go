@@ -527,6 +527,15 @@ func (h *Host) GetAMI() string {
 	return ami
 }
 
+// GetSubnetID returns the subnet ID for the host if available, otherwise returns the empty string.
+func (h *Host) GetSubnetID() string {
+	if len(h.Distro.ProviderSettingsList) == 0 {
+		return ""
+	}
+	subnetID, _ := h.Distro.ProviderSettingsList[0].Lookup("subnet_id").StringValueOK()
+	return subnetID
+}
+
 func (h *Host) IsEphemeral() bool {
 	return utility.StringSliceContains(evergreen.ProviderSpawnable, h.Provider)
 }

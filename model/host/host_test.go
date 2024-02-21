@@ -104,7 +104,7 @@ func TestGenericHostFinding(t *testing.T) {
 				}
 				So(nonMatchingHost.Insert(ctx), ShouldBeNil)
 
-				found, err := Find(ctx, (bson.M{dId: "d1"}))
+				found, err := Find(ctx, bson.M{dId: "d1"})
 				So(err, ShouldBeNil)
 				So(len(found), ShouldEqual, 2)
 				So(hostIdInSlice(found, matchingHostOne.Id), ShouldBeTrue)
@@ -4320,22 +4320,22 @@ func TestAddTags(t *testing.T) {
 	h := Host{
 		Id: "id",
 		InstanceTags: []Tag{
-			Tag{Key: "key-fixed", Value: "val-fixed", CanBeModified: false},
-			Tag{Key: "key-1", Value: "val-1", CanBeModified: true},
-			Tag{Key: "key-2", Value: "val-2", CanBeModified: true},
+			{Key: "key-fixed", Value: "val-fixed", CanBeModified: false},
+			{Key: "key-1", Value: "val-1", CanBeModified: true},
+			{Key: "key-2", Value: "val-2", CanBeModified: true},
 		},
 	}
 	tagsToAdd := []Tag{
-		Tag{Key: "key-fixed", Value: "val-new", CanBeModified: false},
-		Tag{Key: "key-2", Value: "val-new", CanBeModified: true},
-		Tag{Key: "key-3", Value: "val-3", CanBeModified: true},
+		{Key: "key-fixed", Value: "val-new", CanBeModified: false},
+		{Key: "key-2", Value: "val-new", CanBeModified: true},
+		{Key: "key-3", Value: "val-3", CanBeModified: true},
 	}
 	h.AddTags(tagsToAdd)
 	assert.Equal(t, []Tag{
-		Tag{Key: "key-fixed", Value: "val-fixed", CanBeModified: false},
-		Tag{Key: "key-1", Value: "val-1", CanBeModified: true},
-		Tag{Key: "key-2", Value: "val-new", CanBeModified: true},
-		Tag{Key: "key-3", Value: "val-3", CanBeModified: true},
+		{Key: "key-fixed", Value: "val-fixed", CanBeModified: false},
+		{Key: "key-1", Value: "val-1", CanBeModified: true},
+		{Key: "key-2", Value: "val-new", CanBeModified: true},
+		{Key: "key-3", Value: "val-3", CanBeModified: true},
 	}, h.InstanceTags)
 }
 
@@ -4343,16 +4343,16 @@ func TestDeleteTags(t *testing.T) {
 	h := Host{
 		Id: "id",
 		InstanceTags: []Tag{
-			Tag{Key: "key-fixed", Value: "val-fixed", CanBeModified: false},
-			Tag{Key: "key-1", Value: "val-1", CanBeModified: true},
-			Tag{Key: "key-2", Value: "val-2", CanBeModified: true},
+			{Key: "key-fixed", Value: "val-fixed", CanBeModified: false},
+			{Key: "key-1", Value: "val-1", CanBeModified: true},
+			{Key: "key-2", Value: "val-2", CanBeModified: true},
 		},
 	}
 	tagsToDelete := []string{"key-fixed", "key-1"}
 	h.DeleteTags(tagsToDelete)
 	assert.Equal(t, []Tag{
-		Tag{Key: "key-fixed", Value: "val-fixed", CanBeModified: false},
-		Tag{Key: "key-2", Value: "val-2", CanBeModified: true},
+		{Key: "key-fixed", Value: "val-fixed", CanBeModified: false},
+		{Key: "key-2", Value: "val-2", CanBeModified: true},
 	}, h.InstanceTags)
 }
 
@@ -4364,13 +4364,13 @@ func TestSetTags(t *testing.T) {
 	h := Host{
 		Id: "id",
 		InstanceTags: []Tag{
-			Tag{Key: "key-1", Value: "val-1", CanBeModified: true},
-			Tag{Key: "key-2", Value: "val-2", CanBeModified: true},
+			{Key: "key-1", Value: "val-1", CanBeModified: true},
+			{Key: "key-2", Value: "val-2", CanBeModified: true},
 		},
 	}
 	assert.NoError(t, h.Insert(ctx))
 	h.InstanceTags = []Tag{
-		Tag{Key: "key-3", Value: "val-3", CanBeModified: true},
+		{Key: "key-3", Value: "val-3", CanBeModified: true},
 	}
 	assert.NoError(t, h.SetTags(ctx))
 	foundHost, err := FindOneId(ctx, h.Id)
@@ -5203,6 +5203,25 @@ func TestGetAMI(t *testing.T) {
 	}
 	assert.Equal(t, h.GetAMI(), "ami")
 	assert.Equal(t, h2.GetAMI(), "")
+}
+
+func TestGetSubnetID(t *testing.T) {
+	require.NoError(t, db.ClearCollections(Collection))
+	h := &Host{
+		Id: "myEC2Host",
+		Distro: distro.Distro{
+			ProviderSettingsList: []*birch.Document{birch.NewDocument(
+				birch.EC.String("subnet_id", "swish"),
+			)},
+			Provider: evergreen.ProviderNameEc2OnDemand,
+		},
+	}
+	h2 := &Host{
+		Id:       "myOtherHost",
+		Provider: evergreen.ProviderNameMock,
+	}
+	assert.Equal(t, h.GetSubnetID(), "swish")
+	assert.Equal(t, h2.GetSubnetID(), "")
 }
 
 func TestUnsafeReplace(t *testing.T) {
