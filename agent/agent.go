@@ -1017,7 +1017,6 @@ func (a *Agent) finishTask(ctx context.Context, tc *taskContext, status string, 
 	return resp, nil
 }
 
-//nolint:unused
 func (a *Agent) upsertCheckRun(ctx context.Context, tc *taskContext) error {
 	if tc.taskConfig == nil {
 		return nil
@@ -1205,6 +1204,12 @@ func (a *Agent) logPanic(logger client.LoggerProducer, pErr, originalErr error, 
 		logMsg := message.Fields{
 			"message":   "programmatic error: Evergreen agent hit panic",
 			"operation": op,
+		}
+		if a.opts.HostID != "" {
+			logMsg["host_id"] = a.opts.HostID
+		}
+		if a.opts.PodID != "" {
+			logMsg["pod_id"] = a.opts.PodID
 		}
 		logger.Task().Error(logMsg)
 	}

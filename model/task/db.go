@@ -76,6 +76,7 @@ var (
 	OldTaskIdKey                   = bsonutil.MustHaveTag(Task{}, "OldTaskId")
 	ArchivedKey                    = bsonutil.MustHaveTag(Task{}, "Archived")
 	CanResetKey                    = bsonutil.MustHaveTag(Task{}, "CanReset")
+	CheckRunIdKey                  = bsonutil.MustHaveTag(Task{}, "CheckRunId")
 	RevisionOrderNumberKey         = bsonutil.MustHaveTag(Task{}, "RevisionOrderNumber")
 	RequesterKey                   = bsonutil.MustHaveTag(Task{}, "Requester")
 	StatusKey                      = bsonutil.MustHaveTag(Task{}, "Status")
