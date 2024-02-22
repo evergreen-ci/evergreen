@@ -662,7 +662,7 @@ func assignNextAvailableTask(ctx context.Context, env evergreen.Environment, tas
 			continue
 		}
 
-		grip.Error(message.WrapError(nextTask.SetNumNextTaskDispatches(), message.Fields{
+		grip.Error(message.WrapError(nextTask.IncNumNextTaskDispatches(), message.Fields{
 			"message":        "problem updating the number of times the task has been dispatched",
 			"task_id":        nextTask.Id,
 			"task_execution": nextTask.Execution,
@@ -1106,7 +1106,12 @@ func sendBackRunningTask(ctx context.Context, env evergreen.Environment, h *host
 			"task_id":        t.Id,
 			"task_execution": t.Execution,
 			"host_id":        h.Id,
-			"agent_version":  evergreen.AgentVersion,
+			"agent_version":  h.AgentRevision,
+		})
+
+		return gimlet.MakeJSONInternalErrorResponder(gimlet.ErrorResponse{
+			StatusCode: http.StatusInternalServerError,
+			Message:    fmt.Sprintf("The agent has re-requested the task '%s' with execution '%d' '%d' times.", t.Id, t.Execution, evergreen.MaxTaskDispatchAttempts),
 		})
 	}
 
@@ -1130,7 +1135,7 @@ func sendBackRunningTask(ctx context.Context, env evergreen.Environment, h *host
 	}
 
 	if t.Activated {
-		grip.Error(message.WrapError(t.SetNumNextTaskDispatches(), message.Fields{
+		grip.Error(message.WrapError(t.IncNumNextTaskDispatches(), message.Fields{
 			"message":        "problem updating the number of times the task has been dispatched",
 			"task_id":        t.Id,
 			"task_execution": t.Execution,

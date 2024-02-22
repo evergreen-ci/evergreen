@@ -2867,16 +2867,18 @@ func SetHasAnnotations(taskId string, execution int) error {
 	return errors.Wrapf(err, "marking task '%s' as having annotations", taskId)
 }
 
-// SetNumNextTaskDispatches sets the number of times a host has requested this
+// IncNumNextTaskDispatches sets the number of times a host has requested this
 // task and execution as its next task.
-func (t *Task) SetNumNextTaskDispatches() error {
-	err := UpdateOne(
+func (t *Task) IncNumNextTaskDispatches() error {
+	if err := UpdateOne(
 		ByIdAndExecution(t.Id, t.Execution),
 		bson.M{
 			"$inc": bson.M{NumNextTaskDispatchesKey: 1},
-		})
+		}); err != nil {
+		errors.Wrapf(err, "setting next task count for task '%s'", t.Id)
+	}
 	t.NumNextTaskDispatches = t.NumNextTaskDispatches + 1
-	return errors.Wrapf(err, "setting next task count for task '%s'", t.Id)
+	return nil
 }
 
 // UnsetHasAnnotations unsets a task's HasAnnotations flag, indicating
