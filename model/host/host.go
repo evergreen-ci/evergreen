@@ -381,6 +381,18 @@ func (i SleepScheduleInfo) Validate() error {
 	catcher.ErrorfWhen(i.DailyStopTime != "" && i.DailyStartTime == "", "cannot specify a daily stop time without a daily start time")
 	catcher.ErrorfWhen(i.DailyStopTime == "" && i.DailyStartTime != "", "cannot specify a daily start time without a daily stop time")
 
+	_, err := time.LoadLocation(i.TimeZone)
+	catcher.Wrapf(err, "invalid time zone '%s'", i.TimeZone)
+
+	if i.DailyStopTime != "" {
+		catcher.Wrapf(i.validateDailyTime(i.DailyStopTime), "invalid daily stop time")
+	}
+	if i.DailyStartTime != "" {
+		catcher.Wrapf(i.validateDailyTime(i.DailyStartTime), "invalid daily start time")
+	}
+
+	catcher.ErrorfWhen(i.DailyStartTime != "" && i.DailyStopTime != "" && i.DailyStartTime == i.DailyStopTime, "daily start time and daily stop time cannot be the same (%s)", i.DailyStartTime)
+
 	uniqueWeekdays := map[time.Weekday]struct{}{}
 	for _, weekday := range i.WholeWeekdaysOff {
 		if _, ok := uniqueWeekdays[weekday]; ok {
@@ -388,13 +400,6 @@ func (i SleepScheduleInfo) Validate() error {
 		}
 		catcher.ErrorfWhen(weekday < time.Sunday || weekday > time.Saturday, "weekday '%s' is not a valid day of the week", weekday.String())
 		uniqueWeekdays[weekday] = struct{}{}
-	}
-
-	if i.DailyStopTime != "" {
-		catcher.Wrapf(i.validateDailyTimeFormat(i.DailyStopTime), "invalid daily stop time")
-	}
-	if i.DailyStartTime != "" {
-		catcher.Wrapf(i.validateDailyTimeFormat(i.DailyStartTime), "invalid daily start time")
 	}
 
 	const minNumHoursPerWeek = 24 * time.Hour
@@ -420,29 +425,40 @@ func (i SleepScheduleInfo) Validate() error {
 	return catcher.Resolve()
 }
 
-func (i *SleepScheduleInfo) validateDailyTimeFormat(t string) error {
+func (i *SleepScheduleInfo) validateDailyTime(t string) error {
+	hours, mins, err := parseDailyTime(t)
+	if err != nil {
+		return errors.Wrap(err, "parsing daily time format")
+	}
+
+	catcher := grip.NewBasicCatcher()
+	catcher.NewWhen(hours < 0 || hours >= 24, "hours must be between 0 and 23 (inclusive)")
+	catcher.NewWhen(mins < 0 || mins >= 60, "minutes must be between 0 and 59 (inclusive)")
+
+	return catcher.Resolve()
+}
+
+// IsDailyOvernightSchedule returns whether the daily sleep schedule runs
+// overnight. In other words, the host sleeps on one day, then wakes up on the
+// next day.
+func (i *SleepScheduleInfo) IsDailyOvernightSchedule() bool {
+	return i.DailyStartTime < i.DailyStopTime
+}
+
+func parseDailyTime(t string) (hours int, mins int, err error) {
 	hoursMins := strings.Split(t, ":")
 	if len(hoursMins) != 2 {
-		return errors.Errorf("invalid daily time format '%s', expected HH:MM", t)
+		return 0, 0, errors.Errorf("invalid daily time format '%s', expected HH:MM", t)
 	}
-
-	hours, err := strconv.Atoi(hoursMins[0])
+	hours, err = strconv.Atoi(hoursMins[0])
 	if err != nil {
-		return errors.Wrap(err, "parsing hours")
+		return 0, 0, errors.Wrap(err, "parsing hours")
 	}
-	if hours < 0 || hours >= 24 {
-		return errors.Errorf("hour must be between 0 and 23")
-	}
-
-	mins, err := strconv.Atoi(hoursMins[1])
+	mins, err = strconv.Atoi(hoursMins[1])
 	if err != nil {
-		return errors.Wrap(err, "parsing minutes")
+		return 0, 0, errors.Wrap(err, "parsing minutes")
 	}
-	if mins < 0 || mins >= 60 {
-		return errors.Errorf("minutes must be between 0 and 59")
-	}
-
-	return nil
+	return hours, mins, nil
 }
 
 // IsZero implements the bsoncodec.Zeroer interface for the sake of defining the
@@ -3463,13 +3479,10 @@ func (h *Host) UnsetPersistentDNSInfo(ctx context.Context) error {
 // indefinitely).
 var SleepScheduleSentinelTime = time.Date(10000, 0, 0, 0, 0, 0, 0, time.UTC)
 
-// CalculateNextScheduledStopTime calculates the next time a host should be
-// stopped for its sleep schedule.
-// kim: NOTE: manual stops/starts by users don't trigger a schedule change.
-func (h *Host) CalculateNextScheduledStopTime(now time.Time) (time.Time, error) {
+// GetNextScheduledStopTime returns the next time a host should be
+// stopped according to its sleep schedule.
+func (h *Host) GetNextScheduledStopTime(now time.Time) (time.Time, error) {
 	if h.SleepSchedule.PermanentlyExempt || h.SleepSchedule.ShouldKeepOff {
-		// kim: NOTE: outer logic will deal with mismatches between sentinel
-		// time being set and a host being exempt/indefinitely off.
 		return SleepScheduleSentinelTime, nil
 	}
 
@@ -3487,25 +3500,25 @@ func (h *Host) CalculateNextScheduledStopTime(now time.Time) (time.Time, error) 
 		calculateTimeAfter = h.SleepSchedule.TemporarilyExemptUntil
 	} else if !utility.IsZeroTime(h.SleepSchedule.NextStartTime) {
 		// If the next start time is known, do not try to stop the host again
-		// until after it's scheduled to start back up. This is an extra
-		// safeguard against an edge case where the host is stopped for the
-		// sleep schedule but the user manually starts the host back up again.
+		// until after it's scheduled to start back up. This is a necessary
+		// safeguard against a rare edge case where the host is stopped for the
+		// sleep schedule but the user manually starts the host back up again in
+		// between a daily stop time and a whole weekday off.
 		//
-		// As an illustrative example, say the user sets a schedule to have
-		// Saturday and Sunday off. It's Saturday at 11:30 PM and their host is
-		// currently stopped for the sleep schedule. They then manually start up
-		// their host. If the next stop time was calculated to be Sunday at
-		// midnight (the next scheduled whole day off), they may see their host
-		// abruptly shut down at midnight in the middle of working on it. A
-		// more graceful behavior would be to avoid stopping the host again
-		// until the next time the user would have expected their host to wake
-		// up (i.e. Monday at midnight).
+		// As an illustrative example, say the user sets a schedule to stop
+		// every day from 10 pm to 6 am, and also has Saturday and Sunday off.
+		// It's Friday at 11:30 PM and their host is currently stopped for the
+		// sleep schedule. They then manually start up their host. If the next
+		// stop time was calculated to be Saturday at midnight (the next
+		// scheduled whole day off), they may see their host abruptly shut down
+		// at midnight in the middle of working on it. A more graceful behavior
+		// would be to avoid stopping the host again until the next time the
+		// user would have expected their host to wake up (i.e. Monday at 6 am).
 		//
 		// To avoid this unfortunate scenario, once the host has been stopped
 		// for its sleep schedule, it should not try to stop the host again
 		// until after the next time the schedule would typically start it back
 		// up.
-		// kim: TODO: write test for handling this case
 		calculateTimeAfter = h.SleepSchedule.NextStartTime
 	} else {
 		calculateTimeAfter = now
@@ -3515,65 +3528,69 @@ func (h *Host) CalculateNextScheduledStopTime(now time.Time) (time.Time, error) 
 	// account for timezone-specific quirks like daylight savings time changes.
 	calculateTimeAfter = calculateTimeAfter.In(userTimeZone)
 
-	// Partition the weekdays into the whole days off (if any) and the weekdays
-	// when the daily sleep schedule applies (if any).
+	// Partition the weekdays into the first day in a series of whole days off
+	// (if any) and the weekdays when the daily sleep schedule applies (if any).
 	var dailyWeekdays []string
-	var wholeDaysOff []string
+	var firstContiguousWeekdayOff []string
 	for _, weekday := range []time.Weekday{time.Sunday, time.Monday, time.Tuesday, time.Wednesday, time.Thursday, time.Friday, time.Saturday} {
 		isOff := utility.FilterSlice(h.SleepSchedule.WholeWeekdaysOff, func(weekdayToCheck time.Weekday) bool { return weekdayToCheck == weekday })
 		if len(isOff) == 0 {
 			dailyWeekdays = append(dailyWeekdays, fmt.Sprintf("%d", weekday))
 		} else {
-			wholeDaysOff = append(wholeDaysOff, fmt.Sprintf("%d", weekday))
+			prevWeekdayOff := (weekday - 1) % 7
+			if prevWeekdayOff < 0 {
+				// Convert negative modulo to positive value (because -1 mod 7 = -1).
+				prevWeekdayOff += 7
+			}
+			isPrevWeekdayOff := utility.FilterSlice(h.SleepSchedule.WholeWeekdaysOff, func(weekdayToCheck time.Weekday) bool { return weekdayToCheck == prevWeekdayOff })
+			if len(isPrevWeekdayOff) == 0 {
+				// It's the first day in a contiguous series of weekdays off,
+				// which means the host can stop on this day.
+				firstContiguousWeekdayOff = append(firstContiguousWeekdayOff, fmt.Sprintf("%d", weekday))
+			}
 		}
 	}
 
 	var nextDailyTriggerAt time.Time
 	if h.SleepSchedule.DailyStopTime != "" {
-		hoursMins := strings.Split(h.SleepSchedule.DailyStopTime, ":")
-		if len(hoursMins) != 2 {
-			return time.Time{}, errors.Errorf("invalid daily stop time format '%s', expected HH:MM", h.SleepSchedule.DailyStopTime)
-		}
-
-		dailySchedule, err := cron.NewParser(cron.Minute | cron.Hour | cron.Dow).Parse(fmt.Sprintf("%s %s %s", hoursMins[1], hoursMins[0], strings.Join(dailyWeekdays, ",")))
+		hours, mins, err := parseDailyTime(h.SleepSchedule.DailyStopTime)
 		if err != nil {
-			return time.Time{}, errors.Wrap(err, "creating schedule for daily stop time")
+			return time.Time{}, errors.Wrap(err, "parsing daily stop time")
 		}
-
-		nextDailyTriggerAt = dailySchedule.Next(calculateTimeAfter)
+		nextDailyTriggerAt, err = getNextScheduledTime(calculateTimeAfter, fmt.Sprintf("%d %d %s", mins, hours, strings.Join(dailyWeekdays, ",")))
+		if err != nil {
+			return time.Time{}, errors.Wrap(err, "determining next scheduled stop time from daily stop time")
+		}
 	}
 
 	var nextWeekdayOffTriggerAt time.Time
-	if len(wholeDaysOff) > 0 {
-		// On whole days off, power off as soon as the day starts.
-		// kim: NOTE: need to specially consider whole days off that are
-		// contiguous with the daily schedule (e.g. 8pm stop on Friday segues
-		// into 12 am on Saturday).
-		// kim: NOTE: the daily cron behavior has a quirk where if the whole
-		// days off are contiguous and the user starts their host manually and
-		// the next stop time gets calculated (which wouldn't happen for
-		// manually starting), it'll set the next stop time to midnight of the
-		// next whole day off. For example, say a user puts their host to sleep
-		// on Saturdays and Sundays. If the host is stopped by the schedule on
-		// Friday, then the user turns it on during Saturday, then somehow the
-		// next stop time is recalculated, it'll set the next stop time to
-		// midnight of Sunday. We could work around this by skipping forward to
-		// the next non-contiguous day off. It's a small edge case, but the
-		// design does call for allowing users to turn on their host and not be
-		// interrupted.
-		// kim: NOTE: I believe the above scenario is covered by jumping forward
-		// to the next start time.
-		// kim: TODO: write tests for user starting up during whole days off or
-		// during segue.
-		wholeWeekdaysOffSchedule, err := cron.NewParser(cron.Minute | cron.Hour | cron.Dow).Parse(fmt.Sprintf("00 00 %s", strings.Join(wholeDaysOff, ",")))
+	if len(firstContiguousWeekdayOff) > 0 {
+		nextWeekdayOffTriggerAt, err = getNextScheduledTime(calculateTimeAfter, fmt.Sprintf("00 00 %s", strings.Join(firstContiguousWeekdayOff, ",")))
 		if err != nil {
-			return time.Time{}, errors.Wrap(err, "creating schedule for whole days off")
+			return time.Time{}, errors.Wrap(err, "determining next scheduled stop time from weekdays off")
 		}
-
-		nextWeekdayOffTriggerAt = wholeWeekdaysOffSchedule.Next(calculateTimeAfter)
 	}
 
 	if !utility.IsZeroTime(nextDailyTriggerAt) && !utility.IsZeroTime(nextWeekdayOffTriggerAt) {
+		// kim: NOTE: worth testing the case of non-overnight sleep schedule
+		// into whole weekday off, but I believe this doesn't matter because
+		// the current time is always before the upcoming proposed sleep times.
+		dayAfterNextDailyTriggerAt := nextDailyTriggerAt.AddDate(0, 0, 1)
+		// // kim: TODO: add test for 2 am sleep - 3 am stop, followed by a whole
+		// // day off tomorrow.
+		if dayAfterNextDailyTriggerAt.Year() == nextWeekdayOffTriggerAt.Year() &&
+			dayAfterNextDailyTriggerAt.Month() == nextWeekdayOffTriggerAt.Month() &&
+			dayAfterNextDailyTriggerAt.Day() == nextWeekdayOffTriggerAt.Day() &&
+			h.SleepSchedule.IsDailyOvernightSchedule() {
+			// If the two proposed wake-up times are for the daily stop time and
+			// the
+			// daily one runs overnight into a , choose the daily one. For example, if
+			// the host has Sunday off and a daily sleep schedule from 10 pm to
+			// 4 am, it should start at 4 am on Monday (rather than 12 am)
+			// because the two sleep schedules are contiguous.
+			return nextDailyTriggerAt, nil
+		}
+
 		if nextDailyTriggerAt.Before(nextWeekdayOffTriggerAt) {
 			return nextDailyTriggerAt, nil
 		}
@@ -3589,16 +3606,9 @@ func (h *Host) CalculateNextScheduledStopTime(now time.Time) (time.Time, error) 
 	return time.Time{}, errors.New("neither daily nor whole days off schedule could determine a next stop time")
 }
 
-// CalculateNextScheduledStopTime calculates the next time a host should be
-// started for its sleep schedule.
-// kim: NOTE: the algorithm for calculating the next start time is symmetrical
-// EXCEPT for the case of a whole day off segueing into a daily sleep (e.g.
-// Sunday off, then sleep 10pm - 4 am each day). This should only require a
-// special case check - if the two proposed wake-up times are on the same day of
-// the week and they're contiguous, choose the later one rather than the earlier
-// one. If they're not contiguous (e.g. Sunday off, then 2 am - 3 am daily sleep
-// schedule), choose the earlier one.
-func (h *Host) CalculateNextScheduledStartTime(now time.Time) (time.Time, error) {
+// GetNextScheduledStartTime returns the next time a host should be
+// started according to its sleep schedule.
+func (h *Host) GetNextScheduledStartTime(now time.Time) (time.Time, error) {
 	if h.SleepSchedule.PermanentlyExempt || h.SleepSchedule.ShouldKeepOff {
 		return SleepScheduleSentinelTime, nil
 	}
@@ -3626,53 +3636,52 @@ func (h *Host) CalculateNextScheduledStartTime(now time.Time) (time.Time, error)
 	// account for timezone-specific quirks like daylight savings time changes.
 	calculateTimeAfter = calculateTimeAfter.In(userTimeZone)
 
-	// Partition the weekdays into the days after whole days off (if any) and
-	// the weekdays when the daily waking schedule applies (if any).
+	// Partition the weekdays into the first day after a series of whole days
+	// off (if any) and the weekdays when the daily waking schedule applies (if
+	// any).
 	var dailyWeekdays []string
-	var afterWeekdaysOff []string
+	var afterContiguousWeekdaysOff []string
 	for _, weekday := range []time.Weekday{time.Sunday, time.Monday, time.Tuesday, time.Wednesday, time.Thursday, time.Friday, time.Saturday} {
 		isOff := utility.FilterSlice(h.SleepSchedule.WholeWeekdaysOff, func(weekdayToCheck time.Weekday) bool { return weekdayToCheck == weekday })
 		if len(isOff) == 0 {
 			dailyWeekdays = append(dailyWeekdays, fmt.Sprintf("%d", weekday))
 		} else {
-			// kim: NOTE: need to +1 to jump to tomorrow (i.e. the host can
-			// start at 00:00 of the next day).
-			afterWeekdaysOff = append(afterWeekdaysOff, fmt.Sprintf("%d", (weekday+1)%7))
+			nextWeekday := (weekday + 1) % 7
+			isNextWeekdayOff := utility.FilterSlice(h.SleepSchedule.WholeWeekdaysOff, func(weekdayToCheck time.Weekday) bool { return weekdayToCheck == nextWeekday })
+			if len(isNextWeekdayOff) == 0 {
+				// It's the end of a contiguous series of weekdays off, which
+				// means the host can start up again on this day.
+				afterContiguousWeekdaysOff = append(afterContiguousWeekdaysOff, fmt.Sprintf("%d", nextWeekday))
+			}
 		}
 	}
 
 	var nextDailyTriggerAt time.Time
-	var isOvernightDailySchedule bool
 	if h.SleepSchedule.DailyStartTime != "" {
-		isOvernightDailySchedule = h.SleepSchedule.DailyStartTime < h.SleepSchedule.DailyStopTime
-		hoursMins := strings.Split(h.SleepSchedule.DailyStartTime, ":")
-		if len(hoursMins) != 2 {
-			return time.Time{}, errors.Errorf("invalid time format '%s', expected HH:MM", h.SleepSchedule.DailyStartTime)
-		}
-
-		dailySchedule, err := cron.NewParser(cron.Minute | cron.Hour | cron.Dow).Parse(fmt.Sprintf("%s %s %s", hoursMins[1], hoursMins[0], strings.Join(dailyWeekdays, ",")))
+		hours, mins, err := parseDailyTime(h.SleepSchedule.DailyStartTime)
 		if err != nil {
-			return time.Time{}, errors.Wrap(err, "parsing daily hour schedule")
+			return time.Time{}, errors.Wrap(err, "parsing daily start time")
 		}
-
-		nextDailyTriggerAt = dailySchedule.Next(calculateTimeAfter)
+		nextDailyTriggerAt, err = getNextScheduledTime(calculateTimeAfter, fmt.Sprintf("%d %d %s", mins, hours, strings.Join(dailyWeekdays, ",")))
+		if err != nil {
+			return time.Time{}, errors.Wrap(err, "determining next start time from daily start time")
+		}
 	}
 
 	var nextAfterWeekdayOffTriggerAt time.Time
-	if len(afterWeekdaysOff) > 0 {
-		afterWeekdaysOffSchedule, err := cron.NewParser(cron.Minute | cron.Hour | cron.Dow).Parse(fmt.Sprintf("00 00 %s", strings.Join(afterWeekdaysOff, ",")))
+	if len(afterContiguousWeekdaysOff) > 0 {
+		nextAfterWeekdayOffTriggerAt, err = getNextScheduledTime(calculateTimeAfter, fmt.Sprintf("00 00 %s", strings.Join(afterContiguousWeekdaysOff, ",")))
 		if err != nil {
-			return time.Time{}, errors.Wrap(err, "parsing whole days off schedule")
+			return time.Time{}, errors.Wrap(err, "determining next start time to start after weekdays off")
 		}
-
-		nextAfterWeekdayOffTriggerAt = afterWeekdaysOffSchedule.Next(calculateTimeAfter)
 	}
 
 	if !utility.IsZeroTime(nextDailyTriggerAt) && !utility.IsZeroTime(nextAfterWeekdayOffTriggerAt) {
-		dailyYear, dailyMonth, dailyDate := nextDailyTriggerAt.Date()
-		wholeWeekdayYear, wholeWeekdayMonth, wholeWeekdayDate := nextAfterWeekdayOffTriggerAt.Date()
-		if dailyYear == wholeWeekdayYear && dailyMonth == wholeWeekdayMonth && dailyDate == wholeWeekdayDate && isOvernightDailySchedule {
-			// If the two proposed wake-up times are on the same day and the
+		if nextDailyTriggerAt.Year() == nextAfterWeekdayOffTriggerAt.Year() &&
+			nextDailyTriggerAt.Month() == nextAfterWeekdayOffTriggerAt.Month() &&
+			nextDailyTriggerAt.Day() == nextAfterWeekdayOffTriggerAt.Day() &&
+			h.SleepSchedule.IsDailyOvernightSchedule() {
+			// If the two proposed wake-up times are on the same date and the
 			// daily one runs overnight, choose the daily one. For example, if
 			// the host has Sunday off and a daily sleep schedule from 10 pm to
 			// 4 am, it should start at 4 am on Monday (rather than 12 am)
@@ -3692,5 +3701,17 @@ func (h *Host) CalculateNextScheduledStartTime(now time.Time) (time.Time, error)
 		return nextDailyTriggerAt, nil
 	}
 
-	return time.Time{}, errors.New("neither daily nor whole days off schedule could determine a next stop time")
+	return time.Time{}, errors.New("neither daily nor whole days off schedule could determine a next start time")
+}
+
+func getNextScheduledTime(after time.Time, spec string) (time.Time, error) {
+	schedule, err := cron.NewParser(cron.Minute | cron.Hour | cron.Dow).Parse(spec)
+	if err != nil {
+		return time.Time{}, errors.Wrap(err, "creating schedule")
+	}
+	nextTriggerAt := schedule.Next(after)
+	if utility.IsZeroTime(nextTriggerAt) {
+		return time.Time{}, errors.New("could not determine next scheduled time")
+	}
+	return nextTriggerAt, nil
 }
