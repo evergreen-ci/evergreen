@@ -12,6 +12,7 @@ import (
 	"github.com/evergreen-ci/evergreen/model/pod"
 	"github.com/evergreen-ci/evergreen/model/pod/dispatcher"
 	"github.com/evergreen-ci/evergreen/model/task"
+	"github.com/evergreen-ci/evergreen/util"
 	"github.com/evergreen-ci/utility"
 	"github.com/mongodb/amboy"
 	"github.com/mongodb/amboy/job"
@@ -230,7 +231,6 @@ func (j *podAllocatorJob) populate(ctx context.Context) error {
 		}
 		j.pRef = pRef
 	}
-
 	if j.smClient == nil {
 		client, err := cloud.MakeSecretsManagerClient(ctx, &j.settings)
 		if err != nil {
@@ -288,13 +288,26 @@ func (j *podAllocatorJob) getIntentPodOptions(ctx context.Context) (*pod.TaskInt
 			return nil, errors.Wrap(err, "importing Windows version")
 		}
 	}
+
+	image := j.task.ContainerOpts.Image
+	projVars, err := model.FindMergedProjectVars(j.pRef.Id)
+	if err != nil {
+		return nil, errors.Wrapf(err, "getting project vars for project '%s'", j.pRef.Id)
+	}
+	if projVars != nil {
+		expansions := util.NewExpansions(projVars.Vars)
+		image, err = expansions.ExpandString(j.task.ContainerOpts.Image)
+		if err != nil {
+			return nil, errors.Wrap(err, "expanding container image")
+		}
+	}
 	return &pod.TaskIntentPodOptions{
 		CPU:                 j.task.ContainerOpts.CPU,
 		MemoryMB:            j.task.ContainerOpts.MemoryMB,
 		OS:                  os,
 		Arch:                arch,
 		WindowsVersion:      winVer,
-		Image:               j.task.ContainerOpts.Image,
+		Image:               image,
 		RepoCredsExternalID: repoCredsExternalID,
 		WorkingDir:          j.task.ContainerOpts.WorkingDir,
 		PodSecretExternalID: podSecretExternalID,
