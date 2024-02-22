@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"net/http"
 	"strconv"
+	"strings"
 	"time"
 
 	"github.com/evergreen-ci/evergreen"
@@ -51,7 +52,10 @@ func (uis *UIServer) hostPage(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	if RedirectSpruceUsers(w, r, fmt.Sprintf("%s/host/%s", uis.Settings.Ui.UIv2Url, id)) {
+	spruceLink := fmt.Sprintf("%s/host/%s", uis.Settings.Ui.UIv2Url, id)
+	// Redirect the user to spruce only if they aren't visiting this page from spruce already and have spruce enabled
+	if u.Settings.UseSpruceOptions.SpruceV1 && !strings.Contains(r.Referer(), uis.Settings.Ui.UIv2Url) {
+		http.Redirect(w, r, spruceLink, http.StatusTemporaryRedirect)
 		return
 	}
 
@@ -89,7 +93,6 @@ func (uis *UIServer) hostPage(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 
-	spruceLink := fmt.Sprintf("%s/host/%s", uis.Settings.Ui.UIv2Url, h.Id)
 	newUILink := ""
 	if len(uis.Settings.Ui.UIv2Url) > 0 {
 		newUILink = spruceLink
