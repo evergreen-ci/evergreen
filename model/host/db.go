@@ -1390,8 +1390,8 @@ func (h *Host) UnsetNumAgentCleanupFailures(ctx context.Context) error {
 			IdKey: h.Id,
 		},
 		bson.M{
-			"$unset": bson.M{
-				NumAgentCleanupFailuresKey: 1,
+			"$set": bson.M{
+				NumAgentCleanupFailuresKey: 0,
 			},
 		},
 	)
