@@ -481,7 +481,7 @@ func assignNextAvailableTask(ctx context.Context, env evergreen.Environment, tas
 		}
 
 		if queueItem == nil {
-			return nil, false, nil
+			return nil, true, nil
 		}
 
 		nextTask, err := task.FindOneId(queueItem.Id)
