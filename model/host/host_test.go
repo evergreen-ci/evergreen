@@ -6236,6 +6236,14 @@ func TestSleepScheduleInfoValidate(t *testing.T) {
 			TimeZone:       "America/New_York",
 		}).Validate())
 	})
+	t.Run("FailsWithDailyScheduleUnderOneHourPerDay", func(t *testing.T) {
+		assert.Error(t, (SleepScheduleInfo{
+			DailyStartTime:   "00:10",
+			DailyStopTime:    "00:00",
+			WholeWeekdaysOff: []time.Weekday{time.Sunday},
+			TimeZone:         "America/New_York",
+		}).Validate())
+	})
 	t.Run("SucceedsWithDailyOvernightScheduleUnderMinimumHoursPerWeek", func(t *testing.T) {
 		assert.Error(t, (SleepScheduleInfo{
 			DailyStartTime: "01:00",

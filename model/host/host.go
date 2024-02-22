@@ -419,6 +419,7 @@ func (i SleepScheduleInfo) Validate() error {
 			} else {
 				dailySleep = sampleStart.Sub(sampleStop)
 			}
+			catcher.ErrorfWhen(dailySleep < time.Hour, "daily sleep schedule runs for %s per day, which is less than the minimum of 1 hour", dailySleep.String())
 			weeklySleep += dailySleep * time.Duration(7-len(i.WholeWeekdaysOff))
 		}
 	}
