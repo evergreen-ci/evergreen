@@ -131,20 +131,19 @@ func (tr TestResult) GetLogURL(env evergreen.Environment, viewer evergreen.LogVi
 			return tr.RawLogURL
 		}
 
-		var logsToMerge []string
+		var logsToMerge string
 		if tr.LogInfo != nil {
-			logsToMerge = make([]string, len(tr.LogInfo.LogsToMerge))
-			for i, logPath := range tr.LogInfo.LogsToMerge {
-				logsToMerge[i] = fmt.Sprintf("logs_to_merge=%s", url.QueryEscape(*logPath))
+			for _, logPath := range tr.LogInfo.LogsToMerge {
+				logsToMerge += fmt.Sprintf("&logs_to_merge=%s", url.QueryEscape(*logPath))
 			}
 		}
 
-		return fmt.Sprintf("%s/rest/v2/tasks/%s/build/test_logs/%s?execution=%d&print_time=true&%s",
+		return fmt.Sprintf("%s/rest/v2/tasks/%s/build/test_logs/%s?execution=%d&print_time=true%s",
 			root,
 			url.PathEscape(tr.TaskID),
 			url.QueryEscape(tr.getLogTestName()),
 			tr.Execution,
-			strings.Join(logsToMerge, "&"),
+			logsToMerge,
 		)
 	}
 }
