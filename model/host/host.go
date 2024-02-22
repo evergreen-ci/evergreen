@@ -3589,6 +3589,8 @@ func (h *Host) CalculateNextScheduledStopTime(now time.Time) (time.Time, error) 
 	return time.Time{}, errors.New("neither daily nor whole days off schedule could determine a next stop time")
 }
 
+// CalculateNextScheduledStopTime calculates the next time a host should be
+// started for its sleep schedule.
 // kim: NOTE: the algorithm for calculating the next start time is symmetrical
 // EXCEPT for the case of a whole day off segueing into a daily sleep (e.g.
 // Sunday off, then sleep 10pm - 4 am each day). This should only require a

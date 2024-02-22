@@ -6285,16 +6285,21 @@ func TestSleepScheduleInfoValidate(t *testing.T) {
 }
 
 func TestCalculateNextScheduledStopTime(t *testing.T) {
+	const easternTZ = "America/New_York"
+	easternTZLoc, err := time.LoadLocation(easternTZ)
+	require.NoError(t, err)
+
 	for tName, tCase := range map[string]func(t *testing.T, h *Host){
 		"ReturnsNextStopTimeForWholeDayOff": func(t *testing.T, h *Host) {
 			h.SleepSchedule = SleepScheduleInfo{
 				WholeWeekdaysOff: []time.Weekday{time.Sunday},
-				TimeZone:         "Antarctica/Troll",
+				TimeZone:         easternTZ,
 			}
 			now := time.Now()
 
 			nextStop, err := h.CalculateNextScheduledStopTime(now)
 			assert.NoError(t, err)
+
 			assert.True(t, nextStop.After(now), "next stop time should be in the future")
 			assert.True(t, nextStop.Compare(now.AddDate(0, 0, 7)) <= 0, "next stop time should within the next week")
 			assert.Equal(t, time.Sunday, nextStop.Weekday(), "next stop time should be on a Sunday")
@@ -6306,120 +6311,121 @@ func TestCalculateNextScheduledStopTime(t *testing.T) {
 		"ReturnsNextStopTimeBasedOnCurrentTimestamp": func(t *testing.T, h *Host) {
 			h.SleepSchedule = SleepScheduleInfo{
 				WholeWeekdaysOff: []time.Weekday{time.Sunday, time.Tuesday, time.Thursday},
-				TimeZone:         "America/New_York",
+				TimeZone:         easternTZ,
 			}
 			// Simulate the current time, which is:
-			// Wednesday February 21, 2024 at 3:00 PM UTC
-			now, err := time.Parse(time.RFC3339, "2024-02-21T15:00:00Z")
+			// Wednesday February 21, 2024 at 3:00 PM EST
+			now, err := time.ParseInLocation(time.DateTime, "2024-02-21 15:00:00", easternTZLoc)
 			require.NoError(t, err)
+			now = now.UTC()
 
 			nextStop, err := h.CalculateNextScheduledStopTime(now)
 			assert.NoError(t, err)
 
 			// The next stop time should be:
 			// Thursday February 22 at midnight EST
-			expectedNextStop, err := time.Parse(time.RFC3339, "2024-02-22T00:00:00-05:00")
+			expectedNextStop, err := time.ParseInLocation(time.DateTime, "2024-02-22 00:00:00", easternTZLoc)
 			require.NoError(t, err)
-			assert.True(t, nextStop.Equal(expectedNextStop), "next stop time should be at midnight on Thursday in user's local time zone")
+			assert.WithinDuration(t, expectedNextStop, nextStop, 0)
 
 			// The next stop time should be:
-			// Thursday February 22 at 05:00 UTC (equivalent to midnight EST)
-			expectedNextStopUTC, err := time.Parse(time.RFC3339, "2024-02-22T05:00:00Z")
+			// Thursday February 22 at 00:00 EST
+			expectedNextStopUTC, err := time.ParseInLocation(time.DateTime, "2024-02-22 05:00:00", time.UTC)
 			require.NoError(t, err)
-			assert.True(t, nextStop.Equal(expectedNextStopUTC), "next stop time should be at midnight on Thursday in UTC")
+			assert.WithinDuration(t, expectedNextStopUTC, nextStop, 0)
 			assert.Equal(t, h.SleepSchedule.TimeZone, nextStop.Location().String(), "next stop time should be specified in the user's time zone")
 		},
 		"ReturnsNextStopTimeCorrectlyWithTimeZoneDifferenceBetweenUserTimeAndEvergreenTime": func(t *testing.T, h *Host) {
 			h.SleepSchedule = SleepScheduleInfo{
 				WholeWeekdaysOff: []time.Weekday{time.Wednesday, time.Thursday},
-				TimeZone:         "America/New_York",
+				TimeZone:         easternTZ,
 			}
 			// Simulate the current time, which is:
 			// Wednesday February 21, 2024 at midnight UTC
 			// Note that the user time zone is in EST, which is 5 hours behind
 			// UTC, so in the user's time zone, it's Tuesday February 20, 2024
 			// at 7:00 PM EST.
-			now, err := time.Parse(time.RFC3339, "2024-02-21T00:00:00Z")
+			now, err := time.ParseInLocation(time.DateTime, "2024-02-21 00:00:00", time.UTC)
 			require.NoError(t, err)
+			now = now.UTC()
 
 			nextStop, err := h.CalculateNextScheduledStopTime(now)
 			assert.NoError(t, err)
+
 			// The next stop time should be:
-			// Wednesday February 21, 2024 at midnight EST
+			// Wednesday February 21, 2024 at 00:00 EST
 			// This is because the current time is still Tuesday
-			// 7:00 PM in EST (the user's time zone).
-			expectedNextStop, err := time.Parse(time.RFC3339, "2024-02-21T00:00:00-05:00")
+			// 19:00 in EST (the user's time zone).
+			expectedNextStop, err := time.ParseInLocation(time.DateTime, "2024-02-21 00:00:00", easternTZLoc)
 			require.NoError(t, err)
-			assert.True(t, nextStop.Equal(expectedNextStop))
+			assert.WithinDuration(t, expectedNextStop, nextStop, 0)
 			assert.Equal(t, h.SleepSchedule.TimeZone, nextStop.Location().String(), "next stop time should be specified in the user's time zone")
 		},
 		"ReturnsNextStopTimeForDailySchedule": func(t *testing.T, h *Host) {
 			h.SleepSchedule = SleepScheduleInfo{
 				DailyStartTime: "06:00",
 				DailyStopTime:  "17:00",
-				TimeZone:       "America/New_York",
+				TimeZone:       easternTZ,
 			}
 			// Simulate the current time, which is:
-			// Wednesday February 21, 2024 at 10:00 AM UTC
-			now, err := time.Parse(time.RFC3339, "2024-02-21T10:00:00Z")
+			// Wednesday February 21, 2024 at 10:00 UTC
+			now, err := time.ParseInLocation(time.DateTime, "2024-02-21 10:00:00", easternTZLoc)
 			require.NoError(t, err)
+			now = now.UTC()
 
 			nextStop, err := h.CalculateNextScheduledStopTime(now)
 			assert.NoError(t, err)
 
 			// The next stop time should be:
-			// Wednesday February 21, 2024 at 5:00 PM EST
-			expectedNextStop, err := time.Parse(time.RFC3339, "2024-02-21T17:00:00-05:00")
+			// Wednesday February 21, 2024 at 17:00 EST
+			expectedNextStop, err := time.ParseInLocation(time.DateTime, "2024-02-21 17:00:00", easternTZLoc)
 			require.NoError(t, err)
-			assert.True(t, nextStop.Equal(expectedNextStop))
+			assert.WithinDuration(t, expectedNextStop, nextStop, 0)
 			assert.Equal(t, h.SleepSchedule.TimeZone, nextStop.Location().String(), "next stop time should be specified in the user's time zone")
 		},
 		"ReturnsNextStopTimeForDailyScheduleAfterStopTime": func(t *testing.T, h *Host) {
 			h.SleepSchedule = SleepScheduleInfo{
 				DailyStartTime: "06:00",
 				DailyStopTime:  "17:00",
-				TimeZone:       "America/New_York",
+				TimeZone:       easternTZ,
 			}
 			// Simulate the current time, which is:
-			// Wednesday February 21, 2024 at 10:00 PM UTC
-			now, err := time.Parse(time.RFC3339, "2024-02-21T22:00:00Z")
+			// Wednesday February 21, 2024 at 22:00 UTC
+			now, err := time.ParseInLocation(time.DateTime, "2024-02-21 17:00:00", easternTZLoc)
 			require.NoError(t, err)
+			now = now.UTC()
 
 			nextStop, err := h.CalculateNextScheduledStopTime(now)
 			assert.NoError(t, err)
 
 			// The next stop time should be:
-			// Wednesday February 22, 2024 at 8:00 PM EST
-			expectedNextStop, err := time.Parse(time.RFC3339, "2024-02-22T17:00:00-05:00")
+			// Wednesday February 22, 2024 at 20:00 EST
+			expectedNextStop, err := time.ParseInLocation(time.DateTime, "2024-02-22 17:00:00", easternTZLoc)
 			require.NoError(t, err)
-			assert.True(t, nextStop.Equal(expectedNextStop))
+			assert.WithinDuration(t, expectedNextStop, nextStop, 0)
 			assert.Equal(t, h.SleepSchedule.TimeZone, nextStop.Location().String(), "next stop time should be specified in the user's time zone")
 		},
-		// kim: TODO: add test case for recalculation to skip over contiguous
-		// whole weekdays off.
-		// kim: TODO: add test case for recalculation to skip over daily stop
-		// segueing into whole weekdays off.
-		// kim: TODO: add a test for daylight savings time
 		"ReturnsNextStopTimeAsWholeWeekdayOffForMixOfWholeWeekdaysOffAndDailySchedule": func(t *testing.T, h *Host) {
 			h.SleepSchedule = SleepScheduleInfo{
 				WholeWeekdaysOff: []time.Weekday{time.Thursday, time.Friday},
 				DailyStartTime:   "06:00",
 				DailyStopTime:    "17:00",
-				TimeZone:         "America/New_York",
+				TimeZone:         easternTZ,
 			}
 			// Simulate the current time, which is:
-			// Wednesday February 21, 2024 at 11:00 PM UTC
-			now, err := time.Parse(time.RFC3339, "2024-02-21T23:00:00Z")
+			// Wednesday February 21, 2024 at 23:00 UTC
+			now, err := time.ParseInLocation(time.DateTime, "2024-02-21 18:00:00", easternTZLoc)
 			require.NoError(t, err)
+			now = now.UTC()
 
 			nextStop, err := h.CalculateNextScheduledStopTime(now)
 			assert.NoError(t, err)
 
 			// The next stop time should be:
 			// Thursday February 22, 2024 at midnight EST
-			expectedNextStop, err := time.Parse(time.RFC3339, "2024-02-22T00:00:00-05:00")
+			expectedNextStop, err := time.ParseInLocation(time.DateTime, "2024-02-22 00:00:00", easternTZLoc)
 			require.NoError(t, err)
-			assert.True(t, nextStop.Equal(expectedNextStop))
+			assert.WithinDuration(t, expectedNextStop, nextStop, 0)
 			assert.Equal(t, h.SleepSchedule.TimeZone, nextStop.Location().String(), "next stop time should be specified in the user's time zone")
 		},
 		"ReturnsNextStopTimeAsDailyStopTimeForMixOfWholeWeekdaysOffAndDailySchedule": func(t *testing.T, h *Host) {
@@ -6427,21 +6433,110 @@ func TestCalculateNextScheduledStopTime(t *testing.T) {
 				WholeWeekdaysOff: []time.Weekday{time.Thursday, time.Friday},
 				DailyStartTime:   "06:00",
 				DailyStopTime:    "17:00",
-				TimeZone:         "America/New_York",
+				TimeZone:         easternTZ,
 			}
 			// Simulate the current time, which is:
-			// Wednesday February 21, 2024 at 11:00 PM UTC
-			now, err := time.Parse(time.RFC3339, "2024-02-21T23:00:00Z")
+			// Wednesday February 21, 2024 at 23:00 UTC
+			now, err := time.ParseInLocation(time.DateTime, "2024-02-21 18:00:00", easternTZLoc)
 			require.NoError(t, err)
+			now = now.UTC()
 
 			nextStop, err := h.CalculateNextScheduledStopTime(now)
 			assert.NoError(t, err)
 
 			// The next stop time should be:
 			// Thursday February 22, 2024 at midnight EST
-			expectedNextStop, err := time.Parse(time.RFC3339, "2024-02-22T00:00:00-05:00")
+			expectedNextStop, err := time.ParseInLocation(time.DateTime, "2024-02-22 00:00:00", easternTZLoc)
 			require.NoError(t, err)
-			assert.True(t, nextStop.Equal(expectedNextStop))
+			assert.WithinDuration(t, expectedNextStop, nextStop, 0)
+			assert.Equal(t, h.SleepSchedule.TimeZone, nextStop.Location().String(), "next stop time should be specified in the user's time zone")
+		},
+		"ReturnsNextStopTimeAfterNextStartTime": func(t *testing.T, h *Host) {
+			// Simulate the next start time, which is:
+			// Monday February 26, 2024 at 06:00 EST.
+			nextStart, err := time.ParseInLocation(time.DateTime, "2024-02-26 06:00:00", easternTZLoc)
+			require.NoError(t, err)
+			h.SleepSchedule = SleepScheduleInfo{
+				WholeWeekdaysOff: []time.Weekday{time.Saturday, time.Sunday},
+				DailyStartTime:   "06:00",
+				DailyStopTime:    "01:00",
+				NextStartTime:    nextStart,
+				TimeZone:         easternTZ,
+			}
+			// Simulate the current time, which is:
+			// Saturday February 24, 2024 at 00:00 UTC
+			now, err := time.ParseInLocation(time.DateTime, "2024-02-23 19:00:00", easternTZLoc)
+			require.NoError(t, err)
+			now = now.UTC()
+
+			nextStop, err := h.CalculateNextScheduledStopTime(now)
+			assert.NoError(t, err)
+
+			// The next stop time should be:
+			// Tuesday February 27, 2024 at 01:00 EST
+			expectedNextStop, err := time.ParseInLocation(time.DateTime, "2024-02-27 01:00:00", easternTZLoc)
+			require.NoError(t, err)
+			assert.WithinDuration(t, expectedNextStop, nextStop, 0)
+			assert.Equal(t, h.SleepSchedule.TimeZone, nextStop.Location().String(), "next stop time should be specified in the user's time zone")
+		},
+		"ReturnsNextStopTimeAfterNextStartTimeForOvernightDailySchedule": func(t *testing.T, h *Host) {
+			// Simulate the next start time, which is:
+			// Monday February 26, 2024 at 06:00 EST
+			nextStart, err := time.ParseInLocation(time.DateTime, "2024-02-26 06:00:00", easternTZLoc)
+			require.NoError(t, err)
+			h.SleepSchedule = SleepScheduleInfo{
+				WholeWeekdaysOff: []time.Weekday{time.Saturday, time.Sunday},
+				DailyStartTime:   "06:00",
+				DailyStopTime:    "22:00",
+				NextStartTime:    nextStart,
+				TimeZone:         easternTZ,
+			}
+			// Simulate the current time, which is:
+			// Friday February 23, 2024 at 22:00 UTC
+			now, err := time.ParseInLocation(time.DateTime, "2024-02-23 17:00:00", easternTZLoc)
+			require.NoError(t, err)
+			now = now.UTC()
+
+			nextStop, err := h.CalculateNextScheduledStopTime(now)
+			assert.NoError(t, err)
+
+			// The next stop time should be:
+			// Monday February 26, 2024 at 22:00 EST
+			expectedNextStop, err := time.ParseInLocation(time.DateTime, "2024-02-26 22:00:00", easternTZLoc)
+			require.NoError(t, err)
+			assert.WithinDuration(t, expectedNextStop, nextStop, 0)
+			assert.Equal(t, h.SleepSchedule.TimeZone, nextStop.Location().String(), "next stop time should be specified in the user's time zone")
+		},
+		"ReturnsNextStopTimeWithAccountingForDaylightSavingsTime": func(t *testing.T, h *Host) {
+			h.SleepSchedule = SleepScheduleInfo{
+				DailyStartTime: "06:00",
+				DailyStopTime:  "22:00",
+				TimeZone:       easternTZ,
+			}
+			// Simulate the current time, which is:
+			// Saturday March 9, 2024 at 22:00 EST (AKA Sunday March 10, 2024 at
+			// 03:00 UTC)
+			now, err := time.ParseInLocation(time.DateTime, "2024-03-09 22:00:00", easternTZLoc)
+			require.NoError(t, err)
+			_, tzOffset := now.Zone()
+			expectedOffsetSecs := int((-5 * time.Hour).Seconds())
+			assert.Equal(t, expectedOffsetSecs, tzOffset, "current time should be EST")
+			now = now.UTC()
+
+			nextStop, err := h.CalculateNextScheduledStopTime(now)
+			assert.NoError(t, err)
+
+			// The next stop time should be:
+			// Sunday March 10, 2024 at 22:00 EDT
+			// Note that daylight savings time begins on March 10 at 2 AM,
+			// meaning that the next stop time is in EDT rather than EST.
+			expectedNextStop, err := time.ParseInLocation(time.DateTime, "2024-03-10 22:00:00", easternTZLoc)
+			require.NoError(t, err)
+			assert.WithinDuration(t, expectedNextStop, nextStop, 0)
+
+			_, tzOffset = nextStop.Zone()
+			expectedOffsetSecs = int((-4 * time.Hour).Seconds())
+			assert.Equal(t, expectedOffsetSecs, tzOffset, "next stop time should be in EDT rather than EST")
 			assert.Equal(t, h.SleepSchedule.TimeZone, nextStop.Location().String(), "next stop time should be specified in the user's time zone")
 		},
 		"ReturnsSentinelTimeForPermanentlyExemptHost": func(t *testing.T, h *Host) {
@@ -6474,11 +6569,6 @@ func TestCalculateNextScheduledStopTime(t *testing.T) {
 			_, err := h.CalculateNextScheduledStopTime(time.Now())
 			assert.Error(t, err)
 		},
-		// "": func(t *testing.T, h *Host) {},
-		// "": func(t *testing.T, h *Host) {},
-		// "": func(t *testing.T, h *Host) {},
-		// "": func(t *testing.T, h *Host) {},
-		// "": func(t *testing.T, h *Host) {},
 	} {
 		t.Run(tName, func(t *testing.T) {
 			tCase(t, &Host{Id: "host_id"})
