@@ -731,8 +731,7 @@ func (a *Agent) runPreAndMain(ctx context.Context, tc *taskContext) (status stri
 	}
 
 	defer func() {
-		// TODO: figure out which context to use here
-		if err := tc.taskConfig.TaskOutputDir.Run(ctx); err != nil {
+		if err := tc.taskConfig.TaskOutputDir.Run(execTimeoutCtx); err != nil {
 			tc.logger.Execution().Error(errors.Wrap(err, "ingesting task output"))
 		}
 	}()
