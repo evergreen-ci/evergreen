@@ -280,7 +280,7 @@ func TestHostNextTask(t *testing.T) {
 					require.NoError(t, err)
 					require.NoError(t, intentHost.SetStatus(ctx, evergreen.HostQuarantined, evergreen.User, ""))
 					intentHost.NeedsReprovision = host.ReprovisionToLegacy
-					intentHost.NumAgentCleanupFailures = 10
+					intentHost.NumAgentCleanupFailures = hostAgentCleanupLimit
 					rh.host = intentHost
 					rh.details = &apimodels.GetNextTaskDetails{
 						AgentRevision: evergreen.AgentVersion,

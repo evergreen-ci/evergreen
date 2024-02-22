@@ -1365,8 +1365,7 @@ func FindOneByPersistentDNSName(ctx context.Context, dnsName string) (*Host, err
 
 // IncrementNumAgentCleanupFailures will increment the NumAgentCleanupFailures field by 1.
 func (h *Host) IncrementNumAgentCleanupFailures(ctx context.Context) error {
-	h.NumAgentCleanupFailures = h.NumAgentCleanupFailures + 1
-	err := UpdateOne(
+	if err := UpdateOne(
 		ctx,
 		bson.M{
 			IdKey: h.Id,
@@ -1376,6 +1375,25 @@ func (h *Host) IncrementNumAgentCleanupFailures(ctx context.Context) error {
 				NumAgentCleanupFailuresKey: 1,
 			},
 		},
+	); err != nil {
+		return errors.Wrapf(err, "incrementing number of agent cleanup failures for host '%s'", h.Id)
+	}
+	h.NumAgentCleanupFailures++
+	return nil
+}
+
+// UnsetNumAgentCleanupFailures unsets the NumAgentCleanupFailures field.
+func (h *Host) UnsetNumAgentCleanupFailures(ctx context.Context) error {
+	err := UpdateOne(
+		ctx,
+		bson.M{
+			IdKey: h.Id,
+		},
+		bson.M{
+			"$unset": bson.M{
+				NumAgentCleanupFailuresKey: 1,
+			},
+		},
 	)
-	return errors.Wrapf(err, "incrementing number of agent cleanup failures for host '%s'", h.Id)
+	return errors.Wrapf(err, "unsetting number of agent cleanup failures for host '%s'", h.Id)
 }
