@@ -2884,7 +2884,7 @@ func ValidateContainers(ecsConf evergreen.ECSConfig, pRef *ProjectRef, container
 		image := container.Image
 		if expansions != nil {
 			image, err = expansions.ExpandString(container.Image)
-			catcher.Add(errors.Wrap(err, "expanding container image"))
+			catcher.Wrap(err, "expanding container image")
 		}
 		catcher.Add(container.System.Validate())
 		if container.Resources != nil {
