@@ -4378,19 +4378,24 @@ func TestValidateContainers(t *testing.T) {
 		},
 	} {
 		t.Run(tName, func(t *testing.T) {
-			require.NoError(t, db.Clear(model.ProjectRefCollection))
+			require.NoError(t, db.ClearCollections(model.ProjectRefCollection, model.ProjectVarsCollection))
 
 			p := &model.Project{
 				Identifier: "proj",
 				Containers: []model.Container{
 					{
 						Name:       "c1",
-						Image:      "hadjri/evg-container-self-tests",
+						Image:      "${image}",
 						WorkingDir: "/root",
 						Size:       "s1",
 						Credential: "c1",
 					},
 				},
+			}
+
+			projVars := model.ProjectVars{
+				Id:   "proj",
+				Vars: map[string]string{"image": "hadjri/evg-container-self-tests"},
 			}
 
 			ref := &model.ProjectRef{
@@ -4418,6 +4423,7 @@ func TestValidateContainers(t *testing.T) {
 			}
 
 			require.NoError(t, ref.Upsert())
+			require.NoError(t, projVars.Insert())
 			tCase(t, p, ref)
 		})
 	}
