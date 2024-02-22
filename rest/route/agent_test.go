@@ -154,6 +154,7 @@ func TestAgentGetExpansionsAndVars(t *testing.T) {
 				RunningTask:          t1.Id,
 				RunningTaskExecution: t1.Execution,
 				Distro: distro.Distro{
+					Arch: "windows",
 					Expansions: []distro.Expansion{
 						{
 							Key:   "distro_expansion_key",
