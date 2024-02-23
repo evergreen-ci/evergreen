@@ -95,7 +95,6 @@ func Patch() cli.Command {
 			mutuallyExclusiveArgs(false, patchDescriptionFlagName, autoDescriptionFlag),
 			mutuallyExclusiveArgs(false, preserveCommitsFlag, uncommittedChangesFlag),
 			mutuallyExclusiveArgs(false, repeatDefinitionFlag, repeatPatchIdFlag, repeatFailedDefinitionFlag),
-			conditionallyRequiredArgs(jsonFlagName, skipConfirmFlagName),
 			func(c *cli.Context) error {
 				catcher := grip.NewBasicCatcher()
 				for _, status := range utility.SplitCommas(c.StringSlice(syncStatusesFlagName)) {
@@ -129,7 +128,7 @@ func Patch() cli.Command {
 				SyncTasks:         utility.SplitCommas(c.StringSlice(syncTasksFlagName)),
 				SyncStatuses:      utility.SplitCommas(c.StringSlice(syncStatusesFlagName)),
 				SyncTimeout:       c.Duration(syncTimeoutFlagName),
-				SkipConfirm:       c.Bool(skipConfirmFlagName),
+				SkipConfirm:       c.Bool(skipConfirmFlagName) || outputJSON,
 				Description:       c.String(patchDescriptionFlagName),
 				AutoDescription:   c.Bool(autoDescriptionFlag),
 				Finalize:          c.Bool(patchFinalizeFlagName),

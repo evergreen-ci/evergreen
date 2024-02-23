@@ -274,23 +274,6 @@ func mutuallyExclusiveArgs(required bool, flags ...string) cli.BeforeFunc {
 	}
 }
 
-// conditionallyRequiredArgs checks if the first flag is set,
-// and if it is then checks if the following flags are also set.
-func conditionallyRequiredArgs(flag string, flags ...string) cli.BeforeFunc {
-	return func(c *cli.Context) error {
-		if !c.IsSet(flag) {
-			return nil
-		}
-
-		catcher := grip.NewSimpleCatcher()
-		for _, f := range flags {
-			catcher.AddWhen(!c.IsSet(f), errors.Errorf("flag '%s' is required when flag '%s' is set", f, flag))
-		}
-
-		return catcher.Resolve()
-	}
-}
-
 func requireWorkingDirFlag(dirFlagName string) cli.BeforeFunc {
 	return func(c *cli.Context) error {
 		wd := c.String(dirFlagName)
