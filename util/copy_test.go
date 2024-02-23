@@ -3,7 +3,7 @@ package util
 import (
 	"testing"
 
-	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 )
 
 type dinner struct {
@@ -17,19 +17,29 @@ type drink struct {
 }
 
 func TestDeepCopy(t *testing.T) {
-	assert := assert.New(t)
-
-	myDinner := dinner{
-		Entree:  "gefilte fish",
-		Dessert: true,
-		Drink: &drink{
-			Sugars: 32,
-		},
-	}
-	var yourDinner dinner
-	err := DeepCopy(myDinner, &yourDinner)
-	assert.NoError(err)
-	assert.Equal(myDinner.Entree, yourDinner.Entree)
-	assert.Equal(myDinner.Drink.Sugars, yourDinner.Drink.Sugars)
-	assert.Equal(myDinner.Dessert, yourDinner.Dessert)
+	require := require.New(t)
+	t.Run("DeepCopy", func(t *testing.T) {
+		myDinner := dinner{
+			Entree:  "gefilte fish",
+			Dessert: true,
+			Drink: &drink{
+				Sugars: 32,
+			},
+		}
+		var yourDinner dinner
+		err := DeepCopy(myDinner, &yourDinner)
+		require.NoError(err)
+		require.Equal(myDinner.Entree, yourDinner.Entree)
+		require.Equal(myDinner.Drink.Sugars, yourDinner.Drink.Sugars)
+		require.Equal(myDinner.Dessert, yourDinner.Dessert)
+	})
+	t.Run("DeepCopyWithAStringMap", func(t *testing.T) {
+		myMap := map[string]string{
+			"foo": "bar",
+		}
+		var yourMap map[string]string
+		err := DeepCopy(myMap, &yourMap)
+		require.NoError(err)
+		require.Equal(myMap, yourMap)
+	})
 }
