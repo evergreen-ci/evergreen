@@ -369,7 +369,7 @@ type SleepScheduleInfo struct {
 }
 
 // Validate checks that the sleep schedule provided by the user is valid.
-func (i SleepScheduleInfo) Validate() error {
+func (i *SleepScheduleInfo) Validate() error {
 	if i.PermanentlyExempt {
 		return nil
 	}
@@ -408,9 +408,10 @@ func (i SleepScheduleInfo) Validate() error {
 	if i.DailyStopTime != "" && i.DailyStartTime != "" {
 		// Add up how much time is hypothetically spent sleeping for the daily
 		// sleep schedule.
-		sampleStart, err := time.Parse("15:04", i.DailyStartTime)
+		const hoursMinsFmt = "15:04"
+		sampleStart, err := time.Parse(hoursMinsFmt, i.DailyStartTime)
 		catcher.Wrapf(err, "parsing daily start time as a timestamp")
-		sampleStop, err := time.Parse("15:04", i.DailyStopTime)
+		sampleStop, err := time.Parse(hoursMinsFmt, i.DailyStopTime)
 		catcher.Wrapf(err, "parsing daily stop time as a timestamp")
 		if !utility.IsZeroTime(sampleStart) && !utility.IsZeroTime(sampleStop) {
 			var dailySleep time.Duration
