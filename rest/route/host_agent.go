@@ -512,6 +512,7 @@ func assignNextAvailableTask(ctx context.Context, env evergreen.Environment, tas
 				"task_version":       queueItem.Version,
 			})
 			// An error is not returned in this situation due to https://jira.mongodb.org/browse/EVG-6214
+			fmt.Println("NEXT IS HERE")
 			return nil, false, nil
 		}
 
@@ -665,6 +666,8 @@ func assignNextAvailableTask(ctx context.Context, env evergreen.Environment, tas
 
 		return nextTask, false, nil
 	}
+
+	fmt.Println("Testing here too")
 
 	return nil, false, nil
 }
