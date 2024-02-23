@@ -1248,3 +1248,11 @@ func populateQueueGroup(ctx context.Context, env evergreen.Environment, queueGro
 
 	return errors.Wrapf(amboy.EnqueueManyUniqueJobs(ctx, queueGroup, jobs), "populating '%s' queue", queueGroupName)
 }
+
+// PopulatePersistentDNSAssignment populates jobs to assign persistent DNS names
+// to running unexpirable hosts that don't already have one assigned.
+func PopulatePersistentDNSAssignment() amboy.QueueOperation {
+	return func(ctx context.Context, queue amboy.Queue) error {
+		return amboy.EnqueueUniqueJob(ctx, queue, NewPersistentDNSAssignmentJob(utility.RoundPartOfHour(15).Format(TSFormat)))
+	}
+}
