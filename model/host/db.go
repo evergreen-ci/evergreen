@@ -67,6 +67,7 @@ var (
 	AgentRevisionKey                   = bsonutil.MustHaveTag(Host{}, "AgentRevision")
 	NeedsNewAgentKey                   = bsonutil.MustHaveTag(Host{}, "NeedsNewAgent")
 	NeedsNewAgentMonitorKey            = bsonutil.MustHaveTag(Host{}, "NeedsNewAgentMonitor")
+	NumAgentCleanupFailuresKey         = bsonutil.MustHaveTag(Host{}, "NumAgentCleanupFailures")
 	JasperCredentialsIDKey             = bsonutil.MustHaveTag(Host{}, "JasperCredentialsID")
 	NeedsReprovisionKey                = bsonutil.MustHaveTag(Host{}, "NeedsReprovision")
 	StartedByKey                       = bsonutil.MustHaveTag(Host{}, "StartedBy")
@@ -86,7 +87,7 @@ var (
 	ParentIDKey                        = bsonutil.MustHaveTag(Host{}, "ParentID")
 	DockerOptionsKey                   = bsonutil.MustHaveTag(Host{}, "DockerOptions")
 	ContainerImagesKey                 = bsonutil.MustHaveTag(Host{}, "ContainerImages")
-	ContainerBuildAttempt              = bsonutil.MustHaveTag(Host{}, "ContainerBuildAttempt")
+	ContainerBuildAttemptKey           = bsonutil.MustHaveTag(Host{}, "ContainerBuildAttempt")
 	LastContainerFinishTimeKey         = bsonutil.MustHaveTag(Host{}, "LastContainerFinishTime")
 	SpawnOptionsKey                    = bsonutil.MustHaveTag(Host{}, "SpawnOptions")
 	ContainerPoolSettingsKey           = bsonutil.MustHaveTag(Host{}, "ContainerPoolSettings")
@@ -1378,4 +1379,39 @@ func FindOneByPersistentDNSName(ctx context.Context, dnsName string) (*Host, err
 	return FindOne(ctx, bson.M{
 		PersistentDNSNameKey: dnsName,
 	})
+}
+
+// IncrementNumAgentCleanupFailures will increment the NumAgentCleanupFailures field by 1.
+func (h *Host) IncrementNumAgentCleanupFailures(ctx context.Context) error {
+	if err := UpdateOne(
+		ctx,
+		bson.M{
+			IdKey: h.Id,
+		},
+		bson.M{
+			"$inc": bson.M{
+				NumAgentCleanupFailuresKey: 1,
+			},
+		},
+	); err != nil {
+		return errors.Wrapf(err, "incrementing number of agent cleanup failures for host '%s'", h.Id)
+	}
+	h.NumAgentCleanupFailures++
+	return nil
+}
+
+// UnsetNumAgentCleanupFailures unsets the NumAgentCleanupFailures field.
+func (h *Host) UnsetNumAgentCleanupFailures(ctx context.Context) error {
+	err := UpdateOne(
+		ctx,
+		bson.M{
+			IdKey: h.Id,
+		},
+		bson.M{
+			"$set": bson.M{
+				NumAgentCleanupFailuresKey: 0,
+			},
+		},
+	)
+	return errors.Wrapf(err, "unsetting number of agent cleanup failures for host '%s'", h.Id)
 }

@@ -275,6 +275,30 @@ func TestHostNextTask(t *testing.T) {
 					assert.NotNil(t, realHost)
 					assert.Equal(t, realHost.Status, evergreen.HostDecommissioned)
 				},
+				"ClearsSecretOfUnresponsiveQuarantinedHost": func(ctx context.Context, t *testing.T, handler hostAgentNextTask) {
+					intentHost, err := host.FindOneId(ctx, "intentHost")
+					require.NoError(t, err)
+					require.NoError(t, intentHost.SetStatus(ctx, evergreen.HostQuarantined, evergreen.User, ""))
+					intentHost.NeedsReprovision = host.ReprovisionToLegacy
+					intentHost.NumAgentCleanupFailures = hostAgentCleanupLimit
+					rh.host = intentHost
+					rh.details = &apimodels.GetNextTaskDetails{
+						AgentRevision: evergreen.AgentVersion,
+					}
+					resp := rh.Run(ctx)
+
+					assert.NotNil(t, resp)
+					assert.Equal(t, resp.Status(), http.StatusOK)
+					taskResp, ok := resp.Data().(apimodels.NextTaskResponse)
+					require.True(t, ok, resp.Data())
+					assert.True(t, taskResp.ShouldExit)
+					assert.Empty(t, taskResp.TaskId)
+
+					dbHost, err := host.FindOneId(ctx, "intentHost")
+					require.NoError(t, err)
+					assert.NotNil(t, dbHost)
+					assert.Equal(t, dbHost.Secret, "")
+				},
 			} {
 				t.Run(testName, func(t *testing.T) {
 					require.NoError(t, db.Clear(host.Collection))
