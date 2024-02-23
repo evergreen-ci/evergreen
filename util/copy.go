@@ -1,25 +1,20 @@
 package util
 
 import (
-	"bytes"
-	"encoding/gob"
+	"encoding/json"
 
 	"github.com/pkg/errors"
 )
 
 // DeepCopy makes a deep copy of the src value into the copy params
-// The registeredTypes param can be optionally used to register additional types
-// that need to be used by gob
-func DeepCopy(src, copy interface{}, registeredTypes []interface{}) error {
-	for _, t := range registeredTypes {
-		gob.Register(t)
-	}
-	var buff bytes.Buffer
-	enc := gob.NewEncoder(&buff)
-	dec := gob.NewDecoder(&buff)
-	err := enc.Encode(src)
+func DeepCopy(src, copy interface{}) error {
+	b, err := json.Marshal(src)
 	if err != nil {
-		return errors.Wrap(err, "encoding source")
+		return errors.Wrap(err, "marshalling source")
 	}
-	return errors.Wrap(dec.Decode(copy), "decoding copy")
+	err = json.Unmarshal(b, copy)
+	if err != nil {
+		return errors.Wrap(err, "unmarshalling copy")
+	}
+	return nil
 }

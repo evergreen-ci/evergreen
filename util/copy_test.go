@@ -27,7 +27,7 @@ func TestDeepCopy(t *testing.T) {
 		},
 	}
 	var yourDinner dinner
-	err := DeepCopy(myDinner, &yourDinner, nil)
+	err := DeepCopy(myDinner, &yourDinner)
 	assert.NoError(err)
 	assert.Equal(myDinner.Entree, yourDinner.Entree)
 	assert.Equal(myDinner.Drink.Sugars, yourDinner.Drink.Sugars)
