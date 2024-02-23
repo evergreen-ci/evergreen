@@ -402,9 +402,9 @@ func (i *SleepScheduleInfo) Validate() error {
 		uniqueWeekdays[weekday] = struct{}{}
 	}
 
-	const minNumHoursPerWeek = 24 * time.Hour
+	const minNumHoursPerWeek = utility.Day
 
-	weeklySleep := 24 * time.Hour * time.Duration(len(i.WholeWeekdaysOff))
+	weeklySleep := utility.Day * time.Duration(len(i.WholeWeekdaysOff))
 	if i.DailyStopTime != "" && i.DailyStartTime != "" {
 		// Add up how much time is hypothetically spent sleeping for the daily
 		// sleep schedule.
@@ -416,12 +416,12 @@ func (i *SleepScheduleInfo) Validate() error {
 		if !utility.IsZeroTime(sampleStart) && !utility.IsZeroTime(sampleStop) {
 			var dailySleep time.Duration
 			if i.isDailyOvernightSchedule() {
-				dailySleep = 24*time.Hour - sampleStop.Sub(sampleStart)
+				dailySleep = utility.Day - sampleStop.Sub(sampleStart)
 			} else {
 				dailySleep = sampleStart.Sub(sampleStop)
 			}
 			catcher.ErrorfWhen(dailySleep < time.Hour, "daily sleep schedule runs for %s per day, which is less than the minimum of 1 hour", dailySleep.String())
-			weeklySleep += dailySleep * time.Duration(7-len(i.WholeWeekdaysOff))
+			weeklySleep += dailySleep * time.Duration(len(utility.Weekdays)-len(i.WholeWeekdaysOff))
 		}
 	}
 	catcher.ErrorfWhen(weeklySleep < minNumHoursPerWeek, "sleep schedule runs for %s, which does not meet minimum requirement of %s", weeklySleep.String(), minNumHoursPerWeek.String())
@@ -2306,7 +2306,7 @@ func (h *Host) UpdateParentIDs(ctx context.Context) error {
 // from being extended past 30 days from its creation and not earlier
 // than the current time.
 func (h *Host) ValidateExpirationExtension(extension time.Duration) error {
-	maxExpirationTime := h.CreationTime.Add(evergreen.SpawnHostExpireDays * time.Hour * 24)
+	maxExpirationTime := h.CreationTime.Add(evergreen.SpawnHostExpireDays * utility.Day)
 	proposedTime := h.ExpirationTime.Add(extension)
 
 	if h.ExpirationTime.After(maxExpirationTime) || proposedTime.After(maxExpirationTime) {
@@ -2905,7 +2905,7 @@ func FindSpawnhostsWithNoExpirationToExtend(ctx context.Context) ([]Host, error)
 		UserHostKey:       true,
 		NoExpirationKey:   true,
 		StatusKey:         bson.M{"$in": evergreen.UpHostStatus},
-		ExpirationTimeKey: bson.M{"$lte": time.Now().Add(24 * time.Hour)},
+		ExpirationTimeKey: bson.M{"$lte": time.Now().Add(utility.Day)},
 	}
 
 	return Find(ctx, query)
@@ -3490,10 +3490,6 @@ func (h *Host) GetNextScheduledStopTime(now time.Time) (time.Time, error) {
 		return SleepScheduleSentinelTime, nil
 	}
 
-	if err := h.SleepSchedule.Validate(); err != nil {
-		return time.Time{}, errors.Wrap(err, "invalid sleep schedule")
-	}
-
 	userTimeZone, err := time.LoadLocation(h.SleepSchedule.TimeZone)
 	if err != nil {
 		return time.Time{}, errors.Wrapf(err, "loading user time zone '%s'", h.SleepSchedule.TimeZone)
@@ -3536,15 +3532,15 @@ func (h *Host) GetNextScheduledStopTime(now time.Time) (time.Time, error) {
 	// (if any) and the weekdays when the daily sleep schedule applies (if any).
 	var dailyWeekdays []string
 	var firstContiguousWeekdayOff []string
-	for _, weekday := range []time.Weekday{time.Sunday, time.Monday, time.Tuesday, time.Wednesday, time.Thursday, time.Friday, time.Saturday} {
+	for _, weekday := range utility.Weekdays {
 		isOff := utility.FilterSlice(h.SleepSchedule.WholeWeekdaysOff, func(weekdayToCheck time.Weekday) bool { return weekdayToCheck == weekday })
 		if len(isOff) == 0 {
 			dailyWeekdays = append(dailyWeekdays, fmt.Sprintf("%d", weekday))
 		} else {
-			prevWeekdayOff := (weekday - 1) % 7
+			prevWeekdayOff := (weekday - 1) % time.Weekday(len(utility.Weekdays))
 			if prevWeekdayOff < 0 {
 				// Convert negative modulo to positive value (because -1 mod 7 = -1).
-				prevWeekdayOff += 7
+				prevWeekdayOff += time.Weekday(len(utility.Weekdays))
 			}
 			isPrevWeekdayOff := utility.FilterSlice(h.SleepSchedule.WholeWeekdaysOff, func(weekdayToCheck time.Weekday) bool { return weekdayToCheck == prevWeekdayOff })
 			if len(isPrevWeekdayOff) == 0 {
@@ -3601,10 +3597,6 @@ func (h *Host) GetNextScheduledStartTime(now time.Time) (time.Time, error) {
 		return SleepScheduleSentinelTime, nil
 	}
 
-	if err := h.SleepSchedule.Validate(); err != nil {
-		return time.Time{}, errors.Wrap(err, "invalid sleep schedule")
-	}
-
 	userTimeZone, err := time.LoadLocation(h.SleepSchedule.TimeZone)
 	if err != nil {
 		return time.Time{}, errors.Wrapf(err, "loading user time zone '%s'", h.SleepSchedule.TimeZone)
@@ -3626,12 +3618,12 @@ func (h *Host) GetNextScheduledStartTime(now time.Time) (time.Time, error) {
 	// any).
 	var dailyWeekdays []string
 	var afterContiguousWeekdaysOff []string
-	for _, weekday := range []time.Weekday{time.Sunday, time.Monday, time.Tuesday, time.Wednesday, time.Thursday, time.Friday, time.Saturday} {
+	for _, weekday := range utility.Weekdays {
 		isOff := utility.FilterSlice(h.SleepSchedule.WholeWeekdaysOff, func(weekdayToCheck time.Weekday) bool { return weekdayToCheck == weekday })
 		if len(isOff) == 0 {
 			dailyWeekdays = append(dailyWeekdays, fmt.Sprintf("%d", weekday))
 		} else {
-			nextWeekday := (weekday + 1) % 7
+			nextWeekday := (weekday + 1) % time.Weekday(len(utility.Weekdays))
 			isNextWeekdayOff := utility.FilterSlice(h.SleepSchedule.WholeWeekdaysOff, func(weekdayToCheck time.Weekday) bool { return weekdayToCheck == nextWeekday })
 			if len(isNextWeekdayOff) == 0 {
 				// It's the end of a contiguous series of weekdays off, which
