@@ -1,7 +1,6 @@
 package graphql
 
 import (
-	"encoding/json"
 	"fmt"
 	"os"
 	"reflect"
@@ -77,14 +76,7 @@ func isFieldRedacted(fieldName string, fieldsToRedact map[string]bool) bool {
 // Assumes map structure like map[string]interface{} where interface{} can be another map, a slice, or a basic datatype.
 func RedactFieldsInMap(data map[string]interface{}, fieldsToRedact map[string]bool) map[string]interface{} {
 	dataCopy := map[string]interface{}{}
-	registeredTypes := []interface{}{
-		map[interface{}]interface{}{},
-		map[string]interface{}{},
-		[]interface{}{},
-		[]util.KeyValuePair{},
-		json.Number(""),
-	}
-	if err := util.DeepCopy(data, &dataCopy, registeredTypes); err != nil {
+	if err := util.DeepCopy(data, &dataCopy); err != nil {
 		// If theres an error copying the data, log it and return an empty map.
 		grip.Error(message.WrapError(err, message.Fields{
 			"message": "failed to deep copy request variables",
