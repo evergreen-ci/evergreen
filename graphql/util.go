@@ -1165,15 +1165,10 @@ func interfaceToMap(ctx context.Context, data interface{}) (map[string]interface
 	return mapField, nil
 }
 
-type versionsMatchingTasks struct {
-	Id               string
-	HasMatchingTasks bool
-}
-
 func concurrentlyBuildHasMatchingTasksMap(ctx context.Context, versions []model.Version, opts task.HasMatchingTasksOptions) (map[string]bool, error) {
 	wg := sync.WaitGroup{}
 	input := make(chan model.Version, len(versions))
-	output := make(chan versionsMatchingTasks, len(versions))
+	output := make(chan string, len(versions))
 	catcher := grip.NewBasicCatcher()
 	versionsMatchingTasksMap := map[string]bool{}
 
@@ -1196,7 +1191,9 @@ func concurrentlyBuildHasMatchingTasksMap(ctx context.Context, versions []model.
 					catcher.Add(err)
 					continue
 				}
-				output <- versionsMatchingTasks{Id: i.Id, HasMatchingTasks: hasMatchingTasks}
+				if hasMatchingTasks {
+					output <- i.Id
+				}
 			}
 		}()
 	}
@@ -1207,8 +1204,8 @@ func concurrentlyBuildHasMatchingTasksMap(ctx context.Context, versions []model.
 		return nil, errors.Wrap(catcher.Resolve(), "finding matching tasks")
 	}
 
-	for item := range output {
-		versionsMatchingTasksMap[item.Id] = item.HasMatchingTasks
+	for versionId := range output {
+		versionsMatchingTasksMap[versionId] = true
 	}
 
 	return versionsMatchingTasksMap, nil
