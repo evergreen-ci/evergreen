@@ -1,6 +1,7 @@
 package graphql
 
 import (
+	"encoding/json"
 	"fmt"
 	"os"
 	"reflect"
@@ -81,6 +82,7 @@ func RedactFieldsInMap(data map[string]interface{}, fieldsToRedact map[string]bo
 		map[string]interface{}{},
 		[]interface{}{},
 		[]util.KeyValuePair{},
+		json.Number(""),
 	}
 	if err := util.DeepCopy(data, &dataCopy, registeredTypes); err != nil {
 		// If theres an error copying the data, log it and return an empty map.

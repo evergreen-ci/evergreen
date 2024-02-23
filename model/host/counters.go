@@ -42,7 +42,7 @@ func (h *Host) IncContainerBuildAttempt() error {
 	change := adb.Change{
 		ReturnNew: true,
 		Update: bson.M{
-			"$inc": bson.M{ContainerBuildAttempt: 1},
+			"$inc": bson.M{ContainerBuildAttemptKey: 1},
 		},
 	}
 

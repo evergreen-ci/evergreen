@@ -43,7 +43,7 @@ func TestFindProject(t *testing.T) {
 			projRef := &ProjectRef{
 				Id: "",
 			}
-			version, project, pp, err := FindLatestVersionWithValidProject(projRef.Id, false)
+			version, project, pp, err := FindLatestVersionWithValidProject(projRef.Id)
 			So(err, ShouldNotBeNil)
 			So(project, ShouldBeNil)
 			So(pp, ShouldBeNil)
@@ -72,7 +72,7 @@ func TestFindProject(t *testing.T) {
 			}
 			require.NoError(t, pp.Insert())
 			require.NoError(t, v.Insert(), "failed to insert test version: %v", v)
-			_, _, _, err := FindLatestVersionWithValidProject(p.Id, false)
+			_, _, _, err := FindLatestVersionWithValidProject(p.Id)
 			So(err, ShouldBeNil)
 
 		})
@@ -104,42 +104,16 @@ func TestFindProject(t *testing.T) {
 			So(badVersion.Insert(), ShouldBeNil)
 			So(goodVersion.Insert(), ShouldBeNil)
 			So(pp.Insert(), ShouldBeNil)
-			v, p, pp, err := FindLatestVersionWithValidProject("project_test", false)
+			v, p, pp, err := FindLatestVersionWithValidProject("project_test")
 			So(err, ShouldBeNil)
 			So(pp, ShouldNotBeNil)
 			So(pp.Id, ShouldEqual, "good_version")
 			So(p, ShouldNotBeNil)
 			So(v.Id, ShouldEqual, "good_version")
 		})
-		Convey("if a pre generation parser project exists, it should be pulled", func() {
-			So(db.ClearCollections(VersionCollection, ParserProjectCollection), ShouldBeNil)
-			goodVersion := &Version{
-				Id:                  "good_version",
-				Owner:               "fakeowner",
-				Repo:                "fakerepo",
-				Branch:              "fakebranch",
-				Identifier:          "project_test",
-				Requester:           evergreen.RepotrackerVersionRequester,
-				RevisionOrderNumber: 8,
-			}
-			pp := &ParserProject{}
-			err := util.UnmarshalYAMLWithFallback([]byte("owner: fakeowner\nrepo: fakerepo\nbranch: fakebranch"), &pp)
-			So(err, ShouldBeNil)
-			pp.Id = "good_version"
-			So(goodVersion.Insert(), ShouldBeNil)
-			So(pp.Insert(), ShouldBeNil)
-			pp.Id = "pre_generation_good_version"
-			So(pp.Insert(), ShouldBeNil)
-			v, p, pp, err := FindLatestVersionWithValidProject("project_test", true)
-			So(err, ShouldBeNil)
-			So(pp, ShouldNotBeNil)
-			So(pp.Id, ShouldEqual, "pre_generation_good_version")
-			So(p, ShouldNotBeNil)
-			So(v.Id, ShouldEqual, "pre_generation_good_version")
-		})
 		Convey("error if no version exists", func() {
 			So(db.ClearCollections(VersionCollection, ParserProjectCollection), ShouldBeNil)
-			_, _, _, err := FindLatestVersionWithValidProject("project_test", false)
+			_, _, _, err := FindLatestVersionWithValidProject("project_test")
 			So(err, ShouldNotBeNil)
 		})
 	})

@@ -97,7 +97,7 @@ func (r *patchResolver) PatchTriggerAliases(ctx context.Context, obj *restModel.
 	for _, alias := range projectRef.PatchTriggerAliases {
 		project, projectCached := projectCache[alias.ChildProject]
 		if !projectCached {
-			_, project, _, err = model.FindLatestVersionWithValidProject(alias.ChildProject, false)
+			_, project, _, err = model.FindLatestVersionWithValidProject(alias.ChildProject)
 			if err != nil {
 				return nil, InternalServerError.Send(ctx, fmt.Sprintf("getting last known project for '%s': %s", alias.ChildProject, err.Error()))
 			}

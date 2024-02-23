@@ -113,23 +113,8 @@ func (j *patchIntentProcessor) Run(ctx context.Context) {
 			return
 		}
 		if p == nil {
-			j.AddError(errors.Errorf("child project '%s' not found", patchDoc.Project))
+			j.AddError(errors.Errorf("project '%s' not found", patchDoc.Project))
 			return
-		}
-		if j.IntentType == patch.TriggerIntentType {
-			parentProject, err := model.FindBranchProjectRef(patchDoc.Triggers.ParentProjectID)
-			if err != nil {
-				j.AddError(errors.Wrapf(err, "finding project '%s'", patchDoc.Project))
-				return
-			}
-			if parentProject == nil {
-				j.AddError(errors.Errorf("parent project '%s' not found", patchDoc.Triggers.ParentPatch))
-				return
-			}
-			if p.Owner == parentProject.Owner && p.Repo == parentProject.Repo &&
-				p.Branch == parentProject.Branch {
-				patchDoc.Triggers.SameBranchAsParent = true
-			}
 		}
 		patchDoc.GithubPatchData.BaseOwner = p.Owner
 		patchDoc.GithubPatchData.BaseRepo = p.Repo
@@ -757,14 +742,13 @@ func ProcessTriggerAliases(ctx context.Context, p *patch.Patch, projectRef *mode
 	triggerIntents := make([]patch.Intent, 0, len(aliasGroups))
 	for group, definitions := range aliasGroups {
 		triggerIntent := patch.NewTriggerIntent(patch.TriggerIntentOptions{
-			ParentID:        p.Id.Hex(),
-			ParentProjectID: p.Project,
-			ParentStatus:    group.status,
-			ProjectID:       group.project,
-			ParentAsModule:  group.parentAsModule,
-			Requester:       p.GetRequester(),
-			Author:          p.Author,
-			Definitions:     definitions,
+			ParentID:       p.Id.Hex(),
+			ParentStatus:   group.status,
+			ProjectID:      group.project,
+			ParentAsModule: group.parentAsModule,
+			Requester:      p.GetRequester(),
+			Author:         p.Author,
+			Definitions:    definitions,
 		})
 
 		if err := triggerIntent.Insert(); err != nil {
@@ -1070,7 +1054,8 @@ func (j *patchIntentProcessor) buildTriggerPatchDoc(patchDoc *patch.Patch) (*mod
 	if !ok {
 		return nil, nil, errors.Errorf("programmatic error: expected intent '%s' to be a trigger intent type but instead got '%T'", j.IntentID, j.intent)
 	}
-	v, project, pp, err := model.FindLatestVersionWithValidProject(patchDoc.Project, true)
+
+	v, project, pp, err := model.FindLatestVersionWithValidProject(patchDoc.Project)
 	if err != nil {
 		return nil, nil, errors.Wrapf(err, "getting latest version for project '%s'", patchDoc.Project)
 	}
@@ -1087,7 +1072,8 @@ func (j *patchIntentProcessor) buildTriggerPatchDoc(patchDoc *patch.Patch) (*mod
 	}
 
 	patchDoc.VariantsTasks = matchingTasks
-	if intent.ParentAsModule != "" || patchDoc.Triggers.SameBranchAsParent {
+
+	if intent.ParentAsModule != "" {
 		parentPatch, err := patch.FindOneId(patchDoc.Triggers.ParentPatch)
 		if err != nil {
 			return nil, nil, errors.Wrapf(err, "getting parent patch '%s'", patchDoc.Triggers.ParentPatch)
@@ -1097,17 +1083,8 @@ func (j *patchIntentProcessor) buildTriggerPatchDoc(patchDoc *patch.Patch) (*mod
 		}
 		for _, p := range parentPatch.Patches {
 			if p.ModuleName == "" {
-				moduleName := intent.ParentAsModule
-				if patchDoc.Triggers.SameBranchAsParent {
-					// If the parent patch uses the same repo and branch as the child project,
-					// make the child patch use the same revision and patches as the parent patch.
-					patchDoc.Githash = parentPatch.Githash
-					moduleName = ""
-				}
 				patchDoc.Patches = append(patchDoc.Patches, patch.ModulePatch{
-					// Apply the parent patch's changes if both child and parent are using the
-					// same repo/project/branch
-					ModuleName: moduleName,
+					ModuleName: intent.ParentAsModule,
 					PatchSet:   p.PatchSet,
 					Githash:    parentPatch.Githash,
 				})

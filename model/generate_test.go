@@ -857,11 +857,6 @@ func (s *GenerateSuite) TestSaveNewBuildsAndTasksWithBatchtime() {
 	s.Require().NoError(err)
 	s.NoError(g.Save(s.ctx, s.env.Settings(), p, pp, v))
 
-	// Should have created a pre-generated cached parser project
-	preGeneratedPP, err := ParserProjectFindOneByID(ctx, s.env.Settings(), v.ProjectStorageMethod, fmt.Sprintf("pre_generation_%s", pp.Id))
-	s.NoError(err)
-	s.NotNil(preGeneratedPP)
-
 	// verify we stopped saving versions
 	v, err = VersionFindOneId(v.Id)
 	s.NoError(err)
@@ -979,11 +974,6 @@ func (s *GenerateSuite) TestSaveWithAlreadyGeneratedTasksAndVariants() {
 	s.Len(pp.UpdatedByGenerators, 1) // Not modified again.
 
 	s.NoError(g.Save(s.ctx, s.env.Settings(), p, pp, v))
-
-	// Should not create a pre-generated cached parser project
-	preGeneratedPP, err := ParserProjectFindOneByID(ctx, s.env.Settings(), v.ProjectStorageMethod, fmt.Sprintf("pre_generation_%s", pp.Id))
-	s.NoError(err)
-	s.Nil(preGeneratedPP)
 
 	tasks := []task.Task{}
 	taskQuery := db.Query(bson.M{task.GeneratedByKey: "generator"}).Sort([]string{task.CreateTimeKey})
