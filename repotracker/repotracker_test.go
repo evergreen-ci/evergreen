@@ -176,12 +176,15 @@ func TestStoreRepositoryRevisions(t *testing.T) {
 
 		poller := NewMockRepoPoller(project, revisions)
 
+		pRef := &model.ProjectRef{
+			Id:        "testproject",
+			BatchTime: 10,
+		}
+		require.NoError(t, pRef.Insert())
+
 		repoTracker := RepoTracker{
 			testConfig,
-			&model.ProjectRef{
-				Id:        "testproject",
-				BatchTime: 10,
-			},
+			pRef,
 			poller,
 		}
 
@@ -270,7 +273,7 @@ func TestBatchTimeForTasks(t *testing.T) {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 	assert.NoError(t, db.ClearCollections(model.VersionCollection, distro.Collection, model.ParserProjectCollection,
-		build.Collection, task.Collection, model.ProjectConfigCollection), ShouldBeNil)
+		build.Collection, task.Collection, model.ProjectConfigCollection, model.ProjectRefCollection), ShouldBeNil)
 
 	simpleYml := `
 buildvariants:
@@ -334,6 +337,12 @@ tasks:
 	d.Id = "d2"
 	assert.NoError(t, d.Insert(ctx))
 
+	pRef := &model.ProjectRef{
+		Id:        "testproject",
+		BatchTime: 0,
+	}
+	require.NoError(t, pRef.Insert())
+
 	p := &model.Project{}
 	pp, err := model.LoadProjectInto(ctx, []byte(simpleYml), nil, "testproject", p)
 	assert.NoError(t, err)
@@ -344,10 +353,7 @@ tasks:
 	}
 	repoTracker := RepoTracker{
 		testConfig,
-		&model.ProjectRef{
-			Id:        "testproject",
-			BatchTime: 0,
-		},
+		pRef,
 		NewMockRepoPoller(pp, revisions),
 	}
 	assert.NoError(t, repoTracker.StoreRevisions(ctx, revisions))
