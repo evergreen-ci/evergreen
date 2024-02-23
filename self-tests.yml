@@ -349,6 +349,15 @@ functions:
         args: ["scripts/verify-swaggo-fmt.sh"]
         env:
           GOPATH: ${workdir}/gopath
+  
+  check-go-vulnerabilities:
+    - command: subprocess.exec
+      params:
+        working_dir: evergreen
+        binary: bash
+        args: ["scripts/check-go-vulnerabilities.sh"]
+        env:
+          GOPATH: ${workdir}/gopath
 
   verify-client-version-update:
     - command: subprocess.exec
@@ -612,6 +621,20 @@ tasks:
           include_expansions_in_env:
             - GOROOT
       - func: verify-swaggo-fmt
+  - name: check-go-vulnerabilities
+    tags: ["linter"]
+    commands:
+      - func: get-project-and-modules
+      - command: subprocess.exec
+        params:
+          binary: make
+          args: ["govul-install"]
+          working_dir: evergreen
+          env:
+            GOPATH: ${workdir}/gopath
+          include_expansions_in_env:
+            - GOROOT
+      - func: check-go-vulnerabilities
   - name: verify-agent-version-update
     tags: ["linter"]
     patch_only: true
