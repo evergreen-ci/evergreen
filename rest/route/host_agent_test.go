@@ -2,6 +2,7 @@ package route
 
 import (
 	"context"
+	"fmt"
 	"net/http"
 	"testing"
 	"time"
@@ -821,6 +822,269 @@ func TestTaskLifecycleEndpoints(t *testing.T) {
 
 			tCase(ctx, t, r, env)
 		})
+	}
+}
+
+func TestAssignNextAvailableTaskNew(t *testing.T) {
+	distro1Name := "distro1"
+	distro2Name := "distro2"
+	distro3Name := "distro3"
+	type data struct {
+		Distro1  *distro.Distro
+		Host1    *host.Host
+		Tg1Task1 *task.Task
+		Tg1Task2 *task.Task
+		Tq1      *model.TaskQueue
+
+		Distro2  *distro.Distro
+		Host2    *host.Host
+		Task1    *task.Task
+		Task2    *task.Task
+		Tg2Task1 *task.Task
+		Tg2Task2 *task.Task
+		Tq2      *model.TaskQueue
+
+		Distro3 *distro.Distro
+		Host3   *host.Host
+		Task3   *task.Task
+		Task4   *task.Task
+		Tq3     *model.TaskQueue
+	}
+	for _, settings := range []distro.DispatcherSettings{
+		{Version: evergreen.DispatcherVersionLegacy},
+		{Version: evergreen.DispatcherVersionRevisedWithDependencies},
+	} {
+		for tName, tCase := range map[string]func(ctx context.Context, t *testing.T, env *mock.Environment, gd func() data){
+			"a host should get the task at the top of a queue for a regular task": func(ctx context.Context, t *testing.T, env *mock.Environment, gd func() data) {
+				d := gd()
+				details := &apimodels.GetNextTaskDetails{}
+				task, shouldTeardown, err := assignNextAvailableTask(ctx, env, d.Tq3, model.NewTaskDispatchService(time.Minute), d.Host3, details)
+				require.NoError(t, err)
+				require.NotNil(t, task)
+				assert.False(t, shouldTeardown)
+				assert.Equal(t, d.Task3.Id, task.Id)
+
+				tq, err := model.LoadTaskQueue(d.Distro3.Id)
+				require.NoError(t, err)
+				assert.Equal(t, tq.Length(), 0)
+
+				h, err := host.FindOneId(ctx, d.Host3.Id)
+				require.NoError(t, err)
+				assert.Equal(t, h.RunningTask, d.Task3.Id)
+			},
+			"a host should get the task at the top of a queue for a task group": func(ctx context.Context, t *testing.T, env *mock.Environment, gd func() data) {
+				d := gd()
+				details := &apimodels.GetNextTaskDetails{}
+				task, shouldTeardown, err := assignNextAvailableTask(ctx, env, d.Tq1, model.NewTaskDispatchService(time.Minute), d.Host1, details)
+				fmt.Println("===")
+				fmt.Println(task)
+				fmt.Println(shouldTeardown)
+				fmt.Println(err)
+				fmt.Println("---")
+				fmt.Println(d.Tq1.Queue)
+				fmt.Println("===")
+				require.NoError(t, err)
+				require.NotNil(t, task)
+				assert.False(t, shouldTeardown)
+				assert.Equal(t, d.Tq1.Queue[0].Id, task.Id)
+
+				tq, err := model.LoadTaskQueue(d.Distro1.Id)
+				require.NoError(t, err)
+				assert.Equal(t, tq.Length(), 1)
+
+				h, err := host.FindOneId(ctx, d.Host1.Id)
+				require.NoError(t, err)
+				assert.Equal(t, h.RunningTask, d.Tq1.Queue[0].Id)
+			},
+			"a completed task group should return a nil task": func(ctx context.Context, t *testing.T, env *mock.Environment, gd func() data) {
+				d := gd()
+				details := &apimodels.GetNextTaskDetails{
+					TaskGroup: "completed-task-group",
+				}
+				task, shouldTeardown, err := assignNextAvailableTask(ctx, env, d.Tq1, model.NewTaskDispatchService(time.Minute), d.Host1, details)
+				require.NoError(t, err)
+				assert.True(t, shouldTeardown)
+				assert.Nil(t, task)
+
+				tq, err := model.LoadTaskQueue(d.Distro1.Id)
+				require.NoError(t, err)
+				assert.Equal(t, tq.Length(), 2)
+
+				h, err := host.FindOneId(ctx, d.Host1.Id)
+				require.NoError(t, err)
+				assert.Equal(t, h.RunningTask, "")
+			},
+		} {
+			t.Run(fmt.Sprintf("%s with %s dispatcher settings", tName, settings.Version), func(t *testing.T) {
+				ctx, cancel := context.WithCancel(context.Background())
+				defer cancel()
+
+				env := &mock.Environment{}
+				require.NoError(t, env.Configure(ctx))
+
+				generateData := func() data {
+					colls := []string{distro.Collection, host.Collection, task.Collection, model.TaskQueuesCollection, model.ProjectRefCollection}
+					require.NoError(t, db.ClearCollections(colls...))
+					require.NoError(t, modelUtil.AddTestIndexes(host.Collection, true, true, host.RunningTaskKey))
+
+					var data data
+
+					p := &model.ProjectRef{
+						Id:      "exists",
+						Enabled: true,
+					}
+					require.NoError(t, p.Insert())
+
+					data.Distro1 = &distro.Distro{
+						Id:                 distro1Name,
+						DispatcherSettings: settings,
+					}
+					require.NoError(t, data.Distro1.Insert(ctx))
+					data.Host1 = &host.Host{
+						Id:     "h1",
+						Distro: *data.Distro1,
+						Secret: hostSecret,
+						Status: evergreen.HostRunning,
+					}
+					require.NoError(t, data.Host1.Insert(ctx))
+					data.Distro2 = &distro.Distro{
+						Id:                 distro2Name,
+						DispatcherSettings: settings,
+					}
+					require.NoError(t, data.Distro2.Insert(ctx))
+					data.Host2 = &host.Host{
+						Id:     "h2",
+						Distro: *data.Distro2,
+						Secret: hostSecret,
+						Status: evergreen.HostRunning,
+					}
+					require.NoError(t, data.Host2.Insert(ctx))
+					data.Distro3 = &distro.Distro{
+						Id:                 distro3Name,
+						DispatcherSettings: settings,
+					}
+					require.NoError(t, data.Distro3.Insert(ctx))
+					data.Host3 = &host.Host{
+						Id:     "h3",
+						Distro: *data.Distro3,
+						Secret: hostSecret,
+						Status: evergreen.HostRunning,
+					}
+					require.NoError(t, data.Host3.Insert(ctx))
+
+					tgInfo1 := model.TaskGroupInfo{
+						Name:  "task-group-1",
+						Count: 2,
+					}
+					data.Tg1Task1 = &task.Task{
+						Id:        "tg1-task1",
+						Status:    evergreen.TaskUndispatched,
+						Activated: true,
+						Project:   "exists",
+						StartTime: utility.ZeroTime,
+						TaskGroup: tgInfo1.Name,
+					}
+					require.NoError(t, data.Tg1Task1.Insert())
+					data.Tg1Task2 = &task.Task{
+						Id:        "tg1-task2",
+						Status:    evergreen.TaskUndispatched,
+						Activated: true,
+						Project:   "exists",
+						StartTime: utility.ZeroTime,
+						TaskGroup: tgInfo1.Name,
+					}
+					require.NoError(t, data.Tg1Task2.Insert())
+					data.Tq1 = &model.TaskQueue{
+						Distro: distro1Name,
+						Queue: []model.TaskQueueItem{
+							{Id: data.Tg1Task1.Id},
+							{Id: data.Tg1Task2.Id},
+						},
+						DistroQueueInfo: model.DistroQueueInfo{
+							Length:         2,
+							TaskGroupInfos: []model.TaskGroupInfo{tgInfo1},
+						},
+					}
+					require.NoError(t, data.Tq1.Save())
+					data.Task1 = &task.Task{
+						Id:        "task1",
+						Status:    evergreen.TaskUndispatched,
+						Activated: true,
+						Project:   "exists",
+						StartTime: utility.ZeroTime,
+					}
+					require.NoError(t, data.Task1.Insert())
+					data.Task2 = &task.Task{
+						Id:        "task2",
+						Status:    evergreen.TaskUndispatched,
+						Activated: true,
+						Project:   "exists",
+						StartTime: utility.ZeroTime,
+					}
+					require.NoError(t, data.Task2.Insert())
+					tgInfo2 := model.TaskGroupInfo{
+						Name:  "task-group-1",
+						Count: 2,
+					}
+					data.Tg2Task1 = &task.Task{
+						Id:        "tg2-task1",
+						Status:    evergreen.TaskUndispatched,
+						Activated: true,
+						Project:   "exists",
+						StartTime: utility.ZeroTime,
+						TaskGroup: tgInfo2.Name,
+					}
+					require.NoError(t, data.Tg2Task1.Insert())
+					data.Tg2Task2 = &task.Task{
+						Id:        "tg2-task2",
+						Status:    evergreen.TaskUndispatched,
+						Activated: true,
+						Project:   "exists",
+						StartTime: utility.ZeroTime,
+						TaskGroup: tgInfo2.Name,
+					}
+					require.NoError(t, data.Tg2Task2.Insert())
+					data.Tq2 = &model.TaskQueue{
+						Distro: distro2Name,
+						Queue: []model.TaskQueueItem{
+							{Id: data.Tg2Task1.Id},
+							{Id: data.Task1.Id},
+							{Id: data.Task2.Id},
+							{Id: data.Tg2Task2.Id},
+						},
+						DistroQueueInfo: model.DistroQueueInfo{
+							Length:         4,
+							TaskGroupInfos: []model.TaskGroupInfo{tgInfo2},
+						},
+					}
+					require.NoError(t, data.Tq2.Save())
+					// Start
+					data.Task3 = &task.Task{
+						Id:        "task3",
+						Status:    evergreen.TaskUndispatched,
+						Activated: true,
+						Project:   "exists",
+						StartTime: utility.ZeroTime,
+					}
+					require.NoError(t, data.Task3.Insert())
+					data.Tq3 = &model.TaskQueue{
+						Distro: distro3Name,
+						Queue: []model.TaskQueueItem{
+							{Id: data.Task3.Id},
+						},
+						DistroQueueInfo: model.DistroQueueInfo{
+							Length:         1,
+							TaskGroupInfos: []model.TaskGroupInfo{},
+						},
+					}
+					require.NoError(t, data.Tq3.Save())
+
+					return data
+				}
+
+				tCase(ctx, t, env, generateData)
+			})
+		}
 	}
 }
 
