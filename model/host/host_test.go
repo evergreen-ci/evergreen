@@ -6179,32 +6179,32 @@ func TestUnsetPersistentDNSInfo(t *testing.T) {
 
 func TestSleepScheduleInfoValidate(t *testing.T) {
 	t.Run("FailsWithZeroOptions", func(t *testing.T) {
-		assert.Error(t, (SleepScheduleInfo{}).Validate())
+		assert.Error(t, (&SleepScheduleInfo{}).Validate())
 	})
 	t.Run("SucceedsWithPermanentExemption", func(t *testing.T) {
-		assert.NoError(t, (SleepScheduleInfo{PermanentlyExempt: true}).Validate())
+		assert.NoError(t, (&SleepScheduleInfo{PermanentlyExempt: true}).Validate())
 	})
 	t.Run("SucceedsWithOneWholeDayOff", func(t *testing.T) {
-		assert.NoError(t, (SleepScheduleInfo{
+		assert.NoError(t, (&SleepScheduleInfo{
 			WholeWeekdaysOff: []time.Weekday{time.Sunday},
 			TimeZone:         "America/New_York",
 		}).Validate())
 	})
 	t.Run("SucceedsWithMultipleWholeDayOff", func(t *testing.T) {
-		assert.NoError(t, (SleepScheduleInfo{
+		assert.NoError(t, (&SleepScheduleInfo{
 			WholeWeekdaysOff: []time.Weekday{time.Sunday, time.Wednesday, time.Friday, time.Saturday},
 			TimeZone:         "America/New_York",
 		}).Validate())
 	})
 	t.Run("SucceedsWithDailyScheduleMeetingMinimumHoursPerWeek", func(t *testing.T) {
-		assert.NoError(t, (SleepScheduleInfo{
+		assert.NoError(t, (&SleepScheduleInfo{
 			DailyStartTime: "04:00",
 			DailyStopTime:  "00:00",
 			TimeZone:       "America/New_York",
 		}).Validate())
 	})
 	t.Run("SucceedsWithCombinationOfDailyScheduleAndWholeDaysOff", func(t *testing.T) {
-		assert.NoError(t, (SleepScheduleInfo{
+		assert.NoError(t, (&SleepScheduleInfo{
 			DailyStartTime:   "05:00",
 			DailyStopTime:    "06:00",
 			WholeWeekdaysOff: []time.Weekday{time.Sunday},
@@ -6212,32 +6212,32 @@ func TestSleepScheduleInfoValidate(t *testing.T) {
 		}).Validate())
 	})
 	t.Run("SucceedsWithDailyOvernightScheduleMeetingMinimumHoursPerWeek", func(t *testing.T) {
-		assert.NoError(t, (SleepScheduleInfo{
+		assert.NoError(t, (&SleepScheduleInfo{
 			DailyStartTime: "05:00",
 			DailyStopTime:  "20:00",
 			TimeZone:       "America/New_York",
 		}).Validate())
 	})
 	t.Run("FailsWithNonexistentTimezone", func(t *testing.T) {
-		assert.Error(t, (SleepScheduleInfo{
+		assert.Error(t, (&SleepScheduleInfo{
 			WholeWeekdaysOff: []time.Weekday{time.Sunday},
 			TimeZone:         "foobar",
 		}).Validate())
 	})
 	t.Run("FailsWithoutTimeZone", func(t *testing.T) {
-		assert.Error(t, (SleepScheduleInfo{
+		assert.Error(t, (&SleepScheduleInfo{
 			WholeWeekdaysOff: []time.Weekday{time.Sunday},
 		}).Validate())
 	})
 	t.Run("FailsWithDailyScheduleUnderMinimumHoursPerWeek", func(t *testing.T) {
-		assert.Error(t, (SleepScheduleInfo{
+		assert.Error(t, (&SleepScheduleInfo{
 			DailyStartTime: "01:00",
 			DailyStopTime:  "00:00",
 			TimeZone:       "America/New_York",
 		}).Validate())
 	})
 	t.Run("FailsWithDailyScheduleUnderOneHourPerDay", func(t *testing.T) {
-		assert.Error(t, (SleepScheduleInfo{
+		assert.Error(t, (&SleepScheduleInfo{
 			DailyStartTime:   "00:10",
 			DailyStopTime:    "00:00",
 			WholeWeekdaysOff: []time.Weekday{time.Sunday},
@@ -6245,53 +6245,53 @@ func TestSleepScheduleInfoValidate(t *testing.T) {
 		}).Validate())
 	})
 	t.Run("SucceedsWithDailyOvernightScheduleUnderMinimumHoursPerWeek", func(t *testing.T) {
-		assert.Error(t, (SleepScheduleInfo{
+		assert.Error(t, (&SleepScheduleInfo{
 			DailyStartTime: "01:00",
 			DailyStopTime:  "23:00",
 			TimeZone:       "America/New_York",
 		}).Validate())
 	})
 	t.Run("FailsWithOnlyDailyStopTimeAndNoDailyStartTime", func(t *testing.T) {
-		assert.Error(t, (SleepScheduleInfo{
+		assert.Error(t, (&SleepScheduleInfo{
 			DailyStopTime: "00:00",
 			TimeZone:      "America/New_York",
 		}).Validate())
 	})
 	t.Run("FailsWithOnlyDailyStartTimeAndNoDailyStopTime", func(t *testing.T) {
-		assert.Error(t, (SleepScheduleInfo{
+		assert.Error(t, (&SleepScheduleInfo{
 			DailyStartTime: "00:00",
 			TimeZone:       "America/New_York",
 		}).Validate())
 	})
 	t.Run("FailsWithInvalidDailyStartTime", func(t *testing.T) {
-		assert.Error(t, (SleepScheduleInfo{
+		assert.Error(t, (&SleepScheduleInfo{
 			DailyStartTime: "05:00:00",
 			DailyStopTime:  "20:00",
 			TimeZone:       "America/New_York",
 		}).Validate())
 	})
 	t.Run("FailsWithInvalidDailyStopTime", func(t *testing.T) {
-		assert.Error(t, (SleepScheduleInfo{
+		assert.Error(t, (&SleepScheduleInfo{
 			DailyStartTime: "00:00",
 			DailyStopTime:  "20:00:00",
 			TimeZone:       "America/New_York",
 		}).Validate())
 	})
 	t.Run("FailsWithSameDailyStopAndStartTimes", func(t *testing.T) {
-		assert.Error(t, (SleepScheduleInfo{
+		assert.Error(t, (&SleepScheduleInfo{
 			DailyStartTime: "00:00",
 			DailyStopTime:  "00:00",
 			TimeZone:       "America/New_York",
 		}).Validate())
 	})
 	t.Run("FailsWithDuplicateWholeWeekdaysOff", func(t *testing.T) {
-		assert.Error(t, (SleepScheduleInfo{
+		assert.Error(t, (&SleepScheduleInfo{
 			WholeWeekdaysOff: []time.Weekday{time.Sunday, time.Sunday, time.Monday},
 			TimeZone:         "America/New_York",
 		}).Validate())
 	})
 	t.Run("FailsWithInvalidWeekdays", func(t *testing.T) {
-		assert.Error(t, (SleepScheduleInfo{
+		assert.Error(t, (&SleepScheduleInfo{
 			WholeWeekdaysOff: []time.Weekday{12345},
 			TimeZone:         "America/New_York",
 		}).Validate())
