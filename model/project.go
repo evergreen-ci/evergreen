@@ -431,7 +431,7 @@ type ParameterInfo struct {
 type Container struct {
 	Name       string              `yaml:"name" bson:"name"`
 	WorkingDir string              `yaml:"working_dir,omitempty" bson:"working_dir"`
-	Image      string              `yaml:"image" bson:"image"`
+	Image      string              `yaml:"image" bson:"image" plugin:"expand"`
 	Size       string              `yaml:"size,omitempty" bson:"size"`
 	Credential string              `yaml:"credential,omitempty" bson:"credential"`
 	Resources  *ContainerResources `yaml:"resources,omitempty" bson:"resources"`

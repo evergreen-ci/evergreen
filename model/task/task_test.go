@@ -413,7 +413,7 @@ func TestDependenciesMet(t *testing.T) {
 	})
 }
 
-func TestRefreshBlockedDependencies(t *testing.T) {
+func TestGetFinishedBlockingDependencies(t *testing.T) {
 	taskId := "t1"
 	taskDoc := &Task{
 		Id: taskId,
@@ -435,7 +435,7 @@ func TestRefreshBlockedDependencies(t *testing.T) {
 			taskDoc.DependsOn = []Dependency{}
 			require.NoError(t, taskDoc.Insert())
 
-			tasks, err := taskDoc.RefreshBlockedDependencies(map[string]Task{})
+			tasks, err := taskDoc.GetFinishedBlockingDependencies(map[string]Task{})
 			assert.NoError(t, err)
 			assert.Empty(t, tasks)
 		},
@@ -446,7 +446,20 @@ func TestRefreshBlockedDependencies(t *testing.T) {
 			}
 			require.NoError(t, taskDoc.Insert())
 
-			tasks, err := taskDoc.RefreshBlockedDependencies(map[string]Task{})
+			tasks, err := taskDoc.GetFinishedBlockingDependencies(map[string]Task{})
+			assert.NoError(t, err)
+			assert.Empty(t, tasks)
+		},
+		"SatisfiedWithCache": func(t *testing.T) {
+			taskDoc.DependsOn = []Dependency{
+				{TaskId: depTaskIds[3].TaskId, Status: evergreen.TaskSucceeded},
+				{TaskId: "cached-task", Status: evergreen.TaskSucceeded},
+			}
+			require.NoError(t, taskDoc.Insert())
+
+			tasks, err := taskDoc.GetFinishedBlockingDependencies(map[string]Task{
+				"cached-task": {Id: "cached-task", Status: evergreen.TaskSucceeded},
+			})
 			assert.NoError(t, err)
 			assert.Empty(t, tasks)
 		},
@@ -458,7 +471,21 @@ func TestRefreshBlockedDependencies(t *testing.T) {
 			}
 			require.NoError(t, taskDoc.Insert())
 
-			tasks, err := taskDoc.RefreshBlockedDependencies(map[string]Task{})
+			tasks, err := taskDoc.GetFinishedBlockingDependencies(map[string]Task{})
+			assert.NoError(t, err)
+			assert.Len(t, tasks, 1)
+		},
+		"UnsatisfiedAndFinishedWithCache": func(t *testing.T) {
+			taskDoc.DependsOn = []Dependency{
+				{TaskId: "cached-task", Status: evergreen.TaskSucceeded},
+				{TaskId: depTaskIds[3].TaskId, Status: evergreen.TaskSucceeded},
+				{TaskId: depTaskIds[4].TaskId, Status: evergreen.TaskSucceeded},
+			}
+			require.NoError(t, taskDoc.Insert())
+
+			tasks, err := taskDoc.GetFinishedBlockingDependencies(map[string]Task{
+				"cached-task": {Id: "cached-task", Status: evergreen.TaskFailed},
+			})
 			assert.NoError(t, err)
 			assert.Len(t, tasks, 1)
 		},
@@ -469,7 +496,7 @@ func TestRefreshBlockedDependencies(t *testing.T) {
 			}
 			require.NoError(t, taskDoc.Insert())
 
-			tasks, err := taskDoc.RefreshBlockedDependencies(map[string]Task{})
+			tasks, err := taskDoc.GetFinishedBlockingDependencies(map[string]Task{})
 			assert.NoError(t, err)
 			// already marked blocked
 			assert.Len(t, tasks, 0)
@@ -482,7 +509,7 @@ func TestRefreshBlockedDependencies(t *testing.T) {
 			}
 			require.NoError(t, taskDoc.Insert())
 
-			tasks, err := taskDoc.RefreshBlockedDependencies(map[string]Task{})
+			tasks, err := taskDoc.GetFinishedBlockingDependencies(map[string]Task{})
 			assert.NoError(t, err)
 			assert.Len(t, tasks, 1)
 		}} {
@@ -494,7 +521,7 @@ func TestRefreshBlockedDependencies(t *testing.T) {
 	}
 }
 
-func TestBlockedOnDeactivatedDependency(t *testing.T) {
+func TestGetDeactivatedBlockingDependencies(t *testing.T) {
 	taskId := "t1"
 	taskDoc := &Task{
 		Id: taskId,
@@ -516,7 +543,18 @@ func TestBlockedOnDeactivatedDependency(t *testing.T) {
 		taskDoc.DependsOn = []Dependency{
 			{TaskId: depTaskIds[0].TaskId},
 		}
-		blockingTasks, err := taskDoc.BlockedOnDeactivatedDependency(map[string]Task{})
+		blockingTasks, err := taskDoc.GetDeactivatedBlockingDependencies(map[string]Task{})
+		require.NoError(t, err)
+		assert.Empty(t, blockingTasks)
+	})
+	t.Run("NotBlockedWithCache", func(t *testing.T) {
+		taskDoc.DependsOn = []Dependency{
+			{TaskId: depTaskIds[0].TaskId},
+			{TaskId: "cached-task"},
+		}
+		blockingTasks, err := taskDoc.GetDeactivatedBlockingDependencies(map[string]Task{
+			"cached-task": {Id: "cached-task", Status: evergreen.TaskSucceeded},
+		})
 		require.NoError(t, err)
 		assert.Empty(t, blockingTasks)
 	})
@@ -524,7 +562,7 @@ func TestBlockedOnDeactivatedDependency(t *testing.T) {
 		taskDoc.DependsOn = []Dependency{
 			{TaskId: depTaskIds[1].TaskId},
 		}
-		blockingTasks, err := taskDoc.BlockedOnDeactivatedDependency(map[string]Task{})
+		blockingTasks, err := taskDoc.GetDeactivatedBlockingDependencies(map[string]Task{})
 		require.NoError(t, err)
 		assert.Empty(t, blockingTasks)
 	})
@@ -532,7 +570,18 @@ func TestBlockedOnDeactivatedDependency(t *testing.T) {
 		taskDoc.DependsOn = []Dependency{
 			{TaskId: depTaskIds[2].TaskId},
 		}
-		blockingTasks, err := taskDoc.BlockedOnDeactivatedDependency(map[string]Task{})
+		blockingTasks, err := taskDoc.GetDeactivatedBlockingDependencies(map[string]Task{})
+		require.NoError(t, err)
+		assert.Len(t, blockingTasks, 1)
+	})
+	t.Run("BlockedWithCache", func(t *testing.T) {
+		taskDoc.DependsOn = []Dependency{
+			{TaskId: depTaskIds[2].TaskId},
+			{TaskId: "cached-task"},
+		}
+		blockingTasks, err := taskDoc.GetDeactivatedBlockingDependencies(map[string]Task{
+			"cached-task": {Id: "cached-task", Status: evergreen.TaskSucceeded},
+		})
 		require.NoError(t, err)
 		assert.Len(t, blockingTasks, 1)
 	})
@@ -3445,6 +3494,24 @@ func TestAddParentDisplayTasks(t *testing.T) {
 	assert.Equal(t, dt2.Id, tasks[2].DisplayTask.Id)
 	assert.Equal(t, "et4", tasks[3].Id)
 	assert.Equal(t, dt2.Id, tasks[3].DisplayTask.Id)
+}
+
+func TestSetCheckRunId(t *testing.T) {
+	require.NoError(t, db.Clear(Collection))
+	t1 := &Task{
+		Id: "t1",
+	}
+
+	assert.NoError(t, t1.Insert())
+	assert.NoError(t, t1.SetCheckRunId(12345))
+
+	var err error
+	t1, err = FindOneId(t1.Id)
+	require.NotNil(t, t1)
+	assert.NoError(t, err)
+
+	assert.Equal(t, 12345, utility.FromIntPtr(t1.CheckRunId))
+
 }
 
 func TestAddDisplayTaskIdToExecTasks(t *testing.T) {

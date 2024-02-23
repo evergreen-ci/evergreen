@@ -1006,7 +1006,7 @@ func TranslateProject(pp *ParserProject) (*Project, error) {
 	buildVariants, errs := GetVariantsWithMatrices(ase, pp.Axes, pp.BuildVariants)
 	catcher.Extend(errs)
 	vse := NewVariantSelectorEvaluator(buildVariants, ase)
-	proj.Tasks, proj.TaskGroups, errs = evaluateTaskUnits(tse, tgse, vse, pp.Tasks, pp.TaskGroups, pp.Containers)
+	proj.Tasks, proj.TaskGroups, errs = evaluateTaskUnits(tse, tgse, vse, pp.Tasks, pp.TaskGroups)
 	catcher.Extend(errs)
 
 	proj.BuildVariants, errs = evaluateBuildVariants(tse, tgse, vse, buildVariants, pp.Tasks, proj.TaskGroups)
@@ -1070,7 +1070,7 @@ func sieveMatrixVariants(bvs []parserBV) (regular []parserBV, matrices []matrix)
 // evaluateTaskUnits translates intermediate tasks into true ProjectTask types,
 // evaluating any selectors in the DependsOn field.
 func evaluateTaskUnits(tse *taskSelectorEvaluator, tgse *tagSelectorEvaluator, vse *variantSelectorEvaluator,
-	pts []parserTask, tgs []parserTaskGroup, containers []Container) ([]ProjectTask, []TaskGroup, []error) {
+	pts []parserTask, tgs []parserTaskGroup) ([]ProjectTask, []TaskGroup, []error) {
 	tasks := []ProjectTask{}
 	groups := []TaskGroup{}
 	var evalErrs, errs []error

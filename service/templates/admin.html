@@ -2232,6 +2232,13 @@ Admin Settings
 											placeholder="Path where authorized SSH keys are stored on static hosts" />
 									</md-input-container>
 								</md-card-content>
+								<md-card-content>
+									<md-input-container class="control">
+										<label>Kanopy SSH Key</label>
+										<input type=text ng-model="Settings.kanopy_ssh_key_path"
+											placeholder="Path to the SSH key file when running in Kanopy" />
+									</md-input-container>
+								</md-card-content>
 
 							</md-card>
 
@@ -2438,6 +2445,10 @@ Admin Settings
 									<md-input-container class="control" style="width:45%;">
 										<label>Collector Internal Endpoint</label>
 										<input type="string" ng-model="Settings.tracer.collector_internal_endpoint">
+									</md-input-container>
+									<md-input-container class="control" style="width:45%;">
+										<label>Collector API Key</label>
+										<input type="string" ng-model="Settings.tracer.collector_api_key">
 									</md-input-container>
 									<md-input-container class="control" style="width:45%;">
 										<md-checkbox ng-model="Settings.tracer.enabled">

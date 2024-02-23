@@ -76,6 +76,7 @@ var (
 	OldTaskIdKey                   = bsonutil.MustHaveTag(Task{}, "OldTaskId")
 	ArchivedKey                    = bsonutil.MustHaveTag(Task{}, "Archived")
 	CanResetKey                    = bsonutil.MustHaveTag(Task{}, "CanReset")
+	CheckRunIdKey                  = bsonutil.MustHaveTag(Task{}, "CheckRunId")
 	RevisionOrderNumberKey         = bsonutil.MustHaveTag(Task{}, "RevisionOrderNumber")
 	RequesterKey                   = bsonutil.MustHaveTag(Task{}, "Requester")
 	StatusKey                      = bsonutil.MustHaveTag(Task{}, "Status")
@@ -533,6 +534,30 @@ func FailedTasksByVersionAndBV(version string, variant string) bson.M {
 		VersionKey:      version,
 		BuildVariantKey: variant,
 		StatusKey:       bson.M{"$in": evergreen.TaskFailureStatuses},
+	}
+}
+
+// PotentiallyBlockedTasksByIds finds tasks with the given task ids
+// that have dependencies (these could be completed or not), do not have
+// override dependencies set to true, and the dependencies met time has not
+// been set.
+func PotentiallyBlockedTasksByIds(taskIds []string) bson.M {
+	return bson.M{
+		IdKey: bson.M{"$in": taskIds},
+		"$and": []bson.M{
+			{DependsOnKey: bson.M{
+				"$exists": true,
+				"$not":    bson.M{"$size": 0},
+			}},
+			{"$or": []bson.M{
+				{OverrideDependenciesKey: bson.M{"$exists": false}},
+				{OverrideDependenciesKey: false},
+			}},
+			{"$or": []bson.M{
+				{DependenciesMetTimeKey: bson.M{"$exists": false}},
+				{DependenciesMetTimeKey: bson.M{"$eq": utility.ZeroTime}},
+			}},
+		},
 	}
 }
 
@@ -2601,6 +2626,7 @@ func getTasksByVersionPipeline(versionID string, opts GetTasksByVersionOptions) 
 		{"$project": projectOut},
 		{"$match": match},
 	}
+
 	if !opts.IncludeExecutionTasks {
 		pipeline = append(pipeline, bson.M{
 			"$match": bson.M{
@@ -2640,18 +2666,12 @@ func getTasksByVersionPipeline(versionID string, opts GetTasksByVersionOptions) 
 			pipeline = append(pipeline, AddAnnotations...)
 		}
 	}
+
+	// Add a field for the display status of each task
 	pipeline = append(pipeline,
-		// Add a field for the display status of each task
 		addDisplayStatus,
 	)
-	// Filter on the computed display status before continuing to add additional fields.
-	if len(opts.Statuses) > 0 {
-		pipeline = append(pipeline, bson.M{
-			"$match": bson.M{
-				DisplayStatusKey: bson.M{"$in": opts.Statuses},
-			},
-		})
-	}
+
 	if shouldPopulateBaseTask {
 		// First group by variant and task name to group all tasks and their base tasks together
 		pipeline = append(pipeline, bson.M{
@@ -2689,7 +2709,7 @@ func getTasksByVersionPipeline(versionID string, opts GetTasksByVersionOptions) 
 			},
 		})
 
-		// Project out the the tasks array since they are no longer needed
+		// Project out the the tasks array since it is no longer needed
 		pipeline = append(pipeline, bson.M{
 			"$project": bson.M{
 				"tasks": 0,
@@ -2744,6 +2764,14 @@ func getTasksByVersionPipeline(versionID string, opts GetTasksByVersionOptions) 
 		pipeline = append(pipeline, bson.M{
 			"$sort": bson.M{
 				"_id": 1,
+			},
+		})
+	}
+
+	if len(opts.Statuses) > 0 {
+		pipeline = append(pipeline, bson.M{
+			"$match": bson.M{
+				DisplayStatusKey: bson.M{"$in": opts.Statuses},
 			},
 		})
 	}
