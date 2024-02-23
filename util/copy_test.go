@@ -33,6 +33,14 @@ func TestDeepCopy(t *testing.T) {
 		require.Equal(myDinner.Drink.Sugars, yourDinner.Drink.Sugars)
 		require.Equal(myDinner.Dessert, yourDinner.Dessert)
 	})
+	t.Run("DeepCopyWithAStringSlice", func(t *testing.T) {
+		mySlice := []string{"foo", "bar"}
+		var yourSlice []string
+		err := DeepCopy(mySlice, &yourSlice)
+		require.NoError(err)
+		require.Equal(mySlice, yourSlice)
+	})
+
 	t.Run("DeepCopyWithAStringMap", func(t *testing.T) {
 		myMap := map[string]string{
 			"foo": "bar",
