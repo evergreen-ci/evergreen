@@ -2,7 +2,6 @@ package model
 
 import (
 	"github.com/mongodb/grip"
-	"github.com/mongodb/grip/message"
 	"github.com/pkg/errors"
 )
 
@@ -81,18 +80,8 @@ func (di *dependencyIncluder) handle(pair TVPair, activationInfo *specificActiva
 	if tg := di.Project.FindTaskGroup(pair.TaskName); tg != nil {
 		catcher := grip.NewBasicCatcher()
 		for _, t := range tg.Tasks {
-			ok, err := di.handle(TVPair{TaskName: t, Variant: pair.Variant}, activationInfo, generatedVariants, false)
+			_, err := di.handle(TVPair{TaskName: t, Variant: pair.Variant}, activationInfo, generatedVariants, false)
 			catcher.Wrapf(err, "task group '%s' in variant '%s' contains unschedulable task '%s'", pair.TaskName, pair.Variant, t)
-			// TODO (DEVPROD-4739): delete this debug log after confirming that
-			// this change doesn't cause other patch scheduling issues.
-			grip.DebugWhen(!ok && err == nil, message.Fields{
-				"message":              "not including a task in a task group that's disabled",
-				"ticket":               "DEVPROD-4739",
-				"task_group_task_name": t,
-				"build_variant":        pair.Variant,
-				"task_group":           tg.Name,
-				"project_identifier":   di.Project.Identifier,
-			})
 		}
 
 		if catcher.HasErrors() {

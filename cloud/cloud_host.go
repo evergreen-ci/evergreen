@@ -13,7 +13,6 @@ import (
 // underlying provider's implementation.
 type CloudHost struct {
 	Host     *host.Host
-	KeyPath  string
 	CloudMgr Manager
 }
 
@@ -28,12 +27,7 @@ func GetCloudHost(ctx context.Context, host *host.Host, env evergreen.Environmen
 	if err != nil {
 		return nil, err
 	}
-
-	keyPath := ""
-	if host.Distro.SSHKey != "" {
-		keyPath = env.Settings().Keys[host.Distro.SSHKey]
-	}
-	return &CloudHost{host, keyPath, mgr}, nil
+	return &CloudHost{Host: host, CloudMgr: mgr}, nil
 }
 
 func (cloudHost *CloudHost) ModifyHost(ctx context.Context, opts host.HostModifyOptions) error {

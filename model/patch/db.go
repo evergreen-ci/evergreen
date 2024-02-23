@@ -7,6 +7,7 @@ import (
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/db"
 	mgobson "github.com/evergreen-ci/evergreen/db/mgo/bson"
+	"github.com/evergreen-ci/evergreen/model/user"
 	"github.com/evergreen-ci/evergreen/thirdparty"
 	"github.com/evergreen-ci/utility"
 	"github.com/mongodb/anser/bsonutil"
@@ -249,6 +250,10 @@ func ByUserPaginated(user string, ts time.Time, limit int) db.Q {
 	}).Sort([]string{"-" + CreateTimeKey}).Limit(limit)
 }
 
+func byUser(user string) bson.M {
+	return bson.M{AuthorKey: user}
+}
+
 // MostRecentPatchByUserAndProject returns the latest patch made by the user for the project.
 func MostRecentPatchByUserAndProject(user, project string) db.Q {
 	return db.Query(bson.M{
@@ -363,6 +368,37 @@ func ByGithubPRAndCreatedBefore(t time.Time, owner, repo string, prNumber int) d
 		bsonutil.GetDottedKeyName(githubPatchDataKey, thirdparty.GithubPatchBaseRepoKey):  repo,
 		bsonutil.GetDottedKeyName(githubPatchDataKey, thirdparty.GithubPatchPRNumberKey):  prNumber,
 	})
+}
+
+// ConsolidatePatchesForUser updates all patches authored by oldAuthor to be authored by newAuthor,
+// and if any patches have been authored by the new author already, update the patch numbers to come after the new author.
+func ConsolidatePatchesForUser(oldAuthor string, newUsr *user.DBUser) error {
+
+	// It's not likely that the user would've already created patches for the new user, but if there are any, make
+	// sure that they don't have overlapping patch numbers.
+	patchesForNewAuthor, err := Find(db.Query(byUser(newUsr.Id)))
+	if err != nil {
+		return errors.Wrapf(err, "finding existing patches for '%s'", newUsr.Id)
+	}
+	if len(patchesForNewAuthor) > 0 {
+		for _, p := range patchesForNewAuthor {
+			patchNum, err := newUsr.IncPatchNumber()
+			if err != nil {
+				return errors.Wrap(err, "incrementing patch number to resolve existing patches")
+			}
+			update := bson.M{"$set": bson.M{NumberKey: patchNum}}
+			if err := UpdateOne(bson.M{IdKey: p.Id}, update); err != nil {
+				return errors.Wrap(err, "updating patch number")
+			}
+		}
+	}
+
+	// Move all patches from the old author over to the new one.
+	update := bson.M{
+		"$set": bson.M{AuthorKey: newUsr.Id},
+	}
+	_, err = UpdateAll(byUser(oldAuthor), update)
+	return err
 }
 
 // FindLatestGithubPRPatch returns the latest PR patch for the given PR, if there is one.

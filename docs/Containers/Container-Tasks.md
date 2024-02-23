@@ -191,7 +191,7 @@ containers:
       
   - name: example-small-container
     working_dir: /
-    image: "557821124784.dkr.ecr.us-east-1.amazonaws.com/evergreen/other_repo:&lt;hash&gt;"
+    image: ${image_project_variable}
     size: small-container
     system:
       cpu_architecture: x86_64
@@ -212,7 +212,7 @@ Fields:
     build them into a container registry. Defining arbitrary
     Dockerfiles will be unsupported to start as we need to vet them as
     we scope out the best image-building primitives that are both
-    sustainable and secure.
+    sustainable and secure. (**_note_**: this field can be expanded by project variables)
 
 -   **resources**: the resources allocated to the container: cpu and
     memory_mb set the CPU units and the memory (in MB), respectively,

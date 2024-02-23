@@ -176,12 +176,15 @@ func TestStoreRepositoryRevisions(t *testing.T) {
 
 		poller := NewMockRepoPoller(project, revisions)
 
+		pRef := &model.ProjectRef{
+			Id:        "testproject",
+			BatchTime: 10,
+		}
+		require.NoError(t, pRef.Insert())
+
 		repoTracker := RepoTracker{
 			testConfig,
-			&model.ProjectRef{
-				Id:        "testproject",
-				BatchTime: 10,
-			},
+			pRef,
 			poller,
 		}
 
@@ -270,7 +273,7 @@ func TestBatchTimeForTasks(t *testing.T) {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 	assert.NoError(t, db.ClearCollections(model.VersionCollection, distro.Collection, model.ParserProjectCollection,
-		build.Collection, task.Collection, model.ProjectConfigCollection), ShouldBeNil)
+		build.Collection, task.Collection, model.ProjectConfigCollection, model.ProjectRefCollection), ShouldBeNil)
 
 	simpleYml := `
 buildvariants:
@@ -334,6 +337,12 @@ tasks:
 	d.Id = "d2"
 	assert.NoError(t, d.Insert(ctx))
 
+	pRef := &model.ProjectRef{
+		Id:        "testproject",
+		BatchTime: 0,
+	}
+	require.NoError(t, pRef.Insert())
+
 	p := &model.Project{}
 	pp, err := model.LoadProjectInto(ctx, []byte(simpleYml), nil, "testproject", p)
 	assert.NoError(t, err)
@@ -344,10 +353,7 @@ tasks:
 	}
 	repoTracker := RepoTracker{
 		testConfig,
-		&model.ProjectRef{
-			Id:        "testproject",
-			BatchTime: 0,
-		},
+		pRef,
 		NewMockRepoPoller(pp, revisions),
 	}
 	assert.NoError(t, repoTracker.StoreRevisions(ctx, revisions))
@@ -418,7 +424,7 @@ func TestBatchTimes(t *testing.T) {
 
 	Convey("When deciding whether or not to activate variants for the most recently stored version", t, func() {
 		// We create a version with an activation time of now so that all the bvs have a last activation time of now.
-		So(db.ClearCollections(model.VersionCollection, distro.Collection, model.ParserProjectCollection), ShouldBeNil)
+		So(db.ClearCollections(model.ProjectRefCollection, model.VersionCollection, distro.Collection, model.ParserProjectCollection), ShouldBeNil)
 		previouslyActivatedVersion := model.Version{
 			Id:         "previously activated",
 			Identifier: "testproject",
@@ -449,6 +455,12 @@ func TestBatchTimes(t *testing.T) {
 		So(d.Insert(ctx), ShouldBeNil)
 		d.Id = "test-distro-two"
 		So(d.Insert(ctx), ShouldBeNil)
+
+		pRef := &model.ProjectRef{
+			Id:        "testproject",
+			BatchTime: 1,
+		}
+		So(pRef.Insert(), ShouldBeNil)
 
 		Convey("If the project's batch time has not elapsed, and no buildvariants "+
 			"have overridden their batch times, no variants should be activated", func() {
@@ -609,6 +621,11 @@ func TestBatchTimes(t *testing.T) {
 		So(d.Insert(ctx), ShouldBeNil)
 		d.Id = "test-distro-two"
 		So(d.Insert(ctx), ShouldBeNil)
+		pRef := &model.ProjectRef{
+			Id:        "testproject",
+			BatchTime: 1,
+		}
+		So(pRef.Insert(), ShouldBeNil)
 		zero := 0
 		project := createTestProject(&zero, nil)
 		revisions := []model.Revision{
@@ -796,7 +813,7 @@ func (s *CreateVersionFromConfigSuite) SetupTest() {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 
-	s.NoError(db.ClearCollections(model.VersionCollection, model.ParserProjectCollection, build.Collection, task.Collection, distro.Collection, model.ProjectAliasCollection))
+	s.NoError(db.ClearCollections(model.ProjectRefCollection, model.VersionCollection, model.ParserProjectCollection, build.Collection, task.Collection, distro.Collection, model.ProjectAliasCollection))
 	s.ref = &model.ProjectRef{
 		Repo:       "evergreen",
 		Owner:      "evergreen-ci",
@@ -805,6 +822,7 @@ func (s *CreateVersionFromConfigSuite) SetupTest() {
 		RemotePath: "self-tests.yml",
 		Enabled:    true,
 	}
+	s.NoError(s.ref.Insert())
 	s.rev = &model.Revision{
 		Author:          "me",
 		AuthorGithubUID: 123,

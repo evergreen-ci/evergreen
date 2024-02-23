@@ -703,7 +703,7 @@ func TestHostCreateSecret(t *testing.T) {
 
 		Convey("creating a secret", func() {
 			So(host.Secret, ShouldEqual, "")
-			So(host.CreateSecret(ctx), ShouldBeNil)
+			So(host.CreateSecret(ctx, false), ShouldBeNil)
 
 			Convey("should update the host in memory", func() {
 				So(host.Secret, ShouldNotEqual, "")
