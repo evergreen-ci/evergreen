@@ -16,18 +16,18 @@ top-level of the task's working directory: `${workdir}/build`.
 
 ## Test Logs
 
-Write test logs to the reserved directory `${workdir}/build/test_logs` and the
+Write test logs to the reserved directory `${workdir}/build/TestLogs` and the
 Evergreen agent will automatically ingest and ship anything written to this
 directory at the end of the task. The directory structure is maintained and log
-files are identified via their path relative to `${workdir}/build/test_logs` in
+files are identified via their path relative to `${workdir}/build/TestLogs` in
 the underlying persistence layer.
 
 Logs written to this directory can be merged with other logs from the same task
-run via the [test logs API](../API/REST-V2-Usage.mdx/#tag/build/paths/~1tasks~1%7Btask_id%7D~1build/TestLogs/get").
+run via the [test logs API](../API/REST-V2-Usage.mdx/#tag/TestLogs/paths/~1tasks~1%7Btask_id%7D~1build~1TestLogs~1%7Bpath%7D/get").
 Merging is ordered by log line timestamp.
 
-Use the [attach.results command](Project-Commands.md/#attach.results) to link log
-paths to test results.
+Use the [attach.results command](Project-Commands.md/#attach.results) to link
+log paths to test results.
 
 ### Test Log Specification File
 
