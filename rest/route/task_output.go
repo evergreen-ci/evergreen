@@ -160,7 +160,7 @@ func (h *getTaskOutputLogsBaseHandler) createResponse(it log.LogIterator) gimlet
 	return resp
 }
 
-// GET /tasks/{task_id}/build/task_logs
+// GET /tasks/{task_id}/build/TaskLogs
 type getTaskLogsHandler struct {
 	logType taskoutput.TaskLogType
 
@@ -173,6 +173,19 @@ func makeGetTaskLogs(url string) *getTaskLogsHandler {
 	}
 }
 
+//	@Summary		Get task logs for a task.
+//	@Description	Fetch task logs by task ID.
+//	@Tags			tasks
+//	@Router			/tasks/{task_id}/build/TaskLogs [get]
+//	@Security		Api-User || Api-Key
+//	@Param			task_id		path		string	true	"Task ID."
+//	@Param			execution	query		int		false	"The 0-based number corresponding to the execution of the task ID. Defaults to the latest execution."
+//	@Param			type		query		string	false	"Task log type. Must be one of: `agent_log`, `system_log`, `task_log`, `all_logs`. Defaults to `all_logs`."
+//	@Param			start		query		string	false	"Start of targeted time interval (inclusive) in RFC3339 format. Defaults to the first timestamp of the requested logs."
+//	@Param			end			query		string	false	"End of targeted time interval (inclusive) in RFC3339 format. Defaults to the last timestamp of the requested logs."
+//	@Param			limit		query		int		false	"If set greater than 0, limits the number of log lines returned."
+//	@Param			tail		query		int		false	"If set greater than 0, returns the last N log lines."
+//	@Success		200			{string}	string
 func (h *getTaskLogsHandler) Factory() gimlet.RouteHandler {
 	return &getTaskLogsHandler{
 		getTaskOutputLogsBaseHandler: getTaskOutputLogsBaseHandler{url: h.url},
@@ -208,7 +221,7 @@ func (h *getTaskLogsHandler) Run(ctx context.Context) gimlet.Responder {
 	return h.createResponse(it)
 }
 
-// GET /tasks/{task_id}/build/test_logs/{path}
+// GET /tasks/{task_id}/build/TestLogs/{path}
 type getTestLogsHandler struct {
 	logPaths []string
 
@@ -221,6 +234,21 @@ func makeGetTestLogs(url string) *getTestLogsHandler {
 	}
 }
 
+//	@Summary		Get test logs for a task.
+//	@Description	Fetch test logs by task ID.
+//	@Tags			tasks
+//	@Router			/tasks/{task_id}/build/TestLogs/{path} [get]
+//	@Security		Api-User || Api-Key
+//	@Param			task_id			path		string	true	"Task ID."
+//	@Param			path			path		string	true	"Test log path relative to the task's test logs directory."
+//	@Param			execution		query		int		false	"The 0-based number corresponding to the execution of the task ID. Defaults to the latest execution."
+//	@Param			logs_to_merge	query		string	false	"Test log path, relative to the task's test log directory, to merge with test log specified in the URL path. Can be a prefix. Merging is stable and timestamp-based. Repeat the parameter key if more than one value."
+//	@Param			start			query		string	false	"Start of targeted time interval (inclusive) in RFC3339 format. Defaults to the first timestamp of the test log specified in the URL path."
+//	@Param			end				query		string	false	"End of targeted time interval (inclusive) in RFC3339 format. Defaults to the last timestamp of the test log specified in the URL path."
+//	@Param			limit			query		int		false	"If set greater than 0, limits the number of log lines returned."
+//	@Param			tail			query		int		false	"If set greater than 0, returns the last N log lines."
+//	@Param			paginate		query		bool	false	"If set to true, paginates the response."
+//	@Success		200				{string}	string
 func (h *getTestLogsHandler) Factory() gimlet.RouteHandler {
 	return &getTestLogsHandler{
 		getTaskOutputLogsBaseHandler: getTaskOutputLogsBaseHandler{url: h.url},

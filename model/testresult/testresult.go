@@ -138,7 +138,7 @@ func (tr TestResult) GetLogURL(env evergreen.Environment, viewer evergreen.LogVi
 			}
 		}
 
-		return fmt.Sprintf("%s/rest/v2/tasks/%s/build/test_logs/%s?execution=%d&print_time=true%s",
+		return fmt.Sprintf("%s/rest/v2/tasks/%s/build/TestLogs/%s?execution=%d&print_time=true%s",
 			root,
 			url.PathEscape(tr.TaskID),
 			url.QueryEscape(tr.getLogTestName()),
