@@ -28,14 +28,12 @@ func (t nativeTestResults) convertToService() []testresult.TestResult {
 }
 
 type nativeTestResult struct {
-	TaskID    string                  `json:"task_id"`
-	Execution int                     `json:"execution"`
-	TestFile  string                  `json:"test_file"`
-	GroupID   string                  `json:"group_id"`
-	Status    string                  `json:"status"`
-	LogInfo   *testresult.TestLogInfo `json:"log_info"`
-	Start     float64                 `json:"start"`
-	End       float64                 `json:"end"`
+	TestFile string                  `json:"test_file"`
+	GroupID  string                  `json:"group_id"`
+	Status   string                  `json:"status"`
+	LogInfo  *testresult.TestLogInfo `json:"log_info"`
+	Start    float64                 `json:"start"`
+	End      float64                 `json:"end"`
 
 	// Legacy test log fields.
 	URL     string `json:"url"`
@@ -45,8 +43,6 @@ type nativeTestResult struct {
 
 func (t nativeTestResult) convertToService() testresult.TestResult {
 	return testresult.TestResult{
-		TaskID:        t.TaskID,
-		Execution:     t.Execution,
 		TestName:      t.TestFile,
 		GroupID:       t.GroupID,
 		Status:        t.Status,
