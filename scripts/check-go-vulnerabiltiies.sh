@@ -6,13 +6,13 @@
 govul="govulncheck"
 
 # Test if govulncheck is installed as a binary or a go module.
-if command -v govul &> /dev/null; then
-    # If the user has installed swaggo as a binary, use the binary.
-    swaggo=$(command -v govul)
+if command -v govulncheck &> /dev/null; then
+    # If the user has installed govulncheck as a binary, use the binary.
+    govul=$(command -v govulncheck)
 elif [ -n "$GOPATH" ] && [ -f "$GOPATH/bin/govulncheck" ]; then
-    swaggo="$GOPATH/bin/govulncheck"
+    govul="$GOPATH/bin/govulncheck"
 elif [ -n "$GOBIN" ] && [ -f "$GOBIN/govulncheck" ]; then
-    swaggo="$GOBIN/swag"
+    govul="$GOBIN/govulncheck"
 fi
 
 # If govulncheck is not installed, exit with an error.
