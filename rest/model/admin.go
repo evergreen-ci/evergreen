@@ -74,6 +74,7 @@ type APIAdminSettings struct {
 	Jira                *APIJiraConfig                    `json:"jira,omitempty"`
 	JIRANotifications   *APIJIRANotificationsConfig       `json:"jira_notifications,omitempty"`
 	Keys                map[string]string                 `json:"keys,omitempty"`
+	KanopySSHKeyPath    *string                           `json:"kanopy_ssh_key_path,omitempty"`
 	LDAPRoleMap         *APILDAPRoleMap                   `json:"ldap_role_map,omitempty"`
 	LoggerConfig        *APILoggerConfig                  `json:"logger_config,omitempty"`
 	LogPath             *string                           `json:"log_path,omitempty"`
@@ -142,6 +143,7 @@ func (as *APIAdminSettings) BuildFromService(h interface{}) error {
 		as.Credentials = v.Credentials
 		as.Expansions = v.Expansions
 		as.Keys = v.Keys
+		as.KanopySSHKeyPath = utility.ToStringPtr(v.KanopySSHKeyPath)
 		as.GithubOrgs = v.GithubOrgs
 		as.DisabledGQLQueries = v.DisabledGQLQueries
 		as.SSHKeyDirectory = utility.ToStringPtr(v.SSHKeyDirectory)
@@ -267,6 +269,7 @@ func (as *APIAdminSettings) ToService() (interface{}, error) {
 	for k, v := range as.Keys {
 		settings.Keys[k] = v
 	}
+	settings.KanopySSHKeyPath = utility.FromStringPtr(as.KanopySSHKeyPath)
 	for k, v := range as.Plugins {
 		settings.Plugins[k] = map[string]interface{}{}
 		for k2, v2 := range v {
@@ -2744,6 +2747,7 @@ type APITracerSettings struct {
 	Enabled                   *bool   `json:"enabled"`
 	CollectorEndpoint         *string `json:"collector_endpoint"`
 	CollectorInternalEndpoint *string `json:"collector_internal_endpoint"`
+	CollectorAPIKey           *string `json:"collector_api_key"`
 }
 
 func (c *APITracerSettings) BuildFromService(h interface{}) error {
@@ -2752,6 +2756,7 @@ func (c *APITracerSettings) BuildFromService(h interface{}) error {
 		c.Enabled = &v.Enabled
 		c.CollectorEndpoint = &v.CollectorEndpoint
 		c.CollectorInternalEndpoint = &v.CollectorInternalEndpoint
+		c.CollectorAPIKey = &v.CollectorAPIKey
 	default:
 		return errors.Errorf("programmatic error: expected tracer config but got type %T", h)
 	}
@@ -2763,6 +2768,7 @@ func (c *APITracerSettings) ToService() (interface{}, error) {
 		Enabled:                   utility.FromBoolPtr(c.Enabled),
 		CollectorEndpoint:         utility.FromStringPtr(c.CollectorEndpoint),
 		CollectorInternalEndpoint: utility.FromStringPtr(c.CollectorInternalEndpoint),
+		CollectorAPIKey:           utility.FromStringPtr(c.CollectorAPIKey),
 	}
 
 	return config, nil

@@ -354,7 +354,7 @@ func (c *dockerClientImpl) CreateContainer(ctx context.Context, parentHost, cont
 	} else if containerHost.DockerOptions.Command == "" && !containerHost.SpawnOptions.SpawnedByTask {
 		// Generate the host secret for container if none exists.
 		if containerHost.Secret == "" {
-			if err = containerHost.CreateSecret(ctx); err != nil {
+			if err = containerHost.CreateSecret(ctx, false); err != nil {
 				return errors.Wrapf(err, "creating secret for %s", containerHost.Id)
 			}
 		}

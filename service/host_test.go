@@ -60,6 +60,7 @@ func TestModifyHostStatusWithUpdateStatus(t *testing.T) {
 					Communication: distro.BootstrapMethodSSH,
 				},
 			},
+			NumAgentCleanupFailures: 10,
 		}
 		require.NoError(h.Insert(ctx))
 
@@ -68,6 +69,11 @@ func TestModifyHostStatusWithUpdateStatus(t *testing.T) {
 		assert.Equal(http.StatusOK, httpStatus)
 		assert.Equal(h.Status, evergreen.HostProvisioning)
 		assert.Equal(host.ReprovisionToNew, h.NeedsReprovision)
+
+		dbHost, err := host.FindOneId(ctx, h.Id)
+		require.NoError(err)
+		require.NotNil(t, dbHost)
+		assert.Equal(0, dbHost.NumAgentCleanupFailures)
 	})
 	t.Run("FailsToDecommissionStaticHosts", func(t *testing.T) {
 		user := user.DBUser{Id: "user"}

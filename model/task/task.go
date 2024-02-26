@@ -179,6 +179,10 @@ type Task struct {
 	// CheckRunPath is a local file path to an output json file for the checkrun.
 	CheckRunPath string `bson:"check_run_path" json:"check_run_path"`
 
+	// CheckRunId is the id for the checkrun that was created in github.
+	// This is used to update the checkrun for future executions of the task.
+	CheckRunId *int `bson:"check_run_id,omitempty" json:"check_run_id,omitempty"`
+
 	// CanReset indicates that the task has successfully archived and is in a valid state to be reset.
 	CanReset bool `bson:"can_reset,omitempty" json:"can_reset,omitempty"`
 
@@ -3446,6 +3450,24 @@ func (t *Task) SetDisplayTaskID(id string) error {
 		bson.M{"$set": bson.M{
 			DisplayTaskIdKey: id,
 		}}))
+}
+
+// SetCheckRunId sets the checkRunId for the task
+func (t *Task) SetCheckRunId(checkRunId int) error {
+	if err := UpdateOne(
+		bson.M{
+			IdKey: t.Id,
+		},
+		bson.M{
+			"$set": bson.M{
+				CheckRunIdKey: checkRunId,
+			},
+		},
+	); err != nil {
+		return err
+	}
+	t.CheckRunId = utility.ToIntPtr(checkRunId)
+	return nil
 }
 
 func (t *Task) SetNumDependents() error {

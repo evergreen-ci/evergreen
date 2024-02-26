@@ -2865,7 +2865,22 @@ func GetMessageForPatch(patchID string) (string, error) {
 // on the project admin page.
 func ValidateContainers(ecsConf evergreen.ECSConfig, pRef *ProjectRef, containers []Container) error {
 	catcher := grip.NewSimpleCatcher()
+
+	projVars, err := FindMergedProjectVars(pRef.Id)
+	if err != nil {
+		return errors.Wrapf(err, "getting project vars for project '%s'", pRef.Id)
+	}
+	var expansions *util.Expansions
+	if projVars != nil {
+		expansions = util.NewExpansions(projVars.Vars)
+	}
+
 	for _, container := range containers {
+		image := container.Image
+		if expansions != nil {
+			image, err = expansions.ExpandString(container.Image)
+			catcher.Wrap(err, "expanding container image")
+		}
 		catcher.Add(container.System.Validate())
 		if container.Resources != nil {
 			catcher.Add(container.Resources.Validate(ecsConf))
@@ -2898,7 +2913,7 @@ func ValidateContainers(ecsConf evergreen.ECSConfig, pRef *ProjectRef, container
 		catcher.NewWhen(container.Image == "", "image must be defined")
 		catcher.NewWhen(container.WorkingDir == "", "working directory must be defined")
 		catcher.NewWhen(container.Name == "", "name must be defined")
-		catcher.ErrorfWhen(len(ecsConf.AllowedImages) > 0 && !util.HasAllowedImageAsPrefix(container.Image, ecsConf.AllowedImages), "image '%s' not allowed", container.Image)
+		catcher.ErrorfWhen(len(ecsConf.AllowedImages) > 0 && !util.HasAllowedImageAsPrefix(image, ecsConf.AllowedImages), "image '%s' not allowed", image)
 	}
 	return catcher.Resolve()
 }

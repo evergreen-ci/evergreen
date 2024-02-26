@@ -253,6 +253,7 @@ $(buildDir)/dist.tar.gz:$(buildDir)/make-tarball $(clientBinaries) $(uiFiles) $(
 	./$< --name $@ --prefix $(name) $(foreach item,$(distContents),--item $(item)) --exclude "public/node_modules" --exclude "clients/.cache"
 $(buildDir)/static_assets.tgz:$(buildDir)/make-tarball $(uiFiles)
 	./$< --name $@ --prefix static_assets $(foreach item,$(distArtifacts),--item $(item)) --exclude "public/node_modules" --exclude "clients/.cache"
+local: $(buildDir)/static_assets.tgz $(clientBinaries)
 # end main build
 
 # userfacing targets for basic build and development operations
@@ -359,6 +360,7 @@ $(buildDir)/output.%.coverage.html:$(buildDir)/output.%.coverage
 
 gqlgen:
 	$(gobin) run github.com/99designs/gqlgen generate
+	$(gobin) run cmd/gqlgen/generate_secret_fields.go
 
 swaggo: 
 	$(MAKE) swaggo-format swaggo-build swaggo-render

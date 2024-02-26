@@ -28,6 +28,10 @@ import (
 // if a host encounters more than this number of system failures, then it should be disabled.
 const consecutiveSystemFailureThreshold = 3
 
+// if we fail to clean up the agent on a quarantined host more than this number of times, we can consider the
+// host unreachable and clear its secret.
+const hostAgentCleanupLimit = 10
+
 // GET /rest/v2/hosts/{host_id}/agent/next_task
 
 type hostAgentNextTask struct {
@@ -153,6 +157,14 @@ func (h *hostAgentNextTask) Run(ctx context.Context) gimlet.Responder {
 				"agent":         evergreen.AgentVersion,
 				"current_agent": h.host.AgentRevision,
 			}))
+			if err = h.host.IncrementNumAgentCleanupFailures(ctx); err != nil {
+				return gimlet.MakeJSONInternalErrorResponder(err)
+			}
+			if h.host.NumAgentCleanupFailures > hostAgentCleanupLimit {
+				if err = h.host.CreateSecret(ctx, true); err != nil {
+					return gimlet.MakeJSONInternalErrorResponder(err)
+				}
+			}
 		}
 
 		nextTaskResponse.ShouldExit = shouldExit

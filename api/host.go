@@ -131,6 +131,9 @@ func ModifyHostStatus(ctx context.Context, env evergreen.Environment, queue ambo
 		if _, err = GetReprovisionToNewCallback(ctx, env, u.Username())(h); err != nil {
 			return "", http.StatusInternalServerError, errors.Wrap(err, HostUpdateError)
 		}
+		if err = h.UnsetNumAgentCleanupFailures(ctx); err != nil {
+			return "", http.StatusInternalServerError, errors.Wrap(err, HostUpdateError)
+		}
 
 		return HostReprovisionConfirm, http.StatusOK, nil
 	}

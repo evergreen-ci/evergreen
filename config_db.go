@@ -32,6 +32,7 @@ var (
 	slackKey              = bsonutil.MustHaveTag(Settings{}, "Slack")
 	providersKey          = bsonutil.MustHaveTag(Settings{}, "Providers")
 	keysKey               = bsonutil.MustHaveTag(Settings{}, "Keys")
+	kanopySSHKeyPathKey   = bsonutil.MustHaveTag(Settings{}, "KanopySSHKeyPath")
 	keysNewKey            = bsonutil.MustHaveTag(Settings{}, "KeysNew")
 	credentialsKey        = bsonutil.MustHaveTag(Settings{}, "Credentials")
 	credentialsNewKey     = bsonutil.MustHaveTag(Settings{}, "CredentialsNew")
@@ -120,6 +121,7 @@ var (
 	tracerEnabledKey                   = bsonutil.MustHaveTag(TracerConfig{}, "Enabled")
 	tracerCollectorEndpointKey         = bsonutil.MustHaveTag(TracerConfig{}, "CollectorEndpoint")
 	tracerCollectorInternalEndpointKey = bsonutil.MustHaveTag(TracerConfig{}, "CollectorInternalEndpoint")
+	tracerCollectorAPIKeyKey           = bsonutil.MustHaveTag(TracerConfig{}, "CollectorAPIKey")
 
 	// GithubCheckRun keys
 	checkRunLimitKey = bsonutil.MustHaveTag(GitHubCheckRunConfig{}, "CheckRunLimit")

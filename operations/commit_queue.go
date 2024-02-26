@@ -448,7 +448,12 @@ func backport() cli.Command {
 				return errors.Wrap(err, "uploading backport patch")
 			}
 
-			if err = patchParams.displayPatch(ac, backportPatch, uiV2, false); err != nil {
+			params := outputPatchParams{
+				patches: []patch.Patch{*backportPatch},
+				uiHost:  uiV2,
+			}
+
+			if err = patchParams.displayPatch(ac, params); err != nil {
 				return errors.Wrap(err, "getting result display")
 			}
 
@@ -513,7 +518,11 @@ func listCLICommitQueueItem(item restModel.APICommitQueueItem, ac *legacyClient,
 	if p.Author != "" {
 		grip.Infof("Author: %s", p.Author)
 	}
-	disp, err := getPatchDisplay(ac, p, false, uiServerHost, false)
+	params := outputPatchParams{
+		patches: []patch.Patch{*p},
+		uiHost:  uiServerHost,
+	}
+	disp, err := getPatchDisplay(ac, params)
 	if err != nil {
 		grip.Error(errors.Wrapf(err, "getting patch display summary for patch '%s'", p.Id.Hex()))
 		return
@@ -639,15 +648,19 @@ func (p *mergeParams) uploadMergePatch(conf *ClientSettings, ac *legacyClient, u
 	if err = patchParams.validateSubmission(diffData); err != nil {
 		return err
 	}
-	patch, err := patchParams.createPatch(ac, diffData)
+	newPatch, err := patchParams.createPatch(ac, diffData)
 	if err != nil {
 		return err
 	}
-	if err = patchParams.displayPatch(ac, patch, uiV2Url, true); err != nil {
+	params := outputPatchParams{
+		patches: []patch.Patch{*newPatch},
+		uiHost:  uiV2Url,
+	}
+	if err = patchParams.displayPatch(ac, params); err != nil {
 		grip.Error("Patch information cannot be displayed.")
 	}
 
-	p.id = patch.Id.Hex()
+	p.id = newPatch.Id.Hex()
 	patchParams.setDefaultProject(conf)
 
 	return nil
@@ -760,5 +773,10 @@ func getAPICommitQueuePatchDisplay(ac *legacyClient, apiPatch *restModel.APIPatc
 		return "", errors.Wrap(err, "converting patch to service model")
 	}
 
-	return getPatchDisplay(ac, &servicePatch, summarize, uiHost, true)
+	params := outputPatchParams{
+		patches:   []patch.Patch{servicePatch},
+		summarize: summarize,
+		uiHost:    uiHost,
+	}
+	return getPatchDisplay(ac, params)
 }

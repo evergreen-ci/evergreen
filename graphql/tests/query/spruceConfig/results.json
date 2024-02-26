@@ -101,6 +101,21 @@
                     }
                 }
             }
+        },
+        {
+            "query_file": "secretFields.graphql",
+            "result": {
+                "data": {
+                    "spruceConfig": {
+                        "secretFields": [
+                            "publicKey",
+                            "secret",
+                            "servicePassword",
+                            "vars"
+                        ]
+                    }
+                }
+            }
         }
     ]
 }

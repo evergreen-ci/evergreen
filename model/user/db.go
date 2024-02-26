@@ -2,6 +2,7 @@ package user
 
 import (
 	"context"
+	"strings"
 	"time"
 
 	"github.com/evergreen-ci/evergreen"
@@ -211,6 +212,31 @@ func FindByRole(role string) ([]DBUser, error) {
 	return res, errors.Wrapf(err, "finding users with role '%s'", role)
 }
 
+// AddOrUpdateServiceUser upserts a service user by ID. If it's a new user, it
+// generates a new API key for the user.
+func AddOrUpdateServiceUser(u DBUser) error {
+	if !u.OnlyAPI {
+		return errors.New("cannot update a non-service user")
+	}
+	query := bson.M{
+		IdKey: u.Id,
+	}
+	apiKey := u.APIKey
+	if apiKey == "" {
+		apiKey = utility.RandomString()
+	}
+	update := bson.M{
+		"$set": bson.M{
+			DispNameKey: u.DispName,
+			RolesKey:    u.SystemRoles,
+			OnlyAPIKey:  true,
+			APIKeyKey:   apiKey,
+		},
+	}
+	_, err := UpsertOne(query, update)
+	return err
+}
+
 // FindHumanUsersByRoles returns human users that have any of the given roles.
 func FindHumanUsersByRoles(roles []string) ([]DBUser, error) {
 	res := []DBUser{}
@@ -252,31 +278,6 @@ func GetPatchUser(gitHubUID int) (*DBUser, error) {
 	}
 
 	return u, nil
-}
-
-// AddOrUpdateServiceUser upserts a service user by ID. If it's a new user, it
-// generates a new API key for the user.
-func AddOrUpdateServiceUser(u DBUser) error {
-	if !u.OnlyAPI {
-		return errors.New("cannot update a non-service user")
-	}
-	query := bson.M{
-		IdKey: u.Id,
-	}
-	apiKey := u.APIKey
-	if apiKey == "" {
-		apiKey = utility.RandomString()
-	}
-	update := bson.M{
-		"$set": bson.M{
-			DispNameKey: u.DispName,
-			RolesKey:    u.SystemRoles,
-			OnlyAPIKey:  true,
-			APIKeyKey:   apiKey,
-		},
-	}
-	_, err := UpsertOne(query, update)
-	return err
 }
 
 // DeleteServiceUser deletes a service user by ID.
@@ -494,6 +495,7 @@ func ClearUser(userId string) error {
 			SettingsKey:   1,
 			RolesKey:      1,
 			LoginCacheKey: 1,
+			PubKeysKey:    1,
 		},
 	}
 	query := bson.M{IdKey: userId}
@@ -521,4 +523,38 @@ func ClearAllLoginCaches() error {
 		return errors.Wrap(err, "updating user cache")
 	}
 	return nil
+}
+
+// UpsertOneFromExisting creates a new user with the same necessary data as oldUsr.
+func UpsertOneFromExisting(oldUsr *DBUser, newEmail string) (*DBUser, error) {
+	splitString := strings.Split(newEmail, "@")
+	if len(splitString) == 1 {
+		return nil, errors.New("email address is missing '@'")
+	}
+	newUsername := splitString[0]
+	if newUsername == "" {
+		return nil, errors.New("no user could be parsed from the email address")
+	}
+	newUsr := &DBUser{
+		Id:               newUsername,
+		EmailAddress:     newEmail,
+		FavoriteProjects: oldUsr.FavoriteProjects,
+		PatchNumber:      oldUsr.PatchNumber,
+		Settings:         oldUsr.Settings,
+		SystemRoles:      oldUsr.Roles(),
+		APIKey:           oldUsr.GetAPIKey(),
+		PubKeys:          oldUsr.PublicKeys(),
+	}
+
+	_, err := UpsertOne(bson.M{IdKey: newUsername}, bson.M{"$set": bson.M{
+		EmailAddressKey:     newUsr.Email(),
+		FavoriteProjectsKey: newUsr.FavoriteProjects,
+		PatchNumberKey:      newUsr.PatchNumber,
+		SettingsKey:         newUsr.Settings,
+		RolesKey:            newUsr.Roles(),
+		APIKeyKey:           newUsr.GetAPIKey(),
+		PubKeysKey:          newUsr.PublicKeys(),
+	}})
+
+	return newUsr, errors.Wrapf(err, "unable to insert new user '%s'", newUsername)
 }

@@ -703,7 +703,7 @@ func TestHostCreateSecret(t *testing.T) {
 
 		Convey("creating a secret", func() {
 			So(host.Secret, ShouldEqual, "")
-			So(host.CreateSecret(ctx), ShouldBeNil)
+			So(host.CreateSecret(ctx, false), ShouldBeNil)
 
 			Convey("should update the host in memory", func() {
 				So(host.Secret, ShouldNotEqual, "")
@@ -6009,7 +6009,7 @@ func TestGeneratePersistentDNSName(t *testing.T) {
 		// If working properly, the generated DNS name output should always be
 		// the same when given the same inputs (i.e. same host ID and host
 		// owner) no matter how many times this test runs.
-		assert.Equal(t, fmt.Sprintf("itsa-memario-QPGzx.%s", domain), dnsName, "should produce DNS name deterministically if there's no other host with the same DNS name")
+		assert.Equal(t, fmt.Sprintf("itsa-memario-gf6pd.%s", domain), dnsName, "should produce DNS name deterministically if there's no other host with the same DNS name")
 	})
 	t.Run("AlwaysReturnsSameStringForSameHostID", func(t *testing.T) {
 		h := Host{
