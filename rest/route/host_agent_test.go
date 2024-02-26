@@ -428,7 +428,43 @@ func TestHostNextTask(t *testing.T) {
 					nextTask, err := task.FindOne(db.Query(task.ById(taskResp.TaskId)))
 					require.NoError(t, err)
 					assert.Equal(t, nextTask.Status, evergreen.TaskDispatched)
-					assert.Equal(t, nextTask.NumNextTaskDispatches, 1)
+					assert.Equal(t, nextTask.NumNextTaskDispatches, 3)
+				},
+				"AStuckNextTaskShouldError": func(ctx context.Context, t *testing.T, handler hostAgentNextTask) {
+					stuckTask := task.Task{
+						Id:                    "stuckTask",
+						Status:                evergreen.TaskUndispatched,
+						Activated:             true,
+						BuildId:               "anotherBuild",
+						NumNextTaskDispatches: 5,
+						Version:               "version1",
+						HostId:                "sampleHost",
+					}
+					require.NoError(t, stuckTask.Insert())
+					anotherHost := host.Host{
+						Id:            "sampleHost",
+						Secret:        hostSecret,
+						RunningTask:   stuckTask.Id,
+						AgentRevision: evergreen.AgentVersion,
+						Provisioned:   true,
+						Status:        evergreen.HostRunning,
+					}
+
+					require.NoError(t, anotherHost.Insert(ctx))
+
+					rh.host = &anotherHost
+					resp := rh.Run(ctx)
+					assert.NotNil(t, resp)
+					assert.Equal(t, resp.Status(), http.StatusInternalServerError)
+
+					h, err := host.FindOne(ctx, host.ById(anotherHost.Id))
+					require.NoError(t, err)
+					assert.Equal(t, h.RunningTask, "")
+
+					previouslyStuckTask, err := task.FindOne(db.Query(task.ById(stuckTask.Id)))
+					require.NoError(t, err)
+					assert.Equal(t, previouslyStuckTask.Status, evergreen.TaskFailed)
+
 				},
 				"WithAnUndispatchedTaskButAHostThatHasThatTaskAsARunningTask": func(ctx context.Context, t *testing.T, handler hostAgentNextTask) {
 					t1 := task.Task{
@@ -502,9 +538,10 @@ func TestHostNextTask(t *testing.T) {
 					require.NoError(t, h2.Insert(ctx))
 
 					existingTask := task.Task{
-						Id:        "existingTask",
-						Status:    evergreen.TaskDispatched,
-						Activated: true,
+						Id:                    "existingTask",
+						Status:                evergreen.TaskDispatched,
+						Activated:             true,
+						NumNextTaskDispatches: 2,
 					}
 					require.NoError(t, existingTask.Insert())
 					handler := hostAgentNextTask{

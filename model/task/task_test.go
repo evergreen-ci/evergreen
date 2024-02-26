@@ -4814,6 +4814,7 @@ func TestReset(t *testing.T) {
 			HostId:                  "h",
 			PodID:                   "p",
 			HostCreateDetails:       []HostCreateDetail{{HostId: "h"}},
+			NumNextTaskDispatches:   3,
 		}
 		assert.NoError(t, t0.Insert())
 
@@ -4833,6 +4834,7 @@ func TestReset(t *testing.T) {
 		assert.Empty(t, dbTask.HostCreateDetails)
 		assert.Empty(t, dbTask.TaskOutputInfo)
 		assert.Empty(t, dbTask.Details)
+		assert.Zero(t, dbTask.NumNextTaskDispatches)
 
 	})
 

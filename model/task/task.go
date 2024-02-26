@@ -2257,6 +2257,7 @@ func resetTaskUpdate(t *Task) []bson.M {
 		t.HostCreateDetails = []HostCreateDetail{}
 		t.OverrideDependencies = false
 		t.ContainerAllocationAttempts = 0
+		t.NumNextTaskDispatches = 0
 		t.CanReset = false
 		t.IsAutomaticRestart = false
 	}
@@ -2275,6 +2276,7 @@ func resetTaskUpdate(t *Task) []bson.M {
 				TimeTakenKey:                   0,
 				LastHeartbeatKey:               utility.ZeroTime,
 				ContainerAllocationAttemptsKey: 0,
+				NumNextTaskDispatchesKey:       0,
 				// TODO: (EVG-20334) Remove this field and the aggregation update once old tasks without the UnattainableDependency field have TTLed.
 				UnattainableDependencyKey: bson.M{"$cond": bson.M{
 					"if":   bson.M{"$isArray": "$" + bsonutil.GetDottedKeyName(DependsOnKey, DependencyUnattainableKey)},
