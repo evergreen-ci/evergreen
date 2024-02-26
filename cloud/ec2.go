@@ -313,23 +313,28 @@ func (m *ec2Manager) spawnOnDemandHost(ctx context.Context, h *host.Host, ec2Set
 	reservation, err := m.client.RunInstances(ctx, input)
 	if err != nil || reservation == nil {
 		if err == EC2InsufficientCapacityError {
+			previousSubnet := h.GetSubnetID()
 			// try again in another AZ
 			if subnetErr := m.setNextSubnet(ctx, h); subnetErr == nil {
+				newSubnet := h.GetSubnetID()
 				msg := "got EC2InsufficientCapacityError, will try next available subnet"
 				grip.Info(message.Fields{
-					"message":       msg,
-					"action":        "retrying",
-					"host_id":       h.Id,
-					"host_provider": h.Distro.Provider,
-					"distro":        h.Distro.Id,
+					"message":         msg,
+					"action":          "retrying",
+					"host_id":         h.Id,
+					"host_provider":   h.Distro.Provider,
+					"distro":          h.Distro.Id,
+					"previous_subnet": previousSubnet,
+					"next_subnet":     newSubnet,
 				})
 				return errors.Wrap(err, msg)
 			} else {
 				grip.Error(message.WrapError(subnetErr, message.Fields{
-					"message":       "couldn't increment subnet",
-					"host_id":       h.Id,
-					"host_provider": h.Distro.Provider,
-					"distro":        h.Distro.Id,
+					"message":         "couldn't increment subnet",
+					"host_id":         h.Id,
+					"host_provider":   h.Distro.Provider,
+					"distro":          h.Distro.Id,
+					"previous_subnet": previousSubnet,
 				}))
 			}
 		}
