@@ -294,7 +294,7 @@ nonsensical.
 ### Log Info
 
 A test result can be linked to log files written to and ingested from the
-task's [reserved test logs directory](Task-Output-Directory/#test-logs).
+task's [reserved test logs directory](Task-Output-Directory.md/#test-logs).
 
 Test log URLs are automatically generated and provided via the
 [test result API](../API/REST-V2-Usage.mdx/#tag/tests/paths/~1tasks~1%7Btask_id%7D~1tests/get").
