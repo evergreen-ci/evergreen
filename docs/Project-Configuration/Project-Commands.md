@@ -236,10 +236,11 @@ If you would like to download an artifact after it has been moved to Glacier, pl
 ## attach.results
 
 This command parses and stores results in Evergreen's JSON test result format.
-The use case for this command is when you wish to link test results with test
-logs from the reserved task output directory. Evergreen's JSON format allows
-you to send test metadata and log paths, relative to the task output test log
-directory, which Evergreen will then link from the UI and API.
+The use case for this command is when you wish to link custom test results
+with test logs written via the
+[file system API for task output](Task-Output-Directory.md). Evergreen's JSON
+format allows you to send test metadata and log paths, relative to the reserved
+test logs directory, which Evergreen will then link from the UI and API.
 
 ``` yaml
 - command: attach.results

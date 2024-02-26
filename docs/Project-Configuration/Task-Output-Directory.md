@@ -26,7 +26,7 @@ Logs written to this directory can be merged with other logs from the same task
 run via the [test logs API](../API/REST-V2-Usage.mdx/#tag/TestLogs/paths/~1tasks~1%7Btask_id%7D~1build~1TestLogs~1%7Bpath%7D/get").
 Merging is ordered by log line timestamp.
 
-Use the [attach.results command](Project-Commands.md/#attach.results) to link
+Use the [attach.results command](Project-Commands.md/#attachresults) to link
 log paths to test results.
 
 ### Test Log Specification File
