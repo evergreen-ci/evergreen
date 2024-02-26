@@ -196,15 +196,15 @@ type APIParsleyFilter struct {
 	ExactMatch *bool `json:"exact_match"`
 }
 
-func (t *APIParsleyFilter) ToService() parsley.ParsleyFilter {
-	return parsley.ParsleyFilter{
+func (t *APIParsleyFilter) ToService() parsley.Filter {
+	return parsley.Filter{
 		Expression:    utility.FromStringPtr(t.Expression),
 		CaseSensitive: utility.FromBoolPtr(t.CaseSensitive),
 		ExactMatch:    utility.FromBoolPtr(t.ExactMatch),
 	}
 }
 
-func (t *APIParsleyFilter) BuildFromService(h parsley.ParsleyFilter) {
+func (t *APIParsleyFilter) BuildFromService(h parsley.Filter) {
 	t.Expression = utility.ToStringPtr(h.Expression)
 	t.CaseSensitive = utility.ToBoolPtr(h.CaseSensitive)
 	t.ExactMatch = utility.ToBoolPtr(h.ExactMatch)
@@ -788,7 +788,7 @@ func (p *APIProjectRef) ToService() (*model.ProjectRef, error) {
 
 	// Copy Parsley filters
 	if p.ParsleyFilters != nil {
-		parsleyFilters := []parsley.ParsleyFilter{}
+		parsleyFilters := []parsley.Filter{}
 		for _, f := range p.ParsleyFilters {
 			parsleyFilters = append(parsleyFilters, f.ToService())
 		}

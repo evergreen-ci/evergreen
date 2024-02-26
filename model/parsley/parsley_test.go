@@ -7,30 +7,35 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-func TestValidateParsleyFilters(t *testing.T) {
-	parsleyFilters := []ParsleyFilter{
+func TestValidateFilters(t *testing.T) {
+	filters := []Filter{
 		{
 			Expression:    "",
 			CaseSensitive: false,
 			ExactMatch:    true,
 		},
 	}
-	err := ValidateParsleyFilters(parsleyFilters)
+	err := ValidateFilters(filters)
 	require.Error(t, err)
 	assert.Contains(t, err.Error(), "must be non-empty")
 
-	parsleyFilters = []ParsleyFilter{
+	filters = []Filter{
 		{
-			Expression:    "*.badregex",
+			Expression:    "*.invalidregex",
+			CaseSensitive: false,
+			ExactMatch:    true,
+		},
+		{
+			Expression:    "validregex",
 			CaseSensitive: false,
 			ExactMatch:    true,
 		},
 	}
-	err = ValidateParsleyFilters(parsleyFilters)
+	err = ValidateFilters(filters)
 	require.Error(t, err)
 	assert.Contains(t, err.Error(), "invalid regexp")
 
-	parsleyFilters = []ParsleyFilter{
+	filters = []Filter{
 		{
 			Expression:    "duplicate",
 			CaseSensitive: false,
@@ -38,15 +43,30 @@ func TestValidateParsleyFilters(t *testing.T) {
 		},
 		{
 			Expression:    "duplicate",
+			CaseSensitive: false,
+			ExactMatch:    true,
+		},
+	}
+	err = ValidateFilters(filters)
+	require.Error(t, err)
+	assert.Contains(t, err.Error(), "duplicate filter")
+
+	filters = []Filter{
+		{
+			Expression:    "same_expression",
+			CaseSensitive: false,
+			ExactMatch:    true,
+		},
+		{
+			Expression:    "same_expression",
 			CaseSensitive: true,
 			ExactMatch:    true,
 		},
 	}
-	err = ValidateParsleyFilters(parsleyFilters)
-	require.Error(t, err)
-	assert.Contains(t, err.Error(), "duplicate filter expression")
+	err = ValidateFilters(filters)
+	require.NoError(t, err)
 
-	parsleyFilters = []ParsleyFilter{
+	filters = []Filter{
 		{
 			Expression:    "^abc",
 			CaseSensitive: false,
@@ -58,6 +78,10 @@ func TestValidateParsleyFilters(t *testing.T) {
 			ExactMatch:    false,
 		},
 	}
-	err = ValidateParsleyFilters(parsleyFilters)
+	err = ValidateFilters(filters)
+	require.NoError(t, err)
+
+	filters = []Filter{}
+	err = ValidateFilters(filters)
 	require.NoError(t, err)
 }

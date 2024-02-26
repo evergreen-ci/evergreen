@@ -128,8 +128,8 @@ type ProjectRef struct {
 	Banner        ProjectBanner  `bson:"banner,omitempty" json:"banner,omitempty" yaml:"banner,omitempty"`
 
 	// Filter/view settings
-	ProjectHealthView ProjectHealthView       `bson:"project_health_view" json:"project_health_view" yaml:"project_health_view"`
-	ParsleyFilters    []parsley.ParsleyFilter `bson:"parsley_filters,omitempty" json:"parsley_filters,omitempty"`
+	ProjectHealthView ProjectHealthView `bson:"project_health_view" json:"project_health_view" yaml:"project_health_view"`
+	ParsleyFilters    []parsley.Filter  `bson:"parsley_filters,omitempty" json:"parsley_filters,omitempty"`
 }
 
 type ProjectHealthView string
@@ -1037,7 +1037,7 @@ func mergeParsleyFilters(pRef *ProjectRef, repoRef *RepoRef) {
 	}
 
 	if pRef.ParsleyFilters == nil {
-		pRef.ParsleyFilters = []parsley.ParsleyFilter{}
+		pRef.ParsleyFilters = []parsley.Filter{}
 	}
 
 	pRef.ParsleyFilters = append(pRef.ParsleyFilters, repoRef.ParsleyFilters...)

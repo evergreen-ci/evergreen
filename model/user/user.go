@@ -21,21 +21,21 @@ import (
 )
 
 type DBUser struct {
-	Id               string                  `bson:"_id"`
-	FirstName        string                  `bson:"first_name"`
-	LastName         string                  `bson:"last_name"`
-	DispName         string                  `bson:"display_name"`
-	EmailAddress     string                  `bson:"email"`
-	PatchNumber      int                     `bson:"patch_number"`
-	PubKeys          []PubKey                `bson:"public_keys" json:"public_keys"`
-	CreatedAt        time.Time               `bson:"created_at"`
-	Settings         UserSettings            `bson:"settings"`
-	APIKey           string                  `bson:"apikey"`
-	SystemRoles      []string                `bson:"roles"`
-	LoginCache       LoginCache              `bson:"login_cache,omitempty"`
-	FavoriteProjects []string                `bson:"favorite_projects"`
-	OnlyAPI          bool                    `bson:"only_api,omitempty"`
-	ParsleyFilters   []parsley.ParsleyFilter `bson:"parsley_filters"`
+	Id               string           `bson:"_id"`
+	FirstName        string           `bson:"first_name"`
+	LastName         string           `bson:"last_name"`
+	DispName         string           `bson:"display_name"`
+	EmailAddress     string           `bson:"email"`
+	PatchNumber      int              `bson:"patch_number"`
+	PubKeys          []PubKey         `bson:"public_keys" json:"public_keys"`
+	CreatedAt        time.Time        `bson:"created_at"`
+	Settings         UserSettings     `bson:"settings"`
+	APIKey           string           `bson:"apikey"`
+	SystemRoles      []string         `bson:"roles"`
+	LoginCache       LoginCache       `bson:"login_cache,omitempty"`
+	FavoriteProjects []string         `bson:"favorite_projects"`
+	OnlyAPI          bool             `bson:"only_api,omitempty"`
+	ParsleyFilters   []parsley.Filter `bson:"parsley_filters"`
 }
 
 func (u *DBUser) MarshalBSON() ([]byte, error)  { return mgobson.Marshal(u) }

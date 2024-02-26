@@ -6,15 +6,15 @@ import (
 	"github.com/mongodb/grip"
 )
 
-// ParsleyFilter represents a filter for the Parsley log viewer. Parsley filters can be defined at
+// Filter represents a filter for the Parsley log viewer. Parsley filters can be defined at
 // the project-level and at the user-level.
-type ParsleyFilter struct {
+type Filter struct {
 	Expression    string `bson:"expression" json:"expression"`
 	CaseSensitive bool   `bson:"case_sensitive" json:"case_sensitive"`
 	ExactMatch    bool   `bson:"exact_match" json:"exact_match"`
 }
 
-func (p ParsleyFilter) validate() error {
+func (p Filter) validate() error {
 	catcher := grip.NewSimpleCatcher()
 	catcher.NewWhen(p.Expression == "", "filter expression must be non-empty")
 
@@ -25,18 +25,18 @@ func (p ParsleyFilter) validate() error {
 	return catcher.Resolve()
 }
 
-// ValidateParsleyFilters checks that there are no duplicate expressions among the Parsley filters. It also validates
-// each individual Parsley filter.
-func ValidateParsleyFilters(parsleyFilters []ParsleyFilter) error {
+// ValidateFilters checks that there are no duplicate filters. It also validates each individual
+// filter.
+func ValidateFilters(filters []Filter) error {
 	catcher := grip.NewBasicCatcher()
 
-	filtersSet := make(map[string]bool)
-	for _, filter := range parsleyFilters {
-		if filtersSet[filter.Expression] {
-			catcher.Errorf("duplicate filter expression '%s'", filter.Expression)
+	filtersSet := make(map[Filter]bool)
+	for _, f := range filters {
+		if filtersSet[f] {
+			catcher.Errorf("duplicate filter with expression '%s'", f.Expression)
 		}
-		filtersSet[filter.Expression] = true
-		catcher.Add(filter.validate())
+		filtersSet[f] = true
+		catcher.Add(f.validate())
 	}
 
 	return catcher.Resolve()

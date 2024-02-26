@@ -13,19 +13,22 @@ import (
 
 // ParsleyFilters is the resolver for the parsleyFilters field.
 func (r *userResolver) ParsleyFilters(ctx context.Context, obj *restModel.APIDBUser) ([]*restModel.APIParsleyFilter, error) {
-	parsleyFilters := []*restModel.APIParsleyFilter{}
+	res := []*restModel.APIParsleyFilter{}
 
 	usr, err := user.FindOneById(utility.FromStringPtr(obj.UserID))
 	if err != nil {
-		return parsleyFilters, ResourceNotFound.Send(ctx, "user not found")
+		return nil, InternalServerError.Send(ctx, fmt.Sprintf("finding user with ID '%s': %s", utility.FromStringPtr(obj.UserID), err.Error()))
+	}
+	if usr == nil {
+		return nil, ResourceNotFound.Send(ctx, "user not found")
 	}
 
-	for _, f := range usr.ParsleyFilters {
+	for _, p := range usr.ParsleyFilters {
 		parsleyFilter := restModel.APIParsleyFilter{}
-		parsleyFilter.BuildFromService(f)
-		parsleyFilters = append(parsleyFilters, &parsleyFilter)
+		parsleyFilter.BuildFromService(p)
+		res = append(res, &parsleyFilter)
 	}
-	return parsleyFilters, nil
+	return res, nil
 }
 
 // Patches is the resolver for the patches field.
