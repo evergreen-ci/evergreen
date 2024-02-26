@@ -45,7 +45,7 @@ func getPatchFlags(flags ...cli.Flag) []cli.Flag {
 		addPreserveCommitsFlag(
 			cli.BoolFlag{
 				Name:  joinFlagNames(jsonFlagName, "j"),
-				Usage: "outputs the patch as a JSON object and suppresses warnings, must be used with --skip-confirm",
+				Usage: "outputs the patch as a JSON object; suppresses warnings and confirmations",
 			},
 			cli.StringSliceFlag{
 				Name:  joinFlagNames(tasksFlagName, "t"),
