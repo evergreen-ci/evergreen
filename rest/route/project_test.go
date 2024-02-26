@@ -328,7 +328,7 @@ func (s *ProjectPatchByIDSuite) TestUpdateParsleyFilters() {
 	errResp = (resp.Data()).(gimlet.ErrorResponse)
 	s.Contains(errResp.Message, "filter expression '*' is invalid regexp")
 
-	// fail - duplicate filter expressions
+	// fail - duplicate filters
 	jsonBody = []byte(`{"parsley_filters": [
 		{"expression": "dupe", "case_sensitive": true, "exact_match": false}, 
 		{"expression": "dupe", "case_sensitive": true, "exact_match": false},
@@ -346,8 +346,8 @@ func (s *ProjectPatchByIDSuite) TestUpdateParsleyFilters() {
 	s.NotNil(resp.Data())
 	s.Require().Equal(resp.Status(), http.StatusBadRequest)
 	errResp = (resp.Data()).(gimlet.ErrorResponse)
-	s.Contains(errResp.Message, "duplicate filter expression 'dupe'")
-	s.Contains(errResp.Message, "duplicate filter expression 'also_a_dupe'")
+	s.Contains(errResp.Message, "duplicate filter with expression 'dupe'")
+	s.Contains(errResp.Message, "duplicate filter with expression 'also_a_dupe'")
 
 	// success
 	jsonBody = []byte(`{"parsley_filters": [{"expression": "filter1", "case_sensitive": true, "exact_match": false}, {"expression": "filter2", "case_sensitive": true, "exact_match": false}]}`)
