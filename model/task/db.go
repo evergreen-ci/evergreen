@@ -2875,7 +2875,7 @@ func (t *Task) IncNumNextTaskDispatches() error {
 		bson.M{
 			"$inc": bson.M{NumNextTaskDispatchesKey: 1},
 		}); err != nil {
-		errors.Wrapf(err, "setting next task count for task '%s'", t.Id)
+		return errors.Wrapf(err, "setting next task count for task '%s'", t.Id)
 	}
 	t.NumNextTaskDispatches = t.NumNextTaskDispatches + 1
 	return nil
