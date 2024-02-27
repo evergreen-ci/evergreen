@@ -17,12 +17,13 @@ fi
 
 # If govulncheck is not installed, exit with an error.
 if ! command -v "$govul" &> /dev/null; then
-    echo "govulncheck is not installed."
+    echo "govulncheck is not installed. Please install govulncheck by running 'make govul-install'"
     exit 1
 fi
 
 result=$($govul ./...)
 if [ $? -eq 0 ]; then
+    echo "No vulnerabilities found."
     exit 0
 else
     echo "Please run govulncheck to check for vulnerabilities. See below for found vulnerabilities."
