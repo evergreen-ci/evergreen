@@ -469,6 +469,8 @@ func assignNextAvailableTask(ctx context.Context, env evergreen.Environment, tas
 			return nil, false, errors.WithStack(err)
 		}
 
+		fmt.Println(taskQueue)
+
 		var queueItem *model.TaskQueueItem
 		switch d.DispatcherSettings.Version {
 		case evergreen.DispatcherVersionRevised, evergreen.DispatcherVersionRevisedWithDependencies:
@@ -479,9 +481,10 @@ func assignNextAvailableTask(ctx context.Context, env evergreen.Environment, tas
 		default:
 			queueItem, _ = taskQueue.FindNextTask(ctx, spec)
 		}
+		fmt.Println(queueItem)
 
 		if queueItem == nil {
-			return nil, true, nil
+			return nil, false, nil
 		}
 
 		nextTask, err := task.FindOneId(queueItem.Id)
@@ -511,9 +514,7 @@ func assignNextAvailableTask(ctx context.Context, env evergreen.Environment, tas
 				"task_build_variant": queueItem.BuildVariant,
 				"task_version":       queueItem.Version,
 			})
-			// An error is not returned in this situation due to https://jira.mongodb.org/browse/EVG-6214
-			fmt.Println("NEXT IS HERE")
-			return nil, false, nil
+			return nil, false, errors.New("next task on queue is nil")
 		}
 
 		// validate that the task can be run, if not fetch the next one in the queue.
@@ -526,6 +527,7 @@ func assignNextAvailableTask(ctx context.Context, env evergreen.Environment, tas
 				"host_id":   currentHost.Id,
 			}))
 
+			fmt.Println("this is why 1")
 			continue
 		}
 
@@ -565,6 +567,7 @@ func assignNextAvailableTask(ctx context.Context, env evergreen.Environment, tas
 				"enabled":              projectRef.Enabled,
 				"dispatching_disabled": projectRef.DispatchingDisabled,
 			}))
+			fmt.Println("this is why 2")
 			continue
 		}
 
@@ -588,20 +591,22 @@ func assignNextAvailableTask(ctx context.Context, env evergreen.Environment, tas
 				"project":            projectRef.Id,
 				"project_identifier": projectRef.Enabled,
 			}))
+			fmt.Println("this is why 3")
 			continue
 		}
 
 		// If the current task group is finished we leave the task on the queue, and indicate the current group needs to be torn down.
 		if details.TaskGroup != "" && details.TaskGroup != nextTask.TaskGroup {
 			grip.DebugWhen(nextTask.TaskGroup != "", message.Fields{
-				"message":              "not updating running task group task, because current group needs to be torn down",
-				"task_distro_id":       nextTask.DistroId,
-				"task_id":              nextTask.Id,
-				"task_group":           nextTask.TaskGroup,
-				"task_build_variant":   nextTask.BuildVariant,
-				"task_version":         nextTask.Version,
-				"task_project":         nextTask.Project,
-				"task_group_max_hosts": nextTask.TaskGroupMaxHosts,
+				"message":                 "not updating running task group task, because current group needs to be torn down",
+				"task_distro_id":          nextTask.DistroId,
+				"task_id":                 nextTask.Id,
+				"to_tear_down_task_group": details.TaskGroup,
+				"task_group":              nextTask.TaskGroup,
+				"task_build_variant":      nextTask.BuildVariant,
+				"task_version":            nextTask.Version,
+				"task_project":            nextTask.Project,
+				"task_group_max_hosts":    nextTask.TaskGroupMaxHosts,
 			})
 			return nil, true, nil
 		}
@@ -611,6 +616,8 @@ func assignNextAvailableTask(ctx context.Context, env evergreen.Environment, tas
 			return nil, false, errors.Wrapf(err, "dispatching task '%s' to host '%s'", nextTask.Id, currentHost.Id)
 		}
 		dispatchedTask := lockErr == nil
+		fmt.Println("testing this 1")
+		fmt.Println(dispatchedTask)
 
 		if dispatchedTask && isTaskGroupNewToHost(currentHost, nextTask) {
 			// If the host just ran a task in the group, then it's eligible for
@@ -618,6 +625,7 @@ func assignNextAvailableTask(ctx context.Context, env evergreen.Environment, tas
 			// hosts are running tasks in the task group. Only check the number
 			// of hosts running this task group if the task group is new to the
 			// host.
+			fmt.Println("testing this 2")
 			if err := checkHostTaskGroupAfterDispatch(ctx, currentHost, nextTask); err != nil {
 				grip.Debug(message.Fields{
 					"message":              "failed dispatch task group check due to race, not dispatching",
@@ -646,6 +654,7 @@ func assignNextAvailableTask(ctx context.Context, env evergreen.Environment, tas
 						"task_group_max_hosts": nextTask.TaskGroupMaxHosts,
 					}))
 				}
+				fmt.Println("testing this 3")
 
 				// Continue on trying to dispatch a different task.
 				dispatchedTask = false
@@ -661,13 +670,12 @@ func assignNextAvailableTask(ctx context.Context, env evergreen.Environment, tas
 		}))
 
 		if !dispatchedTask {
+			fmt.Println("this is why 3")
 			continue
 		}
 
 		return nextTask, false, nil
 	}
-
-	fmt.Println("Testing here too")
 
 	return nil, false, nil
 }
