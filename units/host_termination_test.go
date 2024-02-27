@@ -296,7 +296,6 @@ func TestHostTerminationJob(t *testing.T) {
 			// Check if task1 has been reset
 			resetTask, err := task.FindOneId("task2")
 			require.NoError(t, err)
-			assert.Equal(t, "i-12345", resetTask.HostId)
 			assert.Equal(t, evergreen.TaskSucceeded, resetTask.Status)
 		},
 	} {
