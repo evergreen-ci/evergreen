@@ -174,7 +174,7 @@ func (uis *UIServer) variantHistory(w http.ResponseWriter, r *http.Request) {
 		grip.WarningWhen(beforeCommit == nil, "'before' was specified but query returned nil")
 	}
 
-	_, project, _, err := model.FindLatestVersionWithValidProject(projCtx.ProjectRef.Id)
+	_, project, _, err := model.FindLatestVersionWithValidProject(projCtx.ProjectRef.Id, false)
 	if err != nil {
 		uis.LoggedError(w, r, http.StatusInternalServerError, err)
 		return

@@ -2,6 +2,7 @@ package model
 
 import (
 	"context"
+	"fmt"
 
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/model/build"
@@ -182,6 +183,22 @@ func updateParserProject(ctx context.Context, settings *evergreen.Settings, v *V
 	if utility.StringSliceContains(pp.UpdatedByGenerators, taskId) {
 		// This generator has already updated the parser project so continue.
 		return nil
+	}
+
+	// If this is the first time the parser project has been updated by a generator, cache a copy of
+	// the parser project representing its state before any generators updated it.
+	if len(pp.UpdatedByGenerators) == 0 {
+		oldPP, err := ParserProjectFindOneByID(ctx, settings, v.ProjectStorageMethod, v.Id)
+		if err != nil {
+			return errors.Wrapf(err, "finding parser project '%s' from before task generation", v.Id)
+		}
+		if oldPP == nil {
+			return errors.Errorf("parser project '%s' not found", v.Id)
+		}
+		oldPP.Id = fmt.Sprintf("%s_%s", "pre_generation", oldPP.Id)
+		if _, err = ParserProjectUpsertOneWithS3Fallback(ctx, settings, evergreen.ProjectStorageMethodDB, oldPP); err != nil {
+			return errors.Wrapf(err, "upserting pre-generation parser project '%s'", oldPP.Id)
+		}
 	}
 
 	pp.UpdatedByGenerators = append(pp.UpdatedByGenerators, taskId)
