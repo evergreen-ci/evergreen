@@ -7,9 +7,11 @@ import (
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/cloud"
 	"github.com/evergreen-ci/evergreen/db"
+	"github.com/evergreen-ci/evergreen/model"
 	"github.com/evergreen-ci/evergreen/model/distro"
 	"github.com/evergreen-ci/evergreen/model/event"
 	"github.com/evergreen-ci/evergreen/model/host"
+	"github.com/evergreen-ci/evergreen/model/task"
 	"github.com/evergreen-ci/evergreen/testutil"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -237,9 +239,69 @@ func TestHostTerminationJob(t *testing.T) {
 			require.NotZero(t, dbHost)
 			assert.Equal(t, evergreen.HostTerminated, dbHost.Status)
 		},
+		"TaskInTaskGroupDoesNotRestartIfFinished": func(ctx context.Context, t *testing.T, env evergreen.Environment, mcp cloud.MockProvider, h *host.Host) {
+			h.LastGroup = "taskgroup"
+			h.LastTask = "task2"
+			require.NoError(t, h.Insert(ctx))
+
+			task1 := task.Task{
+				Id:                "task1",
+				Status:            evergreen.TaskSucceeded,
+				Activated:         true,
+				BuildId:           "b1",
+				Project:           "exists",
+				HostId:            h.Id,
+				TaskGroup:         "taskgroup",
+				TaskGroupMaxHosts: 1,
+			}
+			require.NoError(t, task1.Insert())
+			task2 := task.Task{
+				Id:                "task2",
+				Status:            evergreen.TaskSucceeded,
+				Activated:         true,
+				BuildId:           "b1",
+				Project:           "exists",
+				TaskGroup:         "taskgroup",
+				TaskGroupMaxHosts: 1,
+			}
+			require.NoError(t, task2.Insert())
+			pref := &model.ProjectRef{
+				Id:      "exists",
+				Enabled: true,
+			}
+			require.NoError(t, pref.Insert())
+			mcp.Set(h.Id, cloud.MockInstance{
+				Status: cloud.StatusRunning,
+			})
+
+			const reason = "some termination message"
+			j := NewHostTerminationJob(env, h, HostTerminationOptions{
+				TerminateIfBusy:   true,
+				TerminationReason: reason,
+			})
+			j.Run(ctx)
+			require.NoError(t, j.Error())
+
+			dbHost, err := host.FindOne(ctx, host.ById(h.Id))
+			require.NoError(t, err)
+			require.NotZero(t, dbHost)
+			assert.Equal(t, evergreen.HostTerminated, dbHost.Status)
+
+			checkTerminationEvent(t, h.Id, reason)
+
+			cloudHost := mcp.Get(h.Id)
+			require.NotZero(t, cloudHost)
+			assert.Equal(t, cloud.StatusTerminated, cloudHost.Status)
+
+			// Check if task1 has been reset
+			resetTask, err := task.FindOneId("task2")
+			require.NoError(t, err)
+			assert.Equal(t, "i-12345", resetTask.HostId)
+			assert.Equal(t, evergreen.TaskSucceeded, resetTask.Status)
+		},
 	} {
 		t.Run(tName, func(t *testing.T) {
-			require.NoError(t, db.ClearCollections(host.Collection, event.EventCollection))
+			require.NoError(t, db.ClearCollections(host.Collection, event.EventCollection, task.Collection, model.ProjectRefCollection))
 			tctx := testutil.TestSpan(ctx, t)
 
 			env := testutil.NewEnvironment(tctx, t)
@@ -247,7 +309,7 @@ func TestHostTerminationJob(t *testing.T) {
 			h := &host.Host{
 				Id:          "i-12345",
 				Status:      evergreen.HostRunning,
-				Distro:      distro.Distro{Provider: evergreen.ProviderNameMock},
+				Distro:      distro.Distro{Id: "d1", Provider: evergreen.ProviderNameMock},
 				Provider:    evergreen.ProviderNameMock,
 				Provisioned: true,
 			}
