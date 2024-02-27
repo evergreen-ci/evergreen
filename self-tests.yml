@@ -358,6 +358,8 @@ functions:
         args: ["scripts/check-go-vulnerabilities.sh"]
         env:
           GOPATH: ${workdir}/gopath
+        include_expansions_in_env:
+          - GOROOT
 
   verify-client-version-update:
     - command: subprocess.exec
