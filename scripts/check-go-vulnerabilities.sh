@@ -1,5 +1,6 @@
 
 #!/usr/bin/env bash
+set -x
 
 # This script checks for go vulnerabilities.
 
