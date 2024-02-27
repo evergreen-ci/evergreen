@@ -626,6 +626,7 @@ func (a *Agent) runTask(ctx context.Context, tcInput *taskContext, nt *apimodels
 	}
 
 	defer func() {
+		tc.logger.Execution().Error(errors.Wrap(tc.taskConfig.TaskOutputDir.Run(tskCtx), "ingesting task output"))
 		tc.logger.Execution().Error(errors.Wrap(a.uploadTraces(tskCtx, tc.taskConfig.WorkDir), "uploading traces"))
 	}()
 
@@ -730,11 +731,6 @@ func (a *Agent) runPreAndMain(ctx context.Context, tc *taskContext) (status stri
 		}
 	}
 
-	defer func() {
-		if err := tc.taskConfig.TaskOutputDir.Run(execTimeoutCtx); err != nil {
-			tc.logger.Execution().Error(errors.Wrap(err, "ingesting task output"))
-		}
-	}()
 	if err := a.runTaskCommands(execTimeoutCtx, tc); err != nil {
 		return evergreen.TaskFailed
 	}
