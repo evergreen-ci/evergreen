@@ -33,7 +33,9 @@ log paths to test results.
 
 The test log specification file is a YAML file that enables configuration for
 test log handling, such as schema versioning and log line format. It must have
-the following file path: `{workdir}/build/test_logs/log_spec.yaml`.
+the following file path: `${workdir}/build/test_logs/log_spec.yaml`. If the
+file does not exist or cannot be read for any reason, an error is logged and
+the default values are used.
 
 Note that this file is not persisted.
 
@@ -42,10 +44,10 @@ schema_version: 0
 format: text-timestamp
 ```
 
-| Name             | Type          | Description                                                    |
-| ---------------- | ------------- | -------------------------------------------------------------- |
-| `schema_versoin` | int           | The version of the log specification file. Should one of: `0`. |
-| `format`         | string (enum) | The log line format, described below.                          |
+| Name             | Type          | Description                                                                      |
+| ---------------- | ------------- | -------------------------------------------------------------------------------- |
+| `schema_version` | int           | The version of the log specification file. Should be one of: `0`. Defaults to 0. |
+| `format`         | string (enum) | The log line format, described below. Defaults to `text`.                        |
 
 Log Line Formats:
 
