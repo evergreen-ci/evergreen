@@ -417,9 +417,8 @@ Notes:
     generate more than 100 variants or more than 1000 tasks.
 -   Because generate.tasks retries on errors that aren't known to us,
     it may appear that your generate.tasks is hanging until timeout.
-    There may be details of this in the task logs; please ask in
-    #evergreen-users if you aren't sure what to do with a hanging
-    generate.tasks.
+    There may be details of this in the task logs; please ask
+    if you aren't sure what to do with a hanging generate.tasks.
 
 ``` yaml
 - command: generate.tasks
