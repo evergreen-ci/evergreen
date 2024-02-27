@@ -2111,6 +2111,11 @@ func (t *Task) MarkEnd(finishTime time.Time, detail *apimodels.TaskEndDetail) er
 		})
 }
 
+// HasOrWillRun
+func (t *Task) HasOrWillRun() bool {
+	return t.Activated || evergreen.IsValidTaskEndStatus(t.Status) || t.Status == evergreen.TaskStarted
+}
+
 // GetDisplayStatus finds and sets DisplayStatus to the task. It should reflect
 // the statuses assigned during the addDisplayStatus aggregation step.
 func (t *Task) GetDisplayStatus() string {
