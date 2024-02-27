@@ -173,6 +173,8 @@ func makeGetTaskLogs(url string) *getTaskLogsHandler {
 	}
 }
 
+// Factory creates an instance of the handler.
+//
 //	@Summary		Get task logs for a task.
 //	@Description	Fetch task logs by task ID.
 //	@Tags			tasks
@@ -234,6 +236,8 @@ func makeGetTestLogs(url string) *getTestLogsHandler {
 	}
 }
 
+// Factory creates an instance of the handler.
+//
 //	@Summary		Get test logs for a task.
 //	@Description	Fetch test logs by task ID.
 //	@Tags			tasks
