@@ -448,10 +448,6 @@ func (h *getExpansionsAndVarsHandler) Run(ctx context.Context) gimlet.Responder 
 			res.PrivateVars = projectVars.PrivateVars
 		}
 	}
-	if foundHost != nil && foundHost.Distro.IsWindows() {
-		res.Vars[evergreen.HostServicePasswordExpansion] = foundHost.ServicePassword
-		res.PrivateVars[evergreen.HostServicePasswordExpansion] = true
-	}
 
 	v, err := model.VersionFindOneId(t.Version)
 	if err != nil {

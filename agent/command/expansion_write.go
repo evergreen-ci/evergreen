@@ -18,6 +18,7 @@ var (
 	ExpansionsToRedact = []string{
 		evergreen.GlobalGitHubTokenExpansion,
 		evergreen.GithubAppToken,
+		evergreen.HostServicePasswordExpansion,
 		AWSAccessKeyId,
 		AWSSecretAccessKey,
 		AWSSessionToken,
