@@ -190,6 +190,7 @@ tasks:
         params:
           aws_key: ${aws_key}
           aws_secret: ${aws_secret}
+          aws_session_token: ${aws_token}
           local_file: upload/s3
           remote_file: evergreen/smoke/${build_id}-${build_variant}/evergreen-${task_name}-${revision}
           bucket: mciuploads
@@ -200,6 +201,7 @@ tasks:
         params:
           aws_key: ${aws_key}
           aws_secret: ${aws_secret}
+          aws_session_token: ${aws_token}
           local_file: upload/s3
           remote_file: evergreen/smoke/${build_id}-${build_variant}/evergreen-${task_name}-${revision}
           bucket: mciuploads
@@ -210,6 +212,7 @@ tasks:
         params:
           aws_key: ${aws_key}
           aws_secret: ${aws_secret}
+          aws_session_token: ${aws_token}
           remote_file: evergreen/smoke/${build_id}-${build_variant}/evergreen-${task_name}-${revision}
           bucket: mciuploads
           local_file: upload/s3-get
@@ -217,6 +220,7 @@ tasks:
         params:
           aws_key: ${aws_key}
           aws_secret: ${aws_secret}
+          aws_session_token: ${aws_token}
           s3_copy_files:
             - source:
                 path: "evergreen/smoke/${build_id}-${build_variant}/evergreen-${task_name}-${revision}"
