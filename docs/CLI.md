@@ -41,6 +41,14 @@ Tasks and variants can also be specified using the regex variants(-rv) and regex
 evergreen patch --regex_variants "enterprise.*" --rt "test-.*"
 ```
 
+When specifying tasks or variants, _both_ must be specified:
+```bash
+evergreen patch --regex_variants "enterprise.*" // not valid, will not select any tasks
+evergreen patch -t unittest // not valid, will not select any tasks
+evergreen patch -rv "enterprise.*" --regex-tasks test-.* // valid
+evergreen patch --regex_variants "enterprise.*" -t unittest // valid
+```
+
 To use the same tasks and variants defined for the previous patch created for this project, you can use the `--reuse` flag. If any tasks/variants were defined for the previous patch but do not exist for the new patch, they will not be added. Note also that aliases will not be re-calculated; this is so if an alias had been given to the previous patch but then the user chose to tweak the specific tasks/variants, the final configuration is the one that we reuse.
 ```
 evergreen patch --reuse
