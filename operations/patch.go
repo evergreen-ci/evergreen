@@ -2,6 +2,7 @@ package operations
 
 import (
 	"context"
+	"fmt"
 	"os"
 	"strings"
 
@@ -42,6 +43,10 @@ func getPatchFlags(flags ...cli.Flag) []cli.Flag {
 		addUncommittedChangesFlag(),
 		addReuseFlags(),
 		addPreserveCommitsFlag(
+			cli.BoolFlag{
+				Name:  joinFlagNames(jsonFlagName, "j"),
+				Usage: "outputs the patch as a JSON object; suppresses warnings and confirmations",
+			},
 			cli.StringSliceFlag{
 				Name:  joinFlagNames(tasksFlagName, "t"),
 				Usage: "task names (\"all\" for all tasks)",
@@ -89,8 +94,7 @@ func Patch() cli.Command {
 			setPlainLogger,
 			mutuallyExclusiveArgs(false, patchDescriptionFlagName, autoDescriptionFlag),
 			mutuallyExclusiveArgs(false, preserveCommitsFlag, uncommittedChangesFlag),
-			mutuallyExclusiveArgs(false, repeatDefinitionFlag, repeatPatchIdFlag,
-				repeatFailedDefinitionFlag),
+			mutuallyExclusiveArgs(false, repeatDefinitionFlag, repeatPatchIdFlag, repeatFailedDefinitionFlag),
 			func(c *cli.Context) error {
 				catcher := grip.NewBasicCatcher()
 				for _, status := range utility.SplitCommas(c.StringSlice(syncStatusesFlagName)) {
@@ -111,6 +115,7 @@ func Patch() cli.Command {
 		),
 		Action: func(c *cli.Context) error {
 			confPath := c.Parent().String(confFlagName)
+			outputJSON := c.Bool(jsonFlagName)
 			args := c.Args()
 			params := &patchParams{
 				Project:           c.String(projectFlagName),
@@ -123,7 +128,7 @@ func Patch() cli.Command {
 				SyncTasks:         utility.SplitCommas(c.StringSlice(syncTasksFlagName)),
 				SyncStatuses:      utility.SplitCommas(c.StringSlice(syncStatusesFlagName)),
 				SyncTimeout:       c.Duration(syncTimeoutFlagName),
-				SkipConfirm:       c.Bool(skipConfirmFlagName),
+				SkipConfirm:       c.Bool(skipConfirmFlagName) || outputJSON,
 				Description:       c.String(patchDescriptionFlagName),
 				AutoDescription:   c.Bool(autoDescriptionFlag),
 				Finalize:          c.Bool(patchFinalizeFlagName),
@@ -135,10 +140,12 @@ func Patch() cli.Command {
 				Uncommitted:       c.Bool(uncommittedChangesFlag),
 				PreserveCommits:   c.Bool(preserveCommitsFlag),
 				TriggerAliases:    utility.SplitCommas(c.StringSlice(patchTriggerAliasFlag)),
+				RepeatPatchId:     c.String(repeatPatchIdFlag),
+				RepeatDefinition:  c.Bool(repeatDefinitionFlag) || c.String(repeatPatchIdFlag) != "",
+				RepeatFailed:      c.Bool(repeatFailedDefinitionFlag),
 			}
 
 			var err error
-			params.addReuseFlags(c)
 			includeModules := c.Bool(includeModulesFlag)
 			paramsPairs := c.StringSlice(parameterFlagName)
 			params.Parameters, err = getParametersFromInput(paramsPairs)
@@ -169,7 +176,7 @@ func Patch() cli.Command {
 				}
 			}
 
-			comm, err := conf.setupRestCommunicator(ctx, true)
+			comm, err := conf.setupRestCommunicator(ctx, !outputJSON)
 			if err != nil {
 				return errors.Wrap(err, "setting up REST communicator")
 			}
@@ -206,7 +213,7 @@ func Patch() cli.Command {
 			remote, err := gitGetRemote("", ref.Owner, ref.Repo)
 			if err != nil {
 				// TODO: DEVPROD-3740 Change this back to an error
-				grip.Warningf("warning - you do not have a remote tracking your Evergreen project. The project to track is https://github.com/%s/%s", ref.Owner, ref.Repo)
+				grip.WarningWhen(!outputJSON, fmt.Sprintf("warning - you do not have a remote tracking your Evergreen project. The project to track is https://github.com/%s/%s", ref.Owner, ref.Repo))
 			}
 
 			diffData, err := loadGitData("", remote, ref.Branch, params.Ref, "", params.PreserveCommits, args...)
@@ -241,7 +248,7 @@ func Patch() cli.Command {
 						continue
 					}
 					if err = addModuleToPatch(params, args, conf, newPatch, &module, modulePath); err != nil {
-						grip.Errorf("Error adding module '%s' to patch: %s", module.Name, err)
+						grip.ErrorWhen(!outputJSON, fmt.Sprintf("Error adding module '%s' to patch: %s", module.Name, err))
 					}
 				}
 			}
@@ -252,19 +259,18 @@ func Patch() cli.Command {
 				}
 			}
 
-			if err = params.displayPatch(ac, newPatch, conf.UIServerHost, false); err != nil {
+			outputParams := outputPatchParams{
+				patches:    []patch.Patch{*newPatch},
+				uiHost:     conf.UIServerHost,
+				outputJSON: outputJSON,
+			}
+			if err = params.displayPatch(ac, outputParams); err != nil {
 				grip.Error(err)
 			}
 			params.setDefaultProject(conf)
 			return nil
 		},
 	}
-}
-
-func (p *patchParams) addReuseFlags(c *cli.Context) {
-	p.RepeatPatchId = c.String(repeatPatchIdFlag)
-	p.RepeatDefinition = c.Bool(repeatDefinitionFlag) || p.RepeatPatchId != ""
-	p.RepeatFailed = c.Bool(repeatFailedDefinitionFlag)
 }
 
 func getParametersFromInput(params []string) ([]patch.Parameter, error) {
@@ -419,7 +425,13 @@ func PatchFile() cli.Command {
 				}
 			}
 
-			return params.displayPatch(ac, newPatch, conf.UIServerHost, false)
+			outputParams := outputPatchParams{
+				patches:    []patch.Patch{*newPatch},
+				uiHost:     conf.UIServerHost,
+				outputJSON: c.Bool(jsonFlagName),
+			}
+
+			return params.displayPatch(ac, outputParams)
 		},
 	}
 }

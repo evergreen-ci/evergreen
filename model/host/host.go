@@ -112,6 +112,9 @@ type Host struct {
 	AgentRevision        string `bson:"agent_revision" json:"agent_revision"`
 	NeedsNewAgent        bool   `bson:"needs_agent" json:"needs_agent"`
 	NeedsNewAgentMonitor bool   `bson:"needs_agent_monitor" json:"needs_agent_monitor"`
+	// NumAgentCleanupFailures represents the number of consecutive failed attempts a host has gone through
+	// while trying to clean up an agent on a quarantined host.
+	NumAgentCleanupFailures int `bson:"num_agent_cleanup_failures" json:"num_agent_cleanup_failures"`
 
 	// NeedsReprovision is set if the host needs to be reprovisioned.
 	// These fields must be unset if no provisioning is needed anymore.
@@ -527,6 +530,15 @@ func (h *Host) GetAMI() string {
 	return ami
 }
 
+// GetSubnetID returns the subnet ID for the host if available, otherwise returns the empty string.
+func (h *Host) GetSubnetID() string {
+	if len(h.Distro.ProviderSettingsList) == 0 {
+		return ""
+	}
+	subnetID, _ := h.Distro.ProviderSettingsList[0].Lookup("subnet_id").StringValueOK()
+	return subnetID
+}
+
 func (h *Host) IsEphemeral() bool {
 	return utility.StringSliceContains(evergreen.ProviderSpawnable, h.Provider)
 }
@@ -799,9 +811,13 @@ func (h *Host) SetQuarantined(ctx context.Context, user string, logs string) err
 }
 
 // CreateSecret generates a host secret and updates the host both locally
-// and in the database.
-func (h *Host) CreateSecret(ctx context.Context) error {
+// and in the database, with the option to clear the secret rather than
+// set a new one.
+func (h *Host) CreateSecret(ctx context.Context, clear bool) error {
 	secret := utility.RandomString()
+	if clear {
+		secret = ""
+	}
 	err := UpdateOne(
 		ctx,
 		bson.M{IdKey: h.Id},
@@ -1453,6 +1469,7 @@ func (h *Host) ClearRunningAndSetLastTask(ctx context.Context, t *task.Task) err
 				RunningTaskBuildVariantKey: 1,
 				RunningTaskVersionKey:      1,
 				RunningTaskProjectKey:      1,
+				NumAgentCleanupFailuresKey: 1,
 			},
 		})
 
@@ -1538,6 +1555,7 @@ func (h *Host) clearRunningTaskWithFunc(doUpdate func(update bson.M) error) erro
 			RunningTaskBuildVariantKey: 1,
 			RunningTaskVersionKey:      1,
 			RunningTaskProjectKey:      1,
+			NumAgentCleanupFailuresKey: 1,
 		},
 	}
 	if err := doUpdate(update); err != nil {
@@ -3253,8 +3271,8 @@ func (h *Host) ClearDockerStdinData(ctx context.Context) error {
 // character ([0-9A-Za-z]).
 var nonAlphanumericRegexp = regexp.MustCompile("[[:^alnum:]]+")
 
-// alphanumericChars contains all alphanumeric characters.
-const alphanumericChars = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789"
+// alphanumericChars contains all alphanumeric characters (case-insensitive).
+const alphanumericChars = "abcdefghijklmnopqrstuvwxyz0123456789"
 
 // GeneratePersistentDNSName returns the host's persistent DNS name, or
 // generates a new one if it doesn't have one currently assigned.
