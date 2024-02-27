@@ -230,7 +230,6 @@ func (j *hostTerminationJob) Run(ctx context.Context) {
 				}
 			}
 		}
-
 	}
 	// set host as decommissioned in DB so no new task will be assigned
 	prevStatus := j.host.Status
