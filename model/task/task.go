@@ -2111,7 +2111,7 @@ func (t *Task) MarkEnd(finishTime time.Time, detail *apimodels.TaskEndDetail) er
 		})
 }
 
-// HasOrWillRun
+// HasOrWillRun returns whether the task has run or will run in the future.
 func (t *Task) HasOrWillRun() bool {
 	return t.Activated || evergreen.IsValidTaskEndStatus(t.Status) || t.Status == evergreen.TaskStarted
 }
