@@ -33,8 +33,8 @@ log paths to test results.
 
 The test log specification file is a YAML file that enables configuration for
 test log handling, such as schema versioning and log line format. It must have
-the following file path: `${workdir}/build/test_logs/log_spec.yaml`. If the
-file does not exist or cannot be read for any reason, an error is logged and
+the following file path: `${workdir}/build/TestLogs/log_spec.yaml`. If the file
+does not exist or cannot be read for any reason, an error is logged and the
 the default values are used.
 
 Note that this file is not persisted.
