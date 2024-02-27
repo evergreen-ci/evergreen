@@ -41,10 +41,11 @@ Tasks and variants can also be specified using the regex variants(-rv) and regex
 evergreen patch --regex_variants "enterprise.*" --rt "test-.*"
 ```
 
-Tasks and variants must _both_ be specified:
+When specifying tasks or variants, _both_ must be specified:
 ```bash
 evergreen patch --regex_variants "enterprise.*" // not valid, will not select any tasks
 evergreen patch -t unittest // not valid, will not select any tasks
+evergreen patch -rv "enterprise.*" --regex-tasks test-.* // valid
 evergreen patch --regex_variants "enterprise.*" -t unittest // valid
 ```
 
