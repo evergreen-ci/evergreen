@@ -16,6 +16,7 @@ import (
 	"github.com/evergreen-ci/evergreen/agent/command"
 	"github.com/evergreen-ci/evergreen/agent/internal"
 	"github.com/evergreen-ci/evergreen/agent/internal/client"
+	"github.com/evergreen-ci/evergreen/agent/internal/testutil"
 	"github.com/evergreen-ci/evergreen/apimodels"
 	"github.com/evergreen-ci/evergreen/model"
 	"github.com/evergreen-ci/evergreen/model/patch"
@@ -122,7 +123,7 @@ func (s *AgentSuite) SetupTest() {
 		DisplayName:    "this_is_a_task_name",
 		BuildVariant:   bvName,
 		Version:        versionID,
-		TaskOutputInfo: initializeTaskOutput(s.T()),
+		TaskOutputInfo: testutil.InitializeTaskOutput(s.T()),
 	}
 	s.mockCommunicator.GetTaskResponse = &s.task
 
@@ -1251,7 +1252,7 @@ func (s *AgentSuite) TestFinishPrevTaskWithoutTaskGroup() {
 				Id:             "some_task_id",
 				BuildId:        buildID,
 				Version:        versionID,
-				TaskOutputInfo: initializeTaskOutput(s.T()),
+				TaskOutputInfo: testutil.InitializeTaskOutput(s.T()),
 			},
 			WorkDir: "task_directory",
 		},
@@ -1280,7 +1281,7 @@ func (s *AgentSuite) TestFinishPrevTaskAndNextTaskIsInNewTaskGroup() {
 				Id:             "some_task_id",
 				BuildId:        buildID,
 				Version:        versionID,
-				TaskOutputInfo: initializeTaskOutput(s.T()),
+				TaskOutputInfo: testutil.InitializeTaskOutput(s.T()),
 			},
 			WorkDir: "task_directory",
 		},
@@ -1313,7 +1314,7 @@ func (s *AgentSuite) TestFinishPrevTaskWithSameTaskGroupAndAlreadyRanSetupGroup(
 				TaskGroup:      taskGroup,
 				BuildId:        buildID,
 				Version:        versionID,
-				TaskOutputInfo: initializeTaskOutput(s.T()),
+				TaskOutputInfo: testutil.InitializeTaskOutput(s.T()),
 			},
 			TaskGroup: &model.TaskGroup{Name: taskGroup},
 			WorkDir:   "task_directory",
@@ -1347,7 +1348,7 @@ func (s *AgentSuite) TestFinishPrevTaskWithSameTaskGroupButDidNotRunSetupGroup()
 				TaskGroup:      taskGroup,
 				Version:        versionID,
 				BuildId:        buildID,
-				TaskOutputInfo: initializeTaskOutput(s.T()),
+				TaskOutputInfo: testutil.InitializeTaskOutput(s.T()),
 			},
 			TaskGroup: &model.TaskGroup{Name: taskGroup},
 			WorkDir:   "task_directory",
@@ -1380,7 +1381,7 @@ func (s *AgentSuite) TestFinishPrevTaskWithSameBuildButDifferentTaskGroup() {
 				TaskGroup:      taskGroup1,
 				Version:        versionID,
 				BuildId:        buildID,
-				TaskOutputInfo: initializeTaskOutput(s.T()),
+				TaskOutputInfo: testutil.InitializeTaskOutput(s.T()),
 			},
 			TaskGroup: &model.TaskGroup{Name: taskGroup1},
 			WorkDir:   "task_directory",
@@ -1542,7 +1543,7 @@ func (s *AgentSuite) TestSetupInitialWithTaskDataLoadingErrorResultsInSystemFail
 		BuildVariant:   "nonexistent_bv",
 		BuildId:        buildID,
 		Version:        versionID,
-		TaskOutputInfo: initializeTaskOutput(s.T()),
+		TaskOutputInfo: testutil.InitializeTaskOutput(s.T()),
 	}
 	s.mockCommunicator.GetProjectResponse = &model.Project{
 		Tasks: []model.ProjectTask{
@@ -2458,6 +2459,34 @@ func (s *AgentSuite) TestUpsertCheckRun() {
 	}, []string{panicLog})
 }
 
+func (s *AgentSuite) TestTaskOutputDirectoryTestLogs() {
+	projYml := `
+tasks:
+  - name: this_is_a_task_name
+    commands:
+      - command: shell.exec
+        params:
+          script: echo "I am test log.\nI should get ingested automatically by the agent.\n" > ${workdir}/build/TestLogs/test.log
+`
+	s.setupRunTask(projYml)
+	nextTask := &apimodels.NextTaskResponse{
+		TaskId:     s.tc.task.ID,
+		TaskSecret: s.tc.task.Secret,
+	}
+	_, _, err := s.a.runTask(s.ctx, s.tc, nextTask, false, s.testTmpDirName)
+	s.Require().NoError(err)
+
+	it, err := s.task.GetTestLogs(s.ctx, taskoutput.TestLogGetOptions{LogPaths: []string{"test.log"}})
+	s.Require().NoError(err)
+
+	var actualLines string
+	for it.Next() {
+		actualLines += it.Item().Data + "\n"
+	}
+	expectedLines := "I am test log.\nI should get ingested automatically by the agent.\n"
+	s.Equal(expectedLines, actualLines)
+}
+
 // checkMockLogs checks the mock communicator's received task logs. Note that
 // callers should flush the task logs before checking them to ensure that they
 // are up-to-date.
@@ -2499,24 +2528,5 @@ func checkMockLogs(t *testing.T, mc *client.Mock, taskID string, logsToFind []st
 
 	if displayLogs {
 		grip.Infof("Logs for task '%s':\n%s\n", taskID, strings.Join(allLogs, "\n"))
-	}
-}
-
-func initializeTaskOutput(t *testing.T) *taskoutput.TaskOutput {
-	return &taskoutput.TaskOutput{
-		TaskLogs: taskoutput.TaskLogOutput{
-			Version: 1,
-			BucketConfig: evergreen.BucketConfig{
-				Name: t.TempDir(),
-				Type: evergreen.BucketTypeLocal,
-			},
-		},
-		TestLogs: taskoutput.TestLogOutput{
-			Version: 1,
-			BucketConfig: evergreen.BucketConfig{
-				Name: t.TempDir(),
-				Type: evergreen.BucketTypeLocal,
-			},
-		},
 	}
 }

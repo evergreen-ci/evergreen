@@ -2062,8 +2062,8 @@
               "testResults": [
                 {
                   "logs": {
-                    "url": "https://localhost:8443/test_log/exec1/0?test_name=apple&group_id=#L126",
-                    "urlRaw": "https://localhost:8443/test_log/exec1/0?test_name=apple&group_id=&text=true",
+                    "url": "https://localhost:8443/test_log/exec1/0?test_name=apple#L126",
+                    "urlRaw": "https://localhost:8443/rest/v2/tasks/exec1/build/TestLogs/apple?execution=0&print_time=true",
                     "urlParsley": "https://localhost:4173/test/exec1/0/apple?shareLine=126"
                   },
                   "id": "apple"
