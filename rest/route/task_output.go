@@ -185,8 +185,8 @@ func makeGetTaskLogs(url string) *getTaskLogsHandler {
 //	@Param			type		query		string	false	"Task log type. Must be one of: `agent_log`, `system_log`, `task_log`, `all_logs`. Defaults to `all_logs`."
 //	@Param			start		query		string	false	"Start of targeted time interval (inclusive) in RFC3339 format. Defaults to the first timestamp of the requested logs."
 //	@Param			end			query		string	false	"End of targeted time interval (inclusive) in RFC3339 format. Defaults to the last timestamp of the requested logs."
-//	@Param			limit		query		int		false	"If set greater than 0, limits the number of log lines returned."
-//	@Param			tail		query		int		false	"If set greater than 0, returns the last N log lines."
+//	@Param			line_limit	query		int		false	"If set greater than 0, limits the number of log lines returned."
+//	@Param			tail_limit	query		int		false	"If set greater than 0, returns the last N log lines."
 //	@Success		200			{string}	string
 func (h *getTaskLogsHandler) Factory() gimlet.RouteHandler {
 	return &getTaskLogsHandler{
@@ -249,8 +249,8 @@ func makeGetTestLogs(url string) *getTestLogsHandler {
 //	@Param			logs_to_merge	query		string	false	"Test log path, relative to the task's test log directory, to merge with test log specified in the URL path. Can be a prefix. Merging is stable and timestamp-based. Repeat the parameter key if more than one value."
 //	@Param			start			query		string	false	"Start of targeted time interval (inclusive) in RFC3339 format. Defaults to the first timestamp of the test log specified in the URL path."
 //	@Param			end				query		string	false	"End of targeted time interval (inclusive) in RFC3339 format. Defaults to the last timestamp of the test log specified in the URL path."
-//	@Param			limit			query		int		false	"If set greater than 0, limits the number of log lines returned."
-//	@Param			tail			query		int		false	"If set greater than 0, returns the last N log lines."
+//	@Param			line_limit		query		int		false	"If set greater than 0, limits the number of log lines returned."
+//	@Param			tail_limit		query		int		false	"If set greater than 0, returns the last N log lines."
 //	@Param			paginate		query		bool	false	"If set to true, paginates the response."
 //	@Success		200				{string}	string
 func (h *getTestLogsHandler) Factory() gimlet.RouteHandler {
