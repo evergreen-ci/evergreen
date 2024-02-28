@@ -1267,11 +1267,12 @@ func (h *hostAgentEndTask) Run(ctx context.Context) gimlet.Responder {
 	// This is a more difficult check because it will require cross-referencing
 	// the host's state against the task's state. Doing the former order of
 	// operations avoids this expensive check.
-	if err = currentHost.ClearRunningAndSetLastTask(ctx, t); err != nil {
+	if err = currentHost.ClearRunningAndSetLastTask(ctx, t, true); err != nil {
 		err = errors.Wrapf(err, "clearing running task '%s' for host '%s'", t.Id, currentHost.Id)
 		grip.Errorf(err.Error())
 		return gimlet.MakeJSONInternalErrorResponder(err)
 	}
+	defer currentHost.UnsetIsIdle(ctx)
 
 	deactivatePrevious := utility.FromBoolPtr(projectRef.DeactivatePrevious)
 	details := &h.details

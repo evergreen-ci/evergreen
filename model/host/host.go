@@ -171,6 +171,8 @@ type Host struct {
 
 	// SleepSchedule stores host sleep schedule information.
 	SleepSchedule SleepScheduleInfo `bson:"sleep_schedule,omitempty" json:"sleep_schedule,omitempty"`
+
+	IsIdle bool `bson:"is_idle,omitempty" json:"is_idle,omitempty"`
 }
 
 type Tag struct {
@@ -1442,9 +1444,49 @@ func (h *Host) MarkAsReprovisioned(ctx context.Context) error {
 	return nil
 }
 
+// UnsetIsIdle unsets the `IsIdle` field for hosts.
+func (h *Host) UnsetIsIdle(ctx context.Context) error {
+	return UpdateOne(
+		ctx,
+		bson.M{
+			IdKey: h.Id,
+		},
+		bson.M{
+			"$unset": bson.M{
+				IsIdleKey: 1,
+			},
+		})
+}
+
 // ClearRunningAndSetLastTask unsets the running task on the host and updates the last task fields.
-func (h *Host) ClearRunningAndSetLastTask(ctx context.Context, t *task.Task) error {
+// If 'lock' is true, the function will set the `IsIdle` parameter as false to block it from getting
+// picked up by the idle host job. Users must call `UnsetIsIdle()` if `lock` is set to true.
+func (h *Host) ClearRunningAndSetLastTask(ctx context.Context, t *task.Task, lock bool) error {
 	now := time.Now()
+
+	set := bson.M{
+		LTCTimeKey:    now,
+		LTCTaskKey:    t.Id,
+		LTCGroupKey:   t.TaskGroup,
+		LTCBVKey:      t.BuildVariant,
+		LTCVersionKey: t.Version,
+		LTCProjectKey: t.Project,
+	}
+	if lock {
+		set[IsIdleKey] = false
+	}
+
+	unset := bson.M{
+		RunningTaskKey:             1,
+		RunningTaskExecutionKey:    1,
+		RunningTaskGroupKey:        1,
+		RunningTaskGroupOrderKey:   1,
+		RunningTaskBuildVariantKey: 1,
+		RunningTaskVersionKey:      1,
+		RunningTaskProjectKey:      1,
+		NumAgentCleanupFailuresKey: 1,
+	}
+
 	err := UpdateOne(
 		ctx,
 		bson.M{
@@ -1453,24 +1495,8 @@ func (h *Host) ClearRunningAndSetLastTask(ctx context.Context, t *task.Task) err
 			RunningTaskExecutionKey: h.RunningTaskExecution,
 		},
 		bson.M{
-			"$set": bson.M{
-				LTCTimeKey:    now,
-				LTCTaskKey:    t.Id,
-				LTCGroupKey:   t.TaskGroup,
-				LTCBVKey:      t.BuildVariant,
-				LTCVersionKey: t.Version,
-				LTCProjectKey: t.Project,
-			},
-			"$unset": bson.M{
-				RunningTaskKey:             1,
-				RunningTaskExecutionKey:    1,
-				RunningTaskGroupKey:        1,
-				RunningTaskGroupOrderKey:   1,
-				RunningTaskBuildVariantKey: 1,
-				RunningTaskVersionKey:      1,
-				RunningTaskProjectKey:      1,
-				NumAgentCleanupFailuresKey: 1,
-			},
+			"$set":   set,
+			"$unset": unset,
 		})
 
 	if err != nil {

@@ -202,7 +202,7 @@ func (j *taskExecutionTimeoutJob) cleanUpTimedOutTask(ctx context.Context) error
 			// fixing the stranded task.
 			return nil
 		}
-		if err = host.ClearRunningAndSetLastTask(ctx, j.task); err != nil {
+		if err = host.ClearRunningAndSetLastTask(ctx, j.task, false); err != nil {
 			return errors.Wrapf(err, "clearing running task '%s' from host '%s'", j.task.Id, host.Id)
 		}
 	}

@@ -97,6 +97,7 @@ var (
 	HomeVolumeIDKey                    = bsonutil.MustHaveTag(Host{}, "HomeVolumeID")
 	PortBindingsKey                    = bsonutil.MustHaveTag(Host{}, "PortBindings")
 	IsVirtualWorkstationKey            = bsonutil.MustHaveTag(Host{}, "IsVirtualWorkstation")
+	IsIdleKey                          = bsonutil.MustHaveTag(Host{}, "IsIdle")
 	SpawnOptionsTaskIDKey              = bsonutil.MustHaveTag(SpawnOptions{}, "TaskID")
 	SpawnOptionsTaskExecutionNumberKey = bsonutil.MustHaveTag(SpawnOptions{}, "TaskExecutionNumber")
 	SpawnOptionsBuildIDKey             = bsonutil.MustHaveTag(SpawnOptions{}, "BuildID")
@@ -175,6 +176,7 @@ func IdleEphemeralGroupedByDistroID(ctx context.Context, env evergreen.Environme
 				StartedByKey:     evergreen.User,
 				ProviderKey:      bson.M{"$in": evergreen.ProviderSpawnable},
 				HasContainersKey: bson.M{"$ne": true},
+				IsIdleKey:        bson.M{"$ne": false},
 				"$or": []bson.M{
 					{
 						StatusKey: evergreen.HostRunning,
@@ -577,6 +579,7 @@ var IsIdle = bson.M{
 	RunningTaskKey: bson.M{"$exists": false},
 	StatusKey:      evergreen.HostRunning,
 	StartedByKey:   evergreen.User,
+	IsIdleKey:      bson.M{"$ne": false},
 }
 
 // ByNotMonitoredSince produces a query that returns all hosts whose

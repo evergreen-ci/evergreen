@@ -847,7 +847,7 @@ func TestHostClearRunningAndSetLastTask(t *testing.T) {
 			" and task dispatch time fields from both the in-memory and"+
 			" database copies of the host", func() {
 
-			So(host.ClearRunningAndSetLastTask(ctx, &task.Task{Id: "prevTask"}), ShouldBeNil)
+			So(host.ClearRunningAndSetLastTask(ctx, &task.Task{Id: "prevTask"}, true), ShouldBeNil)
 			So(host.RunningTask, ShouldEqual, "")
 			So(host.LastTask, ShouldEqual, "prevTask")
 
@@ -857,10 +857,17 @@ func TestHostClearRunningAndSetLastTask(t *testing.T) {
 			So(host.RunningTask, ShouldEqual, "")
 			So(host.LastTask, ShouldEqual, "prevTask")
 
-			Convey("the count of idle hosts should go up", func() {
+			Convey("the count of idle hosts should not go up", func() {
 				count, err := Count(ctx, IsIdle)
 				So(err, ShouldBeNil)
-				So(count, ShouldEqual, 1)
+				So(count, ShouldEqual, 0)
+
+				Convey("the count of idle hosts should go up after unsetting idle", func() {
+					host.UnsetIsIdle(ctx)
+					count, err := Count(ctx, IsIdle)
+					So(err, ShouldBeNil)
+					So(count, ShouldEqual, 1)
+				})
 
 				Convey("but the active host count should remain the same", func() {
 					count, err = Count(ctx, IsActive)
