@@ -298,6 +298,77 @@ func TestHostTerminationJob(t *testing.T) {
 			require.NoError(t, err)
 			assert.Equal(t, evergreen.TaskSucceeded, resetTask.Status)
 		},
+		"TaskInTaskGroupAccountsForInactiveTasks": func(ctx context.Context, t *testing.T, env evergreen.Environment, mcp cloud.MockProvider, h *host.Host) {
+			// If we have a partially activated task group, and the last one that is activated finishes
+			// we should not restart the task group.
+			h.LastGroup = "taskgroup"
+			h.LastTask = "task2"
+			require.NoError(t, h.Insert(ctx))
+
+			task1 := task.Task{
+				Id:                "task1",
+				Status:            evergreen.TaskSucceeded,
+				Activated:         true,
+				BuildId:           "b1",
+				Project:           "exists",
+				HostId:            h.Id,
+				TaskGroup:         "taskgroup",
+				TaskGroupMaxHosts: 1,
+			}
+			require.NoError(t, task1.Insert())
+			task2 := task.Task{
+				Id:                "task2",
+				Status:            evergreen.TaskSucceeded,
+				Activated:         true,
+				BuildId:           "b1",
+				Project:           "exists",
+				TaskGroup:         "taskgroup",
+				TaskGroupMaxHosts: 1,
+			}
+			require.NoError(t, task2.Insert())
+			task3 := task.Task{
+				Id:                "task3",
+				Status:            evergreen.TaskUndispatched,
+				Activated:         true,
+				BuildId:           "b1",
+				Project:           "exists",
+				TaskGroup:         "taskgroup",
+				TaskGroupMaxHosts: 1,
+			}
+			require.NoError(t, task3.Insert())
+			pref := &model.ProjectRef{
+				Id:      "exists",
+				Enabled: true,
+			}
+			require.NoError(t, pref.Insert())
+			mcp.Set(h.Id, cloud.MockInstance{
+				Status: cloud.StatusRunning,
+			})
+
+			const reason = "some termination message"
+			j := NewHostTerminationJob(env, h, HostTerminationOptions{
+				TerminateIfBusy:   true,
+				TerminationReason: reason,
+			})
+			j.Run(ctx)
+			require.NoError(t, j.Error())
+
+			dbHost, err := host.FindOne(ctx, host.ById(h.Id))
+			require.NoError(t, err)
+			require.NotZero(t, dbHost)
+			assert.Equal(t, evergreen.HostTerminated, dbHost.Status)
+
+			checkTerminationEvent(t, h.Id, reason)
+
+			cloudHost := mcp.Get(h.Id)
+			require.NotZero(t, cloudHost)
+			assert.Equal(t, cloud.StatusTerminated, cloudHost.Status)
+
+			// Check if task1 has been reset
+			resetTask, err := task.FindOneId("task2")
+			require.NoError(t, err)
+			assert.Equal(t, evergreen.TaskSucceeded, resetTask.Status)
+		},
 	} {
 		t.Run(tName, func(t *testing.T) {
 			require.NoError(t, db.ClearCollections(host.Collection, event.EventCollection, task.Collection, model.ProjectRefCollection))
