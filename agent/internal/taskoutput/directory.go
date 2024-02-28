@@ -43,7 +43,7 @@ type Directory struct {
 
 // NewDirectory returns a new task output directory with the specified root for
 // the given task.
-func NewDirectory(root string, tsk *task.Task, logger client.LoggerProducer) (*Directory, error) {
+func NewDirectory(root string, tsk *task.Task, logger client.LoggerProducer) *Directory {
 	output := tsk.TaskOutputInfo
 	taskOpts := taskoutput.TaskOptions{
 		ProjectID: tsk.Project,
@@ -51,6 +51,7 @@ func NewDirectory(root string, tsk *task.Task, logger client.LoggerProducer) (*D
 		Execution: tsk.Execution,
 	}
 
+	root = filepath.Join(root, "build")
 	handlers := map[string]directoryHandler{}
 	for name, factory := range directoryHandlerFactories {
 		dir := filepath.Join(root, name)
@@ -60,7 +61,7 @@ func NewDirectory(root string, tsk *task.Task, logger client.LoggerProducer) (*D
 	return &Directory{
 		root:     root,
 		handlers: handlers,
-	}, nil
+	}
 }
 
 // Setup creates the subdirectories for each handler and should be called

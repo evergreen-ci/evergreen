@@ -2,7 +2,6 @@ package evergreen
 
 import (
 	"context"
-	"encoding/gob"
 	"fmt"
 	"math"
 	"os"
@@ -19,7 +18,6 @@ import (
 	"github.com/evergreen-ci/gimlet/rolemanager"
 	"github.com/evergreen-ci/pail"
 	"github.com/evergreen-ci/utility"
-	"github.com/mitchellh/mapstructure"
 	"github.com/mongodb/amboy"
 	"github.com/mongodb/amboy/logger"
 	"github.com/mongodb/amboy/pool"
@@ -72,6 +70,8 @@ const (
 	mongoExternalAuthSource = "$external"
 
 	s3ClientsPrefix = "evergreen/clients"
+
+	honeycombCollectorHeader = "x-honeycomb-team"
 )
 
 func init() { globalEnvLock = &sync.RWMutex{} }
@@ -891,6 +891,11 @@ func (e *envState) initTracer(ctx context.Context, useInternalDNS bool) error {
 		opts = append(opts, otlptracegrpc.WithInsecure())
 	} else {
 		opts = append(opts, otlptracegrpc.WithEndpoint(e.settings.Tracer.CollectorEndpoint))
+		if e.settings.Tracer.CollectorAPIKey != "" {
+			opts = append(opts, otlptracegrpc.WithHeaders(map[string]string{
+				honeycombCollectorHeader: e.settings.Tracer.CollectorAPIKey,
+			}))
+		}
 	}
 	client := otlptracegrpc.NewClient(opts...)
 	exp, err := otlptrace.New(ctx, client)
@@ -1043,31 +1048,9 @@ func (e *envState) SaveConfig(ctx context.Context) error {
 	// this is a hacky workaround to any plugins that have fields that are maps, since
 	// deserializing these fields from yaml does not maintain the typing information
 	var copy Settings
-	registeredTypes := []interface{}{
-		map[interface{}]interface{}{},
-		map[string]interface{}{},
-		[]interface{}{},
-		[]util.KeyValuePair{},
-	}
-	err := util.DeepCopy(*e.settings, &copy, registeredTypes)
+	err := util.DeepCopy(*e.settings, &copy)
 	if err != nil {
 		return errors.Wrap(err, "copying settings")
-	}
-
-	gob.Register(map[interface{}]interface{}{})
-	for pluginName, plugin := range copy.Plugins {
-		if pluginName == "buildbaron" {
-			for fieldName, field := range plugin {
-				if fieldName == "projects" {
-					var projects map[string]BuildBaronSettings
-					err := mapstructure.Decode(field, &projects)
-					if err != nil {
-						return errors.Wrap(err, "decoding buildbaron projects")
-					}
-					plugin[fieldName] = projects
-				}
-			}
-		}
 	}
 
 	return errors.WithStack(UpdateConfig(ctx, &copy))

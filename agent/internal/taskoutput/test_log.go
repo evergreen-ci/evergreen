@@ -112,8 +112,6 @@ func (h *testLogDirectoryHandler) run(ctx context.Context) error {
 //
 // Called once per task run before sweeping the directory for test log files.
 func (h *testLogDirectoryHandler) getSpecFile() {
-	h.logger.Task().Infof("detected first test log file, getting test log spec file")
-
 	data, err := os.ReadFile(filepath.Join(h.dir, testLogSpecFilename))
 	if err != nil {
 		h.logger.Task().Warning(errors.Wrap(err, "reading test log spec; falling back to default spec"))
@@ -141,6 +139,7 @@ func (h *testLogDirectoryHandler) ingest(ctx context.Context, dir, path string) 
 		return
 	}
 	logPath = filepath.ToSlash(logPath)
+	h.logger.Task().Infof("storing test log file '%s' as '%s'", path, logPath)
 
 	f, err := os.Open(path)
 	if err != nil {

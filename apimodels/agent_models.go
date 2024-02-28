@@ -146,7 +146,6 @@ type CreateHost struct {
 	Subnet         string               `mapstructure:"subnet_id" json:"subnet_id" yaml:"subnet_id" plugin:"expand"`
 	Tenancy        evergreen.EC2Tenancy `mapstructure:"tenancy" json:"tenancy" yaml:"tenancy" plugin:"expand"`
 	UserdataFile   string               `mapstructure:"userdata_file" json:"userdata_file" yaml:"userdata_file" plugin:"expand"`
-	KeyName        string               `mapstructure:"key_name" json:"key_name" yaml:"key_name" plugin:"expand"`
 	// UserdataCommand is the content of the userdata file. Users can't actually
 	// set this directly, instead they pass in a userdata file.
 	UserdataCommand string `json:"userdata_command" yaml:"userdata_command" plugin:"expand"`
