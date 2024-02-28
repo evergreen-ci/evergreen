@@ -457,10 +457,6 @@ func IsFailedTaskStatus(status string) bool {
 	return utility.StringSliceContains(TaskFailureStatuses, status)
 }
 
-func IsSystemFailedTaskStatus(status string) bool {
-	return utility.StringSliceContains(TaskSystemFailures, status)
-}
-
 func IsValidTaskEndStatus(status string) bool {
 	return status == TaskSucceeded || status == TaskFailed
 }
@@ -537,7 +533,11 @@ const (
 	MonitorPackage = "EVERGREEN_MONITOR"
 )
 
-var UserTriggeredOrigins = []string{UIPackage, RESTV2Package}
+var UserTriggeredOrigins = []string{
+	UIPackage,
+	RESTV2Package,
+	GithubCheckRun,
+}
 
 const (
 	AuthTokenCookie     = "mci-token"

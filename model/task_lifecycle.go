@@ -294,8 +294,8 @@ func TryResetTask(ctx context.Context, settings *evergreen.Settings, taskId, use
 	maxExecution := evergreen.MaxTaskExecution
 
 	// For system failures, we restart once for tasks on their first execution, if configured.
-	if evergreen.IsSystemFailedTaskStatus(t.Status) && t.Execution == 0 &&
-		settings.ServiceFlags.SystemFailedTaskRestartDisabled {
+	if !settings.ServiceFlags.SystemFailedTaskRestartDisabled &&
+		!detail.IsEmpty() && detail.Type == evergreen.CommandTypeSystem {
 		maxExecution = 1
 	}
 

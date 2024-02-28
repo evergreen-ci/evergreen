@@ -2699,18 +2699,31 @@ func TestTryResetTask(t *testing.T) {
 			So(v.Insert(), ShouldBeNil)
 			So(anotherTask.Insert(), ShouldBeNil)
 
-			commitQueueTask := &task.Task{
-				Id:          "commit_queue_task",
+			systemFailedTask := &task.Task{
+				Id:          "system_failed_task",
+				DisplayName: displayName,
+				Activated:   false,
+				BuildId:     b.Id,
+				Execution:   0,
+				Project:     "sample",
+				Status:      evergreen.TaskFailed,
+				Version:     b.Version,
+				Requester:   evergreen.MergeTestRequester,
+			}
+			So(systemFailedTask.Insert(), ShouldBeNil)
+
+			anotherSystemFailedTask := &task.Task{
+				Id:          "another_system_failed_task",
 				DisplayName: displayName,
 				Activated:   false,
 				BuildId:     b.Id,
 				Execution:   1, // We won't auto-restart system failures after one execution.
 				Project:     "sample",
-				Status:      evergreen.TaskSystemFailed,
+				Status:      evergreen.TaskFailed,
 				Version:     b.Version,
 				Requester:   evergreen.MergeTestRequester,
 			}
-			So(commitQueueTask.Insert(), ShouldBeNil)
+			So(anotherSystemFailedTask.Insert(), ShouldBeNil)
 
 			var err error
 
@@ -2734,12 +2747,34 @@ func TestTryResetTask(t *testing.T) {
 				So(a.Status, ShouldEqual, evergreen.TaskUndispatched)
 				So(a.FinishTime, ShouldResemble, utility.ZeroTime)
 			})
-			Convey("merge tasks not reset if they've reached the admin setting limit", func() {
-				So(TryResetTask(ctx, settings, commitQueueTask.Id, userName, "", detail), ShouldBeNil)
-				commitQueueTask, err = task.FindOne(db.Query(task.ById(commitQueueTask.Id)))
+			Convey("system failed tasks should not reset if admin setting disabled", func() {
+				newSettings := &evergreen.Settings{
+					ServiceFlags: evergreen.ServiceFlags{
+						SystemFailedTaskRestartDisabled: true,
+					},
+				}
+				So(TryResetTask(ctx, newSettings, systemFailedTask.Id, userName, "", detail), ShouldBeNil)
+				systemFailedTask, err = task.FindOne(db.Query(task.ById(systemFailedTask.Id)))
 				So(err, ShouldBeNil)
-				So(commitQueueTask.Details, ShouldNotResemble, *detail)
-				So(commitQueueTask.Status, ShouldNotEqual, detail.Status)
+				So(systemFailedTask.Details, ShouldNotResemble, *detail)
+				So(systemFailedTask.Status, ShouldNotEqual, detail.Status)
+				So(testTask.Status, ShouldNotEqual, evergreen.TaskUndispatched)
+			})
+			Convey("system failed tasks should reset if they haven't reached the admin setting limit", func() {
+				fmt.Println("START OF TEST")
+				detail.Type = evergreen.CommandTypeSystem
+				So(TryResetTask(ctx, settings, systemFailedTask.Id, userName, "", detail), ShouldBeNil)
+				systemFailedTask, err = task.FindOne(db.Query(task.ById(systemFailedTask.Id)))
+				So(err, ShouldBeNil)
+				So(systemFailedTask.Status, ShouldEqual, evergreen.TaskUndispatched)
+			})
+			Convey("system failed tasks should not reset if they've reached the admin setting limit", func() {
+				fmt.Println("SHOULD NOT RESET")
+				detail.Type = evergreen.CommandTypeSystem
+				So(TryResetTask(ctx, settings, anotherSystemFailedTask.Id, userName, "", detail), ShouldBeNil)
+				anotherSystemFailedTask, err = task.FindOne(db.Query(task.ById(systemFailedTask.Id)))
+				So(err, ShouldBeNil)
+				So(systemFailedTask.Status, ShouldNotEqual, evergreen.TaskUndispatched)
 			})
 		})
 	})
