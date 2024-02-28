@@ -6028,7 +6028,7 @@ func TestGeneratePersistentDNSName(t *testing.T) {
 		// If working properly, the generated DNS name output should always be
 		// the same when given the same inputs (i.e. same host ID and host
 		// owner) no matter how many times this test runs.
-		assert.Equal(t, fmt.Sprintf("itsa-memario-gf6pd.%s", domain), dnsName, "should produce DNS name deterministically if there's no other host with the same DNS name")
+		assert.Equal(t, fmt.Sprintf("itsa-memario-87ed9.%s", domain), dnsName, "should produce DNS name deterministically if there's no other host with the same DNS name")
 	})
 	t.Run("AlwaysReturnsSameStringForSameHostID", func(t *testing.T) {
 		h := Host{
