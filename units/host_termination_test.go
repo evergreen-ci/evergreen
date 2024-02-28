@@ -8,6 +8,7 @@ import (
 	"github.com/evergreen-ci/evergreen/cloud"
 	"github.com/evergreen-ci/evergreen/db"
 	"github.com/evergreen-ci/evergreen/model"
+	"github.com/evergreen-ci/evergreen/model/build"
 	"github.com/evergreen-ci/evergreen/model/distro"
 	"github.com/evergreen-ci/evergreen/model/event"
 	"github.com/evergreen-ci/evergreen/model/host"
@@ -304,12 +305,20 @@ func TestHostTerminationJob(t *testing.T) {
 			h.LastGroup = "taskgroup"
 			h.LastTask = "task2"
 			require.NoError(t, h.Insert(ctx))
-
+			build := build.Build{
+				Id: "b1",
+			}
+			require.NoError(t, build.Insert())
+			version := model.Version{
+				Id: "v1",
+			}
+			require.NoError(t, version.Insert())
 			task1 := task.Task{
 				Id:                "task1",
 				Status:            evergreen.TaskSucceeded,
 				Activated:         true,
-				BuildId:           "b1",
+				BuildId:           build.Id,
+				Version:           version.Id,
 				Project:           "exists",
 				HostId:            h.Id,
 				TaskGroup:         "taskgroup",
@@ -320,7 +329,8 @@ func TestHostTerminationJob(t *testing.T) {
 				Id:                "task2",
 				Status:            evergreen.TaskSucceeded,
 				Activated:         true,
-				BuildId:           "b1",
+				BuildId:           build.Id,
+				Version:           version.Id,
 				Project:           "exists",
 				TaskGroup:         "taskgroup",
 				TaskGroupMaxHosts: 1,
@@ -329,8 +339,9 @@ func TestHostTerminationJob(t *testing.T) {
 			task3 := task.Task{
 				Id:                "task3",
 				Status:            evergreen.TaskUndispatched,
-				Activated:         true,
-				BuildId:           "b1",
+				Activated:         false,
+				BuildId:           build.Id,
+				Version:           version.Id,
 				Project:           "exists",
 				TaskGroup:         "taskgroup",
 				TaskGroupMaxHosts: 1,
@@ -371,7 +382,7 @@ func TestHostTerminationJob(t *testing.T) {
 		},
 	} {
 		t.Run(tName, func(t *testing.T) {
-			require.NoError(t, db.ClearCollections(host.Collection, event.EventCollection, task.Collection, model.ProjectRefCollection))
+			require.NoError(t, db.ClearCollections(host.Collection, event.EventCollection, task.Collection, model.ProjectRefCollection, build.Collection, model.VersionCollection))
 			tctx := testutil.TestSpan(ctx, t)
 
 			env := testutil.NewEnvironment(tctx, t)
