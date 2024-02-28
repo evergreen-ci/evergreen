@@ -2,11 +2,9 @@ package operations
 
 import (
 	"context"
-	"encoding/json"
 	"fmt"
 
 	"github.com/evergreen-ci/evergreen/model/patch"
-	restModel "github.com/evergreen-ci/evergreen/rest/model"
 	"github.com/pkg/errors"
 	"github.com/urfave/cli"
 )
@@ -28,7 +26,7 @@ func PatchList() cli.Command {
 			},
 			cli.BoolFlag{
 				Name:  joinFlagNames(jsonFlagName, "j"),
-				Usage: "output JSON instead of text",
+				Usage: "output the patches as a JSON array",
 			},
 			cli.BoolFlag{
 				Name:  joinFlagNames(showSummaryFlagName, "s"),
@@ -74,34 +72,18 @@ func PatchList() cli.Command {
 				}
 			}
 
-			if outputJSON {
-				display := []restModel.APIPatch{}
-
-				for _, p := range patches {
-					api := restModel.APIPatch{}
-					err := api.BuildFromService(p, nil)
-					if err != nil {
-						return errors.Wrap(err, "converting patch to API model")
-					}
-					display = append(display, api)
-				}
-
-				b, err := json.MarshalIndent(display, "", "\t")
-				if err != nil {
-					return err
-				}
-
-				fmt.Println(string(b))
-				return nil
+			params := outputPatchParams{
+				patches:    patches,
+				summarize:  showSummary,
+				uiHost:     conf.UIServerHost,
+				outputJSON: outputJSON,
 			}
 
-			for _, p := range patches {
-				disp, err := getPatchDisplay(ac, &p, showSummary, conf.UIServerHost, false)
-				if err != nil {
-					return err
-				}
-				fmt.Println(disp)
+			disp, err := getPatchDisplay(ac, params)
+			if err != nil {
+				return err
 			}
+			fmt.Println(disp)
 
 			return nil
 		},

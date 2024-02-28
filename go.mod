@@ -27,7 +27,7 @@ require (
 	github.com/evergreen-ci/poplar v0.0.0-20240129220701-28919e26f3a3
 	github.com/evergreen-ci/shrub v0.0.0-20231121224157-600e066f9de6
 	github.com/evergreen-ci/timber v0.0.0-20230905184025-88c53a14c47b
-	github.com/evergreen-ci/utility v0.0.0-20231017180358-3a3a0617644d
+	github.com/evergreen-ci/utility v0.0.0-20240223193433-e2121cffbdfa
 	github.com/golang-jwt/jwt v3.2.2+incompatible
 	github.com/google/go-github/v52 v52.0.0
 	github.com/google/shlex v0.0.0-20191202100458-e7afc7fbc510

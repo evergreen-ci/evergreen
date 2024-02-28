@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"net/http"
 	"net/url"
+	"strings"
 	"time"
 
 	"github.com/evergreen-ci/evergreen"
@@ -87,6 +88,15 @@ func RedirectSpruceUsers(w http.ResponseWriter, r *http.Request, redirect string
 
 	http.Redirect(w, r, redirect, http.StatusTemporaryRedirect)
 	return true
+}
+
+// RedirectIfSpruceSet redirects the user to spruce only if they aren't visiting this page from spruce already and have spruce enabled
+func RedirectIfSpruceSet(w http.ResponseWriter, r *http.Request, u *user.DBUser, redirect, UIv2Url string) bool {
+	if u.Settings.UseSpruceOptions.SpruceV1 && !strings.Contains(r.Referer(), UIv2Url) {
+		http.Redirect(w, r, redirect, http.StatusTemporaryRedirect)
+		return true
+	}
+	return false
 }
 
 // ToPluginContext creates a UIContext from the projectContext data.

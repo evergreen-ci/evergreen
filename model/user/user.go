@@ -66,6 +66,7 @@ type UserSettings struct {
 	Notifications    NotificationPreferences `bson:"notifications,omitempty" json:"notifications,omitempty"`
 	UseSpruceOptions UseSpruceOptions        `json:"use_spruce_options" bson:"use_spruce_options"`
 	DateFormat       string                  `json:"date_format" bson:"date_format"`
+	TimeFormat       string                  `json:"time_format" bson:"time_format"`
 }
 
 type UseSpruceOptions struct {

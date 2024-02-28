@@ -431,7 +431,7 @@ type ParameterInfo struct {
 type Container struct {
 	Name       string              `yaml:"name" bson:"name"`
 	WorkingDir string              `yaml:"working_dir,omitempty" bson:"working_dir"`
-	Image      string              `yaml:"image" bson:"image"`
+	Image      string              `yaml:"image" bson:"image" plugin:"expand"`
 	Size       string              `yaml:"size,omitempty" bson:"size"`
 	Credential string              `yaml:"credential,omitempty" bson:"credential"`
 	Resources  *ContainerResources `yaml:"resources,omitempty" bson:"resources"`
@@ -1334,7 +1334,7 @@ func (p *Project) FindDistroNameForTask(t *task.Task) (string, error) {
 // FindLatestVersionWithValidProject returns the latest mainline version that
 // has a valid project configuration. It also returns the intermediate and final
 // project configurations.
-func FindLatestVersionWithValidProject(projectId string, preGeneration bool) (*Version, *Project, *ParserProject, error) {
+func FindLatestVersionWithValidProject(projectId string) (*Version, *Project, *ParserProject, error) {
 	const retryCount = 5
 	if projectId == "" {
 		return nil, nil, nil, errors.New("cannot pass empty projectId to FindLatestVersionWithValidParserProject")
@@ -1360,16 +1360,6 @@ func FindLatestVersionWithValidProject(projectId string, preGeneration bool) (*V
 		}
 
 		env := evergreen.GetEnvironment()
-		if preGeneration {
-			preGeneratedId := fmt.Sprintf("%s_%s", "pre_generation", lastGoodVersion.Id)
-			pp, err = ParserProjectFindOneByID(ctx, env.Settings(), lastGoodVersion.ProjectStorageMethod, fmt.Sprintf("%s_%s", "pre_generation", lastGoodVersion.Id))
-			if err != nil {
-				return nil, nil, nil, errors.Wrapf(err, "finding parser project '%s'", preGeneratedId)
-			}
-			if pp != nil {
-				lastGoodVersion.Id = preGeneratedId
-			}
-		}
 		project, pp, err = FindAndTranslateProjectForVersion(ctx, env.Settings(), lastGoodVersion)
 		if err != nil {
 			grip.Critical(message.WrapError(err, message.Fields{
