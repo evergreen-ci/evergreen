@@ -1272,8 +1272,13 @@ func (h *hostAgentEndTask) Run(ctx context.Context) gimlet.Responder {
 		grip.Errorf(err.Error())
 		return gimlet.MakeJSONInternalErrorResponder(err)
 	}
-	defer currentHost.UnsetIsIdle(ctx)
-
+	defer func() {
+		err := currentHost.UnsetIsIdle(ctx)
+		if err != nil {
+			err = errors.Wrapf(err, "unsetting IsIdle for host '%s'", currentHost.Id)
+			grip.Errorf(err.Error())
+		}
+	}()
 	deactivatePrevious := utility.FromBoolPtr(projectRef.DeactivatePrevious)
 	details := &h.details
 	if t.Aborted {

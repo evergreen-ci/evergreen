@@ -863,7 +863,7 @@ func TestHostClearRunningAndSetLastTask(t *testing.T) {
 				So(count, ShouldEqual, 0)
 
 				Convey("the count of idle hosts should go up after unsetting idle", func() {
-					host.UnsetIsIdle(ctx)
+					So(host.UnsetIsIdle(ctx), ShouldBeNil)
 					count, err := Count(ctx, IsIdle)
 					So(err, ShouldBeNil)
 					So(count, ShouldEqual, 1)
