@@ -1041,10 +1041,6 @@ func FindByExecutionTasksAndMaxExecution(ctx context.Context, taskIds []string, 
 		}
 		oldTaskPipeline = append(oldTaskPipeline, bson.M{"$match": match})
 		oldTaskPipeline = append(oldTaskPipeline, addDisplayStatus)
-		filterMatch = bson.M{}
-		for _, filter := range filters {
-			filterMatch[filter.Key] = filter.Value
-		}
 		if len(filterMatch) > 0 {
 			oldTaskPipeline = append(oldTaskPipeline, bson.M{"$match": filterMatch})
 		}
