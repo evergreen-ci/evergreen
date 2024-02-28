@@ -3396,7 +3396,7 @@ func (h *Host) GeneratePersistentDNSName(ctx context.Context, domain string) (st
 	}
 	user := strings.Join(cleanedParts, "-")
 
-	const maxRandLen = 5
+	const maxRandLen = 3
 
 	// Since each user can own multiple unexpirable hosts, just using their
 	// username is not sufficient to make a unique persistent DNS name. Try
