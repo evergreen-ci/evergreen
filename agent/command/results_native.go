@@ -4,13 +4,10 @@ import (
 	"context"
 	"os"
 	"path/filepath"
-	"strings"
 
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/agent/internal"
 	"github.com/evergreen-ci/evergreen/agent/internal/client"
-	"github.com/evergreen-ci/evergreen/agent/internal/taskoutput"
-	"github.com/evergreen-ci/evergreen/model/testlog"
 	"github.com/evergreen-ci/evergreen/model/testresult"
 	"github.com/evergreen-ci/utility"
 	"github.com/mitchellh/mapstructure"
@@ -31,31 +28,25 @@ func (t nativeTestResults) convertToService() []testresult.TestResult {
 }
 
 type nativeTestResult struct {
-	TaskID    string  `json:"task_id"`
-	Execution int     `json:"execution"`
-	TestFile  string  `json:"test_file"`
-	Status    string  `json:"status"`
-	GroupID   string  `json:"group_id"`
-	LogRaw    string  `json:"log_raw"`
-	URL       string  `json:"url"`
-	URLRaw    string  `json:"url_raw"`
-	LineNum   int     `json:"line_num"`
-	Start     float64 `json:"start"`
-	End       float64 `json:"end"`
+	TestFile string                  `json:"test_file"`
+	GroupID  string                  `json:"group_id"`
+	Status   string                  `json:"status"`
+	LogInfo  *testresult.TestLogInfo `json:"log_info"`
+	Start    float64                 `json:"start"`
+	End      float64                 `json:"end"`
 
-	// logTestName is not part of the command API and used for internal
-	// purposes only.
-	logTestName string `json:"-"`
+	// Legacy test log fields.
+	URL     string `json:"url"`
+	URLRaw  string `json:"url_raw"`
+	LineNum int    `json:"line_num"`
 }
 
 func (t nativeTestResult) convertToService() testresult.TestResult {
 	return testresult.TestResult{
-		TaskID:        t.TaskID,
-		Execution:     t.Execution,
 		TestName:      t.TestFile,
 		GroupID:       t.GroupID,
 		Status:        t.Status,
-		LogTestName:   t.logTestName,
+		LogInfo:       t.LogInfo,
 		LogURL:        t.URL,
 		RawLogURL:     t.URLRaw,
 		LineNum:       t.LineNum,
@@ -128,41 +119,5 @@ func (c *attachResults) Execute(ctx context.Context,
 		return errors.Wrapf(err, "reading report file '%s'", reportFileLoc)
 	}
 
-	if err := c.sendTestLogs(ctx, conf, logger, comm, &nativeResults); err != nil {
-		return errors.Wrap(err, "sending test logs")
-	}
-
 	return sendTestResults(ctx, comm, logger, conf, nativeResults.convertToService())
-}
-
-func (c *attachResults) sendTestLogs(ctx context.Context, conf *internal.TaskConfig, logger client.LoggerProducer, comm client.Communicator, results *nativeTestResults) error {
-	logger.Execution().Info("Posting test logs...")
-	for i, res := range results.Results {
-		if err := ctx.Err(); err != nil {
-			return errors.Wrap(err, "operation canceled")
-		}
-
-		if res.LogRaw != "" {
-			testLog := &testlog.TestLog{
-				// When sending test logs we need to use a
-				// unique string since there may be duplicate
-				// log paths if there are duplicate test names.
-				Name:          utility.RandomString(),
-				Task:          conf.Task.Id,
-				TaskExecution: conf.Task.Execution,
-				Lines:         strings.Split(res.LogRaw, "\n"),
-			}
-
-			if err := taskoutput.AppendTestLog(ctx, comm, &conf.Task, testLog); err != nil {
-				// Continue on error to let other logs be
-				// posted.
-				logger.Execution().Error(errors.Wrap(err, "sending test logs"))
-			} else {
-				results.Results[i].logTestName = testLog.Name
-			}
-		}
-	}
-	logger.Execution().Info("finished posted test logs")
-
-	return nil
 }

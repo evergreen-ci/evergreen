@@ -117,15 +117,25 @@ func makeCedarTestResults(id string, t *task.Task, results []testresult.TestResu
 		if r.DisplayTestName == "" {
 			r.DisplayTestName = r.TestName
 		}
-		if r.LogTestName == "" {
-			r.LogTestName = r.TestName
+		var logInfo *testresults.LogInfo
+		if r.LogInfo != nil {
+			logInfo = &testresults.LogInfo{
+				LogName:       r.LogInfo.LogName,
+				LineNum:       r.LogInfo.LineNum,
+				RenderingType: r.LogInfo.RenderingType,
+				Version:       r.LogInfo.Version,
+			}
+			for _, logName := range r.LogInfo.LogsToMerge {
+				logInfo.LogsToMerge = append(logInfo.LogsToMerge, *logName)
+			}
 		}
+
 		rs.Results = append(rs.Results, testresults.Result{
 			TestName:        utility.RandomString(),
 			DisplayTestName: r.DisplayTestName,
-			GroupID:         r.GroupID,
 			Status:          r.Status,
-			LogTestName:     r.LogTestName,
+			LogInfo:         logInfo,
+			GroupID:         r.GroupID,
 			LogURL:          r.LogURL,
 			RawLogURL:       r.RawLogURL,
 			LineNum:         int32(r.LineNum),

@@ -51,7 +51,8 @@ func (uis *UIServer) hostPage(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	if RedirectSpruceUsers(w, r, fmt.Sprintf("%s/host/%s", uis.Settings.Ui.UIv2Url, id)) {
+	spruceLink := fmt.Sprintf("%s/host/%s", uis.Settings.Ui.UIv2Url, id)
+	if RedirectIfSpruceSet(w, r, u, spruceLink, uis.Settings.Ui.UIv2Url) {
 		return
 	}
 
@@ -89,7 +90,6 @@ func (uis *UIServer) hostPage(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 
-	spruceLink := fmt.Sprintf("%s/host/%s", uis.Settings.Ui.UIv2Url, h.Id)
 	newUILink := ""
 	if len(uis.Settings.Ui.UIv2Url) > 0 {
 		newUILink = spruceLink

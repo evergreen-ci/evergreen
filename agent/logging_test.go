@@ -10,6 +10,7 @@ import (
 	"github.com/evergreen-ci/evergreen/agent/command"
 	"github.com/evergreen-ci/evergreen/agent/internal"
 	"github.com/evergreen-ci/evergreen/agent/internal/client"
+	"github.com/evergreen-ci/evergreen/agent/internal/testutil"
 	agentutil "github.com/evergreen-ci/evergreen/agent/util"
 	"github.com/evergreen-ci/evergreen/model"
 	"github.com/evergreen-ci/evergreen/model/task"
@@ -63,7 +64,7 @@ func TestAgentFileLogging(t *testing.T) {
 		Id:             "t1",
 		Execution:      0,
 		DisplayName:    "task1",
-		TaskOutputInfo: initializeTaskOutput(t),
+		TaskOutputInfo: testutil.InitializeTaskOutput(t),
 	}
 	tc := &taskContext{
 		task: client.TaskData{

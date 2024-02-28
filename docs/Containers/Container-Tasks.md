@@ -17,9 +17,7 @@ which should be considered if your goal is to port over a critical workflow to c
 
 If you have any questions about container tasks or are interested in
 exploring how this feature could benefit your project, we encourage you
-to reach out to us in ***#evergreen-users***. We'll discuss its
-potential applications and assist you in preparing for its broader
-release.
+to reach out for assistance.
 
 It's important to distinguish that this feature is entirely separate
 from the existing functionality Evergreen has to spin up docker containers

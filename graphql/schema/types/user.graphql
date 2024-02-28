@@ -20,6 +20,7 @@ input UserSettingsInput {
   timezone: String
   useSpruceOptions: UseSpruceOptionsInput
   dateFormat: String
+  timeFormat: String
 }
 
 input GithubUserInput {
@@ -117,6 +118,7 @@ type UserSettings {
   timezone: String
   useSpruceOptions: UseSpruceOptions
   dateFormat: String
+  timeFormat: String
 }
 
 type GithubUser {

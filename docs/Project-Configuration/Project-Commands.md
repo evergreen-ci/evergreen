@@ -235,13 +235,25 @@ If you would like to download an artifact after it has been moved to Glacier, pl
 
 ## attach.results
 
-This command parses results in Evergreen's JSON test result format and
-posts them to the API server. The use case for this command is when you
-wish to store test logs yourself elsewhere. Evergreen's JSON format
-allows you to send test metadata and a link to the test logs to
-Evergreen, which Evergreen will then link from the UI and API.
+This command parses and stores results in Evergreen's JSON test result format.
+The use case for this command is when you wish to link custom test results
+with test logs written via the
+[file system API for task output](Task-Output-Directory.md). Evergreen's JSON
+format allows you to send test metadata and log paths, relative to the reserved
+test logs directory, which Evergreen will then link from the UI and API.
 
-The format is as follows:
+``` yaml
+- command: attach.results
+  params:
+    file_location: src/report.json
+```
+
+Parameters:
+
+-   `file_location`: a JSON file to parse and upload
+
+
+The JSON file format is as follows:
 
 ``` json
 {
@@ -249,8 +261,11 @@ The format is as follows:
     {
         "status":"pass",
         "test_file":"test_1",
-        "exit_code":0,
-        "elapsed":0.32200002670288086, //end-start
+        "log_info": {
+            "log_name": "tests/test_1.log",
+            "logs_to_merge": ["global", "hooks/test_1.log"]
+            "rendering_type": "resmoke",
+        },
         "start":1398782500.359, //epoch_time
         "end":1398782500.681 //epoch_time
     },
@@ -261,32 +276,37 @@ The format is as follows:
 }
 ```
 
-The available fields for each json object in the "results" array above
-are the following. Note that all fields are optional and there is very
-little validation on the data, so the server may accept inputs that are
-logically nonsensical.
+The available fields for each JSON object in the "results" array above are the
+following. Note that all fields are optional and there is very little
+validation on the data, so the server may accept inputs that are logically
+nonsensical.
+
+### Result
 
 | Name        | Type          | Description                                                                                                            |
 | ----------- | ------------- | ---------------------------------------------------------------------------------------------------------------------- |
-| `status`    | string (enum) | The final status of the test. Should be one of: "fail", "pass", "silentfail", "skip".                                  |
 | `test_file` | string        | The name of the test. This is what will be displayed in the test results section of the UI as the test identifier.     |
-| `group_id`  | string        | The group ID if the test is associated with a group. This is mostly used for tests logging directly to cedar.          |
-| `url`       | string        | The URL containing the rich-text view of the test logs.                                                                |
-| `url_raw`   | string        | The URL containing the plain-text view of the test logs.                                                               |
-| `line_num`  | int           | The line number of the test within the "url" parameter, if the URL actually contains the logs for multiple tests.      |
-| `exit_code` | int           | The status with which the test command exited. For the most part this does nothing.                                    |
-| `task_id`   | string        | The ID of the task with which this test should be associated. The test will appear on the page for the specified task. |
-| `execution` | int           | The execution of the task above with which this test should be associated.                                             |
+| `group_id`  | string        | The group ID if the test is associated with a group.                                                                   |
+| `status`    | string (enum) | The final status of the test. Should be one of: "fail", "pass", "silentfail", "skip".                                  |
+| `log_info`  | object        | The test's log information as a `Log Info` object, described below.                                                    |
+| `start`     | float64       | The start time of the test in <seconds>.<fractional_seconds> from the UNIX epoch.                                      |
+| `end`       | float64       | The end time of the test in <seconds>.<fractional_seconds> from the UNIX epoch.                                        |
 
-``` yaml
-- command: attach.results
-  params:
-    file_location: src/report.json
-```
+### Log Info
 
-Parameters:
+A test result can be linked to log files written to and ingested from the
+task's [reserved test logs directory](Task-Output-Directory.md/#test-logs).
 
--   `file_location`: a .json file to parse and upload
+Test log URLs are automatically generated and provided via the
+[test result API](../API/REST-V2-Usage.mdx/#tag/tests/paths/~1tasks~1%7Btask_id%7D~1tests/get").
+
+| Name             | Type          | Description                                                                                                         |
+| ---------------- | ------------- | ------------------------------------------------------------------------------------------------------------------- |
+| `log_name`       | string        | The principal test log path relative to the reserved test logs directory.                                           |
+| `logs_to_merge`  | array         | The log paths, relative to the reserved test logs directory, to merge with the principal test log. Can be prefixes. |
+| `line_num`       | int           | The starting line number of the test log if the file contains logs for multiple tests.                              |
+| `rendering_type` | string (enum) | The rendering format for the Parsley log view. Should be one of: `default`, `resmoke`.                              |
+| `version`        | int           | The log info version. Should be one of: `0`.                                                                        |
 
 ## attach.xunit_results
 
@@ -417,9 +437,8 @@ Notes:
     generate more than 100 variants or more than 1000 tasks.
 -   Because generate.tasks retries on errors that aren't known to us,
     it may appear that your generate.tasks is hanging until timeout.
-    There may be details of this in the task logs; please ask in
-    #evergreen-users if you aren't sure what to do with a hanging
-    generate.tasks.
+    There may be details of this in the task logs; please ask
+    if you aren't sure what to do with a hanging generate.tasks.
 
 ``` yaml
 - command: generate.tasks
