@@ -152,7 +152,7 @@ func (tc testCase) toModelTestResultAndLog(conf *internal.TaskConfig, logger cli
 		log.Name = utility.RandomString()
 		log.Task = conf.Task.Id
 		log.TaskExecution = conf.Task.Execution
-		res.LogTestName = log.Name
+		res.LogInfo = &testresult.TestLogInfo{LogName: log.Name}
 	}
 
 	return res, log

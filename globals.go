@@ -383,6 +383,10 @@ const (
 	// PRTasksRunningDescription is the description for a GitHub PR status
 	// indicating that there are still running tasks.
 	PRTasksRunningDescription = "tasks are running"
+
+	// HostServicePasswordExpansion is the expansion for the service password that is stored on the host,
+	// and is meant to be set as a private variable so that it will be redacted in all logs.
+	HostServicePasswordExpansion = "host_service_password"
 )
 
 var VersionSucceededStatuses = []string{
@@ -461,10 +465,6 @@ func IsFailedTaskStatus(status string) bool {
 	return utility.StringSliceContains(TaskFailureStatuses, status)
 }
 
-func IsSystemFailedTaskStatus(status string) bool {
-	return utility.StringSliceContains(TaskSystemFailures, status)
-}
-
 func IsValidTaskEndStatus(status string) bool {
 	return status == TaskSucceeded || status == TaskFailed
 }
@@ -540,6 +540,12 @@ const (
 	RESTV2Package  = "EVERGREEN_REST_V2"
 	MonitorPackage = "EVERGREEN_MONITOR"
 )
+
+var UserTriggeredOrigins = []string{
+	UIPackage,
+	RESTV2Package,
+	GithubCheckRun,
+}
 
 const (
 	AuthTokenCookie     = "mci-token"
@@ -670,17 +676,6 @@ const (
 	GithubMergeRequester        = "github_merge_request" // GitHub merge queue
 )
 
-var AllRequesterTypes = []string{
-	PatchVersionRequester,
-	GithubPRRequester,
-	GitTagRequester,
-	RepotrackerVersionRequester,
-	TriggerRequester,
-	MergeTestRequester,
-	AdHocRequester,
-	GithubMergeRequester,
-}
-
 // Constants related to requester types.
 var (
 	SystemVersionRequesterTypes = []string{
@@ -688,6 +683,16 @@ var (
 		TriggerRequester,
 		GitTagRequester,
 		AdHocRequester,
+	}
+	AllRequesterTypes = []string{
+		PatchVersionRequester,
+		GithubPRRequester,
+		GitTagRequester,
+		RepotrackerVersionRequester,
+		TriggerRequester,
+		MergeTestRequester,
+		AdHocRequester,
+		GithubMergeRequester,
 	}
 )
 

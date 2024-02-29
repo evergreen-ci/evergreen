@@ -1473,6 +1473,7 @@ type ComplexityRoot struct {
 		Region           func(childComplexity int) int
 		SlackMemberId    func(childComplexity int) int
 		SlackUsername    func(childComplexity int) int
+		TimeFormat       func(childComplexity int) int
 		Timezone         func(childComplexity int) int
 		UseSpruceOptions func(childComplexity int) int
 	}
@@ -8944,6 +8945,13 @@ func (e *executableSchema) Complexity(typeName, field string, childComplexity in
 		}
 
 		return e.complexity.UserSettings.SlackUsername(childComplexity), true
+
+	case "UserSettings.timeFormat":
+		if e.complexity.UserSettings.TimeFormat == nil {
+			break
+		}
+
+		return e.complexity.UserSettings.TimeFormat(childComplexity), true
 
 	case "UserSettings.timezone":
 		if e.complexity.UserSettings.Timezone == nil {
@@ -44792,6 +44800,8 @@ func (ec *executionContext) fieldContext_Query_userSettings(ctx context.Context,
 				return ec.fieldContext_UserSettings_useSpruceOptions(ctx, field)
 			case "dateFormat":
 				return ec.fieldContext_UserSettings_dateFormat(ctx, field)
+			case "timeFormat":
+				return ec.fieldContext_UserSettings_timeFormat(ctx, field)
 			}
 			return nil, fmt.Errorf("no field named %q was found under type UserSettings", field.Name)
 		},
@@ -60794,6 +60804,47 @@ func (ec *executionContext) fieldContext_UserSettings_dateFormat(ctx context.Con
 	return fc, nil
 }
 
+func (ec *executionContext) _UserSettings_timeFormat(ctx context.Context, field graphql.CollectedField, obj *model.APIUserSettings) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_UserSettings_timeFormat(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.TimeFormat, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		return graphql.Null
+	}
+	res := resTmp.(*string)
+	fc.Result = res
+	return ec.marshalOString2ᚖstring(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_UserSettings_timeFormat(ctx context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "UserSettings",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type String does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
 func (ec *executionContext) _VariantTask_name(ctx context.Context, field graphql.CollectedField, obj *model.VariantTask) (ret graphql.Marshaler) {
 	fc, err := ec.fieldContext_VariantTask_name(ctx, field)
 	if err != nil {
@@ -70662,7 +70713,7 @@ func (ec *executionContext) unmarshalInputUserSettingsInput(ctx context.Context,
 		asMap[k] = v
 	}
 
-	fieldsInOrder := [...]string{"githubUser", "notifications", "region", "slackUsername", "slackMemberId", "timezone", "useSpruceOptions", "dateFormat"}
+	fieldsInOrder := [...]string{"githubUser", "notifications", "region", "slackUsername", "slackMemberId", "timezone", "useSpruceOptions", "dateFormat", "timeFormat"}
 	for _, k := range fieldsInOrder {
 		v, ok := asMap[k]
 		if !ok {
@@ -70725,6 +70776,13 @@ func (ec *executionContext) unmarshalInputUserSettingsInput(ctx context.Context,
 				return it, err
 			}
 			it.DateFormat = data
+		case "timeFormat":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("timeFormat"))
+			data, err := ec.unmarshalOString2ᚖstring(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.TimeFormat = data
 		}
 	}
 
@@ -84039,6 +84097,8 @@ func (ec *executionContext) _UserSettings(ctx context.Context, sel ast.Selection
 			out.Values[i] = ec._UserSettings_useSpruceOptions(ctx, field, obj)
 		case "dateFormat":
 			out.Values[i] = ec._UserSettings_dateFormat(ctx, field, obj)
+		case "timeFormat":
+			out.Values[i] = ec._UserSettings_timeFormat(ctx, field, obj)
 		default:
 			panic("unknown field " + strconv.Quote(field.Name))
 		}

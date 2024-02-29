@@ -300,7 +300,7 @@ func (j *agentMonitorDeployJob) runSetupScript(ctx context.Context, settings *ev
 func (j *agentMonitorDeployJob) startAgentMonitor(ctx context.Context, settings *evergreen.Settings) error {
 	// Generate the host secret if none exists.
 	if j.host.Secret == "" {
-		if err := j.host.CreateSecret(ctx); err != nil {
+		if err := j.host.CreateSecret(ctx, false); err != nil {
 			return errors.Wrapf(err, "creating secret for host '%s'", j.host.Id)
 		}
 	}

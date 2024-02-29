@@ -431,7 +431,7 @@ type ParameterInfo struct {
 type Container struct {
 	Name       string              `yaml:"name" bson:"name"`
 	WorkingDir string              `yaml:"working_dir,omitempty" bson:"working_dir"`
-	Image      string              `yaml:"image" bson:"image"`
+	Image      string              `yaml:"image" bson:"image" plugin:"expand"`
 	Size       string              `yaml:"size,omitempty" bson:"size"`
 	Credential string              `yaml:"credential,omitempty" bson:"credential"`
 	Resources  *ContainerResources `yaml:"resources,omitempty" bson:"resources"`
@@ -1221,6 +1221,9 @@ func PopulateExpansions(t *task.Task, h *host.Host, oauthToken, appToken, knownH
 	if h != nil {
 		for _, e := range h.Distro.Expansions {
 			expansions.Put(e.Key, e.Value)
+		}
+		if h.Distro.IsWindows() {
+			expansions.Put(evergreen.HostServicePasswordExpansion, h.ServicePassword)
 		}
 	}
 
