@@ -45,7 +45,7 @@ func getPatchFlags(flags ...cli.Flag) []cli.Flag {
 		addPreserveCommitsFlag(
 			cli.BoolFlag{
 				Name:  joinFlagNames(jsonFlagName, "j"),
-				Usage: "outputs the patch as a JSON object and suppresses warnings, must be used with --skip-confirm",
+				Usage: "outputs the patch as a JSON object; suppresses warnings and confirmations",
 			},
 			cli.StringSliceFlag{
 				Name:  joinFlagNames(tasksFlagName, "t"),
@@ -192,6 +192,15 @@ func Patch() cli.Command {
 				return err
 			}
 			params.Description = params.getDescription()
+
+			hasTasks := len(params.Tasks) > 0 || len(params.RegexTasks) > 0
+			hasVariants := len(params.Variants) > 0 || len(params.RegexVariants) > 0
+			if hasTasks && !hasVariants {
+				grip.Warningf("warning - you specified tasks without specifying variants")
+			}
+			if hasVariants && !hasTasks {
+				grip.Warningf("warning - you specified variants without specifying tasks")
+			}
 
 			isReusing := params.RepeatDefinition || params.RepeatFailed
 			hasTasksOrVariants := len(params.Tasks) > 0 || len(params.Variants) > 0

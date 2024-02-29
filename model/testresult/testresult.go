@@ -32,8 +32,8 @@ type TestResult struct {
 	TaskID          string       `json:"task_id" bson:"task_id"`
 	Execution       int          `json:"execution" bson:"execution"`
 	TestName        string       `json:"test_name" bson:"test_name"`
-	DisplayTestName string       `json:"display_test_name" bson:"display_test_name"`
 	GroupID         string       `json:"group_id" bson:"group_id"`
+	DisplayTestName string       `json:"display_test_name" bson:"display_test_name"`
 	Status          string       `json:"status" bson:"status"`
 	BaseStatus      string       `json:"base_status" bson:"base_status"`
 	LogInfo         *TestLogInfo `json:"log_info" bson:"log_info"`
@@ -100,13 +100,12 @@ func (tr TestResult) GetLogURL(env evergreen.Environment, viewer evergreen.LogVi
 			return tr.LogURL
 		}
 
-		return fmt.Sprintf("%s/test_log/%s/%d?test_name=%s&group_id=%s#L%d",
+		return fmt.Sprintf("%s/test_log/%s/%d?test_name=%s#L%d",
 			root,
 			url.PathEscape(tr.TaskID),
 			tr.Execution,
 			url.QueryEscape(tr.getLogTestName()),
-			url.QueryEscape(tr.GroupID),
-			tr.LineNum,
+			tr.getLineNum(),
 		)
 	case evergreen.LogViewerParsley:
 		if parsleyURL == "" {
@@ -116,11 +115,11 @@ func (tr TestResult) GetLogURL(env evergreen.Environment, viewer evergreen.LogVi
 		for _, url := range deprecatedLogkeeperURLs {
 			if strings.Contains(tr.LogURL, url) {
 				updatedResmokeParsleyURL := strings.Replace(tr.LogURL, fmt.Sprintf("%s/build", url), parsleyURL+"/resmoke", 1)
-				return fmt.Sprintf("%s?shareLine=%d", updatedResmokeParsleyURL, tr.LineNum)
+				return fmt.Sprintf("%s?shareLine=%d", updatedResmokeParsleyURL, tr.getLineNum())
 			}
 		}
 
-		return fmt.Sprintf("%s/test/%s/%d/%s?shareLine=%d", parsleyURL, url.PathEscape(tr.TaskID), tr.Execution, url.QueryEscape(tr.TestName), tr.LineNum)
+		return fmt.Sprintf("%s/test/%s/%d/%s?shareLine=%d", parsleyURL, url.PathEscape(tr.TaskID), tr.Execution, url.QueryEscape(tr.TestName), tr.getLineNum())
 	default:
 		if tr.RawLogURL != "" {
 			// Some test results may have internal URLs that are
@@ -132,12 +131,19 @@ func (tr TestResult) GetLogURL(env evergreen.Environment, viewer evergreen.LogVi
 			return tr.RawLogURL
 		}
 
-		return fmt.Sprintf("%s/test_log/%s/%d?test_name=%s&group_id=%s&text=true",
+		var logsToMerge string
+		if tr.LogInfo != nil {
+			for _, logPath := range tr.LogInfo.LogsToMerge {
+				logsToMerge += fmt.Sprintf("&logs_to_merge=%s", url.QueryEscape(*logPath))
+			}
+		}
+
+		return fmt.Sprintf("%s/rest/v2/tasks/%s/build/TestLogs/%s?execution=%d&print_time=true%s",
 			root,
 			url.PathEscape(tr.TaskID),
-			tr.Execution,
 			url.QueryEscape(tr.getLogTestName()),
-			url.QueryEscape(tr.GroupID),
+			tr.Execution,
+			logsToMerge,
 		)
 	}
 }
@@ -154,6 +160,14 @@ func (tr TestResult) getLogTestName() string {
 	}
 
 	return tr.TestName
+}
+
+func (tr TestResult) getLineNum() int {
+	if tr.LogInfo != nil {
+		return int(tr.LogInfo.LineNum)
+	}
+
+	return tr.LineNum
 }
 
 // TaskTestResultsFailedSample represents a sample of failed test names from

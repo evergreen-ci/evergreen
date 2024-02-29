@@ -1415,3 +1415,15 @@ func (h *Host) UnsetNumAgentCleanupFailures(ctx context.Context) error {
 	)
 	return errors.Wrapf(err, "unsetting number of agent cleanup failures for host '%s'", h.Id)
 }
+
+// FindUnexpirableRunningWithoutPersistentDNSName finds unexpirable hosts that
+// are currently running and do not have a persistent DNS name assigned to
+// them.
+func FindUnexpirableRunningWithoutPersistentDNSName(ctx context.Context, limit int) ([]Host, error) {
+	return Find(ctx, bson.M{
+		StatusKey:            evergreen.HostRunning,
+		StartedByKey:         bson.M{"$ne": evergreen.User},
+		NoExpirationKey:      true,
+		PersistentDNSNameKey: nil,
+	}, options.Find().SetLimit(int64(limit)))
+}

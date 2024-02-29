@@ -78,8 +78,10 @@ func ToModelTestResults(results []*goTestResult, suiteName string) []testresult.
 			Status:        status,
 			TestStartTime: start,
 			TestEndTime:   end,
-			LogTestName:   suiteName,
-			LineNum:       res.StartLine - 1,
+			LogInfo: &testresult.TestLogInfo{
+				LogName: suiteName,
+				LineNum: int32(res.StartLine - 1),
+			},
 		}
 		modelResults = append(modelResults, convertedResult)
 	}

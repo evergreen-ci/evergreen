@@ -146,15 +146,21 @@ func TestXUnitParseAndUpload(t *testing.T) {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 
-	testConfig := testutil.TestConfig()
-	// These test don't actually need the integration test settings, but
-	// MakeTaskConfigFromModelData needs it to create an (unused) GitHub app
-	// token.
-	testutil.ConfigureIntegrationTest(t, testConfig, t.Name())
-
-	comm := client.NewMock("/dev/null")
-	modelData, err := modelutil.SetupAPITestData(testConfig, "aggregation", "rhel55", WildcardConfig, modelutil.NoPatch)
-	require.NoError(t, err)
+	comm := client.NewMock("url")
+	conf := &internal.TaskConfig{
+		Task: task.Task{
+			Id:             "id",
+			Secret:         "secret",
+			Project:        "project",
+			Version:        "version",
+			BuildVariant:   "build_variant",
+			DisplayName:    "task_name",
+			Execution:      5,
+			Requester:      evergreen.GithubPRRequester,
+			TaskOutputInfo: agentutil.InitializeTaskOutput(t),
+		},
+		WorkDir: filepath.Join(testutil.GetDirectoryOfFile(), "testdata", "xunit"),
+	}
 
 	for tName, tCase := range map[string]func(ctx context.Context, t *testing.T, cedarSrv *timberutil.MockCedarServer, conf *internal.TaskConfig, logger client.LoggerProducer){
 		"GlobMatchesAsteriskAndSendsToCedar": func(ctx context.Context, t *testing.T, cedarSrv *timberutil.MockCedarServer, conf *internal.TaskConfig, logger client.LoggerProducer) {
@@ -173,19 +179,19 @@ func TestXUnitParseAndUpload(t *testing.T) {
 					for _, r := range res.Results {
 						assert.NotEmpty(t, r.TestName)
 						assert.NotEmpty(t, r.DisplayTestName)
-						assert.NotEmpty(t, r.LogTestName)
-						if r.Status == evergreen.TestFailedStatus {
-							assert.NotEqual(t, r.DisplayTestName, r.LogTestName)
-						}
 						assert.NotEmpty(t, r.Status)
+
+						if r.Status == evergreen.TestFailedStatus {
+							require.NotEmpty(t, r.LogInfo)
+							assert.NotEqual(t, r.DisplayTestName, r.LogInfo.LogName)
+						}
 					}
 				}
 			}
 		},
 		"GlobMatchesAbsolutePathContainingWorkDirPrefixAndSendsToCedar": func(ctx context.Context, t *testing.T, cedarSrv *timberutil.MockCedarServer, conf *internal.TaskConfig, logger client.LoggerProducer) {
-			conf.WorkDir = filepath.Join(testutil.GetDirectoryOfFile(), "testdata")
 			xr := xunitResults{
-				Files: []string{filepath.Join("xunit", "junit*.xml")},
+				Files: []string{filepath.Join(conf.WorkDir, "junit*.xml")},
 			}
 			assert.NoError(t, xr.parseAndUploadResults(ctx, conf, logger, comm))
 			assert.NoError(t, logger.Close())
@@ -230,11 +236,6 @@ func TestXUnitParseAndUpload(t *testing.T) {
 			defer tcancel()
 
 			cedarSrv := setupCedarServer(tctx, t, comm)
-
-			conf, err := agentutil.MakeTaskConfigFromModelData(ctx, testConfig, modelData)
-			require.NoError(t, err)
-			conf.WorkDir = filepath.Join(testutil.GetDirectoryOfFile(), "testdata", "xunit")
-
 			logger, err := comm.GetLoggerProducer(ctx, &conf.Task, nil)
 			require.NoError(t, err)
 
