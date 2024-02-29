@@ -92,7 +92,7 @@ func (a *Agent) runCommandsInBlock(ctx context.Context, tc *taskContext, cmdBloc
 		if pErr == nil {
 			return
 		}
-		err = a.logPanic(tc.logger, pErr, err, op)
+		err = a.logPanic(tc, pErr, err, op)
 	}()
 
 	legacyBlockName := a.blockToLegacyName(cmdBlock.block)
@@ -291,7 +291,7 @@ func (a *Agent) runCommand(ctx context.Context, tc *taskContext, logger client.L
 			if pErr == nil {
 				return
 			}
-			_ = a.logPanic(tc.logger, pErr, nil, op)
+			_ = a.logPanic(tc, pErr, nil, op)
 
 			cmdChan <- pErr
 		}()
