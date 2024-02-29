@@ -1210,8 +1210,6 @@ func (a *Agent) logPanic(tc *taskContext, pErr, originalErr error, op string) er
 	}
 	logMsg["task_id"] = tc.task.ID
 	grip.Alert(message.WrapError(errors.WithStack(pErr), logMsg))
-	tc.logger.Task().Info("testing below")
-	tc.logger.Task().Error(message.WrapError(errors.WithStack(pErr), logMsg))
 
 	return catcher.Resolve()
 }
