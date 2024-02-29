@@ -226,7 +226,7 @@ func TestUserHasDistroCreatePermission(t *testing.T) {
 	assert.True(t, userHasDistroCreatePermission(&usr))
 }
 
-func TestConcurrentlyBuildHasMatchingTasksMap(t *testing.T) {
+func TestConcurrentlyBuildVersionsMatchingTasksMap(t *testing.T) {
 	ctx := context.Background()
 	assert.NoError(t, db.ClearCollections(task.Collection))
 
