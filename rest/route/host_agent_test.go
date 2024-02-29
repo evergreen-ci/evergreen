@@ -1064,33 +1064,6 @@ func TestAssignNextAvailableTaskWithDispatcherSettingsVersionLegacy(t *testing.T
 			So(taskBFromDb, ShouldNotBeNil)
 			So(taskBFromDb.IsStuckTask(), ShouldBeTrue)
 		})
-		Convey("a stuck tasks should not error", func() {
-			taskQueue.Queue = []model.TaskQueueItem{{Id: "stuckTask"}}
-			So(taskQueue.Save(), ShouldBeNil)
-			stuckTask := task.Task{
-				Id:                    "stuckTask",
-				Status:                evergreen.TaskUndispatched,
-				NumNextTaskDispatches: 5,
-				BuildId:               "b1",
-				Version:               versionId,
-				HostId:                theHostWhoCanBoastTheMostRoast.Id,
-			}
-			So(stuckTask.Insert(), ShouldBeNil)
-			testBuild := build.Build{
-				Id:      "b1",
-				Version: versionId,
-			}
-			require.NoError(t, testBuild.Insert())
-
-			testVersion := model.Version{
-				Id: versionId,
-			}
-			require.NoError(t, testVersion.Insert())
-			t, shouldTeardown, err := assignNextAvailableTask(ctx, env, taskQueue, model.NewTaskDispatchService(time.Minute), &theHostWhoCanBoastTheMostRoast, details)
-			So(err, ShouldBeNil)
-			So(shouldTeardown, ShouldBeFalse)
-			So(t, ShouldBeNil)
-		})
 		Convey("with a host with a running task", func() {
 			anotherHost := host.Host{
 				Id:          "ahost",

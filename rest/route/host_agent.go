@@ -1111,7 +1111,7 @@ func sendBackRunningTask(ctx context.Context, env evergreen.Environment, h *host
 
 		return gimlet.MakeJSONInternalErrorResponder(gimlet.ErrorResponse{
 			StatusCode: http.StatusInternalServerError,
-			Message:    fmt.Sprintf("The agent has re-requested the task '%s' with execution '%d' '%d' times.", t.Id, t.Execution, evergreen.MaxTaskDispatchAttempts),
+			Message:    fmt.Sprintf("The agent has re-requested the task '%s' with execution %d %d times.", t.Id, t.Execution, evergreen.MaxTaskDispatchAttempts),
 		})
 	}
 
