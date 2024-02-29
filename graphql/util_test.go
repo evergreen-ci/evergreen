@@ -315,12 +315,12 @@ func TestConcurrentlyBuildHasMatchingTasksMap(t *testing.T) {
 		},
 	}
 
-	hasMatchingTasksMap, err := concurrentlyBuildHasMatchingTasksMap(ctx, versions, opts)
+	versionsMatchingTasksMap, err := concurrentlyBuildVersionsMatchingTasksMap(ctx, versions, opts)
 	assert.Nil(t, err)
-	assert.NotNil(t, hasMatchingTasksMap)
-	assert.Equal(t, hasMatchingTasksMap["v1"], true)
-	assert.Equal(t, hasMatchingTasksMap["v2"], false)
-	assert.Equal(t, hasMatchingTasksMap["v3"], false)
+	assert.NotNil(t, versionsMatchingTasksMap)
+	assert.Equal(t, versionsMatchingTasksMap["v1"], true)
+	assert.Equal(t, versionsMatchingTasksMap["v2"], false)
+	assert.Equal(t, versionsMatchingTasksMap["v3"], false)
 
 	opts = task.HasMatchingTasksOptions{
 		TaskNames:                  []string{},
@@ -329,12 +329,12 @@ func TestConcurrentlyBuildHasMatchingTasksMap(t *testing.T) {
 		IncludeNeverActivatedTasks: true,
 	}
 
-	hasMatchingTasksMap, err = concurrentlyBuildHasMatchingTasksMap(ctx, versions, opts)
+	versionsMatchingTasksMap, err = concurrentlyBuildVersionsMatchingTasksMap(ctx, versions, opts)
 	assert.Nil(t, err)
-	assert.NotNil(t, hasMatchingTasksMap)
-	assert.Equal(t, hasMatchingTasksMap["v1"], true)
-	assert.Equal(t, hasMatchingTasksMap["v2"], true)
-	assert.Equal(t, hasMatchingTasksMap["v3"], false)
+	assert.NotNil(t, versionsMatchingTasksMap)
+	assert.Equal(t, versionsMatchingTasksMap["v1"], true)
+	assert.Equal(t, versionsMatchingTasksMap["v2"], true)
+	assert.Equal(t, versionsMatchingTasksMap["v3"], false)
 
 	opts = task.HasMatchingTasksOptions{
 		TaskNames:                  []string{"model"},
@@ -343,11 +343,11 @@ func TestConcurrentlyBuildHasMatchingTasksMap(t *testing.T) {
 		IncludeNeverActivatedTasks: true,
 	}
 
-	hasMatchingTasksMap, err = concurrentlyBuildHasMatchingTasksMap(ctx, versions, opts)
+	versionsMatchingTasksMap, err = concurrentlyBuildVersionsMatchingTasksMap(ctx, versions, opts)
 	assert.Nil(t, err)
-	assert.NotNil(t, hasMatchingTasksMap)
-	assert.Equal(t, hasMatchingTasksMap["v1"], false)
-	assert.Equal(t, hasMatchingTasksMap["v2"], false)
-	assert.Equal(t, hasMatchingTasksMap["v3"], true)
+	assert.NotNil(t, versionsMatchingTasksMap)
+	assert.Equal(t, versionsMatchingTasksMap["v1"], false)
+	assert.Equal(t, versionsMatchingTasksMap["v2"], false)
+	assert.Equal(t, versionsMatchingTasksMap["v3"], true)
 
 }

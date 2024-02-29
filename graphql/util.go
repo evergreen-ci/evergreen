@@ -1165,14 +1165,14 @@ func interfaceToMap(ctx context.Context, data interface{}) (map[string]interface
 	return mapField, nil
 }
 
-func concurrentlyBuildHasMatchingTasksMap(ctx context.Context, versions []model.Version, opts task.HasMatchingTasksOptions) (map[string]bool, error) {
+func concurrentlyBuildVersionsMatchingTasksMap(ctx context.Context, versions []model.Version, opts task.HasMatchingTasksOptions) (map[string]bool, error) {
 	wg := sync.WaitGroup{}
 	input := make(chan model.Version, len(versions))
 	output := make(chan string, len(versions))
 	catcher := grip.NewBasicCatcher()
-	versionsMatchingTasksMap := map[string]bool{}
+	hasMatchingTasksMap := map[string]bool{}
 
-	// Create an input channel that the goroutines can read from.
+	// Populate the input channel that the goroutines will read from.
 	for _, v := range versions {
 		input <- v
 	}
@@ -1205,16 +1205,15 @@ func concurrentlyBuildHasMatchingTasksMap(ctx context.Context, versions []model.
 	}
 
 	for versionId := range output {
-		versionsMatchingTasksMap[versionId] = true
+		hasMatchingTasksMap[versionId] = true
 	}
 
-	return versionsMatchingTasksMap, nil
+	return hasMatchingTasksMap, nil
 }
 
 func collapseCommit(ctx context.Context, mainlineCommits MainlineCommits, mainlineCommitVersion *MainlineCommitVersion, apiVersion restModel.APIVersion) {
 	if len(mainlineCommits.Versions) > 0 {
 		lastMainlineCommit := mainlineCommits.Versions[len(mainlineCommits.Versions)-1]
-		// If the previous mainlineCommit contains rolled up unactivated versions append the latest RolledUp unactivated version
 		if lastMainlineCommit.RolledUpVersions != nil {
 			lastMainlineCommit.RolledUpVersions = append(lastMainlineCommit.RolledUpVersions, &apiVersion)
 		} else {
