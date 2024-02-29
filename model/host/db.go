@@ -1238,22 +1238,90 @@ var (
 	awsSecretKey = bsonutil.MustHaveTag(EC2ProviderSettings{}, "Secret")
 )
 
+// StartingHostsByClient returns a map of cloud provider client options to hosts
+// with those client options that are starting up.
+// kim: TODO: add tests
 func StartingHostsByClient(ctx context.Context, limit int) (map[ClientOptions][]Host, error) {
 	if limit <= 0 {
 		limit = 500
 	}
-	results := []struct {
-		Options ClientOptions `bson:"_id"`
-		Hosts   []Host        `bson:"hosts"`
-	}{}
 
-	pipeline := []bson.M{
+	spawnHostsAndHostCreateHosts, err := findStartingSpawnHostsAndHostCreateHosts(ctx, limit)
+	if err != nil {
+		return nil, errors.Wrap(err, "finding starting spawn hosts and host.create hosts")
+	}
+
+	limit -= len(spawnHostsAndHostCreateHosts)
+
+	taskHosts, err := findStartingTaskHosts(ctx, limit)
+	if err != nil {
+		return nil, errors.Wrap(err, "finding starting task hosts")
+	}
+
+	optionsMap := make(map[ClientOptions][]Host)
+	for _, result := range spawnHostsAndHostCreateHosts {
+		optionsMap[result.Options] = append(optionsMap[result.Options], result.Hosts...)
+	}
+	for _, result := range taskHosts {
+		optionsMap[result.Options] = append(optionsMap[result.Options], result.Hosts...)
+	}
+
+	return optionsMap, nil
+}
+
+// hostsWithClient represents an aggregation of hosts with common cloud provider
+// client options.
+type hostsWithClient struct {
+	Options ClientOptions `bson:"_id"`
+	Hosts   []Host        `bson:"hosts"`
+}
+
+func findStartingSpawnHostsAndHostCreateHosts(ctx context.Context, limit int) ([]hostsWithClient, error) {
+	pipeline := hostsByClientPipeline([]bson.M{
 		{
 			"$match": bson.M{
 				StatusKey:      evergreen.HostStarting,
 				ProvisionedKey: false,
+				StartedByKey:   bson.M{"$ne": evergreen.User},
 			},
 		},
+	}, limit)
+	cur, err := evergreen.GetEnvironment().DB().Collection(Collection).Aggregate(ctx, pipeline)
+	if err != nil {
+		return nil, errors.Wrap(err, "aggregating starting spawn hosts and host.create hosts by client options")
+	}
+	results := []hostsWithClient{}
+	if err = cur.All(ctx, &results); err != nil {
+		return nil, errors.Wrap(err, "decoding starting hosts by client options")
+	}
+
+	return results, nil
+}
+
+func findStartingTaskHosts(ctx context.Context, limit int) ([]hostsWithClient, error) {
+	pipeline := hostsByClientPipeline([]bson.M{
+		{
+			"$match": bson.M{
+				StatusKey:      evergreen.HostStarting,
+				ProvisionedKey: false,
+				StartedByKey:   evergreen.User,
+			},
+		},
+	}, limit)
+	cur, err := evergreen.GetEnvironment().DB().Collection(Collection).Aggregate(ctx, pipeline)
+	if err != nil {
+		return nil, errors.Wrap(err, "aggregating starting task hosts by client options")
+	}
+	results := []hostsWithClient{}
+	if err = cur.All(ctx, &results); err != nil {
+		return nil, errors.Wrap(err, "decoding starting hosts by client options")
+	}
+
+	return results, nil
+}
+
+func hostsByClientPipeline(pipeline []bson.M, limit int) []bson.M {
+	return append(pipeline, []bson.M{
 		{
 			"$sort": bson.M{
 				CreateTimeKey: 1,
@@ -1282,21 +1350,7 @@ func StartingHostsByClient(ctx context.Context, limit int) (map[ClientOptions][]
 				"hosts": bson.M{"$push": "$host"},
 			},
 		},
-	}
-	cur, err := evergreen.GetEnvironment().DB().Collection(Collection).Aggregate(ctx, pipeline)
-	if err != nil {
-		return nil, errors.Wrap(err, "aggregating starting hosts by client options")
-	}
-	if err = cur.All(ctx, &results); err != nil {
-		return nil, errors.Wrap(err, "decoding starting hosts by client options")
-	}
-
-	optionsMap := make(map[ClientOptions][]Host)
-	for _, result := range results {
-		optionsMap[result.Options] = result.Hosts
-	}
-
-	return optionsMap, nil
+	}...)
 }
 
 // UnsafeReplace atomically removes the host given by the idToRemove and inserts
