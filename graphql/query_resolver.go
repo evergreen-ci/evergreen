@@ -896,7 +896,8 @@ func (r *queryResolver) MainlineCommits(ctx context.Context, options MainlineCom
 				Statuses:                   getValidTaskStatusesFilter(buildVariantOptions.Statuses),
 				IncludeNeverActivatedTasks: true,
 			}
-			if hasMatchingTasksMap, err = concurrentlyBuildHasMatchingTasksMap(ctx, activeVersions, opts); err != nil {
+			hasMatchingTasksMap, err = concurrentlyBuildHasMatchingTasksMap(ctx, activeVersions, opts)
+			if err != nil {
 				return nil, InternalServerError.Send(ctx, err.Error())
 			}
 		}
