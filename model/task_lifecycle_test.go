@@ -23,6 +23,7 @@ import (
 	"github.com/evergreen-ci/evergreen/model/task"
 	"github.com/evergreen-ci/evergreen/model/testresult"
 	"github.com/evergreen-ci/evergreen/model/user"
+	"github.com/evergreen-ci/evergreen/testutil"
 	"github.com/evergreen-ci/evergreen/thirdparty"
 	"github.com/evergreen-ci/evergreen/util"
 	"github.com/evergreen-ci/utility"
@@ -1953,12 +1954,7 @@ func TestTaskStatusImpactedByFailedTest(t *testing.T) {
 		Id: "p1",
 	}
 	assert.NoError(t, projRef.Insert())
-
-	settings := &evergreen.Settings{
-		CommitQueue: evergreen.CommitQueueConfig{
-			MaxSystemFailedTaskRetries: 2,
-		},
-	}
+	settings := testutil.TestConfig()
 	Convey("With a successful task one failed test should result in a task failure", t, func() {
 		displayName := "testName"
 
@@ -2140,11 +2136,7 @@ func TestMarkEnd(t *testing.T) {
 	details := apimodels.TaskEndDetail{
 		Status: evergreen.TaskFailed,
 	}
-	settings := &evergreen.Settings{
-		CommitQueue: evergreen.CommitQueueConfig{
-			MaxSystemFailedTaskRetries: 2,
-		},
-	}
+	settings := testutil.TestConfig()
 	assert.NoError(MarkEnd(ctx, settings, &testTask, userName, time.Now(), &details, false))
 
 	b, err := build.FindOneId(b.Id)
@@ -2276,11 +2268,7 @@ func TestMarkEndWithTaskGroup(t *testing.T) {
 	detail := &apimodels.TaskEndDetail{
 		Status: evergreen.TaskFailed,
 	}
-	settings := &evergreen.Settings{
-		CommitQueue: evergreen.CommitQueueConfig{
-			MaxSystemFailedTaskRetries: 2,
-		},
-	}
+	settings := testutil.TestConfig()
 	for name, test := range map[string]func(*testing.T){
 		"NotResetWhenFinished": func(t *testing.T) {
 			assert.NoError(t, MarkEnd(ctx, settings, runningTask, "test", time.Now(), detail, false))
@@ -2541,11 +2529,7 @@ func TestTryResetTask(t *testing.T) {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 
-	settings := &evergreen.Settings{
-		CommitQueue: evergreen.CommitQueueConfig{
-			MaxSystemFailedTaskRetries: 2,
-		},
-	}
+	settings := testutil.TestConfig()
 	Convey("With a task that does not exist", t, func() {
 		require.NoError(t, db.ClearCollections(task.Collection))
 		So(TryResetTask(ctx, settings, "id", "username", "", nil), ShouldNotBeNil)
@@ -2715,19 +2699,31 @@ func TestTryResetTask(t *testing.T) {
 			So(v.Insert(), ShouldBeNil)
 			So(anotherTask.Insert(), ShouldBeNil)
 
-			commitQueueMax := settings.CommitQueue.MaxSystemFailedTaskRetries
-			commitQueueTask := &task.Task{
-				Id:          "commit_queue_task",
+			systemFailedTask := &task.Task{
+				Id:          "system_failed_task",
 				DisplayName: displayName,
 				Activated:   false,
 				BuildId:     b.Id,
-				Execution:   commitQueueMax,
+				Execution:   0,
 				Project:     "sample",
-				Status:      evergreen.TaskSystemFailed,
+				Status:      evergreen.TaskFailed,
 				Version:     b.Version,
 				Requester:   evergreen.MergeTestRequester,
 			}
-			So(commitQueueTask.Insert(), ShouldBeNil)
+			So(systemFailedTask.Insert(), ShouldBeNil)
+
+			anotherSystemFailedTask := &task.Task{
+				Id:          "another_system_failed_task",
+				DisplayName: displayName,
+				Activated:   false,
+				BuildId:     b.Id,
+				Execution:   1, // We won't auto-restart system failures after one execution.
+				Project:     "sample",
+				Status:      evergreen.TaskFailed,
+				Version:     b.Version,
+				Requester:   evergreen.MergeTestRequester,
+			}
+			So(anotherSystemFailedTask.Insert(), ShouldBeNil)
 
 			var err error
 
@@ -2751,12 +2747,34 @@ func TestTryResetTask(t *testing.T) {
 				So(a.Status, ShouldEqual, evergreen.TaskUndispatched)
 				So(a.FinishTime, ShouldResemble, utility.ZeroTime)
 			})
-			Convey("merge tasks not reset if they've reached the admin setting limit", func() {
-				So(TryResetTask(ctx, settings, commitQueueTask.Id, userName, "", detail), ShouldBeNil)
-				commitQueueTask, err = task.FindOne(db.Query(task.ById(commitQueueTask.Id)))
+			Convey("system failed tasks should not reset if admin setting disabled", func() {
+				newSettings := &evergreen.Settings{
+					ServiceFlags: evergreen.ServiceFlags{
+						SystemFailedTaskRestartDisabled: true,
+					},
+				}
+				So(TryResetTask(ctx, newSettings, systemFailedTask.Id, userName, "", detail), ShouldBeNil)
+				systemFailedTask, err = task.FindOne(db.Query(task.ById(systemFailedTask.Id)))
 				So(err, ShouldBeNil)
-				So(commitQueueTask.Details, ShouldNotResemble, *detail)
-				So(commitQueueTask.Status, ShouldNotEqual, detail.Status)
+				So(systemFailedTask.Details, ShouldNotResemble, *detail)
+				So(systemFailedTask.Status, ShouldNotEqual, detail.Status)
+				So(testTask.Status, ShouldNotEqual, evergreen.TaskUndispatched)
+			})
+			Convey("system failed tasks should reset if they haven't reached the admin setting limit", func() {
+				fmt.Println("START OF TEST")
+				detail.Type = evergreen.CommandTypeSystem
+				So(TryResetTask(ctx, settings, systemFailedTask.Id, userName, "", detail), ShouldBeNil)
+				systemFailedTask, err = task.FindOne(db.Query(task.ById(systemFailedTask.Id)))
+				So(err, ShouldBeNil)
+				So(systemFailedTask.Status, ShouldEqual, evergreen.TaskUndispatched)
+			})
+			Convey("system failed tasks should not reset if they've reached the admin setting limit", func() {
+				fmt.Println("SHOULD NOT RESET")
+				detail.Type = evergreen.CommandTypeSystem
+				So(TryResetTask(ctx, settings, anotherSystemFailedTask.Id, userName, "", detail), ShouldBeNil)
+				anotherSystemFailedTask, err = task.FindOne(db.Query(task.ById(systemFailedTask.Id)))
+				So(err, ShouldBeNil)
+				So(systemFailedTask.Status, ShouldNotEqual, evergreen.TaskUndispatched)
 			})
 		})
 	})
@@ -2833,11 +2851,7 @@ func TestTryResetTaskWithTaskGroup(t *testing.T) {
 	}
 	assert.NoError(d.Insert(ctx))
 
-	settings := &evergreen.Settings{
-		CommitQueue: evergreen.CommitQueueConfig{
-			MaxSystemFailedTaskRetries: 2,
-		},
-	}
+	settings := testutil.TestConfig()
 
 	for name, test := range map[string]func(*testing.T, *task.Task, string){
 		"NotFinished": func(t *testing.T, t1 *task.Task, t2Id string) {
@@ -4432,11 +4446,7 @@ func TestMarkEndRequiresAllTasksToFinishToUpdateBuildStatus(t *testing.T) {
 		Type:   evergreen.CommandTypeSystem,
 	}
 
-	settings := &evergreen.Settings{
-		CommitQueue: evergreen.CommitQueueConfig{
-			MaxSystemFailedTaskRetries: 2,
-		},
-	}
+	settings := testutil.TestConfig()
 
 	assert.NoError(MarkEnd(ctx, settings, testTask, "", time.Now(), details, false))
 	var err error
@@ -4546,11 +4556,7 @@ func TestMarkEndRequiresAllTasksToFinishToUpdateBuildStatusWithCompileTask(t *te
 		Type:   "test",
 	}
 
-	settings := &evergreen.Settings{
-		CommitQueue: evergreen.CommitQueueConfig{
-			MaxSystemFailedTaskRetries: 2,
-		},
-	}
+	settings := testutil.TestConfig()
 
 	assert.NoError(MarkEnd(ctx, settings, &testTask, "", time.Now(), details, false))
 	var err error
@@ -4631,11 +4637,7 @@ func TestMarkEndWithBlockedDependenciesTriggersNotifications(t *testing.T) {
 		Status: evergreen.TaskFailed,
 		Type:   "test",
 	}
-	settings := &evergreen.Settings{
-		CommitQueue: evergreen.CommitQueueConfig{
-			MaxSystemFailedTaskRetries: 2,
-		},
-	}
+	settings := testutil.TestConfig()
 	assert.NoError(MarkEnd(ctx, settings, &testTask, "", time.Now(), details, false))
 
 	var err error
@@ -4753,11 +4755,7 @@ func TestClearAndResetStrandedHostTask(t *testing.T) {
 	}
 	assert.NoError(v2.Insert())
 
-	settings := &evergreen.Settings{
-		CommitQueue: evergreen.CommitQueueConfig{
-			MaxSystemFailedTaskRetries: 2,
-		},
-	}
+	settings := testutil.TestConfig()
 	assert.NoError(ClearAndResetStrandedHostTask(ctx, settings, h))
 
 	runningTask, err := task.FindOne(db.Query(task.ById("t")))
@@ -4853,11 +4851,7 @@ func TestClearAndResetStaleStrandedHostTask(t *testing.T) {
 	}
 	assert.NoError(runningTask.Insert())
 
-	settings := &evergreen.Settings{
-		CommitQueue: evergreen.CommitQueueConfig{
-			MaxSystemFailedTaskRetries: 2,
-		},
-	}
+	settings := testutil.TestConfig()
 	assert.NoError(ClearAndResetStrandedHostTask(ctx, settings, host))
 	runningTask, err := task.FindOne(db.Query(task.ById("t")))
 	assert.NoError(err)
@@ -4919,11 +4913,7 @@ func TestClearAndResetStrandedHostTaskFailedOnly(t *testing.T) {
 		Id: "version",
 	}
 	assert.NoError(t, v.Insert())
-	settings := &evergreen.Settings{
-		CommitQueue: evergreen.CommitQueueConfig{
-			MaxSystemFailedTaskRetries: 2,
-		},
-	}
+	settings := testutil.TestConfig()
 	assert.NoError(t, ClearAndResetStrandedHostTask(ctx, settings, h))
 	restartedDisplayTask, err := task.FindOne(db.Query(task.ById("dt")))
 	assert.NoError(t, err)
@@ -4951,11 +4941,7 @@ func TestMarkUnallocatableContainerTasksSystemFailed(t *testing.T) {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 
-	settings := &evergreen.Settings{
-		CommitQueue: evergreen.CommitQueueConfig{
-			MaxSystemFailedTaskRetries: 2,
-		},
-	}
+	settings := testutil.TestConfig()
 	defer func() {
 		assert.NoError(t, db.ClearCollections(task.Collection, build.Collection, VersionCollection, event.EventCollection))
 	}()
@@ -5120,12 +5106,7 @@ func TestClearAndResetExecTask(t *testing.T) {
 	}
 	assert.NoError(t, v.Insert())
 
-	settings := &evergreen.Settings{
-		CommitQueue: evergreen.CommitQueueConfig{
-			MaxSystemFailedTaskRetries: 2,
-		},
-	}
-
+	settings := testutil.TestConfig()
 	assert.NoError(t, ClearAndResetStrandedHostTask(ctx, settings, h))
 	restartedDisplayTask, err := task.FindOne(db.Query(task.ById("dt")))
 	assert.NoError(t, err)
@@ -5139,11 +5120,7 @@ func TestClearAndResetStrandedContainerTask(t *testing.T) {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 
-	settings := &evergreen.Settings{
-		CommitQueue: evergreen.CommitQueueConfig{
-			MaxSystemFailedTaskRetries: 2,
-		},
-	}
+	settings := testutil.TestConfig()
 	defer func() {
 		assert.NoError(t, db.ClearCollections(pod.Collection, task.Collection, task.OldCollection, build.Collection, VersionCollection))
 	}()
@@ -5161,7 +5138,7 @@ func TestClearAndResetStrandedContainerTask(t *testing.T) {
 			assert.Zero(t, dbPod.TaskRuntimeInfo.RunningTaskID)
 			assert.Zero(t, dbPod.TaskRuntimeInfo.RunningTaskExecution)
 
-			dbArchivedTask, err := task.FindOneOldByIdAndExecution(tsk.Id, 1)
+			dbArchivedTask, err := task.FindOneOldByIdAndExecution(tsk.Id, 0)
 			require.NoError(t, err)
 			require.NotZero(t, dbArchivedTask, "should have archived the old task execution")
 			assert.Equal(t, evergreen.TaskFailed, dbArchivedTask.Status)
@@ -5221,7 +5198,7 @@ func TestClearAndResetStrandedContainerTask(t *testing.T) {
 			dbTask, err := task.FindOneId(tsk.Id)
 			require.NoError(t, err)
 			require.NotZero(t, dbTask)
-			assert.Equal(t, 1, dbTask.Execution, "current task execution should still be the stranded one")
+			assert.Equal(t, 0, dbTask.Execution, "current task execution should still be the stranded one")
 			assert.Equal(t, evergreen.TaskFailed, dbTask.Status)
 			assert.Equal(t, evergreen.CommandTypeSystem, dbTask.Details.Type)
 			assert.Equal(t, evergreen.TaskDescriptionStranded, dbTask.Details.Description)
@@ -5299,7 +5276,7 @@ func TestClearAndResetStrandedContainerTask(t *testing.T) {
 
 			dbTask, err := task.FindOneId(tsk.Id)
 			require.NoError(t, err)
-			assert.Equal(t, 1, dbTask.Execution, "current task execution should still be the stranded one")
+			assert.Equal(t, 0, dbTask.Execution, "current task execution should still be the stranded one")
 			assert.Equal(t, evergreen.TaskFailed, dbTask.Status)
 			assert.Equal(t, evergreen.CommandTypeSystem, dbTask.Details.Type)
 			assert.Equal(t, evergreen.TaskDescriptionStranded, dbTask.Details.Description)
@@ -5322,7 +5299,7 @@ func TestClearAndResetStrandedContainerTask(t *testing.T) {
 			// assert.Equal(t, evergreen.VersionFailed, dbVersion.Status, "version status should be updated for unrestartable stranded task")
 		},
 		"FailsTaskThatHitsMaxExecutionRestartsWithoutRestartingIt": func(t *testing.T, p pod.Pod, tsk task.Task) {
-			const execNum = evergreen.MaxTaskExecution + 1
+			const execNum = 1 // we only restart stranded tasks automatically once
 			tsk.Execution = execNum
 			p.TaskRuntimeInfo.RunningTaskExecution = execNum
 			require.NoError(t, p.Insert())
@@ -5343,22 +5320,6 @@ func TestClearAndResetStrandedContainerTask(t *testing.T) {
 			assert.Equal(t, evergreen.CommandTypeSystem, dbTask.Details.Type)
 			assert.Equal(t, evergreen.TaskDescriptionStranded, dbTask.Details.Description)
 			assert.False(t, utility.IsZeroTime(dbTask.FinishTime))
-
-			// TODO (EVG-17033): if a stranded task hits the max execution, it
-			// should refuse to restart the task, but the build and version
-			// statuses should still be updated to reflect the stranded task.
-			// The portion of the test below this checking the updated build and
-			// version should pass.
-
-			// dbBuild, err := build.FindOneId(tsk.BuildId)
-			// require.NoError(t, err)
-			// require.NotZero(t, dbBuild)
-			// assert.Equal(t, evergreen.BuildFailed, dbBuild.Status, "build status should be updated for unrestartable stranded task")
-			//
-			// dbVersion, err := VersionFindOneId(tsk.Version)
-			// require.NoError(t, err)
-			// require.NotZero(t, dbVersion)
-			// assert.Equal(t, evergreen.VersionFailed, dbVersion.Status, "version status should be updated for unrestartable stranded task")
 		},
 	} {
 		t.Run(tName, func(t *testing.T) {
@@ -5394,7 +5355,7 @@ func TestClearAndResetStrandedContainerTask(t *testing.T) {
 
 			tsk := task.Task{
 				Id:                     "task_id",
-				Execution:              1,
+				Execution:              0,
 				ExecutionPlatform:      task.ExecutionPlatformContainer,
 				ContainerAllocated:     true,
 				ContainerAllocatedTime: time.Now(),
@@ -5423,11 +5384,7 @@ func TestResetStaleTask(t *testing.T) {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 
-	settings := &evergreen.Settings{
-		CommitQueue: evergreen.CommitQueueConfig{
-			MaxSystemFailedTaskRetries: 2,
-		},
-	}
+	settings := testutil.TestConfig()
 	defer func() {
 		assert.NoError(t, db.ClearCollections(task.Collection, task.OldCollection, build.Collection, VersionCollection))
 	}()
@@ -5438,7 +5395,7 @@ func TestResetStaleTask(t *testing.T) {
 
 			require.NoError(t, FixStaleTask(ctx, settings, &tsk))
 
-			dbArchivedTask, err := task.FindOneOldByIdAndExecution(tsk.Id, 1)
+			dbArchivedTask, err := task.FindOneOldByIdAndExecution(tsk.Id, 0)
 			require.NoError(t, err)
 			require.NotZero(t, dbArchivedTask, "should have archived the old task execution")
 			assert.Equal(t, evergreen.TaskFailed, dbArchivedTask.Status)
@@ -5476,7 +5433,7 @@ func TestResetStaleTask(t *testing.T) {
 			require.NoError(t, tsk.Insert())
 			require.NoError(t, FixStaleTask(ctx, settings, &tsk))
 
-			dbArchivedTask, err := task.FindOneOldByIdAndExecution(tsk.Id, 1)
+			dbArchivedTask, err := task.FindOneOldByIdAndExecution(tsk.Id, 0)
 			require.NoError(t, err)
 			require.Zero(t, dbArchivedTask, "should not have archived the aborted task")
 
@@ -5521,14 +5478,14 @@ func TestResetStaleTask(t *testing.T) {
 			require.NotZero(t, dbDisplayTask)
 			assert.True(t, dbDisplayTask.ResetFailedWhenFinished, "display task should reset failed when other exec task finishes running")
 
-			dbArchivedTask, err := task.FindOneOldByIdAndExecution(tsk.Id, 1)
+			dbArchivedTask, err := task.FindOneOldByIdAndExecution(tsk.Id, 0)
 			assert.NoError(t, err)
 			assert.Zero(t, dbArchivedTask, "execution task should not be archived until display task can reset")
 
 			dbTask, err := task.FindOneId(tsk.Id)
 			require.NoError(t, err)
 			require.NotZero(t, dbTask)
-			assert.Equal(t, 1, dbTask.Execution, "current task execution should still be the stranded one")
+			assert.Equal(t, 0, dbTask.Execution, "current task execution should still be the stranded one")
 			assert.Equal(t, evergreen.TaskFailed, dbTask.Status)
 			assert.Equal(t, evergreen.CommandTypeSystem, dbTask.Details.Type)
 			assert.Equal(t, evergreen.TaskDescriptionHeartbeat, dbTask.Details.Description)
@@ -5548,28 +5505,12 @@ func TestResetStaleTask(t *testing.T) {
 
 			dbTask, err := task.FindOneId(tsk.Id)
 			require.NoError(t, err)
-			assert.Equal(t, 1, dbTask.Execution, "current task execution should still be the stranded one")
+			assert.Equal(t, 0, dbTask.Execution, "current task execution should still be the stranded one")
 			assert.Equal(t, evergreen.TaskFailed, dbTask.Status)
 			assert.Equal(t, evergreen.CommandTypeSystem, dbTask.Details.Type)
 			assert.Equal(t, evergreen.TaskDescriptionHeartbeat, dbTask.Details.Description)
 			assert.True(t, dbTask.Details.TimedOut)
 			assert.False(t, utility.IsZeroTime(dbTask.FinishTime))
-
-			// TODO (EVG-17033): if a stale task hits the unschedulable
-			// threshold, it should refuse to restart the task, but the build
-			// and version statuses should still be updated to reflect the
-			// stranded task. The portion of the test below this checking the
-			// updated build and version should pass.
-
-			// dbBuild, err := build.FindOneId(tsk.BuildId)
-			// require.NoError(t, err)
-			// require.NotZero(t, dbBuild)
-			// assert.Equal(t, evergreen.BuildFailed, dbBuild.Status, "build status should be updated for unrestartable stale task")
-			//
-			// dbVersion, err := VersionFindOneId(tsk.Version)
-			// require.NoError(t, err)
-			// require.NotZero(t, dbVersion)
-			// assert.Equal(t, evergreen.VersionFailed, dbVersion.Status, "version status should be updated for unrestartable stale task")
 		},
 		"FailsStaleTaskThatHitsMaxExecutionRestartsWithoutRestartingIt": func(t *testing.T, tsk task.Task) {
 			const execNum = evergreen.MaxTaskExecution + 1
@@ -5586,22 +5527,6 @@ func TestResetStaleTask(t *testing.T) {
 			assert.Equal(t, evergreen.TaskDescriptionHeartbeat, dbTask.Details.Description)
 			assert.True(t, dbTask.Details.TimedOut)
 			assert.False(t, utility.IsZeroTime(dbTask.FinishTime))
-
-			// TODO (EVG-17033): if a stale task hits the max execution, it
-			// should refuse to restart the task, but the build and version
-			// statuses should still be updated to reflect the stranded task.
-			// The portion of the test below this checking the updated build and
-			// version should pass.
-
-			// dbBuild, err := build.FindOneId(tsk.BuildId)
-			// require.NoError(t, err)
-			// require.NotZero(t, dbBuild)
-			// assert.Equal(t, evergreen.BuildFailed, dbBuild.Status, "build status should be updated for unrestartable stale task")
-			//
-			// dbVersion, err := VersionFindOneId(tsk.Version)
-			// require.NoError(t, err)
-			// require.NotZero(t, dbVersion)
-			// assert.Equal(t, evergreen.VersionFailed, dbVersion.Status, "version status should be updated for unrestartable stale task")
 		},
 	} {
 		t.Run(tName, func(t *testing.T) {
@@ -5640,7 +5565,7 @@ func TestResetStaleTask(t *testing.T) {
 			require.NoError(t, taskPod.Insert())
 			tsk := task.Task{
 				Id:                     "task_id",
-				Execution:              1,
+				Execution:              0,
 				ExecutionPlatform:      task.ExecutionPlatformContainer,
 				ContainerAllocated:     true,
 				ContainerAllocatedTime: time.Now(),
@@ -5730,11 +5655,7 @@ func TestMarkEndWithNoResults(t *testing.T) {
 		Type:   "test",
 	}
 
-	settings := &evergreen.Settings{
-		CommitQueue: evergreen.CommitQueueConfig{
-			MaxSystemFailedTaskRetries: 2,
-		},
-	}
+	settings := testutil.TestConfig()
 	err := MarkEnd(ctx, settings, &testTask1, "", time.Now(), details, false)
 	assert.NoError(t, err)
 	dbTask, err := task.FindOneId(testTask1.Id)
@@ -6031,11 +5952,7 @@ func TestDisplayTaskDelayedRestart(t *testing.T) {
 	}
 	assert.NoError(v.Insert())
 
-	settings := &evergreen.Settings{
-		CommitQueue: evergreen.CommitQueueConfig{
-			MaxSystemFailedTaskRetries: 2,
-		},
-	}
+	settings := testutil.TestConfig()
 
 	// request that the task restarts when it's done
 	assert.NoError(dt.SetResetWhenFinished())
@@ -6201,11 +6118,7 @@ func TestAbortedTaskDelayedRestart(t *testing.T) {
 	detail := &apimodels.TaskEndDetail{
 		Status: evergreen.TaskFailed,
 	}
-	settings := &evergreen.Settings{
-		CommitQueue: evergreen.CommitQueueConfig{
-			MaxSystemFailedTaskRetries: 2,
-		},
-	}
+	settings := testutil.TestConfig()
 	assert.NoError(t, MarkEnd(ctx, settings, &task1, "test", time.Now(), detail, false))
 	newTask, err := task.FindOneId(task1.Id)
 	assert.NoError(t, err)

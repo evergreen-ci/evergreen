@@ -275,11 +275,6 @@ func TestTaskExecutionTimeoutJob(t *testing.T) {
 
 			env := &mock.Environment{}
 			require.NoError(t, env.Configure(ctx))
-			env.EvergreenSettings = &evergreen.Settings{
-				CommitQueue: evergreen.CommitQueueConfig{
-					MaxSystemFailedTaskRetries: 2,
-				},
-			}
 			require.NoError(t, db.ClearCollections(task.Collection, task.OldCollection, build.Collection, model.VersionCollection, model.ParserProjectCollection, model.ProjectRefCollection, pod.Collection, host.Collection, event.EventCollection))
 			mp.Reset()
 

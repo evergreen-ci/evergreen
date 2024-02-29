@@ -1,6 +1,7 @@
 package graphql
 
 import (
+	"context"
 	"testing"
 
 	"github.com/evergreen-ci/evergreen"
@@ -223,4 +224,130 @@ func TestUserHasDistroCreatePermission(t *testing.T) {
 	require.NoError(t, roleManager.AddScope(superUserScope))
 
 	assert.True(t, userHasDistroCreatePermission(&usr))
+}
+
+func TestConcurrentlyBuildVersionsMatchingTasksMap(t *testing.T) {
+	ctx := context.Background()
+	assert.NoError(t, db.ClearCollections(task.Collection))
+
+	t1 := task.Task{
+		Id:                      "t1",
+		DisplayName:             "test-agent",
+		Version:                 "v1",
+		BuildVariant:            "bv1",
+		BuildVariantDisplayName: "Build Variant 1",
+		Execution:               0,
+		Status:                  evergreen.TaskSucceeded,
+		DisplayTaskId:           utility.ToStringPtr(""),
+	}
+	t2 := task.Task{
+		Id:                      "t2",
+		DisplayName:             "test-model",
+		Version:                 "v1",
+		BuildVariant:            "bv1",
+		BuildVariantDisplayName: "Build Variant 1",
+		Execution:               0,
+		Status:                  evergreen.TaskFailed,
+		DisplayTaskId:           utility.ToStringPtr(""),
+	}
+	t3 := task.Task{
+		Id:                      "t3",
+		DisplayName:             "test-rest-route",
+		Version:                 "v1",
+		BuildVariant:            "bv2",
+		BuildVariantDisplayName: "Build Variant 2",
+		Execution:               1,
+		Status:                  evergreen.TaskSucceeded,
+		DisplayTaskId:           utility.ToStringPtr(""),
+	}
+	t4 := task.Task{
+		Id:                      "t4",
+		DisplayName:             "test-rest-data",
+		Version:                 "v1",
+		BuildVariant:            "bv2",
+		BuildVariantDisplayName: "Build Variant 2",
+		Execution:               1,
+		Status:                  evergreen.TaskFailed,
+		DisplayTaskId:           utility.ToStringPtr(""),
+	}
+	t5 := task.Task{
+		Id:                      "t5",
+		DisplayName:             "test-model",
+		Version:                 "v2",
+		BuildVariant:            "bv1",
+		BuildVariantDisplayName: "Build Variant 1",
+		Execution:               1,
+		Status:                  evergreen.TaskFailed,
+		DisplayTaskId:           utility.ToStringPtr(""),
+	}
+	t6 := task.Task{
+		Id:                      "t6",
+		DisplayName:             "test-model",
+		Version:                 "v3",
+		BuildVariant:            "bv2",
+		BuildVariantDisplayName: "Build Variant 2",
+		Execution:               1,
+		Status:                  evergreen.TaskFailed,
+		DisplayTaskId:           utility.ToStringPtr(""),
+	}
+
+	assert.NoError(t, db.InsertMany(task.Collection, t1, t2, t3, t4, t5, t6))
+
+	opts := task.HasMatchingTasksOptions{
+		TaskNames:                  []string{"agent"},
+		Variants:                   []string{},
+		Statuses:                   []string{},
+		IncludeNeverActivatedTasks: true,
+	}
+
+	versions := []model.Version{
+		{
+			Id:        "v1",
+			Activated: utility.TruePtr(),
+		},
+		{
+			Id:        "v2",
+			Activated: utility.TruePtr(),
+		},
+		{
+			Id:        "v3",
+			Activated: utility.TruePtr(),
+		},
+	}
+
+	versionsMatchingTasksMap, err := concurrentlyBuildVersionsMatchingTasksMap(ctx, versions, opts)
+	assert.Nil(t, err)
+	assert.NotNil(t, versionsMatchingTasksMap)
+	assert.Equal(t, versionsMatchingTasksMap["v1"], true)
+	assert.Equal(t, versionsMatchingTasksMap["v2"], false)
+	assert.Equal(t, versionsMatchingTasksMap["v3"], false)
+
+	opts = task.HasMatchingTasksOptions{
+		TaskNames:                  []string{},
+		Variants:                   []string{"bv1"},
+		Statuses:                   []string{},
+		IncludeNeverActivatedTasks: true,
+	}
+
+	versionsMatchingTasksMap, err = concurrentlyBuildVersionsMatchingTasksMap(ctx, versions, opts)
+	assert.Nil(t, err)
+	assert.NotNil(t, versionsMatchingTasksMap)
+	assert.Equal(t, versionsMatchingTasksMap["v1"], true)
+	assert.Equal(t, versionsMatchingTasksMap["v2"], true)
+	assert.Equal(t, versionsMatchingTasksMap["v3"], false)
+
+	opts = task.HasMatchingTasksOptions{
+		TaskNames:                  []string{"model"},
+		Variants:                   []string{"v2"},
+		Statuses:                   []string{evergreen.TaskFailed},
+		IncludeNeverActivatedTasks: true,
+	}
+
+	versionsMatchingTasksMap, err = concurrentlyBuildVersionsMatchingTasksMap(ctx, versions, opts)
+	assert.Nil(t, err)
+	assert.NotNil(t, versionsMatchingTasksMap)
+	assert.Equal(t, versionsMatchingTasksMap["v1"], false)
+	assert.Equal(t, versionsMatchingTasksMap["v2"], false)
+	assert.Equal(t, versionsMatchingTasksMap["v3"], true)
+
 }

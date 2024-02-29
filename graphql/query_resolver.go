@@ -845,7 +845,6 @@ func (r *queryResolver) MainlineCommits(ctx context.Context, options MainlineCom
 	}
 
 	var mainlineCommits MainlineCommits
-	matchingVersionCount := 0
 
 	// We only want to return the PrevPageOrderNumber if a user is not on the first page.
 	if skipOrderNumber != 0 {
@@ -865,101 +864,86 @@ func (r *queryResolver) MainlineCommits(ctx context.Context, options MainlineCom
 		}
 	}
 
-	index := 0
+	matchingVersionCount := 0
 	versionsCheckedCount := 0
+	hasFilters := isPopulated(buildVariantOptions) && utility.FromBoolPtr(options.ShouldCollapse)
 
-	// We will loop through each version returned from GetMainlineCommitVersionsWithOptions and see if there is a commit that matches the filter parameters (if any).
+	// We will loop through each version returned from GetMainlineCommitVersionsWithOptions and see if there is a commit
+	// that matches the filter parameters (if any).
 	// If there is a match, we will add it to the array of versions to be returned to the user.
-	// If there are not enough matches to satisfy our limit, we will call GetMainlineCommitVersionsWithOptions again with the next order number to check and repeat the process.
+	// If there are not enough matches to satisfy our limit, we will call GetMainlineCommitVersionsWithOptions again
+	// with the next order number to check and repeat the process.
 	for matchingVersionCount < limit {
-		// If we no longer have any more versions to check break out and return what we have.
+		// If we no longer have any more versions to check, break out of the loop.
 		if len(versions) == 0 {
 			break
 		}
-		// If we have checked more versions than the MaxMainlineCommitVersionLimit then break out and return what we have.
+
+		// If we have checked more versions than the MaxMainlineCommitVersionLimit, break out of the loop.
 		if versionsCheckedCount >= model.MaxMainlineCommitVersionLimit {
-			// Return an error if we did not find any versions that match.
 			if matchingVersionCount == 0 {
 				return nil, ResourceNotFound.Send(ctx, fmt.Sprintf("Matching version not found in %d most recent versions", model.MaxMainlineCommitVersionLimit))
 			}
 			break
 		}
-		versionsCheckedCount++
-		v := versions[index]
-		apiVersion := restModel.APIVersion{}
-		apiVersion.BuildFromService(v)
 
-		// If the version was created before we started caching activation status we must manually verify it and cache that value.
-		if v.Activated == nil {
-			err = setVersionActivationStatus(ctx, &v)
-			if err != nil {
-				return nil, InternalServerError.Send(ctx, fmt.Sprintf("Error setting version activation status: %s", err.Error()))
-			}
-		}
-		mainlineCommitVersion := MainlineCommitVersion{}
-		shouldCollapse := false
-		if !utility.FromBoolPtr(v.Activated) {
-			shouldCollapse = true
-		} else if isPopulated(buildVariantOptions) && utility.FromBoolPtr(options.ShouldCollapse) {
+		var versionsMatchingTasksMap map[string]bool
+		if hasFilters {
+			activeVersions := utility.FilterSlice(versions, func(s model.Version) bool { return utility.FromBoolPtr(s.Activated) })
 			opts := task.HasMatchingTasksOptions{
 				TaskNames:                  buildVariantOptions.Tasks,
 				Variants:                   buildVariantOptions.Variants,
 				Statuses:                   getValidTaskStatusesFilter(buildVariantOptions.Statuses),
 				IncludeNeverActivatedTasks: true,
 			}
-			hasTasks, err := task.HasMatchingTasks(ctx, v.Id, opts)
+			versionsMatchingTasksMap, err = concurrentlyBuildVersionsMatchingTasksMap(ctx, activeVersions, opts)
 			if err != nil {
-				return nil, InternalServerError.Send(ctx, fmt.Sprintf("Error checking if version has tasks: %s", err.Error()))
-			}
-			if !hasTasks {
-				shouldCollapse = true
+				return nil, InternalServerError.Send(ctx, err.Error())
 			}
 		}
-		// If a version matches our filter criteria we append it directly to our returned list of mainlineCommits
-		if !shouldCollapse {
-			matchingVersionCount++
-			mainlineCommits.NextPageOrderNumber = utility.ToIntPtr(v.RevisionOrderNumber)
-			mainlineCommitVersion.Version = &apiVersion
 
-		} else {
-			// If a version does not match our filter criteria roll up all the unactivated versions that are sequentially near each other into a single MainlineCommitVersion,
-			// and then append it to our returned list.
-			// If we have any versions already we should check the most recent one first otherwise create a new one
-			if len(mainlineCommits.Versions) > 0 {
-				lastMainlineCommit := mainlineCommits.Versions[len(mainlineCommits.Versions)-1]
+		// Loop through the current versions to check for matching versions.
+		for _, v := range versions {
+			mainlineCommitVersion := MainlineCommitVersion{}
+			apiVersion := restModel.APIVersion{}
+			apiVersion.BuildFromService(v)
+			versionsCheckedCount++
 
-				// If the previous mainlineCommit contains rolled up unactivated versions append the latest RolledUp unactivated version
-				if lastMainlineCommit.RolledUpVersions != nil {
-					lastMainlineCommit.RolledUpVersions = append(lastMainlineCommit.RolledUpVersions, &apiVersion)
-				} else {
-					mainlineCommitVersion.RolledUpVersions = []*restModel.APIVersion{&apiVersion}
-				}
+			if !utility.FromBoolPtr(v.Activated) {
+				collapseCommit(ctx, mainlineCommits, &mainlineCommitVersion, apiVersion)
+			} else if hasFilters && !versionsMatchingTasksMap[v.Id] {
+				collapseCommit(ctx, mainlineCommits, &mainlineCommitVersion, apiVersion)
 			} else {
-				mainlineCommitVersion.RolledUpVersions = []*restModel.APIVersion{&apiVersion}
+				matchingVersionCount++
+				mainlineCommits.NextPageOrderNumber = utility.ToIntPtr(v.RevisionOrderNumber)
+				mainlineCommitVersion.Version = &apiVersion
+			}
+
+			// Only add a mainlineCommit if a new one was added and it's not a modified existing RolledUpVersion.
+			if mainlineCommitVersion.Version != nil || mainlineCommitVersion.RolledUpVersions != nil {
+				mainlineCommits.Versions = append(mainlineCommits.Versions, &mainlineCommitVersion)
+			}
+
+			if matchingVersionCount >= limit {
+				break
 			}
 		}
 
-		// Only add a mainlineCommit if a new one was added and it's not a modified existing RolledUpVersion
-		if mainlineCommitVersion.Version != nil || mainlineCommitVersion.RolledUpVersions != nil {
-			mainlineCommits.Versions = append(mainlineCommits.Versions, &mainlineCommitVersion)
-		}
-		index++
-		// If we have exhausted all of our versions we should fetch some more.
-		if index == len(versions) && matchingVersionCount < limit {
+		// If we don't have enough matching versions, fetch more versions to check.
+		if matchingVersionCount < limit {
 			skipOrderNumber := versions[len(versions)-1].RevisionOrderNumber
 			opts := model.MainlineCommitVersionOptions{
 				Limit:           limit,
 				SkipOrderNumber: skipOrderNumber,
 				Requesters:      requesters,
 			}
-
 			versions, err = model.GetMainlineCommitVersionsWithOptions(ctx, projectId, opts)
 			if err != nil {
-				return nil, ResourceNotFound.Send(ctx, fmt.Sprintf("Error getting activated versions: %s", err.Error()))
+				return nil, ResourceNotFound.Send(ctx, fmt.Sprintf("fetching more mainline commit versions: %s", err.Error()))
 			}
-			index = 0
 		}
 	}
+
 	return &mainlineCommits, nil
 }
 
