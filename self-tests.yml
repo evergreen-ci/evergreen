@@ -1,907 +1,118 @@
-command_type: test
-stepback: true
-ignore:
-  - "*.md" # don't schedule tests if a commit only changes markdown files
-  - "*.mdx"
-  - ".github/*" # github CODEOWNERS configuration
-
-post:
-  - func: attach-test-results
-  - command: s3.put
-    display_name: Upload smoke test's app server logs to S3
-    type: system
-    params:
-      aws_key: ${aws_key}
-      aws_secret: ${aws_secret}
-      local_file: evergreen/app_server.log
-      remote_file: evergreen/${task_id}/app_server.log
-      bucket: mciuploads
-      content_type: text/plain
-      permissions: private
-      visibility: signed
-      display_name: Evergreen smoke test application server logs
-  - command: s3.put
-    display_name: Upload smoke test agent logs to S3
-    type: system
-    params:
-      aws_key: ${aws_key}
-      aws_secret: ${aws_secret}
-      local_files_include_filter: evergreen/smoke*.log
-      remote_file: evergreen/${task_id}/
-      bucket: mciuploads
-      content_type: text/plain
-      permissions: private
-      visibility: signed
-      display_name: (Evergreen smoke test agent logs)
-
-#######################################
-#         YAML Templates              #
-#######################################
-variables:
-  - &run-build
-    # runs a build operations. The task name in evergreen should
-    # correspond to a make target for the build operation.
-    name: test
-    commands:
-      - func: get-project-and-modules
-      - func: run-make
-        vars: { target: "${task_name}" }
-      - command: s3.put
-        type: system
-        params:
-          optional: true
-          aws_key: ${aws_key}
-          aws_secret: ${aws_secret}
-          local_file: evergreen/bin/dist.tar.gz
-          remote_file: evergreen/${build_id}-${build_variant}/evergreen-${task_name}-${revision}.tar.gz
-          bucket: mciuploads
-          content_type: application/x-gzip
-          permissions: public-read
-          display_name: dist.tar.gz
-  - &run-go-test-suite
-    # runs a make target and then uploads gotest output to
-    # evergreen. The test name should correspond to a make target for
-    # that suite
-    name: test
-    must_have_test_results: true
-    commands:
-      - func: get-project-and-modules
-      - func: setup-credentials
-      - func: run-make
-        vars: { target: "${task_name}" }
-  - &run-go-test-suite-with-docker
-    name: test
-    must_have_test_results: true
-    commands:
-      - func: get-project-and-modules
-      - func: setup-credentials
-      - func: setup-mongodb
-      - func: setup-docker-host
-      - func: run-make
-        vars: { target: "${task_name}" }
-  - &run-go-test-suite-with-mongodb
-    # runs a make target above, but only on systems that have a
-    # running mongod started for testing.
-    name: test
-    must_have_test_results: true
-    commands:
-      - func: get-project-and-modules
-      - func: setup-credentials
-      - func: setup-mongodb
-      - func: run-make
-        vars: { target: "${task_name}" }
-  - &run-go-test-suite-with-mongodb-useast
-    # runs a make target above, but only on systems that have a
-    # running mongod started for testing.
-    name: test
-    must_have_test_results: true
-    commands:
-      - func: get-project-and-modules
-      - func: setup-credentials
-      - func: setup-mongodb
-      - func: run-make
-        vars: { target: "${task_name}", tz: "America/New_York" }
-  - &run-smoke-test
-    name: smoke
-    must_have_test_results: true
-    commands:
-      - command: timeout.update
-        params:
-          exec_timeout_secs: 900
-          timeout_secs: 900
-      - func: get-project-and-modules
-      - func: setup-mongodb
-      - func: run-make
-        vars: { target: "load-smoke-data" }
-      - command: subprocess.exec
-        params:
-          silent: true
-          working_dir: evergreen
-          env:
-            GITHUB_APP_ID: ${staging_github_app_id}
-            GITHUB_APP_KEY: ${staging_github_app_key}
-            GITHUB_TOKEN: ${github_token}
-          command: bash scripts/setup-smoke-config.sh
-      - func: run-make
-        vars: { target: "set-smoke-vars" }
-      - func: run-make
-        vars: { target: "set-smoke-git-config" }
-      - func: run-make
-        vars: { target: "${task_name}" }
-
-  - &version-constants
-    nodejs_version: "6.11.1"
-  - &run-generate-lint
-    name: generate-lint
-    commands:
-      - func: get-project-and-modules
-      - func: run-make
-        vars: { target: "${task_name}" }
-      - command: s3.put
-        type: system
-        params:
-          aws_key: ${aws_key}
-          aws_secret: ${aws_secret}
-          local_file: evergreen/bin/generate-lint.json
-          remote_file: evergreen/${build_id}-${build_variant}/bin/generate-lint.json
-          bucket: mciuploads
-          content_type: application/json
-          permissions: public-read
-          display_name: generate-lint.json
-      - command: generate.tasks
-        params:
-          files:
-            - evergreen/bin/generate-lint.json
-
-  - &build-and-push-client
-    name: build-and-push-client
-    commands:
-      - func: get-project-and-modules
-      - func: run-make
-        vars: { target: "${task_name}" }
-      - command: s3.put
-        params:
-          aws_key: ${aws_key}
-          aws_secret: ${aws_secret}
-          local_files_include_filter_prefix: evergreen/clients
-          local_files_include_filter: "*_*/evergreen*"
-          remote_file: evergreen/clients/${version_id}/
-          content_type: binary/octet-stream
-          bucket: mciuploads
-          permissions: public-read
-          preserve_path: true
-
 #######################################
 #              Functions              #
 #######################################
 functions:
-  get-project-and-modules:
+  get-project:
     - command: git.get_project
       type: setup
       params:
         directory: evergreen
         token: ${github_token}
         shallow_clone: true
-    - command: shell.exec
-      type: setup
-      params:
-        working_dir: evergreen
-        include_expansions_in_env: ["GOROOT"]
-        shell: bash
-        script: |
-          # Downloading modules is flaky in the ubuntu1604-arm64 distros, because the TCP connection is sometimes reset
-          # by the peer for unknown reasons (this does not happen in other distros). Retry the module download multiple
-          # times to reduce the flakiness.
-          for i in {1..5}; do
-            make mod-tidy;
-            [[ $? -eq 0 ]] && break;
-          done
-  run-make:
-    command: subprocess.exec
-    params:
-      working_dir: evergreen
-      binary: make
-      args: ["${make_args|}", "${target}"]
-      include_expansions_in_env:
-        - GOROOT
-        - MONGO_CREDS_FILE
-        - RUN_TEST
-        - RUN_EC2_SPECIFIC_TESTS
-        - IS_DOCKER
-        - task_id
-        - task_name
-        - execution
-        - version_id
-        - requester
-        - build_id
-        - build_variant
-        - project
-        - project_id
-        - distro_id
-      env:
-        AWS_KEY: ${aws_key}
-        AWS_SECRET: ${aws_secret}
-        DEBUG_ENABLED: ${debug}
-        DOCKER_HOST: ${docker_host}
-        EVERGREEN_ALL: "true"
-        GOARCH: ${goarch}
-        GOOS: ${goos}
-        KARMA_REPORTER: junit
-        NODE_BIN_PATH: ${nodebin}
-        RACE_DETECTOR: ${race_detector}
-        SETTINGS_OVERRIDE: creds.yml
-        TEST_TIMEOUT: ${test_timeout}
-        TZ: ${tz}
-        VENDOR_PKG: "github.com/${trigger_repo_owner}/${trigger_repo_name}"
-        VENDOR_REVISION: ${trigger_revision}
-        XC_BUILD: ${xc_build}
-        NOTARY_CLIENT_URL: ${notary_client_url}
-        NOTARY_SERVER_URL: ${notary_server_url}
-        MACOS_NOTARY_KEY: ${notary_server_key}
-        MACOS_NOTARY_SECRET: ${notary_server_secret}
-        EVERGREEN_BUNDLE_ID: ${evergreen_bundle_id}
-        SIGN_MACOS: ${sign_macos}
-        OTEL_COLLECTOR_ENDPOINT: ${otel_collector_endpoint}
-        OTEL_TRACE_ID: ${otel_trace_id}
-        OTEL_PARENT_ID: ${otel_parent_id}
-        AWS_ACCESS_KEY_ID: ${AWS_ACCESS_KEY_ID}
-        AWS_SECRET_ACCESS_KEY: ${AWS_SECRET_ACCESS_KEY}
-        AWS_SESSION_TOKEN: ${AWS_SESSION_TOKEN}
-
-  setup-credentials:
-    - command: ec2.assume_role
-      type: setup
-      params:
-        role_arn: ${assume_role_arn}
-    - command: subprocess.exec
-      type: setup
-      params:
-        silent: true
-        working_dir: evergreen
-        env:
-          GITHUB_TOKEN: ${github_token}
-          GITHUB_APP_ID: ${staging_github_app_id}
-          GITHUB_APP_KEY: ${staging_github_app_key}
-          JIRA_SERVER: ${jiraserver}
-          CROWD_SERVER: ${crowdserver}
-          AWS_KEY: ${aws_key}
-          AWS_SECRET: ${aws_secret}
-          PARSER_PROJECT_S3_PREFIX: ${task_id}/parser-projects
-          GENERATED_JSON_S3_PREFIX: ${task_id}/generated-json
-          JIRA_PRIVATE_KEY: ${jira_private_key}
-          JIRA_ACCESS_TOKEN: ${jira_access_token}
-          JIRA_TOKEN_SECRET: ${jira_token_secret}
-          JIRA_CONSUMER_KEY: ${jira_consumer_key}
-        command: bash scripts/setup-credentials.sh
-
-  setup-mongodb:
-    - command: subprocess.exec
-      type: setup
-      params:
-        env:
-          MONGODB_URL: ${mongodb_url}
-          MONGODB_DECOMPRESS: ${decompress}
-        working_dir: evergreen
-        command: make get-mongodb
-    - command: subprocess.exec
-      type: setup
-      params:
-        env:
-          MONGOSH_URL: ${mongosh_url}
-          MONGOSH_DECOMPRESS: ${mongosh_decompress|*decompress}
-        working_dir: evergreen
-        command: make get-mongosh
-    - command: subprocess.exec
-      type: setup
-      params:
-        background: true
-        working_dir: evergreen
-        command: make start-mongod
-    - command: subprocess.exec
-      type: setup
-      params:
-        working_dir: evergreen
-        command: make configure-mongod
-
-  setup-docker-host:
-    - command: host.create
-      type: setup
-      params:
-        distro: archlinux-parent
-        provider: ec2
-        retries: 3
-        scope: build
-        security_group_ids:
-          - sg-097bff6dd0d1d31d0
-    - command: host.list
-      type: setup
-      params:
-        wait: true
-        timeout_seconds: 900
-        num_hosts: 1
-        path: evergreen/spawned_hosts.json
-    - command: subprocess.exec
-      type: setup
-      params:
-        working_dir: evergreen
-        command: make parse-host-file
-        include_expansions_in_env: ["GOROOT"]
-        env:
-          HOST_FILE: spawned_hosts.json
-    - command: expansions.update
-      params:
-        file: evergreen/bin/expansions.yml
-
-  verify-agent-version-update:
-    - command: subprocess.exec
-      params:
-        working_dir: evergreen
-        binary: bash
-        args: ["scripts/verify-agent-version-update.sh"]
-        env:
-          BRANCH_NAME: ${branch_name}
-  
-  verify-swaggo-fmt:
-    - command: subprocess.exec
-      params:
-        working_dir: evergreen
-        binary: bash
-        args: ["scripts/verify-swaggo-fmt.sh"]
-        env:
-          GOPATH: ${workdir}/gopath
-
-  verify-client-version-update:
-    - command: subprocess.exec
-      params:
-        working_dir: evergreen
-        binary: bash
-        args: ["scripts/verify-client-version-update.sh"]
-        env:
-          BRANCH_NAME: ${branch_name}
-
-  verify-merge-function-update:
-    - command: subprocess.exec
-      params:
-        working_dir: evergreen
-        binary: bash
-        args: ["scripts/verify-merge-function-update.sh"]
-        env:
-          BRANCH_NAME: ${branch_name}
-
-  attach-test-results:
-    - command: gotest.parse_files
-      type: system
-      params:
-        files:
-          - "evergreen/bin/output.*"
-    - command: attach.xunit_results
-      type: system
-      params:
-        files:
-          - "evergreen/bin/jstests/*.xml"
-  remove-test-results:
-    - command: shell.exec
-      type: system
-      params:
-        shell: bash
-        script: |
-          set -o xtrace
-          rm evergreen/bin/output.*
-          rm evergreen/bin/jstests/*.xml
-
 #######################################
 #                Tasks                #
 #######################################
 
 tasks:
-  - <<: *run-build
-    name: dist-staging
-    patch_only: true
-  - <<: *run-build
-    name: dist
-  - <<: *run-build
-    name: dist-unsigned
-  - <<: *run-smoke-test
-    name: test-smoke-internal-host
-    tags: ["smoke"]
-  - <<: *run-smoke-test
-    name: test-smoke-internal-container
-    tags: ["smoke"]
-  - <<: *run-smoke-test
-    name: test-smoke-internal-endpoint
-    tags: ["smoke"]
-  - <<: *run-smoke-test
-    name: test-smoke-internal-agentmonitor
-    tags: ["smoke"]
-  - <<: *run-generate-lint
-  - <<: *run-go-test-suite
-    name: js-test
-  - <<: *run-go-test-suite
-    tags: ["nodb", "test"]
-    name: test-thirdparty-docker
-  - <<: *run-go-test-suite-with-mongodb
-    tags: ["db", "test"]
-    name: test-auth
-  - <<: *run-go-test-suite-with-mongodb
-    tags: ["db", "test"]
-    name: test-rest-route
-  - <<: *run-go-test-suite-with-mongodb
-    tags: ["db", "test"]
-    name: test-rest-client
-  - <<: *run-go-test-suite-with-mongodb
-    name: test-rest-model
-    tags: ["db", "test"]
-  - <<: *run-go-test-suite-with-mongodb
-    tags: ["test", "db"]
-    name: test-units
-  - <<: *run-go-test-suite-with-mongodb
-    tags: ["db", "test", "agent"]
-    name: test-agent
-  - <<: *run-go-test-suite-with-mongodb
-    tags: ["db", "test", "agent"]
-    name: test-agent-internal
-  - <<: *run-go-test-suite
-    tags: ["nodb", "test", "agent"]
-    name: test-agent-internal-client
-  - <<: *run-go-test-suite
-    tags: ["nodb", "test", "agent"]
-    name: test-agent-internal-taskoutput
-  - <<: *run-go-test-suite
-    tags: ["nodb", "test", "agent"]
-    name: test-agent-util
-  - <<: *run-go-test-suite-with-mongodb
-    tags: ["test", "db", "agent"]
-    name: test-agent-command
-  - <<: *run-go-test-suite-with-mongodb
-    tags: ["db", "test"]
-    name: test-rest-data
-  - <<: *run-go-test-suite-with-mongodb
-    tags: ["db", "test", "cli"]
-    name: test-operations
-  - <<: *run-go-test-suite-with-mongodb
-    tags: ["db", "test"]
-    name: test-db
-  - <<: *run-go-test-suite-with-docker
-    tags: ["db"]
-    name: test-cloud
-  - <<: *run-go-test-suite
-    tags: ["nodb", "test"]
-    name: test-cloud-userdata
-  - <<: *run-go-test-suite-with-mongodb
-    tags: ["db", "test"]
-    name: test-scheduler
-  - <<: *run-go-test-suite-with-mongodb
-    tags: ["db", "test"]
-    name: test-service
-  - <<: *run-go-test-suite-with-mongodb-useast
-    tags: ["db", "test"]
-    name: test-service-graphql
-  - <<: *run-go-test-suite-with-mongodb
-    tags: ["db", "test"]
-    name: test-evergreen
-  - <<: *run-go-test-suite-with-mongodb
-    tags: ["db", "test"]
-    name: test-taskoutput
-  - <<: *run-go-test-suite-with-mongodb
-    tags: ["db", "test"]
-    name: test-thirdparty
-  - <<: *run-go-test-suite-with-mongodb
-    tags: ["db", "test"]
-    name: test-trigger
-  - <<: *run-go-test-suite
-    tags: ["nodb", "test"]
-    name: test-util
-  - <<: *run-go-test-suite-with-mongodb
-    tags: ["db", "test"]
-    name: test-validator
-  - <<: *run-go-test-suite-with-mongodb
-    tags: ["db", "test"]
-    name: test-model
-  - <<: *run-go-test-suite-with-mongodb
-    tags: ["db", "test"]
-    name: test-model-alertrecord
-  - <<: *run-go-test-suite-with-mongodb
-    tags: ["db", "test"]
-    name: test-model-annotations
-  - <<: *run-go-test-suite-with-mongodb
-    tags: ["db", "test"]
-    name: test-model-artifact
-  - <<: *run-go-test-suite-with-mongodb
-    tags: ["db", "test"]
-    name: test-model-build
-  - <<: *run-go-test-suite-with-mongodb
-    tags: ["db", "test"]
-    name: test-model-event
-  - <<: *run-go-test-suite-with-mongodb
-    tags: ["db", "test"]
-    name: test-model-host
-  - <<: *run-go-test-suite-with-mongodb
-    tags: ["db", "test"]
-    name: test-model-notification
-  - <<: *run-go-test-suite-with-mongodb
-    tags: ["db", "test"]
-    name: test-model-patch
-  - <<: *run-go-test-suite-with-mongodb
-    tags: ["db", "test"]
-    name: test-model-pod
-  - <<: *run-go-test-suite-with-mongodb
-    tags: ["db", "test"]
-    name: test-model-pod-definition
-  - <<: *run-go-test-suite-with-mongodb
-    tags: ["db", "test"]
-    name: test-model-pod-dispatcher
-  - <<: *run-go-test-suite-with-mongodb
-    tags: ["db", "test"]
-    name: test-model-taskstats
-  - <<: *run-go-test-suite-with-mongodb
-    tags: ["db", "test"]
-    name: test-model-task
-  - <<: *run-go-test-suite-with-mongodb
-    tags: ["db", "test"]
-    name: test-model-testresult
-  - <<: *run-go-test-suite-with-mongodb
-    tags: ["db", "test"]
-    name: test-model-user
-  - <<: *run-go-test-suite-with-mongodb
-    tags: ["db", "test"]
-    name: test-model-distro
-  - <<: *run-go-test-suite-with-mongodb
-    tags: ["db", "test"]
-    name: test-model-commitqueue
-  - <<: *run-go-test-suite-with-mongodb
-    tags: ["db", "test"]
-    name: test-model-cache
-  - <<: *run-go-test-suite-with-mongodb
-    tags: ["db", "test"]
-    name: test-model-manifest
-  - <<: *run-go-test-suite-with-mongodb
-    tags: ["db", "test"]
-    name: test-model-testlog
-  - <<: *run-go-test-suite-with-mongodb
-    tags: ["db", "test"]
-    name: test-plugin
-  - <<: *run-go-test-suite-with-mongodb
-    tags: ["db", "test"]
-    name: test-migrations
-  - <<: *run-go-test-suite-with-mongodb-useast
-    tags: ["db", "test"]
-    name: test-graphql
-  - name: test-repotracker
-    tags: ["db", "test"]
+  - name: my-task
     commands:
-      - command: git.get_project
-        type: setup
-        params:
-          directory: evergreen
-          token: ${github_token}
-          shallow_clone: false
-      - func: setup-credentials
-      - func: setup-mongodb
-      - func: run-make
-        vars: { target: "test-repotracker" }
-  - name: upload-clis
-    patchable: false
-    depends_on:
-      - name: dist
-        status: success
-    commands:
-      - command: subprocess.exec
-        params:
-          binary: make
-          args: ["upload-clis"]
-          working_dir: evergreen
-          include_expansions_in_env: ["GOROOT"]
-          env:
-            AWS_KEY: ${aws_key}
-            AWS_SECRET: ${aws_secret}
-            BUCKET_NAME: mciuploads
-            LOCAL_PATH: clients
-            EXCLUDE_PATTERN: .cache
-            REMOTE_PATH: evergreen/clients/${project}/${revision}
-  - name: verify-swaggo-fmt
-    tags: ["linter"]
-    commands:
-      - func: get-project-and-modules
-      - command: subprocess.exec
-        params:
-          binary: make
-          args: ["swaggo-install"]
-          working_dir: evergreen
-          env:
-            GOPATH: ${workdir}/gopath
-          include_expansions_in_env:
-            - GOROOT
-      - func: verify-swaggo-fmt
-  - name: verify-agent-version-update
-    tags: ["linter"]
-    patch_only: true
-    commands:
-      - func: get-project-and-modules
-      - func: verify-agent-version-update
-  - name: verify-client-version-update
-    tags: ["linter"]
-    patch_only: true
-    commands:
-      - func: get-project-and-modules
-      - func: verify-client-version-update
-  - name: verify-mod-tidy
-    tags: ["linter"]
-    commands:
-      - command: git.get_project
-        type: setup
-        params:
-          directory: evergreen
-          token: ${github_token}
-      - func: run-make
-        vars: { target: "${task_name}" }
-  - name: verify-merge-function-update
-    tags: ["linter"]
-    patch_only: true
-    commands:
-      - func: get-project-and-modules
-      - func: verify-merge-function-update
-  - name: generate-api-docs
-    commands: 
-      - func: get-project-and-modules
-      - command: subprocess.exec
-        params:
-          binary: make
-          args: ["swaggo-install"]
-          working_dir: evergreen
-          env:
-            GOPATH: ${workdir}/gopath
-          include_expansions_in_env:
-            - GOROOT
+      - func: get-project
       - command: shell.exec
         params:
-          shell: bash
-          working_dir: evergreen
-          env:
-            GOPATH: ${workdir}/gopath
           script: |
-            set -o verbose
-            set -o errexit
-            $GOPATH/bin/swag init -g service/service.go
-      - command: s3.put
-        params:
-          aws_key: ${aws_key}
-          aws_secret: ${aws_secret}
-          local_file: evergreen/docs/swagger.json
-          remote_file: evergreen/${task_id}/${execution}/swagger.json
-          bucket: mciuploads
-          content_type: application/json
-          permissions: public-read
-          display_name: swagger.json
-      - command: s3.put
-        params:
-          aws_key: ${aws_key}
-          aws_secret: ${aws_secret}
-          local_file: evergreen/docs/swagger.json
-          remote_file: evergreen/latest/swagger.json
-          bucket: mciuploads
-          content_type: application/json
-          permissions: public-read
-          display_name: swagger.json (latest)
-          patchable: false
-  - <<: *build-and-push-client
-    name: build-linux_amd64
-    tags: ["build", "build-staging"]
-  - <<: *build-and-push-client
-    name: build-linux_s390x
-    tags: ["build"]
-  - <<: *build-and-push-client
-    name: build-linux_arm64
-    tags: ["build"]
-  - <<: *build-and-push-client
-    name: build-linux_ppc64le
-    tags: ["build"]
-  - <<: *build-and-push-client
-    name: build-windows_amd64
-    tags: ["build", "build-staging"]
-  - <<: *build-and-push-client
-    name: build-darwin_amd64
-    tags: ["build", "build-staging"]
-  - <<: *build-and-push-client
-    name: build-darwin_arm64
-    tags: ["build"]
-  - name: tar-and-push-static-assets
-    tags: ["build", "build-staging"]
-    commands:
-      - func: get-project-and-modules
-      - func: run-make
-        vars: { target: "bin/static_assets.tgz" }
-      - command: s3.put
-        params:
-          aws_key: ${aws_key}
-          aws_secret: ${aws_secret}
-          local_file: evergreen/bin/static_assets.tgz
-          remote_file: evergreen/clients/${version_id}/static_assets.tgz
-          content_type: application/gzip
-          bucket: mciuploads
-          permissions: public-read
-
-task_groups:
-  - name: dist-and-upload-clis
-    max_hosts: 1
-    tasks:
-      - dist
-      - upload-clis
+            echo "I finished getting the project"
 
 #######################################
 #            Buildvariants            #
 #######################################
 buildvariants:
-  - name: ubuntu2204
-    display_name: Ubuntu 22.04
+  - name: rhel62
+    display_name: rhel62
     run_on:
-      - ubuntu2204-small
-      - ubuntu2204-large
-    expansions:
-      goos: linux
-      goarch: amd64
-      nodebin: /opt/node/bin
-      GOROOT: /opt/golang/go1.20
-      RUN_EC2_SPECIFIC_TESTS: true
-      mongodb_url: https://fastdl.mongodb.org/linux/mongodb-linux-x86_64-ubuntu2204-7.0.2.tgz
-      mongosh_url: https://downloads.mongodb.com/compass/mongosh-2.0.2-linux-x64.tgz
-      notary_client_url: https://macos-notary-1628249594.s3.amazonaws.com/releases/client/v3.1.2/linux_amd64.zip
-      sign_macos: true
+      - rhel62
     tasks:
-      - name: "dist-and-upload-clis"
-      - name: "dist-staging"
-      - name: "dist-unsigned"
-        activate: false
-      - name: ".smoke"
-      - name: ".test"
-      - name: ".linter"
-      - name: test-cloud
-      - name: "js-test"
-      - name: generate-api-docs
-
-  - name: race-detector
-    display_name: Race Detector
+      - name: my-task
+  - name: rhel70
+    display_name: rhel70
     run_on:
-      - ubuntu2204-small
-      - ubuntu2204-large
-    expansions:
-      GOROOT: /opt/golang/go1.20
-      RUN_EC2_SPECIFIC_TESTS: true
-      mongodb_url: https://fastdl.mongodb.org/linux/mongodb-linux-x86_64-ubuntu2204-7.0.2.tgz
-      mongosh_url: https://downloads.mongodb.com/compass/mongosh-2.0.2-linux-x64.tgz
-      race_detector: true
-      test_timeout: 15m
+      - rhel70
     tasks:
-      - name: ".test"
-
-  - name: ubuntu2004-container
-    display_name: Ubuntu 20.04 (Container)
+      - name: my-task
+  - name: rhel71-power8
+    display_name: rhel71-power8
     run_on:
-      - evg-container
-    expansions:
-      goos: linux
-      goarch: amd64
-      IS_DOCKER: true
-      GOROOT: /usr/local/go
-      mongodb_url: https://fastdl.mongodb.org/linux/mongodb-linux-x86_64-ubuntu2004-7.0.2.tgz
-      mongosh_url: https://downloads.mongodb.com/compass/mongosh-2.0.2-linux-x64.tgz
-      decompress: tar zxvf
+      - rhel71-power8
     tasks:
-      - name: "dist-unsigned"
-        activate: false
-      - name: ".smoke"
-      - name: ".test"
-      - name: "js-test"
-      - name: ".linter"
-      - name: "dist-staging"
-
-  - name: lint
-    display_name: Lint
+      - name: my-task
+  - name: rhel72-zseries
+    display_name: rhel72-zseries
     run_on:
-      - ubuntu2204-small
-      - ubuntu2204-large
-    expansions:
-      GOROOT: /opt/golang/go1.20
+      - rhel72-zseries
     tasks:
-      - name: generate-lint
-
-  - name: windows
-    display_name: Windows
+      - name: my-task
+  - name: windows-64-vs2015
+    display_name: windows-64-vs2015
     run_on:
-      - windows-vsCurrent-small
-      - windows-vsCurrent-large
-    expansions:
-      GOROOT: c:/golang/go1.20
-      RUN_EC2_SPECIFIC_TESTS: true
-      mongodb_url: https://fastdl.mongodb.org/windows/mongodb-windows-x86_64-7.0.2.zip
-      mongosh_url: https://downloads.mongodb.com/compass/mongosh-2.0.2-win32-x64.zip
-      extension: ".exe"
-      archiveExt: ".zip"
+      - windows-64-vs2015
     tasks:
-      - name: ".agent .test"
-      - name: ".cli .test"
-
-  - name: ubuntu2204-arm64
-    display_name: Ubuntu 22.04 ARM
-    batchtime: 2880
+      - name: my-task
+  - name: macos-1014
+    display_name: macos-1014
     run_on:
-      - ubuntu2204-arm64-large
-    expansions:
-      xc_build: yes
-      goarch: arm64
-      goos: linux
-      GOROOT: /opt/golang/go1.20
-      RUN_EC2_SPECIFIC_TESTS: true
-      mongodb_url: https://fastdl.mongodb.org/linux/mongodb-linux-aarch64-ubuntu2204-7.0.2.tgz
-      mongosh_url: https://downloads.mongodb.com/compass/mongosh-2.0.2-linux-arm64.tgz
+      - macos-1014
     tasks:
-      - name: ".agent .test"
-
-  - name: osx
-    display_name: OSX
-    batchtime: 2880
+      - name: my-task
+  - name: linux-64-amzn
+    display_name: linux-64-amzn
     run_on:
-      - macos-1100-arm64
-    expansions:
-      GOROOT: /opt/golang/go1.20
-      mongodb_url: https://fastdl.mongodb.org/osx/mongodb-macos-arm64-7.0.2.tgz
-      mongosh_url: https://downloads.mongodb.com/compass/mongosh-2.0.2-darwin-arm64.zip
-      mongosh_decompress: unzip
+      - linux-64-amzn
     tasks:
-      - name: ".agent .test"
-      - name: ".cli .test"
-
-  - name: build-and-push
-    display_name: Build and Push
+      - name: my-task
+  - name: archlinux
+    display_name: archlinux
     run_on:
-      - ubuntu2204-small
+      - archlinux
     tasks:
-      - name: ".build"
-    expansions:
-      GOROOT: /opt/golang/go1.20
-      sign_macos: true
-      notary_client_url: https://macos-notary-1628249594.s3.amazonaws.com/releases/client/v3.1.2/linux_amd64.zip
-    display_tasks:
-      - name: build-and-push
-        execution_tasks:
-        - ".build"
-
-  - name: build-and-push-staging
-    display_name: Build and Push - Staging
+      - name: my-task
+  - name: archlinux-packer
+    display_name: archlinux-packer
     run_on:
-      - ubuntu2204-small
-    activate: false
+      - archlinux-packer
     tasks:
-      - name: ".build-staging"
-        priority: 100
-    expansions:
-      GOROOT: /opt/golang/go1.20
-    display_tasks:
-      - name: build-and-push
-        execution_tasks:
-        - ".build-staging"
-
-  - name: build-and-push-unsigned
+      - name: my-task
+  - name: ubuntu1404
+    display_name: ubuntu1404
     run_on:
-      - ubuntu2204-small
-    display_name: Build and Push - Unsigned
-    activate: false
+      - ubuntu1404
     tasks:
-      - name: ".build"
-    expansions:
-      GOROOT: /opt/golang/go1.20
-    display_tasks:
-      - name: build-and-push
-        execution_tasks:
-        - ".build"
-
-
-containers:
-  - name: evg-container
-    working_dir: /
-    image: ${container_image}
-    resources:
-      cpu: 4096
-      memory_mb: 8192
-    system:
-      cpu_architecture: x86_64
-      operating_system: linux
+      - name: my-task
+  - name: ubuntu1604
+    display_name: ubuntu1604
+    run_on:
+      - ubuntu1604
+    tasks:
+      - name: my-task
+  - name: debian81
+    display_name: debian81
+    run_on:
+      - debian81
+    tasks:
+      - name: my-task
+  - name: debian92
+    display_name: debian92
+    run_on:
+      - debian92
+    tasks:
+      - name: my-task
+  - name: suse12-sp5-large
+    display_name: suse12-sp5-large
+    run_on:
+      - suse12-sp5-large
+    tasks:
+      - name: my-task
+  - name: amazon1-2018
+    display_name: amazon1-2018
+    run_on:
+      - amazon1-2018
+    tasks:
+      - name: my-task
