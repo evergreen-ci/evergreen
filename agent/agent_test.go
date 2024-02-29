@@ -1334,7 +1334,6 @@ func (s *AgentSuite) TestFinishPrevTaskWithSameTaskGroupAndAlreadyRanSetupGroup(
 
 	s.False(shouldSetupGroup, "if the next task is in the same group as the previous task and we already ran the setup group, shouldSetupGroup should be false")
 	s.Equal("task_directory", taskDirectory)
-
 }
 
 func (s *AgentSuite) TestFinishPrevTaskWithSameTaskGroupButDidNotRunSetupGroup() {
@@ -1400,6 +1399,41 @@ func (s *AgentSuite) TestFinishPrevTaskWithSameBuildButDifferentTaskGroup() {
 	shouldSetupGroup, taskDirectory := s.a.finishPrevTask(s.ctx, nextTask, tc)
 
 	s.True(shouldSetupGroup, "if the next task is in the same build but a different task group, shouldSetupGroup should be true")
+	s.Empty(taskDirectory)
+}
+
+func (s *AgentSuite) TestFinishPrevTaskWithSameTaskGroupButDifferentTaskExecution() {
+	const taskGroup1 = "task_group_name"
+	const versionID = "task_group_version"
+	const buildID = "build_id"
+	tc := &taskContext{
+		taskConfig: &internal.TaskConfig{
+			Task: task.Task{
+				Id:             "task_id1",
+				Execution:      1,
+				TaskGroup:      taskGroup1,
+				Version:        versionID,
+				BuildId:        buildID,
+				TaskOutputInfo: testutil.InitializeTaskOutput(s.T()),
+			},
+			TaskGroup: &model.TaskGroup{Name: taskGroup1},
+			WorkDir:   "task_directory",
+		},
+		logger:        s.tc.logger,
+		ranSetupGroup: true,
+		oomTracker:    &mock.OOMTracker{},
+	}
+	nextTask := &apimodels.NextTaskResponse{
+		TaskId:        "task_id2",
+		TaskExecution: 2,
+		TaskGroup:     taskGroup1,
+		Version:       versionID,
+		Build:         buildID,
+	}
+
+	shouldSetupGroup, taskDirectory := s.a.finishPrevTask(s.ctx, nextTask, tc)
+
+	s.True(shouldSetupGroup, "if the next task is in the same task group but has a different task execution number, shouldSetupGroup should be true")
 	s.Empty(taskDirectory)
 }
 

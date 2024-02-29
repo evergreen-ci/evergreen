@@ -1349,7 +1349,6 @@ into their resulting variants client-side. Run
 evaluated version of the project.
 
 ### Task Groups
-
 Task groups pin groups of tasks to sets of hosts. When tasks run in a
 task group, the task directory is not removed between tasks, which
 allows tasks in the same task group to share state, which can be useful
@@ -1474,6 +1473,30 @@ The following constraints apply:
 Tasks in a group will be displayed as
 separate tasks. Users can use display tasks if they wish to group the
 task group tasks.
+
+#### Task Group Restarts
+If a task in a single-host task group is restarted:
+
+- The entire task group is restarted. All the tasks in the task group will
+  restart to a new execution.
+- Additionally, if a task in the task group is restarted while some tasks in the
+  task group are still running or waiting to run, it will wait until all of the
+  tasks in the task group finish before restarting all of them.
+- The task directory and setup group commands are not shared across task
+  executions. If the restarted tasks are assigned to the same host as the
+  previous execution, it's treated like a new task group, so it will clear the
+  task directory and re-run the setup group commands.
+
+If a task in a multi-host task group is restarted:
+
+- Only the selected tasks will be restarted.
+- The restarted task can begin running at any time. It won't wait until other
+  tasks in the task group finish.
+- The task directory and setup group commands are not shared across task
+  executions. If the restarted task is assigned to a host that is already
+  running the task group but with a different task execution, it's treated like
+  a new task group, so it will clear the task directory and re-run the setup
+  group commands.
 
 ### Task Dependencies
 
