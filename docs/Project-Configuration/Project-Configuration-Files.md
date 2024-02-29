@@ -1484,8 +1484,9 @@ If a task in a single-host task group is restarted:
   tasks in the task group finish before restarting all of them.
 - The task directory and setup group commands are not shared across task
   executions. If the restarted tasks are assigned to the same host as the
-  previous execution, it's treated like a new task group, so it will clear the
-  task directory and re-run the setup group commands.
+  previous execution, it's treated like a new task group, so it will run the
+  teardown group commands, clear the task directory, and re-run the setup group
+  commands.
 
 If a task in a multi-host task group is restarted:
 
@@ -1495,8 +1496,8 @@ If a task in a multi-host task group is restarted:
 - The task directory and setup group commands are not shared across task
   executions. If the restarted task is assigned to a host that is already
   running the task group but with a different task execution, it's treated like
-  a new task group, so it will clear the task directory and re-run the setup
-  group commands.
+  a new task group, so it will run the teardown group commands, clear the task
+  directory, and re-run the setup group commands.
 
 ### Task Dependencies
 
