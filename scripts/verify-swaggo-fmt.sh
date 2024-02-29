@@ -16,7 +16,7 @@ fi
 
 # If swaggo is not installed, exit with an error.
 if ! command -v "$swaggo" &> /dev/null; then
-    echo "swaggo is not installed."
+    echo "swaggo is not installed. Please install swaggo by running 'make swaggo-install'"
     exit 1
 fi
 
@@ -25,6 +25,7 @@ before=$(git diff --diff-filter=M)
 $swaggo fmt -g service/service.go
 after=$(git diff --diff-filter=M)
 if [ "$before" = "$after" ]; then
+    echo "No formatting errors found."
     exit 0
 else
     echo "Please run 'make swaggo-format' in your local environment to fix the lint errors. If this is your local environment, please commit the changes this command made."
