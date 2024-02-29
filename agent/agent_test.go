@@ -2466,7 +2466,12 @@ tasks:
     commands:
       - command: shell.exec
         params:
-          script: echo "I am test log.\nI should get ingested automatically by the agent.\n" > ${workdir}/build/TestLogs/test.log
+          script: |
+            cat >> build/TestLogs/test.log <<EOF
+            I am test log.
+            I should get ingested automatically by the agent.
+            And stored as well.
+            EOF
 `
 	s.setupRunTask(projYml)
 	nextTask := &apimodels.NextTaskResponse{
@@ -2483,7 +2488,7 @@ tasks:
 	for it.Next() {
 		actualLines += it.Item().Data + "\n"
 	}
-	expectedLines := "I am test log.\nI should get ingested automatically by the agent.\n"
+	expectedLines := "I am test log.\nI should get ingested automatically by the agent.\nAnd stored as well.\n"
 	s.Equal(expectedLines, actualLines)
 }
 
