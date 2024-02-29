@@ -994,7 +994,6 @@ func (a *Agent) finishTask(ctx context.Context, tc *taskContext, status string, 
 	if err != nil {
 		grip.Error(errors.Wrap(err, "upserting checkrun"))
 	}
-	tc.logger.Task().Infof("Successfully upserted checkRun.")
 
 	grip.Infof("Sending final task status: '%s'.", detail.Status)
 	resp, err := a.comm.EndTask(ctx, detail, tc.task)
@@ -1025,7 +1024,12 @@ func (a *Agent) upsertCheckRun(ctx context.Context, tc *taskContext) error {
 		return nil
 	}
 
-	return a.comm.UpsertCheckRun(ctx, tc.task, *checkRunOutput)
+	if err = a.comm.UpsertCheckRun(ctx, tc.task, *checkRunOutput); err != nil {
+		return err
+	}
+
+	tc.logger.Task().Infof("Successfully upserted checkRun.")
+	return nil
 }
 
 func buildCheckRun(ctx context.Context, tc *taskContext) (*apimodels.CheckRunOutput, error) {
