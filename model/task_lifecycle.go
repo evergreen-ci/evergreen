@@ -2218,7 +2218,7 @@ func endAndResetSystemFailedTask(ctx context.Context, settings *evergreen.Settin
 
 	// Mark the task as finished (without restarting) if restarts are disabled, or the task isn't on its first execution.
 	shouldSkipRetry := settings.ServiceFlags.SystemFailedTaskRestartDisabled || t.Execution > 0
-	if unschedulableTask || shouldSkipRetry {
+	if unschedulableTask || shouldSkipRetry || t.IsStuckTask() {
 		failureDetails := task.GetSystemFailureDetails(description)
 		// If the task has already exceeded the unschedulable threshold, we
 		// don't want to restart it, so just mark it as finished.

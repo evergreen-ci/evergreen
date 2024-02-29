@@ -536,7 +536,6 @@ func assignNextAvailableTask(ctx context.Context, env evergreen.Environment, tas
 				"task_id":   nextTask.Id,
 				"host_id":   currentHost.Id,
 			}))
-
 			continue
 		}
 
@@ -674,6 +673,13 @@ func assignNextAvailableTask(ctx context.Context, env evergreen.Environment, tas
 		if !dispatchedTask {
 			continue
 		}
+
+		grip.Error(message.WrapError(nextTask.IncNumNextTaskDispatches(), message.Fields{
+			"message":        "problem updating the number of times the task has been dispatched",
+			"task_id":        nextTask.Id,
+			"task_execution": nextTask.Execution,
+			"host_id":        currentHost.Id,
+		}))
 
 		return nextTask, false, nil
 	}
@@ -1097,6 +1103,30 @@ func sendBackRunningTask(ctx context.Context, env evergreen.Environment, h *host
 		return gimlet.MakeJSONInternalErrorResponder(err)
 	}
 
+	if t.IsStuckTask() {
+		if err := model.ClearAndResetStrandedHostTask(ctx, env.Settings(), h); err != nil {
+			grip.Error(message.WrapError(err, getMessage("ending and resetting system failed task")))
+			return gimlet.MakeJSONInternalErrorResponder(err)
+		}
+		// The agent is expected to run the task once it's been assigned it. If it's requesting the same
+		// task over and over again is a sign that something is wrong.
+		msg := fmt.Sprintf("The agent has re-requested the same task '%d' times.", evergreen.MaxTaskDispatchAttempts)
+		msg += " It's possible that the agent is in a bad state."
+
+		grip.Error(message.Fields{
+			"message":        msg,
+			"task_id":        t.Id,
+			"task_execution": t.Execution,
+			"host_id":        h.Id,
+			"agent_version":  h.AgentRevision,
+		})
+
+		return gimlet.MakeJSONInternalErrorResponder(gimlet.ErrorResponse{
+			StatusCode: http.StatusInternalServerError,
+			Message:    fmt.Sprintf("The agent has re-requested the task '%s' with execution %d %d times.", t.Id, t.Execution, evergreen.MaxTaskDispatchAttempts),
+		})
+	}
+
 	if isTaskGroupNewToHost(h, t) {
 		if err := checkHostTaskGroupAfterDispatch(ctx, h, t); err != nil {
 			if err := undoHostTaskDispatchAtomically(ctx, env, h, t); err != nil {
@@ -1117,6 +1147,12 @@ func sendBackRunningTask(ctx context.Context, env evergreen.Environment, h *host
 	}
 
 	if t.Activated {
+		grip.Error(message.WrapError(t.IncNumNextTaskDispatches(), message.Fields{
+			"message":        "problem updating the number of times the task has been dispatched",
+			"task_id":        t.Id,
+			"task_execution": t.Execution,
+			"host_id":        h.Id,
+		}))
 		setNextTask(t, &response)
 		return gimlet.NewJSONResponse(response)
 	}

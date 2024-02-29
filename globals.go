@@ -187,6 +187,10 @@ const (
 	// MaxAutomaticRestarts is the maximum number of automatic restarts allowed for a task
 	MaxAutomaticRestarts = 1
 
+	// MaxTaskDispatchAttempts is the maximum number of times a task can be
+	// dispatched before it is considered to be in a bad state.
+	MaxTaskDispatchAttempts = 5
+
 	// maximum task priority
 	MaxTaskPriority = 100
 

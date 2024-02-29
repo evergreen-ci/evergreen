@@ -452,6 +452,43 @@ func TestHostNextTask(t *testing.T) {
 					nextTask, err := task.FindOne(db.Query(task.ById(taskResp.TaskId)))
 					require.NoError(t, err)
 					assert.Equal(t, nextTask.Status, evergreen.TaskDispatched)
+					assert.Equal(t, nextTask.NumNextTaskDispatches, 3)
+				},
+				"AStuckNextTaskShouldError": func(ctx context.Context, t *testing.T, handler hostAgentNextTask) {
+					stuckTask := task.Task{
+						Id:                    "stuckTask",
+						Status:                evergreen.TaskUndispatched,
+						Activated:             true,
+						BuildId:               "anotherBuild",
+						NumNextTaskDispatches: 5,
+						Version:               "version1",
+						HostId:                "sampleHost",
+					}
+					require.NoError(t, stuckTask.Insert())
+					anotherHost := host.Host{
+						Id:            "sampleHost",
+						Secret:        hostSecret,
+						RunningTask:   stuckTask.Id,
+						AgentRevision: evergreen.AgentVersion,
+						Provisioned:   true,
+						Status:        evergreen.HostRunning,
+					}
+
+					require.NoError(t, anotherHost.Insert(ctx))
+
+					rh.host = &anotherHost
+					resp := rh.Run(ctx)
+					assert.NotNil(t, resp)
+					assert.Equal(t, resp.Status(), http.StatusInternalServerError)
+
+					h, err := host.FindOne(ctx, host.ById(anotherHost.Id))
+					require.NoError(t, err)
+					assert.Equal(t, h.RunningTask, "")
+
+					previouslyStuckTask, err := task.FindOne(db.Query(task.ById(stuckTask.Id)))
+					require.NoError(t, err)
+					assert.Equal(t, previouslyStuckTask.Status, evergreen.TaskFailed)
+
 				},
 				"WithAnUndispatchedTaskButAHostThatHasThatTaskAsARunningTask": func(ctx context.Context, t *testing.T, handler hostAgentNextTask) {
 					t1 := task.Task{
@@ -525,9 +562,10 @@ func TestHostNextTask(t *testing.T) {
 					require.NoError(t, h2.Insert(ctx))
 
 					existingTask := task.Task{
-						Id:        "existingTask",
-						Status:    evergreen.TaskDispatched,
-						Activated: true,
+						Id:                    "existingTask",
+						Status:                evergreen.TaskDispatched,
+						Activated:             true,
+						NumNextTaskDispatches: 2,
 					}
 					require.NoError(t, existingTask.Insert())
 					handler := hostAgentNextTask{
@@ -860,7 +898,7 @@ func TestAssignNextAvailableTaskWithDispatcherSettingsVersionLegacy(t *testing.T
 			Version: evergreen.DispatcherVersionLegacy,
 		}
 
-		colls := []string{distro.Collection, host.Collection, task.Collection, model.TaskQueuesCollection, model.ProjectRefCollection}
+		colls := []string{distro.Collection, host.Collection, task.Collection, model.TaskQueuesCollection, model.ProjectRefCollection, build.Collection, model.VersionCollection}
 		require.NoError(t, db.ClearCollections(colls...))
 		defer func() {
 			assert.NoError(t, db.ClearCollections(colls...))
@@ -1017,6 +1055,38 @@ func TestAssignNextAvailableTaskWithDispatcherSettingsVersionLegacy(t *testing.T
 			So(err, ShouldBeNil)
 			So(shouldTeardown, ShouldBeFalse)
 			So(t, ShouldBeNil)
+		})
+		Convey("a task's NumNextTaskDispatches should be increased by 1", func() {
+			taskQueue.Queue = []model.TaskQueueItem{{Id: "stillOkayTask"}}
+			So(taskQueue.Save(), ShouldBeNil)
+			stillOkayTask := task.Task{
+				Id:                    "stillOkayTask",
+				Status:                evergreen.TaskUndispatched,
+				Activated:             true,
+				NumNextTaskDispatches: 4,
+				BuildId:               "b1",
+				Version:               versionId,
+				HostId:                theHostWhoCanBoastTheMostRoast.Id,
+			}
+			So(stillOkayTask.Insert(), ShouldBeNil)
+			testBuild := build.Build{
+				Id:      "b1",
+				Version: versionId,
+			}
+			require.NoError(t, testBuild.Insert())
+
+			testVersion := model.Version{
+				Id: versionId,
+			}
+			require.NoError(t, testVersion.Insert())
+			t, shouldTeardown, err := assignNextAvailableTask(ctx, env, taskQueue, model.NewTaskDispatchService(time.Minute), &theHostWhoCanBoastTheMostRoast, details)
+			So(err, ShouldBeNil)
+			So(shouldTeardown, ShouldBeFalse)
+			So(t, ShouldNotBeNil)
+			taskBFromDb, err := task.FindOneId(stillOkayTask.Id)
+			So(err, ShouldBeNil)
+			So(taskBFromDb, ShouldNotBeNil)
+			So(taskBFromDb.IsStuckTask(), ShouldBeTrue)
 		})
 		Convey("with a host with a running task", func() {
 			anotherHost := host.Host{
