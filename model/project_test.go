@@ -135,7 +135,7 @@ func TestFindProject(t *testing.T) {
 			So(pp, ShouldNotBeNil)
 			So(pp.Id, ShouldEqual, "pre_generation_good_version")
 			So(p, ShouldNotBeNil)
-			So(v.Id, ShouldEqual, "pre_generation_good_version")
+			So(v.Id, ShouldEqual, "good_version")
 		})
 		Convey("error if no version exists", func() {
 			So(db.ClearCollections(VersionCollection, ParserProjectCollection), ShouldBeNil)

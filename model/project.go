@@ -1333,7 +1333,9 @@ func (p *Project) FindDistroNameForTask(t *task.Task) (string, error) {
 
 // FindLatestVersionWithValidProject returns the latest mainline version that
 // has a valid project configuration. It also returns the intermediate and final
-// project configurations.
+// project configurations. If the preGeneration flag is set, this will retrieve
+// a cached version of this version's parser project from before it was modified by
+// generate.tasks, which is required for child patches.
 func FindLatestVersionWithValidProject(projectId string, preGeneration bool) (*Version, *Project, *ParserProject, error) {
 	const retryCount = 5
 	if projectId == "" {

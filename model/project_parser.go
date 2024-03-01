@@ -561,7 +561,7 @@ func FindAndTranslateProjectForVersion(ctx context.Context, settings *evergreen.
 	var pp *ParserProject
 	var err error
 	if preGeneration {
-		preGeneratedId := fmt.Sprintf("%s_%s", "pre_generation", v.Id)
+		preGeneratedId := preGeneratedParserProjectId(v.Id)
 		pp, err = ParserProjectFindOneByID(ctx, settings, v.PreGenerationProjectStorageMethod, preGeneratedId)
 		if err != nil {
 			return nil, nil, errors.Wrapf(err, "finding parser project '%s'", preGeneratedId)
@@ -1566,4 +1566,8 @@ func evaluateRequesters(userRequesters []evergreen.UserRequester) []string {
 		requesters = append(requesters, requester)
 	}
 	return requesters
+}
+
+func preGeneratedParserProjectId(originalId string) string {
+	return fmt.Sprintf("%s_%s", "pre_generation", originalId)
 }

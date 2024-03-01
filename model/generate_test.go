@@ -858,7 +858,7 @@ func (s *GenerateSuite) TestSaveNewBuildsAndTasksWithBatchtime() {
 	s.NoError(g.Save(s.ctx, s.env.Settings(), p, pp, v))
 
 	// Should have created a pre-generated cached parser project
-	preGeneratedPP, err := ParserProjectFindOneByID(ctx, s.env.Settings(), v.ProjectStorageMethod, fmt.Sprintf("pre_generation_%s", pp.Id))
+	preGeneratedPP, err := ParserProjectFindOneByID(ctx, s.env.Settings(), v.ProjectStorageMethod, preGeneratedParserProjectId(pp.Id))
 	s.NoError(err)
 	s.NotNil(preGeneratedPP)
 
@@ -981,7 +981,7 @@ func (s *GenerateSuite) TestSaveWithAlreadyGeneratedTasksAndVariants() {
 	s.NoError(g.Save(s.ctx, s.env.Settings(), p, pp, v))
 
 	// Should not create a pre-generated cached parser project
-	preGeneratedPP, err := ParserProjectFindOneByID(ctx, s.env.Settings(), v.ProjectStorageMethod, fmt.Sprintf("pre_generation_%s", pp.Id))
+	preGeneratedPP, err := ParserProjectFindOneByID(ctx, s.env.Settings(), v.ProjectStorageMethod, preGeneratedParserProjectId(pp.Id))
 	s.NoError(err)
 	s.Nil(preGeneratedPP)
 
