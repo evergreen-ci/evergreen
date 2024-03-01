@@ -1907,9 +1907,7 @@ type CloudProviderData struct {
 
 // CacheCloudProvider caches data about the host from its cloud provider.
 func (h *Host) CacheCloudProviderData(ctx context.Context, data CloudProviderData) error {
-	// kim: TODO: see if upsert can be converted to update without breaking
-	// tests.
-	if _, err := UpsertOne(
+	if err := UpdateOne(
 		ctx,
 		bson.M{
 			IdKey: h.Id,
@@ -1930,10 +1928,10 @@ func (h *Host) CacheCloudProviderData(ctx context.Context, data CloudProviderDat
 	return nil
 }
 
-// CacheManyHostsCloudProviderData performs the same updates as
+// CacheAllCloudProviderData performs the same updates as
 // (Host).CacheCloudProviderData but is optimized for updating many hosts at
 // once.
-func CacheManyHostsCloudProviderData(ctx context.Context, env evergreen.Environment, hosts map[string]CloudProviderData) error {
+func CacheAllCloudProviderData(ctx context.Context, env evergreen.Environment, hosts map[string]CloudProviderData) error {
 	updates := make([]mongo.WriteModel, 0, len(hosts))
 	for hostID, data := range hosts {
 		filter := bson.M{IdKey: hostID}

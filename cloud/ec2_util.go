@@ -340,7 +340,6 @@ func cacheHostData(ctx context.Context, env evergreen.Environment, client AWSCli
 
 // cacheAllHostData is the same as cacheHostData but optimized for updating many
 // hosts at once.
-// kim: TODO: add test
 func cacheAllHostData(ctx context.Context, env evergreen.Environment, client AWSClient, pairs []hostInstancePair) error {
 	catcher := grip.NewBasicCatcher()
 
@@ -359,6 +358,7 @@ func cacheAllHostData(ctx context.Context, env evergreen.Environment, client AWS
 		h.Zone = data.Zone
 		h.StartTime = data.StartedAt
 		h.Host = data.PublicDNS
+		h.PublicIPv4 = data.PublicIPv4
 		h.IPv4 = data.PrivateIPv4
 		h.IP = data.IPv6
 		h.Volumes = data.Volumes
@@ -376,7 +376,7 @@ func cacheAllHostData(ctx context.Context, env evergreen.Environment, client AWS
 		}
 	}
 
-	catcher.Wrap(host.CacheManyHostsCloudProviderData(ctx, env, hostsToCache), "bulk caching host data")
+	catcher.Wrap(host.CacheAllCloudProviderData(ctx, env, hostsToCache), "bulk caching host data")
 
 	return catcher.Resolve()
 }
@@ -388,6 +388,7 @@ func validateInstanceDataToCache(instance *types.Instance) error {
 	catcher.ErrorfWhen(instance.Placement == nil || instance.Placement.AvailabilityZone == nil, "instance missing availability zone")
 	catcher.ErrorfWhen(instance.LaunchTime == nil, "instance missing launch time")
 	catcher.ErrorfWhen(instance.PublicDnsName == nil, "instance missing public DNS name")
+	catcher.ErrorfWhen(instance.PublicIpAddress == nil, "instance missing public IP address")
 	catcher.ErrorfWhen(instance.PrivateIpAddress == nil, "instance missing private IP address")
 	return catcher.Resolve()
 }
