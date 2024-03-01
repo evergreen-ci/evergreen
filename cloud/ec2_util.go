@@ -288,35 +288,11 @@ type hostInstancePair struct {
 	instance *types.Instance
 }
 
-func makeCloudProviderData(h *host.Host, instance *types.Instance) (*host.CloudProviderData, error) {
-	if err := validateInstanceDataToCache(instance); err != nil {
-		return nil, err
-	}
-
-	var ipv6 string
-	for _, networkInterface := range instance.NetworkInterfaces {
-		if len(networkInterface.Ipv6Addresses) > 0 {
-			ipv6 = *networkInterface.Ipv6Addresses[0].Ipv6Address
-			break
-		}
-	}
-
-	return &host.CloudProviderData{
-		Zone:        utility.FromStringPtr(instance.Placement.AvailabilityZone),
-		StartedAt:   utility.FromTimePtr(instance.LaunchTime),
-		PublicDNS:   utility.FromStringPtr(instance.PublicDnsName),
-		Volumes:     makeVolumeAttachments(instance.BlockDeviceMappings),
-		PublicIPv4:  utility.FromStringPtr(instance.PublicIpAddress),
-		PrivateIPv4: utility.FromStringPtr(instance.PrivateIpAddress),
-		IPv6:        ipv6,
-	}, nil
-}
-
 // cacheHostData caches host information received from AWS about the instance.
 func cacheHostData(ctx context.Context, env evergreen.Environment, client AWSClient, pair hostInstancePair) error {
 	h := pair.host
 	instance := pair.instance
-	data, err := makeCloudProviderData(h, instance)
+	data, err := makeCloudProviderData(instance)
 	if err != nil {
 		return errors.Wrap(err, "making cloud provider data")
 	}
@@ -347,7 +323,7 @@ func cacheAllHostData(ctx context.Context, env evergreen.Environment, client AWS
 	for _, hostAndInstance := range pairs {
 		h := hostAndInstance.host
 		instance := hostAndInstance.instance
-		data, err := makeCloudProviderData(h, instance)
+		data, err := makeCloudProviderData(instance)
 		if err != nil {
 			catcher.Wrapf(err, "making cloud provider data for host '%s'", h.Id)
 			continue
@@ -381,9 +357,33 @@ func cacheAllHostData(ctx context.Context, env evergreen.Environment, client AWS
 	return catcher.Resolve()
 }
 
-// validateInstanceDataToCache checks that all the required instance data is
-// present to cache it in the host.
-func validateInstanceDataToCache(instance *types.Instance) error {
+func makeCloudProviderData(instance *types.Instance) (*host.CloudProviderData, error) {
+	if err := validateCloudProviderData(instance); err != nil {
+		return nil, err
+	}
+
+	var ipv6 string
+	for _, networkInterface := range instance.NetworkInterfaces {
+		if len(networkInterface.Ipv6Addresses) > 0 {
+			ipv6 = *networkInterface.Ipv6Addresses[0].Ipv6Address
+			break
+		}
+	}
+
+	return &host.CloudProviderData{
+		Zone:        utility.FromStringPtr(instance.Placement.AvailabilityZone),
+		StartedAt:   utility.FromTimePtr(instance.LaunchTime),
+		PublicDNS:   utility.FromStringPtr(instance.PublicDnsName),
+		Volumes:     makeVolumeAttachments(instance.BlockDeviceMappings),
+		PublicIPv4:  utility.FromStringPtr(instance.PublicIpAddress),
+		PrivateIPv4: utility.FromStringPtr(instance.PrivateIpAddress),
+		IPv6:        ipv6,
+	}, nil
+}
+
+// validateCloudProviderData checks that all the required instance data from the
+// cloud provider is present to cache it in the host.
+func validateCloudProviderData(instance *types.Instance) error {
 	catcher := grip.NewBasicCatcher()
 	catcher.ErrorfWhen(instance.Placement == nil || instance.Placement.AvailabilityZone == nil, "instance missing availability zone")
 	catcher.ErrorfWhen(instance.LaunchTime == nil, "instance missing launch time")
@@ -399,7 +399,7 @@ func validateInstanceDataToCache(instance *types.Instance) error {
 const persistentDNSRecordTTLSecs = 1
 
 // setHostPersistentDNSName sets a host's persistent DNS record with its
-// associated IP address and sets the persistent DNS name on the host.
+// associated IP address and sets it on the host.
 func setHostPersistentDNSName(ctx context.Context, env evergreen.Environment, h *host.Host, ipv4Addr string, client AWSClient) error {
 	if ipv4Addr == "" {
 		return errors.New("instance did not include an IP address")

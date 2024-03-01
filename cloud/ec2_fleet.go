@@ -164,14 +164,8 @@ func (m *ec2FleetManager) GetInstanceStatuses(ctx context.Context, hosts []host.
 	}
 	defer m.client.Close()
 
-	startAt := time.Now()
 	describeInstancesOutput, err := m.client.DescribeInstances(ctx, &ec2.DescribeInstancesInput{
 		InstanceIds: instanceIDs,
-	})
-	grip.Debug(message.Fields{
-		"message":       "finished getting describe instances",
-		"num_hosts":     len(hosts),
-		"duration_secs": time.Since(startAt).Seconds(),
 	})
 
 	if err != nil {
@@ -210,7 +204,7 @@ func (m *ec2FleetManager) GetInstanceStatuses(ctx context.Context, hosts []host.
 	// Cache instance information so we can make fewer calls to AWS's API.
 	grip.Error(message.WrapError(cacheAllHostData(ctx, m.env, m.client, hostsToCache), message.Fields{
 		"message":   "error bulk updating cached host data",
-		"num_hosts": len(hostsToCache),
+		"num_hosts": len(hostIDsToCache),
 		"host_ids":  hostIDsToCache,
 	}))
 

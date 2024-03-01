@@ -742,7 +742,7 @@ func (m *ec2Manager) GetInstanceStatuses(ctx context.Context, hosts []host.Host)
 		hostID := hostsToCheck[i]
 		instance, ok := reservationsMap[hostID]
 		if !ok {
-			hostToStatusMap[hostsToCheck[i]] = StatusNonExistent
+			hostToStatusMap[hostID] = StatusNonExistent
 			continue
 		}
 		status := ec2StatusToEvergreenStatus(instance.State.Name)
@@ -759,7 +759,7 @@ func (m *ec2Manager) GetInstanceStatuses(ctx context.Context, hosts []host.Host)
 	// Cache instance information so we can make fewer calls to AWS's API.
 	grip.Error(message.WrapError(cacheAllHostData(ctx, m.env, m.client, hostsToCache), message.Fields{
 		"message":   "error bulk updating cached host data",
-		"num_hosts": len(hostsToCache),
+		"num_hosts": len(hostIDsToCache),
 		"host_ids":  hostIDsToCache,
 	}))
 
