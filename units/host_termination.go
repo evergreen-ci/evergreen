@@ -217,9 +217,10 @@ func (j *hostTerminationJob) Run(ctx context.Context) {
 					j.AddError(errors.Errorf("no tasks found in task group for task '%s'", latestTask.Id))
 					return
 				}
+				// Check for the last task in the task group that we have activated, running, or completed.
 				var lastTaskGroupTask task.Task
 				for _, t := range tasks {
-					if t.HasOrWillRun() {
+					if t.Activated || evergreen.IsValidTaskEndStatus(t.Status) || t.Status == evergreen.TaskStarted {
 						lastTaskGroupTask = t
 					}
 				}
