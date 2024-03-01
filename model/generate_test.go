@@ -864,6 +864,7 @@ func (s *GenerateSuite) TestSaveNewBuildsAndTasksWithBatchtime() {
 
 	// verify we stopped saving versions
 	v, err = VersionFindOneId(v.Id)
+	s.Equal(evergreen.ProjectStorageMethodDB, v.PreGenerationProjectStorageMethod)
 	s.NoError(err)
 	s.Require().NotNil(v)
 	s.Require().Len(v.BuildVariants, 2)
