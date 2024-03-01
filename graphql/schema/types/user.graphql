@@ -79,6 +79,7 @@ It contains information about a user's id, name, email, and permissions.
 type User {
   displayName: String!
   emailAddress: String!
+  parsleyFilters: [ParsleyFilter!]!
   patches(patchesInput: PatchesInput!): Patches! # user patches
   permissions: Permissions!
   subscriptions: [GeneralSubscription!]

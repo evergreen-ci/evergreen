@@ -6,9 +6,30 @@ import (
 
 	"github.com/evergreen-ci/evergreen/model/event"
 	"github.com/evergreen-ci/evergreen/model/patch"
+	"github.com/evergreen-ci/evergreen/model/user"
 	restModel "github.com/evergreen-ci/evergreen/rest/model"
 	"github.com/evergreen-ci/utility"
 )
+
+// ParsleyFilters is the resolver for the parsleyFilters field.
+func (r *userResolver) ParsleyFilters(ctx context.Context, obj *restModel.APIDBUser) ([]*restModel.APIParsleyFilter, error) {
+	res := []*restModel.APIParsleyFilter{}
+
+	usr, err := user.FindOneById(utility.FromStringPtr(obj.UserID))
+	if err != nil {
+		return nil, InternalServerError.Send(ctx, fmt.Sprintf("finding user with ID '%s': %s", utility.FromStringPtr(obj.UserID), err.Error()))
+	}
+	if usr == nil {
+		return nil, ResourceNotFound.Send(ctx, "user not found")
+	}
+
+	for _, p := range usr.ParsleyFilters {
+		parsleyFilter := restModel.APIParsleyFilter{}
+		parsleyFilter.BuildFromService(p)
+		res = append(res, &parsleyFilter)
+	}
+	return res, nil
+}
 
 // Patches is the resolver for the patches field.
 func (r *userResolver) Patches(ctx context.Context, obj *restModel.APIDBUser, patchesInput PatchesInput) (*Patches, error) {

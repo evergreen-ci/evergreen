@@ -20,6 +20,7 @@ import (
 	"github.com/evergreen-ci/evergreen/model/build"
 	"github.com/evergreen-ci/evergreen/model/commitqueue"
 	"github.com/evergreen-ci/evergreen/model/event"
+	"github.com/evergreen-ci/evergreen/model/parsley"
 	"github.com/evergreen-ci/evergreen/model/patch"
 	"github.com/evergreen-ci/evergreen/model/task"
 	"github.com/evergreen-ci/evergreen/model/user"
@@ -128,13 +129,7 @@ type ProjectRef struct {
 
 	// Filter/view settings
 	ProjectHealthView ProjectHealthView `bson:"project_health_view" json:"project_health_view" yaml:"project_health_view"`
-	ParsleyFilters    []ParsleyFilter   `bson:"parsley_filters,omitempty" json:"parsley_filters,omitempty"`
-}
-
-type ParsleyFilter struct {
-	Expression    string `bson:"expression" json:"expression"`
-	CaseSensitive bool   `bson:"case_sensitive" json:"case_sensitive"`
-	ExactMatch    bool   `bson:"exact_match" json:"exact_match"`
+	ParsleyFilters    []parsley.Filter  `bson:"parsley_filters,omitempty" json:"parsley_filters,omitempty"`
 }
 
 type ProjectHealthView string
@@ -1042,7 +1037,7 @@ func mergeParsleyFilters(pRef *ProjectRef, repoRef *RepoRef) {
 	}
 
 	if pRef.ParsleyFilters == nil {
-		pRef.ParsleyFilters = []ParsleyFilter{}
+		pRef.ParsleyFilters = []parsley.Filter{}
 	}
 
 	pRef.ParsleyFilters = append(pRef.ParsleyFilters, repoRef.ParsleyFilters...)
@@ -3290,34 +3285,6 @@ func ValidateContainerSecrets(settings *evergreen.Settings, projectID string, or
 	catcher.ErrorfWhen(len(podSecrets) > 1, "a project can have at most one pod secret but tried to create %d pod secrets total", len(podSecrets))
 
 	return combined, catcher.Resolve()
-}
-
-// ValidateParsleyFilters checks that there are no duplicate expressions among the Parsley filters. It also validates
-// each individual Parsley filter.
-func ValidateParsleyFilters(parsleyFilters []ParsleyFilter) error {
-	catcher := grip.NewBasicCatcher()
-
-	filtersSet := make(map[string]bool)
-	for _, filter := range parsleyFilters {
-		if filtersSet[filter.Expression] {
-			catcher.Errorf("duplicate filter expression '%s'", filter.Expression)
-		}
-		filtersSet[filter.Expression] = true
-		catcher.Add(filter.validate())
-	}
-
-	return catcher.Resolve()
-}
-
-func (p ParsleyFilter) validate() error {
-	catcher := grip.NewSimpleCatcher()
-	catcher.NewWhen(p.Expression == "", "filter expression must be non-empty")
-
-	if _, regexErr := regexp.Compile(p.Expression); regexErr != nil {
-		catcher.Wrapf(regexErr, "filter expression '%s' is invalid regexp", p.Expression)
-	}
-
-	return catcher.Resolve()
 }
 
 func newContainerSecretExternalName(smConf evergreen.SecretsManagerConfig, projectID string, secret ContainerSecret) (string, error) {

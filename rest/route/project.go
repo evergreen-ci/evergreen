@@ -16,6 +16,7 @@ import (
 	"github.com/evergreen-ci/evergreen/model/artifact"
 	"github.com/evergreen-ci/evergreen/model/commitqueue"
 	"github.com/evergreen-ci/evergreen/model/event"
+	"github.com/evergreen-ci/evergreen/model/parsley"
 	"github.com/evergreen-ci/evergreen/model/task"
 	"github.com/evergreen-ci/evergreen/model/user"
 	"github.com/evergreen-ci/evergreen/rest/data"
@@ -474,7 +475,7 @@ func (h *projectIDPatchHandler) Run(ctx context.Context) gimlet.Responder {
 	}
 
 	// Validate Parsley filters before updating project.
-	err = dbModel.ValidateParsleyFilters(h.newProjectRef.ParsleyFilters)
+	err = parsley.ValidateFilters(h.newProjectRef.ParsleyFilters)
 	if err != nil {
 		return gimlet.MakeJSONErrorResponder(errors.Wrap(err, "invalid Parsley filters"))
 	}
