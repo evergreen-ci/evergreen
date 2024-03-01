@@ -1225,6 +1225,9 @@ Parameters:
     no-op for patches (i.e. continue without performing the s3 put).
 -   `patch_only`: defaults to false. If set to true, the command will
     no-op for non-patches (i.e. continue without performing the s3 put).
+-   `preserve_path`: defaults to false. If set to true, causes multi part uploads uploaded with 
+    `LocalFilesIncludeFilter` to preserve the original folder structure instead
+     of putting all the files into the same folder
 
 ## s3.put with multiple files
 
