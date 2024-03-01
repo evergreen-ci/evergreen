@@ -1095,11 +1095,15 @@ func sendBackRunningTask(ctx context.Context, env evergreen.Environment, h *host
 	}
 	if t == nil {
 		grip.Notice(getMessage("clearing host's running task because it does not exist"))
+		// Need to store the running task and execution here because
+		// ClearRunningTask will unset them.
+		runningTask := h.RunningTask
+		runningTaskExec := h.RunningTaskExecution
 		if err := h.ClearRunningTask(ctx); err != nil {
 			grip.Error(message.WrapError(err, getMessage("could not clear host's nonexistent running task")))
 			return gimlet.MakeJSONInternalErrorResponder(err)
 		}
-		err := errors.Errorf("host's running task '%s' execution '%d' not found", h.RunningTask, h.RunningTaskExecution)
+		err := errors.Errorf("host's running task '%s' execution '%d' not found", runningTask, runningTaskExec)
 		return gimlet.MakeJSONInternalErrorResponder(err)
 	}
 
@@ -1172,6 +1176,7 @@ func sendBackRunningTask(ctx context.Context, env evergreen.Environment, h *host
 // setNextTask constructs a NextTaskResponse from a task that has been assigned to run next.
 func setNextTask(t *task.Task, response *apimodels.NextTaskResponse) {
 	response.TaskId = t.Id
+	response.TaskExecution = t.Execution
 	response.TaskSecret = t.Secret
 	response.TaskGroup = t.TaskGroup
 	response.Version = t.Version

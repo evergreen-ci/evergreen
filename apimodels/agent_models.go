@@ -113,6 +113,7 @@ type AgentSetupData struct {
 // NextTaskResponse represents the response sent back when an agent asks for a next task
 type NextTaskResponse struct {
 	TaskId              string `json:"task_id,omitempty"`
+	TaskExecution       int    `json:"task_execution,omitempty"`
 	TaskSecret          string `json:"task_secret,omitempty"`
 	TaskGroup           string `json:"task_group,omitempty"`
 	Version             string `json:"version,omitempty"`

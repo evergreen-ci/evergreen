@@ -29,15 +29,14 @@ import (
 	"go.mongodb.org/mongo-driver/bson"
 )
 
-var (
-	hostSecret = "secret"
-)
+const hostSecret = "secret"
 
 func TestHostNextTask(t *testing.T) {
 	distroID := "testDistro"
 	buildID := "buildId"
 	task1 := task.Task{
 		Id:        "task1",
+		Execution: 5,
 		Status:    evergreen.TaskUndispatched,
 		Activated: true,
 		BuildId:   buildID,
@@ -91,18 +90,21 @@ func TestHostNextTask(t *testing.T) {
 			taskResp, ok := resp.Data().(apimodels.NextTaskResponse)
 			require.True(t, ok, resp.Data())
 			assert.NotNil(t, taskResp)
-			assert.Equal(t, taskResp.TaskId, "task1")
+			assert.Equal(t, "task1", taskResp.TaskId)
+			assert.Equal(t, 5, taskResp.TaskExecution)
 			nextTask, err := task.FindOne(db.Query(task.ById(taskResp.TaskId)))
 			require.NoError(t, err)
 			require.NotNil(t, nextTask)
 			assert.Equal(t, nextTask.Status, evergreen.TaskDispatched)
 			dbHost, err := host.FindOneId(ctx, "h1")
 			require.NoError(t, err)
+			require.NotZero(t, dbHost)
 			assert.False(t, utility.IsZeroTime(dbHost.AgentStartTime))
 		},
 		"ShouldExitWithOutOfDateRevisionAndTaskGroup": func(ctx context.Context, t *testing.T, rh *hostAgentNextTask) {
 			sampleHost, err := host.FindOneId(ctx, "h1")
 			require.NoError(t, err)
+			require.NotZero(t, sampleHost)
 			require.NoError(t, sampleHost.SetAgentRevision(ctx, "out-of-date-string"))
 			defer func() {
 				assert.NoError(t, sampleHost.SetAgentRevision(ctx, evergreen.AgentVersion)) // reset
@@ -120,17 +122,21 @@ func TestHostNextTask(t *testing.T) {
 				"ShouldPrepareToReprovision": func(ctx context.Context, t *testing.T, handler hostAgentNextTask) {
 					h, err := host.FindOneId(ctx, "id")
 					require.NoError(t, err)
+					require.NotZero(t, h)
 
 					rh.details = &apimodels.GetNextTaskDetails{AgentRevision: evergreen.AgentVersion}
 					rh.host = h
 					resp := rh.Run(ctx)
 					assert.NotNil(t, resp)
 					assert.Equal(t, resp.Status(), http.StatusOK)
+
 					taskResp, ok := resp.Data().(apimodels.NextTaskResponse)
 					require.True(t, ok, resp.Data())
 					assert.True(t, taskResp.ShouldExit)
+
 					dbHost, err := host.FindOneId(ctx, h.Id)
 					require.NoError(t, err)
+					require.NotZero(t, dbHost)
 					assert.Equal(t, dbHost.NeedsReprovision, host.ReprovisionToNew)
 					assert.Equal(t, dbHost.Status, evergreen.HostProvisioning)
 					assert.False(t, dbHost.Provisioned)
@@ -141,6 +147,7 @@ func TestHostNextTask(t *testing.T) {
 				"DoesntReprovisionIfNotNeeded": func(ctx context.Context, t *testing.T, handler hostAgentNextTask) {
 					h, err := host.FindOneId(ctx, "id")
 					require.NoError(t, err)
+					require.NotZero(t, h)
 					require.NoError(t, host.UpdateOne(ctx, bson.M{host.IdKey: h.Id}, bson.M{"$unset": bson.M{host.NeedsReprovisionKey: host.ReprovisionNone}}))
 					h.NeedsReprovision = ""
 					rh.details = &apimodels.GetNextTaskDetails{AgentRevision: evergreen.AgentVersion}
@@ -153,6 +160,7 @@ func TestHostNextTask(t *testing.T) {
 					assert.False(t, taskResp.ShouldExit)
 					dbHost, err := host.FindOneId(ctx, h.Id)
 					require.NoError(t, err)
+					require.NotZero(t, dbHost)
 					assert.Empty(t, dbHost.NeedsReprovision)
 					assert.Equal(t, dbHost.Status, evergreen.HostRunning)
 					assert.True(t, dbHost.Provisioned)
@@ -191,6 +199,7 @@ func TestHostNextTask(t *testing.T) {
 				"ConvertsBuildingIntentHostToStartingRealHost": func(ctx context.Context, t *testing.T, handler hostAgentNextTask) {
 					intentHost, err := host.FindOneId(ctx, "intentHost")
 					require.NoError(t, err)
+					require.NotZero(t, intentHost)
 					instanceID := generateFakeEC2InstanceID()
 
 					rh.host = intentHost
@@ -213,12 +222,13 @@ func TestHostNextTask(t *testing.T) {
 
 					realHost, err := host.FindOneId(ctx, instanceID)
 					require.NoError(t, err)
-					assert.NotNil(t, realHost)
+					require.NotNil(t, realHost)
 					assert.Equal(t, realHost.Status, evergreen.HostStarting)
 				},
 				"ConvertsFailedIntentHostToDecommissionedRealHost": func(ctx context.Context, t *testing.T, handler hostAgentNextTask) {
 					intentHost, err := host.FindOneId(ctx, "intentHost")
 					require.NoError(t, err)
+					require.NotZero(t, intentHost)
 					require.NoError(t, intentHost.SetStatus(ctx, evergreen.HostBuildingFailed, evergreen.User, ""))
 
 					instanceID := generateFakeEC2InstanceID()
@@ -243,8 +253,8 @@ func TestHostNextTask(t *testing.T) {
 
 					realHost, err := host.FindOneId(ctx, instanceID)
 					require.NoError(t, err)
-					assert.NotNil(t, realHost)
-					assert.Equal(t, realHost.Status, evergreen.HostDecommissioned)
+					require.NotNil(t, realHost)
+					assert.Equal(t, evergreen.HostDecommissioned, realHost.Status)
 				},
 				"ConvertsTerminatedHostIntoDecommissionedRealHost": func(ctx context.Context, t *testing.T, handler hostAgentNextTask) {
 					intentHost, err := host.FindOneId(ctx, "intentHost")
@@ -272,12 +282,13 @@ func TestHostNextTask(t *testing.T) {
 
 					realHost, err := host.FindOneId(ctx, instanceID)
 					require.NoError(t, err)
-					assert.NotNil(t, realHost)
+					require.NotNil(t, realHost)
 					assert.Equal(t, realHost.Status, evergreen.HostDecommissioned)
 				},
 				"ClearsSecretOfUnresponsiveQuarantinedHost": func(ctx context.Context, t *testing.T, handler hostAgentNextTask) {
 					intentHost, err := host.FindOneId(ctx, "intentHost")
 					require.NoError(t, err)
+					require.NotZero(t, intentHost)
 					require.NoError(t, intentHost.SetStatus(ctx, evergreen.HostQuarantined, evergreen.User, ""))
 					intentHost.NeedsReprovision = host.ReprovisionToLegacy
 					intentHost.NumAgentCleanupFailures = hostAgentCleanupLimit
@@ -296,8 +307,8 @@ func TestHostNextTask(t *testing.T) {
 
 					dbHost, err := host.FindOneId(ctx, "intentHost")
 					require.NoError(t, err)
-					assert.NotNil(t, dbHost)
-					assert.Equal(t, dbHost.Secret, "")
+					require.NotNil(t, dbHost)
+					assert.Equal(t, "", dbHost.Secret)
 				},
 			} {
 				t.Run(testName, func(t *testing.T) {
@@ -351,7 +362,8 @@ func TestHostNextTask(t *testing.T) {
 				assert.Empty(t, taskResp.TaskId)
 				dbHost, err := host.FindOneId(ctx, nonLegacyHost.Id)
 				require.NoError(t, err)
-				assert.Equal(t, dbHost.Status, status)
+				require.NotZero(t, dbHost)
+				assert.Equal(t, status, dbHost.Status)
 			}
 		},
 		"NonLegacyHostWithOldAgentRevision": func(ctx context.Context, t *testing.T, rh *hostAgentNextTask) {
@@ -368,7 +380,8 @@ func TestHostNextTask(t *testing.T) {
 					assert.False(t, taskResp.ShouldExit)
 					dbHost, err := host.FindOneId(ctx, nonLegacyHost.Id)
 					require.NoError(t, err)
-					assert.Equal(t, dbHost.Status, evergreen.HostRunning)
+					require.NotZero(t, dbHost)
+					assert.Equal(t, evergreen.HostRunning, dbHost.Status)
 				},
 				"ShouldGetNextTaskWhenProvisioning": func(ctx context.Context, t *testing.T, handler hostAgentNextTask) {
 					nonLegacyHost, err := host.FindOneId(ctx, "nonLegacyHost")
@@ -377,7 +390,7 @@ func TestHostNextTask(t *testing.T) {
 					require.NoError(t, db.Update(host.Collection, bson.M{host.IdKey: nonLegacyHost.Id}, bson.M{"$set": bson.M{host.StatusKey: evergreen.HostStarting}}))
 					dbHost, err := host.FindOneId(ctx, nonLegacyHost.Id)
 					require.NoError(t, err)
-					assert.Equal(t, dbHost.Status, evergreen.HostStarting)
+					assert.Equal(t, evergreen.HostStarting, dbHost.Status)
 
 					// next task action
 					rh.host = dbHost
@@ -385,7 +398,7 @@ func TestHostNextTask(t *testing.T) {
 					taskResp, ok := resp.Data().(apimodels.NextTaskResponse)
 					require.True(t, ok, resp.Data())
 					assert.NotEmpty(t, taskResp.TaskId)
-					assert.Equal(t, taskResp.Build, buildID)
+					assert.Equal(t, buildID, taskResp.Build)
 				},
 				"LatestAgentRevisionInNextTaskDetails": func(ctx context.Context, t *testing.T, handler hostAgentNextTask) {
 					nonLegacyHost, err := host.FindOneId(ctx, "nonLegacyHost")
@@ -404,7 +417,7 @@ func TestHostNextTask(t *testing.T) {
 					rh.host = nonLegacyHost
 					rh.details = &apimodels.GetNextTaskDetails{AgentRevision: "out-of-date"}
 					resp := rh.Run(ctx)
-					assert.Equal(t, resp.Status(), http.StatusOK)
+					assert.Equal(t, http.StatusOK, resp.Status())
 					taskResp, ok := resp.Data().(apimodels.NextTaskResponse)
 					require.True(t, ok, resp.Data())
 					assert.True(t, taskResp.ShouldExit)
@@ -442,15 +455,18 @@ func TestHostNextTask(t *testing.T) {
 				"GettingNextTaskShouldReturnExistingTask": func(ctx context.Context, t *testing.T, handler hostAgentNextTask) {
 					h2, err := host.FindOneId(ctx, "anotherHost")
 					require.NoError(t, err)
+					require.NotZero(t, h2)
 					rh.host = h2
 					resp := rh.Run(ctx)
 					assert.NotNil(t, resp)
 					assert.Equal(t, resp.Status(), http.StatusOK)
 					taskResp, ok := resp.Data().(apimodels.NextTaskResponse)
 					require.True(t, ok, resp.Data())
-					assert.Equal(t, taskResp.TaskId, "existingTask")
+					assert.Equal(t, "existingTask", taskResp.TaskId)
+					assert.Equal(t, 8, taskResp.TaskExecution)
 					nextTask, err := task.FindOne(db.Query(task.ById(taskResp.TaskId)))
 					require.NoError(t, err)
+					require.NotZero(t, nextTask)
 					assert.Equal(t, nextTask.Status, evergreen.TaskDispatched)
 					assert.Equal(t, nextTask.NumNextTaskDispatches, 3)
 				},
@@ -519,6 +535,7 @@ func TestHostNextTask(t *testing.T) {
 					assert.Equal(t, taskResp.TaskId, t1.Id)
 					nextTask, err := task.FindOne(db.Query(task.ById(taskResp.TaskId)))
 					require.NoError(t, err)
+					require.NotZero(t, nextTask)
 					assert.Equal(t, nextTask.Status, evergreen.TaskDispatched)
 					inactiveTask := task.Task{
 						Id:        "t2",
@@ -543,26 +560,29 @@ func TestHostNextTask(t *testing.T) {
 					assert.NotNil(t, resp)
 					assert.Equal(t, resp.Status(), http.StatusOK)
 					taskResp = resp.Data().(apimodels.NextTaskResponse)
-					assert.Equal(t, taskResp.TaskId, "")
+					assert.Equal(t, "", taskResp.TaskId)
 					h, err := host.FindOne(ctx, host.ById(h3.Id))
 					require.NoError(t, err)
-					assert.Equal(t, h.RunningTask, "")
+					require.NotZero(t, h)
+					assert.Equal(t, "", h.RunningTask)
 				},
 			} {
 				t.Run(testName, func(t *testing.T) {
 					require.NoError(t, db.ClearCollections(host.Collection, task.Collection))
 					h2 := host.Host{
-						Id:            "anotherHost",
-						Secret:        hostSecret,
-						RunningTask:   "existingTask",
-						AgentRevision: evergreen.AgentVersion,
-						Provisioned:   true,
-						Status:        evergreen.HostRunning,
+						Id:                   "anotherHost",
+						Secret:               hostSecret,
+						RunningTask:          "existingTask",
+						RunningTaskExecution: 8,
+						AgentRevision:        evergreen.AgentVersion,
+						Provisioned:          true,
+						Status:               evergreen.HostRunning,
 					}
 					require.NoError(t, h2.Insert(ctx))
 
 					existingTask := task.Task{
 						Id:                    "existingTask",
+						Execution:             8,
 						Status:                evergreen.TaskDispatched,
 						Activated:             true,
 						NumNextTaskDispatches: 2,
@@ -662,7 +682,7 @@ func TestTaskLifecycleEndpoints(t *testing.T) {
 	versionId := "v1"
 
 	for tName, tCase := range map[string]func(ctx context.Context, t *testing.T, rh *hostAgentEndTask, env *mock.Environment){
-		"test task should start a background job": func(ctx context.Context, t *testing.T, handler *hostAgentEndTask, env *mock.Environment) {
+		"TestTaskShouldShowHostRunningTask": func(ctx context.Context, t *testing.T, handler *hostAgentEndTask, env *mock.Environment) {
 			startTaskHandler := makeStartTask(env).(*startTaskHandler)
 			startTaskHandler.hostID = "h1"
 			startTaskHandler.taskID = "task1"
@@ -672,9 +692,10 @@ func TestTaskLifecycleEndpoints(t *testing.T) {
 
 			h, err := host.FindOneId(ctx, hostId)
 			require.NoError(t, err)
+			require.NotZero(t, h)
 			assert.Equal(t, 1, h.TaskCount)
 		},
-		"with a set of task end details indicating that task has succeeded": func(ctx context.Context, t *testing.T, handler *hostAgentEndTask, env *mock.Environment) {
+		"WithTaskEndDetailsIndicatingTaskSucceeded": func(ctx context.Context, t *testing.T, handler *hostAgentEndTask, env *mock.Environment) {
 			details := &apimodels.TaskEndDetail{
 				Status: evergreen.TaskSucceeded,
 			}
@@ -686,21 +707,23 @@ func TestTaskLifecycleEndpoints(t *testing.T) {
 			require.False(t, taskResp.ShouldExit)
 			h, err := host.FindOne(ctx, host.ById(hostId))
 			require.NoError(t, err)
+			require.NotZero(t, h)
 			require.Equal(t, h.RunningTask, "")
 
 			foundTask, err := task.FindOne(db.Query(task.ById("task1")))
 			require.NoError(t, err)
-			require.Equal(t, foundTask.Status, evergreen.TaskSucceeded)
-			require.Equal(t, foundTask.Details.Status, evergreen.TaskSucceeded)
-
+			require.NotZero(t, foundTask)
+			require.Equal(t, evergreen.TaskSucceeded, foundTask.Status)
+			require.Equal(t, evergreen.TaskSucceeded, foundTask.Details.Status)
 		},
-		"with a set of task end details indicating that task has failed": func(ctx context.Context, t *testing.T, handler *hostAgentEndTask, env *mock.Environment) {
+		"WithTaskEndDetailsIndicatingTaskFailed": func(ctx context.Context, t *testing.T, handler *hostAgentEndTask, env *mock.Environment) {
 			details := &apimodels.TaskEndDetail{
 				Status: evergreen.TaskFailed,
 			}
 			testTask, err := task.FindOne(db.Query(task.ById("task1")))
 			require.NoError(t, err)
-			require.Equal(t, testTask.Status, evergreen.TaskStarted)
+			require.NotZero(t, testTask)
+			require.Equal(t, evergreen.TaskStarted, testTask.Status)
 			handler.details = *details
 			resp := handler.Run(ctx)
 			require.NotNil(t, resp)
@@ -710,15 +733,16 @@ func TestTaskLifecycleEndpoints(t *testing.T) {
 
 			h, err := host.FindOne(ctx, host.ById(hostId))
 			require.NoError(t, err)
-			require.Equal(t, h.RunningTask, "")
+			require.NotZero(t, h)
+			require.Equal(t, "", h.RunningTask)
 
 			foundTask, err := task.FindOne(db.Query(task.ById("task1")))
 			require.NoError(t, err)
-			require.Equal(t, foundTask.Status, evergreen.TaskFailed)
-			require.Equal(t, foundTask.Details.Status, evergreen.TaskFailed)
-
+			require.NotZero(t, foundTask)
+			require.Equal(t, evergreen.TaskFailed, foundTask.Status)
+			require.Equal(t, evergreen.TaskFailed, foundTask.Details.Status)
 		},
-		"with a set of task end details but a task that is inactive": func(ctx context.Context, t *testing.T, handler *hostAgentEndTask, env *mock.Environment) {
+		"WithTaskEndDetailsButTaskIsInactive": func(ctx context.Context, t *testing.T, handler *hostAgentEndTask, env *mock.Environment) {
 			task2 := task.Task{
 				Id:        "task2",
 				Status:    evergreen.TaskUndispatched,
@@ -745,7 +769,8 @@ func TestTaskLifecycleEndpoints(t *testing.T) {
 			}
 			testTask, err := task.FindOne(db.Query(task.ById("task1")))
 			require.NoError(t, err)
-			require.Equal(t, testTask.Status, evergreen.TaskStarted)
+			require.NotZero(t, testTask)
+			require.Equal(t, evergreen.TaskStarted, testTask.Status)
 
 			handler.details = *details
 			resp := handler.Run(ctx)
@@ -753,9 +778,8 @@ func TestTaskLifecycleEndpoints(t *testing.T) {
 			require.Equal(t, resp.Status(), http.StatusOK)
 			taskResp := apimodels.EndTaskResponse{}
 			require.False(t, taskResp.ShouldExit)
-
 		},
-		"with tasks, a host, a build, and a task queue": func(ctx context.Context, t *testing.T, handler *hostAgentEndTask, env *mock.Environment) {
+		"WithTasksHostsBuildAndTaskQueue": func(ctx context.Context, t *testing.T, handler *hostAgentEndTask, env *mock.Environment) {
 			execTask := task.Task{
 				Id:           "et",
 				DisplayName:  "execTask",
@@ -806,7 +830,8 @@ func TestTaskLifecycleEndpoints(t *testing.T) {
 
 			dbTask, err := task.FindOne(db.Query(task.ById(displayTask.Id)))
 			require.NoError(t, err)
-			require.Equal(t, dbTask.Status, evergreen.TaskFailed)
+			require.NotZero(t, dbTask)
+			require.Equal(t, evergreen.TaskFailed, dbTask.Status)
 		},
 	} {
 		t.Run(tName, func(t *testing.T) {
@@ -1594,7 +1619,7 @@ func TestHandleEndTaskForCommitQueueTask(t *testing.T) {
 		DisplayTaskId: utility.ToStringPtr(""),
 	}
 	for testName, testCase := range map[string]func(t *testing.T, cq commitqueue.CommitQueue){
-		"next task is failed": func(t *testing.T, cq commitqueue.CommitQueue) {
+		"NextTaskIsFailed": func(t *testing.T, cq commitqueue.CommitQueue) {
 			taskA.Status = evergreen.TaskSucceeded
 			assert.NoError(t, taskA.Insert())
 
@@ -1609,23 +1634,23 @@ func TestHandleEndTaskForCommitQueueTask(t *testing.T) {
 
 			taskBFromDb, err := task.FindOneId("taskB")
 			assert.NoError(t, err)
-			assert.NotNil(t, taskBFromDb)
+			require.NotNil(t, taskBFromDb)
 			// taskB was not restarted
 			assert.Equal(t, taskB.Status, taskBFromDb.Status)
 			assert.Equal(t, taskBFromDb.Execution, 0)
 
 			taskCFromDb, err := task.FindOneId("taskC")
 			assert.NoError(t, err)
-			assert.NotNil(t, taskCFromDb)
+			require.NotNil(t, taskCFromDb)
 			assert.Equal(t, evergreen.TaskUndispatched, taskCFromDb.Status)
 			assert.Equal(t, taskCFromDb.Execution, 1)
 
 			cqFromDb, err := commitqueue.FindOneId(cq.ProjectID)
 			assert.NoError(t, err)
-			assert.NotNil(t, cqFromDb)
+			require.NotNil(t, cqFromDb)
 			assert.Equal(t, -1, cqFromDb.FindItem("taskB"))
 		},
-		"next task is successful": func(t *testing.T, cq commitqueue.CommitQueue) {
+		"NextTaskIsSuccessful": func(t *testing.T, cq commitqueue.CommitQueue) {
 			taskA.Status = evergreen.TaskSucceeded
 			assert.NoError(t, taskA.Insert())
 
@@ -1640,24 +1665,24 @@ func TestHandleEndTaskForCommitQueueTask(t *testing.T) {
 
 			taskBFromDb, err := task.FindOneId("taskB")
 			assert.NoError(t, err)
-			assert.NotNil(t, taskBFromDb)
+			require.NotNil(t, taskBFromDb)
 			// taskB was not restarted
 			assert.Equal(t, taskB.Status, taskBFromDb.Status)
 			assert.Equal(t, taskBFromDb.Execution, 0)
 
 			taskCFromDb, err := task.FindOneId("taskC")
 			assert.NoError(t, err)
-			assert.NotNil(t, taskCFromDb)
+			require.NotNil(t, taskCFromDb)
 			// taskC is not restarted but is dequeued
 			assert.Equal(t, taskC.Status, taskCFromDb.Status)
-			assert.Equal(t, taskCFromDb.Execution, 0)
+			assert.Equal(t, 0, taskCFromDb.Execution)
 
 			cqFromDb, err := commitqueue.FindOneId(cq.ProjectID)
 			assert.NoError(t, err)
-			assert.NotNil(t, cqFromDb)
+			require.NotNil(t, cqFromDb)
 			assert.Equal(t, -1, cqFromDb.FindItem("taskC"))
 		},
-		"next task is undispatched": func(t *testing.T, cq commitqueue.CommitQueue) {
+		"NextTaskIsUndispatched": func(t *testing.T, cq commitqueue.CommitQueue) {
 			taskA.Status = evergreen.TaskSucceeded
 			assert.NoError(t, taskA.Insert())
 
@@ -1673,24 +1698,24 @@ func TestHandleEndTaskForCommitQueueTask(t *testing.T) {
 
 			taskBFromDb, err := task.FindOneId("taskB")
 			assert.NoError(t, err)
-			assert.NotNil(t, taskBFromDb)
+			require.NotNil(t, taskBFromDb)
 			// taskB was not restarted
 			assert.Equal(t, taskB.Status, taskBFromDb.Status)
-			assert.Equal(t, taskBFromDb.Execution, 0)
+			assert.Equal(t, 0, taskBFromDb.Execution)
 
 			taskCFromDb, err := task.FindOneId("taskC")
 			assert.NoError(t, err)
 			assert.NotNil(t, taskCFromDb)
 			// taskC was not restarted
 			assert.Equal(t, taskC.Status, taskCFromDb.Status)
-			assert.Equal(t, taskCFromDb.Execution, 0)
+			require.Equal(t, 0, taskCFromDb.Execution)
 
 			cqFromDb, err := commitqueue.FindOneId(cq.ProjectID)
 			assert.NoError(t, err)
-			assert.NotNil(t, cqFromDb)
+			require.NotNil(t, cqFromDb)
 			assert.Len(t, cqFromDb.Queue, 3) // no item dequeued
 		},
-		"next task not created yet": func(t *testing.T, cq commitqueue.CommitQueue) {
+		"NextTaskIsNotCreatedYet": func(t *testing.T, cq commitqueue.CommitQueue) {
 			require.Len(t, cq.Queue, 3)
 			itemToChange := cq.Queue[1]
 			itemToChange.Version = ""
@@ -1705,10 +1730,10 @@ func TestHandleEndTaskForCommitQueueTask(t *testing.T) {
 
 			cqFromDb, err := commitqueue.FindOneId(cq.ProjectID)
 			assert.NoError(t, err)
-			assert.NotNil(t, cqFromDb)
+			require.NotNil(t, cqFromDb)
 			assert.Len(t, cqFromDb.Queue, 3) // no item dequeued
 		},
-		"previous task hasn't run yet": func(t *testing.T, cq commitqueue.CommitQueue) {
+		"PreviousTaskHasNotRunYet": func(t *testing.T, cq commitqueue.CommitQueue) {
 			taskA.Status = evergreen.TaskDispatched
 			assert.NoError(t, taskA.Insert())
 
@@ -1725,19 +1750,19 @@ func TestHandleEndTaskForCommitQueueTask(t *testing.T) {
 			// no tasks restarted
 			taskBFromDb, err := task.FindOneId("taskB")
 			assert.NoError(t, err)
-			assert.NotNil(t, taskBFromDb)
+			require.NotNil(t, taskBFromDb)
 			assert.Equal(t, taskB.Status, taskBFromDb.Status)
-			assert.Equal(t, taskBFromDb.Execution, 0)
+			assert.Equal(t, 0, taskBFromDb.Execution)
 
 			taskCFromDb, err := task.FindOneId("taskC")
 			assert.NoError(t, err)
-			assert.NotNil(t, taskCFromDb)
+			require.NotNil(t, taskCFromDb)
 			assert.Equal(t, taskC.Status, taskCFromDb.Status)
-			assert.Equal(t, taskCFromDb.Execution, 0)
+			assert.Equal(t, 0, taskCFromDb.Execution)
 
 			cqFromDb, err := commitqueue.FindOneId(cq.ProjectID)
 			assert.NoError(t, err)
-			assert.NotNil(t, cqFromDb)
+			require.NotNil(t, cqFromDb)
 			assert.Len(t, cqFromDb.Queue, 3) // no item dequeued
 		},
 	} {
