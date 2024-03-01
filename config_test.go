@@ -389,7 +389,6 @@ func (s *AdminSuite) TestJiraConfig() {
 			PrivateKey:  "asdf",
 			AccessToken: "fdsa",
 		},
-		DefaultProject: "proj",
 		Email:          "a@mail.com",
 	}
 

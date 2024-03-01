@@ -221,7 +221,6 @@ func MockConfig() *evergreen.Settings {
 				Username: "username",
 				Password: "password",
 			},
-			DefaultProject: "proj",
 		},
 		Keys: map[string]string{"k3": "v3"},
 		TaskLimits: evergreen.TaskLimitsConfig{
