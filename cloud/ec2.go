@@ -729,14 +729,18 @@ func (m *ec2Manager) GetInstanceStatuses(ctx context.Context, hosts []host.Host)
 	if err = validateEc2DescribeInstancesOutput(out); err != nil {
 		return nil, errors.Wrap(err, "invalid describe instances response")
 	}
+
 	reservationsMap := map[string]types.Instance{}
 	for i := range out.Reservations {
 		reservationsMap[*out.Reservations[i].Instances[0].InstanceId] = out.Reservations[i].Instances[0]
 	}
+
 	hostsToCache := make([]hostInstancePair, 0, len(hostsToCheck))
-	hostToStatusMap := map[string]CloudStatus{}
+	hostIDsToCache := make([]string, 0, len(hostsToCheck))
+	hostToStatusMap := make(map[string]CloudStatus, len(hostsToCheck))
 	for i := range hostsToCheck {
-		instance, ok := reservationsMap[hostsToCheck[i]]
+		hostID := hostsToCheck[i]
+		instance, ok := reservationsMap[hostID]
 		if !ok {
 			hostToStatusMap[hostsToCheck[i]] = StatusNonExistent
 			continue
@@ -744,17 +748,19 @@ func (m *ec2Manager) GetInstanceStatuses(ctx context.Context, hosts []host.Host)
 		status := ec2StatusToEvergreenStatus(instance.State.Name)
 		if status == StatusRunning {
 			hostsToCache = append(hostsToCache, hostInstancePair{
-				host:     instanceIdToHostMap[hostsToCheck[i]],
+				host:     instanceIdToHostMap[hostID],
 				instance: &instance,
 			})
+			hostIDsToCache = append(hostIDsToCache, hostID)
 		}
-		hostToStatusMap[instanceIdToHostMap[hostsToCheck[i]].Id] = status
+		hostToStatusMap[hostID] = status
 	}
 
 	// Cache instance information so we can make fewer calls to AWS's API.
 	grip.Error(message.WrapError(cacheAllHostData(ctx, m.env, m.client, hostsToCache), message.Fields{
 		"message":   "error bulk updating cached host data",
 		"num_hosts": len(hostsToCache),
+		"host_ids":  hostIDsToCache,
 	}))
 
 	return hostToStatusMap, nil

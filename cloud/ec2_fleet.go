@@ -193,6 +193,7 @@ func (m *ec2FleetManager) GetInstanceStatuses(ctx context.Context, hosts []host.
 	}
 
 	hostsToCache := make([]hostInstancePair, 0, len(hosts))
+	hostIDsToCache := make([]string, 0, len(hosts))
 	for i := range hosts {
 		h := hosts[i]
 		status, ok := statuses[h.Id]
@@ -202,6 +203,7 @@ func (m *ec2FleetManager) GetInstanceStatuses(ctx context.Context, hosts []host.
 		if status == StatusRunning {
 			pair := hostInstancePair{host: &h, instance: instanceMap[h.Id]}
 			hostsToCache = append(hostsToCache, pair)
+			hostIDsToCache = append(hostIDsToCache, h.Id)
 		}
 	}
 
@@ -209,6 +211,7 @@ func (m *ec2FleetManager) GetInstanceStatuses(ctx context.Context, hosts []host.
 	grip.Error(message.WrapError(cacheAllHostData(ctx, m.env, m.client, hostsToCache), message.Fields{
 		"message":   "error bulk updating cached host data",
 		"num_hosts": len(hostsToCache),
+		"host_ids":  hostIDsToCache,
 	}))
 
 	return statuses, nil
