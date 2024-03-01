@@ -202,29 +202,35 @@ func (j *hostTerminationJob) Run(ctx context.Context) {
 	} else {
 		// Consider if the host is in between running a single-host task group
 		if j.host.LastGroup != "" {
-			lastTask, err := task.FindOneId(j.host.LastTask)
+			latestTask, err := task.FindOneId(j.host.LastTask)
 			if err != nil {
 				j.AddError(errors.Wrapf(err, "finding last task '%s'", j.host.LastTask))
 			}
 			// Only try to restart the task group if it was successful and should have continued executing.
-			if lastTask != nil && lastTask.IsPartOfSingleHostTaskGroup() && lastTask.Status == evergreen.TaskSucceeded {
-				tasks, err := task.FindTaskGroupFromBuild(lastTask.BuildId, lastTask.TaskGroup)
+			if latestTask != nil && latestTask.IsPartOfSingleHostTaskGroup() && latestTask.Status == evergreen.TaskSucceeded {
+				tasks, err := task.FindTaskGroupFromBuild(latestTask.BuildId, latestTask.TaskGroup)
 				if err != nil {
-					j.AddError(errors.Wrapf(err, "getting task group for task '%s'", lastTask.Id))
+					j.AddError(errors.Wrapf(err, "getting task group for task '%s'", latestTask.Id))
 					return
 				}
 				if len(tasks) == 0 {
-					j.AddError(errors.Errorf("no tasks found in task group for task '%s'", lastTask.Id))
+					j.AddError(errors.Errorf("no tasks found in task group for task '%s'", latestTask.Id))
 					return
 				}
-				if tasks[len(tasks)-1].Id != lastTask.Id {
+				// Check for the last task in the task group that we have activated, running, or completed.
+				var lastTaskGroupTask task.Task
+				for _, t := range tasks {
+					if t.Activated {
+						lastTaskGroupTask = t
+					}
+				}
+				if lastTaskGroupTask.Id != latestTask.Id {
 					// If we aren't looking at the last task in the group, then we should mark the whole thing for restart,
 					// because later tasks in the group need to run on the same host as the earlier ones.
-					j.AddError(errors.Wrapf(model.TryResetTask(ctx, j.env.Settings(), lastTask.Id, evergreen.User, evergreen.MonitorPackage, nil), "resetting task '%s'", lastTask.Id))
+					j.AddError(errors.Wrapf(model.TryResetTask(ctx, j.env.Settings(), latestTask.Id, evergreen.User, evergreen.MonitorPackage, nil), "resetting task '%s'", latestTask.Id))
 				}
 			}
 		}
-
 	}
 	// set host as decommissioned in DB so no new task will be assigned
 	prevStatus := j.host.Status
