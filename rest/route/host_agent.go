@@ -1095,6 +1095,8 @@ func sendBackRunningTask(ctx context.Context, env evergreen.Environment, h *host
 	}
 	if t == nil {
 		grip.Notice(getMessage("clearing host's running task because it does not exist"))
+		// Need to store the running task and execution here because
+		// ClearRunningTask will unset them.
 		runningTask := h.RunningTask
 		runningTaskExec := h.RunningTaskExecution
 		if err := h.ClearRunningTask(ctx); err != nil {
