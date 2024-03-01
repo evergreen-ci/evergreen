@@ -1893,23 +1893,71 @@ func (h *Host) Upsert(ctx context.Context) (*mongo.UpdateResult, error) {
 	return UpsertOne(ctx, bson.M{IdKey: h.Id}, update)
 }
 
-func (h *Host) CacheHostData(ctx context.Context) error {
-	_, err := UpsertOne(
+// CloudProviderData represents data to cache in the host from its cloud
+// provider.
+type CloudProviderData struct {
+	Zone      string
+	StartedAt time.Time
+	PublicDNS string
+	IPv4      string
+	IPv6      string
+	Volumes   []VolumeAttachment
+}
+
+// CacheCloudProvider caches data about the host from its cloud provider.
+func (h *Host) CacheCloudProviderData(ctx context.Context, data CloudProviderData) error {
+	// kim: TODO: see if upsert can be converted to update without breaking
+	// tests.
+	if _, err := UpsertOne(
 		ctx,
 		bson.M{
 			IdKey: h.Id,
 		},
-		bson.M{
-			"$set": bson.M{
-				ZoneKey:      h.Zone,
-				StartTimeKey: h.StartTime,
-				VolumesKey:   h.Volumes,
-				DNSKey:       h.Host,
-				IPv4Key:      h.IPv4,
-			},
-		},
-	)
+		cacheCloudProviderDataUpdate(data),
+	); err != nil {
+		return err
+	}
+
+	h.Zone = data.Zone
+	h.StartTime = data.StartedAt
+	h.Host = data.PublicDNS
+	h.IPv4 = data.IPv4
+	h.IP = data.IPv6
+	h.Volumes = data.Volumes
+
+	return nil
+}
+
+// CacheManyHostsCloudProviderData performs the same updates as
+// (Host).CacheCloudProviderData but is optimized for updating many hosts at
+// once.
+func CacheManyHostsCloudProviderData(ctx context.Context, env evergreen.Environment, hosts map[string]CloudProviderData) error {
+	updates := make([]mongo.WriteModel, 0, len(hosts))
+	for hostID, data := range hosts {
+		filter := bson.M{IdKey: hostID}
+		update := cacheCloudProviderDataUpdate(data)
+		updates = append(updates, mongo.NewUpdateOneModel().SetFilter(filter).SetUpdate(update))
+	}
+	if len(updates) == 0 {
+		return nil
+	}
+	_, err := env.DB().Collection(Collection).BulkWrite(ctx, updates, options.BulkWrite().SetOrdered(false))
 	return err
+}
+
+// cacheCloudProviderDataUpdate returns an update for caching cloud provider
+// data.
+func cacheCloudProviderDataUpdate(data CloudProviderData) bson.M {
+	return bson.M{
+		"$set": bson.M{
+			ZoneKey:      data.Zone,
+			StartTimeKey: data.StartedAt,
+			DNSKey:       data.PublicDNS,
+			IPv4Key:      data.IPv4,
+			IPKey:        data.IPv6,
+			VolumesKey:   data.Volumes,
+		},
+	}
 }
 
 func (h *Host) Insert(ctx context.Context) error {

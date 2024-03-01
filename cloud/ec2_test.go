@@ -1082,7 +1082,8 @@ func (s *EC2Suite) TestCacheHostData() {
 	instance.PublicDnsName = aws.String("public_dns_name")
 	instance.PrivateIpAddress = aws.String("12.34.56.78")
 
-	s.NoError(cacheHostData(s.ctx, s.env, s.h, instance, ec2m.client))
+	pair := hostInstancePair{host: s.h, instance: instance}
+	s.NoError(cacheHostData(s.ctx, s.env, ec2m.client, pair))
 
 	s.Equal(*instance.Placement.AvailabilityZone, s.h.Zone)
 	s.True(instance.LaunchTime.Equal(s.h.StartTime))

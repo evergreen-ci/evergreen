@@ -709,7 +709,6 @@ func (m *ec2Manager) GetInstanceStatuses(ctx context.Context, hosts []host.Host)
 	defer m.client.Close()
 
 	instanceIdToHostMap := map[string]*host.Host{}
-	hostToStatusMap := map[string]CloudStatus{}
 	hostsToCheck := []string{}
 
 	for i := range hosts {
@@ -717,37 +716,46 @@ func (m *ec2Manager) GetInstanceStatuses(ctx context.Context, hosts []host.Host)
 		hostsToCheck = append(hostsToCheck, hosts[i].Id)
 	}
 
-	// Get host statuses
-	if len(hostsToCheck) > 0 {
-		out, err := m.client.DescribeInstances(ctx, &ec2.DescribeInstancesInput{
-			InstanceIds: hostsToCheck,
-		})
-		if err != nil {
-			return nil, errors.Wrap(err, "describing instances")
-		}
-		if err = validateEc2DescribeInstancesOutput(out); err != nil {
-			return nil, errors.Wrap(err, "invalid describe instances response")
-		}
-		reservationsMap := map[string]types.Instance{}
-		for i := range out.Reservations {
-			reservationsMap[*out.Reservations[i].Instances[0].InstanceId] = out.Reservations[i].Instances[0]
-		}
-		for i := range hostsToCheck {
-			instance, ok := reservationsMap[hostsToCheck[i]]
-			if !ok {
-				hostToStatusMap[hostsToCheck[i]] = StatusNonExistent
-				continue
-			}
-			status := ec2StatusToEvergreenStatus(instance.State.Name)
-			if status == StatusRunning {
-				// cache instance information so we can make fewer calls to AWS's API
-				if err = cacheHostData(ctx, m.env, instanceIdToHostMap[hostsToCheck[i]], &instance, m.client); err != nil {
-					return nil, errors.Wrapf(err, "caching EC2 host data for host '%s'", hostsToCheck[i])
-				}
-			}
-			hostToStatusMap[instanceIdToHostMap[hostsToCheck[i]].Id] = status
-		}
+	if len(hostsToCheck) == 0 {
+		return map[string]CloudStatus{}, nil
 	}
+
+	out, err := m.client.DescribeInstances(ctx, &ec2.DescribeInstancesInput{
+		InstanceIds: hostsToCheck,
+	})
+	if err != nil {
+		return nil, errors.Wrap(err, "describing instances")
+	}
+	if err = validateEc2DescribeInstancesOutput(out); err != nil {
+		return nil, errors.Wrap(err, "invalid describe instances response")
+	}
+	reservationsMap := map[string]types.Instance{}
+	for i := range out.Reservations {
+		reservationsMap[*out.Reservations[i].Instances[0].InstanceId] = out.Reservations[i].Instances[0]
+	}
+	hostsToCache := make([]hostInstancePair, 0, len(hostsToCheck))
+	hostToStatusMap := map[string]CloudStatus{}
+	for i := range hostsToCheck {
+		instance, ok := reservationsMap[hostsToCheck[i]]
+		if !ok {
+			hostToStatusMap[hostsToCheck[i]] = StatusNonExistent
+			continue
+		}
+		status := ec2StatusToEvergreenStatus(instance.State.Name)
+		if status == StatusRunning {
+			hostsToCache = append(hostsToCache, hostInstancePair{
+				host:     instanceIdToHostMap[hostsToCheck[i]],
+				instance: &instance,
+			})
+		}
+		hostToStatusMap[instanceIdToHostMap[hostsToCheck[i]].Id] = status
+	}
+
+	// Cache instance information so we can make fewer calls to AWS's API.
+	grip.Error(message.WrapError(cacheAllHostData(ctx, m.env, m.client, hostsToCache), message.Fields{
+		"message":   "error bulk updating cached host data",
+		"num_hosts": len(hostsToCache),
+	}))
 
 	return hostToStatusMap, nil
 }
@@ -777,8 +785,12 @@ func (m *ec2Manager) GetInstanceStatus(ctx context.Context, h *host.Host) (Cloud
 	status = ec2StatusToEvergreenStatus(instance.State.Name)
 
 	if status == StatusRunning {
-		// cache instance information so we can make fewer calls to AWS's API
-		if err = cacheHostData(ctx, m.env, h, instance, m.client); err != nil {
+		// Cache instance information so we can make fewer calls to AWS's API.
+		pair := hostInstancePair{
+			host:     h,
+			instance: instance,
+		}
+		if err = cacheHostData(ctx, m.env, m.client, pair); err != nil {
 			return status, errors.Wrapf(err, "caching EC2 host data for host '%s'", h.Id)
 		}
 	}
@@ -1005,7 +1017,11 @@ func (m *ec2Manager) StartInstance(ctx context.Context, h *host.Host, user strin
 		return errors.Wrap(err, "checking if spawn host started")
 	}
 
-	if err = cacheHostData(ctx, m.env, h, instance, m.client); err != nil {
+	pair := hostInstancePair{
+		host:     h,
+		instance: instance,
+	}
+	if err = cacheHostData(ctx, m.env, m.client, pair); err != nil {
 		return errors.Wrapf(err, "cache EC2 host data for host '%s'", h.Id)
 	}
 

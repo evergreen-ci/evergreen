@@ -282,38 +282,46 @@ func validateUserDataSize(userData, distroID string) error {
 	return errors.WithStack(err)
 }
 
-// cacheHostData caches host information received from AWS about the instance.
-func cacheHostData(ctx context.Context, env evergreen.Environment, h *host.Host, instance *types.Instance, client AWSClient) error {
-	if instance.Placement == nil || instance.Placement.AvailabilityZone == nil {
-		return errors.New("instance missing availability zone")
-	}
-	if instance.LaunchTime == nil {
-		return errors.New("instance missing launch time")
-	}
-	if instance.PublicDnsName == nil {
-		return errors.New("instance missing public DNS name")
-	}
-	if instance.PrivateIpAddress == nil {
-		return errors.New("instance missing private IP address")
-	}
-	h.Zone = *instance.Placement.AvailabilityZone
-	h.StartTime = *instance.LaunchTime
-	h.Host = *instance.PublicDnsName
-	h.Volumes = makeVolumeAttachments(instance.BlockDeviceMappings)
-	h.IPv4 = *instance.PrivateIpAddress
+// hostInstancePair represents a host and its associated EC2 instance.
+type hostInstancePair struct {
+	host     *host.Host
+	instance *types.Instance
+}
 
-	if err := h.CacheHostData(ctx); err != nil {
-		return errors.Wrap(err, "updating host document in DB")
+func makeCloudProviderData(h *host.Host, instance *types.Instance) (*host.CloudProviderData, error) {
+	if err := validateInstanceDataToCache(instance); err != nil {
+		return nil, err
 	}
 
-	// set IPv6 address, if applicable
+	var ipv6 string
 	for _, networkInterface := range instance.NetworkInterfaces {
 		if len(networkInterface.Ipv6Addresses) > 0 {
-			if err := h.SetIPv6Address(ctx, *networkInterface.Ipv6Addresses[0].Ipv6Address); err != nil {
-				return errors.Wrap(err, "setting IPv6 address")
-			}
+			ipv6 = *networkInterface.Ipv6Addresses[0].Ipv6Address
 			break
 		}
+	}
+
+	return &host.CloudProviderData{
+		Zone:      utility.FromStringPtr(instance.Placement.AvailabilityZone),
+		StartedAt: utility.FromTimePtr(instance.LaunchTime),
+		PublicDNS: utility.FromStringPtr(instance.PublicDnsName),
+		Volumes:   makeVolumeAttachments(instance.BlockDeviceMappings),
+		IPv4:      utility.FromStringPtr(instance.PrivateIpAddress),
+		IPv6:      ipv6,
+	}, nil
+}
+
+// cacheHostData caches host information received from AWS about the instance.
+func cacheHostData(ctx context.Context, env evergreen.Environment, client AWSClient, pair hostInstancePair) error {
+	h := pair.host
+	instance := pair.instance
+	data, err := makeCloudProviderData(h, instance)
+	if err != nil {
+		return errors.Wrap(err, "making cloud provider data")
+	}
+
+	if err := h.CacheCloudProviderData(ctx, *data); err != nil {
+		return errors.Wrap(err, "updating host document in DB")
 	}
 
 	if h.NoExpiration {
@@ -327,6 +335,60 @@ func cacheHostData(ctx context.Context, env evergreen.Environment, h *host.Host,
 	}
 
 	return nil
+}
+
+// cacheAllHostData is the same as cacheHostData but optimized for updating many
+// hosts at once.
+// kim: TODO: add test
+func cacheAllHostData(ctx context.Context, env evergreen.Environment, client AWSClient, pairs []hostInstancePair) error {
+	catcher := grip.NewBasicCatcher()
+
+	hostsToCache := map[string]host.CloudProviderData{}
+	for _, hostAndInstance := range pairs {
+		h := hostAndInstance.host
+		instance := hostAndInstance.instance
+		data, err := makeCloudProviderData(h, instance)
+		if err != nil {
+			catcher.Wrapf(err, "making cloud provider data for host '%s'", h.Id)
+			continue
+		}
+
+		hostsToCache[h.Id] = *data
+
+		h.Zone = data.Zone
+		h.StartTime = data.StartedAt
+		h.Host = data.PublicDNS
+		h.IPv4 = data.IPv4
+		h.IP = data.IPv6
+		h.Volumes = data.Volumes
+
+		if h.NoExpiration {
+			// This is not a bulk operation for convenience because it's assumed
+			// that the number of unexpirable hosts is small.
+			grip.Error(message.WrapError(setHostPersistentDNSName(ctx, env, h, utility.FromStringPtr(instance.PublicIpAddress), client), message.Fields{
+				"message":    "could not update host's persistent DNS name",
+				"op":         "upsert",
+				"dashboard":  "evergreen sleep schedule health",
+				"host_id":    h.Id,
+				"started_by": h.StartedBy,
+			}))
+		}
+	}
+
+	catcher.Wrap(host.CacheManyHostsCloudProviderData(ctx, env, hostsToCache), "bulk caching host data")
+
+	return catcher.Resolve()
+}
+
+// validateInstanceDataToCache checks that all the required instance data is
+// present to cache it in the host.
+func validateInstanceDataToCache(instance *types.Instance) error {
+	catcher := grip.NewBasicCatcher()
+	catcher.ErrorfWhen(instance.Placement == nil || instance.Placement.AvailabilityZone == nil, "instance missing availability zone")
+	catcher.ErrorfWhen(instance.LaunchTime == nil, "instance missing launch time")
+	catcher.ErrorfWhen(instance.PublicDnsName == nil, "instance missing public DNS name")
+	catcher.ErrorfWhen(instance.PrivateIpAddress == nil, "instance missing private IP address")
+	return catcher.Resolve()
 }
 
 // persistentDNSRecordTTLSecs is the number of seconds that a DNS record can be

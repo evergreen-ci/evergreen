@@ -192,19 +192,24 @@ func (m *ec2FleetManager) GetInstanceStatuses(ctx context.Context, hosts []host.
 		statuses[instanceID] = status
 	}
 
-	for _, h := range hosts {
+	hostsToCache := make([]hostInstancePair, 0, len(hosts))
+	for i := range hosts {
+		h := hosts[i]
 		status, ok := statuses[h.Id]
 		if !ok {
 			statuses[h.Id] = StatusNonExistent
 		}
 		if status == StatusRunning {
-			// cache instance information so we can make fewer calls to AWS's API
-			grip.Error(message.WrapError(cacheHostData(ctx, m.env, &h, instanceMap[h.Id], m.client), message.Fields{
-				"message": "can't update host cached data",
-				"host_id": h.Id,
-			}))
+			pair := hostInstancePair{host: &h, instance: instanceMap[h.Id]}
+			hostsToCache = append(hostsToCache, pair)
 		}
 	}
+
+	// Cache instance information so we can make fewer calls to AWS's API.
+	grip.Error(message.WrapError(cacheAllHostData(ctx, m.env, m.client, hostsToCache), message.Fields{
+		"message":   "error bulk updating cached host data",
+		"num_hosts": len(hostsToCache),
+	}))
 
 	return statuses, nil
 }
@@ -236,8 +241,12 @@ func (m *ec2FleetManager) GetInstanceStatus(ctx context.Context, h *host.Host) (
 	}
 	status = ec2StatusToEvergreenStatus(instance.State.Name)
 	if status == StatusRunning {
-		// cache instance information so we can make fewer calls to AWS's API
-		grip.Error(message.WrapError(cacheHostData(ctx, m.env, h, instance, m.client), message.Fields{
+		// Cache instance information so we can make fewer calls to AWS's API.
+		pair := hostInstancePair{
+			host:     h,
+			instance: instance,
+		}
+		grip.Error(message.WrapError(cacheHostData(ctx, m.env, m.client, pair), message.Fields{
 			"message": "can't update host cached data",
 			"host_id": h.Id,
 		}))
