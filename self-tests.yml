@@ -767,8 +767,8 @@ tasks:
 task_groups:
   - name: dist-and-upload-clis
     max_hosts: 1
-    setup_group_can_fail_task: true
-    setup_group:
+    setup_task_can_fail_task: true
+    setup_task:
       - func: assume-role
     tasks:
       - dist
