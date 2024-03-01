@@ -1493,7 +1493,7 @@ func (h *checkRunHandler) Run(ctx context.Context) gimlet.Responder {
 	//todo: if it's the second execution of the same task, we should
 	// update the checkrun instead of creating a new one
 	gh := p.GithubPatchData
-	checkRun, err := thirdparty.CreateCheckRun(ctx, gh.HeadOwner, gh.HeadRepo, *h.checkRunOutput.Title, gh.HeadHash, &h.checkRunOutput)
+	checkRun, err := thirdparty.CreateCheckRun(ctx, gh.HeadOwner, gh.HeadRepo, gh.HeadHash, h.settings.Ui.Url, t, &h.checkRunOutput)
 
 	if err != nil {
 		errorMessage := fmt.Sprintf("creating checkRun for task: %s", t.Id)
