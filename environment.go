@@ -575,6 +575,8 @@ func (e *envState) getPreferredRemoteQueueIndexes() queue.PreferredIndexOptions 
 }
 
 func (e *envState) getNamedRemoteQueueOptions(client *mongo.Client) (map[string]queue.MongoDBQueueOptions, []queue.RegexpMongoDBQueueOptions, error) {
+	// kim: TODO: copy named queue group options for spawnhost modify from
+	// staging over to prod.
 	perQueueOpts := map[string]queue.MongoDBQueueOptions{}
 	var regexpQueueOpts []queue.RegexpMongoDBQueueOptions
 	for _, namedQueue := range e.settings.Amboy.NamedQueues {

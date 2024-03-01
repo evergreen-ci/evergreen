@@ -35,6 +35,7 @@ const (
 	podAllocationQueueGroup         = "service.pod.allocate"
 	podDefinitionCreationQueueGroup = "service.pod.definition.create"
 	podCreationQueueGroup           = "service.pod.create"
+	spawnHostModificationQueueGroup = "service.spawnhost.modify"
 )
 
 type cronJobFactory func(context.Context, time.Time) ([]amboy.Job, error)

@@ -83,3 +83,12 @@ func EnqueueHostReprovisioningJob(ctx context.Context, env evergreen.Environment
 
 	return nil
 }
+
+func EnqueueSpawnHostModificationJob(ctx context.Context, env evergreen.Environment, j amboy.Job) error {
+	queueCtx, _ := env.Context()
+	q, err := env.RemoteQueueGroup().Get(queueCtx, spawnHostModificationQueueGroup)
+	if err != nil {
+		return errors.Wrap(err, "getting spawn host modification queue")
+	}
+	return amboy.EnqueueUniqueJob(ctx, q, j)
+}

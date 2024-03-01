@@ -886,6 +886,7 @@ func (m *ec2Manager) TerminateInstance(ctx context.Context, h *host.Host, user, 
 
 // StopInstance stops a running EC2 instance.
 func (m *ec2Manager) StopInstance(ctx context.Context, h *host.Host, user string) error {
+	// kim: TODO: remove status checks
 	if h.Status == evergreen.HostStopped {
 		return errors.Errorf("cannot stop host '%s' because it is already marked as stopped", h.Id)
 	} else if h.Status != evergreen.HostRunning && h.Status != evergreen.HostStopping {
@@ -897,6 +898,8 @@ func (m *ec2Manager) StopInstance(ctx context.Context, h *host.Host, user string
 	}
 	defer m.client.Close()
 
+	// kim: NOTE: this is already idempotent, so the status check above is not
+	// needed.
 	out, err := m.client.StopInstances(ctx, &ec2.StopInstancesInput{
 		InstanceIds: []string{h.Id},
 	})
@@ -965,6 +968,7 @@ func (m *ec2Manager) StopInstance(ctx context.Context, h *host.Host, user string
 
 // StartInstance starts a stopped EC2 instance.
 func (m *ec2Manager) StartInstance(ctx context.Context, h *host.Host, user string) error {
+	// kim: TODO: remove status check
 	if h.Status != evergreen.HostStopped {
 		return errors.Errorf("cannot start host '%s' because its status is '%s'", h.Id, h.Status)
 	}
@@ -974,6 +978,8 @@ func (m *ec2Manager) StartInstance(ctx context.Context, h *host.Host, user strin
 	}
 	defer m.client.Close()
 
+	// kim: NOTE: this is already idempotent, so the status check above is not
+	// needed.
 	_, err := m.client.StartInstances(ctx, &ec2.StartInstancesInput{
 		InstanceIds: []string{h.Id},
 	})
