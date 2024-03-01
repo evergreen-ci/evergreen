@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"io"
 	"net/http"
+	"net/url"
 	"strconv"
 	"strings"
 	"time"
@@ -14,6 +15,7 @@ import (
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/model/cache"
 	"github.com/evergreen-ci/evergreen/model/commitqueue"
+	"github.com/evergreen-ci/evergreen/model/task"
 	"github.com/evergreen-ci/utility"
 	"github.com/google/go-github/v52/github"
 	"github.com/gregjones/httpcache"
@@ -79,6 +81,13 @@ const (
 	githubPRHasHooks = "has_hooks"
 	githubPRUnknown  = "unknown"
 	githubPRUnstable = "unstable"
+
+	githubCheckRunSuccess        = "success"
+	githubCheckRunFailure        = "failure"
+	githubCheckRunSkipped        = "skipped"
+	githubCheckRunTimedOut       = "timed_out"
+	githubCheckRunActionRequired = "action_required"
+	githubCheckRunCompleted      = "completed"
 )
 
 var (
@@ -1938,8 +1947,31 @@ func GetBranchProtectionRules(ctx context.Context, token, owner, repo, branch st
 	return nil, nil
 }
 
+func getCheckRunConclusion(status string) string {
+	switch status {
+	case evergreen.TaskSucceeded:
+		return githubCheckRunSuccess
+	case evergreen.TaskAborted:
+		return githubCheckRunSkipped
+	case evergreen.TaskFailed:
+		return githubCheckRunActionRequired
+	case evergreen.TaskTimedOut:
+		return githubCheckRunTimedOut
+	default:
+		return githubCheckRunFailure
+	}
+}
+
+func makeTaskLink(uiBase string, taskID string, execution int) string {
+	return fmt.Sprintf("%s/task/%s/%d?redirect_spruce_users=true", uiBase, url.PathEscape(taskID), execution)
+}
+
+func makeCheckRunName(task *task.Task) string {
+	return fmt.Sprintf("%s/%s", task.BuildVariantDisplayName, task.DisplayName)
+}
+
 // CreateCheckRun creates a checkRun and returns a Github CheckRun object
-func CreateCheckRun(ctx context.Context, owner, repo, name, headSHA string, output *github.CheckRunOutput) (*github.CheckRun, error) {
+func CreateCheckRun(ctx context.Context, owner, repo, headSHA, uiBase string, task *task.Task, output *github.CheckRunOutput) (*github.CheckRun, error) {
 	caller := "createCheckrun"
 	ctx, span := tracer.Start(ctx, caller, trace.WithAttributes(
 		attribute.String(githubEndpointAttribute, caller),
@@ -1956,9 +1988,15 @@ func CreateCheckRun(ctx context.Context, owner, repo, name, headSHA string, outp
 	githubClient := getGithubClient(token, caller, retryConfig{retry: true})
 
 	opts := github.CreateCheckRunOptions{
-		Output:  output,
-		Name:    name,
-		HeadSHA: headSHA,
+		Output:      output,
+		Name:        makeCheckRunName(task),
+		HeadSHA:     headSHA,
+		ExternalID:  utility.ToStringPtr(task.Id),
+		StartedAt:   &github.Timestamp{Time: task.StartTime},
+		CompletedAt: &github.Timestamp{Time: task.FinishTime},
+		Status:      utility.ToStringPtr(githubCheckRunCompleted),
+		Conclusion:  utility.ToStringPtr(getCheckRunConclusion(task.Status)),
+		DetailsURL:  utility.ToStringPtr(makeTaskLink(uiBase, task.Id, task.Execution)),
 	}
 
 	checkRun, resp, err := githubClient.Checks.CreateCheckRun(ctx, owner, repo, opts)
