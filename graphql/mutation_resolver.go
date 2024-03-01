@@ -566,8 +566,8 @@ func (r *mutationResolver) CreateProject(ctx context.Context, project restModel.
 	}
 
 	if utility.FromBoolPtr(requestS3Creds) {
-		if err = data.RequestS3Creds(ctx, *apiProjectRef.Identifier, u.EmailAddress); err != nil {
-			return nil, InternalServerError.Send(ctx, fmt.Sprintf("error creating jira ticket to request S3 credentials: %s", err.Error()))
+		if err = logRequestS3Creds(utility.FromStringPtr(apiProjectRef.Identifier), u.EmailAddress); err != nil {
+			return nil, InternalServerError.Send(ctx, fmt.Sprintf("error requesting S3 credentials: %s", err.Error()))
 		}
 	}
 	return &apiProjectRef, nil
@@ -595,8 +595,8 @@ func (r *mutationResolver) CopyProject(ctx context.Context, project data.CopyPro
 	}
 	if utility.FromBoolPtr(requestS3Creds) {
 		usr := mustHaveUser(ctx)
-		if err = data.RequestS3Creds(ctx, *projectRef.Identifier, usr.EmailAddress); err != nil {
-			return nil, InternalServerError.Send(ctx, fmt.Sprintf("error creating jira ticket to request AWS access: %s", err.Error()))
+		if err = logRequestS3Creds(utility.FromStringPtr(projectRef.Identifier), usr.EmailAddress); err != nil {
+			return nil, InternalServerError.Send(ctx, fmt.Sprintf("error requesting S3 credentials: %s", err.Error()))
 		}
 	}
 	return projectRef, nil

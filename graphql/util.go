@@ -1223,3 +1223,18 @@ func collapseCommit(ctx context.Context, mainlineCommits MainlineCommits, mainli
 		mainlineCommitVersion.RolledUpVersions = []*restModel.APIVersion{&apiVersion}
 	}
 }
+
+// logRequestS3Creds lots that S3 credentials need to be added for the specified project; currently
+// Splunk creates a JIRA ticket based on this information.
+func logRequestS3Creds(projectIdentifier, userEmail string) error {
+	if projectIdentifier == "" {
+		return errors.New("project identifier cannot be empty")
+	}
+
+	grip.Info(message.Fields{
+		"message":            "s3 credentials needed for project",
+		"project_identifier": projectIdentifier,
+		"user_email":         userEmail,
+	})
+	return nil
+}

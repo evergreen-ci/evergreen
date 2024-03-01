@@ -11,8 +11,6 @@ import (
 	"github.com/evergreen-ci/evergreen/cloud"
 	mgobson "github.com/evergreen-ci/evergreen/db/mgo/bson"
 	"github.com/evergreen-ci/evergreen/model"
-	"github.com/evergreen-ci/evergreen/model/event"
-	"github.com/evergreen-ci/evergreen/model/notification"
 	"github.com/evergreen-ci/evergreen/model/patch"
 	"github.com/evergreen-ci/evergreen/model/user"
 	restModel "github.com/evergreen-ci/evergreen/rest/model"
@@ -52,47 +50,6 @@ func FindProjectById(id string, includeRepo bool, includeProjectConfig bool) (*m
 		}
 	}
 	return p, nil
-}
-
-// RequestS3Creds creates a JIRA ticket that requests S3 credentials to be added for the specified project.
-// TODO PM-3212: Remove the function after project completion.
-func RequestS3Creds(ctx context.Context, projectIdentifier, userEmail string) error {
-	if projectIdentifier == "" {
-		return errors.New("project identifier cannot be empty")
-	}
-	settings, err := evergreen.GetConfig(ctx)
-	if err != nil {
-		return errors.Wrap(err, "getting evergreen settings")
-	}
-	if settings.ProjectCreation.JiraProject == "" {
-		return nil
-	}
-	summary := fmt.Sprintf("Create AWS key for s3 uploads for '%s' project", projectIdentifier)
-	description := fmt.Sprintf("Could you create an s3 key for the new [%s|%s/project/%s/settings/general] project?", projectIdentifier, settings.Ui.UIv2Url, projectIdentifier)
-	jiraIssue := message.JiraIssue{
-		Project:     settings.ProjectCreation.JiraProject,
-		Summary:     summary,
-		Description: description,
-		Components:  []string{"Access"},
-		Reporter:    userEmail,
-	}
-	sub := event.Subscriber{
-		Type: event.JIRAIssueSubscriberType,
-		Target: event.JIRAIssueSubscriber{
-			Project:   settings.ProjectCreation.JiraProject,
-			IssueType: "Task",
-		},
-	}
-	n, err := notification.New("", utility.RandomString(), &sub, jiraIssue)
-	if err != nil {
-		return err
-	}
-
-	err = notification.InsertMany(*n)
-	if err != nil {
-		return errors.Wrap(err, "batch inserting notifications")
-	}
-	return nil
 }
 
 // CreateProject creates a new project ref from the given one and performs other

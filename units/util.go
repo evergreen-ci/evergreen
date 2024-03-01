@@ -2,6 +2,7 @@ package units
 
 import (
 	"context"
+	"fmt"
 	"time"
 
 	"github.com/evergreen-ci/evergreen"
@@ -10,6 +11,7 @@ import (
 	"github.com/evergreen-ci/utility"
 	"github.com/mongodb/amboy"
 	"github.com/mongodb/grip"
+	"github.com/mongodb/grip/message"
 	"github.com/pkg/errors"
 )
 
@@ -51,9 +53,18 @@ func DisableAndNotifyPoisonedHost(ctx context.Context, env evergreen.Environment
 		return errors.Wrap(err, "disabling poisoned host")
 	}
 
-	if err = amboy.EnqueueUniqueJob(ctx, env.RemoteQueue(), NewDecoHostNotifyJob(env, h, nil, reason)); err != nil {
-		return errors.Wrap(err, "enqueueing decohost notify job")
-	}
+	hostUptime := time.Since(h.CreationTime)
+	grip.Error(message.Fields{
+		"operation":   "disabling poisoned host",
+		"message":     reason,
+		"distro":      h.Distro.Id,
+		"provider":    h.Provider,
+		"host":        h.Id,
+		"uptime_secs": hostUptime.Seconds(),
+		"uptime_span": hostUptime.String(),
+		"host_id":     h.Id,
+		"target":      fmt.Sprintf("%s@%s", h.Distro.User, h.Host),
+	})
 
 	return model.ClearAndResetStrandedHostTask(ctx, env.Settings(), h)
 }
