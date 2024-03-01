@@ -102,7 +102,7 @@ func TestHostPostHandler(t *testing.T) {
 	assert.Empty(h1.InstanceType)
 
 	h.options.InstanceTags = []host.Tag{
-		host.Tag{
+		{
 			Key:           "ssh-rsa YWJjZDEyMzQK",
 			Value:         "value",
 			CanBeModified: true,
@@ -113,7 +113,7 @@ func TestHostPostHandler(t *testing.T) {
 	assert.Equal(http.StatusOK, resp.Status())
 
 	h2 := resp.Data().(*model.APIHost)
-	assert.Equal([]host.Tag{host.Tag{Key: "ssh-rsa YWJjZDEyMzQK", Value: "value", CanBeModified: true}}, h2.InstanceTags)
+	assert.Equal([]host.Tag{{Key: "ssh-rsa YWJjZDEyMzQK", Value: "value", CanBeModified: true}}, h2.InstanceTags)
 	assert.Empty(h2.InstanceType)
 
 	d.Provider = evergreen.ProviderNameMock
@@ -129,112 +129,203 @@ func TestHostPostHandler(t *testing.T) {
 	assert.Equal("test_instance_type", *h3.InstanceType)
 }
 
-func TestHostStopHandler(t *testing.T) {
-	require.NoError(t, db.ClearCollections(host.Collection, event.SubscriptionsCollection))
-	defer func() {
-		assert.NoError(t, db.ClearCollections(host.Collection, event.SubscriptionsCollection))
-	}()
+func TestHostModifyHandlers(t *testing.T) {
 	testutil.DisablePermissionsForTests()
 	defer testutil.EnablePermissionsForTests()
-	ctx, cancel := context.WithCancel(context.Background())
-	defer cancel()
-	h := &hostStopHandler{
-		env: testutil.NewEnvironment(ctx, t),
-	}
-	ctx = gimlet.AttachUser(ctx, &user.DBUser{Id: "user"})
 
-	hosts := []host.Host{
-		host.Host{
-			Id:     "host-stopped",
-			Status: evergreen.HostStopped,
-		},
-		host.Host{
-			Id:     "host-stopping",
-			Status: evergreen.HostStopping,
-		},
-		host.Host{
-			Id:     "host-provisioning",
-			Status: evergreen.HostProvisioning,
-		},
-		host.Host{
-			Id:     "host-running",
-			Status: evergreen.HostRunning,
-		},
-	}
-	for _, hostToAdd := range hosts {
-		assert.NoError(t, hostToAdd.Insert(ctx))
-	}
-
-	h.hostID = hosts[0].Id
-	resp := h.Run(ctx)
-	assert.NotNil(t, resp)
-	assert.Equal(t, http.StatusBadRequest, resp.Status())
-
-	h.hostID = hosts[1].Id
-	resp = h.Run(ctx)
-	require.NotZero(t, resp)
-	assert.Equal(t, http.StatusOK, resp.Status())
-
-	h.hostID = hosts[2].Id
-	resp = h.Run(ctx)
-	assert.NotNil(t, resp)
-	assert.Equal(t, http.StatusBadRequest, resp.Status())
-
-	h.hostID = hosts[3].Id
-	h.subscriptionType = event.SlackSubscriberType
-	resp = h.Run(ctx)
-	assert.NotNil(t, resp)
-	assert.Equal(t, http.StatusOK, resp.Status())
-
-	subscriptions, err := data.GetSubscriptions("user", event.OwnerTypePerson)
-	assert.NoError(t, err)
-	assert.Len(t, subscriptions, 1)
-}
-
-func TestHostStartHandler(t *testing.T) {
-	require.NoError(t, db.ClearCollections(host.Collection, host.VolumesCollection, event.SubscriptionsCollection))
 	defer func() {
 		assert.NoError(t, db.ClearCollections(host.Collection, host.VolumesCollection, event.SubscriptionsCollection))
 	}()
-	testutil.DisablePermissionsForTests()
-	defer testutil.EnablePermissionsForTests()
-	ctx, cancel := context.WithCancel(context.Background())
-	defer cancel()
-	h := &hostStartHandler{
-		env: testutil.NewEnvironment(ctx, t),
-	}
-	ctx = gimlet.AttachUser(ctx, &user.DBUser{Id: "user"})
 
-	hosts := []host.Host{
-		host.Host{
-			Id:       "host-running",
-			Status:   evergreen.HostRunning,
-			UserHost: true,
+	checkSubscriptions := func(t *testing.T, userID string, numSubs int) {
+		subscriptions, err := data.GetSubscriptions("user", event.OwnerTypePerson)
+		assert.NoError(t, err)
+		assert.Len(t, subscriptions, numSubs)
+	}
+	checkSpawnHostModifyQueueGroup := func(ctx context.Context, t *testing.T, env *mock.Environment, numQueues int) {
+		qg := env.RemoteQueueGroup()
+		assert.Len(t, qg.Len(), numQueues)
+	}
+
+	for tName, tCase := range map[string]func(ctx context.Context, t *testing.T, env *mock.Environment, hosts []host.Host){
+		"StopHandlerEnqueuesStopJobForRunningHost": func(ctx context.Context, t *testing.T, env *mock.Environment, hosts []host.Host) {
+			rh := &hostStopHandler{
+				env:              env,
+				subscriptionType: event.SlackSubscriberType,
+			}
+			hostID := hosts[3].Id
+
+			rh.hostID = hostID
+			resp := rh.Run(ctx)
+			require.NotZero(t, resp)
+			assert.Equal(t, http.StatusOK, resp.Status())
+
+			checkSubscriptions(t, "user", 1)
+			checkSpawnHostModifyQueueGroup(ctx, t, env, 1)
 		},
-		host.Host{
-			Id:       "host-stopped",
-			UserHost: true,
-			Status:   evergreen.HostStopped,
+		"StopHandlerEnqueuesStopJobForStoppingHost": func(ctx context.Context, t *testing.T, env *mock.Environment, hosts []host.Host) {
+			rh := &hostStopHandler{
+				env:              env,
+				subscriptionType: event.SlackSubscriberType,
+			}
+			hostID := hosts[1].Id
+
+			rh.hostID = hostID
+			resp := rh.Run(ctx)
+			require.NotZero(t, resp)
+			assert.Equal(t, http.StatusOK, resp.Status())
+
+			checkSubscriptions(t, "user", 1)
+			checkSpawnHostModifyQueueGroup(ctx, t, env, 1)
 		},
+		"StopHandlerNoopsForAlreadyStoppedHost": func(ctx context.Context, t *testing.T, env *mock.Environment, hosts []host.Host) {
+			rh := &hostStopHandler{
+				env:              env,
+				subscriptionType: event.SlackSubscriberType,
+			}
+			hostID := hosts[0].Id
+
+			rh.hostID = hostID
+			resp := rh.Run(ctx)
+			assert.NotNil(t, resp)
+			assert.Equal(t, http.StatusOK, resp.Status())
+
+			checkSpawnHostModifyQueueGroup(ctx, t, env, 0)
+		},
+		"StopHandlerErrorsForNonstoppableHostStatus": func(ctx context.Context, t *testing.T, env *mock.Environment, hosts []host.Host) {
+			rh := &hostStopHandler{
+				env:              env,
+				subscriptionType: event.SlackSubscriberType,
+			}
+			hostID := hosts[2].Id
+
+			rh.hostID = hostID
+			resp := rh.Run(ctx)
+			require.NotZero(t, resp)
+			assert.Equal(t, http.StatusBadRequest, resp.Status())
+
+			checkSubscriptions(t, "user", 0)
+			checkSpawnHostModifyQueueGroup(ctx, t, env, 0)
+		},
+		"StartHandlerEnqueuesStartJobForStoppedHost": func(ctx context.Context, t *testing.T, env *mock.Environment, hosts []host.Host) {
+			rh := &hostStartHandler{
+				env:              env,
+				subscriptionType: event.SlackSubscriberType,
+			}
+			hostID := hosts[0].Id
+
+			rh.hostID = hostID
+			resp := rh.Run(ctx)
+			require.NotZero(t, resp)
+			assert.Equal(t, http.StatusOK, resp.Status())
+
+			checkSubscriptions(t, "user", 1)
+			checkSpawnHostModifyQueueGroup(ctx, t, env, 1)
+		},
+		"StartHandlerEnqueuesStartJobForStoppingHost": func(ctx context.Context, t *testing.T, env *mock.Environment, hosts []host.Host) {
+			rh := &hostStartHandler{
+				env:              env,
+				subscriptionType: event.SlackSubscriberType,
+			}
+			hostID := hosts[1].Id
+
+			rh.hostID = hostID
+			resp := rh.Run(ctx)
+			require.NotZero(t, resp)
+			assert.Equal(t, http.StatusOK, resp.Status())
+
+			checkSubscriptions(t, "user", 1)
+			checkSpawnHostModifyQueueGroup(ctx, t, env, 1)
+		},
+		"StartHandlerErrorsForNonstartableHostStatus": func(ctx context.Context, t *testing.T, env *mock.Environment, hosts []host.Host) {
+			rh := &hostStartHandler{
+				env:              env,
+				subscriptionType: event.SlackSubscriberType,
+			}
+			hostID := hosts[2].Id
+
+			rh.hostID = hostID
+			resp := rh.Run(ctx)
+			require.NotZero(t, resp)
+			assert.Equal(t, http.StatusBadRequest, resp.Status())
+
+			checkSubscriptions(t, "user", 0)
+			checkSpawnHostModifyQueueGroup(ctx, t, env, 0)
+		},
+		"StartHandlerNoopsForAlreadyRunningHost": func(ctx context.Context, t *testing.T, env *mock.Environment, hosts []host.Host) {
+			rh := &hostStartHandler{
+				env:              env,
+				subscriptionType: event.SlackSubscriberType,
+			}
+			hostID := hosts[3].Id
+
+			rh.hostID = hostID
+			resp := rh.Run(ctx)
+			require.NotZero(t, resp)
+			assert.Equal(t, http.StatusOK, resp.Status())
+
+			checkSpawnHostModifyQueueGroup(ctx, t, env, 0)
+		},
+		"ModifyHandlerModifiesHost": func(ctx context.Context, t *testing.T, env *mock.Environment, hosts []host.Host) {
+			rh := &hostModifyHandler{
+				env: env,
+				options: &host.HostModifyOptions{
+					AddHours: 10 * time.Hour,
+				},
+			}
+			hostID := hosts[3].Id
+
+			rh.hostID = hostID
+			resp := rh.Run(ctx)
+			require.NotZero(t, resp)
+			assert.Equal(t, http.StatusOK, resp.Status())
+
+			checkSpawnHostModifyQueueGroup(ctx, t, env, 1)
+		},
+	} {
+		t.Run(tName, func(t *testing.T) {
+			require.NoError(t, db.ClearCollections(host.Collection, host.VolumesCollection, event.SubscriptionsCollection))
+
+			ctx, cancel := context.WithCancel(context.Background())
+			defer cancel()
+			ctx = gimlet.AttachUser(ctx, &user.DBUser{Id: "user"})
+
+			env := &mock.Environment{}
+			require.NoError(t, env.Configure(ctx))
+
+			hosts := []host.Host{
+				{
+					Id:       "host-stopped",
+					Status:   evergreen.HostStopped,
+					Provider: evergreen.ProviderNameMock,
+					Distro:   distro.Distro{Id: "distro", Provider: evergreen.ProviderNameMock},
+				},
+				{
+					Id:       "host-stopping",
+					Status:   evergreen.HostStopping,
+					Provider: evergreen.ProviderNameMock,
+					Distro:   distro.Distro{Id: "distro", Provider: evergreen.ProviderNameMock},
+				},
+				{
+					Id:       "host-provisioning",
+					Status:   evergreen.HostProvisioning,
+					Provider: evergreen.ProviderNameMock,
+					Distro:   distro.Distro{Id: "distro", Provider: evergreen.ProviderNameMock},
+				},
+				{
+					Id:       "host-running",
+					Status:   evergreen.HostRunning,
+					Provider: evergreen.ProviderNameMock,
+					Distro:   distro.Distro{Id: "distro", Provider: evergreen.ProviderNameMock},
+				},
+			}
+			for _, hostToAdd := range hosts {
+				assert.NoError(t, hostToAdd.Insert(ctx))
+			}
+
+			tCase(ctx, t, env, hosts)
+		})
 	}
-	for _, hostToAdd := range hosts {
-		assert.NoError(t, hostToAdd.Insert(ctx))
-	}
-
-	h.hostID = "host-running"
-	resp := h.Run(ctx)
-	require.NotNil(t, resp)
-	assert.Equal(t, http.StatusBadRequest, resp.Status())
-
-	h.hostID = "host-stopped"
-	h.subscriptionType = event.SlackSubscriberType
-	resp = h.Run(ctx)
-	require.NotNil(t, resp)
-	assert.Equal(t, http.StatusOK, resp.Status())
-
-	subscriptions, err := data.GetSubscriptions("user", event.OwnerTypePerson)
-	assert.NoError(t, err)
-	assert.Len(t, subscriptions, 1)
 }
 
 func TestCreateVolumeHandler(t *testing.T) {
@@ -322,13 +413,13 @@ func TestAttachVolumeHandler(t *testing.T) {
 	}
 	ctx = gimlet.AttachUser(ctx, &user.DBUser{Id: "user"})
 	hosts := []host.Host{
-		host.Host{
+		{
 			Id:        "my-host",
 			Status:    evergreen.HostRunning,
 			StartedBy: "user",
 			Zone:      "us-east-1c",
 		},
-		host.Host{
+		{
 			Id: "different-host",
 		},
 	}
@@ -383,7 +474,7 @@ func TestDetachVolumeHandler(t *testing.T) {
 	}
 	ctx = gimlet.AttachUser(ctx, &user.DBUser{Id: "user"})
 	hosts := []host.Host{
-		host.Host{
+		{
 			Id:        "my-host",
 			StartedBy: "user",
 			Status:    evergreen.HostRunning,
