@@ -5,33 +5,37 @@ ignore:
   - "*.mdx"
   - ".github/*" # github CODEOWNERS configuration
 
+pre_error_fails_task: true
+pre:
+  - func: assume-role
+
 post:
   - func: attach-test-results
   - command: s3.put
     display_name: Upload smoke test's app server logs to S3
     type: system
     params:
-      aws_key: ${aws_key}
-      aws_secret: ${aws_secret}
+      aws_key: ${AWS_ACCESS_KEY_ID}
+      aws_secret: ${AWS_SECRET_ACCESS_KEY}
+      aws_session_token: ${AWS_SESSION_TOKEN}
       local_file: evergreen/app_server.log
       remote_file: evergreen/${task_id}/app_server.log
       bucket: mciuploads
       content_type: text/plain
       permissions: private
-      visibility: signed
       display_name: Evergreen smoke test application server logs
   - command: s3.put
     display_name: Upload smoke test agent logs to S3
     type: system
     params:
-      aws_key: ${aws_key}
-      aws_secret: ${aws_secret}
+      aws_key: ${AWS_ACCESS_KEY_ID}
+      aws_secret: ${AWS_SECRET_ACCESS_KEY}
+      aws_session_token: ${AWS_SESSION_TOKEN}
       local_files_include_filter: evergreen/smoke*.log
       remote_file: evergreen/${task_id}/
       bucket: mciuploads
       content_type: text/plain
       permissions: private
-      visibility: signed
       display_name: (Evergreen smoke test agent logs)
 
 #######################################
@@ -50,8 +54,9 @@ variables:
         type: system
         params:
           optional: true
-          aws_key: ${aws_key}
-          aws_secret: ${aws_secret}
+          aws_key: ${AWS_ACCESS_KEY_ID}
+          aws_secret: ${AWS_SECRET_ACCESS_KEY}
+          aws_session_token: ${AWS_SESSION_TOKEN}
           local_file: evergreen/bin/dist.tar.gz
           remote_file: evergreen/${build_id}-${build_variant}/evergreen-${task_name}-${revision}.tar.gz
           bucket: mciuploads
@@ -111,6 +116,7 @@ variables:
           timeout_secs: 900
       - func: get-project-and-modules
       - func: setup-mongodb
+      - func: setup-credentials
       - func: run-make
         vars: { target: "load-smoke-data" }
       - command: subprocess.exec
@@ -140,8 +146,9 @@ variables:
       - command: s3.put
         type: system
         params:
-          aws_key: ${aws_key}
-          aws_secret: ${aws_secret}
+          aws_key: ${AWS_ACCESS_KEY_ID}
+          aws_secret: ${AWS_SECRET_ACCESS_KEY}
+          aws_session_token: ${AWS_SESSION_TOKEN}
           local_file: evergreen/bin/generate-lint.json
           remote_file: evergreen/${build_id}-${build_variant}/bin/generate-lint.json
           bucket: mciuploads
@@ -161,8 +168,9 @@ variables:
         vars: { target: "${task_name}" }
       - command: s3.put
         params:
-          aws_key: ${aws_key}
-          aws_secret: ${aws_secret}
+          aws_key: ${AWS_ACCESS_KEY_ID}
+          aws_secret: ${AWS_SECRET_ACCESS_KEY}
+          aws_session_token: ${AWS_SESSION_TOKEN}
           local_files_include_filter_prefix: evergreen/clients
           local_files_include_filter: "*_*/evergreen*"
           remote_file: evergreen/clients/${version_id}/
@@ -196,6 +204,13 @@ functions:
             make mod-tidy;
             [[ $? -eq 0 ]] && break;
           done
+
+  assume-role:
+    - command: ec2.assume_role
+      type: setup
+      params:
+        role_arn: ${assume_role_arn}
+
   run-make:
     command: subprocess.exec
     params:
@@ -204,6 +219,9 @@ functions:
       args: ["${make_args|}", "${target}"]
       include_expansions_in_env:
         - GOROOT
+        - AWS_ACCESS_KEY_ID
+        - AWS_SECRET_ACCESS_KEY
+        - AWS_SESSION_TOKEN
         - MONGO_CREDS_FILE
         - RUN_TEST
         - RUN_EC2_SPECIFIC_TESTS
@@ -219,8 +237,6 @@ functions:
         - project_id
         - distro_id
       env:
-        AWS_KEY: ${aws_key}
-        AWS_SECRET: ${aws_secret}
         DEBUG_ENABLED: ${debug}
         DOCKER_HOST: ${docker_host}
         EVERGREEN_ALL: "true"
@@ -244,9 +260,6 @@ functions:
         OTEL_COLLECTOR_ENDPOINT: ${otel_collector_endpoint}
         OTEL_TRACE_ID: ${otel_trace_id}
         OTEL_PARENT_ID: ${otel_parent_id}
-        AWS_ACCESS_KEY_ID: ${AWS_ACCESS_KEY_ID}
-        AWS_SECRET_ACCESS_KEY: ${AWS_SECRET_ACCESS_KEY}
-        AWS_SESSION_TOKEN: ${AWS_SESSION_TOKEN}
 
   setup-credentials:
     - command: ec2.assume_role
@@ -264,8 +277,6 @@ functions:
           GITHUB_APP_KEY: ${staging_github_app_key}
           JIRA_SERVER: ${jiraserver}
           CROWD_SERVER: ${crowdserver}
-          AWS_KEY: ${aws_key}
-          AWS_SECRET: ${aws_secret}
           PARSER_PROJECT_S3_PREFIX: ${task_id}/parser-projects
           GENERATED_JSON_S3_PREFIX: ${task_id}/generated-json
           JIRA_PRIVATE_KEY: ${jira_private_key}
@@ -604,10 +615,12 @@ tasks:
           binary: make
           args: ["upload-clis"]
           working_dir: evergreen
-          include_expansions_in_env: ["GOROOT"]
+          include_expansions_in_env:
+            - GOROOT
+            - AWS_ACCESS_KEY_ID
+            - AWS_SECRET_ACCESS_KEY
+            - AWS_SESSION_TOKEN
           env:
-            AWS_KEY: ${aws_key}
-            AWS_SECRET: ${aws_secret}
             BUCKET_NAME: mciuploads
             LOCAL_PATH: clients
             EXCLUDE_PATTERN: .cache
@@ -692,8 +705,9 @@ tasks:
             $GOPATH/bin/swag init -g service/service.go
       - command: s3.put
         params:
-          aws_key: ${aws_key}
-          aws_secret: ${aws_secret}
+          aws_key: ${AWS_ACCESS_KEY_ID}
+          aws_secret: ${AWS_SECRET_ACCESS_KEY}
+          aws_session_token: ${AWS_SESSION_TOKEN}
           local_file: evergreen/docs/swagger.json
           remote_file: evergreen/${task_id}/${execution}/swagger.json
           bucket: mciuploads
@@ -702,8 +716,9 @@ tasks:
           display_name: swagger.json
       - command: s3.put
         params:
-          aws_key: ${aws_key}
-          aws_secret: ${aws_secret}
+          aws_key: ${AWS_ACCESS_KEY_ID}
+          aws_secret: ${AWS_SECRET_ACCESS_KEY}
+          aws_session_token: ${AWS_SESSION_TOKEN}
           local_file: evergreen/docs/swagger.json
           remote_file: evergreen/latest/swagger.json
           bucket: mciuploads
@@ -740,8 +755,9 @@ tasks:
         vars: { target: "bin/static_assets.tgz" }
       - command: s3.put
         params:
-          aws_key: ${aws_key}
-          aws_secret: ${aws_secret}
+          aws_key: ${AWS_ACCESS_KEY_ID}
+          aws_secret: ${AWS_SECRET_ACCESS_KEY}
+          aws_session_token: ${AWS_SESSION_TOKEN}
           local_file: evergreen/bin/static_assets.tgz
           remote_file: evergreen/clients/${version_id}/static_assets.tgz
           content_type: application/gzip
@@ -751,6 +767,9 @@ tasks:
 task_groups:
   - name: dist-and-upload-clis
     max_hosts: 1
+    setup_group_can_fail_task: true
+    setup_group:
+      - func: assume-role
     tasks:
       - dist
       - upload-clis
