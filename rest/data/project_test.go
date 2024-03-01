@@ -14,11 +14,9 @@ import (
 	"github.com/evergreen-ci/evergreen/model"
 	"github.com/evergreen-ci/evergreen/model/commitqueue"
 	"github.com/evergreen-ci/evergreen/model/event"
-	"github.com/evergreen-ci/evergreen/model/notification"
 	"github.com/evergreen-ci/evergreen/model/user"
 	restModel "github.com/evergreen-ci/evergreen/rest/model"
 	"github.com/evergreen-ci/utility"
-	"github.com/mongodb/grip/message"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"github.com/stretchr/testify/suite"
@@ -536,37 +534,6 @@ func TestGetLegacyProjectEvents(t *testing.T) {
 	require.Len(t, eventLog.Before.ProjectRef.PeriodicBuilds, 0)
 	require.NotNil(t, eventLog.Before.ProjectRef.WorkstationConfig.SetupCommands)
 	require.Len(t, eventLog.Before.ProjectRef.WorkstationConfig.SetupCommands, 0)
-}
-
-func TestRequestS3Creds(t *testing.T) {
-	ctx, cancel := context.WithCancel(context.Background())
-	defer cancel()
-
-	assert.NoError(t, db.ClearCollections(notification.Collection, evergreen.ConfigCollection))
-	assert.Error(t, RequestS3Creds(ctx, "", ""))
-	assert.NoError(t, RequestS3Creds(ctx, "identifier", "user@email.com"))
-	n, err := notification.FindUnprocessed()
-	assert.NoError(t, err)
-	assert.Len(t, n, 0)
-	projectCreationConfig := evergreen.ProjectCreationConfig{
-		JiraProject: "BUILD",
-	}
-	assert.NoError(t, projectCreationConfig.Set(ctx))
-	assert.NoError(t, RequestS3Creds(ctx, "identifier", "user@email.com"))
-	n, err = notification.FindUnprocessed()
-	assert.NoError(t, err)
-	assert.Len(t, n, 1)
-	assert.Equal(t, event.JIRAIssueSubscriberType, n[0].Subscriber.Type)
-	target := n[0].Subscriber.Target.(*event.JIRAIssueSubscriber)
-	assert.Equal(t, "BUILD", target.Project)
-	payload := n[0].Payload.(*message.JiraIssue)
-	summary := "Create AWS key for s3 uploads for 'identifier' project"
-	description := "Could you create an s3 key for the new [identifier|/project/identifier/settings/general] project?"
-	assert.Equal(t, "BUILD", payload.Project)
-	assert.Equal(t, summary, payload.Summary)
-	assert.Equal(t, description, payload.Description)
-	assert.Equal(t, []string{"Access"}, payload.Components)
-	assert.Equal(t, "user@email.com", payload.Reporter)
 }
 
 func TestHideBranch(t *testing.T) {

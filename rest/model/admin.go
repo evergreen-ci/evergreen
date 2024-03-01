@@ -1042,8 +1042,8 @@ func (a *APIJiraConfig) BuildFromService(h interface{}) error {
 
 func (a *APIJiraConfig) ToService() (interface{}, error) {
 	c := evergreen.JiraConfig{
-		Host:           utility.FromStringPtr(a.Host),
-		Email:          utility.FromStringPtr(a.Email),
+		Host:  utility.FromStringPtr(a.Host),
+		Email: utility.FromStringPtr(a.Email),
 	}
 	if a.BasicAuthConfig != nil {
 		c.BasicAuthConfig = a.BasicAuthConfig.ToService()

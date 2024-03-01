@@ -389,7 +389,7 @@ func (s *AdminSuite) TestJiraConfig() {
 			PrivateKey:  "asdf",
 			AccessToken: "fdsa",
 		},
-		Email:          "a@mail.com",
+		Email: "a@mail.com",
 	}
 
 	err := config.Set(ctx)
