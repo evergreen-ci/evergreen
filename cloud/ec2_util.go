@@ -302,12 +302,13 @@ func makeCloudProviderData(h *host.Host, instance *types.Instance) (*host.CloudP
 	}
 
 	return &host.CloudProviderData{
-		Zone:      utility.FromStringPtr(instance.Placement.AvailabilityZone),
-		StartedAt: utility.FromTimePtr(instance.LaunchTime),
-		PublicDNS: utility.FromStringPtr(instance.PublicDnsName),
-		Volumes:   makeVolumeAttachments(instance.BlockDeviceMappings),
-		IPv4:      utility.FromStringPtr(instance.PrivateIpAddress),
-		IPv6:      ipv6,
+		Zone:        utility.FromStringPtr(instance.Placement.AvailabilityZone),
+		StartedAt:   utility.FromTimePtr(instance.LaunchTime),
+		PublicDNS:   utility.FromStringPtr(instance.PublicDnsName),
+		Volumes:     makeVolumeAttachments(instance.BlockDeviceMappings),
+		PublicIPv4:  utility.FromStringPtr(instance.PublicIpAddress),
+		PrivateIPv4: utility.FromStringPtr(instance.PrivateIpAddress),
+		IPv6:        ipv6,
 	}, nil
 }
 
@@ -358,7 +359,7 @@ func cacheAllHostData(ctx context.Context, env evergreen.Environment, client AWS
 		h.Zone = data.Zone
 		h.StartTime = data.StartedAt
 		h.Host = data.PublicDNS
-		h.IPv4 = data.IPv4
+		h.IPv4 = data.PrivateIPv4
 		h.IP = data.IPv6
 		h.Volumes = data.Volumes
 
@@ -397,7 +398,7 @@ func validateInstanceDataToCache(instance *types.Instance) error {
 const persistentDNSRecordTTLSecs = 1
 
 // setHostPersistentDNSName sets a host's persistent DNS record with its
-// associated IP address and sets it on the host.
+// associated IP address and sets the persistent DNS name on the host.
 func setHostPersistentDNSName(ctx context.Context, env evergreen.Environment, h *host.Host, ipv4Addr string, client AWSClient) error {
 	if ipv4Addr == "" {
 		return errors.New("instance did not include an IP address")

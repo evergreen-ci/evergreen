@@ -1896,12 +1896,13 @@ func (h *Host) Upsert(ctx context.Context) (*mongo.UpdateResult, error) {
 // CloudProviderData represents data to cache in the host from its cloud
 // provider.
 type CloudProviderData struct {
-	Zone      string
-	StartedAt time.Time
-	PublicDNS string
-	IPv4      string
-	IPv6      string
-	Volumes   []VolumeAttachment
+	Zone        string
+	StartedAt   time.Time
+	PublicDNS   string
+	PublicIPv4  string
+	PrivateIPv4 string
+	IPv6        string
+	Volumes     []VolumeAttachment
 }
 
 // CacheCloudProvider caches data about the host from its cloud provider.
@@ -1921,7 +1922,8 @@ func (h *Host) CacheCloudProviderData(ctx context.Context, data CloudProviderDat
 	h.Zone = data.Zone
 	h.StartTime = data.StartedAt
 	h.Host = data.PublicDNS
-	h.IPv4 = data.IPv4
+	h.PublicIPv4 = data.PublicIPv4
+	h.IPv4 = data.PrivateIPv4
 	h.IP = data.IPv6
 	h.Volumes = data.Volumes
 
@@ -1950,12 +1952,13 @@ func CacheManyHostsCloudProviderData(ctx context.Context, env evergreen.Environm
 func cacheCloudProviderDataUpdate(data CloudProviderData) bson.M {
 	return bson.M{
 		"$set": bson.M{
-			ZoneKey:      data.Zone,
-			StartTimeKey: data.StartedAt,
-			DNSKey:       data.PublicDNS,
-			IPv4Key:      data.IPv4,
-			IPKey:        data.IPv6,
-			VolumesKey:   data.Volumes,
+			ZoneKey:       data.Zone,
+			StartTimeKey:  data.StartedAt,
+			DNSKey:        data.PublicDNS,
+			PublicIPv4Key: data.PublicIPv4,
+			IPv4Key:       data.PrivateIPv4,
+			IPKey:         data.IPv6,
+			VolumesKey:    data.Volumes,
 		},
 	}
 }
@@ -3499,6 +3502,9 @@ func (h *Host) GeneratePersistentDNSName(ctx context.Context, domain string) (st
 func (h *Host) SetPersistentDNSInfo(ctx context.Context, dnsName, ipv4Addr string) error {
 	if dnsName == "" || ipv4Addr == "" {
 		return errors.New("cannot set empty DNS name or IPv4 address")
+	}
+	if dnsName == h.PersistentDNSName && h.PublicIPv4 == ipv4Addr {
+		return nil
 	}
 
 	if err := UpdateOne(ctx, bson.M{
