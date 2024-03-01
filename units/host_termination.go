@@ -220,7 +220,7 @@ func (j *hostTerminationJob) Run(ctx context.Context) {
 				// Check for the last task in the task group that we have activated, running, or completed.
 				var lastTaskGroupTask task.Task
 				for _, t := range tasks {
-					if t.Activated || evergreen.IsValidTaskEndStatus(t.Status) || t.IsInProgress() {
+					if t.Activated {
 						lastTaskGroupTask = t
 					}
 				}
