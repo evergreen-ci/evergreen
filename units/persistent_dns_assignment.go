@@ -4,15 +4,13 @@ import (
 	"context"
 	"fmt"
 
-	"github.com/evergreen-ci/evergreen"
 	"github.com/mongodb/amboy"
 	"github.com/mongodb/amboy/job"
 	"github.com/mongodb/amboy/registry"
 )
 
 const (
-	persistentDNSAssignmentJobName   = "persistent-dns-assignment"
-	persistentDNSAssignmentBatchSize = 10
+	persistentDNSAssignmentJobName = "persistent-dns-assignment"
 )
 
 func init() {
@@ -23,8 +21,6 @@ func init() {
 
 type persistentDNSAssignmentJob struct {
 	job.Base `bson:"job_base" json:"job_base" yaml:"job_base"`
-
-	env evergreen.Environment
 }
 
 func makePersistentDNSAssignment() *persistentDNSAssignmentJob {
