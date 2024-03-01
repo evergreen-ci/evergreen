@@ -5,8 +5,10 @@ and write access to various pieces of data found in Evergreen. You can use the
 GraphQL Playground, which can be found at https://evergreen.mongodb.com/graphql,
 to experiment with and explore the available data.
 
-Please note that the Evergreen GraphQL API is currently in beta and is not
-officially supported for production-level code. If you intend to use this API
+⚠️ Please note that the Evergreen GraphQL API is currently in beta and is not
+officially supported for production-level code.
+
+If you intend to use this API
 for production, we recommend reaching out to us for proper support and
 authorization. However, for exploratory operations, you are welcome to use the
 API without prior authorization.
