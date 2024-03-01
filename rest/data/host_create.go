@@ -171,7 +171,7 @@ func makeProjectAndExpansionsFromTask(ctx context.Context, settings *evergreen.S
 	if v == nil {
 		return nil, nil, errors.Errorf("version '%s' not found", t.Version)
 	}
-	project, _, err := model.FindAndTranslateProjectForVersion(ctx, settings, v)
+	project, _, err := model.FindAndTranslateProjectForVersion(ctx, settings, v, false)
 	if err != nil {
 		return nil, nil, errors.Wrap(err, "loading project")
 	}

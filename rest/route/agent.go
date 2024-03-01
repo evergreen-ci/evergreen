@@ -1261,7 +1261,7 @@ func (h *manifestLoadHandler) Run(ctx context.Context) gimlet.Responder {
 	}
 
 	env := evergreen.GetEnvironment()
-	project, _, err := model.FindAndTranslateProjectForVersion(ctx, env.Settings(), v)
+	project, _, err := model.FindAndTranslateProjectForVersion(ctx, env.Settings(), v, false)
 	if err != nil {
 		return gimlet.MakeJSONErrorResponder(errors.Wrapf(err, "loading project from version"))
 	}

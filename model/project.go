@@ -1300,7 +1300,7 @@ func FindProjectFromVersionID(versionStr string) (*Project, error) {
 	defer cancel()
 	env := evergreen.GetEnvironment()
 
-	project, _, err := FindAndTranslateProjectForVersion(ctx, env.Settings(), ver)
+	project, _, err := FindAndTranslateProjectForVersion(ctx, env.Settings(), ver, false)
 	if err != nil {
 		return nil, errors.Wrapf(err, "loading project config for version '%s'", versionStr)
 	}
@@ -1360,17 +1360,7 @@ func FindLatestVersionWithValidProject(projectId string, preGeneration bool) (*V
 		}
 
 		env := evergreen.GetEnvironment()
-		if preGeneration {
-			preGeneratedId := fmt.Sprintf("%s_%s", "pre_generation", lastGoodVersion.Id)
-			pp, err = ParserProjectFindOneByID(ctx, env.Settings(), lastGoodVersion.ProjectStorageMethod, fmt.Sprintf("%s_%s", "pre_generation", lastGoodVersion.Id))
-			if err != nil {
-				return nil, nil, nil, errors.Wrapf(err, "finding parser project '%s'", preGeneratedId)
-			}
-			if pp != nil {
-				lastGoodVersion.Id = preGeneratedId
-			}
-		}
-		project, pp, err = FindAndTranslateProjectForVersion(ctx, env.Settings(), lastGoodVersion)
+		project, pp, err = FindAndTranslateProjectForVersion(ctx, env.Settings(), lastGoodVersion, preGeneration)
 		if err != nil {
 			grip.Critical(message.WrapError(err, message.Fields{
 				"message": "last known good version has malformed config",

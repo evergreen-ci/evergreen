@@ -196,8 +196,12 @@ func updateParserProject(ctx context.Context, settings *evergreen.Settings, v *V
 			return errors.Errorf("parser project '%s' not found", v.Id)
 		}
 		oldPP.Id = fmt.Sprintf("%s_%s", "pre_generation", oldPP.Id)
-		if _, err = ParserProjectUpsertOneWithS3Fallback(ctx, settings, evergreen.ProjectStorageMethodDB, oldPP); err != nil {
+		preGenerationStorageMethod, err := ParserProjectUpsertOneWithS3Fallback(ctx, settings, evergreen.ProjectStorageMethodDB, oldPP)
+		if err != nil {
 			return errors.Wrapf(err, "upserting pre-generation parser project '%s'", oldPP.Id)
+		}
+		if err = v.UpdatePreGenerationProjectStorageMethod(preGenerationStorageMethod); err != nil {
+			return errors.Wrapf(err, "updating version's parser project pre-generation storage method from '%s' to '%s'", v.ProjectStorageMethod, preGenerationStorageMethod)
 		}
 	}
 

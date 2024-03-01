@@ -551,18 +551,31 @@ func FindAndTranslateProjectForPatch(ctx context.Context, settings *evergreen.Se
 	if v == nil {
 		return nil, nil, errors.Errorf("version '%s' not found for patch '%s'", p.Version, p.Id.Hex())
 	}
-	return FindAndTranslateProjectForVersion(ctx, settings, v)
+	return FindAndTranslateProjectForVersion(ctx, settings, v, false)
 }
 
 // FindAndTranslateProjectForVersion translates a parser project for a version into a Project.
-// Also sets the project ID.
-func FindAndTranslateProjectForVersion(ctx context.Context, settings *evergreen.Settings, v *Version) (*Project, *ParserProject, error) {
-	pp, err := ParserProjectFindOneByID(ctx, settings, v.ProjectStorageMethod, v.Id)
-	if err != nil {
-		return nil, nil, errors.Wrap(err, "finding parser project")
+// Also sets the project ID. If the preGeneration flag is true, this function will attempt to
+// fetch and translate the parser project from before it was modified by generate.tasks
+func FindAndTranslateProjectForVersion(ctx context.Context, settings *evergreen.Settings, v *Version, preGeneration bool) (*Project, *ParserProject, error) {
+	var pp *ParserProject
+	var err error
+	if preGeneration {
+		preGeneratedId := fmt.Sprintf("%s_%s", "pre_generation", v.Id)
+		pp, err = ParserProjectFindOneByID(ctx, settings, v.PreGenerationProjectStorageMethod, preGeneratedId)
+		if err != nil {
+			return nil, nil, errors.Wrapf(err, "finding parser project '%s'", preGeneratedId)
+		}
+		// Fall back to the parser project post-generation if the pre-generation parser project was not found
 	}
 	if pp == nil {
-		return nil, nil, errors.Errorf("parser project not found for version '%s'", v.Id)
+		pp, err = ParserProjectFindOneByID(ctx, settings, v.ProjectStorageMethod, v.Id)
+		if err != nil {
+			return nil, nil, errors.Wrapf(err, "finding parser project '%s'", v.Id)
+		}
+		if pp == nil {
+			return nil, nil, errors.Errorf("parser project not found for version '%s'", v.Id)
+		}
 	}
 	// Setting the translated project's identifier is necessary here because the
 	// version always has an identifier, but some old parser projects used to
@@ -594,7 +607,7 @@ func LoadProjectInfoForVersion(ctx context.Context, settings *evergreen.Settings
 			return ProjectInfo{}, errors.Wrap(err, "finding project config")
 		}
 	}
-	p, pp, err := FindAndTranslateProjectForVersion(ctx, settings, v)
+	p, pp, err := FindAndTranslateProjectForVersion(ctx, settings, v, false)
 	if err != nil {
 		return ProjectInfo{}, errors.Wrap(err, "translating project")
 	}

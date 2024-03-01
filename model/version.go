@@ -95,6 +95,9 @@ type Version struct {
 	// ProjectStorageMethod describes how the parser project for this version is
 	// stored. If this is empty, the default storage method is StorageMethodDB.
 	ProjectStorageMethod evergreen.ParserProjectStorageMethod `bson:"storage_method" json:"storage_method,omitempty"`
+	// PreGenerationProjectStorageMethod describes how the cached parser project from before it was modified
+	// by generate.tasks for this version is stored. If this is empty, the default storage method is StorageMethodDB.
+	PreGenerationProjectStorageMethod evergreen.ParserProjectStorageMethod `bson:"pre_generation_storage_method" json:"pre_generation_storage_method,omitempty"`
 }
 
 func (v *Version) MarshalBSON() ([]byte, error)  { return mgobson.Marshal(v) }
@@ -257,6 +260,21 @@ func (v *Version) UpdateProjectStorageMethod(method evergreen.ParserProjectStora
 		return err
 	}
 	v.ProjectStorageMethod = method
+	return nil
+}
+
+// UpdatePreGenerationProjectStorageMethod updates the version's pre-generation parser project storage
+// method.
+func (v *Version) UpdatePreGenerationProjectStorageMethod(method evergreen.ParserProjectStorageMethod) error {
+	if method == v.PreGenerationProjectStorageMethod {
+		return nil
+	}
+	if err := VersionUpdateOne(bson.M{VersionIdKey: v.Id}, bson.M{
+		"$set": bson.M{VersionPreGenerationProjectStorageMethodKey: method},
+	}); err != nil {
+		return err
+	}
+	v.PreGenerationProjectStorageMethod = method
 	return nil
 }
 
