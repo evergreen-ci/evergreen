@@ -1153,27 +1153,6 @@ func (h *Host) SetDNSName(ctx context.Context, dnsName string) error {
 	return err
 }
 
-func (h *Host) SetIPv6Address(ctx context.Context, ipv6Address string) error {
-	err := UpdateOne(
-		ctx,
-		bson.M{
-			IdKey: h.Id,
-		},
-		bson.M{
-			"$set": bson.M{
-				IPKey: ipv6Address,
-			},
-		},
-	)
-
-	if err != nil {
-		return errors.Wrap(err, "updating IPv6 address")
-	}
-
-	h.IP = ipv6Address
-	return nil
-}
-
 // probably don't want to store the port mapping exactly this way
 func (h *Host) SetPortMapping(ctx context.Context, portsMap PortMap) error {
 	err := UpdateOne(
