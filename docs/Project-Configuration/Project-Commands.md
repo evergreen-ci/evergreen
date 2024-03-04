@@ -238,7 +238,7 @@ If you would like to download an artifact after it has been moved to Glacier, pl
 This command parses and stores results in Evergreen's JSON test result format.
 The use case for this command is when you wish to link custom test results
 with test logs written via the
-[file system API for task output](Task-Output-Directory.md). Evergreen's JSON
+[file system API for task output](Task-Output-Directory). Evergreen's JSON
 format allows you to send test metadata and log paths, relative to the reserved
 test logs directory, which Evergreen will then link from the UI and API.
 
@@ -289,16 +289,17 @@ nonsensical.
 | `group_id`  | string        | The group ID if the test is associated with a group.                                                                   |
 | `status`    | string (enum) | The final status of the test. Should be one of: "fail", "pass", "silentfail", "skip".                                  |
 | `log_info`  | object        | The test's log information as a `Log Info` object, described below.                                                    |
-| `start`     | float64       | The start time of the test in <seconds>.<fractional_seconds> from the UNIX epoch.                                      |
-| `end`       | float64       | The end time of the test in <seconds>.<fractional_seconds> from the UNIX epoch.                                        |
+| `start`     | float64       | The start time of the test in \<seconds\>.\<fractional_seconds\> from the UNIX epoch.                                      |
+| `end`       | float64       | The end time of the test in \<seconds\>.\<fractional_seconds\> from the UNIX epoch.                                        |
 
 ### Log Info
 
 A test result can be linked to log files written to and ingested from the
-task's [reserved test logs directory](Task-Output-Directory.md/#test-logs).
+task's [reserved test logs directory](Task-Output-Directory/#test-logs).
 
 Test log URLs are automatically generated and provided via the
-[test result API](../API/REST-V2-Usage.mdx/#tag/tests/paths/~1tasks~1%7Btask_id%7D~1tests/get").
+[test logs API](../API/REST-V2-Usage/#tag/tasks/paths/~1tasks~1%7Btask_id%7D~1build~1TestLogs~1%7Bpath%7D/get)
+
 
 | Name             | Type          | Description                                                                                                         |
 | ---------------- | ------------- | ------------------------------------------------------------------------------------------------------------------- |

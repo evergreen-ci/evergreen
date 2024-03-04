@@ -14,7 +14,8 @@ import (
 )
 
 func (uis *UIServer) projectsPage(w http.ResponseWriter, r *http.Request) {
-	newUIProjectsLink := fmt.Sprintf("%s/projects", uis.Settings.Ui.UIv2Url)
+	projectId := gimlet.GetVars(r)["project_id"]
+	newUIProjectsLink := fmt.Sprintf("%s/project/%s/settings", uis.Settings.Ui.UIv2Url, projectId)
 	http.Redirect(w, r, newUIProjectsLink, http.StatusPermanentRedirect)
 }
 

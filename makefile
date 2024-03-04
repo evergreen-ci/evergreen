@@ -4,7 +4,7 @@ buildDir := bin
 nodeDir := public
 packages := $(name) agent agent-command agent-util agent-internal agent-internal-client agent-internal-taskoutput agent-internal-testutil operations cloud cloud-userdata
 packages += db util plugin units graphql thirdparty thirdparty-docker auth scheduler model validator service repotracker mock
-packages += model-annotations model-patch model-artifact model-host model-pod model-pod-definition model-pod-dispatcher model-build model-event model-task model-user model-distro model-manifest model-testresult model-log model-testlog
+packages += model-annotations model-patch model-artifact model-host model-pod model-pod-definition model-pod-dispatcher model-build model-event model-task model-user model-distro model-manifest model-testresult model-log model-testlog model-parsley
 packages += model-commitqueue model-cache
 packages += rest-client rest-data rest-route rest-model migrations trigger model-alertrecord model-notification model-taskstats model-reliability
 packages += taskoutput
@@ -155,8 +155,9 @@ set-project-var:$(buildDir)/set-project-var
 # commands such as s3.put. The agent revision must be set to the current version because the agent will have to exit
 # under the expectation that it will be redeployed if it's outdated (and the smoke test cannot deploy agents).
 set-smoke-vars:$(buildDir)/.load-smoke-data $(buildDir)/set-project-var $(buildDir)/set-var
-	@$(buildDir)/set-project-var -dbName mci_smoke -key aws_key -value $(AWS_KEY)
-	@$(buildDir)/set-project-var -dbName mci_smoke -key aws_secret -value $(AWS_SECRET)
+	@$(buildDir)/set-project-var -dbName mci_smoke -key aws_key -value $(AWS_ACCESS_KEY_ID)
+	@$(buildDir)/set-project-var -dbName mci_smoke -key aws_secret -value $(AWS_SECRET_ACCESS_KEY)
+	@$(buildDir)/set-project-var -dbName mci_smoke -key aws_token -value $(AWS_SESSION_TOKEN)
 	@$(buildDir)/set-var -dbName=mci_smoke -collection=hosts -id=localhost -key=agent_revision -value=$(agentVersion)
 	@$(buildDir)/set-var -dbName=mci_smoke -collection=pods -id=localhost -key=agent_version -value=$(agentVersion)
 
@@ -361,6 +362,9 @@ $(buildDir)/output.%.coverage.html:$(buildDir)/output.%.coverage
 gqlgen:
 	$(gobin) run github.com/99designs/gqlgen generate
 	$(gobin) run cmd/gqlgen/generate_secret_fields.go
+
+govul-install:
+	$(gobin) install golang.org/x/vuln/cmd/govulncheck@latest
 
 swaggo: 
 	$(MAKE) swaggo-format swaggo-build swaggo-render

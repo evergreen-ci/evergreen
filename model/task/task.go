@@ -307,6 +307,10 @@ type Task struct {
 	// HasAnnotations indicates whether there exist task annotations with this task's
 	// execution and id that have a populated Issues key
 	HasAnnotations bool `bson:"has_annotations" json:"has_annotations"`
+
+	// NumNextTaskDispatches is the number of times the task has been dispatched to run on a
+	// host or in a container. This is used to determine if the task seems to be stuck.
+	NumNextTaskDispatches int `bson:"num_next_task_dispatches" json:"num_next_task_dispatches"`
 }
 
 // GeneratedJSONFiles represent files used by a task for generate.tasks to update the project YAML.
@@ -509,6 +513,11 @@ func (t *Task) IsHostDispatchable() bool {
 // IsHostTask returns true if it's a task that runs on hosts.
 func (t *Task) IsHostTask() bool {
 	return (t.ExecutionPlatform == "" || t.ExecutionPlatform == ExecutionPlatformHost) && !t.DisplayOnly
+}
+
+// IsStuckTask returns true if the task has been dispatched over the system limit
+func (t *Task) IsStuckTask() bool {
+	return t.NumNextTaskDispatches >= evergreen.MaxTaskDispatchAttempts
 }
 
 // IsContainerTask returns true if it's a task that runs on containers.
@@ -2252,6 +2261,7 @@ func resetTaskUpdate(t *Task) []bson.M {
 		t.HostCreateDetails = []HostCreateDetail{}
 		t.OverrideDependencies = false
 		t.ContainerAllocationAttempts = 0
+		t.NumNextTaskDispatches = 0
 		t.CanReset = false
 		t.IsAutomaticRestart = false
 	}
@@ -2270,6 +2280,7 @@ func resetTaskUpdate(t *Task) []bson.M {
 				TimeTakenKey:                   0,
 				LastHeartbeatKey:               utility.ZeroTime,
 				ContainerAllocationAttemptsKey: 0,
+				NumNextTaskDispatchesKey:       0,
 				// TODO: (EVG-20334) Remove this field and the aggregation update once old tasks without the UnattainableDependency field have TTLed.
 				UnattainableDependencyKey: bson.M{"$cond": bson.M{
 					"if":   bson.M{"$isArray": "$" + bsonutil.GetDottedKeyName(DependsOnKey, DependencyUnattainableKey)},

@@ -3,7 +3,6 @@ package main
 import (
 	"context"
 	"flag"
-	"os"
 
 	"github.com/aws/aws-sdk-go/aws/endpoints"
 	"github.com/evergreen-ci/pail"
@@ -32,15 +31,6 @@ func main() {
 		grip.EmergencyFatal("remote path is missing")
 	}
 
-	awsKey := os.Getenv("AWS_KEY")
-	if awsKey == "" {
-		grip.EmergencyFatal("AWS key is missing (env var: AWS_KEY)")
-	}
-	awsSecret := os.Getenv("AWS_SECRET")
-	if awsSecret == "" {
-		grip.EmergencyFatal("AWS secret is missing (env var: AWS_SECRET)")
-	}
-
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 
@@ -48,7 +38,6 @@ func main() {
 	defer utility.PutHTTPClient(client)
 
 	opts := pail.S3Options{
-		Credentials: pail.CreateAWSCredentials(awsKey, awsSecret, ""),
 		Region:      endpoints.UsEast1RegionID,
 		Name:        bucketName,
 		MaxRetries:  utility.ToIntPtr(10),

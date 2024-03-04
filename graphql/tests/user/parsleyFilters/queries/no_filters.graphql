@@ -1,0 +1,11 @@
+query {
+  user(userId: "jane.smith") {
+    displayName
+    userId
+    parsleyFilters {
+      expression
+      exactMatch
+      caseSensitive
+    }
+  }
+}

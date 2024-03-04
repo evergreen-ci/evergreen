@@ -1,0 +1,39 @@
+{
+  "tests": [
+    {
+      "query_file": "has_filters.graphql",
+      "result": {
+        "data": {
+          "user": {
+            "displayName": "Bob Smith",
+            "userId": "bob.smith",
+            "parsleyFilters": [
+              {
+                "expression": "abc",
+                "exactMatch": true,
+                "caseSensitive": true
+              },
+              {
+                "expression": "def",
+                "exactMatch": false,
+                "caseSensitive": false
+              }
+            ]
+          }
+        }
+      }
+    },
+    {
+      "query_file": "no_filters.graphql",
+      "result": {
+        "data": {
+          "user": {
+            "displayName": "Jane Smith",
+            "userId": "jane.smith",
+            "parsleyFilters": []
+          }
+        }
+      }
+    }
+  ]
+}

@@ -5,9 +5,13 @@ and write access to various pieces of data found in Evergreen. You can use the
 GraphQL Playground, which can be found at https://evergreen.mongodb.com/graphql,
 to experiment with and explore the available data.
 
-If you intend to use this API for production-level code, we ask that you get in
-touch with us to ensure proper support. However, if you wish to perform
-exploratory operations, there is no need to seek prior authorization.
+⚠️ Please note that the Evergreen GraphQL API is currently in beta and is not
+officially supported for production-level code.
+
+If you intend to use this API
+for production, we recommend reaching out to us for proper support and
+authorization. However, for exploratory operations, you are welcome to use the
+API without prior authorization.
 
 ## Authentication
 
@@ -98,7 +102,11 @@ query ($options: MainlineCommitsOptions!, $buildVariantOptions: BuildVariantOpti
 }
 ```
 
-Take the below query which fetches both a task and its base task. Traditionally, fetching the desired data would have required a minimum of two requests for a given task using the REST API. With GraphQL, however, it can be achieved in just one request. Additionally, we only return the data that is required by the application requesting the data. 
+Take the below query which fetches both a task and its base task. Traditionally,
+fetching the desired data would have required a minimum of two requests for a
+given task using the REST API. With GraphQL, however, it can be achieved in just
+one request. Additionally, we only return the data that is required by the
+application requesting the data.
 
 ```graphql
 {

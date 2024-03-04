@@ -6,6 +6,7 @@ import (
 	"net/http"
 	"sort"
 	"strings"
+	"sync"
 	"time"
 
 	"github.com/evergreen-ci/evergreen"
@@ -27,12 +28,12 @@ import (
 	restModel "github.com/evergreen-ci/evergreen/rest/model"
 	"github.com/evergreen-ci/evergreen/taskoutput"
 	"github.com/evergreen-ci/evergreen/thirdparty"
+	"github.com/evergreen-ci/evergreen/util"
 	"github.com/evergreen-ci/gimlet"
 	"github.com/evergreen-ci/utility"
 	"github.com/mongodb/grip"
 	"github.com/mongodb/grip/message"
 	"github.com/pkg/errors"
-	werrors "github.com/pkg/errors"
 	"github.com/vektah/gqlparser/v2/gqlerror"
 	"golang.org/x/crypto/ssh"
 )
@@ -298,7 +299,7 @@ func getTask(ctx context.Context, taskID string, execution *int, apiURL string) 
 		return nil, ResourceNotFound.Send(ctx, err.Error())
 	}
 	if dbTask == nil {
-		return nil, werrors.Errorf("unable to find task %s", taskID)
+		return nil, errors.Errorf("unable to find task %s", taskID)
 	}
 	apiTask, err := getAPITaskFromTask(ctx, apiURL, *dbTask)
 	if err != nil {
@@ -1162,4 +1163,63 @@ func interfaceToMap(ctx context.Context, data interface{}) (map[string]interface
 	}
 
 	return mapField, nil
+}
+
+func concurrentlyBuildVersionsMatchingTasksMap(ctx context.Context, versions []model.Version, opts task.HasMatchingTasksOptions) (map[string]bool, error) {
+	wg := sync.WaitGroup{}
+	input := make(chan model.Version, len(versions))
+	output := make(chan string, len(versions))
+	catcher := grip.NewBasicCatcher()
+	hasMatchingTasksMap := map[string]bool{}
+
+	// Populate the input channel that the goroutines will read from.
+	for _, v := range versions {
+		input <- v
+	}
+	close(input)
+
+	// Limit number of parallel requests to the DB.
+	const maxParallel = 20
+	workers := util.Min(maxParallel, len(versions))
+	for i := 0; i < workers; i++ {
+		wg.Add(1)
+		go func() {
+			defer wg.Done()
+			for i := range input {
+				hasMatchingTasks, err := task.HasMatchingTasks(ctx, i.Id, opts)
+				if err != nil {
+					catcher.Add(err)
+					continue
+				}
+				if hasMatchingTasks {
+					output <- i.Id
+				}
+			}
+		}()
+	}
+	wg.Wait()
+	close(output)
+
+	if catcher.HasErrors() {
+		return nil, errors.Wrap(catcher.Resolve(), "finding matching tasks")
+	}
+
+	for versionId := range output {
+		hasMatchingTasksMap[versionId] = true
+	}
+
+	return hasMatchingTasksMap, nil
+}
+
+func collapseCommit(ctx context.Context, mainlineCommits MainlineCommits, mainlineCommitVersion *MainlineCommitVersion, apiVersion restModel.APIVersion) {
+	if len(mainlineCommits.Versions) > 0 {
+		lastMainlineCommit := mainlineCommits.Versions[len(mainlineCommits.Versions)-1]
+		if lastMainlineCommit.RolledUpVersions != nil {
+			lastMainlineCommit.RolledUpVersions = append(lastMainlineCommit.RolledUpVersions, &apiVersion)
+		} else {
+			mainlineCommitVersion.RolledUpVersions = []*restModel.APIVersion{&apiVersion}
+		}
+	} else {
+		mainlineCommitVersion.RolledUpVersions = []*restModel.APIVersion{&apiVersion}
+	}
 }

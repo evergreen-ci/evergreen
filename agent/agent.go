@@ -498,18 +498,27 @@ func (a *Agent) handleSetupError(ctx context.Context, tc *taskContext, err error
 	return tc, shouldExit, catcher.Resolve()
 }
 
+// shouldRunSetupGroup determines if the next task that's about to run is part
+// of a new task group or is a standalone task.
+// If so, then the task or task group is new to the host and should therefore
+// perform task initialization, including setting up a new task directory and
+// running setup group (for task groups only).
+// If not, then the task is part of a task group, and it shares the task
+// directory with the previous task in the task group that the agent ran.
 func shouldRunSetupGroup(nextTask *apimodels.NextTaskResponse, tc *taskContext) bool {
 	var previousTaskGroup string
 	if tc.taskConfig != nil && tc.taskConfig.TaskGroup != nil {
 		previousTaskGroup = tc.taskConfig.TaskGroup.Name
 	}
-	if !tc.ranSetupGroup { // we didn't run setup group yet
+	if !tc.ranSetupGroup { // The agent hasn't run setup group before.
 		return true
-	} else if tc.taskConfig == nil ||
-		nextTask.TaskGroup == "" ||
-		nextTask.Build != tc.taskConfig.Task.BuildId { // next task has a standalone task or a new build
+	} else if tc.taskConfig == nil || // The agent hasn't run any task previously.
+		nextTask.TaskGroup == "" || // The agent's previous task wasn't part of a task group.
+		nextTask.Build != tc.taskConfig.Task.BuildId { // The next task is in a different build.
 		return true
-	} else if nextTask.TaskGroup != previousTaskGroup { // next task has a different task group
+	} else if nextTask.TaskGroup != previousTaskGroup { // The next task has a different task group.
+		return true
+	} else if nextTask.TaskExecution != tc.taskConfig.Task.Execution { // The previous and next task are in the same task group but the next task has a different execution number.
 		return true
 	}
 	return false
@@ -994,7 +1003,6 @@ func (a *Agent) finishTask(ctx context.Context, tc *taskContext, status string, 
 	if err != nil {
 		grip.Error(errors.Wrap(err, "upserting checkrun"))
 	}
-	tc.logger.Task().Infof("Successfully upserted checkRun.")
 
 	grip.Infof("Sending final task status: '%s'.", detail.Status)
 	resp, err := a.comm.EndTask(ctx, detail, tc.task)
@@ -1025,7 +1033,12 @@ func (a *Agent) upsertCheckRun(ctx context.Context, tc *taskContext) error {
 		return nil
 	}
 
-	return a.comm.UpsertCheckRun(ctx, tc.task, *checkRunOutput)
+	if err = a.comm.UpsertCheckRun(ctx, tc.task, *checkRunOutput); err != nil {
+		return err
+	}
+
+	tc.logger.Task().Infof("Successfully upserted checkRun.")
+	return nil
 }
 
 func buildCheckRun(ctx context.Context, tc *taskContext) (*apimodels.CheckRunOutput, error) {

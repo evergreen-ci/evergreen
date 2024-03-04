@@ -3376,8 +3376,8 @@ func (h *Host) ClearDockerStdinData(ctx context.Context) error {
 // character ([0-9A-Za-z]).
 var nonAlphanumericRegexp = regexp.MustCompile("[[:^alnum:]]+")
 
-// alphanumericChars contains all alphanumeric characters (case-insensitive).
-const alphanumericChars = "abcdefghijklmnopqrstuvwxyz0123456789"
+// hexadecimalChars contains all hexademical characters (case-insensitive).
+const hexadecimalChars = "abcdef0123456789"
 
 // GeneratePersistentDNSName returns the host's persistent DNS name, or
 // generates a new one if it doesn't have one currently assigned.
@@ -3396,7 +3396,7 @@ func (h *Host) GeneratePersistentDNSName(ctx context.Context, domain string) (st
 	}
 	user := strings.Join(cleanedParts, "-")
 
-	const maxRandLen = 5
+	const maxRandLen = 3
 
 	// Since each user can own multiple unexpirable hosts, just using their
 	// username is not sufficient to make a unique persistent DNS name. Try
@@ -3404,9 +3404,9 @@ func (h *Host) GeneratePersistentDNSName(ctx context.Context, domain string) (st
 	// 1. contains only alphanumeric characters so it's more memorable, and
 	// 2. is derived from the host ID.
 	//
-	// This is slightly preferable to a random alphanumeric string, because a
-	// host with a particular ID will have a more short and memorable
-	// alphabet-only string.
+	// This is slightly preferable compared to a random alphanumeric string,
+	// because a host with a particular ID will always map to the same ID and
+	// will have a more short and memorable string.
 
 	idBasedHash := sha256.Sum256([]byte(h.Id))
 	encoder := base64.RawURLEncoding
@@ -3417,7 +3417,7 @@ func (h *Host) GeneratePersistentDNSName(ctx context.Context, domain string) (st
 	// more memorable.
 	idBasedRandom := make([]byte, maxRandLen)
 	for i := range idBasedRandom {
-		idBasedRandom[i] = alphanumericChars[idBasedEncoding[i]%byte(len(alphanumericChars))]
+		idBasedRandom[i] = hexadecimalChars[idBasedEncoding[i]%byte(len(hexadecimalChars))]
 	}
 	candidate := fmt.Sprintf("%s-%s.%s", user, string(idBasedRandom), strings.TrimPrefix(domain, "."))
 	conflicting, _ := FindOneByPersistentDNSName(ctx, candidate)
