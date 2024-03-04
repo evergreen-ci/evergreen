@@ -3,7 +3,6 @@ package command
 import (
 	"context"
 	"os"
-	"strings"
 
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/agent/internal"
@@ -55,7 +54,7 @@ func (c *expansionsWriter) Execute(ctx context.Context,
 		_, ok := conf.Redacted[k]
 		// Redact private variables unless redacted set to true. Always
 		// redact the global GitHub and AWS expansions.
-		if (ok && !c.Redacted && !isPerfProject(conf)) || utility.StringSliceContains(ExpansionsToRedact, k) {
+		if (ok && !c.Redacted) || utility.StringSliceContains(ExpansionsToRedact, k) {
 			continue
 		}
 
@@ -71,10 +70,4 @@ func (c *expansionsWriter) Execute(ctx context.Context,
 	}
 	logger.Task().Infof("Expansions written to file '%s'.", fn)
 	return nil
-}
-
-// TODO (DEVPROD-4483): Remove this special logic for sys-perf projects after
-// March 1.
-func isPerfProject(conf *internal.TaskConfig) bool {
-	return strings.HasPrefix(conf.Project.Identifier, "sys-perf")
 }
