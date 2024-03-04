@@ -19,20 +19,7 @@
     },
     {
       "query_file": "not_attached_to_repo.graphql",
-      "result": { 
-        "data": null,
-        "errors": [
-          {
-            "message": "400 (Bad Request): project 'evergreen_id' must be attached to a repo to be eligible for deletion",
-            "path": [
-              "deleteProject"
-            ],
-            "extensions": {
-              "code": "INPUT_VALIDATION_ERROR"
-            }
-          }
-        ]
-      }
+      "result": { "data": { "deleteProject": true } }
     },
     {
       "query_file": "success.graphql",
