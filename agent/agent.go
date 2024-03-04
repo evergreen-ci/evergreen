@@ -1221,8 +1221,10 @@ func (a *Agent) logPanic(tc *taskContext, pErr, originalErr error, op string) er
 		}
 		tc.logger.Task().Error(logMsg)
 	}
-	logMsg["task_id"] = tc.taskConfig.Task.Id
-	logMsg["task_execution"] = tc.taskConfig.Task.Execution
+	logMsg["task_id"] = tc.task.ID
+	if tc.taskConfig != nil {
+		logMsg["task_execution"] = tc.taskConfig.Task.Execution
+	}
 	grip.Alert(message.WrapError(errors.WithStack(pErr), logMsg))
 
 	return catcher.Resolve()
