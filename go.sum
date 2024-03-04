@@ -102,8 +102,8 @@ github.com/aws/aws-sdk-go-v2/service/internal/endpoint-discovery v1.8.11 h1:e9AV
 github.com/aws/aws-sdk-go-v2/service/internal/endpoint-discovery v1.8.11/go.mod h1:B90ZQJa36xo0ph9HsoteI1+r8owgQH/U1QNfqZQkj1Q=
 github.com/aws/aws-sdk-go-v2/service/internal/presigned-url v1.11.0 h1:SHN/umDLTmFTmYfI+gkanz6da3vK8Kvj/5wkqnTHbuA=
 github.com/aws/aws-sdk-go-v2/service/internal/presigned-url v1.11.0/go.mod h1:l8gPU5RYGOFHJqWEpPMoRTP0VoaWQSkJdKo+hwWnnDA=
-github.com/aws/aws-sdk-go-v2/service/resourcegroupstaggingapi v1.20.1 h1:tpPeCTu4zwyezXPnnzx/zZclr6GYkuHjGp5ayLP0gWA=
-github.com/aws/aws-sdk-go-v2/service/resourcegroupstaggingapi v1.20.1/go.mod h1:BRuiq4shgrokCvNWSXVHz1hhH5sNSLW0ZruTV0jiNMQ=
+github.com/aws/aws-sdk-go-v2/service/resourcegroupstaggingapi v1.21.1 h1:ADhzQ6eCjR2jkcrxKcjZl0lumL3QIiWSu94ZcxEYOHU=
+github.com/aws/aws-sdk-go-v2/service/resourcegroupstaggingapi v1.21.1/go.mod h1:EYr+WnZlEA4LQXZdz76eBP1sOmXedhzE/KJ+QXellgA=
 github.com/aws/aws-sdk-go-v2/service/route53 v1.37.1 h1:U7OksynDSIFScG+7sGqOuJh+fP1USMkNtjxzGFZYG34=
 github.com/aws/aws-sdk-go-v2/service/route53 v1.37.1/go.mod h1:8qqfpG4mug2JLlEyWPSFhEGvJiaZ9iPmMDDMYc5Xtas=
 github.com/aws/aws-sdk-go-v2/service/secretsmanager v1.28.1 h1:DtKw4TxZT3VrzYupXQJPBqT9ImyobZZE+JIQPPAVxqs=
