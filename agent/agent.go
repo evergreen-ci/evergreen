@@ -603,7 +603,7 @@ func (a *Agent) runTask(ctx context.Context, tcInput *taskContext, nt *apimodels
 		if pErr == nil {
 			return
 		}
-		err = a.logPanic(tc.logger, pErr, err, op)
+		err = a.logPanic(tc, pErr, err, op)
 	}()
 
 	// Setup occurs before the task is actually running, so it's not abortable. If setup is taking
@@ -659,7 +659,7 @@ func (a *Agent) runPreAndMain(ctx context.Context, tc *taskContext) (status stri
 		if pErr == nil {
 			return
 		}
-		_ = a.logPanic(tc.logger, pErr, nil, op)
+		_ = a.logPanic(tc, pErr, nil, op)
 		status = evergreen.TaskSystemFailed
 	}()
 
@@ -1207,7 +1207,7 @@ func (a *Agent) shouldKill(tc *taskContext, ignoreTaskGroupCheck bool) bool {
 
 // logPanic logs a panic to the task log and returns the panic error, along with
 // the original error (if any). If there was no panic error, this is a no-op.
-func (a *Agent) logPanic(logger client.LoggerProducer, pErr, originalErr error, op string) error {
+func (a *Agent) logPanic(tc *taskContext, pErr, originalErr error, op string) error {
 	if pErr == nil {
 		return nil
 	}
@@ -1215,19 +1215,24 @@ func (a *Agent) logPanic(logger client.LoggerProducer, pErr, originalErr error, 
 	catcher := grip.NewBasicCatcher()
 	catcher.Add(originalErr)
 	catcher.Add(pErr)
-	if logger != nil && !logger.Closed() {
-		logMsg := message.Fields{
-			"message":   "programmatic error: Evergreen agent hit panic",
-			"operation": op,
-		}
+	logMsg := message.Fields{
+		"message":   "programmatic error: Evergreen agent hit panic",
+		"operation": op,
+	}
+	if tc.logger != nil && !tc.logger.Closed() {
 		if a.opts.HostID != "" {
 			logMsg["host_id"] = a.opts.HostID
 		}
 		if a.opts.PodID != "" {
 			logMsg["pod_id"] = a.opts.PodID
 		}
-		logger.Task().Error(logMsg)
+		tc.logger.Task().Error(logMsg)
 	}
+	logMsg["task_id"] = tc.task.ID
+	if tc.taskConfig != nil {
+		logMsg["task_execution"] = tc.taskConfig.Task.Execution
+	}
+	grip.Alert(message.WrapError(errors.WithStack(pErr), logMsg))
 
 	return catcher.Resolve()
 }
