@@ -851,14 +851,20 @@ func (s *GenerateSuite) TestSaveNewBuildsAndTasksWithBatchtime() {
 	g := sampleGeneratedProject
 	g.Task = genTask
 
-	p, pp, err := FindAndTranslateProjectForVersion(ctx, env.Settings(), v)
+	p, pp, err := FindAndTranslateProjectForVersion(ctx, env.Settings(), v, false)
 	s.Require().NoError(err)
 	p, pp, v, err = g.NewVersion(context.Background(), p, pp, v)
 	s.Require().NoError(err)
 	s.NoError(g.Save(s.ctx, s.env.Settings(), p, pp, v))
 
+	// Should have created a pre-generated cached parser project
+	preGeneratedPP, err := ParserProjectFindOneByID(ctx, s.env.Settings(), v.ProjectStorageMethod, preGeneratedParserProjectId(pp.Id))
+	s.NoError(err)
+	s.NotNil(preGeneratedPP)
+
 	// verify we stopped saving versions
 	v, err = VersionFindOneId(v.Id)
+	s.Equal(evergreen.ProjectStorageMethodDB, v.PreGenerationProjectStorageMethod)
 	s.NoError(err)
 	s.Require().NotNil(v)
 	s.Require().Len(v.BuildVariants, 2)
@@ -958,7 +964,7 @@ func (s *GenerateSuite) TestSaveWithAlreadyGeneratedTasksAndVariants() {
 	pp.Id = "version_that_called_generate_task"
 	s.NoError(pp.Insert())
 	// Setup parser project to be partially generated.
-	p, pp, err := FindAndTranslateProjectForVersion(s.ctx, s.env.Settings(), v)
+	p, pp, err := FindAndTranslateProjectForVersion(s.ctx, s.env.Settings(), v, false)
 	s.NoError(err)
 
 	g := partiallyGeneratedProject
@@ -974,6 +980,11 @@ func (s *GenerateSuite) TestSaveWithAlreadyGeneratedTasksAndVariants() {
 	s.Len(pp.UpdatedByGenerators, 1) // Not modified again.
 
 	s.NoError(g.Save(s.ctx, s.env.Settings(), p, pp, v))
+
+	// Should not create a pre-generated cached parser project
+	preGeneratedPP, err := ParserProjectFindOneByID(ctx, s.env.Settings(), v.ProjectStorageMethod, preGeneratedParserProjectId(pp.Id))
+	s.NoError(err)
+	s.Nil(preGeneratedPP)
 
 	tasks := []task.Task{}
 	taskQuery := db.Query(bson.M{task.GeneratedByKey: "generator"}).Sort([]string{task.CreateTimeKey})
@@ -1043,7 +1054,7 @@ func (s *GenerateSuite) TestSaveNewTasksWithDependencies() {
 
 	g := sampleGeneratedProjectAddToBVOnly
 	g.Task = &tasksThatExist[0]
-	p, pp, err := FindAndTranslateProjectForVersion(s.ctx, s.env.Settings(), v)
+	p, pp, err := FindAndTranslateProjectForVersion(s.ctx, s.env.Settings(), v, false)
 	s.Require().NoError(err)
 	p, pp, v, err = g.NewVersion(context.Background(), p, pp, v)
 	s.NoError(err)
@@ -1153,7 +1164,7 @@ buildvariants:
 	s.Require().NoError(err)
 	g.Task = genTask
 
-	p, pp, err := FindAndTranslateProjectForVersion(s.ctx, s.env.Settings(), v)
+	p, pp, err := FindAndTranslateProjectForVersion(s.ctx, s.env.Settings(), v, false)
 	s.Require().NoError(err)
 	p, pp, v, err = g.NewVersion(context.Background(), p, pp, v)
 	s.NoError(err)
@@ -1243,7 +1254,7 @@ buildvariants:
 	s.Require().NoError(err)
 	g.Task = genTask
 
-	p, pp, err := FindAndTranslateProjectForVersion(s.ctx, s.env.Settings(), v)
+	p, pp, err := FindAndTranslateProjectForVersion(s.ctx, s.env.Settings(), v, false)
 	s.Require().NoError(err)
 	p, pp, v, err = g.NewVersion(context.Background(), p, pp, v)
 	s.NoError(err)
@@ -1351,7 +1362,7 @@ buildvariants:
 	s.Require().NoError(err)
 	g.Task = genTask
 
-	p, pp, err := FindAndTranslateProjectForVersion(s.ctx, s.env.Settings(), v)
+	p, pp, err := FindAndTranslateProjectForVersion(s.ctx, s.env.Settings(), v, false)
 	s.Require().NoError(err)
 	p, pp, v, err = g.NewVersion(context.Background(), p, pp, v)
 	s.NoError(err)
@@ -1458,7 +1469,7 @@ buildvariants:
 	s.Require().NoError(err)
 	g.Task = genTask
 
-	p, pp, err := FindAndTranslateProjectForVersion(s.ctx, s.env.Settings(), v)
+	p, pp, err := FindAndTranslateProjectForVersion(s.ctx, s.env.Settings(), v, false)
 	s.Require().NoError(err)
 	p, pp, v, err = g.NewVersion(context.Background(), p, pp, v)
 	s.NoError(err)
@@ -1507,7 +1518,7 @@ func (s *GenerateSuite) TestSaveNewTaskWithExistingExecutionTask() {
 
 	g := smallGeneratedProject
 	g.Task = &taskThatExists
-	p, pp, err := FindAndTranslateProjectForVersion(s.ctx, s.env.Settings(), v)
+	p, pp, err := FindAndTranslateProjectForVersion(s.ctx, s.env.Settings(), v, false)
 	s.Require().NoError(err)
 	p, pp, v, err = g.NewVersion(context.Background(), p, pp, v)
 	s.Require().NoError(err)

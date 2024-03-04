@@ -1303,7 +1303,7 @@ func FindProjectFromVersionID(versionStr string) (*Project, error) {
 	defer cancel()
 	env := evergreen.GetEnvironment()
 
-	project, _, err := FindAndTranslateProjectForVersion(ctx, env.Settings(), ver)
+	project, _, err := FindAndTranslateProjectForVersion(ctx, env.Settings(), ver, false)
 	if err != nil {
 		return nil, errors.Wrapf(err, "loading project config for version '%s'", versionStr)
 	}
@@ -1336,8 +1336,10 @@ func (p *Project) FindDistroNameForTask(t *task.Task) (string, error) {
 
 // FindLatestVersionWithValidProject returns the latest mainline version that
 // has a valid project configuration. It also returns the intermediate and final
-// project configurations.
-func FindLatestVersionWithValidProject(projectId string) (*Version, *Project, *ParserProject, error) {
+// project configurations. If the preGeneration flag is set, this will retrieve
+// a cached version of this version's parser project from before it was modified by
+// generate.tasks, which is required for child patches.
+func FindLatestVersionWithValidProject(projectId string, preGeneration bool) (*Version, *Project, *ParserProject, error) {
 	const retryCount = 5
 	if projectId == "" {
 		return nil, nil, nil, errors.New("cannot pass empty projectId to FindLatestVersionWithValidParserProject")
@@ -1363,7 +1365,7 @@ func FindLatestVersionWithValidProject(projectId string) (*Version, *Project, *P
 		}
 
 		env := evergreen.GetEnvironment()
-		project, pp, err = FindAndTranslateProjectForVersion(ctx, env.Settings(), lastGoodVersion)
+		project, pp, err = FindAndTranslateProjectForVersion(ctx, env.Settings(), lastGoodVersion, preGeneration)
 		if err != nil {
 			grip.Critical(message.WrapError(err, message.Fields{
 				"message": "last known good version has malformed config",

@@ -184,6 +184,28 @@ func updateParserProject(ctx context.Context, settings *evergreen.Settings, v *V
 		return nil
 	}
 
+	// If this is the first time the parser project has been updated by a generator, cache a copy of
+	// the parser project representing its state before any generators updated it. This is required for
+	// a special case that enables child patches to reference a pre-generated copy of the parser project
+	// so that they can call generate.tasks again without getting a "redefining tasks" error.
+	if len(pp.UpdatedByGenerators) == 0 {
+		oldPP, err := ParserProjectFindOneByID(ctx, settings, v.ProjectStorageMethod, v.Id)
+		if err != nil {
+			return errors.Wrapf(err, "finding parser project '%s' from before task generation", v.Id)
+		}
+		if oldPP == nil {
+			return errors.Errorf("parser project '%s' not found", v.Id)
+		}
+		oldPP.Id = preGeneratedParserProjectId(oldPP.Id)
+		preGenerationStorageMethod, err := ParserProjectUpsertOneWithS3Fallback(ctx, settings, evergreen.ProjectStorageMethodDB, oldPP)
+		if err != nil {
+			return errors.Wrapf(err, "upserting pre-generation parser project '%s'", oldPP.Id)
+		}
+		if err = v.UpdatePreGenerationProjectStorageMethod(preGenerationStorageMethod); err != nil {
+			return errors.Wrapf(err, "updating version's parser project pre-generation storage method from '%s' to '%s'", v.ProjectStorageMethod, preGenerationStorageMethod)
+		}
+	}
+
 	pp.UpdatedByGenerators = append(pp.UpdatedByGenerators, taskId)
 
 	ppStorageMethod, err := ParserProjectUpsertOneWithS3Fallback(ctx, settings, v.ProjectStorageMethod, pp)

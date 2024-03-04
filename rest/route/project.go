@@ -166,7 +166,7 @@ func (h *legacyVersionsGetHandler) Run(ctx context.Context) gimlet.Responder {
 		return gimlet.MakeJSONInternalErrorResponder(errors.Wrapf(err, "getting ID for project '%s'", h.project))
 	}
 
-	_, proj, _, err := dbModel.FindLatestVersionWithValidProject(projRefId)
+	_, proj, _, err := dbModel.FindLatestVersionWithValidProject(projRefId, false)
 	if err != nil {
 		return gimlet.MakeJSONInternalErrorResponder(errors.Wrapf(err, "finding latest version for project '%s'", projRefId))
 	}
@@ -1408,7 +1408,7 @@ func (h *projectParametersGetHandler) Run(ctx context.Context) gimlet.Responder 
 	if err != nil {
 		return gimlet.NewJSONInternalErrorResponse(errors.Wrapf(err, "getting ID for project '%s'", h.projectName))
 	}
-	_, p, _, err := dbModel.FindLatestVersionWithValidProject(id)
+	_, p, _, err := dbModel.FindLatestVersionWithValidProject(id, false)
 	if err != nil {
 		return gimlet.NewJSONInternalErrorResponse(errors.Wrapf(err,
 			"finding project config for project '%s'", id))

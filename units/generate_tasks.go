@@ -97,7 +97,7 @@ func (j *generateTasksJob) generate(ctx context.Context, t *task.Task) error {
 	if v == nil {
 		return errors.Errorf("version '%s' not found", t.Version)
 	}
-	project, parserProject, err := model.FindAndTranslateProjectForVersion(ctx, j.env.Settings(), v)
+	project, parserProject, err := model.FindAndTranslateProjectForVersion(ctx, j.env.Settings(), v, false)
 	if err != nil {
 		return errors.Wrapf(err, "loading project for version '%s'", t.Version)
 	}

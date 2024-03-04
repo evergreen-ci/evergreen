@@ -617,3 +617,45 @@ func TestUpdateProjectStorageMethod(t *testing.T) {
 	}
 
 }
+
+func TestUpdatePreGenerationProjectStorageMethod(t *testing.T) {
+	defer func() {
+		assert.NoError(t, db.ClearCollections(VersionCollection))
+	}()
+
+	for tName, tCase := range map[string]func(t *testing.T, v *Version){
+		"ChangesPreGenerationProjectStorageMethod": func(t *testing.T, v *Version) {
+			assert.NoError(t, v.UpdatePreGenerationProjectStorageMethod(evergreen.ProjectStorageMethodS3))
+
+			assert.Equal(t, evergreen.ProjectStorageMethodS3, v.PreGenerationProjectStorageMethod)
+
+			dbVersion, err := VersionFindOneId(v.Id)
+			require.NoError(t, err)
+			require.NotZero(t, dbVersion)
+			assert.Equal(t, evergreen.ProjectStorageMethodS3, dbVersion.PreGenerationProjectStorageMethod)
+		},
+		"NoopsWhenVersionStorageMethodIsIdentical": func(t *testing.T, v *Version) {
+			v.PreGenerationProjectStorageMethod = evergreen.ProjectStorageMethodS3
+			assert.NoError(t, v.UpdatePreGenerationProjectStorageMethod(evergreen.ProjectStorageMethodS3))
+
+			assert.Equal(t, evergreen.ProjectStorageMethodS3, v.PreGenerationProjectStorageMethod)
+
+			dbVersion, err := VersionFindOneId(v.Id)
+			require.NoError(t, err)
+			require.NotZero(t, dbVersion)
+			assert.Equal(t, evergreen.ProjectStorageMethodDB, dbVersion.PreGenerationProjectStorageMethod)
+		},
+	} {
+		t.Run(tName, func(t *testing.T) {
+			assert.NoError(t, db.ClearCollections(VersionCollection))
+			v := Version{
+				Id:                                "id",
+				PreGenerationProjectStorageMethod: evergreen.ProjectStorageMethodDB,
+			}
+			require.NoError(t, v.Insert())
+
+			tCase(t, &v)
+		})
+	}
+
+}

@@ -359,7 +359,9 @@ patch command when creating a patch via the CLI, or by selecting that
 alias on the patch configure page on the new UI. The alias can also be
 added as a Github Trigger Alias in the GitHub Pull Request Testing
 section to kick off a child patch for each pull request opened in the
-repository as well as each subsequent push to each pull request.
+repository as well as each subsequent push to each pull request. If the
+child patch tracks the same project and branch as the parent patch, the
+child patch will also include the changes from the parent patch.
 
 To pass information from the upstream patch to the downstream patch use
 [downstream_expansions.set](Project-Commands.md#downstream_expansionsset)
