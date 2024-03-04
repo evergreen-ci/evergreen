@@ -829,8 +829,8 @@ func (a *Agent) runPostTaskCommands(ctx context.Context, tc *taskContext) error 
 	ctx, span := a.tracer.Start(ctx, "post-task-commands")
 	defer span.End()
 
-	a.killProcs(ctx, tc, false, "post task commands are starting")
-	defer a.killProcs(ctx, tc, false, "post task commands are finished")
+	a.killProcs(ctx, tc, false, "post-task commands are starting")
+	defer a.killProcs(ctx, tc, false, "post-task commands are finished")
 
 	post, err := tc.getPost()
 	if err != nil {
@@ -955,7 +955,7 @@ func (a *Agent) finishTask(ctx context.Context, tc *taskContext, status string, 
 		a.handleTimeoutAndOOM(ctx, tc, status)
 		tc.logger.Task().Info("Task completed - SUCCESS.")
 		if err := a.runPostTaskCommands(ctx, tc); err != nil {
-			tc.logger.Task().Info("Post task completed - FAILURE. Overall task status changed to FAILED.")
+			tc.logger.Task().Info("Post-task completed - FAILURE. Overall task status changed to FAILED.")
 			setEndTaskFailureDetails(tc, detail, evergreen.TaskFailed, "", "")
 		}
 		a.runEndTaskSync(ctx, tc, detail)
