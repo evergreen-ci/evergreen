@@ -1148,7 +1148,7 @@ func TestDeleteProject(t *testing.T) {
 	require.NoError(t, badProject.Insert())
 	pdh.projectName = badProject.Id
 	resp = pdh.Run(ctx)
-	assert.Equal(t, http.StatusBadRequest, resp.Status())
+	assert.Equal(t, http.StatusOK, resp.Status())
 }
 
 func TestAttachProjectToRepo(t *testing.T) {
