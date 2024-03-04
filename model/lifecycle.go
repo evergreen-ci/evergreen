@@ -1193,8 +1193,8 @@ func createOneTask(id string, creationInfo TaskCreationInfo, buildVarTask BuildV
 		IsEssentialToSucceed:    creationInfo.ActivatedTasksAreEssentialToSucceed && activateTask,
 	}
 
-	if buildVarTask.CreateCheckRun != nil && buildVarTask.CreateCheckRun.PathToOutputs != "" {
-		t.CheckRunPath = buildVarTask.CreateCheckRun.PathToOutputs
+	if buildVarTask.CreateCheckRun != nil {
+		t.CheckRunPath = utility.ToStringPtr(buildVarTask.CreateCheckRun.PathToOutputs)
 	}
 
 	projectTask := creationInfo.Project.FindProjectTask(buildVarTask.Name)

@@ -2479,7 +2479,7 @@ func (s *AgentSuite) TestUpsertCheckRun() {
 	s.NoError(err)
 	s.NoError(f.Close())
 
-	s.tc.taskConfig.Task.CheckRunPath = f.Name()
+	s.tc.taskConfig.Task.CheckRunPath = utility.ToStringPtr(f.Name())
 	s.tc.taskConfig.Task.Requester = evergreen.GithubPRRequester
 
 	s.tc.taskConfig.Expansions.Put("checkRun_key", "checkRun_value")
@@ -2490,6 +2490,26 @@ func (s *AgentSuite) TestUpsertCheckRun() {
 	s.NoError(s.tc.logger.Close())
 	checkMockLogs(s.T(), s.mockCommunicator, s.tc.taskConfig.Task.Id, []string{
 		"Upserting checkRun: This is my report checkRun_value",
+	}, []string{panicLog})
+}
+
+func (s *AgentSuite) TestUpsertEmptyCheckRun() {
+	s.setupRunTask(defaultProjYml)
+
+	f, err := os.CreateTemp(os.TempDir(), "")
+	s.NoError(err)
+	defer os.Remove(f.Name())
+
+	s.tc.taskConfig.Task.CheckRunPath = utility.ToStringPtr("")
+	s.tc.taskConfig.Task.Requester = evergreen.GithubPRRequester
+
+	checkRunOutput, err := buildCheckRun(s.ctx, s.tc)
+	s.NoError(err)
+	s.NotNil(checkRunOutput)
+
+	s.NoError(s.tc.logger.Close())
+	checkMockLogs(s.T(), s.mockCommunicator, s.tc.taskConfig.Task.Id, []string{
+		"Upserting checkRun with no output file specified.",
 	}, []string{panicLog})
 }
 

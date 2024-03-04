@@ -177,7 +177,7 @@ type Task struct {
 	IsGithubCheck bool `bson:"is_github_check,omitempty" json:"is_github_check,omitempty"`
 
 	// CheckRunPath is a local file path to an output json file for the checkrun.
-	CheckRunPath string `bson:"check_run_path" json:"check_run_path"`
+	CheckRunPath *string `bson:"check_run_path" json:"check_run_path"`
 
 	// CheckRunId is the id for the checkrun that was created in github.
 	// This is used to update the checkrun for future executions of the task.
@@ -2958,7 +2958,7 @@ func (t *Task) IsPartOfSingleHostTaskGroup() bool {
 
 // HasCheckRun retruns true if the task specifies a check run path.
 func (t *Task) HasCheckRun() bool {
-	return t.CheckRunPath != ""
+	return t.CheckRunPath != nil
 }
 
 func (t *Task) IsPartOfDisplay() bool {

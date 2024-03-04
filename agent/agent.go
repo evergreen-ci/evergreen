@@ -1042,17 +1042,24 @@ func (a *Agent) upsertCheckRun(ctx context.Context, tc *taskContext) error {
 }
 
 func buildCheckRun(ctx context.Context, tc *taskContext) (*apimodels.CheckRunOutput, error) {
-	fileName := tc.taskConfig.Task.CheckRunPath
+	fileNamePointer := tc.taskConfig.Task.CheckRunPath
 	// no checkRun specified
-	if fileName == "" || !evergreen.IsGitHubPatchRequester(tc.taskConfig.Task.Requester) {
+	if fileNamePointer == nil || !evergreen.IsGitHubPatchRequester(tc.taskConfig.Task.Requester) {
 		return nil, nil
 	}
+
+	fileName := utility.FromStringPtr(fileNamePointer)
+	checkRunOutput := apimodels.CheckRunOutput{}
+	if fileName == "" {
+		tc.logger.Task().Infof("Upserting checkRun with no output file specified.")
+		return &checkRunOutput, nil
+	}
+
 	_, err := os.Stat(fileName)
 	if os.IsNotExist(err) {
 		return nil, errors.Errorf("file '%s' does not exist", fileName)
 	}
 
-	checkRunOutput := apimodels.CheckRunOutput{}
 	err = utility.ReadJSONFile(fileName, &checkRunOutput)
 	if err != nil {
 		return nil, err
