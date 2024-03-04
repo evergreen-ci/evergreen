@@ -998,8 +998,9 @@ func GetRecentTaskStats(period time.Duration, nameKey string) ([]StatusItem, err
 // FindByExecutionTasksAndMaxExecution returns the tasks corresponding to the
 // passed in taskIds and execution, or the most recent executions of those
 // tasks if they do not have a matching execution.
-func FindByExecutionTasksAndMaxExecution(taskIds []string, execution int, filters ...bson.E) ([]Task, error) {
-	query := bson.M{
+func FindByExecutionTasksAndMaxExecution(ctx context.Context, taskIds []string, execution int, filters ...bson.E) ([]Task, error) {
+	pipeline := []bson.M{}
+	match := bson.M{
 		IdKey: bson.M{
 			"$in": taskIds,
 		},
@@ -1007,10 +1008,17 @@ func FindByExecutionTasksAndMaxExecution(taskIds []string, execution int, filter
 			"$lte": execution,
 		},
 	}
+	pipeline = append(pipeline, bson.M{"$match": match})
+	pipeline = append(pipeline, addDisplayStatus)
+	filterMatch := bson.M{}
 	for _, filter := range filters {
-		query[filter.Key] = filter.Value
+		filterMatch[filter.Key] = filter.Value
 	}
-	tasks, err := Find(query)
+	if len(filterMatch) > 0 {
+		pipeline = append(pipeline, bson.M{"$match": filterMatch})
+	}
+	var tasks []Task
+	err := Aggregate(pipeline, &tasks)
 	if err != nil {
 		return nil, errors.Wrap(err, "finding tasks")
 	}
@@ -1032,11 +1040,11 @@ func FindByExecutionTasksAndMaxExecution(taskIds []string, execution int, filter
 				"$lte": execution,
 			},
 		}
-		for _, filter := range filters {
-			match[filter.Key] = filter.Value
-		}
 		oldTaskPipeline = append(oldTaskPipeline, bson.M{"$match": match})
-
+		oldTaskPipeline = append(oldTaskPipeline, addDisplayStatus)
+		if len(filterMatch) > 0 {
+			oldTaskPipeline = append(oldTaskPipeline, bson.M{"$match": filterMatch})
+		}
 		// If there are multiple previous executions, matching on
 		// non-zero executions with $lte will return duplicate tasks.
 		// We sort and group to find and return the old task with the
