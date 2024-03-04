@@ -825,16 +825,16 @@ func (a *Agent) runTaskTimeoutCommands(ctx context.Context, tc *taskContext) {
 	}
 }
 
-func (a *Agent) runPostTaskCommands(ctx context.Context, tc *taskContext) error {
+func (a *Agent) runPostOrTeardownTaskCommands(ctx context.Context, tc *taskContext) error {
 	ctx, span := a.tracer.Start(ctx, "post-task-commands")
 	defer span.End()
 
-	a.killProcs(ctx, tc, false, "post-task commands are starting")
-	defer a.killProcs(ctx, tc, false, "post-task commands are finished")
+	a.killProcs(ctx, tc, false, "post-task or teardown-task commands are starting")
+	defer a.killProcs(ctx, tc, false, "post-task or teardown-task commands are finished")
 
 	post, err := tc.getPost()
 	if err != nil {
-		tc.logger.Execution().Error(errors.Wrap(err, "fetching post-task commands"))
+		tc.logger.Execution().Error(errors.Wrap(err, "fetching post-task or teardown-task commands"))
 		return nil
 	}
 
@@ -954,8 +954,8 @@ func (a *Agent) finishTask(ctx context.Context, tc *taskContext, status string, 
 	case evergreen.TaskSucceeded:
 		a.handleTimeoutAndOOM(ctx, tc, status)
 		tc.logger.Task().Info("Task completed - SUCCESS.")
-		if err := a.runPostTaskCommands(ctx, tc); err != nil {
-			tc.logger.Task().Info("Post-task completed - FAILURE. Overall task status changed to FAILED.")
+		if err := a.runPostOrTeardownTaskCommands(ctx, tc); err != nil {
+			tc.logger.Task().Info("Post task completed - FAILURE. Overall task status changed to FAILED.")
 			setEndTaskFailureDetails(tc, detail, evergreen.TaskFailed, "", "")
 		}
 		a.runEndTaskSync(ctx, tc, detail)
@@ -965,7 +965,7 @@ func (a *Agent) finishTask(ctx context.Context, tc *taskContext, status string, 
 		// If the post commands error, ignore the error. runCommandsInBlock
 		// already logged the error, and the post commands cannot cause the
 		// task to fail since the task already failed.
-		_ = a.runPostTaskCommands(ctx, tc)
+		_ = a.runPostOrTeardownTaskCommands(ctx, tc)
 		a.runEndTaskSync(ctx, tc, detail)
 	case evergreen.TaskSystemFailed:
 		// This is a special status indicating that the agent failed for reasons
