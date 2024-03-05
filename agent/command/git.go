@@ -28,6 +28,7 @@ import (
 	"github.com/pkg/errors"
 	"go.opentelemetry.io/otel/attribute"
 	"go.opentelemetry.io/otel/trace"
+	"golang.org/x/sync/errgroup"
 )
 
 const (
@@ -855,10 +856,12 @@ func (c *gitFetchProject) fetch(ctx context.Context,
 		}
 	}
 
+	var g errgroup.Group
+
 	// Clone the project.
-	if err = c.fetchSource(ctx, comm, logger, conf, jpm, opts); err != nil {
-		return errors.Wrap(err, "problem running fetch command")
-	}
+	g.Go(func() error {
+		return errors.Wrap(c.fetchSource(ctx, comm, logger, conf, jpm, opts), "problem running fetch command")
+	})
 
 	// Retrieve the patch for the version if one exists.
 	var p *patch.Patch
@@ -872,13 +875,18 @@ func (c *gitFetchProject) fetch(ctx context.Context,
 
 	// Clone the project's modules.
 	for _, moduleName := range conf.BuildVariant.Modules {
-		if err := ctx.Err(); err != nil {
-			return errors.Wrapf(err, "canceled while applying module '%s'", moduleName)
-		}
-		err = c.fetchModuleSource(ctx, comm, conf, logger, jpm, td, opts.token, opts.method, p, moduleName)
-		if err != nil {
-			return errors.Wrapf(err, "fetching module source '%s'", moduleName)
-		}
+		g.Go(func(name string) func() error {
+			return func() error {
+				if err := ctx.Err(); err != nil {
+					return errors.Wrapf(err, "canceled while applying module '%s'", moduleName)
+				}
+				return errors.Wrapf(c.fetchModuleSource(ctx, comm, conf, logger, jpm, td, opts.token, opts.method, p, moduleName), "fetching module source '%s'", moduleName)
+			}
+		}(moduleName))
+	}
+
+	if err = g.Wait(); err != nil {
+		return errors.Wrap(err, "fetching project and module source")
 	}
 
 	// Apply additional patches for commit queue batch execution.
