@@ -640,7 +640,7 @@ tasks:
             - GOROOT
       - func: verify-swaggo-fmt
   - name: check-go-vulnerabilities
-    tags: ["linter"]
+    tags: ["linter", "skip-container"]
     commands:
       - func: get-project-and-modules
       - command: subprocess.exec
@@ -838,7 +838,7 @@ buildvariants:
       - name: ".smoke"
       - name: ".test"
       - name: "js-test"
-      - name: ".linter"
+      - name: ".linter !.skip-container"
       - name: "dist-staging"
 
   - name: lint

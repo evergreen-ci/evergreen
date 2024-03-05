@@ -635,8 +635,8 @@ func (a *Agent) runTask(ctx context.Context, tcInput *taskContext, nt *apimodels
 	}
 
 	defer func() {
-		tc.logger.Execution().Error(errors.Wrap(tc.taskConfig.TaskOutputDir.Run(tskCtx), "ingesting task output"))
 		tc.logger.Execution().Error(errors.Wrap(a.uploadTraces(tskCtx, tc.taskConfig.WorkDir), "uploading traces"))
+		tc.logger.Execution().Error(errors.Wrap(tc.taskConfig.TaskOutputDir.Run(tskCtx), "ingesting task output"))
 	}()
 
 	tc.setHeartbeatTimeout(heartbeatTimeoutOptions{})
