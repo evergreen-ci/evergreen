@@ -7,6 +7,7 @@ import (
 	"github.com/evergreen-ci/evergreen/db"
 	"github.com/evergreen-ci/evergreen/model/task"
 	"github.com/evergreen-ci/evergreen/model/user"
+	"github.com/evergreen-ci/evergreen/util"
 	"github.com/evergreen-ci/gimlet"
 	"github.com/evergreen-ci/utility"
 	"github.com/mongodb/anser/bsonutil"
@@ -102,49 +103,47 @@ func FindMergedProjectVars(projectID string) (*ProjectVars, error) {
 	return projectVars, nil
 }
 
+// UpdateProjectVarsByValue searches all projects who have a variable set to the toReplace input parameter, and replaces all
+// matching project variables with the replacement input parameter. If dryRun is set to true, the update is not performed.
+// We return a list of keys that were replaced (or, the list of keys that would be replaced in the case that dryRun is true).
 func UpdateProjectVarsByValue(toReplace, replacement, username string, dryRun bool) (map[string][]string, error) {
 	catcher := grip.NewBasicCatcher()
-	matchingProjects, err := GetVarsByValue(toReplace)
+	matchingProjectVars, err := getVarsByValue(toReplace)
 	if err != nil {
 		catcher.Wrap(err, "fetching projects with matching value")
 	}
-	if matchingProjects == nil {
+	if matchingProjectVars == nil {
 		catcher.New("no projects with matching value found")
 	}
 	changes := map[string][]string{}
-	for _, project := range matchingProjects {
-		for key, val := range project.Vars {
+	for _, projectVars := range matchingProjectVars {
+		for key, val := range projectVars.Vars {
 			if val == toReplace {
 				if !dryRun {
-					originalVars := make(map[string]string)
-					for k, v := range project.Vars {
-						originalVars[k] = v
+					var beforeVars ProjectVars
+					err = util.DeepCopy(*projectVars, &beforeVars)
+					if err != nil {
+						catcher.Wrap(err, "copying project variables")
 					}
 					before := ProjectSettings{
-						Vars: ProjectVars{
-							Id:   project.Id,
-							Vars: originalVars,
-						},
+						Vars: beforeVars,
 					}
 
-					project.Vars[key] = replacement
-					_, err = project.Upsert()
+					projectVars.Vars[key] = replacement
+					_, err = projectVars.Upsert()
 					if err != nil {
-						catcher.Wrapf(err, "overwriting variables for project '%s'", project.Id)
+						catcher.Wrapf(err, "overwriting variables for project '%s'", projectVars.Id)
 					}
 
 					after := ProjectSettings{
-						Vars: ProjectVars{
-							Id:   project.Id,
-							Vars: project.Vars,
-						},
+						Vars: *projectVars,
 					}
 
-					if err = LogProjectModified(project.Id, username, &before, &after); err != nil {
-						catcher.Wrapf(err, "logging project modification for project '%s'", project.Id)
+					if err = LogProjectModified(projectVars.Id, username, &before, &after); err != nil {
+						catcher.Wrapf(err, "logging project modification for project '%s'", projectVars.Id)
 					}
 				}
-				changes[project.Id] = append(changes[project.Id], key)
+				changes[projectVars.Id] = append(changes[projectVars.Id], key)
 			}
 		}
 	}
@@ -338,7 +337,7 @@ func (projectVars *ProjectVars) RedactPrivateVars() *ProjectVars {
 	return res
 }
 
-func GetVarsByValue(val string) ([]*ProjectVars, error) {
+func getVarsByValue(val string) ([]*ProjectVars, error) {
 	matchingProjects := []*ProjectVars{}
 	pipeline := []bson.M{
 		{"$addFields": bson.M{projectVarsMapKey: bson.M{"$objectToArray": "$" + projectVarsMapKey}}},

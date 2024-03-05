@@ -2,6 +2,7 @@ package data
 
 import (
 	"context"
+	"github.com/evergreen-ci/evergreen/testutil"
 	"testing"
 	"time"
 
@@ -28,6 +29,8 @@ import (
 ////////////////////////////////////////////////////////////////////////
 //
 // Tests for fetch patch by project route
+
+func init() { testutil.Setup() }
 
 type ProjectConnectorGetSuite struct {
 	setup    func() error
@@ -310,12 +313,31 @@ func TestUpdateProjectVarsByValue(t *testing.T) {
 	assert.NotNil(t, res)
 	assert.Equal(t, "11", res.Vars["a"])
 
+	resp, err = model.UpdateProjectVarsByValue("3", "33", username, false)
+	assert.NoError(t, err)
+	assert.NotNil(t, resp)
+	assert.Equal(t, []string{"b"}, resp[projectId])
+
+	res, err = FindProjectVarsById(projectId, "", false)
+	assert.NoError(t, err)
+	assert.NotNil(t, res)
+	assert.Equal(t, "33", res.Vars["b"])
+
 	projectEvents, err := model.MostRecentProjectEvents(projectId, 5)
 	assert.NoError(t, err)
-	assert.Equal(t, 1, len(projectEvents))
+	assert.Equal(t, 2, len(projectEvents))
 
 	assert.NotNil(t, projectEvents[0].Data)
 	eventData := projectEvents[0].Data.(*model.ProjectChangeEvent)
+
+	assert.Equal(t, username, eventData.User)
+	assert.Equal(t, "3", eventData.Before.Vars.Vars["b"])
+	assert.True(t, eventData.Before.Vars.PrivateVars["b"])
+	assert.Equal(t, "33", eventData.After.Vars.Vars["b"])
+	assert.True(t, eventData.After.Vars.PrivateVars["b"])
+
+	assert.NotNil(t, projectEvents[1].Data)
+	eventData = projectEvents[1].Data.(*model.ProjectChangeEvent)
 
 	assert.Equal(t, username, eventData.User)
 	assert.Equal(t, "1", eventData.Before.Vars.Vars["a"])
