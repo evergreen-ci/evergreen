@@ -268,7 +268,7 @@ func (m *mockManager) TerminateInstance(ctx context.Context, host *host.Host, us
 
 func (m *mockManager) StopInstance(ctx context.Context, host *host.Host, user string) error {
 	if !utility.StringSliceContains(evergreen.StoppableHostStatuses, host.Status) {
-		return errors.Errorf("cannot start host '%s' because the host status is '%s' which is not a stoppable state", host.Id, host.Status)
+		return errors.Errorf("cannot stop host '%s' because the host status is '%s' which is not a stoppable state", host.Id, host.Status)
 	}
 
 	l := m.mutex
