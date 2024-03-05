@@ -3909,7 +3909,8 @@ func TestByExecutionTasksAndMaxExecution(t *testing.T) {
 		ot2 = *ot2.makeArchivedTask()
 		assert.NoError(t, db.Insert(OldCollection, ot2))
 
-		tasks, err := FindByExecutionTasksAndMaxExecution(tasksToFetch, 1)
+		ctx := context.TODO()
+		tasks, err := FindByExecutionTasksAndMaxExecution(ctx, tasksToFetch, 1)
 		tasks = convertOldTasksIntoTasks(tasks)
 		assert.NoError(t, err)
 		assert.Equal(t, 2, len(tasks))
@@ -3947,7 +3948,8 @@ func TestByExecutionTasksAndMaxExecution(t *testing.T) {
 		ot2 = *ot2.makeArchivedTask()
 		assert.NoError(t, db.Insert(OldCollection, ot2))
 
-		tasks, err := FindByExecutionTasksAndMaxExecution(tasksToFetch, 2)
+		ctx := context.TODO()
+		tasks, err := FindByExecutionTasksAndMaxExecution(ctx, tasksToFetch, 2)
 		tasks = convertOldTasksIntoTasks(tasks)
 		assert.NoError(t, err)
 		assert.Equal(t, 2, len(tasks))
@@ -3993,8 +3995,8 @@ func TestByExecutionTasksAndMaxExecution(t *testing.T) {
 		ot2.Execution = 0
 		ot2 = *ot2.makeArchivedTask()
 		assert.NoError(t, db.Insert(OldCollection, ot2))
-
-		tasks, err := FindByExecutionTasksAndMaxExecution(tasksToFetch, 1)
+		ctx := context.TODO()
+		tasks, err := FindByExecutionTasksAndMaxExecution(ctx, tasksToFetch, 1)
 		tasks = convertOldTasksIntoTasks(tasks)
 		assert.NoError(t, err)
 		assert.Equal(t, 2, len(tasks))
@@ -4488,8 +4490,8 @@ func TestHasResults(t *testing.T) {
 				_, err := db.Upsert(OldCollection, ById(execTask.Id), &execTask)
 				require.NoError(t, err)
 			}
-
-			assert.Equal(t, test.hasResults, test.tsk.HasResults())
+			ctx := context.TODO()
+			assert.Equal(t, test.hasResults, test.tsk.HasResults(ctx))
 		})
 	}
 }
@@ -4671,8 +4673,8 @@ func TestCreateTestResultsTaskOptions(t *testing.T) {
 				_, err := db.Upsert(OldCollection, ById(execTask.Id), &execTask)
 				require.NoError(t, err)
 			}
-
-			opts, err := test.tsk.CreateTestResultsTaskOptions()
+			ctx := context.TODO()
+			opts, err := test.tsk.CreateTestResultsTaskOptions(ctx)
 			require.NoError(t, err)
 			assert.ElementsMatch(t, test.expectedOpts, opts)
 		})

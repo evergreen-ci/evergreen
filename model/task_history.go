@@ -239,7 +239,7 @@ func (thi *taskHistoryIterator) GetFailedTests(tasks []task.Task) (map[string][]
 	var allTaskOpts []testresult.TaskOptions
 	taskIDsToDisplay := map[string]string{}
 	for _, tsk := range tasks {
-		taskOpts, err := tsk.CreateTestResultsTaskOptions()
+		taskOpts, err := tsk.CreateTestResultsTaskOptions(ctx)
 		if err != nil {
 			return nil, errors.Wrap(err, "creating test results task options")
 		}
