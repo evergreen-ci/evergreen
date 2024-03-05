@@ -886,9 +886,6 @@ func (m *ec2Manager) TerminateInstance(ctx context.Context, h *host.Host, user, 
 
 // StopInstance stops a running EC2 instance.
 func (m *ec2Manager) StopInstance(ctx context.Context, h *host.Host, user string) error {
-	if h.Status == evergreen.HostStopped {
-		return nil
-	}
 	if !utility.StringSliceContains(evergreen.StoppableHostStatuses, h.Status) {
 		return errors.Errorf("host cannot be stopped because its status ('%s') is not a stoppable state", h.Status)
 	}
@@ -907,7 +904,7 @@ func (m *ec2Manager) StopInstance(ctx context.Context, h *host.Host, user string
 
 	if len(out.StoppingInstances) == 1 {
 		// Stopping a host can be quite fast, so sometimes EC2 will say the host
-		// is stopped in its response.
+		// is stopping or already stopped in its response.
 		instance := out.StoppingInstances[0]
 		status := ec2StatusToEvergreenStatus(instance.CurrentState.Name)
 		switch status {
@@ -918,6 +915,13 @@ func (m *ec2Manager) StopInstance(ctx context.Context, h *host.Host, user string
 				"user":    user,
 			}))
 		case StatusStopped:
+			grip.Info(message.Fields{
+				"message":       "stopped instance",
+				"user":          user,
+				"host_provider": h.Distro.Provider,
+				"host_id":       h.Id,
+				"distro":        h.Distro.Id,
+			})
 			return errors.Wrap(h.SetStopped(ctx, user), "marking DB host as stopped")
 		default:
 			return errors.Errorf("instance is in unexpected state '%s'", status)
@@ -966,9 +970,6 @@ func (m *ec2Manager) StopInstance(ctx context.Context, h *host.Host, user string
 
 // StartInstance starts a stopped EC2 instance.
 func (m *ec2Manager) StartInstance(ctx context.Context, h *host.Host, user string) error {
-	if h.Status == evergreen.HostRunning {
-		return nil
-	}
 	if !utility.StringSliceContains(evergreen.StartableHostStatuses, h.Status) {
 		return errors.Errorf("host cannot be started because its status ('%s') is not a startable state", h.Status)
 	}

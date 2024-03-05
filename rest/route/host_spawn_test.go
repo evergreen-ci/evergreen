@@ -144,7 +144,7 @@ func TestHostModifyHandlers(t *testing.T) {
 	}
 	checkSpawnHostModifyQueueGroup := func(ctx context.Context, t *testing.T, env *mock.Environment, numQueues int) {
 		qg := env.RemoteQueueGroup()
-		assert.Len(t, qg.Len(), numQueues)
+		assert.Equal(t, numQueues, qg.Len())
 	}
 
 	for tName, tCase := range map[string]func(ctx context.Context, t *testing.T, env *mock.Environment, hosts []host.Host){
@@ -178,7 +178,7 @@ func TestHostModifyHandlers(t *testing.T) {
 			checkSubscriptions(t, "user", 1)
 			checkSpawnHostModifyQueueGroup(ctx, t, env, 1)
 		},
-		"StopHandlerNoopsForAlreadyStoppedHost": func(ctx context.Context, t *testing.T, env *mock.Environment, hosts []host.Host) {
+		"StopHandlerEnqueuesStopJobForAlreadyStoppedHost": func(ctx context.Context, t *testing.T, env *mock.Environment, hosts []host.Host) {
 			rh := &hostStopHandler{
 				env:              env,
 				subscriptionType: event.SlackSubscriberType,
@@ -190,7 +190,8 @@ func TestHostModifyHandlers(t *testing.T) {
 			assert.NotNil(t, resp)
 			assert.Equal(t, http.StatusOK, resp.Status())
 
-			checkSpawnHostModifyQueueGroup(ctx, t, env, 0)
+			checkSubscriptions(t, "user", 1)
+			checkSpawnHostModifyQueueGroup(ctx, t, env, 1)
 		},
 		"StopHandlerErrorsForNonstoppableHostStatus": func(ctx context.Context, t *testing.T, env *mock.Environment, hosts []host.Host) {
 			rh := &hostStopHandler{
@@ -252,7 +253,7 @@ func TestHostModifyHandlers(t *testing.T) {
 			checkSubscriptions(t, "user", 0)
 			checkSpawnHostModifyQueueGroup(ctx, t, env, 0)
 		},
-		"StartHandlerNoopsForAlreadyRunningHost": func(ctx context.Context, t *testing.T, env *mock.Environment, hosts []host.Host) {
+		"StartHandlerEnqueuesJobForAlreadyRunningHost": func(ctx context.Context, t *testing.T, env *mock.Environment, hosts []host.Host) {
 			rh := &hostStartHandler{
 				env:              env,
 				subscriptionType: event.SlackSubscriberType,
@@ -264,7 +265,8 @@ func TestHostModifyHandlers(t *testing.T) {
 			require.NotZero(t, resp)
 			assert.Equal(t, http.StatusOK, resp.Status())
 
-			checkSpawnHostModifyQueueGroup(ctx, t, env, 0)
+			checkSubscriptions(t, "user", 1)
+			checkSpawnHostModifyQueueGroup(ctx, t, env, 1)
 		},
 		"ModifyHandlerModifiesHost": func(ctx context.Context, t *testing.T, env *mock.Environment, hosts []host.Host) {
 			rh := &hostModifyHandler{
