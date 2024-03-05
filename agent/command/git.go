@@ -856,10 +856,13 @@ func (c *gitFetchProject) fetch(ctx context.Context,
 		}
 	}
 
-	var g errgroup.Group
+	g, ctx := errgroup.WithContext(ctx)
 
 	// Clone the project.
 	g.Go(func() error {
+		if err := ctx.Err(); err != nil {
+			return errors.Wrap(err, "canceled while fetching project '%s'")
+		}
 		return errors.Wrap(c.fetchSource(ctx, comm, logger, conf, jpm, opts), "problem running fetch command")
 	})
 
