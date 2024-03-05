@@ -629,7 +629,7 @@ post:
 `
 	s.setupRunTask(projYml)
 
-	s.NoError(s.a.runPostTaskCommands(s.ctx, s.tc))
+	s.NoError(s.a.runPostOrTeardownTaskCommands(s.ctx, s.tc))
 
 	s.NoError(s.tc.logger.Close())
 	checkMockLogs(s.T(), s.mockCommunicator, s.tc.taskConfig.Task.Id, []string{
@@ -660,7 +660,7 @@ post:
 	s.setupRunTask(projYml)
 
 	startAt := time.Now()
-	s.NoError(s.a.runPostTaskCommands(s.ctx, s.tc))
+	s.NoError(s.a.runPostOrTeardownTaskCommands(s.ctx, s.tc))
 
 	s.Less(time.Since(startAt), 5*time.Second, "post command should have stopped early")
 	s.False(s.tc.hadTimedOut(), "should not record post timeout when post cannot fail task")
@@ -695,7 +695,7 @@ post:
 `
 	s.setupRunTask(projYml)
 
-	s.Error(s.a.runPostTaskCommands(s.ctx, s.tc))
+	s.Error(s.a.runPostOrTeardownTaskCommands(s.ctx, s.tc))
 
 	s.NoError(s.tc.logger.Close())
 	checkMockLogs(s.T(), s.mockCommunicator, s.tc.taskConfig.Task.Id, nil, []string{panicLog})
@@ -716,7 +716,7 @@ post:
 	s.setupRunTask(projYml)
 
 	startAt := time.Now()
-	err := s.a.runPostTaskCommands(s.ctx, s.tc)
+	err := s.a.runPostOrTeardownTaskCommands(s.ctx, s.tc)
 	s.Error(err)
 	s.True(utility.IsContextError(errors.Cause(err)))
 
@@ -1120,7 +1120,7 @@ post:
 `
 	s.setupRunTask(projYml)
 
-	s.NoError(s.a.runPostTaskCommands(s.ctx, s.tc))
+	s.NoError(s.a.runPostOrTeardownTaskCommands(s.ctx, s.tc))
 
 	s.NoError(s.tc.logger.Close())
 	checkMockLogs(s.T(), s.mockCommunicator, s.tc.taskConfig.Task.Id, []string{
@@ -2057,7 +2057,7 @@ task_groups:
 	s.tc.taskConfig.Task.TaskGroup = taskGroup
 	s.tc.taskConfig.TaskGroup = s.tc.taskConfig.Project.FindTaskGroup(taskGroup)
 
-	s.NoError(s.a.runPostTaskCommands(s.ctx, s.tc))
+	s.NoError(s.a.runPostOrTeardownTaskCommands(s.ctx, s.tc))
 
 	s.NoError(s.tc.logger.Close())
 	checkMockLogs(s.T(), s.mockCommunicator, s.tc.taskConfig.Task.Id, []string{
@@ -2089,7 +2089,7 @@ task_groups:
 	s.tc.taskConfig.Task.TaskGroup = taskGroup
 	s.tc.taskConfig.TaskGroup = s.tc.taskConfig.Project.FindTaskGroup(taskGroup)
 
-	s.Error(s.a.runPostTaskCommands(s.ctx, s.tc))
+	s.Error(s.a.runPostOrTeardownTaskCommands(s.ctx, s.tc))
 
 	s.NoError(s.tc.logger.Close())
 	checkMockLogs(s.T(), s.mockCommunicator, s.tc.taskConfig.Task.Id, []string{
@@ -2122,7 +2122,7 @@ task_groups:
 	s.tc.taskConfig.TaskGroup = s.tc.taskConfig.Project.FindTaskGroup(taskGroup)
 
 	startAt := time.Now()
-	s.NoError(s.a.runPostTaskCommands(s.ctx, s.tc), "teardown task timeout should not fail task")
+	s.NoError(s.a.runPostOrTeardownTaskCommands(s.ctx, s.tc), "teardown task timeout should not fail task")
 
 	s.Less(time.Since(startAt), 5*time.Second, "timeout should have triggered after 1s")
 	s.False(s.tc.hadTimedOut(), "should not have hit task timeout")
@@ -2162,7 +2162,7 @@ task_groups:
 	s.tc.taskConfig.TaskGroup = s.tc.taskConfig.Project.FindTaskGroup(taskGroup)
 
 	startAt := time.Now()
-	err := s.a.runPostTaskCommands(s.ctx, s.tc)
+	err := s.a.runPostOrTeardownTaskCommands(s.ctx, s.tc)
 	s.Error(err, "teardown task timeout should fail task")
 	s.True(utility.IsContextError(errors.Cause(err)))
 
