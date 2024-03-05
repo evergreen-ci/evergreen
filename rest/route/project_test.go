@@ -1142,7 +1142,7 @@ func TestDeleteProject(t *testing.T) {
 
 	// Project with UseRepoSettings == false
 	badProject := serviceModel.ProjectRef{
-		Id:        "bad_project",
+		Id:        "non_tracking_project",
 		RepoRefId: "",
 	}
 	require.NoError(t, badProject.Insert())
