@@ -905,6 +905,7 @@ var (
 	// StoppableHostStatuses represent all host statuses when it is possible to
 	// stop a running host.
 	StoppableHostStatuses = []string{
+		HostStopped,
 		HostStopping,
 		HostRunning,
 	}
@@ -914,6 +915,7 @@ var (
 	StartableHostStatuses = []string{
 		HostStopped,
 		HostStopping,
+		HostRunning,
 	}
 
 	StartedHostStatus = []string{

@@ -267,15 +267,16 @@ func (m *mockManager) TerminateInstance(ctx context.Context, host *host.Host, us
 }
 
 func (m *mockManager) StopInstance(ctx context.Context, host *host.Host, user string) error {
+	if !utility.StringSliceContains(evergreen.StoppableHostStatuses, host.Status) {
+		return errors.Errorf("cannot start host '%s' because the host status is '%s' which is not a stoppable state", host.Id, host.Status)
+	}
+
 	l := m.mutex
 	l.Lock()
 	defer l.Unlock()
 	instance, ok := m.Instances[host.Id]
 	if !ok {
 		return errors.Errorf("unable to fetch host '%s'", host.Id)
-	}
-	if host.Status != evergreen.HostRunning {
-		return errors.Errorf("cannot stop host '%s' because the instance is not running", host.Id)
 	}
 	instance.Status = StatusStopped
 	m.Instances[host.Id] = instance
@@ -285,15 +286,16 @@ func (m *mockManager) StopInstance(ctx context.Context, host *host.Host, user st
 }
 
 func (m *mockManager) StartInstance(ctx context.Context, host *host.Host, user string) error {
+	if !utility.StringSliceContains(evergreen.StartableHostStatuses, host.Status) {
+		return errors.Errorf("cannot start host '%s' because the host status is '%s' which is not a startable state", host.Id, host.Status)
+	}
+
 	l := m.mutex
 	l.Lock()
 	defer l.Unlock()
 	instance, ok := m.Instances[host.Id]
 	if !ok {
 		return errors.Errorf("unable to fetch host '%s'", host.Id)
-	}
-	if host.Status != evergreen.HostStopped {
-		return errors.Errorf("cannot start host '%s' because the instance is not stopped", host.Id)
 	}
 	instance.Status = StatusRunning
 	m.Instances[host.Id] = instance
