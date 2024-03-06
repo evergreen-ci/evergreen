@@ -6048,6 +6048,10 @@ func TestGeneratePersistentDNSName(t *testing.T) {
 		}
 	})
 	t.Run("ReturnsUniqueStringsForDifferentHostIDs", func(t *testing.T) {
+		require.NoError(t, db.ClearCollections(Collection))
+		defer func() {
+			assert.NoError(t, db.ClearCollections(Collection))
+		}()
 		dnsNames := make(map[string]struct{})
 		for i := 0; i < 10; i++ {
 			h := Host{
@@ -6058,7 +6062,10 @@ func TestGeneratePersistentDNSName(t *testing.T) {
 			require.NoError(t, err)
 			assert.NotContains(t, dnsNames, dnsName, "generated DNS name should be unique")
 			assert.False(t, validDNSNameRegexp.MatchString(dnsName), "generated DNS name should only contain periods, dashes, and alphanumeric characters")
+
 			dnsNames[dnsName] = struct{}{}
+			h.PersistentDNSName = dnsName
+			assert.NoError(t, h.Insert(ctx))
 		}
 	})
 	t.Run("ReturnsUniquePersistentDNSNameEvenIfThereIsAnIdenticalOneAlreadyAssignedToADifferentHost", func(t *testing.T) {
