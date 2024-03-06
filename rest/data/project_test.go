@@ -2,7 +2,6 @@ package data
 
 import (
 	"context"
-	"github.com/evergreen-ci/evergreen/testutil"
 	"testing"
 	"time"
 
@@ -29,8 +28,6 @@ import (
 ////////////////////////////////////////////////////////////////////////
 //
 // Tests for fetch patch by project route
-
-func init() { testutil.Setup() }
 
 type ProjectConnectorGetSuite struct {
 	setup    func() error
@@ -62,8 +59,8 @@ func getMockProjectSettings() model.ProjectSettings {
 		GithubHooksEnabled: true,
 		Vars: model.ProjectVars{
 			Id:          projectId,
-			Vars:        map[string]string{},
-			PrivateVars: map[string]bool{},
+			Vars:        map[string]string{"hello": "world", "world": "hello", "beep": "boop"},
+			PrivateVars: map[string]bool{"world": true},
 		},
 		Aliases: []model.ProjectAlias{{
 			ID:        mgobson.ObjectIdHex("5bedc72ee4055d31f0340b1d"),
@@ -150,6 +147,11 @@ func TestProjectConnectorGetSuite(t *testing.T) {
 		after := getMockProjectSettings()
 		after.GithubHooksEnabled = false
 		after.ProjectRef.WorkstationConfig.SetupCommands = []model.WorkstationSetupCommand{}
+		after.Vars = model.ProjectVars{
+			Id:          projectId,
+			Vars:        map[string]string{"hello": "another_world", "world": "changed", "beep": "boop"},
+			PrivateVars: map[string]bool{"world": true},
+		}
 		s.NotEmpty(before.Aliases[0].ID)
 		s.NotEmpty(after.Aliases[0].ID)
 
@@ -207,6 +209,10 @@ func (s *ProjectConnectorGetSuite) TestGetProjectEvents() {
 		s.Nil(eventLog.Before.ProjectRef.WorkstationConfig.SetupCommands)
 		s.NotNil(eventLog.After.ProjectRef.WorkstationConfig.SetupCommands)
 		s.Len(eventLog.After.ProjectRef.WorkstationConfig.SetupCommands, 0)
+		s.Equal(eventLog.Before.Vars.Vars["hello"], "world")
+		s.Equal(eventLog.After.Vars.Vars["hello"], "another_world")
+		s.Equal(eventLog.Before.Vars.Vars["world"], "{REDACTED}")
+		s.Equal(eventLog.After.Vars.Vars["world"], "")
 	}
 
 	// No error for empty events

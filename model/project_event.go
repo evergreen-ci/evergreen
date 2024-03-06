@@ -108,10 +108,31 @@ func (p *ProjectChangeEvents) RedactPrivateVars() {
 		if !isChangeEvent {
 			continue
 		}
+		modifiedPrivateVarKeys := findModifiedPrivateVars(changeEvent)
 		changeEvent.After.Vars = *changeEvent.After.Vars.RedactPrivateVars()
 		changeEvent.Before.Vars = *changeEvent.Before.Vars.RedactPrivateVars()
+		// If a private variable has been changed, change the before value of the
+		// variable to {REDACTED} so the event log will show that the private variable
+		// has been changed in the UI.
+		for _, privateVarKey := range modifiedPrivateVarKeys {
+			changeEvent.Before.Vars.Vars[privateVarKey] = "{REDACTED}"
+		}
 		event.EventLogEntry.Data = changeEvent
 	}
+}
+
+// findModifiedPrivateVars returns a list of private variables that have had
+// their values modified.
+func findModifiedPrivateVars(changeEvent *ProjectChangeEvent) []string {
+	modifiedPrivateVarKeys := []string{}
+	for key, afterVal := range changeEvent.After.Vars.Vars {
+		isPrivateVar := changeEvent.After.Vars.PrivateVars[key]
+		beforeVal, exists := changeEvent.Before.Vars.Vars[key]
+		if isPrivateVar && exists && afterVal != beforeVal {
+			modifiedPrivateVarKeys = append(modifiedPrivateVarKeys, key)
+		}
+	}
+	return modifiedPrivateVarKeys
 }
 
 type ProjectChangeEventEntry struct {
