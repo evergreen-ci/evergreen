@@ -691,7 +691,7 @@ func MarkEnd(ctx context.Context, settings *evergreen.Settings, t *task.Task, ca
 		})
 		return nil
 	}
-	if detailsCopy.Status == evergreen.TaskSucceeded && t.MustHaveResults && !t.HasResults(ctx) {
+	if detailsCopy.Status == evergreen.TaskSucceeded && t.MustHaveResults && !t.HasResults() {
 		detailsCopy.Type = evergreen.CommandTypeTest
 		detailsCopy.Status = evergreen.TaskFailed
 		detailsCopy.Description = evergreen.TaskDescriptionNoResults

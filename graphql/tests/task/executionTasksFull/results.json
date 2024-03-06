@@ -10,10 +10,6 @@
               {
                 "id": "execution_task",
                 "status": "success"
-              },
-              {
-                "id": "execution_task_2",
-                "status": "known-issue"
               }
             ]
           }
