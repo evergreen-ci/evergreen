@@ -658,7 +658,7 @@ func (r *queryResolver) TaskTestSample(ctx context.Context, tasks []string, filt
 	apiSamples := make([]*TaskTestResultSample, len(dbTasks))
 	apiSamplesByTaskID := map[string]*TaskTestResultSample{}
 	for i, dbTask := range dbTasks {
-		taskOpts, err := dbTask.CreateTestResultsTaskOptions(ctx)
+		taskOpts, err := dbTask.CreateTestResultsTaskOptions()
 		if err != nil {
 			return nil, InternalServerError.Send(ctx, fmt.Sprintf("Error creating test results task options for task '%s': %s", dbTask.Id, err))
 		}
