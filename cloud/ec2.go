@@ -757,7 +757,7 @@ func (m *ec2Manager) GetInstanceStatuses(ctx context.Context, hosts []host.Host)
 	}
 
 	// Cache instance information so we can make fewer calls to AWS's API.
-	grip.Error(message.WrapError(cacheAllHostData(ctx, m.env, m.client, hostsToCache), message.Fields{
+	grip.Error(message.WrapError(cacheAllHostData(ctx, m.env, m.client, hostsToCache...), message.Fields{
 		"message":   "error bulk updating cached host data",
 		"num_hosts": len(hostIDsToCache),
 		"host_ids":  hostIDsToCache,
@@ -796,7 +796,7 @@ func (m *ec2Manager) GetInstanceStatus(ctx context.Context, h *host.Host) (Cloud
 			host:     h,
 			instance: instance,
 		}
-		if err = cacheHostData(ctx, m.env, m.client, pair); err != nil {
+		if err = cacheAllHostData(ctx, m.env, m.client, pair); err != nil {
 			return status, errors.Wrapf(err, "caching EC2 host data for host '%s'", h.Id)
 		}
 	}
@@ -1027,7 +1027,7 @@ func (m *ec2Manager) StartInstance(ctx context.Context, h *host.Host, user strin
 		host:     h,
 		instance: instance,
 	}
-	if err = cacheHostData(ctx, m.env, m.client, pair); err != nil {
+	if err = cacheAllHostData(ctx, m.env, m.client, pair); err != nil {
 		return errors.Wrapf(err, "cache EC2 host data for host '%s'", h.Id)
 	}
 

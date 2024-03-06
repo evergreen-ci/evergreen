@@ -288,37 +288,10 @@ type hostInstancePair struct {
 	instance *types.Instance
 }
 
-// cacheHostData caches host information received from AWS about the instance.
-func cacheHostData(ctx context.Context, env evergreen.Environment, client AWSClient, pair hostInstancePair) error {
-	h := pair.host
-	instance := pair.instance
-	data, err := makeCloudProviderData(instance)
-	if err != nil {
-		return errors.Wrap(err, "making cloud provider data")
-	}
-
-	if err := h.CacheCloudProviderData(ctx, *data); err != nil {
-		return errors.Wrap(err, "updating host document in DB")
-	}
-
-	if h.NoExpiration {
-		grip.Error(message.WrapError(setHostPersistentDNSName(ctx, env, h, utility.FromStringPtr(instance.PublicIpAddress), client), message.Fields{
-			"message":    "could not update host's persistent DNS name",
-			"op":         "upsert",
-			"dashboard":  "evergreen sleep schedule health",
-			"host_id":    h.Id,
-			"started_by": h.StartedBy,
-		}))
-	}
-
-	return nil
-}
-
-// cacheAllHostData is the same as cacheHostData but optimized for updating many
-// hosts at once.
-func cacheAllHostData(ctx context.Context, env evergreen.Environment, client AWSClient, pairs []hostInstancePair) error {
+// cacheAllHostData caches information about an EC2 instance for the associated
+// host.
+func cacheAllHostData(ctx context.Context, env evergreen.Environment, client AWSClient, pairs ...hostInstancePair) error {
 	catcher := grip.NewBasicCatcher()
-
 	hostsToCache := map[string]host.CloudProviderData{}
 	for _, hostAndInstance := range pairs {
 		h := hostAndInstance.host
@@ -331,14 +304,6 @@ func cacheAllHostData(ctx context.Context, env evergreen.Environment, client AWS
 
 		hostsToCache[h.Id] = *data
 
-		h.Zone = data.Zone
-		h.StartTime = data.StartedAt
-		h.Host = data.PublicDNS
-		h.PublicIPv4 = data.PublicIPv4
-		h.IPv4 = data.PrivateIPv4
-		h.IP = data.IPv6
-		h.Volumes = data.Volumes
-
 		if h.NoExpiration {
 			// This is not a bulk operation for convenience because it's assumed
 			// that the number of unexpirable hosts is small.
@@ -350,6 +315,14 @@ func cacheAllHostData(ctx context.Context, env evergreen.Environment, client AWS
 				"started_by": h.StartedBy,
 			}))
 		}
+
+		h.Zone = data.Zone
+		h.StartTime = data.StartedAt
+		h.Host = data.PublicDNS
+		h.PublicIPv4 = data.PublicIPv4
+		h.IPv4 = data.PrivateIPv4
+		h.IP = data.IPv6
+		h.Volumes = data.Volumes
 	}
 
 	catcher.Wrap(host.CacheAllCloudProviderData(ctx, env, hostsToCache), "bulk caching host data")
@@ -359,7 +332,7 @@ func cacheAllHostData(ctx context.Context, env evergreen.Environment, client AWS
 
 func makeCloudProviderData(instance *types.Instance) (*host.CloudProviderData, error) {
 	if err := validateCloudProviderData(instance); err != nil {
-		return nil, err
+		return nil, errors.Wrap(err, "EC2 provided invalid instance data")
 	}
 
 	var ipv6 string

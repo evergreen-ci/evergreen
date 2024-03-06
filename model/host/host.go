@@ -1884,29 +1884,6 @@ type CloudProviderData struct {
 	Volumes     []VolumeAttachment
 }
 
-// CacheCloudProvider caches data about the host from its cloud provider.
-func (h *Host) CacheCloudProviderData(ctx context.Context, data CloudProviderData) error {
-	if err := UpdateOne(
-		ctx,
-		bson.M{
-			IdKey: h.Id,
-		},
-		cacheCloudProviderDataUpdate(data),
-	); err != nil {
-		return err
-	}
-
-	h.Zone = data.Zone
-	h.StartTime = data.StartedAt
-	h.Host = data.PublicDNS
-	h.PublicIPv4 = data.PublicIPv4
-	h.IPv4 = data.PrivateIPv4
-	h.IP = data.IPv6
-	h.Volumes = data.Volumes
-
-	return nil
-}
-
 // CacheAllCloudProviderData performs the same updates as
 // (Host).CacheCloudProviderData but is optimized for updating many hosts at
 // once.
