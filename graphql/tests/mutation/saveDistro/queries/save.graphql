@@ -69,12 +69,12 @@ mutation {
           mainlineTimeInQueueFactor: 0
           patchFactor: 0
           patchTimeInQueueFactor: 0
-          targetTime: 0
+          targetTime: 5000
           version: TUNABLE
         }
         dispatcherSettings: { version: REVISED_WITH_DEPENDENCIES }
         hostAllocatorSettings: {
-          acceptableHostIdleTime: 30000000000
+          acceptableHostIdleTime: 30000
           feedbackRule: DEFAULT
           futureHostFraction: 0
           hostsOverallocatedRule: DEFAULT
@@ -103,6 +103,12 @@ mutation {
       isCluster
       name
       note
+      plannerSettings {
+        targetTime
+      }
+      hostAllocatorSettings {
+        acceptableHostIdleTime
+      }
     }
     hostCount
   }
