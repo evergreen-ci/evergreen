@@ -1248,6 +1248,7 @@ type ComplexityRoot struct {
 		StartTime               func(childComplexity int) int
 		Status                  func(childComplexity int) int
 		StepbackInfo            func(childComplexity int) int
+		Tags                    func(childComplexity int) int
 		TaskFiles               func(childComplexity int) int
 		TaskGroup               func(childComplexity int) int
 		TaskGroupMaxHosts       func(childComplexity int) int
@@ -1858,6 +1859,7 @@ type TaskResolver interface {
 	SpawnHostLink(ctx context.Context, obj *model.APITask) (*string, error)
 
 	Status(ctx context.Context, obj *model.APITask) (string, error)
+
 	TaskFiles(ctx context.Context, obj *model.APITask) (*TaskFiles, error)
 
 	TaskLogs(ctx context.Context, obj *model.APITask) (*TaskLogs, error)
@@ -7908,6 +7910,13 @@ func (e *executableSchema) Complexity(typeName, field string, childComplexity in
 		}
 
 		return e.complexity.Task.StepbackInfo(childComplexity), true
+
+	case "Task.tags":
+		if e.complexity.Task.Tags == nil {
+			break
+		}
+
+		return e.complexity.Task.Tags(childComplexity), true
 
 	case "Task.taskFiles":
 		if e.complexity.Task.TaskFiles == nil {
@@ -20166,6 +20175,8 @@ func (ec *executionContext) fieldContext_GroupedBuildVariant_tasks(ctx context.C
 				return ec.fieldContext_Task_startTime(ctx, field)
 			case "status":
 				return ec.fieldContext_Task_status(ctx, field)
+			case "tags":
+				return ec.fieldContext_Task_tags(ctx, field)
 			case "taskFiles":
 				return ec.fieldContext_Task_taskFiles(ctx, field)
 			case "taskGroup":
@@ -25225,6 +25236,8 @@ func (ec *executionContext) fieldContext_LogkeeperBuild_task(ctx context.Context
 				return ec.fieldContext_Task_startTime(ctx, field)
 			case "status":
 				return ec.fieldContext_Task_status(ctx, field)
+			case "tags":
+				return ec.fieldContext_Task_tags(ctx, field)
 			case "taskFiles":
 				return ec.fieldContext_Task_taskFiles(ctx, field)
 			case "taskGroup":
@@ -27951,6 +27964,8 @@ func (ec *executionContext) fieldContext_Mutation_scheduleUndispatchedBaseTasks(
 				return ec.fieldContext_Task_startTime(ctx, field)
 			case "status":
 				return ec.fieldContext_Task_status(ctx, field)
+			case "tags":
+				return ec.fieldContext_Task_tags(ctx, field)
 			case "taskFiles":
 				return ec.fieldContext_Task_taskFiles(ctx, field)
 			case "taskGroup":
@@ -30455,6 +30470,8 @@ func (ec *executionContext) fieldContext_Mutation_abortTask(ctx context.Context,
 				return ec.fieldContext_Task_startTime(ctx, field)
 			case "status":
 				return ec.fieldContext_Task_status(ctx, field)
+			case "tags":
+				return ec.fieldContext_Task_tags(ctx, field)
 			case "taskFiles":
 				return ec.fieldContext_Task_taskFiles(ctx, field)
 			case "taskGroup":
@@ -30660,6 +30677,8 @@ func (ec *executionContext) fieldContext_Mutation_overrideTaskDependencies(ctx c
 				return ec.fieldContext_Task_startTime(ctx, field)
 			case "status":
 				return ec.fieldContext_Task_status(ctx, field)
+			case "tags":
+				return ec.fieldContext_Task_tags(ctx, field)
 			case "taskFiles":
 				return ec.fieldContext_Task_taskFiles(ctx, field)
 			case "taskGroup":
@@ -30865,6 +30884,8 @@ func (ec *executionContext) fieldContext_Mutation_restartTask(ctx context.Contex
 				return ec.fieldContext_Task_startTime(ctx, field)
 			case "status":
 				return ec.fieldContext_Task_status(ctx, field)
+			case "tags":
+				return ec.fieldContext_Task_tags(ctx, field)
 			case "taskFiles":
 				return ec.fieldContext_Task_taskFiles(ctx, field)
 			case "taskGroup":
@@ -31070,6 +31091,8 @@ func (ec *executionContext) fieldContext_Mutation_scheduleTasks(ctx context.Cont
 				return ec.fieldContext_Task_startTime(ctx, field)
 			case "status":
 				return ec.fieldContext_Task_status(ctx, field)
+			case "tags":
+				return ec.fieldContext_Task_tags(ctx, field)
 			case "taskFiles":
 				return ec.fieldContext_Task_taskFiles(ctx, field)
 			case "taskGroup":
@@ -31275,6 +31298,8 @@ func (ec *executionContext) fieldContext_Mutation_setTaskPriority(ctx context.Co
 				return ec.fieldContext_Task_startTime(ctx, field)
 			case "status":
 				return ec.fieldContext_Task_status(ctx, field)
+			case "tags":
+				return ec.fieldContext_Task_tags(ctx, field)
 			case "taskFiles":
 				return ec.fieldContext_Task_taskFiles(ctx, field)
 			case "taskGroup":
@@ -31480,6 +31505,8 @@ func (ec *executionContext) fieldContext_Mutation_unscheduleTask(ctx context.Con
 				return ec.fieldContext_Task_startTime(ctx, field)
 			case "status":
 				return ec.fieldContext_Task_status(ctx, field)
+			case "tags":
+				return ec.fieldContext_Task_tags(ctx, field)
 			case "taskFiles":
 				return ec.fieldContext_Task_taskFiles(ctx, field)
 			case "taskGroup":
@@ -36817,6 +36844,8 @@ func (ec *executionContext) fieldContext_Pod_task(ctx context.Context, field gra
 				return ec.fieldContext_Task_startTime(ctx, field)
 			case "status":
 				return ec.fieldContext_Task_status(ctx, field)
+			case "tags":
+				return ec.fieldContext_Task_tags(ctx, field)
 			case "taskFiles":
 				return ec.fieldContext_Task_taskFiles(ctx, field)
 			case "taskGroup":
@@ -37356,6 +37385,8 @@ func (ec *executionContext) fieldContext_PodEventLogData_task(ctx context.Contex
 				return ec.fieldContext_Task_startTime(ctx, field)
 			case "status":
 				return ec.fieldContext_Task_status(ctx, field)
+			case "tags":
+				return ec.fieldContext_Task_tags(ctx, field)
 			case "taskFiles":
 				return ec.fieldContext_Task_taskFiles(ctx, field)
 			case "taskGroup":
@@ -44284,6 +44315,8 @@ func (ec *executionContext) fieldContext_Query_task(ctx context.Context, field g
 				return ec.fieldContext_Task_startTime(ctx, field)
 			case "status":
 				return ec.fieldContext_Task_status(ctx, field)
+			case "tags":
+				return ec.fieldContext_Task_tags(ctx, field)
 			case "taskFiles":
 				return ec.fieldContext_Task_taskFiles(ctx, field)
 			case "taskGroup":
@@ -44489,6 +44522,8 @@ func (ec *executionContext) fieldContext_Query_taskAllExecutions(ctx context.Con
 				return ec.fieldContext_Task_startTime(ctx, field)
 			case "status":
 				return ec.fieldContext_Task_status(ctx, field)
+			case "tags":
+				return ec.fieldContext_Task_tags(ctx, field)
 			case "taskFiles":
 				return ec.fieldContext_Task_taskFiles(ctx, field)
 			case "taskGroup":
@@ -50911,6 +50946,8 @@ func (ec *executionContext) fieldContext_Task_baseTask(ctx context.Context, fiel
 				return ec.fieldContext_Task_startTime(ctx, field)
 			case "status":
 				return ec.fieldContext_Task_status(ctx, field)
+			case "tags":
+				return ec.fieldContext_Task_tags(ctx, field)
 			case "taskFiles":
 				return ec.fieldContext_Task_taskFiles(ctx, field)
 			case "taskGroup":
@@ -51991,6 +52028,8 @@ func (ec *executionContext) fieldContext_Task_displayTask(ctx context.Context, f
 				return ec.fieldContext_Task_startTime(ctx, field)
 			case "status":
 				return ec.fieldContext_Task_status(ctx, field)
+			case "tags":
+				return ec.fieldContext_Task_tags(ctx, field)
 			case "taskFiles":
 				return ec.fieldContext_Task_taskFiles(ctx, field)
 			case "taskGroup":
@@ -52352,6 +52391,8 @@ func (ec *executionContext) fieldContext_Task_executionTasksFull(ctx context.Con
 				return ec.fieldContext_Task_startTime(ctx, field)
 			case "status":
 				return ec.fieldContext_Task_status(ctx, field)
+			case "tags":
+				return ec.fieldContext_Task_tags(ctx, field)
 			case "taskFiles":
 				return ec.fieldContext_Task_taskFiles(ctx, field)
 			case "taskGroup":
@@ -53793,6 +53834,47 @@ func (ec *executionContext) fieldContext_Task_status(ctx context.Context, field 
 		Field:      field,
 		IsMethod:   true,
 		IsResolver: true,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type String does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _Task_tags(ctx context.Context, field graphql.CollectedField, obj *model.APITask) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_Task_tags(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.Tags, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		return graphql.Null
+	}
+	res := resTmp.([]*string)
+	fc.Result = res
+	return ec.marshalOString2ᚕᚖstringᚄ(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_Task_tags(ctx context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "Task",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
 		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
 			return nil, errors.New("field of type String does not have child fields")
 		},
@@ -59606,6 +59688,8 @@ func (ec *executionContext) fieldContext_UpstreamProject_task(ctx context.Contex
 				return ec.fieldContext_Task_startTime(ctx, field)
 			case "status":
 				return ec.fieldContext_Task_status(ctx, field)
+			case "tags":
+				return ec.fieldContext_Task_tags(ctx, field)
 			case "taskFiles":
 				return ec.fieldContext_Task_taskFiles(ctx, field)
 			case "taskGroup":
@@ -63365,6 +63449,8 @@ func (ec *executionContext) fieldContext_VersionTasks_data(ctx context.Context, 
 				return ec.fieldContext_Task_startTime(ctx, field)
 			case "status":
 				return ec.fieldContext_Task_status(ctx, field)
+			case "tags":
+				return ec.fieldContext_Task_tags(ctx, field)
 			case "taskFiles":
 				return ec.fieldContext_Task_taskFiles(ctx, field)
 			case "taskGroup":
@@ -82132,6 +82218,8 @@ func (ec *executionContext) _Task(ctx context.Context, sel ast.SelectionSet, obj
 			}
 
 			out.Concurrently(i, func(ctx context.Context) graphql.Marshaler { return innerFunc(ctx, out) })
+		case "tags":
+			out.Values[i] = ec._Task_tags(ctx, field, obj)
 		case "taskFiles":
 			field := field
 
