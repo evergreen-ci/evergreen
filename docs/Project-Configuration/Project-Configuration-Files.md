@@ -1504,7 +1504,7 @@ If a task in a multi-host task group is restarted:
 #### TearDown task and teardown group reliability 
 Both `teardown_task` and `teardown_group` are not 100% guaranteed to run. If a 
 host runs into an issue and needs to exit before it ran the `teardown_task` 
-or `teardown_group`, it will exit without running the teardown commands. 
+or `teardown_group`, it will exit without running them. 
 
 However, the likelihood of encountering this scenario is higher with 
 `teardown_group` compared to the `teardown_task`. That is because `teardown_group`
