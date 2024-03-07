@@ -1069,7 +1069,6 @@ func buildCheckRun(ctx context.Context, tc *taskContext) (*apimodels.CheckRunOut
 		return nil, errors.Wrap(err, "applying expansions")
 	}
 
-	tc.logger.Task().Infof("CheckRun built for task '%s'.", tc.task.ID)
 	return &checkRunOutput, nil
 
 }

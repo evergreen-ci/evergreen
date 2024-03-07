@@ -2025,7 +2025,7 @@ func UpdateCheckRun(ctx context.Context, owner, repo, uiBase string, checkRunID 
 	if output == nil {
 		output = &github.CheckRunOutput{
 			Title:   utility.ToStringPtr("Task restarted with no output"),
-			Summary: utility.ToStringPtr(fmt.Sprintf("Task '%s' at execution %d was completed", task.DisplayName, task.Execution)),
+			Summary: utility.ToStringPtr(fmt.Sprintf("Task '%s' at execution %d was completed", task.DisplayName, task.Execution+1)),
 		}
 	}
 
