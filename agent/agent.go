@@ -1062,14 +1062,12 @@ func buildCheckRun(ctx context.Context, tc *taskContext) (*apimodels.CheckRunOut
 
 	err = utility.ReadJSONFile(fileName, &checkRunOutput)
 	if err != nil {
-		return nil, err
+		return nil, errors.Wrap(err, "reading checkRun output file")
 	}
 
 	if err := util.ExpandValues(&checkRunOutput, &tc.taskConfig.Expansions); err != nil {
 		return nil, errors.Wrap(err, "applying expansions")
 	}
-
-	tc.logger.Task().Infof("Upserting checkRun: %s.", checkRunOutput.Title)
 
 	return &checkRunOutput, nil
 

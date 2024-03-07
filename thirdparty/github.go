@@ -1988,9 +1988,9 @@ func CreateCheckRun(ctx context.Context, owner, repo, headSHA, uiBase string, ta
 	githubClient := getGithubClient(token, caller, retryConfig{retry: true})
 
 	opts := github.CreateCheckRunOptions{
-		Output:      output,
 		Name:        makeCheckRunName(task),
 		HeadSHA:     headSHA,
+		Output:      output,
 		ExternalID:  utility.ToStringPtr(task.Id),
 		StartedAt:   &github.Timestamp{Time: task.StartTime},
 		CompletedAt: &github.Timestamp{Time: task.FinishTime},
@@ -2013,11 +2013,7 @@ func CreateCheckRun(ctx context.Context, owner, repo, headSHA, uiBase string, ta
 
 // UpdateCheckRun updates a checkRun and returns a Github CheckRun object
 // UpdateCheckRunOptions must specify a name for the check run
-func UpdateCheckRun(ctx context.Context, owner, repo string, checkRunID int64, opts *github.UpdateCheckRunOptions) (*github.CheckRun, error) {
-	if opts == nil {
-		return nil, errors.New("Options for updating check run must not be nil")
-	}
-
+func UpdateCheckRun(ctx context.Context, owner, repo, uiBase string, checkRunID int64, task *task.Task, output *github.CheckRunOutput) (*github.CheckRun, error) {
 	caller := "updateCheckrun"
 	ctx, span := tracer.Start(ctx, caller, trace.WithAttributes(
 		attribute.String(githubEndpointAttribute, caller),
@@ -2026,13 +2022,22 @@ func UpdateCheckRun(ctx context.Context, owner, repo string, checkRunID int64, o
 	))
 	defer span.End()
 
+	updateOpts := github.UpdateCheckRunOptions{
+		Name:       makeCheckRunName(task),
+		Status:     utility.ToStringPtr(githubCheckRunCompleted),
+		Conclusion: utility.ToStringPtr(getCheckRunConclusion(task.Status)),
+		DetailsURL: utility.ToStringPtr(makeTaskLink(uiBase, task.Id, task.Execution)),
+		Output:     output,
+	}
+
 	token, err := getInstallationToken(ctx, owner, repo, nil)
 	if err != nil {
 		return nil, errors.Wrap(err, "getting installation token")
 	}
 
 	githubClient := getGithubClient(token, caller, retryConfig{retry: true})
-	checkRun, resp, err := githubClient.Checks.UpdateCheckRun(ctx, owner, repo, checkRunID, *opts)
+	checkRun, resp, err := githubClient.Checks.UpdateCheckRun(ctx, owner, repo, checkRunID, updateOpts)
+
 	if resp != nil {
 		defer resp.Body.Close()
 		span.SetAttributes(attribute.Bool(githubCachedAttribute, respFromCache(resp.Response)))
@@ -2044,19 +2049,19 @@ func UpdateCheckRun(ctx context.Context, owner, repo string, checkRunID int64, o
 	return checkRun, nil
 }
 
-func ValidateCheckRun(checkRun *github.CheckRunOutput) error {
-	if checkRun == nil {
-		return errors.New("checkRun Output is nil")
+func ValidateCheckRunOutput(output *github.CheckRunOutput) error {
+	if output == nil {
+		return nil
 	}
 
 	catcher := grip.NewBasicCatcher()
 
-	catcher.NewWhen(checkRun.Title == nil, "checkRun has no title")
-	summaryErrMsg := fmt.Sprintf("the checkRun '%s' has no summary", utility.FromStringPtr(checkRun.Title))
-	catcher.NewWhen(checkRun.Summary == nil, summaryErrMsg)
+	catcher.NewWhen(output.Title == nil, "checkRun output has no title")
+	summaryErrMsg := fmt.Sprintf("the checkRun output '%s' has no summary", utility.FromStringPtr(output.Title))
+	catcher.NewWhen(output.Summary == nil, summaryErrMsg)
 
-	for _, an := range checkRun.Annotations {
-		annotationErrorMessage := fmt.Sprintf("checkRun '%s' specifies an annotation '%s' with no", utility.FromStringPtr(checkRun.Title), utility.FromStringPtr(an.Title))
+	for _, an := range output.Annotations {
+		annotationErrorMessage := fmt.Sprintf("checkRun output '%s' specifies an annotation '%s' with no", utility.FromStringPtr(output.Title), utility.FromStringPtr(an.Title))
 
 		catcher.NewWhen(an.Path == nil, fmt.Sprintf("%s path", annotationErrorMessage))
 		invalidStart := an.StartLine == nil || utility.FromIntPtr(an.StartLine) < 1
@@ -2071,7 +2076,7 @@ func ValidateCheckRun(checkRun *github.CheckRunOutput) error {
 
 		if an.EndColumn != nil || an.StartColumn != nil {
 			if utility.FromIntPtr(an.StartLine) != utility.FromIntPtr(an.EndLine) {
-				errMessage := fmt.Sprintf("The annotation '%s' in checkRun '%s' should not include a start or end column when start_line and end_line have different values", utility.FromStringPtr(an.Title), utility.FromStringPtr(checkRun.Title))
+				errMessage := fmt.Sprintf("The annotation '%s' in checkRun '%s' should not include a start or end column when start_line and end_line have different values", utility.FromStringPtr(an.Title), utility.FromStringPtr(output.Title))
 				catcher.New(errMessage)
 			}
 		}

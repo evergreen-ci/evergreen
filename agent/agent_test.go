@@ -2483,7 +2483,7 @@ func (s *AgentSuite) TestUpsertCheckRun() {
 	s.tc.taskConfig.Task.Requester = evergreen.GithubPRRequester
 
 	s.tc.taskConfig.Expansions.Put("checkRun_key", "checkRun_value")
-	checkRunOutput, err := buildCheckRun(s.ctx, s.tc)
+	checkRunOutput, err := buildCheckRun(s.tc)
 	s.NoError(err)
 	s.NotNil(checkRunOutput)
 
@@ -2503,7 +2503,7 @@ func (s *AgentSuite) TestUpsertEmptyCheckRun() {
 	s.tc.taskConfig.Task.CheckRunPath = utility.ToStringPtr("")
 	s.tc.taskConfig.Task.Requester = evergreen.GithubPRRequester
 
-	checkRunOutput, err := buildCheckRun(s.ctx, s.tc)
+	checkRunOutput, err := buildCheckRun(s.tc)
 	s.NoError(err)
 	s.NotNil(checkRunOutput)
 
