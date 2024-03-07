@@ -383,7 +383,7 @@ func (a *Agent) processNextTask(ctx context.Context, nt *apimodels.NextTaskRespo
 		msg := "run task indicates agent should exit"
 		span.SetStatus(codes.Error, msg)
 		span.RecordError(errors.New(msg), trace.WithAttributes(
-			attribute.Bool(shouldExitAttribute, nt.ShouldExit),
+			attribute.Bool(shouldExitAttribute, shouldExit),
 		))
 		return processNextResponse{
 			shouldExit: true,
