@@ -441,7 +441,7 @@ func TestValidateCheckRunOutput(t *testing.T) {
 	require.NoError(t, err)
 	err = ValidateCheckRunOutput(checkRunOutput)
 
-	expectedError := "the checkRun 'This is my report' has no summary\n" +
-		"checkRun 'This is my report' specifies an annotation 'Error Detector' with no annotation level"
+	expectedError := "the checkRun output 'This is my report' has no summary\n" +
+		"checkRun output 'This is my report' specifies an annotation 'Error Detector' with no annotation level"
 	assert.Equal(t, expectedError, err.Error())
 }
