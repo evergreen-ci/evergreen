@@ -2486,11 +2486,17 @@ func (s *AgentSuite) TestUpsertCheckRun() {
 	checkRunOutput, err := buildCheckRun(s.ctx, s.tc)
 	s.NoError(err)
 	s.NotNil(checkRunOutput)
-
-	s.NoError(s.tc.logger.Close())
-	checkMockLogs(s.T(), s.mockCommunicator, s.tc.taskConfig.Task.Id, []string{
-		"Upserting checkRun: This is my report checkRun_value",
-	}, []string{panicLog})
+	s.Equal(checkRunOutput.Title, "This is my report checkRun_value")
+	s.Equal(checkRunOutput.Summary, "We found 6 failures and 2 warnings")
+	s.Equal(checkRunOutput.Text, "It looks like there are some errors on lines 2 and 4.")
+	s.Assert().Len(checkRunOutput.Annotations, 1)
+	s.Equal(checkRunOutput.Annotations[0].Path, "README.md")
+	s.Equal(checkRunOutput.Annotations[0].AnnotationLevel, "warning")
+	s.Equal(checkRunOutput.Annotations[0].Title, "Error Detector")
+	s.Equal(checkRunOutput.Annotations[0].Message, "message")
+	s.Equal(checkRunOutput.Annotations[0].RawDetails, "Do you mean this other thing?")
+	s.Equal(checkRunOutput.Annotations[0].StartLine, utility.ToIntPtr(2))
+	s.Equal(checkRunOutput.Annotations[0].EndLine, utility.ToIntPtr(4))
 }
 
 func (s *AgentSuite) TestUpsertEmptyCheckRun() {
