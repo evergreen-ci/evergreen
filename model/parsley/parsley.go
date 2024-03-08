@@ -6,6 +6,11 @@ import (
 	"github.com/mongodb/grip"
 )
 
+// Settings represents settings that can be configured for for the Parsley log viewer.
+type Settings struct {
+	SectionsEnabled *bool `bson:"sections_enabled" json:"sections_enabled"`
+}
+
 // Filter represents a filter for the Parsley log viewer. Parsley filters can be defined at
 // the project-level and at the user-level.
 type Filter struct {
