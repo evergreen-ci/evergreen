@@ -1102,6 +1102,7 @@ func (c *awsClientMock) DescribeInstances(ctx context.Context, input *ec2.Descri
 							Name: types.InstanceStateNameRunning,
 						},
 						PublicDnsName:    aws.String("public_dns_name"),
+						PublicIpAddress:  aws.String("127.0.0.1"),
 						PrivateIpAddress: aws.String(MockIPV4),
 						NetworkInterfaces: []types.InstanceNetworkInterface{
 							{
@@ -1180,6 +1181,7 @@ func (c *awsClientMock) StartInstances(ctx context.Context, input *ec2.StartInst
 			AvailabilityZone: aws.String("us-east-1a"),
 		},
 		PublicDnsName:    aws.String("public_dns_name"),
+		PublicIpAddress:  aws.String("127.0.0.1"),
 		PrivateIpAddress: aws.String("12.34.56.78"),
 		LaunchTime:       aws.Time(time.Now()),
 	}
