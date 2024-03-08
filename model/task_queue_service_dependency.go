@@ -2,6 +2,7 @@ package model
 
 import (
 	"context"
+	"fmt"
 	"sort"
 	"sync"
 	"time"
@@ -32,6 +33,20 @@ type basicCachedDAGDispatcherImpl struct {
 	taskGroups  map[string]schedulableUnit // map[compositeGroupID(TaskQueueItem.Group, TaskQueueItem.BuildVariant, TaskQueueItem.Project, TaskQueueItem.Version)]schedulableUnit
 	ttl         time.Duration
 	lastUpdated time.Time
+}
+
+// schedulableUnit represents a unit of tasks that must be kept together in the queue because they
+// are pinned to some number of hosts. That is, it represents tasks and task groups, but it does
+// _not_ represent builds or DAGs of tasks and their dependencies.
+type schedulableUnit struct {
+	id           string
+	group        string
+	project      string
+	version      string
+	variant      string
+	runningHosts int // number of hosts unit is currently running on
+	maxHosts     int // number of hosts unit can run on
+	tasks        []TaskQueueItem
 }
 
 // newDistroTaskDAGDispatchService creates a basicCachedDAGDispatcherImpl from a slice of TaskQueueItems.
@@ -455,4 +470,18 @@ func (d *basicCachedDAGDispatcherImpl) nextTaskGroupTask(unit schedulableUnit) *
 	}
 
 	return nil
+}
+
+// isBlockedSingleHostTaskGroup checks if the task is running in a 1-host task group, has finished,
+// and did not succeed. But rely on EndTask to block later tasks.
+func isBlockedSingleHostTaskGroup(unit schedulableUnit, dbTask *task.Task) bool {
+	return unit.maxHosts == 1 && !utility.IsZeroTime(dbTask.FinishTime) && dbTask.Status != evergreen.TaskSucceeded
+}
+
+func compositeGroupID(group, variant, project, version string) string {
+	return fmt.Sprintf("%s_%s_%s_%s", group, variant, project, version)
+}
+
+func shouldRefreshCached(ttl time.Duration, lastUpdated time.Time) bool {
+	return lastUpdated.IsZero() || time.Since(lastUpdated) > ttl
 }

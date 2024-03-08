@@ -108,7 +108,7 @@ func TestCheckDistro(t *testing.T) {
 					Version: evergreen.FinderVersionLegacy,
 				},
 				DispatcherSettings: distro.DispatcherSettings{
-					Version: evergreen.DispatcherVersionRevised,
+					Version: evergreen.DispatcherVersionRevisedWithDependencies,
 				},
 				HostAllocatorSettings: distro.HostAllocatorSettings{
 					Version:      evergreen.HostAllocatorUtilization,
@@ -456,11 +456,11 @@ func TestEnsureValidContainerPool(t *testing.T) {
 				{
 					Distro: "d4",
 					Id:     "test-pool-valid",
-								},
+				},
 				{
 					Distro: "d1",
 					Id:     "test-pool-invalid",
-								},
+				},
 			},
 		},
 	}
