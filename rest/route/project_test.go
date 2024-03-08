@@ -1141,12 +1141,12 @@ func TestDeleteProject(t *testing.T) {
 	assert.Equal(t, http.StatusBadRequest, resp.Status())
 
 	// Project with UseRepoSettings == false
-	badProject := serviceModel.ProjectRef{
+	nonTrackingProject := serviceModel.ProjectRef{
 		Id:        "non_tracking_project",
 		RepoRefId: "",
 	}
-	require.NoError(t, badProject.Insert())
-	pdh.projectName = badProject.Id
+	require.NoError(t, nonTrackingProject.Insert())
+	pdh.projectName = nonTrackingProject.Id
 	resp = pdh.Run(ctx)
 	assert.Equal(t, http.StatusOK, resp.Status())
 }
