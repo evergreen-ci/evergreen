@@ -874,16 +874,16 @@ func (c *gitFetchProject) fetch(ctx context.Context,
 		}
 	}
 
-	g, ctx := errgroup.WithContext(ctx)
+	g, gCtx := errgroup.WithContext(ctx)
 
 	// Clone the project's modules.
 	for _, moduleName := range conf.BuildVariant.Modules {
 		moduleName := moduleName
 		g.Go(func() error {
-			if err := ctx.Err(); err != nil {
+			if err := gCtx.Err(); err != nil {
 				return errors.Wrapf(err, "canceled while applying module '%s'", moduleName)
 			}
-			return errors.Wrapf(c.fetchModuleSource(ctx, comm, conf, logger, jpm, td, opts.token, opts.method, p, moduleName), "fetching module source '%s'", moduleName)
+			return errors.Wrapf(c.fetchModuleSource(gCtx, comm, conf, logger, jpm, td, opts.token, opts.method, p, moduleName), "fetching module source '%s'", moduleName)
 		})
 	}
 
