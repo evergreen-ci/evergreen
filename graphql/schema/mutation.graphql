@@ -34,12 +34,8 @@ type Mutation {
 
   # distros
   deleteDistro(opts: DeleteDistroInput!): DeleteDistroPayload!
-  copyDistro(
-    opts: CopyDistroInput! @requireDistroAccess(access: CREATE)
-  ): NewDistroPayload!
-  createDistro(
-    opts: CreateDistroInput! @requireDistroAccess(access: CREATE)
-  ): NewDistroPayload!
+  copyDistro(opts: CopyDistroInput! @requireDistroAccess(access: CREATE)): NewDistroPayload!
+  createDistro(opts: CreateDistroInput! @requireDistroAccess(access: CREATE)): NewDistroPayload!
   saveDistro(opts: SaveDistroInput!): SaveDistroPayload!
 
   # hosts
@@ -66,49 +62,19 @@ type Mutation {
   # project
   addFavoriteProject(identifier: String!): Project!
   attachProjectToNewRepo(project: MoveProjectInput!): Project!
-  attachProjectToRepo(
-    projectId: String! @requireProjectAccess(access: EDIT)
-  ): Project!
-  createProject(
-    project: CreateProjectInput! @requireProjectAdmin
-    requestS3Creds: Boolean
-  ): Project!
-  copyProject(
-    project: CopyProjectInput! @requireProjectAdmin
-    requestS3Creds: Boolean
-  ): Project!
-  deactivateStepbackTask(
-    projectId: String!
-    buildVariantName: String!
-    taskName: String! @requireProjectAccess(access: EDIT)
-  ): Boolean!
-  defaultSectionToRepo(
-    projectId: String! @requireProjectAccess(access: EDIT)
-    section: ProjectSettingsSection!
-  ): String
+  attachProjectToRepo(projectId: String! @requireProjectAccess(access: EDIT)): Project!
+  createProject(project: CreateProjectInput! @requireProjectAdmin, requestS3Creds: Boolean): Project! 
+  copyProject(project: CopyProjectInput! @requireProjectAdmin, requestS3Creds: Boolean): Project! 
+  deactivateStepbackTask(projectId: String!, buildVariantName: String!, taskName: String! @requireProjectAccess(access: EDIT)): Boolean!
+  defaultSectionToRepo(projectId: String! @requireProjectAccess(access: EDIT), section: ProjectSettingsSection!): String
   deleteProject(projectId: String! @requireProjectAdmin): Boolean!
-  detachProjectFromRepo(
-    projectId: String! @requireProjectAccess(access: EDIT)
-  ): Project!
-  forceRepotrackerRun(
-    projectId: String! @requireProjectAccess(access: EDIT)
-  ): Boolean!
-  promoteVarsToRepo(
-    projectId: String! @requireProjectAccess(access: EDIT)
-    varNames: [String!]!
-  ): Boolean!
+  detachProjectFromRepo(projectId: String! @requireProjectAccess(access: EDIT)): Project!
+  forceRepotrackerRun(projectId: String! @requireProjectAccess(access: EDIT)): Boolean!
+  promoteVarsToRepo(projectId: String! @requireProjectAccess(access: EDIT), varNames: [String!]!): Boolean!
   removeFavoriteProject(identifier: String!): Project!
-  saveProjectSettingsForSection(
-    projectSettings: ProjectSettingsInput
-    section: ProjectSettingsSection!
-  ): ProjectSettings!
-  saveRepoSettingsForSection(
-    repoSettings: RepoSettingsInput
-    section: ProjectSettingsSection!
-  ): RepoSettings!
-  setLastRevision(
-    opts: SetLastRevisionInput! @requireProjectAdmin
-  ): SetLastRevisionPayload!
+  saveProjectSettingsForSection(projectSettings: ProjectSettingsInput, section: ProjectSettingsSection!): ProjectSettings!
+  saveRepoSettingsForSection(repoSettings: RepoSettingsInput, section: ProjectSettingsSection!): RepoSettings!
+  setLastRevision(opts: SetLastRevisionInput! @requireProjectAdmin): SetLastRevisionPayload!
 
   # spawn
   attachVolumeToHost(volumeAndHost: VolumeHost!): Boolean!
@@ -135,9 +101,7 @@ type Mutation {
   deleteSubscriptions(subscriptionIds: [String!]!): Int!
   removePublicKey(keyName: String!): [PublicKey!]!
   saveSubscription(subscription: SubscriptionInput!): Boolean!
-  updateParsleySettings(
-    opts: UpdateParsleySettingsInput!
-  ): UpdateParsleySettingsPayload
+  updateParsleySettings(opts: UpdateParsleySettingsInput!): UpdateParsleySettingsPayload
   updatePublicKey(
     targetKeyName: String!
     updateInfo: PublicKeyInput!
@@ -145,15 +109,8 @@ type Mutation {
   updateUserSettings(userSettings: UserSettingsInput): Boolean!
 
   # commit queue
-  removeItemFromCommitQueue(
-    commitQueueId: String!
-    issue: String! @requireCommitQueueItemOwner
-  ): String
+  removeItemFromCommitQueue(commitQueueId: String!, issue: String! @requireCommitQueueItemOwner): String
 
   # version
-  restartVersions(
-    versionId: String!
-    abort: Boolean!
-    versionsToRestart: [VersionToRestart!]!
-  ): [Version!]
+  restartVersions(versionId: String!, abort: Boolean!, versionsToRestart: [VersionToRestart!]!): [Version!]
 }
