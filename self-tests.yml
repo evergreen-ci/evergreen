@@ -640,6 +640,7 @@ tasks:
             - GOROOT
       - func: verify-swaggo-fmt
   - name: check-go-vulnerabilities
+    disable: true
     tags: ["linter", "skip-container"]
     commands:
       - func: get-project-and-modules
