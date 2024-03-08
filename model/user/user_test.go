@@ -822,7 +822,9 @@ func TestViewableProjectSettings(t *testing.T) {
 	assert.NotContains(t, projects, "other")
 }
 
-func TestUpdateParsleytSettings(t *testing.T) {
+func TestUpdateParsleySettings(t *testing.T) {
+	assert.NoError(t, db.ClearCollections(Collection))
+
 	usr := DBUser{
 		Id: "me",
 	}
