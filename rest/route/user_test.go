@@ -393,7 +393,7 @@ func TestServiceUserOperations(t *testing.T) {
 	defer cancel()
 	require.NoError(t, db.Clear(user.Collection))
 
-	body := `{ "user_id": "foo", "display_name": "service", "roles": ["one", "two"] }`
+	body := `{ "user_id": "foo", "display_name": "service", "roles": ["one", "two"], "email_address":"myemail@mailplace.com" }`
 	request, err := http.NewRequest(http.MethodPost, "", bytes.NewBuffer([]byte(body)))
 	require.NoError(t, err)
 	handler := makeUpdateServiceUser()
@@ -410,6 +410,7 @@ func TestServiceUserOperations(t *testing.T) {
 	assert.Equal(t, "foo", *users[0].UserID)
 	assert.Equal(t, "service", *users[0].DisplayName)
 	assert.Equal(t, []string{"one", "two"}, users[0].Roles)
+	assert.Equal(t, "myemail@mailplace.com", *users[0].EmailAddress)
 	assert.True(t, users[0].OnlyApi)
 
 	body = `{ "user_id": "foo", "display_name": "different" }`

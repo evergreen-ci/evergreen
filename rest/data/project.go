@@ -430,13 +430,6 @@ func HideBranch(projectID string) error {
 		}
 	}
 
-	if !pRef.UseRepoSettings() {
-		return gimlet.ErrorResponse{
-			StatusCode: http.StatusBadRequest,
-			Message:    errors.Errorf("project '%s' must be attached to a repo to be eligible for deletion", pRef.Id).Error(),
-		}
-	}
-
 	skeletonProj := model.ProjectRef{
 		Id:        pRef.Id,
 		Owner:     pRef.Owner,

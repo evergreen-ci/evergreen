@@ -177,11 +177,11 @@ type Task struct {
 	IsGithubCheck bool `bson:"is_github_check,omitempty" json:"is_github_check,omitempty"`
 
 	// CheckRunPath is a local file path to an output json file for the checkrun.
-	CheckRunPath *string `bson:"check_run_path" json:"check_run_path"`
+	CheckRunPath *string `bson:"check_run_path,omitempty" json:"check_run_path,omitempty"`
 
 	// CheckRunId is the id for the checkrun that was created in github.
 	// This is used to update the checkrun for future executions of the task.
-	CheckRunId *int `bson:"check_run_id,omitempty" json:"check_run_id,omitempty"`
+	CheckRunId *int64 `bson:"check_run_id,omitempty" json:"check_run_id,omitempty"`
 
 	// CanReset indicates that the task has successfully archived and is in a valid state to be reset.
 	CanReset bool `bson:"can_reset,omitempty" json:"can_reset,omitempty"`
@@ -1702,11 +1702,11 @@ func (t *Task) SetResultsInfo(service string, failedResults bool) error {
 }
 
 // HasResults returns whether the task has test results or not.
-func (t *Task) HasResults(ctx context.Context) bool {
+func (t *Task) HasResults() bool {
 	if t.DisplayOnly && len(t.ExecutionTasks) > 0 {
 		hasResults := []bson.M{{ResultsServiceKey: bson.M{"$exists": true}}, {HasCedarResultsKey: true}}
 		if t.Archived {
-			execTasks, err := FindByExecutionTasksAndMaxExecution(ctx, t.ExecutionTasks, t.Execution, bson.E{Key: "$or", Value: hasResults})
+			execTasks, err := FindByExecutionTasksAndMaxExecution(t.ExecutionTasks, t.Execution, bson.E{Key: "$or", Value: hasResults})
 			if err != nil {
 				grip.Error(message.WrapError(err, message.Fields{
 					"message": "getting execution tasks for archived display task",
@@ -2745,7 +2745,7 @@ func (t *Task) PopulateTestResults() error {
 // GetTestResults returns the task's test results filtered, sorted, and
 // paginated as specified by the optional filter options.
 func (t *Task) GetTestResults(ctx context.Context, env evergreen.Environment, filterOpts *testresult.FilterOptions) (testresult.TaskTestResults, error) {
-	taskOpts, err := t.CreateTestResultsTaskOptions(ctx)
+	taskOpts, err := t.CreateTestResultsTaskOptions()
 	if err != nil {
 		return testresult.TaskTestResults{}, errors.Wrap(err, "creating test results task options")
 	}
@@ -2758,7 +2758,7 @@ func (t *Task) GetTestResults(ctx context.Context, env evergreen.Environment, fi
 
 // GetTestResultsStats returns basic statistics of the task's test results.
 func (t *Task) GetTestResultsStats(ctx context.Context, env evergreen.Environment) (testresult.TaskTestResultsStats, error) {
-	taskOpts, err := t.CreateTestResultsTaskOptions(ctx)
+	taskOpts, err := t.CreateTestResultsTaskOptions()
 	if err != nil {
 		return testresult.TaskTestResultsStats{}, errors.Wrap(err, "creating test results task options")
 	}
@@ -2773,7 +2773,7 @@ func (t *Task) GetTestResultsStats(ctx context.Context, env evergreen.Environmen
 // the task. If the task does not have any results or does not have any failing
 // tests, a nil slice is returned.
 func (t *Task) GetFailedTestSample(ctx context.Context, env evergreen.Environment) ([]string, error) {
-	taskOpts, err := t.CreateTestResultsTaskOptions(ctx)
+	taskOpts, err := t.CreateTestResultsTaskOptions()
 	if err != nil {
 		return nil, errors.Wrap(err, "creating test results task options")
 	}
@@ -2791,7 +2791,7 @@ func (t *Task) GetFailedTestSample(ctx context.Context, env evergreen.Environmen
 // additional tasks are required for fetching test results, such as when
 // sorting results by some base status, using this function to populate those
 // task options is useful.
-func (t *Task) CreateTestResultsTaskOptions(ctx context.Context) ([]testresult.TaskOptions, error) {
+func (t *Task) CreateTestResultsTaskOptions() ([]testresult.TaskOptions, error) {
 	var taskOpts []testresult.TaskOptions
 	if t.DisplayOnly && len(t.ExecutionTasks) > 0 {
 		var (
@@ -2800,7 +2800,7 @@ func (t *Task) CreateTestResultsTaskOptions(ctx context.Context) ([]testresult.T
 		)
 		hasResults := []bson.M{{ResultsServiceKey: bson.M{"$exists": true}}, {HasCedarResultsKey: true}}
 		if t.Archived {
-			execTasksWithResults, err = FindByExecutionTasksAndMaxExecution(ctx, t.ExecutionTasks, t.Execution, bson.E{Key: "$or", Value: hasResults})
+			execTasksWithResults, err = FindByExecutionTasksAndMaxExecution(t.ExecutionTasks, t.Execution, bson.E{Key: "$or", Value: hasResults})
 		} else {
 			query := ByIds(t.ExecutionTasks)
 			query["$or"] = hasResults
@@ -2821,7 +2821,7 @@ func (t *Task) CreateTestResultsTaskOptions(ctx context.Context) ([]testresult.T
 				ResultsService: execTask.ResultsService,
 			})
 		}
-	} else if t.HasResults(ctx) {
+	} else if t.HasResults() {
 		taskID := t.Id
 		if t.Archived {
 			taskID = t.OldTaskId
@@ -3464,7 +3464,7 @@ func (t *Task) SetDisplayTaskID(id string) error {
 }
 
 // SetCheckRunId sets the checkRunId for the task
-func (t *Task) SetCheckRunId(checkRunId int) error {
+func (t *Task) SetCheckRunId(checkRunId int64) error {
 	if err := UpdateOne(
 		bson.M{
 			IdKey: t.Id,
@@ -3477,7 +3477,7 @@ func (t *Task) SetCheckRunId(checkRunId int) error {
 	); err != nil {
 		return err
 	}
-	t.CheckRunId = utility.ToIntPtr(checkRunId)
+	t.CheckRunId = utility.ToInt64Ptr(checkRunId)
 	return nil
 }
 

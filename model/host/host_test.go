@@ -529,36 +529,6 @@ func TestHostSetDNSName(t *testing.T) {
 	})
 }
 
-func TestHostSetIPv6Address(t *testing.T) {
-	ctx, cancel := context.WithCancel(context.Background())
-	defer cancel()
-
-	assert := assert.New(t)
-	assert.NoError(db.ClearCollections(Collection))
-
-	host := &Host{
-		Id: "hostOne",
-	}
-	assert.NoError(host.Insert(ctx))
-
-	ipv6Address := "abcd:1234:459c:2d00:cfe4:843b:1d60:8e47"
-	ipv6Address2 := "aaaa:1f18:459c:2d00:cfe4:843b:1d60:9999"
-
-	assert.NoError(host.SetIPv6Address(ctx, ipv6Address))
-	assert.Equal(host.IP, ipv6Address)
-	host, err := FindOne(ctx, ById(host.Id))
-	assert.NoError(err)
-	assert.Equal(host.IP, ipv6Address)
-
-	// if the host is already updated, new updates should work
-	assert.NoError(host.SetIPv6Address(ctx, ipv6Address2))
-	assert.Equal(host.IP, ipv6Address2)
-
-	host, err = FindOne(ctx, ById(host.Id))
-	assert.NoError(err)
-	assert.Equal(host.IP, ipv6Address2)
-}
-
 func TestMarkAsProvisioned(t *testing.T) {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
@@ -6048,6 +6018,10 @@ func TestGeneratePersistentDNSName(t *testing.T) {
 		}
 	})
 	t.Run("ReturnsUniqueStringsForDifferentHostIDs", func(t *testing.T) {
+		require.NoError(t, db.ClearCollections(Collection))
+		defer func() {
+			assert.NoError(t, db.ClearCollections(Collection))
+		}()
 		dnsNames := make(map[string]struct{})
 		for i := 0; i < 10; i++ {
 			h := Host{
@@ -6058,7 +6032,10 @@ func TestGeneratePersistentDNSName(t *testing.T) {
 			require.NoError(t, err)
 			assert.NotContains(t, dnsNames, dnsName, "generated DNS name should be unique")
 			assert.False(t, validDNSNameRegexp.MatchString(dnsName), "generated DNS name should only contain periods, dashes, and alphanumeric characters")
+
 			dnsNames[dnsName] = struct{}{}
+			h.PersistentDNSName = dnsName
+			assert.NoError(t, h.Insert(ctx))
 		}
 	})
 	t.Run("ReturnsUniquePersistentDNSNameEvenIfThereIsAnIdenticalOneAlreadyAssignedToADifferentHost", func(t *testing.T) {

@@ -409,7 +409,7 @@ func TestGetGitHubSender(t *testing.T) {
 	assert.NotZero(t, sender.ErrorHandler, "fallback error handler should be set")
 }
 
-func TestValidateCheckRun(t *testing.T) {
+func TestValidateCheckRunOutput(t *testing.T) {
 	f, err := os.CreateTemp(os.TempDir(), "")
 	require.NoError(t, err)
 	defer os.Remove(f.Name())
@@ -439,9 +439,9 @@ func TestValidateCheckRun(t *testing.T) {
 
 	err = utility.ReadJSONFile(f.Name(), &checkRunOutput)
 	require.NoError(t, err)
-	err = ValidateCheckRun(checkRunOutput)
+	err = ValidateCheckRunOutput(checkRunOutput)
 
-	expectedError := "the checkRun 'This is my report' has no summary\n" +
-		"checkRun 'This is my report' specifies an annotation 'Error Detector' with no annotation level"
+	expectedError := "the checkRun output 'This is my report' has no summary\n" +
+		"checkRun output 'This is my report' specifies an annotation 'Error Detector' with no annotation level"
 	assert.Equal(t, expectedError, err.Error())
 }

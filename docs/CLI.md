@@ -173,6 +173,9 @@ projects:
   - alias: "alias_name"
     variant: ".*"
     task: "^compile$,tests$"
+  - alias: "alias_using_tags"
+    task_tags:  [ "test", "!smoke" ]
+    variant_tags: ["small"]
   tasks:
   - compile
   - unittests
