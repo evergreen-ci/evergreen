@@ -920,7 +920,7 @@ func TestAssignNextAvailableTaskWithDispatcherSettingsVersionLegacy(t *testing.T
 
 	Convey("with a task queue and a host", t, func() {
 		settings := distro.DispatcherSettings{
-			Version: evergreen.DispatcherVersionLegacy,
+			Version: evergreen.DispatcherVersionRevisedWithDependencies,
 		}
 
 		colls := []string{distro.Collection, host.Collection, task.Collection, model.TaskQueuesCollection, model.ProjectRefCollection, build.Collection, model.VersionCollection}
