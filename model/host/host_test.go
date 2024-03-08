@@ -4751,13 +4751,6 @@ func TestFindHostWithVolume(t *testing.T) {
 	assert.Nil(t, foundHost)
 }
 
-func compareHosts(t *testing.T, host1, host2 Host) {
-	assert.Equal(t, host1.Id, host2.Id)
-	assert.Equal(t, host1.Status, host2.Status)
-	assert.Equal(t, host1.Distro.Provider, host2.Distro.Provider)
-	assert.Equal(t, host1.Distro.ProviderSettingsList[0].ExportMap(), host2.Distro.ProviderSettingsList[0].ExportMap())
-}
-
 func TestFindHostsInRange(t *testing.T) {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
