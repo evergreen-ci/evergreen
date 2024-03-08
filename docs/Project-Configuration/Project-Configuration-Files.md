@@ -1501,7 +1501,7 @@ If a task in a multi-host task group is restarted:
   a new task group, so it will run the teardown group commands, clear the task
   directory, and re-run the setup group commands.
 
-#### TearDown task and teardown group reliability 
+#### Teardown task and teardown group reliability 
 Both `teardown_task` and `teardown_group` are not 100% guaranteed to run. If a 
 host runs into an issue and needs to exit before it ran the `teardown_task` 
 or `teardown_group`, it will exit without running them. 
