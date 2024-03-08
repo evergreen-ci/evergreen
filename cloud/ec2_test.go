@@ -658,10 +658,6 @@ func (s *EC2Suite) TestStopInstance() {
 
 	unstoppableHosts := []*host.Host{
 		{
-			Id:     "host-stopped",
-			Status: evergreen.HostStopped,
-		},
-		{
 			Id:     "host-provisioning",
 			Status: evergreen.HostProvisioning,
 		},
@@ -683,6 +679,10 @@ func (s *EC2Suite) TestStopInstance() {
 			Id:     "host-running",
 			Status: evergreen.HostRunning,
 		},
+		{
+			Id:     "host-stopped",
+			Status: evergreen.HostStopped,
+		},
 	}
 	for _, h := range stoppableHosts {
 		h.Distro = s.distro
@@ -701,7 +701,27 @@ func (s *EC2Suite) TestStartInstance() {
 	ctx, cancel := context.WithCancel(s.ctx)
 	defer cancel()
 
-	hosts := []*host.Host{
+	manager, ok := s.onDemandManager.(*ec2Manager)
+	s.Require().True(ok)
+	mock, ok := manager.client.(*awsClientMock)
+	s.Require().True(ok)
+	mock.DescribeInstancesOutput = &ec2.DescribeInstancesOutput{}
+
+	unstartableHosts := []*host.Host{
+		{
+			Id:     "host-provisioning",
+			Status: evergreen.HostProvisioning,
+		},
+	}
+	for _, h := range unstartableHosts {
+		h.Distro = s.distro
+		s.Require().NoError(h.Insert(ctx))
+	}
+	for _, h := range unstartableHosts {
+		s.Error(s.onDemandManager.StartInstance(ctx, h, evergreen.User))
+	}
+
+	startableHosts := []*host.Host{
 		{
 			Id:     "host-running",
 			Status: evergreen.HostRunning,
@@ -713,18 +733,19 @@ func (s *EC2Suite) TestStartInstance() {
 			IPv4:   "1.1.1.1",
 		},
 	}
-	for _, h := range hosts {
+	for _, h := range startableHosts {
 		h.Distro = s.distro
 		s.NoError(h.Insert(ctx))
 	}
+	for _, h := range startableHosts {
+		s.NoError(s.onDemandManager.StartInstance(ctx, h, evergreen.User))
 
-	s.Error(s.onDemandManager.StartInstance(ctx, hosts[0], evergreen.User))
-	s.NoError(s.onDemandManager.StartInstance(ctx, hosts[1], evergreen.User))
-	found, err := host.FindOne(ctx, host.ById("host-stopped"))
-	s.NoError(err)
-	s.Equal(evergreen.HostRunning, found.Status)
-	s.Equal("public_dns_name", found.Host)
-	s.Equal("12.34.56.78", found.IPv4)
+		found, err := host.FindOne(ctx, host.ById(h.Id))
+		s.NoError(err)
+		s.Equal(evergreen.HostRunning, found.Status)
+		s.Equal("public_dns_name", found.Host)
+		s.Equal("12.34.56.78", found.IPv4)
+	}
 }
 
 func (s *EC2Suite) TestGetDNSName() {
@@ -803,8 +824,9 @@ func (s *EC2Suite) TestGetInstanceStatuses() {
 	ctx, cancel := context.WithCancel(s.ctx)
 	defer cancel()
 	manager, ok := s.onDemandManager.(*ec2Manager)
-	s.True(ok)
+	s.Require().True(ok)
 	mock, ok := manager.client.(*awsClientMock)
+	s.Require().True(ok)
 
 	mock.DescribeInstancesOutput = &ec2.DescribeInstancesOutput{
 		Reservations: []types.Reservation{
@@ -1032,7 +1054,8 @@ func (s *EC2Suite) TestGetInstanceStatusesForNonexistentInstances() {
 	}
 
 	manager := s.onDemandManager.(*ec2Manager)
-	mock := manager.client.(*awsClientMock)
+	mock, ok := manager.client.(*awsClientMock)
+	s.Require().True(ok)
 	mock.DescribeInstancesOutput = &ec2.DescribeInstancesOutput{
 		Reservations: []types.Reservation{
 			{
@@ -1265,9 +1288,9 @@ func (s *EC2Suite) TestCreateVolume() {
 	s.NoError(err)
 
 	manager, ok := s.onDemandManager.(*ec2Manager)
-	s.True(ok)
+	s.Require().True(ok)
 	mock, ok := manager.client.(*awsClientMock)
-	s.True(ok)
+	s.Require().True(ok)
 
 	input := *mock.CreateVolumeInput
 	s.EqualValues("standard", input.VolumeType)
@@ -1285,9 +1308,9 @@ func (s *EC2Suite) TestDeleteVolume() {
 	s.NoError(s.onDemandManager.DeleteVolume(ctx, s.volume))
 
 	manager, ok := s.onDemandManager.(*ec2Manager)
-	s.True(ok)
+	s.Require().True(ok)
 	mock, ok := manager.client.(*awsClientMock)
-	s.True(ok)
+	s.Require().True(ok)
 
 	input := *mock.DeleteVolumeInput
 	s.Equal("test-volume", *input.VolumeId)
@@ -1309,9 +1332,9 @@ func (s *EC2Suite) TestAttachVolume() {
 	s.NoError(s.onDemandManager.AttachVolume(ctx, s.h, &newAttachment))
 
 	manager, ok := s.onDemandManager.(*ec2Manager)
-	s.True(ok)
+	s.Require().True(ok)
 	mock, ok := manager.client.(*awsClientMock)
-	s.True(ok)
+	s.Require().True(ok)
 
 	input := *mock.AttachVolumeInput
 	s.Equal("h1", *input.InstanceId)
@@ -1354,9 +1377,9 @@ func (s *EC2Suite) TestDetachVolume() {
 	s.NoError(s.onDemandManager.DetachVolume(ctx, s.h, "test-volume"))
 
 	manager, ok := s.onDemandManager.(*ec2Manager)
-	s.True(ok)
+	s.Require().True(ok)
 	mock, ok := manager.client.(*awsClientMock)
-	s.True(ok)
+	s.Require().True(ok)
 
 	input := *mock.DetachVolumeInput
 	s.Equal("h1", *input.InstanceId)
@@ -1378,9 +1401,9 @@ func (s *EC2Suite) TestModifyVolumeExpiration() {
 	s.True(newExpiration.Equal(vol.Expiration))
 
 	manager, ok := s.onDemandManager.(*ec2Manager)
-	s.True(ok)
+	s.Require().True(ok)
 	mock, ok := manager.client.(*awsClientMock)
-	s.True(ok)
+	s.Require().True(ok)
 
 	input := *mock.CreateTagsInput
 	s.Len(input.Tags, 1)
@@ -1396,9 +1419,9 @@ func (s *EC2Suite) TestModifyVolumeNoExpiration() {
 	s.True(time.Now().Add(evergreen.SpawnHostNoExpirationDuration).Sub(vol.Expiration) < time.Minute)
 
 	manager, ok := s.onDemandManager.(*ec2Manager)
-	s.True(ok)
+	s.Require().True(ok)
 	mock, ok := manager.client.(*awsClientMock)
-	s.True(ok)
+	s.Require().True(ok)
 
 	input := *mock.CreateTagsInput
 	s.Len(input.Tags, 1)
@@ -1414,9 +1437,9 @@ func (s *EC2Suite) TestModifyVolumeSize() {
 	s.EqualValues(vol.Size, 100)
 
 	manager, ok := s.onDemandManager.(*ec2Manager)
-	s.True(ok)
+	s.Require().True(ok)
 	mock, ok := manager.client.(*awsClientMock)
-	s.True(ok)
+	s.Require().True(ok)
 
 	input := *mock.ModifyVolumeInput
 	s.EqualValues(*input.Size, 100)
