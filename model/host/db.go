@@ -1238,45 +1238,40 @@ var (
 	awsSecretKey = bsonutil.MustHaveTag(EC2ProviderSettings{}, "Secret")
 )
 
-// StartingHostsByClient returns a map of cloud provider client options to hosts
-// with those client options that are starting up.
-// kim: TODO: add tests
-func StartingHostsByClient(ctx context.Context, limit int) (map[ClientOptions][]Host, error) {
+// FindStartingHostsByClient returns a map of cloud provider client options to hosts
+// with those client options that are starting up. The limit limits the number
+// of hosts that can be returned. The limit is applied separately for task hosts
+// and spawn hosts/host.create hosts.
+func FindStartingHostsByClient(ctx context.Context, limit int) ([]HostsByClient, error) {
 	if limit <= 0 {
 		limit = 500
 	}
 
-	spawnHostsAndHostCreateHosts, err := findStartingSpawnHostsAndHostCreateHosts(ctx, limit)
+	nonTaskHosts, err := findStartingNonTaskHosts(ctx, limit)
 	if err != nil {
-		return nil, errors.Wrap(err, "finding starting spawn hosts and host.create hosts")
+		return nil, errors.Wrap(err, "finding starting non-task hosts")
 	}
 
-	limit -= len(spawnHostsAndHostCreateHosts)
-
-	taskHosts, err := findStartingTaskHosts(ctx, limit)
+	taskHostsByClient, err := findStartingTaskHosts(ctx, limit)
 	if err != nil {
 		return nil, errors.Wrap(err, "finding starting task hosts")
 	}
 
-	optionsMap := make(map[ClientOptions][]Host)
-	for _, result := range spawnHostsAndHostCreateHosts {
-		optionsMap[result.Options] = append(optionsMap[result.Options], result.Hosts...)
-	}
-	for _, result := range taskHosts {
-		optionsMap[result.Options] = append(optionsMap[result.Options], result.Hosts...)
-	}
+	hostsByClient := []HostsByClient{}
+	hostsByClient = append(hostsByClient, nonTaskHosts...)
+	hostsByClient = append(hostsByClient, taskHostsByClient...)
 
-	return optionsMap, nil
+	return hostsByClient, nil
 }
 
-// hostsWithClient represents an aggregation of hosts with common cloud provider
+// HostsByClient represents an aggregation of hosts with common cloud provider
 // client options.
-type hostsWithClient struct {
+type HostsByClient struct {
 	Options ClientOptions `bson:"_id"`
 	Hosts   []Host        `bson:"hosts"`
 }
 
-func findStartingSpawnHostsAndHostCreateHosts(ctx context.Context, limit int) ([]hostsWithClient, error) {
+func findStartingNonTaskHosts(ctx context.Context, limit int) ([]HostsByClient, error) {
 	pipeline := hostsByClientPipeline([]bson.M{
 		{
 			"$match": bson.M{
@@ -1290,7 +1285,7 @@ func findStartingSpawnHostsAndHostCreateHosts(ctx context.Context, limit int) ([
 	if err != nil {
 		return nil, errors.Wrap(err, "aggregating starting spawn hosts and host.create hosts by client options")
 	}
-	results := []hostsWithClient{}
+	results := []HostsByClient{}
 	if err = cur.All(ctx, &results); err != nil {
 		return nil, errors.Wrap(err, "decoding starting hosts by client options")
 	}
@@ -1298,7 +1293,7 @@ func findStartingSpawnHostsAndHostCreateHosts(ctx context.Context, limit int) ([
 	return results, nil
 }
 
-func findStartingTaskHosts(ctx context.Context, limit int) ([]hostsWithClient, error) {
+func findStartingTaskHosts(ctx context.Context, limit int) ([]HostsByClient, error) {
 	pipeline := hostsByClientPipeline([]bson.M{
 		{
 			"$match": bson.M{
@@ -1312,7 +1307,7 @@ func findStartingTaskHosts(ctx context.Context, limit int) ([]hostsWithClient, e
 	if err != nil {
 		return nil, errors.Wrap(err, "aggregating starting task hosts by client options")
 	}
-	results := []hostsWithClient{}
+	results := []HostsByClient{}
 	if err = cur.All(ctx, &results); err != nil {
 		return nil, errors.Wrap(err, "decoding starting hosts by client options")
 	}
