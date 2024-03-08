@@ -856,15 +856,13 @@ func (c *gitFetchProject) fetch(ctx context.Context,
 		}
 	}
 
-	g, ctx := errgroup.WithContext(ctx)
-
 	// Clone the project.
-	g.Go(func() error {
-		if err := ctx.Err(); err != nil {
-			return errors.Wrap(err, "canceled while fetching project '%s'")
-		}
-		return errors.Wrap(c.fetchSource(ctx, comm, logger, conf, jpm, opts), "problem running fetch command")
-	})
+	if err := ctx.Err(); err != nil {
+		return errors.Wrap(err, "canceled while fetching project '%s'")
+	}
+	if err = c.fetchSource(ctx, comm, logger, conf, jpm, opts); err != nil {
+		return errors.Wrap(err, "problem running fetch command")
+	}
 
 	// Retrieve the patch for the version if one exists.
 	var p *patch.Patch
@@ -875,6 +873,8 @@ func (c *gitFetchProject) fetch(ctx context.Context,
 			return errors.Wrap(err, "getting patch for task")
 		}
 	}
+
+	g, ctx := errgroup.WithContext(ctx)
 
 	// Clone the project's modules.
 	for _, moduleName := range conf.BuildVariant.Modules {
