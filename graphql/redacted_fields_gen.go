@@ -7,4 +7,3 @@ var redactedFields = map[string]bool{
 	"servicePassword": true,
 	"vars": true,
 }
-

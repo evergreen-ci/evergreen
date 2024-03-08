@@ -11,7 +11,13 @@
               "disableShallowClone": true,
               "isCluster": true,
               "name": "rhel71-power8-large",
-              "note": "This is an updated note"
+              "note": "This is an updated note",
+              "plannerSettings": {
+                "targetTime": 5000
+              },
+              "hostAllocatorSettings": {
+                "acceptableHostIdleTime": 30000
+              }
             },
             "hostCount": 2
           }
