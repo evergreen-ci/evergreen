@@ -857,9 +857,6 @@ func (c *gitFetchProject) fetch(ctx context.Context,
 	}
 
 	// Clone the project.
-	if err := ctx.Err(); err != nil {
-		return errors.Wrap(err, "canceled while fetching project '%s'")
-	}
 	if err = c.fetchSource(ctx, comm, logger, conf, jpm, opts); err != nil {
 		return errors.Wrap(err, "problem running fetch command")
 	}
