@@ -811,10 +811,13 @@ func (h *Host) SetProvisioning(ctx context.Context) error {
 
 // SetDecommissioned sets the host as decommissioned. If checkTaskGroup is set,
 // we only update the host if it hasn't started running a task group.
-func (h *Host) SetDecommissioned(ctx context.Context, user string, checkTaskGroup bool, logs string) error {
+func (h *Host) SetDecommissioned(ctx context.Context, user string, checkTaskGroup, terminateIfBusy bool, logs string) error {
 	query := bson.M{}
 	if checkTaskGroup {
 		query[RunningTaskGroupKey] = bson.M{"$eq": ""}
+	}
+	if !terminateIfBusy {
+		query[RunningTaskKey] = bson.M{"$eq": ""}
 	}
 	if h.HasContainers {
 		containers, err := h.GetContainers(ctx)
@@ -2011,7 +2014,7 @@ func (h *Host) DisablePoisonedHost(ctx context.Context, logs string) error {
 		return nil
 	}
 
-	return errors.WithStack(h.SetDecommissioned(ctx, evergreen.User, false, logs))
+	return errors.WithStack(h.SetDecommissioned(ctx, evergreen.User, false, true, logs))
 }
 
 func (h *Host) SetExtId(ctx context.Context) error {

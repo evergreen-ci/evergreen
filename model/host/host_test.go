@@ -412,7 +412,7 @@ func TestDecommissionHost(t *testing.T) {
 	}
 	assert.NoError(t, h.Insert(ctx))
 
-	assert.NoError(t, h.SetDecommissioned(ctx, "user", true, "because I said so"))
+	assert.NoError(t, h.SetDecommissioned(ctx, "user", true, true, "because I said so"))
 
 	// Updating shouldn't work because we checked task group.
 	hostFromDb, err := FindOneId(ctx, h.Id)
@@ -421,7 +421,7 @@ func TestDecommissionHost(t *testing.T) {
 	assert.NotEqual(t, evergreen.HostDecommissioned, hostFromDb.Status)
 	assert.NotEqual(t, evergreen.HostDecommissioned, h.Status)
 
-	assert.NoError(t, h.SetDecommissioned(ctx, "user", false, "counting to three"))
+	assert.NoError(t, h.SetDecommissioned(ctx, "user", false, true, "counting to three"))
 
 	// Updating should work because we ignored task group.
 	hostFromDb, err = FindOneId(ctx, h.Id)

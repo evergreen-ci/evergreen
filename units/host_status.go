@@ -309,7 +309,7 @@ func (j *cloudHostReadyJob) prepareToTerminateHost(ctx context.Context, h *host.
 
 	catcher := grip.NewBasicCatcher()
 	catcher.Wrap(handleTerminatedHostSpawnedByTask(ctx, h), "handling host.create host that was terminating before it was running")
-	catcher.Wrap(h.SetDecommissioned(ctx, evergreen.User, false, terminationReason), "decommissioning host")
+	catcher.Wrap(h.SetDecommissioned(ctx, evergreen.User, false, true, terminationReason), "decommissioning host")
 	terminationJob := NewHostTerminationJob(j.env, h, HostTerminationOptions{
 		TerminateIfBusy:          true,
 		TerminationReason:        terminationReason,
