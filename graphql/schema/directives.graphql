@@ -3,10 +3,15 @@ requireProjectAdmin is used to restrict certain actions to admins.
 """
 directive @requireProjectAdmin on ARGUMENT_DEFINITION 
 
+
 """
 requireProjectAccess is used to restrict view and edit access for project settings.
 """
 directive @requireProjectAccess(access: ProjectSettingsAccess!) on ARGUMENT_DEFINITION | INPUT_FIELD_DEFINITION | FIELD_DEFINITION
+enum ProjectSettingsAccess {
+  EDIT
+  VIEW
+}
 
 """
 requireProjectSettingsAccess is used to restrict view access for fields accessed within ProjectSettings (or RepoSettings) structs.
@@ -17,6 +22,39 @@ directive @requireProjectSettingsAccess on FIELD_DEFINITION
 requireDistroAccess is used to restrict view, edit, admin, and create access for distros.
 """
 directive @requireDistroAccess(access: DistroSettingsAccess!) on ARGUMENT_DEFINITION | INPUT_FIELD_DEFINITION
+enum DistroSettingsAccess {
+  ADMIN
+  CREATE
+  EDIT
+  VIEW
+}
+
+"""
+requireTaskAccess is used to restrict view, edit, and admin access for tasks.
+"""
+directive @requireTaskAccess(access: TaskAccess!) on ARGUMENT_DEFINITION | INPUT_FIELD_DEFINITION
+enum TaskAccess {
+  ADMIN
+  EDIT
+  VIEW
+}
+
+"""
+requireAnnotationAccess is used to restrict view and edit access for annotations.
+"""
+directive @requireAnnotationAccess(access: AnnotationAccess!) on ARGUMENT_DEFINITION | INPUT_FIELD_DEFINITION
+enum AnnotationAccess {
+  EDIT
+  VIEW
+}
+
+"""
+requireLogAccess is used to restrict view access for logs.
+"""
+directive @requireLogAccess(access: LogAccess!) on ARGUMENT_DEFINITION | INPUT_FIELD_DEFINITION
+enum LogAccess {
+  VIEW
+}
 
 """
 requireCommitQueueItemOwner is used to restrict changes to commit queue patches.

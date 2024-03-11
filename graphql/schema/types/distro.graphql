@@ -1,11 +1,4 @@
 ###### ENUMS ######
-enum DistroSettingsAccess {
-  ADMIN
-  CREATE
-  EDIT
-  VIEW
-}
-
 enum DistroOnSaveOperation {
   DECOMMISSION
   RESTART_JASPER

@@ -9,8 +9,10 @@ import (
 
 	"github.com/99designs/gqlgen/graphql"
 	"github.com/evergreen-ci/evergreen"
+	"github.com/evergreen-ci/evergreen/model"
 	"github.com/evergreen-ci/evergreen/rest/data"
 	restModel "github.com/evergreen-ci/evergreen/rest/model"
+	"github.com/evergreen-ci/evergreen/rest/route"
 	"github.com/evergreen-ci/gimlet"
 	"github.com/evergreen-ci/utility"
 )
@@ -227,7 +229,108 @@ func New(apiURL string) Config {
 		}
 		return next(ctx)
 	}
+	c.Directives.RequireTaskAccess = func(ctx context.Context, obj interface{}, next graphql.Resolver, access TaskAccess) (interface{}, error) {
+		user := mustHaveUser(ctx)
 
+		args, isMap := obj.(map[string]interface{})
+		if !isMap {
+			return nil, ResourceNotFound.Send(ctx, "converting args into map")
+		}
+
+		// Populate argsMap to use in the next step.
+		paramsMap := map[string]string{}
+
+		if projectIdentifier, hasProjectIdentifier := args["projectIdentifier"].(string); hasProjectIdentifier {
+			paramsMap["projectId"] = projectIdentifier
+		}
+		if versionId, hasVersionId := args["versionId"].(string); hasVersionId {
+			paramsMap["versionId"] = versionId
+		}
+		if patchId, hasPatchId := args["patchId"].(string); hasPatchId {
+			paramsMap["patchId"] = patchId
+		}
+		if taskId, hasTaskId := args["taskId"].(string); hasTaskId {
+			paramsMap["taskId"] = taskId
+		}
+
+		if len(paramsMap) == 0 {
+			return nil, InputValidationError.Send(ctx, "params map is empty")
+		}
+
+		projectId, statusCode, err := route.GetProjectIdForProjectScopes(ctx, paramsMap)
+		if err != nil {
+			return nil, mapHTTPStatusToGqlError(ctx, statusCode, err)
+		}
+		if projectId == "" {
+			return nil, InternalServerError.Send(ctx, "project ID is blank")
+		}
+		var requiredLevel int
+
+		switch access {
+		case TaskAccessView:
+			requiredLevel = evergreen.TasksView.Value
+		case TaskAccessEdit:
+			requiredLevel = evergreen.TasksBasic.Value
+		case TaskAccessAdmin:
+			requiredLevel = evergreen.TasksAdmin.Value
+		default:
+			return nil, Forbidden.Send(ctx, "permission not specified")
+		}
+
+		opts := gimlet.PermissionOpts{
+			Resource:      projectId,
+			ResourceType:  evergreen.ProjectResourceType,
+			Permission:    evergreen.PermissionTasks,
+			RequiredLevel: requiredLevel,
+		}
+		if user.HasPermission(opts) {
+			return next(ctx)
+		}
+		return nil, Forbidden.Send(ctx, fmt.Sprintf("user '%s' does not have permission to access tasks for the project '%s'", user.Username(), projectId))
+	}
+	c.Directives.RequireAnnotationAccess = func(ctx context.Context, obj interface{}, next graphql.Resolver, access AnnotationAccess) (interface{}, error) {
+		user := mustHaveUser(ctx)
+
+		args, isMap := obj.(map[string]interface{})
+		if !isMap {
+			return nil, ResourceNotFound.Send(ctx, "converting args into map")
+		}
+
+		taskId, hasTaskId := args["taskId"].(string)
+		if !hasTaskId {
+			return nil, InputValidationError.Send(ctx, "task ID was not provided")
+		}
+
+		pRef, err := model.GetProjectRefForTask(taskId)
+		if err != nil {
+			return nil, InternalServerError.Send(ctx, fmt.Sprintf("finding project for task '%s'", taskId))
+		}
+		if pRef == nil {
+			return nil, ResourceNotFound.Send(ctx, fmt.Sprintf("no project for task '%s'", taskId))
+		}
+
+		var requiredLevel int
+
+		switch access {
+		case AnnotationAccessEdit:
+			requiredLevel = evergreen.AnnotationsModify.Value
+		case AnnotationAccessView:
+			requiredLevel = evergreen.AnnotationsView.Value
+		default:
+			return nil, Forbidden.Send(ctx, "permission not specified")
+		}
+
+		opts := gimlet.PermissionOpts{
+			Resource:      pRef.Id,
+			ResourceType:  evergreen.ProjectResourceType,
+			Permission:    evergreen.PermissionAnnotations,
+			RequiredLevel: requiredLevel,
+		}
+		if user.HasPermission(opts) {
+			return next(ctx)
+		}
+		return nil, Forbidden.Send(ctx, fmt.Sprintf("user '%s' does not have permission to access annotations for the project '%s'", user.Username(), pRef.Id))
+	}
 	c.Directives.RedactSecrets = func(ctx context.Context, obj interface{}, next graphql.Resolver) (res interface{}, err error) {
 		return next(ctx)
 	}

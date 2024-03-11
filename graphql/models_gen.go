@@ -513,6 +513,47 @@ type VolumeHost struct {
 	HostID   string `json:"hostId"`
 }
 
+type AnnotationAccess string
+
+const (
+	AnnotationAccessEdit AnnotationAccess = "EDIT"
+	AnnotationAccessView AnnotationAccess = "VIEW"
+)
+
+var AllAnnotationAccess = []AnnotationAccess{
+	AnnotationAccessEdit,
+	AnnotationAccessView,
+}
+
+func (e AnnotationAccess) IsValid() bool {
+	switch e {
+	case AnnotationAccessEdit, AnnotationAccessView:
+		return true
+	}
+	return false
+}
+
+func (e AnnotationAccess) String() string {
+	return string(e)
+}
+
+func (e *AnnotationAccess) UnmarshalGQL(v interface{}) error {
+	str, ok := v.(string)
+	if !ok {
+		return fmt.Errorf("enums must be strings")
+	}
+
+	*e = AnnotationAccess(str)
+	if !e.IsValid() {
+		return fmt.Errorf("%s is not a valid AnnotationAccess", str)
+	}
+	return nil
+}
+
+func (e AnnotationAccess) MarshalGQL(w io.Writer) {
+	fmt.Fprint(w, strconv.Quote(e.String()))
+}
+
 type Arch string
 
 const (
@@ -961,6 +1002,45 @@ func (e HostSortBy) MarshalGQL(w io.Writer) {
 	fmt.Fprint(w, strconv.Quote(e.String()))
 }
 
+type LogAccess string
+
+const (
+	LogAccessView LogAccess = "VIEW"
+)
+
+var AllLogAccess = []LogAccess{
+	LogAccessView,
+}
+
+func (e LogAccess) IsValid() bool {
+	switch e {
+	case LogAccessView:
+		return true
+	}
+	return false
+}
+
+func (e LogAccess) String() string {
+	return string(e)
+}
+
+func (e *LogAccess) UnmarshalGQL(v interface{}) error {
+	str, ok := v.(string)
+	if !ok {
+		return fmt.Errorf("enums must be strings")
+	}
+
+	*e = LogAccess(str)
+	if !e.IsValid() {
+		return fmt.Errorf("%s is not a valid LogAccess", str)
+	}
+	return nil
+}
+
+func (e LogAccess) MarshalGQL(w io.Writer) {
+	fmt.Fprint(w, strconv.Quote(e.String()))
+}
+
 type MetStatus string
 
 const (
@@ -1404,6 +1484,49 @@ func (e *SpawnHostStatusActions) UnmarshalGQL(v interface{}) error {
 }
 
 func (e SpawnHostStatusActions) MarshalGQL(w io.Writer) {
+	fmt.Fprint(w, strconv.Quote(e.String()))
+}
+
+type TaskAccess string
+
+const (
+	TaskAccessAdmin TaskAccess = "ADMIN"
+	TaskAccessEdit  TaskAccess = "EDIT"
+	TaskAccessView  TaskAccess = "VIEW"
+)
+
+var AllTaskAccess = []TaskAccess{
+	TaskAccessAdmin,
+	TaskAccessEdit,
+	TaskAccessView,
+}
+
+func (e TaskAccess) IsValid() bool {
+	switch e {
+	case TaskAccessAdmin, TaskAccessEdit, TaskAccessView:
+		return true
+	}
+	return false
+}
+
+func (e TaskAccess) String() string {
+	return string(e)
+}
+
+func (e *TaskAccess) UnmarshalGQL(v interface{}) error {
+	str, ok := v.(string)
+	if !ok {
+		return fmt.Errorf("enums must be strings")
+	}
+
+	*e = TaskAccess(str)
+	if !e.IsValid() {
+		return fmt.Errorf("%s is not a valid TaskAccess", str)
+	}
+	return nil
+}
+
+func (e TaskAccess) MarshalGQL(w io.Writer) {
 	fmt.Fprint(w, strconv.Quote(e.String()))
 }
 

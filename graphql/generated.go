@@ -90,11 +90,14 @@ type ResolverRoot interface {
 
 type DirectiveRoot struct {
 	RedactSecrets                func(ctx context.Context, obj interface{}, next graphql.Resolver) (res interface{}, err error)
+	RequireAnnotationAccess      func(ctx context.Context, obj interface{}, next graphql.Resolver, access AnnotationAccess) (res interface{}, err error)
 	RequireCommitQueueItemOwner  func(ctx context.Context, obj interface{}, next graphql.Resolver) (res interface{}, err error)
 	RequireDistroAccess          func(ctx context.Context, obj interface{}, next graphql.Resolver, access DistroSettingsAccess) (res interface{}, err error)
+	RequireLogAccess             func(ctx context.Context, obj interface{}, next graphql.Resolver, access LogAccess) (res interface{}, err error)
 	RequireProjectAccess         func(ctx context.Context, obj interface{}, next graphql.Resolver, access ProjectSettingsAccess) (res interface{}, err error)
 	RequireProjectAdmin          func(ctx context.Context, obj interface{}, next graphql.Resolver) (res interface{}, err error)
 	RequireProjectSettingsAccess func(ctx context.Context, obj interface{}, next graphql.Resolver) (res interface{}, err error)
+	RequireTaskAccess            func(ctx context.Context, obj interface{}, next graphql.Resolver, access TaskAccess) (res interface{}, err error)
 }
 
 type ComplexityRoot struct {
@@ -9730,6 +9733,21 @@ var parsedSchema = gqlparser.MustLoadSchema(sources...)
 
 // region    ***************************** args.gotpl *****************************
 
+func (ec *executionContext) dir_requireAnnotationAccess_args(ctx context.Context, rawArgs map[string]interface{}) (map[string]interface{}, error) {
+	var err error
+	args := map[string]interface{}{}
+	var arg0 AnnotationAccess
+	if tmp, ok := rawArgs["access"]; ok {
+		ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("access"))
+		arg0, err = ec.unmarshalNAnnotationAccess2githubᚗcomᚋevergreenᚑciᚋevergreenᚋgraphqlᚐAnnotationAccess(ctx, tmp)
+		if err != nil {
+			return nil, err
+		}
+	}
+	args["access"] = arg0
+	return args, nil
+}
+
 func (ec *executionContext) dir_requireDistroAccess_args(ctx context.Context, rawArgs map[string]interface{}) (map[string]interface{}, error) {
 	var err error
 	args := map[string]interface{}{}
@@ -9745,6 +9763,21 @@ func (ec *executionContext) dir_requireDistroAccess_args(ctx context.Context, ra
 	return args, nil
 }
 
+func (ec *executionContext) dir_requireLogAccess_args(ctx context.Context, rawArgs map[string]interface{}) (map[string]interface{}, error) {
+	var err error
+	args := map[string]interface{}{}
+	var arg0 LogAccess
+	if tmp, ok := rawArgs["access"]; ok {
+		ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("access"))
+		arg0, err = ec.unmarshalNLogAccess2githubᚗcomᚋevergreenᚑciᚋevergreenᚋgraphqlᚐLogAccess(ctx, tmp)
+		if err != nil {
+			return nil, err
+		}
+	}
+	args["access"] = arg0
+	return args, nil
+}
+
 func (ec *executionContext) dir_requireProjectAccess_args(ctx context.Context, rawArgs map[string]interface{}) (map[string]interface{}, error) {
 	var err error
 	args := map[string]interface{}{}
@@ -9752,6 +9785,21 @@ func (ec *executionContext) dir_requireProjectAccess_args(ctx context.Context, r
 	if tmp, ok := rawArgs["access"]; ok {
 		ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("access"))
 		arg0, err = ec.unmarshalNProjectSettingsAccess2githubᚗcomᚋevergreenᚑciᚋevergreenᚋgraphqlᚐProjectSettingsAccess(ctx, tmp)
+		if err != nil {
+			return nil, err
+		}
+	}
+	args["access"] = arg0
+	return args, nil
+}
+
+func (ec *executionContext) dir_requireTaskAccess_args(ctx context.Context, rawArgs map[string]interface{}) (map[string]interface{}, error) {
+	var err error
+	args := map[string]interface{}{}
+	var arg0 TaskAccess
+	if tmp, ok := rawArgs["access"]; ok {
+		ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("access"))
+		arg0, err = ec.unmarshalNTaskAccess2githubᚗcomᚋevergreenᚑciᚋevergreenᚋgraphqlᚐTaskAccess(ctx, tmp)
 		if err != nil {
 			return nil, err
 		}
@@ -85795,6 +85843,16 @@ func (ec *executionContext) ___Type(ctx context.Context, sel ast.SelectionSet, o
 
 // region    ***************************** type.gotpl *****************************
 
+func (ec *executionContext) unmarshalNAnnotationAccess2githubᚗcomᚋevergreenᚑciᚋevergreenᚋgraphqlᚐAnnotationAccess(ctx context.Context, v interface{}) (AnnotationAccess, error) {
+	var res AnnotationAccess
+	err := res.UnmarshalGQL(v)
+	return res, graphql.ErrorOnPath(ctx, err)
+}
+
+func (ec *executionContext) marshalNAnnotationAccess2githubᚗcomᚋevergreenᚑciᚋevergreenᚋgraphqlᚐAnnotationAccess(ctx context.Context, sel ast.SelectionSet, v AnnotationAccess) graphql.Marshaler {
+	return v
+}
+
 func (ec *executionContext) unmarshalNArch2githubᚗcomᚋevergreenᚑciᚋevergreenᚋgraphqlᚐArch(ctx context.Context, v interface{}) (Arch, error) {
 	var res Arch
 	err := res.UnmarshalGQL(v)
@@ -87210,6 +87268,16 @@ func (ec *executionContext) marshalNJiraTicket2ᚖgithubᚗcomᚋevergreenᚑci�
 		return graphql.Null
 	}
 	return ec._JiraTicket(ctx, sel, v)
+}
+
+func (ec *executionContext) unmarshalNLogAccess2githubᚗcomᚋevergreenᚑciᚋevergreenᚋgraphqlᚐLogAccess(ctx context.Context, v interface{}) (LogAccess, error) {
+	var res LogAccess
+	err := res.UnmarshalGQL(v)
+	return res, graphql.ErrorOnPath(ctx, err)
+}
+
+func (ec *executionContext) marshalNLogAccess2githubᚗcomᚋevergreenᚑciᚋevergreenᚋgraphqlᚐLogAccess(ctx context.Context, sel ast.SelectionSet, v LogAccess) graphql.Marshaler {
+	return v
 }
 
 func (ec *executionContext) marshalNLogMessage2ᚕᚖgithubᚗcomᚋevergreenᚑciᚋevergreenᚋapimodelsᚐLogMessageᚄ(ctx context.Context, sel ast.SelectionSet, v []*apimodels.LogMessage) graphql.Marshaler {
@@ -88986,6 +89054,16 @@ func (ec *executionContext) marshalNTask2ᚖgithubᚗcomᚋevergreenᚑciᚋever
 		return graphql.Null
 	}
 	return ec._Task(ctx, sel, v)
+}
+
+func (ec *executionContext) unmarshalNTaskAccess2githubᚗcomᚋevergreenᚑciᚋevergreenᚋgraphqlᚐTaskAccess(ctx context.Context, v interface{}) (TaskAccess, error) {
+	var res TaskAccess
+	err := res.UnmarshalGQL(v)
+	return res, graphql.ErrorOnPath(ctx, err)
+}
+
+func (ec *executionContext) marshalNTaskAccess2githubᚗcomᚋevergreenᚑciᚋevergreenᚋgraphqlᚐTaskAccess(ctx context.Context, sel ast.SelectionSet, v TaskAccess) graphql.Marshaler {
+	return v
 }
 
 func (ec *executionContext) marshalNTaskAnnotationSettings2githubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐAPITaskAnnotationSettings(ctx context.Context, sel ast.SelectionSet, v model.APITaskAnnotationSettings) graphql.Marshaler {

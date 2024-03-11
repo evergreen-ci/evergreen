@@ -10,6 +10,7 @@ import (
 	"github.com/evergreen-ci/evergreen/db"
 	"github.com/evergreen-ci/evergreen/db/mgo/bson"
 	"github.com/evergreen-ci/evergreen/model"
+	"github.com/evergreen-ci/evergreen/model/build"
 	"github.com/evergreen-ci/evergreen/model/commitqueue"
 	"github.com/evergreen-ci/evergreen/model/distro"
 	"github.com/evergreen-ci/evergreen/model/event"
@@ -17,6 +18,7 @@ import (
 	"github.com/evergreen-ci/evergreen/model/patch"
 	"github.com/evergreen-ci/evergreen/model/pod"
 	"github.com/evergreen-ci/evergreen/model/task"
+	"github.com/evergreen-ci/evergreen/model/testlog"
 	"github.com/evergreen-ci/evergreen/model/user"
 	"github.com/evergreen-ci/evergreen/testutil"
 	_ "github.com/evergreen-ci/evergreen/testutil"
@@ -968,4 +970,86 @@ func TestEventLogPermission(t *testing.T) {
 	authHandler.ServeHTTP(rw, req, checkPermission)
 	assert.Equal(http.StatusOK, rw.Code)
 	assert.Equal(3, counter)
+}
+
+func TestGetProjectIdForProjectScopes(t *testing.T) {
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
+	require.NoError(t, db.ClearCollections(task.Collection, model.VersionCollection, model.ProjectRefCollection,
+		model.RepoRefCollection, patch.Collection, build.Collection, testlog.TestLogCollection))
+	ctx = gimlet.AttachUser(ctx, &user.DBUser{Id: "me"})
+
+	project := &model.ProjectRef{
+		Id:         "project_id",
+		Identifier: "project_identifier",
+	}
+	require.NoError(t, project.Insert())
+	projectId, statusCode, err := GetProjectIdForProjectScopes(ctx, map[string]string{"projectId": project.Id})
+	require.Nil(t, err)
+	require.Equal(t, statusCode, http.StatusOK)
+	require.Equal(t, projectId, project.Id)
+
+	task := &task.Task{
+		Id:      "task_id",
+		Project: project.Identifier,
+	}
+	require.NoError(t, task.Insert())
+	projectId, statusCode, err = GetProjectIdForProjectScopes(ctx, map[string]string{"taskId": task.Id})
+	require.Nil(t, err)
+	require.Equal(t, statusCode, http.StatusOK)
+	require.Equal(t, projectId, project.Id)
+
+	version := &model.Version{
+		Id:         "version_id",
+		Identifier: project.Identifier,
+	}
+	require.NoError(t, version.Insert())
+	projectId, statusCode, err = GetProjectIdForProjectScopes(ctx, map[string]string{"versionId": version.Id})
+	require.Nil(t, err)
+	require.Equal(t, statusCode, http.StatusOK)
+	require.Equal(t, projectId, project.Id)
+
+	patchId := bson.NewObjectId()
+	patch := &patch.Patch{
+		Id:      patchId,
+		Project: project.Identifier,
+	}
+	require.NoError(t, patch.Insert())
+	projectId, statusCode, err = GetProjectIdForProjectScopes(ctx, map[string]string{"patchId": patchId.Hex()})
+	require.Nil(t, err)
+	require.Equal(t, statusCode, http.StatusOK)
+	require.Equal(t, projectId, project.Id)
+
+	build := &build.Build{
+		Id:      "build_id",
+		Project: project.Identifier,
+	}
+	require.NoError(t, build.Insert())
+	projectId, statusCode, err = GetProjectIdForProjectScopes(ctx, map[string]string{"buildId": build.Id})
+	require.Nil(t, err)
+	require.Equal(t, statusCode, http.StatusOK)
+	require.Equal(t, projectId, project.Id)
+
+	testLog := &testlog.TestLog{
+		Id:   "test_log_id",
+		Task: task.Id,
+		Name: "this is a test",
+	}
+	require.NoError(t, testLog.Insert())
+	projectId, statusCode, err = GetProjectIdForProjectScopes(ctx, map[string]string{"logId": testLog.Id})
+	require.Nil(t, err)
+	require.Equal(t, statusCode, http.StatusOK)
+	require.Equal(t, projectId, project.Id)
+
+	repo := &model.RepoRef{
+		ProjectRef: model.ProjectRef{
+			Id: "repo_id",
+		},
+	}
+	require.NoError(t, repo.Upsert())
+	projectId, statusCode, err = GetProjectIdForProjectScopes(ctx, map[string]string{"repoId": repo.ProjectRef.Id})
+	require.Nil(t, err)
+	require.Equal(t, statusCode, http.StatusOK)
+	require.Equal(t, projectId, repo.ProjectRef.Id)
 }
