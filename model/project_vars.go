@@ -124,15 +124,17 @@ func UpdateProjectVarsByValue(toReplace, replacement, username string, dryRun bo
 					err = util.DeepCopy(*projectVars, &beforeVars)
 					if err != nil {
 						catcher.Wrap(err, "copying project variables")
+						continue
 					}
 					before := ProjectSettings{
 						Vars: beforeVars,
 					}
 
 					projectVars.Vars[key] = replacement
-					_, err = projectVars.Upsert()
+					err = projectVars.updateSingleVar(key, replacement)
 					if err != nil {
-						catcher.Wrapf(err, "overwriting variables for project '%s'", projectVars.Id)
+						catcher.Wrapf(err, "overwriting variable '%s' for project '%s'", key, projectVars.Id)
+						continue
 					}
 
 					after := ProjectSettings{
@@ -148,6 +150,27 @@ func UpdateProjectVarsByValue(toReplace, replacement, username string, dryRun bo
 		}
 	}
 	return changes, catcher.Resolve()
+}
+
+func (projectVars *ProjectVars) updateSingleVar(key, val string) error {
+	setUpdate := bson.M{}
+	if len(projectVars.Vars) == 0 && len(projectVars.PrivateVars) == 0 &&
+		len(projectVars.AdminOnlyVars) == 0 {
+		return nil
+	}
+	setUpdate[bsonutil.GetDottedKeyName(projectVarsMapKey, key)] = val
+
+	return db.Update(
+		ProjectVarsCollection,
+		bson.M{
+			projectVarIdKey: projectVars.Id,
+		},
+		bson.M{
+			"$set": bson.M{
+				bsonutil.GetDottedKeyName(projectVarsMapKey, key): val,
+			},
+		},
+	)
 }
 
 // CopyProjectVars copies the variables for the first project to the second

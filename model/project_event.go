@@ -111,11 +111,13 @@ func (p *ProjectChangeEvents) RedactPrivateVars() {
 		modifiedPrivateVarKeys := findModifiedPrivateVars(changeEvent)
 		changeEvent.After.Vars = *changeEvent.After.Vars.RedactPrivateVars()
 		changeEvent.Before.Vars = *changeEvent.Before.Vars.RedactPrivateVars()
-		// If a private variable has been changed, change the before value of the
-		// variable to {REDACTED} so the event log will show that the private variable
-		// has been changed in the UI.
+		// Here we need to change the after value of modified private variables to
+		// {REDACTED} so the event log will show that the private variable
+		// has been changed in the UI. This is necessary because the above RedactPrivateVars
+		// function redacts private variables to an empty string, which will not get picked up
+		// by the UI as it relies on the before / after diff.
 		for _, privateVarKey := range modifiedPrivateVarKeys {
-			changeEvent.Before.Vars.Vars[privateVarKey] = "{REDACTED}"
+			changeEvent.After.Vars.Vars[privateVarKey] = "{REDACTED}"
 		}
 		event.EventLogEntry.Data = changeEvent
 	}

@@ -211,8 +211,8 @@ func (s *ProjectConnectorGetSuite) TestGetProjectEvents() {
 		s.Len(eventLog.After.ProjectRef.WorkstationConfig.SetupCommands, 0)
 		s.Equal(eventLog.Before.Vars.Vars["hello"], "world")
 		s.Equal(eventLog.After.Vars.Vars["hello"], "another_world")
-		s.Equal(eventLog.Before.Vars.Vars["world"], "{REDACTED}")
-		s.Equal(eventLog.After.Vars.Vars["world"], "")
+		s.Equal(eventLog.After.Vars.Vars["world"], "{REDACTED}")
+		s.Equal(eventLog.Before.Vars.Vars["world"], "")
 	}
 
 	// No error for empty events
@@ -331,7 +331,7 @@ func TestUpdateProjectVarsByValue(t *testing.T) {
 
 	projectEvents, err := model.MostRecentProjectEvents(projectId, 5)
 	assert.NoError(t, err)
-	assert.Equal(t, 2, len(projectEvents))
+	require.Len(t, 2, len(projectEvents))
 
 	assert.NotNil(t, projectEvents[0].Data)
 	eventData := projectEvents[0].Data.(*model.ProjectChangeEvent)
@@ -342,7 +342,7 @@ func TestUpdateProjectVarsByValue(t *testing.T) {
 	assert.Equal(t, "33", eventData.After.Vars.Vars["b"])
 	assert.True(t, eventData.After.Vars.PrivateVars["b"])
 
-	assert.NotNil(t, projectEvents[1].Data)
+	require.NotNil(t, projectEvents[1].Data)
 	eventData = projectEvents[1].Data.(*model.ProjectChangeEvent)
 
 	assert.Equal(t, username, eventData.User)
