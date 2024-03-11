@@ -483,6 +483,51 @@ func TestFlaggingIdleHostsWhenNonZeroMinimumHosts(t *testing.T) {
 	})
 }
 
+func TestTearingDownIsNotConsideredIdle(t *testing.T) {
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+	ctx = testutil.TestSpan(ctx, t)
+
+	env := evergreen.GetEnvironment()
+
+	tctx := testutil.TestSpan(ctx, t)
+	testFlaggingIdleHostsSetupTest(t)
+	defer testFlaggingIdleHostsTeardownTest(t)
+
+	distro1 := distro.Distro{
+		Id:                    "distro1",
+		Provider:              evergreen.ProviderNameMock,
+		HostAllocatorSettings: distro.HostAllocatorSettings{},
+	}
+	require.NoError(t, distro1.Insert(tctx))
+
+	host1 := host.Host{
+		Id:           "h1",
+		Distro:       distro1,
+		Provider:     evergreen.ProviderNameMock,
+		CreationTime: time.Now().Add(-30 * time.Minute),
+		Status:       evergreen.HostRunning,
+		StartedBy:    evergreen.User,
+	}
+	host2 := host.Host{
+		Id:            "h2",
+		Distro:        distro1,
+		Provider:      evergreen.ProviderNameMock,
+		CreationTime:  time.Now().Add(-30 * time.Minute),
+		Status:        evergreen.HostRunning,
+		StartedBy:     evergreen.User,
+		IsTearingDown: true,
+	}
+
+	require.NoError(t, host1.Insert(tctx))
+	require.NoError(t, host2.Insert(tctx))
+
+	// The host tearing down should not be flagged as idle.
+	num, hosts := numIdleHostsFound(tctx, env, t)
+	assert.Equal(t, 1, num)
+	assert.Equal(t, "h1", hosts[0])
+
+}
 func TestPopulateIdleHostJobsCalculations(t *testing.T) {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()

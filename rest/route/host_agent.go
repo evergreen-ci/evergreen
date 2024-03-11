@@ -97,6 +97,7 @@ func (h *hostAgentNextTask) Run(ctx context.Context) gimlet.Responder {
 	begin := time.Now()
 
 	setAgentFirstContactTime(ctx, h.host)
+	h.host.UnsetIsTearingDown(ctx)
 
 	grip.Error(message.WrapError(h.host.SetUserDataHostProvisioned(ctx), message.Fields{
 		"message":      "failed to mark host as done provisioning with user data",
@@ -243,6 +244,7 @@ func (h *hostAgentNextTask) Run(ctx context.Context) gimlet.Responder {
 				"message": "host task group finished, not assigning task",
 				"host_id": h.host.Id,
 			})
+			h.host.SetIsTearingDown(ctx)
 			nextTaskResponse.ShouldTeardownGroup = true
 		} else {
 			// if the task is empty, still send it with a status ok and check it on the other side

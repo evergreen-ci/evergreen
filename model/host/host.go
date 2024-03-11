@@ -80,6 +80,9 @@ type Host struct {
 	RunningTaskGroup        string `bson:"running_task_group,omitempty" json:"running_task_group,omitempty"`
 	RunningTaskGroupOrder   int    `bson:"running_task_group_order,omitempty" json:"running_task_group_order,omitempty"`
 
+	// if set to true, the host is currently in the process of tearing down a task group
+	IsTearingDown bool `bson:"running_teardown,omitempty" json:"running_teardown,omitempty"`
+
 	// the task the most recently finished running on the host
 	LastTask         string `bson:"last_task" json:"last_task"`
 	LastGroup        string `bson:"last_group,omitempty" json:"last_group,omitempty"`
@@ -558,6 +561,11 @@ func (h *Host) IdleTime() time.Duration {
 		return 0
 	}
 
+	// If the host is currently tearing down a task group, it is not idle.
+	if h.IsTearingDown {
+		return 0
+	}
+
 	// If the host has run a task it's been idle since that task finished running.
 	if h.LastTask != "" {
 		return time.Since(h.LastTaskCompletedTime)
@@ -957,6 +965,43 @@ func (h *Host) SetAgentStartTime(ctx context.Context) error {
 		return errors.Wrap(err, "setting agent start time")
 	}
 	h.AgentStartTime = now
+	return nil
+}
+
+// SetIsTearingDown sets the IsTearingDown flag for the host
+func (h *Host) SetIsTearingDown(ctx context.Context) error {
+	if err := UpdateOne(ctx, bson.M{
+		IdKey: h.Id,
+	}, bson.M{
+		"$set": bson.M{
+			IsTearingDownKey: true,
+		},
+	}); err != nil {
+		return err
+	}
+
+	h.IsTearingDown = true
+	return nil
+}
+
+// UnsetIsTearingDown unsets the IsTearingDown flag for the host.
+func (h *Host) UnsetIsTearingDown(ctx context.Context) error {
+	if h.IsTearingDown == false {
+		return nil
+	}
+
+	if err := UpdateOne(ctx, bson.M{
+		IdKey: h.Id,
+	}, bson.M{
+		"$unset": bson.M{
+			IsTearingDownKey: 1,
+		},
+	}); err != nil {
+		return err
+	}
+
+	h.IsTearingDown = false
+
 	return nil
 }
 
