@@ -1506,14 +1506,6 @@ Both `teardown_task` and `teardown_group` are not 100% guaranteed to run. If a
 host runs into an issue and needs to exit before it ran the `teardown_task` 
 or `teardown_group`, it will exit without running them. 
 
-However, the likelihood of encountering this scenario is higher with 
-`teardown_group` compared to the `teardown_task`. That is because `teardown_group`
-runs after the next task has already been assigned to the host (and it was 
-able to determine that the next task is not part of the same task group). 
-There are a few actions and checks that are performed before a task is 
-assigned to the host during which it may encounter a situation where the 
-agent is asked to exit. 
-
 ### Task Dependencies
 
 A task can be made to depend on other tasks by adding the depended on
