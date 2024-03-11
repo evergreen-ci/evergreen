@@ -97,7 +97,10 @@ func (h *hostAgentNextTask) Run(ctx context.Context) gimlet.Responder {
 	begin := time.Now()
 
 	setAgentFirstContactTime(ctx, h.host)
-	h.host.UnsetIsTearingDown(ctx)
+
+	if err := h.host.UnsetIsTearingDown(ctx); err != nil {
+		return gimlet.MakeJSONInternalErrorResponder(err)
+	}
 
 	grip.Error(message.WrapError(h.host.SetUserDataHostProvisioned(ctx), message.Fields{
 		"message":      "failed to mark host as done provisioning with user data",
