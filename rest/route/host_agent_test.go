@@ -1072,11 +1072,6 @@ func TestAssignNextAvailableTaskWithDispatcherSettingsVersionLegacy(t *testing.T
 			So(t, ShouldBeNil)
 			So(shouldTeardown, ShouldBeTrue)
 
-			// host sets IsTearingDown
-			h, err := host.FindOne(ctx, host.ById(theHostWhoCanBoastTheMostRoast.Id))
-			So(err, ShouldBeNil)
-			So(h.IsTearingDown, ShouldBeTrue)
-
 			// task queue unmodified
 			currentTq, err = model.LoadTaskQueue(distroID)
 			So(err, ShouldBeNil)

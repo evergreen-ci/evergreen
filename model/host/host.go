@@ -986,7 +986,7 @@ func (h *Host) SetIsTearingDown(ctx context.Context) error {
 
 // UnsetIsTearingDown unsets the IsTearingDown flag for the host.
 func (h *Host) UnsetIsTearingDown(ctx context.Context) error {
-	if h.IsTearingDown == false {
+	if !h.IsTearingDown {
 		return nil
 	}
 

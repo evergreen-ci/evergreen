@@ -127,7 +127,7 @@ func (j *hostDrawdownJob) checkAndTerminateHost(ctx context.Context, h *host.Hos
 		return nil
 	}
 
-	// don't drawdown hosts that are running or tearing down task groups
+	// don't drawdown hosts that are running task groups
 	if h.RunningTaskGroup != "" {
 		t, err := task.FindOneIdAndExecution(h.RunningTask, h.RunningTaskExecution)
 		if err != nil {

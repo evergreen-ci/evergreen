@@ -244,7 +244,10 @@ func (h *hostAgentNextTask) Run(ctx context.Context) gimlet.Responder {
 				"message": "host task group finished, not assigning task",
 				"host_id": h.host.Id,
 			})
-			h.host.SetIsTearingDown(ctx)
+			err = h.host.SetIsTearingDown(ctx)
+			if err != nil {
+				return gimlet.MakeJSONErrorResponder(err)
+			}
 			nextTaskResponse.ShouldTeardownGroup = true
 		} else {
 			// if the task is empty, still send it with a status ok and check it on the other side
