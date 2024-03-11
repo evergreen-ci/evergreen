@@ -830,9 +830,9 @@ func TestCountRunningStatusHosts(t *testing.T) {
 
 	assert.NoError(t, db.InsertMany(Collection, h1, h2, h3, h4, h5, h6, h7, h8))
 
-	ctx := context.TODO()
-	count, err := CountRunningStatusHosts(ctx, "d1")
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+	count, err := CountRunningStatusHosts(ctx, d1.Id)
 	assert.NoError(t, err)
 	assert.Equal(t, 2, count)
-
 }
