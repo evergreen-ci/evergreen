@@ -1238,13 +1238,15 @@ var (
 	awsSecretKey = bsonutil.MustHaveTag(EC2ProviderSettings{}, "Secret")
 )
 
-// FindStartingHostsByClient returns a map of cloud provider client options to hosts
-// with those client options that are starting up. The limit limits the number
-// of hosts that can be returned. The limit is applied separately for task hosts
-// and spawn hosts/host.create hosts.
+const defaultStartingHostsByClientLimit = 500
+
+// FindStartingHostsByClient returns a list mapping cloud provider client
+// options to hosts with those client options that are starting up. The limit
+// limits the number of hosts that can be returned. The limit is applied
+// separately for task hosts and spawn hosts/host.create hosts.
 func FindStartingHostsByClient(ctx context.Context, limit int) ([]HostsByClient, error) {
 	if limit <= 0 {
-		limit = 500
+		limit = defaultStartingHostsByClientLimit
 	}
 
 	nonTaskHosts, err := findStartingNonTaskHosts(ctx, limit)
@@ -1252,16 +1254,12 @@ func FindStartingHostsByClient(ctx context.Context, limit int) ([]HostsByClient,
 		return nil, errors.Wrap(err, "finding starting non-task hosts")
 	}
 
-	taskHostsByClient, err := findStartingTaskHosts(ctx, limit)
+	taskHosts, err := findStartingTaskHosts(ctx, limit)
 	if err != nil {
 		return nil, errors.Wrap(err, "finding starting task hosts")
 	}
 
-	hostsByClient := []HostsByClient{}
-	hostsByClient = append(hostsByClient, nonTaskHosts...)
-	hostsByClient = append(hostsByClient, taskHostsByClient...)
-
-	return hostsByClient, nil
+	return append(nonTaskHosts, taskHosts...), nil
 }
 
 // HostsByClient represents an aggregation of hosts with common cloud provider
