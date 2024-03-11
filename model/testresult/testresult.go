@@ -9,6 +9,7 @@ import (
 
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/util"
+	"github.com/evergreen-ci/utility"
 	"github.com/pkg/errors"
 )
 
@@ -131,18 +132,24 @@ func (tr TestResult) GetLogURL(env evergreen.Environment, viewer evergreen.LogVi
 			return tr.RawLogURL
 		}
 
+		printTime := true
 		var logsToMerge string
 		if tr.LogInfo != nil {
+			if utility.FromStringPtr(tr.LogInfo.RenderingType) == "resmoke" {
+				printTime = false
+			}
+
 			for _, logPath := range tr.LogInfo.LogsToMerge {
 				logsToMerge += fmt.Sprintf("&logs_to_merge=%s", url.QueryEscape(*logPath))
 			}
 		}
 
-		return fmt.Sprintf("%s/rest/v2/tasks/%s/build/TestLogs/%s?execution=%d&print_time=true%s",
+		return fmt.Sprintf("%s/rest/v2/tasks/%s/build/TestLogs/%s?execution=%d&print_time=%v%s",
 			root,
 			url.PathEscape(tr.TaskID),
 			url.QueryEscape(tr.getLogTestName()),
 			tr.Execution,
+			printTime,
 			logsToMerge,
 		)
 	}

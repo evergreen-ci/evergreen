@@ -177,11 +177,11 @@ type Task struct {
 	IsGithubCheck bool `bson:"is_github_check,omitempty" json:"is_github_check,omitempty"`
 
 	// CheckRunPath is a local file path to an output json file for the checkrun.
-	CheckRunPath string `bson:"check_run_path" json:"check_run_path"`
+	CheckRunPath *string `bson:"check_run_path,omitempty" json:"check_run_path,omitempty"`
 
 	// CheckRunId is the id for the checkrun that was created in github.
 	// This is used to update the checkrun for future executions of the task.
-	CheckRunId *int `bson:"check_run_id,omitempty" json:"check_run_id,omitempty"`
+	CheckRunId *int64 `bson:"check_run_id,omitempty" json:"check_run_id,omitempty"`
 
 	// CanReset indicates that the task has successfully archived and is in a valid state to be reset.
 	CanReset bool `bson:"can_reset,omitempty" json:"can_reset,omitempty"`
@@ -2958,7 +2958,7 @@ func (t *Task) IsPartOfSingleHostTaskGroup() bool {
 
 // HasCheckRun retruns true if the task specifies a check run path.
 func (t *Task) HasCheckRun() bool {
-	return t.CheckRunPath != ""
+	return t.CheckRunPath != nil
 }
 
 func (t *Task) IsPartOfDisplay() bool {
@@ -3464,7 +3464,7 @@ func (t *Task) SetDisplayTaskID(id string) error {
 }
 
 // SetCheckRunId sets the checkRunId for the task
-func (t *Task) SetCheckRunId(checkRunId int) error {
+func (t *Task) SetCheckRunId(checkRunId int64) error {
 	if err := UpdateOne(
 		bson.M{
 			IdKey: t.Id,
@@ -3477,7 +3477,7 @@ func (t *Task) SetCheckRunId(checkRunId int) error {
 	); err != nil {
 		return err
 	}
-	t.CheckRunId = utility.ToIntPtr(checkRunId)
+	t.CheckRunId = utility.ToInt64Ptr(checkRunId)
 	return nil
 }
 

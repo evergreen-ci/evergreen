@@ -1153,27 +1153,6 @@ func (h *Host) SetDNSName(ctx context.Context, dnsName string) error {
 	return err
 }
 
-func (h *Host) SetIPv6Address(ctx context.Context, ipv6Address string) error {
-	err := UpdateOne(
-		ctx,
-		bson.M{
-			IdKey: h.Id,
-		},
-		bson.M{
-			"$set": bson.M{
-				IPKey: ipv6Address,
-			},
-		},
-	)
-
-	if err != nil {
-		return errors.Wrap(err, "updating IPv6 address")
-	}
-
-	h.IP = ipv6Address
-	return nil
-}
-
 // probably don't want to store the port mapping exactly this way
 func (h *Host) SetPortMapping(ctx context.Context, portsMap PortMap) error {
 	err := UpdateOne(
@@ -1893,23 +1872,49 @@ func (h *Host) Upsert(ctx context.Context) (*mongo.UpdateResult, error) {
 	return UpsertOne(ctx, bson.M{IdKey: h.Id}, update)
 }
 
-func (h *Host) CacheHostData(ctx context.Context) error {
-	_, err := UpsertOne(
-		ctx,
-		bson.M{
-			IdKey: h.Id,
-		},
-		bson.M{
-			"$set": bson.M{
-				ZoneKey:      h.Zone,
-				StartTimeKey: h.StartTime,
-				VolumesKey:   h.Volumes,
-				DNSKey:       h.Host,
-				IPv4Key:      h.IPv4,
-			},
-		},
-	)
+// CloudProviderData represents data to cache in the host from its cloud
+// provider.
+type CloudProviderData struct {
+	Zone        string
+	StartedAt   time.Time
+	PublicDNS   string
+	PublicIPv4  string
+	PrivateIPv4 string
+	IPv6        string
+	Volumes     []VolumeAttachment
+}
+
+// CacheAllCloudProviderData performs the same updates as
+// (Host).CacheCloudProviderData but is optimized for updating many hosts at
+// once.
+func CacheAllCloudProviderData(ctx context.Context, env evergreen.Environment, hosts map[string]CloudProviderData) error {
+	updates := make([]mongo.WriteModel, 0, len(hosts))
+	for hostID, data := range hosts {
+		filter := bson.M{IdKey: hostID}
+		update := cacheCloudProviderDataUpdate(data)
+		updates = append(updates, mongo.NewUpdateOneModel().SetFilter(filter).SetUpdate(update))
+	}
+	if len(updates) == 0 {
+		return nil
+	}
+	_, err := env.DB().Collection(Collection).BulkWrite(ctx, updates, options.BulkWrite().SetOrdered(false))
 	return err
+}
+
+// cacheCloudProviderDataUpdate returns an update for caching cloud provider
+// data.
+func cacheCloudProviderDataUpdate(data CloudProviderData) bson.M {
+	return bson.M{
+		"$set": bson.M{
+			ZoneKey:       data.Zone,
+			StartTimeKey:  data.StartedAt,
+			DNSKey:        data.PublicDNS,
+			PublicIPv4Key: data.PublicIPv4,
+			IPv4Key:       data.PrivateIPv4,
+			IPKey:         data.IPv6,
+			VolumesKey:    data.Volumes,
+		},
+	}
 }
 
 func (h *Host) Insert(ctx context.Context) error {
@@ -3451,6 +3456,9 @@ func (h *Host) GeneratePersistentDNSName(ctx context.Context, domain string) (st
 func (h *Host) SetPersistentDNSInfo(ctx context.Context, dnsName, ipv4Addr string) error {
 	if dnsName == "" || ipv4Addr == "" {
 		return errors.New("cannot set empty DNS name or IPv4 address")
+	}
+	if dnsName == h.PersistentDNSName && h.PublicIPv4 == ipv4Addr {
+		return nil
 	}
 
 	if err := UpdateOne(ctx, bson.M{

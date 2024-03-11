@@ -115,15 +115,4 @@ func TestExpansionWriter(t *testing.T) {
 	out, err = os.ReadFile(f.Name())
 	assert.NoError(t, err)
 	assert.Equal(t, "baz: qux\nfoo: bar\npassword: hunter2\n", string(out))
-
-	// Check sys-perf projects vars are never redacted.
-	// TODO (DEVPROD-4483): Remove this after March 1.
-	tc.Project.Identifier = "sys-perf-4.4"
-	writer = &expansionsWriter{File: f.Name()}
-	err = writer.Execute(ctx, comm, logger, tc)
-	assert.NoError(t, err)
-	out, err = os.ReadFile(f.Name())
-	assert.NoError(t, err)
-	assert.Equal(t, "baz: qux\nfoo: bar\npassword: hunter2\n", string(out))
-
 }

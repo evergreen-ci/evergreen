@@ -34,6 +34,12 @@ import (
 	"google.golang.org/grpc"
 )
 
+const hostAttribute = "evergreen.host"
+
+var (
+	shouldExitAttribute = fmt.Sprintf("%s.should_exit", hostAttribute)
+)
+
 // Agent manages the data necessary to run tasks in a runtime environment.
 type Agent struct {
 	comm          client.Communicator
@@ -308,7 +314,12 @@ func (a *Agent) processNextTask(ctx context.Context, nt *apimodels.NextTaskRespo
 	_, span := a.tracer.Start(ctx, "process-next-task")
 	defer span.End()
 	if nt.ShouldExit {
-		grip.Notice("Next task response indicates agent should exit.")
+		msg := "next task response indicates agent should exit"
+		span.SetStatus(codes.Error, msg)
+		span.RecordError(errors.New(msg), trace.WithAttributes(
+			attribute.Bool(shouldExitAttribute, nt.ShouldExit),
+		))
+		grip.Notice(msg)
 		return processNextResponse{shouldExit: true}, nil
 	}
 	if nt.ShouldTeardownGroup {
@@ -369,6 +380,11 @@ func (a *Agent) processNextTask(ctx context.Context, nt *apimodels.NextTaskRespo
 		}, nil
 	}
 	if shouldExit {
+		msg := "run task indicates agent should exit"
+		span.SetStatus(codes.Error, msg)
+		span.RecordError(errors.New(msg), trace.WithAttributes(
+			attribute.Bool(shouldExitAttribute, shouldExit),
+		))
 		return processNextResponse{
 			shouldExit: true,
 			tc:         tc,
@@ -498,18 +514,27 @@ func (a *Agent) handleSetupError(ctx context.Context, tc *taskContext, err error
 	return tc, shouldExit, catcher.Resolve()
 }
 
+// shouldRunSetupGroup determines if the next task that's about to run is part
+// of a new task group or is a standalone task.
+// If so, then the task or task group is new to the host and should therefore
+// perform task initialization, including setting up a new task directory and
+// running setup group (for task groups only).
+// If not, then the task is part of a task group, and it shares the task
+// directory with the previous task in the task group that the agent ran.
 func shouldRunSetupGroup(nextTask *apimodels.NextTaskResponse, tc *taskContext) bool {
 	var previousTaskGroup string
 	if tc.taskConfig != nil && tc.taskConfig.TaskGroup != nil {
 		previousTaskGroup = tc.taskConfig.TaskGroup.Name
 	}
-	if !tc.ranSetupGroup { // we didn't run setup group yet
+	if !tc.ranSetupGroup { // The agent hasn't run setup group before.
 		return true
-	} else if tc.taskConfig == nil ||
-		nextTask.TaskGroup == "" ||
-		nextTask.Build != tc.taskConfig.Task.BuildId { // next task has a standalone task or a new build
+	} else if tc.taskConfig == nil || // The agent hasn't run any task previously.
+		nextTask.TaskGroup == "" || // The agent's previous task wasn't part of a task group.
+		nextTask.Build != tc.taskConfig.Task.BuildId { // The next task is in a different build.
 		return true
-	} else if nextTask.TaskGroup != previousTaskGroup { // next task has a different task group
+	} else if nextTask.TaskGroup != previousTaskGroup { // The next task has a different task group.
+		return true
+	} else if nextTask.TaskExecution != tc.taskConfig.Task.Execution { // The previous and next task are in the same task group but the next task has a different execution number.
 		return true
 	}
 	return false
@@ -594,7 +619,7 @@ func (a *Agent) runTask(ctx context.Context, tcInput *taskContext, nt *apimodels
 		if pErr == nil {
 			return
 		}
-		err = a.logPanic(tc.logger, pErr, err, op)
+		err = a.logPanic(tc, pErr, err, op)
 	}()
 
 	// Setup occurs before the task is actually running, so it's not abortable. If setup is taking
@@ -626,8 +651,8 @@ func (a *Agent) runTask(ctx context.Context, tcInput *taskContext, nt *apimodels
 	}
 
 	defer func() {
-		tc.logger.Execution().Error(errors.Wrap(tc.taskConfig.TaskOutputDir.Run(tskCtx), "ingesting task output"))
 		tc.logger.Execution().Error(errors.Wrap(a.uploadTraces(tskCtx, tc.taskConfig.WorkDir), "uploading traces"))
+		tc.logger.Execution().Error(errors.Wrap(tc.taskConfig.TaskOutputDir.Run(tskCtx), "ingesting task output"))
 	}()
 
 	tc.setHeartbeatTimeout(heartbeatTimeoutOptions{})
@@ -650,7 +675,7 @@ func (a *Agent) runPreAndMain(ctx context.Context, tc *taskContext) (status stri
 		if pErr == nil {
 			return
 		}
-		_ = a.logPanic(tc.logger, pErr, nil, op)
+		_ = a.logPanic(tc, pErr, nil, op)
 		status = evergreen.TaskSystemFailed
 	}()
 
@@ -816,16 +841,16 @@ func (a *Agent) runTaskTimeoutCommands(ctx context.Context, tc *taskContext) {
 	}
 }
 
-func (a *Agent) runPostTaskCommands(ctx context.Context, tc *taskContext) error {
+func (a *Agent) runPostOrTeardownTaskCommands(ctx context.Context, tc *taskContext) error {
 	ctx, span := a.tracer.Start(ctx, "post-task-commands")
 	defer span.End()
 
-	a.killProcs(ctx, tc, false, "post task commands are starting")
-	defer a.killProcs(ctx, tc, false, "post task commands are finished")
+	a.killProcs(ctx, tc, false, "post-task or teardown-task commands are starting")
+	defer a.killProcs(ctx, tc, false, "post-task or teardown-task commands are finished")
 
 	post, err := tc.getPost()
 	if err != nil {
-		tc.logger.Execution().Error(errors.Wrap(err, "fetching post-task commands"))
+		tc.logger.Execution().Error(errors.Wrap(err, "fetching post-task or teardown-task commands"))
 		return nil
 	}
 
@@ -945,7 +970,7 @@ func (a *Agent) finishTask(ctx context.Context, tc *taskContext, status string, 
 	case evergreen.TaskSucceeded:
 		a.handleTimeoutAndOOM(ctx, tc, status)
 		tc.logger.Task().Info("Task completed - SUCCESS.")
-		if err := a.runPostTaskCommands(ctx, tc); err != nil {
+		if err := a.runPostOrTeardownTaskCommands(ctx, tc); err != nil {
 			tc.logger.Task().Info("Post task completed - FAILURE. Overall task status changed to FAILED.")
 			setEndTaskFailureDetails(tc, detail, evergreen.TaskFailed, "", "")
 		}
@@ -956,7 +981,7 @@ func (a *Agent) finishTask(ctx context.Context, tc *taskContext, status string, 
 		// If the post commands error, ignore the error. runCommandsInBlock
 		// already logged the error, and the post commands cannot cause the
 		// task to fail since the task already failed.
-		_ = a.runPostTaskCommands(ctx, tc)
+		_ = a.runPostOrTeardownTaskCommands(ctx, tc)
 		a.runEndTaskSync(ctx, tc, detail)
 	case evergreen.TaskSystemFailed:
 		// This is a special status indicating that the agent failed for reasons
@@ -1033,27 +1058,32 @@ func (a *Agent) upsertCheckRun(ctx context.Context, tc *taskContext) error {
 }
 
 func buildCheckRun(ctx context.Context, tc *taskContext) (*apimodels.CheckRunOutput, error) {
-	fileName := tc.taskConfig.Task.CheckRunPath
+	fileNamePointer := tc.taskConfig.Task.CheckRunPath
 	// no checkRun specified
-	if fileName == "" || !evergreen.IsGitHubPatchRequester(tc.taskConfig.Task.Requester) {
+	if fileNamePointer == nil || !evergreen.IsGitHubPatchRequester(tc.taskConfig.Task.Requester) {
 		return nil, nil
 	}
+
+	fileName := utility.FromStringPtr(fileNamePointer)
+	checkRunOutput := apimodels.CheckRunOutput{}
+	if fileName == "" {
+		tc.logger.Task().Infof("Upserting checkRun with no output file specified.")
+		return &checkRunOutput, nil
+	}
+
 	_, err := os.Stat(fileName)
 	if os.IsNotExist(err) {
 		return nil, errors.Errorf("file '%s' does not exist", fileName)
 	}
 
-	checkRunOutput := apimodels.CheckRunOutput{}
 	err = utility.ReadJSONFile(fileName, &checkRunOutput)
 	if err != nil {
-		return nil, err
+		return nil, errors.Wrap(err, "reading checkRun output file")
 	}
 
 	if err := util.ExpandValues(&checkRunOutput, &tc.taskConfig.Expansions); err != nil {
 		return nil, errors.Wrap(err, "applying expansions")
 	}
-
-	tc.logger.Task().Infof("Upserting checkRun: %s.", checkRunOutput.Title)
 
 	return &checkRunOutput, nil
 
@@ -1191,7 +1221,7 @@ func (a *Agent) shouldKill(tc *taskContext, ignoreTaskGroupCheck bool) bool {
 
 // logPanic logs a panic to the task log and returns the panic error, along with
 // the original error (if any). If there was no panic error, this is a no-op.
-func (a *Agent) logPanic(logger client.LoggerProducer, pErr, originalErr error, op string) error {
+func (a *Agent) logPanic(tc *taskContext, pErr, originalErr error, op string) error {
 	if pErr == nil {
 		return nil
 	}
@@ -1199,19 +1229,24 @@ func (a *Agent) logPanic(logger client.LoggerProducer, pErr, originalErr error, 
 	catcher := grip.NewBasicCatcher()
 	catcher.Add(originalErr)
 	catcher.Add(pErr)
-	if logger != nil && !logger.Closed() {
-		logMsg := message.Fields{
-			"message":   "programmatic error: Evergreen agent hit panic",
-			"operation": op,
-		}
+	logMsg := message.Fields{
+		"message":   "programmatic error: Evergreen agent hit panic",
+		"operation": op,
+	}
+	if tc.logger != nil && !tc.logger.Closed() {
 		if a.opts.HostID != "" {
 			logMsg["host_id"] = a.opts.HostID
 		}
 		if a.opts.PodID != "" {
 			logMsg["pod_id"] = a.opts.PodID
 		}
-		logger.Task().Error(logMsg)
+		tc.logger.Task().Error(logMsg)
 	}
+	logMsg["task_id"] = tc.task.ID
+	if tc.taskConfig != nil {
+		logMsg["task_execution"] = tc.taskConfig.Task.Execution
+	}
+	grip.Alert(message.WrapError(errors.WithStack(pErr), logMsg))
 
 	return catcher.Resolve()
 }

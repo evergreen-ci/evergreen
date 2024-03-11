@@ -1261,7 +1261,7 @@ func (h *manifestLoadHandler) Run(ctx context.Context) gimlet.Responder {
 	}
 
 	env := evergreen.GetEnvironment()
-	project, _, err := model.FindAndTranslateProjectForVersion(ctx, env.Settings(), v)
+	project, _, err := model.FindAndTranslateProjectForVersion(ctx, env.Settings(), v, false)
 	if err != nil {
 		return gimlet.MakeJSONErrorResponder(errors.Wrapf(err, "loading project from version"))
 	}
@@ -1416,7 +1416,7 @@ func (g *createInstallationToken) Run(ctx context.Context) gimlet.Responder {
 // POST /task/{task_id}/check_run
 type checkRunHandler struct {
 	taskID         string
-	checkRunOutput github.CheckRunOutput
+	checkRunOutput *github.CheckRunOutput
 	settings       *evergreen.Settings
 }
 
@@ -1435,7 +1435,8 @@ func (h *checkRunHandler) Parse(ctx context.Context, r *http.Request) error {
 		return errors.New("missing task ID")
 	}
 
-	err := utility.ReadJSON(r.Body, &h.checkRunOutput)
+	output := github.CheckRunOutput{}
+	err := utility.ReadJSON(r.Body, &output)
 	if err != nil {
 		errorMessage := fmt.Sprintf("reading checkRun for task '%s'", h.taskID)
 		grip.Error(message.Fields{
@@ -1445,12 +1446,19 @@ func (h *checkRunHandler) Parse(ctx context.Context, r *http.Request) error {
 		return errors.Wrapf(err, errorMessage)
 	}
 
-	err = thirdparty.ValidateCheckRun(&h.checkRunOutput)
+	// output is empty if it does not specify the three fields Evergreen processes.
+	if output.Title == nil && output.Summary == nil && len(output.Annotations) == 0 {
+		return nil
+	}
+
+	h.checkRunOutput = &output
+	err = thirdparty.ValidateCheckRunOutput(h.checkRunOutput)
 	if err != nil {
 		errorMessage := fmt.Sprintf("validating checkRun for task '%s'", h.taskID)
 		grip.Error(message.Fields{
 			"message": errorMessage,
 			"task_id": h.taskID,
+			"error":   err.Error(),
 		})
 		return errors.Wrapf(err, errorMessage)
 	}
@@ -1459,7 +1467,8 @@ func (h *checkRunHandler) Parse(ctx context.Context, r *http.Request) error {
 }
 
 func (h *checkRunHandler) Run(ctx context.Context) gimlet.Responder {
-	if h.settings.GitHubCheckRun.CheckRunLimit <= 0 {
+	env := evergreen.GetEnvironment()
+	if env.Settings().GitHubCheckRun.CheckRunLimit <= 0 {
 		return nil
 	}
 
@@ -1490,13 +1499,26 @@ func (h *checkRunHandler) Run(ctx context.Context) gimlet.Responder {
 		})
 	}
 
-	//todo: if it's the second execution of the same task, we should
-	// update the checkrun instead of creating a new one
 	gh := p.GithubPatchData
-	checkRun, err := thirdparty.CreateCheckRun(ctx, gh.HeadOwner, gh.HeadRepo, *h.checkRunOutput.Title, gh.HeadHash, &h.checkRunOutput)
+	if t.CheckRunId != nil {
+		_, err := thirdparty.UpdateCheckRun(ctx, gh.BaseOwner, gh.BaseRepo, env.Settings().ApiUrl, utility.FromInt64Ptr(t.CheckRunId), t, h.checkRunOutput)
+		if err != nil {
+			errorMessage := fmt.Sprintf("updating checkRun for task: '%s'", t.Id)
+			grip.Error(message.Fields{
+				"message":      errorMessage,
+				"error":        err.Error(),
+				"task_id":      t.Id,
+				"check_run_id": t.CheckRunId,
+			})
+			return gimlet.MakeJSONInternalErrorResponder(errors.Wrap(err, "updating check run"))
+		}
+		return gimlet.NewJSONResponse(fmt.Sprintf("Successfully updated check run for  '%v'", t.Id))
+	}
+
+	checkRun, err := thirdparty.CreateCheckRun(ctx, gh.BaseOwner, gh.BaseRepo, gh.HeadHash, env.Settings().ApiUrl, t, h.checkRunOutput)
 
 	if err != nil {
-		errorMessage := fmt.Sprintf("creating checkRun for task: %s", t.Id)
+		errorMessage := fmt.Sprintf("creating checkRun for task: '%s'", t.Id)
 		grip.Error(message.Fields{
 			"message": errorMessage,
 			"error":   err.Error(),
@@ -1505,14 +1527,26 @@ func (h *checkRunHandler) Run(ctx context.Context) gimlet.Responder {
 		return gimlet.MakeJSONInternalErrorResponder(errors.Wrap(err, "creating check run"))
 	}
 
-	checkRunInt := int(utility.FromInt64Ptr(checkRun.ID))
+	if checkRun == nil {
+		errorMessage := fmt.Sprintf("created checkRun not return for task: '%s'", t.Id)
+		grip.Error(message.Fields{
+			"message": errorMessage,
+			"error":   err.Error(),
+			"task_id": t.Id,
+		})
+		return gimlet.MakeJSONInternalErrorResponder(errors.Wrap(err, "creating check run"))
+	}
+
+	checkRunInt := utility.FromInt64Ptr(checkRun.ID)
 	if err = t.SetCheckRunId(checkRunInt); err != nil {
 		err = errors.Wrap(err, "setting check run ID on task")
-		grip.Error(message.WrapError(err, message.Fields{
-			"task_id": t.Id}))
-
+		grip.Error(message.WrapError(err,
+			message.Fields{
+				"task_id":      t.Id,
+				"check_run_id": checkRunInt,
+			}))
 		return gimlet.MakeJSONInternalErrorResponder(err)
 	}
 
-	return gimlet.NewJSONResponse(fmt.Sprintf("Successfully upserted checkRun for  %v ", t.Id))
+	return gimlet.NewJSONResponse(fmt.Sprintf("Successfully created check run for  '%v'", t.Id))
 }

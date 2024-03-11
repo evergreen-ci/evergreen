@@ -629,7 +629,7 @@ post:
 `
 	s.setupRunTask(projYml)
 
-	s.NoError(s.a.runPostTaskCommands(s.ctx, s.tc))
+	s.NoError(s.a.runPostOrTeardownTaskCommands(s.ctx, s.tc))
 
 	s.NoError(s.tc.logger.Close())
 	checkMockLogs(s.T(), s.mockCommunicator, s.tc.taskConfig.Task.Id, []string{
@@ -660,7 +660,7 @@ post:
 	s.setupRunTask(projYml)
 
 	startAt := time.Now()
-	s.NoError(s.a.runPostTaskCommands(s.ctx, s.tc))
+	s.NoError(s.a.runPostOrTeardownTaskCommands(s.ctx, s.tc))
 
 	s.Less(time.Since(startAt), 5*time.Second, "post command should have stopped early")
 	s.False(s.tc.hadTimedOut(), "should not record post timeout when post cannot fail task")
@@ -695,7 +695,7 @@ post:
 `
 	s.setupRunTask(projYml)
 
-	s.Error(s.a.runPostTaskCommands(s.ctx, s.tc))
+	s.Error(s.a.runPostOrTeardownTaskCommands(s.ctx, s.tc))
 
 	s.NoError(s.tc.logger.Close())
 	checkMockLogs(s.T(), s.mockCommunicator, s.tc.taskConfig.Task.Id, nil, []string{panicLog})
@@ -716,7 +716,7 @@ post:
 	s.setupRunTask(projYml)
 
 	startAt := time.Now()
-	err := s.a.runPostTaskCommands(s.ctx, s.tc)
+	err := s.a.runPostOrTeardownTaskCommands(s.ctx, s.tc)
 	s.Error(err)
 	s.True(utility.IsContextError(errors.Cause(err)))
 
@@ -1120,7 +1120,7 @@ post:
 `
 	s.setupRunTask(projYml)
 
-	s.NoError(s.a.runPostTaskCommands(s.ctx, s.tc))
+	s.NoError(s.a.runPostOrTeardownTaskCommands(s.ctx, s.tc))
 
 	s.NoError(s.tc.logger.Close())
 	checkMockLogs(s.T(), s.mockCommunicator, s.tc.taskConfig.Task.Id, []string{
@@ -1334,7 +1334,6 @@ func (s *AgentSuite) TestFinishPrevTaskWithSameTaskGroupAndAlreadyRanSetupGroup(
 
 	s.False(shouldSetupGroup, "if the next task is in the same group as the previous task and we already ran the setup group, shouldSetupGroup should be false")
 	s.Equal("task_directory", taskDirectory)
-
 }
 
 func (s *AgentSuite) TestFinishPrevTaskWithSameTaskGroupButDidNotRunSetupGroup() {
@@ -1400,6 +1399,41 @@ func (s *AgentSuite) TestFinishPrevTaskWithSameBuildButDifferentTaskGroup() {
 	shouldSetupGroup, taskDirectory := s.a.finishPrevTask(s.ctx, nextTask, tc)
 
 	s.True(shouldSetupGroup, "if the next task is in the same build but a different task group, shouldSetupGroup should be true")
+	s.Empty(taskDirectory)
+}
+
+func (s *AgentSuite) TestFinishPrevTaskWithSameTaskGroupButDifferentTaskExecution() {
+	const taskGroup1 = "task_group_name"
+	const versionID = "task_group_version"
+	const buildID = "build_id"
+	tc := &taskContext{
+		taskConfig: &internal.TaskConfig{
+			Task: task.Task{
+				Id:             "task_id1",
+				Execution:      1,
+				TaskGroup:      taskGroup1,
+				Version:        versionID,
+				BuildId:        buildID,
+				TaskOutputInfo: testutil.InitializeTaskOutput(s.T()),
+			},
+			TaskGroup: &model.TaskGroup{Name: taskGroup1},
+			WorkDir:   "task_directory",
+		},
+		logger:        s.tc.logger,
+		ranSetupGroup: true,
+		oomTracker:    &mock.OOMTracker{},
+	}
+	nextTask := &apimodels.NextTaskResponse{
+		TaskId:        "task_id2",
+		TaskExecution: 2,
+		TaskGroup:     taskGroup1,
+		Version:       versionID,
+		Build:         buildID,
+	}
+
+	shouldSetupGroup, taskDirectory := s.a.finishPrevTask(s.ctx, nextTask, tc)
+
+	s.True(shouldSetupGroup, "if the next task is in the same task group but has a different task execution number, shouldSetupGroup should be true")
 	s.Empty(taskDirectory)
 }
 
@@ -2023,7 +2057,7 @@ task_groups:
 	s.tc.taskConfig.Task.TaskGroup = taskGroup
 	s.tc.taskConfig.TaskGroup = s.tc.taskConfig.Project.FindTaskGroup(taskGroup)
 
-	s.NoError(s.a.runPostTaskCommands(s.ctx, s.tc))
+	s.NoError(s.a.runPostOrTeardownTaskCommands(s.ctx, s.tc))
 
 	s.NoError(s.tc.logger.Close())
 	checkMockLogs(s.T(), s.mockCommunicator, s.tc.taskConfig.Task.Id, []string{
@@ -2055,7 +2089,7 @@ task_groups:
 	s.tc.taskConfig.Task.TaskGroup = taskGroup
 	s.tc.taskConfig.TaskGroup = s.tc.taskConfig.Project.FindTaskGroup(taskGroup)
 
-	s.Error(s.a.runPostTaskCommands(s.ctx, s.tc))
+	s.Error(s.a.runPostOrTeardownTaskCommands(s.ctx, s.tc))
 
 	s.NoError(s.tc.logger.Close())
 	checkMockLogs(s.T(), s.mockCommunicator, s.tc.taskConfig.Task.Id, []string{
@@ -2088,7 +2122,7 @@ task_groups:
 	s.tc.taskConfig.TaskGroup = s.tc.taskConfig.Project.FindTaskGroup(taskGroup)
 
 	startAt := time.Now()
-	s.NoError(s.a.runPostTaskCommands(s.ctx, s.tc), "teardown task timeout should not fail task")
+	s.NoError(s.a.runPostOrTeardownTaskCommands(s.ctx, s.tc), "teardown task timeout should not fail task")
 
 	s.Less(time.Since(startAt), 5*time.Second, "timeout should have triggered after 1s")
 	s.False(s.tc.hadTimedOut(), "should not have hit task timeout")
@@ -2128,7 +2162,7 @@ task_groups:
 	s.tc.taskConfig.TaskGroup = s.tc.taskConfig.Project.FindTaskGroup(taskGroup)
 
 	startAt := time.Now()
-	err := s.a.runPostTaskCommands(s.ctx, s.tc)
+	err := s.a.runPostOrTeardownTaskCommands(s.ctx, s.tc)
 	s.Error(err, "teardown task timeout should fail task")
 	s.True(utility.IsContextError(errors.Cause(err)))
 
@@ -2445,17 +2479,43 @@ func (s *AgentSuite) TestUpsertCheckRun() {
 	s.NoError(err)
 	s.NoError(f.Close())
 
-	s.tc.taskConfig.Task.CheckRunPath = f.Name()
+	s.tc.taskConfig.Task.CheckRunPath = utility.ToStringPtr(f.Name())
 	s.tc.taskConfig.Task.Requester = evergreen.GithubPRRequester
 
 	s.tc.taskConfig.Expansions.Put("checkRun_key", "checkRun_value")
 	checkRunOutput, err := buildCheckRun(s.ctx, s.tc)
 	s.NoError(err)
 	s.NotNil(checkRunOutput)
+	s.Equal(checkRunOutput.Title, "This is my report checkRun_value")
+	s.Equal(checkRunOutput.Summary, "We found 6 failures and 2 warnings")
+	s.Equal(checkRunOutput.Text, "It looks like there are some errors on lines 2 and 4.")
+	s.Assert().Len(checkRunOutput.Annotations, 1)
+	s.Equal(checkRunOutput.Annotations[0].Path, "README.md")
+	s.Equal(checkRunOutput.Annotations[0].AnnotationLevel, "warning")
+	s.Equal(checkRunOutput.Annotations[0].Title, "Error Detector")
+	s.Equal(checkRunOutput.Annotations[0].Message, "message")
+	s.Equal(checkRunOutput.Annotations[0].RawDetails, "Do you mean this other thing?")
+	s.Equal(checkRunOutput.Annotations[0].StartLine, utility.ToIntPtr(2))
+	s.Equal(checkRunOutput.Annotations[0].EndLine, utility.ToIntPtr(4))
+}
+
+func (s *AgentSuite) TestUpsertEmptyCheckRun() {
+	s.setupRunTask(defaultProjYml)
+
+	f, err := os.CreateTemp(os.TempDir(), "")
+	s.NoError(err)
+	defer os.Remove(f.Name())
+
+	s.tc.taskConfig.Task.CheckRunPath = utility.ToStringPtr("")
+	s.tc.taskConfig.Task.Requester = evergreen.GithubPRRequester
+
+	checkRunOutput, err := buildCheckRun(s.ctx, s.tc)
+	s.NoError(err)
+	s.NotNil(checkRunOutput)
 
 	s.NoError(s.tc.logger.Close())
 	checkMockLogs(s.T(), s.mockCommunicator, s.tc.taskConfig.Task.Id, []string{
-		"Upserting checkRun: This is my report checkRun_value",
+		"Upserting checkRun with no output file specified.",
 	}, []string{panicLog})
 }
 
@@ -2466,7 +2526,12 @@ tasks:
     commands:
       - command: shell.exec
         params:
-          script: echo "I am test log.\nI should get ingested automatically by the agent.\n" > ${workdir}/build/TestLogs/test.log
+          script: |
+            cat >> build/TestLogs/test.log <<EOF
+            I am test log.
+            I should get ingested automatically by the agent.
+            And stored as well.
+            EOF
 `
 	s.setupRunTask(projYml)
 	nextTask := &apimodels.NextTaskResponse{
@@ -2483,7 +2548,7 @@ tasks:
 	for it.Next() {
 		actualLines += it.Item().Data + "\n"
 	}
-	expectedLines := "I am test log.\nI should get ingested automatically by the agent.\n"
+	expectedLines := "I am test log.\nI should get ingested automatically by the agent.\nAnd stored as well.\n"
 	s.Equal(expectedLines, actualLines)
 }
 

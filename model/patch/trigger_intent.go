@@ -12,12 +12,13 @@ import (
 const TriggerIntentType = "trigger"
 
 type TriggerIntent struct {
-	Id             string `bson:"_id"`
-	Requester      string `bson:"requester"`
-	Author         string `bson:"author"`
-	ProjectID      string `bson:"project_id"`
-	ParentID       string `bson:"parent_id"`
-	ParentAsModule string `bson:"parent_as_module"`
+	Id              string `bson:"_id"`
+	Requester       string `bson:"requester"`
+	Author          string `bson:"author"`
+	ProjectID       string `bson:"project_id"`
+	ParentID        string `bson:"parent_id"`
+	ParentProjectID string `bson:"parent_project"`
+	ParentAsModule  string `bson:"parent_as_module"`
 	// the parent status that the child patch should run on
 	ParentStatus string                   `bson:"parent_status"`
 	Definitions  []PatchTriggerDefinition `bson:"definitions"`
@@ -61,7 +62,7 @@ func (t *TriggerIntent) NewPatch() *Patch {
 	return &Patch{
 		Id:       mgobson.ObjectIdHex(t.Id),
 		Author:   evergreen.ParentPatchUser,
-		Triggers: TriggerInfo{ParentPatch: t.ParentID},
+		Triggers: TriggerInfo{ParentPatch: t.ParentID, ParentProjectID: t.ParentProjectID},
 		Status:   evergreen.VersionCreated,
 		Project:  t.ProjectID,
 	}
@@ -97,24 +98,26 @@ func (t *TriggerIntent) GetCalledBy() string {
 }
 
 type TriggerIntentOptions struct {
-	Requester      string
-	Author         string
-	ProjectID      string
-	ParentID       string
-	ParentAsModule string
-	ParentStatus   string
-	Definitions    []PatchTriggerDefinition
+	Requester       string
+	Author          string
+	ProjectID       string
+	ParentID        string
+	ParentProjectID string
+	ParentAsModule  string
+	ParentStatus    string
+	Definitions     []PatchTriggerDefinition
 }
 
 func NewTriggerIntent(opts TriggerIntentOptions) Intent {
 	return &TriggerIntent{
-		Id:             mgobson.NewObjectId().Hex(),
-		Requester:      opts.Requester,
-		Author:         opts.Author,
-		ProjectID:      opts.ProjectID,
-		ParentID:       opts.ParentID,
-		ParentAsModule: opts.ParentAsModule,
-		ParentStatus:   opts.ParentStatus,
-		Definitions:    opts.Definitions,
+		Id:              mgobson.NewObjectId().Hex(),
+		Requester:       opts.Requester,
+		Author:          opts.Author,
+		ProjectID:       opts.ProjectID,
+		ParentID:        opts.ParentID,
+		ParentProjectID: opts.ParentProjectID,
+		ParentAsModule:  opts.ParentAsModule,
+		ParentStatus:    opts.ParentStatus,
+		Definitions:     opts.Definitions,
 	}
 }

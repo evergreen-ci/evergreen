@@ -155,8 +155,9 @@ set-project-var:$(buildDir)/set-project-var
 # commands such as s3.put. The agent revision must be set to the current version because the agent will have to exit
 # under the expectation that it will be redeployed if it's outdated (and the smoke test cannot deploy agents).
 set-smoke-vars:$(buildDir)/.load-smoke-data $(buildDir)/set-project-var $(buildDir)/set-var
-	@$(buildDir)/set-project-var -dbName mci_smoke -key aws_key -value $(AWS_KEY)
-	@$(buildDir)/set-project-var -dbName mci_smoke -key aws_secret -value $(AWS_SECRET)
+	@$(buildDir)/set-project-var -dbName mci_smoke -key aws_key -value $(AWS_ACCESS_KEY_ID)
+	@$(buildDir)/set-project-var -dbName mci_smoke -key aws_secret -value $(AWS_SECRET_ACCESS_KEY)
+	@$(buildDir)/set-project-var -dbName mci_smoke -key aws_token -value $(AWS_SESSION_TOKEN)
 	@$(buildDir)/set-var -dbName=mci_smoke -collection=hosts -id=localhost -key=agent_revision -value=$(agentVersion)
 	@$(buildDir)/set-var -dbName=mci_smoke -collection=pods -id=localhost -key=agent_version -value=$(agentVersion)
 

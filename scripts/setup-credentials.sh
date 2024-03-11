@@ -50,8 +50,6 @@ jira:
 providers:
   aws:
     parser_project:
-      key: "$AWS_KEY"
-      secret: "$AWS_SECRET"
       bucket: "evergreen-projects-testing"
       prefix: "$PARSER_PROJECT_S3_PREFIX"
       generated_json_prefix: $GENERATED_JSON_S3_PREFIX

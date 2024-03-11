@@ -18,7 +18,7 @@ Explanation:
 -   `command`: a command name from the predefined set of commands documented below.
 -   `display_name`: an optional user defined display name for the command. This will show up in logs and in the UI
      with more details, for example:`'shell.exec' ('run my cool script') (step 1 of 1)` 
--   `type`: an optional command type. This will affect the [failure colors](Project-Configuration-Files/#command-failure-colors)
+-   `type`: an optional command type. This will affect the [failure colors](Project-Configuration-Files#command-failure-colors)
 -   `timeout_secs`: an optional timeout that will force the command to fail if it stays "idle" for more than a specified number of 
     seconds.
 -   `retry_on_failure`: an optional field. If set to true, it will automatically restart the task upon failure. The 
@@ -238,7 +238,7 @@ If you would like to download an artifact after it has been moved to Glacier, pl
 This command parses and stores results in Evergreen's JSON test result format.
 The use case for this command is when you wish to link custom test results
 with test logs written via the
-[file system API for task output](Task-Output-Directory.md). Evergreen's JSON
+[file system API for task output](Task-Output-Directory). Evergreen's JSON
 format allows you to send test metadata and log paths, relative to the reserved
 test logs directory, which Evergreen will then link from the UI and API.
 
@@ -289,16 +289,17 @@ nonsensical.
 | `group_id`  | string        | The group ID if the test is associated with a group.                                                                   |
 | `status`    | string (enum) | The final status of the test. Should be one of: "fail", "pass", "silentfail", "skip".                                  |
 | `log_info`  | object        | The test's log information as a `Log Info` object, described below.                                                    |
-| `start`     | float64       | The start time of the test in <seconds>.<fractional_seconds> from the UNIX epoch.                                      |
-| `end`       | float64       | The end time of the test in <seconds>.<fractional_seconds> from the UNIX epoch.                                        |
+| `start`     | float64       | The start time of the test in \<seconds\>.\<fractional_seconds\> from the UNIX epoch.                                      |
+| `end`       | float64       | The end time of the test in \<seconds\>.\<fractional_seconds\> from the UNIX epoch.                                        |
 
 ### Log Info
 
 A test result can be linked to log files written to and ingested from the
-task's [reserved test logs directory](Task-Output-Directory.md/#test-logs).
+task's [reserved test logs directory](Task-Output-Directory#test-logs).
 
 Test log URLs are automatically generated and provided via the
-[test result API](../API/REST-V2-Usage.mdx/#tag/tests/paths/~1tasks~1%7Btask_id%7D~1tests/get").
+[test logs API](../API/REST-V2-Usage#tag/tasks/paths/~1tasks~1%7Btask_id%7D~1build~1TestLogs~1%7Bpath%7D/get)
+
 
 | Name             | Type          | Description                                                                                                         |
 | ---------------- | ------------- | ------------------------------------------------------------------------------------------------------------------- |
@@ -1168,7 +1169,7 @@ Parameters:
 ## s3.put
 
 This command uploads a file to Amazon s3, for use in later tasks or
-distribution. Files uploaded with this command will also be viewable within the Parsley log viewer if the `content_type` is set to `text/plain`, `application/json` or `text/csv`.
+distribution. **Files uploaded with this command will also be viewable within the Parsley log viewer if the `content_type` is set to `text/plain`, `application/json` or `text/csv`.**
 
 ``` yaml
 - command: s3.put
@@ -1225,6 +1226,9 @@ Parameters:
     no-op for patches (i.e. continue without performing the s3 put).
 -   `patch_only`: defaults to false. If set to true, the command will
     no-op for non-patches (i.e. continue without performing the s3 put).
+-   `preserve_path`: defaults to false. If set to true, causes multi part uploads uploaded with 
+    `LocalFilesIncludeFilter` to preserve the original folder structure instead
+     of putting all the files into the same folder
 
 ## s3.put with multiple files
 

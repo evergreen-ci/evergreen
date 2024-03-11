@@ -227,10 +227,11 @@ func AddOrUpdateServiceUser(u DBUser) error {
 	}
 	update := bson.M{
 		"$set": bson.M{
-			DispNameKey: u.DispName,
-			RolesKey:    u.SystemRoles,
-			OnlyAPIKey:  true,
-			APIKeyKey:   apiKey,
+			DispNameKey:     u.DispName,
+			RolesKey:        u.SystemRoles,
+			OnlyAPIKey:      true,
+			APIKeyKey:       apiKey,
+			EmailAddressKey: u.EmailAddress,
 		},
 	}
 	_, err := UpsertOne(query, update)
