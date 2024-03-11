@@ -244,7 +244,9 @@ buildvariants:
       share_processes: true
       max_hosts: 3
       teardown_group:
-      - command: attach.results
+      - command: shell.exec
+        params:
+          script: echo "tearing down group"
       tasks:
       - example_task_2
       - example_task_3
