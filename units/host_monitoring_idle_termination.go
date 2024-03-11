@@ -101,7 +101,7 @@ func (j *idleHostJob) Run(ctx context.Context) {
 			return
 		}
 		for _, h := range hosts {
-			j.AddError(errors.Wrapf(h.SetDecommissioned(ctx, evergreen.User, false, true, "host's distro not found"), "could not set host '%s' as decommissioned", h.Id))
+			j.AddError(errors.Wrapf(h.SetDecommissioned(ctx, evergreen.User, true, "host's distro not found"), "could not set host '%s' as decommissioned", h.Id))
 		}
 
 		if j.HasErrors() {

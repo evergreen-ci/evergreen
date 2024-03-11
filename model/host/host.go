@@ -809,16 +809,12 @@ func (h *Host) SetProvisioning(ctx context.Context) error {
 	)
 }
 
-// SetDecommissioned sets the host as decommissioned. If checkTaskGroup is set,
-// we only update the host if it hasn't started running a task group. If terminateIfBusy
-// isn't set, only update the host if there is no running task.
-func (h *Host) SetDecommissioned(ctx context.Context, user string, checkTaskGroup, terminateIfBusy bool, logs string) error {
+// SetDecommissioned sets the host as decommissioned. If decommissionIfBusy
+// isn't set, we only update the host if there is no running task.
+func (h *Host) SetDecommissioned(ctx context.Context, user string, decommissionIfBusy bool, logs string) error {
 	query := bson.M{}
-	if checkTaskGroup {
-		query[RunningTaskGroupKey] = bson.M{"$eq": ""}
-	}
-	if !terminateIfBusy {
-		query[RunningTaskKey] = bson.M{"$eq": ""}
+	if !decommissionIfBusy {
+		query[RunningTaskKey] = bson.M{"$exists": false}
 	}
 	if h.HasContainers {
 		containers, err := h.GetContainers(ctx)
@@ -843,7 +839,7 @@ func (h *Host) SetDecommissioned(ctx context.Context, user string, checkTaskGrou
 	err := h.setStatusAndFields(ctx, evergreen.HostDecommissioned, query, nil, nil, user, logs)
 	// Shouldn't consider it an error if the host isn't found when checking task group,
 	// because a task group may have been set for the host.
-	if err != nil && (checkTaskGroup || !terminateIfBusy) && adb.ResultsNotFound(err) {
+	if err != nil && !decommissionIfBusy && adb.ResultsNotFound(err) {
 		return nil
 	}
 	return err
@@ -2015,7 +2011,7 @@ func (h *Host) DisablePoisonedHost(ctx context.Context, logs string) error {
 		return nil
 	}
 
-	return errors.WithStack(h.SetDecommissioned(ctx, evergreen.User, false, true, logs))
+	return errors.WithStack(h.SetDecommissioned(ctx, evergreen.User, true, logs))
 }
 
 func (h *Host) SetExtId(ctx context.Context) error {
