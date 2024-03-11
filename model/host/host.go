@@ -810,7 +810,8 @@ func (h *Host) SetProvisioning(ctx context.Context) error {
 }
 
 // SetDecommissioned sets the host as decommissioned. If checkTaskGroup is set,
-// we only update the host if it hasn't started running a task group.
+// we only update the host if it hasn't started running a task group. If terminateIfBusy
+// isn't set, only update the host if there is no running task.
 func (h *Host) SetDecommissioned(ctx context.Context, user string, checkTaskGroup, terminateIfBusy bool, logs string) error {
 	query := bson.M{}
 	if checkTaskGroup {
@@ -842,7 +843,7 @@ func (h *Host) SetDecommissioned(ctx context.Context, user string, checkTaskGrou
 	err := h.setStatusAndFields(ctx, evergreen.HostDecommissioned, query, nil, nil, user, logs)
 	// Shouldn't consider it an error if the host isn't found when checking task group,
 	// because a task group may have been set for the host.
-	if err != nil && checkTaskGroup && adb.ResultsNotFound(err) {
+	if err != nil && (checkTaskGroup || !terminateIfBusy) && adb.ResultsNotFound(err) {
 		return nil
 	}
 	return err
