@@ -29,91 +29,97 @@ const (
 )
 
 var (
-	IdKey                              = bsonutil.MustHaveTag(Host{}, "Id")
-	DNSKey                             = bsonutil.MustHaveTag(Host{}, "Host")
-	SecretKey                          = bsonutil.MustHaveTag(Host{}, "Secret")
-	UserKey                            = bsonutil.MustHaveTag(Host{}, "User")
-	ServicePasswordKey                 = bsonutil.MustHaveTag(Host{}, "ServicePassword")
-	TagKey                             = bsonutil.MustHaveTag(Host{}, "Tag")
-	DistroKey                          = bsonutil.MustHaveTag(Host{}, "Distro")
-	ProviderKey                        = bsonutil.MustHaveTag(Host{}, "Provider")
-	IPKey                              = bsonutil.MustHaveTag(Host{}, "IP")
-	IPv4Key                            = bsonutil.MustHaveTag(Host{}, "IPv4")
-	PersistentDNSNameKey               = bsonutil.MustHaveTag(Host{}, "PersistentDNSName")
-	PublicIPv4Key                      = bsonutil.MustHaveTag(Host{}, "PublicIPv4")
-	ProvisionedKey                     = bsonutil.MustHaveTag(Host{}, "Provisioned")
-	ProvisionTimeKey                   = bsonutil.MustHaveTag(Host{}, "ProvisionTime")
-	ExtIdKey                           = bsonutil.MustHaveTag(Host{}, "ExternalIdentifier")
-	DisplayNameKey                     = bsonutil.MustHaveTag(Host{}, "DisplayName")
-	RunningTaskFullKey                 = bsonutil.MustHaveTag(Host{}, "RunningTaskFull")
-	RunningTaskKey                     = bsonutil.MustHaveTag(Host{}, "RunningTask")
-	RunningTaskExecutionKey            = bsonutil.MustHaveTag(Host{}, "RunningTaskExecution")
-	RunningTaskGroupKey                = bsonutil.MustHaveTag(Host{}, "RunningTaskGroup")
-	RunningTaskGroupOrderKey           = bsonutil.MustHaveTag(Host{}, "RunningTaskGroupOrder")
-	RunningTaskBuildVariantKey         = bsonutil.MustHaveTag(Host{}, "RunningTaskBuildVariant")
-	RunningTaskVersionKey              = bsonutil.MustHaveTag(Host{}, "RunningTaskVersion")
-	RunningTaskProjectKey              = bsonutil.MustHaveTag(Host{}, "RunningTaskProject")
-	CreateTimeKey                      = bsonutil.MustHaveTag(Host{}, "CreationTime")
-	ExpirationTimeKey                  = bsonutil.MustHaveTag(Host{}, "ExpirationTime")
-	NoExpirationKey                    = bsonutil.MustHaveTag(Host{}, "NoExpiration")
-	TerminationTimeKey                 = bsonutil.MustHaveTag(Host{}, "TerminationTime")
-	LTCTimeKey                         = bsonutil.MustHaveTag(Host{}, "LastTaskCompletedTime")
-	LTCTaskKey                         = bsonutil.MustHaveTag(Host{}, "LastTask")
-	LTCGroupKey                        = bsonutil.MustHaveTag(Host{}, "LastGroup")
-	LTCBVKey                           = bsonutil.MustHaveTag(Host{}, "LastBuildVariant")
-	LTCVersionKey                      = bsonutil.MustHaveTag(Host{}, "LastVersion")
-	LTCProjectKey                      = bsonutil.MustHaveTag(Host{}, "LastProject")
-	StatusKey                          = bsonutil.MustHaveTag(Host{}, "Status")
-	AgentRevisionKey                   = bsonutil.MustHaveTag(Host{}, "AgentRevision")
-	NeedsNewAgentKey                   = bsonutil.MustHaveTag(Host{}, "NeedsNewAgent")
-	NeedsNewAgentMonitorKey            = bsonutil.MustHaveTag(Host{}, "NeedsNewAgentMonitor")
-	NumAgentCleanupFailuresKey         = bsonutil.MustHaveTag(Host{}, "NumAgentCleanupFailures")
-	JasperCredentialsIDKey             = bsonutil.MustHaveTag(Host{}, "JasperCredentialsID")
-	NeedsReprovisionKey                = bsonutil.MustHaveTag(Host{}, "NeedsReprovision")
-	StartedByKey                       = bsonutil.MustHaveTag(Host{}, "StartedBy")
-	InstanceTypeKey                    = bsonutil.MustHaveTag(Host{}, "InstanceType")
-	VolumesKey                         = bsonutil.MustHaveTag(Host{}, "Volumes")
-	LastCommunicationTimeKey           = bsonutil.MustHaveTag(Host{}, "LastCommunicationTime")
-	UserHostKey                        = bsonutil.MustHaveTag(Host{}, "UserHost")
-	ZoneKey                            = bsonutil.MustHaveTag(Host{}, "Zone")
-	ProjectKey                         = bsonutil.MustHaveTag(Host{}, "Project")
-	ProvisionOptionsKey                = bsonutil.MustHaveTag(Host{}, "ProvisionOptions")
-	TaskCountKey                       = bsonutil.MustHaveTag(Host{}, "TaskCount")
-	StartTimeKey                       = bsonutil.MustHaveTag(Host{}, "StartTime")
-	BillingStartTimeKey                = bsonutil.MustHaveTag(Host{}, "BillingStartTime")
-	AgentStartTimeKey                  = bsonutil.MustHaveTag(Host{}, "AgentStartTime")
-	TotalIdleTimeKey                   = bsonutil.MustHaveTag(Host{}, "TotalIdleTime")
-	HasContainersKey                   = bsonutil.MustHaveTag(Host{}, "HasContainers")
-	ParentIDKey                        = bsonutil.MustHaveTag(Host{}, "ParentID")
-	DockerOptionsKey                   = bsonutil.MustHaveTag(Host{}, "DockerOptions")
-	ContainerImagesKey                 = bsonutil.MustHaveTag(Host{}, "ContainerImages")
-	ContainerBuildAttemptKey           = bsonutil.MustHaveTag(Host{}, "ContainerBuildAttempt")
-	LastContainerFinishTimeKey         = bsonutil.MustHaveTag(Host{}, "LastContainerFinishTime")
-	SpawnOptionsKey                    = bsonutil.MustHaveTag(Host{}, "SpawnOptions")
-	ContainerPoolSettingsKey           = bsonutil.MustHaveTag(Host{}, "ContainerPoolSettings")
-	InstanceTagsKey                    = bsonutil.MustHaveTag(Host{}, "InstanceTags")
-	SSHKeyNamesKey                     = bsonutil.MustHaveTag(Host{}, "SSHKeyNames")
-	SSHPortKey                         = bsonutil.MustHaveTag(Host{}, "SSHPort")
-	HomeVolumeIDKey                    = bsonutil.MustHaveTag(Host{}, "HomeVolumeID")
-	PortBindingsKey                    = bsonutil.MustHaveTag(Host{}, "PortBindings")
-	IsVirtualWorkstationKey            = bsonutil.MustHaveTag(Host{}, "IsVirtualWorkstation")
-	SpawnOptionsTaskIDKey              = bsonutil.MustHaveTag(SpawnOptions{}, "TaskID")
-	SpawnOptionsTaskExecutionNumberKey = bsonutil.MustHaveTag(SpawnOptions{}, "TaskExecutionNumber")
-	SpawnOptionsBuildIDKey             = bsonutil.MustHaveTag(SpawnOptions{}, "BuildID")
-	SpawnOptionsTimeoutKey             = bsonutil.MustHaveTag(SpawnOptions{}, "TimeoutTeardown")
-	SpawnOptionsSpawnedByTaskKey       = bsonutil.MustHaveTag(SpawnOptions{}, "SpawnedByTask")
-	VolumeIDKey                        = bsonutil.MustHaveTag(Volume{}, "ID")
-	VolumeDisplayNameKey               = bsonutil.MustHaveTag(Volume{}, "DisplayName")
-	VolumeCreatedByKey                 = bsonutil.MustHaveTag(Volume{}, "CreatedBy")
-	VolumeTypeKey                      = bsonutil.MustHaveTag(Volume{}, "Type")
-	VolumeSizeKey                      = bsonutil.MustHaveTag(Volume{}, "Size")
-	VolumeExpirationKey                = bsonutil.MustHaveTag(Volume{}, "Expiration")
-	VolumeNoExpirationKey              = bsonutil.MustHaveTag(Volume{}, "NoExpiration")
-	VolumeHostKey                      = bsonutil.MustHaveTag(Volume{}, "Host")
-	VolumeMigratingKey                 = bsonutil.MustHaveTag(Volume{}, "Migrating")
-	VolumeAttachmentIDKey              = bsonutil.MustHaveTag(VolumeAttachment{}, "VolumeID")
-	VolumeDeviceNameKey                = bsonutil.MustHaveTag(VolumeAttachment{}, "DeviceName")
-	DockerOptionsStdinDataKey          = bsonutil.MustHaveTag(DockerOptions{}, "StdinData")
+	IdKey                                  = bsonutil.MustHaveTag(Host{}, "Id")
+	DNSKey                                 = bsonutil.MustHaveTag(Host{}, "Host")
+	SecretKey                              = bsonutil.MustHaveTag(Host{}, "Secret")
+	UserKey                                = bsonutil.MustHaveTag(Host{}, "User")
+	ServicePasswordKey                     = bsonutil.MustHaveTag(Host{}, "ServicePassword")
+	TagKey                                 = bsonutil.MustHaveTag(Host{}, "Tag")
+	DistroKey                              = bsonutil.MustHaveTag(Host{}, "Distro")
+	ProviderKey                            = bsonutil.MustHaveTag(Host{}, "Provider")
+	IPKey                                  = bsonutil.MustHaveTag(Host{}, "IP")
+	IPv4Key                                = bsonutil.MustHaveTag(Host{}, "IPv4")
+	PersistentDNSNameKey                   = bsonutil.MustHaveTag(Host{}, "PersistentDNSName")
+	PublicIPv4Key                          = bsonutil.MustHaveTag(Host{}, "PublicIPv4")
+	ProvisionedKey                         = bsonutil.MustHaveTag(Host{}, "Provisioned")
+	ProvisionTimeKey                       = bsonutil.MustHaveTag(Host{}, "ProvisionTime")
+	ExtIdKey                               = bsonutil.MustHaveTag(Host{}, "ExternalIdentifier")
+	DisplayNameKey                         = bsonutil.MustHaveTag(Host{}, "DisplayName")
+	RunningTaskFullKey                     = bsonutil.MustHaveTag(Host{}, "RunningTaskFull")
+	RunningTaskKey                         = bsonutil.MustHaveTag(Host{}, "RunningTask")
+	RunningTaskExecutionKey                = bsonutil.MustHaveTag(Host{}, "RunningTaskExecution")
+	RunningTaskGroupKey                    = bsonutil.MustHaveTag(Host{}, "RunningTaskGroup")
+	RunningTaskGroupOrderKey               = bsonutil.MustHaveTag(Host{}, "RunningTaskGroupOrder")
+	RunningTaskBuildVariantKey             = bsonutil.MustHaveTag(Host{}, "RunningTaskBuildVariant")
+	RunningTaskVersionKey                  = bsonutil.MustHaveTag(Host{}, "RunningTaskVersion")
+	RunningTaskProjectKey                  = bsonutil.MustHaveTag(Host{}, "RunningTaskProject")
+	CreateTimeKey                          = bsonutil.MustHaveTag(Host{}, "CreationTime")
+	ExpirationTimeKey                      = bsonutil.MustHaveTag(Host{}, "ExpirationTime")
+	NoExpirationKey                        = bsonutil.MustHaveTag(Host{}, "NoExpiration")
+	TerminationTimeKey                     = bsonutil.MustHaveTag(Host{}, "TerminationTime")
+	LTCTimeKey                             = bsonutil.MustHaveTag(Host{}, "LastTaskCompletedTime")
+	LTCTaskKey                             = bsonutil.MustHaveTag(Host{}, "LastTask")
+	LTCGroupKey                            = bsonutil.MustHaveTag(Host{}, "LastGroup")
+	LTCBVKey                               = bsonutil.MustHaveTag(Host{}, "LastBuildVariant")
+	LTCVersionKey                          = bsonutil.MustHaveTag(Host{}, "LastVersion")
+	LTCProjectKey                          = bsonutil.MustHaveTag(Host{}, "LastProject")
+	StatusKey                              = bsonutil.MustHaveTag(Host{}, "Status")
+	AgentRevisionKey                       = bsonutil.MustHaveTag(Host{}, "AgentRevision")
+	NeedsNewAgentKey                       = bsonutil.MustHaveTag(Host{}, "NeedsNewAgent")
+	NeedsNewAgentMonitorKey                = bsonutil.MustHaveTag(Host{}, "NeedsNewAgentMonitor")
+	NumAgentCleanupFailuresKey             = bsonutil.MustHaveTag(Host{}, "NumAgentCleanupFailures")
+	JasperCredentialsIDKey                 = bsonutil.MustHaveTag(Host{}, "JasperCredentialsID")
+	NeedsReprovisionKey                    = bsonutil.MustHaveTag(Host{}, "NeedsReprovision")
+	StartedByKey                           = bsonutil.MustHaveTag(Host{}, "StartedBy")
+	InstanceTypeKey                        = bsonutil.MustHaveTag(Host{}, "InstanceType")
+	VolumesKey                             = bsonutil.MustHaveTag(Host{}, "Volumes")
+	LastCommunicationTimeKey               = bsonutil.MustHaveTag(Host{}, "LastCommunicationTime")
+	UserHostKey                            = bsonutil.MustHaveTag(Host{}, "UserHost")
+	ZoneKey                                = bsonutil.MustHaveTag(Host{}, "Zone")
+	ProjectKey                             = bsonutil.MustHaveTag(Host{}, "Project")
+	ProvisionOptionsKey                    = bsonutil.MustHaveTag(Host{}, "ProvisionOptions")
+	TaskCountKey                           = bsonutil.MustHaveTag(Host{}, "TaskCount")
+	StartTimeKey                           = bsonutil.MustHaveTag(Host{}, "StartTime")
+	BillingStartTimeKey                    = bsonutil.MustHaveTag(Host{}, "BillingStartTime")
+	AgentStartTimeKey                      = bsonutil.MustHaveTag(Host{}, "AgentStartTime")
+	TotalIdleTimeKey                       = bsonutil.MustHaveTag(Host{}, "TotalIdleTime")
+	HasContainersKey                       = bsonutil.MustHaveTag(Host{}, "HasContainers")
+	ParentIDKey                            = bsonutil.MustHaveTag(Host{}, "ParentID")
+	DockerOptionsKey                       = bsonutil.MustHaveTag(Host{}, "DockerOptions")
+	ContainerImagesKey                     = bsonutil.MustHaveTag(Host{}, "ContainerImages")
+	ContainerBuildAttemptKey               = bsonutil.MustHaveTag(Host{}, "ContainerBuildAttempt")
+	LastContainerFinishTimeKey             = bsonutil.MustHaveTag(Host{}, "LastContainerFinishTime")
+	SpawnOptionsKey                        = bsonutil.MustHaveTag(Host{}, "SpawnOptions")
+	ContainerPoolSettingsKey               = bsonutil.MustHaveTag(Host{}, "ContainerPoolSettings")
+	InstanceTagsKey                        = bsonutil.MustHaveTag(Host{}, "InstanceTags")
+	SSHKeyNamesKey                         = bsonutil.MustHaveTag(Host{}, "SSHKeyNames")
+	SSHPortKey                             = bsonutil.MustHaveTag(Host{}, "SSHPort")
+	HomeVolumeIDKey                        = bsonutil.MustHaveTag(Host{}, "HomeVolumeID")
+	PortBindingsKey                        = bsonutil.MustHaveTag(Host{}, "PortBindings")
+	IsVirtualWorkstationKey                = bsonutil.MustHaveTag(Host{}, "IsVirtualWorkstation")
+	SleepScheduleKey                       = bsonutil.MustHaveTag(Host{}, "SleepSchedule")
+	SpawnOptionsTaskIDKey                  = bsonutil.MustHaveTag(SpawnOptions{}, "TaskID")
+	SpawnOptionsTaskExecutionNumberKey     = bsonutil.MustHaveTag(SpawnOptions{}, "TaskExecutionNumber")
+	SpawnOptionsBuildIDKey                 = bsonutil.MustHaveTag(SpawnOptions{}, "BuildID")
+	SpawnOptionsTimeoutKey                 = bsonutil.MustHaveTag(SpawnOptions{}, "TimeoutTeardown")
+	SpawnOptionsSpawnedByTaskKey           = bsonutil.MustHaveTag(SpawnOptions{}, "SpawnedByTask")
+	VolumeIDKey                            = bsonutil.MustHaveTag(Volume{}, "ID")
+	VolumeDisplayNameKey                   = bsonutil.MustHaveTag(Volume{}, "DisplayName")
+	VolumeCreatedByKey                     = bsonutil.MustHaveTag(Volume{}, "CreatedBy")
+	VolumeTypeKey                          = bsonutil.MustHaveTag(Volume{}, "Type")
+	VolumeSizeKey                          = bsonutil.MustHaveTag(Volume{}, "Size")
+	VolumeExpirationKey                    = bsonutil.MustHaveTag(Volume{}, "Expiration")
+	VolumeNoExpirationKey                  = bsonutil.MustHaveTag(Volume{}, "NoExpiration")
+	VolumeHostKey                          = bsonutil.MustHaveTag(Volume{}, "Host")
+	VolumeMigratingKey                     = bsonutil.MustHaveTag(Volume{}, "Migrating")
+	VolumeAttachmentIDKey                  = bsonutil.MustHaveTag(VolumeAttachment{}, "VolumeID")
+	VolumeDeviceNameKey                    = bsonutil.MustHaveTag(VolumeAttachment{}, "DeviceName")
+	DockerOptionsStdinDataKey              = bsonutil.MustHaveTag(DockerOptions{}, "StdinData")
+	SleepScheduleNextStopTimeKey           = bsonutil.MustHaveTag(SleepScheduleInfo{}, "NextStopTime")
+	SleepScheduleNextStartTimeKey          = bsonutil.MustHaveTag(SleepScheduleInfo{}, "NextStartTime")
+	SleepSchedulePermanentlyExemptKey      = bsonutil.MustHaveTag(SleepScheduleInfo{}, "PermanentlyExempt")
+	SleepScheduleTemporarilyExemptUntilKey = bsonutil.MustHaveTag(SleepScheduleInfo{}, "TemporarilyExemptUntil")
+	SleepScheduleShouldKeepOffKey          = bsonutil.MustHaveTag(SleepScheduleInfo{}, "ShouldKeepOff")
 )
 
 var (
@@ -1473,4 +1479,57 @@ func FindUnexpirableRunningWithoutPersistentDNSName(ctx context.Context, limit i
 		NoExpirationKey:      true,
 		PersistentDNSNameKey: nil,
 	}, options.Find().SetLimit(int64(limit)))
+}
+
+// FindHostsScheduledToStop finds all hosts that are due to stop due to their sleep
+// schedule settings.
+func FindHostsScheduledToStop(ctx context.Context) ([]Host, error) {
+	now := time.Now()
+	sleepScheduleNextStopKey := bsonutil.GetDottedKeyName(SleepScheduleKey, SleepScheduleNextStopTimeKey)
+	sleepSchedulePermanentlyExemptKey := bsonutil.GetDottedKeyName(SleepScheduleKey, SleepSchedulePermanentlyExemptKey)
+	sleepScheduleTemporarilyExemptUntil := bsonutil.GetDottedKeyName(SleepScheduleKey, SleepScheduleTemporarilyExemptUntilKey)
+	sleepScheduleShouldKeepOff := bsonutil.GetDottedKeyName(SleepScheduleKey, SleepScheduleShouldKeepOffKey)
+
+	return Find(ctx, bson.M{
+		StatusKey:                         bson.M{"$in": []string{evergreen.HostRunning, evergreen.HostStopping}},
+		sleepScheduleNextStopKey:          bson.M{"$lte": now},
+		sleepSchedulePermanentlyExemptKey: bson.M{"$ne": true},
+		"$or": []bson.M{
+			{
+				sleepScheduleTemporarilyExemptUntil: nil,
+			},
+			{
+				sleepScheduleTemporarilyExemptUntil: bson.M{"$lte": now},
+			},
+		},
+		sleepScheduleShouldKeepOff: bson.M{"$ne": true},
+	})
+}
+
+// FindHostsToSleep finds all hosts that are due to start soon due to their
+// sleep schedule settings.
+func FindHostsScheduledToStart(ctx context.Context) ([]Host, error) {
+	const preWakeThreshold = 5 * time.Minute
+	now := time.Now()
+	sleepScheduleNextStartKey := bsonutil.GetDottedKeyName(SleepScheduleKey, SleepScheduleNextStartTimeKey)
+	sleepSchedulePermanentlyExemptKey := bsonutil.GetDottedKeyName(SleepScheduleKey, SleepSchedulePermanentlyExemptKey)
+	sleepScheduleTemporarilyExemptUntil := bsonutil.GetDottedKeyName(SleepScheduleKey, SleepScheduleTemporarilyExemptUntilKey)
+	sleepScheduleShouldKeepOff := bsonutil.GetDottedKeyName(SleepScheduleKey, SleepScheduleShouldKeepOffKey)
+
+	return Find(ctx, bson.M{
+		StatusKey: bson.M{"$in": []string{evergreen.HostStopped, evergreen.HostStopping}},
+		// Include hosts that are imminently about to reach their wakeup time to
+		// better ensure the host is running at the scheduled time.
+		sleepScheduleNextStartKey:         bson.M{"$lte": now.Add(preWakeThreshold)},
+		sleepSchedulePermanentlyExemptKey: bson.M{"$ne": true},
+		"$or": []bson.M{
+			{
+				sleepScheduleTemporarilyExemptUntil: nil,
+			},
+			{
+				sleepScheduleTemporarilyExemptUntil: bson.M{"$lte": now},
+			},
+		},
+		sleepScheduleShouldKeepOff: bson.M{"$ne": true},
+	})
 }
