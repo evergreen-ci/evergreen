@@ -58,6 +58,15 @@ func (j *sleepSchedulerJob) Run(ctx context.Context) {
 		return
 	}
 
+	flags, err := evergreen.GetServiceFlags(ctx)
+	if err != nil {
+		j.AddError(errors.Wrap(err, "checking if sleep schedule is enabled"))
+		return
+	}
+	if flags.SleepScheduleDisabled {
+		return
+	}
+
 	ts := utility.RoundPartOfMinute(0)
 	if err := populateQueueGroup(ctx, j.env, spawnHostModificationQueueGroup, j.makeStopAndStartJobs, ts); err != nil {
 		j.AddError(errors.Wrap(err, "enqueuing stop and start jobs"))
