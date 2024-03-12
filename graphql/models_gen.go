@@ -1002,45 +1002,6 @@ func (e HostSortBy) MarshalGQL(w io.Writer) {
 	fmt.Fprint(w, strconv.Quote(e.String()))
 }
 
-type LogAccess string
-
-const (
-	LogAccessView LogAccess = "VIEW"
-)
-
-var AllLogAccess = []LogAccess{
-	LogAccessView,
-}
-
-func (e LogAccess) IsValid() bool {
-	switch e {
-	case LogAccessView:
-		return true
-	}
-	return false
-}
-
-func (e LogAccess) String() string {
-	return string(e)
-}
-
-func (e *LogAccess) UnmarshalGQL(v interface{}) error {
-	str, ok := v.(string)
-	if !ok {
-		return fmt.Errorf("enums must be strings")
-	}
-
-	*e = LogAccess(str)
-	if !e.IsValid() {
-		return fmt.Errorf("%s is not a valid LogAccess", str)
-	}
-	return nil
-}
-
-func (e LogAccess) MarshalGQL(w io.Writer) {
-	fmt.Fprint(w, strconv.Quote(e.String()))
-}
-
 type MetStatus string
 
 const (

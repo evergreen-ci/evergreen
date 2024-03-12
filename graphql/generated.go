@@ -93,7 +93,6 @@ type DirectiveRoot struct {
 	RequireAnnotationAccess      func(ctx context.Context, obj interface{}, next graphql.Resolver, access AnnotationAccess) (res interface{}, err error)
 	RequireCommitQueueItemOwner  func(ctx context.Context, obj interface{}, next graphql.Resolver) (res interface{}, err error)
 	RequireDistroAccess          func(ctx context.Context, obj interface{}, next graphql.Resolver, access DistroSettingsAccess) (res interface{}, err error)
-	RequireLogAccess             func(ctx context.Context, obj interface{}, next graphql.Resolver, access LogAccess) (res interface{}, err error)
 	RequireProjectAccess         func(ctx context.Context, obj interface{}, next graphql.Resolver, access ProjectSettingsAccess) (res interface{}, err error)
 	RequireProjectAdmin          func(ctx context.Context, obj interface{}, next graphql.Resolver) (res interface{}, err error)
 	RequireProjectSettingsAccess func(ctx context.Context, obj interface{}, next graphql.Resolver) (res interface{}, err error)
@@ -9755,21 +9754,6 @@ func (ec *executionContext) dir_requireDistroAccess_args(ctx context.Context, ra
 	if tmp, ok := rawArgs["access"]; ok {
 		ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("access"))
 		arg0, err = ec.unmarshalNDistroSettingsAccess2githubᚗcomᚋevergreenᚑciᚋevergreenᚋgraphqlᚐDistroSettingsAccess(ctx, tmp)
-		if err != nil {
-			return nil, err
-		}
-	}
-	args["access"] = arg0
-	return args, nil
-}
-
-func (ec *executionContext) dir_requireLogAccess_args(ctx context.Context, rawArgs map[string]interface{}) (map[string]interface{}, error) {
-	var err error
-	args := map[string]interface{}{}
-	var arg0 LogAccess
-	if tmp, ok := rawArgs["access"]; ok {
-		ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("access"))
-		arg0, err = ec.unmarshalNLogAccess2githubᚗcomᚋevergreenᚑciᚋevergreenᚋgraphqlᚐLogAccess(ctx, tmp)
 		if err != nil {
 			return nil, err
 		}
@@ -87268,16 +87252,6 @@ func (ec *executionContext) marshalNJiraTicket2ᚖgithubᚗcomᚋevergreenᚑci�
 		return graphql.Null
 	}
 	return ec._JiraTicket(ctx, sel, v)
-}
-
-func (ec *executionContext) unmarshalNLogAccess2githubᚗcomᚋevergreenᚑciᚋevergreenᚋgraphqlᚐLogAccess(ctx context.Context, v interface{}) (LogAccess, error) {
-	var res LogAccess
-	err := res.UnmarshalGQL(v)
-	return res, graphql.ErrorOnPath(ctx, err)
-}
-
-func (ec *executionContext) marshalNLogAccess2githubᚗcomᚋevergreenᚑciᚋevergreenᚋgraphqlᚐLogAccess(ctx context.Context, sel ast.SelectionSet, v LogAccess) graphql.Marshaler {
-	return v
 }
 
 func (ec *executionContext) marshalNLogMessage2ᚕᚖgithubᚗcomᚋevergreenᚑciᚋevergreenᚋapimodelsᚐLogMessageᚄ(ctx context.Context, sel ast.SelectionSet, v []*apimodels.LogMessage) graphql.Marshaler {

@@ -49,14 +49,6 @@ enum AnnotationAccess {
 }
 
 """
-requireLogAccess is used to restrict view access for logs.
-"""
-directive @requireLogAccess(access: LogAccess!) on ARGUMENT_DEFINITION | INPUT_FIELD_DEFINITION
-enum LogAccess {
-  VIEW
-}
-
-"""
 requireCommitQueueItemOwner is used to restrict changes to commit queue patches.
 """
 directive @requireCommitQueueItemOwner on ARGUMENT_DEFINITION
