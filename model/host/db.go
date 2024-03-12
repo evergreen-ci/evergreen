@@ -1481,7 +1481,7 @@ func FindUnexpirableRunningWithoutPersistentDNSName(ctx context.Context, limit i
 	}, options.Find().SetLimit(int64(limit)))
 }
 
-// FindHostsScheduledToStop finds all hosts that are due to stop due to their sleep
+// FindHostsScheduledToStop finds all unepxirable hosts that are due to stop due to their sleep
 // schedule settings.
 func FindHostsScheduledToStop(ctx context.Context) ([]Host, error) {
 	now := time.Now()
@@ -1492,6 +1492,8 @@ func FindHostsScheduledToStop(ctx context.Context) ([]Host, error) {
 
 	return Find(ctx, bson.M{
 		StatusKey:                         bson.M{"$in": []string{evergreen.HostRunning, evergreen.HostStopping}},
+		StartedByKey:                      bson.M{"$ne": evergreen.User},
+		NoExpirationKey:                   true,
 		sleepScheduleNextStopKey:          bson.M{"$lte": now},
 		sleepSchedulePermanentlyExemptKey: bson.M{"$ne": true},
 		"$or": []bson.M{
@@ -1506,8 +1508,8 @@ func FindHostsScheduledToStop(ctx context.Context) ([]Host, error) {
 	})
 }
 
-// FindHostsToSleep finds all hosts that are due to start soon due to their
-// sleep schedule settings.
+// FindHostsToSleep finds all unexpirable hosts that are due to start soon due
+// to their sleep schedule settings.
 func FindHostsScheduledToStart(ctx context.Context) ([]Host, error) {
 	const preWakeThreshold = 5 * time.Minute
 	now := time.Now()
@@ -1517,7 +1519,9 @@ func FindHostsScheduledToStart(ctx context.Context) ([]Host, error) {
 	sleepScheduleShouldKeepOff := bsonutil.GetDottedKeyName(SleepScheduleKey, SleepScheduleShouldKeepOffKey)
 
 	return Find(ctx, bson.M{
-		StatusKey: bson.M{"$in": []string{evergreen.HostStopped, evergreen.HostStopping}},
+		StatusKey:       bson.M{"$in": []string{evergreen.HostStopped, evergreen.HostStopping}},
+		StartedByKey:    bson.M{"$ne": evergreen.User},
+		NoExpirationKey: true,
 		// Include hosts that are imminently about to reach their wakeup time to
 		// better ensure the host is running at the scheduled time.
 		sleepScheduleNextStartKey:         bson.M{"$lte": now.Add(preWakeThreshold)},

@@ -384,9 +384,10 @@ func TestFindHostsScheduledToStop(t *testing.T) {
 			name: "ReturnsRunningHostWhoseNextStopHasElapsed",
 			hosts: []Host{
 				{
-					Id:        "h0",
-					StartedBy: "myself",
-					Status:    evergreen.HostRunning,
+					Id:           "h0",
+					StartedBy:    "myself",
+					NoExpiration: true,
+					Status:       evergreen.HostRunning,
 					SleepSchedule: SleepScheduleInfo{
 						NextStopTime: now.Add(-time.Minute),
 					},
@@ -398,9 +399,10 @@ func TestFindHostsScheduledToStop(t *testing.T) {
 			name: "ReturnsStoppingHostWhoseNextStopHasElapsed",
 			hosts: []Host{
 				{
-					Id:        "h0",
-					StartedBy: "myself",
-					Status:    evergreen.HostStopping,
+					Id:           "h0",
+					StartedBy:    "myself",
+					NoExpiration: true,
+					Status:       evergreen.HostStopping,
 					SleepSchedule: SleepScheduleInfo{
 						NextStopTime: now.Add(-time.Minute),
 					},
@@ -412,9 +414,10 @@ func TestFindHostsScheduledToStop(t *testing.T) {
 			name: "IgnoresHostWhoseNextStopIsNotAboutToElapse",
 			hosts: []Host{
 				{
-					Id:        "h0",
-					StartedBy: "myself",
-					Status:    evergreen.HostRunning,
+					Id:           "h0",
+					StartedBy:    "myself",
+					NoExpiration: true,
+					Status:       evergreen.HostRunning,
 					SleepSchedule: SleepScheduleInfo{
 						NextStopTime: now.Add(time.Hour),
 					},
@@ -426,9 +429,10 @@ func TestFindHostsScheduledToStop(t *testing.T) {
 			name: "IgnoresHostThatIsNotStoppable",
 			hosts: []Host{
 				{
-					Id:        "h0",
-					StartedBy: "myself",
-					Status:    evergreen.HostUninitialized,
+					Id:           "h0",
+					StartedBy:    "myself",
+					NoExpiration: true,
+					Status:       evergreen.HostUninitialized,
 					SleepSchedule: SleepScheduleInfo{
 						NextStopTime: now.Add(-time.Minute),
 					},
@@ -440,9 +444,10 @@ func TestFindHostsScheduledToStop(t *testing.T) {
 			name: "IgnoresPermanentlyExemptHost",
 			hosts: []Host{
 				{
-					Id:        "h0",
-					StartedBy: "myself",
-					Status:    evergreen.HostRunning,
+					Id:           "h0",
+					StartedBy:    "myself",
+					NoExpiration: true,
+					Status:       evergreen.HostRunning,
 					SleepSchedule: SleepScheduleInfo{
 						PermanentlyExempt: true,
 						NextStopTime:      now.Add(-time.Minute),
@@ -455,9 +460,10 @@ func TestFindHostsScheduledToStop(t *testing.T) {
 			name: "IgnoresTemporarilyExemptHost",
 			hosts: []Host{
 				{
-					Id:        "h0",
-					StartedBy: "myself",
-					Status:    evergreen.HostRunning,
+					Id:           "h0",
+					StartedBy:    "myself",
+					NoExpiration: true,
+					Status:       evergreen.HostRunning,
 					SleepSchedule: SleepScheduleInfo{
 						TemporarilyExemptUntil: now.Add(time.Hour),
 						NextStopTime:           now.Add(-time.Minute),
@@ -470,9 +476,10 @@ func TestFindHostsScheduledToStop(t *testing.T) {
 			name: "IgnoresHostKeptOff",
 			hosts: []Host{
 				{
-					Id:        "h0",
-					StartedBy: "myself",
-					Status:    evergreen.HostStopped,
+					Id:           "h0",
+					StartedBy:    "myself",
+					NoExpiration: true,
+					Status:       evergreen.HostStopped,
 					SleepSchedule: SleepScheduleInfo{
 						ShouldKeepOff: true,
 						NextStopTime:  now.Add(-time.Minute),
@@ -485,9 +492,26 @@ func TestFindHostsScheduledToStop(t *testing.T) {
 			name: "IgnoresHostWithoutASleepSchedule",
 			hosts: []Host{
 				{
-					Id:        "h0",
-					StartedBy: "myself",
-					Status:    evergreen.HostRunning,
+					Id:           "h0",
+					StartedBy:    "myself",
+					NoExpiration: true,
+					Status:       evergreen.HostRunning,
+				},
+			},
+			expectedHosts: nil,
+		},
+		{
+			name: "IgnoresExpirableHost",
+			hosts: []Host{
+				{
+					Id:           "h0",
+					StartedBy:    "myself",
+					NoExpiration: false,
+					Status:       evergreen.HostRunning,
+					SleepSchedule: SleepScheduleInfo{
+						ShouldKeepOff: true,
+						NextStopTime:  now.Add(-time.Minute),
+					},
 				},
 			},
 			expectedHosts: nil,
@@ -496,25 +520,28 @@ func TestFindHostsScheduledToStop(t *testing.T) {
 			name: "ReturnsMultipleHostsWhoseNextStopHaveElapsed",
 			hosts: []Host{
 				{
-					Id:        "h0",
-					StartedBy: "myself",
-					Status:    evergreen.HostRunning,
+					Id:           "h0",
+					StartedBy:    "myself",
+					NoExpiration: true,
+					Status:       evergreen.HostRunning,
 					SleepSchedule: SleepScheduleInfo{
 						NextStopTime: now.Add(-time.Minute),
 					},
 				},
 				{
-					Id:        "h1",
-					StartedBy: "myself",
-					Status:    evergreen.HostRunning,
+					Id:           "h1",
+					StartedBy:    "myself",
+					NoExpiration: true,
+					Status:       evergreen.HostRunning,
 					SleepSchedule: SleepScheduleInfo{
 						NextStopTime: now.Add(time.Hour),
 					},
 				},
 				{
-					Id:        "h2",
-					StartedBy: "myself",
-					Status:    evergreen.HostStopping,
+					Id:           "h2",
+					StartedBy:    "myself",
+					NoExpiration: true,
+					Status:       evergreen.HostStopping,
 					SleepSchedule: SleepScheduleInfo{
 						NextStopTime: now.Add(-3 * time.Minute),
 					},
@@ -556,9 +583,10 @@ func TestFindHostsScheduledToStart(t *testing.T) {
 			name: "ReturnsStoppedHostsWhoseNextStartHasElapsed",
 			hosts: []Host{
 				{
-					Id:        "h0",
-					StartedBy: "myself",
-					Status:    evergreen.HostStopped,
+					Id:           "h0",
+					StartedBy:    "myself",
+					NoExpiration: true,
+					Status:       evergreen.HostStopped,
 					SleepSchedule: SleepScheduleInfo{
 						NextStartTime: now.Add(-time.Minute),
 					},
@@ -570,9 +598,10 @@ func TestFindHostsScheduledToStart(t *testing.T) {
 			name: "ReturnsStoppedHostsWhoseNextStartIsAboutToElapse",
 			hosts: []Host{
 				{
-					Id:        "h0",
-					StartedBy: "myself",
-					Status:    evergreen.HostStopped,
+					Id:           "h0",
+					StartedBy:    "myself",
+					NoExpiration: true,
+					Status:       evergreen.HostStopped,
 					SleepSchedule: SleepScheduleInfo{
 						NextStartTime: now.Add(time.Minute),
 					},
@@ -584,9 +613,10 @@ func TestFindHostsScheduledToStart(t *testing.T) {
 			name: "ReturnsStoppingHostWhoseNextStartHasElapsed",
 			hosts: []Host{
 				{
-					Id:        "h0",
-					StartedBy: "myself",
-					Status:    evergreen.HostStopping,
+					Id:           "h0",
+					StartedBy:    "myself",
+					NoExpiration: true,
+					Status:       evergreen.HostStopping,
 					SleepSchedule: SleepScheduleInfo{
 						NextStartTime: now.Add(-time.Minute),
 					},
@@ -598,9 +628,10 @@ func TestFindHostsScheduledToStart(t *testing.T) {
 			name: "IgnoresHostWhoseNextStartHasNotElapsed",
 			hosts: []Host{
 				{
-					Id:        "h0",
-					StartedBy: "myself",
-					Status:    evergreen.HostRunning,
+					Id:           "h0",
+					StartedBy:    "myself",
+					NoExpiration: true,
+					Status:       evergreen.HostRunning,
 					SleepSchedule: SleepScheduleInfo{
 						NextStartTime: now.Add(time.Hour),
 					},
@@ -612,9 +643,10 @@ func TestFindHostsScheduledToStart(t *testing.T) {
 			name: "IgnoresHostThatIsNotStartable",
 			hosts: []Host{
 				{
-					Id:        "h0",
-					StartedBy: "myself",
-					Status:    evergreen.HostUninitialized,
+					Id:           "h0",
+					StartedBy:    "myself",
+					NoExpiration: true,
+					Status:       evergreen.HostUninitialized,
 					SleepSchedule: SleepScheduleInfo{
 						NextStartTime: now.Add(-time.Minute),
 					},
@@ -626,9 +658,10 @@ func TestFindHostsScheduledToStart(t *testing.T) {
 			name: "IgnoresPermanentlyExemptHost",
 			hosts: []Host{
 				{
-					Id:        "h0",
-					StartedBy: "myself",
-					Status:    evergreen.HostStopped,
+					Id:           "h0",
+					StartedBy:    "myself",
+					NoExpiration: true,
+					Status:       evergreen.HostStopped,
 					SleepSchedule: SleepScheduleInfo{
 						PermanentlyExempt: true,
 						NextStartTime:     now.Add(-time.Minute),
@@ -641,9 +674,10 @@ func TestFindHostsScheduledToStart(t *testing.T) {
 			name: "IgnoresTemporarilyExemptHost",
 			hosts: []Host{
 				{
-					Id:        "h0",
-					StartedBy: "myself",
-					Status:    evergreen.HostStopped,
+					Id:           "h0",
+					StartedBy:    "myself",
+					NoExpiration: true,
+					Status:       evergreen.HostStopped,
 					SleepSchedule: SleepScheduleInfo{
 						TemporarilyExemptUntil: now.Add(time.Hour),
 						NextStartTime:          now.Add(-time.Minute),
@@ -656,9 +690,10 @@ func TestFindHostsScheduledToStart(t *testing.T) {
 			name: "IgnoresHostKeptOff",
 			hosts: []Host{
 				{
-					Id:        "h0",
-					StartedBy: "myself",
-					Status:    evergreen.HostStopped,
+					Id:           "h0",
+					StartedBy:    "myself",
+					NoExpiration: true,
+					Status:       evergreen.HostStopped,
 					SleepSchedule: SleepScheduleInfo{
 						ShouldKeepOff: true,
 						NextStartTime: now.Add(-time.Minute),
@@ -671,9 +706,26 @@ func TestFindHostsScheduledToStart(t *testing.T) {
 			name: "IgnoresHostWithoutASleepSchedule",
 			hosts: []Host{
 				{
-					Id:        "h0",
-					StartedBy: "myself",
-					Status:    evergreen.HostRunning,
+					Id:           "h0",
+					StartedBy:    "myself",
+					NoExpiration: true,
+					Status:       evergreen.HostRunning,
+				},
+			},
+			expectedHosts: nil,
+		},
+		{
+			name: "IgnoresExpirableHost",
+			hosts: []Host{
+				{
+					Id:           "h0",
+					StartedBy:    "myself",
+					NoExpiration: false,
+					Status:       evergreen.HostStopped,
+					SleepSchedule: SleepScheduleInfo{
+						ShouldKeepOff: true,
+						NextStartTime: now.Add(-time.Minute),
+					},
 				},
 			},
 			expectedHosts: nil,
@@ -682,25 +734,28 @@ func TestFindHostsScheduledToStart(t *testing.T) {
 			name: "ReturnsMultipleHostsWhoseNextStartHaveElapsed",
 			hosts: []Host{
 				{
-					Id:        "h0",
-					StartedBy: "myself",
-					Status:    evergreen.HostStopped,
+					Id:           "h0",
+					StartedBy:    "myself",
+					NoExpiration: true,
+					Status:       evergreen.HostStopped,
 					SleepSchedule: SleepScheduleInfo{
 						NextStartTime: now.Add(-time.Minute),
 					},
 				},
 				{
-					Id:        "h1",
-					StartedBy: "myself",
-					Status:    evergreen.HostStopped,
+					Id:           "h1",
+					StartedBy:    "myself",
+					NoExpiration: true,
+					Status:       evergreen.HostStopped,
 					SleepSchedule: SleepScheduleInfo{
 						NextStartTime: now.Add(time.Hour),
 					},
 				},
 				{
-					Id:        "h2",
-					StartedBy: "myself",
-					Status:    evergreen.HostStopping,
+					Id:           "h2",
+					StartedBy:    "myself",
+					NoExpiration: true,
+					Status:       evergreen.HostStopping,
 					SleepSchedule: SleepScheduleInfo{
 						NextStartTime: now.Add(-3 * time.Minute),
 					},
