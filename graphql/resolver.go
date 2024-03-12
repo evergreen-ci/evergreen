@@ -237,7 +237,6 @@ func New(apiURL string) Config {
 			return nil, ResourceNotFound.Send(ctx, "converting args into map")
 		}
 
-		// Populate argsMap to use in the next step.
 		paramsMap := map[string]string{}
 
 		if projectIdentifier, hasProjectIdentifier := args["projectIdentifier"].(string); hasProjectIdentifier {
@@ -267,12 +266,12 @@ func New(apiURL string) Config {
 		var requiredLevel int
 
 		switch access {
-		case TaskAccessView:
-			requiredLevel = evergreen.TasksView.Value
-		case TaskAccessEdit:
-			requiredLevel = evergreen.TasksBasic.Value
 		case TaskAccessAdmin:
 			requiredLevel = evergreen.TasksAdmin.Value
+		case TaskAccessEdit:
+			requiredLevel = evergreen.TasksBasic.Value
+		case TaskAccessView:
+			requiredLevel = evergreen.TasksView.Value
 		default:
 			return nil, Forbidden.Send(ctx, "permission not specified")
 		}
