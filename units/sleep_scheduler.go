@@ -58,15 +58,6 @@ func (j *sleepSchedulerJob) Run(ctx context.Context) {
 		return
 	}
 
-	flags, err := evergreen.GetServiceFlags(ctx)
-	if err != nil {
-		j.AddError(errors.Wrap(err, "checking if sleep schedule is enabled"))
-		return
-	}
-	if flags.SleepScheduleDisabled {
-		return
-	}
-
 	ts := utility.RoundPartOfMinute(0)
 	if err := populateQueueGroup(ctx, j.env, spawnHostModificationQueueGroup, j.makeStopAndStartJobs, ts); err != nil {
 		j.AddError(errors.Wrap(err, "enqueuing stop and start jobs"))
@@ -82,16 +73,31 @@ func (j *sleepSchedulerJob) populateIfUnset() error {
 }
 
 func (j *sleepSchedulerJob) makeStopAndStartJobs(ctx context.Context, _ evergreen.Environment, ts time.Time) ([]amboy.Job, error) {
-	hostsToStop, err := host.FindHostsScheduledToStop(ctx)
+
+	flags, err := evergreen.GetServiceFlags(ctx)
 	if err != nil {
-		return nil, errors.Wrap(err, "finding hosts to stop")
+		return nil, errors.Wrap(err, "checking if sleep schedule is enabled")
 	}
-	stopJobs := make([]amboy.Job, 0, len(hostsToStop))
-	hostIDsToStop := make([]string, 0, len(hostsToStop))
-	for i := range hostsToStop {
-		h := hostsToStop[i]
-		stopJobs = append(stopJobs, NewSpawnhostStopJob(&h, evergreen.User, ts.Format(TSFormat)))
-		hostIDsToStop = append(hostIDsToStop, h.Id)
+	var stopJobs []amboy.Job
+	var hostIDsToStop []string
+	if !flags.SleepScheduleDisabled {
+		// If sleep schedules are disabled, disable just the auto-stopping of
+		// hosts, not the auto-starting of hosts. The sleep schedule feature
+		// might be toggled as sleep schedules are rolling out to users (e.g. in
+		// case of issues). Even if the feature is turned off while their host
+		// is stopped, we assume users would still prefer have their host be
+		// turned back on during waking hours for their convenience.
+		hostsToStop, err := host.FindHostsScheduledToStop(ctx)
+		if err != nil {
+			return nil, errors.Wrap(err, "finding hosts to stop")
+		}
+		stopJobs = make([]amboy.Job, 0, len(hostsToStop))
+		hostIDsToStop = make([]string, 0, len(hostsToStop))
+		for i := range hostsToStop {
+			h := hostsToStop[i]
+			stopJobs = append(stopJobs, NewSpawnhostStopJob(&h, evergreen.User, ts.Format(TSFormat)))
+			hostIDsToStop = append(hostIDsToStop, h.Id)
+		}
 	}
 
 	hostsToStart, err := host.FindHostsScheduledToStart(ctx)
