@@ -73,9 +73,17 @@ func RequestS3Creds(ctx context.Context, projectIdentifier, userEmail string) er
 		Project:     settings.ProjectCreation.JiraProject,
 		Summary:     summary,
 		Description: description,
-		Components:  []string{"Access"},
 		Reporter:    userEmail,
+		Fields: map[string]interface{}{
+			// We assign service because it's a required field, but keep it general to prevent this from getting out of sync with service naming too quickly.
+			evergreen.DevProdServiceField: []map[string]string{{"value": evergreen.DevProdServiceId}},
+		},
 	}
+	grip.Info(message.Fields{
+		"message": "creating Jira ticket for s3 credentials",
+		"project": projectIdentifier,
+		"issue":   jiraIssue,
+	})
 	sub := event.Subscriber{
 		Type: event.JIRAIssueSubscriberType,
 		Target: event.JIRAIssueSubscriber{

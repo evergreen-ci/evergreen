@@ -857,6 +857,12 @@ func (k SenderKey) String() string {
 	}
 }
 
+// DevProd Service is a required field for DEVPROD tickets, which we sometimes auto-generate.
+const (
+	DevProdServiceField = "customfield_24158"
+	DevProdServiceId    = "27020"
+)
+
 // Recognized Evergreen agent CPU architectures, which should be in the form
 // ${GOOS}_${GOARCH}.
 const (

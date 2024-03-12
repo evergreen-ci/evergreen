@@ -18,8 +18,6 @@ import (
 )
 
 const decoHostNotifyJobName = "deco-host-notify"
-const fieldAssignedTeams = "customfield_12751"
-const runtimeEnvironmentsId = "25626"
 
 func init() {
 	registry.AddJobType(decoHostNotifyJobName, func() amboy.Job { return makeDecoHostsNotifyJob() })
@@ -134,11 +132,11 @@ func (j *decoHostNotifyJob) Run(_ context.Context) {
 	issue := message.JiraIssue{
 		Project:     conf.Jira.DefaultProject,
 		Summary:     fmt.Sprintf("investigate automatically decommissioned host '%s'", j.Host.Id),
-		Type:        "Incident",
+		Type:        "Bug",
 		Description: strings.Join(descParts, "\n"),
-		Components:  []string{"Static Host Management"},
 		Fields: map[string]interface{}{
-			fieldAssignedTeams: []map[string]string{{"id": runtimeEnvironmentsId}}, // Assigned Teams: Runtime Environments
+			// We assign service because it's a required field, but keep it general to prevent this from getting out of sync with service naming too quickly.
+			evergreen.DevProdServiceField: []map[string]string{{"id": evergreen.DevProdServiceId}},
 		},
 	}
 
