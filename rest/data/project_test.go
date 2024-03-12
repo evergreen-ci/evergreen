@@ -331,7 +331,7 @@ func TestUpdateProjectVarsByValue(t *testing.T) {
 
 	projectEvents, err := model.MostRecentProjectEvents(projectId, 5)
 	assert.NoError(t, err)
-	require.Len(t, 2, len(projectEvents))
+	require.Len(t, projectEvents, 2)
 
 	assert.NotNil(t, projectEvents[0].Data)
 	eventData := projectEvents[0].Data.(*model.ProjectChangeEvent)
