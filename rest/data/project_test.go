@@ -211,8 +211,8 @@ func (s *ProjectConnectorGetSuite) TestGetProjectEvents() {
 		s.Len(eventLog.After.ProjectRef.WorkstationConfig.SetupCommands, 0)
 		s.Equal(eventLog.Before.Vars.Vars["hello"], "world")
 		s.Equal(eventLog.After.Vars.Vars["hello"], "another_world")
-		s.Equal(eventLog.After.Vars.Vars["world"], "{REDACTED}")
-		s.Equal(eventLog.Before.Vars.Vars["world"], "")
+		s.Equal(eventLog.After.Vars.Vars["world"], "{REDACTED_AFTER}")
+		s.Equal(eventLog.Before.Vars.Vars["world"], "{REDACTED_BEFORE}")
 	}
 
 	// No error for empty events
