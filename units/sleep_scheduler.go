@@ -11,6 +11,8 @@ import (
 	"github.com/mongodb/amboy"
 	"github.com/mongodb/amboy/job"
 	"github.com/mongodb/amboy/registry"
+	"github.com/mongodb/grip"
+	"github.com/mongodb/grip/message"
 	"github.com/pkg/errors"
 )
 
@@ -76,9 +78,11 @@ func (j *sleepSchedulerJob) makeStopAndStartJobs(ctx context.Context, _ evergree
 		return nil, errors.Wrap(err, "finding hosts to stop")
 	}
 	stopJobs := make([]amboy.Job, 0, len(hostsToStop))
+	hostIDsToStop := make([]string, 0, len(hostsToStop))
 	for i := range hostsToStop {
 		h := hostsToStop[i]
 		stopJobs = append(stopJobs, NewSpawnhostStopJob(&h, evergreen.User, ts.Format(TSFormat)))
+		hostIDsToStop = append(hostIDsToStop, h.Id)
 	}
 
 	hostsToStart, err := host.FindHostsScheduledToStart(ctx)
@@ -86,10 +90,25 @@ func (j *sleepSchedulerJob) makeStopAndStartJobs(ctx context.Context, _ evergree
 		return nil, errors.Wrap(err, "finding hosts to start")
 	}
 	startJobs := make([]amboy.Job, 0, len(hostsToStart))
+	hostIDsToStart := make([]string, 0, len(hostsToStart))
 	for i := range hostsToStart {
 		h := hostsToStart[i]
 		startJobs = append(startJobs, NewSpawnhostStartJob(&h, evergreen.User, ts.Format(TSFormat)))
+		hostIDsToStart = append(hostIDsToStart, h.Id)
 	}
+
+	grip.InfoWhen(len(hostIDsToStop) > 0, message.Fields{
+		"message":  "enqueueing jobs to stop hosts for sleep schedule",
+		"num_jobs": len(hostIDsToStop),
+		"host_ids": hostIDsToStop,
+		"job":      j.ID(),
+	})
+	grip.InfoWhen(len(hostIDsToStart) > 0, message.Fields{
+		"message":  "enqueueing jobs to start hosts for sleep schedule",
+		"num_jobs": len(hostIDsToStart),
+		"host_ids": hostIDsToStart,
+		"job":      j.ID(),
+	})
 
 	return append(stopJobs, startJobs...), nil
 }

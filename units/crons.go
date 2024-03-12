@@ -1248,6 +1248,6 @@ func populateQueueGroup(ctx context.Context, env evergreen.Environment, queueGro
 	return errors.Wrapf(amboy.EnqueueManyUniqueJobs(ctx, queueGroup, jobs), "populating '%s' queue", queueGroupName)
 }
 
-func sleepScheduleJobs(ctx context.Context, env evergreen.Environment, ts time.Time) ([]amboy.Job, error) {
+func sleepSchedulerJobs(ctx context.Context, env evergreen.Environment, ts time.Time) ([]amboy.Job, error) {
 	return []amboy.Job{NewSleepSchedulerJob(env, ts.Format(TSFormat))}, nil
 }

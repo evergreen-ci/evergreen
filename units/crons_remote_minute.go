@@ -58,6 +58,7 @@ func (j *cronsRemoteMinuteJob) Run(ctx context.Context) {
 		"periodic notification":      periodicNotificationJobs,
 		"user data done":             userDataDoneJobs,
 		"pod termination":            podTerminationJobs,
+		"sleep scheduler":            sleepSchedulerJobs,
 	}
 
 	var allJobs []amboy.Job
