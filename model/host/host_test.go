@@ -406,24 +406,24 @@ func TestDecommissionHost(t *testing.T) {
 
 	assert.NoError(t, db.ClearCollections(Collection))
 	h := Host{
-		Id:               "myHost",
-		RunningTaskGroup: "myTaskGroup",
-		Status:           evergreen.HostRunning,
+		Id:          "myHost",
+		RunningTask: "runningTask",
+		Status:      evergreen.HostRunning,
 	}
 	assert.NoError(t, h.Insert(ctx))
 
-	assert.NoError(t, h.SetDecommissioned(ctx, "user", true, "because I said so"))
+	assert.NoError(t, h.SetDecommissioned(ctx, "user", false, "because I said so"))
 
-	// Updating shouldn't work because we checked task group.
+	// Updating shouldn't work because we have a running task.
 	hostFromDb, err := FindOneId(ctx, h.Id)
 	assert.NoError(t, err)
 	require.NotNil(t, hostFromDb)
 	assert.NotEqual(t, evergreen.HostDecommissioned, hostFromDb.Status)
 	assert.NotEqual(t, evergreen.HostDecommissioned, h.Status)
 
-	assert.NoError(t, h.SetDecommissioned(ctx, "user", false, "counting to three"))
+	assert.NoError(t, h.SetDecommissioned(ctx, "user", true, "counting to three"))
 
-	// Updating should work because we ignored task group.
+	// Updating should work because we set terminate if busy.
 	hostFromDb, err = FindOneId(ctx, h.Id)
 	assert.NoError(t, err)
 	require.NotNil(t, hostFromDb)
