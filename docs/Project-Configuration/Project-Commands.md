@@ -1536,4 +1536,6 @@ Parameters:
 Both parameters are optional. If not set, the task will use the
 definition from the project config.
 
+Note: CLI tools that run on Evergreen might have their own timeout configurations. For example, DSI has `expire-on-delta` and `no_output_ms`, which are documented on [this page](https://github.com/10gen/dsi/wiki/Configuration-Explained). Please check the documentation of the CLI tools you use for more details.
+
 Commands can also be configured to run if timeout occurs, as documented [here](Project-Configuration-Files.md#timeout-handler).
