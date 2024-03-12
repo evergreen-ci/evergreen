@@ -122,6 +122,3 @@ func (s *taskDispatchService) ensureQueue(ctx context.Context, distroID string) 
 	s.cachedDispatchers[distroID] = distroDispatchService
 	return distroDispatchService, nil
 }
-
-
-
