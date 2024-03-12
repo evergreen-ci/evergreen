@@ -1,4 +1,4 @@
-package client
+package redactor
 
 import (
 	"fmt"
@@ -19,6 +19,13 @@ type redactingSender struct {
 	send.Sender
 }
 
+type RedactionOptions struct {
+	// Expansions defines the values to redact.
+	Expansions *util.DynamicExpansions
+	// Redacted specifies the names of expansions to redact the values for.
+	Redacted []string
+}
+
 func (r *redactingSender) Send(m message.Composer) {
 	if !m.Loggable() {
 		return
@@ -33,10 +40,10 @@ func (r *redactingSender) Send(m message.Composer) {
 	r.Sender.Send(message.NewDefaultMessage(m.Priority(), msg))
 }
 
-func newRedactingSender(sender send.Sender, expansions *util.DynamicExpansions, expansionsToRedact []string) send.Sender {
+func NewRedactingSender(sender send.Sender, opts RedactionOptions) send.Sender {
 	return &redactingSender{
-		expansions:         expansions,
-		expansionsToRedact: expansionsToRedact,
+		expansions:         opts.Expansions,
+		expansionsToRedact: opts.Redacted,
 		Sender:             sender,
 	}
 }

@@ -11,6 +11,7 @@ import (
 
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/agent/internal/client"
+	"github.com/evergreen-ci/evergreen/agent/internal/redactor"
 	"github.com/evergreen-ci/evergreen/model/log"
 	"github.com/evergreen-ci/evergreen/model/task"
 	"github.com/evergreen-ci/evergreen/model/testlog"
@@ -52,7 +53,7 @@ func TestAppendTestLog(t *testing.T) {
 	}
 	comm := client.NewMock("url")
 
-	require.NoError(t, AppendTestLog(ctx, comm, tsk, testLog))
+	require.NoError(t, AppendTestLog(ctx, comm, tsk, redactor.RedactionOptions{}, testLog))
 	it, err := tsk.GetTestLogs(ctx, taskoutput.TestLogGetOptions{LogPaths: []string{testLog.Name}})
 	require.NoError(t, err)
 
@@ -357,7 +358,7 @@ func setupTestTestLogDirectoryHandler(t *testing.T, comm *client.Mock) (*task.Ta
 		ProjectID: tsk.Project,
 		TaskID:    tsk.Id,
 		Execution: tsk.Execution,
-	}, logger)
+	}, redactor.RedactionOptions{}, logger)
 
 	return tsk, h.(*testLogDirectoryHandler)
 }

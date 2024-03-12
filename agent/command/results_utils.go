@@ -6,6 +6,7 @@ import (
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/agent/internal"
 	"github.com/evergreen-ci/evergreen/agent/internal/client"
+	"github.com/evergreen-ci/evergreen/agent/internal/redactor"
 	"github.com/evergreen-ci/evergreen/agent/internal/taskoutput"
 	"github.com/evergreen-ci/evergreen/apimodels"
 	"github.com/evergreen-ci/evergreen/model/task"
@@ -44,7 +45,7 @@ func sendTestLogsAndResults(ctx context.Context, comm client.Communicator, logge
 			return errors.Wrap(err, "canceled while sending test logs")
 		}
 
-		if err := taskoutput.AppendTestLog(ctx, comm, &conf.Task, &log); err != nil {
+		if err := taskoutput.AppendTestLog(ctx, comm, &conf.Task, redactor.RedactionOptions{Expansions: conf.NewExpansions, Redacted: ToRedact(conf.Redacted)}, &log); err != nil {
 			// Continue on error to let the other logs be posted.
 			logger.Task().Error(errors.Wrap(err, "sending test log"))
 		}
@@ -150,4 +151,16 @@ func makeCedarTestResults(id string, t *task.Task, results []testresult.TestResu
 	}
 
 	return rs, failed
+}
+
+// ToRedact returns the full list of expansion keys whose values
+// should get redacted from task logs.
+func ToRedact(redacted map[string]bool) []string {
+	var expansionsToRedact []string
+	for key := range redacted {
+		expansionsToRedact = append(expansionsToRedact, key)
+	}
+	expansionsToRedact = append(expansionsToRedact, ExpansionsToRedact...)
+
+	return expansionsToRedact
 }

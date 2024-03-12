@@ -10,6 +10,7 @@ import (
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/agent/internal"
 	"github.com/evergreen-ci/evergreen/agent/internal/client"
+	"github.com/evergreen-ci/evergreen/agent/internal/redactor"
 	"github.com/evergreen-ci/evergreen/agent/internal/taskoutput"
 	"github.com/evergreen-ci/evergreen/model/testlog"
 	"github.com/evergreen-ci/evergreen/model/testresult"
@@ -191,7 +192,7 @@ func (c *xunitResults) parseAndUploadResults(ctx context.Context, conf *internal
 			return errors.Wrap(err, "canceled while sending test logs")
 		}
 
-		if err := taskoutput.AppendTestLog(ctx, comm, &conf.Task, log); err != nil {
+		if err := taskoutput.AppendTestLog(ctx, comm, &conf.Task, redactor.RedactionOptions{Expansions: conf.NewExpansions, Redacted: ToRedact(conf.Redacted)}, log); err != nil {
 			logger.Task().Error(errors.Wrap(err, "sending test log"))
 			continue
 		} else {

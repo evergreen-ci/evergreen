@@ -13,6 +13,7 @@ import (
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/agent/command"
 	"github.com/evergreen-ci/evergreen/agent/internal/client"
+	"github.com/evergreen-ci/evergreen/agent/internal/redactor"
 	"github.com/evergreen-ci/evergreen/agent/internal/taskoutput"
 	agentutil "github.com/evergreen-ci/evergreen/agent/util"
 	"github.com/evergreen-ci/evergreen/apimodels"
@@ -471,11 +472,9 @@ func (a *Agent) setupTask(agentCtx, setupCtx context.Context, initialTC *taskCon
 
 	// Set up a new task output directory regardless if the task is part of
 	// a task group.
-	tc.taskConfig.TaskOutputDir = taskoutput.NewDirectory(tc.taskConfig.WorkDir, &tc.taskConfig.Task, tc.logger)
+	tc.taskConfig.TaskOutputDir = taskoutput.NewDirectory(tc.taskConfig.WorkDir, &tc.taskConfig.Task, redactor.RedactionOptions{Expansions: tc.taskConfig.NewExpansions, Redacted: command.ToRedact(tc.taskConfig.Redacted)}, tc.logger)
 	if err := tc.taskConfig.TaskOutputDir.Setup(); err != nil {
-		if err != nil {
-			return a.handleSetupError(setupCtx, tc, errors.Wrap(err, "creating task output directory"))
-		}
+		return a.handleSetupError(setupCtx, tc, errors.Wrap(err, "creating task output directory"))
 	}
 
 	// We are only calling this again to get the log for the current command after logging has been set up.
