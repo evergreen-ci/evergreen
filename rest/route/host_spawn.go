@@ -15,7 +15,6 @@ import (
 	"github.com/evergreen-ci/evergreen/model/user"
 	"github.com/evergreen-ci/evergreen/rest/data"
 	"github.com/evergreen-ci/evergreen/rest/model"
-	"github.com/evergreen-ci/evergreen/units"
 	"github.com/evergreen-ci/gimlet"
 	"github.com/evergreen-ci/utility"
 	"github.com/mongodb/grip"
@@ -144,9 +143,8 @@ func (h *hostModifyHandler) Run(ctx context.Context) gimlet.Responder {
 		return gimlet.MakeJSONErrorResponder(errors.Wrap(catcher.Resolve(), "invalid host modify request"))
 	}
 
-	modifyJob := units.NewSpawnhostModifyJob(foundHost, *h.options, utility.RoundPartOfMinute(1).Format(units.TSFormat))
-	if err = h.env.RemoteQueue().Put(ctx, modifyJob); err != nil {
-		return gimlet.MakeJSONInternalErrorResponder(errors.Wrapf(err, "enqueueing spawn host modification job"))
+	if _, err := data.ModifySpawnHost(ctx, h.env, user, foundHost, *h.options); err != nil {
+		return gimlet.MakeJSONInternalErrorResponder(err)
 	}
 
 	if h.options.SubscriptionType != "" {

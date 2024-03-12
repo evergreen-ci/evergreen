@@ -260,10 +260,11 @@ func TestVolumeMigrateJob(t *testing.T) {
 				SpawnAllowed: true,
 			}
 
+			const username = "username"
 			h := &host.Host{
 				Id:           "h0",
 				UserHost:     true,
-				StartedBy:    evergreen.User,
+				StartedBy:    username,
 				Status:       evergreen.HostRunning,
 				Provider:     evergreen.ProviderNameMock,
 				Distro:       *d,
@@ -301,6 +302,7 @@ func TestVolumeMigrateJob(t *testing.T) {
 			}
 
 			spawnOptions := cloud.SpawnOptions{
+				UserName:  username,
 				DistroId:  d.Id,
 				PublicKey: "ssh-rsa YWJjZDEyMzQK",
 				Region:    evergreen.DefaultEC2Region,
