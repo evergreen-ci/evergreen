@@ -1342,7 +1342,7 @@ func FindFirstProjectRef() (*ProjectRef, error) {
 // FindAllMergedTrackedProjectRefsWithRestrictedProjects returns all project refs in the db
 // that are currently being tracked (i.e. their project files
 // still exist and the project is not hidden) and are not restricted projects.
-// You can optionally pass in a list of restricted projects to include in the results.
+// You can optionally pass in a list of restricted projects the user has permission to view to include in the results.
 func FindAllMergedTrackedProjectRefsWithRestrictedProjects(restrictedProjectRefIds []string) ([]ProjectRef, error) {
 	projectRefs := []ProjectRef{}
 	q := db.Query(bson.M{
