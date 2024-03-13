@@ -19,7 +19,7 @@ import (
 )
 
 const (
-	spawnHostStartRetryLimit = 10
+	spawnHostStartRetryLimit = 3
 	spawnhostStartName       = "spawnhost-start"
 )
 
@@ -92,7 +92,7 @@ func (j *spawnhostStartJob) Run(ctx context.Context) {
 	}
 
 	if err := j.CloudHostModification.modifyHost(ctx, startCloudHost); err != nil {
-		j.AddError(err)
+		j.AddRetryableError(err)
 		return
 	}
 }
