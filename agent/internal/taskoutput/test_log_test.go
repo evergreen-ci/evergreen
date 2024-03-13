@@ -39,7 +39,6 @@ func TestAppendTestLog(t *testing.T) {
 			TestLogs: taskoutput.TestLogOutput{
 				Version: 1,
 				BucketConfig: evergreen.BucketConfig{
-					Name: t.TempDir(),
 					Type: evergreen.BucketTypeLocal,
 				},
 			},
@@ -50,23 +49,48 @@ func TestAppendTestLog(t *testing.T) {
 		Name:          "test",
 		Task:          "task",
 		TaskExecution: 5,
-		Lines:         []string{"log line 1\nlog line 2", "log line 3\n", "log line 4"},
 	}
 	comm := client.NewMock("url")
 
-	require.NoError(t, AppendTestLog(ctx, comm, tsk, redactor.RedactionOptions{}, testLog))
-	it, err := tsk.GetTestLogs(ctx, taskoutput.TestLogGetOptions{LogPaths: []string{testLog.Name}})
-	require.NoError(t, err)
+	for _, testCase := range []struct {
+		name           string
+		input          []string
+		expectedOutput []string
+		redactOpts     redactor.RedactionOptions
+	}{
+		{
+			name:           "Newlines",
+			input:          []string{"log line 1\nlog line 2", "log line 3\n", "log line 4"},
+			expectedOutput: []string{"log line 1", "log line 2", "log line 3", "log line 4"},
+		},
+		{
+			name:           "Redacted",
+			input:          []string{"the secret is: DEADBEEF"},
+			expectedOutput: []string{"the secret is: <REDACTED:secret_name>"},
+			redactOpts: redactor.RedactionOptions{
+				Expansions: &util.DynamicExpansions{Expansions: map[string]string{"secret_name": "DEADBEEF"}},
+				Redacted:   []string{"secret_name"},
+			},
+		},
+	} {
+		t.Run(testCase.name, func(t *testing.T) {
+			tsk.TaskOutputInfo.TestLogs.BucketConfig.Name = t.TempDir()
+			testLog.Lines = testCase.input
 
-	var actual string
-	for it.Next() {
-		line := it.Item()
-		assert.Equal(t, level.Info, line.Priority)
-		assert.WithinDuration(t, time.Now(), time.Unix(0, line.Timestamp), time.Second)
-		actual += line.Data + "\n"
+			require.NoError(t, AppendTestLog(ctx, comm, tsk, testCase.redactOpts, testLog))
+			it, err := tsk.GetTestLogs(ctx, taskoutput.TestLogGetOptions{LogPaths: []string{testLog.Name}})
+			require.NoError(t, err)
+
+			var actual []string
+			for it.Next() {
+				line := it.Item()
+				assert.Equal(t, level.Info, line.Priority)
+				assert.WithinDuration(t, time.Now(), time.Unix(0, line.Timestamp), time.Second)
+				actual = append(actual, line.Data)
+			}
+			assert.Equal(t, testCase.expectedOutput, actual)
+		})
 	}
-	expectedLines := "log line 1\nlog line 2\nlog line 3\nlog line 4\n"
-	assert.Equal(t, expectedLines, actual)
 }
 
 func TestTestLogDirectoryHandlerRun(t *testing.T) {
