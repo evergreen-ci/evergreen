@@ -63,13 +63,11 @@ func NewSpawnhostStartJob(h *host.Host, source evergreen.ModifySpawnHostSource, 
 	return j
 }
 
-// kim: TODO: test for sleep schedule next start time.
 func (j *spawnhostStartJob) Run(ctx context.Context) {
 	defer j.MarkComplete()
 
 	startCloudHost := func(ctx context.Context, mgr cloud.Manager, h *host.Host, user string) error {
-		// kim: TODO: account for few minutes of padding to pre-emptive start.
-		if j.Source == evergreen.ModifySpawnHostSleepSchedule && h.SleepSchedule.NextStartTime.After(time.Now()) {
+		if j.Source == evergreen.ModifySpawnHostSleepSchedule && h.SleepSchedule.NextStartTime.After(time.Now().Add(host.PreStartThreshold)) {
 			grip.Info(message.Fields{
 				"message":         "no-oping because host is not scheduled to start yet",
 				"host_id":         h.Id,

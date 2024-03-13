@@ -3,6 +3,7 @@ package units
 import (
 	"context"
 	"testing"
+	"time"
 
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/cloud"
@@ -146,6 +147,82 @@ func TestSpawnhostStartJob(t *testing.T) {
 			assert.Equal(t, evergreen.HostUninitialized, dbHost.Status)
 
 			checkSpawnHostModificationEvent(t, h.Id, event.EventHostStarted, false)
+		},
+		"RunStartsHostAndSchedulesNextStartTime": func(ctx context.Context, t *testing.T, mock cloud.MockProvider) {
+			userTZ, err := time.LoadLocation("Antarctica/South_Pole")
+			require.NoError(t, err)
+			now := utility.BSONTime(time.Now())
+			h := host.Host{
+				Id:       "host-stopped",
+				Status:   evergreen.HostStopped,
+				Provider: evergreen.ProviderNameMock,
+				Distro:   distro.Distro{Provider: evergreen.ProviderNameMock},
+				SleepSchedule: host.SleepScheduleInfo{
+					DailyStartTime: "10:00",
+					DailyStopTime:  "18:00",
+					TimeZone:       userTZ.String(),
+					NextStartTime:  now.Add(time.Minute),
+				},
+			}
+			assert.NoError(t, h.Insert(ctx))
+			mock.Set(h.Id, cloud.MockInstance{
+				Status: cloud.StatusRunning,
+			})
+
+			ts := utility.RoundPartOfMinute(1).Format(TSFormat)
+			j := NewSpawnhostStartJob(&h, evergreen.ModifySpawnHostSleepSchedule, sleepScheduleUser, ts)
+
+			j.Run(ctx)
+			assert.NoError(t, j.Error())
+
+			dbHost, err := host.FindOneId(ctx, h.Id)
+			assert.NoError(t, err)
+			require.NotZero(t, dbHost)
+			assert.Equal(t, evergreen.HostRunning, dbHost.Status)
+
+			checkSpawnHostModificationEvent(t, h.Id, event.EventHostStarted, true)
+
+			assert.True(t, dbHost.SleepSchedule.NextStartTime.After(now), "next start time should be set in the future")
+
+			hrs, mins, secs := dbHost.SleepSchedule.NextStartTime.In(userTZ).Clock()
+			assert.Equal(t, 10, hrs, "next start time should be at 10:00 in user's local time")
+			assert.Equal(t, 0, mins, "next start time should be at 10:00 in user's local time")
+			assert.Equal(t, 0, secs, "next start time should be at 10:00 in user's local time")
+		},
+		"RunNoopsIfNotScheduledToStartYet": func(ctx context.Context, t *testing.T, mock cloud.MockProvider) {
+			userTZ, err := time.LoadLocation("Antarctica/South_Pole")
+			require.NoError(t, err)
+			now := utility.BSONTime(time.Now())
+			nextStart := now.Add(time.Hour)
+			h := host.Host{
+				Id:       "host-running",
+				Status:   evergreen.HostRunning,
+				Provider: evergreen.ProviderNameMock,
+				Distro:   distro.Distro{Provider: evergreen.ProviderNameMock},
+				SleepSchedule: host.SleepScheduleInfo{
+					DailyStartTime: "10:00",
+					DailyStopTime:  "18:00",
+					TimeZone:       userTZ.String(),
+					NextStartTime:  nextStart,
+				},
+			}
+			assert.NoError(t, h.Insert(ctx))
+			mock.Set(h.Id, cloud.MockInstance{
+				Status: cloud.StatusRunning,
+			})
+
+			ts := utility.RoundPartOfMinute(1).Format(TSFormat)
+			j := NewSpawnhostStartJob(&h, evergreen.ModifySpawnHostSleepSchedule, sleepScheduleUser, ts)
+
+			j.Run(ctx)
+			assert.NoError(t, j.Error())
+
+			dbHost, err := host.FindOneId(ctx, h.Id)
+			assert.NoError(t, err)
+			require.NotZero(t, dbHost)
+			assert.Equal(t, evergreen.HostRunning, dbHost.Status, "host should not be started because it has not reached its scheduled start time")
+
+			assert.True(t, dbHost.SleepSchedule.NextStartTime.Equal(nextStart), "next start time should be the same as original")
 		},
 		// "RunSchedulesNextStartTime": func(ctx context.Context, t *testing.T, mock cloud.MockProvider) {
 		// },

@@ -65,7 +65,6 @@ func NewSpawnhostStopJob(h *host.Host, shouldKeepOff bool, source evergreen.Modi
 	return j
 }
 
-// kim: TODO: test for sleep schedule next start time.
 func (j *spawnhostStopJob) Run(ctx context.Context) {
 	defer j.MarkComplete()
 
