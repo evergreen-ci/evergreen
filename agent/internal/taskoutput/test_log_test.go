@@ -12,6 +12,7 @@ import (
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/agent/internal/client"
 	"github.com/evergreen-ci/evergreen/agent/internal/redactor"
+	"github.com/evergreen-ci/evergreen/agent/util"
 	"github.com/evergreen-ci/evergreen/model/log"
 	"github.com/evergreen-ci/evergreen/model/task"
 	"github.com/evergreen-ci/evergreen/model/testlog"
@@ -76,26 +77,28 @@ func TestTestLogDirectoryHandlerRun(t *testing.T) {
 
 	type logInfo struct {
 		logPath       string
+		inputLines    []string
 		expectedLines []string
 	}
 
 	for _, test := range []struct {
-		name string
-		logs []logInfo
+		name       string
+		logs       []logInfo
+		redactOpts redactor.RedactionOptions
 	}{
 		{
 			name: "RecursiveDirectoryWalk",
 			logs: []logInfo{
 				{
 					logPath: "log0.log",
-					expectedLines: []string{
+					inputLines: []string{
 						"This is a small test log.",
 						"With only a few lines.",
 					},
 				},
 				{
 					logPath: "log1.log",
-					expectedLines: []string{
+					inputLines: []string{
 						"This is a another small test log.",
 						"With only a few lines.",
 						"But it should get there.",
@@ -103,7 +106,7 @@ func TestTestLogDirectoryHandlerRun(t *testing.T) {
 				},
 				{
 					logPath: "nested/log2.log",
-					expectedLines: []string{
+					inputLines: []string{
 						"This is a another small test log.",
 						"With only a few lines.",
 						"But this time it is in nested directory.",
@@ -111,7 +114,7 @@ func TestTestLogDirectoryHandlerRun(t *testing.T) {
 				},
 				{
 					logPath: "nested/nested/log3.log",
-					expectedLines: []string{
+					inputLines: []string{
 						"This is a small test log, again.",
 						"In an an even more nested directory.",
 						"With some a friend!",
@@ -119,7 +122,7 @@ func TestTestLogDirectoryHandlerRun(t *testing.T) {
 				},
 				{
 					logPath: "nested/nested/log4.log",
-					expectedLines: []string{
+					inputLines: []string{
 						"This is the last test log.",
 						"Blah blah blah blah.",
 						"Something something something.",
@@ -128,12 +131,30 @@ func TestTestLogDirectoryHandlerRun(t *testing.T) {
 				},
 			},
 		},
+		{
+			name: "RedactedLog",
+			logs: []logInfo{
+				{
+					logPath: "secret.log",
+					inputLines: []string{
+						"This log contains a big secret: DEADBEEF",
+					},
+					expectedLines: []string{
+						"This log contains a big secret: <REDACTED:secret_name>",
+					},
+				},
+			},
+			redactOpts: redactor.RedactionOptions{
+				Expansions: &util.DynamicExpansions{Expansions: map[string]string{"secret_name": "DEADBEEF"}},
+				Redacted:   []string{"secret_name"},
+			},
+		},
 	} {
 		t.Run(test.name, func(t *testing.T) {
-			tsk, h := setupTestTestLogDirectoryHandler(t, comm)
+			tsk, h := setupTestTestLogDirectoryHandler(t, comm, test.redactOpts)
 			for _, li := range test.logs {
 				require.NoError(t, os.MkdirAll(filepath.Join(h.dir, filepath.Dir(li.logPath)), 0777))
-				require.NoError(t, os.WriteFile(filepath.Join(h.dir, li.logPath), []byte(strings.Join(li.expectedLines, "\n")+"\n"), 0777))
+				require.NoError(t, os.WriteFile(filepath.Join(h.dir, li.logPath), []byte(strings.Join(li.inputLines, "\n")+"\n"), 0777))
 			}
 
 			require.NoError(t, h.run(ctx))
@@ -146,7 +167,12 @@ func TestTestLogDirectoryHandlerRun(t *testing.T) {
 				}
 				assert.NoError(t, it.Close())
 				require.NoError(t, it.Err())
-				assert.Equal(t, li.expectedLines, persistedRawLines)
+
+				expectedLines := li.expectedLines
+				if expectedLines == nil {
+					expectedLines = li.inputLines
+				}
+				assert.Equal(t, expectedLines, persistedRawLines)
 			}
 		})
 	}
@@ -199,7 +225,7 @@ func TestTestLogDirectoryHandlerGetSpecFile(t *testing.T) {
 		},
 	} {
 		t.Run(test.name, func(t *testing.T) {
-			tsk, h := setupTestTestLogDirectoryHandler(t, comm)
+			tsk, h := setupTestTestLogDirectoryHandler(t, comm, redactor.RedactionOptions{})
 
 			// Set the expected test log spec and write spec file
 			// if spec data exists.
@@ -338,7 +364,7 @@ func TestTestLogFormatValidate(t *testing.T) {
 	}
 }
 
-func setupTestTestLogDirectoryHandler(t *testing.T, comm *client.Mock) (*task.Task, *testLogDirectoryHandler) {
+func setupTestTestLogDirectoryHandler(t *testing.T, comm *client.Mock, redactOpts redactor.RedactionOptions) (*task.Task, *testLogDirectoryHandler) {
 	tsk := &task.Task{
 		Project: "project",
 		Id:      utility.RandomString(),
@@ -358,7 +384,7 @@ func setupTestTestLogDirectoryHandler(t *testing.T, comm *client.Mock) (*task.Ta
 		ProjectID: tsk.Project,
 		TaskID:    tsk.Id,
 		Execution: tsk.Execution,
-	}, redactor.RedactionOptions{}, logger)
+	}, redactOpts, logger)
 
 	return tsk, h.(*testLogDirectoryHandler)
 }
