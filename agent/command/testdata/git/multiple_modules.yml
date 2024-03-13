@@ -24,7 +24,8 @@ buildvariants:
   - name: linux-64
     display_name: Linux 64-bit
     modules:
-      - evergreen
+      - sample-1
+      - sample-2
     test_flags: --continue-on-failure
     expansions:
       blah: "blah"
