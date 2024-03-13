@@ -3840,3 +3840,37 @@ func getNextScheduledTime(after time.Time, spec string) (time.Time, error) {
 	}
 	return nextTriggerAt, nil
 }
+
+// SetNextScheduledStart sets the next time the host is planned to start for its
+// sleep schedule.
+func (h *Host) SetNextScheduledStart(ctx context.Context, t time.Time) error {
+	// kim: NOTE: needs merge.
+	sleepScheduleStartKey := bsonutil.GetDottedKeyName(SleepScheduleKey, SleepScheduleNextStartTimeKey)
+	if err := UpdateOne(ctx,
+		bson.M{IdKey: h.Id},
+		bson.M{"$set": bson.M{sleepScheduleStartKey: t}},
+	); err != nil {
+		return err
+	}
+
+	h.SleepSchedule.NextStartTime = t
+
+	return nil
+}
+
+// SetNextScheduledStop sets the next time the host is planned to stop for its
+// sleep schedule.
+func (h *Host) SetNextScheduledStop(ctx context.Context, t time.Time) error {
+	// kim: NOTE: needs merge.
+	sleepScheduleStopKey := bsonutil.GetDottedKeyName(SleepScheduleKey, SleepScheduleNextStopTimeKey)
+	if err := UpdateOne(ctx,
+		bson.M{IdKey: h.Id},
+		bson.M{"$set": bson.M{sleepScheduleStopKey: t}},
+	); err != nil {
+		return err
+	}
+
+	h.SleepSchedule.NextStopTime = t
+
+	return nil
+}

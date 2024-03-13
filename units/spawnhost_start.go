@@ -47,14 +47,14 @@ func makeSpawnhostStartJob() *spawnhostStartJob {
 }
 
 // NewSpawnhostStartJob returns a job to start a stopped spawn host.
-func NewSpawnhostStartJob(h *host.Host, user, ts string) amboy.Job {
+func NewSpawnhostStartJob(h *host.Host, source evergreen.ModifySpawnHostSource, user, ts string) amboy.Job {
 	j := makeSpawnhostStartJob()
 	j.SetID(fmt.Sprintf("%s.%s.%s.%s", spawnhostStartName, user, h.Id, ts))
 	j.SetScopes([]string{fmt.Sprintf("%s.%s", spawnHostStatusChangeScopeName, h.Id)})
 	j.SetEnqueueAllScopes(true)
 	j.CloudHostModification.HostID = h.Id
 	j.CloudHostModification.UserID = user
-	j.CloudHostModification.Source = evergreen.ModifySpawnHostManual
+	j.CloudHostModification.Source = source
 	j.UpdateRetryInfo(amboy.JobRetryOptions{
 		Retryable:   utility.TruePtr(),
 		MaxAttempts: utility.ToIntPtr(spawnHostStartRetryLimit),
@@ -63,10 +63,22 @@ func NewSpawnhostStartJob(h *host.Host, user, ts string) amboy.Job {
 	return j
 }
 
+// kim: TODO: test for sleep schedule next start time.
 func (j *spawnhostStartJob) Run(ctx context.Context) {
 	defer j.MarkComplete()
 
 	startCloudHost := func(ctx context.Context, mgr cloud.Manager, h *host.Host, user string) error {
+		// kim: TODO: account for few minutes of padding to pre-emptive start.
+		if j.Source == evergreen.ModifySpawnHostSleepSchedule && h.SleepSchedule.NextStartTime.After(time.Now()) {
+			grip.Info(message.Fields{
+				"message":         "no-oping because host is not scheduled to start yet",
+				"host_id":         h.Id,
+				"next_start_time": h.SleepSchedule.NextStartTime,
+				"job":             j.ID(),
+			})
+			return nil
+		}
+
 		if err := mgr.StartInstance(ctx, h, user); err != nil {
 			event.LogHostStartError(h.Id, err.Error())
 			grip.Error(message.WrapError(err, message.Fields{
@@ -74,7 +86,7 @@ func (j *spawnhostStartJob) Run(ctx context.Context) {
 				"host_id":  h.Id,
 				"host_tag": h.Tag,
 				"distro":   h.Distro.Id,
-				"user":     user,
+				"job":      j.ID(),
 			}))
 			return errors.Wrap(err, "starting spawn host")
 		}
@@ -85,8 +97,17 @@ func (j *spawnhostStartJob) Run(ctx context.Context) {
 			"host_id":  h.Id,
 			"host_tag": h.Tag,
 			"distro":   h.Distro.Id,
-			"user":     user,
+			"job":      j.ID(),
 		})
+
+		if j.Source == evergreen.ModifySpawnHostSleepSchedule {
+			grip.Warning(message.WrapError(j.setNextScheduledStart(ctx, h), message.Fields{
+				"message":        "successfully started host for sleep schedule but could not set next scheduled start time",
+				"host_id":        h.Id,
+				"sleep_schedule": fmt.Sprintf("%#v", h.SleepSchedule),
+				"job":            j.ID(),
+			}))
+		}
 
 		return nil
 	}
@@ -95,4 +116,18 @@ func (j *spawnhostStartJob) Run(ctx context.Context) {
 		j.AddRetryableError(err)
 		return
 	}
+}
+
+func (j *spawnhostStartJob) setNextScheduledStart(ctx context.Context, h *host.Host) error {
+	if j.Source != evergreen.ModifySpawnHostSleepSchedule {
+		return nil
+	}
+	nextStart, err := h.GetNextScheduledStartTime(time.Now())
+	if err != nil {
+		return errors.Wrap(err, "calculating next scheduled start")
+	}
+	if err := h.SetNextScheduledStart(ctx, nextStart); err != nil {
+		return errors.Wrapf(err, "setting next scheduled stop to '%s'", nextStart)
+	}
+	return nil
 }

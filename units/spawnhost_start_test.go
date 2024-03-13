@@ -33,7 +33,7 @@ func TestSpawnhostStartJob(t *testing.T) {
 				Provider: evergreen.ProviderNameMock,
 				Distro:   distro.Distro{Provider: evergreen.ProviderNameMock},
 			}
-			j, ok := NewSpawnhostStartJob(&h, "user", ts).(*spawnhostStartJob)
+			j, ok := NewSpawnhostStartJob(&h, evergreen.ModifySpawnHostManual, "user", ts).(*spawnhostStartJob)
 			require.True(t, ok)
 
 			assert.NotZero(t, j.RetryInfo().GetMaxAttempts(), "job should retry")
@@ -54,7 +54,7 @@ func TestSpawnhostStartJob(t *testing.T) {
 			})
 
 			ts := utility.RoundPartOfMinute(1).Format(TSFormat)
-			j := NewSpawnhostStartJob(&h, "user", ts)
+			j := NewSpawnhostStartJob(&h, evergreen.ModifySpawnHostManual, "user", ts)
 
 			j.Run(ctx)
 			assert.NoError(t, j.Error())
@@ -110,7 +110,7 @@ func TestSpawnhostStartJob(t *testing.T) {
 			})
 
 			ts := utility.RoundPartOfMinute(1).Format(TSFormat)
-			j := NewSpawnhostStartJob(&h, "user", ts)
+			j := NewSpawnhostStartJob(&h, evergreen.ModifySpawnHostManual, "user", ts)
 
 			j.Run(ctx)
 			assert.NoError(t, j.Error())
@@ -135,7 +135,7 @@ func TestSpawnhostStartJob(t *testing.T) {
 			})
 
 			ts := utility.RoundPartOfMinute(1).Format(TSFormat)
-			j := NewSpawnhostStartJob(&h, "user", ts)
+			j := NewSpawnhostStartJob(&h, evergreen.ModifySpawnHostManual, "user", ts)
 
 			j.Run(ctx)
 			assert.Error(t, j.Error())
@@ -147,6 +147,10 @@ func TestSpawnhostStartJob(t *testing.T) {
 
 			checkSpawnHostModificationEvent(t, h.Id, event.EventHostStarted, false)
 		},
+		// "RunSchedulesNextStartTime": func(ctx context.Context, t *testing.T, mock cloud.MockProvider) {
+		// },
+		// "RunNoopsIfNotScheduledToStart": func(ctx context.Context, t *testing.T, mock cloud.MockProvider) {
+		// },
 	} {
 		t.Run(tName, func(t *testing.T) {
 			tctx := testutil.TestSpan(ctx, t)
