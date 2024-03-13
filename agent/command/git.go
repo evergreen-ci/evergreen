@@ -875,6 +875,7 @@ func (c *gitFetchProject) fetch(ctx context.Context,
 	// using ctx ruins the honeycomb traces (the require the same
 	// uncancelled context).
 	g, gCtx := errgroup.WithContext(context.Background())
+	g.SetLimit(10)
 
 	// Clone the project's modules in goroutines.
 	for _, moduleName := range conf.BuildVariant.Modules {
