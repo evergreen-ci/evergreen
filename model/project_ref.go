@@ -1343,14 +1343,13 @@ func FindFirstProjectRef() (*ProjectRef, error) {
 // that are currently being tracked (i.e. their project files
 // still exist and the project is not hidden) and are not restricted projects.
 // You can optionally pass in a list of restricted projects to include in the results.
-func FindAllMergedTrackedProjectRefsWithRestrictedProjects(restrictedProjectRefIdentifiers []string) ([]ProjectRef, error) {
+func FindAllMergedTrackedProjectRefsWithRestrictedProjects(restrictedProjectRefIds []string) ([]ProjectRef, error) {
 	projectRefs := []ProjectRef{}
-	fmt.Println("restrictedProjectRefIdentifiers", restrictedProjectRefIdentifiers)
 	q := db.Query(bson.M{
 		ProjectRefEnabledKey: true,
 		"$or": []bson.M{
 			{ProjectRefHiddenKey: bson.M{"$ne": true}, ProjectRefRestrictedKey: bson.M{"$ne": true}},
-			{ProjectRefIdKey: bson.M{"$in": restrictedProjectRefIdentifiers},
+			{ProjectRefIdKey: bson.M{"$in": restrictedProjectRefIds},
 				ProjectRefRestrictedKey: true,
 				ProjectRefHiddenKey: bson.M{
 					"$ne": true,
