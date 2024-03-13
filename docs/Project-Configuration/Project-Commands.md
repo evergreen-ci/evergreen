@@ -18,7 +18,7 @@ Explanation:
 -   `command`: a command name from the predefined set of commands documented below.
 -   `display_name`: an optional user defined display name for the command. This will show up in logs and in the UI
      with more details, for example:`'shell.exec' ('run my cool script') (step 1 of 1)` 
--   `type`: an optional command type. This will affect the [failure colors](Project-Configuration-Files/#command-failure-colors)
+-   `type`: an optional command type. This will affect the [failure colors](Project-Configuration-Files#command-failure-colors)
 -   `timeout_secs`: an optional timeout that will force the command to fail if it stays "idle" for more than a specified number of 
     seconds.
 -   `retry_on_failure`: an optional field. If set to true, it will automatically restart the task upon failure. The 
@@ -295,10 +295,10 @@ nonsensical.
 ### Log Info
 
 A test result can be linked to log files written to and ingested from the
-task's [reserved test logs directory](Task-Output-Directory/#test-logs).
+task's [reserved test logs directory](Task-Output-Directory#test-logs).
 
 Test log URLs are automatically generated and provided via the
-[test logs API](../API/REST-V2-Usage/#tag/tasks/paths/~1tasks~1%7Btask_id%7D~1build~1TestLogs~1%7Bpath%7D/get)
+[test logs API](../API/REST-V2-Usage#tag/tasks/paths/~1tasks~1%7Btask_id%7D~1build~1TestLogs~1%7Bpath%7D/get)
 
 
 | Name             | Type          | Description                                                                                                         |
@@ -1537,3 +1537,5 @@ Both parameters are optional. If not set, the task will use the
 definition from the project config.
 
 Commands can also be configured to run if timeout occurs, as documented [here](Project-Configuration-Files.md#timeout-handler).
+
+Note: CLI tools that run on Evergreen (such as DSI) might also have their own timeout configurations. Please check the documentation of the CLI tools you use for more details.

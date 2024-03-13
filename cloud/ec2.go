@@ -709,7 +709,6 @@ func (m *ec2Manager) GetInstanceStatuses(ctx context.Context, hosts []host.Host)
 	defer m.client.Close()
 
 	instanceIdToHostMap := map[string]*host.Host{}
-	hostToStatusMap := map[string]CloudStatus{}
 	hostsToCheck := []string{}
 
 	for i := range hosts {
@@ -717,37 +716,52 @@ func (m *ec2Manager) GetInstanceStatuses(ctx context.Context, hosts []host.Host)
 		hostsToCheck = append(hostsToCheck, hosts[i].Id)
 	}
 
-	// Get host statuses
-	if len(hostsToCheck) > 0 {
-		out, err := m.client.DescribeInstances(ctx, &ec2.DescribeInstancesInput{
-			InstanceIds: hostsToCheck,
-		})
-		if err != nil {
-			return nil, errors.Wrap(err, "describing instances")
-		}
-		if err = validateEc2DescribeInstancesOutput(out); err != nil {
-			return nil, errors.Wrap(err, "invalid describe instances response")
-		}
-		reservationsMap := map[string]types.Instance{}
-		for i := range out.Reservations {
-			reservationsMap[*out.Reservations[i].Instances[0].InstanceId] = out.Reservations[i].Instances[0]
-		}
-		for i := range hostsToCheck {
-			instance, ok := reservationsMap[hostsToCheck[i]]
-			if !ok {
-				hostToStatusMap[hostsToCheck[i]] = StatusNonExistent
-				continue
-			}
-			status := ec2StatusToEvergreenStatus(instance.State.Name)
-			if status == StatusRunning {
-				// cache instance information so we can make fewer calls to AWS's API
-				if err = cacheHostData(ctx, m.env, instanceIdToHostMap[hostsToCheck[i]], &instance, m.client); err != nil {
-					return nil, errors.Wrapf(err, "caching EC2 host data for host '%s'", hostsToCheck[i])
-				}
-			}
-			hostToStatusMap[instanceIdToHostMap[hostsToCheck[i]].Id] = status
-		}
+	if len(hostsToCheck) == 0 {
+		return map[string]CloudStatus{}, nil
 	}
+
+	out, err := m.client.DescribeInstances(ctx, &ec2.DescribeInstancesInput{
+		InstanceIds: hostsToCheck,
+	})
+	if err != nil {
+		return nil, errors.Wrap(err, "describing instances")
+	}
+	if err = validateEc2DescribeInstancesOutput(out); err != nil {
+		return nil, errors.Wrap(err, "invalid describe instances response")
+	}
+
+	reservationsMap := map[string]types.Instance{}
+	for i := range out.Reservations {
+		reservationsMap[*out.Reservations[i].Instances[0].InstanceId] = out.Reservations[i].Instances[0]
+	}
+
+	hostsToCache := make([]hostInstancePair, 0, len(hostsToCheck))
+	hostIDsToCache := make([]string, 0, len(hostsToCheck))
+	hostToStatusMap := make(map[string]CloudStatus, len(hostsToCheck))
+	for i := range hostsToCheck {
+		hostID := hostsToCheck[i]
+		instance, ok := reservationsMap[hostID]
+		if !ok {
+			hostToStatusMap[hostID] = StatusNonExistent
+			continue
+		}
+		status := ec2StatusToEvergreenStatus(instance.State.Name)
+		if status == StatusRunning {
+			hostsToCache = append(hostsToCache, hostInstancePair{
+				host:     instanceIdToHostMap[hostID],
+				instance: &instance,
+			})
+			hostIDsToCache = append(hostIDsToCache, hostID)
+		}
+		hostToStatusMap[hostID] = status
+	}
+
+	// Cache instance information so we can make fewer calls to AWS's API.
+	grip.Error(message.WrapError(cacheAllHostData(ctx, m.env, m.client, hostsToCache...), message.Fields{
+		"message":   "error bulk updating cached host data",
+		"num_hosts": len(hostIDsToCache),
+		"host_ids":  hostIDsToCache,
+	}))
 
 	return hostToStatusMap, nil
 }
@@ -777,8 +791,12 @@ func (m *ec2Manager) GetInstanceStatus(ctx context.Context, h *host.Host) (Cloud
 	status = ec2StatusToEvergreenStatus(instance.State.Name)
 
 	if status == StatusRunning {
-		// cache instance information so we can make fewer calls to AWS's API
-		if err = cacheHostData(ctx, m.env, h, instance, m.client); err != nil {
+		// Cache instance information so we can make fewer calls to AWS's API.
+		pair := hostInstancePair{
+			host:     h,
+			instance: instance,
+		}
+		if err = cacheAllHostData(ctx, m.env, m.client, pair); err != nil {
 			return status, errors.Wrapf(err, "caching EC2 host data for host '%s'", h.Id)
 		}
 	}
@@ -886,10 +904,8 @@ func (m *ec2Manager) TerminateInstance(ctx context.Context, h *host.Host, user, 
 
 // StopInstance stops a running EC2 instance.
 func (m *ec2Manager) StopInstance(ctx context.Context, h *host.Host, user string) error {
-	if h.Status == evergreen.HostStopped {
-		return errors.Errorf("cannot stop host '%s' because it is already marked as stopped", h.Id)
-	} else if h.Status != evergreen.HostRunning && h.Status != evergreen.HostStopping {
-		return errors.Errorf("cannot stop host '%s' because its status ('%s') is not a stoppable state", h.Id, h.Status)
+	if !utility.StringSliceContains(evergreen.StoppableHostStatuses, h.Status) {
+		return errors.Errorf("host cannot be stopped because its status ('%s') is not a stoppable state", h.Status)
 	}
 
 	if err := m.client.Create(ctx, m.region); err != nil {
@@ -905,6 +921,8 @@ func (m *ec2Manager) StopInstance(ctx context.Context, h *host.Host, user string
 	}
 
 	if len(out.StoppingInstances) == 1 {
+		// Stopping a host can be quite fast, so sometimes EC2 will say the host
+		// is stopping or already stopped in its response.
 		instance := out.StoppingInstances[0]
 		status := ec2StatusToEvergreenStatus(instance.CurrentState.Name)
 		switch status {
@@ -915,6 +933,13 @@ func (m *ec2Manager) StopInstance(ctx context.Context, h *host.Host, user string
 				"user":    user,
 			}))
 		case StatusStopped:
+			grip.Info(message.Fields{
+				"message":       "stopped instance",
+				"user":          user,
+				"host_provider": h.Distro.Provider,
+				"host_id":       h.Id,
+				"distro":        h.Distro.Id,
+			})
 			return errors.Wrap(h.SetStopped(ctx, user), "marking DB host as stopped")
 		default:
 			return errors.Errorf("instance is in unexpected state '%s'", status)
@@ -933,12 +958,10 @@ func (m *ec2Manager) StopInstance(ctx context.Context, h *host.Host, user string
 	err = utility.Retry(
 		ctx,
 		func() (bool, error) {
-			var instance *types.Instance
-			instance, err = m.client.GetInstanceInfo(ctx, h.Id)
+			status, err := m.GetInstanceStatus(ctx, h)
 			if err != nil {
-				return false, errors.Wrap(err, "getting instance info")
+				return false, errors.Wrap(err, "getting instance status")
 			}
-			status := ec2StatusToEvergreenStatus(instance.State.Name)
 			if status == StatusStopped {
 				return false, nil
 			}
@@ -965,8 +988,8 @@ func (m *ec2Manager) StopInstance(ctx context.Context, h *host.Host, user string
 
 // StartInstance starts a stopped EC2 instance.
 func (m *ec2Manager) StartInstance(ctx context.Context, h *host.Host, user string) error {
-	if h.Status != evergreen.HostStopped {
-		return errors.Errorf("cannot start host '%s' because its status is '%s'", h.Id, h.Status)
+	if !utility.StringSliceContains(evergreen.StartableHostStatuses, h.Status) {
+		return errors.Errorf("host cannot be started because its status ('%s') is not a startable state", h.Status)
 	}
 
 	if err := m.client.Create(ctx, m.region); err != nil {
@@ -981,18 +1004,16 @@ func (m *ec2Manager) StartInstance(ctx context.Context, h *host.Host, user strin
 		return errors.Wrapf(err, "starting EC2 instance '%s'", h.Id)
 	}
 
-	var instance *types.Instance
-
 	// Instances start asynchronously, so before we can say the host is running,
 	// we have to poll the status until it's actually running.
 	err = utility.Retry(
 		ctx,
 		func() (bool, error) {
-			instance, err = m.client.GetInstanceInfo(ctx, h.Id)
+			status, err := m.GetInstanceStatus(ctx, h)
 			if err != nil {
-				return false, errors.Wrap(err, "getting instance info")
+				return false, errors.Wrap(err, "getting instance status")
 			}
-			if ec2StatusToEvergreenStatus(instance.State.Name) == StatusRunning {
+			if status == StatusRunning {
 				return false, nil
 			}
 			return true, errors.New("host is not started")
@@ -1005,10 +1026,6 @@ func (m *ec2Manager) StartInstance(ctx context.Context, h *host.Host, user strin
 		return errors.Wrap(err, "checking if spawn host started")
 	}
 
-	if err = cacheHostData(ctx, m.env, h, instance, m.client); err != nil {
-		return errors.Wrapf(err, "cache EC2 host data for host '%s'", h.Id)
-	}
-
 	grip.Info(message.Fields{
 		"message":       "started instance",
 		"user":          user,
@@ -1017,7 +1034,7 @@ func (m *ec2Manager) StartInstance(ctx context.Context, h *host.Host, user strin
 		"distro":        h.Distro.Id,
 	})
 
-	return errors.Wrap(h.SetRunning(ctx, user), "failed to mark instance as running in DB")
+	return errors.Wrap(h.SetRunning(ctx, user), "marking host as running")
 }
 
 func (m *ec2Manager) AttachVolume(ctx context.Context, h *host.Host, attachment *host.VolumeAttachment) error {

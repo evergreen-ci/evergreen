@@ -92,6 +92,7 @@ func APIDBUserBuildFromService(t user.DBUser) *APIDBUser {
 	m.Roles = ArrstringArrstring(t.SystemRoles)
 	m.UserID = StringStringPtr(t.Id)
 	m.OnlyApi = BoolBool(t.OnlyAPI)
+	m.EmailAddress = StringStringPtr(t.EmailAddress)
 	return &m
 }
 
@@ -103,5 +104,6 @@ func APIDBUserToService(m APIDBUser) *user.DBUser {
 	out.Id = StringPtrString(m.UserID)
 	out.SystemRoles = ArrstringArrstring(m.Roles)
 	out.OnlyAPI = BoolBool(m.OnlyApi)
+	out.EmailAddress = StringPtrString(m.EmailAddress)
 	return out
 }

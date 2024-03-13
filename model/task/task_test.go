@@ -3510,7 +3510,7 @@ func TestSetCheckRunId(t *testing.T) {
 	require.NotNil(t, t1)
 	assert.NoError(t, err)
 
-	assert.Equal(t, 12345, utility.FromIntPtr(t1.CheckRunId))
+	assert.Equal(t, int64(12345), utility.FromInt64Ptr(t1.CheckRunId))
 
 }
 

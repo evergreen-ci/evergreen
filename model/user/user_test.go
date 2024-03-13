@@ -597,9 +597,10 @@ func TestServiceUserOperations(t *testing.T) {
 
 	require.NoError(t, db.Clear(Collection))
 	u := DBUser{
-		Id:          "u",
-		DispName:    "service_user",
-		SystemRoles: []string{"one"},
+		Id:           "u",
+		DispName:     "service_user",
+		SystemRoles:  []string{"one"},
+		EmailAddress: "myemail@mailplace.com",
 	}
 	assert.EqualError(t, AddOrUpdateServiceUser(u), "cannot update a non-service user")
 	u.OnlyAPI = true
@@ -621,6 +622,7 @@ func TestServiceUserOperations(t *testing.T) {
 	assert.Equal(t, u.DispName, dbUser.DispName)
 	assert.Equal(t, u.SystemRoles, dbUser.SystemRoles)
 	assert.Equal(t, u.APIKey, dbUser.APIKey)
+	assert.Equal(t, u.EmailAddress, dbUser.EmailAddress)
 
 	users, err := FindServiceUsers()
 	assert.NoError(t, err)

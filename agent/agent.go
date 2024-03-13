@@ -34,6 +34,12 @@ import (
 	"google.golang.org/grpc"
 )
 
+const hostAttribute = "evergreen.host"
+
+var (
+	shouldExitAttribute = fmt.Sprintf("%s.should_exit", hostAttribute)
+)
+
 // Agent manages the data necessary to run tasks in a runtime environment.
 type Agent struct {
 	comm          client.Communicator
@@ -308,7 +314,12 @@ func (a *Agent) processNextTask(ctx context.Context, nt *apimodels.NextTaskRespo
 	_, span := a.tracer.Start(ctx, "process-next-task")
 	defer span.End()
 	if nt.ShouldExit {
-		grip.Notice("Next task response indicates agent should exit.")
+		msg := "next task response indicates agent should exit"
+		span.SetStatus(codes.Error, msg)
+		span.RecordError(errors.New(msg), trace.WithAttributes(
+			attribute.Bool(shouldExitAttribute, nt.ShouldExit),
+		))
+		grip.Notice(msg)
 		return processNextResponse{shouldExit: true}, nil
 	}
 	if nt.ShouldTeardownGroup {
@@ -369,6 +380,11 @@ func (a *Agent) processNextTask(ctx context.Context, nt *apimodels.NextTaskRespo
 		}, nil
 	}
 	if shouldExit {
+		msg := "run task indicates agent should exit"
+		span.SetStatus(codes.Error, msg)
+		span.RecordError(errors.New(msg), trace.WithAttributes(
+			attribute.Bool(shouldExitAttribute, shouldExit),
+		))
 		return processNextResponse{
 			shouldExit: true,
 			tc:         tc,
@@ -1062,14 +1078,12 @@ func buildCheckRun(ctx context.Context, tc *taskContext) (*apimodels.CheckRunOut
 
 	err = utility.ReadJSONFile(fileName, &checkRunOutput)
 	if err != nil {
-		return nil, err
+		return nil, errors.Wrap(err, "reading checkRun output file")
 	}
 
 	if err := util.ExpandValues(&checkRunOutput, &tc.taskConfig.Expansions); err != nil {
 		return nil, errors.Wrap(err, "applying expansions")
 	}
-
-	tc.logger.Task().Infof("Upserting checkRun: %s.", checkRunOutput.Title)
 
 	return &checkRunOutput, nil
 

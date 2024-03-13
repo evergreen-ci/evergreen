@@ -164,7 +164,7 @@ func TerminateSpawnHost(ctx context.Context, env evergreen.Environment, u *user.
 
 	ts := utility.RoundPartOfMinute(1).Format(units.TSFormat)
 	terminateJob := units.NewSpawnHostTerminationJob(h, u.Id, ts)
-	if err := env.RemoteQueue().Put(ctx, terminateJob); err != nil {
+	if err := units.EnqueueSpawnHostModificationJob(ctx, env, terminateJob); err != nil {
 		if amboy.IsDuplicateJobScopeError(err) {
 			err = errHostStatusChangeConflict
 		}
@@ -176,16 +176,13 @@ func TerminateSpawnHost(ctx context.Context, env evergreen.Environment, u *user.
 
 // StopSpawnHost enqueues a job to stop a running spawn host.
 func StopSpawnHost(ctx context.Context, env evergreen.Environment, u *user.DBUser, h *host.Host) (int, error) {
-	if h.Status == evergreen.HostStopped {
-		return http.StatusBadRequest, errors.Errorf("host '%s' is already stopped", h.Id)
-	}
-	if h.Status != evergreen.HostRunning && h.Status != evergreen.HostStopping {
-		return http.StatusBadRequest, errors.Errorf("host '%s' cannot stop when its status is '%s'", h.Id, h.Status)
+	if !utility.StringSliceContains(evergreen.StoppableHostStatuses, h.Status) {
+		return http.StatusBadRequest, errors.Errorf("host '%s' cannot be stopped because because its status ('%s') is not a stoppable state", h.Id, h.Status)
 	}
 
 	ts := utility.RoundPartOfMinute(1).Format(units.TSFormat)
 	stopJob := units.NewSpawnhostStopJob(h, u.Id, ts)
-	if err := env.RemoteQueue().Put(ctx, stopJob); err != nil {
+	if err := units.EnqueueSpawnHostModificationJob(ctx, env, stopJob); err != nil {
 		if amboy.IsDuplicateJobScopeError(err) {
 			err = errHostStatusChangeConflict
 		}
@@ -197,17 +194,29 @@ func StopSpawnHost(ctx context.Context, env evergreen.Environment, u *user.DBUse
 
 // StartSpawnHost enqueues a job to start a stopped spawn host.
 func StartSpawnHost(ctx context.Context, env evergreen.Environment, u *user.DBUser, h *host.Host) (int, error) {
-	if h.Status != evergreen.HostStopped {
-		return http.StatusBadRequest, errors.Errorf("host '%s' cannot be started when its status is '%s'", h.Id, h.Status)
+	if !utility.StringSliceContains(evergreen.StartableHostStatuses, h.Status) {
+		return http.StatusBadRequest, errors.Errorf("host '%s' cannot be started because because its status ('%s') is not a startable state", h.Id, h.Status)
 	}
 
 	ts := utility.RoundPartOfMinute(1).Format(units.TSFormat)
 	startJob := units.NewSpawnhostStartJob(h, u.Id, ts)
-	if err := env.RemoteQueue().Put(ctx, startJob); err != nil {
+	if err := units.EnqueueSpawnHostModificationJob(ctx, env, startJob); err != nil {
 		if amboy.IsDuplicateJobScopeError(err) {
 			err = errHostStatusChangeConflict
 		}
+		return http.StatusInternalServerError, err
+	}
+	return http.StatusOK, nil
+}
 
+// StartSpawnHost enqueues a job to modify a spawn host.
+func ModifySpawnHost(ctx context.Context, env evergreen.Environment, u *user.DBUser, h *host.Host, opts host.HostModifyOptions) (int, error) {
+	ts := utility.RoundPartOfMinute(1).Format(units.TSFormat)
+	modifyJob := units.NewSpawnhostModifyJob(h, opts, ts)
+	if err := units.EnqueueSpawnHostModificationJob(ctx, env, modifyJob); err != nil {
+		if amboy.IsDuplicateJobScopeError(err) {
+			err = errHostStatusChangeConflict
+		}
 		return http.StatusInternalServerError, err
 	}
 	return http.StatusOK, nil
