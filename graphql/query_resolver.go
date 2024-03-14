@@ -499,7 +499,7 @@ func (r *queryResolver) RepoEvents(ctx context.Context, id *string, limit *int, 
 	if before != nil {
 		timestamp = *before
 	}
-	events, err := data.GetEventsById(id, timestamp, utility.FromIntPtr(limit))
+	events, err := data.GetEventsById(utility.FromStringPtr(id), timestamp, utility.FromIntPtr(limit))
 	res := &ProjectEvents{
 		EventLogEntries: getPointerEventList(events),
 		Count:           len(events),
