@@ -1067,12 +1067,13 @@ func buildCheckRun(ctx context.Context, tc *taskContext) (*apimodels.CheckRunOut
 	fileName := utility.FromStringPtr(fileNamePointer)
 	checkRunOutput := apimodels.CheckRunOutput{}
 	if fileName == "" {
-		tc.logger.Task().Infof("Upserting checkRun with no output file specified.")
+		tc.logger.Task().Infof("Upserting check run with no output file specified.")
 		return &checkRunOutput, nil
 	}
 
 	_, err := os.Stat(fileName)
 	if os.IsNotExist(err) {
+		tc.logger.Task().Errorf("Attempting to create check run but file '%s' does not exist", fileName)
 		return nil, errors.Errorf("file '%s' does not exist", fileName)
 	}
 
