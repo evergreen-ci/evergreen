@@ -124,7 +124,7 @@ func (j *spawnhostStopJob) setNextScheduledStop(ctx context.Context, h *host.Hos
 	if j.Source != evergreen.ModifySpawnHostSleepSchedule {
 		return nil
 	}
-	nextStop, err := h.GetNextScheduledStopTime(time.Now())
+	nextStop, err := h.GetNextScheduledStopTime(h.SleepSchedule.NextStopTime)
 	if err != nil {
 		return errors.Wrap(err, "calculating next scheduled stop time")
 	}
