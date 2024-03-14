@@ -40,6 +40,8 @@ func (r *redactingSender) Send(m message.Composer) {
 	r.Sender.Send(message.NewDefaultMessage(m.Priority(), msg))
 }
 
+// NewRedactingSender wraps the provided sender with a sender that redacts
+// expansions in accordance with the reaction options.
 func NewRedactingSender(sender send.Sender, opts RedactionOptions) send.Sender {
 	return &redactingSender{
 		expansions:         opts.Expansions,
