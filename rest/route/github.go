@@ -347,7 +347,22 @@ func (gh *githubHookApi) handleCheckRunRerequested(ctx context.Context, event *g
 		Title:   utility.ToStringPtr("Task restarted"),
 		Summary: utility.ToStringPtr("Please wait for task to complete"),
 	}
-	_, err = thirdparty.UpdateCheckRun(ctx, owner, repo, gh.settings.ApiUrl, checkRun.GetID(), taskToRestart, output)
+
+	// Get the task again to ensure we have the latest execution.
+	refreshedTask, taskErr := data.FindTask(checkRunTask)
+	if taskErr != nil {
+		grip.Error(message.Fields{
+			"source":  "GitHub hook",
+			"msg_id":  gh.msgID,
+			"event":   gh.eventType,
+			"owner":   owner,
+			"repo":    repo,
+			"task":    checkRunTask,
+			"message": "finding refreshed task",
+		})
+		return gimlet.NewJSONInternalErrorResponse(errors.Wrapf(taskErr, "finding task '%s' for check run", checkRunTask))
+	}
+	_, err = thirdparty.UpdateCheckRun(ctx, owner, repo, gh.settings.ApiUrl, checkRun.GetID(), refreshedTask, output)
 	if err != nil {
 		grip.Error(message.WrapError(err, message.Fields{
 			"source":    "GitHub hook",
