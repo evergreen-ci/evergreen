@@ -471,10 +471,13 @@ func (r *mutationResolver) UnschedulePatchTasks(ctx context.Context, patchID str
 }
 
 // AddFavoriteProject is the resolver for the addFavoriteProject field.
-func (r *mutationResolver) AddFavoriteProject(ctx context.Context, identifier *string) (*restModel.APIProjectRef, error) {
-	p, err := model.FindBranchProjectRef(utility.FromStringPtr(identifier))
+func (r *mutationResolver) AddFavoriteProject(ctx context.Context, identifier *string, projectIdentifier *string) (*restModel.APIProjectRef, error) {
+	if projectIdentifier == nil {
+		projectIdentifier = identifier
+	}
+	p, err := model.FindBranchProjectRef(utility.FromStringPtr(projectIdentifier))
 	if err != nil || p == nil {
-		return nil, ResourceNotFound.Send(ctx, fmt.Sprintf("could not find project '%s'", identifier))
+		return nil, ResourceNotFound.Send(ctx, fmt.Sprintf("could not find project '%s'", utility.FromStringPtr(projectIdentifier)))
 	}
 
 	usr := mustHaveUser(ctx)
@@ -512,14 +515,17 @@ func (r *mutationResolver) AttachProjectToNewRepo(ctx context.Context, project M
 }
 
 // AttachProjectToRepo is the resolver for the attachProjectToRepo field.
-func (r *mutationResolver) AttachProjectToRepo(ctx context.Context, projectID *string) (*restModel.APIProjectRef, error) {
+func (r *mutationResolver) AttachProjectToRepo(ctx context.Context, projectID *string, projectIdentifier *string) (*restModel.APIProjectRef, error) {
+	if projectIdentifier == nil {
+		projectIdentifier = projectID
+	}
 	usr := mustHaveUser(ctx)
-	pRef, err := data.FindProjectById(utility.FromStringPtr(projectID), false, false)
+	pRef, err := data.FindProjectById(utility.FromStringPtr(projectIdentifier), false, false)
 	if err != nil {
-		return nil, ResourceNotFound.Send(ctx, fmt.Sprintf("error finding project %s: %s", projectID, err.Error()))
+		return nil, ResourceNotFound.Send(ctx, fmt.Sprintf("error finding project %s: %s", utility.FromStringPtr(projectIdentifier), err.Error()))
 	}
 	if pRef == nil {
-		return nil, ResourceNotFound.Send(ctx, fmt.Sprintf("cannot find project %s", projectID))
+		return nil, ResourceNotFound.Send(ctx, fmt.Sprintf("cannot find project %s", utility.FromStringPtr(projectIdentifier)))
 	}
 	if err = pRef.AttachToRepo(ctx, usr); err != nil {
 		return nil, InternalServerError.Send(ctx, fmt.Sprintf("error attaching to repo: %s", err.Error()))
@@ -612,35 +618,44 @@ func (r *mutationResolver) DeactivateStepbackTask(ctx context.Context, projectID
 }
 
 // DefaultSectionToRepo is the resolver for the defaultSectionToRepo field.
-func (r *mutationResolver) DefaultSectionToRepo(ctx context.Context, projectID *string, section ProjectSettingsSection) (*string, error) {
+func (r *mutationResolver) DefaultSectionToRepo(ctx context.Context, projectID *string, projectIdentifier *string, section ProjectSettingsSection) (*string, error) {
 	usr := mustHaveUser(ctx)
-	if err := model.DefaultSectionToRepo(utility.FromStringPtr(projectID), model.ProjectPageSection(section), usr.Username()); err != nil {
+	if projectIdentifier == nil {
+		projectIdentifier = projectID
+	}
+	if err := model.DefaultSectionToRepo(utility.FromStringPtr(projectIdentifier), model.ProjectPageSection(section), usr.Username()); err != nil {
 		return nil, InternalServerError.Send(ctx, fmt.Sprintf("error defaulting to repo for section: %s", err.Error()))
 	}
 	return projectID, nil
 }
 
 // DeleteProject is the resolver for the deleteProject field.
-func (r *mutationResolver) DeleteProject(ctx context.Context, projectID *string) (bool, error) {
-	if err := data.HideBranch(utility.FromStringPtr(projectID)); err != nil {
+func (r *mutationResolver) DeleteProject(ctx context.Context, projectID *string, projectIdentifier *string) (bool, error) {
+	if projectIdentifier == nil {
+		projectIdentifier = projectID
+	}
+	if err := data.HideBranch(utility.FromStringPtr(projectIdentifier)); err != nil {
 		gimletErr, ok := err.(gimlet.ErrorResponse)
 		if ok {
 			return false, mapHTTPStatusToGqlError(ctx, gimletErr.StatusCode, err)
 		}
-		return false, InternalServerError.Send(ctx, fmt.Sprintf("deleting project '%s': %s", projectID, err.Error()))
+		return false, InternalServerError.Send(ctx, fmt.Sprintf("deleting project '%s': %s", utility.FromStringPtr(projectIdentifier), err.Error()))
 	}
 	return true, nil
 }
 
 // DetachProjectFromRepo is the resolver for the detachProjectFromRepo field.
-func (r *mutationResolver) DetachProjectFromRepo(ctx context.Context, projectID *string) (*restModel.APIProjectRef, error) {
+func (r *mutationResolver) DetachProjectFromRepo(ctx context.Context, projectID *string, projectIdentifier *string) (*restModel.APIProjectRef, error) {
 	usr := mustHaveUser(ctx)
-	pRef, err := data.FindProjectById(utility.FromStringPtr(projectID), false, false)
+	if projectIdentifier == nil {
+		projectIdentifier = projectID
+	}
+	pRef, err := data.FindProjectById(utility.FromStringPtr(projectIdentifier), false, false)
 	if err != nil {
-		return nil, ResourceNotFound.Send(ctx, fmt.Sprintf("error finding project %s: %s", projectID, err.Error()))
+		return nil, ResourceNotFound.Send(ctx, fmt.Sprintf("error finding project %s: %s", utility.FromStringPtr(projectIdentifier), err.Error()))
 	}
 	if pRef == nil {
-		return nil, ResourceNotFound.Send(ctx, fmt.Sprintf("cannot find project %s", projectID))
+		return nil, ResourceNotFound.Send(ctx, fmt.Sprintf("cannot find project %s", utility.FromStringPtr(projectIdentifier)))
 	}
 	if err = pRef.DetachFromRepo(usr); err != nil {
 		return nil, InternalServerError.Send(ctx, fmt.Sprintf("error detaching from repo: %s", err.Error()))
@@ -654,7 +669,7 @@ func (r *mutationResolver) DetachProjectFromRepo(ctx context.Context, projectID 
 }
 
 // ForceRepotrackerRun is the resolver for the forceRepotrackerRun field.
-func (r *mutationResolver) ForceRepotrackerRun(ctx context.Context, projectID *string) (bool, error) {
+func (r *mutationResolver) ForceRepotrackerRun(ctx context.Context, projectID *string, projectIdentifier *string) (bool, error) {
 	ts := utility.RoundPartOfHour(1).Format(units.TSFormat)
 	j := units.NewRepotrackerJob(fmt.Sprintf("catchup-%s", ts), utility.FromStringPtr(projectID))
 	if err := amboy.EnqueueUniqueJob(ctx, evergreen.GetEnvironment().RemoteQueue(), j); err != nil {
@@ -664,26 +679,32 @@ func (r *mutationResolver) ForceRepotrackerRun(ctx context.Context, projectID *s
 }
 
 // PromoteVarsToRepo is the resolver for the promoteVarsToRepo field.
-func (r *mutationResolver) PromoteVarsToRepo(ctx context.Context, projectID *string, varNames []string) (bool, error) {
+func (r *mutationResolver) PromoteVarsToRepo(ctx context.Context, projectID *string, projectIdentifier *string, varNames []string) (bool, error) {
+	if projectIdentifier == nil {
+		projectIdentifier = projectID
+	}
 	usr := mustHaveUser(ctx)
-	if err := data.PromoteVarsToRepo(utility.FromStringPtr(projectID), varNames, usr.Username()); err != nil {
-		return false, InternalServerError.Send(ctx, fmt.Sprintf("promoting variables to repo for project '%s': %s", utility.FromStringPtr(projectID), err.Error()))
+	if err := data.PromoteVarsToRepo(utility.FromStringPtr(projectIdentifier), varNames, usr.Username()); err != nil {
+		return false, InternalServerError.Send(ctx, fmt.Sprintf("promoting variables to repo for project '%s': %s", utility.FromStringPtr(projectIdentifier), err.Error()))
 
 	}
 	return true, nil
 }
 
 // RemoveFavoriteProject is the resolver for the removeFavoriteProject field.
-func (r *mutationResolver) RemoveFavoriteProject(ctx context.Context, identifier *string) (*restModel.APIProjectRef, error) {
-	p, err := model.FindBranchProjectRef(utility.FromStringPtr(identifier))
+func (r *mutationResolver) RemoveFavoriteProject(ctx context.Context, identifier *string, projectIdentifier *string) (*restModel.APIProjectRef, error) {
+	if projectIdentifier == nil {
+		projectIdentifier = identifier
+	}
+	p, err := model.FindBranchProjectRef(utility.FromStringPtr(projectIdentifier))
 	if err != nil || p == nil {
-		return nil, ResourceNotFound.Send(ctx, fmt.Sprintf("Could not find project: %s", utility.FromStringPtr(identifier)))
+		return nil, ResourceNotFound.Send(ctx, fmt.Sprintf("Could not find project: %s", utility.FromStringPtr(projectIdentifier)))
 	}
 
 	usr := mustHaveUser(ctx)
-	err = usr.RemoveFavoriteProject(utility.FromStringPtr(identifier))
+	err = usr.RemoveFavoriteProject(utility.FromStringPtr(projectIdentifier))
 	if err != nil {
-		return nil, InternalServerError.Send(ctx, fmt.Sprintf("Error removing project : %s : %s", utility.FromStringPtr(identifier), err))
+		return nil, InternalServerError.Send(ctx, fmt.Sprintf("Error removing project : %s : %s", utility.FromStringPtr(projectIdentifier), err))
 	}
 	apiProjectRef := restModel.APIProjectRef{}
 	err = apiProjectRef.BuildFromService(*p)

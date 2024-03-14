@@ -60,18 +60,18 @@ type Mutation {
   unschedulePatchTasks(patchId: String!, abort: Boolean!): String
 
   # project
-  addFavoriteProject(identifier: String): Project!
+  addFavoriteProject(identifier: String @deprecated(reason: "use projectIdentifier instead"), projectIdentifier: String): Project!
   attachProjectToNewRepo(project: MoveProjectInput!): Project!
-  attachProjectToRepo(projectId: String @requireProjectAccess(access: EDIT)): Project!
+  attachProjectToRepo(projectId: String @requireProjectAccess(access: EDIT) @deprecated(reason: "use projectIdentifier instead"), projectIdentifier: String @requireProjectAccess(access: EDIT)): Project!
   createProject(project: CreateProjectInput! @requireProjectAdmin, requestS3Creds: Boolean): Project! 
   copyProject(project: CopyProjectInput! @requireProjectAdmin, requestS3Creds: Boolean): Project! 
   deactivateStepbackTask(projectId: String, buildVariantName: String!, taskName: String! @requireProjectAccess(access: EDIT)): Boolean!
-  defaultSectionToRepo(projectId: String @requireProjectAccess(access: EDIT), section: ProjectSettingsSection!): String
-  deleteProject(projectId: String @requireProjectAdmin): Boolean!
-  detachProjectFromRepo(projectId: String @requireProjectAccess(access: EDIT)): Project!
-  forceRepotrackerRun(projectId: String @requireProjectAccess(access: EDIT)): Boolean!
-  promoteVarsToRepo(projectId: String @requireProjectAccess(access: EDIT), varNames: [String!]!): Boolean!
-  removeFavoriteProject(identifier: String): Project!
+  defaultSectionToRepo(projectId: String @requireProjectAccess(access: EDIT) @deprecated(reason: "use projectIdentifier instead"), projectIdentifier: String @requireProjectAccess(access: EDIT), section: ProjectSettingsSection!): String
+  deleteProject(projectId: String @requireProjectAdmin @deprecated(reason: "use projectIdentifier instead"), projectIdentifier: String @requireProjectAdmin): Boolean!
+  detachProjectFromRepo(projectId: String @requireProjectAccess(access: EDIT) @deprecated(reason: "use projectIdentifier instead"), projectIdentifier: String @requireProjectAccess(access: EDIT)): Project!
+  forceRepotrackerRun(projectId: String @requireProjectAccess(access: EDIT) @deprecated(reason: "use projectIdentifier instead"), projectIdentifier: String @requireProjectAccess(access: EDIT)): Boolean!
+  promoteVarsToRepo(projectId: String @requireProjectAccess(access: EDIT) @deprecated(reason: "use projectIdentifier instead"), projectIdentifier: String @requireProjectAccess(access: EDIT), varNames: [String!]!): Boolean!
+  removeFavoriteProject(identifier: String @deprecated(reason: "use projectIdentifier instead"), projectIdentifier: String): Project!
   saveProjectSettingsForSection(projectSettings: ProjectSettingsInput, section: ProjectSettingsSection!): ProjectSettings!
   saveRepoSettingsForSection(repoSettings: RepoSettingsInput, section: ProjectSettingsSection!): RepoSettings!
   setLastRevision(opts: SetLastRevisionInput! @requireProjectAdmin): SetLastRevisionPayload!
