@@ -1537,3 +1537,5 @@ Both parameters are optional. If not set, the task will use the
 definition from the project config.
 
 Commands can also be configured to run if timeout occurs, as documented [here](Project-Configuration-Files.md#timeout-handler).
+
+Note: CLI tools that run on Evergreen (such as DSI) might also have their own timeout configurations. Please check the documentation of the CLI tools you use for more details.
