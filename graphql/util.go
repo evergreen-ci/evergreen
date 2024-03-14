@@ -1224,3 +1224,75 @@ func collapseCommit(ctx context.Context, mainlineCommits MainlineCommits, mainli
 		mainlineCommitVersion.RolledUpVersions = []*restModel.APIVersion{&apiVersion}
 	}
 }
+
+type PermissionLevel struct {
+	Permission string
+	Level      int
+}
+
+var projectPermissionAccessMap = map[ProjectPermission]map[AccessLevel]PermissionLevel{
+	ProjectPermissionSettings: {
+		AccessLevelEdit: {Permission: evergreen.PermissionProjectSettings, Level: evergreen.ProjectSettingsEdit.Value},
+		AccessLevelView: {Permission: evergreen.PermissionProjectSettings, Level: evergreen.ProjectSettingsView.Value},
+	},
+	ProjectPermissionTasks: {
+		AccessLevelAdmin: {Permission: evergreen.PermissionTasks, Level: evergreen.TasksAdmin.Value},
+		AccessLevelEdit:  {Permission: evergreen.PermissionTasks, Level: evergreen.TasksBasic.Value},
+		AccessLevelView:  {Permission: evergreen.PermissionTasks, Level: evergreen.TasksView.Value},
+	},
+	ProjectPermissionAnnotations: {
+		AccessLevelEdit: {Permission: evergreen.PermissionAnnotations, Level: evergreen.AnnotationsModify.Value},
+		AccessLevelView: {Permission: evergreen.PermissionAnnotations, Level: evergreen.AnnotationsView.Value},
+	},
+	ProjectPermissionPatches: {
+		AccessLevelAdmin: {Permission: evergreen.PermissionPatches, Level: evergreen.PatchSubmitAdmin.Value},
+		AccessLevelEdit:  {Permission: evergreen.PermissionPatches, Level: evergreen.PatchSubmit.Value},
+	},
+	ProjectPermissionLogs: {
+		AccessLevelView: {Permission: evergreen.PermissionLogs, Level: evergreen.LogsView.Value},
+	},
+}
+
+const (
+	projectIdentifierKey = "projectIdentifier"
+	identifierKey        = "identifier"
+
+	// Keys that are used in the paramsMap.
+	projectIdKey = "projectId"
+	repoIdKey    = "repoId"
+	versionIdKey = "versionId"
+	patchIdKey   = "patchId"
+	taskIdKey    = "taskId"
+)
+
+func buildProjectParameterMap(args map[string]interface{}) (map[string]string, error) {
+	paramsMap := map[string]string{}
+
+	if projectIdentifier, hasProjectIdentifier := args[projectIdentifierKey].(string); hasProjectIdentifier {
+		paramsMap[projectIdKey] = projectIdentifier
+	}
+	if identifier, hasIdentifier := args[identifierKey].(string); hasIdentifier {
+		paramsMap[projectIdKey] = identifier
+	}
+	if projectId, hasProjectId := args[projectIdKey].(string); hasProjectId {
+		paramsMap[projectIdKey] = projectId
+	}
+	if repoId, hasRepoId := args[repoIdKey].(string); hasRepoId {
+		paramsMap[repoIdKey] = repoId
+	}
+	if versionId, hasVersionId := args[versionIdKey].(string); hasVersionId {
+		paramsMap[versionIdKey] = versionId
+	}
+	if patchId, hasPatchId := args[patchIdKey].(string); hasPatchId {
+		paramsMap[patchIdKey] = patchId
+	}
+	if taskId, hasTaskId := args[taskIdKey].(string); hasTaskId {
+		paramsMap[taskIdKey] = taskId
+	}
+
+	if len(paramsMap) == 0 {
+		return nil, errors.New("params map is empty")
+	}
+
+	return paramsMap, nil
+}

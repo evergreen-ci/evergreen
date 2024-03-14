@@ -513,44 +513,46 @@ type VolumeHost struct {
 	HostID   string `json:"hostId"`
 }
 
-type AnnotationAccess string
+type AccessLevel string
 
 const (
-	AnnotationAccessEdit AnnotationAccess = "EDIT"
-	AnnotationAccessView AnnotationAccess = "VIEW"
+	AccessLevelAdmin AccessLevel = "ADMIN"
+	AccessLevelEdit  AccessLevel = "EDIT"
+	AccessLevelView  AccessLevel = "VIEW"
 )
 
-var AllAnnotationAccess = []AnnotationAccess{
-	AnnotationAccessEdit,
-	AnnotationAccessView,
+var AllAccessLevel = []AccessLevel{
+	AccessLevelAdmin,
+	AccessLevelEdit,
+	AccessLevelView,
 }
 
-func (e AnnotationAccess) IsValid() bool {
+func (e AccessLevel) IsValid() bool {
 	switch e {
-	case AnnotationAccessEdit, AnnotationAccessView:
+	case AccessLevelAdmin, AccessLevelEdit, AccessLevelView:
 		return true
 	}
 	return false
 }
 
-func (e AnnotationAccess) String() string {
+func (e AccessLevel) String() string {
 	return string(e)
 }
 
-func (e *AnnotationAccess) UnmarshalGQL(v interface{}) error {
+func (e *AccessLevel) UnmarshalGQL(v interface{}) error {
 	str, ok := v.(string)
 	if !ok {
 		return fmt.Errorf("enums must be strings")
 	}
 
-	*e = AnnotationAccess(str)
+	*e = AccessLevel(str)
 	if !e.IsValid() {
-		return fmt.Errorf("%s is not a valid AnnotationAccess", str)
+		return fmt.Errorf("%s is not a valid AccessLevel", str)
 	}
 	return nil
 }
 
-func (e AnnotationAccess) MarshalGQL(w io.Writer) {
+func (e AccessLevel) MarshalGQL(w io.Writer) {
 	fmt.Fprint(w, strconv.Quote(e.String()))
 }
 
@@ -1131,6 +1133,53 @@ func (e PlannerVersion) MarshalGQL(w io.Writer) {
 	fmt.Fprint(w, strconv.Quote(e.String()))
 }
 
+type ProjectPermission string
+
+const (
+	ProjectPermissionSettings    ProjectPermission = "SETTINGS"
+	ProjectPermissionTasks       ProjectPermission = "TASKS"
+	ProjectPermissionAnnotations ProjectPermission = "ANNOTATIONS"
+	ProjectPermissionPatches     ProjectPermission = "PATCHES"
+	ProjectPermissionLogs        ProjectPermission = "LOGS"
+)
+
+var AllProjectPermission = []ProjectPermission{
+	ProjectPermissionSettings,
+	ProjectPermissionTasks,
+	ProjectPermissionAnnotations,
+	ProjectPermissionPatches,
+	ProjectPermissionLogs,
+}
+
+func (e ProjectPermission) IsValid() bool {
+	switch e {
+	case ProjectPermissionSettings, ProjectPermissionTasks, ProjectPermissionAnnotations, ProjectPermissionPatches, ProjectPermissionLogs:
+		return true
+	}
+	return false
+}
+
+func (e ProjectPermission) String() string {
+	return string(e)
+}
+
+func (e *ProjectPermission) UnmarshalGQL(v interface{}) error {
+	str, ok := v.(string)
+	if !ok {
+		return fmt.Errorf("enums must be strings")
+	}
+
+	*e = ProjectPermission(str)
+	if !e.IsValid() {
+		return fmt.Errorf("%s is not a valid ProjectPermission", str)
+	}
+	return nil
+}
+
+func (e ProjectPermission) MarshalGQL(w io.Writer) {
+	fmt.Fprint(w, strconv.Quote(e.String()))
+}
+
 type ProjectSettingsAccess string
 
 const (
@@ -1445,49 +1494,6 @@ func (e *SpawnHostStatusActions) UnmarshalGQL(v interface{}) error {
 }
 
 func (e SpawnHostStatusActions) MarshalGQL(w io.Writer) {
-	fmt.Fprint(w, strconv.Quote(e.String()))
-}
-
-type TaskAccess string
-
-const (
-	TaskAccessAdmin TaskAccess = "ADMIN"
-	TaskAccessEdit  TaskAccess = "EDIT"
-	TaskAccessView  TaskAccess = "VIEW"
-)
-
-var AllTaskAccess = []TaskAccess{
-	TaskAccessAdmin,
-	TaskAccessEdit,
-	TaskAccessView,
-}
-
-func (e TaskAccess) IsValid() bool {
-	switch e {
-	case TaskAccessAdmin, TaskAccessEdit, TaskAccessView:
-		return true
-	}
-	return false
-}
-
-func (e TaskAccess) String() string {
-	return string(e)
-}
-
-func (e *TaskAccess) UnmarshalGQL(v interface{}) error {
-	str, ok := v.(string)
-	if !ok {
-		return fmt.Errorf("enums must be strings")
-	}
-
-	*e = TaskAccess(str)
-	if !e.IsValid() {
-		return fmt.Errorf("%s is not a valid TaskAccess", str)
-	}
-	return nil
-}
-
-func (e TaskAccess) MarshalGQL(w io.Writer) {
 	fmt.Fprint(w, strconv.Quote(e.String()))
 }
 

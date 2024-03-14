@@ -1,13 +1,15 @@
 """
 requireProjectAdmin is used to restrict certain actions to admins.
 """
-directive @requireProjectAdmin on ARGUMENT_DEFINITION 
-
+directive @requireProjectAdmin on ARGUMENT_DEFINITION
 
 """
 requireProjectAccess is used to restrict view and edit access for project settings.
+It will be replaced with @requireProjectAccessNew after some necessary adjustments to the GraphQL schema to 
+standardize input parameters.
 """
 directive @requireProjectAccess(access: ProjectSettingsAccess!) on ARGUMENT_DEFINITION | INPUT_FIELD_DEFINITION | FIELD_DEFINITION
+
 enum ProjectSettingsAccess {
   EDIT
   VIEW
@@ -22,28 +24,10 @@ directive @requireProjectSettingsAccess on FIELD_DEFINITION
 requireDistroAccess is used to restrict view, edit, admin, and create access for distros.
 """
 directive @requireDistroAccess(access: DistroSettingsAccess!) on ARGUMENT_DEFINITION | INPUT_FIELD_DEFINITION
+
 enum DistroSettingsAccess {
   ADMIN
   CREATE
-  EDIT
-  VIEW
-}
-
-"""
-requireTaskAccess is used to restrict view, edit, and admin access for tasks.
-"""
-directive @requireTaskAccess(access: TaskAccess!) on ARGUMENT_DEFINITION | INPUT_FIELD_DEFINITION
-enum TaskAccess {
-  ADMIN
-  EDIT
-  VIEW
-}
-
-"""
-requireAnnotationAccess is used to restrict view and edit access for annotations.
-"""
-directive @requireAnnotationAccess(access: AnnotationAccess!) on ARGUMENT_DEFINITION | INPUT_FIELD_DEFINITION
-enum AnnotationAccess {
   EDIT
   VIEW
 }
@@ -57,3 +41,23 @@ directive @requireCommitQueueItemOwner on ARGUMENT_DEFINITION
 redactSecrets is used to mark input fields that should not be logged or exposed in any way and should be redacted.
 """
 directive @redactSecrets on INPUT_FIELD_DEFINITION | ARGUMENT_DEFINITION | INPUT_OBJECT
+
+"""
+requireProjectAccessNew is used to restrict admin, view, and edit access for projects.
+It will be renamed upon the deletion of @requireProjectAccess.
+"""
+directive @requireProjectAccessNew(permission: ProjectPermission!, access: AccessLevel!) on ARGUMENT_DEFINITION | INPUT_FIELD_DEFINITION | FIELD_DEFINITION
+
+enum ProjectPermission {
+  SETTINGS
+  TASKS
+  ANNOTATIONS
+  PATCHES
+  LOGS
+}
+
+enum AccessLevel {
+  ADMIN
+  EDIT
+  VIEW
+}
