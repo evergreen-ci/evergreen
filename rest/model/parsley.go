@@ -6,7 +6,7 @@ import (
 )
 
 type APIParsleySettings struct {
-	// Whether to render task logs with sections.
+	//SectionsEnabled describes whether to render task logs with sections.
 	SectionsEnabled *bool `json:"sections_enabled"`
 }
 
@@ -26,11 +26,11 @@ func (s *APIParsleySettings) ToService() parsley.Settings {
 }
 
 type APIParsleyFilter struct {
-	// Regex to match in Parsley.
+	// Expression is a regular expression representing the filter.
 	Expression *string `json:"expression"`
-	// Whether the filter is case sensitive.
+	// CaseSensitive indicates whether the filter is case sensitive.
 	CaseSensitive *bool `json:"case_sensitive"`
-	// Whether the filter must be an exact match.
+	// ExactMatch indicates whether the filter must be an exact match.
 	ExactMatch *bool `json:"exact_match"`
 }
 

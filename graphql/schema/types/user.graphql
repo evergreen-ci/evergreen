@@ -88,7 +88,7 @@ type User {
   displayName: String!
   emailAddress: String!
   parsleyFilters: [ParsleyFilter!]!
-  parsleySettings: ParsleySettings
+  parsleySettings: ParsleySettings!
   patches(patchesInput: PatchesInput!): Patches! # user patches
   permissions: Permissions!
   subscriptions: [GeneralSubscription!]

@@ -823,23 +823,23 @@ func TestViewableProjectSettings(t *testing.T) {
 }
 
 func TestUpdateParsleySettings(t *testing.T) {
-	assert.NoError(t, db.ClearCollections(Collection))
+	require.NoError(t, db.ClearCollections(Collection))
 
 	usr := DBUser{
 		Id: "me",
 	}
-	assert.NoError(t, usr.Insert())
+	require.NoError(t, usr.Insert())
 
 	newSettings := parsley.Settings{
 		SectionsEnabled: utility.FalsePtr(),
 	}
 	err := usr.UpdateParsleySettings(newSettings)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	assert.Equal(t, utility.FromBoolPtr(usr.ParsleySettings.SectionsEnabled), false)
 
 	dbUser, err := FindOneById(usr.Id)
-	assert.NoError(t, err)
-	assert.NotNil(t, dbUser)
+	require.NoError(t, err)
+	require.NotNil(t, dbUser)
 	assert.Equal(t, utility.FromBoolPtr(dbUser.ParsleySettings.SectionsEnabled), false)
 }
 
