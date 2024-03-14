@@ -667,7 +667,7 @@ func (r *mutationResolver) ForceRepotrackerRun(ctx context.Context, projectID *s
 func (r *mutationResolver) PromoteVarsToRepo(ctx context.Context, projectID *string, varNames []string) (bool, error) {
 	usr := mustHaveUser(ctx)
 	if err := data.PromoteVarsToRepo(utility.FromStringPtr(projectID), varNames, usr.Username()); err != nil {
-		return false, InternalServerError.Send(ctx, fmt.Sprintf("promoting variables to repo for project '%s': %s", utility.FromStringPtr((projectID), err.Error()))
+		return false, InternalServerError.Send(ctx, fmt.Sprintf("promoting variables to repo for project '%s': %s", utility.FromStringPtr(projectID), err.Error()))
 
 	}
 	return true, nil
