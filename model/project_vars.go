@@ -153,12 +153,10 @@ func UpdateProjectVarsByValue(toReplace, replacement, username string, dryRun bo
 }
 
 func (projectVars *ProjectVars) updateSingleVar(key, val string) error {
-	setUpdate := bson.M{}
 	if len(projectVars.Vars) == 0 && len(projectVars.PrivateVars) == 0 &&
 		len(projectVars.AdminOnlyVars) == 0 {
 		return nil
 	}
-	setUpdate[bsonutil.GetDottedKeyName(projectVarsMapKey, key)] = val
 
 	return db.Update(
 		ProjectVarsCollection,
