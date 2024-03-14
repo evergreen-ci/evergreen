@@ -667,7 +667,7 @@ func (r *mutationResolver) ForceRepotrackerRun(ctx context.Context, projectID *s
 func (r *mutationResolver) PromoteVarsToRepo(ctx context.Context, projectID *string, varNames []string) (bool, error) {
 	usr := mustHaveUser(ctx)
 	if err := data.PromoteVarsToRepo(utility.FromStringPtr(projectID), varNames, usr.Username()); err != nil {
-		return false, InternalServerError.Send(ctx, fmt.Sprintf("promoting variables to repo for project '%s': %s", projectID, err.Error()))
+		return false, InternalServerError.Send(ctx, fmt.Sprintf("promoting variables to repo for project '%s': %s", utility.FromStringPtr((projectID), err.Error()))
 
 	}
 	return true, nil
@@ -677,13 +677,13 @@ func (r *mutationResolver) PromoteVarsToRepo(ctx context.Context, projectID *str
 func (r *mutationResolver) RemoveFavoriteProject(ctx context.Context, identifier *string) (*restModel.APIProjectRef, error) {
 	p, err := model.FindBranchProjectRef(utility.FromStringPtr(identifier))
 	if err != nil || p == nil {
-		return nil, ResourceNotFound.Send(ctx, fmt.Sprintf("Could not find project: %s", identifier))
+		return nil, ResourceNotFound.Send(ctx, fmt.Sprintf("Could not find project: %s", utility.FromStringPtr(identifier)))
 	}
 
 	usr := mustHaveUser(ctx)
 	err = usr.RemoveFavoriteProject(utility.FromStringPtr(identifier))
 	if err != nil {
-		return nil, InternalServerError.Send(ctx, fmt.Sprintf("Error removing project : %s : %s", identifier, err))
+		return nil, InternalServerError.Send(ctx, fmt.Sprintf("Error removing project : %s : %s", utility.FromStringPtr(identifier), err))
 	}
 	apiProjectRef := restModel.APIProjectRef{}
 	err = apiProjectRef.BuildFromService(*p)
