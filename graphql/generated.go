@@ -997,10 +997,10 @@ type ComplexityRoot struct {
 		Patch                    func(childComplexity int, id string) int
 		Pod                      func(childComplexity int, podID string) int
 		Project                  func(childComplexity int, projectIdentifier string) int
-		ProjectEvents            func(childComplexity int, identifier string, limit *int, before *time.Time) int
-		ProjectSettings          func(childComplexity int, identifier string) int
+		ProjectEvents            func(childComplexity int, identifier *string, limit *int, before *time.Time) int
+		ProjectSettings          func(childComplexity int, identifier *string) int
 		Projects                 func(childComplexity int) int
-		RepoEvents               func(childComplexity int, id string, limit *int, before *time.Time) int
+		RepoEvents               func(childComplexity int, id *string, limit *int, before *time.Time) int
 		RepoSettings             func(childComplexity int, id string) int
 		SpruceConfig             func(childComplexity int) int
 		SubnetAvailabilityZones  func(childComplexity int) int
@@ -1772,9 +1772,9 @@ type QueryResolver interface {
 	GithubProjectConflicts(ctx context.Context, projectID string) (*model1.GithubProjectConflicts, error)
 	Project(ctx context.Context, projectIdentifier string) (*model.APIProjectRef, error)
 	Projects(ctx context.Context) ([]*GroupedProjects, error)
-	ProjectEvents(ctx context.Context, identifier string, limit *int, before *time.Time) (*ProjectEvents, error)
-	ProjectSettings(ctx context.Context, identifier string) (*model.APIProjectSettings, error)
-	RepoEvents(ctx context.Context, id string, limit *int, before *time.Time) (*ProjectEvents, error)
+	ProjectEvents(ctx context.Context, identifier *string, limit *int, before *time.Time) (*ProjectEvents, error)
+	ProjectSettings(ctx context.Context, identifier *string) (*model.APIProjectSettings, error)
+	RepoEvents(ctx context.Context, id *string, limit *int, before *time.Time) (*ProjectEvents, error)
 	RepoSettings(ctx context.Context, id string) (*model.APIProjectSettings, error)
 	ViewableProjectRefs(ctx context.Context) ([]*GroupedProjects, error)
 	MyHosts(ctx context.Context) ([]*model.APIHost, error)
@@ -6553,7 +6553,7 @@ func (e *executableSchema) Complexity(typeName, field string, childComplexity in
 			return 0, false
 		}
 
-		return e.complexity.Query.ProjectEvents(childComplexity, args["identifier"].(string), args["limit"].(*int), args["before"].(*time.Time)), true
+		return e.complexity.Query.ProjectEvents(childComplexity, args["identifier"].(*string), args["limit"].(*int), args["before"].(*time.Time)), true
 
 	case "Query.projectSettings":
 		if e.complexity.Query.ProjectSettings == nil {
@@ -6565,7 +6565,7 @@ func (e *executableSchema) Complexity(typeName, field string, childComplexity in
 			return 0, false
 		}
 
-		return e.complexity.Query.ProjectSettings(childComplexity, args["identifier"].(string)), true
+		return e.complexity.Query.ProjectSettings(childComplexity, args["identifier"].(*string)), true
 
 	case "Query.projects":
 		if e.complexity.Query.Projects == nil {
@@ -6584,7 +6584,7 @@ func (e *executableSchema) Complexity(typeName, field string, childComplexity in
 			return 0, false
 		}
 
-		return e.complexity.Query.RepoEvents(childComplexity, args["id"].(string), args["limit"].(*int), args["before"].(*time.Time)), true
+		return e.complexity.Query.RepoEvents(childComplexity, args["id"].(*string), args["limit"].(*int), args["before"].(*time.Time)), true
 
 	case "Query.repoSettings":
 		if e.complexity.Query.RepoSettings == nil {
@@ -11668,10 +11668,10 @@ func (ec *executionContext) field_Query_pod_args(ctx context.Context, rawArgs ma
 func (ec *executionContext) field_Query_projectEvents_args(ctx context.Context, rawArgs map[string]interface{}) (map[string]interface{}, error) {
 	var err error
 	args := map[string]interface{}{}
-	var arg0 string
+	var arg0 *string
 	if tmp, ok := rawArgs["identifier"]; ok {
 		ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("identifier"))
-		arg0, err = ec.unmarshalNString2string(ctx, tmp)
+		arg0, err = ec.unmarshalOString2ᚖstring(ctx, tmp)
 		if err != nil {
 			return nil, err
 		}
@@ -11720,10 +11720,10 @@ func (ec *executionContext) field_Query_projectEvents_args(ctx context.Context, 
 func (ec *executionContext) field_Query_projectSettings_args(ctx context.Context, rawArgs map[string]interface{}) (map[string]interface{}, error) {
 	var err error
 	args := map[string]interface{}{}
-	var arg0 string
+	var arg0 *string
 	if tmp, ok := rawArgs["identifier"]; ok {
 		ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("identifier"))
-		directive0 := func(ctx context.Context) (interface{}, error) { return ec.unmarshalNString2string(ctx, tmp) }
+		directive0 := func(ctx context.Context) (interface{}, error) { return ec.unmarshalOString2ᚖstring(ctx, tmp) }
 		directive1 := func(ctx context.Context) (interface{}, error) {
 			access, err := ec.unmarshalNProjectSettingsAccess2githubᚗcomᚋevergreenᚑciᚋevergreenᚋgraphqlᚐProjectSettingsAccess(ctx, "VIEW")
 			if err != nil {
@@ -11739,10 +11739,12 @@ func (ec *executionContext) field_Query_projectSettings_args(ctx context.Context
 		if err != nil {
 			return nil, graphql.ErrorOnPath(ctx, err)
 		}
-		if data, ok := tmp.(string); ok {
+		if data, ok := tmp.(*string); ok {
 			arg0 = data
+		} else if tmp == nil {
+			arg0 = nil
 		} else {
-			return nil, graphql.ErrorOnPath(ctx, fmt.Errorf(`unexpected type %T from directive, should be string`, tmp))
+			return nil, graphql.ErrorOnPath(ctx, fmt.Errorf(`unexpected type %T from directive, should be *string`, tmp))
 		}
 	}
 	args["identifier"] = arg0
@@ -11767,10 +11769,10 @@ func (ec *executionContext) field_Query_project_args(ctx context.Context, rawArg
 func (ec *executionContext) field_Query_repoEvents_args(ctx context.Context, rawArgs map[string]interface{}) (map[string]interface{}, error) {
 	var err error
 	args := map[string]interface{}{}
-	var arg0 string
+	var arg0 *string
 	if tmp, ok := rawArgs["id"]; ok {
 		ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("id"))
-		arg0, err = ec.unmarshalNString2string(ctx, tmp)
+		arg0, err = ec.unmarshalOString2ᚖstring(ctx, tmp)
 		if err != nil {
 			return nil, err
 		}
@@ -43585,7 +43587,7 @@ func (ec *executionContext) _Query_projectEvents(ctx context.Context, field grap
 	}()
 	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
 		ctx = rctx // use context from middleware stack in children
-		return ec.resolvers.Query().ProjectEvents(rctx, fc.Args["identifier"].(string), fc.Args["limit"].(*int), fc.Args["before"].(*time.Time))
+		return ec.resolvers.Query().ProjectEvents(rctx, fc.Args["identifier"].(*string), fc.Args["limit"].(*int), fc.Args["before"].(*time.Time))
 	})
 	if err != nil {
 		ec.Error(ctx, err)
@@ -43646,7 +43648,7 @@ func (ec *executionContext) _Query_projectSettings(ctx context.Context, field gr
 	}()
 	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
 		ctx = rctx // use context from middleware stack in children
-		return ec.resolvers.Query().ProjectSettings(rctx, fc.Args["identifier"].(string))
+		return ec.resolvers.Query().ProjectSettings(rctx, fc.Args["identifier"].(*string))
 	})
 	if err != nil {
 		ec.Error(ctx, err)
@@ -43713,7 +43715,7 @@ func (ec *executionContext) _Query_repoEvents(ctx context.Context, field graphql
 	}()
 	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
 		ctx = rctx // use context from middleware stack in children
-		return ec.resolvers.Query().RepoEvents(rctx, fc.Args["id"].(string), fc.Args["limit"].(*int), fc.Args["before"].(*time.Time))
+		return ec.resolvers.Query().RepoEvents(rctx, fc.Args["id"].(*string), fc.Args["limit"].(*int), fc.Args["before"].(*time.Time))
 	})
 	if err != nil {
 		ec.Error(ctx, err)
