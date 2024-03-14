@@ -74,7 +74,7 @@ mutation {
         }
         dispatcherSettings: { version: REVISED_WITH_DEPENDENCIES }
         hostAllocatorSettings: {
-          acceptableHostIdleTime: 5407399999
+          acceptableHostIdleTime: 5400
           feedbackRule: DEFAULT
           futureHostFraction: 0
           hostsOverallocatedRule: DEFAULT

@@ -244,7 +244,7 @@ func (j *volumeMigrationJob) populateIfUnset(ctx context.Context) error {
 	if j.InitialHostID == "" {
 		// If volume was initially attached to a now-terminated host, query for this host by its home volume field.
 		if j.volume.Host == "" {
-			initialHost, err := host.FindLatestTerminatedHostWithHomeVolume(ctx, j.VolumeID, evergreen.User)
+			initialHost, err := host.FindLatestTerminatedHostWithHomeVolume(ctx, j.VolumeID, j.ModifyOptions.UserName)
 			if err != nil {
 				return errors.Wrapf(err, "getting host attached to volume '%s'", j.VolumeID)
 			}

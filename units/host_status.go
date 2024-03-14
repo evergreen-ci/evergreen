@@ -43,7 +43,7 @@ func NewCloudHostReadyJob(env evergreen.Environment, id string) amboy.Job {
 	j.env = env
 	j.SetPriority(1)
 	j.SetScopes([]string{cloudHostReadyJobName})
-	// Jobs never appear to exceed 1 minute, but add a bunch of padding.
+	// Jobs never appear to exceed a few minutes, but add a bunch of padding.
 	j.UpdateTimeInfo(amboy.JobTimeInfo{MaxTime: 10 * time.Minute})
 	return j
 }
@@ -72,13 +72,15 @@ func (j *cloudHostReadyJob) Run(ctx context.Context) {
 		j.AddError(errors.Wrap(err, "getting admin settings"))
 		return
 	}
-	startingHostsByClient, err := host.StartingHostsByClient(ctx, settings.HostInit.CloudStatusBatchSize)
+	startingHostsByClient, err := host.FindStartingHostsByClient(ctx, settings.HostInit.CloudStatusBatchSize)
 	if err != nil {
 		j.AddError(errors.Wrap(err, "getting starting hosts"))
 		return
 	}
 clientsLoop:
-	for clientOpts, hosts := range startingHostsByClient {
+	for _, hostsByClient := range startingHostsByClient {
+		clientOpts := hostsByClient.Options
+		hosts := hostsByClient.Hosts
 		if ctx.Err() != nil {
 			j.AddError(ctx.Err())
 			return
@@ -309,7 +311,7 @@ func (j *cloudHostReadyJob) prepareToTerminateHost(ctx context.Context, h *host.
 
 	catcher := grip.NewBasicCatcher()
 	catcher.Wrap(handleTerminatedHostSpawnedByTask(ctx, h), "handling host.create host that was terminating before it was running")
-	catcher.Wrap(h.SetDecommissioned(ctx, evergreen.User, false, terminationReason), "decommissioning host")
+	catcher.Wrap(h.SetDecommissioned(ctx, evergreen.User, true, terminationReason), "decommissioning host")
 	terminationJob := NewHostTerminationJob(j.env, h, HostTerminationOptions{
 		TerminateIfBusy:          true,
 		TerminationReason:        terminationReason,
