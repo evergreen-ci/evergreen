@@ -266,7 +266,7 @@ func (m *mockManager) TerminateInstance(ctx context.Context, host *host.Host, us
 	return errors.WithStack(host.Terminate(ctx, user, reason))
 }
 
-func (m *mockManager) StopInstance(ctx context.Context, host *host.Host, user string) error {
+func (m *mockManager) StopInstance(ctx context.Context, host *host.Host, shouldKeepOff bool, user string) error {
 	if !utility.StringSliceContains(evergreen.StoppableHostStatuses, host.Status) {
 		return errors.Errorf("cannot stop host '%s' because the host status is '%s' which is not a stoppable state", host.Id, host.Status)
 	}
@@ -281,7 +281,7 @@ func (m *mockManager) StopInstance(ctx context.Context, host *host.Host, user st
 	instance.Status = StatusStopped
 	m.Instances[host.Id] = instance
 
-	return errors.WithStack(host.SetStopped(ctx, user))
+	return errors.WithStack(host.SetStopped(ctx, shouldKeepOff, user))
 
 }
 

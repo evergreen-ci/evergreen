@@ -235,6 +235,7 @@ func checkVolumeLimitExceeded(user string, newSize int, maxSize int) error {
 
 type hostStopHandler struct {
 	hostID           string
+	shouldKeepOff    bool
 	subscriptionType string
 	env              evergreen.Environment
 }
@@ -253,7 +254,7 @@ func makeHostStopManager(env evergreen.Environment) gimlet.RouteHandler {
 //	@Router			/hosts/{host_id}/stop [post]
 //	@Security		Api-User || Api-Key
 //	@Param			host_id		path	string					true	"the host ID"
-//	@Param			{object}	body	hostSubscriptionInfo	false	"subscription_type"
+//	@Param			{object}	body	hostSubscriptionInfo	false "subscription_type"
 //	@Success		200
 func (h *hostStopHandler) Factory() gimlet.RouteHandler {
 	return &hostStopHandler{
@@ -292,7 +293,7 @@ func (h *hostStopHandler) Run(ctx context.Context) gimlet.Responder {
 		return gimlet.MakeJSONInternalErrorResponder(errors.Wrapf(err, "finding host '%s' with owner '%s'", h.hostID, user.Id))
 	}
 
-	statusCode, err := data.StopSpawnHost(ctx, h.env, user, host)
+	statusCode, err := data.StopSpawnHost(ctx, h.env, user, host, false)
 	if err != nil {
 		return gimlet.MakeJSONErrorResponder(gimlet.ErrorResponse{
 			StatusCode: statusCode,

@@ -681,13 +681,15 @@ func IsIntentHostId(id string) bool {
 func (h *Host) SetStatus(ctx context.Context, newStatus, user, logs string) error {
 	var unset bson.M
 	if newStatus == evergreen.HostRunning {
+		shouldKeepOffKey := bsonutil.GetDottedKeyName(SleepScheduleKey, SleepScheduleShouldKeepOffKey)
 		unset = bson.M{
-			LTCTimeKey:    1,
-			LTCTaskKey:    1,
-			LTCGroupKey:   1,
-			LTCBVKey:      1,
-			LTCVersionKey: 1,
-			LTCProjectKey: 1,
+			LTCTimeKey:       1,
+			LTCTaskKey:       1,
+			LTCGroupKey:      1,
+			LTCBVKey:         1,
+			LTCVersionKey:    1,
+			LTCProjectKey:    1,
+			shouldKeepOffKey: 1,
 		}
 	}
 	return h.setStatusAndFields(ctx, newStatus, nil, nil, unset, user, logs)
@@ -857,18 +859,26 @@ func (h *Host) SetStopping(ctx context.Context, user string) error {
 	return h.SetStatus(ctx, evergreen.HostStopping, user, "")
 }
 
-func (h *Host) SetStopped(ctx context.Context, user string) error {
+// SetStopped sets a host to stopped. If shouldKeepOff is true, it will also
+// keep the host off and ignore any sleep schedule until it's started up again
+// by a user.
+func (h *Host) SetStopped(ctx context.Context, shouldKeepOff bool, user string) error {
+	setFields := bson.M{
+		StatusKey:    evergreen.HostStopped,
+		DNSKey:       "",
+		StartTimeKey: utility.ZeroTime,
+	}
+	if shouldKeepOff {
+		shouldKeepOffKey := bsonutil.GetDottedKeyName(SleepScheduleKey, SleepScheduleShouldKeepOffKey)
+		setFields[shouldKeepOffKey] = true
+	}
 	err := UpdateOne(
 		ctx,
 		bson.M{
 			IdKey:     h.Id,
 			StatusKey: h.Status,
 		},
-		bson.M{"$set": bson.M{
-			StatusKey:    evergreen.HostStopped,
-			DNSKey:       "",
-			StartTimeKey: utility.ZeroTime,
-		}},
+		bson.M{"$set": setFields},
 	)
 	if err != nil {
 		return errors.Wrap(err, "setting host status to stopped")
