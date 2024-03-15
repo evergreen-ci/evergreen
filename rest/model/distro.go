@@ -148,12 +148,7 @@ type APIDispatcherSettings struct {
 
 // BuildFromService converts from service level distro.DispatcherSettings to an APIDispatcherSettings
 func (s *APIDispatcherSettings) BuildFromService(settings distro.DispatcherSettings) {
-	if settings.Version == "" {
-		s.Version = utility.ToStringPtr(evergreen.DispatcherVersionRevisedWithDependencies)
-	} else {
-		s.Version = utility.ToStringPtr(settings.Version)
-	}
-
+	s.Version = utility.ToStringPtr(evergreen.DispatcherVersionRevisedWithDependencies)
 }
 
 // ToService returns a service layer distro.DispatcherSettings using the data from APIDispatcherSettings

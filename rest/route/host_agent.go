@@ -489,7 +489,7 @@ func assignNextAvailableTask(ctx context.Context, env evergreen.Environment, tas
 				return nil, false, errors.Wrap(err, "problem getting next task")
 			}
 		default:
-			queueItem, _ = taskQueue.FindNextTask(ctx, spec)
+			return nil, false, errors.Wrapf(err, "invalid dispatcher version '%s'", d.DispatcherSettings.Version)
 		}
 
 		if queueItem == nil {
