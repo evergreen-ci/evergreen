@@ -116,7 +116,7 @@ func (s *taskDispatchService) ensureQueue(ctx context.Context, distroID string) 
 			return nil, err
 		}
 	default:
-		// TODO: Error?
+		return nil, errors.Errorf("invalid dispatcher version '%s'", d.DispatcherSettings.Version)
 	}
 
 	s.cachedDispatchers[distroID] = distroDispatchService
