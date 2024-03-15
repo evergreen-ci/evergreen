@@ -64,7 +64,7 @@ func (c *expansionsWriter) Execute(ctx context.Context,
 	if err != nil {
 		return errors.Wrap(err, "marshalling expansions")
 	}
-	fn := getWorkingDirectory(conf, c.File)
+	fn := GetWorkingDirectory(conf, c.File)
 	if err := os.WriteFile(fn, out, 0600); err != nil {
 		return errors.Wrapf(err, "writing expansions to file '%s'", fn)
 	}
