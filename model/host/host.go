@@ -203,6 +203,10 @@ const (
 
 func (h *Host) UnmarshalBSON(in []byte) error { return mgobson.Unmarshal(in, h) }
 
+func (h *Host) IsFree() bool {
+	return h.RunningTask == "" && !h.IsTearingDown
+}
+
 type IdleHostsByDistroID struct {
 	DistroID          string `bson:"distro_id"`
 	IdleHosts         []Host `bson:"idle_hosts"`
@@ -2555,7 +2559,7 @@ func (hosts HostGroup) Stats() HostGroupStats {
 		} else if h.Status != evergreen.HostRunning {
 			out.Provisioning++
 		} else if h.Status == evergreen.HostRunning {
-			if h.RunningTask == "" {
+			if h.IsFree() {
 				out.Idle++
 			} else {
 				out.Active++
