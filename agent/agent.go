@@ -1067,13 +1067,16 @@ func buildCheckRun(ctx context.Context, tc *taskContext) (*apimodels.CheckRunOut
 	fileName := utility.FromStringPtr(fileNamePointer)
 	checkRunOutput := apimodels.CheckRunOutput{}
 	if fileName == "" {
-		tc.logger.Task().Infof("Upserting checkRun with no output file specified.")
+		tc.logger.Task().Infof("Upserting check run with no output file specified.")
 		return &checkRunOutput, nil
 	}
 
 	_, err := os.Stat(fileName)
 	if os.IsNotExist(err) {
-		return nil, errors.Errorf("file '%s' does not exist", fileName)
+		checkRunOutput.Title = "Error getting check run output"
+		checkRunOutput.Summary = "Evergreen couldn't find the check run output file"
+		tc.logger.Task().Errorf("Attempting to create check run but file '%s' does not exist", fileName)
+		return &checkRunOutput, nil
 	}
 
 	err = utility.ReadJSONFile(fileName, &checkRunOutput)
