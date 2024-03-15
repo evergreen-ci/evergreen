@@ -57,8 +57,8 @@ func (c *autoArchiveCreate) Execute(ctx context.Context,
 		return errors.Wrap(err, "applying expansions")
 	}
 
-	c.SourceDir = getWorkingDirectory(conf, c.SourceDir)
-	c.Target = getWorkingDirectory(conf, c.Target)
+	c.SourceDir = GetWorkingDirectory(conf, c.SourceDir)
+	c.Target = GetWorkingDirectory(conf, c.Target)
 
 	var filenames []string
 	if len(c.Include) == 0 && len(c.ExcludeFiles) == 0 {

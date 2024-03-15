@@ -1006,6 +1006,11 @@ func (a *Agent) finishTask(ctx context.Context, tc *taskContext, status string, 
 		}
 	}
 
+	err := a.upsertCheckRun(ctx, tc)
+	if err != nil {
+		grip.Error(errors.Wrap(err, "upserting checkrun"))
+	}
+
 	a.killProcs(ctx, tc, false, "task is ending")
 
 	if tc.logger != nil {
@@ -1013,11 +1018,6 @@ func (a *Agent) finishTask(ctx context.Context, tc *taskContext, status string, 
 		flushCtx, cancel := context.WithTimeout(ctx, time.Minute)
 		defer cancel()
 		grip.Error(errors.Wrap(tc.logger.Flush(flushCtx), "flushing logs"))
-	}
-
-	err := a.upsertCheckRun(ctx, tc)
-	if err != nil {
-		grip.Error(errors.Wrap(err, "upserting checkrun"))
 	}
 
 	grip.Infof("Sending final task status: '%s'.", detail.Status)
@@ -1071,7 +1071,14 @@ func buildCheckRun(ctx context.Context, tc *taskContext) (*apimodels.CheckRunOut
 		return &checkRunOutput, nil
 	}
 
-	_, err := os.Stat(fileName)
+	fileName, err := tc.taskConfig.Expansions.ExpandString(fileName)
+	if err != nil {
+		return nil, errors.WithStack(err)
+	}
+
+	fileName = command.GetWorkingDirectory(tc.taskConfig, fileName)
+
+	_, err = os.Stat(fileName)
 	if os.IsNotExist(err) {
 		checkRunOutput.Title = "Error getting check run output"
 		checkRunOutput.Summary = "Evergreen couldn't find the check run output file"
