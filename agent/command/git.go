@@ -871,24 +871,17 @@ func (c *gitFetchProject) fetch(ctx context.Context,
 		}
 	}
 
-	// We use context.Background() instead of ctx here because
-	// using ctx ruins the honeycomb traces (the require the same
-	// uncancelled context).
-	g, gCtx := errgroup.WithContext(context.Background())
+	g, gCtx := errgroup.WithContext(ctx)
 	g.SetLimit(10)
 
 	// Clone the project's modules in goroutines.
 	for _, moduleName := range conf.BuildVariant.Modules {
 		moduleName := moduleName
 		g.Go(func() error {
-			if err := ctx.Err(); err != nil {
-				return errors.Wrapf(err, "canceled while applying module '%s'", moduleName)
-			}
-			// If gCtx has an error, this goroutine should not run and the error will be processed in the Wait() call.
 			if err := gCtx.Err(); err != nil {
 				return nil
 			}
-			return errors.Wrapf(c.fetchModuleSource(ctx, comm, conf, logger, jpm, td, opts.token, opts.method, p, moduleName), "fetching module source '%s'", moduleName)
+			return errors.Wrapf(c.fetchModuleSource(gCtx, comm, conf, logger, jpm, td, opts.token, opts.method, p, moduleName), "fetching module source '%s'", moduleName)
 		})
 	}
 
