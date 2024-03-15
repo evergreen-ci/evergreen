@@ -439,11 +439,11 @@ func (r *queryResolver) Project(ctx context.Context, projectIdentifier string) (
 // Projects is the resolver for the projects field.
 func (r *queryResolver) Projects(ctx context.Context) ([]*GroupedProjects, error) {
 	usr := mustHaveUser(ctx)
-	viewableProjects, err := usr.GetViewableProjectSettings(ctx)
+	viewableProjectIds, err := usr.GetViewableProjectSettings(ctx)
 	if err != nil {
 		return nil, InternalServerError.Send(ctx, fmt.Sprintf("error getting viewable projects for '%s': '%s'", usr.DispName, err.Error()))
 	}
-	allProjects, err := model.FindAllMergedTrackedProjectRefsWithRestrictedProjects(viewableProjects)
+	allProjects, err := model.FindAllMergedTrackedProjectRefsWithRestrictedProjects(viewableProjectIds)
 	if err != nil {
 		return nil, ResourceNotFound.Send(ctx, err.Error())
 	}
