@@ -1076,7 +1076,7 @@ func buildCheckRun(ctx context.Context, tc *taskContext) (*apimodels.CheckRunOut
 		checkRunOutput.Title = "Error getting check run output"
 		checkRunOutput.Summary = "Evergreen couldn't find the check run output file"
 		tc.logger.Task().Errorf("Attempting to create check run but file '%s' does not exist", fileName)
-		return &checkRunOutput, nil
+		return &checkRunOutput, errors.Wrap(err, "getting check run output")
 	}
 
 	err = utility.ReadJSONFile(fileName, &checkRunOutput)
