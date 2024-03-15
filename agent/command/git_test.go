@@ -848,15 +848,21 @@ func (s *GitGetProjectSuite) TestMultipleModules() {
 	const sample1Hash = "cf46076567e4949f9fc68e0634139d4ac495c89b"
 	const sample2Hash = "9bdedd0990e83e328e42f7bb8c2771cab6ae0145"
 	conf := s.taskConfig8
+
 	logger, err := s.comm.GetLoggerProducer(s.ctx, &conf.Task, nil)
 	s.Require().NoError(err)
+	conf.Distro.CloneMethod = evergreen.CloneMethodOAuth
+	token, err := s.settings.GetGithubOauthToken()
+	s.Require().NoError(err)
+	conf.Expansions.Put(evergreen.GlobalGitHubTokenExpansion, token)
+	var pluginCmds []Command
+
 	conf.Expansions.Put(moduleRevExpansionName("sample-1"), sample1Hash)
 	conf.Expansions.Put(moduleRevExpansionName("sample-2"), sample2Hash)
 
 	for _, task := range conf.Project.Tasks {
 		s.NotEqual(len(task.Commands), 0)
 		for _, command := range task.Commands {
-			var pluginCmds []Command
 			pluginCmds, err = Render(command, &conf.Project, BlockInfo{})
 			s.NoError(err)
 			s.NotNil(pluginCmds)
