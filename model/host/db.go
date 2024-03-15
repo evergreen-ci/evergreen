@@ -97,6 +97,7 @@ var (
 	HomeVolumeIDKey                    = bsonutil.MustHaveTag(Host{}, "HomeVolumeID")
 	PortBindingsKey                    = bsonutil.MustHaveTag(Host{}, "PortBindings")
 	IsVirtualWorkstationKey            = bsonutil.MustHaveTag(Host{}, "IsVirtualWorkstation")
+	SleepScheduleKey                   = bsonutil.MustHaveTag(Host{}, "SleepSchedule")
 	SpawnOptionsTaskIDKey              = bsonutil.MustHaveTag(SpawnOptions{}, "TaskID")
 	SpawnOptionsTaskExecutionNumberKey = bsonutil.MustHaveTag(SpawnOptions{}, "TaskExecutionNumber")
 	SpawnOptionsBuildIDKey             = bsonutil.MustHaveTag(SpawnOptions{}, "BuildID")

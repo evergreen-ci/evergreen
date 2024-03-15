@@ -3502,6 +3502,46 @@ func (h *Host) UnsetPersistentDNSInfo(ctx context.Context) error {
 	return nil
 }
 
+// SetSleepSchedule updates the host's sleep schedule. Note that if some fields
+// in the sleep schedule are not being modified, the sleep schedule must still
+// contain all the unmodified fields. For example, if this host is on a
+// temporary exemption when their daily schedule is updated, the new schedule
+// must still have the temporary exemption populated.
+func (h *Host) SetSleepSchedule(ctx context.Context, schedule SleepScheduleInfo) error {
+	if err := schedule.Validate(); err != nil {
+		return errors.Wrap(err, "invalid sleep schedule")
+	}
+
+	// Since the sleep schedule is being updated, recalculate the next
+	// stop/start times based on the new schedule.
+	schedule.NextStartTime = time.Time{}
+	schedule.NextStopTime = time.Time{}
+
+	now := time.Now()
+	var err error
+	schedule.NextStartTime, err = schedule.GetNextScheduledStartTime(now)
+	if err != nil {
+		return errors.Wrap(err, "determining next sleep schedule start time")
+	}
+	schedule.NextStopTime, err = schedule.GetNextScheduledStopTime(now)
+	if err != nil {
+		return errors.Wrap(err, "determining next sleep schedule stop time")
+	}
+	if err := UpdateOne(ctx, bson.M{
+		IdKey: h.Id,
+	}, bson.M{
+		"$set": bson.M{
+			SleepScheduleKey: schedule,
+		},
+	}); err != nil {
+		return err
+	}
+
+	h.SleepSchedule = schedule
+
+	return nil
+}
+
 // SleepScheduleSentinelTime is a special date that's so far in the future that
 // it's assumed Evergreen will never reach this time. This timestamp is only
 // used to signify that a host's sleep schedule should not take effect (either
@@ -3511,20 +3551,20 @@ var SleepScheduleSentinelTime = time.Date(10000, 0, 0, 0, 0, 0, 0, time.UTC)
 
 // GetNextScheduledStopTime returns the next time a host should be
 // stopped according to its sleep schedule.
-func (h *Host) GetNextScheduledStopTime(now time.Time) (time.Time, error) {
-	if h.SleepSchedule.PermanentlyExempt || h.SleepSchedule.ShouldKeepOff {
+func (s *SleepScheduleInfo) GetNextScheduledStopTime(now time.Time) (time.Time, error) {
+	if s.PermanentlyExempt || s.ShouldKeepOff {
 		return SleepScheduleSentinelTime, nil
 	}
 
-	userTimeZone, err := time.LoadLocation(h.SleepSchedule.TimeZone)
+	userTimeZone, err := time.LoadLocation(s.TimeZone)
 	if err != nil {
-		return time.Time{}, errors.Wrapf(err, "loading user time zone '%s'", h.SleepSchedule.TimeZone)
+		return time.Time{}, errors.Wrapf(err, "loading user time zone '%s'", s.TimeZone)
 	}
 
 	var calculateTimeAfter time.Time
-	if !utility.IsZeroTime(h.SleepSchedule.TemporarilyExemptUntil) {
-		calculateTimeAfter = h.SleepSchedule.TemporarilyExemptUntil
-	} else if !utility.IsZeroTime(h.SleepSchedule.NextStartTime) {
+	if !utility.IsZeroTime(s.TemporarilyExemptUntil) {
+		calculateTimeAfter = s.TemporarilyExemptUntil
+	} else if !utility.IsZeroTime(s.NextStartTime) {
 		// If the next start time is known, do not try to stop the host again
 		// until after it's scheduled to start back up. This is a necessary
 		// safeguard against a rare edge case where the host is stopped for the
@@ -3545,7 +3585,7 @@ func (h *Host) GetNextScheduledStopTime(now time.Time) (time.Time, error) {
 		// for its sleep schedule, it should not try to stop the host again
 		// until after the next time the schedule would typically start it back
 		// up.
-		calculateTimeAfter = h.SleepSchedule.NextStartTime
+		calculateTimeAfter = s.NextStartTime
 	} else {
 		calculateTimeAfter = now
 	}
@@ -3559,7 +3599,7 @@ func (h *Host) GetNextScheduledStopTime(now time.Time) (time.Time, error) {
 	var dailyWeekdays []string
 	var firstContiguousWeekdayOff []string
 	for _, weekday := range utility.Weekdays {
-		isOff := utility.FilterSlice(h.SleepSchedule.WholeWeekdaysOff, func(weekdayToCheck time.Weekday) bool { return weekdayToCheck == weekday })
+		isOff := utility.FilterSlice(s.WholeWeekdaysOff, func(weekdayToCheck time.Weekday) bool { return weekdayToCheck == weekday })
 		if len(isOff) == 0 {
 			dailyWeekdays = append(dailyWeekdays, fmt.Sprintf("%d", weekday))
 		} else {
@@ -3568,7 +3608,7 @@ func (h *Host) GetNextScheduledStopTime(now time.Time) (time.Time, error) {
 				// Convert negative modulo to positive value (because -1 mod 7 = -1).
 				prevWeekdayOff += time.Weekday(len(utility.Weekdays))
 			}
-			isPrevWeekdayOff := utility.FilterSlice(h.SleepSchedule.WholeWeekdaysOff, func(weekdayToCheck time.Weekday) bool { return weekdayToCheck == prevWeekdayOff })
+			isPrevWeekdayOff := utility.FilterSlice(s.WholeWeekdaysOff, func(weekdayToCheck time.Weekday) bool { return weekdayToCheck == prevWeekdayOff })
 			if len(isPrevWeekdayOff) == 0 {
 				// It's the first day in a contiguous series of weekdays off,
 				// which means the host can stop on this day.
@@ -3578,8 +3618,8 @@ func (h *Host) GetNextScheduledStopTime(now time.Time) (time.Time, error) {
 	}
 
 	var nextDailyTrigger time.Time
-	if h.SleepSchedule.DailyStopTime != "" {
-		hours, mins, err := parseDailyTime(h.SleepSchedule.DailyStopTime)
+	if s.DailyStopTime != "" {
+		hours, mins, err := parseDailyTime(s.DailyStopTime)
 		if err != nil {
 			return time.Time{}, errors.Wrap(err, "parsing daily stop time")
 		}
@@ -3618,19 +3658,19 @@ func (h *Host) GetNextScheduledStopTime(now time.Time) (time.Time, error) {
 
 // GetNextScheduledStartTime returns the next time a host should be
 // started according to its sleep schedule.
-func (h *Host) GetNextScheduledStartTime(now time.Time) (time.Time, error) {
-	if h.SleepSchedule.PermanentlyExempt || h.SleepSchedule.ShouldKeepOff {
+func (s *SleepScheduleInfo) GetNextScheduledStartTime(now time.Time) (time.Time, error) {
+	if s.PermanentlyExempt || s.ShouldKeepOff {
 		return SleepScheduleSentinelTime, nil
 	}
 
-	userTimeZone, err := time.LoadLocation(h.SleepSchedule.TimeZone)
+	userTimeZone, err := time.LoadLocation(s.TimeZone)
 	if err != nil {
-		return time.Time{}, errors.Wrapf(err, "loading user time zone '%s'", h.SleepSchedule.TimeZone)
+		return time.Time{}, errors.Wrapf(err, "loading user time zone '%s'", s.TimeZone)
 	}
 
 	var calculateTimeAfter time.Time
-	if !utility.IsZeroTime(h.SleepSchedule.TemporarilyExemptUntil) {
-		calculateTimeAfter = h.SleepSchedule.TemporarilyExemptUntil
+	if !utility.IsZeroTime(s.TemporarilyExemptUntil) {
+		calculateTimeAfter = s.TemporarilyExemptUntil
 	} else {
 		calculateTimeAfter = now
 	}
@@ -3645,12 +3685,12 @@ func (h *Host) GetNextScheduledStartTime(now time.Time) (time.Time, error) {
 	var dailyWeekdays []string
 	var afterContiguousWeekdaysOff []string
 	for _, weekday := range utility.Weekdays {
-		isOff := utility.FilterSlice(h.SleepSchedule.WholeWeekdaysOff, func(weekdayToCheck time.Weekday) bool { return weekdayToCheck == weekday })
+		isOff := utility.FilterSlice(s.WholeWeekdaysOff, func(weekdayToCheck time.Weekday) bool { return weekdayToCheck == weekday })
 		if len(isOff) == 0 {
 			dailyWeekdays = append(dailyWeekdays, fmt.Sprintf("%d", weekday))
 		} else {
 			nextWeekday := (weekday + 1) % time.Weekday(len(utility.Weekdays))
-			isNextWeekdayOff := utility.FilterSlice(h.SleepSchedule.WholeWeekdaysOff, func(weekdayToCheck time.Weekday) bool { return weekdayToCheck == nextWeekday })
+			isNextWeekdayOff := utility.FilterSlice(s.WholeWeekdaysOff, func(weekdayToCheck time.Weekday) bool { return weekdayToCheck == nextWeekday })
 			if len(isNextWeekdayOff) == 0 {
 				// It's the end of a contiguous series of weekdays off, which
 				// means the host can start up again on this day.
@@ -3660,8 +3700,8 @@ func (h *Host) GetNextScheduledStartTime(now time.Time) (time.Time, error) {
 	}
 
 	var nextDailyTrigger time.Time
-	if h.SleepSchedule.DailyStartTime != "" {
-		hours, mins, err := parseDailyTime(h.SleepSchedule.DailyStartTime)
+	if s.DailyStartTime != "" {
+		hours, mins, err := parseDailyTime(s.DailyStartTime)
 		if err != nil {
 			return time.Time{}, errors.Wrap(err, "parsing daily start time")
 		}
@@ -3686,7 +3726,7 @@ func (h *Host) GetNextScheduledStartTime(now time.Time) (time.Time, error) {
 		if nextDailyTrigger.Year() == nextAfterWeekdayOffTrigger.Year() &&
 			nextDailyTrigger.Month() == nextAfterWeekdayOffTrigger.Month() &&
 			nextDailyTrigger.Day() == nextAfterWeekdayOffTrigger.Day() &&
-			h.SleepSchedule.isDailyOvernightSchedule() {
+			s.isDailyOvernightSchedule() {
 			// If the two proposed start times are on the same date and the
 			// daily one runs overnight, choose the daily one. For example, if
 			// the host has Sunday off and a daily sleep schedule from 10 pm to
