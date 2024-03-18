@@ -13,7 +13,7 @@ Evergreen creates a temporary task directory for each task. Commands by default 
 
 ## subprocess.exec
 
-In general, use [subprocess.exec](Project-Commands.md#subprocessexec) instead of shell.exec.
+In general, use [subprocess.exec](Project-Commands#subprocessexec) instead of shell.exec.
 
 The reasons to prefer subprocess.exec include:
 1. Evergreen uses expansions with the same syntax as shell expansions.
@@ -25,7 +25,7 @@ You can pass environment variables to subprocess.exec if you'd like to pass expa
 
 ## Task Tags
 
-Use [task tags](Project-Configuration-Files.md#task-and-variant-tags) to reduce repetition in your Evergreen configuration file.
+Use [task tags](Project-Configuration-Files#task-and-variant-tags) to reduce repetition in your Evergreen configuration file.
 
 ## Expansions
 

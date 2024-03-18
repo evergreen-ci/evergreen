@@ -301,7 +301,7 @@ Fields:
     will check that task once per day. If the most recent mainline commit is
     inactive, Evergreen will activate it. In this way, cron is tied more closely
     to project commit activity. To run something on a regular schedule
-    regardless of commit activity, consider using [periodic builds](Project-and-Distro-Settings.md#periodic-builds)
+    regardless of commit activity, consider using [periodic builds](Project-and-Distro-Settings#periodic-builds)
     instead.
 -   `task_group`: a [task
     group](#task-groups)
@@ -328,7 +328,7 @@ from larger, more powerful machines.
 ### Version Controlled Project Settings
 Project configurations can version control some select project settings (e.g. aliases, plugins) directly within the yaml
 rather than on the project page UI, for better accessibility and maintainability. Read more
-[here](Project-and-Distro-Settings.md#version-control).
+[here](Project-and-Distro-Settings#version-control).
 
 ## Advanced Features
 
@@ -343,7 +343,7 @@ includes. This will accept a list of filenames and module names. If the
 include isn't given, we will only use the main project configuration
 file.
 
-Note: included files do not support [version-controlled project settings configuration](Project-and-Distro-Settings.md#version-control)
+Note: included files do not support [version-controlled project settings configuration](Project-and-Distro-Settings#version-control)
 
 ``` yaml
 include: 
@@ -409,7 +409,7 @@ Manifest" will contain details on how the modules were parsed from YAML and
 which git revisions are being used. If no modules have been defined, the
 "Version Manifest" will not appear at all in the Spruce UI.
 
-For mainline commits and [trigger versions](Project-and-Distro-Settings.md#project-triggers), a new 
+For mainline commits and [trigger versions](Project-and-Distro-Settings#project-triggers), a new 
 manifest will be created that uses the latest revision available for each module.
 
 For manual patches and GitHub PRs, by default, the git revisions in the
@@ -421,7 +421,7 @@ latest revision available for a module. The full hierarchy of how
 module revisions are determined is available in the [git.get_project](Project-Commands/#module-hash-hierarchy)
 docs.
 
-Module fields support the expansion of variables defined in the [Variables](Project-and-Distro-Settings.md#variables)
+Module fields support the expansion of variables defined in the [Variables](Project-and-Distro-Settings#variables)
 tab of the Spruce project settings. These fields are expanded at the time of version creation, at which point 
 the "Version Manifest" shown in the Spruce UI should show module configurations including the expanded variables.
 
@@ -539,7 +539,7 @@ task commands; it does not apply to the `post`, `teardown_task`, and
 can only be set on the project or on a task as seen in below example. 
 It cannot be set on functions or build variant tasks.
 
-You can also set `exec_timeout_secs` using [timeout.update](Project-Commands.md#timeoutupdate).
+You can also set `exec_timeout_secs` using [timeout.update](Project-Commands#timeoutupdate).
 
 **Idle timeout: timeout_secs**
 You may also force a specific command to trigger a failure if it does not appear
@@ -553,7 +553,7 @@ commands; it does not apply to the `post`, `teardown_task`, and `teardown_group`
 blocks. This timeout defaults to 2 hours.
 
 You can also overwrite the default `timeout_secs` for all later commands using
-[timeout.update](Project-Commands.md#timeoutupdate).
+[timeout.update](Project-Commands#timeoutupdate).
 
 Example:
 
@@ -646,7 +646,7 @@ run for any requester. If you specify an empty `allowed_requesters` list (i.e.
 If `allowed_requesters` is specified and a conflicting project setting is also
 specified, `allowed_requesters` will take higher precedence. For example, if the
 project settings configure a [GitHub PR patch
-definition](Project-and-Distro-Settings.md#github-pull-request-testing) to run
+definition](Project-and-Distro-Settings#github-pull-request-testing) to run
 tasks A and B but task A has `allowed_requesters: ["commit"]`, then GitHub PR
 patches will only run task B.
 
@@ -790,11 +790,11 @@ Every task has some expansions available by default:
 -   `${otel_trace_id}` is the OTel trace ID this task is running under.
     Include the trace ID in your task's spans so they'll be hooked
     in under the task's trace.
-    See [Hooking tests into command spans](Task_Traces.md#hooking-tests-into-command-spans) for more information.
+    See [Hooking tests into command spans](Task_Traces#hooking-tests-into-command-spans) for more information.
 -   `${otel_parent_id}` is the OTel span ID of the current command.
     Include this ID in your test's root spans so it'll be hooked
     in under the command's trace.
-    See [Hooking tests into command spans](Task_Traces.md#hooking-tests-into-command-spans) for more information.
+    See [Hooking tests into command spans](Task_Traces#hooking-tests-into-command-spans) for more information.
 -   `${__project_aws_ssh_key_name}` is the unique key name for the ssh key 
     pair generated by Evergreen. 
 -   `${__project_aws_ssh_key_value}` is the unencrypted PEM encoded PKCS#1 private key 
@@ -832,7 +832,7 @@ given module
 -   `${<module_name>_owner}` is the Github repo owner for the evergreen
     module associated with this task
 
-In the [Github merge queue](Merge-Queue.md), a single additional expansion
+In the [Github merge queue](Merge-Queue), a single additional expansion
 called `${github_head_branch}` is available. This is the name of the temporary
 branch that GitHub creates for this merge group item. It looks something like
 "gh-readonly-queue/main/pr-515-9cd8a2532bcddf58369aa82eb66ba88e2323c056". In the
@@ -1007,7 +1007,7 @@ oom_tracker: false
 ### Matrix Variant Definition
 
 The matrix syntax is deprecated in favor of the
-[generate.tasks](Project-Commands.md#generatetasks)
+[generate.tasks](Project-Commands#generatetasks)
 command. **Evergreen is unlikely to do further development on matrix
 variant definitions.** The documentation is here for completeness, but
 please do not add new matrix variant definitions. It is typically
@@ -1519,7 +1519,7 @@ parameters are available:
     not be automatically pulled in to the version.
 -   `omit_generated_tasks` - boolean (default: false). If true and the
     dependency is a generator task (i.e. it generates tasks via the
-    [`generate.tasks`](Project-Commands.md#generatetasks) command), then generated tasks will not be included
+    [`generate.tasks`](Project-Commands#generatetasks) command), then generated tasks will not be included
     as dependencies.
 
 So, for example:
