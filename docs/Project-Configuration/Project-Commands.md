@@ -339,9 +339,9 @@ Parameters:
 This command calls the aws assumeRole API and returns credentials as
 these expansions:
 
--   `AWS_ACCESS_KEY_ID` (not accessible by expansion.write)
--   `AWS_SECRET_ACCESS_KEY` (not accessible by expansion.write)
--   `AWS_SESSION_TOKEN` (not accessible by expansion.write)
+-   `AWS_ACCESS_KEY_ID` (not accessible by expansions.write)
+-   `AWS_SECRET_ACCESS_KEY` (not accessible by expansions.write)
+-   `AWS_SESSION_TOKEN` (not accessible by expansions.write)
 -   `AWS_ROLE_EXPIRATION`
 
 See
