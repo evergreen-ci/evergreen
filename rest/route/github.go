@@ -723,9 +723,8 @@ func (gh *githubHookApi) AddIntentForPR(ctx context.Context, pr *github.PullRequ
 	conflictingPatches, err := getOtherPatchesWithHash(pr.Head.GetSHA(), pr.GetNumber())
 	if err != nil {
 		grip.Error(message.WrapError(err, message.Fields{
-			"message": "error getting same hash patches",
-			"owner":   pr.Base.User.GetLogin(),
-
+			"message":           "error getting same hash patches",
+			"owner":             pr.Base.User.GetLogin(),
 			"repo":              pr.Base.Repo.GetName(),
 			"ref":               pr.Head.GetRef(),
 			"pr_num":            pr.GetNumber(),

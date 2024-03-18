@@ -73,9 +73,12 @@ type ProjectRef struct {
 	// all aliases defined for the project
 	PatchTriggerAliases []patch.PatchTriggerDefinition `bson:"patch_trigger_aliases" json:"patch_trigger_aliases"`
 	// all PatchTriggerAliases applied to github patch intents
-	GithubTriggerAliases []string                  `bson:"github_trigger_aliases" json:"github_trigger_aliases"`
-	PeriodicBuilds       []PeriodicBuildDefinition `bson:"periodic_builds" json:"periodic_builds"`
-	CommitQueue          CommitQueueParams         `bson:"commit_queue" json:"commit_queue" yaml:"commit_queue"`
+	GithubTriggerAliases []string `bson:"github_trigger_aliases" json:"github_trigger_aliases"`
+	// OldestAllowedMergeBase is the commit hash of the oldest merge base on the target branch
+	// that PR patches can be created from.
+	OldestAllowedMergeBase string                    `bson:"oldest_allowed_merge_base" json:"oldest_allowed_merge_base"`
+	PeriodicBuilds         []PeriodicBuildDefinition `bson:"periodic_builds" json:"periodic_builds"`
+	CommitQueue            CommitQueueParams         `bson:"commit_queue" json:"commit_queue" yaml:"commit_queue"`
 
 	// Admins contain a list of users who are able to access the projects page.
 	Admins []string `bson:"admins" json:"admins"`

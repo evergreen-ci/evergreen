@@ -281,6 +281,18 @@ func (j *patchIntentProcessor) finishPatch(ctx context.Context, patchDoc *patch.
 		return errors.New("task sync at the end of a patched task is disabled by project settings")
 	}
 
+	if j.IntentType == patch.GithubIntentType && pref.OldestAllowedMergeBase != "" {
+		isMergeBaseAllowed, err := thirdparty.IsMergeBaseAllowed(ctx, token, patchDoc.GithubPatchData.BaseOwner, patchDoc.GithubPatchData.BaseRepo, pref.OldestAllowedMergeBase, j.intent.GetType())
+		// TODO change above
+		if err != nil {
+			return errors.Wrap(err, "checking if merge base is allowed")
+		}
+		if !isMergeBaseAllowed {
+			j.gitHubError = MergeBaseTooOld
+			return errors.New("merge base is older than the oldest allowed merge base in project settings")
+		}
+	}
+
 	validationCatcher := grip.NewBasicCatcher()
 	// Get and validate patched config
 	var patchedProjectConfig string
