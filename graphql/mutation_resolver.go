@@ -1262,6 +1262,20 @@ func (r *mutationResolver) SaveSubscription(ctx context.Context, subscription re
 	return true, nil
 }
 
+// UpdateParsleySettings is the resolver for the updateParsleySettings field.
+func (r *mutationResolver) UpdateParsleySettings(ctx context.Context, opts UpdateParsleySettingsInput) (*UpdateParsleySettingsPayload, error) {
+	usr := mustHaveUser(ctx)
+	newSettings := opts.ParsleySettings.ToService()
+
+	// TODO: Update to recursively set undefined fields in DEVPROD-5277, since ParsleySettingsInput allows omitting fields.
+	if err := usr.UpdateParsleySettings(newSettings); err != nil {
+		return nil, InternalServerError.Send(ctx, fmt.Sprintf("updating Parsley settings: %s", err.Error()))
+	}
+	return &UpdateParsleySettingsPayload{
+		ParsleySettings: opts.ParsleySettings,
+	}, nil
+}
+
 // UpdatePublicKey is the resolver for the updatePublicKey field.
 func (r *mutationResolver) UpdatePublicKey(ctx context.Context, targetKeyName string, updateInfo PublicKeyInput) ([]*restModel.APIPubKey, error) {
 	if !doesPublicKeyNameAlreadyExist(ctx, targetKeyName) {

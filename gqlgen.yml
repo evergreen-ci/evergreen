@@ -180,6 +180,10 @@ models:
     model: github.com/evergreen-ci/evergreen/rest/model.APIParsleyFilter
   ParsleyFilterInput:
     model: github.com/evergreen-ci/evergreen/rest/model.APIParsleyFilter
+  ParsleySettings:
+    model: github.com/evergreen-ci/evergreen/rest/model.APIParsleySettings
+  ParsleySettingsInput:
+    model: github.com/evergreen-ci/evergreen/rest/model.APIParsleySettings
   Patch:
     model: github.com/evergreen-ci/evergreen/rest/model.APIPatch
     fields:

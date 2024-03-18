@@ -31,6 +31,20 @@ func (r *userResolver) ParsleyFilters(ctx context.Context, obj *restModel.APIDBU
 	return res, nil
 }
 
+// ParsleySettings is the resolver for the parsleySettings field.
+func (r *userResolver) ParsleySettings(ctx context.Context, obj *restModel.APIDBUser) (*restModel.APIParsleySettings, error) {
+	usr, err := user.FindOneById(utility.FromStringPtr(obj.UserID))
+	if err != nil {
+		return nil, InternalServerError.Send(ctx, fmt.Sprintf("finding user with ID '%s': %s", utility.FromStringPtr(obj.UserID), err.Error()))
+	}
+	if usr == nil {
+		return nil, ResourceNotFound.Send(ctx, "user not found")
+	}
+	parsleySettings := restModel.APIParsleySettings{}
+	parsleySettings.BuildFromService(usr.ParsleySettings)
+	return &parsleySettings, nil
+}
+
 // Patches is the resolver for the patches field.
 func (r *userResolver) Patches(ctx context.Context, obj *restModel.APIDBUser, patchesInput PatchesInput) (*Patches, error) {
 	opts := patch.ByPatchNameStatusesCommitQueuePaginatedOptions{
