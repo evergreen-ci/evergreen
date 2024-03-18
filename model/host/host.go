@@ -60,9 +60,8 @@ type Host struct {
 	ExternalIdentifier string `bson:"ext_identifier" json:"ext_identifier"`
 	DisplayName        string `bson:"display_name" json:"display_name"`
 
-	// physical location of host
-	Project string `bson:"project" json:"project"`
-	Zone    string `bson:"zone" json:"zone"`
+	// Availability zone of the host.
+	Zone string `bson:"zone" json:"zone"`
 
 	// True if the app server has done all necessary host setup work (although
 	// the host may need to do additional provisioning before it is running).
@@ -1840,7 +1839,6 @@ func (h *Host) Upsert(ctx context.Context) (*mongo.UpdateResult, error) {
 		TagKey:              h.Tag,
 		InstanceTypeKey:     h.InstanceType,
 		ZoneKey:             h.Zone,
-		ProjectKey:          h.Project,
 		ProvisionedKey:      h.Provisioned,
 		ProvisionOptionsKey: h.ProvisionOptions,
 		StatusKey:           h.Status,

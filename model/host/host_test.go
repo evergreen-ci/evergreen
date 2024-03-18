@@ -1749,7 +1749,6 @@ func TestHostUpsert(t *testing.T) {
 		Tag:            "tag",
 		InstanceType:   "instance",
 		Zone:           "zone",
-		Project:        "project",
 		ProvisionOptions: &ProvisionOptions{
 			TaskId:   "task_id",
 			TaskSync: true,
