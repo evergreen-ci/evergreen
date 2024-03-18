@@ -6,7 +6,7 @@ import (
 	"github.com/mongodb/grip"
 )
 
-// Settings represents settings that can be configured for for the Parsley log viewer.
+// Settings represents settings that can be configured for the Parsley log viewer.
 type Settings struct {
 	SectionsEnabled *bool `bson:"sections_enabled" json:"sections_enabled"`
 }
