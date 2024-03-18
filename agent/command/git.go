@@ -667,7 +667,7 @@ func (c *gitFetchProject) fetchModuleSource(ctx context.Context,
 		return errors.Errorf("module '%s' not found", moduleName)
 	}
 
-	moduleBase := filepath.ToSlash(filepath.Join(expandModulePrefix(conf, module.Name, module.Prefix, logger), module.Name))
+	moduleBase := filepath.ToSlash(filepath.Join(conf.ModulePaths[module.Name], module.Name))
 
 	// use submodule revisions based on the main patch. If there is a need in the future,
 	// this could maybe use the most recent submodule revision of all requested patches.
@@ -871,8 +871,16 @@ func (c *gitFetchProject) fetch(ctx context.Context,
 		}
 	}
 
-	if conf.ModulePaths == nil {
-		conf.ModulePaths = map[string]string{}
+	// For every module, expand the module prefix.
+	for _, moduleName := range conf.BuildVariant.Modules {
+		module, err := conf.Project.GetModuleByName(moduleName)
+		if err != nil {
+			return errors.Wrapf(err, "getting module '%s'", moduleName)
+		}
+		if module == nil {
+			return errors.Errorf("module '%s' not found", moduleName)
+		}
+		expandModulePrefix(conf, module.Name, module.Prefix, logger)
 	}
 
 	g, gCtx := errgroup.WithContext(ctx)
