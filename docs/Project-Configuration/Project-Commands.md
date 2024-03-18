@@ -526,12 +526,12 @@ Parameters:
 
 -   `dir`: the directory to clone into
 -   `revisions`: For commit builds, each module should be passed as
-    `<module_name> : ${<module_name>_rev}` (these are loaded from the [manifest](../API/REST-V2-Usage#manifest) 
+    `<module_name> : ${<module_name>_rev}` (these are loaded from the [manifest](../API/REST-V2-Usage.md#manifest) 
     at the beginning of the command). 
     For patch builds, the hash
     must be passed directly as `<module_name> : <hash>`. Note that this
     means that for patch builds, editing the
-    ["modules"](Project-Configuration-Files#modules)
+    ["modules"](Project-Configuration-Files.md#modules)
     section of the project config will not change the checked out hash.
 -   `token`: Use a token to clone instead of the ssh key on the host.
     Since this is a secret, it should be provided as a project
@@ -1275,7 +1275,7 @@ s3.push is restarted, it will replace the existing one.
 Users also have the option to inspect the task working directory after
 it has finished pushing (e.g. for debugging a failed task). This can be
 achieved by either pulling the task working directory from S3 onto a
-spawn host (from the UI) or their local machines (using [evergreen pull](../CLI#pull)).
+spawn host (from the UI) or their local machines (using [evergreen pull](../CLI.md#pull)).
 
 The working directory is put in a private S3 bucket shared between all
 projects. Any other logged in user can pull and view the directory
@@ -1364,7 +1364,7 @@ Parameters:
 
 ## shell.exec
 
-This command runs a shell script. To follow [Evergreen best practices](Best-Practices#subprocessexec), we recommend using [subprocess.exec](#subprocess.exec).
+This command runs a shell script. To follow [Evergreen best practices](Best-Practices.md#subprocessexec), we recommend using [subprocess.exec](#subprocess.exec).
 
 ``` yaml
 - command: shell.exec
@@ -1536,6 +1536,6 @@ Parameters:
 Both parameters are optional. If not set, the task will use the
 definition from the project config.
 
-Commands can also be configured to run if timeout occurs, as documented [here](Project-Configuration-Files#timeout-handler).
+Commands can also be configured to run if timeout occurs, as documented [here](Project-Configuration-Files.md#timeout-handler).
 
 Note: CLI tools that run on Evergreen (such as DSI) might also have their own timeout configurations. Please check the documentation of the CLI tools you use for more details.

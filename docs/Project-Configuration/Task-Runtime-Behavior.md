@@ -3,8 +3,8 @@
 This article describes the detailed specification for how a task behaves once
 it's running. It also assumes you already have basic knowledge of task
 configuration. For more information on how to configure a task, see [project
-configuration](Project-Configuration-Files) or [project
-commands](Project-Commands).
+configuration](Project-Configuration-Files.md) or [project
+commands](Project-Commands.md).
 
 ## Initial Task Setup
 
@@ -21,12 +21,12 @@ are issues on Evergreen's end.
 Once the task is set up, the command blocks will run their commands. For a
 task that's not part of a task group, the blocks will run in this order:
 
-1. [`pre`](Project-Configuration-Files#pre-and-post)
+1. [`pre`](Project-Configuration-Files.md#pre-and-post)
 2. Main task commands (i.e. commands listed under the task definition)
-3. [`timeout`](Project-Configuration-Files#timeout-handler) (only runs if the task [hit a timeout](#task-timeouts))
-4. [`post`](Project-Configuration-Files#pre-and-post)
+3. [`timeout`](Project-Configuration-Files.md#timeout-handler) (only runs if the task [hit a timeout](#task-timeouts))
+4. [`post`](Project-Configuration-Files.md#pre-and-post)
 
-For a task that _is_ part of a [task group](Project-Configuration-Files#task-groups), the blocks will run in this
+For a task that _is_ part of a [task group](Project-Configuration-Files.md#task-groups), the blocks will run in this
 order:
 
 1. `setup_group` (only runs if it's the first task in this task group running on
@@ -66,7 +66,7 @@ If a command fails in `pre`, by default the task will continue on error, and
 will _not_ cause the task to fail. The `pre` block will simply log the failing
 command's error and continue running any remaining `pre` commands.
 
-However, if [`pre_error_fails_task`](Project-Configuration-Files#pre-and-post) is set to true and a `pre` command fails:
+However, if [`pre_error_fails_task`](Project-Configuration-Files.md#pre-and-post) is set to true and a `pre` command fails:
 
 ```yaml
 pre_error_fails_task: true
@@ -100,7 +100,7 @@ In between some command blocks, the task will try to clean up processes and
 Docker resources that were potentially created by commands. Process cleanup will
 stop any lingering processes and clean up Docker resources such as containers,
 images, and volumes. For example, if the task has a background `mongod` process
-started via [`subprocess.exec`](Project-Commands#subprocessexec) or if a `subprocess.exec` executable has also
+started via [`subprocess.exec`](Project-Commands.md#subprocessexec) or if a `subprocess.exec` executable has also
 started some child processes, the resource cleanup process will catch these
 processes and kill them.
 
@@ -228,7 +228,7 @@ is set.
 | Name            | Type    | Description                                                                                                                                                                                                                                                       |
 |-----------------|---------|-------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
 | status          | string  | Required. The overall task status. This can be "success" or "failed". If this is configured incorrectly, the task will system fail.                                                                                                                               |
-| type            | string  | The failure type. This can be "setup", "system", or "test" (see [project configuration files](Project-Configuration-Files#command-failure-colors) for corresponding colors). If not specified, will default to the failure type of the last command that runs. |
+| type            | string  | The failure type. This can be "setup", "system", or "test" (see [project configuration files](Project-Configuration-Files.md#command-failure-colors) for corresponding colors). If not specified, will default to the failure type of the last command that runs. |
 | desc            | string  | Provide details on the task failure. This is limited to 500 characters. If not specified or the message is too long, it will default to the display name of the last command that runs.                                                                           |
 | should_continue | boolean | If set, the task will continue running commands, but the final status will be the one explicitly set. Defaults to false.                                                                                                                                          |
 

@@ -33,4 +33,4 @@ menu -> Set priority.
 ![set priority](../images/priority.png)
 
 It can also be set with the
-[API](API/REST-V2-Usage).
+[API](../API/REST-V2-Usage.md).
