@@ -306,6 +306,9 @@ func (gh *githubHookApi) rerunCheckRun(ctx context.Context, owner, repo string, 
 		})
 		catcher.Add(errors.Wrapf(taskErr, "finding task '%s' for check run", checkRunTask))
 	}
+	if !utility.StringSliceContains(evergreen.TaskCompletedStatuses, taskToRestart.Status) {
+		return errors.Errorf("task '%s' is not in a completed state", checkRunTask)
+	}
 	githubUser, err := user.FindByGithubUID(uid)
 	if err != nil {
 		grip.Error(message.WrapError(err, message.Fields{
