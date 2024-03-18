@@ -2,7 +2,6 @@ package model
 
 import (
 	"context"
-	"fmt"
 	"sync"
 	"time"
 
@@ -63,7 +62,6 @@ func (s *taskDispatchService) RefreshFindNextTask(ctx context.Context, distroID 
 	if err := distroDispatchService.Refresh(); err != nil {
 		return nil, errors.WithStack(err)
 	}
-
 	return distroDispatchService.FindNextTask(ctx, spec, amiUpdatedTime), nil
 }
 
@@ -89,7 +87,7 @@ func (s *taskDispatchService) ensureQueue(ctx context.Context, distroID string) 
 	if foundDistro != nil {
 		d = *foundDistro
 	}
-	fmt.Println("Found distro is empty -- using nothing")
+
 	// If there is a "distro": *basicCachedDispatcherImpl in the cachedDispatchers map, return that.
 	// Otherwise, get the "distro"'s taskQueue from the database; seed its cachedDispatcher; put that in the map and return it.
 	s.mu.Lock()
@@ -108,7 +106,7 @@ func (s *taskDispatchService) ensureQueue(ctx context.Context, distroID string) 
 	}
 
 	if err != nil {
-		return nil, errors.WithStack(err)
+		return nil, errors.WithStack(errors.Wrap(err, "finding task queue"))
 	}
 
 	switch d.DispatcherSettings.Version {

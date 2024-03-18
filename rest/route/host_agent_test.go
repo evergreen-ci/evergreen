@@ -1151,6 +1151,12 @@ func TestAssignNextAvailableTaskWithDispatcherSettingsVersionTunable(t *testing.
 				RunningTaskBuildVariant: "variant1",
 				RunningTaskVersion:      "version1",
 				RunningTaskProject:      "exists",
+				Distro: distro.Distro{
+					Id: "d1",
+					DispatcherSettings: distro.DispatcherSettings{
+						Version: evergreen.DispatcherVersionRevisedWithDependencies,
+					},
+				},
 			}
 			So(host1.Insert(ctx), ShouldBeNil)
 			host2 := host.Host{
@@ -1161,6 +1167,12 @@ func TestAssignNextAvailableTaskWithDispatcherSettingsVersionTunable(t *testing.
 				RunningTaskBuildVariant: "",
 				RunningTaskVersion:      "",
 				RunningTaskProject:      "",
+				Distro: distro.Distro{
+					Id: d.Id,
+					DispatcherSettings: distro.DispatcherSettings{
+						Version: evergreen.DispatcherVersionRevisedWithDependencies,
+					},
+				},
 			}
 			So(host2.Insert(ctx), ShouldBeNil)
 			task3 := task.Task{
