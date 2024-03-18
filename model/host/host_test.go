@@ -432,29 +432,57 @@ func TestDecommissionHost(t *testing.T) {
 }
 
 func TestSetStopped(t *testing.T) {
-	ctx, cancel := context.WithCancel(context.Background())
-	defer cancel()
+	defer func() {
+		assert.NoError(t, db.Clear(Collection))
+	}()
 
-	require.NoError(t, db.Clear(Collection))
-	h := &Host{
-		Id:        "h1",
-		Status:    evergreen.HostRunning,
-		StartTime: time.Date(2009, time.November, 10, 23, 0, 0, 0, time.UTC),
-		Host:      "host.mongodb.com",
+	for tName, tCase := range map[string]func(ctx context.Context, t *testing.T, h *Host){
+		"StopsHost": func(ctx context.Context, t *testing.T, h *Host) {
+			require.NoError(t, h.Insert(ctx))
+
+			assert.NoError(t, h.SetStopped(ctx, false, ""))
+			assert.Equal(t, evergreen.HostStopped, h.Status)
+			assert.Empty(t, h.Host)
+			assert.True(t, utility.IsZeroTime(h.StartTime))
+
+			dbHost, err := FindOneId(ctx, h.Id)
+			require.NoError(t, err)
+			assert.Equal(t, evergreen.HostStopped, dbHost.Status)
+			assert.Empty(t, dbHost.Host)
+			assert.True(t, utility.IsZeroTime(dbHost.StartTime))
+			assert.False(t, h.SleepSchedule.ShouldKeepOff)
+		},
+		"SetsShouldKeepOff": func(ctx context.Context, t *testing.T, h *Host) {
+			require.NoError(t, h.Insert(ctx))
+
+			assert.NoError(t, h.SetStopped(ctx, true, ""))
+			assert.Equal(t, evergreen.HostStopped, h.Status)
+			assert.Empty(t, h.Host)
+			assert.True(t, utility.IsZeroTime(h.StartTime))
+			assert.True(t, h.SleepSchedule.ShouldKeepOff)
+
+			dbHost, err := FindOneId(ctx, h.Id)
+			require.NoError(t, err)
+			assert.Equal(t, evergreen.HostStopped, dbHost.Status)
+			assert.Empty(t, dbHost.Host)
+			assert.True(t, utility.IsZeroTime(dbHost.StartTime))
+			assert.True(t, dbHost.SleepSchedule.ShouldKeepOff)
+		},
+	} {
+		t.Run(tName, func(t *testing.T) {
+			ctx, cancel := context.WithCancel(context.Background())
+			defer cancel()
+
+			require.NoError(t, db.Clear(Collection))
+			h := &Host{
+				Id:        "host",
+				Status:    evergreen.HostRunning,
+				StartTime: time.Date(2009, time.November, 10, 23, 0, 0, 0, time.UTC),
+				Host:      "host.mongodb.com",
+			}
+			tCase(ctx, t, h)
+		})
 	}
-
-	require.NoError(t, h.Insert(ctx))
-
-	assert.NoError(t, h.SetStopped(ctx, ""))
-	assert.Equal(t, evergreen.HostStopped, h.Status)
-	assert.Empty(t, h.Host)
-	assert.True(t, utility.IsZeroTime(h.StartTime))
-
-	h, err := FindOneId(ctx, "h1")
-	require.NoError(t, err)
-	assert.Equal(t, evergreen.HostStopped, h.Status)
-	assert.Empty(t, h.Host)
-	assert.True(t, utility.IsZeroTime(h.StartTime))
 }
 
 func TestSetHostTerminated(t *testing.T) {

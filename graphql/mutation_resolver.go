@@ -964,7 +964,7 @@ func (r *mutationResolver) UpdateSpawnHostStatus(ctx context.Context, hostID str
 	case SpawnHostStatusActionsStart:
 		httpStatus, err = data.StartSpawnHost(ctx, env, usr, h)
 	case SpawnHostStatusActionsStop:
-		httpStatus, err = data.StopSpawnHost(ctx, env, usr, h)
+		httpStatus, err = data.StopSpawnHost(ctx, env, usr, h, false)
 	case SpawnHostStatusActionsTerminate:
 		httpStatus, err = data.TerminateSpawnHost(ctx, env, usr, h)
 	default:

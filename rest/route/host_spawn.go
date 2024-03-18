@@ -236,6 +236,7 @@ func checkVolumeLimitExceeded(user string, newSize int, maxSize int) error {
 type hostStopHandler struct {
 	hostID           string
 	subscriptionType string
+	shouldKeepOff    bool
 	env              evergreen.Environment
 }
 
@@ -252,8 +253,8 @@ func makeHostStopManager(env evergreen.Environment) gimlet.RouteHandler {
 //	@Tags			hosts
 //	@Router			/hosts/{host_id}/stop [post]
 //	@Security		Api-User || Api-Key
-//	@Param			host_id		path	string					true	"the host ID"
-//	@Param			{object}	body	hostSubscriptionInfo	false	"subscription_type"
+//	@Param			host_id		path	string			true	"the host ID"
+//	@Param			{object}	body	hostStopOptions	false	"subscription type and whether an unexpirable host should be kept off"
 //	@Success		200
 func (h *hostStopHandler) Factory() gimlet.RouteHandler {
 	return &hostStopHandler{
@@ -261,9 +262,13 @@ func (h *hostStopHandler) Factory() gimlet.RouteHandler {
 	}
 }
 
-type hostSubscriptionInfo struct {
+type hostStopOptions struct {
 	// The type of subscription to send when the host is stopped ("slack" or "email")
 	SubscriptionType string `json:"subscription_type"`
+	// If this host is an unexpirable host with a sleep schedule, setting this
+	// to true will keep the host off (and ignore the sleep schedule) until it's
+	// started back up manually.
+	ShouldKeepOff bool `json:"should_keep_off"`
 }
 
 func (h *hostStopHandler) Parse(ctx context.Context, r *http.Request) error {
@@ -276,11 +281,12 @@ func (h *hostStopHandler) Parse(ctx context.Context, r *http.Request) error {
 	body := utility.NewRequestReader(r)
 	defer body.Close()
 
-	options := hostSubscriptionInfo{}
+	options := hostStopOptions{}
 	if err := utility.ReadJSON(body, &options); err != nil {
 		h.subscriptionType = ""
 	}
 	h.subscriptionType = options.SubscriptionType
+	h.shouldKeepOff = options.ShouldKeepOff
 
 	return nil
 }
@@ -292,7 +298,7 @@ func (h *hostStopHandler) Run(ctx context.Context) gimlet.Responder {
 		return gimlet.MakeJSONInternalErrorResponder(errors.Wrapf(err, "finding host '%s' with owner '%s'", h.hostID, user.Id))
 	}
 
-	statusCode, err := data.StopSpawnHost(ctx, h.env, user, host)
+	statusCode, err := data.StopSpawnHost(ctx, h.env, user, host, h.shouldKeepOff)
 	if err != nil {
 		return gimlet.MakeJSONErrorResponder(gimlet.ErrorResponse{
 			StatusCode: statusCode,
@@ -343,6 +349,11 @@ func (h *hostStartHandler) Factory() gimlet.RouteHandler {
 	return &hostStartHandler{
 		env: h.env,
 	}
+}
+
+type hostSubscriptionInfo struct {
+	// The type of subscription to send when the host is running ("slack" or "email")
+	SubscriptionType string `json:"subscription_type"`
 }
 
 func (h *hostStartHandler) Parse(ctx context.Context, r *http.Request) error {

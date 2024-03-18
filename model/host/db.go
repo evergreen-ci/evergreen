@@ -115,6 +115,7 @@ var (
 	VolumeAttachmentIDKey              = bsonutil.MustHaveTag(VolumeAttachment{}, "VolumeID")
 	VolumeDeviceNameKey                = bsonutil.MustHaveTag(VolumeAttachment{}, "DeviceName")
 	DockerOptionsStdinDataKey          = bsonutil.MustHaveTag(DockerOptions{}, "StdinData")
+	SleepScheduleShouldKeepOffKey      = bsonutil.MustHaveTag(SleepScheduleInfo{}, "ShouldKeepOff")
 )
 
 var (
