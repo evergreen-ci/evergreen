@@ -896,6 +896,7 @@ func (h *Host) SetStopped(ctx context.Context, shouldKeepOff bool, user string) 
 	h.Status = evergreen.HostStopped
 	h.Host = ""
 	h.StartTime = utility.ZeroTime
+	h.SleepSchedule.ShouldKeepOff = shouldKeepOff
 
 	return nil
 }
