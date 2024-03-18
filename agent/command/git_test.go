@@ -874,7 +874,7 @@ func (s *GitGetProjectSuite) TestMultipleModules() {
 
 	// Test module 1.
 	cmd := exec.Command("git", "rev-parse", "HEAD")
-	cmd.Dir = conf.WorkDir + "/src/hello/module-1/sample/"
+	cmd.Dir = conf.WorkDir + "/src/hello/module-1/sample-1/"
 	var out bytes.Buffer
 	cmd.Stdout = &out
 	err = cmd.Run()
@@ -894,7 +894,7 @@ func (s *GitGetProjectSuite) TestMultipleModules() {
 
 	// Test module 2.
 	cmd = exec.Command("git", "rev-parse", "HEAD")
-	cmd.Dir = conf.WorkDir + "/src/hello/module-2/sample/"
+	cmd.Dir = conf.WorkDir + "/src/hello/module-2/sample-2/"
 	cmd.Stdout = &out
 	err = cmd.Run()
 	s.NoError(err)
