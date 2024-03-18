@@ -871,6 +871,8 @@ func (c *gitFetchProject) fetch(ctx context.Context,
 		}
 	}
 
+	conf.ModulePaths = map[string]string{}
+
 	g, gCtx := errgroup.WithContext(ctx)
 	g.SetLimit(10)
 
