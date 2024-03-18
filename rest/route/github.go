@@ -280,7 +280,6 @@ func (gh *githubHookApi) Run(ctx context.Context) gimlet.Responder {
 }
 
 func (gh *githubHookApi) rerunCheckRun(ctx context.Context, owner, repo string, uid int, checkRun *github.CheckRun) error {
-	catcher := grip.NewBasicCatcher()
 	checkRunTask := checkRun.GetExternalID()
 	if checkRunTask == "" {
 		grip.Error(message.Fields{
@@ -291,7 +290,7 @@ func (gh *githubHookApi) rerunCheckRun(ctx context.Context, owner, repo string, 
 			"repo":    repo,
 			"message": "check run doesn't carry task",
 		})
-		catcher.Add(errors.New("check run doesn't carry task"))
+		return errors.New("check run doesn't carry task")
 	}
 	taskToRestart, taskErr := data.FindTask(checkRunTask)
 	if taskErr != nil {
@@ -304,7 +303,7 @@ func (gh *githubHookApi) rerunCheckRun(ctx context.Context, owner, repo string, 
 			"task":    checkRunTask,
 			"message": "finding task",
 		})
-		catcher.Add(errors.Wrapf(taskErr, "finding task '%s' for check run", checkRunTask))
+		return errors.Wrapf(taskErr, "finding task '%s' for check run", checkRunTask)
 	}
 	if !utility.StringSliceContains(evergreen.TaskCompletedStatuses, taskToRestart.Status) {
 		return errors.Errorf("task '%s' is not in a completed state", checkRunTask)
@@ -320,7 +319,10 @@ func (gh *githubHookApi) rerunCheckRun(ctx context.Context, owner, repo string, 
 			"user":    uid,
 			"message": "finding user by GitHub ID",
 		}))
-		catcher.Add(errors.Wrapf(err, "finding user by GitHub ID '%d'", uid))
+		return errors.Wrapf(err, "finding user by GitHub ID '%d'", uid)
+	}
+	if githubUser == nil {
+		return errors.Errorf("user with GitHub ID '%d' not found", uid)
 	}
 	if err := model.ResetTaskOrDisplayTask(ctx, gh.settings, taskToRestart, githubUser.Id, evergreen.GithubCheckRun, false, nil); err != nil {
 		grip.Error(message.WrapError(err, message.Fields{
@@ -332,7 +334,7 @@ func (gh *githubHookApi) rerunCheckRun(ctx context.Context, owner, repo string, 
 			"task":    checkRunTask,
 			"message": "restarting task",
 		}))
-		catcher.Add(errors.Wrap(err, "resetting task"))
+		return errors.Wrap(err, "resetting task")
 	}
 
 	output := &github.CheckRunOutput{
@@ -352,7 +354,7 @@ func (gh *githubHookApi) rerunCheckRun(ctx context.Context, owner, repo string, 
 			"task":    checkRunTask,
 			"message": "finding refreshed task",
 		})
-		catcher.Add(errors.Wrapf(taskErr, "finding task '%s' for check run", checkRunTask))
+		refreshedTask = taskToRestart
 	}
 	_, err = thirdparty.UpdateCheckRun(ctx, owner, repo, gh.settings.ApiUrl, checkRun.GetID(), refreshedTask, output)
 	if err != nil {
@@ -365,9 +367,9 @@ func (gh *githubHookApi) rerunCheckRun(ctx context.Context, owner, repo string, 
 			"check_run": checkRun.GetName(),
 			"message":   "updating check run",
 		}))
-		catcher.Add(errors.Wrap(err, "updating check run"))
+		return errors.Wrap(err, "updating check run")
 	}
-	return catcher.Resolve()
+	return nil
 }
 
 // handleCheckRunRerequested restarts the task associated with the check run that was rerequested to be re-run and
