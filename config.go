@@ -38,7 +38,7 @@ var (
 
 	// Agent version to control agent rollover. The format is the calendar date
 	// (YYYY-MM-DD).
-	AgentVersion = "2024-03-11"
+	AgentVersion = "2024-03-18"
 )
 
 // ConfigSection defines a sub-document in the evergreen config

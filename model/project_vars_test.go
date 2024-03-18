@@ -226,19 +226,19 @@ func TestGetVarsByValue(t *testing.T) {
 	require.NoError(t, projectVars2.Insert())
 	require.NoError(t, projectVars3.Insert())
 
-	newVars, err := GetVarsByValue("1")
+	newVars, err := getVarsByValue("1")
 	assert.NoError(err)
 	assert.Equal(2, len(newVars))
 
-	newVars, err = GetVarsByValue("2")
+	newVars, err = getVarsByValue("2")
 	assert.NoError(err)
 	assert.Equal(3, len(newVars))
 
-	newVars, err = GetVarsByValue("3")
+	newVars, err = getVarsByValue("3")
 	assert.NoError(err)
 	assert.Equal(1, len(newVars))
 
-	newVars, err = GetVarsByValue("0")
+	newVars, err = getVarsByValue("0")
 	assert.NoError(err)
 	assert.Equal(0, len(newVars))
 }

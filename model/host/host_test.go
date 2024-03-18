@@ -406,24 +406,24 @@ func TestDecommissionHost(t *testing.T) {
 
 	assert.NoError(t, db.ClearCollections(Collection))
 	h := Host{
-		Id:               "myHost",
-		RunningTaskGroup: "myTaskGroup",
-		Status:           evergreen.HostRunning,
+		Id:          "myHost",
+		RunningTask: "runningTask",
+		Status:      evergreen.HostRunning,
 	}
 	assert.NoError(t, h.Insert(ctx))
 
-	assert.NoError(t, h.SetDecommissioned(ctx, "user", true, "because I said so"))
+	assert.NoError(t, h.SetDecommissioned(ctx, "user", false, "because I said so"))
 
-	// Updating shouldn't work because we checked task group.
+	// Updating shouldn't work because we have a running task.
 	hostFromDb, err := FindOneId(ctx, h.Id)
 	assert.NoError(t, err)
 	require.NotNil(t, hostFromDb)
 	assert.NotEqual(t, evergreen.HostDecommissioned, hostFromDb.Status)
 	assert.NotEqual(t, evergreen.HostDecommissioned, h.Status)
 
-	assert.NoError(t, h.SetDecommissioned(ctx, "user", false, "counting to three"))
+	assert.NoError(t, h.SetDecommissioned(ctx, "user", true, "counting to three"))
 
-	// Updating should work because we ignored task group.
+	// Updating should work because we set terminate if busy.
 	hostFromDb, err = FindOneId(ctx, h.Id)
 	assert.NoError(t, err)
 	require.NotNil(t, hostFromDb)
@@ -4749,93 +4749,6 @@ func TestFindHostWithVolume(t *testing.T) {
 	foundHost, err = FindHostWithVolume(ctx, "volume-2")
 	assert.NoError(t, err)
 	assert.Nil(t, foundHost)
-}
-
-func TestStartingHostsByClient(t *testing.T) {
-	ctx, cancel := context.WithCancel(context.Background())
-	defer cancel()
-
-	require.NoError(t, db.ClearCollections(Collection))
-	doc1 := birch.NewDocument(birch.EC.String(awsRegionKey, evergreen.DefaultEC2Region))
-	doc2 := birch.NewDocument(
-		birch.EC.String(awsRegionKey, "us-west-1"),
-		birch.EC.String(awsKeyKey, "key1"),
-		birch.EC.String(awsSecretKey, "secret1"),
-	)
-	startingHosts := []Host{
-		{
-			Id:     "h0",
-			Status: evergreen.HostStarting,
-			Distro: distro.Distro{
-				Provider:             evergreen.ProviderNameEc2OnDemand,
-				ProviderSettingsList: []*birch.Document{doc1},
-			},
-		},
-		{
-			Id:     "h1",
-			Status: evergreen.HostStarting,
-			Distro: distro.Distro{
-				Provider:             evergreen.ProviderNameEc2OnDemand,
-				ProviderSettingsList: []*birch.Document{doc2},
-			},
-		},
-		{
-			Id:     "h2",
-			Status: evergreen.HostStarting,
-			Distro: distro.Distro{
-				Provider:             evergreen.ProviderNameDocker,
-				ProviderSettingsList: []*birch.Document{birch.NewDocument()},
-			},
-		},
-		{
-			Id:     "h3",
-			Status: evergreen.HostStarting,
-			Distro: distro.Distro{
-				Provider:             evergreen.ProviderNameDocker,
-				ProviderSettingsList: []*birch.Document{birch.NewDocument()},
-			},
-		},
-	}
-	for _, h := range startingHosts {
-		require.NoError(t, h.Insert(ctx))
-	}
-
-	hostsByClient, err := StartingHostsByClient(ctx, 0)
-	assert.NoError(t, err)
-	assert.Len(t, hostsByClient, 3)
-	for clientOptions, hosts := range hostsByClient {
-		switch clientOptions {
-		case ClientOptions{
-			Provider: evergreen.ProviderNameEc2OnDemand,
-			Region:   evergreen.DefaultEC2Region,
-		}:
-			require.Len(t, hosts, 1)
-			compareHosts(t, hosts[0], startingHosts[0])
-		case ClientOptions{
-			Provider: evergreen.ProviderNameEc2OnDemand,
-			Region:   "us-west-1",
-			Key:      "key1",
-			Secret:   "secret1",
-		}:
-			require.Len(t, hosts, 1)
-			compareHosts(t, hosts[0], startingHosts[1])
-		case ClientOptions{
-			Provider: evergreen.ProviderNameDocker,
-		}:
-			require.Len(t, hosts, 2)
-			compareHosts(t, hosts[0], startingHosts[2])
-			compareHosts(t, hosts[1], startingHosts[3])
-		default:
-			assert.Fail(t, "unrecognized client options")
-		}
-	}
-}
-
-func compareHosts(t *testing.T, host1, host2 Host) {
-	assert.Equal(t, host1.Id, host2.Id)
-	assert.Equal(t, host1.Status, host2.Status)
-	assert.Equal(t, host1.Distro.Provider, host2.Distro.Provider)
-	assert.Equal(t, host1.Distro.ProviderSettingsList[0].ExportMap(), host2.Distro.ProviderSettingsList[0].ExportMap())
 }
 
 func TestFindHostsInRange(t *testing.T) {
