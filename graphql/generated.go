@@ -441,6 +441,7 @@ type ComplexityRoot struct {
 		InstanceType          func(childComplexity int) int
 		LastCommunicationTime func(childComplexity int) int
 		NoExpiration          func(childComplexity int) int
+		PersistentDNSName     func(childComplexity int) int
 		Provider              func(childComplexity int) int
 		RunningTask           func(childComplexity int) int
 		StartedBy             func(childComplexity int) int
@@ -3407,6 +3408,13 @@ func (e *executableSchema) Complexity(typeName, field string, childComplexity in
 		}
 
 		return e.complexity.Host.NoExpiration(childComplexity), true
+
+	case "Host.persistentDnsName":
+		if e.complexity.Host.PersistentDNSName == nil {
+			break
+		}
+
+		return e.complexity.Host.PersistentDNSName(childComplexity), true
 
 	case "Host.provider":
 		if e.complexity.Host.Provider == nil {
@@ -21598,6 +21606,50 @@ func (ec *executionContext) fieldContext_Host_noExpiration(ctx context.Context, 
 	return fc, nil
 }
 
+func (ec *executionContext) _Host_persistentDnsName(ctx context.Context, field graphql.CollectedField, obj *model.APIHost) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_Host_persistentDnsName(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.PersistentDNSName, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.(*string)
+	fc.Result = res
+	return ec.marshalNString2ᚖstring(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_Host_persistentDnsName(ctx context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "Host",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type String does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
 func (ec *executionContext) _Host_provider(ctx context.Context, field graphql.CollectedField, obj *model.APIHost) (ret graphql.Marshaler) {
 	fc, err := ec.fieldContext_Host_provider(ctx, field)
 	if err != nil {
@@ -23624,6 +23676,8 @@ func (ec *executionContext) fieldContext_HostsResponse_hosts(ctx context.Context
 				return ec.fieldContext_Host_lastCommunicationTime(ctx, field)
 			case "noExpiration":
 				return ec.fieldContext_Host_noExpiration(ctx, field)
+			case "persistentDnsName":
+				return ec.fieldContext_Host_persistentDnsName(ctx, field)
 			case "provider":
 				return ec.fieldContext_Host_provider(ctx, field)
 			case "runningTask":
@@ -29835,6 +29889,8 @@ func (ec *executionContext) fieldContext_Mutation_editSpawnHost(ctx context.Cont
 				return ec.fieldContext_Host_lastCommunicationTime(ctx, field)
 			case "noExpiration":
 				return ec.fieldContext_Host_noExpiration(ctx, field)
+			case "persistentDnsName":
+				return ec.fieldContext_Host_persistentDnsName(ctx, field)
 			case "provider":
 				return ec.fieldContext_Host_provider(ctx, field)
 			case "runningTask":
@@ -29995,6 +30051,8 @@ func (ec *executionContext) fieldContext_Mutation_spawnHost(ctx context.Context,
 				return ec.fieldContext_Host_lastCommunicationTime(ctx, field)
 			case "noExpiration":
 				return ec.fieldContext_Host_noExpiration(ctx, field)
+			case "persistentDnsName":
+				return ec.fieldContext_Host_persistentDnsName(ctx, field)
 			case "provider":
 				return ec.fieldContext_Host_provider(ctx, field)
 			case "runningTask":
@@ -30210,6 +30268,8 @@ func (ec *executionContext) fieldContext_Mutation_updateSpawnHostStatus(ctx cont
 				return ec.fieldContext_Host_lastCommunicationTime(ctx, field)
 			case "noExpiration":
 				return ec.fieldContext_Host_noExpiration(ctx, field)
+			case "persistentDnsName":
+				return ec.fieldContext_Host_persistentDnsName(ctx, field)
 			case "provider":
 				return ec.fieldContext_Host_provider(ctx, field)
 			case "runningTask":
@@ -42930,6 +42990,8 @@ func (ec *executionContext) fieldContext_Query_host(ctx context.Context, field g
 				return ec.fieldContext_Host_lastCommunicationTime(ctx, field)
 			case "noExpiration":
 				return ec.fieldContext_Host_noExpiration(ctx, field)
+			case "persistentDnsName":
+				return ec.fieldContext_Host_persistentDnsName(ctx, field)
 			case "provider":
 				return ec.fieldContext_Host_provider(ctx, field)
 			case "runningTask":
@@ -43979,6 +44041,8 @@ func (ec *executionContext) fieldContext_Query_myHosts(ctx context.Context, fiel
 				return ec.fieldContext_Host_lastCommunicationTime(ctx, field)
 			case "noExpiration":
 				return ec.fieldContext_Host_noExpiration(ctx, field)
+			case "persistentDnsName":
+				return ec.fieldContext_Host_persistentDnsName(ctx, field)
 			case "provider":
 				return ec.fieldContext_Host_provider(ctx, field)
 			case "runningTask":
@@ -63970,6 +64034,8 @@ func (ec *executionContext) fieldContext_Volume_host(ctx context.Context, field 
 				return ec.fieldContext_Host_lastCommunicationTime(ctx, field)
 			case "noExpiration":
 				return ec.fieldContext_Host_noExpiration(ctx, field)
+			case "persistentDnsName":
+				return ec.fieldContext_Host_persistentDnsName(ctx, field)
 			case "provider":
 				return ec.fieldContext_Host_provider(ctx, field)
 			case "runningTask":
@@ -74087,6 +74153,11 @@ func (ec *executionContext) _Host(ctx context.Context, sel ast.SelectionSet, obj
 			out.Values[i] = ec._Host_lastCommunicationTime(ctx, field, obj)
 		case "noExpiration":
 			out.Values[i] = ec._Host_noExpiration(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				atomic.AddUint32(&out.Invalids, 1)
+			}
+		case "persistentDnsName":
+			out.Values[i] = ec._Host_persistentDnsName(ctx, field, obj)
 			if out.Values[i] == graphql.Null {
 				atomic.AddUint32(&out.Invalids, 1)
 			}
