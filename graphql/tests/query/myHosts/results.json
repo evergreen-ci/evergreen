@@ -9,12 +9,14 @@
               "id": "i-06f80fa6e28f93b7d",
               "distroId": "ubuntu1604-small",
               "distro": { "workDir": "/data/mci", "id": "ubuntu1604-small" },
+              "persistentDnsName": "testuser-123.workstations.build.10gen.cc",
               "volumes": []
             },
             {
               "id": "i-0f81a2d39744003dd",
               "distroId": "ubuntu1604-large",
               "distro": { "workDir": "/data/mci", "id": "ubuntu1604-large" },
+              "persistentDnsName": "",
               "volumes": [
                 { "id": "vol-0b5ec54a106c6e976" },
                 { "id": "vol-015b745bb69a2a16b" }
@@ -27,12 +29,14 @@
                 "workDir": "/data/mci",
                 "id": "ubuntu1604-large"
               },
+              "persistentDnsName": "",
               "volumes": []
             },
             {
               "id": "recently-terminated-host",
               "distroId": "ubuntu1804-small",
               "distro": { "workDir": "/data/mci", "id": "ubuntu1804-small" },
+              "persistentDnsName": "",
               "volumes": []
             }
           ]
