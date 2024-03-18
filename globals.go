@@ -899,6 +899,34 @@ var (
 		HostStopped,
 	}
 
+	// StoppableHostStatuses represent all host statuses when it is possible to
+	// stop a running host.
+	StoppableHostStatuses = []string{
+		// If the host is already stopped, stopping it again is a no-op but not
+		// an error. It will remain stopped.
+		HostStopped,
+		// If the host is stopping but somehow gets stuck stopping (e.g. a
+		// timeout waiting for it to stop), this is an intermediate state, so it
+		// is valid to try stopping it again.
+		HostStopping,
+		// If the host is running, it can be stopped.
+		HostRunning,
+	}
+
+	// StoppableHostStatuses represent all host statuses when it is possible to
+	// start a stopped host.
+	StartableHostStatuses = []string{
+		// If the host is stopped, it can be started back up.
+		HostStopped,
+		// If the host is stopping but somehow gets stuck stopping (e.g. a
+		// timeout waiting for it to stop), this is an intermediate state, so it
+		// is valid to start it back up.
+		HostStopping,
+		// If the host is already running, starting it again is a no-op but not
+		// an error. It will remain running.
+		HostRunning,
+	}
+
 	StartedHostStatus = []string{
 		HostBuilding,
 		HostStarting,

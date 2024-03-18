@@ -341,7 +341,7 @@ func (r *finderSettingsInputResolver) Version(ctx context.Context, obj *model.AP
 
 // AcceptableHostIdleTime is the resolver for the acceptableHostIdleTime field.
 func (r *hostAllocatorSettingsInputResolver) AcceptableHostIdleTime(ctx context.Context, obj *model.APIHostAllocatorSettings, data int) error {
-	obj.AcceptableHostIdleTime = model.NewAPIDuration(time.Duration(data))
+	obj.AcceptableHostIdleTime = model.NewAPIDuration(time.Duration(data) * time.Millisecond)
 	return nil
 }
 
@@ -403,7 +403,7 @@ func (r *hostAllocatorSettingsInputResolver) Version(ctx context.Context, obj *m
 
 // TargetTime is the resolver for the targetTime field.
 func (r *plannerSettingsInputResolver) TargetTime(ctx context.Context, obj *model.APIPlannerSettings, data int) error {
-	obj.TargetTime = model.NewAPIDuration(time.Duration(data))
+	obj.TargetTime = model.NewAPIDuration(time.Duration(data) * time.Millisecond)
 	return nil
 }
 

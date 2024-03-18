@@ -3,7 +3,7 @@ mutation {
     opts: {
       distro: {
         name: "rhel71-power8-large"
-        adminOnly: false,
+        adminOnly: false
         workDir: ""
         mountpoints: ["/"]
         aliases: ["new-alias"]
@@ -74,7 +74,7 @@ mutation {
         }
         dispatcherSettings: { version: REVISED_WITH_DEPENDENCIES }
         hostAllocatorSettings: {
-          acceptableHostIdleTime: 30000000000
+          acceptableHostIdleTime: 30000
           feedbackRule: DEFAULT
           futureHostFraction: 0
           hostsOverallocatedRule: DEFAULT

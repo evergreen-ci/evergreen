@@ -563,7 +563,7 @@ func TestWriteUserDataHeaders(t *testing.T) {
 }
 
 func TestWriteUserDataPart(t *testing.T) {
-	t.Run("SucceedsWIthValidUserData", func(t *testing.T) {
+	t.Run("SucceedsWithValidUserData", func(t *testing.T) {
 		buf := &bytes.Buffer{}
 		mimeWriter := multipart.NewWriter(buf)
 		boundary := "some_boundary"

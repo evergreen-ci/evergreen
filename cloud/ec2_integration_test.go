@@ -99,12 +99,12 @@ func TestSpawnEC2InstanceOnDemand(t *testing.T) {
 	assert.NoError(h.Insert(ctx))
 	foundHosts, err := host.Find(ctx, host.IsUninitialized)
 	assert.NoError(err)
-	assert.Len(foundHosts, 1)
+	require.Len(foundHosts, 1)
 
 	assert.NoError(m.TerminateInstance(ctx, h, evergreen.User, ""))
 	foundHosts, err = host.Find(ctx, host.IsTerminated)
 	assert.NoError(err)
-	assert.Len(foundHosts, 1)
+	require.Len(foundHosts, 1)
 
 	instance, err := m.client.GetInstanceInfo(ctx, h.Id)
 	assert.NoError(err)
