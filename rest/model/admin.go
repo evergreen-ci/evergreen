@@ -38,6 +38,7 @@ func NewConfigModel() *APIAdminSettings {
 		Scheduler:         &APISchedulerConfig{},
 		ServiceFlags:      &APIServiceFlags{},
 		Slack:             &APISlackConfig{},
+		SleepSchedule:     &APISleepScheduleConfig{},
 		Splunk:            &APISplunkConfig{},
 		TaskLimits:        &APITaskLimitsConfig{},
 		Triggers:          &APITriggerConfig{},
@@ -89,6 +90,7 @@ type APIAdminSettings struct {
 	Scheduler           *APISchedulerConfig               `json:"scheduler,omitempty"`
 	ServiceFlags        *APIServiceFlags                  `json:"service_flags,omitempty"`
 	Slack               *APISlackConfig                   `json:"slack,omitempty"`
+	SleepSchedule       *APISleepScheduleConfig           `json:"sleep_schedule,omitempty"`
 	SSHKeyDirectory     *string                           `json:"ssh_key_directory,omitempty"`
 	SSHKeyPairs         []APISSHKeyPair                   `json:"ssh_key_pairs,omitempty"`
 	Splunk              *APISplunkConfig                  `json:"splunk,omitempty"`
@@ -113,6 +115,8 @@ func (as *APIAdminSettings) BuildFromService(h interface{}) error {
 		for i := 0; i < apiModelReflect.NumField(); i++ {
 			propName := apiModelReflect.Type().Field(i).Name
 			val := apiModelReflect.FieldByName(propName)
+			if strings.ToLower(propName) == "sleepscheduleconfig" {
+			}
 			if val.IsNil() {
 				continue
 			}
@@ -2272,6 +2276,29 @@ func (a *APISlackOptions) ToService() (interface{}, error) {
 		Fields:        a.Fields,
 		AllFields:     a.AllFields,
 		FieldsSet:     a.FieldsSet,
+	}, nil
+}
+
+type APISleepScheduleConfig struct {
+	PermanentlyExemptHosts []string `json:"permanently_exempt_hosts"`
+}
+
+func (a *APISleepScheduleConfig) BuildFromService(h interface{}) error {
+	switch v := h.(type) {
+	case evergreen.SleepScheduleConfig:
+		a.PermanentlyExemptHosts = v.PermanentlyExemptHosts
+	default:
+		return errors.Errorf("programmatic error: expected sleep schedule config but got type %T", h)
+	}
+	return nil
+}
+
+func (a *APISleepScheduleConfig) ToService() (interface{}, error) {
+	if a == nil {
+		return evergreen.SleepScheduleConfig{}, nil
+	}
+	return evergreen.SleepScheduleConfig{
+		PermanentlyExemptHosts: a.PermanentlyExemptHosts,
 	}, nil
 }
 

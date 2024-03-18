@@ -809,6 +809,26 @@ func (s *AdminSuite) TestHostJasperConfig() {
 	s.Equal(config, settings.HostJasper)
 }
 
+func (s *AdminSuite) TestSleepScheduleConfig() {
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
+	emptyConfig := SleepScheduleConfig{}
+	s.NoError(emptyConfig.ValidateAndDefault())
+
+	config := SleepScheduleConfig{
+		PermanentlyExemptHosts: []string{"host0", "host1"},
+	}
+
+	s.NoError(config.ValidateAndDefault())
+	s.NoError(config.Set(ctx))
+
+	settings, err := GetConfig(ctx)
+	s.Require().NoError(err)
+
+	s.Equal(config, settings.SleepSchedule)
+}
+
 func (s *AdminSuite) TestAddEC2RegionToSSHKey() {
 	env := GetEnvironment()
 	ctx, cancel := env.Context()
