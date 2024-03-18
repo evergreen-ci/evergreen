@@ -895,11 +895,12 @@ func (s *GitGetProjectSuite) TestMultipleModules() {
 	// Test module 2.
 	cmd = exec.Command("git", "rev-parse", "HEAD")
 	cmd.Dir = conf.WorkDir + "/src/hello/module-2/sample-2/"
+	out = bytes.Buffer{}
 	cmd.Stdout = &out
 	err = cmd.Run()
 	s.NoError(err)
 	ref = strings.Trim(out.String(), "\n")
-	s.Equal(sample1Hash, ref)
+	s.Equal(sample2Hash, ref)
 	s.NoError(logger.Close())
 	toCheck = fmt.Sprintf("Using revision/ref '%s' for module 'sample-2' (reason: from manifest).", sample2Hash)
 	foundMsg = false
