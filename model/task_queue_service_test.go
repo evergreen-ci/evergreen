@@ -194,7 +194,7 @@ func (s *taskDAGDispatchServiceSuite) TestOutsideTasksWithTaskGroupDependencies(
 				TaskId:       "taskgroup_task3",
 				Status:       "success",
 				Unattainable: false,
-						},
+			},
 		},
 	}
 	item5 := TaskQueueItem{
@@ -307,17 +307,17 @@ func (s *taskDAGDispatchServiceSuite) TestIntraTaskGroupDependencies() {
 				TaskId:       "task2",
 				Status:       "success",
 				Unattainable: false,
-						},
+			},
 			{
 				TaskId:       "task4",
 				Status:       "success",
 				Unattainable: false,
-						},
+			},
 			{
 				TaskId:       "task3",
 				Status:       "success",
 				Unattainable: false,
-						},
+			},
 		},
 		// TaskGroupOrder:      4,
 	}
@@ -403,12 +403,12 @@ func (s *taskDAGDispatchServiceSuite) TestIntraTaskGroupDependencies() {
 				TaskId:       "task2",
 				Status:       "success",
 				Unattainable: false,
-						},
+			},
 			{
 				TaskId:       "task4",
 				Status:       "success",
 				Unattainable: false,
-						},
+			},
 		},
 		// TaskGroupOrder:      3,
 	}
@@ -455,7 +455,7 @@ func (s *taskDAGDispatchServiceSuite) TestIntraTaskGroupDependencies() {
 				TaskId:       "task2",
 				Status:       "success",
 				Unattainable: false,
-						},
+			},
 		},
 		// TaskGroupOrder:      2,
 	}

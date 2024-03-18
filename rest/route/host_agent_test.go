@@ -180,6 +180,9 @@ func TestHostNextTask(t *testing.T) {
 								Method:        distro.BootstrapMethodSSH,
 								Communication: distro.CommunicationMethodRPC,
 							},
+							DispatcherSettings: distro.DispatcherSettings{
+								Version: evergreen.DispatcherVersionRevisedWithDependencies,
+							},
 						},
 						Secret:           hostSecret,
 						Provisioned:      true,
@@ -318,6 +321,9 @@ func TestHostNextTask(t *testing.T) {
 						Distro: distro.Distro{
 							Id:       distroID,
 							Provider: evergreen.ProviderNameEc2Fleet,
+							DispatcherSettings: distro.DispatcherSettings{
+								Version: evergreen.DispatcherVersionRevisedWithDependencies,
+							},
 						},
 						Secret:        hostSecret,
 						Provisioned:   true,
@@ -341,6 +347,9 @@ func TestHostNextTask(t *testing.T) {
 						Communication: distro.CommunicationMethodRPC,
 					},
 					Provider: evergreen.ProviderNameEc2Fleet,
+					DispatcherSettings: distro.DispatcherSettings{
+						Version: evergreen.DispatcherVersionRevisedWithDependencies,
+					},
 				},
 				Secret:        hostSecret,
 				Provisioned:   true,
@@ -430,6 +439,9 @@ func TestHostNextTask(t *testing.T) {
 						Id: "nonLegacyHost",
 						Distro: distro.Distro{
 							Id: distroID,
+							DispatcherSettings: distro.DispatcherSettings{
+								Version: evergreen.DispatcherVersionRevisedWithDependencies,
+							},
 							BootstrapSettings: distro.BootstrapSettings{
 								Method:        distro.BootstrapMethodUserData,
 								Communication: distro.CommunicationMethodRPC,
