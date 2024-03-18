@@ -24,6 +24,6 @@ Once a webhook is configured, the following data will be sent to the webhook whe
 ```
 
 ## How to Update Created Tickets
-After a ticket is filed using the webhook, evergreen needs to be notified of the newly filed ticket's key and url so that the ticket can be stored and displayed to the user under **Tickets Created From This Task**. To do that, please use the [created_tickets endpoint](https://github.com/evergreen-ci/evergreen/wiki/REST-V2-Usage#send-a-newly-created-ticket-for-a-task).
+After a ticket is filed using the webhook, evergreen needs to be notified of the newly filed ticket's key and url so that the ticket can be stored and displayed to the user under **Tickets Created From This Task**. To do that, please use the [created_tickets endpoint](../API/REST-V2-Usage.mdx#tag/annotations/paths/~1tasks~1{task_id}~1created_ticket/put).
 ![image](https://user-images.githubusercontent.com/13104717/108778354-3f41f080-7533-11eb-8ae5-bcd9ac708724.png) 
 

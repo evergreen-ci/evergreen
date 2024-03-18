@@ -298,7 +298,7 @@ A test result can be linked to log files written to and ingested from the
 task's [reserved test logs directory](Task-Output-Directory#test-logs).
 
 Test log URLs are automatically generated and provided via the
-[test logs API](../API/REST-V2-Usage#tag/tasks/paths/~1tasks~1%7Btask_id%7D~1build~1TestLogs~1%7Bpath%7D/get)
+[test logs API](../API/REST-V2-Usage.mdx#tag/tasks/paths/~1tasks~1%7Btask_id%7D~1build~1TestLogs~1%7Bpath%7D/get)
 
 
 | Name             | Type          | Description                                                                                                         |
@@ -526,7 +526,7 @@ Parameters:
 
 -   `dir`: the directory to clone into
 -   `revisions`: For commit builds, each module should be passed as
-    `<module_name> : ${<module_name>_rev}` (these are loaded from the [manifest](../API/REST-V2-Usage.md#manifest) 
+    `<module_name> : ${<module_name>_rev}` (these are loaded from the [manifest](../API/REST-V2-Usage.mdx#manifest) 
     at the beginning of the command). 
     For patch builds, the hash
     must be passed directly as `<module_name> : <hash>`. Note that this

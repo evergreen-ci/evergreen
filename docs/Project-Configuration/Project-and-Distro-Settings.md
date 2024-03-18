@@ -536,7 +536,7 @@ Special Fields:
 - `{version_id}` — if this is included in the metadata link, we will sub in the ID when rendering the link
 
 This may also be added to individual tasks using `metadata_links`
-for [task annotations](https://docs.devprod.prod.corp.mongodb.com/evergreen/API/REST-V2-Usage#task-annotations).
+for [task annotations](../API/REST-V2-Usage.mdx#task-annotations).
 
 
 ## Distro Settings

@@ -68,7 +68,7 @@ foo       bar           this is a demonstration
 ```
 If testing local changes, you can use ``--path <path_to_file>`` instead of ``--project``.
 
-Parameters can also be retrieved with rest route [/projects/<project_id>/parameters](../API/REST-V2-Usage.md#get-current-parameters-for-a-project), although descriptions are not returned here.
+Parameters can also be retrieved with rest route [/projects/<project_id>/parameters](../API/REST-V2-Usage.mdx#get-current-parameters-for-a-project), although descriptions are not returned here.
 
 #### Get Parameters for a Specific Patch
 

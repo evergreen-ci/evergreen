@@ -1,7 +1,7 @@
 # Legacy API
 ----------
 
-*Note*: For the REST v2 API documentation, please see [REST V2 Usage](REST-V2-Usage).
+*Note*: For the REST v2 API documentation, please see [REST V2 Usage](REST-V2-Usage.mdx).
 
 ## A note on authentication
 
@@ -103,7 +103,7 @@ _Note that you must use API credentials to see private projects._
             ...
           }
         },
-        "debian71": { ... },
+        "debian71": { ... }
       }
     },
     {
