@@ -152,6 +152,7 @@ func TestHostNextTask(t *testing.T) {
 					h.NeedsReprovision = ""
 					rh.details = &apimodels.GetNextTaskDetails{AgentRevision: evergreen.AgentVersion}
 					rh.host = h
+					rh.taskDispatcher = model.NewTaskDispatchService(time.Hour)
 					resp := rh.Run(ctx)
 					assert.NotNil(t, resp)
 					assert.Equal(t, resp.Status(), http.StatusOK)
@@ -170,7 +171,7 @@ func TestHostNextTask(t *testing.T) {
 				},
 			} {
 				t.Run(testName, func(t *testing.T) {
-					require.NoError(t, db.Clear(host.Collection))
+					require.NoError(t, db.ClearCollections(host.Collection, distro.Collection))
 					h := host.Host{
 						Id: "id",
 						Distro: distro.Distro{
@@ -190,6 +191,7 @@ func TestHostNextTask(t *testing.T) {
 						NeedsReprovision: host.ReprovisionToNew,
 					}
 					require.NoError(t, h.Insert(ctx))
+					require.NoError(t, h.Distro.Insert(ctx))
 					handler := hostAgentNextTask{
 						env: env,
 					}
@@ -315,7 +317,7 @@ func TestHostNextTask(t *testing.T) {
 				},
 			} {
 				t.Run(testName, func(t *testing.T) {
-					require.NoError(t, db.Clear(host.Collection))
+					require.NoError(t, db.ClearCollections(host.Collection, distro.Collection))
 					intentHost := host.Host{
 						Id: "intentHost",
 						Distro: distro.Distro{
@@ -332,12 +334,14 @@ func TestHostNextTask(t *testing.T) {
 						Provider:      evergreen.ProviderNameEc2Fleet,
 					}
 					require.NoError(t, intentHost.Insert(ctx))
+					require.NoError(t, intentHost.Distro.Insert(ctx))
 					handler := hostAgentNextTask{}
 					testCase(ctx, t, handler)
 				})
 			}
 		},
 		"NonLegacyHost": func(ctx context.Context, t *testing.T, rh *hostAgentNextTask) {
+			require.NoError(t, db.ClearCollections(host.Collection, distro.Collection))
 			nonLegacyHost := host.Host{
 				Id: "nonLegacyHost",
 				Distro: distro.Distro{
@@ -357,6 +361,7 @@ func TestHostNextTask(t *testing.T) {
 				AgentRevision: evergreen.AgentVersion,
 			}
 			require.NoError(t, nonLegacyHost.Insert(ctx))
+			require.NoError(t, nonLegacyHost.Distro.Insert(ctx))
 
 			for _, status = range []string{evergreen.HostQuarantined, evergreen.HostDecommissioned, evergreen.HostTerminated} {
 				require.NoError(t, nonLegacyHost.SetStatus(ctx, status, evergreen.User, ""))
@@ -383,6 +388,7 @@ func TestHostNextTask(t *testing.T) {
 					require.NoError(t, nonLegacyHost.SetProvisionedNotRunning(ctx))
 					rh.details = &apimodels.GetNextTaskDetails{AgentRevision: evergreen.AgentVersion}
 					rh.host = nonLegacyHost
+					rh.taskDispatcher = model.NewTaskDispatchService(time.Hour)
 					resp := rh.Run(ctx)
 					taskResp, ok := resp.Data().(apimodels.NextTaskResponse)
 					require.True(t, ok, resp.Data())
@@ -433,7 +439,7 @@ func TestHostNextTask(t *testing.T) {
 				},
 			} {
 				t.Run(testName, func(t *testing.T) {
-					require.NoError(t, db.ClearCollections(host.Collection, task.Collection))
+					require.NoError(t, db.ClearCollections(host.Collection, task.Collection, distro.Collection))
 					handler := hostAgentNextTask{}
 					nonLegacyHost := &host.Host{
 						Id: "nonLegacyHost",
@@ -457,7 +463,9 @@ func TestHostNextTask(t *testing.T) {
 					require.NoError(t, task3.Insert())
 					require.NoError(t, task4.Insert())
 					require.NoError(t, nonLegacyHost.Insert(ctx))
+					require.NoError(t, nonLegacyHost.Distro.Insert(ctx))
 					handler.host = nonLegacyHost
+					handler.taskDispatcher = model.NewTaskDispatchService(time.Hour)
 					testCase(ctx, t, handler)
 				})
 			}
@@ -650,6 +658,9 @@ func TestHostNextTask(t *testing.T) {
 				Id: "h1",
 				Distro: distro.Distro{
 					Id: distroID,
+					DispatcherSettings: distro.DispatcherSettings{
+						Version: evergreen.DispatcherVersionRevisedWithDependencies,
+					},
 				},
 				Secret:        hostSecret,
 				Provisioned:   true,
@@ -678,6 +689,7 @@ func TestHostNextTask(t *testing.T) {
 
 			r.host = &sampleHost
 			r.details = &apimodels.GetNextTaskDetails{}
+			r.taskDispatcher = model.NewTaskDispatchService(time.Hour)
 			tCase(ctx, t, r)
 		})
 	}

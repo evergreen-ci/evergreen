@@ -489,7 +489,7 @@ func assignNextAvailableTask(ctx context.Context, env evergreen.Environment, tas
 				return nil, false, errors.Wrap(err, "problem getting next task")
 			}
 		default:
-			return nil, false, errors.Errorf("invalid dispatcher version '%s'", d.DispatcherSettings.Version)
+			return nil, false, errors.Errorf("invalid dispatcher version '%s' for host '%s'", d.DispatcherSettings.Version, currentHost.Id)
 		}
 
 		if queueItem == nil {

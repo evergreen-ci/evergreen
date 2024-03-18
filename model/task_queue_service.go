@@ -2,6 +2,7 @@ package model
 
 import (
 	"context"
+	"fmt"
 	"sync"
 	"time"
 
@@ -88,6 +89,7 @@ func (s *taskDispatchService) ensureQueue(ctx context.Context, distroID string) 
 	if foundDistro != nil {
 		d = *foundDistro
 	}
+	fmt.Println("Found distro is empty -- using nothing")
 	// If there is a "distro": *basicCachedDispatcherImpl in the cachedDispatchers map, return that.
 	// Otherwise, get the "distro"'s taskQueue from the database; seed its cachedDispatcher; put that in the map and return it.
 	s.mu.Lock()
