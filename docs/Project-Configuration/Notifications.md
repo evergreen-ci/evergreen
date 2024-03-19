@@ -1,6 +1,6 @@
 # Notifications
 
-These are for setting up personal user notifications. For project-level notifications, see [project settings](Project-and-Distro-Settings#project-level-notifications).
+These are for setting up personal user notifications. For project-level notifications, see [project settings](Project-and-Distro-Settings.md#project-level-notifications).
 
 Evergreen has the ability to issue notifications based on events that happen in the system.
 
