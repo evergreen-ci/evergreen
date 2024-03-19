@@ -355,7 +355,7 @@ func TestPopulatePodAllocatorJobs(t *testing.T) {
 			doesNotNeedAllocation.Project = ref.Id
 			require.NoError(t, doesNotNeedAllocation.Insert())
 
-			jobs, err := podAllocatorJobs(ctx, time.Date(2009, time.November, 10, 23, 0, 0, 0, time.UTC))
+			jobs, err := podAllocatorJobs(ctx, env, time.Date(2009, time.November, 10, 23, 0, 0, 0, time.UTC))
 			require.NoError(t, err)
 			require.NoError(t, env.Remote.PutMany(ctx, jobs))
 			assert.Zero(t, env.Remote.Stats(ctx))
@@ -368,7 +368,7 @@ func TestPopulatePodAllocatorJobs(t *testing.T) {
 			staleNeedsAllocation.Project = ref.Id
 			require.NoError(t, staleNeedsAllocation.Insert())
 
-			jobs, err := podAllocatorJobs(ctx, time.Date(2009, time.November, 10, 23, 0, 0, 0, time.UTC))
+			jobs, err := podAllocatorJobs(ctx, env, time.Date(2009, time.November, 10, 23, 0, 0, 0, time.UTC))
 			require.NoError(t, err)
 			require.NoError(t, env.Remote.PutMany(ctx, jobs))
 			assert.Zero(t, env.Remote.Stats(ctx))
@@ -395,7 +395,7 @@ func TestPopulatePodAllocatorJobs(t *testing.T) {
 			needsAllocation.Project = ref.Id
 			require.NoError(t, needsAllocation.Insert())
 
-			jobs, err := podAllocatorJobs(ctx, time.Date(2009, time.November, 10, 23, 0, 0, 0, time.UTC))
+			jobs, err := podAllocatorJobs(ctx, env, time.Date(2009, time.November, 10, 23, 0, 0, 0, time.UTC))
 			require.NoError(t, err)
 			require.NoError(t, env.Remote.PutMany(ctx, jobs))
 			assert.Zero(t, env.Remote.Stats(ctx), "should not enqueue more pod allocator jobs when max parallel pod request limit is reached")
@@ -414,7 +414,7 @@ func TestPopulatePodAllocatorJobs(t *testing.T) {
 			needsAllocation.Project = ref.Id
 			require.NoError(t, needsAllocation.Insert())
 
-			jobs, err := podAllocatorJobs(ctx, time.Date(2009, time.November, 10, 23, 0, 0, 0, time.UTC))
+			jobs, err := podAllocatorJobs(ctx, env, time.Date(2009, time.November, 10, 23, 0, 0, 0, time.UTC))
 			require.NoError(t, err)
 			require.NoError(t, env.Remote.PutMany(ctx, jobs))
 			assert.Zero(t, env.Remote.Stats(ctx), "pod allocator job should not be created when max parallel pod requset limit is reached")
