@@ -17,5 +17,5 @@ The left side panel contains the build variants that are available for the proje
  
 - **Configure:** the default which contains the tasks that are selectable for the variant, a search bar which allows you to search for tasks by name, a button to **Select All** visible tasks, and a button to **Deselect All** visible tasks.
 - **Changes** which shows the files that have been changed in the patch
-- **Parameters** which allows you to specify [custom parameters](Project-Configuration/Parameterized-Builds) to pass into your patch build.
+- **Parameters** which allows you to specify [custom parameters](../Project-Configuration/Parameterized-Builds) to pass into your patch build.
 
