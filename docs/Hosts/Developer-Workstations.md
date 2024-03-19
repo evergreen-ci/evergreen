@@ -46,7 +46,7 @@ checked out and running on workstations, though this feature is not
 necessarily dependent on workstations, and could be used on local
 systems.
 
-Project settings include a ["Workstation Setup" section](../Project-Configuration/Project-and-Distro-Settings.md#virtual-workstation-commands)
+Project settings include a ["Workstation Setup" section](../Project-Configuration/Project-and-Distro-Settings#virtual-workstation-commands)
 where administrators declare a number of simple commands (and directory
 contexts) that will run a project's setup. These commands are *not* shell
 interpolated, and are *not* meant to provision the development environment (e.g.

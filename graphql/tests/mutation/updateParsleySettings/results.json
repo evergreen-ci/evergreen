@@ -1,0 +1,16 @@
+{
+  "tests": [
+    {
+      "query_file": "update_parsley_settings.graphql",
+      "result": {
+        "data": {
+          "updateParsleySettings": {
+            "parsleySettings": {
+              "sectionsEnabled": false
+            }
+          }
+        }
+      }
+    }
+  ]
+}

@@ -76,7 +76,6 @@ var (
 	LastCommunicationTimeKey           = bsonutil.MustHaveTag(Host{}, "LastCommunicationTime")
 	UserHostKey                        = bsonutil.MustHaveTag(Host{}, "UserHost")
 	ZoneKey                            = bsonutil.MustHaveTag(Host{}, "Zone")
-	ProjectKey                         = bsonutil.MustHaveTag(Host{}, "Project")
 	ProvisionOptionsKey                = bsonutil.MustHaveTag(Host{}, "ProvisionOptions")
 	TaskCountKey                       = bsonutil.MustHaveTag(Host{}, "TaskCount")
 	StartTimeKey                       = bsonutil.MustHaveTag(Host{}, "StartTime")
@@ -97,6 +96,7 @@ var (
 	HomeVolumeIDKey                    = bsonutil.MustHaveTag(Host{}, "HomeVolumeID")
 	PortBindingsKey                    = bsonutil.MustHaveTag(Host{}, "PortBindings")
 	IsVirtualWorkstationKey            = bsonutil.MustHaveTag(Host{}, "IsVirtualWorkstation")
+	SleepScheduleKey                   = bsonutil.MustHaveTag(Host{}, "SleepSchedule")
 	SpawnOptionsTaskIDKey              = bsonutil.MustHaveTag(SpawnOptions{}, "TaskID")
 	SpawnOptionsTaskExecutionNumberKey = bsonutil.MustHaveTag(SpawnOptions{}, "TaskExecutionNumber")
 	SpawnOptionsBuildIDKey             = bsonutil.MustHaveTag(SpawnOptions{}, "BuildID")
@@ -114,6 +114,7 @@ var (
 	VolumeAttachmentIDKey              = bsonutil.MustHaveTag(VolumeAttachment{}, "VolumeID")
 	VolumeDeviceNameKey                = bsonutil.MustHaveTag(VolumeAttachment{}, "DeviceName")
 	DockerOptionsStdinDataKey          = bsonutil.MustHaveTag(DockerOptions{}, "StdinData")
+	SleepScheduleShouldKeepOffKey      = bsonutil.MustHaveTag(SleepScheduleInfo{}, "ShouldKeepOff")
 )
 
 var (
@@ -1238,22 +1239,83 @@ var (
 	awsSecretKey = bsonutil.MustHaveTag(EC2ProviderSettings{}, "Secret")
 )
 
-func StartingHostsByClient(ctx context.Context, limit int) (map[ClientOptions][]Host, error) {
-	if limit <= 0 {
-		limit = 500
-	}
-	results := []struct {
-		Options ClientOptions `bson:"_id"`
-		Hosts   []Host        `bson:"hosts"`
-	}{}
+const defaultStartingHostsByClientLimit = 500
 
-	pipeline := []bson.M{
+// FindStartingHostsByClient returns a list mapping cloud provider client
+// options to hosts with those client options that are starting up. The limit
+// limits the number of hosts that can be returned. The limit is applied
+// separately for task hosts and spawn hosts/host.create hosts.
+func FindStartingHostsByClient(ctx context.Context, limit int) ([]HostsByClient, error) {
+	if limit <= 0 {
+		limit = defaultStartingHostsByClientLimit
+	}
+
+	nonTaskHosts, err := findStartingNonTaskHosts(ctx, limit)
+	if err != nil {
+		return nil, errors.Wrap(err, "finding starting non-task hosts")
+	}
+
+	taskHosts, err := findStartingTaskHosts(ctx, limit)
+	if err != nil {
+		return nil, errors.Wrap(err, "finding starting task hosts")
+	}
+
+	return append(nonTaskHosts, taskHosts...), nil
+}
+
+// HostsByClient represents an aggregation of hosts with common cloud provider
+// client options.
+type HostsByClient struct {
+	Options ClientOptions `bson:"_id"`
+	Hosts   []Host        `bson:"hosts"`
+}
+
+func findStartingNonTaskHosts(ctx context.Context, limit int) ([]HostsByClient, error) {
+	pipeline := hostsByClientPipeline([]bson.M{
 		{
 			"$match": bson.M{
 				StatusKey:      evergreen.HostStarting,
 				ProvisionedKey: false,
+				StartedByKey:   bson.M{"$ne": evergreen.User},
 			},
 		},
+	}, limit)
+	cur, err := evergreen.GetEnvironment().DB().Collection(Collection).Aggregate(ctx, pipeline)
+	if err != nil {
+		return nil, errors.Wrap(err, "aggregating starting spawn hosts and host.create hosts by client options")
+	}
+	results := []HostsByClient{}
+	if err = cur.All(ctx, &results); err != nil {
+		return nil, errors.Wrap(err, "decoding starting hosts by client options")
+	}
+
+	return results, nil
+}
+
+func findStartingTaskHosts(ctx context.Context, limit int) ([]HostsByClient, error) {
+	pipeline := hostsByClientPipeline([]bson.M{
+		{
+			"$match": bson.M{
+				StatusKey:      evergreen.HostStarting,
+				ProvisionedKey: false,
+				StartedByKey:   evergreen.User,
+			},
+		},
+	}, limit)
+	cur, err := evergreen.GetEnvironment().DB().Collection(Collection).Aggregate(ctx, pipeline)
+	if err != nil {
+		return nil, errors.Wrap(err, "aggregating starting task hosts by client options")
+	}
+	results := []HostsByClient{}
+	if err = cur.All(ctx, &results); err != nil {
+		return nil, errors.Wrap(err, "decoding starting hosts by client options")
+	}
+
+	return results, nil
+}
+
+func hostsByClientPipeline(pipeline []bson.M, limit int) []bson.M {
+	return append(pipeline, []bson.M{
 		{
 			"$sort": bson.M{
 				CreateTimeKey: 1,
@@ -1282,21 +1344,7 @@ func StartingHostsByClient(ctx context.Context, limit int) (map[ClientOptions][]
 				"hosts": bson.M{"$push": "$host"},
 			},
 		},
-	}
-	cur, err := evergreen.GetEnvironment().DB().Collection(Collection).Aggregate(ctx, pipeline)
-	if err != nil {
-		return nil, errors.Wrap(err, "aggregating starting hosts by client options")
-	}
-	if err = cur.All(ctx, &results); err != nil {
-		return nil, errors.Wrap(err, "decoding starting hosts by client options")
-	}
-
-	optionsMap := make(map[ClientOptions][]Host)
-	for _, result := range results {
-		optionsMap[result.Options] = result.Hosts
-	}
-
-	return optionsMap, nil
+	}...)
 }
 
 // UnsafeReplace atomically removes the host given by the idToRemove and inserts

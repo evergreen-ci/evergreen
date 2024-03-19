@@ -38,8 +38,8 @@ func (cloudHost *CloudHost) TerminateInstance(ctx context.Context, user, reason 
 	return cloudHost.CloudMgr.TerminateInstance(ctx, cloudHost.Host, user, reason)
 }
 
-func (cloudHost *CloudHost) StopInstance(ctx context.Context, user string) error {
-	return cloudHost.CloudMgr.StopInstance(ctx, cloudHost.Host, user)
+func (cloudHost *CloudHost) StopInstance(ctx context.Context, shouldKeepOff bool, user string) error {
+	return cloudHost.CloudMgr.StopInstance(ctx, cloudHost.Host, shouldKeepOff, user)
 }
 
 func (cloudHost *CloudHost) StartInstance(ctx context.Context, user string) error {

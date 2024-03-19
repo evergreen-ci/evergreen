@@ -54,7 +54,7 @@ func (c *setDownstream) Execute(ctx context.Context,
 		return errors.WithStack(err)
 	}
 
-	filename := getWorkingDirectory(conf, c.YamlFile)
+	filename := GetWorkingDirectory(conf, c.YamlFile)
 
 	_, err = os.Stat(filename)
 	if os.IsNotExist(err) {

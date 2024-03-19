@@ -7,6 +7,14 @@ input PublicKeyInput {
   name: String!
 }
 
+input UpdateParsleySettingsInput {
+  parsleySettings: ParsleySettingsInput!
+}
+
+input ParsleySettingsInput {
+  sectionsEnabled: Boolean
+}
+
 """
 UserSettingsInput is the input to the updateUserSettings mutation.
 It is used to update user information such as GitHub or Slack username.
@@ -80,6 +88,7 @@ type User {
   displayName: String!
   emailAddress: String!
   parsleyFilters: [ParsleyFilter!]!
+  parsleySettings: ParsleySettings!
   patches(patchesInput: PatchesInput!): Patches! # user patches
   permissions: Permissions!
   subscriptions: [GeneralSubscription!]
@@ -104,6 +113,17 @@ type UserConfig {
   api_server_host: String!
   ui_server_host: String!
   user: String!
+}
+
+type UpdateParsleySettingsPayload {
+  parsleySettings: ParsleySettings
+}
+
+"""
+ParsleySettings contains information about a user's settings for Parsley.
+"""
+type ParsleySettings {
+  sectionsEnabled: Boolean!
 }
 
 """

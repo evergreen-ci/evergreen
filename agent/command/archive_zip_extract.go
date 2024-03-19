@@ -44,11 +44,11 @@ func (e *zipExtract) Execute(ctx context.Context,
 
 	// if the target is a relative path, join it to the working dir
 	if !filepath.IsAbs(e.TargetDirectory) {
-		e.TargetDirectory = getWorkingDirectory(conf, e.TargetDirectory)
+		e.TargetDirectory = GetWorkingDirectory(conf, e.TargetDirectory)
 	}
 
 	if !filepath.IsAbs(e.ArchivePath) {
-		e.ArchivePath = getWorkingDirectory(conf, e.ArchivePath)
+		e.ArchivePath = GetWorkingDirectory(conf, e.ArchivePath)
 	}
 
 	if _, err := os.Stat(e.ArchivePath); os.IsNotExist(err) {
