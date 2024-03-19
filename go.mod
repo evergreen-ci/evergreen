@@ -185,7 +185,7 @@ require (
 	github.com/xi2/xz v0.0.0-20171230120015-48954b6210f8 // indirect
 	github.com/xrash/smetrics v0.0.0-20201216005158-039620a65673 // indirect
 	github.com/youmark/pkcs8 v0.0.0-20201027041543-1326539a0a0a // indirect
-	github.com/yusufpapurcu/wmi v1.2.3 // indirect
+	github.com/yusufpapurcu/wmi v1.2.4 // indirect
 	go.opentelemetry.io/contrib v1.21.1 // indirect
 	golang.org/x/exp v0.0.0-20230321023759-10a507213a29 // indirect
 	golang.org/x/mod v0.12.0 // indirect
@@ -206,7 +206,7 @@ require (
 	github.com/evergreen-ci/tarjan v0.0.0-20170824211642-fcd3f3321826
 	github.com/gorilla/handlers v1.5.2
 	github.com/mongodb/jasper v0.0.0-20240214180020-54b4948d176b
-	github.com/shirou/gopsutil/v3 v3.23.12
+	github.com/shirou/gopsutil/v3 v3.24.2
 	gopkg.in/yaml.v3 v3.0.1
 )
 
