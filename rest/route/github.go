@@ -342,8 +342,9 @@ func (gh *githubHookApi) rerunCheckRun(ctx context.Context, owner, repo string, 
 		Summary: utility.ToStringPtr("Please wait for task to complete"),
 	}
 
-	// Get the task again to ensure we have the latest execution.
-	refreshedTask, taskErr := data.FindTask(taskIDFromCheckrun)
+	// Get the task again to ensure we have the latest execution for link to task.
+	// Should still update check run even if task isn't refreshed.
+	latestExecutionForTask, taskErr := data.FindTask(taskIDFromCheckrun)
 	if taskErr != nil {
 		grip.Error(message.Fields{
 			"source":  "GitHub hook",
@@ -354,9 +355,9 @@ func (gh *githubHookApi) rerunCheckRun(ctx context.Context, owner, repo string, 
 			"task":    taskIDFromCheckrun,
 			"message": "finding refreshed task",
 		})
-		refreshedTask = taskToRestart
+		latestExecutionForTask = taskToRestart
 	}
-	_, err = thirdparty.UpdateCheckRun(ctx, owner, repo, gh.settings.ApiUrl, checkRun.GetID(), refreshedTask, output)
+	_, err = thirdparty.UpdateCheckRun(ctx, owner, repo, gh.settings.ApiUrl, checkRun.GetID(), latestExecutionForTask, output)
 	if err != nil {
 		grip.Error(message.WrapError(err, message.Fields{
 			"source":    "GitHub hook",
