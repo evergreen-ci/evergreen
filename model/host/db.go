@@ -76,7 +76,6 @@ var (
 	LastCommunicationTimeKey           = bsonutil.MustHaveTag(Host{}, "LastCommunicationTime")
 	UserHostKey                        = bsonutil.MustHaveTag(Host{}, "UserHost")
 	ZoneKey                            = bsonutil.MustHaveTag(Host{}, "Zone")
-	ProjectKey                         = bsonutil.MustHaveTag(Host{}, "Project")
 	ProvisionOptionsKey                = bsonutil.MustHaveTag(Host{}, "ProvisionOptions")
 	TaskCountKey                       = bsonutil.MustHaveTag(Host{}, "TaskCount")
 	StartTimeKey                       = bsonutil.MustHaveTag(Host{}, "StartTime")
