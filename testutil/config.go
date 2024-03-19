@@ -384,6 +384,9 @@ func MockConfig() *evergreen.Settings {
 			SleepScheduleDisabled:           true,
 			SystemFailedTaskRestartDisabled: true,
 		},
+		SleepSchedule: evergreen.SleepScheduleConfig{
+			PermanentlyExemptHosts: []string{"host0", "host1"},
+		},
 		SSHKeyDirectory: "/ssh_key_directory",
 		SSHKeyPairs: []evergreen.SSHKeyPair{
 			{

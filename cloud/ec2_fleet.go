@@ -323,7 +323,7 @@ func (m *ec2FleetManager) TerminateInstance(ctx context.Context, h *host.Host, u
 }
 
 // StopInstance should do nothing for EC2 Fleet.
-func (m *ec2FleetManager) StopInstance(context.Context, *host.Host, string) error {
+func (m *ec2FleetManager) StopInstance(context.Context, *host.Host, bool, string) error {
 	return errors.New("can't stop instances for EC2 fleet provider")
 }
 

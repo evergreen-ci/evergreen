@@ -45,7 +45,7 @@ func TestGetJoinedWithWorkDir(t *testing.T) {
 	expected, err := filepath.Abs("/foo/bar")
 	require.NoError(t, err)
 	expected = filepath.ToSlash(expected)
-	actual, err := filepath.Abs(getWorkingDirectory(conf, relativeDir))
+	actual, err := filepath.Abs(GetWorkingDirectory(conf, relativeDir))
 	require.NoError(t, err)
 	actual = filepath.ToSlash(actual)
 	assert.Equal(t, expected, actual)
@@ -53,7 +53,7 @@ func TestGetJoinedWithWorkDir(t *testing.T) {
 	expected, err = filepath.Abs("/bar")
 	require.NoError(t, err)
 	expected = filepath.ToSlash(expected)
-	assert.Equal(t, expected, filepath.ToSlash(getWorkingDirectory(conf, absoluteDir)))
+	assert.Equal(t, expected, filepath.ToSlash(GetWorkingDirectory(conf, absoluteDir)))
 }
 
 func TestGetWorkingDirectoryLegacy(t *testing.T) {
