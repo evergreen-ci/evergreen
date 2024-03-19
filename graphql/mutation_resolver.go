@@ -847,6 +847,12 @@ func (r *mutationResolver) EditSpawnHost(ctx context.Context, spawnHost *EditSpa
 		}
 	}
 
+	if spawnHost.SleepSchedule != nil {
+		if err = h.SetSleepSchedule(ctx, *spawnHost.SleepSchedule); err != nil {
+			return nil, InternalServerError.Send(ctx, fmt.Sprintf("setting sleep schedule: %s", err.Error()))
+		}
+	}
+
 	if err = cloud.ModifySpawnHost(ctx, evergreen.GetEnvironment(), h, opts); err != nil {
 		return nil, InternalServerError.Send(ctx, fmt.Sprintf("Error modifying spawn host: %s", err))
 	}
@@ -886,6 +892,11 @@ func (r *mutationResolver) SpawnHost(ctx context.Context, spawnHostInput *SpawnH
 	}
 	if spawnHost == nil {
 		return nil, InternalServerError.Send(ctx, "An error occurred Spawn host is nil")
+	}
+	if spawnHostInput.SleepSchedule != nil {
+		if err = spawnHost.SetSleepSchedule(ctx, *spawnHostInput.SleepSchedule); err != nil {
+			return nil, InternalServerError.Send(ctx, fmt.Sprintf("setting sleep schedule: %s", err.Error()))
+		}
 	}
 	apiHost := restModel.APIHost{}
 	apiHost.BuildFromService(spawnHost, nil)

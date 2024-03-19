@@ -102,17 +102,18 @@ type DistroPermissionsOptions struct {
 // EditSpawnHostInput is the input to the editSpawnHost mutation.
 // Its fields determine how a given host will be modified.
 type EditSpawnHostInput struct {
-	AddedInstanceTags   []*host.Tag     `json:"addedInstanceTags,omitempty"`
-	DeletedInstanceTags []*host.Tag     `json:"deletedInstanceTags,omitempty"`
-	DisplayName         *string         `json:"displayName,omitempty"`
-	Expiration          *time.Time      `json:"expiration,omitempty"`
-	HostID              string          `json:"hostId"`
-	InstanceType        *string         `json:"instanceType,omitempty"`
-	NoExpiration        *bool           `json:"noExpiration,omitempty"`
-	PublicKey           *PublicKeyInput `json:"publicKey,omitempty"`
-	SavePublicKey       *bool           `json:"savePublicKey,omitempty"`
-	ServicePassword     *string         `json:"servicePassword,omitempty"`
-	Volume              *string         `json:"volume,omitempty"`
+	AddedInstanceTags   []*host.Tag             `json:"addedInstanceTags,omitempty"`
+	DeletedInstanceTags []*host.Tag             `json:"deletedInstanceTags,omitempty"`
+	DisplayName         *string                 `json:"displayName,omitempty"`
+	Expiration          *time.Time              `json:"expiration,omitempty"`
+	HostID              string                  `json:"hostId"`
+	InstanceType        *string                 `json:"instanceType,omitempty"`
+	NoExpiration        *bool                   `json:"noExpiration,omitempty"`
+	PublicKey           *PublicKeyInput         `json:"publicKey,omitempty"`
+	SavePublicKey       *bool                   `json:"savePublicKey,omitempty"`
+	ServicePassword     *string                 `json:"servicePassword,omitempty"`
+	SleepSchedule       *host.SleepScheduleInfo `json:"sleepSchedule,omitempty"`
+	Volume              *string                 `json:"volume,omitempty"`
 }
 
 type ExternalLinkForMetadata struct {
@@ -336,22 +337,23 @@ type SortOrder struct {
 // SpawnHostInput is the input to the spawnHost mutation.
 // Its fields determine the properties of the host that will be spawned.
 type SpawnHostInput struct {
-	DistroID                string          `json:"distroId"`
-	Expiration              *time.Time      `json:"expiration,omitempty"`
-	HomeVolumeSize          *int            `json:"homeVolumeSize,omitempty"`
-	IsVirtualWorkStation    bool            `json:"isVirtualWorkStation"`
-	NoExpiration            bool            `json:"noExpiration"`
-	PublicKey               *PublicKeyInput `json:"publicKey"`
-	Region                  string          `json:"region"`
-	SavePublicKey           bool            `json:"savePublicKey"`
-	SetUpScript             *string         `json:"setUpScript,omitempty"`
-	SpawnHostsStartedByTask *bool           `json:"spawnHostsStartedByTask,omitempty"`
-	TaskID                  *string         `json:"taskId,omitempty"`
-	TaskSync                *bool           `json:"taskSync,omitempty"`
-	UseProjectSetupScript   *bool           `json:"useProjectSetupScript,omitempty"`
-	UserDataScript          *string         `json:"userDataScript,omitempty"`
-	UseTaskConfig           *bool           `json:"useTaskConfig,omitempty"`
-	VolumeID                *string         `json:"volumeId,omitempty"`
+	DistroID                string                  `json:"distroId"`
+	Expiration              *time.Time              `json:"expiration,omitempty"`
+	HomeVolumeSize          *int                    `json:"homeVolumeSize,omitempty"`
+	IsVirtualWorkStation    bool                    `json:"isVirtualWorkStation"`
+	NoExpiration            bool                    `json:"noExpiration"`
+	PublicKey               *PublicKeyInput         `json:"publicKey"`
+	Region                  string                  `json:"region"`
+	SavePublicKey           bool                    `json:"savePublicKey"`
+	SetUpScript             *string                 `json:"setUpScript,omitempty"`
+	SleepSchedule           *host.SleepScheduleInfo `json:"sleepSchedule,omitempty"`
+	SpawnHostsStartedByTask *bool                   `json:"spawnHostsStartedByTask,omitempty"`
+	TaskID                  *string                 `json:"taskId,omitempty"`
+	TaskSync                *bool                   `json:"taskSync,omitempty"`
+	UseProjectSetupScript   *bool                   `json:"useProjectSetupScript,omitempty"`
+	UserDataScript          *string                 `json:"userDataScript,omitempty"`
+	UseTaskConfig           *bool                   `json:"useTaskConfig,omitempty"`
+	VolumeID                *string                 `json:"volumeId,omitempty"`
 }
 
 // SpawnVolumeInput is the input to the spawnVolume mutation.

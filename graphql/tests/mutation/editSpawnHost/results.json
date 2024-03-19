@@ -3,14 +3,48 @@
         {
             "query_file": "error_adding_key.graphql",
             "result": {
-            "errors": [
-                {
-                    "message": "Host must be running to add a public key but is 'provisioning'",
-                    "path": ["editSpawnHost"],
-                    "extensions": { "code": "INPUT_VALIDATION_ERROR" }
+                "errors": [
+                    {
+                        "message": "Host must be running to add a public key but is 'provisioning'",
+                        "path": ["editSpawnHost"],
+                        "extensions": { "code": "INPUT_VALIDATION_ERROR" }
+                    }
+                ],
+                "data": null
+            }
+        },
+        {
+            "query_file": "sleep_schedule_error.graphql",
+            "result": {
+                "errors": [
+                    {
+                        "message": "setting sleep schedule: invalid sleep schedule: cannot specify a daily start time without a daily stop time\nsleep schedule runs for 0s, which does not meet minimum requirement of 24h0m0s",
+                        "path": ["editSpawnHost"],
+                        "extensions": {
+                            "code": "INTERNAL_SERVER_ERROR"
+                        }
+                    }
+                ],
+                "data": null
+            }
+        },
+        {
+            "query_file": "edit_host.graphql",
+            "result": {
+                "data": {
+                    "editSpawnHost": {
+                        "id": "i-0f81a2d39744003dd",
+                        "sleepSchedule": {
+                            "dailyStartTime": "08:00",
+                            "dailyStopTime": "20:00",
+                            "permanentlyExempt": false,
+                            "shouldKeepOff": false,
+                            "timeZone": "America/New_York",
+                            "temporarilyExemptUntil": "2024-01-06T12:42:12-05:00",
+                            "wholeWeekdaysOff": []
+                        }
+                    }
                 }
-            ],
-            "data": null
             }
         }
     ]
