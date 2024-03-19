@@ -785,7 +785,7 @@ Note:
 **user** field set for the command's distro, which can be inspected [on Evergreen's distro page](https://evergreen.mongodb.com/distros).
 This is not a default expansion, so it must be set manually.
 - The mcipacker.pem key file was created by echoing the value of the
-`${__project_aws_ssh_key_value}` expansion (which gets populated automatically with the ssh public key value) into the file. This
+`${__project_aws_ssh_key_value}` expansion (which gets populated automatically with the ssh private key value) into the file. This
 expansion is automatically set by Evergreen when the host is spawned.
 
 ## host.list
