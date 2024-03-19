@@ -280,19 +280,19 @@ func (gh *githubHookApi) Run(ctx context.Context) gimlet.Responder {
 }
 
 func (gh *githubHookApi) rerunCheckRun(ctx context.Context, owner, repo string, uid int, checkRun *github.CheckRun) error {
-	checkRunTask := checkRun.GetExternalID()
-	if checkRunTask == "" {
+	taskIDFromCheckrun := checkRun.GetExternalID()
+	if taskIDFromCheckrun == "" {
 		grip.Error(message.Fields{
 			"source":  "GitHub hook",
 			"msg_id":  gh.msgID,
 			"event":   gh.eventType,
 			"owner":   owner,
 			"repo":    repo,
-			"message": "check run doesn't carry task",
+			"message": "check run GitHub event doesn't carry task",
 		})
-		return errors.New("check run doesn't carry task")
+		return errors.New("check run GitHub event doesn't carry task")
 	}
-	taskToRestart, taskErr := data.FindTask(checkRunTask)
+	taskToRestart, taskErr := data.FindTask(taskIDFromCheckrun)
 	if taskErr != nil {
 		grip.Error(message.Fields{
 			"source":  "GitHub hook",
@@ -300,13 +300,13 @@ func (gh *githubHookApi) rerunCheckRun(ctx context.Context, owner, repo string, 
 			"event":   gh.eventType,
 			"owner":   owner,
 			"repo":    repo,
-			"task":    checkRunTask,
+			"task":    taskIDFromCheckrun,
 			"message": "finding task",
 		})
-		return errors.Wrapf(taskErr, "finding task '%s' for check run", checkRunTask)
+		return errors.Wrapf(taskErr, "finding task '%s' for check run", taskIDFromCheckrun)
 	}
 	if !utility.StringSliceContains(evergreen.TaskCompletedStatuses, taskToRestart.Status) {
-		return errors.Errorf("task '%s' is not in a completed state", checkRunTask)
+		return errors.Errorf("task '%s' is not in a completed state", taskIDFromCheckrun)
 	}
 	githubUser, err := user.FindByGithubUID(uid)
 	if err != nil {
@@ -331,7 +331,7 @@ func (gh *githubHookApi) rerunCheckRun(ctx context.Context, owner, repo string, 
 			"event":   gh.eventType,
 			"owner":   owner,
 			"repo":    repo,
-			"task":    checkRunTask,
+			"task":    taskIDFromCheckrun,
 			"message": "restarting task",
 		}))
 		return errors.Wrap(err, "resetting task")
@@ -343,7 +343,7 @@ func (gh *githubHookApi) rerunCheckRun(ctx context.Context, owner, repo string, 
 	}
 
 	// Get the task again to ensure we have the latest execution.
-	refreshedTask, taskErr := data.FindTask(checkRunTask)
+	refreshedTask, taskErr := data.FindTask(taskIDFromCheckrun)
 	if taskErr != nil {
 		grip.Error(message.Fields{
 			"source":  "GitHub hook",
@@ -351,7 +351,7 @@ func (gh *githubHookApi) rerunCheckRun(ctx context.Context, owner, repo string, 
 			"event":   gh.eventType,
 			"owner":   owner,
 			"repo":    repo,
-			"task":    checkRunTask,
+			"task":    taskIDFromCheckrun,
 			"message": "finding refreshed task",
 		})
 		refreshedTask = taskToRestart
