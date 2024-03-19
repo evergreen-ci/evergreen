@@ -73,11 +73,11 @@ func (j *sleepSchedulerJob) populateIfUnset() error {
 }
 
 func (j *sleepSchedulerJob) makeStopAndStartJobs(ctx context.Context, _ evergreen.Environment, ts time.Time) ([]amboy.Job, error) {
-
 	flags, err := evergreen.GetServiceFlags(ctx)
 	if err != nil {
 		return nil, errors.Wrap(err, "checking if sleep schedule is enabled")
 	}
+
 	var stopJobs []amboy.Job
 	var hostIDsToStop []string
 	if !flags.SleepScheduleDisabled {
@@ -95,7 +95,7 @@ func (j *sleepSchedulerJob) makeStopAndStartJobs(ctx context.Context, _ evergree
 		hostIDsToStop = make([]string, 0, len(hostsToStop))
 		for i := range hostsToStop {
 			h := hostsToStop[i]
-			stopJobs = append(stopJobs, NewSpawnhostStopJob(&h, evergreen.User, ts.Format(TSFormat)))
+			stopJobs = append(stopJobs, NewSpawnhostStopJob(&h, false, evergreen.User, ts.Format(TSFormat)))
 			hostIDsToStop = append(hostIDsToStop, h.Id)
 		}
 	}
