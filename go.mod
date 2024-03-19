@@ -15,7 +15,7 @@ require (
 	github.com/aws/aws-sdk-go-v2/service/secretsmanager v1.28.1
 	github.com/aws/smithy-go v1.20.1
 	github.com/cheynewallace/tabby v1.1.1
-	github.com/docker/docker v24.0.7+incompatible
+	github.com/docker/docker v25.0.4+incompatible
 	github.com/docker/go-connections v0.5.0
 	github.com/dustin/go-humanize v1.0.1
 	github.com/evergreen-ci/birch v0.0.0-20220401151432-c792c3d8e0eb
@@ -60,7 +60,7 @@ require (
 	go.opentelemetry.io/contrib/instrumentation/net/http/otelhttp v0.46.1
 	go.opentelemetry.io/otel v1.24.0
 	go.opentelemetry.io/otel/exporters/otlp/otlpmetric/otlpmetricgrpc v1.23.1
-	go.opentelemetry.io/otel/exporters/otlp/otlptrace v1.22.0
+	go.opentelemetry.io/otel/exporters/otlp/otlptrace v1.24.0
 	go.opentelemetry.io/otel/exporters/otlp/otlptrace/otlptracegrpc v1.21.0
 	go.opentelemetry.io/otel/metric v1.24.0
 	go.opentelemetry.io/otel/sdk v1.24.0
@@ -72,7 +72,7 @@ require (
 	golang.org/x/text v0.14.0
 	golang.org/x/tools v0.13.0 // indirect
 	gonum.org/v1/gonum v0.14.0
-	google.golang.org/grpc v1.61.0
+	google.golang.org/grpc v1.61.1
 	google.golang.org/protobuf v1.32.0
 	gopkg.in/yaml.v2 v2.4.0
 )
@@ -110,7 +110,6 @@ require (
 	github.com/decred/dcrd/dcrec/secp256k1/v4 v4.0.0-20210816181553-5444fa50b93d // indirect
 	github.com/dghubble/oauth1 v0.7.2 // indirect
 	github.com/dgrijalva/jwt-go v3.2.0+incompatible // indirect
-	github.com/docker/distribution v2.7.1+incompatible // indirect
 	github.com/docker/go-units v0.4.0 // indirect
 	github.com/dsnet/compress v0.0.2-0.20210315054119-f66993602bf5 // indirect
 	github.com/evergreen-ci/aviation v0.0.0-20220405151811-ff4a78a4297c // indirect
@@ -211,8 +210,11 @@ require (
 )
 
 require (
+	github.com/containerd/log v0.1.0 // indirect
+	github.com/distribution/reference v0.5.0 // indirect
 	github.com/golang-jwt/jwt/v4 v4.5.0 // indirect
 	github.com/google/go-github/v29 v29.0.2 // indirect
 	github.com/papertrail/go-tail v0.0.0-20180509224916-973c153b0431 // indirect
 	github.com/sosodev/duration v1.2.0 // indirect
+	go.opentelemetry.io/otel/exporters/otlp/otlptrace/otlptracehttp v1.24.0 // indirect
 )
