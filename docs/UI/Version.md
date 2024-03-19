@@ -31,6 +31,6 @@ The Task Duration tab contains a list of all of the tasks that ran in the versio
 ![Changes table](../images/changes_table.png)
 
 #### Downstream Projects
-The Downstream Projects tab contains a list of all of the projects that were triggered by the version. Note: This tab is only visible if you have [project triggers configured](Project-Configuration/Project-and-Distro-Settings#project-triggers).
+The Downstream Projects tab contains a list of all of the projects that were triggered by the version. Note: This tab is only visible if you have [project triggers configured](../Project-Configuration/Project-and-Distro-Settings#project-triggers).
 
 ![Downstream Projects table](../images/downstream_projects.png)

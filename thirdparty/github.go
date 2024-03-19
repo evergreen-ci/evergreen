@@ -2091,3 +2091,61 @@ func ValidateCheckRunOutput(output *github.CheckRunOutput) error {
 
 	return catcher.Resolve()
 }
+
+// ListCheckRunCheckSuite returns a list of check run IDs for a given check suite
+func ListCheckRunCheckSuite(ctx context.Context, owner, repo string, checkSuiteID int64) ([]int64, error) {
+	caller := "ListCheckRunCheckSuite"
+	ctx, span := tracer.Start(ctx, caller, trace.WithAttributes(
+		attribute.String(githubEndpointAttribute, caller),
+		attribute.String(githubOwnerAttribute, owner),
+		attribute.String(githubRepoAttribute, repo),
+	))
+	defer span.End()
+
+	token, err := getInstallationToken(ctx, owner, repo, nil)
+	if err != nil {
+		return nil, errors.Wrap(err, "getting installation token")
+	}
+
+	githubClient := getGithubClient(token, caller, retryConfig{retry: true})
+	listCheckRunsResult, resp, err := githubClient.Checks.ListCheckRunsCheckSuite(ctx, owner, repo, checkSuiteID, nil)
+	if resp != nil {
+		defer resp.Body.Close()
+		span.SetAttributes(attribute.Bool(githubCachedAttribute, respFromCache(resp.Response)))
+	}
+	if err != nil {
+		return nil, errors.Wrap(err, "listing check suite")
+	}
+	checkRunIDs := []int64{}
+	for _, checkRun := range listCheckRunsResult.CheckRuns {
+		checkRunIDs = append(checkRunIDs, checkRun.GetID())
+	}
+	return checkRunIDs, nil
+}
+
+// GetCheckRun gets a check run by ID
+func GetCheckRun(ctx context.Context, owner, repo string, checkRunID int64) (*github.CheckRun, error) {
+	caller := "GetCheckRun"
+	ctx, span := tracer.Start(ctx, caller, trace.WithAttributes(
+		attribute.String(githubEndpointAttribute, caller),
+		attribute.String(githubOwnerAttribute, owner),
+		attribute.String(githubRepoAttribute, repo),
+	))
+	defer span.End()
+
+	token, err := getInstallationToken(ctx, owner, repo, nil)
+	if err != nil {
+		return nil, errors.Wrap(err, "getting installation token")
+	}
+
+	githubClient := getGithubClient(token, caller, retryConfig{retry: true})
+	checkRun, resp, err := githubClient.Checks.GetCheckRun(ctx, owner, repo, checkRunID)
+	if resp != nil {
+		defer resp.Body.Close()
+		span.SetAttributes(attribute.Bool(githubCachedAttribute, respFromCache(resp.Response)))
+	}
+	if err != nil {
+		return nil, errors.Wrapf(err, "getting check run %d", checkRunID)
+	}
+	return checkRun, nil
+}

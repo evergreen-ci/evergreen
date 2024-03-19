@@ -166,7 +166,7 @@ For example:
 - `["!cool !primary"]` would return all items that are not tagged "cool" AND not tagged
   with "primary". That means only items that don't have these tags will be included.
 
-Aliases can also be defined locally as shown [here](CLI#local-aliases).
+Aliases can also be defined locally as shown [here](../CLI#local-aliases).
 
 ### GitHub Pull Request Testing
 
@@ -435,7 +435,7 @@ the
 [s3.push](Project-Commands#s3push)
 or
 [s3.pull](Project-Commands#s3pull)
-project commands, or using it from [the CLI](CLI#task-sync).
+project commands, or using it from [the CLI](../CLI#task-sync).
 
 Options:
 
@@ -447,7 +447,7 @@ Options:
 ### Virtual Workstation Commands
 
 Users can specify custom commands to be run when setting up their
-virtual workstation. See more info [here](Hosts/Developer-Workstations#project-setup).
+virtual workstation. See more info [here](../Hosts/Developer-Workstations#project-setup).
 
 Options:
 
@@ -536,7 +536,7 @@ Special Fields:
 - `{version_id}` — if this is included in the metadata link, we will sub in the ID when rendering the link
 
 This may also be added to individual tasks using `metadata_links`
-for [task annotations](https://docs.devprod.prod.corp.mongodb.com/evergreen/API/REST-V2-Usage#task-annotations).
+for [task annotations](../API/REST-V2-Usage#task-annotations).
 
 
 ## Distro Settings
