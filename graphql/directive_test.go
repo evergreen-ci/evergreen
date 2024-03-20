@@ -36,10 +36,14 @@ func setupPermissions(t *testing.T) {
 	require.Len(t, roles, 0)
 
 	superUserRole := gimlet.Role{
-		ID:          "superuser",
-		Name:        "superuser",
-		Scope:       "superuser_scope",
-		Permissions: map[string]int{"project_create": 10, "distro_create": 10, "modify_roles": 10},
+		ID:    "superuser",
+		Name:  "superuser",
+		Scope: "superuser_scope",
+		Permissions: map[string]int{
+			evergreen.PermissionProjectCreate: evergreen.ProjectCreate.Value,
+			evergreen.PermissionDistroCreate:  evergreen.DistroCreate.Value,
+			evergreen.PermissionRoleModify:    evergreen.RoleModify.Value,
+		},
 	}
 	err = roleManager.UpdateRole(superUserRole)
 	require.NoError(t, err)
@@ -58,11 +62,11 @@ func setupPermissions(t *testing.T) {
 		Name:  "admin access",
 		Scope: evergreen.AllProjectsScope,
 		Permissions: map[string]int{
-			"project_logs":             10,
-			"project_patches":          20,
-			"project_tasks":            30,
-			"project_settings":         20,
-			"project_task_annotations": 20,
+			evergreen.PermissionLogs:            evergreen.LogsView.Value,
+			evergreen.PermissionPatches:         evergreen.PatchSubmitAdmin.Value,
+			evergreen.PermissionTasks:           evergreen.TasksAdmin.Value,
+			evergreen.PermissionProjectSettings: evergreen.ProjectSettingsEdit.Value,
+			evergreen.PermissionAnnotations:     evergreen.AnnotationsModify.Value,
 		},
 	}
 	require.NoError(t, roleManager.UpdateRole(superUserProjectRole))
@@ -80,8 +84,8 @@ func setupPermissions(t *testing.T) {
 		Name:  "admin access",
 		Scope: evergreen.AllDistrosScope,
 		Permissions: map[string]int{
-			"distro_settings": 30,
-			"distro_hosts":    20,
+			evergreen.PermissionDistroSettings: evergreen.DistroSettingsAdmin.Value,
+			evergreen.PermissionHosts:          evergreen.HostsEdit.Value,
 		},
 	}
 	require.NoError(t, roleManager.UpdateRole(superUserDistroRole))
@@ -104,17 +108,27 @@ func setupPermissions(t *testing.T) {
 	require.NoError(t, err)
 
 	projectAdminRole := gimlet.Role{
-		ID:          "admin_project",
-		Scope:       projectScope.ID,
-		Permissions: map[string]int{"project_settings": 20, "project_tasks": 30, "project_patches": 10, "project_logs": 10},
+		ID:    "admin_project",
+		Scope: projectScope.ID,
+		Permissions: map[string]int{
+			evergreen.PermissionProjectSettings: evergreen.ProjectSettingsEdit.Value,
+			evergreen.PermissionTasks:           evergreen.TasksAdmin.Value,
+			evergreen.PermissionPatches:         evergreen.PatchSubmitAdmin.Value,
+			evergreen.PermissionLogs:            evergreen.LogsView.Value,
+		},
 	}
 	err = roleManager.UpdateRole(projectAdminRole)
 	require.NoError(t, err)
 
 	projectViewRole := gimlet.Role{
-		ID:          "view_project",
-		Scope:       projectScope.ID,
-		Permissions: map[string]int{"project_settings": 10, "project_tasks": 30, "project_patches": 10, "project_logs": 10},
+		ID:    "view_project",
+		Scope: projectScope.ID,
+		Permissions: map[string]int{
+			evergreen.PermissionProjectSettings: evergreen.ProjectSettingsView.Value,
+			evergreen.PermissionTasks:           evergreen.TasksAdmin.Value,
+			evergreen.PermissionPatches:         evergreen.PatchSubmit.Value,
+			evergreen.PermissionLogs:            evergreen.LogsView.Value,
+		},
 	}
 	err = roleManager.UpdateRole(projectViewRole)
 	require.NoError(t, err)
@@ -130,77 +144,77 @@ func setupPermissions(t *testing.T) {
 	distroAdminRole := gimlet.Role{
 		ID:          "admin_distro-id",
 		Scope:       distroScope.ID,
-		Permissions: map[string]int{"distro_settings": evergreen.DistroSettingsAdmin.Value},
+		Permissions: map[string]int{evergreen.PermissionDistroSettings: evergreen.DistroSettingsAdmin.Value},
 	}
 	require.NoError(t, roleManager.UpdateRole(distroAdminRole))
 
 	distroEditRole := gimlet.Role{
 		ID:          "edit_distro-id",
 		Scope:       distroScope.ID,
-		Permissions: map[string]int{"distro_settings": evergreen.DistroSettingsEdit.Value},
+		Permissions: map[string]int{evergreen.PermissionDistroSettings: evergreen.DistroSettingsEdit.Value},
 	}
 	require.NoError(t, roleManager.UpdateRole(distroEditRole))
 
 	distroViewRole := gimlet.Role{
 		ID:          "view_distro-id",
 		Scope:       distroScope.ID,
-		Permissions: map[string]int{"distro_settings": evergreen.DistroSettingsView.Value},
+		Permissions: map[string]int{evergreen.PermissionDistroSettings: evergreen.DistroSettingsView.Value},
 	}
 	require.NoError(t, roleManager.UpdateRole(distroViewRole))
 
 	taskAdminRole := gimlet.Role{
 		ID:          "admin_task",
 		Scope:       projectScope.ID,
-		Permissions: map[string]int{"project_tasks": evergreen.TasksAdmin.Value},
+		Permissions: map[string]int{evergreen.PermissionTasks: evergreen.TasksAdmin.Value},
 	}
 	require.NoError(t, roleManager.UpdateRole(taskAdminRole))
 
 	taskEditRole := gimlet.Role{
 		ID:          "edit_task",
 		Scope:       projectScope.ID,
-		Permissions: map[string]int{"project_tasks": evergreen.TasksBasic.Value},
+		Permissions: map[string]int{evergreen.PermissionTasks: evergreen.TasksBasic.Value},
 	}
 	require.NoError(t, roleManager.UpdateRole(taskEditRole))
 
 	taskViewRole := gimlet.Role{
 		ID:          "view_task",
 		Scope:       projectScope.ID,
-		Permissions: map[string]int{"project_tasks": evergreen.TasksView.Value},
+		Permissions: map[string]int{evergreen.PermissionTasks: evergreen.TasksView.Value},
 	}
 	require.NoError(t, roleManager.UpdateRole(taskViewRole))
 
 	annotationEditRole := gimlet.Role{
 		ID:          "edit_annotation",
 		Scope:       projectScope.ID,
-		Permissions: map[string]int{"project_task_annotations": evergreen.AnnotationsModify.Value},
+		Permissions: map[string]int{evergreen.PermissionAnnotations: evergreen.AnnotationsModify.Value},
 	}
 	require.NoError(t, roleManager.UpdateRole(annotationEditRole))
 
 	annotationViewRole := gimlet.Role{
 		ID:          "view_annotation",
 		Scope:       projectScope.ID,
-		Permissions: map[string]int{"project_task_annotations": evergreen.AnnotationsView.Value},
+		Permissions: map[string]int{evergreen.PermissionAnnotations: evergreen.AnnotationsView.Value},
 	}
 	require.NoError(t, roleManager.UpdateRole(annotationViewRole))
 
 	patchAdminRole := gimlet.Role{
 		ID:          "admin_patch",
 		Scope:       projectScope.ID,
-		Permissions: map[string]int{"project_patches": evergreen.PatchSubmitAdmin.Value},
+		Permissions: map[string]int{evergreen.PermissionPatches: evergreen.PatchSubmitAdmin.Value},
 	}
 	require.NoError(t, roleManager.UpdateRole(patchAdminRole))
 
 	patchEditRole := gimlet.Role{
 		ID:          "edit_patch",
 		Scope:       projectScope.ID,
-		Permissions: map[string]int{"project_patches": evergreen.PatchSubmit.Value},
+		Permissions: map[string]int{evergreen.PermissionPatches: evergreen.PatchSubmit.Value},
 	}
 	require.NoError(t, roleManager.UpdateRole(patchEditRole))
 
 	logViewRole := gimlet.Role{
 		ID:          "view_logs",
 		Scope:       projectScope.ID,
-		Permissions: map[string]int{"project_logs": evergreen.LogsView.Value},
+		Permissions: map[string]int{evergreen.PermissionLogs: evergreen.LogsView.Value},
 	}
 	require.NoError(t, roleManager.UpdateRole(logViewRole))
 }
