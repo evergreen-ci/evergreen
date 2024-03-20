@@ -2042,6 +2042,17 @@ func UpdateCheckRun(ctx context.Context, owner, repo, uiBase string, checkRunID 
 		return nil, errors.Wrap(err, "getting installation token")
 	}
 
+	grip.Info(message.Fields{
+		"bynnbynn":   "updating check run",
+		"owner":      owner,
+		"repo":       repo,
+		"checkRunID": checkRunID,
+		"task":       *task,
+		"execution":  task.Execution,
+		"status":     task.Status,
+		"updateOpts": updateOpts,
+	})
+
 	githubClient := getGithubClient(token, caller, retryConfig{retry: true})
 	checkRun, resp, err := githubClient.Checks.UpdateCheckRun(ctx, owner, repo, checkRunID, updateOpts)
 
