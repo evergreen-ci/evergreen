@@ -1078,8 +1078,8 @@ func (c *gitFetchProject) applyPatch(ctx context.Context, logger client.LoggerPr
 					module.Name)
 				continue
 			}
-
-			moduleDir = filepath.ToSlash(filepath.Join(expandModulePrefix(conf, module.Name, module.Prefix, logger), module.Name))
+			expandModulePrefix(conf, module.Name, module.Prefix, logger)
+			moduleDir = filepath.ToSlash(filepath.Join(conf.ModulePaths[module.Name], module.Name))
 		}
 
 		if len(patchPart.PatchSet.Patch) == 0 {
