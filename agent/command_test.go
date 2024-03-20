@@ -7,6 +7,7 @@ import (
 	"testing"
 
 	"github.com/evergreen-ci/evergreen"
+	"github.com/evergreen-ci/evergreen/agent/globals"
 	"github.com/evergreen-ci/evergreen/agent/internal"
 	"github.com/evergreen-ci/evergreen/agent/internal/client"
 	agentutil "github.com/evergreen-ci/evergreen/agent/util"
@@ -51,7 +52,7 @@ func (s *CommandSuite) SetupTest() {
 			HostID:           "host",
 			HostSecret:       "secret",
 			StatusPort:       2286,
-			LogOutput:        LogOutputStdout,
+			LogOutput:        globals.LogOutputStdout,
 			LogPrefix:        "agent",
 			WorkingDirectory: s.tmpDirName,
 		},

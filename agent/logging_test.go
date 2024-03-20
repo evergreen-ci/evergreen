@@ -7,6 +7,7 @@ import (
 	"os"
 	"testing"
 
+	"github.com/evergreen-ci/evergreen/agent/globals"
 	"github.com/evergreen-ci/evergreen/agent/internal"
 	"github.com/evergreen-ci/evergreen/agent/internal/client"
 	"github.com/evergreen-ci/evergreen/agent/internal/testutil"
@@ -26,7 +27,7 @@ func TestGetSenderLocal(t *testing.T) {
 	assert := assert.New(t)
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
-	_, err := (&Agent{}).GetSender(ctx, LogOutputStdout, "agent", "task_id", 2)
+	_, err := (&Agent{}).GetSender(ctx, globals.LogOutputStdout, "agent", "task_id", 2)
 	assert.NoError(err)
 }
 
@@ -42,7 +43,7 @@ func TestAgentFileLogging(t *testing.T) {
 			HostID:           "host",
 			HostSecret:       "secret",
 			StatusPort:       2286,
-			LogOutput:        LogOutputStdout,
+			LogOutput:        globals.LogOutputStdout,
 			LogPrefix:        "agent",
 			WorkingDirectory: tmpDirName,
 		},
@@ -129,7 +130,7 @@ func TestStartLogging(t *testing.T) {
 			HostID:           "host",
 			HostSecret:       "secret",
 			StatusPort:       2286,
-			LogOutput:        LogOutputStdout,
+			LogOutput:        globals.LogOutputStdout,
 			LogPrefix:        "agent",
 			WorkingDirectory: tmpDirName,
 		},

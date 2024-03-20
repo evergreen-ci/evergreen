@@ -194,33 +194,3 @@ func setupCedarServer(ctx context.Context, t *testing.T, comm *client.Mock) *tim
 	comm.CedarGRPCConn = conn
 	return srv
 }
-
-func TestGetExpansionsToRedact(t *testing.T) {
-	for _, test := range []struct {
-		name     string
-		redacted map[string]bool
-		expected []string
-	}{
-		{
-			name: "Defaults",
-		},
-		{
-			name: "Redacted",
-			redacted: map[string]bool{
-				"aws_token": true,
-				"my_secret": true,
-			},
-			expected: []string{
-				"aws_token",
-				"my_secret",
-			},
-		},
-	} {
-		t.Run(test.name, func(t *testing.T) {
-			test.expected = append(test.expected, ExpansionsToRedact...)
-
-			actual := ToRedact(test.redacted)
-			assert.ElementsMatch(t, test.expected, actual)
-		})
-	}
-}
