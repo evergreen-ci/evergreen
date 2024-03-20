@@ -119,7 +119,7 @@ func (a *Agent) prepLogger(tc *taskContext, c *model.LoggerConfig, commandName s
 		AWSCredentials:     pail.CreateAWSCredentials(tc.taskConfig.TaskSync.Key, tc.taskConfig.TaskSync.Secret, ""),
 		RedactorOpts: redactor.RedactionOptions{
 			Expansions: tc.taskConfig.NewExpansions,
-			Redacted:   redactor.ToRedact(tc.taskConfig.Redacted),
+			Redacted:   tc.taskConfig.Redacted,
 		},
 	}
 

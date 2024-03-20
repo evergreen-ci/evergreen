@@ -45,7 +45,7 @@ func sendTestLogsAndResults(ctx context.Context, comm client.Communicator, logge
 			return errors.Wrap(err, "canceled while sending test logs")
 		}
 
-		if err := taskoutput.AppendTestLog(ctx, comm, &conf.Task, redactor.RedactionOptions{Expansions: conf.NewExpansions, Redacted: redactor.ToRedact(conf.Redacted)}, &log); err != nil {
+		if err := taskoutput.AppendTestLog(ctx, comm, &conf.Task, redactor.RedactionOptions{Expansions: conf.NewExpansions, Redacted: conf.Redacted}, &log); err != nil {
 			// Continue on error to let the other logs be posted.
 			logger.Task().Error(errors.Wrap(err, "sending test log"))
 		}

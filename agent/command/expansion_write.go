@@ -36,15 +36,16 @@ func (c *expansionsWriter) Execute(ctx context.Context,
 	_ client.Communicator, logger client.LoggerProducer, conf *internal.TaskConfig) error {
 
 	expansions := map[string]string{}
-	for k, v := range conf.Expansions.Map() {
-		_, ok := conf.Redacted[k]
-		// Redact private variables unless redacted set to true. Always
-		// redact the global GitHub and AWS expansions.
-		if (ok && !c.Redacted) || utility.StringSliceContains(globals.ExpansionsToRedact, k) {
-			continue
-		}
+	for expansionKey, expansionValue := range conf.Expansions.Map() {
+		for _, redactedKey := range conf.Redacted {
+			// Redact private variables unless redacted set to true. Always
+			// redact the global GitHub and AWS expansions.
+			if (expansionKey == redactedKey && !c.Redacted) || utility.StringSliceContains(globals.ExpansionsToRedact, expansionKey) {
+				continue
+			}
 
-		expansions[k] = v
+			expansions[expansionKey] = expansionValue
+		}
 	}
 	out, err := yaml.Marshal(expansions)
 	if err != nil {

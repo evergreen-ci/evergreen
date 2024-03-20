@@ -46,19 +46,7 @@ func (r *redactingSender) Send(m message.Composer) {
 func NewRedactingSender(sender send.Sender, opts RedactionOptions) send.Sender {
 	return &redactingSender{
 		expansions:         opts.Expansions,
-		expansionsToRedact: opts.Redacted,
+		expansionsToRedact: append(opts.Redacted, globals.ExpansionsToRedact...),
 		Sender:             sender,
 	}
-}
-
-// ToRedact returns the full list of expansion keys whose values
-// should get redacted from task logs.
-func ToRedact(redacted map[string]bool) []string {
-	var expansionsToRedact []string
-	for key := range redacted {
-		expansionsToRedact = append(expansionsToRedact, key)
-	}
-	expansionsToRedact = append(expansionsToRedact, globals.ExpansionsToRedact...)
-
-	return expansionsToRedact
 }
