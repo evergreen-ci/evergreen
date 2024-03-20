@@ -103,7 +103,7 @@ _Note that you must use API credentials to see private projects._
             ...
           }
         },
-        "debian71": { ... },
+        "debian71": { ... }
       }
     },
     {

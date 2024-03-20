@@ -76,7 +76,6 @@ var (
 	LastCommunicationTimeKey           = bsonutil.MustHaveTag(Host{}, "LastCommunicationTime")
 	UserHostKey                        = bsonutil.MustHaveTag(Host{}, "UserHost")
 	ZoneKey                            = bsonutil.MustHaveTag(Host{}, "Zone")
-	ProjectKey                         = bsonutil.MustHaveTag(Host{}, "Project")
 	ProvisionOptionsKey                = bsonutil.MustHaveTag(Host{}, "ProvisionOptions")
 	TaskCountKey                       = bsonutil.MustHaveTag(Host{}, "TaskCount")
 	StartTimeKey                       = bsonutil.MustHaveTag(Host{}, "StartTime")
@@ -97,6 +96,7 @@ var (
 	HomeVolumeIDKey                    = bsonutil.MustHaveTag(Host{}, "HomeVolumeID")
 	PortBindingsKey                    = bsonutil.MustHaveTag(Host{}, "PortBindings")
 	IsVirtualWorkstationKey            = bsonutil.MustHaveTag(Host{}, "IsVirtualWorkstation")
+	SleepScheduleKey                   = bsonutil.MustHaveTag(Host{}, "SleepSchedule")
 	SpawnOptionsTaskIDKey              = bsonutil.MustHaveTag(SpawnOptions{}, "TaskID")
 	SpawnOptionsTaskExecutionNumberKey = bsonutil.MustHaveTag(SpawnOptions{}, "TaskExecutionNumber")
 	SpawnOptionsBuildIDKey             = bsonutil.MustHaveTag(SpawnOptions{}, "BuildID")
@@ -114,6 +114,7 @@ var (
 	VolumeAttachmentIDKey              = bsonutil.MustHaveTag(VolumeAttachment{}, "VolumeID")
 	VolumeDeviceNameKey                = bsonutil.MustHaveTag(VolumeAttachment{}, "DeviceName")
 	DockerOptionsStdinDataKey          = bsonutil.MustHaveTag(DockerOptions{}, "StdinData")
+	SleepScheduleShouldKeepOffKey      = bsonutil.MustHaveTag(SleepScheduleInfo{}, "ShouldKeepOff")
 )
 
 var (

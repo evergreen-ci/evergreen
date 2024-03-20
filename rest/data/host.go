@@ -175,13 +175,13 @@ func TerminateSpawnHost(ctx context.Context, env evergreen.Environment, u *user.
 }
 
 // StopSpawnHost enqueues a job to stop a running spawn host.
-func StopSpawnHost(ctx context.Context, env evergreen.Environment, u *user.DBUser, h *host.Host) (int, error) {
+func StopSpawnHost(ctx context.Context, env evergreen.Environment, u *user.DBUser, h *host.Host, shouldKeepOff bool) (int, error) {
 	if !utility.StringSliceContains(evergreen.StoppableHostStatuses, h.Status) {
 		return http.StatusBadRequest, errors.Errorf("host '%s' cannot be stopped because because its status ('%s') is not a stoppable state", h.Id, h.Status)
 	}
 
 	ts := utility.RoundPartOfMinute(1).Format(units.TSFormat)
-	stopJob := units.NewSpawnhostStopJob(h, u.Id, ts)
+	stopJob := units.NewSpawnhostStopJob(h, shouldKeepOff, u.Id, ts)
 	if err := units.EnqueueSpawnHostModificationJob(ctx, env, stopJob); err != nil {
 		if amboy.IsDuplicateJobScopeError(err) {
 			err = errHostStatusChangeConflict

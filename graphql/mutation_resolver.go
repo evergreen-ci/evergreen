@@ -985,7 +985,7 @@ func (r *mutationResolver) UpdateSpawnHostStatus(ctx context.Context, hostID str
 	case SpawnHostStatusActionsStart:
 		httpStatus, err = data.StartSpawnHost(ctx, env, usr, h)
 	case SpawnHostStatusActionsStop:
-		httpStatus, err = data.StopSpawnHost(ctx, env, usr, h)
+		httpStatus, err = data.StopSpawnHost(ctx, env, usr, h, false)
 	case SpawnHostStatusActionsTerminate:
 		httpStatus, err = data.TerminateSpawnHost(ctx, env, usr, h)
 	default:
@@ -1281,6 +1281,20 @@ func (r *mutationResolver) SaveSubscription(ctx context.Context, subscription re
 		return false, InternalServerError.Send(ctx, fmt.Sprintf("error saving subscription: %s", err.Error()))
 	}
 	return true, nil
+}
+
+// UpdateParsleySettings is the resolver for the updateParsleySettings field.
+func (r *mutationResolver) UpdateParsleySettings(ctx context.Context, opts UpdateParsleySettingsInput) (*UpdateParsleySettingsPayload, error) {
+	usr := mustHaveUser(ctx)
+	newSettings := opts.ParsleySettings.ToService()
+
+	// TODO: Update to recursively set undefined fields in DEVPROD-5277, since ParsleySettingsInput allows omitting fields.
+	if err := usr.UpdateParsleySettings(newSettings); err != nil {
+		return nil, InternalServerError.Send(ctx, fmt.Sprintf("updating Parsley settings: %s", err.Error()))
+	}
+	return &UpdateParsleySettingsPayload{
+		ParsleySettings: opts.ParsleySettings,
+	}, nil
 }
 
 // UpdatePublicKey is the resolver for the updatePublicKey field.

@@ -903,7 +903,7 @@ func (m *ec2Manager) TerminateInstance(ctx context.Context, h *host.Host, user, 
 }
 
 // StopInstance stops a running EC2 instance.
-func (m *ec2Manager) StopInstance(ctx context.Context, h *host.Host, user string) error {
+func (m *ec2Manager) StopInstance(ctx context.Context, h *host.Host, shouldKeepOff bool, user string) error {
 	if !utility.StringSliceContains(evergreen.StoppableHostStatuses, h.Status) {
 		return errors.Errorf("host cannot be stopped because its status ('%s') is not a stoppable state", h.Status)
 	}
@@ -940,7 +940,7 @@ func (m *ec2Manager) StopInstance(ctx context.Context, h *host.Host, user string
 				"host_id":       h.Id,
 				"distro":        h.Distro.Id,
 			})
-			return errors.Wrap(h.SetStopped(ctx, user), "marking DB host as stopped")
+			return errors.Wrap(h.SetStopped(ctx, shouldKeepOff, user), "marking DB host as stopped")
 		default:
 			return errors.Errorf("instance is in unexpected state '%s'", status)
 		}
@@ -983,7 +983,7 @@ func (m *ec2Manager) StopInstance(ctx context.Context, h *host.Host, user string
 		"distro":        h.Distro.Id,
 	})
 
-	return errors.Wrap(h.SetStopped(ctx, user), "marking DB host as stopped")
+	return errors.Wrap(h.SetStopped(ctx, shouldKeepOff, user), "marking DB host as stopped")
 }
 
 // StartInstance starts a stopped EC2 instance.
