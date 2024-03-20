@@ -990,6 +990,11 @@ func TestGetProjectIdForProjectScopes(t *testing.T) {
 	require.Equal(t, statusCode, http.StatusOK)
 	require.Equal(t, projectId, project.Id)
 
+	projectId, statusCode, err = GetProjectIdForProjectScopes(ctx, map[string]string{"projectIdentifier": project.Identifier})
+	require.Nil(t, err)
+	require.Equal(t, statusCode, http.StatusOK)
+	require.Equal(t, projectId, project.Id)
+
 	task := &task.Task{
 		Id:      "task_id",
 		Project: project.Identifier,

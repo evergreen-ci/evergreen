@@ -110,13 +110,13 @@ func TestRequireProjectAccessForSettings(t *testing.T) {
 	ctx = gimlet.AttachUser(ctx, usr)
 	require.NotNil(t, ctx)
 
-	obj := interface{}(map[string]interface{}{"identifier": "invalid_identifier"})
+	obj := interface{}(map[string]interface{}{"projectIdentifier": "invalid_identifier"})
 	res, err := config.Directives.RequireProjectAccessNew(ctx, obj, next, ProjectPermissionSettings, AccessLevelEdit)
 	require.EqualError(t, err, "input: project 'invalid_identifier' not found")
 	require.Nil(t, res)
 	require.Equal(t, 0, callCount)
 
-	obj = interface{}(map[string]interface{}{"identifier": "project_identifier"})
+	obj = interface{}(map[string]interface{}{"projectIdentifier": projectRef.Identifier})
 	res, err = config.Directives.RequireProjectAccessNew(ctx, obj, next, ProjectPermissionSettings, AccessLevelEdit)
 	require.EqualError(t, err, "input: user 'testuser' does not have permission to access settings for the project 'project_id'")
 	require.Nil(t, res)
@@ -143,13 +143,13 @@ func TestRequireProjectAccessForSettings(t *testing.T) {
 	require.Nil(t, res)
 	require.Equal(t, 2, callCount)
 
-	obj = interface{}(map[string]interface{}{"identifier": "project_identifier"})
+	obj = interface{}(map[string]interface{}{"projectIdentifier": projectRef.Identifier})
 	res, err = config.Directives.RequireProjectAccessNew(ctx, obj, next, ProjectPermissionSettings, AccessLevelEdit)
 	require.NoError(t, err)
 	require.Nil(t, res)
 	require.Equal(t, 3, callCount)
 
-	obj = interface{}(map[string]interface{}{"repoId": "repo_id"})
+	obj = interface{}(map[string]interface{}{"repoId": repoRef.ProjectRef.Id})
 	res, err = config.Directives.RequireProjectAccessNew(ctx, obj, next, ProjectPermissionSettings, AccessLevelEdit)
 	require.NoError(t, err)
 	require.Nil(t, res)

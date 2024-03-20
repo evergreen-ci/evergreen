@@ -615,7 +615,7 @@ func RequiresSuperUserPermission(permission string, level evergreen.PermissionLe
 }
 
 func GetProjectIdForProjectScopes(ctx context.Context, paramsMap map[string]string) (string, int, error) {
-	projectID := paramsMap["projectId"]
+	projectID := util.CoalesceString(paramsMap["projectId"], paramsMap["projectIdentifier"])
 	repoID := paramsMap["repoId"]
 
 	var err error

@@ -1230,6 +1230,7 @@ type PermissionLevel struct {
 	Level      int
 }
 
+// projectPermissionAccessMap maps project permissions and access levels used in GraphQL directives to Evergreen permission levels.
 var projectPermissionAccessMap = map[ProjectPermission]map[AccessLevel]PermissionLevel{
 	ProjectPermissionSettings: {
 		AccessLevelEdit: {Permission: evergreen.PermissionProjectSettings, Level: evergreen.ProjectSettingsEdit.Value},
@@ -1254,28 +1255,28 @@ var projectPermissionAccessMap = map[ProjectPermission]map[AccessLevel]Permissio
 }
 
 const (
-	projectIdentifierKey = "projectIdentifier"
-	identifierKey        = "identifier"
+	projectIdKey  = "projectId"
+	identifierKey = "identifier"
 
 	// Keys that are used in the paramsMap.
-	projectIdKey = "projectId"
-	repoIdKey    = "repoId"
-	versionIdKey = "versionId"
-	patchIdKey   = "patchId"
-	taskIdKey    = "taskId"
+	projectIdentifierKey = "projectIdentifier"
+	repoIdKey            = "repoId"
+	versionIdKey         = "versionId"
+	patchIdKey           = "patchId"
+	taskIdKey            = "taskId"
 )
 
 func buildProjectParameterMap(args map[string]interface{}) (map[string]string, error) {
 	paramsMap := map[string]string{}
 
 	if projectIdentifier, hasProjectIdentifier := args[projectIdentifierKey].(string); hasProjectIdentifier {
-		paramsMap[projectIdKey] = projectIdentifier
+		paramsMap[projectIdentifierKey] = projectIdentifier
 	}
 	if identifier, hasIdentifier := args[identifierKey].(string); hasIdentifier {
-		paramsMap[projectIdKey] = identifier
+		paramsMap[projectIdentifierKey] = identifier
 	}
 	if projectId, hasProjectId := args[projectIdKey].(string); hasProjectId {
-		paramsMap[projectIdKey] = projectId
+		paramsMap[projectIdentifierKey] = projectId
 	}
 	if repoId, hasRepoId := args[repoIdKey].(string); hasRepoId {
 		paramsMap[repoIdKey] = repoId
