@@ -10,7 +10,6 @@ evergreen help
 
 We have documentation here but we also provide it on the PR itself. It will display commands that are available for your project, with some context about when to use them. If the commit queue is disabled but there is an available message, we will still display the message. If PR testing isn't enabled for the branch but [PR testing is set up for untracked branches](../Project-Configuration/Repo-Level-Settings#how-to-use-pr-testing-for-untracked-branches) then we will also still show the related GitHub Pull request commands (detailed below).
 
-
 ## GitHub Pull Request Testing
 
 Evergreen has an option to create patches for pull requests and this can be defined on the project page.
@@ -51,10 +50,9 @@ If you used `evergreen keep-definitions`, then `evergreen reset-definitions` wil
 
 #### Skip CI Testing
 
-Sometimes you may want to avoid having Evergreen create patches (perhaps because the work is in progress, or testing isn't relevant yet). 
-Simply including `[skip-ci]` or `[skip ci]` in the PR title or the first 100 characters of the description will prevent Evergreen from creating a patch (both from commits and `evergreen retry` comments) 
+Sometimes you may want to avoid having Evergreen create patches (perhaps because the work is in progress, or testing isn't relevant yet).
+Simply including `[skip-ci]` or `[skip ci]` in the PR title or the first 100 characters of the description will prevent Evergreen from creating a patch (both from commits and `evergreen retry` comments)
 until the label is removed and a new commit or `evergreen retry` comment is pushed.
-
 
 #### Create a patch for manual testing
 
@@ -76,7 +74,7 @@ Sometimes Evergreen has trouble sending updated GitHub statuses, so the checks o
 
 GitHub only allows one set of statuses for every commit SHA. If you have a situation where you have two PRs where the HEAD commit is the same, Evergreen will only create a patch for the first one and will make a comment on the second one explaining why. In general, if your tasks do not require the context of the PR (most notably the branch name, which is known to be used in some s3.put tasks), then the status displayed for the PRs will be correct. If the tasks do require the context of the PR, you may comment 'evergreen retry' and force Evergreen to abort currently running patches in favor of a new one in the context of the PR you have commented on.
 
-## Commit Queue 
+## Commit Queue
 
 Evergreen's commit queue merges changes after the code has passed a set of tests. You can read more about this [here](Commit-Queue#commit-queue).
 
@@ -89,3 +87,75 @@ evergreen merge
 
 To add a PR to the commit queue, comment `evergreen merge`. Any text after the newline will be added as the commit message.
 
+## Github Check Runs
+
+Evergreen offers integration with the GitHub checks API. Users have the option to specify check runs with or without output and they will then be sent to GitHub once the task finishes running. The check run will include basic information about the task such as the status and complete time as well as whatever information is sent as output.
+
+#### Configuration
+
+To add a check run to a task, specify it in the list of tasks in the build variant definition.
+
+```
+pre:
+  - command: git.get_project
+    params:
+      directory: src
+tasks:
+  - name: print_apple
+    commands:
+      - command: shell.exec
+        params:
+          script: echo "this is a task"
+buildvariants:
+  - name: ubuntu2204
+    display_name: Ubuntu 22.04
+    run_on:
+      - ubuntu2204-small
+    tasks:
+      - name: "print_apple"
+        create_check_run:
+          path_to_outputs: "src/output.json" ## for no output use ""
+    expansions:
+      checkRun_key: apple
+```
+
+The output json file should have the format specified [here](https://docs.github.com/en/rest/checks/runs?apiVersion=2022-11-28#create-a-check-run) for output. Expansions are supported in the output file, but please be careful to not pass any keys or sensitive data.
+
+example output.json file:
+
+```
+{
+  "title": "This is my report for ${checkRun_key}",
+  "summary": "We found 6 failures and 2 warnings",
+  "text": "It looks like there are some errors on lines 2 and 4.",
+  "annotations": [
+    {
+      "path": "README.md",
+      "annotation_level": "warning",
+      "title": "Error Detector",
+      "message": "message",
+      "raw_details": "Do you mean this other thing?",
+      "start_line": 2,
+      "end_line": 4
+    }
+  ]
+}
+```
+
+#### Interacting with the GitHub UI
+
+Once a check run is created with GitHub, a GitHub status will be posted to the PR.
+![Check Run Status](../images/check_run_status.png)
+
+When applicable, annotations will be visible in the files tab.
+![Check Run Annotation](../images/check_run_annotation.png)
+
+The checks can also be viewed in the checks tab.
+![Check Run Checks Tab](../images/check_run_checks_tab.png)
+
+The check run will include a `view more details` link which will link back to the corresponding evergreen task. The task can be restarted with the re-run button on the check run.
+
+#### Restrictions
+
+- Check runs only apply to PR patches
+- There is a limit on how many check runs can be added per version. This limit is set by evergreen based on demand and available resources and is subject to change.
