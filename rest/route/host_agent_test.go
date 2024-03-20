@@ -638,7 +638,8 @@ func TestHostNextTask(t *testing.T) {
 			ctx, cancel := context.WithCancel(context.Background())
 			defer cancel()
 
-			colls := []string{model.ProjectRefCollection, host.Collection, task.Collection, model.TaskQueuesCollection, build.Collection, evergreen.ConfigCollection}
+			colls := []string{model.ProjectRefCollection, host.Collection, task.Collection, model.TaskQueuesCollection, build.Collection,
+				evergreen.ConfigCollection, distro.Collection}
 			require.NoError(t, db.ClearCollections(colls...))
 			defer func() {
 				assert.NoError(t, db.ClearCollections(colls...))
@@ -651,6 +652,13 @@ func TestHostNextTask(t *testing.T) {
 					{Id: "task1"},
 					{Id: "task2"},
 					{Id: "task3"},
+				},
+			}
+
+			d := &distro.Distro{
+				Id: distroID,
+				DispatcherSettings: distro.DispatcherSettings{
+					Version: evergreen.DispatcherVersionRevisedWithDependencies,
 				},
 			}
 
@@ -675,6 +683,7 @@ func TestHostNextTask(t *testing.T) {
 				Enabled: true,
 			}
 
+			require.NoError(t, d.Insert(ctx))
 			require.NoError(t, task1.Insert())
 			require.NoError(t, task2.Insert())
 			require.NoError(t, task3.Insert())
