@@ -339,6 +339,7 @@ var (
 	projectRefPatchTriggerAliasesKey      = bsonutil.MustHaveTag(ProjectRef{}, "PatchTriggerAliases")
 	projectRefGithubTriggerAliasesKey     = bsonutil.MustHaveTag(ProjectRef{}, "GithubTriggerAliases")
 	projectRefPeriodicBuildsKey           = bsonutil.MustHaveTag(ProjectRef{}, "PeriodicBuilds")
+	projectRefOldestAllowedMergeBaseKey   = bsonutil.MustHaveTag(ProjectRef{}, "OldestAllowedMergeBase")
 	projectRefWorkstationConfigKey        = bsonutil.MustHaveTag(ProjectRef{}, "WorkstationConfig")
 	projectRefTaskAnnotationSettingsKey   = bsonutil.MustHaveTag(ProjectRef{}, "TaskAnnotationSettings")
 	projectRefBuildBaronSettingsKey       = bsonutil.MustHaveTag(ProjectRef{}, "BuildBaronSettings")
