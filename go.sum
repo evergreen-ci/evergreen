@@ -90,8 +90,8 @@ github.com/aws/aws-sdk-go-v2/internal/endpoints/v2 v2.6.2 h1:EtOU5jsPdIQNP+6Q2C5
 github.com/aws/aws-sdk-go-v2/internal/endpoints/v2 v2.6.2/go.mod h1:tyF5sKccmDz0Bv4NrstEr+/9YkSPJHrcO7UsUKf7pWM=
 github.com/aws/aws-sdk-go-v2/internal/ini v1.7.3 h1:n3GDfwqF2tzEkXlv5cuy4iy7LpKDtqDMcNLfZDu9rls=
 github.com/aws/aws-sdk-go-v2/internal/ini v1.7.3/go.mod h1:6fQQgfuGmw8Al/3M2IgIllycxV7ZW7WCdVSqfBeUiCY=
-github.com/aws/aws-sdk-go-v2/service/dynamodb v1.26.8 h1:XKO0BswTDeZMLDBd/b5pCEZGttNXrzRUVtFvp2Ak/Vo=
-github.com/aws/aws-sdk-go-v2/service/dynamodb v1.26.8/go.mod h1:N5tqZcYMM0N1PN7UQYJNWuGyO886OfnMhf/3MAbqMcI=
+github.com/aws/aws-sdk-go-v2/service/dynamodb v1.27.1 h1:plNo3WtooT2fYnhdyuzzsIJ4QWzcF5AT9oFbnrYC5Dw=
+github.com/aws/aws-sdk-go-v2/service/dynamodb v1.27.1/go.mod h1:N5tqZcYMM0N1PN7UQYJNWuGyO886OfnMhf/3MAbqMcI=
 github.com/aws/aws-sdk-go-v2/service/ec2 v1.148.1 h1:OGzK1PwB0sCE2Zwy6ISs/XSul4lrujQf3doXvmGqCwg=
 github.com/aws/aws-sdk-go-v2/service/ec2 v1.148.1/go.mod h1:ntWksNNQcXImRQMdxab74tp+H94neF/TwQJ9Ndxb04k=
 github.com/aws/aws-sdk-go-v2/service/ecs v1.36.0 h1:XjN5jaDmvP0fDGEOn/Ws06wNKNXUAPGLdeBhKUetQcc=
@@ -734,8 +734,8 @@ go.opentelemetry.io/contrib/detectors/aws/ec2 v1.21.1 h1:CUYilK1UkIUpdtYrku1Rb6t
 go.opentelemetry.io/contrib/detectors/aws/ec2 v1.21.1/go.mod h1:8X6bRmDQ4PMy7iVK7qor/eHnI00S2+q4BM0ukcMEl0s=
 go.opentelemetry.io/contrib/detectors/aws/ecs v1.23.0 h1:3qTvz60FDkm5h6EWKyCPe+U2DeSE11Cwz02kqm9p/l4=
 go.opentelemetry.io/contrib/detectors/aws/ecs v1.23.0/go.mod h1:GQPDmzp0DEgD5QttiPR2MPWOPFygbI/pvwU+57XlQpo=
-go.opentelemetry.io/contrib/instrumentation/github.com/aws/aws-sdk-go-v2/otelaws v0.46.1 h1:PGmSzEMllKQwBQHe9SERAsCytvgLhsb8OrRLeW+40xw=
-go.opentelemetry.io/contrib/instrumentation/github.com/aws/aws-sdk-go-v2/otelaws v0.46.1/go.mod h1:h0dNRrQsnnlMonPE/+FXrXtDYZEyZSTaIOfs+n8P/RQ=
+go.opentelemetry.io/contrib/instrumentation/github.com/aws/aws-sdk-go-v2/otelaws v0.49.0 h1:2P+w3GiH9Esh8f5mEa8lTB+8Ruh7XCsCuQah0tLEmE4=
+go.opentelemetry.io/contrib/instrumentation/github.com/aws/aws-sdk-go-v2/otelaws v0.49.0/go.mod h1:P9cJwfcWVLOHu/8swW4Jfl8AX/a4eXTptW9rp0Uv/co=
 go.opentelemetry.io/contrib/instrumentation/github.com/gorilla/mux/otelmux v0.47.0 h1:yPWywmjyhn5C64Z7OLdIfjnbwOQF/Xz89HNqSVquC2E=
 go.opentelemetry.io/contrib/instrumentation/github.com/gorilla/mux/otelmux v0.47.0/go.mod h1:jk2INQzOTr9e27FwMs2JVXXttZc/3bucJX/7l3YVfbw=
 go.opentelemetry.io/contrib/instrumentation/net/http/otelhttp v0.46.1 h1:aFJWCqJMNjENlcleuuOkGAPH82y0yULBScfXcIEdS24=

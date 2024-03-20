@@ -55,7 +55,7 @@ require (
 	go.mongodb.org/mongo-driver v1.13.1
 	go.opentelemetry.io/contrib/detectors/aws/ec2 v1.21.1
 	go.opentelemetry.io/contrib/detectors/aws/ecs v1.23.0
-	go.opentelemetry.io/contrib/instrumentation/github.com/aws/aws-sdk-go-v2/otelaws v0.46.1
+	go.opentelemetry.io/contrib/instrumentation/github.com/aws/aws-sdk-go-v2/otelaws v0.49.0
 	go.opentelemetry.io/contrib/instrumentation/github.com/gorilla/mux/otelmux v0.47.0
 	go.opentelemetry.io/contrib/instrumentation/net/http/otelhttp v0.46.1
 	go.opentelemetry.io/otel v1.24.0
@@ -89,7 +89,7 @@ require (
 	github.com/aws/aws-sdk-go-v2/internal/configsources v1.3.2 // indirect
 	github.com/aws/aws-sdk-go-v2/internal/endpoints/v2 v2.6.2 // indirect
 	github.com/aws/aws-sdk-go-v2/internal/ini v1.7.3 // indirect
-	github.com/aws/aws-sdk-go-v2/service/dynamodb v1.26.8 // indirect
+	github.com/aws/aws-sdk-go-v2/service/dynamodb v1.27.1 // indirect
 	github.com/aws/aws-sdk-go-v2/service/internal/accept-encoding v1.11.0 // indirect
 	github.com/aws/aws-sdk-go-v2/service/internal/endpoint-discovery v1.8.11 // indirect
 	github.com/aws/aws-sdk-go-v2/service/internal/presigned-url v1.11.0 // indirect
