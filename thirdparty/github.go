@@ -156,6 +156,7 @@ type GithubPatch struct {
 	MergeCommitSHA string `bson:"merge_commit_sha"`
 	CommitTitle    string `bson:"commit_title"`
 	CommitMessage  string `bson:"commit_message"`
+	MergeBase      string `bson:"merge_base"`
 	// the patchId to copy the definitions for for the next patch the pr creates
 	RepeatPatchIdNextPatch string `bson:"repeat_patch_id_next_patch"`
 }
@@ -619,7 +620,7 @@ func IsMergeBaseAllowed(ctx context.Context, token, owner, repo, oldestAllowedMe
 		attribute.String(githubRepoAttribute, repo),
 	))
 	defer span.End()
-	compare, err := getCommitComparison(ctx, token, owner, repo, oldestAllowedMergeBase, mergeBase, caller)
+	compare, err := getCommitComparison(ctx, token, owner, repo, mergeBase, oldestAllowedMergeBase, caller)
 	if err != nil {
 		return false, errors.Wrapf(err, "retreiving comparison between commit hashses '%s' and '%s'", oldestAllowedMergeBase, mergeBase)
 	}
@@ -627,7 +628,8 @@ func IsMergeBaseAllowed(ctx context.Context, token, owner, repo, oldestAllowedMe
 
 	// Per the API docs: https://docs.github.com/en/rest/commits/commits?apiVersion=2022-11-28#compare-two-commits
 	// Valid statuses are within the enum of "diverged", "ahead", "behind", "identical"
-	return status != "ahead", nil
+	// The input merge base is allowed if the oldest allowed merge base is at or behind it
+	return status == "behind" || status == "identical", nil
 }
 
 func getCommitComparison(ctx context.Context, token, owner, repo, baseRevision, currentCommitHash, caller string) (*github.CommitsComparison, error) {

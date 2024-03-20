@@ -282,8 +282,7 @@ func (j *patchIntentProcessor) finishPatch(ctx context.Context, patchDoc *patch.
 	}
 
 	if j.IntentType == patch.GithubIntentType && pref.OldestAllowedMergeBase != "" {
-		isMergeBaseAllowed, err := thirdparty.IsMergeBaseAllowed(ctx, token, patchDoc.GithubPatchData.BaseOwner, patchDoc.GithubPatchData.BaseRepo, pref.OldestAllowedMergeBase, j.intent.GetType())
-		// TODO change above
+		isMergeBaseAllowed, err := thirdparty.IsMergeBaseAllowed(ctx, token, patchDoc.GithubPatchData.BaseOwner, patchDoc.GithubPatchData.BaseRepo, pref.OldestAllowedMergeBase, patchDoc.GithubPatchData.MergeBase)
 		if err != nil {
 			return errors.Wrap(err, "checking if merge base is allowed")
 		}

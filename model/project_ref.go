@@ -2065,6 +2065,7 @@ func SaveProjectPageForSection(projectId string, p *ProjectRef, section ProjectP
 					ProjectRefGitTagAuthorizedUsersKey:  p.GitTagAuthorizedUsers,
 					ProjectRefGitTagAuthorizedTeamsKey:  p.GitTagAuthorizedTeams,
 					projectRefCommitQueueKey:            p.CommitQueue,
+					projectRefOldestAllowedMergeBaseKey: p.OldestAllowedMergeBase,
 				},
 			})
 	case ProjectPageNotificationsSection:

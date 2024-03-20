@@ -304,6 +304,7 @@ func (g *githubIntent) NewPatch() *Patch {
 			HeadOwner:  headRepo[0],
 			HeadRepo:   headRepo[1],
 			HeadHash:   g.HeadHash,
+			MergeBase:  g.MergeBase,
 			Author:     g.User,
 			AuthorUID:  g.UID,
 		},
