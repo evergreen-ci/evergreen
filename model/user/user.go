@@ -357,11 +357,24 @@ func (u *DBUser) GetViewableProjectSettings(ctx context.Context) ([]string, erro
 	}
 	roleManager := evergreen.GetEnvironment().RoleManager()
 
-	viewProjects, err := rolemanager.FindAllowedResources(ctx, roleManager, u.Roles(), evergreen.ProjectResourceType, evergreen.PermissionProjectSettings, evergreen.ProjectSettingsView.Value)
+	viewableProjects, err := rolemanager.FindAllowedResources(ctx, roleManager, u.Roles(), evergreen.ProjectResourceType, evergreen.PermissionProjectSettings, evergreen.ProjectSettingsView.Value)
 	if err != nil {
 		return nil, err
 	}
-	return viewProjects, nil
+	return viewableProjects, nil
+}
+
+func (u *DBUser) GetViewableProjects(ctx context.Context) ([]string, error) {
+	if evergreen.PermissionsDisabledForTests() {
+		return nil, nil
+	}
+	roleManager := evergreen.GetEnvironment().RoleManager()
+
+	viewableProjects, err := rolemanager.FindAllowedResources(ctx, roleManager, u.Roles(), evergreen.ProjectResourceType, evergreen.PermissionTasks, evergreen.TasksView.Value)
+	if err != nil {
+		return nil, err
+	}
+	return viewableProjects, nil
 }
 
 func (u *DBUser) HasPermission(opts gimlet.PermissionOpts) bool {

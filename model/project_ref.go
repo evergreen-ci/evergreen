@@ -1422,6 +1422,14 @@ func FindMergedProjectRefsByIds(ids ...string) ([]ProjectRef, error) {
 	}, true)
 }
 
+func FindProjectsByIdsWithLoggerAndRepoSettings(ids ...string) ([]ProjectRef, error) {
+	projectRefs, err := FindMergedProjectRefsByIds(ids...)
+	if err != nil {
+		return nil, err
+	}
+	return addLoggerAndRepoSettingsToProjects(projectRefs)
+}
+
 func FindProjectRefsByIds(ids ...string) ([]ProjectRef, error) {
 	if len(ids) == 0 {
 		return nil, nil
