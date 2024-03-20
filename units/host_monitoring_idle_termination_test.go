@@ -24,7 +24,7 @@ func numIdleHostsFound(ctx context.Context, env evergreen.Environment, t *testin
 	require.NoError(t, queue.Start(ctx))
 	defer queue.Runner().Close(ctx)
 
-	jobs, err := idleHostJobs(ctx, time.Date(2009, time.November, 10, 23, 0, 0, 0, time.UTC))
+	jobs, err := idleHostJobs(ctx, env, time.Date(2009, time.November, 10, 23, 0, 0, 0, time.UTC))
 	require.NoError(t, err)
 	require.NoError(t, queue.PutMany(ctx, jobs))
 
