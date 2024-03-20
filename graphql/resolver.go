@@ -194,9 +194,6 @@ func New(apiURL string) Config {
 		if err != nil {
 			return nil, mapHTTPStatusToGqlError(ctx, statusCode, err)
 		}
-		if projectId == "" {
-			return nil, InternalServerError.Send(ctx, "project ID is blank")
-		}
 
 		opts := gimlet.PermissionOpts{
 			Resource:      projectId,

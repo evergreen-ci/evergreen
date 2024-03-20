@@ -699,6 +699,10 @@ func GetProjectIdForProjectScopes(ctx context.Context, paramsMap map[string]stri
 		return "", http.StatusUnauthorized, errors.New("unauthorized")
 	}
 
+	if projectRef.Id == "" {
+		return "", http.StatusInternalServerError, errors.New("project ID is blank")
+	}
+
 	return projectRef.Id, http.StatusOK, nil
 }
 
@@ -731,9 +735,6 @@ func urlVarsToProjectScopes(r *http.Request) ([]string, int, error) {
 	projectId, statusCode, err := GetProjectIdForProjectScopes(r.Context(), paramsMap)
 	if err != nil {
 		return nil, statusCode, err
-	}
-	if projectId == "" {
-		return nil, statusCode, errors.Errorf("project ID is blank")
 	}
 
 	res := []string{projectId}
