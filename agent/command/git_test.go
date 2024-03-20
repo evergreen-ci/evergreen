@@ -57,6 +57,8 @@ type GitGetProjectSuite struct {
 	taskConfig6 *internal.TaskConfig     // used for TestMergeMultiplePatches
 	modelData7  *modelutil.TestModelData // GitHub merge queue
 	taskConfig7 *internal.TaskConfig     // GitHub merge queue
+	modelData8  *modelutil.TestModelData // Multiple modules (parallelized)
+	taskConfig8 *internal.TaskConfig     // Multiple modules (parallelized)
 
 	comm   *client.Mock
 	jasper jasper.Manager
@@ -98,6 +100,7 @@ func (s *GitGetProjectSuite) SetupTest() {
 	configPath2 := filepath.Join(testutil.GetDirectoryOfFile(), "testdata", "git", "test_config.yml")
 	configPath3 := filepath.Join(testutil.GetDirectoryOfFile(), "testdata", "git", "no_token.yml")
 	configPath4 := filepath.Join(testutil.GetDirectoryOfFile(), "testdata", "git", "additional_patch.yml")
+	configPath5 := filepath.Join(testutil.GetDirectoryOfFile(), "testdata", "git", "multiple_modules.yml")
 	patchPath := filepath.Join(testutil.GetDirectoryOfFile(), "testdata", "git", "test.patch")
 
 	s.modelData1, err = modelutil.SetupAPITestData(s.settings, "testtask1", "rhel55", configPath1, modelutil.NoPatch)
@@ -169,6 +172,15 @@ func (s *GitGetProjectSuite) SetupTest() {
 		HeadSHA:    "d2a90288ad96adca4a7d0122d8d4fd1deb24db11",
 	}
 	s.taskConfig7.Task.Requester = evergreen.GithubMergeRequester
+
+	s.modelData8, err = modelutil.SetupAPITestData(s.settings, "testtask1", "rhel55", configPath5, modelutil.NoPatch)
+	s.Require().NoError(err)
+	s.taskConfig8, err = agentutil.MakeTaskConfigFromModelData(s.ctx, s.settings, s.modelData8)
+	s.Require().NoError(err)
+	s.taskConfig8.Expansions = *util.NewExpansions(s.settings.Credentials)
+	s.taskConfig8.Expansions.Put("prefixpath", "hello")
+	// SetupAPITestData always creates BuildVariant with no modules so this line works around that
+	s.taskConfig8.BuildVariant.Modules = []string{"sample-1", "sample-2"}
 
 	s.comm.CreateInstallationTokenResult = mockedGitHubAppToken
 }
@@ -830,6 +842,75 @@ func (s *GitGetProjectSuite) TestCorrectModuleRevisionSetModule() {
 	}
 	s.True(foundMsg)
 	s.Equal("hello/module", conf.ModulePaths["sample"])
+}
+
+func (s *GitGetProjectSuite) TestMultipleModules() {
+	const sample1Hash = "cf46076567e4949f9fc68e0634139d4ac495c89b"
+	const sample2Hash = "9bdedd0990e83e328e42f7bb8c2771cab6ae0145"
+	conf := s.taskConfig8
+
+	logger, err := s.comm.GetLoggerProducer(s.ctx, &conf.Task, nil)
+	s.Require().NoError(err)
+	conf.Distro.CloneMethod = evergreen.CloneMethodOAuth
+	token, err := s.settings.GetGithubOauthToken()
+	s.Require().NoError(err)
+	conf.Expansions.Put(evergreen.GlobalGitHubTokenExpansion, token)
+	var pluginCmds []Command
+
+	conf.Expansions.Put(moduleRevExpansionName("sample-1"), sample1Hash)
+	conf.Expansions.Put(moduleRevExpansionName("sample-2"), sample2Hash)
+
+	for _, task := range conf.Project.Tasks {
+		s.NotEqual(len(task.Commands), 0)
+		for _, command := range task.Commands {
+			pluginCmds, err = Render(command, &conf.Project, BlockInfo{})
+			s.NoError(err)
+			s.NotNil(pluginCmds)
+			pluginCmds[0].SetJasperManager(s.jasper)
+			err = pluginCmds[0].Execute(s.ctx, s.comm, logger, conf)
+			s.NoError(err)
+		}
+	}
+
+	// Test module 1.
+	cmd := exec.Command("git", "rev-parse", "HEAD")
+	cmd.Dir = conf.WorkDir + "/src/hello/module-1/sample-1/"
+	var out bytes.Buffer
+	cmd.Stdout = &out
+	err = cmd.Run()
+	s.NoError(err)
+	ref := strings.Trim(out.String(), "\n")
+	s.Equal(sample1Hash, ref)
+	s.NoError(logger.Close())
+	toCheck := fmt.Sprintf("Using revision/ref '%s' for module 'sample-1' (reason: from manifest).", sample1Hash)
+	foundMsg := false
+	for _, line := range s.comm.GetTaskLogs(conf.Task.Id) {
+		if line.Data == toCheck {
+			foundMsg = true
+		}
+	}
+	s.True(foundMsg)
+	s.Equal("hello/module-1", conf.ModulePaths["sample-1"])
+
+	// Test module 2.
+	cmd = exec.Command("git", "rev-parse", "HEAD")
+	cmd.Dir = conf.WorkDir + "/src/hello/module-2/sample-2/"
+	out = bytes.Buffer{}
+	cmd.Stdout = &out
+	err = cmd.Run()
+	s.NoError(err)
+	ref = strings.Trim(out.String(), "\n")
+	s.Equal(sample2Hash, ref)
+	s.NoError(logger.Close())
+	toCheck = fmt.Sprintf("Using revision/ref '%s' for module 'sample-2' (reason: from manifest).", sample2Hash)
+	foundMsg = false
+	for _, line := range s.comm.GetTaskLogs(conf.Task.Id) {
+		if line.Data == toCheck {
+			foundMsg = true
+		}
+	}
+	s.True(foundMsg)
+	s.Equal("hello/module-2", conf.ModulePaths["sample-2"])
 }
 
 func (s *GitGetProjectSuite) TestCorrectModuleRevisionManifest() {
