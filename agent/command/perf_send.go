@@ -60,7 +60,7 @@ func (c *perfSend) Execute(ctx context.Context, comm client.Communicator, logger
 	}
 
 	// Read the file and add the Evergreen info.
-	filename := getWorkingDirectory(conf, c.File)
+	filename := GetWorkingDirectory(conf, c.File)
 	report, err := poplar.LoadTests(filename)
 	if err != nil {
 		return errors.Wrapf(err, "reading tests from file '%s'", filename)

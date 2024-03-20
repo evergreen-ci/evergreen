@@ -700,7 +700,7 @@ func (h *projectIDPutHandler) Parse(ctx context.Context, r *http.Request) error 
 	}
 	h.project = apiProjectRef
 
-	if len(*h.project.Owner) == 0 || len(*h.project.Repo) == 0 {
+	if utility.FromStringPtr(h.project.Owner) == "" || utility.FromStringPtr(h.project.Repo) == "" {
 		return errors.New("Owner and repository must not be empty strings")
 	}
 

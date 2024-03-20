@@ -59,7 +59,7 @@ func (c *attachArtifacts) Execute(ctx context.Context,
 	}
 
 	if !c.ExactFileNames {
-		workDir := getWorkingDirectory(conf, c.Prefix)
+		workDir := GetWorkingDirectory(conf, c.Prefix)
 		include := utility.NewGitIgnoreFileMatcher(workDir, c.Files...)
 		b := utility.FileListBuilder{
 			WorkingDir: workDir,
@@ -84,7 +84,7 @@ func (c *attachArtifacts) Execute(ctx context.Context,
 	files := []*artifact.File{}
 	var segment []*artifact.File
 	for idx := range c.Files {
-		segment, err = readArtifactsFile(getWorkingDirectory(conf, c.Prefix), c.Files[idx])
+		segment, err = readArtifactsFile(GetWorkingDirectory(conf, c.Prefix), c.Files[idx])
 		if err != nil {
 			if c.Optional && os.IsNotExist(errors.Cause(err)) {
 				// pass;

@@ -258,7 +258,7 @@ func (m *dockerManager) TerminateInstance(ctx context.Context, h *host.Host, use
 	return h.Terminate(ctx, user, reason)
 }
 
-func (m *dockerManager) StopInstance(ctx context.Context, host *host.Host, user string) error {
+func (m *dockerManager) StopInstance(ctx context.Context, host *host.Host, shouldKeepOff bool, user string) error {
 	return errors.New("StopInstance is not supported for Docker provider")
 }
 

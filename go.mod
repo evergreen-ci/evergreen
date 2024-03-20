@@ -23,7 +23,7 @@ require (
 	github.com/evergreen-ci/cocoa v0.0.0-20230918160723-69a3ef4b69a0
 	github.com/evergreen-ci/gimlet v0.0.0-20240214172145-245537ea7b99
 	github.com/evergreen-ci/juniper v0.0.0-20230901183147-c805ea7351aa
-	github.com/evergreen-ci/pail v0.0.0-20240125155701-e60f20da397e
+	github.com/evergreen-ci/pail v0.0.0-20240319220903-6ca95a41e4c9
 	github.com/evergreen-ci/poplar v0.0.0-20240129220701-28919e26f3a3
 	github.com/evergreen-ci/shrub v0.0.0-20231121224157-600e066f9de6
 	github.com/evergreen-ci/timber v0.0.0-20230905184025-88c53a14c47b
@@ -204,6 +204,7 @@ require (
 	github.com/evergreen-ci/evg-lint v0.0.0-20211115144425-3b19c8e83a57
 	github.com/evergreen-ci/plank v0.0.0-20230207190607-5f47f8a30da1
 	github.com/evergreen-ci/tarjan v0.0.0-20170824211642-fcd3f3321826
+	github.com/gorilla/handlers v1.5.2
 	github.com/mongodb/jasper v0.0.0-20240214180020-54b4948d176b
 	github.com/shirou/gopsutil/v3 v3.23.12
 	gopkg.in/yaml.v3 v3.0.1

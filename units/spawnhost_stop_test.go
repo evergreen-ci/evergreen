@@ -33,7 +33,7 @@ func TestSpawnhostStopJob(t *testing.T) {
 				Provider: evergreen.ProviderNameMock,
 				Distro:   distro.Distro{Provider: evergreen.ProviderNameMock},
 			}
-			j, ok := NewSpawnhostStopJob(&h, "user", ts).(*spawnhostStopJob)
+			j, ok := NewSpawnhostStopJob(&h, false, "user", ts).(*spawnhostStopJob)
 			require.True(t, ok)
 
 			assert.NotZero(t, j.RetryInfo().GetMaxAttempts(), "job should retry")
@@ -54,7 +54,7 @@ func TestSpawnhostStopJob(t *testing.T) {
 			})
 
 			ts := utility.RoundPartOfMinute(1).Format(TSFormat)
-			j := NewSpawnhostStopJob(&h, "user", ts)
+			j := NewSpawnhostStopJob(&h, false, "user", ts)
 
 			j.Run(ctx)
 			assert.NoError(t, j.Error())
@@ -64,6 +64,34 @@ func TestSpawnhostStopJob(t *testing.T) {
 			assert.NoError(t, err)
 			require.NotZero(t, dbHost)
 			assert.Equal(t, evergreen.HostStopped, dbHost.Status)
+			assert.False(t, dbHost.SleepSchedule.ShouldKeepOff)
+
+			checkSpawnHostModificationEvent(t, h.Id, event.EventHostStopped, true)
+		},
+		"RunStopsRunningHostAndSetsKeepOff": func(ctx context.Context, t *testing.T, mock cloud.MockProvider) {
+			h := host.Host{
+				Id:       "host-running",
+				Status:   evergreen.HostRunning,
+				Provider: evergreen.ProviderNameMock,
+				Distro:   distro.Distro{Provider: evergreen.ProviderNameMock},
+			}
+			assert.NoError(t, h.Insert(ctx))
+			mock.Set(h.Id, cloud.MockInstance{
+				Status: cloud.StatusStopped,
+			})
+
+			ts := utility.RoundPartOfMinute(1).Format(TSFormat)
+			j := NewSpawnhostStopJob(&h, true, "user", ts)
+
+			j.Run(ctx)
+			assert.NoError(t, j.Error())
+			assert.True(t, j.Status().Completed)
+
+			dbHost, err := host.FindOneId(ctx, h.Id)
+			assert.NoError(t, err)
+			require.NotZero(t, dbHost)
+			assert.Equal(t, evergreen.HostStopped, dbHost.Status)
+			assert.True(t, dbHost.SleepSchedule.ShouldKeepOff)
 
 			checkSpawnHostModificationEvent(t, h.Id, event.EventHostStopped, true)
 		},
@@ -81,7 +109,7 @@ func TestSpawnhostStopJob(t *testing.T) {
 			})
 
 			ts := utility.RoundPartOfMinute(1).Format(TSFormat)
-			j := NewSpawnhostStopJob(&h, "user", ts)
+			j := NewSpawnhostStopJob(&h, false, "user", ts)
 
 			j.Run(ctx)
 			assert.NoError(t, j.Error())

@@ -18,6 +18,7 @@
       "display_name": "",
       "project": "",
       "zone": "us-east-1e",
+      "persistent_dns_name": "testuser-123.workstations.build.10gen.cc",
       "provisioned": true,
       "priv_attempts": 1,
       "last_task": "",

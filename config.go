@@ -38,11 +38,11 @@ var (
 
 	// Agent version to control agent rollover. The format is the calendar date
 	// (YYYY-MM-DD).
-	AgentVersion = "2024-03-07"
+	AgentVersion = "2024-03-15-B"
 )
 
 // ConfigSection defines a sub-document in the evergreen config
-// any config sections must also be added to registry.go
+// any config sections must also be added to the registry in config_sections.go.
 type ConfigSection interface {
 	// SectionId returns the ID of the section to be used in the database document and struct tag
 	SectionId() string
@@ -105,6 +105,7 @@ type Settings struct {
 	SSHKeyDirectory     string                 `yaml:"ssh_key_directory" bson:"ssh_key_directory" json:"ssh_key_directory"`
 	SSHKeyPairs         []SSHKeyPair           `yaml:"ssh_key_pairs" bson:"ssh_key_pairs" json:"ssh_key_pairs"`
 	Slack               SlackConfig            `yaml:"slack" bson:"slack" json:"slack" id:"slack"`
+	SleepSchedule       SleepScheduleConfig    `yaml:"sleep_schedule" bson:"sleep_schedule" json:"sleep_schedule" id:"sleep_schedule"`
 	Splunk              SplunkConfig           `yaml:"splunk" bson:"splunk" json:"splunk" id:"splunk"`
 	TaskLimits          TaskLimitsConfig       `yaml:"task_limits" bson:"task_limits" json:"task_limits" id:"task_limits"`
 	Triggers            TriggerConfig          `yaml:"triggers" bson:"triggers" json:"triggers" id:"triggers"`

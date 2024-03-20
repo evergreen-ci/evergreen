@@ -373,7 +373,7 @@ func (uis *UIServer) modifySpawnHost(w http.ResponseWriter, r *http.Request) {
 		return
 
 	case HostStop:
-		_, err = data.StopSpawnHost(ctx, evergreen.GetEnvironment(), u, h)
+		_, err = data.StopSpawnHost(ctx, evergreen.GetEnvironment(), u, h, false)
 		if err != nil {
 			gimlet.WriteJSONError(w, err)
 		}
