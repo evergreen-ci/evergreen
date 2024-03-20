@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"strings"
 
+	"github.com/evergreen-ci/evergreen/agent/globals"
 	"github.com/evergreen-ci/evergreen/agent/util"
 	"github.com/mongodb/grip/message"
 	"github.com/mongodb/grip/send"
@@ -48,4 +49,16 @@ func NewRedactingSender(sender send.Sender, opts RedactionOptions) send.Sender {
 		expansionsToRedact: opts.Redacted,
 		Sender:             sender,
 	}
+}
+
+// ToRedact returns the full list of expansion keys whose values
+// should get redacted from task logs.
+func ToRedact(redacted map[string]bool) []string {
+	var expansionsToRedact []string
+	for key := range redacted {
+		expansionsToRedact = append(expansionsToRedact, key)
+	}
+	expansionsToRedact = append(expansionsToRedact, globals.ExpansionsToRedact...)
+
+	return expansionsToRedact
 }

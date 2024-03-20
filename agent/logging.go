@@ -6,7 +6,7 @@ import (
 	"os"
 	"path/filepath"
 
-	"github.com/evergreen-ci/evergreen/agent/command"
+	"github.com/evergreen-ci/evergreen/agent/globals"
 	"github.com/evergreen-ci/evergreen/agent/internal/client"
 	"github.com/evergreen-ci/evergreen/agent/internal/redactor"
 	"github.com/evergreen-ci/evergreen/model"
@@ -44,7 +44,7 @@ func getInc() int { return <-idSource }
 
 // GetSender configures the agent's local logging, which can go to Splunk, a
 // file, or stdout.
-func (a *Agent) GetSender(ctx context.Context, output LogOutputType, prefix string, taskID string, taskExecution int) (send.Sender, error) {
+func (a *Agent) GetSender(ctx context.Context, output globals.LogOutputType, prefix string, taskID string, taskExecution int) (send.Sender, error) {
 	var senders []send.Sender
 
 	splunkInfo := send.SplunkConnectionInfo{
@@ -65,7 +65,7 @@ func (a *Agent) GetSender(ctx context.Context, output LogOutputType, prefix stri
 	}
 
 	switch output {
-	case LogOutputStdout:
+	case globals.LogOutputStdout:
 		sender, err := send.NewNativeLogger("evergreen.agent", send.LevelInfo{Default: level.Info, Threshold: level.Debug})
 		if err != nil {
 			return nil, errors.Wrap(err, "creating native console logger")
@@ -119,7 +119,7 @@ func (a *Agent) prepLogger(tc *taskContext, c *model.LoggerConfig, commandName s
 		AWSCredentials:     pail.CreateAWSCredentials(tc.taskConfig.TaskSync.Key, tc.taskConfig.TaskSync.Secret, ""),
 		RedactorOpts: redactor.RedactionOptions{
 			Expansions: tc.taskConfig.NewExpansions,
-			Redacted:   command.ToRedact(tc.taskConfig.Redacted),
+			Redacted:   redactor.ToRedact(tc.taskConfig.Redacted),
 		},
 	}
 

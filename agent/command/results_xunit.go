@@ -192,7 +192,7 @@ func (c *xunitResults) parseAndUploadResults(ctx context.Context, conf *internal
 			return errors.Wrap(err, "canceled while sending test logs")
 		}
 
-		if err := taskoutput.AppendTestLog(ctx, comm, &conf.Task, redactor.RedactionOptions{Expansions: conf.NewExpansions, Redacted: ToRedact(conf.Redacted)}, log); err != nil {
+		if err := taskoutput.AppendTestLog(ctx, comm, &conf.Task, redactor.RedactionOptions{Expansions: conf.NewExpansions, Redacted: redactor.ToRedact(conf.Redacted)}, log); err != nil {
 			logger.Task().Error(errors.Wrap(err, "sending test log"))
 			continue
 		} else {

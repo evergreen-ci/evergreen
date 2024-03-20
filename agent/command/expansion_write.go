@@ -4,27 +4,13 @@ import (
 	"context"
 	"os"
 
-	"github.com/evergreen-ci/evergreen"
+	"github.com/evergreen-ci/evergreen/agent/globals"
 	"github.com/evergreen-ci/evergreen/agent/internal"
 	"github.com/evergreen-ci/evergreen/agent/internal/client"
 	"github.com/evergreen-ci/utility"
 	"github.com/mitchellh/mapstructure"
 	"github.com/pkg/errors"
 	"gopkg.in/yaml.v3"
-)
-
-var (
-	ExpansionsToRedact = []string{
-		evergreen.GlobalGitHubTokenExpansion,
-		evergreen.GithubAppToken,
-		// HostServicePasswordExpansion exists to redact the host's ServicePassword in the logs,
-		// which is used for some jasper commands for Windows hosts. It is populated as a default
-		// expansion only for tasks running on Windows hosts.
-		evergreen.HostServicePasswordExpansion,
-		AWSAccessKeyId,
-		AWSSecretAccessKey,
-		AWSSessionToken,
-	}
 )
 
 type expansionsWriter struct {
@@ -54,7 +40,7 @@ func (c *expansionsWriter) Execute(ctx context.Context,
 		_, ok := conf.Redacted[k]
 		// Redact private variables unless redacted set to true. Always
 		// redact the global GitHub and AWS expansions.
-		if (ok && !c.Redacted) || utility.StringSliceContains(ExpansionsToRedact, k) {
+		if (ok && !c.Redacted) || utility.StringSliceContains(globals.ExpansionsToRedact, k) {
 			continue
 		}
 
