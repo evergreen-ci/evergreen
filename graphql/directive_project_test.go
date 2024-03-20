@@ -70,7 +70,7 @@ func TestRequireProjectAccessNew(t *testing.T) {
 	// error if invalid permission and access combination
 	obj = interface{}(map[string]interface{}(nil))
 	res, err = config.Directives.RequireProjectAccessNew(ctx, obj, next, ProjectPermissionAnnotations, AccessLevelAdmin)
-	require.EqualError(t, err, "input: invalid permission and access level configuration")
+	require.EqualError(t, err, "input: invalid permission and access level configuration: invalid access level for project_task_annotations")
 	require.Nil(t, res)
 	require.Equal(t, 0, callCount)
 }

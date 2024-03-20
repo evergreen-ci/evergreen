@@ -1225,31 +1225,59 @@ func collapseCommit(ctx context.Context, mainlineCommits MainlineCommits, mainli
 	}
 }
 
-type PermissionLevel struct {
-	Permission string
-	Level      int
-}
+func getPermissionLevel(projectPermission ProjectPermission, access AccessLevel) (requiredPermission string, requiredLevel int, err error) {
+	var permission string
+	var level int
 
-// projectPermissionAccessMap maps project permissions and access levels used in GraphQL directives to Evergreen permission levels.
-var projectPermissionAccessMap = map[ProjectPermission]map[AccessLevel]PermissionLevel{
-	ProjectPermissionSettings: {
-		AccessLevelEdit: {Permission: evergreen.PermissionProjectSettings, Level: evergreen.ProjectSettingsEdit.Value},
-		AccessLevelView: {Permission: evergreen.PermissionProjectSettings, Level: evergreen.ProjectSettingsView.Value},
-	},
-	ProjectPermissionTasks: {
-		AccessLevelAdmin: {Permission: evergreen.PermissionTasks, Level: evergreen.TasksAdmin.Value},
-		AccessLevelEdit:  {Permission: evergreen.PermissionTasks, Level: evergreen.TasksBasic.Value},
-		AccessLevelView:  {Permission: evergreen.PermissionTasks, Level: evergreen.TasksView.Value},
-	},
-	ProjectPermissionAnnotations: {
-		AccessLevelEdit: {Permission: evergreen.PermissionAnnotations, Level: evergreen.AnnotationsModify.Value},
-		AccessLevelView: {Permission: evergreen.PermissionAnnotations, Level: evergreen.AnnotationsView.Value},
-	},
-	ProjectPermissionPatches: {
-		AccessLevelAdmin: {Permission: evergreen.PermissionPatches, Level: evergreen.PatchSubmitAdmin.Value},
-		AccessLevelEdit:  {Permission: evergreen.PermissionPatches, Level: evergreen.PatchSubmit.Value},
-	},
-	ProjectPermissionLogs: {
-		AccessLevelView: {Permission: evergreen.PermissionLogs, Level: evergreen.LogsView.Value},
-	},
+	switch projectPermission {
+	case ProjectPermissionSettings:
+		permission = evergreen.PermissionProjectSettings
+		if access == AccessLevelEdit {
+			level = evergreen.ProjectSettingsEdit.Value
+		} else if access == AccessLevelView {
+			level = evergreen.ProjectSettingsView.Value
+		} else {
+			return "", 0, errors.Errorf("invalid access level for %s", evergreen.PermissionProjectSettings)
+		}
+	case ProjectPermissionPatches:
+		permission = evergreen.PermissionPatches
+		if access == AccessLevelAdmin {
+			level = evergreen.PatchSubmitAdmin.Value
+		} else if access == AccessLevelEdit {
+			level = evergreen.PatchSubmit.Value
+		} else {
+			return "", 0, errors.Errorf("invalid access level for %s", evergreen.PermissionPatches)
+		}
+	case ProjectPermissionTasks:
+		permission = evergreen.PermissionTasks
+		if access == AccessLevelAdmin {
+			level = evergreen.TasksAdmin.Value
+		} else if access == AccessLevelEdit {
+			level = evergreen.TasksBasic.Value
+		} else if access == AccessLevelView {
+			level = evergreen.TasksView.Value
+		} else {
+			return "", 0, errors.Errorf("invalid access level for %s", evergreen.PermissionTasks)
+		}
+	case ProjectPermissionAnnotations:
+		permission = evergreen.PermissionAnnotations
+		if access == AccessLevelEdit {
+			level = evergreen.AnnotationsModify.Value
+		} else if access == AccessLevelView {
+			level = evergreen.AnnotationsView.Value
+		} else {
+			return "", 0, errors.Errorf("invalid access level for %s", evergreen.PermissionAnnotations)
+		}
+	case ProjectPermissionLogs:
+		permission = evergreen.PermissionLogs
+		if access == AccessLevelView {
+			level = evergreen.LogsView.Value
+		} else {
+			return "", 0, errors.Errorf("invalid access level for %s", evergreen.PermissionLogs)
+		}
+	default:
+		return "", 0, errors.New("invalid project permission")
+	}
+
+	return permission, level, nil
 }

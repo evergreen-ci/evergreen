@@ -179,9 +179,9 @@ func New(apiURL string) Config {
 			return nil, InternalServerError.Send(ctx, "converting args into map")
 		}
 
-		perms, permsOk := projectPermissionAccessMap[permission][access]
-		if !permsOk {
-			return nil, InputValidationError.Send(ctx, "invalid permission and access level configuration")
+		requiredPermission, requiredLevel, err := getPermissionLevel(permission, access)
+		if err != nil {
+			return nil, InputValidationError.Send(ctx, fmt.Sprintf("invalid permission and access level configuration: %s", err.Error()))
 		}
 
 		paramsMap, err := data.BuildProjectParameterMap(args)
@@ -197,8 +197,8 @@ func New(apiURL string) Config {
 		opts := gimlet.PermissionOpts{
 			Resource:      projectId,
 			ResourceType:  evergreen.ProjectResourceType,
-			Permission:    perms.Permission,
-			RequiredLevel: perms.Level,
+			Permission:    requiredPermission,
+			RequiredLevel: requiredLevel,
 		}
 		if user.HasPermission(opts) {
 			return next(ctx)
