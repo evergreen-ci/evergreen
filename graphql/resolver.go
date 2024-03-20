@@ -12,7 +12,6 @@ import (
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/rest/data"
 	restModel "github.com/evergreen-ci/evergreen/rest/model"
-	"github.com/evergreen-ci/evergreen/rest/route"
 	"github.com/evergreen-ci/gimlet"
 	"github.com/evergreen-ci/utility"
 )
@@ -185,12 +184,12 @@ func New(apiURL string) Config {
 			return nil, InputValidationError.Send(ctx, "invalid permission and access level configuration")
 		}
 
-		paramsMap, err := buildProjectParameterMap(args)
+		paramsMap, err := data.BuildProjectParameterMap(args)
 		if err != nil {
 			return nil, InputValidationError.Send(ctx, err.Error())
 		}
 
-		projectId, statusCode, err := route.GetProjectIdForProjectScopes(ctx, paramsMap)
+		projectId, statusCode, err := data.GetProjectIdFromParams(ctx, paramsMap)
 		if err != nil {
 			return nil, mapHTTPStatusToGqlError(ctx, statusCode, err)
 		}
