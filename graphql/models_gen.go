@@ -661,18 +661,16 @@ func (e CommunicationMethod) MarshalGQL(w io.Writer) {
 type DispatcherVersion string
 
 const (
-	DispatcherVersionRevised                 DispatcherVersion = "REVISED"
 	DispatcherVersionRevisedWithDependencies DispatcherVersion = "REVISED_WITH_DEPENDENCIES"
 )
 
 var AllDispatcherVersion = []DispatcherVersion{
-	DispatcherVersionRevised,
 	DispatcherVersionRevisedWithDependencies,
 }
 
 func (e DispatcherVersion) IsValid() bool {
 	switch e {
-	case DispatcherVersionRevised, DispatcherVersionRevisedWithDependencies:
+	case DispatcherVersionRevisedWithDependencies:
 		return true
 	}
 	return false

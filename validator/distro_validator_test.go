@@ -51,7 +51,7 @@ func TestCheckDistro(t *testing.T) {
 					Version: evergreen.FinderVersionLegacy,
 				},
 				DispatcherSettings: distro.DispatcherSettings{
-					Version: evergreen.DispatcherVersionLegacy,
+					Version: evergreen.DispatcherVersionRevisedWithDependencies,
 				},
 				HostAllocatorSettings: distro.HostAllocatorSettings{
 					Version:      evergreen.HostAllocatorUtilization,
@@ -108,7 +108,7 @@ func TestCheckDistro(t *testing.T) {
 					Version: evergreen.FinderVersionLegacy,
 				},
 				DispatcherSettings: distro.DispatcherSettings{
-					Version: evergreen.DispatcherVersionRevised,
+					Version: evergreen.DispatcherVersionRevisedWithDependencies,
 				},
 				HostAllocatorSettings: distro.HostAllocatorSettings{
 					Version:      evergreen.HostAllocatorUtilization,
@@ -453,11 +453,11 @@ func TestEnsureValidContainerPool(t *testing.T) {
 	conf := &evergreen.Settings{
 		ContainerPools: evergreen.ContainerPoolsConfig{
 			Pools: []evergreen.ContainerPool{
-				evergreen.ContainerPool{
+				{
 					Distro: "d4",
 					Id:     "test-pool-valid",
 				},
-				evergreen.ContainerPool{
+				{
 					Distro: "d1",
 					Id:     "test-pool-invalid",
 				},

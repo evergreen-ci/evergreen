@@ -56,8 +56,6 @@ func (r *dispatcherSettingsResolver) Version(ctx context.Context, obj *model.API
 	}
 
 	switch utility.FromStringPtr(obj.Version) {
-	case evergreen.DispatcherVersionRevised:
-		return DispatcherVersionRevised, nil
 	case evergreen.DispatcherVersionRevisedWithDependencies:
 		return DispatcherVersionRevisedWithDependencies, nil
 	default:
@@ -258,8 +256,6 @@ func (r *bootstrapSettingsInputResolver) Method(ctx context.Context, obj *model.
 // Version is the resolver for the version field.
 func (r *dispatcherSettingsInputResolver) Version(ctx context.Context, obj *model.APIDispatcherSettings, data DispatcherVersion) error {
 	switch data {
-	case DispatcherVersionRevised:
-		obj.Version = utility.ToStringPtr(evergreen.DispatcherVersionRevised)
 	case DispatcherVersionRevisedWithDependencies:
 		obj.Version = utility.ToStringPtr(evergreen.DispatcherVersionRevisedWithDependencies)
 	default:
