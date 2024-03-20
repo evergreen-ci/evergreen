@@ -37,7 +37,13 @@ func TestRequireProjectAccessNew(t *testing.T) {
 	const refreshToken = "refresh_token"
 	config := New("/graphql")
 	require.NotNil(t, config)
-	ctx := context.Background()
+
+	usr, err := user.GetOrCreateUser(apiUser, "User Name", email, accessToken, refreshToken, []string{})
+	require.NoError(t, err)
+	require.NotNil(t, usr)
+
+	ctx := gimlet.AttachUser(context.Background(), usr)
+	require.NotNil(t, ctx)
 
 	// callCount keeps track of how many times the function is called
 	callCount := 0
@@ -46,13 +52,6 @@ func TestRequireProjectAccessNew(t *testing.T) {
 		callCount++
 		return nil, nil
 	}
-
-	usr, err := user.GetOrCreateUser(apiUser, "User Name", email, accessToken, refreshToken, []string{})
-	require.NoError(t, err)
-	require.NotNil(t, usr)
-
-	ctx = gimlet.AttachUser(ctx, usr)
-	require.NotNil(t, ctx)
 
 	// error if input is invalid
 	obj := interface{}(nil)
@@ -80,7 +79,13 @@ func TestRequireProjectAccessForSettings(t *testing.T) {
 	setupPermissions(t)
 	config := New("/graphql")
 	require.NotNil(t, config)
-	ctx := context.Background()
+
+	usr, err := setupUser(t)
+	require.NoError(t, err)
+	require.NotNil(t, usr)
+
+	ctx := gimlet.AttachUser(context.Background(), usr)
+	require.NotNil(t, ctx)
 
 	// callCount keeps track of how many times the function is called
 	callCount := 0
@@ -89,10 +94,6 @@ func TestRequireProjectAccessForSettings(t *testing.T) {
 		callCount++
 		return nil, nil
 	}
-
-	usr, err := setupUser(t)
-	require.NoError(t, err)
-	require.NotNil(t, usr)
 
 	projectRef := model.ProjectRef{
 		Id:         "project_id",
@@ -106,9 +107,6 @@ func TestRequireProjectAccessForSettings(t *testing.T) {
 	}}
 	err = repoRef.Upsert()
 	require.NoError(t, err)
-
-	ctx = gimlet.AttachUser(ctx, usr)
-	require.NotNil(t, ctx)
 
 	obj := interface{}(map[string]interface{}{"projectIdentifier": "invalid_identifier"})
 	res, err := config.Directives.RequireProjectAccessNew(ctx, obj, next, ProjectPermissionSettings, AccessLevelEdit)
@@ -185,8 +183,14 @@ func TestRequireProjectAccessForTasks(t *testing.T) {
 	const refreshToken = "refresh_token"
 	config := New("/graphql")
 	require.NotNil(t, config)
-	ctx := context.Background()
 	obj := interface{}(map[string]interface{}{"taskId": task.Id})
+
+	usr, err := user.GetOrCreateUser(apiUser, "User Name", email, accessToken, refreshToken, []string{})
+	require.NoError(t, err)
+	require.NotNil(t, usr)
+
+	ctx := gimlet.AttachUser(context.Background(), usr)
+	require.NotNil(t, ctx)
 
 	// callCount keeps track of how many times the function is called
 	callCount := 0
@@ -195,13 +199,6 @@ func TestRequireProjectAccessForTasks(t *testing.T) {
 		callCount++
 		return nil, nil
 	}
-
-	usr, err := user.GetOrCreateUser(apiUser, "User Name", email, accessToken, refreshToken, []string{})
-	require.NoError(t, err)
-	require.NotNil(t, usr)
-
-	ctx = gimlet.AttachUser(ctx, usr)
-	require.NotNil(t, ctx)
 
 	// superuser should be successful for admin, edit, view
 	require.NoError(t, usr.AddRole("admin_project_access"))
@@ -316,8 +313,14 @@ func TestRequireProjectAccessForAnnotations(t *testing.T) {
 	const refreshToken = "refresh_token"
 	config := New("/graphql")
 	require.NotNil(t, config)
-	ctx := context.Background()
 	obj := interface{}(map[string]interface{}{"taskId": task.Id})
+
+	usr, err := user.GetOrCreateUser(apiUser, "User Name", email, accessToken, refreshToken, []string{})
+	require.NoError(t, err)
+	require.NotNil(t, usr)
+
+	ctx := gimlet.AttachUser(context.Background(), usr)
+	require.NotNil(t, ctx)
 
 	// callCount keeps track of how many times the function is called
 	callCount := 0
@@ -326,13 +329,6 @@ func TestRequireProjectAccessForAnnotations(t *testing.T) {
 		callCount++
 		return nil, nil
 	}
-
-	usr, err := user.GetOrCreateUser(apiUser, "User Name", email, accessToken, refreshToken, []string{})
-	require.NoError(t, err)
-	require.NotNil(t, usr)
-
-	ctx = gimlet.AttachUser(ctx, usr)
-	require.NotNil(t, ctx)
 
 	// superuser should be successful for edit, view
 	require.NoError(t, usr.AddRole("admin_project_access"))
@@ -411,8 +407,14 @@ func TestRequireProjectAccessForPatches(t *testing.T) {
 	const refreshToken = "refresh_token"
 	config := New("/graphql")
 	require.NotNil(t, config)
-	ctx := context.Background()
 	obj := interface{}(map[string]interface{}{"patchId": patch.Id.Hex()})
+
+	usr, err := user.GetOrCreateUser(apiUser, "User Name", email, accessToken, refreshToken, []string{})
+	require.NoError(t, err)
+	require.NotNil(t, usr)
+
+	ctx := gimlet.AttachUser(context.Background(), usr)
+	require.NotNil(t, ctx)
 
 	// callCount keeps track of how many times the function is called
 	callCount := 0
@@ -421,13 +423,6 @@ func TestRequireProjectAccessForPatches(t *testing.T) {
 		callCount++
 		return nil, nil
 	}
-
-	usr, err := user.GetOrCreateUser(apiUser, "User Name", email, accessToken, refreshToken, []string{})
-	require.NoError(t, err)
-	require.NotNil(t, usr)
-
-	ctx = gimlet.AttachUser(ctx, usr)
-	require.NotNil(t, ctx)
 
 	// superuser should be successful for admin, edit
 	require.NoError(t, usr.AddRole("admin_project_access"))
@@ -500,8 +495,14 @@ func TestRequireProjectAccessForLogs(t *testing.T) {
 	const refreshToken = "refresh_token"
 	config := New("/graphql")
 	require.NotNil(t, config)
-	ctx := context.Background()
 	obj := interface{}(map[string]interface{}{"projectId": project.Id})
+
+	usr, err := user.GetOrCreateUser(apiUser, "User Name", email, accessToken, refreshToken, []string{})
+	require.NoError(t, err)
+	require.NotNil(t, usr)
+
+	ctx := gimlet.AttachUser(context.Background(), usr)
+	require.NotNil(t, ctx)
 
 	// callCount keeps track of how many times the function is called
 	callCount := 0
@@ -510,13 +511,6 @@ func TestRequireProjectAccessForLogs(t *testing.T) {
 		callCount++
 		return nil, nil
 	}
-
-	usr, err := user.GetOrCreateUser(apiUser, "User Name", email, accessToken, refreshToken, []string{})
-	require.NoError(t, err)
-	require.NotNil(t, usr)
-
-	ctx = gimlet.AttachUser(ctx, usr)
-	require.NotNil(t, ctx)
 
 	// superuser should be successful for view
 	require.NoError(t, usr.AddRole("admin_project_access"))
