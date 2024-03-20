@@ -20,6 +20,7 @@ type redactingSender struct {
 	send.Sender
 }
 
+// RedactionOptions configures a redacting sender.
 type RedactionOptions struct {
 	// Expansions defines the values to redact.
 	Expansions *util.DynamicExpansions

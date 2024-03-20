@@ -67,6 +67,7 @@ const (
 	EndTaskMessageLimit = 500
 )
 
+// TimeoutType indicates the type of task timeout.
 type TimeoutType string
 
 const (
