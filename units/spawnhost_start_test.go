@@ -67,6 +67,36 @@ func TestSpawnhostStartJob(t *testing.T) {
 
 			checkSpawnHostModificationEvent(t, h.Id, event.EventHostStarted, true)
 		},
+		"RunStartsStoppedHostAndClearsKeepOff": func(ctx context.Context, t *testing.T, mock cloud.MockProvider) {
+			h := host.Host{
+				Id:       "host-stopped",
+				Status:   evergreen.HostStopped,
+				Provider: evergreen.ProviderNameMock,
+				Distro:   distro.Distro{Provider: evergreen.ProviderNameMock},
+				SleepSchedule: host.SleepScheduleInfo{
+					ShouldKeepOff: true,
+				},
+			}
+			assert.NoError(t, h.Insert(ctx))
+			mock.Set(h.Id, cloud.MockInstance{
+				Status: cloud.StatusRunning,
+			})
+
+			ts := utility.RoundPartOfMinute(1).Format(TSFormat)
+			j := NewSpawnhostStartJob(&h, "user", ts)
+
+			j.Run(ctx)
+			assert.NoError(t, j.Error())
+			assert.True(t, j.Status().Completed)
+
+			dbHost, err := host.FindOneId(ctx, h.Id)
+			assert.NoError(t, err)
+			require.NotZero(t, dbHost)
+			assert.Equal(t, evergreen.HostRunning, dbHost.Status)
+			assert.False(t, dbHost.SleepSchedule.ShouldKeepOff)
+
+			checkSpawnHostModificationEvent(t, h.Id, event.EventHostStarted, true)
+		},
 		"RunNoopsIfHostIsAlreadyRunning": func(ctx context.Context, t *testing.T, mock cloud.MockProvider) {
 			h := host.Host{
 				Id:       "host-running",

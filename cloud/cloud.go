@@ -45,7 +45,7 @@ type Manager interface {
 	TerminateInstance(context.Context, *host.Host, string, string) error
 
 	// StopInstance stops an instance.
-	StopInstance(context.Context, *host.Host, string) error
+	StopInstance(ctx context.Context, h *host.Host, shouldKeepOff bool, user string) error
 
 	// StartInstance starts a stopped instance.
 	StartInstance(context.Context, *host.Host, string) error

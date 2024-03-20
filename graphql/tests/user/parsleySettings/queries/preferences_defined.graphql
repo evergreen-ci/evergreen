@@ -1,0 +1,9 @@
+query {
+  user(userId: "bob.smith") {
+    displayName
+    userId
+    parsleySettings {
+      sectionsEnabled
+    }
+  }
+}

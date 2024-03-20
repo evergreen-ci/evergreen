@@ -13,6 +13,7 @@
 *.js.map
 
 # Folders
+_bucketdata
 _obj
 _test
 bin

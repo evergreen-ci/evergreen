@@ -98,8 +98,9 @@ func TestHostPaginator(t *testing.T) {
 						prefix = 0
 					}
 					nextModelHost := &model.APIHost{
-						Id:      utility.ToStringPtr(fmt.Sprintf("%dhost%d", prefix, i)),
-						HostURL: utility.ToStringPtr(""),
+						Id:                utility.ToStringPtr(fmt.Sprintf("%dhost%d", prefix, i)),
+						HostURL:           utility.ToStringPtr(""),
+						PersistentDNSName: utility.ToStringPtr(""),
 						Distro: model.DistroInfo{
 							Id:                   utility.ToStringPtr(""),
 							Provider:             utility.ToStringPtr(evergreen.ProviderNameMock),
@@ -151,8 +152,9 @@ func TestHostPaginator(t *testing.T) {
 						prefix = 0
 					}
 					nextModelHost := &model.APIHost{
-						Id:      utility.ToStringPtr(fmt.Sprintf("%dhost%d", prefix, i)),
-						HostURL: utility.ToStringPtr(""),
+						Id:                utility.ToStringPtr(fmt.Sprintf("%dhost%d", prefix, i)),
+						HostURL:           utility.ToStringPtr(""),
+						PersistentDNSName: utility.ToStringPtr(""),
 						Distro: model.DistroInfo{
 							Id:                   utility.ToStringPtr(""),
 							Provider:             utility.ToStringPtr(evergreen.ProviderNameMock),
@@ -205,8 +207,9 @@ func TestHostPaginator(t *testing.T) {
 						prefix = 0
 					}
 					nextModelHost := &model.APIHost{
-						Id:      utility.ToStringPtr(fmt.Sprintf("%dhost%d", prefix, i)),
-						HostURL: utility.ToStringPtr(""),
+						Id:                utility.ToStringPtr(fmt.Sprintf("%dhost%d", prefix, i)),
+						HostURL:           utility.ToStringPtr(""),
+						PersistentDNSName: utility.ToStringPtr(""),
 						Distro: model.DistroInfo{
 							Id:                   utility.ToStringPtr(""),
 							Provider:             utility.ToStringPtr(evergreen.ProviderNameMock),
@@ -258,8 +261,9 @@ func TestHostPaginator(t *testing.T) {
 						prefix = 0
 					}
 					nextModelHost := &model.APIHost{
-						Id:      utility.ToStringPtr(fmt.Sprintf("%dhost%d", prefix, i)),
-						HostURL: utility.ToStringPtr(""),
+						Id:                utility.ToStringPtr(fmt.Sprintf("%dhost%d", prefix, i)),
+						HostURL:           utility.ToStringPtr(""),
+						PersistentDNSName: utility.ToStringPtr(""),
 						Distro: model.DistroInfo{
 							Id:                   utility.ToStringPtr(""),
 							Provider:             utility.ToStringPtr(evergreen.ProviderNameMock),

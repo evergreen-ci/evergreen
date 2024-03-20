@@ -459,6 +459,14 @@ type TestSortOptions struct {
 	Direction SortDirection    `json:"direction"`
 }
 
+type UpdateParsleySettingsInput struct {
+	ParsleySettings *model.APIParsleySettings `json:"parsleySettings"`
+}
+
+type UpdateParsleySettingsPayload struct {
+	ParsleySettings *model.APIParsleySettings `json:"parsleySettings,omitempty"`
+}
+
 // UpdateVolumeInput is the input to the updateVolume mutation.
 // Its fields determine how a given volume will be modified.
 type UpdateVolumeInput struct {

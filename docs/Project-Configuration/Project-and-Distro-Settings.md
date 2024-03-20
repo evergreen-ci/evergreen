@@ -73,7 +73,7 @@ Evergreen.
 
 Admins can also set the branch project to inherit values from a
 repo-level project settings configuration. This can be learned about at
-['Using Repo Level Settings'](Repo-Level-Settings.md).
+['Using Repo Level Settings'](Repo-Level-Settings).
 
 ### Project Flags
 
@@ -166,7 +166,7 @@ For example:
 - `["!cool !primary"]` would return all items that are not tagged "cool" AND not tagged
   with "primary". That means only items that don't have these tags will be included.
 
-Aliases can also be defined locally as shown [here](../CLI.md#local-aliases).
+Aliases can also be defined locally as shown [here](../CLI#local-aliases).
 
 ### GitHub Pull Request Testing
 
@@ -364,7 +364,7 @@ child patch tracks the same project and branch as the parent patch, the
 child patch will also include the changes from the parent patch.
 
 To pass information from the upstream patch to the downstream patch use
-[downstream_expansions.set](Project-Commands.md#downstream_expansionsset)
+[downstream_expansions.set](Project-Commands#downstream_expansionsset)
 
 **Example**:  to allow testing Spruce tasks as part of patches for the Evergreen project,  
 a configuration like this could be added to **Evergreen's project page:**
@@ -432,10 +432,10 @@ Define default filters for your project. Users can access these filters in Parsl
 Enabling this feature allows users to push and pull their task working
 directory to and from a remote store (S3). This can be done either using
 the
-[s3.push](Project-Commands.md#s3push)
+[s3.push](Project-Commands#s3push)
 or
-[s3.pull](Project-Commands.md#s3pull)
-project commands, or using it from [the CLI](../CLI.md#task-sync).
+[s3.pull](Project-Commands#s3pull)
+project commands, or using it from [the CLI](../CLI#task-sync).
 
 Options:
 
@@ -447,7 +447,7 @@ Options:
 ### Virtual Workstation Commands
 
 Users can specify custom commands to be run when setting up their
-virtual workstation. See more info [here](../Hosts/Developer-Workstations.md#project-setup).
+virtual workstation. See more info [here](../Hosts/Developer-Workstations#project-setup).
 
 Options:
 
@@ -536,7 +536,7 @@ Special Fields:
 - `{version_id}` — if this is included in the metadata link, we will sub in the ID when rendering the link
 
 This may also be added to individual tasks using `metadata_links`
-for [task annotations](https://docs.devprod.prod.corp.mongodb.com/evergreen/API/REST-V2-Usage#task-annotations).
+for [task annotations](../API/REST-V2-Usage#task-annotations).
 
 
 ## Distro Settings
@@ -611,13 +611,13 @@ that all execute independently:
 
 ## Version Control
 
-A subset of the above project settings can also be specified in [config YAML](Project-Configuration-Files.md).
+A subset of the above project settings can also be specified in [config YAML](Project-Configuration-Files).
 To enable this feature, the "version control" flag must be enabled on the project settings page.
 ![container_metadata.png](../images/version_control.png)
 
 Once toggled, the settings specified [below](#available-fields) may be defined in YAML, rather than in the project or repo settings page.
 
-**Note**: [included files](Project-Configuration-Files.md#include) do not currently support version-controlled configurations. Version-controlled configuration must
+**Note**: [included files](Project-Configuration-Files#include) do not currently support version-controlled configurations. Version-controlled configuration must
 be defined in the main YAML file for it to take effect.
 
 ### Hierarchical Inheritance
