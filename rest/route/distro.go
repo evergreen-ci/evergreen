@@ -167,7 +167,7 @@ func (h *distroIDPutHandler) Run(ctx context.Context) gimlet.Responder {
 			Version: utility.ToStringPtr(evergreen.PlannerVersionLegacy),
 		},
 		DispatcherSettings: model.APIDispatcherSettings{
-			Version: utility.ToStringPtr(evergreen.DispatcherVersionRevised),
+			Version: utility.ToStringPtr(evergreen.DispatcherVersionRevisedWithDependencies),
 		},
 		HostAllocatorSettings: model.APIHostAllocatorSettings{
 			Version: utility.ToStringPtr(evergreen.HostAllocatorUtilization),
@@ -788,7 +788,7 @@ func (h *distroIcecreamConfigHandler) Parse(ctx context.Context, r *http.Request
 // Run enqueues a job to run a script on all hosts that are not down for the
 // given given distro ID.
 func (h *distroIcecreamConfigHandler) Run(ctx context.Context) gimlet.Responder {
-	hosts, err := host.Find(ctx, (host.ByDistroIDsOrAliasesRunning(h.distro)))
+	hosts, err := host.Find(ctx, host.ByDistroIDsOrAliasesRunning(h.distro))
 	if err != nil {
 		return gimlet.MakeJSONInternalErrorResponder(errors.Wrapf(err, "finding hosts for distro '%s'", h.distro))
 	}

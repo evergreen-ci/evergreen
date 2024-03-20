@@ -185,7 +185,7 @@ func TestCopyDistro(t *testing.T) {
 					Method: distro.BootstrapMethodNone,
 				},
 				DispatcherSettings: distro.DispatcherSettings{
-					Version: evergreen.DispatcherVersionRevised,
+					Version: evergreen.DispatcherVersionRevisedWithDependencies,
 				},
 				FinderSettings: distro.FinderSettings{
 					Version: evergreen.FinderVersionParallel,
@@ -270,7 +270,7 @@ func TestCreateDistro(t *testing.T) {
 					Method: distro.BootstrapMethodNone,
 				},
 				DispatcherSettings: distro.DispatcherSettings{
-					Version: evergreen.DispatcherVersionRevised,
+					Version: evergreen.DispatcherVersionRevisedWithDependencies,
 				},
 				FinderSettings: distro.FinderSettings{
 					Version: evergreen.FinderVersionParallel,

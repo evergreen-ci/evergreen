@@ -377,7 +377,7 @@ func TestUpdateDistrosSettingsHandlerRun(t *testing.T) {
 			Version: evergreen.FinderVersionLegacy,
 		},
 		DispatcherSettings: distro.DispatcherSettings{
-			Version: evergreen.DispatcherVersionLegacy,
+			Version: evergreen.DispatcherVersionRevisedWithDependencies,
 		},
 		HostAllocatorSettings: distro.HostAllocatorSettings{
 			Version:      evergreen.HostAllocatorUtilization,
