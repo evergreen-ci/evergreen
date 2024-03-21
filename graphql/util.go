@@ -1225,7 +1225,7 @@ func collapseCommit(ctx context.Context, mainlineCommits MainlineCommits, mainli
 	}
 }
 
-func getPermissionLevel(projectPermission ProjectPermission, access AccessLevel) (requiredPermission string, requiredLevel int, err error) {
+func getProjectPermissionLevel(projectPermission ProjectPermission, access AccessLevel) (requiredPermission string, requiredLevel int, err error) {
 	var permission string
 	var level int
 

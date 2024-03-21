@@ -44,7 +44,7 @@ directive @redactSecrets on INPUT_FIELD_DEFINITION | ARGUMENT_DEFINITION | INPUT
 
 """
 requireProjectAccessNew is used to restrict admin, view, and edit access for projects.
-It will be renamed upon the deletion of @requireProjectAccess.
+TODO: Rename this directive upon the deletion of @requireProjectAccess.
 """
 directive @requireProjectAccessNew(permission: ProjectPermission!, access: AccessLevel!) on ARGUMENT_DEFINITION | INPUT_FIELD_DEFINITION | FIELD_DEFINITION
 

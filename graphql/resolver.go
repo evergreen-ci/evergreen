@@ -179,7 +179,7 @@ func New(apiURL string) Config {
 			return nil, InternalServerError.Send(ctx, "converting args into map")
 		}
 
-		requiredPermission, requiredLevel, err := getPermissionLevel(permission, access)
+		requiredPermission, requiredLevel, err := getProjectPermissionLevel(permission, access)
 		if err != nil {
 			return nil, InputValidationError.Send(ctx, fmt.Sprintf("invalid permission and access level configuration: %s", err.Error()))
 		}
