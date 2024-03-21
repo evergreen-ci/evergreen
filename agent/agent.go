@@ -1022,7 +1022,6 @@ func (a *Agent) finishTask(ctx context.Context, tc *taskContext, status string, 
 	}
 	grip.Infof("Successfully sent final task status: '%s'.", detail.Status)
 
-	// Upsert check run only after updating task status.
 	err = a.upsertCheckRun(ctx, tc)
 	if err != nil {
 		grip.Error(errors.Wrap(err, "upserting checkrun"))
