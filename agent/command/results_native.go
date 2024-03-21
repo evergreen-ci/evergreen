@@ -123,6 +123,10 @@ func (c *attachResults) Execute(ctx context.Context,
 		return errors.Wrapf(err, "reading report file '%s'", reportFileLoc)
 	}
 
+	if err := c.sendTestLogs(ctx, conf, logger, comm, &nativeResults); err != nil {
+		return errors.Wrap(err, "sending test logs")
+	}
+
 	return sendTestResults(ctx, comm, logger, conf, nativeResults.convertToService())
 }
 
