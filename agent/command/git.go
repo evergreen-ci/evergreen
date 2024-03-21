@@ -28,6 +28,7 @@ import (
 	"github.com/pkg/errors"
 	"go.opentelemetry.io/otel/attribute"
 	"go.opentelemetry.io/otel/trace"
+	"golang.org/x/sync/errgroup"
 )
 
 const (
@@ -666,7 +667,7 @@ func (c *gitFetchProject) fetchModuleSource(ctx context.Context,
 		return errors.Errorf("module '%s' not found", moduleName)
 	}
 
-	moduleBase := filepath.ToSlash(filepath.Join(expandModulePrefix(conf, module.Name, module.Prefix, logger), module.Name))
+	moduleBase := filepath.ToSlash(filepath.Join(conf.ModulePaths[module.Name], module.Name))
 
 	// use submodule revisions based on the main patch. If there is a need in the future,
 	// this could maybe use the most recent submodule revision of all requested patches.
@@ -788,7 +789,7 @@ func (c *gitFetchProject) fetchModuleSource(ctx context.Context,
 	// read/write the buffer, so the buffer has to be thread-safe.
 	stdErr := utility.MakeSafeBuffer(bytes.Buffer{})
 	err = jpm.CreateCommand(ctx).Add([]string{"bash", "-c", strings.Join(moduleCmds, "\n")}).
-		Directory(filepath.ToSlash(getWorkingDirectory(conf, c.Directory))).
+		Directory(filepath.ToSlash(GetWorkingDirectory(conf, c.Directory))).
 		SetOutputSender(level.Info, logger.Task().GetSender()).SetErrorWriter(stdErr).Run(ctx)
 
 	errOutput := stdErr.String()
@@ -870,15 +871,35 @@ func (c *gitFetchProject) fetch(ctx context.Context,
 		}
 	}
 
-	// Clone the project's modules.
+	// For every module, expand the module prefix.
 	for _, moduleName := range conf.BuildVariant.Modules {
-		if err := ctx.Err(); err != nil {
-			return errors.Wrapf(err, "canceled while applying module '%s'", moduleName)
-		}
-		err = c.fetchModuleSource(ctx, comm, conf, logger, jpm, td, opts.token, opts.method, p, moduleName)
+		module, err := conf.Project.GetModuleByName(moduleName)
 		if err != nil {
-			return errors.Wrapf(err, "fetching module source '%s'", moduleName)
+			return errors.Wrapf(err, "getting module '%s'", moduleName)
 		}
+		if module == nil {
+			return errors.Errorf("module '%s' not found", moduleName)
+		}
+		expandModulePrefix(conf, module.Name, module.Prefix, logger)
+	}
+
+	g, gCtx := errgroup.WithContext(ctx)
+	g.SetLimit(10)
+
+	// Clone the project's modules in goroutines.
+	for _, name := range conf.BuildVariant.Modules {
+		// TODO (DEVPROD-3611): remove capturing the loop variable and use the loop variable directly.
+		moduleName := name
+		g.Go(func() error {
+			if err := gCtx.Err(); err != nil {
+				return nil
+			}
+			return errors.Wrapf(c.fetchModuleSource(gCtx, comm, conf, logger, jpm, td, opts.token, opts.method, p, moduleName), "fetching module source '%s'", moduleName)
+		})
+	}
+
+	if err = g.Wait(); err != nil {
+		return errors.Wrap(err, "fetching project and module source")
 	}
 
 	// Apply additional patches for commit queue batch execution.
@@ -1057,8 +1078,8 @@ func (c *gitFetchProject) applyPatch(ctx context.Context, logger client.LoggerPr
 					module.Name)
 				continue
 			}
-
-			moduleDir = filepath.ToSlash(filepath.Join(expandModulePrefix(conf, module.Name, module.Prefix, logger), module.Name))
+			expandModulePrefix(conf, module.Name, module.Prefix, logger)
+			moduleDir = filepath.ToSlash(filepath.Join(conf.ModulePaths[module.Name], module.Name))
 		}
 
 		if len(patchPart.PatchSet.Patch) == 0 {
@@ -1098,7 +1119,7 @@ func (c *gitFetchProject) applyPatch(ctx context.Context, logger client.LoggerPr
 		cmdsJoined := strings.Join(patchCommandStrings, "\n")
 
 		cmd := jpm.CreateCommand(ctx).Add([]string{"bash", "-c", cmdsJoined}).
-			Directory(filepath.ToSlash(getWorkingDirectory(conf, c.Directory))).
+			Directory(filepath.ToSlash(GetWorkingDirectory(conf, c.Directory))).
 			SetOutputSender(level.Info, logger.Task().GetSender()).SetErrorSender(level.Error, logger.Task().GetSender())
 
 		if err = cmd.Run(ctx); err != nil {

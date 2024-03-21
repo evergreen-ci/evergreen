@@ -59,8 +59,8 @@ func getMockProjectSettings() model.ProjectSettings {
 		GithubHooksEnabled: true,
 		Vars: model.ProjectVars{
 			Id:          projectId,
-			Vars:        map[string]string{},
-			PrivateVars: map[string]bool{},
+			Vars:        map[string]string{"hello": "world", "world": "hello", "beep": "boop"},
+			PrivateVars: map[string]bool{"world": true},
 		},
 		Aliases: []model.ProjectAlias{{
 			ID:        mgobson.ObjectIdHex("5bedc72ee4055d31f0340b1d"),
@@ -147,6 +147,11 @@ func TestProjectConnectorGetSuite(t *testing.T) {
 		after := getMockProjectSettings()
 		after.GithubHooksEnabled = false
 		after.ProjectRef.WorkstationConfig.SetupCommands = []model.WorkstationSetupCommand{}
+		after.Vars = model.ProjectVars{
+			Id:          projectId,
+			Vars:        map[string]string{"hello": "another_world", "world": "changed", "beep": "boop"},
+			PrivateVars: map[string]bool{"world": true},
+		}
 		s.NotEmpty(before.Aliases[0].ID)
 		s.NotEmpty(after.Aliases[0].ID)
 
@@ -204,6 +209,10 @@ func (s *ProjectConnectorGetSuite) TestGetProjectEvents() {
 		s.Nil(eventLog.Before.ProjectRef.WorkstationConfig.SetupCommands)
 		s.NotNil(eventLog.After.ProjectRef.WorkstationConfig.SetupCommands)
 		s.Len(eventLog.After.ProjectRef.WorkstationConfig.SetupCommands, 0)
+		s.Equal(eventLog.Before.Vars.Vars["hello"], "world")
+		s.Equal(eventLog.After.Vars.Vars["hello"], "another_world")
+		s.Equal(eventLog.After.Vars.Vars["world"], "{REDACTED_AFTER}")
+		s.Equal(eventLog.Before.Vars.Vars["world"], "{REDACTED_BEFORE}")
 	}
 
 	// No error for empty events
@@ -310,12 +319,31 @@ func TestUpdateProjectVarsByValue(t *testing.T) {
 	assert.NotNil(t, res)
 	assert.Equal(t, "11", res.Vars["a"])
 
+	resp, err = model.UpdateProjectVarsByValue("3", "33", username, false)
+	assert.NoError(t, err)
+	assert.NotNil(t, resp)
+	assert.Equal(t, []string{"b"}, resp[projectId])
+
+	res, err = FindProjectVarsById(projectId, "", false)
+	assert.NoError(t, err)
+	assert.NotNil(t, res)
+	assert.Equal(t, "33", res.Vars["b"])
+
 	projectEvents, err := model.MostRecentProjectEvents(projectId, 5)
 	assert.NoError(t, err)
-	assert.Equal(t, 1, len(projectEvents))
+	require.Len(t, projectEvents, 2)
 
 	assert.NotNil(t, projectEvents[0].Data)
 	eventData := projectEvents[0].Data.(*model.ProjectChangeEvent)
+
+	assert.Equal(t, username, eventData.User)
+	assert.Equal(t, "3", eventData.Before.Vars.Vars["b"])
+	assert.True(t, eventData.Before.Vars.PrivateVars["b"])
+	assert.Equal(t, "33", eventData.After.Vars.Vars["b"])
+	assert.True(t, eventData.After.Vars.PrivateVars["b"])
+
+	require.NotNil(t, projectEvents[1].Data)
+	eventData = projectEvents[1].Data.(*model.ProjectChangeEvent)
 
 	assert.Equal(t, username, eventData.User)
 	assert.Equal(t, "1", eventData.Before.Vars.Vars["a"])

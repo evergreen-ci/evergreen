@@ -33,7 +33,6 @@ enum Provider {
 }
 
 enum DispatcherVersion {
-  REVISED
   REVISED_WITH_DEPENDENCIES
 }
 

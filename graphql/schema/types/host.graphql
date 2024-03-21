@@ -39,6 +39,7 @@ type Host {
   instanceTags: [InstanceTag!]!
   lastCommunicationTime: Time
   noExpiration: Boolean!
+  persistentDnsName: String!
   provider: String!
   runningTask: TaskInfo
   startedBy: String!

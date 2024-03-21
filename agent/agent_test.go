@@ -2516,7 +2516,7 @@ func (s *AgentSuite) TestUpsertEmptyCheckRun() {
 
 	s.NoError(s.tc.logger.Close())
 	checkMockLogs(s.T(), s.mockCommunicator, s.tc.taskConfig.Task.Id, []string{
-		"Upserting checkRun with no output file specified.",
+		"Upserting check run with no output file specified.",
 	}, []string{panicLog})
 }
 

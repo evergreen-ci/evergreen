@@ -34,6 +34,7 @@ type cronsEventSuite struct {
 	n        []notification.Notification
 	suiteCtx context.Context
 	ctx      context.Context
+	env      *mock.Environment
 }
 
 func TestEventCrons(t *testing.T) {
@@ -52,6 +53,9 @@ func (s *cronsEventSuite) SetupTest() {
 	s.ctx = testutil.TestSpan(s.suiteCtx, s.T())
 	s.Require().NoError(db.ClearCollections(event.EventCollection, evergreen.ConfigCollection, notification.Collection,
 		event.SubscriptionsCollection, patch.Collection, model.ProjectRefCollection))
+
+	s.env = &mock.Environment{}
+	s.Require().NoError(s.env.Configure(s.ctx))
 
 	events := []event.EventLogEntry{
 		{
@@ -133,7 +137,7 @@ func (s *cronsEventSuite) TestDegradedMode() {
 
 	// degraded mode shouldn't process events
 	s.NoError(e.Log())
-	jobs, err := eventNotifierJobs(s.ctx, time.Time{})
+	jobs, err := eventNotifierJobs(s.ctx, s.env, time.Time{})
 	s.NoError(err)
 	s.Len(jobs, 0)
 }
@@ -284,7 +288,7 @@ func (s *cronsEventSuite) TestEndToEnd() {
 	go httpServer(ln, handler)
 
 	q := evergreen.GetEnvironment().RemoteQueue()
-	jobs, err := eventNotifierJobs(s.ctx, time.Time{})
+	jobs, err := eventNotifierJobs(s.ctx, s.env, time.Time{})
 	s.NoError(err)
 	s.NoError(q.PutMany(s.ctx, jobs))
 
@@ -304,7 +308,7 @@ func (s *cronsEventSuite) TestEndToEnd() {
 func (s *cronsEventSuite) TestSendNotificationJobs() {
 	s.NoError(notification.InsertMany(s.n...))
 
-	jobs, err := sendNotificationJobs(s.ctx, time.Time{})
+	jobs, err := sendNotificationJobs(s.ctx, s.env, time.Time{})
 	s.NoError(err)
 	s.Len(jobs, 6)
 }
