@@ -45,6 +45,10 @@ func (r *redactingSender) Send(m message.Composer) {
 // NewRedactingSender wraps the provided sender with a sender that redacts
 // expansions in accordance with the reaction options.
 func NewRedactingSender(sender send.Sender, opts RedactionOptions) send.Sender {
+	if opts.Expansions == nil {
+		opts.Expansions = &util.DynamicExpansions{}
+	}
+
 	return &redactingSender{
 		expansions:         opts.Expansions,
 		expansionsToRedact: append(opts.Redacted, globals.ExpansionsToRedact...),
