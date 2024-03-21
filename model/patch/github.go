@@ -1,7 +1,6 @@
 package patch
 
 import (
-	"context"
 	"fmt"
 	"strings"
 	"time"
@@ -118,7 +117,7 @@ var (
 
 // NewGithubIntent creates an Intent from a google/go-github PullRequestEvent,
 // or returns an error if the some part of the struct is invalid
-func NewGithubIntent(msgDeliveryID, patchOwner, calledBy string, pr *github.PullRequest) (Intent, error) {
+func NewGithubIntent(msgDeliveryID, patchOwner, calledBy, mergeBase string, pr *github.PullRequest) (Intent, error) {
 	if pr == nil ||
 		pr.Base == nil || pr.Base.Repo == nil ||
 		pr.Head == nil || pr.Head.Repo == nil ||
@@ -164,13 +163,6 @@ func NewGithubIntent(msgDeliveryID, patchOwner, calledBy string, pr *github.Pull
 	repeat, err := getRepeatPatchId(pr.Base.Repo.Owner.GetLogin(), pr.Base.Repo.GetName(), pr.GetNumber())
 	if err != nil {
 		return nil, errors.Wrap(err, "getting patch to repeat definitions from")
-	}
-	ctx, cancel := context.WithTimeout(context.Background(), time.Minute)
-	defer cancel()
-
-	mergeBase, err := thirdparty.GetGithubMergeBaseRevision(ctx, "", baseOwnerAndRepo[0], baseOwnerAndRepo[1], pr.Base.GetRef(), pr.Head.GetRef())
-	if err != nil {
-		return nil, errors.Wrapf(err, "getting merge base between branches '%s' and '%s'", pr.Base.GetRef(), pr.Head.GetRef())
 	}
 
 	return &githubIntent{
