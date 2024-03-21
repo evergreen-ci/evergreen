@@ -4,10 +4,13 @@ import (
 	"context"
 	"os"
 	"path/filepath"
+	"strings"
 
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/agent/internal"
 	"github.com/evergreen-ci/evergreen/agent/internal/client"
+	"github.com/evergreen-ci/evergreen/agent/internal/taskoutput"
+	"github.com/evergreen-ci/evergreen/model/testlog"
 	"github.com/evergreen-ci/evergreen/model/testresult"
 	"github.com/evergreen-ci/utility"
 	"github.com/mitchellh/mapstructure"
@@ -31,6 +34,7 @@ type nativeTestResult struct {
 	TestFile string                  `json:"test_file"`
 	GroupID  string                  `json:"group_id"`
 	Status   string                  `json:"status"`
+	LogRaw   string                  `json:"log_raw"`
 	LogInfo  *testresult.TestLogInfo `json:"log_info"`
 	Start    float64                 `json:"start"`
 	End      float64                 `json:"end"`
@@ -120,4 +124,36 @@ func (c *attachResults) Execute(ctx context.Context,
 	}
 
 	return sendTestResults(ctx, comm, logger, conf, nativeResults.convertToService())
+}
+
+func (c *attachResults) sendTestLogs(ctx context.Context, conf *internal.TaskConfig, logger client.LoggerProducer, comm client.Communicator, results *nativeTestResults) error {
+	logger.Execution().Info("Posting test logs...")
+	for i, res := range results.Results {
+		if err := ctx.Err(); err != nil {
+			return errors.Wrap(err, "operation canceled")
+		}
+
+		if res.LogRaw != "" {
+			testLog := &testlog.TestLog{
+				// When sending test logs we need to use a
+				// unique string since there may be duplicate
+				// log paths if there are duplicate test names.
+				Name:          utility.RandomString(),
+				Task:          conf.Task.Id,
+				TaskExecution: conf.Task.Execution,
+				Lines:         strings.Split(res.LogRaw, "\n"),
+			}
+
+			if err := taskoutput.AppendTestLog(ctx, comm, &conf.Task, testLog); err != nil {
+				// Continue on error to let other logs be
+				// posted.
+				logger.Execution().Error(errors.Wrap(err, "sending test logs"))
+			} else {
+				results.Results[i].LogInfo = &testresult.TestLogInfo{LogName: testLog.Name}
+			}
+		}
+	}
+	logger.Execution().Info("finished posted test logs")
+
+	return nil
 }
