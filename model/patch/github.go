@@ -127,8 +127,7 @@ func NewGithubIntent(msgDeliveryID, patchOwner, calledBy, mergeBase string, pr *
 	if msgDeliveryID == "" {
 		return nil, errors.New("unique msg ID cannot be empty")
 	}
-	baseOwnerAndRepo := strings.Split(pr.Base.Repo.GetFullName(), "/")
-	if len(baseOwnerAndRepo) != 2 {
+	if len(strings.Split(pr.Base.Repo.GetFullName(), "/")) != 2 {
 		return nil, errors.New("base repo name is invalid (expected [owner]/[repo])")
 	}
 	if pr.Base.GetRef() == "" {
