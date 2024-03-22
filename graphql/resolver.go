@@ -184,7 +184,7 @@ func New(apiURL string) Config {
 			return nil, InputValidationError.Send(ctx, fmt.Sprintf("invalid permission and access level configuration: %s", err.Error()))
 		}
 
-		paramsMap, err := data.BuildProjectParameterMap(args)
+		paramsMap, err := data.BuildProjectParameterMapForGraphQL(args)
 		if err != nil {
 			return nil, InputValidationError.Send(ctx, err.Error())
 		}
@@ -203,7 +203,7 @@ func New(apiURL string) Config {
 		if user.HasPermission(opts) {
 			return next(ctx)
 		}
-		return nil, Forbidden.Send(ctx, fmt.Sprintf("user '%s' does not have permission to access %s for the project '%s'", user.Username(), strings.ToLower(permission.String()), projectId))
+		return nil, Forbidden.Send(ctx, fmt.Sprintf("user '%s' does not have permission to access '%s' for the project '%s'", user.Username(), strings.ToLower(permission.String()), projectId))
 	}
 	c.Directives.RequireProjectSettingsAccess = func(ctx context.Context, obj interface{}, next graphql.Resolver) (res interface{}, err error) {
 		user := mustHaveUser(ctx)

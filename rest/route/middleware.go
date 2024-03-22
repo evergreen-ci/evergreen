@@ -627,16 +627,7 @@ func urlVarsToProjectScopes(r *http.Request) ([]string, int, error) {
 	}
 	destProjectID := util.CoalesceString(query["dest_project"]...)
 
-	paramsMap := map[string]string{
-		"projectId": util.CoalesceStrings(append(query["project_id"], query["projectId"]...), vars["project_id"], vars["projectId"]),
-		"repoId":    util.CoalesceStrings(append(query["repo_id"], query["repoId"]...), vars["repo_id"], vars["repoId"]),
-		"versionId": util.CoalesceStrings(append(query["version_id"], query["versionId"]...), vars["version_id"], vars["versionId"]),
-		"patchId":   util.CoalesceStrings(append(query["patch_id"], query["patchId"]...), vars["patch_id"], vars["patchId"]),
-		"buildId":   util.CoalesceStrings(append(query["build_id"], query["buildId"]...), vars["build_id"], vars["buildId"]),
-		"logId":     util.CoalesceStrings(query["log_id"], vars["log_id"]),
-		"taskId":    util.CoalesceStrings(append(query["task_id"], query["taskId"]...), vars["task_id"], vars["taskId"]),
-	}
-
+	paramsMap := data.BuildProjectParameterMapForLegacy(query, vars)
 	projectId, statusCode, err := data.GetProjectIdFromParams(r.Context(), paramsMap)
 	if err != nil {
 		return nil, statusCode, err

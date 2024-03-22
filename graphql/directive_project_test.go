@@ -116,7 +116,7 @@ func TestRequireProjectAccessForSettings(t *testing.T) {
 
 	obj = interface{}(map[string]interface{}{"projectIdentifier": projectRef.Identifier})
 	res, err = config.Directives.RequireProjectAccessNew(ctx, obj, next, ProjectPermissionSettings, AccessLevelEdit)
-	require.EqualError(t, err, "input: user 'testuser' does not have permission to access settings for the project 'project_id'")
+	require.EqualError(t, err, "input: user 'testuser' does not have permission to access 'settings' for the project 'project_id'")
 	require.Nil(t, res)
 	require.Equal(t, 0, callCount)
 
@@ -124,7 +124,7 @@ func TestRequireProjectAccessForSettings(t *testing.T) {
 	require.NoError(t, err)
 
 	res, err = config.Directives.RequireProjectAccessNew(ctx, obj, next, ProjectPermissionSettings, AccessLevelEdit)
-	require.EqualError(t, err, "input: user 'testuser' does not have permission to access settings for the project 'project_id'")
+	require.EqualError(t, err, "input: user 'testuser' does not have permission to access 'settings' for the project 'project_id'")
 	require.Nil(t, res)
 	require.Equal(t, 0, callCount)
 
@@ -240,7 +240,7 @@ func TestRequireProjectAccessForTasks(t *testing.T) {
 	require.NoError(t, usr.AddRole("edit_task"))
 	res, err = config.Directives.RequireProjectAccessNew(ctx, obj, next, ProjectPermissionTasks, AccessLevelAdmin)
 	require.Nil(t, res)
-	require.EqualError(t, err, "input: user 'testuser' does not have permission to access tasks for the project 'project_id'")
+	require.EqualError(t, err, "input: user 'testuser' does not have permission to access 'tasks' for the project 'project_id'")
 	require.Equal(t, 6, callCount)
 
 	res, err = config.Directives.RequireProjectAccessNew(ctx, obj, next, ProjectPermissionTasks, AccessLevelEdit)
@@ -258,11 +258,11 @@ func TestRequireProjectAccessForTasks(t *testing.T) {
 	require.NoError(t, usr.AddRole("view_task"))
 	_, err = config.Directives.RequireProjectAccessNew(ctx, obj, next, ProjectPermissionTasks, AccessLevelAdmin)
 	require.Equal(t, 8, callCount)
-	require.EqualError(t, err, "input: user 'testuser' does not have permission to access tasks for the project 'project_id'")
+	require.EqualError(t, err, "input: user 'testuser' does not have permission to access 'tasks' for the project 'project_id'")
 
 	_, err = config.Directives.RequireProjectAccessNew(ctx, obj, next, ProjectPermissionTasks, AccessLevelEdit)
 	require.Equal(t, 8, callCount)
-	require.EqualError(t, err, "input: user 'testuser' does not have permission to access tasks for the project 'project_id'")
+	require.EqualError(t, err, "input: user 'testuser' does not have permission to access 'tasks' for the project 'project_id'")
 
 	res, err = config.Directives.RequireProjectAccessNew(ctx, obj, next, ProjectPermissionTasks, AccessLevelView)
 	require.NoError(t, err)
@@ -273,15 +273,15 @@ func TestRequireProjectAccessForTasks(t *testing.T) {
 	// no access fails all query attempts
 	_, err = config.Directives.RequireProjectAccessNew(ctx, obj, next, ProjectPermissionTasks, AccessLevelAdmin)
 	require.Equal(t, 9, callCount)
-	require.EqualError(t, err, "input: user 'testuser' does not have permission to access tasks for the project 'project_id'")
+	require.EqualError(t, err, "input: user 'testuser' does not have permission to access 'tasks' for the project 'project_id'")
 
 	_, err = config.Directives.RequireProjectAccessNew(ctx, obj, next, ProjectPermissionTasks, AccessLevelEdit)
 	require.Equal(t, 9, callCount)
-	require.EqualError(t, err, "input: user 'testuser' does not have permission to access tasks for the project 'project_id'")
+	require.EqualError(t, err, "input: user 'testuser' does not have permission to access 'tasks' for the project 'project_id'")
 
 	_, err = config.Directives.RequireProjectAccessNew(ctx, obj, next, ProjectPermissionTasks, AccessLevelView)
 	require.Equal(t, 9, callCount)
-	require.EqualError(t, err, "input: user 'testuser' does not have permission to access tasks for the project 'project_id'")
+	require.EqualError(t, err, "input: user 'testuser' does not have permission to access 'tasks' for the project 'project_id'")
 }
 
 func TestRequireProjectAccessForAnnotations(t *testing.T) {
@@ -360,7 +360,7 @@ func TestRequireProjectAccessForAnnotations(t *testing.T) {
 	require.NoError(t, usr.AddRole("view_annotation"))
 	res, err = config.Directives.RequireProjectAccessNew(ctx, obj, next, ProjectPermissionAnnotations, AccessLevelEdit)
 	require.Nil(t, res)
-	require.EqualError(t, err, "input: user 'testuser' does not have permission to access annotations for the project 'project_id'")
+	require.EqualError(t, err, "input: user 'testuser' does not have permission to access 'annotations' for the project 'project_id'")
 	require.Equal(t, 4, callCount)
 
 	res, err = config.Directives.RequireProjectAccessNew(ctx, obj, next, ProjectPermissionAnnotations, AccessLevelView)
@@ -372,11 +372,11 @@ func TestRequireProjectAccessForAnnotations(t *testing.T) {
 	// no access fails all query attempts
 	_, err = config.Directives.RequireProjectAccessNew(ctx, obj, next, ProjectPermissionAnnotations, AccessLevelEdit)
 	require.Equal(t, 5, callCount)
-	require.EqualError(t, err, "input: user 'testuser' does not have permission to access annotations for the project 'project_id'")
+	require.EqualError(t, err, "input: user 'testuser' does not have permission to access 'annotations' for the project 'project_id'")
 
 	_, err = config.Directives.RequireProjectAccessNew(ctx, obj, next, ProjectPermissionAnnotations, AccessLevelView)
 	require.Equal(t, 5, callCount)
-	require.EqualError(t, err, "input: user 'testuser' does not have permission to access annotations for the project 'project_id'")
+	require.EqualError(t, err, "input: user 'testuser' does not have permission to access 'annotations' for the project 'project_id'")
 }
 
 func TestRequireProjectAccessForPatches(t *testing.T) {
@@ -454,7 +454,7 @@ func TestRequireProjectAccessForPatches(t *testing.T) {
 	require.NoError(t, usr.AddRole("edit_patch"))
 	res, err = config.Directives.RequireProjectAccessNew(ctx, obj, next, ProjectPermissionPatches, AccessLevelAdmin)
 	require.Nil(t, res)
-	require.EqualError(t, err, "input: user 'testuser' does not have permission to access patches for the project 'project_id'")
+	require.EqualError(t, err, "input: user 'testuser' does not have permission to access 'patches' for the project 'project_id'")
 	require.Equal(t, 4, callCount)
 
 	res, err = config.Directives.RequireProjectAccessNew(ctx, obj, next, ProjectPermissionPatches, AccessLevelEdit)
@@ -466,11 +466,11 @@ func TestRequireProjectAccessForPatches(t *testing.T) {
 	// no access fails all query attempts
 	_, err = config.Directives.RequireProjectAccessNew(ctx, obj, next, ProjectPermissionPatches, AccessLevelAdmin)
 	require.Equal(t, 5, callCount)
-	require.EqualError(t, err, "input: user 'testuser' does not have permission to access patches for the project 'project_id'")
+	require.EqualError(t, err, "input: user 'testuser' does not have permission to access 'patches' for the project 'project_id'")
 
 	_, err = config.Directives.RequireProjectAccessNew(ctx, obj, next, ProjectPermissionPatches, AccessLevelEdit)
 	require.Equal(t, 5, callCount)
-	require.EqualError(t, err, "input: user 'testuser' does not have permission to access patches for the project 'project_id'")
+	require.EqualError(t, err, "input: user 'testuser' does not have permission to access 'patches' for the project 'project_id'")
 }
 
 func TestRequireProjectAccessForLogs(t *testing.T) {
@@ -531,5 +531,5 @@ func TestRequireProjectAccessForLogs(t *testing.T) {
 	// no access fails all query attempts
 	_, err = config.Directives.RequireProjectAccessNew(ctx, obj, next, ProjectPermissionLogs, AccessLevelView)
 	require.Equal(t, 2, callCount)
-	require.EqualError(t, err, "input: user 'testuser' does not have permission to access logs for the project 'project_id'")
+	require.EqualError(t, err, "input: user 'testuser' does not have permission to access 'logs' for the project 'project_id'")
 }

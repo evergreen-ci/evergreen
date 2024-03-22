@@ -3,6 +3,7 @@ package data
 import (
 	"context"
 	"net/http"
+	"net/url"
 
 	"github.com/evergreen-ci/evergreen/model"
 	"github.com/evergreen-ci/evergreen/model/build"
@@ -123,9 +124,9 @@ func GetProjectIdFromParams(ctx context.Context, paramsMap map[string]string) (s
 	return projectRef.Id, http.StatusOK, nil
 }
 
-// BuildProjectParameterMap builds the parameters map that can be used as in input to GetProjectIdFromParams.
-// It used by the GraphQL @requireProjectAccess directive.
-func BuildProjectParameterMap(args map[string]interface{}) (map[string]string, error) {
+// BuildProjectParameterMapForGraphQL builds the parameters map that can be used as an input to GetProjectIdFromParams.
+// It is used by the GraphQL @requireProjectAccess directive.
+func BuildProjectParameterMapForGraphQL(args map[string]interface{}) (map[string]string, error) {
 	paramsMap := map[string]string{}
 
 	if projectIdentifier, hasProjectIdentifier := args[projectIdentifierKey].(string); hasProjectIdentifier {
@@ -155,4 +156,19 @@ func BuildProjectParameterMap(args map[string]interface{}) (map[string]string, e
 	}
 
 	return paramsMap, nil
+}
+
+// BuildProjectParameterMapForLegacy builds the parameters map that can be used as an input to GetProjectIdFromParams.
+// It is used by the legacy middleware.
+func BuildProjectParameterMapForLegacy(query url.Values, vars map[string]string) map[string]string {
+	paramsMap := map[string]string{
+		projectIdKey: util.CoalesceStrings(append(query["project_id"], query[projectIdKey]...), vars["project_id"], vars[projectIdKey]),
+		repoIdKey:    util.CoalesceStrings(append(query["repo_id"], query[repoIdKey]...), vars["repo_id"], vars[repoIdKey]),
+		versionIdKey: util.CoalesceStrings(append(query["version_id"], query[versionIdKey]...), vars["version_id"], vars[versionIdKey]),
+		patchIdKey:   util.CoalesceStrings(append(query["patch_id"], query[patchIdKey]...), vars["patch_id"], vars[patchIdKey]),
+		buildIdKey:   util.CoalesceStrings(append(query["build_id"], query[buildIdKey]...), vars["build_id"], vars[buildIdKey]),
+		logIdKey:     util.CoalesceStrings(query["log_id"], vars["log_id"]),
+		taskIdKey:    util.CoalesceStrings(append(query["task_id"], query[taskIdKey]...), vars["task_id"], vars[taskIdKey]),
+	}
+	return paramsMap
 }

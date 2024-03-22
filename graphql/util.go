@@ -1225,6 +1225,8 @@ func collapseCommit(ctx context.Context, mainlineCommits MainlineCommits, mainli
 	}
 }
 
+// getProjectPermissionLevel takes in ProjectPermission and AccessLevel (GraphQL-specific variables) and returns
+// the equivalent Evergreen permission constants defined in globals.go.
 func getProjectPermissionLevel(projectPermission ProjectPermission, access AccessLevel) (requiredPermission string, requiredLevel int, err error) {
 	var permission string
 	var level int
