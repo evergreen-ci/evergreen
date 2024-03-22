@@ -813,6 +813,7 @@ func TestViewableProject(t *testing.T) {
 	assert.Contains(t, projects, "mci")
 	assert.Contains(t, projects, "spruce")
 
+	// assert that adding a role to the user allows them to view the restricted project they didn't have access to before
 	err = myUser.AddRole(parsleyAccessRoleId)
 	assert.NoError(t, err)
 
