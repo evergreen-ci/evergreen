@@ -23,6 +23,7 @@ import (
 
 type taskContext struct {
 	currentCommand command.Command
+	currentBlock   command.BlockType
 	logger         client.LoggerProducer
 	task           client.TaskData
 	ranSetupGroup  bool
@@ -50,6 +51,18 @@ func (tc *taskContext) getCurrentCommand() command.Command {
 	tc.RLock()
 	defer tc.RUnlock()
 	return tc.currentCommand
+}
+
+func (tc *taskContext) setCurrentBlock(block command.BlockType) {
+	tc.Lock()
+	defer tc.Unlock()
+	tc.currentBlock = block
+}
+
+func (tc *taskContext) getCurrentBlock() command.BlockType {
+	tc.RLock()
+	defer tc.RUnlock()
+	return tc.currentBlock
 }
 
 // setCurrentIdleTimeout sets the idle timeout for the current running command.

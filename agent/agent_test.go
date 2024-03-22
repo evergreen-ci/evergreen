@@ -158,6 +158,7 @@ func (s *AgentSuite) SetupTest() {
 	factory, ok := command.GetCommandFactory("setup.initial")
 	s.True(ok)
 	s.tc.setCurrentCommand(factory())
+	s.tc.setCurrentBlock("setup.initial")
 	sender, err := s.a.GetSender(ctx, LogOutputStdout, "agent", "task_id", 2)
 	s.Require().NoError(err)
 	s.a.SetDefaultLogger(sender)
@@ -1141,6 +1142,7 @@ func (s *AgentSuite) TestEndTaskResponse() {
 	factory, ok := command.GetCommandFactory("setup.initial")
 	s.Require().True(ok)
 	s.tc.setCurrentCommand(factory())
+	s.tc.setCurrentBlock("setup.initial")
 
 	const systemFailureDescription = "failure message"
 	s.T().Run("TaskFailingWithCurrentCommandOverridesEmptyDescription", func(t *testing.T) {

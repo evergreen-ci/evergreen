@@ -262,6 +262,7 @@ func (a *Agent) runCommand(ctx context.Context, tc *taskContext, logger client.L
 	}()
 
 	tc.setCurrentCommand(cmd)
+	tc.setCurrentBlock(options.block)
 	switch options.block {
 	case command.PreBlock, command.SetupGroupBlock, command.SetupTaskBlock, command.MainTaskBlock:
 		// Only set the idle timeout in cases where the idle timeout is actually

@@ -440,6 +440,7 @@ func (a *Agent) setupTask(agentCtx, setupCtx context.Context, initialTC *taskCon
 	}
 	if factory != nil {
 		tc.setCurrentCommand(factory())
+		tc.setCurrentBlock("setup.initial")
 	}
 
 	a.comm.UpdateLastMessageTime()
@@ -481,6 +482,7 @@ func (a *Agent) setupTask(agentCtx, setupCtx context.Context, initialTC *taskCon
 	// We are only calling this again to get the log for the current command after logging has been set up.
 	if factory != nil {
 		tc.setCurrentCommand(factory())
+		tc.setCurrentBlock("setup.initial")
 	}
 
 	tc.logger.Task().Infof("Task logger initialized (agent version '%s' from Evergreen build revision '%s').", evergreen.AgentVersion, evergreen.BuildRevision)
@@ -1129,6 +1131,7 @@ func (a *Agent) endTaskResponse(ctx context.Context, tc *taskContext, status str
 		OOMTracker:  tc.getOomTrackerInfo(),
 		TraceID:     tc.traceID,
 		DiskDevices: tc.diskDevices,
+		BlockType:   string(tc.getCurrentBlock()),
 	}
 	setEndTaskFailureDetails(tc, detail, status, highestPriorityDescription, userDefinedFailureType)
 	if tc.taskConfig != nil {
