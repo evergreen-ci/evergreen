@@ -149,11 +149,11 @@ Evergreen supports using expansions in the output file, but please be careful to
       {
       "path": "README.md",
       "annotation_level": "warning",
-      "title": "Error Detector",
-      "message": "message",
+      "title": "Why did the line of code change its mind",
+      "message": "Because it had too many branches and decided to 'git' back on track!",
       "raw_details": "Do you mean this other thing?",
       "start_line": 2,
-      "end_line": 4
+      "end_line": 2
       }
   ]
 }
