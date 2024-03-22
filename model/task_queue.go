@@ -1,14 +1,9 @@
 package model
 
 import (
-	"context"
-	"strings"
 	"time"
 
 	"github.com/evergreen-ci/evergreen/db"
-	"github.com/evergreen-ci/evergreen/model/host"
-	"github.com/evergreen-ci/evergreen/model/task"
-	"github.com/evergreen-ci/tarjan"
 	"github.com/mongodb/anser/bsonutil"
 	adb "github.com/mongodb/anser/db"
 	"github.com/mongodb/grip"
@@ -182,125 +177,12 @@ func (tq *TaskQueue) Length() int {
 	return len(tq.Queue)
 }
 
-func (tq *TaskQueue) NextTask() *TaskQueueItem {
-	return &tq.Queue[0]
-}
-
-// shouldRunTaskGroup returns true if the number of hosts running a task is less than the maximum for that task group.
-func shouldRunTaskGroup(ctx context.Context, taskId string, spec TaskSpec) bool {
-	// Get number of hosts running this spec.
-	numHosts, err := host.NumHostsByTaskSpec(ctx, spec.Group, spec.BuildVariant, spec.Project, spec.Version)
-	if err != nil {
-		grip.Error(message.WrapError(err, message.Fields{
-			"message":    "error finding hosts for spec",
-			"task_id":    taskId,
-			"queue_item": spec,
-		}))
-		return false
-	}
-	// If the group is running on 0 hosts, return true early.
-	if numHosts == 0 {
-		return true
-	}
-	// If this spec is running on fewer hosts than max_hosts, dispatch this task.
-	if numHosts < spec.GroupMaxHosts {
-		return true
-	}
-	return false
-}
-
-func ValidateNewGraph(t *task.Task, tasksToBlock []task.Task) error {
-	tasksInVersion, err := task.FindAllTasksFromVersionWithDependencies(t.Version)
-	if err != nil {
-		return errors.Wrap(err, "finding version for task")
-	}
-
-	// tmap maps tasks to their dependencies
-	tmap := map[string][]string{}
-	for _, t := range tasksInVersion {
-		for _, d := range t.DependsOn {
-			tmap[t.Id] = append(tmap[t.Id], d.TaskId)
-		}
-	}
-
-	// simulate proposed dependencies
-	for _, taskToBlock := range tasksToBlock {
-		tmap[taskToBlock.Id] = append(tmap[taskToBlock.Id], t.Id)
-	}
-
-	catcher := grip.NewBasicCatcher()
-	for _, group := range tarjan.Connections(tmap) {
-		if len(group) > 1 {
-			catcher.Errorf("task dependency cycle detected: %s", strings.Join(group, ", "))
-		}
-	}
-	return catcher.Resolve()
-}
-
 func (tq *TaskQueue) Save() error {
 	if len(tq.Queue) > 10000 {
 		tq.Queue = tq.Queue[:10000]
 	}
 
 	return updateTaskQueue(tq.Distro, tq.Queue, tq.DistroQueueInfo)
-}
-
-func (tq *TaskQueue) FindNextTask(ctx context.Context, spec TaskSpec) (*TaskQueueItem, []string) {
-	if tq.Length() == 0 {
-		return nil, nil
-	}
-	// With a spec, find a matching task.
-	if spec.Group != "" && spec.Project != "" && spec.BuildVariant != "" && spec.Version != "" {
-		for _, it := range tq.Queue {
-			if it.Project != spec.Project {
-				continue
-			}
-
-			if it.Version != spec.Version {
-				continue
-			}
-
-			if it.BuildVariant != spec.BuildVariant {
-				continue
-			}
-
-			if it.Group != spec.Group {
-				continue
-			}
-			return &it, nil
-		}
-	}
-
-	// Otherwise, find the next dispatchable task.
-	spec = TaskSpec{}
-	for _, it := range tq.Queue {
-		// Always return a task if the task group is empty.
-		if it.Group == "" {
-			return &it, nil
-		}
-
-		// If we already determined that this task group is not runnable, continue.
-		if it.Group == spec.Group &&
-			it.BuildVariant == spec.BuildVariant &&
-			it.Project == spec.Project &&
-			it.Version == spec.Version &&
-			it.GroupMaxHosts == spec.GroupMaxHosts {
-			continue
-		}
-
-		// Otherwise, return the task if it is running on fewer than its task group's max hosts.
-		spec = TaskSpec{
-			Group:         it.Group,
-			BuildVariant:  it.BuildVariant,
-			Project:       it.Project,
-			Version:       it.Version,
-			GroupMaxHosts: it.GroupMaxHosts,
-		}
-		if shouldRun := shouldRunTaskGroup(ctx, it.Id, spec); shouldRun {
-			return &it, nil
-		}
-	}
-	return nil, nil
 }
 
 func updateTaskQueue(distro string, taskQueue []TaskQueueItem, distroQueueInfo DistroQueueInfo) error {

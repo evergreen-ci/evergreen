@@ -555,7 +555,7 @@ level. For more information about available distro choices see [Guidelines aroun
 The process of scheduling tasks contains a number of distinct phases
 that all execute independently:
 
-1.  *Task Finding* identifies all runable undispatched runnable tasks
+1. *Task Finding* identifies all runable undispatched runnable tasks
     for a distro. You can choose to include tasks which have unsatisfied
     dependencies, if the task dispatcher supports having these tasks in
     the queue. There are multiple implementations of the task finder in
@@ -564,7 +564,7 @@ that all execute independently:
     production because it is the most stable, but the other
     implementations are equivalent.
 
-2.  *Task Planning* manages how tasks are ordered in the queue. There
+2. *Task Planning* manages how tasks are ordered in the queue. There
     are two implementations, Evergreen's Legacy implementation which
     orders tasks using a short circuiting list of comparison operation,
     and the "Tunable" implementation which uses a point-based
@@ -599,20 +599,15 @@ that all execute independently:
     If dependencies are included in the queue, the tunable planner is
     the only implementation that can properly manage these dependencies.
 
-3.  *Host Allocation* controls the how Evergreen starts new machines to
+3. *Host Allocation* controls how Evergreen starts new machines to
     run hosts. The utilization-based implementation is aware of task
     groups, is the most recent implementation, and works well. All
     implementations have a slight over-allocation bias.
 
-4.  *Task Dispatching* controls how Evergreen dispatches tasks to hosts.
-    There are three implementations:
-
-    -   legacy, is no longer used in production, and is deprecated.
-    -   revised, is the most stable implementation and has first-class
-        support for task groups, but does not support
-    -   revised-with-dependencies, is a new scheduling system developed
-        with the tunable planner and is the only dispatcher that can
-        handle dependencies have not yet been satisfied.
+4. *Task Dispatching* controls how Evergreen dispatches tasks to hosts.
+   There is currently only one implementation, revised-with-dependencies, 
+   which is a scheduling system developed with the tunable planner and is the only dispatcher that can
+   handle dependencies have not yet been satisfied.
 
 ## Version Control
 

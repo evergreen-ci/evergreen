@@ -357,6 +357,9 @@ func (gh *githubHookApi) rerunCheckRun(ctx context.Context, owner, repo string, 
 		})
 		latestExecutionForTask = taskToRestart
 	}
+
+	// Check run status should stay the same while task is being re-run.
+	latestExecutionForTask.Status = taskToRestart.Status
 	_, err = thirdparty.UpdateCheckRun(ctx, owner, repo, gh.settings.ApiUrl, checkRun.GetID(), latestExecutionForTask, output)
 	if err != nil {
 		grip.Error(message.WrapError(err, message.Fields{

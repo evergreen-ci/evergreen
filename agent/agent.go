@@ -1006,11 +1006,6 @@ func (a *Agent) finishTask(ctx context.Context, tc *taskContext, status string, 
 		}
 	}
 
-	err := a.upsertCheckRun(ctx, tc)
-	if err != nil {
-		grip.Error(errors.Wrap(err, "upserting checkrun"))
-	}
-
 	a.killProcs(ctx, tc, false, "task is ending")
 
 	if tc.logger != nil {
@@ -1026,6 +1021,11 @@ func (a *Agent) finishTask(ctx context.Context, tc *taskContext, status string, 
 		return nil, errors.Wrap(err, "marking task complete")
 	}
 	grip.Infof("Successfully sent final task status: '%s'.", detail.Status)
+
+	err = a.upsertCheckRun(ctx, tc)
+	if err != nil {
+		grip.Error(errors.Wrap(err, "upserting checkrun"))
+	}
 
 	span := trace.SpanFromContext(ctx)
 	span.SetAttributes(attribute.String(evergreen.TaskStatusOtelAttribute, detail.Status))
