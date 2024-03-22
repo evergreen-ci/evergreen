@@ -119,27 +119,46 @@ buildvariants:
       checkRun_key: apple
 ```
 
-The output json file should have the format specified [here](https://docs.github.com/en/rest/checks/runs?apiVersion=2022-11-28#create-a-check-run) for output. Expansions are supported in the output file, but please be careful to not pass any keys or sensitive data.
+The output json file can specify the following fields. Required fields are only required if an output file is specified.
+
+- `title`: required, title of the check
+- `summary`: can use markdown
+- `text`: optional
+- `annotations`: optional, array of objects with the following parameters
+  - `path`: required, path of the file to add an annotation to. For example, assets/css/main.css.
+  - `start_line`: required, start line of the annotation. Line numbers start at 1.
+  - `end_line`: required, end line of the annotation.
+  - `start_column`: optional, start column of the annotation. Annotations only support start_column and end_column on the same line. Omit this parameter if start_line and end_line have different values. Column numbers start at 1.
+  - `end_column`: optional, end column of the annotation. Annotations only support start_column and end_column on the same line. Omit this parameter if start_line and end_line have different values.
+  - `annotation_level`: required, level of the annotation. Can be one of: notice, warning, failure
+  - `message`: equired, short description of the feedback for these lines of code. The maximum size is 64 KB.
+  - `title`: optional, title that represents the annotation. The maximum size is 255 characters.
+  - `raw_details`: optional, details about this annotation. The maximum size is 64 KB.
+
+```
+Expansions are supported in the output file, but please be careful to not pass any keys or sensitive data.
 
 example output.json file:
 
 ```
+
 {
-  "title": "This is my report for ${checkRun_key}",
-  "summary": "We found 6 failures and 2 warnings",
-  "text": "It looks like there are some errors on lines 2 and 4.",
-  "annotations": [
-    {
-      "path": "README.md",
-      "annotation_level": "warning",
-      "title": "Error Detector",
-      "message": "message",
-      "raw_details": "Do you mean this other thing?",
-      "start_line": 2,
-      "end_line": 4
-    }
-  ]
+"title": "This is my report for ${checkRun_key}",
+"summary": "We found 6 failures and 2 warnings",
+"text": "It looks like there are some errors on lines 2 and 4.",
+"annotations": [
+{
+"path": "README.md",
+"annotation_level": "warning",
+"title": "Error Detector",
+"message": "message",
+"raw_details": "Do you mean this other thing?",
+"start_line": 2,
+"end_line": 4
 }
+]
+}
+
 ```
 
 #### Interacting with the GitHub UI
@@ -159,3 +178,4 @@ The check run will include a `view more details` link which will link back to th
 
 - Check runs only apply to PR patches
 - There is a limit on how many check runs can be added per version. This limit is set by evergreen based on demand and available resources and is subject to change.
+```
