@@ -142,20 +142,20 @@ example output.json file:
 ```
 
 {
-"title": "This is my report for ${checkRun_key}",
-"summary": "We found 6 failures and 2 warnings",
-"text": "It looks like there are some errors on lines 2 and 4.",
-"annotations": [
-{
-"path": "README.md",
-"annotation_level": "warning",
-"title": "Error Detector",
-"message": "message",
-"raw_details": "Do you mean this other thing?",
-"start_line": 2,
-"end_line": 4
-}
-]
+  "title": "This is my report for ${checkRun_key}",
+  "summary": "We found 6 failures and 2 warnings",
+  "text": "It looks like there are some errors on lines 2 and 4.",
+  "annotations": [
+      {
+      "path": "README.md",
+      "annotation_level": "warning",
+      "title": "Error Detector",
+      "message": "message",
+      "raw_details": "Do you mean this other thing?",
+      "start_line": 2,
+      "end_line": 4
+      }
+  ]
 }
 
 ```
