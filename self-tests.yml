@@ -94,7 +94,8 @@ buildvariants:
   - name: ubuntu2204
     display_name: ubuntu2204
     run_on:
-      - ubuntu2204
+      - ubuntu2204-large
+      - ubuntu2204-small
     tasks:
       - name: my-task
   - name: ubuntu1604
