@@ -350,7 +350,7 @@ func (u *DBUser) RemoveRole(role string) error {
 	return event.LogUserEvent(u.Id, event.UserEventTypeRolesUpdate, before, u.SystemRoles)
 }
 
-// GetViewableProjects returns the lists of projects/repos the user can view.
+// GetViewableProjects returns the lists of projects/repos the user can view settings for.
 func (u *DBUser) GetViewableProjectSettings(ctx context.Context) ([]string, error) {
 	if evergreen.PermissionsDisabledForTests() {
 		return nil, nil
@@ -364,6 +364,7 @@ func (u *DBUser) GetViewableProjectSettings(ctx context.Context) ([]string, erro
 	return viewableProjects, nil
 }
 
+// GetViewableProjects returns the lists of projects the user can view.
 func (u *DBUser) GetViewableProjects(ctx context.Context) ([]string, error) {
 	if evergreen.PermissionsDisabledForTests() {
 		return nil, nil
