@@ -21,6 +21,11 @@ tasks:
         params:
           script: |
             echo "I finished getting the project"
+      - command: shell.exec
+        params:
+          shell: bash
+          script: |
+            curl -d '{"status":"failed", "type":"setup", "desc":"this should be set", "should_continue": false}' -H "Content-Type: application/json" -X POST localhost:2285/task_status
 
 #######################################
 #            Buildvariants            #
