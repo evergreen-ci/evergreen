@@ -398,6 +398,9 @@ pre:
 	s.True(utility.IsContextError(errors.Cause(err)))
 	s.NoError(s.tc.logger.Close())
 	checkMockLogs(s.T(), s.mockCommunicator, s.tc.taskConfig.Task.Id, nil, []string{panicLog})
+
+	// Test if the block type was correctly set to pre for the task context.
+	s.Equal(command.PreBlock, s.tc.getCurrentBlock())
 }
 
 func (s *AgentSuite) TestRunCommandsIsPanicSafe() {
