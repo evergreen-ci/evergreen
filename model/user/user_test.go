@@ -754,6 +754,47 @@ func TestGeneralSubscriptionIDs(t *testing.T) {
 	}, u.GeneralSubscriptionIDs())
 }
 
+func TestViewableProject(t *testing.T) {
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+	env := testutil.NewEnvironment(ctx, t)
+	rm := env.RoleManager()
+
+	assert.NoError(t, db.ClearCollections(evergreen.RoleCollection, evergreen.ScopeCollection, Collection))
+	unrestrictedProjectScope := gimlet.Scope{
+		ID:        evergreen.UnrestrictedProjectsScope,
+		Name:      "unrestricted projects",
+		Type:      evergreen.ProjectResourceType,
+		Resources: []string{"mci", "spruce"},
+	}
+	err := rm.AddScope(unrestrictedProjectScope)
+	assert.NoError(t, err)
+
+	basicProjectAccessRole := gimlet.Role{
+		ID:          evergreen.BasicProjectAccessRole,
+		Name:        "basic access",
+		Scope:       evergreen.UnrestrictedProjectsScope,
+		Permissions: map[string]int{"project_tasks": 20, "project_patches": 10, "project_logs": 10, "project_task_annotations": 10},
+	}
+	err = rm.UpdateRole(basicProjectAccessRole)
+	assert.NoError(t, err)
+
+	myUser := DBUser{
+		Id: "me",
+	}
+	assert.NoError(t, myUser.Insert())
+	err = myUser.AddRole(evergreen.BasicProjectAccessRole)
+	assert.NoError(t, err)
+
+	// assert that viewable projects contains the edit projects and the view projects
+	projects, err := myUser.GetViewableProjects(ctx)
+	assert.NoError(t, err)
+	assert.Len(t, projects, 2)
+	assert.Contains(t, projects, "mci")
+	assert.Contains(t, projects, "spruce")
+
+}
+
 func TestViewableProjectSettings(t *testing.T) {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
