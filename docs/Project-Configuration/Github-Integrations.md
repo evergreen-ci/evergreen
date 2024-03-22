@@ -135,7 +135,6 @@ The output json file can specify the following fields. Required fields are only 
   - `title`: optional, title that represents the annotation. The maximum size is 255 characters.
   - `raw_details`: optional, details about this annotation. The maximum size is 64 KB.
 
-```
 Expansions are supported in the output file, but please be careful to not pass any keys or sensitive data.
 
 example output.json file:
@@ -178,4 +177,7 @@ The check run will include a `view more details` link which will link back to th
 
 - Check runs only apply to PR patches
 - There is a limit on how many check runs can be added per version. This limit is set by evergreen based on demand and available resources and is subject to change.
+
+```
+
 ```
