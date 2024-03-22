@@ -119,7 +119,7 @@ buildvariants:
       checkRun_key: apple
 ```
 
-The output json file can specify the following fields. Required fields are only required if an output file is specified.
+The output json file can specify the following fields. Required fields are only required if an output file is specified. Please see [the github docs](https://docs.github.com/en/rest/checks/runs?apiVersion=2022-11-28#create-a-check-run) for the most up to date information on supported fields.
 
 - `title`: required, title of the check
 - `summary`: can use markdown
@@ -135,7 +135,7 @@ The output json file can specify the following fields. Required fields are only 
   - `title`: optional, title that represents the annotation. The maximum size is 255 characters.
   - `raw_details`: optional, details about this annotation. The maximum size is 64 KB.
 
-Expansions are supported in the output file, but please be careful to not pass any keys or sensitive data.
+Evergreen supports using expansions in the output file, but please be careful to not pass any keys or sensitive data.
 
 example output.json file:
 
