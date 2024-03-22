@@ -761,20 +761,40 @@ func TestViewableProject(t *testing.T) {
 	rm := env.RoleManager()
 
 	assert.NoError(t, db.ClearCollections(evergreen.RoleCollection, evergreen.ScopeCollection, Collection))
+
+	restrictedProjectScope := gimlet.Scope{
+		ID:        "restricted_project_scope",
+		Name:      "restricted projects",
+		Resources: []string{"parsley"},
+		Type:      evergreen.ProjectResourceType,
+	}
+	err := rm.AddScope(restrictedProjectScope)
+	assert.NoError(t, err)
+
+	parsleyAccessRoleId := "parsley_access"
+	parsleyAccessRole := gimlet.Role{
+		ID:          parsleyAccessRoleId,
+		Name:        "parsley access",
+		Scope:       "restricted_project_scope",
+		Permissions: map[string]int{evergreen.PermissionTasks: 20, evergreen.PermissionPatches: 10, evergreen.PermissionLogs: 10, evergreen.PermissionAnnotations: 10},
+	}
+	err = rm.UpdateRole(parsleyAccessRole)
+	assert.NoError(t, err)
+
 	unrestrictedProjectScope := gimlet.Scope{
 		ID:        evergreen.UnrestrictedProjectsScope,
 		Name:      "unrestricted projects",
 		Type:      evergreen.ProjectResourceType,
 		Resources: []string{"mci", "spruce"},
 	}
-	err := rm.AddScope(unrestrictedProjectScope)
+	err = rm.AddScope(unrestrictedProjectScope)
 	assert.NoError(t, err)
 
 	basicProjectAccessRole := gimlet.Role{
 		ID:          evergreen.BasicProjectAccessRole,
 		Name:        "basic access",
 		Scope:       evergreen.UnrestrictedProjectsScope,
-		Permissions: map[string]int{"project_tasks": 20, "project_patches": 10, "project_logs": 10, "project_task_annotations": 10},
+		Permissions: map[string]int{evergreen.PermissionTasks: 20, evergreen.PermissionPatches: 10, evergreen.PermissionLogs: 10, evergreen.PermissionAnnotations: 10},
 	}
 	err = rm.UpdateRole(basicProjectAccessRole)
 	assert.NoError(t, err)
@@ -793,6 +813,15 @@ func TestViewableProject(t *testing.T) {
 	assert.Contains(t, projects, "mci")
 	assert.Contains(t, projects, "spruce")
 
+	err = myUser.AddRole(parsleyAccessRoleId)
+	assert.NoError(t, err)
+
+	projects, err = myUser.GetViewableProjects(ctx)
+	assert.NoError(t, err)
+	assert.Len(t, projects, 3)
+	assert.Contains(t, projects, "mci")
+	assert.Contains(t, projects, "spruce")
+	assert.Contains(t, projects, "parsley")
 }
 
 func TestViewableProjectSettings(t *testing.T) {
