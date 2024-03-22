@@ -335,7 +335,7 @@ functions:
 	s.Empty(s.tc.taskConfig.DynamicExpansions)
 }
 
-func (s *CommandSuite) TestVarsUnsetPreserveExpansionUpdatesFromFile2() {
+func (s *CommandSuite) TestRetryOnFailureWorksForFunction() {
 	projYml := `
 functions:
   should_retry:

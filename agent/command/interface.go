@@ -52,6 +52,7 @@ type Command interface {
 	JasperManager() jasper.Manager
 	SetJasperManager(jasper.Manager)
 
+	// RetryOnFailure indicates whether the entire task should be retried if this command fails.
 	RetryOnFailure() bool
 	SetRetryOnFailure(bool)
 }
