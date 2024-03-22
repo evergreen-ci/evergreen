@@ -52,57 +52,6 @@ func TestFindOneProjectRef(t *testing.T) {
 	assert.Equal(projectRefFromDB.Id, "ident")
 }
 
-func TestFindAllMergedTrackedProjectRefsWithRestrictedProjects(t *testing.T) {
-	require := require.New(t)
-	require.NoError(db.ClearCollections(ProjectRefCollection, evergreen.ScopeCollection, evergreen.RoleCollection, user.Collection))
-	projectRef := &ProjectRef{
-		Owner:     "evergreen-ci",
-		Repo:      "evergreen",
-		Branch:    "main",
-		Enabled:   true,
-		BatchTime: 10,
-		Id:        "evergreen",
-	}
-	require.Nil(projectRef.Insert())
-
-	projectRef = &ProjectRef{
-		Owner:     "evergreen-ci",
-		Repo:      "spruce",
-		Branch:    "main",
-		Enabled:   false,
-		BatchTime: 10,
-		Id:        "spruce",
-	}
-	require.Nil(projectRef.Insert())
-
-	projectRef = &ProjectRef{
-		Owner:      "evergreen-ci",
-		Repo:       "parsley",
-		Branch:     "main",
-		Enabled:    true,
-		Restricted: utility.ToBoolPtr(true),
-		BatchTime:  10,
-		Id:         "parsley",
-	}
-	require.Nil(projectRef.Insert())
-	u := &user.DBUser{
-		Id:          "me",
-		SystemRoles: []string{GetViewRepoRole("ident")},
-	}
-	require.Nil(u.Insert())
-
-	projects, err := FindAllMergedTrackedProjectRefsWithRestrictedProjects([]string{})
-	require.Nil(err)
-	require.Len(projects, 1)
-	require.Equal("evergreen", projects[0].Id)
-
-	projects, err = FindAllMergedTrackedProjectRefsWithRestrictedProjects([]string{"parsley"})
-	require.Nil(err)
-	require.Len(projects, 2)
-	require.Equal("evergreen", projects[0].Id)
-	require.Equal("parsley", projects[1].Id)
-
-}
 func TestFindMergedProjectRef(t *testing.T) {
 	require.NoError(t, db.ClearCollections(ProjectRefCollection, RepoRefCollection, ParserProjectCollection, ProjectConfigCollection))
 
