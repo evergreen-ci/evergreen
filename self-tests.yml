@@ -91,6 +91,12 @@ buildvariants:
       - ubuntu1404
     tasks:
       - name: my-task
+  - name: ubuntu2204
+    display_name: ubuntu2204
+    run_on:
+      - ubuntu2204
+    tasks:
+      - name: my-task
   - name: ubuntu1604
     display_name: ubuntu1604
     run_on:
