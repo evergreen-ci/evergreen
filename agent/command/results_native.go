@@ -9,7 +9,6 @@ import (
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/agent/internal"
 	"github.com/evergreen-ci/evergreen/agent/internal/client"
-	"github.com/evergreen-ci/evergreen/agent/internal/taskoutput"
 	"github.com/evergreen-ci/evergreen/model/testlog"
 	"github.com/evergreen-ci/evergreen/model/testresult"
 	"github.com/evergreen-ci/utility"
@@ -34,12 +33,12 @@ type nativeTestResult struct {
 	TestFile string                  `json:"test_file"`
 	GroupID  string                  `json:"group_id"`
 	Status   string                  `json:"status"`
-	LogRaw   string                  `json:"log_raw"`
 	LogInfo  *testresult.TestLogInfo `json:"log_info"`
 	Start    float64                 `json:"start"`
 	End      float64                 `json:"end"`
 
 	// Legacy test log fields.
+	LogRaw  string `json:"log_raw"`
 	URL     string `json:"url"`
 	URLRaw  string `json:"url_raw"`
 	LineNum int    `json:"line_num"`
@@ -97,10 +96,8 @@ func (c *attachResults) expandAttachResultsParams(taskConfig *internal.TaskConfi
 	return nil
 }
 
-// Execute carries out the attachResults command - this is required
-// to satisfy the 'Command' interface
-func (c *attachResults) Execute(ctx context.Context,
-	comm client.Communicator, logger client.LoggerProducer, conf *internal.TaskConfig) error {
+// Execute carries out the attachResults command.
+func (c *attachResults) Execute(ctx context.Context, comm client.Communicator, logger client.LoggerProducer, conf *internal.TaskConfig) error {
 
 	if err := c.expandAttachResultsParams(conf); err != nil {
 		return errors.Wrap(err, "applying expansions")
@@ -111,7 +108,6 @@ func (c *attachResults) Execute(ctx context.Context,
 		reportFileLoc = GetWorkingDirectory(conf, c.FileLoc)
 	}
 
-	// attempt to open the file
 	reportFile, err := os.Open(reportFileLoc)
 	if err != nil {
 		return errors.Wrapf(err, "opening report file '%s'", reportFileLoc)
@@ -123,22 +119,10 @@ func (c *attachResults) Execute(ctx context.Context,
 		return errors.Wrapf(err, "reading report file '%s'", reportFileLoc)
 	}
 
-	if err := c.sendTestLogs(ctx, conf, logger, comm, &nativeResults); err != nil {
-		return errors.Wrap(err, "sending test logs")
-	}
-
-	return sendTestResults(ctx, comm, logger, conf, nativeResults.convertToService())
-}
-
-func (c *attachResults) sendTestLogs(ctx context.Context, conf *internal.TaskConfig, logger client.LoggerProducer, comm client.Communicator, results *nativeTestResults) error {
-	logger.Execution().Info("Posting test logs...")
-	for i, res := range results.Results {
-		if err := ctx.Err(); err != nil {
-			return errors.Wrap(err, "operation canceled")
-		}
-
+	var testLogs []testlog.TestLog
+	for i, res := range nativeResults.Results {
 		if res.LogRaw != "" {
-			testLog := &testlog.TestLog{
+			testLogs = append(testLogs, testlog.TestLog{
 				// When sending test logs we need to use a
 				// unique string since there may be duplicate
 				// log paths if there are duplicate test names.
@@ -146,18 +130,10 @@ func (c *attachResults) sendTestLogs(ctx context.Context, conf *internal.TaskCon
 				Task:          conf.Task.Id,
 				TaskExecution: conf.Task.Execution,
 				Lines:         strings.Split(res.LogRaw, "\n"),
-			}
-
-			if err := taskoutput.AppendTestLog(ctx, comm, &conf.Task, testLog); err != nil {
-				// Continue on error to let other logs be
-				// posted.
-				logger.Execution().Error(errors.Wrap(err, "sending test logs"))
-			} else {
-				results.Results[i].LogInfo = &testresult.TestLogInfo{LogName: testLog.Name}
-			}
+			})
+			nativeResults.Results[i].LogInfo = &testresult.TestLogInfo{LogName: testLogs[len(testLogs)-1].Name}
 		}
 	}
-	logger.Execution().Info("finished posted test logs")
 
-	return nil
+	return sendTestLogsAndResults(ctx, comm, logger, conf, testLogs, nativeResults.convertToService())
 }
