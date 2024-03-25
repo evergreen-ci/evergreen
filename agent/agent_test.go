@@ -375,6 +375,9 @@ pre:
 
 	s.True(cmdDuration > waitUntilAbort, "command should have only stopped when it received cancel")
 	s.True(cmdDuration < cmdSleepSecs*time.Second, "command should not block if it's taking too long to stop")
+
+	// Test if the block type was correctly set as the preblock.
+	s.Equal(command.PreBlock, s.tc.getCurrentBlock())
 }
 
 func (s *AgentSuite) TestCancelledRunCommandsIsNonBlocking() {
@@ -399,8 +402,8 @@ pre:
 	s.NoError(s.tc.logger.Close())
 	checkMockLogs(s.T(), s.mockCommunicator, s.tc.taskConfig.Task.Id, nil, []string{panicLog})
 
-	// Test if the block type was correctly set to pre for the task context.
-	s.Equal(command.PreBlock, s.tc.getCurrentBlock())
+	// Test if the block type was correctly kept as "setup.initial" since no tasks were ran.
+	s.Equal("setup.initial", string(s.tc.getCurrentBlock()))
 }
 
 func (s *AgentSuite) TestRunCommandsIsPanicSafe() {
