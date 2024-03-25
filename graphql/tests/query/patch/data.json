@@ -4,7 +4,8 @@
       "_id": {
         "$oid": "5dd2e89cd1fe07048e43bc8f"
       },
-      "identifier": "spruce",
+      "githash": "123",
+      "branch": "spruce",
       "author": "bob.smith"
     }
   ]

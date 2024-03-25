@@ -2,6 +2,6 @@
   patch(patchId: "5dd2e89cd1fe07048e43bc8f") {
     id
     author
-    projectIdentifier
+    githash
   }
 }
