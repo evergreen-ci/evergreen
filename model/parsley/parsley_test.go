@@ -3,9 +3,36 @@ package parsley
 import (
 	"testing"
 
+	"github.com/evergreen-ci/utility"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
+
+func TestMergeExistingParsleySettings(t *testing.T) {
+	oldSettings := Settings{}
+	newSettings := Settings{
+		JumpToFailingLineEnabled: utility.FalsePtr(),
+	}
+	changes := MergeExistingParsleySettings(oldSettings, newSettings)
+	require.NotNil(t, changes)
+	assert.Nil(t, changes.SectionsEnabled)
+	require.NotNil(t, changes.JumpToFailingLineEnabled)
+	assert.Equal(t, utility.FromBoolPtr(changes.JumpToFailingLineEnabled), false)
+
+	oldSettings = Settings{
+		SectionsEnabled:          utility.FalsePtr(),
+		JumpToFailingLineEnabled: utility.TruePtr(),
+	}
+	newSettings = Settings{
+		JumpToFailingLineEnabled: utility.FalsePtr(),
+	}
+	changes = MergeExistingParsleySettings(oldSettings, newSettings)
+	require.NotNil(t, changes)
+	require.NotNil(t, changes.SectionsEnabled)
+	assert.Equal(t, utility.FromBoolPtr(changes.SectionsEnabled), false)
+	require.NotNil(t, changes.JumpToFailingLineEnabled)
+	assert.Equal(t, utility.FromBoolPtr(changes.JumpToFailingLineEnabled), false)
+}
 
 func TestValidateFilters(t *testing.T) {
 	filters := []Filter{

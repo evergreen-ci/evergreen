@@ -20,6 +20,7 @@ import (
 	"github.com/evergreen-ci/evergreen/model/distro"
 	"github.com/evergreen-ci/evergreen/model/event"
 	"github.com/evergreen-ci/evergreen/model/host"
+	"github.com/evergreen-ci/evergreen/model/parsley"
 	"github.com/evergreen-ci/evergreen/model/patch"
 	"github.com/evergreen-ci/evergreen/model/task"
 	"github.com/evergreen-ci/evergreen/model/user"
@@ -1267,12 +1268,15 @@ func (r *mutationResolver) UpdateParsleySettings(ctx context.Context, opts Updat
 	usr := mustHaveUser(ctx)
 	newSettings := opts.ParsleySettings.ToService()
 
-	// TODO: Update to recursively set undefined fields in DEVPROD-5277, since ParsleySettingsInput allows omitting fields.
-	if err := usr.UpdateParsleySettings(newSettings); err != nil {
+	changes := parsley.MergeExistingParsleySettings(usr.ParsleySettings, newSettings)
+	if err := usr.UpdateParsleySettings(changes); err != nil {
 		return nil, InternalServerError.Send(ctx, fmt.Sprintf("updating Parsley settings: %s", err.Error()))
 	}
+
+	parsleySettings := restModel.APIParsleySettings{}
+	parsleySettings.BuildFromService(usr.ParsleySettings)
 	return &UpdateParsleySettingsPayload{
-		ParsleySettings: opts.ParsleySettings,
+		ParsleySettings: &parsleySettings,
 	}, nil
 }
 
