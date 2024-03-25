@@ -350,18 +350,32 @@ func (u *DBUser) RemoveRole(role string) error {
 	return event.LogUserEvent(u.Id, event.UserEventTypeRolesUpdate, before, u.SystemRoles)
 }
 
-// GetViewableProjects returns the lists of projects/repos the user can view.
+// GetViewableProjects returns the lists of projects/repos the user can view settings for.
 func (u *DBUser) GetViewableProjectSettings(ctx context.Context) ([]string, error) {
 	if evergreen.PermissionsDisabledForTests() {
 		return nil, nil
 	}
 	roleManager := evergreen.GetEnvironment().RoleManager()
 
-	viewProjects, err := rolemanager.FindAllowedResources(ctx, roleManager, u.Roles(), evergreen.ProjectResourceType, evergreen.PermissionProjectSettings, evergreen.ProjectSettingsView.Value)
+	viewableProjects, err := rolemanager.FindAllowedResources(ctx, roleManager, u.Roles(), evergreen.ProjectResourceType, evergreen.PermissionProjectSettings, evergreen.ProjectSettingsView.Value)
 	if err != nil {
 		return nil, err
 	}
-	return viewProjects, nil
+	return viewableProjects, nil
+}
+
+// GetViewableProjects returns the lists of projects the user can view.
+func (u *DBUser) GetViewableProjects(ctx context.Context) ([]string, error) {
+	if evergreen.PermissionsDisabledForTests() {
+		return nil, nil
+	}
+	roleManager := evergreen.GetEnvironment().RoleManager()
+
+	viewableProjects, err := rolemanager.FindAllowedResources(ctx, roleManager, u.Roles(), evergreen.ProjectResourceType, evergreen.PermissionTasks, evergreen.TasksView.Value)
+	if err != nil {
+		return nil, err
+	}
+	return viewableProjects, nil
 }
 
 func (u *DBUser) HasPermission(opts gimlet.PermissionOpts) bool {
