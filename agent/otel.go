@@ -42,6 +42,7 @@ const (
 	packageName    = "github.com/evergreen-ci/evergreen/agent"
 	traceSuffix    = "build/OTelTraces"
 	maxLineSize    = 1024 * 1024
+	batchSize      = 2000
 
 	cpuTimeInstrumentPrefix = "system.cpu.time"
 	cpuUtilInstrument       = "system.cpu.utilization"
@@ -377,15 +378,28 @@ func (a *Agent) uploadTraces(ctx context.Context, taskDir string) error {
 			continue
 		}
 
-		if err = client.UploadTraces(ctx, resourceSpans); err != nil {
-			catcher.Wrapf(err, "uploading traces for '%s'", fileName)
-			continue
+		spanBatches := batchSpans(resourceSpans, batchSize)
+		for _, batch := range spanBatches {
+			if err = client.UploadTraces(ctx, batch); err != nil {
+				catcher.Wrapf(err, "uploading traces for '%s'", fileName)
+				continue
+			}
 		}
 
 		catcher.Wrapf(os.Remove(fileName), "removing trace file '%s'", fileName)
 	}
 
 	return catcher.Resolve()
+}
+
+func batchSpans(spans []*tracepb.ResourceSpans, batchSize int) [][]*tracepb.ResourceSpans {
+	// Batching algorithm from https://go.dev/wiki/SliceTricks#batching-with-minimal-allocation
+	batches := make([][]*tracepb.ResourceSpans, 0, (len(spans)+batchSize-1)/batchSize)
+
+	for batchSize < len(spans) {
+		spans, batches = spans[batchSize:], append(batches, spans[0:batchSize:batchSize])
+	}
+	return append(batches, spans)
 }
 
 func unmarshalTraces(fileName string) ([]*tracepb.ResourceSpans, error) {
