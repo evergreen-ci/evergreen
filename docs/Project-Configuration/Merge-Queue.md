@@ -17,6 +17,9 @@ turn on the GitHub merge queue in GitHub.
 
 You cannot use Evergreen's commit queue if the GitHub merge queue is on.
 
+Note that unlike Evergreen's commit queue, GitHub's requires that you have write
+access to the repository to merge, like you would have to without the queue.
+
 ## Enable the merge queue
 
 ### Turn on Evergreen's merge queue integration
