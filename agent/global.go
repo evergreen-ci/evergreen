@@ -40,12 +40,12 @@ const (
 	// block should time out and stop the current command.
 	defaultCallbackTimeout = 15 * time.Minute
 
-	// defaultTeardownGroupTimeout specifies the duration after when the
+	// maxTeardownGroupTimeout specifies the duration after when the
 	// teardown_group should time out and stop the current command.
 	// this cannot be set higher than the evergreen.MaxTeardownGroupThreshold
 	// because hosts will be considered idle if they have been tearing down
 	// a task group for longer than that time.
-	defaultTeardownGroupTimeout = 3 * time.Minute
+	maxTeardownGroupTimeout = 3 * time.Minute
 
 	// defaultPreTimeout specifies the default duration after when the pre,
 	// setup_group, or setup_task block should time out and stop the current

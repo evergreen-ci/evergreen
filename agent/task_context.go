@@ -456,11 +456,12 @@ func (tc *taskContext) getTeardownGroupTimeout() func() time.Duration {
 		tc.RLock()
 		defer tc.RUnlock()
 
+		// if the task group timeout is over the max, use the max timeout
 		tg := tc.taskConfig.TaskGroup
-		if tg != nil && tg.TeardownGroupTimeoutSecs != 0 {
+		if tg != nil && tg.TeardownGroupTimeoutSecs != 0 && tg.TeardownGroupTimeoutSecs < int(maxTeardownGroupTimeout.Seconds()) {
 			return time.Duration(tg.TeardownGroupTimeoutSecs) * time.Second
 		}
-		return defaultTeardownGroupTimeout
+		return maxTeardownGroupTimeout
 	}
 }
 
