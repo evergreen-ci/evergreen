@@ -185,7 +185,7 @@ func (s *GitGetProjectSuite) SetupTest() {
 	s.comm.CreateInstallationTokenResult = mockedGitHubAppToken
 }
 
-func (s *GitGetProjectSuite) TestBuildCloneCommandUsesHTTPS() {
+func (s *GitGetProjectSuite) TestBuildSourceCommandUsesHTTPS() {
 	c := &gitFetchProject{
 		Directory: "dir",
 		Token:     projectGitHubToken,
@@ -203,11 +203,11 @@ func (s *GitGetProjectSuite) TestBuildCloneCommandUsesHTTPS() {
 		token:  c.Token,
 	}
 	s.Require().NoError(opts.setLocation())
-	cmds, _ := c.buildCloneCommand(s.ctx, s.comm, logger, conf, opts)
+	cmds, _ := c.buildSourceCloneCommand(s.ctx, s.comm, logger, conf, opts)
 	s.True(utility.StringSliceContains(cmds, "git clone https://PROJECTTOKEN:x-oauth-basic@github.com/evergreen-ci/sample.git 'dir' --branch 'main'"))
 }
 
-func (s *GitGetProjectSuite) TestBuildCloneCommandWithHTTPSNeedsToken() {
+func (s *GitGetProjectSuite) TestBuildSourceCommandWithHTTPSNeedsToken() {
 	c := &gitFetchProject{
 		Directory: "dir",
 	}
@@ -224,11 +224,11 @@ func (s *GitGetProjectSuite) TestBuildCloneCommandWithHTTPSNeedsToken() {
 		token:  "",
 	}
 	s.Require().NoError(opts.setLocation())
-	_, err = c.buildCloneCommand(context.Background(), s.comm, logger, conf, opts)
+	_, err = c.buildSourceCloneCommand(context.Background(), s.comm, logger, conf, opts)
 	s.Error(err)
 }
 
-func (s *GitGetProjectSuite) TestBuildCloneCommandUsesSSH() {
+func (s *GitGetProjectSuite) TestBuildSourceCommandUsesSSH() {
 	c := &gitFetchProject{
 		Directory: "dir",
 		Token:     "",
@@ -245,12 +245,12 @@ func (s *GitGetProjectSuite) TestBuildCloneCommandUsesSSH() {
 		dir:    c.Directory,
 	}
 	s.Require().NoError(opts.setLocation())
-	cmds, err := c.buildCloneCommand(s.ctx, s.comm, logger, conf, opts)
+	cmds, err := c.buildSourceCloneCommand(s.ctx, s.comm, logger, conf, opts)
 	s.Require().NoError(err)
 	s.True(utility.StringSliceContains(cmds, "git clone 'git@github.com:evergreen-ci/sample.git' 'dir' --branch 'main'"))
 }
 
-func (s *GitGetProjectSuite) TestBuildCloneCommandDefaultCloneMethodUsesSSH() {
+func (s *GitGetProjectSuite) TestBuildSourceCommandDefaultCloneMethodUsesSSH() {
 	c := &gitFetchProject{
 		Directory: "dir",
 	}
@@ -265,12 +265,12 @@ func (s *GitGetProjectSuite) TestBuildCloneCommandDefaultCloneMethodUsesSSH() {
 		dir:    c.Directory,
 	}
 	s.Require().NoError(opts.setLocation())
-	cmds, err := c.buildCloneCommand(s.ctx, s.comm, logger, conf, opts)
+	cmds, err := c.buildSourceCloneCommand(s.ctx, s.comm, logger, conf, opts)
 	s.Require().NoError(err)
 	s.True(utility.StringSliceContains(cmds, "git clone 'git@github.com:evergreen-ci/sample.git' 'dir' --branch 'main'"))
 }
 
-func (s *GitGetProjectSuite) TestBuildCloneCommandCloneDepth() {
+func (s *GitGetProjectSuite) TestBuildSourceCommandCloneDepth() {
 	c := &gitFetchProject{
 		Directory: "dir",
 	}
@@ -286,7 +286,7 @@ func (s *GitGetProjectSuite) TestBuildCloneCommandCloneDepth() {
 		cloneDepth: 50,
 	}
 	s.Require().NoError(opts.setLocation())
-	cmds, err := c.buildCloneCommand(s.ctx, s.comm, logger, conf, opts)
+	cmds, err := c.buildSourceCloneCommand(s.ctx, s.comm, logger, conf, opts)
 	s.Require().NoError(err)
 	combined := strings.Join(cmds, " ")
 	s.Contains(combined, "--depth 50")
@@ -543,7 +543,7 @@ func (s *GitGetProjectSuite) TestBuildSSHCloneCommand() {
 	s.Equal("cd dir", cmds[1])
 }
 
-func (s *GitGetProjectSuite) TestBuildCommand() {
+func (s *GitGetProjectSuite) TestBuildSourceCommand() {
 	conf := s.taskConfig1
 	logger, err := s.comm.GetLoggerProducer(s.ctx, &conf.Task, nil)
 	s.Require().NoError(err)
@@ -562,7 +562,7 @@ func (s *GitGetProjectSuite) TestBuildCommand() {
 		dir:    c.Directory,
 	}
 	s.Require().NoError(opts.setLocation())
-	cmds, err := c.buildCloneCommand(s.ctx, s.comm, logger, conf, opts)
+	cmds, err := c.buildSourceCloneCommand(s.ctx, s.comm, logger, conf, opts)
 	s.NoError(err)
 	s.Require().Len(cmds, 8)
 	s.True(utility.ContainsOrderedSubset([]string{
@@ -582,7 +582,7 @@ func (s *GitGetProjectSuite) TestBuildCommand() {
 	opts.token = c.Token
 	s.Require().NoError(opts.setLocation())
 	s.Require().NoError(err)
-	cmds, err = c.buildCloneCommand(s.ctx, s.comm, logger, conf, opts)
+	cmds, err = c.buildSourceCloneCommand(s.ctx, s.comm, logger, conf, opts)
 	s.NoError(err)
 	s.Require().Len(cmds, 11)
 	s.True(utility.ContainsOrderedSubset([]string{
@@ -600,7 +600,7 @@ func (s *GitGetProjectSuite) TestBuildCommand() {
 	}, cmds))
 }
 
-func (s *GitGetProjectSuite) TestBuildCommandForPullRequests() {
+func (s *GitGetProjectSuite) TestBuildSourceCommandForPullRequests() {
 	conf := s.taskConfig3
 	logger, err := s.comm.GetLoggerProducer(s.ctx, &conf.Task, nil)
 	s.Require().NoError(err)
@@ -618,7 +618,7 @@ func (s *GitGetProjectSuite) TestBuildCommandForPullRequests() {
 	}
 	s.Require().NoError(opts.setLocation())
 
-	cmds, err := c.buildCloneCommand(s.ctx, s.comm, logger, conf, opts)
+	cmds, err := c.buildSourceCloneCommand(s.ctx, s.comm, logger, conf, opts)
 	s.NoError(err)
 	s.Require().Len(cmds, 10)
 	s.True(utility.StringSliceContainsOrderedPrefixSubset(cmds, []string{
@@ -628,7 +628,7 @@ func (s *GitGetProjectSuite) TestBuildCommandForPullRequests() {
 		"git log --oneline -n 10",
 	}))
 }
-func (s *GitGetProjectSuite) TestBuildCommandForGitHubMergeQueue() {
+func (s *GitGetProjectSuite) TestBuildSourceCommandForGitHubMergeQueue() {
 	conf := s.taskConfig7
 	logger, err := s.comm.GetLoggerProducer(s.ctx, &conf.Task, nil)
 	s.Require().NoError(err)
@@ -646,7 +646,7 @@ func (s *GitGetProjectSuite) TestBuildCommandForGitHubMergeQueue() {
 	}
 	s.Require().NoError(opts.setLocation())
 
-	cmds, err := c.buildCloneCommand(s.ctx, s.comm, logger, conf, opts)
+	cmds, err := c.buildSourceCloneCommand(s.ctx, s.comm, logger, conf, opts)
 	s.NoError(err)
 	s.Len(cmds, 10)
 	s.True(utility.StringSliceContainsOrderedPrefixSubset(cmds, []string{
@@ -657,7 +657,7 @@ func (s *GitGetProjectSuite) TestBuildCommandForGitHubMergeQueue() {
 	}))
 }
 
-func (s *GitGetProjectSuite) TestBuildCommandForCLIMergeTests() {
+func (s *GitGetProjectSuite) TestBuildSourceCommandForCLIMergeTests() {
 	conf := s.taskConfig2
 	logger, err := s.comm.GetLoggerProducer(s.ctx, &conf.Task, nil)
 	s.Require().NoError(err)
@@ -678,7 +678,7 @@ func (s *GitGetProjectSuite) TestBuildCommandForCLIMergeTests() {
 	s.Require().NoError(opts.setLocation())
 
 	s.taskConfig2.Task.Requester = evergreen.MergeTestRequester
-	cmds, err := c.buildCloneCommand(s.ctx, s.comm, logger, conf, opts)
+	cmds, err := c.buildSourceCloneCommand(s.ctx, s.comm, logger, conf, opts)
 	s.NoError(err)
 	s.Len(cmds, 10)
 	s.True(strings.HasSuffix(cmds[6], fmt.Sprintf("--branch '%s'", s.taskConfig2.ProjectRef.Branch)))
