@@ -779,7 +779,7 @@ func (s *GitGetProjectSuite) TestGetApplyCommand() {
 	patchPath := filepath.Join(testutil.GetDirectoryOfFile(), "testdata", "git", "test.patch")
 	applyCommand, err := c.getApplyCommand(patchPath, tc)
 	s.NoError(err)
-	s.Equal(fmt.Sprintf("git apply --binary --index < '%s'", patchPath), applyCommand)
+	s.Equal(fmt.Sprintf("GIT_TRACE=1 git apply --binary --index < '%s'", patchPath), applyCommand)
 
 	// mbox patch
 	tc = &internal.TaskConfig{
