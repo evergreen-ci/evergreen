@@ -510,13 +510,13 @@ func TestTearingDownIsNotConsideredIdle(t *testing.T) {
 		StartedBy:    evergreen.User,
 	}
 	host2 := host.Host{
-		Id:            "h2",
-		Distro:        distro1,
-		Provider:      evergreen.ProviderNameMock,
-		CreationTime:  time.Now().Add(-30 * time.Minute),
-		Status:        evergreen.HostRunning,
-		StartedBy:     evergreen.User,
-		IsTearingDown: true,
+		Id:                         "h2",
+		Distro:                     distro1,
+		Provider:                   evergreen.ProviderNameMock,
+		CreationTime:               time.Now().Add(-30 * time.Minute),
+		Status:                     evergreen.HostRunning,
+		StartedBy:                  evergreen.User,
+		TaskGroupTeardownStartTime: time.Now(),
 	}
 
 	require.NoError(t, host1.Insert(tctx))
