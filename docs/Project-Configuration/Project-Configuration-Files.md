@@ -463,8 +463,8 @@ to run at the start and end of every task that isn't in a task group. For task
 groups, `setup_task` and `teardown_task` will run instead of `pre` and `post`
 (see [task groups](#task-groups) for more information). These are incredibly
 useful as a place for results commands or for task setup and cleanup. Note: If a 
-host runs into an issue and needs to exit before it ran the post task commands, 
-it will exit without running the post task commands. 
+host runs into an issue and needs to exit it will exit without running the post 
+task commands. 
 
 ``` yaml
 pre_error_fails_task: true
