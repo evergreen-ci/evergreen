@@ -31,7 +31,7 @@ func UtilizationBasedHostAllocator(ctx context.Context, hostAllocatorData *HostA
 	// calculate approximate number of free hosts for the distro-scheduler-report
 	freeHosts := make([]host.Host, 0, len(hostAllocatorData.ExistingHosts))
 	for _, existingDistroHost := range hostAllocatorData.ExistingHosts {
-		if existingDistroHost.RunningTask == "" {
+		if existingDistroHost.IsFree() {
 			freeHosts = append(freeHosts, existingDistroHost)
 		}
 	}
@@ -300,7 +300,7 @@ func calcExistingFreeHosts(existingHosts []host.Host, futureHostFactor float64, 
 	}
 
 	for _, existingHost := range existingHosts {
-		if existingHost.RunningTask == "" {
+		if existingHost.IsFree() {
 			numFreeHosts++
 		}
 	}

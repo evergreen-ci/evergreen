@@ -50,6 +50,7 @@ var (
 	RunningTaskExecutionKey                = bsonutil.MustHaveTag(Host{}, "RunningTaskExecution")
 	RunningTaskGroupKey                    = bsonutil.MustHaveTag(Host{}, "RunningTaskGroup")
 	RunningTaskGroupOrderKey               = bsonutil.MustHaveTag(Host{}, "RunningTaskGroupOrder")
+	TaskGroupTeardownStartTimeKey          = bsonutil.MustHaveTag(Host{}, "TaskGroupTeardownStartTime")
 	RunningTaskBuildVariantKey             = bsonutil.MustHaveTag(Host{}, "RunningTaskBuildVariant")
 	RunningTaskVersionKey                  = bsonutil.MustHaveTag(Host{}, "RunningTaskVersion")
 	RunningTaskProjectKey                  = bsonutil.MustHaveTag(Host{}, "RunningTaskProject")

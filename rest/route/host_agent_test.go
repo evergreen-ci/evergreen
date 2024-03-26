@@ -117,6 +117,38 @@ func TestHostNextTask(t *testing.T) {
 			assert.Equal(t, resp.Status(), http.StatusOK)
 			assert.False(t, taskResp.ShouldExit)
 		},
+		"SetsAndUnsetsIsTearingDown": func(ctx context.Context, t *testing.T, rh *hostAgentNextTask) {
+			sampleHost, err := host.FindOneId(ctx, "h1")
+			require.NoError(t, err)
+			require.NotZero(t, sampleHost)
+			rh.host = sampleHost
+			rh.details = &apimodels.GetNextTaskDetails{TaskGroup: "task_group"}
+			resp := rh.Run(ctx)
+			taskResp, ok := resp.Data().(apimodels.NextTaskResponse)
+			require.True(t, ok, resp.Data())
+			assert.Equal(t, resp.Status(), http.StatusOK)
+			assert.False(t, taskResp.ShouldExit)
+			assert.True(t, taskResp.ShouldTeardownGroup)
+
+			dbHost, err := host.FindOneId(ctx, "h1")
+			require.NoError(t, err)
+			require.NotZero(t, dbHost)
+			assert.True(t, dbHost.IsTearingDown())
+
+			// unsets tearing down the next time
+			rh.details = &apimodels.GetNextTaskDetails{TaskGroup: ""}
+			resp = rh.Run(ctx)
+			taskResp, ok = resp.Data().(apimodels.NextTaskResponse)
+			require.True(t, ok, resp.Data())
+			assert.Equal(t, resp.Status(), http.StatusOK)
+			assert.False(t, taskResp.ShouldExit)
+			assert.False(t, taskResp.ShouldTeardownGroup)
+
+			dbHost, err = host.FindOneId(ctx, "h1")
+			require.NoError(t, err)
+			require.NotZero(t, dbHost)
+			assert.False(t, dbHost.IsTearingDown())
+		},
 		"NonLegacyHostThatNeedsReprovision": func(ctx context.Context, t *testing.T, rh *hostAgentNextTask) {
 			for testName, testCase := range map[string]func(ctx context.Context, t *testing.T, handler hostAgentNextTask){
 				"ShouldPrepareToReprovision": func(ctx context.Context, t *testing.T, handler hostAgentNextTask) {
