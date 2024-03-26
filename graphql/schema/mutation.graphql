@@ -101,6 +101,7 @@ type Mutation {
   deleteSubscriptions(subscriptionIds: [String!]!): Int!
   removePublicKey(keyName: String!): [PublicKey!]!
   saveSubscription(subscription: SubscriptionInput!): Boolean!
+  updateParsleySettings(opts: UpdateParsleySettingsInput!): UpdateParsleySettingsPayload
   updatePublicKey(
     targetKeyName: String!
     updateInfo: PublicKeyInput!

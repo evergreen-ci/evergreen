@@ -109,7 +109,7 @@ func (staticMgr *staticManager) TerminateInstance(ctx context.Context, host *hos
 	return nil
 }
 
-func (staticMgr *staticManager) StopInstance(ctx context.Context, host *host.Host, user string) error {
+func (staticMgr *staticManager) StopInstance(ctx context.Context, host *host.Host, shouldKeepOff bool, user string) error {
 	return errors.New("StopInstance is not supported for static provider")
 }
 

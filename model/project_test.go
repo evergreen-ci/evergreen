@@ -691,15 +691,6 @@ func (s *projectSuite) SetupTest() {
 					},
 				},
 			},
-			{
-				Name: "bv_3",
-				Tasks: []BuildVariantTaskUnit{
-					{
-						Name:    "g1",
-						Variant: "bv_3",
-					},
-				},
-			},
 		},
 		Tasks: []ProjectTask{
 			{
@@ -761,15 +752,6 @@ func (s *projectSuite) SetupTest() {
 					{
 						Command: "shell.exec",
 					},
-				},
-			},
-		},
-		TaskGroups: []TaskGroup{
-			{
-				Name: "g1",
-				Tasks: []string{
-					"a_task_1",
-					"a_task_2",
 				},
 			},
 		},

@@ -278,9 +278,6 @@ const (
 	PlannerVersionLegacy  = "legacy"
 	PlannerVersionTunable = "tunable"
 
-	// TODO: EVG-18706 all distros use DispatcherVersionRevisedWithDependencies, we may be able to remove these and their custom logic
-	DispatcherVersionLegacy                  = "legacy"
-	DispatcherVersionRevised                 = "revised"
 	DispatcherVersionRevisedWithDependencies = "revised-with-dependencies"
 
 	// maximum turnaround we want to maintain for all hosts for a given distro
@@ -991,8 +988,6 @@ var (
 
 	// Set of valid DispatchSettings.Version strings that can be user set via the API
 	ValidTaskDispatcherVersions = []string{
-		DispatcherVersionLegacy,
-		DispatcherVersionRevised,
 		DispatcherVersionRevisedWithDependencies,
 	}
 

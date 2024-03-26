@@ -74,7 +74,7 @@ func (c *gitPush) Execute(ctx context.Context, comm client.Communicator, logger 
 	checkoutCommand := fmt.Sprintf("git checkout %s", conf.ProjectRef.Branch)
 	logger.Execution().Debugf("git checkout command %s", checkoutCommand)
 	jpm := c.JasperManager()
-	cmd := jpm.CreateCommand(ctx).Directory(filepath.ToSlash(getWorkingDirectory(conf, c.Directory))).Append(checkoutCommand).
+	cmd := jpm.CreateCommand(ctx).Directory(filepath.ToSlash(GetWorkingDirectory(conf, c.Directory))).Append(checkoutCommand).
 		SetOutputSender(level.Info, logger.Task().GetSender()).SetErrorSender(level.Error, logger.Task().GetSender())
 	if err = cmd.Run(ctx); err != nil {
 		return errors.Wrapf(err, "checking out branch '%s'", conf.ProjectRef.Branch)
@@ -105,7 +105,8 @@ func (c *gitPush) Execute(ctx context.Context, comm client.Communicator, logger 
 			logger.Execution().Errorf("Module '%s' not found.", modulePatch.ModuleName)
 			continue
 		}
-		moduleBase := filepath.Join(expandModulePrefix(conf, module.Name, module.Prefix, logger), module.Name)
+		expandModulePrefix(conf, module.Name, module.Prefix, logger)
+		moduleBase := filepath.Join(conf.ModulePaths[module.Name], module.Name)
 
 		checkoutCommand = fmt.Sprintf("git checkout %s", module.Branch)
 		logger.Execution().Debugf("git checkout command: %s", checkoutCommand)
@@ -135,7 +136,7 @@ func (c *gitPush) Execute(ctx context.Context, comm client.Communicator, logger 
 		}
 
 		logger.Execution().Info("Pushing patch.")
-		params.directory = filepath.ToSlash(getWorkingDirectory(conf, c.Directory))
+		params.directory = filepath.ToSlash(GetWorkingDirectory(conf, c.Directory))
 		params.branch = conf.ProjectRef.Branch
 		if err = c.pushPatch(ctx, logger, params); err != nil {
 			return errors.Wrap(err, "pushing patch")
@@ -185,7 +186,7 @@ func (c *gitPush) revParse(ctx context.Context, conf *internal.TaskConfig, logge
 
 	revParseCommand := fmt.Sprintf("git rev-parse %s", ref)
 	logger.Execution().Debugf("git rev-parse command: %s", revParseCommand)
-	cmd := jpm.CreateCommand(ctx).Directory(filepath.ToSlash(getWorkingDirectory(conf, c.Directory))).Append(revParseCommand).SetOutputWriter(stdout).
+	cmd := jpm.CreateCommand(ctx).Directory(filepath.ToSlash(GetWorkingDirectory(conf, c.Directory))).Append(revParseCommand).SetOutputWriter(stdout).
 		SetErrorSender(level.Error, logger.Task().GetSender())
 
 	if err := cmd.Run(ctx); err != nil {

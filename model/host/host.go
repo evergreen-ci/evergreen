@@ -60,9 +60,8 @@ type Host struct {
 	ExternalIdentifier string `bson:"ext_identifier" json:"ext_identifier"`
 	DisplayName        string `bson:"display_name" json:"display_name"`
 
-	// physical location of host
-	Project string `bson:"project" json:"project"`
-	Zone    string `bson:"zone" json:"zone"`
+	// Availability zone of the host.
+	Zone string `bson:"zone" json:"zone"`
 
 	// True if the app server has done all necessary host setup work (although
 	// the host may need to do additional provisioning before it is running).
@@ -699,13 +698,15 @@ func IsIntentHostId(id string) bool {
 func (h *Host) SetStatus(ctx context.Context, newStatus, user, logs string) error {
 	var unset bson.M
 	if newStatus == evergreen.HostRunning {
+		shouldKeepOffKey := bsonutil.GetDottedKeyName(SleepScheduleKey, SleepScheduleShouldKeepOffKey)
 		unset = bson.M{
-			LTCTimeKey:    1,
-			LTCTaskKey:    1,
-			LTCGroupKey:   1,
-			LTCBVKey:      1,
-			LTCVersionKey: 1,
-			LTCProjectKey: 1,
+			LTCTimeKey:       1,
+			LTCTaskKey:       1,
+			LTCGroupKey:      1,
+			LTCBVKey:         1,
+			LTCVersionKey:    1,
+			LTCProjectKey:    1,
+			shouldKeepOffKey: 1,
 		}
 	}
 	return h.setStatusAndFields(ctx, newStatus, nil, nil, unset, user, logs)
@@ -827,12 +828,12 @@ func (h *Host) SetProvisioning(ctx context.Context) error {
 	)
 }
 
-// SetDecommissioned sets the host as decommissioned. If checkTaskGroup is set,
-// we only update the host if it hasn't started running a task group.
-func (h *Host) SetDecommissioned(ctx context.Context, user string, checkTaskGroup bool, logs string) error {
+// SetDecommissioned sets the host as decommissioned. If decommissionIfBusy
+// isn't set, we only update the host if there is no running task.
+func (h *Host) SetDecommissioned(ctx context.Context, user string, decommissionIfBusy bool, logs string) error {
 	query := bson.M{}
-	if checkTaskGroup {
-		query[RunningTaskGroupKey] = bson.M{"$eq": ""}
+	if !decommissionIfBusy {
+		query[RunningTaskKey] = bson.M{"$exists": false}
 	}
 	if h.HasContainers {
 		containers, err := h.GetContainers(ctx)
@@ -857,7 +858,7 @@ func (h *Host) SetDecommissioned(ctx context.Context, user string, checkTaskGrou
 	err := h.setStatusAndFields(ctx, evergreen.HostDecommissioned, query, nil, nil, user, logs)
 	// Shouldn't consider it an error if the host isn't found when checking task group,
 	// because a task group may have been set for the host.
-	if err != nil && checkTaskGroup && adb.ResultsNotFound(err) {
+	if err != nil && !decommissionIfBusy && adb.ResultsNotFound(err) {
 		return nil
 	}
 	return err
@@ -875,18 +876,26 @@ func (h *Host) SetStopping(ctx context.Context, user string) error {
 	return h.SetStatus(ctx, evergreen.HostStopping, user, "")
 }
 
-func (h *Host) SetStopped(ctx context.Context, user string) error {
+// SetStopped sets a host to stopped. If shouldKeepOff is true, it will also
+// keep the host off and ignore any sleep schedule until it's started up again
+// by a user.
+func (h *Host) SetStopped(ctx context.Context, shouldKeepOff bool, user string) error {
+	setFields := bson.M{
+		StatusKey:    evergreen.HostStopped,
+		DNSKey:       "",
+		StartTimeKey: utility.ZeroTime,
+	}
+	if shouldKeepOff {
+		shouldKeepOffKey := bsonutil.GetDottedKeyName(SleepScheduleKey, SleepScheduleShouldKeepOffKey)
+		setFields[shouldKeepOffKey] = true
+	}
 	err := UpdateOne(
 		ctx,
 		bson.M{
 			IdKey:     h.Id,
 			StatusKey: h.Status,
 		},
-		bson.M{"$set": bson.M{
-			StatusKey:    evergreen.HostStopped,
-			DNSKey:       "",
-			StartTimeKey: utility.ZeroTime,
-		}},
+		bson.M{"$set": setFields},
 	)
 	if err != nil {
 		return errors.Wrap(err, "setting host status to stopped")
@@ -904,6 +913,7 @@ func (h *Host) SetStopped(ctx context.Context, user string) error {
 	h.Status = evergreen.HostStopped
 	h.Host = ""
 	h.StartTime = utility.ZeroTime
+	h.SleepSchedule.ShouldKeepOff = shouldKeepOff
 
 	return nil
 }
@@ -1896,7 +1906,6 @@ func (h *Host) Upsert(ctx context.Context) (*mongo.UpdateResult, error) {
 		TagKey:              h.Tag,
 		InstanceTypeKey:     h.InstanceType,
 		ZoneKey:             h.Zone,
-		ProjectKey:          h.Project,
 		ProvisionedKey:      h.Provisioned,
 		ProvisionOptionsKey: h.ProvisionOptions,
 		StatusKey:           h.Status,
@@ -2072,7 +2081,7 @@ func (h *Host) DisablePoisonedHost(ctx context.Context, logs string) error {
 		return nil
 	}
 
-	return errors.WithStack(h.SetDecommissioned(ctx, evergreen.User, false, logs))
+	return errors.WithStack(h.SetDecommissioned(ctx, evergreen.User, true, logs))
 }
 
 func (h *Host) SetExtId(ctx context.Context) error {
@@ -3563,6 +3572,46 @@ func (h *Host) UnsetPersistentDNSInfo(ctx context.Context) error {
 	return nil
 }
 
+// SetSleepSchedule updates the host's sleep schedule. Note that if some fields
+// in the sleep schedule are not being modified, the sleep schedule must still
+// contain all the unmodified fields. For example, if this host is on a
+// temporary exemption when their daily schedule is updated, the new schedule
+// must still have the temporary exemption populated.
+func (h *Host) SetSleepSchedule(ctx context.Context, schedule SleepScheduleInfo) error {
+	if err := schedule.Validate(); err != nil {
+		return errors.Wrap(err, "invalid sleep schedule")
+	}
+
+	// Since the sleep schedule is being updated, recalculate the next
+	// stop/start times based on the new schedule.
+	schedule.NextStartTime = time.Time{}
+	schedule.NextStopTime = time.Time{}
+
+	now := time.Now()
+	var err error
+	schedule.NextStartTime, err = schedule.GetNextScheduledStartTime(now)
+	if err != nil {
+		return errors.Wrap(err, "determining next sleep schedule start time")
+	}
+	schedule.NextStopTime, err = schedule.GetNextScheduledStopTime(now)
+	if err != nil {
+		return errors.Wrap(err, "determining next sleep schedule stop time")
+	}
+	if err := UpdateOne(ctx, bson.M{
+		IdKey: h.Id,
+	}, bson.M{
+		"$set": bson.M{
+			SleepScheduleKey: schedule,
+		},
+	}); err != nil {
+		return err
+	}
+
+	h.SleepSchedule = schedule
+
+	return nil
+}
+
 // SleepScheduleSentinelTime is a special date that's so far in the future that
 // it's assumed Evergreen will never reach this time. This timestamp is only
 // used to signify that a host's sleep schedule should not take effect (either
@@ -3572,20 +3621,20 @@ var SleepScheduleSentinelTime = time.Date(10000, 0, 0, 0, 0, 0, 0, time.UTC)
 
 // GetNextScheduledStopTime returns the next time a host should be
 // stopped according to its sleep schedule.
-func (h *Host) GetNextScheduledStopTime(now time.Time) (time.Time, error) {
-	if h.SleepSchedule.PermanentlyExempt || h.SleepSchedule.ShouldKeepOff {
+func (s *SleepScheduleInfo) GetNextScheduledStopTime(now time.Time) (time.Time, error) {
+	if s.PermanentlyExempt || s.ShouldKeepOff {
 		return SleepScheduleSentinelTime, nil
 	}
 
-	userTimeZone, err := time.LoadLocation(h.SleepSchedule.TimeZone)
+	userTimeZone, err := time.LoadLocation(s.TimeZone)
 	if err != nil {
-		return time.Time{}, errors.Wrapf(err, "loading user time zone '%s'", h.SleepSchedule.TimeZone)
+		return time.Time{}, errors.Wrapf(err, "loading user time zone '%s'", s.TimeZone)
 	}
 
 	var calculateTimeAfter time.Time
-	if !utility.IsZeroTime(h.SleepSchedule.TemporarilyExemptUntil) {
-		calculateTimeAfter = h.SleepSchedule.TemporarilyExemptUntil
-	} else if !utility.IsZeroTime(h.SleepSchedule.NextStartTime) {
+	if !utility.IsZeroTime(s.TemporarilyExemptUntil) {
+		calculateTimeAfter = s.TemporarilyExemptUntil
+	} else if !utility.IsZeroTime(s.NextStartTime) {
 		// If the next start time is known, do not try to stop the host again
 		// until after it's scheduled to start back up. This is a necessary
 		// safeguard against a rare edge case where the host is stopped for the
@@ -3606,7 +3655,7 @@ func (h *Host) GetNextScheduledStopTime(now time.Time) (time.Time, error) {
 		// for its sleep schedule, it should not try to stop the host again
 		// until after the next time the schedule would typically start it back
 		// up.
-		calculateTimeAfter = h.SleepSchedule.NextStartTime
+		calculateTimeAfter = s.NextStartTime
 	} else {
 		calculateTimeAfter = now
 	}
@@ -3620,7 +3669,7 @@ func (h *Host) GetNextScheduledStopTime(now time.Time) (time.Time, error) {
 	var dailyWeekdays []string
 	var firstContiguousWeekdayOff []string
 	for _, weekday := range utility.Weekdays {
-		isOff := utility.FilterSlice(h.SleepSchedule.WholeWeekdaysOff, func(weekdayToCheck time.Weekday) bool { return weekdayToCheck == weekday })
+		isOff := utility.FilterSlice(s.WholeWeekdaysOff, func(weekdayToCheck time.Weekday) bool { return weekdayToCheck == weekday })
 		if len(isOff) == 0 {
 			dailyWeekdays = append(dailyWeekdays, fmt.Sprintf("%d", weekday))
 		} else {
@@ -3629,7 +3678,7 @@ func (h *Host) GetNextScheduledStopTime(now time.Time) (time.Time, error) {
 				// Convert negative modulo to positive value (because -1 mod 7 = -1).
 				prevWeekdayOff += time.Weekday(len(utility.Weekdays))
 			}
-			isPrevWeekdayOff := utility.FilterSlice(h.SleepSchedule.WholeWeekdaysOff, func(weekdayToCheck time.Weekday) bool { return weekdayToCheck == prevWeekdayOff })
+			isPrevWeekdayOff := utility.FilterSlice(s.WholeWeekdaysOff, func(weekdayToCheck time.Weekday) bool { return weekdayToCheck == prevWeekdayOff })
 			if len(isPrevWeekdayOff) == 0 {
 				// It's the first day in a contiguous series of weekdays off,
 				// which means the host can stop on this day.
@@ -3639,8 +3688,8 @@ func (h *Host) GetNextScheduledStopTime(now time.Time) (time.Time, error) {
 	}
 
 	var nextDailyTrigger time.Time
-	if h.SleepSchedule.DailyStopTime != "" {
-		hours, mins, err := parseDailyTime(h.SleepSchedule.DailyStopTime)
+	if s.DailyStopTime != "" {
+		hours, mins, err := parseDailyTime(s.DailyStopTime)
 		if err != nil {
 			return time.Time{}, errors.Wrap(err, "parsing daily stop time")
 		}
@@ -3679,19 +3728,19 @@ func (h *Host) GetNextScheduledStopTime(now time.Time) (time.Time, error) {
 
 // GetNextScheduledStartTime returns the next time a host should be
 // started according to its sleep schedule.
-func (h *Host) GetNextScheduledStartTime(now time.Time) (time.Time, error) {
-	if h.SleepSchedule.PermanentlyExempt || h.SleepSchedule.ShouldKeepOff {
+func (s *SleepScheduleInfo) GetNextScheduledStartTime(now time.Time) (time.Time, error) {
+	if s.PermanentlyExempt || s.ShouldKeepOff {
 		return SleepScheduleSentinelTime, nil
 	}
 
-	userTimeZone, err := time.LoadLocation(h.SleepSchedule.TimeZone)
+	userTimeZone, err := time.LoadLocation(s.TimeZone)
 	if err != nil {
-		return time.Time{}, errors.Wrapf(err, "loading user time zone '%s'", h.SleepSchedule.TimeZone)
+		return time.Time{}, errors.Wrapf(err, "loading user time zone '%s'", s.TimeZone)
 	}
 
 	var calculateTimeAfter time.Time
-	if !utility.IsZeroTime(h.SleepSchedule.TemporarilyExemptUntil) {
-		calculateTimeAfter = h.SleepSchedule.TemporarilyExemptUntil
+	if !utility.IsZeroTime(s.TemporarilyExemptUntil) {
+		calculateTimeAfter = s.TemporarilyExemptUntil
 	} else {
 		calculateTimeAfter = now
 	}
@@ -3706,12 +3755,12 @@ func (h *Host) GetNextScheduledStartTime(now time.Time) (time.Time, error) {
 	var dailyWeekdays []string
 	var afterContiguousWeekdaysOff []string
 	for _, weekday := range utility.Weekdays {
-		isOff := utility.FilterSlice(h.SleepSchedule.WholeWeekdaysOff, func(weekdayToCheck time.Weekday) bool { return weekdayToCheck == weekday })
+		isOff := utility.FilterSlice(s.WholeWeekdaysOff, func(weekdayToCheck time.Weekday) bool { return weekdayToCheck == weekday })
 		if len(isOff) == 0 {
 			dailyWeekdays = append(dailyWeekdays, fmt.Sprintf("%d", weekday))
 		} else {
 			nextWeekday := (weekday + 1) % time.Weekday(len(utility.Weekdays))
-			isNextWeekdayOff := utility.FilterSlice(h.SleepSchedule.WholeWeekdaysOff, func(weekdayToCheck time.Weekday) bool { return weekdayToCheck == nextWeekday })
+			isNextWeekdayOff := utility.FilterSlice(s.WholeWeekdaysOff, func(weekdayToCheck time.Weekday) bool { return weekdayToCheck == nextWeekday })
 			if len(isNextWeekdayOff) == 0 {
 				// It's the end of a contiguous series of weekdays off, which
 				// means the host can start up again on this day.
@@ -3721,8 +3770,8 @@ func (h *Host) GetNextScheduledStartTime(now time.Time) (time.Time, error) {
 	}
 
 	var nextDailyTrigger time.Time
-	if h.SleepSchedule.DailyStartTime != "" {
-		hours, mins, err := parseDailyTime(h.SleepSchedule.DailyStartTime)
+	if s.DailyStartTime != "" {
+		hours, mins, err := parseDailyTime(s.DailyStartTime)
 		if err != nil {
 			return time.Time{}, errors.Wrap(err, "parsing daily start time")
 		}
@@ -3747,7 +3796,7 @@ func (h *Host) GetNextScheduledStartTime(now time.Time) (time.Time, error) {
 		if nextDailyTrigger.Year() == nextAfterWeekdayOffTrigger.Year() &&
 			nextDailyTrigger.Month() == nextAfterWeekdayOffTrigger.Month() &&
 			nextDailyTrigger.Day() == nextAfterWeekdayOffTrigger.Day() &&
-			h.SleepSchedule.isDailyOvernightSchedule() {
+			s.isDailyOvernightSchedule() {
 			// If the two proposed start times are on the same date and the
 			// daily one runs overnight, choose the daily one. For example, if
 			// the host has Sunday off and a daily sleep schedule from 10 pm to

@@ -67,7 +67,7 @@ func (c *goTestResults) Execute(ctx context.Context,
 
 	// All file patterns should be relative to the task's working directory.
 	for i, file := range c.Files {
-		c.Files[i] = getWorkingDirectory(conf, file)
+		c.Files[i] = GetWorkingDirectory(conf, file)
 	}
 
 	// will be all files containing test results
@@ -125,7 +125,6 @@ func globFiles(patterns ...string) ([]string, error) {
 
 // parseTestOutput parses the test results and logs from a single output source.
 func parseTestOutput(ctx context.Context, conf *internal.TaskConfig, report io.Reader, suiteName string) (testlog.TestLog, []testresult.TestResult, error) {
-	// parse the output logs
 	parser := &goTestParser{}
 	if err := parser.Parse(report); err != nil {
 		return testlog.TestLog{}, nil, errors.Wrap(err, "parsing file")
@@ -135,7 +134,6 @@ func parseTestOutput(ctx context.Context, conf *internal.TaskConfig, report io.R
 		return testlog.TestLog{}, nil, errors.New("no results found")
 	}
 
-	// build up the test logs
 	logLines := parser.Logs()
 	logs := testlog.TestLog{
 		Name:          suiteName,
@@ -149,13 +147,12 @@ func parseTestOutput(ctx context.Context, conf *internal.TaskConfig, report io.R
 
 // parseTestOutputFiles parses all of the files that are passed in, and returns
 // the test logs and test results found within.
-func parseTestOutputFiles(ctx context.Context, logger client.LoggerProducer,
-	conf *internal.TaskConfig, outputFiles []string) ([]testlog.TestLog, [][]testresult.TestResult, error) {
+func parseTestOutputFiles(ctx context.Context, logger client.LoggerProducer, conf *internal.TaskConfig, outputFiles []string) ([]testlog.TestLog, []testresult.TestResult, error) {
+	var (
+		allResults []testresult.TestResult
+		logs       []testlog.TestLog
+	)
 
-	var results [][]testresult.TestResult
-	var logs []testlog.TestLog
-
-	// now, open all the files, and parse the test results
 	for _, outputFile := range outputFiles {
 		if err := ctx.Err(); err != nil {
 			return nil, nil, errors.Wrap(err, "canceled while processing test output files")
@@ -164,30 +161,26 @@ func parseTestOutputFiles(ctx context.Context, logger client.LoggerProducer,
 		_, suiteName := filepath.Split(outputFile)
 		suiteName = strings.TrimSuffix(suiteName, ".suite")
 
-		// open the file
 		fileReader, err := os.Open(outputFile)
 		if err != nil {
-			// don't bomb out on a single bad file
 			logger.Task().Error(errors.Wrapf(err, "opening file '%s' for parsing", outputFile))
 			continue
 		}
 		defer fileReader.Close() //nolint: evg-lint
 
-		log, result, err := parseTestOutput(ctx, conf, fileReader, suiteName)
+		log, results, err := parseTestOutput(ctx, conf, fileReader, suiteName)
 		if err != nil {
-			// continue on error
 			logger.Task().Error(errors.Wrapf(err, "parsing file '%s'", outputFile))
 			continue
 		}
 
-		// save the results
-		results = append(results, result)
+		allResults = append(allResults, results...)
 		logs = append(logs, log)
 	}
 
-	if len(results) == 0 && len(logs) == 0 {
+	if len(allResults) == 0 && len(logs) == 0 {
 		return nil, nil, errors.New("go test output files contained no results")
 	}
 
-	return logs, results, nil
+	return logs, allResults, nil
 }

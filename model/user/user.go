@@ -36,6 +36,7 @@ type DBUser struct {
 	FavoriteProjects []string         `bson:"favorite_projects"`
 	OnlyAPI          bool             `bson:"only_api,omitempty"`
 	ParsleyFilters   []parsley.Filter `bson:"parsley_filters"`
+	ParsleySettings  parsley.Settings `bson:"parsley_settings"`
 }
 
 func (u *DBUser) MarshalBSON() ([]byte, error)  { return mgobson.Marshal(u) }
@@ -149,9 +150,19 @@ func (u *DBUser) UpdateAPIKey(newKey string) error {
 func (u *DBUser) UpdateSettings(settings UserSettings) error {
 	update := bson.M{"$set": bson.M{SettingsKey: settings}}
 	if err := UpdateOne(bson.M{IdKey: u.Id}, update); err != nil {
-		return errors.Wrapf(err, "saving user settings for user'%s'", u.Id)
+		return errors.Wrapf(err, "saving user settings for user '%s'", u.Id)
 	}
 	u.Settings = settings
+	return nil
+}
+
+// UpdateParsleySettings updates the user's settings for Parsley.
+func (u *DBUser) UpdateParsleySettings(settings parsley.Settings) error {
+	update := bson.M{"$set": bson.M{ParsleySettingsKey: settings}}
+	if err := UpdateOne(bson.M{IdKey: u.Id}, update); err != nil {
+		return errors.Wrapf(err, "saving Parsley settings for user '%s'", u.Id)
+	}
+	u.ParsleySettings = settings
 	return nil
 }
 
