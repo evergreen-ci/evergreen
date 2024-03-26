@@ -366,9 +366,9 @@ const (
 	// a heartbeat
 	HeartbeatTimeoutThreshold = 7 * time.Minute
 
-	// DefaultTeardownGroupTimeout specifies the duration after when the
-	// teardown_group should time out and stop the current command.
-	DefaultTeardownGroupTimeout = 3 * time.Minute
+	// MaxTeardownGroupThreshold specifies the duration after which the host should no longer continue
+	// to tear down a task group.
+	MaxTeardownGroupThreshold = 3 * time.Minute
 
 	SaveGenerateTasksError     = "error saving config in `generate.tasks`"
 	TasksAlreadyGeneratedError = "generator already ran and generated tasks"
@@ -392,13 +392,6 @@ const (
 	// and is meant to be set as a private variable so that it will be redacted in all logs.
 	HostServicePasswordExpansion = "host_service_password"
 )
-
-// GetTeardownGroupTimeout returns a function that returns the default teardown group timeout.
-func GetTeardownGroupTimeout() func() time.Duration {
-	return func() time.Duration {
-		return DefaultTeardownGroupTimeout
-	}
-}
 
 var VersionSucceededStatuses = []string{
 	VersionSucceeded, LegacyPatchSucceeded,
