@@ -1,8 +1,6 @@
 module github.com/evergreen-ci/evergreen
 
-go 1.21
-
-toolchain go1.21.4
+go 1.20
 
 require (
 	github.com/99designs/gqlgen v0.17.42
@@ -72,7 +70,7 @@ require (
 	golang.org/x/crypto v0.19.0
 	golang.org/x/oauth2 v0.16.0
 	golang.org/x/text v0.14.0
-	golang.org/x/tools v0.14.0 // indirect
+	golang.org/x/tools v0.13.0 // indirect
 	gonum.org/v1/gonum v0.14.0
 	google.golang.org/grpc v1.61.0
 	google.golang.org/protobuf v1.32.0
@@ -190,7 +188,7 @@ require (
 	github.com/yusufpapurcu/wmi v1.2.4 // indirect
 	go.opentelemetry.io/contrib v1.21.1 // indirect
 	golang.org/x/exp v0.0.0-20230321023759-10a507213a29 // indirect
-	golang.org/x/mod v0.14.0 // indirect
+	golang.org/x/mod v0.12.0 // indirect
 	golang.org/x/net v0.20.0 // indirect
 	golang.org/x/sync v0.5.0
 	golang.org/x/sys v0.17.0 // indirect
@@ -213,25 +211,8 @@ require (
 )
 
 require (
-	github.com/cilium/ebpf v0.11.0 // indirect
-	github.com/cosiner/argv v0.1.0 // indirect
-	github.com/derekparker/trie v0.0.0-20230829180723-39f4de51ef7d // indirect
-	github.com/go-delve/delve v1.22.1 // indirect
-	github.com/go-delve/liner v1.2.3-0.20231231155935-4726ab1d7f62 // indirect
 	github.com/golang-jwt/jwt/v4 v4.5.0 // indirect
-	github.com/google/go-dap v0.11.0 // indirect
 	github.com/google/go-github/v29 v29.0.2 // indirect
-	github.com/hashicorp/golang-lru v1.0.2 // indirect
-	github.com/inconshreveable/mousetrap v1.1.0 // indirect
-	github.com/mattn/go-colorable v0.1.13 // indirect
-	github.com/mattn/go-isatty v0.0.20 // indirect
-	github.com/mattn/go-runewidth v0.0.13 // indirect
 	github.com/papertrail/go-tail v0.0.0-20180509224916-973c153b0431 // indirect
-	github.com/rivo/uniseg v0.2.0 // indirect
-	github.com/sirupsen/logrus v1.9.3 // indirect
 	github.com/sosodev/duration v1.2.0 // indirect
-	github.com/spf13/cobra v1.7.0 // indirect
-	github.com/spf13/pflag v1.0.5 // indirect
-	go.starlark.net v0.0.0-20231101134539-556fd59b42f6 // indirect
-	golang.org/x/arch v0.6.0 // indirect
 )
