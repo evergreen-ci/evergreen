@@ -196,6 +196,27 @@ func setup(ctx context.Context, t *testing.T, state *AtomicGraphQLState) {
 	require.NoError(t, err)
 	require.Len(t, roles, 0)
 
+	unrestrictedProjectScope := gimlet.Scope{
+		ID:        evergreen.UnrestrictedProjectsScope,
+		Name:      "unrestricted projects",
+		Type:      evergreen.ProjectResourceType,
+		Resources: []string{"mci"},
+	}
+	err = roleManager.AddScope(unrestrictedProjectScope)
+	require.NoError(t, err)
+
+	basicProjectAccessRole := gimlet.Role{
+		ID:          evergreen.BasicProjectAccessRole,
+		Name:        "basic access",
+		Scope:       evergreen.UnrestrictedProjectsScope,
+		Permissions: map[string]int{"project_tasks": 20, "project_patches": 10, "project_logs": 10, "project_task_annotations": 10},
+	}
+	err = roleManager.UpdateRole(basicProjectAccessRole)
+	require.NoError(t, err)
+
+	err = usr.AddRole(evergreen.BasicProjectAccessRole)
+	require.NoError(t, err)
+
 	distroScope := gimlet.Scope{
 		ID:        evergreen.AllDistrosScope,
 		Name:      "modify host scope",
