@@ -777,7 +777,7 @@ func (s *GitGetProjectSuite) TestGetApplyCommand() {
 		Task: task.Task{},
 	}
 	patchPath := filepath.Join(testutil.GetDirectoryOfFile(), "testdata", "git", "test.patch")
-	applyCommand, err := c.getApplyCommand(patchPath, tc, false)
+	applyCommand, err := c.getApplyCommand(patchPath, tc)
 	s.NoError(err)
 	s.Equal(fmt.Sprintf("git apply --binary --index < '%s'", patchPath), applyCommand)
 
@@ -788,7 +788,7 @@ func (s *GitGetProjectSuite) TestGetApplyCommand() {
 		},
 	}
 	patchPath = filepath.Join(testutil.GetDirectoryOfFile(), "testdata", "git", "test_mbox.patch")
-	applyCommand, err = c.getApplyCommand(patchPath, tc, false)
+	applyCommand, err = c.getApplyCommand(patchPath, tc)
 	s.NoError(err)
 	s.Equal(fmt.Sprintf(`GIT_COMMITTER_NAME="%s" GIT_COMMITTER_EMAIL="%s" git am --keep-cr --keep < "%s"`, c.CommitterName, c.CommitterEmail, patchPath), applyCommand)
 }
@@ -985,7 +985,7 @@ func (s *GitGetProjectSuite) TestAllowsEmptyPatches() {
 		WorkDir: dir,
 	}
 
-	s.NoError(c.applyPatch(ctx, logger, &conf, []patch.ModulePatch{{}}, false))
+	s.NoError(c.applyPatch(ctx, logger, &conf, []patch.ModulePatch{{}}))
 	s.Equal(1, sender.Len())
 
 	msg := sender.GetMessage()
