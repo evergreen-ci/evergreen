@@ -80,8 +80,8 @@ type Host struct {
 	RunningTaskGroup        string `bson:"running_task_group,omitempty" json:"running_task_group,omitempty"`
 	RunningTaskGroupOrder   int    `bson:"running_task_group_order,omitempty" json:"running_task_group_order,omitempty"`
 
-	// if set to true, the host is currently in the process of tearing down a task group
-	IsTearingDown bool `bson:"running_teardown,omitempty" json:"running_teardown,omitempty"`
+	// TaskGroupTeardownStartTime represents the time when the teardown of task groups process started for the host.
+	TaskGroupTeardownStartTime time.Time `bson:"teardown_start_time,omitempty" json:"teardown_start_time,omitempty"`
 
 	// the task the most recently finished running on the host
 	LastTask         string `bson:"last_task" json:"last_task"`
@@ -203,8 +203,14 @@ const (
 
 func (h *Host) UnmarshalBSON(in []byte) error { return mgobson.Unmarshal(in, h) }
 
+// IsFree checks that the host is not running a task and is not in the process of tearing down.
 func (h *Host) IsFree() bool {
-	return h.RunningTask == "" && !h.IsTearingDown
+	return h.RunningTask == "" && !h.IsTearingDown()
+}
+
+// IsTearingDown determines if TeardownStartTime is not zero time, therefore indicating that the host is tearing down
+func (h *Host) IsTearingDown() bool {
+	return !h.TaskGroupTeardownStartTime.IsZero()
 }
 
 type IdleHostsByDistroID struct {
@@ -566,7 +572,7 @@ func (h *Host) IdleTime() time.Duration {
 	}
 
 	// If the host is currently tearing down a task group, it is not idle.
-	if h.IsTearingDown {
+	if h.IsTearingDown() {
 		return 0
 	}
 
@@ -972,25 +978,26 @@ func (h *Host) SetAgentStartTime(ctx context.Context) error {
 	return nil
 }
 
-// SetIsTearingDown sets the IsTearingDown flag for the host
-func (h *Host) SetIsTearingDown(ctx context.Context) error {
+// SetTaskGroupTeardownStartTime sets the TaskGroupTeardownStartTime to the current time for the host
+func (h *Host) SetTaskGroupTeardownStartTime(ctx context.Context) error {
+	now := time.Now()
 	if err := UpdateOne(ctx, bson.M{
 		IdKey: h.Id,
 	}, bson.M{
 		"$set": bson.M{
-			IsTearingDownKey: true,
+			TaskGroupTeardownStartTimeKey: now,
 		},
 	}); err != nil {
 		return err
 	}
 
-	h.IsTearingDown = true
+	h.TaskGroupTeardownStartTime = now
 	return nil
 }
 
-// UnsetIsTearingDown unsets the IsTearingDown flag for the host.
-func (h *Host) UnsetIsTearingDown(ctx context.Context) error {
-	if !h.IsTearingDown {
+// UnsetTaskGroupTeardownStartTime unsets the TaskGroupTeardownStartTime for the host.
+func (h *Host) UnsetTaskGroupTeardownStartTime(ctx context.Context) error {
+	if h.TaskGroupTeardownStartTime.IsZero() {
 		return nil
 	}
 
@@ -998,13 +1005,13 @@ func (h *Host) UnsetIsTearingDown(ctx context.Context) error {
 		IdKey: h.Id,
 	}, bson.M{
 		"$unset": bson.M{
-			IsTearingDownKey: 1,
+			TaskGroupTeardownStartTimeKey: 1,
 		},
 	}); err != nil {
 		return err
 	}
 
-	h.IsTearingDown = false
+	h.TaskGroupTeardownStartTime = time.Time{}
 
 	return nil
 }
@@ -2026,6 +2033,11 @@ func (h *Host) GetElapsedCommunicationTime() time.Duration {
 		return time.Since(h.LastCommunicationTime)
 	}
 	return time.Since(h.CreationTime)
+}
+
+// GetElapsedTeardownTime calculates the elapsed time since the teardown of the task group started.
+func (h *Host) GetElapsedTeardownTime() time.Duration {
+	return time.Since(h.TaskGroupTeardownStartTime)
 }
 
 // DecommissionHostsWithDistroId marks all up hosts intended for running tasks

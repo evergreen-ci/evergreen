@@ -40,10 +40,6 @@ const (
 	// block should time out and stop the current command.
 	defaultCallbackTimeout = 15 * time.Minute
 
-	// defaultTeardownGroupTimeout specifies the duration after when the
-	// teardown_group should time out and stop the current command.
-	defaultTeardownGroupTimeout = 15 * time.Minute
-
 	// defaultPreTimeout specifies the default duration after when the pre,
 	// setup_group, or setup_task block should time out and stop the current
 	// command.

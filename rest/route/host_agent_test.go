@@ -133,7 +133,7 @@ func TestHostNextTask(t *testing.T) {
 			dbHost, err := host.FindOneId(ctx, "h1")
 			require.NoError(t, err)
 			require.NotZero(t, dbHost)
-			assert.True(t, dbHost.IsTearingDown)
+			assert.True(t, dbHost.IsTearingDown())
 
 			// unsets tearing down the next time
 			rh.details = &apimodels.GetNextTaskDetails{TaskGroup: ""}
@@ -147,7 +147,7 @@ func TestHostNextTask(t *testing.T) {
 			dbHost, err = host.FindOneId(ctx, "h1")
 			require.NoError(t, err)
 			require.NotZero(t, dbHost)
-			assert.False(t, dbHost.IsTearingDown)
+			assert.False(t, dbHost.IsTearingDown())
 		},
 		"NonLegacyHostThatNeedsReprovision": func(ctx context.Context, t *testing.T, rh *hostAgentNextTask) {
 			for testName, testCase := range map[string]func(ctx context.Context, t *testing.T, handler hostAgentNextTask){

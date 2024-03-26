@@ -98,7 +98,7 @@ func (h *hostAgentNextTask) Run(ctx context.Context) gimlet.Responder {
 
 	setAgentFirstContactTime(ctx, h.host)
 
-	if err := h.host.UnsetIsTearingDown(ctx); err != nil {
+	if err := h.host.UnsetTaskGroupTeardownStartTime(ctx); err != nil {
 		return gimlet.MakeJSONInternalErrorResponder(err)
 	}
 
@@ -247,7 +247,7 @@ func (h *hostAgentNextTask) Run(ctx context.Context) gimlet.Responder {
 				"message": "host task group finished, not assigning task",
 				"host_id": h.host.Id,
 			})
-			err = h.host.SetIsTearingDown(ctx)
+			err = h.host.SetTaskGroupTeardownStartTime(ctx)
 			if err != nil {
 				return gimlet.MakeJSONErrorResponder(err)
 			}

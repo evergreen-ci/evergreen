@@ -345,7 +345,7 @@ func (tc *taskContext) getTeardownGroup() (*commandBlock, error) {
 		block:       command.TeardownGroupBlock,
 		commands:    tg.TeardownGroup,
 		timeoutKind: teardownGroupTimeout,
-		getTimeout:  tc.getTeardownGroupTimeout(),
+		getTimeout:  evergreen.GetTeardownGroupTimeout(),
 		canFailTask: false,
 	}, nil
 }
@@ -447,20 +447,6 @@ func (tc *taskContext) getTeardownTaskTimeout() func() time.Duration {
 			return time.Duration(tg.TeardownTaskTimeoutSecs) * time.Second
 		}
 		return defaultPostTimeout
-	}
-}
-
-// getTeardownGroupTimeout returns the timeout for the teardown group block.
-func (tc *taskContext) getTeardownGroupTimeout() func() time.Duration {
-	return func() time.Duration {
-		tc.RLock()
-		defer tc.RUnlock()
-
-		tg := tc.taskConfig.TaskGroup
-		if tg != nil && tg.TeardownGroupTimeoutSecs != 0 {
-			return time.Duration(tg.TeardownGroupTimeoutSecs) * time.Second
-		}
-		return defaultTeardownGroupTimeout
 	}
 }
 

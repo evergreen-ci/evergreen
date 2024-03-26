@@ -123,7 +123,7 @@ func (j *hostDrawdownJob) checkAndTerminateHost(ctx context.Context, h *host.Hos
 	}
 
 	// don't drawdown hosts that are currently in the middle of tearing down a task group
-	if h.IsTearingDown {
+	if h.IsTearingDown() && h.GetElapsedTeardownTime() < evergreen.DefaultTeardownGroupTimeout {
 		return nil
 	}
 
