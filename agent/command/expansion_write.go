@@ -37,14 +37,9 @@ func (c *expansionsWriter) Execute(ctx context.Context,
 
 	expansions := map[string]string{}
 	for expansionKey, expansionValue := range conf.Expansions.Map() {
-		for _, redactedKey := range conf.Redacted {
-			// Redact private variables unless redacted set to true. Always
-			// redact the global GitHub and AWS expansions.
-			if (expansionKey == redactedKey && !c.Redacted) || utility.StringSliceContains(globals.ExpansionsToRedact, expansionKey) {
-				continue
-			}
+		if !c.redactExpansion(expansionKey, conf) {
+			expansions[expansionKey] = expansionValue
 		}
-		expansions[expansionKey] = expansionValue
 	}
 	out, err := yaml.Marshal(expansions)
 	if err != nil {
@@ -56,4 +51,20 @@ func (c *expansionsWriter) Execute(ctx context.Context,
 	}
 	logger.Task().Infof("Expansions written to file '%s'.", fn)
 	return nil
+}
+
+func (c *expansionsWriter) redactExpansion(key string, conf *internal.TaskConfig) bool {
+	// Always redact the global GitHub and AWS expansions.
+	if utility.StringSliceContains(globals.ExpansionsToRedact, key) {
+		return true
+	}
+
+	for _, redactedKey := range conf.Redacted {
+		// Redact private variables unless redacted set to true.
+		if key == redactedKey && !c.Redacted {
+			return true
+		}
+	}
+
+	return false
 }
