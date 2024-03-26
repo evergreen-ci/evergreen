@@ -6,6 +6,7 @@ package graphql
 import (
 	"context"
 	"fmt"
+	"strings"
 
 	"github.com/99designs/gqlgen/graphql"
 	"github.com/evergreen-ci/evergreen"
@@ -170,6 +171,40 @@ func New(apiURL string) Config {
 		}
 		return nil, Forbidden.Send(ctx, fmt.Sprintf("user %s does not have permission to access settings for the project %s", user.Username(), projectId))
 	}
+	c.Directives.RequireProjectAccessNew = func(ctx context.Context, obj interface{}, next graphql.Resolver, permission ProjectPermission, access AccessLevel) (interface{}, error) {
+		user := mustHaveUser(ctx)
+
+		args, isMap := obj.(map[string]interface{})
+		if !isMap {
+			return nil, InternalServerError.Send(ctx, "converting args into map")
+		}
+
+		requiredPermission, requiredLevel, err := getProjectPermissionLevel(permission, access)
+		if err != nil {
+			return nil, InputValidationError.Send(ctx, fmt.Sprintf("invalid permission and access level configuration: %s", err.Error()))
+		}
+
+		paramsMap, err := data.BuildProjectParameterMapForGraphQL(args)
+		if err != nil {
+			return nil, InputValidationError.Send(ctx, err.Error())
+		}
+
+		projectId, statusCode, err := data.GetProjectIdFromParams(ctx, paramsMap)
+		if err != nil {
+			return nil, mapHTTPStatusToGqlError(ctx, statusCode, err)
+		}
+
+		opts := gimlet.PermissionOpts{
+			Resource:      projectId,
+			ResourceType:  evergreen.ProjectResourceType,
+			Permission:    requiredPermission,
+			RequiredLevel: requiredLevel,
+		}
+		if user.HasPermission(opts) {
+			return next(ctx)
+		}
+		return nil, Forbidden.Send(ctx, fmt.Sprintf("user '%s' does not have permission to access '%s' for the project '%s'", user.Username(), strings.ToLower(permission.String()), projectId))
+	}
 	c.Directives.RequireProjectSettingsAccess = func(ctx context.Context, obj interface{}, next graphql.Resolver) (res interface{}, err error) {
 		user := mustHaveUser(ctx)
 
@@ -227,7 +262,6 @@ func New(apiURL string) Config {
 		}
 		return next(ctx)
 	}
-
 	c.Directives.RedactSecrets = func(ctx context.Context, obj interface{}, next graphql.Resolver) (res interface{}, err error) {
 		return next(ctx)
 	}

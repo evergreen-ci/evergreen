@@ -10,13 +10,10 @@ import (
 
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/model"
-	"github.com/evergreen-ci/evergreen/model/build"
 	"github.com/evergreen-ci/evergreen/model/distro"
 	"github.com/evergreen-ci/evergreen/model/event"
 	"github.com/evergreen-ci/evergreen/model/host"
-	"github.com/evergreen-ci/evergreen/model/patch"
 	"github.com/evergreen-ci/evergreen/model/task"
-	"github.com/evergreen-ci/evergreen/model/testlog"
 	"github.com/evergreen-ci/evergreen/model/user"
 	"github.com/evergreen-ci/evergreen/rest/data"
 	"github.com/evergreen-ci/evergreen/util"
@@ -618,6 +615,7 @@ func urlVarsToProjectScopes(r *http.Request) ([]string, int, error) {
 	var err error
 	vars := gimlet.GetVars(r)
 	query := r.URL.Query()
+
 	resourceType := strings.ToUpper(util.CoalesceStrings(query["resource_type"], vars["resource_type"]))
 	if resourceType != "" {
 		switch resourceType {
@@ -627,93 +625,15 @@ func urlVarsToProjectScopes(r *http.Request) ([]string, int, error) {
 			vars["task_id"] = vars["resource_id"]
 		}
 	}
-
-	projectID := util.CoalesceStrings(append(query["project_id"], query["projectId"]...), vars["project_id"], vars["projectId"])
-	repoID := util.CoalesceStrings(append(query["repo_id"], query["repoId"]...), vars["repo_id"], vars["repoId"])
 	destProjectID := util.CoalesceString(query["dest_project"]...)
 
-	versionID := util.CoalesceStrings(append(query["version_id"], query["versionId"]...), vars["version_id"], vars["versionId"])
-	if projectID == "" && versionID != "" {
-		projectID, err = model.FindProjectForVersion(versionID)
-		if err != nil {
-			return nil, http.StatusNotFound, errors.Wrapf(err, "finding version '%s'", versionID)
-		}
-	}
-
-	patchID := util.CoalesceStrings(append(query["patch_id"], query["patchId"]...), vars["patch_id"], vars["patchId"])
-	if projectID == "" && patchID != "" {
-		if !patch.IsValidId(patchID) {
-			return nil, http.StatusBadRequest, errors.New("not a valid patch ID")
-		}
-		projectID, err = patch.FindProjectForPatch(patch.NewId(patchID))
-		if err != nil {
-			return nil, http.StatusNotFound, errors.Wrapf(err, "finding project for patch '%s'", patchID)
-		}
-	}
-
-	buildID := util.CoalesceStrings(append(query["build_id"], query["buildId"]...), vars["build_id"], vars["buildId"])
-	if projectID == "" && buildID != "" {
-		projectID, err = build.FindProjectForBuild(buildID)
-		if err != nil {
-			return nil, http.StatusNotFound, errors.Wrapf(err, "finding project for build '%s'", buildID)
-		}
-	}
-
-	testLog := util.CoalesceStrings(query["log_id"], vars["log_id"])
-	if projectID == "" && testLog != "" {
-		var test *testlog.TestLog
-		test, err = testlog.FindOneTestLogById(testLog)
-		if err != nil {
-			return nil, http.StatusInternalServerError, errors.Wrapf(err, "finding test log '%s'", testLog)
-		}
-		if test == nil {
-			return nil, http.StatusNotFound, errors.Errorf("test log '%s' not found", testLog)
-		}
-		projectID, err = task.FindProjectForTask(test.Task)
-		if err != nil {
-			return nil, http.StatusNotFound, errors.Wrapf(err, "finding project for task '%s' associated with test log '%s'", test.Task, test.Id)
-		}
-	}
-
-	// retrieve all possible naming conventions for task ID
-	taskID := util.CoalesceStrings(append(query["task_id"], query["taskId"]...), vars["task_id"], vars["taskId"])
-	if projectID == "" && taskID != "" {
-		projectID, err = task.FindProjectForTask(taskID)
-		if err != nil {
-			return nil, http.StatusNotFound, errors.Wrapf(err, "finding project for task '%s'", taskID)
-		}
-	}
-
-	if repoID != "" {
-		var repoRef *model.RepoRef
-		repoRef, err = model.FindOneRepoRef(repoID)
-		if err != nil {
-			return nil, http.StatusInternalServerError, errors.Wrap(err, "finding repo")
-		}
-		if repoRef == nil {
-			return nil, http.StatusNotFound, errors.Errorf("repo '%s' not found", repoID)
-		}
-		return []string{repoID}, http.StatusOK, nil
-	}
-
-	// Return an error if the project isn't found
-	if projectID == "" {
-		return nil, http.StatusNotFound, errors.New("no project found")
-	}
-
-	projectRef, err := model.FindMergedProjectRef(projectID, versionID, true)
+	paramsMap := data.BuildProjectParameterMapForLegacy(query, vars)
+	projectId, statusCode, err := data.GetProjectIdFromParams(r.Context(), paramsMap)
 	if err != nil {
-		return nil, http.StatusInternalServerError, errors.Wrap(err, "finding project")
-	}
-	if projectRef == nil {
-		return nil, http.StatusNotFound, errors.Errorf("project '%s' not found", projectID)
-	}
-	usr := gimlet.GetUser(r.Context())
-	if usr == nil && projectRef.IsPrivate() {
-		return nil, http.StatusUnauthorized, errors.New("unauthorized")
+		return nil, statusCode, err
 	}
 
-	res := []string{projectRef.Id}
+	res := []string{projectId}
 	if destProjectID != "" {
 		res = append(res, destProjectID)
 	}

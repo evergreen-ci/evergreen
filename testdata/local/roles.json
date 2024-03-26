@@ -9,3 +9,4 @@
 {"_id":"annotations_evergreen","name":"project_task_annotations","scope":"evergreen","permissions":{"project_task_annotations": 20}}
 {"_id":"admin_project_access","name":"project_settings","scope":"all_projects","permissions":{"project_logs":10,"project_patches":10,"project_tasks":30,"project_settings":20}}
 {"_id":"basic_distro_access","name":"basic access","scope":"all_distros","permissions":{"distro_settings":10,"distro_hosts":10}}
+{"_id":"basic_project_access","name": "basic access","scope":"unrestricted_projects","permissions":{"project_tasks":20,"project_patches":10,"project_logs":10,"project_task_annotations":10}}

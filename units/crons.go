@@ -870,7 +870,7 @@ func PopulateCacheHistoricalTaskDataJob(part int) amboy.QueueOperation {
 		if err != nil {
 			return errors.WithStack(err)
 		}
-
+		// Although we don't run this hourly, we still queue hourly to improve resiliency.
 		ts := utility.RoundPartOfDay(part).Format(TSFormat)
 
 		catcher := grip.NewBasicCatcher()
