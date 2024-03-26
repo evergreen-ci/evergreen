@@ -43,9 +43,8 @@ func (c *expansionsWriter) Execute(ctx context.Context,
 			if (expansionKey == redactedKey && !c.Redacted) || utility.StringSliceContains(globals.ExpansionsToRedact, expansionKey) {
 				continue
 			}
-
-			expansions[expansionKey] = expansionValue
 		}
+		expansions[expansionKey] = expansionValue
 	}
 	out, err := yaml.Marshal(expansions)
 	if err != nil {
