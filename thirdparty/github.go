@@ -37,7 +37,8 @@ const (
 	commitObjectType = "commit"
 	tagObjectType    = "tag"
 
-	GithubInvestigation = "Github API Limit Investigation"
+	GithubInvestigation        = "Github API Limit Investigation"
+	PRDiffTooLargeErrorMessage = "the diff exceeded the maximum"
 )
 
 const (
