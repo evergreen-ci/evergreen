@@ -484,7 +484,33 @@ func (h *userPermissionsGetHandler) Run(ctx context.Context) gimlet.Responder {
 	if err != nil {
 		return gimlet.NewJSONInternalErrorResponse(errors.Wrapf(err, "getting permissions for user '%s'", h.userID))
 	}
+	if err = removeHiddenProjects(permissions); err != nil {
+		return gimlet.MakeJSONInternalErrorResponder(err)
+	}
 	return gimlet.NewJSONResponse(permissions)
+}
+
+func removeHiddenProjects(permissions []rolemanager.PermissionSummary) error {
+	var projectIDs []string
+	var projectPermissions rolemanager.PermissionsForResources
+	for _, permission := range permissions {
+		if permission.Type == evergreen.ProjectResourceType {
+			projectPermissions = permission.Permissions
+			for projectID, _ := range permission.Permissions {
+				projectIDs = append(projectIDs, projectID)
+			}
+		}
+	}
+	projectRefs, err := serviceModel.FindProjectRefsByIds(projectIDs...)
+	if err != nil {
+		return errors.Wrapf(err, "getting projects")
+	}
+	for _, projectRef := range projectRefs {
+		if utility.FromBoolPtr(projectRef.Hidden) {
+			delete(projectPermissions, projectRef.Id)
+		}
+	}
+	return nil
 }
 
 type rolesPostRequest struct {
