@@ -496,7 +496,7 @@ func removeHiddenProjects(permissions []rolemanager.PermissionSummary) error {
 	for _, permission := range permissions {
 		if permission.Type == evergreen.ProjectResourceType {
 			projectPermissions = permission.Permissions
-			for projectID, _ := range permission.Permissions {
+			for projectID := range permission.Permissions {
 				projectIDs = append(projectIDs, projectID)
 			}
 		}
