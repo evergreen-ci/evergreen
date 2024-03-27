@@ -199,7 +199,7 @@ require (
 )
 
 require (
-	github.com/aws/aws-sdk-go-v2/service/route53 v1.37.1
+	github.com/aws/aws-sdk-go-v2/service/route53 v1.40.3
 	github.com/bradleyfalzon/ghinstallation v1.1.1
 	github.com/evergreen-ci/evg-lint v0.0.0-20211115144425-3b19c8e83a57
 	github.com/evergreen-ci/plank v0.0.0-20230207190607-5f47f8a30da1

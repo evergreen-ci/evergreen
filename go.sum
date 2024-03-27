@@ -104,8 +104,8 @@ github.com/aws/aws-sdk-go-v2/service/internal/presigned-url v1.11.6 h1:b+E7zIUHM
 github.com/aws/aws-sdk-go-v2/service/internal/presigned-url v1.11.6/go.mod h1:S2fNV0rxrP78NhPbCZeQgY8H9jdDMeGtwcfZIRxzBqU=
 github.com/aws/aws-sdk-go-v2/service/resourcegroupstaggingapi v1.20.1 h1:tpPeCTu4zwyezXPnnzx/zZclr6GYkuHjGp5ayLP0gWA=
 github.com/aws/aws-sdk-go-v2/service/resourcegroupstaggingapi v1.20.1/go.mod h1:BRuiq4shgrokCvNWSXVHz1hhH5sNSLW0ZruTV0jiNMQ=
-github.com/aws/aws-sdk-go-v2/service/route53 v1.37.1 h1:U7OksynDSIFScG+7sGqOuJh+fP1USMkNtjxzGFZYG34=
-github.com/aws/aws-sdk-go-v2/service/route53 v1.37.1/go.mod h1:8qqfpG4mug2JLlEyWPSFhEGvJiaZ9iPmMDDMYc5Xtas=
+github.com/aws/aws-sdk-go-v2/service/route53 v1.40.3 h1:wr5gulbwbb8PSRMWjCROoP0TIMccpF8x5A7hEk2SjpA=
+github.com/aws/aws-sdk-go-v2/service/route53 v1.40.3/go.mod h1:/Gyl9xjGcjIVe80ar75YlmA8m6oFh0A4XfLciBmdS8s=
 github.com/aws/aws-sdk-go-v2/service/secretsmanager v1.28.1 h1:DtKw4TxZT3VrzYupXQJPBqT9ImyobZZE+JIQPPAVxqs=
 github.com/aws/aws-sdk-go-v2/service/secretsmanager v1.28.1/go.mod h1:bit9G2ORpSjUTr4PA4usvbBfbOyvMj0LbE1dXF14Sug=
 github.com/aws/aws-sdk-go-v2/service/ses v1.19.6 h1:2WWiQwUVU39kD8EGYw/sTGU+REd5Q+BFarTccU00Asc=
