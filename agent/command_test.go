@@ -335,3 +335,29 @@ functions:
 	s.Equal("expansionVar3", key3Value, "key3 should be the original expansion value")
 	s.Empty(s.tc.taskConfig.DynamicExpansions)
 }
+
+func (s *CommandSuite) TestRetryOnFailureWorksForFunction() {
+	projYml := `
+functions:
+  should_retry:
+    command: shell.exec
+    retry_on_failure: true
+    params:
+      script: exit 1
+`
+	s.setUpConfigAndProject(projYml)
+
+	func1 := model.PluginCommandConf{
+		Function:    "should_retry",
+		DisplayName: "function",
+		Vars:        map[string]string{"key1": "newValue1", "key2": "newValue2", "key3": "newValue3"},
+	}
+
+	cmdBlock := commandBlock{
+		commands:    &model.YAMLCommandSet{SingleCommand: &func1},
+		canFailTask: true,
+	}
+	err := s.a.runCommandsInBlock(s.ctx, s.tc, cmdBlock)
+	s.Error(err)
+	s.True(s.mockCommunicator.TaskShouldRetryOnFail)
+}
