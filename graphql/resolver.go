@@ -10,6 +10,7 @@ import (
 
 	"github.com/99designs/gqlgen/graphql"
 	"github.com/evergreen-ci/evergreen"
+	"github.com/evergreen-ci/evergreen/model"
 	"github.com/evergreen-ci/evergreen/rest/data"
 	restModel "github.com/evergreen-ci/evergreen/rest/model"
 	"github.com/evergreen-ci/gimlet"
@@ -17,9 +18,10 @@ import (
 )
 
 const (
-	CreateProjectMutation = "CreateProject"
-	CopyProjectMutation   = "CopyProject"
-	DeleteProjectMutation = "DeleteProject"
+	CreateProjectMutation   = "CreateProject"
+	CopyProjectMutation     = "CopyProject"
+	DeleteProjectMutation   = "DeleteProject"
+	SetLastRevisionMutation = "SetLastRevision"
 )
 
 type Resolver struct {
@@ -127,6 +129,29 @@ func New(apiURL string) Config {
 			}
 			opts := gimlet.PermissionOpts{
 				Resource:      projectId,
+				ResourceType:  evergreen.ProjectResourceType,
+				Permission:    evergreen.PermissionProjectSettings,
+				RequiredLevel: evergreen.ProjectSettingsEdit.Value,
+			}
+			if user.HasPermission(opts) {
+				return next(ctx)
+			}
+		}
+
+		if operationContext == SetLastRevisionMutation {
+			projectIdentifier, ok := args["opts"].(map[string]interface{})["projectIdentifier"].(string)
+			if !ok {
+				return nil, InternalServerError.Send(ctx, "finding projectIdentifier for set last revision operation")
+			}
+			project, err := model.FindBranchProjectRef(projectIdentifier)
+			if err != nil {
+				return nil, InternalServerError.Send(ctx, fmt.Sprintf("finding project '%s': %s", projectIdentifier, err.Error()))
+			}
+			if project == nil {
+				return nil, ResourceNotFound.Send(ctx, fmt.Sprintf("project '%s' not found", projectIdentifier))
+			}
+			opts := gimlet.PermissionOpts{
+				Resource:      project.Id,
 				ResourceType:  evergreen.ProjectResourceType,
 				Permission:    evergreen.PermissionProjectSettings,
 				RequiredLevel: evergreen.ProjectSettingsEdit.Value,
