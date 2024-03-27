@@ -49,14 +49,14 @@ type Query {
   project(projectIdentifier: String!): Project!
   projects: [GroupedProjects]!
   projectEvents(
-    identifier: String!
+    identifier: String
     limit: Int = 0
     before: Time
     @requireProjectAccess(access: VIEW)
   ): ProjectEvents!
-  projectSettings(identifier: String! @requireProjectAccess(access: VIEW)): ProjectSettings!
+  projectSettings(identifier: String @requireProjectAccess(access: VIEW)): ProjectSettings!
   repoEvents(
-    id: String!
+    id: String
     limit: Int = 0
     before: Time
     @requireProjectAccess(access: VIEW)

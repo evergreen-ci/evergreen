@@ -5,7 +5,7 @@ It contains information about a new project to be created.
 """
 input CreateProjectInput {
   id: String
-  identifier: String!
+  identifier: String
   owner: String!
   repo: String!
   repoRefId: String
