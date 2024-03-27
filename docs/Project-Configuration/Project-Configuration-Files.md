@@ -1637,15 +1637,32 @@ This is only recommended for commands that are known to be flaky, or fail interm
 **In order to prevent overuse of this feature, the number of times a single
 task can be automatically restarted on failure is limited to 1 time.**
 
-An example is:
+In the example below, both `task1` and `task2` will retry automatically:
 
 ``` yaml
-- command: shell.exec
-  retry_on_failure: true
-  params:
-    working_dir: src
-    script: |
-      exit 1
+functions:
+  my_function:
+     - command: shell.exec
+       params:
+         script: echo "hello"
+     - command: shell.exec
+       retry_on_failure: true
+       params:
+         script: exit 1
+
+tasks:
+  - name: task1
+    commands:
+    - command: shell.exec
+      retry_on_failure: true
+      params:
+       working_dir: src
+       script: |
+        exit 1
+        
+  - name: task2
+    commands:
+    - func: my_function
 ```
 
 ### Customizing Logging

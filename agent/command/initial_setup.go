@@ -26,6 +26,8 @@ func (*initialSetup) IdleTimeout() time.Duration                      { return 0
 func (*initialSetup) ParseParams(params map[string]interface{}) error { return nil }
 func (*initialSetup) JasperManager() jasper.Manager                   { return nil }
 func (*initialSetup) SetJasperManager(_ jasper.Manager)               {}
+func (*initialSetup) RetryOnFailure() bool                            { return false }
+func (*initialSetup) SetRetryOnFailure(bool)                          {}
 func (*initialSetup) Execute(ctx context.Context,
 	client client.Communicator, logger client.LoggerProducer, conf *internal.TaskConfig) error {
 
