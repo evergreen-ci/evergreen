@@ -59,11 +59,8 @@ func (c *expansionsWriter) redactExpansion(key string, conf *internal.TaskConfig
 		return true
 	}
 
-	for _, redactedKey := range conf.Redacted {
-		// Redact private variables unless redacted set to true.
-		if key == redactedKey && !c.Redacted {
-			return true
-		}
+	if utility.StringSliceContains(conf.Redacted, key) && !c.Redacted {
+		return true
 	}
 
 	return false

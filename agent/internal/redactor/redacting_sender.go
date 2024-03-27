@@ -25,6 +25,7 @@ type RedactionOptions struct {
 	// Expansions defines the values to redact.
 	Expansions *util.DynamicExpansions
 	// Redacted specifies the names of expansions to redact the values for.
+	// [globals.ExpansionsToRedact] are always redacted.
 	Redacted []string
 }
 
