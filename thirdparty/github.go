@@ -655,7 +655,7 @@ func getCommitComparison(ctx context.Context, token, owner, repo, baseRevision, 
 		apiErr := errors.Errorf("nil response from merge base commit response for '%s/%s'@%s..%s: %v", owner, repo, baseRevision, currentCommitHash, err)
 		grip.Error(message.WrapError(apiErr, message.Fields{
 			"message":             "failed to compare commits to determine order of commits",
-			"op":                  "IsMergeBaseAllowed",
+			"op":                  "getCommitComparison",
 			"github_error":        fmt.Sprint(err),
 			"repo":                repo,
 			"base_revision":       baseRevision,
