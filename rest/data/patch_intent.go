@@ -16,22 +16,8 @@ import (
 	"github.com/pkg/errors"
 )
 
-// AddPatchIntent inserts the intent and adds it to the queue if PR testing is enabled for the branch.
-func AddPatchIntent(intent patch.Intent, queue amboy.Queue) error {
-	// Verify that the owner/repo uses PR testing before inserting the intent.
-	patchDoc := intent.NewPatch()
-	projectRef, err := model.FindOneProjectRefByRepoAndBranchWithPRTesting(patchDoc.GithubPatchData.BaseOwner,
-		patchDoc.GithubPatchData.BaseRepo, patchDoc.GithubPatchData.BaseBranch, intent.GetCalledBy())
-	if err != nil {
-		return gimlet.ErrorResponse{
-			StatusCode: http.StatusInternalServerError,
-			Message:    errors.Wrap(err, "finding project ref for patch").Error(),
-		}
-	}
-	if projectRef == nil {
-		return nil
-	}
-
+// AddPRPatchIntent inserts the intent and adds it to the queue if PR testing is enabled for the branch.
+func AddPRPatchIntent(intent patch.Intent, queue amboy.Queue) error {
 	if err := intent.Insert(); err != nil {
 		grip.Error(message.WrapError(err, message.Fields{
 			"message":   "couldn't insert patch intent",
