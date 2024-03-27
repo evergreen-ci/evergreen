@@ -1001,6 +1001,7 @@ func (j *patchIntentProcessor) buildGithubPatchDoc(ctx context.Context, patchDoc
 
 	patchContent, summaries, err := thirdparty.GetGithubPullRequestDiff(ctx, githubOauthToken, patchDoc.GithubPatchData)
 	if err != nil {
+		// Expected error when the PR diff is more than 3000 lines or 300 files.
 		if strings.Contains(err.Error(), thirdparty.PRDiffTooLargeErrorMessage) {
 			return isMember, nil
 		}
