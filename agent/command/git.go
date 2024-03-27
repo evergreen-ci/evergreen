@@ -47,6 +47,7 @@ var (
 	cloneModuleAttribute  = fmt.Sprintf("%s.clone_module", gitGetProjectAttribute)
 	cloneRetriesAttribute = fmt.Sprintf("%s.clone_retries", gitGetProjectAttribute)
 	cloneMethodAttribute  = fmt.Sprintf("%s.clone_method", gitGetProjectAttribute)
+	cloneAttemptAttribute = fmt.Sprintf("%s.attempt", gitGetProjectAttribute)
 )
 
 // gitFetchProject is a command that fetches source code from git for the project
@@ -554,7 +555,9 @@ func (c *gitFetchProject) fetchSource(ctx context.Context,
 	conf *internal.TaskConfig,
 	jpm jasper.Manager,
 	opts cloneOpts) error {
+	attempt := 0
 	return c.retryFetch(ctx, logger, true, opts, func(opts cloneOpts) error {
+		attempt++
 		gitCommands, err := c.buildSourceCloneCommand(ctx, comm, logger, conf, opts)
 		if err != nil {
 			return err
@@ -584,6 +587,7 @@ func (c *gitFetchProject) fetchSource(ctx context.Context,
 			attribute.String(cloneRepoAttribute, opts.repo),
 			attribute.String(cloneBranchAttribute, opts.branch),
 			attribute.String(cloneMethodAttribute, opts.method),
+			attribute.Int(cloneAttemptAttribute, attempt),
 		))
 		defer span.End()
 
@@ -782,35 +786,42 @@ func (c *gitFetchProject) fetchModuleSource(ctx context.Context,
 		return err
 	}
 
-	ctx, span := getTracer().Start(ctx, "clone_module", trace.WithAttributes(
-		attribute.String(cloneModuleAttribute, module.Name),
-		attribute.String(cloneOwnerAttribute, opts.owner),
-		attribute.String(cloneRepoAttribute, opts.repo),
-		attribute.String(cloneBranchAttribute, opts.branch),
-		attribute.String(cloneMethodAttribute, opts.method),
-	))
-	defer span.End()
+	// add retry fetch here?
 
-	// This needs to use a thread-safe buffer just in case the context errors
-	// (e.g. due to a timeout) while the command is running. A non-thread-safe
-	// buffer is only safe to read once the command exits, guaranteeing that all
-	// output is finished writing. However, if the context errors, Run will
-	// return early and will stop waiting for the command to exit. In the
-	// context error case, this thread and the still-running command may race to
-	// read/write the buffer, so the buffer has to be thread-safe.
-	stdErr := utility.MakeSafeBuffer(bytes.Buffer{})
-	err = jpm.CreateCommand(ctx).Add([]string{"bash", "-c", strings.Join(moduleCmds, "\n")}).
-		Directory(filepath.ToSlash(GetWorkingDirectory(conf, c.Directory))).
-		SetOutputSender(level.Info, logger.Task().GetSender()).SetErrorWriter(stdErr).Run(ctx)
+	attempt := 0
+	return c.retryFetch(ctx, logger, false, opts, func(opts cloneOpts) error {
+		attempt++
+		ctx, span := getTracer().Start(ctx, "clone_module", trace.WithAttributes(
+			attribute.String(cloneModuleAttribute, module.Name),
+			attribute.String(cloneOwnerAttribute, opts.owner),
+			attribute.String(cloneRepoAttribute, opts.repo),
+			attribute.String(cloneBranchAttribute, opts.branch),
+			attribute.String(cloneMethodAttribute, opts.method),
+			attribute.Int(cloneAttemptAttribute, attempt),
+		))
+		defer span.End()
 
-	errOutput := stdErr.String()
-	if errOutput != "" {
-		if opts.token != "" {
-			errOutput = strings.Replace(errOutput, opts.token, "[redacted oauth token]", -1)
+		// This needs to use a thread-safe buffer just in case the context errors
+		// (e.g. due to a timeout) while the command is running. A non-thread-safe
+		// buffer is only safe to read once the command exits, guaranteeing that all
+		// output is finished writing. However, if the context errors, Run will
+		// return early and will stop waiting for the command to exit. In the
+		// context error case, this thread and the still-running command may race to
+		// read/write the buffer, so the buffer has to be thread-safe.
+		stdErr := utility.MakeSafeBuffer(bytes.Buffer{})
+		err = jpm.CreateCommand(ctx).Add([]string{"bash", "-c", strings.Join(moduleCmds, "\n")}).
+			Directory(filepath.ToSlash(GetWorkingDirectory(conf, c.Directory))).
+			SetOutputSender(level.Info, logger.Task().GetSender()).SetErrorWriter(stdErr).Run(ctx)
+
+		errOutput := stdErr.String()
+		if errOutput != "" {
+			if opts.token != "" {
+				errOutput = strings.Replace(errOutput, opts.token, "[redacted oauth token]", -1)
+			}
+			logger.Execution().Info(errOutput)
 		}
-		logger.Execution().Info(errOutput)
-	}
-	return err
+		return err
+	})
 }
 
 func (c *gitFetchProject) applyAdditionalPatch(ctx context.Context,
