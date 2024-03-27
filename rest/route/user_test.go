@@ -28,8 +28,6 @@ import (
 	"github.com/stretchr/testify/suite"
 )
 
-func init() { testutil.Setup() }
-
 type UserRouteSuite struct {
 	suite.Suite
 	postHandler gimlet.RouteHandler
