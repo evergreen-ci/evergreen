@@ -39,6 +39,7 @@ var (
 	ParserProjectTaskGroupsKey        = bsonutil.MustHaveTag(ParserProject{}, "TaskGroups")
 	ParserProjectTasksKey             = bsonutil.MustHaveTag(ParserProject{}, "Tasks")
 	ParserProjectExecTimeoutSecsKey   = bsonutil.MustHaveTag(ParserProject{}, "ExecTimeoutSecs")
+	ParserProjectTimeoutSecsKey       = bsonutil.MustHaveTag(ParserProject{}, "TimeoutSecs")
 	ParserProjectLoggersKey           = bsonutil.MustHaveTag(ParserProject{}, "Loggers")
 	ParserProjectAxesKey              = bsonutil.MustHaveTag(ParserProject{}, "Axes")
 	ParserProjectCreateTimeKey        = bsonutil.MustHaveTag(ParserProject{}, "CreateTime")

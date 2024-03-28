@@ -533,8 +533,8 @@ Parameters:
 **Exec timeout: exec_timeout_secs**
 You can customize the points at which the "timeout" conditions are
 triggered. To cause a task to stop (and fail) if it doesn't complete
-within an allotted time, set the key `exec_timeout_secs` on the project
-or task to the maximum allowed length of execution time. Exec timeout only
+within an allotted time, set the key `exec_timeout_secs` on the overall project
+or on a specific task to set the maximum allowed length of execution time. Exec timeout only
 applies to commands that run in `pre`, `setup_group`, `setup_task`, and the main
 task commands; it does not apply to the `post`, `teardown_task`, and
 `teardown_group` blocks. This timeout defaults to 6 hours. `exec_timeout_secs`
@@ -546,7 +546,7 @@ You can also set `exec_timeout_secs` using [timeout.update](Project-Commands#tim
 **Idle timeout: timeout_secs**
 You may also force a specific command to trigger a failure if it does not appear
 to generate any output on `stdout`/`stderr` for more than a certain threshold,
-using the `timeout_secs` setting on the command. As long as the command produces
+using the `timeout_secs` setting on the command, or the overall project. As long as the command produces
 output to `stdout`/`stderr`, it will be allowed to continue, but if it does not
 write any output for longer than `timeout_secs` then the command will time out.
 If this timeout is hit, the task will stop (and fail). Idle timeout only applies
@@ -561,6 +561,8 @@ Example:
 
 ``` yaml
 exec_timeout_secs: 60 ## automatically fail any task if it takes longer than a minute to finish.
+timeout_secs: 120 ## force all commands to fail if they stay "idle" for 120 seconds or more by default
+
 buildvariants:
 - name: osx-108
   display_name: OSX
@@ -573,8 +575,8 @@ tasks:
   name: compile
   commands:
     - command: shell.exec
-      timeout_secs: 10 ## force this command to fail if it stays "idle" for 10 seconds or more
-      exec_timeout_secs: 20 ## will override the project level exec_timeout defined above for this task
+      timeout_secs: 10 ## override the project level timeout_secs defined above and force this command to fail if it stays "idle" for 10 seconds or more
+      exec_timeout_secs: 20 ## will override the project level exec_timeout_secs defined above for this task
       params:
         script: |
           sleep 1000

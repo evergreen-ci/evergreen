@@ -39,8 +39,7 @@ func (c *timeout) ParseParams(params map[string]interface{}) error {
 }
 
 // Execute updates the idle timeout.
-func (c *timeout) Execute(ctx context.Context,
-	comm client.Communicator, logger client.LoggerProducer, conf *internal.TaskConfig) error {
+func (c *timeout) Execute(ctx context.Context, _ client.Communicator, logger client.LoggerProducer, conf *internal.TaskConfig) error {
 	// do the params parsing here rather than in ParseParams because we want
 	// to destructure only if parsing as ints fails.
 	if err := mapstructure.Decode(c.params, c); err != nil ||
