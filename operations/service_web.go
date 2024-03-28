@@ -133,7 +133,7 @@ func startWebService() cli.Command {
 			startServiceSpan.End()
 
 			gracefulWait := make(chan struct{})
-			go gracefulShutdownForSIGTERM(ctx, []*http.Server{uiServer, apiServer, adminServer}, gracefulWait, catcher, env, tracerCloser)
+			go gracefulShutdownForSIGTERM(ctx, []*http.Server{uiServer, apiServer, adminServer}, gracefulWait, catcher, env)
 
 			<-apiWait
 			<-uiWait
@@ -146,13 +146,14 @@ func startWebService() cli.Command {
 			ctx, cancel = context.WithTimeout(ctx, 60*time.Second)
 			defer cancel()
 			catcher.Add(env.Close(ctx))
+			catcher.Add(tracerCloser(ctx))
 
 			return catcher.Resolve()
 		},
 	}
 }
 
-func initTracer(ctx context.Context) (func(context.Context), error) {
+func initTracer(ctx context.Context) (func(context.Context) error, error) {
 	resource, err := resource.New(ctx,
 		resource.WithHost(),
 		resource.WithAttributes(semconv.ServiceName("evergreen")),
@@ -183,15 +184,15 @@ func initTracer(ctx context.Context) (func(context.Context), error) {
 		grip.Error(errors.Wrap(err, "otel error"))
 	}))
 
-	return func(ctx context.Context) {
+	return func(ctx context.Context) error {
 		catcher := grip.NewBasicCatcher()
 		catcher.Add(tp.Shutdown(ctx))
 		catcher.Add(exp.Shutdown(ctx))
-		grip.Error(message.WrapError(catcher.Resolve(), "closing tracer provider"))
+		return errors.Wrapf(catcher.Resolve(), "closing tracer provider")
 	}, nil
 }
 
-func gracefulShutdownForSIGTERM(ctx context.Context, servers []*http.Server, wait chan struct{}, catcher grip.Catcher, env evergreen.Environment, tracerCloser func(context.Context)) {
+func gracefulShutdownForSIGTERM(ctx context.Context, servers []*http.Server, wait chan struct{}, catcher grip.Catcher, env evergreen.Environment) {
 	defer recovery.LogStackTraceAndContinue("graceful shutdown")
 	sigChan := make(chan os.Signal, len(servers))
 	signal.Notify(sigChan, syscall.SIGTERM)
@@ -200,7 +201,6 @@ func gracefulShutdownForSIGTERM(ctx context.Context, servers []*http.Server, wai
 	// we got the signal, so modify the status endpoint and wait (EVG-12993)
 	// This allows the load balancer to detect shutoffs and route traffic with no downtime
 	env.SetShutdown()
-	tracerCloser(ctx)
 
 	time.Sleep(time.Duration(env.Settings().ShutdownWaitSeconds) * time.Second)
 	waiters := make([]chan struct{}, 0)
