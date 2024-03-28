@@ -438,18 +438,16 @@ func (r *queryResolver) Project(ctx context.Context, projectIdentifier string) (
 
 // Projects is the resolver for the projects field.
 func (r *queryResolver) Projects(ctx context.Context) ([]*GroupedProjects, error) {
-	allProjects, err := model.FindAllMergedTrackedProjectRefs()
+	usr := mustHaveUser(ctx)
+	viewableProjectIds, err := usr.GetViewableProjects(ctx)
+	if err != nil {
+		return nil, InternalServerError.Send(ctx, fmt.Sprintf("error getting viewable projects for '%s': '%s'", usr.DispName, err.Error()))
+	}
+	allProjects, err := model.FindMergedProjectRefsByIds(viewableProjectIds...)
 	if err != nil {
 		return nil, ResourceNotFound.Send(ctx, err.Error())
 	}
-	// We have to iterate over the merged project refs to verify if they are enabled
-	enabledProjects := []model.ProjectRef{}
-	for _, p := range allProjects {
-		if p.Enabled {
-			enabledProjects = append(enabledProjects, p)
-		}
-	}
-	groupedProjects, err := groupProjects(enabledProjects, false)
+	groupedProjects, err := groupProjects(allProjects, false)
 	if err != nil {
 		return nil, InternalServerError.Send(ctx, fmt.Sprintf("error grouping project: %s", err.Error()))
 	}

@@ -464,7 +464,9 @@ All projects can have a `pre` and `post` field which define a list of commands
 to run at the start and end of every task that isn't in a task group. For task
 groups, `setup_task` and `teardown_task` will run instead of `pre` and `post`
 (see [task groups](#task-groups) for more information). These are incredibly
-useful as a place for results commands or for task setup and cleanup.
+useful as a place for results commands or for task setup and cleanup. Note: If a 
+host runs into an issue and needs to exit it will exit without running the post 
+task commands. 
 
 ``` yaml
 pre_error_fails_task: true
@@ -1501,6 +1503,11 @@ If a task in a multi-host task group is restarted:
   a new task group, so it will run the teardown group commands, clear the task
   directory, and re-run the setup group commands.
 
+#### Teardown task and teardown group reliability 
+Both `teardown_task` and `teardown_group` are not 100% guaranteed to run. If a 
+host runs into an issue and needs to exit before it ran the `teardown_task` 
+or `teardown_group`, it will exit without running them. 
+
 ### Task Dependencies
 
 A task can be made to depend on other tasks by adding the depended on
@@ -1630,15 +1637,32 @@ This is only recommended for commands that are known to be flaky, or fail interm
 **In order to prevent overuse of this feature, the number of times a single
 task can be automatically restarted on failure is limited to 1 time.**
 
-An example is:
+In the example below, both `task1` and `task2` will retry automatically:
 
 ``` yaml
-- command: shell.exec
-  retry_on_failure: true
-  params:
-    working_dir: src
-    script: |
-      exit 1
+functions:
+  my_function:
+     - command: shell.exec
+       params:
+         script: echo "hello"
+     - command: shell.exec
+       retry_on_failure: true
+       params:
+         script: exit 1
+
+tasks:
+  - name: task1
+    commands:
+    - command: shell.exec
+      retry_on_failure: true
+      params:
+       working_dir: src
+       script: |
+        exit 1
+        
+  - name: task2
+    commands:
+    - func: my_function
 ```
 
 ### Customizing Logging
