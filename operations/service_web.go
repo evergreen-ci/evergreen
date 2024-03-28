@@ -36,10 +36,17 @@ func startWebService() cli.Command {
 	return cli.Command{
 		Name:  "web",
 		Usage: "start web services for API and UI",
-		Flags: mergeFlagSlices(serviceConfigFlags(), addDbSettingsFlags()),
+		Flags: mergeFlagSlices(
+			serviceConfigFlags(),
+			addDbSettingsFlags(),
+			[]cli.Flag{cli.StringFlag{
+				Name:   traceEndpointFlagName,
+				Usage:  "Endpoint to send traces to",
+				EnvVar: evergreen.TraceEndpoint}},
+		),
 		Action: func(c *cli.Context) error {
 			ctx, cancel := context.WithCancel(context.Background())
-			tracerCloser, err := initTracer(ctx)
+			tracerCloser, err := initTracer(ctx, c.String(traceEndpointFlagName))
 			grip.Error(message.WrapError(err, "initializing tracer"))
 
 			ctx, startServiceSpan := tracer.Start(ctx, "StartService")
@@ -153,7 +160,11 @@ func startWebService() cli.Command {
 	}
 }
 
-func initTracer(ctx context.Context) (func(context.Context) error, error) {
+func initTracer(ctx context.Context, traceEndpoint string) (func(context.Context) error, error) {
+	if traceEndpoint == "" {
+		return nil, nil
+	}
+
 	resource, err := resource.New(ctx,
 		resource.WithHost(),
 		resource.WithAttributes(semconv.ServiceName("evergreen")),
@@ -163,7 +174,7 @@ func initTracer(ctx context.Context) (func(context.Context) error, error) {
 	}
 
 	client := otlptracegrpc.NewClient(
-		otlptracegrpc.WithEndpoint("otel-collector-web-app.devprod-platform.svc.cluster.local:4317"),
+		otlptracegrpc.WithEndpoint(traceEndpoint),
 		otlptracegrpc.WithInsecure(),
 	)
 	exp, err := otlptrace.New(ctx, client)
