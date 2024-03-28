@@ -8,7 +8,7 @@ import (
 type APIParsleySettings struct {
 	//SectionsEnabled describes whether to render task logs with sections.
 	SectionsEnabled *bool `json:"sections_enabled"`
-	// JumpToFailingLineEnabled describes whether to scroll to the failing log line upon initial page load.
+	// JumpToFailingLineEnabled describes whether to automatically scroll to the failing log line on initial page load.
 	JumpToFailingLineEnabled *bool `json:"jump_to_failing_line_enabled"`
 }
 
