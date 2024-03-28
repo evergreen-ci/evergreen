@@ -6,7 +6,7 @@ import (
 	"time"
 
 	"github.com/aws/aws-sdk-go/aws/credentials"
-	"github.com/evergreen-ci/evergreen/agent/util"
+	"github.com/evergreen-ci/evergreen/agent/internal/redactor"
 	"github.com/evergreen-ci/evergreen/apimodels"
 	"github.com/evergreen-ci/evergreen/cloud"
 	"github.com/evergreen-ci/evergreen/model"
@@ -142,8 +142,7 @@ type LoggerConfig struct {
 	Task               []LogOpts
 	SendToGlobalSender bool
 	AWSCredentials     *credentials.Credentials
-	Expansions         *util.DynamicExpansions
-	ExpansionsToRedact []string
+	RedactorOpts       redactor.RedactionOptions
 }
 
 type LogOpts struct {

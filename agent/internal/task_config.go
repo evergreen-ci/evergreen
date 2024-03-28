@@ -31,7 +31,7 @@ type TaskConfig struct {
 	NewExpansions      *agentutil.DynamicExpansions
 	DynamicExpansions  util.Expansions
 	ProjectVars        map[string]string
-	Redacted           map[string]bool
+	Redacted           []string
 	RedactKeys         []string
 	WorkDir            string
 	TaskOutputDir      *taskoutput.Directory
@@ -128,6 +128,11 @@ func NewTaskConfig(workDir string, d *apimodels.DistroView, p *model.Project, t 
 		}
 	}
 
+	var redacted []string
+	for key := range e.PrivateVars {
+		redacted = append(redacted, key)
+	}
+
 	taskConfig := &TaskConfig{
 		Distro:            d,
 		ProjectRef:        *r,
@@ -138,7 +143,7 @@ func NewTaskConfig(workDir string, d *apimodels.DistroView, p *model.Project, t 
 		NewExpansions:     agentutil.NewDynamicExpansions(e.Expansions),
 		DynamicExpansions: util.Expansions{},
 		ProjectVars:       e.Vars,
-		Redacted:          e.PrivateVars,
+		Redacted:          redacted,
 		WorkDir:           workDir,
 		TaskGroup:         taskGroup,
 	}
