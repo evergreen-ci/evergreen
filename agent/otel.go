@@ -42,7 +42,7 @@ const (
 	packageName    = "github.com/evergreen-ci/evergreen/agent"
 	traceSuffix    = "build/OTelTraces"
 	maxLineSize    = 1024 * 1024
-	batchSize      = 2000
+	batchSize      = 1500
 
 	cpuTimeInstrumentPrefix = "system.cpu.time"
 	cpuUtilInstrument       = "system.cpu.utilization"
