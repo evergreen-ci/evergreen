@@ -4,6 +4,7 @@ query {
     userId
     parsleySettings {
       sectionsEnabled
+      jumpToFailingLineEnabled
     }
   }
 }
