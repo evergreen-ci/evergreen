@@ -260,6 +260,9 @@ functions:
         OTEL_COLLECTOR_ENDPOINT: ${otel_collector_endpoint}
         OTEL_TRACE_ID: ${otel_trace_id}
         OTEL_PARENT_ID: ${otel_parent_id}
+        PAPERTRAIL_TEST: "1"
+        PAPERTRAIL_KEY_ID: ${papertrail_key_id}
+        PAPERTRAIL_SECRET_KEY: ${papertrail_secret_key}
 
   setup-credentials:
     - command: ec2.assume_role
