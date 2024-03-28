@@ -140,6 +140,7 @@ func (s *PatchIntentUnitsSuite) SetupTest() {
 		CommitQueue: model.CommitQueueParams{
 			Enabled: utility.TruePtr(),
 		},
+		OldestAllowedMergeBase: "536cde7f7b29f7e117371a48a3e59540a44af1ac",
 	}).Insert())
 
 	s.NoError((&model.ProjectRef{
@@ -1020,6 +1021,54 @@ func (s *PatchIntentUnitsSuite) TestProcessMergeGroupIntent() {
 	}
 }
 
+func (s *PatchIntentUnitsSuite) TestProcessGitHubIntentWithMergeBase() {
+	pr := &github.PullRequest{
+		Title: utility.ToStringPtr("Test title"),
+		Base: &github.PullRequestBranch{
+			SHA: github.String("ed42b5e51e81724c5258686a0b9d515a99696eac"),
+			Repo: &github.Repository{
+				FullName: utility.ToStringPtr("evergreen-ci/commit-queue-sandbox"),
+			},
+			Ref: utility.ToStringPtr("main"),
+		},
+		Head: &github.PullRequestBranch{
+			SHA: github.String("ed42b5e51e81724c5258686a0b9d515a99696eac"),
+			Repo: &github.Repository{
+				FullName: utility.ToStringPtr("evergreen-ci/DEVPROD-123"),
+			},
+			Ref: utility.ToStringPtr("abc"),
+		},
+		User: &github.User{
+			ID:    github.Int64(1),
+			Login: utility.ToStringPtr("abc"),
+		},
+		Number:         github.Int(1),
+		MergeCommitSHA: github.String("abcdef"),
+	}
+	// SHA ed42b5e51e81724c5258686a0b9d515a99696eac is newer than the oldest allowed merge base and should be accepted
+	intent, err := patch.NewGithubIntent("id", "auto", "", "ed42b5e51e81724c5258686a0b9d515a99696eac", pr)
+
+	s.NoError(err)
+	s.Require().NotNil(intent)
+	s.NoError(intent.Insert())
+	j := NewPatchIntentProcessor(s.env, mgobson.NewObjectId(), intent).(*patchIntentProcessor)
+	patchDoc := intent.NewPatch()
+	s.NoError(j.finishPatch(s.ctx, patchDoc))
+	s.Empty(j.gitHubError)
+
+	// SHA 4aa79c5e7ef7af351764b843a2c05fab98c23881 is older than the oldest allowed merge base and should be rejected
+	intent, err = patch.NewGithubIntent("another_id", "auto", "", "4aa79c5e7ef7af351764b843a2c05fab98c23881", pr)
+
+	s.NoError(err)
+	s.Require().NotNil(intent)
+	s.NoError(intent.Insert())
+	j = NewPatchIntentProcessor(s.env, mgobson.NewObjectId(), intent).(*patchIntentProcessor)
+	patchDoc = intent.NewPatch()
+	s.Error(j.finishPatch(s.ctx, patchDoc))
+	s.NotEmpty(j.gitHubError)
+	s.Equal(j.gitHubError, MergeBaseTooOld)
+}
+
 func (s *PatchIntentUnitsSuite) TestProcessCliPatchIntent() {
 	githubOauthToken, err := s.env.Settings().GetGithubOauthToken()
 	s.Require().NoError(err)
@@ -1275,7 +1324,7 @@ func (s *PatchIntentUnitsSuite) TestRunInDegradedModeWithGithubIntent() {
 	}
 	s.NoError(evergreen.SetServiceFlags(s.ctx, flags))
 
-	intent, err := patch.NewGithubIntent("1", "", "", testutil.NewGithubPR(s.prNumber, s.repo, s.baseHash, s.headRepo, s.hash, "tychoish", "title1"))
+	intent, err := patch.NewGithubIntent("1", "", "", "", testutil.NewGithubPR(s.prNumber, s.repo, s.baseHash, s.headRepo, s.hash, "tychoish", "title1"))
 	s.NoError(err)
 	s.NotNil(intent)
 	s.NoError(intent.Insert())
@@ -1306,7 +1355,7 @@ func (s *PatchIntentUnitsSuite) TestGithubPRTestFromUnknownUserDoesntCreateVersi
 	}
 	s.Require().NoError(evergreen.SetServiceFlags(s.ctx, flags))
 
-	intent, err := patch.NewGithubIntent("1", "", "", testutil.NewGithubPR(s.prNumber, "evergreen-ci/evergreen", s.baseHash, s.headRepo, "8a425038834326c212d65289e0c9e80e48d07e7e", "octocat", "title1"))
+	intent, err := patch.NewGithubIntent("1", "", "", "", testutil.NewGithubPR(s.prNumber, "evergreen-ci/evergreen", s.baseHash, s.headRepo, "8a425038834326c212d65289e0c9e80e48d07e7e", "octocat", "title1"))
 	s.NoError(err)
 	s.NotNil(intent)
 	s.NoError(intent.Insert())
