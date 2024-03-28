@@ -250,6 +250,49 @@ func (s *GitGetProjectSuite) TestBuildSourceCommandUsesSSH() {
 	s.True(utility.StringSliceContains(cmds, "git clone 'git@github.com:evergreen-ci/sample.git' 'dir' --branch 'main'"))
 }
 
+func (s *GitGetProjectSuite) TestRetryFetchAttemptsFiveTimesOnError() {
+	c := &gitFetchProject{
+		Directory: "dir",
+		Token:     projectGitHubToken,
+	}
+	conf := s.taskConfig2
+	logger, err := s.comm.GetLoggerProducer(s.ctx, &conf.Task, nil)
+	s.Require().NoError(err)
+
+	opts := cloneOpts{}
+
+	attempt := 0
+	err = c.retryFetch(s.ctx, logger, false, opts, func(o cloneOpts) error {
+		attempt++
+		return errors.New("failed to fetch")
+	})
+
+	s.Equal(5, attempt)
+	s.Require().Error(err)
+	s.Equal("failed to fetch", err.Error())
+}
+
+func (s *GitGetProjectSuite) TestRetryFetchAttemptsOnceOnSuccess() {
+	c := &gitFetchProject{
+		Directory: "dir",
+		Token:     projectGitHubToken,
+	}
+	conf := s.taskConfig2
+	logger, err := s.comm.GetLoggerProducer(s.ctx, &conf.Task, nil)
+	s.Require().NoError(err)
+
+	opts := cloneOpts{}
+
+	attempt := 0
+	err = c.retryFetch(s.ctx, logger, false, opts, func(o cloneOpts) error {
+		attempt++
+		return nil
+	})
+
+	s.Equal(1, attempt)
+	s.Require().NoError(err)
+}
+
 func (s *GitGetProjectSuite) TestBuildSourceCommandDefaultCloneMethodUsesSSH() {
 	c := &gitFetchProject{
 		Directory: "dir",
