@@ -169,9 +169,9 @@ type ApiTaskEndDetail struct {
 	Type *string `json:"type"`
 	// Description of the final status of this task
 	Description *string `json:"desc"`
-	// FinalBlockType is the type of block that the task ended on (post, pre,
+	// ErrorBlockType is the type of block that the task errored on (post, pre,
 	// etc. if it is blank, it was the main task block).
-	FinalBlockType *string `json:"final_block_type"`
+	ErrorBlockType *string `json:"error_block_type"`
 	// Whether this task ended in a timeout
 	TimedOut    bool              `json:"timed_out"`
 	TimeoutType *string           `json:"timeout_type"`
@@ -184,7 +184,7 @@ func (at *ApiTaskEndDetail) BuildFromService(t apimodels.TaskEndDetail) error {
 	at.Status = utility.ToStringPtr(t.Status)
 	at.Type = utility.ToStringPtr(t.Type)
 	at.Description = utility.ToStringPtr(t.Description)
-	at.FinalBlockType = utility.ToStringPtr(t.BlockType)
+	at.ErrorBlockType = utility.ToStringPtr(t.ErrorBlockType)
 	at.TimedOut = t.TimedOut
 	at.TimeoutType = utility.ToStringPtr(t.TimeoutType)
 
@@ -199,15 +199,15 @@ func (at *ApiTaskEndDetail) BuildFromService(t apimodels.TaskEndDetail) error {
 
 func (ad *ApiTaskEndDetail) ToService() apimodels.TaskEndDetail {
 	return apimodels.TaskEndDetail{
-		Status:      utility.FromStringPtr(ad.Status),
-		Type:        utility.FromStringPtr(ad.Type),
-		Description: utility.FromStringPtr(ad.Description),
-		BlockType:   utility.FromStringPtr(ad.FinalBlockType),
-		TimedOut:    ad.TimedOut,
-		TimeoutType: utility.FromStringPtr(ad.TimeoutType),
-		OOMTracker:  ad.OOMTracker.ToService(),
-		TraceID:     utility.FromStringPtr(ad.TraceID),
-		DiskDevices: ad.DiskDevices,
+		Status:         utility.FromStringPtr(ad.Status),
+		Type:           utility.FromStringPtr(ad.Type),
+		Description:    utility.FromStringPtr(ad.Description),
+		ErrorBlockType: utility.FromStringPtr(ad.ErrorBlockType),
+		TimedOut:       ad.TimedOut,
+		TimeoutType:    utility.FromStringPtr(ad.TimeoutType),
+		OOMTracker:     ad.OOMTracker.ToService(),
+		TraceID:        utility.FromStringPtr(ad.TraceID),
+		DiskDevices:    ad.DiskDevices,
 	}
 }
 

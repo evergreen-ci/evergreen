@@ -975,6 +975,7 @@ func (a *Agent) finishTask(ctx context.Context, tc *taskContext, status string, 
 		if err := a.runPostOrTeardownTaskCommands(ctx, tc); err != nil {
 			tc.logger.Task().Info("Post task completed - FAILURE. Overall task status changed to FAILED.")
 			setEndTaskFailureDetails(tc, detail, evergreen.TaskFailed, "", "")
+			detail.ErrorBlockType = string(tc.getCurrentBlock())
 		}
 		a.runEndTaskSync(ctx, tc, detail)
 	case evergreen.TaskFailed:
@@ -982,7 +983,8 @@ func (a *Agent) finishTask(ctx context.Context, tc *taskContext, status string, 
 		tc.logger.Task().Info("Task completed - FAILURE.")
 		// If the post commands error, ignore the error. runCommandsInBlock
 		// already logged the error, and the post commands cannot cause the
-		// task to fail since the task already failed.
+		// task to fail since the task already failed. As well, the error
+		// block type should not be overwritten.
 		_ = a.runPostOrTeardownTaskCommands(ctx, tc)
 		a.runEndTaskSync(ctx, tc, detail)
 	case evergreen.TaskSystemFailed:
@@ -1131,7 +1133,6 @@ func (a *Agent) endTaskResponse(ctx context.Context, tc *taskContext, status str
 		OOMTracker:  tc.getOomTrackerInfo(),
 		TraceID:     tc.traceID,
 		DiskDevices: tc.diskDevices,
-		BlockType:   string(tc.getCurrentBlock()),
 	}
 	setEndTaskFailureDetails(tc, detail, status, highestPriorityDescription, userDefinedFailureType)
 	if tc.taskConfig != nil {
@@ -1158,6 +1159,7 @@ func setEndTaskFailureDetails(tc *taskContext, detail *apimodels.TaskEndDetail, 
 	if status != evergreen.TaskSucceeded {
 		detail.Type = failureType
 		detail.Description = description
+		detail.ErrorBlockType = string(tc.getCurrentBlock())
 	}
 	if !isDefaultDescription {
 		detail.Description = description
