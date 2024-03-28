@@ -392,8 +392,9 @@ func (a *Agent) uploadTraces(ctx context.Context, taskDir string) error {
 	return catcher.Resolve()
 }
 
+// batchSpans batches spans to avoid exceeding the collector's gRPC message size limit of 4MB.
+// Batching algorithm from https://go.dev/wiki/SliceTricks#batching-with-minimal-allocation
 func batchSpans(spans []*tracepb.ResourceSpans, batchSize int) [][]*tracepb.ResourceSpans {
-	// Batching algorithm from https://go.dev/wiki/SliceTricks#batching-with-minimal-allocation
 	batches := make([][]*tracepb.ResourceSpans, 0, (len(spans)+batchSize-1)/batchSize)
 
 	for batchSize < len(spans) {
