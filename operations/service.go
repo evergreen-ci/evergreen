@@ -13,6 +13,7 @@ import (
 	"github.com/mongodb/grip/message"
 	"github.com/pkg/errors"
 	"github.com/urfave/cli"
+	"go.opentelemetry.io/otel/trace"
 )
 
 func Service() cli.Command {
@@ -68,6 +69,11 @@ func parseDB(c *cli.Context) *evergreen.DBSettings {
 // Common Initialization Code
 
 func startSystemCronJobs(ctx context.Context, env evergreen.Environment) error {
+	ctx, span := tracer.Start(ctx, "StartSystemCronJobs")
+	defer span.End()
+	// Remove the parent span from the context.
+	ctx = trace.ContextWithSpan(ctx, nil)
+
 	// Add jobs to a remote queue at various intervals for
 	// repotracker operations. Generally the intervals are half the
 	// actual frequency of the job, which are controlled by the

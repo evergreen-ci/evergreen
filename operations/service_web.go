@@ -13,6 +13,7 @@ import (
 	"github.com/evergreen-ci/evergreen/auth"
 	"github.com/evergreen-ci/evergreen/service"
 	"github.com/evergreen-ci/gimlet"
+	"github.com/evergreen-ci/utility"
 	"github.com/mongodb/amboy"
 	"github.com/mongodb/amboy/management"
 	"github.com/mongodb/amboy/rest"
@@ -22,6 +23,13 @@ import (
 	"github.com/mongodb/jasper/remote"
 	"github.com/pkg/errors"
 	"github.com/urfave/cli"
+	"go.opentelemetry.io/otel"
+	"go.opentelemetry.io/otel/exporters/otlp/otlptrace"
+	"go.opentelemetry.io/otel/exporters/otlp/otlptrace/otlptracegrpc"
+	"go.opentelemetry.io/otel/sdk/resource"
+	sdktrace "go.opentelemetry.io/otel/sdk/trace"
+	semconv "go.opentelemetry.io/otel/semconv/v1.17.0"
+	"go.opentelemetry.io/otel/trace"
 )
 
 func startWebService() cli.Command {
@@ -30,25 +38,33 @@ func startWebService() cli.Command {
 		Usage: "start web services for API and UI",
 		Flags: mergeFlagSlices(serviceConfigFlags(), addDbSettingsFlags()),
 		Action: func(c *cli.Context) error {
+			ctx, cancel := context.WithCancel(context.Background())
+			tracerCloser, err := initTracer(ctx)
+			grip.Error(message.WrapError(err, "initializing tracer"))
+
+			ctx, startServiceSpan := tracer.Start(ctx, "StartService")
+
 			confPath := c.String(confFlagName)
 			versionID := c.String(versionIDFlagName)
 			db := parseDB(c)
-			ctx, cancel := context.WithCancel(context.Background())
-
 			env, err := evergreen.NewEnvironment(ctx, confPath, versionID, db)
 			grip.EmergencyFatal(errors.Wrap(err, "configuring application environment"))
 			evergreen.SetEnvironment(env)
 			if c.Bool(overwriteConfFlagName) {
 				grip.EmergencyFatal(errors.Wrap(env.SaveConfig(ctx), "saving config"))
 			}
-			grip.EmergencyFatal(errors.Wrap(env.RemoteQueue().Start(ctx), "starting remote queue"))
+
+			// Remove the span from the remoteQueueCtx since the queue caches the ctx.
+			remoteQueueCtx := trace.ContextWithSpan(ctx, nil)
+			grip.EmergencyFatal(errors.Wrap(env.RemoteQueue().Start(remoteQueueCtx), "starting remote queue"))
 
 			settings := env.Settings()
-			sender, err := settings.GetSender(ctx, env)
+			// Remove the span from the senderCtx since the sender caches the ctx.
+			senderCtx := trace.ContextWithSpan(ctx, nil)
+			sender, err := settings.GetSender(senderCtx, env)
 			grip.EmergencyFatal(err)
 			grip.EmergencyFatal(grip.SetSender(sender))
 			queue := env.RemoteQueue()
-			remoteQueueGroup := env.RemoteQueueGroup()
 
 			// Create the user manager before setting up job queues to allow
 			// background reauthorization jobs to start.
@@ -75,11 +91,11 @@ func startWebService() cli.Command {
 				uiServer  *http.Server
 			)
 
-			serviceHandler, err := getServiceRouter(env, queue, remoteQueueGroup)
+			serviceHandler, err := getServiceRouter(ctx, env, queue)
 			if err != nil {
 				return errors.WithStack(err)
 			}
-			adminHandler, err := getAdminService(ctx, env, settings)
+			adminHandler, err := getAdminService(ctx, env)
 			if err != nil {
 				return errors.WithStack(err)
 			}
@@ -114,8 +130,10 @@ func startWebService() cli.Command {
 				close(adminWait)
 			}()
 
+			startServiceSpan.End()
+
 			gracefulWait := make(chan struct{})
-			go gracefulShutdownForSIGTERM(ctx, []*http.Server{uiServer, apiServer, adminServer}, gracefulWait, catcher, env)
+			go gracefulShutdownForSIGTERM(ctx, []*http.Server{uiServer, apiServer, adminServer}, gracefulWait, catcher, env, tracerCloser)
 
 			<-apiWait
 			<-uiWait
@@ -134,7 +152,46 @@ func startWebService() cli.Command {
 	}
 }
 
-func gracefulShutdownForSIGTERM(ctx context.Context, servers []*http.Server, wait chan struct{}, catcher grip.Catcher, env evergreen.Environment) {
+func initTracer(ctx context.Context) (func(context.Context), error) {
+	resource, err := resource.New(ctx,
+		resource.WithHost(),
+		resource.WithAttributes(semconv.ServiceName("evergreen")),
+	)
+	if err != nil {
+		return nil, errors.Wrap(err, "making otel resource")
+	}
+
+	client := otlptracegrpc.NewClient(
+		otlptracegrpc.WithEndpoint("otel-collector-web-app.devprod-platform.svc.cluster.local:4317"),
+		otlptracegrpc.WithInsecure(),
+	)
+	exp, err := otlptrace.New(ctx, client)
+	if err != nil {
+		return nil, errors.Wrap(err, "initializing otel exporter")
+	}
+
+	spanLimits := sdktrace.NewSpanLimits()
+
+	tp := sdktrace.NewTracerProvider(
+		sdktrace.WithBatcher(exp),
+		sdktrace.WithResource(resource),
+		sdktrace.WithRawSpanLimits(spanLimits),
+	)
+	tp.RegisterSpanProcessor(utility.NewAttributeSpanProcessor())
+	otel.SetTracerProvider(tp)
+	otel.SetErrorHandler(otel.ErrorHandlerFunc(func(err error) {
+		grip.Error(errors.Wrap(err, "otel error"))
+	}))
+
+	return func(ctx context.Context) {
+		catcher := grip.NewBasicCatcher()
+		catcher.Add(tp.Shutdown(ctx))
+		catcher.Add(exp.Shutdown(ctx))
+		grip.Error(message.WrapError(catcher.Resolve(), "closing tracer provider"))
+	}, nil
+}
+
+func gracefulShutdownForSIGTERM(ctx context.Context, servers []*http.Server, wait chan struct{}, catcher grip.Catcher, env evergreen.Environment, tracerCloser func(context.Context)) {
 	defer recovery.LogStackTraceAndContinue("graceful shutdown")
 	sigChan := make(chan os.Signal, len(servers))
 	signal.Notify(sigChan, syscall.SIGTERM)
@@ -143,6 +200,7 @@ func gracefulShutdownForSIGTERM(ctx context.Context, servers []*http.Server, wai
 	// we got the signal, so modify the status endpoint and wait (EVG-12993)
 	// This allows the load balancer to detect shutoffs and route traffic with no downtime
 	env.SetShutdown()
+	tracerCloser(ctx)
 
 	time.Sleep(time.Duration(env.Settings().ShutdownWaitSeconds) * time.Second)
 	waiters := make([]chan struct{}, 0)
@@ -174,7 +232,10 @@ func gracefulShutdownForSIGTERM(ctx context.Context, servers []*http.Server, wai
 	close(wait)
 }
 
-func getServiceRouter(env evergreen.Environment, queue amboy.Queue, remoteQueueGroup amboy.QueueGroup) (http.Handler, error) {
+func getServiceRouter(ctx context.Context, env evergreen.Environment, queue amboy.Queue) (http.Handler, error) {
+	_, span := tracer.Start(ctx, "GetServiceRouter")
+	defer span.End()
+
 	home := evergreen.FindEvergreenHome()
 	if home == "" {
 		return nil, errors.New("EVGHOME environment variable must be set to run UI server")
@@ -198,7 +259,10 @@ func getServiceRouter(env evergreen.Environment, queue amboy.Queue, remoteQueueG
 	return service.GetRouter(as, uis)
 }
 
-func getAdminService(ctx context.Context, env evergreen.Environment, settings *evergreen.Settings) (http.Handler, error) {
+func getAdminService(ctx context.Context, env evergreen.Environment) (http.Handler, error) {
+	ctx, span := tracer.Start(ctx, "GetAdminService")
+	defer span.End()
+
 	localPool, ok := env.LocalQueue().Runner().(amboy.AbortableRunner)
 	if !ok {
 		return nil, errors.New("local pool is not configured with an abortable pool")
@@ -227,6 +291,8 @@ func getAdminService(ctx context.Context, env evergreen.Environment, settings *e
 	apps = append(apps, localAbort, remoteAbort, groupAbort, localManagement)
 
 	jpm := remote.NewRESTService(env.JasperManager())
+	// Remove the span from the ctx since the App caches the ctx.
+	ctx = trace.ContextWithSpan(ctx, nil)
 	jpmapp := jpm.App(ctx)
 	jpmapp.SetPrefix("jasper")
 	jpm.SetDisableCachePruning(true)
