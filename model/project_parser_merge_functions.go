@@ -200,6 +200,12 @@ func (pp *ParserProject) mergeUnique(toMerge *ParserProject) error {
 		pp.ExecTimeoutSecs = toMerge.ExecTimeoutSecs
 	}
 
+	if pp.TimeoutSecs != nil && toMerge.TimeoutSecs != nil {
+		catcher.New("timeout secs can only be defined in one YAML")
+	} else if toMerge.TimeoutSecs != nil {
+		pp.TimeoutSecs = toMerge.TimeoutSecs
+	}
+
 	return catcher.Resolve()
 }
 

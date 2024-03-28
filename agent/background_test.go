@@ -368,7 +368,7 @@ func (s *BackgroundSuite) TestIdleTimeoutIsSetForCommand() {
 	cmd := cmdFactory()
 	cmd.SetIdleTimeout(time.Second)
 	s.tc.setCurrentCommand(cmd)
-	s.tc.setCurrentIdleTimeout(cmd, "")
+	s.tc.setCurrentIdleTimeout(cmd)
 	s.Equal(time.Second, s.tc.getCurrentIdleTimeout())
 }
 
