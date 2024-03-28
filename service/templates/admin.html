@@ -1418,8 +1418,12 @@ Admin Settings
 								</md-card-title>
 								<md-card-content>
 									<md-input-container class="control" style="width:45%;">
-										<label>Base URL</label>
+										<label>HTTP Base URL</label>
 										<input type="text" ng-model="Settings.cedar.base_url">
+									</md-input-container>
+									<md-input-container class="control" style="width:45%;">
+										<label>GRPC Base URL</label>
+										<input type="text" ng-model="Settings.cedar.grpc_base_url">
 									</md-input-container>
 									<md-input-container class="control" style="width:45%;">
 										<label>RPC Port</label>

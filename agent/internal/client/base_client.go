@@ -116,14 +116,14 @@ func (c *baseCommunicator) createCedarGRPCConn(ctx context.Context) error {
 			return errors.Wrap(err, "getting Cedar config")
 		}
 
-		if cc.BaseURL == "" {
+		if cc.GRPCBaseURL == "" {
 			// No cedar base URL probably means we are running
 			// evergreen locally or in some testing mode.
 			return nil
 		}
 
 		dialOpts := timber.DialCedarOptions{
-			BaseAddress: cc.BaseURL,
+			BaseAddress: cc.GRPCBaseURL,
 			RPCPort:     cc.RPCPort,
 			Username:    cc.Username,
 			APIKey:      cc.APIKey,
@@ -317,10 +317,6 @@ func (c *baseCommunicator) GetExpansionsAndVars(ctx context.Context, taskData Ta
 	}
 	return &expAndVars, nil
 }
-
-// TaskConflict is a special agent-internal message that the heartbeat uses to
-// indicate that the task is failing because it's being aborted.
-const TaskConflict = "task-conflict"
 
 func (c *baseCommunicator) Heartbeat(ctx context.Context, taskData TaskData) (string, error) {
 	data := interface{}("heartbeat")
