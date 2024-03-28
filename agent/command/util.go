@@ -48,7 +48,7 @@ func createEnclosingDirectoryIfNeeded(path string) error {
 	return nil
 }
 
-func expandModulePrefix(conf *internal.TaskConfig, module, prefix string, logger client.LoggerProducer) string {
+func expandModulePrefix(conf *internal.TaskConfig, module, prefix string, logger client.LoggerProducer) {
 	modulePrefix, err := conf.Expansions.ExpandString(prefix)
 	if err != nil {
 		logger.Task().Error(errors.Wrapf(err, "expanding module prefix '%s'", modulePrefix))
@@ -59,7 +59,6 @@ func expandModulePrefix(conf *internal.TaskConfig, module, prefix string, logger
 		conf.ModulePaths = map[string]string{}
 	}
 	conf.ModulePaths[module] = modulePrefix
-	return modulePrefix
 }
 
 // GetWorkingDirectory joins the conf.WorkDir A with B like this:

@@ -6,6 +6,7 @@ import (
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/agent/internal"
 	"github.com/evergreen-ci/evergreen/agent/internal/client"
+	"github.com/evergreen-ci/evergreen/agent/internal/redactor"
 	"github.com/evergreen-ci/evergreen/agent/internal/taskoutput"
 	"github.com/evergreen-ci/evergreen/apimodels"
 	"github.com/evergreen-ci/evergreen/model/task"
@@ -35,27 +36,22 @@ func sendTestResults(ctx context.Context, comm client.Communicator, logger clien
 }
 
 // sendTestLogsAndResults sends the test logs and test results to backend
-// logging results services.
-func sendTestLogsAndResults(ctx context.Context, comm client.Communicator, logger client.LoggerProducer, conf *internal.TaskConfig, logs []testlog.TestLog, results [][]testresult.TestResult) error {
+// logging and results services.
+func sendTestLogsAndResults(ctx context.Context, comm client.Communicator, logger client.LoggerProducer, conf *internal.TaskConfig, logs []testlog.TestLog, results []testresult.TestResult) error {
 	logger.Task().Info("Posting test logs...")
-	var allResults []testresult.TestResult
-	for idx, log := range logs {
+	for _, log := range logs {
 		if err := ctx.Err(); err != nil {
 			return errors.Wrap(err, "canceled while sending test logs")
 		}
 
-		if err := taskoutput.AppendTestLog(ctx, comm, &conf.Task, &log); err != nil {
-			// Continue on error to let the other logs be posted.
+		if err := taskoutput.AppendTestLog(ctx, comm, &conf.Task, redactor.RedactionOptions{Expansions: conf.NewExpansions, Redacted: conf.Redacted}, &log); err != nil {
+			// Continue on error to let the other logs get posted.
 			logger.Task().Error(errors.Wrap(err, "sending test log"))
 		}
-
-		// Add all of the test results that correspond to that log to
-		// the full list of results.
-		allResults = append(allResults, results[idx]...)
 	}
 	logger.Task().Info("Finished posting test logs.")
 
-	return sendTestResults(ctx, comm, logger, conf, allResults)
+	return sendTestResults(ctx, comm, logger, conf, results)
 }
 
 func sendTestResultsToCedar(ctx context.Context, conf *internal.TaskConfig, td client.TaskData, comm client.Communicator, results []testresult.TestResult) error {

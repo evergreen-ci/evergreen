@@ -6,7 +6,7 @@ import (
 	"syscall"
 	"testing"
 
-	"github.com/evergreen-ci/evergreen/agent"
+	"github.com/evergreen-ci/evergreen/agent/globals"
 	"github.com/evergreen-ci/evergreen/smoke/internal"
 	"github.com/mongodb/grip"
 	"github.com/mongodb/grip/message"
@@ -31,7 +31,7 @@ func TestSmokeHostTask(t *testing.T) {
 		}
 	}()
 
-	agentCmd := internal.StartAgent(ctx, t, params.APIParams, agent.HostMode, params.ExecModeID, params.ExecModeSecret)
+	agentCmd := internal.StartAgent(ctx, t, params.APIParams, globals.HostMode, params.ExecModeID, params.ExecModeSecret)
 	defer func() {
 		if agentCmd != nil {
 			grip.Error(errors.Wrap(agentCmd.Signal(ctx, syscall.SIGTERM), "stopping agent after test completion"))

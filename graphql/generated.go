@@ -95,6 +95,7 @@ type DirectiveRoot struct {
 	RequireCommitQueueItemOwner  func(ctx context.Context, obj interface{}, next graphql.Resolver) (res interface{}, err error)
 	RequireDistroAccess          func(ctx context.Context, obj interface{}, next graphql.Resolver, access DistroSettingsAccess) (res interface{}, err error)
 	RequireProjectAccess         func(ctx context.Context, obj interface{}, next graphql.Resolver, access ProjectSettingsAccess) (res interface{}, err error)
+	RequireProjectAccessNew      func(ctx context.Context, obj interface{}, next graphql.Resolver, permission ProjectPermission, access AccessLevel) (res interface{}, err error)
 	RequireProjectAdmin          func(ctx context.Context, obj interface{}, next graphql.Resolver) (res interface{}, err error)
 	RequireProjectSettingsAccess func(ctx context.Context, obj interface{}, next graphql.Resolver) (res interface{}, err error)
 }
@@ -722,7 +723,8 @@ type ComplexityRoot struct {
 	}
 
 	ParsleySettings struct {
-		SectionsEnabled func(childComplexity int) int
+		JumpToFailingLineEnabled func(childComplexity int) int
+		SectionsEnabled          func(childComplexity int) int
 	}
 
 	Patch struct {
@@ -5059,6 +5061,13 @@ func (e *executableSchema) Complexity(typeName, field string, childComplexity in
 		}
 
 		return e.complexity.ParsleyFilter.Expression(childComplexity), true
+
+	case "ParsleySettings.jumpToFailingLineEnabled":
+		if e.complexity.ParsleySettings.JumpToFailingLineEnabled == nil {
+			break
+		}
+
+		return e.complexity.ParsleySettings.JumpToFailingLineEnabled(childComplexity), true
 
 	case "ParsleySettings.sectionsEnabled":
 		if e.complexity.ParsleySettings.SectionsEnabled == nil {
@@ -9884,6 +9893,30 @@ func (ec *executionContext) dir_requireDistroAccess_args(ctx context.Context, ra
 		}
 	}
 	args["access"] = arg0
+	return args, nil
+}
+
+func (ec *executionContext) dir_requireProjectAccessNew_args(ctx context.Context, rawArgs map[string]interface{}) (map[string]interface{}, error) {
+	var err error
+	args := map[string]interface{}{}
+	var arg0 ProjectPermission
+	if tmp, ok := rawArgs["permission"]; ok {
+		ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("permission"))
+		arg0, err = ec.unmarshalNProjectPermission2githubᚗcomᚋevergreenᚑciᚋevergreenᚋgraphqlᚐProjectPermission(ctx, tmp)
+		if err != nil {
+			return nil, err
+		}
+	}
+	args["permission"] = arg0
+	var arg1 AccessLevel
+	if tmp, ok := rawArgs["access"]; ok {
+		ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("access"))
+		arg1, err = ec.unmarshalNAccessLevel2githubᚗcomᚋevergreenᚑciᚋevergreenᚋgraphqlᚐAccessLevel(ctx, tmp)
+		if err != nil {
+			return nil, err
+		}
+	}
+	args["access"] = arg1
 	return args, nil
 }
 
@@ -33407,6 +33440,50 @@ func (ec *executionContext) _ParsleySettings_sectionsEnabled(ctx context.Context
 }
 
 func (ec *executionContext) fieldContext_ParsleySettings_sectionsEnabled(ctx context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "ParsleySettings",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type Boolean does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _ParsleySettings_jumpToFailingLineEnabled(ctx context.Context, field graphql.CollectedField, obj *model.APIParsleySettings) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_ParsleySettings_jumpToFailingLineEnabled(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.JumpToFailingLineEnabled, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.(*bool)
+	fc.Result = res
+	return ec.marshalNBoolean2ᚖbool(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_ParsleySettings_jumpToFailingLineEnabled(ctx context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
 	fc = &graphql.FieldContext{
 		Object:     "ParsleySettings",
 		Field:      field,
@@ -60023,6 +60100,8 @@ func (ec *executionContext) fieldContext_UpdateParsleySettingsPayload_parsleySet
 			switch field.Name {
 			case "sectionsEnabled":
 				return ec.fieldContext_ParsleySettings_sectionsEnabled(ctx, field)
+			case "jumpToFailingLineEnabled":
+				return ec.fieldContext_ParsleySettings_jumpToFailingLineEnabled(ctx, field)
 			}
 			return nil, fmt.Errorf("no field named %q was found under type ParsleySettings", field.Name)
 		},
@@ -60954,6 +61033,8 @@ func (ec *executionContext) fieldContext_User_parsleySettings(ctx context.Contex
 			switch field.Name {
 			case "sectionsEnabled":
 				return ec.fieldContext_ParsleySettings_sectionsEnabled(ctx, field)
+			case "jumpToFailingLineEnabled":
+				return ec.fieldContext_ParsleySettings_jumpToFailingLineEnabled(ctx, field)
 			}
 			return nil, fmt.Errorf("no field named %q was found under type ParsleySettings", field.Name)
 		},
@@ -69201,7 +69282,7 @@ func (ec *executionContext) unmarshalInputParsleySettingsInput(ctx context.Conte
 		asMap[k] = v
 	}
 
-	fieldsInOrder := [...]string{"sectionsEnabled"}
+	fieldsInOrder := [...]string{"sectionsEnabled", "jumpToFailingLineEnabled"}
 	for _, k := range fieldsInOrder {
 		v, ok := asMap[k]
 		if !ok {
@@ -69215,6 +69296,13 @@ func (ec *executionContext) unmarshalInputParsleySettingsInput(ctx context.Conte
 				return it, err
 			}
 			it.SectionsEnabled = data
+		case "jumpToFailingLineEnabled":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("jumpToFailingLineEnabled"))
+			data, err := ec.unmarshalOBoolean2ᚖbool(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.JumpToFailingLineEnabled = data
 		}
 	}
 
@@ -77230,6 +77318,11 @@ func (ec *executionContext) _ParsleySettings(ctx context.Context, sel ast.Select
 			out.Values[i] = graphql.MarshalString("ParsleySettings")
 		case "sectionsEnabled":
 			out.Values[i] = ec._ParsleySettings_sectionsEnabled(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "jumpToFailingLineEnabled":
+			out.Values[i] = ec._ParsleySettings_jumpToFailingLineEnabled(ctx, field, obj)
 			if out.Values[i] == graphql.Null {
 				out.Invalids++
 			}
@@ -87055,6 +87148,16 @@ func (ec *executionContext) ___Type(ctx context.Context, sel ast.SelectionSet, o
 
 // region    ***************************** type.gotpl *****************************
 
+func (ec *executionContext) unmarshalNAccessLevel2githubᚗcomᚋevergreenᚑciᚋevergreenᚋgraphqlᚐAccessLevel(ctx context.Context, v interface{}) (AccessLevel, error) {
+	var res AccessLevel
+	err := res.UnmarshalGQL(v)
+	return res, graphql.ErrorOnPath(ctx, err)
+}
+
+func (ec *executionContext) marshalNAccessLevel2githubᚗcomᚋevergreenᚑciᚋevergreenᚋgraphqlᚐAccessLevel(ctx context.Context, sel ast.SelectionSet, v AccessLevel) graphql.Marshaler {
+	return v
+}
+
 func (ec *executionContext) unmarshalNArch2githubᚗcomᚋevergreenᚑciᚋevergreenᚋgraphqlᚐArch(ctx context.Context, v interface{}) (Arch, error) {
 	var res Arch
 	err := res.UnmarshalGQL(v)
@@ -89616,6 +89719,16 @@ func (ec *executionContext) marshalNProjectHealthView2githubᚗcomᚋevergreen�
 		}
 	}
 	return res
+}
+
+func (ec *executionContext) unmarshalNProjectPermission2githubᚗcomᚋevergreenᚑciᚋevergreenᚋgraphqlᚐProjectPermission(ctx context.Context, v interface{}) (ProjectPermission, error) {
+	var res ProjectPermission
+	err := res.UnmarshalGQL(v)
+	return res, graphql.ErrorOnPath(ctx, err)
+}
+
+func (ec *executionContext) marshalNProjectPermission2githubᚗcomᚋevergreenᚑciᚋevergreenᚋgraphqlᚐProjectPermission(ctx context.Context, sel ast.SelectionSet, v ProjectPermission) graphql.Marshaler {
+	return v
 }
 
 func (ec *executionContext) marshalNProjectPermissions2githubᚗcomᚋevergreenᚑciᚋevergreenᚋgraphqlᚐProjectPermissions(ctx context.Context, sel ast.SelectionSet, v ProjectPermissions) graphql.Marshaler {

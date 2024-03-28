@@ -12,6 +12,7 @@ import (
 	"time"
 
 	"github.com/evergreen-ci/evergreen"
+	"github.com/evergreen-ci/evergreen/agent/internal/redactor"
 	"github.com/evergreen-ci/evergreen/apimodels"
 	"github.com/evergreen-ci/evergreen/cloud"
 	"github.com/evergreen-ci/evergreen/model"
@@ -467,7 +468,7 @@ func (c *baseCommunicator) makeSender(ctx context.Context, tsk *task.Task, opts 
 			}
 		}
 
-		sender = newRedactingSender(sender, config.Expansions, config.ExpansionsToRedact)
+		sender = redactor.NewRedactingSender(sender, config.RedactorOpts)
 		if logType == taskoutput.TaskLogTypeTask {
 			sender = makeTimeoutLogSender(sender, c)
 		}

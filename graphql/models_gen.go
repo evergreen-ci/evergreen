@@ -523,6 +523,49 @@ type VolumeHost struct {
 	HostID   string `json:"hostId"`
 }
 
+type AccessLevel string
+
+const (
+	AccessLevelAdmin AccessLevel = "ADMIN"
+	AccessLevelEdit  AccessLevel = "EDIT"
+	AccessLevelView  AccessLevel = "VIEW"
+)
+
+var AllAccessLevel = []AccessLevel{
+	AccessLevelAdmin,
+	AccessLevelEdit,
+	AccessLevelView,
+}
+
+func (e AccessLevel) IsValid() bool {
+	switch e {
+	case AccessLevelAdmin, AccessLevelEdit, AccessLevelView:
+		return true
+	}
+	return false
+}
+
+func (e AccessLevel) String() string {
+	return string(e)
+}
+
+func (e *AccessLevel) UnmarshalGQL(v interface{}) error {
+	str, ok := v.(string)
+	if !ok {
+		return fmt.Errorf("enums must be strings")
+	}
+
+	*e = AccessLevel(str)
+	if !e.IsValid() {
+		return fmt.Errorf("%s is not a valid AccessLevel", str)
+	}
+	return nil
+}
+
+func (e AccessLevel) MarshalGQL(w io.Writer) {
+	fmt.Fprint(w, strconv.Quote(e.String()))
+}
+
 type Arch string
 
 const (
@@ -663,18 +706,16 @@ func (e CommunicationMethod) MarshalGQL(w io.Writer) {
 type DispatcherVersion string
 
 const (
-	DispatcherVersionRevised                 DispatcherVersion = "REVISED"
 	DispatcherVersionRevisedWithDependencies DispatcherVersion = "REVISED_WITH_DEPENDENCIES"
 )
 
 var AllDispatcherVersion = []DispatcherVersion{
-	DispatcherVersionRevised,
 	DispatcherVersionRevisedWithDependencies,
 }
 
 func (e DispatcherVersion) IsValid() bool {
 	switch e {
-	case DispatcherVersionRevised, DispatcherVersionRevisedWithDependencies:
+	case DispatcherVersionRevisedWithDependencies:
 		return true
 	}
 	return false
@@ -1097,6 +1138,53 @@ func (e *PlannerVersion) UnmarshalGQL(v interface{}) error {
 }
 
 func (e PlannerVersion) MarshalGQL(w io.Writer) {
+	fmt.Fprint(w, strconv.Quote(e.String()))
+}
+
+type ProjectPermission string
+
+const (
+	ProjectPermissionSettings    ProjectPermission = "SETTINGS"
+	ProjectPermissionTasks       ProjectPermission = "TASKS"
+	ProjectPermissionAnnotations ProjectPermission = "ANNOTATIONS"
+	ProjectPermissionPatches     ProjectPermission = "PATCHES"
+	ProjectPermissionLogs        ProjectPermission = "LOGS"
+)
+
+var AllProjectPermission = []ProjectPermission{
+	ProjectPermissionSettings,
+	ProjectPermissionTasks,
+	ProjectPermissionAnnotations,
+	ProjectPermissionPatches,
+	ProjectPermissionLogs,
+}
+
+func (e ProjectPermission) IsValid() bool {
+	switch e {
+	case ProjectPermissionSettings, ProjectPermissionTasks, ProjectPermissionAnnotations, ProjectPermissionPatches, ProjectPermissionLogs:
+		return true
+	}
+	return false
+}
+
+func (e ProjectPermission) String() string {
+	return string(e)
+}
+
+func (e *ProjectPermission) UnmarshalGQL(v interface{}) error {
+	str, ok := v.(string)
+	if !ok {
+		return fmt.Errorf("enums must be strings")
+	}
+
+	*e = ProjectPermission(str)
+	if !e.IsValid() {
+		return fmt.Errorf("%s is not a valid ProjectPermission", str)
+	}
+	return nil
+}
+
+func (e ProjectPermission) MarshalGQL(w io.Writer) {
 	fmt.Fprint(w, strconv.Quote(e.String()))
 }
 

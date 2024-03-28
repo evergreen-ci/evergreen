@@ -58,6 +58,7 @@ func (j *cronsRemoteMinuteJob) Run(ctx context.Context) {
 		"periodic notification":      periodicNotificationJobs,
 		"user data done":             userDataDoneJobs,
 		"pod termination":            podTerminationJobs,
+		"sleep scheduler":            sleepSchedulerJobs,
 	}
 
 	var allJobs []amboy.Job
@@ -68,7 +69,7 @@ func (j *cronsRemoteMinuteJob) Run(ctx context.Context) {
 		if ctx.Err() != nil {
 			j.AddError(errors.New("operation aborted"))
 		}
-		jobs, err := op(ctx, ts)
+		jobs, err := op(ctx, j.env, ts)
 		if err != nil {
 			catcher.Wrapf(err, "getting '%s' jobs", name)
 			continue
@@ -76,7 +77,7 @@ func (j *cronsRemoteMinuteJob) Run(ctx context.Context) {
 		allJobs = append(allJobs, jobs...)
 	}
 	catcher.Wrap(amboy.EnqueueManyUniqueJobs(ctx, j.env.RemoteQueue(), allJobs), "populating main queue")
-	catcher.Add(enqueueHostSetupJobs(ctx, j.env.RemoteQueue(), ts))
+	catcher.Add(enqueueHostSetupJobs(ctx, j.env, j.env.RemoteQueue(), ts))
 
 	// Create dedicated queues for host creation, event notifier, and commit queue jobs.
 	catcher.Add(populateQueueGroup(ctx, j.env, createHostQueueGroup, hostCreationJobs, ts))
