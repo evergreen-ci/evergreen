@@ -69,6 +69,10 @@ type githubIntent struct {
 	// BaseHash is the base hash of the commit.
 	BaseHash string `bson:"base_hash"`
 
+	// MergeBase is merge base of the pull request, or the common ancestor commit
+	// between the feature branch and the target branch.
+	MergeBase string `bson:"merge_base"`
+
 	// Title is the title of the Github PR
 	Title string `bson:"Title"`
 
@@ -113,7 +117,7 @@ var (
 
 // NewGithubIntent creates an Intent from a google/go-github PullRequestEvent,
 // or returns an error if the some part of the struct is invalid
-func NewGithubIntent(msgDeliveryID, patchOwner, calledBy string, pr *github.PullRequest) (Intent, error) {
+func NewGithubIntent(msgDeliveryID, patchOwner, calledBy, mergeBase string, pr *github.PullRequest) (Intent, error) {
 	if pr == nil ||
 		pr.Base == nil || pr.Base.Repo == nil ||
 		pr.Head == nil || pr.Head.Repo == nil ||
@@ -128,6 +132,9 @@ func NewGithubIntent(msgDeliveryID, patchOwner, calledBy string, pr *github.Pull
 	}
 	if pr.Base.GetRef() == "" {
 		return nil, errors.New("base ref is empty")
+	}
+	if pr.Head.GetRef() == "" {
+		return nil, errors.New("head ref is empty")
 	}
 	if len(strings.Split(pr.Head.Repo.GetFullName(), "/")) != 2 {
 		return nil, errors.New("head repo name is invalid (expected [owner]/[repo])")
@@ -168,6 +175,7 @@ func NewGithubIntent(msgDeliveryID, patchOwner, calledBy string, pr *github.Pull
 		UID:           int(pr.User.GetID()),
 		HeadHash:      pr.Head.GetSHA(),
 		BaseHash:      pr.Base.GetSHA(),
+		MergeBase:     mergeBase,
 		Title:         pr.GetTitle(),
 		IntentType:    GithubIntentType,
 		CalledBy:      calledBy,
@@ -287,6 +295,7 @@ func (g *githubIntent) NewPatch() *Patch {
 			HeadOwner:  headRepo[0],
 			HeadRepo:   headRepo[1],
 			HeadHash:   g.HeadHash,
+			MergeBase:  g.MergeBase,
 			Author:     g.User,
 			AuthorUID:  g.UID,
 		},

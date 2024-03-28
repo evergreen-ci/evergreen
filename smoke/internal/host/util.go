@@ -11,7 +11,7 @@ import (
 	"time"
 
 	"github.com/evergreen-ci/evergreen"
-	"github.com/evergreen-ci/evergreen/agent"
+	"github.com/evergreen-ci/evergreen/agent/globals"
 	"github.com/evergreen-ci/evergreen/rest/model"
 	"github.com/evergreen-ci/evergreen/smoke/internal"
 	"github.com/evergreen-ci/utility"
@@ -99,7 +99,7 @@ func RunHostTaskPatchTest(ctx context.Context, t *testing.T, params SmokeTestPar
 	require.NotEmpty(t, builds, "must have at least one build to test")
 
 	// Check that the tasks eventually finish and check their output.
-	internal.CheckTaskStatusAndLogs(ctx, t, params.APIParams, client, agent.HostMode, builds[0].Tasks)
+	internal.CheckTaskStatusAndLogs(ctx, t, params.APIParams, client, globals.HostMode, builds[0].Tasks)
 
 	// Now that the task generator has run, check the builds again for the
 	// generated tasks.
@@ -115,7 +115,7 @@ func RunHostTaskPatchTest(ctx context.Context, t *testing.T, params SmokeTestPar
 	require.NotEmpty(t, generatedTasks, "should have generated at least one task")
 
 	// Check that the generated tasks eventually finish and check their output.
-	internal.CheckTaskStatusAndLogs(ctx, t, params.APIParams, client, agent.HostMode, generatedTasks)
+	internal.CheckTaskStatusAndLogs(ctx, t, params.APIParams, client, globals.HostMode, generatedTasks)
 }
 
 // triggerRepotracker makes a request to the Evergreen app server's REST API to

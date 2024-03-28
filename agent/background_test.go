@@ -6,6 +6,7 @@ import (
 	"time"
 
 	"github.com/evergreen-ci/evergreen/agent/command"
+	"github.com/evergreen-ci/evergreen/agent/globals"
 	"github.com/evergreen-ci/evergreen/agent/internal"
 	"github.com/evergreen-ci/evergreen/agent/internal/client"
 	"github.com/evergreen-ci/evergreen/model"
@@ -37,7 +38,7 @@ func (s *BackgroundSuite) SetupTest() {
 			HostID:     "host",
 			HostSecret: "secret",
 			StatusPort: 2286,
-			LogOutput:  LogOutputStdout,
+			LogOutput:  globals.LogOutputStdout,
 			LogPrefix:  "agent",
 		},
 		comm:   client.NewMock("url"),
@@ -67,7 +68,7 @@ func (s *BackgroundSuite) TestStartTimeoutWatcherTimesOut() {
 	startAt := time.Now()
 	timeoutOpts := timeoutWatcherOptions{
 		tc:                    s.tc,
-		kind:                  callbackTimeout,
+		kind:                  globals.CallbackTimeout,
 		getTimeout:            func() time.Duration { return timeout },
 		canMarkTimeoutFailure: true,
 	}
@@ -76,7 +77,7 @@ func (s *BackgroundSuite) TestStartTimeoutWatcherTimesOut() {
 	s.Less(time.Since(startAt), testTimeout)
 	s.Error(ctx.Err(), "should have cancelled operation to time out")
 	s.True(s.tc.hadTimedOut())
-	s.Equal(callbackTimeout, s.tc.getTimeoutType(), "should have hit callback timeout")
+	s.Equal(globals.CallbackTimeout, s.tc.getTimeoutType(), "should have hit callback timeout")
 	s.Equal(timeout, s.tc.getTimeoutDuration(), "should have recorded timeout duration")
 }
 
@@ -86,7 +87,7 @@ func (s *BackgroundSuite) TestStartTimeoutWatcherExitsWithoutTimeout() {
 	go func() {
 		timeoutOpts := timeoutWatcherOptions{
 			tc:                    s.tc,
-			kind:                  callbackTimeout,
+			kind:                  globals.CallbackTimeout,
 			getTimeout:            func() time.Duration { return time.Hour },
 			canMarkTimeoutFailure: true,
 		}
@@ -110,7 +111,7 @@ func (s *BackgroundSuite) TestStartTimeoutWatcherTimesOutButDoesNotMarkTimeoutFa
 	startAt := time.Now()
 	timeoutOpts := timeoutWatcherOptions{
 		tc:         s.tc,
-		kind:       callbackTimeout,
+		kind:       globals.CallbackTimeout,
 		getTimeout: func() time.Duration { return timeout },
 	}
 	s.a.startTimeoutWatcher(ctx, cancel, timeoutOpts)
@@ -331,8 +332,8 @@ func (s *BackgroundSuite) TestHeartbeatTimesOut() {
 
 	// Set the initial state so the heartbeat has already timed out.
 	s.tc.setHeartbeatTimeout(heartbeatTimeoutOptions{
-		startAt:    time.Now().Add(-10 * defaultHeartbeatTimeout),
-		getTimeout: func() time.Duration { return defaultHeartbeatTimeout },
+		startAt:    time.Now().Add(-10 * globals.DefaultHeartbeatTimeout),
+		getTimeout: func() time.Duration { return globals.DefaultHeartbeatTimeout },
 	})
 	go s.a.startHeartbeat(heartbeatCtx, childCancel, s.tc)
 
@@ -372,7 +373,7 @@ func (s *BackgroundSuite) TestIdleTimeoutIsSetForCommand() {
 }
 
 func (s *BackgroundSuite) TestGetTimeoutDefault() {
-	s.Equal(defaultIdleTimeout, s.tc.getCurrentIdleTimeout())
+	s.Equal(globals.DefaultIdleTimeout, s.tc.getCurrentIdleTimeout())
 }
 
 type heartbeatCheckOptions struct {

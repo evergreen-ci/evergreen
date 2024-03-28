@@ -762,7 +762,31 @@ func (gh *githubHookApi) refreshPatchStatus(ctx context.Context, owner, repo str
 // both updates from patches and be in a race condition for which one GitHub checks shows last- so we want
 // to avoid this state when possible.
 func (gh *githubHookApi) AddIntentForPR(ctx context.Context, pr *github.PullRequest, owner, calledBy string, overrideExisting bool) error {
-	ghi, err := patch.NewGithubIntent(gh.msgID, owner, calledBy, pr)
+	// Verify that the owner/repo uses PR testing before inserting the intent.
+	baseRepoName := pr.Base.Repo.GetFullName()
+	baseRepo := strings.Split(baseRepoName, "/")
+	projectRef, err := model.FindOneProjectRefByRepoAndBranchWithPRTesting(baseRepo[0],
+		baseRepo[1], pr.Base.GetRef(), calledBy)
+	if err != nil {
+		return errors.Wrap(err, "finding project ref for patch")
+	}
+	if projectRef == nil {
+		return nil
+	}
+	var mergeBase string
+	if projectRef.OldestAllowedMergeBase != "" {
+		ctx, cancel := context.WithTimeout(context.Background(), time.Minute)
+		defer cancel()
+		baseOwnerAndRepo := strings.Split(pr.Base.Repo.GetFullName(), "/")
+		if len(baseOwnerAndRepo) != 2 {
+			return errors.New("PR base repo name is invalid (expected [owner]/[repo])")
+		}
+		mergeBase, err = thirdparty.GetGithubMergeBaseRevision(ctx, "", baseOwnerAndRepo[0], baseOwnerAndRepo[1], pr.Base.GetRef(), pr.Head.GetRef())
+		if err != nil {
+			return errors.Wrapf(err, "getting merge base between branches '%s' and '%s'", pr.Base.GetRef(), pr.Head.GetRef())
+		}
+	}
+	ghi, err := patch.NewGithubIntent(gh.msgID, owner, calledBy, mergeBase, pr)
 	if err != nil {
 		return errors.Wrap(err, "creating GitHub patch intent")
 	}
@@ -789,9 +813,8 @@ func (gh *githubHookApi) AddIntentForPR(ctx context.Context, pr *github.PullRequ
 	conflictingPatches, err := getOtherPatchesWithHash(pr.Head.GetSHA(), pr.GetNumber())
 	if err != nil {
 		grip.Error(message.WrapError(err, message.Fields{
-			"message": "error getting same hash patches",
-			"owner":   pr.Base.User.GetLogin(),
-
+			"message":           "error getting same hash patches",
+			"owner":             pr.Base.User.GetLogin(),
 			"repo":              pr.Base.Repo.GetName(),
 			"ref":               pr.Head.GetRef(),
 			"pr_num":            pr.GetNumber(),
@@ -803,7 +826,7 @@ func (gh *githubHookApi) AddIntentForPR(ctx context.Context, pr *github.PullRequ
 
 	// If no conflicting patches exist, we can create the patch
 	if len(conflictingPatches) == 0 {
-		return errors.Wrap(data.AddPatchIntent(ghi, gh.queue), "saving GitHub patch intent")
+		return errors.Wrap(data.AddPRPatchIntent(ghi, gh.queue), "saving GitHub patch intent")
 	}
 
 	// If we don't want to override any existing patches, comment to inform the user and no-op.
@@ -826,7 +849,7 @@ func (gh *githubHookApi) AddIntentForPR(ctx context.Context, pr *github.PullRequ
 		return errors.Wrap(err, "overriding other PRs")
 	}
 
-	return errors.Wrap(data.AddPatchIntent(ghi, gh.queue), "saving GitHub patch intent")
+	return errors.Wrap(data.AddPRPatchIntent(ghi, gh.queue), "saving GitHub patch intent")
 }
 
 // overrideOtherPRs aborts the given patches and comments on each patch's PR to inform the user that their patch
