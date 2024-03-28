@@ -855,7 +855,7 @@ func (r *mutationResolver) EditSpawnHost(ctx context.Context, spawnHost *EditSpa
 			if ok {
 				return nil, mapHTTPStatusToGqlError(ctx, gimletErr.StatusCode, err)
 			}
-			return nil, InternalServerError.Send(ctx, fmt.Sprintf("setting sleep schedule:", err.Error()))
+			return nil, InternalServerError.Send(ctx, fmt.Sprintf("setting sleep schedule: '%s'", err.Error()))
 		}
 	}
 
@@ -905,7 +905,7 @@ func (r *mutationResolver) SpawnHost(ctx context.Context, spawnHostInput *SpawnH
 			if ok {
 				return nil, mapHTTPStatusToGqlError(ctx, gimletErr.StatusCode, err)
 			}
-			return nil, InternalServerError.Send(ctx, fmt.Sprintf("setting sleep schedule:", err.Error()))
+			return nil, InternalServerError.Send(ctx, fmt.Sprintf("setting sleep schedule: '%s'", err.Error()))
 		}
 	}
 	apiHost := restModel.APIHost{}
