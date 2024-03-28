@@ -37,6 +37,7 @@
               ],
               "gitTagAuthorizedUsers": ["ablack12"],
               "gitTagAuthorizedTeams": null,
+              "oldestAllowedMergeBase": "abc",
               "triggers": [
                 {
                   "project": "spruce",

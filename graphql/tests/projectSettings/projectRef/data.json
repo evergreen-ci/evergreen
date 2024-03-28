@@ -95,6 +95,7 @@
           "exact_match": true
         }
       ],
+      "oldest_allowed_merge_base": "abc",
       "git_tag_authorized_users": ["ablack12"],
       "workstation_config": {
         "setup_commands": null,

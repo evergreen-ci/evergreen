@@ -203,6 +203,11 @@ For security reasons, commits by users outside of your organization will
 not automatically be run. A patch will still be created and must be
 manually authorized to run by a logged-in user.
 
+#### Limiting when PR patches will run
+You can optionally specify the oldest commit SHA that is allowed to be a merge base
+for a PR, otherwise a PR patch will not be created. To do so, input the oldest SHA
+on your project's branch you want to accept as the merge base via the 'Oldest Allowed Merge Base' field.
+
 ### GitHub Commit Checks
 
 Definitions for this section exist under the "Github & Commit Queue" tab.

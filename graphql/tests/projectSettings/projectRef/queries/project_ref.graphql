@@ -28,6 +28,7 @@
       }
       gitTagAuthorizedUsers
       gitTagAuthorizedTeams
+      oldestAllowedMergeBase
       triggers {
         project
         level
