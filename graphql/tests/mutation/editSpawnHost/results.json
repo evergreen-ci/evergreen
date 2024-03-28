@@ -18,10 +18,10 @@
             "result": {
                 "errors": [
                     {
-                        "message": "setting sleep schedule: invalid sleep schedule: cannot specify a daily start time without a daily stop time\nsleep schedule runs for 0s, which does not meet minimum requirement of 24h0m0s",
+                        "message": "400 (Bad Request): invalid sleep schedule: cannot specify a daily start time without a daily stop time\nsleep schedule runs for 0s, which does not meet minimum requirement of 24h0m0s",
                         "path": ["editSpawnHost"],
                         "extensions": {
-                            "code": "INTERNAL_SERVER_ERROR"
+                            "code": "INPUT_VALIDATION_ERROR"
                         }
                     }
                 ],
