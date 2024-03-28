@@ -18,6 +18,7 @@ input RepoRefInput {
   gitTagVersionsEnabled: Boolean
   manualPrTestingEnabled: Boolean
   notifyOnBuildFailure: Boolean
+  oldestAllowedMergeBase: String
   owner: String
   parsleyFilters: [ParsleyFilterInput!]
   patchingDisabled: Boolean
@@ -67,6 +68,7 @@ type RepoRef {
   gitTagVersionsEnabled: Boolean!
   manualPrTestingEnabled: Boolean!
   notifyOnBuildFailure: Boolean!
+  oldestAllowedMergeBase: String!
   owner: String!
   parsleyFilters: [ParsleyFilter!]
   patchingDisabled: Boolean!
