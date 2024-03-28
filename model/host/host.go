@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"math"
 	"net"
+	"net/http"
 	"regexp"
 	"strconv"
 	"strings"
@@ -3511,14 +3512,31 @@ func (h *Host) UnsetPersistentDNSInfo(ctx context.Context) error {
 	return nil
 }
 
-// SetSleepSchedule updates the host's sleep schedule. Note that if some fields
+// SetSleepSchedule sets the sleep schedule for a given host
+func SetSleepSchedule(ctx context.Context, hostId string, schedule SleepScheduleInfo) error {
+	if err := UpdateOne(ctx, bson.M{
+		IdKey: hostId,
+	}, bson.M{
+		"$set": bson.M{
+			SleepScheduleKey: schedule,
+		},
+	}); err != nil {
+		return err
+	}
+	return nil
+}
+
+// UpdateSleepSchedule updates the host's sleep schedule. Note that if some fields
 // in the sleep schedule are not being modified, the sleep schedule must still
 // contain all the unmodified fields. For example, if this host is on a
 // temporary exemption when their daily schedule is updated, the new schedule
 // must still have the temporary exemption populated.
-func (h *Host) SetSleepSchedule(ctx context.Context, schedule SleepScheduleInfo) error {
+func (h *Host) UpdateSleepSchedule(ctx context.Context, schedule SleepScheduleInfo) error {
 	if err := schedule.Validate(); err != nil {
-		return errors.Wrap(err, "invalid sleep schedule")
+		return gimlet.ErrorResponse{
+			StatusCode: http.StatusBadRequest,
+			Message:    errors.Wrap(err, "invalid sleep schedule").Error(),
+		}
 	}
 
 	// Since the sleep schedule is being updated, recalculate the next
@@ -3530,22 +3548,24 @@ func (h *Host) SetSleepSchedule(ctx context.Context, schedule SleepScheduleInfo)
 	var err error
 	schedule.NextStartTime, err = schedule.GetNextScheduledStartTime(now)
 	if err != nil {
-		return errors.Wrap(err, "determining next sleep schedule start time")
+		return gimlet.ErrorResponse{
+			StatusCode: http.StatusInternalServerError,
+			Message:    errors.Wrap(err, "determining next sleep schedule start time").Error(),
+		}
 	}
 	schedule.NextStopTime, err = schedule.GetNextScheduledStopTime(now)
 	if err != nil {
-		return errors.Wrap(err, "determining next sleep schedule stop time")
+		return gimlet.ErrorResponse{
+			StatusCode: http.StatusInternalServerError,
+			Message:    errors.Wrap(err, "determining next sleep schedule stop time").Error(),
+		}
 	}
-	if err := UpdateOne(ctx, bson.M{
-		IdKey: h.Id,
-	}, bson.M{
-		"$set": bson.M{
-			SleepScheduleKey: schedule,
-		},
-	}); err != nil {
-		return err
+	if err = SetSleepSchedule(ctx, h.Id, schedule); err != nil {
+		return gimlet.ErrorResponse{
+			StatusCode: http.StatusInternalServerError,
+			Message:    errors.Wrap(err, "setting sleep schedule").Error(),
+		}
 	}
-
 	h.SleepSchedule = schedule
 
 	return nil

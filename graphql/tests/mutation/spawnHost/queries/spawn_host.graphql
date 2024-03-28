@@ -9,6 +9,14 @@ mutation {
         name: "mykey.pub"
       }
       savePublicKey: false
+      sleepSchedule: {
+        dailyStartTime: ""
+        dailyStopTime: ""
+        permanentlyExempt: false
+        shouldKeepOff: false
+        timeZone: "America/New_York"
+        wholeWeekdaysOff: [0, 6]
+      }
       noExpiration: false
       expiration: "2020-08-06T17:42:12Z"
     }
@@ -19,6 +27,15 @@ mutation {
     noExpiration
     distro {
       id
+    }
+    sleepSchedule {
+      dailyStartTime
+      dailyStopTime
+      permanentlyExempt
+      shouldKeepOff
+      timeZone
+      temporarilyExemptUntil
+      wholeWeekdaysOff
     }
   }
 }

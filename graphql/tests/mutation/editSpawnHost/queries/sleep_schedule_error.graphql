@@ -1,0 +1,27 @@
+mutation {
+  editSpawnHost(
+    spawnHost: {
+      hostId: "i-0f81a2d39744003dd",
+      sleepSchedule: {
+        dailyStartTime: "8:00"
+        dailyStopTime: ""
+        permanentlyExempt: false
+        shouldKeepOff: false
+        temporarilyExemptUntil: "2024-01-06T17:42:12Z"
+        timeZone: "America/New_York"
+        wholeWeekdaysOff: []
+      }
+    }
+  ) {
+    id
+    sleepSchedule {
+      dailyStartTime
+      dailyStopTime
+      permanentlyExempt
+      shouldKeepOff
+      timeZone
+      temporarilyExemptUntil
+      wholeWeekdaysOff
+    }
+  }
+}

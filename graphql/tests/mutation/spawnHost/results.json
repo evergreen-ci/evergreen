@@ -11,6 +11,15 @@
                         "noExpiration": false,
                         "distro": {
                             "id": "rhel71-power8-large"
+                        },
+                        "sleepSchedule": {
+                          "dailyStartTime": "",
+                          "dailyStopTime": "",
+                          "permanentlyExempt": false,
+                          "shouldKeepOff": false,
+                          "timeZone": "America/New_York",
+                          "temporarilyExemptUntil": null,
+                          "wholeWeekdaysOff": [0, 6]
                         }
                     }
                 }
