@@ -20,6 +20,7 @@ type APIProjectEvent struct {
 
 // take this from the original place instead of redefinning it here
 type APIProjectEventSettings struct {
+	Id                    *string           `json:"id"`
 	ProjectRef            APIProjectRef     `json:"proj_ref"`
 	GithubWebhooksEnabled bool              `json:"github_webhooks_enabled"`
 	Vars                  APIProjectVars    `json:"vars"`
@@ -28,6 +29,7 @@ type APIProjectEventSettings struct {
 }
 
 type APIProjectSettings struct {
+	Id                    *string           `json:"id"`
 	ProjectRef            APIProjectRef     `json:"proj_ref"`
 	GithubWebhooksEnabled bool              `json:"github_webhooks_enabled"`
 	Vars                  APIProjectVars    `json:"vars"`

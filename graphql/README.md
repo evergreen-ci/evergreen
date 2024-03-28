@@ -40,6 +40,8 @@ over
 
 See the Apollo GraphQL [blogpost](https://www.apollographql.com/blog/designing-graphql-mutations) from which this was referenced.
 
+Note that this guideline only applies to mutations, not queries.
+
 #### Nullability
 
 Nullability is controlled via the exclamation mark (`!`). If you put an exclamation mark on a field, it means that the field cannot be null.

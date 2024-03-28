@@ -1,0 +1,16 @@
+{
+  "tests": [
+    {
+      "query_file": "new_args.graphql",
+      "result": {
+        "data": {
+          "patch": {
+            "id": "5dd2e89cd1fe07048e43bc8f",
+            "author": "bob.smith",
+            "githash": "123"
+          }
+        }
+      }
+    }
+  ]
+}

@@ -1,45 +1,51 @@
 {
-    "tests": [
-        {
-            "query_file": "periodic_build.graphql",
-            "result": {
-                "data": {
-                    "hasVersion": true
-                }
-            }
-        },
-        {
-            "query_file": "patch.graphql",
-            "result": {
-                "data": {
-                    "hasVersion": false
-                }
-            }
-        },
-        {
-            "query_file" : "mainline_commit.graphql",
-            "result": {
-                "data": {
-                    "hasVersion": true
-                }
-            }
-        },
-        {
-            "query_file" : "does_not_exist.graphql", 
-            "result": {
-                "data": null,
-                "errors": [
-                    {
-                        "message": "Unable to find patch or version notARealId",
-                        "path": [
-                            "hasVersion"
-                        ],
-                        "extensions": {
-                            "code": "RESOURCE_NOT_FOUND"
-                        }
-                    }
-                ]
-            }
+  "tests": [
+    {
+      "query_file": "periodic_build.graphql",
+      "result": {
+        "data": {
+          "hasVersion": true
         }
-    ]
+      }
+    },
+    {
+      "query_file": "patch.graphql",
+      "result": {
+        "data": {
+          "hasVersion": false
+        }
+      }
+    },
+    {
+      "query_file": "mainline_commit.graphql",
+      "result": {
+        "data": {
+          "hasVersion": true
+        }
+      }
+    },
+    {
+      "query_file": "new_args.graphql",
+      "result": {
+        "data": {
+          "hasVersion": true
+        }
+      }
+    },
+    {
+      "query_file": "does_not_exist.graphql",
+      "result": {
+        "data": null,
+        "errors": [
+          {
+            "message": "Unable to find patch or version notARealId",
+            "path": ["hasVersion"],
+            "extensions": {
+              "code": "RESOURCE_NOT_FOUND"
+            }
+          }
+        ]
+      }
+    }
+  ]
 }
