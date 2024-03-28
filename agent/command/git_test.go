@@ -269,7 +269,7 @@ func (s *GitGetProjectSuite) TestRetryFetchAttemptsFiveTimesOnError() {
 
 	s.Equal(5, attempt)
 	s.Require().Error(err)
-	s.Contains("failed to fetch", err.Error())
+	s.Contains(err.Error(), "failed to fetch")
 }
 
 func (s *GitGetProjectSuite) TestRetryFetchAttemptsOnceOnSuccess() {
