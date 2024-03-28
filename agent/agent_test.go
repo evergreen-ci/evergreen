@@ -158,6 +158,7 @@ func (s *AgentSuite) SetupTest() {
 	factory, ok := command.GetCommandFactory("setup.initial")
 	s.True(ok)
 	s.tc.setCurrentCommand(factory())
+	s.tc.setCurrentBlock("setup.initial")
 	sender, err := s.a.GetSender(ctx, LogOutputStdout, "agent", "task_id", 2)
 	s.Require().NoError(err)
 	s.a.SetDefaultLogger(sender)
@@ -374,6 +375,9 @@ pre:
 
 	s.True(cmdDuration > waitUntilAbort, "command should have only stopped when it received cancel")
 	s.True(cmdDuration < cmdSleepSecs*time.Second, "command should not block if it's taking too long to stop")
+
+	// Test if the block type was correctly set as the preblock.
+	s.Equal(command.PreBlock, s.tc.getCurrentBlock())
 }
 
 func (s *AgentSuite) TestCancelledRunCommandsIsNonBlocking() {
@@ -397,6 +401,9 @@ pre:
 	s.True(utility.IsContextError(errors.Cause(err)))
 	s.NoError(s.tc.logger.Close())
 	checkMockLogs(s.T(), s.mockCommunicator, s.tc.taskConfig.Task.Id, nil, []string{panicLog})
+
+	// Test if the block type was correctly kept as "setup.initial" since no tasks were ran.
+	s.Equal("setup.initial", string(s.tc.getCurrentBlock()))
 }
 
 func (s *AgentSuite) TestRunCommandsIsPanicSafe() {
@@ -1141,6 +1148,7 @@ func (s *AgentSuite) TestEndTaskResponse() {
 	factory, ok := command.GetCommandFactory("setup.initial")
 	s.Require().True(ok)
 	s.tc.setCurrentCommand(factory())
+	s.tc.setCurrentBlock("setup.initial")
 
 	const systemFailureDescription = "failure message"
 	s.T().Run("TaskFailingWithCurrentCommandOverridesEmptyDescription", func(t *testing.T) {
