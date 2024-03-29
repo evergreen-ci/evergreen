@@ -86,6 +86,8 @@ type ResolverRoot interface {
 	FinderSettingsInput() FinderSettingsInputResolver
 	HostAllocatorSettingsInput() HostAllocatorSettingsInputResolver
 	PlannerSettingsInput() PlannerSettingsInputResolver
+	ProjectSettingsInput() ProjectSettingsInputResolver
+	RepoSettingsInput() RepoSettingsInputResolver
 	SleepScheduleInput() SleepScheduleInputResolver
 	SubscriberInput() SubscriberInputResolver
 }
@@ -663,7 +665,7 @@ type ComplexityRoot struct {
 		SaveSubscription              func(childComplexity int, subscription model.APISubscription) int
 		SchedulePatch                 func(childComplexity int, patchID string, configure PatchConfigure) int
 		SchedulePatchTasks            func(childComplexity int, patchID string) int
-		ScheduleTasks                 func(childComplexity int, taskIds []string) int
+		ScheduleTasks                 func(childComplexity int, taskIds []string, versionID *string) int
 		ScheduleUndispatchedBaseTasks func(childComplexity int, patchID string) int
 		SetAnnotationMetadataLinks    func(childComplexity int, taskID string, execution int, metadataLinks []*model.APIMetadataLink) int
 		SetLastRevision               func(childComplexity int, opts SetLastRevisionInput) int
@@ -995,7 +997,7 @@ type ComplexityRoot struct {
 		DistroTaskQueue          func(childComplexity int, distroID string) int
 		Distros                  func(childComplexity int, onlySpawnable bool) int
 		GithubProjectConflicts   func(childComplexity int, projectID string) int
-		HasVersion               func(childComplexity int, id string) int
+		HasVersion               func(childComplexity int, id *string, patchID *string) int
 		Host                     func(childComplexity int, hostID string) int
 		HostEvents               func(childComplexity int, hostID string, hostTag *string, limit *int, page *int) int
 		Hosts                    func(childComplexity int, hostID *string, distroID *string, currentTaskID *string, statuses []string, startedBy *string, sortBy *HostSortBy, sortDir *SortDirection, page *int, limit *int) int
@@ -1005,14 +1007,14 @@ type ComplexityRoot struct {
 		MyHosts                  func(childComplexity int) int
 		MyPublicKeys             func(childComplexity int) int
 		MyVolumes                func(childComplexity int) int
-		Patch                    func(childComplexity int, id string) int
+		Patch                    func(childComplexity int, id *string, patchID *string) int
 		Pod                      func(childComplexity int, podID string) int
 		Project                  func(childComplexity int, projectIdentifier string) int
 		ProjectEvents            func(childComplexity int, identifier string, limit *int, before *time.Time) int
 		ProjectSettings          func(childComplexity int, identifier string) int
 		Projects                 func(childComplexity int) int
-		RepoEvents               func(childComplexity int, id string, limit *int, before *time.Time) int
-		RepoSettings             func(childComplexity int, id string) int
+		RepoEvents               func(childComplexity int, id *string, limit *int, before *time.Time, repoID *string) int
+		RepoSettings             func(childComplexity int, id *string, repoID *string) int
 		SpruceConfig             func(childComplexity int) int
 		SubnetAvailabilityZones  func(childComplexity int) int
 		Task                     func(childComplexity int, taskID string, execution *int) int
@@ -1023,7 +1025,7 @@ type ComplexityRoot struct {
 		User                     func(childComplexity int, userID *string) int
 		UserConfig               func(childComplexity int) int
 		UserSettings             func(childComplexity int) int
-		Version                  func(childComplexity int, id string) int
+		Version                  func(childComplexity int, id *string, versionID *string) int
 		ViewableProjectRefs      func(childComplexity int) int
 	}
 
@@ -1708,7 +1710,7 @@ type MutationResolver interface {
 	AbortTask(ctx context.Context, taskID string) (*model.APITask, error)
 	OverrideTaskDependencies(ctx context.Context, taskID string) (*model.APITask, error)
 	RestartTask(ctx context.Context, taskID string, failedOnly bool) (*model.APITask, error)
-	ScheduleTasks(ctx context.Context, taskIds []string) ([]*model.APITask, error)
+	ScheduleTasks(ctx context.Context, taskIds []string, versionID *string) ([]*model.APITask, error)
 	SetTaskPriority(ctx context.Context, taskID string, priority int) (*model.APITask, error)
 	UnscheduleTask(ctx context.Context, taskID string) (*model.APITask, error)
 	ClearMySubscriptions(ctx context.Context) (int, error)
@@ -1798,14 +1800,14 @@ type QueryResolver interface {
 	Hosts(ctx context.Context, hostID *string, distroID *string, currentTaskID *string, statuses []string, startedBy *string, sortBy *HostSortBy, sortDir *SortDirection, page *int, limit *int) (*HostsResponse, error)
 	TaskQueueDistros(ctx context.Context) ([]*TaskQueueDistro, error)
 	Pod(ctx context.Context, podID string) (*model.APIPod, error)
-	Patch(ctx context.Context, id string) (*model.APIPatch, error)
+	Patch(ctx context.Context, id *string, patchID *string) (*model.APIPatch, error)
 	GithubProjectConflicts(ctx context.Context, projectID string) (*model1.GithubProjectConflicts, error)
 	Project(ctx context.Context, projectIdentifier string) (*model.APIProjectRef, error)
 	Projects(ctx context.Context) ([]*GroupedProjects, error)
 	ProjectEvents(ctx context.Context, identifier string, limit *int, before *time.Time) (*ProjectEvents, error)
 	ProjectSettings(ctx context.Context, identifier string) (*model.APIProjectSettings, error)
-	RepoEvents(ctx context.Context, id string, limit *int, before *time.Time) (*ProjectEvents, error)
-	RepoSettings(ctx context.Context, id string) (*model.APIProjectSettings, error)
+	RepoEvents(ctx context.Context, id *string, limit *int, before *time.Time, repoID *string) (*ProjectEvents, error)
+	RepoSettings(ctx context.Context, id *string, repoID *string) (*model.APIProjectSettings, error)
 	ViewableProjectRefs(ctx context.Context) ([]*GroupedProjects, error)
 	MyHosts(ctx context.Context) ([]*model.APIHost, error)
 	MyVolumes(ctx context.Context) ([]*model.APIVolume, error)
@@ -1821,8 +1823,8 @@ type QueryResolver interface {
 	BuildVariantsForTaskName(ctx context.Context, projectIdentifier string, taskName string) ([]*task.BuildVariantTuple, error)
 	MainlineCommits(ctx context.Context, options MainlineCommitsOptions, buildVariantOptions *BuildVariantOptions) (*MainlineCommits, error)
 	TaskNamesForBuildVariant(ctx context.Context, projectIdentifier string, buildVariant string) ([]string, error)
-	HasVersion(ctx context.Context, id string) (bool, error)
-	Version(ctx context.Context, id string) (*model.APIVersion, error)
+	HasVersion(ctx context.Context, id *string, patchID *string) (bool, error)
+	Version(ctx context.Context, id *string, versionID *string) (*model.APIVersion, error)
 }
 type RepoSettingsResolver interface {
 	Aliases(ctx context.Context, obj *model.APIProjectSettings) ([]*model.APIProjectAlias, error)
@@ -1989,6 +1991,12 @@ type HostAllocatorSettingsInputResolver interface {
 type PlannerSettingsInputResolver interface {
 	TargetTime(ctx context.Context, obj *model.APIPlannerSettings, data int) error
 	Version(ctx context.Context, obj *model.APIPlannerSettings, data PlannerVersion) error
+}
+type ProjectSettingsInputResolver interface {
+	ProjectID(ctx context.Context, obj *model.APIProjectSettings, data *string) error
+}
+type RepoSettingsInputResolver interface {
+	RepoID(ctx context.Context, obj *model.APIProjectSettings, data *string) error
 }
 type SleepScheduleInputResolver interface {
 	WholeWeekdaysOff(ctx context.Context, obj *host.SleepScheduleInfo, data []int) error
@@ -4714,7 +4722,7 @@ func (e *executableSchema) Complexity(typeName, field string, childComplexity in
 			return 0, false
 		}
 
-		return e.complexity.Mutation.ScheduleTasks(childComplexity, args["taskIds"].([]string)), true
+		return e.complexity.Mutation.ScheduleTasks(childComplexity, args["taskIds"].([]string), args["versionId"].(*string)), true
 
 	case "Mutation.scheduleUndispatchedBaseTasks":
 		if e.complexity.Mutation.ScheduleUndispatchedBaseTasks == nil {
@@ -6495,7 +6503,7 @@ func (e *executableSchema) Complexity(typeName, field string, childComplexity in
 			return 0, false
 		}
 
-		return e.complexity.Query.HasVersion(childComplexity, args["id"].(string)), true
+		return e.complexity.Query.HasVersion(childComplexity, args["id"].(*string), args["patchId"].(*string)), true
 
 	case "Query.host":
 		if e.complexity.Query.Host == nil {
@@ -6595,7 +6603,7 @@ func (e *executableSchema) Complexity(typeName, field string, childComplexity in
 			return 0, false
 		}
 
-		return e.complexity.Query.Patch(childComplexity, args["id"].(string)), true
+		return e.complexity.Query.Patch(childComplexity, args["id"].(*string), args["patchId"].(*string)), true
 
 	case "Query.pod":
 		if e.complexity.Query.Pod == nil {
@@ -6662,7 +6670,7 @@ func (e *executableSchema) Complexity(typeName, field string, childComplexity in
 			return 0, false
 		}
 
-		return e.complexity.Query.RepoEvents(childComplexity, args["id"].(string), args["limit"].(*int), args["before"].(*time.Time)), true
+		return e.complexity.Query.RepoEvents(childComplexity, args["id"].(*string), args["limit"].(*int), args["before"].(*time.Time), args["repoId"].(*string)), true
 
 	case "Query.repoSettings":
 		if e.complexity.Query.RepoSettings == nil {
@@ -6674,7 +6682,7 @@ func (e *executableSchema) Complexity(typeName, field string, childComplexity in
 			return 0, false
 		}
 
-		return e.complexity.Query.RepoSettings(childComplexity, args["id"].(string)), true
+		return e.complexity.Query.RepoSettings(childComplexity, args["id"].(*string), args["repoId"].(*string)), true
 
 	case "Query.spruceConfig":
 		if e.complexity.Query.SpruceConfig == nil {
@@ -6781,7 +6789,7 @@ func (e *executableSchema) Complexity(typeName, field string, childComplexity in
 			return 0, false
 		}
 
-		return e.complexity.Query.Version(childComplexity, args["id"].(string)), true
+		return e.complexity.Query.Version(childComplexity, args["id"].(*string), args["versionId"].(*string)), true
 
 	case "Query.viewableProjectRefs":
 		if e.complexity.Query.ViewableProjectRefs == nil {
@@ -11025,6 +11033,15 @@ func (ec *executionContext) field_Mutation_scheduleTasks_args(ctx context.Contex
 		}
 	}
 	args["taskIds"] = arg0
+	var arg1 *string
+	if tmp, ok := rawArgs["versionId"]; ok {
+		ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("versionId"))
+		arg1, err = ec.unmarshalOString2ᚖstring(ctx, tmp)
+		if err != nil {
+			return nil, err
+		}
+	}
+	args["versionId"] = arg1
 	return args, nil
 }
 
@@ -11630,15 +11647,24 @@ func (ec *executionContext) field_Query_githubProjectConflicts_args(ctx context.
 func (ec *executionContext) field_Query_hasVersion_args(ctx context.Context, rawArgs map[string]interface{}) (map[string]interface{}, error) {
 	var err error
 	args := map[string]interface{}{}
-	var arg0 string
+	var arg0 *string
 	if tmp, ok := rawArgs["id"]; ok {
 		ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("id"))
-		arg0, err = ec.unmarshalNString2string(ctx, tmp)
+		arg0, err = ec.unmarshalOString2ᚖstring(ctx, tmp)
 		if err != nil {
 			return nil, err
 		}
 	}
 	args["id"] = arg0
+	var arg1 *string
+	if tmp, ok := rawArgs["patchId"]; ok {
+		ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("patchId"))
+		arg1, err = ec.unmarshalOString2ᚖstring(ctx, tmp)
+		if err != nil {
+			return nil, err
+		}
+	}
+	args["patchId"] = arg1
 	return args, nil
 }
 
@@ -11828,15 +11854,24 @@ func (ec *executionContext) field_Query_mainlineCommits_args(ctx context.Context
 func (ec *executionContext) field_Query_patch_args(ctx context.Context, rawArgs map[string]interface{}) (map[string]interface{}, error) {
 	var err error
 	args := map[string]interface{}{}
-	var arg0 string
+	var arg0 *string
 	if tmp, ok := rawArgs["id"]; ok {
 		ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("id"))
-		arg0, err = ec.unmarshalNString2string(ctx, tmp)
+		arg0, err = ec.unmarshalOString2ᚖstring(ctx, tmp)
 		if err != nil {
 			return nil, err
 		}
 	}
 	args["id"] = arg0
+	var arg1 *string
+	if tmp, ok := rawArgs["patchId"]; ok {
+		ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("patchId"))
+		arg1, err = ec.unmarshalOString2ᚖstring(ctx, tmp)
+		if err != nil {
+			return nil, err
+		}
+	}
+	args["patchId"] = arg1
 	return args, nil
 }
 
@@ -11957,10 +11992,10 @@ func (ec *executionContext) field_Query_project_args(ctx context.Context, rawArg
 func (ec *executionContext) field_Query_repoEvents_args(ctx context.Context, rawArgs map[string]interface{}) (map[string]interface{}, error) {
 	var err error
 	args := map[string]interface{}{}
-	var arg0 string
+	var arg0 *string
 	if tmp, ok := rawArgs["id"]; ok {
 		ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("id"))
-		arg0, err = ec.unmarshalNString2string(ctx, tmp)
+		arg0, err = ec.unmarshalOString2ᚖstring(ctx, tmp)
 		if err != nil {
 			return nil, err
 		}
@@ -12003,16 +12038,25 @@ func (ec *executionContext) field_Query_repoEvents_args(ctx context.Context, raw
 		}
 	}
 	args["before"] = arg2
+	var arg3 *string
+	if tmp, ok := rawArgs["repoId"]; ok {
+		ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("repoId"))
+		arg3, err = ec.unmarshalOString2ᚖstring(ctx, tmp)
+		if err != nil {
+			return nil, err
+		}
+	}
+	args["repoId"] = arg3
 	return args, nil
 }
 
 func (ec *executionContext) field_Query_repoSettings_args(ctx context.Context, rawArgs map[string]interface{}) (map[string]interface{}, error) {
 	var err error
 	args := map[string]interface{}{}
-	var arg0 string
+	var arg0 *string
 	if tmp, ok := rawArgs["id"]; ok {
 		ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("id"))
-		directive0 := func(ctx context.Context) (interface{}, error) { return ec.unmarshalNString2string(ctx, tmp) }
+		directive0 := func(ctx context.Context) (interface{}, error) { return ec.unmarshalOString2ᚖstring(ctx, tmp) }
 		directive1 := func(ctx context.Context) (interface{}, error) {
 			access, err := ec.unmarshalNProjectSettingsAccess2githubᚗcomᚋevergreenᚑciᚋevergreenᚋgraphqlᚐProjectSettingsAccess(ctx, "VIEW")
 			if err != nil {
@@ -12028,13 +12072,24 @@ func (ec *executionContext) field_Query_repoSettings_args(ctx context.Context, r
 		if err != nil {
 			return nil, graphql.ErrorOnPath(ctx, err)
 		}
-		if data, ok := tmp.(string); ok {
+		if data, ok := tmp.(*string); ok {
 			arg0 = data
+		} else if tmp == nil {
+			arg0 = nil
 		} else {
-			return nil, graphql.ErrorOnPath(ctx, fmt.Errorf(`unexpected type %T from directive, should be string`, tmp))
+			return nil, graphql.ErrorOnPath(ctx, fmt.Errorf(`unexpected type %T from directive, should be *string`, tmp))
 		}
 	}
 	args["id"] = arg0
+	var arg1 *string
+	if tmp, ok := rawArgs["repoId"]; ok {
+		ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("repoId"))
+		arg1, err = ec.unmarshalOString2ᚖstring(ctx, tmp)
+		if err != nil {
+			return nil, err
+		}
+	}
+	args["repoId"] = arg1
 	return args, nil
 }
 
@@ -12143,15 +12198,24 @@ func (ec *executionContext) field_Query_user_args(ctx context.Context, rawArgs m
 func (ec *executionContext) field_Query_version_args(ctx context.Context, rawArgs map[string]interface{}) (map[string]interface{}, error) {
 	var err error
 	args := map[string]interface{}{}
-	var arg0 string
+	var arg0 *string
 	if tmp, ok := rawArgs["id"]; ok {
 		ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("id"))
-		arg0, err = ec.unmarshalNString2string(ctx, tmp)
+		arg0, err = ec.unmarshalOString2ᚖstring(ctx, tmp)
 		if err != nil {
 			return nil, err
 		}
 	}
 	args["id"] = arg0
+	var arg1 *string
+	if tmp, ok := rawArgs["versionId"]; ok {
+		ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("versionId"))
+		arg1, err = ec.unmarshalOString2ᚖstring(ctx, tmp)
+		if err != nil {
+			return nil, err
+		}
+	}
+	args["versionId"] = arg1
 	return args, nil
 }
 
@@ -31234,7 +31298,7 @@ func (ec *executionContext) _Mutation_scheduleTasks(ctx context.Context, field g
 	}()
 	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
 		ctx = rctx // use context from middleware stack in children
-		return ec.resolvers.Mutation().ScheduleTasks(rctx, fc.Args["taskIds"].([]string))
+		return ec.resolvers.Mutation().ScheduleTasks(rctx, fc.Args["taskIds"].([]string), fc.Args["versionId"].(*string))
 	})
 	if err != nil {
 		ec.Error(ctx, err)
@@ -43671,7 +43735,7 @@ func (ec *executionContext) _Query_patch(ctx context.Context, field graphql.Coll
 	}()
 	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
 		ctx = rctx // use context from middleware stack in children
-		return ec.resolvers.Query().Patch(rctx, fc.Args["id"].(string))
+		return ec.resolvers.Query().Patch(rctx, fc.Args["id"].(*string), fc.Args["patchId"].(*string))
 	})
 	if err != nil {
 		ec.Error(ctx, err)
@@ -44190,7 +44254,7 @@ func (ec *executionContext) _Query_repoEvents(ctx context.Context, field graphql
 	}()
 	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
 		ctx = rctx // use context from middleware stack in children
-		return ec.resolvers.Query().RepoEvents(rctx, fc.Args["id"].(string), fc.Args["limit"].(*int), fc.Args["before"].(*time.Time))
+		return ec.resolvers.Query().RepoEvents(rctx, fc.Args["id"].(*string), fc.Args["limit"].(*int), fc.Args["before"].(*time.Time), fc.Args["repoId"].(*string))
 	})
 	if err != nil {
 		ec.Error(ctx, err)
@@ -44251,7 +44315,7 @@ func (ec *executionContext) _Query_repoSettings(ctx context.Context, field graph
 	}()
 	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
 		ctx = rctx // use context from middleware stack in children
-		return ec.resolvers.Query().RepoSettings(rctx, fc.Args["id"].(string))
+		return ec.resolvers.Query().RepoSettings(rctx, fc.Args["id"].(*string), fc.Args["repoId"].(*string))
 	})
 	if err != nil {
 		ec.Error(ctx, err)
@@ -45558,7 +45622,7 @@ func (ec *executionContext) _Query_hasVersion(ctx context.Context, field graphql
 	}()
 	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
 		ctx = rctx // use context from middleware stack in children
-		return ec.resolvers.Query().HasVersion(rctx, fc.Args["id"].(string))
+		return ec.resolvers.Query().HasVersion(rctx, fc.Args["id"].(*string), fc.Args["patchId"].(*string))
 	})
 	if err != nil {
 		ec.Error(ctx, err)
@@ -45613,7 +45677,7 @@ func (ec *executionContext) _Query_version(ctx context.Context, field graphql.Co
 	}()
 	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
 		ctx = rctx // use context from middleware stack in children
-		return ec.resolvers.Query().Version(rctx, fc.Args["id"].(string))
+		return ec.resolvers.Query().Version(rctx, fc.Args["id"].(*string), fc.Args["versionId"].(*string))
 	})
 	if err != nil {
 		ec.Error(ctx, err)
@@ -70192,13 +70256,22 @@ func (ec *executionContext) unmarshalInputProjectSettingsInput(ctx context.Conte
 		asMap[k] = v
 	}
 
-	fieldsInOrder := [...]string{"aliases", "githubWebhooksEnabled", "projectRef", "subscriptions", "vars"}
+	fieldsInOrder := [...]string{"projectId", "aliases", "githubWebhooksEnabled", "projectRef", "subscriptions", "vars"}
 	for _, k := range fieldsInOrder {
 		v, ok := asMap[k]
 		if !ok {
 			continue
 		}
 		switch k {
+		case "projectId":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("projectId"))
+			data, err := ec.unmarshalOString2ᚖstring(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			if err = ec.resolvers.ProjectSettingsInput().ProjectID(ctx, &it, data); err != nil {
+				return it, err
+			}
 		case "aliases":
 			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("aliases"))
 			data, err := ec.unmarshalOProjectAliasInput2ᚕgithubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐAPIProjectAliasᚄ(ctx, v)
@@ -70656,13 +70729,22 @@ func (ec *executionContext) unmarshalInputRepoSettingsInput(ctx context.Context,
 		asMap[k] = v
 	}
 
-	fieldsInOrder := [...]string{"aliases", "githubWebhooksEnabled", "projectRef", "subscriptions", "vars"}
+	fieldsInOrder := [...]string{"repoId", "aliases", "githubWebhooksEnabled", "projectRef", "subscriptions", "vars"}
 	for _, k := range fieldsInOrder {
 		v, ok := asMap[k]
 		if !ok {
 			continue
 		}
 		switch k {
+		case "repoId":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("repoId"))
+			data, err := ec.unmarshalOString2ᚖstring(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			if err = ec.resolvers.RepoSettingsInput().RepoID(ctx, &it, data); err != nil {
+				return it, err
+			}
 		case "aliases":
 			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("aliases"))
 			data, err := ec.unmarshalOProjectAliasInput2ᚕgithubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐAPIProjectAliasᚄ(ctx, v)
