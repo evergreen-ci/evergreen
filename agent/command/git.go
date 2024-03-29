@@ -528,23 +528,18 @@ func (c *gitFetchProject) Execute(ctx context.Context, comm client.Communicator,
 		return err
 	}
 
-	var attemptNum int
 	err = c.fetch(ctx, comm, logger, conf, td, opts)
 	if err != nil {
 		logger.Task().Error(message.WrapError(err, message.Fields{
-			"operation":            "git.get_project",
-			"message":              "cloning failed",
-			"num_attempts":         attemptNum,
-			"num_attempts_allowed": gitFetchProjectRetries,
-			"owner":                conf.ProjectRef.Owner,
-			"repo":                 conf.ProjectRef.Repo,
-			"branch":               conf.ProjectRef.Branch,
-			"clone_method":         opts.method,
+			"operation":    "git.get_project",
+			"message":      "cloning failed",
+			"num_attempts": gitFetchProjectRetries,
+			"owner":        conf.ProjectRef.Owner,
+			"repo":         conf.ProjectRef.Repo,
+			"branch":       conf.ProjectRef.Branch,
+			"clone_method": opts.method,
 		}))
 	}
-
-	span := trace.SpanFromContext(ctx)
-	span.SetAttributes(attribute.Int(cloneRetriesAttribute, attemptNum))
 
 	return err
 }
