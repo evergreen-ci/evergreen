@@ -115,10 +115,13 @@ func (c *baseCommunicator) createCedarGRPCConn(ctx context.Context) error {
 			return errors.Wrap(err, "getting Cedar config")
 		}
 
-		if cc.GRPCBaseURL == "" {
-			// No cedar base URL probably means we are running
+		if cc.GRPCBaseURL == "" && cc.BaseURL == "" {
+			// No cedar URLs probably means we are running
 			// evergreen locally or in some testing mode.
 			return nil
+		} else if cc.GRPCBaseURL == "" {
+			// Default the GRPC url to the HTTP base url if it's unpopulated
+			cc.GRPCBaseURL = cc.BaseURL
 		}
 
 		dialOpts := timber.DialCedarOptions{
