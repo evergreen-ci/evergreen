@@ -554,10 +554,18 @@ func TestRemoveHiddenProjects(t *testing.T) {
 				},
 			},
 		},
+		{
+			Type: evergreen.DistroResourceType,
+			Permissions: rolemanager.PermissionsForResources{
+				"distro1": gimlet.Permissions{
+					"distro_settings": 10,
+				},
+			},
+		},
 	}
 
 	assert.NoError(t, removeHiddenProjects(permissions))
-	require.Len(t, permissions, 1)
+	require.Len(t, permissions, 2)
 	require.Len(t, permissions[0].Permissions, 2)
 	require.Nil(t, permissions[0].Permissions["project1"])
 	require.NotNil(t, permissions[0].Permissions["project2"])
