@@ -51,6 +51,10 @@ type Command interface {
 	// be used to run and manage processes that are started within commands.
 	JasperManager() jasper.Manager
 	SetJasperManager(jasper.Manager)
+
+	// RetryOnFailure indicates whether the entire task should be retried if this command fails.
+	RetryOnFailure() bool
+	SetRetryOnFailure(bool)
 }
 
 // base contains a basic implementation of functionality that is
@@ -59,6 +63,7 @@ type base struct {
 	idleTimeout     time.Duration
 	typeName        string
 	fullDisplayName string
+	retryOnFailure  bool
 	jasper          jasper.Manager
 	mu              sync.RWMutex
 }
@@ -117,4 +122,18 @@ func (b *base) JasperManager() jasper.Manager {
 	defer b.mu.RUnlock()
 
 	return b.jasper
+}
+
+func (b *base) SetRetryOnFailure(retry bool) {
+	b.mu.Lock()
+	defer b.mu.Unlock()
+
+	b.retryOnFailure = retry
+}
+
+func (b *base) RetryOnFailure() bool {
+	b.mu.RLock()
+	defer b.mu.RUnlock()
+
+	return b.retryOnFailure
 }

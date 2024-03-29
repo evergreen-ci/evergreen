@@ -12,6 +12,7 @@ import (
 	"sync"
 
 	"github.com/evergreen-ci/evergreen/agent/internal/client"
+	"github.com/evergreen-ci/evergreen/agent/internal/redactor"
 	"github.com/evergreen-ci/evergreen/model/log"
 	"github.com/evergreen-ci/evergreen/model/task"
 	"github.com/evergreen-ci/evergreen/model/testlog"
@@ -26,7 +27,7 @@ import (
 
 // AppendTestLog appends log lines to the specified test log for the given task
 // run.
-func AppendTestLog(ctx context.Context, comm client.Communicator, tsk *task.Task, testLog *testlog.TestLog) error {
+func AppendTestLog(ctx context.Context, comm client.Communicator, tsk *task.Task, redactionOptions redactor.RedactionOptions, testLog *testlog.TestLog) error {
 	taskOpts := taskoutput.TaskOptions{
 		ProjectID: tsk.Project,
 		TaskID:    tsk.Id,
@@ -36,6 +37,7 @@ func AppendTestLog(ctx context.Context, comm client.Communicator, tsk *task.Task
 	if err != nil {
 		return errors.Wrapf(err, "creating Evergreen logger for test log '%s'", testLog.Name)
 	}
+	sender = redactor.NewRedactingSender(sender, redactionOptions)
 	sender.Send(message.ConvertToComposer(level.Info, strings.Join(testLog.Lines, "\n")))
 
 	return errors.Wrapf(sender.Close(), "closing Evergreen logger for test result '%s'", testLog.Name)
@@ -53,16 +55,20 @@ type testLogDirectoryHandler struct {
 
 // newTestLogDirectoryHandler returns a new test log directory handler for the
 // specified task.
-func newTestLogDirectoryHandler(dir string, output *taskoutput.TaskOutput, taskOpts taskoutput.TaskOptions, logger client.LoggerProducer) directoryHandler {
+func newTestLogDirectoryHandler(dir string, output *taskoutput.TaskOutput, taskOpts taskoutput.TaskOptions, redactionOptions redactor.RedactionOptions, logger client.LoggerProducer) directoryHandler {
 	h := &testLogDirectoryHandler{
 		dir:    dir,
 		logger: logger,
 	}
 	h.createSender = func(ctx context.Context, logPath string) (send.Sender, error) {
-		return output.TestLogs.NewSender(ctx, taskOpts, taskoutput.EvergreenSenderOptions{
+		evgSender, err := output.TestLogs.NewSender(ctx, taskOpts, taskoutput.EvergreenSenderOptions{
 			Local: logger.Task().GetSender(),
 			Parse: h.spec.getParser(),
 		}, logPath)
+		if err != nil {
+			return nil, errors.Wrap(err, "making test log sender")
+		}
+		return redactor.NewRedactingSender(evgSender, redactionOptions), nil
 	}
 
 	return h

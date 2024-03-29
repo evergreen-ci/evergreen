@@ -281,6 +281,17 @@ func (j *patchIntentProcessor) finishPatch(ctx context.Context, patchDoc *patch.
 		return errors.New("task sync at the end of a patched task is disabled by project settings")
 	}
 
+	if j.IntentType == patch.GithubIntentType && pref.OldestAllowedMergeBase != "" {
+		isMergeBaseAllowed, err := thirdparty.IsMergeBaseAllowed(ctx, token, patchDoc.GithubPatchData.BaseOwner, patchDoc.GithubPatchData.BaseRepo, pref.OldestAllowedMergeBase, patchDoc.GithubPatchData.MergeBase)
+		if err != nil {
+			return errors.Wrap(err, "checking if merge base is allowed")
+		}
+		if !isMergeBaseAllowed {
+			j.gitHubError = MergeBaseTooOld
+			return errors.New("merge base is older than the oldest allowed merge base in project settings")
+		}
+	}
+
 	validationCatcher := grip.NewBasicCatcher()
 	// Get and validate patched config
 	var patchedProjectConfig string
@@ -992,8 +1003,19 @@ func (j *patchIntentProcessor) buildGithubPatchDoc(ctx context.Context, patchDoc
 		})
 	}
 
+	j.user, err = findEvergreenUserForPR(patchDoc.GithubPatchData.AuthorUID)
+	if err != nil {
+		return isMember, errors.Wrapf(err, "finding user associated with GitHub UID '%d'", patchDoc.GithubPatchData.AuthorUID)
+	}
+	patchDoc.Author = j.user.Id
+	patchDoc.Project = projectRef.Id
+
 	patchContent, summaries, err := thirdparty.GetGithubPullRequestDiff(ctx, githubOauthToken, patchDoc.GithubPatchData)
 	if err != nil {
+		// Expected error when the PR diff is more than 3000 lines or 300 files.
+		if strings.Contains(err.Error(), thirdparty.PRDiffTooLargeErrorMessage) {
+			return isMember, nil
+		}
 		return isMember, err
 	}
 
@@ -1006,17 +1028,10 @@ func (j *patchIntentProcessor) buildGithubPatchDoc(ctx context.Context, patchDoc
 			Summary:     summaries,
 		},
 	})
-	patchDoc.Project = projectRef.Id
 
 	if err = db.WriteGridFile(patch.GridFSPrefix, patchFileID, strings.NewReader(patchContent)); err != nil {
 		return isMember, errors.Wrap(err, "writing patch file to DB")
 	}
-
-	j.user, err = findEvergreenUserForPR(patchDoc.GithubPatchData.AuthorUID)
-	if err != nil {
-		return isMember, errors.Wrapf(err, "finding user associated with GitHub UID '%d'", patchDoc.GithubPatchData.AuthorUID)
-	}
-	patchDoc.Author = j.user.Id
 
 	return isMember, nil
 }

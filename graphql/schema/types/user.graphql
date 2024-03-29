@@ -13,6 +13,7 @@ input UpdateParsleySettingsInput {
 
 input ParsleySettingsInput {
   sectionsEnabled: Boolean
+  jumpToFailingLineEnabled: Boolean
 }
 
 """
@@ -124,6 +125,7 @@ ParsleySettings contains information about a user's settings for Parsley.
 """
 type ParsleySettings {
   sectionsEnabled: Boolean!
+  jumpToFailingLineEnabled: Boolean!
 }
 
 """

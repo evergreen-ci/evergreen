@@ -10,7 +10,7 @@ import (
 	"time"
 
 	"github.com/evergreen-ci/evergreen"
-	"github.com/evergreen-ci/evergreen/agent"
+	"github.com/evergreen-ci/evergreen/agent/globals"
 	"github.com/mongodb/jasper"
 	"github.com/mongodb/jasper/options"
 	"github.com/mongodb/jasper/remote"
@@ -62,7 +62,7 @@ func TestAgentMonitorWithJasper(t *testing.T) {
 			m := &monitor{
 				clientPath: filepath.Join(tmpDir, "evergreen"),
 				distroID:   "distro",
-				logOutput:  agent.LogOutputFile,
+				logOutput:  globals.LogOutputFile,
 				logPrefix:  filepath.Join(tmpDir, "agent-monitor"),
 				jasperPort: jasperPort,
 				port:       port,

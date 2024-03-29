@@ -722,7 +722,8 @@ type ComplexityRoot struct {
 	}
 
 	ParsleySettings struct {
-		SectionsEnabled func(childComplexity int) int
+		JumpToFailingLineEnabled func(childComplexity int) int
+		SectionsEnabled          func(childComplexity int) int
 	}
 
 	Patch struct {
@@ -5040,6 +5041,13 @@ func (e *executableSchema) Complexity(typeName, field string, childComplexity in
 		}
 
 		return e.complexity.ParsleyFilter.Expression(childComplexity), true
+
+	case "ParsleySettings.jumpToFailingLineEnabled":
+		if e.complexity.ParsleySettings.JumpToFailingLineEnabled == nil {
+			break
+		}
+
+		return e.complexity.ParsleySettings.JumpToFailingLineEnabled(childComplexity), true
 
 	case "ParsleySettings.sectionsEnabled":
 		if e.complexity.ParsleySettings.SectionsEnabled == nil {
@@ -33356,6 +33364,50 @@ func (ec *executionContext) fieldContext_ParsleySettings_sectionsEnabled(ctx con
 	return fc, nil
 }
 
+func (ec *executionContext) _ParsleySettings_jumpToFailingLineEnabled(ctx context.Context, field graphql.CollectedField, obj *model.APIParsleySettings) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_ParsleySettings_jumpToFailingLineEnabled(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.JumpToFailingLineEnabled, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.(*bool)
+	fc.Result = res
+	return ec.marshalNBoolean2ᚖbool(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_ParsleySettings_jumpToFailingLineEnabled(ctx context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "ParsleySettings",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type Boolean does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
 func (ec *executionContext) _Patch_id(ctx context.Context, field graphql.CollectedField, obj *model.APIPatch) (ret graphql.Marshaler) {
 	fc, err := ec.fieldContext_Patch_id(ctx, field)
 	if err != nil {
@@ -59651,6 +59703,8 @@ func (ec *executionContext) fieldContext_UpdateParsleySettingsPayload_parsleySet
 			switch field.Name {
 			case "sectionsEnabled":
 				return ec.fieldContext_ParsleySettings_sectionsEnabled(ctx, field)
+			case "jumpToFailingLineEnabled":
+				return ec.fieldContext_ParsleySettings_jumpToFailingLineEnabled(ctx, field)
 			}
 			return nil, fmt.Errorf("no field named %q was found under type ParsleySettings", field.Name)
 		},
@@ -60582,6 +60636,8 @@ func (ec *executionContext) fieldContext_User_parsleySettings(ctx context.Contex
 			switch field.Name {
 			case "sectionsEnabled":
 				return ec.fieldContext_ParsleySettings_sectionsEnabled(ctx, field)
+			case "jumpToFailingLineEnabled":
+				return ec.fieldContext_ParsleySettings_jumpToFailingLineEnabled(ctx, field)
 			}
 			return nil, fmt.Errorf("no field named %q was found under type ParsleySettings", field.Name)
 		},
@@ -68820,7 +68876,7 @@ func (ec *executionContext) unmarshalInputParsleySettingsInput(ctx context.Conte
 		asMap[k] = v
 	}
 
-	fieldsInOrder := [...]string{"sectionsEnabled"}
+	fieldsInOrder := [...]string{"sectionsEnabled", "jumpToFailingLineEnabled"}
 	for _, k := range fieldsInOrder {
 		v, ok := asMap[k]
 		if !ok {
@@ -68834,6 +68890,13 @@ func (ec *executionContext) unmarshalInputParsleySettingsInput(ctx context.Conte
 				return it, err
 			}
 			it.SectionsEnabled = data
+		case "jumpToFailingLineEnabled":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("jumpToFailingLineEnabled"))
+			data, err := ec.unmarshalOBoolean2ᚖbool(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.JumpToFailingLineEnabled = data
 		}
 	}
 
@@ -76756,6 +76819,11 @@ func (ec *executionContext) _ParsleySettings(ctx context.Context, sel ast.Select
 			out.Values[i] = graphql.MarshalString("ParsleySettings")
 		case "sectionsEnabled":
 			out.Values[i] = ec._ParsleySettings_sectionsEnabled(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "jumpToFailingLineEnabled":
+			out.Values[i] = ec._ParsleySettings_jumpToFailingLineEnabled(ctx, field, obj)
 			if out.Values[i] == graphql.Null {
 				out.Invalids++
 			}

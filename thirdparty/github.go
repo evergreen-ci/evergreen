@@ -37,7 +37,8 @@ const (
 	commitObjectType = "commit"
 	tagObjectType    = "tag"
 
-	GithubInvestigation = "Github API Limit Investigation"
+	GithubInvestigation        = "Github API Limit Investigation"
+	PRDiffTooLargeErrorMessage = "the diff exceeded the maximum"
 )
 
 const (
@@ -156,6 +157,7 @@ type GithubPatch struct {
 	MergeCommitSHA string `bson:"merge_commit_sha"`
 	CommitTitle    string `bson:"commit_title"`
 	CommitMessage  string `bson:"commit_message"`
+	MergeBase      string `bson:"merge_base"`
 	// the patchId to copy the definitions for for the next patch the pr creates
 	RepeatPatchIdNextPatch string `bson:"repeat_patch_id_next_patch"`
 }
@@ -602,12 +604,42 @@ func getMergeBaseRevision(ctx context.Context, token, owner, repo, baseRevision,
 		attribute.String(githubRepoAttribute, repo),
 	))
 	defer span.End()
+	compare, err := getCommitComparison(ctx, token, owner, repo, baseRevision, currentCommitHash, caller)
+	if err != nil {
+		return "", errors.Wrapf(err, "retreiving comparison between commit hashses '%s' and '%s'", baseRevision, currentCommitHash)
+	}
+	return *compare.MergeBaseCommit.SHA, nil
+}
 
+// IsMergeBaseAllowed will return true if the input merge base is newer than the oldest allowed merge base
+// configured in the project settings.
+func IsMergeBaseAllowed(ctx context.Context, token, owner, repo, oldestAllowedMergeBase, mergeBase string) (bool, error) {
+	caller := "IsMergeBaseAllowed"
+	ctx, span := tracer.Start(ctx, caller, trace.WithAttributes(
+		attribute.String(githubEndpointAttribute, caller),
+		attribute.String(githubOwnerAttribute, owner),
+		attribute.String(githubRepoAttribute, repo),
+	))
+	defer span.End()
+	compare, err := getCommitComparison(ctx, token, owner, repo, mergeBase, oldestAllowedMergeBase, caller)
+	if err != nil {
+		return false, errors.Wrapf(err, "retreiving comparison between commit hashses '%s' and '%s'", oldestAllowedMergeBase, mergeBase)
+	}
+	status := compare.GetStatus()
+
+	// Per the API docs: https://docs.github.com/en/rest/commits/commits?apiVersion=2022-11-28#compare-two-commits
+	// Valid statuses are within the enum of "diverged", "ahead", "behind", "identical"
+	// The input merge base is allowed if the oldest allowed merge base is at or behind it
+	return status == "behind" || status == "identical", nil
+}
+
+func getCommitComparison(ctx context.Context, token, owner, repo, baseRevision, currentCommitHash, caller string) (*github.CommitsComparison, error) {
+	span := trace.SpanFromContext(ctx)
 	if token == "" {
 		var err error
 		token, err = getInstallationToken(ctx, owner, repo, nil)
 		if err != nil {
-			return "", errors.Wrap(err, "getting installation token")
+			return nil, errors.Wrap(err, "getting installation token")
 		}
 	}
 	githubClient := getGithubClient(token, caller, retryConfig{retry: true})
@@ -618,26 +650,24 @@ func getMergeBaseRevision(ctx context.Context, token, owner, repo, baseRevision,
 		defer resp.Body.Close()
 		span.SetAttributes(attribute.Bool(githubCachedAttribute, respFromCache(resp.Response)))
 		if err != nil {
-			return "", parseGithubErrorResponse(resp)
+			return nil, parseGithubErrorResponse(resp)
 		}
 	} else {
 		apiErr := errors.Errorf("nil response from merge base commit response for '%s/%s'@%s..%s: %v", owner, repo, baseRevision, currentCommitHash, err)
 		grip.Error(message.WrapError(apiErr, message.Fields{
-			"message":             "failed to compare commits to find merge base commit",
-			"op":                  "GetGithubMergeBaseRevision",
+			"message":             "failed to compare commits to determine order of commits",
+			"op":                  "getCommitComparison",
 			"github_error":        fmt.Sprint(err),
 			"repo":                repo,
 			"base_revision":       baseRevision,
 			"current_commit_hash": currentCommitHash,
 		}))
-		return "", APIResponseError{apiErr.Error()}
+		return nil, APIResponseError{apiErr.Error()}
 	}
-
 	if compare == nil || compare.MergeBaseCommit == nil || compare.MergeBaseCommit.SHA == nil {
-		return "", APIRequestError{Message: "missing data from GitHub compare response"}
+		return nil, APIRequestError{Message: "missing data from GitHub compare response"}
 	}
-
-	return *compare.MergeBaseCommit.SHA, nil
+	return compare, nil
 }
 
 func GetCommitEvent(ctx context.Context, token, owner, repo, githash string) (*github.RepositoryCommit, error) {

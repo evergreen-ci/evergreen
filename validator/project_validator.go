@@ -11,8 +11,8 @@ import (
 	"time"
 
 	"github.com/evergreen-ci/evergreen"
-	"github.com/evergreen-ci/evergreen/agent"
 	"github.com/evergreen-ci/evergreen/agent/command"
+	"github.com/evergreen-ci/evergreen/agent/globals"
 	"github.com/evergreen-ci/evergreen/model"
 	"github.com/evergreen-ci/evergreen/model/distro"
 	"github.com/evergreen-ci/evergreen/model/task"
@@ -2301,7 +2301,7 @@ func checkTasks(project *model.Project) ValidationErrors {
 				ValidationError{
 					Message: fmt.Sprintf("no exec_timeout_secs defined at the top-level or on one or more tasks; "+
 						"these tasks will default to a timeout of %d hours",
-						int(agent.DefaultExecTimeout.Hours())),
+						int(globals.DefaultExecTimeout.Hours())),
 					Level: Warning,
 				},
 			)
