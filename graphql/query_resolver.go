@@ -997,7 +997,7 @@ func (r *queryResolver) HasVersion(ctx context.Context, id *string, patchID *str
 			return false, nil
 		}
 	}
-	return false, ResourceNotFound.Send(ctx, fmt.Sprintf("patch or version '%s' not found", patchId))
+	return false, ResourceNotFound.Send(ctx, fmt.Sprintf("Unable to find patch or version %s", patchId))
 }
 
 // Version is the resolver for the version field.
