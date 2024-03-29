@@ -1003,8 +1003,19 @@ func (j *patchIntentProcessor) buildGithubPatchDoc(ctx context.Context, patchDoc
 		})
 	}
 
+	j.user, err = findEvergreenUserForPR(patchDoc.GithubPatchData.AuthorUID)
+	if err != nil {
+		return isMember, errors.Wrapf(err, "finding user associated with GitHub UID '%d'", patchDoc.GithubPatchData.AuthorUID)
+	}
+	patchDoc.Author = j.user.Id
+	patchDoc.Project = projectRef.Id
+
 	patchContent, summaries, err := thirdparty.GetGithubPullRequestDiff(ctx, githubOauthToken, patchDoc.GithubPatchData)
 	if err != nil {
+		// Expected error when the PR diff is more than 3000 lines or 300 files.
+		if strings.Contains(err.Error(), thirdparty.PRDiffTooLargeErrorMessage) {
+			return isMember, nil
+		}
 		return isMember, err
 	}
 
@@ -1017,17 +1028,10 @@ func (j *patchIntentProcessor) buildGithubPatchDoc(ctx context.Context, patchDoc
 			Summary:     summaries,
 		},
 	})
-	patchDoc.Project = projectRef.Id
 
 	if err = db.WriteGridFile(patch.GridFSPrefix, patchFileID, strings.NewReader(patchContent)); err != nil {
 		return isMember, errors.Wrap(err, "writing patch file to DB")
 	}
-
-	j.user, err = findEvergreenUserForPR(patchDoc.GithubPatchData.AuthorUID)
-	if err != nil {
-		return isMember, errors.Wrapf(err, "finding user associated with GitHub UID '%d'", patchDoc.GithubPatchData.AuthorUID)
-	}
-	patchDoc.Author = j.user.Id
 
 	return isMember, nil
 }

@@ -7,7 +7,7 @@ import (
 	"os"
 	"testing"
 
-	"github.com/evergreen-ci/evergreen/agent/command"
+	"github.com/evergreen-ci/evergreen/agent/globals"
 	"github.com/evergreen-ci/evergreen/agent/internal"
 	"github.com/evergreen-ci/evergreen/agent/internal/client"
 	"github.com/evergreen-ci/evergreen/agent/internal/testutil"
@@ -27,7 +27,7 @@ func TestGetSenderLocal(t *testing.T) {
 	assert := assert.New(t)
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
-	_, err := (&Agent{}).GetSender(ctx, LogOutputStdout, "agent", "task_id", 2)
+	_, err := (&Agent{}).GetSender(ctx, globals.LogOutputStdout, "agent", "task_id", 2)
 	assert.NoError(err)
 }
 
@@ -43,7 +43,7 @@ func TestAgentFileLogging(t *testing.T) {
 			HostID:           "host",
 			HostSecret:       "secret",
 			StatusPort:       2286,
-			LogOutput:        LogOutputStdout,
+			LogOutput:        globals.LogOutputStdout,
 			LogPrefix:        "agent",
 			WorkingDirectory: tmpDirName,
 		},
@@ -130,7 +130,7 @@ func TestStartLogging(t *testing.T) {
 			HostID:           "host",
 			HostSecret:       "secret",
 			StatusPort:       2286,
-			LogOutput:        LogOutputStdout,
+			LogOutput:        globals.LogOutputStdout,
 			LogPrefix:        "agent",
 			WorkingDirectory: tmpDirName,
 		},
@@ -163,34 +163,4 @@ func TestStartLogging(t *testing.T) {
 	// Check that expansions are correctly populated.
 	logConfig := agt.prepLogger(tc, tc.taskConfig.Project.Loggers, "")
 	assert.Equal(t, "bar", logConfig.System[0].SplunkToken)
-}
-
-func TestGetExpansionsToRedact(t *testing.T) {
-	for _, test := range []struct {
-		name     string
-		redacted map[string]bool
-		expected []string
-	}{
-		{
-			name: "Defaults",
-		},
-		{
-			name: "Redacted",
-			redacted: map[string]bool{
-				"aws_token": true,
-				"my_secret": true,
-			},
-			expected: []string{
-				"aws_token",
-				"my_secret",
-			},
-		},
-	} {
-		t.Run(test.name, func(t *testing.T) {
-			test.expected = append(test.expected, command.ExpansionsToRedact...)
-
-			actual := getExpansionsToRedact(test.redacted)
-			assert.ElementsMatch(t, test.expected, actual)
-		})
-	}
 }
