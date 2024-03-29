@@ -385,14 +385,14 @@ func (r *queryResolver) Patch(ctx context.Context, id *string, patchID *string) 
 	if evergreen.IsFinishedVersionStatus(*patch.Status) {
 		statuses, err := task.GetTaskStatusesByVersion(ctx, patchId, false)
 		if err != nil {
-			return nil, InternalServerError.Send(ctx, fmt.Sprintf("Could not fetch task statuses for patch: %s", err.Error()))
+			return nil, InternalServerError.Send(ctx, fmt.Sprintf("fetching task statuses for patch: %s", err.Error()))
 		}
 
 		if len(patch.ChildPatches) > 0 {
 			for _, cp := range patch.ChildPatches {
 				childPatchStatuses, err := task.GetTaskStatusesByVersion(ctx, *cp.Id, false)
 				if err != nil {
-					return nil, InternalServerError.Send(ctx, fmt.Sprintf("Could not fetch task statuses for child patch: %s", err.Error()))
+					return nil, InternalServerError.Send(ctx, fmt.Sprintf("fetching task statuses for child patch: %s", err.Error()))
 				}
 				statuses = append(statuses, childPatchStatuses...)
 			}
@@ -982,7 +982,7 @@ func (r *queryResolver) HasVersion(ctx context.Context, id *string, patchID *str
 
 	v, err := model.VersionFindOne(model.VersionById(patchId))
 	if err != nil {
-		return false, InternalServerError.Send(ctx, fmt.Sprintf("Error finding version %s: %s", patchId, err.Error()))
+		return false, InternalServerError.Send(ctx, fmt.Sprintf("finding version '%s': %s", patchId, err.Error()))
 	}
 	if v != nil {
 		return true, nil
@@ -991,13 +991,13 @@ func (r *queryResolver) HasVersion(ctx context.Context, id *string, patchID *str
 	if patch.IsValidId(patchId) {
 		p, err := patch.FindOneId(patchId)
 		if err != nil {
-			return false, InternalServerError.Send(ctx, fmt.Sprintf("Error finding patch %s: %s", patchId, err.Error()))
+			return false, InternalServerError.Send(ctx, fmt.Sprintf("finding patch '%s': %s", patchId, err.Error()))
 		}
 		if p != nil {
 			return false, nil
 		}
 	}
-	return false, ResourceNotFound.Send(ctx, fmt.Sprintf("Unable to find patch or version %s", patchId))
+	return false, ResourceNotFound.Send(ctx, fmt.Sprintf("patch or version '%s' not found", patchId))
 }
 
 // Version is the resolver for the version field.
@@ -1006,10 +1006,10 @@ func (r *queryResolver) Version(ctx context.Context, id *string, versionID *stri
 	versionId := util.CoalesceString(utility.FromStringPtr(id), utility.FromStringPtr(versionID))
 	v, err := model.VersionFindOneId(versionId)
 	if err != nil {
-		return nil, InternalServerError.Send(ctx, fmt.Sprintf("Error while finding version with id: `%s`: %s", versionId, err.Error()))
+		return nil, InternalServerError.Send(ctx, fmt.Sprintf("finding version '%s': %s", versionId, err.Error()))
 	}
 	if v == nil {
-		return nil, ResourceNotFound.Send(ctx, fmt.Sprintf("Unable to find version with id: `%s`", versionId))
+		return nil, ResourceNotFound.Send(ctx, fmt.Sprintf("version '%s' not found", versionId))
 	}
 	apiVersion := restModel.APIVersion{}
 	apiVersion.BuildFromService(*v)
