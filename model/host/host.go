@@ -3512,20 +3512,6 @@ func (h *Host) UnsetPersistentDNSInfo(ctx context.Context) error {
 	return nil
 }
 
-// SetSleepSchedule sets the sleep schedule for a given host
-func SetSleepSchedule(ctx context.Context, hostId string, schedule SleepScheduleInfo) error {
-	if err := UpdateOne(ctx, bson.M{
-		IdKey: hostId,
-	}, bson.M{
-		"$set": bson.M{
-			SleepScheduleKey: schedule,
-		},
-	}); err != nil {
-		return err
-	}
-	return nil
-}
-
 // UpdateSleepSchedule updates the host's sleep schedule. Note that if some fields
 // in the sleep schedule are not being modified, the sleep schedule must still
 // contain all the unmodified fields. For example, if this host is on a
@@ -3560,7 +3546,7 @@ func (h *Host) UpdateSleepSchedule(ctx context.Context, schedule SleepScheduleIn
 			Message:    errors.Wrap(err, "determining next sleep schedule stop time").Error(),
 		}
 	}
-	if err = SetSleepSchedule(ctx, h.Id, schedule); err != nil {
+	if err = setSleepSchedule(ctx, h.Id, schedule); err != nil {
 		return gimlet.ErrorResponse{
 			StatusCode: http.StatusInternalServerError,
 			Message:    errors.Wrap(err, "setting sleep schedule").Error(),
