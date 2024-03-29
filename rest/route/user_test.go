@@ -514,6 +514,57 @@ func TestGetUsersForRole(t *testing.T) {
 	assert.Contains(t, utility.FromStringPtr(usersWithRole.Users[1]), u2.Id)
 }
 
+func TestRemoveHiddenProjects(t *testing.T) {
+	require.NoError(t, db.ClearCollections(model.ProjectRefCollection))
+	projectRefs := []model.ProjectRef{
+		{
+			Id:     "project1",
+			Hidden: utility.TruePtr(),
+		},
+		{
+			Id: "project2",
+		},
+		{
+			Id:     "project3",
+			Hidden: utility.TruePtr(),
+		},
+		{
+			Id: "project4",
+		},
+	}
+	for _, projectRef := range projectRefs {
+		require.NoError(t, projectRef.Upsert())
+	}
+
+	permissions := []rolemanager.PermissionSummary{
+		{
+			Type: evergreen.ProjectResourceType,
+			Permissions: rolemanager.PermissionsForResources{
+				"project1": gimlet.Permissions{
+					"project_settings": 10,
+				},
+				"project2": gimlet.Permissions{
+					"project_settings": 10,
+				},
+				"project3": gimlet.Permissions{
+					"project_settings": 10,
+				},
+				"project4": gimlet.Permissions{
+					"project_settings": 10,
+				},
+			},
+		},
+	}
+
+	assert.NoError(t, removeHiddenProjects(permissions))
+	require.Len(t, permissions, 1)
+	require.Len(t, permissions[0].Permissions, 2)
+	require.Nil(t, permissions[0].Permissions["project1"])
+	require.NotNil(t, permissions[0].Permissions["project2"])
+	require.Nil(t, permissions[0].Permissions["project3"])
+	require.NotNil(t, permissions[0].Permissions["project4"])
+}
+
 func TestGetUsersForResourceId(t *testing.T) {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
