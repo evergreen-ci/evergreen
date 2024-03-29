@@ -45,7 +45,6 @@ var (
 	cloneRepoAttribute    = fmt.Sprintf("%s.clone_repo", gitGetProjectAttribute)
 	cloneBranchAttribute  = fmt.Sprintf("%s.clone_branch", gitGetProjectAttribute)
 	cloneModuleAttribute  = fmt.Sprintf("%s.clone_module", gitGetProjectAttribute)
-	cloneRetriesAttribute = fmt.Sprintf("%s.clone_retries", gitGetProjectAttribute)
 	cloneMethodAttribute  = fmt.Sprintf("%s.clone_method", gitGetProjectAttribute)
 	cloneAttemptAttribute = fmt.Sprintf("%s.attempt", gitGetProjectAttribute)
 )
