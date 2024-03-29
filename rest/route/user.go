@@ -493,10 +493,10 @@ func (h *userPermissionsGetHandler) Run(ctx context.Context) gimlet.Responder {
 
 func removeHiddenProjects(permissions []rolemanager.PermissionSummary) error {
 	var projectIDs []string
-	var projectPermissions rolemanager.PermissionsForResources
-	for _, permission := range permissions {
+	var projectResourceIndex int
+	for i, permission := range permissions {
 		if permission.Type == evergreen.ProjectResourceType {
-			projectPermissions = permission.Permissions
+			projectResourceIndex = i
 			for projectID := range permission.Permissions {
 				projectIDs = append(projectIDs, projectID)
 			}
@@ -508,7 +508,7 @@ func removeHiddenProjects(permissions []rolemanager.PermissionSummary) error {
 	}
 	for _, projectRef := range projectRefs {
 		if utility.FromBoolPtr(projectRef.Hidden) {
-			delete(projectPermissions, projectRef.Id)
+			delete(permissions[projectResourceIndex].Permissions, projectRef.Id)
 		}
 	}
 	return nil
