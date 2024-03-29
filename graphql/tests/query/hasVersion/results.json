@@ -38,7 +38,7 @@
         "data": null,
         "errors": [
           {
-            "message": "Unable to find patch or version notARealId",
+            "message": "patch or version 'notARealId' not found",
             "path": ["hasVersion"],
             "extensions": {
               "code": "RESOURCE_NOT_FOUND"
