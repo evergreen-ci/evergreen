@@ -615,7 +615,7 @@ func (c *gitFetchProject) retryFetch(ctx context.Context, logger client.LoggerPr
 			if attemptNum > 2 {
 				opts.useVerbose = true // use verbose for the last 2 attempts
 				logger.Task().Error(message.Fields{
-					"message":      fmt.Sprintf("running git %s clone with verbose output", fetchType),
+					"message":      fmt.Sprintf("running git '%s' clone with verbose output", fetchType),
 					"num_attempts": gitFetchProjectRetries,
 					"attempt":      attemptNum,
 				})
