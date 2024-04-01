@@ -1716,13 +1716,6 @@ func validateTaskGroups(p *model.Project) ValidationErrors {
 				Level:   Error,
 			})
 		}
-		// validate that teardown group timeout is not over GetMaxTeardownGroupTimeout()
-		if tg.TeardownGroupTimeoutSecs > int(agent.GetMaxTeardownGroupTimeout().Seconds()) {
-			errs = append(errs, ValidationError{
-				Message: fmt.Sprintf("task group %s has a teardown task timeout of %d seconds, which exceeds the maximum of %d seconds", tg.Name, tg.TeardownGroupTimeoutSecs, int(agent.GetMaxTeardownGroupTimeout().Seconds())),
-				Level:   Warning,
-			})
-		}
 		// validate that the task group is not named the same as a task
 		for _, t := range p.Tasks {
 			if t.Name == tg.Name {
@@ -1774,6 +1767,13 @@ func checkTaskGroups(p *model.Project) ValidationErrors {
 		}
 	}
 	for _, tg := range taskGroups {
+		// validate that teardown group timeout is not over GetMaxTeardownGroupTimeout()
+		if tg.TeardownGroupTimeoutSecs > int(agent.GetMaxTeardownGroupTimeout().Seconds()) {
+			errs = append(errs, ValidationError{
+				Message: fmt.Sprintf("task group %s has a teardown task timeout of %d seconds, which exceeds the maximum of %d seconds", tg.Name, tg.TeardownGroupTimeoutSecs, int(agent.GetMaxTeardownGroupTimeout().Seconds())),
+				Level:   Warning,
+			})
+		}
 		if _, ok := names[tg.Name]; ok {
 			errs = append(errs, ValidationError{
 				Level:   Warning,
