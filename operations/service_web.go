@@ -30,6 +30,7 @@ import (
 	sdktrace "go.opentelemetry.io/otel/sdk/trace"
 	semconv "go.opentelemetry.io/otel/semconv/v1.17.0"
 	"go.opentelemetry.io/otel/trace"
+	"go.opentelemetry.io/otel/trace/noop"
 )
 
 func startWebService() cli.Command {
@@ -41,15 +42,21 @@ func startWebService() cli.Command {
 			addDbSettingsFlags(),
 			[]cli.Flag{cli.StringFlag{
 				Name:   traceEndpointFlagName,
-				Usage:  "Endpoint to send traces to",
+				Usage:  "Endpoint to send startup traces to",
 				EnvVar: evergreen.TraceEndpoint}},
 		),
 		Action: func(c *cli.Context) error {
 			ctx, cancel := context.WithCancel(context.Background())
 
-			tp, err := startupTracerProvider(ctx, c.String(traceEndpointFlagName))
-			grip.EmergencyFatal(message.WrapError(err, "initializing startup tracer provider"))
-			defer tp.Shutdown(ctx)
+			var tp trace.TracerProvider
+			sdkTracerProvider, err := startupTracerProvider(ctx, c.String(traceEndpointFlagName))
+			if err != nil || sdkTracerProvider == nil {
+				grip.Error(message.WrapError(err, "initializing startup tracer provider"))
+				tp = noop.NewTracerProvider()
+			} else {
+				tp = sdkTracerProvider
+			}
+
 			tracer := tp.Tracer("github.com/evergreen-ci/evergreen/operations")
 			ctx, startServiceSpan := tracer.Start(ctx, "StartService")
 
@@ -140,7 +147,9 @@ func startWebService() cli.Command {
 			}()
 
 			startServiceSpan.End()
-			tp.Shutdown(ctx)
+			if sdkTracerProvider != nil {
+				sdkTracerProvider.Shutdown(ctx)
+			}
 
 			gracefulWait := make(chan struct{})
 			go gracefulShutdownForSIGTERM(ctx, []*http.Server{uiServer, apiServer, adminServer}, gracefulWait, catcher, env)

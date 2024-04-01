@@ -245,8 +245,8 @@ func NewEnvironment(ctx context.Context, confPath, versionID string, db *DBSetti
 	catcher.Add(e.createRemoteQueues(ctx, versionID != "", tracer))
 	catcher.Add(e.createNotificationQueue(ctx, tracer))
 	catcher.Add(e.setupRoleManager(ctx, tracer))
-	catcher.Add(e.initClientConfig(ctx, versionID, tracer))
 	catcher.Add(e.initTracer(ctx, versionID != "", tracer))
+	catcher.Add(e.initClientConfig(ctx, versionID, tracer))
 	catcher.Extend(e.initQueues(ctx, tracer))
 
 	if catcher.HasErrors() {
@@ -711,7 +711,7 @@ func (e *envState) createNotificationQueue(ctx context.Context, tracer trace.Tra
 }
 
 func (e *envState) initQueues(ctx context.Context, tracer trace.Tracer) []error {
-	_, span := tracer.Start(ctx, "InitQueues")
+	ctx, span := tracer.Start(ctx, "InitQueues")
 	defer span.End()
 	// Remove the span from the ctx since the queues cache the ctx.
 	ctx = trace.ContextWithSpan(ctx, nil)
