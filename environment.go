@@ -36,6 +36,12 @@ import (
 	"go.mongodb.org/mongo-driver/mongo/options"
 	"go.mongodb.org/mongo-driver/mongo/readpref"
 	"go.opentelemetry.io/contrib/instrumentation/github.com/aws/aws-sdk-go-v2/otelaws"
+	"go.opentelemetry.io/otel"
+	"go.opentelemetry.io/otel/exporters/otlp/otlptrace"
+	"go.opentelemetry.io/otel/exporters/otlp/otlptrace/otlptracegrpc"
+	"go.opentelemetry.io/otel/sdk/resource"
+	sdktrace "go.opentelemetry.io/otel/sdk/trace"
+	semconv "go.opentelemetry.io/otel/semconv/v1.17.0"
 	"go.opentelemetry.io/otel/trace"
 )
 
@@ -187,8 +193,9 @@ type Environment interface {
 //
 // NewEnvironment requires that either the path or DB is sent so that
 // if both are specified, the settings are read from the file.
-func NewEnvironment(ctx context.Context, confPath, versionID string, db *DBSettings) (Environment, error) {
+func NewEnvironment(ctx context.Context, confPath, versionID string, db *DBSettings, tp trace.TracerProvider) (Environment, error) {
 	ctx, cancel := context.WithCancel(ctx)
+	tracer := tp.Tracer("github.com/evergreen-ci/evergreen/evergreen")
 	ctx, span := tracer.Start(ctx, "NewEnvironment")
 	defer span.End()
 
@@ -208,7 +215,7 @@ func NewEnvironment(ctx context.Context, confPath, versionID string, db *DBSetti
 	}()
 
 	if db != nil && confPath == "" {
-		if err := e.initDB(ctx, *db); err != nil {
+		if err := e.initDB(ctx, *db, tracer); err != nil {
 			return nil, errors.Wrap(err, "initializing DB")
 		}
 		e.dbName = db.DB
@@ -216,7 +223,7 @@ func NewEnvironment(ctx context.Context, confPath, versionID string, db *DBSetti
 		SetEnvironment(e)
 	}
 
-	if err := e.initSettings(ctx, confPath); err != nil {
+	if err := e.initSettings(ctx, confPath, tracer); err != nil {
 		return nil, errors.WithStack(err)
 	}
 
@@ -228,18 +235,19 @@ func NewEnvironment(ctx context.Context, confPath, versionID string, db *DBSetti
 
 	catcher := grip.NewBasicCatcher()
 	if e.client == nil {
-		catcher.Add(e.initDB(ctx, e.settings.Database))
+		catcher.Add(e.initDB(ctx, e.settings.Database, tracer))
 	}
 
-	catcher.Add(e.initJasper())
-	catcher.Add(e.initDepot(ctx))
-	catcher.Add(e.initThirdPartySenders(ctx))
-	catcher.Add(e.createLocalQueue(ctx))
-	catcher.Add(e.createRemoteQueues(ctx, versionID != ""))
-	catcher.Add(e.createNotificationQueue(ctx))
-	catcher.Add(e.setupRoleManager())
-	catcher.Add(e.initClientConfig(ctx, versionID))
-	catcher.Extend(e.initQueues(ctx))
+	catcher.Add(e.initJasper(ctx, tracer))
+	catcher.Add(e.initDepot(ctx, tracer))
+	catcher.Add(e.initThirdPartySenders(ctx, tracer))
+	catcher.Add(e.createLocalQueue(ctx, tracer))
+	catcher.Add(e.createRemoteQueues(ctx, versionID != "", tracer))
+	catcher.Add(e.createNotificationQueue(ctx, tracer))
+	catcher.Add(e.setupRoleManager(ctx, tracer))
+	catcher.Add(e.initClientConfig(ctx, versionID, tracer))
+	catcher.Add(e.initTracer(ctx, versionID != "", tracer))
+	catcher.Extend(e.initQueues(ctx, tracer))
 
 	if catcher.HasErrors() {
 		return nil, errors.WithStack(catcher.Resolve())
@@ -293,7 +301,7 @@ type cachedGitHubSender struct {
 	time   time.Time
 }
 
-func (e *envState) initSettings(ctx context.Context, path string) error {
+func (e *envState) initSettings(ctx context.Context, path string, tracer trace.Tracer) error {
 	// read configuration from either the file or DB and validate
 	// if the file path is blank, the DB session must be configured already
 	ctx, span := tracer.Start(ctx, "InitSettings")
@@ -356,7 +364,7 @@ func redactSensitiveCollections(command bson.Raw) string {
 	return string(b)
 }
 
-func (e *envState) initDB(ctx context.Context, settings DBSettings) error {
+func (e *envState) initDB(ctx context.Context, settings DBSettings, tracer trace.Tracer) error {
 	ctx, span := tracer.Start(ctx, "InitDB")
 	defer span.End()
 
@@ -381,7 +389,7 @@ func (e *envState) initDB(ctx context.Context, settings DBSettings) error {
 	return nil
 }
 
-func (e *envState) createRemoteQueues(ctx context.Context, inKanopy bool) error {
+func (e *envState) createRemoteQueues(ctx context.Context, inKanopy bool, tracer trace.Tracer) error {
 	ctx, span := tracer.Start(ctx, "CreateRemoteQueues")
 	defer span.End()
 
@@ -416,8 +424,8 @@ func (e *envState) createRemoteQueues(ctx context.Context, inKanopy bool) error 
 	}
 
 	catcher := grip.NewBasicCatcher()
-	catcher.Add(e.createApplicationQueue(ctx, client))
-	catcher.Add(e.createRemoteQueueGroup(ctx, client))
+	catcher.Add(e.createApplicationQueue(ctx, client, tracer))
+	catcher.Add(e.createRemoteQueueGroup(ctx, client, tracer))
 	return catcher.Resolve()
 }
 
@@ -454,7 +462,7 @@ func (e *envState) DB() *mongo.Database {
 	return e.client.Database(e.dbName)
 }
 
-func (e *envState) createLocalQueue(ctx context.Context) error {
+func (e *envState) createLocalQueue(ctx context.Context, tracer trace.Tracer) error {
 	_, span := tracer.Start(ctx, "CreateLocalQueue")
 	defer span.End()
 
@@ -472,7 +480,7 @@ func (e *envState) createLocalQueue(ctx context.Context) error {
 	return nil
 }
 
-func (e *envState) createApplicationQueue(ctx context.Context, client *mongo.Client) error {
+func (e *envState) createApplicationQueue(ctx context.Context, client *mongo.Client, tracer trace.Tracer) error {
 	ctx, span := tracer.Start(ctx, "CreateApplicationQueue")
 	defer span.End()
 
@@ -514,7 +522,7 @@ func (e *envState) createApplicationQueue(ctx context.Context, client *mongo.Cli
 	return nil
 }
 
-func (e *envState) createRemoteQueueGroup(ctx context.Context, client *mongo.Client) error {
+func (e *envState) createRemoteQueueGroup(ctx context.Context, client *mongo.Client, tracer trace.Tracer) error {
 	ctx, span := tracer.Start(ctx, "CreateRemoteQueueGroup")
 	defer span.End()
 
@@ -636,7 +644,7 @@ func (e *envState) getNamedRemoteQueueOptions(client *mongo.Client) (map[string]
 	return perQueueOpts, regexpQueueOpts, nil
 }
 
-func (e *envState) createNotificationQueue(ctx context.Context) error {
+func (e *envState) createNotificationQueue(ctx context.Context, tracer trace.Tracer) error {
 	ctx, span := tracer.Start(ctx, "CreateNotificationQueue")
 	defer span.End()
 
@@ -702,7 +710,7 @@ func (e *envState) createNotificationQueue(ctx context.Context) error {
 	return nil
 }
 
-func (e *envState) initQueues(ctx context.Context) []error {
+func (e *envState) initQueues(ctx context.Context, tracer trace.Tracer) []error {
 	_, span := tracer.Start(ctx, "InitQueues")
 	defer span.End()
 	// Remove the span from the ctx since the queues cache the ctx.
@@ -730,7 +738,7 @@ func (e *envState) initQueues(ctx context.Context) []error {
 // If versionID is non-empty the ClientConfig will contain links to
 // the version's S3 clients in place of local links. If there are no built clients, this returns an empty config
 // version, but does *not* error.
-func (e *envState) initClientConfig(ctx context.Context, versionID string) error {
+func (e *envState) initClientConfig(ctx context.Context, versionID string, tracer trace.Tracer) error {
 	ctx, span := tracer.Start(ctx, "InitClientConfig")
 	defer span.End()
 
@@ -749,7 +757,7 @@ func (e *envState) initClientConfig(ctx context.Context, versionID string) error
 // are meant to enable specific Evergreen behaviors like notifications, and are
 // distinct from the global application-wide logging system (see
 // (*Settings).GetSender).
-func (e *envState) initThirdPartySenders(ctx context.Context) error {
+func (e *envState) initThirdPartySenders(ctx context.Context, tracer trace.Tracer) error {
 	ctx, span := tracer.Start(ctx, "InitThirdPartySenders")
 	defer span.End()
 
@@ -854,7 +862,10 @@ func (e *envState) setSenderErrorHandler(s send.Sender, name string) error {
 	})
 }
 
-func (e *envState) initJasper() error {
+func (e *envState) initJasper(ctx context.Context, tracer trace.Tracer) error {
+	_, span := tracer.Start(ctx, "InitJasper")
+	defer span.End()
+
 	jpm, err := jasper.NewSynchronizedManager(true)
 	if err != nil {
 		return errors.WithStack(err)
@@ -869,7 +880,7 @@ func (e *envState) initJasper() error {
 	return nil
 }
 
-func (e *envState) initDepot(ctx context.Context) error {
+func (e *envState) initDepot(ctx context.Context, tracer trace.Tracer) error {
 	ctx, span := tracer.Start(ctx, "InitDepot")
 	defer span.End()
 
@@ -914,7 +925,69 @@ func (e *envState) initDepot(ctx context.Context) error {
 	return nil
 }
 
-func (e *envState) setupRoleManager() error {
+func (e *envState) initTracer(ctx context.Context, useInternalDNS bool, tracer trace.Tracer) error {
+	ctx, span := tracer.Start(ctx, "InitTracer")
+	defer span.End()
+
+	if !e.settings.Tracer.Enabled {
+		return nil
+	}
+
+	resource, err := resource.New(ctx,
+		resource.WithHost(),
+		resource.WithAttributes(semconv.ServiceName("evergreen")),
+		resource.WithAttributes(semconv.ServiceVersion(BuildRevision)),
+	)
+	if err != nil {
+		return errors.Wrap(err, "making otel resource")
+	}
+
+	var opts []otlptracegrpc.Option
+	if useInternalDNS {
+		opts = append(opts, otlptracegrpc.WithEndpoint(e.settings.Tracer.CollectorInternalEndpoint))
+		opts = append(opts, otlptracegrpc.WithInsecure())
+	} else {
+		opts = append(opts, otlptracegrpc.WithEndpoint(e.settings.Tracer.CollectorEndpoint))
+		if e.settings.Tracer.CollectorAPIKey != "" {
+			opts = append(opts, otlptracegrpc.WithHeaders(map[string]string{
+				honeycombCollectorHeader: e.settings.Tracer.CollectorAPIKey,
+			}))
+		}
+	}
+	client := otlptracegrpc.NewClient(opts...)
+	exp, err := otlptrace.New(ctx, client)
+	if err != nil {
+		return errors.Wrap(err, "initializing otel exporter")
+	}
+
+	spanLimits := sdktrace.NewSpanLimits()
+	spanLimits.AttributeValueLengthLimit = OtelAttributeMaxLength
+
+	tp := sdktrace.NewTracerProvider(
+		sdktrace.WithBatcher(exp),
+		sdktrace.WithResource(resource),
+		sdktrace.WithRawSpanLimits(spanLimits),
+	)
+	tp.RegisterSpanProcessor(utility.NewAttributeSpanProcessor())
+	otel.SetTracerProvider(tp)
+	otel.SetErrorHandler(otel.ErrorHandlerFunc(func(err error) {
+		grip.Error(errors.Wrap(err, "otel error"))
+	}))
+
+	e.RegisterCloser("otel-tracer-provider", false, func(ctx context.Context) error {
+		catcher := grip.NewBasicCatcher()
+		catcher.Add(tp.Shutdown(ctx))
+		catcher.Add(exp.Shutdown(ctx))
+		return nil
+	})
+
+	return nil
+}
+
+func (e *envState) setupRoleManager(ctx context.Context, tracer trace.Tracer) error {
+	_, span := tracer.Start(ctx, "SetupRoleManager")
+	defer span.End()
+
 	e.roleManager = rolemanager.NewMongoBackedRoleManager(rolemanager.MongoBackedRoleManagerOpts{
 		Client:          e.client,
 		DBName:          e.dbName,

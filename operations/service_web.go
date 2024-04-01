@@ -46,15 +46,17 @@ func startWebService() cli.Command {
 		),
 		Action: func(c *cli.Context) error {
 			ctx, cancel := context.WithCancel(context.Background())
-			tracerCloser, err := initTracer(ctx, c.String(traceEndpointFlagName))
-			grip.Error(message.WrapError(err, "initializing tracer"))
 
+			tp, err := startupTracerProvider(ctx, c.String(traceEndpointFlagName))
+			grip.EmergencyFatal(message.WrapError(err, "initializing startup tracer provider"))
+			defer tp.Shutdown(ctx)
+			tracer := tp.Tracer("github.com/evergreen-ci/evergreen/operations")
 			ctx, startServiceSpan := tracer.Start(ctx, "StartService")
 
 			confPath := c.String(confFlagName)
 			versionID := c.String(versionIDFlagName)
 			db := parseDB(c)
-			env, err := evergreen.NewEnvironment(ctx, confPath, versionID, db)
+			env, err := evergreen.NewEnvironment(ctx, confPath, versionID, db, tp)
 			grip.EmergencyFatal(errors.Wrap(err, "configuring application environment"))
 			evergreen.SetEnvironment(env)
 			if c.Bool(overwriteConfFlagName) {
@@ -91,18 +93,18 @@ func startWebService() cli.Command {
 				"process": grip.Name(),
 			})
 
-			grip.EmergencyFatal(errors.Wrap(startSystemCronJobs(ctx, env), "starting background work"))
+			grip.EmergencyFatal(errors.Wrap(startSystemCronJobs(ctx, env, tracer), "starting background work"))
 
 			var (
 				apiServer *http.Server
 				uiServer  *http.Server
 			)
 
-			serviceHandler, err := getServiceRouter(ctx, env, queue)
+			serviceHandler, err := getServiceRouter(ctx, env, queue, tracer)
 			if err != nil {
 				return errors.WithStack(err)
 			}
-			adminHandler, err := getAdminService(ctx, env)
+			adminHandler, err := getAdminService(ctx, env, tracer)
 			if err != nil {
 				return errors.WithStack(err)
 			}
@@ -138,6 +140,7 @@ func startWebService() cli.Command {
 			}()
 
 			startServiceSpan.End()
+			tp.Shutdown(ctx)
 
 			gracefulWait := make(chan struct{})
 			go gracefulShutdownForSIGTERM(ctx, []*http.Server{uiServer, apiServer, adminServer}, gracefulWait, catcher, env)
@@ -153,14 +156,13 @@ func startWebService() cli.Command {
 			ctx, cancel = context.WithTimeout(ctx, 60*time.Second)
 			defer cancel()
 			catcher.Add(env.Close(ctx))
-			catcher.Add(tracerCloser(ctx))
 
 			return catcher.Resolve()
 		},
 	}
 }
 
-func initTracer(ctx context.Context, traceEndpoint string) (func(context.Context) error, error) {
+func startupTracerProvider(ctx context.Context, traceEndpoint string) (*sdktrace.TracerProvider, error) {
 	if traceEndpoint == "" {
 		return nil, nil
 	}
@@ -173,34 +175,26 @@ func initTracer(ctx context.Context, traceEndpoint string) (func(context.Context
 		return nil, errors.Wrap(err, "making otel resource")
 	}
 
-	client := otlptracegrpc.NewClient(
-		otlptracegrpc.WithEndpoint(traceEndpoint),
-		otlptracegrpc.WithInsecure(),
-	)
+	var opts []otlptracegrpc.Option
+	opts = append(opts, otlptracegrpc.WithEndpoint(traceEndpoint))
+	opts = append(opts, otlptracegrpc.WithInsecure())
+
+	client := otlptracegrpc.NewClient(opts...)
 	exp, err := otlptrace.New(ctx, client)
 	if err != nil {
 		return nil, errors.Wrap(err, "initializing otel exporter")
 	}
 
-	spanLimits := sdktrace.NewSpanLimits()
-
 	tp := sdktrace.NewTracerProvider(
 		sdktrace.WithBatcher(exp),
 		sdktrace.WithResource(resource),
-		sdktrace.WithRawSpanLimits(spanLimits),
 	)
 	tp.RegisterSpanProcessor(utility.NewAttributeSpanProcessor())
-	otel.SetTracerProvider(tp)
 	otel.SetErrorHandler(otel.ErrorHandlerFunc(func(err error) {
 		grip.Error(errors.Wrap(err, "otel error"))
 	}))
 
-	return func(ctx context.Context) error {
-		catcher := grip.NewBasicCatcher()
-		catcher.Add(tp.Shutdown(ctx))
-		catcher.Add(exp.Shutdown(ctx))
-		return errors.Wrapf(catcher.Resolve(), "closing tracer provider")
-	}, nil
+	return tp, nil
 }
 
 func gracefulShutdownForSIGTERM(ctx context.Context, servers []*http.Server, wait chan struct{}, catcher grip.Catcher, env evergreen.Environment) {
@@ -243,7 +237,7 @@ func gracefulShutdownForSIGTERM(ctx context.Context, servers []*http.Server, wai
 	close(wait)
 }
 
-func getServiceRouter(ctx context.Context, env evergreen.Environment, queue amboy.Queue) (http.Handler, error) {
+func getServiceRouter(ctx context.Context, env evergreen.Environment, queue amboy.Queue, tracer trace.Tracer) (http.Handler, error) {
 	_, span := tracer.Start(ctx, "GetServiceRouter")
 	defer span.End()
 
@@ -270,7 +264,7 @@ func getServiceRouter(ctx context.Context, env evergreen.Environment, queue ambo
 	return service.GetRouter(as, uis)
 }
 
-func getAdminService(ctx context.Context, env evergreen.Environment) (http.Handler, error) {
+func getAdminService(ctx context.Context, env evergreen.Environment, tracer trace.Tracer) (http.Handler, error) {
 	ctx, span := tracer.Start(ctx, "GetAdminService")
 	defer span.End()
 

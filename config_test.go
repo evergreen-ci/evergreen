@@ -14,6 +14,7 @@ import (
 	"github.com/stretchr/testify/suite"
 	"go.mongodb.org/mongo-driver/bson"
 	"go.mongodb.org/mongo-driver/mongo/options"
+	"go.opentelemetry.io/otel/trace/noop"
 )
 
 const (
@@ -134,7 +135,7 @@ func TestAdminSuite(t *testing.T) {
 	originalSettings, err := GetConfig(ctx)
 	require.NoError(t, err)
 
-	env, err := NewEnvironment(ctx, configFile, "", nil)
+	env, err := NewEnvironment(ctx, configFile, "", nil, noop.NewTracerProvider())
 	require.NoError(t, err)
 
 	s := new(AdminSuite)

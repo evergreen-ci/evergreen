@@ -68,7 +68,7 @@ func parseDB(c *cli.Context) *evergreen.DBSettings {
 //
 // Common Initialization Code
 
-func startSystemCronJobs(ctx context.Context, env evergreen.Environment) error {
+func startSystemCronJobs(ctx context.Context, env evergreen.Environment, tracer trace.Tracer) error {
 	ctx, span := tracer.Start(ctx, "StartSystemCronJobs")
 	defer span.End()
 	// Remove the parent span from the context.

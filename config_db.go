@@ -136,9 +136,6 @@ func byIDs(ids []string) bson.M {
 }
 
 func getSectionsBSON(ctx context.Context, ids []string) ([]bson.Raw, error) {
-	ctx, span := tracer.Start(ctx, "GetSectionsBSON")
-	defer span.End()
-
 	cur, err := GetEnvironment().DB().Collection(ConfigCollection).Find(ctx, byIDs(ids))
 	if err != nil {
 		return nil, errors.Wrap(err, "finding configuration sections")

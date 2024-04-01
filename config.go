@@ -303,9 +303,6 @@ func NewSettings(filename string) (*Settings, error) {
 // present in the DB, it will return the defaults.
 // Use Settings() to get the cached settings object.
 func GetConfig(ctx context.Context) (*Settings, error) {
-	ctx, span := tracer.Start(ctx, "GetConfig")
-	defer span.End()
-
 	config := NewConfigSections()
 	if err := config.populateSections(ctx); err != nil {
 		return nil, errors.Wrap(err, "populating sections")
