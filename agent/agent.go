@@ -1024,7 +1024,9 @@ func (a *Agent) finishTask(ctx context.Context, tc *taskContext, status string, 
 
 	err = a.upsertCheckRun(ctx, tc)
 	if err != nil {
-		grip.Error(errors.Wrap(err, "upserting checkrun"))
+		err = errors.Wrap(err, "upserting checkrun")
+		grip.Error(err)
+		tc.logger.Task().Error(err.Error())
 	}
 
 	span := trace.SpanFromContext(ctx)
@@ -1050,7 +1052,6 @@ func (a *Agent) upsertCheckRun(ctx context.Context, tc *taskContext) error {
 	}
 
 	if err = a.comm.UpsertCheckRun(ctx, tc.task, *checkRunOutput); err != nil {
-		tc.logger.Task().Debugf("Error upserting checkRun: '%s'", err.Error())
 		return err
 	}
 
