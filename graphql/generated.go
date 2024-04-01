@@ -69,6 +69,7 @@ type ResolverRoot interface {
 	ProjectVars() ProjectVarsResolver
 	Query() QueryResolver
 	RepoSettings() RepoSettingsResolver
+	SleepSchedule() SleepScheduleResolver
 	SpruceConfig() SpruceConfigResolver
 	SubscriberWrapper() SubscriberWrapperResolver
 	Task() TaskResolver
@@ -85,6 +86,9 @@ type ResolverRoot interface {
 	FinderSettingsInput() FinderSettingsInputResolver
 	HostAllocatorSettingsInput() HostAllocatorSettingsInputResolver
 	PlannerSettingsInput() PlannerSettingsInputResolver
+	ProjectSettingsInput() ProjectSettingsInputResolver
+	RepoSettingsInput() RepoSettingsInputResolver
+	SleepScheduleInput() SleepScheduleInputResolver
 	SubscriberInput() SubscriberInputResolver
 }
 
@@ -445,6 +449,7 @@ type ComplexityRoot struct {
 		PersistentDNSName     func(childComplexity int) int
 		Provider              func(childComplexity int) int
 		RunningTask           func(childComplexity int) int
+		SleepSchedule         func(childComplexity int) int
 		StartedBy             func(childComplexity int) int
 		Status                func(childComplexity int) int
 		Tag                   func(childComplexity int) int
@@ -660,7 +665,7 @@ type ComplexityRoot struct {
 		SaveSubscription              func(childComplexity int, subscription model.APISubscription) int
 		SchedulePatch                 func(childComplexity int, patchID string, configure PatchConfigure) int
 		SchedulePatchTasks            func(childComplexity int, patchID string) int
-		ScheduleTasks                 func(childComplexity int, taskIds []string) int
+		ScheduleTasks                 func(childComplexity int, taskIds []string, versionID *string) int
 		ScheduleUndispatchedBaseTasks func(childComplexity int, patchID string) int
 		SetAnnotationMetadataLinks    func(childComplexity int, taskID string, execution int, metadataLinks []*model.APIMetadataLink) int
 		SetLastRevision               func(childComplexity int, opts SetLastRevisionInput) int
@@ -720,7 +725,8 @@ type ComplexityRoot struct {
 	}
 
 	ParsleySettings struct {
-		SectionsEnabled func(childComplexity int) int
+		JumpToFailingLineEnabled func(childComplexity int) int
+		SectionsEnabled          func(childComplexity int) int
 	}
 
 	Patch struct {
@@ -991,7 +997,7 @@ type ComplexityRoot struct {
 		DistroTaskQueue          func(childComplexity int, distroID string) int
 		Distros                  func(childComplexity int, onlySpawnable bool) int
 		GithubProjectConflicts   func(childComplexity int, projectID string) int
-		HasVersion               func(childComplexity int, id string) int
+		HasVersion               func(childComplexity int, id *string, patchID *string) int
 		Host                     func(childComplexity int, hostID string) int
 		HostEvents               func(childComplexity int, hostID string, hostTag *string, limit *int, page *int) int
 		Hosts                    func(childComplexity int, hostID *string, distroID *string, currentTaskID *string, statuses []string, startedBy *string, sortBy *HostSortBy, sortDir *SortDirection, page *int, limit *int) int
@@ -1001,14 +1007,14 @@ type ComplexityRoot struct {
 		MyHosts                  func(childComplexity int) int
 		MyPublicKeys             func(childComplexity int) int
 		MyVolumes                func(childComplexity int) int
-		Patch                    func(childComplexity int, id string) int
+		Patch                    func(childComplexity int, id *string, patchID *string) int
 		Pod                      func(childComplexity int, podID string) int
 		Project                  func(childComplexity int, projectIdentifier string) int
 		ProjectEvents            func(childComplexity int, identifier string, limit *int, before *time.Time) int
 		ProjectSettings          func(childComplexity int, identifier string) int
 		Projects                 func(childComplexity int) int
-		RepoEvents               func(childComplexity int, id string, limit *int, before *time.Time) int
-		RepoSettings             func(childComplexity int, id string) int
+		RepoEvents               func(childComplexity int, id *string, limit *int, before *time.Time, repoID *string) int
+		RepoSettings             func(childComplexity int, id *string, repoID *string) int
 		SpruceConfig             func(childComplexity int) int
 		SubnetAvailabilityZones  func(childComplexity int) int
 		Task                     func(childComplexity int, taskID string, execution *int) int
@@ -1019,7 +1025,7 @@ type ComplexityRoot struct {
 		User                     func(childComplexity int, userID *string) int
 		UserConfig               func(childComplexity int) int
 		UserSettings             func(childComplexity int) int
-		Version                  func(childComplexity int, id string) int
+		Version                  func(childComplexity int, id *string, versionID *string) int
 		ViewableProjectRefs      func(childComplexity int) int
 	}
 
@@ -1133,6 +1139,16 @@ type ComplexityRoot struct {
 
 	SlackConfig struct {
 		Name func(childComplexity int) int
+	}
+
+	SleepSchedule struct {
+		DailyStartTime         func(childComplexity int) int
+		DailyStopTime          func(childComplexity int) int
+		PermanentlyExempt      func(childComplexity int) int
+		ShouldKeepOff          func(childComplexity int) int
+		TemporarilyExemptUntil func(childComplexity int) int
+		TimeZone               func(childComplexity int) int
+		WholeWeekdaysOff       func(childComplexity int) int
 	}
 
 	Source struct {
@@ -1626,6 +1642,8 @@ type HostResolver interface {
 
 	HomeVolume(ctx context.Context, obj *model.APIHost) (*model.APIVolume, error)
 
+	SleepSchedule(ctx context.Context, obj *model.APIHost) (*host.SleepScheduleInfo, error)
+
 	Uptime(ctx context.Context, obj *model.APIHost) (*time.Time, error)
 
 	Volumes(ctx context.Context, obj *model.APIHost) ([]*model.APIVolume, error)
@@ -1692,7 +1710,7 @@ type MutationResolver interface {
 	AbortTask(ctx context.Context, taskID string) (*model.APITask, error)
 	OverrideTaskDependencies(ctx context.Context, taskID string) (*model.APITask, error)
 	RestartTask(ctx context.Context, taskID string, failedOnly bool) (*model.APITask, error)
-	ScheduleTasks(ctx context.Context, taskIds []string) ([]*model.APITask, error)
+	ScheduleTasks(ctx context.Context, taskIds []string, versionID *string) ([]*model.APITask, error)
 	SetTaskPriority(ctx context.Context, taskID string, priority int) (*model.APITask, error)
 	UnscheduleTask(ctx context.Context, taskID string) (*model.APITask, error)
 	ClearMySubscriptions(ctx context.Context) (int, error)
@@ -1782,14 +1800,14 @@ type QueryResolver interface {
 	Hosts(ctx context.Context, hostID *string, distroID *string, currentTaskID *string, statuses []string, startedBy *string, sortBy *HostSortBy, sortDir *SortDirection, page *int, limit *int) (*HostsResponse, error)
 	TaskQueueDistros(ctx context.Context) ([]*TaskQueueDistro, error)
 	Pod(ctx context.Context, podID string) (*model.APIPod, error)
-	Patch(ctx context.Context, id string) (*model.APIPatch, error)
+	Patch(ctx context.Context, id *string, patchID *string) (*model.APIPatch, error)
 	GithubProjectConflicts(ctx context.Context, projectID string) (*model1.GithubProjectConflicts, error)
 	Project(ctx context.Context, projectIdentifier string) (*model.APIProjectRef, error)
 	Projects(ctx context.Context) ([]*GroupedProjects, error)
 	ProjectEvents(ctx context.Context, identifier string, limit *int, before *time.Time) (*ProjectEvents, error)
 	ProjectSettings(ctx context.Context, identifier string) (*model.APIProjectSettings, error)
-	RepoEvents(ctx context.Context, id string, limit *int, before *time.Time) (*ProjectEvents, error)
-	RepoSettings(ctx context.Context, id string) (*model.APIProjectSettings, error)
+	RepoEvents(ctx context.Context, id *string, limit *int, before *time.Time, repoID *string) (*ProjectEvents, error)
+	RepoSettings(ctx context.Context, id *string, repoID *string) (*model.APIProjectSettings, error)
 	ViewableProjectRefs(ctx context.Context) ([]*GroupedProjects, error)
 	MyHosts(ctx context.Context) ([]*model.APIHost, error)
 	MyVolumes(ctx context.Context) ([]*model.APIVolume, error)
@@ -1805,8 +1823,8 @@ type QueryResolver interface {
 	BuildVariantsForTaskName(ctx context.Context, projectIdentifier string, taskName string) ([]*task.BuildVariantTuple, error)
 	MainlineCommits(ctx context.Context, options MainlineCommitsOptions, buildVariantOptions *BuildVariantOptions) (*MainlineCommits, error)
 	TaskNamesForBuildVariant(ctx context.Context, projectIdentifier string, buildVariant string) ([]string, error)
-	HasVersion(ctx context.Context, id string) (bool, error)
-	Version(ctx context.Context, id string) (*model.APIVersion, error)
+	HasVersion(ctx context.Context, id *string, patchID *string) (bool, error)
+	Version(ctx context.Context, id *string, versionID *string) (*model.APIVersion, error)
 }
 type RepoSettingsResolver interface {
 	Aliases(ctx context.Context, obj *model.APIProjectSettings) ([]*model.APIProjectAlias, error)
@@ -1814,6 +1832,9 @@ type RepoSettingsResolver interface {
 
 	Subscriptions(ctx context.Context, obj *model.APIProjectSettings) ([]*model.APISubscription, error)
 	Vars(ctx context.Context, obj *model.APIProjectSettings) (*model.APIProjectVars, error)
+}
+type SleepScheduleResolver interface {
+	WholeWeekdaysOff(ctx context.Context, obj *host.SleepScheduleInfo) ([]int, error)
 }
 type SpruceConfigResolver interface {
 	Keys(ctx context.Context, obj *model.APIAdminSettings) ([]*SSHKey, error)
@@ -1970,6 +1991,15 @@ type HostAllocatorSettingsInputResolver interface {
 type PlannerSettingsInputResolver interface {
 	TargetTime(ctx context.Context, obj *model.APIPlannerSettings, data int) error
 	Version(ctx context.Context, obj *model.APIPlannerSettings, data PlannerVersion) error
+}
+type ProjectSettingsInputResolver interface {
+	ProjectID(ctx context.Context, obj *model.APIProjectSettings, data *string) error
+}
+type RepoSettingsInputResolver interface {
+	RepoID(ctx context.Context, obj *model.APIProjectSettings, data *string) error
+}
+type SleepScheduleInputResolver interface {
+	WholeWeekdaysOff(ctx context.Context, obj *host.SleepScheduleInfo, data []int) error
 }
 type SubscriberInputResolver interface {
 	Target(ctx context.Context, obj *model.APISubscriber, data string) error
@@ -3443,6 +3473,13 @@ func (e *executableSchema) Complexity(typeName, field string, childComplexity in
 
 		return e.complexity.Host.RunningTask(childComplexity), true
 
+	case "Host.sleepSchedule":
+		if e.complexity.Host.SleepSchedule == nil {
+			break
+		}
+
+		return e.complexity.Host.SleepSchedule(childComplexity), true
+
 	case "Host.startedBy":
 		if e.complexity.Host.StartedBy == nil {
 			break
@@ -4685,7 +4722,7 @@ func (e *executableSchema) Complexity(typeName, field string, childComplexity in
 			return 0, false
 		}
 
-		return e.complexity.Mutation.ScheduleTasks(childComplexity, args["taskIds"].([]string)), true
+		return e.complexity.Mutation.ScheduleTasks(childComplexity, args["taskIds"].([]string), args["versionId"].(*string)), true
 
 	case "Mutation.scheduleUndispatchedBaseTasks":
 		if e.complexity.Mutation.ScheduleUndispatchedBaseTasks == nil {
@@ -5032,6 +5069,13 @@ func (e *executableSchema) Complexity(typeName, field string, childComplexity in
 		}
 
 		return e.complexity.ParsleyFilter.Expression(childComplexity), true
+
+	case "ParsleySettings.jumpToFailingLineEnabled":
+		if e.complexity.ParsleySettings.JumpToFailingLineEnabled == nil {
+			break
+		}
+
+		return e.complexity.ParsleySettings.JumpToFailingLineEnabled(childComplexity), true
 
 	case "ParsleySettings.sectionsEnabled":
 		if e.complexity.ParsleySettings.SectionsEnabled == nil {
@@ -6459,7 +6503,7 @@ func (e *executableSchema) Complexity(typeName, field string, childComplexity in
 			return 0, false
 		}
 
-		return e.complexity.Query.HasVersion(childComplexity, args["id"].(string)), true
+		return e.complexity.Query.HasVersion(childComplexity, args["id"].(*string), args["patchId"].(*string)), true
 
 	case "Query.host":
 		if e.complexity.Query.Host == nil {
@@ -6559,7 +6603,7 @@ func (e *executableSchema) Complexity(typeName, field string, childComplexity in
 			return 0, false
 		}
 
-		return e.complexity.Query.Patch(childComplexity, args["id"].(string)), true
+		return e.complexity.Query.Patch(childComplexity, args["id"].(*string), args["patchId"].(*string)), true
 
 	case "Query.pod":
 		if e.complexity.Query.Pod == nil {
@@ -6626,7 +6670,7 @@ func (e *executableSchema) Complexity(typeName, field string, childComplexity in
 			return 0, false
 		}
 
-		return e.complexity.Query.RepoEvents(childComplexity, args["id"].(string), args["limit"].(*int), args["before"].(*time.Time)), true
+		return e.complexity.Query.RepoEvents(childComplexity, args["id"].(*string), args["limit"].(*int), args["before"].(*time.Time), args["repoId"].(*string)), true
 
 	case "Query.repoSettings":
 		if e.complexity.Query.RepoSettings == nil {
@@ -6638,7 +6682,7 @@ func (e *executableSchema) Complexity(typeName, field string, childComplexity in
 			return 0, false
 		}
 
-		return e.complexity.Query.RepoSettings(childComplexity, args["id"].(string)), true
+		return e.complexity.Query.RepoSettings(childComplexity, args["id"].(*string), args["repoId"].(*string)), true
 
 	case "Query.spruceConfig":
 		if e.complexity.Query.SpruceConfig == nil {
@@ -6745,7 +6789,7 @@ func (e *executableSchema) Complexity(typeName, field string, childComplexity in
 			return 0, false
 		}
 
-		return e.complexity.Query.Version(childComplexity, args["id"].(string)), true
+		return e.complexity.Query.Version(childComplexity, args["id"].(*string), args["versionId"].(*string)), true
 
 	case "Query.viewableProjectRefs":
 		if e.complexity.Query.ViewableProjectRefs == nil {
@@ -7264,6 +7308,55 @@ func (e *executableSchema) Complexity(typeName, field string, childComplexity in
 		}
 
 		return e.complexity.SlackConfig.Name(childComplexity), true
+
+	case "SleepSchedule.dailyStartTime":
+		if e.complexity.SleepSchedule.DailyStartTime == nil {
+			break
+		}
+
+		return e.complexity.SleepSchedule.DailyStartTime(childComplexity), true
+
+	case "SleepSchedule.dailyStopTime":
+		if e.complexity.SleepSchedule.DailyStopTime == nil {
+			break
+		}
+
+		return e.complexity.SleepSchedule.DailyStopTime(childComplexity), true
+
+	case "SleepSchedule.permanentlyExempt":
+		if e.complexity.SleepSchedule.PermanentlyExempt == nil {
+			break
+		}
+
+		return e.complexity.SleepSchedule.PermanentlyExempt(childComplexity), true
+
+	case "SleepSchedule.shouldKeepOff":
+		if e.complexity.SleepSchedule.ShouldKeepOff == nil {
+			break
+		}
+
+		return e.complexity.SleepSchedule.ShouldKeepOff(childComplexity), true
+
+	case "SleepSchedule.temporarilyExemptUntil":
+		if e.complexity.SleepSchedule.TemporarilyExemptUntil == nil {
+			break
+		}
+
+		return e.complexity.SleepSchedule.TemporarilyExemptUntil(childComplexity), true
+
+	case "SleepSchedule.timeZone":
+		if e.complexity.SleepSchedule.TimeZone == nil {
+			break
+		}
+
+		return e.complexity.SleepSchedule.TimeZone(childComplexity), true
+
+	case "SleepSchedule.wholeWeekdaysOff":
+		if e.complexity.SleepSchedule.WholeWeekdaysOff == nil {
+			break
+		}
+
+		return e.complexity.SleepSchedule.WholeWeekdaysOff(childComplexity), true
 
 	case "Source.author":
 		if e.complexity.Source.Author == nil {
@@ -9625,6 +9718,7 @@ func (e *executableSchema) Exec(ctx context.Context) graphql.ResponseHandler {
 		ec.unmarshalInputSaveDistroInput,
 		ec.unmarshalInputSelectorInput,
 		ec.unmarshalInputSetLastRevisionInput,
+		ec.unmarshalInputSleepScheduleInput,
 		ec.unmarshalInputSortOrder,
 		ec.unmarshalInputSpawnHostInput,
 		ec.unmarshalInputSpawnVolumeInput,
@@ -10939,6 +11033,15 @@ func (ec *executionContext) field_Mutation_scheduleTasks_args(ctx context.Contex
 		}
 	}
 	args["taskIds"] = arg0
+	var arg1 *string
+	if tmp, ok := rawArgs["versionId"]; ok {
+		ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("versionId"))
+		arg1, err = ec.unmarshalOString2ᚖstring(ctx, tmp)
+		if err != nil {
+			return nil, err
+		}
+	}
+	args["versionId"] = arg1
 	return args, nil
 }
 
@@ -11544,15 +11647,24 @@ func (ec *executionContext) field_Query_githubProjectConflicts_args(ctx context.
 func (ec *executionContext) field_Query_hasVersion_args(ctx context.Context, rawArgs map[string]interface{}) (map[string]interface{}, error) {
 	var err error
 	args := map[string]interface{}{}
-	var arg0 string
+	var arg0 *string
 	if tmp, ok := rawArgs["id"]; ok {
 		ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("id"))
-		arg0, err = ec.unmarshalNString2string(ctx, tmp)
+		arg0, err = ec.unmarshalOString2ᚖstring(ctx, tmp)
 		if err != nil {
 			return nil, err
 		}
 	}
 	args["id"] = arg0
+	var arg1 *string
+	if tmp, ok := rawArgs["patchId"]; ok {
+		ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("patchId"))
+		arg1, err = ec.unmarshalOString2ᚖstring(ctx, tmp)
+		if err != nil {
+			return nil, err
+		}
+	}
+	args["patchId"] = arg1
 	return args, nil
 }
 
@@ -11742,15 +11854,24 @@ func (ec *executionContext) field_Query_mainlineCommits_args(ctx context.Context
 func (ec *executionContext) field_Query_patch_args(ctx context.Context, rawArgs map[string]interface{}) (map[string]interface{}, error) {
 	var err error
 	args := map[string]interface{}{}
-	var arg0 string
+	var arg0 *string
 	if tmp, ok := rawArgs["id"]; ok {
 		ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("id"))
-		arg0, err = ec.unmarshalNString2string(ctx, tmp)
+		arg0, err = ec.unmarshalOString2ᚖstring(ctx, tmp)
 		if err != nil {
 			return nil, err
 		}
 	}
 	args["id"] = arg0
+	var arg1 *string
+	if tmp, ok := rawArgs["patchId"]; ok {
+		ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("patchId"))
+		arg1, err = ec.unmarshalOString2ᚖstring(ctx, tmp)
+		if err != nil {
+			return nil, err
+		}
+	}
+	args["patchId"] = arg1
 	return args, nil
 }
 
@@ -11871,10 +11992,10 @@ func (ec *executionContext) field_Query_project_args(ctx context.Context, rawArg
 func (ec *executionContext) field_Query_repoEvents_args(ctx context.Context, rawArgs map[string]interface{}) (map[string]interface{}, error) {
 	var err error
 	args := map[string]interface{}{}
-	var arg0 string
+	var arg0 *string
 	if tmp, ok := rawArgs["id"]; ok {
 		ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("id"))
-		arg0, err = ec.unmarshalNString2string(ctx, tmp)
+		arg0, err = ec.unmarshalOString2ᚖstring(ctx, tmp)
 		if err != nil {
 			return nil, err
 		}
@@ -11917,16 +12038,25 @@ func (ec *executionContext) field_Query_repoEvents_args(ctx context.Context, raw
 		}
 	}
 	args["before"] = arg2
+	var arg3 *string
+	if tmp, ok := rawArgs["repoId"]; ok {
+		ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("repoId"))
+		arg3, err = ec.unmarshalOString2ᚖstring(ctx, tmp)
+		if err != nil {
+			return nil, err
+		}
+	}
+	args["repoId"] = arg3
 	return args, nil
 }
 
 func (ec *executionContext) field_Query_repoSettings_args(ctx context.Context, rawArgs map[string]interface{}) (map[string]interface{}, error) {
 	var err error
 	args := map[string]interface{}{}
-	var arg0 string
+	var arg0 *string
 	if tmp, ok := rawArgs["id"]; ok {
 		ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("id"))
-		directive0 := func(ctx context.Context) (interface{}, error) { return ec.unmarshalNString2string(ctx, tmp) }
+		directive0 := func(ctx context.Context) (interface{}, error) { return ec.unmarshalOString2ᚖstring(ctx, tmp) }
 		directive1 := func(ctx context.Context) (interface{}, error) {
 			access, err := ec.unmarshalNProjectSettingsAccess2githubᚗcomᚋevergreenᚑciᚋevergreenᚋgraphqlᚐProjectSettingsAccess(ctx, "VIEW")
 			if err != nil {
@@ -11942,13 +12072,24 @@ func (ec *executionContext) field_Query_repoSettings_args(ctx context.Context, r
 		if err != nil {
 			return nil, graphql.ErrorOnPath(ctx, err)
 		}
-		if data, ok := tmp.(string); ok {
+		if data, ok := tmp.(*string); ok {
 			arg0 = data
+		} else if tmp == nil {
+			arg0 = nil
 		} else {
-			return nil, graphql.ErrorOnPath(ctx, fmt.Errorf(`unexpected type %T from directive, should be string`, tmp))
+			return nil, graphql.ErrorOnPath(ctx, fmt.Errorf(`unexpected type %T from directive, should be *string`, tmp))
 		}
 	}
 	args["id"] = arg0
+	var arg1 *string
+	if tmp, ok := rawArgs["repoId"]; ok {
+		ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("repoId"))
+		arg1, err = ec.unmarshalOString2ᚖstring(ctx, tmp)
+		if err != nil {
+			return nil, err
+		}
+	}
+	args["repoId"] = arg1
 	return args, nil
 }
 
@@ -12057,15 +12198,24 @@ func (ec *executionContext) field_Query_user_args(ctx context.Context, rawArgs m
 func (ec *executionContext) field_Query_version_args(ctx context.Context, rawArgs map[string]interface{}) (map[string]interface{}, error) {
 	var err error
 	args := map[string]interface{}{}
-	var arg0 string
+	var arg0 *string
 	if tmp, ok := rawArgs["id"]; ok {
 		ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("id"))
-		arg0, err = ec.unmarshalNString2string(ctx, tmp)
+		arg0, err = ec.unmarshalOString2ᚖstring(ctx, tmp)
 		if err != nil {
 			return nil, err
 		}
 	}
 	args["id"] = arg0
+	var arg1 *string
+	if tmp, ok := rawArgs["versionId"]; ok {
+		ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("versionId"))
+		arg1, err = ec.unmarshalOString2ᚖstring(ctx, tmp)
+		if err != nil {
+			return nil, err
+		}
+	}
+	args["versionId"] = arg1
 	return args, nil
 }
 
@@ -21828,6 +21978,63 @@ func (ec *executionContext) fieldContext_Host_runningTask(ctx context.Context, f
 	return fc, nil
 }
 
+func (ec *executionContext) _Host_sleepSchedule(ctx context.Context, field graphql.CollectedField, obj *model.APIHost) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_Host_sleepSchedule(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
+		ctx = rctx // use context from middleware stack in children
+		return ec.resolvers.Host().SleepSchedule(rctx, obj)
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		return graphql.Null
+	}
+	res := resTmp.(*host.SleepScheduleInfo)
+	fc.Result = res
+	return ec.marshalOSleepSchedule2ᚖgithubᚗcomᚋevergreenᚑciᚋevergreenᚋmodelᚋhostᚐSleepScheduleInfo(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_Host_sleepSchedule(ctx context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "Host",
+		Field:      field,
+		IsMethod:   true,
+		IsResolver: true,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			switch field.Name {
+			case "dailyStartTime":
+				return ec.fieldContext_SleepSchedule_dailyStartTime(ctx, field)
+			case "dailyStopTime":
+				return ec.fieldContext_SleepSchedule_dailyStopTime(ctx, field)
+			case "permanentlyExempt":
+				return ec.fieldContext_SleepSchedule_permanentlyExempt(ctx, field)
+			case "shouldKeepOff":
+				return ec.fieldContext_SleepSchedule_shouldKeepOff(ctx, field)
+			case "timeZone":
+				return ec.fieldContext_SleepSchedule_timeZone(ctx, field)
+			case "temporarilyExemptUntil":
+				return ec.fieldContext_SleepSchedule_temporarilyExemptUntil(ctx, field)
+			case "wholeWeekdaysOff":
+				return ec.fieldContext_SleepSchedule_wholeWeekdaysOff(ctx, field)
+			}
+			return nil, fmt.Errorf("no field named %q was found under type SleepSchedule", field.Name)
+		},
+	}
+	return fc, nil
+}
+
 func (ec *executionContext) _Host_startedBy(ctx context.Context, field graphql.CollectedField, obj *model.APIHost) (ret graphql.Marshaler) {
 	fc, err := ec.fieldContext_Host_startedBy(ctx, field)
 	if err != nil {
@@ -23769,6 +23976,8 @@ func (ec *executionContext) fieldContext_HostsResponse_hosts(ctx context.Context
 				return ec.fieldContext_Host_provider(ctx, field)
 			case "runningTask":
 				return ec.fieldContext_Host_runningTask(ctx, field)
+			case "sleepSchedule":
+				return ec.fieldContext_Host_sleepSchedule(ctx, field)
 			case "startedBy":
 				return ec.fieldContext_Host_startedBy(ctx, field)
 			case "status":
@@ -29982,6 +30191,8 @@ func (ec *executionContext) fieldContext_Mutation_editSpawnHost(ctx context.Cont
 				return ec.fieldContext_Host_provider(ctx, field)
 			case "runningTask":
 				return ec.fieldContext_Host_runningTask(ctx, field)
+			case "sleepSchedule":
+				return ec.fieldContext_Host_sleepSchedule(ctx, field)
 			case "startedBy":
 				return ec.fieldContext_Host_startedBy(ctx, field)
 			case "status":
@@ -30144,6 +30355,8 @@ func (ec *executionContext) fieldContext_Mutation_spawnHost(ctx context.Context,
 				return ec.fieldContext_Host_provider(ctx, field)
 			case "runningTask":
 				return ec.fieldContext_Host_runningTask(ctx, field)
+			case "sleepSchedule":
+				return ec.fieldContext_Host_sleepSchedule(ctx, field)
 			case "startedBy":
 				return ec.fieldContext_Host_startedBy(ctx, field)
 			case "status":
@@ -30361,6 +30574,8 @@ func (ec *executionContext) fieldContext_Mutation_updateSpawnHostStatus(ctx cont
 				return ec.fieldContext_Host_provider(ctx, field)
 			case "runningTask":
 				return ec.fieldContext_Host_runningTask(ctx, field)
+			case "sleepSchedule":
+				return ec.fieldContext_Host_sleepSchedule(ctx, field)
 			case "startedBy":
 				return ec.fieldContext_Host_startedBy(ctx, field)
 			case "status":
@@ -31083,7 +31298,7 @@ func (ec *executionContext) _Mutation_scheduleTasks(ctx context.Context, field g
 	}()
 	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
 		ctx = rctx // use context from middleware stack in children
-		return ec.resolvers.Mutation().ScheduleTasks(rctx, fc.Args["taskIds"].([]string))
+		return ec.resolvers.Mutation().ScheduleTasks(rctx, fc.Args["taskIds"].([]string), fc.Args["versionId"].(*string))
 	})
 	if err != nil {
 		ec.Error(ctx, err)
@@ -33289,6 +33504,50 @@ func (ec *executionContext) _ParsleySettings_sectionsEnabled(ctx context.Context
 }
 
 func (ec *executionContext) fieldContext_ParsleySettings_sectionsEnabled(ctx context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "ParsleySettings",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type Boolean does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _ParsleySettings_jumpToFailingLineEnabled(ctx context.Context, field graphql.CollectedField, obj *model.APIParsleySettings) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_ParsleySettings_jumpToFailingLineEnabled(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.JumpToFailingLineEnabled, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.(*bool)
+	fc.Result = res
+	return ec.marshalNBoolean2ᚖbool(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_ParsleySettings_jumpToFailingLineEnabled(ctx context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
 	fc = &graphql.FieldContext{
 		Object:     "ParsleySettings",
 		Field:      field,
@@ -43183,6 +43442,8 @@ func (ec *executionContext) fieldContext_Query_host(ctx context.Context, field g
 				return ec.fieldContext_Host_provider(ctx, field)
 			case "runningTask":
 				return ec.fieldContext_Host_runningTask(ctx, field)
+			case "sleepSchedule":
+				return ec.fieldContext_Host_sleepSchedule(ctx, field)
 			case "startedBy":
 				return ec.fieldContext_Host_startedBy(ctx, field)
 			case "status":
@@ -43474,7 +43735,7 @@ func (ec *executionContext) _Query_patch(ctx context.Context, field graphql.Coll
 	}()
 	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
 		ctx = rctx // use context from middleware stack in children
-		return ec.resolvers.Query().Patch(rctx, fc.Args["id"].(string))
+		return ec.resolvers.Query().Patch(rctx, fc.Args["id"].(*string), fc.Args["patchId"].(*string))
 	})
 	if err != nil {
 		ec.Error(ctx, err)
@@ -43993,7 +44254,7 @@ func (ec *executionContext) _Query_repoEvents(ctx context.Context, field graphql
 	}()
 	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
 		ctx = rctx // use context from middleware stack in children
-		return ec.resolvers.Query().RepoEvents(rctx, fc.Args["id"].(string), fc.Args["limit"].(*int), fc.Args["before"].(*time.Time))
+		return ec.resolvers.Query().RepoEvents(rctx, fc.Args["id"].(*string), fc.Args["limit"].(*int), fc.Args["before"].(*time.Time), fc.Args["repoId"].(*string))
 	})
 	if err != nil {
 		ec.Error(ctx, err)
@@ -44054,7 +44315,7 @@ func (ec *executionContext) _Query_repoSettings(ctx context.Context, field graph
 	}()
 	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
 		ctx = rctx // use context from middleware stack in children
-		return ec.resolvers.Query().RepoSettings(rctx, fc.Args["id"].(string))
+		return ec.resolvers.Query().RepoSettings(rctx, fc.Args["id"].(*string), fc.Args["repoId"].(*string))
 	})
 	if err != nil {
 		ec.Error(ctx, err)
@@ -44234,6 +44495,8 @@ func (ec *executionContext) fieldContext_Query_myHosts(ctx context.Context, fiel
 				return ec.fieldContext_Host_provider(ctx, field)
 			case "runningTask":
 				return ec.fieldContext_Host_runningTask(ctx, field)
+			case "sleepSchedule":
+				return ec.fieldContext_Host_sleepSchedule(ctx, field)
 			case "startedBy":
 				return ec.fieldContext_Host_startedBy(ctx, field)
 			case "status":
@@ -45359,7 +45622,7 @@ func (ec *executionContext) _Query_hasVersion(ctx context.Context, field graphql
 	}()
 	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
 		ctx = rctx // use context from middleware stack in children
-		return ec.resolvers.Query().HasVersion(rctx, fc.Args["id"].(string))
+		return ec.resolvers.Query().HasVersion(rctx, fc.Args["id"].(*string), fc.Args["patchId"].(*string))
 	})
 	if err != nil {
 		ec.Error(ctx, err)
@@ -45414,7 +45677,7 @@ func (ec *executionContext) _Query_version(ctx context.Context, field graphql.Co
 	}()
 	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
 		ctx = rctx // use context from middleware stack in children
-		return ec.resolvers.Query().Version(rctx, fc.Args["id"].(string))
+		return ec.resolvers.Query().Version(rctx, fc.Args["id"].(*string), fc.Args["versionId"].(*string))
 	})
 	if err != nil {
 		ec.Error(ctx, err)
@@ -49170,6 +49433,311 @@ func (ec *executionContext) fieldContext_SlackConfig_name(ctx context.Context, f
 		IsResolver: false,
 		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
 			return nil, errors.New("field of type String does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _SleepSchedule_dailyStartTime(ctx context.Context, field graphql.CollectedField, obj *host.SleepScheduleInfo) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_SleepSchedule_dailyStartTime(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.DailyStartTime, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.(string)
+	fc.Result = res
+	return ec.marshalNString2string(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_SleepSchedule_dailyStartTime(ctx context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "SleepSchedule",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type String does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _SleepSchedule_dailyStopTime(ctx context.Context, field graphql.CollectedField, obj *host.SleepScheduleInfo) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_SleepSchedule_dailyStopTime(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.DailyStopTime, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.(string)
+	fc.Result = res
+	return ec.marshalNString2string(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_SleepSchedule_dailyStopTime(ctx context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "SleepSchedule",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type String does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _SleepSchedule_permanentlyExempt(ctx context.Context, field graphql.CollectedField, obj *host.SleepScheduleInfo) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_SleepSchedule_permanentlyExempt(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.PermanentlyExempt, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.(bool)
+	fc.Result = res
+	return ec.marshalNBoolean2bool(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_SleepSchedule_permanentlyExempt(ctx context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "SleepSchedule",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type Boolean does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _SleepSchedule_shouldKeepOff(ctx context.Context, field graphql.CollectedField, obj *host.SleepScheduleInfo) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_SleepSchedule_shouldKeepOff(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.ShouldKeepOff, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.(bool)
+	fc.Result = res
+	return ec.marshalNBoolean2bool(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_SleepSchedule_shouldKeepOff(ctx context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "SleepSchedule",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type Boolean does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _SleepSchedule_timeZone(ctx context.Context, field graphql.CollectedField, obj *host.SleepScheduleInfo) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_SleepSchedule_timeZone(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.TimeZone, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.(string)
+	fc.Result = res
+	return ec.marshalNString2string(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_SleepSchedule_timeZone(ctx context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "SleepSchedule",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type String does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _SleepSchedule_temporarilyExemptUntil(ctx context.Context, field graphql.CollectedField, obj *host.SleepScheduleInfo) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_SleepSchedule_temporarilyExemptUntil(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.TemporarilyExemptUntil, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		return graphql.Null
+	}
+	res := resTmp.(time.Time)
+	fc.Result = res
+	return ec.marshalOTime2timeᚐTime(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_SleepSchedule_temporarilyExemptUntil(ctx context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "SleepSchedule",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type Time does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _SleepSchedule_wholeWeekdaysOff(ctx context.Context, field graphql.CollectedField, obj *host.SleepScheduleInfo) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_SleepSchedule_wholeWeekdaysOff(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
+		ctx = rctx // use context from middleware stack in children
+		return ec.resolvers.SleepSchedule().WholeWeekdaysOff(rctx, obj)
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.([]int)
+	fc.Result = res
+	return ec.marshalNInt2ᚕintᚄ(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_SleepSchedule_wholeWeekdaysOff(ctx context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "SleepSchedule",
+		Field:      field,
+		IsMethod:   true,
+		IsResolver: true,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type Int does not have child fields")
 		},
 	}
 	return fc, nil
@@ -59596,6 +60164,8 @@ func (ec *executionContext) fieldContext_UpdateParsleySettingsPayload_parsleySet
 			switch field.Name {
 			case "sectionsEnabled":
 				return ec.fieldContext_ParsleySettings_sectionsEnabled(ctx, field)
+			case "jumpToFailingLineEnabled":
+				return ec.fieldContext_ParsleySettings_jumpToFailingLineEnabled(ctx, field)
 			}
 			return nil, fmt.Errorf("no field named %q was found under type ParsleySettings", field.Name)
 		},
@@ -60527,6 +61097,8 @@ func (ec *executionContext) fieldContext_User_parsleySettings(ctx context.Contex
 			switch field.Name {
 			case "sectionsEnabled":
 				return ec.fieldContext_ParsleySettings_sectionsEnabled(ctx, field)
+			case "jumpToFailingLineEnabled":
+				return ec.fieldContext_ParsleySettings_jumpToFailingLineEnabled(ctx, field)
 			}
 			return nil, fmt.Errorf("no field named %q was found under type ParsleySettings", field.Name)
 		},
@@ -64322,6 +64894,8 @@ func (ec *executionContext) fieldContext_Volume_host(ctx context.Context, field 
 				return ec.fieldContext_Host_provider(ctx, field)
 			case "runningTask":
 				return ec.fieldContext_Host_runningTask(ctx, field)
+			case "sleepSchedule":
+				return ec.fieldContext_Host_sleepSchedule(ctx, field)
 			case "startedBy":
 				return ec.fieldContext_Host_startedBy(ctx, field)
 			case "status":
@@ -67883,7 +68457,7 @@ func (ec *executionContext) unmarshalInputEditSpawnHostInput(ctx context.Context
 		asMap[k] = v
 	}
 
-	fieldsInOrder := [...]string{"addedInstanceTags", "deletedInstanceTags", "displayName", "expiration", "hostId", "instanceType", "noExpiration", "publicKey", "savePublicKey", "servicePassword", "volume"}
+	fieldsInOrder := [...]string{"addedInstanceTags", "deletedInstanceTags", "displayName", "expiration", "hostId", "instanceType", "noExpiration", "publicKey", "savePublicKey", "servicePassword", "sleepSchedule", "volume"}
 	for _, k := range fieldsInOrder {
 		v, ok := asMap[k]
 		if !ok {
@@ -67992,6 +68566,13 @@ func (ec *executionContext) unmarshalInputEditSpawnHostInput(ctx context.Context
 				err := fmt.Errorf(`unexpected type %T from directive, should be *string`, tmp)
 				return it, graphql.ErrorOnPath(ctx, err)
 			}
+		case "sleepSchedule":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("sleepSchedule"))
+			data, err := ec.unmarshalOSleepScheduleInput2ᚖgithubᚗcomᚋevergreenᚑciᚋevergreenᚋmodelᚋhostᚐSleepScheduleInfo(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.SleepSchedule = data
 		case "volume":
 			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("volume"))
 			data, err := ec.unmarshalOString2ᚖstring(ctx, v)
@@ -68765,7 +69346,7 @@ func (ec *executionContext) unmarshalInputParsleySettingsInput(ctx context.Conte
 		asMap[k] = v
 	}
 
-	fieldsInOrder := [...]string{"sectionsEnabled"}
+	fieldsInOrder := [...]string{"sectionsEnabled", "jumpToFailingLineEnabled"}
 	for _, k := range fieldsInOrder {
 		v, ok := asMap[k]
 		if !ok {
@@ -68779,6 +69360,13 @@ func (ec *executionContext) unmarshalInputParsleySettingsInput(ctx context.Conte
 				return it, err
 			}
 			it.SectionsEnabled = data
+		case "jumpToFailingLineEnabled":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("jumpToFailingLineEnabled"))
+			data, err := ec.unmarshalOBoolean2ᚖbool(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.JumpToFailingLineEnabled = data
 		}
 	}
 
@@ -69668,13 +70256,22 @@ func (ec *executionContext) unmarshalInputProjectSettingsInput(ctx context.Conte
 		asMap[k] = v
 	}
 
-	fieldsInOrder := [...]string{"aliases", "githubWebhooksEnabled", "projectRef", "subscriptions", "vars"}
+	fieldsInOrder := [...]string{"projectId", "aliases", "githubWebhooksEnabled", "projectRef", "subscriptions", "vars"}
 	for _, k := range fieldsInOrder {
 		v, ok := asMap[k]
 		if !ok {
 			continue
 		}
 		switch k {
+		case "projectId":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("projectId"))
+			data, err := ec.unmarshalOString2ᚖstring(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			if err = ec.resolvers.ProjectSettingsInput().ProjectID(ctx, &it, data); err != nil {
+				return it, err
+			}
 		case "aliases":
 			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("aliases"))
 			data, err := ec.unmarshalOProjectAliasInput2ᚕgithubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐAPIProjectAliasᚄ(ctx, v)
@@ -70132,13 +70729,22 @@ func (ec *executionContext) unmarshalInputRepoSettingsInput(ctx context.Context,
 		asMap[k] = v
 	}
 
-	fieldsInOrder := [...]string{"aliases", "githubWebhooksEnabled", "projectRef", "subscriptions", "vars"}
+	fieldsInOrder := [...]string{"repoId", "aliases", "githubWebhooksEnabled", "projectRef", "subscriptions", "vars"}
 	for _, k := range fieldsInOrder {
 		v, ok := asMap[k]
 		if !ok {
 			continue
 		}
 		switch k {
+		case "repoId":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("repoId"))
+			data, err := ec.unmarshalOString2ᚖstring(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			if err = ec.resolvers.RepoSettingsInput().RepoID(ctx, &it, data); err != nil {
+				return it, err
+			}
 		case "aliases":
 			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("aliases"))
 			data, err := ec.unmarshalOProjectAliasInput2ᚕgithubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐAPIProjectAliasᚄ(ctx, v)
@@ -70352,6 +70958,77 @@ func (ec *executionContext) unmarshalInputSetLastRevisionInput(ctx context.Conte
 	return it, nil
 }
 
+func (ec *executionContext) unmarshalInputSleepScheduleInput(ctx context.Context, obj interface{}) (host.SleepScheduleInfo, error) {
+	var it host.SleepScheduleInfo
+	asMap := map[string]interface{}{}
+	for k, v := range obj.(map[string]interface{}) {
+		asMap[k] = v
+	}
+
+	fieldsInOrder := [...]string{"dailyStartTime", "dailyStopTime", "permanentlyExempt", "shouldKeepOff", "timeZone", "temporarilyExemptUntil", "wholeWeekdaysOff"}
+	for _, k := range fieldsInOrder {
+		v, ok := asMap[k]
+		if !ok {
+			continue
+		}
+		switch k {
+		case "dailyStartTime":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("dailyStartTime"))
+			data, err := ec.unmarshalNString2string(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.DailyStartTime = data
+		case "dailyStopTime":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("dailyStopTime"))
+			data, err := ec.unmarshalNString2string(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.DailyStopTime = data
+		case "permanentlyExempt":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("permanentlyExempt"))
+			data, err := ec.unmarshalNBoolean2bool(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.PermanentlyExempt = data
+		case "shouldKeepOff":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("shouldKeepOff"))
+			data, err := ec.unmarshalNBoolean2bool(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.ShouldKeepOff = data
+		case "timeZone":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("timeZone"))
+			data, err := ec.unmarshalNString2string(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.TimeZone = data
+		case "temporarilyExemptUntil":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("temporarilyExemptUntil"))
+			data, err := ec.unmarshalOTime2timeᚐTime(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.TemporarilyExemptUntil = data
+		case "wholeWeekdaysOff":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("wholeWeekdaysOff"))
+			data, err := ec.unmarshalNInt2ᚕintᚄ(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			if err = ec.resolvers.SleepScheduleInput().WholeWeekdaysOff(ctx, &it, data); err != nil {
+				return it, err
+			}
+		}
+	}
+
+	return it, nil
+}
+
 func (ec *executionContext) unmarshalInputSortOrder(ctx context.Context, obj interface{}) (SortOrder, error) {
 	var it SortOrder
 	asMap := map[string]interface{}{}
@@ -70393,7 +71070,7 @@ func (ec *executionContext) unmarshalInputSpawnHostInput(ctx context.Context, ob
 		asMap[k] = v
 	}
 
-	fieldsInOrder := [...]string{"distroId", "expiration", "homeVolumeSize", "isVirtualWorkStation", "noExpiration", "publicKey", "region", "savePublicKey", "setUpScript", "spawnHostsStartedByTask", "taskId", "taskSync", "useProjectSetupScript", "userDataScript", "useTaskConfig", "volumeId"}
+	fieldsInOrder := [...]string{"distroId", "expiration", "homeVolumeSize", "isVirtualWorkStation", "noExpiration", "publicKey", "region", "savePublicKey", "setUpScript", "sleepSchedule", "spawnHostsStartedByTask", "taskId", "taskSync", "useProjectSetupScript", "userDataScript", "useTaskConfig", "volumeId"}
 	for _, k := range fieldsInOrder {
 		v, ok := asMap[k]
 		if !ok {
@@ -70463,6 +71140,13 @@ func (ec *executionContext) unmarshalInputSpawnHostInput(ctx context.Context, ob
 				return it, err
 			}
 			it.SetUpScript = data
+		case "sleepSchedule":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("sleepSchedule"))
+			data, err := ec.unmarshalOSleepScheduleInput2ᚖgithubᚗcomᚋevergreenᚑciᚋevergreenᚋmodelᚋhostᚐSleepScheduleInfo(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.SleepSchedule = data
 		case "spawnHostsStartedByTask":
 			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("spawnHostsStartedByTask"))
 			data, err := ec.unmarshalOBoolean2ᚖbool(ctx, v)
@@ -74504,6 +75188,39 @@ func (ec *executionContext) _Host(ctx context.Context, sel ast.SelectionSet, obj
 			}
 		case "runningTask":
 			out.Values[i] = ec._Host_runningTask(ctx, field, obj)
+		case "sleepSchedule":
+			field := field
+
+			innerFunc := func(ctx context.Context, fs *graphql.FieldSet) (res graphql.Marshaler) {
+				defer func() {
+					if r := recover(); r != nil {
+						ec.Error(ctx, ec.Recover(ctx, r))
+					}
+				}()
+				res = ec._Host_sleepSchedule(ctx, field, obj)
+				return res
+			}
+
+			if field.Deferrable != nil {
+				dfs, ok := deferred[field.Deferrable.Label]
+				di := 0
+				if ok {
+					dfs.AddField(field)
+					di = len(dfs.Values) - 1
+				} else {
+					dfs = graphql.NewFieldSet([]graphql.CollectedField{field})
+					deferred[field.Deferrable.Label] = dfs
+				}
+				dfs.Concurrently(di, func(ctx context.Context) graphql.Marshaler {
+					return innerFunc(ctx, dfs)
+				})
+
+				// don't run the out.Concurrently() call below
+				out.Values[i] = graphql.Null
+				continue
+			}
+
+			out.Concurrently(i, func(ctx context.Context) graphql.Marshaler { return innerFunc(ctx, out) })
 		case "startedBy":
 			out.Values[i] = ec._Host_startedBy(ctx, field, obj)
 			if out.Values[i] == graphql.Null {
@@ -76683,6 +77400,11 @@ func (ec *executionContext) _ParsleySettings(ctx context.Context, sel ast.Select
 			out.Values[i] = graphql.MarshalString("ParsleySettings")
 		case "sectionsEnabled":
 			out.Values[i] = ec._ParsleySettings_sectionsEnabled(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "jumpToFailingLineEnabled":
+			out.Values[i] = ec._ParsleySettings_jumpToFailingLineEnabled(ctx, field, obj)
 			if out.Values[i] == graphql.Null {
 				out.Invalids++
 			}
@@ -81019,6 +81741,103 @@ func (ec *executionContext) _SlackConfig(ctx context.Context, sel ast.SelectionS
 			out.Values[i] = graphql.MarshalString("SlackConfig")
 		case "name":
 			out.Values[i] = ec._SlackConfig_name(ctx, field, obj)
+		default:
+			panic("unknown field " + strconv.Quote(field.Name))
+		}
+	}
+	out.Dispatch(ctx)
+	if out.Invalids > 0 {
+		return graphql.Null
+	}
+
+	atomic.AddInt32(&ec.deferred, int32(len(deferred)))
+
+	for label, dfs := range deferred {
+		ec.processDeferredGroup(graphql.DeferredGroup{
+			Label:    label,
+			Path:     graphql.GetPath(ctx),
+			FieldSet: dfs,
+			Context:  ctx,
+		})
+	}
+
+	return out
+}
+
+var sleepScheduleImplementors = []string{"SleepSchedule"}
+
+func (ec *executionContext) _SleepSchedule(ctx context.Context, sel ast.SelectionSet, obj *host.SleepScheduleInfo) graphql.Marshaler {
+	fields := graphql.CollectFields(ec.OperationContext, sel, sleepScheduleImplementors)
+
+	out := graphql.NewFieldSet(fields)
+	deferred := make(map[string]*graphql.FieldSet)
+	for i, field := range fields {
+		switch field.Name {
+		case "__typename":
+			out.Values[i] = graphql.MarshalString("SleepSchedule")
+		case "dailyStartTime":
+			out.Values[i] = ec._SleepSchedule_dailyStartTime(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				atomic.AddUint32(&out.Invalids, 1)
+			}
+		case "dailyStopTime":
+			out.Values[i] = ec._SleepSchedule_dailyStopTime(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				atomic.AddUint32(&out.Invalids, 1)
+			}
+		case "permanentlyExempt":
+			out.Values[i] = ec._SleepSchedule_permanentlyExempt(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				atomic.AddUint32(&out.Invalids, 1)
+			}
+		case "shouldKeepOff":
+			out.Values[i] = ec._SleepSchedule_shouldKeepOff(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				atomic.AddUint32(&out.Invalids, 1)
+			}
+		case "timeZone":
+			out.Values[i] = ec._SleepSchedule_timeZone(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				atomic.AddUint32(&out.Invalids, 1)
+			}
+		case "temporarilyExemptUntil":
+			out.Values[i] = ec._SleepSchedule_temporarilyExemptUntil(ctx, field, obj)
+		case "wholeWeekdaysOff":
+			field := field
+
+			innerFunc := func(ctx context.Context, fs *graphql.FieldSet) (res graphql.Marshaler) {
+				defer func() {
+					if r := recover(); r != nil {
+						ec.Error(ctx, ec.Recover(ctx, r))
+					}
+				}()
+				res = ec._SleepSchedule_wholeWeekdaysOff(ctx, field, obj)
+				if res == graphql.Null {
+					atomic.AddUint32(&fs.Invalids, 1)
+				}
+				return res
+			}
+
+			if field.Deferrable != nil {
+				dfs, ok := deferred[field.Deferrable.Label]
+				di := 0
+				if ok {
+					dfs.AddField(field)
+					di = len(dfs.Values) - 1
+				} else {
+					dfs = graphql.NewFieldSet([]graphql.CollectedField{field})
+					deferred[field.Deferrable.Label] = dfs
+				}
+				dfs.Concurrently(di, func(ctx context.Context) graphql.Marshaler {
+					return innerFunc(ctx, dfs)
+				})
+
+				// don't run the out.Concurrently() call below
+				out.Values[i] = graphql.Null
+				continue
+			}
+
+			out.Concurrently(i, func(ctx context.Context) graphql.Marshaler { return innerFunc(ctx, out) })
 		default:
 			panic("unknown field " + strconv.Quote(field.Name))
 		}
@@ -87691,6 +88510,38 @@ func (ec *executionContext) marshalNInt2int64(ctx context.Context, sel ast.Selec
 	return res
 }
 
+func (ec *executionContext) unmarshalNInt2ᚕintᚄ(ctx context.Context, v interface{}) ([]int, error) {
+	var vSlice []interface{}
+	if v != nil {
+		vSlice = graphql.CoerceList(v)
+	}
+	var err error
+	res := make([]int, len(vSlice))
+	for i := range vSlice {
+		ctx := graphql.WithPathContext(ctx, graphql.NewPathWithIndex(i))
+		res[i], err = ec.unmarshalNInt2int(ctx, vSlice[i])
+		if err != nil {
+			return nil, err
+		}
+	}
+	return res, nil
+}
+
+func (ec *executionContext) marshalNInt2ᚕintᚄ(ctx context.Context, sel ast.SelectionSet, v []int) graphql.Marshaler {
+	ret := make(graphql.Array, len(v))
+	for i := range v {
+		ret[i] = ec.marshalNInt2int(ctx, sel, v[i])
+	}
+
+	for _, e := range ret {
+		if e == graphql.Null {
+			return graphql.Null
+		}
+	}
+
+	return ret
+}
+
 func (ec *executionContext) unmarshalNInt2ᚖint(ctx context.Context, v interface{}) (*int, error) {
 	res, err := graphql.UnmarshalInt(v)
 	return &res, graphql.ErrorOnPath(ctx, err)
@@ -92554,6 +93405,21 @@ func (ec *executionContext) marshalOSlackConfig2ᚖgithubᚗcomᚋevergreenᚑci
 		return graphql.Null
 	}
 	return ec._SlackConfig(ctx, sel, v)
+}
+
+func (ec *executionContext) marshalOSleepSchedule2ᚖgithubᚗcomᚋevergreenᚑciᚋevergreenᚋmodelᚋhostᚐSleepScheduleInfo(ctx context.Context, sel ast.SelectionSet, v *host.SleepScheduleInfo) graphql.Marshaler {
+	if v == nil {
+		return graphql.Null
+	}
+	return ec._SleepSchedule(ctx, sel, v)
+}
+
+func (ec *executionContext) unmarshalOSleepScheduleInput2ᚖgithubᚗcomᚋevergreenᚑciᚋevergreenᚋmodelᚋhostᚐSleepScheduleInfo(ctx context.Context, v interface{}) (*host.SleepScheduleInfo, error) {
+	if v == nil {
+		return nil, nil
+	}
+	res, err := ec.unmarshalInputSleepScheduleInput(ctx, v)
+	return &res, graphql.ErrorOnPath(ctx, err)
 }
 
 func (ec *executionContext) unmarshalOSortDirection2ᚖgithubᚗcomᚋevergreenᚑciᚋevergreenᚋgraphqlᚐSortDirection(ctx context.Context, v interface{}) (*SortDirection, error) {

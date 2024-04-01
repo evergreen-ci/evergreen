@@ -6,7 +6,8 @@
         "data": {
           "updateParsleySettings": {
             "parsleySettings": {
-              "sectionsEnabled": false
+              "sectionsEnabled": false,
+              "jumpToFailingLineEnabled": true
             }
           }
         }

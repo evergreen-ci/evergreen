@@ -13,7 +13,7 @@ import (
 	"time"
 
 	"github.com/evergreen-ci/evergreen"
-	"github.com/evergreen-ci/evergreen/agent"
+	"github.com/evergreen-ci/evergreen/agent/globals"
 	"github.com/evergreen-ci/evergreen/rest/client"
 	"github.com/evergreen-ci/utility"
 	"github.com/mongodb/grip"
@@ -55,7 +55,7 @@ type monitor struct {
 	cloudProvider   string
 	distroID        string
 	shellPath       string
-	logOutput       agent.LogOutputType
+	logOutput       globals.LogOutputType
 	logPrefix       string
 	jasperPort      int
 	port            int
@@ -123,7 +123,7 @@ func agentMonitor() cli.Command {
 			},
 			cli.StringFlag{
 				Name:  logOutputFlagName,
-				Value: string(agent.LogOutputFile),
+				Value: string(globals.LogOutputFile),
 				Usage: "location for the agent monitor's log output (file, stdout)",
 			},
 			cli.StringFlag{
@@ -167,7 +167,7 @@ func agentMonitor() cli.Command {
 				shellPath:       c.String(shellPathFlagName),
 				jasperPort:      c.Int(jasperPortFlagName),
 				port:            c.Int(portFlagName),
-				logOutput:       agent.LogOutputType(c.String(logOutputFlagName)),
+				logOutput:       globals.LogOutputType(c.String(logOutputFlagName)),
 				logPrefix:       c.String(logPrefixFlagName),
 			}
 
@@ -244,7 +244,7 @@ func setupLogging(m *monitor) error {
 	}
 
 	switch senderOutput {
-	case agent.LogOutputStdout:
+	case globals.LogOutputStdout:
 		sender, err := send.NewNativeLogger(senderName, send.LevelInfo{Default: level.Info, Threshold: level.Debug})
 		if err != nil {
 			return errors.Wrap(err, "creating native console logger")

@@ -10,6 +10,7 @@ import (
 	"github.com/evergreen-ci/evergreen/agent/internal"
 	"github.com/evergreen-ci/evergreen/agent/internal/client"
 	agentutil "github.com/evergreen-ci/evergreen/agent/internal/testutil"
+	"github.com/evergreen-ci/evergreen/agent/util"
 	"github.com/evergreen-ci/evergreen/db"
 	"github.com/evergreen-ci/evergreen/model/task"
 	"github.com/evergreen-ci/evergreen/model/testlog"
@@ -159,7 +160,8 @@ func TestXUnitParseAndUpload(t *testing.T) {
 			Requester:      evergreen.GithubPRRequester,
 			TaskOutputInfo: agentutil.InitializeTaskOutput(t),
 		},
-		WorkDir: filepath.Join(testutil.GetDirectoryOfFile(), "testdata", "xunit"),
+		WorkDir:       filepath.Join(testutil.GetDirectoryOfFile(), "testdata", "xunit"),
+		NewExpansions: &util.DynamicExpansions{},
 	}
 
 	for tName, tCase := range map[string]func(ctx context.Context, t *testing.T, cedarSrv *timberutil.MockCedarServer, conf *internal.TaskConfig, logger client.LoggerProducer){

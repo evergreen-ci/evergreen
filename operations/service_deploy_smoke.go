@@ -10,7 +10,7 @@ import (
 	"runtime"
 	"strconv"
 
-	"github.com/evergreen-ci/evergreen/agent"
+	"github.com/evergreen-ci/evergreen/agent/globals"
 	timberutil "github.com/evergreen-ci/timber/testutil"
 	"github.com/mongodb/grip"
 	"github.com/mongodb/grip/send"
@@ -161,7 +161,7 @@ func smokeStartEvergreen() cli.Command {
 					fmt.Sprintf("--%s_id=%s", mode, execModeID),
 					fmt.Sprintf("--%s_secret=%s", mode, execModeSecret),
 					"--api_server", apiServerURL,
-					"--log_output", string(agent.LogOutputFile),
+					"--log_output", string(globals.LogOutputFile),
 					"--log_prefix", "smoke.agent",
 					"--global_task_logs",
 					"--status_port", statusPort,
@@ -210,11 +210,11 @@ func smokeStartEvergreen() cli.Command {
 					wd,
 					binary,
 					"agent",
-					fmt.Sprintf("--mode=%s", agent.HostMode),
+					fmt.Sprintf("--mode=%s", globals.HostMode),
 					"--host_id", execModeID,
 					"--host_secret", execModeSecret,
 					"--api_server", apiServerURL,
-					"--log_output", string(agent.LogOutputFile),
+					"--log_output", string(globals.LogOutputFile),
 					"--global_task_logs",
 					"--log_prefix", "smoke.agent",
 					"--status_port", statusPort,
@@ -222,7 +222,7 @@ func smokeStartEvergreen() cli.Command {
 					"monitor",
 					"--distro", distroID,
 					"--client_path", clientFile.Name(),
-					"--log_output", string(agent.LogOutputFile),
+					"--log_output", string(globals.LogOutputFile),
 					"--log_prefix", "smoke.agent.monitor",
 					"--port", strconv.Itoa(monitorPort),
 					"--jasper_port", strconv.Itoa(jasperPort),

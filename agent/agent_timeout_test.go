@@ -8,6 +8,7 @@ import (
 	"time"
 
 	"github.com/evergreen-ci/evergreen"
+	"github.com/evergreen-ci/evergreen/agent/globals"
 	"github.com/evergreen-ci/evergreen/agent/internal/client"
 	"github.com/evergreen-ci/evergreen/apimodels"
 	"github.com/mongodb/jasper"
@@ -39,7 +40,7 @@ func (s *TimeoutSuite) SetupTest() {
 			HostID:     "host",
 			HostSecret: "secret",
 			StatusPort: 2286,
-			LogOutput:  LogOutputStdout,
+			LogOutput:  globals.LogOutputStdout,
 			LogPrefix:  "agent",
 		},
 		comm:   client.NewMock("url"),
@@ -68,7 +69,7 @@ func (s *TimeoutSuite) TearDownTest() {
 func checkHeartbeatTimeoutReset(t *testing.T, tc *taskContext) {
 	heartbeatTimeoutOpts := tc.getHeartbeatTimeout()
 	require.NotZero(t, heartbeatTimeoutOpts.getTimeout)
-	assert.Equal(t, defaultHeartbeatTimeout, heartbeatTimeoutOpts.getTimeout(), "should reset heartbeat timeout to default")
+	assert.Equal(t, globals.DefaultHeartbeatTimeout, heartbeatTimeoutOpts.getTimeout(), "should reset heartbeat timeout to default")
 	assert.WithinDuration(t, heartbeatTimeoutOpts.startAt, time.Now(), time.Second, "should reset heartbeat timer start to now")
 	assert.Empty(t, heartbeatTimeoutOpts.kind, "should reset heartbeat timeout type")
 }
@@ -92,7 +93,7 @@ func (s *TimeoutSuite) TestExecTimeoutProject() {
 	s.mockCommunicator.TaskExecution = 0
 
 	const expectedTimeout = time.Second
-	const expectedTimeoutType = execTimeout
+	const expectedTimeoutType = globals.ExecTimeout
 
 	nextTask := &apimodels.NextTaskResponse{
 		TaskId:     taskID,
@@ -175,7 +176,7 @@ func (s *TimeoutSuite) TestExecTimeoutTask() {
 	s.Equal("'shell.exec' in function 'task' (step 1 of 1)", detail.Description)
 	s.True(detail.TimedOut)
 	s.Equal(1*time.Second, detail.TimeoutDuration)
-	s.EqualValues(execTimeout, detail.TimeoutType)
+	s.EqualValues(globals.ExecTimeout, detail.TimeoutType)
 
 	data, err := os.ReadFile(s.tmpFileName)
 	s.Require().NoError(err)
@@ -229,7 +230,7 @@ func (s *TimeoutSuite) TestIdleTimeoutFunc() {
 	s.Equal("'shell.exec' in function 'task' (step 1 of 1)", detail.Description)
 	s.True(detail.TimedOut)
 	s.Equal(1*time.Second, detail.TimeoutDuration)
-	s.EqualValues(idleTimeout, detail.TimeoutType)
+	s.EqualValues(globals.IdleTimeout, detail.TimeoutType)
 
 	data, err := os.ReadFile(s.tmpFileName)
 	s.Require().NoError(err)
@@ -280,7 +281,7 @@ func (s *TimeoutSuite) TestIdleTimeoutCommand() {
 	s.Equal("'shell.exec' in function 'task' (step 1 of 1)", detail.Description)
 	s.True(detail.TimedOut)
 	s.Equal(1*time.Second, detail.TimeoutDuration)
-	s.EqualValues(idleTimeout, detail.TimeoutType)
+	s.EqualValues(globals.IdleTimeout, detail.TimeoutType)
 
 	data, err := os.ReadFile(s.tmpFileName)
 	s.Require().NoError(err)
@@ -330,7 +331,7 @@ func (s *TimeoutSuite) TestDynamicIdleTimeout() {
 	s.Equal("'shell.exec' in function 'task' (step 2 of 2)", detail.Description)
 	s.True(detail.TimedOut)
 	s.Equal(2*time.Second, detail.TimeoutDuration)
-	s.EqualValues(idleTimeout, detail.TimeoutType)
+	s.EqualValues(globals.IdleTimeout, detail.TimeoutType)
 
 	data, err := os.ReadFile(s.tmpFileName)
 	s.Require().NoError(err)
@@ -383,7 +384,7 @@ func (s *TimeoutSuite) TestDynamicExecTimeoutTask() {
 	s.Equal("'shell.exec' in function 'task' (step 2 of 2)", detail.Description)
 	s.True(detail.TimedOut)
 	s.Equal(2*time.Second, detail.TimeoutDuration)
-	s.EqualValues(execTimeout, detail.TimeoutType)
+	s.EqualValues(globals.ExecTimeout, detail.TimeoutType)
 
 	data, err := os.ReadFile(s.tmpFileName)
 	s.Require().NoError(err)

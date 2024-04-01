@@ -14,6 +14,16 @@ input VolumeHost {
   hostId: String!
 }
 
+input SleepScheduleInput {
+  dailyStartTime: String!
+  dailyStopTime: String!
+  permanentlyExempt: Boolean!
+  shouldKeepOff: Boolean!
+  timeZone: String!
+  temporarilyExemptUntil: Time
+  wholeWeekdaysOff: [Int!]!
+}
+
 """
 SpawnHostInput is the input to the spawnHost mutation.
 Its fields determine the properties of the host that will be spawned.
@@ -28,6 +38,7 @@ input SpawnHostInput {
   region: String!
   savePublicKey: Boolean!
   setUpScript: String
+  sleepSchedule: SleepScheduleInput
   spawnHostsStartedByTask: Boolean
   taskId: String
   taskSync: Boolean
@@ -76,6 +87,7 @@ input EditSpawnHostInput {
   publicKey: PublicKeyInput @redactSecrets
   savePublicKey: Boolean
   servicePassword: String @redactSecrets
+  sleepSchedule: SleepScheduleInput
   volume: String
 }
 

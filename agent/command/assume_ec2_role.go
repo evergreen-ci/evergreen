@@ -10,6 +10,7 @@ import (
 	"github.com/aws/aws-sdk-go/aws/credentials"
 	"github.com/aws/aws-sdk-go/aws/credentials/stscreds"
 	"github.com/aws/aws-sdk-go/aws/session"
+	"github.com/evergreen-ci/evergreen/agent/globals"
 	"github.com/evergreen-ci/evergreen/agent/internal"
 	"github.com/evergreen-ci/evergreen/agent/internal/client"
 	"github.com/evergreen-ci/evergreen/util"
@@ -17,13 +18,6 @@ import (
 	"github.com/mitchellh/mapstructure"
 	"github.com/mongodb/grip"
 	"github.com/pkg/errors"
-)
-
-const (
-	AWSAccessKeyId     = "AWS_ACCESS_KEY_ID"
-	AWSSecretAccessKey = "AWS_SECRET_ACCESS_KEY"
-	AWSSessionToken    = "AWS_SESSION_TOKEN"
-	AWSRoleExpiration  = "AWS_ROLE_EXPIRATION"
 )
 
 type ec2AssumeRole struct {
@@ -120,9 +114,9 @@ func (r *ec2AssumeRole) Execute(ctx context.Context,
 		return errors.WithStack(err)
 	}
 
-	conf.NewExpansions.Put(AWSAccessKeyId, credValues.AccessKeyID)
-	conf.NewExpansions.Put(AWSSecretAccessKey, credValues.SecretAccessKey)
-	conf.NewExpansions.Put(AWSSessionToken, credValues.SessionToken)
-	conf.NewExpansions.Put(AWSRoleExpiration, expTime.String())
+	conf.NewExpansions.Put(globals.AWSAccessKeyId, credValues.AccessKeyID)
+	conf.NewExpansions.Put(globals.AWSSecretAccessKey, credValues.SecretAccessKey)
+	conf.NewExpansions.Put(globals.AWSSessionToken, credValues.SessionToken)
+	conf.NewExpansions.Put(globals.AWSRoleExpiration, expTime.String())
 	return nil
 }
