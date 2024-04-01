@@ -780,8 +780,6 @@ func (c *gitFetchProject) fetchModuleSource(ctx context.Context,
 		return err
 	}
 
-	// add retry fetch here?
-
 	attempt := 0
 	return c.retryFetch(ctx, logger, false, opts, func(opts cloneOpts) error {
 		attempt++
