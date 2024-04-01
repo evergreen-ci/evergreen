@@ -101,3 +101,8 @@ const (
 	// LogOutputStdout indicates that the agent will log to standard output.
 	LogOutputStdout LogOutputType = "stdout"
 )
+
+// GetMaxTeardownGroupTimeout returns the maximum teardown group timeout.
+func GetMaxTeardownGroupTimeout() time.Duration {
+	return maxTeardownGroupTimeout
+}

@@ -762,6 +762,29 @@ func TestHostSetAgentStartTime(t *testing.T) {
 	assert.True(t, now.Sub(dbHost.AgentStartTime) < time.Second)
 }
 
+func TestSetTaskGroupTeardownStartTime(t *testing.T) {
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
+	require.NoError(t, db.Clear(Collection))
+	defer func() {
+		assert.NoError(t, db.Clear(Collection))
+	}()
+
+	h := &Host{
+		Id: "id",
+	}
+	require.NoError(t, h.Insert(ctx))
+
+	now := time.Now()
+	require.NoError(t, h.SetTaskGroupTeardownStartTime(ctx))
+	assert.True(t, now.Sub(h.TaskGroupTeardownStartTime) < time.Second)
+
+	dbHost, err := FindOneId(ctx, h.Id)
+	require.NoError(t, err)
+	assert.True(t, now.Sub(dbHost.TaskGroupTeardownStartTime) < time.Second)
+}
+
 func TestHostSetExpirationTime(t *testing.T) {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()

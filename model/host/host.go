@@ -2044,9 +2044,10 @@ func (h *Host) GetElapsedCommunicationTime() time.Duration {
 	return time.Since(h.CreationTime)
 }
 
-// GetElapsedTeardownTime calculates the elapsed time since the teardown of the task group started.
-func (h *Host) GetElapsedTeardownTime() time.Duration {
-	return time.Since(h.TaskGroupTeardownStartTime)
+// TeardownTimeExceededMax checks if the time since the host's task group teardown start time
+// has exceeded the maximum teardown threshold.
+func (h *Host) TeardownTimeExceededMax() bool {
+	return time.Since(h.TaskGroupTeardownStartTime) < evergreen.MaxTeardownGroupThreshold
 }
 
 // DecommissionHostsWithDistroId marks all up hosts intended for running tasks
