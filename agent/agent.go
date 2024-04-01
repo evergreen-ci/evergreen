@@ -1050,6 +1050,7 @@ func (a *Agent) upsertCheckRun(ctx context.Context, tc *taskContext) error {
 	}
 
 	if err = a.comm.UpsertCheckRun(ctx, tc.task, *checkRunOutput); err != nil {
+		tc.logger.Task().Debugf("Error upserting checkRun: '%s'", err.Error())
 		return err
 	}
 
