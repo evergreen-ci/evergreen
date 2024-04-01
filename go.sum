@@ -739,8 +739,8 @@ go.opentelemetry.io/contrib/instrumentation/github.com/aws/aws-sdk-go-v2/otelaws
 go.opentelemetry.io/contrib/instrumentation/github.com/aws/aws-sdk-go-v2/otelaws v0.49.0/go.mod h1:P9cJwfcWVLOHu/8swW4Jfl8AX/a4eXTptW9rp0Uv/co=
 go.opentelemetry.io/contrib/instrumentation/github.com/gorilla/mux/otelmux v0.47.0 h1:yPWywmjyhn5C64Z7OLdIfjnbwOQF/Xz89HNqSVquC2E=
 go.opentelemetry.io/contrib/instrumentation/github.com/gorilla/mux/otelmux v0.47.0/go.mod h1:jk2INQzOTr9e27FwMs2JVXXttZc/3bucJX/7l3YVfbw=
-go.opentelemetry.io/contrib/instrumentation/net/http/otelhttp v0.46.1 h1:aFJWCqJMNjENlcleuuOkGAPH82y0yULBScfXcIEdS24=
-go.opentelemetry.io/contrib/instrumentation/net/http/otelhttp v0.46.1/go.mod h1:sEGXWArGqc3tVa+ekntsN65DmVbVeW+7lTKTjZF3/Fo=
+go.opentelemetry.io/contrib/instrumentation/net/http/otelhttp v0.49.0 h1:jq9TW8u3so/bN+JPT166wjOI6/vQPF6Xe7nMNIltagk=
+go.opentelemetry.io/contrib/instrumentation/net/http/otelhttp v0.49.0/go.mod h1:p8pYQP+m5XfbZm9fxtSKAbM6oIllS7s2AfxrChvc7iw=
 go.opentelemetry.io/otel v1.24.0 h1:0LAOdjNmQeSTzGBzduGe/rU4tZhMwL5rWgtp9Ku5Jfo=
 go.opentelemetry.io/otel v1.24.0/go.mod h1:W7b9Ozg4nkF5tWI5zsXkaKKDjdVjpD4oAt9Qi/MArHo=
 go.opentelemetry.io/otel/exporters/otlp/otlpmetric/otlpmetricgrpc v1.23.1 h1:ZqRWZJGHXV/1yCcEEVJ6/Uz2JtM79DNS8OZYa3vVY/A=
