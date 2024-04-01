@@ -148,7 +148,7 @@ func startWebService() cli.Command {
 
 			startServiceSpan.End()
 			if sdkTracerProvider != nil {
-				sdkTracerProvider.Shutdown(ctx)
+				catcher.Add(sdkTracerProvider.Shutdown(ctx))
 			}
 
 			gracefulWait := make(chan struct{})
