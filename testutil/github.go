@@ -11,6 +11,7 @@ func NewGithubPR(prNumber int, baseRepoName, baseHash, headRepoName, headHash, u
 		Title:  github.String(title),
 		Number: github.Int(prNumber),
 		Head: &github.PullRequestBranch{
+			Ref: github.String("DEVPROD-123"),
 			SHA: github.String(headHash),
 			Repo: &github.Repository{
 				FullName: github.String(headRepoName),

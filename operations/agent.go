@@ -10,6 +10,7 @@ import (
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/agent"
 	"github.com/evergreen-ci/evergreen/agent/command"
+	"github.com/evergreen-ci/evergreen/agent/globals"
 	"github.com/mongodb/grip"
 	"github.com/mongodb/grip/message"
 	"github.com/mongodb/grip/recovery"
@@ -75,7 +76,7 @@ func Agent() cli.Command {
 			},
 			cli.StringFlag{
 				Name:  logOutputFlagName,
-				Value: string(agent.LogOutputFile),
+				Value: string(globals.LogOutputFile),
 				Usage: "location for the agent's log output (file, stdout)",
 			},
 			cli.StringFlag{
@@ -121,10 +122,10 @@ func Agent() cli.Command {
 				catcher.Add(requireStringFlag(workingDirectoryFlagName)(c))
 				mode := c.String(modeFlagName)
 				switch mode {
-				case string(agent.HostMode):
+				case string(globals.HostMode):
 					catcher.Add(requireStringFlag(hostIDFlagName)(c))
 					catcher.Add(requireStringFlag(hostSecretFlagName)(c))
-				case string(agent.PodMode):
+				case string(globals.PodMode):
 					catcher.Add(requireStringFlag(podIDFlagName)(c))
 					catcher.Add(requireStringFlag(podSecretFlagName)(c))
 				default:
@@ -148,10 +149,10 @@ func Agent() cli.Command {
 				HostSecret:                 c.String(hostSecretFlagName),
 				PodID:                      c.String(podIDFlagName),
 				PodSecret:                  c.String(podSecretFlagName),
-				Mode:                       agent.Mode(c.String(modeFlagName)),
+				Mode:                       globals.Mode(c.String(modeFlagName)),
 				StatusPort:                 c.Int(statusPortFlagName),
 				LogPrefix:                  c.String(logPrefixFlagName),
-				LogOutput:                  agent.LogOutputType(c.String(logOutputFlagName)),
+				LogOutput:                  globals.LogOutputType(c.String(logOutputFlagName)),
 				WorkingDirectory:           c.String(workingDirectoryFlagName),
 				Cleanup:                    c.Bool(cleanupFlagName),
 				CloudProvider:              c.String(agentCloudProviderFlagName),

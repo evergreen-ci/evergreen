@@ -6257,7 +6257,7 @@ func TestSleepScheduleInfoValidate(t *testing.T) {
 	})
 }
 
-func TestSetSleepSchedule(t *testing.T) {
+func TestUpdateSleepSchedule(t *testing.T) {
 	defer func() {
 		assert.NoError(t, db.ClearCollections(Collection))
 	}()
@@ -6272,7 +6272,7 @@ func TestSetSleepSchedule(t *testing.T) {
 		assert.Equal(t, expected.TimeZone, actual.TimeZone)
 	}
 	for tName, tCase := range map[string]func(ctx context.Context, t *testing.T, h *Host){
-		"SetsSleepScheduleAndNextScheduledTimes": func(ctx context.Context, t *testing.T, h *Host) {
+		"UpdatesSleepScheduleAndNextScheduledTimes": func(ctx context.Context, t *testing.T, h *Host) {
 			require.NoError(t, h.Insert(ctx))
 			s := SleepScheduleInfo{
 				DailyStartTime: "18:00",
@@ -6280,7 +6280,7 @@ func TestSetSleepSchedule(t *testing.T) {
 				TimeZone:       userTZ.String(),
 			}
 
-			require.NoError(t, h.SetSleepSchedule(ctx, s))
+			require.NoError(t, h.UpdateSleepSchedule(ctx, s))
 
 			now := utility.BSONTime(time.Now())
 			dbHost, err := FindOneId(ctx, h.Id)
@@ -6319,7 +6319,7 @@ func TestSetSleepSchedule(t *testing.T) {
 				TemporarilyExemptUntil: temporarilyExemptUntil,
 			}
 
-			require.NoError(t, h.SetSleepSchedule(ctx, s))
+			require.NoError(t, h.UpdateSleepSchedule(ctx, s))
 
 			now = time.Now()
 			dbHost, err := FindOneId(ctx, h.Id)
@@ -6345,11 +6345,11 @@ func TestSetSleepSchedule(t *testing.T) {
 		},
 		"FailsWithZeroSleepSchedule": func(ctx context.Context, t *testing.T, h *Host) {
 			require.NoError(t, h.Insert(ctx))
-			assert.Error(t, h.SetSleepSchedule(ctx, SleepScheduleInfo{}))
+			assert.Error(t, h.UpdateSleepSchedule(ctx, SleepScheduleInfo{}))
 		},
 		"FailsWithInvalidSleepSchedule": func(ctx context.Context, t *testing.T, h *Host) {
 			require.NoError(t, h.Insert(ctx))
-			assert.Error(t, h.SetSleepSchedule(ctx, SleepScheduleInfo{
+			assert.Error(t, h.UpdateSleepSchedule(ctx, SleepScheduleInfo{
 				DailyStartTime: "10:00",
 			}))
 		},
