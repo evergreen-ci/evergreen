@@ -158,7 +158,7 @@ func (s *AgentSuite) SetupTest() {
 	factory, ok := command.GetCommandFactory("setup.initial")
 	s.True(ok)
 	s.tc.setCurrentCommand(factory())
-	s.tc.setCurrentBlock("setup.initial")
+	s.tc.setCurrentBlock("pre")
 	sender, err := s.a.GetSender(ctx, LogOutputStdout, "agent", "task_id", 2)
 	s.Require().NoError(err)
 	s.a.SetDefaultLogger(sender)
@@ -402,8 +402,8 @@ pre:
 	s.NoError(s.tc.logger.Close())
 	checkMockLogs(s.T(), s.mockCommunicator, s.tc.taskConfig.Task.Id, nil, []string{panicLog})
 
-	// Test if the block type was correctly kept as "setup.initial" since no tasks were ran.
-	s.Equal("setup.initial", string(s.tc.getCurrentBlock()))
+	// Test if the block type was correctly kept as "pre" since no tasks were ran.
+	s.Equal("pre", string(s.tc.getCurrentBlock()))
 }
 
 func (s *AgentSuite) TestRunCommandsIsPanicSafe() {
@@ -1148,7 +1148,7 @@ func (s *AgentSuite) TestEndTaskResponse() {
 	factory, ok := command.GetCommandFactory("setup.initial")
 	s.Require().True(ok)
 	s.tc.setCurrentCommand(factory())
-	s.tc.setCurrentBlock("setup.initial")
+	s.tc.setCurrentBlock("pre")
 
 	const systemFailureDescription = "failure message"
 	s.T().Run("TaskFailingWithCurrentCommandOverridesEmptyDescription", func(t *testing.T) {

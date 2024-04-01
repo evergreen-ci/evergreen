@@ -440,7 +440,7 @@ func (a *Agent) setupTask(agentCtx, setupCtx context.Context, initialTC *taskCon
 	}
 	if factory != nil {
 		tc.setCurrentCommand(factory())
-		tc.setCurrentBlock("setup.initial")
+		tc.setCurrentBlock("pre")
 	}
 
 	a.comm.UpdateLastMessageTime()
@@ -482,7 +482,7 @@ func (a *Agent) setupTask(agentCtx, setupCtx context.Context, initialTC *taskCon
 	// We are only calling this again to get the log for the current command after logging has been set up.
 	if factory != nil {
 		tc.setCurrentCommand(factory())
-		tc.setCurrentBlock("setup.initial")
+		tc.setCurrentBlock("pre")
 	}
 
 	tc.logger.Task().Infof("Task logger initialized (agent version '%s' from Evergreen build revision '%s').", evergreen.AgentVersion, evergreen.BuildRevision)
