@@ -106,17 +106,21 @@ func New(apiURL string) Config {
 			}
 		}
 
+		createPermissionOpts := func(projectId string) gimlet.PermissionOpts {
+			return gimlet.PermissionOpts{
+				Resource:      projectId,
+				ResourceType:  evergreen.ProjectResourceType,
+				Permission:    evergreen.PermissionProjectSettings,
+				RequiredLevel: evergreen.ProjectSettingsEdit.Value,
+			}
+		}
+
 		if operationContext == CopyProjectMutation {
 			projectIdToCopy, ok := args["project"].(map[string]interface{})["projectIdToCopy"].(string)
 			if !ok {
 				return nil, InternalServerError.Send(ctx, "finding projectIdToCopy for copy project operation")
 			}
-			opts := gimlet.PermissionOpts{
-				Resource:      projectIdToCopy,
-				ResourceType:  evergreen.ProjectResourceType,
-				Permission:    evergreen.PermissionProjectSettings,
-				RequiredLevel: evergreen.ProjectSettingsEdit.Value,
-			}
+			opts := createPermissionOpts(projectIdToCopy)
 			if user.HasPermission(opts) {
 				return next(ctx)
 			}
@@ -127,12 +131,7 @@ func New(apiURL string) Config {
 			if !ok {
 				return nil, InternalServerError.Send(ctx, "finding projectId for delete project operation")
 			}
-			opts := gimlet.PermissionOpts{
-				Resource:      projectId,
-				ResourceType:  evergreen.ProjectResourceType,
-				Permission:    evergreen.PermissionProjectSettings,
-				RequiredLevel: evergreen.ProjectSettingsEdit.Value,
-			}
+			opts := createPermissionOpts(projectId)
 			if user.HasPermission(opts) {
 				return next(ctx)
 			}
@@ -150,12 +149,7 @@ func New(apiURL string) Config {
 			if project == nil {
 				return nil, ResourceNotFound.Send(ctx, fmt.Sprintf("project '%s' not found", projectIdentifier))
 			}
-			opts := gimlet.PermissionOpts{
-				Resource:      project.Id,
-				ResourceType:  evergreen.ProjectResourceType,
-				Permission:    evergreen.PermissionProjectSettings,
-				RequiredLevel: evergreen.ProjectSettingsEdit.Value,
-			}
+			opts := createPermissionOpts(project.Id)
 			if user.HasPermission(opts) {
 				return next(ctx)
 			}
