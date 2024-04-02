@@ -141,6 +141,14 @@ func ByUserWithRunningStatus(user string) bson.M {
 	}
 }
 
+// ByRunningStatus produces a query that returns all hosts
+// with the running status.
+func ByRunningStatus() bson.M {
+	return bson.M{
+		StatusKey: evergreen.HostRunning,
+	}
+}
+
 // ByUserRecentlyTerminated produces a query that returns all
 // terminated hosts whose TerminationTimeKey is after the given
 // timestamp.
