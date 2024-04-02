@@ -1544,3 +1544,17 @@ func FindHostsScheduledToStart(ctx context.Context) ([]Host, error) {
 		sleepScheduleShouldKeepOff: bson.M{"$ne": true},
 	})
 }
+
+// setSleepSchedule sets the sleep schedule for a given host
+func setSleepSchedule(ctx context.Context, hostId string, schedule SleepScheduleInfo) error {
+	if err := UpdateOne(ctx, bson.M{
+		IdKey: hostId,
+	}, bson.M{
+		"$set": bson.M{
+			SleepScheduleKey: schedule,
+		},
+	}); err != nil {
+		return err
+	}
+	return nil
+}

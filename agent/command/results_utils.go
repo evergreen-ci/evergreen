@@ -6,6 +6,7 @@ import (
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/agent/internal"
 	"github.com/evergreen-ci/evergreen/agent/internal/client"
+	"github.com/evergreen-ci/evergreen/agent/internal/redactor"
 	"github.com/evergreen-ci/evergreen/agent/internal/taskoutput"
 	"github.com/evergreen-ci/evergreen/apimodels"
 	"github.com/evergreen-ci/evergreen/model/task"
@@ -43,7 +44,7 @@ func sendTestLogsAndResults(ctx context.Context, comm client.Communicator, logge
 			return errors.Wrap(err, "canceled while sending test logs")
 		}
 
-		if err := taskoutput.AppendTestLog(ctx, comm, &conf.Task, &log); err != nil {
+		if err := taskoutput.AppendTestLog(ctx, comm, &conf.Task, redactor.RedactionOptions{Expansions: conf.NewExpansions, Redacted: conf.Redacted}, &log); err != nil {
 			// Continue on error to let the other logs get posted.
 			logger.Task().Error(errors.Wrap(err, "sending test log"))
 		}

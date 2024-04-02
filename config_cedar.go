@@ -11,20 +11,22 @@ import (
 )
 
 type CedarConfig struct {
-	BaseURL string `bson:"base_url" json:"base_url" yaml:"base_url"`
-	RPCPort string `bson:"rpc_port" json:"rpc_port" yaml:"rpc_port"`
-	User    string `bson:"user" json:"user" yaml:"user"`
-	APIKey  string `bson:"api_key" json:"api_key" yaml:"api_key"`
+	BaseURL     string `bson:"base_url" json:"base_url" yaml:"base_url"`
+	GRPCBaseURL string `bson:"grpc_base_url" json:"grpc_base_url" yaml:"grpc_base_url"`
+	RPCPort     string `bson:"rpc_port" json:"rpc_port" yaml:"rpc_port"`
+	User        string `bson:"user" json:"user" yaml:"user"`
+	APIKey      string `bson:"api_key" json:"api_key" yaml:"api_key"`
 	// Insecure disables TLS, this should only be used for testing.
 	Insecure bool `bson:"insecure" json:"insecure" yaml:"insecure"`
 }
 
 var (
-	cedarConfigBaseURLKey  = bsonutil.MustHaveTag(CedarConfig{}, "BaseURL")
-	cedarConfigRPCPortKey  = bsonutil.MustHaveTag(CedarConfig{}, "RPCPort")
-	cedarConfigUserKey     = bsonutil.MustHaveTag(CedarConfig{}, "User")
-	cedarConfigAPIKeyKey   = bsonutil.MustHaveTag(CedarConfig{}, "APIKey")
-	cedarConfigInsecureKey = bsonutil.MustHaveTag(CedarConfig{}, "Insecure")
+	cedarConfigBaseURLKey     = bsonutil.MustHaveTag(CedarConfig{}, "BaseURL")
+	cedarConfigGRPCBaseURLKey = bsonutil.MustHaveTag(CedarConfig{}, "GRPCBaseURL")
+	cedarConfigRPCPortKey     = bsonutil.MustHaveTag(CedarConfig{}, "RPCPort")
+	cedarConfigUserKey        = bsonutil.MustHaveTag(CedarConfig{}, "User")
+	cedarConfigAPIKeyKey      = bsonutil.MustHaveTag(CedarConfig{}, "APIKey")
+	cedarConfigInsecureKey    = bsonutil.MustHaveTag(CedarConfig{}, "Insecure")
 )
 
 func (*CedarConfig) SectionId() string { return "cedar" }
@@ -49,11 +51,12 @@ func (c *CedarConfig) Get(ctx context.Context) error {
 func (c *CedarConfig) Set(ctx context.Context) error {
 	_, err := GetEnvironment().DB().Collection(ConfigCollection).UpdateOne(ctx, byId(c.SectionId()), bson.M{
 		"$set": bson.M{
-			cedarConfigBaseURLKey:  c.BaseURL,
-			cedarConfigRPCPortKey:  c.RPCPort,
-			cedarConfigUserKey:     c.User,
-			cedarConfigAPIKeyKey:   c.APIKey,
-			cedarConfigInsecureKey: c.Insecure,
+			cedarConfigBaseURLKey:     c.BaseURL,
+			cedarConfigGRPCBaseURLKey: c.GRPCBaseURL,
+			cedarConfigRPCPortKey:     c.RPCPort,
+			cedarConfigUserKey:        c.User,
+			cedarConfigAPIKeyKey:      c.APIKey,
+			cedarConfigInsecureKey:    c.Insecure,
 		},
 	}, options.Update().SetUpsert(true))
 

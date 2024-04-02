@@ -50,11 +50,12 @@ func (*agentCedarConfig) Parse(_ context.Context, _ *http.Request) error { retur
 
 func (h *agentCedarConfig) Run(ctx context.Context) gimlet.Responder {
 	return gimlet.NewJSONResponse(apimodels.CedarConfig{
-		BaseURL:  h.config.BaseURL,
-		RPCPort:  h.config.RPCPort,
-		Username: h.config.User,
-		APIKey:   h.config.APIKey,
-		Insecure: h.config.Insecure,
+		BaseURL:     h.config.BaseURL,
+		GRPCBaseURL: h.config.GRPCBaseURL,
+		RPCPort:     h.config.RPCPort,
+		Username:    h.config.User,
+		APIKey:      h.config.APIKey,
+		Insecure:    h.config.Insecure,
 	})
 }
 
@@ -1468,10 +1469,6 @@ func (h *checkRunHandler) Parse(ctx context.Context, r *http.Request) error {
 
 func (h *checkRunHandler) Run(ctx context.Context) gimlet.Responder {
 	env := evergreen.GetEnvironment()
-	if env.Settings().GitHubCheckRun.CheckRunLimit <= 0 {
-		return nil
-	}
-
 	t, err := task.FindOneId(h.taskID)
 	if err != nil {
 		return gimlet.MakeJSONInternalErrorResponder(errors.Wrapf(err, "finding task '%s'", h.taskID))

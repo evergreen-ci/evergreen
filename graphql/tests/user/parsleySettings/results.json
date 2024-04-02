@@ -8,7 +8,8 @@
             "displayName": "Jane Smith",
             "userId": "jane.smith",
             "parsleySettings": {
-              "sectionsEnabled": true
+              "sectionsEnabled": true,
+              "jumpToFailingLineEnabled": true
             }
           }
         }
@@ -22,7 +23,8 @@
             "displayName": "Bob Smith",
             "userId": "bob.smith",
             "parsleySettings": {
-              "sectionsEnabled": false
+              "sectionsEnabled": false,
+              "jumpToFailingLineEnabled": false
             }
           }
         }
