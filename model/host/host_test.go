@@ -777,6 +777,7 @@ func TestSetTaskGroupTeardownStartTime(t *testing.T) {
 	require.NoError(t, h.Insert(ctx))
 
 	now := time.Now()
+	assert.False(t, now.Sub(h.TaskGroupTeardownStartTime) < time.Second)
 	require.NoError(t, h.SetTaskGroupTeardownStartTime(ctx))
 	assert.True(t, now.Sub(h.TaskGroupTeardownStartTime) < time.Second)
 
