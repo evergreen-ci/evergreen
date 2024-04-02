@@ -956,10 +956,11 @@ var (
 		HostStarting,
 	}
 
-	// Hosts in "initializing" and "building" status aren't actually running yet:
+	// Hosts in "initializing" status aren't actually running yet:
 	// they're just intents, so this list omits that value.
 	ActiveStatus = []string{
 		HostRunning,
+		HostBuilding,
 		HostStarting,
 		HostProvisioning,
 		HostProvisionFailed,
