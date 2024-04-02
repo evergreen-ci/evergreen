@@ -1,5 +1,5 @@
 query {
-    repoEvents(id: "5678") {
+    repoEvents(repoId: "5678") {
         eventLogEntries {
             user
             timestamp
