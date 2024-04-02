@@ -1024,7 +1024,8 @@ func (a *Agent) finishTask(ctx context.Context, tc *taskContext, status string, 
 
 	err = a.upsertCheckRun(ctx, tc)
 	if err != nil {
-		grip.Error(errors.Wrap(err, "upserting checkrun"))
+		grip.Error(errors.Wrap(err, "upserting check run"))
+		tc.logger.Task().Errorf("Error upserting check run: '%s'", err.Error())
 	}
 
 	span := trace.SpanFromContext(ctx)
@@ -1073,7 +1074,7 @@ func buildCheckRun(ctx context.Context, tc *taskContext) (*apimodels.CheckRunOut
 
 	fileName, err := tc.taskConfig.Expansions.ExpandString(fileName)
 	if err != nil {
-		return nil, errors.WithStack(err)
+		return nil, errors.New("Error expanding check run output file")
 	}
 
 	fileName = command.GetWorkingDirectory(tc.taskConfig, fileName)
@@ -1092,7 +1093,7 @@ func buildCheckRun(ctx context.Context, tc *taskContext) (*apimodels.CheckRunOut
 	}
 
 	if err := util.ExpandValues(&checkRunOutput, &tc.taskConfig.Expansions); err != nil {
-		return nil, errors.Wrap(err, "applying expansions")
+		return nil, errors.New("Error expanding values for check run output")
 	}
 
 	return &checkRunOutput, nil
