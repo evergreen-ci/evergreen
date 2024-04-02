@@ -534,7 +534,7 @@ func shouldRunSetupGroup(nextTask *apimodels.NextTaskResponse, tc *taskContext) 
 		return true
 	} else if nextTask.TaskGroup != previousTaskGroup { // The next task has a different task group.
 		return true
-	} else if nextTask.TaskExecution != tc.taskConfig.Task.Execution { // The previous and next task are in the same task group but the next task has a different execution number.
+	} else if nextTask.TaskExecution > tc.taskConfig.Task.Execution { // The previous and next task are in the same task group but the next task has a higher execution number.
 		return true
 	}
 	return false
