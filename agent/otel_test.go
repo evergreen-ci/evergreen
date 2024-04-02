@@ -8,6 +8,7 @@ import (
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+	tracepb "go.opentelemetry.io/proto/otlp/trace/v1"
 )
 
 func TestUnmarshalTraces(t *testing.T) {
@@ -85,4 +86,39 @@ func TestGetTraceFiles(t *testing.T) {
 		assert.Equal(t, path.Join(tmpDir, traceSuffix, "trace0.json"), files[0])
 	})
 
+}
+
+func TestBatchSpans(t *testing.T) {
+	for _, testCase := range []struct {
+		name               string
+		spansLen           int
+		batchSize          int
+		expectedBatchCount int
+	}{
+		{
+			name:               "EvenSize",
+			spansLen:           100,
+			batchSize:          10,
+			expectedBatchCount: 10,
+		},
+		{
+			name:               "OddSize",
+			spansLen:           10,
+			batchSize:          3,
+			expectedBatchCount: 4,
+		},
+	} {
+		t.Run(testCase.name, func(t *testing.T) {
+			var spans []*tracepb.ResourceSpans
+			for i := 0; i < testCase.spansLen; i++ {
+				spans = append(spans, &tracepb.ResourceSpans{})
+			}
+
+			spanBatches := batchSpans(spans, testCase.batchSize)
+			assert.Len(t, spanBatches, testCase.expectedBatchCount)
+			for _, batch := range spanBatches[:len(spanBatches)-1] {
+				assert.Len(t, batch, testCase.spansLen/testCase.batchSize)
+			}
+		})
+	}
 }

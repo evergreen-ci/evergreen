@@ -11,8 +11,8 @@ import (
 	"time"
 
 	"github.com/evergreen-ci/evergreen"
-	"github.com/evergreen-ci/evergreen/agent"
 	"github.com/evergreen-ci/evergreen/agent/command"
+	"github.com/evergreen-ci/evergreen/agent/globals"
 	"github.com/evergreen-ci/evergreen/model"
 	"github.com/evergreen-ci/evergreen/model/distro"
 	"github.com/evergreen-ci/evergreen/model/task"
@@ -1767,6 +1767,13 @@ func checkTaskGroups(p *model.Project) ValidationErrors {
 		}
 	}
 	for _, tg := range taskGroups {
+		// validate that teardown group timeout is not over MaxTeardownGroupTimeout
+		if tg.TeardownGroupTimeoutSecs > int(globals.MaxTeardownGroupTimeout.Seconds()) {
+			errs = append(errs, ValidationError{
+				Message: fmt.Sprintf("task group '%s' has a teardown task timeout of %d seconds, which exceeds the maximum of %d seconds", tg.Name, tg.TeardownGroupTimeoutSecs, int(globals.MaxTeardownGroupTimeout.Seconds())),
+				Level:   Warning,
+			})
+		}
 		if _, ok := names[tg.Name]; ok {
 			errs = append(errs, ValidationError{
 				Level:   Warning,
@@ -2301,7 +2308,7 @@ func checkTasks(project *model.Project) ValidationErrors {
 				ValidationError{
 					Message: fmt.Sprintf("no exec_timeout_secs defined at the top-level or on one or more tasks; "+
 						"these tasks will default to a timeout of %d hours",
-						int(agent.DefaultExecTimeout.Hours())),
+						int(globals.DefaultExecTimeout.Hours())),
 					Level: Warning,
 				},
 			)

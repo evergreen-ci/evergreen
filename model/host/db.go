@@ -50,6 +50,7 @@ var (
 	RunningTaskExecutionKey                = bsonutil.MustHaveTag(Host{}, "RunningTaskExecution")
 	RunningTaskGroupKey                    = bsonutil.MustHaveTag(Host{}, "RunningTaskGroup")
 	RunningTaskGroupOrderKey               = bsonutil.MustHaveTag(Host{}, "RunningTaskGroupOrder")
+	TaskGroupTeardownStartTimeKey          = bsonutil.MustHaveTag(Host{}, "TaskGroupTeardownStartTime")
 	RunningTaskBuildVariantKey             = bsonutil.MustHaveTag(Host{}, "RunningTaskBuildVariant")
 	RunningTaskVersionKey                  = bsonutil.MustHaveTag(Host{}, "RunningTaskVersion")
 	RunningTaskProjectKey                  = bsonutil.MustHaveTag(Host{}, "RunningTaskProject")
@@ -1535,4 +1536,18 @@ func FindHostsScheduledToStart(ctx context.Context) ([]Host, error) {
 		},
 		sleepScheduleShouldKeepOff: bson.M{"$ne": true},
 	})
+}
+
+// setSleepSchedule sets the sleep schedule for a given host
+func setSleepSchedule(ctx context.Context, hostId string, schedule SleepScheduleInfo) error {
+	if err := UpdateOne(ctx, bson.M{
+		IdKey: hostId,
+	}, bson.M{
+		"$set": bson.M{
+			SleepScheduleKey: schedule,
+		},
+	}); err != nil {
+		return err
+	}
+	return nil
 }

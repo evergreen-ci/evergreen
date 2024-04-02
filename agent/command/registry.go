@@ -191,6 +191,7 @@ func (r *commandRegistry) renderCommands(commandInfo model.PluginCommandConf,
 		cmd.SetType(c.GetType(project))
 		cmd.SetFullDisplayName(c.DisplayName)
 		cmd.SetIdleTimeout(time.Duration(c.TimeoutSecs) * time.Second)
+		cmd.SetRetryOnFailure(c.RetryOnFailure)
 
 		out = append(out, cmd)
 	}

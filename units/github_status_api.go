@@ -50,6 +50,7 @@ const (
 	EmptyConfig                 = "config file was empty"
 	ProjectFailsValidation      = "Project fails validation"
 	OtherErrors                 = "Evergreen error"
+	MergeBaseTooOld             = "merge base is too old"
 )
 
 func init() {

@@ -1,9 +1,10 @@
-package client
+package redactor
 
 import (
 	"fmt"
 	"strings"
 
+	"github.com/evergreen-ci/evergreen/agent/globals"
 	"github.com/evergreen-ci/evergreen/agent/util"
 	"github.com/mongodb/grip/message"
 	"github.com/mongodb/grip/send"
@@ -17,6 +18,15 @@ type redactingSender struct {
 	expansionsToRedact []string
 
 	send.Sender
+}
+
+// RedactionOptions configures a redacting sender.
+type RedactionOptions struct {
+	// Expansions defines the values to redact.
+	Expansions *util.DynamicExpansions
+	// Redacted specifies the names of expansions to redact the values for.
+	// [globals.ExpansionsToRedact] are always redacted.
+	Redacted []string
 }
 
 func (r *redactingSender) Send(m message.Composer) {
@@ -33,10 +43,16 @@ func (r *redactingSender) Send(m message.Composer) {
 	r.Sender.Send(message.NewDefaultMessage(m.Priority(), msg))
 }
 
-func newRedactingSender(sender send.Sender, expansions *util.DynamicExpansions, expansionsToRedact []string) send.Sender {
+// NewRedactingSender wraps the provided sender with a sender that redacts
+// expansions in accordance with the reaction options.
+func NewRedactingSender(sender send.Sender, opts RedactionOptions) send.Sender {
+	if opts.Expansions == nil {
+		opts.Expansions = &util.DynamicExpansions{}
+	}
+
 	return &redactingSender{
-		expansions:         expansions,
-		expansionsToRedact: expansionsToRedact,
+		expansions:         opts.Expansions,
+		expansionsToRedact: append(opts.Redacted, globals.ExpansionsToRedact...),
 		Sender:             sender,
 	}
 }

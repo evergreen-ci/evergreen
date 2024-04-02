@@ -1427,8 +1427,9 @@ Parameters:
     commands run once per host that's running the task group tasks. Note that
     `post` does not run for task group tasks.
 -   `teardown_group_timeout_secs`: set a timeout for the `teardown_group`.
-    Defaults to 15 minutes. Hitting this timeout will stop the `teardown_task`
-    commands but will not cause the task to fail.
+    The maximum and the default is 3 minutes. If it's not set or if it's set to a 
+    number higher than the maximum, it will default to 3 minutes. Hitting this timeout 
+    will stop the `teardown_group` commands but will not cause the task to fail. 
 -   `setup_task`: commands to run prior to running each task in the task group.
     Note that `pre` does not run for task group tasks.
 -   `setup_task_can_fail_task`: if true, task will fail if a command in
@@ -1507,6 +1508,10 @@ If a task in a multi-host task group is restarted:
 Both `teardown_task` and `teardown_group` are not 100% guaranteed to run. If a 
 host runs into an issue and needs to exit before it ran the `teardown_task` 
 or `teardown_group`, it will exit without running them. 
+
+Additionally, `teardown_group` has a max timeout of 3 minutes. Even if the 
+timeout is manually set higher with `teardown_group_timeout_secs`, a three minute 
+timeout will be enforced.  
 
 ### Task Dependencies
 
@@ -1637,15 +1642,32 @@ This is only recommended for commands that are known to be flaky, or fail interm
 **In order to prevent overuse of this feature, the number of times a single
 task can be automatically restarted on failure is limited to 1 time.**
 
-An example is:
+In the example below, both `task1` and `task2` will retry automatically:
 
 ``` yaml
-- command: shell.exec
-  retry_on_failure: true
-  params:
-    working_dir: src
-    script: |
-      exit 1
+functions:
+  my_function:
+     - command: shell.exec
+       params:
+         script: echo "hello"
+     - command: shell.exec
+       retry_on_failure: true
+       params:
+         script: exit 1
+
+tasks:
+  - name: task1
+    commands:
+    - command: shell.exec
+      retry_on_failure: true
+      params:
+       working_dir: src
+       script: |
+        exit 1
+        
+  - name: task2
+    commands:
+    - func: my_function
 ```
 
 ### Customizing Logging

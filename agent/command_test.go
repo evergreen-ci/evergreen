@@ -7,6 +7,7 @@ import (
 	"testing"
 
 	"github.com/evergreen-ci/evergreen"
+	"github.com/evergreen-ci/evergreen/agent/globals"
 	"github.com/evergreen-ci/evergreen/agent/internal"
 	"github.com/evergreen-ci/evergreen/agent/internal/client"
 	agentutil "github.com/evergreen-ci/evergreen/agent/util"
@@ -51,7 +52,7 @@ func (s *CommandSuite) SetupTest() {
 			HostID:           "host",
 			HostSecret:       "secret",
 			StatusPort:       2286,
-			LogOutput:        LogOutputStdout,
+			LogOutput:        globals.LogOutputStdout,
 			LogPrefix:        "agent",
 			WorkingDirectory: s.tmpDirName,
 		},
@@ -333,4 +334,30 @@ functions:
 	key3Value := s.tc.taskConfig.Expansions.Get("key3")
 	s.Equal("expansionVar3", key3Value, "key3 should be the original expansion value")
 	s.Empty(s.tc.taskConfig.DynamicExpansions)
+}
+
+func (s *CommandSuite) TestRetryOnFailureWorksForFunction() {
+	projYml := `
+functions:
+  should_retry:
+    command: shell.exec
+    retry_on_failure: true
+    params:
+      script: exit 1
+`
+	s.setUpConfigAndProject(projYml)
+
+	func1 := model.PluginCommandConf{
+		Function:    "should_retry",
+		DisplayName: "function",
+		Vars:        map[string]string{"key1": "newValue1", "key2": "newValue2", "key3": "newValue3"},
+	}
+
+	cmdBlock := commandBlock{
+		commands:    &model.YAMLCommandSet{SingleCommand: &func1},
+		canFailTask: true,
+	}
+	err := s.a.runCommandsInBlock(s.ctx, s.tc, cmdBlock)
+	s.Error(err)
+	s.True(s.mockCommunicator.TaskShouldRetryOnFail)
 }
