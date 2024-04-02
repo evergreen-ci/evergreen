@@ -529,7 +529,6 @@ func TestRequireProjectAdmin(t *testing.T) {
 	}
 	require.NoError(t, usr.RemoveRole("admin_project"))
 	res, err = config.Directives.RequireProjectAdmin(ctx, obj, next)
-	require.NoError(t, usr.AddRole("admin_project"))
 	require.EqualError(t, err, "input: user testuser does not have permission to access the SetLastRevision resolver")
 	require.Nil(t, res)
 	require.Equal(t, 5, callCount)
