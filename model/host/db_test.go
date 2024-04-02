@@ -784,43 +784,54 @@ func TestFindHostsScheduledToStart(t *testing.T) {
 
 func TestCountRunningStatusHosts(t *testing.T) {
 	assert.NoError(t, db.ClearCollections(Collection))
+	d1 := distro.Distro{
+		Id: "d1",
+	}
 	h1 := Host{
 		Id:     "h1",
+		Distro: d1,
 		Status: evergreen.HostRunning,
 	}
 	h2 := Host{
 		Id:     "h2",
+		Distro: d1,
 		Status: evergreen.HostTerminated,
 	}
 	h3 := Host{
 		Id:     "h3",
+		Distro: d1,
 		Status: evergreen.HostStopping,
 	}
 	h4 := Host{
 		Id:     "h4",
+		Distro: d1,
 		Status: evergreen.HostRunning,
 	}
 	h5 := Host{
 		Id:     "h5",
+		Distro: d1,
 		Status: evergreen.HostBuilding,
 	}
 	h6 := Host{
 		Id:     "h6",
+		Distro: d1,
 		Status: evergreen.HostProvisionFailed,
 	}
 	h7 := Host{
 		Id:     "h7",
+		Distro: d1,
 		Status: evergreen.HostStopped,
 	}
 	h8 := Host{
 		Id:     "h8",
+		Distro: d1,
 		Status: evergreen.HostProvisioning,
 	}
 
 	assert.NoError(t, db.InsertMany(Collection, h1, h2, h3, h4, h5, h6, h7, h8))
 
 	ctx := context.TODO()
-	count, err := CountRunningStatusHosts(ctx)
+	count, err := CountRunningStatusHosts(ctx, "d1")
 	assert.NoError(t, err)
 	assert.Equal(t, 2, count)
 

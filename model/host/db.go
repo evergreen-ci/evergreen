@@ -141,14 +141,6 @@ func ByUserWithRunningStatus(user string) bson.M {
 	}
 }
 
-// ByRunningStatus produces a query that returns all hosts
-// with the running status.
-func ByRunningStatus() bson.M {
-	return bson.M{
-		StatusKey: evergreen.HostRunning,
-	}
-}
-
 // ByUserRecentlyTerminated produces a query that returns all
 // terminated hosts whose TerminationTimeKey is after the given
 // timestamp.
@@ -240,6 +232,16 @@ func runningHostsQuery(distroID string) bson.M {
 	return query
 }
 
+// byRunningStatusQuery produces a query that returns all hosts
+// with the running status that belong to the given.
+func byRunningStatusQuery(distroID string) bson.M {
+	distroIDKey := bsonutil.GetDottedKeyName(DistroKey, distro.IdKey)
+	return bson.M{
+		distroIDKey: distroID,
+		StatusKey:   evergreen.HostRunning,
+	}
+}
+
 func idleStartedTaskHostsQuery(distroID string) bson.M {
 	query := bson.M{
 		StatusKey:      bson.M{"$in": evergreen.StartedHostStatus},
@@ -271,8 +273,8 @@ func CountRunningHosts(ctx context.Context, distroID string) (int, error) {
 	return num, errors.Wrap(err, "counting running hosts")
 }
 
-func CountRunningStatusHosts(ctx context.Context) (int, error) {
-	num, err := Count(ctx, ByRunningStatus())
+func CountRunningStatusHosts(ctx context.Context, distroID string) (int, error) {
+	num, err := Count(ctx, byRunningStatusQuery(distroID))
 	return num, errors.Wrap(err, "counting Running status hosts")
 }
 
