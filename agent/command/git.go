@@ -78,6 +78,12 @@ type gitFetchProject struct {
 
 	RecurseSubmodules bool `mapstructure:"recurse_submodules"`
 
+	// CloneAllBranches specifies whether all branches should be cloned with the '--single-branch' flag.
+	// If set to true, all branches will be cloned during the git operation.
+	// If set to false, only the current branch will be cloned.
+	// If a depth (CloneDepth) is specified, the clone will be single-branch (as implied by Git).
+	CloneAllBranches bool `mapstructure:"clone_all_branches"`
+
 	CommitterName string `mapstructure:"committer_name"`
 
 	CommitterEmail string `mapstructure:"committer_email"`
@@ -94,6 +100,7 @@ type cloneOpts struct {
 	dir                    string
 	token                  string
 	recurseSubmodules      bool
+	cloneAllBranches       bool
 	useVerbose             bool
 	usePatchMergeCommitSha bool
 	cloneDepth             int
@@ -235,6 +242,9 @@ func (opts cloneOpts) buildHTTPCloneCommand(forApp bool) ([]string, error) {
 	}
 	if opts.branch != "" {
 		clone = fmt.Sprintf("%s --branch '%s'", clone, opts.branch)
+	}
+	if !opts.cloneAllBranches {
+		clone = fmt.Sprintf("%s --single-branch", clone)
 	}
 
 	redactedClone := strings.Replace(clone, opts.token, "[redacted oauth token]", -1)
@@ -454,6 +464,7 @@ func (c *gitFetchProject) opts(projectMethod, projectToken string, logger client
 		dir:                    c.Directory,
 		token:                  projectToken,
 		recurseSubmodules:      c.RecurseSubmodules,
+		cloneAllBranches:       c.CloneAllBranches,
 		usePatchMergeCommitSha: true,
 	}
 	cloneDepth := c.CloneDepth
