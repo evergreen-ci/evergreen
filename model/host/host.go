@@ -80,6 +80,9 @@ type Host struct {
 	RunningTaskGroup        string `bson:"running_task_group,omitempty" json:"running_task_group,omitempty"`
 	RunningTaskGroupOrder   int    `bson:"running_task_group_order,omitempty" json:"running_task_group_order,omitempty"`
 
+	// TaskGroupTeardownStartTime represents the time when the teardown of task groups process started for the host.
+	TaskGroupTeardownStartTime time.Time `bson:"teardown_start_time,omitempty" json:"teardown_start_time,omitempty"`
+
 	// the task the most recently finished running on the host
 	LastTask         string `bson:"last_task" json:"last_task"`
 	LastGroup        string `bson:"last_group,omitempty" json:"last_group,omitempty"`
@@ -199,6 +202,16 @@ const (
 )
 
 func (h *Host) UnmarshalBSON(in []byte) error { return mgobson.Unmarshal(in, h) }
+
+// IsFree checks that the host is not running a task and is not in the process of tearing down.
+func (h *Host) IsFree() bool {
+	return h.RunningTask == "" && !h.IsTearingDown()
+}
+
+// IsTearingDown determines if TeardownStartTime is not zero time, therefore indicating that the host is tearing down
+func (h *Host) IsTearingDown() bool {
+	return !h.TaskGroupTeardownStartTime.IsZero()
+}
 
 type IdleHostsByDistroID struct {
 	DistroID          string `bson:"distro_id"`
@@ -555,6 +568,11 @@ func (h *Host) GetTaskGroupString() string {
 func (h *Host) IdleTime() time.Duration {
 	// If the host is currently running a task, it is not idle.
 	if h.RunningTask != "" {
+		return 0
+	}
+
+	// If the host is currently tearing down a task group, it is not idle.
+	if h.IsTearingDown() {
 		return 0
 	}
 
@@ -968,6 +986,44 @@ func (h *Host) SetAgentStartTime(ctx context.Context) error {
 		return errors.Wrap(err, "setting agent start time")
 	}
 	h.AgentStartTime = now
+	return nil
+}
+
+// SetTaskGroupTeardownStartTime sets the TaskGroupTeardownStartTime to the current time for the host
+func (h *Host) SetTaskGroupTeardownStartTime(ctx context.Context) error {
+	now := time.Now()
+	if err := UpdateOne(ctx, bson.M{
+		IdKey: h.Id,
+	}, bson.M{
+		"$set": bson.M{
+			TaskGroupTeardownStartTimeKey: now,
+		},
+	}); err != nil {
+		return err
+	}
+
+	h.TaskGroupTeardownStartTime = now
+	return nil
+}
+
+// UnsetTaskGroupTeardownStartTime unsets the TaskGroupTeardownStartTime for the host.
+func (h *Host) UnsetTaskGroupTeardownStartTime(ctx context.Context) error {
+	if h.TaskGroupTeardownStartTime.IsZero() {
+		return nil
+	}
+
+	if err := UpdateOne(ctx, bson.M{
+		IdKey: h.Id,
+	}, bson.M{
+		"$unset": bson.M{
+			TaskGroupTeardownStartTimeKey: 1,
+		},
+	}); err != nil {
+		return err
+	}
+
+	h.TaskGroupTeardownStartTime = time.Time{}
+
 	return nil
 }
 
@@ -1989,6 +2045,12 @@ func (h *Host) GetElapsedCommunicationTime() time.Duration {
 	return time.Since(h.CreationTime)
 }
 
+// TeardownTimeExceededMax checks if the time since the host's task group teardown start time
+// has exceeded the maximum teardown threshold.
+func (h *Host) TeardownTimeExceededMax() bool {
+	return time.Since(h.TaskGroupTeardownStartTime) < evergreen.MaxTeardownGroupThreshold
+}
+
 // DecommissionHostsWithDistroId marks all up hosts intended for running tasks
 // that have a matching distro ID as decommissioned.
 func DecommissionHostsWithDistroId(ctx context.Context, distroId string) error {
@@ -2520,7 +2582,7 @@ func (hosts HostGroup) Stats() HostGroupStats {
 		} else if h.Status != evergreen.HostRunning {
 			out.Provisioning++
 		} else if h.Status == evergreen.HostRunning {
-			if h.RunningTask == "" {
+			if h.IsFree() {
 				out.Idle++
 			} else {
 				out.Active++

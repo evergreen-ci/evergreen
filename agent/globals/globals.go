@@ -51,6 +51,13 @@ const (
 	// command.
 	DefaultPreTimeout = 2 * time.Hour
 
+	// maxTeardownGroupTimeout specifies the duration after when the
+	// teardown_group should time out and stop the current command.
+	// this cannot be set higher than the evergreen.MaxTeardownGroupThreshold
+	// because hosts will be considered idle if they have been tearing down
+	// a task group for longer than that time.
+	MaxTeardownGroupTimeout = 3 * time.Minute
+
 	// DefaultPostTimeout specifies the default duration after when the post or
 	// teardown_task block should time out and stop the current command.
 	DefaultPostTimeout = 30 * time.Minute
