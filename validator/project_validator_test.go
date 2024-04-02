@@ -3649,7 +3649,7 @@ buildvariants:
 
 	validationErrs = checkTaskGroups(&proj)
 	require.Len(t, validationErrs, 1)
-	assert.Contains(validationErrs[0].Message, "task group example_task_group has a teardown task timeout of 1800 seconds, which exceeds the maximum of 180 seconds")
+	assert.Contains(validationErrs[0].Message, "task group 'example_task_group' has a teardown task timeout of 1800 seconds, which exceeds the maximum of 180 seconds")
 	assert.Equal(validationErrs[0].Level, Warning)
 }
 
