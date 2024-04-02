@@ -344,7 +344,7 @@ func (r *queryResolver) TaskQueueDistros(ctx context.Context) ([]*TaskQueueDistr
 	distros := []*TaskQueueDistro{}
 
 	for _, distro := range queues {
-		numHosts, err := host.CountRunningHosts(ctx, distro.Distro)
+		numHosts, err := host.CountRunningStatusHosts(ctx)
 		if err != nil {
 			return nil, InternalServerError.Send(ctx, fmt.Sprintf("Error getting associated hosts: %s", err.Error()))
 		}

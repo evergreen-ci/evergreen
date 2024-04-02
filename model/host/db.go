@@ -271,6 +271,11 @@ func CountRunningHosts(ctx context.Context, distroID string) (int, error) {
 	return num, errors.Wrap(err, "counting running hosts")
 }
 
+func CountRunningStatusHosts(ctx context.Context) (int, error) {
+	num, err := Count(ctx, ByRunningStatus())
+	return num, errors.Wrap(err, "counting Running status hosts")
+}
+
 func CountAllRunningDynamicHosts(ctx context.Context) (int, error) {
 	query := IsLive()
 	query[ProviderKey] = bson.M{"$in": evergreen.ProviderSpawnable}

@@ -781,3 +781,47 @@ func TestFindHostsScheduledToStart(t *testing.T) {
 		})
 	}
 }
+
+func TestCountRunningStatusHosts(t *testing.T) {
+	assert.NoError(t, db.ClearCollections(Collection))
+	h1 := Host{
+		Id:     "h1",
+		Status: evergreen.HostRunning,
+	}
+	h2 := Host{
+		Id:     "h2",
+		Status: evergreen.HostTerminated,
+	}
+	h3 := Host{
+		Id:     "h3",
+		Status: evergreen.HostStopping,
+	}
+	h4 := Host{
+		Id:     "h4",
+		Status: evergreen.HostRunning,
+	}
+	h5 := Host{
+		Id:     "h5",
+		Status: evergreen.HostBuilding,
+	}
+	h6 := Host{
+		Id:     "h6",
+		Status: evergreen.HostProvisionFailed,
+	}
+	h7 := Host{
+		Id:     "h7",
+		Status: evergreen.HostStopped,
+	}
+	h8 := Host{
+		Id:     "h8",
+		Status: evergreen.HostProvisioning,
+	}
+
+	assert.NoError(t, db.InsertMany(Collection, h1, h2, h3, h4, h5, h6, h7, h8))
+
+	ctx := context.TODO()
+	count, err := CountRunningStatusHosts(ctx)
+	assert.NoError(t, err)
+	assert.Equal(t, 2, count)
+
+}
