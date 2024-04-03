@@ -179,7 +179,6 @@ func (s *DistroByIDSuite) SetupSuite() {
 				Method:        distro.BootstrapMethodLegacySSH,
 				Communication: distro.CommunicationMethodLegacySSH,
 			},
-			CloneMethod: evergreen.CloneMethodLegacySSH,
 		},
 		{Id: "distro2"},
 	}
@@ -372,7 +371,6 @@ func TestUpdateDistrosSettingsHandlerRun(t *testing.T) {
 			Method:        distro.BootstrapMethodLegacySSH,
 			Communication: distro.CommunicationMethodLegacySSH,
 		},
-		CloneMethod: evergreen.CloneMethodLegacySSH,
 		FinderSettings: distro.FinderSettings{
 			Version: evergreen.FinderVersionLegacy,
 		},
