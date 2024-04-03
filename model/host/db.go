@@ -233,7 +233,7 @@ func runningHostsQuery(distroID string) bson.M {
 }
 
 // byRunningStatusQuery produces a query that returns all hosts
-// with the running status that belong to the given.
+// with the running status that belong to the given distro.
 func byRunningStatusQuery(distroID string) bson.M {
 	distroIDKey := bsonutil.GetDottedKeyName(DistroKey, distro.IdKey)
 	return bson.M{
@@ -275,7 +275,7 @@ func CountRunningHosts(ctx context.Context, distroID string) (int, error) {
 
 func CountRunningStatusHosts(ctx context.Context, distroID string) (int, error) {
 	num, err := Count(ctx, byRunningStatusQuery(distroID))
-	return num, errors.Wrap(err, "counting Running status hosts")
+	return num, errors.Wrap(err, "counting running status hosts")
 }
 
 func CountAllRunningDynamicHosts(ctx context.Context) (int, error) {
