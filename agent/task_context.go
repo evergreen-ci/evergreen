@@ -77,23 +77,6 @@ func (tc *taskContext) setCurrentIdleTimeout(cmd command.Command) {
 		cmd.FullDisplayName(), cmd.Type(), tc.getIdleTimeout())
 }
 
-/*
-func (tc *taskContext) getExecTimeout() time.Duration {
-	tc.RLock()
-	defer tc.RUnlock()
-	if dynamicTimeout := tc.taskConfig.GetExecTimeout(); dynamicTimeout > 0 {
-		return time.Duration(dynamicTimeout) * time.Second
-	}
-	if pt := tc.taskConfig.Project.FindProjectTask(tc.taskConfig.Task.DisplayName); pt != nil && pt.ExecTimeoutSecs > 0 {
-		return time.Duration(pt.ExecTimeoutSecs) * time.Second
-	}
-	if tc.taskConfig.Project.ExecTimeoutSecs > 0 {
-		return time.Duration(tc.taskConfig.Project.ExecTimeoutSecs) * time.Second
-	}
-	return globals.DefaultExecTimeout
-}
-*/
-
 // getCurrentIdleTimeout returns the idle timeout for the current running
 // command.
 func (tc *taskContext) getCurrentIdleTimeout() time.Duration {
