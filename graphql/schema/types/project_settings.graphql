@@ -20,6 +20,7 @@ It contains information about project settings (e.g. Build Baron configurations,
 update the settings for a given project.
 """
 input ProjectSettingsInput {
+  projectId: String # TODO: Make this required.
   aliases: [ProjectAliasInput!]
   githubWebhooksEnabled: Boolean
   projectRef: ProjectInput
@@ -50,6 +51,7 @@ input ProjectInput {
   identifier: String
   manualPrTestingEnabled: Boolean
   notifyOnBuildFailure: Boolean
+  oldestAllowedMergeBase: String
   owner: String
   parsleyFilters: [ParsleyFilterInput!]
   patchingDisabled: Boolean

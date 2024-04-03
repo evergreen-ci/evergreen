@@ -1767,6 +1767,13 @@ func checkTaskGroups(p *model.Project) ValidationErrors {
 		}
 	}
 	for _, tg := range taskGroups {
+		// validate that teardown group timeout is not over MaxTeardownGroupTimeout
+		if tg.TeardownGroupTimeoutSecs > int(globals.MaxTeardownGroupTimeout.Seconds()) {
+			errs = append(errs, ValidationError{
+				Message: fmt.Sprintf("task group '%s' has a teardown task timeout of %d seconds, which exceeds the maximum of %d seconds", tg.Name, tg.TeardownGroupTimeoutSecs, int(globals.MaxTeardownGroupTimeout.Seconds())),
+				Level:   Warning,
+			})
+		}
 		if _, ok := names[tg.Name]; ok {
 			errs = append(errs, ValidationError{
 				Level:   Warning,

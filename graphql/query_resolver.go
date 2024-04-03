@@ -21,6 +21,7 @@ import (
 	"github.com/evergreen-ci/evergreen/rest/data"
 	restModel "github.com/evergreen-ci/evergreen/rest/model"
 	"github.com/evergreen-ci/evergreen/thirdparty"
+	"github.com/evergreen-ci/evergreen/util"
 	"github.com/evergreen-ci/plank"
 	"github.com/evergreen-ci/utility"
 	"github.com/mongodb/anser/bsonutil"
@@ -373,23 +374,25 @@ func (r *queryResolver) Pod(ctx context.Context, podID string) (*restModel.APIPo
 }
 
 // Patch is the resolver for the patch field.
-func (r *queryResolver) Patch(ctx context.Context, id string) (*restModel.APIPatch, error) {
-	patch, err := data.FindPatchById(id)
+func (r *queryResolver) Patch(ctx context.Context, id *string, patchID *string) (*restModel.APIPatch, error) {
+	// TODO: Remove this temporary workaround.
+	patchId := util.CoalesceString(utility.FromStringPtr(id), utility.FromStringPtr(patchID))
+	patch, err := data.FindPatchById(patchId)
 	if err != nil {
 		return nil, InternalServerError.Send(ctx, err.Error())
 	}
 
 	if evergreen.IsFinishedVersionStatus(*patch.Status) {
-		statuses, err := task.GetTaskStatusesByVersion(ctx, id, false)
+		statuses, err := task.GetTaskStatusesByVersion(ctx, patchId, false)
 		if err != nil {
-			return nil, InternalServerError.Send(ctx, fmt.Sprintf("Could not fetch task statuses for patch: %s ", err.Error()))
+			return nil, InternalServerError.Send(ctx, fmt.Sprintf("fetching task statuses for patch: %s", err.Error()))
 		}
 
 		if len(patch.ChildPatches) > 0 {
 			for _, cp := range patch.ChildPatches {
 				childPatchStatuses, err := task.GetTaskStatusesByVersion(ctx, *cp.Id, false)
 				if err != nil {
-					return nil, InternalServerError.Send(ctx, fmt.Sprintf("Could not fetch task statuses for child patch: %s ", err.Error()))
+					return nil, InternalServerError.Send(ctx, fmt.Sprintf("fetching task statuses for child patch: %s", err.Error()))
 				}
 				statuses = append(statuses, childPatchStatuses...)
 			}
@@ -492,12 +495,14 @@ func (r *queryResolver) ProjectSettings(ctx context.Context, identifier string) 
 }
 
 // RepoEvents is the resolver for the repoEvents field.
-func (r *queryResolver) RepoEvents(ctx context.Context, id string, limit *int, before *time.Time) (*ProjectEvents, error) {
+func (r *queryResolver) RepoEvents(ctx context.Context, repoID *string, id *string, limit *int, before *time.Time) (*ProjectEvents, error) {
+	// TODO: Remove this temporary workaround.
+	repoId := util.CoalesceString(utility.FromStringPtr(id), utility.FromStringPtr(repoID))
 	timestamp := time.Now()
 	if before != nil {
 		timestamp = *before
 	}
-	events, err := data.GetEventsById(id, timestamp, utility.FromIntPtr(limit))
+	events, err := data.GetEventsById(repoId, timestamp, utility.FromIntPtr(limit))
 	res := &ProjectEvents{
 		EventLogEntries: getPointerEventList(events),
 		Count:           len(events),
@@ -506,8 +511,10 @@ func (r *queryResolver) RepoEvents(ctx context.Context, id string, limit *int, b
 }
 
 // RepoSettings is the resolver for the repoSettings field.
-func (r *queryResolver) RepoSettings(ctx context.Context, id string) (*restModel.APIProjectSettings, error) {
-	repoRef, err := model.FindOneRepoRef(id)
+func (r *queryResolver) RepoSettings(ctx context.Context, repoID *string, id *string) (*restModel.APIProjectSettings, error) {
+	// TODO: Remove this temporary workaround.
+	repoId := util.CoalesceString(utility.FromStringPtr(id), utility.FromStringPtr(repoID))
+	repoRef, err := model.FindOneRepoRef(repoId)
 	if err != nil {
 		return nil, InternalServerError.Send(ctx, fmt.Sprintf("error looking in repo collection: %s", err.Error()))
 	}
@@ -969,35 +976,40 @@ func (r *queryResolver) TaskNamesForBuildVariant(ctx context.Context, projectIde
 }
 
 // HasVersion is the resolver for the hasVersion field.
-func (r *queryResolver) HasVersion(ctx context.Context, id string) (bool, error) {
-	v, err := model.VersionFindOne(model.VersionById(id))
+func (r *queryResolver) HasVersion(ctx context.Context, id *string, patchID *string) (bool, error) {
+	// TODO: Remove this temporary workaround.
+	patchId := util.CoalesceString(utility.FromStringPtr(id), utility.FromStringPtr(patchID))
+
+	v, err := model.VersionFindOne(model.VersionById(patchId))
 	if err != nil {
-		return false, InternalServerError.Send(ctx, fmt.Sprintf("Error finding version %s: %s", id, err.Error()))
+		return false, InternalServerError.Send(ctx, fmt.Sprintf("finding version '%s': %s", patchId, err.Error()))
 	}
 	if v != nil {
 		return true, nil
 	}
 
-	if patch.IsValidId(id) {
-		p, err := patch.FindOneId(id)
+	if patch.IsValidId(patchId) {
+		p, err := patch.FindOneId(patchId)
 		if err != nil {
-			return false, InternalServerError.Send(ctx, fmt.Sprintf("Error finding patch %s: %s", id, err.Error()))
+			return false, InternalServerError.Send(ctx, fmt.Sprintf("finding patch '%s': %s", patchId, err.Error()))
 		}
 		if p != nil {
 			return false, nil
 		}
 	}
-	return false, ResourceNotFound.Send(ctx, fmt.Sprintf("Unable to find patch or version %s", id))
+	return false, ResourceNotFound.Send(ctx, fmt.Sprintf("Unable to find patch or version %s", patchId))
 }
 
 // Version is the resolver for the version field.
-func (r *queryResolver) Version(ctx context.Context, id string) (*restModel.APIVersion, error) {
-	v, err := model.VersionFindOneId(id)
+func (r *queryResolver) Version(ctx context.Context, id *string, versionID *string) (*restModel.APIVersion, error) {
+	// TODO: Remove this temporary workaround.
+	versionId := util.CoalesceString(utility.FromStringPtr(id), utility.FromStringPtr(versionID))
+	v, err := model.VersionFindOneId(versionId)
 	if err != nil {
-		return nil, InternalServerError.Send(ctx, fmt.Sprintf("Error while finding version with id: `%s`: %s", id, err.Error()))
+		return nil, InternalServerError.Send(ctx, fmt.Sprintf("finding version '%s': %s", versionId, err.Error()))
 	}
 	if v == nil {
-		return nil, ResourceNotFound.Send(ctx, fmt.Sprintf("Unable to find version with id: `%s`", id))
+		return nil, ResourceNotFound.Send(ctx, fmt.Sprintf("version '%s' not found", versionId))
 	}
 	apiVersion := restModel.APIVersion{}
 	apiVersion.BuildFromService(*v)

@@ -311,6 +311,10 @@ models:
     model: github.com/evergreen-ci/evergreen/rest/model.APISelector
   SiteBanner:
     model: github.com/evergreen-ci/evergreen/rest/model.APIBanner
+  SleepSchedule:
+    model: github.com/evergreen-ci/evergreen/model/host.SleepScheduleInfo
+  SleepScheduleInput:
+    model: github.com/evergreen-ci/evergreen/model/host.SleepScheduleInfo
   Source:
     model: github.com/evergreen-ci/evergreen/rest/model.APISource
   SpawnHostConfig:

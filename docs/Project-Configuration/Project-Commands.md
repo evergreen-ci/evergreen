@@ -905,6 +905,38 @@ Parameters:
     internally.
 -   `destination`: expansion name to save the value to.
 
+## papertrail.trace
+
+This command traces artifact releases with the Papertrail service. It is owned
+by the Release Infrastructure team, and you may receive assistance with it in
+#ask-devprod-release-tools.
+
+``` yaml
+- command: papertrail.trace
+  params:
+    key_id: ${papertrail_key_id}
+    secret_key: ${papertrail_secret_key}
+    product: mongosh
+    version: 1.0.0
+    filenames:
+        - mongosh-linux-amd64.tar.gz
+        - mongosh-linux-arm64.tar.gz
+```
+
+Parameters:
+
+-   `key_id`: your Papertrail key ID (use private variables to keep this a
+    secret).
+-   `secret_key`: your Papertrail secret key (use private variables to keep this
+    a secret).
+-   `product`: The name of the product these filenames belong to (e.g. mongosh,
+    compass, java-driver).
+-   `version`: The version of the product these filenames belong to (e.g.
+    1.0.1).
+-   `filenames`: A list of filename paths to pass to the service. You may use
+    full filepaths in this parameter, the command will label the file with its
+    basename only when sent to the service.
+
 ## perf.send
 
 This command sends performance test data, as either JSON or YAML, to

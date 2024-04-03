@@ -40,7 +40,19 @@ func (r *repoSettingsResolver) Vars(ctx context.Context, obj *restModel.APIProje
 	return getRedactedAPIVarsForProject(ctx, utility.FromStringPtr(obj.ProjectRef.Id))
 }
 
+// RepoID is the resolver for the repoId field.
+func (r *repoSettingsInputResolver) RepoID(ctx context.Context, obj *restModel.APIProjectSettings, data *string) error {
+	obj.Id = data
+	return nil
+}
+
 // RepoSettings returns RepoSettingsResolver implementation.
 func (r *Resolver) RepoSettings() RepoSettingsResolver { return &repoSettingsResolver{r} }
 
+// RepoSettingsInput returns RepoSettingsInputResolver implementation.
+func (r *Resolver) RepoSettingsInput() RepoSettingsInputResolver {
+	return &repoSettingsInputResolver{r}
+}
+
 type repoSettingsResolver struct{ *Resolver }
+type repoSettingsInputResolver struct{ *Resolver }

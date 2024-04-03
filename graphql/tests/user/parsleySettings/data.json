@@ -13,7 +13,8 @@
         }
       },
       "parsley_settings": {
-        "sections_enabled": false
+        "sections_enabled": false,
+        "jump_to_failing_line_enabled": false
       }
     },
     {

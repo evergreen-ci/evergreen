@@ -71,8 +71,10 @@ auth:
 
 github_pr_creator_org: "10gen"
 
-# Do not edit below this line
 expansions:
+  papertrail_key_id: $PAPERTRAIL_KEY_ID
+  papertrail_secret_key: $PAPERTRAIL_SECRET_KEY
+  # Do not edit below this line
   github_app_key: |
 EOF
 
