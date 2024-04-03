@@ -1469,10 +1469,6 @@ func (h *checkRunHandler) Parse(ctx context.Context, r *http.Request) error {
 
 func (h *checkRunHandler) Run(ctx context.Context) gimlet.Responder {
 	env := evergreen.GetEnvironment()
-	if env.Settings().GitHubCheckRun.CheckRunLimit <= 0 {
-		return nil
-	}
-
 	t, err := task.FindOneId(h.taskID)
 	if err != nil {
 		return gimlet.MakeJSONInternalErrorResponder(errors.Wrapf(err, "finding task '%s'", h.taskID))

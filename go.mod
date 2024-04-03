@@ -5,15 +5,15 @@ go 1.20
 require (
 	github.com/99designs/gqlgen v0.17.42
 	github.com/PuerkitoBio/rehttp v1.3.0
-	github.com/aws/aws-sdk-go v1.49.19
-	github.com/aws/aws-sdk-go-v2 v1.26.0
+	github.com/aws/aws-sdk-go v1.50.15
+	github.com/aws/aws-sdk-go-v2 v1.26.1
 	github.com/aws/aws-sdk-go-v2/config v1.27.9
 	github.com/aws/aws-sdk-go-v2/credentials v1.17.9 // indirect
 	github.com/aws/aws-sdk-go-v2/service/ec2 v1.154.0
 	github.com/aws/aws-sdk-go-v2/service/ecs v1.36.0
 	github.com/aws/aws-sdk-go-v2/service/resourcegroupstaggingapi v1.20.1
 	github.com/aws/aws-sdk-go-v2/service/secretsmanager v1.28.1
-	github.com/aws/smithy-go v1.20.1
+	github.com/aws/smithy-go v1.20.2
 	github.com/cheynewallace/tabby v1.1.1
 	github.com/docker/docker v24.0.7+incompatible
 	github.com/docker/go-connections v0.5.0
@@ -53,11 +53,11 @@ require (
 	github.com/urfave/cli v1.22.13
 	github.com/vektah/gqlparser/v2 v2.5.10
 	go.mongodb.org/mongo-driver v1.13.1
-	go.opentelemetry.io/contrib/detectors/aws/ec2 v1.21.1
+	go.opentelemetry.io/contrib/detectors/aws/ec2 v1.24.0
 	go.opentelemetry.io/contrib/detectors/aws/ecs v1.23.0
 	go.opentelemetry.io/contrib/instrumentation/github.com/aws/aws-sdk-go-v2/otelaws v0.49.0
 	go.opentelemetry.io/contrib/instrumentation/github.com/gorilla/mux/otelmux v0.47.0
-	go.opentelemetry.io/contrib/instrumentation/net/http/otelhttp v0.46.1
+	go.opentelemetry.io/contrib/instrumentation/net/http/otelhttp v0.49.0
 	go.opentelemetry.io/otel v1.24.0
 	go.opentelemetry.io/otel/exporters/otlp/otlpmetric/otlpmetricgrpc v1.23.1
 	go.opentelemetry.io/otel/exporters/otlp/otlptrace v1.22.0
@@ -67,7 +67,7 @@ require (
 	go.opentelemetry.io/otel/sdk/metric v1.24.0
 	go.opentelemetry.io/otel/trace v1.24.0
 	go.opentelemetry.io/proto/otlp v1.1.0
-	golang.org/x/crypto v0.19.0
+	golang.org/x/crypto v0.21.0
 	golang.org/x/oauth2 v0.16.0
 	golang.org/x/text v0.14.0
 	golang.org/x/tools v0.13.0 // indirect
@@ -86,8 +86,8 @@ require (
 	github.com/andybalholm/brotli v1.0.3 // indirect
 	github.com/andygrunwald/go-jira v1.16.0 // indirect
 	github.com/aws/aws-sdk-go-v2/feature/ec2/imds v1.16.0 // indirect
-	github.com/aws/aws-sdk-go-v2/internal/configsources v1.3.4 // indirect
-	github.com/aws/aws-sdk-go-v2/internal/endpoints/v2 v2.6.4 // indirect
+	github.com/aws/aws-sdk-go-v2/internal/configsources v1.3.5 // indirect
+	github.com/aws/aws-sdk-go-v2/internal/endpoints/v2 v2.6.5 // indirect
 	github.com/aws/aws-sdk-go-v2/internal/ini v1.8.0 // indirect
 	github.com/aws/aws-sdk-go-v2/service/dynamodb v1.27.1 // indirect
 	github.com/aws/aws-sdk-go-v2/service/internal/accept-encoding v1.11.1 // indirect
@@ -189,9 +189,9 @@ require (
 	go.opentelemetry.io/contrib v1.21.1 // indirect
 	golang.org/x/exp v0.0.0-20230321023759-10a507213a29 // indirect
 	golang.org/x/mod v0.12.0 // indirect
-	golang.org/x/net v0.20.0 // indirect
+	golang.org/x/net v0.21.0 // indirect
 	golang.org/x/sync v0.6.0
-	golang.org/x/sys v0.17.0 // indirect
+	golang.org/x/sys v0.18.0 // indirect
 	google.golang.org/appengine v1.6.8 // indirect
 	google.golang.org/genproto/googleapis/api v0.0.0-20240102182953-50ed04b92917 // indirect
 	google.golang.org/genproto/googleapis/rpc v0.0.0-20240102182953-50ed04b92917 // indirect
@@ -199,7 +199,7 @@ require (
 )
 
 require (
-	github.com/aws/aws-sdk-go-v2/service/route53 v1.40.3
+	github.com/aws/aws-sdk-go-v2/service/route53 v1.40.4
 	github.com/bradleyfalzon/ghinstallation v1.1.1
 	github.com/evergreen-ci/evg-lint v0.0.0-20211115144425-3b19c8e83a57
 	github.com/evergreen-ci/plank v0.0.0-20230207190607-5f47f8a30da1

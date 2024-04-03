@@ -19,6 +19,16 @@ enum TaskQueueItemType {
   PATCH
 }
 
+type SleepSchedule {
+  dailyStartTime: String!
+  dailyStopTime: String!
+  permanentlyExempt: Boolean!
+  shouldKeepOff: Boolean!
+  timeZone: String!
+  temporarilyExemptUntil: Time
+  wholeWeekdaysOff: [Int!]!
+}
+
 ###### TYPES ######
 """ 
 Host models a host, which are used for things like running tasks or as virtual workstations.
@@ -42,6 +52,7 @@ type Host {
   persistentDnsName: String!
   provider: String!
   runningTask: TaskInfo
+  sleepSchedule: SleepSchedule
   startedBy: String!
   status: String!
   tag: String!
