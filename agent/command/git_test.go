@@ -15,7 +15,6 @@ import (
 	"github.com/evergreen-ci/evergreen/agent/internal"
 	"github.com/evergreen-ci/evergreen/agent/internal/client"
 	agentutil "github.com/evergreen-ci/evergreen/agent/internal/testutil"
-	"github.com/evergreen-ci/evergreen/apimodels"
 	"github.com/evergreen-ci/evergreen/db"
 	"github.com/evergreen-ci/evergreen/model"
 	"github.com/evergreen-ci/evergreen/model/build"
@@ -363,7 +362,6 @@ func (s *GitGetProjectSuite) TestGitFetchRetries() {
 	c := gitFetchProject{Directory: "dir"}
 
 	conf := s.taskConfig1
-	conf.Distro.CloneMethod = "this is not real!"
 	s.comm.CreateInstallationTokenFail = true
 
 	ctx, cancel := context.WithCancel(context.Background())
@@ -426,7 +424,6 @@ func (s *GitGetProjectSuite) TestStdErrLogged() {
 	logger, err := s.comm.GetLoggerProducer(s.ctx, &conf.Task, nil)
 	s.Require().NoError(err)
 	conf.ProjectRef.Repo = "invalidRepo"
-	conf.Distro.CloneMethod = evergreen.CloneMethodLegacySSH
 	s.comm.CreateInstallationTokenFail = true
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
@@ -468,7 +465,6 @@ func (s *GitGetProjectSuite) TestValidateGitCommands() {
 	conf := s.taskConfig2
 	logger, err := s.comm.GetLoggerProducer(s.ctx, &conf.Task, nil)
 	s.Require().NoError(err)
-	conf.Distro.CloneMethod = evergreen.CloneMethodOAuth
 	token, err := s.settings.GetGithubOauthToken()
 	s.Require().NoError(err)
 	conf.Expansions.Put(evergreen.GlobalGitHubTokenExpansion, token)
@@ -894,7 +890,6 @@ func (s *GitGetProjectSuite) TestMultipleModules() {
 
 	logger, err := s.comm.GetLoggerProducer(s.ctx, &conf.Task, nil)
 	s.Require().NoError(err)
-	conf.Distro.CloneMethod = evergreen.CloneMethodOAuth
 	token, err := s.settings.GetGithubOauthToken()
 	s.Require().NoError(err)
 	conf.Expansions.Put(evergreen.GlobalGitHubTokenExpansion, token)
@@ -1080,9 +1075,6 @@ func (s *GitGetProjectSuite) TestGetProjectMethodAndToken() {
 		Expansions: map[string]string{
 			evergreen.GlobalGitHubTokenExpansion: globalGitHubToken,
 		},
-		Distro: &apimodels.DistroView{
-			CloneMethod: evergreen.CloneMethodOAuth,
-		},
 	}
 
 	method, token, err = getProjectMethodAndToken(s.ctx, s.comm, td, conf, projectGitHubToken)
@@ -1090,14 +1082,10 @@ func (s *GitGetProjectSuite) TestGetProjectMethodAndToken() {
 	s.Equal(projectGitHubToken, token)
 	s.Equal(evergreen.CloneMethodOAuth, method)
 
-	conf.Distro.CloneMethod = evergreen.CloneMethodOAuth
-
 	method, token, err = getProjectMethodAndToken(s.ctx, s.comm, td, conf, "")
 	s.NoError(err)
 	s.Equal(mockedGitHubAppToken, token)
 	s.Equal(evergreen.CloneMethodAccessToken, method)
-
-	conf.Distro.CloneMethod = evergreen.CloneMethodLegacySSH
 
 	method, token, err = getProjectMethodAndToken(s.ctx, s.comm, td, conf, "")
 	s.NoError(err)
@@ -1109,15 +1097,12 @@ func (s *GitGetProjectSuite) TestGetProjectMethodAndToken() {
 	s.Equal(projectGitHubToken, token)
 	s.Equal(evergreen.CloneMethodOAuth, method)
 
-	conf.Distro.CloneMethod = evergreen.CloneMethodOAuth
 	conf.Expansions[evergreen.GlobalGitHubTokenExpansion] = ""
 
 	method, token, err = getProjectMethodAndToken(s.ctx, s.comm, td, conf, projectGitHubToken)
 	s.NoError(err)
 	s.Equal(projectGitHubToken, token)
 	s.Equal(evergreen.CloneMethodOAuth, method)
-
-	conf.Distro.CloneMethod = evergreen.CloneMethodLegacySSH
 
 	method, token, err = getProjectMethodAndToken(s.ctx, s.comm, td, conf, projectGitHubToken)
 	s.NoError(err)
@@ -1131,39 +1116,20 @@ func (s *GitGetProjectSuite) TestGetProjectMethodAndToken() {
 	s.Equal("", token)
 	s.Equal(evergreen.CloneMethodLegacySSH, method)
 
-	conf.Distro.CloneMethod = evergreen.CloneMethodOAuth
-
 	method, token, err = getProjectMethodAndToken(s.ctx, s.comm, td, conf, "")
 	s.Error(err)
 	s.Equal("", token)
 	s.Equal(evergreen.CloneMethodLegacySSH, method)
-
-	conf.Distro.CloneMethod = evergreen.CloneMethodLegacySSH
 
 	method, token, err = getProjectMethodAndToken(s.ctx, s.comm, td, conf, "")
 	s.NoError(err)
 	s.Equal("", token)
 	s.Equal(evergreen.CloneMethodLegacySSH, method)
 
-	conf.Distro.CloneMethod = ""
-
 	method, token, err = getProjectMethodAndToken(s.ctx, s.comm, td, conf, "")
 	s.NoError(err)
 	s.Equal("", token)
 	s.Equal(evergreen.CloneMethodLegacySSH, method)
-
-	conf.Distro.CloneMethod = "not real clone method"
-
-	method, token, err = getProjectMethodAndToken(s.ctx, s.comm, td, conf, "")
-	s.Error(err)
-	s.Equal("", token)
-	s.Equal("", method)
-
-	conf.Distro.CloneMethod = evergreen.CloneMethodOAuth
-	conf.Expansions[evergreen.GlobalGitHubTokenExpansion] = "token this is not a real token"
-
-	_, _, err = getProjectMethodAndToken(s.ctx, s.comm, td, conf, "")
-	s.Error(err)
 
 	conf.Expansions[evergreen.GlobalGitHubTokenExpansion] = globalGitHubToken
 

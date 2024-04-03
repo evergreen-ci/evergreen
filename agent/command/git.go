@@ -169,21 +169,11 @@ func getProjectMethodAndToken(ctx context.Context, comm client.Communicator, td 
 		return evergreen.CloneMethodLegacySSH, "", err
 	}
 
-	switch conf.GetCloneMethod() {
-	// No clone method specified is equivalent to using legacy SSH.
-	case "", evergreen.CloneMethodLegacySSH:
-		return evergreen.CloneMethodLegacySSH, token, nil
-	case evergreen.CloneMethodOAuth:
-		if token == "" {
-			return evergreen.CloneMethodLegacySSH, "", errors.New("cannot clone using OAuth if explicit token from parameter and global token are both empty")
-		}
-		token, err := parseToken(globalToken)
-		return evergreen.CloneMethodOAuth, token, err
-	case evergreen.CloneMethodAccessToken:
-		return evergreen.CloneMethodLegacySSH, "", errors.New("cannot specify clone method access token")
+	if token == "" {
+		return evergreen.CloneMethodLegacySSH, "", errors.New("cannot clone using OAuth if explicit token from parameter and global token are both empty")
 	}
-
-	return "", "", errors.Errorf("unrecognized clone method '%s'", conf.GetCloneMethod())
+	token, err = parseToken(globalToken)
+	return evergreen.CloneMethodOAuth, token, err
 }
 
 // parseToken parses the OAuth token, if it is in the format "token <token>";
