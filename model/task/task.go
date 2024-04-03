@@ -327,6 +327,22 @@ type StepbackInfo struct {
 	NextStepbackTaskId string `bson:"next_stepback_task_id,omitempty" json:"next_stepback_task_id"`
 	// PreviousStepbackTaskId stores the last stepback iteration id.
 	PreviousStepbackTaskId string `bson:"previous_stepback_task_id,omitempty" json:"previous_stepback_task_id"`
+	// GeneratedStepbackInfo stores information on a generator for it's generated tasks.
+	GeneratedStepbackInfo []GeneratedStepbackInfo `bson:"generated_stepback_info,omitempty" json:"generated_stepback_info,omitempty"`
+}
+
+type GeneratedStepbackInfo struct {
+	// DisplayName is the display name of the generated task.
+	DisplayName string `bson:"display_name,omitempty" json:"display_name,omitempty"`
+	// BuildVariant is the build variant of the generated task.
+	BuildVariant string `bson:"build_variant,omitempty" json:"build_variant,omitempty"`
+
+	// See StepbackInfo for more information on these fields. These fields specifically
+	// store the task ids for the generator tasks.
+	LastFailingStepbackTaskId string `bson:"last_failing_stepback_task_id,omitempty" json:"last_failing_stepback_task_id"`
+	LastPassingStepbackTaskId string `bson:"last_passing_stepback_task_id,omitempty" json:"last_passing_stepback_task_id"`
+	NextStepbackTaskId        string `bson:"next_stepback_task_id,omitempty" json:"next_stepback_task_id"`
+	PreviousStepbackTaskId    string `bson:"previous_stepback_task_id,omitempty" json:"previous_stepback_task_id"`
 }
 
 func (s *StepbackInfo) IsZero() bool {
@@ -336,8 +352,30 @@ func (s *StepbackInfo) IsZero() bool {
 	if s.LastFailingStepbackTaskId != "" && s.LastPassingStepbackTaskId != "" {
 		return false
 	}
+	if len(s.GeneratedStepbackInfo) > 0 {
+		return false
+	}
 	// If the other fields are set but not the ones above, the struct should be considered empty.
 	return true
+}
+
+func (s *StepbackInfo) HasGeneratedStepbackInfo() bool {
+	if s == nil {
+		return false
+	}
+	return len(s.GeneratedStepbackInfo) > 0
+}
+
+func (s *StepbackInfo) GetGeneratedStepbackInfo(displayName string, buildVariant string) *GeneratedStepbackInfo {
+	if s == nil {
+		return nil
+	}
+	for _, info := range s.GeneratedStepbackInfo {
+		if info.DisplayName == displayName && info.BuildVariant == buildVariant {
+			return &info
+		}
+	}
+	return nil
 }
 
 // ExecutionPlatform indicates the type of environment that the task runs in.
@@ -1559,6 +1597,60 @@ func SetLastAndPreviousStepbackIds(taskId string, s StepbackInfo) error {
 			},
 		},
 	)
+}
+
+// AddGeneraterStepbackInfo appends a new GeneratedStepbackInfo to the
+// task's StepbackInfo.
+func AddGeneraterStepbackInfo(taskId string, g GeneratedStepbackInfo) error {
+	return UpdateOne(
+		bson.M{
+			IdKey: taskId,
+		},
+		bson.M{
+			"$push": bson.M{
+				bsonutil.GetDottedKeyName(StepbackInfoKey, GeneratedStepbackInfoKey): g,
+			},
+		},
+	)
+}
+
+// SetGeneraterStepbackInfo sets the GeneratedStepbackInfo that already
+// exists on that task's StepbackInfo (by DisplayName and BuildVariant).
+func SetGeneraterStepbackInfo(taskId string, g GeneratedStepbackInfo) error {
+	r, err := evergreen.GetEnvironment().DB().Collection(Collection).UpdateMany(context.TODO(),
+		bson.M{
+			IdKey: taskId,
+			StepbackInfoKey: bson.M{
+				GeneratedStepbackInfoKey: bson.M{
+					"$elemMatch": bson.M{
+						GeneratedDisplayNameKey:  g.DisplayName,
+						GeneratedBuildVariantKey: g.BuildVariant,
+					},
+				},
+			},
+		},
+		bson.M{
+			"$set": bson.M{
+				bsonutil.GetDottedKeyName(StepbackInfoKey, GeneratedStepbackInfoKey, "$[elem]", GeneratedLastFailingStepbackTaskIdKey): g.LastFailingStepbackTaskId,
+				bsonutil.GetDottedKeyName(StepbackInfoKey, GeneratedStepbackInfoKey, "$[elem]", GeneratedLastPassingStepbackTaskIdKey): g.LastPassingStepbackTaskId,
+				bsonutil.GetDottedKeyName(StepbackInfoKey, GeneratedStepbackInfoKey, "$[elem]", GeneratedNextStepbackTaskIdKey):        g.NextStepbackTaskId,
+				bsonutil.GetDottedKeyName(StepbackInfoKey, GeneratedStepbackInfoKey, "$[elem]", GeneratedPreviousStepbackTaskIdKey):    g.PreviousStepbackTaskId,
+			},
+		},
+		options.Update().SetArrayFilters(options.ArrayFilters{
+			Filters: []interface{}{
+				bson.M{
+					bsonutil.GetDottedKeyName("elem", GeneratedDisplayNameKey):  g.DisplayName,
+					bsonutil.GetDottedKeyName("elem", GeneratedBuildVariantKey): g.BuildVariant,
+				},
+			},
+		}),
+	)
+	// If no documents were modified, fallback to adding the new GeneratedStepbackInfo.
+	if r.ModifiedCount == 0 {
+		return AddGeneraterStepbackInfo(taskId, g)
+	}
+	return err
 }
 
 // SetNextStepbackId sets the NextStepbackTaskId for a given task id.
