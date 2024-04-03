@@ -1,4 +1,4 @@
-# 2023-08-23 Teardown Group Idleness
+# 2024-03-26 Teardown Group Idleness
 
 - status: accepted
 - date: 2024-03-26
