@@ -106,7 +106,7 @@ func New(apiURL string) Config {
 			}
 		}
 
-		createPermissionOpts := func(projectId string) gimlet.PermissionOpts {
+		generatePermissionOpts := func(projectId string) gimlet.PermissionOpts {
 			return gimlet.PermissionOpts{
 				Resource:      projectId,
 				ResourceType:  evergreen.ProjectResourceType,
@@ -120,7 +120,7 @@ func New(apiURL string) Config {
 			if !ok {
 				return nil, InternalServerError.Send(ctx, "finding projectIdToCopy for copy project operation")
 			}
-			opts := createPermissionOpts(projectIdToCopy)
+			opts := generatePermissionOpts(projectIdToCopy)
 			if user.HasPermission(opts) {
 				return next(ctx)
 			}
@@ -131,7 +131,7 @@ func New(apiURL string) Config {
 			if !ok {
 				return nil, InternalServerError.Send(ctx, "finding projectId for delete project operation")
 			}
-			opts := createPermissionOpts(projectId)
+			opts := generatePermissionOpts(projectId)
 			if user.HasPermission(opts) {
 				return next(ctx)
 			}
@@ -149,7 +149,7 @@ func New(apiURL string) Config {
 			if project == nil {
 				return nil, ResourceNotFound.Send(ctx, fmt.Sprintf("project '%s' not found", projectIdentifier))
 			}
-			opts := createPermissionOpts(project.Id)
+			opts := generatePermissionOpts(project.Id)
 			if user.HasPermission(opts) {
 				return next(ctx)
 			}
