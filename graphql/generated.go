@@ -890,6 +890,7 @@ type ComplexityRoot struct {
 		IsFavorite               func(childComplexity int) int
 		ManualPRTestingEnabled   func(childComplexity int) int
 		NotifyOnBuildFailure     func(childComplexity int) int
+		OldestAllowedMergeBase   func(childComplexity int) int
 		Owner                    func(childComplexity int) int
 		PRTestingEnabled         func(childComplexity int) int
 		ParsleyFilters           func(childComplexity int) int
@@ -1013,8 +1014,8 @@ type ComplexityRoot struct {
 		ProjectEvents            func(childComplexity int, identifier string, limit *int, before *time.Time) int
 		ProjectSettings          func(childComplexity int, identifier string) int
 		Projects                 func(childComplexity int) int
-		RepoEvents               func(childComplexity int, id *string, limit *int, before *time.Time, repoID *string) int
-		RepoSettings             func(childComplexity int, id *string, repoID *string) int
+		RepoEvents               func(childComplexity int, repoID *string, id *string, limit *int, before *time.Time) int
+		RepoSettings             func(childComplexity int, repoID *string, id *string) int
 		SpruceConfig             func(childComplexity int) int
 		SubnetAvailabilityZones  func(childComplexity int) int
 		Task                     func(childComplexity int, taskID string, execution *int) int
@@ -1056,6 +1057,7 @@ type ComplexityRoot struct {
 		Id                       func(childComplexity int) int
 		ManualPRTestingEnabled   func(childComplexity int) int
 		NotifyOnBuildFailure     func(childComplexity int) int
+		OldestAllowedMergeBase   func(childComplexity int) int
 		Owner                    func(childComplexity int) int
 		PRTestingEnabled         func(childComplexity int) int
 		ParsleyFilters           func(childComplexity int) int
@@ -1806,8 +1808,8 @@ type QueryResolver interface {
 	Projects(ctx context.Context) ([]*GroupedProjects, error)
 	ProjectEvents(ctx context.Context, identifier string, limit *int, before *time.Time) (*ProjectEvents, error)
 	ProjectSettings(ctx context.Context, identifier string) (*model.APIProjectSettings, error)
-	RepoEvents(ctx context.Context, id *string, limit *int, before *time.Time, repoID *string) (*ProjectEvents, error)
-	RepoSettings(ctx context.Context, id *string, repoID *string) (*model.APIProjectSettings, error)
+	RepoEvents(ctx context.Context, repoID *string, id *string, limit *int, before *time.Time) (*ProjectEvents, error)
+	RepoSettings(ctx context.Context, repoID *string, id *string) (*model.APIProjectSettings, error)
 	ViewableProjectRefs(ctx context.Context) ([]*GroupedProjects, error)
 	MyHosts(ctx context.Context) ([]*model.APIHost, error)
 	MyVolumes(ctx context.Context) ([]*model.APIVolume, error)
@@ -5925,6 +5927,13 @@ func (e *executableSchema) Complexity(typeName, field string, childComplexity in
 
 		return e.complexity.Project.NotifyOnBuildFailure(childComplexity), true
 
+	case "Project.oldestAllowedMergeBase":
+		if e.complexity.Project.OldestAllowedMergeBase == nil {
+			break
+		}
+
+		return e.complexity.Project.OldestAllowedMergeBase(childComplexity), true
+
 	case "Project.owner":
 		if e.complexity.Project.Owner == nil {
 			break
@@ -6670,7 +6679,7 @@ func (e *executableSchema) Complexity(typeName, field string, childComplexity in
 			return 0, false
 		}
 
-		return e.complexity.Query.RepoEvents(childComplexity, args["id"].(*string), args["limit"].(*int), args["before"].(*time.Time), args["repoId"].(*string)), true
+		return e.complexity.Query.RepoEvents(childComplexity, args["repoId"].(*string), args["id"].(*string), args["limit"].(*int), args["before"].(*time.Time)), true
 
 	case "Query.repoSettings":
 		if e.complexity.Query.RepoSettings == nil {
@@ -6682,7 +6691,7 @@ func (e *executableSchema) Complexity(typeName, field string, childComplexity in
 			return 0, false
 		}
 
-		return e.complexity.Query.RepoSettings(childComplexity, args["id"].(*string), args["repoId"].(*string)), true
+		return e.complexity.Query.RepoSettings(childComplexity, args["repoId"].(*string), args["id"].(*string)), true
 
 	case "Query.spruceConfig":
 		if e.complexity.Query.SpruceConfig == nil {
@@ -6958,6 +6967,13 @@ func (e *executableSchema) Complexity(typeName, field string, childComplexity in
 		}
 
 		return e.complexity.RepoRef.NotifyOnBuildFailure(childComplexity), true
+
+	case "RepoRef.oldestAllowedMergeBase":
+		if e.complexity.RepoRef.OldestAllowedMergeBase == nil {
+			break
+		}
+
+		return e.complexity.RepoRef.OldestAllowedMergeBase(childComplexity), true
 
 	case "RepoRef.owner":
 		if e.complexity.RepoRef.Owner == nil {
@@ -11993,69 +12009,8 @@ func (ec *executionContext) field_Query_repoEvents_args(ctx context.Context, raw
 	var err error
 	args := map[string]interface{}{}
 	var arg0 *string
-	if tmp, ok := rawArgs["id"]; ok {
-		ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("id"))
-		arg0, err = ec.unmarshalOString2ᚖstring(ctx, tmp)
-		if err != nil {
-			return nil, err
-		}
-	}
-	args["id"] = arg0
-	var arg1 *int
-	if tmp, ok := rawArgs["limit"]; ok {
-		ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("limit"))
-		arg1, err = ec.unmarshalOInt2ᚖint(ctx, tmp)
-		if err != nil {
-			return nil, err
-		}
-	}
-	args["limit"] = arg1
-	var arg2 *time.Time
-	if tmp, ok := rawArgs["before"]; ok {
-		ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("before"))
-		directive0 := func(ctx context.Context) (interface{}, error) { return ec.unmarshalOTime2ᚖtimeᚐTime(ctx, tmp) }
-		directive1 := func(ctx context.Context) (interface{}, error) {
-			access, err := ec.unmarshalNProjectSettingsAccess2githubᚗcomᚋevergreenᚑciᚋevergreenᚋgraphqlᚐProjectSettingsAccess(ctx, "VIEW")
-			if err != nil {
-				return nil, err
-			}
-			if ec.directives.RequireProjectAccess == nil {
-				return nil, errors.New("directive requireProjectAccess is not implemented")
-			}
-			return ec.directives.RequireProjectAccess(ctx, rawArgs, directive0, access)
-		}
-
-		tmp, err = directive1(ctx)
-		if err != nil {
-			return nil, graphql.ErrorOnPath(ctx, err)
-		}
-		if data, ok := tmp.(*time.Time); ok {
-			arg2 = data
-		} else if tmp == nil {
-			arg2 = nil
-		} else {
-			return nil, graphql.ErrorOnPath(ctx, fmt.Errorf(`unexpected type %T from directive, should be *time.Time`, tmp))
-		}
-	}
-	args["before"] = arg2
-	var arg3 *string
 	if tmp, ok := rawArgs["repoId"]; ok {
 		ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("repoId"))
-		arg3, err = ec.unmarshalOString2ᚖstring(ctx, tmp)
-		if err != nil {
-			return nil, err
-		}
-	}
-	args["repoId"] = arg3
-	return args, nil
-}
-
-func (ec *executionContext) field_Query_repoSettings_args(ctx context.Context, rawArgs map[string]interface{}) (map[string]interface{}, error) {
-	var err error
-	args := map[string]interface{}{}
-	var arg0 *string
-	if tmp, ok := rawArgs["id"]; ok {
-		ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("id"))
 		directive0 := func(ctx context.Context) (interface{}, error) { return ec.unmarshalOString2ᚖstring(ctx, tmp) }
 		directive1 := func(ctx context.Context) (interface{}, error) {
 			access, err := ec.unmarshalNProjectSettingsAccess2githubᚗcomᚋevergreenᚑciᚋevergreenᚋgraphqlᚐProjectSettingsAccess(ctx, "VIEW")
@@ -12080,16 +12035,77 @@ func (ec *executionContext) field_Query_repoSettings_args(ctx context.Context, r
 			return nil, graphql.ErrorOnPath(ctx, fmt.Errorf(`unexpected type %T from directive, should be *string`, tmp))
 		}
 	}
-	args["id"] = arg0
+	args["repoId"] = arg0
 	var arg1 *string
-	if tmp, ok := rawArgs["repoId"]; ok {
-		ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("repoId"))
+	if tmp, ok := rawArgs["id"]; ok {
+		ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("id"))
 		arg1, err = ec.unmarshalOString2ᚖstring(ctx, tmp)
 		if err != nil {
 			return nil, err
 		}
 	}
-	args["repoId"] = arg1
+	args["id"] = arg1
+	var arg2 *int
+	if tmp, ok := rawArgs["limit"]; ok {
+		ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("limit"))
+		arg2, err = ec.unmarshalOInt2ᚖint(ctx, tmp)
+		if err != nil {
+			return nil, err
+		}
+	}
+	args["limit"] = arg2
+	var arg3 *time.Time
+	if tmp, ok := rawArgs["before"]; ok {
+		ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("before"))
+		arg3, err = ec.unmarshalOTime2ᚖtimeᚐTime(ctx, tmp)
+		if err != nil {
+			return nil, err
+		}
+	}
+	args["before"] = arg3
+	return args, nil
+}
+
+func (ec *executionContext) field_Query_repoSettings_args(ctx context.Context, rawArgs map[string]interface{}) (map[string]interface{}, error) {
+	var err error
+	args := map[string]interface{}{}
+	var arg0 *string
+	if tmp, ok := rawArgs["repoId"]; ok {
+		ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("repoId"))
+		directive0 := func(ctx context.Context) (interface{}, error) { return ec.unmarshalOString2ᚖstring(ctx, tmp) }
+		directive1 := func(ctx context.Context) (interface{}, error) {
+			access, err := ec.unmarshalNProjectSettingsAccess2githubᚗcomᚋevergreenᚑciᚋevergreenᚋgraphqlᚐProjectSettingsAccess(ctx, "VIEW")
+			if err != nil {
+				return nil, err
+			}
+			if ec.directives.RequireProjectAccess == nil {
+				return nil, errors.New("directive requireProjectAccess is not implemented")
+			}
+			return ec.directives.RequireProjectAccess(ctx, rawArgs, directive0, access)
+		}
+
+		tmp, err = directive1(ctx)
+		if err != nil {
+			return nil, graphql.ErrorOnPath(ctx, err)
+		}
+		if data, ok := tmp.(*string); ok {
+			arg0 = data
+		} else if tmp == nil {
+			arg0 = nil
+		} else {
+			return nil, graphql.ErrorOnPath(ctx, fmt.Errorf(`unexpected type %T from directive, should be *string`, tmp))
+		}
+	}
+	args["repoId"] = arg0
+	var arg1 *string
+	if tmp, ok := rawArgs["id"]; ok {
+		ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("id"))
+		arg1, err = ec.unmarshalOString2ᚖstring(ctx, tmp)
+		if err != nil {
+			return nil, err
+		}
+	}
+	args["id"] = arg1
 	return args, nil
 }
 
@@ -20802,6 +20818,8 @@ func (ec *executionContext) fieldContext_GroupedProjects_projects(ctx context.Co
 				return ec.fieldContext_Project_manualPrTestingEnabled(ctx, field)
 			case "notifyOnBuildFailure":
 				return ec.fieldContext_Project_notifyOnBuildFailure(ctx, field)
+			case "oldestAllowedMergeBase":
+				return ec.fieldContext_Project_oldestAllowedMergeBase(ctx, field)
 			case "owner":
 				return ec.fieldContext_Project_owner(ctx, field)
 			case "parsleyFilters":
@@ -20931,6 +20949,8 @@ func (ec *executionContext) fieldContext_GroupedProjects_repo(ctx context.Contex
 				return ec.fieldContext_RepoRef_manualPrTestingEnabled(ctx, field)
 			case "notifyOnBuildFailure":
 				return ec.fieldContext_RepoRef_notifyOnBuildFailure(ctx, field)
+			case "oldestAllowedMergeBase":
+				return ec.fieldContext_RepoRef_oldestAllowedMergeBase(ctx, field)
 			case "owner":
 				return ec.fieldContext_RepoRef_owner(ctx, field)
 			case "parsleyFilters":
@@ -28543,6 +28563,8 @@ func (ec *executionContext) fieldContext_Mutation_addFavoriteProject(ctx context
 				return ec.fieldContext_Project_manualPrTestingEnabled(ctx, field)
 			case "notifyOnBuildFailure":
 				return ec.fieldContext_Project_notifyOnBuildFailure(ctx, field)
+			case "oldestAllowedMergeBase":
+				return ec.fieldContext_Project_oldestAllowedMergeBase(ctx, field)
 			case "owner":
 				return ec.fieldContext_Project_owner(ctx, field)
 			case "parsleyFilters":
@@ -28698,6 +28720,8 @@ func (ec *executionContext) fieldContext_Mutation_attachProjectToNewRepo(ctx con
 				return ec.fieldContext_Project_manualPrTestingEnabled(ctx, field)
 			case "notifyOnBuildFailure":
 				return ec.fieldContext_Project_notifyOnBuildFailure(ctx, field)
+			case "oldestAllowedMergeBase":
+				return ec.fieldContext_Project_oldestAllowedMergeBase(ctx, field)
 			case "owner":
 				return ec.fieldContext_Project_owner(ctx, field)
 			case "parsleyFilters":
@@ -28853,6 +28877,8 @@ func (ec *executionContext) fieldContext_Mutation_attachProjectToRepo(ctx contex
 				return ec.fieldContext_Project_manualPrTestingEnabled(ctx, field)
 			case "notifyOnBuildFailure":
 				return ec.fieldContext_Project_notifyOnBuildFailure(ctx, field)
+			case "oldestAllowedMergeBase":
+				return ec.fieldContext_Project_oldestAllowedMergeBase(ctx, field)
 			case "owner":
 				return ec.fieldContext_Project_owner(ctx, field)
 			case "parsleyFilters":
@@ -29008,6 +29034,8 @@ func (ec *executionContext) fieldContext_Mutation_createProject(ctx context.Cont
 				return ec.fieldContext_Project_manualPrTestingEnabled(ctx, field)
 			case "notifyOnBuildFailure":
 				return ec.fieldContext_Project_notifyOnBuildFailure(ctx, field)
+			case "oldestAllowedMergeBase":
+				return ec.fieldContext_Project_oldestAllowedMergeBase(ctx, field)
 			case "owner":
 				return ec.fieldContext_Project_owner(ctx, field)
 			case "parsleyFilters":
@@ -29163,6 +29191,8 @@ func (ec *executionContext) fieldContext_Mutation_copyProject(ctx context.Contex
 				return ec.fieldContext_Project_manualPrTestingEnabled(ctx, field)
 			case "notifyOnBuildFailure":
 				return ec.fieldContext_Project_notifyOnBuildFailure(ctx, field)
+			case "oldestAllowedMergeBase":
+				return ec.fieldContext_Project_oldestAllowedMergeBase(ctx, field)
 			case "owner":
 				return ec.fieldContext_Project_owner(ctx, field)
 			case "parsleyFilters":
@@ -29480,6 +29510,8 @@ func (ec *executionContext) fieldContext_Mutation_detachProjectFromRepo(ctx cont
 				return ec.fieldContext_Project_manualPrTestingEnabled(ctx, field)
 			case "notifyOnBuildFailure":
 				return ec.fieldContext_Project_notifyOnBuildFailure(ctx, field)
+			case "oldestAllowedMergeBase":
+				return ec.fieldContext_Project_oldestAllowedMergeBase(ctx, field)
 			case "owner":
 				return ec.fieldContext_Project_owner(ctx, field)
 			case "parsleyFilters":
@@ -29745,6 +29777,8 @@ func (ec *executionContext) fieldContext_Mutation_removeFavoriteProject(ctx cont
 				return ec.fieldContext_Project_manualPrTestingEnabled(ctx, field)
 			case "notifyOnBuildFailure":
 				return ec.fieldContext_Project_notifyOnBuildFailure(ctx, field)
+			case "oldestAllowedMergeBase":
+				return ec.fieldContext_Project_oldestAllowedMergeBase(ctx, field)
 			case "owner":
 				return ec.fieldContext_Project_owner(ctx, field)
 			case "parsleyFilters":
@@ -34763,6 +34797,8 @@ func (ec *executionContext) fieldContext_Patch_projectMetadata(ctx context.Conte
 				return ec.fieldContext_Project_manualPrTestingEnabled(ctx, field)
 			case "notifyOnBuildFailure":
 				return ec.fieldContext_Project_notifyOnBuildFailure(ctx, field)
+			case "oldestAllowedMergeBase":
+				return ec.fieldContext_Project_oldestAllowedMergeBase(ctx, field)
 			case "owner":
 				return ec.fieldContext_Project_owner(ctx, field)
 			case "parsleyFilters":
@@ -39486,6 +39522,50 @@ func (ec *executionContext) fieldContext_Project_notifyOnBuildFailure(ctx contex
 	return fc, nil
 }
 
+func (ec *executionContext) _Project_oldestAllowedMergeBase(ctx context.Context, field graphql.CollectedField, obj *model.APIProjectRef) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_Project_oldestAllowedMergeBase(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.OldestAllowedMergeBase, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.(*string)
+	fc.Result = res
+	return ec.marshalNString2ᚖstring(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_Project_oldestAllowedMergeBase(ctx context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "Project",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type String does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
 func (ec *executionContext) _Project_owner(ctx context.Context, field graphql.CollectedField, obj *model.APIProjectRef) (ret graphql.Marshaler) {
 	fc, err := ec.fieldContext_Project_owner(ctx, field)
 	if err != nil {
@@ -41692,6 +41772,8 @@ func (ec *executionContext) fieldContext_ProjectEventSettings_projectRef(ctx con
 				return ec.fieldContext_Project_manualPrTestingEnabled(ctx, field)
 			case "notifyOnBuildFailure":
 				return ec.fieldContext_Project_notifyOnBuildFailure(ctx, field)
+			case "oldestAllowedMergeBase":
+				return ec.fieldContext_Project_oldestAllowedMergeBase(ctx, field)
 			case "owner":
 				return ec.fieldContext_Project_owner(ctx, field)
 			case "parsleyFilters":
@@ -42254,6 +42336,8 @@ func (ec *executionContext) fieldContext_ProjectSettings_projectRef(ctx context.
 				return ec.fieldContext_Project_manualPrTestingEnabled(ctx, field)
 			case "notifyOnBuildFailure":
 				return ec.fieldContext_Project_notifyOnBuildFailure(ctx, field)
+			case "oldestAllowedMergeBase":
+				return ec.fieldContext_Project_oldestAllowedMergeBase(ctx, field)
 			case "owner":
 				return ec.fieldContext_Project_owner(ctx, field)
 			case "parsleyFilters":
@@ -43992,6 +44076,8 @@ func (ec *executionContext) fieldContext_Query_project(ctx context.Context, fiel
 				return ec.fieldContext_Project_manualPrTestingEnabled(ctx, field)
 			case "notifyOnBuildFailure":
 				return ec.fieldContext_Project_notifyOnBuildFailure(ctx, field)
+			case "oldestAllowedMergeBase":
+				return ec.fieldContext_Project_oldestAllowedMergeBase(ctx, field)
 			case "owner":
 				return ec.fieldContext_Project_owner(ctx, field)
 			case "parsleyFilters":
@@ -44254,7 +44340,7 @@ func (ec *executionContext) _Query_repoEvents(ctx context.Context, field graphql
 	}()
 	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
 		ctx = rctx // use context from middleware stack in children
-		return ec.resolvers.Query().RepoEvents(rctx, fc.Args["id"].(*string), fc.Args["limit"].(*int), fc.Args["before"].(*time.Time), fc.Args["repoId"].(*string))
+		return ec.resolvers.Query().RepoEvents(rctx, fc.Args["repoId"].(*string), fc.Args["id"].(*string), fc.Args["limit"].(*int), fc.Args["before"].(*time.Time))
 	})
 	if err != nil {
 		ec.Error(ctx, err)
@@ -44315,7 +44401,7 @@ func (ec *executionContext) _Query_repoSettings(ctx context.Context, field graph
 	}()
 	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
 		ctx = rctx // use context from middleware stack in children
-		return ec.resolvers.Query().RepoSettings(rctx, fc.Args["id"].(*string), fc.Args["repoId"].(*string))
+		return ec.resolvers.Query().RepoSettings(rctx, fc.Args["repoId"].(*string), fc.Args["id"].(*string))
 	})
 	if err != nil {
 		ec.Error(ctx, err)
@@ -46917,6 +47003,50 @@ func (ec *executionContext) fieldContext_RepoRef_notifyOnBuildFailure(ctx contex
 	return fc, nil
 }
 
+func (ec *executionContext) _RepoRef_oldestAllowedMergeBase(ctx context.Context, field graphql.CollectedField, obj *model.APIProjectRef) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_RepoRef_oldestAllowedMergeBase(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.OldestAllowedMergeBase, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.(*string)
+	fc.Result = res
+	return ec.marshalNString2ᚖstring(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_RepoRef_oldestAllowedMergeBase(ctx context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "RepoRef",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type String does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
 func (ec *executionContext) _RepoRef_owner(ctx context.Context, field graphql.CollectedField, obj *model.APIProjectRef) (ret graphql.Marshaler) {
 	fc, err := ec.fieldContext_RepoRef_owner(ctx, field)
 	if err != nil {
@@ -48155,6 +48285,8 @@ func (ec *executionContext) fieldContext_RepoSettings_projectRef(ctx context.Con
 				return ec.fieldContext_RepoRef_manualPrTestingEnabled(ctx, field)
 			case "notifyOnBuildFailure":
 				return ec.fieldContext_RepoRef_notifyOnBuildFailure(ctx, field)
+			case "oldestAllowedMergeBase":
+				return ec.fieldContext_RepoRef_oldestAllowedMergeBase(ctx, field)
 			case "owner":
 				return ec.fieldContext_RepoRef_owner(ctx, field)
 			case "parsleyFilters":
@@ -54224,6 +54356,8 @@ func (ec *executionContext) fieldContext_Task_project(ctx context.Context, field
 				return ec.fieldContext_Project_manualPrTestingEnabled(ctx, field)
 			case "notifyOnBuildFailure":
 				return ec.fieldContext_Project_notifyOnBuildFailure(ctx, field)
+			case "oldestAllowedMergeBase":
+				return ec.fieldContext_Project_oldestAllowedMergeBase(ctx, field)
 			case "owner":
 				return ec.fieldContext_Project_owner(ctx, field)
 			case "parsleyFilters":
@@ -63527,6 +63661,8 @@ func (ec *executionContext) fieldContext_Version_projectMetadata(ctx context.Con
 				return ec.fieldContext_Project_manualPrTestingEnabled(ctx, field)
 			case "notifyOnBuildFailure":
 				return ec.fieldContext_Project_notifyOnBuildFailure(ctx, field)
+			case "oldestAllowedMergeBase":
+				return ec.fieldContext_Project_oldestAllowedMergeBase(ctx, field)
 			case "owner":
 				return ec.fieldContext_Project_owner(ctx, field)
 			case "parsleyFilters":
@@ -69882,7 +70018,7 @@ func (ec *executionContext) unmarshalInputProjectInput(ctx context.Context, obj 
 		asMap[k] = v
 	}
 
-	fieldsInOrder := [...]string{"id", "admins", "banner", "batchTime", "branch", "buildBaronSettings", "commitQueue", "containerSizeDefinitions", "deactivatePrevious", "disabledStatsCache", "dispatchingDisabled", "displayName", "enabled", "externalLinks", "githubChecksEnabled", "githubTriggerAliases", "gitTagAuthorizedTeams", "gitTagAuthorizedUsers", "gitTagVersionsEnabled", "identifier", "manualPrTestingEnabled", "notifyOnBuildFailure", "owner", "parsleyFilters", "patchingDisabled", "patchTriggerAliases", "perfEnabled", "periodicBuilds", "private", "projectHealthView", "prTestingEnabled", "remotePath", "repo", "repotrackerDisabled", "restricted", "spawnHostScriptPath", "stepbackDisabled", "stepbackBisect", "taskAnnotationSettings", "taskSync", "tracksPushEvents", "triggers", "versionControlEnabled", "workstationConfig"}
+	fieldsInOrder := [...]string{"id", "admins", "banner", "batchTime", "branch", "buildBaronSettings", "commitQueue", "containerSizeDefinitions", "deactivatePrevious", "disabledStatsCache", "dispatchingDisabled", "displayName", "enabled", "externalLinks", "githubChecksEnabled", "githubTriggerAliases", "gitTagAuthorizedTeams", "gitTagAuthorizedUsers", "gitTagVersionsEnabled", "identifier", "manualPrTestingEnabled", "notifyOnBuildFailure", "oldestAllowedMergeBase", "owner", "parsleyFilters", "patchingDisabled", "patchTriggerAliases", "perfEnabled", "periodicBuilds", "private", "projectHealthView", "prTestingEnabled", "remotePath", "repo", "repotrackerDisabled", "restricted", "spawnHostScriptPath", "stepbackDisabled", "stepbackBisect", "taskAnnotationSettings", "taskSync", "tracksPushEvents", "triggers", "versionControlEnabled", "workstationConfig"}
 	for _, k := range fieldsInOrder {
 		v, ok := asMap[k]
 		if !ok {
@@ -70062,6 +70198,13 @@ func (ec *executionContext) unmarshalInputProjectInput(ctx context.Context, obj 
 				return it, err
 			}
 			it.NotifyOnBuildFailure = data
+		case "oldestAllowedMergeBase":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("oldestAllowedMergeBase"))
+			data, err := ec.unmarshalOString2ᚖstring(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.OldestAllowedMergeBase = data
 		case "owner":
 			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("owner"))
 			data, err := ec.unmarshalOString2ᚖstring(ctx, v)
@@ -70410,7 +70553,7 @@ func (ec *executionContext) unmarshalInputRepoRefInput(ctx context.Context, obj 
 		asMap[k] = v
 	}
 
-	fieldsInOrder := [...]string{"id", "admins", "batchTime", "buildBaronSettings", "commitQueue", "deactivatePrevious", "disabledStatsCache", "dispatchingDisabled", "displayName", "enabled", "externalLinks", "githubChecksEnabled", "githubTriggerAliases", "gitTagAuthorizedTeams", "gitTagAuthorizedUsers", "gitTagVersionsEnabled", "manualPrTestingEnabled", "notifyOnBuildFailure", "owner", "parsleyFilters", "patchingDisabled", "patchTriggerAliases", "perfEnabled", "periodicBuilds", "private", "prTestingEnabled", "remotePath", "repo", "repotrackerDisabled", "restricted", "spawnHostScriptPath", "stepbackDisabled", "stepbackBisect", "taskAnnotationSettings", "taskSync", "tracksPushEvents", "triggers", "versionControlEnabled", "workstationConfig", "containerSizeDefinitions"}
+	fieldsInOrder := [...]string{"id", "admins", "batchTime", "buildBaronSettings", "commitQueue", "deactivatePrevious", "disabledStatsCache", "dispatchingDisabled", "displayName", "enabled", "externalLinks", "githubChecksEnabled", "githubTriggerAliases", "gitTagAuthorizedTeams", "gitTagAuthorizedUsers", "gitTagVersionsEnabled", "manualPrTestingEnabled", "notifyOnBuildFailure", "oldestAllowedMergeBase", "owner", "parsleyFilters", "patchingDisabled", "patchTriggerAliases", "perfEnabled", "periodicBuilds", "private", "prTestingEnabled", "remotePath", "repo", "repotrackerDisabled", "restricted", "spawnHostScriptPath", "stepbackDisabled", "stepbackBisect", "taskAnnotationSettings", "taskSync", "tracksPushEvents", "triggers", "versionControlEnabled", "workstationConfig", "containerSizeDefinitions"}
 	for _, k := range fieldsInOrder {
 		v, ok := asMap[k]
 		if !ok {
@@ -70562,6 +70705,13 @@ func (ec *executionContext) unmarshalInputRepoRefInput(ctx context.Context, obj 
 				return it, err
 			}
 			it.NotifyOnBuildFailure = data
+		case "oldestAllowedMergeBase":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("oldestAllowedMergeBase"))
+			data, err := ec.unmarshalOString2ᚖstring(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.OldestAllowedMergeBase = data
 		case "owner":
 			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("owner"))
 			data, err := ec.unmarshalOString2ᚖstring(ctx, v)
@@ -79148,6 +79298,11 @@ func (ec *executionContext) _Project(ctx context.Context, sel ast.SelectionSet, 
 			out.Values[i] = ec._Project_manualPrTestingEnabled(ctx, field, obj)
 		case "notifyOnBuildFailure":
 			out.Values[i] = ec._Project_notifyOnBuildFailure(ctx, field, obj)
+		case "oldestAllowedMergeBase":
+			out.Values[i] = ec._Project_oldestAllowedMergeBase(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				atomic.AddUint32(&out.Invalids, 1)
+			}
 		case "owner":
 			out.Values[i] = ec._Project_owner(ctx, field, obj)
 			if out.Values[i] == graphql.Null {
@@ -81018,6 +81173,11 @@ func (ec *executionContext) _RepoRef(ctx context.Context, sel ast.SelectionSet, 
 			}
 		case "notifyOnBuildFailure":
 			out.Values[i] = ec._RepoRef_notifyOnBuildFailure(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "oldestAllowedMergeBase":
+			out.Values[i] = ec._RepoRef_oldestAllowedMergeBase(ctx, field, obj)
 			if out.Values[i] == graphql.Null {
 				out.Invalids++
 			}

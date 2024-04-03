@@ -39,6 +39,7 @@ func init() {
 		"gotest.parse_files":                    goTestFactory,
 		"keyval.inc":                            keyValIncFactory,
 		"manifest.load":                         manifestLoadFactory,
+		"papertrail.trace":                      papertrailTraceFactory,
 		"perf.send":                             perfSendFactory,
 		"downstream_expansions.set":             setExpansionsFactory,
 		"s3.get":                                s3GetFactory,

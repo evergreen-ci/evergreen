@@ -779,6 +779,9 @@ func getProjectIdFromArgs(ctx context.Context, args map[string]interface{}) (res
 	if id, hasId := args["id"].(string); hasId {
 		return id, nil
 	}
+	if repoId, hasRepoId := args["repoId"].(string); hasRepoId {
+		return repoId, nil
+	}
 	if projectId, hasProjectId := args["projectId"].(string); hasProjectId {
 		pid, err := model.GetIdForProject(projectId)
 		if err != nil {
