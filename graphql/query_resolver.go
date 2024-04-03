@@ -495,7 +495,7 @@ func (r *queryResolver) ProjectSettings(ctx context.Context, identifier string) 
 }
 
 // RepoEvents is the resolver for the repoEvents field.
-func (r *queryResolver) RepoEvents(ctx context.Context, id *string, limit *int, before *time.Time, repoID *string) (*ProjectEvents, error) {
+func (r *queryResolver) RepoEvents(ctx context.Context, repoID *string, id *string, limit *int, before *time.Time) (*ProjectEvents, error) {
 	// TODO: Remove this temporary workaround.
 	repoId := util.CoalesceString(utility.FromStringPtr(id), utility.FromStringPtr(repoID))
 	timestamp := time.Now()
@@ -511,7 +511,7 @@ func (r *queryResolver) RepoEvents(ctx context.Context, id *string, limit *int, 
 }
 
 // RepoSettings is the resolver for the repoSettings field.
-func (r *queryResolver) RepoSettings(ctx context.Context, id *string, repoID *string) (*restModel.APIProjectSettings, error) {
+func (r *queryResolver) RepoSettings(ctx context.Context, repoID *string, id *string) (*restModel.APIProjectSettings, error) {
 	// TODO: Remove this temporary workaround.
 	repoId := util.CoalesceString(utility.FromStringPtr(id), utility.FromStringPtr(repoID))
 	repoRef, err := model.FindOneRepoRef(repoId)

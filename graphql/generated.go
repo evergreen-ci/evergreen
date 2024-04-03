@@ -1013,8 +1013,8 @@ type ComplexityRoot struct {
 		ProjectEvents            func(childComplexity int, identifier string, limit *int, before *time.Time) int
 		ProjectSettings          func(childComplexity int, identifier string) int
 		Projects                 func(childComplexity int) int
-		RepoEvents               func(childComplexity int, id *string, limit *int, before *time.Time, repoID *string) int
-		RepoSettings             func(childComplexity int, id *string, repoID *string) int
+		RepoEvents               func(childComplexity int, repoID *string, id *string, limit *int, before *time.Time) int
+		RepoSettings             func(childComplexity int, repoID *string, id *string) int
 		SpruceConfig             func(childComplexity int) int
 		SubnetAvailabilityZones  func(childComplexity int) int
 		Task                     func(childComplexity int, taskID string, execution *int) int
@@ -1806,8 +1806,8 @@ type QueryResolver interface {
 	Projects(ctx context.Context) ([]*GroupedProjects, error)
 	ProjectEvents(ctx context.Context, identifier string, limit *int, before *time.Time) (*ProjectEvents, error)
 	ProjectSettings(ctx context.Context, identifier string) (*model.APIProjectSettings, error)
-	RepoEvents(ctx context.Context, id *string, limit *int, before *time.Time, repoID *string) (*ProjectEvents, error)
-	RepoSettings(ctx context.Context, id *string, repoID *string) (*model.APIProjectSettings, error)
+	RepoEvents(ctx context.Context, repoID *string, id *string, limit *int, before *time.Time) (*ProjectEvents, error)
+	RepoSettings(ctx context.Context, repoID *string, id *string) (*model.APIProjectSettings, error)
 	ViewableProjectRefs(ctx context.Context) ([]*GroupedProjects, error)
 	MyHosts(ctx context.Context) ([]*model.APIHost, error)
 	MyVolumes(ctx context.Context) ([]*model.APIVolume, error)
@@ -6670,7 +6670,7 @@ func (e *executableSchema) Complexity(typeName, field string, childComplexity in
 			return 0, false
 		}
 
-		return e.complexity.Query.RepoEvents(childComplexity, args["id"].(*string), args["limit"].(*int), args["before"].(*time.Time), args["repoId"].(*string)), true
+		return e.complexity.Query.RepoEvents(childComplexity, args["repoId"].(*string), args["id"].(*string), args["limit"].(*int), args["before"].(*time.Time)), true
 
 	case "Query.repoSettings":
 		if e.complexity.Query.RepoSettings == nil {
@@ -6682,7 +6682,7 @@ func (e *executableSchema) Complexity(typeName, field string, childComplexity in
 			return 0, false
 		}
 
-		return e.complexity.Query.RepoSettings(childComplexity, args["id"].(*string), args["repoId"].(*string)), true
+		return e.complexity.Query.RepoSettings(childComplexity, args["repoId"].(*string), args["id"].(*string)), true
 
 	case "Query.spruceConfig":
 		if e.complexity.Query.SpruceConfig == nil {
@@ -11993,33 +11993,6 @@ func (ec *executionContext) field_Query_repoEvents_args(ctx context.Context, raw
 	var err error
 	args := map[string]interface{}{}
 	var arg0 *string
-	if tmp, ok := rawArgs["id"]; ok {
-		ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("id"))
-		arg0, err = ec.unmarshalOString2ᚖstring(ctx, tmp)
-		if err != nil {
-			return nil, err
-		}
-	}
-	args["id"] = arg0
-	var arg1 *int
-	if tmp, ok := rawArgs["limit"]; ok {
-		ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("limit"))
-		arg1, err = ec.unmarshalOInt2ᚖint(ctx, tmp)
-		if err != nil {
-			return nil, err
-		}
-	}
-	args["limit"] = arg1
-	var arg2 *time.Time
-	if tmp, ok := rawArgs["before"]; ok {
-		ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("before"))
-		arg2, err = ec.unmarshalOTime2ᚖtimeᚐTime(ctx, tmp)
-		if err != nil {
-			return nil, err
-		}
-	}
-	args["before"] = arg2
-	var arg3 *string
 	if tmp, ok := rawArgs["repoId"]; ok {
 		ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("repoId"))
 		directive0 := func(ctx context.Context) (interface{}, error) { return ec.unmarshalOString2ᚖstring(ctx, tmp) }
@@ -12039,14 +12012,41 @@ func (ec *executionContext) field_Query_repoEvents_args(ctx context.Context, raw
 			return nil, graphql.ErrorOnPath(ctx, err)
 		}
 		if data, ok := tmp.(*string); ok {
-			arg3 = data
+			arg0 = data
 		} else if tmp == nil {
-			arg3 = nil
+			arg0 = nil
 		} else {
 			return nil, graphql.ErrorOnPath(ctx, fmt.Errorf(`unexpected type %T from directive, should be *string`, tmp))
 		}
 	}
-	args["repoId"] = arg3
+	args["repoId"] = arg0
+	var arg1 *string
+	if tmp, ok := rawArgs["id"]; ok {
+		ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("id"))
+		arg1, err = ec.unmarshalOString2ᚖstring(ctx, tmp)
+		if err != nil {
+			return nil, err
+		}
+	}
+	args["id"] = arg1
+	var arg2 *int
+	if tmp, ok := rawArgs["limit"]; ok {
+		ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("limit"))
+		arg2, err = ec.unmarshalOInt2ᚖint(ctx, tmp)
+		if err != nil {
+			return nil, err
+		}
+	}
+	args["limit"] = arg2
+	var arg3 *time.Time
+	if tmp, ok := rawArgs["before"]; ok {
+		ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("before"))
+		arg3, err = ec.unmarshalOTime2ᚖtimeᚐTime(ctx, tmp)
+		if err != nil {
+			return nil, err
+		}
+	}
+	args["before"] = arg3
 	return args, nil
 }
 
@@ -12054,15 +12054,6 @@ func (ec *executionContext) field_Query_repoSettings_args(ctx context.Context, r
 	var err error
 	args := map[string]interface{}{}
 	var arg0 *string
-	if tmp, ok := rawArgs["id"]; ok {
-		ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("id"))
-		arg0, err = ec.unmarshalOString2ᚖstring(ctx, tmp)
-		if err != nil {
-			return nil, err
-		}
-	}
-	args["id"] = arg0
-	var arg1 *string
 	if tmp, ok := rawArgs["repoId"]; ok {
 		ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("repoId"))
 		directive0 := func(ctx context.Context) (interface{}, error) { return ec.unmarshalOString2ᚖstring(ctx, tmp) }
@@ -12082,14 +12073,23 @@ func (ec *executionContext) field_Query_repoSettings_args(ctx context.Context, r
 			return nil, graphql.ErrorOnPath(ctx, err)
 		}
 		if data, ok := tmp.(*string); ok {
-			arg1 = data
+			arg0 = data
 		} else if tmp == nil {
-			arg1 = nil
+			arg0 = nil
 		} else {
 			return nil, graphql.ErrorOnPath(ctx, fmt.Errorf(`unexpected type %T from directive, should be *string`, tmp))
 		}
 	}
-	args["repoId"] = arg1
+	args["repoId"] = arg0
+	var arg1 *string
+	if tmp, ok := rawArgs["id"]; ok {
+		ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("id"))
+		arg1, err = ec.unmarshalOString2ᚖstring(ctx, tmp)
+		if err != nil {
+			return nil, err
+		}
+	}
+	args["id"] = arg1
 	return args, nil
 }
 
@@ -44254,7 +44254,7 @@ func (ec *executionContext) _Query_repoEvents(ctx context.Context, field graphql
 	}()
 	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
 		ctx = rctx // use context from middleware stack in children
-		return ec.resolvers.Query().RepoEvents(rctx, fc.Args["id"].(*string), fc.Args["limit"].(*int), fc.Args["before"].(*time.Time), fc.Args["repoId"].(*string))
+		return ec.resolvers.Query().RepoEvents(rctx, fc.Args["repoId"].(*string), fc.Args["id"].(*string), fc.Args["limit"].(*int), fc.Args["before"].(*time.Time))
 	})
 	if err != nil {
 		ec.Error(ctx, err)
@@ -44315,7 +44315,7 @@ func (ec *executionContext) _Query_repoSettings(ctx context.Context, field graph
 	}()
 	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
 		ctx = rctx // use context from middleware stack in children
-		return ec.resolvers.Query().RepoSettings(rctx, fc.Args["id"].(*string), fc.Args["repoId"].(*string))
+		return ec.resolvers.Query().RepoSettings(rctx, fc.Args["repoId"].(*string), fc.Args["id"].(*string))
 	})
 	if err != nil {
 		ec.Error(ctx, err)

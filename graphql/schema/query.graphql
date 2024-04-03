@@ -55,8 +55,8 @@ type Query {
     @requireProjectAccess(access: VIEW)
   ): ProjectEvents!
   projectSettings(identifier: String! @requireProjectAccess(access: VIEW)): ProjectSettings!
-  repoEvents(id: String @deprecated(reason: "use repoId instead"), limit: Int = 0, before: Time, repoId: String @requireProjectAccess(access: VIEW)): ProjectEvents!
-  repoSettings(id: String @deprecated(reason: "use repoId instead"), repoId: String @requireProjectAccess(access: VIEW)): RepoSettings!
+  repoEvents(repoId: String @requireProjectAccess(access: VIEW), id: String @deprecated(reason: "use repoId instead"), limit: Int = 0, before: Time): ProjectEvents!
+  repoSettings(repoId: String @requireProjectAccess(access: VIEW), id: String @deprecated(reason: "use repoId instead")): RepoSettings!
   viewableProjectRefs: [GroupedProjects]!
 
   # spawn
