@@ -283,6 +283,8 @@ functions:
           JIRA_ACCESS_TOKEN: ${jira_access_token}
           JIRA_TOKEN_SECRET: ${jira_token_secret}
           JIRA_CONSUMER_KEY: ${jira_consumer_key}
+          PAPERTRAIL_KEY_ID: ${papertrail_key_id}
+          PAPERTRAIL_SECRET_KEY: ${papertrail_secret_key}
         command: bash scripts/setup-credentials.sh
 
   setup-mongodb:
