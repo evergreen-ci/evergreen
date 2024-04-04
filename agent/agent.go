@@ -854,11 +854,8 @@ func (a *Agent) runPostOrTeardownTaskCommands(ctx context.Context, tc *taskConte
 
 	if post.commands != nil {
 		err = a.runCommandsInBlock(ctx, tc, *post)
-		if err != nil {
-			tc.setPostErrored(true)
-			if post.canFailTask {
-				return err
-			}
+		if err != nil && post.canFailTask {
+			return err
 		}
 	}
 	return nil
