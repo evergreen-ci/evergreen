@@ -656,7 +656,7 @@ post:
 	s.setupRunTask(projYml)
 	s.NoError(s.a.runPostOrTeardownTaskCommands(s.ctx, s.tc))
 	s.NoError(s.tc.logger.Close())
-	s.True(s.tc.postErrored)
+	s.True(s.tc.getPostErrored())
 }
 
 func (s *AgentSuite) TestPostTimeoutDoesNotFailTask() {
