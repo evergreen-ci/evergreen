@@ -2197,20 +2197,20 @@ func (t *Task) displayTaskPriority() int {
 }
 
 // Reset sets the task state to a state in which it is scheduled to re-run.
-func (t *Task) Reset(ctx context.Context) error {
+func (t *Task) Reset(ctx context.Context, caller string) error {
 	return UpdateOneContext(ctx,
 		bson.M{
 			IdKey:       t.Id,
 			StatusKey:   bson.M{"$in": evergreen.TaskCompletedStatuses},
 			CanResetKey: true,
 		},
-		resetTaskUpdate(t),
+		resetTaskUpdate(t, caller),
 	)
 }
 
 // ResetTasks performs the same DB updates as (*Task).Reset, but resets many
 // tasks instead of a single one.
-func ResetTasks(tasks []Task) error {
+func ResetTasks(tasks []Task, caller string) error {
 	if len(tasks) == 0 {
 		return nil
 	}
@@ -2225,7 +2225,7 @@ func ResetTasks(tasks []Task) error {
 			StatusKey:   bson.M{"$in": evergreen.TaskCompletedStatuses},
 			CanResetKey: true,
 		},
-		resetTaskUpdate(nil),
+		resetTaskUpdate(nil, caller),
 	); err != nil {
 		return err
 	}
@@ -2233,12 +2233,13 @@ func ResetTasks(tasks []Task) error {
 	return nil
 }
 
-func resetTaskUpdate(t *Task) []bson.M {
+func resetTaskUpdate(t *Task, caller string) []bson.M {
 	newSecret := utility.RandomString()
 	now := time.Now()
 	if t != nil {
 		t.Activated = true
 		t.ActivatedTime = now
+		t.ActivatedBy = caller
 		t.Secret = newSecret
 		t.HostId = ""
 		t.PodID = ""
@@ -2270,6 +2271,7 @@ func resetTaskUpdate(t *Task) []bson.M {
 			"$set": bson.M{
 				ActivatedKey:                   true,
 				ActivatedTimeKey:               now,
+				ActivatedByKey:                 caller,
 				SecretKey:                      newSecret,
 				StatusKey:                      evergreen.TaskUndispatched,
 				DispatchTimeKey:                utility.ZeroTime,
