@@ -752,13 +752,6 @@ func doBisectStepbackForGeneratedTask(ctx context.Context, generator *task.Task,
 	}); err != nil {
 		return errors.Wrapf(err, "could not set stepback info for generated task '%s'", generated.Id)
 	}
-	if nextTask.GeneratedTasks {
-		// TODO: Get generated task's next task.
-		// If the next task has finished, negative priority, or already activated, no-op.
-		if nextTask.IsFinished() || nextTask.Priority < 0 || nextTask.Activated {
-			return nil
-		}
-	}
 	// Store our last and previous stepback tasks in our upcoming/next task.
 	if err = task.AddGeneraterStepbackInfo(nextTask.Id, s); err != nil {
 		return errors.Wrapf(err, "setting stepback info for task '%s'", nextTask.Id)
