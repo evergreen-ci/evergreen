@@ -163,16 +163,15 @@ type LogLinks struct {
 }
 
 type ApiTaskEndDetail struct {
-	// The status of the completed task
+	// The status of the completed task.
 	Status *string `json:"status"`
-	// The method by which the task failed
+	// The method by which the task failed.
 	Type *string `json:"type"`
-	// Description of the final status of this task
+	// Description of the final status of this task.
 	Description *string `json:"desc"`
-	// ErrorBlockType is the type of block that the task errored on (post, pre,
-	// etc. if it is blank, it was the main task block).
-	ErrorBlockType *string `json:"error_block_type"`
-	// Whether this task ended in a timeout
+	// PostErrored is true when the post command errored.
+	PostErrored bool `json:"post_errored"`
+	// Whether this task ended in a timeout.
 	TimedOut    bool              `json:"timed_out"`
 	TimeoutType *string           `json:"timeout_type"`
 	OOMTracker  APIOomTrackerInfo `json:"oom_tracker_info"`
@@ -184,7 +183,7 @@ func (at *ApiTaskEndDetail) BuildFromService(t apimodels.TaskEndDetail) error {
 	at.Status = utility.ToStringPtr(t.Status)
 	at.Type = utility.ToStringPtr(t.Type)
 	at.Description = utility.ToStringPtr(t.Description)
-	at.ErrorBlockType = utility.ToStringPtr(t.ErrorBlockType)
+	at.PostErrored = t.PostErrored
 	at.TimedOut = t.TimedOut
 	at.TimeoutType = utility.ToStringPtr(t.TimeoutType)
 
@@ -199,15 +198,15 @@ func (at *ApiTaskEndDetail) BuildFromService(t apimodels.TaskEndDetail) error {
 
 func (ad *ApiTaskEndDetail) ToService() apimodels.TaskEndDetail {
 	return apimodels.TaskEndDetail{
-		Status:         utility.FromStringPtr(ad.Status),
-		Type:           utility.FromStringPtr(ad.Type),
-		Description:    utility.FromStringPtr(ad.Description),
-		ErrorBlockType: utility.FromStringPtr(ad.ErrorBlockType),
-		TimedOut:       ad.TimedOut,
-		TimeoutType:    utility.FromStringPtr(ad.TimeoutType),
-		OOMTracker:     ad.OOMTracker.ToService(),
-		TraceID:        utility.FromStringPtr(ad.TraceID),
-		DiskDevices:    ad.DiskDevices,
+		Status:      utility.FromStringPtr(ad.Status),
+		Type:        utility.FromStringPtr(ad.Type),
+		Description: utility.FromStringPtr(ad.Description),
+		PostErrored: ad.PostErrored,
+		TimedOut:    ad.TimedOut,
+		TimeoutType: utility.FromStringPtr(ad.TimeoutType),
+		OOMTracker:  ad.OOMTracker.ToService(),
+		TraceID:     utility.FromStringPtr(ad.TraceID),
+		DiskDevices: ad.DiskDevices,
 	}
 }
 

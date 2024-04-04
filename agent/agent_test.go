@@ -158,7 +158,6 @@ func (s *AgentSuite) SetupTest() {
 	factory, ok := command.GetCommandFactory("setup.initial")
 	s.True(ok)
 	s.tc.setCurrentCommand(factory())
-	s.tc.setCurrentBlock("pre")
 	sender, err := s.a.GetSender(ctx, LogOutputStdout, "agent", "task_id", 2)
 	s.Require().NoError(err)
 	s.a.SetDefaultLogger(sender)
@@ -375,9 +374,6 @@ pre:
 
 	s.True(cmdDuration > waitUntilAbort, "command should have only stopped when it received cancel")
 	s.True(cmdDuration < cmdSleepSecs*time.Second, "command should not block if it's taking too long to stop")
-
-	// Test if the block type was correctly set as the preblock.
-	s.Equal(command.PreBlock, s.tc.getCurrentBlock())
 }
 
 func (s *AgentSuite) TestCancelledRunCommandsIsNonBlocking() {
@@ -401,9 +397,6 @@ pre:
 	s.True(utility.IsContextError(errors.Cause(err)))
 	s.NoError(s.tc.logger.Close())
 	checkMockLogs(s.T(), s.mockCommunicator, s.tc.taskConfig.Task.Id, nil, []string{panicLog})
-
-	// Test if the block type was correctly kept as "pre" since no tasks were ran.
-	s.Equal("pre", string(s.tc.getCurrentBlock()))
 }
 
 func (s *AgentSuite) TestRunCommandsIsPanicSafe() {
@@ -651,6 +644,19 @@ post:
 		"Set idle timeout for 'shell.exec'",
 		"Running post-task commands failed",
 	})
+}
+
+func (s *AgentSuite) TestPostSucceedsButErrorIsLogged() {
+	projYml := `
+post:
+  - command: shell.exec
+    params:
+      script: exit 1
+`
+	s.setupRunTask(projYml)
+	s.NoError(s.a.runPostOrTeardownTaskCommands(s.ctx, s.tc))
+	s.NoError(s.tc.logger.Close())
+	s.True(s.tc.postErrored)
 }
 
 func (s *AgentSuite) TestPostTimeoutDoesNotFailTask() {
@@ -1148,7 +1154,6 @@ func (s *AgentSuite) TestEndTaskResponse() {
 	factory, ok := command.GetCommandFactory("setup.initial")
 	s.Require().True(ok)
 	s.tc.setCurrentCommand(factory())
-	s.tc.setCurrentBlock("pre")
 
 	const systemFailureDescription = "failure message"
 	s.T().Run("TaskFailingWithCurrentCommandOverridesEmptyDescription", func(t *testing.T) {

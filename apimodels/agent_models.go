@@ -60,7 +60,7 @@ type TaskTestResultsInfo struct {
 type TaskEndDetail struct {
 	Status          string          `bson:"status,omitempty" json:"status,omitempty"`
 	Type            string          `bson:"type,omitempty" json:"type,omitempty"`
-	ErrorBlockType  string          `bson:"error_block_type,omitempty" json:"error_block_type,omitempty"`
+	PostErrored     bool            `bson:"post_errored,omitempty" json:"post_errored,omitempty"`
 	Description     string          `bson:"desc,omitempty" json:"desc,omitempty"`
 	TimedOut        bool            `bson:"timed_out,omitempty" json:"timed_out,omitempty"`
 	TimeoutType     string          `bson:"timeout_type,omitempty" json:"timeout_type,omitempty"`

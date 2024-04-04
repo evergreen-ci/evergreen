@@ -440,7 +440,6 @@ func (a *Agent) setupTask(agentCtx, setupCtx context.Context, initialTC *taskCon
 	}
 	if factory != nil {
 		tc.setCurrentCommand(factory())
-		tc.setCurrentBlock("pre")
 	}
 
 	a.comm.UpdateLastMessageTime()
@@ -474,15 +473,12 @@ func (a *Agent) setupTask(agentCtx, setupCtx context.Context, initialTC *taskCon
 	// a task group.
 	tc.taskConfig.TaskOutputDir = taskoutput.NewDirectory(tc.taskConfig.WorkDir, &tc.taskConfig.Task, tc.logger)
 	if err := tc.taskConfig.TaskOutputDir.Setup(); err != nil {
-		if err != nil {
-			return a.handleSetupError(setupCtx, tc, errors.Wrap(err, "creating task output directory"))
-		}
+		return a.handleSetupError(setupCtx, tc, errors.Wrap(err, "creating task output directory"))
 	}
 
 	// We are only calling this again to get the log for the current command after logging has been set up.
 	if factory != nil {
 		tc.setCurrentCommand(factory())
-		tc.setCurrentBlock("pre")
 	}
 
 	tc.logger.Task().Infof("Task logger initialized (agent version '%s' from Evergreen build revision '%s').", evergreen.AgentVersion, evergreen.BuildRevision)
@@ -858,8 +854,11 @@ func (a *Agent) runPostOrTeardownTaskCommands(ctx context.Context, tc *taskConte
 
 	if post.commands != nil {
 		err = a.runCommandsInBlock(ctx, tc, *post)
-		if err != nil && post.canFailTask {
-			return err
+		if err != nil {
+			tc.setPostErrored(true)
+			if post.canFailTask {
+				return err
+			}
 		}
 	}
 	return nil
@@ -975,7 +974,6 @@ func (a *Agent) finishTask(ctx context.Context, tc *taskContext, status string, 
 		if err := a.runPostOrTeardownTaskCommands(ctx, tc); err != nil {
 			tc.logger.Task().Info("Post task completed - FAILURE. Overall task status changed to FAILED.")
 			setEndTaskFailureDetails(tc, detail, evergreen.TaskFailed, "", "")
-			detail.ErrorBlockType = string(tc.getCurrentBlock())
 		}
 		a.runEndTaskSync(ctx, tc, detail)
 	case evergreen.TaskFailed:
@@ -1156,10 +1154,10 @@ func setEndTaskFailureDetails(tc *taskContext, detail *apimodels.TaskEndDetail, 
 	}
 
 	detail.Status = status
+	detail.PostErrored = tc.getPostErrored()
 	if status != evergreen.TaskSucceeded {
 		detail.Type = failureType
 		detail.Description = description
-		detail.ErrorBlockType = string(tc.getCurrentBlock())
 	}
 	if !isDefaultDescription {
 		detail.Description = description
