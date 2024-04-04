@@ -215,7 +215,6 @@ func (s *DistroByIDSuite) TestFindByIdFound() {
 	s.EqualValues(7, d.PlannerSettings.PatchFactor)
 	s.Equal(utility.ToStringPtr(distro.BootstrapMethodLegacySSH), d.BootstrapSettings.Method)
 	s.Equal(utility.ToStringPtr(distro.CommunicationMethodLegacySSH), d.BootstrapSettings.Communication)
-	s.Equal(utility.ToStringPtr(evergreen.CloneMethodLegacySSH), d.CloneMethod)
 	s.Equal(utility.ToStringPtr(evergreen.FinderVersionLegacy), d.FinderSettings.Version)
 	s.Equal(utility.ToStringPtr(evergreen.DispatcherVersionRevisedWithDependencies), d.DispatcherSettings.Version)
 }
@@ -1394,7 +1393,6 @@ func (s *DistroPatchByIDSuite) TestValidFindAndReplaceFullDocument() {
 	s.Equal(apiDistro.Setup, utility.ToStringPtr("~Set-up script"))
 	s.Equal(utility.ToStringPtr(distro.BootstrapMethodLegacySSH), apiDistro.BootstrapSettings.Method)
 	s.Equal(utility.ToStringPtr(distro.CommunicationMethodLegacySSH), apiDistro.BootstrapSettings.Communication)
-	s.Equal(utility.ToStringPtr(evergreen.CloneMethodLegacySSH), apiDistro.CloneMethod)
 	s.Equal(utility.ToStringPtr("/oldUsr/bin"), apiDistro.BootstrapSettings.ClientDir)
 	s.Equal(utility.ToStringPtr("/oldUsr/local/bin"), apiDistro.BootstrapSettings.JasperBinaryDir)
 	s.Equal(utility.ToStringPtr("/etc/credentials"), apiDistro.BootstrapSettings.JasperCredentialsPath)

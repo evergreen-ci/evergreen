@@ -60,13 +60,11 @@ func TestDistroBuildFromServiceDefaults(t *testing.T) {
 
 	assert.Equal(t, distro.BootstrapMethodLegacySSH, utility.FromStringPtr(apiDistro.BootstrapSettings.Method))
 	assert.Equal(t, distro.CommunicationMethodLegacySSH, utility.FromStringPtr(apiDistro.BootstrapSettings.Method))
-	assert.Equal(t, evergreen.CloneMethodLegacySSH, utility.FromStringPtr(apiDistro.CloneMethod))
 }
 
 func TestDistroToService(t *testing.T) {
 	apiDistro := APIDistro{
-		Name:        utility.ToStringPtr("id"),
-		CloneMethod: utility.ToStringPtr(evergreen.CloneMethodOAuth),
+		Name: utility.ToStringPtr("id"),
 		BootstrapSettings: APIBootstrapSettings{
 			Method:                utility.ToStringPtr(distro.BootstrapMethodSSH),
 			Communication:         utility.ToStringPtr(distro.CommunicationMethodSSH),

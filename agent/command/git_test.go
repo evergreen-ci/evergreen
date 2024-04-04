@@ -1112,24 +1112,7 @@ func (s *GitGetProjectSuite) TestGetProjectMethodAndToken() {
 	s.comm.CreateInstallationTokenFail = true
 
 	method, token, err = getProjectMethodAndToken(s.ctx, s.comm, td, conf, "")
-	s.NoError(err)
-	s.Equal("", token)
-	s.Equal(evergreen.CloneMethodLegacySSH, method)
-
-	method, token, err = getProjectMethodAndToken(s.ctx, s.comm, td, conf, "")
 	s.Error(err)
-	s.Equal("", token)
-	s.Equal(evergreen.CloneMethodLegacySSH, method)
-
-	method, token, err = getProjectMethodAndToken(s.ctx, s.comm, td, conf, "")
-	s.NoError(err)
-	s.Equal("", token)
-	s.Equal(evergreen.CloneMethodLegacySSH, method)
-
-	method, token, err = getProjectMethodAndToken(s.ctx, s.comm, td, conf, "")
-	s.NoError(err)
-	s.Equal("", token)
-	s.Equal(evergreen.CloneMethodLegacySSH, method)
 
 	conf.Expansions[evergreen.GlobalGitHubTokenExpansion] = globalGitHubToken
 

@@ -346,7 +346,6 @@ type APIDistro struct {
 	Setup                 *string                  `json:"setup"`
 	User                  *string                  `json:"user"`
 	BootstrapSettings     APIBootstrapSettings     `json:"bootstrap_settings"`
-	CloneMethod           *string                  `json:"clone_method"`
 	SSHKey                *string                  `json:"ssh_key"`
 	SSHOptions            []string                 `json:"ssh_options"`
 	AuthorizedKeysFile    *string                  `json:"authorized_keys_file"`
