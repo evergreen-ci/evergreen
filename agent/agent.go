@@ -1128,6 +1128,7 @@ func (a *Agent) endTaskResponse(ctx context.Context, tc *taskContext, status str
 		OOMTracker:  tc.getOomTrackerInfo(),
 		TraceID:     tc.traceID,
 		DiskDevices: tc.diskDevices,
+		PostErrored: tc.getPostErrored(),
 	}
 	setEndTaskFailureDetails(tc, detail, status, highestPriorityDescription, userDefinedFailureType)
 	if tc.taskConfig != nil {
@@ -1151,7 +1152,6 @@ func setEndTaskFailureDetails(tc *taskContext, detail *apimodels.TaskEndDetail, 
 	}
 
 	detail.Status = status
-	detail.PostErrored = tc.getPostErrored()
 	if status != evergreen.TaskSucceeded {
 		detail.Type = failureType
 		detail.Description = description
