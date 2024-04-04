@@ -103,7 +103,7 @@ Finished Evergreen tasks, partitioned by the project and date (in ISO format). F
 | secondary\_distros            | ARRAY(VARCHAR) | Optional secondary distros that can run the task when they're idle.
 | build\_variant                | VARCHAR        | Name of the task's build variant.
 | build\_variant\_display\_name | VARCHAR        | Display name of the task's build variant.
-| execution\_platform           | VARCHAR        | Display name of the task's build variant.
+| execution\_platform           | VARCHAR        | The execution environment the task runs in. One of: `host` and `container`.
 | host\_id                      | VARCHAR        | ID of the host that ran this task.
 | pod\_id                       | VARCHAR        | ID of the pod that ran this task.
 | generate\_task                | BOOLEAN        | Indicates that the task generates other tasks.
@@ -117,13 +117,6 @@ Finished Evergreen tasks, partitioned by the project and date (in ISO format). F
 | project\_id                   | VARCHAR        | ID of the task's project.
 
 ##### Types
-###### execution\_tasks
-| Name         | Type    | Description |
-|--------------|---------|-------------|
-| task\_id     | VARCHAR | Unique task identifier.
-| execution    | BIGINT  | Task execution number.
-| finish\_date | VARCHAR | Date when the task finished, in ISO format.
-
 ###### depends\_on
 | Name                   | Type    | Description |
 |------------------------|---------|-------------|
@@ -132,6 +125,13 @@ Finished Evergreen tasks, partitioned by the project and date (in ISO format). F
 | unattainable           | BOOLEAN | Whether the dependency has finished with a blocking status.
 | finished               | BOOLEAN | If the task's dependency has finished running.
 | omit\_generated\_tasks | BOOLEAN | Causes tasks that depend on a generator task to not depend on the generated tasks if this is set.
+
+###### execution\_tasks
+| Name         | Type    | Description |
+|--------------|---------|-------------|
+| task\_id     | VARCHAR | Unique task identifier.
+| execution    | BIGINT  | Task execution number.
+| finish\_date | VARCHAR | Date when the task finished, in ISO format.
 
 ###### details
 | Name              | Type    | Description |
