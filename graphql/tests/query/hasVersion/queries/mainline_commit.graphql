@@ -1,3 +1,3 @@
 query {
-    hasVersion(id: "evergreen_5e823e1f28baeaa22ae00823d83e03082cd148ab")
+    hasVersion(patchId: "evergreen_5e823e1f28baeaa22ae00823d83e03082cd148ab")
 }

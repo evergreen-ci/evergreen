@@ -25,14 +25,6 @@
       }
     },
     {
-      "query_file": "new_args.graphql",
-      "result": {
-        "data": {
-          "hasVersion": true
-        }
-      }
-    },
-    {
       "query_file": "does_not_exist.graphql",
       "result": {
         "data": null,
