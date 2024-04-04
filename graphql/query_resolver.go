@@ -21,7 +21,6 @@ import (
 	"github.com/evergreen-ci/evergreen/rest/data"
 	restModel "github.com/evergreen-ci/evergreen/rest/model"
 	"github.com/evergreen-ci/evergreen/thirdparty"
-	"github.com/evergreen-ci/evergreen/util"
 	"github.com/evergreen-ci/plank"
 	"github.com/evergreen-ci/utility"
 	"github.com/mongodb/anser/bsonutil"
@@ -374,16 +373,14 @@ func (r *queryResolver) Pod(ctx context.Context, podID string) (*restModel.APIPo
 }
 
 // Patch is the resolver for the patch field.
-func (r *queryResolver) Patch(ctx context.Context, id *string, patchID *string) (*restModel.APIPatch, error) {
-	// TODO: Remove this temporary workaround.
-	patchId := util.CoalesceString(utility.FromStringPtr(id), utility.FromStringPtr(patchID))
-	patch, err := data.FindPatchById(patchId)
+func (r *queryResolver) Patch(ctx context.Context, patchID string) (*restModel.APIPatch, error) {
+	patch, err := data.FindPatchById(patchID)
 	if err != nil {
 		return nil, InternalServerError.Send(ctx, err.Error())
 	}
 
 	if evergreen.IsFinishedVersionStatus(*patch.Status) {
-		statuses, err := task.GetTaskStatusesByVersion(ctx, patchId, false)
+		statuses, err := task.GetTaskStatusesByVersion(ctx, patchID, false)
 		if err != nil {
 			return nil, InternalServerError.Send(ctx, fmt.Sprintf("fetching task statuses for patch: %s", err.Error()))
 		}
@@ -495,14 +492,12 @@ func (r *queryResolver) ProjectSettings(ctx context.Context, identifier string) 
 }
 
 // RepoEvents is the resolver for the repoEvents field.
-func (r *queryResolver) RepoEvents(ctx context.Context, repoID *string, id *string, limit *int, before *time.Time) (*ProjectEvents, error) {
-	// TODO: Remove this temporary workaround.
-	repoId := util.CoalesceString(utility.FromStringPtr(id), utility.FromStringPtr(repoID))
+func (r *queryResolver) RepoEvents(ctx context.Context, repoID string, limit *int, before *time.Time) (*ProjectEvents, error) {
 	timestamp := time.Now()
 	if before != nil {
 		timestamp = *before
 	}
-	events, err := data.GetEventsById(repoId, timestamp, utility.FromIntPtr(limit))
+	events, err := data.GetEventsById(repoID, timestamp, utility.FromIntPtr(limit))
 	res := &ProjectEvents{
 		EventLogEntries: getPointerEventList(events),
 		Count:           len(events),
@@ -511,10 +506,8 @@ func (r *queryResolver) RepoEvents(ctx context.Context, repoID *string, id *stri
 }
 
 // RepoSettings is the resolver for the repoSettings field.
-func (r *queryResolver) RepoSettings(ctx context.Context, repoID *string, id *string) (*restModel.APIProjectSettings, error) {
-	// TODO: Remove this temporary workaround.
-	repoId := util.CoalesceString(utility.FromStringPtr(id), utility.FromStringPtr(repoID))
-	repoRef, err := model.FindOneRepoRef(repoId)
+func (r *queryResolver) RepoSettings(ctx context.Context, repoID string) (*restModel.APIProjectSettings, error) {
+	repoRef, err := model.FindOneRepoRef(repoID)
 	if err != nil {
 		return nil, InternalServerError.Send(ctx, fmt.Sprintf("error looking in repo collection: %s", err.Error()))
 	}
@@ -976,40 +969,35 @@ func (r *queryResolver) TaskNamesForBuildVariant(ctx context.Context, projectIde
 }
 
 // HasVersion is the resolver for the hasVersion field.
-func (r *queryResolver) HasVersion(ctx context.Context, id *string, patchID *string) (bool, error) {
-	// TODO: Remove this temporary workaround.
-	patchId := util.CoalesceString(utility.FromStringPtr(id), utility.FromStringPtr(patchID))
-
-	v, err := model.VersionFindOne(model.VersionById(patchId))
+func (r *queryResolver) HasVersion(ctx context.Context, patchID string) (bool, error) {
+	v, err := model.VersionFindOne(model.VersionById(patchID))
 	if err != nil {
-		return false, InternalServerError.Send(ctx, fmt.Sprintf("finding version '%s': %s", patchId, err.Error()))
+		return false, InternalServerError.Send(ctx, fmt.Sprintf("finding version '%s': %s", patchID, err.Error()))
 	}
 	if v != nil {
 		return true, nil
 	}
 
-	if patch.IsValidId(patchId) {
-		p, err := patch.FindOneId(patchId)
+	if patch.IsValidId(patchID) {
+		p, err := patch.FindOneId(patchID)
 		if err != nil {
-			return false, InternalServerError.Send(ctx, fmt.Sprintf("finding patch '%s': %s", patchId, err.Error()))
+			return false, InternalServerError.Send(ctx, fmt.Sprintf("finding patch '%s': %s", patchID, err.Error()))
 		}
 		if p != nil {
 			return false, nil
 		}
 	}
-	return false, ResourceNotFound.Send(ctx, fmt.Sprintf("Unable to find patch or version %s", patchId))
+	return false, ResourceNotFound.Send(ctx, fmt.Sprintf("Unable to find patch or version %s", patchID))
 }
 
 // Version is the resolver for the version field.
-func (r *queryResolver) Version(ctx context.Context, id *string, versionID *string) (*restModel.APIVersion, error) {
-	// TODO: Remove this temporary workaround.
-	versionId := util.CoalesceString(utility.FromStringPtr(id), utility.FromStringPtr(versionID))
-	v, err := model.VersionFindOneId(versionId)
+func (r *queryResolver) Version(ctx context.Context, versionID string) (*restModel.APIVersion, error) {
+	v, err := model.VersionFindOneId(versionID)
 	if err != nil {
-		return nil, InternalServerError.Send(ctx, fmt.Sprintf("finding version '%s': %s", versionId, err.Error()))
+		return nil, InternalServerError.Send(ctx, fmt.Sprintf("finding version '%s': %s", versionID, err.Error()))
 	}
 	if v == nil {
-		return nil, ResourceNotFound.Send(ctx, fmt.Sprintf("version '%s' not found", versionId))
+		return nil, ResourceNotFound.Send(ctx, fmt.Sprintf("version '%s' not found", versionID))
 	}
 	apiVersion := restModel.APIVersion{}
 	apiVersion.BuildFromService(*v)
