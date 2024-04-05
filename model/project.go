@@ -1226,7 +1226,6 @@ func PopulateExpansions(t *task.Task, h *host.Host, oauthToken, appToken, knownH
 		if h.Distro.IsWindows() {
 			expansions.Put(evergreen.HostServicePasswordExpansion, h.ServicePassword)
 		}
-		expansions.Put(evergreen.HostSecretExpansion, h.Secret)
 	}
 
 	return expansions, nil

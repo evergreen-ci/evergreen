@@ -114,11 +114,13 @@ func (a *Agent) prepLogger(tc *taskContext, c *model.LoggerConfig, commandName s
 		logDir = filepath.Join(logDir, commandName)
 		grip.Error(errors.Wrapf(os.MkdirAll(logDir, os.ModeDir|os.ModePerm), "making log directory '%s' for command '%s'", logDir, commandName))
 	}
+	redactorExpansions := tc.taskConfig.NewExpansions
+	redactorExpansions.Put(globals.HostSecret, a.opts.HostSecret)
 	config := client.LoggerConfig{
 		SendToGlobalSender: a.opts.SendTaskLogsToGlobalSender,
 		AWSCredentials:     pail.CreateAWSCredentials(tc.taskConfig.TaskSync.Key, tc.taskConfig.TaskSync.Secret, ""),
 		RedactorOpts: redactor.RedactionOptions{
-			Expansions: tc.taskConfig.NewExpansions,
+			Expansions: redactorExpansions,
 			Redacted:   tc.taskConfig.Redacted,
 		},
 	}

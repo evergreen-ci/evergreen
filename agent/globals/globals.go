@@ -119,6 +119,7 @@ const (
 	AWSSessionToken = "AWS_SESSION_TOKEN"
 	// AWSRoleExpiration is the expansion name for the expiration of a temporary AWS access key.
 	AWSRoleExpiration = "AWS_ROLE_EXPIRATION"
+	HostSecret        = "HOST_SECRET"
 )
 
 var (
@@ -130,9 +131,9 @@ var (
 		// which is used for some jasper commands for Windows hosts. It is populated as a default
 		// expansion only for tasks running on Windows hosts.
 		evergreen.HostServicePasswordExpansion,
-		evergreen.HostSecretExpansion,
 		AWSAccessKeyId,
 		AWSSecretAccessKey,
 		AWSSessionToken,
+		HostSecret,
 	}
 )
