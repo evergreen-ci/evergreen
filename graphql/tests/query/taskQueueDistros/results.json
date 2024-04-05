@@ -13,7 +13,7 @@
             {
               "id": "debian71-test",
               "taskCount": 0,
-              "hostCount": 1
+              "hostCount": 0
             }
           ]
         }

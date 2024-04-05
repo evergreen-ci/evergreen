@@ -63,6 +63,7 @@ type Project struct {
 	TaskGroups         []TaskGroup                `yaml:"task_groups,omitempty" bson:"task_groups"`
 	Tasks              []ProjectTask              `yaml:"tasks,omitempty" bson:"tasks"`
 	ExecTimeoutSecs    int                        `yaml:"exec_timeout_secs,omitempty" bson:"exec_timeout_secs"`
+	TimeoutSecs        int                        `yaml:"timeout_secs,omitempty" bson:"timeout_secs"`
 	Loggers            *LoggerConfig              `yaml:"loggers,omitempty" bson:"loggers,omitempty"`
 
 	// Flag that indicates a project as requiring user authentication
