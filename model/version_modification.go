@@ -30,7 +30,7 @@ func ModifyVersion(ctx context.Context, version Version, user user.DBUser, modif
 		if version.Requester == evergreen.MergeTestRequester && modifications.Active {
 			return http.StatusBadRequest, errors.New("commit queue merges cannot be manually scheduled")
 		}
-		if err := SetVersionActivation(version.Id, modifications.Active, user.Id); err != nil {
+		if err := SetVersionActivation(ctx, version.Id, modifications.Active, user.Id); err != nil {
 			return http.StatusInternalServerError, errors.Wrap(err, "activating patch")
 		}
 

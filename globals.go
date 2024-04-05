@@ -510,15 +510,28 @@ const (
 	PackageName = "github.com/evergreen-ci/evergreen"
 
 	OtelAttributeMaxLength = 10000
+	// task otel attributes
+	TaskIDOtelAttribute        = "evergreen.task.id"
+	TaskNameOtelAttribute      = "evergreen.task.name"
+	TaskExecutionOtelAttribute = "evergreen.task.execution"
+	TaskStatusOtelAttribute    = "evergreen.task.status"
 
-	TaskIDOtelAttribute            = "evergreen.task.id"
-	TaskNameOtelAttribute          = "evergreen.task.name"
-	TaskExecutionOtelAttribute     = "evergreen.task.execution"
-	TaskStatusOtelAttribute        = "evergreen.task.status"
-	VersionIDOtelAttribute         = "evergreen.version.id"
-	VersionRequesterOtelAttribute  = "evergreen.version.requester"
-	BuildIDOtelAttribute           = "evergreen.build.id"
-	BuildNameOtelAttribute         = "evergreen.build.name"
+	// version otel attributes
+	VersionIDOtelAttribute                  = "evergreen.version.id"
+	VersionRequesterOtelAttribute           = "evergreen.version.requester"
+	VersionStatusOtelAttribute              = "evergreen.version.status"
+	VersionCreateTimeOtelAttribute          = "evergreen.version.create_time"
+	VersionStartTimeOtelAttribute           = "evergreen.version.start_time"
+	VersionFinishTimeOtelAttribute          = "evergreen.version.finish_time"
+	VersionAuthorOtelAttribute              = "evergreen.version.author"
+	VersionBranchOtelAttribute              = "evergreen.version.branch"
+	VersionMakespanDurationMsOtelAttribute  = "evergreen.version.makespan_duration_ms"
+	VersionTimeTakenDurationMsOtelAttribute = "evergreen.version.time_taken_duration_ms"
+
+	// build otel attributes
+	BuildIDOtelAttribute   = "evergreen.build.id"
+	BuildNameOtelAttribute = "evergreen.build.name"
+
 	ProjectIdentifierOtelAttribute = "evergreen.project.identifier"
 	ProjectIDOtelAttribute         = "evergreen.project.id"
 	DistroIDOtelAttribute          = "evergreen.distro.id"

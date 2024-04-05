@@ -445,7 +445,7 @@ func (p *patchAbortHandler) Parse(ctx context.Context, r *http.Request) error {
 
 func (p *patchAbortHandler) Run(ctx context.Context) gimlet.Responder {
 	usr := MustHaveUser(ctx)
-	if err := data.AbortPatch(p.patchId, usr.Id); err != nil {
+	if err := data.AbortPatch(ctx, p.patchId, usr.Id); err != nil {
 		return gimlet.MakeJSONInternalErrorResponder(errors.Wrapf(err, "aborting patch '%s'", p.patchId))
 	}
 
