@@ -52,6 +52,7 @@ func (s *BackgroundSuite) SetupTest() {
 	s.tc.taskConfig = &internal.TaskConfig{}
 	s.tc.taskConfig.Project = model.Project{}
 	s.tc.taskConfig.Project.CallbackTimeout = 0
+	s.tc.taskConfig.Project.TimeoutSecs = 180
 	s.sender = send.MakeInternalLogger()
 	s.tc.logger = client.NewSingleChannelLogHarness("test", s.sender)
 }
@@ -368,8 +369,18 @@ func (s *BackgroundSuite) TestIdleTimeoutIsSetForCommand() {
 	cmd := cmdFactory()
 	cmd.SetIdleTimeout(time.Second)
 	s.tc.setCurrentCommand(cmd)
-	s.tc.setCurrentIdleTimeout(cmd, "")
+	s.tc.setCurrentIdleTimeout(cmd)
 	s.Equal(time.Second, s.tc.getCurrentIdleTimeout())
+}
+
+func (s *BackgroundSuite) TestIdleTimeoutIsSetForProject() {
+	s.tc.taskConfig.Timeout = internal.Timeout{}
+	cmdFactory, exists := command.GetCommandFactory("shell.exec")
+	s.True(exists)
+	cmd := cmdFactory()
+	s.tc.setCurrentCommand(cmd)
+	s.tc.setCurrentIdleTimeout(cmd)
+	s.Equal(180*time.Second, s.tc.getCurrentIdleTimeout())
 }
 
 func (s *BackgroundSuite) TestGetTimeoutDefault() {
