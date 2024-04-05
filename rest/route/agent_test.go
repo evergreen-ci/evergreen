@@ -85,6 +85,7 @@ func TestAgentGetExpansionsAndVars(t *testing.T) {
 			assert.Equal(t, rh.taskID, data.Expansions.Get("task_id"))
 			assert.Equal(t, "distro_expansion_value", data.Expansions.Get("distro_expansion_key"))
 			assert.Equal(t, "password", data.Expansions.Get(evergreen.HostServicePasswordExpansion))
+			assert.Equal(t, "abcdef", data.Expansions.Get(evergreen.HostSecretExpansion))
 			assert.Equal(t, data.Vars, map[string]string{"a": "4", "b": "3"})
 			assert.Equal(t, data.PrivateVars, map[string]bool{"b": true})
 			assert.Equal(t, data.RedactKeys, []string{"pass", "secret"})
@@ -152,6 +153,7 @@ func TestAgentGetExpansionsAndVars(t *testing.T) {
 			}
 			h := host.Host{
 				Id:                   hostID,
+				Secret:               "abcdef",
 				RunningTask:          t1.Id,
 				RunningTaskExecution: t1.Execution,
 				Distro: distro.Distro{

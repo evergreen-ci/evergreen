@@ -130,6 +130,7 @@ var (
 		// which is used for some jasper commands for Windows hosts. It is populated as a default
 		// expansion only for tasks running on Windows hosts.
 		evergreen.HostServicePasswordExpansion,
+		evergreen.HostSecretExpansion,
 		AWSAccessKeyId,
 		AWSSecretAccessKey,
 		AWSSessionToken,

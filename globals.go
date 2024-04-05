@@ -389,6 +389,10 @@ const (
 	// HostServicePasswordExpansion is the expansion for the service password that is stored on the host,
 	// and is meant to be set as a private variable so that it will be redacted in all logs.
 	HostServicePasswordExpansion = "host_service_password"
+
+	// HostSecretExpansion is the expansion for the host's secret, and is meant to be set
+	// as a private variable so that it will be redacted in all logs.
+	HostSecretExpansion = "host_secret"
 )
 
 var VersionSucceededStatuses = []string{
