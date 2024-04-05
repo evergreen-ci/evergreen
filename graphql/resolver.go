@@ -89,11 +89,6 @@ func New(apiURL string) Config {
 			return next(ctx)
 		}
 
-		// Check for admin permissions for each of the resolvers.
-		args, isStringMap := obj.(map[string]interface{})
-		if !isStringMap {
-			return nil, ResourceNotFound.Send(ctx, "Project not specified")
-		}
 		operationContext := graphql.GetOperationContext(ctx).OperationName
 
 		if operationContext == CreateProjectMutation {
@@ -113,6 +108,11 @@ func New(apiURL string) Config {
 				Permission:    evergreen.PermissionProjectSettings,
 				RequiredLevel: evergreen.ProjectSettingsEdit.Value,
 			}
+		}
+
+		args, isStringMap := obj.(map[string]interface{})
+		if !isStringMap {
+			return nil, ResourceNotFound.Send(ctx, "Project not specified")
 		}
 
 		if operationContext == CopyProjectMutation {
