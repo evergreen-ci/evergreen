@@ -174,8 +174,9 @@ func TestCurlCommandWithRetry(t *testing.T) {
 }
 
 func TestGetSSHOptions(t *testing.T) {
-	defaultKeyName := "key_name"
-	defaultKeyPath := "/path/to/key/file"
+	keyFile, err := os.CreateTemp(t.TempDir(), "")
+	require.NoError(t, err)
+	defaultKeyPath := keyFile.Name()
 
 	checkContainsOptionsAndValues := func(t *testing.T, expected []string, actual []string) {
 		exists := map[string]bool{}
@@ -237,7 +238,7 @@ func TestGetSSHOptions(t *testing.T) {
 			checkContainsOptionsAndValues(t, expected, opts)
 		},
 		"FailsWithoutIdentityFile": func(t *testing.T, h *Host, settings *evergreen.Settings) {
-			h.Distro.SSHKey = ""
+			settings.KanopySSHKeyPath = "does_not_exist"
 
 			_, err := h.GetSSHOptions(settings)
 			assert.Error(t, err)
@@ -255,14 +256,9 @@ func TestGetSSHOptions(t *testing.T) {
 			sshKeyDir := t.TempDir()
 			testCase(t, &Host{
 				Id: "id",
-				Distro: distro.Distro{
-					SSHKey: defaultKeyName,
-				},
 			}, &evergreen.Settings{
-				Keys: map[string]string{
-					defaultKeyName: defaultKeyPath,
-				},
-				SSHKeyDirectory: sshKeyDir,
+				KanopySSHKeyPath: defaultKeyPath,
+				SSHKeyDirectory:  sshKeyDir,
 			})
 		})
 	}
@@ -715,10 +711,6 @@ func TestJasperClient(t *testing.T) {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 
-	const (
-		sshKeyName  = "foo"
-		sshKeyValue = "bar"
-	)
 	for testName, testCase := range map[string]struct {
 		withSetupAndTeardown func(ctx context.Context, env *mock.Environment, manager *jmock.Manager, h *Host, fn func()) error
 		h                    *Host
@@ -732,7 +724,6 @@ func TestJasperClient(t *testing.T) {
 						Method:        distro.BootstrapMethodSSH,
 						Communication: distro.CommunicationMethodSSH,
 					},
-					SSHKey: sshKeyName,
 				},
 				User: "foo",
 				Host: "bar",
@@ -748,7 +739,6 @@ func TestJasperClient(t *testing.T) {
 						Method:        distro.BootstrapMethodLegacySSH,
 						Communication: distro.CommunicationMethodLegacySSH,
 					},
-					SSHKey: sshKeyName,
 				},
 			},
 			expectError: true,
@@ -761,22 +751,7 @@ func TestJasperClient(t *testing.T) {
 						Method:        distro.BootstrapMethodLegacySSH,
 						Communication: distro.CommunicationMethodLegacySSH,
 					},
-					SSHKey: sshKeyName,
 				},
-			},
-			expectError: true,
-		},
-		"FailsWithSSHCommunicationButNoSSHKey": {
-			h: &Host{
-				Id: "test-host",
-				Distro: distro.Distro{
-					BootstrapSettings: distro.BootstrapSettings{
-						Method:        distro.BootstrapMethodSSH,
-						Communication: distro.CommunicationMethodSSH,
-					},
-				},
-				User: "foo",
-				Host: "bar",
 			},
 			expectError: true,
 		},
@@ -788,7 +763,6 @@ func TestJasperClient(t *testing.T) {
 						Method:        distro.BootstrapMethodSSH,
 						Communication: distro.CommunicationMethodSSH,
 					},
-					SSHKey: sshKeyName,
 				},
 			},
 			expectError: true,
@@ -841,7 +815,10 @@ func TestJasperClient(t *testing.T) {
 			env := &mock.Environment{}
 			require.NoError(t, env.Configure(tctx))
 			env.Settings().HostJasper.BinaryName = "binary"
-			env.Settings().Keys = map[string]string{sshKeyName: sshKeyValue}
+
+			keyFile, err := os.CreateTemp(t.TempDir(), "")
+			require.NoError(t, err)
+			env.Settings().KanopySSHKeyPath = keyFile.Name()
 
 			doTest := func() {
 				client, err := testCase.h.JasperClient(tctx, env)

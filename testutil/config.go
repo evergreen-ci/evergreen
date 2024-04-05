@@ -224,7 +224,6 @@ func MockConfig() *evergreen.Settings {
 			},
 			DefaultProject: "proj",
 		},
-		Keys: map[string]string{"k3": "v3"},
 		TaskLimits: evergreen.TaskLimitsConfig{
 			MaxTasksPerVersion: 1000,
 		},

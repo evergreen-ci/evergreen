@@ -196,7 +196,6 @@ func (s *AdminSuite) TestBaseConfig() {
 		Expansions:          map[string]string{"k2": "v2"},
 		GithubPRCreatorOrg:  "org",
 		GithubOrgs:          []string{"evergreen-ci"},
-		Keys:                map[string]string{"k3": "v3"},
 		LogPath:             "logpath",
 		Plugins:             map[string]map[string]interface{}{"k4": {"k5": "v5"}},
 		PprofPort:           "port",
@@ -221,7 +220,6 @@ func (s *AdminSuite) TestBaseConfig() {
 	s.Equal(config.Expansions, settings.Expansions)
 	s.Equal(config.GithubPRCreatorOrg, settings.GithubPRCreatorOrg)
 	s.Equal(config.GithubOrgs, settings.GithubOrgs)
-	s.Equal(config.Keys, settings.Keys)
 	s.Equal(config.LogPath, settings.LogPath)
 	s.Equal(config.Plugins, settings.Plugins)
 	s.Equal(config.PprofPort, settings.PprofPort)
@@ -594,9 +592,6 @@ func (s *AdminSuite) TestKeyValPairsToMap() {
 		ExpansionsNew: util.KeyValuePairSlice{
 			{Key: "exp1key", Value: "exp1val"},
 		},
-		KeysNew: util.KeyValuePairSlice{
-			{Key: "key1key", Value: "key1val"},
-		},
 		PluginsNew: util.KeyValuePairSlice{
 			{Key: "myPlugin", Value: util.KeyValuePairSlice{
 				{Key: "pluginKey", Value: "pluginVal"},
@@ -609,11 +604,9 @@ func (s *AdminSuite) TestKeyValPairsToMap() {
 	s.NoError(dbConfig.Get(ctx))
 	s.Len(dbConfig.CredentialsNew, 1)
 	s.Len(dbConfig.ExpansionsNew, 1)
-	s.Len(dbConfig.KeysNew, 1)
 	s.Len(dbConfig.PluginsNew, 1)
 	s.Equal(config.CredentialsNew[0].Value, dbConfig.Credentials[config.CredentialsNew[0].Key])
 	s.Equal(config.ExpansionsNew[0].Value, dbConfig.Expansions[config.ExpansionsNew[0].Key])
-	s.Equal(config.KeysNew[0].Value, dbConfig.Keys[config.KeysNew[0].Key])
 	pluginMap := dbConfig.Plugins[config.PluginsNew[0].Key]
 	s.NotNil(pluginMap)
 	s.Equal("pluginVal", pluginMap["pluginKey"])

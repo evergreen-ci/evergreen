@@ -347,7 +347,6 @@ type APIDistro struct {
 	User                  *string                  `json:"user"`
 	BootstrapSettings     APIBootstrapSettings     `json:"bootstrap_settings"`
 	CloneMethod           *string                  `json:"clone_method"`
-	SSHKey                *string                  `json:"ssh_key"`
 	SSHOptions            []string                 `json:"ssh_options"`
 	AuthorizedKeysFile    *string                  `json:"authorized_keys_file"`
 	Expansions            []APIExpansion           `json:"expansions"`
@@ -385,7 +384,6 @@ func (apiDistro *APIDistro) BuildFromService(d distro.Distro) {
 		d.CloneMethod = evergreen.CloneMethodLegacySSH
 	}
 	apiDistro.CloneMethod = utility.ToStringPtr(d.CloneMethod)
-	apiDistro.SSHKey = utility.ToStringPtr(d.SSHKey)
 	apiDistro.SSHOptions = d.SSHOptions
 	apiDistro.AuthorizedKeysFile = utility.ToStringPtr(d.AuthorizedKeysFile)
 	apiDistro.Disabled = d.Disabled
@@ -451,7 +449,6 @@ func (apiDistro *APIDistro) ToService() *distro.Distro {
 	if d.CloneMethod == "" {
 		d.CloneMethod = evergreen.CloneMethodLegacySSH
 	}
-	d.SSHKey = utility.FromStringPtr(apiDistro.SSHKey)
 	d.SSHOptions = apiDistro.SSHOptions
 	d.AuthorizedKeysFile = utility.FromStringPtr(apiDistro.AuthorizedKeysFile)
 	d.SpawnAllowed = apiDistro.UserSpawnAllowed

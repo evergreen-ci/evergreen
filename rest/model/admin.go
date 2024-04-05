@@ -25,7 +25,6 @@ func NewConfigModel() *APIAdminSettings {
 		HostJasper:        &APIHostJasperConfig{},
 		Jira:              &APIJiraConfig{},
 		JIRANotifications: &APIJIRANotificationsConfig{},
-		Keys:              map[string]string{},
 		LDAPRoleMap:       &APILDAPRoleMap{},
 		LoggerConfig:      &APILoggerConfig{},
 		NewRelic:          &APINewRelicConfig{},
@@ -74,7 +73,6 @@ type APIAdminSettings struct {
 	HostJasper          *APIHostJasperConfig              `json:"host_jasper,omitempty"`
 	Jira                *APIJiraConfig                    `json:"jira,omitempty"`
 	JIRANotifications   *APIJIRANotificationsConfig       `json:"jira_notifications,omitempty"`
-	Keys                map[string]string                 `json:"keys,omitempty"`
 	KanopySSHKeyPath    *string                           `json:"kanopy_ssh_key_path,omitempty"`
 	LDAPRoleMap         *APILDAPRoleMap                   `json:"ldap_role_map,omitempty"`
 	LoggerConfig        *APILoggerConfig                  `json:"logger_config,omitempty"`
@@ -146,7 +144,6 @@ func (as *APIAdminSettings) BuildFromService(h interface{}) error {
 		as.PprofPort = &v.PprofPort
 		as.Credentials = v.Credentials
 		as.Expansions = v.Expansions
-		as.Keys = v.Keys
 		as.KanopySSHKeyPath = utility.ToStringPtr(v.KanopySSHKeyPath)
 		as.GithubOrgs = v.GithubOrgs
 		as.DisabledGQLQueries = v.DisabledGQLQueries
@@ -206,7 +203,6 @@ func (as *APIAdminSettings) ToService() (interface{}, error) {
 	settings := evergreen.Settings{
 		Credentials:        map[string]string{},
 		Expansions:         map[string]string{},
-		Keys:               map[string]string{},
 		Plugins:            evergreen.PluginConfig{},
 		GithubOrgs:         as.GithubOrgs,
 		DisabledGQLQueries: as.DisabledGQLQueries,
@@ -269,9 +265,6 @@ func (as *APIAdminSettings) ToService() (interface{}, error) {
 	}
 	for k, v := range as.Expansions {
 		settings.Expansions[k] = v
-	}
-	for k, v := range as.Keys {
-		settings.Keys[k] = v
 	}
 	settings.KanopySSHKeyPath = utility.FromStringPtr(as.KanopySSHKeyPath)
 	for k, v := range as.Plugins {
