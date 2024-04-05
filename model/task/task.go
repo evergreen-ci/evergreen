@@ -338,14 +338,13 @@ type StepbackInfo struct {
 }
 
 // IsZero returns true if the StepbackInfo is empty or nil.
+// It does not include GeneratedStepbackInfo in the check because
+// those do not cause a generator to stepback.
 func (s *StepbackInfo) IsZero() bool {
 	if s == nil {
 		return true
 	}
 	if s.LastFailingStepbackTaskId != "" && s.LastPassingStepbackTaskId != "" {
-		return false
-	}
-	if len(s.GeneratedStepbackInfo) > 0 {
 		return false
 	}
 	// If the other fields are set but not the ones above, the struct should be considered empty.
