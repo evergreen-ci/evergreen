@@ -218,7 +218,6 @@ func TestEnsureHasRequiredFields(t *testing.T) {
 			{Id: "a"},
 			{Id: "a", Arch: "linux_amd64"},
 			{Id: "a", Arch: "linux_amd64", User: "a"},
-			{Id: "a", Arch: "linux_amd64", User: "a"},
 			{Id: "a", Arch: "linux_amd64", User: "a", WorkDir: "a"},
 			{Id: "a", Arch: "linux_amd64", User: "a", WorkDir: "a", Provider: "a"},
 			{Id: "a", Arch: "linux_amd64", User: "a", WorkDir: "a", Provider: evergreen.ProviderNameEc2OnDemand},
