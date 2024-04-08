@@ -106,8 +106,8 @@ github.com/aws/aws-sdk-go-v2/service/resourcegroupstaggingapi v1.20.1 h1:tpPeCTu
 github.com/aws/aws-sdk-go-v2/service/resourcegroupstaggingapi v1.20.1/go.mod h1:BRuiq4shgrokCvNWSXVHz1hhH5sNSLW0ZruTV0jiNMQ=
 github.com/aws/aws-sdk-go-v2/service/route53 v1.40.4 h1:ZZKiHm4cN8IDDZ2kh8DTk+YnYBjVsiFdwf5FwVs//IQ=
 github.com/aws/aws-sdk-go-v2/service/route53 v1.40.4/go.mod h1:RTfjFUctf+Zyq8e4rgLXmz43+0kIoIXbENvrFtilumI=
-github.com/aws/aws-sdk-go-v2/service/secretsmanager v1.28.1 h1:DtKw4TxZT3VrzYupXQJPBqT9ImyobZZE+JIQPPAVxqs=
-github.com/aws/aws-sdk-go-v2/service/secretsmanager v1.28.1/go.mod h1:bit9G2ORpSjUTr4PA4usvbBfbOyvMj0LbE1dXF14Sug=
+github.com/aws/aws-sdk-go-v2/service/secretsmanager v1.28.6 h1:TIOEjw0i2yyhmhRry3Oeu9YtiiHWISZ6j/irS1W3gX4=
+github.com/aws/aws-sdk-go-v2/service/secretsmanager v1.28.6/go.mod h1:3Ba++UwWd154xtP4FRX5pUK3Gt4up5sDHCve6kVfE+g=
 github.com/aws/aws-sdk-go-v2/service/ses v1.19.6 h1:2WWiQwUVU39kD8EGYw/sTGU+REd5Q+BFarTccU00Asc=
 github.com/aws/aws-sdk-go-v2/service/ses v1.19.6/go.mod h1:huHEdSNRqZOquzLTTjbBoEpoz7snBRwu2fe1dvvhZwE=
 github.com/aws/aws-sdk-go-v2/service/sqs v1.29.7 h1:tRNrFDGRm81e6nTX5Q4CFblea99eAfm0dxXazGpLceU=
