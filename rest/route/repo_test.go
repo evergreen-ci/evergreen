@@ -95,7 +95,8 @@ func TestPatchRepoIDHandler(t *testing.T) {
 	installation := evergreen.GitHubAppInstallation{
 		Owner:          repoRef.Owner,
 		Repo:           repoRef.Repo,
-		InstallationID: 1234,
+		AppID:          1234,
+		InstallationID: 5678,
 	}
 	assert.NoError(t, installation.Upsert(ctx))
 
@@ -231,7 +232,8 @@ func TestPatchRepoIDHandler(t *testing.T) {
 	installation = evergreen.GitHubAppInstallation{
 		Owner:          "10gen",
 		Repo:           repoRef.Repo,
-		InstallationID: 1234,
+		AppID:          1234,
+		InstallationID: 5678,
 	}
 	assert.NoError(t, installation.Upsert(ctx))
 
@@ -284,7 +286,8 @@ func TestPatchHandlersWithRestricted(t *testing.T) {
 	installation := evergreen.GitHubAppInstallation{
 		Owner:          branchProject.Owner,
 		Repo:           branchProject.Repo,
-		InstallationID: 1234,
+		AppID:          1234,
+		InstallationID: 5678,
 	}
 	assert.NoError(t, installation.Upsert(ctx))
 

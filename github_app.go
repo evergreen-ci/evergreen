@@ -29,6 +29,7 @@ var (
 	ownerKey          = bsonutil.MustHaveTag(GitHubAppInstallation{}, "Owner")
 	repoKey           = bsonutil.MustHaveTag(GitHubAppInstallation{}, "Repo")
 	installationIDKey = bsonutil.MustHaveTag(GitHubAppInstallation{}, "InstallationID")
+	appIDKey          = bsonutil.MustHaveTag(GitHubAppInstallation{}, "AppID")
 )
 
 var (
@@ -41,6 +42,9 @@ type GitHubAppInstallation struct {
 
 	// InstallationID is the GitHub app's installation ID for the owner/repo.
 	InstallationID int64 `bson:"installation_id"`
+
+	// AppID is the id of the GitHub app that the installation ID is associated with
+	AppID int64 `bson:"app_id"`
 }
 
 type githubAppAuth struct {
@@ -112,7 +116,7 @@ func (s *Settings) CreateInstallationToken(ctx context.Context, owner, repo stri
 }
 
 func getInstallationID(ctx context.Context, authFields *githubAppAuth, owner, repo string) (int64, error) {
-	cachedID, err := getInstallationIDFromCache(ctx, owner, repo)
+	cachedID, err := getInstallationIDFromCache(ctx, authFields.appId, owner, repo)
 	if err != nil {
 		return 0, errors.Wrapf(err, "getting cached installation id for '%s/%s'", owner, repo)
 	}
@@ -130,6 +134,11 @@ func getInstallationID(ctx context.Context, authFields *githubAppAuth, owner, re
 		Repo:           repo,
 		InstallationID: installationID,
 	}
+
+	if authFields.appId == 0 {
+		cachedInstallation.AppID = authFields.appId
+	}
+
 	if err := cachedInstallation.Upsert(ctx); err != nil {
 		return 0, errors.Wrapf(err, "caching installation id for '%s/%s'", owner, repo)
 	}
@@ -138,10 +147,13 @@ func getInstallationID(ctx context.Context, authFields *githubAppAuth, owner, re
 
 }
 
-func byOwnerRepo(owner, repo string) bson.M {
+func byAppOwnerRepo(appId int64, owner, repo string) bson.M {
 	q := bson.M{
 		ownerKey: owner,
 		repoKey:  repo,
+	}
+	if appId != 0 {
+		q[appIDKey] = appId
 	}
 	return q
 }
@@ -161,7 +173,7 @@ func (h *GitHubAppInstallation) Upsert(ctx context.Context) error {
 
 	_, err := GetEnvironment().DB().Collection(GitHubAppCollection).UpdateOne(
 		ctx,
-		byOwnerRepo(h.Owner, h.Repo),
+		byAppOwnerRepo(h.AppID, h.Owner, h.Repo),
 		bson.M{
 			"$set": h,
 		},
@@ -173,13 +185,13 @@ func (h *GitHubAppInstallation) Upsert(ctx context.Context) error {
 }
 
 // getInstallationID returns the cached installation ID for GitHub app from the database.
-func getInstallationIDFromCache(ctx context.Context, owner, repo string) (int64, error) {
+func getInstallationIDFromCache(ctx context.Context, app int64, owner, repo string) (int64, error) {
 	if err := validateOwnerRepo(owner, repo); err != nil {
 		return 0, err
 	}
 
 	installation := &GitHubAppInstallation{}
-	res := GetEnvironment().DB().Collection(GitHubAppCollection).FindOne(ctx, byOwnerRepo(owner, repo))
+	res := GetEnvironment().DB().Collection(GitHubAppCollection).FindOne(ctx, byAppOwnerRepo(app, owner, repo))
 	if err := res.Err(); err != nil {
 		if errors.Is(err, mongo.ErrNoDocuments) {
 			return 0, nil

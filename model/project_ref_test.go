@@ -529,7 +529,8 @@ func TestAttachToNewRepo(t *testing.T) {
 	installation := evergreen.GitHubAppInstallation{
 		Owner:          pRef.Owner,
 		Repo:           pRef.Repo,
-		InstallationID: 1234,
+		AppID:          1234,
+		InstallationID: 5678,
 	}
 	assert.NoError(t, installation.Upsert(ctx))
 
@@ -542,7 +543,8 @@ func TestAttachToNewRepo(t *testing.T) {
 	newInstallation := evergreen.GitHubAppInstallation{
 		Owner:          pRef.Owner,
 		Repo:           pRef.Repo,
-		InstallationID: 1234,
+		AppID:          1234,
+		InstallationID: 5678,
 	}
 	assert.NoError(t, newInstallation.Upsert(ctx))
 	assert.NoError(t, pRef.AttachToNewRepo(u))
@@ -642,7 +644,8 @@ func TestAttachToRepo(t *testing.T) {
 	installation := evergreen.GitHubAppInstallation{
 		Owner:          pRef.Owner,
 		Repo:           pRef.Repo,
-		InstallationID: 1234,
+		AppID:          1234,
+		InstallationID: 5678,
 	}
 	assert.NoError(t, installation.Upsert(ctx))
 
@@ -1407,7 +1410,8 @@ func TestCreateNewRepoRef(t *testing.T) {
 	installation := evergreen.GitHubAppInstallation{
 		Owner:          "mongodb",
 		Repo:           "mongo",
-		InstallationID: 1234,
+		AppID:          1234,
+		InstallationID: 5678,
 	}
 	assert.NoError(t, installation.Upsert(ctx))
 

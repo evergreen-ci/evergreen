@@ -126,7 +126,8 @@
     {
       "owner": "evergreen-ci",
       "repo": "commit-queue-sandbox",
-      "installation_id": 1234
+      "app_id": 1234,
+      "installation_id": 5678
     }
   ]
 }
