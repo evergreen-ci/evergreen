@@ -92,7 +92,7 @@ func presignFile(file File) (string, error) {
 		return "", errors.New("AWS secret, AWS key, S3 bucket, or file key missing")
 	}
 
-	// TODO (DEVPROD-5758): remove this special casing once artifacts from the old
+	// TODO (DEVPROD-6193): remove this special casing once artifacts from the old
 	// AWS key have expired (after 3/1/2025).
 	// Empty creds will use the SDK's default credentials chain.
 	if file.Bucket == "mciuploads" {
