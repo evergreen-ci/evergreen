@@ -35,7 +35,6 @@
           "virtual_memory": -1
         }
       },
-      "ssh_key": "mci",
       "ssh_options": [
         "StrictHostKeyChecking=no",
         "BatchMode=yes",
@@ -141,7 +140,6 @@
             "virtual_memory": -1
           }
         },
-        "ssh_key": "mci",
         "ssh_options": [
           "StrictHostKeyChecking=no",
           "BatchMode=yes",
@@ -240,7 +238,6 @@
             "virtual_memory": -1
           }
         },
-        "ssh_key": "mci",
         "ssh_options": [
           "StrictHostKeyChecking=no",
           "BatchMode=yes",
@@ -300,14 +297,6 @@
       "status": "running",
       "tag": "",
       "user": "mci-exec"
-    }
-  ],
-  "admin": [
-    {
-      "_id": "global",
-      "keys": {
-        "mci": "key"
-      }
     }
   ]
 }

@@ -477,7 +477,6 @@ func (s *DistroPutSuite) TestParse() {
 	{
 		"arch": "linux_amd64",
 		"work_dir": "/data/mci",
-		"ssh_key": "SSH key",
 		"provider": "mock",
 		"user": "tibor",
 		"planner_settings": {
@@ -503,7 +502,7 @@ func (s *DistroPutSuite) TestParse() {
 func (s *DistroPutSuite) TestRunNewWithValidEntity() {
 	ctx := context.Background()
 	ctx = gimlet.AttachUser(ctx, &user.DBUser{Id: "user"})
-	json := []byte(`{"arch": "linux_amd64", "work_dir": "/data/mci", "ssh_key": "SSH Key", "provider": "mock", "user": "tibor"}`)
+	json := []byte(`{"arch": "linux_amd64", "work_dir": "/data/mci", "provider": "mock", "user": "tibor"}`)
 	h := s.rm.(*distroIDPutHandler)
 	h.distroID = "distro5"
 	h.body = json
@@ -520,7 +519,6 @@ func (s *DistroPutSuite) TestRunNewWithInvalidEntity() {
 	{
 		"arch": "linux_amd64",
 		"work_dir": "/data/mci",
-		"ssh_key": "",
 		"bootstrap_settings": {"method": "foo", "communication": "bar"},
 		"provider": "mock",
 		"user": "tibor",
@@ -535,7 +533,6 @@ func (s *DistroPutSuite) TestRunNewWithInvalidEntity() {
 	s.NotNil(resp.Data())
 	s.Equal(resp.Status(), http.StatusBadRequest)
 	err := (resp.Data()).(gimlet.ErrorResponse)
-	s.Contains(err.Message, "ERROR: distro 'ssh_key' cannot be blank")
 	s.Contains(err.Message, "'foo' is not a valid bootstrap method")
 	s.Contains(err.Message, "'bar' is not a valid communication method")
 	s.Contains(err.Message, "ERROR: invalid planner_settings.version 'invalid' for distro 'distro4'")
@@ -544,7 +541,7 @@ func (s *DistroPutSuite) TestRunNewWithInvalidEntity() {
 func (s *DistroPutSuite) TestRunNewConflictingName() {
 	ctx := context.Background()
 	ctx = gimlet.AttachUser(ctx, &user.DBUser{Id: "user"})
-	json := []byte(`{"name": "distro5", "arch": "linux_amd64", "work_dir": "/data/mci", "ssh_key": "SSH Key", "provider": "mock", "user": "tibor"}`)
+	json := []byte(`{"name": "distro5", "arch": "linux_amd64", "work_dir": "/data/mci", "provider": "mock", "user": "tibor"}`)
 	h := s.rm.(*distroIDPutHandler)
 	h.distroID = "distro4"
 	h.body = json
@@ -559,7 +556,7 @@ func (s *DistroPutSuite) TestRunNewConflictingName() {
 func (s *DistroPutSuite) TestRunExistingWithValidEntity() {
 	ctx := context.Background()
 	ctx = gimlet.AttachUser(ctx, &user.DBUser{Id: "user"})
-	json := []byte(`{"arch": "linux_amd64", "work_dir": "/data/mci", "ssh_key": "SSH Key", "provider": "mock", "user": "tibor"}`)
+	json := []byte(`{"arch": "linux_amd64", "work_dir": "/data/mci", "provider": "mock", "user": "tibor"}`)
 	h := s.rm.(*distroIDPutHandler)
 	h.distroID = "distro3"
 	h.body = json
@@ -572,7 +569,7 @@ func (s *DistroPutSuite) TestRunExistingWithValidEntity() {
 func (s *DistroPutSuite) TestRunExistingWithInvalidEntity() {
 	ctx := context.Background()
 	ctx = gimlet.AttachUser(ctx, &user.DBUser{Id: "user"})
-	json := []byte(`{"arch": "", "work_dir": "/data/mci", "ssh_key": "SSH Key", "provider": "", "user": ""}`)
+	json := []byte(`{"arch": "", "work_dir": "/data/mci", "provider": "", "user": ""}`)
 	h := s.rm.(*distroIDPutHandler)
 	h.distroID = "distro3"
 	h.body = json
@@ -589,7 +586,7 @@ func (s *DistroPutSuite) TestRunExistingWithInvalidEntity() {
 func (s *DistroPutSuite) TestRunExistingConflictingName() {
 	ctx := context.Background()
 	ctx = gimlet.AttachUser(ctx, &user.DBUser{Id: "user"})
-	json := []byte(`{"name": "distro5", "arch": "linux_amd64", "work_dir": "/data/mci", "ssh_key": "SSH Key", "provider": "mock", "user": "tibor"}`)
+	json := []byte(`{"name": "distro5", "arch": "linux_amd64", "work_dir": "/data/mci", "provider": "mock", "user": "tibor"}`)
 	h := s.rm.(*distroIDPutHandler)
 	h.distroID = "distro3"
 	h.body = json
@@ -1029,7 +1026,7 @@ func (s *DistroPatchByIDSuite) TestRunValidContainer() {
 func (s *DistroPatchByIDSuite) TestRunInvalidEmptyStringValues() {
 	ctx := context.Background()
 	ctx = gimlet.AttachUser(ctx, &user.DBUser{Id: "me"})
-	json := []byte(`{"arch": "","user": "","work_dir": "","ssh_key": "","provider": "mock"}`)
+	json := []byte(`{"arch": "","user": "","work_dir": "","provider": "mock"}`)
 	h := s.rm.(*distroIDPatchHandler)
 	h.distroID = "fedora8"
 	h.body = json

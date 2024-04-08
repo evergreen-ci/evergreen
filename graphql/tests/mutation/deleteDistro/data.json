@@ -13,16 +13,12 @@
         ]
       },
       "user": "ubuntu",
-      "spawn_allowed": false,
-      "ssh_key": "fake_ssh_key"
+      "spawn_allowed": false
     }
   ],
   "admin": [
     {
-      "_id": "global",
-      "keys": {
-        "fake_ssh_key": "key"
-      }
+      "_id": "global"
     }
   ],
   "task_queues": [
