@@ -56,7 +56,7 @@ func (tc *taskContext) getCurrentCommand() command.Command {
 // setCurrentIdleTimeout sets the idle timeout for the current running command.
 // This timeout only applies to commands running in specific blocks where idle
 // timeout is allowed.
-func (tc *taskContext) setCurrentIdleTimeout(cmd command.Command, block command.BlockType) {
+func (tc *taskContext) setCurrentIdleTimeout(cmd command.Command) {
 	tc.Lock()
 	defer tc.Unlock()
 
@@ -65,6 +65,8 @@ func (tc *taskContext) setCurrentIdleTimeout(cmd command.Command, block command.
 		timeout = time.Duration(dynamicTimeout) * time.Second
 	} else if cmd.IdleTimeout() > 0 {
 		timeout = cmd.IdleTimeout()
+	} else if tc.taskConfig.Project.TimeoutSecs > 0 {
+		timeout = time.Duration(tc.taskConfig.Project.TimeoutSecs) * time.Second
 	} else {
 		timeout = globals.DefaultIdleTimeout
 	}

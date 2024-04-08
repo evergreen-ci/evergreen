@@ -2553,6 +2553,60 @@ tasks:
 	s.Equal(expectedLines, actualLines)
 }
 
+func (s *AgentSuite) TestShouldRunSetupGroup() {
+	nextTask := &apimodels.NextTaskResponse{
+		TaskGroup: "",
+		TaskId:    "task1",
+	}
+	tc := &taskContext{
+		taskConfig: &internal.TaskConfig{
+			Task: task.Task{
+				Execution: 0,
+				BuildId:   "build1",
+			},
+			TaskGroup: &model.TaskGroup{
+				Name: "group1",
+			},
+		},
+		ranSetupGroup: false,
+	}
+
+	shouldRun := shouldRunSetupGroup(nextTask, tc)
+	s.Equal(true, shouldRun)
+
+	tc.ranSetupGroup = true
+
+	shouldRun = shouldRunSetupGroup(nextTask, &taskContext{})
+	s.Equal(true, shouldRun)
+
+	shouldRun = shouldRunSetupGroup(nextTask, tc)
+	s.Equal(true, shouldRun)
+
+	nextTask.TaskGroup = "not same"
+	shouldRun = shouldRunSetupGroup(nextTask, tc)
+	s.Equal(true, shouldRun)
+
+	nextTask.Build = "build1"
+	shouldRun = shouldRunSetupGroup(nextTask, tc)
+	s.Equal(true, shouldRun)
+
+	nextTask.TaskGroup = "group1"
+	shouldRun = shouldRunSetupGroup(nextTask, tc)
+	s.Equal(false, shouldRun)
+
+	nextTask.TaskExecution = 1
+	shouldRun = shouldRunSetupGroup(nextTask, tc)
+	s.Equal(true, shouldRun)
+
+	tc.taskConfig.Task.Execution = 1
+	shouldRun = shouldRunSetupGroup(nextTask, tc)
+	s.Equal(false, shouldRun)
+
+	tc.taskConfig.Task.Execution = 2
+	shouldRun = shouldRunSetupGroup(nextTask, tc)
+	s.Equal(false, shouldRun)
+}
+
 // checkMockLogs checks the mock communicator's received task logs. Note that
 // callers should flush the task logs before checking them to ensure that they
 // are up-to-date.

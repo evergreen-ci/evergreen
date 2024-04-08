@@ -40,8 +40,9 @@ import (
 	"go.opentelemetry.io/otel/exporters/otlp/otlptrace"
 	"go.opentelemetry.io/otel/exporters/otlp/otlptrace/otlptracegrpc"
 	"go.opentelemetry.io/otel/sdk/resource"
-	"go.opentelemetry.io/otel/sdk/trace"
+	sdktrace "go.opentelemetry.io/otel/sdk/trace"
 	semconv "go.opentelemetry.io/otel/semconv/v1.20.0"
+	"go.opentelemetry.io/otel/trace"
 )
 
 var (
@@ -192,10 +193,17 @@ type Environment interface {
 //
 // NewEnvironment requires that either the path or DB is sent so that
 // if both are specified, the settings are read from the file.
-func NewEnvironment(ctx context.Context, confPath, versionID string, db *DBSettings) (Environment, error) {
+func NewEnvironment(ctx context.Context, confPath, versionID string, db *DBSettings, tp trace.TracerProvider) (Environment, error) {
 	ctx, cancel := context.WithCancel(ctx)
+	tracer := tp.Tracer("github.com/evergreen-ci/evergreen/evergreen")
+	ctx, span := tracer.Start(ctx, "NewEnvironment")
+	defer span.End()
+
+	// Remove the parent span from the context because the environment caches the
+	// context.
+	cachedEnvCtx := trace.ContextWithSpan(ctx, nil)
 	e := &envState{
-		ctx:                     ctx,
+		ctx:                     cachedEnvCtx,
 		senders:                 map[SenderKey]send.Sender{},
 		shutdownSequenceStarted: false,
 	}
@@ -207,7 +215,7 @@ func NewEnvironment(ctx context.Context, confPath, versionID string, db *DBSetti
 	}()
 
 	if db != nil && confPath == "" {
-		if err := e.initDB(ctx, *db); err != nil {
+		if err := e.initDB(ctx, *db, tracer); err != nil {
 			return nil, errors.Wrap(err, "initializing DB")
 		}
 		e.dbName = db.DB
@@ -215,7 +223,7 @@ func NewEnvironment(ctx context.Context, confPath, versionID string, db *DBSetti
 		SetEnvironment(e)
 	}
 
-	if err := e.initSettings(ctx, confPath); err != nil {
+	if err := e.initSettings(ctx, confPath, tracer); err != nil {
 		return nil, errors.WithStack(err)
 	}
 
@@ -227,19 +235,19 @@ func NewEnvironment(ctx context.Context, confPath, versionID string, db *DBSetti
 
 	catcher := grip.NewBasicCatcher()
 	if e.client == nil {
-		catcher.Add(e.initDB(ctx, e.settings.Database))
+		catcher.Add(e.initDB(ctx, e.settings.Database, tracer))
 	}
 
-	catcher.Add(e.initJasper())
-	catcher.Add(e.initDepot(ctx))
-	catcher.Add(e.initThirdPartySenders(ctx))
-	catcher.Add(e.createLocalQueue(ctx))
-	catcher.Add(e.createRemoteQueues(ctx, versionID != ""))
-	catcher.Add(e.createNotificationQueue(ctx))
-	catcher.Add(e.setupRoleManager())
-	catcher.Add(e.initTracer(ctx, versionID != ""))
-	catcher.Add(e.initClientConfig(ctx, versionID))
-	catcher.Extend(e.initQueues(ctx))
+	catcher.Add(e.initJasper(ctx, tracer))
+	catcher.Add(e.initDepot(ctx, tracer))
+	catcher.Add(e.initThirdPartySenders(ctx, tracer))
+	catcher.Add(e.createLocalQueue(ctx, tracer))
+	catcher.Add(e.createRemoteQueues(ctx, versionID != "", tracer))
+	catcher.Add(e.createNotificationQueue(ctx, tracer))
+	catcher.Add(e.setupRoleManager(ctx, tracer))
+	catcher.Add(e.initTracer(ctx, versionID != "", tracer))
+	catcher.Add(e.initClientConfig(ctx, versionID, tracer))
+	catcher.Extend(e.initQueues(ctx, tracer))
 
 	if catcher.HasErrors() {
 		return nil, errors.WithStack(catcher.Resolve())
@@ -293,9 +301,11 @@ type cachedGitHubSender struct {
 	time   time.Time
 }
 
-func (e *envState) initSettings(ctx context.Context, path string) error {
+func (e *envState) initSettings(ctx context.Context, path string, tracer trace.Tracer) error {
 	// read configuration from either the file or DB and validate
 	// if the file path is blank, the DB session must be configured already
+	ctx, span := tracer.Start(ctx, "InitSettings")
+	defer span.End()
 
 	var err error
 
@@ -354,7 +364,10 @@ func redactSensitiveCollections(command bson.Raw) string {
 	return string(b)
 }
 
-func (e *envState) initDB(ctx context.Context, settings DBSettings) error {
+func (e *envState) initDB(ctx context.Context, settings DBSettings, tracer trace.Tracer) error {
+	ctx, span := tracer.Start(ctx, "InitDB")
+	defer span.End()
+
 	opts := options.Client().ApplyURI(settings.Url).SetWriteConcern(settings.WriteConcernSettings.Resolve()).
 		SetReadConcern(settings.ReadConcernSettings.Resolve()).
 		SetConnectTimeout(5 * time.Second).
@@ -376,7 +389,10 @@ func (e *envState) initDB(ctx context.Context, settings DBSettings) error {
 	return nil
 }
 
-func (e *envState) createRemoteQueues(ctx context.Context, inKanopy bool) error {
+func (e *envState) createRemoteQueues(ctx context.Context, inKanopy bool, tracer trace.Tracer) error {
+	ctx, span := tracer.Start(ctx, "CreateRemoteQueues")
+	defer span.End()
+
 	var url string
 	if inKanopy {
 		url = e.settings.Amboy.DBConnection.KanopyURL
@@ -408,8 +424,8 @@ func (e *envState) createRemoteQueues(ctx context.Context, inKanopy bool) error 
 	}
 
 	catcher := grip.NewBasicCatcher()
-	catcher.Add(e.createApplicationQueue(ctx, client))
-	catcher.Add(e.createRemoteQueueGroup(ctx, client))
+	catcher.Add(e.createApplicationQueue(ctx, client, tracer))
+	catcher.Add(e.createRemoteQueueGroup(ctx, client, tracer))
 	return catcher.Resolve()
 }
 
@@ -446,7 +462,10 @@ func (e *envState) DB() *mongo.Database {
 	return e.client.Database(e.dbName)
 }
 
-func (e *envState) createLocalQueue(ctx context.Context) error {
+func (e *envState) createLocalQueue(ctx context.Context, tracer trace.Tracer) error {
+	_, span := tracer.Start(ctx, "CreateLocalQueue")
+	defer span.End()
+
 	// configure the local-only (memory-backed) queue.
 	e.localQueue = queue.NewLocalLimitedSize(e.settings.Amboy.PoolSizeLocal, e.settings.Amboy.LocalStorage)
 	if err := e.localQueue.SetRunner(pool.NewAbortablePool(e.settings.Amboy.PoolSizeLocal, e.localQueue)); err != nil {
@@ -461,7 +480,10 @@ func (e *envState) createLocalQueue(ctx context.Context) error {
 	return nil
 }
 
-func (e *envState) createApplicationQueue(ctx context.Context, client *mongo.Client) error {
+func (e *envState) createApplicationQueue(ctx context.Context, client *mongo.Client, tracer trace.Tracer) error {
+	ctx, span := tracer.Start(ctx, "CreateApplicationQueue")
+	defer span.End()
+
 	// configure the remote mongodb-backed amboy
 	// queue.
 	opts := queue.DefaultMongoDBOptions()
@@ -500,7 +522,12 @@ func (e *envState) createApplicationQueue(ctx context.Context, client *mongo.Cli
 	return nil
 }
 
-func (e *envState) createRemoteQueueGroup(ctx context.Context, client *mongo.Client) error {
+func (e *envState) createRemoteQueueGroup(ctx context.Context, client *mongo.Client, tracer trace.Tracer) error {
+	ctx, span := tracer.Start(ctx, "CreateRemoteQueueGroup")
+	defer span.End()
+
+	// Remove the span from the ctx since the queue group caches the ctx.
+	ctx = trace.ContextWithSpan(ctx, nil)
 	opts := e.getRemoteQueueGroupDBOptions(client)
 
 	retryOpts := e.settings.Amboy.Retry.RetryableQueueOptions()
@@ -617,7 +644,10 @@ func (e *envState) getNamedRemoteQueueOptions(client *mongo.Client) (map[string]
 	return perQueueOpts, regexpQueueOpts, nil
 }
 
-func (e *envState) createNotificationQueue(ctx context.Context) error {
+func (e *envState) createNotificationQueue(ctx context.Context, tracer trace.Tracer) error {
+	ctx, span := tracer.Start(ctx, "CreateNotificationQueue")
+	defer span.End()
+
 	// Notifications queue w/ moving weight avg pool
 	e.notificationsQueue = queue.NewLocalLimitedSize(len(e.senders), e.settings.Amboy.LocalStorage)
 
@@ -670,6 +700,9 @@ func (e *envState) createNotificationQueue(ctx context.Context) error {
 		return catcher.Resolve()
 	})
 
+	// Remove the parent span from the context because the queue sender caches the
+	// context.
+	ctx = trace.ContextWithSpan(ctx, nil)
 	for k := range e.senders {
 		e.senders[k] = logger.MakeQueueSender(ctx, e.notificationsQueue, e.senders[k])
 	}
@@ -677,7 +710,12 @@ func (e *envState) createNotificationQueue(ctx context.Context) error {
 	return nil
 }
 
-func (e *envState) initQueues(ctx context.Context) []error {
+func (e *envState) initQueues(ctx context.Context, tracer trace.Tracer) []error {
+	ctx, span := tracer.Start(ctx, "InitQueues")
+	defer span.End()
+	// Remove the span from the ctx since the queues cache the ctx.
+	ctx = trace.ContextWithSpan(ctx, nil)
+
 	catcher := grip.NewBasicCatcher()
 	catcher.NewWhen(e.localQueue == nil, "local queue is not defined")
 	catcher.NewWhen(e.notificationsQueue == nil, "notification queue is not defined")
@@ -700,7 +738,10 @@ func (e *envState) initQueues(ctx context.Context) []error {
 // If versionID is non-empty the ClientConfig will contain links to
 // the version's S3 clients in place of local links. If there are no built clients, this returns an empty config
 // version, but does *not* error.
-func (e *envState) initClientConfig(ctx context.Context, versionID string) error {
+func (e *envState) initClientConfig(ctx context.Context, versionID string, tracer trace.Tracer) error {
+	ctx, span := tracer.Start(ctx, "InitClientConfig")
+	defer span.End()
+
 	// In k8s the versionID will be set to a versionID corresponding to a version in the Evergreen project
 	// that pushed clients to S3 under a versionID prefix. There will be no local clients on the images.
 	if versionID != "" {
@@ -716,7 +757,10 @@ func (e *envState) initClientConfig(ctx context.Context, versionID string) error
 // are meant to enable specific Evergreen behaviors like notifications, and are
 // distinct from the global application-wide logging system (see
 // (*Settings).GetSender).
-func (e *envState) initThirdPartySenders(ctx context.Context) error {
+func (e *envState) initThirdPartySenders(ctx context.Context, tracer trace.Tracer) error {
+	ctx, span := tracer.Start(ctx, "InitThirdPartySenders")
+	defer span.End()
+
 	if e.settings == nil {
 		return errors.New("no settings object, cannot build senders")
 	}
@@ -734,7 +778,9 @@ func (e *envState) initThirdPartySenders(ctx context.Context) error {
 			return errors.Wrap(err, "loading AWS config")
 		}
 		otelaws.AppendMiddlewares(&config.APIOptions)
-		sesSender, err := send.NewSESLogger(ctx,
+		// Remove the span from the ctx since the SES sender caches the ctx.
+		sesLoggerCtx := trace.ContextWithSpan(ctx, nil)
+		sesSender, err := send.NewSESLogger(sesLoggerCtx,
 			send.SESOptions{
 				Name:          "evergreen",
 				AWSConfig:     config,
@@ -816,7 +862,10 @@ func (e *envState) setSenderErrorHandler(s send.Sender, name string) error {
 	})
 }
 
-func (e *envState) initJasper() error {
+func (e *envState) initJasper(ctx context.Context, tracer trace.Tracer) error {
+	_, span := tracer.Start(ctx, "InitJasper")
+	defer span.End()
+
 	jpm, err := jasper.NewSynchronizedManager(true)
 	if err != nil {
 		return errors.WithStack(err)
@@ -831,7 +880,10 @@ func (e *envState) initJasper() error {
 	return nil
 }
 
-func (e *envState) initDepot(ctx context.Context) error {
+func (e *envState) initDepot(ctx context.Context, tracer trace.Tracer) error {
+	ctx, span := tracer.Start(ctx, "InitDepot")
+	defer span.End()
+
 	if e.settings.DomainName == "" {
 		return errors.Errorf("bootstrapping collection '%s' requires domain name to be set in admin settings", CredentialsCollection)
 	}
@@ -864,6 +916,8 @@ func (e *envState) initDepot(ctx context.Context) error {
 	}
 
 	var err error
+	// Remove the span from the ctx since the depot caches the ctx.
+	ctx = trace.ContextWithSpan(ctx, nil)
 	if e.depot, err = certdepot.BootstrapDepotWithMongoClient(ctx, e.client, bootstrapConfig); err != nil {
 		return errors.Wrapf(err, "bootstrapping collection '%s'", CredentialsCollection)
 	}
@@ -871,7 +925,10 @@ func (e *envState) initDepot(ctx context.Context) error {
 	return nil
 }
 
-func (e *envState) initTracer(ctx context.Context, useInternalDNS bool) error {
+func (e *envState) initTracer(ctx context.Context, useInternalDNS bool, tracer trace.Tracer) error {
+	ctx, span := tracer.Start(ctx, "InitTracer")
+	defer span.End()
+
 	if !e.settings.Tracer.Enabled {
 		return nil
 	}
@@ -903,13 +960,13 @@ func (e *envState) initTracer(ctx context.Context, useInternalDNS bool) error {
 		return errors.Wrap(err, "initializing otel exporter")
 	}
 
-	spanLimits := trace.NewSpanLimits()
+	spanLimits := sdktrace.NewSpanLimits()
 	spanLimits.AttributeValueLengthLimit = OtelAttributeMaxLength
 
-	tp := trace.NewTracerProvider(
-		trace.WithBatcher(exp),
-		trace.WithResource(resource),
-		trace.WithRawSpanLimits(spanLimits),
+	tp := sdktrace.NewTracerProvider(
+		sdktrace.WithBatcher(exp),
+		sdktrace.WithResource(resource),
+		sdktrace.WithRawSpanLimits(spanLimits),
 	)
 	tp.RegisterSpanProcessor(utility.NewAttributeSpanProcessor())
 	otel.SetTracerProvider(tp)
@@ -927,7 +984,10 @@ func (e *envState) initTracer(ctx context.Context, useInternalDNS bool) error {
 	return nil
 }
 
-func (e *envState) setupRoleManager() error {
+func (e *envState) setupRoleManager(ctx context.Context, tracer trace.Tracer) error {
+	_, span := tracer.Start(ctx, "SetupRoleManager")
+	defer span.End()
+
 	e.roleManager = rolemanager.NewMongoBackedRoleManager(rolemanager.MongoBackedRoleManagerOpts{
 		Client:          e.client,
 		DBName:          e.dbName,

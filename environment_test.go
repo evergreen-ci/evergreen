@@ -15,6 +15,7 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/suite"
 	"go.mongodb.org/mongo-driver/bson"
+	"go.opentelemetry.io/otel/trace/noop"
 )
 
 func init() {
@@ -28,7 +29,7 @@ func init() {
 		ctx := context.Background()
 
 		path := testConfigFile()
-		env, err := NewEnvironment(ctx, path, "", nil)
+		env, err := NewEnvironment(ctx, path, "", nil, noop.NewTracerProvider())
 		grip.EmergencyFatal(message.WrapError(err, message.Fields{
 			"message": "could not initialize test environment",
 			"path":    path,
@@ -74,7 +75,7 @@ func (s *EnvironmentSuite) TestInitDB() {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 	localEnv := s.env
-	err := localEnv.initDB(ctx, *db)
+	err := localEnv.initDB(ctx, *db, noop.NewTracerProvider().Tracer(""))
 	s.NoError(err)
 	_, err = localEnv.client.ListDatabases(ctx, bson.M{})
 	s.NoError(err)
@@ -88,7 +89,7 @@ func (s *EnvironmentSuite) TestLoadingConfig() {
 
 	originalEnv := GetEnvironment()
 	// first test loading config from a file
-	env, err := NewEnvironment(ctx, s.path, "", nil)
+	env, err := NewEnvironment(ctx, s.path, "", nil, noop.NewTracerProvider())
 	SetEnvironment(env)
 	defer func() {
 		SetEnvironment(originalEnv)
@@ -106,7 +107,7 @@ func (s *EnvironmentSuite) TestLoadingConfig() {
 	s.NoError(err)
 	db := settings.Database
 
-	env, err = NewEnvironment(ctx, "", "", &db)
+	env, err = NewEnvironment(ctx, "", "", &db, noop.NewTracerProvider())
 	s.Require().NoError(err)
 	SetEnvironment(env)
 
@@ -120,7 +121,7 @@ func (s *EnvironmentSuite) TestConfigErrorsIfCannotValidateConfig() {
 	defer cancel()
 
 	s.env.settings = &Settings{}
-	err := s.env.initSettings(ctx, "")
+	err := s.env.initSettings(ctx, "", noop.NewTracerProvider().Tracer(""))
 	s.Error(err)
 	s.Contains(err.Error(), "validating settings")
 }
@@ -137,7 +138,7 @@ func (s *EnvironmentSuite) TestInitSenders() {
 		},
 	}
 
-	s.Require().NoError(s.env.initThirdPartySenders(ctx))
+	s.Require().NoError(s.env.initThirdPartySenders(ctx, noop.NewTracerProvider().Tracer("")))
 
 	s.Require().NotEmpty(s.env.senders, "should have set up at least one sender")
 	for _, sender := range s.env.senders {
