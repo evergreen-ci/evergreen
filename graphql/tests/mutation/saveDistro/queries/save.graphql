@@ -49,7 +49,6 @@ mutation {
           serviceUser: ""
           shellPath: "/bin/fish"
         }
-        sshKey: "mci"
         sshOptions: [
           "StrictHostKeyChecking=no"
           "BatchMode=yes"
