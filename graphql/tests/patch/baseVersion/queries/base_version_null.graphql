@@ -1,5 +1,5 @@
 {
-  patch(id: "5d7288d91f8c8a403bc34a7d") {
+  patch(patchId: "5d7288d91f8c8a403bc34a7d") {
     id
     versionFull { 
       baseVersion {

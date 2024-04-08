@@ -1,5 +1,5 @@
 {
-  patch(id: "5dd2e89cd1fe07048e43bb9c") {
+  patch(patchId: "5dd2e89cd1fe07048e43bb9c") {
     baseTaskStatuses
   }
 }

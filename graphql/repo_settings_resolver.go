@@ -41,8 +41,8 @@ func (r *repoSettingsResolver) Vars(ctx context.Context, obj *restModel.APIProje
 }
 
 // RepoID is the resolver for the repoId field.
-func (r *repoSettingsInputResolver) RepoID(ctx context.Context, obj *restModel.APIProjectSettings, data *string) error {
-	obj.Id = data
+func (r *repoSettingsInputResolver) RepoID(ctx context.Context, obj *restModel.APIProjectSettings, data string) error {
+	obj.Id = utility.ToStringPtr(data)
 	return nil
 }
 
