@@ -91,7 +91,7 @@ type Mutation {
   abortTask(taskId: String!): Task!
   overrideTaskDependencies(taskId: String!): Task!
   restartTask(taskId: String!, failedOnly: Boolean!): Task!
-  scheduleTasks(taskIds: [String!]!, versionId: String): [Task!]!
+  scheduleTasks(taskIds: [String!]!, versionId: String!): [Task!]!
   setTaskPriority(taskId: String!, priority: Int!): Task!
   unscheduleTask(taskId: String!): Task!
 

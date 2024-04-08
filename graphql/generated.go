@@ -665,7 +665,7 @@ type ComplexityRoot struct {
 		SaveSubscription              func(childComplexity int, subscription model.APISubscription) int
 		SchedulePatch                 func(childComplexity int, patchID string, configure PatchConfigure) int
 		SchedulePatchTasks            func(childComplexity int, patchID string) int
-		ScheduleTasks                 func(childComplexity int, taskIds []string, versionID *string) int
+		ScheduleTasks                 func(childComplexity int, taskIds []string, versionID string) int
 		ScheduleUndispatchedBaseTasks func(childComplexity int, patchID string) int
 		SetAnnotationMetadataLinks    func(childComplexity int, taskID string, execution int, metadataLinks []*model.APIMetadataLink) int
 		SetLastRevision               func(childComplexity int, opts SetLastRevisionInput) int
@@ -1712,7 +1712,7 @@ type MutationResolver interface {
 	AbortTask(ctx context.Context, taskID string) (*model.APITask, error)
 	OverrideTaskDependencies(ctx context.Context, taskID string) (*model.APITask, error)
 	RestartTask(ctx context.Context, taskID string, failedOnly bool) (*model.APITask, error)
-	ScheduleTasks(ctx context.Context, taskIds []string, versionID *string) ([]*model.APITask, error)
+	ScheduleTasks(ctx context.Context, taskIds []string, versionID string) ([]*model.APITask, error)
 	SetTaskPriority(ctx context.Context, taskID string, priority int) (*model.APITask, error)
 	UnscheduleTask(ctx context.Context, taskID string) (*model.APITask, error)
 	ClearMySubscriptions(ctx context.Context) (int, error)
@@ -4724,7 +4724,7 @@ func (e *executableSchema) Complexity(typeName, field string, childComplexity in
 			return 0, false
 		}
 
-		return e.complexity.Mutation.ScheduleTasks(childComplexity, args["taskIds"].([]string), args["versionId"].(*string)), true
+		return e.complexity.Mutation.ScheduleTasks(childComplexity, args["taskIds"].([]string), args["versionId"].(string)), true
 
 	case "Mutation.scheduleUndispatchedBaseTasks":
 		if e.complexity.Mutation.ScheduleUndispatchedBaseTasks == nil {
@@ -11049,10 +11049,10 @@ func (ec *executionContext) field_Mutation_scheduleTasks_args(ctx context.Contex
 		}
 	}
 	args["taskIds"] = arg0
-	var arg1 *string
+	var arg1 string
 	if tmp, ok := rawArgs["versionId"]; ok {
 		ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("versionId"))
-		arg1, err = ec.unmarshalOString2ᚖstring(ctx, tmp)
+		arg1, err = ec.unmarshalNString2string(ctx, tmp)
 		if err != nil {
 			return nil, err
 		}
@@ -31283,7 +31283,7 @@ func (ec *executionContext) _Mutation_scheduleTasks(ctx context.Context, field g
 	}()
 	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
 		ctx = rctx // use context from middleware stack in children
-		return ec.resolvers.Mutation().ScheduleTasks(rctx, fc.Args["taskIds"].([]string), fc.Args["versionId"].(*string))
+		return ec.resolvers.Mutation().ScheduleTasks(rctx, fc.Args["taskIds"].([]string), fc.Args["versionId"].(string))
 	})
 	if err != nil {
 		ec.Error(ctx, err)
