@@ -253,7 +253,7 @@ functions:
         XC_BUILD: ${xc_build}
         NOTARY_CLIENT_URL: ${notary_client_url}
         NOTARY_SERVER_URL: ${notary_server_url}
-        MACOS_NOTARY_KEY: ${notary_server_key}
+        MACOS_NOTARY_KEY: ${notary_server_id}
         MACOS_NOTARY_SECRET: ${notary_server_secret}
         EVERGREEN_BUNDLE_ID: ${evergreen_bundle_id}
         SIGN_MACOS: ${sign_macos}
