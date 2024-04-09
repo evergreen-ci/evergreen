@@ -82,7 +82,7 @@ func TestSpawnhostStopJob(t *testing.T) {
 			})
 
 			ts := utility.RoundPartOfMinute(1).Format(TSFormat)
-			j := NewSpawnhostStopJob(&h, true, "user", ts)
+			j := NewSpawnhostStopJob(&h, true, evergreen.ModifySpawnHostManual, "user", ts)
 
 			j.Run(ctx)
 			assert.NoError(t, j.Error())
@@ -169,7 +169,7 @@ func TestSpawnhostStopJob(t *testing.T) {
 			})
 
 			ts := utility.RoundPartOfMinute(1).Format(TSFormat)
-			j := NewSpawnhostStopJob(&h, evergreen.ModifySpawnHostSleepSchedule, sleepScheduleUser, ts)
+			j := NewSpawnhostStopJob(&h, false, evergreen.ModifySpawnHostSleepSchedule, sleepScheduleUser, ts)
 
 			j.Run(ctx)
 			assert.NoError(t, j.Error())
@@ -211,7 +211,7 @@ func TestSpawnhostStopJob(t *testing.T) {
 			})
 
 			ts := utility.RoundPartOfMinute(1).Format(TSFormat)
-			j := NewSpawnhostStopJob(&h, evergreen.ModifySpawnHostSleepSchedule, sleepScheduleUser, ts)
+			j := NewSpawnhostStopJob(&h, false, evergreen.ModifySpawnHostSleepSchedule, sleepScheduleUser, ts)
 
 			j.Run(ctx)
 			assert.NoError(t, j.Error())

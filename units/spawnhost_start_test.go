@@ -84,7 +84,7 @@ func TestSpawnhostStartJob(t *testing.T) {
 			})
 
 			ts := utility.RoundPartOfMinute(1).Format(TSFormat)
-			j := NewSpawnhostStartJob(&h, "user", ts)
+			j := NewSpawnhostStartJob(&h, evergreen.ModifySpawnHostManual, "user", ts)
 
 			j.Run(ctx)
 			assert.NoError(t, j.Error())
@@ -224,10 +224,6 @@ func TestSpawnhostStartJob(t *testing.T) {
 
 			assert.True(t, dbHost.SleepSchedule.NextStartTime.Equal(nextStart), "next start time should be the same as original")
 		},
-		// "RunSchedulesNextStartTime": func(ctx context.Context, t *testing.T, mock cloud.MockProvider) {
-		// },
-		// "RunNoopsIfNotScheduledToStart": func(ctx context.Context, t *testing.T, mock cloud.MockProvider) {
-		// },
 	} {
 		t.Run(tName, func(t *testing.T) {
 			tctx := testutil.TestSpan(ctx, t)
