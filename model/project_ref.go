@@ -1832,12 +1832,19 @@ func GetProjectSettings(p *ProjectRef) (*ProjectSettings, error) {
 	if err != nil {
 		return nil, errors.Wrapf(err, "finding subscription for project '%s'", p.Id)
 	}
+
+	hasGithubApp, err := HasGithubAppAuth(p.Id)
+	if err != nil {
+		return nil, errors.Wrapf(err, "finding hadGithubApp for project '%s'", p.Id)
+	}
+
 	projectSettingsEvent := ProjectSettings{
 		ProjectRef:         *p,
 		GithubHooksEnabled: hasApp,
 		Vars:               *projectVars,
 		Aliases:            projectAliases,
 		Subscriptions:      subscriptions,
+		HasGitHubApp:       hasGithubApp,
 	}
 	return &projectSettingsEvent, nil
 }
