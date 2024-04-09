@@ -15,6 +15,7 @@ import (
 	"github.com/evergreen-ci/evergreen/agent/internal"
 	"github.com/evergreen-ci/evergreen/agent/internal/client"
 	agentutil "github.com/evergreen-ci/evergreen/agent/internal/testutil"
+	"github.com/evergreen-ci/evergreen/apimodels"
 	"github.com/evergreen-ci/evergreen/db"
 	"github.com/evergreen-ci/evergreen/model"
 	"github.com/evergreen-ci/evergreen/model/build"
@@ -362,6 +363,7 @@ func (s *GitGetProjectSuite) TestGitFetchRetries() {
 	c := gitFetchProject{Directory: "dir"}
 
 	conf := s.taskConfig1
+	conf.Distro = &apimodels.DistroView{}
 	s.comm.CreateInstallationTokenFail = true
 
 	ctx, cancel := context.WithCancel(context.Background())
@@ -445,10 +447,10 @@ func (s *GitGetProjectSuite) TestStdErrLogged() {
 	foundCloneErr := false
 	foundSSHErr := false
 	for _, line := range s.comm.GetTaskLogs(conf.Task.Id) {
-		if strings.Contains(line.Data, "git clone 'git@github.com:evergreen-ci/invalidRepo.git' 'src' --branch 'main'") {
+		if strings.Contains(line.Data, "/invalidRepo.git 'src' --branch 'main'") {
 			foundCloneCommand = true
 		}
-		if strings.Contains(line.Data, "ERROR: Repository not found.") {
+		if strings.Contains(line.Data, "/invalidRepo.git/' not found") {
 			foundCloneErr = true
 		}
 		if strings.Contains(line.Data, "Permission denied (publickey)") || strings.Contains(line.Data, "Host key verification failed.") {
@@ -1111,7 +1113,7 @@ func (s *GitGetProjectSuite) TestGetProjectMethodAndToken() {
 
 	s.comm.CreateInstallationTokenFail = true
 
-	method, token, err = getProjectMethodAndToken(s.ctx, s.comm, td, conf, "")
+	_, _, err = getProjectMethodAndToken(s.ctx, s.comm, td, conf, "")
 	s.Error(err)
 
 	conf.Expansions[evergreen.GlobalGitHubTokenExpansion] = globalGitHubToken
