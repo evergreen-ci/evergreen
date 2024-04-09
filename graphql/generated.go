@@ -50329,14 +50329,11 @@ func (ec *executionContext) _SpruceConfig_keys(ctx context.Context, field graphq
 		return graphql.Null
 	}
 	if resTmp == nil {
-		if !graphql.HasFieldError(ctx, fc) {
-			ec.Errorf(ctx, "must not be null")
-		}
 		return graphql.Null
 	}
 	res := resTmp.([]*SSHKey)
 	fc.Result = res
-	return ec.marshalNSSHKey2ᚕᚖgithubᚗcomᚋevergreenᚑciᚋevergreenᚋgraphqlᚐSSHKeyᚄ(ctx, field.Selections, res)
+	return ec.marshalOSSHKey2ᚕᚖgithubᚗcomᚋevergreenᚑciᚋevergreenᚋgraphqlᚐSSHKeyᚄ(ctx, field.Selections, res)
 }
 
 func (ec *executionContext) fieldContext_SpruceConfig_keys(ctx context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
@@ -68457,7 +68454,7 @@ func (ec *executionContext) unmarshalInputDistroInput(ctx context.Context, obj i
 			it.SetupAsSudo = data
 		case "sshKey":
 			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("sshKey"))
-			data, err := ec.unmarshalNString2ᚖstring(ctx, v)
+			data, err := ec.unmarshalOString2ᚖstring(ctx, v)
 			if err != nil {
 				return it, err
 			}
@@ -82104,9 +82101,6 @@ func (ec *executionContext) _SpruceConfig(ctx context.Context, sel ast.Selection
 					}
 				}()
 				res = ec._SpruceConfig_keys(ctx, field, obj)
-				if res == graphql.Null {
-					atomic.AddUint32(&fs.Invalids, 1)
-				}
 				return res
 			}
 
@@ -90106,50 +90100,6 @@ func (ec *executionContext) marshalNRoundingRule2githubᚗcomᚋevergreenᚑci�
 	return v
 }
 
-func (ec *executionContext) marshalNSSHKey2ᚕᚖgithubᚗcomᚋevergreenᚑciᚋevergreenᚋgraphqlᚐSSHKeyᚄ(ctx context.Context, sel ast.SelectionSet, v []*SSHKey) graphql.Marshaler {
-	ret := make(graphql.Array, len(v))
-	var wg sync.WaitGroup
-	isLen1 := len(v) == 1
-	if !isLen1 {
-		wg.Add(len(v))
-	}
-	for i := range v {
-		i := i
-		fc := &graphql.FieldContext{
-			Index:  &i,
-			Result: &v[i],
-		}
-		ctx := graphql.WithFieldContext(ctx, fc)
-		f := func(i int) {
-			defer func() {
-				if r := recover(); r != nil {
-					ec.Error(ctx, ec.Recover(ctx, r))
-					ret = nil
-				}
-			}()
-			if !isLen1 {
-				defer wg.Done()
-			}
-			ret[i] = ec.marshalNSSHKey2ᚖgithubᚗcomᚋevergreenᚑciᚋevergreenᚋgraphqlᚐSSHKey(ctx, sel, v[i])
-		}
-		if isLen1 {
-			f(i)
-		} else {
-			go f(i)
-		}
-
-	}
-	wg.Wait()
-
-	for _, e := range ret {
-		if e == graphql.Null {
-			return graphql.Null
-		}
-	}
-
-	return ret
-}
-
 func (ec *executionContext) marshalNSSHKey2ᚖgithubᚗcomᚋevergreenᚑciᚋevergreenᚋgraphqlᚐSSHKey(ctx context.Context, sel ast.SelectionSet, v *SSHKey) graphql.Marshaler {
 	if v == nil {
 		if !graphql.HasFieldError(ctx, graphql.GetFieldContext(ctx)) {
@@ -93502,6 +93452,53 @@ func (ec *executionContext) marshalORepotrackerError2ᚖgithubᚗcomᚋevergreen
 		return graphql.Null
 	}
 	return ec._RepotrackerError(ctx, sel, v)
+}
+
+func (ec *executionContext) marshalOSSHKey2ᚕᚖgithubᚗcomᚋevergreenᚑciᚋevergreenᚋgraphqlᚐSSHKeyᚄ(ctx context.Context, sel ast.SelectionSet, v []*SSHKey) graphql.Marshaler {
+	if v == nil {
+		return graphql.Null
+	}
+	ret := make(graphql.Array, len(v))
+	var wg sync.WaitGroup
+	isLen1 := len(v) == 1
+	if !isLen1 {
+		wg.Add(len(v))
+	}
+	for i := range v {
+		i := i
+		fc := &graphql.FieldContext{
+			Index:  &i,
+			Result: &v[i],
+		}
+		ctx := graphql.WithFieldContext(ctx, fc)
+		f := func(i int) {
+			defer func() {
+				if r := recover(); r != nil {
+					ec.Error(ctx, ec.Recover(ctx, r))
+					ret = nil
+				}
+			}()
+			if !isLen1 {
+				defer wg.Done()
+			}
+			ret[i] = ec.marshalNSSHKey2ᚖgithubᚗcomᚋevergreenᚑciᚋevergreenᚋgraphqlᚐSSHKey(ctx, sel, v[i])
+		}
+		if isLen1 {
+			f(i)
+		} else {
+			go f(i)
+		}
+
+	}
+	wg.Wait()
+
+	for _, e := range ret {
+		if e == graphql.Null {
+			return graphql.Null
+		}
+	}
+
+	return ret
 }
 
 func (ec *executionContext) marshalOSearchReturnInfo2ᚖgithubᚗcomᚋevergreenᚑciᚋevergreenᚋthirdpartyᚐSearchReturnInfo(ctx context.Context, sel ast.SelectionSet, v *thirdparty.SearchReturnInfo) graphql.Marshaler {

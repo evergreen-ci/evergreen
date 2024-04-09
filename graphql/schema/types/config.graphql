@@ -9,7 +9,7 @@ type SpruceConfig {
   containerPools: ContainerPoolsConfig
   githubOrgs: [String!]!
   jira: JiraConfig
-  keys: [SSHKey!]!
+  keys: [SSHKey!] @deprecated(reason: "removing this field shortly")
   providers: CloudProviderConfig
   slack: SlackConfig
   spawnHost: SpawnHostConfig!
