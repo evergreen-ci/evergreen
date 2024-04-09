@@ -111,13 +111,6 @@ func ensureHasRequiredFields(ctx context.Context, d *distro.Distro, _ *evergreen
 		})
 	}
 
-	if d.SSHKey == "" && d.Provider != evergreen.ProviderNameStatic {
-		errs = append(errs, ValidationError{
-			Message: fmt.Sprintf("distro '%v' cannot be blank", distro.SSHKeyKey),
-			Level:   Error,
-		})
-	}
-
 	if d.Provider == "" {
 		return append(errs, ValidationError{
 			Message: fmt.Sprintf("distro '%v' cannot be blank", distro.ProviderKey),
