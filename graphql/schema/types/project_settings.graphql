@@ -20,7 +20,7 @@ It contains information about project settings (e.g. Build Baron configurations,
 update the settings for a given project.
 """
 input ProjectSettingsInput {
-  projectId: String!
+  projectId: String! @requireProjectAccess(permission: SETTINGS, access: EDIT)
   aliases: [ProjectAliasInput!]
   githubWebhooksEnabled: Boolean
   projectRef: ProjectInput
@@ -29,7 +29,7 @@ input ProjectSettingsInput {
 }
 
 input ProjectInput {
-  id: String! @requireProjectAccess(access: EDIT)
+  id: String!
   admins: [String!]
   banner: ProjectBannerInput
   batchTime: Int

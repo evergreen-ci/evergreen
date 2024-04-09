@@ -102,7 +102,6 @@
         "git_clone": false
       },
       "hidden": false,
-      "repo_ref_id": "my_repo",
       "external_links": [
         {
           "display_name": "A link to somewhere",

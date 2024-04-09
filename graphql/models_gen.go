@@ -1188,47 +1188,6 @@ func (e ProjectPermission) MarshalGQL(w io.Writer) {
 	fmt.Fprint(w, strconv.Quote(e.String()))
 }
 
-type ProjectSettingsAccess string
-
-const (
-	ProjectSettingsAccessEdit ProjectSettingsAccess = "EDIT"
-	ProjectSettingsAccessView ProjectSettingsAccess = "VIEW"
-)
-
-var AllProjectSettingsAccess = []ProjectSettingsAccess{
-	ProjectSettingsAccessEdit,
-	ProjectSettingsAccessView,
-}
-
-func (e ProjectSettingsAccess) IsValid() bool {
-	switch e {
-	case ProjectSettingsAccessEdit, ProjectSettingsAccessView:
-		return true
-	}
-	return false
-}
-
-func (e ProjectSettingsAccess) String() string {
-	return string(e)
-}
-
-func (e *ProjectSettingsAccess) UnmarshalGQL(v interface{}) error {
-	str, ok := v.(string)
-	if !ok {
-		return fmt.Errorf("enums must be strings")
-	}
-
-	*e = ProjectSettingsAccess(str)
-	if !e.IsValid() {
-		return fmt.Errorf("%s is not a valid ProjectSettingsAccess", str)
-	}
-	return nil
-}
-
-func (e ProjectSettingsAccess) MarshalGQL(w io.Writer) {
-	fmt.Fprint(w, strconv.Quote(e.String()))
-}
-
 type ProjectSettingsSection string
 
 const (

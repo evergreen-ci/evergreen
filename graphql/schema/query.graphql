@@ -49,14 +49,13 @@ type Query {
   project(projectIdentifier: String!): Project!
   projects: [GroupedProjects]!
   projectEvents(
-    identifier: String!
+    identifier: String! @requireProjectAccess(permission: SETTINGS, access: EDIT)
     limit: Int = 0
     before: Time
-    @requireProjectAccess(access: VIEW)
   ): ProjectEvents!
-  projectSettings(identifier: String! @requireProjectAccess(access: VIEW)): ProjectSettings!
-  repoEvents(repoId: String! @requireProjectAccess(access: VIEW), limit: Int = 0, before: Time): ProjectEvents!
-  repoSettings(repoId: String! @requireProjectAccess(access: VIEW)): RepoSettings!
+  projectSettings(identifier: String! @requireProjectAccess(permission: SETTINGS, access: EDIT)): ProjectSettings!
+  repoEvents(repoId: String! @requireProjectAccess(permission: SETTINGS, access: EDIT), limit: Int = 0, before: Time): ProjectEvents!
+  repoSettings(repoId: String! @requireProjectAccess(permission: SETTINGS, access: EDIT)): RepoSettings!
   viewableProjectRefs: [GroupedProjects]!
 
   # spawn

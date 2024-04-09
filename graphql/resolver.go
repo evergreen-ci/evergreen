@@ -157,40 +157,7 @@ func New(apiURL string) Config {
 
 		return nil, Forbidden.Send(ctx, fmt.Sprintf("user %s does not have permission to access the %s resolver", user.Username(), operationContext))
 	}
-	c.Directives.RequireProjectAccess = func(ctx context.Context, obj interface{}, next graphql.Resolver, access ProjectSettingsAccess) (res interface{}, err error) {
-		user := mustHaveUser(ctx)
-
-		var permissionLevel int
-		if access == ProjectSettingsAccessEdit {
-			permissionLevel = evergreen.ProjectSettingsEdit.Value
-		} else if access == ProjectSettingsAccessView {
-			permissionLevel = evergreen.ProjectSettingsView.Value
-		} else {
-			return nil, Forbidden.Send(ctx, "Permission not specified")
-		}
-
-		args, isStringMap := obj.(map[string]interface{})
-		if !isStringMap {
-			return nil, ResourceNotFound.Send(ctx, "Project not specified")
-		}
-
-		projectId, err := getProjectIdFromArgs(ctx, args)
-		if err != nil {
-			return nil, err
-		}
-
-		opts := gimlet.PermissionOpts{
-			Resource:      projectId,
-			ResourceType:  evergreen.ProjectResourceType,
-			Permission:    evergreen.PermissionProjectSettings,
-			RequiredLevel: permissionLevel,
-		}
-		if user.HasPermission(opts) {
-			return next(ctx)
-		}
-		return nil, Forbidden.Send(ctx, fmt.Sprintf("user %s does not have permission to access settings for the project %s", user.Username(), projectId))
-	}
-	c.Directives.RequireProjectAccessNew = func(ctx context.Context, obj interface{}, next graphql.Resolver, permission ProjectPermission, access AccessLevel) (interface{}, error) {
+	c.Directives.RequireProjectAccess = func(ctx context.Context, obj interface{}, next graphql.Resolver, permission ProjectPermission, access AccessLevel) (interface{}, error) {
 		user := mustHaveUser(ctx)
 
 		args, isMap := obj.(map[string]interface{})
