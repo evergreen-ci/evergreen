@@ -1084,6 +1084,17 @@ func TestAssignNextAvailableTaskWithDispatcherSettingsVersionTunable(t *testing.
 			So(currentTq.Length(), ShouldEqual, 2)
 			details.TaskGroup = ""
 		})
+		Convey("a completed task group and an empty queue should return true for teardown", func() {
+			taskQueue.Queue = []model.TaskQueueItem{}
+			So(taskQueue.Save(), ShouldBeNil)
+			So(taskQueue.Length(), ShouldEqual, 0)
+
+			details.TaskGroup = "my-task-group"
+			t, shouldTeardown, err := assignNextAvailableTask(ctx, env, taskQueue, model.NewTaskDispatchService(time.Minute), &theHostWhoCanBoastTheMostRoast, details)
+			So(err, ShouldBeNil)
+			So(t, ShouldBeNil)
+			So(shouldTeardown, ShouldBeTrue)
+		})
 		Convey("a task that is not undispatched should not be updated in the host", func() {
 			taskQueue.Queue = []model.TaskQueueItem{
 				{Id: "undispatchedTask"},
