@@ -972,6 +972,7 @@ func (a *Agent) finishTask(ctx context.Context, tc *taskContext, status string, 
 			tc.logger.Task().Info("Post task completed - FAILURE. Overall task status changed to FAILED.")
 			setEndTaskFailureDetails(tc, detail, evergreen.TaskFailed, "", "")
 		}
+		detail.PostErrored = tc.getPostErrored()
 		a.runEndTaskSync(ctx, tc, detail)
 	case evergreen.TaskFailed:
 		a.handleTimeoutAndOOM(ctx, tc, status)
@@ -980,6 +981,7 @@ func (a *Agent) finishTask(ctx context.Context, tc *taskContext, status string, 
 		// already logged the error, and the post commands cannot cause the
 		// task to fail since the task already failed.
 		_ = a.runPostOrTeardownTaskCommands(ctx, tc)
+		detail.PostErrored = tc.getPostErrored()
 		a.runEndTaskSync(ctx, tc, detail)
 	case evergreen.TaskSystemFailed:
 		// This is a special status indicating that the agent failed for reasons
@@ -1127,7 +1129,6 @@ func (a *Agent) endTaskResponse(ctx context.Context, tc *taskContext, status str
 		OOMTracker:  tc.getOomTrackerInfo(),
 		TraceID:     tc.traceID,
 		DiskDevices: tc.diskDevices,
-		PostErrored: tc.getPostErrored(),
 	}
 	setEndTaskFailureDetails(tc, detail, status, highestPriorityDescription, userDefinedFailureType)
 	if tc.taskConfig != nil {
