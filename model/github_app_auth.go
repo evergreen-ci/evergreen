@@ -43,16 +43,13 @@ func FindOneGithubAppAuth(projectId string) (*GithubAppAuth, error) {
 
 // HasGithubAppAuth checks if the github app auth for the given project id exists
 func HasGithubAppAuth(projectId string) (bool, error) {
-	app, err := FindOneGithubAppAuth(projectId)
-	if err != nil {
+	var app *GithubAppAuth
+	var err error
+	if app, err = FindOneGithubAppAuth(projectId); err != nil {
 		return false, err
 	}
 
-	if app == nil {
-		return false, nil
-	}
-
-	return true, nil
+	return app != nil, nil
 }
 
 // Upsert inserts or updates the app auth for the given project id in the database

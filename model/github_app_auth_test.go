@@ -8,7 +8,7 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-func TestFindOneGithubAppAuth(t *testing.T) {
+func TestFindOneAndHasApp(t *testing.T) {
 	assert := assert.New(t)
 
 	require.NoError(t, db.Clear(GitHubAppAuthCollection),
@@ -45,14 +45,15 @@ func TestRemoveGithubAppAuth(t *testing.T) {
 	err := githubAppAuth.Upsert()
 	require.NoError(t, err)
 
-	githubAppAuthFromDB, err := FindOneGithubAppAuth("mongodb")
+	hasGithubAppAuth, err := HasGithubAppAuth("mongodb")
 	require.NoError(t, err)
-	assert.NotNil(githubAppAuthFromDB)
+	assert.True(hasGithubAppAuth)
 
-	err = RemoveGithubAppAuth(githubAppAuthFromDB.Id)
+	err = RemoveGithubAppAuth(githubAppAuth.Id)
+	require.NoError(t, err)
 
+	hasGithubAppAuth, err = HasGithubAppAuth("mongodb")
 	require.NoError(t, err)
-	githubAppAuthFromDB, err = FindOneGithubAppAuth("mongodb")
-	require.NoError(t, err)
-	assert.Nil(githubAppAuthFromDB)
+	assert.False(hasGithubAppAuth)
+
 }
