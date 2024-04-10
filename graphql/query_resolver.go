@@ -635,7 +635,7 @@ func (r *queryResolver) TaskAllExecutions(ctx context.Context, taskID string) ([
 }
 
 // TaskTestSample is the resolver for the taskTestSample field.
-func (r *queryResolver) TaskTestSample(ctx context.Context, tasks []string, taskIds []string, filters []*TestFilter) ([]*TaskTestResultSample, error) {
+func (r *queryResolver) TaskTestSample(ctx context.Context, tasks []string, taskIds []string, filters []*TestFilter, versionID *string) ([]*TaskTestResultSample, error) {
 	// TODO: Remove this temporary workaround.
 	var tasksToProcess []string
 	if len(tasks) > 0 {

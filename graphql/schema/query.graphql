@@ -73,6 +73,7 @@ type Query {
     tasks: [String!] @deprecated(reason: "Use taskIds instead")
     taskIds: [String!]
     filters: [TestFilter!]!
+    versionId: String
   ): [TaskTestResultSample!]
 
   # user
