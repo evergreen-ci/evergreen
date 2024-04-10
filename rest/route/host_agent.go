@@ -696,11 +696,6 @@ func assignNextAvailableTask(ctx context.Context, env evergreen.Environment, tas
 	if taskQueue.Length() == 0 && details.TaskGroup != "" {
 		// if we have reached the end of the queue and the previous task was part of a task group,
 		// the current task group is finished and needs to be torn down.
-		grip.Info(message.Fields{
-			"message":   "no tasks on queue but task group needs teardown",
-			"host_id":   currentHost.Id,
-			"taskGroup": details.TaskGroup,
-		})
 		return nil, true, nil
 
 	}
