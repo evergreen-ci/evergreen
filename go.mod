@@ -12,7 +12,7 @@ require (
 	github.com/aws/aws-sdk-go-v2/service/ec2 v1.154.0
 	github.com/aws/aws-sdk-go-v2/service/ecs v1.36.0
 	github.com/aws/aws-sdk-go-v2/service/resourcegroupstaggingapi v1.20.1
-	github.com/aws/aws-sdk-go-v2/service/secretsmanager v1.28.1
+	github.com/aws/aws-sdk-go-v2/service/secretsmanager v1.28.6
 	github.com/aws/smithy-go v1.20.2
 	github.com/cheynewallace/tabby v1.1.1
 	github.com/docker/docker v24.0.7+incompatible
@@ -23,7 +23,7 @@ require (
 	github.com/evergreen-ci/cocoa v0.0.0-20230918160723-69a3ef4b69a0
 	github.com/evergreen-ci/gimlet v0.0.0-20240214172145-245537ea7b99
 	github.com/evergreen-ci/juniper v0.0.0-20230901183147-c805ea7351aa
-	github.com/evergreen-ci/pail v0.0.0-20240319220903-6ca95a41e4c9
+	github.com/evergreen-ci/pail v0.0.0-20240408143903-e5e256a7ef30
 	github.com/evergreen-ci/poplar v0.0.0-20240129220701-28919e26f3a3
 	github.com/evergreen-ci/shrub v0.0.0-20231121224157-600e066f9de6
 	github.com/evergreen-ci/timber v0.0.0-20230905184025-88c53a14c47b
@@ -67,13 +67,13 @@ require (
 	go.opentelemetry.io/otel/sdk/metric v1.24.0
 	go.opentelemetry.io/otel/trace v1.24.0
 	go.opentelemetry.io/proto/otlp v1.1.0
-	golang.org/x/crypto v0.21.0
+	golang.org/x/crypto v0.22.0
 	golang.org/x/oauth2 v0.16.0
 	golang.org/x/text v0.14.0
 	golang.org/x/tools v0.13.0 // indirect
 	gonum.org/v1/gonum v0.14.0
 	google.golang.org/grpc v1.61.0
-	google.golang.org/protobuf v1.32.0
+	google.golang.org/protobuf v1.33.0
 	gopkg.in/yaml.v2 v2.4.0
 )
 
@@ -191,7 +191,7 @@ require (
 	golang.org/x/mod v0.12.0 // indirect
 	golang.org/x/net v0.21.0 // indirect
 	golang.org/x/sync v0.6.0
-	golang.org/x/sys v0.18.0 // indirect
+	golang.org/x/sys v0.19.0 // indirect
 	google.golang.org/appengine v1.6.8 // indirect
 	google.golang.org/genproto/googleapis/api v0.0.0-20240102182953-50ed04b92917 // indirect
 	google.golang.org/genproto/googleapis/rpc v0.0.0-20240102182953-50ed04b92917 // indirect

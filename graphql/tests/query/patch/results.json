@@ -1,7 +1,7 @@
 {
   "tests": [
     {
-      "query_file": "new_args.graphql",
+      "query_file": "patch.graphql",
       "result": {
         "data": {
           "patch": {

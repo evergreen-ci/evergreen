@@ -221,8 +221,8 @@ func setupPermissions(t *testing.T) {
 
 func TestRequireDistroAccess(t *testing.T) {
 	setupPermissions(t)
-	require.NoError(t, db.Clear(user.Collection),
-		"unable to clear user collection")
+	require.NoError(t, db.ClearCollections(model.ProjectRefCollection, user.Collection),
+		"unable to clear user or project ref collection")
 	dbUser := &user.DBUser{
 		Id: apiUser,
 		Settings: user.UserSettings{
@@ -401,6 +401,13 @@ func TestRequireProjectAdmin(t *testing.T) {
 	ctx = gimlet.AttachUser(ctx, usr)
 	require.NotNil(t, ctx)
 
+	projectRef := model.ProjectRef{
+		Id:         "project_id",
+		Identifier: "project_identifier",
+	}
+	err = projectRef.Insert()
+	require.NoError(t, err)
+
 	// superuser should always be successful, no matter the resolver
 	err = usr.AddRole("superuser")
 	require.NoError(t, err)
@@ -479,6 +486,53 @@ func TestRequireProjectAdmin(t *testing.T) {
 	require.NoError(t, err)
 	require.Nil(t, res)
 	require.Equal(t, 4, callCount)
+
+	// SetLastRevision - successful
+	operationContext = &graphql.OperationContext{
+		OperationName: SetLastRevisionMutation,
+	}
+	ctx = graphql.WithOperationContext(ctx, operationContext)
+	obj = map[string]interface{}{
+		"opts": map[string]interface{}{
+			"projectIdentifier": "project_identifier",
+		},
+	}
+	res, err = config.Directives.RequireProjectAdmin(ctx, obj, next)
+	require.NoError(t, err)
+	require.Nil(t, res)
+	require.Equal(t, 5, callCount)
+
+	// SetLastRevision - project not found
+	operationContext = &graphql.OperationContext{
+		OperationName: SetLastRevisionMutation,
+	}
+	ctx = graphql.WithOperationContext(ctx, operationContext)
+	obj = map[string]interface{}{
+		"opts": map[string]interface{}{
+			"projectIdentifier": "project_whatever",
+		},
+	}
+	res, err = config.Directives.RequireProjectAdmin(ctx, obj, next)
+	require.EqualError(t, err, "input: project 'project_whatever' not found")
+	require.Nil(t, res)
+	require.Equal(t, 5, callCount)
+
+	// SetLastRevision - permission denied
+	operationContext = &graphql.OperationContext{
+		OperationName: SetLastRevisionMutation,
+	}
+	ctx = graphql.WithOperationContext(ctx, operationContext)
+	obj = map[string]interface{}{
+		"opts": map[string]interface{}{
+			"projectIdentifier": "project_identifier",
+		},
+	}
+	require.NoError(t, usr.RemoveRole("admin_project"))
+	res, err = config.Directives.RequireProjectAdmin(ctx, obj, next)
+	require.EqualError(t, err, "input: user testuser does not have permission to access the SetLastRevision resolver")
+	require.Nil(t, res)
+	require.Equal(t, 5, callCount)
+
 }
 
 func setupUser(t *testing.T) (*user.DBUser, error) {
