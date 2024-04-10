@@ -15,7 +15,6 @@ import (
 	"github.com/evergreen-ci/evergreen/agent/internal"
 	"github.com/evergreen-ci/evergreen/agent/internal/client"
 	agentutil "github.com/evergreen-ci/evergreen/agent/internal/testutil"
-	"github.com/evergreen-ci/evergreen/apimodels"
 	"github.com/evergreen-ci/evergreen/db"
 	"github.com/evergreen-ci/evergreen/model"
 	"github.com/evergreen-ci/evergreen/model/build"
@@ -360,10 +359,10 @@ func (s *GitGetProjectSuite) TestGitPlugin() {
 }
 
 func (s *GitGetProjectSuite) TestGitFetchRetries() {
-	c := gitFetchProject{Directory: "dir"}
+	c := gitFetchProject{Directory: ""}
 
 	conf := s.taskConfig1
-	conf.Distro = &apimodels.DistroView{}
+	c.SetJasperManager(s.jasper)
 	s.comm.CreateInstallationTokenFail = true
 
 	ctx, cancel := context.WithCancel(context.Background())
