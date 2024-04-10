@@ -1411,7 +1411,7 @@ func evalBisectStepback(ctx context.Context, t *task.Task, newStepback, shouldSt
 	}
 
 	existingStepback := !t.StepbackInfo.IsZero() && t.ActivatedBy == evergreen.StepbackTaskActivator
-	if newStepback || existingStepback {
+	if (newStepback || existingStepback) && t.GeneratedBy == "" {
 		return errors.Wrap(doBisectStepback(ctx, t), "performing bisect stepback")
 	}
 
