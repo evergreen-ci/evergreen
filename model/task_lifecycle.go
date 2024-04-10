@@ -890,7 +890,9 @@ func MarkEnd(ctx context.Context, settings *evergreen.Settings, t *task.Task, ca
 
 	// Deactivate previous occurrences of the same task if this one passed on mainline commits.
 	if t.Status == evergreen.TaskSucceeded && deactivatePrevious && t.Requester == evergreen.RepotrackerVersionRequester && t.ActivatedBy != evergreen.StepbackTaskActivator {
-		return errors.Wrap(DeactivatePreviousTasks(ctx, t, caller), "deactivating previous tasks")
+		grip.Error(message.WrapError(DeactivatePreviousTasks(ctx, t, caller), message.Fields{
+			"message": "deactivating previous tasks",
+		}))
 	}
 
 	if err = UpdateBuildAndVersionStatusForTask(ctx, t); err != nil {
