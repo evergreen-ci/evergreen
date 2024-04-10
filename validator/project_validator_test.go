@@ -1410,11 +1410,29 @@ func TestValidateProjectLimits(t *testing.T) {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 
-	makeProjectWithNumTasks := func(numTasks int) *model.Project {
+	makeProjectWithDoubleNumTasks := func(numTasks int) *model.Project {
 		var project model.Project
+		project.BuildVariants = []model.BuildVariant{
+			{
+				Name: "bv1",
+			},
+			{
+				Name: "bv2",
+			},
+		}
+
 		for i := 0; i < numTasks; i++ {
-			project.Tasks = append(project.Tasks, model.ProjectTask{
+			t := model.ProjectTask{
 				Name: fmt.Sprintf("task-%d", i),
+			}
+			project.Tasks = append(project.Tasks, t)
+			project.BuildVariants[0].Tasks = append(project.BuildVariants[0].Tasks, model.BuildVariantTaskUnit{
+				Name:    t.Name,
+				Variant: project.BuildVariants[0].Name,
+			})
+			project.BuildVariants[1].Tasks = append(project.BuildVariants[1].Tasks, model.BuildVariantTaskUnit{
+				Name:    t.Name,
+				Variant: project.BuildVariants[1].Name,
 			})
 		}
 		return &project
@@ -1426,7 +1444,7 @@ func TestValidateProjectLimits(t *testing.T) {
 				MaxTasksPerVersion: 10,
 			},
 		}
-		project := makeProjectWithNumTasks(5)
+		project := makeProjectWithDoubleNumTasks(3)
 		assert.Empty(t, validateProjectLimits(ctx, settings, project, &model.ProjectRef{}, false))
 	})
 	t.Run("FailsWithTasksExceedingLimit", func(t *testing.T) {
@@ -1435,15 +1453,15 @@ func TestValidateProjectLimits(t *testing.T) {
 				MaxTasksPerVersion: 10,
 			},
 		}
-		project := makeProjectWithNumTasks(50)
+		project := makeProjectWithDoubleNumTasks(50)
 		errs := validateProjectLimits(ctx, settings, project, &model.ProjectRef{}, false)
 		require.Len(t, errs, 1)
 		assert.Equal(t, Error, errs[0].Level)
-		assert.Contains(t, "project's total number of tasks (50) exceeds maximum limit (10)", errs[0].Message)
+		assert.Contains(t, "project's total number of tasks (100) exceeds maximum limit (10)", errs[0].Message)
 	})
 	t.Run("SucceedsWithNoMaxTaskLimit", func(t *testing.T) {
 		settings := &evergreen.Settings{}
-		project := makeProjectWithNumTasks(50)
+		project := makeProjectWithDoubleNumTasks(50)
 		assert.Empty(t, validateProjectLimits(ctx, settings, project, &model.ProjectRef{}, false))
 	})
 }
