@@ -646,7 +646,7 @@ post:
 	})
 }
 
-func (s *AgentSuite) TestPostSucceedsButErrorIsLogged() {
+func (s *AgentSuite) TestPostSucceedsButErrorIsStored() {
 	projYml := `
 post:
   - command: shell.exec
@@ -712,6 +712,7 @@ post:
 
 	s.NoError(s.tc.logger.Close())
 	checkMockLogs(s.T(), s.mockCommunicator, s.tc.taskConfig.Task.Id, nil, []string{panicLog})
+	s.True(s.tc.getPostErrored())
 }
 
 func (s *AgentSuite) TestPostTimeoutFailsTask() {

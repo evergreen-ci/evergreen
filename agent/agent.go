@@ -978,8 +978,7 @@ func (a *Agent) finishTask(ctx context.Context, tc *taskContext, status string, 
 		tc.logger.Task().Info("Task completed - FAILURE.")
 		// If the post commands error, ignore the error. runCommandsInBlock
 		// already logged the error, and the post commands cannot cause the
-		// task to fail since the task already failed. As well, the error
-		// block type should not be overwritten.
+		// task to fail since the task already failed.
 		_ = a.runPostOrTeardownTaskCommands(ctx, tc)
 		a.runEndTaskSync(ctx, tc, detail)
 	case evergreen.TaskSystemFailed:
