@@ -6192,13 +6192,23 @@ func TestDisplayTaskFailedAndSucceededExecTasks(t *testing.T) {
 	assert.True(dbTask.Activated)
 }
 
-func TestEvalStepbackDeactivatePrevious(t *testing.T) {
+func TestMarkEndDeactivatesPrevious(t *testing.T) {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 
 	assert := assert.New(t)
-	assert.NoError(db.ClearCollections(task.Collection, ProjectRefCollection, distro.Collection, build.Collection, VersionCollection, ParserProjectCollection))
+	assert.NoError(db.ClearCollections(task.Collection, ProjectRefCollection, distro.Collection, build.Collection, VersionCollection, ParserProjectCollection, host.Collection))
 
+	taskHost1 := &host.Host{
+		Id:          "myHost1",
+		RunningTask: "t2",
+	}
+	require.NoError(t, taskHost1.Insert(ctx))
+	taskHost2 := &host.Host{
+		Id:          "myHost2",
+		RunningTask: "t3",
+	}
+	require.NoError(t, taskHost2.Insert(ctx))
 	proj := ProjectRef{
 		Id: "proj",
 	}
@@ -6223,6 +6233,7 @@ func TestEvalStepbackDeactivatePrevious(t *testing.T) {
 		BuildVariant:        "bv",
 		DisplayName:         "task",
 		Project:             "proj",
+		HostId:              "myHost1",
 		Activated:           true,
 		RevisionOrderNumber: 2,
 		DispatchTime:        utility.ZeroTime,
@@ -6235,13 +6246,14 @@ func TestEvalStepbackDeactivatePrevious(t *testing.T) {
 		BuildVariant: "bv",
 	}
 	assert.NoError(b2.Insert())
-	finishedTask := task.Task{
+	finishedTask := &task.Task{
 		Id:                  "t3",
 		BuildId:             "b3",
-		Status:              evergreen.TaskSucceeded,
+		Status:              evergreen.TaskUndispatched,
 		BuildVariant:        "bv",
 		DisplayName:         "task",
 		Project:             "proj",
+		HostId:              "myHost2",
 		Activated:           true,
 		RevisionOrderNumber: 3,
 		Requester:           evergreen.TriggerRequester,
@@ -6255,13 +6267,21 @@ func TestEvalStepbackDeactivatePrevious(t *testing.T) {
 	assert.NoError(b3.Insert())
 
 	// Should not unschedule previous tasks if the requester is not repotracker.
-	assert.NoError(evalStepback(ctx, &finishedTask, evergreen.TaskSucceeded))
+
+	settings := testutil.TestConfig()
+	detail := &apimodels.TaskEndDetail{
+		Status: evergreen.TaskSucceeded,
+	}
+	assert.NoError(MarkEnd(ctx, settings, finishedTask, "test", time.Now().Add(time.Minute), detail, true))
 	checkTask, err := task.FindOneId(stepbackTask.Id)
 	assert.NoError(err)
 	assert.True(checkTask.Activated)
 
+	require.NoError(t, task.UpdateOne(bson.M{"_id": finishedTask.Id},
+		bson.M{"$set": bson.M{"status": evergreen.TaskUndispatched}}))
 	finishedTask.Requester = evergreen.RepotrackerVersionRequester
-	assert.NoError(evalStepback(ctx, &finishedTask, evergreen.TaskSucceeded))
+	finishedTask.Status = evergreen.TaskUndispatched
+	assert.NoError(MarkEnd(ctx, settings, finishedTask, "test", time.Now().Add(time.Minute), detail, true))
 	checkTask, err = task.FindOneId(stepbackTask.Id)
 	assert.NoError(err)
 	assert.False(checkTask.Activated)
