@@ -2209,6 +2209,7 @@ func TestDisplayTaskRestart(t *testing.T) {
 	for _, dbTask := range tasks {
 		assert.Equal(evergreen.TaskUndispatched, dbTask.Status, dbTask.Id)
 		assert.True(dbTask.Activated, dbTask.Id)
+		assert.Equal(dbTask.ActivatedBy, "test")
 	}
 
 	// test restarting a build
@@ -2220,6 +2221,7 @@ func TestDisplayTaskRestart(t *testing.T) {
 	for _, dbTask := range tasks {
 		assert.Equal(evergreen.TaskUndispatched, dbTask.Status, dbTask.Id)
 		assert.True(dbTask.Activated, dbTask.Id)
+		assert.Equal(dbTask.ActivatedBy, "test")
 	}
 
 	// test that restarting a task correctly resets the task and archives it
@@ -2241,6 +2243,7 @@ func TestDisplayTaskRestart(t *testing.T) {
 	for _, dbTask := range tasks {
 		assert.Equal(evergreen.TaskUndispatched, dbTask.Status, dbTask.Id)
 		assert.True(dbTask.Activated, dbTask.Id)
+		assert.Equal(dbTask.ActivatedBy, "caller")
 	}
 
 	// Test that restarting a display task with restartFailed correctly resets failed tasks.
