@@ -242,7 +242,7 @@ func NewEnvironment(ctx context.Context, confPath, versionID string, db *DBSetti
 	catcher.Add(e.initDepot(ctx, tracer))
 	catcher.Add(e.initThirdPartySenders(ctx, tracer))
 	catcher.Add(e.createLocalQueue(ctx, tracer))
-	catcher.Add(e.createRemoteQueues(ctx, versionID != "", tracer))
+	catcher.Add(e.createRemoteQueues(ctx, tracer))
 	catcher.Add(e.createNotificationQueue(ctx, tracer))
 	catcher.Add(e.setupRoleManager(ctx, tracer))
 	catcher.Add(e.initTracer(ctx, versionID != "", tracer))
@@ -389,16 +389,11 @@ func (e *envState) initDB(ctx context.Context, settings DBSettings, tracer trace
 	return nil
 }
 
-func (e *envState) createRemoteQueues(ctx context.Context, inKanopy bool, tracer trace.Tracer) error {
+func (e *envState) createRemoteQueues(ctx context.Context, tracer trace.Tracer) error {
 	ctx, span := tracer.Start(ctx, "CreateRemoteQueues")
 	defer span.End()
 
-	var url string
-	if inKanopy {
-		url = e.settings.Amboy.DBConnection.KanopyURL
-	} else {
-		url = e.settings.Amboy.DBConnection.URL
-	}
+	url := e.settings.Amboy.DBConnection.URL
 	if url == "" {
 		url = DefaultAmboyDatabaseURL
 	}
