@@ -114,7 +114,7 @@ func (r *versionResolver) ChildVersions(ctx context.Context, obj *restModel.APIV
 		childVersions := []*restModel.APIVersion{}
 		for _, cp := range childPatchIds {
 			// this calls the graphql Version query resolver
-			cv, err := r.Query().Version(ctx, utility.ToStringPtr(cp), utility.ToStringPtr(cp))
+			cv, err := r.Query().Version(ctx, cp)
 			if err != nil {
 				// before erroring due to the version being nil or not found,
 				// fetch the child patch to see if it's activated

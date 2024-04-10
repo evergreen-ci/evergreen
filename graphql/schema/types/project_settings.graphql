@@ -20,7 +20,7 @@ It contains information about project settings (e.g. Build Baron configurations,
 update the settings for a given project.
 """
 input ProjectSettingsInput {
-  projectId: String # TODO: Make this required.
+  projectId: String!
   aliases: [ProjectAliasInput!]
   githubWebhooksEnabled: Boolean
   projectRef: ProjectInput

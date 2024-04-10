@@ -274,9 +274,8 @@ func (s *AdminSuite) TestAmboyConfig() {
 		Name:       "amboy",
 		SingleName: "single",
 		DBConnection: AmboyDBConfig{
-			URL:       "mongodb://localhost:27017",
-			KanopyURL: "mongodb://localhost:27018",
-			Database:  "db",
+			URL:      "mongodb://localhost:27017",
+			Database: "db",
 		},
 		PoolSizeLocal:                         10,
 		PoolSizeRemote:                        20,
