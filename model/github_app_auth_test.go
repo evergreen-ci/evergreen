@@ -20,21 +20,18 @@ func TestFindOneGithubAppAuth(t *testing.T) {
 		AppId:      1234,
 		PrivateKey: key,
 	}
-	change, err := githubAppAuth.Upsert()
-	assert.NotNil(change)
-	assert.NoError(err)
-	assert.NotNil(change.UpsertedId)
-	assert.Equal(1, change.Updated, "%+v", change)
+	err := githubAppAuth.Upsert()
 
+	require.NoError(t, err)
 	githubAppAuthFromDB, err := FindOneGithubAppAuth("mongodb")
-	assert.NoError(err)
+	require.NoError(t, err)
 
 	assert.Equal("mongodb", githubAppAuthFromDB.Id)
 	assert.Equal(int64(1234), githubAppAuthFromDB.AppId)
 	assert.Equal(key, githubAppAuthFromDB.PrivateKey)
 }
 
-func TestRemove(t *testing.T) {
+func TestRemoveGithubAppAuth(t *testing.T) {
 	assert := assert.New(t)
 	require.NoError(t, db.Clear(GitHubAppAuthCollection),
 		"Error clearing collection")
@@ -45,17 +42,17 @@ func TestRemove(t *testing.T) {
 		AppId:      1234,
 		PrivateKey: key,
 	}
-	_, err := githubAppAuth.Upsert()
-	assert.NoError(err)
+	err := githubAppAuth.Upsert()
+	require.NoError(t, err)
 
 	githubAppAuthFromDB, err := FindOneGithubAppAuth("mongodb")
-	assert.NoError(err)
+	require.NoError(t, err)
 	assert.NotNil(githubAppAuthFromDB)
 
-	err = Remove(githubAppAuthFromDB.Id)
+	err = RemoveGithubAppAuth(githubAppAuthFromDB.Id)
 
-	assert.NoError(err)
+	require.NoError(t, err)
 	githubAppAuthFromDB, err = FindOneGithubAppAuth("mongodb")
-	assert.NoError(err)
+	require.NoError(t, err)
 	assert.Nil(githubAppAuthFromDB)
 }

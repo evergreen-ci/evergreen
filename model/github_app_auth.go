@@ -20,13 +20,14 @@ const (
 // GithubAppAuth hold the appId and privateKey for the github app associated with the project.
 // It will not be stored along with the project settings, instead it is fetched only when needed
 type GithubAppAuth struct {
-	//Should match the identifier of the project it refers to
+	// Should match the identifier of the project it refers to
 	Id string `bson:"_id" json:"_id"`
 
 	AppId      int64  `bson:"app_id" json:"app_id"`
 	PrivateKey []byte `bson:"private_key" json:"private_key"`
 }
 
+// FindOneGithubAppAuth finds the github app auth for the given project id
 func FindOneGithubAppAuth(projectId string) (*GithubAppAuth, error) {
 	githubAppAuth := &GithubAppAuth{}
 	q := db.Query(bson.M{githubAppAuthIdKey: projectId})
@@ -40,22 +41,23 @@ func FindOneGithubAppAuth(projectId string) (*GithubAppAuth, error) {
 	return githubAppAuth, nil
 }
 
+// HasGithubAppAuth checks if the github app auth for the given project id exists
 func HasGithubAppAuth(projectId string) (bool, error) {
-	githubAppAuth := &GithubAppAuth{}
-	q := db.Query(bson.M{githubAppAuthIdKey: projectId})
-	err := db.FindOneQ(GitHubAppAuthCollection, q, githubAppAuth)
-	if adb.ResultsNotFound(err) {
-		return false, nil
-	}
+	app, err := FindOneGithubAppAuth(projectId)
 	if err != nil {
 		return false, err
+	}
+
+	if app == nil {
+		return false, nil
 	}
 
 	return true, nil
 }
 
-func (githubAppAuth *GithubAppAuth) Upsert() (*adb.ChangeInfo, error) {
-	return db.Upsert(
+// Upsert inserts or updates the app auth for the given project id in the database
+func (githubAppAuth *GithubAppAuth) Upsert() error {
+	_, err := db.Upsert(
 		GitHubAppAuthCollection,
 		bson.M{
 			githubAppAuthIdKey: githubAppAuth.Id,
@@ -67,10 +69,11 @@ func (githubAppAuth *GithubAppAuth) Upsert() (*adb.ChangeInfo, error) {
 			},
 		},
 	)
+	return err
 }
 
-// Remove deletes the app auth for the given project id from the database
-func Remove(id string) error {
+// RemoveGithubAppAuth deletes the app auth for the given project id from the database
+func RemoveGithubAppAuth(id string) error {
 	return db.Remove(
 		GitHubAppAuthCollection,
 		bson.M{githubAppAuthIdKey: id},
