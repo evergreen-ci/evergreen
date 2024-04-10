@@ -70,7 +70,8 @@ type Query {
   task(taskId: String!, execution: Int): Task
   taskAllExecutions(taskId: String!): [Task!]!
   taskTestSample(
-    tasks: [String!]!
+    tasks: [String!] @deprecated(reason: "Use taskIds instead")
+    taskIds: [String!]
     filters: [TestFilter!]!
   ): [TaskTestResultSample!]
 
