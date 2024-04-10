@@ -163,7 +163,7 @@ func (c *TaskConfig) GetCloneMethod() string {
 }
 
 func (tc *TaskConfig) TaskAttributeMap() map[string]string {
-	return map[string]string{
+	attributes := map[string]string{
 		evergreen.TaskIDOtelAttribute:            tc.Task.Id,
 		evergreen.TaskNameOtelAttribute:          tc.Task.DisplayName,
 		evergreen.TaskExecutionOtelAttribute:     strconv.Itoa(tc.Task.Execution),
@@ -172,9 +172,15 @@ func (tc *TaskConfig) TaskAttributeMap() map[string]string {
 		evergreen.BuildIDOtelAttribute:           tc.Task.BuildId,
 		evergreen.BuildNameOtelAttribute:         tc.Task.BuildVariant,
 		evergreen.ProjectIdentifierOtelAttribute: tc.ProjectRef.Identifier,
+		evergreen.ProjectOrgOtelAttribute:        tc.ProjectRef.Owner,
+		evergreen.ProjectRepoOtelAttribute:       tc.ProjectRef.Repo,
 		evergreen.ProjectIDOtelAttribute:         tc.ProjectRef.Id,
 		evergreen.DistroIDOtelAttribute:          tc.Task.DistroId,
 	}
+	if tc.GithubPatchData.PRNumber != 0 {
+		attributes[evergreen.VersionPRNumOtelAttribute] = strconv.Itoa(tc.GithubPatchData.PRNumber)
+	}
+	return attributes
 }
 
 func (tc *TaskConfig) AddTaskBaggageToCtx(ctx context.Context) (context.Context, error) {
