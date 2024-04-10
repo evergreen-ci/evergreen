@@ -120,7 +120,13 @@ func (j *spawnhostStartJob) setNextScheduledStart(ctx context.Context, h *host.H
 	if j.Source != evergreen.ModifySpawnHostSleepSchedule {
 		return nil
 	}
-	nextStart, err := h.SleepSchedule.GetNextScheduledStartTime(h.SleepSchedule.NextStartTime)
+	// Since hosts are started in advance for their sleep schedule, ensure that
+	// the next start time is after the pre-start threshold.
+	scheduleAfter := time.Now().Add(host.PreStartThreshold)
+	if h.SleepSchedule.NextStartTime.After(scheduleAfter) {
+		scheduleAfter = h.SleepSchedule.NextStartTime
+	}
+	nextStart, err := h.SleepSchedule.GetNextScheduledStartTime(scheduleAfter)
 	if err != nil {
 		return errors.Wrap(err, "calculating next scheduled start")
 	}

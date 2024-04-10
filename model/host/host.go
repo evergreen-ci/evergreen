@@ -356,10 +356,10 @@ type SleepScheduleInfo struct {
 	WholeWeekdaysOff []time.Weekday `bson:"whole_weekdays_off" json:"whole_weekdays_off"`
 	// DailyStartTime and DailyStopTime represent a daily schedule for when to
 	// start a stopped host back up. The format is "HH:MM".
-	DailyStartTime string `bson:"daily_sleep_start_time" json:"daily_sleep_start_time"`
+	DailyStartTime string `bson:"daily_start_time" json:"daily_start_time"`
 	// DailyStopTime represents a daily schedule for when to stop a host. The
 	// format is "HH:MM".
-	DailyStopTime string `bson:"daily_sleep_stop_time" json:"daily_sleep_stop_time"`
+	DailyStopTime string `bson:"daily_stop_time" json:"daily_stop_time"`
 	// TimeZone is the time zone for this host's sleep schedule.
 	TimeZone string `bson:"time_zone" json:"time_zone"`
 	// TemporarilyExemptUntil stores when a user's temporary exemption ends, if
