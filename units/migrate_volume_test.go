@@ -100,9 +100,7 @@ func TestVolumeMigrateJob(t *testing.T) {
 			// until the spawn host stop job finishes once (with an error).
 			var foundFinishedSpawnHostStopJob bool
 			for {
-				if ctx.Err() != nil {
-					require.FailNow(t, "context timed out looking for finished spawn host stop job in the queue")
-				}
+				require.NoError(t, ctx.Err(), "context timed out looking for finished jobs in the queue")
 				for ji := range env.RemoteQueue().JobInfo(ctx) {
 					if ji.ID == j.ID() && ji.Status.Completed {
 						foundFinishedVolumeMigrationJob = true
