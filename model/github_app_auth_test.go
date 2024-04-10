@@ -8,7 +8,7 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-func TestFindOneAndHasApp(t *testing.T) {
+func TestFindOneGithubAppAuth(t *testing.T) {
 	assert := assert.New(t)
 
 	require.NoError(t, db.Clear(GitHubAppAuthCollection),
