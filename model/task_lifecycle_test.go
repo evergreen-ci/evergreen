@@ -6255,13 +6255,13 @@ func TestEvalStepbackDeactivatePrevious(t *testing.T) {
 	assert.NoError(b3.Insert())
 
 	// Should not unschedule previous tasks if the requester is not repotracker.
-	assert.NoError(evalStepback(ctx, &finishedTask, "", evergreen.TaskSucceeded))
+	assert.NoError(evalStepback(ctx, &finishedTask, evergreen.TaskSucceeded))
 	checkTask, err := task.FindOneId(stepbackTask.Id)
 	assert.NoError(err)
 	assert.True(checkTask.Activated)
 
 	finishedTask.Requester = evergreen.RepotrackerVersionRequester
-	assert.NoError(evalStepback(ctx, &finishedTask, "", evergreen.TaskSucceeded))
+	assert.NoError(evalStepback(ctx, &finishedTask, evergreen.TaskSucceeded))
 	checkTask, err = task.FindOneId(stepbackTask.Id)
 	assert.NoError(err)
 	assert.False(checkTask.Activated)
@@ -6282,13 +6282,13 @@ func TestEvalBisectStepback(t *testing.T) {
 			// Set the first task to failed status.
 			require.NoError(task.UpdateOne(bson.M{"_id": "t1"},
 				bson.M{"$set": bson.M{"status": evergreen.TaskFailed}}))
-			require.NoError(evalStepback(ctx, &t10, "", evergreen.TaskFailed))
+			require.NoError(evalStepback(ctx, &t10, evergreen.TaskFailed))
 			midTask, err := task.FindMidwayTaskFromIds("t1", "t10")
 			require.NoError(err)
 			assert.False(midTask.Activated)
 		},
 		"FailedTaskInStepback": func(t *testing.T, t10 task.Task) {
-			require.NoError(evalStepback(ctx, &t10, "", evergreen.TaskFailed))
+			require.NoError(evalStepback(ctx, &t10, evergreen.TaskFailed))
 			midTask, err := task.FindMidwayTaskFromIds("t1", "t10")
 			prevTask := *midTask
 			require.NoError(err)
@@ -6318,7 +6318,7 @@ func TestEvalBisectStepback(t *testing.T) {
 			require.NoError(task.UpdateOne(bson.M{"_id": midTask.Id},
 				bson.M{"$set": bson.M{"status": evergreen.TaskFailed}}))
 			// Activate next stepback
-			require.NoError(evalStepback(ctx, &prevTask, "", evergreen.TaskFailed))
+			require.NoError(evalStepback(ctx, &prevTask, evergreen.TaskFailed))
 			midTask, err = task.FindMidwayTaskFromIds("t1", prevTask.Id)
 			require.NoError(err)
 			assert.True(midTask.Activated)
@@ -6342,7 +6342,7 @@ func TestEvalBisectStepback(t *testing.T) {
 			require.Nil(lastPassing.StepbackInfo)
 		},
 		"PassedTaskInStepback": func(t *testing.T, t10 task.Task) {
-			require.NoError(evalStepback(ctx, &t10, "", evergreen.TaskFailed))
+			require.NoError(evalStepback(ctx, &t10, evergreen.TaskFailed))
 			midTask, err := task.FindMidwayTaskFromIds("t1", "t10")
 			require.NoError(err)
 			assert.True(midTask.Activated)
@@ -6372,7 +6372,7 @@ func TestEvalBisectStepback(t *testing.T) {
 			require.NoError(task.UpdateOne(bson.M{"_id": midTask.Id},
 				bson.M{"$set": bson.M{"status": evergreen.TaskSucceeded}}))
 			// Activate next stepback
-			require.NoError(evalStepback(ctx, midTask, "", evergreen.TaskSucceeded))
+			require.NoError(evalStepback(ctx, midTask, evergreen.TaskSucceeded))
 			midTask, err = task.FindMidwayTaskFromIds("t10", prevTask.Id)
 			require.NoError(err)
 			assert.True(midTask.Activated)
@@ -6453,8 +6453,8 @@ func TestEvalBisectStepback(t *testing.T) {
 			generated2Tasks[9].Status = evergreen.TaskFailed
 			require.NoError(task.UpdateOne(bson.M{"_id": generated2Tasks[9].Id},
 				bson.M{"$set": bson.M{"status": generated2Tasks[9].Status}}))
-			require.NoError(evalStepback(ctx, &generated1Tasks[9], "", evergreen.TaskFailed))
-			require.NoError(evalStepback(ctx, &generated2Tasks[9], "", evergreen.TaskFailed))
+			require.NoError(evalStepback(ctx, &generated1Tasks[9], evergreen.TaskFailed))
+			require.NoError(evalStepback(ctx, &generated2Tasks[9], evergreen.TaskFailed))
 			midTask, err := task.FindMidwayTaskFromIds("t1", "t10")
 			require.NoError(err)
 			assert.True(midTask.Activated)
@@ -6465,14 +6465,14 @@ func TestEvalBisectStepback(t *testing.T) {
 			require.Empty(midTask.StepbackInfo.NextStepbackTaskId)
 			require.Empty(midTask.StepbackInfo.PreviousStepbackTaskId)
 			// For generated task 1.
-			g1Info := midTask.StepbackInfo.GetGeneratedStepbackInfo("generated1", "bv")
+			g1Info := midTask.StepbackInfo.GetStepbackInfoForGeneratedTask("generated1", "bv")
 			require.NotNil(g1Info)
 			assert.Equal("t10", g1Info.LastFailingStepbackTaskId)
 			assert.Equal("t1", g1Info.LastPassingStepbackTaskId)
 			assert.Equal("t5", g1Info.NextStepbackTaskId)
 			assert.Equal("t10", g1Info.PreviousStepbackTaskId)
 			// For generated task 2.
-			g2Info := midTask.StepbackInfo.GetGeneratedStepbackInfo("generated2", "bv")
+			g2Info := midTask.StepbackInfo.GetStepbackInfoForGeneratedTask("generated2", "bv")
 			require.NotNil(g2Info)
 			assert.Equal("t10", g2Info.LastFailingStepbackTaskId)
 			assert.Equal("t1", g2Info.LastPassingStepbackTaskId)
@@ -6483,7 +6483,7 @@ func TestEvalBisectStepback(t *testing.T) {
 			require.NoError(err)
 			require.NotNil(lastFailing.StepbackInfo)
 			// For generator's generated task info 1.
-			g1Info = lastFailing.StepbackInfo.GetGeneratedStepbackInfo("generated1", "bv")
+			g1Info = lastFailing.StepbackInfo.GetStepbackInfoForGeneratedTask("generated1", "bv")
 			require.NotNil(g1Info)
 			assert.Equal("t10", g1Info.LastFailingStepbackTaskId)
 			assert.Equal("t1", g1Info.LastPassingStepbackTaskId)
@@ -6492,7 +6492,7 @@ func TestEvalBisectStepback(t *testing.T) {
 			assert.Equal(generated1Tasks[0].DisplayName, g1Info.DisplayName)
 			assert.Equal(generated1Tasks[0].BuildVariant, g1Info.BuildVariant)
 			// For generator's generated task info 2.
-			g2Info = lastFailing.StepbackInfo.GetGeneratedStepbackInfo("generated2", "bv")
+			g2Info = lastFailing.StepbackInfo.GetStepbackInfoForGeneratedTask("generated2", "bv")
 			require.NotNil(g2Info)
 			assert.Equal("t10", g2Info.LastFailingStepbackTaskId)
 			assert.Equal("t1", g2Info.LastPassingStepbackTaskId)
@@ -6520,8 +6520,8 @@ func TestEvalBisectStepback(t *testing.T) {
 
 			prevTask := *midTask
 			// Activate g1 next stepback
-			require.NoError(evalStepback(ctx, midTaskG1, "", evergreen.TaskSucceeded))
-			require.NoError(evalStepback(ctx, midTaskG2, "", evergreen.TaskFailed))
+			require.NoError(evalStepback(ctx, midTaskG1, evergreen.TaskSucceeded))
+			require.NoError(evalStepback(ctx, midTaskG2, evergreen.TaskFailed))
 
 			// Check mid task stepback info relating to generated task 1.
 			midTask, err = task.FindMidwayTaskFromIds("t10", prevTask.Id)
@@ -6535,14 +6535,14 @@ func TestEvalBisectStepback(t *testing.T) {
 			require.Empty(midTask.StepbackInfo.NextStepbackTaskId)
 			require.Empty(midTask.StepbackInfo.PreviousStepbackTaskId)
 			// For generated task 1.
-			g1Info = midTask.StepbackInfo.GetGeneratedStepbackInfo("generated1", "bv")
+			g1Info = midTask.StepbackInfo.GetStepbackInfoForGeneratedTask("generated1", "bv")
 			require.NotNil(g1Info)
 			assert.Equal("t10", g1Info.LastFailingStepbackTaskId)
 			assert.Equal(prevTask.Id, g1Info.LastPassingStepbackTaskId)
 			assert.Equal("t7", g1Info.NextStepbackTaskId)
 			assert.Equal(prevTask.Id, g1Info.PreviousStepbackTaskId)
 			// For generated task 2 (this mid task should not have data on it).
-			g2Info = midTask.StepbackInfo.GetGeneratedStepbackInfo("generated2", "bv")
+			g2Info = midTask.StepbackInfo.GetStepbackInfoForGeneratedTask("generated2", "bv")
 			require.Nil(g2Info)
 
 			// Check mid task stepback info relating to generated task 2.
@@ -6557,10 +6557,10 @@ func TestEvalBisectStepback(t *testing.T) {
 			require.Empty(midTask.StepbackInfo.NextStepbackTaskId)
 			require.Empty(midTask.StepbackInfo.PreviousStepbackTaskId)
 			// For generated task 1 (this mid task should not have data on it).
-			g1Info = midTask.StepbackInfo.GetGeneratedStepbackInfo("generated1", "bv")
+			g1Info = midTask.StepbackInfo.GetStepbackInfoForGeneratedTask("generated1", "bv")
 			require.Nil(g1Info)
 			// For generated task 2.
-			g2Info = midTask.StepbackInfo.GetGeneratedStepbackInfo("generated2", "bv")
+			g2Info = midTask.StepbackInfo.GetStepbackInfoForGeneratedTask("generated2", "bv")
 			require.NotNil(g2Info)
 			assert.Equal(prevTask.Id, g2Info.LastFailingStepbackTaskId)
 			assert.Equal("t1", g2Info.LastPassingStepbackTaskId)
@@ -6748,7 +6748,7 @@ tasks:
 	assert.NoError(b3.Insert())
 
 	// should not step back if there was never a successful task
-	assert.NoError(evalStepback(ctx, &finishedTask, "", evergreen.TaskFailed))
+	assert.NoError(evalStepback(ctx, &finishedTask, evergreen.TaskFailed))
 	checkTask, err := task.FindOneId(stepbackTask.Id)
 	assert.NoError(err)
 	assert.False(checkTask.Activated)
@@ -6772,7 +6772,7 @@ tasks:
 		BuildVariant: "bv",
 	}
 	assert.NoError(b1.Insert())
-	assert.NoError(evalStepback(ctx, &finishedTask, "", evergreen.TaskFailed))
+	assert.NoError(evalStepback(ctx, &finishedTask, evergreen.TaskFailed))
 	checkTask, err = task.FindOneId(stepbackTask.Id)
 	require.NoError(t, err)
 	assert.True(checkTask.Activated)
@@ -6845,14 +6845,14 @@ tasks:
 	}
 	assert.NoError(b5.Insert())
 	// Ensure system failure doesn't cause a stepback unless we're already stepping back.
-	assert.NoError(evalStepback(ctx, &generated, "", evergreen.TaskSystemFailed))
+	assert.NoError(evalStepback(ctx, &generated, evergreen.TaskSystemFailed))
 	checkTask, err = task.FindOneId(stepbackTask.Id)
 	assert.NoError(err)
 	assert.False(checkTask.Activated)
 
 	// System failure steps back since activated by stepback (and steps back generator).
 	generated.ActivatedBy = evergreen.StepbackTaskActivator
-	assert.NoError(evalStepback(ctx, &generated, "", evergreen.TaskSystemFailed))
+	assert.NoError(evalStepback(ctx, &generated, evergreen.TaskSystemFailed))
 	checkTask, err = task.FindOneId(stepbackTask.Id)
 	assert.NoError(err)
 	assert.True(checkTask.Activated)
@@ -7017,7 +7017,7 @@ func TestEvalStepbackTaskGroup(t *testing.T) {
 		RevisionOrderNumber: 1,
 	}
 	assert.NoError(t, db.InsertMany(task.Collection, t1, t2, t3, prevT1, prevT2, prevT3, prevSuccessT1, prevSuccessT2, prevSuccessT3))
-	assert.NoError(t, evalStepback(ctx, &t2, "", evergreen.TaskFailed))
+	assert.NoError(t, evalStepback(ctx, &t2, evergreen.TaskFailed))
 
 	// verify only the previous t1 and t2 are stepped back
 	prevT1FromDb, err := task.FindOneId(prevT1.Id)
@@ -7031,7 +7031,7 @@ func TestEvalStepbackTaskGroup(t *testing.T) {
 	assert.False(t, prevT3FromDb.Activated)
 
 	// stepping back t3 should now also stepback t3 and not error on earlier activated tasks
-	assert.NoError(t, evalStepback(ctx, &t3, "", evergreen.TaskFailed))
+	assert.NoError(t, evalStepback(ctx, &t3, evergreen.TaskFailed))
 	prevT3FromDb, err = task.FindOneId(prevT3.Id)
 	assert.NoError(t, err)
 	assert.True(t, prevT3FromDb.Activated)

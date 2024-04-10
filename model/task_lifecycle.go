@@ -555,17 +555,6 @@ func doLinearStepback(ctx context.Context, t *task.Task) error {
 // doBisectStepback performs a bisect stepback on the task.
 // If there are no tasks to bisect, it no-ops.
 func doBisectStepback(ctx context.Context, t *task.Task) error {
-	// If we are a generated task, do stepback on our generator.
-	if t.GeneratedBy != "" {
-		generator, err := task.FindOneId(t.GeneratedBy)
-		if err != nil {
-			return errors.Wrapf(err, "finding generator '%s'", t.GeneratedBy)
-		}
-		if generator == nil {
-			return errors.Errorf("nil generator '%s'", t.GeneratedBy)
-		}
-		return errors.Wrapf(doBisectStepbackForGeneratedTask(ctx, generator, t), "bisect stepback on generator '%s' for generated '%s'", t.GeneratedBy, t.Id)
-	}
 	// Do stepback for all execution tasks.
 	if t.DisplayOnly {
 		execTasks, err := task.Find(task.ByIds(t.ExecutionTasks))
@@ -673,15 +662,10 @@ func doBisectStepback(ctx context.Context, t *task.Task) error {
 
 func doBisectStepbackForGeneratedTask(ctx context.Context, generator *task.Task, generated *task.Task) error {
 	var s task.StepbackInfo
-	if lastStepbackInfo := generator.StepbackInfo.GetGeneratedStepbackInfo(generated.DisplayName, generated.BuildVariant); lastStepbackInfo != nil {
+	if lastStepbackInfo := generator.StepbackInfo.GetStepbackInfoForGeneratedTask(generated.DisplayName, generated.BuildVariant); lastStepbackInfo != nil {
 		// Carry over from the last task.
 		s = *lastStepbackInfo
 	} else {
-		// If this is the first iteration of stepback, we must get the initial condition (last successful passing task).
-		// If the generated task is not failed, stepback should be skipped.
-		if generated.Status != evergreen.TaskFailed {
-			return nil
-		}
 		lastPassingGenerated, err := generated.PreviousCompletedTask(generated.Project, []string{evergreen.TaskSucceeded})
 		if err != nil {
 			return errors.Wrap(err, "locating previous successful task")
@@ -694,9 +678,8 @@ func doBisectStepbackForGeneratedTask(ctx context.Context, generator *task.Task,
 			return errors.Errorf("last passing generated task '%s' must have a generator task", lastPassingGenerated.Id)
 		}
 		s = task.StepbackInfo{
-			DisplayName:  generated.DisplayName,
-			BuildVariant: generated.BuildVariant,
-
+			DisplayName:               generated.DisplayName,
+			BuildVariant:              generated.BuildVariant,
 			LastPassingStepbackTaskId: lastPassingGenerated.GeneratedBy,
 		}
 		grip.Info(message.Fields{
@@ -894,9 +877,9 @@ func MarkEnd(ctx context.Context, settings *evergreen.Settings, t *task.Task, ca
 			if err != nil {
 				return errors.Wrap(err, "getting display task")
 			}
-			err = evalStepback(ctx, t.DisplayTask, caller, status)
+			err = evalStepback(ctx, t.DisplayTask, status)
 		} else {
-			err = evalStepback(ctx, t, caller, status)
+			err = evalStepback(ctx, t, status)
 		}
 		grip.Error(message.WrapError(err, message.Fields{
 			"message": "evaluating stepback",
@@ -906,7 +889,7 @@ func MarkEnd(ctx context.Context, settings *evergreen.Settings, t *task.Task, ca
 	}
 
 	// Deactivate previous occurrences of the same task if this one passed on mainline commits.
-	if t.Status == evergreen.TaskSucceeded && deactivatePrevious && t.Requester == evergreen.RepotrackerVersionRequester {
+	if t.Status == evergreen.TaskSucceeded && deactivatePrevious && t.Requester == evergreen.RepotrackerVersionRequester && t.ActivatedBy != evergreen.StepbackTaskActivator {
 		return errors.Wrap(DeactivatePreviousTasks(ctx, t, caller), "deactivating previous tasks")
 	}
 
@@ -1373,7 +1356,7 @@ func removeNextMergeTaskDependency(ctx context.Context, cq commitqueue.CommitQue
 // evalStepback runs linear or bisect stepback depending on project, build variant, and task settings.
 // The status passed in is a display status, initially stepback only activates if the task
 // has failed but not on system failure.
-func evalStepback(ctx context.Context, t *task.Task, caller, status string) error {
+func evalStepback(ctx context.Context, t *task.Task, status string) error {
 	s, err := getStepback(t.Id)
 	if err != nil {
 		return errors.WithStack(err)
@@ -1382,14 +1365,14 @@ func evalStepback(ctx context.Context, t *task.Task, caller, status string) erro
 	// and it is not aborted.
 	newStepback := status == evergreen.TaskFailed && !t.Aborted
 	if s.bisect {
-		return evalBisectStepback(ctx, t, caller, newStepback, s.shouldStepback)
+		return evalBisectStepback(ctx, t, newStepback, s.shouldStepback)
 	}
-	return evalLinearStepback(ctx, t, caller, newStepback, s.shouldStepback)
+	return evalLinearStepback(ctx, t, newStepback, s.shouldStepback)
 }
 
 // evalLinearStepback performs linear stepback on the task or cleans up after previous iterations of lienar
 // stepback.
-func evalLinearStepback(ctx context.Context, t *task.Task, caller string, newStepback, shouldStepback bool) error {
+func evalLinearStepback(ctx context.Context, t *task.Task, newStepback, shouldStepback bool) error {
 	existingStepback := t.Status == evergreen.TaskFailed && t.ActivatedBy == evergreen.StepbackTaskActivator
 	if newStepback || existingStepback {
 		if !shouldStepback {
@@ -1421,19 +1404,35 @@ func evalLinearStepback(ctx context.Context, t *task.Task, caller string, newSte
 }
 
 // evalBisectStepback performs bisect stepback on the task.
-func evalBisectStepback(ctx context.Context, t *task.Task, caller string, newStepback, shouldStepback bool) error {
+func evalBisectStepback(ctx context.Context, t *task.Task, newStepback, shouldStepback bool) error {
 	// If the task is aborted or stepback is disabled then no-op.
 	if t.Aborted || !shouldStepback {
 		return nil
 	}
 
 	existingStepback := !t.StepbackInfo.IsZero() && t.ActivatedBy == evergreen.StepbackTaskActivator
-	generatedTask := t.GeneratedBy != ""
-	if newStepback || existingStepback || generatedTask {
+	generatedTaskStepback := t.GeneratedBy != ""
+	if newStepback || existingStepback || generatedTaskStepback {
 		return errors.Wrap(doBisectStepback(ctx, t), "performing bisect stepback")
 	}
 
-	return nil
+	if t.GeneratedBy == "" {
+		return nil
+	}
+
+	generator, err := task.FindOneId(t.GeneratedBy)
+	if err != nil {
+		return errors.Wrapf(err, "finding generator '%s'", t.GeneratedBy)
+	}
+	if generator == nil {
+		return errors.Errorf("nil generator '%s'", t.GeneratedBy)
+	}
+	// Test if the task is in stepback.
+	if generator.StepbackInfo.GetStepbackInfoForGeneratedTask(t.DisplayName, t.BuildVariant) == nil {
+		return nil
+	}
+
+	return errors.Wrapf(doBisectStepbackForGeneratedTask(ctx, generator, t), "bisect stepback on generator '%s' for generated '%s'", t.GeneratedBy, t.Id)
 }
 
 // updateMakespans updates the predicted and actual makespans for the tasks in

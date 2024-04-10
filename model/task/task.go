@@ -351,18 +351,9 @@ func (s *StepbackInfo) IsZero() bool {
 	return true
 }
 
-// HasGeneratedStepbackInfo returns true if the StepbackInfo has generated stepback info.
-// This means the task with this stepback info is a generator task and a generated task
-// of it is being stepbacked.
-func (s *StepbackInfo) HasGeneratedStepbackInfo() bool {
-	if s == nil {
-		return false
-	}
-	return len(s.GeneratedStepbackInfo) > 0
-}
-
-// GetGeneratedStepbackInfo returns the generated stepback info for the given display name and build variant.
-func (s *StepbackInfo) GetGeneratedStepbackInfo(displayName string, buildVariant string) *StepbackInfo {
+// GetStepbackInfoForGeneratedTask returns the StepbackInfo for a generated task that's
+// on a generator task.
+func (s *StepbackInfo) GetStepbackInfoForGeneratedTask(displayName string, buildVariant string) *StepbackInfo {
 	if s == nil {
 		return nil
 	}
@@ -1598,8 +1589,8 @@ func SetLastAndPreviousStepbackIds(taskId string, s StepbackInfo) error {
 	)
 }
 
-// AddGeneratedStepbackInfoForGenerator appends a new GeneratedStepbackInfo to the
-// task's StepbackInfo.
+// AddGeneratedStepbackInfoForGenerator appends a new StepbackInfo to the
+// task's GeneratedStepbackInfo.
 func AddGeneratedStepbackInfoForGenerator(taskId string, s StepbackInfo) error {
 	return UpdateOne(
 		bson.M{
@@ -1613,8 +1604,8 @@ func AddGeneratedStepbackInfoForGenerator(taskId string, s StepbackInfo) error {
 	)
 }
 
-// SetGeneratedStepbackInfoForGenerator sets the StepbackInfo that already
-// exists on that task's StepbackInfo (by DisplayName and BuildVariant).
+// SetGeneratedStepbackInfoForGenerator sets the StepbackInfo's GeneratedStepbackInfo
+// element with the same DisplayName and BuildVariant as the input StepbackInfo.
 func SetGeneratedStepbackInfoForGenerator(ctx context.Context, taskId string, s StepbackInfo) error {
 	r, err := evergreen.GetEnvironment().DB().Collection(Collection).UpdateOne(ctx,
 		bson.M{
