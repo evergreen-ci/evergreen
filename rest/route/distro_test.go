@@ -1060,7 +1060,6 @@ func (s *DistroPatchByIDSuite) TestRunInvalidEmptyStringValues() {
 		"ERROR: distro 'arch' cannot be blank",
 		"ERROR: distro 'user' cannot be blank",
 		"ERROR: distro 'work_dir' cannot be blank",
-		"ERROR: distro 'ssh_key' cannot be blank",
 	}
 
 	error := (resp.Data()).(gimlet.ErrorResponse)
