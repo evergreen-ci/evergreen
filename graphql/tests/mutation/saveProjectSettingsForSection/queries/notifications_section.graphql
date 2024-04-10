@@ -1,6 +1,7 @@
 mutation {
   saveProjectSettingsForSection(
     projectSettings: {
+      projectId: "sandbox_project_id"
       projectRef: {
         id: "sandbox_project_id"
         banner: { theme: WARNING, text: "banner text!!" }

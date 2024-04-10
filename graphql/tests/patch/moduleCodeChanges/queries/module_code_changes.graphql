@@ -1,5 +1,5 @@
 {
-  patch(id: "5e4ff3abe3c3317e352062e4") {
+  patch(patchId: "5e4ff3abe3c3317e352062e4") {
     moduleCodeChanges {
       branchName
       htmlLink

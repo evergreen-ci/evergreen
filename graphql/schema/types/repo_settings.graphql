@@ -5,7 +5,7 @@ It contains information about repo settings (e.g. Build Baron configurations, su
 update the settings for a given project.
 """
 input RepoSettingsInput {
-  repoId: String # TODO: Make this required.
+  repoId: String!
   aliases: [ProjectAliasInput!]
   githubWebhooksEnabled: Boolean
   projectRef: RepoRefInput ## use the repo ref here in order to have stronger types

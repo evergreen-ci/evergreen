@@ -2350,6 +2350,9 @@ func tryUpdateDisplayTaskAtomically(dt task.Task) (updated *task.Task, err error
 	if err != nil {
 		return &dt, errors.Wrap(err, "retrieving execution tasks")
 	}
+	if len(execTasks) == 0 {
+		return nil, errors.Errorf("display task '%s' has no execution tasks", dt.Id)
+	}
 
 	hasFinishedTasks := false
 	hasTasksToRun := false

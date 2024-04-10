@@ -1123,7 +1123,7 @@ func (r *mutationResolver) RestartTask(ctx context.Context, taskID string, faile
 }
 
 // ScheduleTasks is the resolver for the scheduleTasks field.
-func (r *mutationResolver) ScheduleTasks(ctx context.Context, taskIds []string, versionID *string) ([]*restModel.APITask, error) {
+func (r *mutationResolver) ScheduleTasks(ctx context.Context, taskIds []string, versionID string) ([]*restModel.APITask, error) {
 	scheduledTasks := []*restModel.APITask{}
 	scheduled, err := setManyTasksScheduled(ctx, r.sc.GetURL(), true, taskIds...)
 	if err != nil {

@@ -42,7 +42,7 @@ type Query {
   pod(podId: String!): Pod!
   
   # patch
-  patch(id: String @deprecated(reason: "use patchId instead"), patchId: String): Patch!
+  patch(patchId: String!): Patch!
 
   # project
   githubProjectConflicts(projectId: String!): GithubProjectConflicts!
@@ -55,8 +55,8 @@ type Query {
     @requireProjectAccess(access: VIEW)
   ): ProjectEvents!
   projectSettings(identifier: String! @requireProjectAccess(access: VIEW)): ProjectSettings!
-  repoEvents(repoId: String @requireProjectAccess(access: VIEW), id: String @deprecated(reason: "use repoId instead"), limit: Int = 0, before: Time): ProjectEvents!
-  repoSettings(repoId: String @requireProjectAccess(access: VIEW), id: String @deprecated(reason: "use repoId instead")): RepoSettings!
+  repoEvents(repoId: String! @requireProjectAccess(access: VIEW), limit: Int = 0, before: Time): ProjectEvents!
+  repoSettings(repoId: String! @requireProjectAccess(access: VIEW)): RepoSettings!
   viewableProjectRefs: [GroupedProjects]!
 
   # spawn
@@ -89,6 +89,6 @@ type Query {
   taskNamesForBuildVariant(projectIdentifier: String!, buildVariant: String!): [String!]
 
   # version
-  hasVersion(id: String @deprecated(reason: "use patchId instead"), patchId: String): Boolean!
-  version(id: String @deprecated(reason: "use versionId instead"), versionId: String): Version!
+  hasVersion(patchId: String!): Boolean!
+  version(versionId: String!): Version!
 }

@@ -74,20 +74,11 @@ func StripHiddenFiles(files []File, hasUser bool) ([]File, error) {
 		case (file.Visibility == Private || file.Visibility == Signed) && !hasUser:
 			continue
 		case file.Visibility == Signed && hasUser:
-			if !file.ContainsSigningParams() {
-				return nil, errors.New("AWS secret, AWS key, S3 bucket, or file key missing")
-			}
-			requestParams := pail.PreSignRequestParams{
-				Bucket:    file.Bucket,
-				FileKey:   file.FileKey,
-				AwsKey:    file.AwsKey,
-				AwsSecret: file.AwsSecret,
-			}
-			urlStr, err := pail.PreSign(requestParams)
+			link, err := presignFile(file)
 			if err != nil {
-				return nil, errors.Wrap(err, "presigning url")
+				return nil, errors.Wrapf(err, "presigning url for file '%s'", file.Name)
 			}
-			file.Link = urlStr
+			file.Link = link
 			publicFiles = append(publicFiles, file)
 		default:
 			publicFiles = append(publicFiles, file)
@@ -96,10 +87,26 @@ func StripHiddenFiles(files []File, hasUser bool) ([]File, error) {
 	return publicFiles, nil
 }
 
-// ContainsSigningParams returns true if all the params needed for
-// presigning a url are present
-func (f *File) ContainsSigningParams() bool {
-	return !(f.AwsSecret == "" || f.AwsKey == "" || f.Bucket == "" || f.FileKey == "")
+func presignFile(file File) (string, error) {
+	if file.AwsSecret == "" || file.AwsKey == "" || file.Bucket == "" || file.FileKey == "" {
+		return "", errors.New("AWS secret, AWS key, S3 bucket, or file key missing")
+	}
+
+	// TODO (DEVPROD-6193): remove this special casing once artifacts from the old
+	// AWS key have expired (after 3/1/2025).
+	// Empty creds will use the SDK's default credentials chain.
+	if file.Bucket == "mciuploads" {
+		file.AwsKey = ""
+		file.AwsSecret = ""
+	}
+
+	requestParams := pail.PreSignRequestParams{
+		Bucket:    file.Bucket,
+		FileKey:   file.FileKey,
+		AwsKey:    file.AwsKey,
+		AwsSecret: file.AwsSecret,
+	}
+	return pail.PreSign(requestParams)
 }
 
 func GetAllArtifacts(tasks []TaskIDAndExecution) ([]File, error) {

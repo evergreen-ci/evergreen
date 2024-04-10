@@ -1,10 +1,11 @@
 mutation {
     saveProjectSettingsForSection(
         projectSettings: {
+            projectId: "sandbox_project_id"
             projectRef: {
-                id: "sandbox_project_id",
-                identifier: "sandbox",
-                enabled: true,
+                id: "sandbox_project_id"
+                identifier: "sandbox"
+                enabled: true
                 remotePath: "my_path_is_new"
                 owner: "evergreen-ci"
                 repo: "commit-queue-sandbox"

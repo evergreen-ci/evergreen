@@ -1,5 +1,5 @@
 mutation {
-    scheduleTasks(taskIds: ["wuzzup"]) {
+    scheduleTasks(taskIds: ["wuzzup"], versionId: "version") {
       status
     }
 }

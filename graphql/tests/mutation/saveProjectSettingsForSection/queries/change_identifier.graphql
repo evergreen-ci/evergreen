@@ -1,8 +1,9 @@
 mutation {
     saveProjectSettingsForSection(
         projectSettings: {
+            projectId: "second_project_id"
             projectRef: {
-                id: "second_project_id",
+                id: "second_project_id"
                 identifier: "sandbox"
             }
         },
