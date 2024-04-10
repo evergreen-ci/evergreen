@@ -4874,7 +4874,7 @@ func TestResetTasks(t *testing.T) {
 		}
 		assert.NoError(t, t0.Insert())
 
-		assert.NoError(t, ResetTasks([]Task{t0}, ""))
+		assert.NoError(t, ResetTasks([]Task{t0}, "user"))
 		dbTask, err := FindOneId(t0.Id)
 		assert.NoError(t, err)
 		assert.False(t, dbTask.UnattainableDependency)
