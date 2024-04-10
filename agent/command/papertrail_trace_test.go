@@ -20,6 +20,7 @@ import (
 	"github.com/evergreen-ci/utility"
 	"github.com/mongodb/grip/send"
 	"github.com/pkg/errors"
+	"github.com/stretchr/testify/require"
 )
 
 func TestPapertrailTrace(t *testing.T) {
@@ -44,7 +45,7 @@ func TestPapertrailTrace(t *testing.T) {
 		execution  int
 		expansions map[string]string
 	}{
-		"basic-no-expansions": {
+		"BasicNoExpansions": {
 			keyID:     keyID,
 			secretKey: secretKey,
 			product:   product,
@@ -57,7 +58,7 @@ func TestPapertrailTrace(t *testing.T) {
 			taskID:    "abc123",
 			execution: 1,
 		},
-		"basic-expansions": {
+		"BasicExpansions": {
 			keyID:     "${key_id}",
 			secretKey: "${secret_key}",
 			product:   "${product}",
@@ -80,13 +81,13 @@ func TestPapertrailTrace(t *testing.T) {
 		},
 	}
 
-	ctx := context.Background()
-	tempdir, err := os.MkdirTemp(os.TempDir(), "papertrail-test-*")
-	if err != nil {
-		t.Fatalf("make temp dir: %s", err)
-	}
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
 
-	t.Cleanup(func() { os.RemoveAll(tempdir) })
+	tempdir, err := os.MkdirTemp(os.TempDir(), "papertrail-trace-test-*")
+	require.NoError(t, err)
+
+	t.Cleanup(func() { require.NoError(t, os.RemoveAll(tempdir)) })
 
 	pclient := thirdparty.NewPapertrailClient(keyID, secretKey, "")
 
@@ -117,16 +118,13 @@ func TestPapertrailTrace(t *testing.T) {
 
 				filename := filepath.Join(tempdir, basename)
 
-				if err := os.WriteFile(filename, []byte(data), 0755); err != nil {
-					t.Fatalf("write temp file: %s", err)
-				}
+				require.NoError(t, os.WriteFile(filename, []byte(data), 0755))
 
 				filenames = append(filenames, filepath.Base(filename))
 
 				h := sha256.New()
-				if _, err := io.Copy(h, strings.NewReader(data)); err != nil {
-					t.Fatalf("read file: %s", err)
-				}
+				_, err := io.Copy(h, strings.NewReader(data))
+				require.NoError(t, err)
 
 				sha256sum := fmt.Sprintf("%x", h.Sum(nil))
 
@@ -144,9 +142,7 @@ func TestPapertrailTrace(t *testing.T) {
 
 			cmd := papertrailTraceFactory()
 
-			if err := cmd.ParseParams(params); err != nil {
-				t.Fatalf("parse params: %s", err)
-			}
+			require.NoError(t, cmd.ParseParams(params))
 
 			tconf := &internal.TaskConfig{
 				Expansions: util.Expansions(tc.expansions),
@@ -157,60 +153,193 @@ func TestPapertrailTrace(t *testing.T) {
 				},
 			}
 
-			if err := cmd.Execute(ctx, nil, logger, tconf); err != nil {
-				t.Fatalf("execute: %s", err)
-			}
+			require.NoError(t, cmd.Execute(ctx, nil, logger, tconf))
 
 			product := getExpandedValue(tc.product)
 			version := getExpandedValue(tc.version)
 
 			pv, err := pclient.GetProductVersion(ctx, product, version)
-			if err != nil {
-				t.Fatalf("get product version: %s", err)
-			}
+			require.NoError(t, err)
 
-			if len(pv.Spans) != len(filenames) {
-				t.Fatalf("got %d spans, expected %d", len(pv.Spans), len(filenames))
-			}
+			require.Equal(t, len(pv.Spans), len(filenames))
 
 			for i, got := range pv.Spans {
 
 				sum := checksums[i]
 				filename := filenames[i]
 
-				if got.SHA256sum != sum {
-					t.Fatalf("got checksum '%s', expected '%s'", got.SHA256sum, sum)
-				}
-
-				if got.Filename != filename {
-					t.Fatalf("got filename '%s', expected '%s'", got.Filename, filename)
-				}
+				require.Equal(t, sum, got.SHA256sum)
+				require.Equal(t, filename, got.Filename)
 
 				build := getPapertrailBuildID(tc.taskID, tc.execution)
 
-				if got.Build != build {
-					t.Fatalf("got build '%s', expected '%s'", got.Build, build)
-				}
-
-				if got.Platform != "evergreen" {
-					t.Fatalf("got platform '%s', expected 'evergreen'", got.Platform)
-				}
-
-				if got.Product != product {
-					t.Fatalf("got product '%s', expected '%s'", got.Product, tc.product)
-				}
-
-				if got.Version != version {
-					t.Fatalf("got version '%s', expected '%s'", got.Version, tc.version)
-				}
-
-				if got.Submitter != tc.author {
-					t.Fatalf("got submitter '%s', expected '%s'", got.Submitter, tc.author)
-				}
-
+				require.Equal(t, build, got.Build)
+				require.Equal(t, "evergreen", got.Platform)
+				require.Equal(t, product, got.Product)
+				require.Equal(t, version, got.Version)
+				require.Equal(t, tc.author, got.Submitter)
 			}
 		})
 	}
+}
+
+func TestPapertrailGetFiles(t *testing.T) {
+	type testFile struct {
+		path    string
+		content string
+		want    papertrailTraceFile
+	}
+
+	cases := map[string]struct {
+		files    []testFile
+		patterns []string
+	}{
+		"Simple": {
+			files: []testFile{
+				{
+					path:    "test.tar.gz",
+					content: "test1",
+					want: papertrailTraceFile{
+						filename: "test.tar.gz",
+						sha256:   "1b4f0e9851971998e732078544c96b36c3d01cedf7caa332359d6f1d83567014",
+					},
+				},
+			},
+			patterns: []string{"test.tar.gz"},
+		},
+		"NestedSimple": {
+			files: []testFile{
+				{
+					path:    "parent/test.tar.gz",
+					content: "test1",
+					want: papertrailTraceFile{
+						filename: "test.tar.gz",
+						sha256:   "1b4f0e9851971998e732078544c96b36c3d01cedf7caa332359d6f1d83567014",
+					},
+				},
+			},
+			patterns: []string{"parent/test.tar.gz"},
+		},
+		"Wildcard": {
+			files: []testFile{
+				{
+					path:    "test1.tar.gz",
+					content: "foo",
+					want: papertrailTraceFile{
+						filename: "test1.tar.gz",
+						sha256:   "2c26b46b68ffc68ff99b453c1d30413413422d706483bfa0f98a5e886266e7ae",
+					},
+				},
+				{
+					path:    "test2.tar.gz",
+					content: "bar",
+					want: papertrailTraceFile{
+						filename: "test2.tar.gz",
+						sha256:   "fcde2b2edba56bf408601fb721fe9b5c338d10ee429ea04fae5511b68fbf8fb9",
+					},
+				},
+			},
+			patterns: []string{"*.tar.gz"},
+		},
+		"WildcardParent": {
+			files: []testFile{
+				{
+					path:    "parent/test1.tar.gz",
+					content: "foo",
+					want: papertrailTraceFile{
+						filename: "test1.tar.gz",
+						sha256:   "2c26b46b68ffc68ff99b453c1d30413413422d706483bfa0f98a5e886266e7ae",
+					},
+				},
+				{
+					path:    "parent/test2.tar.gz",
+					content: "bar",
+					want: papertrailTraceFile{
+						filename: "test2.tar.gz",
+						sha256:   "fcde2b2edba56bf408601fb721fe9b5c338d10ee429ea04fae5511b68fbf8fb9",
+					},
+				},
+			},
+			patterns: []string{"parent/*.tar.gz"},
+		},
+		"MultipleWildcardParent": {
+			files: []testFile{
+				{
+					path:    "test-1/parent/test1.tar.gz",
+					content: "foo",
+					want: papertrailTraceFile{
+						filename: "test1.tar.gz",
+						sha256:   "2c26b46b68ffc68ff99b453c1d30413413422d706483bfa0f98a5e886266e7ae",
+					},
+				},
+				{
+					path:    "test-2/parent/test2.tar.gz",
+					content: "bar",
+					want: papertrailTraceFile{
+						filename: "test2.tar.gz",
+						sha256:   "fcde2b2edba56bf408601fb721fe9b5c338d10ee429ea04fae5511b68fbf8fb9",
+					},
+				},
+			},
+			patterns: []string{"*/parent/*.tar.gz"},
+		},
+	}
+
+	for name, tc := range cases {
+		name, tc := name, tc
+		t.Run(name, func(t *testing.T) {
+			tempdir, err := os.MkdirTemp(os.TempDir(), "papertrail-get-files-test-*")
+			require.NoError(t, err)
+
+			t.Cleanup(func() { require.NoError(t, os.RemoveAll(tempdir)) })
+
+			for _, f := range tc.files {
+				path := filepath.Join(tempdir, f.path)
+				parent := filepath.Dir(path)
+
+				require.NoError(t, os.MkdirAll(parent, 0755))
+
+				require.NoError(t, os.WriteFile(path, []byte(f.content), 0644))
+			}
+
+			got, err := getTraceFiles(tempdir, tc.patterns)
+			require.NoError(t, err)
+
+			require.Equal(t, len(got), len(tc.files))
+
+			for i, gotf := range got {
+				tcf := tc.files[i]
+
+				require.Equal(t, tcf.want, gotf)
+			}
+		})
+	}
+
+	t.Run("MultipleMatches", func(t *testing.T) {
+		tempdir, err := os.MkdirTemp(os.TempDir(), "papertrail-get-files-test-*")
+		require.NoError(t, err)
+
+		t.Cleanup(func() { require.NoError(t, os.RemoveAll(tempdir)) })
+
+		filename := "test.tar.gz"
+		content := "test-content"
+
+		path := filepath.Join(tempdir, filename)
+
+		require.NoError(t, os.WriteFile(path, []byte(content), 0644))
+
+		patterns := []string{
+			"*.tar.gz",
+			"*.gz",
+		}
+
+		_, err = getTraceFiles(tempdir, patterns)
+		require.Error(t, err)
+
+		want := "file 'test.tar.gz' matched multiple filename patterns ('*.gz' and '*.tar.gz'); papertrail.trace requires uploaded filenames to be unique regardless of their path, please provide only unique file names"
+
+		require.Equal(t, want, err.Error())
+	})
 }
 
 func TestPapertrailParseParams(t *testing.T) {
@@ -223,7 +352,7 @@ func TestPapertrailParseParams(t *testing.T) {
 		err       error
 	}{
 
-		"missing-key-id": {
+		"MissingKeyID": {
 			keyID:     "",
 			secretKey: "test-secret-key",
 			product:   "test-product",
@@ -231,7 +360,7 @@ func TestPapertrailParseParams(t *testing.T) {
 			filenames: []string{"test-filename"},
 			err:       errors.New("must specify key_id"),
 		},
-		"missing-secret-key": {
+		"MissingSecretKey": {
 			keyID:     "test-key",
 			secretKey: "",
 			product:   "test-product",
@@ -239,7 +368,7 @@ func TestPapertrailParseParams(t *testing.T) {
 			filenames: []string{"test-filename"},
 			err:       errors.New("must specify secret_key"),
 		},
-		"missing-product": {
+		"MissingProduct": {
 			keyID:     "test-key",
 			secretKey: "test-secret-key",
 			product:   "",
@@ -247,7 +376,7 @@ func TestPapertrailParseParams(t *testing.T) {
 			filenames: []string{"test-filename"},
 			err:       errors.New("must specify product"),
 		},
-		"missing-version": {
+		"MissingVersion": {
 			keyID:     "test-key",
 			secretKey: "test-secret-key",
 			product:   "test-product",
@@ -255,7 +384,7 @@ func TestPapertrailParseParams(t *testing.T) {
 			filenames: []string{"test-filename"},
 			err:       errors.New("must specify version"),
 		},
-		"missing-filename": {
+		"MissingFilename": {
 			keyID:     "test-key",
 			secretKey: "test-secret-key",
 			product:   "test-product",
@@ -279,13 +408,11 @@ func TestPapertrailParseParams(t *testing.T) {
 			cmd := papertrailTraceFactory()
 
 			err := cmd.ParseParams(params)
-			if err.Error() != tc.err.Error() {
-				t.Fatalf("expected error '%s', got '%s'", tc.err, err)
-			}
+			require.Equal(t, tc.err.Error(), err.Error())
 		})
 	}
 
-	t.Run("no-errors", func(t *testing.T) {
+	t.Run("NoErrors", func(t *testing.T) {
 		params := map[string]any{
 			"key_id":     "test-key",
 			"secret_key": "test-secret-key",
@@ -297,8 +424,6 @@ func TestPapertrailParseParams(t *testing.T) {
 		cmd := papertrailTraceFactory()
 
 		err := cmd.ParseParams(params)
-		if err != nil {
-			t.Fatalf("expected no error, got '%s'", err)
-		}
+		require.NoError(t, err)
 	})
 }

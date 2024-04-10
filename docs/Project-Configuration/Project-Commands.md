@@ -921,6 +921,7 @@ by the Release Infrastructure team, and you may receive assistance with it in
     filenames:
         - mongosh-linux-amd64.tar.gz
         - mongosh-linux-arm64.tar.gz
+        - *.zip
 ```
 
 Parameters:
@@ -935,7 +936,15 @@ Parameters:
     1.0.1).
 -   `filenames`: A list of filename paths to pass to the service. You may use
     full filepaths in this parameter, the command will label the file with its
-    basename only when sent to the service.
+    basename only when sent to the service. Wildcard globs are supported within
+    a single directory path. For example, the filename `dist/*.zip` would
+    locate each zip file within the `dist` directory and individually trace
+    those files. Double star globs like `dist/**/*.zip` are not supported. If
+    a filename is matched multiple times in the same call to `papertrail.trace`,
+    the command will throw an error before any tracing occurs. Note that this
+    means that each basename must be unique, regardless of their path on the
+    filesystem. For example, `./build-a/file.zip` and `./build-b/file.zip` would
+    not be allowed as filenames in the same `papertrail.trace` command.
 
 ## perf.send
 
