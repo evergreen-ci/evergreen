@@ -1426,7 +1426,7 @@ func evalBisectStepback(ctx context.Context, t *task.Task, newStepback, shouldSt
 	if generator == nil {
 		return errors.Errorf("nil generator '%s'", t.GeneratedBy)
 	}
-	// Test if the task is in stepback.
+	// Check if the task is in stepback.
 	if generator.StepbackInfo.GetStepbackInfoForGeneratedTask(t.DisplayName, t.BuildVariant) == nil {
 		return nil
 	}
