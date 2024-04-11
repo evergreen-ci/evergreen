@@ -38,11 +38,7 @@ func (t *papertrailTrace) Execute(ctx context.Context,
 	pclient := thirdparty.NewPapertrailClient(t.KeyID, t.SecretKey, "")
 
 	task := conf.Task
-
-	workdir := t.WorkDir
-	if workdir == "" {
-		workdir = conf.WorkDir
-	}
+	workdir := GetWorkingDirectory(conf, t.WorkDir)
 
 	const platform = "evergreen"
 
@@ -113,6 +109,10 @@ func getTraceFiles(workdir string, patterns []string) ([]papertrailTraceFile, er
 
 			files = append(files, f)
 		}
+	}
+
+	if len(files) == 0 {
+		return nil, errors.New("filenames did not match any files; papertrail.trace requires at least one matching filename on disk")
 	}
 
 	return files, nil

@@ -941,7 +941,7 @@ Parameters:
     the command will throw an error before any tracing occurs. Note that this
     means that each basename must be unique, regardless of their path on the
     filesystem. For example, `./build-a/file.zip` and `./build-b/file.zip` would
-    not be allowed as filenames in the same `papertrail.trace` command.
+    not be allowed as filenames in the same `papertrail.trace` command. If at least one file cannot be found while using wildcard globs, the command will return an error.
 
 ## perf.send
 
