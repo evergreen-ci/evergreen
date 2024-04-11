@@ -654,6 +654,7 @@ func (s *GitGetProjectSuite) TestBuildModuleCommand() {
 
 	opts := cloneOpts{
 		method: cloneMethodOAuth,
+		token:  c.Token,
 		owner:  "evergreen-ci",
 		repo:   "sample",
 		dir:    "module",
@@ -661,7 +662,6 @@ func (s *GitGetProjectSuite) TestBuildModuleCommand() {
 	s.Require().NoError(opts.setLocation())
 
 	// ensure module clone command with http URL injects token
-	opts.token = c.Token
 	s.Require().NoError(opts.setLocation())
 	cmds, err := c.buildModuleCloneCommand(conf, opts, "main", nil)
 	s.NoError(err)
@@ -700,7 +700,7 @@ func (s *GitGetProjectSuite) TestBuildModuleCommand() {
 	s.Require().NoError(opts.setLocation())
 	cmds, err = c.buildModuleCloneCommand(conf, opts, "main", module)
 	s.NoError(err)
-	s.Require().Len(cmds, 7)
+	s.Require().Len(cmds, 10)
 	s.True(utility.StringSliceContainsOrderedPrefixSubset(cmds, []string{
 		"set -o xtrace",
 		"set -o errexit",
