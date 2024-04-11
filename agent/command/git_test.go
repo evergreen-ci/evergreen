@@ -280,6 +280,7 @@ func (s *GitGetProjectSuite) TestBuildSourceCommandCloneDepth() {
 
 	opts := cloneOpts{
 		method:     cloneMethodAccessToken,
+		token:      projectGitHubToken,
 		owner:      conf.ProjectRef.Owner,
 		repo:       conf.ProjectRef.Repo,
 		branch:     conf.ProjectRef.Branch,
@@ -579,7 +580,7 @@ func (s *GitGetProjectSuite) TestBuildSourceCommandForPullRequests() {
 
 	cmds, err := c.buildSourceCloneCommand(s.ctx, s.comm, logger, conf, opts)
 	s.NoError(err)
-	s.Require().Len(cmds, 10)
+	s.Require().Len(cmds, 13)
 	s.True(utility.StringSliceContainsOrderedPrefixSubset(cmds, []string{
 		"git fetch origin \"pull/9001/head:evg-pr-test-",
 		"git checkout \"evg-pr-test-",
@@ -608,7 +609,7 @@ func (s *GitGetProjectSuite) TestBuildSourceCommandForGitHubMergeQueue() {
 
 	cmds, err := c.buildSourceCloneCommand(s.ctx, s.comm, logger, conf, opts)
 	s.NoError(err)
-	s.Len(cmds, 10)
+	s.Len(cmds, 13)
 	s.True(utility.StringSliceContainsOrderedPrefixSubset(cmds, []string{
 		"git fetch origin \"gh-readonly-queue/main/pr-515-9cd8a2532bcddf58369aa82eb66ba88e2323c056:evg-mg-test-",
 		"git checkout \"evg-mg-test-",
@@ -652,7 +653,7 @@ func (s *GitGetProjectSuite) TestBuildModuleCommand() {
 	}
 
 	opts := cloneOpts{
-		method: "cloneMethodOAuth",
+		method: cloneMethodOAuth,
 		owner:  "evergreen-ci",
 		repo:   "sample",
 		dir:    "module",
@@ -948,7 +949,7 @@ func (s *GitGetProjectSuite) TestCloneOptsSetLocationGitHub() {
 		token:  "",
 	}
 	s.Require().NoError(opts.setLocation())
-	s.Equal("git@github.com:foo/bar.git", opts.location)
+	s.Equal("https://github.com/foo/bar.git", opts.location)
 
 	opts.method = cloneMethodOAuth
 	s.Require().NoError(opts.setLocation())
