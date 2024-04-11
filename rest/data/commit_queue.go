@@ -115,7 +115,7 @@ func (pc *DBCommitQueueConnector) AddPatchForPR(ctx context.Context, projectRef 
 
 func getPatchInfo(ctx context.Context, settings *evergreen.Settings, githubToken string, patchDoc *patch.Patch) (string, []thirdparty.Summary, *model.Project, *model.ParserProject, error) {
 	patchContent, summaries, err := thirdparty.GetGithubPullRequestDiff(ctx, githubToken, patchDoc.GithubPatchData)
-	if err != nil {
+	if err != nil && !strings.Contains(err.Error(), thirdparty.PRDiffTooLargeErrorMessage) {
 		return "", nil, nil, nil, errors.Wrap(err, "getting GitHub PR diff")
 	}
 
