@@ -78,10 +78,8 @@ func (c instanceTypeSubnetCache) getAZs(ctx context.Context, settings *evergreen
 }
 
 type EC2FleetManagerOptions struct {
-	client AWSClient
-	region string
-	// kim: TODO: remove providerKey and providerSecret because both are dead
-	// fields.
+	client         AWSClient
+	region         string
 	providerKey    string
 	providerSecret string
 }

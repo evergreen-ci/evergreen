@@ -451,8 +451,10 @@ func TestSetStopped(t *testing.T) {
 			assert.Empty(t, dbHost.Host)
 			assert.True(t, utility.IsZeroTime(dbHost.StartTime))
 			assert.False(t, h.SleepSchedule.ShouldKeepOff)
+			assert.NotZero(t, h.SleepSchedule.NextStopTime, "next stop time should remain set on the host")
+			assert.NotZero(t, h.SleepSchedule.NextStartTime, "next start time should remain set on the host")
 		},
-		"SetsShouldKeepOff": func(ctx context.Context, t *testing.T, h *Host) {
+		"SetsShouldKeepOffAndClearsNextSleepScheduleTimes": func(ctx context.Context, t *testing.T, h *Host) {
 			require.NoError(t, h.Insert(ctx))
 
 			assert.NoError(t, h.SetStopped(ctx, true, ""))
@@ -467,6 +469,8 @@ func TestSetStopped(t *testing.T) {
 			assert.Empty(t, dbHost.Host)
 			assert.True(t, utility.IsZeroTime(dbHost.StartTime))
 			assert.True(t, dbHost.SleepSchedule.ShouldKeepOff)
+			assert.Zero(t, h.SleepSchedule.NextStopTime, "next stop time should be cleared on a host being kept off")
+			assert.Zero(t, h.SleepSchedule.NextStartTime, "next start time should be cleared on a host being kept off")
 		},
 	} {
 		t.Run(tName, func(t *testing.T) {
@@ -479,6 +483,10 @@ func TestSetStopped(t *testing.T) {
 				Status:    evergreen.HostRunning,
 				StartTime: time.Date(2009, time.November, 10, 23, 0, 0, 0, time.UTC),
 				Host:      "host.mongodb.com",
+				SleepSchedule: SleepScheduleInfo{
+					NextStartTime: time.Now(),
+					NextStopTime:  time.Now(),
+				},
 			}
 			tCase(ctx, t, h)
 		})
