@@ -11908,7 +11908,7 @@ func (ec *executionContext) field_Query_projectEvents_args(ctx context.Context, 
 			if err != nil {
 				return nil, err
 			}
-			access, err := ec.unmarshalNAccessLevel2githubᚗcomᚋevergreenᚑciᚋevergreenᚋgraphqlᚐAccessLevel(ctx, "EDIT")
+			access, err := ec.unmarshalNAccessLevel2githubᚗcomᚋevergreenᚑciᚋevergreenᚋgraphqlᚐAccessLevel(ctx, "VIEW")
 			if err != nil {
 				return nil, err
 			}
@@ -11962,7 +11962,7 @@ func (ec *executionContext) field_Query_projectSettings_args(ctx context.Context
 			if err != nil {
 				return nil, err
 			}
-			access, err := ec.unmarshalNAccessLevel2githubᚗcomᚋevergreenᚑciᚋevergreenᚋgraphqlᚐAccessLevel(ctx, "EDIT")
+			access, err := ec.unmarshalNAccessLevel2githubᚗcomᚋevergreenᚑciᚋevergreenᚋgraphqlᚐAccessLevel(ctx, "VIEW")
 			if err != nil {
 				return nil, err
 			}
@@ -12013,7 +12013,7 @@ func (ec *executionContext) field_Query_repoEvents_args(ctx context.Context, raw
 			if err != nil {
 				return nil, err
 			}
-			access, err := ec.unmarshalNAccessLevel2githubᚗcomᚋevergreenᚑciᚋevergreenᚋgraphqlᚐAccessLevel(ctx, "EDIT")
+			access, err := ec.unmarshalNAccessLevel2githubᚗcomᚋevergreenᚑciᚋevergreenᚋgraphqlᚐAccessLevel(ctx, "VIEW")
 			if err != nil {
 				return nil, err
 			}
@@ -12067,7 +12067,7 @@ func (ec *executionContext) field_Query_repoSettings_args(ctx context.Context, r
 			if err != nil {
 				return nil, err
 			}
-			access, err := ec.unmarshalNAccessLevel2githubᚗcomᚋevergreenᚑciᚋevergreenᚋgraphqlᚐAccessLevel(ctx, "EDIT")
+			access, err := ec.unmarshalNAccessLevel2githubᚗcomᚋevergreenᚑciᚋevergreenᚋgraphqlᚐAccessLevel(ctx, "VIEW")
 			if err != nil {
 				return nil, err
 			}
