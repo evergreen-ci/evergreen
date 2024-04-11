@@ -163,13 +163,15 @@ type LogLinks struct {
 }
 
 type ApiTaskEndDetail struct {
-	// The status of the completed task
+	// The status of the completed task.
 	Status *string `json:"status"`
-	// The method by which the task failed
+	// The method by which the task failed.
 	Type *string `json:"type"`
-	// Description of the final status of this task
+	// Description of the final status of this task.
 	Description *string `json:"desc"`
-	// Whether this task ended in a timeout
+	// PostErrored is true when the post command errored.
+	PostErrored bool `json:"post_errored"`
+	// Whether this task ended in a timeout.
 	TimedOut    bool              `json:"timed_out"`
 	TimeoutType *string           `json:"timeout_type"`
 	OOMTracker  APIOomTrackerInfo `json:"oom_tracker_info"`
@@ -181,6 +183,7 @@ func (at *ApiTaskEndDetail) BuildFromService(t apimodels.TaskEndDetail) error {
 	at.Status = utility.ToStringPtr(t.Status)
 	at.Type = utility.ToStringPtr(t.Type)
 	at.Description = utility.ToStringPtr(t.Description)
+	at.PostErrored = t.PostErrored
 	at.TimedOut = t.TimedOut
 	at.TimeoutType = utility.ToStringPtr(t.TimeoutType)
 
@@ -198,6 +201,7 @@ func (ad *ApiTaskEndDetail) ToService() apimodels.TaskEndDetail {
 		Status:      utility.FromStringPtr(ad.Status),
 		Type:        utility.FromStringPtr(ad.Type),
 		Description: utility.FromStringPtr(ad.Description),
+		PostErrored: ad.PostErrored,
 		TimedOut:    ad.TimedOut,
 		TimeoutType: utility.FromStringPtr(ad.TimeoutType),
 		OOMTracker:  ad.OOMTracker.ToService(),
