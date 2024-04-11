@@ -1815,7 +1815,7 @@ func GetProjectSettingsById(projectId string, isRepo bool) (*ProjectSettings, er
 func GetProjectSettings(p *ProjectRef) (*ProjectSettings, error) {
 	// Don't error even if there is problem with verifying the GitHub app installation
 	// because a GitHub outage could cause project settings page to not load.
-	hasApp, _ := evergreen.GetEnvironment().Settings().HasGitHubApp(context.Background(), p.Owner, p.Repo)
+	hasEvergreenAppInstalled, _ := evergreen.GetEnvironment().Settings().HasGitHubApp(context.Background(), p.Owner, p.Repo)
 
 	projectVars, err := FindOneProjectVars(p.Id)
 	if err != nil {
@@ -1832,12 +1832,19 @@ func GetProjectSettings(p *ProjectRef) (*ProjectSettings, error) {
 	if err != nil {
 		return nil, errors.Wrapf(err, "finding subscription for project '%s'", p.Id)
 	}
+
+	hasGithubAppAuth, err := HasGithubAppAuth(p.Id)
+	if err != nil {
+		return nil, errors.Wrapf(err, "finding hadGithubApp for project '%s'", p.Id)
+	}
+
 	projectSettingsEvent := ProjectSettings{
 		ProjectRef:         *p,
-		GithubHooksEnabled: hasApp,
+		GithubHooksEnabled: hasEvergreenAppInstalled,
 		Vars:               *projectVars,
 		Aliases:            projectAliases,
 		Subscriptions:      subscriptions,
+		HasGitHubApp:       hasGithubAppAuth,
 	}
 	return &projectSettingsEvent, nil
 }

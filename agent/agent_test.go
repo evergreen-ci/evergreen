@@ -647,6 +647,19 @@ post:
 	})
 }
 
+func (s *AgentSuite) TestPostSucceedsButErrorIsStored() {
+	projYml := `
+post:
+  - command: shell.exec
+    params:
+      script: exit 1
+`
+	s.setupRunTask(projYml)
+	s.NoError(s.a.runPostOrTeardownTaskCommands(s.ctx, s.tc))
+	s.NoError(s.tc.logger.Close())
+	s.True(s.tc.getPostErrored())
+}
+
 func (s *AgentSuite) TestPostTimeoutDoesNotFailTask() {
 	projYml := `
 buildvariants:
@@ -700,6 +713,7 @@ post:
 
 	s.NoError(s.tc.logger.Close())
 	checkMockLogs(s.T(), s.mockCommunicator, s.tc.taskConfig.Task.Id, nil, []string{panicLog})
+	s.True(s.tc.getPostErrored())
 }
 
 func (s *AgentSuite) TestPostTimeoutFailsTask() {

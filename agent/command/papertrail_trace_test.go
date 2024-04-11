@@ -34,6 +34,14 @@ func TestPapertrailTrace(t *testing.T) {
 	secretKey := settings.Expansions["papertrail_secret_key"]
 	product := "papertrail-evergreen-command-testing"
 
+	// temproot (/tmp) is the task working directory
+	temproot := os.TempDir()
+	tempdir, err := os.MkdirTemp(temproot, "papertrail-trace-test-*")
+	require.NoError(t, err)
+
+	// papertrail-trace-test-* is used to simulate a relative working directory
+	tempdirBase := filepath.Base(tempdir)
+
 	cases := map[string]struct {
 		keyID      string
 		secretKey  string
@@ -43,6 +51,7 @@ func TestPapertrailTrace(t *testing.T) {
 		author     string
 		taskID     string
 		execution  int
+		workdir    string
 		expansions map[string]string
 	}{
 		"BasicNoExpansions": {
@@ -53,6 +62,20 @@ func TestPapertrailTrace(t *testing.T) {
 			filenames: []string{
 				utility.RandomString(),
 				utility.RandomString(),
+			},
+			author:    "foo.bar",
+			taskID:    "abc123",
+			execution: 1,
+			workdir:   tempdirBase,
+		},
+		"WithoutWorkDir": {
+			keyID:     keyID,
+			secretKey: secretKey,
+			product:   product,
+			version:   utility.RandomString(),
+			filenames: []string{
+				filepath.Join(tempdirBase, utility.RandomString()),
+				filepath.Join(tempdirBase, utility.RandomString()),
 			},
 			author:    "foo.bar",
 			taskID:    "abc123",
@@ -70,6 +93,7 @@ func TestPapertrailTrace(t *testing.T) {
 			author:    "foo.bar",
 			taskID:    "abc123",
 			execution: 1,
+			workdir:   tempdirBase,
 			expansions: map[string]string{
 				"key_id":      keyID,
 				"secret_key":  secretKey,
@@ -83,9 +107,6 @@ func TestPapertrailTrace(t *testing.T) {
 
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
-
-	tempdir, err := os.MkdirTemp(os.TempDir(), "papertrail-trace-test-*")
-	require.NoError(t, err)
 
 	t.Cleanup(func() { require.NoError(t, os.RemoveAll(tempdir)) })
 
@@ -108,19 +129,20 @@ func TestPapertrailTrace(t *testing.T) {
 		}
 
 		t.Run(name, func(t *testing.T) {
-			filenames := make([]string, 0, len(tc.filenames))
+			basenames := make([]string, 0, len(tc.filenames))
 			checksums := make([]string, 0, len(tc.filenames))
 
-			for _, basename := range tc.filenames {
-				basename = getExpandedValue(basename)
+			for _, fullname := range tc.filenames {
+				fullname = getExpandedValue(fullname)
 
 				data := utility.RandomString()
 
+				basename := filepath.Base(fullname)
 				filename := filepath.Join(tempdir, basename)
 
 				require.NoError(t, os.WriteFile(filename, []byte(data), 0755))
 
-				filenames = append(filenames, filepath.Base(filename))
+				basenames = append(basenames, basename)
 
 				h := sha256.New()
 				_, err := io.Copy(h, strings.NewReader(data))
@@ -136,8 +158,8 @@ func TestPapertrailTrace(t *testing.T) {
 				"secret_key": tc.secretKey,
 				"product":    tc.product,
 				"version":    tc.version,
-				"filenames":  filenames,
-				"work_dir":   tempdir,
+				"filenames":  tc.filenames,
+				"work_dir":   tc.workdir,
 			}
 
 			cmd := papertrailTraceFactory()
@@ -151,6 +173,7 @@ func TestPapertrailTrace(t *testing.T) {
 					Execution:   tc.execution,
 					ActivatedBy: tc.author,
 				},
+				WorkDir: temproot,
 			}
 
 			require.NoError(t, cmd.Execute(ctx, nil, logger, tconf))
@@ -161,12 +184,12 @@ func TestPapertrailTrace(t *testing.T) {
 			pv, err := pclient.GetProductVersion(ctx, product, version)
 			require.NoError(t, err)
 
-			require.Equal(t, len(pv.Spans), len(filenames))
+			require.Equal(t, len(pv.Spans), len(basenames))
 
 			for i, got := range pv.Spans {
 
 				sum := checksums[i]
-				filename := filenames[i]
+				filename := basenames[i]
 
 				require.Equal(t, sum, got.SHA256sum)
 				require.Equal(t, filename, got.Filename)
@@ -337,6 +360,31 @@ func TestPapertrailGetFiles(t *testing.T) {
 		require.Error(t, err)
 
 		want := "file 'test.tar.gz' matched multiple filename patterns ('*.gz' and '*.tar.gz'); papertrail.trace requires uploaded filenames to be unique regardless of their path, please provide only unique file names"
+
+		require.Equal(t, want, err.Error())
+	})
+
+	t.Run("NoMatches", func(t *testing.T) {
+		tempdir, err := os.MkdirTemp(os.TempDir(), "papertrail-get-files-test-*")
+		require.NoError(t, err)
+
+		t.Cleanup(func() { require.NoError(t, os.RemoveAll(tempdir)) })
+
+		filename := "test.tar.gz"
+		content := "test-content"
+
+		path := filepath.Join(tempdir, filename)
+
+		require.NoError(t, os.WriteFile(path, []byte(content), 0644))
+
+		patterns := []string{
+			"*.zip",
+		}
+
+		_, err = getTraceFiles(tempdir, patterns)
+		require.Error(t, err)
+
+		want := "filenames did not match any files; papertrail.trace requires at least one matching filename on disk"
 
 		require.Equal(t, want, err.Error())
 	})

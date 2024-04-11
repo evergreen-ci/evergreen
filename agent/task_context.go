@@ -24,6 +24,7 @@ import (
 
 type taskContext struct {
 	currentCommand command.Command
+	postErrored    bool
 	logger         client.LoggerProducer
 	task           client.TaskData
 	ranSetupGroup  bool
@@ -36,6 +37,18 @@ type taskContext struct {
 	// will overwrite the default end task response.
 	userEndTaskResp *triggerEndTaskResp
 	sync.RWMutex
+}
+
+func (tc *taskContext) getPostErrored() bool {
+	tc.RLock()
+	defer tc.RUnlock()
+	return tc.postErrored
+}
+
+func (tc *taskContext) setPostErrored(errored bool) {
+	tc.Lock()
+	defer tc.Unlock()
+	tc.postErrored = errored
 }
 
 func (tc *taskContext) setCurrentCommand(command command.Command) {

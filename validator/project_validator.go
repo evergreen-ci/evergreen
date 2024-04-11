@@ -974,10 +974,11 @@ func validateIncludeLimits(_ context.Context, settings *evergreen.Settings, proj
 }
 
 func validateProjectLimits(_ context.Context, settings *evergreen.Settings, project *model.Project, _ *model.ProjectRef, _ bool) ValidationErrors {
+	bvTasks := project.FindAllBuildVariantTasks()
 	errs := ValidationErrors{}
-	if settings.TaskLimits.MaxTasksPerVersion > 0 && len(project.Tasks) > settings.TaskLimits.MaxTasksPerVersion {
+	if settings.TaskLimits.MaxTasksPerVersion > 0 && len(bvTasks) > settings.TaskLimits.MaxTasksPerVersion {
 		errs = append(errs, ValidationError{
-			Message: fmt.Sprintf("project's total number of tasks (%d) exceeds maximum limit (%d)", len(project.Tasks), settings.TaskLimits.MaxTasksPerVersion),
+			Message: fmt.Sprintf("project's total number of tasks (%d) exceeds maximum limit (%d)", len(bvTasks), settings.TaskLimits.MaxTasksPerVersion),
 			Level:   Error,
 		})
 	}
