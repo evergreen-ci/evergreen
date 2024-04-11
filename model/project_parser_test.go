@@ -2508,6 +2508,7 @@ func TestMergeUnique(t *testing.T) {
 		CommandType:       utility.ToStringPtr("type"),
 		CallbackTimeout:   utility.ToIntPtr(1),
 		ExecTimeoutSecs:   utility.ToIntPtr(1),
+		TimeoutSecs:       utility.ToIntPtr(1),
 	}
 
 	err := main.mergeUnique(add)
@@ -2522,6 +2523,7 @@ func TestMergeUnique(t *testing.T) {
 	assert.NotNil(t, main.CommandType)
 	assert.NotNil(t, main.CallbackTimeout)
 	assert.NotNil(t, main.ExecTimeoutSecs)
+	assert.NotNil(t, main.TimeoutSecs)
 }
 
 func TestMergeUniqueFail(t *testing.T) {
@@ -2549,6 +2551,7 @@ func TestMergeUniqueFail(t *testing.T) {
 		CommandType:       utility.ToStringPtr("type"),
 		CallbackTimeout:   utility.ToIntPtr(1),
 		ExecTimeoutSecs:   utility.ToIntPtr(1),
+		TimeoutSecs:       utility.ToIntPtr(1),
 	}
 
 	err := main.mergeUnique(add)
@@ -2562,6 +2565,7 @@ func TestMergeUniqueFail(t *testing.T) {
 	assert.Contains(t, err.Error(), "command type can only be defined in one YAML")
 	assert.Contains(t, err.Error(), "callback timeout can only be defined in one YAML")
 	assert.Contains(t, err.Error(), "exec timeout secs can only be defined in one YAML")
+	assert.Contains(t, err.Error(), "timeout secs can only be defined in one YAML")
 }
 
 func TestMergeBuildVariant(t *testing.T) {

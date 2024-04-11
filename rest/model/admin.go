@@ -413,18 +413,16 @@ func (a *APIAmboyConfig) ToService() (interface{}, error) {
 }
 
 type APIAmboyDBConfig struct {
-	URL       *string `json:"url"`
-	KanopyURL *string `json:"kanopy_url"`
-	Database  *string `json:"database"`
-	Username  *string `json:"username"`
-	Password  *string `json:"password"`
+	URL      *string `json:"url"`
+	Database *string `json:"database"`
+	Username *string `json:"username"`
+	Password *string `json:"password"`
 }
 
 func (a *APIAmboyDBConfig) BuildFromService(h interface{}) error {
 	switch v := h.(type) {
 	case evergreen.AmboyDBConfig:
 		a.URL = utility.ToStringPtr(v.URL)
-		a.KanopyURL = utility.ToStringPtr(v.KanopyURL)
 		a.Database = utility.ToStringPtr(v.Database)
 		return nil
 	default:
@@ -434,9 +432,8 @@ func (a *APIAmboyDBConfig) BuildFromService(h interface{}) error {
 
 func (a *APIAmboyDBConfig) ToService() (interface{}, error) {
 	return evergreen.AmboyDBConfig{
-		URL:       utility.FromStringPtr(a.URL),
-		KanopyURL: utility.FromStringPtr(a.KanopyURL),
-		Database:  utility.FromStringPtr(a.Database),
+		URL:      utility.FromStringPtr(a.URL),
+		Database: utility.FromStringPtr(a.Database),
 	}, nil
 }
 
@@ -685,16 +682,18 @@ func (a *APIBucketsConfig) ToService() (interface{}, error) {
 }
 
 type APICedarConfig struct {
-	BaseURL *string `json:"base_url"`
-	RPCPort *string `json:"rpc_port"`
-	User    *string `json:"user"`
-	APIKey  *string `json:"api_key"`
+	BaseURL     *string `json:"base_url"`
+	GRPCBaseURL *string `json:"grpc_base_url"`
+	RPCPort     *string `json:"rpc_port"`
+	User        *string `json:"user"`
+	APIKey      *string `json:"api_key"`
 }
 
 func (a *APICedarConfig) BuildFromService(h interface{}) error {
 	switch v := h.(type) {
 	case evergreen.CedarConfig:
 		a.BaseURL = utility.ToStringPtr(v.BaseURL)
+		a.GRPCBaseURL = utility.ToStringPtr(v.GRPCBaseURL)
 		a.RPCPort = utility.ToStringPtr(v.RPCPort)
 		a.User = utility.ToStringPtr(v.User)
 		a.APIKey = utility.ToStringPtr(v.APIKey)
@@ -706,10 +705,11 @@ func (a *APICedarConfig) BuildFromService(h interface{}) error {
 
 func (a *APICedarConfig) ToService() (interface{}, error) {
 	return evergreen.CedarConfig{
-		BaseURL: utility.FromStringPtr(a.BaseURL),
-		RPCPort: utility.FromStringPtr(a.RPCPort),
-		User:    utility.FromStringPtr(a.User),
-		APIKey:  utility.FromStringPtr(a.APIKey),
+		BaseURL:     utility.FromStringPtr(a.BaseURL),
+		GRPCBaseURL: utility.FromStringPtr(a.GRPCBaseURL),
+		RPCPort:     utility.FromStringPtr(a.RPCPort),
+		User:        utility.FromStringPtr(a.User),
+		APIKey:      utility.FromStringPtr(a.APIKey),
 	}, nil
 }
 

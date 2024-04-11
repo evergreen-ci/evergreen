@@ -95,6 +95,7 @@
           "exact_match": true
         }
       ],
+      "oldest_allowed_merge_base": "abc",
       "git_tag_authorized_users": ["ablack12"],
       "workstation_config": {
         "setup_commands": null,
@@ -125,7 +126,8 @@
     {
       "owner": "evergreen-ci",
       "repo": "commit-queue-sandbox",
-      "installation_id": 1234
+      "app_id": 1234,
+      "installation_id": 5678
     }
   ]
 }

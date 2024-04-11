@@ -231,6 +231,7 @@ type Project {
   isFavorite: Boolean!
   manualPrTestingEnabled: Boolean
   notifyOnBuildFailure: Boolean
+  oldestAllowedMergeBase: String!
   owner: String!
   parsleyFilters: [ParsleyFilter!]
   patches(patchesInput: PatchesInput!): Patches! # project patches

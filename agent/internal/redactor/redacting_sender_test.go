@@ -1,4 +1,4 @@
-package client
+package redactor
 
 import (
 	"fmt"
@@ -74,7 +74,7 @@ func TestRedactingSender(t *testing.T) {
 			wrappedSender, err := send.NewInternalLogger("", send.LevelInfo{Threshold: level.Info, Default: level.Info})
 			require.NoError(t, err)
 
-			newRedactingSender(wrappedSender, util.NewDynamicExpansions(test.expansions), test.expansionsToRedact).Send(message.NewDefaultMessage(level.Info, test.inputString))
+			NewRedactingSender(wrappedSender, RedactionOptions{Expansions: util.NewDynamicExpansions(test.expansions), Redacted: test.expansionsToRedact}).Send(message.NewDefaultMessage(level.Info, test.inputString))
 			assert.Equal(t, test.expected, wrappedSender.GetMessage().Message.String())
 		})
 	}

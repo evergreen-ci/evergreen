@@ -582,6 +582,8 @@ type APIProjectRef struct {
 	BatchTime int `json:"batch_time"`
 	// Path to config file in repo.
 	RemotePath *string `json:"remote_path"`
+	// Oldest allowed merge base for PR patches
+	OldestAllowedMergeBase *string `json:"oldest_allowed_merge_base"`
 	// File path to script that users can run on spawn hosts loaded with task
 	// data.
 	SpawnHostScriptPath *string `json:"spawn_host_script_path"`
@@ -724,6 +726,7 @@ func (p *APIProjectRef) ToService() (*model.ProjectRef, error) {
 		DisabledStatsCache:     utility.BoolPtrCopy(p.DisabledStatsCache),
 		NotifyOnBuildFailure:   utility.BoolPtrCopy(p.NotifyOnBuildFailure),
 		SpawnHostScriptPath:    utility.FromStringPtr(p.SpawnHostScriptPath),
+		OldestAllowedMergeBase: utility.FromStringPtr(p.OldestAllowedMergeBase),
 		Admins:                 utility.FromStringPtrSlice(p.Admins),
 		GitTagAuthorizedUsers:  utility.FromStringPtrSlice(p.GitTagAuthorizedUsers),
 		GitTagAuthorizedTeams:  utility.FromStringPtrSlice(p.GitTagAuthorizedTeams),
@@ -833,6 +836,7 @@ func (p *APIProjectRef) BuildPublicFields(projectRef model.ProjectRef) error {
 	p.DisabledStatsCache = utility.BoolPtrCopy(projectRef.DisabledStatsCache)
 	p.NotifyOnBuildFailure = utility.BoolPtrCopy(projectRef.NotifyOnBuildFailure)
 	p.SpawnHostScriptPath = utility.ToStringPtr(projectRef.SpawnHostScriptPath)
+	p.OldestAllowedMergeBase = utility.ToStringPtr(projectRef.OldestAllowedMergeBase)
 	p.GitTagAuthorizedUsers = utility.ToStringPtrSlice(projectRef.GitTagAuthorizedUsers)
 	p.GitTagAuthorizedTeams = utility.ToStringPtrSlice(projectRef.GitTagAuthorizedTeams)
 	p.GithubTriggerAliases = utility.ToStringPtrSlice(projectRef.GithubTriggerAliases)

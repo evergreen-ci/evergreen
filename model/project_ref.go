@@ -73,9 +73,12 @@ type ProjectRef struct {
 	// all aliases defined for the project
 	PatchTriggerAliases []patch.PatchTriggerDefinition `bson:"patch_trigger_aliases" json:"patch_trigger_aliases"`
 	// all PatchTriggerAliases applied to github patch intents
-	GithubTriggerAliases []string                  `bson:"github_trigger_aliases" json:"github_trigger_aliases"`
-	PeriodicBuilds       []PeriodicBuildDefinition `bson:"periodic_builds" json:"periodic_builds"`
-	CommitQueue          CommitQueueParams         `bson:"commit_queue" json:"commit_queue" yaml:"commit_queue"`
+	GithubTriggerAliases []string `bson:"github_trigger_aliases" json:"github_trigger_aliases"`
+	// OldestAllowedMergeBase is the commit hash of the oldest merge base on the target branch
+	// that PR patches can be created from.
+	OldestAllowedMergeBase string                    `bson:"oldest_allowed_merge_base" json:"oldest_allowed_merge_base"`
+	PeriodicBuilds         []PeriodicBuildDefinition `bson:"periodic_builds" json:"periodic_builds"`
+	CommitQueue            CommitQueueParams         `bson:"commit_queue" json:"commit_queue" yaml:"commit_queue"`
 
 	// Admins contain a list of users who are able to access the projects page.
 	Admins []string `bson:"admins" json:"admins"`
@@ -336,6 +339,7 @@ var (
 	projectRefPatchTriggerAliasesKey      = bsonutil.MustHaveTag(ProjectRef{}, "PatchTriggerAliases")
 	projectRefGithubTriggerAliasesKey     = bsonutil.MustHaveTag(ProjectRef{}, "GithubTriggerAliases")
 	projectRefPeriodicBuildsKey           = bsonutil.MustHaveTag(ProjectRef{}, "PeriodicBuilds")
+	projectRefOldestAllowedMergeBaseKey   = bsonutil.MustHaveTag(ProjectRef{}, "OldestAllowedMergeBase")
 	projectRefWorkstationConfigKey        = bsonutil.MustHaveTag(ProjectRef{}, "WorkstationConfig")
 	projectRefTaskAnnotationSettingsKey   = bsonutil.MustHaveTag(ProjectRef{}, "TaskAnnotationSettings")
 	projectRefBuildBaronSettingsKey       = bsonutil.MustHaveTag(ProjectRef{}, "BuildBaronSettings")
@@ -1811,7 +1815,7 @@ func GetProjectSettingsById(projectId string, isRepo bool) (*ProjectSettings, er
 func GetProjectSettings(p *ProjectRef) (*ProjectSettings, error) {
 	// Don't error even if there is problem with verifying the GitHub app installation
 	// because a GitHub outage could cause project settings page to not load.
-	hasApp, _ := evergreen.GetEnvironment().Settings().HasGitHubApp(context.Background(), p.Owner, p.Repo)
+	hasEvergreenAppInstalled, _ := evergreen.GetEnvironment().Settings().HasGitHubApp(context.Background(), p.Owner, p.Repo)
 
 	projectVars, err := FindOneProjectVars(p.Id)
 	if err != nil {
@@ -1828,12 +1832,19 @@ func GetProjectSettings(p *ProjectRef) (*ProjectSettings, error) {
 	if err != nil {
 		return nil, errors.Wrapf(err, "finding subscription for project '%s'", p.Id)
 	}
+
+	hasGithubAppAuth, err := HasGithubAppAuth(p.Id)
+	if err != nil {
+		return nil, errors.Wrapf(err, "finding hadGithubApp for project '%s'", p.Id)
+	}
+
 	projectSettingsEvent := ProjectSettings{
 		ProjectRef:         *p,
-		GithubHooksEnabled: hasApp,
+		GithubHooksEnabled: hasEvergreenAppInstalled,
 		Vars:               *projectVars,
 		Aliases:            projectAliases,
 		Subscriptions:      subscriptions,
+		HasGitHubApp:       hasGithubAppAuth,
 	}
 	return &projectSettingsEvent, nil
 }
@@ -2061,6 +2072,7 @@ func SaveProjectPageForSection(projectId string, p *ProjectRef, section ProjectP
 					ProjectRefGitTagAuthorizedUsersKey:  p.GitTagAuthorizedUsers,
 					ProjectRefGitTagAuthorizedTeamsKey:  p.GitTagAuthorizedTeams,
 					projectRefCommitQueueKey:            p.CommitQueue,
+					projectRefOldestAllowedMergeBaseKey: p.OldestAllowedMergeBase,
 				},
 			})
 	case ProjectPageNotificationsSection:

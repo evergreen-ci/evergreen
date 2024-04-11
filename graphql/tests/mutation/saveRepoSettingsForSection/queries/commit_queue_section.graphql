@@ -1,6 +1,7 @@
 mutation {
   saveRepoSettingsForSection(
     repoSettings: {
+      repoId: "repo_id"
       projectRef: {
         id: "repo_id"
         commitQueue: {

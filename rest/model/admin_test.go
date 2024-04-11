@@ -91,7 +91,6 @@ func TestModelConversion(t *testing.T) {
 
 	assert.EqualValues(testSettings.Amboy.Name, utility.FromStringPtr(apiSettings.Amboy.Name))
 	assert.EqualValues(testSettings.Amboy.DBConnection.URL, utility.FromStringPtr(apiSettings.Amboy.DBConnection.URL))
-	assert.EqualValues(testSettings.Amboy.DBConnection.KanopyURL, utility.FromStringPtr(apiSettings.Amboy.DBConnection.KanopyURL))
 	assert.EqualValues(testSettings.Amboy.DBConnection.Database, utility.FromStringPtr(apiSettings.Amboy.DBConnection.Database))
 	assert.EqualValues(testSettings.Amboy.LocalStorage, apiSettings.Amboy.LocalStorage)
 	assert.EqualValues(testSettings.Amboy.GroupDefaultWorkers, apiSettings.Amboy.GroupDefaultWorkers)

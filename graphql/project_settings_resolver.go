@@ -40,7 +40,19 @@ func (r *projectSettingsResolver) Vars(ctx context.Context, obj *restModel.APIPr
 	return getRedactedAPIVarsForProject(ctx, utility.FromStringPtr(obj.ProjectRef.Id))
 }
 
+// ProjectID is the resolver for the projectId field.
+func (r *projectSettingsInputResolver) ProjectID(ctx context.Context, obj *restModel.APIProjectSettings, data string) error {
+	obj.Id = utility.ToStringPtr(data)
+	return nil
+}
+
 // ProjectSettings returns ProjectSettingsResolver implementation.
 func (r *Resolver) ProjectSettings() ProjectSettingsResolver { return &projectSettingsResolver{r} }
 
+// ProjectSettingsInput returns ProjectSettingsInputResolver implementation.
+func (r *Resolver) ProjectSettingsInput() ProjectSettingsInputResolver {
+	return &projectSettingsInputResolver{r}
+}
+
 type projectSettingsResolver struct{ *Resolver }
+type projectSettingsInputResolver struct{ *Resolver }

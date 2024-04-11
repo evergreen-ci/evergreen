@@ -11,6 +11,7 @@ import (
 	"github.com/mongodb/grip"
 	"github.com/pkg/errors"
 	"github.com/urfave/cli"
+	"go.opentelemetry.io/otel/trace/noop"
 )
 
 func deployMigration() cli.Command {
@@ -25,7 +26,7 @@ func deployMigration() cli.Command {
 			defer cancel()
 
 			db := parseDB(c)
-			env, err := evergreen.NewEnvironment(ctx, c.String(confFlagName), "", db)
+			env, err := evergreen.NewEnvironment(ctx, c.String(confFlagName), "", db, noop.NewTracerProvider())
 			grip.EmergencyFatal(errors.Wrap(err, "configuring application environment"))
 			evergreen.SetEnvironment(env)
 			settings := env.Settings()
@@ -77,7 +78,7 @@ func deployDataTransforms() cli.Command {
 			defer cancel()
 
 			db := parseDB(c)
-			env, err := evergreen.NewEnvironment(ctx, confPath, "", db)
+			env, err := evergreen.NewEnvironment(ctx, confPath, "", db, noop.NewTracerProvider())
 			grip.EmergencyFatal(errors.Wrap(err, "configuring application environment"))
 			evergreen.SetEnvironment(env)
 			settings := env.Settings()

@@ -209,6 +209,7 @@ const (
 	MongodbUrl          = "MONGO_URL"
 	MongoAWSAuthEnabled = "MONGO_AWS_AUTH"
 	EvergreenVersionID  = "EVG_VERSION_ID"
+	TraceEndpoint       = "TRACE_ENDPOINT"
 
 	// localLoggingOverride is a special log path indicating that the app server
 	// should attempt to log to systemd if available, and otherwise fall back to
@@ -362,6 +363,10 @@ const (
 	// HeartbeatTimeoutThreshold is the timeout for how long a task can run without sending
 	// a heartbeat
 	HeartbeatTimeoutThreshold = 7 * time.Minute
+
+	// MaxTeardownGroupThreshold specifies the duration after which the host should no longer continue
+	// to tear down a task group. This is set one minute longer than the agent's maxTeardownGroupTimeout.
+	MaxTeardownGroupThreshold = 4 * time.Minute
 
 	SaveGenerateTasksError     = "error saving config in `generate.tasks`"
 	TasksAlreadyGeneratedError = "generator already ran and generated tasks"

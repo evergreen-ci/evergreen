@@ -535,7 +535,6 @@ func (s *DistroPutSuite) TestRunNewWithInvalidEntity() {
 	s.NotNil(resp.Data())
 	s.Equal(resp.Status(), http.StatusBadRequest)
 	err := (resp.Data()).(gimlet.ErrorResponse)
-	s.Contains(err.Message, "ERROR: distro 'ssh_key' cannot be blank")
 	s.Contains(err.Message, "'foo' is not a valid bootstrap method")
 	s.Contains(err.Message, "'bar' is not a valid communication method")
 	s.Contains(err.Message, "ERROR: invalid planner_settings.version 'invalid' for distro 'distro4'")
@@ -1061,7 +1060,6 @@ func (s *DistroPatchByIDSuite) TestRunInvalidEmptyStringValues() {
 		"ERROR: distro 'arch' cannot be blank",
 		"ERROR: distro 'user' cannot be blank",
 		"ERROR: distro 'work_dir' cannot be blank",
-		"ERROR: distro 'ssh_key' cannot be blank",
 	}
 
 	error := (resp.Data()).(gimlet.ErrorResponse)

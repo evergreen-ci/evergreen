@@ -58,6 +58,15 @@ func (r *hostResolver) HomeVolume(ctx context.Context, obj *restModel.APIHost) (
 	return nil, nil
 }
 
+// SleepSchedule is the resolver for the sleepSchedule field.
+func (r *hostResolver) SleepSchedule(ctx context.Context, obj *restModel.APIHost) (*host.SleepScheduleInfo, error) {
+	h, err := host.FindOne(ctx, host.ById(*obj.Id))
+	if err != nil {
+		return nil, InternalServerError.Send(ctx, fmt.Sprintf("getting host %s", *obj.Id))
+	}
+	return &h.SleepSchedule, nil
+}
+
 // Uptime is the resolver for the uptime field.
 func (r *hostResolver) Uptime(ctx context.Context, obj *restModel.APIHost) (*time.Time, error) {
 	return obj.CreationTime, nil
@@ -82,7 +91,20 @@ func (r *hostResolver) Volumes(ctx context.Context, obj *restModel.APIHost) ([]*
 	return volumes, nil
 }
 
+// WholeWeekdaysOff is the resolver for the wholeWeekdaysOff field.
+func (r *sleepScheduleResolver) WholeWeekdaysOff(ctx context.Context, obj *host.SleepScheduleInfo) ([]int, error) {
+	weekdayInts := []int{}
+	for _, day := range obj.WholeWeekdaysOff {
+		weekdayInts = append(weekdayInts, int(day))
+	}
+	return weekdayInts, nil
+}
+
 // Host returns HostResolver implementation.
 func (r *Resolver) Host() HostResolver { return &hostResolver{r} }
 
+// SleepSchedule returns SleepScheduleResolver implementation.
+func (r *Resolver) SleepSchedule() SleepScheduleResolver { return &sleepScheduleResolver{r} }
+
 type hostResolver struct{ *Resolver }
+type sleepScheduleResolver struct{ *Resolver }

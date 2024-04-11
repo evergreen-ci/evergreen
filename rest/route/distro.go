@@ -35,6 +35,15 @@ func makeGetDistroSetup() gimlet.RouteHandler {
 	return &distroIDGetSetupHandler{}
 }
 
+// Factory creates an instance of the handler.
+//
+//	@Summary		Get the setup script for a distro
+//	@Description	Fetch a distro's setup script by its distro ID.
+//	@Tags			distros
+//	@Router			/distros/{distro_id}/setup [get]
+//	@Security		Api-User || Api-Key
+//	@Param			distro_id	path		string	true	"distro ID"
+//	@Success		200			{string}	string	"The distro setup script"
 func (h *distroIDGetSetupHandler) Factory() gimlet.RouteHandler {
 	return &distroIDGetSetupHandler{}
 }
@@ -70,7 +79,8 @@ func (h *distroIDGetSetupHandler) Run(ctx context.Context) gimlet.Responder {
 // PATCH /rest/v2/distros/{distro_id}/setup
 
 type distroIDChangeSetupHandler struct {
-	Setup    string
+	// The updated setup script.
+	Setup    string `json:"setup"`
 	distroID string
 }
 
@@ -78,6 +88,16 @@ func makeChangeDistroSetup() gimlet.RouteHandler {
 	return &distroIDChangeSetupHandler{}
 }
 
+// Factory creates an instance of the handler.
+//
+//	@Summary		Update the setup script for a distro
+//	@Description	Update a distro's setup script. Accepts a JSON body with the new setup script.
+//	@Tags			distros
+//	@Router			/distros/{distro_id}/setup [patch]
+//	@Security		Api-User || Api-Key
+//	@Param			distro_id	path		string						true	"distro ID"
+//	@Param			{object}	body		distroIDChangeSetupHandler	true	"the updated setup script"
+//	@Success		200			{object}	model.APIDistro				"The updated distro with the new setup script"
 func (h *distroIDChangeSetupHandler) Factory() gimlet.RouteHandler {
 	return &distroIDChangeSetupHandler{}
 }
@@ -129,6 +149,17 @@ func makePutDistro() gimlet.RouteHandler {
 	return &distroIDPutHandler{}
 }
 
+// Factory creates an instance of the handler.
+//
+//	@Summary		Replace or add a distro
+//	@Description	Replace an existing distro by ID or add a new distro. If replacing an existing distro, all fields will be replaced with the new configuration.
+//	@Tags			distros
+//	@Router			/distros/{distro_id} [put]
+//	@Security		Api-User || Api-Key
+//	@Param			distro_id	path	string			true	"distro ID"
+//	@Param			{object}	body	model.APIDistro	true	"the new distro"
+//	@Success		201
+//	@Success		200
 func (h *distroIDPutHandler) Factory() gimlet.RouteHandler {
 	return &distroIDPutHandler{}
 }
@@ -231,6 +262,15 @@ func makeDeleteDistroByID() gimlet.RouteHandler {
 	return &distroIDDeleteHandler{}
 }
 
+// Factory creates an instance of the handler.
+//
+//	@Summary		Delete a distro
+//	@Description	Delete a distro by ID.
+//	@Tags			distros
+//	@Router			/distros/{distro_id} [delete]
+//	@Security		Api-User || Api-Key
+//	@Param			distro_id	path	string	true	"distro ID"
+//	@Success		200
 func (h *distroIDDeleteHandler) Factory() gimlet.RouteHandler {
 	return &distroIDDeleteHandler{}
 }
@@ -275,6 +315,16 @@ func makePatchDistroByID() gimlet.RouteHandler {
 	return &distroIDPatchHandler{}
 }
 
+// Factory creates an instance of the handler.
+//
+//	@Summary		Update an existing distro
+//	@Description	Update an existing distro by ID. Only updates the fields that are present in the request body.
+//	@Tags			distros
+//	@Router			/distros/{distro_id} [patch]
+//	@Security		Api-User || Api-Key
+//	@Param			distro_id	path		string			true	"distro ID"
+//	@Param			{object}	body		model.APIDistro	true	"the updated distro"
+//	@Success		200			{object}	model.APIDistro	"The updated distro"
 func (h *distroIDPatchHandler) Factory() gimlet.RouteHandler {
 	return &distroIDPatchHandler{}
 }
@@ -349,6 +399,15 @@ func makeGetDistroByID() gimlet.RouteHandler {
 	return &distroIDGetHandler{}
 }
 
+// Factory creates an instance of the handler.
+//
+//	@Summary		Get a single distro
+//	@Description	Fetch a single distro by its ID.
+//	@Tags			distros
+//	@Router			/distros/{distro_id} [get]
+//	@Security		Api-User || Api-Key
+//	@Param			distro_id	path		string	true	"distro ID"
+//	@Success		200			{object}	model.APIDistro
 func (h *distroIDGetHandler) Factory() gimlet.RouteHandler {
 	return &distroIDGetHandler{}
 }
@@ -392,6 +451,15 @@ func makeGetDistroAMI() gimlet.RouteHandler {
 	return &distroAMIHandler{}
 }
 
+// Factory creates an instance of the handler.
+//
+//	@Summary		Get a single distro's AMI
+//	@Description	Fetch a single distro's AMI by its distro ID.
+//	@Tags			distros
+//	@Router			/distros/{distro_id}/ami [get]
+//	@Security		Api-User || Api-Key
+//	@Param			distro_id	path		string	true	"distro ID"
+//	@Success		200			{string}	string	"The distro's AMI"
 func (h *distroAMIHandler) Factory() gimlet.RouteHandler {
 	return &distroAMIHandler{}
 }
@@ -605,8 +673,8 @@ func makeDistroRoute() gimlet.RouteHandler {
 
 // Factory creates an instance of the handler.
 //
-//	@Summary		Get distros
-//	@Description	Fetches distros defined in the system
+//	@Summary		Get all distros
+//	@Description	Fetches all available distros.
 //	@Tags			distros
 //	@Router			/distros [get]
 //	@Security		Api-User || Api-Key
@@ -864,6 +932,13 @@ func makeGetDistroClientURLs(env evergreen.Environment) gimlet.RouteHandler {
 	}
 }
 
+// Factory creates an instance of the handler.
+//
+//	@Summary		Get Evergreen client URLs for a distro
+//	@Description	Returns the URLs for downloading the Evergreen client for a distro.
+//	@Tags			distros
+//	@Router			/distros/{distro_id}/client_urls [get]
+//	@Success		200	{array}	string	"The URLs for downloading the Evergreen client"
 func (rh *distroClientURLsGetHandler) Factory() gimlet.RouteHandler {
 	return &distroClientURLsGetHandler{
 		env: rh.env,

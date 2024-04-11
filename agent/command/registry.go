@@ -39,6 +39,7 @@ func init() {
 		"gotest.parse_files":                    goTestFactory,
 		"keyval.inc":                            keyValIncFactory,
 		"manifest.load":                         manifestLoadFactory,
+		"papertrail.trace":                      papertrailTraceFactory,
 		"perf.send":                             perfSendFactory,
 		"downstream_expansions.set":             setExpansionsFactory,
 		"s3.get":                                s3GetFactory,
@@ -191,6 +192,7 @@ func (r *commandRegistry) renderCommands(commandInfo model.PluginCommandConf,
 		cmd.SetType(c.GetType(project))
 		cmd.SetFullDisplayName(c.DisplayName)
 		cmd.SetIdleTimeout(time.Duration(c.TimeoutSecs) * time.Second)
+		cmd.SetRetryOnFailure(c.RetryOnFailure)
 
 		out = append(out, cmd)
 	}

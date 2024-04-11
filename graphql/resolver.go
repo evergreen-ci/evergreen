@@ -6,9 +6,11 @@ package graphql
 import (
 	"context"
 	"fmt"
+	"strings"
 
 	"github.com/99designs/gqlgen/graphql"
 	"github.com/evergreen-ci/evergreen"
+	"github.com/evergreen-ci/evergreen/model"
 	"github.com/evergreen-ci/evergreen/rest/data"
 	restModel "github.com/evergreen-ci/evergreen/rest/model"
 	"github.com/evergreen-ci/gimlet"
@@ -16,9 +18,10 @@ import (
 )
 
 const (
-	CreateProjectMutation = "CreateProject"
-	CopyProjectMutation   = "CopyProject"
-	DeleteProjectMutation = "DeleteProject"
+	CreateProjectMutation   = "CreateProject"
+	CopyProjectMutation     = "CopyProject"
+	DeleteProjectMutation   = "DeleteProject"
+	SetLastRevisionMutation = "SetLastRevision"
 )
 
 type Resolver struct {
@@ -86,11 +89,6 @@ func New(apiURL string) Config {
 			return next(ctx)
 		}
 
-		// Check for admin permissions for each of the resolvers.
-		args, isStringMap := obj.(map[string]interface{})
-		if !isStringMap {
-			return nil, ResourceNotFound.Send(ctx, "Project not specified")
-		}
 		operationContext := graphql.GetOperationContext(ctx).OperationName
 
 		if operationContext == CreateProjectMutation {
@@ -103,17 +101,26 @@ func New(apiURL string) Config {
 			}
 		}
 
+		getPermissionOpts := func(projectId string) gimlet.PermissionOpts {
+			return gimlet.PermissionOpts{
+				Resource:      projectId,
+				ResourceType:  evergreen.ProjectResourceType,
+				Permission:    evergreen.PermissionProjectSettings,
+				RequiredLevel: evergreen.ProjectSettingsEdit.Value,
+			}
+		}
+
+		args, isStringMap := obj.(map[string]interface{})
+		if !isStringMap {
+			return nil, ResourceNotFound.Send(ctx, "Project not specified")
+		}
+
 		if operationContext == CopyProjectMutation {
 			projectIdToCopy, ok := args["project"].(map[string]interface{})["projectIdToCopy"].(string)
 			if !ok {
 				return nil, InternalServerError.Send(ctx, "finding projectIdToCopy for copy project operation")
 			}
-			opts := gimlet.PermissionOpts{
-				Resource:      projectIdToCopy,
-				ResourceType:  evergreen.ProjectResourceType,
-				Permission:    evergreen.PermissionProjectSettings,
-				RequiredLevel: evergreen.ProjectSettingsEdit.Value,
-			}
+			opts := getPermissionOpts(projectIdToCopy)
 			if user.HasPermission(opts) {
 				return next(ctx)
 			}
@@ -124,12 +131,25 @@ func New(apiURL string) Config {
 			if !ok {
 				return nil, InternalServerError.Send(ctx, "finding projectId for delete project operation")
 			}
-			opts := gimlet.PermissionOpts{
-				Resource:      projectId,
-				ResourceType:  evergreen.ProjectResourceType,
-				Permission:    evergreen.PermissionProjectSettings,
-				RequiredLevel: evergreen.ProjectSettingsEdit.Value,
+			opts := getPermissionOpts(projectId)
+			if user.HasPermission(opts) {
+				return next(ctx)
 			}
+		}
+
+		if operationContext == SetLastRevisionMutation {
+			projectIdentifier, ok := args["opts"].(map[string]interface{})["projectIdentifier"].(string)
+			if !ok {
+				return nil, InternalServerError.Send(ctx, "finding projectIdentifier for set last revision operation")
+			}
+			project, err := model.FindBranchProjectRef(projectIdentifier)
+			if err != nil {
+				return nil, InternalServerError.Send(ctx, fmt.Sprintf("finding project '%s': %s", projectIdentifier, err.Error()))
+			}
+			if project == nil {
+				return nil, ResourceNotFound.Send(ctx, fmt.Sprintf("project '%s' not found", projectIdentifier))
+			}
+			opts := getPermissionOpts(project.Id)
 			if user.HasPermission(opts) {
 				return next(ctx)
 			}
@@ -169,6 +189,40 @@ func New(apiURL string) Config {
 			return next(ctx)
 		}
 		return nil, Forbidden.Send(ctx, fmt.Sprintf("user %s does not have permission to access settings for the project %s", user.Username(), projectId))
+	}
+	c.Directives.RequireProjectAccessNew = func(ctx context.Context, obj interface{}, next graphql.Resolver, permission ProjectPermission, access AccessLevel) (interface{}, error) {
+		user := mustHaveUser(ctx)
+
+		args, isMap := obj.(map[string]interface{})
+		if !isMap {
+			return nil, InternalServerError.Send(ctx, "converting args into map")
+		}
+
+		requiredPermission, requiredLevel, err := getProjectPermissionLevel(permission, access)
+		if err != nil {
+			return nil, InputValidationError.Send(ctx, fmt.Sprintf("invalid permission and access level configuration: %s", err.Error()))
+		}
+
+		paramsMap, err := data.BuildProjectParameterMapForGraphQL(args)
+		if err != nil {
+			return nil, InputValidationError.Send(ctx, err.Error())
+		}
+
+		projectId, statusCode, err := data.GetProjectIdFromParams(ctx, paramsMap)
+		if err != nil {
+			return nil, mapHTTPStatusToGqlError(ctx, statusCode, err)
+		}
+
+		opts := gimlet.PermissionOpts{
+			Resource:      projectId,
+			ResourceType:  evergreen.ProjectResourceType,
+			Permission:    requiredPermission,
+			RequiredLevel: requiredLevel,
+		}
+		if user.HasPermission(opts) {
+			return next(ctx)
+		}
+		return nil, Forbidden.Send(ctx, fmt.Sprintf("user '%s' does not have permission to access '%s' for the project '%s'", user.Username(), strings.ToLower(permission.String()), projectId))
 	}
 	c.Directives.RequireProjectSettingsAccess = func(ctx context.Context, obj interface{}, next graphql.Resolver) (res interface{}, err error) {
 		user := mustHaveUser(ctx)
@@ -227,7 +281,6 @@ func New(apiURL string) Config {
 		}
 		return next(ctx)
 	}
-
 	c.Directives.RedactSecrets = func(ctx context.Context, obj interface{}, next graphql.Resolver) (res interface{}, err error) {
 		return next(ctx)
 	}
