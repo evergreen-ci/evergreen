@@ -1474,11 +1474,15 @@ func TestValidateTaskNames(t *testing.T) {
 				{Name: "|task"},
 				{Name: "ta|sk"},
 				{Name: "this is my task"},
-				{Name: "task"},
+				{Name: "task()<"},
+				{Name: "task'"},
+				{Name: "task{_}"},
+				{Name: "task==/"},
+				{Name: "task\\"},
 			},
 		}
 		validationResults := validateTaskNames(project)
-		So(len(validationResults), ShouldEqual, 4)
+		So(len(validationResults), ShouldEqual, len(project.Tasks))
 	})
 	Convey("A warning should be returned when a task name", t, func() {
 		Convey("Contains commas", func() {

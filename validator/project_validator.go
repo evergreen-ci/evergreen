@@ -5,6 +5,7 @@ import (
 	"context"
 	"fmt"
 	"math"
+	"regexp"
 	"sort"
 	"strconv"
 	"strings"
@@ -987,14 +988,15 @@ func validateProjectLimits(_ context.Context, settings *evergreen.Settings, proj
 
 // validateTaskNames ensures the task names do not contain unauthorized characters.
 func validateTaskNames(project *model.Project) ValidationErrors {
-	unauthorizedTaskCharacters := unauthorizedCharacters + " "
 	errs := ValidationErrors{}
+
+	validCharacters, _ := regexp.Compile("^[a-zA-Z0-9_]*$")
 	for _, task := range project.Tasks {
-		if strings.ContainsAny(strings.TrimSpace(task.Name), unauthorizedTaskCharacters) {
+		if !validCharacters.MatchString(task.Name) {
 			errs = append(errs,
 				ValidationError{
-					Message: fmt.Sprintf("task name '%s' contains unauthorized characters ('%s')",
-						task.Name, unauthorizedTaskCharacters),
+					Message: fmt.Sprintf("task name '%s' contains unauthorized characters",
+						task.Name),
 				})
 		}
 	}
