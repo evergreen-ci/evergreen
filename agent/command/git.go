@@ -38,6 +38,10 @@ const (
 	shallowCloneDepth      = 100
 
 	gitGetProjectAttribute = "evergreen.command.git_get_project"
+
+	// Valid types of performing git clone
+	cloneMethodOAuth       = "oauth"
+	cloneMethodAccessToken = "access-token"
 )
 
 var (
@@ -47,6 +51,12 @@ var (
 	cloneModuleAttribute  = fmt.Sprintf("%s.clone_module", gitGetProjectAttribute)
 	cloneMethodAttribute  = fmt.Sprintf("%s.clone_method", gitGetProjectAttribute)
 	cloneAttemptAttribute = fmt.Sprintf("%s.attempt", gitGetProjectAttribute)
+
+	// validCloneMethods includes all recognized clone methods.
+	validCloneMethods = []string{
+		cloneMethodOAuth,
+		cloneMethodAccessToken,
+	}
 )
 
 // gitFetchProject is a command that fetches source code from git for the project
@@ -89,6 +99,15 @@ type cloneOpts struct {
 	cloneDepth             int
 }
 
+// validateCloneMethod checks that the clone mechanism is one of the supported
+// methods.
+func validateCloneMethod(method string) error {
+	if !utility.StringSliceContains(validCloneMethods, method) {
+		return errors.Errorf("'%s' is not a valid clone method", method)
+	}
+	return nil
+}
+
 func (opts cloneOpts) validate() error {
 	catcher := grip.NewBasicCatcher()
 	if opts.owner == "" {
@@ -101,9 +120,9 @@ func (opts cloneOpts) validate() error {
 		catcher.New("missing required location")
 	}
 	if opts.method != "" {
-		catcher.Wrapf(evergreen.ValidateCloneMethod(opts.method), "invalid clone method '%s'", opts.method)
+		catcher.Wrapf(validateCloneMethod(opts.method), "invalid clone method '%s'", opts.method)
 	}
-	if (opts.method == evergreen.CloneMethodOAuth || opts.method == evergreen.CloneMethodAccessToken) && opts.token == "" {
+	if opts.token == "" {
 		catcher.New("cannot clone using OAuth or access token if token is not set")
 	}
 	if opts.cloneDepth < 0 {
@@ -112,24 +131,17 @@ func (opts cloneOpts) validate() error {
 	return catcher.Resolve()
 }
 
-func (opts cloneOpts) sshLocation() string {
-	return thirdparty.FormGitURL("github.com", opts.owner, opts.repo, "")
-}
-
 func (opts cloneOpts) httpLocation() string {
 	return fmt.Sprintf("https://github.com/%s/%s.git", opts.owner, opts.repo)
 }
 
 // setLocation sets the location to clone from.
 func (opts *cloneOpts) setLocation() error {
-	switch opts.method {
-	case "", evergreen.CloneMethodLegacySSH:
-		opts.location = opts.sshLocation()
-	case evergreen.CloneMethodOAuth, evergreen.CloneMethodAccessToken:
-		opts.location = opts.httpLocation()
-	default:
+	if err := validateCloneMethod(opts.method); err != nil {
 		return errors.Errorf("unrecognized clone method '%s'", opts.method)
 	}
+
+	opts.location = opts.httpLocation()
 	return nil
 }
 
@@ -138,7 +150,7 @@ func (opts *cloneOpts) setLocation() error {
 func getProjectMethodAndToken(ctx context.Context, comm client.Communicator, td client.TaskData, conf *internal.TaskConfig, projectToken string) (string, string, error) {
 	if projectToken != "" {
 		token, err := parseToken(projectToken)
-		return evergreen.CloneMethodOAuth, token, err
+		return cloneMethodOAuth, token, err
 	}
 
 	owner := conf.ProjectRef.Owner
@@ -153,7 +165,7 @@ func getProjectMethodAndToken(ctx context.Context, comm client.Communicator, td 
 		"ticket":  "EVG-21022",
 	}))
 	if appToken != "" {
-		return evergreen.CloneMethodAccessToken, appToken, nil
+		return cloneMethodAccessToken, appToken, nil
 	}
 	grip.DebugWhen(err == nil, message.Fields{
 		"message": "GitHub app token not found, falling back to legacy clone methods",
@@ -166,14 +178,14 @@ func getProjectMethodAndToken(ctx context.Context, comm client.Communicator, td 
 	globalToken := conf.Expansions.Get(evergreen.GlobalGitHubTokenExpansion)
 	token, err := parseToken(globalToken)
 	if err != nil {
-		return evergreen.CloneMethodLegacySSH, "", err
+		return "", "", err
 	}
 
 	if token == "" {
-		return evergreen.CloneMethodLegacySSH, "", errors.New("cannot clone using OAuth if explicit token from parameter and global token are both empty")
+		return "", "", errors.New("cannot clone using OAuth if explicit token from parameter and global token are both empty")
 	}
-	token, err = parseToken(globalToken)
-	return evergreen.CloneMethodOAuth, token, err
+
+	return cloneMethodOAuth, token, err
 }
 
 // parseToken parses the OAuth token, if it is in the format "token <token>";
@@ -194,11 +206,9 @@ func (opts cloneOpts) getCloneCommand() ([]string, error) {
 		return nil, errors.Wrap(err, "invalid clone command options")
 	}
 	switch opts.method {
-	case "", evergreen.CloneMethodLegacySSH:
-		return opts.buildSSHCloneCommand()
-	case evergreen.CloneMethodOAuth:
+	case cloneMethodOAuth:
 		return opts.buildHTTPCloneCommand(false)
-	case evergreen.CloneMethodAccessToken:
+	case cloneMethodAccessToken:
 		return opts.buildHTTPCloneCommand(true)
 	}
 	return nil, errors.New("unrecognized clone method in options")
@@ -235,27 +245,6 @@ func (opts cloneOpts) buildHTTPCloneCommand(forApp bool) ([]string, error) {
 		fmt.Sprintf(`echo %s`, strconv.Quote(redactedClone)),
 		clone,
 		"set -o xtrace",
-		fmt.Sprintf("cd %s", opts.dir),
-	}, nil
-}
-
-func (opts cloneOpts) buildSSHCloneCommand() ([]string, error) {
-	cloneCmd := fmt.Sprintf("git clone '%s' '%s'", opts.location, opts.dir)
-	if opts.recurseSubmodules {
-		cloneCmd = fmt.Sprintf("%s --recurse-submodules", cloneCmd)
-	}
-	if opts.useVerbose {
-		cloneCmd = fmt.Sprintf("GIT_TRACE=1 %s", cloneCmd)
-	}
-	if opts.cloneDepth > 0 {
-		cloneCmd = fmt.Sprintf("%s --depth %d", cloneCmd, opts.cloneDepth)
-	}
-	if opts.branch != "" {
-		cloneCmd = fmt.Sprintf("%s --branch '%s'", cloneCmd, opts.branch)
-	}
-
-	return []string{
-		cloneCmd,
 		fmt.Sprintf("cd %s", opts.dir),
 	}, nil
 }
@@ -737,7 +726,7 @@ func (c *gitFetchProject) fetchModuleSource(ctx context.Context,
 		return errors.Wrap(err, "setting location to clone from")
 	}
 
-	if opts.method == evergreen.CloneMethodOAuth {
+	if opts.method == cloneMethodOAuth {
 		// If user provided a token, use that token.
 		opts.token = projectToken
 	} else {
@@ -749,7 +738,7 @@ func (c *gitFetchProject) fetchModuleSource(ctx context.Context,
 			opts.token = appToken
 		} else {
 			// If a token cannot be created, fallback to the legacy global token.
-			opts.method = evergreen.CloneMethodOAuth
+			opts.method = cloneMethodOAuth
 			opts.token = conf.Expansions.Get(evergreen.GlobalGitHubTokenExpansion)
 			logger.Execution().Warning(message.WrapError(err, message.Fields{
 				"message": "failed to create app token, falling back to global token",
