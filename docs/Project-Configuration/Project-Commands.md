@@ -656,8 +656,6 @@ EC2 Parameters:
 -   `userdata_file` - Path to file to load as EC2 user data on boot. May
     set if `distro` is set, which will override the value from the
     distro configuration. May set if distro is not set.
--   `vpc_id` - EC2 VPC. Must set if `ami` is set. May set if `distro` is
-    set, which will override the value from the distro configuration.
 
 Docker Parameters:
 
@@ -770,7 +768,6 @@ tasks:
           security_group_ids:
             - ${security_group_id}
           subnet_id: ${subnet_id}
-          vpc_id: ${vpc_id}
       - command: host.list
         params:
           num_hosts: 1
@@ -921,6 +918,7 @@ by the Release Infrastructure team, and you may receive assistance with it in
     filenames:
         - mongosh-linux-amd64.tar.gz
         - mongosh-linux-arm64.tar.gz
+        - *.zip
 ```
 
 Parameters:
@@ -935,7 +933,15 @@ Parameters:
     1.0.1).
 -   `filenames`: A list of filename paths to pass to the service. You may use
     full filepaths in this parameter, the command will label the file with its
-    basename only when sent to the service.
+    basename only when sent to the service. Wildcard globs are supported within
+    a single directory path. For example, the filename `dist/*.zip` would
+    locate each zip file within the `dist` directory and individually trace
+    those files. Double star globs like `dist/**/*.zip` are not supported. If
+    a filename is matched multiple times in the same call to `papertrail.trace`,
+    the command will throw an error before any tracing occurs. Note that this
+    means that each basename must be unique, regardless of their path on the
+    filesystem. For example, `./build-a/file.zip` and `./build-b/file.zip` would
+    not be allowed as filenames in the same `papertrail.trace` command. If at least one file cannot be found while using wildcard globs, the command will return an error.
 
 ## perf.send
 

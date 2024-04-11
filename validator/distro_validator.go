@@ -25,7 +25,6 @@ var distroSyntaxValidators = []distroValidator{
 	ensureHasNonZeroID,
 	ensureHasRequiredFields,
 	ensureValidSSHOptions,
-	ensureValidSSHKeyName,
 	ensureStaticHasAuthorizedKeysFile,
 	ensureValidExpansions,
 	ensureStaticHostsAreNotSpawnable,
@@ -108,13 +107,6 @@ func ensureHasRequiredFields(ctx context.Context, d *distro.Distro, _ *evergreen
 	if d.WorkDir == "" {
 		errs = append(errs, ValidationError{
 			Message: fmt.Sprintf("distro '%v' cannot be blank", distro.WorkDirKey),
-			Level:   Error,
-		})
-	}
-
-	if d.SSHKey == "" && d.Provider != evergreen.ProviderNameStatic {
-		errs = append(errs, ValidationError{
-			Message: fmt.Sprintf("distro '%v' cannot be blank", distro.SSHKeyKey),
 			Level:   Error,
 		})
 	}
@@ -251,25 +243,6 @@ func ensureValidSSHOptions(ctx context.Context, d *distro.Distro, s *evergreen.S
 		}
 	}
 	return nil
-}
-
-// ensureValidSSHKeyName checks that the SSH key name corresponds to an actual
-// SSH key.
-func ensureValidSSHKeyName(ctx context.Context, d *distro.Distro, s *evergreen.Settings) ValidationErrors {
-	if key := s.Keys[d.SSHKey]; key != "" {
-		return nil
-	}
-	for _, key := range s.SSHKeyPairs {
-		if key.Name == d.SSHKey {
-			return nil
-		}
-	}
-	return ValidationErrors{
-		{
-			Message: fmt.Sprintf("ssh key '%s' not found", d.SSHKey),
-			Level:   Error,
-		},
-	}
 }
 
 // ensureStaticHasAuthorizedKeysFile checks that the SSH key name corresponds to an actual

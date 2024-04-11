@@ -107,12 +107,13 @@ func (j *generateTasksJob) generate(ctx context.Context, t *task.Task) error {
 	// already been updated by another generator and therefore will be invalid because the
 	// config has already been modified. We do this again in `handleError` to reduce the chances
 	// of this race as close to zero as possible.
-	t, err = task.FindOneId(t.Id)
+	taskId := t.Id
+	t, err = task.FindOneId(taskId)
 	if err != nil {
-		return errors.Wrapf(err, "finding task '%s'", t.Id)
+		return errors.Wrapf(err, "finding task '%s'", taskId)
 	}
 	if t == nil {
-		return errors.Errorf("task '%s' not found", t.Id)
+		return errors.Errorf("task '%s' not found", taskId)
 	}
 	if t.GeneratedTasks {
 		grip.Debug(message.Fields{

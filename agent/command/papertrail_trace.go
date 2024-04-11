@@ -38,32 +38,23 @@ func (t *papertrailTrace) Execute(ctx context.Context,
 	pclient := thirdparty.NewPapertrailClient(t.KeyID, t.SecretKey, "")
 
 	task := conf.Task
-
-	workdir := t.WorkDir
-	if workdir == "" {
-		workdir = conf.WorkDir
-	}
+	workdir := GetWorkingDirectory(conf, t.WorkDir)
 
 	const platform = "evergreen"
 
-	for _, file := range t.Filenames {
-		fullname := filepath.Join(workdir, file)
+	papertrailBuildID := getPapertrailBuildID(task.Id, task.Execution)
 
-		sha256sum, err := getSHA256(fullname)
-		if err != nil {
-			return errors.Wrap(err, "getting sha256")
-		}
+	files, err := getTraceFiles(workdir, t.Filenames)
+	if err != nil {
+		return errors.Wrap(err, "getting trace files")
+	}
 
-		papertrailBuildID := getPapertrailBuildID(task.Id, task.Execution)
-
-		// should already be the basename, but just in case
-		basename := filepath.Base(file)
-
+	for _, f := range files {
 		args := thirdparty.TraceArgs{
 			Build:     papertrailBuildID,
 			Platform:  platform,
-			Filename:  basename,
-			Sha256:    sha256sum,
+			Filename:  f.filename,
+			Sha256:    f.sha256,
 			Product:   t.Product,
 			Version:   t.Version,
 			Submitter: task.ActivatedBy,
@@ -73,10 +64,58 @@ func (t *papertrailTrace) Execute(ctx context.Context,
 			return errors.Wrap(err, "running trace")
 		}
 
-		logger.Task().Infof("Successfully traced '%s' (sha256://%s)", fullname, sha256sum)
+		logger.Task().Infof("Successfully traced '%s' (sha256://%s)", f.filename, f.sha256)
 	}
 
 	return nil
+}
+
+type papertrailTraceFile struct {
+	filename string
+	sha256   string
+}
+
+func getTraceFiles(workdir string, patterns []string) ([]papertrailTraceFile, error) {
+	files := make([]papertrailTraceFile, 0, len(patterns))
+
+	seen := make(map[string]string)
+
+	for _, path := range patterns {
+		patternpath := filepath.Join(workdir, path)
+
+		matches, err := filepath.Glob(patternpath)
+		if err != nil {
+			return nil, errors.Wrap(err, "globbing filepath")
+		}
+
+		for _, matchpath := range matches {
+			sha256sum, err := getSHA256(matchpath)
+			if err != nil {
+				return nil, errors.Wrap(err, "getting sha256")
+			}
+
+			basename := filepath.Base(matchpath)
+
+			if v, ok := seen[basename]; ok {
+				return nil, errors.Errorf("file '%s' matched multiple filename patterns ('%s' and '%s'); papertrail.trace requires uploaded filenames to be unique regardless of their path, please provide only unique file names", basename, path, v)
+			}
+
+			seen[basename] = path
+
+			f := papertrailTraceFile{
+				filename: basename,
+				sha256:   sha256sum,
+			}
+
+			files = append(files, f)
+		}
+	}
+
+	if len(files) == 0 {
+		return nil, errors.New("filenames did not match any files; papertrail.trace requires at least one matching filename on disk")
+	}
+
+	return files, nil
 }
 
 func getSHA256(filename string) (string, error) {
