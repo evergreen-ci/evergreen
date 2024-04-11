@@ -656,8 +656,6 @@ EC2 Parameters:
 -   `userdata_file` - Path to file to load as EC2 user data on boot. May
     set if `distro` is set, which will override the value from the
     distro configuration. May set if distro is not set.
--   `vpc_id` - EC2 VPC. Must set if `ami` is set. May set if `distro` is
-    set, which will override the value from the distro configuration.
 
 Docker Parameters:
 
@@ -770,7 +768,6 @@ tasks:
           security_group_ids:
             - ${security_group_id}
           subnet_id: ${subnet_id}
-          vpc_id: ${vpc_id}
       - command: host.list
         params:
           num_hosts: 1
