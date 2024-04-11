@@ -888,7 +888,13 @@ func (h *Host) SetStopped(ctx context.Context, shouldKeepOff bool, user string) 
 	}
 	if shouldKeepOff {
 		shouldKeepOffKey := bsonutil.GetDottedKeyName(SleepScheduleKey, SleepScheduleShouldKeepOffKey)
+		sleepScheduleNextStartTimeKey := bsonutil.GetDottedKeyName(SleepScheduleKey, SleepScheduleNextStartTimeKey)
+		sleepScheduleNextStopTimeKey := bsonutil.GetDottedKeyName(SleepScheduleKey, SleepScheduleNextStopTimeKey)
 		setFields[shouldKeepOffKey] = true
+		// Zero out the next stop/start times because the sleep schedule should
+		// not take effect until the user starts the host again.
+		setFields[sleepScheduleNextStartTimeKey] = time.Time{}
+		setFields[sleepScheduleNextStopTimeKey] = time.Time{}
 	}
 	err := UpdateOne(
 		ctx,

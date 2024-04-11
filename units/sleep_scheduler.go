@@ -74,6 +74,79 @@ func (j *sleepSchedulerJob) populateIfUnset() error {
 
 const sleepScheduleUser = "sleep_schedule"
 
+// fixMissingNextScheduledTimes finds and fixes hosts that are subject to the
+// sleep schedule but are missing next stop/start times.
+func (j *sleepSchedulerJob) fixMissingNextScheduledTimes(ctx context.Context) error {
+	hosts, err := host.FindMissingNextSleepScheduleTime(ctx)
+	if err != nil {
+		return errors.Wrap(err, "finding hosts with missing next stop/start times")
+	}
+	// now := time.Now()
+	catcher := grip.NewBasicCatcher()
+	for _, h := range hosts {
+		if utility.IsZeroTime(h.SleepSchedule.NextStartTime) {
+			// nextStart, err := h.SleepSchedule.GetNextScheduledStartTime(now)
+			// if err != nil {
+			//     catcher.Wrapf(err, "getting next start time for host '%s'", h.Id)
+			//     continue
+			// }
+			// // kim: TODO: needs DEVPROD-3951
+			// h.SetNextScheduledStartTime(ctx, nextStart)
+		}
+		if utility.IsZeroTime(h.SleepSchedule.NextStopTime) {
+			// nextStop, err := h.SleepSchedule.GetNextScheduledStopTime(now)
+			// if err != nil {
+			//     catcher.Wrapf(err, "getting next stop time for host '%s'", h.Id)
+			//     continue
+			// }
+			// // kim: TODO: needs DEVPROD-3951
+			// h.SetNextScheduledStopTime(ctx, nextStop)
+		}
+	}
+	return catcher.Resolve()
+}
+
+// fixHostsExceedingScheduledTimeout finds and reschedules the next stop/start
+// time for hosts that need to stop/start for their sleep schedule but have
+// taken too long while attempting to stop/start.
+func (j *sleepSchedulerJob) fixHostsExceedingScheduledTimeout(ctx context.Context) error {
+	hosts, err := host.FindExceedsSleepScheduleActionTimeout(ctx)
+	if err != nil {
+		return errors.Wrap(err, "finding hosts exceeding scheduled threshold")
+	}
+	now := time.Now()
+	catcher := grip.NewBasicCatcher()
+	for _, h := range hosts {
+		if h.SleepSchedule.NextStopTime.Before(now.Add(-host.SleepScheduleActionTimeout)) {
+			// nextStop, err := h.SleepSchedule.GetNextScheduledStopTime(now)
+			// if err != nil {
+			//     catcher.Wrapf(err, "getting next stop time for host '%s'", h.Id)
+			//     continue
+			// }
+			// // kim: TODO: needs DEVPROD-3951
+			// h.SetNextScheduledStopTime(ctx, nextStop)
+		}
+		if h.SleepSchedule.NextStartTime.Before(now.Add(-host.SleepScheduleActionTimeout)) {
+			// nextStart, err := h.SleepSchedule.GetNextScheduledStartTime(now)
+			// if err != nil {
+			//     catcher.Wrapf(err, "getting next start time for host '%s'", h.Id)
+			//     continue
+			// }
+			// // kim: TODO: needs DEVPROD-3951
+			// h.SetNextScheduledStartTime(ctx, nextStart)
+		}
+	}
+	return catcher.Resolve()
+}
+
+// syncPermanentlyExemptHosts ensures that the hosts that are marked as
+// permanently exempt are consistent with the most up-to-date list of
+// permanently exempt hosts.
+func (j *sleepSchedulerJob) syncPermanentlyExemptHosts(ctx context.Context) error {
+	settings := j.env.Settings()
+	return host.SyncPermanentExemptions(ctx, settings.SleepSchedule.PermanentlyExemptHosts)
+}
+
 func (j *sleepSchedulerJob) makeStopAndStartJobs(ctx context.Context, _ evergreen.Environment, ts time.Time) ([]amboy.Job, error) {
 	flags, err := evergreen.GetServiceFlags(ctx)
 	if err != nil {
