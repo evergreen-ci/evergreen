@@ -704,7 +704,7 @@ func (s *GitGetProjectSuite) TestBuildModuleCommand() {
 	s.True(utility.StringSliceContainsOrderedPrefixSubset(cmds, []string{
 		"set -o xtrace",
 		"set -o errexit",
-		"git clone https://x-access-token:[redacted oauth token]@github.com/<REDACTED:notary_server_key>-ci/sample.git 'module'",
+		"git clone https://x-access-token:[redacted oauth token]@github.com/evergreen-ci/sample.git 'module'",
 		"cd module",
 		"git fetch origin \"pull/1234/merge:evg-merge-test-",
 		"git checkout 'evg-merge-test-",
