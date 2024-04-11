@@ -270,26 +270,6 @@ func (s *GitGetProjectSuite) TestRetryFetchAttemptsOnceOnSuccess() {
 	s.Require().NoError(err)
 }
 
-func (s *GitGetProjectSuite) TestBuildSourceCommandDefaultCloneMethodUsesSSH() {
-	c := &gitFetchProject{
-		Directory: "dir",
-	}
-	conf := s.taskConfig2
-	logger, err := s.comm.GetLoggerProducer(s.ctx, &conf.Task, nil)
-	s.Require().NoError(err)
-
-	opts := cloneOpts{
-		owner:  conf.ProjectRef.Owner,
-		repo:   conf.ProjectRef.Repo,
-		branch: conf.ProjectRef.Branch,
-		dir:    c.Directory,
-	}
-	s.Require().NoError(opts.setLocation())
-	cmds, err := c.buildSourceCloneCommand(s.ctx, s.comm, logger, conf, opts)
-	s.Require().NoError(err)
-	s.True(utility.StringSliceContains(cmds, "git clone 'git@github.com:evergreen-ci/sample.git' 'dir' --branch 'main'"))
-}
-
 func (s *GitGetProjectSuite) TestBuildSourceCommandCloneDepth() {
 	c := &gitFetchProject{
 		Directory: "dir",
@@ -299,6 +279,7 @@ func (s *GitGetProjectSuite) TestBuildSourceCommandCloneDepth() {
 	s.Require().NoError(err)
 
 	opts := cloneOpts{
+		method:     cloneMethodAccessToken,
 		owner:      conf.ProjectRef.Owner,
 		repo:       conf.ProjectRef.Repo,
 		branch:     conf.ProjectRef.Branch,
@@ -588,6 +569,7 @@ func (s *GitGetProjectSuite) TestBuildSourceCommandForPullRequests() {
 
 	opts := cloneOpts{
 		method: cloneMethodAccessToken,
+		token:  projectGitHubToken,
 		branch: conf.ProjectRef.Branch,
 		owner:  conf.ProjectRef.Owner,
 		repo:   conf.ProjectRef.Repo,
@@ -616,6 +598,7 @@ func (s *GitGetProjectSuite) TestBuildSourceCommandForGitHubMergeQueue() {
 
 	opts := cloneOpts{
 		method: cloneMethodAccessToken,
+		token:  projectGitHubToken,
 		branch: conf.ProjectRef.Branch,
 		owner:  conf.ProjectRef.Owner,
 		repo:   conf.ProjectRef.Repo,
@@ -669,14 +652,14 @@ func (s *GitGetProjectSuite) TestBuildModuleCommand() {
 	}
 
 	opts := cloneOpts{
-		owner: "evergreen-ci",
-		repo:  "sample",
-		dir:   "module",
+		method: "cloneMethodOAuth",
+		owner:  "evergreen-ci",
+		repo:   "sample",
+		dir:    "module",
 	}
 	s.Require().NoError(opts.setLocation())
 
 	// ensure module clone command with http URL injects token
-	opts.method = cloneMethodOAuth
 	opts.token = c.Token
 	s.Require().NoError(opts.setLocation())
 	cmds, err := c.buildModuleCloneCommand(conf, opts, "main", nil)
@@ -959,7 +942,7 @@ func (s *GitGetProjectSuite) TestAllowsEmptyPatches() {
 
 func (s *GitGetProjectSuite) TestCloneOptsSetLocationGitHub() {
 	opts := cloneOpts{
-		method: "",
+		method: cloneMethodAccessToken,
 		owner:  "foo",
 		repo:   "bar",
 		token:  "",
