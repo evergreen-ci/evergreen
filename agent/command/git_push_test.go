@@ -9,7 +9,6 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/agent/internal"
 	"github.com/evergreen-ci/evergreen/agent/internal/client"
 	"github.com/evergreen-ci/evergreen/model"
@@ -39,8 +38,6 @@ func TestGitPush(t *testing.T) {
 	}
 	logger, err := comm.GetLoggerProducer(context.Background(), &conf.Task, nil)
 	require.NoError(t, err)
-
-	assert.Equal(t, conf.GetCloneMethod(), evergreen.CloneMethodOAuth)
 
 	var splitCommand []string
 	for name, test := range map[string]func(*testing.T){

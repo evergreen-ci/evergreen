@@ -155,13 +155,6 @@ func NewTaskConfig(workDir string, d *apimodels.DistroView, p *model.Project, t 
 	return taskConfig, nil
 }
 
-func (c *TaskConfig) GetCloneMethod() string {
-	if c.Distro != nil {
-		return c.Distro.CloneMethod
-	}
-	return evergreen.CloneMethodOAuth
-}
-
 func (tc *TaskConfig) TaskAttributeMap() map[string]string {
 	return map[string]string{
 		evergreen.TaskIDOtelAttribute:            tc.Task.Id,
