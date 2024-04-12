@@ -119,9 +119,7 @@ func (opts cloneOpts) validate() error {
 	if opts.location == "" {
 		catcher.New("missing required location")
 	}
-	if opts.method != "" {
-		catcher.Wrapf(validateCloneMethod(opts.method), "invalid clone method '%s'", opts.method)
-	}
+	catcher.Wrapf(validateCloneMethod(opts.method), "invalid clone method '%s'", opts.method)
 	if opts.token == "" {
 		catcher.New("cannot clone using OAuth or access token if token is not set")
 	}
@@ -185,7 +183,7 @@ func getProjectMethodAndToken(ctx context.Context, comm client.Communicator, td 
 		return "", "", errors.New("cannot clone using OAuth if explicit token from parameter and global token are both empty")
 	}
 
-	return cloneMethodOAuth, token, err
+	return cloneMethodOAuth, token, nil
 }
 
 // parseToken parses the OAuth token, if it is in the format "token <token>";
