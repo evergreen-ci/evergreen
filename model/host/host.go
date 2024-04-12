@@ -353,13 +353,13 @@ type SpawnOptions struct {
 // related bookkeeping information.
 type SleepScheduleInfo struct {
 	// WholeWeekdaysOff represents whole weekdays for the host to sleep.
-	WholeWeekdaysOff []time.Weekday `bson:"whole_weekdays_off" json:"whole_weekdays_off"`
+	WholeWeekdaysOff []time.Weekday `bson:"whole_weekdays_off,omitempty" json:"whole_weekdays_off,omitempty"`
 	// DailyStartTime and DailyStopTime represent a daily schedule for when to
 	// start a stopped host back up. The format is "HH:MM".
-	DailyStartTime string `bson:"daily_start_time" json:"daily_start_time"`
+	DailyStartTime string `bson:"daily_start_time,omitempty" json:"daily_start_time,omitempty"`
 	// DailyStopTime represents a daily schedule for when to stop a host. The
 	// format is "HH:MM".
-	DailyStopTime string `bson:"daily_stop_time" json:"daily_stop_time"`
+	DailyStopTime string `bson:"daily_stop_time,omitempty" json:"daily_stop_time,omitempty"`
 	// TimeZone is the time zone for this host's sleep schedule.
 	TimeZone string `bson:"time_zone" json:"time_zone"`
 	// TemporarilyExemptUntil stores when a user's temporary exemption ends, if
@@ -378,10 +378,12 @@ type SleepScheduleInfo struct {
 	ShouldKeepOff bool `bson:"should_keep_off" json:"should_keep_off"`
 	// NextStopTime is the next time that the host should stop for its sleep
 	// schedule.
-	NextStopTime time.Time `bson:"next_stop_time" json:"next_stop_time"`
+	// kim: NOTE: slightly changing data model to allow empty next stop/start
+	// times rather than allowing Go zero time to be set.
+	NextStopTime time.Time `bson:"next_stop_time,omitempty" json:"next_stop_time,omitempty"`
 	// NextStartTime is the next time that the host should start for its sleep
 	// schedule.
-	NextStartTime time.Time `bson:"next_start_time" json:"next_start_time"`
+	NextStartTime time.Time `bson:"next_start_time,omitempty" json:"next_start_time,omitempty"`
 }
 
 // Validate checks that the sleep schedule provided by the user is valid.
@@ -3627,18 +3629,29 @@ func (h *Host) UpdateSleepSchedule(ctx context.Context, schedule SleepScheduleIn
 	return nil
 }
 
-// SleepScheduleSentinelTime is a special date that's so far in the future that
-// it's assumed Evergreen will never reach this time. This timestamp is only
-// used to signify that a host's sleep schedule should not take effect (either
-// is permanently exempt from the sleep schedule, or is being kept off
-// indefinitely).
-var SleepScheduleSentinelTime = time.Date(10000, 0, 0, 0, 0, 0, 0, time.UTC)
+// IsSleepScheduleEnabled returns whether or not a sleep schedule is enabled
+// for the host.
+func (h *Host) IsSleepScheduleEnabled() bool {
+	if !h.NoExpiration {
+		return false
+	}
+	if !utility.StringSliceContains(evergreen.SleepScheduleStatuses, h.Status) {
+		return false
+	}
+	if h.SleepSchedule.PermanentlyExempt || h.SleepSchedule.ShouldKeepOff {
+		return false
+	}
+	if h.SleepSchedule.TemporarilyExemptUntil.After(time.Now()) {
+		return false
+	}
+	return true
+}
 
 // GetNextScheduledStopTime returns the next time a host should be
 // stopped according to its sleep schedule.
 func (s *SleepScheduleInfo) GetNextScheduledStopTime(now time.Time) (time.Time, error) {
 	if s.PermanentlyExempt || s.ShouldKeepOff {
-		return SleepScheduleSentinelTime, nil
+		return time.Time{}, nil
 	}
 
 	userTimeZone, err := time.LoadLocation(s.TimeZone)
@@ -3745,7 +3758,7 @@ func (s *SleepScheduleInfo) GetNextScheduledStopTime(now time.Time) (time.Time, 
 // started according to its sleep schedule.
 func (s *SleepScheduleInfo) GetNextScheduledStartTime(now time.Time) (time.Time, error) {
 	if s.PermanentlyExempt || s.ShouldKeepOff {
-		return SleepScheduleSentinelTime, nil
+		return time.Time{}, nil
 	}
 
 	userTimeZone, err := time.LoadLocation(s.TimeZone)

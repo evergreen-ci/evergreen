@@ -6601,23 +6601,23 @@ func TestGetNextScheduledStopTime(t *testing.T) {
 			assert.Equal(t, expectedOffsetSecs, tzOffset, "next stop time should be in EDT rather than EST")
 			assert.Equal(t, s.TimeZone, nextStop.Location().String(), "next stop time should be specified in the user's time zone")
 		},
-		"ReturnsSentinelTimeForPermanentlyExemptHost": func(t *testing.T) {
+		"ReturnsZeroTimeForPermanentlyExemptHost": func(t *testing.T) {
 			s := SleepScheduleInfo{
 				WholeWeekdaysOff:  []time.Weekday{time.Sunday},
 				PermanentlyExempt: true,
 			}
 			nextStop, err := s.GetNextScheduledStopTime(time.Now())
 			assert.NoError(t, err)
-			assert.Equal(t, SleepScheduleSentinelTime, nextStop)
+			assert.Zero(t, nextStop)
 		},
-		"ReturnsSentinelTimeForIndefinitelyOffHost": func(t *testing.T) {
+		"ReturnsZeroTimeForIndefinitelyOffHost": func(t *testing.T) {
 			s := SleepScheduleInfo{
 				WholeWeekdaysOff: []time.Weekday{time.Sunday},
 				ShouldKeepOff:    true,
 			}
 			nextStop, err := s.GetNextScheduledStopTime(time.Now())
 			assert.NoError(t, err)
-			assert.Equal(t, SleepScheduleSentinelTime, nextStop)
+			assert.Zero(t, nextStop)
 		},
 		"ReturnsErrorForZeroSleepSchedule": func(t *testing.T) {
 			s := SleepScheduleInfo{}
@@ -6836,23 +6836,23 @@ func TestGetNextScheduledStartTime(t *testing.T) {
 			assert.Equal(t, expectedOffsetSecs, tzOffset, "next start time should be in EDT rather than EST")
 			assert.Equal(t, s.TimeZone, nextStart.Location().String(), "next start time should be specified in the user's time zone")
 		},
-		"ReturnsSentinelTimeForPermanentlyExemptHost": func(t *testing.T, h *Host) {
+		"ReturnsZeroTimeForPermanentlyExemptHost": func(t *testing.T, h *Host) {
 			s := SleepScheduleInfo{
 				WholeWeekdaysOff:  []time.Weekday{time.Sunday},
 				PermanentlyExempt: true,
 			}
 			nextStop, err := s.GetNextScheduledStartTime(time.Now())
 			assert.NoError(t, err)
-			assert.Equal(t, SleepScheduleSentinelTime, nextStop)
+			assert.Zero(t, nextStop)
 		},
-		"ReturnsSentinelTimeForIndefinitelyOffHost": func(t *testing.T, h *Host) {
+		"ReturnsZeroTimeForIndefinitelyOffHost": func(t *testing.T, h *Host) {
 			s := SleepScheduleInfo{
 				WholeWeekdaysOff: []time.Weekday{time.Sunday},
 				ShouldKeepOff:    true,
 			}
 			nextStop, err := s.GetNextScheduledStartTime(time.Now())
 			assert.NoError(t, err)
-			assert.Equal(t, SleepScheduleSentinelTime, nextStop)
+			assert.Zero(t, nextStop)
 		},
 		"ReturnsErrorForZeroSleepSchedule": func(t *testing.T, h *Host) {
 			s := SleepScheduleInfo{}

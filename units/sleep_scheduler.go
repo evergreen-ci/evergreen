@@ -58,11 +58,12 @@ func (j *sleepSchedulerJob) Run(ctx context.Context) {
 		return
 	}
 
+	j.AddError(errors.Wrap(j.syncPermanentlyExemptHosts(ctx), "syncing permanently exempt hosts"))
+	j.AddError(errors.Wrap(j.fixMissingNextScheduleTimes(ctx), "fixing hosts that are missing next schedule times"))
+	j.AddError(errors.Wrap(j.fixHostsExceedingTimeout(ctx), "fixing hosts that are exceeding the scheduled stop/start timeout"))
+
 	ts := utility.RoundPartOfMinute(0)
-	if err := populateQueueGroup(ctx, j.env, spawnHostModificationQueueGroup, j.makeStopAndStartJobs, ts); err != nil {
-		j.AddError(errors.Wrap(err, "enqueuing stop and start jobs"))
-		return
-	}
+	j.AddError(errors.Wrap(populateQueueGroup(ctx, j.env, spawnHostModificationQueueGroup, j.makeStopAndStartJobs, ts), "enqueueing stop and start jobs"))
 }
 
 func (j *sleepSchedulerJob) populateIfUnset() error {
@@ -74,9 +75,9 @@ func (j *sleepSchedulerJob) populateIfUnset() error {
 
 const sleepScheduleUser = "sleep_schedule"
 
-// fixMissingNextScheduledTimes finds and fixes hosts that are subject to the
+// fixMissingNextScheduleTimes finds and fixes hosts that are subject to the
 // sleep schedule but are missing next stop/start times.
-func (j *sleepSchedulerJob) fixMissingNextScheduledTimes(ctx context.Context) error {
+func (j *sleepSchedulerJob) fixMissingNextScheduleTimes(ctx context.Context) error {
 	hosts, err := host.FindMissingNextSleepScheduleTime(ctx)
 	if err != nil {
 		return errors.Wrap(err, "finding hosts with missing next stop/start times")
@@ -85,6 +86,7 @@ func (j *sleepSchedulerJob) fixMissingNextScheduledTimes(ctx context.Context) er
 	catcher := grip.NewBasicCatcher()
 	for _, h := range hosts {
 		if utility.IsZeroTime(h.SleepSchedule.NextStartTime) {
+			oldNextStart := h.SleepSchedule.NextStartTime
 			// nextStart, err := h.SleepSchedule.GetNextScheduledStartTime(now)
 			// if err != nil {
 			//     catcher.Wrapf(err, "getting next start time for host '%s'", h.Id)
@@ -92,8 +94,17 @@ func (j *sleepSchedulerJob) fixMissingNextScheduledTimes(ctx context.Context) er
 			// }
 			// // kim: TODO: needs DEVPROD-3951
 			// h.SetNextScheduledStartTime(ctx, nextStart)
+			grip.Notice(message.Fields{
+				"message":             "host has exceeded scheduled start timeout, re-scheduling to next available start time",
+				"host_id":             h.Id,
+				"started_by":          h.StartedBy,
+				"old_next_start_time": oldNextStart,
+				"new_next_start_time": "kim: TODO: fill in",
+				"job":                 j.ID(),
+			})
 		}
 		if utility.IsZeroTime(h.SleepSchedule.NextStopTime) {
+			oldNextStop := h.SleepSchedule.NextStopTime
 			// nextStop, err := h.SleepSchedule.GetNextScheduledStopTime(now)
 			// if err != nil {
 			//     catcher.Wrapf(err, "getting next stop time for host '%s'", h.Id)
@@ -101,6 +112,14 @@ func (j *sleepSchedulerJob) fixMissingNextScheduledTimes(ctx context.Context) er
 			// }
 			// // kim: TODO: needs DEVPROD-3951
 			// h.SetNextScheduledStopTime(ctx, nextStop)
+			grip.Notice(message.Fields{
+				"message":            "host has exceeded scheduled stop timeout, re-scheduling to next available stop time",
+				"host_id":            h.Id,
+				"started_by":         h.StartedBy,
+				"old_next_stop_time": oldNextStop,
+				"new_next_stop_time": "kim: TODO: fill in",
+				"job":                j.ID(),
+			})
 		}
 	}
 	return catcher.Resolve()
@@ -109,24 +128,16 @@ func (j *sleepSchedulerJob) fixMissingNextScheduledTimes(ctx context.Context) er
 // fixHostsExceedingScheduledTimeout finds and reschedules the next stop/start
 // time for hosts that need to stop/start for their sleep schedule but have
 // taken too long while attempting to stop/start.
-func (j *sleepSchedulerJob) fixHostsExceedingScheduledTimeout(ctx context.Context) error {
-	hosts, err := host.FindExceedsSleepScheduleActionTimeout(ctx)
+func (j *sleepSchedulerJob) fixHostsExceedingTimeout(ctx context.Context) error {
+	hosts, err := host.FindExceedsSleepScheduleTimeout(ctx)
 	if err != nil {
-		return errors.Wrap(err, "finding hosts exceeding scheduled threshold")
+		return errors.Wrap(err, "finding hosts exceeding sleep schedule timeout")
 	}
 	now := time.Now()
 	catcher := grip.NewBasicCatcher()
 	for _, h := range hosts {
-		if h.SleepSchedule.NextStopTime.Before(now.Add(-host.SleepScheduleActionTimeout)) {
-			// nextStop, err := h.SleepSchedule.GetNextScheduledStopTime(now)
-			// if err != nil {
-			//     catcher.Wrapf(err, "getting next stop time for host '%s'", h.Id)
-			//     continue
-			// }
-			// // kim: TODO: needs DEVPROD-3951
-			// h.SetNextScheduledStopTime(ctx, nextStop)
-		}
-		if h.SleepSchedule.NextStartTime.Before(now.Add(-host.SleepScheduleActionTimeout)) {
+		if now.Sub(h.SleepSchedule.NextStartTime) > host.SleepScheduleActionTimeout {
+			oldNextStart := h.SleepSchedule.NextStartTime
 			// nextStart, err := h.SleepSchedule.GetNextScheduledStartTime(now)
 			// if err != nil {
 			//     catcher.Wrapf(err, "getting next start time for host '%s'", h.Id)
@@ -134,6 +145,32 @@ func (j *sleepSchedulerJob) fixHostsExceedingScheduledTimeout(ctx context.Contex
 			// }
 			// // kim: TODO: needs DEVPROD-3951
 			// h.SetNextScheduledStartTime(ctx, nextStart)
+			grip.Notice(message.Fields{
+				"message":             "host has exceeded scheduled start timeout, re-scheduling to next available start time",
+				"host_id":             h.Id,
+				"started_by":          h.StartedBy,
+				"job":                 j.ID(),
+				"old_next_start_time": oldNextStart,
+				"new_next_start_time": "kim: TODO: fill in",
+			})
+		}
+		if now.Sub(h.SleepSchedule.NextStopTime) > host.SleepScheduleActionTimeout {
+			oldNextStop := h.SleepSchedule.NextStopTime
+			// nextStop, err := h.SleepSchedule.GetNextScheduledStopTime(now)
+			// if err != nil {
+			//     catcher.Wrapf(err, "getting next stop time for host '%s'", h.Id)
+			//     continue
+			// }
+			// // kim: TODO: needs DEVPROD-3951
+			// h.SetNextScheduledStopTime(ctx, nextStop)
+			grip.Notice(message.Fields{
+				"message":            "host has exceeded scheduled stop timeout, re-scheduling to next available stop time",
+				"host_id":            h.Id,
+				"started_by":         h.StartedBy,
+				"job":                j.ID(),
+				"old_next_stop_time": oldNextStop,
+				"new_next_stop_time": "kim: TODO: fill in",
+			})
 		}
 	}
 	return catcher.Resolve()
@@ -142,6 +179,8 @@ func (j *sleepSchedulerJob) fixHostsExceedingScheduledTimeout(ctx context.Contex
 // syncPermanentlyExemptHosts ensures that the hosts that are marked as
 // permanently exempt are consistent with the most up-to-date list of
 // permanently exempt hosts.
+// kim: NOTE: this is first step in fixes because permanent exemption syncing is
+// important to get right before other fixes.
 func (j *sleepSchedulerJob) syncPermanentlyExemptHosts(ctx context.Context) error {
 	settings := j.env.Settings()
 	return host.SyncPermanentExemptions(ctx, settings.SleepSchedule.PermanentlyExemptHosts)
