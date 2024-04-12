@@ -79,6 +79,59 @@
         "git_clone": false
       },
       "hidden": false
+    },
+    {
+      "_id": "evergreen",
+      "display_name": "Evergreen Repo",
+      "enabled": null,
+      "owner_name": "evergreen-ci",
+      "repo_name": "evergreen",
+      "branch_name": "main",
+      "remote_path": "evergreen.yml",
+      "patching_disabled": false,
+      "pr_testing_enabled": true,
+      "stepback_disabled": false,
+      "batch_time": 2,
+      "deactivate_previous": true,
+      "triggers": [],
+      "patch_trigger_aliases": [],
+      "commit_queue": {
+        "enabled": true,
+        "require_signed": false,
+        "merge_method": "squash",
+        "message": "hmmm"
+      },
+      "admins": [],
+      "spawn_host_script_path": "",
+      "tracks_push_events": true,
+      "task_sync": {
+        "config_enabled": false,
+        "patch_enabled": true
+      },
+      "perf_enabled": true,
+      "build_baron_settings": {
+        "ticket_create_project": "EVG",
+        "ticket_search_projects": ["EVG"],
+        "bf_suggestion_server": "",
+        "bf_suggestion_username": "",
+        "bf_suggestion_password": "",
+        "bf_suggestion_timeout_secs": 0,
+        "bf_suggestion_features_url": ""
+      },
+      "task_annotation_settings": {
+        "web_hook": {
+          "endpoint": "endpoint",
+          "secret": "shh"
+        },
+        "jira_custom_fields": []
+      },
+      "container_size_definitions": [],
+      "git_tag_authorized_users": [],
+      "workstation_config": {
+        "setup_commands": null,
+        "git_clone": false
+      },
+      "hidden": false
     }
   ],
   "project_ref": [

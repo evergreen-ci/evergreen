@@ -2,15 +2,12 @@
   "tests": [
     {
       "query_file": "no_admin.graphql",
-      "result": { 
+      "result": {
         "data": null,
         "errors": [
           {
-            "message": "user testuser does not have permission to access settings for the project evergreen_id",
-            "path": [
-              "deactivateStepbackTask",
-              "taskName"
-            ],
+            "message": "user 'testuser' does not have permission to access 'settings' for the project 'evergreen_id'",
+            "path": ["deactivateStepbackTask", "projectId"],
             "extensions": {
               "code": "FORBIDDEN"
             }
@@ -20,14 +17,12 @@
     },
     {
       "query_file": "not_found.graphql",
-      "result": { 
+      "result": {
         "data": null,
         "errors": [
           {
             "message": "no stepback task 'does-not-exist' for variant 'ubuntu1604' found",
-            "path": [
-              "deactivateStepbackTask"
-            ],
+            "path": ["deactivateStepbackTask"],
             "extensions": {
               "code": "INTERNAL_SERVER_ERROR"
             }

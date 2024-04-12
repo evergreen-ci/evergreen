@@ -62,15 +62,15 @@ type Mutation {
   # project
   addFavoriteProject(identifier: String!): Project!
   attachProjectToNewRepo(project: MoveProjectInput!): Project!
-  attachProjectToRepo(projectId: String! @requireProjectAccess(access: EDIT)): Project!
+  attachProjectToRepo(projectId: String! @requireProjectAccess(permission: SETTINGS, access: EDIT)): Project!
   createProject(project: CreateProjectInput! @requireProjectAdmin, requestS3Creds: Boolean): Project! 
   copyProject(project: CopyProjectInput! @requireProjectAdmin, requestS3Creds: Boolean): Project! 
-  deactivateStepbackTask(projectId: String!, buildVariantName: String!, taskName: String! @requireProjectAccess(access: EDIT)): Boolean!
-  defaultSectionToRepo(projectId: String! @requireProjectAccess(access: EDIT), section: ProjectSettingsSection!): String
+  deactivateStepbackTask(projectId: String! @requireProjectAccess(permission: SETTINGS, access: EDIT), buildVariantName: String!, taskName: String!): Boolean!
+  defaultSectionToRepo(projectId: String! @requireProjectAccess(permission: SETTINGS, access: EDIT), section: ProjectSettingsSection!): String
   deleteProject(projectId: String! @requireProjectAdmin): Boolean!
-  detachProjectFromRepo(projectId: String! @requireProjectAccess(access: EDIT)): Project!
-  forceRepotrackerRun(projectId: String! @requireProjectAccess(access: EDIT)): Boolean!
-  promoteVarsToRepo(projectId: String! @requireProjectAccess(access: EDIT), varNames: [String!]!): Boolean!
+  detachProjectFromRepo(projectId: String! @requireProjectAccess(permission: SETTINGS, access: EDIT)): Project!
+  forceRepotrackerRun(projectId: String! @requireProjectAccess(permission: SETTINGS, access: EDIT)): Boolean!
+  promoteVarsToRepo(projectId: String! @requireProjectAccess(permission: SETTINGS, access: EDIT), varNames: [String!]!): Boolean!
   removeFavoriteProject(identifier: String!): Project!
   saveProjectSettingsForSection(projectSettings: ProjectSettingsInput, section: ProjectSettingsSection!): ProjectSettings!
   saveRepoSettingsForSection(repoSettings: RepoSettingsInput, section: ProjectSettingsSection!): RepoSettings!
