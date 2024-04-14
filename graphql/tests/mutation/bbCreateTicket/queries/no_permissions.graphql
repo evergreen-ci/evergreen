@@ -1,0 +1,3 @@
+mutation {
+  bbCreateTicket(taskId: "no_permissions", execution: 0)
+}

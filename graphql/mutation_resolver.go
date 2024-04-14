@@ -281,7 +281,11 @@ func (r *mutationResolver) EnqueuePatch(ctx context.Context, patchID string, com
 		return nil, InternalServerError.Send(ctx, fmt.Sprintf("error getting patch '%s'", patchID))
 	}
 
-	if !hasEnqueuePatchPermission(user, existingPatch) {
+	patch, err := existingPatch.ToService()
+	if err != nil {
+		return nil, InternalServerError.Send(ctx, fmt.Sprintf("converting APIPatch to patch '%s'", patchID))
+	}
+	if !hasEditPatchPermission(user, patch) {
 		return nil, Forbidden.Send(ctx, "can't enqueue another user's patch")
 	}
 
@@ -321,6 +325,7 @@ func (r *mutationResolver) EnqueuePatch(ctx context.Context, patchID string, com
 
 // SetPatchVisibility is the resolver for the setPatchVisibility field.
 func (r *mutationResolver) SetPatchVisibility(ctx context.Context, patchIds []string, hidden bool) ([]*restModel.APIPatch, error) {
+	user := mustHaveUser(ctx)
 	updatedPatches := []*restModel.APIPatch{}
 	patches, err := patch.Find(patch.ByStringIds(patchIds))
 
@@ -329,6 +334,9 @@ func (r *mutationResolver) SetPatchVisibility(ctx context.Context, patchIds []st
 	}
 
 	for _, p := range patches {
+		if !hasEditPatchPermission(user, p) {
+			return nil, Forbidden.Send(ctx, "can't change visibility of another user's patch")
+		}
 		err = p.SetPatchVisibility(hidden)
 		if err != nil {
 			return nil, InternalServerError.Send(ctx, fmt.Sprintf("Error occurred setting patch '%s' visibility: %s", p.Id, err.Error()))
@@ -469,26 +477,6 @@ func (r *mutationResolver) UnschedulePatchTasks(ctx context.Context, patchID str
 		return nil, err
 	}
 	return &patchID, nil
-}
-
-// AddFavoriteProject is the resolver for the addFavoriteProject field.
-func (r *mutationResolver) AddFavoriteProject(ctx context.Context, identifier string) (*restModel.APIProjectRef, error) {
-	p, err := model.FindBranchProjectRef(identifier)
-	if err != nil || p == nil {
-		return nil, ResourceNotFound.Send(ctx, fmt.Sprintf("could not find project '%s'", identifier))
-	}
-
-	usr := mustHaveUser(ctx)
-	err = usr.AddFavoritedProject(identifier)
-	if err != nil {
-		return nil, InternalServerError.Send(ctx, err.Error())
-	}
-	apiProjectRef := restModel.APIProjectRef{}
-	err = apiProjectRef.BuildFromService(*p)
-	if err != nil {
-		return nil, InternalServerError.Send(ctx, fmt.Sprintf("error building APIProjectRef from service: %s", err.Error()))
-	}
-	return &apiProjectRef, nil
 }
 
 // AttachProjectToNewRepo is the resolver for the attachProjectToNewRepo field.
@@ -672,26 +660,6 @@ func (r *mutationResolver) PromoteVarsToRepo(ctx context.Context, projectID stri
 
 	}
 	return true, nil
-}
-
-// RemoveFavoriteProject is the resolver for the removeFavoriteProject field.
-func (r *mutationResolver) RemoveFavoriteProject(ctx context.Context, identifier string) (*restModel.APIProjectRef, error) {
-	p, err := model.FindBranchProjectRef(identifier)
-	if err != nil || p == nil {
-		return nil, ResourceNotFound.Send(ctx, fmt.Sprintf("Could not find project: %s", identifier))
-	}
-
-	usr := mustHaveUser(ctx)
-	err = usr.RemoveFavoriteProject(identifier)
-	if err != nil {
-		return nil, InternalServerError.Send(ctx, fmt.Sprintf("Error removing project : %s : %s", identifier, err))
-	}
-	apiProjectRef := restModel.APIProjectRef{}
-	err = apiProjectRef.BuildFromService(*p)
-	if err != nil {
-		return nil, InternalServerError.Send(ctx, fmt.Sprintf("error building APIProjectRef from service: %s", err.Error()))
-	}
-	return &apiProjectRef, nil
 }
 
 // SaveProjectSettingsForSection is the resolver for the saveProjectSettingsForSection field.
@@ -1123,7 +1091,17 @@ func (r *mutationResolver) RestartTask(ctx context.Context, taskID string, faile
 }
 
 // ScheduleTasks is the resolver for the scheduleTasks field.
-func (r *mutationResolver) ScheduleTasks(ctx context.Context, taskIds []string, versionID string) ([]*restModel.APITask, error) {
+func (r *mutationResolver) ScheduleTasks(ctx context.Context, versionID string, taskIds []string) ([]*restModel.APITask, error) {
+	tasks, err := findAllTasksByIds(ctx, taskIds...)
+	if err != nil {
+		return nil, err
+	}
+	for _, t := range tasks {
+		if t.Version != versionID && t.ParentPatchID != versionID {
+			return nil, InputValidationError.Send(ctx, fmt.Sprintf("task '%s' does not belong to version '%s'", t.Id, versionID))
+		}
+	}
+
 	scheduledTasks := []*restModel.APITask{}
 	scheduled, err := setManyTasksScheduled(ctx, r.sc.GetURL(), true, taskIds...)
 	if err != nil {
@@ -1182,6 +1160,26 @@ func (r *mutationResolver) UnscheduleTask(ctx context.Context, taskID string) (*
 	return scheduled[0], nil
 }
 
+// AddFavoriteProject is the resolver for the addFavoriteProject field.
+func (r *mutationResolver) AddFavoriteProject(ctx context.Context, identifier string) (*restModel.APIProjectRef, error) {
+	p, err := model.FindBranchProjectRef(identifier)
+	if err != nil || p == nil {
+		return nil, ResourceNotFound.Send(ctx, fmt.Sprintf("could not find project '%s'", identifier))
+	}
+
+	usr := mustHaveUser(ctx)
+	err = usr.AddFavoritedProject(identifier)
+	if err != nil {
+		return nil, InternalServerError.Send(ctx, err.Error())
+	}
+	apiProjectRef := restModel.APIProjectRef{}
+	err = apiProjectRef.BuildFromService(*p)
+	if err != nil {
+		return nil, InternalServerError.Send(ctx, fmt.Sprintf("error building APIProjectRef from service: %s", err.Error()))
+	}
+	return &apiProjectRef, nil
+}
+
 // ClearMySubscriptions is the resolver for the clearMySubscriptions field.
 func (r *mutationResolver) ClearMySubscriptions(ctx context.Context) (int, error) {
 	usr := mustHaveUser(ctx)
@@ -1217,6 +1215,26 @@ func (r *mutationResolver) DeleteSubscriptions(ctx context.Context, subscription
 		return 0, InternalServerError.Send(ctx, fmt.Sprintf("Error deleting subscriptions '%s'", err.Error()))
 	}
 	return len(subscriptionIds), nil
+}
+
+// RemoveFavoriteProject is the resolver for the removeFavoriteProject field.
+func (r *mutationResolver) RemoveFavoriteProject(ctx context.Context, identifier string) (*restModel.APIProjectRef, error) {
+	p, err := model.FindBranchProjectRef(identifier)
+	if err != nil || p == nil {
+		return nil, ResourceNotFound.Send(ctx, fmt.Sprintf("Could not find project: %s", identifier))
+	}
+
+	usr := mustHaveUser(ctx)
+	err = usr.RemoveFavoriteProject(identifier)
+	if err != nil {
+		return nil, InternalServerError.Send(ctx, fmt.Sprintf("Error removing project : %s : %s", identifier, err))
+	}
+	apiProjectRef := restModel.APIProjectRef{}
+	err = apiProjectRef.BuildFromService(*p)
+	if err != nil {
+		return nil, InternalServerError.Send(ctx, fmt.Sprintf("error building APIProjectRef from service: %s", err.Error()))
+	}
+	return &apiProjectRef, nil
 }
 
 // RemovePublicKey is the resolver for the removePublicKey field.

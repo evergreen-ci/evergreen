@@ -1,0 +1,18 @@
+{
+  "project_ref": [
+    {
+      "_id": "evergreen",
+      "owner_name": "evergreen-ci",
+      "repo_name": "evergreen"
+    },
+    {
+      "_id": "spruce",
+      "identifier": "spruce",
+      "display_name": "Spruce"
+    }
+  ],
+  "tasks": [
+    { "_id": "task_id", "branch": "spruce" },
+    { "_id": "no_permissions", "branch": "evergreen" }
+  ]
+}

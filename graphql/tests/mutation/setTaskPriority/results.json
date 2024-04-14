@@ -1,0 +1,44 @@
+{
+  "tests": [
+    {
+      "query_file": "set_priority.graphql",
+      "result": {
+        "data": {
+          "setTaskPriority": {
+            "id": "task_id"
+          }
+        }
+      }
+    },
+    {
+      "query_file": "set_priority_too_high_for_permission_level.graphql",
+      "result": {
+        "data": null,
+        "errors": [
+          {
+            "message": "Insufficient access to set priority 999, can only set priority less than or equal to 100",
+            "path": ["setTaskPriority"],
+            "extensions": {
+              "code": "FORBIDDEN"
+            }
+          }
+        ]
+      }
+    },
+    {
+      "query_file": "no_permissions.graphql",
+      "result": {
+        "data": null,
+        "errors": [
+          {
+            "message": "user 'testuser' does not have permission to access 'tasks' for the project 'evergreen'",
+            "path": ["setTaskPriority", "taskId"],
+            "extensions": {
+              "code": "FORBIDDEN"
+            }
+          }
+        ]
+      }
+    }
+  ]
+}

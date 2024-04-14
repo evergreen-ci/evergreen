@@ -11,8 +11,8 @@
       "result": {
         "errors": [
           {
-            "message": "cannot find task with id 'nonexistent'",
-            "path": ["restartTask"],
+            "message": "finding project for task 'nonexistent': task not found",
+            "path": ["restartTask", "taskId"],
             "extensions": { "code": "RESOURCE_NOT_FOUND" }
           }
         ],

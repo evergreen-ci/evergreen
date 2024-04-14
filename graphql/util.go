@@ -180,17 +180,17 @@ func getDisplayStatus(v *model.Version) (string, error) {
 	return patch.GetCollectiveStatusFromPatchStatuses(allStatuses), nil
 }
 
-func hasEnqueuePatchPermission(u *user.DBUser, existingPatch *restModel.APIPatch) bool {
-	if u == nil || existingPatch == nil {
+func hasEditPatchPermission(u *user.DBUser, patch patch.Patch) bool {
+	if u == nil {
 		return false
 	}
 
-	// patch owner
-	if utility.FromStringPtr(existingPatch.Author) == u.Username() {
+	// Check if user is patch owner.
+	if patch.Author == u.Username() {
 		return true
 	}
 
-	// superuser
+	// Check if user is superuser.
 	permissions := gimlet.PermissionOpts{
 		Resource:      evergreen.SuperUserPermissionsID,
 		ResourceType:  evergreen.SuperUserResourceType,
@@ -201,12 +201,25 @@ func hasEnqueuePatchPermission(u *user.DBUser, existingPatch *restModel.APIPatch
 		return true
 	}
 
-	return u.HasPermission(gimlet.PermissionOpts{
-		Resource:      utility.FromStringPtr(existingPatch.ProjectId),
+	// Check if user is project admin.
+	permissions = gimlet.PermissionOpts{
+		Resource:      patch.Project,
 		ResourceType:  evergreen.ProjectResourceType,
 		Permission:    evergreen.PermissionProjectSettings,
 		RequiredLevel: evergreen.ProjectSettingsEdit.Value,
-	})
+	}
+	if u.HasPermission(permissions) {
+		return true
+	}
+
+	// Check if user has patch admin permissions.
+	permissions = gimlet.PermissionOpts{
+		Resource:      patch.Project,
+		ResourceType:  evergreen.ProjectResourceType,
+		Permission:    evergreen.PermissionPatches,
+		RequiredLevel: evergreen.PatchSubmitAdmin.Value,
+	}
+	return u.HasPermission(permissions)
 }
 
 // getPatchProjectVariantsAndTasksForUI gets the variants and tasks for a project for a patch id

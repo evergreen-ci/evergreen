@@ -1,0 +1,19 @@
+{
+  "tests": [
+    {
+      "query_file": "no_permissions.graphql",
+      "result": {
+        "data": null,
+        "errors": [
+          {
+            "message": "user 'testuser' does not have permission to access 'annotations' for the project 'evergreen'",
+            "path": ["bbCreateTicket", "taskId"],
+            "extensions": {
+              "code": "FORBIDDEN"
+            }
+          }
+        ]
+      }
+    }
+  ]
+}

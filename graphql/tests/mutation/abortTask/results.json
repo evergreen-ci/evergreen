@@ -27,10 +27,8 @@
       "result": {
         "errors": [
           {
-            "message": "Error aborting task fail_commit_queue: dequeueing and restarting task 'fail_commit_queue': commit queue for project 'logkeeper' not found",
-            "path": [
-              "abortTask"
-            ],
+            "message": "Error aborting task fail_commit_queue: dequeueing and restarting task 'fail_commit_queue': commit queue for project 'spruce' not found",
+            "path": ["abortTask"],
             "extensions": {
               "code": "INTERNAL_SERVER_ERROR"
             }
@@ -45,9 +43,7 @@
         "errors": [
           {
             "message": "Error aborting task completed_task: task 'completed_task' currently has status 'failed' - cannot abort task in this status",
-            "path": [
-              "abortTask"
-            ],
+            "path": ["abortTask"],
             "extensions": {
               "code": "INTERNAL_SERVER_ERROR"
             }
@@ -61,12 +57,25 @@
       "result": {
         "errors": [
           {
-            "message": "cannot find task with id fake-task-id",
-            "path": [
-              "abortTask"
-            ],
+            "message": "finding project for task 'fake-task-id': task not found",
+            "path": ["abortTask", "taskId"],
             "extensions": {
               "code": "RESOURCE_NOT_FOUND"
+            }
+          }
+        ],
+        "data": null
+      }
+    },
+    {
+      "query_file": "no_permissions.graphql",
+      "result": {
+        "errors": [
+          {
+            "message": "user 'testuser' does not have permission to access 'tasks' for the project 'evergreen'",
+            "path": ["abortTask", "taskId"],
+            "extensions": {
+              "code": "FORBIDDEN"
             }
           }
         ],

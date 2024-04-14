@@ -3,27 +3,19 @@
     {
       "_id": "evergreen",
       "owner_name": "evergreen-ci",
-      "repo_name": "evergreen",
-      "branch_name": "main",
-      "repo_kind": "github",
-      "enabled": true,
-      "private": false,
-      "batch_time": 0,
-      "remote_path": "testdata/smoke/project.yml",
-      "identifier": "evergreen",
-      "display_name": "evergreen smoke test",
-      "local_config": "",
-      "deactivate_previous": true,
-      "hidden": false,
-      "admins": [],
-      "repotracker_error": null
+      "repo_name": "evergreen"
+    },
+    {
+      "_id": "spruce",
+      "identifier": "spruce",
+      "display_name": "Spruce"
     }
   ],
   "versions": [
     {
       "_id": "5e4ff3abe3c3317e352062e4",
-      "branch": "evergreen",
-      "identifier": "evergreen"
+      "branch": "spruce",
+      "identifier": "spruce"
     }
   ],
   "tasks": [
@@ -41,7 +33,7 @@
       "start_time": { "$date": "2016-10-20T22:01:00.194Z" },
       "finish_time": { "$date": "2017-12-04T21:06:48.822Z" },
       "version": "5e4ff3abe3c3317e352062e4",
-      "branch": "evergreen",
+      "branch": "spruce",
       "gitspec": "edd78c1d581bf757a880777b00685321685a8e67",
       "build_variant": "ubuntu",
       "build_number": "1",
@@ -68,9 +60,10 @@
     }
   ],
   "patches": [
+    { "_id": { "$oid": "9e4ff3abe3c3317e352062e4" }, "branch": "evergreen" },
     {
       "_id": { "$oid": "5e4ff3abe3c3317e352062e4" },
-      "branch": "evergreen",
+      "branch": "spruce",
       "version": "5e4ff3abe3c3317e352062e4",
       "activated": true,
       "githash": "5e823e1f28baeaa22ae00823d83e03082cd148ab",

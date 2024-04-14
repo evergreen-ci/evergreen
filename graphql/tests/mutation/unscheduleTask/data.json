@@ -1,6 +1,10 @@
 {
   "tasks": [
     {
+      "_id": "no_permissions",
+      "branch": "evergreen"
+    },
+    {
       "_id": "activated_task",
       "create_time": {
         "$date": "2018-01-11T00:01:36.796Z"
@@ -24,7 +28,7 @@
         "$date": "2018-01-11T00:01:36.796Z"
       },
       "version": "version_id",
-      "branch": "curator",
+      "branch": "sandbox_project_id",
       "gitspec": "revise",
       "priority": 5,
       "task_group": "grp",
@@ -38,10 +42,7 @@
       "r": "something",
       "status": "started",
       "display_only": true,
-      "execution_tasks": [
-        "exec1",
-        "exec2"
-      ],
+      "execution_tasks": ["exec1", "exec2"],
       "generate_task": false,
       "generated_by": "something"
     }
@@ -62,7 +63,7 @@
       "start_time": "2019-07-21T00:39:42.274Z",
       "finish_time": "0001-01-01T00:00:00Z",
       "version": "5d2661149dbe326298fee2a3",
-      "branch": "mci",
+      "branch": "sandbox_project_id",
       "gitspec": "",
       "build_variant": "ubuntu1604-docker",
       "build_number": "1798",
@@ -87,6 +88,18 @@
       "predicted_makespan": 0,
       "actual_makespan": 0,
       "r": "ad_hoc"
+    }
+  ],
+  "project_ref": [
+    {
+      "_id": "sandbox_project_id",
+      "identifier": "sandbox",
+      "display_name": "Sandbox"
+    },
+    {
+      "_id": "evergreen",
+      "identifier": "evergreen",
+      "display_name": "Evergreen"
     }
   ]
 }

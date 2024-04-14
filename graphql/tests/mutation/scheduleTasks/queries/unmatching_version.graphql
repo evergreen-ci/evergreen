@@ -1,0 +1,5 @@
+mutation {
+    scheduleTasks(taskIds: ["wuzzup"], versionId: "unmatching_version") {
+      status
+    }
+}

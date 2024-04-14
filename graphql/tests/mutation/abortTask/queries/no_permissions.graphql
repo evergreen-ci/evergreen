@@ -1,0 +1,6 @@
+mutation {
+  abortTask(taskId: "no_permissions") {
+    aborted
+    activated
+  }
+}
