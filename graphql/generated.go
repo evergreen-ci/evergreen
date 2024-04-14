@@ -1021,7 +1021,7 @@ type ComplexityRoot struct {
 		TaskAllExecutions        func(childComplexity int, taskID string) int
 		TaskNamesForBuildVariant func(childComplexity int, projectIdentifier string, buildVariant string) int
 		TaskQueueDistros         func(childComplexity int) int
-		TaskTestSample           func(childComplexity int, tasks []string, filters []*TestFilter) int
+		TaskTestSample           func(childComplexity int, tasks []string, taskIds []string, filters []*TestFilter, versionID *string) int
 		User                     func(childComplexity int, userID *string) int
 		UserConfig               func(childComplexity int) int
 		UserSettings             func(childComplexity int) int
@@ -1815,7 +1815,7 @@ type QueryResolver interface {
 	LogkeeperBuildMetadata(ctx context.Context, buildID string) (*plank.Build, error)
 	Task(ctx context.Context, taskID string, execution *int) (*model.APITask, error)
 	TaskAllExecutions(ctx context.Context, taskID string) ([]*model.APITask, error)
-	TaskTestSample(ctx context.Context, tasks []string, filters []*TestFilter) ([]*TaskTestResultSample, error)
+	TaskTestSample(ctx context.Context, tasks []string, taskIds []string, filters []*TestFilter, versionID *string) ([]*TaskTestResultSample, error)
 	MyPublicKeys(ctx context.Context) ([]*model.APIPubKey, error)
 	User(ctx context.Context, userID *string) (*model.APIDBUser, error)
 	UserConfig(ctx context.Context) (*UserConfig, error)
@@ -6759,7 +6759,7 @@ func (e *executableSchema) Complexity(typeName, field string, childComplexity in
 			return 0, false
 		}
 
-		return e.complexity.Query.TaskTestSample(childComplexity, args["tasks"].([]string), args["filters"].([]*TestFilter)), true
+		return e.complexity.Query.TaskTestSample(childComplexity, args["tasks"].([]string), args["taskIds"].([]string), args["filters"].([]*TestFilter), args["versionId"].(*string)), true
 
 	case "Query.user":
 		if e.complexity.Query.User == nil {
@@ -12136,21 +12136,39 @@ func (ec *executionContext) field_Query_taskTestSample_args(ctx context.Context,
 	var arg0 []string
 	if tmp, ok := rawArgs["tasks"]; ok {
 		ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("tasks"))
-		arg0, err = ec.unmarshalNString2ᚕstringᚄ(ctx, tmp)
+		arg0, err = ec.unmarshalOString2ᚕstringᚄ(ctx, tmp)
 		if err != nil {
 			return nil, err
 		}
 	}
 	args["tasks"] = arg0
-	var arg1 []*TestFilter
-	if tmp, ok := rawArgs["filters"]; ok {
-		ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("filters"))
-		arg1, err = ec.unmarshalNTestFilter2ᚕᚖgithubᚗcomᚋevergreenᚑciᚋevergreenᚋgraphqlᚐTestFilterᚄ(ctx, tmp)
+	var arg1 []string
+	if tmp, ok := rawArgs["taskIds"]; ok {
+		ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("taskIds"))
+		arg1, err = ec.unmarshalOString2ᚕstringᚄ(ctx, tmp)
 		if err != nil {
 			return nil, err
 		}
 	}
-	args["filters"] = arg1
+	args["taskIds"] = arg1
+	var arg2 []*TestFilter
+	if tmp, ok := rawArgs["filters"]; ok {
+		ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("filters"))
+		arg2, err = ec.unmarshalNTestFilter2ᚕᚖgithubᚗcomᚋevergreenᚑciᚋevergreenᚋgraphqlᚐTestFilterᚄ(ctx, tmp)
+		if err != nil {
+			return nil, err
+		}
+	}
+	args["filters"] = arg2
+	var arg3 *string
+	if tmp, ok := rawArgs["versionId"]; ok {
+		ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("versionId"))
+		arg3, err = ec.unmarshalOString2ᚖstring(ctx, tmp)
+		if err != nil {
+			return nil, err
+		}
+	}
+	args["versionId"] = arg3
 	return args, nil
 }
 
@@ -45147,7 +45165,7 @@ func (ec *executionContext) _Query_taskTestSample(ctx context.Context, field gra
 	}()
 	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
 		ctx = rctx // use context from middleware stack in children
-		return ec.resolvers.Query().TaskTestSample(rctx, fc.Args["tasks"].([]string), fc.Args["filters"].([]*TestFilter))
+		return ec.resolvers.Query().TaskTestSample(rctx, fc.Args["tasks"].([]string), fc.Args["taskIds"].([]string), fc.Args["filters"].([]*TestFilter), fc.Args["versionId"].(*string))
 	})
 	if err != nil {
 		ec.Error(ctx, err)
