@@ -46,6 +46,12 @@ type CreateDistroInput struct {
 	NewDistroID string `json:"newDistroId"`
 }
 
+type DeactivateStepbackTaskInput struct {
+	ProjectIdentifier string `json:"projectIdentifier"`
+	BuildVariantName  string `json:"buildVariantName"`
+	TaskName          string `json:"taskName"`
+}
+
 // DeleteDistroInput is the input to the deleteDistro mutation.
 type DeleteDistroInput struct {
 	DistroID string `json:"distroId"`

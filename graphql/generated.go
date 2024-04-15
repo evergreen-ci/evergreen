@@ -634,7 +634,7 @@ type ComplexityRoot struct {
 		CreateDistro                  func(childComplexity int, opts CreateDistroInput) int
 		CreateProject                 func(childComplexity int, project model.APIProjectRef, requestS3Creds *bool) int
 		CreatePublicKey               func(childComplexity int, publicKeyInput PublicKeyInput) int
-		DeactivateStepbackTask        func(childComplexity int, projectID *string, projectIdentifier *string, buildVariantName string, taskName string) int
+		DeactivateStepbackTask        func(childComplexity int, projectID *string, buildVariantName *string, taskName *string, opts *DeactivateStepbackTaskInput) int
 		DefaultSectionToRepo          func(childComplexity int, projectID *string, projectIdentifier *string, section ProjectSettingsSection) int
 		DeleteDistro                  func(childComplexity int, opts DeleteDistroInput) int
 		DeleteProject                 func(childComplexity int, projectID *string, projectIdentifier *string) int
@@ -1689,7 +1689,7 @@ type MutationResolver interface {
 	AttachProjectToRepo(ctx context.Context, projectID *string, projectIdentifier *string) (*model.APIProjectRef, error)
 	CreateProject(ctx context.Context, project model.APIProjectRef, requestS3Creds *bool) (*model.APIProjectRef, error)
 	CopyProject(ctx context.Context, project data.CopyProjectOpts, requestS3Creds *bool) (*model.APIProjectRef, error)
-	DeactivateStepbackTask(ctx context.Context, projectID *string, projectIdentifier *string, buildVariantName string, taskName string) (bool, error)
+	DeactivateStepbackTask(ctx context.Context, projectID *string, buildVariantName *string, taskName *string, opts *DeactivateStepbackTaskInput) (bool, error)
 	DefaultSectionToRepo(ctx context.Context, projectID *string, projectIdentifier *string, section ProjectSettingsSection) (*string, error)
 	DeleteProject(ctx context.Context, projectID *string, projectIdentifier *string) (bool, error)
 	DetachProjectFromRepo(ctx context.Context, projectID *string, projectIdentifier *string) (*model.APIProjectRef, error)
@@ -4364,7 +4364,7 @@ func (e *executableSchema) Complexity(typeName, field string, childComplexity in
 			return 0, false
 		}
 
-		return e.complexity.Mutation.DeactivateStepbackTask(childComplexity, args["projectId"].(*string), args["projectIdentifier"].(*string), args["buildVariantName"].(string), args["taskName"].(string)), true
+		return e.complexity.Mutation.DeactivateStepbackTask(childComplexity, args["projectId"].(*string), args["buildVariantName"].(*string), args["taskName"].(*string), args["opts"].(*DeactivateStepbackTaskInput)), true
 
 	case "Mutation.defaultSectionToRepo":
 		if e.complexity.Mutation.DefaultSectionToRepo == nil {
@@ -9689,6 +9689,7 @@ func (e *executableSchema) Exec(ctx context.Context) graphql.ResponseHandler {
 		ec.unmarshalInputCopyProjectInput,
 		ec.unmarshalInputCreateDistroInput,
 		ec.unmarshalInputCreateProjectInput,
+		ec.unmarshalInputDeactivateStepbackTaskInput,
 		ec.unmarshalInputDeleteDistroInput,
 		ec.unmarshalInputDispatcherSettingsInput,
 		ec.unmarshalInputDisplayTask,
@@ -10346,55 +10347,32 @@ func (ec *executionContext) field_Mutation_deactivateStepbackTask_args(ctx conte
 	}
 	args["projectId"] = arg0
 	var arg1 *string
-	if tmp, ok := rawArgs["projectIdentifier"]; ok {
-		ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("projectIdentifier"))
-		directive0 := func(ctx context.Context) (interface{}, error) { return ec.unmarshalOString2ᚖstring(ctx, tmp) }
-		directive1 := func(ctx context.Context) (interface{}, error) {
-			permission, err := ec.unmarshalNProjectPermission2githubᚗcomᚋevergreenᚑciᚋevergreenᚋgraphqlᚐProjectPermission(ctx, "SETTINGS")
-			if err != nil {
-				return nil, err
-			}
-			access, err := ec.unmarshalNAccessLevel2githubᚗcomᚋevergreenᚑciᚋevergreenᚋgraphqlᚐAccessLevel(ctx, "EDIT")
-			if err != nil {
-				return nil, err
-			}
-			if ec.directives.RequireProjectAccess == nil {
-				return nil, errors.New("directive requireProjectAccess is not implemented")
-			}
-			return ec.directives.RequireProjectAccess(ctx, rawArgs, directive0, permission, access)
-		}
-
-		tmp, err = directive1(ctx)
-		if err != nil {
-			return nil, graphql.ErrorOnPath(ctx, err)
-		}
-		if data, ok := tmp.(*string); ok {
-			arg1 = data
-		} else if tmp == nil {
-			arg1 = nil
-		} else {
-			return nil, graphql.ErrorOnPath(ctx, fmt.Errorf(`unexpected type %T from directive, should be *string`, tmp))
-		}
-	}
-	args["projectIdentifier"] = arg1
-	var arg2 string
 	if tmp, ok := rawArgs["buildVariantName"]; ok {
 		ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("buildVariantName"))
-		arg2, err = ec.unmarshalNString2string(ctx, tmp)
+		arg1, err = ec.unmarshalOString2ᚖstring(ctx, tmp)
 		if err != nil {
 			return nil, err
 		}
 	}
-	args["buildVariantName"] = arg2
-	var arg3 string
+	args["buildVariantName"] = arg1
+	var arg2 *string
 	if tmp, ok := rawArgs["taskName"]; ok {
 		ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("taskName"))
-		arg3, err = ec.unmarshalNString2string(ctx, tmp)
+		arg2, err = ec.unmarshalOString2ᚖstring(ctx, tmp)
 		if err != nil {
 			return nil, err
 		}
 	}
-	args["taskName"] = arg3
+	args["taskName"] = arg2
+	var arg3 *DeactivateStepbackTaskInput
+	if tmp, ok := rawArgs["opts"]; ok {
+		ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("opts"))
+		arg3, err = ec.unmarshalODeactivateStepbackTaskInput2ᚖgithubᚗcomᚋevergreenᚑciᚋevergreenᚋgraphqlᚐDeactivateStepbackTaskInput(ctx, tmp)
+		if err != nil {
+			return nil, err
+		}
+	}
+	args["opts"] = arg3
 	return args, nil
 }
 
@@ -29583,7 +29561,7 @@ func (ec *executionContext) _Mutation_deactivateStepbackTask(ctx context.Context
 	}()
 	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
 		ctx = rctx // use context from middleware stack in children
-		return ec.resolvers.Mutation().DeactivateStepbackTask(rctx, fc.Args["projectId"].(*string), fc.Args["projectIdentifier"].(*string), fc.Args["buildVariantName"].(string), fc.Args["taskName"].(string))
+		return ec.resolvers.Mutation().DeactivateStepbackTask(rctx, fc.Args["projectId"].(*string), fc.Args["buildVariantName"].(*string), fc.Args["taskName"].(*string), fc.Args["opts"].(*DeactivateStepbackTaskInput))
 	})
 	if err != nil {
 		ec.Error(ctx, err)
@@ -68444,6 +68422,68 @@ func (ec *executionContext) unmarshalInputCreateProjectInput(ctx context.Context
 	return it, nil
 }
 
+func (ec *executionContext) unmarshalInputDeactivateStepbackTaskInput(ctx context.Context, obj interface{}) (DeactivateStepbackTaskInput, error) {
+	var it DeactivateStepbackTaskInput
+	asMap := map[string]interface{}{}
+	for k, v := range obj.(map[string]interface{}) {
+		asMap[k] = v
+	}
+
+	fieldsInOrder := [...]string{"projectIdentifier", "buildVariantName", "taskName"}
+	for _, k := range fieldsInOrder {
+		v, ok := asMap[k]
+		if !ok {
+			continue
+		}
+		switch k {
+		case "projectIdentifier":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("projectIdentifier"))
+			directive0 := func(ctx context.Context) (interface{}, error) { return ec.unmarshalNString2string(ctx, v) }
+			directive1 := func(ctx context.Context) (interface{}, error) {
+				permission, err := ec.unmarshalNProjectPermission2githubᚗcomᚋevergreenᚑciᚋevergreenᚋgraphqlᚐProjectPermission(ctx, "SETTINGS")
+				if err != nil {
+					return nil, err
+				}
+				access, err := ec.unmarshalNAccessLevel2githubᚗcomᚋevergreenᚑciᚋevergreenᚋgraphqlᚐAccessLevel(ctx, "EDIT")
+				if err != nil {
+					return nil, err
+				}
+				if ec.directives.RequireProjectAccess == nil {
+					return nil, errors.New("directive requireProjectAccess is not implemented")
+				}
+				return ec.directives.RequireProjectAccess(ctx, obj, directive0, permission, access)
+			}
+
+			tmp, err := directive1(ctx)
+			if err != nil {
+				return it, graphql.ErrorOnPath(ctx, err)
+			}
+			if data, ok := tmp.(string); ok {
+				it.ProjectIdentifier = data
+			} else {
+				err := fmt.Errorf(`unexpected type %T from directive, should be string`, tmp)
+				return it, graphql.ErrorOnPath(ctx, err)
+			}
+		case "buildVariantName":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("buildVariantName"))
+			data, err := ec.unmarshalNString2string(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.BuildVariantName = data
+		case "taskName":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("taskName"))
+			data, err := ec.unmarshalNString2string(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.TaskName = data
+		}
+	}
+
+	return it, nil
+}
+
 func (ec *executionContext) unmarshalInputDeleteDistroInput(ctx context.Context, obj interface{}) (DeleteDistroInput, error) {
 	var it DeleteDistroInput
 	asMap := map[string]interface{}{}
@@ -92338,6 +92378,14 @@ func (ec *executionContext) unmarshalOContainerResourcesInput2ᚕgithubᚗcomᚋ
 		}
 	}
 	return res, nil
+}
+
+func (ec *executionContext) unmarshalODeactivateStepbackTaskInput2ᚖgithubᚗcomᚋevergreenᚑciᚋevergreenᚋgraphqlᚐDeactivateStepbackTaskInput(ctx context.Context, v interface{}) (*DeactivateStepbackTaskInput, error) {
+	if v == nil {
+		return nil, nil
+	}
+	res, err := ec.unmarshalInputDeactivateStepbackTaskInput(ctx, v)
+	return &res, graphql.ErrorOnPath(ctx, err)
 }
 
 func (ec *executionContext) marshalODependency2ᚕᚖgithubᚗcomᚋevergreenᚑciᚋevergreenᚋgraphqlᚐDependencyᚄ(ctx context.Context, sel ast.SelectionSet, v []*Dependency) graphql.Marshaler {

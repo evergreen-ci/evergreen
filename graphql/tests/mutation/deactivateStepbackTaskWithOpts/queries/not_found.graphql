@@ -1,0 +1,9 @@
+mutation {
+  deactivateStepbackTask(
+    opts: {
+      projectIdentifier: "sandbox_project_id",
+      buildVariantName: "ubuntu1604",
+      taskName: "does-not-exist"
+    }
+  )
+}

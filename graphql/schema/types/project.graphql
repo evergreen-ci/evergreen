@@ -164,6 +164,11 @@ input WorkstationSetupCommandInput {
   directory: String
 }
 
+input DeactivateStepbackTaskInput {
+  projectIdentifier: String! @requireProjectAccess(permission: SETTINGS, access: EDIT)
+  buildVariantName: String!
+  taskName: String!
+}
 ###### TYPES ######
 """
 GroupedProjects is the return value for the projects & viewableProjectRefs queries.
