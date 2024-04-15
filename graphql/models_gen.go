@@ -304,6 +304,12 @@ type ProjectPermissionsOptions struct {
 	ProjectIdentifier string `json:"projectIdentifier"`
 }
 
+// PromoteVarsToRepoInput is the input to the promoteVarsToRepo mutation.
+type PromoteVarsToRepoInput struct {
+	ProjectIdentifier string   `json:"projectIdentifier"`
+	VarNames          []string `json:"varNames"`
+}
+
 // PublicKeyInput is an input to the createPublicKey and updatePublicKey mutations.
 type PublicKeyInput struct {
 	Key  string `json:"key"`

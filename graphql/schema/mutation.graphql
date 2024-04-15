@@ -70,7 +70,7 @@ type Mutation {
   deleteProject(projectId: String @deprecated(reason: "use projectIdentifier instead") @requireProjectAdmin, projectIdentifier: String @requireProjectAdmin): Boolean!
   detachProjectFromRepo(projectId: String @deprecated(reason: "use projectIdentifier instead") @requireProjectAccess(permission: SETTINGS, access: EDIT), projectIdentifier: String @requireProjectAccess(permission: SETTINGS, access: EDIT) ): Project!
   forceRepotrackerRun(projectId: String @deprecated(reason: "use projectIdentifier instead") @requireProjectAccess(permission: SETTINGS, access: EDIT), projectIdentifier: String @requireProjectAccess(permission: SETTINGS, access: EDIT)): Boolean!
-  promoteVarsToRepo(projectId: String @deprecated(reason: "use projectIdentifier instead") @requireProjectAccess(permission: SETTINGS, access: EDIT), projectIdentifier: String @requireProjectAccess(permission: SETTINGS, access: EDIT), varNames: [String!]!): Boolean!
+  promoteVarsToRepo(projectId: String @deprecated(reason: "use opts.projectIdentifier instead") @requireProjectAccess(permission: SETTINGS, access: EDIT), varNames: [String!] @deprecated(reason: "use opts.varNames instead"), opts: PromoteVarsToRepoInput): Boolean!
   removeFavoriteProject(identifier: String @deprecated(reason: "use projectIdentifier instead"), projectIdentifier: String): Project!
   saveProjectSettingsForSection(projectSettings: ProjectSettingsInput, section: ProjectSettingsSection!): ProjectSettings!
   saveRepoSettingsForSection(repoSettings: RepoSettingsInput, section: ProjectSettingsSection!): RepoSettings!

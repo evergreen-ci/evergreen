@@ -648,7 +648,7 @@ type ComplexityRoot struct {
 		MigrateVolume                 func(childComplexity int, volumeID string, spawnHostInput *SpawnHostInput) int
 		MoveAnnotationIssue           func(childComplexity int, taskID string, execution int, apiIssue model.APIIssueLink, isIssue bool) int
 		OverrideTaskDependencies      func(childComplexity int, taskID string) int
-		PromoteVarsToRepo             func(childComplexity int, projectID *string, projectIdentifier *string, varNames []string) int
+		PromoteVarsToRepo             func(childComplexity int, projectID *string, varNames []string, opts *PromoteVarsToRepoInput) int
 		RemoveAnnotationIssue         func(childComplexity int, taskID string, execution int, apiIssue model.APIIssueLink, isIssue bool) int
 		RemoveFavoriteProject         func(childComplexity int, identifier *string, projectIdentifier *string) int
 		RemoveItemFromCommitQueue     func(childComplexity int, commitQueueID string, issue string) int
@@ -1694,7 +1694,7 @@ type MutationResolver interface {
 	DeleteProject(ctx context.Context, projectID *string, projectIdentifier *string) (bool, error)
 	DetachProjectFromRepo(ctx context.Context, projectID *string, projectIdentifier *string) (*model.APIProjectRef, error)
 	ForceRepotrackerRun(ctx context.Context, projectID *string, projectIdentifier *string) (bool, error)
-	PromoteVarsToRepo(ctx context.Context, projectID *string, projectIdentifier *string, varNames []string) (bool, error)
+	PromoteVarsToRepo(ctx context.Context, projectID *string, varNames []string, opts *PromoteVarsToRepoInput) (bool, error)
 	RemoveFavoriteProject(ctx context.Context, identifier *string, projectIdentifier *string) (*model.APIProjectRef, error)
 	SaveProjectSettingsForSection(ctx context.Context, projectSettings *model.APIProjectSettings, section ProjectSettingsSection) (*model.APIProjectSettings, error)
 	SaveRepoSettingsForSection(ctx context.Context, repoSettings *model.APIProjectSettings, section ProjectSettingsSection) (*model.APIProjectSettings, error)
@@ -4532,7 +4532,7 @@ func (e *executableSchema) Complexity(typeName, field string, childComplexity in
 			return 0, false
 		}
 
-		return e.complexity.Mutation.PromoteVarsToRepo(childComplexity, args["projectId"].(*string), args["projectIdentifier"].(*string), args["varNames"].([]string)), true
+		return e.complexity.Mutation.PromoteVarsToRepo(childComplexity, args["projectId"].(*string), args["varNames"].([]string), args["opts"].(*PromoteVarsToRepoInput)), true
 
 	case "Mutation.removeAnnotationIssue":
 		if e.complexity.Mutation.RemoveAnnotationIssue == nil {
@@ -9729,6 +9729,7 @@ func (e *executableSchema) Exec(ctx context.Context) graphql.ResponseHandler {
 		ec.unmarshalInputProjectPermissionsOptions,
 		ec.unmarshalInputProjectSettingsInput,
 		ec.unmarshalInputProjectVarsInput,
+		ec.unmarshalInputPromoteVarsToRepoInput,
 		ec.unmarshalInputPublicKeyInput,
 		ec.unmarshalInputRepoRefInput,
 		ec.unmarshalInputRepoSettingsInput,
@@ -10869,47 +10870,24 @@ func (ec *executionContext) field_Mutation_promoteVarsToRepo_args(ctx context.Co
 		}
 	}
 	args["projectId"] = arg0
-	var arg1 *string
-	if tmp, ok := rawArgs["projectIdentifier"]; ok {
-		ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("projectIdentifier"))
-		directive0 := func(ctx context.Context) (interface{}, error) { return ec.unmarshalOString2ᚖstring(ctx, tmp) }
-		directive1 := func(ctx context.Context) (interface{}, error) {
-			permission, err := ec.unmarshalNProjectPermission2githubᚗcomᚋevergreenᚑciᚋevergreenᚋgraphqlᚐProjectPermission(ctx, "SETTINGS")
-			if err != nil {
-				return nil, err
-			}
-			access, err := ec.unmarshalNAccessLevel2githubᚗcomᚋevergreenᚑciᚋevergreenᚋgraphqlᚐAccessLevel(ctx, "EDIT")
-			if err != nil {
-				return nil, err
-			}
-			if ec.directives.RequireProjectAccess == nil {
-				return nil, errors.New("directive requireProjectAccess is not implemented")
-			}
-			return ec.directives.RequireProjectAccess(ctx, rawArgs, directive0, permission, access)
-		}
-
-		tmp, err = directive1(ctx)
-		if err != nil {
-			return nil, graphql.ErrorOnPath(ctx, err)
-		}
-		if data, ok := tmp.(*string); ok {
-			arg1 = data
-		} else if tmp == nil {
-			arg1 = nil
-		} else {
-			return nil, graphql.ErrorOnPath(ctx, fmt.Errorf(`unexpected type %T from directive, should be *string`, tmp))
-		}
-	}
-	args["projectIdentifier"] = arg1
-	var arg2 []string
+	var arg1 []string
 	if tmp, ok := rawArgs["varNames"]; ok {
 		ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("varNames"))
-		arg2, err = ec.unmarshalNString2ᚕstringᚄ(ctx, tmp)
+		arg1, err = ec.unmarshalOString2ᚕstringᚄ(ctx, tmp)
 		if err != nil {
 			return nil, err
 		}
 	}
-	args["varNames"] = arg2
+	args["varNames"] = arg1
+	var arg2 *PromoteVarsToRepoInput
+	if tmp, ok := rawArgs["opts"]; ok {
+		ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("opts"))
+		arg2, err = ec.unmarshalOPromoteVarsToRepoInput2ᚖgithubᚗcomᚋevergreenᚑciᚋevergreenᚋgraphqlᚐPromoteVarsToRepoInput(ctx, tmp)
+		if err != nil {
+			return nil, err
+		}
+	}
+	args["opts"] = arg2
 	return args, nil
 }
 
@@ -29913,7 +29891,7 @@ func (ec *executionContext) _Mutation_promoteVarsToRepo(ctx context.Context, fie
 	}()
 	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
 		ctx = rctx // use context from middleware stack in children
-		return ec.resolvers.Mutation().PromoteVarsToRepo(rctx, fc.Args["projectId"].(*string), fc.Args["projectIdentifier"].(*string), fc.Args["varNames"].([]string))
+		return ec.resolvers.Mutation().PromoteVarsToRepo(rctx, fc.Args["projectId"].(*string), fc.Args["varNames"].([]string), fc.Args["opts"].(*PromoteVarsToRepoInput))
 	})
 	if err != nil {
 		ec.Error(ctx, err)
@@ -70926,6 +70904,61 @@ func (ec *executionContext) unmarshalInputProjectVarsInput(ctx context.Context, 
 	return it, nil
 }
 
+func (ec *executionContext) unmarshalInputPromoteVarsToRepoInput(ctx context.Context, obj interface{}) (PromoteVarsToRepoInput, error) {
+	var it PromoteVarsToRepoInput
+	asMap := map[string]interface{}{}
+	for k, v := range obj.(map[string]interface{}) {
+		asMap[k] = v
+	}
+
+	fieldsInOrder := [...]string{"projectIdentifier", "varNames"}
+	for _, k := range fieldsInOrder {
+		v, ok := asMap[k]
+		if !ok {
+			continue
+		}
+		switch k {
+		case "projectIdentifier":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("projectIdentifier"))
+			directive0 := func(ctx context.Context) (interface{}, error) { return ec.unmarshalNString2string(ctx, v) }
+			directive1 := func(ctx context.Context) (interface{}, error) {
+				permission, err := ec.unmarshalNProjectPermission2githubᚗcomᚋevergreenᚑciᚋevergreenᚋgraphqlᚐProjectPermission(ctx, "SETTINGS")
+				if err != nil {
+					return nil, err
+				}
+				access, err := ec.unmarshalNAccessLevel2githubᚗcomᚋevergreenᚑciᚋevergreenᚋgraphqlᚐAccessLevel(ctx, "EDIT")
+				if err != nil {
+					return nil, err
+				}
+				if ec.directives.RequireProjectAccess == nil {
+					return nil, errors.New("directive requireProjectAccess is not implemented")
+				}
+				return ec.directives.RequireProjectAccess(ctx, obj, directive0, permission, access)
+			}
+
+			tmp, err := directive1(ctx)
+			if err != nil {
+				return it, graphql.ErrorOnPath(ctx, err)
+			}
+			if data, ok := tmp.(string); ok {
+				it.ProjectIdentifier = data
+			} else {
+				err := fmt.Errorf(`unexpected type %T from directive, should be string`, tmp)
+				return it, graphql.ErrorOnPath(ctx, err)
+			}
+		case "varNames":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("varNames"))
+			data, err := ec.unmarshalNString2ᚕstringᚄ(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.VarNames = data
+		}
+	}
+
+	return it, nil
+}
+
 func (ec *executionContext) unmarshalInputPublicKeyInput(ctx context.Context, obj interface{}) (PublicKeyInput, error) {
 	var it PublicKeyInput
 	asMap := map[string]interface{}{}
@@ -93903,6 +93936,14 @@ func (ec *executionContext) marshalOProjectVars2ᚖgithubᚗcomᚋevergreenᚑci
 func (ec *executionContext) unmarshalOProjectVarsInput2githubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐAPIProjectVars(ctx context.Context, v interface{}) (model.APIProjectVars, error) {
 	res, err := ec.unmarshalInputProjectVarsInput(ctx, v)
 	return res, graphql.ErrorOnPath(ctx, err)
+}
+
+func (ec *executionContext) unmarshalOPromoteVarsToRepoInput2ᚖgithubᚗcomᚋevergreenᚑciᚋevergreenᚋgraphqlᚐPromoteVarsToRepoInput(ctx context.Context, v interface{}) (*PromoteVarsToRepoInput, error) {
+	if v == nil {
+		return nil, nil
+	}
+	res, err := ec.unmarshalInputPromoteVarsToRepoInput(ctx, v)
+	return &res, graphql.ErrorOnPath(ctx, err)
 }
 
 func (ec *executionContext) unmarshalOPublicKeyInput2ᚖgithubᚗcomᚋevergreenᚑciᚋevergreenᚋgraphqlᚐPublicKeyInput(ctx context.Context, v interface{}) (*PublicKeyInput, error) {

@@ -1,0 +1,6 @@
+mutation {
+  promoteVarsToRepo(opts: {
+    projectIdentifier: "sandbox",
+    varNames: ["hello", "foo"]
+  })
+}

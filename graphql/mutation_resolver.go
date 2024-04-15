@@ -690,12 +690,15 @@ func (r *mutationResolver) ForceRepotrackerRun(ctx context.Context, projectID *s
 }
 
 // PromoteVarsToRepo is the resolver for the promoteVarsToRepo field.
-func (r *mutationResolver) PromoteVarsToRepo(ctx context.Context, projectID *string, projectIdentifier *string, varNames []string) (bool, error) {
-	if projectIdentifier == nil {
-		projectIdentifier = projectID
+func (r *mutationResolver) PromoteVarsToRepo(ctx context.Context, projectID *string, varNames []string, opts *PromoteVarsToRepoInput) (bool, error) {
+	if opts == nil {
+		opts = &PromoteVarsToRepoInput{
+			ProjectIdentifier: utility.FromStringPtr(projectID),
+			VarNames:          varNames,
+		}
 	}
 	usr := mustHaveUser(ctx)
-	if err := data.PromoteVarsToRepo(utility.FromStringPtr(projectIdentifier), varNames, usr.Username()); err != nil {
+	if err := data.PromoteVarsToRepo(opts.ProjectIdentifier, opts.VarNames, usr.Username()); err != nil {
 		return false, InternalServerError.Send(ctx, fmt.Sprintf("promoting variables to repo for project '%s': %s", utility.FromStringPtr(projectIdentifier), err.Error()))
 
 	}

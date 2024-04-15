@@ -181,6 +181,15 @@ input DefaultSectionToRepoInput {
   section: ProjectSettingsSection!
 }
 
+"""
+PromoteVarsToRepoInput is the input to the promoteVarsToRepo mutation.
+"""
+input PromoteVarsToRepoInput {
+  projectIdentifier: String! @requireProjectAccess(permission: SETTINGS, access: EDIT)
+  varNames: [String!]!
+}
+
+
 ###### TYPES ######
 """
 GroupedProjects is the return value for the projects & viewableProjectRefs queries.
