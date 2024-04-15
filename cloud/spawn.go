@@ -244,7 +244,7 @@ func SetHostRDPPassword(ctx context.Context, env evergreen.Environment, h *host.
 }
 
 func updateRDPPassword(ctx context.Context, env evergreen.Environment, host *host.Host, password string) error {
-	const redactedPasswordStr := "<REDACTED>"
+	const redactedPasswordStr = "<REDACTED>"
 	pwdUpdateCmd, err := constructPwdUpdateCommand(ctx, env, host, password)
 	if err != nil {
 		return errors.Wrap(err, "constructing host RDP password")
