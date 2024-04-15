@@ -635,7 +635,7 @@ type ComplexityRoot struct {
 		CreateProject                 func(childComplexity int, project model.APIProjectRef, requestS3Creds *bool) int
 		CreatePublicKey               func(childComplexity int, publicKeyInput PublicKeyInput) int
 		DeactivateStepbackTask        func(childComplexity int, projectID *string, buildVariantName *string, taskName *string, opts *DeactivateStepbackTaskInput) int
-		DefaultSectionToRepo          func(childComplexity int, projectID *string, projectIdentifier *string, section ProjectSettingsSection) int
+		DefaultSectionToRepo          func(childComplexity int, projectID *string, section *ProjectSettingsSection, opts *DefaultSectionToRepoInput) int
 		DeleteDistro                  func(childComplexity int, opts DeleteDistroInput) int
 		DeleteProject                 func(childComplexity int, projectID *string, projectIdentifier *string) int
 		DeleteSubscriptions           func(childComplexity int, subscriptionIds []string) int
@@ -1690,7 +1690,7 @@ type MutationResolver interface {
 	CreateProject(ctx context.Context, project model.APIProjectRef, requestS3Creds *bool) (*model.APIProjectRef, error)
 	CopyProject(ctx context.Context, project data.CopyProjectOpts, requestS3Creds *bool) (*model.APIProjectRef, error)
 	DeactivateStepbackTask(ctx context.Context, projectID *string, buildVariantName *string, taskName *string, opts *DeactivateStepbackTaskInput) (bool, error)
-	DefaultSectionToRepo(ctx context.Context, projectID *string, projectIdentifier *string, section ProjectSettingsSection) (*string, error)
+	DefaultSectionToRepo(ctx context.Context, projectID *string, section *ProjectSettingsSection, opts *DefaultSectionToRepoInput) (*string, error)
 	DeleteProject(ctx context.Context, projectID *string, projectIdentifier *string) (bool, error)
 	DetachProjectFromRepo(ctx context.Context, projectID *string, projectIdentifier *string) (*model.APIProjectRef, error)
 	ForceRepotrackerRun(ctx context.Context, projectID *string, projectIdentifier *string) (bool, error)
@@ -4376,7 +4376,7 @@ func (e *executableSchema) Complexity(typeName, field string, childComplexity in
 			return 0, false
 		}
 
-		return e.complexity.Mutation.DefaultSectionToRepo(childComplexity, args["projectId"].(*string), args["projectIdentifier"].(*string), args["section"].(ProjectSettingsSection)), true
+		return e.complexity.Mutation.DefaultSectionToRepo(childComplexity, args["projectId"].(*string), args["section"].(*ProjectSettingsSection), args["opts"].(*DefaultSectionToRepoInput)), true
 
 	case "Mutation.deleteDistro":
 		if e.complexity.Mutation.DeleteDistro == nil {
@@ -9690,6 +9690,7 @@ func (e *executableSchema) Exec(ctx context.Context) graphql.ResponseHandler {
 		ec.unmarshalInputCreateDistroInput,
 		ec.unmarshalInputCreateProjectInput,
 		ec.unmarshalInputDeactivateStepbackTaskInput,
+		ec.unmarshalInputDefaultSectionToRepoInput,
 		ec.unmarshalInputDeleteDistroInput,
 		ec.unmarshalInputDispatcherSettingsInput,
 		ec.unmarshalInputDisplayTask,
@@ -10411,47 +10412,24 @@ func (ec *executionContext) field_Mutation_defaultSectionToRepo_args(ctx context
 		}
 	}
 	args["projectId"] = arg0
-	var arg1 *string
-	if tmp, ok := rawArgs["projectIdentifier"]; ok {
-		ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("projectIdentifier"))
-		directive0 := func(ctx context.Context) (interface{}, error) { return ec.unmarshalOString2ᚖstring(ctx, tmp) }
-		directive1 := func(ctx context.Context) (interface{}, error) {
-			permission, err := ec.unmarshalNProjectPermission2githubᚗcomᚋevergreenᚑciᚋevergreenᚋgraphqlᚐProjectPermission(ctx, "SETTINGS")
-			if err != nil {
-				return nil, err
-			}
-			access, err := ec.unmarshalNAccessLevel2githubᚗcomᚋevergreenᚑciᚋevergreenᚋgraphqlᚐAccessLevel(ctx, "EDIT")
-			if err != nil {
-				return nil, err
-			}
-			if ec.directives.RequireProjectAccess == nil {
-				return nil, errors.New("directive requireProjectAccess is not implemented")
-			}
-			return ec.directives.RequireProjectAccess(ctx, rawArgs, directive0, permission, access)
-		}
-
-		tmp, err = directive1(ctx)
-		if err != nil {
-			return nil, graphql.ErrorOnPath(ctx, err)
-		}
-		if data, ok := tmp.(*string); ok {
-			arg1 = data
-		} else if tmp == nil {
-			arg1 = nil
-		} else {
-			return nil, graphql.ErrorOnPath(ctx, fmt.Errorf(`unexpected type %T from directive, should be *string`, tmp))
-		}
-	}
-	args["projectIdentifier"] = arg1
-	var arg2 ProjectSettingsSection
+	var arg1 *ProjectSettingsSection
 	if tmp, ok := rawArgs["section"]; ok {
 		ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("section"))
-		arg2, err = ec.unmarshalNProjectSettingsSection2githubᚗcomᚋevergreenᚑciᚋevergreenᚋgraphqlᚐProjectSettingsSection(ctx, tmp)
+		arg1, err = ec.unmarshalOProjectSettingsSection2ᚖgithubᚗcomᚋevergreenᚑciᚋevergreenᚋgraphqlᚐProjectSettingsSection(ctx, tmp)
 		if err != nil {
 			return nil, err
 		}
 	}
-	args["section"] = arg2
+	args["section"] = arg1
+	var arg2 *DefaultSectionToRepoInput
+	if tmp, ok := rawArgs["opts"]; ok {
+		ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("opts"))
+		arg2, err = ec.unmarshalODefaultSectionToRepoInput2ᚖgithubᚗcomᚋevergreenᚑciᚋevergreenᚋgraphqlᚐDefaultSectionToRepoInput(ctx, tmp)
+		if err != nil {
+			return nil, err
+		}
+	}
+	args["opts"] = arg2
 	return args, nil
 }
 
@@ -29616,7 +29594,7 @@ func (ec *executionContext) _Mutation_defaultSectionToRepo(ctx context.Context, 
 	}()
 	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
 		ctx = rctx // use context from middleware stack in children
-		return ec.resolvers.Mutation().DefaultSectionToRepo(rctx, fc.Args["projectId"].(*string), fc.Args["projectIdentifier"].(*string), fc.Args["section"].(ProjectSettingsSection))
+		return ec.resolvers.Mutation().DefaultSectionToRepo(rctx, fc.Args["projectId"].(*string), fc.Args["section"].(*ProjectSettingsSection), fc.Args["opts"].(*DefaultSectionToRepoInput))
 	})
 	if err != nil {
 		ec.Error(ctx, err)
@@ -68484,6 +68462,61 @@ func (ec *executionContext) unmarshalInputDeactivateStepbackTaskInput(ctx contex
 	return it, nil
 }
 
+func (ec *executionContext) unmarshalInputDefaultSectionToRepoInput(ctx context.Context, obj interface{}) (DefaultSectionToRepoInput, error) {
+	var it DefaultSectionToRepoInput
+	asMap := map[string]interface{}{}
+	for k, v := range obj.(map[string]interface{}) {
+		asMap[k] = v
+	}
+
+	fieldsInOrder := [...]string{"projectIdentifier", "section"}
+	for _, k := range fieldsInOrder {
+		v, ok := asMap[k]
+		if !ok {
+			continue
+		}
+		switch k {
+		case "projectIdentifier":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("projectIdentifier"))
+			directive0 := func(ctx context.Context) (interface{}, error) { return ec.unmarshalNString2string(ctx, v) }
+			directive1 := func(ctx context.Context) (interface{}, error) {
+				permission, err := ec.unmarshalNProjectPermission2githubᚗcomᚋevergreenᚑciᚋevergreenᚋgraphqlᚐProjectPermission(ctx, "SETTINGS")
+				if err != nil {
+					return nil, err
+				}
+				access, err := ec.unmarshalNAccessLevel2githubᚗcomᚋevergreenᚑciᚋevergreenᚋgraphqlᚐAccessLevel(ctx, "EDIT")
+				if err != nil {
+					return nil, err
+				}
+				if ec.directives.RequireProjectAccess == nil {
+					return nil, errors.New("directive requireProjectAccess is not implemented")
+				}
+				return ec.directives.RequireProjectAccess(ctx, obj, directive0, permission, access)
+			}
+
+			tmp, err := directive1(ctx)
+			if err != nil {
+				return it, graphql.ErrorOnPath(ctx, err)
+			}
+			if data, ok := tmp.(string); ok {
+				it.ProjectIdentifier = data
+			} else {
+				err := fmt.Errorf(`unexpected type %T from directive, should be string`, tmp)
+				return it, graphql.ErrorOnPath(ctx, err)
+			}
+		case "section":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("section"))
+			data, err := ec.unmarshalNProjectSettingsSection2githubᚗcomᚋevergreenᚑciᚋevergreenᚋgraphqlᚐProjectSettingsSection(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.Section = data
+		}
+	}
+
+	return it, nil
+}
+
 func (ec *executionContext) unmarshalInputDeleteDistroInput(ctx context.Context, obj interface{}) (DeleteDistroInput, error) {
 	var it DeleteDistroInput
 	asMap := map[string]interface{}{}
@@ -92388,6 +92421,14 @@ func (ec *executionContext) unmarshalODeactivateStepbackTaskInput2ᚖgithubᚗco
 	return &res, graphql.ErrorOnPath(ctx, err)
 }
 
+func (ec *executionContext) unmarshalODefaultSectionToRepoInput2ᚖgithubᚗcomᚋevergreenᚑciᚋevergreenᚋgraphqlᚐDefaultSectionToRepoInput(ctx context.Context, v interface{}) (*DefaultSectionToRepoInput, error) {
+	if v == nil {
+		return nil, nil
+	}
+	res, err := ec.unmarshalInputDefaultSectionToRepoInput(ctx, v)
+	return &res, graphql.ErrorOnPath(ctx, err)
+}
+
 func (ec *executionContext) marshalODependency2ᚕᚖgithubᚗcomᚋevergreenᚑciᚋevergreenᚋgraphqlᚐDependencyᚄ(ctx context.Context, sel ast.SelectionSet, v []*Dependency) graphql.Marshaler {
 	if v == nil {
 		return graphql.Null
@@ -93830,6 +93871,22 @@ func (ec *executionContext) unmarshalOProjectSettingsInput2ᚖgithubᚗcomᚋeve
 	}
 	res, err := ec.unmarshalInputProjectSettingsInput(ctx, v)
 	return &res, graphql.ErrorOnPath(ctx, err)
+}
+
+func (ec *executionContext) unmarshalOProjectSettingsSection2ᚖgithubᚗcomᚋevergreenᚑciᚋevergreenᚋgraphqlᚐProjectSettingsSection(ctx context.Context, v interface{}) (*ProjectSettingsSection, error) {
+	if v == nil {
+		return nil, nil
+	}
+	var res = new(ProjectSettingsSection)
+	err := res.UnmarshalGQL(v)
+	return res, graphql.ErrorOnPath(ctx, err)
+}
+
+func (ec *executionContext) marshalOProjectSettingsSection2ᚖgithubᚗcomᚋevergreenᚑciᚋevergreenᚋgraphqlᚐProjectSettingsSection(ctx context.Context, sel ast.SelectionSet, v *ProjectSettingsSection) graphql.Marshaler {
+	if v == nil {
+		return graphql.Null
+	}
+	return v
 }
 
 func (ec *executionContext) marshalOProjectVars2githubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐAPIProjectVars(ctx context.Context, sel ast.SelectionSet, v model.APIProjectVars) graphql.Marshaler {

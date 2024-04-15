@@ -626,12 +626,15 @@ func (r *mutationResolver) DeactivateStepbackTask(ctx context.Context, projectID
 }
 
 // DefaultSectionToRepo is the resolver for the defaultSectionToRepo field.
-func (r *mutationResolver) DefaultSectionToRepo(ctx context.Context, projectID *string, projectIdentifier *string, section ProjectSettingsSection) (*string, error) {
-	usr := mustHaveUser(ctx)
-	if projectIdentifier == nil {
-		projectIdentifier = projectID
+func (r *mutationResolver) DefaultSectionToRepo(ctx context.Context, projectID *string, section *ProjectSettingsSection, opts *DefaultSectionToRepoInput) (*string, error) {
+	if opts == nil {
+		opts = &DefaultSectionToRepoInput{
+			ProjectIdentifier: utility.FromStringPtr(projectID),
+			Section:           *section,
+		}
 	}
-	if err := model.DefaultSectionToRepo(utility.FromStringPtr(projectIdentifier), model.ProjectPageSection(section), usr.Username()); err != nil {
+	usr := mustHaveUser(ctx)
+	if err := model.DefaultSectionToRepo(opts.ProjectIdentifier, model.ProjectPageSection(opts.Section), usr.Username()); err != nil {
 		return nil, InternalServerError.Send(ctx, fmt.Sprintf("error defaulting to repo for section: %s", err.Error()))
 	}
 	return projectID, nil

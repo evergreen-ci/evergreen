@@ -164,11 +164,23 @@ input WorkstationSetupCommandInput {
   directory: String
 }
 
+"""
+DeactivateStepbackTaskInput is the input to the deactivateStepbackTask mutation.
+"""
 input DeactivateStepbackTaskInput {
   projectIdentifier: String! @requireProjectAccess(permission: SETTINGS, access: EDIT)
   buildVariantName: String!
   taskName: String!
 }
+
+"""
+DefaultSectionToRepoInput is the input to the defaultSectionToRepo mutation.
+"""
+input DefaultSectionToRepoInput {
+  projectIdentifier: String! @requireProjectAccess(permission: SETTINGS, access: EDIT)
+  section: ProjectSettingsSection!
+}
+
 ###### TYPES ######
 """
 GroupedProjects is the return value for the projects & viewableProjectRefs queries.

@@ -1,0 +1,46 @@
+{
+  "tests": [
+    {
+      "query_file": "default_section_to_repo.graphql",
+      "result": {
+        "data": {
+          "defaultSectionToRepo": "sandbox_project_id"
+        }
+      }
+    },
+    {
+      "query_file": "unattached_project.graphql",
+      "result": {
+        "data": {
+          "defaultSectionToRepo": null
+        },
+        "errors": [
+          {
+            "message": "project 'repo_id' not found",
+            "path": ["defaultSectionToRepo", "projectId"],
+            "extensions": {
+              "code": "RESOURCE_NOT_FOUND"
+            }
+          }
+        ]
+      }
+    },
+    {
+      "query_file": "no_admin.graphql",
+      "result": {
+        "data": {
+          "defaultSectionToRepo": null
+        },
+        "errors": [
+          {
+            "message": "user 'testuser' does not have permission to access 'settings' for the project 'evergreen_id'",
+            "path": ["defaultSectionToRepo", "projectId"],
+            "extensions": {
+              "code": "FORBIDDEN"
+            }
+          }
+        ]
+      }
+    }
+  ]
+}
