@@ -23,6 +23,7 @@ import (
 	"github.com/mongodb/grip/sometimes"
 	"github.com/pkg/errors"
 	"go.mongodb.org/mongo-driver/mongo"
+	"go.opentelemetry.io/otel/attribute"
 )
 
 // if a host encounters more than this number of system failures, then it should be disabled.
@@ -1242,6 +1243,13 @@ func (h *hostAgentEndTask) Parse(ctx context.Context, r *http.Request) error {
 // If the task is a patch, it will alert the users based on failures
 // It also updates the expected task duration of the task for scheduling.
 func (h *hostAgentEndTask) Run(ctx context.Context) gimlet.Responder {
+	ctx = utility.ContextWithAttributes(ctx, []attribute.KeyValue{
+		attribute.String(evergreen.HostIDOtelAttribute, h.hostID),
+		attribute.String(evergreen.TaskIDOtelAttribute, h.taskID),
+	})
+	ctx, span := tracer.Start(ctx, "host-agent-end-task")
+	defer span.End()
+
 	finishTime := time.Now()
 
 	t, err := task.FindOneId(h.taskID)
