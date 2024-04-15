@@ -7,6 +7,7 @@ import (
 	"io"
 	"os"
 	"path/filepath"
+	"runtime"
 
 	"github.com/evergreen-ci/evergreen/agent/internal"
 	"github.com/evergreen-ci/evergreen/agent/internal/client"
@@ -33,6 +34,10 @@ func (t *papertrailTrace) Execute(ctx context.Context,
 	comm client.Communicator, logger client.LoggerProducer, conf *internal.TaskConfig) error {
 	if err := util.ExpandValues(t, &conf.Expansions); err != nil {
 		return errors.Wrap(err, "applying expansions")
+	}
+
+	if runtime.GOOS == "darwin" {
+		return errors.New("papertrail.trace is not supported on MacOS currently because these hosts do not always run in AWS with the necessary networking configuration")
 	}
 
 	pclient := thirdparty.NewPapertrailClient(t.KeyID, t.SecretKey, "")
