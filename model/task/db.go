@@ -130,6 +130,9 @@ var (
 	LastPassingStepbackTaskIdKey = bsonutil.MustHaveTag(StepbackInfo{}, "LastPassingStepbackTaskId")
 	NextStepbackTaskIdKey        = bsonutil.MustHaveTag(StepbackInfo{}, "NextStepbackTaskId")
 	PreviousStepbackTaskIdKey    = bsonutil.MustHaveTag(StepbackInfo{}, "PreviousStepbackTaskId")
+	GeneratedStepbackInfoKey     = bsonutil.MustHaveTag(StepbackInfo{}, "GeneratedStepbackInfo")
+	StepbackInfoDisplayNameKey   = bsonutil.MustHaveTag(StepbackInfo{}, "DisplayName")
+	StepbackInfoBuildVariantKey  = bsonutil.MustHaveTag(StepbackInfo{}, "BuildVariant")
 )
 
 var (

@@ -484,6 +484,7 @@ func assignNextAvailableTask(ctx context.Context, env evergreen.Environment, tas
 	// continues until the task queue is empty. This means that every
 	// continue must be preceded by dequeueing the current task from the
 	// queue to prevent an infinite loop.
+
 	for taskQueue.Length() != 0 {
 		if err = ctx.Err(); err != nil {
 			return nil, false, errors.WithStack(err)
@@ -690,6 +691,13 @@ func assignNextAvailableTask(ctx context.Context, env evergreen.Environment, tas
 		}))
 
 		return nextTask, false, nil
+	}
+
+	if taskQueue.Length() == 0 && details.TaskGroup != "" {
+		// if we have reached the end of the queue and the previous task was part of a task group,
+		// the current task group is finished and needs to be torn down.
+		return nil, true, nil
+
 	}
 
 	return nil, false, nil

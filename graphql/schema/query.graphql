@@ -49,14 +49,13 @@ type Query {
   project(projectIdentifier: String!): Project!
   projects: [GroupedProjects]!
   projectEvents(
-    identifier: String!
+    identifier: String! @requireProjectAccess(permission: SETTINGS, access: VIEW)
     limit: Int = 0
     before: Time
-    @requireProjectAccess(access: VIEW)
   ): ProjectEvents!
-  projectSettings(identifier: String! @requireProjectAccess(access: VIEW)): ProjectSettings!
-  repoEvents(repoId: String! @requireProjectAccess(access: VIEW), limit: Int = 0, before: Time): ProjectEvents!
-  repoSettings(repoId: String! @requireProjectAccess(access: VIEW)): RepoSettings!
+  projectSettings(identifier: String! @requireProjectAccess(permission: SETTINGS, access: VIEW)): ProjectSettings!
+  repoEvents(repoId: String! @requireProjectAccess(permission: SETTINGS, access: VIEW), limit: Int = 0, before: Time): ProjectEvents!
+  repoSettings(repoId: String! @requireProjectAccess(permission: SETTINGS, access: VIEW)): RepoSettings!
   viewableProjectRefs: [GroupedProjects]!
 
   # spawn
@@ -70,8 +69,10 @@ type Query {
   task(taskId: String!, execution: Int): Task
   taskAllExecutions(taskId: String!): [Task!]!
   taskTestSample(
-    tasks: [String!]!
+    tasks: [String!] @deprecated(reason: "Use taskIds instead")
+    taskIds: [String!]
     filters: [TestFilter!]!
+    versionId: String
   ): [TaskTestResultSample!]
 
   # user

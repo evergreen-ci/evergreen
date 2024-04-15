@@ -373,11 +373,6 @@ const (
 	KeyTooLargeToIndexError    = "key too large to index"
 	InvalidDivideInputError    = "$divide only supports numeric types"
 
-	// Valid types of performing git clone
-	CloneMethodLegacySSH   = "legacy-ssh"
-	CloneMethodOAuth       = "oauth"
-	CloneMethodAccessToken = "access-token"
-
 	// ContainerHealthDashboard is the name of the Splunk dashboard that displays
 	// charts relating to the health of container tasks.
 	ContainerHealthDashboard = "container task health dashboard"
@@ -1068,13 +1063,6 @@ var (
 		ArchDarwinArm64:  "OSX ARM 64-bit",
 		ArchLinuxAmd64:   "Linux 64-bit",
 	}
-
-	// ValidCloneMethods includes all recognized clone methods.
-	ValidCloneMethods = []string{
-		CloneMethodLegacySSH,
-		CloneMethodOAuth,
-		CloneMethodAccessToken,
-	}
 )
 
 // FindEvergreenHome finds the directory of the EVGHOME environment variable.
@@ -1520,13 +1508,4 @@ func ValidateSSHKey(key string) error {
 	}
 	return errors.Errorf("either an invalid Evergreen-managed key name has been provided, "+
 		"or the key value is not one of the valid types: %s", validKeyTypes)
-}
-
-// ValidateCloneMethod checks that the clone mechanism is one of the supported
-// methods.
-func ValidateCloneMethod(method string) error {
-	if !utility.StringSliceContains(ValidCloneMethods, method) {
-		return errors.Errorf("'%s' is not a valid clone method", method)
-	}
-	return nil
 }
