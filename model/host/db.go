@@ -1534,15 +1534,13 @@ func isSleepScheduleEnabledQuery(q bson.M, now time.Time) bson.M {
 			sleepScheduleTemporarilyExemptUntil: bson.M{"$lte": now},
 		},
 	}
+
+	andClauses := []interface{}{bson.M{"$or": notTemporarilyExempt}}
 	if andClause, ok := q["$and"]; ok {
 		// Combine $and/$or clauses in case $and is already defined.
-		q["$and"] = []interface{}{
-			andClause,
-			bson.M{
-				"$or": notTemporarilyExempt,
-			},
-		}
+		andClauses = append(andClauses, andClause)
 	}
+	q["$and"] = andClauses
 
 	return q
 }
@@ -1605,12 +1603,10 @@ func FindMissingNextSleepScheduleTime(ctx context.Context) ([]Host, error) {
 		StatusKey: bson.M{"$in": []string{evergreen.HostRunning, evergreen.HostStopped, evergreen.HostStopping}},
 		"$or": []bson.M{
 			{
-				// kim: TODO: consider explicitly checking for Go zero time just
-				// in case we don't follow the data model fully.
-				sleepScheduleNextStartTimeKey: nil,
+				sleepScheduleNextStartTimeKey: bson.M{"$in": []interface{}{nil, time.Time{}}},
 			},
 			{
-				sleepScheduleNextStopTimeKey: nil,
+				sleepScheduleNextStopTimeKey: bson.M{"$in": []interface{}{nil, time.Time{}}},
 			},
 		},
 	}, now)

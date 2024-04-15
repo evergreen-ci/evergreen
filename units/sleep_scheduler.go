@@ -34,8 +34,8 @@ type sleepSchedulerJob struct {
 func NewSleepSchedulerJob(env evergreen.Environment, ts string) amboy.Job {
 	j := makeSleepSchedulerJob()
 	j.SetID(fmt.Sprintf("%s.%s", sleepSchedulerJobName, ts))
+	j.SetEnqueueScopes(sleepSchedulerJobName)
 	j.env = env
-	j.SetScopes([]string{sleepSchedulerJobName})
 	return j
 }
 
@@ -179,8 +179,6 @@ func (j *sleepSchedulerJob) fixHostsExceedingTimeout(ctx context.Context) error 
 // syncPermanentlyExemptHosts ensures that the hosts that are marked as
 // permanently exempt are consistent with the most up-to-date list of
 // permanently exempt hosts.
-// kim: NOTE: this is first step in fixes because permanent exemption syncing is
-// important to get right before other fixes.
 func (j *sleepSchedulerJob) syncPermanentlyExemptHosts(ctx context.Context) error {
 	settings := j.env.Settings()
 	return host.SyncPermanentExemptions(ctx, settings.SleepSchedule.PermanentlyExemptHosts)
