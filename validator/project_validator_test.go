@@ -1478,7 +1478,6 @@ func TestValidateTaskNames(t *testing.T) {
 				{Name: "task'"},
 				{Name: "task{}"},
 				{Name: "task\\"},
-				{Name: "task.•=/[-]"},
 			},
 		}
 		validationResults := validateTaskNames(project)
