@@ -990,13 +990,14 @@ func validateProjectLimits(_ context.Context, settings *evergreen.Settings, proj
 func validateTaskNames(project *model.Project) ValidationErrors {
 	errs := ValidationErrors{}
 
-	validCharacters, _ := regexp.Compile("^[a-zA-Z0-9_-]*$")
+	validCharacters, _ := regexp.Compile(`^[a-zA-Z0-9_./:•=\\[\\]-]*$`)
 	for _, task := range project.Tasks {
 		if !validCharacters.MatchString(task.Name) {
 			errs = append(errs,
 				ValidationError{
 					Message: fmt.Sprintf("task name '%s' contains unauthorized characters",
 						task.Name),
+					Level: Error,
 				})
 		}
 	}
