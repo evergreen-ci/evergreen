@@ -368,3 +368,471 @@ func TestFindStartingHostsByClient(t *testing.T) {
 		})
 	}
 }
+
+func TestFindHostsScheduledToStop(t *testing.T) {
+	defer func() {
+		assert.NoError(t, db.ClearCollections(Collection))
+	}()
+	now := time.Now()
+
+	for _, tCase := range []struct {
+		name          string
+		hosts         []Host
+		expectedHosts []string
+	}{
+		{
+			name: "ReturnsRunningHostWhoseNextStopHasElapsed",
+			hosts: []Host{
+				{
+					Id:           "h0",
+					StartedBy:    "myself",
+					NoExpiration: true,
+					Status:       evergreen.HostRunning,
+					SleepSchedule: SleepScheduleInfo{
+						NextStopTime: now.Add(-time.Minute),
+					},
+				},
+			},
+			expectedHosts: []string{"h0"},
+		},
+		{
+			name: "ReturnsStoppingHostWhoseNextStopHasElapsed",
+			hosts: []Host{
+				{
+					Id:           "h0",
+					StartedBy:    "myself",
+					NoExpiration: true,
+					Status:       evergreen.HostStopping,
+					SleepSchedule: SleepScheduleInfo{
+						NextStopTime: now.Add(-time.Minute),
+					},
+				},
+			},
+			expectedHosts: []string{"h0"},
+		},
+		{
+			name: "IgnoresHostWhoseNextStopIsNotAboutToElapse",
+			hosts: []Host{
+				{
+					Id:           "h0",
+					StartedBy:    "myself",
+					NoExpiration: true,
+					Status:       evergreen.HostRunning,
+					SleepSchedule: SleepScheduleInfo{
+						NextStopTime: now.Add(time.Hour),
+					},
+				},
+			},
+			expectedHosts: nil,
+		},
+		{
+			name: "IgnoresHostThatIsNotStoppable",
+			hosts: []Host{
+				{
+					Id:           "h0",
+					StartedBy:    "myself",
+					NoExpiration: true,
+					Status:       evergreen.HostUninitialized,
+					SleepSchedule: SleepScheduleInfo{
+						NextStopTime: now.Add(-time.Minute),
+					},
+				},
+			},
+			expectedHosts: nil,
+		},
+		{
+			name: "IgnoresPermanentlyExemptHost",
+			hosts: []Host{
+				{
+					Id:           "h0",
+					StartedBy:    "myself",
+					NoExpiration: true,
+					Status:       evergreen.HostRunning,
+					SleepSchedule: SleepScheduleInfo{
+						PermanentlyExempt: true,
+						NextStopTime:      now.Add(-time.Minute),
+					},
+				},
+			},
+			expectedHosts: nil,
+		},
+		{
+			name: "IgnoresTemporarilyExemptHost",
+			hosts: []Host{
+				{
+					Id:           "h0",
+					StartedBy:    "myself",
+					NoExpiration: true,
+					Status:       evergreen.HostRunning,
+					SleepSchedule: SleepScheduleInfo{
+						TemporarilyExemptUntil: now.Add(time.Hour),
+						NextStopTime:           now.Add(-time.Minute),
+					},
+				},
+			},
+			expectedHosts: nil,
+		},
+		{
+			name: "IgnoresHostKeptOff",
+			hosts: []Host{
+				{
+					Id:           "h0",
+					StartedBy:    "myself",
+					NoExpiration: true,
+					Status:       evergreen.HostStopped,
+					SleepSchedule: SleepScheduleInfo{
+						ShouldKeepOff: true,
+						NextStopTime:  now.Add(-time.Minute),
+					},
+				},
+			},
+			expectedHosts: nil,
+		},
+		{
+			name: "IgnoresHostWithoutASleepSchedule",
+			hosts: []Host{
+				{
+					Id:           "h0",
+					StartedBy:    "myself",
+					NoExpiration: true,
+					Status:       evergreen.HostRunning,
+				},
+			},
+			expectedHosts: nil,
+		},
+		{
+			name: "IgnoresExpirableHost",
+			hosts: []Host{
+				{
+					Id:           "h0",
+					StartedBy:    "myself",
+					NoExpiration: false,
+					Status:       evergreen.HostRunning,
+					SleepSchedule: SleepScheduleInfo{
+						ShouldKeepOff: true,
+						NextStopTime:  now.Add(-time.Minute),
+					},
+				},
+			},
+			expectedHosts: nil,
+		},
+		{
+			name: "ReturnsMultipleHostsWhoseNextStopHaveElapsed",
+			hosts: []Host{
+				{
+					Id:           "h0",
+					StartedBy:    "myself",
+					NoExpiration: true,
+					Status:       evergreen.HostRunning,
+					SleepSchedule: SleepScheduleInfo{
+						NextStopTime: now.Add(-time.Minute),
+					},
+				},
+				{
+					Id:           "h1",
+					StartedBy:    "myself",
+					NoExpiration: true,
+					Status:       evergreen.HostRunning,
+					SleepSchedule: SleepScheduleInfo{
+						NextStopTime: now.Add(time.Hour),
+					},
+				},
+				{
+					Id:           "h2",
+					StartedBy:    "myself",
+					NoExpiration: true,
+					Status:       evergreen.HostStopping,
+					SleepSchedule: SleepScheduleInfo{
+						NextStopTime: now.Add(-3 * time.Minute),
+					},
+				},
+			},
+			expectedHosts: []string{"h0", "h2"},
+		},
+	} {
+		t.Run(tCase.name, func(t *testing.T) {
+			ctx, cancel := context.WithCancel(context.Background())
+			defer cancel()
+			require.NoError(t, db.ClearCollections(Collection))
+			for _, h := range tCase.hosts {
+				require.NoError(t, h.Insert(ctx))
+			}
+
+			foundHosts, err := FindHostsScheduledToStop(ctx)
+			require.NoError(t, err)
+			assert.Len(t, foundHosts, len(tCase.expectedHosts))
+			for _, h := range foundHosts {
+				assert.Contains(t, tCase.expectedHosts, h.Id)
+			}
+		})
+	}
+}
+
+func TestFindHostsScheduledToStart(t *testing.T) {
+	defer func() {
+		assert.NoError(t, db.ClearCollections(Collection))
+	}()
+	now := time.Now()
+
+	for _, tCase := range []struct {
+		name          string
+		hosts         []Host
+		expectedHosts []string
+	}{
+		{
+			name: "ReturnsStoppedHostsWhoseNextStartHasElapsed",
+			hosts: []Host{
+				{
+					Id:           "h0",
+					StartedBy:    "myself",
+					NoExpiration: true,
+					Status:       evergreen.HostStopped,
+					SleepSchedule: SleepScheduleInfo{
+						NextStartTime: now.Add(-time.Minute),
+					},
+				},
+			},
+			expectedHosts: []string{"h0"},
+		},
+		{
+			name: "ReturnsStoppedHostsWhoseNextStartIsAboutToElapse",
+			hosts: []Host{
+				{
+					Id:           "h0",
+					StartedBy:    "myself",
+					NoExpiration: true,
+					Status:       evergreen.HostStopped,
+					SleepSchedule: SleepScheduleInfo{
+						NextStartTime: now.Add(time.Minute),
+					},
+				},
+			},
+			expectedHosts: []string{"h0"},
+		},
+		{
+			name: "ReturnsStoppingHostWhoseNextStartHasElapsed",
+			hosts: []Host{
+				{
+					Id:           "h0",
+					StartedBy:    "myself",
+					NoExpiration: true,
+					Status:       evergreen.HostStopping,
+					SleepSchedule: SleepScheduleInfo{
+						NextStartTime: now.Add(-time.Minute),
+					},
+				},
+			},
+			expectedHosts: []string{"h0"},
+		},
+		{
+			name: "IgnoresHostWhoseNextStartHasNotElapsed",
+			hosts: []Host{
+				{
+					Id:           "h0",
+					StartedBy:    "myself",
+					NoExpiration: true,
+					Status:       evergreen.HostRunning,
+					SleepSchedule: SleepScheduleInfo{
+						NextStartTime: now.Add(time.Hour),
+					},
+				},
+			},
+			expectedHosts: nil,
+		},
+		{
+			name: "IgnoresHostThatIsNotStartable",
+			hosts: []Host{
+				{
+					Id:           "h0",
+					StartedBy:    "myself",
+					NoExpiration: true,
+					Status:       evergreen.HostUninitialized,
+					SleepSchedule: SleepScheduleInfo{
+						NextStartTime: now.Add(-time.Minute),
+					},
+				},
+			},
+			expectedHosts: nil,
+		},
+		{
+			name: "IgnoresPermanentlyExemptHost",
+			hosts: []Host{
+				{
+					Id:           "h0",
+					StartedBy:    "myself",
+					NoExpiration: true,
+					Status:       evergreen.HostStopped,
+					SleepSchedule: SleepScheduleInfo{
+						PermanentlyExempt: true,
+						NextStartTime:     now.Add(-time.Minute),
+					},
+				},
+			},
+			expectedHosts: nil,
+		},
+		{
+			name: "IgnoresTemporarilyExemptHost",
+			hosts: []Host{
+				{
+					Id:           "h0",
+					StartedBy:    "myself",
+					NoExpiration: true,
+					Status:       evergreen.HostStopped,
+					SleepSchedule: SleepScheduleInfo{
+						TemporarilyExemptUntil: now.Add(time.Hour),
+						NextStartTime:          now.Add(-time.Minute),
+					},
+				},
+			},
+			expectedHosts: nil,
+		},
+		{
+			name: "IgnoresHostKeptOff",
+			hosts: []Host{
+				{
+					Id:           "h0",
+					StartedBy:    "myself",
+					NoExpiration: true,
+					Status:       evergreen.HostStopped,
+					SleepSchedule: SleepScheduleInfo{
+						ShouldKeepOff: true,
+						NextStartTime: now.Add(-time.Minute),
+					},
+				},
+			},
+			expectedHosts: nil,
+		},
+		{
+			name: "IgnoresHostWithoutASleepSchedule",
+			hosts: []Host{
+				{
+					Id:           "h0",
+					StartedBy:    "myself",
+					NoExpiration: true,
+					Status:       evergreen.HostRunning,
+				},
+			},
+			expectedHosts: nil,
+		},
+		{
+			name: "IgnoresExpirableHost",
+			hosts: []Host{
+				{
+					Id:           "h0",
+					StartedBy:    "myself",
+					NoExpiration: false,
+					Status:       evergreen.HostStopped,
+					SleepSchedule: SleepScheduleInfo{
+						ShouldKeepOff: true,
+						NextStartTime: now.Add(-time.Minute),
+					},
+				},
+			},
+			expectedHosts: nil,
+		},
+		{
+			name: "ReturnsMultipleHostsWhoseNextStartHaveElapsed",
+			hosts: []Host{
+				{
+					Id:           "h0",
+					StartedBy:    "myself",
+					NoExpiration: true,
+					Status:       evergreen.HostStopped,
+					SleepSchedule: SleepScheduleInfo{
+						NextStartTime: now.Add(-time.Minute),
+					},
+				},
+				{
+					Id:           "h1",
+					StartedBy:    "myself",
+					NoExpiration: true,
+					Status:       evergreen.HostStopped,
+					SleepSchedule: SleepScheduleInfo{
+						NextStartTime: now.Add(time.Hour),
+					},
+				},
+				{
+					Id:           "h2",
+					StartedBy:    "myself",
+					NoExpiration: true,
+					Status:       evergreen.HostStopping,
+					SleepSchedule: SleepScheduleInfo{
+						NextStartTime: now.Add(-3 * time.Minute),
+					},
+				},
+			},
+			expectedHosts: []string{"h0", "h2"},
+		},
+	} {
+		t.Run(tCase.name, func(t *testing.T) {
+			ctx, cancel := context.WithCancel(context.Background())
+			defer cancel()
+			require.NoError(t, db.ClearCollections(Collection))
+			for _, h := range tCase.hosts {
+				require.NoError(t, h.Insert(ctx))
+			}
+
+			foundHosts, err := FindHostsScheduledToStart(ctx)
+			require.NoError(t, err)
+			assert.Len(t, foundHosts, len(tCase.expectedHosts))
+			for _, h := range foundHosts {
+				assert.Contains(t, tCase.expectedHosts, h.Id)
+			}
+		})
+	}
+}
+
+func TestCountRunningStatusHosts(t *testing.T) {
+	assert.NoError(t, db.ClearCollections(Collection))
+	d1 := distro.Distro{
+		Id: "d1",
+	}
+	h1 := Host{
+		Id:     "h1",
+		Distro: d1,
+		Status: evergreen.HostRunning,
+	}
+	h2 := Host{
+		Id:     "h2",
+		Distro: d1,
+		Status: evergreen.HostTerminated,
+	}
+	h3 := Host{
+		Id:     "h3",
+		Distro: d1,
+		Status: evergreen.HostStopping,
+	}
+	h4 := Host{
+		Id:     "h4",
+		Distro: d1,
+		Status: evergreen.HostRunning,
+	}
+	h5 := Host{
+		Id:     "h5",
+		Distro: d1,
+		Status: evergreen.HostBuilding,
+	}
+	h6 := Host{
+		Id:     "h6",
+		Distro: d1,
+		Status: evergreen.HostProvisionFailed,
+	}
+	h7 := Host{
+		Id:     "h7",
+		Distro: d1,
+		Status: evergreen.HostStopped,
+	}
+	h8 := Host{
+		Id:     "h8",
+		Distro: d1,
+		Status: evergreen.HostProvisioning,
+	}
+
+	assert.NoError(t, db.InsertMany(Collection, h1, h2, h3, h4, h5, h6, h7, h8))
+
+	ctx := context.TODO()
+	count, err := CountRunningStatusHosts(ctx, "d1")
+	assert.NoError(t, err)
+	assert.Equal(t, 2, count)
+
+}

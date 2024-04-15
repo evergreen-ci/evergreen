@@ -38,7 +38,7 @@ const (
 	spawnHostModificationQueueGroup = "service.spawnhost.modify"
 )
 
-type cronJobFactory func(context.Context, time.Time) ([]amboy.Job, error)
+type cronJobFactory func(context.Context, evergreen.Environment, time.Time) ([]amboy.Job, error)
 
 func PopulateActivationJobs(part int) amboy.QueueOperation {
 	return func(ctx context.Context, queue amboy.Queue) error {
@@ -60,7 +60,7 @@ func PopulateActivationJobs(part int) amboy.QueueOperation {
 	}
 }
 
-func hostMonitoringJobs(ctx context.Context, ts time.Time) ([]amboy.Job, error) {
+func hostMonitoringJobs(ctx context.Context, env evergreen.Environment, ts time.Time) ([]amboy.Job, error) {
 	const reachabilityCheckInterval = 10 * time.Minute
 	flags, err := evergreen.GetServiceFlags(ctx)
 	if err != nil {
@@ -90,7 +90,7 @@ func hostMonitoringJobs(ctx context.Context, ts time.Time) ([]amboy.Job, error) 
 
 	jobs := []amboy.Job{NewStrandedTaskCleanupJob(ts.Format(TSFormat))}
 	for _, host := range hosts {
-		jobs = append(jobs, NewHostMonitorExternalStateJob(nil, &host, ts.Format(TSFormat)))
+		jobs = append(jobs, NewHostMonitorExternalStateJob(env, &host, ts.Format(TSFormat)))
 	}
 	return jobs, nil
 }
@@ -128,7 +128,7 @@ func PopulatePodHealthCheckJobs() amboy.QueueOperation {
 	}
 }
 
-func sendNotificationJobs(ctx context.Context, ts time.Time) ([]amboy.Job, error) {
+func sendNotificationJobs(ctx context.Context, _ evergreen.Environment, ts time.Time) ([]amboy.Job, error) {
 	flags, err := evergreen.GetServiceFlags(ctx)
 	if err != nil {
 		return nil, errors.WithStack(err)
@@ -150,7 +150,7 @@ func sendNotificationJobs(ctx context.Context, ts time.Time) ([]amboy.Job, error
 	return notificationJobs(ctx, unprocessedNotifications, flags, ts)
 }
 
-func eventNotifierJobs(ctx context.Context, ts time.Time) ([]amboy.Job, error) {
+func eventNotifierJobs(ctx context.Context, env evergreen.Environment, ts time.Time) ([]amboy.Job, error) {
 	flags, err := evergreen.GetServiceFlags(ctx)
 	if err != nil {
 		return nil, errors.Wrap(err, "getting service flags")
@@ -177,7 +177,7 @@ func eventNotifierJobs(ctx context.Context, ts time.Time) ([]amboy.Job, error) {
 
 	var jobs []amboy.Job
 	for _, evt := range events {
-		jobs = append(jobs, NewEventNotifierJob(nil, evt.ID, ts.Format(TSFormat)))
+		jobs = append(jobs, NewEventNotifierJob(env, evt.ID, ts.Format(TSFormat)))
 	}
 	return jobs, nil
 }
@@ -202,7 +202,7 @@ func PopulateTaskMonitoring(mins int) amboy.QueueOperation {
 	}
 }
 
-func hostTerminationJobs(ctx context.Context, _ time.Time) ([]amboy.Job, error) {
+func hostTerminationJobs(ctx context.Context, env evergreen.Environment, _ time.Time) ([]amboy.Job, error) {
 	flags, err := evergreen.GetServiceFlags(ctx)
 	if err != nil {
 		return nil, errors.Wrap(err, "getting service flags")
@@ -235,7 +235,7 @@ func hostTerminationJobs(ctx context.Context, _ time.Time) ([]amboy.Job, error) 
 			})
 			continue
 		}
-		jobs = append(jobs, NewHostTerminationJob(nil, &h, HostTerminationOptions{
+		jobs = append(jobs, NewHostTerminationJob(env, &h, HostTerminationOptions{
 			TerminateIfBusy:   true,
 			TerminationReason: "host is expired, decommissioned, or failed to provision",
 		}))
@@ -250,7 +250,7 @@ func hostTerminationJobs(ctx context.Context, _ time.Time) ([]amboy.Job, error) 
 	catcher.Wrap(err, "finding hosts spawned by tasks to terminate")
 
 	for _, h := range hosts {
-		jobs = append(jobs, NewHostTerminationJob(nil, &h, HostTerminationOptions{
+		jobs = append(jobs, NewHostTerminationJob(env, &h, HostTerminationOptions{
 			TerminateIfBusy:   true,
 			TerminationReason: "host spawned by task has gone out of scope",
 		}))
@@ -259,11 +259,11 @@ func hostTerminationJobs(ctx context.Context, _ time.Time) ([]amboy.Job, error) 
 	return jobs, catcher.Resolve()
 }
 
-func lastContainerFinishTimeJobs(ctx context.Context, ts time.Time) ([]amboy.Job, error) {
+func lastContainerFinishTimeJobs(ctx context.Context, _ evergreen.Environment, ts time.Time) ([]amboy.Job, error) {
 	return []amboy.Job{NewLastContainerFinishTimeJob(ts.Format(TSFormat))}, nil
 }
 
-func parentDecommissionJobs(ctx context.Context, ts time.Time) ([]amboy.Job, error) {
+func parentDecommissionJobs(ctx context.Context, _ evergreen.Environment, ts time.Time) ([]amboy.Job, error) {
 	settings, err := evergreen.GetConfig(ctx)
 	if err != nil {
 		return nil, errors.Wrap(err, "getting admin settings")
@@ -279,7 +279,7 @@ func parentDecommissionJobs(ctx context.Context, ts time.Time) ([]amboy.Job, err
 	return jobs, nil
 }
 
-func containerStateJobs(ctx context.Context, ts time.Time) ([]amboy.Job, error) {
+func containerStateJobs(ctx context.Context, env evergreen.Environment, ts time.Time) ([]amboy.Job, error) {
 	parents, err := host.FindAllRunningParents(ctx)
 	if err != nil {
 		return nil, errors.Wrap(err, "finding parent hosts")
@@ -288,12 +288,12 @@ func containerStateJobs(ctx context.Context, ts time.Time) ([]amboy.Job, error) 
 	var jobs []amboy.Job
 	// Create a job to check container state consistency for each parent.
 	for _, p := range parents {
-		jobs = append(jobs, NewHostMonitorContainerStateJob(nil, &p, evergreen.ProviderNameDocker, ts.Format(TSFormat)))
+		jobs = append(jobs, NewHostMonitorContainerStateJob(env, &p, evergreen.ProviderNameDocker, ts.Format(TSFormat)))
 	}
 	return jobs, nil
 }
 
-func oldestImageRemovalJobs(ctx context.Context, ts time.Time) ([]amboy.Job, error) {
+func oldestImageRemovalJobs(ctx context.Context, _ evergreen.Environment, ts time.Time) ([]amboy.Job, error) {
 	parents, err := host.FindAllRunningParents(ctx)
 	if err != nil {
 		return nil, errors.Wrap(err, "finding all parent hosts")
@@ -307,7 +307,7 @@ func oldestImageRemovalJobs(ctx context.Context, ts time.Time) ([]amboy.Job, err
 	return jobs, nil
 }
 
-func commitQueueJobs(ctx context.Context, ts time.Time) ([]amboy.Job, error) {
+func commitQueueJobs(ctx context.Context, env evergreen.Environment, ts time.Time) ([]amboy.Job, error) {
 	flags, err := evergreen.GetServiceFlags(ctx)
 	if err != nil {
 		return nil, errors.WithStack(err)
@@ -328,12 +328,12 @@ func commitQueueJobs(ctx context.Context, ts time.Time) ([]amboy.Job, error) {
 	}
 	var jobs []amboy.Job
 	for _, id := range projectIds {
-		jobs = append(jobs, NewCommitQueueJob(nil, id, ts.Format(TSFormat)))
+		jobs = append(jobs, NewCommitQueueJob(env, id, ts.Format(TSFormat)))
 	}
 	return jobs, nil
 }
 
-func hostAllocatorJobs(ctx context.Context, ts time.Time) ([]amboy.Job, error) {
+func hostAllocatorJobs(ctx context.Context, env evergreen.Environment, ts time.Time) ([]amboy.Job, error) {
 	config, err := evergreen.GetConfig(ctx)
 	if err != nil {
 		return nil, errors.WithStack(err)
@@ -356,13 +356,13 @@ func hostAllocatorJobs(ctx context.Context, ts time.Time) ([]amboy.Job, error) {
 
 	jobs := make([]amboy.Job, 0, len(distros))
 	for _, d := range distros {
-		jobs = append(jobs, NewHostAllocatorJob(nil, d.Id, ts))
+		jobs = append(jobs, NewHostAllocatorJob(env, d.Id, ts))
 	}
 
 	return jobs, nil
 }
 
-func schedulerJobs(ctx context.Context, ts time.Time) ([]amboy.Job, error) {
+func schedulerJobs(ctx context.Context, _ evergreen.Environment, ts time.Time) ([]amboy.Job, error) {
 	config, err := evergreen.GetConfig(ctx)
 	if err != nil {
 		return nil, errors.Wrap(err, "getting admin settings")
@@ -393,7 +393,7 @@ func schedulerJobs(ctx context.Context, ts time.Time) ([]amboy.Job, error) {
 	return jobs, nil
 }
 
-func aliasSchedulerJobs(ctx context.Context, ts time.Time) ([]amboy.Job, error) {
+func aliasSchedulerJobs(ctx context.Context, _ evergreen.Environment, ts time.Time) ([]amboy.Job, error) {
 	config, err := evergreen.GetConfig(ctx)
 	if err != nil {
 		return nil, errors.Wrap(err, "getting admin settings")
@@ -425,7 +425,7 @@ func aliasSchedulerJobs(ctx context.Context, ts time.Time) ([]amboy.Job, error) 
 	return jobs, nil
 }
 
-func idleHostJobs(ctx context.Context, ts time.Time) ([]amboy.Job, error) {
+func idleHostJobs(ctx context.Context, env evergreen.Environment, ts time.Time) ([]amboy.Job, error) {
 	flags, err := evergreen.GetServiceFlags(ctx)
 	if err != nil {
 		return nil, errors.Wrap(err, "getting service flags")
@@ -440,7 +440,7 @@ func idleHostJobs(ctx context.Context, ts time.Time) ([]amboy.Job, error) {
 		return nil, nil
 	}
 
-	return []amboy.Job{NewIdleHostTerminationJob(nil, ts.Format(TSFormat))}, nil
+	return []amboy.Job{NewIdleHostTerminationJob(env, ts.Format(TSFormat))}, nil
 }
 
 func PopulateCheckUnmarkedBlockedTasks() amboy.QueueOperation {
@@ -493,7 +493,7 @@ func PopulateHostStatJobs(parts int) amboy.QueueOperation {
 	}
 }
 
-func agentDeployJobs(ctx context.Context, ts time.Time) ([]amboy.Job, error) {
+func agentDeployJobs(ctx context.Context, env evergreen.Environment, ts time.Time) ([]amboy.Job, error) {
 	flags, err := evergreen.GetServiceFlags(ctx)
 	if err != nil {
 		return nil, errors.Wrap(err, "getting service flags")
@@ -538,7 +538,7 @@ func agentDeployJobs(ctx context.Context, ts time.Time) ([]amboy.Job, error) {
 
 	jobs := make([]amboy.Job, 0, len(hosts))
 	for _, h := range hosts {
-		jobs = append(jobs, NewAgentDeployJob(nil, h, ts.Format(TSFormat)))
+		jobs = append(jobs, NewAgentDeployJob(env, h, ts.Format(TSFormat)))
 	}
 
 	return jobs, nil
@@ -548,7 +548,7 @@ func agentDeployJobs(ctx context.Context, ts time.Time) ([]amboy.Job, error) {
 // to any host in which: (1) the agent monitor has not been deployed yet, (2)
 // the agent's last communication time has exceeded the threshold or (3) has
 // already been marked as needing to redeploy a new agent monitor.
-func agentMonitorDeployJobs(ctx context.Context, ts time.Time) ([]amboy.Job, error) {
+func agentMonitorDeployJobs(ctx context.Context, env evergreen.Environment, ts time.Time) ([]amboy.Job, error) {
 	flags, err := evergreen.GetServiceFlags(ctx)
 	if err != nil {
 		return nil, errors.Wrap(err, "getting service flags")
@@ -591,7 +591,7 @@ func agentMonitorDeployJobs(ctx context.Context, ts time.Time) ([]amboy.Job, err
 
 	jobs := make([]amboy.Job, 0, len(hosts))
 	for _, h := range hosts {
-		jobs = append(jobs, NewAgentMonitorDeployJob(nil, h, ts.Format(TSFormat)))
+		jobs = append(jobs, NewAgentMonitorDeployJob(env, h, ts.Format(TSFormat)))
 	}
 
 	return jobs, nil
@@ -610,7 +610,7 @@ func enqueueFallbackGenerateTasksJobs(ctx context.Context, env evergreen.Environ
 	return CreateAndEnqueueGenerateTasks(ctx, env, tasks, ts.Format(TSFormat))
 }
 
-func hostCreationJobs(ctx context.Context, ts time.Time) ([]amboy.Job, error) {
+func hostCreationJobs(ctx context.Context, env evergreen.Environment, ts time.Time) ([]amboy.Job, error) {
 	flags, err := evergreen.GetServiceFlags(ctx)
 	if err != nil {
 		return nil, errors.Wrap(err, "getting service flags")
@@ -638,12 +638,12 @@ func hostCreationJobs(ctx context.Context, ts time.Time) ([]amboy.Job, error) {
 
 	var jobs []amboy.Job
 	for _, h := range hosts {
-		jobs = append(jobs, NewHostCreateJob(nil, h, ts.Format(TSFormat), 0, false))
+		jobs = append(jobs, NewHostCreateJob(env, h, ts.Format(TSFormat), 0, false))
 	}
 	return jobs, nil
 }
 
-func enqueueHostSetupJobs(ctx context.Context, queue amboy.Queue, ts time.Time) error {
+func enqueueHostSetupJobs(ctx context.Context, env evergreen.Environment, queue amboy.Queue, ts time.Time) error {
 	flags, err := evergreen.GetServiceFlags(ctx)
 	if err != nil {
 		return errors.Wrap(err, "getting service flags")
@@ -658,7 +658,6 @@ func enqueueHostSetupJobs(ctx context.Context, queue amboy.Queue, ts time.Time) 
 		return nil
 	}
 
-	env := evergreen.GetEnvironment()
 	hostInitSettings := env.Settings().HostInit
 	if err = hostInitSettings.Get(ctx); err != nil {
 		hostInitSettings = env.Settings().HostInit
@@ -717,7 +716,7 @@ func enqueueHostSetupJobs(ctx context.Context, queue amboy.Queue, ts time.Time) 
 	return catcher.Resolve()
 }
 
-func hostReadyJob(ctx context.Context, ts time.Time) ([]amboy.Job, error) {
+func hostReadyJob(ctx context.Context, _ evergreen.Environment, ts time.Time) ([]amboy.Job, error) {
 	flags, err := evergreen.GetServiceFlags(ctx)
 	if err != nil {
 		return nil, errors.Wrap(err, "getting service flags")
@@ -808,7 +807,7 @@ func PopulateHostProvisioningConversionJobs(env evergreen.Environment) amboy.Que
 	}
 }
 
-func backgroundStatsJobs(ctx context.Context, ts time.Time) ([]amboy.Job, error) {
+func backgroundStatsJobs(ctx context.Context, env evergreen.Environment, ts time.Time) ([]amboy.Job, error) {
 	flags, err := evergreen.GetServiceFlags(ctx)
 	if err != nil {
 		grip.Alert(message.WrapError(err, message.Fields{
@@ -828,7 +827,7 @@ func backgroundStatsJobs(ctx context.Context, ts time.Time) ([]amboy.Job, error)
 	}
 
 	return []amboy.Job{
-		NewRemoteAmboyStatsCollector(nil, ts.Format(TSFormat)),
+		NewRemoteAmboyStatsCollector(env, ts.Format(TSFormat)),
 		NewHostStatsCollector(ts.Format(TSFormat)),
 		NewPodStatsCollector(ts.Format(TSFormat)),
 		NewTaskStatsCollector(ts.Format(TSFormat)),
@@ -837,7 +836,7 @@ func backgroundStatsJobs(ctx context.Context, ts time.Time) ([]amboy.Job, error)
 	}, nil
 }
 
-func periodicNotificationJobs(ctx context.Context, ts time.Time) ([]amboy.Job, error) {
+func periodicNotificationJobs(ctx context.Context, _ evergreen.Environment, ts time.Time) ([]amboy.Job, error) {
 	flags, err := evergreen.GetServiceFlags(ctx)
 	if err != nil {
 		return nil, errors.Wrap(err, "getting service flags")
@@ -871,7 +870,7 @@ func PopulateCacheHistoricalTaskDataJob(part int) amboy.QueueOperation {
 		if err != nil {
 			return errors.WithStack(err)
 		}
-
+		// Although we don't run this hourly, we still queue hourly to improve resiliency.
 		ts := utility.RoundPartOfDay(part).Format(TSFormat)
 
 		catcher := grip.NewBasicCatcher()
@@ -1023,14 +1022,14 @@ func PopulatePeriodicBuilds() amboy.QueueOperation {
 
 // userDataDoneJobs enqueues the jobs to check whether a spawn host
 // provisioning with user data is done running its user data script yet.
-func userDataDoneJobs(ctx context.Context, ts time.Time) ([]amboy.Job, error) {
+func userDataDoneJobs(ctx context.Context, env evergreen.Environment, ts time.Time) ([]amboy.Job, error) {
 	hosts, err := host.FindUserDataSpawnHostsProvisioning(ctx)
 	if err != nil {
 		return nil, errors.Wrap(err, "finding user data spawn hosts that are still provisioning")
 	}
 	var jobs []amboy.Job
 	for _, h := range hosts {
-		jobs = append(jobs, NewUserDataDoneJob(nil, h.Id, ts))
+		jobs = append(jobs, NewUserDataDoneJob(env, h.Id, ts))
 	}
 	return jobs, nil
 }
@@ -1113,7 +1112,7 @@ func PopulateReauthorizeUserJobs(env evergreen.Environment) amboy.QueueOperation
 // podAllocatorJobs returns the queue operation to enqueue jobs to
 // allocate pods to tasks and disable container tasks that exceed the stale
 // undispatched threshold.
-func podAllocatorJobs(ctx context.Context, ts time.Time) ([]amboy.Job, error) {
+func podAllocatorJobs(ctx context.Context, _ evergreen.Environment, ts time.Time) ([]amboy.Job, error) {
 	settings, err := evergreen.GetConfig(ctx)
 	if err != nil {
 		return nil, errors.Wrap(err, "getting admin settings")
@@ -1173,7 +1172,7 @@ func podAllocatorJobs(ctx context.Context, ts time.Time) ([]amboy.Job, error) {
 	return jobs, nil
 }
 
-func podCreationJobs(ctx context.Context, ts time.Time) ([]amboy.Job, error) {
+func podCreationJobs(ctx context.Context, _ evergreen.Environment, ts time.Time) ([]amboy.Job, error) {
 	pods, err := pod.FindByInitializing()
 	if err != nil {
 		return nil, errors.Wrap(err, "finding initializing pods")
@@ -1187,7 +1186,7 @@ func podCreationJobs(ctx context.Context, ts time.Time) ([]amboy.Job, error) {
 	return jobs, nil
 }
 
-func podTerminationJobs(ctx context.Context, ts time.Time) ([]amboy.Job, error) {
+func podTerminationJobs(ctx context.Context, _ evergreen.Environment, ts time.Time) ([]amboy.Job, error) {
 	pods, err := pod.FindByNeedsTermination()
 	if err != nil {
 		return nil, errors.Wrap(err, "finding pods that need to be terminated")
@@ -1202,13 +1201,12 @@ func podTerminationJobs(ctx context.Context, ts time.Time) ([]amboy.Job, error) 
 
 // podDefinitionCreationJobs populates the jobs to create pod
 // definitions.
-func podDefinitionCreationJobs(ctx context.Context, ts time.Time) ([]amboy.Job, error) {
+func podDefinitionCreationJobs(ctx context.Context, env evergreen.Environment, ts time.Time) ([]amboy.Job, error) {
 	pods, err := pod.FindByInitializing()
 	if err != nil {
 		return nil, errors.Wrap(err, "finding initializing pods")
 	}
 
-	env := evergreen.GetEnvironment()
 	jobs := make([]amboy.Job, 0, len(pods))
 	for _, p := range pods {
 		jobs = append(jobs, NewPodDefinitionCreationJob(env.Settings().Providers.AWS.Pod.ECS, p.TaskContainerCreationOpts, ts.Format(TSFormat)))
@@ -1242,10 +1240,14 @@ func populateQueueGroup(ctx context.Context, env evergreen.Environment, queueGro
 	if err != nil {
 		return errors.Wrapf(err, "getting '%s' queue", queueGroupName)
 	}
-	jobs, err := factory(ctx, ts)
+	jobs, err := factory(ctx, env, ts)
 	if err != nil {
 		return errors.Wrapf(err, "getting '%s' jobs", queueGroupName)
 	}
 
 	return errors.Wrapf(amboy.EnqueueManyUniqueJobs(ctx, queueGroup, jobs), "populating '%s' queue", queueGroupName)
+}
+
+func sleepSchedulerJobs(ctx context.Context, env evergreen.Environment, ts time.Time) ([]amboy.Job, error) {
+	return []amboy.Job{NewSleepSchedulerJob(env, ts.Format(TSFormat))}, nil
 }

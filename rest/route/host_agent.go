@@ -98,6 +98,10 @@ func (h *hostAgentNextTask) Run(ctx context.Context) gimlet.Responder {
 
 	setAgentFirstContactTime(ctx, h.host)
 
+	if err := h.host.UnsetTaskGroupTeardownStartTime(ctx); err != nil {
+		return gimlet.MakeJSONInternalErrorResponder(err)
+	}
+
 	grip.Error(message.WrapError(h.host.SetUserDataHostProvisioned(ctx), message.Fields{
 		"message":      "failed to mark host as done provisioning with user data",
 		"host_id":      h.host.Id,
@@ -243,6 +247,10 @@ func (h *hostAgentNextTask) Run(ctx context.Context) gimlet.Responder {
 				"message": "host task group finished, not assigning task",
 				"host_id": h.host.Id,
 			})
+			err = h.host.SetTaskGroupTeardownStartTime(ctx)
+			if err != nil {
+				return gimlet.MakeJSONErrorResponder(err)
+			}
 			nextTaskResponse.ShouldTeardownGroup = true
 		} else {
 			// if the task is empty, still send it with a status ok and check it on the other side
@@ -476,6 +484,7 @@ func assignNextAvailableTask(ctx context.Context, env evergreen.Environment, tas
 	// continues until the task queue is empty. This means that every
 	// continue must be preceded by dequeueing the current task from the
 	// queue to prevent an infinite loop.
+
 	for taskQueue.Length() != 0 {
 		if err = ctx.Err(); err != nil {
 			return nil, false, errors.WithStack(err)
@@ -483,13 +492,13 @@ func assignNextAvailableTask(ctx context.Context, env evergreen.Environment, tas
 
 		var queueItem *model.TaskQueueItem
 		switch d.DispatcherSettings.Version {
-		case evergreen.DispatcherVersionRevised, evergreen.DispatcherVersionRevisedWithDependencies:
+		case evergreen.DispatcherVersionRevisedWithDependencies:
 			queueItem, err = dispatcher.RefreshFindNextTask(ctx, d.Id, spec, amiUpdatedTime)
 			if err != nil {
 				return nil, false, errors.Wrap(err, "problem getting next task")
 			}
 		default:
-			queueItem, _ = taskQueue.FindNextTask(ctx, spec)
+			return nil, false, errors.Errorf("invalid dispatcher version '%s' for host '%s'", d.DispatcherSettings.Version, currentHost.Id)
 		}
 
 		if queueItem == nil {
@@ -682,6 +691,13 @@ func assignNextAvailableTask(ctx context.Context, env evergreen.Environment, tas
 		}))
 
 		return nextTask, false, nil
+	}
+
+	if taskQueue.Length() == 0 && details.TaskGroup != "" {
+		// if we have reached the end of the queue and the previous task was part of a task group,
+		// the current task group is finished and needs to be torn down.
+		return nil, true, nil
+
 	}
 
 	return nil, false, nil

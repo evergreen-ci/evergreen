@@ -148,12 +148,7 @@ type APIDispatcherSettings struct {
 
 // BuildFromService converts from service level distro.DispatcherSettings to an APIDispatcherSettings
 func (s *APIDispatcherSettings) BuildFromService(settings distro.DispatcherSettings) {
-	if settings.Version == "" {
-		s.Version = utility.ToStringPtr(evergreen.DispatcherVersionRevised)
-	} else {
-		s.Version = utility.ToStringPtr(settings.Version)
-	}
-
+	s.Version = utility.ToStringPtr(evergreen.DispatcherVersionRevisedWithDependencies)
 }
 
 // ToService returns a service layer distro.DispatcherSettings using the data from APIDispatcherSettings
@@ -162,7 +157,7 @@ func (s *APIDispatcherSettings) ToService() distro.DispatcherSettings {
 		Version: utility.FromStringPtr(s.Version),
 	}
 	if settings.Version == "" {
-		settings.Version = evergreen.DispatcherVersionRevised
+		settings.Version = evergreen.DispatcherVersionRevisedWithDependencies
 	}
 
 	return settings
@@ -351,7 +346,6 @@ type APIDistro struct {
 	Setup                 *string                  `json:"setup"`
 	User                  *string                  `json:"user"`
 	BootstrapSettings     APIBootstrapSettings     `json:"bootstrap_settings"`
-	CloneMethod           *string                  `json:"clone_method"`
 	SSHKey                *string                  `json:"ssh_key"`
 	SSHOptions            []string                 `json:"ssh_options"`
 	AuthorizedKeysFile    *string                  `json:"authorized_keys_file"`
@@ -386,10 +380,6 @@ func (apiDistro *APIDistro) BuildFromService(d distro.Distro) {
 	apiDistro.Setup = utility.ToStringPtr(d.Setup)
 	apiDistro.User = utility.ToStringPtr(d.User)
 
-	if d.CloneMethod == "" {
-		d.CloneMethod = evergreen.CloneMethodLegacySSH
-	}
-	apiDistro.CloneMethod = utility.ToStringPtr(d.CloneMethod)
 	apiDistro.SSHKey = utility.ToStringPtr(d.SSHKey)
 	apiDistro.SSHOptions = d.SSHOptions
 	apiDistro.AuthorizedKeysFile = utility.ToStringPtr(d.AuthorizedKeysFile)
@@ -452,10 +442,6 @@ func (apiDistro *APIDistro) ToService() *distro.Distro {
 	d.Setup = utility.FromStringPtr(apiDistro.Setup)
 	d.User = utility.FromStringPtr(apiDistro.User)
 	d.BootstrapSettings = apiDistro.BootstrapSettings.ToService()
-	d.CloneMethod = utility.FromStringPtr(apiDistro.CloneMethod)
-	if d.CloneMethod == "" {
-		d.CloneMethod = evergreen.CloneMethodLegacySSH
-	}
 	d.SSHKey = utility.FromStringPtr(apiDistro.SSHKey)
 	d.SSHOptions = apiDistro.SSHOptions
 	d.AuthorizedKeysFile = utility.FromStringPtr(apiDistro.AuthorizedKeysFile)

@@ -93,6 +93,7 @@ func (j *createHostJob) Run(ctx context.Context) {
 	flags, err := evergreen.GetServiceFlags(ctx)
 	if err != nil {
 		j.AddError(err)
+		return
 	}
 
 	if flags.HostInitDisabled {

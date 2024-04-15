@@ -12,6 +12,7 @@ import (
 	"time"
 
 	"github.com/evergreen-ci/evergreen"
+	"github.com/evergreen-ci/evergreen/agent/internal/redactor"
 	"github.com/evergreen-ci/evergreen/apimodels"
 	"github.com/evergreen-ci/evergreen/cloud"
 	"github.com/evergreen-ci/evergreen/model"
@@ -115,14 +116,17 @@ func (c *baseCommunicator) createCedarGRPCConn(ctx context.Context) error {
 			return errors.Wrap(err, "getting Cedar config")
 		}
 
-		if cc.BaseURL == "" {
-			// No cedar base URL probably means we are running
+		if cc.GRPCBaseURL == "" && cc.BaseURL == "" {
+			// No cedar URLs probably means we are running
 			// evergreen locally or in some testing mode.
 			return nil
+		} else if cc.GRPCBaseURL == "" {
+			// Default the GRPC url to the HTTP base url if it's unpopulated
+			cc.GRPCBaseURL = cc.BaseURL
 		}
 
 		dialOpts := timber.DialCedarOptions{
-			BaseAddress: cc.BaseURL,
+			BaseAddress: cc.GRPCBaseURL,
 			RPCPort:     cc.RPCPort,
 			Username:    cc.Username,
 			APIKey:      cc.APIKey,
@@ -317,10 +321,6 @@ func (c *baseCommunicator) GetExpansionsAndVars(ctx context.Context, taskData Ta
 	return &expAndVars, nil
 }
 
-// TaskConflict is a special agent-internal message that the heartbeat uses to
-// indicate that the task is failing because it's being aborted.
-const TaskConflict = "task-conflict"
-
 func (c *baseCommunicator) Heartbeat(ctx context.Context, taskData TaskData) (string, error) {
 	data := interface{}("heartbeat")
 	ctx, cancel := context.WithTimeout(ctx, heartbeatTimeout)
@@ -467,7 +467,7 @@ func (c *baseCommunicator) makeSender(ctx context.Context, tsk *task.Task, opts 
 			}
 		}
 
-		sender = newRedactingSender(sender, config.Expansions, config.ExpansionsToRedact)
+		sender = redactor.NewRedactingSender(sender, config.RedactorOpts)
 		if logType == taskoutput.TaskLogTypeTask {
 			sender = makeTimeoutLogSender(sender, c)
 		}

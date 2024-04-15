@@ -773,29 +773,6 @@ func groupProjects(projects []model.ProjectRef, onlyDefaultedToRepo bool) ([]*Gr
 	return groupsArr, nil
 }
 
-// getProjectIdFromArgs extracts a project ID from the requireProjectAccess directive args.
-func getProjectIdFromArgs(ctx context.Context, args map[string]interface{}) (res string, err error) {
-	// id should always be a repo ID.
-	if id, hasId := args["id"].(string); hasId {
-		return id, nil
-	}
-	if projectId, hasProjectId := args["projectId"].(string); hasProjectId {
-		pid, err := model.GetIdForProject(projectId)
-		if err != nil {
-			return "", ResourceNotFound.Send(ctx, fmt.Sprintf("Could not find project with projectId: %s", projectId))
-		}
-		return pid, nil
-	}
-	if identifier, hasIdentifier := args["identifier"].(string); hasIdentifier {
-		pid, err := model.GetIdForProject(identifier)
-		if err != nil {
-			return "", ResourceNotFound.Send(ctx, fmt.Sprintf("Could not find project with identifier: %s", identifier))
-		}
-		return pid, nil
-	}
-	return "", ResourceNotFound.Send(ctx, "Could not find project")
-}
-
 // getValidTaskStatusesFilter returns a slice of task statuses that are valid and are searchable.
 // It returns an empty array if all is included as one of the entries
 func getValidTaskStatusesFilter(statuses []string) []string {
@@ -1223,4 +1200,63 @@ func collapseCommit(ctx context.Context, mainlineCommits MainlineCommits, mainli
 	} else {
 		mainlineCommitVersion.RolledUpVersions = []*restModel.APIVersion{&apiVersion}
 	}
+}
+
+// getProjectPermissionLevel takes in ProjectPermission and AccessLevel (GraphQL-specific variables) and returns
+// the equivalent Evergreen permission constants defined in globals.go.
+func getProjectPermissionLevel(projectPermission ProjectPermission, access AccessLevel) (requiredPermission string, requiredLevel int, err error) {
+	var permission string
+	var level int
+
+	switch projectPermission {
+	case ProjectPermissionSettings:
+		permission = evergreen.PermissionProjectSettings
+		if access == AccessLevelEdit {
+			level = evergreen.ProjectSettingsEdit.Value
+		} else if access == AccessLevelView {
+			level = evergreen.ProjectSettingsView.Value
+		} else {
+			return "", 0, errors.Errorf("invalid access level for %s", evergreen.PermissionProjectSettings)
+		}
+	case ProjectPermissionPatches:
+		permission = evergreen.PermissionPatches
+		if access == AccessLevelAdmin {
+			level = evergreen.PatchSubmitAdmin.Value
+		} else if access == AccessLevelEdit {
+			level = evergreen.PatchSubmit.Value
+		} else {
+			return "", 0, errors.Errorf("invalid access level for %s", evergreen.PermissionPatches)
+		}
+	case ProjectPermissionTasks:
+		permission = evergreen.PermissionTasks
+		if access == AccessLevelAdmin {
+			level = evergreen.TasksAdmin.Value
+		} else if access == AccessLevelEdit {
+			level = evergreen.TasksBasic.Value
+		} else if access == AccessLevelView {
+			level = evergreen.TasksView.Value
+		} else {
+			return "", 0, errors.Errorf("invalid access level for %s", evergreen.PermissionTasks)
+		}
+	case ProjectPermissionAnnotations:
+		permission = evergreen.PermissionAnnotations
+		if access == AccessLevelEdit {
+			level = evergreen.AnnotationsModify.Value
+		} else if access == AccessLevelView {
+			level = evergreen.AnnotationsView.Value
+		} else {
+			return "", 0, errors.Errorf("invalid access level for %s", evergreen.PermissionAnnotations)
+		}
+	case ProjectPermissionLogs:
+		permission = evergreen.PermissionLogs
+		if access == AccessLevelView {
+			level = evergreen.LogsView.Value
+		} else {
+			return "", 0, errors.Errorf("invalid access level for %s", evergreen.PermissionLogs)
+		}
+	default:
+		return "", 0, errors.New("invalid project permission")
+	}
+
+	return permission, level, nil
 }

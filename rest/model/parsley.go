@@ -8,6 +8,8 @@ import (
 type APIParsleySettings struct {
 	//SectionsEnabled describes whether to render task logs with sections.
 	SectionsEnabled *bool `json:"sections_enabled"`
+	// JumpToFailingLineEnabled describes whether to automatically scroll to the failing log line on initial page load.
+	JumpToFailingLineEnabled *bool `json:"jump_to_failing_line_enabled"`
 }
 
 func (s *APIParsleySettings) BuildFromService(settings parsley.Settings) {
@@ -17,11 +19,19 @@ func (s *APIParsleySettings) BuildFromService(settings parsley.Settings) {
 	} else {
 		s.SectionsEnabled = settings.SectionsEnabled
 	}
+
+	// Jump to failing log line should be enabled for all users by default.
+	if settings.JumpToFailingLineEnabled == nil {
+		s.JumpToFailingLineEnabled = utility.TruePtr()
+	} else {
+		s.JumpToFailingLineEnabled = settings.JumpToFailingLineEnabled
+	}
 }
 
 func (s *APIParsleySettings) ToService() parsley.Settings {
 	return parsley.Settings{
-		SectionsEnabled: s.SectionsEnabled,
+		SectionsEnabled:          s.SectionsEnabled,
+		JumpToFailingLineEnabled: s.JumpToFailingLineEnabled,
 	}
 }
 

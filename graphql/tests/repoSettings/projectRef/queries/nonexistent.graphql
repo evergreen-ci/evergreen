@@ -1,5 +1,5 @@
 {
-  repoSettings(id: "evergreen") {
+  repoSettings(repoId: "evergreen") {
     projectRef {
       id
     }

@@ -102,17 +102,18 @@ type DistroPermissionsOptions struct {
 // EditSpawnHostInput is the input to the editSpawnHost mutation.
 // Its fields determine how a given host will be modified.
 type EditSpawnHostInput struct {
-	AddedInstanceTags   []*host.Tag     `json:"addedInstanceTags,omitempty"`
-	DeletedInstanceTags []*host.Tag     `json:"deletedInstanceTags,omitempty"`
-	DisplayName         *string         `json:"displayName,omitempty"`
-	Expiration          *time.Time      `json:"expiration,omitempty"`
-	HostID              string          `json:"hostId"`
-	InstanceType        *string         `json:"instanceType,omitempty"`
-	NoExpiration        *bool           `json:"noExpiration,omitempty"`
-	PublicKey           *PublicKeyInput `json:"publicKey,omitempty"`
-	SavePublicKey       *bool           `json:"savePublicKey,omitempty"`
-	ServicePassword     *string         `json:"servicePassword,omitempty"`
-	Volume              *string         `json:"volume,omitempty"`
+	AddedInstanceTags   []*host.Tag             `json:"addedInstanceTags,omitempty"`
+	DeletedInstanceTags []*host.Tag             `json:"deletedInstanceTags,omitempty"`
+	DisplayName         *string                 `json:"displayName,omitempty"`
+	Expiration          *time.Time              `json:"expiration,omitempty"`
+	HostID              string                  `json:"hostId"`
+	InstanceType        *string                 `json:"instanceType,omitempty"`
+	NoExpiration        *bool                   `json:"noExpiration,omitempty"`
+	PublicKey           *PublicKeyInput         `json:"publicKey,omitempty"`
+	SavePublicKey       *bool                   `json:"savePublicKey,omitempty"`
+	ServicePassword     *string                 `json:"servicePassword,omitempty"`
+	SleepSchedule       *host.SleepScheduleInfo `json:"sleepSchedule,omitempty"`
+	Volume              *string                 `json:"volume,omitempty"`
 }
 
 type ExternalLinkForMetadata struct {
@@ -336,22 +337,23 @@ type SortOrder struct {
 // SpawnHostInput is the input to the spawnHost mutation.
 // Its fields determine the properties of the host that will be spawned.
 type SpawnHostInput struct {
-	DistroID                string          `json:"distroId"`
-	Expiration              *time.Time      `json:"expiration,omitempty"`
-	HomeVolumeSize          *int            `json:"homeVolumeSize,omitempty"`
-	IsVirtualWorkStation    bool            `json:"isVirtualWorkStation"`
-	NoExpiration            bool            `json:"noExpiration"`
-	PublicKey               *PublicKeyInput `json:"publicKey"`
-	Region                  string          `json:"region"`
-	SavePublicKey           bool            `json:"savePublicKey"`
-	SetUpScript             *string         `json:"setUpScript,omitempty"`
-	SpawnHostsStartedByTask *bool           `json:"spawnHostsStartedByTask,omitempty"`
-	TaskID                  *string         `json:"taskId,omitempty"`
-	TaskSync                *bool           `json:"taskSync,omitempty"`
-	UseProjectSetupScript   *bool           `json:"useProjectSetupScript,omitempty"`
-	UserDataScript          *string         `json:"userDataScript,omitempty"`
-	UseTaskConfig           *bool           `json:"useTaskConfig,omitempty"`
-	VolumeID                *string         `json:"volumeId,omitempty"`
+	DistroID                string                  `json:"distroId"`
+	Expiration              *time.Time              `json:"expiration,omitempty"`
+	HomeVolumeSize          *int                    `json:"homeVolumeSize,omitempty"`
+	IsVirtualWorkStation    bool                    `json:"isVirtualWorkStation"`
+	NoExpiration            bool                    `json:"noExpiration"`
+	PublicKey               *PublicKeyInput         `json:"publicKey"`
+	Region                  string                  `json:"region"`
+	SavePublicKey           bool                    `json:"savePublicKey"`
+	SetUpScript             *string                 `json:"setUpScript,omitempty"`
+	SleepSchedule           *host.SleepScheduleInfo `json:"sleepSchedule,omitempty"`
+	SpawnHostsStartedByTask *bool                   `json:"spawnHostsStartedByTask,omitempty"`
+	TaskID                  *string                 `json:"taskId,omitempty"`
+	TaskSync                *bool                   `json:"taskSync,omitempty"`
+	UseProjectSetupScript   *bool                   `json:"useProjectSetupScript,omitempty"`
+	UserDataScript          *string                 `json:"userDataScript,omitempty"`
+	UseTaskConfig           *bool                   `json:"useTaskConfig,omitempty"`
+	VolumeID                *string                 `json:"volumeId,omitempty"`
 }
 
 // SpawnVolumeInput is the input to the spawnVolume mutation.
@@ -521,6 +523,49 @@ type VolumeHost struct {
 	HostID   string `json:"hostId"`
 }
 
+type AccessLevel string
+
+const (
+	AccessLevelAdmin AccessLevel = "ADMIN"
+	AccessLevelEdit  AccessLevel = "EDIT"
+	AccessLevelView  AccessLevel = "VIEW"
+)
+
+var AllAccessLevel = []AccessLevel{
+	AccessLevelAdmin,
+	AccessLevelEdit,
+	AccessLevelView,
+}
+
+func (e AccessLevel) IsValid() bool {
+	switch e {
+	case AccessLevelAdmin, AccessLevelEdit, AccessLevelView:
+		return true
+	}
+	return false
+}
+
+func (e AccessLevel) String() string {
+	return string(e)
+}
+
+func (e *AccessLevel) UnmarshalGQL(v interface{}) error {
+	str, ok := v.(string)
+	if !ok {
+		return fmt.Errorf("enums must be strings")
+	}
+
+	*e = AccessLevel(str)
+	if !e.IsValid() {
+		return fmt.Errorf("%s is not a valid AccessLevel", str)
+	}
+	return nil
+}
+
+func (e AccessLevel) MarshalGQL(w io.Writer) {
+	fmt.Fprint(w, strconv.Quote(e.String()))
+}
+
 type Arch string
 
 const (
@@ -661,18 +706,16 @@ func (e CommunicationMethod) MarshalGQL(w io.Writer) {
 type DispatcherVersion string
 
 const (
-	DispatcherVersionRevised                 DispatcherVersion = "REVISED"
 	DispatcherVersionRevisedWithDependencies DispatcherVersion = "REVISED_WITH_DEPENDENCIES"
 )
 
 var AllDispatcherVersion = []DispatcherVersion{
-	DispatcherVersionRevised,
 	DispatcherVersionRevisedWithDependencies,
 }
 
 func (e DispatcherVersion) IsValid() bool {
 	switch e {
-	case DispatcherVersionRevised, DispatcherVersionRevisedWithDependencies:
+	case DispatcherVersionRevisedWithDependencies:
 		return true
 	}
 	return false
@@ -1098,44 +1141,50 @@ func (e PlannerVersion) MarshalGQL(w io.Writer) {
 	fmt.Fprint(w, strconv.Quote(e.String()))
 }
 
-type ProjectSettingsAccess string
+type ProjectPermission string
 
 const (
-	ProjectSettingsAccessEdit ProjectSettingsAccess = "EDIT"
-	ProjectSettingsAccessView ProjectSettingsAccess = "VIEW"
+	ProjectPermissionSettings    ProjectPermission = "SETTINGS"
+	ProjectPermissionTasks       ProjectPermission = "TASKS"
+	ProjectPermissionAnnotations ProjectPermission = "ANNOTATIONS"
+	ProjectPermissionPatches     ProjectPermission = "PATCHES"
+	ProjectPermissionLogs        ProjectPermission = "LOGS"
 )
 
-var AllProjectSettingsAccess = []ProjectSettingsAccess{
-	ProjectSettingsAccessEdit,
-	ProjectSettingsAccessView,
+var AllProjectPermission = []ProjectPermission{
+	ProjectPermissionSettings,
+	ProjectPermissionTasks,
+	ProjectPermissionAnnotations,
+	ProjectPermissionPatches,
+	ProjectPermissionLogs,
 }
 
-func (e ProjectSettingsAccess) IsValid() bool {
+func (e ProjectPermission) IsValid() bool {
 	switch e {
-	case ProjectSettingsAccessEdit, ProjectSettingsAccessView:
+	case ProjectPermissionSettings, ProjectPermissionTasks, ProjectPermissionAnnotations, ProjectPermissionPatches, ProjectPermissionLogs:
 		return true
 	}
 	return false
 }
 
-func (e ProjectSettingsAccess) String() string {
+func (e ProjectPermission) String() string {
 	return string(e)
 }
 
-func (e *ProjectSettingsAccess) UnmarshalGQL(v interface{}) error {
+func (e *ProjectPermission) UnmarshalGQL(v interface{}) error {
 	str, ok := v.(string)
 	if !ok {
 		return fmt.Errorf("enums must be strings")
 	}
 
-	*e = ProjectSettingsAccess(str)
+	*e = ProjectPermission(str)
 	if !e.IsValid() {
-		return fmt.Errorf("%s is not a valid ProjectSettingsAccess", str)
+		return fmt.Errorf("%s is not a valid ProjectPermission", str)
 	}
 	return nil
 }
 
-func (e ProjectSettingsAccess) MarshalGQL(w io.Writer) {
+func (e ProjectPermission) MarshalGQL(w io.Writer) {
 	fmt.Fprint(w, strconv.Quote(e.String()))
 }
 

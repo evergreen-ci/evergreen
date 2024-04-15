@@ -20,6 +20,7 @@ import (
 	"github.com/evergreen-ci/evergreen/model/distro"
 	"github.com/evergreen-ci/evergreen/model/event"
 	"github.com/evergreen-ci/evergreen/model/host"
+	"github.com/evergreen-ci/evergreen/model/parsley"
 	"github.com/evergreen-ci/evergreen/model/patch"
 	"github.com/evergreen-ci/evergreen/model/task"
 	"github.com/evergreen-ci/evergreen/model/user"
@@ -609,7 +610,7 @@ func (r *mutationResolver) CopyProject(ctx context.Context, project data.CopyPro
 }
 
 // DeactivateStepbackTask is the resolver for the deactivateStepbackTask field.
-func (r *mutationResolver) DeactivateStepbackTask(ctx context.Context, projectID *string, buildVariantName string, taskName string) (bool, error) {
+func (r *mutationResolver) DeactivateStepbackTask(ctx context.Context, projectID *string, projectIdentifier *string, buildVariantName string, taskName string) (bool, error) {
 	usr := mustHaveUser(ctx)
 	if err := task.DeactivateStepbackTask(utility.FromStringPtr(projectID), buildVariantName, taskName, usr.Username()); err != nil {
 		return false, InternalServerError.Send(ctx, err.Error())
@@ -868,6 +869,17 @@ func (r *mutationResolver) EditSpawnHost(ctx context.Context, spawnHost *EditSpa
 		}
 	}
 
+	if spawnHost.SleepSchedule != nil {
+
+		if err = h.UpdateSleepSchedule(ctx, *spawnHost.SleepSchedule); err != nil {
+			gimletErr, ok := err.(gimlet.ErrorResponse)
+			if ok {
+				return nil, mapHTTPStatusToGqlError(ctx, gimletErr.StatusCode, err)
+			}
+			return nil, InternalServerError.Send(ctx, fmt.Sprintf("setting sleep schedule: '%s'", err.Error()))
+		}
+	}
+
 	if err = cloud.ModifySpawnHost(ctx, evergreen.GetEnvironment(), h, opts); err != nil {
 		return nil, InternalServerError.Send(ctx, fmt.Sprintf("Error modifying spawn host: %s", err))
 	}
@@ -907,6 +919,15 @@ func (r *mutationResolver) SpawnHost(ctx context.Context, spawnHostInput *SpawnH
 	}
 	if spawnHost == nil {
 		return nil, InternalServerError.Send(ctx, "An error occurred Spawn host is nil")
+	}
+	if spawnHostInput.SleepSchedule != nil {
+		if err = spawnHost.UpdateSleepSchedule(ctx, *spawnHostInput.SleepSchedule); err != nil {
+			gimletErr, ok := err.(gimlet.ErrorResponse)
+			if ok {
+				return nil, mapHTTPStatusToGqlError(ctx, gimletErr.StatusCode, err)
+			}
+			return nil, InternalServerError.Send(ctx, fmt.Sprintf("setting sleep schedule: '%s'", err.Error()))
+		}
 	}
 	apiHost := restModel.APIHost{}
 	apiHost.BuildFromService(spawnHost, nil)
@@ -1123,7 +1144,7 @@ func (r *mutationResolver) RestartTask(ctx context.Context, taskID string, faile
 }
 
 // ScheduleTasks is the resolver for the scheduleTasks field.
-func (r *mutationResolver) ScheduleTasks(ctx context.Context, taskIds []string) ([]*restModel.APITask, error) {
+func (r *mutationResolver) ScheduleTasks(ctx context.Context, taskIds []string, versionID string) ([]*restModel.APITask, error) {
 	scheduledTasks := []*restModel.APITask{}
 	scheduled, err := setManyTasksScheduled(ctx, r.sc.GetURL(), true, taskIds...)
 	if err != nil {
@@ -1288,12 +1309,15 @@ func (r *mutationResolver) UpdateParsleySettings(ctx context.Context, opts Updat
 	usr := mustHaveUser(ctx)
 	newSettings := opts.ParsleySettings.ToService()
 
-	// TODO: Update to recursively set undefined fields in DEVPROD-5277, since ParsleySettingsInput allows omitting fields.
-	if err := usr.UpdateParsleySettings(newSettings); err != nil {
+	changes := parsley.MergeExistingParsleySettings(usr.ParsleySettings, newSettings)
+	if err := usr.UpdateParsleySettings(changes); err != nil {
 		return nil, InternalServerError.Send(ctx, fmt.Sprintf("updating Parsley settings: %s", err.Error()))
 	}
+
+	parsleySettings := restModel.APIParsleySettings{}
+	parsleySettings.BuildFromService(usr.ParsleySettings)
 	return &UpdateParsleySettingsPayload{
-		ParsleySettings: opts.ParsleySettings,
+		ParsleySettings: &parsleySettings,
 	}, nil
 }
 

@@ -14,7 +14,7 @@ import (
 	"time"
 
 	"github.com/evergreen-ci/evergreen"
-	"github.com/evergreen-ci/evergreen/agent"
+	"github.com/evergreen-ci/evergreen/agent/globals"
 	"github.com/mongodb/grip"
 	"github.com/mongodb/grip/send"
 	"github.com/mongodb/jasper"
@@ -106,7 +106,7 @@ func WaitForEvergreen(t *testing.T, appServerURL string, client *http.Client) {
 // CheckTaskStatusAndLogs checks that all the expected tasks are finished,
 // succeeded, and performed the expected operations based on the task log
 // contents.
-func CheckTaskStatusAndLogs(ctx context.Context, t *testing.T, params APIParams, client *http.Client, mode agent.Mode, tasks []string) {
+func CheckTaskStatusAndLogs(ctx context.Context, t *testing.T, params APIParams, client *http.Client, mode globals.Mode, tasks []string) {
 	grip.Infof("Checking task status and task logs for tasks: %s", strings.Join(tasks, ", "))
 
 	const maxTaskCheckAttempts = 40
@@ -195,7 +195,7 @@ func getTaskInfo(ctx context.Context, params APIParams, client *http.Client, tas
 // getAndCheckTaskLog gets the task logs from the task log URL and checks that
 // it has the expected content, indicating that the task executed the commands
 // properly.
-func getAndCheckTaskLog(ctx context.Context, t *testing.T, params APIParams, client *http.Client, mode agent.Mode, task smokeAPITask) {
+func getAndCheckTaskLog(ctx context.Context, t *testing.T, params APIParams, client *http.Client, mode globals.Mode, task smokeAPITask) {
 	// retry for *slightly* delayed logger closing
 	const taskLogCheckAttempts = 3
 	for i := 0; i < taskLogCheckAttempts; i++ {
@@ -218,7 +218,7 @@ func getAndCheckTaskLog(ctx context.Context, t *testing.T, params APIParams, cli
 
 // checkTaskLogContent compares the expected result of running the smoke test
 // project YAML (project.yml) against the actual task log's text.
-func checkTaskLogContent(t *testing.T, taskName string, body []byte, mode agent.Mode) {
+func checkTaskLogContent(t *testing.T, taskName string, body []byte, mode globals.Mode) {
 	grip.Infof("Checking task logs for task named '%s'", taskName)
 
 	page := string(body)
@@ -236,7 +236,7 @@ func checkTaskLogContent(t *testing.T, taskName string, body []byte, mode agent.
 	const setupGroupLog = "smoke test is running the setup group"
 	const teardownGroupLog = "smoke test is running the teardown group"
 
-	if mode == agent.HostMode {
+	if mode == globals.HostMode {
 		switch taskName {
 		case generatorTaskName:
 			require.Contains(t, page, "Finished command 'generate.tasks'", "generator task '%s' should have logged generate.tasks command ran", taskName)
@@ -270,7 +270,7 @@ func checkTaskLogContent(t *testing.T, taskName string, body []byte, mode agent.
 			require.Contains(t, page, teardownTaskLog, "teardown task should run for every task in the task group")
 		}
 
-	} else if mode == agent.PodMode {
+	} else if mode == globals.PodMode {
 		const containerTaskLog = "container task"
 		assert.Contains(t, page, containerTaskLog, "should have found expected container task log")
 	}
@@ -358,7 +358,7 @@ func StartAppServer(ctx context.Context, t *testing.T, params APIParams) jasper.
 
 // StartAgent starts the smoke test agent with the given execution mode and
 // ID.
-func StartAgent(ctx context.Context, t *testing.T, params APIParams, mode agent.Mode, execModeID, execModeSecret string) jasper.Process {
+func StartAgent(ctx context.Context, t *testing.T, params APIParams, mode globals.Mode, execModeID, execModeSecret string) jasper.Process {
 	grip.Info("Starting smoke test agent.")
 
 	agentCmd, err := SmokeRunBinary(ctx,

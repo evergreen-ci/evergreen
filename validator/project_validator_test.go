@@ -1410,11 +1410,29 @@ func TestValidateProjectLimits(t *testing.T) {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 
-	makeProjectWithNumTasks := func(numTasks int) *model.Project {
+	makeProjectWithDoubleNumTasks := func(numTasks int) *model.Project {
 		var project model.Project
+		project.BuildVariants = []model.BuildVariant{
+			{
+				Name: "bv1",
+			},
+			{
+				Name: "bv2",
+			},
+		}
+
 		for i := 0; i < numTasks; i++ {
-			project.Tasks = append(project.Tasks, model.ProjectTask{
+			t := model.ProjectTask{
 				Name: fmt.Sprintf("task-%d", i),
+			}
+			project.Tasks = append(project.Tasks, t)
+			project.BuildVariants[0].Tasks = append(project.BuildVariants[0].Tasks, model.BuildVariantTaskUnit{
+				Name:    t.Name,
+				Variant: project.BuildVariants[0].Name,
+			})
+			project.BuildVariants[1].Tasks = append(project.BuildVariants[1].Tasks, model.BuildVariantTaskUnit{
+				Name:    t.Name,
+				Variant: project.BuildVariants[1].Name,
 			})
 		}
 		return &project
@@ -1426,7 +1444,7 @@ func TestValidateProjectLimits(t *testing.T) {
 				MaxTasksPerVersion: 10,
 			},
 		}
-		project := makeProjectWithNumTasks(5)
+		project := makeProjectWithDoubleNumTasks(3)
 		assert.Empty(t, validateProjectLimits(ctx, settings, project, &model.ProjectRef{}, false))
 	})
 	t.Run("FailsWithTasksExceedingLimit", func(t *testing.T) {
@@ -1435,15 +1453,15 @@ func TestValidateProjectLimits(t *testing.T) {
 				MaxTasksPerVersion: 10,
 			},
 		}
-		project := makeProjectWithNumTasks(50)
+		project := makeProjectWithDoubleNumTasks(50)
 		errs := validateProjectLimits(ctx, settings, project, &model.ProjectRef{}, false)
 		require.Len(t, errs, 1)
 		assert.Equal(t, Error, errs[0].Level)
-		assert.Contains(t, "project's total number of tasks (50) exceeds maximum limit (10)", errs[0].Message)
+		assert.Contains(t, "project's total number of tasks (100) exceeds maximum limit (10)", errs[0].Message)
 	})
 	t.Run("SucceedsWithNoMaxTaskLimit", func(t *testing.T) {
 		settings := &evergreen.Settings{}
-		project := makeProjectWithNumTasks(50)
+		project := makeProjectWithDoubleNumTasks(50)
 		assert.Empty(t, validateProjectLimits(ctx, settings, project, &model.ProjectRef{}, false))
 	})
 }
@@ -3616,6 +3634,41 @@ buildvariants:
 	assert.Contains(validationErrs[1].Message, "task group 'inline_task_group' has max number of hosts 3 greater than the number of tasks 2")
 	assert.Equal(validationErrs[0].Level, Warning)
 	assert.Equal(validationErrs[1].Level, Warning)
+
+	overMaxTimeoutYml := `
+tasks:
+- name: example_task_1
+task_groups:
+- name: example_task_group
+  max_hosts: 4
+  teardown_group_timeout_secs: 1800
+  tasks:
+  - example_task_1
+buildvariants:
+- name: "bv"
+  display_name: "bv_display"
+  tasks:
+    - name: example_task_group
+    - name: inline_task_group
+      task_group:
+        share_processes: true
+        teardown_group:
+        - command: shell.exec
+        - command: shell.exec
+          params:
+           script: "echo teardown_group"
+        tasks:
+        - example_task_1
+`
+	pp, err = model.LoadProjectInto(ctx, []byte(overMaxTimeoutYml), nil, "", &proj)
+	require.NotNil(t, proj)
+	assert.NotNil(pp)
+	assert.NoError(err)
+
+	validationErrs = checkTaskGroups(&proj)
+	require.Len(t, validationErrs, 1)
+	assert.Contains(validationErrs[0].Message, "task group 'example_task_group' has a teardown task timeout of 1800 seconds, which exceeds the maximum of 180 seconds")
+	assert.Equal(validationErrs[0].Level, Warning)
 }
 
 func TestTaskGroupTeardownValidation(t *testing.T) {

@@ -16,11 +16,8 @@
         },
         "errors": [
           {
-            "message": "Could not find project with projectId: repo_id",
-            "path": [
-              "defaultSectionToRepo",
-              "projectId"
-            ],
+            "message": "project 'repo_id' not found",
+            "path": ["defaultSectionToRepo", "projectId"],
             "extensions": {
               "code": "RESOURCE_NOT_FOUND"
             }
@@ -36,11 +33,8 @@
         },
         "errors": [
           {
-            "message": "user testuser does not have permission to access settings for the project evergreen_id",
-            "path": [
-              "defaultSectionToRepo",
-              "projectId"
-            ],
+            "message": "user 'testuser' does not have permission to access 'settings' for the project 'evergreen_id'",
+            "path": ["defaultSectionToRepo", "projectId"],
             "extensions": {
               "code": "FORBIDDEN"
             }

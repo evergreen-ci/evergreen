@@ -14,6 +14,7 @@ import (
 
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/agent/command"
+	"github.com/evergreen-ci/evergreen/agent/globals"
 	"github.com/evergreen-ci/evergreen/agent/internal"
 	"github.com/evergreen-ci/evergreen/agent/internal/client"
 	"github.com/evergreen-ci/evergreen/agent/internal/testutil"
@@ -105,7 +106,7 @@ func (s *AgentSuite) SetupTest() {
 			HostID:           "host",
 			HostSecret:       "secret",
 			StatusPort:       2286,
-			LogOutput:        LogOutputStdout,
+			LogOutput:        globals.LogOutputStdout,
 			LogPrefix:        "agent",
 			WorkingDirectory: s.testTmpDirName,
 		},
@@ -158,7 +159,7 @@ func (s *AgentSuite) SetupTest() {
 	factory, ok := command.GetCommandFactory("setup.initial")
 	s.True(ok)
 	s.tc.setCurrentCommand(factory())
-	sender, err := s.a.GetSender(ctx, LogOutputStdout, "agent", "task_id", 2)
+	sender, err := s.a.GetSender(ctx, globals.LogOutputStdout, "agent", "task_id", 2)
 	s.Require().NoError(err)
 	s.a.SetDefaultLogger(sender)
 }
@@ -529,7 +530,7 @@ pre:
 
 	s.Less(time.Since(startAt), 5*time.Second, "timeout should have triggered after 1s")
 	s.True(s.tc.hadTimedOut(), "should have recorded pre timeout because it fails the task")
-	s.EqualValues(preTimeout, s.tc.getTimeoutType())
+	s.EqualValues(globals.PreTimeout, s.tc.getTimeoutType())
 	s.Equal(time.Second, s.tc.getTimeoutDuration())
 
 	s.NoError(s.tc.logger.Close())
@@ -646,6 +647,19 @@ post:
 	})
 }
 
+func (s *AgentSuite) TestPostSucceedsButErrorIsStored() {
+	projYml := `
+post:
+  - command: shell.exec
+    params:
+      script: exit 1
+`
+	s.setupRunTask(projYml)
+	s.NoError(s.a.runPostOrTeardownTaskCommands(s.ctx, s.tc))
+	s.NoError(s.tc.logger.Close())
+	s.True(s.tc.getPostErrored())
+}
+
 func (s *AgentSuite) TestPostTimeoutDoesNotFailTask() {
 	projYml := `
 buildvariants:
@@ -699,6 +713,7 @@ post:
 
 	s.NoError(s.tc.logger.Close())
 	checkMockLogs(s.T(), s.mockCommunicator, s.tc.taskConfig.Task.Id, nil, []string{panicLog})
+	s.True(s.tc.getPostErrored())
 }
 
 func (s *AgentSuite) TestPostTimeoutFailsTask() {
@@ -722,7 +737,7 @@ post:
 
 	s.Less(time.Since(startAt), 5*time.Second, "post command should have stopped early")
 	s.True(s.tc.hadTimedOut(), "should have recorded post timeout because it fails the task")
-	s.Equal(postTimeout, s.tc.getTimeoutType())
+	s.Equal(globals.PostTimeout, s.tc.getTimeoutType())
 	s.Equal(time.Second, s.tc.getTimeoutDuration())
 
 	s.NoError(s.tc.logger.Close())
@@ -777,7 +792,7 @@ post:
 	s.Equal(evergreen.TaskFailed, s.mockCommunicator.EndTaskResult.Detail.Status)
 	s.Equal("'shell.exec' (step 1 of 1) in block 'post'", s.mockCommunicator.EndTaskResult.Detail.Description)
 	s.True(s.mockCommunicator.EndTaskResult.Detail.TimedOut)
-	s.EqualValues(postTimeout, s.mockCommunicator.EndTaskResult.Detail.TimeoutType)
+	s.EqualValues(globals.PostTimeout, s.mockCommunicator.EndTaskResult.Detail.TimeoutType)
 	s.Equal(time.Second, s.mockCommunicator.EndTaskResult.Detail.TimeoutDuration)
 
 	s.NoError(s.tc.logger.Close())
@@ -1160,7 +1175,7 @@ func (s *AgentSuite) TestEndTaskResponse() {
 		s.Empty(detail.Description)
 	})
 	s.T().Run("TaskSucceedsWithSystemFailureDescription", func(t *testing.T) {
-		s.tc.setTimedOut(true, idleTimeout)
+		s.tc.setTimedOut(true, globals.IdleTimeout)
 		defer s.tc.setTimedOut(false, "")
 		detail := s.a.endTaskResponse(s.ctx, s.tc, evergreen.TaskSucceeded, systemFailureDescription)
 		s.True(detail.TimedOut)
@@ -1180,14 +1195,14 @@ func (s *AgentSuite) TestEndTaskResponse() {
 		s.Equal(s.tc.userEndTaskResp.Description, detail.Description)
 	})
 	s.T().Run("TaskHitsIdleTimeoutAndFailsResultsInFailureWithTimeout", func(t *testing.T) {
-		s.tc.setTimedOut(true, idleTimeout)
+		s.tc.setTimedOut(true, globals.IdleTimeout)
 		detail := s.a.endTaskResponse(s.ctx, s.tc, evergreen.TaskFailed, systemFailureDescription)
 		s.True(detail.TimedOut)
 		s.Equal(evergreen.TaskFailed, detail.Status)
 		s.Equal(systemFailureDescription, detail.Description)
 	})
 	s.T().Run("TaskClearsIdleTimeoutAndFailsResultsInFailureWithoutTimeout", func(t *testing.T) {
-		s.tc.setTimedOut(false, idleTimeout)
+		s.tc.setTimedOut(false, globals.IdleTimeout)
 		defer s.tc.setTimedOut(false, "")
 		detail := s.a.endTaskResponse(s.ctx, s.tc, evergreen.TaskFailed, systemFailureDescription)
 		s.False(detail.TimedOut)
@@ -1199,7 +1214,7 @@ func (s *AgentSuite) TestEndTaskResponse() {
 		// last command in the main block already finished. It does record that
 		// the timeout occurred, but the task commands nonetheless still
 		// succeeded.
-		s.tc.setTimedOut(true, idleTimeout)
+		s.tc.setTimedOut(true, globals.IdleTimeout)
 		defer s.tc.setTimedOut(false, "")
 		detail := s.a.endTaskResponse(s.ctx, s.tc, evergreen.TaskSucceeded, "")
 		s.True(detail.TimedOut)
@@ -1898,7 +1913,7 @@ task_groups:
 
 	s.Less(time.Since(startAt), 5*time.Second, "timeout should have triggered after 1s")
 	s.True(s.tc.hadTimedOut(), "should have hit task timeout")
-	s.Equal(setupGroupTimeout, s.tc.getTimeoutType())
+	s.Equal(globals.SetupGroupTimeout, s.tc.getTimeoutType())
 	s.Equal(time.Second, s.tc.getTimeoutDuration())
 
 	s.NoError(s.tc.logger.Close())
@@ -2028,7 +2043,7 @@ task_groups:
 
 	s.Less(time.Since(startAt), 5*time.Second, "timeout should have triggered after 1s")
 	s.True(s.tc.hadTimedOut(), "should have hit task timeout")
-	s.Equal(setupTaskTimeout, s.tc.getTimeoutType())
+	s.Equal(globals.SetupTaskTimeout, s.tc.getTimeoutType())
 	s.Equal(time.Second, s.tc.getTimeoutDuration())
 
 	s.NoError(s.tc.logger.Close())
@@ -2168,7 +2183,7 @@ task_groups:
 
 	s.Less(time.Since(startAt), 5*time.Second, "timeout should have triggered after 1s")
 	s.True(s.tc.hadTimedOut(), "should have hit task timeout")
-	s.Equal(teardownTaskTimeout, s.tc.getTimeoutType())
+	s.Equal(globals.TeardownTaskTimeout, s.tc.getTimeoutType())
 	s.Equal(time.Second, s.tc.getTimeoutDuration())
 
 	s.NoError(s.tc.logger.Close())
@@ -2550,6 +2565,60 @@ tasks:
 	}
 	expectedLines := "I am test log.\nI should get ingested automatically by the agent.\nAnd stored as well.\n"
 	s.Equal(expectedLines, actualLines)
+}
+
+func (s *AgentSuite) TestShouldRunSetupGroup() {
+	nextTask := &apimodels.NextTaskResponse{
+		TaskGroup: "",
+		TaskId:    "task1",
+	}
+	tc := &taskContext{
+		taskConfig: &internal.TaskConfig{
+			Task: task.Task{
+				Execution: 0,
+				BuildId:   "build1",
+			},
+			TaskGroup: &model.TaskGroup{
+				Name: "group1",
+			},
+		},
+		ranSetupGroup: false,
+	}
+
+	shouldRun := shouldRunSetupGroup(nextTask, tc)
+	s.Equal(true, shouldRun)
+
+	tc.ranSetupGroup = true
+
+	shouldRun = shouldRunSetupGroup(nextTask, &taskContext{})
+	s.Equal(true, shouldRun)
+
+	shouldRun = shouldRunSetupGroup(nextTask, tc)
+	s.Equal(true, shouldRun)
+
+	nextTask.TaskGroup = "not same"
+	shouldRun = shouldRunSetupGroup(nextTask, tc)
+	s.Equal(true, shouldRun)
+
+	nextTask.Build = "build1"
+	shouldRun = shouldRunSetupGroup(nextTask, tc)
+	s.Equal(true, shouldRun)
+
+	nextTask.TaskGroup = "group1"
+	shouldRun = shouldRunSetupGroup(nextTask, tc)
+	s.Equal(false, shouldRun)
+
+	nextTask.TaskExecution = 1
+	shouldRun = shouldRunSetupGroup(nextTask, tc)
+	s.Equal(true, shouldRun)
+
+	tc.taskConfig.Task.Execution = 1
+	shouldRun = shouldRunSetupGroup(nextTask, tc)
+	s.Equal(false, shouldRun)
+
+	tc.taskConfig.Task.Execution = 2
+	shouldRun = shouldRunSetupGroup(nextTask, tc)
+	s.Equal(false, shouldRun)
 }
 
 // checkMockLogs checks the mock communicator's received task logs. Note that

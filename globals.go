@@ -209,6 +209,7 @@ const (
 	MongodbUrl          = "MONGO_URL"
 	MongoAWSAuthEnabled = "MONGO_AWS_AUTH"
 	EvergreenVersionID  = "EVG_VERSION_ID"
+	TraceEndpoint       = "TRACE_ENDPOINT"
 
 	// localLoggingOverride is a special log path indicating that the app server
 	// should attempt to log to systemd if available, and otherwise fall back to
@@ -278,9 +279,6 @@ const (
 	PlannerVersionLegacy  = "legacy"
 	PlannerVersionTunable = "tunable"
 
-	// TODO: EVG-18706 all distros use DispatcherVersionRevisedWithDependencies, we may be able to remove these and their custom logic
-	DispatcherVersionLegacy                  = "legacy"
-	DispatcherVersionRevised                 = "revised"
 	DispatcherVersionRevisedWithDependencies = "revised-with-dependencies"
 
 	// maximum turnaround we want to maintain for all hosts for a given distro
@@ -366,15 +364,14 @@ const (
 	// a heartbeat
 	HeartbeatTimeoutThreshold = 7 * time.Minute
 
+	// MaxTeardownGroupThreshold specifies the duration after which the host should no longer continue
+	// to tear down a task group. This is set one minute longer than the agent's maxTeardownGroupTimeout.
+	MaxTeardownGroupThreshold = 4 * time.Minute
+
 	SaveGenerateTasksError     = "error saving config in `generate.tasks`"
 	TasksAlreadyGeneratedError = "generator already ran and generated tasks"
 	KeyTooLargeToIndexError    = "key too large to index"
 	InvalidDivideInputError    = "$divide only supports numeric types"
-
-	// Valid types of performing git clone
-	CloneMethodLegacySSH   = "legacy-ssh"
-	CloneMethodOAuth       = "oauth"
-	CloneMethodAccessToken = "access-token"
 
 	// ContainerHealthDashboard is the name of the Splunk dashboard that displays
 	// charts relating to the health of container tasks.
@@ -987,8 +984,6 @@ var (
 
 	// Set of valid DispatchSettings.Version strings that can be user set via the API
 	ValidTaskDispatcherVersions = []string{
-		DispatcherVersionLegacy,
-		DispatcherVersionRevised,
 		DispatcherVersionRevisedWithDependencies,
 	}
 
@@ -1064,13 +1059,6 @@ var (
 		ArchDarwinAmd64:  "OSX 64-bit",
 		ArchDarwinArm64:  "OSX ARM 64-bit",
 		ArchLinuxAmd64:   "Linux 64-bit",
-	}
-
-	// ValidCloneMethods includes all recognized clone methods.
-	ValidCloneMethods = []string{
-		CloneMethodLegacySSH,
-		CloneMethodOAuth,
-		CloneMethodAccessToken,
 	}
 )
 
@@ -1517,13 +1505,4 @@ func ValidateSSHKey(key string) error {
 	}
 	return errors.Errorf("either an invalid Evergreen-managed key name has been provided, "+
 		"or the key value is not one of the valid types: %s", validKeyTypes)
-}
-
-// ValidateCloneMethod checks that the clone mechanism is one of the supported
-// methods.
-func ValidateCloneMethod(method string) error {
-	if !utility.StringSliceContains(ValidCloneMethods, method) {
-		return errors.Errorf("'%s' is not a valid clone method", method)
-	}
-	return nil
 }

@@ -42,7 +42,7 @@ func makeChangePatchStatus(env evergreen.Environment) gimlet.RouteHandler {
 //	@Summary		Change patch status
 //	@Description	Sets the priority and activation status of a single patch to the input values
 //	@Tags			patches
-//	@Router			/patchs/{patch_id} [patch]
+//	@Router			/patches/{patch_id} [patch]
 //	@Security		Api-User || Api-Key
 //	@Param			patch_id	path		string						true	"patch ID"
 //	@Param			{object}	body		patchChangeStatusHandler	true	"parameters"
@@ -116,7 +116,7 @@ func makeFetchPatchByID() gimlet.RouteHandler {
 //	@Summary		Fetch patch by ID
 //	@Description	Fetch a single patch using its ID
 //	@Tags			patches
-//	@Router			/patchs/{patch_id} [get]
+//	@Router			/patches/{patch_id} [get]
 //	@Security		Api-User || Api-Key
 //	@Param			patch_id	path		string	true	"patch ID"
 //	@Param			module		query		string	false	"A module to get the diff for. Returns the empty string when no patch exists for the module."
@@ -157,7 +157,7 @@ func makePatchRawHandler() gimlet.RouteHandler {
 //	@Summary		Get patch diff
 //	@Description	Fetch the raw diff for a patch
 //	@Tags			patches
-//	@Router			/patchs/{patch_id}/raw [get]
+//	@Router			/patches/{patch_id}/raw [get]
 //	@Security		Api-User || Api-Key
 //	@Param			patch_id	path		string	true	"patch ID"
 //	@Param			module		query		string	false	"A module to get the diff for. Returns the empty string when no patch exists for the module."

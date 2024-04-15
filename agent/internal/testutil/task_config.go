@@ -29,11 +29,6 @@ func MakeTaskConfigFromModelData(ctx context.Context, settings *evergreen.Settin
 		return nil, errors.Wrap(err, "populating expansions")
 	}
 	var dv *apimodels.DistroView
-	if data.Host != nil {
-		dv = &apimodels.DistroView{
-			CloneMethod: data.Host.Distro.CloneMethod,
-		}
-	}
 	config, err := internal.NewTaskConfig(data.Host.Distro.WorkDir, dv, data.Project, data.Task, data.ProjectRef, nil, &apimodels.ExpansionsAndVars{Expansions: exp})
 	if err != nil {
 		return nil, errors.Wrap(err, "making task config from test model data")

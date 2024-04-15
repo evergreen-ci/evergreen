@@ -46,12 +46,11 @@ func TestCheckDistro(t *testing.T) {
 					Method:        distro.BootstrapMethodLegacySSH,
 					Communication: distro.CommunicationMethodLegacySSH,
 				},
-				CloneMethod: evergreen.CloneMethodLegacySSH,
 				FinderSettings: distro.FinderSettings{
 					Version: evergreen.FinderVersionLegacy,
 				},
 				DispatcherSettings: distro.DispatcherSettings{
-					Version: evergreen.DispatcherVersionLegacy,
+					Version: evergreen.DispatcherVersionRevisedWithDependencies,
 				},
 				HostAllocatorSettings: distro.HostAllocatorSettings{
 					Version:      evergreen.HostAllocatorUtilization,
@@ -77,7 +76,6 @@ func TestCheckDistro(t *testing.T) {
 					Method:        distro.BootstrapMethodLegacySSH,
 					Communication: distro.CommunicationMethodLegacySSH,
 				},
-				CloneMethod: evergreen.CloneMethodLegacySSH,
 			}
 			// simulate duplicate id
 			dupe := distro.Distro{Id: "a"}
@@ -103,12 +101,11 @@ func TestCheckDistro(t *testing.T) {
 					Method:        distro.BootstrapMethodLegacySSH,
 					Communication: distro.CommunicationMethodLegacySSH,
 				},
-				CloneMethod: evergreen.CloneMethodLegacySSH,
 				FinderSettings: distro.FinderSettings{
 					Version: evergreen.FinderVersionLegacy,
 				},
 				DispatcherSettings: distro.DispatcherSettings{
-					Version: evergreen.DispatcherVersionRevised,
+					Version: evergreen.DispatcherVersionRevisedWithDependencies,
 				},
 				HostAllocatorSettings: distro.HostAllocatorSettings{
 					Version:      evergreen.HostAllocatorUtilization,
@@ -453,11 +450,11 @@ func TestEnsureValidContainerPool(t *testing.T) {
 	conf := &evergreen.Settings{
 		ContainerPools: evergreen.ContainerPoolsConfig{
 			Pools: []evergreen.ContainerPool{
-				evergreen.ContainerPool{
+				{
 					Distro: "d4",
 					Id:     "test-pool-valid",
 				},
-				evergreen.ContainerPool{
+				{
 					Distro: "d1",
 					Id:     "test-pool-invalid",
 				},
@@ -668,25 +665,6 @@ func TestEnsureValidStaticBootstrapSettings(t *testing.T) {
 
 	d.BootstrapSettings.Method = distro.BootstrapMethodUserData
 	assert.NotNil(t, ensureValidStaticBootstrapSettings(ctx, &d, &evergreen.Settings{}))
-}
-
-func TestEnsureValidSSHKeyName(t *testing.T) {
-	ctx := context.Background()
-	defaultKeyName := "default_key"
-	settings := &evergreen.Settings{
-		Keys: map[string]string{
-			defaultKeyName: "default_key_value",
-		},
-		SSHKeyPairs: []evergreen.SSHKeyPair{
-			{
-				Name: "ssh_key1",
-			},
-		},
-	}
-	assert.Nil(t, ensureValidSSHKeyName(ctx, &distro.Distro{SSHKey: defaultKeyName}, settings))
-	assert.Nil(t, ensureValidSSHKeyName(ctx, &distro.Distro{SSHKey: settings.SSHKeyPairs[0].Name}, settings))
-	assert.NotNil(t, ensureValidSSHKeyName(ctx, &distro.Distro{}, settings))
-	assert.NotNil(t, ensureValidSSHKeyName(ctx, &distro.Distro{SSHKey: "nonexistent"}, settings))
 }
 
 func TestEnsureStaticHasAuthorizedKeysFile(t *testing.T) {

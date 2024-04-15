@@ -464,7 +464,9 @@ All projects can have a `pre` and `post` field which define a list of commands
 to run at the start and end of every task that isn't in a task group. For task
 groups, `setup_task` and `teardown_task` will run instead of `pre` and `post`
 (see [task groups](#task-groups) for more information). These are incredibly
-useful as a place for results commands or for task setup and cleanup.
+useful as a place for results commands or for task setup and cleanup. Note: If a 
+host runs into an issue and needs to exit it will exit without running the post 
+task commands. 
 
 ``` yaml
 pre_error_fails_task: true
@@ -531,8 +533,8 @@ Parameters:
 **Exec timeout: exec_timeout_secs**
 You can customize the points at which the "timeout" conditions are
 triggered. To cause a task to stop (and fail) if it doesn't complete
-within an allotted time, set the key `exec_timeout_secs` on the project
-or task to the maximum allowed length of execution time. Exec timeout only
+within an allotted time, set the key `exec_timeout_secs` on the overall project
+or on a specific task to set the maximum allowed length of execution time. Exec timeout only
 applies to commands that run in `pre`, `setup_group`, `setup_task`, and the main
 task commands; it does not apply to the `post`, `teardown_task`, and
 `teardown_group` blocks. This timeout defaults to 6 hours. `exec_timeout_secs`
@@ -544,7 +546,7 @@ You can also set `exec_timeout_secs` using [timeout.update](Project-Commands#tim
 **Idle timeout: timeout_secs**
 You may also force a specific command to trigger a failure if it does not appear
 to generate any output on `stdout`/`stderr` for more than a certain threshold,
-using the `timeout_secs` setting on the command. As long as the command produces
+using the `timeout_secs` setting on the command, or the overall project. As long as the command produces
 output to `stdout`/`stderr`, it will be allowed to continue, but if it does not
 write any output for longer than `timeout_secs` then the command will time out.
 If this timeout is hit, the task will stop (and fail). Idle timeout only applies
@@ -559,6 +561,8 @@ Example:
 
 ``` yaml
 exec_timeout_secs: 60 ## automatically fail any task if it takes longer than a minute to finish.
+timeout_secs: 120 ## force all commands to fail if they stay "idle" for 120 seconds or more by default
+
 buildvariants:
 - name: osx-108
   display_name: OSX
@@ -571,8 +575,8 @@ tasks:
   name: compile
   commands:
     - command: shell.exec
-      timeout_secs: 10 ## force this command to fail if it stays "idle" for 10 seconds or more
-      exec_timeout_secs: 20 ## will override the project level exec_timeout defined above for this task
+      timeout_secs: 10 ## override the project level timeout_secs defined above and force this command to fail if it stays "idle" for 10 seconds or more
+      exec_timeout_secs: 20 ## will override the project level exec_timeout_secs defined above for this task
       params:
         script: |
           sleep 1000
@@ -1425,8 +1429,9 @@ Parameters:
     commands run once per host that's running the task group tasks. Note that
     `post` does not run for task group tasks.
 -   `teardown_group_timeout_secs`: set a timeout for the `teardown_group`.
-    Defaults to 15 minutes. Hitting this timeout will stop the `teardown_task`
-    commands but will not cause the task to fail.
+    The maximum and the default is 3 minutes. If it's not set or if it's set to a 
+    number higher than the maximum, it will default to 3 minutes. Hitting this timeout 
+    will stop the `teardown_group` commands but will not cause the task to fail. 
 -   `setup_task`: commands to run prior to running each task in the task group.
     Note that `pre` does not run for task group tasks.
 -   `setup_task_can_fail_task`: if true, task will fail if a command in
@@ -1500,6 +1505,15 @@ If a task in a multi-host task group is restarted:
   running the task group but with a different task execution, it's treated like
   a new task group, so it will run the teardown group commands, clear the task
   directory, and re-run the setup group commands.
+
+#### Teardown task and teardown group reliability 
+Both `teardown_task` and `teardown_group` are not 100% guaranteed to run. If a 
+host runs into an issue and needs to exit before it ran the `teardown_task` 
+or `teardown_group`, it will exit without running them. 
+
+Additionally, `teardown_group` has a max timeout of 3 minutes. Even if the 
+timeout is manually set higher with `teardown_group_timeout_secs`, a three minute 
+timeout will be enforced.  
 
 ### Task Dependencies
 
@@ -1630,15 +1644,32 @@ This is only recommended for commands that are known to be flaky, or fail interm
 **In order to prevent overuse of this feature, the number of times a single
 task can be automatically restarted on failure is limited to 1 time.**
 
-An example is:
+In the example below, both `task1` and `task2` will retry automatically:
 
 ``` yaml
-- command: shell.exec
-  retry_on_failure: true
-  params:
-    working_dir: src
-    script: |
-      exit 1
+functions:
+  my_function:
+     - command: shell.exec
+       params:
+         script: echo "hello"
+     - command: shell.exec
+       retry_on_failure: true
+       params:
+         script: exit 1
+
+tasks:
+  - name: task1
+    commands:
+    - command: shell.exec
+      retry_on_failure: true
+      params:
+       working_dir: src
+       script: |
+        exit 1
+        
+  - name: task2
+    commands:
+    - func: my_function
 ```
 
 ### Customizing Logging

@@ -1,5 +1,5 @@
 {
-    repoSettings(id: "repo_id") {
+    repoSettings(repoId: "repo_id") {
         subscriptions{
             id
             resourceType

@@ -32,11 +32,10 @@ func GetDirectoryOfFile() string {
 	return filepath.Dir(file)
 }
 
-func ConfigureIntegrationTest(t *testing.T, testSettings *evergreen.Settings, testName string) {
-	// make sure an override file is provided
-	if skip, _ := strconv.ParseBool(os.Getenv("SKIP_INTEGRATION_TESTS")); skip {
-		t.Skip("SKIP_INTEGRATION_TESTS is set, skipping integration test")
-	}
+// GetIntegrationFile returns an initialized evergreen.Settings struct. It will
+// halt test execution if an override file was not provided, or if there was
+// an error parsing the settings
+func GetIntegrationFile(t *testing.T) *evergreen.Settings {
 	if (*settingsOverride) == "" {
 		require.NotZero(t, os.Getenv(EnvOverride), "Integration tests need a settings override file to be provided")
 
@@ -51,9 +50,20 @@ func ConfigureIntegrationTest(t *testing.T, testSettings *evergreen.Settings, te
 	integrationSettings, err := evergreen.NewSettings(*settingsOverride)
 	require.NoError(t, err, "Error opening settings override file '%s'", *settingsOverride)
 
+	return integrationSettings
+}
+
+func ConfigureIntegrationTest(t *testing.T, testSettings *evergreen.Settings, testName string) {
+	// make sure an override file is provided
+	if skip, _ := strconv.ParseBool(os.Getenv("SKIP_INTEGRATION_TESTS")); skip {
+		t.Skip("SKIP_INTEGRATION_TESTS is set, skipping integration test")
+	}
+
+	integrationSettings := GetIntegrationFile(t)
+
 	// Manually update admin settings in DB for GitHub App credentials.
 	testSettings.AuthConfig = integrationSettings.AuthConfig
-	err = testSettings.AuthConfig.Set(context.Background())
+	err := testSettings.AuthConfig.Set(context.Background())
 	require.NoError(t, err, "Error updating auth config settings in DB")
 
 	if val, ok := integrationSettings.Expansions[evergreen.GithubAppPrivateKey]; ok {

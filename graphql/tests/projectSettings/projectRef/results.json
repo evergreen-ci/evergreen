@@ -16,7 +16,7 @@
                 "mergeQueue": "EVERGREEN"
               },
               "periodicBuilds": null,
-              "githubChecksEnabled": null,
+              "githubChecksEnabled": false,
               "patchingDisabled": false,
               "prTestingEnabled": true,
               "stepbackDisabled": false,
@@ -37,6 +37,7 @@
               ],
               "gitTagAuthorizedUsers": ["ablack12"],
               "gitTagAuthorizedTeams": null,
+              "oldestAllowedMergeBase": "abc",
               "triggers": [
                 {
                   "project": "spruce",
@@ -120,7 +121,7 @@
         "data": null,
         "errors": [
           {
-            "message": "Could not find project with identifier: evergreen",
+            "message": "project 'evergreen' not found",
             "path": ["projectSettings", "identifier"],
             "extensions": {
               "code": "RESOURCE_NOT_FOUND"
