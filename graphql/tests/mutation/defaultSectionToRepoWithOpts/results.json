@@ -17,7 +17,7 @@
         "errors": [
           {
             "message": "project 'repo_id' not found",
-            "path": ["defaultSectionToRepo", "projectId"],
+            "path": ["defaultSectionToRepo", "opts", "projectIdentifier"],
             "extensions": {
               "code": "RESOURCE_NOT_FOUND"
             }
@@ -34,7 +34,7 @@
         "errors": [
           {
             "message": "user 'testuser' does not have permission to access 'settings' for the project 'evergreen_id'",
-            "path": ["defaultSectionToRepo", "projectId"],
+            "path": ["defaultSectionToRepo", "opts", "projectIdentifier"],
             "extensions": {
               "code": "FORBIDDEN"
             }
