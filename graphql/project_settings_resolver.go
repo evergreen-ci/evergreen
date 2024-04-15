@@ -41,8 +41,14 @@ func (r *projectSettingsResolver) Vars(ctx context.Context, obj *restModel.APIPr
 }
 
 // ProjectID is the resolver for the projectId field.
-func (r *projectSettingsInputResolver) ProjectID(ctx context.Context, obj *restModel.APIProjectSettings, data string) error {
-	obj.Id = utility.ToStringPtr(data)
+func (r *projectSettingsInputResolver) ProjectID(ctx context.Context, obj *restModel.APIProjectSettings, data *string) error {
+	obj.Id = data
+	return nil
+}
+
+// ProjectIdentifier is the resolver for the projectIdentifier field.
+func (r *projectSettingsInputResolver) ProjectIdentifier(ctx context.Context, obj *restModel.APIProjectSettings, data *string) error {
+	obj.Id = data
 	return nil
 }
 

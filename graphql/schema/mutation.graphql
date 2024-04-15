@@ -62,16 +62,16 @@ type Mutation {
   # project
   addFavoriteProject(identifier: String @deprecated(reason: "use projectIdentifier instead"), projectIdentifier: String): Project!
   attachProjectToNewRepo(project: MoveProjectInput!): Project!
-  attachProjectToRepo(projectId: String @requireProjectAccess(permission: SETTINGS, access: EDIT), projectIdentifier: String @requireProjectAccess(permission: SETTINGS, access: EDIT)): Project!
+  attachProjectToRepo(projectId: String @deprecated(reason: "use projectIdentifier instead") @requireProjectAccess(permission: SETTINGS, access: EDIT), projectIdentifier: String @requireProjectAccess(permission: SETTINGS, access: EDIT)): Project!
   createProject(project: CreateProjectInput! @requireProjectAdmin, requestS3Creds: Boolean): Project! 
   copyProject(project: CopyProjectInput! @requireProjectAdmin, requestS3Creds: Boolean): Project! 
-  deactivateStepbackTask(projectId: String @requireProjectAccess(permission: SETTINGS, access: EDIT), projectIdentifier: String @requireProjectAccess(permission: SETTINGS, access: EDIT), buildVariantName: String!, taskName: String!): Boolean!
-  defaultSectionToRepo(projectId: String @requireProjectAccess(permission: SETTINGS, access: EDIT), projectIdentifier: String @requireProjectAccess(permission: SETTINGS, access: EDIT), section: ProjectSettingsSection!): String
-  deleteProject(projectId: String @requireProjectAdmin, projectIdentifier: String @requireProjectAdmin): Boolean!
-  detachProjectFromRepo(projectId: String @requireProjectAccess(permission: SETTINGS, access: EDIT), projectIdentifier: String @requireProjectAccess(permission: SETTINGS, access: EDIT) ): Project!
-  forceRepotrackerRun(projectId: String @requireProjectAccess(permission: SETTINGS, access: EDIT), projectIdentifier: String @requireProjectAccess(permission: SETTINGS, access: EDIT)): Boolean!
-  promoteVarsToRepo(projectId: String @requireProjectAccess(permission: SETTINGS, access: EDIT), projectIdentifier: String @requireProjectAccess(permission: SETTINGS, access: EDIT), varNames: [String!]!): Boolean!
-  removeFavoriteProject(identifier: String, projectIdentifier: String): Project!
+  deactivateStepbackTask(projectId: String @deprecated(reason: "use projectIdentifier instead") @requireProjectAccess(permission: SETTINGS, access: EDIT), projectIdentifier: String @requireProjectAccess(permission: SETTINGS, access: EDIT), buildVariantName: String!, taskName: String!): Boolean!
+  defaultSectionToRepo(projectId: String @deprecated(reason: "use projectIdentifier instead") @requireProjectAccess(permission: SETTINGS, access: EDIT), projectIdentifier: String @requireProjectAccess(permission: SETTINGS, access: EDIT), section: ProjectSettingsSection!): String
+  deleteProject(projectId: String @deprecated(reason: "use projectIdentifier instead") @requireProjectAdmin, projectIdentifier: String @requireProjectAdmin): Boolean!
+  detachProjectFromRepo(projectId: String @deprecated(reason: "use projectIdentifier instead") @requireProjectAccess(permission: SETTINGS, access: EDIT), projectIdentifier: String @requireProjectAccess(permission: SETTINGS, access: EDIT) ): Project!
+  forceRepotrackerRun(projectId: String @deprecated(reason: "use projectIdentifier instead") @requireProjectAccess(permission: SETTINGS, access: EDIT), projectIdentifier: String @requireProjectAccess(permission: SETTINGS, access: EDIT)): Boolean!
+  promoteVarsToRepo(projectId: String @deprecated(reason: "use projectIdentifier instead") @requireProjectAccess(permission: SETTINGS, access: EDIT), projectIdentifier: String @requireProjectAccess(permission: SETTINGS, access: EDIT), varNames: [String!]!): Boolean!
+  removeFavoriteProject(identifier: String @deprecated(reason: "use projectIdentifier instead"), projectIdentifier: String): Project!
   saveProjectSettingsForSection(projectSettings: ProjectSettingsInput, section: ProjectSettingsSection!): ProjectSettings!
   saveRepoSettingsForSection(repoSettings: RepoSettingsInput, section: ProjectSettingsSection!): RepoSettings!
   setLastRevision(opts: SetLastRevisionInput! @requireProjectAdmin): SetLastRevisionPayload!

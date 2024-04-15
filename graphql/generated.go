@@ -1994,7 +1994,8 @@ type PlannerSettingsInputResolver interface {
 	Version(ctx context.Context, obj *model.APIPlannerSettings, data PlannerVersion) error
 }
 type ProjectSettingsInputResolver interface {
-	ProjectID(ctx context.Context, obj *model.APIProjectSettings, data string) error
+	ProjectID(ctx context.Context, obj *model.APIProjectSettings, data *string) error
+	ProjectIdentifier(ctx context.Context, obj *model.APIProjectSettings, data *string) error
 }
 type RepoSettingsInputResolver interface {
 	RepoID(ctx context.Context, obj *model.APIProjectSettings, data string) error
@@ -70688,7 +70689,7 @@ func (ec *executionContext) unmarshalInputProjectSettingsInput(ctx context.Conte
 		asMap[k] = v
 	}
 
-	fieldsInOrder := [...]string{"projectId", "aliases", "githubWebhooksEnabled", "projectRef", "subscriptions", "vars"}
+	fieldsInOrder := [...]string{"projectId", "projectIdentifier", "aliases", "githubWebhooksEnabled", "projectRef", "subscriptions", "vars"}
 	for _, k := range fieldsInOrder {
 		v, ok := asMap[k]
 		if !ok {
@@ -70697,7 +70698,7 @@ func (ec *executionContext) unmarshalInputProjectSettingsInput(ctx context.Conte
 		switch k {
 		case "projectId":
 			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("projectId"))
-			directive0 := func(ctx context.Context) (interface{}, error) { return ec.unmarshalNString2string(ctx, v) }
+			directive0 := func(ctx context.Context) (interface{}, error) { return ec.unmarshalOString2ᚖstring(ctx, v) }
 			directive1 := func(ctx context.Context) (interface{}, error) {
 				permission, err := ec.unmarshalNProjectPermission2githubᚗcomᚋevergreenᚑciᚋevergreenᚋgraphqlᚐProjectPermission(ctx, "SETTINGS")
 				if err != nil {
@@ -70717,12 +70718,42 @@ func (ec *executionContext) unmarshalInputProjectSettingsInput(ctx context.Conte
 			if err != nil {
 				return it, graphql.ErrorOnPath(ctx, err)
 			}
-			if data, ok := tmp.(string); ok {
+			if data, ok := tmp.(*string); ok {
 				if err = ec.resolvers.ProjectSettingsInput().ProjectID(ctx, &it, data); err != nil {
 					return it, err
 				}
 			} else {
-				err := fmt.Errorf(`unexpected type %T from directive, should be string`, tmp)
+				err := fmt.Errorf(`unexpected type %T from directive, should be *string`, tmp)
+				return it, graphql.ErrorOnPath(ctx, err)
+			}
+		case "projectIdentifier":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("projectIdentifier"))
+			directive0 := func(ctx context.Context) (interface{}, error) { return ec.unmarshalOString2ᚖstring(ctx, v) }
+			directive1 := func(ctx context.Context) (interface{}, error) {
+				permission, err := ec.unmarshalNProjectPermission2githubᚗcomᚋevergreenᚑciᚋevergreenᚋgraphqlᚐProjectPermission(ctx, "SETTINGS")
+				if err != nil {
+					return nil, err
+				}
+				access, err := ec.unmarshalNAccessLevel2githubᚗcomᚋevergreenᚑciᚋevergreenᚋgraphqlᚐAccessLevel(ctx, "EDIT")
+				if err != nil {
+					return nil, err
+				}
+				if ec.directives.RequireProjectAccess == nil {
+					return nil, errors.New("directive requireProjectAccess is not implemented")
+				}
+				return ec.directives.RequireProjectAccess(ctx, obj, directive0, permission, access)
+			}
+
+			tmp, err := directive1(ctx)
+			if err != nil {
+				return it, graphql.ErrorOnPath(ctx, err)
+			}
+			if data, ok := tmp.(*string); ok {
+				if err = ec.resolvers.ProjectSettingsInput().ProjectIdentifier(ctx, &it, data); err != nil {
+					return it, err
+				}
+			} else {
+				err := fmt.Errorf(`unexpected type %T from directive, should be *string`, tmp)
 				return it, graphql.ErrorOnPath(ctx, err)
 			}
 		case "aliases":
