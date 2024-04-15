@@ -206,29 +206,23 @@ func parseToken(token string) (string, error) {
 	return splitToken[1], nil
 }
 
-func (opts cloneOpts) getCloneCommand() ([]string, error) {
+func (opts cloneOpts) buildGitCloneCommand() ([]string, error) {
 	if err := opts.validate(); err != nil {
 		return nil, errors.Wrap(err, "invalid clone command options")
 	}
-	switch opts.method {
-	case cloneMethodOAuth:
-		return opts.buildHTTPCloneCommand(false)
-	case cloneMethodAccessToken:
-		return opts.buildHTTPCloneCommand(true)
-	}
-	return nil, errors.New("unrecognized clone method in options")
-}
-
-func (opts cloneOpts) buildHTTPCloneCommand(forApp bool) ([]string, error) {
 	urlLocation, err := url.Parse(opts.location)
 	if err != nil {
 		return nil, errors.Wrap(err, "parsing URL from location")
 	}
 	var gitURL string
-	if forApp {
+
+	switch opts.method {
+	case cloneMethodAccessToken:
 		gitURL = thirdparty.FormGitURLForApp(urlLocation.Host, opts.owner, opts.repo, opts.token)
-	} else {
+	case cloneMethodOAuth:
 		gitURL = thirdparty.FormGitURL(urlLocation.Host, opts.owner, opts.repo, opts.token)
+	default:
+		return nil, errors.New("unrecognized clone method in options")
 	}
 	clone := fmt.Sprintf("git clone %s '%s'", gitURL, opts.dir)
 	if opts.recurseSubmodules {
@@ -308,7 +302,19 @@ func (c *gitFetchProject) buildSourceCloneCommand(ctx context.Context, comm clie
 		fmt.Sprintf("rm -rf %s", c.Directory),
 	}
 
-	cloneCmd, err := opts.getCloneCommand()
+	switch conf.Task.Requester {
+	case evergreen.GithubMergeRequester:
+		// If this is a github merge queue task, we can directly clone
+		// the provided branch.
+		opts.branch = conf.GithubMergeData.HeadBranch
+	case evergreen.GithubPRRequester:
+		// If this is a PR task, we can directly clone the provided PR.
+		opts.branch = conf.GithubPatchData.HeadBranch
+		opts.owner = conf.GithubPatchData.HeadOwner
+		opts.repo = conf.GithubPatchData.HeadRepo
+	}
+
+	cloneCmd, err := opts.buildGitCloneCommand()
 	if err != nil {
 		return nil, errors.Wrap(err, "getting command to clone repo")
 	}
@@ -335,19 +341,6 @@ func (c *gitFetchProject) buildSourceCloneCommand(ctx context.Context, comm clie
 			suffix = "/merge"
 			localBranchName = fmt.Sprintf("evg-merge-test-%s", utility.RandomString())
 			remoteBranchName = fmt.Sprintf("pull/%d", conf.GithubPatchData.PRNumber)
-		} else if conf.Task.Requester == evergreen.GithubPRRequester {
-			// Github creates a ref called refs/pull/[pr number]/head
-			// that provides the entire tree of changes, including merges
-			suffix = "/head"
-			commitToTest = conf.GithubPatchData.HeadHash
-			localBranchName = fmt.Sprintf("evg-pr-test-%s", utility.RandomString())
-			remoteBranchName = fmt.Sprintf("pull/%d", conf.GithubPatchData.PRNumber)
-		} else if conf.Task.Requester == evergreen.GithubMergeRequester {
-			suffix = "" // redundant, included for clarity
-			commitToTest = conf.GithubMergeData.HeadSHA
-			localBranchName = fmt.Sprintf("evg-mg-test-%s", utility.RandomString())
-			// HeadRef looks like "refs/heads/gh-readonly-queue/main/pr-515-9cd8a2532bcddf58369aa82eb66ba88e2323c056"
-			remoteBranchName = conf.GithubMergeData.HeadBranch
 		}
 		if commitToTest != "" {
 			gitCommands = append(gitCommands, []string{
@@ -434,7 +427,7 @@ func (c *gitFetchProject) buildModuleCloneCommand(conf *internal.TaskConfig, opt
 		return nil, errors.New("empty ref/branch to check out")
 	}
 
-	cloneCmd, err := opts.getCloneCommand()
+	cloneCmd, err := opts.buildGitCloneCommand()
 	if err != nil {
 		return nil, errors.Wrap(err, "getting command to clone repo")
 	}
@@ -641,6 +634,62 @@ func (c *gitFetchProject) fetchAdditionalPatches(ctx context.Context,
 	return additionalPatches, nil
 }
 
+func (c *gitFetchProject) getModuleRevision(conf *internal.TaskConfig, logger client.LoggerProducer, p *patch.Patch, moduleName string) (string, error) {
+	// First, try to get the revision from the module patch.
+	if p != nil {
+		modulePatch := p.FindModule(moduleName)
+		if modulePatch != nil {
+			// If this is commit queue, default to HEAD (since before merging
+			// we should test against HEAD).
+			if conf.Task.Requester == evergreen.MergeTestRequester || conf.Task.Requester == evergreen.GithubMergeRequester {
+				module, err := conf.Project.GetModuleByName(moduleName)
+				if err != nil {
+					return "", errors.Wrapf(err, "getting module '%s'", moduleName)
+				}
+				if module == nil {
+					return "", errors.Errorf("module '%s' not found", moduleName)
+				}
+				if module.Branch != "" {
+					c.logModuleRevision(logger, module.Branch, moduleName, "defaulting to HEAD for merge")
+					return module.Branch, nil
+				}
+			}
+			// Otherwise, use the revision from the module patch if provided.
+			if modulePatch.Githash != "" {
+				c.logModuleRevision(logger, modulePatch.Githash, moduleName, "specified in set-module")
+				return modulePatch.Githash, nil
+			}
+		}
+	}
+
+	// Next, try to get the revision from the command parameters.
+	if c.Revisions[moduleName] != "" {
+		c.logModuleRevision(logger, c.Revisions[moduleName], moduleName, "specified as parameter to git.get_project")
+		return c.Revisions[moduleName], nil
+	}
+
+	// Next, try to get the revision from an expansion.
+	if conf.Expansions.Get(moduleRevExpansionName(moduleName)) != "" {
+		c.logModuleRevision(logger, conf.Expansions.Get(moduleRevExpansionName(moduleName)), moduleName, "from manifest")
+		return conf.Expansions.Get(moduleRevExpansionName(moduleName)), nil
+	}
+
+	// Finally, try to get the revision from the module in the project config.
+	module, err := conf.Project.GetModuleByName(moduleName)
+	if err != nil {
+		return "", errors.Wrapf(err, "getting module '%s'", moduleName)
+	}
+	if module == nil {
+		return "", errors.Errorf("module '%s' not found", moduleName)
+	}
+	if module.Ref != "" {
+		c.logModuleRevision(logger, module.Ref, moduleName, "ref field in config file")
+		return module.Ref, nil
+	}
+
+	return "", nil
+}
+
 func (c *gitFetchProject) fetchModuleSource(ctx context.Context,
 	comm client.Communicator,
 	conf *internal.TaskConfig,
@@ -666,46 +715,9 @@ func (c *gitFetchProject) fetchModuleSource(ctx context.Context,
 
 	moduleBase := filepath.ToSlash(filepath.Join(conf.ModulePaths[module.Name], module.Name))
 
-	// use submodule revisions based on the main patch. If there is a need in the future,
-	// this could maybe use the most recent submodule revision of all requested patches.
-	// We ignore set-module changes for commit queue and GitHub merge queue, since we should verify HEAD before merging.
-	var modulePatch *patch.ModulePatch
-	var revision string
-	if p != nil {
-		modulePatch := p.FindModule(moduleName)
-		if modulePatch != nil {
-			if conf.Task.Requester == evergreen.MergeTestRequester || conf.Task.Requester == evergreen.GithubMergeRequester {
-				revision = module.Branch
-				c.logModuleRevision(logger, revision, moduleName, "defaulting to HEAD for merge")
-			} else {
-				revision = modulePatch.Githash
-				if revision != "" {
-					c.logModuleRevision(logger, revision, moduleName, "specified in set-module")
-				}
-			}
-		}
-	}
-	if revision == "" {
-		revision = c.Revisions[moduleName]
-		if revision != "" {
-			c.logModuleRevision(logger, revision, moduleName, "specified as parameter to git.get_project")
-		}
-	}
-	if revision == "" {
-		revision = conf.Expansions.Get(moduleRevExpansionName(moduleName))
-		if revision != "" {
-			c.logModuleRevision(logger, revision, moduleName, "from manifest")
-		}
-	}
-	// if there is no revision, then use the revision from the module, then branch name
-	if revision == "" {
-		if module.Ref != "" {
-			revision = module.Ref
-			c.logModuleRevision(logger, revision, moduleName, "ref field in config file")
-		} else {
-			revision = module.Branch
-			c.logModuleRevision(logger, revision, moduleName, "branch field in config file")
-		}
+	revision, err := c.getModuleRevision(conf, logger, p, moduleName)
+	if err != nil {
+		return errors.Wrapf(err, "getting revision for module '%s'", moduleName)
 	}
 
 	opts := cloneOpts{
@@ -761,6 +773,8 @@ func (c *gitFetchProject) fetchModuleSource(ctx context.Context,
 	if err = opts.validate(); err != nil {
 		return errors.Wrap(err, "validating clone options")
 	}
+
+	modulePatch := p.FindModule(moduleName)
 
 	var moduleCmds []string
 	moduleCmds, err = c.buildModuleCloneCommand(conf, opts, revision, modulePatch)

@@ -471,7 +471,7 @@ func (s *GitGetProjectSuite) TestBuildHTTPCloneCommand() {
 		token:  projectGitHubToken,
 	}
 	s.Require().NoError(opts.setLocation())
-	cmds, err := opts.buildHTTPCloneCommand(false)
+	cmds, err := opts.buildGitCloneCommand()
 	s.NoError(err)
 	s.Require().Len(cmds, 5)
 	s.True(utility.ContainsOrderedSubset(cmds, []string{
@@ -483,7 +483,7 @@ func (s *GitGetProjectSuite) TestBuildHTTPCloneCommand() {
 	}))
 	// build clone command to clone by http with token into 'dir' w/o specified branch
 	opts.branch = ""
-	cmds, err = opts.buildHTTPCloneCommand(false)
+	cmds, err = opts.buildGitCloneCommand()
 	s.NoError(err)
 	s.Require().Len(cmds, 5)
 	s.True(utility.ContainsOrderedSubset(cmds, []string{
@@ -498,7 +498,7 @@ func (s *GitGetProjectSuite) TestBuildHTTPCloneCommand() {
 	// been forced to use https
 	opts.location = "http://github.com/evergreen-ci/sample.git"
 	opts.branch = projectRef.Branch
-	cmds, err = opts.buildHTTPCloneCommand(false)
+	cmds, err = opts.buildGitCloneCommand()
 	s.NoError(err)
 	s.Require().Len(cmds, 5)
 	s.True(utility.ContainsOrderedSubset(cmds, []string{
@@ -509,7 +509,7 @@ func (s *GitGetProjectSuite) TestBuildHTTPCloneCommand() {
 	// ensure that we aren't sending the github oauth token to other
 	// servers
 	opts.location = "http://someothergithost.com/something/else.git"
-	cmds, err = opts.buildHTTPCloneCommand(false)
+	cmds, err = opts.buildGitCloneCommand()
 	s.NoError(err)
 	s.Require().Len(cmds, 5)
 	s.True(utility.ContainsOrderedSubset(cmds, []string{

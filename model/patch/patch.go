@@ -1208,6 +1208,7 @@ func MakeNewMergePatch(pr *github.PullRequest, projectID, alias, commitTitle, co
 			BaseRepo:       pr.Base.Repo.GetName(),
 			BaseBranch:     pr.Base.GetRef(),
 			HeadHash:       pr.Head.GetSHA(),
+			HeadBranch:     pr.Head.GetRef(),
 			CommitTitle:    commitTitle,
 			CommitMessage:  commitMessage,
 		},

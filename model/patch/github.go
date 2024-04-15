@@ -49,6 +49,10 @@ type githubIntent struct {
 	// BaseBranch is the branch that this pull request was opened against
 	BaseBranch string `bson:"base_branch"`
 
+	// HeadBranch is the branch that this pull request is requesting to merge
+	// in to the base branch.
+	HeadBranch string `bson:"head_branch"`
+
 	// HeadRepoName is the full repository name that contains the changes
 	// to be merged
 	HeadRepoName string `bson:"head_repo_name"`
@@ -169,6 +173,7 @@ func NewGithubIntent(msgDeliveryID, patchOwner, calledBy, mergeBase string, pr *
 		MsgID:         msgDeliveryID,
 		BaseRepoName:  pr.Base.Repo.GetFullName(),
 		BaseBranch:    pr.Base.GetRef(),
+		HeadBranch:    pr.Head.GetRef(),
 		HeadRepoName:  pr.Head.Repo.GetFullName(),
 		PRNumber:      pr.GetNumber(),
 		User:          patchOwner,
@@ -295,6 +300,7 @@ func (g *githubIntent) NewPatch() *Patch {
 			HeadOwner:  headRepo[0],
 			HeadRepo:   headRepo[1],
 			HeadHash:   g.HeadHash,
+			HeadBranch: g.HeadBranch,
 			MergeBase:  g.MergeBase,
 			Author:     g.User,
 			AuthorUID:  g.UID,
