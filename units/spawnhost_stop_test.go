@@ -152,10 +152,11 @@ func TestSpawnhostStopJob(t *testing.T) {
 			require.NoError(t, err)
 			now := utility.BSONTime(time.Now())
 			h := host.Host{
-				Id:       "host-running",
-				Status:   evergreen.HostRunning,
-				Provider: evergreen.ProviderNameMock,
-				Distro:   distro.Distro{Provider: evergreen.ProviderNameMock},
+				Id:           "host-running",
+				Status:       evergreen.HostRunning,
+				Provider:     evergreen.ProviderNameMock,
+				Distro:       distro.Distro{Provider: evergreen.ProviderNameMock},
+				NoExpiration: true,
 				SleepSchedule: host.SleepScheduleInfo{
 					DailyStartTime: "10:00",
 					DailyStopTime:  "18:00",
@@ -192,12 +193,13 @@ func TestSpawnhostStopJob(t *testing.T) {
 			userTZ, err := time.LoadLocation("Antarctica/South_Pole")
 			require.NoError(t, err)
 			now := utility.BSONTime(time.Now())
-			nextStop := now.Add(time.Hour)
+			nextStop := utility.BSONTime(now.Add(time.Hour))
 			h := host.Host{
-				Id:       "host-running",
-				Status:   evergreen.HostRunning,
-				Provider: evergreen.ProviderNameMock,
-				Distro:   distro.Distro{Provider: evergreen.ProviderNameMock},
+				Id:           "host-running",
+				Status:       evergreen.HostRunning,
+				Provider:     evergreen.ProviderNameMock,
+				Distro:       distro.Distro{Provider: evergreen.ProviderNameMock},
+				NoExpiration: true,
 				SleepSchedule: host.SleepScheduleInfo{
 					DailyStartTime: "10:00",
 					DailyStopTime:  "18:00",

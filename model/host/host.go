@@ -378,8 +378,6 @@ type SleepScheduleInfo struct {
 	ShouldKeepOff bool `bson:"should_keep_off" json:"should_keep_off"`
 	// NextStopTime is the next time that the host should stop for its sleep
 	// schedule.
-	// kim: NOTE: slightly changing data model to allow empty next stop/start
-	// times rather than allowing Go zero time to be set.
 	NextStopTime time.Time `bson:"next_stop_time,omitempty" json:"next_stop_time,omitempty"`
 	// NextStartTime is the next time that the host should start for its sleep
 	// schedule.
@@ -888,21 +886,28 @@ func (h *Host) SetStopped(ctx context.Context, shouldKeepOff bool, user string) 
 		DNSKey:       "",
 		StartTimeKey: utility.ZeroTime,
 	}
+	unsetFields := bson.M{}
 	if shouldKeepOff {
 		shouldKeepOffKey := bsonutil.GetDottedKeyName(SleepScheduleKey, SleepScheduleShouldKeepOffKey)
-		sleepScheduleNextStartTimeKey := bsonutil.GetDottedKeyName(SleepScheduleKey, SleepScheduleNextStartTimeKey)
-		sleepScheduleNextStopTimeKey := bsonutil.GetDottedKeyName(SleepScheduleKey, SleepScheduleNextStopTimeKey)
 		setFields[shouldKeepOffKey] = true
-		setFields[sleepScheduleNextStartTimeKey] = time.Time{}
-		setFields[sleepScheduleNextStopTimeKey] = time.Time{}
+
+		sleepScheduleNextStartKey := bsonutil.GetDottedKeyName(SleepScheduleKey, SleepScheduleNextStartTimeKey)
+		sleepScheduleNextStopKey := bsonutil.GetDottedKeyName(SleepScheduleKey, SleepScheduleNextStopTimeKey)
+		unsetFields[sleepScheduleNextStartKey] = 1
+		unsetFields[sleepScheduleNextStopKey] = 1
 	}
+	update := bson.M{"$set": setFields}
+	if len(unsetFields) > 0 {
+		update["$unset"] = unsetFields
+	}
+
 	err := UpdateOne(
 		ctx,
 		bson.M{
 			IdKey:     h.Id,
 			StatusKey: h.Status,
 		},
-		bson.M{"$set": setFields},
+		update,
 	)
 	if err != nil {
 		return errors.Wrap(err, "setting host status to stopped")
@@ -3866,9 +3871,15 @@ func getNextScheduledTime(after time.Time, spec string) (time.Time, error) {
 // sleep schedule.
 func (h *Host) SetNextScheduledStart(ctx context.Context, t time.Time) error {
 	sleepScheduleStartKey := bsonutil.GetDottedKeyName(SleepScheduleKey, SleepScheduleNextStartTimeKey)
+	update := bson.M{}
+	if utility.IsZeroTime(t) {
+		update = bson.M{"$unset": bson.M{sleepScheduleStartKey: 1}}
+	} else {
+		update = bson.M{"$set": bson.M{sleepScheduleStartKey: t}}
+	}
 	if err := UpdateOne(ctx,
 		bson.M{IdKey: h.Id},
-		bson.M{"$set": bson.M{sleepScheduleStartKey: t}},
+		update,
 	); err != nil {
 		return err
 	}
@@ -3882,9 +3893,16 @@ func (h *Host) SetNextScheduledStart(ctx context.Context, t time.Time) error {
 // sleep schedule.
 func (h *Host) SetNextScheduledStop(ctx context.Context, t time.Time) error {
 	sleepScheduleStopKey := bsonutil.GetDottedKeyName(SleepScheduleKey, SleepScheduleNextStopTimeKey)
+	update := bson.M{}
+	if utility.IsZeroTime(t) {
+		update = bson.M{"$unset": bson.M{sleepScheduleStopKey: 1}}
+	} else {
+		update = bson.M{"$set": bson.M{sleepScheduleStopKey: t}}
+	}
+
 	if err := UpdateOne(ctx,
 		bson.M{IdKey: h.Id},
-		bson.M{"$set": bson.M{sleepScheduleStopKey: t}},
+		update,
 	); err != nil {
 		return err
 	}

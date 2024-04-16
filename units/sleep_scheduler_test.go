@@ -32,6 +32,8 @@ func TestSleepSchedulerJob(t *testing.T) {
 
 	for tName, tCase := range map[string]func(ctx context.Context, t *testing.T, env *mock.Environment, j *sleepSchedulerJob){
 		"EnqueuesJobsForHostsNeedingToStopForSleepSchedule": func(ctx context.Context, t *testing.T, env *mock.Environment, j *sleepSchedulerJob) {
+			env.EvergreenSettings.SleepSchedule.PermanentlyExemptHosts = []string{"h1"}
+			now := utility.BSONTime(time.Now())
 			hosts := []host.Host{
 				{
 					Id:           "h0",
@@ -39,7 +41,9 @@ func TestSleepSchedulerJob(t *testing.T) {
 					StartedBy:    "me",
 					NoExpiration: true,
 					SleepSchedule: host.SleepScheduleInfo{
-						NextStopTime: time.Now().Add(-time.Minute),
+						WholeWeekdaysOff: []time.Weekday{time.Saturday, time.Sunday},
+						NextStartTime:    utility.BSONTime(now.Add(time.Hour)),
+						NextStopTime:     utility.BSONTime(now.Add(-time.Minute)),
 					},
 				},
 				{
@@ -57,7 +61,9 @@ func TestSleepSchedulerJob(t *testing.T) {
 					StartedBy:    "me",
 					NoExpiration: true,
 					SleepSchedule: host.SleepScheduleInfo{
-						NextStartTime: time.Now().Add(-5 * time.Minute),
+						WholeWeekdaysOff: []time.Weekday{time.Saturday, time.Sunday},
+						NextStartTime:    utility.BSONTime(now.Add(time.Hour)),
+						NextStopTime:     utility.BSONTime(now.Add(-time.Minute)),
 					},
 				},
 			}
@@ -90,6 +96,8 @@ func TestSleepSchedulerJob(t *testing.T) {
 			}
 		},
 		"EnqueuesJobsForHostsNeedingToStartForSleepSchedule": func(ctx context.Context, t *testing.T, env *mock.Environment, j *sleepSchedulerJob) {
+			env.EvergreenSettings.SleepSchedule.PermanentlyExemptHosts = []string{"h1"}
+			now := utility.BSONTime(time.Now())
 			hosts := []host.Host{
 				{
 					Id:           "h0",
@@ -97,7 +105,9 @@ func TestSleepSchedulerJob(t *testing.T) {
 					StartedBy:    "me",
 					NoExpiration: true,
 					SleepSchedule: host.SleepScheduleInfo{
-						NextStartTime: time.Now().Add(-time.Minute),
+						WholeWeekdaysOff: []time.Weekday{time.Saturday, time.Sunday},
+						NextStartTime:    utility.BSONTime(now.Add(-time.Minute)),
+						NextStopTime:     utility.BSONTime(now.Add(time.Hour)),
 					},
 				},
 				{
@@ -115,7 +125,9 @@ func TestSleepSchedulerJob(t *testing.T) {
 					StartedBy:    "me",
 					NoExpiration: true,
 					SleepSchedule: host.SleepScheduleInfo{
-						NextStartTime: time.Now().Add(time.Minute),
+						WholeWeekdaysOff: []time.Weekday{time.Saturday, time.Sunday},
+						NextStartTime:    utility.BSONTime(now.Add(time.Minute)),
+						NextStopTime:     utility.BSONTime(now.Add(time.Hour)),
 					},
 				},
 			}
@@ -167,7 +179,7 @@ func TestSleepSchedulerJob(t *testing.T) {
 				},
 			}
 			require.NoError(t, h.Insert(ctx))
-			assert.NoError(t, j.fixMissingNextScheduledTimes(ctx))
+			assert.NoError(t, j.fixMissingNextScheduleTimes(ctx))
 
 			dbHost, err := host.FindOneId(ctx, h.Id)
 			require.NoError(t, err)
@@ -190,14 +202,14 @@ func TestSleepSchedulerJob(t *testing.T) {
 				},
 			}
 			require.NoError(t, h.Insert(ctx))
-			assert.NoError(t, j.fixMissingNextScheduledTimes(ctx))
+			assert.NoError(t, j.fixMissingNextScheduleTimes(ctx))
 
 			dbHost, err := host.FindOneId(ctx, h.Id)
 			require.NoError(t, err)
 			require.NotZero(t, dbHost)
 			assert.NotZero(t, dbHost.SleepSchedule.NextStartTime)
 			assert.True(t, dbHost.SleepSchedule.NextStartTime.After(now), "next start time should be in the future")
-			assert.Equal(t, now, dbHost.SleepSchedule.NextStopTime, "next stop time should be unchanged")
+			assert.True(t, dbHost.SleepSchedule.NextStopTime.Equal(now), "next stop time should be unchanged")
 		},
 		"AddsNextStopTimeForHostMissingIt": func(ctx context.Context, t *testing.T, env *mock.Environment, j *sleepSchedulerJob) {
 			now := utility.BSONTime(time.Now())
@@ -208,23 +220,24 @@ func TestSleepSchedulerJob(t *testing.T) {
 				SleepSchedule: host.SleepScheduleInfo{
 					TimeZone:         "America/New_York",
 					WholeWeekdaysOff: []time.Weekday{time.Saturday, time.Sunday},
-					NextStopTime:     now,
+					NextStartTime:    now,
 				},
 			}
 			require.NoError(t, h.Insert(ctx))
-			assert.NoError(t, j.fixMissingNextScheduledTimes(ctx))
+			assert.NoError(t, j.fixMissingNextScheduleTimes(ctx))
 
 			dbHost, err := host.FindOneId(ctx, h.Id)
 			require.NoError(t, err)
 			require.NotZero(t, dbHost)
-			assert.Equal(t, now, dbHost.SleepSchedule.NextStartTime, "next start time should be unchanged")
+			assert.True(t, dbHost.SleepSchedule.NextStartTime.Equal(now), "next start time should be unchanged")
 			assert.NotZero(t, dbHost.SleepSchedule.NextStopTime)
 			assert.True(t, dbHost.SleepSchedule.NextStopTime.After(now), "next stop time should be in the future")
 		},
 		"DoesNotAddNextSleepScheduleTimesForPermanentlyExemptHost": func(ctx context.Context, t *testing.T, env *mock.Environment, j *sleepSchedulerJob) {
 			h := host.Host{
-				Id:     "host_missing_sleep_schedule_times_but_permanently_exempt",
-				Status: evergreen.HostRunning,
+				Id:           "host_missing_sleep_schedule_times_but_permanently_exempt",
+				Status:       evergreen.HostRunning,
+				NoExpiration: true,
 				SleepSchedule: host.SleepScheduleInfo{
 					TimeZone:          "America/New_York",
 					WholeWeekdaysOff:  []time.Weekday{time.Saturday, time.Sunday},
@@ -232,7 +245,7 @@ func TestSleepSchedulerJob(t *testing.T) {
 				},
 			}
 			require.NoError(t, h.Insert(ctx))
-			assert.NoError(t, j.fixMissingNextScheduledTimes(ctx))
+			assert.NoError(t, j.fixMissingNextScheduleTimes(ctx))
 
 			dbHost, err := host.FindOneId(ctx, h.Id)
 			require.NoError(t, err)
@@ -242,15 +255,16 @@ func TestSleepSchedulerJob(t *testing.T) {
 		},
 		"DoesNotAddNextSleepScheduleTimesForTerminatedHost": func(ctx context.Context, t *testing.T, env *mock.Environment, j *sleepSchedulerJob) {
 			h := host.Host{
-				Id:     "host_missing_sleep_schedule_times_but_terminated",
-				Status: evergreen.HostTerminated,
+				Id:           "host_missing_sleep_schedule_times_but_terminated",
+				Status:       evergreen.HostTerminated,
+				NoExpiration: true,
 				SleepSchedule: host.SleepScheduleInfo{
 					TimeZone:         "America/New_York",
 					WholeWeekdaysOff: []time.Weekday{time.Saturday, time.Sunday},
 				},
 			}
 			require.NoError(t, h.Insert(ctx))
-			assert.NoError(t, j.fixMissingNextScheduledTimes(ctx))
+			assert.NoError(t, j.fixMissingNextScheduleTimes(ctx))
 
 			dbHost, err := host.FindOneId(ctx, h.Id)
 			require.NoError(t, err)
@@ -261,13 +275,14 @@ func TestSleepSchedulerJob(t *testing.T) {
 		"ReschedulesNextStopForHostExceedingAttemptTimeout": func(ctx context.Context, t *testing.T, env *mock.Environment, j *sleepSchedulerJob) {
 			now := utility.BSONTime(time.Now())
 			h := host.Host{
-				Id:     "host_taking_too_long_to_stop",
-				Status: evergreen.HostRunning,
+				Id:           "host_taking_too_long_to_stop",
+				Status:       evergreen.HostRunning,
+				NoExpiration: true,
 				SleepSchedule: host.SleepScheduleInfo{
 					TimeZone:         "America/New_York",
 					WholeWeekdaysOff: []time.Weekday{time.Saturday, time.Sunday},
 					NextStartTime:    now,
-					NextStopTime:     now.Add(-utility.Day),
+					NextStopTime:     utility.BSONTime(now.Add(-utility.Day)),
 				},
 			}
 			require.NoError(t, h.Insert(ctx))
@@ -276,19 +291,20 @@ func TestSleepSchedulerJob(t *testing.T) {
 			dbHost, err := host.FindOneId(ctx, h.Id)
 			require.NoError(t, err)
 			require.NotZero(t, dbHost)
-			assert.Equal(t, now, h.SleepSchedule.NextStartTime, "next start time should be unchanged")
+			assert.True(t, dbHost.SleepSchedule.NextStartTime.Equal(now), "next start time should be unchanged")
 			assert.True(t, dbHost.SleepSchedule.NextStopTime.After(now), "next stop time should be re-scheduled to be in the future")
 		},
 		// kim: NOTE; tests won't pass until DEVPROD-3951 is merged
 		"ReschedulesNextStartForHostExceedingAttemptTimeout": func(ctx context.Context, t *testing.T, env *mock.Environment, j *sleepSchedulerJob) {
 			now := utility.BSONTime(time.Now())
 			h := host.Host{
-				Id:     "host_taking_too_long_to_start",
-				Status: evergreen.HostStopped,
+				Id:           "host_taking_too_long_to_start",
+				Status:       evergreen.HostStopped,
+				NoExpiration: true,
 				SleepSchedule: host.SleepScheduleInfo{
 					TimeZone:         "America/New_York",
 					WholeWeekdaysOff: []time.Weekday{time.Saturday, time.Sunday},
-					NextStartTime:    now.Add(-utility.Day),
+					NextStartTime:    utility.BSONTime(now.Add(-utility.Day)),
 					NextStopTime:     now,
 				},
 			}
@@ -298,15 +314,16 @@ func TestSleepSchedulerJob(t *testing.T) {
 			dbHost, err := host.FindOneId(ctx, h.Id)
 			require.NoError(t, err)
 			require.NotZero(t, dbHost)
-			assert.Equal(t, now, h.SleepSchedule.NextStopTime, "next stop time should be unchanged")
+			assert.True(t, h.SleepSchedule.NextStopTime.Equal(now), "next stop time should be unchanged")
 			assert.True(t, dbHost.SleepSchedule.NextStartTime.After(now), "next start time should be re-scheduled to be in the future")
 		},
 		"MarksNewlyAddedHostAsPermanentlyExempt": func(ctx context.Context, t *testing.T, env *mock.Environment, j *sleepSchedulerJob) {
 			now := utility.BSONTime(time.Now())
 			env.EvergreenSettings.SleepSchedule.PermanentlyExemptHosts = []string{"host_added_to_permanent_exemption"}
 			h := host.Host{
-				Id:     "host_added_to_permanent_exemption",
-				Status: evergreen.HostRunning,
+				Id:           "host_added_to_permanent_exemption",
+				Status:       evergreen.HostRunning,
+				NoExpiration: true,
 				SleepSchedule: host.SleepScheduleInfo{
 					TimeZone:         "America/New_York",
 					WholeWeekdaysOff: []time.Weekday{time.Saturday, time.Sunday},
@@ -328,8 +345,9 @@ func TestSleepSchedulerJob(t *testing.T) {
 			now := utility.BSONTime(time.Now())
 			env.EvergreenSettings.SleepSchedule.PermanentlyExemptHosts = []string{"some_other_host"}
 			h := host.Host{
-				Id:     "host_removed_from_permanent_exemption",
-				Status: evergreen.HostRunning,
+				Id:           "host_removed_from_permanent_exemption",
+				Status:       evergreen.HostRunning,
+				NoExpiration: true,
 				SleepSchedule: host.SleepScheduleInfo{
 					TimeZone:          "America/New_York",
 					WholeWeekdaysOff:  []time.Weekday{time.Saturday, time.Sunday},
@@ -338,7 +356,7 @@ func TestSleepSchedulerJob(t *testing.T) {
 			}
 			require.NoError(t, h.Insert(ctx))
 			assert.NoError(t, j.syncPermanentlyExemptHosts(ctx))
-			assert.NoError(t, j.fixMissingNextScheduledTimes(ctx))
+			assert.NoError(t, j.fixMissingNextScheduleTimes(ctx))
 
 			dbHost, err := host.FindOneId(ctx, h.Id)
 			require.NoError(t, err)

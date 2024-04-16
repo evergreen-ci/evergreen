@@ -1549,11 +1549,11 @@ func isSleepScheduleEnabledQuery(q bson.M, now time.Time) bson.M {
 // schedule settings.
 func FindHostsScheduledToStop(ctx context.Context) ([]Host, error) {
 	now := time.Now()
-	sleepScheduleNextStopTimeKey := bsonutil.GetDottedKeyName(SleepScheduleKey, SleepScheduleNextStopTimeKey)
+	sleepScheduleNextStopKey := bsonutil.GetDottedKeyName(SleepScheduleKey, SleepScheduleNextStopTimeKey)
 
 	q := isSleepScheduleEnabledQuery(bson.M{
-		StatusKey:                    bson.M{"$in": []string{evergreen.HostRunning, evergreen.HostStopping}},
-		sleepScheduleNextStopTimeKey: bson.M{"$lte": now},
+		StatusKey:                bson.M{"$in": []string{evergreen.HostRunning, evergreen.HostStopping}},
+		sleepScheduleNextStopKey: bson.M{"$lte": now},
 	}, now)
 
 	return Find(ctx, q)
@@ -1567,13 +1567,13 @@ const PreStartThreshold = 5 * time.Minute
 // to their sleep schedule settings.
 func FindHostsScheduledToStart(ctx context.Context) ([]Host, error) {
 	now := time.Now()
-	sleepScheduleNextStartTimeKey := bsonutil.GetDottedKeyName(SleepScheduleKey, SleepScheduleNextStartTimeKey)
+	sleepScheduleNextStartKey := bsonutil.GetDottedKeyName(SleepScheduleKey, SleepScheduleNextStartTimeKey)
 
 	q := isSleepScheduleEnabledQuery(bson.M{
 		StatusKey: bson.M{"$in": []string{evergreen.HostStopped, evergreen.HostStopping}},
 		// Include hosts that are imminently about to reach their wakeup time to
 		// better ensure the host is running at the scheduled time.
-		sleepScheduleNextStartTimeKey: bson.M{"$lte": now.Add(PreStartThreshold)},
+		sleepScheduleNextStartKey: bson.M{"$lte": now.Add(PreStartThreshold)},
 	}, now)
 
 	return Find(ctx, q)
@@ -1597,16 +1597,15 @@ func setSleepSchedule(ctx context.Context, hostId string, schedule SleepSchedule
 // schedule but are missing a next scheduled stop/start time.
 func FindMissingNextSleepScheduleTime(ctx context.Context) ([]Host, error) {
 	now := time.Now()
-	sleepScheduleNextStartTimeKey := bsonutil.GetDottedKeyName(SleepScheduleKey, SleepScheduleNextStartTimeKey)
-	sleepScheduleNextStopTimeKey := bsonutil.GetDottedKeyName(SleepScheduleKey, SleepScheduleNextStopTimeKey)
+	sleepScheduleNextStartKey := bsonutil.GetDottedKeyName(SleepScheduleKey, SleepScheduleNextStartTimeKey)
+	sleepScheduleNextStopKey := bsonutil.GetDottedKeyName(SleepScheduleKey, SleepScheduleNextStopTimeKey)
 	q := isSleepScheduleEnabledQuery(bson.M{
-		StatusKey: bson.M{"$in": []string{evergreen.HostRunning, evergreen.HostStopped, evergreen.HostStopping}},
 		"$or": []bson.M{
 			{
-				sleepScheduleNextStartTimeKey: bson.M{"$in": []interface{}{nil, time.Time{}}},
+				sleepScheduleNextStartKey: nil,
 			},
 			{
-				sleepScheduleNextStopTimeKey: bson.M{"$in": []interface{}{nil, time.Time{}}},
+				sleepScheduleNextStopKey: nil,
 			},
 		},
 	}, now)
@@ -1620,16 +1619,16 @@ const SleepScheduleActionTimeout = 30 * time.Minute
 // do so.
 func FindExceedsSleepScheduleTimeout(ctx context.Context) ([]Host, error) {
 	now := time.Now()
-	sleepScheduleNextStartTimeKey := bsonutil.GetDottedKeyName(SleepScheduleKey, SleepScheduleNextStartTimeKey)
-	sleepScheduleNextStopTimeKey := bsonutil.GetDottedKeyName(SleepScheduleKey, SleepScheduleNextStopTimeKey)
+	sleepScheduleNextStartKey := bsonutil.GetDottedKeyName(SleepScheduleKey, SleepScheduleNextStartTimeKey)
+	sleepScheduleNextStopKey := bsonutil.GetDottedKeyName(SleepScheduleKey, SleepScheduleNextStopTimeKey)
 	q := isSleepScheduleEnabledQuery(bson.M{
 		StatusKey: bson.M{"$in": []string{evergreen.HostRunning, evergreen.HostStopped, evergreen.HostStopping}},
 		"$or": []bson.M{
 			{
-				sleepScheduleNextStartTimeKey: bson.M{"$lte": now.Add(-SleepScheduleActionTimeout)},
+				sleepScheduleNextStartKey: bson.M{"$lte": now.Add(-SleepScheduleActionTimeout)},
 			},
 			{
-				sleepScheduleNextStopTimeKey: bson.M{"$lte": now.Add(-SleepScheduleActionTimeout)},
+				sleepScheduleNextStopKey: bson.M{"$lte": now.Add(-SleepScheduleActionTimeout)},
 			},
 		},
 	}, now)
@@ -1640,27 +1639,35 @@ func FindExceedsSleepScheduleTimeout(ctx context.Context) ([]Host, error) {
 // on the authoritative list of permanently exempt hosts. The function returns:
 //  1. Hosts that are on the list of permanent exemptions but are not marked as
 //     permanently exempt (i.e. should be marked as permanently exempt).
-//  2. Hosts that are marked as permanentl yexempt but are not on the list of
+//  2. Hosts that are marked as permanently exempt but are not on the list of
 //     permanent exemptions (i.e. should be marked as not permanently exempt).
 func SyncPermanentExemptions(ctx context.Context, permanentlyExempt []string) error {
 	sleepSchedulePermanentlyExemptKey := bsonutil.GetDottedKeyName(SleepScheduleKey, SleepSchedulePermanentlyExemptKey)
-	sleepScheduleNextStartTimeKey := bsonutil.GetDottedKeyName(SleepScheduleKey, SleepScheduleNextStartTimeKey)
-	sleepScheduleNextStopTimeKey := bsonutil.GetDottedKeyName(SleepScheduleKey, SleepScheduleNextStopTimeKey)
+	sleepScheduleNextStartKey := bsonutil.GetDottedKeyName(SleepScheduleKey, SleepScheduleNextStartTimeKey)
+	sleepScheduleNextStopKey := bsonutil.GetDottedKeyName(SleepScheduleKey, SleepScheduleNextStopTimeKey)
 
+	if permanentlyExempt == nil {
+		permanentlyExempt = []string{}
+	}
 	catcher := grip.NewBasicCatcher()
-	err := UpdateAll(ctx, isSleepScheduleApplicable(bson.M{
-		IdKey:                             bson.M{"$in": permanentlyExempt},
-		sleepSchedulePermanentlyExemptKey: bson.M{"$ne": true},
-	}), bson.M{
-		"$set": bson.M{
-			sleepSchedulePermanentlyExemptKey: true,
-			sleepScheduleNextStartTimeKey:     time.Time{},
-			sleepScheduleNextStopTimeKey:      time.Time{},
-		},
-	})
-	catcher.Wrap(err, "marking newly-added hosts as permanently exempt")
+	if len(permanentlyExempt) > 0 {
+		err := UpdateAll(ctx, isSleepScheduleApplicable(bson.M{
+			IdKey:                             bson.M{"$in": permanentlyExempt},
+			sleepSchedulePermanentlyExemptKey: bson.M{"$ne": true},
+		}), bson.M{
+			"$set": bson.M{
+				sleepSchedulePermanentlyExemptKey: true,
+			},
+			"$unset": bson.M{
+				sleepScheduleNextStartKey: 1,
+				sleepScheduleNextStopKey:  1,
+			},
+		})
+		catcher.Wrap(err, "marking newly-added hosts as permanently exempt")
 
-	err = UpdateAll(ctx, isSleepScheduleApplicable(bson.M{
+	}
+
+	err := UpdateAll(ctx, isSleepScheduleApplicable(bson.M{
 		IdKey:                             bson.M{"$nin": permanentlyExempt},
 		sleepSchedulePermanentlyExemptKey: true,
 	}), bson.M{

@@ -86,6 +86,7 @@ func (j *spawnhostStartJob) Run(ctx context.Context) {
 				"next_start_time": h.SleepSchedule.NextStartTime,
 				"job":             j.ID(),
 			})
+			return nil
 		}
 
 		if err := mgr.StartInstance(ctx, h, user); err != nil {
