@@ -220,7 +220,7 @@ func (c *Settings) ValidateAndDefault() error {
 		catcher.ErrorfWhen(c.SSHKeyPairs[i].Private == "", "must specify a private key for SSH key pair '%s'", c.SSHKeyPairs[i].Name)
 		// Avoid overwriting the filepath stored in Keys, which is a special
 		// case for the path to the legacy SSH identity file.
-		catcher.ErrorfWhen(c.SSHKeyPairs[i].PrivatePath(c) == c.KanopySSHKeyPath, "cannot overwrite the legacy SSH key '%s'", c.KanopySSHKeyPath)
+		catcher.ErrorfWhen(c.SSHKeyPairs[i].PrivatePath(c) == c.KanopySSHKeyPath, "cannot overwrite the legacy SSH key at path '%s'", c.KanopySSHKeyPath)
 
 		// ValidateAndDefault can be called before the environment has been
 		// initialized.
