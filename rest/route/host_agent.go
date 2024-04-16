@@ -1262,7 +1262,9 @@ func (h *hostAgentEndTask) Run(ctx context.Context) gimlet.Responder {
 			Message:    fmt.Sprintf("task '%s' not found", h.taskID),
 		})
 	}
-	span.SetAttributes(attribute.Int(evergreen.TaskExecutionOtelAttribute, t.Execution))
+	ctx = utility.ContextWithAttributes(ctx, []attribute.KeyValue{
+		attribute.Int(evergreen.TaskExecutionOtelAttribute, t.Execution),
+	})
 
 	currentHost, err := host.FindOneId(ctx, h.hostID)
 	if err != nil {
