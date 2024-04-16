@@ -699,7 +699,7 @@ func (r *mutationResolver) PromoteVarsToRepo(ctx context.Context, projectID *str
 	}
 	usr := mustHaveUser(ctx)
 	if err := data.PromoteVarsToRepo(opts.ProjectIdentifier, opts.VarNames, usr.Username()); err != nil {
-		return false, InternalServerError.Send(ctx, fmt.Sprintf("promoting variables to repo for project '%s': %s", utility.FromStringPtr(projectIdentifier), err.Error()))
+		return false, InternalServerError.Send(ctx, fmt.Sprintf("promoting variables to repo for project '%s': %s", opts.ProjectIdentifier, err.Error()))
 
 	}
 	return true, nil
