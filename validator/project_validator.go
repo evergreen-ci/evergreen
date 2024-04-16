@@ -47,7 +47,7 @@ const (
 )
 
 var (
-	unauthorizedCharacters = []string{"|", "&", ";", "$", "`", "'", "*", "?", "#", "~", "%", "^", "+", "@", "{", "}", "(", ")", "<", ">"}
+	unauthorizedCharacters = []string{"|", "&", ";", "$", "`", "'", "*", "?", "#", "%", "^", "+", "@", "{", "}", "(", ")", "<", ">"}
 )
 
 func (vel ValidationErrorLevel) String() string {
