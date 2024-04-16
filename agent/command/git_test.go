@@ -671,8 +671,8 @@ func (s *GitGetProjectSuite) TestBuildModuleCommand() {
 		"set -o xtrace",
 		"set -o errexit",
 		"set +o xtrace",
-		"echo \"git clone https://[redacted oauth token]:x-oauth-basic@github.com/evergreen-ci/sample.git --single-branch 'module'\"",
-		"git clone https://PROJECTTOKEN:x-oauth-basic@github.com/evergreen-ci/sample.git --single-branch 'module'",
+		"echo \"git clone https://[redacted oauth token]:x-oauth-basic@github.com/evergreen-ci/sample.git 'module' --single-branch\"",
+		"git clone https://PROJECTTOKEN:x-oauth-basic@github.com/evergreen-ci/sample.git 'module' --single-branch",
 		"set -o xtrace",
 		"cd module",
 		"git checkout 'main'",
@@ -684,8 +684,8 @@ func (s *GitGetProjectSuite) TestBuildModuleCommand() {
 	s.NoError(err)
 	s.Require().Len(cmds, 8)
 	s.True(utility.ContainsOrderedSubset(cmds, []string{
-		"echo \"git clone https://[redacted oauth token]:x-oauth-basic@github.com/evergreen-ci/sample.git --single-branch 'module'\"",
-		"git clone https://PROJECTTOKEN:x-oauth-basic@github.com/evergreen-ci/sample.git --single-branch 'module'",
+		"echo \"git clone https://[redacted oauth token]:x-oauth-basic@github.com/evergreen-ci/sample.git 'module' --single-branch\"",
+		"git clone https://PROJECTTOKEN:x-oauth-basic@github.com/evergreen-ci/sample.git 'module' --single-branch",
 	}))
 
 	conf = s.taskConfig4
@@ -705,7 +705,7 @@ func (s *GitGetProjectSuite) TestBuildModuleCommand() {
 	s.True(utility.StringSliceContainsOrderedPrefixSubset(cmds, []string{
 		"set -o xtrace",
 		"set -o errexit",
-		"git clone https://x-access-token:PROJECTTOKEN@github.com/evergreen-ci/sample.git --single-branch 'module'",
+		"git clone https://x-access-token:PROJECTTOKEN@github.com/evergreen-ci/sample.git 'module' --single-branch",
 		"cd module",
 		"git fetch origin \"pull/1234/merge:evg-merge-test-",
 		"git checkout 'evg-merge-test-",
