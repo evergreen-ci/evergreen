@@ -390,7 +390,7 @@ func resetTask(ctx context.Context, taskId, caller string) error {
 		return errors.Wrap(err, "can't restart task because it can't be archived")
 	}
 
-	if err = MarkOneTaskReset(ctx, t); err != nil {
+	if err = MarkOneTaskReset(ctx, t, caller); err != nil {
 		return errors.WithStack(err)
 	}
 	event.LogTaskRestarted(t.Id, t.Execution, caller)
@@ -2013,10 +2013,10 @@ func MarkHostTaskDispatched(t *task.Task, h *host.Host) error {
 	return nil
 }
 
-func MarkOneTaskReset(ctx context.Context, t *task.Task) error {
+func MarkOneTaskReset(ctx context.Context, t *task.Task, caller string) error {
 	if t.DisplayOnly {
 		if !t.ResetFailedWhenFinished {
-			if err := MarkTasksReset(ctx, t.ExecutionTasks); err != nil {
+			if err := MarkTasksReset(ctx, t.ExecutionTasks, caller); err != nil {
 				return errors.Wrap(err, "resetting execution tasks")
 			}
 		} else {
@@ -2028,13 +2028,13 @@ func MarkOneTaskReset(ctx context.Context, t *task.Task) error {
 			for _, et := range failedExecTasks {
 				failedExecTaskIds = append(failedExecTaskIds, et.Id)
 			}
-			if err := MarkTasksReset(ctx, failedExecTaskIds); err != nil {
+			if err := MarkTasksReset(ctx, failedExecTaskIds, caller); err != nil {
 				return errors.Wrap(err, "resetting failed execution tasks")
 			}
 		}
 	}
 
-	if err := t.Reset(ctx); err != nil && !adb.ResultsNotFound(err) {
+	if err := t.Reset(ctx, caller); err != nil && !adb.ResultsNotFound(err) {
 		return errors.Wrap(err, "resetting task in database")
 	}
 
@@ -2051,7 +2051,7 @@ func MarkOneTaskReset(ctx context.Context, t *task.Task) error {
 
 // MarkTasksReset resets many tasks by their IDs. For execution tasks, this also
 // resets their parent display tasks.
-func MarkTasksReset(ctx context.Context, taskIds []string) error {
+func MarkTasksReset(ctx context.Context, taskIds []string, caller string) error {
 	tasks, err := task.FindAll(db.Query(task.ByIds(taskIds)))
 	if err != nil {
 		return errors.WithStack(err)
@@ -2061,7 +2061,7 @@ func MarkTasksReset(ctx context.Context, taskIds []string) error {
 		return errors.WithStack(err)
 	}
 
-	if err = task.ResetTasks(tasks); err != nil {
+	if err = task.ResetTasks(tasks, caller); err != nil {
 		return errors.Wrap(err, "resetting tasks in database")
 	}
 
