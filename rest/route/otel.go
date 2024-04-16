@@ -7,6 +7,6 @@ import (
 	"go.opentelemetry.io/otel"
 )
 
-var packageName = fmt.Sprintf("%s%s", evergreen.PackageName, "/route")
+var packageName = fmt.Sprintf("%s%s", evergreen.PackageName, "/rest/route")
 
 var tracer = otel.GetTracerProvider().Tracer(packageName)
