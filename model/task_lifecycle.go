@@ -23,6 +23,8 @@ import (
 	"github.com/mongodb/grip/message"
 	"github.com/pkg/errors"
 	"go.mongodb.org/mongo-driver/bson"
+	"go.opentelemetry.io/otel/attribute"
+	"go.opentelemetry.io/otel/trace"
 )
 
 type StatusChanges struct {
@@ -771,7 +773,9 @@ func doBisectStepbackForGeneratedTask(ctx context.Context, generator *task.Task,
 // MarkEnd updates the task as being finished, performs a stepback if necessary, and updates the build status
 func MarkEnd(ctx context.Context, settings *evergreen.Settings, t *task.Task, caller string, finishTime time.Time, detail *apimodels.TaskEndDetail,
 	deactivatePrevious bool) error {
-	ctx, span := tracer.Start(ctx, "mark-end")
+	ctx, span := tracer.Start(ctx, "mark-end", trace.WithAttributes(
+		attribute.Int(evergreen.TaskExecutionOtelAttribute, t.Execution),
+	))
 	defer span.End()
 
 	const slowThreshold = time.Second
