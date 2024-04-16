@@ -1,15 +1,15 @@
 {
   "project_ref": [
     {
-      "_id" : "1234",
-      "identifier" : "evergreen"
+      "_id": "sandbox_project_id",
+      "identifier": "sandbox"
     }
   ],
   "project_vars": [
     {
-    "_id": "1234",
-    "vars": {"hello": "world", "foo":  "bar"},
-    "private_vars": {"hello":  true, "foo":  false}
+      "_id": "sandbox_project_id",
+      "vars": { "hello": "world", "foo": "bar" },
+      "private_vars": { "hello": true, "foo": false }
     }
   ],
   "events": [
@@ -22,39 +22,39 @@
       "ts": {
         "$date": "2020-03-03T15:46:00.709Z"
       },
-      "r_id": "1234",
+      "r_id": "sandbox_project_id",
       "e_type": "PROJECT_MODIFIED",
       "data": {
-        "user" : "Annie Black",
-        "before" : {
-          "proj_ref" : {
-            "_id" : "1234",
-            "identifier" : "evergreen",
-            "owner_name" : "evergreen-ci",
-            "repo_name" : "evergreen",
+        "user": "Annie Black",
+        "before": {
+          "proj_ref": {
+            "_id": "1234",
+            "identifier": "evergreen",
+            "owner_name": "evergreen-ci",
+            "repo_name": "evergreen",
             "branch_name": "master"
           },
-          "github_hooks_enabled" : false,
-          "vars" : {
-            "_id" : "1234",
-            "vars" : {
-              "hello" : "world"
+          "github_hooks_enabled": false,
+          "vars": {
+            "_id": "sandbox_project_id",
+            "vars": {
+              "hello": "world"
             }
           }
         },
-        "after" : {
-          "proj_ref" : {
-            "_id" : "1234",
-            "identifier" : "evergreen",
-            "owner_name" : "evergreen-ci",
-            "repo_name" : "evergreen",
+        "after": {
+          "proj_ref": {
+            "_id": "sandbox_project_id",
+            "identifier": "evergreen",
+            "owner_name": "evergreen-ci",
+            "repo_name": "evergreen",
             "branch_name": "main"
           },
-          "github_hooks_enabled" : true,
-          "vars" : {
-            "_id" : "1234",
-            "vars" : {
-              "hello" : "universe"
+          "github_hooks_enabled": true,
+          "vars": {
+            "_id": "sandbox_project_id",
+            "vars": {
+              "hello": "universe"
             }
           }
         }

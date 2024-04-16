@@ -60,6 +60,7 @@ type TaskTestResultsInfo struct {
 type TaskEndDetail struct {
 	Status          string          `bson:"status,omitempty" json:"status,omitempty"`
 	Type            string          `bson:"type,omitempty" json:"type,omitempty"`
+	PostErrored     bool            `bson:"post_errored,omitempty" json:"post_errored,omitempty"`
 	Description     string          `bson:"desc,omitempty" json:"desc,omitempty"`
 	TimedOut        bool            `bson:"timed_out,omitempty" json:"timed_out,omitempty"`
 	TimeoutType     string          `bson:"timeout_type,omitempty" json:"timeout_type,omitempty"`
@@ -328,7 +329,6 @@ type GeneratePollResponse struct {
 // DistroView represents the view of data that the agent uses from the distro
 // it is running on.
 type DistroView struct {
-	CloneMethod         string   `json:"clone_method"`
 	DisableShallowClone bool     `json:"disable_shallow_clone"`
 	Mountpoints         []string `json:"mountpoints"`
 }

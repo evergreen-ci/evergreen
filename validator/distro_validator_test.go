@@ -46,7 +46,6 @@ func TestCheckDistro(t *testing.T) {
 					Method:        distro.BootstrapMethodLegacySSH,
 					Communication: distro.CommunicationMethodLegacySSH,
 				},
-				CloneMethod: evergreen.CloneMethodLegacySSH,
 				FinderSettings: distro.FinderSettings{
 					Version: evergreen.FinderVersionLegacy,
 				},
@@ -77,7 +76,6 @@ func TestCheckDistro(t *testing.T) {
 					Method:        distro.BootstrapMethodLegacySSH,
 					Communication: distro.CommunicationMethodLegacySSH,
 				},
-				CloneMethod: evergreen.CloneMethodLegacySSH,
 			}
 			// simulate duplicate id
 			dupe := distro.Distro{Id: "a"}
@@ -103,7 +101,6 @@ func TestCheckDistro(t *testing.T) {
 					Method:        distro.BootstrapMethodLegacySSH,
 					Communication: distro.CommunicationMethodLegacySSH,
 				},
-				CloneMethod: evergreen.CloneMethodLegacySSH,
 				FinderSettings: distro.FinderSettings{
 					Version: evergreen.FinderVersionLegacy,
 				},

@@ -23,6 +23,7 @@ import (
 	"github.com/mongodb/grip/sometimes"
 	"github.com/pkg/errors"
 	"go.mongodb.org/mongo-driver/mongo"
+	"go.opentelemetry.io/otel/attribute"
 )
 
 // if a host encounters more than this number of system failures, then it should be disabled.
@@ -484,6 +485,7 @@ func assignNextAvailableTask(ctx context.Context, env evergreen.Environment, tas
 	// continues until the task queue is empty. This means that every
 	// continue must be preceded by dequeueing the current task from the
 	// queue to prevent an infinite loop.
+
 	for taskQueue.Length() != 0 {
 		if err = ctx.Err(); err != nil {
 			return nil, false, errors.WithStack(err)
@@ -690,6 +692,13 @@ func assignNextAvailableTask(ctx context.Context, env evergreen.Environment, tas
 		}))
 
 		return nextTask, false, nil
+	}
+
+	if taskQueue.Length() == 0 && details.TaskGroup != "" {
+		// if we have reached the end of the queue and the previous task was part of a task group,
+		// the current task group is finished and needs to be torn down.
+		return nil, true, nil
+
 	}
 
 	return nil, false, nil
@@ -1234,6 +1243,13 @@ func (h *hostAgentEndTask) Parse(ctx context.Context, r *http.Request) error {
 // If the task is a patch, it will alert the users based on failures
 // It also updates the expected task duration of the task for scheduling.
 func (h *hostAgentEndTask) Run(ctx context.Context) gimlet.Responder {
+	ctx = utility.ContextWithAttributes(ctx, []attribute.KeyValue{
+		attribute.String(evergreen.HostIDOtelAttribute, h.hostID),
+		attribute.String(evergreen.TaskIDOtelAttribute, h.taskID),
+	})
+	ctx, span := tracer.Start(ctx, "host-agent-end-task")
+	defer span.End()
+
 	finishTime := time.Now()
 
 	t, err := task.FindOneId(h.taskID)
@@ -1246,6 +1262,11 @@ func (h *hostAgentEndTask) Run(ctx context.Context) gimlet.Responder {
 			Message:    fmt.Sprintf("task '%s' not found", h.taskID),
 		})
 	}
+	span.SetAttributes(attribute.Int(evergreen.TaskExecutionOtelAttribute, t.Execution))
+	ctx = utility.ContextWithAttributes(ctx, []attribute.KeyValue{
+		attribute.Int(evergreen.TaskExecutionOtelAttribute, t.Execution),
+	})
+
 	currentHost, err := host.FindOneId(ctx, h.hostID)
 	if err != nil {
 		return gimlet.MakeJSONInternalErrorResponder(errors.Wrap(err, "getting host"))

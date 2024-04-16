@@ -327,8 +327,19 @@ type StepbackInfo struct {
 	NextStepbackTaskId string `bson:"next_stepback_task_id,omitempty" json:"next_stepback_task_id"`
 	// PreviousStepbackTaskId stores the last stepback iteration id.
 	PreviousStepbackTaskId string `bson:"previous_stepback_task_id,omitempty" json:"previous_stepback_task_id"`
+	// GeneratedStepbackInfo stores information on a generator for it's generated tasks.
+	GeneratedStepbackInfo []StepbackInfo `bson:"generated_stepback_info,omitempty" json:"generated_stepback_info,omitempty"`
+
+	// Generator fields only (responsible for propogating stepback in its generated tasks).
+	// DisplayName is the display name of the generated task.
+	DisplayName string `bson:"display_name,omitempty" json:"display_name,omitempty"`
+	// BuildVariant is the build variant of the generated task.
+	BuildVariant string `bson:"build_variant,omitempty" json:"build_variant,omitempty"`
 }
 
+// IsZero returns true if the StepbackInfo is empty or nil.
+// It does not include GeneratedStepbackInfo in the check because
+// those do not cause a generator to stepback.
 func (s *StepbackInfo) IsZero() bool {
 	if s == nil {
 		return true
@@ -338,6 +349,20 @@ func (s *StepbackInfo) IsZero() bool {
 	}
 	// If the other fields are set but not the ones above, the struct should be considered empty.
 	return true
+}
+
+// GetStepbackInfoForGeneratedTask returns the StepbackInfo for a generated task that's
+// on a generator task.
+func (s *StepbackInfo) GetStepbackInfoForGeneratedTask(displayName string, buildVariant string) *StepbackInfo {
+	if s == nil {
+		return nil
+	}
+	for _, info := range s.GeneratedStepbackInfo {
+		if info.DisplayName == displayName && info.BuildVariant == buildVariant {
+			return &info
+		}
+	}
+	return nil
 }
 
 // ExecutionPlatform indicates the type of environment that the task runs in.
@@ -1370,7 +1395,7 @@ func findMidwayTask(t1, t2 Task) (*Task, error) {
 	catcher.ErrorfWhen(t1.BuildVariant != t2.BuildVariant, "given tasks have differing build variants '%s' and '%s'", t1.BuildVariant, t2.BuildVariant)
 	catcher.ErrorfWhen(t1.DisplayName != t2.DisplayName, "given tasks have differing display name '%s' and '%s'", t1.DisplayName, t2.DisplayName)
 	catcher.ErrorfWhen(t1.Project != t2.Project, "given tasks have differing project '%s' and '%s'", t1.Project, t2.Project)
-	catcher.ErrorfWhen(t1.Requester != t2.Requester, "given tasks have differing project '%s' and '%s'", t1.Requester, t2.Requester)
+	catcher.ErrorfWhen(t1.Requester != t2.Requester, "given tasks have differing requester '%s' and '%s'", t1.Requester, t2.Requester)
 	if catcher.HasErrors() {
 		return nil, catcher.Resolve()
 	}
@@ -1395,6 +1420,9 @@ func findMidwayTask(t1, t2 Task) (*Task, error) {
 // passed cannot have a middle (i.e. it is sequential tasks or the same task)
 // it will return the first task given.
 func FindMidwayTaskFromIds(t1Id, t2Id string) (*Task, error) {
+	if t1Id == "" || t2Id == "" {
+		return nil, nil
+	}
 	t1, err := FindOneId(t1Id)
 	if err != nil {
 		return nil, errors.Wrapf(err, "finding task id '%s'", t1Id)
@@ -1559,6 +1587,60 @@ func SetLastAndPreviousStepbackIds(taskId string, s StepbackInfo) error {
 			},
 		},
 	)
+}
+
+// AddGeneratedStepbackInfoForGenerator appends a new StepbackInfo to the
+// task's GeneratedStepbackInfo.
+func AddGeneratedStepbackInfoForGenerator(taskId string, s StepbackInfo) error {
+	return UpdateOne(
+		bson.M{
+			IdKey: taskId,
+		},
+		bson.M{
+			"$push": bson.M{
+				bsonutil.GetDottedKeyName(StepbackInfoKey, GeneratedStepbackInfoKey): s,
+			},
+		},
+	)
+}
+
+// SetGeneratedStepbackInfoForGenerator sets the StepbackInfo's GeneratedStepbackInfo
+// element with the same DisplayName and BuildVariant as the input StepbackInfo.
+func SetGeneratedStepbackInfoForGenerator(ctx context.Context, taskId string, s StepbackInfo) error {
+	r, err := evergreen.GetEnvironment().DB().Collection(Collection).UpdateOne(ctx,
+		bson.M{
+			IdKey: taskId,
+			StepbackInfoKey: bson.M{
+				GeneratedStepbackInfoKey: bson.M{
+					"$elemMatch": bson.M{
+						StepbackInfoDisplayNameKey:  s.DisplayName,
+						StepbackInfoBuildVariantKey: s.BuildVariant,
+					},
+				},
+			},
+		},
+		bson.M{
+			"$set": bson.M{
+				bsonutil.GetDottedKeyName(StepbackInfoKey, GeneratedStepbackInfoKey, "$[elem]", LastFailingStepbackTaskIdKey): s.LastFailingStepbackTaskId,
+				bsonutil.GetDottedKeyName(StepbackInfoKey, GeneratedStepbackInfoKey, "$[elem]", LastPassingStepbackTaskIdKey): s.LastPassingStepbackTaskId,
+				bsonutil.GetDottedKeyName(StepbackInfoKey, GeneratedStepbackInfoKey, "$[elem]", NextStepbackTaskIdKey):        s.NextStepbackTaskId,
+				bsonutil.GetDottedKeyName(StepbackInfoKey, GeneratedStepbackInfoKey, "$[elem]", PreviousStepbackTaskIdKey):    s.PreviousStepbackTaskId,
+			},
+		},
+		options.Update().SetArrayFilters(options.ArrayFilters{
+			Filters: []interface{}{
+				bson.M{
+					bsonutil.GetDottedKeyName("elem", DisplayNameKey):  s.DisplayName,
+					bsonutil.GetDottedKeyName("elem", BuildVariantKey): s.BuildVariant,
+				},
+			},
+		}),
+	)
+	// If no documents were modified, fallback to adding the new StepbackInfo.
+	if r.ModifiedCount == 0 {
+		return AddGeneratedStepbackInfoForGenerator(taskId, s)
+	}
+	return err
 }
 
 // SetNextStepbackId sets the NextStepbackTaskId for a given task id.
@@ -2197,20 +2279,20 @@ func (t *Task) displayTaskPriority() int {
 }
 
 // Reset sets the task state to a state in which it is scheduled to re-run.
-func (t *Task) Reset(ctx context.Context) error {
+func (t *Task) Reset(ctx context.Context, caller string) error {
 	return UpdateOneContext(ctx,
 		bson.M{
 			IdKey:       t.Id,
 			StatusKey:   bson.M{"$in": evergreen.TaskCompletedStatuses},
 			CanResetKey: true,
 		},
-		resetTaskUpdate(t),
+		resetTaskUpdate(t, caller),
 	)
 }
 
 // ResetTasks performs the same DB updates as (*Task).Reset, but resets many
 // tasks instead of a single one.
-func ResetTasks(tasks []Task) error {
+func ResetTasks(tasks []Task, caller string) error {
 	if len(tasks) == 0 {
 		return nil
 	}
@@ -2225,7 +2307,7 @@ func ResetTasks(tasks []Task) error {
 			StatusKey:   bson.M{"$in": evergreen.TaskCompletedStatuses},
 			CanResetKey: true,
 		},
-		resetTaskUpdate(nil),
+		resetTaskUpdate(nil, caller),
 	); err != nil {
 		return err
 	}
@@ -2233,12 +2315,13 @@ func ResetTasks(tasks []Task) error {
 	return nil
 }
 
-func resetTaskUpdate(t *Task) []bson.M {
+func resetTaskUpdate(t *Task, caller string) []bson.M {
 	newSecret := utility.RandomString()
 	now := time.Now()
 	if t != nil {
 		t.Activated = true
 		t.ActivatedTime = now
+		t.ActivatedBy = caller
 		t.Secret = newSecret
 		t.HostId = ""
 		t.PodID = ""
@@ -2270,6 +2353,7 @@ func resetTaskUpdate(t *Task) []bson.M {
 			"$set": bson.M{
 				ActivatedKey:                   true,
 				ActivatedTimeKey:               now,
+				ActivatedByKey:                 caller,
 				SecretKey:                      newSecret,
 				StatusKey:                      evergreen.TaskUndispatched,
 				DispatchTimeKey:                utility.ZeroTime,

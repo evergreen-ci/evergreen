@@ -656,8 +656,6 @@ EC2 Parameters:
 -   `userdata_file` - Path to file to load as EC2 user data on boot. May
     set if `distro` is set, which will override the value from the
     distro configuration. May set if distro is not set.
--   `vpc_id` - EC2 VPC. Must set if `ami` is set. May set if `distro` is
-    set, which will override the value from the distro configuration.
 
 Docker Parameters:
 
@@ -770,7 +768,6 @@ tasks:
           security_group_ids:
             - ${security_group_id}
           subnet_id: ${subnet_id}
-          vpc_id: ${vpc_id}
       - command: host.list
         params:
           num_hosts: 1
@@ -909,7 +906,10 @@ Parameters:
 
 This command traces artifact releases with the Papertrail service. It is owned
 by the Release Infrastructure team, and you may receive assistance with it in
-#ask-devprod-release-tools.
+#ask-devprod-release-tools. This command cannot run on Evergreen hosts outside
+of AWS, which includes most MacOS hosts, because of security requirements for
+the Papertrail service. In the future, MacOS hosts will not have this
+limitation.
 
 ``` yaml
 - command: papertrail.trace
@@ -944,7 +944,7 @@ Parameters:
     the command will throw an error before any tracing occurs. Note that this
     means that each basename must be unique, regardless of their path on the
     filesystem. For example, `./build-a/file.zip` and `./build-b/file.zip` would
-    not be allowed as filenames in the same `papertrail.trace` command.
+    not be allowed as filenames in the same `papertrail.trace` command. If at least one file cannot be found while using wildcard globs, the command will return an error.
 
 ## perf.send
 

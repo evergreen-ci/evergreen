@@ -42,7 +42,6 @@ const (
 	packageName    = "github.com/evergreen-ci/evergreen/agent"
 	traceSuffix    = "build/OTelTraces"
 	maxLineSize    = 1024 * 1024
-	batchSize      = 1500
 
 	cpuTimeInstrumentPrefix = "system.cpu.time"
 	cpuUtilInstrument       = "system.cpu.utilization"
@@ -378,7 +377,7 @@ func (a *Agent) uploadTraces(ctx context.Context, taskDir string) error {
 			continue
 		}
 
-		spanBatches := batchSpans(resourceSpans, batchSize)
+		spanBatches := batchSpans(resourceSpans, sdktrace.DefaultMaxExportBatchSize)
 		for _, batch := range spanBatches {
 			if err = client.UploadTraces(ctx, batch); err != nil {
 				catcher.Wrapf(err, "uploading traces for '%s'", fileName)

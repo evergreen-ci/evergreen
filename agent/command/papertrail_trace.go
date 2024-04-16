@@ -7,6 +7,7 @@ import (
 	"io"
 	"os"
 	"path/filepath"
+	"runtime"
 
 	"github.com/evergreen-ci/evergreen/agent/internal"
 	"github.com/evergreen-ci/evergreen/agent/internal/client"
@@ -35,14 +36,14 @@ func (t *papertrailTrace) Execute(ctx context.Context,
 		return errors.Wrap(err, "applying expansions")
 	}
 
+	if runtime.GOOS == "darwin" {
+		return errors.New("papertrail.trace is not supported on MacOS currently because these hosts do not always run in AWS with the necessary networking configuration")
+	}
+
 	pclient := thirdparty.NewPapertrailClient(t.KeyID, t.SecretKey, "")
 
 	task := conf.Task
-
-	workdir := t.WorkDir
-	if workdir == "" {
-		workdir = conf.WorkDir
-	}
+	workdir := GetWorkingDirectory(conf, t.WorkDir)
 
 	const platform = "evergreen"
 
@@ -113,6 +114,10 @@ func getTraceFiles(workdir string, patterns []string) ([]papertrailTraceFile, er
 
 			files = append(files, f)
 		}
+	}
+
+	if len(files) == 0 {
+		return nil, errors.New("filenames did not match any files; papertrail.trace requires at least one matching filename on disk")
 	}
 
 	return files, nil
