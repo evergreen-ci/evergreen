@@ -68,7 +68,6 @@ func (j *spawnhostStartJob) Run(ctx context.Context) {
 
 	startCloudHost := func(ctx context.Context, mgr cloud.Manager, h *host.Host, user string) error {
 		if j.Source == evergreen.ModifySpawnHostSleepSchedule && !h.IsSleepScheduleEnabled() {
-			// kim: TODO: test
 			grip.Info(message.Fields{
 				"message":             "no-oping scheduled start because sleep schedule is not enabled for this host",
 				"host_id":             j.HostID,

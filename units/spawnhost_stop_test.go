@@ -189,6 +189,87 @@ func TestSpawnhostStopJob(t *testing.T) {
 			assert.Equal(t, 0, mins, "next stop time should be at 18:00 in user's local time")
 			assert.Equal(t, 0, secs, "next stop time should be at 18:00 in user's local time")
 		},
+		"RunNoopsIfSleepSchedulesAreDisabled": func(ctx context.Context, t *testing.T, mock cloud.MockProvider) {
+			originalFlags, err := evergreen.GetServiceFlags(ctx)
+			require.NoError(t, err)
+			defer func() {
+				assert.NoError(t, evergreen.SetServiceFlags(ctx, *originalFlags))
+			}()
+			assert.NoError(t, evergreen.SetServiceFlags(ctx, evergreen.ServiceFlags{SleepScheduleDisabled: true}))
+
+			userTZ, err := time.LoadLocation("Antarctica/South_Pole")
+			require.NoError(t, err)
+			now := utility.BSONTime(time.Now())
+			nextStop := utility.BSONTime(now.Add(time.Hour))
+			h := host.Host{
+				Id:           "host-running",
+				Status:       evergreen.HostRunning,
+				Provider:     evergreen.ProviderNameMock,
+				Distro:       distro.Distro{Provider: evergreen.ProviderNameMock},
+				NoExpiration: true,
+				SleepSchedule: host.SleepScheduleInfo{
+					DailyStartTime:         "10:00",
+					DailyStopTime:          "18:00",
+					TimeZone:               userTZ.String(),
+					NextStopTime:           nextStop,
+					TemporarilyExemptUntil: utility.BSONTime(now.Add(time.Hour)),
+				},
+			}
+			assert.NoError(t, h.Insert(ctx))
+			mock.Set(h.Id, cloud.MockInstance{
+				Status: cloud.StatusStopped,
+			})
+
+			ts := utility.RoundPartOfMinute(1).Format(TSFormat)
+			j := NewSpawnhostStopJob(&h, false, evergreen.ModifySpawnHostSleepSchedule, sleepScheduleUser, ts)
+
+			j.Run(ctx)
+			assert.NoError(t, j.Error())
+
+			dbHost, err := host.FindOneId(ctx, h.Id)
+			assert.NoError(t, err)
+			require.NotZero(t, dbHost)
+			assert.Equal(t, evergreen.HostRunning, dbHost.Status, "host should not be stopped because it has not reached its scheduled stop time")
+
+			assert.True(t, dbHost.SleepSchedule.NextStopTime.Equal(nextStop), "next stop time should be the same as original")
+		},
+		"RunNoopsIfTemporarilyExemptFromSleepSchedule": func(ctx context.Context, t *testing.T, mock cloud.MockProvider) {
+			userTZ, err := time.LoadLocation("Antarctica/South_Pole")
+			require.NoError(t, err)
+			now := utility.BSONTime(time.Now())
+			nextStop := utility.BSONTime(now.Add(time.Hour))
+			h := host.Host{
+				Id:           "host-running",
+				Status:       evergreen.HostRunning,
+				Provider:     evergreen.ProviderNameMock,
+				Distro:       distro.Distro{Provider: evergreen.ProviderNameMock},
+				NoExpiration: true,
+				SleepSchedule: host.SleepScheduleInfo{
+					DailyStartTime:         "10:00",
+					DailyStopTime:          "18:00",
+					TimeZone:               userTZ.String(),
+					NextStopTime:           nextStop,
+					TemporarilyExemptUntil: utility.BSONTime(now.Add(time.Hour)),
+				},
+			}
+			assert.NoError(t, h.Insert(ctx))
+			mock.Set(h.Id, cloud.MockInstance{
+				Status: cloud.StatusStopped,
+			})
+
+			ts := utility.RoundPartOfMinute(1).Format(TSFormat)
+			j := NewSpawnhostStopJob(&h, false, evergreen.ModifySpawnHostSleepSchedule, sleepScheduleUser, ts)
+
+			j.Run(ctx)
+			assert.NoError(t, j.Error())
+
+			dbHost, err := host.FindOneId(ctx, h.Id)
+			assert.NoError(t, err)
+			require.NotZero(t, dbHost)
+			assert.Equal(t, evergreen.HostRunning, dbHost.Status, "host should not be stopped because it has not reached its scheduled stop time")
+
+			assert.True(t, dbHost.SleepSchedule.NextStopTime.Equal(nextStop), "next stop time should be the same as original")
+		},
 		"RunNoopsIfNotScheduledToStopYet": func(ctx context.Context, t *testing.T, mock cloud.MockProvider) {
 			userTZ, err := time.LoadLocation("Antarctica/South_Pole")
 			require.NoError(t, err)
