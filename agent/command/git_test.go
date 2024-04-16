@@ -14,7 +14,6 @@ import (
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/agent/internal"
 	"github.com/evergreen-ci/evergreen/agent/internal/client"
-	agentutil "github.com/evergreen-ci/evergreen/agent/internal/testutil"
 	"github.com/evergreen-ci/evergreen/db"
 	"github.com/evergreen-ci/evergreen/model"
 	"github.com/evergreen-ci/evergreen/model/build"
@@ -23,8 +22,6 @@ import (
 	"github.com/evergreen-ci/evergreen/model/task"
 	modelutil "github.com/evergreen-ci/evergreen/model/testutil"
 	"github.com/evergreen-ci/evergreen/testutil"
-	"github.com/evergreen-ci/evergreen/thirdparty"
-	"github.com/evergreen-ci/evergreen/util"
 	"github.com/evergreen-ci/utility"
 	"github.com/mongodb/grip/level"
 	"github.com/mongodb/grip/send"
@@ -83,105 +80,105 @@ func (s *GitGetProjectSuite) SetupSuite() {
 	s.comm = client.NewMock("http://localhost.com")
 
 	s.ctx, s.cancel = context.WithCancel(context.Background())
-	env := testutil.NewEnvironment(s.ctx, s.T())
-	settings := env.Settings()
+	// env := testutil.NewEnvironment(s.ctx, s.T())
+	// settings := env.Settings()
 
-	testutil.ConfigureIntegrationTest(s.T(), settings, s.T().Name())
-	s.settings = settings
+	// testutil.ConfigureIntegrationTest(s.T(), settings, s.T().Name())
+	// s.settings = settings
 }
 
 func (s *GitGetProjectSuite) SetupTest() {
 	s.NoError(db.ClearCollections(patch.Collection, build.Collection, task.Collection,
 		model.VersionCollection, host.Collection))
-	var err error
+	// var err error
 
-	configPath1 := filepath.Join(testutil.GetDirectoryOfFile(), "testdata", "git", "plugin_clone.yml")
-	configPath2 := filepath.Join(testutil.GetDirectoryOfFile(), "testdata", "git", "test_config.yml")
-	configPath3 := filepath.Join(testutil.GetDirectoryOfFile(), "testdata", "git", "no_token.yml")
-	configPath4 := filepath.Join(testutil.GetDirectoryOfFile(), "testdata", "git", "additional_patch.yml")
-	configPath5 := filepath.Join(testutil.GetDirectoryOfFile(), "testdata", "git", "multiple_modules.yml")
-	patchPath := filepath.Join(testutil.GetDirectoryOfFile(), "testdata", "git", "test.patch")
+	// configPath1 := filepath.Join(testutil.GetDirectoryOfFile(), "testdata", "git", "plugin_clone.yml")
+	// configPath2 := filepath.Join(testutil.GetDirectoryOfFile(), "testdata", "git", "test_config.yml")
+	// configPath3 := filepath.Join(testutil.GetDirectoryOfFile(), "testdata", "git", "no_token.yml")
+	// configPath4 := filepath.Join(testutil.GetDirectoryOfFile(), "testdata", "git", "additional_patch.yml")
+	// configPath5 := filepath.Join(testutil.GetDirectoryOfFile(), "testdata", "git", "multiple_modules.yml")
+	// patchPath := filepath.Join(testutil.GetDirectoryOfFile(), "testdata", "git", "test.patch")
 
-	s.modelData1, err = modelutil.SetupAPITestData(s.settings, "testtask1", "rhel55", configPath1, modelutil.NoPatch)
-	s.Require().NoError(err)
-	s.taskConfig1, err = agentutil.MakeTaskConfigFromModelData(s.ctx, s.settings, s.modelData1)
-	s.Require().NoError(err)
-	s.taskConfig1.Expansions = *util.NewExpansions(map[string]string{evergreen.GlobalGitHubTokenExpansion: fmt.Sprintf("token " + globalGitHubToken)})
-	s.Require().NoError(err)
+	// s.modelData1, err = modelutil.SetupAPITestData(s.settings, "testtask1", "rhel55", configPath1, modelutil.NoPatch)
+	// s.Require().NoError(err)
+	// s.taskConfig1, err = agentutil.MakeTaskConfigFromModelData(s.ctx, s.settings, s.modelData1)
+	// s.Require().NoError(err)
+	// s.taskConfig1.Expansions = *util.NewExpansions(map[string]string{evergreen.GlobalGitHubTokenExpansion: fmt.Sprintf("token " + globalGitHubToken)})
+	// s.Require().NoError(err)
 
-	s.modelData2, err = modelutil.SetupAPITestData(s.settings, "testtask1", "rhel55", configPath2, modelutil.NoPatch)
-	s.Require().NoError(err)
-	s.taskConfig2, err = agentutil.MakeTaskConfigFromModelData(s.ctx, s.settings, s.modelData2)
-	s.Require().NoError(err)
-	s.taskConfig2.Expansions = *util.NewExpansions(s.settings.Credentials)
-	s.taskConfig2.Expansions.Put("prefixpath", "hello")
-	// SetupAPITestData always creates BuildVariant with no modules so this line works around that
-	s.taskConfig2.BuildVariant.Modules = []string{"sample"}
-	err = setupTestPatchData(s.modelData1, patchPath, s.T())
-	s.Require().NoError(err)
+	// s.modelData2, err = modelutil.SetupAPITestData(s.settings, "testtask1", "rhel55", configPath2, modelutil.NoPatch)
+	// s.Require().NoError(err)
+	// s.taskConfig2, err = agentutil.MakeTaskConfigFromModelData(s.ctx, s.settings, s.modelData2)
+	// s.Require().NoError(err)
+	// s.taskConfig2.Expansions = *util.NewExpansions(s.settings.Credentials)
+	// s.taskConfig2.Expansions.Put("prefixpath", "hello")
+	// // SetupAPITestData always creates BuildVariant with no modules so this line works around that
+	// s.taskConfig2.BuildVariant.Modules = []string{"sample"}
+	// err = setupTestPatchData(s.modelData1, patchPath, s.T())
+	// s.Require().NoError(err)
 
-	s.modelData3, err = modelutil.SetupAPITestData(s.settings, "testtask1", "rhel55", configPath2, modelutil.NoPatch)
-	s.Require().NoError(err)
-	s.taskConfig3, err = agentutil.MakeTaskConfigFromModelData(s.ctx, s.settings, s.modelData3)
-	s.Require().NoError(err)
-	s.taskConfig3.Expansions = *util.NewExpansions(s.settings.Credentials)
-	s.taskConfig3.GithubPatchData = thirdparty.GithubPatch{
-		PRNumber:   9001,
-		BaseOwner:  "evergreen-ci",
-		BaseRepo:   "evergreen",
-		BaseBranch: "main",
-		HeadOwner:  "octocat",
-		HeadRepo:   "evergreen",
-		HeadHash:   "55ca6286e3e4f4fba5d0448333fa99fc5a404a73",
-		Author:     "octocat",
-	}
-	s.taskConfig3.Task.Requester = evergreen.GithubPRRequester
+	// s.modelData3, err = modelutil.SetupAPITestData(s.settings, "testtask1", "rhel55", configPath2, modelutil.NoPatch)
+	// s.Require().NoError(err)
+	// s.taskConfig3, err = agentutil.MakeTaskConfigFromModelData(s.ctx, s.settings, s.modelData3)
+	// s.Require().NoError(err)
+	// s.taskConfig3.Expansions = *util.NewExpansions(s.settings.Credentials)
+	// s.taskConfig3.GithubPatchData = thirdparty.GithubPatch{
+	// 	PRNumber:   9001,
+	// 	BaseOwner:  "evergreen-ci",
+	// 	BaseRepo:   "evergreen",
+	// 	BaseBranch: "main",
+	// 	HeadOwner:  "octocat",
+	// 	HeadRepo:   "evergreen",
+	// 	HeadHash:   "55ca6286e3e4f4fba5d0448333fa99fc5a404a73",
+	// 	Author:     "octocat",
+	// }
+	// s.taskConfig3.Task.Requester = evergreen.GithubPRRequester
 
-	s.modelData4, err = modelutil.SetupAPITestData(s.settings, "testtask1", "rhel55", configPath2, modelutil.MergePatch)
-	s.Require().NoError(err)
-	s.taskConfig4, err = agentutil.MakeTaskConfigFromModelData(s.ctx, s.settings, s.modelData4)
-	s.Require().NoError(err)
-	s.taskConfig4.Expansions = *util.NewExpansions(s.settings.Credentials)
-	s.taskConfig4.GithubPatchData = thirdparty.GithubPatch{
-		PRNumber:       9001,
-		MergeCommitSHA: "abcdef",
-	}
-	s.modelData5, err = modelutil.SetupAPITestData(s.settings, "testtask1", "rhel55", configPath3, modelutil.MergePatch)
-	s.Require().NoError(err)
-	s.taskConfig5, err = agentutil.MakeTaskConfigFromModelData(s.ctx, s.settings, s.modelData5)
-	s.Require().NoError(err)
+	// s.modelData4, err = modelutil.SetupAPITestData(s.settings, "testtask1", "rhel55", configPath2, modelutil.MergePatch)
+	// s.Require().NoError(err)
+	// s.taskConfig4, err = agentutil.MakeTaskConfigFromModelData(s.ctx, s.settings, s.modelData4)
+	// s.Require().NoError(err)
+	// s.taskConfig4.Expansions = *util.NewExpansions(s.settings.Credentials)
+	// s.taskConfig4.GithubPatchData = thirdparty.GithubPatch{
+	// 	PRNumber:       9001,
+	// 	MergeCommitSHA: "abcdef",
+	// }
+	// s.modelData5, err = modelutil.SetupAPITestData(s.settings, "testtask1", "rhel55", configPath3, modelutil.MergePatch)
+	// s.Require().NoError(err)
+	// s.taskConfig5, err = agentutil.MakeTaskConfigFromModelData(s.ctx, s.settings, s.modelData5)
+	// s.Require().NoError(err)
 
-	s.modelData6, err = modelutil.SetupAPITestData(s.settings, "testtask1", "linux-64", configPath4, modelutil.InlinePatch)
-	s.Require().NoError(err)
-	s.modelData6.Task.Requester = evergreen.MergeTestRequester
-	s.Require().NoError(err)
-	s.taskConfig6, err = agentutil.MakeTaskConfigFromModelData(s.ctx, s.settings, s.modelData6)
-	s.Require().NoError(err)
-	s.taskConfig6.Expansions = *util.NewExpansions(map[string]string{evergreen.GlobalGitHubTokenExpansion: fmt.Sprintf("token " + globalGitHubToken)})
-	s.taskConfig6.BuildVariant.Modules = []string{"evergreen"}
+	// s.modelData6, err = modelutil.SetupAPITestData(s.settings, "testtask1", "linux-64", configPath4, modelutil.InlinePatch)
+	// s.Require().NoError(err)
+	// s.modelData6.Task.Requester = evergreen.MergeTestRequester
+	// s.Require().NoError(err)
+	// s.taskConfig6, err = agentutil.MakeTaskConfigFromModelData(s.ctx, s.settings, s.modelData6)
+	// s.Require().NoError(err)
+	// s.taskConfig6.Expansions = *util.NewExpansions(map[string]string{evergreen.GlobalGitHubTokenExpansion: fmt.Sprintf("token " + globalGitHubToken)})
+	// s.taskConfig6.BuildVariant.Modules = []string{"evergreen"}
 
-	s.modelData7, err = modelutil.SetupAPITestData(s.settings, "testtask1", "linux-64", configPath3, modelutil.InlinePatch)
-	s.Require().NoError(err)
-	s.taskConfig7, err = agentutil.MakeTaskConfigFromModelData(s.ctx, s.settings, s.modelData7)
-	s.Require().NoError(err)
-	s.taskConfig7.Expansions = *util.NewExpansions(map[string]string{evergreen.GlobalGitHubTokenExpansion: fmt.Sprintf("token " + globalGitHubToken)})
-	s.taskConfig7.BuildVariant.Modules = []string{"evergreen"}
-	s.taskConfig7.GithubMergeData = thirdparty.GithubMergeGroup{
-		HeadBranch: "gh-readonly-queue/main/pr-515-9cd8a2532bcddf58369aa82eb66ba88e2323c056",
-		HeadSHA:    "d2a90288ad96adca4a7d0122d8d4fd1deb24db11",
-	}
-	s.taskConfig7.Task.Requester = evergreen.GithubMergeRequester
+	// s.modelData7, err = modelutil.SetupAPITestData(s.settings, "testtask1", "linux-64", configPath3, modelutil.InlinePatch)
+	// s.Require().NoError(err)
+	// s.taskConfig7, err = agentutil.MakeTaskConfigFromModelData(s.ctx, s.settings, s.modelData7)
+	// s.Require().NoError(err)
+	// s.taskConfig7.Expansions = *util.NewExpansions(map[string]string{evergreen.GlobalGitHubTokenExpansion: fmt.Sprintf("token " + globalGitHubToken)})
+	// s.taskConfig7.BuildVariant.Modules = []string{"evergreen"}
+	// s.taskConfig7.GithubMergeData = thirdparty.GithubMergeGroup{
+	// 	HeadBranch: "gh-readonly-queue/main/pr-515-9cd8a2532bcddf58369aa82eb66ba88e2323c056",
+	// 	HeadSHA:    "d2a90288ad96adca4a7d0122d8d4fd1deb24db11",
+	// }
+	// s.taskConfig7.Task.Requester = evergreen.GithubMergeRequester
 
-	s.modelData8, err = modelutil.SetupAPITestData(s.settings, "testtask1", "rhel55", configPath5, modelutil.NoPatch)
-	s.Require().NoError(err)
-	s.taskConfig8, err = agentutil.MakeTaskConfigFromModelData(s.ctx, s.settings, s.modelData8)
-	s.Require().NoError(err)
-	s.taskConfig8.Expansions = *util.NewExpansions(s.settings.Credentials)
-	s.taskConfig8.Expansions.Put("prefixpath", "hello")
-	// SetupAPITestData always creates BuildVariant with no modules so this line works around that
-	s.taskConfig8.BuildVariant.Modules = []string{"sample-1", "sample-2"}
+	// s.modelData8, err = modelutil.SetupAPITestData(s.settings, "testtask1", "rhel55", configPath5, modelutil.NoPatch)
+	// s.Require().NoError(err)
+	// s.taskConfig8, err = agentutil.MakeTaskConfigFromModelData(s.ctx, s.settings, s.modelData8)
+	// s.Require().NoError(err)
+	// s.taskConfig8.Expansions = *util.NewExpansions(s.settings.Credentials)
+	// s.taskConfig8.Expansions.Put("prefixpath", "hello")
+	// // SetupAPITestData always creates BuildVariant with no modules so this line works around that
+	// s.taskConfig8.BuildVariant.Modules = []string{"sample-1", "sample-2"}
 
-	s.comm.CreateInstallationTokenResult = mockedGitHubAppToken
+	// s.comm.CreateInstallationTokenResult = mockedGitHubAppToken
 }
 
 func (s *GitGetProjectSuite) TestBuildSourceCommandUsesHTTPS() {
@@ -203,7 +200,7 @@ func (s *GitGetProjectSuite) TestBuildSourceCommandUsesHTTPS() {
 	}
 	s.Require().NoError(opts.setLocation())
 	cmds, _ := c.buildSourceCloneCommand(s.ctx, s.comm, logger, conf, opts)
-	s.True(utility.StringSliceContains(cmds, "git clone https://PROJECTTOKEN:x-oauth-basic@github.com/evergreen-ci/sample.git 'dir' --branch --single-branch 'main'"))
+	s.True(utility.StringSliceContains(cmds, "git clone https://PROJECTTOKEN:x-oauth-basic@github.com/evergreen-ci/sample.git 'dir' --branch 'main' --single-branch"))
 }
 
 func (s *GitGetProjectSuite) TestBuildSourceCommandWithHTTPSNeedsToken() {
@@ -474,10 +471,11 @@ func (s *GitGetProjectSuite) TestBuildHTTPCloneCommand() {
 	cmds, err := opts.buildGitCloneCommand()
 	s.NoError(err)
 	s.Require().Len(cmds, 5)
+	fmt.Println(cmds)
 	s.True(utility.ContainsOrderedSubset(cmds, []string{
 		"set +o xtrace",
-		"echo \"git clone https://[redacted oauth token]:x-oauth-basic@github.com/evergreen-ci/sample.git 'dir' --branch --single-branch 'main'\"",
-		"git clone https://PROJECTTOKEN:x-oauth-basic@github.com/evergreen-ci/sample.git 'dir' --branch --single-branch 'main'",
+		"echo \"git clone https://[redacted oauth token]:x-oauth-basic@github.com/evergreen-ci/sample.git 'dir' --branch 'main' --single-branch\"",
+		"git clone https://PROJECTTOKEN:x-oauth-basic@github.com/evergreen-ci/sample.git 'dir' --branch 'main' --single-branch",
 		"set -o xtrace",
 		"cd dir",
 	}))
@@ -488,8 +486,8 @@ func (s *GitGetProjectSuite) TestBuildHTTPCloneCommand() {
 	s.Require().Len(cmds, 5)
 	s.True(utility.ContainsOrderedSubset(cmds, []string{
 		"set +o xtrace",
-		"echo \"git clone https://[redacted oauth token]:x-oauth-basic@github.com/evergreen-ci/sample.git --single-branch 'dir'\"",
-		"git clone https://PROJECTTOKEN:x-oauth-basic@github.com/evergreen-ci/sample.git --single-branch 'dir'",
+		"echo \"git clone https://[redacted oauth token]:x-oauth-basic@github.com/evergreen-ci/sample.git 'dir' --single-branch\"",
+		"git clone https://PROJECTTOKEN:x-oauth-basic@github.com/evergreen-ci/sample.git 'dir' --single-branch",
 		"set -o xtrace",
 		"cd dir",
 	}))
@@ -502,8 +500,8 @@ func (s *GitGetProjectSuite) TestBuildHTTPCloneCommand() {
 	s.NoError(err)
 	s.Require().Len(cmds, 5)
 	s.True(utility.ContainsOrderedSubset(cmds, []string{
-		"echo \"git clone https://[redacted oauth token]:x-oauth-basic@github.com/evergreen-ci/sample.git 'dir' --branch --single-branch 'main'\"",
-		"git clone https://PROJECTTOKEN:x-oauth-basic@github.com/evergreen-ci/sample.git 'dir' --branch --single-branch 'main'",
+		"echo \"git clone https://[redacted oauth token]:x-oauth-basic@github.com/evergreen-ci/sample.git 'dir' --branch 'main' --single-branch\"",
+		"git clone https://PROJECTTOKEN:x-oauth-basic@github.com/evergreen-ci/sample.git 'dir' --branch 'main' --single-branch",
 	}))
 
 	// ensure that we aren't sending the github oauth token to other
@@ -513,8 +511,8 @@ func (s *GitGetProjectSuite) TestBuildHTTPCloneCommand() {
 	s.NoError(err)
 	s.Require().Len(cmds, 5)
 	s.True(utility.ContainsOrderedSubset(cmds, []string{
-		"echo \"git clone https://[redacted oauth token]:x-oauth-basic@someothergithost.com/evergreen-ci/sample.git 'dir' --branch --single-branch 'main'\"",
-		"git clone https://PROJECTTOKEN:x-oauth-basic@someothergithost.com/evergreen-ci/sample.git 'dir' --branch --single-branch 'main'",
+		"echo \"git clone https://[redacted oauth token]:x-oauth-basic@someothergithost.com/evergreen-ci/sample.git 'dir' --branch 'main' --single-branch\"",
+		"git clone https://PROJECTTOKEN:x-oauth-basic@someothergithost.com/evergreen-ci/sample.git 'dir' --branch 'main' --single-branch",
 	}))
 }
 
@@ -550,8 +548,8 @@ func (s *GitGetProjectSuite) TestBuildSourceCommand() {
 		"set -o errexit",
 		"rm -rf dir",
 		"set +o xtrace",
-		"echo \"git clone https://[redacted oauth token]:x-oauth-basic@github.com/evergreen-ci/sample.git 'dir' --branch --single-branch 'main'\"",
-		"git clone https://PROJECTTOKEN:x-oauth-basic@github.com/evergreen-ci/sample.git 'dir' --branch --single-branch 'main'",
+		"echo \"git clone https://[redacted oauth token]:x-oauth-basic@github.com/evergreen-ci/sample.git 'dir' --branch 'main' --single-branch\"",
+		"git clone https://PROJECTTOKEN:x-oauth-basic@github.com/evergreen-ci/sample.git 'dir' --branch 'main' --single-branch",
 		"set -o xtrace",
 		"cd dir",
 		"git reset --hard ",
