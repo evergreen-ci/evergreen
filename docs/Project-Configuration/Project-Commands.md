@@ -545,6 +545,10 @@ Parameters:
 -   `shallow_clone`: Sets `clone_depth` to 100, if not already set.
 -   `recurse_submodules`: automatically initialize and update each
     submodule in the repository, including any nested submodules.
+-   `clone_all_branches`: If set to true, clones all branches in the
+    repository. Default is false (which applies `--single-branch`).
+-   `full_tree_clone`: If set to true, clones all trees in the
+    repository. Default is false (which applies `--filter=tree:0`).
 
 The parameters for each module are:
 
