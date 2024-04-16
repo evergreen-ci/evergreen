@@ -47,7 +47,7 @@ const (
 )
 
 var (
-	unauthorizedCharacters = []string{"|", "&", ";", "$", "`", "'", "*", "?", "#", "~", "%", "^", "+", "@", "{", "}", "(", ")", "<", ">", " "}
+	unauthorizedCharacters = []string{"|", "&", ";", "$", "`", "'", "*", "?", "#", "~", "%", "^", "+", "@", "{", "}", "(", ")", "<", ">"}
 )
 
 func (vel ValidationErrorLevel) String() string {
@@ -993,7 +993,8 @@ func validateTaskNames(project *model.Project) ValidationErrors {
 	errs := ValidationErrors{}
 
 	for _, task := range project.Tasks {
-		if strings.ContainsAny(strings.TrimSpace(task.Name), strings.Join(unauthorizedCharacters, "")) {
+		// Add space to the list of unauthorized characters to prevent task names from containing spaces.
+		if strings.ContainsAny(strings.TrimSpace(task.Name), strings.Join(unauthorizedCharacters, " ")) {
 			errs = append(errs,
 				ValidationError{
 					Message: fmt.Sprintf("task name '%s' contains unauthorized characters (%s)",
