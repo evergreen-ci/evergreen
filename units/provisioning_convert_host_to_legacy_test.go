@@ -80,8 +80,6 @@ func TestConvertHostToLegacyProvisioningJob(t *testing.T) {
 			require.NoError(t, env.Configure(tctx))
 			mgr := &jmock.Manager{}
 			env.JasperProcessManager = mgr
-			sshKeyName, sshKeyValue := "foo", "bar"
-			env.Settings().Keys = map[string]string{sshKeyName: sshKeyValue}
 			env.Settings().HostJasper = evergreen.HostJasperConfig{
 				BinaryName: "binary",
 			}
@@ -103,7 +101,6 @@ func TestConvertHostToLegacyProvisioningJob(t *testing.T) {
 						Communication:   distro.CommunicationMethodLegacySSH,
 						JasperBinaryDir: "/jasper_dir",
 					},
-					SSHKey: sshKeyName,
 				},
 				Host: "localhost",
 				User: evergreen.User,

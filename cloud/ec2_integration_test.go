@@ -49,7 +49,6 @@ func fetchTestDistro() distro.Distro {
 		SetupAsSudo: true,
 		Setup:       "",
 		User:        "root",
-		SSHKey:      "",
 	}
 }
 

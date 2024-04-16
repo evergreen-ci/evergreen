@@ -25,7 +25,6 @@ var (
 	SetupKey                 = bsonutil.MustHaveTag(Distro{}, "Setup")
 	AuthorizedKeysFileKey    = bsonutil.MustHaveTag(Distro{}, "AuthorizedKeysFile")
 	UserKey                  = bsonutil.MustHaveTag(Distro{}, "User")
-	SSHKeyKey                = bsonutil.MustHaveTag(Distro{}, "SSHKey")
 	SSHOptionsKey            = bsonutil.MustHaveTag(Distro{}, "SSHOptions")
 	BootstrapSettingsKey     = bsonutil.MustHaveTag(Distro{}, "BootstrapSettings")
 	DispatcherSettingsKey    = bsonutil.MustHaveTag(Distro{}, "DispatcherSettings")

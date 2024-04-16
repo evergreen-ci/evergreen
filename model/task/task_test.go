@@ -4766,10 +4766,11 @@ func TestReset(t *testing.T) {
 		}
 		assert.NoError(t, t0.Insert())
 
-		assert.NoError(t, t0.Reset(ctx))
+		assert.NoError(t, t0.Reset(ctx, "user"))
 		dbTask, err := FindOneId(t0.Id)
 		assert.NoError(t, err)
 		assert.False(t, dbTask.UnattainableDependency)
+		assert.Equal(t, dbTask.ActivatedBy, "user")
 	})
 
 	t.Run("UnattainableDependency", func(t *testing.T) {
@@ -4786,7 +4787,7 @@ func TestReset(t *testing.T) {
 		}
 		assert.NoError(t, t0.Insert())
 
-		assert.NoError(t, t0.Reset(ctx))
+		assert.NoError(t, t0.Reset(ctx, ""))
 		dbTask, err := FindOneId(t0.Id)
 		assert.NoError(t, err)
 		assert.True(t, dbTask.UnattainableDependency)
@@ -4806,7 +4807,7 @@ func TestReset(t *testing.T) {
 		}
 		assert.NoError(t, t0.Insert())
 
-		assert.NoError(t, t0.Reset(ctx))
+		assert.NoError(t, t0.Reset(ctx, ""))
 		dbTask, err := FindOneId(t0.Id)
 		assert.NoError(t, err)
 		assert.False(t, dbTask.UnattainableDependency)
@@ -4836,7 +4837,7 @@ func TestReset(t *testing.T) {
 		}
 		assert.NoError(t, t0.Insert())
 
-		assert.NoError(t, t0.Reset(ctx))
+		assert.NoError(t, t0.Reset(ctx, ""))
 		dbTask, err := FindOneId(t0.Id)
 		assert.NoError(t, err)
 		assert.False(t, dbTask.ResultsFailed)
@@ -4873,10 +4874,11 @@ func TestResetTasks(t *testing.T) {
 		}
 		assert.NoError(t, t0.Insert())
 
-		assert.NoError(t, ResetTasks([]Task{t0}))
+		assert.NoError(t, ResetTasks([]Task{t0}, "user"))
 		dbTask, err := FindOneId(t0.Id)
 		assert.NoError(t, err)
 		assert.False(t, dbTask.UnattainableDependency)
+		assert.Equal(t, dbTask.ActivatedBy, "user")
 	})
 
 	t.Run("UnattainableDependency", func(t *testing.T) {
@@ -4893,7 +4895,7 @@ func TestResetTasks(t *testing.T) {
 		}
 		assert.NoError(t, t0.Insert())
 
-		assert.NoError(t, ResetTasks([]Task{t0}))
+		assert.NoError(t, ResetTasks([]Task{t0}, ""))
 		dbTask, err := FindOneId(t0.Id)
 		assert.NoError(t, err)
 		assert.True(t, dbTask.UnattainableDependency)
@@ -4913,7 +4915,7 @@ func TestResetTasks(t *testing.T) {
 		}
 		assert.NoError(t, t0.Insert())
 
-		assert.NoError(t, ResetTasks([]Task{t0}))
+		assert.NoError(t, ResetTasks([]Task{t0}, ""))
 		dbTask, err := FindOneId(t0.Id)
 		assert.NoError(t, err)
 		assert.False(t, dbTask.UnattainableDependency)

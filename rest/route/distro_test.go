@@ -345,7 +345,7 @@ func TestUpdateDistrosSettingsHandlerRun(t *testing.T) {
 	assert.NoError(t, evergreen.UpdateConfig(ctx, conf))
 	ctx = gimlet.AttachUser(ctx, &user.DBUser{Id: "userName"})
 
-	d := &distro.Distro{Id: "d1", Arch: "linux_amd64", User: "a", SSHKey: "a", WorkDir: "a",
+	d := &distro.Distro{Id: "d1", Arch: "linux_amd64", User: "a", WorkDir: "a",
 		Provider: evergreen.ProviderNameEc2OnDemand,
 		ProviderSettingsList: []*birch.Document{
 			birch.NewDocument(
@@ -474,7 +474,6 @@ func (s *DistroPutSuite) TestParse() {
 	{
 		"arch": "linux_amd64",
 		"work_dir": "/data/mci",
-		"ssh_key": "SSH key",
 		"provider": "mock",
 		"user": "tibor",
 		"planner_settings": {
@@ -500,7 +499,7 @@ func (s *DistroPutSuite) TestParse() {
 func (s *DistroPutSuite) TestRunNewWithValidEntity() {
 	ctx := context.Background()
 	ctx = gimlet.AttachUser(ctx, &user.DBUser{Id: "user"})
-	json := []byte(`{"arch": "linux_amd64", "work_dir": "/data/mci", "ssh_key": "SSH Key", "provider": "mock", "user": "tibor"}`)
+	json := []byte(`{"arch": "linux_amd64", "work_dir": "/data/mci", "provider": "mock", "user": "tibor"}`)
 	h := s.rm.(*distroIDPutHandler)
 	h.distroID = "distro5"
 	h.body = json
@@ -517,7 +516,6 @@ func (s *DistroPutSuite) TestRunNewWithInvalidEntity() {
 	{
 		"arch": "linux_amd64",
 		"work_dir": "/data/mci",
-		"ssh_key": "",
 		"bootstrap_settings": {"method": "foo", "communication": "bar"},
 		"provider": "mock",
 		"user": "tibor",
@@ -540,7 +538,7 @@ func (s *DistroPutSuite) TestRunNewWithInvalidEntity() {
 func (s *DistroPutSuite) TestRunNewConflictingName() {
 	ctx := context.Background()
 	ctx = gimlet.AttachUser(ctx, &user.DBUser{Id: "user"})
-	json := []byte(`{"name": "distro5", "arch": "linux_amd64", "work_dir": "/data/mci", "ssh_key": "SSH Key", "provider": "mock", "user": "tibor"}`)
+	json := []byte(`{"name": "distro5", "arch": "linux_amd64", "work_dir": "/data/mci", "provider": "mock", "user": "tibor"}`)
 	h := s.rm.(*distroIDPutHandler)
 	h.distroID = "distro4"
 	h.body = json
@@ -555,7 +553,7 @@ func (s *DistroPutSuite) TestRunNewConflictingName() {
 func (s *DistroPutSuite) TestRunExistingWithValidEntity() {
 	ctx := context.Background()
 	ctx = gimlet.AttachUser(ctx, &user.DBUser{Id: "user"})
-	json := []byte(`{"arch": "linux_amd64", "work_dir": "/data/mci", "ssh_key": "SSH Key", "provider": "mock", "user": "tibor"}`)
+	json := []byte(`{"arch": "linux_amd64", "work_dir": "/data/mci", "provider": "mock", "user": "tibor"}`)
 	h := s.rm.(*distroIDPutHandler)
 	h.distroID = "distro3"
 	h.body = json
@@ -568,7 +566,7 @@ func (s *DistroPutSuite) TestRunExistingWithValidEntity() {
 func (s *DistroPutSuite) TestRunExistingWithInvalidEntity() {
 	ctx := context.Background()
 	ctx = gimlet.AttachUser(ctx, &user.DBUser{Id: "user"})
-	json := []byte(`{"arch": "", "work_dir": "/data/mci", "ssh_key": "SSH Key", "provider": "", "user": ""}`)
+	json := []byte(`{"arch": "", "work_dir": "/data/mci", "provider": "", "user": ""}`)
 	h := s.rm.(*distroIDPutHandler)
 	h.distroID = "distro3"
 	h.body = json
@@ -585,7 +583,7 @@ func (s *DistroPutSuite) TestRunExistingWithInvalidEntity() {
 func (s *DistroPutSuite) TestRunExistingConflictingName() {
 	ctx := context.Background()
 	ctx = gimlet.AttachUser(ctx, &user.DBUser{Id: "user"})
-	json := []byte(`{"name": "distro5", "arch": "linux_amd64", "work_dir": "/data/mci", "ssh_key": "SSH Key", "provider": "mock", "user": "tibor"}`)
+	json := []byte(`{"name": "distro5", "arch": "linux_amd64", "work_dir": "/data/mci", "provider": "mock", "user": "tibor"}`)
 	h := s.rm.(*distroIDPutHandler)
 	h.distroID = "distro3"
 	h.body = json
@@ -721,7 +719,6 @@ func (s *DistroPatchByIDSuite) SetupTest() {
 			SetupAsSudo:          true,
 			Setup:                "Set-up string",
 			User:                 "root",
-			SSHKey:               sshKey,
 			SSHOptions: []string{
 				"StrictHostKeyChecking=no",
 				"BatchMode=yes",
@@ -953,23 +950,6 @@ func (s *DistroPatchByIDSuite) TestRunValidUser() {
 	s.Equal(apiDistro.User, utility.ToStringPtr("user101"))
 }
 
-func (s *DistroPatchByIDSuite) TestRunValidSSHKey() {
-	ctx := context.Background()
-	ctx = gimlet.AttachUser(ctx, &user.DBUser{Id: "me"})
-	json := []byte(`{"ssh_key": "New SSH Key"}`)
-	h := s.rm.(*distroIDPatchHandler)
-	h.distroID = "fedora8"
-	h.body = json
-
-	resp := s.rm.Run(ctx)
-	s.NotNil(resp.Data())
-	s.Equal(resp.Status(), http.StatusOK)
-
-	apiDistro, ok := (resp.Data()).(*restModel.APIDistro)
-	s.Require().True(ok)
-	s.Equal(apiDistro.SSHKey, utility.ToStringPtr("New SSH Key"))
-}
-
 func (s *DistroPatchByIDSuite) TestRunValidSSHOptions() {
 	ctx := context.Background()
 	ctx = gimlet.AttachUser(ctx, &user.DBUser{Id: "me"})
@@ -1043,7 +1023,7 @@ func (s *DistroPatchByIDSuite) TestRunValidContainer() {
 func (s *DistroPatchByIDSuite) TestRunInvalidEmptyStringValues() {
 	ctx := context.Background()
 	ctx = gimlet.AttachUser(ctx, &user.DBUser{Id: "me"})
-	json := []byte(`{"arch": "","user": "","work_dir": "","ssh_key": "","provider": "mock"}`)
+	json := []byte(`{"arch": "","user": "","work_dir": "","provider": "mock"}`)
 	h := s.rm.(*distroIDPatchHandler)
 	h.distroID = "fedora8"
 	h.body = json
@@ -1334,7 +1314,6 @@ func (s *DistroPatchByIDSuite) TestValidFindAndReplaceFullDocument() {
 					]
 				},
 				"clone_method": "legacy-ssh",
-				"ssh_key" : "New SSH Key",
 				"ssh_options" : [
 					"~StrictHostKeyChecking=no",
 					"~BatchMode=no",
@@ -1407,7 +1386,6 @@ func (s *DistroPatchByIDSuite) TestValidFindAndReplaceFullDocument() {
 	s.Equal(utility.ToStringPtr("/tmp/foo"), apiDistro.BootstrapSettings.PreconditionScripts[0].Path)
 	s.Equal(utility.ToStringPtr("echo foo"), apiDistro.BootstrapSettings.PreconditionScripts[0].Script)
 	s.Equal(utility.ToStringPtr("~root"), apiDistro.User)
-	s.Equal(utility.ToStringPtr("New SSH Key"), apiDistro.SSHKey)
 	s.Equal([]string{"~StrictHostKeyChecking=no", "~BatchMode=no", "~ConnectTimeout=10"}, apiDistro.SSHOptions)
 	s.False(apiDistro.UserSpawnAllowed)
 
@@ -1479,7 +1457,6 @@ func getMockDistrosdata() error {
 			SetupAsSudo: true,
 			Setup:       "Set-up script",
 			User:        "root",
-			SSHKey:      "SSH key string",
 			SSHOptions: []string{
 				"StrictHostKeyChecking=no",
 				"BatchMode=yes",

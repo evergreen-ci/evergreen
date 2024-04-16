@@ -7,6 +7,7 @@ import (
 	"io"
 	"os"
 	"path/filepath"
+	"runtime"
 	"strconv"
 	"strings"
 	"testing"
@@ -26,6 +27,10 @@ import (
 func TestPapertrailTrace(t *testing.T) {
 	if skip, _ := strconv.ParseBool(os.Getenv("SKIP_INTEGRATION_TESTS")); skip {
 		t.Skip("SKIP_INTEGRATION_TESTS is set, skipping integration test")
+	}
+
+	if runtime.GOOS == "darwin" {
+		t.Skip("papertrail.trace is not supported on MacOS currently because these hosts do not always run in AWS with the necessary networking configuration")
 	}
 
 	settings := testutil.GetIntegrationFile(t)

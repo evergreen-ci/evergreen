@@ -1523,10 +1523,13 @@ func FindHostsScheduledToStop(ctx context.Context) ([]Host, error) {
 	})
 }
 
+// PreStartThreshold is how long in advance Evergreen can check for hosts that
+// are scheduled to start up soon.
+const PreStartThreshold = 5 * time.Minute
+
 // FindHostsToSleep finds all unexpirable hosts that are due to start soon due
 // to their sleep schedule settings.
 func FindHostsScheduledToStart(ctx context.Context) ([]Host, error) {
-	const preWakeThreshold = 5 * time.Minute
 	now := time.Now()
 	sleepScheduleNextStartKey := bsonutil.GetDottedKeyName(SleepScheduleKey, SleepScheduleNextStartTimeKey)
 	sleepSchedulePermanentlyExemptKey := bsonutil.GetDottedKeyName(SleepScheduleKey, SleepSchedulePermanentlyExemptKey)
@@ -1539,7 +1542,7 @@ func FindHostsScheduledToStart(ctx context.Context) ([]Host, error) {
 		NoExpirationKey: true,
 		// Include hosts that are imminently about to reach their wakeup time to
 		// better ensure the host is running at the scheduled time.
-		sleepScheduleNextStartKey:         bson.M{"$lte": now.Add(preWakeThreshold)},
+		sleepScheduleNextStartKey:         bson.M{"$lte": now.Add(PreStartThreshold)},
 		sleepSchedulePermanentlyExemptKey: bson.M{"$ne": true},
 		"$or": []bson.M{
 			{
