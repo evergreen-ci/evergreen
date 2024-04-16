@@ -74,7 +74,6 @@ func (j *spawnhostStopJob) Run(ctx context.Context) {
 		return
 	}
 	if j.Source == evergreen.ModifySpawnHostSleepSchedule && flags.SleepScheduleDisabled {
-		// kim: TODO: test
 		grip.Notice(message.Fields{
 			"message": "no-oping scheduled stop because sleep schedule service flag is disabled",
 			"host_id": j.HostID,

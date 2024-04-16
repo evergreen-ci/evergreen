@@ -294,7 +294,6 @@ func TestSleepSchedulerJob(t *testing.T) {
 			assert.True(t, dbHost.SleepSchedule.NextStartTime.Equal(now), "next start time should be unchanged")
 			assert.True(t, dbHost.SleepSchedule.NextStopTime.After(now), "next stop time should be re-scheduled to be in the future")
 		},
-		// kim: NOTE; tests won't pass until DEVPROD-3951 is merged
 		"ReschedulesNextStartForHostExceedingAttemptTimeout": func(ctx context.Context, t *testing.T, env *mock.Environment, j *sleepSchedulerJob) {
 			now := utility.BSONTime(time.Now())
 			h := host.Host{
