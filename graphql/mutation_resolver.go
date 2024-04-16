@@ -637,7 +637,7 @@ func (r *mutationResolver) DefaultSectionToRepo(ctx context.Context, projectID *
 	if err := model.DefaultSectionToRepo(opts.ProjectIdentifier, model.ProjectPageSection(opts.Section), usr.Username()); err != nil {
 		return nil, InternalServerError.Send(ctx, fmt.Sprintf("error defaulting to repo for section: %s", err.Error()))
 	}
-	return projectID, nil
+	return &opts.ProjectIdentifier, nil
 }
 
 // DeleteProject is the resolver for the deleteProject field.
