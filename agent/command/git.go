@@ -86,7 +86,7 @@ type gitFetchProject struct {
 
 	// FullTreeClone forces Evergreen to clone the full tree of the repository.
 	// If set to false, Evergreen will clone the repository without the full tree.
-	FullTreeClone bool `mapstructure:"treeless_clone"`
+	FullTreeClone bool `mapstructure:"full_tree_clone"`
 
 	CommitterName string `mapstructure:"committer_name"`
 
