@@ -57,63 +57,60 @@ type ConfigSection interface {
 // Settings contains all configuration settings for running Evergreen. Settings
 // with the "id" struct tag should implement the ConfigSection interface.
 type Settings struct {
-	Id                 string                  `bson:"_id" json:"id" yaml:"id"`
-	Amboy              AmboyConfig             `yaml:"amboy" bson:"amboy" json:"amboy" id:"amboy"`
-	Api                APIConfig               `yaml:"api" bson:"api" json:"api" id:"api"`
-	ApiUrl             string                  `yaml:"api_url" bson:"api_url" json:"api_url"`
-	AuthConfig         AuthConfig              `yaml:"auth" bson:"auth" json:"auth" id:"auth"`
-	AWSInstanceRole    string                  `yaml:"aws_instance_role" bson:"aws_instance_role" json:"aws_instance_role"`
-	Banner             string                  `bson:"banner" json:"banner" yaml:"banner"`
-	BannerTheme        BannerTheme             `bson:"banner_theme" json:"banner_theme" yaml:"banner_theme"`
-	Buckets            BucketsConfig           `bson:"buckets" json:"buckets" yaml:"buckets" id:"buckets"`
-	Cedar              CedarConfig             `bson:"cedar" json:"cedar" yaml:"cedar" id:"cedar"`
-	ClientBinariesDir  string                  `yaml:"client_binaries_dir" bson:"client_binaries_dir" json:"client_binaries_dir"`
-	CommitQueue        CommitQueueConfig       `yaml:"commit_queue" bson:"commit_queue" json:"commit_queue" id:"commit_queue"`
-	ConfigDir          string                  `yaml:"configdir" bson:"configdir" json:"configdir"`
-	ContainerPools     ContainerPoolsConfig    `yaml:"container_pools" bson:"container_pools" json:"container_pools" id:"container_pools"`
-	Credentials        map[string]string       `yaml:"credentials" bson:"credentials" json:"credentials"`
-	CredentialsNew     util.KeyValuePairSlice  `yaml:"credentials_new" bson:"credentials_new" json:"credentials_new"`
-	Database           DBSettings              `yaml:"database" json:"database" bson:"database"`
-	DomainName         string                  `yaml:"domain_name" bson:"domain_name" json:"domain_name"`
-	Expansions         map[string]string       `yaml:"expansions" bson:"expansions" json:"expansions"`
-	ExpansionsNew      util.KeyValuePairSlice  `yaml:"expansions_new" bson:"expansions_new" json:"expansions_new"`
-	GithubPRCreatorOrg string                  `yaml:"github_pr_creator_org" bson:"github_pr_creator_org" json:"github_pr_creator_org"`
-	GithubOrgs         []string                `yaml:"github_orgs" bson:"github_orgs" json:"github_orgs"`
-	DisabledGQLQueries []string                `yaml:"disabled_gql_queries" bson:"disabled_gql_queries" json:"disabled_gql_queries"`
-	HostInit           HostInitConfig          `yaml:"hostinit" bson:"hostinit" json:"hostinit" id:"hostinit"`
-	HostJasper         HostJasperConfig        `yaml:"host_jasper" bson:"host_jasper" json:"host_jasper" id:"host_jasper"`
-	Jira               JiraConfig              `yaml:"jira" bson:"jira" json:"jira" id:"jira"`
-	JIRANotifications  JIRANotificationsConfig `yaml:"jira_notifications" json:"jira_notifications" bson:"jira_notifications" id:"jira_notifications"`
-	Keys               map[string]string       `yaml:"keys" bson:"keys" json:"keys"`
-	// TODO (DEVPROD-4798): remove KanopySSHKeyPath after the cutover to Kanopy.
-	KanopySSHKeyPath    string                 `yaml:"kanopy_ssh_key_path" bson:"kanopy_ssh_key_path" json:"kanopy_ssh_key_path"`
-	KeysNew             util.KeyValuePairSlice `yaml:"keys_new" bson:"keys_new" json:"keys_new"`
-	LDAPRoleMap         LDAPRoleMap            `yaml:"ldap_role_map" bson:"ldap_role_map" json:"ldap_role_map"`
-	LoggerConfig        LoggerConfig           `yaml:"logger_config" bson:"logger_config" json:"logger_config" id:"logger_config"`
-	LogPath             string                 `yaml:"log_path" bson:"log_path" json:"log_path"`
-	NewRelic            NewRelicConfig         `yaml:"newrelic" bson:"newrelic" json:"newrelic" id:"newrelic"`
-	Notify              NotifyConfig           `yaml:"notify" bson:"notify" json:"notify" id:"notify"`
-	Plugins             PluginConfig           `yaml:"plugins" bson:"plugins" json:"plugins"`
-	PluginsNew          util.KeyValuePairSlice `yaml:"plugins_new" bson:"plugins_new" json:"plugins_new"`
-	PodLifecycle        PodLifecycleConfig     `yaml:"pod_lifecycle" bson:"pod_lifecycle" json:"pod_lifecycle" id:"pod_lifecycle"`
-	PprofPort           string                 `yaml:"pprof_port" bson:"pprof_port" json:"pprof_port"`
-	ProjectCreation     ProjectCreationConfig  `yaml:"project_creation" bson:"project_creation" json:"project_creation" id:"project_creation"`
-	Providers           CloudProviders         `yaml:"providers" bson:"providers" json:"providers" id:"providers"`
-	RepoTracker         RepoTrackerConfig      `yaml:"repotracker" bson:"repotracker" json:"repotracker" id:"repotracker"`
-	Scheduler           SchedulerConfig        `yaml:"scheduler" bson:"scheduler" json:"scheduler" id:"scheduler"`
-	ServiceFlags        ServiceFlags           `bson:"service_flags" json:"service_flags" id:"service_flags" yaml:"service_flags"`
-	SSHKeyDirectory     string                 `yaml:"ssh_key_directory" bson:"ssh_key_directory" json:"ssh_key_directory"`
-	SSHKeyPairs         []SSHKeyPair           `yaml:"ssh_key_pairs" bson:"ssh_key_pairs" json:"ssh_key_pairs"`
-	Slack               SlackConfig            `yaml:"slack" bson:"slack" json:"slack" id:"slack"`
-	SleepSchedule       SleepScheduleConfig    `yaml:"sleep_schedule" bson:"sleep_schedule" json:"sleep_schedule" id:"sleep_schedule"`
-	Splunk              SplunkConfig           `yaml:"splunk" bson:"splunk" json:"splunk" id:"splunk"`
-	TaskLimits          TaskLimitsConfig       `yaml:"task_limits" bson:"task_limits" json:"task_limits" id:"task_limits"`
-	Triggers            TriggerConfig          `yaml:"triggers" bson:"triggers" json:"triggers" id:"triggers"`
-	Ui                  UIConfig               `yaml:"ui" bson:"ui" json:"ui" id:"ui"`
-	Spawnhost           SpawnHostConfig        `yaml:"spawnhost" bson:"spawnhost" json:"spawnhost" id:"spawnhost"`
-	ShutdownWaitSeconds int                    `yaml:"shutdown_wait_seconds" bson:"shutdown_wait_seconds" json:"shutdown_wait_seconds"`
-	Tracer              TracerConfig           `yaml:"tracer" bson:"tracer" json:"tracer" id:"tracer"`
-	GitHubCheckRun      GitHubCheckRunConfig   `yaml:"github_check_run" bson:"github_check_run" json:"github_check_run" id:"github_check_run"`
+	Id                  string                  `bson:"_id" json:"id" yaml:"id"`
+	Amboy               AmboyConfig             `yaml:"amboy" bson:"amboy" json:"amboy" id:"amboy"`
+	Api                 APIConfig               `yaml:"api" bson:"api" json:"api" id:"api"`
+	ApiUrl              string                  `yaml:"api_url" bson:"api_url" json:"api_url"`
+	AuthConfig          AuthConfig              `yaml:"auth" bson:"auth" json:"auth" id:"auth"`
+	AWSInstanceRole     string                  `yaml:"aws_instance_role" bson:"aws_instance_role" json:"aws_instance_role"`
+	Banner              string                  `bson:"banner" json:"banner" yaml:"banner"`
+	BannerTheme         BannerTheme             `bson:"banner_theme" json:"banner_theme" yaml:"banner_theme"`
+	Buckets             BucketsConfig           `bson:"buckets" json:"buckets" yaml:"buckets" id:"buckets"`
+	Cedar               CedarConfig             `bson:"cedar" json:"cedar" yaml:"cedar" id:"cedar"`
+	ClientBinariesDir   string                  `yaml:"client_binaries_dir" bson:"client_binaries_dir" json:"client_binaries_dir"`
+	CommitQueue         CommitQueueConfig       `yaml:"commit_queue" bson:"commit_queue" json:"commit_queue" id:"commit_queue"`
+	ConfigDir           string                  `yaml:"configdir" bson:"configdir" json:"configdir"`
+	ContainerPools      ContainerPoolsConfig    `yaml:"container_pools" bson:"container_pools" json:"container_pools" id:"container_pools"`
+	Credentials         map[string]string       `yaml:"credentials" bson:"credentials" json:"credentials"`
+	CredentialsNew      util.KeyValuePairSlice  `yaml:"credentials_new" bson:"credentials_new" json:"credentials_new"`
+	Database            DBSettings              `yaml:"database" json:"database" bson:"database"`
+	DomainName          string                  `yaml:"domain_name" bson:"domain_name" json:"domain_name"`
+	Expansions          map[string]string       `yaml:"expansions" bson:"expansions" json:"expansions"`
+	ExpansionsNew       util.KeyValuePairSlice  `yaml:"expansions_new" bson:"expansions_new" json:"expansions_new"`
+	GithubPRCreatorOrg  string                  `yaml:"github_pr_creator_org" bson:"github_pr_creator_org" json:"github_pr_creator_org"`
+	GithubOrgs          []string                `yaml:"github_orgs" bson:"github_orgs" json:"github_orgs"`
+	DisabledGQLQueries  []string                `yaml:"disabled_gql_queries" bson:"disabled_gql_queries" json:"disabled_gql_queries"`
+	HostInit            HostInitConfig          `yaml:"hostinit" bson:"hostinit" json:"hostinit" id:"hostinit"`
+	HostJasper          HostJasperConfig        `yaml:"host_jasper" bson:"host_jasper" json:"host_jasper" id:"host_jasper"`
+	Jira                JiraConfig              `yaml:"jira" bson:"jira" json:"jira" id:"jira"`
+	JIRANotifications   JIRANotificationsConfig `yaml:"jira_notifications" json:"jira_notifications" bson:"jira_notifications" id:"jira_notifications"`
+	KanopySSHKeyPath    string                  `yaml:"kanopy_ssh_key_path" bson:"kanopy_ssh_key_path" json:"kanopy_ssh_key_path"`
+	LDAPRoleMap         LDAPRoleMap             `yaml:"ldap_role_map" bson:"ldap_role_map" json:"ldap_role_map"`
+	LoggerConfig        LoggerConfig            `yaml:"logger_config" bson:"logger_config" json:"logger_config" id:"logger_config"`
+	LogPath             string                  `yaml:"log_path" bson:"log_path" json:"log_path"`
+	NewRelic            NewRelicConfig          `yaml:"newrelic" bson:"newrelic" json:"newrelic" id:"newrelic"`
+	Notify              NotifyConfig            `yaml:"notify" bson:"notify" json:"notify" id:"notify"`
+	Plugins             PluginConfig            `yaml:"plugins" bson:"plugins" json:"plugins"`
+	PluginsNew          util.KeyValuePairSlice  `yaml:"plugins_new" bson:"plugins_new" json:"plugins_new"`
+	PodLifecycle        PodLifecycleConfig      `yaml:"pod_lifecycle" bson:"pod_lifecycle" json:"pod_lifecycle" id:"pod_lifecycle"`
+	PprofPort           string                  `yaml:"pprof_port" bson:"pprof_port" json:"pprof_port"`
+	ProjectCreation     ProjectCreationConfig   `yaml:"project_creation" bson:"project_creation" json:"project_creation" id:"project_creation"`
+	Providers           CloudProviders          `yaml:"providers" bson:"providers" json:"providers" id:"providers"`
+	RepoTracker         RepoTrackerConfig       `yaml:"repotracker" bson:"repotracker" json:"repotracker" id:"repotracker"`
+	Scheduler           SchedulerConfig         `yaml:"scheduler" bson:"scheduler" json:"scheduler" id:"scheduler"`
+	ServiceFlags        ServiceFlags            `bson:"service_flags" json:"service_flags" id:"service_flags" yaml:"service_flags"`
+	SSHKeyDirectory     string                  `yaml:"ssh_key_directory" bson:"ssh_key_directory" json:"ssh_key_directory"`
+	SSHKeyPairs         []SSHKeyPair            `yaml:"ssh_key_pairs" bson:"ssh_key_pairs" json:"ssh_key_pairs"`
+	Slack               SlackConfig             `yaml:"slack" bson:"slack" json:"slack" id:"slack"`
+	SleepSchedule       SleepScheduleConfig     `yaml:"sleep_schedule" bson:"sleep_schedule" json:"sleep_schedule" id:"sleep_schedule"`
+	Splunk              SplunkConfig            `yaml:"splunk" bson:"splunk" json:"splunk" id:"splunk"`
+	TaskLimits          TaskLimitsConfig        `yaml:"task_limits" bson:"task_limits" json:"task_limits" id:"task_limits"`
+	Triggers            TriggerConfig           `yaml:"triggers" bson:"triggers" json:"triggers" id:"triggers"`
+	Ui                  UIConfig                `yaml:"ui" bson:"ui" json:"ui" id:"ui"`
+	Spawnhost           SpawnHostConfig         `yaml:"spawnhost" bson:"spawnhost" json:"spawnhost" id:"spawnhost"`
+	ShutdownWaitSeconds int                     `yaml:"shutdown_wait_seconds" bson:"shutdown_wait_seconds" json:"shutdown_wait_seconds"`
+	Tracer              TracerConfig            `yaml:"tracer" bson:"tracer" json:"tracer" id:"tracer"`
+	GitHubCheckRun      GitHubCheckRunConfig    `yaml:"github_check_run" bson:"github_check_run" json:"github_check_run" id:"github_check_run"`
 }
 
 func (c *Settings) SectionId() string { return ConfigDocID }
@@ -154,9 +151,7 @@ func (c *Settings) Set(ctx context.Context) error {
 			githubPRCreatorOrgKey: c.GithubPRCreatorOrg,
 			githubOrgsKey:         c.GithubOrgs,
 			disabledGQLQueriesKey: c.DisabledGQLQueries,
-			keysKey:               c.Keys,
 			kanopySSHKeyPathKey:   c.KanopySSHKeyPath,
-			keysNewKey:            c.KeysNew,
 			ldapRoleMapKey:        c.LDAPRoleMap,
 			logPathKey:            c.LogPath,
 			pprofPortKey:          c.PprofPort,
@@ -193,11 +188,6 @@ func (c *Settings) ValidateAndDefault() error {
 			catcher.Add(errors.Wrap(err, "parsing expansions"))
 		}
 	}
-	if len(c.KeysNew) > 0 {
-		if c.Keys, err = c.KeysNew.Map(); err != nil {
-			catcher.Add(errors.Wrap(err, "parsing keys"))
-		}
-	}
 	if len(c.PluginsNew) > 0 {
 		tempPlugins, err := c.PluginsNew.NestedMap()
 		if err != nil {
@@ -230,9 +220,7 @@ func (c *Settings) ValidateAndDefault() error {
 		catcher.ErrorfWhen(c.SSHKeyPairs[i].Private == "", "must specify a private key for SSH key pair '%s'", c.SSHKeyPairs[i].Name)
 		// Avoid overwriting the filepath stored in Keys, which is a special
 		// case for the path to the legacy SSH identity file.
-		for _, key := range c.Keys {
-			catcher.ErrorfWhen(c.SSHKeyPairs[i].PrivatePath(c) == key, "cannot overwrite the legacy SSH key '%s'", key)
-		}
+		catcher.ErrorfWhen(c.SSHKeyPairs[i].PrivatePath(c) == c.KanopySSHKeyPath, "cannot overwrite the legacy SSH key at path '%s'", c.KanopySSHKeyPath)
 
 		// ValidateAndDefault can be called before the environment has been
 		// initialized.

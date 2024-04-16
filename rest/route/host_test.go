@@ -6,6 +6,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"net/http"
+	"os"
 	"testing"
 	"time"
 
@@ -531,8 +532,6 @@ func TestHostChangeRDPPasswordHandler(t *testing.T) {
 	require.NoError(t, env.Configure(ctx))
 	s.env = env
 
-	s.env.Settings().Keys["ssh_key_name"] = "ssh_key"
-
 	setupMockHostsConnector(t, s.env)
 
 	suite.Run(t, s)
@@ -540,6 +539,10 @@ func TestHostChangeRDPPasswordHandler(t *testing.T) {
 
 func (s *hostChangeRDPPasswordHandlerSuite) SetupTest() {
 	s.rm = makeHostChangePassword(s.env)
+
+	keyFile, err := os.CreateTemp(s.T().TempDir(), "")
+	s.Require().NoError(err)
+	s.env.(*mock.Environment).EvergreenSettings.KanopySSHKeyPath = keyFile.Name()
 }
 
 func (s *hostChangeRDPPasswordHandlerSuite) TestExecuteWithNoUserPanics() {
@@ -836,7 +839,6 @@ func setupMockHostsConnector(t *testing.T, env evergreen.Environment) {
 		Id:       "windows",
 		Arch:     "windows_amd64",
 		Provider: evergreen.ProviderNameMock,
-		SSHKey:   "ssh_key_name",
 	}
 	users := []user.DBUser{
 		{

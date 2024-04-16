@@ -154,8 +154,6 @@ func (h *Host) GetSSHOptions(settings *evergreen.Settings) ([]string, error) {
 
 	if _, err := os.Stat(settings.KanopySSHKeyPath); err == nil {
 		keyPaths = append(keyPaths, settings.KanopySSHKeyPath)
-	} else if defaultKeyPath := settings.Keys[h.Distro.SSHKey]; defaultKeyPath != "" {
-		keyPaths = append(keyPaths, defaultKeyPath)
 	}
 	if len(keyPaths) == 0 {
 		return nil, errors.New("no SSH identity files available")
