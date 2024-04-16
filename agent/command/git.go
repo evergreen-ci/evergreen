@@ -84,6 +84,10 @@ type gitFetchProject struct {
 	// If a depth (CloneDepth) is specified, the clone will be single-branch (as implied by Git).
 	CloneAllBranches bool `mapstructure:"clone_all_branches"`
 
+	// FullTreeClone forces Evergreen to clone the full tree of the repository.
+	// If set to false, Evergreen will clone the repository without the full tree.
+	FullTreeClone bool `mapstructure:"treeless_clone"`
+
 	CommitterName string `mapstructure:"committer_name"`
 
 	CommitterEmail string `mapstructure:"committer_email"`
@@ -101,6 +105,7 @@ type cloneOpts struct {
 	token                  string
 	recurseSubmodules      bool
 	cloneAllBranches       bool
+	fullTreeClone          bool
 	useVerbose             bool
 	usePatchMergeCommitSha bool
 	cloneDepth             int
@@ -239,6 +244,9 @@ func (opts cloneOpts) buildGitCloneCommand() ([]string, error) {
 	}
 	if !opts.cloneAllBranches {
 		clone = fmt.Sprintf("%s --single-branch", clone)
+	}
+	if !opts.fullTreeClone {
+		clone = fmt.Sprintf("%s --filter=tree:0", clone)
 	}
 
 	redactedClone := strings.Replace(clone, opts.token, "[redacted oauth token]", -1)
@@ -458,6 +466,7 @@ func (c *gitFetchProject) opts(projectMethod, projectToken string, logger client
 		token:                  projectToken,
 		recurseSubmodules:      c.RecurseSubmodules,
 		cloneAllBranches:       c.CloneAllBranches,
+		fullTreeClone:          c.FullTreeClone,
 		usePatchMergeCommitSha: true,
 	}
 	cloneDepth := c.CloneDepth
