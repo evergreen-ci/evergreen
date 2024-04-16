@@ -181,7 +181,7 @@ func StopSpawnHost(ctx context.Context, env evergreen.Environment, u *user.DBUse
 	}
 
 	ts := utility.RoundPartOfMinute(1).Format(units.TSFormat)
-	stopJob := units.NewSpawnhostStopJob(h, shouldKeepOff, u.Id, ts)
+	stopJob := units.NewSpawnhostStopJob(h, shouldKeepOff, evergreen.ModifySpawnHostManual, u.Id, ts)
 	if err := units.EnqueueSpawnHostModificationJob(ctx, env, stopJob); err != nil {
 		if amboy.IsDuplicateJobScopeError(err) {
 			err = errHostStatusChangeConflict
@@ -199,7 +199,7 @@ func StartSpawnHost(ctx context.Context, env evergreen.Environment, u *user.DBUs
 	}
 
 	ts := utility.RoundPartOfMinute(1).Format(units.TSFormat)
-	startJob := units.NewSpawnhostStartJob(h, u.Id, ts)
+	startJob := units.NewSpawnhostStartJob(h, evergreen.ModifySpawnHostManual, u.Id, ts)
 	if err := units.EnqueueSpawnHostModificationJob(ctx, env, startJob); err != nil {
 		if amboy.IsDuplicateJobScopeError(err) {
 			err = errHostStatusChangeConflict
