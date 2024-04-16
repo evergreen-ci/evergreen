@@ -581,11 +581,10 @@ func (s *GitGetProjectSuite) TestBuildSourceCommandForPullRequests() {
 
 	cmds, err := c.buildSourceCloneCommand(s.ctx, s.comm, logger, conf, opts)
 	s.NoError(err)
-	s.Require().Len(cmds, 13)
+	s.Require().Len(cmds, 10)
+	fmt.Println(cmds)
 	s.True(utility.StringSliceContainsOrderedPrefixSubset(cmds, []string{
-		"git fetch origin \"pull/9001/head:evg-pr-test-",
-		"git checkout \"evg-pr-test-",
-		"git reset --hard 55ca6286e3e4f4fba5d0448333fa99fc5a404a73",
+		"git clone https://x-access-token:PROJECTTOKEN@github.com/octocat/evergreen.git 'dir' --single-branch",
 		"git log --oneline -n 10",
 	}))
 }
@@ -610,11 +609,9 @@ func (s *GitGetProjectSuite) TestBuildSourceCommandForGitHubMergeQueue() {
 
 	cmds, err := c.buildSourceCloneCommand(s.ctx, s.comm, logger, conf, opts)
 	s.NoError(err)
-	s.Len(cmds, 13)
+	s.Len(cmds, 10)
 	s.True(utility.StringSliceContainsOrderedPrefixSubset(cmds, []string{
-		"git fetch origin \"gh-readonly-queue/main/pr-515-9cd8a2532bcddf58369aa82eb66ba88e2323c056:evg-mg-test-",
-		"git checkout \"evg-mg-test-",
-		"git reset --hard d2a90288ad96adca4a7d0122d8d4fd1deb24db11",
+		"git clone https://x-access-token:PROJECTTOKEN@github.com/evergreen-ci/sample.git 'dir' --branch 'gh-readonly-queue/main/pr-515-9cd8a2532bcddf58369aa82eb66ba88e2323c056' --single-branch",
 		"git log --oneline -n 10",
 	}))
 }
@@ -643,7 +640,7 @@ func (s *GitGetProjectSuite) TestBuildSourceCommandForCLIMergeTests() {
 	cmds, err := c.buildSourceCloneCommand(s.ctx, s.comm, logger, conf, opts)
 	s.NoError(err)
 	s.Len(cmds, 10)
-	s.True(strings.HasSuffix(cmds[6], fmt.Sprintf("--branch '%s'", s.taskConfig2.ProjectRef.Branch)))
+	s.True(strings.HasSuffix(cmds[6], fmt.Sprintf("--branch '%s' --single-branch", s.taskConfig2.ProjectRef.Branch)))
 }
 
 func (s *GitGetProjectSuite) TestBuildModuleCommand() {
