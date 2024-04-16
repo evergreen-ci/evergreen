@@ -5,7 +5,6 @@ import (
 	"context"
 	"fmt"
 	"math"
-	"regexp"
 	"sort"
 	"strconv"
 	"strings"
@@ -41,11 +40,14 @@ type ValidationErrorLevel int64
 const (
 	Error ValidationErrorLevel = iota
 	Warning
-	unauthorizedCharacters                  = "|"
 	EC2HostCreateTotalLimit                 = 1000
 	DockerHostCreateTotalLimit              = 200
 	HostCreateLimitPerTask                  = 3
 	maxTaskSyncCommandsForDependenciesCheck = 300 // this should take about one second
+)
+
+var (
+	unauthorizedCharacters = []string{"|", "&", ";", "$", "`", "'", "*", "?", "#", "~", "%", "^", "+", "@", "{", "}", "(", ")", "<", ">", " "}
 )
 
 func (vel ValidationErrorLevel) String() string {
@@ -990,15 +992,12 @@ func validateProjectLimits(_ context.Context, settings *evergreen.Settings, proj
 func validateTaskNames(project *model.Project) ValidationErrors {
 	errs := ValidationErrors{}
 
-	validSpecialCharacters := []string{"_", ".", "/", ":", "•", "=", "[", "]", "-"}
-	validCharacters := `a-zA-Z0-9` + regexp.QuoteMeta(strings.Join(validSpecialCharacters, ""))
-	validRegex, _ := regexp.Compile(fmt.Sprintf(`^[%s]*$`, validCharacters))
 	for _, task := range project.Tasks {
-		if !validRegex.MatchString(strings.TrimSpace(task.Name)) {
+		if strings.ContainsAny(strings.TrimSpace(task.Name), strings.Join(unauthorizedCharacters, "")) {
 			errs = append(errs,
 				ValidationError{
-					Message: fmt.Sprintf("task name '%s' contains unauthorized characters",
-						task.Name),
+					Message: fmt.Sprintf("task name '%s' contains unauthorized characters (%s)",
+						task.Name, unauthorizedCharacters),
 					Level: Error,
 				})
 		}
@@ -1126,7 +1125,7 @@ func validateBVNames(project *model.Project) ValidationErrors {
 			})
 		}
 
-		if strings.ContainsAny(buildVariant.Name, unauthorizedCharacters) {
+		if strings.ContainsAny(buildVariant.Name, strings.Join(unauthorizedCharacters, "")) {
 			errs = append(errs,
 				ValidationError{
 					Message: fmt.Sprintf("buildvariant name '%s' contains unauthorized characters (%s)",
