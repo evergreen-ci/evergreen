@@ -520,6 +520,9 @@ func getFile(ctx context.Context, token, owner, repo, path, ref string) (*github
 // SendPendingStatusToGithub sends a pending status to a Github PR patch
 // associated with a given version.
 func SendPendingStatusToGithub(ctx context.Context, input SendGithubStatusInput, urlBase string) error {
+	ctx, span := tracer.Start(ctx, "send-pending-status-to-github")
+	defer span.End()
+
 	flags, err := evergreen.GetServiceFlags(ctx)
 	if err != nil {
 		return errors.Wrap(err, "error retrieving admin settings")
