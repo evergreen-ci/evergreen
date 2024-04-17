@@ -2,9 +2,9 @@
 Evergreen's stepback bisection performs stepback by continuously reducing the amount of commits needed to test by half. To enable it, go to the Project Settings page "General" tab and enable the 'Stepback Bisection' flag. For this flag to work, the 'Stepback' flag will also need to be enabled. As well, stepback only activates on tasks that have failed normally and not for more specific reasons (like setup failed, system failed, etc.).
 
 ## Navigation
-Once activated, tasks going through stepback biscection will have a new metadata tag labeled "Stepback" that indicates the progress of stepback (Linear stepback will not have this). If it states completed, you can navigate to the commit that broke* this test by going to the top right "Relevant Commits" dropdown and selecting "Go to breaking commit". If you notice "Go to breaking commit" is not available, it means you are on the commit that broke the test.
+Once activated, tasks going through stepback biscection will have a new metadata tag labeled "Stepback" that indicates the progress of stepback (linear stepback will not have this). If it states completed, you can navigate to the commit that broke* this test by going to the top right "Relevant Commits" dropdown and selecting "Go to breaking commit". If you notice "Go to breaking commit" is not available, it means you are on the commit that broke the test.
 
-* This does not take in to account flaky tests that may give false positives.
+* This does not take into account flaky tests that may give false positives.
 
 ## Motivation
 Traditionally, Evergreen performed linear stepback which activates each previous inactive commit. If stepback bisection is enabled, Evergreen will use bisection instead of linear.
