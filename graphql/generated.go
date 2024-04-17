@@ -284,6 +284,7 @@ type ComplexityRoot struct {
 		User                  func(childComplexity int) int
 		UserSpawnAllowed      func(childComplexity int) int
 		ValidProjects         func(childComplexity int) int
+		Warnings              func(childComplexity int) int
 		WorkDir               func(childComplexity int) int
 	}
 
@@ -2829,6 +2830,13 @@ func (e *executableSchema) Complexity(typeName, field string, childComplexity in
 		}
 
 		return e.complexity.Distro.ValidProjects(childComplexity), true
+
+	case "Distro.warnings":
+		if e.complexity.Distro.Warnings == nil {
+			break
+		}
+
+		return e.complexity.Distro.Warnings(childComplexity), true
 
 	case "Distro.workDir":
 		if e.complexity.Distro.WorkDir == nil {
@@ -17088,6 +17096,50 @@ func (ec *executionContext) _Distro_note(ctx context.Context, field graphql.Coll
 }
 
 func (ec *executionContext) fieldContext_Distro_note(ctx context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "Distro",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type String does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _Distro_warnings(ctx context.Context, field graphql.CollectedField, obj *model.APIDistro) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_Distro_warnings(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.Warnings, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.(*string)
+	fc.Result = res
+	return ec.marshalNString2ᚖstring(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_Distro_warnings(ctx context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
 	fc = &graphql.FieldContext{
 		Object:     "Distro",
 		Field:      field,
@@ -43148,6 +43200,8 @@ func (ec *executionContext) fieldContext_Query_distro(ctx context.Context, field
 				return ec.fieldContext_Distro_name(ctx, field)
 			case "note":
 				return ec.fieldContext_Distro_note(ctx, field)
+			case "warnings":
+				return ec.fieldContext_Distro_warnings(ctx, field)
 			case "plannerSettings":
 				return ec.fieldContext_Distro_plannerSettings(ctx, field)
 			case "provider":
@@ -43326,6 +43380,8 @@ func (ec *executionContext) fieldContext_Query_distros(ctx context.Context, fiel
 				return ec.fieldContext_Distro_name(ctx, field)
 			case "note":
 				return ec.fieldContext_Distro_note(ctx, field)
+			case "warnings":
+				return ec.fieldContext_Distro_warnings(ctx, field)
 			case "plannerSettings":
 				return ec.fieldContext_Distro_plannerSettings(ctx, field)
 			case "provider":
@@ -49131,6 +49187,8 @@ func (ec *executionContext) fieldContext_SaveDistroPayload_distro(ctx context.Co
 				return ec.fieldContext_Distro_name(ctx, field)
 			case "note":
 				return ec.fieldContext_Distro_note(ctx, field)
+			case "warnings":
+				return ec.fieldContext_Distro_warnings(ctx, field)
 			case "plannerSettings":
 				return ec.fieldContext_Distro_plannerSettings(ctx, field)
 			case "provider":
@@ -68299,7 +68357,7 @@ func (ec *executionContext) unmarshalInputDistroInput(ctx context.Context, obj i
 		asMap[k] = v
 	}
 
-	fieldsInOrder := [...]string{"adminOnly", "aliases", "arch", "authorizedKeysFile", "bootstrapSettings", "containerPool", "disabled", "disableShallowClone", "dispatcherSettings", "expansions", "finderSettings", "homeVolumeSettings", "hostAllocatorSettings", "iceCreamSettings", "isCluster", "isVirtualWorkStation", "name", "note", "plannerSettings", "provider", "providerSettingsList", "setup", "setupAsSudo", "sshKey", "sshOptions", "user", "userSpawnAllowed", "validProjects", "workDir", "mountpoints"}
+	fieldsInOrder := [...]string{"adminOnly", "aliases", "arch", "authorizedKeysFile", "bootstrapSettings", "containerPool", "disabled", "disableShallowClone", "dispatcherSettings", "expansions", "finderSettings", "homeVolumeSettings", "hostAllocatorSettings", "iceCreamSettings", "isCluster", "isVirtualWorkStation", "name", "warnings", "note", "plannerSettings", "provider", "providerSettingsList", "setup", "setupAsSudo", "sshKey", "sshOptions", "user", "userSpawnAllowed", "validProjects", "workDir", "mountpoints"}
 	for _, k := range fieldsInOrder {
 		v, ok := asMap[k]
 		if !ok {
@@ -68446,6 +68504,13 @@ func (ec *executionContext) unmarshalInputDistroInput(ctx context.Context, obj i
 				err := fmt.Errorf(`unexpected type %T from directive, should be *string`, tmp)
 				return it, graphql.ErrorOnPath(ctx, err)
 			}
+		case "warnings":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("warnings"))
+			data, err := ec.unmarshalOString2ᚖstring(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.Warnings = data
 		case "note":
 			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("note"))
 			data, err := ec.unmarshalNString2ᚖstring(ctx, v)
@@ -73888,6 +73953,11 @@ func (ec *executionContext) _Distro(ctx context.Context, sel ast.SelectionSet, o
 			}
 		case "note":
 			out.Values[i] = ec._Distro_note(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				atomic.AddUint32(&out.Invalids, 1)
+			}
+		case "warnings":
+			out.Values[i] = ec._Distro_warnings(ctx, field, obj)
 			if out.Values[i] == graphql.Null {
 				atomic.AddUint32(&out.Invalids, 1)
 			}

@@ -362,6 +362,7 @@ type APIDistro struct {
 	IsVirtualWorkstation  bool                     `json:"is_virtual_workstation"`
 	IsCluster             bool                     `json:"is_cluster"`
 	Note                  *string                  `json:"note"`
+	Warnings              *string                  `json:"warnings"`
 	ValidProjects         []*string                `json:"valid_projects"`
 	Mountpoints           []string                 `json:"mountpoints"`
 }
@@ -387,6 +388,7 @@ func (apiDistro *APIDistro) BuildFromService(d distro.Distro) {
 	apiDistro.ContainerPool = utility.ToStringPtr(d.ContainerPool)
 	apiDistro.DisableShallowClone = d.DisableShallowClone
 	apiDistro.Note = utility.ToStringPtr(d.Note)
+	apiDistro.Warnings = utility.ToStringPtr(d.Warnings)
 	apiDistro.ValidProjects = utility.ToStringPtrSlice(d.ValidProjects)
 	apiDistro.Mountpoints = d.Mountpoints
 	if d.Expansions != nil {
@@ -463,6 +465,7 @@ func (apiDistro *APIDistro) ToService() *distro.Distro {
 
 	d.DisableShallowClone = apiDistro.DisableShallowClone
 	d.Note = utility.FromStringPtr(apiDistro.Note)
+	d.Warnings = utility.FromStringPtr(apiDistro.Warnings)
 	d.ValidProjects = utility.FromStringPtrSlice(apiDistro.ValidProjects)
 
 	d.IsVirtualWorkstation = apiDistro.IsVirtualWorkstation

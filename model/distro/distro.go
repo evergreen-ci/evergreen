@@ -48,6 +48,7 @@ type Distro struct {
 	HostAllocatorSettings HostAllocatorSettings `bson:"host_allocator_settings" json:"host_allocator_settings" mapstructure:"host_allocator_settings"`
 	DisableShallowClone   bool                  `bson:"disable_shallow_clone" json:"disable_shallow_clone" mapstructure:"disable_shallow_clone"`
 	Note                  string                `bson:"note" json:"note" mapstructure:"note"`
+	Warnings              string                `bson:"warnings,omitempty" json:"warnings,omitempty" mapstructure:"warnings,omitempty"`
 	ValidProjects         []string              `bson:"valid_projects,omitempty" json:"valid_projects,omitempty" mapstructure:"valid_projects,omitempty"`
 	IsVirtualWorkstation  bool                  `bson:"is_virtual_workstation" json:"is_virtual_workstation" mapstructure:"is_virtual_workstation"`
 	IsCluster             bool                  `bson:"is_cluster" json:"is_cluster" mapstructure:"is_cluster"`
