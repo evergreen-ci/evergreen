@@ -404,7 +404,7 @@ func restartTasks(ctx context.Context, allFinishedTasks []task.Task, caller, ver
 	}
 
 	// Set all the task fields to indicate restarted
-	if err := MarkTasksReset(ctx, restartIds); err != nil {
+	if err := MarkTasksReset(ctx, restartIds, caller); err != nil {
 		return errors.WithStack(err)
 	}
 	for _, t := range allFinishedTasks {

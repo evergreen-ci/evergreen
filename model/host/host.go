@@ -356,10 +356,10 @@ type SleepScheduleInfo struct {
 	WholeWeekdaysOff []time.Weekday `bson:"whole_weekdays_off" json:"whole_weekdays_off"`
 	// DailyStartTime and DailyStopTime represent a daily schedule for when to
 	// start a stopped host back up. The format is "HH:MM".
-	DailyStartTime string `bson:"daily_sleep_start_time" json:"daily_sleep_start_time"`
+	DailyStartTime string `bson:"daily_start_time" json:"daily_start_time"`
 	// DailyStopTime represents a daily schedule for when to stop a host. The
 	// format is "HH:MM".
-	DailyStopTime string `bson:"daily_sleep_stop_time" json:"daily_sleep_stop_time"`
+	DailyStopTime string `bson:"daily_stop_time" json:"daily_stop_time"`
 	// TimeZone is the time zone for this host's sleep schedule.
 	TimeZone string `bson:"time_zone" json:"time_zone"`
 	// TemporarilyExemptUntil stores when a user's temporary exemption ends, if
@@ -3839,4 +3839,36 @@ func getNextScheduledTime(after time.Time, spec string) (time.Time, error) {
 		return time.Time{}, errors.New("could not determine next scheduled time")
 	}
 	return nextTriggerAt, nil
+}
+
+// SetNextScheduledStart sets the next time the host is planned to start for its
+// sleep schedule.
+func (h *Host) SetNextScheduledStart(ctx context.Context, t time.Time) error {
+	sleepScheduleStartKey := bsonutil.GetDottedKeyName(SleepScheduleKey, SleepScheduleNextStartTimeKey)
+	if err := UpdateOne(ctx,
+		bson.M{IdKey: h.Id},
+		bson.M{"$set": bson.M{sleepScheduleStartKey: t}},
+	); err != nil {
+		return err
+	}
+
+	h.SleepSchedule.NextStartTime = t
+
+	return nil
+}
+
+// SetNextScheduledStop sets the next time the host is planned to stop for its
+// sleep schedule.
+func (h *Host) SetNextScheduledStop(ctx context.Context, t time.Time) error {
+	sleepScheduleStopKey := bsonutil.GetDottedKeyName(SleepScheduleKey, SleepScheduleNextStopTimeKey)
+	if err := UpdateOne(ctx,
+		bson.M{IdKey: h.Id},
+		bson.M{"$set": bson.M{sleepScheduleStopKey: t}},
+	); err != nil {
+		return err
+	}
+
+	h.SleepSchedule.NextStopTime = t
+
+	return nil
 }

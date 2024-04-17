@@ -104,15 +104,6 @@ func TestCopyDistro(t *testing.T) {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 
-	config, err := evergreen.GetConfig(ctx)
-	assert.NoError(t, err)
-	config.Keys = map[string]string{"abc": "123"}
-	assert.NoError(t, config.Set(ctx))
-	defer func() {
-		config.Keys = map[string]string{}
-		assert.NoError(t, config.Set(ctx))
-	}()
-
 	for tName, tCase := range map[string]func(t *testing.T, ctx context.Context, u user.DBUser){
 		"Successfully copies distro": func(t *testing.T, ctx context.Context, u user.DBUser) {
 
@@ -197,7 +188,6 @@ func TestCopyDistro(t *testing.T) {
 					Version: evergreen.PlannerVersionTunable,
 				},
 				Provider: evergreen.ProviderNameStatic,
-				SSHKey:   "abc",
 				WorkDir:  "/tmp",
 				User:     "admin",
 			}
@@ -219,15 +209,6 @@ func TestCopyDistro(t *testing.T) {
 func TestCreateDistro(t *testing.T) {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
-
-	config, err := evergreen.GetConfig(ctx)
-	assert.NoError(t, err)
-	config.Keys = map[string]string{"abc": "123"}
-	assert.NoError(t, config.Set(ctx))
-	defer func() {
-		config.Keys = map[string]string{}
-		assert.NoError(t, config.Set(ctx))
-	}()
 
 	for tName, tCase := range map[string]func(t *testing.T, ctx context.Context, u user.DBUser){
 		"Successfully creates distro": func(t *testing.T, ctx context.Context, u user.DBUser) {
@@ -282,7 +263,6 @@ func TestCreateDistro(t *testing.T) {
 					Version: evergreen.PlannerVersionTunable,
 				},
 				Provider: evergreen.ProviderNameStatic,
-				SSHKey:   "abc",
 				WorkDir:  "/tmp",
 				User:     "admin",
 			}

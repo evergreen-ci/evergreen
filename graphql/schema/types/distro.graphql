@@ -139,7 +139,6 @@ input DistroInput {
   providerSettingsList: [Map!]!
   setup: String!
   setupAsSudo: Boolean!
-  sshKey: String @deprecated(reason: "removing this field shortly")
   sshOptions: [String!]!
   user: String!
   userSpawnAllowed: Boolean!
@@ -289,7 +288,6 @@ type Distro {
   providerSettingsList: [Map!]!
   setup: String!
   setupAsSudo: Boolean!
-  sshKey: String!
   sshOptions: [String!]!
   user: String!
   userSpawnAllowed: Boolean!

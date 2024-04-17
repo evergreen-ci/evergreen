@@ -346,7 +346,6 @@ type APIDistro struct {
 	Setup                 *string                  `json:"setup"`
 	User                  *string                  `json:"user"`
 	BootstrapSettings     APIBootstrapSettings     `json:"bootstrap_settings"`
-	SSHKey                *string                  `json:"ssh_key"`
 	SSHOptions            []string                 `json:"ssh_options"`
 	AuthorizedKeysFile    *string                  `json:"authorized_keys_file"`
 	Expansions            []APIExpansion           `json:"expansions"`
@@ -380,8 +379,6 @@ func (apiDistro *APIDistro) BuildFromService(d distro.Distro) {
 	apiDistro.SetupAsSudo = d.SetupAsSudo
 	apiDistro.Setup = utility.ToStringPtr(d.Setup)
 	apiDistro.User = utility.ToStringPtr(d.User)
-
-	apiDistro.SSHKey = utility.ToStringPtr(d.SSHKey)
 	apiDistro.SSHOptions = d.SSHOptions
 	apiDistro.AuthorizedKeysFile = utility.ToStringPtr(d.AuthorizedKeysFile)
 	apiDistro.Disabled = d.Disabled
@@ -444,7 +441,6 @@ func (apiDistro *APIDistro) ToService() *distro.Distro {
 	d.Setup = utility.FromStringPtr(apiDistro.Setup)
 	d.User = utility.FromStringPtr(apiDistro.User)
 	d.BootstrapSettings = apiDistro.BootstrapSettings.ToService()
-	d.SSHKey = utility.FromStringPtr(apiDistro.SSHKey)
 	d.SSHOptions = apiDistro.SSHOptions
 	d.AuthorizedKeysFile = utility.FromStringPtr(apiDistro.AuthorizedKeysFile)
 	d.SpawnAllowed = apiDistro.UserSpawnAllowed
