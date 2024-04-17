@@ -606,6 +606,20 @@ func (p *ProjectRef) MergeWithProjectConfig(version string) (err error) {
 	return err
 }
 
+// SetGitHubAppCredentials updates or creates an entry in
+// GithubAppAuth for the project ref. If the provided values
+// are empty, the entry is deleted.
+func (p *ProjectRef) SetGithubAppCredentials(appID int64, privateKey []byte) error {
+	if appID == 0 || len(privateKey) == 0 {
+		return RemoveGithubAppAuth(p.Id)
+	}
+	return GithubAppAuth{
+		Id:         p.Id,
+		AppId:      appID,
+		PrivateKey: privateKey,
+	}.Upsert()
+}
+
 // AddToRepoScope validates that the branch can be attached to the matching repo,
 // adds the branch to the unrestricted branches under repo scope, and
 // adds repo view permission for branch admins, and adds branch edit access for repo admins.
