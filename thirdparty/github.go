@@ -353,9 +353,9 @@ func RevokeInstallationToken(ctx context.Context, token string) error {
 	defer span.End()
 
 	githubClient := getGithubClient(token, caller, retryConfig{retry: true})
-	_, err := githubClient.Apps.RevokeInstallationToken(ctx)
+	resp, err := githubClient.Apps.RevokeInstallationToken(ctx)
 
-	span.SetAttributes(attribute.Bool("success", err == nil))
+	span.SetAttributes(attribute.Int("status", resp.StatusCode))
 	if err != nil {
 		span.SetAttributes(attribute.String("err", err.Error()))
 	}
