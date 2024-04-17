@@ -1474,11 +1474,24 @@ func TestValidateTaskNames(t *testing.T) {
 				{Name: "|task"},
 				{Name: "ta|sk"},
 				{Name: "this is my task"},
-				{Name: "task"},
+				{Name: "task()<"},
+				{Name: "task'"},
+				{Name: "task{}"},
 			},
 		}
 		validationResults := validateTaskNames(project)
-		So(len(validationResults), ShouldEqual, 4)
+		So(len(validationResults), ShouldEqual, len(project.Tasks))
+	})
+	Convey("When a task name is valid, no error should be returned", t, func() {
+		project := &model.Project{
+			Tasks: []model.ProjectTask{
+				{Name: "task"},
+				{Name: "unittest--[a-z]"},
+				{Name: `check:sasl=Cyrus\_\u2022\_tls=LibreSSL\_\u2022\_test_mongocxx_ref=r3.9.0`},
+			},
+		}
+		validationResults := validateTaskNames(project)
+		So(len(validationResults), ShouldEqual, 0)
 	})
 	Convey("A warning should be returned when a task name", t, func() {
 		Convey("Contains commas", func() {
