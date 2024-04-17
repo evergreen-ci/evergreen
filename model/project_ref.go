@@ -610,7 +610,7 @@ func (p *ProjectRef) MergeWithProjectConfig(version string) (err error) {
 // GithubAppAuth for the project ref. If the provided values
 // are empty, the entry is deleted.
 func (p *ProjectRef) SetGithubAppCredentials(appID int64, privateKey []byte) error {
-	if appID == 0 || len(privateKey) == 0 {
+	if appID == 0 || privateKey == nil || len(privateKey) == 0 {
 		return RemoveGithubAppAuth(p.Id)
 	}
 	return GithubAppAuth{
