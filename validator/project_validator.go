@@ -47,6 +47,7 @@ const (
 )
 
 var (
+	// Not a regex because these characters could be valid if unicoded.
 	unauthorizedCharacters = []string{"|", "&", ";", "$", "`", "'", "*", "?", "#", "%", "^", "@", "{", "}", "(", ")", "<", ">"}
 )
 
