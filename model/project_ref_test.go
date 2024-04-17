@@ -1374,7 +1374,7 @@ func TestSetGithubAppCredentials(t *testing.T) {
 			require.NoError(t, err)
 			assert.True(t, hasApp)
 		},
-		"CredentialsCanBeRemovedByEmptyAppID": func(t *testing.T, p *ProjectRef) {
+		"CredentialsCanBeRemovedByEmptyAppIDAndEmptyPrivateKey": func(t *testing.T, p *ProjectRef) {
 			// Add credentials.
 			require.NoError(t, p.SetGithubAppCredentials(10, []byte("private_key")))
 			hasApp, err := HasGithubAppAuth(p.Id)
@@ -1382,12 +1382,25 @@ func TestSetGithubAppCredentials(t *testing.T) {
 			assert.True(t, hasApp)
 
 			// Remove credentials.
-			require.NoError(t, p.SetGithubAppCredentials(0, []byte("private_key")))
+			require.NoError(t, p.SetGithubAppCredentials(0, []byte("")))
 			hasApp, err = HasGithubAppAuth(p.Id)
 			require.NoError(t, err)
 			assert.False(t, hasApp)
 		},
-		"CredentialsCanBeRemovedByEmptyPrivateKey": func(t *testing.T, p *ProjectRef) {
+		"CredentialsCanBeRemovedByEmptyAppIDAndNilPrivateKey": func(t *testing.T, p *ProjectRef) {
+			// Add credentials.
+			require.NoError(t, p.SetGithubAppCredentials(10, []byte("private_key")))
+			hasApp, err := HasGithubAppAuth(p.Id)
+			require.NoError(t, err)
+			assert.True(t, hasApp)
+
+			// Remove credentials.
+			require.NoError(t, p.SetGithubAppCredentials(0, nil))
+			hasApp, err = HasGithubAppAuth(p.Id)
+			require.NoError(t, err)
+			assert.False(t, hasApp)
+		},
+		"CredentialsCannotBeRemovedByOnlyEmptyPrivateKey": func(t *testing.T, p *ProjectRef) {
 			// Add credentials.
 			require.NoError(t, p.SetGithubAppCredentials(10, []byte("private_key")))
 			hasApp, err := HasGithubAppAuth(p.Id)
@@ -1397,10 +1410,10 @@ func TestSetGithubAppCredentials(t *testing.T) {
 			// Remove credentials.
 			require.NoError(t, p.SetGithubAppCredentials(10, []byte("")))
 			hasApp, err = HasGithubAppAuth(p.Id)
-			require.NoError(t, err)
+			require.Error(t, err, "both app ID and private key must be provided")
 			assert.False(t, hasApp)
 		},
-		"CredentialsCanBeRemovedByNilPrivateKey": func(t *testing.T, p *ProjectRef) {
+		"CredentialsCannotBeRemovedByOnlyNilPrivateKey": func(t *testing.T, p *ProjectRef) {
 			// Add credentials.
 			require.NoError(t, p.SetGithubAppCredentials(10, []byte("private_key")))
 			hasApp, err := HasGithubAppAuth(p.Id)
@@ -1410,7 +1423,20 @@ func TestSetGithubAppCredentials(t *testing.T) {
 			// Remove credentials.
 			require.NoError(t, p.SetGithubAppCredentials(10, nil))
 			hasApp, err = HasGithubAppAuth(p.Id)
+			require.Error(t, err, "both app ID and private key must be provided")
+			assert.False(t, hasApp)
+		},
+		"CredentialsCannotBeRemovedByOnlyEmptyAppID": func(t *testing.T, p *ProjectRef) {
+			// Add credentials.
+			require.NoError(t, p.SetGithubAppCredentials(10, []byte("private_key")))
+			hasApp, err := HasGithubAppAuth(p.Id)
 			require.NoError(t, err)
+			assert.True(t, hasApp)
+
+			// Remove credentials.
+			require.NoError(t, p.SetGithubAppCredentials(0, []byte("private_key")))
+			hasApp, err = HasGithubAppAuth(p.Id)
+			require.Error(t, err, "both app ID and private key must be provided")
 			assert.False(t, hasApp)
 		},
 	} {

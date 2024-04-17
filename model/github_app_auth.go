@@ -53,7 +53,7 @@ func HasGithubAppAuth(projectId string) (bool, error) {
 }
 
 // Upsert inserts or updates the app auth for the given project id in the database
-func (githubAppAuth GithubAppAuth) Upsert() error {
+func (githubAppAuth *GithubAppAuth) Upsert() error {
 	_, err := db.Upsert(
 		GitHubAppAuthCollection,
 		bson.M{
