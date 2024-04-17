@@ -635,24 +635,16 @@ func (r *queryResolver) TaskAllExecutions(ctx context.Context, taskID string) ([
 }
 
 // TaskTestSample is the resolver for the taskTestSample field.
-func (r *queryResolver) TaskTestSample(ctx context.Context, tasks []string, taskIds []string, filters []*TestFilter, versionID *string) ([]*TaskTestResultSample, error) {
-	// TODO: Remove this temporary workaround.
-	var tasksToProcess []string
-	if len(tasks) > 0 {
-		tasksToProcess = tasks
-	} else {
-		tasksToProcess = taskIds
-	}
-
-	if len(tasksToProcess) == 0 {
+func (r *queryResolver) TaskTestSample(ctx context.Context, versionID string, taskIds []string, filters []*TestFilter) ([]*TaskTestResultSample, error) {
+	if len(taskIds) == 0 {
 		return nil, nil
 	}
-	dbTasks, err := task.FindAll(db.Query(task.ByIds(tasksToProcess)))
+	dbTasks, err := task.FindAll(db.Query(task.ByIds(taskIds)))
 	if err != nil {
-		return nil, InternalServerError.Send(ctx, fmt.Sprintf("Error finding tasks %s: %s", tasksToProcess, err))
+		return nil, InternalServerError.Send(ctx, fmt.Sprintf("Error finding tasks %s: %s", taskIds, err))
 	}
 	if len(dbTasks) == 0 {
-		return nil, ResourceNotFound.Send(ctx, fmt.Sprintf("Tasks %s not found", tasksToProcess))
+		return nil, ResourceNotFound.Send(ctx, fmt.Sprintf("Tasks %s not found", taskIds))
 	}
 
 	failingTests := []string{}
@@ -664,6 +656,9 @@ func (r *queryResolver) TaskTestSample(ctx context.Context, tasks []string, task
 	apiSamples := make([]*TaskTestResultSample, len(dbTasks))
 	apiSamplesByTaskID := map[string]*TaskTestResultSample{}
 	for i, dbTask := range dbTasks {
+		if dbTask.Version != versionID && dbTask.ParentPatchID != versionID {
+			return nil, InputValidationError.Send(ctx, fmt.Sprintf("task '%s' does not belong to version '%s'", dbTask.Id, versionID))
+		}
 		taskOpts, err := dbTask.CreateTestResultsTaskOptions()
 		if err != nil {
 			return nil, InternalServerError.Send(ctx, fmt.Sprintf("Error creating test results task options for task '%s': %s", dbTask.Id, err))
