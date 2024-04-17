@@ -192,7 +192,10 @@ func (j *sleepSchedulerJob) fixHostsExceedingTimeout(ctx context.Context) error 
 // permanently exempt are consistent with the most up-to-date list of
 // permanently exempt hosts.
 func (j *sleepSchedulerJob) syncPermanentlyExemptHosts(ctx context.Context) error {
-	settings := j.env.Settings()
+	settings, err := evergreen.GetConfig(ctx)
+	if err != nil {
+		return errors.Wrap(err, "getting admin settings")
+	}
 	return host.SyncPermanentExemptions(ctx, settings.SleepSchedule.PermanentlyExemptHosts)
 }
 
