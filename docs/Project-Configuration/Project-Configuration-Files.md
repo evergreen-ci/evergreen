@@ -883,7 +883,9 @@ buildvariants:
 ```
 
 Tags can be referenced in variant definitions to quickly include groups
-of tasks.
+of tasks. The build variant will only be considered invalid if _all_
+tag selectors and tasks are invalid/not found, if an individual tag
+selector has not tasks, it will be ignored.
 
 ``` yaml
 buildvariants:
