@@ -647,7 +647,7 @@ func TestTranslateBuildVariants(t *testing.T) {
 	})
 }
 
-func parserTaskSelectorTaskEval(tse *taskSelectorEvaluator, tasks parserBVTaskUnits, taskDefs []parserTask, expected []BuildVariantTaskUnit) {
+func parserTaskSelectorTaskEval(tse *taskSelectorEvaluator, tsge *tagSelectorEvaluator, tasks parserBVTaskUnits, taskDefs []parserTask, expected []BuildVariantTaskUnit) {
 	names := []string{}
 	exp := []string{}
 	for _, t := range tasks {
@@ -660,7 +660,7 @@ func parserTaskSelectorTaskEval(tse *taskSelectorEvaluator, tasks parserBVTaskUn
 	Convey(fmt.Sprintf("tasks [%v] should evaluate to [%v]",
 		strings.Join(names, ", "), strings.Join(exp, ", ")), func() {
 		pbv := parserBV{Name: "build-variant-wow", Tasks: tasks}
-		ts, errs := evaluateBVTasks(tse, nil, vse, pbv, taskDefs)
+		ts, errs := evaluateBVTasks(tse, tsge, vse, pbv, taskDefs)
 		if expected != nil {
 			So(errs, ShouldBeNil)
 		} else {
@@ -696,22 +696,23 @@ func TestParserTaskSelectorEvaluation(t *testing.T) {
 
 		Convey("a project parser", func() {
 			tse := NewParserTaskSelectorEvaluator(taskDefs)
+			tgse := newTaskGroupSelectorEvaluator([]parserTaskGroup{})
 			Convey("should evaluate valid tasks pointers properly", func() {
-				parserTaskSelectorTaskEval(tse,
+				parserTaskSelectorTaskEval(tse, tgse,
 					parserBVTaskUnits{{Name: "white"}},
 					taskDefs,
 					[]BuildVariantTaskUnit{{Name: "white"}})
-				parserTaskSelectorTaskEval(tse,
+				parserTaskSelectorTaskEval(tse, tgse,
 					parserBVTaskUnits{{Name: "red", Priority: 500}, {Name: ".secondary"}},
 					taskDefs,
 					[]BuildVariantTaskUnit{{Name: "red", Priority: 500}, {Name: "orange"}, {Name: "purple"}, {Name: "green"}})
-				parserTaskSelectorTaskEval(tse,
+				parserTaskSelectorTaskEval(tse, tgse,
 					parserBVTaskUnits{
 						{Name: "orange", Distros: []string{"d1"}},
 						{Name: ".warm .secondary", Distros: []string{"d1"}}},
 					taskDefs,
 					[]BuildVariantTaskUnit{{Name: "orange", RunOn: []string{"d1"}}})
-				parserTaskSelectorTaskEval(tse,
+				parserTaskSelectorTaskEval(tse, tgse,
 					parserBVTaskUnits{
 						{Name: "orange", Distros: []string{"d1"}},
 						{Name: "!.warm .secondary", Distros: []string{"d1"}}},
@@ -720,7 +721,7 @@ func TestParserTaskSelectorEvaluation(t *testing.T) {
 						{Name: "orange", RunOn: []string{"d1"}},
 						{Name: "purple", RunOn: []string{"d1"}},
 						{Name: "green", RunOn: []string{"d1"}}})
-				parserTaskSelectorTaskEval(tse,
+				parserTaskSelectorTaskEval(tse, tgse,
 					parserBVTaskUnits{{Name: "*"}},
 					taskDefs,
 					[]BuildVariantTaskUnit{
@@ -728,7 +729,7 @@ func TestParserTaskSelectorEvaluation(t *testing.T) {
 						{Name: "orange"}, {Name: "purple"}, {Name: "green"},
 						{Name: "brown"}, {Name: "white"}, {Name: "black"},
 					})
-				parserTaskSelectorTaskEval(tse,
+				parserTaskSelectorTaskEval(tse, tgse,
 					parserBVTaskUnits{
 						{Name: "red", Priority: 100},
 						{Name: "!.warm .secondary", Priority: 100}},
@@ -737,6 +738,22 @@ func TestParserTaskSelectorEvaluation(t *testing.T) {
 						{Name: "red", Priority: 100},
 						{Name: "purple", Priority: 100},
 						{Name: "green", Priority: 100}})
+			})
+			Convey("should ignore selectors that do not select any tasks if another does select a task", func() {
+				parserTaskSelectorTaskEval(tse, tgse,
+					parserBVTaskUnits{{Name: ".warm .cool"}, {Name: "white"}},
+					taskDefs,
+					[]BuildVariantTaskUnit{{Name: "white"}})
+			})
+			Convey("should error when all selectors combined do not select any tasks", func() {
+				parserTaskSelectorTaskEval(tse, tgse,
+					parserBVTaskUnits{{Name: ".warm .cool"}},
+					taskDefs,
+					nil)
+				parserTaskSelectorTaskEval(tse, tgse,
+					parserBVTaskUnits{{Name: ".warm .cool"}, {Name: ".secondary .primary"}},
+					taskDefs,
+					nil)
 			})
 		})
 	})
