@@ -1361,6 +1361,70 @@ func TestFindProjectRefsByRepoAndBranch(t *testing.T) {
 	assert.Len(projectRefs, 2)
 }
 
+func TestSetGithubAppCredentials(t *testing.T) {
+	for name, test := range map[string]func(t *testing.T, p *ProjectRef){
+		"NoCredentialsWhenNoneExist": func(t *testing.T, p *ProjectRef) {
+			hasApp, err := HasGithubAppAuth(p.Id)
+			require.NoError(t, err)
+			assert.False(t, hasApp)
+		},
+		"CredentialsCanBeSet": func(t *testing.T, p *ProjectRef) {
+			require.NoError(t, p.SetGithubAppCredentials(10, []byte("private_key")))
+			hasApp, err := HasGithubAppAuth(p.Id)
+			require.NoError(t, err)
+			assert.True(t, hasApp)
+		},
+		"CredentialsCanBeRemovedByEmptyAppID": func(t *testing.T, p *ProjectRef) {
+			// Add credentials.
+			require.NoError(t, p.SetGithubAppCredentials(10, []byte("private_key")))
+			hasApp, err := HasGithubAppAuth(p.Id)
+			require.NoError(t, err)
+			assert.True(t, hasApp)
+
+			// Remove credentials.
+			require.NoError(t, p.SetGithubAppCredentials(0, []byte("private_key")))
+			hasApp, err = HasGithubAppAuth(p.Id)
+			require.NoError(t, err)
+			assert.False(t, hasApp)
+		},
+		"CredentialsCanBeRemovedByEmptyPrivateKey": func(t *testing.T, p *ProjectRef) {
+			// Add credentials.
+			require.NoError(t, p.SetGithubAppCredentials(10, []byte("private_key")))
+			hasApp, err := HasGithubAppAuth(p.Id)
+			require.NoError(t, err)
+			assert.True(t, hasApp)
+
+			// Remove credentials.
+			require.NoError(t, p.SetGithubAppCredentials(10, []byte("")))
+			hasApp, err = HasGithubAppAuth(p.Id)
+			require.NoError(t, err)
+			assert.False(t, hasApp)
+		},
+		"CredentialsCanBeRemovedByNilPrivateKey": func(t *testing.T, p *ProjectRef) {
+			// Add credentials.
+			require.NoError(t, p.SetGithubAppCredentials(10, []byte("private_key")))
+			hasApp, err := HasGithubAppAuth(p.Id)
+			require.NoError(t, err)
+			assert.True(t, hasApp)
+
+			// Remove credentials.
+			require.NoError(t, p.SetGithubAppCredentials(10, nil))
+			hasApp, err = HasGithubAppAuth(p.Id)
+			require.NoError(t, err)
+			assert.False(t, hasApp)
+		},
+	} {
+		t.Run(name, func(t *testing.T) {
+			require.NoError(t, db.ClearCollections(ProjectRefCollection, GitHubAppAuthCollection))
+			p := &ProjectRef{
+				Id: "id1",
+			}
+			require.NoError(t, p.Insert())
+			test(t, p)
+		})
+	}
+}
+
 func TestCreateNewRepoRef(t *testing.T) {
 	assert.NoError(t, db.ClearCollections(ProjectRefCollection, RepoRefCollection, user.Collection,
 		evergreen.ScopeCollection, ProjectVarsCollection, ProjectAliasCollection, evergreen.GitHubAppCollection))
