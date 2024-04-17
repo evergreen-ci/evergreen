@@ -85,6 +85,7 @@ mutation {
         }
         disableShallowClone: true
         note: "This is an updated note"
+        warnings: "This is a warning"
         isVirtualWorkStation: false
         isCluster: true
         homeVolumeSettings: { formatCommand: "" }
