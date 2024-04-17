@@ -2288,8 +2288,9 @@ func (p *ProjectRef) GetActivationTimeForVariant(variant *BuildVariant) (time.Ti
 		if buildStatus.BuildVariant != variant.Name || !buildStatus.Activated {
 			continue
 		}
-
-		return buildStatus.ActivateAt.Add(time.Minute * time.Duration(p.getBatchTimeForVariant(variant))), nil
+		if !buildStatus.ActivateAt.IsZero() {
+			return buildStatus.ActivateAt.Add(time.Minute * time.Duration(p.getBatchTimeForVariant(variant))), nil
+		}
 	}
 
 	return defaultRes, nil
