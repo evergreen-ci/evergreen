@@ -1305,6 +1305,7 @@ func evaluateBVTasks(tse *taskSelectorEvaluator, tgse *tagSelectorEvaluator, vse
 	for _, t := range tasks {
 		tasksByName[t.Name] = t
 	}
+	var allNames []string
 	for _, pbvt := range pbv.Tasks {
 		// Evaluate each task against both the task and task group selectors
 		// only error if both selectors error because each task should only be found
@@ -1330,9 +1331,11 @@ func evaluateBVTasks(tse *taskSelectorEvaluator, tgse *tagSelectorEvaluator, vse
 			}
 			if err1 != nil && err2 != nil {
 				evalErrs = append(evalErrs, err1, err2)
+				allNames = append(allNames, names...)
 				continue
 			}
 		}
+		allNames = append(allNames, names...)
 		// create new task definitions--duplicates must have the same status requirements
 		for _, name := range names {
 			parserTask := tasksByName[name]
@@ -1369,6 +1372,9 @@ func evaluateBVTasks(tse *taskSelectorEvaluator, tgse *tagSelectorEvaluator, vse
 				}
 			}
 		}
+	}
+	if len(allNames) == 0 {
+		evalErrs = append(evalErrs, errors.Errorf("no tasks found for build variant '%s'", pbv.Name))
 	}
 	return ts, evalErrs
 }
