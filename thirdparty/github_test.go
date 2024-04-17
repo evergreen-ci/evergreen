@@ -163,6 +163,20 @@ func (s *githubSuite) TestGetGithubCommitsUntil() {
 	s.Len(githubCommits, 4)
 }
 
+func (s *githubSuite) TestRevokeInstallationToken() {
+	token, err := getInstallationToken(s.ctx, "evergreen-ci", "evergreen", nil)
+	s.NoError(err)
+	s.NotEmpty(token)
+
+	// Revoking the first time should succeed.
+	err = RevokeInstallationToken(s.ctx, token)
+	s.NoError(err)
+
+	// Revoking the second time should fail.
+	err = RevokeInstallationToken(s.ctx, token)
+	s.Error(err)
+}
+
 func (s *githubSuite) TestGetTaggedCommitFromGithub() {
 	s.Run("AnnotatedTag", func() {
 		commit, err := GetTaggedCommitFromGithub(s.ctx, s.token, "evergreen-ci", "spruce", "refs/tags/v3.0.97")
