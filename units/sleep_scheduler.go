@@ -59,7 +59,7 @@ func (j *sleepSchedulerJob) Run(ctx context.Context) {
 	}
 
 	j.AddError(errors.Wrap(j.syncPermanentlyExemptHosts(ctx), "syncing permanently exempt hosts"))
-	j.AddError(errors.Wrap(j.fixMissingNextScheduleTimes(ctx), "fixing hosts that are missing next schedule times"))
+	j.AddError(errors.Wrap(j.fixMissingNextScheduleTimes(ctx), "fixing hosts that are missing next scheduled start/stop times"))
 	j.AddError(errors.Wrap(j.fixHostsExceedingTimeout(ctx), "fixing hosts that are exceeding the scheduled stop/start timeout"))
 
 	ts := utility.RoundPartOfMinute(0)
@@ -98,7 +98,7 @@ func (j *sleepSchedulerJob) fixMissingNextScheduleTimes(ctx context.Context) err
 			}
 
 			grip.Notice(message.Fields{
-				"message":             "host has exceeded scheduled start timeout, re-scheduled to next available start time",
+				"message":             "host is missing next start time, re-scheduled to next available start time",
 				"host_id":             h.Id,
 				"started_by":          h.StartedBy,
 				"old_next_start_time": oldNextStart,
@@ -119,7 +119,7 @@ func (j *sleepSchedulerJob) fixMissingNextScheduleTimes(ctx context.Context) err
 			}
 
 			grip.Notice(message.Fields{
-				"message":            "host has exceeded scheduled stop timeout, re-scheduled to next available stop time",
+				"message":            "host is missing next stop time, re-scheduled to next available stop time",
 				"host_id":            h.Id,
 				"started_by":         h.StartedBy,
 				"old_next_stop_time": oldNextStop,
@@ -154,7 +154,7 @@ func (j *sleepSchedulerJob) fixHostsExceedingTimeout(ctx context.Context) error 
 				continue
 			}
 
-			grip.Notice(message.Fields{
+			grip.Warning(message.Fields{
 				"message":             "host has exceeded scheduled start timeout, re-scheduled to next available start time",
 				"host_id":             h.Id,
 				"started_by":          h.StartedBy,
@@ -175,7 +175,7 @@ func (j *sleepSchedulerJob) fixHostsExceedingTimeout(ctx context.Context) error 
 				continue
 			}
 
-			grip.Notice(message.Fields{
+			grip.Warning(message.Fields{
 				"message":            "host has exceeded scheduled stop timeout, re-scheduling to next available stop time",
 				"host_id":            h.Id,
 				"started_by":         h.StartedBy,

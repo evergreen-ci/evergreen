@@ -1520,7 +1520,9 @@ func isSleepScheduleEnabledQuery(q bson.M, now time.Time) bson.M {
 	sleepScheduleShouldKeepOff := bsonutil.GetDottedKeyName(SleepScheduleKey, SleepScheduleShouldKeepOffKey)
 
 	if _, ok := q[StatusKey]; !ok {
-		q[StatusKey] = bson.M{"$in": []string{evergreen.HostRunning, evergreen.HostStopped, evergreen.HostStopping}}
+		// Use all sleep schedule statuses if the query hasn't already specified
+		// a more specific set of statuses.
+		q[StatusKey] = bson.M{"$in": evergreen.SleepScheduleStatuses}
 	}
 
 	q[sleepSchedulePermanentlyExemptKey] = bson.M{"$ne": true}
@@ -1622,7 +1624,6 @@ func FindExceedsSleepScheduleTimeout(ctx context.Context) ([]Host, error) {
 	sleepScheduleNextStartKey := bsonutil.GetDottedKeyName(SleepScheduleKey, SleepScheduleNextStartTimeKey)
 	sleepScheduleNextStopKey := bsonutil.GetDottedKeyName(SleepScheduleKey, SleepScheduleNextStopTimeKey)
 	q := isSleepScheduleEnabledQuery(bson.M{
-		StatusKey: bson.M{"$in": []string{evergreen.HostRunning, evergreen.HostStopped, evergreen.HostStopping}},
 		"$or": []bson.M{
 			{
 				sleepScheduleNextStartKey: bson.M{"$lte": now.Add(-SleepScheduleActionTimeout)},
