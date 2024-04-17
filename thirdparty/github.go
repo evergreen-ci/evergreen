@@ -344,6 +344,25 @@ func getInstallationToken(ctx context.Context, owner, repo string, opts *github.
 	return token, nil
 }
 
+// revokeInstallationToken revokes an installation token.
+func RevokeInstallationToken(ctx context.Context, token string) error {
+	caller := "RevokeInstallationToken"
+	ctx, span := tracer.Start(ctx, caller, trace.WithAttributes(
+		attribute.String(githubEndpointAttribute, caller),
+	))
+	defer span.End()
+
+	githubClient := getGithubClient(token, caller, retryConfig{retry: true})
+	_, err := githubClient.Apps.RevokeInstallationToken(ctx)
+
+	span.SetAttributes(attribute.Bool("success", err == nil))
+	if err != nil {
+		span.SetAttributes(attribute.String("err", err.Error()))
+	}
+
+	return err
+}
+
 func getInstallationTokenWithDefaultOwnerRepo(ctx context.Context, opts *github.InstallationTokenOptions) (string, error) {
 	settings, err := evergreen.GetConfig(ctx)
 	if err != nil {
