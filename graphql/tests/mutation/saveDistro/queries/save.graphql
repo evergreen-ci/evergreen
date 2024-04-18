@@ -103,6 +103,7 @@ mutation {
       isCluster
       name
       note
+      warnings
       plannerSettings {
         targetTime
       }
