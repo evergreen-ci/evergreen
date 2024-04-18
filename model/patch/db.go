@@ -138,15 +138,46 @@ func ByGithash(githash string) db.Q {
 }
 
 type ByPatchNameStatusesCommitQueuePaginatedOptions struct {
-	Author             *string
-	Project            *string
-	PatchName          string
-	Statuses           []string
-	Page               int
-	Limit              int
-	IncludeCommitQueue *bool
-	IncludeHidden      *bool
-	OnlyCommitQueue    *bool
+	Author              *string
+	IncludeCommitQueue  *bool
+	IncludeHidden       *bool
+	Limit               int
+	OnlyCommitQueue     *bool
+	Page                int
+	PatchName           string
+	Project             *string
+	FilterGitHubPatches *bool
+	FilterCLIPatches    *bool
+	Statuses            []string
+}
+
+var requesterExpression = bson.M{
+	"$switch": bson.M{
+		"branches": []bson.M{
+			{
+				"case": bson.M{
+					"$ne": []string{"$" + bsonutil.GetDottedKeyName("github_patch_data", "head_owner"), ""},
+				},
+				"then": evergreen.GithubPRRequester,
+			},
+			{
+				"case": bson.M{
+					"$ne": []string{"$" + bsonutil.GetDottedKeyName("github_merge_data", "head_sha"), ""},
+				},
+				"then": evergreen.GithubMergeRequester,
+			},
+			{
+				"case": bson.M{
+					"$or": []bson.M{
+						{"$eq": []string{"$" + AliasKey, evergreen.CommitQueueAlias}},
+						{"$ne": []string{"$" + bsonutil.GetDottedKeyName("github_patch_data", "merge_commit_sha"), ""}},
+					},
+				},
+				"then": evergreen.MergeTestRequester,
+			},
+		},
+		"default": evergreen.PatchVersionRequester,
+	},
 }
 
 func ByPatchNameStatusesCommitQueuePaginated(ctx context.Context, opts ByPatchNameStatusesCommitQueuePaginatedOptions) ([]Patch, int, error) {
@@ -176,6 +207,10 @@ func ByPatchNameStatusesCommitQueuePaginated(ctx context.Context, opts ByPatchNa
 	if opts.PatchName != "" {
 		match[DescriptionKey] = bson.M{"$regex": opts.PatchName, "$options": "i"}
 	}
+	if utility.FromBoolPtr(opts.FilterGitHubPatches) {
+		match["github_patch_data.head_owner"] = bson.M{"$ne": ""}
+	}
+
 	if len(opts.Statuses) > 0 {
 		// Verify that we're considering the legacy patch status as well; we'll remove this logic in EVG-20032.
 		if len(utility.StringSliceIntersection(opts.Statuses, evergreen.VersionSucceededStatuses)) > 0 {
