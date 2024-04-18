@@ -1,6 +1,7 @@
 package model
 
 import (
+	"context"
 	"time"
 
 	"github.com/evergreen-ci/evergreen"
@@ -11,7 +12,7 @@ import (
 	"github.com/pkg/errors"
 )
 
-func DoProjectActivation(id string, ts time.Time) (bool, error) {
+func DoProjectActivation(ctx context.Context, id string, ts time.Time) (bool, error) {
 	// fetch the most recent, non-ignored version (before the given time) to activate
 	activateVersion, err := VersionFindOne(VersionByMostRecentNonIgnored(id, ts))
 	if err != nil {
@@ -25,7 +26,7 @@ func DoProjectActivation(id string, ts time.Time) (bool, error) {
 		})
 		return false, nil
 	}
-	activated, err := ActivateElapsedBuildsAndTasks(activateVersion)
+	activated, err := ActivateElapsedBuildsAndTasks(ctx, activateVersion)
 	if err != nil {
 		return false, errors.WithStack(err)
 	}
@@ -35,7 +36,7 @@ func DoProjectActivation(id string, ts time.Time) (bool, error) {
 }
 
 // ActivateElapsedBuildsAndTasks activates any builds/tasks if their BatchTimes have elapsed.
-func ActivateElapsedBuildsAndTasks(v *Version) (bool, error) {
+func ActivateElapsedBuildsAndTasks(ctx context.Context, v *Version) (bool, error) {
 	now := time.Now()
 
 	buildIdsToActivate := []string{}
@@ -131,7 +132,7 @@ func ActivateElapsedBuildsAndTasks(v *Version) (bool, error) {
 	}
 
 	if len(elapsedBuildIds) > 0 {
-		if err := setTaskActivationForBuilds(elapsedBuildIds, true, true, allIgnoreTaskIds, evergreen.ElapsedBuildActivator); err != nil {
+		if err := setTaskActivationForBuilds(ctx, elapsedBuildIds, true, true, allIgnoreTaskIds, evergreen.ElapsedBuildActivator); err != nil {
 			grip.Error(message.WrapError(err, message.Fields{
 				"operation": "project-activation",
 				"message":   "problem activating tasks for builds",

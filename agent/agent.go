@@ -942,7 +942,7 @@ func (a *Agent) handleTaskResponse(ctx context.Context, tc *taskContext, status 
 	return false, errors.WithStack(err)
 }
 
-func (a *Agent) handleTimeoutAndOOM(ctx context.Context, tc *taskContext, status string) {
+func (a *Agent) handleTimeoutAndOOM(ctx context.Context, tc *taskContext, detail *apimodels.TaskEndDetail, status string) {
 	if tc.hadTimedOut() && ctx.Err() == nil {
 		status = evergreen.TaskFailed
 		a.runTaskTimeoutCommands(ctx, tc)
@@ -953,9 +953,13 @@ func (a *Agent) handleTimeoutAndOOM(ctx context.Context, tc *taskContext, status
 		oomCtx, oomCancel := context.WithTimeout(ctx, 10*time.Second)
 		defer oomCancel()
 		tc.logger.Execution().Error(errors.Wrap(tc.oomTracker.Check(oomCtx), "checking for OOM killed processes"))
-		if lines, _ := tc.oomTracker.Report(); len(lines) > 0 {
+		if lines, pids := tc.oomTracker.Report(); len(lines) > 0 {
 			tc.logger.Execution().Debugf("Found an OOM kill (in %.3f seconds).", time.Since(startTime).Seconds())
 			tc.logger.Execution().Debug(strings.Join(lines, "\n"))
+			detail.OOMTracker = &apimodels.OOMTrackerInfo{
+				Detected: true,
+				Pids:     pids,
+			}
 		} else {
 			tc.logger.Execution().Debugf("Found no OOM kill (in %.3f seconds).", time.Since(startTime).Seconds())
 		}
@@ -968,7 +972,7 @@ func (a *Agent) finishTask(ctx context.Context, tc *taskContext, status string, 
 	detail := a.endTaskResponse(ctx, tc, status, systemFailureDescription)
 	switch detail.Status {
 	case evergreen.TaskSucceeded:
-		a.handleTimeoutAndOOM(ctx, tc, status)
+		a.handleTimeoutAndOOM(ctx, tc, detail, status)
 		tc.logger.Task().Info("Task completed - SUCCESS.")
 		if err := a.runPostOrTeardownTaskCommands(ctx, tc); err != nil {
 			tc.logger.Task().Info("Post task completed - FAILURE. Overall task status changed to FAILED.")
@@ -977,7 +981,7 @@ func (a *Agent) finishTask(ctx context.Context, tc *taskContext, status string, 
 		detail.PostErrored = tc.getPostErrored()
 		a.runEndTaskSync(ctx, tc, detail)
 	case evergreen.TaskFailed:
-		a.handleTimeoutAndOOM(ctx, tc, status)
+		a.handleTimeoutAndOOM(ctx, tc, detail, status)
 		tc.logger.Task().Info("Task completed - FAILURE.")
 		// If the post commands error, ignore the error. runCommandsInBlock
 		// already logged the error, and the post commands cannot cause the
@@ -1129,7 +1133,6 @@ func (a *Agent) endTaskResponse(ctx context.Context, tc *taskContext, status str
 	}
 
 	detail := &apimodels.TaskEndDetail{
-		OOMTracker:  tc.getOomTrackerInfo(),
 		TraceID:     tc.traceID,
 		DiskDevices: tc.diskDevices,
 	}

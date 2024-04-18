@@ -97,14 +97,16 @@ func (s *BuildConnectorChangeStatusSuite) SetupSuite() {
 }
 
 func (s *BuildConnectorChangeStatusSuite) TestSetActivated() {
-	err := ActivateBuildsAndTasks([]string{"build1"}, true, "user1")
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+	err := ActivateBuildsAndTasks(ctx, []string{"build1"}, true, "user1")
 	s.NoError(err)
 	b, err := build.FindOneId("build1")
 	s.NoError(err)
 	s.True(b.Activated)
 	s.Equal("user1", b.ActivatedBy)
 
-	err = ActivateBuildsAndTasks([]string{"build1"}, false, "user1")
+	err = ActivateBuildsAndTasks(ctx, []string{"build1"}, false, "user1")
 	s.NoError(err)
 	b, err = build.FindOneId("build1")
 	s.NoError(err)
