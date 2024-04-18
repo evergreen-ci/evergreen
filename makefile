@@ -202,7 +202,7 @@ $(buildDir)/.lintSetup:$(buildDir)/golangci-lint
 	@touch $@
 $(buildDir)/golangci-lint:
 	@curl $(curlRetryOpts) -o "$(buildDir)/install.sh" https://raw.githubusercontent.com/golangci/golangci-lint/$(goLintInstallerVersion)/install.sh
-	@echo "$(goLintInstallerChecksum) $(buildDir)/install.sh" | sha256sum --check
+	@echo "$(goLintInstallerChecksum) $(buildDir)/install.sh" | openssl dgst -sha256
 	@bash $(buildDir)/install.sh -b $(buildDir) $(goLintInstallerVersion) && touch $@
 $(buildDir)/run-linter:cmd/run-linter/run-linter.go $(buildDir)/.lintSetup
 	$(gobin) build -ldflags "-w" -o $@ $<
