@@ -1650,9 +1650,12 @@ func SyncPermanentExemptions(ctx context.Context, permanentlyExempt []string) er
 	if permanentlyExempt == nil {
 		permanentlyExempt = []string{}
 	}
+
 	catcher := grip.NewBasicCatcher()
+	coll := evergreen.GetEnvironment().DB().Collection(Collection)
+
 	if len(permanentlyExempt) > 0 {
-		err := UpdateAll(ctx, isSleepScheduleApplicable(bson.M{
+		res, err := coll.UpdateMany(ctx, isSleepScheduleApplicable(bson.M{
 			IdKey:                             bson.M{"$in": permanentlyExempt},
 			sleepSchedulePermanentlyExemptKey: bson.M{"$ne": true},
 		}), bson.M{
@@ -1665,10 +1668,13 @@ func SyncPermanentExemptions(ctx context.Context, permanentlyExempt []string) er
 			},
 		})
 		catcher.Wrap(err, "marking newly-added hosts as permanently exempt")
-
+		grip.InfoWhen(res.ModifiedCount > 0, message.Fields{
+			"message":   "marked newly-added hosts as permanently exempt",
+			"num_hosts": res.ModifiedCount,
+		})
 	}
 
-	err := UpdateAll(ctx, isSleepScheduleApplicable(bson.M{
+	res, err := coll.UpdateMany(ctx, isSleepScheduleApplicable(bson.M{
 		IdKey:                             bson.M{"$nin": permanentlyExempt},
 		sleepSchedulePermanentlyExemptKey: true,
 	}), bson.M{
@@ -1677,6 +1683,10 @@ func SyncPermanentExemptions(ctx context.Context, permanentlyExempt []string) er
 		},
 	})
 	catcher.Wrap(err, "marking newly-removed hosts as no longer permanently exempt")
+	grip.InfoWhen(res.ModifiedCount > 0, message.Fields{
+		"message":   "marked newly-removed hosts as no longer permanently exempt",
+		"num_hosts": res.ModifiedCount,
+	})
 
 	return catcher.Resolve()
 }

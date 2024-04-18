@@ -3873,9 +3873,9 @@ func (h *Host) SetNextScheduledStart(ctx context.Context, t time.Time) error {
 	sleepScheduleStartKey := bsonutil.GetDottedKeyName(SleepScheduleKey, SleepScheduleNextStartTimeKey)
 	update := bson.M{}
 	if utility.IsZeroTime(t) {
-		update = bson.M{"$unset": bson.M{sleepScheduleStartKey: 1}}
+		update["$unset"] = bson.M{sleepScheduleStartKey: 1}
 	} else {
-		update = bson.M{"$set": bson.M{sleepScheduleStartKey: t}}
+		update["$set"] = bson.M{sleepScheduleStartKey: t}
 	}
 	if err := UpdateOne(ctx,
 		bson.M{IdKey: h.Id},
@@ -3895,9 +3895,9 @@ func (h *Host) SetNextScheduledStop(ctx context.Context, t time.Time) error {
 	sleepScheduleStopKey := bsonutil.GetDottedKeyName(SleepScheduleKey, SleepScheduleNextStopTimeKey)
 	update := bson.M{}
 	if utility.IsZeroTime(t) {
-		update = bson.M{"$unset": bson.M{sleepScheduleStopKey: 1}}
+		update["$unset"] = bson.M{sleepScheduleStopKey: 1}
 	} else {
-		update = bson.M{"$set": bson.M{sleepScheduleStopKey: t}}
+		update["$set"] = bson.M{sleepScheduleStopKey: t}
 	}
 
 	if err := UpdateOne(ctx,
