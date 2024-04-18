@@ -249,6 +249,7 @@ type PatchesInput struct {
 	Page               int      `json:"page"`
 	PatchName          string   `json:"patchName"`
 	Statuses           []string `json:"statuses"`
+	Requesters         []string `json:"requesters,omitempty"`
 }
 
 type Permissions struct {
