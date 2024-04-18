@@ -474,7 +474,6 @@ func (s *GitGetProjectSuite) TestBuildHTTPCloneCommand() {
 	cmds, err := opts.buildGitCloneCommand()
 	s.NoError(err)
 	s.Require().Len(cmds, 5)
-	fmt.Println(cmds)
 	s.True(utility.ContainsOrderedSubset(cmds, []string{
 		"set +o xtrace",
 		"echo \"git clone https://[redacted oauth token]:x-oauth-basic@github.com/evergreen-ci/sample.git 'dir' --branch 'main' --single-branch --filter=tree:0\"",
@@ -582,7 +581,6 @@ func (s *GitGetProjectSuite) TestBuildSourceCommandForPullRequests() {
 	cmds, err := c.buildSourceCloneCommand(s.ctx, s.comm, logger, conf, opts)
 	s.NoError(err)
 	s.Require().Len(cmds, 10)
-	fmt.Println(cmds)
 	s.True(utility.StringSliceContainsOrderedPrefixSubset(cmds, []string{
 		"git clone https://x-access-token:PROJECTTOKEN@github.com/octocat/evergreen.git 'dir' --single-branch --filter=tree:0",
 		"git log --oneline -n 10",
