@@ -109,6 +109,11 @@ type cloneOpts struct {
 	useVerbose             bool
 	usePatchMergeCommitSha bool
 	cloneDepth             int
+
+	// Since some distros or situations might cause a filtered clone of a
+	// single branch to fail, on retries we fall back to a full clone.
+	// This affects GH merge queue and PR tasks.
+	fallbackToFullClone bool
 }
 
 // validateCloneMethod checks that the clone mechanism is one of the supported
@@ -242,14 +247,17 @@ func (opts cloneOpts) buildGitCloneCommand() ([]string, error) {
 	if opts.branch != "" {
 		clone = fmt.Sprintf("%s --branch '%s'", clone, opts.branch)
 	}
-	if !opts.cloneAllBranches {
-		clone = fmt.Sprintf("%s --single-branch", clone)
-	}
-	if !opts.fullTreeClone {
-		// `tree:0` is a filter that tells git to not clone
-		// any additional trees (folders and files) not related
-		// the HEAD commit.
-		clone = fmt.Sprintf("%s --filter=tree:0", clone)
+	// If we're not falling back to a full clone, we can use single-branch and filter.
+	if !opts.fallbackToFullClone {
+		if !opts.cloneAllBranches {
+			clone = fmt.Sprintf("%s --single-branch", clone)
+		}
+		if !opts.fullTreeClone {
+			// `tree:0` is a filter that tells git to not clone
+			// any additional trees (folders and files) not related
+			// the HEAD commit.
+			clone = fmt.Sprintf("%s --filter=tree:0", clone)
+		}
 	}
 
 	redactedClone := strings.Replace(clone, opts.token, "[redacted oauth token]", -1)
@@ -313,16 +321,18 @@ func (c *gitFetchProject) buildSourceCloneCommand(ctx context.Context, comm clie
 		fmt.Sprintf("rm -rf %s", c.Directory),
 	}
 
-	switch conf.Task.Requester {
-	case evergreen.GithubMergeRequester:
-		// If this is a github merge queue task, we can directly clone
-		// the provided branch.
-		opts.branch = conf.GithubMergeData.HeadBranch
-	case evergreen.GithubPRRequester:
-		// If this is a PR task, we can directly clone the provided PR.
-		opts.branch = conf.GithubPatchData.HeadBranch
-		opts.owner = conf.GithubPatchData.HeadOwner
-		opts.repo = conf.GithubPatchData.HeadRepo
+	if !opts.fallbackToFullClone {
+		switch conf.Task.Requester {
+		case evergreen.GithubMergeRequester:
+			// If this is a github merge queue task, we can directly clone
+			// the provided branch.
+			opts.branch = conf.GithubMergeData.HeadBranch
+		case evergreen.GithubPRRequester:
+			// If this is a PR task, we can directly clone the provided PR.
+			opts.branch = conf.GithubPatchData.HeadBranch
+			opts.owner = conf.GithubPatchData.HeadOwner
+			opts.repo = conf.GithubPatchData.HeadRepo
+		}
 	}
 
 	cloneCmd, err := opts.buildGitCloneCommand()
@@ -352,6 +362,22 @@ func (c *gitFetchProject) buildSourceCloneCommand(ctx context.Context, comm clie
 			suffix = "/merge"
 			localBranchName = fmt.Sprintf("evg-merge-test-%s", utility.RandomString())
 			remoteBranchName = fmt.Sprintf("pull/%d", conf.GithubPatchData.PRNumber)
+		}
+		if opts.fallbackToFullClone {
+			if conf.Task.Requester == evergreen.GithubPRRequester {
+				// Github creates a ref called refs/pull/[pr number]/head
+				// that provides the entire tree of changes, including merges
+				suffix = "/head"
+				commitToTest = conf.GithubPatchData.HeadHash
+				localBranchName = fmt.Sprintf("evg-pr-test-%s", utility.RandomString())
+				remoteBranchName = fmt.Sprintf("pull/%d", conf.GithubPatchData.PRNumber)
+			} else if conf.Task.Requester == evergreen.GithubMergeRequester {
+				suffix = "" // redundant, included for clarity
+				commitToTest = conf.GithubMergeData.HeadSHA
+				localBranchName = fmt.Sprintf("evg-mg-test-%s", utility.RandomString())
+				// HeadRef looks like "refs/heads/gh-readonly-queue/main/pr-515-9cd8a2532bcddf58369aa82eb66ba88e2323c056"
+				remoteBranchName = conf.GithubMergeData.HeadBranch
+			}
 		}
 		if commitToTest != "" {
 			gitCommands = append(gitCommands, []string{
@@ -545,6 +571,13 @@ func (c *gitFetchProject) fetchSource(ctx context.Context,
 	attempt := 0
 	return c.retryFetch(ctx, logger, true, opts, func(opts cloneOpts) error {
 		attempt++
+		fallbackDueToError := attempt > 1 && (conf.Task.Requester == evergreen.MergeTestRequester || conf.Task.Requester == evergreen.GithubMergeRequester)
+		fallbackDueToMissingInfo := conf.GithubMergeData.HeadBranch == ""
+		if fallbackDueToError || fallbackDueToMissingInfo {
+			opts.fallbackToFullClone = true
+			// log to splunk a warning that we are falling back to a full clone.
+		}
+
 		gitCommands, err := c.buildSourceCloneCommand(ctx, comm, logger, conf, opts)
 		if err != nil {
 			return err
@@ -791,15 +824,18 @@ func (c *gitFetchProject) fetchModuleSource(ctx context.Context,
 		modulePatch = p.FindModule(moduleName)
 	}
 
-	var moduleCmds []string
-	moduleCmds, err = c.buildModuleCloneCommand(conf, opts, revision, modulePatch)
-	if err != nil {
-		return err
-	}
-
 	attempt := 0
 	return c.retryFetch(ctx, logger, false, opts, func(opts cloneOpts) error {
 		attempt++
+		// Fallback if the attempt is more than 1 or the head branch is missing.
+		if attempt > 1 || conf.GithubMergeData.HeadBranch == "" {
+			opts.fallbackToFullClone = true
+		}
+		var moduleCmds []string
+		moduleCmds, err = c.buildModuleCloneCommand(conf, opts, revision, modulePatch)
+		if err != nil {
+			return err
+		}
 		ctx, span := getTracer().Start(ctx, "clone_module", trace.WithAttributes(
 			attribute.String(cloneModuleAttribute, module.Name),
 			attribute.String(cloneOwnerAttribute, opts.owner),
