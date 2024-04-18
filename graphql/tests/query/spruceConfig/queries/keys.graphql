@@ -1,8 +1,0 @@
-query {
-  spruceConfig {
-    keys {
-      name
-      location
-    }
-  }
-}

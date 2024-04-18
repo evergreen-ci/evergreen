@@ -28,7 +28,7 @@ It contains information used to move a project to a a new owner and repo.
 input MoveProjectInput {
   newOwner: String!
   newRepo: String!
-  projectId: String! @requireProjectAccess(access: EDIT)
+  projectId: String! @requireProjectAccess(permission: SETTINGS, access: EDIT)
 }
 
 """

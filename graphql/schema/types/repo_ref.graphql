@@ -1,6 +1,6 @@
 ###### INPUTS ######
 input RepoRefInput {
-  id: String! @requireProjectAccess(access: EDIT)
+  id: String!
   admins: [String!]
   batchTime: Int
   buildBaronSettings: BuildBaronSettingsInput

@@ -773,32 +773,6 @@ func groupProjects(projects []model.ProjectRef, onlyDefaultedToRepo bool) ([]*Gr
 	return groupsArr, nil
 }
 
-// getProjectIdFromArgs extracts a project ID from the requireProjectAccess directive args.
-func getProjectIdFromArgs(ctx context.Context, args map[string]interface{}) (res string, err error) {
-	// id should always be a repo ID.
-	if id, hasId := args["id"].(string); hasId {
-		return id, nil
-	}
-	if repoId, hasRepoId := args["repoId"].(string); hasRepoId {
-		return repoId, nil
-	}
-	if projectId, hasProjectId := args["projectId"].(string); hasProjectId {
-		pid, err := model.GetIdForProject(projectId)
-		if err != nil {
-			return "", ResourceNotFound.Send(ctx, fmt.Sprintf("Could not find project with projectId: %s", projectId))
-		}
-		return pid, nil
-	}
-	if identifier, hasIdentifier := args["identifier"].(string); hasIdentifier {
-		pid, err := model.GetIdForProject(identifier)
-		if err != nil {
-			return "", ResourceNotFound.Send(ctx, fmt.Sprintf("Could not find project with identifier: %s", identifier))
-		}
-		return pid, nil
-	}
-	return "", ResourceNotFound.Send(ctx, "Could not find project")
-}
-
 // getValidTaskStatusesFilter returns a slice of task statuses that are valid and are searchable.
 // It returns an empty array if all is included as one of the entries
 func getValidTaskStatusesFilter(statuses []string) []string {

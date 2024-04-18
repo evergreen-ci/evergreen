@@ -195,9 +195,9 @@ const (
 )
 
 const (
-	checkSuccessAttempts   = 12
+	checkSuccessAttempts   = 10
 	checkSuccessInitPeriod = 2 * time.Second
-	checkSuccessMaxDelay   = 2 * time.Minute
+	checkSuccessMaxDelay   = time.Minute
 )
 
 const (
@@ -1020,6 +1020,7 @@ func (m *ec2Manager) StartInstance(ctx context.Context, h *host.Host, user strin
 		}, utility.RetryOptions{
 			MaxAttempts: checkSuccessAttempts,
 			MinDelay:    checkSuccessInitPeriod,
+			MaxDelay:    checkSuccessMaxDelay,
 		})
 
 	if err != nil {

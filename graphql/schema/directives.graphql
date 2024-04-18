@@ -4,13 +4,20 @@ requireProjectAdmin is used to restrict certain actions to admins.
 directive @requireProjectAdmin on ARGUMENT_DEFINITION
 
 """
-requireProjectAccess is used to restrict view and edit access for project settings.
-It will be replaced with @requireProjectAccessNew after some necessary adjustments to the GraphQL schema to 
-standardize input parameters.
+requireProjectAccess is used to restrict admin, view, and edit access for projects.
 """
-directive @requireProjectAccess(access: ProjectSettingsAccess!) on ARGUMENT_DEFINITION | INPUT_FIELD_DEFINITION | FIELD_DEFINITION
+directive @requireProjectAccess(permission: ProjectPermission!, access: AccessLevel!) on ARGUMENT_DEFINITION | INPUT_FIELD_DEFINITION | FIELD_DEFINITION
 
-enum ProjectSettingsAccess {
+enum ProjectPermission {
+  SETTINGS
+  TASKS
+  ANNOTATIONS
+  PATCHES
+  LOGS
+}
+
+enum AccessLevel {
+  ADMIN
   EDIT
   VIEW
 }
@@ -42,22 +49,3 @@ redactSecrets is used to mark input fields that should not be logged or exposed 
 """
 directive @redactSecrets on INPUT_FIELD_DEFINITION | ARGUMENT_DEFINITION | INPUT_OBJECT
 
-"""
-requireProjectAccessNew is used to restrict admin, view, and edit access for projects.
-TODO: Rename this directive upon the deletion of @requireProjectAccess.
-"""
-directive @requireProjectAccessNew(permission: ProjectPermission!, access: AccessLevel!) on ARGUMENT_DEFINITION | INPUT_FIELD_DEFINITION | FIELD_DEFINITION
-
-enum ProjectPermission {
-  SETTINGS
-  TASKS
-  ANNOTATIONS
-  PATCHES
-  LOGS
-}
-
-enum AccessLevel {
-  ADMIN
-  EDIT
-  VIEW
-}

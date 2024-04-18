@@ -54,8 +54,8 @@ func (s *AdminEventSuite) TestEventLogging() {
 
 func (s *AdminEventSuite) TestEventLogging2() {
 	before := evergreen.Settings{
-		ApiUrl: "api",
-		Keys:   map[string]string{"k1": "v1"},
+		ApiUrl:      "api",
+		Credentials: map[string]string{"k1": "v1"},
 	}
 	after := evergreen.Settings{}
 	s.NoError(LogAdminEvent(before.SectionId(), &before, &after, s.username))
@@ -67,9 +67,9 @@ func (s *AdminEventSuite) TestEventLogging2() {
 	beforeVal := eventData.Changes.Before.(*evergreen.Settings)
 	afterVal := eventData.Changes.After.(*evergreen.Settings)
 	s.Equal(before.ApiUrl, beforeVal.ApiUrl)
-	s.Equal(before.Keys, beforeVal.Keys)
+	s.Equal(before.Credentials, beforeVal.Credentials)
 	s.Equal("", afterVal.ApiUrl)
-	s.Equal(map[string]string{}, afterVal.Keys)
+	s.Equal(map[string]string{}, afterVal.Credentials)
 }
 
 func (s *AdminEventSuite) TestEventLogging3() {
