@@ -1232,7 +1232,7 @@ tasks:
    commands: 
     - command: shell.exec
       params:
-        script: exit 0
+        script: exit 1
 post:
   - command: shell.exec
     params:
@@ -1253,7 +1253,7 @@ post:
 	}
 	_, _, err := s.a.runTask(s.ctx, s.tc, nextTask, false, s.testTmpDirName)
 	s.NoError(err)
-	s.Equal(evergreen.TaskSucceeded, s.mockCommunicator.EndTaskResult.Detail.Status)
+	s.Equal(evergreen.TaskFailed, s.mockCommunicator.EndTaskResult.Detail.Status)
 	s.True(s.mockCommunicator.EndTaskResult.Detail.OOMTracker.Detected)
 	s.Equal(pids, s.mockCommunicator.EndTaskResult.Detail.OOMTracker.Pids)
 }
