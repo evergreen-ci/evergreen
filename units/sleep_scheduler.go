@@ -76,7 +76,9 @@ func (j *sleepSchedulerJob) populateIfUnset() error {
 const sleepScheduleUser = "sleep_schedule"
 
 // fixMissingNextScheduleTimes finds and fixes hosts that are subject to the
-// sleep schedule but are missing next stop/start times.
+// sleep schedule but are missing next stop/start times. For example, a host
+// that was kept off but is now back on should be put back on its regular sleep
+// schedule.
 func (j *sleepSchedulerJob) fixMissingNextScheduleTimes(ctx context.Context) error {
 	hosts, err := host.FindMissingNextSleepScheduleTime(ctx)
 	if err != nil {
