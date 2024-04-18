@@ -1019,8 +1019,8 @@ func getVersionCtxForTracing(ctx context.Context, v *Version, project string) (c
 		attribute.String(evergreen.VersionCreateTimeOtelAttribute, v.CreateTime.String()),
 		attribute.String(evergreen.VersionStartTimeOtelAttribute, v.StartTime.String()),
 		attribute.String(evergreen.VersionFinishTimeOtelAttribute, v.FinishTime.String()),
-		attribute.Int(evergreen.VersionTimeTakenDurationMsOtelAttribute, int(timeTaken.Seconds())),
-		attribute.Int(evergreen.VersionMakespanDurationMsOtelAttribute, int(makespan.Seconds())),
+		attribute.Int(evergreen.VersionTimeTakenSecondsOtelAttribute, int(timeTaken.Seconds())),
+		attribute.Int(evergreen.VersionMakespanSecondsOtelAttribute, int(makespan.Seconds())),
 		attribute.String(evergreen.VersionAuthorOtelAttribute, v.Author),
 		attribute.String(evergreen.VersionBranchOtelAttribute, v.Branch),
 	})

@@ -517,16 +517,16 @@ const (
 	TaskStatusOtelAttribute    = "evergreen.task.status"
 
 	// version otel attributes
-	VersionIDOtelAttribute                  = "evergreen.version.id"
-	VersionRequesterOtelAttribute           = "evergreen.version.requester"
-	VersionStatusOtelAttribute              = "evergreen.version.status"
-	VersionCreateTimeOtelAttribute          = "evergreen.version.create_time"
-	VersionStartTimeOtelAttribute           = "evergreen.version.start_time"
-	VersionFinishTimeOtelAttribute          = "evergreen.version.finish_time"
-	VersionAuthorOtelAttribute              = "evergreen.version.author"
-	VersionBranchOtelAttribute              = "evergreen.version.branch"
-	VersionMakespanDurationMsOtelAttribute  = "evergreen.version.makespan_duration_ms"
-	VersionTimeTakenDurationMsOtelAttribute = "evergreen.version.time_taken_duration_ms"
+	VersionIDOtelAttribute               = "evergreen.version.id"
+	VersionRequesterOtelAttribute        = "evergreen.version.requester"
+	VersionStatusOtelAttribute           = "evergreen.version.status"
+	VersionCreateTimeOtelAttribute       = "evergreen.version.create_time"
+	VersionStartTimeOtelAttribute        = "evergreen.version.start_time"
+	VersionFinishTimeOtelAttribute       = "evergreen.version.finish_time"
+	VersionAuthorOtelAttribute           = "evergreen.version.author"
+	VersionBranchOtelAttribute           = "evergreen.version.branch"
+	VersionMakespanSecondsOtelAttribute  = "evergreen.version.makespan_seconds"
+	VersionTimeTakenSecondsOtelAttribute = "evergreen.version.time_taken_seconds"
 
 	// build otel attributes
 	BuildIDOtelAttribute   = "evergreen.build.id"
