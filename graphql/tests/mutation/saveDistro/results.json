@@ -12,7 +12,7 @@
               "isCluster": true,
               "name": "rhel71-power8-large",
               "note": "This is an updated note",
-              "warnings": "This is a warning",
+              "warningNote": "This is a warning",
               "plannerSettings": {
                 "targetTime": 5000
               },
