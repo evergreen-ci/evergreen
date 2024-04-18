@@ -661,7 +661,6 @@ func doBisectStepback(ctx context.Context, t *task.Task) error {
 	return nil
 }
 
-// chayatodo: do it from here
 func doBisectStepbackForGeneratedTask(ctx context.Context, generator *task.Task, generated *task.Task) error {
 	var s task.StepbackInfo
 	if lastStepbackInfo := generator.StepbackInfo.GetStepbackInfoForGeneratedTask(generated.DisplayName, generated.BuildVariant); lastStepbackInfo != nil {
@@ -1011,8 +1010,6 @@ func getVersionCtxForTracing(ctx context.Context, v *Version, project string) (c
 	if err != nil {
 		return nil, errors.Wrap(err, "getting time spent")
 	}
-	timeTakenMs := int64(timeTaken.Round(time.Second) / time.Millisecond)
-	MakeSpanMs := int64(makespan.Round(time.Second) / time.Millisecond)
 
 	ctx = utility.ContextWithAttributes(ctx, []attribute.KeyValue{
 		attribute.String(evergreen.VersionIDOtelAttribute, v.Id),
@@ -1022,8 +1019,8 @@ func getVersionCtxForTracing(ctx context.Context, v *Version, project string) (c
 		attribute.String(evergreen.VersionCreateTimeOtelAttribute, v.CreateTime.String()),
 		attribute.String(evergreen.VersionStartTimeOtelAttribute, v.StartTime.String()),
 		attribute.String(evergreen.VersionFinishTimeOtelAttribute, v.FinishTime.String()),
-		attribute.Int64(evergreen.VersionTimeTakenDurationMsOtelAttribute, timeTakenMs),
-		attribute.Int64(evergreen.VersionMakespanDurationMsOtelAttribute, MakeSpanMs),
+		attribute.Int(evergreen.VersionTimeTakenDurationMsOtelAttribute, int(timeTaken.Seconds())),
+		attribute.Int(evergreen.VersionMakespanDurationMsOtelAttribute, int(makespan.Seconds())),
 		attribute.String(evergreen.VersionAuthorOtelAttribute, v.Author),
 		attribute.String(evergreen.VersionBranchOtelAttribute, v.Branch),
 	})
@@ -1866,8 +1863,6 @@ func UpdatePatchStatus(ctx context.Context, p *patch.Patch, status string) error
 // and the task's version based on all the builds in the version.
 // Also update build and version Github statuses based on the subset of tasks and builds included in github checks
 func UpdateBuildAndVersionStatusForTask(ctx context.Context, t *task.Task) error {
-
-	// chaya todo:  add tracing here
 	taskBuild, err := build.FindOneId(t.BuildId)
 	if err != nil {
 		return errors.Wrapf(err, "getting build for task '%s'", t.Id)
@@ -1902,7 +1897,7 @@ func UpdateBuildAndVersionStatusForTask(ctx context.Context, t *task.Task) error
 		if err = checkUpdateBuildPRStatusPending(ctx, taskBuild); err != nil {
 			return errors.Wrapf(err, "updating build '%s' PR status", taskBuild.Id)
 		}
-		// only do it for version, patches need wait for child patches
+		// only add tracing for versions, patches need to wait for child patches
 		if !evergreen.IsPatchRequester(taskVersion.Requester) {
 			traceContext, err := getVersionCtxForTracing(ctx, taskVersion, t.Project)
 			if err != nil {
