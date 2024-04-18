@@ -877,9 +877,10 @@ func MarkEnd(ctx context.Context, settings *evergreen.Settings, t *task.Task, ca
 		if t.IsPartOfDisplay() {
 			_, err = t.GetDisplayTask()
 			if err != nil {
-				return errors.Wrap(err, "getting display task")
+				err = errors.Wrap(err, "getting display task")
+			} else {
+				err = evalStepback(ctx, t.DisplayTask, status)
 			}
-			err = evalStepback(ctx, t.DisplayTask, status)
 		} else {
 			err = evalStepback(ctx, t, status)
 		}
