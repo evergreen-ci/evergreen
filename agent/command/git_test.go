@@ -577,6 +577,7 @@ func (s *GitGetProjectSuite) TestBuildSourceCommandForPullRequests() {
 		dir:    c.Directory,
 	}
 	s.Require().NoError(opts.setLocation())
+	conf.GithubPatchData.HeadBranch = "main"
 
 	cmds, err := c.buildSourceCloneCommand(s.ctx, s.comm, logger, conf, opts)
 	s.NoError(err)
