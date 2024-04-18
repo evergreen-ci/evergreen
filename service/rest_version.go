@@ -398,7 +398,7 @@ func (restapi restAPI) modifyVersionInfo(w http.ResponseWriter, r *http.Request)
 	}
 
 	if input.Activated != nil {
-		if err := model.SetVersionActivation(v.Id, *input.Activated, user.Id); err != nil {
+		if err := model.SetVersionActivation(r.Context(), v.Id, *input.Activated, user.Id); err != nil {
 			state := "inactive"
 			if *input.Activated {
 				state = "active"

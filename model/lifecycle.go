@@ -54,7 +54,7 @@ type VersionToRestart struct {
 
 // SetVersionActivation updates the "active" state of all builds and tasks associated with a
 // version to the given setting. It also updates the task cache for all builds affected.
-func SetVersionActivation(versionId string, active bool, caller string) error {
+func SetVersionActivation(ctx context.Context, versionId string, active bool, caller string) error {
 	q := task.ByVersionWithChildTasks(versionId)
 	q[task.StatusKey] = evergreen.TaskUndispatched
 
@@ -106,7 +106,7 @@ func SetVersionActivation(versionId string, active bool, caller string) error {
 	if err := build.UpdateActivation(buildIds, active, caller); err != nil {
 		return errors.Wrapf(err, "setting build activations to %t", active)
 	}
-	if err := UpdateVersionAndPatchStatusForBuilds(buildIds); err != nil {
+	if err := UpdateVersionAndPatchStatusForBuilds(ctx, buildIds); err != nil {
 		return errors.Wrapf(err, "updating build and version status for version '%s'", versionId)
 	}
 	return nil
@@ -114,12 +114,12 @@ func SetVersionActivation(versionId string, active bool, caller string) error {
 
 // ActivateBuildsAndTasks updates the "active" state of this build and all associated tasks.
 // It also updates the task cache for the build document.
-func ActivateBuildsAndTasks(buildIds []string, active bool, caller string) error {
+func ActivateBuildsAndTasks(ctx context.Context, buildIds []string, active bool, caller string) error {
 	if err := build.UpdateActivation(buildIds, active, caller); err != nil {
 		return errors.Wrapf(err, "setting build activation to %t for builds '%v'", active, buildIds)
 	}
 
-	return errors.Wrapf(setTaskActivationForBuilds(buildIds, active, true, nil, caller),
+	return errors.Wrapf(setTaskActivationForBuilds(ctx, buildIds, active, true, nil, caller),
 		"setting task activation for builds '%v'", buildIds)
 }
 
@@ -127,7 +127,7 @@ func ActivateBuildsAndTasks(buildIds []string, active bool, caller string) error
 // It also updates the task cache for the build document.
 // If withDependencies is true, also set dependencies. Don't need to do this when the entire version is affected.
 // If tasks are given to ignore, then we don't activate those tasks.
-func setTaskActivationForBuilds(buildIds []string, active, withDependencies bool, ignoreTasks []string, caller string) error {
+func setTaskActivationForBuilds(ctx context.Context, buildIds []string, active, withDependencies bool, ignoreTasks []string, caller string) error {
 	// If activating a task, set the ActivatedBy field to be the caller
 	if active {
 		q := bson.M{
@@ -173,7 +173,7 @@ func setTaskActivationForBuilds(buildIds []string, active, withDependencies bool
 		}
 	}
 
-	if err := UpdateVersionAndPatchStatusForBuilds(buildIds); err != nil {
+	if err := UpdateVersionAndPatchStatusForBuilds(ctx, buildIds); err != nil {
 		return errors.Wrapf(err, "updating status for builds '%s'", buildIds)
 	}
 	return nil
