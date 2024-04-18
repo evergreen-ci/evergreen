@@ -545,10 +545,13 @@ Parameters:
 -   `shallow_clone`: Sets `clone_depth` to 100, if not already set.
 -   `recurse_submodules`: automatically initialize and update each
     submodule in the repository, including any nested submodules.
--   `clone_all_branches`: If set to true, clones all branches in the
-    repository. Default is false (which applies `--single-branch`).
--   `full_tree_clone`: If set to true, clones all trees in the
-    repository. Default is false (which applies `--filter=tree:0`).
+-   `clone_all_branches`: By default, Evergreen clones only the default
+    or given `branch` for each module. If set to true, Evergreen clones
+    all branches for each module.
+-   `full_tree_clone`: By default, Evergreen only clones the trees
+    (files and folders) associated with the default or given `branch`
+    for each module. If set to true, Evergreen clones the full history
+    of each module.
 
 The parameters for each module are:
 
