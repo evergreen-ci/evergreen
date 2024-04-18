@@ -326,12 +326,22 @@ func (c *gitFetchProject) buildSourceCloneCommand(ctx context.Context, comm clie
 		case evergreen.GithubMergeRequester:
 			// If this is a github merge queue task, we can directly clone
 			// the provided branch.
-			opts.branch = conf.GithubMergeData.HeadBranch
+			if conf.GithubMergeData.HeadBranch != "" {
+				opts.branch = conf.GithubMergeData.HeadBranch
+			} else {
+				// If the head branch is missing, fall back to a full clone.
+				opts.fallbackToFullClone = true
+			}
 		case evergreen.GithubPRRequester:
 			// If this is a PR task, we can directly clone the provided PR.
-			opts.branch = conf.GithubPatchData.HeadBranch
-			opts.owner = conf.GithubPatchData.HeadOwner
-			opts.repo = conf.GithubPatchData.HeadRepo
+			if conf.GithubPatchData.HeadBranch != "" {
+				opts.branch = conf.GithubPatchData.HeadBranch
+				opts.owner = conf.GithubPatchData.HeadOwner
+				opts.repo = conf.GithubPatchData.HeadRepo
+			} else {
+				// If the head branch is missing, fall back to a full clone.
+				opts.fallbackToFullClone = true
+			}
 		}
 	}
 
@@ -571,9 +581,7 @@ func (c *gitFetchProject) fetchSource(ctx context.Context,
 	attempt := 0
 	return c.retryFetch(ctx, logger, true, opts, func(opts cloneOpts) error {
 		attempt++
-		fallbackDueToError := attempt > 1 && (conf.Task.Requester == evergreen.MergeTestRequester || conf.Task.Requester == evergreen.GithubMergeRequester)
-		fallbackDueToMissingInfo := conf.GithubMergeData.HeadBranch == ""
-		if fallbackDueToError || fallbackDueToMissingInfo {
+		if attempt > 1 {
 			opts.fallbackToFullClone = true
 			// log to splunk a warning that we are falling back to a full clone.
 		}
@@ -828,7 +836,7 @@ func (c *gitFetchProject) fetchModuleSource(ctx context.Context,
 	return c.retryFetch(ctx, logger, false, opts, func(opts cloneOpts) error {
 		attempt++
 		// Fallback if the attempt is more than 1 or the head branch is missing.
-		if attempt > 1 || conf.GithubMergeData.HeadBranch == "" {
+		if attempt > 1 || conf.GithubPatchData.HeadBranch == "" {
 			opts.fallbackToFullClone = true
 		}
 		var moduleCmds []string
