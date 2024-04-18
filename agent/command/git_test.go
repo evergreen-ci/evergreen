@@ -583,7 +583,7 @@ func (s *GitGetProjectSuite) TestBuildSourceCommandForPullRequests() {
 	s.NoError(err)
 	s.Require().Len(cmds, 10)
 	s.True(utility.StringSliceContainsOrderedPrefixSubset(cmds, []string{
-		"git clone https://x-access-token:PROJECTTOKEN@github.com/octocat/evergreen.git 'dir' --single-branch --filter=tree:0",
+		"git clone https://x-access-token:PROJECTTOKEN@github.com/octocat/evergreen.git 'dir' --branch 'main' --single-branch --filter=tree:0",
 		"git log --oneline -n 10",
 	}))
 }
