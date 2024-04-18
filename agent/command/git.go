@@ -227,7 +227,7 @@ func (opts cloneOpts) buildGitCloneCommand() ([]string, error) {
 	case cloneMethodOAuth:
 		gitURL = thirdparty.FormGitURL(urlLocation.Host, opts.owner, opts.repo, opts.token)
 	default:
-		return nil, errors.New("unrecognized clone method in options")
+		return nil, errors.Errorf("unrecognized clone method '%s' in options", opts.method)
 	}
 	clone := fmt.Sprintf("git clone %s '%s'", gitURL, opts.dir)
 	if opts.recurseSubmodules {
