@@ -92,12 +92,12 @@ func (j *periodicBuildJob) Run(ctx context.Context) {
 		}))
 	}()
 
-	mostRecentRevision, err := model.FindLatestRevisionForProject(j.ProjectID)
+	mostRecentRevision, author, err := model.FindLatestRevisionAndAuthorForProject(j.ProjectID)
 	if err != nil {
 		j.AddError(err)
 		return
 	}
-	versionErr := j.addVersion(ctx, *definition, mostRecentRevision)
+	versionErr := j.addVersion(ctx, *definition, mostRecentRevision, author)
 
 	if versionErr != nil {
 		// If the version fails to be added, create a stub version and
@@ -109,6 +109,7 @@ func (j *periodicBuildJob) Run(ctx context.Context) {
 			Alias:           definition.Alias,
 			Revision: model.Revision{
 				Revision: mostRecentRevision,
+				Author:   author,
 			},
 		}
 		stubVersion, dbErr := repotracker.ShellVersionFromRevision(ctx, j.project, metadata)
@@ -143,7 +144,7 @@ func (j *periodicBuildJob) Run(ctx context.Context) {
 	}
 }
 
-func (j *periodicBuildJob) addVersion(ctx context.Context, definition model.PeriodicBuildDefinition, mostRecentRevision string) error {
+func (j *periodicBuildJob) addVersion(ctx context.Context, definition model.PeriodicBuildDefinition, mostRecentRevision, author string) error {
 	token, err := j.env.Settings().GetGithubOauthToken()
 	if err != nil {
 		return errors.Wrap(err, "getting GitHub OAuth token")
@@ -175,6 +176,11 @@ func (j *periodicBuildJob) addVersion(ctx context.Context, definition model.Peri
 			return errors.Wrap(err, "parsing project config")
 		}
 	}
+
+	if author == "" {
+		author = evergreen.PeriodicBuildAuthor
+	}
+
 	metadata := model.VersionMetadata{
 		IsAdHoc:         true,
 		Activate:        true,
@@ -183,6 +189,7 @@ func (j *periodicBuildJob) addVersion(ctx context.Context, definition model.Peri
 		Alias:           definition.Alias,
 		Revision: model.Revision{
 			Revision: mostRecentRevision,
+			Author:   author,
 		},
 	}
 

@@ -49,6 +49,7 @@ func TestPeriodicBuildsJob(t *testing.T) {
 		Identifier: sampleProject.Id,
 		Requester:  evergreen.RepotrackerVersionRequester,
 		Revision:   "88dcc12106a40cb4917f552deab7574ececd9a3e",
+		Author:     "test author",
 	}
 	assert.NoError(prevVersion.Insert())
 
@@ -59,9 +60,11 @@ func TestPeriodicBuildsJob(t *testing.T) {
 	assert.NoError(err)
 	assert.Equal(evergreen.AdHocRequester, createdVersion.Requester)
 	assert.Equal(prevVersion.Revision, createdVersion.Revision)
+	assert.Equal(prevVersion.Author, createdVersion.Author)
 	tasks, err := task.Find(task.ByVersion(createdVersion.Id))
 	assert.NoError(err)
 	assert.True(tasks[0].Activated)
+	assert.Equal(tasks[0].ActivatedBy, prevVersion.Author)
 	dbProject, err := model.FindBranchProjectRef(sampleProject.Id)
 	assert.NoError(err)
 	assert.True(sampleProject.PeriodicBuilds[0].NextRunTime.Add(time.Hour).Equal(dbProject.PeriodicBuilds[0].NextRunTime))

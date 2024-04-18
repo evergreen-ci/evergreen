@@ -97,20 +97,21 @@ func byLatestProjectVersion(projectId string) bson.M {
 	}
 }
 
-// FindLatestRevisionForProject returns the latest revision for the project, and returns an error if it's not found.
-func FindLatestRevisionForProject(projectId string) (string, error) {
+// FindLatestRevisionAndauthorForProject returns the latest revision for the project, and returns an error if it's not found.
+func FindLatestRevisionAndAuthorForProject(projectId string) (string, string, error) {
 	v, err := VersionFindOne(db.Query(byLatestProjectVersion(projectId)).
-		Sort([]string{"-" + VersionRevisionOrderNumberKey}).WithFields(VersionRevisionKey))
+		Sort([]string{"-" + VersionRevisionOrderNumberKey}).WithFields(VersionRevisionKey, VersionAuthorKey))
 	if err != nil {
-		return "", errors.Wrapf(err, "finding most recent version for project '%s'", projectId)
+		return "", "", errors.Wrapf(err, "finding most recent version for project '%s'", projectId)
 	}
 	if v == nil {
-		return "", errors.Errorf("no recent version found for project '%s'", projectId)
+		return "", "", errors.Errorf("no recent version found for project '%s'", projectId)
 	}
 	if v.Revision == "" {
-		return "", errors.Errorf("latest version '%s' has no revision", v.Id)
+		return "", "", errors.Errorf("latest version '%s' has no revision", v.Id)
 	}
-	return v.Revision, nil
+
+	return v.Revision, v.Author, nil
 }
 
 // BaseVersionByProjectIdAndRevision finds a base version for the given project and revision.

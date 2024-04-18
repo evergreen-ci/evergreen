@@ -384,6 +384,10 @@ const (
 	// HostServicePasswordExpansion is the expansion for the service password that is stored on the host,
 	// and is meant to be set as a private variable so that it will be redacted in all logs.
 	HostServicePasswordExpansion = "host_service_password"
+
+	// PeriodicBuildAuthor is the revision author name to use when a periodic
+	// build selects a version without an author already assigned
+	PeriodicBuildAuthor = "Evergreen Periodic Build"
 )
 
 var VersionSucceededStatuses = []string{
