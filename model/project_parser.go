@@ -1373,7 +1373,8 @@ func evaluateBVTasks(tse *taskSelectorEvaluator, tgse *tagSelectorEvaluator, vse
 			}
 		}
 	}
-	if len(allNames) == 0 {
+	// No tasks found should result in an error if there are any tasks defined in the build variant.
+	if len(allNames) == 0 && len(pbv.Tasks) > 0 {
 		evalErrs = append(evalErrs, errors.Errorf("no tasks found for build variant '%s'", pbv.Name))
 	}
 	return ts, evalErrs
