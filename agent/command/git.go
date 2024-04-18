@@ -246,6 +246,9 @@ func (opts cloneOpts) buildGitCloneCommand() ([]string, error) {
 		clone = fmt.Sprintf("%s --single-branch", clone)
 	}
 	if !opts.fullTreeClone {
+		// `tree:0` is a filter that tells git to not clone
+		// any additional trees (folders and files) not related
+		// the HEAD commit.
 		clone = fmt.Sprintf("%s --filter=tree:0", clone)
 	}
 
