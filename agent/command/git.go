@@ -583,7 +583,6 @@ func (c *gitFetchProject) fetchSource(ctx context.Context,
 		attempt++
 		if attempt > 1 {
 			opts.fallbackToFullClone = true
-			// log to splunk a warning that we are falling back to a full clone.
 		}
 
 		gitCommands, err := c.buildSourceCloneCommand(ctx, comm, logger, conf, opts)
@@ -687,56 +686,41 @@ func (c *gitFetchProject) fetchAdditionalPatches(ctx context.Context,
 	return additionalPatches, nil
 }
 
-func (c *gitFetchProject) getModuleRevision(conf *internal.TaskConfig, logger client.LoggerProducer, p *patch.Patch, moduleName string) (string, error) {
+func (c *gitFetchProject) getModuleRevision(conf *internal.TaskConfig, logger client.LoggerProducer, p *patch.Patch, module model.Module) (string, error) {
 	// First, try to get the revision from the module patch.
 	if p != nil {
-		modulePatch := p.FindModule(moduleName)
+		modulePatch := p.FindModule(module.Name)
 		if modulePatch != nil {
 			// If this is commit queue, default to HEAD (since before merging
 			// we should test against HEAD).
 			if conf.Task.Requester == evergreen.MergeTestRequester || conf.Task.Requester == evergreen.GithubMergeRequester {
-				module, err := conf.Project.GetModuleByName(moduleName)
-				if err != nil {
-					return "", errors.Wrapf(err, "getting module '%s'", moduleName)
-				}
-				if module == nil {
-					return "", errors.Errorf("module '%s' not found", moduleName)
-				}
 				if module.Branch != "" {
-					c.logModuleRevision(logger, module.Branch, moduleName, "defaulting to HEAD for merge")
+					c.logModuleRevision(logger, module.Branch, module.Name, "defaulting to HEAD for merge")
 					return module.Branch, nil
 				}
 			}
 			// Otherwise, use the revision from the module patch if provided.
 			if modulePatch.Githash != "" {
-				c.logModuleRevision(logger, modulePatch.Githash, moduleName, "specified in set-module")
+				c.logModuleRevision(logger, modulePatch.Githash, module.Name, "specified in set-module")
 				return modulePatch.Githash, nil
 			}
 		}
 	}
 
 	// Next, try to get the revision from the command parameters.
-	if c.Revisions[moduleName] != "" {
-		c.logModuleRevision(logger, c.Revisions[moduleName], moduleName, "specified as parameter to git.get_project")
-		return c.Revisions[moduleName], nil
+	if c.Revisions[module.Name] != "" {
+		c.logModuleRevision(logger, c.Revisions[module.Name], module.Name, "specified as parameter to git.get_project")
+		return c.Revisions[module.Name], nil
 	}
 
 	// Next, try to get the revision from an expansion.
-	if conf.Expansions.Get(moduleRevExpansionName(moduleName)) != "" {
-		c.logModuleRevision(logger, conf.Expansions.Get(moduleRevExpansionName(moduleName)), moduleName, "from manifest")
-		return conf.Expansions.Get(moduleRevExpansionName(moduleName)), nil
+	if conf.Expansions.Get(moduleRevExpansionName(module.Name)) != "" {
+		c.logModuleRevision(logger, conf.Expansions.Get(moduleRevExpansionName(module.Name)), module.Name, "from manifest")
+		return conf.Expansions.Get(moduleRevExpansionName(module.Name)), nil
 	}
 
-	// Finally, try to get the revision from the module in the project config.
-	module, err := conf.Project.GetModuleByName(moduleName)
-	if err != nil {
-		return "", errors.Wrapf(err, "getting module '%s'", moduleName)
-	}
-	if module == nil {
-		return "", errors.Errorf("module '%s' not found", moduleName)
-	}
 	if module.Ref != "" {
-		c.logModuleRevision(logger, module.Ref, moduleName, "ref field in config file")
+		c.logModuleRevision(logger, module.Ref, module.Name, "ref field in config file")
 		return module.Ref, nil
 	}
 
@@ -768,7 +752,7 @@ func (c *gitFetchProject) fetchModuleSource(ctx context.Context,
 
 	moduleBase := filepath.ToSlash(filepath.Join(conf.ModulePaths[module.Name], module.Name))
 
-	revision, err := c.getModuleRevision(conf, logger, p, moduleName)
+	revision, err := c.getModuleRevision(conf, logger, p, *module)
 	if err != nil {
 		return errors.Wrapf(err, "getting revision for module '%s'", moduleName)
 	}
