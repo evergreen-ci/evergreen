@@ -2817,8 +2817,9 @@ func (c *APIGitHubCheckRunConfig) ToService() (interface{}, error) {
 }
 
 type APITaskLimitsConfig struct {
-	MaxTasksPerVersion    *int `json:"max_tasks_per_version"`
-	MaxIncludesPerVersion *int `json:"max_includes_per_version"`
+	MaxTasksPerVersion       *int `json:"max_tasks_per_version"`
+	MaxIncludesPerVersion    *int `json:"max_includes_per_version"`
+	MaxPendingGeneratedTasks *int `json:"max_pending_generated_tasks"`
 }
 
 func (c *APITaskLimitsConfig) BuildFromService(h interface{}) error {
@@ -2826,6 +2827,7 @@ func (c *APITaskLimitsConfig) BuildFromService(h interface{}) error {
 	case evergreen.TaskLimitsConfig:
 		c.MaxTasksPerVersion = utility.ToIntPtr(v.MaxTasksPerVersion)
 		c.MaxIncludesPerVersion = utility.ToIntPtr(v.MaxIncludesPerVersion)
+		c.MaxPendingGeneratedTasks = utility.ToIntPtr(v.MaxPendingGeneratedTasks)
 		return nil
 	default:
 		return errors.Errorf("programmatic error: expected task limits config but got type %T", h)
@@ -2834,7 +2836,8 @@ func (c *APITaskLimitsConfig) BuildFromService(h interface{}) error {
 
 func (c *APITaskLimitsConfig) ToService() (interface{}, error) {
 	return evergreen.TaskLimitsConfig{
-		MaxTasksPerVersion:    utility.FromIntPtr(c.MaxTasksPerVersion),
-		MaxIncludesPerVersion: utility.FromIntPtr(c.MaxIncludesPerVersion),
+		MaxTasksPerVersion:       utility.FromIntPtr(c.MaxTasksPerVersion),
+		MaxIncludesPerVersion:    utility.FromIntPtr(c.MaxIncludesPerVersion),
+		MaxPendingGeneratedTasks: utility.FromIntPtr(c.MaxPendingGeneratedTasks),
 	}, nil
 }
