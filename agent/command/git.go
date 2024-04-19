@@ -112,7 +112,8 @@ type cloneOpts struct {
 
 	// Since some distros or situations might cause a filtered clone of a
 	// single branch to fail, on retries we fall back to a full clone.
-	// This affects GH merge queue and PR tasks.
+	// After the first attempt, this flag is set to true. Or if the head
+	// branch/relevant branch is missing, we fall back to a full clone.
 	fallbackToFullClone bool
 }
 
