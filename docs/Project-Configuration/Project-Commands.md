@@ -906,10 +906,7 @@ Parameters:
 
 This command traces artifact releases with the Papertrail service. It is owned
 by the Release Infrastructure team, and you may receive assistance with it in
-#ask-devprod-release-tools. This command cannot run on Evergreen hosts outside
-of AWS, which includes most MacOS hosts, because of security requirements for
-the Papertrail service. In the future, MacOS hosts will not have this
-limitation.
+#ask-devprod-release-tools.
 
 ``` yaml
 - command: papertrail.trace
