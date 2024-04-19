@@ -180,7 +180,9 @@ func getDisplayStatus(v *model.Version) (string, error) {
 	return patch.GetCollectiveStatusFromPatchStatuses(allStatuses), nil
 }
 
-func hasEditPatchPermission(u *user.DBUser, patch patch.Patch) bool {
+// userCanModifyPatch checks if a user can make changes to a given patch. This is mainly to prevent
+// users from modifying other users' patches.
+func userCanModifyPatch(u *user.DBUser, patch patch.Patch) bool {
 	if u == nil {
 		return false
 	}
