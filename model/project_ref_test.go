@@ -3464,3 +3464,44 @@ func TestSetContainerSecrets(t *testing.T) {
 		assert.Empty(t, dbProjRef.RepotrackerError)
 	})
 }
+
+func TestGetActivationTimeForVariant(t *testing.T) {
+	assert := assert.New(t)
+	require.NoError(t, db.ClearCollections(ProjectRefCollection, VersionCollection))
+	projectRef := &ProjectRef{
+		Owner:      "mongodb",
+		Repo:       "mci",
+		Branch:     "main",
+		Enabled:    true,
+		Id:         "ident",
+		Identifier: "identifier",
+	}
+	assert.Nil(projectRef.Insert())
+
+	// set based on last activation time when no version is found
+	activationTime, err := projectRef.GetActivationTimeForVariant(&BuildVariant{Name: "bv"})
+	assert.NoError(err)
+	assert.NotZero(activationTime)
+
+	// set based on last activation time with a version
+	version := &Version{
+		Id:                  "v1",
+		Identifier:          "ident",
+		RevisionOrderNumber: 10,
+		Requester:           evergreen.RepotrackerVersionRequester,
+		BuildVariants: []VersionBuildStatus{
+			{
+				BuildVariant: "bv",
+				BuildId:      "build",
+				ActivationStatus: ActivationStatus{
+					Activated: true,
+				},
+			},
+		},
+	}
+	assert.Nil(version.Insert())
+
+	activationTime, err = projectRef.GetActivationTimeForVariant(&BuildVariant{Name: "bv"})
+	assert.NoError(err)
+	assert.NotZero(activationTime)
+}
