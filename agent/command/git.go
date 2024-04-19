@@ -820,7 +820,7 @@ func (c *gitFetchProject) fetchModuleSource(ctx context.Context,
 	return c.retryFetch(ctx, logger, false, opts, func(opts cloneOpts) error {
 		attempt++
 		// Fallback if the attempt is more than 1 or the head branch is missing.
-		if attempt > 1 || conf.GithubPatchData.HeadBranch == "" {
+		if attempt > 1 {
 			opts.fallbackToFullClone = true
 		}
 		var moduleCmds []string
