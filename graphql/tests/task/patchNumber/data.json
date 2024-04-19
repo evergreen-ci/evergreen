@@ -17,7 +17,14 @@
       "host_id": "i-0bb70e2ac4c1a9ac8",
       "distro": "archlinux-small",
       "r": "github_pull_request",
-      "execution": 0
+      "execution": 0,
+      "branch": "spruce"
+    }
+  ],
+  "project_ref": [
+    {
+      "_id": "spruce",
+      "identifier": "spruce"
     }
   ]
 }

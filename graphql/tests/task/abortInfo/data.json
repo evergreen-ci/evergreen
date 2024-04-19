@@ -8,17 +8,20 @@
       "abort_info": {
         "user": "apiserver",
         "task_id": "2"
-      }
+      },
+      "branch": "spruce"
     },
     {
       "_id": "2",
       "build_id": "sys_perf_linux_3",
-      "display_name": "validate_commit_message"
+      "display_name": "validate_commit_message",
+      "branch": "spruce"
     },
     {
       "_id": "3",
       "display_name": "generate-lint",
-      "status": "success"
+      "status": "success",
+      "branch": "spruce"
     }
   ],
   "builds": [
@@ -27,6 +30,12 @@
       "status": "failed",
       "build_variant": "commit-queue",
       "display_name": "~ Commit Queue"
+    }
+  ],
+  "project_ref": [
+    {
+      "_id": "spruce",
+      "identifier": "spruce"
     }
   ]
 }

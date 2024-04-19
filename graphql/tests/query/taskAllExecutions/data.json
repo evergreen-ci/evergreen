@@ -1,0 +1,48 @@
+{
+  "tasks": [
+    {
+      "_id": "multi_exec_task",
+      "r": "github_pull_request",
+      "branch": "spruce",
+      "gitspec": "12345",
+      "build_variant": "ubuntu1604",
+      "status": "success",
+      "display_name": "multi_exec_task",
+      "execution": 1
+    },
+    {
+      "_id": "no_permissions",
+      "r": "github_pull_request",
+      "branch": "evergreen",
+      "gitspec": "678910",
+      "build_variant": "ubuntu1604",
+      "status": "success",
+      "display_name": "no_permissions",
+      "execution": 0
+    }
+  ],
+  "old_tasks": [
+    {
+      "_id": "multi_exec_task_0",
+      "r": "github_pull_request",
+      "branch": "spruce",
+      "gitspec": "12345",
+      "build_variant": "ubuntu1604",
+      "status": "success",
+      "display_name": "multi_exec_task",
+      "execution": 0,
+      "old_task_id": "multi_exec_task",
+      "archived": true
+    }
+  ],
+  "project_ref": [
+    {
+      "_id": "spruce",
+      "identifier": "spruce"
+    },
+    {
+      "_id": "evergreen",
+      "identifier": "evergreen"
+    }
+  ]
+}

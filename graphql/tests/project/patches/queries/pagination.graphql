@@ -1,13 +1,13 @@
 {
-  page0: project(projectIdentifier: "evergreen") {
+  page0: project(projectIdentifier: "spruce") {
     patches(patchesInput: { onlyCommitQueue: false, page: 0, limit: 3 }) {
       patches {
         id
       }
       filteredPatchCount
     }
-  },
-  page1: project(projectIdentifier: "evergreen") {
+  }
+  page1: project(projectIdentifier: "spruce") {
     patches(patchesInput: { onlyCommitQueue: false, page: 1, limit: 3 }) {
       patches {
         id

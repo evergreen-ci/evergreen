@@ -94,5 +94,11 @@
         }
       ]
     }
+  ],
+  "project_ref": [
+    {
+      "_id": "spruce",
+      "identifier": "spruce"
+    }
   ]
 }

@@ -1,5 +1,7 @@
 query {
-  mainlineCommits(options: { projectIdentifier: "evergreen", limit: 1, revision: "2c" }) {
+  mainlineCommits(
+    options: { projectIdentifier: "spruce", limit: 1, revision: "2c" }
+  ) {
     versions {
       version {
         id

@@ -1,0 +1,36 @@
+{
+  "tests": [
+    {
+      "query_file": "task_all_executions.graphql",
+      "result": {
+        "data": {
+          "taskAllExecutions": [
+            {
+              "id": "multi_exec_task",
+              "execution": 0
+            },
+            {
+              "id": "multi_exec_task",
+              "execution": 1
+            }
+          ]
+        }
+      }
+    },
+    {
+      "query_file": "no_permissions.graphql",
+      "result": {
+        "data": null,
+        "errors": [
+          {
+            "message": "user 'testuser' does not have permission to access 'tasks' for the project 'evergreen'",
+            "path": ["taskAllExecutions", "taskId"],
+            "extensions": {
+              "code": "FORBIDDEN"
+            }
+          }
+        ]
+      }
+    }
+  ]
+}

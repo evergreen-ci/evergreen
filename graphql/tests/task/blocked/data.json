@@ -22,6 +22,7 @@
       "display_name": "test-thirdparty-docker",
       "r": "github_pull_request",
       "status": "success",
+      "branch": "spruce",
       "depends_on": [
         {
           "_id": "random_thang",
@@ -29,6 +30,12 @@
           "unattainable": true
         }
       ]
+    }
+  ],
+  "project_ref": [
+    {
+      "_id": "spruce",
+      "identifier": "spruce"
     }
   ]
 }
