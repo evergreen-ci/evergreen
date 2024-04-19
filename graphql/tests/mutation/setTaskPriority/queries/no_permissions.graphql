@@ -1,0 +1,5 @@
+mutation {
+  setTaskPriority(taskId: "no_permissions", priority: 2) {
+    id
+  }
+}

@@ -5,10 +5,10 @@
       "result": {
         "errors": [
           {
-            "message": "Unable to find version with id: `washington`",
-            "path": ["schedulePatchTasks"],
+            "message": "not a valid patch ID",
+            "path": ["schedulePatchTasks", "patchId"],
             "extensions": {
-              "code": "RESOURCE_NOT_FOUND"
+              "code": "INPUT_VALIDATION_ERROR"
             }
           }
         ],
@@ -34,6 +34,23 @@
             "path": ["schedulePatchTasks"],
             "extensions": {
               "code": "INPUT_VALIDATION_ERROR"
+            }
+          }
+        ],
+        "data": {
+          "schedulePatchTasks": null
+        }
+      }
+    },
+    {
+      "query_file": "no_permissions.graphql",
+      "result": {
+        "errors": [
+          {
+            "message": "user 'testuser' does not have permission to access 'tasks' for the project 'evergreen'",
+            "path": ["schedulePatchTasks", "patchId"],
+            "extensions": {
+              "code": "FORBIDDEN"
             }
           }
         ],

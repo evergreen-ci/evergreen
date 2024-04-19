@@ -2,14 +2,13 @@
   "versions": [
     {
       "_id": "5e4ff3abe3c3317e352062e4",
-      "branch": "evergreen",
-      "identifier": "evergreen",
-      "r": "patch_request"
+      "r": "patch_request",
+      "identifier": "sandbox_project_id"
     },
     {
-      "_id": "123456789012345678901234",
+      "_id": "5dd2e89cd1fe07048e43bb9c",
       "r": "merge_test",
-      "identifier": "p1"
+      "identifier": "sandbox_project_id"
     }
   ],
   "tasks": [
@@ -22,12 +21,12 @@
     {
       "_id": "7",
       "display_name": "cq merge",
-      "branch": "p1",
+      "branch": "sandbox_project_id",
       "status": "started",
       "build_id": "7",
       "r": "merge_test",
       "commit_queue_merge": true,
-      "version": "123456789012345678901234"
+      "version": "5dd2e89cd1fe07048e43bb9c"
     }
   ],
   "builds": [
@@ -37,7 +36,6 @@
       "start_time": { "$date": "2016-10-20T22:01:00.194Z" },
       "finish_time": { "$date": "2017-12-04T21:06:48.822Z" },
       "version": "5e4ff3abe3c3317e352062e4",
-      "branch": "evergreen",
       "gitspec": "edd78c1d581bf757a880777b00685321685a8e67",
       "build_variant": "ubuntu",
       "build_number": "1",
@@ -72,8 +70,18 @@
   ],
   "patches": [
     {
-      "_id": { "$oid": "5e4ff3abe3c3317e352062e4" },
+      "_id": { "$oid": "5dd2e89cd1fe07048e43bb9c" },
+      "branch": "sandbox_project_id",
+      "version": "5dd2e89cd1fe07048e43bb9c"
+    },
+    {
+      "_id": { "$oid": "9e4ff3abe3c3317e352062e4" },
       "branch": "evergreen",
+      "version": "9e4ff3abe3c3317e352062e4"
+    },
+    {
+      "_id": { "$oid": "5e4ff3abe3c3317e352062e4" },
+      "branch": "sandbox_project_id",
       "version": "5e4ff3abe3c3317e352062e4",
       "activated": true,
       "githash": "5e823e1f28baeaa22ae00823d83e03082cd148ab",
@@ -128,8 +136,13 @@
   ],
   "project_ref": [
     {
-      "_id": "p1",
-      "identifier": "p1",
+      "_id": "evergreen",
+      "identifier": "evergreen"
+    },
+    {
+      "_id": "sandbox_project_id",
+      "identifier": "sandbox",
+      "display_name": "Sandbox",
       "commit_queue": {
         "enabled": true
       }
@@ -137,12 +150,12 @@
   ],
   "commit_queue": [
     {
-      "_id": "p1",
+      "_id": "sandbox_project_id",
       "processing": true,
       "queue": [
         {
-          "version": "123456789012345678901234",
-          "issue": "123456789012345678901234",
+          "version": "5dd2e89cd1fe07048e43bb9c",
+          "issue": "5dd2e89cd1fe07048e43bb9c",
           "source": "diff"
         }
       ]

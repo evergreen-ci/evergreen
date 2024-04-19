@@ -1,0 +1,33 @@
+{
+  "tasks": [
+    {
+      "_id": "task_id",
+      "build_id": "build1",
+      "status": "success",
+      "version": "version_id",
+      "branch": "sandbox_project_id"
+    }
+  ],
+  "versions": [
+    {
+      "_id": "version_id",
+      "identifier": "sandbox_project_id"
+    },
+    {
+      "_id": "no_permissions",
+      "identifier": "evergreen"
+    }
+  ],
+  "project_ref": [
+    {
+      "_id": "sandbox_project_id",
+      "identifier": "sandbox",
+      "display_name": "Sandbox"
+    },
+    {
+      "_id": "evergreen",
+      "identifier": "evergreen",
+      "display_name": "Evergreen"
+    }
+  ]
+}

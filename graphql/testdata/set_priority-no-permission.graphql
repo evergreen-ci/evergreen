@@ -1,6 +1,0 @@
-mutation {
-  setTaskPriority(taskId: "wuzzup", priority: 101) {
-    priority
-    id
-  }
-}

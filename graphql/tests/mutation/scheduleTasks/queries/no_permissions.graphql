@@ -1,0 +1,5 @@
+mutation {
+    scheduleTasks(taskIds: ["wuzzup"], versionId: "no_permissions") {
+      status
+    }
+}

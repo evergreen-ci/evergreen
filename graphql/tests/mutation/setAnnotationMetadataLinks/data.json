@@ -1,4 +1,30 @@
 {
+  "tasks": [
+    {
+      "_id": "task-1234",
+      "version": "5e4ff3abe3c3317e352062e5",
+      "revision": "5e823e1f28baeaa22ae00823d83e03082cd148ac",
+      "branch": "sandbox_project_id"
+    },
+    {
+      "_id": "no_permissions",
+      "version": "5e4ff3abe3c3317e352062e5",
+      "revision": "5e823e1f28baeaa22ae00823d83e03082cd148ac",
+      "branch": "evergreen"
+    }
+  ],
+  "project_ref": [
+    {
+      "_id": "sandbox_project_id",
+      "identifier": "sandbox",
+      "display_name": "Sandbox"
+    },
+    {
+      "_id": "evergreen",
+      "identifier": "evergreen",
+      "display_name": "Evergreen"
+    }
+  ],
   "task_annotations": [
     {
       "_id": {

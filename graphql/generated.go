@@ -663,7 +663,7 @@ type ComplexityRoot struct {
 		SaveSubscription              func(childComplexity int, subscription model.APISubscription) int
 		SchedulePatch                 func(childComplexity int, patchID string, configure PatchConfigure) int
 		SchedulePatchTasks            func(childComplexity int, patchID string) int
-		ScheduleTasks                 func(childComplexity int, taskIds []string, versionID string) int
+		ScheduleTasks                 func(childComplexity int, versionID string, taskIds []string) int
 		ScheduleUndispatchedBaseTasks func(childComplexity int, patchID string) int
 		SetAnnotationMetadataLinks    func(childComplexity int, taskID string, execution int, metadataLinks []*model.APIMetadataLink) int
 		SetLastRevision               func(childComplexity int, opts SetLastRevisionInput) int
@@ -1677,7 +1677,6 @@ type MutationResolver interface {
 	ScheduleUndispatchedBaseTasks(ctx context.Context, patchID string) ([]*model.APITask, error)
 	SetPatchPriority(ctx context.Context, patchID string, priority int) (*string, error)
 	UnschedulePatchTasks(ctx context.Context, patchID string, abort bool) (*string, error)
-	AddFavoriteProject(ctx context.Context, identifier string) (*model.APIProjectRef, error)
 	AttachProjectToNewRepo(ctx context.Context, project MoveProjectInput) (*model.APIProjectRef, error)
 	AttachProjectToRepo(ctx context.Context, projectID string) (*model.APIProjectRef, error)
 	CreateProject(ctx context.Context, project model.APIProjectRef, requestS3Creds *bool) (*model.APIProjectRef, error)
@@ -1688,7 +1687,6 @@ type MutationResolver interface {
 	DetachProjectFromRepo(ctx context.Context, projectID string) (*model.APIProjectRef, error)
 	ForceRepotrackerRun(ctx context.Context, projectID string) (bool, error)
 	PromoteVarsToRepo(ctx context.Context, projectID string, varNames []string) (bool, error)
-	RemoveFavoriteProject(ctx context.Context, identifier string) (*model.APIProjectRef, error)
 	SaveProjectSettingsForSection(ctx context.Context, projectSettings *model.APIProjectSettings, section ProjectSettingsSection) (*model.APIProjectSettings, error)
 	SaveRepoSettingsForSection(ctx context.Context, repoSettings *model.APIProjectSettings, section ProjectSettingsSection) (*model.APIProjectSettings, error)
 	SetLastRevision(ctx context.Context, opts SetLastRevisionInput) (*SetLastRevisionPayload, error)
@@ -1704,12 +1702,14 @@ type MutationResolver interface {
 	AbortTask(ctx context.Context, taskID string) (*model.APITask, error)
 	OverrideTaskDependencies(ctx context.Context, taskID string) (*model.APITask, error)
 	RestartTask(ctx context.Context, taskID string, failedOnly bool) (*model.APITask, error)
-	ScheduleTasks(ctx context.Context, taskIds []string, versionID string) ([]*model.APITask, error)
+	ScheduleTasks(ctx context.Context, versionID string, taskIds []string) ([]*model.APITask, error)
 	SetTaskPriority(ctx context.Context, taskID string, priority int) (*model.APITask, error)
 	UnscheduleTask(ctx context.Context, taskID string) (*model.APITask, error)
+	AddFavoriteProject(ctx context.Context, identifier string) (*model.APIProjectRef, error)
 	ClearMySubscriptions(ctx context.Context) (int, error)
 	CreatePublicKey(ctx context.Context, publicKeyInput PublicKeyInput) ([]*model.APIPubKey, error)
 	DeleteSubscriptions(ctx context.Context, subscriptionIds []string) (int, error)
+	RemoveFavoriteProject(ctx context.Context, identifier string) (*model.APIProjectRef, error)
 	RemovePublicKey(ctx context.Context, keyName string) ([]*model.APIPubKey, error)
 	SaveSubscription(ctx context.Context, subscription model.APISubscription) (bool, error)
 	UpdateParsleySettings(ctx context.Context, opts UpdateParsleySettingsInput) (*UpdateParsleySettingsPayload, error)
@@ -4707,7 +4707,7 @@ func (e *executableSchema) Complexity(typeName, field string, childComplexity in
 			return 0, false
 		}
 
-		return e.complexity.Mutation.ScheduleTasks(childComplexity, args["taskIds"].([]string), args["versionId"].(string)), true
+		return e.complexity.Mutation.ScheduleTasks(childComplexity, args["versionId"].(string), args["taskIds"].([]string)), true
 
 	case "Mutation.scheduleUndispatchedBaseTasks":
 		if e.complexity.Mutation.ScheduleUndispatchedBaseTasks == nil {
@@ -9912,9 +9912,30 @@ func (ec *executionContext) field_Mutation_abortTask_args(ctx context.Context, r
 	var arg0 string
 	if tmp, ok := rawArgs["taskId"]; ok {
 		ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("taskId"))
-		arg0, err = ec.unmarshalNString2string(ctx, tmp)
+		directive0 := func(ctx context.Context) (interface{}, error) { return ec.unmarshalNString2string(ctx, tmp) }
+		directive1 := func(ctx context.Context) (interface{}, error) {
+			permission, err := ec.unmarshalNProjectPermission2githubᚗcomᚋevergreenᚑciᚋevergreenᚋgraphqlᚐProjectPermission(ctx, "TASKS")
+			if err != nil {
+				return nil, err
+			}
+			access, err := ec.unmarshalNAccessLevel2githubᚗcomᚋevergreenᚑciᚋevergreenᚋgraphqlᚐAccessLevel(ctx, "EDIT")
+			if err != nil {
+				return nil, err
+			}
+			if ec.directives.RequireProjectAccess == nil {
+				return nil, errors.New("directive requireProjectAccess is not implemented")
+			}
+			return ec.directives.RequireProjectAccess(ctx, rawArgs, directive0, permission, access)
+		}
+
+		tmp, err = directive1(ctx)
 		if err != nil {
-			return nil, err
+			return nil, graphql.ErrorOnPath(ctx, err)
+		}
+		if data, ok := tmp.(string); ok {
+			arg0 = data
+		} else {
+			return nil, graphql.ErrorOnPath(ctx, fmt.Errorf(`unexpected type %T from directive, should be string`, tmp))
 		}
 	}
 	args["taskId"] = arg0
@@ -9927,9 +9948,30 @@ func (ec *executionContext) field_Mutation_addAnnotationIssue_args(ctx context.C
 	var arg0 string
 	if tmp, ok := rawArgs["taskId"]; ok {
 		ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("taskId"))
-		arg0, err = ec.unmarshalNString2string(ctx, tmp)
+		directive0 := func(ctx context.Context) (interface{}, error) { return ec.unmarshalNString2string(ctx, tmp) }
+		directive1 := func(ctx context.Context) (interface{}, error) {
+			permission, err := ec.unmarshalNProjectPermission2githubᚗcomᚋevergreenᚑciᚋevergreenᚋgraphqlᚐProjectPermission(ctx, "ANNOTATIONS")
+			if err != nil {
+				return nil, err
+			}
+			access, err := ec.unmarshalNAccessLevel2githubᚗcomᚋevergreenᚑciᚋevergreenᚋgraphqlᚐAccessLevel(ctx, "EDIT")
+			if err != nil {
+				return nil, err
+			}
+			if ec.directives.RequireProjectAccess == nil {
+				return nil, errors.New("directive requireProjectAccess is not implemented")
+			}
+			return ec.directives.RequireProjectAccess(ctx, rawArgs, directive0, permission, access)
+		}
+
+		tmp, err = directive1(ctx)
 		if err != nil {
-			return nil, err
+			return nil, graphql.ErrorOnPath(ctx, err)
+		}
+		if data, ok := tmp.(string); ok {
+			arg0 = data
+		} else {
+			return nil, graphql.ErrorOnPath(ctx, fmt.Errorf(`unexpected type %T from directive, should be string`, tmp))
 		}
 	}
 	args["taskId"] = arg0
@@ -10050,9 +10092,30 @@ func (ec *executionContext) field_Mutation_bbCreateTicket_args(ctx context.Conte
 	var arg0 string
 	if tmp, ok := rawArgs["taskId"]; ok {
 		ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("taskId"))
-		arg0, err = ec.unmarshalNString2string(ctx, tmp)
+		directive0 := func(ctx context.Context) (interface{}, error) { return ec.unmarshalNString2string(ctx, tmp) }
+		directive1 := func(ctx context.Context) (interface{}, error) {
+			permission, err := ec.unmarshalNProjectPermission2githubᚗcomᚋevergreenᚑciᚋevergreenᚋgraphqlᚐProjectPermission(ctx, "ANNOTATIONS")
+			if err != nil {
+				return nil, err
+			}
+			access, err := ec.unmarshalNAccessLevel2githubᚗcomᚋevergreenᚑciᚋevergreenᚋgraphqlᚐAccessLevel(ctx, "EDIT")
+			if err != nil {
+				return nil, err
+			}
+			if ec.directives.RequireProjectAccess == nil {
+				return nil, errors.New("directive requireProjectAccess is not implemented")
+			}
+			return ec.directives.RequireProjectAccess(ctx, rawArgs, directive0, permission, access)
+		}
+
+		tmp, err = directive1(ctx)
 		if err != nil {
-			return nil, err
+			return nil, graphql.ErrorOnPath(ctx, err)
+		}
+		if data, ok := tmp.(string); ok {
+			arg0 = data
+		} else {
+			return nil, graphql.ErrorOnPath(ctx, fmt.Errorf(`unexpected type %T from directive, should be string`, tmp))
 		}
 	}
 	args["taskId"] = arg0
@@ -10443,9 +10506,30 @@ func (ec *executionContext) field_Mutation_editAnnotationNote_args(ctx context.C
 	var arg0 string
 	if tmp, ok := rawArgs["taskId"]; ok {
 		ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("taskId"))
-		arg0, err = ec.unmarshalNString2string(ctx, tmp)
+		directive0 := func(ctx context.Context) (interface{}, error) { return ec.unmarshalNString2string(ctx, tmp) }
+		directive1 := func(ctx context.Context) (interface{}, error) {
+			permission, err := ec.unmarshalNProjectPermission2githubᚗcomᚋevergreenᚑciᚋevergreenᚋgraphqlᚐProjectPermission(ctx, "ANNOTATIONS")
+			if err != nil {
+				return nil, err
+			}
+			access, err := ec.unmarshalNAccessLevel2githubᚗcomᚋevergreenᚑciᚋevergreenᚋgraphqlᚐAccessLevel(ctx, "EDIT")
+			if err != nil {
+				return nil, err
+			}
+			if ec.directives.RequireProjectAccess == nil {
+				return nil, errors.New("directive requireProjectAccess is not implemented")
+			}
+			return ec.directives.RequireProjectAccess(ctx, rawArgs, directive0, permission, access)
+		}
+
+		tmp, err = directive1(ctx)
 		if err != nil {
-			return nil, err
+			return nil, graphql.ErrorOnPath(ctx, err)
+		}
+		if data, ok := tmp.(string); ok {
+			arg0 = data
+		} else {
+			return nil, graphql.ErrorOnPath(ctx, fmt.Errorf(`unexpected type %T from directive, should be string`, tmp))
 		}
 	}
 	args["taskId"] = arg0
@@ -10500,9 +10584,30 @@ func (ec *executionContext) field_Mutation_enqueuePatch_args(ctx context.Context
 	var arg0 string
 	if tmp, ok := rawArgs["patchId"]; ok {
 		ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("patchId"))
-		arg0, err = ec.unmarshalNString2string(ctx, tmp)
+		directive0 := func(ctx context.Context) (interface{}, error) { return ec.unmarshalNString2string(ctx, tmp) }
+		directive1 := func(ctx context.Context) (interface{}, error) {
+			permission, err := ec.unmarshalNProjectPermission2githubᚗcomᚋevergreenᚑciᚋevergreenᚋgraphqlᚐProjectPermission(ctx, "PATCHES")
+			if err != nil {
+				return nil, err
+			}
+			access, err := ec.unmarshalNAccessLevel2githubᚗcomᚋevergreenᚑciᚋevergreenᚋgraphqlᚐAccessLevel(ctx, "EDIT")
+			if err != nil {
+				return nil, err
+			}
+			if ec.directives.RequireProjectAccess == nil {
+				return nil, errors.New("directive requireProjectAccess is not implemented")
+			}
+			return ec.directives.RequireProjectAccess(ctx, rawArgs, directive0, permission, access)
+		}
+
+		tmp, err = directive1(ctx)
 		if err != nil {
-			return nil, err
+			return nil, graphql.ErrorOnPath(ctx, err)
+		}
+		if data, ok := tmp.(string); ok {
+			arg0 = data
+		} else {
+			return nil, graphql.ErrorOnPath(ctx, fmt.Errorf(`unexpected type %T from directive, should be string`, tmp))
 		}
 	}
 	args["patchId"] = arg0
@@ -10584,9 +10689,30 @@ func (ec *executionContext) field_Mutation_moveAnnotationIssue_args(ctx context.
 	var arg0 string
 	if tmp, ok := rawArgs["taskId"]; ok {
 		ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("taskId"))
-		arg0, err = ec.unmarshalNString2string(ctx, tmp)
+		directive0 := func(ctx context.Context) (interface{}, error) { return ec.unmarshalNString2string(ctx, tmp) }
+		directive1 := func(ctx context.Context) (interface{}, error) {
+			permission, err := ec.unmarshalNProjectPermission2githubᚗcomᚋevergreenᚑciᚋevergreenᚋgraphqlᚐProjectPermission(ctx, "ANNOTATIONS")
+			if err != nil {
+				return nil, err
+			}
+			access, err := ec.unmarshalNAccessLevel2githubᚗcomᚋevergreenᚑciᚋevergreenᚋgraphqlᚐAccessLevel(ctx, "EDIT")
+			if err != nil {
+				return nil, err
+			}
+			if ec.directives.RequireProjectAccess == nil {
+				return nil, errors.New("directive requireProjectAccess is not implemented")
+			}
+			return ec.directives.RequireProjectAccess(ctx, rawArgs, directive0, permission, access)
+		}
+
+		tmp, err = directive1(ctx)
 		if err != nil {
-			return nil, err
+			return nil, graphql.ErrorOnPath(ctx, err)
+		}
+		if data, ok := tmp.(string); ok {
+			arg0 = data
+		} else {
+			return nil, graphql.ErrorOnPath(ctx, fmt.Errorf(`unexpected type %T from directive, should be string`, tmp))
 		}
 	}
 	args["taskId"] = arg0
@@ -10626,9 +10752,30 @@ func (ec *executionContext) field_Mutation_overrideTaskDependencies_args(ctx con
 	var arg0 string
 	if tmp, ok := rawArgs["taskId"]; ok {
 		ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("taskId"))
-		arg0, err = ec.unmarshalNString2string(ctx, tmp)
+		directive0 := func(ctx context.Context) (interface{}, error) { return ec.unmarshalNString2string(ctx, tmp) }
+		directive1 := func(ctx context.Context) (interface{}, error) {
+			permission, err := ec.unmarshalNProjectPermission2githubᚗcomᚋevergreenᚑciᚋevergreenᚋgraphqlᚐProjectPermission(ctx, "TASKS")
+			if err != nil {
+				return nil, err
+			}
+			access, err := ec.unmarshalNAccessLevel2githubᚗcomᚋevergreenᚑciᚋevergreenᚋgraphqlᚐAccessLevel(ctx, "EDIT")
+			if err != nil {
+				return nil, err
+			}
+			if ec.directives.RequireProjectAccess == nil {
+				return nil, errors.New("directive requireProjectAccess is not implemented")
+			}
+			return ec.directives.RequireProjectAccess(ctx, rawArgs, directive0, permission, access)
+		}
+
+		tmp, err = directive1(ctx)
 		if err != nil {
-			return nil, err
+			return nil, graphql.ErrorOnPath(ctx, err)
+		}
+		if data, ok := tmp.(string); ok {
+			arg0 = data
+		} else {
+			return nil, graphql.ErrorOnPath(ctx, fmt.Errorf(`unexpected type %T from directive, should be string`, tmp))
 		}
 	}
 	args["taskId"] = arg0
@@ -10686,9 +10833,30 @@ func (ec *executionContext) field_Mutation_removeAnnotationIssue_args(ctx contex
 	var arg0 string
 	if tmp, ok := rawArgs["taskId"]; ok {
 		ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("taskId"))
-		arg0, err = ec.unmarshalNString2string(ctx, tmp)
+		directive0 := func(ctx context.Context) (interface{}, error) { return ec.unmarshalNString2string(ctx, tmp) }
+		directive1 := func(ctx context.Context) (interface{}, error) {
+			permission, err := ec.unmarshalNProjectPermission2githubᚗcomᚋevergreenᚑciᚋevergreenᚋgraphqlᚐProjectPermission(ctx, "ANNOTATIONS")
+			if err != nil {
+				return nil, err
+			}
+			access, err := ec.unmarshalNAccessLevel2githubᚗcomᚋevergreenᚑciᚋevergreenᚋgraphqlᚐAccessLevel(ctx, "EDIT")
+			if err != nil {
+				return nil, err
+			}
+			if ec.directives.RequireProjectAccess == nil {
+				return nil, errors.New("directive requireProjectAccess is not implemented")
+			}
+			return ec.directives.RequireProjectAccess(ctx, rawArgs, directive0, permission, access)
+		}
+
+		tmp, err = directive1(ctx)
 		if err != nil {
-			return nil, err
+			return nil, graphql.ErrorOnPath(ctx, err)
+		}
+		if data, ok := tmp.(string); ok {
+			arg0 = data
+		} else {
+			return nil, graphql.ErrorOnPath(ctx, fmt.Errorf(`unexpected type %T from directive, should be string`, tmp))
 		}
 	}
 	args["taskId"] = arg0
@@ -10840,9 +11008,30 @@ func (ec *executionContext) field_Mutation_restartTask_args(ctx context.Context,
 	var arg0 string
 	if tmp, ok := rawArgs["taskId"]; ok {
 		ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("taskId"))
-		arg0, err = ec.unmarshalNString2string(ctx, tmp)
+		directive0 := func(ctx context.Context) (interface{}, error) { return ec.unmarshalNString2string(ctx, tmp) }
+		directive1 := func(ctx context.Context) (interface{}, error) {
+			permission, err := ec.unmarshalNProjectPermission2githubᚗcomᚋevergreenᚑciᚋevergreenᚋgraphqlᚐProjectPermission(ctx, "TASKS")
+			if err != nil {
+				return nil, err
+			}
+			access, err := ec.unmarshalNAccessLevel2githubᚗcomᚋevergreenᚑciᚋevergreenᚋgraphqlᚐAccessLevel(ctx, "EDIT")
+			if err != nil {
+				return nil, err
+			}
+			if ec.directives.RequireProjectAccess == nil {
+				return nil, errors.New("directive requireProjectAccess is not implemented")
+			}
+			return ec.directives.RequireProjectAccess(ctx, rawArgs, directive0, permission, access)
+		}
+
+		tmp, err = directive1(ctx)
 		if err != nil {
-			return nil, err
+			return nil, graphql.ErrorOnPath(ctx, err)
+		}
+		if data, ok := tmp.(string); ok {
+			arg0 = data
+		} else {
+			return nil, graphql.ErrorOnPath(ctx, fmt.Errorf(`unexpected type %T from directive, should be string`, tmp))
 		}
 	}
 	args["taskId"] = arg0
@@ -10864,9 +11053,30 @@ func (ec *executionContext) field_Mutation_restartVersions_args(ctx context.Cont
 	var arg0 string
 	if tmp, ok := rawArgs["versionId"]; ok {
 		ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("versionId"))
-		arg0, err = ec.unmarshalNString2string(ctx, tmp)
+		directive0 := func(ctx context.Context) (interface{}, error) { return ec.unmarshalNString2string(ctx, tmp) }
+		directive1 := func(ctx context.Context) (interface{}, error) {
+			permission, err := ec.unmarshalNProjectPermission2githubᚗcomᚋevergreenᚑciᚋevergreenᚋgraphqlᚐProjectPermission(ctx, "TASKS")
+			if err != nil {
+				return nil, err
+			}
+			access, err := ec.unmarshalNAccessLevel2githubᚗcomᚋevergreenᚑciᚋevergreenᚋgraphqlᚐAccessLevel(ctx, "EDIT")
+			if err != nil {
+				return nil, err
+			}
+			if ec.directives.RequireProjectAccess == nil {
+				return nil, errors.New("directive requireProjectAccess is not implemented")
+			}
+			return ec.directives.RequireProjectAccess(ctx, rawArgs, directive0, permission, access)
+		}
+
+		tmp, err = directive1(ctx)
 		if err != nil {
-			return nil, err
+			return nil, graphql.ErrorOnPath(ctx, err)
+		}
+		if data, ok := tmp.(string); ok {
+			arg0 = data
+		} else {
+			return nil, graphql.ErrorOnPath(ctx, fmt.Errorf(`unexpected type %T from directive, should be string`, tmp))
 		}
 	}
 	args["versionId"] = arg0
@@ -10975,9 +11185,30 @@ func (ec *executionContext) field_Mutation_schedulePatchTasks_args(ctx context.C
 	var arg0 string
 	if tmp, ok := rawArgs["patchId"]; ok {
 		ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("patchId"))
-		arg0, err = ec.unmarshalNString2string(ctx, tmp)
+		directive0 := func(ctx context.Context) (interface{}, error) { return ec.unmarshalNString2string(ctx, tmp) }
+		directive1 := func(ctx context.Context) (interface{}, error) {
+			permission, err := ec.unmarshalNProjectPermission2githubᚗcomᚋevergreenᚑciᚋevergreenᚋgraphqlᚐProjectPermission(ctx, "TASKS")
+			if err != nil {
+				return nil, err
+			}
+			access, err := ec.unmarshalNAccessLevel2githubᚗcomᚋevergreenᚑciᚋevergreenᚋgraphqlᚐAccessLevel(ctx, "EDIT")
+			if err != nil {
+				return nil, err
+			}
+			if ec.directives.RequireProjectAccess == nil {
+				return nil, errors.New("directive requireProjectAccess is not implemented")
+			}
+			return ec.directives.RequireProjectAccess(ctx, rawArgs, directive0, permission, access)
+		}
+
+		tmp, err = directive1(ctx)
 		if err != nil {
-			return nil, err
+			return nil, graphql.ErrorOnPath(ctx, err)
+		}
+		if data, ok := tmp.(string); ok {
+			arg0 = data
+		} else {
+			return nil, graphql.ErrorOnPath(ctx, fmt.Errorf(`unexpected type %T from directive, should be string`, tmp))
 		}
 	}
 	args["patchId"] = arg0
@@ -10990,9 +11221,30 @@ func (ec *executionContext) field_Mutation_schedulePatch_args(ctx context.Contex
 	var arg0 string
 	if tmp, ok := rawArgs["patchId"]; ok {
 		ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("patchId"))
-		arg0, err = ec.unmarshalNString2string(ctx, tmp)
+		directive0 := func(ctx context.Context) (interface{}, error) { return ec.unmarshalNString2string(ctx, tmp) }
+		directive1 := func(ctx context.Context) (interface{}, error) {
+			permission, err := ec.unmarshalNProjectPermission2githubᚗcomᚋevergreenᚑciᚋevergreenᚋgraphqlᚐProjectPermission(ctx, "PATCHES")
+			if err != nil {
+				return nil, err
+			}
+			access, err := ec.unmarshalNAccessLevel2githubᚗcomᚋevergreenᚑciᚋevergreenᚋgraphqlᚐAccessLevel(ctx, "EDIT")
+			if err != nil {
+				return nil, err
+			}
+			if ec.directives.RequireProjectAccess == nil {
+				return nil, errors.New("directive requireProjectAccess is not implemented")
+			}
+			return ec.directives.RequireProjectAccess(ctx, rawArgs, directive0, permission, access)
+		}
+
+		tmp, err = directive1(ctx)
 		if err != nil {
-			return nil, err
+			return nil, graphql.ErrorOnPath(ctx, err)
+		}
+		if data, ok := tmp.(string); ok {
+			arg0 = data
+		} else {
+			return nil, graphql.ErrorOnPath(ctx, fmt.Errorf(`unexpected type %T from directive, should be string`, tmp))
 		}
 	}
 	args["patchId"] = arg0
@@ -11011,24 +11263,45 @@ func (ec *executionContext) field_Mutation_schedulePatch_args(ctx context.Contex
 func (ec *executionContext) field_Mutation_scheduleTasks_args(ctx context.Context, rawArgs map[string]interface{}) (map[string]interface{}, error) {
 	var err error
 	args := map[string]interface{}{}
-	var arg0 []string
-	if tmp, ok := rawArgs["taskIds"]; ok {
-		ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("taskIds"))
-		arg0, err = ec.unmarshalNString2ᚕstringᚄ(ctx, tmp)
-		if err != nil {
-			return nil, err
-		}
-	}
-	args["taskIds"] = arg0
-	var arg1 string
+	var arg0 string
 	if tmp, ok := rawArgs["versionId"]; ok {
 		ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("versionId"))
-		arg1, err = ec.unmarshalNString2string(ctx, tmp)
+		directive0 := func(ctx context.Context) (interface{}, error) { return ec.unmarshalNString2string(ctx, tmp) }
+		directive1 := func(ctx context.Context) (interface{}, error) {
+			permission, err := ec.unmarshalNProjectPermission2githubᚗcomᚋevergreenᚑciᚋevergreenᚋgraphqlᚐProjectPermission(ctx, "TASKS")
+			if err != nil {
+				return nil, err
+			}
+			access, err := ec.unmarshalNAccessLevel2githubᚗcomᚋevergreenᚑciᚋevergreenᚋgraphqlᚐAccessLevel(ctx, "EDIT")
+			if err != nil {
+				return nil, err
+			}
+			if ec.directives.RequireProjectAccess == nil {
+				return nil, errors.New("directive requireProjectAccess is not implemented")
+			}
+			return ec.directives.RequireProjectAccess(ctx, rawArgs, directive0, permission, access)
+		}
+
+		tmp, err = directive1(ctx)
+		if err != nil {
+			return nil, graphql.ErrorOnPath(ctx, err)
+		}
+		if data, ok := tmp.(string); ok {
+			arg0 = data
+		} else {
+			return nil, graphql.ErrorOnPath(ctx, fmt.Errorf(`unexpected type %T from directive, should be string`, tmp))
+		}
+	}
+	args["versionId"] = arg0
+	var arg1 []string
+	if tmp, ok := rawArgs["taskIds"]; ok {
+		ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("taskIds"))
+		arg1, err = ec.unmarshalNString2ᚕstringᚄ(ctx, tmp)
 		if err != nil {
 			return nil, err
 		}
 	}
-	args["versionId"] = arg1
+	args["taskIds"] = arg1
 	return args, nil
 }
 
@@ -11038,9 +11311,30 @@ func (ec *executionContext) field_Mutation_scheduleUndispatchedBaseTasks_args(ct
 	var arg0 string
 	if tmp, ok := rawArgs["patchId"]; ok {
 		ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("patchId"))
-		arg0, err = ec.unmarshalNString2string(ctx, tmp)
+		directive0 := func(ctx context.Context) (interface{}, error) { return ec.unmarshalNString2string(ctx, tmp) }
+		directive1 := func(ctx context.Context) (interface{}, error) {
+			permission, err := ec.unmarshalNProjectPermission2githubᚗcomᚋevergreenᚑciᚋevergreenᚋgraphqlᚐProjectPermission(ctx, "TASKS")
+			if err != nil {
+				return nil, err
+			}
+			access, err := ec.unmarshalNAccessLevel2githubᚗcomᚋevergreenᚑciᚋevergreenᚋgraphqlᚐAccessLevel(ctx, "EDIT")
+			if err != nil {
+				return nil, err
+			}
+			if ec.directives.RequireProjectAccess == nil {
+				return nil, errors.New("directive requireProjectAccess is not implemented")
+			}
+			return ec.directives.RequireProjectAccess(ctx, rawArgs, directive0, permission, access)
+		}
+
+		tmp, err = directive1(ctx)
 		if err != nil {
-			return nil, err
+			return nil, graphql.ErrorOnPath(ctx, err)
+		}
+		if data, ok := tmp.(string); ok {
+			arg0 = data
+		} else {
+			return nil, graphql.ErrorOnPath(ctx, fmt.Errorf(`unexpected type %T from directive, should be string`, tmp))
 		}
 	}
 	args["patchId"] = arg0
@@ -11053,9 +11347,30 @@ func (ec *executionContext) field_Mutation_setAnnotationMetadataLinks_args(ctx c
 	var arg0 string
 	if tmp, ok := rawArgs["taskId"]; ok {
 		ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("taskId"))
-		arg0, err = ec.unmarshalNString2string(ctx, tmp)
+		directive0 := func(ctx context.Context) (interface{}, error) { return ec.unmarshalNString2string(ctx, tmp) }
+		directive1 := func(ctx context.Context) (interface{}, error) {
+			permission, err := ec.unmarshalNProjectPermission2githubᚗcomᚋevergreenᚑciᚋevergreenᚋgraphqlᚐProjectPermission(ctx, "ANNOTATIONS")
+			if err != nil {
+				return nil, err
+			}
+			access, err := ec.unmarshalNAccessLevel2githubᚗcomᚋevergreenᚑciᚋevergreenᚋgraphqlᚐAccessLevel(ctx, "EDIT")
+			if err != nil {
+				return nil, err
+			}
+			if ec.directives.RequireProjectAccess == nil {
+				return nil, errors.New("directive requireProjectAccess is not implemented")
+			}
+			return ec.directives.RequireProjectAccess(ctx, rawArgs, directive0, permission, access)
+		}
+
+		tmp, err = directive1(ctx)
 		if err != nil {
-			return nil, err
+			return nil, graphql.ErrorOnPath(ctx, err)
+		}
+		if data, ok := tmp.(string); ok {
+			arg0 = data
+		} else {
+			return nil, graphql.ErrorOnPath(ctx, fmt.Errorf(`unexpected type %T from directive, should be string`, tmp))
 		}
 	}
 	args["taskId"] = arg0
@@ -11116,9 +11431,30 @@ func (ec *executionContext) field_Mutation_setPatchPriority_args(ctx context.Con
 	var arg0 string
 	if tmp, ok := rawArgs["patchId"]; ok {
 		ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("patchId"))
-		arg0, err = ec.unmarshalNString2string(ctx, tmp)
+		directive0 := func(ctx context.Context) (interface{}, error) { return ec.unmarshalNString2string(ctx, tmp) }
+		directive1 := func(ctx context.Context) (interface{}, error) {
+			permission, err := ec.unmarshalNProjectPermission2githubᚗcomᚋevergreenᚑciᚋevergreenᚋgraphqlᚐProjectPermission(ctx, "TASKS")
+			if err != nil {
+				return nil, err
+			}
+			access, err := ec.unmarshalNAccessLevel2githubᚗcomᚋevergreenᚑciᚋevergreenᚋgraphqlᚐAccessLevel(ctx, "EDIT")
+			if err != nil {
+				return nil, err
+			}
+			if ec.directives.RequireProjectAccess == nil {
+				return nil, errors.New("directive requireProjectAccess is not implemented")
+			}
+			return ec.directives.RequireProjectAccess(ctx, rawArgs, directive0, permission, access)
+		}
+
+		tmp, err = directive1(ctx)
 		if err != nil {
-			return nil, err
+			return nil, graphql.ErrorOnPath(ctx, err)
+		}
+		if data, ok := tmp.(string); ok {
+			arg0 = data
+		} else {
+			return nil, graphql.ErrorOnPath(ctx, fmt.Errorf(`unexpected type %T from directive, should be string`, tmp))
 		}
 	}
 	args["patchId"] = arg0
@@ -11164,9 +11500,30 @@ func (ec *executionContext) field_Mutation_setTaskPriority_args(ctx context.Cont
 	var arg0 string
 	if tmp, ok := rawArgs["taskId"]; ok {
 		ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("taskId"))
-		arg0, err = ec.unmarshalNString2string(ctx, tmp)
+		directive0 := func(ctx context.Context) (interface{}, error) { return ec.unmarshalNString2string(ctx, tmp) }
+		directive1 := func(ctx context.Context) (interface{}, error) {
+			permission, err := ec.unmarshalNProjectPermission2githubᚗcomᚋevergreenᚑciᚋevergreenᚋgraphqlᚐProjectPermission(ctx, "TASKS")
+			if err != nil {
+				return nil, err
+			}
+			access, err := ec.unmarshalNAccessLevel2githubᚗcomᚋevergreenᚑciᚋevergreenᚋgraphqlᚐAccessLevel(ctx, "EDIT")
+			if err != nil {
+				return nil, err
+			}
+			if ec.directives.RequireProjectAccess == nil {
+				return nil, errors.New("directive requireProjectAccess is not implemented")
+			}
+			return ec.directives.RequireProjectAccess(ctx, rawArgs, directive0, permission, access)
+		}
+
+		tmp, err = directive1(ctx)
 		if err != nil {
-			return nil, err
+			return nil, graphql.ErrorOnPath(ctx, err)
+		}
+		if data, ok := tmp.(string); ok {
+			arg0 = data
+		} else {
+			return nil, graphql.ErrorOnPath(ctx, fmt.Errorf(`unexpected type %T from directive, should be string`, tmp))
 		}
 	}
 	args["taskId"] = arg0
@@ -11218,9 +11575,30 @@ func (ec *executionContext) field_Mutation_unschedulePatchTasks_args(ctx context
 	var arg0 string
 	if tmp, ok := rawArgs["patchId"]; ok {
 		ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("patchId"))
-		arg0, err = ec.unmarshalNString2string(ctx, tmp)
+		directive0 := func(ctx context.Context) (interface{}, error) { return ec.unmarshalNString2string(ctx, tmp) }
+		directive1 := func(ctx context.Context) (interface{}, error) {
+			permission, err := ec.unmarshalNProjectPermission2githubᚗcomᚋevergreenᚑciᚋevergreenᚋgraphqlᚐProjectPermission(ctx, "TASKS")
+			if err != nil {
+				return nil, err
+			}
+			access, err := ec.unmarshalNAccessLevel2githubᚗcomᚋevergreenᚑciᚋevergreenᚋgraphqlᚐAccessLevel(ctx, "EDIT")
+			if err != nil {
+				return nil, err
+			}
+			if ec.directives.RequireProjectAccess == nil {
+				return nil, errors.New("directive requireProjectAccess is not implemented")
+			}
+			return ec.directives.RequireProjectAccess(ctx, rawArgs, directive0, permission, access)
+		}
+
+		tmp, err = directive1(ctx)
 		if err != nil {
-			return nil, err
+			return nil, graphql.ErrorOnPath(ctx, err)
+		}
+		if data, ok := tmp.(string); ok {
+			arg0 = data
+		} else {
+			return nil, graphql.ErrorOnPath(ctx, fmt.Errorf(`unexpected type %T from directive, should be string`, tmp))
 		}
 	}
 	args["patchId"] = arg0
@@ -11242,9 +11620,30 @@ func (ec *executionContext) field_Mutation_unscheduleTask_args(ctx context.Conte
 	var arg0 string
 	if tmp, ok := rawArgs["taskId"]; ok {
 		ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("taskId"))
-		arg0, err = ec.unmarshalNString2string(ctx, tmp)
+		directive0 := func(ctx context.Context) (interface{}, error) { return ec.unmarshalNString2string(ctx, tmp) }
+		directive1 := func(ctx context.Context) (interface{}, error) {
+			permission, err := ec.unmarshalNProjectPermission2githubᚗcomᚋevergreenᚑciᚋevergreenᚋgraphqlᚐProjectPermission(ctx, "TASKS")
+			if err != nil {
+				return nil, err
+			}
+			access, err := ec.unmarshalNAccessLevel2githubᚗcomᚋevergreenᚑciᚋevergreenᚋgraphqlᚐAccessLevel(ctx, "EDIT")
+			if err != nil {
+				return nil, err
+			}
+			if ec.directives.RequireProjectAccess == nil {
+				return nil, errors.New("directive requireProjectAccess is not implemented")
+			}
+			return ec.directives.RequireProjectAccess(ctx, rawArgs, directive0, permission, access)
+		}
+
+		tmp, err = directive1(ctx)
 		if err != nil {
-			return nil, err
+			return nil, graphql.ErrorOnPath(ctx, err)
+		}
+		if data, ok := tmp.(string); ok {
+			arg0 = data
+		} else {
+			return nil, graphql.ErrorOnPath(ctx, fmt.Errorf(`unexpected type %T from directive, should be string`, tmp))
 		}
 	}
 	args["taskId"] = arg0
@@ -28377,163 +28776,6 @@ func (ec *executionContext) fieldContext_Mutation_unschedulePatchTasks(ctx conte
 	return fc, nil
 }
 
-func (ec *executionContext) _Mutation_addFavoriteProject(ctx context.Context, field graphql.CollectedField) (ret graphql.Marshaler) {
-	fc, err := ec.fieldContext_Mutation_addFavoriteProject(ctx, field)
-	if err != nil {
-		return graphql.Null
-	}
-	ctx = graphql.WithFieldContext(ctx, fc)
-	defer func() {
-		if r := recover(); r != nil {
-			ec.Error(ctx, ec.Recover(ctx, r))
-			ret = graphql.Null
-		}
-	}()
-	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
-		ctx = rctx // use context from middleware stack in children
-		return ec.resolvers.Mutation().AddFavoriteProject(rctx, fc.Args["identifier"].(string))
-	})
-	if err != nil {
-		ec.Error(ctx, err)
-		return graphql.Null
-	}
-	if resTmp == nil {
-		if !graphql.HasFieldError(ctx, fc) {
-			ec.Errorf(ctx, "must not be null")
-		}
-		return graphql.Null
-	}
-	res := resTmp.(*model.APIProjectRef)
-	fc.Result = res
-	return ec.marshalNProject2ᚖgithubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐAPIProjectRef(ctx, field.Selections, res)
-}
-
-func (ec *executionContext) fieldContext_Mutation_addFavoriteProject(ctx context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
-	fc = &graphql.FieldContext{
-		Object:     "Mutation",
-		Field:      field,
-		IsMethod:   true,
-		IsResolver: true,
-		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
-			switch field.Name {
-			case "id":
-				return ec.fieldContext_Project_id(ctx, field)
-			case "admins":
-				return ec.fieldContext_Project_admins(ctx, field)
-			case "banner":
-				return ec.fieldContext_Project_banner(ctx, field)
-			case "batchTime":
-				return ec.fieldContext_Project_batchTime(ctx, field)
-			case "branch":
-				return ec.fieldContext_Project_branch(ctx, field)
-			case "buildBaronSettings":
-				return ec.fieldContext_Project_buildBaronSettings(ctx, field)
-			case "commitQueue":
-				return ec.fieldContext_Project_commitQueue(ctx, field)
-			case "containerSizeDefinitions":
-				return ec.fieldContext_Project_containerSizeDefinitions(ctx, field)
-			case "deactivatePrevious":
-				return ec.fieldContext_Project_deactivatePrevious(ctx, field)
-			case "disabledStatsCache":
-				return ec.fieldContext_Project_disabledStatsCache(ctx, field)
-			case "dispatchingDisabled":
-				return ec.fieldContext_Project_dispatchingDisabled(ctx, field)
-			case "displayName":
-				return ec.fieldContext_Project_displayName(ctx, field)
-			case "enabled":
-				return ec.fieldContext_Project_enabled(ctx, field)
-			case "externalLinks":
-				return ec.fieldContext_Project_externalLinks(ctx, field)
-			case "githubChecksEnabled":
-				return ec.fieldContext_Project_githubChecksEnabled(ctx, field)
-			case "githubTriggerAliases":
-				return ec.fieldContext_Project_githubTriggerAliases(ctx, field)
-			case "gitTagAuthorizedTeams":
-				return ec.fieldContext_Project_gitTagAuthorizedTeams(ctx, field)
-			case "gitTagAuthorizedUsers":
-				return ec.fieldContext_Project_gitTagAuthorizedUsers(ctx, field)
-			case "gitTagVersionsEnabled":
-				return ec.fieldContext_Project_gitTagVersionsEnabled(ctx, field)
-			case "hidden":
-				return ec.fieldContext_Project_hidden(ctx, field)
-			case "identifier":
-				return ec.fieldContext_Project_identifier(ctx, field)
-			case "isFavorite":
-				return ec.fieldContext_Project_isFavorite(ctx, field)
-			case "manualPrTestingEnabled":
-				return ec.fieldContext_Project_manualPrTestingEnabled(ctx, field)
-			case "notifyOnBuildFailure":
-				return ec.fieldContext_Project_notifyOnBuildFailure(ctx, field)
-			case "oldestAllowedMergeBase":
-				return ec.fieldContext_Project_oldestAllowedMergeBase(ctx, field)
-			case "owner":
-				return ec.fieldContext_Project_owner(ctx, field)
-			case "parsleyFilters":
-				return ec.fieldContext_Project_parsleyFilters(ctx, field)
-			case "patches":
-				return ec.fieldContext_Project_patches(ctx, field)
-			case "patchingDisabled":
-				return ec.fieldContext_Project_patchingDisabled(ctx, field)
-			case "patchTriggerAliases":
-				return ec.fieldContext_Project_patchTriggerAliases(ctx, field)
-			case "perfEnabled":
-				return ec.fieldContext_Project_perfEnabled(ctx, field)
-			case "periodicBuilds":
-				return ec.fieldContext_Project_periodicBuilds(ctx, field)
-			case "private":
-				return ec.fieldContext_Project_private(ctx, field)
-			case "projectHealthView":
-				return ec.fieldContext_Project_projectHealthView(ctx, field)
-			case "prTestingEnabled":
-				return ec.fieldContext_Project_prTestingEnabled(ctx, field)
-			case "remotePath":
-				return ec.fieldContext_Project_remotePath(ctx, field)
-			case "repo":
-				return ec.fieldContext_Project_repo(ctx, field)
-			case "repoRefId":
-				return ec.fieldContext_Project_repoRefId(ctx, field)
-			case "repotrackerDisabled":
-				return ec.fieldContext_Project_repotrackerDisabled(ctx, field)
-			case "repotrackerError":
-				return ec.fieldContext_Project_repotrackerError(ctx, field)
-			case "restricted":
-				return ec.fieldContext_Project_restricted(ctx, field)
-			case "spawnHostScriptPath":
-				return ec.fieldContext_Project_spawnHostScriptPath(ctx, field)
-			case "stepbackDisabled":
-				return ec.fieldContext_Project_stepbackDisabled(ctx, field)
-			case "stepbackBisect":
-				return ec.fieldContext_Project_stepbackBisect(ctx, field)
-			case "taskAnnotationSettings":
-				return ec.fieldContext_Project_taskAnnotationSettings(ctx, field)
-			case "taskSync":
-				return ec.fieldContext_Project_taskSync(ctx, field)
-			case "tracksPushEvents":
-				return ec.fieldContext_Project_tracksPushEvents(ctx, field)
-			case "triggers":
-				return ec.fieldContext_Project_triggers(ctx, field)
-			case "versionControlEnabled":
-				return ec.fieldContext_Project_versionControlEnabled(ctx, field)
-			case "workstationConfig":
-				return ec.fieldContext_Project_workstationConfig(ctx, field)
-			}
-			return nil, fmt.Errorf("no field named %q was found under type Project", field.Name)
-		},
-	}
-	defer func() {
-		if r := recover(); r != nil {
-			err = ec.Recover(ctx, r)
-			ec.Error(ctx, err)
-		}
-	}()
-	ctx = graphql.WithFieldContext(ctx, fc)
-	if fc.Args, err = ec.field_Mutation_addFavoriteProject_args(ctx, field.ArgumentMap(ec.Variables)); err != nil {
-		ec.Error(ctx, err)
-		return fc, err
-	}
-	return fc, nil
-}
-
 func (ec *executionContext) _Mutation_attachProjectToNewRepo(ctx context.Context, field graphql.CollectedField) (ret graphql.Marshaler) {
 	fc, err := ec.fieldContext_Mutation_attachProjectToNewRepo(ctx, field)
 	if err != nil {
@@ -29585,163 +29827,6 @@ func (ec *executionContext) fieldContext_Mutation_promoteVarsToRepo(ctx context.
 	}()
 	ctx = graphql.WithFieldContext(ctx, fc)
 	if fc.Args, err = ec.field_Mutation_promoteVarsToRepo_args(ctx, field.ArgumentMap(ec.Variables)); err != nil {
-		ec.Error(ctx, err)
-		return fc, err
-	}
-	return fc, nil
-}
-
-func (ec *executionContext) _Mutation_removeFavoriteProject(ctx context.Context, field graphql.CollectedField) (ret graphql.Marshaler) {
-	fc, err := ec.fieldContext_Mutation_removeFavoriteProject(ctx, field)
-	if err != nil {
-		return graphql.Null
-	}
-	ctx = graphql.WithFieldContext(ctx, fc)
-	defer func() {
-		if r := recover(); r != nil {
-			ec.Error(ctx, ec.Recover(ctx, r))
-			ret = graphql.Null
-		}
-	}()
-	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
-		ctx = rctx // use context from middleware stack in children
-		return ec.resolvers.Mutation().RemoveFavoriteProject(rctx, fc.Args["identifier"].(string))
-	})
-	if err != nil {
-		ec.Error(ctx, err)
-		return graphql.Null
-	}
-	if resTmp == nil {
-		if !graphql.HasFieldError(ctx, fc) {
-			ec.Errorf(ctx, "must not be null")
-		}
-		return graphql.Null
-	}
-	res := resTmp.(*model.APIProjectRef)
-	fc.Result = res
-	return ec.marshalNProject2ᚖgithubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐAPIProjectRef(ctx, field.Selections, res)
-}
-
-func (ec *executionContext) fieldContext_Mutation_removeFavoriteProject(ctx context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
-	fc = &graphql.FieldContext{
-		Object:     "Mutation",
-		Field:      field,
-		IsMethod:   true,
-		IsResolver: true,
-		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
-			switch field.Name {
-			case "id":
-				return ec.fieldContext_Project_id(ctx, field)
-			case "admins":
-				return ec.fieldContext_Project_admins(ctx, field)
-			case "banner":
-				return ec.fieldContext_Project_banner(ctx, field)
-			case "batchTime":
-				return ec.fieldContext_Project_batchTime(ctx, field)
-			case "branch":
-				return ec.fieldContext_Project_branch(ctx, field)
-			case "buildBaronSettings":
-				return ec.fieldContext_Project_buildBaronSettings(ctx, field)
-			case "commitQueue":
-				return ec.fieldContext_Project_commitQueue(ctx, field)
-			case "containerSizeDefinitions":
-				return ec.fieldContext_Project_containerSizeDefinitions(ctx, field)
-			case "deactivatePrevious":
-				return ec.fieldContext_Project_deactivatePrevious(ctx, field)
-			case "disabledStatsCache":
-				return ec.fieldContext_Project_disabledStatsCache(ctx, field)
-			case "dispatchingDisabled":
-				return ec.fieldContext_Project_dispatchingDisabled(ctx, field)
-			case "displayName":
-				return ec.fieldContext_Project_displayName(ctx, field)
-			case "enabled":
-				return ec.fieldContext_Project_enabled(ctx, field)
-			case "externalLinks":
-				return ec.fieldContext_Project_externalLinks(ctx, field)
-			case "githubChecksEnabled":
-				return ec.fieldContext_Project_githubChecksEnabled(ctx, field)
-			case "githubTriggerAliases":
-				return ec.fieldContext_Project_githubTriggerAliases(ctx, field)
-			case "gitTagAuthorizedTeams":
-				return ec.fieldContext_Project_gitTagAuthorizedTeams(ctx, field)
-			case "gitTagAuthorizedUsers":
-				return ec.fieldContext_Project_gitTagAuthorizedUsers(ctx, field)
-			case "gitTagVersionsEnabled":
-				return ec.fieldContext_Project_gitTagVersionsEnabled(ctx, field)
-			case "hidden":
-				return ec.fieldContext_Project_hidden(ctx, field)
-			case "identifier":
-				return ec.fieldContext_Project_identifier(ctx, field)
-			case "isFavorite":
-				return ec.fieldContext_Project_isFavorite(ctx, field)
-			case "manualPrTestingEnabled":
-				return ec.fieldContext_Project_manualPrTestingEnabled(ctx, field)
-			case "notifyOnBuildFailure":
-				return ec.fieldContext_Project_notifyOnBuildFailure(ctx, field)
-			case "oldestAllowedMergeBase":
-				return ec.fieldContext_Project_oldestAllowedMergeBase(ctx, field)
-			case "owner":
-				return ec.fieldContext_Project_owner(ctx, field)
-			case "parsleyFilters":
-				return ec.fieldContext_Project_parsleyFilters(ctx, field)
-			case "patches":
-				return ec.fieldContext_Project_patches(ctx, field)
-			case "patchingDisabled":
-				return ec.fieldContext_Project_patchingDisabled(ctx, field)
-			case "patchTriggerAliases":
-				return ec.fieldContext_Project_patchTriggerAliases(ctx, field)
-			case "perfEnabled":
-				return ec.fieldContext_Project_perfEnabled(ctx, field)
-			case "periodicBuilds":
-				return ec.fieldContext_Project_periodicBuilds(ctx, field)
-			case "private":
-				return ec.fieldContext_Project_private(ctx, field)
-			case "projectHealthView":
-				return ec.fieldContext_Project_projectHealthView(ctx, field)
-			case "prTestingEnabled":
-				return ec.fieldContext_Project_prTestingEnabled(ctx, field)
-			case "remotePath":
-				return ec.fieldContext_Project_remotePath(ctx, field)
-			case "repo":
-				return ec.fieldContext_Project_repo(ctx, field)
-			case "repoRefId":
-				return ec.fieldContext_Project_repoRefId(ctx, field)
-			case "repotrackerDisabled":
-				return ec.fieldContext_Project_repotrackerDisabled(ctx, field)
-			case "repotrackerError":
-				return ec.fieldContext_Project_repotrackerError(ctx, field)
-			case "restricted":
-				return ec.fieldContext_Project_restricted(ctx, field)
-			case "spawnHostScriptPath":
-				return ec.fieldContext_Project_spawnHostScriptPath(ctx, field)
-			case "stepbackDisabled":
-				return ec.fieldContext_Project_stepbackDisabled(ctx, field)
-			case "stepbackBisect":
-				return ec.fieldContext_Project_stepbackBisect(ctx, field)
-			case "taskAnnotationSettings":
-				return ec.fieldContext_Project_taskAnnotationSettings(ctx, field)
-			case "taskSync":
-				return ec.fieldContext_Project_taskSync(ctx, field)
-			case "tracksPushEvents":
-				return ec.fieldContext_Project_tracksPushEvents(ctx, field)
-			case "triggers":
-				return ec.fieldContext_Project_triggers(ctx, field)
-			case "versionControlEnabled":
-				return ec.fieldContext_Project_versionControlEnabled(ctx, field)
-			case "workstationConfig":
-				return ec.fieldContext_Project_workstationConfig(ctx, field)
-			}
-			return nil, fmt.Errorf("no field named %q was found under type Project", field.Name)
-		},
-	}
-	defer func() {
-		if r := recover(); r != nil {
-			err = ec.Recover(ctx, r)
-			ec.Error(ctx, err)
-		}
-	}()
-	ctx = graphql.WithFieldContext(ctx, fc)
-	if fc.Args, err = ec.field_Mutation_removeFavoriteProject_args(ctx, field.ArgumentMap(ec.Variables)); err != nil {
 		ec.Error(ctx, err)
 		return fc, err
 	}
@@ -31233,7 +31318,7 @@ func (ec *executionContext) _Mutation_scheduleTasks(ctx context.Context, field g
 	}()
 	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
 		ctx = rctx // use context from middleware stack in children
-		return ec.resolvers.Mutation().ScheduleTasks(rctx, fc.Args["taskIds"].([]string), fc.Args["versionId"].(string))
+		return ec.resolvers.Mutation().ScheduleTasks(rctx, fc.Args["versionId"].(string), fc.Args["taskIds"].([]string))
 	})
 	if err != nil {
 		ec.Error(ctx, err)
@@ -31840,6 +31925,163 @@ func (ec *executionContext) fieldContext_Mutation_unscheduleTask(ctx context.Con
 	return fc, nil
 }
 
+func (ec *executionContext) _Mutation_addFavoriteProject(ctx context.Context, field graphql.CollectedField) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_Mutation_addFavoriteProject(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
+		ctx = rctx // use context from middleware stack in children
+		return ec.resolvers.Mutation().AddFavoriteProject(rctx, fc.Args["identifier"].(string))
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.(*model.APIProjectRef)
+	fc.Result = res
+	return ec.marshalNProject2ᚖgithubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐAPIProjectRef(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_Mutation_addFavoriteProject(ctx context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "Mutation",
+		Field:      field,
+		IsMethod:   true,
+		IsResolver: true,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			switch field.Name {
+			case "id":
+				return ec.fieldContext_Project_id(ctx, field)
+			case "admins":
+				return ec.fieldContext_Project_admins(ctx, field)
+			case "banner":
+				return ec.fieldContext_Project_banner(ctx, field)
+			case "batchTime":
+				return ec.fieldContext_Project_batchTime(ctx, field)
+			case "branch":
+				return ec.fieldContext_Project_branch(ctx, field)
+			case "buildBaronSettings":
+				return ec.fieldContext_Project_buildBaronSettings(ctx, field)
+			case "commitQueue":
+				return ec.fieldContext_Project_commitQueue(ctx, field)
+			case "containerSizeDefinitions":
+				return ec.fieldContext_Project_containerSizeDefinitions(ctx, field)
+			case "deactivatePrevious":
+				return ec.fieldContext_Project_deactivatePrevious(ctx, field)
+			case "disabledStatsCache":
+				return ec.fieldContext_Project_disabledStatsCache(ctx, field)
+			case "dispatchingDisabled":
+				return ec.fieldContext_Project_dispatchingDisabled(ctx, field)
+			case "displayName":
+				return ec.fieldContext_Project_displayName(ctx, field)
+			case "enabled":
+				return ec.fieldContext_Project_enabled(ctx, field)
+			case "externalLinks":
+				return ec.fieldContext_Project_externalLinks(ctx, field)
+			case "githubChecksEnabled":
+				return ec.fieldContext_Project_githubChecksEnabled(ctx, field)
+			case "githubTriggerAliases":
+				return ec.fieldContext_Project_githubTriggerAliases(ctx, field)
+			case "gitTagAuthorizedTeams":
+				return ec.fieldContext_Project_gitTagAuthorizedTeams(ctx, field)
+			case "gitTagAuthorizedUsers":
+				return ec.fieldContext_Project_gitTagAuthorizedUsers(ctx, field)
+			case "gitTagVersionsEnabled":
+				return ec.fieldContext_Project_gitTagVersionsEnabled(ctx, field)
+			case "hidden":
+				return ec.fieldContext_Project_hidden(ctx, field)
+			case "identifier":
+				return ec.fieldContext_Project_identifier(ctx, field)
+			case "isFavorite":
+				return ec.fieldContext_Project_isFavorite(ctx, field)
+			case "manualPrTestingEnabled":
+				return ec.fieldContext_Project_manualPrTestingEnabled(ctx, field)
+			case "notifyOnBuildFailure":
+				return ec.fieldContext_Project_notifyOnBuildFailure(ctx, field)
+			case "oldestAllowedMergeBase":
+				return ec.fieldContext_Project_oldestAllowedMergeBase(ctx, field)
+			case "owner":
+				return ec.fieldContext_Project_owner(ctx, field)
+			case "parsleyFilters":
+				return ec.fieldContext_Project_parsleyFilters(ctx, field)
+			case "patches":
+				return ec.fieldContext_Project_patches(ctx, field)
+			case "patchingDisabled":
+				return ec.fieldContext_Project_patchingDisabled(ctx, field)
+			case "patchTriggerAliases":
+				return ec.fieldContext_Project_patchTriggerAliases(ctx, field)
+			case "perfEnabled":
+				return ec.fieldContext_Project_perfEnabled(ctx, field)
+			case "periodicBuilds":
+				return ec.fieldContext_Project_periodicBuilds(ctx, field)
+			case "private":
+				return ec.fieldContext_Project_private(ctx, field)
+			case "projectHealthView":
+				return ec.fieldContext_Project_projectHealthView(ctx, field)
+			case "prTestingEnabled":
+				return ec.fieldContext_Project_prTestingEnabled(ctx, field)
+			case "remotePath":
+				return ec.fieldContext_Project_remotePath(ctx, field)
+			case "repo":
+				return ec.fieldContext_Project_repo(ctx, field)
+			case "repoRefId":
+				return ec.fieldContext_Project_repoRefId(ctx, field)
+			case "repotrackerDisabled":
+				return ec.fieldContext_Project_repotrackerDisabled(ctx, field)
+			case "repotrackerError":
+				return ec.fieldContext_Project_repotrackerError(ctx, field)
+			case "restricted":
+				return ec.fieldContext_Project_restricted(ctx, field)
+			case "spawnHostScriptPath":
+				return ec.fieldContext_Project_spawnHostScriptPath(ctx, field)
+			case "stepbackDisabled":
+				return ec.fieldContext_Project_stepbackDisabled(ctx, field)
+			case "stepbackBisect":
+				return ec.fieldContext_Project_stepbackBisect(ctx, field)
+			case "taskAnnotationSettings":
+				return ec.fieldContext_Project_taskAnnotationSettings(ctx, field)
+			case "taskSync":
+				return ec.fieldContext_Project_taskSync(ctx, field)
+			case "tracksPushEvents":
+				return ec.fieldContext_Project_tracksPushEvents(ctx, field)
+			case "triggers":
+				return ec.fieldContext_Project_triggers(ctx, field)
+			case "versionControlEnabled":
+				return ec.fieldContext_Project_versionControlEnabled(ctx, field)
+			case "workstationConfig":
+				return ec.fieldContext_Project_workstationConfig(ctx, field)
+			}
+			return nil, fmt.Errorf("no field named %q was found under type Project", field.Name)
+		},
+	}
+	defer func() {
+		if r := recover(); r != nil {
+			err = ec.Recover(ctx, r)
+			ec.Error(ctx, err)
+		}
+	}()
+	ctx = graphql.WithFieldContext(ctx, fc)
+	if fc.Args, err = ec.field_Mutation_addFavoriteProject_args(ctx, field.ArgumentMap(ec.Variables)); err != nil {
+		ec.Error(ctx, err)
+		return fc, err
+	}
+	return fc, nil
+}
+
 func (ec *executionContext) _Mutation_clearMySubscriptions(ctx context.Context, field graphql.CollectedField) (ret graphql.Marshaler) {
 	fc, err := ec.fieldContext_Mutation_clearMySubscriptions(ctx, field)
 	if err != nil {
@@ -31994,6 +32236,163 @@ func (ec *executionContext) fieldContext_Mutation_deleteSubscriptions(ctx contex
 	}()
 	ctx = graphql.WithFieldContext(ctx, fc)
 	if fc.Args, err = ec.field_Mutation_deleteSubscriptions_args(ctx, field.ArgumentMap(ec.Variables)); err != nil {
+		ec.Error(ctx, err)
+		return fc, err
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _Mutation_removeFavoriteProject(ctx context.Context, field graphql.CollectedField) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_Mutation_removeFavoriteProject(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
+		ctx = rctx // use context from middleware stack in children
+		return ec.resolvers.Mutation().RemoveFavoriteProject(rctx, fc.Args["identifier"].(string))
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.(*model.APIProjectRef)
+	fc.Result = res
+	return ec.marshalNProject2ᚖgithubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐAPIProjectRef(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_Mutation_removeFavoriteProject(ctx context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "Mutation",
+		Field:      field,
+		IsMethod:   true,
+		IsResolver: true,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			switch field.Name {
+			case "id":
+				return ec.fieldContext_Project_id(ctx, field)
+			case "admins":
+				return ec.fieldContext_Project_admins(ctx, field)
+			case "banner":
+				return ec.fieldContext_Project_banner(ctx, field)
+			case "batchTime":
+				return ec.fieldContext_Project_batchTime(ctx, field)
+			case "branch":
+				return ec.fieldContext_Project_branch(ctx, field)
+			case "buildBaronSettings":
+				return ec.fieldContext_Project_buildBaronSettings(ctx, field)
+			case "commitQueue":
+				return ec.fieldContext_Project_commitQueue(ctx, field)
+			case "containerSizeDefinitions":
+				return ec.fieldContext_Project_containerSizeDefinitions(ctx, field)
+			case "deactivatePrevious":
+				return ec.fieldContext_Project_deactivatePrevious(ctx, field)
+			case "disabledStatsCache":
+				return ec.fieldContext_Project_disabledStatsCache(ctx, field)
+			case "dispatchingDisabled":
+				return ec.fieldContext_Project_dispatchingDisabled(ctx, field)
+			case "displayName":
+				return ec.fieldContext_Project_displayName(ctx, field)
+			case "enabled":
+				return ec.fieldContext_Project_enabled(ctx, field)
+			case "externalLinks":
+				return ec.fieldContext_Project_externalLinks(ctx, field)
+			case "githubChecksEnabled":
+				return ec.fieldContext_Project_githubChecksEnabled(ctx, field)
+			case "githubTriggerAliases":
+				return ec.fieldContext_Project_githubTriggerAliases(ctx, field)
+			case "gitTagAuthorizedTeams":
+				return ec.fieldContext_Project_gitTagAuthorizedTeams(ctx, field)
+			case "gitTagAuthorizedUsers":
+				return ec.fieldContext_Project_gitTagAuthorizedUsers(ctx, field)
+			case "gitTagVersionsEnabled":
+				return ec.fieldContext_Project_gitTagVersionsEnabled(ctx, field)
+			case "hidden":
+				return ec.fieldContext_Project_hidden(ctx, field)
+			case "identifier":
+				return ec.fieldContext_Project_identifier(ctx, field)
+			case "isFavorite":
+				return ec.fieldContext_Project_isFavorite(ctx, field)
+			case "manualPrTestingEnabled":
+				return ec.fieldContext_Project_manualPrTestingEnabled(ctx, field)
+			case "notifyOnBuildFailure":
+				return ec.fieldContext_Project_notifyOnBuildFailure(ctx, field)
+			case "oldestAllowedMergeBase":
+				return ec.fieldContext_Project_oldestAllowedMergeBase(ctx, field)
+			case "owner":
+				return ec.fieldContext_Project_owner(ctx, field)
+			case "parsleyFilters":
+				return ec.fieldContext_Project_parsleyFilters(ctx, field)
+			case "patches":
+				return ec.fieldContext_Project_patches(ctx, field)
+			case "patchingDisabled":
+				return ec.fieldContext_Project_patchingDisabled(ctx, field)
+			case "patchTriggerAliases":
+				return ec.fieldContext_Project_patchTriggerAliases(ctx, field)
+			case "perfEnabled":
+				return ec.fieldContext_Project_perfEnabled(ctx, field)
+			case "periodicBuilds":
+				return ec.fieldContext_Project_periodicBuilds(ctx, field)
+			case "private":
+				return ec.fieldContext_Project_private(ctx, field)
+			case "projectHealthView":
+				return ec.fieldContext_Project_projectHealthView(ctx, field)
+			case "prTestingEnabled":
+				return ec.fieldContext_Project_prTestingEnabled(ctx, field)
+			case "remotePath":
+				return ec.fieldContext_Project_remotePath(ctx, field)
+			case "repo":
+				return ec.fieldContext_Project_repo(ctx, field)
+			case "repoRefId":
+				return ec.fieldContext_Project_repoRefId(ctx, field)
+			case "repotrackerDisabled":
+				return ec.fieldContext_Project_repotrackerDisabled(ctx, field)
+			case "repotrackerError":
+				return ec.fieldContext_Project_repotrackerError(ctx, field)
+			case "restricted":
+				return ec.fieldContext_Project_restricted(ctx, field)
+			case "spawnHostScriptPath":
+				return ec.fieldContext_Project_spawnHostScriptPath(ctx, field)
+			case "stepbackDisabled":
+				return ec.fieldContext_Project_stepbackDisabled(ctx, field)
+			case "stepbackBisect":
+				return ec.fieldContext_Project_stepbackBisect(ctx, field)
+			case "taskAnnotationSettings":
+				return ec.fieldContext_Project_taskAnnotationSettings(ctx, field)
+			case "taskSync":
+				return ec.fieldContext_Project_taskSync(ctx, field)
+			case "tracksPushEvents":
+				return ec.fieldContext_Project_tracksPushEvents(ctx, field)
+			case "triggers":
+				return ec.fieldContext_Project_triggers(ctx, field)
+			case "versionControlEnabled":
+				return ec.fieldContext_Project_versionControlEnabled(ctx, field)
+			case "workstationConfig":
+				return ec.fieldContext_Project_workstationConfig(ctx, field)
+			}
+			return nil, fmt.Errorf("no field named %q was found under type Project", field.Name)
+		},
+	}
+	defer func() {
+		if r := recover(); r != nil {
+			err = ec.Recover(ctx, r)
+			ec.Error(ctx, err)
+		}
+	}()
+	ctx = graphql.WithFieldContext(ctx, fc)
+	if fc.Args, err = ec.field_Mutation_removeFavoriteProject_args(ctx, field.ArgumentMap(ec.Variables)); err != nil {
 		ec.Error(ctx, err)
 		return fc, err
 	}
@@ -76722,13 +77121,6 @@ func (ec *executionContext) _Mutation(ctx context.Context, sel ast.SelectionSet)
 			out.Values[i] = ec.OperationContext.RootResolverMiddleware(innerCtx, func(ctx context.Context) (res graphql.Marshaler) {
 				return ec._Mutation_unschedulePatchTasks(ctx, field)
 			})
-		case "addFavoriteProject":
-			out.Values[i] = ec.OperationContext.RootResolverMiddleware(innerCtx, func(ctx context.Context) (res graphql.Marshaler) {
-				return ec._Mutation_addFavoriteProject(ctx, field)
-			})
-			if out.Values[i] == graphql.Null {
-				out.Invalids++
-			}
 		case "attachProjectToNewRepo":
 			out.Values[i] = ec.OperationContext.RootResolverMiddleware(innerCtx, func(ctx context.Context) (res graphql.Marshaler) {
 				return ec._Mutation_attachProjectToNewRepo(ctx, field)
@@ -76792,13 +77184,6 @@ func (ec *executionContext) _Mutation(ctx context.Context, sel ast.SelectionSet)
 		case "promoteVarsToRepo":
 			out.Values[i] = ec.OperationContext.RootResolverMiddleware(innerCtx, func(ctx context.Context) (res graphql.Marshaler) {
 				return ec._Mutation_promoteVarsToRepo(ctx, field)
-			})
-			if out.Values[i] == graphql.Null {
-				out.Invalids++
-			}
-		case "removeFavoriteProject":
-			out.Values[i] = ec.OperationContext.RootResolverMiddleware(innerCtx, func(ctx context.Context) (res graphql.Marshaler) {
-				return ec._Mutation_removeFavoriteProject(ctx, field)
 			})
 			if out.Values[i] == graphql.Null {
 				out.Invalids++
@@ -76929,6 +77314,13 @@ func (ec *executionContext) _Mutation(ctx context.Context, sel ast.SelectionSet)
 			if out.Values[i] == graphql.Null {
 				out.Invalids++
 			}
+		case "addFavoriteProject":
+			out.Values[i] = ec.OperationContext.RootResolverMiddleware(innerCtx, func(ctx context.Context) (res graphql.Marshaler) {
+				return ec._Mutation_addFavoriteProject(ctx, field)
+			})
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
 		case "clearMySubscriptions":
 			out.Values[i] = ec.OperationContext.RootResolverMiddleware(innerCtx, func(ctx context.Context) (res graphql.Marshaler) {
 				return ec._Mutation_clearMySubscriptions(ctx, field)
@@ -76946,6 +77338,13 @@ func (ec *executionContext) _Mutation(ctx context.Context, sel ast.SelectionSet)
 		case "deleteSubscriptions":
 			out.Values[i] = ec.OperationContext.RootResolverMiddleware(innerCtx, func(ctx context.Context) (res graphql.Marshaler) {
 				return ec._Mutation_deleteSubscriptions(ctx, field)
+			})
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "removeFavoriteProject":
+			out.Values[i] = ec.OperationContext.RootResolverMiddleware(innerCtx, func(ctx context.Context) (res graphql.Marshaler) {
+				return ec._Mutation_removeFavoriteProject(ctx, field)
 			})
 			if out.Values[i] == graphql.Null {
 				out.Invalids++

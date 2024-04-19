@@ -3,14 +3,14 @@
     {
       "_id": "t1",
       "display_name": "cq merge",
-      "branch": "p1",
+      "branch": "sandbox_project_id",
       "status": "undispatched",
       "build_id": "b1",
       "r": "merge_test",
       "commit_queue_merge": true,
       "activated": true,
       "version": "123456789012345678901234",
-        "depends_on": [
+      "depends_on": [
         {
           "_id": "dep1",
           "status": "success",
@@ -19,11 +19,32 @@
       ]
     },
     {
-        "_id": "dep1",
-        "status": "failed",
-        "display_name": "a dep",
-        "build_id": "b1",
-        "version": "123456789012345678901234"
+      "_id": "dep1",
+      "status": "failed",
+      "display_name": "a dep",
+      "build_id": "b1",
+      "version": "123456789012345678901234"
+    },
+    {
+      "_id": "no_permissions",
+      "branch": "evergreen",
+      "depends_on": [
+        {
+          "_id": "dep1",
+          "status": "success",
+          "unattainable": true
+        }
+      ]
+    }
+  ],
+  "project_ref": [
+    {
+      "_id": "evergreen",
+      "identifier": "evergreen"
+    },
+    {
+      "_id": "sandbox_project_id",
+      "identifier": "sandbox"
     }
   ]
 }
