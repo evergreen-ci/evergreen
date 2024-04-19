@@ -1,8 +1,8 @@
 # This file lists all of the queries. The query definitions can be found in the corresponding files in the resolvers folder.
 type Query {
   # annotations
-  bbGetCreatedTickets(taskId: String!): [JiraTicket!]!
-  buildBaron(taskId: String!, execution: Int!): BuildBaron!
+  bbGetCreatedTickets(taskId: String! @requireProjectAccess(permission: ANNOTATIONS, access: VIEW)): [JiraTicket!]!
+  buildBaron(taskId: String! @requireProjectAccess(permission: ANNOTATIONS, access: VIEW), execution: Int!): BuildBaron!
 
   # config
   awsRegions: [String!]
@@ -13,7 +13,7 @@ type Query {
 
   # distros
   distro(distroId: String! @requireDistroAccess(access: VIEW)): Distro
-  distroEvents(opts: DistroEventsInput!): DistroEventsPayload!
+  distroEvents(opts: DistroEventsInput!): DistroEventsPayload! # Has directive on DistroEventsInput.
   distros(onlySpawnable: Boolean!): [Distro]!
   distroTaskQueue(distroId: String!): [TaskQueueItem!]!
 
@@ -42,11 +42,11 @@ type Query {
   pod(podId: String!): Pod!
   
   # patch
-  patch(patchId: String!): Patch!
+  patch(patchId: String! @requireProjectAccess(permission: TASKS, access: VIEW)): Patch!
 
   # project
-  githubProjectConflicts(projectId: String!): GithubProjectConflicts!
-  project(projectIdentifier: String!): Project!
+  githubProjectConflicts(projectId: String! @requireProjectAccess(permission: SETTINGS, access: VIEW)): GithubProjectConflicts!
+  project(projectIdentifier: String! @requireProjectAccess(permission: TASKS, access: VIEW)): Project!
   projects: [GroupedProjects]!
   projectEvents(
     identifier: String! @requireProjectAccess(permission: SETTINGS, access: VIEW)
@@ -66,10 +66,10 @@ type Query {
   logkeeperBuildMetadata(buildId: String!): LogkeeperBuild!
 
   # task
-  task(taskId: String!, execution: Int): Task
-  taskAllExecutions(taskId: String!): [Task!]!
+  task(taskId: String! @requireProjectAccess(permission: TASKS, access: VIEW), execution: Int): Task
+  taskAllExecutions(taskId: String! @requireProjectAccess(permission: TASKS, access: VIEW)): [Task!]!
   taskTestSample(
-    versionId: String!
+    versionId: String! @requireProjectAccess(permission: TASKS, access: VIEW)
     taskIds: [String!]!
     filters: [TestFilter!]!
   ): [TaskTestResultSample!]
@@ -81,14 +81,14 @@ type Query {
   userSettings: UserSettings
 
   # commit queue
-  commitQueue(projectIdentifier: String!): CommitQueue!
+  commitQueue(projectIdentifier: String! @requireProjectAccess(permission: TASKS, access: VIEW)): CommitQueue!
 
   # mainline commits
-  buildVariantsForTaskName(projectIdentifier: String!, taskName: String!): [BuildVariantTuple]
-  mainlineCommits(options: MainlineCommitsOptions!, buildVariantOptions: BuildVariantOptions): MainlineCommits
-  taskNamesForBuildVariant(projectIdentifier: String!, buildVariant: String!): [String!]
+  buildVariantsForTaskName(projectIdentifier: String! @requireProjectAccess(permission: TASKS, access: VIEW), taskName: String!): [BuildVariantTuple]
+  mainlineCommits(options: MainlineCommitsOptions!, buildVariantOptions: BuildVariantOptions): MainlineCommits # Has directive on MainlineCommitsOptions.
+  taskNamesForBuildVariant(projectIdentifier: String! @requireProjectAccess(permission: TASKS, access: VIEW), buildVariant: String!): [String!]
 
   # version
   hasVersion(patchId: String!): Boolean!
-  version(versionId: String!): Version!
+  version(versionId: String! @requireProjectAccess(permission: TASKS, access: VIEW)): Version!
 }
