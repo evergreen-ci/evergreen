@@ -91,6 +91,7 @@ const (
 	TriggerPatchStarted              = "started"
 	TriggerTaskFirstFailureInVersion = "first-failure-in-version"
 	TriggerTaskStarted               = "task-started"
+	TriggerSpawnHostIdle             = "spawn-host-idle"
 )
 
 type Subscription struct {
@@ -822,6 +823,14 @@ func NewPatchOutcomeSubscriptionByOwner(owner string, sub Subscriber) Subscripti
 
 func NewSpawnhostExpirationSubscription(owner string, sub Subscriber) Subscription {
 	return NewSubscriptionByOwner(owner, sub, ResourceTypeHost, TriggerExpiration)
+}
+
+// NewSpawnHostIdleWarningSubscription returns a subscription for the spawn host.
+func NewSpawnHostIdleWarningSubscription(hostId string, sub Subscriber) Subscription {
+	subscription := NewSubscriptionByID(ResourceTypeHost, TriggerSpawnHostIdle, hostId, sub)
+	// Assign hostID as the subscription to avoid having multiple idle subscriptions on the same host.
+	subscription.ID = hostId
+	return subscription
 }
 
 func NewCommitQueueSubscriptionByOwner(owner string, sub Subscriber) Subscription {

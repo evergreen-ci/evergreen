@@ -6,11 +6,15 @@ import (
 
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/cloud"
+	"github.com/evergreen-ci/evergreen/model/event"
 	"github.com/evergreen-ci/evergreen/model/host"
+	"github.com/evergreen-ci/evergreen/model/user"
 	"github.com/evergreen-ci/utility"
 	"github.com/mongodb/amboy"
 	"github.com/mongodb/amboy/job"
 	"github.com/mongodb/amboy/registry"
+	"github.com/mongodb/grip"
+	"github.com/mongodb/grip/message"
 	"github.com/pkg/errors"
 )
 
@@ -86,4 +90,35 @@ func (j *spawnhostExpirationCheckJob) Run(ctx context.Context) {
 		j.AddError(errors.Wrapf(err, "extending expiration for host '%s'", j.HostID))
 		return
 	}
+	// If an unexpirable host hasn't been used in a while, send an email encouraging the user to remove the host.
+	if j.host.ShouldNotifyStoppedSpawnHostIdle() || j.host.ShouldNotifyRunningSpawnHostIdle() {
+		j.AddError(tryIdleSpawnHostNotification(j.host))
+	}
+
+}
+
+// tryIdleSpawnHostNotification attempts to insert a subscription and notification for this spawn host.
+func tryIdleSpawnHostNotification(h *host.Host) error {
+	usr, err := user.FindOneById(h.StartedBy)
+	if err != nil {
+		return errors.Wrapf(err, "finding user '%s'", h.StartedBy)
+	}
+	if usr == nil {
+		return errors.Errorf("user '%s' not found", h.StartedBy)
+	}
+	subscriber := event.NewEmailSubscriber(usr.Email())
+	subscription := event.NewSpawnHostIdleWarningSubscription(h.Id, subscriber)
+	if err = subscription.Upsert(); err != nil {
+		return errors.Wrap(err, "upserting idle spawn host subscription")
+	}
+	grip.Info(message.Fields{
+		"message":                 "sending idle host notification",
+		"host_id":                 h.Id,
+		"owner":                   h.StartedBy,
+		"last_communication_time": h.LastCommunicationTime,
+		"status":                  h.Status,
+		"email":                   usr.Email(),
+	})
+	event.LogSpawnHostIdleNotificationSent(h.Id)
+	return nil
 }
