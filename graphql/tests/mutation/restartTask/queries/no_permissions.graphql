@@ -1,0 +1,6 @@
+mutation {
+  restartTask(taskId: "no_permissions", failedOnly: false) {
+    status
+    id
+  }
+}

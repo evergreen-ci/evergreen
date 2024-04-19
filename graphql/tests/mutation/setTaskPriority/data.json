@@ -6,13 +6,13 @@
       "repo_name": "evergreen"
     },
     {
-      "_id": "spruce",
-      "identifier": "spruce",
-      "display_name": "Spruce"
+      "_id": "happyAbyssinian",
+      "identifier": "happyAbyssinian",
+      "display_name": "Happy Abyssinian"
     }
   ],
   "tasks": [
-    { "_id": "task_id", "branch": "spruce" },
+    { "_id": "task_id", "branch": "happyAbyssinian" },
     { "_id": "no_permissions", "branch": "evergreen" }
   ]
 }

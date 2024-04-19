@@ -1,7 +1,10 @@
 # This file lists all of the mutations. The mutation definitions can be found in the corresponding files in the resolvers folder.
 type Mutation {
   # annotations
-  bbCreateTicket(taskId: String! @requireProjectAccess(permission: ANNOTATIONS, access: EDIT), execution: Int): Boolean!
+  bbCreateTicket(
+    taskId: String! @requireProjectAccess(permission: ANNOTATIONS, access: EDIT), 
+    execution: Int
+  ): Boolean!
   addAnnotationIssue(
     taskId: String! @requireProjectAccess(permission: ANNOTATIONS, access: EDIT)
     execution: Int!
@@ -33,10 +36,10 @@ type Mutation {
   ): Boolean!
 
   # distros
-  deleteDistro(opts: DeleteDistroInput!): DeleteDistroPayload!
+  deleteDistro(opts: DeleteDistroInput!): DeleteDistroPayload! # Has directive on DeleteDistroInput.
   copyDistro(opts: CopyDistroInput! @requireDistroAccess(access: CREATE)): NewDistroPayload!
   createDistro(opts: CreateDistroInput! @requireDistroAccess(access: CREATE)): NewDistroPayload!
-  saveDistro(opts: SaveDistroInput!): SaveDistroPayload!
+  saveDistro(opts: SaveDistroInput!): SaveDistroPayload! # Has directive on SaveDistroInput.
 
   # hosts
   reprovisionToNew(hostIds: [String!]!): Int!
@@ -52,7 +55,7 @@ type Mutation {
   """
   setPatchVisibility takes a list of patch ids and a boolean to set the visibility on the my patches queries
   """
-  setPatchVisibility(patchIds: [String!]!, hidden: Boolean!): [Patch!]!
+  setPatchVisibility(patchIds: [String!]!, hidden: Boolean!): [Patch!]! # Permissions are checked in the resolver.
   schedulePatch(patchId: String! @requireProjectAccess(permission: PATCHES, access: EDIT), configure: PatchConfigure!): Patch!
   schedulePatchTasks(patchId: String! @requireProjectAccess(permission: TASKS, access: EDIT)): String
   scheduleUndispatchedBaseTasks(patchId: String! @requireProjectAccess(permission: TASKS, access: EDIT)): [Task!]
@@ -60,7 +63,7 @@ type Mutation {
   unschedulePatchTasks(patchId: String! @requireProjectAccess(permission: TASKS, access: EDIT), abort: Boolean!): String
 
   # project
-  attachProjectToNewRepo(project: MoveProjectInput!): Project!
+  attachProjectToNewRepo(project: MoveProjectInput!): Project! # Has directive on MoveProjectInput.
   attachProjectToRepo(projectId: String! @requireProjectAccess(permission: SETTINGS, access: EDIT)): Project!
   createProject(project: CreateProjectInput! @requireProjectAdmin, requestS3Creds: Boolean): Project! 
   copyProject(project: CopyProjectInput! @requireProjectAdmin, requestS3Creds: Boolean): Project! 
@@ -70,8 +73,8 @@ type Mutation {
   detachProjectFromRepo(projectId: String! @requireProjectAccess(permission: SETTINGS, access: EDIT)): Project!
   forceRepotrackerRun(projectId: String! @requireProjectAccess(permission: SETTINGS, access: EDIT)): Boolean!
   promoteVarsToRepo(projectId: String! @requireProjectAccess(permission: SETTINGS, access: EDIT), varNames: [String!]!): Boolean!
-  saveProjectSettingsForSection(projectSettings: ProjectSettingsInput, section: ProjectSettingsSection!): ProjectSettings!
-  saveRepoSettingsForSection(repoSettings: RepoSettingsInput, section: ProjectSettingsSection!): RepoSettings!
+  saveProjectSettingsForSection(projectSettings: ProjectSettingsInput, section: ProjectSettingsSection!): ProjectSettings! # Has directive on ProjectSettingsInput.
+  saveRepoSettingsForSection(repoSettings: RepoSettingsInput, section: ProjectSettingsSection!): RepoSettings! # Has directive on RepoSettingsInput.
   setLastRevision(opts: SetLastRevisionInput! @requireProjectAdmin): SetLastRevisionPayload!
 
   # spawn

@@ -280,7 +280,7 @@ func setup(ctx context.Context, t *testing.T, state *AtomicGraphQLState) {
 		Permissions: map[string]int{
 			evergreen.PermissionProjectSettings: evergreen.ProjectSettingsEdit.Value,
 			evergreen.PermissionAnnotations:     evergreen.AnnotationsModify.Value,
-			evergreen.PermissionTasks:           evergreen.TasksBasic.Value,
+			evergreen.PermissionTasks:           evergreen.TasksAdmin.Value,
 			evergreen.PermissionPatches:         evergreen.PatchSubmitAdmin.Value,
 			evergreen.PermissionLogs:            evergreen.LogsView.Value,
 		},
@@ -355,9 +355,10 @@ func setup(ctx context.Context, t *testing.T, state *AtomicGraphQLState) {
 		Permissions: map[string]int{
 			evergreen.PermissionProjectSettings: evergreen.ProjectSettingsEdit.Value,
 			evergreen.PermissionAnnotations:     evergreen.AnnotationsModify.Value,
-			evergreen.PermissionTasks:           evergreen.TasksAdmin.Value,
-			evergreen.PermissionPatches:         evergreen.PatchSubmitAdmin.Value,
-			evergreen.PermissionLogs:            evergreen.LogsView.Value,
+			// Note: this project only gives basic, not admin, task permissions.
+			evergreen.PermissionTasks:   evergreen.TasksBasic.Value,
+			evergreen.PermissionPatches: evergreen.PatchSubmitAdmin.Value,
+			evergreen.PermissionLogs:    evergreen.LogsView.Value,
 		},
 		Owners: []string{"testuser"},
 	}

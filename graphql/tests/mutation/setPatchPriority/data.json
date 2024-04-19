@@ -6,16 +6,16 @@
       "repo_name": "evergreen"
     },
     {
-      "_id": "spruce",
-      "identifier": "spruce",
-      "display_name": "Spruce"
+      "_id": "happyAbyssinian",
+      "identifier": "happyAbyssinian",
+      "display_name": "Happy Abyssinian"
     }
   ],
   "versions": [
     {
       "_id": "5e4ff3abe3c3317e352062e4",
-      "branch": "spruce",
-      "identifier": "spruce"
+      "branch": "happyAbyssinian",
+      "identifier": "happyAbyssinian"
     }
   ],
   "tasks": [
@@ -33,7 +33,7 @@
       "start_time": { "$date": "2016-10-20T22:01:00.194Z" },
       "finish_time": { "$date": "2017-12-04T21:06:48.822Z" },
       "version": "5e4ff3abe3c3317e352062e4",
-      "branch": "spruce",
+      "branch": "happyAbyssinian",
       "gitspec": "edd78c1d581bf757a880777b00685321685a8e67",
       "build_variant": "ubuntu",
       "build_number": "1",
@@ -63,7 +63,7 @@
     { "_id": { "$oid": "9e4ff3abe3c3317e352062e4" }, "branch": "evergreen" },
     {
       "_id": { "$oid": "5e4ff3abe3c3317e352062e4" },
-      "branch": "spruce",
+      "branch": "happyAbyssinian",
       "version": "5e4ff3abe3c3317e352062e4",
       "activated": true,
       "githash": "5e823e1f28baeaa22ae00823d83e03082cd148ab",

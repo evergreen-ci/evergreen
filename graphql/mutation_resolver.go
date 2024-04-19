@@ -335,7 +335,7 @@ func (r *mutationResolver) SetPatchVisibility(ctx context.Context, patchIds []st
 
 	for _, p := range patches {
 		if !hasEditPatchPermission(user, p) {
-			return nil, Forbidden.Send(ctx, "can't change visibility of another user's patch")
+			return nil, Forbidden.Send(ctx, fmt.Sprintf("not authorized to change patch '%s' visibility", p.Id))
 		}
 		err = p.SetPatchVisibility(hidden)
 		if err != nil {

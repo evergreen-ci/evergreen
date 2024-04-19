@@ -35,6 +35,13 @@
       "status": "success",
       "latest_parent_execution": 0,
       "branch": "sandbox_project_id"
+    },
+    {
+      "_id": "no_permissions",
+      "build_id": "build1",
+      "status": "success",
+      "version": "version1",
+      "branch": "evergreen"
     }
   ],
   "builds": [
@@ -53,6 +60,10 @@
     {
       "_id": "sandbox_project_id",
       "identifier": "sandbox"
+    },
+    {
+      "_id": "evergreen",
+      "identifier": "evergreen"
     }
   ]
 }
