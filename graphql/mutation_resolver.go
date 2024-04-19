@@ -1092,11 +1092,11 @@ func (r *mutationResolver) RestartTask(ctx context.Context, taskID string, faile
 
 // ScheduleTasks is the resolver for the scheduleTasks field.
 func (r *mutationResolver) ScheduleTasks(ctx context.Context, versionID string, taskIds []string) ([]*restModel.APITask, error) {
-	tasks, err := findAllTasksByIds(ctx, taskIds...)
+	dbTasks, err := findAllTasksByIds(ctx, taskIds...)
 	if err != nil {
 		return nil, err
 	}
-	for _, t := range tasks {
+	for _, t := range dbTasks {
 		if t.Version != versionID && t.ParentPatchID != versionID {
 			return nil, InputValidationError.Send(ctx, fmt.Sprintf("task '%s' does not belong to version '%s'", t.Id, versionID))
 		}
