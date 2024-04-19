@@ -1636,7 +1636,7 @@ func FindExceedsSleepScheduleTimeout(ctx context.Context) ([]Host, error) {
 	return Find(ctx, q)
 }
 
-// FindPermanentlyExemptSetDifference finds two sets of unexpirable hosts based
+// SyncPermanentExemptions finds two sets of unexpirable hosts based
 // on the authoritative list of permanently exempt hosts. The function returns:
 //  1. Hosts that are on the list of permanent exemptions but are not marked as
 //     permanently exempt (i.e. should be marked as permanently exempt).
