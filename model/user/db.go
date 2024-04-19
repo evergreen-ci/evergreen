@@ -30,6 +30,7 @@ var (
 	EmailAddressKey           = bsonutil.MustHaveTag(DBUser{}, "EmailAddress")
 	PatchNumberKey            = bsonutil.MustHaveTag(DBUser{}, "PatchNumber")
 	CreatedAtKey              = bsonutil.MustHaveTag(DBUser{}, "CreatedAt")
+	LastScheduledTasksAtKey   = bsonutil.MustHaveTag(DBUser{}, "LastScheduledTasksAt")
 	SettingsKey               = bsonutil.MustHaveTag(DBUser{}, "Settings")
 	APIKeyKey                 = bsonutil.MustHaveTag(DBUser{}, "APIKey")
 	OnlyAPIKey                = bsonutil.MustHaveTag(DBUser{}, "OnlyAPI")
@@ -46,6 +47,7 @@ var (
 	FavoriteProjectsKey       = bsonutil.MustHaveTag(DBUser{}, "FavoriteProjects")
 	ParsleyFiltersKey         = bsonutil.MustHaveTag(DBUser{}, "ParsleyFilters")
 	ParsleySettingsKey        = bsonutil.MustHaveTag(DBUser{}, "ParsleySettings")
+	NumScheduledPatchTasksKey = bsonutil.MustHaveTag(DBUser{}, "NumScheduledPatchTasks")
 )
 
 //nolint:megacheck,unused

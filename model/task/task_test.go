@@ -2187,7 +2187,9 @@ func TestActivateDeactivatedDependencies(t *testing.T) {
 	}
 
 	updatedIDs := []string{"t3", "t4"}
-	err := ActivateDeactivatedDependencies([]string{"t0"}, "")
+	depTasksToUpdate, depTaskIDsToUpdate, err := getDependencyTaskIdsToActivate([]string{"t0"}, true)
+	require.NoError(t, err)
+	err = activateDeactivatedDependencies(depTasksToUpdate, depTaskIDsToUpdate, "")
 	assert.NoError(t, err)
 
 	dbTasks, err := FindAll(All)
@@ -2310,7 +2312,7 @@ func TestDeactivateTasks(t *testing.T) {
 	require.NoError(t, db.ClearCollections(Collection, event.EventCollection))
 
 	tasks := []Task{
-		{Id: "t0", DisplayOnly: true, ExecutionTasks: []string{"t6"}},
+		{Id: "t0", DisplayOnly: true, ExecutionTasks: []string{"t6"}, Activated: true},
 		{Id: "t1"},
 		{Id: "t2", DependsOn: []Dependency{{TaskId: "t1"}, {TaskId: "t0"}}, Activated: false},
 		{Id: "t3", DependsOn: []Dependency{{TaskId: "t1"}}},

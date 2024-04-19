@@ -606,8 +606,9 @@ func FinalizePatch(ctx context.Context, p *patch.Patch, requester string, github
 	if p.GitInfo != nil {
 		authorEmail = p.GitInfo.Email
 	}
+	var u *user.DBUser
 	if p.Author != "" {
-		u, err := user.FindOneById(p.Author)
+		u, err = user.FindOneById(p.Author)
 		if err != nil {
 			return nil, errors.Wrap(err, "getting user")
 		}
@@ -745,6 +746,27 @@ func FinalizePatch(ctx context.Context, p *patch.Patch, requester string, github
 
 	patchVersion.ProjectStorageMethod = p.ProjectStorageMethod
 
+	numTasksActivated := 0
+	for _, t := range tasksToInsert {
+		if t.Activated {
+			numTasksActivated++
+		}
+	}
+	if len(tasksToInsert) > evergreen.NumTasksForLargePatch {
+		grip.Info(message.Fields{
+			"message":             "version has large number of activated tasks",
+			"op":                  "finalize patch",
+			"num_tasks_activated": numTasksActivated,
+			"total_tasks":         len(tasksToInsert),
+			"version":             patchVersion.Id,
+		})
+	}
+	if u != nil {
+		if err = u.CheckAndUpdateSchedulingLimit(settings, numTasksActivated); err != nil {
+			return nil, errors.Wrapf(err, "checking task scheduling limit for user '%s'", u.Id)
+		}
+	}
+
 	env := evergreen.GetEnvironment()
 	mongoClient := env.Client()
 	session, err := mongoClient.StartSession()
@@ -795,21 +817,6 @@ func FinalizePatch(ctx context.Context, p *patch.Patch, requester string, github
 				return nil, errors.Wrap(err, "finalizing child patch")
 			}
 		}
-	}
-	if len(tasksToInsert) > evergreen.NumTasksForLargePatch {
-		numTasksActivated := 0
-		for _, t := range tasksToInsert {
-			if t.Activated {
-				numTasksActivated++
-			}
-		}
-		grip.Info(message.Fields{
-			"message":             "version has large number of activated tasks",
-			"op":                  "finalize patch",
-			"num_tasks_activated": numTasksActivated,
-			"total_tasks":         len(tasksToInsert),
-			"version":             patchVersion.Id,
-		})
 	}
 
 	return patchVersion, nil

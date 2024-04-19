@@ -21,22 +21,24 @@ import (
 )
 
 type DBUser struct {
-	Id               string           `bson:"_id"`
-	FirstName        string           `bson:"first_name"`
-	LastName         string           `bson:"last_name"`
-	DispName         string           `bson:"display_name"`
-	EmailAddress     string           `bson:"email"`
-	PatchNumber      int              `bson:"patch_number"`
-	PubKeys          []PubKey         `bson:"public_keys" json:"public_keys"`
-	CreatedAt        time.Time        `bson:"created_at"`
-	Settings         UserSettings     `bson:"settings"`
-	APIKey           string           `bson:"apikey"`
-	SystemRoles      []string         `bson:"roles"`
-	LoginCache       LoginCache       `bson:"login_cache,omitempty"`
-	FavoriteProjects []string         `bson:"favorite_projects"`
-	OnlyAPI          bool             `bson:"only_api,omitempty"`
-	ParsleyFilters   []parsley.Filter `bson:"parsley_filters"`
-	ParsleySettings  parsley.Settings `bson:"parsley_settings"`
+	Id                     string           `bson:"_id"`
+	FirstName              string           `bson:"first_name"`
+	LastName               string           `bson:"last_name"`
+	DispName               string           `bson:"display_name"`
+	EmailAddress           string           `bson:"email"`
+	PatchNumber            int              `bson:"patch_number"`
+	PubKeys                []PubKey         `bson:"public_keys" json:"public_keys"`
+	CreatedAt              time.Time        `bson:"created_at"`
+	Settings               UserSettings     `bson:"settings"`
+	APIKey                 string           `bson:"apikey"`
+	SystemRoles            []string         `bson:"roles"`
+	LoginCache             LoginCache       `bson:"login_cache,omitempty"`
+	FavoriteProjects       []string         `bson:"favorite_projects"`
+	OnlyAPI                bool             `bson:"only_api,omitempty"`
+	ParsleyFilters         []parsley.Filter `bson:"parsley_filters"`
+	ParsleySettings        parsley.Settings `bson:"parsley_settings"`
+	NumScheduledPatchTasks int              `bson:"num_scheduled_patch_tasks"`
+	LastScheduledTasksAt   time.Time        `bson:"last_scheduled_tasks_at"`
 }
 
 func (u *DBUser) MarshalBSON() ([]byte, error)  { return mgobson.Marshal(u) }
@@ -164,6 +166,48 @@ func (u *DBUser) UpdateParsleySettings(settings parsley.Settings) error {
 	}
 	u.ParsleySettings = settings
 	return nil
+}
+
+// CheckAndUpdateSchedulingLimit checks if the number of tasks to be activated by the user is allowed given
+// the global per-user hourly task scheduling limit, and updates relevant timestamp and counter info used
+// to track the user's hourly scheduling usage. The numTasksActivated parameter being negative signifies
+// the user is deactivating tasks, which frees up space in their scheduling limit.
+func (u *DBUser) CheckAndUpdateSchedulingLimit(settings *evergreen.Settings, numTasksActivated int) error {
+	var update bson.M
+	maxScheduledTasks := settings.TaskLimits.MaxHourlyPatchTasks
+	if maxScheduledTasks == 0 {
+		return nil
+	}
+	now := time.Now()
+	oneHourAgo := now.Add(-1 * time.Hour)
+	// If the last time the user scheduled patch tasks was within the hour, increment the number
+	// of activated tasks to the user's counter, erroring if the global limit is breached. If numTasksActivated
+	// is negative, the counter is decremented.
+	if u.LastScheduledTasksAt.After(oneHourAgo) {
+		update = bson.M{
+			"$inc": bson.M{NumScheduledPatchTasksKey: numTasksActivated},
+		}
+		if (numTasksActivated + u.NumScheduledPatchTasks) > maxScheduledTasks {
+			minutesRemaining := int(now.Sub(u.LastScheduledTasksAt).Minutes())
+			return errors.Errorf("user '%s' has scheduled too many tasks in the past hour, limit will refresh in %d minutes", u.Id, minutesRemaining)
+		}
+	} else {
+		// Otherwise, if the user has not scheduled any patch tasks within the past hour, reset the last scheduled tasks
+		// timestamp to now, and reset the number of schedule tasks to the number of activated tasks passed in here. If we are dea
+		if numTasksActivated < 0 {
+			numTasksActivated = 0
+		}
+		update = bson.M{
+			"$set": bson.M{
+				NumScheduledPatchTasksKey: numTasksActivated,
+				LastScheduledTasksAtKey:   time.Now(),
+			},
+		}
+		if numTasksActivated > maxScheduledTasks {
+			return errors.Errorf("cannot schedule %d tasks, hourly per-user limit is %d tasks", numTasksActivated, maxScheduledTasks)
+		}
+	}
+	return UpdateOne(bson.M{IdKey: u.Id}, update)
 }
 
 func (u *DBUser) AddPublicKey(keyName, keyValue string) error {

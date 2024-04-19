@@ -796,7 +796,7 @@ func TestSetActiveState(t *testing.T) {
 			So(err, ShouldBeNil)
 			So(dtFromDb.Activated, ShouldBeTrue)
 
-			So(SetActiveState(ctx, "test", false, *t1), ShouldBeNil)
+			So(SetActiveState(ctx, "test", false, *t1FromDb), ShouldBeNil)
 			t1FromDb, err = task.FindOne(db.Query(task.ById(t1.Id)))
 			So(err, ShouldBeNil)
 			So(t1FromDb.Activated, ShouldBeFalse)
