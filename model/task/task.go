@@ -287,6 +287,10 @@ type Task struct {
 	// GeneratedTasksToActivate is only populated if we want to override activation for these generated tasks, because of stepback.
 	// Maps the build variant to a list of task names.
 	GeneratedTasksToActivate map[string][]string `bson:"generated_tasks_to_stepback,omitempty" json:"generated_tasks_to_stepback,omitempty"`
+	// NumGeneratedTasks is the number of tasks that this task has generated.
+	NumGeneratedTasks int `bson:"num_generated_tasks,omitempty" json:"num_generated_tasks,omitempty"`
+	// NumActivatedGeneratedTasks is the number of tasks that this task has generated and activated.
+	NumActivatedGeneratedTasks int `bson:"num_activated_generated_tasks,omitempty" json:"num_activated_generated_tasks,omitempty"`
 
 	// Fields set if triggered by an upstream build
 	TriggerID    string `bson:"trigger_id,omitempty" json:"trigger_id,omitempty"`
@@ -2405,6 +2409,34 @@ func (t *Task) UpdateHeartbeat() error {
 		bson.M{
 			"$set": bson.M{
 				LastHeartbeatKey: t.LastHeartbeat,
+			},
+		},
+	)
+}
+
+// SetNumGeneratedTasks sets the number of generated tasks to the given value.
+func (t *Task) SetNumGeneratedTasks(numGeneratedTasks int) error {
+	return UpdateOne(
+		bson.M{
+			IdKey: t.Id,
+		},
+		bson.M{
+			"$set": bson.M{
+				NumGeneratedTasksKey: numGeneratedTasks,
+			},
+		},
+	)
+}
+
+// SetNumActivatedGeneratedTasks sets the number of activated generated tasks to the given value.
+func (t *Task) SetNumActivatedGeneratedTasks(numActivatedGeneratedTasks int) error {
+	return UpdateOne(
+		bson.M{
+			IdKey: t.Id,
+		},
+		bson.M{
+			"$set": bson.M{
+				NumActivatedGeneratedTasksKey: numActivatedGeneratedTasks,
 			},
 		},
 	)
