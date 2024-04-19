@@ -2,6 +2,7 @@ package user
 
 import (
 	"context"
+	"fmt"
 	"strconv"
 	"testing"
 	"time"
@@ -60,6 +61,7 @@ func (s *UserTestSuite) SetupTest() {
 				Token:        "1234",
 				TTL:          time.Now(),
 			},
+			LastScheduledTasksAt: time.Now().Add(-30 * time.Minute),
 		},
 		{
 			Id: "Test2",
@@ -222,6 +224,84 @@ func (s *UserTestSuite) TestAddKey() {
 
 	s.Equal(u.PubKeys[0].Name, "key1")
 	s.Equal(u.PubKeys[0].Key, "ssh-mock 67890")
+}
+
+func (s *UserTestSuite) TestCheckAndUpdateSchedulingLimit() {
+	u := s.users[0]
+	settings := &evergreen.Settings{
+		TaskLimits: evergreen.TaskLimitsConfig{
+			MaxHourlyPatchTasks: 100,
+		},
+	}
+
+	// Should not be able to go to a negative counter
+	s.Require().NoError(u.CheckAndUpdateSchedulingLimit(settings, -100))
+	u, err := FindOne(ById(u.Id))
+	s.Require().NoError(err)
+	s.Require().NotNil(u)
+	s.Equal(u.NumScheduledPatchTasks, 0)
+
+	// Confirm scheduling tasks less than the limit is allowed
+	s.Require().NoError(u.CheckAndUpdateSchedulingLimit(settings, 99))
+	u, err = FindOne(ById(u.Id))
+	s.Require().NoError(err)
+	s.Require().NotNil(u)
+	s.Equal(u.NumScheduledPatchTasks, 99)
+
+	// Confirm NumScheduledPatchTasks is unchanged and we receive an error after breaching the limit
+	err = u.CheckAndUpdateSchedulingLimit(settings, 1)
+	s.Require().Error(err)
+	s.Contains(err.Error(), fmt.Sprintf("user '%s' has scheduled too many tasks in the past hour", u.Id))
+	u, err = FindOne(ById(u.Id))
+	s.Require().NoError(err)
+	s.Require().NotNil(u)
+	s.Equal(u.NumScheduledPatchTasks, 99)
+
+	// Confirm unscheduling one task brings the count-down to 98
+	err = u.CheckAndUpdateSchedulingLimit(settings, -1)
+	s.Require().NoError(err)
+	u, err = FindOne(ById(u.Id))
+	s.Require().NoError(err)
+	s.Require().NotNil(u)
+	s.Equal(u.NumScheduledPatchTasks, 98)
+
+	// Confirm that scheduling one more task is now possible
+	err = u.CheckAndUpdateSchedulingLimit(settings, 1)
+	s.Require().NoError(err)
+	u, err = FindOne(ById(u.Id))
+	s.Require().NoError(err)
+	s.Require().NotNil(u)
+	s.Equal(u.NumScheduledPatchTasks, 99)
+
+	// When the last time the user has scheduled tasks falls out of the hour, we should reset the
+	// counter, and we should not be able to go negative
+	u.LastScheduledTasksAt = time.Now().Add(-1 * time.Hour)
+	err = u.CheckAndUpdateSchedulingLimit(settings, 5)
+	s.Require().NoError(err)
+	u, err = FindOne(ById(u.Id))
+	s.Require().NoError(err)
+	s.Require().NotNil(u)
+	s.Equal(u.NumScheduledPatchTasks, 5)
+
+	// When the last time the user has scheduled tasks falls out of the hour, we should reset the
+	// counter, and we should not be able to go negative
+	u.LastScheduledTasksAt = time.Now().Add(-1 * time.Hour)
+	err = u.CheckAndUpdateSchedulingLimit(settings, -5)
+	s.Require().NoError(err)
+	u, err = FindOne(ById(u.Id))
+	s.Require().NoError(err)
+	s.Require().NotNil(u)
+	s.Equal(u.NumScheduledPatchTasks, 0)
+
+	// Confirm you cannot schedule more tasks than the limit, even if your counter is zero
+	u.LastScheduledTasksAt = time.Now().Add(-1 * time.Hour)
+	err = u.CheckAndUpdateSchedulingLimit(settings, 101)
+	s.Require().Error(err)
+	s.Contains(err.Error(), fmt.Sprintf("cannot schedule %d tasks, hourly per-user limit is %d tasks", 101, 100))
+	u, err = FindOne(ById(u.Id))
+	s.Require().NoError(err)
+	s.Require().NotNil(u)
+	s.Equal(u.NumScheduledPatchTasks, 0)
 }
 
 func (s *UserTestSuite) TestAddDuplicateKeyFails() {

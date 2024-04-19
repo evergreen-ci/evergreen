@@ -185,21 +185,18 @@ func (u *DBUser) CheckAndUpdateSchedulingLimit(settings *evergreen.Settings, num
 	// is negative, the counter is decremented.
 	if u.LastScheduledTasksAt.After(oneHourAgo) {
 		update = bson.M{
-			"$inc": bson.M{NumScheduledPatchTasksKey: numTasksActivated},
+			"$set": bson.M{NumScheduledPatchTasksKey: getNewCounter(u.NumScheduledPatchTasks, numTasksActivated)},
 		}
-		if (numTasksActivated + u.NumScheduledPatchTasks) > maxScheduledTasks {
+		if (numTasksActivated + u.NumScheduledPatchTasks) >= maxScheduledTasks {
 			minutesRemaining := int(now.Sub(u.LastScheduledTasksAt).Minutes())
 			return errors.Errorf("user '%s' has scheduled too many tasks in the past hour, limit will refresh in %d minutes", u.Id, minutesRemaining)
 		}
 	} else {
 		// Otherwise, if the user has not scheduled any patch tasks within the past hour, reset the last scheduled tasks
 		// timestamp to now, and reset the number of schedule tasks to the number of activated tasks passed in here. If we are dea
-		if numTasksActivated < 0 {
-			numTasksActivated = 0
-		}
 		update = bson.M{
 			"$set": bson.M{
-				NumScheduledPatchTasksKey: numTasksActivated,
+				NumScheduledPatchTasksKey: getNewCounter(0, numTasksActivated),
 				LastScheduledTasksAtKey:   time.Now(),
 			},
 		}
@@ -208,6 +205,14 @@ func (u *DBUser) CheckAndUpdateSchedulingLimit(settings *evergreen.Settings, num
 		}
 	}
 	return UpdateOne(bson.M{IdKey: u.Id}, update)
+}
+
+func getNewCounter(currentCounter, numTasksActivated int) int {
+	sum := currentCounter + numTasksActivated
+	if sum < 0 {
+		return 0
+	}
+	return sum
 }
 
 func (u *DBUser) AddPublicKey(keyName, keyValue string) error {
