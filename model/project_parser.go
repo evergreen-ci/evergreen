@@ -1013,6 +1013,7 @@ func TranslateProject(pp *ParserProject) (*Project, error) {
 		TimeoutSecs:        utility.FromIntPtr(pp.TimeoutSecs),
 		Loggers:            pp.Loggers,
 		NumIncludes:        len(pp.Include),
+		EmptyTaskSelectors: map[string][]string{},
 	}
 	catcher := grip.NewBasicCatcher()
 	tse := NewParserTaskSelectorEvaluator(pp.Tasks)
@@ -1023,6 +1024,17 @@ func TranslateProject(pp *ParserProject) (*Project, error) {
 	vse := NewVariantSelectorEvaluator(buildVariants, ase)
 	proj.Tasks, proj.TaskGroups, errs = evaluateTaskUnits(tse, tgse, vse, pp.Tasks, pp.TaskGroups)
 	catcher.Extend(errs)
+
+	for _, bv := range pp.BuildVariants {
+		for _, t := range bv.Tasks {
+			// Ignore errors here because we're only checking if the selector is empty- errors are handled in evaluateBuildVariants.
+			names, _ := tse.evalSelector(ParseSelector(t.Name))
+			names2, _ := tgse.evalSelector(ParseSelector(t.Name))
+			if len(names) == 0 && len(names2) == 0 {
+				proj.EmptyTaskSelectors[bv.Name] = append(proj.EmptyTaskSelectors[bv.Name], t.Name)
+			}
+		}
+	}
 
 	proj.BuildVariants, errs = evaluateBuildVariants(tse, tgse, vse, buildVariants, pp.Tasks, proj.TaskGroups)
 	catcher.Extend(errs)

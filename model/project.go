@@ -71,6 +71,10 @@ type Project struct {
 
 	// Number of includes in the project cached for validation
 	NumIncludes int `yaml:"-" bson:"-"`
+
+	// EmptyTaskSelectors stores task selectors that don't target any tasks for a build variant.
+	// This is only for validation purposes.
+	EmptyTaskSelectors map[string][]string `yaml:"-" bson:"-"`
 }
 
 type ProjectInfo struct {

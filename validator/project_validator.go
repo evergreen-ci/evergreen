@@ -2346,6 +2346,16 @@ func checkBuildVariants(project *model.Project) ValidationErrors {
 				},
 			)
 		}
+
+		if emptyTaskSelectors, ok := project.EmptyTaskSelectors[buildVariant.Name]; ok {
+			errs = append(errs,
+				ValidationError{
+					Message: fmt.Sprintf("buildvariant '%s' contains empty task selectors: '%s'", buildVariant.Name, strings.Join(emptyTaskSelectors, "', '")),
+					Level:   Warning,
+				},
+			)
+		}
+
 		errs = append(errs, checkBVNames(&buildVariant)...)
 		errs = append(errs, checkBVBatchTimes(&buildVariant)...)
 	}
@@ -2361,5 +2371,6 @@ func checkBuildVariants(project *model.Project) ValidationErrors {
 
 		}
 	}
+
 	return errs
 }
