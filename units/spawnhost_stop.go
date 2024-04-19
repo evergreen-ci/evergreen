@@ -68,7 +68,33 @@ func NewSpawnhostStopJob(h *host.Host, shouldKeepOff bool, source evergreen.Modi
 func (j *spawnhostStopJob) Run(ctx context.Context) {
 	defer j.MarkComplete()
 
+	flags, err := evergreen.GetServiceFlags(ctx)
+	if err != nil {
+		j.AddRetryableError(errors.Wrap(err, "getting service flags"))
+		return
+	}
+	if j.Source == evergreen.ModifySpawnHostSleepSchedule && flags.SleepScheduleDisabled {
+		grip.Notice(message.Fields{
+			"message": "no-oping scheduled stop because sleep schedule service flag is disabled",
+			"host_id": j.HostID,
+			"user":    j.UserID,
+			"job":     j.ID(),
+		})
+		return
+	}
+
 	stopCloudHost := func(ctx context.Context, mgr cloud.Manager, h *host.Host, user string) error {
+		if j.Source == evergreen.ModifySpawnHostSleepSchedule && !h.IsSleepScheduleEnabled() {
+			grip.Info(message.Fields{
+				"message":             "no-oping scheduled stop because sleep schedule is not enabled for this host",
+				"host_id":             j.HostID,
+				"host_status":         h.Status,
+				"host_sleep_schedule": h.SleepSchedule,
+				"user":                j.UserID,
+				"job":                 j.ID(),
+			})
+			return nil
+		}
 		if j.Source == evergreen.ModifySpawnHostSleepSchedule && h.SleepSchedule.NextStopTime.After(time.Now()) {
 			grip.Info(message.Fields{
 				"message":        "no-oping because host is not scheduled to stop yet",

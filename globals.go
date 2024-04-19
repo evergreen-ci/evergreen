@@ -984,6 +984,15 @@ var (
 		HostStopped,
 	}
 
+	// SleepScheduleStatuses are all host statuses for which the sleep schedule
+	// can take effect. If it's not in one of these states, the sleep schedule
+	// does not apply.
+	SleepScheduleStatuses = []string{
+		HostRunning,
+		HostStopped,
+		HostStopping,
+	}
+
 	// Set of host status values that can be user set via the API
 	ValidUserSetHostStatus = []string{
 		HostRunning,
