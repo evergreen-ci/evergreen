@@ -3,6 +3,7 @@ package trigger
 import (
 	"context"
 	"fmt"
+	"github.com/mongodb/anser/bsonutil"
 	"testing"
 	"time"
 
@@ -97,11 +98,6 @@ func (s *hostSuite) TestEmailMessage() {
 	s.NoError(err)
 	s.Equal("myDistro idle host notice", email.Subject)
 	s.Contains(email.Body, "Your stopped myDistro host 'hostName' has been idle since")
-
-	email, err = s.testData.hostEmailPayload(idleHostEmailSubject, idleRunningHostEmailBody, s.t.Attributes())
-	s.NoError(err)
-	s.Equal("myDistro idle host notice", email.Subject)
-	s.Contains(email.Body, "Your myDistro host 'hostName' has been idle since")
 }
 
 func (s *hostSuite) TestSlackMessage() {
@@ -149,33 +145,21 @@ func (s *hostSuite) TestAllTriggers() {
 
 	s.Require().NoError(host.UpdateOne(context.Background(), host.ById(s.t.host.Id), bson.M{
 		"$set": bson.M{
-			host.NoExpirationKey:          true,
+			host.NoExpirationKey: true,
+			host.StatusKey:       evergreen.HostRunning,
+			bsonutil.GetDottedKeyName(host.SleepScheduleKey, host.SleepScheduleShouldKeepOffKey): true,
 			host.LastCommunicationTimeKey: time.Now().Add(-1 * time.Hour * 24 * 31), // 1 months ago
 		},
 	}))
-	// A one-month idle running host should trigger a notification.
-	n, err = NotificationsFromEvent(s.ctx, s.t.event)
-	s.NoError(err)
-	s.Require().Len(n, 1)
-	email, ok = n[0].Payload.(*message.Email)
-	s.True(ok)
-	s.Contains(email.Body, "has been idle")
-
-	s.Require().NoError(host.UpdateOne(context.Background(), host.ById(s.t.host.Id), bson.M{
-		"$set": bson.M{
-			host.NoExpirationKey:          true,
-			host.LastCommunicationTimeKey: time.Now().Add(-1 * time.Hour * 24 * 14), // two weeks ago
-		},
-	}))
-	// A two-week idle running host should not trigger a notification.
+	// A one-month idle running host should not trigger a notification.
 	n, err = NotificationsFromEvent(s.ctx, s.t.event)
 	s.NoError(err)
 	s.Require().Len(n, 0)
 
 	s.Require().NoError(host.UpdateOne(context.Background(), host.ById(s.t.host.Id), bson.M{
 		"$set": bson.M{
-			host.LastCommunicationTimeKey: time.Now().Add(-1 * time.Hour * 24 * 31), // 1 months ago
 			host.StatusKey:                evergreen.HostStopped,
+			host.LastCommunicationTimeKey: time.Now().Add(-1 * time.Hour * 24 * 31), // 1 months ago
 		},
 	}))
 	// A one-month idle stopped host should not trigger a notification.
@@ -195,6 +179,16 @@ func (s *hostSuite) TestAllTriggers() {
 	email, ok = n[0].Payload.(*message.Email)
 	s.True(ok)
 	s.Contains(email.Body, "has been idle")
+
+	// A temporarily stopped three-month idle host should not trigger a notification.
+	s.Require().NoError(host.UpdateOne(context.Background(), host.ById(s.t.host.Id), bson.M{
+		"$unset": bson.M{
+			bsonutil.GetDottedKeyName(host.SleepScheduleKey, host.SleepScheduleShouldKeepOffKey): 1,
+		},
+	}))
+	n, err = NotificationsFromEvent(s.ctx, s.t.event)
+	s.NoError(err)
+	s.Require().Len(n, 0)
 }
 
 func (s *hostSuite) TestHostExpiration() {
@@ -206,6 +200,8 @@ func (s *hostSuite) TestHostExpiration() {
 
 func (s *hostSuite) TestSpawnHostIdle() {
 	s.t.host.NoExpiration = true
+	s.t.host.Status = evergreen.HostStopped
+	s.t.host.SleepSchedule.ShouldKeepOff = true
 	n, err := s.t.spawnHostIdle(&s.subs[1])
 	s.NoError(err)
 	s.NotNil(n)

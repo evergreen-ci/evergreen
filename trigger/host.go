@@ -30,8 +30,6 @@ const (
 	expiringHostSlackAttachmentTitle = "Spawn Host Page"
 
 	idleHostEmailSubject     = `{{.Distro}} idle host notice`
-	idleRunningHostEmailBody = `Your {{.Distro}} host '{{.Name}}' has been idle since {{.LastCommunicationTime}}. 
-In order to be responsible about resource consumption, please consider removing from the <a href={{.URL}}>spawnhost page</a> if the host is no longer in use.`
 	idleStoppedHostEmailBody = `Your stopped {{.Distro}} host '{{.Name}}' has been idle since {{.LastCommunicationTime}}. 
 In order to be responsible about resource consumption, please consider stopping or removing from the <a href={{.URL}}>spawnhost page</a> if the host is no longer in use.`
 )
@@ -217,14 +215,9 @@ func (t *hostTriggers) hostExpiration(sub *event.Subscription) (*notification.No
 }
 
 func (t *hostTriggers) spawnHostIdle(sub *event.Subscription) (*notification.Notification, error) {
-	body := ""
-	if t.host.ShouldNotifyRunningSpawnHostIdle() {
-		body = idleRunningHostEmailBody
-	} else if t.host.ShouldNotifyStoppedSpawnHostIdle() {
-		body = idleStoppedHostEmailBody
-	} else {
+	if !t.host.ShouldNotifyStoppedSpawnHostIdle() {
 		return nil, nil
 	}
 	t.templateData.LastCommunicationTime = t.host.LastCommunicationTime.Format(time.RFC1123)
-	return t.generateIdleSpawnHost(sub, body)
+	return t.generateIdleSpawnHost(sub, idleStoppedHostEmailBody)
 }

@@ -91,7 +91,7 @@ func (j *spawnhostExpirationCheckJob) Run(ctx context.Context) {
 		return
 	}
 	// If an unexpirable host hasn't been used in a while, send an email encouraging the user to remove the host.
-	if j.host.ShouldNotifyStoppedSpawnHostIdle() || j.host.ShouldNotifyRunningSpawnHostIdle() {
+	if j.host.ShouldNotifyStoppedSpawnHostIdle() {
 		j.AddError(tryIdleSpawnHostNotification(j.host))
 	}
 

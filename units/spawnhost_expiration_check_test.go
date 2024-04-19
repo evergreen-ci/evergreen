@@ -65,7 +65,7 @@ func TestTryIdleSpawnHostNotification(t *testing.T) {
 	assert.NoError(t, db.ClearCollections(event.SubscriptionsCollection, event.EventCollection, user.Collection))
 	h := &host.Host{
 		Id:       "test-host",
-		Status:   evergreen.HostRunning,
+		Status:   evergreen.HostStopped,
 		UserHost: true,
 		Provider: evergreen.ProviderNameMock,
 		Distro: distro.Distro{
@@ -73,6 +73,9 @@ func TestTryIdleSpawnHostNotification(t *testing.T) {
 			ProviderSettingsList: []*birch.Document{birch.NewDocument(
 				birch.EC.String("region", "test-region"),
 			)},
+		},
+		SleepSchedule: host.SleepScheduleInfo{
+			ShouldKeepOff: true,
 		},
 		NoExpiration:          true,
 		ExpirationTime:        time.Now(),
