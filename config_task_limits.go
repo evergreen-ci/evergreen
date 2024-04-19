@@ -23,7 +23,7 @@ type TaskLimitsConfig struct {
 	MaxIncludesPerVersion int `bson:"max_includes_per_version" json:"max_includes_per_version" yaml:"max_includes_per_version"`
 
 	// MaxPendingGeneratedTasks is the maximum number of tasks that can be created
-	// by generated task at once.
+	// by all generated task at once.
 	MaxPendingGeneratedTasks int `bson:"max_pending_generated_tasks" json:"max_pending_generated_tasks" yaml:"max_pending_generated_tasks"`
 }
 
