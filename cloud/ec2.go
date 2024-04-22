@@ -777,12 +777,6 @@ func (m *ec2Manager) GetInstanceStatus(ctx context.Context, h *host.Host) (Cloud
 		if isEC2InstanceNotFound(err) {
 			return StatusNonExistent, nil
 		}
-		grip.Error(message.WrapError(err, message.Fields{
-			"message":       "error getting instance info",
-			"host_id":       h.Id,
-			"host_provider": h.Distro.Provider,
-			"distro":        h.Distro.Id,
-		}))
 		return status, err
 	}
 	status = ec2StatusToEvergreenStatus(instance.State.Name)
