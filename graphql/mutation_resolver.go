@@ -1401,6 +1401,114 @@ func (r *mutationResolver) RestartVersions(ctx context.Context, versionID string
 	return versions, nil
 }
 
+// ScheduleVersionTasks is the resolver for the scheduleVersionTasks field.
+func (r *mutationResolver) ScheduleVersionTasks(ctx context.Context, versionID string) (*string, error) {
+	modifications := model.VersionModification{
+		Action: evergreen.SetActiveAction,
+		Active: true,
+		Abort:  false,
+	}
+	err := modifyVersionHandler(ctx, versionID, modifications)
+	if err != nil {
+		return nil, err
+	}
+	return &versionID, nil
+}
+
+// ScheduleUndispatchedBaseVersionTasks is the resolver for the scheduleUndispatchedBaseVersionTasks field.
+func (r *mutationResolver) ScheduleUndispatchedBaseVersionTasks(ctx context.Context, versionID string) ([]*restModel.APITask, error) {
+	opts := task.GetTasksByVersionOptions{
+		Statuses:              evergreen.TaskFailureStatuses,
+		IncludeExecutionTasks: true,
+	}
+	tasks, _, err := task.GetTasksByVersion(ctx, versionID, opts)
+	if err != nil {
+		return nil, InternalServerError.Send(ctx, fmt.Sprintf("Could not fetch tasks for patch: %s ", err.Error()))
+	}
+
+	scheduledTasks := []*restModel.APITask{}
+	tasksToSchedule := make(map[string]bool)
+
+	for _, t := range tasks {
+		// If a task is a generated task don't schedule it until we get all of the generated tasks we want to generate
+		if t.GeneratedBy == "" {
+			// We can ignore an error while fetching tasks because this could just mean the task didn't exist on the base commit.
+			baseTask, _ := t.FindTaskOnBaseCommit()
+			if baseTask != nil && baseTask.Status == evergreen.TaskUndispatched {
+				tasksToSchedule[baseTask.Id] = true
+			}
+			// If a task is generated lets find its base task if it exists otherwise we need to generate it
+		} else if t.GeneratedBy != "" {
+			baseTask, _ := t.FindTaskOnBaseCommit()
+			// If the task is undispatched or doesn't exist on the base commit then we want to schedule
+			if baseTask == nil {
+				generatorTask, err := task.FindByIdExecution(t.GeneratedBy, nil)
+				if err != nil {
+					return nil, InternalServerError.Send(ctx, fmt.Sprintf("Experienced an error trying to find the generator task: %s", err.Error()))
+				}
+				if generatorTask != nil {
+					baseGeneratorTask, _ := generatorTask.FindTaskOnBaseCommit()
+					// If baseGeneratorTask is nil then it didn't exist on the base task and we can't do anything
+					if baseGeneratorTask != nil && baseGeneratorTask.Status == evergreen.TaskUndispatched {
+						err = baseGeneratorTask.SetGeneratedTasksToActivate(t.BuildVariant, t.DisplayName)
+						if err != nil {
+							return nil, InternalServerError.Send(ctx, fmt.Sprintf("Could not activate generated task: %s", err.Error()))
+						}
+						tasksToSchedule[baseGeneratorTask.Id] = true
+
+					}
+				}
+			} else if baseTask.Status == evergreen.TaskUndispatched {
+				tasksToSchedule[baseTask.Id] = true
+			}
+
+		}
+	}
+
+	taskIDs := []string{}
+	for taskId := range tasksToSchedule {
+		taskIDs = append(taskIDs, taskId)
+	}
+	scheduled, err := setManyTasksScheduled(ctx, r.sc.GetURL(), true, taskIDs...)
+	if err != nil {
+		return nil, err
+	}
+	scheduledTasks = append(scheduledTasks, scheduled...)
+	// sort scheduledTasks by display name to guarantee the order of the tasks
+	sort.Slice(scheduledTasks, func(i, j int) bool {
+		return utility.FromStringPtr(scheduledTasks[i].DisplayName) < utility.FromStringPtr(scheduledTasks[j].DisplayName)
+	})
+
+	return scheduledTasks, nil
+}
+
+// SetVersionPriority is the resolver for the setVersionPriority field.
+func (r *mutationResolver) SetVersionPriority(ctx context.Context, versionID string, priority int) (*string, error) {
+	modifications := model.VersionModification{
+		Action:   evergreen.SetPriorityAction,
+		Priority: int64(priority),
+	}
+	err := modifyVersionHandler(ctx, versionID, modifications)
+	if err != nil {
+		return nil, err
+	}
+	return &versionID, nil
+}
+
+// UnscheduleVersionTasks is the resolver for the unscheduleVersionTasks field.
+func (r *mutationResolver) UnscheduleVersionTasks(ctx context.Context, versionID string, abort bool) (*string, error) {
+	modifications := model.VersionModification{
+		Action: evergreen.SetActiveAction,
+		Active: false,
+		Abort:  abort,
+	}
+	err := modifyVersionHandler(ctx, versionID, modifications)
+	if err != nil {
+		return nil, err
+	}
+	return &versionID, nil
+}
+
 // Mutation returns MutationResolver implementation.
 func (r *Resolver) Mutation() MutationResolver { return &mutationResolver{r} }
 

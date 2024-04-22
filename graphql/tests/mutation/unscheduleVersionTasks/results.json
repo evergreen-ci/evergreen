@@ -1,27 +1,10 @@
 {
   "tests": [
     {
-      "query_file": "unschedule_patch_tasks_bad_id.graphql",
-      "result": {
-        "data": {
-          "unschedulePatchTasks": null
-        },
-        "errors": [
-          {
-            "message": "not a valid patch ID",
-            "path": ["unschedulePatchTasks", "patchId"],
-            "extensions": {
-              "code": "INPUT_VALIDATION_ERROR"
-            }
-          }
-        ]
-      }
-    },
-    {
       "query_file": "unschedule_patch_tasks.graphql",
       "result": {
         "data": {
-          "unschedulePatchTasks": "5e4ff3abe3c3317e352062e4"
+          "unscheduleVersionTasks": "evg_5e4ff3abe3c3317e352062e4"
         }
       }
     },
@@ -29,7 +12,7 @@
       "query_file": "abort_unschedule_patch_tasks.graphql",
       "result": {
         "data": {
-          "unschedulePatchTasks": "5e4ff3abe3c3317e352062e4"
+          "unscheduleVersionTasks": "evg_5e4ff3abe3c3317e352062e4"
         }
       }
     },
@@ -37,7 +20,7 @@
       "query_file": "commit_queue_dequeue.graphql",
       "result": {
         "data": {
-          "unschedulePatchTasks": "5dd2e89cd1fe07048e43bb9c"
+          "unscheduleVersionTasks": "5dd2e89cd1fe07048e43bb9c"
         }
       }
     },
@@ -45,12 +28,12 @@
       "query_file": "no_permissions.graphql",
       "result": {
         "data": {
-          "unschedulePatchTasks": null
+          "unscheduleVersionTasks": null
         },
         "errors": [
           {
             "message": "user 'testuser' does not have permission to access 'tasks' for the project 'evergreen'",
-            "path": ["unschedulePatchTasks", "patchId"],
+            "path": ["unscheduleVersionTasks", "versionId"],
             "extensions": {
               "code": "FORBIDDEN"
             }

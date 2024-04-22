@@ -1,27 +1,10 @@
 {
   "tests": [
     {
-      "query_file": "set_priority_bad_id.graphql",
-      "result": {
-        "data": {
-          "setPatchPriority": null
-        },
-        "errors": [
-          {
-            "message": "not a valid patch ID",
-            "path": ["setPatchPriority", "patchId"],
-            "extensions": {
-              "code": "INPUT_VALIDATION_ERROR"
-            }
-          }
-        ]
-      }
-    },
-    {
       "query_file": "set_priority.graphql",
       "result": {
         "data": {
-          "setPatchPriority": "5e4ff3abe3c3317e352062e4"
+          "setVersionPriority": "5e4ff3abe3c3317e352062e4"
         }
       }
     },
@@ -29,12 +12,12 @@
       "query_file": "set_priority_too_high_for_permission_level.graphql",
       "result": {
         "data": {
-          "setPatchPriority": null
+          "setVersionPriority": null
         },
         "errors": [
           {
             "message": "insufficient access to set priority 999, can only set priority less than or equal to 100",
-            "path": ["setPatchPriority"],
+            "path": ["setVersionPriority"],
             "extensions": {
               "code": "FORBIDDEN"
             }
@@ -46,12 +29,12 @@
       "query_file": "no_permissions.graphql",
       "result": {
         "data": {
-          "setPatchPriority": null
+          "setVersionPriority": null
         },
         "errors": [
           {
             "message": "user 'testuser' does not have permission to access 'tasks' for the project 'evergreen'",
-            "path": ["setPatchPriority", "patchId"],
+            "path": ["setVersionPriority", "versionId"],
             "extensions": {
               "code": "FORBIDDEN"
             }

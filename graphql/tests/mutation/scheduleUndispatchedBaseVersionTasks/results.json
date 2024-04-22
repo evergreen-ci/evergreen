@@ -4,7 +4,7 @@
       "query_file": "successful_restart.graphql",
       "result": {
         "data": {
-          "scheduleUndispatchedBaseTasks": [
+          "scheduleUndispatchedBaseVersionTasks": [
             {
               "id": "base-task-2",
               "execution": 0,
@@ -18,7 +18,7 @@
       "query_file": "generated_tasks.graphql",
       "result": {
         "data": {
-          "scheduleUndispatchedBaseTasks": [
+          "scheduleUndispatchedBaseVersionTasks": [
             {
               "id": "base_generated_task",
               "execution": 0,
@@ -37,12 +37,12 @@
       "query_file": "no_permissions.graphql",
       "result": {
         "data": {
-          "scheduleUndispatchedBaseTasks": null
+          "scheduleUndispatchedBaseVersionTasks": null
         },
         "errors": [
           {
             "message": "user 'testuser' does not have permission to access 'tasks' for the project 'evergreen'",
-            "path": ["scheduleUndispatchedBaseTasks", "patchId"],
+            "path": ["scheduleUndispatchedBaseVersionTasks", "versionId"],
             "extensions": {
               "code": "FORBIDDEN"
             }
