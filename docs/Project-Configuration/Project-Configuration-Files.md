@@ -883,9 +883,9 @@ buildvariants:
 ```
 
 Tags can be referenced in variant definitions to quickly include groups
-of tasks. If the selectors do not match any tasks it will produce a warning. If that is true 
-for all task selectors in a build variant and the build variant selects no tasks, it will 
-be considered invalid and error. 
+of tasks. If no tasks are selected in the build variant, it will generate
+an error. If no tasks are selected by an individual line, it will
+generate a warning. 
 
 ``` yaml
 buildvariants:
