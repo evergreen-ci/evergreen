@@ -92,8 +92,8 @@ github.com/aws/aws-sdk-go-v2/internal/ini v1.8.0 h1:hT8rVHwugYE2lEfdFE0QWVo81lF7
 github.com/aws/aws-sdk-go-v2/internal/ini v1.8.0/go.mod h1:8tu/lYfQfFe6IGnaOdrpVgEL2IrrDOf6/m9RQum4NkY=
 github.com/aws/aws-sdk-go-v2/service/dynamodb v1.27.1 h1:plNo3WtooT2fYnhdyuzzsIJ4QWzcF5AT9oFbnrYC5Dw=
 github.com/aws/aws-sdk-go-v2/service/dynamodb v1.27.1/go.mod h1:N5tqZcYMM0N1PN7UQYJNWuGyO886OfnMhf/3MAbqMcI=
-github.com/aws/aws-sdk-go-v2/service/ec2 v1.156.0 h1:TFK9GeUINErClL2+A+GLYhjiChVdaXCgIUiCsS/UQrE=
-github.com/aws/aws-sdk-go-v2/service/ec2 v1.156.0/go.mod h1:xejKuuRDjz6z5OqyeLsz01MlOqqW7CqpAB4PabNvpu8=
+github.com/aws/aws-sdk-go-v2/service/ec2 v1.157.0 h1:BCNvChkZM4xqssztw+rFllaDnoS4Hm6bZ20XBj8RsI0=
+github.com/aws/aws-sdk-go-v2/service/ec2 v1.157.0/go.mod h1:xejKuuRDjz6z5OqyeLsz01MlOqqW7CqpAB4PabNvpu8=
 github.com/aws/aws-sdk-go-v2/service/ecs v1.36.0 h1:XjN5jaDmvP0fDGEOn/Ws06wNKNXUAPGLdeBhKUetQcc=
 github.com/aws/aws-sdk-go-v2/service/ecs v1.36.0/go.mod h1:kt+L4lMA2nvv9evq9S6TOH1up95/2RsQG4GXfxoPRfM=
 github.com/aws/aws-sdk-go-v2/service/internal/accept-encoding v1.11.2 h1:Ji0DY1xUsUr3I8cHps0G+XM3WWU16lP6yG8qu1GAZAs=
