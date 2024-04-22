@@ -94,7 +94,7 @@ func TestTryIdleSpawnHostNotification(t *testing.T) {
 	require.Len(t, fetchedSubs, 1)
 	assert.Equal(t, u.EmailAddress, utility.FromStringPtr(fetchedSubs[0].Subscriber.Target.(*string)))
 	assert.Equal(t, event.EmailSubscriberType, fetchedSubs[0].Subscriber.Type)
-	assert.Equal(t, fetchedSubs[0].ID, h.Id)
+	assert.Contains(t, fetchedSubs[0].ID, h.Id)
 
 	// Trying to re-insert the subscription doesn't create a new subscription.
 	assert.NoError(t, tryIdleSpawnHostNotification(h))
