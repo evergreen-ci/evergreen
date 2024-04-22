@@ -10,6 +10,7 @@ import (
 	"github.com/evergreen-ci/evergreen/model/event"
 	"github.com/evergreen-ci/evergreen/model/host"
 	"github.com/evergreen-ci/evergreen/model/task"
+	"github.com/evergreen-ci/utility"
 	"github.com/mongodb/amboy"
 	"github.com/mongodb/amboy/job"
 	"github.com/mongodb/amboy/registry"
@@ -116,7 +117,7 @@ func handleExternallyTerminatedHost(ctx context.Context, id string, env evergree
 
 	switch cloudStatus {
 	case cloud.StatusRunning:
-		userDataProvisioning := h.Distro.BootstrapSettings.Method == distro.BootstrapMethodUserData && h.Status == evergreen.HostStarting
+		userDataProvisioning := h.Distro.BootstrapSettings.Method == distro.BootstrapMethodUserData && utility.StringSliceContains(evergreen.StartedHostStatus, h.Status)
 		if h.Status != evergreen.HostRunning && !userDataProvisioning {
 			grip.Info(message.Fields{
 				"op_id":   id,

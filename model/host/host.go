@@ -1750,10 +1750,10 @@ func (h *Host) UpdateRunningTaskWithContext(ctx context.Context, env evergreen.E
 	}
 
 	statuses := []string{evergreen.HostRunning}
-	// User data can start anytime after the instance is created, so the app
-	// server may not have marked it as running yet.
+	// User data-provisioned hosts can start anytime after the instance is
+	// created, so the app server may not have marked it as running yet.
 	if h.Distro.BootstrapSettings.Method == distro.BootstrapMethodUserData {
-		statuses = append(statuses, evergreen.HostStarting)
+		statuses = append(statuses, evergreen.StartedHostStatus...)
 	}
 	query := bson.M{
 		IdKey:          h.Id,

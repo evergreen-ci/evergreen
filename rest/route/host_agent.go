@@ -66,7 +66,7 @@ func (h *hostAgentNextTask) Parse(ctx context.Context, r *http.Request) error {
 	if h.hostID = gimlet.GetVars(r)["host_id"]; h.hostID == "" {
 		return errors.New("missing host ID")
 	}
-	host, err := host.FindOneId(ctx, h.hostID)
+	host, err := host.FindOneByIdOrTag(ctx, h.hostID)
 	if err != nil {
 		return gimlet.ErrorResponse{
 			StatusCode: http.StatusInternalServerError,
@@ -881,9 +881,9 @@ func checkHostHealth(h *host.Host) bool {
 		return false
 	}
 
-	// User data can start anytime after the instance is created, so the app
-	// server may not have marked it as running yet.
-	if h.Distro.BootstrapSettings.Method == distro.BootstrapMethodUserData && h.Status == evergreen.HostStarting {
+	// User data-provisioned hosts can start anytime after the instance is
+	// created, so the app server may not have marked it as running yet.
+	if h.Distro.BootstrapSettings.Method == distro.BootstrapMethodUserData && utility.StringSliceContains(evergreen.StartedHostStatus, h.Status) {
 		return false
 	}
 
