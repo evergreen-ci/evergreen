@@ -1657,6 +1657,7 @@ func SyncPermanentExemptions(ctx context.Context, permanentlyExempt []string) er
 	if len(permanentlyExempt) > 0 {
 		res, err := coll.UpdateMany(ctx, isSleepScheduleApplicable(bson.M{
 			IdKey:                             bson.M{"$in": permanentlyExempt},
+			StatusKey:                         bson.M{"$in": evergreen.SleepScheduleStatuses},
 			sleepSchedulePermanentlyExemptKey: bson.M{"$ne": true},
 		}), bson.M{
 			"$set": bson.M{
@@ -1676,6 +1677,7 @@ func SyncPermanentExemptions(ctx context.Context, permanentlyExempt []string) er
 
 	res, err := coll.UpdateMany(ctx, isSleepScheduleApplicable(bson.M{
 		IdKey:                             bson.M{"$nin": permanentlyExempt},
+		StatusKey:                         bson.M{"$in": evergreen.SleepScheduleStatuses},
 		sleepSchedulePermanentlyExemptKey: true,
 	}), bson.M{
 		"$set": bson.M{
