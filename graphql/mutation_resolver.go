@@ -371,20 +371,6 @@ func (r *mutationResolver) SchedulePatch(ctx context.Context, patchID string, co
 	return scheduledPatch, nil
 }
 
-// SchedulePatchTasks is the resolver for the schedulePatchTasks field.
-func (r *mutationResolver) SchedulePatchTasks(ctx context.Context, patchID string) (*string, error) {
-	modifications := model.VersionModification{
-		Action: evergreen.SetActiveAction,
-		Active: true,
-		Abort:  false,
-	}
-	err := modifyVersionHandler(ctx, patchID, modifications)
-	if err != nil {
-		return nil, err
-	}
-	return &patchID, nil
-}
-
 // ScheduleUndispatchedBaseTasks is the resolver for the scheduleUndispatchedBaseTasks field.
 func (r *mutationResolver) ScheduleUndispatchedBaseTasks(ctx context.Context, patchID string) ([]*restModel.APITask, error) {
 	opts := task.GetTasksByVersionOptions{
@@ -1399,20 +1385,6 @@ func (r *mutationResolver) RestartVersions(ctx context.Context, versionID string
 		}
 	}
 	return versions, nil
-}
-
-// ScheduleVersionTasks is the resolver for the scheduleVersionTasks field.
-func (r *mutationResolver) ScheduleVersionTasks(ctx context.Context, versionID string) (*string, error) {
-	modifications := model.VersionModification{
-		Action: evergreen.SetActiveAction,
-		Active: true,
-		Abort:  false,
-	}
-	err := modifyVersionHandler(ctx, versionID, modifications)
-	if err != nil {
-		return nil, err
-	}
-	return &versionID, nil
 }
 
 // ScheduleUndispatchedBaseVersionTasks is the resolver for the scheduleUndispatchedBaseVersionTasks field.
