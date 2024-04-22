@@ -151,6 +151,7 @@ type ByPatchNameStatusesCommitQueuePaginatedOptions struct {
 	Statuses           []string
 }
 
+// Based off of the implementation for Patch.GetRequester.
 var requesterExpression = bson.M{
 	"$switch": bson.M{
 		"branches": []bson.M{
