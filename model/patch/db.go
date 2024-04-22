@@ -48,6 +48,7 @@ var (
 	ProjectStorageMethodKey = bsonutil.MustHaveTag(Patch{}, "ProjectStorageMethod")
 	PatchedProjectConfigKey = bsonutil.MustHaveTag(Patch{}, "PatchedProjectConfig")
 	AliasKey                = bsonutil.MustHaveTag(Patch{}, "Alias")
+	githubMergeDataKey      = bsonutil.MustHaveTag(Patch{}, "GithubMergeData")
 	githubPatchDataKey      = bsonutil.MustHaveTag(Patch{}, "GithubPatchData")
 	MergePatchKey           = bsonutil.MustHaveTag(Patch{}, "MergePatch")
 	TriggersKey             = bsonutil.MustHaveTag(Patch{}, "Triggers")
@@ -138,17 +139,16 @@ func ByGithash(githash string) db.Q {
 }
 
 type ByPatchNameStatusesCommitQueuePaginatedOptions struct {
-	Author              *string
-	IncludeCommitQueue  *bool
-	IncludeHidden       *bool
-	Limit               int
-	OnlyCommitQueue     *bool
-	Page                int
-	PatchName           string
-	Project             *string
-	FilterGitHubPatches *bool
-	FilterCLIPatches    *bool
-	Statuses            []string
+	Author             *string
+	IncludeCommitQueue *bool
+	IncludeHidden      *bool
+	Limit              int
+	OnlyCommitQueue    *bool
+	Page               int
+	PatchName          string
+	Project            *string
+	Requesters         []string
+	Statuses           []string
 }
 
 var requesterExpression = bson.M{
@@ -156,22 +156,35 @@ var requesterExpression = bson.M{
 		"branches": []bson.M{
 			{
 				"case": bson.M{
-					"$ne": []string{"$" + bsonutil.GetDottedKeyName("github_patch_data", "head_owner"), ""},
+					"$and": []bson.M{
+						{"$ifNull": []interface{}{"$" + githubPatchDataKey, false}},
+						{"$ne": []string{"$" + bsonutil.GetDottedKeyName(githubPatchDataKey, "head_owner"), ""}},
+						{"$ne": []interface{}{"$" + bsonutil.GetDottedKeyName(githubPatchDataKey, "head_owner"), nil}},
+					},
 				},
 				"then": evergreen.GithubPRRequester,
 			},
 			{
 				"case": bson.M{
-					"$ne": []string{"$" + bsonutil.GetDottedKeyName("github_merge_data", "head_sha"), ""},
+					"$and": []bson.M{
+						{"$ifNull": []interface{}{"$" + githubMergeDataKey, false}},
+						{"$ne": []string{"$" + bsonutil.GetDottedKeyName(githubMergeDataKey, "head_sha"), ""}},
+					},
 				},
 				"then": evergreen.GithubMergeRequester,
 			},
 			{
 				"case": bson.M{
-					"$or": []bson.M{
-						{"$eq": []string{"$" + AliasKey, evergreen.CommitQueueAlias}},
-						{"$ne": []string{"$" + bsonutil.GetDottedKeyName("github_patch_data", "merge_commit_sha"), ""}},
+					"$and": []bson.M{
+						{"$ifNull": []interface{}{"$" + githubPatchDataKey, false}},
+						{"$ne": []string{"$" + bsonutil.GetDottedKeyName(githubPatchDataKey, "merge_commit_sha"), ""}},
 					},
+				},
+				"then": evergreen.MergeTestRequester,
+			},
+			{
+				"case": bson.M{
+					"$eq": []string{"$" + AliasKey, evergreen.CommitQueueAlias},
 				},
 				"then": evergreen.MergeTestRequester,
 			},
@@ -189,6 +202,10 @@ func ByPatchNameStatusesCommitQueuePaginated(ctx context.Context, opts ByPatchNa
 	}
 	pipeline := []bson.M{}
 	match := bson.M{}
+	if len(opts.Requesters) > 0 {
+		pipeline = append(pipeline, bson.M{"$addFields": bson.M{"requester": requesterExpression}})
+		match["requester"] = bson.M{"$in": opts.Requesters}
+	}
 	// Conditionally add the commit queue filter if the user is explicitly filtering on it.
 	// This is only used on the project patches page when we want to conditionally only show the commit queue patches.
 	if utility.FromBoolPtr(opts.OnlyCommitQueue) {
@@ -206,9 +223,6 @@ func ByPatchNameStatusesCommitQueuePaginated(ctx context.Context, opts ByPatchNa
 
 	if opts.PatchName != "" {
 		match[DescriptionKey] = bson.M{"$regex": opts.PatchName, "$options": "i"}
-	}
-	if utility.FromBoolPtr(opts.FilterGitHubPatches) {
-		match["github_patch_data.head_owner"] = bson.M{"$ne": ""}
 	}
 
 	if len(opts.Statuses) > 0 {
