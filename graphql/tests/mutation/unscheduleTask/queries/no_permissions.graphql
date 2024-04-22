@@ -1,0 +1,5 @@
+mutation {
+  unscheduleTask(taskId: "no_permissions") {
+    activated
+  }
+}

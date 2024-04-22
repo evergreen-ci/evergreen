@@ -2072,12 +2072,14 @@ func TestValidateAliasCoverage(t *testing.T) {
 				Alias:       evergreen.CommitQueueAlias,
 				VariantTags: []string{"notTheVariantTag"},
 				TaskTags:    []string{"taskTag1", "taskTag2"},
+				Source:      model.AliasSourceConfig,
 			}
 			alias2 := model.ProjectAlias{
 				ID:      mgobson.NewObjectId(),
 				Alias:   evergreen.CommitQueueAlias,
 				Variant: "nonsense",
 				Task:    ".*",
+				Source:  model.AliasSourceConfig,
 			}
 			aliasMap := map[string]model.ProjectAlias{
 				"alias1": alias1,
@@ -2097,8 +2099,10 @@ func TestValidateAliasCoverage(t *testing.T) {
 			errs := validateAliasCoverage(p, model.ProjectAliases{alias1, alias2})
 			require.Len(t, errs, 2)
 			assert.Contains(t, errs[0].Message, "Commit queue alias")
+			assert.Contains(t, errs[0].Message, "(from the yaml)")
 			assert.Contains(t, errs[0].Message, "has no matching variants")
 			assert.Contains(t, errs[1].Message, "Commit queue alias")
+			assert.Contains(t, errs[1].Message, "(from the yaml)")
 			assert.Contains(t, errs[1].Message, "has no matching variants")
 			assert.NotContains(t, errs[0].Message, "tasks")
 			assert.NotContains(t, errs[1].Message, "tasks")
@@ -2140,11 +2144,13 @@ func TestValidateAliasCoverage(t *testing.T) {
 				ID:          mgobson.NewObjectId(),
 				Alias:       evergreen.CommitQueueAlias,
 				VariantTags: []string{"variantTag"},
+				Source:      model.AliasSourceProject,
 			}
 			alias2 := model.ProjectAlias{
 				ID:      mgobson.NewObjectId(),
 				Alias:   evergreen.CommitQueueAlias,
 				Variant: "badRegex",
+				Source:  model.AliasSourceProject,
 			}
 			aliasMap := map[string]model.ProjectAlias{
 				"alias1": alias1,
@@ -2163,9 +2169,11 @@ func TestValidateAliasCoverage(t *testing.T) {
 			errs := validateAliasCoverage(p, model.ProjectAliases{alias1, alias2})
 			require.Len(t, errs, 2)
 			assert.Contains(t, errs[0].Message, "Commit queue alias")
+			assert.Contains(t, errs[0].Message, "(from the project page)")
 			assert.Contains(t, errs[0].Message, "has no matching variants")
 			assert.NotContains(t, errs[0].Message, "matching task regexp")
 			assert.Contains(t, errs[1].Message, "Commit queue alias")
+			assert.Contains(t, errs[1].Message, "(from the project page)")
 			assert.Contains(t, errs[1].Message, "has no matching tasks")
 			assert.Contains(t, errs[1].Message, "variant tags")
 			assert.Contains(t, errs[1].Message, "matching task regexp")
@@ -2277,6 +2285,7 @@ func TestValidateAliasCoverage(t *testing.T) {
 				Alias:    "alias",
 				Variant:  "bvWithTag",
 				TaskTags: []string{"taskTag1 taskTag2 nonexistent"},
+				Source:   model.AliasSourceRepo,
 			}
 			aliases := map[string]model.ProjectAlias{a.Alias: a}
 			needsVariants, needsTasks, err := getAliasCoverage(p, aliases)
@@ -2291,6 +2300,8 @@ func TestValidateAliasCoverage(t *testing.T) {
 			}
 			errs := validateAliasCoverage(p, model.ProjectAliases{a})
 			assert.Len(t, errs, 1)
+			assert.Contains(t, errs[0].Message, "(from the repo page)")
+			assert.Contains(t, errs[0].Message, "Patch alias 'alias'")
 		},
 	} {
 		t.Run(testName, func(t *testing.T) {

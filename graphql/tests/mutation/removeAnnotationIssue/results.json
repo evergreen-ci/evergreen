@@ -15,6 +15,21 @@
           "removeAnnotationIssue": true
         }
       }
+    },
+    {
+      "query_file": "no_permissions.graphql",
+      "result": {
+        "data": null,
+        "errors": [
+          {
+            "message": "user 'testuser' does not have permission to access 'annotations' for the project 'evergreen'",
+            "path": ["removeAnnotationIssue", "taskId"],
+            "extensions": {
+              "code": "FORBIDDEN"
+            }
+          }
+        ]
+      }
     }
   ]
 }

@@ -132,6 +132,7 @@ input DistroInput {
   isCluster: Boolean!
   isVirtualWorkStation: Boolean!
   name: String! @requireDistroAccess(access: EDIT)
+  warningNote: String
   note: String!
   plannerSettings: PlannerSettingsInput!
   provider: Provider!
@@ -281,6 +282,7 @@ type Distro {
   isVirtualWorkStation: Boolean!
   name: String!
   note: String!
+  warningNote: String!
   plannerSettings: PlannerSettings!
   provider: Provider!
   providerSettingsList: [Map!]!

@@ -1,23 +1,38 @@
 {
-    "tests": [
-        {
-            "query_file": "override_task_dependencies.graphql",
-            "result": {
-                "data": {
-                    "overrideTaskDependencies": {
-                        "id": "t1",
-                        "execution": 0,
-                        "status": "will-run",
-                        "dependsOn": [
-                            {
-                            "name": "a dep",
-                            "metStatus": "UNMET",
-                            "requiredStatus": "MUST_SUCCEED"
-                            }
-                        ]
-                    }
-                }
-            }
+  "tests": [
+    {
+      "query_file": "override_task_dependencies.graphql",
+      "result": {
+        "data": {
+          "overrideTaskDependencies": {
+            "id": "t1",
+            "execution": 0,
+            "status": "will-run",
+            "dependsOn": [
+              {
+                "name": "a dep",
+                "metStatus": "UNMET",
+                "requiredStatus": "MUST_SUCCEED"
+              }
+            ]
+          }
         }
-    ]
+      }
+    },
+    {
+      "query_file": "no_permissions.graphql",
+      "result": {
+        "data": null,
+        "errors": [
+          {
+            "message": "user 'testuser' does not have permission to access 'tasks' for the project 'evergreen'",
+            "path": ["overrideTaskDependencies", "taskId"],
+            "extensions": {
+              "code": "FORBIDDEN"
+            }
+          }
+        ]
+      }
+    }
+  ]
 }

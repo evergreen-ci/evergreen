@@ -122,7 +122,7 @@ func (vh *versionPatchHandler) Parse(ctx context.Context, r *http.Request) error
 // Run calls the data model.SetVersionActivation function
 func (vh *versionPatchHandler) Run(ctx context.Context) gimlet.Responder {
 	u := MustHaveUser(ctx)
-	if err := dbModel.SetVersionActivation(vh.versionId, utility.FromBoolPtr(vh.Activated), u.Id); err != nil {
+	if err := dbModel.SetVersionActivation(ctx, vh.versionId, utility.FromBoolPtr(vh.Activated), u.Id); err != nil {
 		state := "inactive"
 		if utility.FromBoolPtr(vh.Activated) {
 			state = "active"

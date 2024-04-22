@@ -93,6 +93,7 @@
       },
       "disable_shallow_clone": false,
       "note": "",
+      "warnings": "",
       "is_virtual_workstation": false,
       "is_cluster": false,
       "home_volume_settings": {

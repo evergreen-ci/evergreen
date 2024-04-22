@@ -1,0 +1,29 @@
+{
+  "tests": [
+    {
+      "query_file": "restart_versions.graphql",
+      "result": {
+        "data": {
+          "restartVersions": [{ "id": "version_id" }]
+        }
+      }
+    },
+    {
+      "query_file": "no_permissions.graphql",
+      "result": {
+        "data": {
+          "restartVersions": null
+        },
+        "errors": [
+          {
+            "message": "user 'testuser' does not have permission to access 'tasks' for the project 'evergreen'",
+            "path": ["restartVersions", "versionId"],
+            "extensions": {
+              "code": "FORBIDDEN"
+            }
+          }
+        ]
+      }
+    }
+  ]
+}

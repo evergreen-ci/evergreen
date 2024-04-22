@@ -2820,6 +2820,7 @@ type APITaskLimitsConfig struct {
 	MaxTasksPerVersion    *int `json:"max_tasks_per_version"`
 	MaxIncludesPerVersion *int `json:"max_includes_per_version"`
 	MaxHourlyPatchTasks   *int `json:"max_hourly_patch_tasks"`
+	MaxPendingGeneratedTasks *int `json:"max_pending_generated_tasks"`
 }
 
 func (c *APITaskLimitsConfig) BuildFromService(h interface{}) error {
@@ -2827,6 +2828,7 @@ func (c *APITaskLimitsConfig) BuildFromService(h interface{}) error {
 	case evergreen.TaskLimitsConfig:
 		c.MaxTasksPerVersion = utility.ToIntPtr(v.MaxTasksPerVersion)
 		c.MaxIncludesPerVersion = utility.ToIntPtr(v.MaxIncludesPerVersion)
+		c.MaxPendingGeneratedTasks = utility.ToIntPtr(v.MaxPendingGeneratedTasks)
 		c.MaxHourlyPatchTasks = utility.ToIntPtr(v.MaxHourlyPatchTasks)
 		return nil
 	default:
@@ -2839,5 +2841,6 @@ func (c *APITaskLimitsConfig) ToService() (interface{}, error) {
 		MaxTasksPerVersion:    utility.FromIntPtr(c.MaxTasksPerVersion),
 		MaxIncludesPerVersion: utility.FromIntPtr(c.MaxIncludesPerVersion),
 		MaxHourlyPatchTasks:   utility.FromIntPtr(c.MaxHourlyPatchTasks),
+		MaxPendingGeneratedTasks: utility.FromIntPtr(c.MaxPendingGeneratedTasks),
 	}, nil
 }
