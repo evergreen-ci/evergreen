@@ -119,6 +119,6 @@ func tryIdleSpawnHostNotification(h *host.Host) error {
 		"status":                  h.Status,
 		"email":                   usr.Email(),
 	})
-	event.LogSpawnHostIdleNotificationSent(h.Id)
+	event.LogSpawnHostIdleNotification(h.Id)
 	return nil
 }

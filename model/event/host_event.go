@@ -14,7 +14,7 @@ func init() {
 	registry.AddType(ResourceTypeHost, func() interface{} { return &HostEventData{} })
 	registry.AllowSubscription(ResourceTypeHost, EventHostExpirationWarningSent)
 	registry.AllowSubscription(ResourceTypeHost, EventVolumeExpirationWarningSent)
-	registry.AllowSubscription(ResourceTypeHost, EventSpawnHostIdleNotificationSent)
+	registry.AllowSubscription(ResourceTypeHost, EventSpawnHostIdleNotification)
 	registry.AllowSubscription(ResourceTypeHost, EventHostProvisioned)
 	registry.AllowSubscription(ResourceTypeHost, EventHostProvisionFailed)
 	registry.AllowSubscription(ResourceTypeHost, EventHostCreatedError)
@@ -53,7 +53,7 @@ const (
 	EventHostTaskFinished                = "HOST_TASK_FINISHED"
 	EventHostTerminatedExternally        = "HOST_TERMINATED_EXTERNALLY"
 	EventHostExpirationWarningSent       = "HOST_EXPIRATION_WARNING_SENT"
-	EventSpawnHostIdleNotificationSent   = "HOST_IDLE_NOTIFICATION_SENT"
+	EventSpawnHostIdleNotification       = "HOST_IDLE_NOTIFICATION"
 	EventHostScriptExecuted              = "HOST_SCRIPT_EXECUTED"
 	EventHostScriptExecuteFailed         = "HOST_SCRIPT_EXECUTE_FAILED"
 	EventVolumeExpirationWarningSent     = "VOLUME_EXPIRATION_WARNING_SENT"
@@ -273,12 +273,13 @@ func LogSpawnhostExpirationWarningSent(hostID string) {
 	LogHostEvent(hostID, EventHostExpirationWarningSent, HostEventData{})
 }
 
-func LogSpawnHostIdleNotificationSent(hostID string) {
-	LogHostEvent(hostID, EventSpawnHostIdleNotificationSent, HostEventData{})
-}
-
 func LogVolumeExpirationWarningSent(volumeID string) {
 	LogHostEvent(volumeID, EventVolumeExpirationWarningSent, HostEventData{})
+}
+
+// LogSpawnHostIdleNotification logs a notification for the spawn host being idle.
+func LogSpawnHostIdleNotification(hostID string) {
+	LogHostEvent(hostID, EventSpawnHostIdleNotification, HostEventData{})
 }
 
 func LogHostScriptExecuted(hostID string, logs string) {

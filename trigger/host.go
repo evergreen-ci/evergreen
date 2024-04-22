@@ -18,7 +18,7 @@ import (
 
 func init() {
 	registry.registerEventHandler(event.ResourceTypeHost, event.EventHostExpirationWarningSent, makeHostTriggers)
-	registry.registerEventHandler(event.ResourceTypeHost, event.EventSpawnHostIdleNotificationSent, makeHostTriggers)
+	registry.registerEventHandler(event.ResourceTypeHost, event.EventSpawnHostIdleNotification, makeHostTriggers)
 
 }
 
@@ -30,8 +30,9 @@ const (
 	expiringHostSlackAttachmentTitle = "Spawn Host Page"
 
 	idleHostEmailSubject     = `{{.Distro}} idle host notice`
-	idleStoppedHostEmailBody = `Your stopped {{.Distro}} host '{{.Name}}' has been idle since {{.LastCommunicationTime}}. 
-In order to be responsible about resource consumption, please consider stopping or removing from the <a href={{.URL}}>spawnhost page</a> if the host is no longer in use.`
+	idleStoppedHostEmailBody = `Your stopped {{.Distro}} host '{{.Name}}' has been idle since {{.LastCommunicationTime}}.
+In order to be responsible about resource consumption (as stopped instances still have EBS volumes attached and thus still incur costs), 
+please consider terminating from the <a href={{.URL}}>spawnhost page</a> if the host is no longer in use.`
 )
 
 type hostBase struct {

@@ -827,9 +827,10 @@ func NewSpawnhostExpirationSubscription(owner string, sub Subscriber) Subscripti
 
 // NewSpawnHostIdleWarningSubscription returns a subscription for the spawn host.
 func NewSpawnHostIdleWarningSubscription(hostId string, sub Subscriber) Subscription {
+	const notificationIDFormat = "idle-warning-%s"
 	subscription := NewSubscriptionByID(ResourceTypeHost, TriggerSpawnHostIdle, hostId, sub)
-	// Assign hostID as the subscription to avoid having multiple idle subscriptions on the same host.
-	subscription.ID = hostId
+	// Use hostID in the ID (as opposed to a random hash) to avoid having multiple idle subscriptions on the same host.
+	subscription.ID = fmt.Sprintf(notificationIDFormat, hostId)
 	return subscription
 }
 

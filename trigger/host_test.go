@@ -3,7 +3,6 @@ package trigger
 import (
 	"context"
 	"fmt"
-	"github.com/mongodb/anser/bsonutil"
 	"testing"
 	"time"
 
@@ -12,6 +11,7 @@ import (
 	"github.com/evergreen-ci/evergreen/model/alertrecord"
 	"github.com/evergreen-ci/evergreen/model/event"
 	"github.com/evergreen-ci/evergreen/model/host"
+	"github.com/mongodb/anser/bsonutil"
 	"github.com/mongodb/grip/message"
 	"github.com/stretchr/testify/suite"
 	"go.mongodb.org/mongo-driver/bson"
@@ -114,7 +114,7 @@ func (s *hostSuite) TestFetch() {
 
 	s.t.event = &event.EventLogEntry{
 		ResourceType: event.ResourceTypeHost,
-		EventType:    event.EventSpawnHostIdleNotificationSent,
+		EventType:    event.EventSpawnHostIdleNotification,
 		ResourceId:   s.t.host.Id,
 		Data:         &event.HostEventData{},
 	}
@@ -135,7 +135,7 @@ func (s *hostSuite) TestAllTriggers() {
 	s.t.event = &event.EventLogEntry{
 		ID:           "66218a19751026f955192ba5",
 		ResourceType: event.ResourceTypeHost,
-		EventType:    event.EventSpawnHostIdleNotificationSent,
+		EventType:    event.EventSpawnHostIdleNotification,
 		ResourceId:   s.t.host.Id,
 		Data:         &event.HostEventData{},
 		ProcessedAt:  time.Date(1, time.January, 1, 0, 0, 0, 0, time.UTC),
