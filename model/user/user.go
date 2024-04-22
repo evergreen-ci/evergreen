@@ -188,7 +188,7 @@ func (u *DBUser) CheckAndUpdateSchedulingLimit(settings *evergreen.Settings, num
 			"$set": bson.M{NumScheduledPatchTasksKey: getNewCounter(u.NumScheduledPatchTasks, numTasksActivated)},
 		}
 		if (numTasksActivated + u.NumScheduledPatchTasks) >= maxScheduledTasks {
-			minutesRemaining := int(now.Sub(u.LastScheduledTasksAt).Minutes())
+			minutesRemaining := 60 - int(now.Sub(u.LastScheduledTasksAt).Minutes())
 			return errors.Errorf("user '%s' has scheduled too many tasks in the past hour, limit will refresh in %d minutes", u.Id, minutesRemaining)
 		}
 	} else {

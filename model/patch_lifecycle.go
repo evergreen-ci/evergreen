@@ -100,9 +100,21 @@ func addNewTasksAndBuildsForPatch(ctx context.Context, creationInfo TaskCreation
 	if err != nil {
 		return errors.Wrap(err, "adding new builds")
 	}
-	_, err = addNewTasksToExistingBuilds(ctx, creationInfo, existingBuilds, caller)
+	activatedTaskIds, err := addNewTasksToExistingBuilds(ctx, creationInfo, existingBuilds, caller)
 	if err != nil {
 		return errors.Wrap(err, "adding new tasks")
+	}
+	if !evergreen.IsSystemActivator(caller) {
+		u, err := user.FindOneById(caller)
+		if err != nil {
+			return errors.Wrapf(err, "finding user '%s'", caller)
+		}
+		if u != nil {
+			settings := evergreen.GetEnvironment().Settings()
+			if err = u.CheckAndUpdateSchedulingLimit(settings, len(activatedTaskIds)); err != nil {
+				return errors.Wrapf(err, "checking task scheduling limit for user '%s'", u.Id)
+			}
+		}
 	}
 	err = activateExistingInactiveTasks(ctx, creationInfo, existingBuilds, caller)
 	return errors.Wrap(err, "activating existing inactive tasks")
