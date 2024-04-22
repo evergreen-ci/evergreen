@@ -1617,10 +1617,7 @@ func TestValidateBVNames(t *testing.T) {
 		Convey("if any variant has task selectors that don't target anything, an warning should be returned", func() {
 			project := &model.Project{
 				BuildVariants: []model.BuildVariant{
-					{Name: "linux"},
-				},
-				EmptyTaskSelectors: map[string][]string{
-					"linux": {".task1"},
+					{Name: "linux", EmptyTaskSelectors: []string{".task1"}},
 				},
 			}
 			validationResults := checkBuildVariants(project)
