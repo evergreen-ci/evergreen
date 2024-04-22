@@ -17,6 +17,8 @@ import (
 	"github.com/pkg/errors"
 )
 
+// POST /task/{task_id}/generate
+
 func makeGenerateTasksHandler(env evergreen.Environment) gimlet.RouteHandler {
 	return &generateHandler{env: env}
 }
@@ -38,6 +40,10 @@ func (h *generateHandler) Parse(ctx context.Context, r *http.Request) error {
 	}
 	h.taskID = gimlet.GetVars(r)["task_id"]
 
+	if err = validateFileSize(h.files, h.env.Settings().TaskLimits.MaxGenerateTaskJSONSize); err != nil {
+		return errors.Wrap(err, "validating JSON size")
+	}
+
 	return nil
 }
 
@@ -45,6 +51,23 @@ func parseJson(r *http.Request) ([]json.RawMessage, error) {
 	var files []json.RawMessage
 	err := utility.ReadJSON(r.Body, &files)
 	return files, err
+}
+
+func validateFileSize(files []json.RawMessage, maxSizeInMB int) error {
+	// Don't validate if the maximum size is not set.
+	if maxSizeInMB == 0 {
+		return nil
+	}
+
+	maxSize := maxSizeInMB * 1024 * 1024
+	fileSize := 0
+	for _, f := range files {
+		fileSize += len(f)
+	}
+	if fileSize > maxSize {
+		return errors.Errorf("JSON size exceeds maximum of %d MB", maxSize)
+	}
+	return nil
 }
 
 func (h *generateHandler) Run(ctx context.Context) gimlet.Responder {
@@ -66,6 +89,8 @@ func (h *generateHandler) Run(ctx context.Context) gimlet.Responder {
 
 	return gimlet.NewJSONResponse(struct{}{})
 }
+
+// GET /task/{task_id}/generate
 
 func makeGenerateTasksPollHandler() gimlet.RouteHandler {
 	return &generatePollHandler{}
