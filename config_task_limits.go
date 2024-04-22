@@ -26,7 +26,7 @@ type TaskLimitsConfig struct {
 	// by all generated task at once.
 	MaxPendingGeneratedTasks int `bson:"max_pending_generated_tasks" json:"max_pending_generated_tasks" yaml:"max_pending_generated_tasks"`
 
-	// MaxGenerateTaskJSONSize is the maximum size of a JSON file in MB that can be specifed in the generate.tasks command.
+	// MaxGenerateTaskJSONSize is the maximum size of a JSON file in MB that can be specified in the generate.tasks command.
 	MaxGenerateTaskJSONSize int `bson:"max_generate_task_json_size" json:"max_generate_task_json_size" yaml:"max_generate_task_json_size"`
 }
 
