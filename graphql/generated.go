@@ -9956,30 +9956,9 @@ func (ec *executionContext) field_Mutation_addAnnotationIssue_args(ctx context.C
 	var arg0 string
 	if tmp, ok := rawArgs["taskId"]; ok {
 		ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("taskId"))
-		directive0 := func(ctx context.Context) (interface{}, error) { return ec.unmarshalNString2string(ctx, tmp) }
-		directive1 := func(ctx context.Context) (interface{}, error) {
-			permission, err := ec.unmarshalNProjectPermission2githubᚗcomᚋevergreenᚑciᚋevergreenᚋgraphqlᚐProjectPermission(ctx, "ANNOTATIONS")
-			if err != nil {
-				return nil, err
-			}
-			access, err := ec.unmarshalNAccessLevel2githubᚗcomᚋevergreenᚑciᚋevergreenᚋgraphqlᚐAccessLevel(ctx, "EDIT")
-			if err != nil {
-				return nil, err
-			}
-			if ec.directives.RequireProjectAccess == nil {
-				return nil, errors.New("directive requireProjectAccess is not implemented")
-			}
-			return ec.directives.RequireProjectAccess(ctx, rawArgs, directive0, permission, access)
-		}
-
-		tmp, err = directive1(ctx)
+		arg0, err = ec.unmarshalNString2string(ctx, tmp)
 		if err != nil {
-			return nil, graphql.ErrorOnPath(ctx, err)
-		}
-		if data, ok := tmp.(string); ok {
-			arg0 = data
-		} else {
-			return nil, graphql.ErrorOnPath(ctx, fmt.Errorf(`unexpected type %T from directive, should be string`, tmp))
+			return nil, err
 		}
 	}
 	args["taskId"] = arg0
@@ -10100,30 +10079,9 @@ func (ec *executionContext) field_Mutation_bbCreateTicket_args(ctx context.Conte
 	var arg0 string
 	if tmp, ok := rawArgs["taskId"]; ok {
 		ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("taskId"))
-		directive0 := func(ctx context.Context) (interface{}, error) { return ec.unmarshalNString2string(ctx, tmp) }
-		directive1 := func(ctx context.Context) (interface{}, error) {
-			permission, err := ec.unmarshalNProjectPermission2githubᚗcomᚋevergreenᚑciᚋevergreenᚋgraphqlᚐProjectPermission(ctx, "ANNOTATIONS")
-			if err != nil {
-				return nil, err
-			}
-			access, err := ec.unmarshalNAccessLevel2githubᚗcomᚋevergreenᚑciᚋevergreenᚋgraphqlᚐAccessLevel(ctx, "EDIT")
-			if err != nil {
-				return nil, err
-			}
-			if ec.directives.RequireProjectAccess == nil {
-				return nil, errors.New("directive requireProjectAccess is not implemented")
-			}
-			return ec.directives.RequireProjectAccess(ctx, rawArgs, directive0, permission, access)
-		}
-
-		tmp, err = directive1(ctx)
+		arg0, err = ec.unmarshalNString2string(ctx, tmp)
 		if err != nil {
-			return nil, graphql.ErrorOnPath(ctx, err)
-		}
-		if data, ok := tmp.(string); ok {
-			arg0 = data
-		} else {
-			return nil, graphql.ErrorOnPath(ctx, fmt.Errorf(`unexpected type %T from directive, should be string`, tmp))
+			return nil, err
 		}
 	}
 	args["taskId"] = arg0
@@ -10514,30 +10472,9 @@ func (ec *executionContext) field_Mutation_editAnnotationNote_args(ctx context.C
 	var arg0 string
 	if tmp, ok := rawArgs["taskId"]; ok {
 		ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("taskId"))
-		directive0 := func(ctx context.Context) (interface{}, error) { return ec.unmarshalNString2string(ctx, tmp) }
-		directive1 := func(ctx context.Context) (interface{}, error) {
-			permission, err := ec.unmarshalNProjectPermission2githubᚗcomᚋevergreenᚑciᚋevergreenᚋgraphqlᚐProjectPermission(ctx, "ANNOTATIONS")
-			if err != nil {
-				return nil, err
-			}
-			access, err := ec.unmarshalNAccessLevel2githubᚗcomᚋevergreenᚑciᚋevergreenᚋgraphqlᚐAccessLevel(ctx, "EDIT")
-			if err != nil {
-				return nil, err
-			}
-			if ec.directives.RequireProjectAccess == nil {
-				return nil, errors.New("directive requireProjectAccess is not implemented")
-			}
-			return ec.directives.RequireProjectAccess(ctx, rawArgs, directive0, permission, access)
-		}
-
-		tmp, err = directive1(ctx)
+		arg0, err = ec.unmarshalNString2string(ctx, tmp)
 		if err != nil {
-			return nil, graphql.ErrorOnPath(ctx, err)
-		}
-		if data, ok := tmp.(string); ok {
-			arg0 = data
-		} else {
-			return nil, graphql.ErrorOnPath(ctx, fmt.Errorf(`unexpected type %T from directive, should be string`, tmp))
+			return nil, err
 		}
 	}
 	args["taskId"] = arg0
@@ -10697,30 +10634,9 @@ func (ec *executionContext) field_Mutation_moveAnnotationIssue_args(ctx context.
 	var arg0 string
 	if tmp, ok := rawArgs["taskId"]; ok {
 		ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("taskId"))
-		directive0 := func(ctx context.Context) (interface{}, error) { return ec.unmarshalNString2string(ctx, tmp) }
-		directive1 := func(ctx context.Context) (interface{}, error) {
-			permission, err := ec.unmarshalNProjectPermission2githubᚗcomᚋevergreenᚑciᚋevergreenᚋgraphqlᚐProjectPermission(ctx, "ANNOTATIONS")
-			if err != nil {
-				return nil, err
-			}
-			access, err := ec.unmarshalNAccessLevel2githubᚗcomᚋevergreenᚑciᚋevergreenᚋgraphqlᚐAccessLevel(ctx, "EDIT")
-			if err != nil {
-				return nil, err
-			}
-			if ec.directives.RequireProjectAccess == nil {
-				return nil, errors.New("directive requireProjectAccess is not implemented")
-			}
-			return ec.directives.RequireProjectAccess(ctx, rawArgs, directive0, permission, access)
-		}
-
-		tmp, err = directive1(ctx)
+		arg0, err = ec.unmarshalNString2string(ctx, tmp)
 		if err != nil {
-			return nil, graphql.ErrorOnPath(ctx, err)
-		}
-		if data, ok := tmp.(string); ok {
-			arg0 = data
-		} else {
-			return nil, graphql.ErrorOnPath(ctx, fmt.Errorf(`unexpected type %T from directive, should be string`, tmp))
+			return nil, err
 		}
 	}
 	args["taskId"] = arg0
@@ -10841,30 +10757,9 @@ func (ec *executionContext) field_Mutation_removeAnnotationIssue_args(ctx contex
 	var arg0 string
 	if tmp, ok := rawArgs["taskId"]; ok {
 		ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("taskId"))
-		directive0 := func(ctx context.Context) (interface{}, error) { return ec.unmarshalNString2string(ctx, tmp) }
-		directive1 := func(ctx context.Context) (interface{}, error) {
-			permission, err := ec.unmarshalNProjectPermission2githubᚗcomᚋevergreenᚑciᚋevergreenᚋgraphqlᚐProjectPermission(ctx, "ANNOTATIONS")
-			if err != nil {
-				return nil, err
-			}
-			access, err := ec.unmarshalNAccessLevel2githubᚗcomᚋevergreenᚑciᚋevergreenᚋgraphqlᚐAccessLevel(ctx, "EDIT")
-			if err != nil {
-				return nil, err
-			}
-			if ec.directives.RequireProjectAccess == nil {
-				return nil, errors.New("directive requireProjectAccess is not implemented")
-			}
-			return ec.directives.RequireProjectAccess(ctx, rawArgs, directive0, permission, access)
-		}
-
-		tmp, err = directive1(ctx)
+		arg0, err = ec.unmarshalNString2string(ctx, tmp)
 		if err != nil {
-			return nil, graphql.ErrorOnPath(ctx, err)
-		}
-		if data, ok := tmp.(string); ok {
-			arg0 = data
-		} else {
-			return nil, graphql.ErrorOnPath(ctx, fmt.Errorf(`unexpected type %T from directive, should be string`, tmp))
+			return nil, err
 		}
 	}
 	args["taskId"] = arg0
@@ -11355,30 +11250,9 @@ func (ec *executionContext) field_Mutation_setAnnotationMetadataLinks_args(ctx c
 	var arg0 string
 	if tmp, ok := rawArgs["taskId"]; ok {
 		ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("taskId"))
-		directive0 := func(ctx context.Context) (interface{}, error) { return ec.unmarshalNString2string(ctx, tmp) }
-		directive1 := func(ctx context.Context) (interface{}, error) {
-			permission, err := ec.unmarshalNProjectPermission2githubᚗcomᚋevergreenᚑciᚋevergreenᚋgraphqlᚐProjectPermission(ctx, "ANNOTATIONS")
-			if err != nil {
-				return nil, err
-			}
-			access, err := ec.unmarshalNAccessLevel2githubᚗcomᚋevergreenᚑciᚋevergreenᚋgraphqlᚐAccessLevel(ctx, "EDIT")
-			if err != nil {
-				return nil, err
-			}
-			if ec.directives.RequireProjectAccess == nil {
-				return nil, errors.New("directive requireProjectAccess is not implemented")
-			}
-			return ec.directives.RequireProjectAccess(ctx, rawArgs, directive0, permission, access)
-		}
-
-		tmp, err = directive1(ctx)
+		arg0, err = ec.unmarshalNString2string(ctx, tmp)
 		if err != nil {
-			return nil, graphql.ErrorOnPath(ctx, err)
-		}
-		if data, ok := tmp.(string); ok {
-			arg0 = data
-		} else {
-			return nil, graphql.ErrorOnPath(ctx, fmt.Errorf(`unexpected type %T from directive, should be string`, tmp))
+			return nil, err
 		}
 	}
 	args["taskId"] = arg0

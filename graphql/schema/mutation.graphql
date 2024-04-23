@@ -2,35 +2,35 @@
 type Mutation {
   # annotations
   bbCreateTicket(
-    taskId: String! @requireProjectAccess(permission: ANNOTATIONS, access: EDIT), 
+    taskId: String! # Permissions are checked in the resolver.
     execution: Int
   ): Boolean!
   addAnnotationIssue(
-    taskId: String! @requireProjectAccess(permission: ANNOTATIONS, access: EDIT)
+    taskId: String! # Permissions are checked in the resolver.
     execution: Int!
     apiIssue: IssueLinkInput!
     isIssue: Boolean!
   ): Boolean!
   editAnnotationNote(
-    taskId: String! @requireProjectAccess(permission: ANNOTATIONS, access: EDIT)
+    taskId: String! # Permissions are checked in the resolver.
     execution: Int!
     originalMessage: String!
     newMessage: String!
   ): Boolean!
   moveAnnotationIssue(
-    taskId: String! @requireProjectAccess(permission: ANNOTATIONS, access: EDIT)
+    taskId: String! # Permissions are checked in the resolver.
     execution: Int!
     apiIssue: IssueLinkInput!
     isIssue: Boolean!
   ): Boolean!
   removeAnnotationIssue(
-    taskId: String! @requireProjectAccess(permission: ANNOTATIONS, access: EDIT)
+    taskId: String! # Permissions are checked in the resolver.
     execution: Int!
     apiIssue: IssueLinkInput!
     isIssue: Boolean!
   ): Boolean!
   setAnnotationMetadataLinks(
-    taskId: String! @requireProjectAccess(permission: ANNOTATIONS, access: EDIT)
+    taskId: String! # Permissions are checked in the resolver.
     execution: Int!
     metadataLinks: [MetadataLinkInput!]!
   ): Boolean!
