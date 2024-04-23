@@ -64,14 +64,14 @@ type Mutation {
 
   # project
   attachProjectToNewRepo(project: MoveProjectInput!): Project!
-  attachProjectToRepo(projectId: String @deprecated(reason: "use projectIdentifier instead") @requireProjectAccess(permission: SETTINGS, access: EDIT), projectIdentifier: String! @requireProjectAccess(permission: SETTINGS, access: EDIT)): Project!
+  attachProjectToRepo(projectId: String @deprecated(reason: "use projectIdentifier instead") @requireProjectAccess(permission: SETTINGS, access: EDIT), projectIdentifier: String @requireProjectAccess(permission: SETTINGS, access: EDIT)): Project!
   createProject(project: CreateProjectInput! @requireProjectAdmin, requestS3Creds: Boolean): Project! 
   copyProject(project: CopyProjectInput! @requireProjectAdmin, requestS3Creds: Boolean): Project! 
   deactivateStepbackTask(projectId: String @deprecated(reason: "use opts.projectIdentifier instead") @requireProjectAccess(permission: SETTINGS, access: EDIT), buildVariantName: String @deprecated(reason: "use opts.buildVariantName instead"), taskName: String @deprecated(reason: "use opts.taskName instead"), opts: DeactivateStepbackTaskInput): Boolean!
   defaultSectionToRepo(projectId: String @deprecated(reason: "use opts.projectIdentifier instead") @requireProjectAccess(permission: SETTINGS, access: EDIT), section: ProjectSettingsSection @deprecated(reason: "use opts.section instead"), opts: DefaultSectionToRepoInput): String
-  deleteProject(projectId: String @deprecated(reason: "use projectIdentifier instead") @requireProjectAdmin, projectIdentifier: String! @requireProjectAdmin): Boolean!
-  detachProjectFromRepo(projectId: String @deprecated(reason: "use projectIdentifier instead") @requireProjectAccess(permission: SETTINGS, access: EDIT), projectIdentifier: String! @requireProjectAccess(permission: SETTINGS, access: EDIT) ): Project!
-  forceRepotrackerRun(projectId: String @deprecated(reason: "use projectIdentifier instead") @requireProjectAccess(permission: SETTINGS, access: EDIT), projectIdentifier: String! @requireProjectAccess(permission: SETTINGS, access: EDIT)): Boolean!
+  deleteProject(projectId: String @deprecated(reason: "use projectIdentifier instead") @requireProjectAdmin, projectIdentifier: String @requireProjectAdmin): Boolean!
+  detachProjectFromRepo(projectId: String @deprecated(reason: "use projectIdentifier instead") @requireProjectAccess(permission: SETTINGS, access: EDIT), projectIdentifier: String @requireProjectAccess(permission: SETTINGS, access: EDIT) ): Project!
+  forceRepotrackerRun(projectId: String @deprecated(reason: "use projectIdentifier instead") @requireProjectAccess(permission: SETTINGS, access: EDIT), projectIdentifier: String @requireProjectAccess(permission: SETTINGS, access: EDIT)): Boolean!
   promoteVarsToRepo(projectId: String @deprecated(reason: "use opts.projectIdentifier instead") @requireProjectAccess(permission: SETTINGS, access: EDIT), varNames: [String!] @deprecated(reason: "use opts.varNames instead"), opts: PromoteVarsToRepoInput): Boolean!
   saveProjectSettingsForSection(projectSettings: ProjectSettingsInput, section: ProjectSettingsSection!): ProjectSettings!
   saveRepoSettingsForSection(repoSettings: RepoSettingsInput, section: ProjectSettingsSection!): RepoSettings!
@@ -97,11 +97,11 @@ type Mutation {
   unscheduleTask(taskId: String! @requireProjectAccess(permission: TASKS, access: EDIT)): Task!
 
   # user
-  addFavoriteProject(identifier: String @deprecated(reason: "use projectIdentifier instead"), projectIdentifier: String!): Project!
+  addFavoriteProject(identifier: String @deprecated(reason: "use projectIdentifier instead"), projectIdentifier: String): Project!
   clearMySubscriptions: Int!
   createPublicKey(publicKeyInput: PublicKeyInput!): [PublicKey!]!
   deleteSubscriptions(subscriptionIds: [String!]!): Int!
-  removeFavoriteProject(identifier: String @deprecated(reason: "use projectIdentifier instead"), projectIdentifier: String!): Project!
+  removeFavoriteProject(identifier: String @deprecated(reason: "use projectIdentifier instead"), projectIdentifier: String): Project!
   removePublicKey(keyName: String!): [PublicKey!]!
   saveSubscription(subscription: SubscriptionInput!): Boolean!
   updateParsleySettings(opts: UpdateParsleySettingsInput!): UpdateParsleySettingsPayload
