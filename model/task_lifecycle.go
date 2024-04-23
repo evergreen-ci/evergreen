@@ -609,9 +609,9 @@ func doBisectStepback(ctx context.Context, t *task.Task) error {
 	}
 
 	// The midway task is our next stepback target.
-	nextTask, err := task.FindMidwayTaskFromIds(s.LastFailingStepbackTaskId, s.LastPassingStepbackTaskId)
+	nextTask, err := task.ByBeforeMidwayTaskFromIds(s.LastFailingStepbackTaskId, s.LastPassingStepbackTaskId)
 	if err != nil {
-		return errors.Wrapf(err, "finding midway task between tasks '%s' and '%s'", s.LastFailingStepbackTaskId, s.LastPassingStepbackTaskId)
+		return errors.Wrap(err, "finding previous task")
 	}
 	if nextTask == nil {
 		return errors.Errorf("midway task could not be found for tasks '%s' '%s'", s.LastFailingStepbackTaskId, s.LastPassingStepbackTaskId)
@@ -709,7 +709,7 @@ func doBisectStepbackForGeneratedTask(ctx context.Context, generator *task.Task,
 	}
 
 	// The midway task is our next stepback target.
-	nextTask, err := task.FindMidwayTaskFromIds(s.LastFailingStepbackTaskId, s.LastPassingStepbackTaskId)
+	nextTask, err := task.ByBeforeMidwayTaskFromIds(s.LastFailingStepbackTaskId, s.LastPassingStepbackTaskId)
 	if err != nil {
 		return errors.Wrapf(err, "finding midway task between tasks '%s' and '%s'", s.LastFailingStepbackTaskId, s.LastPassingStepbackTaskId)
 	}

@@ -6303,13 +6303,13 @@ func TestEvalBisectStepback(t *testing.T) {
 			require.NoError(task.UpdateOne(bson.M{"_id": "t1"},
 				bson.M{"$set": bson.M{"status": evergreen.TaskFailed}}))
 			require.NoError(evalStepback(ctx, &t10, evergreen.TaskFailed))
-			midTask, err := task.FindMidwayTaskFromIds("t1", "t10")
+			midTask, err := task.ByBeforeMidwayTaskFromIds("t10", "t1")
 			require.NoError(err)
 			assert.False(midTask.Activated)
 		},
 		"FailedTaskInStepback": func(t *testing.T, t10 task.Task) {
 			require.NoError(evalStepback(ctx, &t10, evergreen.TaskFailed))
-			midTask, err := task.FindMidwayTaskFromIds("t1", "t10")
+			midTask, err := task.ByBeforeMidwayTaskFromIds("t10", "t1")
 			prevTask := *midTask
 			require.NoError(err)
 			assert.True(midTask.Activated)
@@ -6339,7 +6339,7 @@ func TestEvalBisectStepback(t *testing.T) {
 				bson.M{"$set": bson.M{"status": evergreen.TaskFailed}}))
 			// Activate next stepback
 			require.NoError(evalStepback(ctx, &prevTask, evergreen.TaskFailed))
-			midTask, err = task.FindMidwayTaskFromIds("t1", prevTask.Id)
+			midTask, err = task.ByBeforeMidwayTaskFromIds(prevTask.Id, "t1")
 			require.NoError(err)
 			assert.True(midTask.Activated)
 			// Check mid task stepback info.
@@ -6363,7 +6363,7 @@ func TestEvalBisectStepback(t *testing.T) {
 		},
 		"PassedTaskInStepback": func(t *testing.T, t10 task.Task) {
 			require.NoError(evalStepback(ctx, &t10, evergreen.TaskFailed))
-			midTask, err := task.FindMidwayTaskFromIds("t1", "t10")
+			midTask, err := task.ByBeforeMidwayTaskFromIds("t10", "t1")
 			require.NoError(err)
 			assert.True(midTask.Activated)
 			// Check mid task stepback info.
@@ -6393,7 +6393,7 @@ func TestEvalBisectStepback(t *testing.T) {
 				bson.M{"$set": bson.M{"status": evergreen.TaskSucceeded}}))
 			// Activate next stepback
 			require.NoError(evalStepback(ctx, midTask, evergreen.TaskSucceeded))
-			midTask, err = task.FindMidwayTaskFromIds("t10", prevTask.Id)
+			midTask, err = task.ByBeforeMidwayTaskFromIds("t10", prevTask.Id)
 			require.NoError(err)
 			assert.True(midTask.Activated)
 			// Check mid task stepback info.
@@ -6475,7 +6475,7 @@ func TestEvalBisectStepback(t *testing.T) {
 				bson.M{"$set": bson.M{"status": generated2Tasks[9].Status}}))
 			require.NoError(evalStepback(ctx, &generated1Tasks[9], evergreen.TaskFailed))
 			require.NoError(evalStepback(ctx, &generated2Tasks[9], evergreen.TaskFailed))
-			midTask, err := task.FindMidwayTaskFromIds("t1", "t10")
+			midTask, err := task.ByBeforeMidwayTaskFromIds("t10", "t1")
 			require.NoError(err)
 			assert.True(midTask.Activated)
 			require.NotNil(midTask.StepbackInfo)
@@ -6544,7 +6544,7 @@ func TestEvalBisectStepback(t *testing.T) {
 			require.NoError(evalStepback(ctx, midTaskG2, evergreen.TaskFailed))
 
 			// Check mid task stepback info relating to generated task 1.
-			midTask, err = task.FindMidwayTaskFromIds("t10", prevTask.Id)
+			midTask, err = task.ByBeforeMidwayTaskFromIds("t10", prevTask.Id)
 			require.NoError(err)
 			assert.True(midTask.Activated)
 			require.NotNil(midTask.StepbackInfo)
@@ -6566,7 +6566,7 @@ func TestEvalBisectStepback(t *testing.T) {
 			require.Nil(g2Info)
 
 			// Check mid task stepback info relating to generated task 2.
-			midTask, err = task.FindMidwayTaskFromIds("t1", prevTask.Id)
+			midTask, err = task.ByBeforeMidwayTaskFromIds(prevTask.Id, "t1")
 			require.NoError(err)
 			assert.True(midTask.Activated)
 			require.NotNil(midTask.StepbackInfo)
