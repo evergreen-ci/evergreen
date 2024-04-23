@@ -6307,6 +6307,40 @@ func TestEvalBisectStepback(t *testing.T) {
 			require.NoError(err)
 			assert.False(midTask.Activated)
 		},
+		"MissingTask": func(t *testing.T, t10 task.Task) {
+			// If t5 is missing, t4 should be used.
+			require.NoError(task.Remove("t5"))
+			require.NoError(evalStepback(ctx, &t10, evergreen.TaskFailed))
+			midTask, err := task.ByBeforeMidwayTaskFromIds("t10", "t1")
+			require.NoError(err)
+			assert.True(midTask.Activated)
+			assert.Equal(midTask.Id, "t4")
+		},
+		"ManyMissingTasks": func(t *testing.T, t10 task.Task) {
+			// If t5, t4, t3 are missing, t2 should be used.
+			require.NoError(task.Remove("t5"))
+			require.NoError(task.Remove("t4"))
+			require.NoError(task.Remove("t3"))
+			require.NoError(evalStepback(ctx, &t10, evergreen.TaskFailed))
+			midTask, err := task.ByBeforeMidwayTaskFromIds("t10", "t1")
+			require.NoError(err)
+			assert.True(midTask.Activated)
+			assert.Equal(midTask.Id, "t2")
+		},
+		"AllMissingTasks": func(t *testing.T, t10 task.Task) {
+			// If t5, t4, t3, t2 are missing then stepback has
+			// no task to step back to and it should
+			// no-op (and not re-activate t1).
+			require.NoError(task.Remove("t5"))
+			require.NoError(task.Remove("t4"))
+			require.NoError(task.Remove("t3"))
+			require.NoError(task.Remove("t2"))
+			require.NoError(evalStepback(ctx, &t10, evergreen.TaskFailed))
+			midTask, err := task.ByBeforeMidwayTaskFromIds("t10", "t1")
+			require.NoError(err)
+			assert.False(midTask.Activated)
+			assert.Equal(midTask.Id, "t1")
+		},
 		"FailedTaskInStepback": func(t *testing.T, t10 task.Task) {
 			require.NoError(evalStepback(ctx, &t10, evergreen.TaskFailed))
 			midTask, err := task.ByBeforeMidwayTaskFromIds("t10", "t1")
