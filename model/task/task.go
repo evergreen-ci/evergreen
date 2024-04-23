@@ -1388,37 +1388,6 @@ func SetTasksScheduledTime(tasks []Task, scheduledTime time.Time) error {
 	return nil
 }
 
-// findMidwayTask gets the task between two task given that they are
-// from the same project, requester, build variant, and display name. The
-// order of the ID's does not matter and if the task passed cannot have a
-// middle (i.e. it is sequential tasks or the same task) it will return the
-// the first task given.
-func findMidwayTask(t1, t2 Task) (*Task, error) {
-	// The tasks should be the same build variant, display name, project, and requester.
-	catcher := grip.NewBasicCatcher() // Makes an error accumulator
-	catcher.ErrorfWhen(t1.BuildVariant != t2.BuildVariant, "given tasks have differing build variants '%s' and '%s'", t1.BuildVariant, t2.BuildVariant)
-	catcher.ErrorfWhen(t1.DisplayName != t2.DisplayName, "given tasks have differing display name '%s' and '%s'", t1.DisplayName, t2.DisplayName)
-	catcher.ErrorfWhen(t1.Project != t2.Project, "given tasks have differing project '%s' and '%s'", t1.Project, t2.Project)
-	catcher.ErrorfWhen(t1.Requester != t2.Requester, "given tasks have differing requester '%s' and '%s'", t1.Requester, t2.Requester)
-	if catcher.HasErrors() {
-		return nil, catcher.Resolve()
-	}
-	// If the tasks are sequential or the same order number, return the
-	// lowest revision order number task (this keeps behavior consistent,
-	// since the mid value below is always truncated and leans towards the
-	// lower revision order number).
-	d := t1.RevisionOrderNumber - t2.RevisionOrderNumber
-	if d == -1 || d == 0 || d == 1 {
-		if t1.RevisionOrderNumber < t2.RevisionOrderNumber {
-			return &t1, nil
-		}
-		return &t2, nil
-	}
-
-	mid := (t1.RevisionOrderNumber + t2.RevisionOrderNumber) / 2
-	return FindOne(db.Query(ByRevisionOrderNumber(t1.BuildVariant, t1.DisplayName, t1.Project, t1.Requester, mid)))
-}
-
 // ByBeforeMidwayTaskFromIds gets the task before the midway task between two tasks.
 // It checks that the tasks are from the same project, requester,
 // build variant, and display name.
@@ -1464,36 +1433,26 @@ func ByBeforeMidwayTaskFromIds(t1Id, t2Id string) (*Task, error) {
 		return nil, errors.Errorf("could not find task between '%s' and '%s'", t1Id, t2Id)
 	}
 
-	// If t1 is before t2, t1 is our lower bound and t2 is our upper bound.
-	if t1.RevisionOrderNumber <= t2.RevisionOrderNumber {
-		if task.RevisionOrderNumber >= t2.RevisionOrderNumber || task.RevisionOrderNumber <= t1.RevisionOrderNumber {
-			grip.Info(message.Fields{
-				"message":                 "found midway task is out of bounds",
-				"t1_id":                   t1Id,
-				"t1_order_number":         t1.RevisionOrderNumber,
-				"t2_id":                   t2Id,
-				"t2_order_number":         t2.RevisionOrderNumber,
-				"found_task":              task.Id,
-				"found_task_order_number": task.RevisionOrderNumber,
-			})
-			// We return the lower bound task if the found task is out of bounds.
-			return t1, nil
-		}
-	} else {
-		// If t2 is before t1, t2 is our lower bound and t1 is our upper bound.
-		if task.RevisionOrderNumber >= t1.RevisionOrderNumber || task.RevisionOrderNumber <= t2.RevisionOrderNumber {
-			grip.Info(message.Fields{
-				"message":                 "found midway task is out of bounds",
-				"t1_id":                   t1Id,
-				"t1_order_number":         t1.RevisionOrderNumber,
-				"t2_id":                   t2Id,
-				"t2_order_number":         t2.RevisionOrderNumber,
-				"found_task":              task.Id,
-				"found_task_order_number": task.RevisionOrderNumber,
-			})
-			// We return the lower bound task if the found task is out of bounds.
-			return t2, nil
-		}
+	lowerBoundTask := t1
+	upperBoundTask := t2
+	// If t1 is after t2, t1 is our upper bound and t2 is our lower bound.
+	if t1.RevisionOrderNumber > t2.RevisionOrderNumber {
+		upperBoundTask = t1
+		lowerBoundTask = t2
+	}
+	if task.RevisionOrderNumber >= upperBoundTask.RevisionOrderNumber ||
+		task.RevisionOrderNumber <= lowerBoundTask.RevisionOrderNumber {
+		grip.Info(message.Fields{
+			"message":                 "found midway task is out of bounds",
+			"t1_id":                   t1Id,
+			"t1_order_number":         t1.RevisionOrderNumber,
+			"t2_id":                   t2Id,
+			"t2_order_number":         t2.RevisionOrderNumber,
+			"found_task":              task.Id,
+			"found_task_order_number": task.RevisionOrderNumber,
+		})
+		// We return the lower bound task if the found task is out of bounds.
+		return lowerBoundTask, nil
 	}
 
 	return task, nil
