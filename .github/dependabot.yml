@@ -10,3 +10,12 @@ updates:
     open-pull-requests-limit: 5
     commit-message:
       prefix: "CHORE: "
+    groups:
+      otel-dependencies:
+        applies-to: version-updates
+        patterns:
+          - go.opentelemetry.io/*
+      aws-dependencies:
+        applies-to: version-updates
+        patterns:
+          - github.com/aws/aws-sdk-go-v2*
