@@ -610,6 +610,10 @@ Admin Settings
 										<label>Max Pending Generated Tasks</label>
 										<input type="number" ng-model="Settings.task_limits.max_pending_generated_tasks">
 									</md-input-container>
+									<md-input-container class="control" style="width:45%;">
+										<label>Generate Task JSON Limit (MB)</label>
+										<input type="number" ng-model="Settings.task_limits.max_generate_task_json_size">
+									</md-input-container>
 								</md-card-content>
 							</md-card>
 						</section>
