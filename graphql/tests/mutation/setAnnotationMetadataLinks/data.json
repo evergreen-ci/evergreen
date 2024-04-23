@@ -4,13 +4,15 @@
       "_id": "task-1234",
       "version": "5e4ff3abe3c3317e352062e5",
       "revision": "5e823e1f28baeaa22ae00823d83e03082cd148ac",
-      "branch": "sandbox_project_id"
+      "branch": "sandbox_project_id",
+      "execution": 0
     },
     {
       "_id": "no_permissions",
       "version": "5e4ff3abe3c3317e352062e5",
       "revision": "5e823e1f28baeaa22ae00823d83e03082cd148ac",
-      "branch": "evergreen"
+      "branch": "evergreen",
+      "execution": 0
     }
   ],
   "project_ref": [
