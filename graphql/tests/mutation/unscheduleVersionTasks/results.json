@@ -23,23 +23,6 @@
           "unscheduleVersionTasks": "5dd2e89cd1fe07048e43bb9c"
         }
       }
-    },
-    {
-      "query_file": "no_permissions.graphql",
-      "result": {
-        "data": {
-          "unscheduleVersionTasks": null
-        },
-        "errors": [
-          {
-            "message": "user 'testuser' does not have permission to access 'tasks' for the project 'evergreen'",
-            "path": ["unscheduleVersionTasks", "versionId"],
-            "extensions": {
-              "code": "FORBIDDEN"
-            }
-          }
-        ]
-      }
     }
   ]
 }

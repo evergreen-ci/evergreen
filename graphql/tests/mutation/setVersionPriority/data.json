@@ -17,6 +17,10 @@
       "identifier": "happyAbyssinian"
     },
     {
+      "_id": "spruce_5e4ff3abe3c3317e352062e4",
+      "identifier": "happyAbyssinian"
+    },
+    {
       "_id": "9e4ff3abe3c3317e352062e4",
       "identifier": "evergreen"
     }
@@ -27,7 +31,8 @@
     { "_id": "3", "version": "5e4ff3abe3c3317e352062e4" },
     { "_id": "4", "version": "5e4ff3abe3c3317e352062e4" },
     { "_id": "5", "version": "5e4ff3abe3c3317e352062e4" },
-    { "_id": "6", "version": "5e4ff3abe3c3317e352062e4" }
+    { "_id": "6", "version": "5e4ff3abe3c3317e352062e4" },
+    { "_id": "7", "version": "spruce_5e4ff3abe3c3317e352062e4" }
   ],
   "builds": [
     {

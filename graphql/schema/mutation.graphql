@@ -58,7 +58,7 @@ type Mutation {
   setPatchVisibility(patchIds: [String!]!, hidden: Boolean!): [Patch!]! # Permissions are checked in the resolver.
   schedulePatch(patchId: String! @requireProjectAccess(permission: PATCHES, access: EDIT), configure: PatchConfigure!): Patch!
   ### The below are being converted to process versionIds rather than patchIds. If you look at the code of these resolvers, they are actually operating on versions and not patches.
-  ### These resolvers were misleadingly named. They are being temporarily unrestricted as we migrate to the new mutations.
+  ### They are temporarily unrestricted as we migrate to the new mutations.
   setPatchPriority(patchId: String!, priority: Int!): String @deprecated(reason: "Use setVersionPriority instead")
   unschedulePatchTasks(patchId: String!, abort: Boolean!): String @deprecated(reason: "Use unscheduleVersionTasks instead")
 

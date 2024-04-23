@@ -9,6 +9,14 @@
       }
     },
     {
+      "query_file": "set_priority_mainline.graphql",
+      "result": {
+        "data": {
+          "setVersionPriority": "spruce_5e4ff3abe3c3317e352062e4"
+        }
+      }
+    },
+    {
       "query_file": "set_priority_too_high_for_permission_level.graphql",
       "result": {
         "data": {

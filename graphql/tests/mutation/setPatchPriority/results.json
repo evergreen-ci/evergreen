@@ -8,10 +8,10 @@
         },
         "errors": [
           {
-            "message": "not a valid patch ID",
-            "path": ["setPatchPriority", "patchId"],
+            "message": "Unable to find version with id: `washington`",
+            "path": ["setPatchPriority"],
             "extensions": {
-              "code": "INPUT_VALIDATION_ERROR"
+              "code": "RESOURCE_NOT_FOUND"
             }
           }
         ]
