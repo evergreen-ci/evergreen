@@ -1312,7 +1312,7 @@ func annotationPermissionHelper(ctx context.Context, taskID string, execution *i
 		return false, err
 	}
 	if !canModify {
-		return false, InputValidationError.Send(ctx, "Insufficient permission for modifying annotation.")
+		return false, Forbidden.Send(ctx, "insufficient permission for modifying annotation")
 	}
 	return true, nil
 }
