@@ -1,11 +1,26 @@
 {
   "tests": [
     {
-      "query_file": "setAnnotationMetadataLinks.graphql",
+      "query_file": "set_annotation_metadata_links.graphql",
       "result": {
         "data": {
           "setAnnotationMetadataLinks": true
         }
+      }
+    },
+    {
+      "query_file": "no_permissions.graphql",
+      "result": {
+        "data": null,
+        "errors": [
+          {
+            "message": "user 'testuser' does not have permission to access 'annotations' for the project 'evergreen'",
+            "path": ["setAnnotationMetadataLinks", "taskId"],
+            "extensions": {
+              "code": "FORBIDDEN"
+            }
+          }
+        ]
       }
     }
   ]

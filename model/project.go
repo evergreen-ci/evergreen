@@ -919,6 +919,10 @@ func (tt TaskIdTable) GetIdsForAllTasks() []string {
 	return ids
 }
 
+func (t TaskIdConfig) Length() int {
+	return len(t.ExecutionTasks) + len(t.DisplayTasks)
+}
+
 // NewTaskIdConfigForRepotrackerVersion creates a special TaskIdTable for a
 // repotracker version.
 func NewTaskIdConfigForRepotrackerVersion(p *Project, v *Version, sourceRev, defID string) TaskIdConfig {

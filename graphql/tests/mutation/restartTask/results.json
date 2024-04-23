@@ -11,8 +11,8 @@
       "result": {
         "errors": [
           {
-            "message": "cannot find task with id 'nonexistent'",
-            "path": ["restartTask"],
+            "message": "finding project for task 'nonexistent': task not found",
+            "path": ["restartTask", "taskId"],
             "extensions": { "code": "RESOURCE_NOT_FOUND" }
           }
         ],
@@ -38,6 +38,21 @@
             ]
           }
         }
+      }
+    },
+    {
+      "query_file": "no_permissions.graphql",
+      "result": {
+        "data": null,
+        "errors": [
+          {
+            "message": "user 'testuser' does not have permission to access 'tasks' for the project 'evergreen'",
+            "path": ["restartTask", "taskId"],
+            "extensions": {
+              "code": "FORBIDDEN"
+            }
+          }
+        ]
       }
     }
   ]

@@ -934,9 +934,9 @@ func SubscribeOnParentOutcome(parentStatus string, childPatchId string, parentPa
 }
 
 // CancelPatch aborts all of a patch's in-progress tasks and deactivates its undispatched tasks.
-func CancelPatch(p *patch.Patch, reason task.AbortInfo) error {
+func CancelPatch(ctx context.Context, p *patch.Patch, reason task.AbortInfo) error {
 	if p.Version != "" {
-		if err := SetVersionActivation(p.Version, false, reason.User); err != nil {
+		if err := SetVersionActivation(ctx, p.Version, false, reason.User); err != nil {
 			return errors.WithStack(err)
 		}
 		return errors.WithStack(task.AbortVersionTasks(p.Version, reason))
@@ -986,7 +986,7 @@ func AbortPatchesWithGithubPatchData(ctx context.Context, createdBefore time.Tim
 			}
 			catcher.Add(DequeueAndRestartForTask(ctx, nil, mergeTask, message.GithubStateFailure, evergreen.APIServerTaskActivator, "new push to pull request"))
 		} else {
-			err = CancelPatch(&p, task.AbortInfo{User: evergreen.GithubPatchUser, NewVersion: newPatch, PRClosed: closed})
+			err = CancelPatch(ctx, &p, task.AbortInfo{User: evergreen.GithubPatchUser, NewVersion: newPatch, PRClosed: closed})
 			msg := message.Fields{
 				"source":         "github hook",
 				"created_before": createdBefore.String(),

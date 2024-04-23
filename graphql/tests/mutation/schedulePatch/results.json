@@ -8,18 +8,12 @@
             "id": "5e6bb9e23066155a993e0f1a",
             "status": "created",
             "activated": true,
-            "tasks": [
-              "test-graphql"
-            ],
-            "variants": [
-              "ubuntu1604"
-            ],
+            "tasks": ["test-graphql"],
+            "variants": ["ubuntu1604"],
             "variantsTasks": [
               {
                 "name": "ubuntu1604",
-                "tasks": [
-                  "test-graphql"
-                ]
+                "tasks": ["test-graphql"]
               }
             ],
             "parameters": [
@@ -38,6 +32,21 @@
             ]
           }
         }
+      }
+    },
+    {
+      "query_file": "no_permissions.graphql",
+      "result": {
+        "data": null,
+        "errors": [
+          {
+            "message": "user 'testuser' does not have permission to access 'patches' for the project 'evergreen'",
+            "path": ["schedulePatch", "patchId"],
+            "extensions": {
+              "code": "FORBIDDEN"
+            }
+          }
+        ]
       }
     }
   ]

@@ -1,0 +1,27 @@
+{
+  "tests": [
+    {
+      "query_file": "enqueue_patch.graphql",
+      "result": {
+        "data": {
+          "enqueuePatch": { "author": "bob.smith" }
+        }
+      }
+    },
+    {
+      "query_file": "no_permissions.graphql",
+      "result": {
+        "data": null,
+        "errors": [
+          {
+            "message": "user 'testuser' does not have permission to access 'patches' for the project 'evergreen'",
+            "path": ["enqueuePatch", "patchId"],
+            "extensions": {
+              "code": "FORBIDDEN"
+            }
+          }
+        ]
+      }
+    }
+  ]
+}

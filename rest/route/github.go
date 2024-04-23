@@ -870,7 +870,7 @@ func (gh *githubHookApi) overrideOtherPRs(ctx context.Context, pr *github.PullRe
 	cancelCatcher := grip.NewBasicCatcher()
 	for _, p := range patches {
 		commentsCatcher.Wrap(gh.sc.AddCommentToPR(ctx, p.GithubPatchData.BaseOwner, p.GithubPatchData.BaseRepo, p.GithubPatchData.PRNumber, gh.comments.overriddenPR(pr)), "adding comment to overridden PR")
-		err := model.CancelPatch(&p, task.AbortInfo{User: evergreen.GithubPatchUser, NewVersion: "", PRClosed: false})
+		err := model.CancelPatch(ctx, &p, task.AbortInfo{User: evergreen.GithubPatchUser, NewVersion: "", PRClosed: false})
 		if err == nil {
 			continue
 		}
