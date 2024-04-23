@@ -1302,17 +1302,17 @@ func canModifyAnnotation(ctx context.Context, obj *restModel.APITask) (bool, err
 	return false, nil
 }
 
-func annotationPermissionHelper(ctx context.Context, taskID string, execution *int) (bool, error) {
+func annotationPermissionHelper(ctx context.Context, taskID string, execution *int) error {
 	t, err := getTask(ctx, taskID, execution, "")
 	if err != nil {
-		return false, err
+		return err
 	}
 	canModify, err := canModifyAnnotation(ctx, t)
 	if err != nil {
-		return false, err
+		return err
 	}
 	if !canModify {
-		return false, Forbidden.Send(ctx, "insufficient permission for modifying annotation")
+		return Forbidden.Send(ctx, "insufficient permission for modifying annotation")
 	}
-	return true, nil
+	return nil
 }

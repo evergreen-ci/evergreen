@@ -40,12 +40,9 @@ import (
 
 // BbCreateTicket is the resolver for the bbCreateTicket field.
 func (r *mutationResolver) BbCreateTicket(ctx context.Context, taskID string, execution *int) (bool, error) {
-	canModify, err := annotationPermissionHelper(ctx, taskID, execution)
+	err := annotationPermissionHelper(ctx, taskID, execution)
 	if err != nil {
 		return false, err
-	}
-	if !canModify {
-		return false, nil
 	}
 	httpStatus, err := data.BbFileTicket(ctx, taskID, *execution)
 	if err != nil {
@@ -56,12 +53,9 @@ func (r *mutationResolver) BbCreateTicket(ctx context.Context, taskID string, ex
 
 // AddAnnotationIssue is the resolver for the addAnnotationIssue field.
 func (r *mutationResolver) AddAnnotationIssue(ctx context.Context, taskID string, execution int, apiIssue restModel.APIIssueLink, isIssue bool) (bool, error) {
-	canModify, err := annotationPermissionHelper(ctx, taskID, utility.ToIntPtr(execution))
+	err := annotationPermissionHelper(ctx, taskID, utility.ToIntPtr(execution))
 	if err != nil {
 		return false, err
-	}
-	if !canModify {
-		return false, nil
 	}
 	usr := mustHaveUser(ctx)
 	issue := restModel.APIIssueLinkToService(apiIssue)
@@ -83,12 +77,9 @@ func (r *mutationResolver) AddAnnotationIssue(ctx context.Context, taskID string
 
 // EditAnnotationNote is the resolver for the editAnnotationNote field.
 func (r *mutationResolver) EditAnnotationNote(ctx context.Context, taskID string, execution int, originalMessage string, newMessage string) (bool, error) {
-	canModify, err := annotationPermissionHelper(ctx, taskID, utility.ToIntPtr(execution))
+	err := annotationPermissionHelper(ctx, taskID, utility.ToIntPtr(execution))
 	if err != nil {
 		return false, err
-	}
-	if !canModify {
-		return false, nil
 	}
 	usr := mustHaveUser(ctx)
 	if err := annotations.UpdateAnnotationNote(taskID, execution, originalMessage, newMessage, usr.Username()); err != nil {
@@ -99,12 +90,9 @@ func (r *mutationResolver) EditAnnotationNote(ctx context.Context, taskID string
 
 // MoveAnnotationIssue is the resolver for the moveAnnotationIssue field.
 func (r *mutationResolver) MoveAnnotationIssue(ctx context.Context, taskID string, execution int, apiIssue restModel.APIIssueLink, isIssue bool) (bool, error) {
-	canModify, err := annotationPermissionHelper(ctx, taskID, utility.ToIntPtr(execution))
+	err := annotationPermissionHelper(ctx, taskID, utility.ToIntPtr(execution))
 	if err != nil {
 		return false, err
-	}
-	if !canModify {
-		return false, nil
 	}
 	usr := mustHaveUser(ctx)
 	issue := restModel.APIIssueLinkToService(apiIssue)
@@ -123,12 +111,9 @@ func (r *mutationResolver) MoveAnnotationIssue(ctx context.Context, taskID strin
 
 // RemoveAnnotationIssue is the resolver for the removeAnnotationIssue field.
 func (r *mutationResolver) RemoveAnnotationIssue(ctx context.Context, taskID string, execution int, apiIssue restModel.APIIssueLink, isIssue bool) (bool, error) {
-	canModify, err := annotationPermissionHelper(ctx, taskID, utility.ToIntPtr(execution))
+	err := annotationPermissionHelper(ctx, taskID, utility.ToIntPtr(execution))
 	if err != nil {
 		return false, err
-	}
-	if !canModify {
-		return false, nil
 	}
 	issue := restModel.APIIssueLinkToService(apiIssue)
 	if isIssue {
@@ -146,12 +131,9 @@ func (r *mutationResolver) RemoveAnnotationIssue(ctx context.Context, taskID str
 
 // SetAnnotationMetadataLinks is the resolver for the setAnnotationMetadataLinks field.
 func (r *mutationResolver) SetAnnotationMetadataLinks(ctx context.Context, taskID string, execution int, metadataLinks []*restModel.APIMetadataLink) (bool, error) {
-	canModify, err := annotationPermissionHelper(ctx, taskID, utility.ToIntPtr(execution))
+	err := annotationPermissionHelper(ctx, taskID, utility.ToIntPtr(execution))
 	if err != nil {
 		return false, err
-	}
-	if !canModify {
-		return false, nil
 	}
 	usr := mustHaveUser(ctx)
 	modelMetadataLinks := restModel.APIMetadataLinksToService(metadataLinks)
