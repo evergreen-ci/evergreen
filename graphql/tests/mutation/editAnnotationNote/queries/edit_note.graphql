@@ -1,8 +1,8 @@
 mutation {
-    editAnnotationNote(
-        taskId: "task-1234"
-        execution: 1
-        originalMessage: "my message"
-        newMessage: "my new message"
-    )
+  editAnnotationNote(
+    taskId: "task-1234"
+    execution: 1
+    originalMessage: "my message"
+    newMessage: "my new message"
+  )
 }
