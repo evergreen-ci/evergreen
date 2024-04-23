@@ -456,6 +456,9 @@ func (r *queryResolver) Projects(ctx context.Context) ([]*GroupedProjects, error
 
 // ProjectEvents is the resolver for the projectEvents field.
 func (r *queryResolver) ProjectEvents(ctx context.Context, identifier *string, projectIdentifier *string, limit *int, before *time.Time) (*ProjectEvents, error) {
+	if projectIdentifier == nil {
+		projectIdentifier = identifier
+	}
 	timestamp := time.Now()
 	if before != nil {
 		timestamp = *before
@@ -470,7 +473,10 @@ func (r *queryResolver) ProjectEvents(ctx context.Context, identifier *string, p
 
 // ProjectSettings is the resolver for the projectSettings field.
 func (r *queryResolver) ProjectSettings(ctx context.Context, identifier *string, projectIdentifier *string) (*restModel.APIProjectSettings, error) {
-	projectRef, err := model.FindBranchProjectRef(utility.FromStringPtr(identifier))
+	if projectIdentifier == nil {
+		projectIdentifier = identifier
+	}
+	projectRef, err := model.FindBranchProjectRef(utility.FromStringPtr(projectIdentifier))
 	if err != nil {
 		return nil, InternalServerError.Send(ctx, fmt.Sprintf("error looking in project collection: %s", err.Error()))
 	}

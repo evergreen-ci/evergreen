@@ -1199,7 +1199,7 @@ func (r *mutationResolver) AddFavoriteProject(ctx context.Context, identifier *s
 	}
 
 	usr := mustHaveUser(ctx)
-	err = usr.AddFavoritedProject(utility.FromStringPtr(identifier))
+	err = usr.AddFavoritedProject(utility.FromStringPtr(projectIdentifier))
 	if err != nil {
 		return nil, InternalServerError.Send(ctx, err.Error())
 	}
