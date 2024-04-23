@@ -58,10 +58,9 @@ type Mutation {
   setPatchVisibility(patchIds: [String!]!, hidden: Boolean!): [Patch!]! # Permissions are checked in the resolver.
   schedulePatch(patchId: String! @requireProjectAccess(permission: PATCHES, access: EDIT), configure: PatchConfigure!): Patch!
   ### The below are being converted to process versionIds rather than patchIds. If you look at the code of these resolvers, they are actually operating on versions and not patches.
-  ### These resolvers were misleadingly named.
-  scheduleUndispatchedBaseTasks(patchId: String! @requireProjectAccess(permission: TASKS, access: EDIT)): [Task!] @deprecated(reason: "Use scheduleUndispatchedBaseVersionTasks instead")
-  setPatchPriority(patchId: String! @requireProjectAccess(permission: TASKS, access: EDIT), priority: Int!): String @deprecated(reason: "Use setVersionPriority instead")
-  unschedulePatchTasks(patchId: String! @requireProjectAccess(permission: TASKS, access: EDIT), abort: Boolean!): String @deprecated(reason: "Use unscheduleVersionTasks instead")
+  ### These resolvers were misleadingly named. They are being temporarily unrestricted as we migrate to the new mutations.
+  setPatchPriority(patchId: String!, priority: Int!): String @deprecated(reason: "Use setVersionPriority instead")
+  unschedulePatchTasks(patchId: String!, abort: Boolean!): String @deprecated(reason: "Use unscheduleVersionTasks instead")
 
   # project
   attachProjectToNewRepo(project: MoveProjectInput!): Project! # Has directive on MoveProjectInput.
@@ -117,7 +116,7 @@ type Mutation {
 
   # version
   restartVersions(versionId: String! @requireProjectAccess(permission: TASKS, access: EDIT), abort: Boolean!, versionsToRestart: [VersionToRestart!]!): [Version!]
-  scheduleUndispatchedBaseVersionTasks(versionId: String! @requireProjectAccess(permission: TASKS, access: EDIT)): [Task!]
+  scheduleUndispatchedBaseTasks(patchId: String @deprecated(reason: "Use versionId instead"), versionId: String): [Task!]
   setVersionPriority(versionId: String! @requireProjectAccess(permission: TASKS, access: EDIT), priority: Int!): String
   unscheduleVersionTasks(versionId: String! @requireProjectAccess(permission: TASKS, access: EDIT), abort: Boolean!): String
 }

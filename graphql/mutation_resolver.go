@@ -371,73 +371,6 @@ func (r *mutationResolver) SchedulePatch(ctx context.Context, patchID string, co
 	return scheduledPatch, nil
 }
 
-// ScheduleUndispatchedBaseTasks is the resolver for the scheduleUndispatchedBaseTasks field.
-func (r *mutationResolver) ScheduleUndispatchedBaseTasks(ctx context.Context, patchID string) ([]*restModel.APITask, error) {
-	opts := task.GetTasksByVersionOptions{
-		Statuses:              evergreen.TaskFailureStatuses,
-		IncludeExecutionTasks: true,
-	}
-	tasks, _, err := task.GetTasksByVersion(ctx, patchID, opts)
-	if err != nil {
-		return nil, InternalServerError.Send(ctx, fmt.Sprintf("Could not fetch tasks for patch: %s ", err.Error()))
-	}
-
-	scheduledTasks := []*restModel.APITask{}
-	tasksToSchedule := make(map[string]bool)
-
-	for _, t := range tasks {
-		// If a task is a generated task don't schedule it until we get all of the generated tasks we want to generate
-		if t.GeneratedBy == "" {
-			// We can ignore an error while fetching tasks because this could just mean the task didn't exist on the base commit.
-			baseTask, _ := t.FindTaskOnBaseCommit()
-			if baseTask != nil && baseTask.Status == evergreen.TaskUndispatched {
-				tasksToSchedule[baseTask.Id] = true
-			}
-			// If a task is generated lets find its base task if it exists otherwise we need to generate it
-		} else if t.GeneratedBy != "" {
-			baseTask, _ := t.FindTaskOnBaseCommit()
-			// If the task is undispatched or doesn't exist on the base commit then we want to schedule
-			if baseTask == nil {
-				generatorTask, err := task.FindByIdExecution(t.GeneratedBy, nil)
-				if err != nil {
-					return nil, InternalServerError.Send(ctx, fmt.Sprintf("Experienced an error trying to find the generator task: %s", err.Error()))
-				}
-				if generatorTask != nil {
-					baseGeneratorTask, _ := generatorTask.FindTaskOnBaseCommit()
-					// If baseGeneratorTask is nil then it didn't exist on the base task and we can't do anything
-					if baseGeneratorTask != nil && baseGeneratorTask.Status == evergreen.TaskUndispatched {
-						err = baseGeneratorTask.SetGeneratedTasksToActivate(t.BuildVariant, t.DisplayName)
-						if err != nil {
-							return nil, InternalServerError.Send(ctx, fmt.Sprintf("Could not activate generated task: %s", err.Error()))
-						}
-						tasksToSchedule[baseGeneratorTask.Id] = true
-
-					}
-				}
-			} else if baseTask.Status == evergreen.TaskUndispatched {
-				tasksToSchedule[baseTask.Id] = true
-			}
-
-		}
-	}
-
-	taskIDs := []string{}
-	for taskId := range tasksToSchedule {
-		taskIDs = append(taskIDs, taskId)
-	}
-	scheduled, err := setManyTasksScheduled(ctx, r.sc.GetURL(), true, taskIDs...)
-	if err != nil {
-		return nil, err
-	}
-	scheduledTasks = append(scheduledTasks, scheduled...)
-	// sort scheduledTasks by display name to guarantee the order of the tasks
-	sort.Slice(scheduledTasks, func(i, j int) bool {
-		return utility.FromStringPtr(scheduledTasks[i].DisplayName) < utility.FromStringPtr(scheduledTasks[j].DisplayName)
-	})
-
-	return scheduledTasks, nil
-}
-
 // SetPatchPriority is the resolver for the setPatchPriority field.
 func (r *mutationResolver) SetPatchPriority(ctx context.Context, patchID string, priority int) (*string, error) {
 	modifications := model.VersionModification{
@@ -1387,13 +1320,16 @@ func (r *mutationResolver) RestartVersions(ctx context.Context, versionID string
 	return versions, nil
 }
 
-// ScheduleUndispatchedBaseVersionTasks is the resolver for the scheduleUndispatchedBaseVersionTasks field.
-func (r *mutationResolver) ScheduleUndispatchedBaseVersionTasks(ctx context.Context, versionID string) ([]*restModel.APITask, error) {
+// ScheduleUndispatchedBaseTasks is the resolver for the scheduleUndispatchedBaseTasks field.
+func (r *mutationResolver) ScheduleUndispatchedBaseTasks(ctx context.Context, patchID *string, versionID *string) ([]*restModel.APITask, error) {
+	// TODO: Remove this temporary workaround.
+	versionId := util.CoalesceString(utility.FromStringPtr(patchID), utility.FromStringPtr(versionID))
+
 	opts := task.GetTasksByVersionOptions{
 		Statuses:              evergreen.TaskFailureStatuses,
 		IncludeExecutionTasks: true,
 	}
-	tasks, _, err := task.GetTasksByVersion(ctx, versionID, opts)
+	tasks, _, err := task.GetTasksByVersion(ctx, versionId, opts)
 	if err != nil {
 		return nil, InternalServerError.Send(ctx, fmt.Sprintf("Could not fetch tasks for patch: %s ", err.Error()))
 	}
