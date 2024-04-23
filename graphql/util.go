@@ -1290,7 +1290,7 @@ func canModifyAnnotation(ctx context.Context, obj *restModel.APITask) (bool, err
 	if utility.StringSliceContains(evergreen.PatchRequesters, utility.FromStringPtr(obj.Requester)) {
 		p, err := patch.FindOneId(utility.FromStringPtr(obj.Version))
 		if err != nil {
-			return false, InternalServerError.Send(ctx, fmt.Sprintf("error finding patch for task: %s", err.Error()))
+			return false, InternalServerError.Send(ctx, fmt.Sprintf("finding patch for task: %s", err.Error()))
 		}
 		if p == nil {
 			return false, InternalServerError.Send(ctx, "patch for task doesn't exist")
@@ -1312,7 +1312,7 @@ func annotationPermissionHelper(ctx context.Context, taskID string, execution *i
 		return false, err
 	}
 	if !canModify {
-		return false, InputValidationError.Send(ctx, "Insufficient permission for modifying annotation.")
+		return false, Forbidden.Send(ctx, "insufficient permission for modifying annotation")
 	}
 	return true, nil
 }
