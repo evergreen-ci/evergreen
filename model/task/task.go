@@ -1388,13 +1388,13 @@ func SetTasksScheduledTime(tasks []Task, scheduledTime time.Time) error {
 	return nil
 }
 
-// ByBeforeMidwayTaskFromIds gets the task before the midway task between two tasks.
-// It checks that the tasks are from the same project, requester,
+// ByBeforeMidwayTaskFromIds tries to get the midway task between two tasks
+// but if it does not find it (i.e. periodic builds), it gets the closest task
+// (with lower order number). If there are no matching tasks, or the task it
+// gets is out of bounds, it returns the given lower order revision task.
+//
+// It verifies that the tasks are from the same project, requester,
 // build variant, and display name.
-// It looks between the order revision number of the two tasks
-// and returns the task in the middle. If that version does not
-// have the task, it will look before that version for one that
-// matches. If it cannot find a task, it returns the second task.
 func ByBeforeMidwayTaskFromIds(t1Id, t2Id string) (*Task, error) {
 	t1, err := FindOneId(t1Id)
 	if err != nil {
