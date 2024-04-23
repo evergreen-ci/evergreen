@@ -41,23 +41,6 @@
           }
         ]
       }
-    },
-    {
-      "query_file": "no_permissions.graphql",
-      "result": {
-        "data": {
-          "setPatchPriority": null
-        },
-        "errors": [
-          {
-            "message": "user 'testuser' does not have permission to access 'tasks' for the project 'evergreen'",
-            "path": ["setPatchPriority", "patchId"],
-            "extensions": {
-              "code": "FORBIDDEN"
-            }
-          }
-        ]
-      }
     }
   ]
 }

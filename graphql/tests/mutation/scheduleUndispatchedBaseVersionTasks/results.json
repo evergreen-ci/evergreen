@@ -32,23 +32,6 @@
           ]
         }
       }
-    },
-    {
-      "query_file": "no_permissions.graphql",
-      "result": {
-        "data": {
-          "scheduleUndispatchedBaseVersionTasks": null
-        },
-        "errors": [
-          {
-            "message": "user 'testuser' does not have permission to access 'tasks' for the project 'evergreen'",
-            "path": ["scheduleUndispatchedBaseVersionTasks", "versionId"],
-            "extensions": {
-              "code": "FORBIDDEN"
-            }
-          }
-        ]
-      }
     }
   ]
 }

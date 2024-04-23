@@ -1,5 +1,5 @@
 mutation {
-  scheduleUndispatchedBaseVersionTasks(versionId: "9e4ff3abe3c3317e352062e4") {
+  scheduleUndispatchedBaseTasks(versionId: "9e4ff3abe3c3317e352062e4") {
     id
     execution
     status
