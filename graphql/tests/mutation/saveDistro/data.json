@@ -35,7 +35,6 @@
           "virtual_memory": -1
         }
       },
-      "ssh_key": "mci",
       "ssh_options": [
         "StrictHostKeyChecking=no",
         "BatchMode=yes",
@@ -94,6 +93,7 @@
       },
       "disable_shallow_clone": false,
       "note": "",
+      "warnings": "",
       "is_virtual_workstation": false,
       "is_cluster": false,
       "home_volume_settings": {
@@ -141,7 +141,6 @@
             "virtual_memory": -1
           }
         },
-        "ssh_key": "mci",
         "ssh_options": [
           "StrictHostKeyChecking=no",
           "BatchMode=yes",
@@ -240,7 +239,6 @@
             "virtual_memory": -1
           }
         },
-        "ssh_key": "mci",
         "ssh_options": [
           "StrictHostKeyChecking=no",
           "BatchMode=yes",
@@ -300,14 +298,6 @@
       "status": "running",
       "tag": "",
       "user": "mci-exec"
-    }
-  ],
-  "admin": [
-    {
-      "_id": "global",
-      "keys": {
-        "mci": "key"
-      }
     }
   ]
 }

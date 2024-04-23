@@ -17,6 +17,11 @@
       "hidden": false,
       "admins": [],
       "repotracker_error": null
+    },
+    {
+      "_id": "sandbox_project_id",
+      "identifier": "sandbox",
+      "display_name": "Sandbox"
     }
   ],
   "parser_projects": [
@@ -47,7 +52,7 @@
         "$oid": "5e6bb9e23066155a993e0f1a"
       },
       "desc": "test meee",
-      "branch": "evergreen",
+      "branch": "sandbox_project_id",
       "githash": "25ab18d7ed2775f27be77d8135ddd841c78cfe28",
       "patch_number": 452,
       "author": "trey.granderson",
@@ -78,8 +83,18 @@
         }
       ],
       "project_storage_method": "db",
-      "activated": false,
-      "alias": ""
+      "activated": false
+    },
+    {
+      "_id": {
+        "$oid": "5e4ff3abe3c3317e352062e4"
+      },
+      "desc": "no permissions patch",
+      "branch": "evergreen",
+      "githash": "25ab18d7ed2775f27be77d8135ddd841c78cfe28",
+      "patch_number": 123,
+      "author": "bob.smith",
+      "status": "created"
     }
   ]
 }

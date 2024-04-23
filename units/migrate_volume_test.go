@@ -90,19 +90,35 @@ func TestVolumeMigrateJob(t *testing.T) {
 
 			j := NewVolumeMigrationJob(env, v.ID, spawnOptions, "123")
 			j.UpdateRetryInfo(amboy.JobRetryOptions{
-				WaitUntil:   utility.ToTimeDurationPtr(100 * time.Millisecond),
-				MaxAttempts: utility.ToIntPtr(3),
+				Retryable: utility.FalsePtr(),
 			})
 			require.NoError(t, env.RemoteQueue().Start(ctx))
 			require.NoError(t, env.RemoteQueue().Put(ctx, j))
 
-			require.True(t, amboy.WaitInterval(ctx, env.RemoteQueue(), 100*time.Millisecond))
-			assert.Error(t, j.Error())
-			assert.Contains(t, j.Error().Error(), "not yet stopped")
-			// Second attempt fails to stop initial host
-			j, ok := env.RemoteQueue().Get(ctx, j.ID())
-			assert.True(t, ok)
-			assert.Error(t, j.Error())
+			var foundFinishedVolumeMigrationJob bool
+			// The spawn host start job should fail but may also retry, so wait
+			// until the spawn host stop job finishes once (with an error).
+			var foundFinishedSpawnHostStopJob bool
+			for {
+				require.NoError(t, ctx.Err(), "context timed out looking for finished jobs in the queue")
+				for ji := range env.RemoteQueue().JobInfo(ctx) {
+					if ji.ID == j.ID() && ji.Status.Completed {
+						foundFinishedVolumeMigrationJob = true
+						assert.NotZero(t, ji.Status.ErrorCount, "volume migration job should have errored")
+					}
+					if ji.Type.Name == spawnhostStopName && ji.Status.Completed {
+						foundFinishedSpawnHostStopJob = true
+						assert.NotZero(t, ji.Status.ErrorCount, "spawn host stop job should have errored")
+					}
+				}
+				if foundFinishedSpawnHostStopJob && foundFinishedVolumeMigrationJob {
+					break
+				}
+			}
+			assert.True(t, foundFinishedSpawnHostStopJob, "should have found a finished spawn host stop job in the queue")
+			assert.True(t, foundFinishedVolumeMigrationJob, "should have found a finished volume migration job in the queue")
+
+			require.Error(t, j.Error())
 			assert.Contains(t, j.Error().Error(), "not yet stopped")
 
 			// Verify volume remains attached to initial host

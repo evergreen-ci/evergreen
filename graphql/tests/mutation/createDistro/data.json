@@ -1,10 +1,1 @@
-{
-  "admin": [
-    {
-      "_id": "global",
-      "keys": {
-        "mci": "key"
-      }
-    }
-  ]
-}
+{}

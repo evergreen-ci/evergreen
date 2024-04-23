@@ -353,13 +353,13 @@ type SpawnOptions struct {
 // related bookkeeping information.
 type SleepScheduleInfo struct {
 	// WholeWeekdaysOff represents whole weekdays for the host to sleep.
-	WholeWeekdaysOff []time.Weekday `bson:"whole_weekdays_off" json:"whole_weekdays_off"`
+	WholeWeekdaysOff []time.Weekday `bson:"whole_weekdays_off,omitempty" json:"whole_weekdays_off,omitempty"`
 	// DailyStartTime and DailyStopTime represent a daily schedule for when to
 	// start a stopped host back up. The format is "HH:MM".
-	DailyStartTime string `bson:"daily_sleep_start_time" json:"daily_sleep_start_time"`
+	DailyStartTime string `bson:"daily_start_time,omitempty" json:"daily_start_time,omitempty"`
 	// DailyStopTime represents a daily schedule for when to stop a host. The
 	// format is "HH:MM".
-	DailyStopTime string `bson:"daily_sleep_stop_time" json:"daily_sleep_stop_time"`
+	DailyStopTime string `bson:"daily_stop_time,omitempty" json:"daily_stop_time,omitempty"`
 	// TimeZone is the time zone for this host's sleep schedule.
 	TimeZone string `bson:"time_zone" json:"time_zone"`
 	// TemporarilyExemptUntil stores when a user's temporary exemption ends, if
@@ -378,10 +378,10 @@ type SleepScheduleInfo struct {
 	ShouldKeepOff bool `bson:"should_keep_off" json:"should_keep_off"`
 	// NextStopTime is the next time that the host should stop for its sleep
 	// schedule.
-	NextStopTime time.Time `bson:"next_stop_time" json:"next_stop_time"`
+	NextStopTime time.Time `bson:"next_stop_time,omitempty" json:"next_stop_time,omitempty"`
 	// NextStartTime is the next time that the host should start for its sleep
 	// schedule.
-	NextStartTime time.Time `bson:"next_start_time" json:"next_start_time"`
+	NextStartTime time.Time `bson:"next_start_time,omitempty" json:"next_start_time,omitempty"`
 }
 
 // Validate checks that the sleep schedule provided by the user is valid.
@@ -886,17 +886,28 @@ func (h *Host) SetStopped(ctx context.Context, shouldKeepOff bool, user string) 
 		DNSKey:       "",
 		StartTimeKey: utility.ZeroTime,
 	}
+	unsetFields := bson.M{}
 	if shouldKeepOff {
 		shouldKeepOffKey := bsonutil.GetDottedKeyName(SleepScheduleKey, SleepScheduleShouldKeepOffKey)
 		setFields[shouldKeepOffKey] = true
+
+		sleepScheduleNextStartKey := bsonutil.GetDottedKeyName(SleepScheduleKey, SleepScheduleNextStartTimeKey)
+		sleepScheduleNextStopKey := bsonutil.GetDottedKeyName(SleepScheduleKey, SleepScheduleNextStopTimeKey)
+		unsetFields[sleepScheduleNextStartKey] = 1
+		unsetFields[sleepScheduleNextStopKey] = 1
 	}
+	update := bson.M{"$set": setFields}
+	if len(unsetFields) > 0 {
+		update["$unset"] = unsetFields
+	}
+
 	err := UpdateOne(
 		ctx,
 		bson.M{
 			IdKey:     h.Id,
 			StatusKey: h.Status,
 		},
-		bson.M{"$set": setFields},
+		update,
 	)
 	if err != nil {
 		return errors.Wrap(err, "setting host status to stopped")
@@ -915,6 +926,10 @@ func (h *Host) SetStopped(ctx context.Context, shouldKeepOff bool, user string) 
 	h.Host = ""
 	h.StartTime = utility.ZeroTime
 	h.SleepSchedule.ShouldKeepOff = shouldKeepOff
+	if shouldKeepOff {
+		h.SleepSchedule.NextStartTime = time.Time{}
+		h.SleepSchedule.NextStopTime = time.Time{}
+	}
 
 	return nil
 }
@@ -3619,18 +3634,29 @@ func (h *Host) UpdateSleepSchedule(ctx context.Context, schedule SleepScheduleIn
 	return nil
 }
 
-// SleepScheduleSentinelTime is a special date that's so far in the future that
-// it's assumed Evergreen will never reach this time. This timestamp is only
-// used to signify that a host's sleep schedule should not take effect (either
-// is permanently exempt from the sleep schedule, or is being kept off
-// indefinitely).
-var SleepScheduleSentinelTime = time.Date(10000, 0, 0, 0, 0, 0, 0, time.UTC)
+// IsSleepScheduleEnabled returns whether or not a sleep schedule is enabled
+// for the host.
+func (h *Host) IsSleepScheduleEnabled() bool {
+	if !h.NoExpiration {
+		return false
+	}
+	if !utility.StringSliceContains(evergreen.SleepScheduleStatuses, h.Status) {
+		return false
+	}
+	if h.SleepSchedule.PermanentlyExempt || h.SleepSchedule.ShouldKeepOff {
+		return false
+	}
+	if h.SleepSchedule.TemporarilyExemptUntil.After(time.Now()) {
+		return false
+	}
+	return true
+}
 
 // GetNextScheduledStopTime returns the next time a host should be
 // stopped according to its sleep schedule.
 func (s *SleepScheduleInfo) GetNextScheduledStopTime(now time.Time) (time.Time, error) {
 	if s.PermanentlyExempt || s.ShouldKeepOff {
-		return SleepScheduleSentinelTime, nil
+		return time.Time{}, nil
 	}
 
 	userTimeZone, err := time.LoadLocation(s.TimeZone)
@@ -3737,7 +3763,7 @@ func (s *SleepScheduleInfo) GetNextScheduledStopTime(now time.Time) (time.Time, 
 // started according to its sleep schedule.
 func (s *SleepScheduleInfo) GetNextScheduledStartTime(now time.Time) (time.Time, error) {
 	if s.PermanentlyExempt || s.ShouldKeepOff {
-		return SleepScheduleSentinelTime, nil
+		return time.Time{}, nil
 	}
 
 	userTimeZone, err := time.LoadLocation(s.TimeZone)
@@ -3839,4 +3865,49 @@ func getNextScheduledTime(after time.Time, spec string) (time.Time, error) {
 		return time.Time{}, errors.New("could not determine next scheduled time")
 	}
 	return nextTriggerAt, nil
+}
+
+// SetNextScheduledStart sets the next time the host is planned to start for its
+// sleep schedule.
+func (h *Host) SetNextScheduledStart(ctx context.Context, t time.Time) error {
+	sleepScheduleStartKey := bsonutil.GetDottedKeyName(SleepScheduleKey, SleepScheduleNextStartTimeKey)
+	update := bson.M{}
+	if utility.IsZeroTime(t) {
+		update["$unset"] = bson.M{sleepScheduleStartKey: 1}
+	} else {
+		update["$set"] = bson.M{sleepScheduleStartKey: t}
+	}
+	if err := UpdateOne(ctx,
+		bson.M{IdKey: h.Id},
+		update,
+	); err != nil {
+		return err
+	}
+
+	h.SleepSchedule.NextStartTime = t
+
+	return nil
+}
+
+// SetNextScheduledStop sets the next time the host is planned to stop for its
+// sleep schedule.
+func (h *Host) SetNextScheduledStop(ctx context.Context, t time.Time) error {
+	sleepScheduleStopKey := bsonutil.GetDottedKeyName(SleepScheduleKey, SleepScheduleNextStopTimeKey)
+	update := bson.M{}
+	if utility.IsZeroTime(t) {
+		update["$unset"] = bson.M{sleepScheduleStopKey: 1}
+	} else {
+		update["$set"] = bson.M{sleepScheduleStopKey: t}
+	}
+
+	if err := UpdateOne(ctx,
+		bson.M{IdKey: h.Id},
+		update,
+	); err != nil {
+		return err
+	}
+
+	h.SleepSchedule.NextStopTime = t
+
+	return nil
 }

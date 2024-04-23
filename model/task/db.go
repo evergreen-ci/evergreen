@@ -111,6 +111,8 @@ var (
 	GeneratedJSONStorageMethodKey = bsonutil.MustHaveTag(Task{}, "GeneratedJSONStorageMethod")
 	GenerateTasksErrorKey         = bsonutil.MustHaveTag(Task{}, "GenerateTasksError")
 	GeneratedTasksToActivateKey   = bsonutil.MustHaveTag(Task{}, "GeneratedTasksToActivate")
+	NumGeneratedTasksKey          = bsonutil.MustHaveTag(Task{}, "NumGeneratedTasks")
+	NumActivatedGeneratedTasksKey = bsonutil.MustHaveTag(Task{}, "NumActivatedGeneratedTasks")
 	ResetWhenFinishedKey          = bsonutil.MustHaveTag(Task{}, "ResetWhenFinished")
 	ResetFailedWhenFinishedKey    = bsonutil.MustHaveTag(Task{}, "ResetFailedWhenFinished")
 	NumAutomaticRestartsKey       = bsonutil.MustHaveTag(Task{}, "NumAutomaticRestarts")

@@ -509,7 +509,7 @@ func TestSetVersionActivation(t *testing.T) {
 		require.NoError(t, task.Insert())
 	}
 
-	assert.NoError(t, SetVersionActivation(vID, false, "user"))
+	assert.NoError(t, SetVersionActivation(context.Background(), vID, false, "user"))
 	builds, err := build.FindBuildsByVersions([]string{vID})
 	require.NoError(t, err)
 	require.Len(t, builds, 2)
@@ -528,6 +528,8 @@ func TestSetVersionActivation(t *testing.T) {
 
 func TestBuildSetActivated(t *testing.T) {
 	Convey("With a build", t, func() {
+		ctx, cancel := context.WithCancel(context.Background())
+		defer cancel()
 
 		require.NoError(t, db.ClearCollections(build.Collection, task.Collection, VersionCollection))
 
@@ -610,7 +612,7 @@ func TestBuildSetActivated(t *testing.T) {
 				}
 				So(canary.Insert(), ShouldBeNil)
 
-				So(ActivateBuildsAndTasks([]string{b.Id}, false, ""), ShouldBeNil)
+				So(ActivateBuildsAndTasks(ctx, []string{b.Id}, false, ""), ShouldBeNil)
 				// the build should have been updated in the db
 				b, err := build.FindOne(build.ById(b.Id))
 				So(err, ShouldBeNil)
@@ -629,7 +631,7 @@ func TestBuildSetActivated(t *testing.T) {
 				So(differentUserTask.Activated, ShouldBeTrue)
 				So(differentUserTask.ActivatedBy, ShouldEqual, user)
 
-				So(ActivateBuildsAndTasks([]string{b.Id}, true, ""), ShouldBeNil)
+				So(ActivateBuildsAndTasks(ctx, []string{b.Id}, true, ""), ShouldBeNil)
 				activatedTasks, err := task.Find(task.ByActivation(true))
 				So(err, ShouldBeNil)
 				So(len(activatedTasks), ShouldEqual, 5)
@@ -675,7 +677,7 @@ func TestBuildSetActivated(t *testing.T) {
 				So(matching2.Insert(), ShouldBeNil)
 
 				// have a user set the build activation to true
-				So(ActivateBuildsAndTasks([]string{b.Id}, true, user), ShouldBeNil)
+				So(ActivateBuildsAndTasks(ctx, []string{b.Id}, true, user), ShouldBeNil)
 
 				// task with the different user activating should be activated with that user
 				task1, err := task.FindOne(db.Query(task.ById(matching.Id)))
@@ -696,7 +698,7 @@ func TestBuildSetActivated(t *testing.T) {
 				So(b.ActivatedBy, ShouldEqual, user)
 
 				// deactivate the task from evergreen and nothing should be deactivated.
-				So(ActivateBuildsAndTasks([]string{b.Id}, false, ""), ShouldBeNil)
+				So(ActivateBuildsAndTasks(ctx, []string{b.Id}, false, ""), ShouldBeNil)
 
 				// refresh from the database and check again
 				b, err = build.FindOne(build.ById(b.Id))
@@ -2209,6 +2211,7 @@ func TestDisplayTaskRestart(t *testing.T) {
 	for _, dbTask := range tasks {
 		assert.Equal(evergreen.TaskUndispatched, dbTask.Status, dbTask.Id)
 		assert.True(dbTask.Activated, dbTask.Id)
+		assert.Equal(dbTask.ActivatedBy, "test")
 	}
 
 	// test restarting a build
@@ -2220,6 +2223,7 @@ func TestDisplayTaskRestart(t *testing.T) {
 	for _, dbTask := range tasks {
 		assert.Equal(evergreen.TaskUndispatched, dbTask.Status, dbTask.Id)
 		assert.True(dbTask.Activated, dbTask.Id)
+		assert.Equal(dbTask.ActivatedBy, "test")
 	}
 
 	// test that restarting a task correctly resets the task and archives it
@@ -2241,6 +2245,7 @@ func TestDisplayTaskRestart(t *testing.T) {
 	for _, dbTask := range tasks {
 		assert.Equal(evergreen.TaskUndispatched, dbTask.Status, dbTask.Id)
 		assert.True(dbTask.Activated, dbTask.Id)
+		assert.Equal(dbTask.ActivatedBy, "caller")
 	}
 
 	// Test that restarting a display task with restartFailed correctly resets failed tasks.
@@ -2660,7 +2665,7 @@ func TestSetTaskActivationForBuildsActivated(t *testing.T) {
 	}
 
 	// t0 should still be activated because it's a dependency of a task that is being activated
-	assert.NoError(t, setTaskActivationForBuilds([]string{"b0"}, true, true, []string{"t0"}, ""))
+	assert.NoError(t, setTaskActivationForBuilds(context.Background(), []string{"b0"}, true, true, []string{"t0"}, ""))
 
 	dbTasks, err := task.FindAll(task.All)
 	require.NoError(t, err)
@@ -2691,7 +2696,7 @@ func TestSetTaskActivationForBuildsWithIgnoreTasks(t *testing.T) {
 		require.NoError(t, task.Insert())
 	}
 
-	assert.NoError(t, setTaskActivationForBuilds([]string{"b0"}, true, true, []string{"t3"}, ""))
+	assert.NoError(t, setTaskActivationForBuilds(context.Background(), []string{"b0"}, true, true, []string{"t3"}, ""))
 
 	dbTasks, err := task.FindAll(task.All)
 	require.NoError(t, err)
@@ -2726,7 +2731,7 @@ func TestSetTaskActivationForBuildsDeactivated(t *testing.T) {
 	}
 
 	// ignore tasks is ignored for deactivating
-	assert.NoError(t, setTaskActivationForBuilds([]string{"b0"}, false, true, []string{"t0", "t1", "t2"}, ""))
+	assert.NoError(t, setTaskActivationForBuilds(context.Background(), []string{"b0"}, false, true, []string{"t0", "t1", "t2"}, ""))
 
 	dbTasks, err := task.FindAll(task.All)
 	require.NoError(t, err)

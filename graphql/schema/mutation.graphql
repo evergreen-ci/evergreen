@@ -1,42 +1,45 @@
 # This file lists all of the mutations. The mutation definitions can be found in the corresponding files in the resolvers folder.
 type Mutation {
   # annotations
-  bbCreateTicket(taskId: String!, execution: Int): Boolean!
+  bbCreateTicket(
+    taskId: String! @requireProjectAccess(permission: ANNOTATIONS, access: EDIT), 
+    execution: Int
+  ): Boolean!
   addAnnotationIssue(
-    taskId: String!
+    taskId: String! @requireProjectAccess(permission: ANNOTATIONS, access: EDIT)
     execution: Int!
     apiIssue: IssueLinkInput!
     isIssue: Boolean!
   ): Boolean!
   editAnnotationNote(
-    taskId: String!
+    taskId: String! @requireProjectAccess(permission: ANNOTATIONS, access: EDIT)
     execution: Int!
     originalMessage: String!
     newMessage: String!
   ): Boolean!
   moveAnnotationIssue(
-    taskId: String!
+    taskId: String! @requireProjectAccess(permission: ANNOTATIONS, access: EDIT)
     execution: Int!
     apiIssue: IssueLinkInput!
     isIssue: Boolean!
   ): Boolean!
   removeAnnotationIssue(
-    taskId: String!
+    taskId: String! @requireProjectAccess(permission: ANNOTATIONS, access: EDIT)
     execution: Int!
     apiIssue: IssueLinkInput!
     isIssue: Boolean!
   ): Boolean!
   setAnnotationMetadataLinks(
-    taskId: String!
+    taskId: String! @requireProjectAccess(permission: ANNOTATIONS, access: EDIT)
     execution: Int!
     metadataLinks: [MetadataLinkInput!]!
   ): Boolean!
 
   # distros
-  deleteDistro(opts: DeleteDistroInput!): DeleteDistroPayload!
+  deleteDistro(opts: DeleteDistroInput!): DeleteDistroPayload! # Has directive on DeleteDistroInput.
   copyDistro(opts: CopyDistroInput! @requireDistroAccess(access: CREATE)): NewDistroPayload!
   createDistro(opts: CreateDistroInput! @requireDistroAccess(access: CREATE)): NewDistroPayload!
-  saveDistro(opts: SaveDistroInput!): SaveDistroPayload!
+  saveDistro(opts: SaveDistroInput!): SaveDistroPayload! # Has directive on SaveDistroInput.
 
   # hosts
   reprovisionToNew(hostIds: [String!]!): Int!
@@ -48,30 +51,28 @@ type Mutation {
   ): Int!
 
   # patch
-  enqueuePatch(patchId: String!, commitMessage: String): Patch!
+  enqueuePatch(patchId: String! @requireProjectAccess(permission: PATCHES, access: EDIT), commitMessage: String): Patch!
   """
   setPatchVisibility takes a list of patch ids and a boolean to set the visibility on the my patches queries
   """
-  setPatchVisibility(patchIds: [String!]!, hidden: Boolean!): [Patch!]!
-  schedulePatch(patchId: String!, configure: PatchConfigure!): Patch!
-  schedulePatchTasks(patchId: String!): String
-  scheduleUndispatchedBaseTasks(patchId: String!): [Task!]
-  setPatchPriority(patchId: String!, priority: Int!): String
-  unschedulePatchTasks(patchId: String!, abort: Boolean!): String
+  setPatchVisibility(patchIds: [String!]!, hidden: Boolean!): [Patch!]! # Permissions are checked in the resolver.
+  schedulePatch(patchId: String! @requireProjectAccess(permission: PATCHES, access: EDIT), configure: PatchConfigure!): Patch!
+  schedulePatchTasks(patchId: String! @requireProjectAccess(permission: TASKS, access: EDIT)): String
+  scheduleUndispatchedBaseTasks(patchId: String! @requireProjectAccess(permission: TASKS, access: EDIT)): [Task!]
+  setPatchPriority(patchId: String! @requireProjectAccess(permission: TASKS, access: EDIT), priority: Int!): String
+  unschedulePatchTasks(patchId: String! @requireProjectAccess(permission: TASKS, access: EDIT), abort: Boolean!): String
 
   # project
-  addFavoriteProject(identifier: String @deprecated(reason: "use projectIdentifier instead"), projectIdentifier: String): Project!
   attachProjectToNewRepo(project: MoveProjectInput!): Project!
-  attachProjectToRepo(projectId: String @deprecated(reason: "use projectIdentifier instead") @requireProjectAccess(permission: SETTINGS, access: EDIT), projectIdentifier: String @requireProjectAccess(permission: SETTINGS, access: EDIT)): Project!
+  attachProjectToRepo(projectId: String @deprecated(reason: "use projectIdentifier instead") @requireProjectAccess(permission: SETTINGS, access: EDIT), projectIdentifier: String! @requireProjectAccess(permission: SETTINGS, access: EDIT)): Project!
   createProject(project: CreateProjectInput! @requireProjectAdmin, requestS3Creds: Boolean): Project! 
   copyProject(project: CopyProjectInput! @requireProjectAdmin, requestS3Creds: Boolean): Project! 
   deactivateStepbackTask(projectId: String @deprecated(reason: "use opts.projectIdentifier instead") @requireProjectAccess(permission: SETTINGS, access: EDIT), buildVariantName: String @deprecated(reason: "use opts.buildVariantName instead"), taskName: String @deprecated(reason: "use opts.taskName instead"), opts: DeactivateStepbackTaskInput): Boolean!
   defaultSectionToRepo(projectId: String @deprecated(reason: "use opts.projectIdentifier instead") @requireProjectAccess(permission: SETTINGS, access: EDIT), section: ProjectSettingsSection @deprecated(reason: "use opts.section instead"), opts: DefaultSectionToRepoInput): String
-  deleteProject(projectId: String @deprecated(reason: "use projectIdentifier instead") @requireProjectAdmin, projectIdentifier: String @requireProjectAdmin): Boolean!
-  detachProjectFromRepo(projectId: String @deprecated(reason: "use projectIdentifier instead") @requireProjectAccess(permission: SETTINGS, access: EDIT), projectIdentifier: String @requireProjectAccess(permission: SETTINGS, access: EDIT) ): Project!
-  forceRepotrackerRun(projectId: String @deprecated(reason: "use projectIdentifier instead") @requireProjectAccess(permission: SETTINGS, access: EDIT), projectIdentifier: String @requireProjectAccess(permission: SETTINGS, access: EDIT)): Boolean!
+  deleteProject(projectId: String @deprecated(reason: "use projectIdentifier instead") @requireProjectAdmin, projectIdentifier: String! @requireProjectAdmin): Boolean!
+  detachProjectFromRepo(projectId: String @deprecated(reason: "use projectIdentifier instead") @requireProjectAccess(permission: SETTINGS, access: EDIT), projectIdentifier: String! @requireProjectAccess(permission: SETTINGS, access: EDIT) ): Project!
+  forceRepotrackerRun(projectId: String @deprecated(reason: "use projectIdentifier instead") @requireProjectAccess(permission: SETTINGS, access: EDIT), projectIdentifier: String! @requireProjectAccess(permission: SETTINGS, access: EDIT)): Boolean!
   promoteVarsToRepo(projectId: String @deprecated(reason: "use opts.projectIdentifier instead") @requireProjectAccess(permission: SETTINGS, access: EDIT), varNames: [String!] @deprecated(reason: "use opts.varNames instead"), opts: PromoteVarsToRepoInput): Boolean!
-  removeFavoriteProject(identifier: String @deprecated(reason: "use projectIdentifier instead"), projectIdentifier: String): Project!
   saveProjectSettingsForSection(projectSettings: ProjectSettingsInput, section: ProjectSettingsSection!): ProjectSettings!
   saveRepoSettingsForSection(repoSettings: RepoSettingsInput, section: ProjectSettingsSection!): RepoSettings!
   setLastRevision(opts: SetLastRevisionInput! @requireProjectAdmin): SetLastRevisionPayload!
@@ -88,17 +89,19 @@ type Mutation {
   updateVolume(updateVolumeInput: UpdateVolumeInput!): Boolean!
 
   # task
-  abortTask(taskId: String!): Task!
-  overrideTaskDependencies(taskId: String!): Task!
-  restartTask(taskId: String!, failedOnly: Boolean!): Task!
-  scheduleTasks(taskIds: [String!]!, versionId: String!): [Task!]!
-  setTaskPriority(taskId: String!, priority: Int!): Task!
-  unscheduleTask(taskId: String!): Task!
+  abortTask(taskId: String! @requireProjectAccess(permission: TASKS, access: EDIT)): Task!
+  overrideTaskDependencies(taskId: String! @requireProjectAccess(permission: TASKS, access: EDIT)): Task!
+  restartTask(taskId: String! @requireProjectAccess(permission: TASKS, access: EDIT), failedOnly: Boolean!): Task!
+  scheduleTasks(versionId: String! @requireProjectAccess(permission: TASKS, access: EDIT), taskIds: [String!]!): [Task!]!
+  setTaskPriority(taskId: String! @requireProjectAccess(permission: TASKS, access: EDIT), priority: Int!): Task!
+  unscheduleTask(taskId: String! @requireProjectAccess(permission: TASKS, access: EDIT)): Task!
 
   # user
+  addFavoriteProject(identifier: String @deprecated(reason: "use projectIdentifier instead"), projectIdentifier: String!): Project!
   clearMySubscriptions: Int!
   createPublicKey(publicKeyInput: PublicKeyInput!): [PublicKey!]!
   deleteSubscriptions(subscriptionIds: [String!]!): Int!
+  removeFavoriteProject(identifier: String @deprecated(reason: "use projectIdentifier instead"), projectIdentifier: String!): Project!
   removePublicKey(keyName: String!): [PublicKey!]!
   saveSubscription(subscription: SubscriptionInput!): Boolean!
   updateParsleySettings(opts: UpdateParsleySettingsInput!): UpdateParsleySettingsPayload
@@ -112,5 +115,5 @@ type Mutation {
   removeItemFromCommitQueue(commitQueueId: String!, issue: String! @requireCommitQueueItemOwner): String
 
   # version
-  restartVersions(versionId: String!, abort: Boolean!, versionsToRestart: [VersionToRestart!]!): [Version!]
+  restartVersions(versionId: String! @requireProjectAccess(permission: TASKS, access: EDIT), abort: Boolean!, versionsToRestart: [VersionToRestart!]!): [Version!]
 }

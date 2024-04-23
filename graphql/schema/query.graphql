@@ -70,10 +70,9 @@ type Query {
   task(taskId: String!, execution: Int): Task
   taskAllExecutions(taskId: String!): [Task!]!
   taskTestSample(
-    tasks: [String!] @deprecated(reason: "Use taskIds instead")
-    taskIds: [String!]
+    versionId: String!
+    taskIds: [String!]!
     filters: [TestFilter!]!
-    versionId: String
   ): [TaskTestResultSample!]
 
   # user

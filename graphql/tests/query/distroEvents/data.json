@@ -43,7 +43,6 @@
             "root_dir": "C:/cygwin"
           },
           "clone_method": "legacy-ssh",
-          "ssh_key": "mci",
           "ssh_options": [
             "StrictHostKeyChecking=no",
             "BatchMode=yes",
@@ -181,7 +180,6 @@
             "root_dir": "C:/cygwin"
           },
           "clone_method": "legacy-ssh",
-          "ssh_key": "mci",
           "ssh_options": [
             "StrictHostKeyChecking=no",
             "BatchMode=yes",
@@ -305,7 +303,6 @@
             "root_dir": "C:/cygwin"
           },
           "clone_method": "legacy-ssh",
-          "ssh_key": "mci",
           "ssh_options": [
             "StrictHostKeyChecking=no",
             "BatchMode=yes",
@@ -428,7 +425,6 @@
             "root_dir": "C:/cygwin"
           },
           "clone_method": "legacy-ssh",
-          "ssh_key": "mci",
           "ssh_options": [
             "StrictHostKeyChecking=no",
             "BatchMode=yes",

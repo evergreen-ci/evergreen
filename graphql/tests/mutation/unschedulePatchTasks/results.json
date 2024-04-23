@@ -3,18 +3,18 @@
     {
       "query_file": "unschedule_patch_tasks_bad_id.graphql",
       "result": {
-        "errors": [
-          {
-            "message": "Unable to find version with id: `washington`",
-            "path": ["unschedulePatchTasks"],
-            "extensions": {
-              "code": "RESOURCE_NOT_FOUND"
-            }
-          }
-        ],
         "data": {
           "unschedulePatchTasks": null
-        }
+        },
+        "errors": [
+          {
+            "message": "not a valid patch ID",
+            "path": ["unschedulePatchTasks", "patchId"],
+            "extensions": {
+              "code": "INPUT_VALIDATION_ERROR"
+            }
+          }
+        ]
       }
     },
     {
@@ -37,8 +37,25 @@
       "query_file": "commit_queue_dequeue.graphql",
       "result": {
         "data": {
-          "unschedulePatchTasks": "123456789012345678901234"
+          "unschedulePatchTasks": "5dd2e89cd1fe07048e43bb9c"
         }
+      }
+    },
+    {
+      "query_file": "no_permissions.graphql",
+      "result": {
+        "data": {
+          "unschedulePatchTasks": null
+        },
+        "errors": [
+          {
+            "message": "user 'testuser' does not have permission to access 'tasks' for the project 'evergreen'",
+            "path": ["unschedulePatchTasks", "patchId"],
+            "extensions": {
+              "code": "FORBIDDEN"
+            }
+          }
+        ]
       }
     }
   ]

@@ -287,15 +287,15 @@ func (s *cronsEventSuite) TestEndToEnd() {
 
 	go httpServer(ln, handler)
 
-	q := evergreen.GetEnvironment().RemoteQueue()
+	q := s.env.RemoteQueue()
 	jobs, err := eventNotifierJobs(s.ctx, s.env, time.Time{})
 	s.NoError(err)
 	s.NoError(q.PutMany(s.ctx, jobs))
 
 	// Wait for event notifier to finish.
-	amboy.WaitInterval(s.ctx, q, 10*time.Millisecond)
+	s.Require().True(amboy.WaitInterval(s.ctx, q, 10*time.Millisecond))
 	// Wait for event send to finish.
-	amboy.WaitInterval(s.ctx, q, 10*time.Millisecond)
+	s.Require().True(amboy.WaitInterval(s.ctx, q, 10*time.Millisecond))
 
 	out := []notification.Notification{}
 	s.NoError(db.FindAllQ(notification.Collection, db.Q{}, &out))

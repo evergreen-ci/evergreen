@@ -2,7 +2,23 @@
   "tasks": [
     {
       "_id": "task-1234",
-      "execution": 0
+      "execution": 0,
+      "branch": "sandbox_project_id"
+    },
+    {
+      "_id": "no_permissions",
+      "execution": 1,
+      "branch": "evergreen"
+    }
+  ],
+  "project_ref": [
+    {
+      "_id": "evergreen",
+      "identifier": "evergreen"
+    },
+    {
+      "_id": "sandbox_project_id",
+      "identifier": "sandbox"
     }
   ],
   "task_annotations": [

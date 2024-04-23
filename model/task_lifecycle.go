@@ -23,6 +23,7 @@ import (
 	"github.com/mongodb/grip/message"
 	"github.com/pkg/errors"
 	"go.mongodb.org/mongo-driver/bson"
+	"go.opentelemetry.io/otel/attribute"
 )
 
 type StatusChanges struct {
@@ -390,7 +391,7 @@ func resetTask(ctx context.Context, taskId, caller string) error {
 		return errors.Wrap(err, "can't restart task because it can't be archived")
 	}
 
-	if err = MarkOneTaskReset(ctx, t); err != nil {
+	if err = MarkOneTaskReset(ctx, t, caller); err != nil {
 		return errors.WithStack(err)
 	}
 	event.LogTaskRestarted(t.Id, t.Execution, caller)
@@ -771,6 +772,8 @@ func doBisectStepbackForGeneratedTask(ctx context.Context, generator *task.Task,
 // MarkEnd updates the task as being finished, performs a stepback if necessary, and updates the build status
 func MarkEnd(ctx context.Context, settings *evergreen.Settings, t *task.Task, caller string, finishTime time.Time, detail *apimodels.TaskEndDetail,
 	deactivatePrevious bool) error {
+	ctx, span := tracer.Start(ctx, "mark-end")
+	defer span.End()
 
 	const slowThreshold = time.Second
 
@@ -999,10 +1002,41 @@ func logTaskEndStats(ctx context.Context, t *task.Task) error {
 	return nil
 }
 
+// getVersionCtxForTracing returns a context with version attributes for tracing
+func getVersionCtxForTracing(ctx context.Context, v *Version, project string) (context.Context, error) {
+	if v == nil {
+		return nil, errors.New("version is nil")
+	}
+
+	timeTaken, makespan, err := v.GetTimeSpent()
+	if err != nil {
+		return nil, errors.Wrap(err, "getting time spent")
+	}
+
+	ctx = utility.ContextWithAttributes(ctx, []attribute.KeyValue{
+		attribute.String(evergreen.VersionIDOtelAttribute, v.Id),
+		attribute.String(evergreen.VersionRequesterOtelAttribute, v.Requester),
+		attribute.String(evergreen.ProjectIDOtelAttribute, project),
+		attribute.String(evergreen.VersionStatusOtelAttribute, v.Status),
+		attribute.String(evergreen.VersionCreateTimeOtelAttribute, v.CreateTime.String()),
+		attribute.String(evergreen.VersionStartTimeOtelAttribute, v.StartTime.String()),
+		attribute.String(evergreen.VersionFinishTimeOtelAttribute, v.FinishTime.String()),
+		attribute.Int(evergreen.VersionTimeTakenSecondsOtelAttribute, int(timeTaken.Seconds())),
+		attribute.Int(evergreen.VersionMakespanSecondsOtelAttribute, int(makespan.Seconds())),
+		attribute.String(evergreen.VersionAuthorOtelAttribute, v.Author),
+		attribute.String(evergreen.VersionBranchOtelAttribute, v.Branch),
+	})
+
+	return ctx, nil
+}
+
 // UpdateBlockedDependencies traverses the dependency graph and recursively sets
 // each parent dependency as unattainable in depending tasks. It updates the
 // status of builds as well, in case they change due to blocking dependencies.
 func UpdateBlockedDependencies(ctx context.Context, t *task.Task) error {
+	ctx, span := tracer.Start(ctx, "update-blocked-dependencies")
+	defer span.End()
+
 	dependentTasks, err := t.FindAllUnmarkedBlockedDependencies()
 	if err != nil {
 		return errors.Wrapf(err, "getting tasks depending on task '%s'", t.Id)
@@ -1026,7 +1060,7 @@ func UpdateBlockedDependencies(ctx context.Context, t *task.Task) error {
 		buildIDs = append(buildIDs, buildID)
 	}
 
-	if err = UpdateVersionAndPatchStatusForBuilds(buildIDs); err != nil {
+	if err = UpdateVersionAndPatchStatusForBuilds(ctx, buildIDs); err != nil {
 		return errors.Wrap(err, "updating build, version, and patch statuses")
 	}
 
@@ -1057,7 +1091,7 @@ func UpdateUnblockedDependencies(ctx context.Context, t *task.Task) error {
 	for buildID := range buildsToUpdate {
 		buildIDs = append(buildIDs, buildID)
 	}
-	if err := UpdateVersionAndPatchStatusForBuilds(buildIDs); err != nil {
+	if err := UpdateVersionAndPatchStatusForBuilds(ctx, buildIDs); err != nil {
 		return errors.Wrapf(err, "updating build, version, and patch statuses")
 	}
 
@@ -1296,7 +1330,7 @@ func tryDequeueAndAbortCommitQueueItem(ctx context.Context, p *patch.Patch, cq c
 	}
 
 	event.LogCommitQueueConcludeWithErrorMessage(p.Id.Hex(), evergreen.MergeTestFailed, mergeErrMsg)
-	if err := CancelPatch(p, task.AbortInfo{TaskID: taskID, User: caller}); err != nil {
+	if err := CancelPatch(ctx, p, task.AbortInfo{TaskID: taskID, User: caller}); err != nil {
 		return nil, errors.Wrap(err, "aborting failed commit queue patch")
 	}
 
@@ -1561,6 +1595,9 @@ func updateBuildGithubStatus(b *build.Build, buildTasks []task.Task) error {
 // checkUpdateBuildPRStatusPending checks if the build is coming from a PR, and if so
 // sends a pending status to GitHub to reflect the status of the build.
 func checkUpdateBuildPRStatusPending(ctx context.Context, b *build.Build) error {
+	ctx, span := tracer.Start(ctx, "check-update-build-pr-status-pending")
+	defer span.End()
+
 	if !evergreen.IsGitHubPatchRequester(b.Requester) {
 		return nil
 	}
@@ -1796,7 +1833,7 @@ func updateVersionStatus(v *Version) (string, error) {
 }
 
 // UpdatePatchStatus updates the status of a patch.
-func UpdatePatchStatus(p *patch.Patch, status string) error {
+func UpdatePatchStatus(ctx context.Context, p *patch.Patch, status string) error {
 	if status == p.Status {
 		return nil
 	}
@@ -1834,6 +1871,9 @@ func UpdatePatchStatus(p *patch.Patch, status string) error {
 // and the task's version based on all the builds in the version.
 // Also update build and version Github statuses based on the subset of tasks and builds included in github checks
 func UpdateBuildAndVersionStatusForTask(ctx context.Context, t *task.Task) error {
+	ctx, span := tracer.Start(ctx, "save-builds-and-tasks")
+	defer span.End()
+
 	taskBuild, err := build.FindOneId(t.BuildId)
 	if err != nil {
 		return errors.Wrapf(err, "getting build for task '%s'", t.Id)
@@ -1868,6 +1908,17 @@ func UpdateBuildAndVersionStatusForTask(ctx context.Context, t *task.Task) error
 		if err = checkUpdateBuildPRStatusPending(ctx, taskBuild); err != nil {
 			return errors.Wrapf(err, "updating build '%s' PR status", taskBuild.Id)
 		}
+		// only add tracing for versions, patches need to wait for child patches
+		if !evergreen.IsPatchRequester(taskVersion.Requester) {
+			traceContext, err := getVersionCtxForTracing(ctx, taskVersion, t.Project)
+			if err != nil {
+				return errors.Wrap(err, "getting context for tracing")
+			}
+			_, span := tracer.Start(traceContext, "version-completion")
+			defer span.End()
+
+			return nil
+		}
 	}
 
 	if evergreen.IsPatchRequester(taskVersion.Requester) {
@@ -1878,7 +1929,7 @@ func UpdateBuildAndVersionStatusForTask(ctx context.Context, t *task.Task) error
 		if p == nil {
 			return errors.Errorf("no patch found for version '%s'", taskVersion.Id)
 		}
-		if err = UpdatePatchStatus(p, newVersionStatus); err != nil {
+		if err = UpdatePatchStatus(ctx, p, newVersionStatus); err != nil {
 			return errors.Wrapf(err, "updating patch '%s' status", p.Id.Hex())
 		}
 
@@ -1896,7 +1947,15 @@ func UpdateBuildAndVersionStatusForTask(ctx context.Context, t *task.Task) error
 			} else {
 				event.LogVersionChildrenCompletionEvent(p.Id.Hex(), versionStatus, p.Author)
 			}
-
+			if err = UpdatePatchStatus(ctx, p, newVersionStatus); err != nil {
+				return errors.Wrapf(err, "updating patch '%s' status", p.Id.Hex())
+			}
+			traceContext, err := getVersionCtxForTracing(ctx, taskVersion, t.Project)
+			if err != nil {
+				return errors.Wrap(err, "getting context for tracing")
+			}
+			_, span := tracer.Start(traceContext, "version-completion")
+			defer span.End()
 		}
 
 	}
@@ -1906,7 +1965,7 @@ func UpdateBuildAndVersionStatusForTask(ctx context.Context, t *task.Task) error
 
 // UpdateVersionAndPatchStatusForBuilds updates the status of all versions,
 // patches and builds associated with the given input list of build IDs.
-func UpdateVersionAndPatchStatusForBuilds(buildIds []string) error {
+func UpdateVersionAndPatchStatusForBuilds(ctx context.Context, buildIds []string) error {
 	if len(buildIds) == 0 {
 		return nil
 	}
@@ -1948,7 +2007,7 @@ func UpdateVersionAndPatchStatusForBuilds(buildIds []string) error {
 			if p == nil {
 				return errors.Errorf("no patch found for version '%s'", buildVersion.Id)
 			}
-			if err = UpdatePatchStatus(p, newVersionStatus); err != nil {
+			if err = UpdatePatchStatus(ctx, p, newVersionStatus); err != nil {
 				return errors.Wrapf(err, "updating patch '%s' status", p.Id.Hex())
 			}
 		}
@@ -2013,10 +2072,10 @@ func MarkHostTaskDispatched(t *task.Task, h *host.Host) error {
 	return nil
 }
 
-func MarkOneTaskReset(ctx context.Context, t *task.Task) error {
+func MarkOneTaskReset(ctx context.Context, t *task.Task, caller string) error {
 	if t.DisplayOnly {
 		if !t.ResetFailedWhenFinished {
-			if err := MarkTasksReset(ctx, t.ExecutionTasks); err != nil {
+			if err := MarkTasksReset(ctx, t.ExecutionTasks, caller); err != nil {
 				return errors.Wrap(err, "resetting execution tasks")
 			}
 		} else {
@@ -2028,13 +2087,13 @@ func MarkOneTaskReset(ctx context.Context, t *task.Task) error {
 			for _, et := range failedExecTasks {
 				failedExecTaskIds = append(failedExecTaskIds, et.Id)
 			}
-			if err := MarkTasksReset(ctx, failedExecTaskIds); err != nil {
+			if err := MarkTasksReset(ctx, failedExecTaskIds, caller); err != nil {
 				return errors.Wrap(err, "resetting failed execution tasks")
 			}
 		}
 	}
 
-	if err := t.Reset(ctx); err != nil && !adb.ResultsNotFound(err) {
+	if err := t.Reset(ctx, caller); err != nil && !adb.ResultsNotFound(err) {
 		return errors.Wrap(err, "resetting task in database")
 	}
 
@@ -2051,7 +2110,7 @@ func MarkOneTaskReset(ctx context.Context, t *task.Task) error {
 
 // MarkTasksReset resets many tasks by their IDs. For execution tasks, this also
 // resets their parent display tasks.
-func MarkTasksReset(ctx context.Context, taskIds []string) error {
+func MarkTasksReset(ctx context.Context, taskIds []string, caller string) error {
 	tasks, err := task.FindAll(db.Query(task.ByIds(taskIds)))
 	if err != nil {
 		return errors.WithStack(err)
@@ -2061,7 +2120,7 @@ func MarkTasksReset(ctx context.Context, taskIds []string) error {
 		return errors.WithStack(err)
 	}
 
-	if err = task.ResetTasks(tasks); err != nil {
+	if err = task.ResetTasks(tasks, caller); err != nil {
 		return errors.Wrap(err, "resetting tasks in database")
 	}
 

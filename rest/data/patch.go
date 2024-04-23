@@ -92,7 +92,7 @@ func FindPatchById(patchId string) (*restModel.APIPatch, error) {
 
 // AbortPatch uses the service level CancelPatch method to abort a single patch
 // with matching Id.
-func AbortPatch(patchId string, user string) error {
+func AbortPatch(ctx context.Context, patchId string, user string) error {
 	if err := ValidatePatchID(patchId); err != nil {
 		return errors.WithStack(err)
 	}
@@ -107,7 +107,7 @@ func AbortPatch(patchId string, user string) error {
 			Message:    fmt.Sprintf("patch '%s' not found", patchId),
 		}
 	}
-	return model.CancelPatch(p, task.AbortInfo{User: user})
+	return model.CancelPatch(ctx, p, task.AbortInfo{User: user})
 }
 
 // SetPatchActivated attempts to activate the patch and create a new version (if activated is set to true)
@@ -154,7 +154,7 @@ func SetPatchActivated(ctx context.Context, patchId string, user string, activat
 		}
 	}
 
-	return model.SetVersionActivation(patchId, activated, user)
+	return model.SetVersionActivation(ctx, patchId, activated, user)
 }
 
 // FindPatchesByUser finds patches for the input user as ordered by creation time

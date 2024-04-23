@@ -40,11 +40,15 @@ type ValidationErrorLevel int64
 const (
 	Error ValidationErrorLevel = iota
 	Warning
-	unauthorizedCharacters                  = "|"
 	EC2HostCreateTotalLimit                 = 1000
 	DockerHostCreateTotalLimit              = 200
 	HostCreateLimitPerTask                  = 3
 	maxTaskSyncCommandsForDependenciesCheck = 300 // this should take about one second
+)
+
+var (
+	// Not a regex because these characters could be valid if unicoded.
+	unauthorizedCharacters = []string{"|", "&", ";", "$", "`", "'", "*", "?", "#", "%", "^", "@", "{", "}", "(", ")", "<", ">"}
 )
 
 func (vel ValidationErrorLevel) String() string {
@@ -536,7 +540,15 @@ func constructAliasWarnings(aliasMap map[string]model.ProjectAlias, aliasNeedsVa
 		case evergreen.GithubChecksAlias:
 			msgComponents = append(msgComponents, "GitHub check alias")
 		default:
-			msgComponents = append(msgComponents, "Patch alias")
+			msgComponents = append(msgComponents, fmt.Sprintf("Patch alias '%s'", a.Alias))
+		}
+		switch a.Source {
+		case model.AliasSourceConfig:
+			msgComponents = append(msgComponents, "(from the yaml)")
+		case model.AliasSourceProject:
+			msgComponents = append(msgComponents, "(from the project page)")
+		case model.AliasSourceRepo:
+			msgComponents = append(msgComponents, "(from the repo page)")
 		}
 		if len(a.VariantTags) > 0 {
 			msgComponents = append(msgComponents, fmt.Sprintf("matching variant tags '%v'", a.VariantTags))
@@ -987,14 +999,16 @@ func validateProjectLimits(_ context.Context, settings *evergreen.Settings, proj
 
 // validateTaskNames ensures the task names do not contain unauthorized characters.
 func validateTaskNames(project *model.Project) ValidationErrors {
-	unauthorizedTaskCharacters := unauthorizedCharacters + " "
 	errs := ValidationErrors{}
+
 	for _, task := range project.Tasks {
-		if strings.ContainsAny(strings.TrimSpace(task.Name), unauthorizedTaskCharacters) {
+		// Add space to the list of unauthorized characters to prevent task names from containing spaces.
+		if strings.ContainsAny(strings.TrimSpace(task.Name), strings.Join(unauthorizedCharacters, " ")) {
 			errs = append(errs,
 				ValidationError{
-					Message: fmt.Sprintf("task name '%s' contains unauthorized characters ('%s')",
-						task.Name, unauthorizedTaskCharacters),
+					Message: fmt.Sprintf("task name '%s' contains unauthorized characters (%s)",
+						task.Name, unauthorizedCharacters),
+					Level: Error,
 				})
 		}
 	}
@@ -1121,7 +1135,7 @@ func validateBVNames(project *model.Project) ValidationErrors {
 			})
 		}
 
-		if strings.ContainsAny(buildVariant.Name, unauthorizedCharacters) {
+		if strings.ContainsAny(buildVariant.Name, strings.Join(unauthorizedCharacters, "")) {
 			errs = append(errs,
 				ValidationError{
 					Message: fmt.Sprintf("buildvariant name '%s' contains unauthorized characters (%s)",
