@@ -341,7 +341,13 @@ func (c *Mock) GetClientURLs(context.Context, string) ([]string, error) {
 	return []string{"https://example.com"}, nil
 }
 
-func (c *Mock) GetHostProvisioningOptions(context.Context, string, string) (*restmodel.APIHostProvisioningOptions, error) {
+func (c *Mock) PostHostIsUp(ctx context.Context, hostID, hostSecret, instanceID string) (*restmodel.APIHost, error) {
+	return &restmodel.APIHost{
+		Id: utility.ToStringPtr("mock_host_id"),
+	}, nil
+}
+
+func (c *Mock) GetHostProvisioningOptions(ctx context.Context, hostID, hostSecret string) (*restmodel.APIHostProvisioningOptions, error) {
 	return &restmodel.APIHostProvisioningOptions{
 		Content: "echo hello world",
 	}, nil

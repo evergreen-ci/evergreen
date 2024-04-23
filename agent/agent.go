@@ -205,6 +205,8 @@ func (a *Agent) Start(ctx context.Context) error {
 // populateEC2InstanceID sets the agent's instance ID based on the EC2 instance
 // metadata service if it's an EC2 instance. If it's not an EC2 instance or the
 // EC2 instance ID has already been populated, this is a no-op.
+// TODO (DEVPROD-6752): remove this logic once agents have rolled over to using
+// the new route.
 func (a *Agent) populateEC2InstanceID(ctx context.Context) {
 	if a.ec2InstanceID != "" || !utility.StringSliceContains(evergreen.ProviderEc2Type, a.opts.CloudProvider) {
 		return
