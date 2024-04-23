@@ -40,11 +40,8 @@ func (h *generateHandler) Parse(ctx context.Context, r *http.Request) error {
 	}
 	h.taskID = gimlet.GetVars(r)["task_id"]
 
-	if err = validateFileSize(h.files, h.env.Settings().TaskLimits.MaxGenerateTaskJSONSize); err != nil {
-		return errors.Wrap(err, "validating JSON size")
-	}
-
-	return nil
+	err = validateFileSize(h.files, h.env.Settings().TaskLimits.MaxGenerateTaskJSONSize)
+	return errors.Wrap(err, "validating JSON size")
 }
 
 func parseJson(r *http.Request) ([]json.RawMessage, error) {
@@ -65,7 +62,7 @@ func validateFileSize(files []json.RawMessage, maxSizeInMB int) error {
 		fileSize += len(f)
 	}
 	if fileSize > maxSize {
-		return errors.Errorf("JSON size exceeds maximum of %d MB", maxSize)
+		return errors.Errorf("JSON is %d MB, which exceeds maximum of %d MB", fileSize, maxSize)
 	}
 	return nil
 }
