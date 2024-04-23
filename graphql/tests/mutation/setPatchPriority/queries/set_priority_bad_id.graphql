@@ -1,0 +1,3 @@
+mutation {
+  setPatchPriority(patchId: "washington", priority: 999)
+}

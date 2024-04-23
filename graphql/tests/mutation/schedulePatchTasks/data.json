@@ -1,0 +1,127 @@
+{
+  "versions": [
+    {
+      "_id": "5e4ff3abe3c3317e352062e4",
+      "branch": "sandbox_project_id"
+    },
+    {
+      "_id": "5e6bb9e23066155a993e0f1a",
+      "branch": "sandbox_project_id",
+      "r": "merge_test"
+    }
+  ],
+  "tasks": [
+    { "_id": "1", "version": "5e4ff3abe3c3317e352062e4" },
+    { "_id": "2", "version": "5e4ff3abe3c3317e352062e4" },
+    { "_id": "3", "version": "5e4ff3abe3c3317e352062e4" },
+    { "_id": "4", "version": "5e4ff3abe3c3317e352062e4" },
+    { "_id": "5", "version": "5e4ff3abe3c3317e352062e4" },
+    { "_id": "6", "version": "5e4ff3abe3c3317e352062e4" }
+  ],
+  "builds": [
+    {
+      "_id": "logkeeper_ubuntu_edd78c1d581bf757a880777b00685321685a8e67_16_10_20_21_58_58",
+      "create_time": { "$date": "2016-10-20T21:58:58.947Z" },
+      "start_time": { "$date": "2016-10-20T22:01:00.194Z" },
+      "finish_time": { "$date": "2017-12-04T21:06:48.822Z" },
+      "version": "5e4ff3abe3c3317e352062e4",
+      "branch": "sandbox_project_id",
+      "gitspec": "edd78c1d581bf757a880777b00685321685a8e67",
+      "build_variant": "ubuntu",
+      "build_number": "1",
+      "status": "created",
+      "activated": true,
+      "activated_by": "",
+      "activated_time": { "$date": "2016-10-20T21:59:00.367Z" },
+      "order": 10,
+      "tasks": [
+        {
+          "id": "logkeeper_ubuntu_test_edd78c1d581bf757a880777b00685321685a8e67_16_10_20_21_58_58",
+          "d": "test",
+          "s": "undispatched",
+          "st": { "$date": "1970-01-01T00:00:00.000Z" },
+          "tt": { "$numberLong": "16102029964" },
+          "a": true
+        }
+      ],
+      "display_name": "Ubuntu",
+      "actual_makespan": 0,
+      "r": "gitter_request",
+      "time_taken": 30000000000000,
+      "predicted_makespan": 70000000000000
+    }
+  ],
+  "patches": [
+    {
+      "_id": { "$oid": "5e4ff3abe3c3317e352062e4" },
+      "branch": "sandbox_project_id",
+      "version": "5e4ff3abe3c3317e352062e4",
+      "activated": true,
+      "githash": "5e823e1f28baeaa22ae00823d83e03082cd148ab",
+      "patches": [
+        {
+          "name": "",
+          "githash": "5e823e1f28baeaa22ae00823d83e03082cd148ab",
+          "patch_set": {
+            "patch_file_id": "5e4ff3ab850e6136624eaf95_5e823e1f28baeaa22ae00823d83e03082cd148ab",
+            "summary": [
+              {
+                "filename": "service/api_task.go",
+                "additions": 5,
+                "deletions": 4
+              }
+            ]
+          },
+          "message": ""
+        },
+        {
+          "name": "Spruce",
+          "githash": "5e823e1s28baeaa22ae00823d83e03082cd148ab",
+          "patch_set": {
+            "patch_file_id": "5e4ff3ab85026136624eaf95_5e823e1f28baeaa22ae00823d83e03082cd148ab",
+            "summary": [
+              {
+                "filename": "src/page/Task.tsx",
+                "additions": 11,
+                "deletions": 4
+              },
+              {
+                "filename": "src/App.tsx",
+                "additions": 22,
+                "deletions": 4
+              },
+              {
+                "filename": "src/page/Patch.tsx",
+                "additions": 33,
+                "deletions": 4
+              }
+            ]
+          },
+          "message": ""
+        }
+      ]
+    },
+    {
+      "_id": { "$oid": "5e6bb9e23066155a993e0f1a" },
+      "branch": "sandbox_project_id",
+      "version": "5e6bb9e23066155a993e0f1a"
+    },
+    {
+      "_id": { "$oid": "9e4ff3abe3c3317e352062e4" },
+      "branch": "evergreen",
+      "version": "9e4ff3abe3c3317e352062e4"
+    }
+  ],
+  "project_ref": [
+    {
+      "_id": "sandbox_project_id",
+      "identifier": "sandbox",
+      "display_name": "Sandbox"
+    },
+    {
+      "_id": "evergreen",
+      "identifier": "evergreen",
+      "display_name": "Evergreen"
+    }
+  ]
+}
