@@ -15,7 +15,9 @@ import (
 
 	"github.com/docker/docker/api/types"
 	"github.com/docker/docker/api/types/container"
+	"github.com/docker/docker/api/types/image"
 	"github.com/docker/docker/api/types/network"
+	"github.com/docker/docker/api/types/registry"
 	docker "github.com/docker/docker/client"
 	"github.com/docker/docker/pkg/stdcopy"
 	"github.com/evergreen-ci/evergreen"
@@ -34,14 +36,14 @@ type DockerClient interface {
 	BuildImageWithAgent(context.Context, *host.Host, string) (string, error)
 	CreateContainer(context.Context, *host.Host, *host.Host) error
 	GetContainer(context.Context, *host.Host, string) (*types.ContainerJSON, error)
-	GetDockerLogs(context.Context, string, *host.Host, types.ContainerLogsOptions) (io.Reader, error)
+	GetDockerLogs(context.Context, string, *host.Host, container.LogsOptions) (io.Reader, error)
 	GetDockerStatus(context.Context, string, *host.Host) (*ContainerStatus, error)
 	ListContainers(context.Context, *host.Host) ([]types.Container, error)
 	RemoveImage(context.Context, *host.Host, string) error
 	RemoveContainer(context.Context, *host.Host, string) error
 	StartContainer(context.Context, *host.Host, string) error
 	AttachToContainer(context.Context, *host.Host, string, host.DockerOptions) (*types.HijackedResponse, error)
-	ListImages(context.Context, *host.Host) ([]types.ImageSummary, error)
+	ListImages(context.Context, *host.Host) ([]image.Summary, error)
 }
 
 type dockerClientImpl struct {
@@ -229,7 +231,7 @@ func (c *dockerClientImpl) pullImage(ctx context.Context, h *host.Host, url, use
 
 	var auth string
 	if username != "" {
-		authConfig := types.AuthConfig{
+		authConfig := registry.AuthConfig{
 			Username: username,
 			Password: password,
 		}
@@ -241,7 +243,7 @@ func (c *dockerClientImpl) pullImage(ctx context.Context, h *host.Host, url, use
 		auth = base64.URLEncoding.EncodeToString(jsonBytes)
 	}
 
-	resp, err := dockerClient.ImagePull(ctx, url, types.ImagePullOptions{RegistryAuth: auth})
+	resp, err := dockerClient.ImagePull(ctx, url, image.PullOptions{RegistryAuth: auth})
 	if err != nil {
 		return errors.Wrap(err, "error pulling image from registry")
 	}
@@ -403,7 +405,7 @@ func (c *dockerClientImpl) CreateContainer(ctx context.Context, parentHost, cont
 
 // GetDockerLogs returns output logs or error logs, based on the given options.
 // This assumes the container is not using TTY.
-func (c *dockerClientImpl) GetDockerLogs(ctx context.Context, containerID string, parent *host.Host, options types.ContainerLogsOptions) (io.Reader, error) {
+func (c *dockerClientImpl) GetDockerLogs(ctx context.Context, containerID string, parent *host.Host, options container.LogsOptions) (io.Reader, error) {
 	dockerClient, err := c.generateClient(parent)
 	if err != nil {
 		return nil, errors.Wrap(err, "Failed to generate docker client")
@@ -472,7 +474,7 @@ func (c *dockerClientImpl) ListContainers(ctx context.Context, h *host.Host) ([]
 	}
 
 	// Get all running containers
-	opts := types.ContainerListOptions{All: false}
+	opts := container.ListOptions{All: false}
 	containers, err := dockerClient.ContainerList(ctx, opts)
 	if err != nil {
 		return nil, errors.Wrap(err, "Docker list API call failed")
@@ -482,7 +484,7 @@ func (c *dockerClientImpl) ListContainers(ctx context.Context, h *host.Host) ([]
 }
 
 // ListImages lists all images on the specified host machine.
-func (c *dockerClientImpl) ListImages(ctx context.Context, h *host.Host) ([]types.ImageSummary, error) {
+func (c *dockerClientImpl) ListImages(ctx context.Context, h *host.Host) ([]image.Summary, error) {
 	dockerClient, err := c.generateClient(h)
 	if err != nil {
 		return nil, errors.Wrap(err, "Failed to generate docker client")
@@ -525,7 +527,7 @@ func (c *dockerClientImpl) RemoveContainer(ctx context.Context, h *host.Host, co
 		return errors.Wrap(err, "generating Docker client")
 	}
 
-	opts := types.ContainerRemoveOptions{Force: true}
+	opts := container.RemoveOptions{Force: true}
 	if err = dockerClient.ContainerRemove(ctx, containerID, opts); err != nil {
 		return errors.Wrapf(err, "removing container '%s'", containerID)
 	}
@@ -540,7 +542,7 @@ func (c *dockerClientImpl) StartContainer(ctx context.Context, h *host.Host, con
 		return errors.Wrap(err, "generating Docker client")
 	}
 
-	opts := types.ContainerStartOptions{}
+	opts := container.StartOptions{}
 	if err := dockerClient.ContainerStart(ctx, containerID, opts); err != nil {
 		return errors.Wrapf(err, "starting container '%s'", containerID)
 	}
@@ -557,7 +559,7 @@ func (c *dockerClientImpl) AttachToContainer(ctx context.Context, h *host.Host, 
 		return nil, errors.Wrap(err, "generating Docker client")
 	}
 
-	stream, err := dockerClient.ContainerAttach(ctx, containerID, types.ContainerAttachOptions{
+	stream, err := dockerClient.ContainerAttach(ctx, containerID, container.AttachOptions{
 		Stream: true,
 		Stdin:  true,
 	})
