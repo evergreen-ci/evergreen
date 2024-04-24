@@ -6,8 +6,10 @@
         "data": null,
         "errors": [
           {
-            "message": "user 'testuser' does not have permission to access 'annotations' for the project 'evergreen'",
-            "path": ["bbCreateTicket", "taskId"],
+            "message": "insufficient permission for modifying annotation",
+            "path": [
+              "bbCreateTicket"
+            ],
             "extensions": {
               "code": "FORBIDDEN"
             }

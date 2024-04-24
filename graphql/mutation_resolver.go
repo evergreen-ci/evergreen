@@ -40,6 +40,10 @@ import (
 
 // BbCreateTicket is the resolver for the bbCreateTicket field.
 func (r *mutationResolver) BbCreateTicket(ctx context.Context, taskID string, execution *int) (bool, error) {
+	err := annotationPermissionHelper(ctx, taskID, execution)
+	if err != nil {
+		return false, err
+	}
 	httpStatus, err := data.BbFileTicket(ctx, taskID, *execution)
 	if err != nil {
 		return false, mapHTTPStatusToGqlError(ctx, httpStatus, err)
@@ -49,6 +53,10 @@ func (r *mutationResolver) BbCreateTicket(ctx context.Context, taskID string, ex
 
 // AddAnnotationIssue is the resolver for the addAnnotationIssue field.
 func (r *mutationResolver) AddAnnotationIssue(ctx context.Context, taskID string, execution int, apiIssue restModel.APIIssueLink, isIssue bool) (bool, error) {
+	err := annotationPermissionHelper(ctx, taskID, utility.ToIntPtr(execution))
+	if err != nil {
+		return false, err
+	}
 	usr := mustHaveUser(ctx)
 	issue := restModel.APIIssueLinkToService(apiIssue)
 	if err := util.CheckURL(issue.URL); err != nil {
@@ -69,6 +77,10 @@ func (r *mutationResolver) AddAnnotationIssue(ctx context.Context, taskID string
 
 // EditAnnotationNote is the resolver for the editAnnotationNote field.
 func (r *mutationResolver) EditAnnotationNote(ctx context.Context, taskID string, execution int, originalMessage string, newMessage string) (bool, error) {
+	err := annotationPermissionHelper(ctx, taskID, utility.ToIntPtr(execution))
+	if err != nil {
+		return false, err
+	}
 	usr := mustHaveUser(ctx)
 	if err := annotations.UpdateAnnotationNote(taskID, execution, originalMessage, newMessage, usr.Username()); err != nil {
 		return false, InternalServerError.Send(ctx, fmt.Sprintf("couldn't update note: %s", err.Error()))
@@ -78,6 +90,10 @@ func (r *mutationResolver) EditAnnotationNote(ctx context.Context, taskID string
 
 // MoveAnnotationIssue is the resolver for the moveAnnotationIssue field.
 func (r *mutationResolver) MoveAnnotationIssue(ctx context.Context, taskID string, execution int, apiIssue restModel.APIIssueLink, isIssue bool) (bool, error) {
+	err := annotationPermissionHelper(ctx, taskID, utility.ToIntPtr(execution))
+	if err != nil {
+		return false, err
+	}
 	usr := mustHaveUser(ctx)
 	issue := restModel.APIIssueLinkToService(apiIssue)
 	if isIssue {
@@ -95,6 +111,10 @@ func (r *mutationResolver) MoveAnnotationIssue(ctx context.Context, taskID strin
 
 // RemoveAnnotationIssue is the resolver for the removeAnnotationIssue field.
 func (r *mutationResolver) RemoveAnnotationIssue(ctx context.Context, taskID string, execution int, apiIssue restModel.APIIssueLink, isIssue bool) (bool, error) {
+	err := annotationPermissionHelper(ctx, taskID, utility.ToIntPtr(execution))
+	if err != nil {
+		return false, err
+	}
 	issue := restModel.APIIssueLinkToService(apiIssue)
 	if isIssue {
 		if err := task.RemoveIssueFromAnnotation(taskID, execution, *issue); err != nil {
@@ -111,6 +131,10 @@ func (r *mutationResolver) RemoveAnnotationIssue(ctx context.Context, taskID str
 
 // SetAnnotationMetadataLinks is the resolver for the setAnnotationMetadataLinks field.
 func (r *mutationResolver) SetAnnotationMetadataLinks(ctx context.Context, taskID string, execution int, metadataLinks []*restModel.APIMetadataLink) (bool, error) {
+	err := annotationPermissionHelper(ctx, taskID, utility.ToIntPtr(execution))
+	if err != nil {
+		return false, err
+	}
 	usr := mustHaveUser(ctx)
 	modelMetadataLinks := restModel.APIMetadataLinksToService(metadataLinks)
 	if err := annotations.ValidateMetadataLinks(modelMetadataLinks...); err != nil {
@@ -369,87 +393,6 @@ func (r *mutationResolver) SchedulePatch(ctx context.Context, patchID string, co
 		return nil, InternalServerError.Send(ctx, fmt.Sprintf("Error getting scheduled patch '%s': %s", patchID, err))
 	}
 	return scheduledPatch, nil
-}
-
-// SchedulePatchTasks is the resolver for the schedulePatchTasks field.
-func (r *mutationResolver) SchedulePatchTasks(ctx context.Context, patchID string) (*string, error) {
-	modifications := model.VersionModification{
-		Action: evergreen.SetActiveAction,
-		Active: true,
-		Abort:  false,
-	}
-	err := modifyVersionHandler(ctx, patchID, modifications)
-	if err != nil {
-		return nil, err
-	}
-	return &patchID, nil
-}
-
-// ScheduleUndispatchedBaseTasks is the resolver for the scheduleUndispatchedBaseTasks field.
-func (r *mutationResolver) ScheduleUndispatchedBaseTasks(ctx context.Context, patchID string) ([]*restModel.APITask, error) {
-	opts := task.GetTasksByVersionOptions{
-		Statuses:              evergreen.TaskFailureStatuses,
-		IncludeExecutionTasks: true,
-	}
-	tasks, _, err := task.GetTasksByVersion(ctx, patchID, opts)
-	if err != nil {
-		return nil, InternalServerError.Send(ctx, fmt.Sprintf("Could not fetch tasks for patch: %s ", err.Error()))
-	}
-
-	scheduledTasks := []*restModel.APITask{}
-	tasksToSchedule := make(map[string]bool)
-
-	for _, t := range tasks {
-		// If a task is a generated task don't schedule it until we get all of the generated tasks we want to generate
-		if t.GeneratedBy == "" {
-			// We can ignore an error while fetching tasks because this could just mean the task didn't exist on the base commit.
-			baseTask, _ := t.FindTaskOnBaseCommit()
-			if baseTask != nil && baseTask.Status == evergreen.TaskUndispatched {
-				tasksToSchedule[baseTask.Id] = true
-			}
-			// If a task is generated lets find its base task if it exists otherwise we need to generate it
-		} else if t.GeneratedBy != "" {
-			baseTask, _ := t.FindTaskOnBaseCommit()
-			// If the task is undispatched or doesn't exist on the base commit then we want to schedule
-			if baseTask == nil {
-				generatorTask, err := task.FindByIdExecution(t.GeneratedBy, nil)
-				if err != nil {
-					return nil, InternalServerError.Send(ctx, fmt.Sprintf("Experienced an error trying to find the generator task: %s", err.Error()))
-				}
-				if generatorTask != nil {
-					baseGeneratorTask, _ := generatorTask.FindTaskOnBaseCommit()
-					// If baseGeneratorTask is nil then it didn't exist on the base task and we can't do anything
-					if baseGeneratorTask != nil && baseGeneratorTask.Status == evergreen.TaskUndispatched {
-						err = baseGeneratorTask.SetGeneratedTasksToActivate(t.BuildVariant, t.DisplayName)
-						if err != nil {
-							return nil, InternalServerError.Send(ctx, fmt.Sprintf("Could not activate generated task: %s", err.Error()))
-						}
-						tasksToSchedule[baseGeneratorTask.Id] = true
-
-					}
-				}
-			} else if baseTask.Status == evergreen.TaskUndispatched {
-				tasksToSchedule[baseTask.Id] = true
-			}
-
-		}
-	}
-
-	taskIDs := []string{}
-	for taskId := range tasksToSchedule {
-		taskIDs = append(taskIDs, taskId)
-	}
-	scheduled, err := setManyTasksScheduled(ctx, r.sc.GetURL(), true, taskIDs...)
-	if err != nil {
-		return nil, err
-	}
-	scheduledTasks = append(scheduledTasks, scheduled...)
-	// sort scheduledTasks by display name to guarantee the order of the tasks
-	sort.Slice(scheduledTasks, func(i, j int) bool {
-		return utility.FromStringPtr(scheduledTasks[i].DisplayName) < utility.FromStringPtr(scheduledTasks[j].DisplayName)
-	})
-
-	return scheduledTasks, nil
 }
 
 // SetPatchPriority is the resolver for the setPatchPriority field.
@@ -1399,6 +1342,103 @@ func (r *mutationResolver) RestartVersions(ctx context.Context, versionID string
 		}
 	}
 	return versions, nil
+}
+
+// ScheduleUndispatchedBaseTasks is the resolver for the scheduleUndispatchedBaseTasks field.
+func (r *mutationResolver) ScheduleUndispatchedBaseTasks(ctx context.Context, patchID *string, versionID *string) ([]*restModel.APITask, error) {
+	// TODO: Remove this temporary workaround.
+	versionId := util.CoalesceString(utility.FromStringPtr(patchID), utility.FromStringPtr(versionID))
+
+	opts := task.GetTasksByVersionOptions{
+		Statuses:              evergreen.TaskFailureStatuses,
+		IncludeExecutionTasks: true,
+	}
+	tasks, _, err := task.GetTasksByVersion(ctx, versionId, opts)
+	if err != nil {
+		return nil, InternalServerError.Send(ctx, fmt.Sprintf("Could not fetch tasks for patch: %s ", err.Error()))
+	}
+
+	scheduledTasks := []*restModel.APITask{}
+	tasksToSchedule := make(map[string]bool)
+
+	for _, t := range tasks {
+		// If a task is a generated task don't schedule it until we get all of the generated tasks we want to generate
+		if t.GeneratedBy == "" {
+			// We can ignore an error while fetching tasks because this could just mean the task didn't exist on the base commit.
+			baseTask, _ := t.FindTaskOnBaseCommit()
+			if baseTask != nil && baseTask.Status == evergreen.TaskUndispatched {
+				tasksToSchedule[baseTask.Id] = true
+			}
+			// If a task is generated lets find its base task if it exists otherwise we need to generate it
+		} else if t.GeneratedBy != "" {
+			baseTask, _ := t.FindTaskOnBaseCommit()
+			// If the task is undispatched or doesn't exist on the base commit then we want to schedule
+			if baseTask == nil {
+				generatorTask, err := task.FindByIdExecution(t.GeneratedBy, nil)
+				if err != nil {
+					return nil, InternalServerError.Send(ctx, fmt.Sprintf("Experienced an error trying to find the generator task: %s", err.Error()))
+				}
+				if generatorTask != nil {
+					baseGeneratorTask, _ := generatorTask.FindTaskOnBaseCommit()
+					// If baseGeneratorTask is nil then it didn't exist on the base task and we can't do anything
+					if baseGeneratorTask != nil && baseGeneratorTask.Status == evergreen.TaskUndispatched {
+						err = baseGeneratorTask.SetGeneratedTasksToActivate(t.BuildVariant, t.DisplayName)
+						if err != nil {
+							return nil, InternalServerError.Send(ctx, fmt.Sprintf("Could not activate generated task: %s", err.Error()))
+						}
+						tasksToSchedule[baseGeneratorTask.Id] = true
+
+					}
+				}
+			} else if baseTask.Status == evergreen.TaskUndispatched {
+				tasksToSchedule[baseTask.Id] = true
+			}
+
+		}
+	}
+
+	taskIDs := []string{}
+	for taskId := range tasksToSchedule {
+		taskIDs = append(taskIDs, taskId)
+	}
+	scheduled, err := setManyTasksScheduled(ctx, r.sc.GetURL(), true, taskIDs...)
+	if err != nil {
+		return nil, err
+	}
+	scheduledTasks = append(scheduledTasks, scheduled...)
+	// sort scheduledTasks by display name to guarantee the order of the tasks
+	sort.Slice(scheduledTasks, func(i, j int) bool {
+		return utility.FromStringPtr(scheduledTasks[i].DisplayName) < utility.FromStringPtr(scheduledTasks[j].DisplayName)
+	})
+
+	return scheduledTasks, nil
+}
+
+// SetVersionPriority is the resolver for the setVersionPriority field.
+func (r *mutationResolver) SetVersionPriority(ctx context.Context, versionID string, priority int) (*string, error) {
+	modifications := model.VersionModification{
+		Action:   evergreen.SetPriorityAction,
+		Priority: int64(priority),
+	}
+	err := modifyVersionHandler(ctx, versionID, modifications)
+	if err != nil {
+		return nil, err
+	}
+	return &versionID, nil
+}
+
+// UnscheduleVersionTasks is the resolver for the unscheduleVersionTasks field.
+func (r *mutationResolver) UnscheduleVersionTasks(ctx context.Context, versionID string, abort bool) (*string, error) {
+	modifications := model.VersionModification{
+		Action: evergreen.SetActiveAction,
+		Active: false,
+		Abort:  abort,
+	}
+	err := modifyVersionHandler(ctx, versionID, modifications)
+	if err != nil {
+		return nil, err
+	}
+	return &versionID, nil
 }
 
 // Mutation returns MutationResolver implementation.

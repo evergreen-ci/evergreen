@@ -8,10 +8,10 @@
         },
         "errors": [
           {
-            "message": "not a valid patch ID",
-            "path": ["setPatchPriority", "patchId"],
+            "message": "Unable to find version with id: `washington`",
+            "path": ["setPatchPriority"],
             "extensions": {
-              "code": "INPUT_VALIDATION_ERROR"
+              "code": "RESOURCE_NOT_FOUND"
             }
           }
         ]
@@ -35,23 +35,6 @@
           {
             "message": "insufficient access to set priority 999, can only set priority less than or equal to 100",
             "path": ["setPatchPriority"],
-            "extensions": {
-              "code": "FORBIDDEN"
-            }
-          }
-        ]
-      }
-    },
-    {
-      "query_file": "no_permissions.graphql",
-      "result": {
-        "data": {
-          "setPatchPriority": null
-        },
-        "errors": [
-          {
-            "message": "user 'testuser' does not have permission to access 'tasks' for the project 'evergreen'",
-            "path": ["setPatchPriority", "patchId"],
             "extensions": {
               "code": "FORBIDDEN"
             }
