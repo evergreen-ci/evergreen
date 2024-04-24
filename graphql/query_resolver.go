@@ -463,7 +463,7 @@ func (r *queryResolver) ProjectEvents(ctx context.Context, identifier *string, p
 	if before != nil {
 		timestamp = *before
 	}
-	events, err := data.GetProjectEventLog(utility.FromStringPtr(identifier), timestamp, utility.FromIntPtr(limit))
+	events, err := data.GetProjectEventLog(utility.FromStringPtr(projectIdentifier), timestamp, utility.FromIntPtr(limit))
 	res := &ProjectEvents{
 		EventLogEntries: getPointerEventList(events),
 		Count:           len(events),
