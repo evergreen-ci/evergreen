@@ -2817,9 +2817,9 @@ func (c *APIGitHubCheckRunConfig) ToService() (interface{}, error) {
 }
 
 type APITaskLimitsConfig struct {
-	MaxTasksPerVersion    *int `json:"max_tasks_per_version"`
-	MaxIncludesPerVersion *int `json:"max_includes_per_version"`
-	MaxHourlyPatchTasks   *int `json:"max_hourly_patch_tasks"`
+	MaxTasksPerVersion       *int `json:"max_tasks_per_version"`
+	MaxIncludesPerVersion    *int `json:"max_includes_per_version"`
+	MaxHourlyPatchTasks      *int `json:"max_hourly_patch_tasks"`
 	MaxPendingGeneratedTasks *int `json:"max_pending_generated_tasks"`
 	MaxGenerateTaskJSONSize  *int `json:"max_generate_task_json_size"`
 }
@@ -2840,9 +2840,9 @@ func (c *APITaskLimitsConfig) BuildFromService(h interface{}) error {
 
 func (c *APITaskLimitsConfig) ToService() (interface{}, error) {
 	return evergreen.TaskLimitsConfig{
-		MaxTasksPerVersion:    utility.FromIntPtr(c.MaxTasksPerVersion),
-		MaxIncludesPerVersion: utility.FromIntPtr(c.MaxIncludesPerVersion),
-		MaxHourlyPatchTasks:   utility.FromIntPtr(c.MaxHourlyPatchTasks),
+		MaxTasksPerVersion:       utility.FromIntPtr(c.MaxTasksPerVersion),
+		MaxIncludesPerVersion:    utility.FromIntPtr(c.MaxIncludesPerVersion),
+		MaxHourlyPatchTasks:      utility.FromIntPtr(c.MaxHourlyPatchTasks),
 		MaxPendingGeneratedTasks: utility.FromIntPtr(c.MaxPendingGeneratedTasks),
 		MaxGenerateTaskJSONSize:  utility.FromIntPtr(c.MaxGenerateTaskJSONSize),
 	}, nil

@@ -3,6 +3,7 @@ package model
 import (
 	"context"
 	"fmt"
+	"github.com/evergreen-ci/evergreen/model/user"
 	"sort"
 	"strings"
 	"time"
@@ -867,6 +868,10 @@ func createTasksForBuild(creationInfo TaskCreationInfo) (task.Tasks, error) {
 		tasks = append(tasks, t)
 	}
 
+	if err := checkUsersPatchTaskLimit(creationInfo, tasks); err != nil {
+		return nil, errors.Wrap(err, "updating patch task limit for user")
+	}
+
 	// Set the NumDependents field
 	// Existing tasks in the db and tasks in other builds are not updated
 	setNumDeps(tasks)
@@ -875,6 +880,27 @@ func createTasksForBuild(creationInfo TaskCreationInfo) (task.Tasks, error) {
 
 	// return all of the tasks created
 	return tasks, nil
+}
+
+func checkUsersPatchTaskLimit(creationInfo TaskCreationInfo, tasks task.Tasks) error {
+	if !evergreen.IsPatchRequester(creationInfo.Version.Requester) {
+		return nil
+	}
+	numTasksToActivate := 0
+	for _, t := range tasks {
+		if t.Activated {
+			numTasksToActivate++
+		}
+	}
+	u, err := user.FindOneById(creationInfo.Version.Author)
+	if err != nil {
+		return errors.Wrap(err, "getting user")
+	}
+	if u != nil {
+		s := evergreen.GetEnvironment().Settings()
+		return errors.Wrapf(u.CheckAndUpdateSchedulingLimit(s, numTasksToActivate), "checking task scheduling limit for user '%s'", u.Id)
+	}
+	return nil
 }
 
 // addSingleHostTaskGroupDependencies adds dependencies to any tasks in a single-host task group
