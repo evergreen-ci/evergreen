@@ -1306,7 +1306,6 @@ func evaluateBVTasks(tse *taskSelectorEvaluator, tgse *tagSelectorEvaluator, vse
 	for _, t := range tasks {
 		tasksByName[t.Name] = t
 	}
-	var selectsAtLeastOneTask bool
 	for _, pbvt := range pbv.Tasks {
 		// Evaluate each task against both the task and task group selectors
 		// only error if both selectors error because each task should only be found
@@ -1332,17 +1331,11 @@ func evaluateBVTasks(tse *taskSelectorEvaluator, tgse *tagSelectorEvaluator, vse
 			}
 			if err1 != nil && err2 != nil {
 				evalErrs = append(evalErrs, err1, err2)
-				if len(names) > 0 {
-					selectsAtLeastOneTask = true
-				} else {
-					emptySelectors = append(emptySelectors, pbvt.Name)
-				}
+				emptySelectors = append(emptySelectors, pbvt.Name)
 				continue
 			}
 		}
-		if len(names) > 0 {
-			selectsAtLeastOneTask = true
-		} else {
+		if len(names) == 0 {
 			emptySelectors = append(emptySelectors, pbvt.Name)
 		}
 		// create new task definitions--duplicates must have the same status requirements
@@ -1383,7 +1376,7 @@ func evaluateBVTasks(tse *taskSelectorEvaluator, tgse *tagSelectorEvaluator, vse
 		}
 	}
 	// No tasks selected should result in an error if there are any tasks defined in the build variant.
-	if !selectsAtLeastOneTask && len(pbv.Tasks) > 0 {
+	if len(ts) == 0 && len(pbv.Tasks) > 0 {
 		evalErrs = append(evalErrs, errors.Errorf("task selectors for build variant '%s' did not match any tasks", pbv.Name))
 
 	}
