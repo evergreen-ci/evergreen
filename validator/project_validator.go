@@ -540,7 +540,15 @@ func constructAliasWarnings(aliasMap map[string]model.ProjectAlias, aliasNeedsVa
 		case evergreen.GithubChecksAlias:
 			msgComponents = append(msgComponents, "GitHub check alias")
 		default:
-			msgComponents = append(msgComponents, "Patch alias")
+			msgComponents = append(msgComponents, fmt.Sprintf("Patch alias '%s'", a.Alias))
+		}
+		switch a.Source {
+		case model.AliasSourceConfig:
+			msgComponents = append(msgComponents, "(from the yaml)")
+		case model.AliasSourceProject:
+			msgComponents = append(msgComponents, "(from the project page)")
+		case model.AliasSourceRepo:
+			msgComponents = append(msgComponents, "(from the repo page)")
 		}
 		if len(a.VariantTags) > 0 {
 			msgComponents = append(msgComponents, fmt.Sprintf("matching variant tags '%v'", a.VariantTags))

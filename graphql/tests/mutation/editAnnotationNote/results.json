@@ -29,14 +29,16 @@
         "data": null,
         "errors": [
           {
-            "message": "user 'testuser' does not have permission to access 'annotations' for the project 'evergreen'",
-            "path": ["editAnnotationNote", "taskId"],
+            "message": "insufficient permission for modifying annotation",
+            "path": [
+              "editAnnotationNote"
+            ],
             "extensions": {
               "code": "FORBIDDEN"
             }
           }
         ]
-      }
+      } 
     }
   ]
 }

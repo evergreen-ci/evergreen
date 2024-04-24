@@ -22,8 +22,10 @@
         "data": null,
         "errors": [
           {
-            "message": "user 'testuser' does not have permission to access 'annotations' for the project 'evergreen'",
-            "path": ["addAnnotationIssue", "taskId"],
+            "message": "insufficient permission for modifying annotation",
+            "path": [
+              "addAnnotationIssue"
+            ],
             "extensions": {
               "code": "FORBIDDEN"
             }
