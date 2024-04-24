@@ -11,7 +11,6 @@ import (
 	"github.com/evergreen-ci/evergreen/model/alertrecord"
 	"github.com/evergreen-ci/evergreen/model/event"
 	"github.com/evergreen-ci/evergreen/model/host"
-	"github.com/mongodb/anser/bsonutil"
 	"github.com/mongodb/grip/message"
 	"github.com/stretchr/testify/suite"
 	"go.mongodb.org/mongo-driver/bson"
@@ -133,7 +132,7 @@ func (s *hostSuite) TestAllTriggers() {
 	s.Contains(email.Body, "will be terminated")
 
 	s.t.event = &event.EventLogEntry{
-		ID:           "66218a19751026f955192ba5",
+		ID:           "idleEvent",
 		ResourceType: event.ResourceTypeHost,
 		EventType:    event.EventSpawnHostIdleNotification,
 		ResourceId:   s.t.host.Id,
@@ -143,36 +142,24 @@ func (s *hostSuite) TestAllTriggers() {
 		Expirable:    true,
 	}
 
+	// A running host should not trigger a notification.
 	s.Require().NoError(host.UpdateOne(context.Background(), host.ById(s.t.host.Id), bson.M{
 		"$set": bson.M{
 			host.NoExpirationKey: true,
 			host.StatusKey:       evergreen.HostRunning,
-			bsonutil.GetDottedKeyName(host.SleepScheduleKey, host.SleepScheduleShouldKeepOffKey): true,
-			host.LastCommunicationTimeKey: time.Now().Add(-1 * time.Hour * 24 * 31), // 1 months ago
 		},
 	}))
-	// A one-month idle running host should not trigger a notification.
 	n, err = NotificationsFromEvent(s.ctx, s.t.event)
 	s.NoError(err)
 	s.Require().Len(n, 0)
 
+	// A stopped host with no stopped event should trigger a notification.
 	s.Require().NoError(host.UpdateOne(context.Background(), host.ById(s.t.host.Id), bson.M{
 		"$set": bson.M{
-			host.StatusKey:                evergreen.HostStopped,
-			host.LastCommunicationTimeKey: time.Now().Add(-1 * time.Hour * 24 * 31), // 1 months ago
+			host.StatusKey: evergreen.HostStopped,
 		},
 	}))
-	// A one-month idle stopped host should not trigger a notification.
-	n, err = NotificationsFromEvent(s.ctx, s.t.event)
-	s.NoError(err)
-	s.Require().Len(n, 0)
 
-	// A three-month idle stopped host should trigger a notification.
-	s.Require().NoError(host.UpdateOne(context.Background(), host.ById(s.t.host.Id), bson.M{
-		"$set": bson.M{
-			host.LastCommunicationTimeKey: time.Now().Add(-6 * time.Hour * 24 * 31), // 3 months ago
-		},
-	}))
 	n, err = NotificationsFromEvent(s.ctx, s.t.event)
 	s.NoError(err)
 	s.Require().Len(n, 1)
@@ -180,12 +167,36 @@ func (s *hostSuite) TestAllTriggers() {
 	s.True(ok)
 	s.Contains(email.Body, "has been idle")
 
-	// A temporarily stopped three-month idle host should not trigger a notification.
-	s.Require().NoError(host.UpdateOne(context.Background(), host.ById(s.t.host.Id), bson.M{
-		"$unset": bson.M{
-			bsonutil.GetDottedKeyName(host.SleepScheduleKey, host.SleepScheduleShouldKeepOffKey): 1,
-		},
-	}))
+	// A four-month stopped host should trigger a notification.
+	stoppedEvent := &event.EventLogEntry{
+		ID:           "stoppedEvent",
+		ResourceType: event.ResourceTypeHost,
+		EventType:    event.EventHostStopped,
+		ResourceId:   s.t.host.Id,
+		Data:         &event.HostEventData{},
+		Timestamp:    time.Now().Add(-time.Hour * 24 * 31 * 4),
+		Expirable:    true,
+	}
+	s.NoError(db.Insert(event.EventCollection, stoppedEvent))
+	n, err = NotificationsFromEvent(s.ctx, s.t.event)
+	s.NoError(err)
+	s.Require().Len(n, 1)
+	email, ok = n[0].Payload.(*message.Email)
+	s.True(ok)
+	s.Contains(email.Body, "has been idle")
+
+	// A one-month idle stopped host should not trigger a notification.
+	stoppedEvent = &event.EventLogEntry{
+		ID:           "recentStoppedEvent",
+		ResourceType: event.ResourceTypeHost,
+		EventType:    event.EventHostStopped,
+		ResourceId:   s.t.host.Id,
+		Data:         &event.HostEventData{},
+		Timestamp:    time.Now().Add(-time.Hour * 24 * 31),
+		Expirable:    true,
+	}
+	s.NoError(db.Insert(event.EventCollection, stoppedEvent))
+
 	n, err = NotificationsFromEvent(s.ctx, s.t.event)
 	s.NoError(err)
 	s.Require().Len(n, 0)

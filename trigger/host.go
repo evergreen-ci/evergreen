@@ -216,7 +216,11 @@ func (t *hostTriggers) hostExpiration(sub *event.Subscription) (*notification.No
 }
 
 func (t *hostTriggers) spawnHostIdle(sub *event.Subscription) (*notification.Notification, error) {
-	if !t.host.ShouldNotifyStoppedSpawnHostIdle() {
+	shouldNotify, err := t.host.ShouldNotifyStoppedSpawnHostIdle()
+	if err != nil {
+		return nil, err
+	}
+	if !shouldNotify {
 		return nil, nil
 	}
 	t.templateData.LastCommunicationTime = t.host.LastCommunicationTime.Format(time.RFC1123)

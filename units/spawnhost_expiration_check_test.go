@@ -77,10 +77,9 @@ func TestTryIdleSpawnHostNotification(t *testing.T) {
 		SleepSchedule: host.SleepScheduleInfo{
 			ShouldKeepOff: true,
 		},
-		NoExpiration:          true,
-		ExpirationTime:        time.Now(),
-		LastCommunicationTime: time.Now().Add(-time.Hour * 24 * 365),
-		StartedBy:             "me",
+		NoExpiration:   true,
+		ExpirationTime: time.Now(),
+		StartedBy:      "me",
 	}
 	u := &user.DBUser{
 		Id:           "me",
