@@ -38,7 +38,7 @@ var (
 
 	// Agent version to control agent rollover. The format is the calendar date
 	// (YYYY-MM-DD).
-	AgentVersion = "2024-04-19"
+	AgentVersion = "2024-04-22"
 )
 
 // ConfigSection defines a sub-document in the evergreen config
@@ -506,7 +506,7 @@ func (s *Settings) GetSender(ctx context.Context, env Environment) (send.Sender,
 	}
 
 	// the slack logging service is only for logging very high level alerts.
-	if s.Slack.Token != "" {
+	if s.Slack.Token != "" && level.FromString(s.Slack.Level).IsValid() {
 		sender, err = send.NewSlackLogger(s.Slack.Options, s.Slack.Token,
 			send.LevelInfo{Default: level.Critical, Threshold: level.FromString(s.Slack.Level)})
 		if err == nil {

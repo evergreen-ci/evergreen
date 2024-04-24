@@ -5,7 +5,7 @@
         "$oid": "5e4aa5abe3c3317e35201abc"
       },
       "task_id": "task-1234",
-      "task_execution": 0,
+      "task_execution": 1,
       "issues": [
         {
           "url": "https://link.com",
@@ -36,7 +36,7 @@
         "$oid": "5e3aa5bbe3c3317e35206abc"
       },
       "task_id": "task-5678",
-      "task_execution": 0,
+      "task_execution": 1,
       "note": {
         "message": "my other message",
         "source": {

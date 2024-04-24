@@ -2821,6 +2821,7 @@ type APITaskLimitsConfig struct {
 	MaxIncludesPerVersion *int `json:"max_includes_per_version"`
 	MaxHourlyPatchTasks   *int `json:"max_hourly_patch_tasks"`
 	MaxPendingGeneratedTasks *int `json:"max_pending_generated_tasks"`
+	MaxGenerateTaskJSONSize  *int `json:"max_generate_task_json_size"`
 }
 
 func (c *APITaskLimitsConfig) BuildFromService(h interface{}) error {
@@ -2830,6 +2831,7 @@ func (c *APITaskLimitsConfig) BuildFromService(h interface{}) error {
 		c.MaxIncludesPerVersion = utility.ToIntPtr(v.MaxIncludesPerVersion)
 		c.MaxPendingGeneratedTasks = utility.ToIntPtr(v.MaxPendingGeneratedTasks)
 		c.MaxHourlyPatchTasks = utility.ToIntPtr(v.MaxHourlyPatchTasks)
+		c.MaxGenerateTaskJSONSize = utility.ToIntPtr(v.MaxGenerateTaskJSONSize)
 		return nil
 	default:
 		return errors.Errorf("programmatic error: expected task limits config but got type %T", h)
@@ -2842,5 +2844,6 @@ func (c *APITaskLimitsConfig) ToService() (interface{}, error) {
 		MaxIncludesPerVersion: utility.FromIntPtr(c.MaxIncludesPerVersion),
 		MaxHourlyPatchTasks:   utility.FromIntPtr(c.MaxHourlyPatchTasks),
 		MaxPendingGeneratedTasks: utility.FromIntPtr(c.MaxPendingGeneratedTasks),
+		MaxGenerateTaskJSONSize:  utility.FromIntPtr(c.MaxGenerateTaskJSONSize),
 	}, nil
 }
