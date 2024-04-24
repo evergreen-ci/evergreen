@@ -5962,7 +5962,7 @@ func TestDisplayTaskDelayedRestart(t *testing.T) {
 	assert.Equal(evergreen.TaskStarted, dbTask.Status)
 
 	// end the final task so that it restarts
-	assert.NoError(checkResetDisplayTask(ctx, settings, &dt))
+	assert.NoError(checkResetDisplayTask(ctx, settings, "", "", &dt))
 	dbTask, err = task.FindOne(db.Query(task.ById(dt.Id)))
 	assert.NoError(err)
 	assert.Equal(evergreen.TaskUndispatched, dbTask.Status)
