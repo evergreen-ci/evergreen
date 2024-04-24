@@ -1818,16 +1818,6 @@ func (t *Task) HasResults() bool {
 	return t.ResultsService != "" || t.HasCedarResults
 }
 
-// ActivateTask will set the ActivatedBy field to the caller and set the active state to be true.
-// Also activates dependencies of the task.
-func (t *Task) ActivateTask(caller string) error {
-	t.ActivatedBy = caller
-	t.Activated = true
-	t.ActivatedTime = time.Now()
-
-	return ActivateTasks([]Task{*t}, t.ActivatedTime, true, caller)
-}
-
 // ActivateTasks sets all given tasks to active, logs them as activated, and proceeds to activate any dependencies that were deactivated.
 func ActivateTasks(tasks []Task, activationTime time.Time, updateDependencies bool, caller string) error {
 	tasksToActivate := make([]Task, 0, len(tasks))

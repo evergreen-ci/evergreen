@@ -387,18 +387,16 @@ func resetTask(ctx context.Context, taskId, caller string) error {
 	if t.IsPartOfDisplay() {
 		return errors.Errorf("cannot restart execution task '%s' because it is part of a display task", t.Id)
 	}
+	if err = checkUsersPatchTaskLimit(t.Requester, caller, true, *t); err != nil {
+		return errors.Wrap(err, "updating patch task limit for user")
+	}
 	if err = t.Archive(ctx); err != nil {
 		return errors.Wrap(err, "can't restart task because it can't be archived")
 	}
-
 	if err = MarkOneTaskReset(ctx, t, caller); err != nil {
 		return errors.WithStack(err)
 	}
 	event.LogTaskRestarted(t.Id, t.Execution, caller)
-
-	if err := t.ActivateTask(caller); err != nil {
-		return errors.WithStack(err)
-	}
 
 	return errors.WithStack(UpdateBuildAndVersionStatusForTask(ctx, t))
 }
@@ -853,7 +851,7 @@ func MarkEnd(ctx context.Context, settings *evergreen.Settings, t *task.Task, ca
 		"pod_id":             t.PodID,
 		"execution_platform": t.ExecutionPlatform,
 	})
-
+	requester := evergreen.APIServerTaskActivator
 	if t.IsPartOfDisplay() {
 		if err = UpdateDisplayTaskForTask(t); err != nil {
 			return errors.Wrap(err, "updating display task")
@@ -862,7 +860,7 @@ func MarkEnd(ctx context.Context, settings *evergreen.Settings, t *task.Task, ca
 		if err != nil {
 			return errors.Wrap(err, "getting display task")
 		}
-		if err = checkResetDisplayTask(ctx, settings, dt); err != nil {
+		if err = checkResetDisplayTask(ctx, settings, requester, "", dt); err != nil {
 			return errors.Wrap(err, "checking display task reset")
 		}
 	} else {
@@ -907,7 +905,6 @@ func MarkEnd(ctx context.Context, settings *evergreen.Settings, t *task.Task, ca
 	}
 
 	if (t.ResetWhenFinished || t.ResetFailedWhenFinished) && !t.IsPartOfDisplay() && !t.IsPartOfSingleHostTaskGroup() {
-		requester := evergreen.APIServerTaskActivator
 		if t.IsAutomaticRestart {
 			requester = evergreen.AutoRestartActivator
 		}
@@ -2074,22 +2071,12 @@ func MarkHostTaskDispatched(t *task.Task, h *host.Host) error {
 
 func MarkOneTaskReset(ctx context.Context, t *task.Task, caller string) error {
 	if t.DisplayOnly {
-		if !t.ResetFailedWhenFinished {
-			if err := MarkTasksReset(ctx, t.ExecutionTasks, caller); err != nil {
-				return errors.Wrap(err, "resetting execution tasks")
-			}
-		} else {
-			failedExecTasks, err := task.FindWithFields(task.FailedTasksByIds(t.ExecutionTasks), task.IdKey)
-			if err != nil {
-				return errors.Wrap(err, "retrieving failed execution tasks")
-			}
-			failedExecTaskIds := []string{}
-			for _, et := range failedExecTasks {
-				failedExecTaskIds = append(failedExecTaskIds, et.Id)
-			}
-			if err := MarkTasksReset(ctx, failedExecTaskIds, caller); err != nil {
-				return errors.Wrap(err, "resetting failed execution tasks")
-			}
+		execTaskIdsToRestart, err := findExecTasksToReset(t)
+		if err != nil {
+			return errors.Wrap(err, "finding execution tasks to restart")
+		}
+		if err = MarkTasksReset(ctx, execTaskIdsToRestart, caller); err != nil {
+			return errors.Wrap(err, "resetting failed execution tasks")
 		}
 	}
 
@@ -2106,6 +2093,22 @@ func MarkOneTaskReset(ctx context.Context, t *task.Task, caller string) error {
 	}
 
 	return nil
+}
+
+func findExecTasksToReset(t *task.Task) ([]string, error) {
+	if !t.ResetFailedWhenFinished {
+		return t.ExecutionTasks, nil
+	} else {
+		failedExecTasks, err := task.FindWithFields(task.FailedTasksByIds(t.ExecutionTasks), task.IdKey)
+		if err != nil {
+			return nil, errors.Wrap(err, "retrieving failed execution tasks")
+		}
+		failedExecTaskIds := []string{}
+		for _, et := range failedExecTasks {
+			failedExecTaskIds = append(failedExecTaskIds, et.Id)
+		}
+		return failedExecTaskIds, nil
+	}
 }
 
 // MarkTasksReset resets many tasks by their IDs. For execution tasks, this also
@@ -2447,7 +2450,7 @@ func ResetTaskOrDisplayTask(ctx context.Context, settings *evergreen.Settings, t
 				return errors.Wrap(err, "marking display task for reset")
 			}
 		}
-		return errors.Wrap(checkResetDisplayTask(ctx, settings, &taskToReset), "checking display task reset")
+		return errors.Wrap(checkResetDisplayTask(ctx, settings, user, origin, &taskToReset), "checking display task reset")
 	}
 
 	return errors.Wrap(TryResetTask(ctx, settings, t.Id, user, origin, detail), "resetting task")
@@ -2672,7 +2675,7 @@ func checkResetSingleHostTaskGroup(ctx context.Context, t *task.Task, caller str
 // checkResetDisplayTask attempts to reset all tasks that are under the same
 // parent display task as t once all tasks under the display task are finished
 // running.
-func checkResetDisplayTask(ctx context.Context, setting *evergreen.Settings, t *task.Task) error {
+func checkResetDisplayTask(ctx context.Context, setting *evergreen.Settings, user, origin string, t *task.Task) error {
 	if !t.ResetWhenFinished && !t.ResetFailedWhenFinished {
 		return nil
 	}
@@ -2693,11 +2696,10 @@ func checkResetDisplayTask(ctx context.Context, setting *evergreen.Settings, t *
 			Status: evergreen.TaskFailed,
 		}
 	}
-	requester := evergreen.User
 	if t.IsAutomaticRestart {
-		requester = evergreen.AutoRestartActivator
+		user = evergreen.AutoRestartActivator
 	}
-	return errors.Wrap(TryResetTask(ctx, setting, t.Id, requester, requester, details), "resetting display task")
+	return errors.Wrap(TryResetTask(ctx, setting, t.Id, user, origin, details), "resetting display task")
 }
 
 // MarkUnallocatableContainerTasksSystemFailed marks any container task within

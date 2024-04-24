@@ -251,7 +251,7 @@ func (s *UserTestSuite) TestCheckAndUpdateSchedulingLimit() {
 	// Confirm NumScheduledPatchTasks is unchanged and we receive an error after breaching the limit
 	err = u.CheckAndUpdateSchedulingLimit(settings, 1)
 	s.Require().Error(err)
-	s.Contains(err.Error(), fmt.Sprintf("user '%s' has scheduled too many tasks in the past hour", u.Id))
+	s.Contains(err.Error(), fmt.Sprintf("user '%s' has scheduled %d out of %d allowed tasks in the past hour", u.Id, u.NumScheduledPatchTasks, settings.TaskLimits.MaxHourlyPatchTasks))
 	u, err = FindOne(ById(u.Id))
 	s.Require().NoError(err)
 	s.Require().NotNil(u)

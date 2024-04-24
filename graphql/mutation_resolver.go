@@ -976,7 +976,7 @@ func (r *mutationResolver) AbortTask(ctx context.Context, taskID string) (*restM
 	if t == nil {
 		return nil, ResourceNotFound.Send(ctx, fmt.Sprintf("cannot find task with id %s", taskID))
 	}
-	user := gimlet.GetUser(ctx).DisplayName()
+	user := gimlet.GetUser(ctx).Username()
 	err = model.AbortTask(ctx, taskID, user)
 	if err != nil {
 		return nil, InternalServerError.Send(ctx, fmt.Sprintf("Error aborting task %s: %s", taskID, err.Error()))

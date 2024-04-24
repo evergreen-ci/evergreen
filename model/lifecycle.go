@@ -314,10 +314,6 @@ func RestartVersion(ctx context.Context, versionID string, taskIDs []string, abo
 	if err != nil {
 		return errors.Wrap(err, "finding completed tasks for version")
 	}
-	if len(completedTasks) == 0 {
-		return nil
-	}
-
 	return restartTasks(ctx, completedTasks, caller, versionID)
 }
 
@@ -349,16 +345,15 @@ func RestartBuild(ctx context.Context, b *build.Build, taskIDs []string, abortIn
 	if err != nil {
 		return errors.Wrap(err, "finding completed tasks for build")
 	}
-	if len(completedTasks) == 0 {
-		return nil
-	}
-
 	return restartTasks(ctx, completedTasks, caller, b.Version)
 }
 
 // restartTasks restarts all finished tasks in the given list that are not part of
 // a single host task group.
 func restartTasks(ctx context.Context, allFinishedTasks []task.Task, caller, versionId string) error {
+	if len(allFinishedTasks) == 0 {
+		return nil
+	}
 	toArchive := []task.Task{}
 	for _, t := range allFinishedTasks {
 		if !t.IsPartOfSingleHostTaskGroup() {
@@ -367,6 +362,9 @@ func restartTasks(ctx context.Context, allFinishedTasks []task.Task, caller, ver
 			// archive them all at once.
 			toArchive = append(toArchive, t)
 		}
+	}
+	if err := checkUsersPatchTaskLimit(allFinishedTasks[0].Requester, caller, true, toArchive...); err != nil {
+		return errors.Wrap(err, "updating patch task limit for user")
 	}
 	if err := task.ArchiveMany(ctx, toArchive); err != nil {
 		return errors.Wrap(err, "archiving tasks")
@@ -868,7 +866,7 @@ func createTasksForBuild(creationInfo TaskCreationInfo) (task.Tasks, error) {
 		tasks = append(tasks, t)
 	}
 
-	if err := checkUsersPatchTaskLimit(creationInfo, tasks); err != nil {
+	if err := checkUsersPatchTaskLimit(creationInfo.Version.Requester, creationInfo.Version.Author, false, tasks.Export()...); err != nil {
 		return nil, errors.Wrap(err, "updating patch task limit for user")
 	}
 
@@ -882,17 +880,29 @@ func createTasksForBuild(creationInfo TaskCreationInfo) (task.Tasks, error) {
 	return tasks, nil
 }
 
-func checkUsersPatchTaskLimit(creationInfo TaskCreationInfo, tasks task.Tasks) error {
-	if !evergreen.IsPatchRequester(creationInfo.Version.Requester) {
+// checkUsersPatchTaskLimit takes in an input list of tasks that is set to get activated, and checks if they're
+// patch tasks, and that the request has been submitted by a user. If so, the maximum hourly patch tasks counter
+// will be incremented accordingly. the addExecutionTasks parameter indicates that execution tasks are included
+// as part of the input tasks param, otherwise we need to account for them.
+func checkUsersPatchTaskLimit(requester, username string, addExecutionTasks bool, tasks ...task.Task) error {
+	// we only care about patch tasks that are to be activated by an actual person
+	if !evergreen.IsPatchRequester(requester) || evergreen.IsSystemActivator(username) {
 		return nil
 	}
 	numTasksToActivate := 0
 	for _, t := range tasks {
 		if t.Activated {
+			if addExecutionTasks && t.DisplayOnly {
+				execTaskIdsToRestart, err := findExecTasksToReset(&t)
+				if err != nil {
+					return errors.Wrap(err, "finding execution tasks to restart")
+				}
+				numTasksToActivate += len(execTaskIdsToRestart)
+			}
 			numTasksToActivate++
 		}
 	}
-	u, err := user.FindOneById(creationInfo.Version.Author)
+	u, err := user.FindOneById(username)
 	if err != nil {
 		return errors.Wrap(err, "getting user")
 	}

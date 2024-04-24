@@ -178,6 +178,9 @@ func (u *DBUser) CheckAndUpdateSchedulingLimit(settings *evergreen.Settings, num
 	if maxScheduledTasks == 0 {
 		return nil
 	}
+	if numTasksActivated > maxScheduledTasks {
+		return errors.Errorf("cannot schedule %d tasks, maxumum hourly per-user limit is %d", numTasksActivated, maxScheduledTasks)
+	}
 	now := time.Now()
 	oneHourAgo := now.Add(-1 * time.Hour)
 	// If the last time the user scheduled patch tasks was within the hour, increment the number
@@ -189,7 +192,7 @@ func (u *DBUser) CheckAndUpdateSchedulingLimit(settings *evergreen.Settings, num
 		}
 		if (numTasksActivated + u.NumScheduledPatchTasks) >= maxScheduledTasks {
 			minutesRemaining := 60 - int(now.Sub(u.LastScheduledTasksAt).Minutes())
-			return errors.Errorf("user '%s' has scheduled too many tasks in the past hour, limit will refresh in %d minutes", u.Id, minutesRemaining)
+			return errors.Errorf("user '%s' has scheduled %d out of %d allowed tasks in the past hour, limit refreshes in %d minutes", u.Id, u.NumScheduledPatchTasks, maxScheduledTasks, minutesRemaining)
 		}
 	} else {
 		// Otherwise, if the user has not scheduled any patch tasks within the past hour, reset the last scheduled tasks
@@ -199,9 +202,6 @@ func (u *DBUser) CheckAndUpdateSchedulingLimit(settings *evergreen.Settings, num
 				NumScheduledPatchTasksKey: getNewCounter(0, numTasksActivated),
 				LastScheduledTasksAtKey:   time.Now(),
 			},
-		}
-		if numTasksActivated > maxScheduledTasks {
-			return errors.Errorf("cannot schedule %d tasks, hourly per-user limit is %d tasks", numTasksActivated, maxScheduledTasks)
 		}
 	}
 	return UpdateOne(bson.M{IdKey: u.Id}, update)
