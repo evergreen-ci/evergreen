@@ -884,8 +884,7 @@ buildvariants:
 
 Tags can be referenced in variant definitions to quickly include groups
 of tasks. If no tasks are selected in the build variant, it will generate
-an error. If no tasks are selected by an individual line, it will
-generate a warning. 
+an error.
 
 ``` yaml
 buildvariants:
