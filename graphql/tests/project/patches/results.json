@@ -163,10 +163,13 @@
         "data": {
           "user": {
             "patches": {
-              "filteredPatchCount": 2,
+              "filteredPatchCount": 3,
               "patches": [
                 {
                   "id": "5e4ff3abe3c3317e352062e8"
+                },
+                {
+                  "id": "5e4ff3abe3c3317e352062e7"
                 },
                 {
                   "id": "5e4ff3abe3c3317e352062e9"

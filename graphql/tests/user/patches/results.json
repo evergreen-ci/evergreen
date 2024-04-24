@@ -241,19 +241,10 @@
         "data": {
           "user": {
             "patches": {
-              "filteredPatchCount": 5,
+              "filteredPatchCount": 2,
               "patches": [
                 {
                   "id": "5e4ff3abe3c3317e352062e8"
-                },
-                {
-                  "id": "5e4ff3abe3c3317e352062e6"
-                },
-                {
-                  "id": "5e4ff3abe3c3317e352062e5"
-                },
-                {
-                  "id": "5e4ff3abe3c3317e352062e4"
                 },
                 {
                   "id": "5e4ff3abe3c3317e352062e9"
