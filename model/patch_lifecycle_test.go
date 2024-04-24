@@ -776,7 +776,7 @@ func TestAddNewPatch(t *testing.T) {
 	}
 	u := &user.DBUser{
 		Id:                     "test.user",
-		NumScheduledPatchTasks: 10,
+		NumScheduledPatchTasks: 0,
 		LastScheduledTasksAt:   time.Now().Add(-10 * time.Minute),
 	}
 	v := &Version{
@@ -857,7 +857,7 @@ func TestAddNewPatch(t *testing.T) {
 	dbUser, err := user.FindOneById(u.Id)
 	assert.NoError(err)
 	require.NotNil(t, dbUser)
-	assert.Equal(dbUser.NumScheduledPatchTasks, 16)
+	assert.Equal(dbUser.NumScheduledPatchTasks, 4)
 	dbTasks, err := task.FindAll(db.Query(task.ByBuildId(dbBuild.Id)))
 	assert.NoError(err)
 	assert.NotNil(dbBuild)
