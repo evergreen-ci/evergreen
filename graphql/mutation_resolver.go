@@ -395,33 +395,6 @@ func (r *mutationResolver) SchedulePatch(ctx context.Context, patchID string, co
 	return scheduledPatch, nil
 }
 
-// SetPatchPriority is the resolver for the setPatchPriority field.
-func (r *mutationResolver) SetPatchPriority(ctx context.Context, patchID string, priority int) (*string, error) {
-	modifications := model.VersionModification{
-		Action:   evergreen.SetPriorityAction,
-		Priority: int64(priority),
-	}
-	err := modifyVersionHandler(ctx, patchID, modifications)
-	if err != nil {
-		return nil, err
-	}
-	return &patchID, nil
-}
-
-// UnschedulePatchTasks is the resolver for the unschedulePatchTasks field.
-func (r *mutationResolver) UnschedulePatchTasks(ctx context.Context, patchID string, abort bool) (*string, error) {
-	modifications := model.VersionModification{
-		Action: evergreen.SetActiveAction,
-		Active: false,
-		Abort:  abort,
-	}
-	err := modifyVersionHandler(ctx, patchID, modifications)
-	if err != nil {
-		return nil, err
-	}
-	return &patchID, nil
-}
-
 // AttachProjectToNewRepo is the resolver for the attachProjectToNewRepo field.
 func (r *mutationResolver) AttachProjectToNewRepo(ctx context.Context, project MoveProjectInput) (*restModel.APIProjectRef, error) {
 	usr := mustHaveUser(ctx)
@@ -1345,15 +1318,12 @@ func (r *mutationResolver) RestartVersions(ctx context.Context, versionID string
 }
 
 // ScheduleUndispatchedBaseTasks is the resolver for the scheduleUndispatchedBaseTasks field.
-func (r *mutationResolver) ScheduleUndispatchedBaseTasks(ctx context.Context, patchID *string, versionID *string) ([]*restModel.APITask, error) {
-	// TODO: Remove this temporary workaround.
-	versionId := util.CoalesceString(utility.FromStringPtr(patchID), utility.FromStringPtr(versionID))
-
+func (r *mutationResolver) ScheduleUndispatchedBaseTasks(ctx context.Context, versionID string) ([]*restModel.APITask, error) {
 	opts := task.GetTasksByVersionOptions{
 		Statuses:              evergreen.TaskFailureStatuses,
 		IncludeExecutionTasks: true,
 	}
-	tasks, _, err := task.GetTasksByVersion(ctx, versionId, opts)
+	tasks, _, err := task.GetTasksByVersion(ctx, versionID, opts)
 	if err != nil {
 		return nil, InternalServerError.Send(ctx, fmt.Sprintf("Could not fetch tasks for patch: %s ", err.Error()))
 	}
