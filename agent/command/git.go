@@ -343,6 +343,10 @@ func (c *gitFetchProject) buildSourceCloneCommand(ctx context.Context, comm clie
 				// If the head branch is missing, fall back to a full clone.
 				opts.fallbackToFullClone = true
 			}
+		case evergreen.PatchVersionRequester:
+			// TODO: (DEVPROD-6795) Include Git tracking information
+			// inside of the patch document so we can use it here.
+			opts.fallbackToFullClone = true
 		}
 	}
 
