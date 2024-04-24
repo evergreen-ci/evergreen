@@ -1622,7 +1622,7 @@ func TestValidateBVNames(t *testing.T) {
 			}
 			validationResults := checkBuildVariants(project)
 
-			So(validationResults.String(), ShouldContainSubstring, "WARNING: buildvariant 'linux' contains empty task selectors: '.task1'")
+			So(validationResults.String(), ShouldContainSubstring, "WARNING: buildvariant 'linux' has task names/tags that do not match any tasks: '.task1'")
 		})
 
 		Convey("if two variants have the same display name, a warning should be returned, but no errors", func() {
