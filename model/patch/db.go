@@ -160,7 +160,7 @@ var requesterExpression = bson.M{
 					"$and": []bson.M{
 						{"$ifNull": []interface{}{"$" + githubPatchDataKey, false}},
 						{"$ne": []string{"$" + bsonutil.GetDottedKeyName(githubPatchDataKey, "head_owner"), ""}},
-						{"$ne": []interface{}{"$" + bsonutil.GetDottedKeyName(githubPatchDataKey, "head_owner"), nil}},
+						{"$ne": []interface{}{"$" + bsonutil.GetDottedKeyName(githubPatchDataKey, "head_owner"), ""}},
 					},
 				},
 				"then": evergreen.GithubPRRequester,
