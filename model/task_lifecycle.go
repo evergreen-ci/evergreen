@@ -773,6 +773,7 @@ func MarkEnd(ctx context.Context, settings *evergreen.Settings, t *task.Task, ca
 	deactivatePrevious bool) error {
 	ctx, span := tracer.Start(ctx, "mark-end")
 	defer span.End()
+	catcher := grip.NewBasicCatcher()
 
 	const slowThreshold = time.Second
 
@@ -819,15 +820,15 @@ func MarkEnd(ctx context.Context, settings *evergreen.Settings, t *task.Task, ca
 	})
 
 	if err != nil {
-		return errors.Wrap(err, "marking task finished")
+		catcher.Wrap(err, "marking task finished")
 	}
 
 	if err = UpdateBlockedDependencies(ctx, t); err != nil {
-		return errors.Wrap(err, "updating blocked dependencies")
+		catcher.Wrap(err, "updating blocked dependencies")
 	}
 
 	if err = t.MarkDependenciesFinished(ctx, true); err != nil {
-		return errors.Wrap(err, "updating dependency met status")
+		catcher.Wrap(err, "updating dependency met status")
 	}
 
 	status := t.GetDisplayStatus()
@@ -854,6 +855,7 @@ func MarkEnd(ctx context.Context, settings *evergreen.Settings, t *task.Task, ca
 	})
 
 	if t.IsPartOfDisplay() {
+		// TODO: make errors in catcher
 		if err = UpdateDisplayTaskForTask(t); err != nil {
 			return errors.Wrap(err, "updating display task")
 		}
