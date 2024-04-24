@@ -463,7 +463,7 @@ func sendGitHubCommitQueueError(ctx context.Context, env evergreen.Environment, 
 	}
 
 	catcher := grip.NewBasicCatcher()
-	if skipStatus {
+	if !skipStatus {
 		catcher.Wrap(thirdparty.SendCommitQueueGithubStatus(ctx, env, pr, message.GithubStateFailure, err.Error(), ""), "sending GitHub status update")
 	}
 
