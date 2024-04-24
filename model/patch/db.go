@@ -75,6 +75,13 @@ var (
 	TriggerInfoParentPatchKey          = bsonutil.MustHaveTag(TriggerInfo{}, "ParentPatch")
 	TriggerInfoChildPatchesKey         = bsonutil.MustHaveTag(TriggerInfo{}, "ChildPatches")
 	TriggerInfoDownstreamParametersKey = bsonutil.MustHaveTag(TriggerInfo{}, "DownstreamParameters")
+
+	// BSON fields for thirdparty.Github
+	githubPatchHeadOwnerKey       = bsonutil.MustHaveTag(thirdparty.GithubPatch{}, "HeadOwner")
+	githubPatchMergeCommitSHAHKey = bsonutil.MustHaveTag(thirdparty.GithubPatch{}, "MergeCommitSHA")
+
+	// BSON fields for thirdparty.GithubMergeGroup
+	githubMergeGroupHeadSHAKey = bsonutil.MustHaveTag(thirdparty.GithubMergeGroup{}, "HeadSHA")
 )
 
 // Query Validation
@@ -159,8 +166,7 @@ var requesterExpression = bson.M{
 				"case": bson.M{
 					"$and": []bson.M{
 						{"$ifNull": []interface{}{"$" + githubPatchDataKey, false}},
-						{"$ne": []string{"$" + bsonutil.GetDottedKeyName(githubPatchDataKey, "head_owner"), ""}},
-						{"$ne": []interface{}{"$" + bsonutil.GetDottedKeyName(githubPatchDataKey, "head_owner"), ""}},
+						{"$ne": []string{"$" + bsonutil.GetDottedKeyName(githubPatchDataKey, githubPatchHeadOwnerKey), ""}},
 					},
 				},
 				"then": evergreen.GithubPRRequester,
@@ -169,7 +175,7 @@ var requesterExpression = bson.M{
 				"case": bson.M{
 					"$and": []bson.M{
 						{"$ifNull": []interface{}{"$" + githubMergeDataKey, false}},
-						{"$ne": []string{"$" + bsonutil.GetDottedKeyName(githubMergeDataKey, "head_sha"), ""}},
+						{"$ne": []string{"$" + bsonutil.GetDottedKeyName(githubMergeDataKey, githubMergeGroupHeadSHAKey), ""}},
 					},
 				},
 				"then": evergreen.GithubMergeRequester,
@@ -178,7 +184,7 @@ var requesterExpression = bson.M{
 				"case": bson.M{
 					"$and": []bson.M{
 						{"$ifNull": []interface{}{"$" + githubPatchDataKey, false}},
-						{"$ne": []string{"$" + bsonutil.GetDottedKeyName(githubPatchDataKey, "merge_commit_sha"), ""}},
+						{"$ne": []string{"$" + bsonutil.GetDottedKeyName(githubPatchDataKey, githubPatchMergeCommitSHAHKey), ""}},
 					},
 				},
 				"then": evergreen.MergeTestRequester,
