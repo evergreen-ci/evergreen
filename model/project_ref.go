@@ -164,7 +164,6 @@ type CommitQueueParams struct {
 	Enabled     *bool      `bson:"enabled" json:"enabled" yaml:"enabled"`
 	MergeMethod string     `bson:"merge_method" json:"merge_method" yaml:"merge_method"`
 	MergeQueue  MergeQueue `bson:"merge_queue" json:"merge_queue" yaml:"merge_queue"`
-	CLIOnly     bool       `bson:"cli_only" json:"cli_only" yaml:"cli_only"`
 	Message     string     `bson:"message,omitempty" json:"message,omitempty" yaml:"message"`
 }
 
@@ -352,6 +351,7 @@ var (
 	projectRefProjectHealthViewKey        = bsonutil.MustHaveTag(ProjectRef{}, "ProjectHealthView")
 
 	commitQueueEnabledKey          = bsonutil.MustHaveTag(CommitQueueParams{}, "Enabled")
+	commitQueueMergeQueueKey       = bsonutil.MustHaveTag(CommitQueueParams{}, "MergeQueue")
 	triggerDefinitionProjectKey    = bsonutil.MustHaveTag(TriggerDefinition{}, "Project")
 	containerSecretExternalNameKey = bsonutil.MustHaveTag(ContainerSecret{}, "ExternalName")
 	containerSecretExternalIDKey   = bsonutil.MustHaveTag(ContainerSecret{}, "ExternalID")
@@ -604,6 +604,25 @@ func (p *ProjectRef) MergeWithProjectConfig(version string) (err error) {
 		util.RecursivelySetUndefinedFields(reflectedRef, reflectedConfig)
 	}
 	return err
+}
+
+// SetGitHubAppCredentials updates or creates an entry in
+// GithubAppAuth for the project ref. If the provided values
+// are empty, the entry is deleted.
+func (p *ProjectRef) SetGithubAppCredentials(appID int64, privateKey []byte) error {
+	if appID == 0 && len(privateKey) == 0 {
+		return RemoveGithubAppAuth(p.Id)
+	}
+
+	if appID == 0 || len(privateKey) == 0 {
+		return errors.New("both app ID and private key must be provided")
+	}
+	auth := GithubAppAuth{
+		Id:         p.Id,
+		AppId:      appID,
+		PrivateKey: privateKey,
+	}
+	return auth.Upsert()
 }
 
 // AddToRepoScope validates that the branch can be attached to the matching repo,
@@ -2288,8 +2307,9 @@ func (p *ProjectRef) GetActivationTimeForVariant(variant *BuildVariant) (time.Ti
 		if buildStatus.BuildVariant != variant.Name || !buildStatus.Activated {
 			continue
 		}
-
-		return buildStatus.ActivateAt.Add(time.Minute * time.Duration(p.getBatchTimeForVariant(variant))), nil
+		if !buildStatus.ActivateAt.IsZero() {
+			return buildStatus.ActivateAt.Add(time.Minute * time.Duration(p.getBatchTimeForVariant(variant))), nil
+		}
 	}
 
 	return defaultRes, nil
@@ -3140,11 +3160,13 @@ func projectRefPipelineForCommitQueueEnabled() []bson.M {
 				}},
 				{"$or": []bson.M{
 					{
-						bsonutil.GetDottedKeyName(projectRefCommitQueueKey, commitQueueEnabledKey): true,
+						bsonutil.GetDottedKeyName(projectRefCommitQueueKey, commitQueueEnabledKey):    true,
+						bsonutil.GetDottedKeyName(projectRefCommitQueueKey, commitQueueMergeQueueKey): MergeQueueEvergreen,
 					},
 					{
-						bsonutil.GetDottedKeyName(projectRefCommitQueueKey, commitQueueEnabledKey):          nil,
-						bsonutil.GetDottedKeyName("repo_ref", RepoRefCommitQueueKey, commitQueueEnabledKey): true,
+						bsonutil.GetDottedKeyName(projectRefCommitQueueKey, commitQueueEnabledKey):             nil,
+						bsonutil.GetDottedKeyName("repo_ref", RepoRefCommitQueueKey, commitQueueEnabledKey):    true,
+						bsonutil.GetDottedKeyName("repo_ref", RepoRefCommitQueueKey, commitQueueMergeQueueKey): MergeQueueEvergreen,
 					},
 				}},
 			}},

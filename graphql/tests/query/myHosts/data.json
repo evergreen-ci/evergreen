@@ -116,7 +116,6 @@
           }
         },
         "clone_method": "legacy-ssh",
-        "ssh_key": "mci",
         "ssh_options": [
           "StrictHostKeyChecking=no",
           "BatchMode=yes",
@@ -349,7 +348,6 @@
           }
         },
         "clone_method": "legacy-ssh",
-        "ssh_key": "mci",
         "ssh_options": [
           "StrictHostKeyChecking=no",
           "BatchMode=yes",
@@ -698,7 +696,6 @@
         }
       },
       "clone_method": "legacy-ssh",
-      "ssh_key": "mci",
       "ssh_options": [
         "StrictHostKeyChecking=no",
         "BatchMode=yes",
@@ -809,7 +806,6 @@
         }
       },
       "clone_method": "legacy-ssh",
-      "ssh_key": "mci",
       "ssh_options": [
         "StrictHostKeyChecking=no",
         "BatchMode=yes",

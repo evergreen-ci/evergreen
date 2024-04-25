@@ -70,10 +70,6 @@ func TestModelConversion(t *testing.T) {
 		assert.Contains(apiSettings.Expansions, k)
 		assert.Equal(v, apiSettings.Expansions[k])
 	}
-	for k, v := range testSettings.Keys {
-		assert.Contains(apiSettings.Keys, k)
-		assert.Equal(v, apiSettings.Keys[k])
-	}
 	for k, v := range testSettings.Plugins {
 		assert.Contains(apiSettings.Plugins, k)
 		for k2, v2 := range v {

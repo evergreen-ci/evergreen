@@ -291,7 +291,7 @@ func (s *PatchConnectorAbortByIdSuite) TearDownSuite() {
 }
 
 func (s *PatchConnectorAbortByIdSuite) TestAbort() {
-	err := AbortPatch(s.obj_ids[0], "user1")
+	err := AbortPatch(context.Background(), s.obj_ids[0], "user1")
 	s.NoError(err)
 	p, err := FindPatchById(s.obj_ids[0])
 	s.Require().NoError(err)
@@ -301,7 +301,7 @@ func (s *PatchConnectorAbortByIdSuite) TestAbort() {
 	s.NoError(err)
 	s.Equal(evergreen.PatchVersionRequester, *abortedPatch.Requester)
 
-	err = AbortPatch(s.obj_ids[1], "user1")
+	err = AbortPatch(context.Background(), s.obj_ids[1], "user1")
 	s.NoError(err)
 
 	p, err = FindPatchById(s.obj_ids[1])
@@ -315,7 +315,7 @@ func (s *PatchConnectorAbortByIdSuite) TestAbortFail() {
 	for _, i := range s.obj_ids {
 		s.NotEqual(new_id, i)
 	}
-	err := AbortPatch(new_id.Hex(), "user")
+	err := AbortPatch(context.Background(), new_id.Hex(), "user")
 	s.Error(err)
 }
 

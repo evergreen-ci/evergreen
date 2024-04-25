@@ -49,7 +49,6 @@ mutation {
           serviceUser: ""
           shellPath: "/bin/fish"
         }
-        sshKey: "mci"
         sshOptions: [
           "StrictHostKeyChecking=no"
           "BatchMode=yes"
@@ -85,6 +84,7 @@ mutation {
         }
         disableShallowClone: true
         note: "This is an updated note"
+        warningNote: "This is a warning"
         isVirtualWorkStation: false
         isCluster: true
         homeVolumeSettings: { formatCommand: "" }
@@ -103,6 +103,7 @@ mutation {
       isCluster
       name
       note
+      warningNote
       plannerSettings {
         targetTime
       }

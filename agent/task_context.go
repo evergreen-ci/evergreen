@@ -153,18 +153,6 @@ func (tc *taskContext) hadTimedOut() bool {
 	return tc.timedOut()
 }
 
-func (tc *taskContext) getOomTrackerInfo() *apimodels.OOMTrackerInfo {
-	lines, pids := tc.oomTracker.Report()
-	if len(lines) == 0 {
-		return nil
-	}
-
-	return &apimodels.OOMTrackerInfo{
-		Detected: true,
-		Pids:     pids,
-	}
-}
-
 func (tc *taskContext) oomTrackerEnabled(cloudProvider string) bool {
 	return tc.taskConfig.Project.OomTracker && !utility.StringSliceContains(evergreen.ProviderContainer, cloudProvider)
 }

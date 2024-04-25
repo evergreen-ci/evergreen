@@ -14,8 +14,7 @@
         ]
       },
       "user": "ubuntu",
-      "spawn_allowed": false,
-      "ssh_key": "fake_ssh_key"
+      "spawn_allowed": false
     },
     {
       "_id": "localhost2",
@@ -30,8 +29,7 @@
         ]
       },
       "user": "ubuntu",
-      "spawn_allowed": false,
-      "ssh_key": "fake_ssh_key"
+      "spawn_allowed": false
     },
     {
       "_id": "rhel71-power8-large",
@@ -70,7 +68,6 @@
         }
       },
       "clone_method": "legacy-ssh",
-      "ssh_key": "mci",
       "ssh_options": [
         "StrictHostKeyChecking=no",
         "BatchMode=yes",
@@ -184,7 +181,6 @@
         "resource_limits": {}
       },
       "clone_method": "oauth",
-      "ssh_key": "mci",
       "ssh_options": [
         "StrictHostKeyChecking=no",
         "BatchMode=yes",

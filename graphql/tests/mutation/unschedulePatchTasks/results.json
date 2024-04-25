@@ -3,6 +3,9 @@
     {
       "query_file": "unschedule_patch_tasks_bad_id.graphql",
       "result": {
+        "data": {
+          "unschedulePatchTasks": null
+        },
         "errors": [
           {
             "message": "Unable to find version with id: `washington`",
@@ -11,10 +14,7 @@
               "code": "RESOURCE_NOT_FOUND"
             }
           }
-        ],
-        "data": {
-          "unschedulePatchTasks": null
-        }
+        ]
       }
     },
     {
@@ -37,7 +37,7 @@
       "query_file": "commit_queue_dequeue.graphql",
       "result": {
         "data": {
-          "unschedulePatchTasks": "123456789012345678901234"
+          "unschedulePatchTasks": "5dd2e89cd1fe07048e43bb9c"
         }
       }
     }

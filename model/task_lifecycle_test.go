@@ -1457,7 +1457,7 @@ func TestUpdateVersionAndPatchStatusForBuilds(t *testing.T) {
 	assert.NoError(t, testTask.Insert())
 	assert.NoError(t, anotherTask.Insert())
 
-	assert.NoError(t, UpdateVersionAndPatchStatusForBuilds([]string{b.Id}))
+	assert.NoError(t, UpdateVersionAndPatchStatusForBuilds(ctx, []string{b.Id}))
 	dbBuild, err := build.FindOneId(b.Id)
 	assert.NoError(t, err)
 	assert.Equal(t, evergreen.BuildStarted, dbBuild.Status)
@@ -1470,7 +1470,7 @@ func TestUpdateVersionAndPatchStatusForBuilds(t *testing.T) {
 		bson.M{"$set": bson.M{task.StatusKey: evergreen.TaskFailed}},
 	)
 	assert.NoError(t, err)
-	assert.NoError(t, UpdateVersionAndPatchStatusForBuilds([]string{b.Id}))
+	assert.NoError(t, UpdateVersionAndPatchStatusForBuilds(ctx, []string{b.Id}))
 	dbBuild, err = build.FindOneId(b.Id)
 	assert.NoError(t, err)
 	assert.Equal(t, evergreen.BuildFailed, dbBuild.Status)

@@ -1,0 +1,7 @@
+mutation {
+    setAnnotationMetadataLinks(
+        taskId: "no_permissions",
+        execution: 1,
+        metadataLinks: [{url: "https://issuelink.com/browse/ticket", text: "Hello World"}]
+    )
+}

@@ -22,7 +22,7 @@ type Thing struct {
 	Thing string `json:"thing"`
 }
 
-func TestValidateJSON(t *testing.T) {
+func TestValidate(t *testing.T) {
 	assert := assert.New(t)
 	jsonBytes := []byte(`
 [
@@ -49,6 +49,8 @@ func TestValidateJSON(t *testing.T) {
 			assert.Equal("two", thing.Thing)
 		}
 	}
+
+	assert.NoError(validateFileSize(files, 1))
 }
 
 func TestGenerateExecute(t *testing.T) {

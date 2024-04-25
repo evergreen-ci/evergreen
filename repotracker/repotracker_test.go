@@ -368,7 +368,7 @@ tasks:
 	assert.False(t, bv.BatchTimeTasks[0].Activated)
 
 	// should activate build variants and tasks except for the batchtime task and the task with a negative priority
-	ok, err := model.ActivateElapsedBuildsAndTasks(v)
+	ok, err := model.ActivateElapsedBuildsAndTasks(ctx, v)
 	assert.NoError(t, err)
 	assert.True(t, ok)
 	assert.Len(t, v.BuildVariants, 2)
@@ -405,7 +405,7 @@ tasks:
 			v.BuildVariants[i].BatchTimeTasks[0].ActivateAt = time.Now().Add(-time.Millisecond)
 		}
 	}
-	ok, err = model.ActivateElapsedBuildsAndTasks(v)
+	ok, err = model.ActivateElapsedBuildsAndTasks(ctx, v)
 	assert.NoError(t, err)
 	assert.True(t, ok)
 	bv, _ = findStatus(v, "bv1")
@@ -483,7 +483,7 @@ func TestBatchTimes(t *testing.T) {
 			So(v, ShouldNotBeNil)
 			So(err, ShouldBeNil)
 			So(len(v.BuildVariants), ShouldEqual, 2)
-			ok, err := model.ActivateElapsedBuildsAndTasks(v)
+			ok, err := model.ActivateElapsedBuildsAndTasks(ctx, v)
 			So(err, ShouldBeNil)
 			So(ok, ShouldBeFalse)
 			So(v.BuildVariants[0].Activated, ShouldBeFalse)
@@ -509,7 +509,7 @@ func TestBatchTimes(t *testing.T) {
 			version, err := model.VersionFindOne(model.VersionByMostRecentSystemRequester("testproject"))
 			So(version, ShouldNotBeNil)
 			So(err, ShouldBeNil)
-			ok, err := model.ActivateElapsedBuildsAndTasks(version)
+			ok, err := model.ActivateElapsedBuildsAndTasks(ctx, version)
 			So(err, ShouldBeNil)
 			So(ok, ShouldBeTrue)
 			bv1, found := findStatus(version, "bv1")
@@ -546,7 +546,7 @@ func TestBatchTimes(t *testing.T) {
 			version, err := model.VersionFindOne(model.VersionByMostRecentSystemRequester("testproject"))
 			So(version, ShouldNotBeNil)
 			So(err, ShouldBeNil)
-			ok, err := model.ActivateElapsedBuildsAndTasks(version)
+			ok, err := model.ActivateElapsedBuildsAndTasks(ctx, version)
 			So(err, ShouldBeNil)
 			So(ok, ShouldBeFalse)
 			bv1, found := findStatus(version, "bv1")
@@ -581,7 +581,7 @@ func TestBatchTimes(t *testing.T) {
 			version, err := model.VersionFindOne(model.VersionByMostRecentSystemRequester("testproject"))
 			So(err, ShouldBeNil)
 			So(version, ShouldNotBeNil)
-			ok, err := model.ActivateElapsedBuildsAndTasks(version)
+			ok, err := model.ActivateElapsedBuildsAndTasks(ctx, version)
 			So(err, ShouldBeNil)
 			So(ok, ShouldBeTrue)
 			bv1, found := findStatus(version, "bv1")
@@ -646,7 +646,7 @@ func TestBatchTimes(t *testing.T) {
 		So(version, ShouldNotBeNil)
 
 		Convey("the new variant should activate immediately", func() {
-			ok, err := model.ActivateElapsedBuildsAndTasks(version)
+			ok, err := model.ActivateElapsedBuildsAndTasks(ctx, version)
 			So(err, ShouldBeNil)
 			So(ok, ShouldBeTrue)
 			bv1, found := findStatus(version, "bv1")

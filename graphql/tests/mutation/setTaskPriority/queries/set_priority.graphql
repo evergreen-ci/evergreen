@@ -1,0 +1,5 @@
+mutation {
+  setTaskPriority(taskId: "task_id", priority: 10) {
+    id
+  }
+}

@@ -21,9 +21,6 @@
             "api_url": "localhost:9090",
             "configdir": "../config",
             "domain_name": "localhost",
-            "keys": {
-                "fake_ssh_key": "/path/to/key"
-            },
             "banner": "This is an important notification",
             "banner_theme": "important",
             "client_binaries_dir": "clients",
