@@ -454,7 +454,7 @@ func tryEnqueueItemForPR(ctx context.Context, sc Connector, projectRef *model.Pr
 	return patchDoc, nil
 }
 
-// sendGitHubCommitQueueError updates the GitHub status and posts a comment
+// sendGitHubCommitQueueError posts a comment to the PR
 // after an error has occurred related to the commit queue.
 func sendGitHubCommitQueueError(ctx context.Context, env evergreen.Environment, sc Connector, pr *github.PullRequest, userRepo UserRepoInfo, err error) error {
 	if err == nil {
