@@ -289,9 +289,6 @@ func (j *hostAllocatorJob) Run(ctx context.Context) {
 	span.SetAttributes(
 		attribute.String(evergreen.DistroIDOtelAttribute, distro.Id),
 		attribute.String(fmt.Sprintf("%s.distro_provider", hostAllocatorAttributePrefix), distro.Provider),
-		attribute.String(fmt.Sprintf("%s.total_runtime", hostAllocatorAttributePrefix), distroQueueInfo.ExpectedDuration.String()),
-		attribute.String(fmt.Sprintf("%s.time_to_empty", hostAllocatorAttributePrefix), timeToEmpty.String()),
-		attribute.String(fmt.Sprintf("%s.time_to_empty_no_spawns", hostAllocatorAttributePrefix), timeToEmptyNoSpawns.String()),
 		attribute.Int(fmt.Sprintf("%s.distro_max_hosts", hostAllocatorAttributePrefix), distro.HostAllocatorSettings.MaximumHosts),
 		attribute.Int(fmt.Sprintf("%s.hosts_requested", hostAllocatorAttributePrefix), len(hostsSpawned)),
 		attribute.Int(fmt.Sprintf("%s.hosts_free", hostAllocatorAttributePrefix), nHostsFree),
@@ -305,12 +302,11 @@ func (j *hostAllocatorJob) Run(ctx context.Context) {
 		attribute.Int(fmt.Sprintf("%s.task_queue_length", hostAllocatorAttributePrefix), distroQueueInfo.Length),
 		attribute.Int(fmt.Sprintf("%s.overdue_tasks", hostAllocatorAttributePrefix), distroQueueInfo.CountWaitOverThreshold),
 		attribute.Int(fmt.Sprintf("%s.overdue_tasks_in_groups", hostAllocatorAttributePrefix), totalOverdueInTaskGroups),
-		attribute.Float64(fmt.Sprintf("%s.seconds_to_empty", hostAllocatorAttributePrefix), timeToEmptyNoSpawns.Seconds()),
 		attribute.Float64(fmt.Sprintf("%s.queue_ratio", hostAllocatorAttributePrefix), float64(noSpawnsRatio)),
 		attribute.Float64(fmt.Sprintf("%s.host_queue_ratio", hostAllocatorAttributePrefix), float64(hostQueueRatio)),
 		attribute.Float64(fmt.Sprintf("%s.runtime_secs", hostAllocatorAttributePrefix), distroQueueInfo.ExpectedDuration.Seconds()),
-		attribute.Float64(fmt.Sprintf("%s.time_to_empty_mins", hostAllocatorAttributePrefix), timeToEmpty.Minutes()),
-		attribute.Float64(fmt.Sprintf("%s.time_to_empty_no_spawns_mins", hostAllocatorAttributePrefix), timeToEmptyNoSpawns.Minutes()),
+		attribute.Float64(fmt.Sprintf("%s.time_to_empty_secs", hostAllocatorAttributePrefix), timeToEmpty.Seconds()),
+		attribute.Float64(fmt.Sprintf("%s.time_to_empty_no_spawns_secs", hostAllocatorAttributePrefix), timeToEmptyNoSpawns.Seconds()),
 	)
 }
 
