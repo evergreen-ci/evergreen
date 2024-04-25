@@ -318,7 +318,6 @@ var errNoCommitQueueForBranch = errors.New("no project with commit queue enabled
 // submit to the commit queue, and enqueues it. If it succeeds, it will return
 // the created patch and the PR info. It may still return the PR info even if
 // it fails to create the patch.
-// Returns true if sending GitHub status should be skipped.
 func getAndEnqueueCommitQueueItemForPR(ctx context.Context, env evergreen.Environment, sc Connector, info commitqueue.EnqueuePRInfo) (*patch.Patch, *github.PullRequest, error) {
 	pr, err := getPRAndCheckBase(ctx, sc, info)
 	if err != nil {
