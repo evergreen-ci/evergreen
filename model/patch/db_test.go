@@ -76,6 +76,8 @@ func TestMostRecentByUserAndProject(t *testing.T) {
 	assert.Equal(t, p.Id, previousPatch.Id)
 }
 func TestByPatchNameStatusesCommitQueuePaginatedRequestersOption(t *testing.T) {
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
 	assert.NoError(t, db.ClearCollections(Collection))
 	ghPRPatch := Patch{
 		Id:          bson.NewObjectId(),
@@ -123,7 +125,6 @@ func TestByPatchNameStatusesCommitQueuePaginatedRequestersOption(t *testing.T) {
 		Project:    utility.ToStringPtr("evergreen"),
 		Requesters: []string{evergreen.PatchVersionRequester},
 	}
-	ctx := context.TODO()
 	patches, count, err := ByPatchNameStatusesCommitQueuePaginated(ctx, opts)
 	assert.NoError(t, err)
 	assert.Equal(t, 1, count)
