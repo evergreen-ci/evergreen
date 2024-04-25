@@ -10,7 +10,7 @@ import (
 	"strings"
 	"time"
 
-	"github.com/docker/docker/api/types/container"
+	"github.com/docker/docker/api/types"
 	"github.com/evergreen-ci/birch"
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/apimodels"
@@ -456,7 +456,7 @@ func getHostCreationOptions(d distro.Distro, taskID, userID string, createHost a
 
 // GetDockerLogs retrieves the logs for the given container.
 func GetDockerLogs(ctx context.Context, containerId string, parent *host.Host,
-	settings *evergreen.Settings, options container.LogsOptions) (io.Reader, error) {
+	settings *evergreen.Settings, options types.ContainerLogsOptions) (io.Reader, error) {
 	c := cloud.GetDockerClient(settings)
 
 	if err := c.Init(settings.Providers.Docker.APIVersion); err != nil {

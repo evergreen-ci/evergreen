@@ -4,7 +4,6 @@ import (
 	"context"
 
 	"github.com/docker/docker/api/types"
-	"github.com/docker/docker/api/types/container"
 	"github.com/docker/docker/api/types/volume"
 	"github.com/docker/docker/client"
 	"github.com/mongodb/grip"
@@ -44,14 +43,14 @@ func Cleanup(ctx context.Context, logger grip.Journaler) error {
 }
 
 func cleanContainers(ctx context.Context, dockerClient *client.Client) error {
-	containers, err := dockerClient.ContainerList(ctx, container.ListOptions{All: true})
+	containers, err := dockerClient.ContainerList(ctx, types.ContainerListOptions{All: true})
 	if err != nil {
 		return errors.Wrap(err, "can't get list of containers")
 	}
 
 	catcher := grip.NewBasicCatcher()
-	for _, c := range containers {
-		catcher.Wrapf(dockerClient.ContainerRemove(ctx, c.ID, container.RemoveOptions{Force: true}), "can't remove container '%s'", c.ID)
+	for _, container := range containers {
+		catcher.Wrapf(dockerClient.ContainerRemove(ctx, container.ID, types.ContainerRemoveOptions{Force: true}), "can't remove container '%s'", container.ID)
 	}
 
 	return catcher.Resolve()

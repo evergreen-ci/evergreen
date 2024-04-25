@@ -7,7 +7,7 @@ import (
 	"strconv"
 	"time"
 
-	"github.com/docker/docker/api/types/container"
+	"github.com/docker/docker/api/types"
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/apimodels"
 	"github.com/evergreen-ci/evergreen/model/distro"
@@ -220,7 +220,7 @@ func (h *containerLogsHandler) Run(ctx context.Context) gimlet.Responder {
 	if err != nil {
 		return gimlet.NewJSONInternalErrorResponse(errors.Wrap(err, "getting admin settings"))
 	}
-	options := container.LogsOptions{
+	options := types.ContainerLogsOptions{
 		Timestamps: true,
 		Tail:       h.tail,
 		Since:      h.startTime,

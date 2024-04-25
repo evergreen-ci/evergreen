@@ -10,7 +10,6 @@ import (
 
 	"github.com/docker/docker/api/types"
 	"github.com/docker/docker/api/types/container"
-	"github.com/docker/docker/api/types/image"
 	"github.com/docker/go-connections/nat"
 	"github.com/evergreen-ci/evergreen/model/host"
 	"github.com/pkg/errors"
@@ -104,7 +103,7 @@ func (c *dockerClientMock) GetContainer(context.Context, *host.Host, string) (*t
 	return container, nil
 }
 
-func (c *dockerClientMock) GetDockerLogs(_ context.Context, containerID string, _ *host.Host, _ container.LogsOptions) (io.Reader, error) {
+func (c *dockerClientMock) GetDockerLogs(_ context.Context, containerID string, _ *host.Host, _ types.ContainerLogsOptions) (io.Reader, error) {
 	return bytes.NewBufferString("this is a log message"), nil
 }
 
@@ -139,22 +138,22 @@ func (c *dockerClientMock) RemoveContainer(context.Context, *host.Host, string) 
 	return nil
 }
 
-func (c *dockerClientMock) ListImages(context.Context, *host.Host) ([]image.Summary, error) {
+func (c *dockerClientMock) ListImages(context.Context, *host.Host) ([]types.ImageSummary, error) {
 	if c.failList {
 		return nil, errors.New("failed to list images")
 	}
 	now := time.Now()
-	image1 := image.Summary{
+	image1 := types.ImageSummary{
 		ID:         "image-1",
 		Containers: 2,
 		Created:    now.Unix(),
 	}
-	image2 := image.Summary{
+	image2 := types.ImageSummary{
 		ID:         "image-2",
 		Containers: 2,
 		Created:    now.Add(-10 * time.Minute).Unix(),
 	}
-	return []image.Summary{image1, image2}, nil
+	return []types.ImageSummary{image1, image2}, nil
 }
 
 func (c *dockerClientMock) RemoveImage(context.Context, *host.Host, string) error {
