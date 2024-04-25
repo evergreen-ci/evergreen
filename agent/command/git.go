@@ -78,15 +78,12 @@ type gitFetchProject struct {
 
 	RecurseSubmodules bool `mapstructure:"recurse_submodules"`
 
-	// CloneAllBranches specifies whether all branches should be cloned with the '--single-branch' flag.
-	// If set to true, all branches will be cloned during the git operation.
-	// If set to false, only the current branch will be cloned.
-	// If a depth (CloneDepth) is specified, the clone will be single-branch (as implied by Git).
-	CloneAllBranches bool `mapstructure:"clone_all_branches"`
-
-	// FullTreeClone forces Evergreen to clone the full tree of the repository.
-	// If set to false, Evergreen will clone the repository without the full tree.
-	FullTreeClone bool `mapstructure:"full_tree_clone"`
+	// FullClone when set to true, forces Evergreen to clone the full tree of the
+	// repository and all branches.
+	// When set to false (by default), Evergreen will clone the repository without
+	// the full tree and will only clone the target.
+	// This will fallback to a full clone if there is no clear target branch.
+	FullClone bool `mapstructure:"full_tree_clone"`
 
 	CommitterName string `mapstructure:"committer_name"`
 
@@ -104,17 +101,10 @@ type cloneOpts struct {
 	dir                    string
 	token                  string
 	recurseSubmodules      bool
-	cloneAllBranches       bool
-	fullTreeClone          bool
+	fullClone              bool
 	useVerbose             bool
 	usePatchMergeCommitSha bool
 	cloneDepth             int
-
-	// Since some distros or situations might cause a filtered clone of a
-	// single branch to fail, on retries we fall back to a full clone.
-	// After the first attempt, this flag is set to true. Or if the head
-	// branch/relevant branch is missing, we fall back to a full clone.
-	fallbackToFullClone bool
 }
 
 // validateCloneMethod checks that the clone mechanism is one of the supported
@@ -247,17 +237,13 @@ func (opts cloneOpts) buildGitCloneCommand() ([]string, error) {
 	}
 	if opts.branch != "" {
 		clone = fmt.Sprintf("%s --branch '%s'", clone, opts.branch)
-	}
-	// If we're not falling back to a full clone, we can use single-branch and filter.
-	if !opts.fallbackToFullClone {
-		if !opts.cloneAllBranches {
-			clone = fmt.Sprintf("%s --single-branch", clone)
-		}
-		if !opts.fullTreeClone {
+		// If the branch is specified, we can do a single branch filtered clone.
+		// These options are useless if the branch is not specified.
+		if !opts.fullClone {
 			// `tree:0` is a filter that tells git to not clone
 			// any additional trees (folders and files) not related
 			// the HEAD commit.
-			clone = fmt.Sprintf("%s --filter=tree:0", clone)
+			clone = fmt.Sprintf("%s --single-branch --filter=tree:0", clone)
 		}
 	}
 
@@ -322,32 +308,20 @@ func (c *gitFetchProject) buildSourceCloneCommand(ctx context.Context, comm clie
 		fmt.Sprintf("rm -rf %s", c.Directory),
 	}
 
-	if !opts.fallbackToFullClone {
-		switch conf.Task.Requester {
-		case evergreen.GithubMergeRequester:
-			// If this is a github merge queue task, we can directly clone
-			// the provided branch.
-			if conf.GithubMergeData.HeadBranch != "" {
-				opts.branch = conf.GithubMergeData.HeadBranch
-			} else {
-				// If the head branch is missing, fall back to a full clone.
-				opts.fallbackToFullClone = true
-			}
-		case evergreen.GithubPRRequester:
-			// If this is a PR task, we can directly clone the provided PR.
-			if conf.GithubPatchData.HeadBranch != "" {
-				opts.branch = conf.GithubPatchData.HeadBranch
-				opts.owner = conf.GithubPatchData.HeadOwner
-				opts.repo = conf.GithubPatchData.HeadRepo
-			} else {
-				// If the head branch is missing, fall back to a full clone.
-				opts.fallbackToFullClone = true
-			}
-		case evergreen.PatchVersionRequester:
-			// TODO: (DEVPROD-6795) Include Git tracking information
-			// inside of the patch document so we can use it here.
-			opts.fallbackToFullClone = true
-		}
+	// This sets the branch option for the clone command based on requester.
+	// This allows the full clone to be used for PRs and merge requests.
+	switch conf.Task.Requester {
+	// TODO: (DEVPROD-6795) Include Git tracking information
+	// inside of the patch document so we can use it here for other requesters.
+	case evergreen.GithubMergeRequester:
+		// If this is a GH merge queue task, we can track
+		// the branch from the merge request.
+		opts.branch = conf.GithubMergeData.HeadBranch
+	case evergreen.GithubPRRequester:
+		// If this is a PR task, we can track the branch from the PR.
+		opts.branch = conf.GithubPatchData.HeadBranch
+		opts.owner = conf.GithubPatchData.HeadOwner
+		opts.repo = conf.GithubPatchData.HeadRepo
 	}
 
 	cloneCmd, err := opts.buildGitCloneCommand()
@@ -378,7 +352,7 @@ func (c *gitFetchProject) buildSourceCloneCommand(ctx context.Context, comm clie
 			localBranchName = fmt.Sprintf("evg-merge-test-%s", utility.RandomString())
 			remoteBranchName = fmt.Sprintf("pull/%d", conf.GithubPatchData.PRNumber)
 		}
-		if opts.fallbackToFullClone {
+		if opts.branch == "" {
 			if conf.Task.Requester == evergreen.GithubPRRequester {
 				// Github creates a ref called refs/pull/[pr number]/head
 				// that provides the entire tree of changes, including merges
@@ -509,8 +483,7 @@ func (c *gitFetchProject) opts(projectMethod, projectToken string, logger client
 		dir:                    c.Directory,
 		token:                  projectToken,
 		recurseSubmodules:      c.RecurseSubmodules,
-		cloneAllBranches:       c.CloneAllBranches,
-		fullTreeClone:          c.FullTreeClone,
+		fullClone:              c.FullClone,
 		usePatchMergeCommitSha: true,
 	}
 	cloneDepth := c.CloneDepth
@@ -587,7 +560,7 @@ func (c *gitFetchProject) fetchSource(ctx context.Context,
 	return c.retryFetch(ctx, logger, true, opts, func(opts cloneOpts) error {
 		attempt++
 		if attempt > 1 {
-			opts.fallbackToFullClone = true
+			opts.fullClone = true
 		}
 
 		gitCommands, err := c.buildSourceCloneCommand(ctx, comm, logger, conf, opts)
@@ -826,7 +799,7 @@ func (c *gitFetchProject) fetchModuleSource(ctx context.Context,
 		attempt++
 		// Fallback if the attempt is more than 1 or the head branch is missing.
 		if attempt > 1 {
-			opts.fallbackToFullClone = true
+			opts.fullClone = true
 		}
 		var moduleCmds []string
 		moduleCmds, err = c.buildModuleCloneCommand(conf, opts, revision, modulePatch)
