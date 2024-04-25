@@ -1516,11 +1516,11 @@ func (c *communicatorImpl) PostHostIsUp(ctx context.Context, hostID, hostSecret,
 		method: http.MethodPost,
 		path:   fmt.Sprintf("/hosts/%s/is_up", hostID),
 	}
-	params := restmodel.APIHostIsUpParams{
+	opts := restmodel.APIHostIsUpOptions{
 		HostID:        hostID,
 		EC2InstanceID: ec2InstanceID,
 	}
-	r, err := c.createRequest(info, params)
+	r, err := c.createRequest(info, opts)
 	if err != nil {
 		return nil, errors.Wrap(err, "creating request")
 	}
@@ -1536,7 +1536,7 @@ func (c *communicatorImpl) PostHostIsUp(ctx context.Context, hostID, hostSecret,
 	}
 	defer resp.Body.Close()
 	if resp.StatusCode != http.StatusOK {
-		return nil, util.RespErrorf(resp, "posting that host is up")
+		return nil, util.RespErrorf(resp, "posting that host '%s' is up", hostID)
 	}
 	var h restmodel.APIHost
 	if err = utility.ReadJSON(resp.Body, &h); err != nil {

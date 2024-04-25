@@ -265,7 +265,7 @@ func makeSpawnOptions(options *restmodel.HostRequestOptions, user *user.DBUser) 
 }
 
 // PostHostIsUp indicates to the app server that a host is up.
-func PostHostIsUp(ctx context.Context, params restmodel.APIHostIsUpParams) (*restmodel.APIHost, error) {
+func PostHostIsUp(ctx context.Context, params restmodel.APIHostIsUpOptions) (*restmodel.APIHost, error) {
 	h, err := host.FindOneByIdOrTag(ctx, params.HostID)
 	if err != nil {
 		return nil, gimlet.ErrorResponse{

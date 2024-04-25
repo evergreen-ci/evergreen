@@ -411,7 +411,7 @@ func (rh *hostProvisioningOptionsGetHandler) Run(ctx context.Context) gimlet.Res
 // GET /hosts/{host_id}/is_up
 
 type hostIsUpPostHandler struct {
-	params model.APIHostIsUpParams
+	params model.APIHostIsUpOptions
 }
 
 func makeHostIsUpPostHandler() gimlet.RouteHandler {

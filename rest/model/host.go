@@ -294,7 +294,7 @@ type APIOffboardUserResults struct {
 	TerminatedVolumes []string `json:"terminated_volumes"`
 }
 
-type APIHostIsUpParams struct {
+type APIHostIsUpOptions struct {
 	HostID        string `json:"host_id"`
 	EC2InstanceID string `json:"ec2_instance_id,omitempty"`
 }
