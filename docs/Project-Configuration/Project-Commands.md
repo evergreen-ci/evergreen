@@ -545,10 +545,10 @@ Parameters:
 -   `shallow_clone`: Sets `clone_depth` to 100, if not already set.
 -   `recurse_submodules`: automatically initialize and update each
     submodule in the repository, including any nested submodules.
--   `full_clone`: This option is only affects for GitHub merge queue and
-    pull requests tasks. By default (false), it will only clone the head
-    branch and git metadata (tags, etc). If set to true, it will always
-    clone the entire repository and all branches.
+-   `full_clone`: This option is only affects for GitHub merge queue,
+    pull requests tasks, and mainline commits. By default (false), it
+    will only clone the head branch and git metadata (tags, etc). If
+    set to true, it will always clone the entire repository and all branches.
 
 The parameters for each module are:
 

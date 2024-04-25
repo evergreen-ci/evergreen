@@ -78,9 +78,10 @@ type gitFetchProject struct {
 
 	RecurseSubmodules bool `mapstructure:"recurse_submodules"`
 
-	// FullClone only affects GH merge queue and PR tasks.
+	// FullClone only affects GH merge queue, PR tasks, and mainline commits.
 	// If true, Evergreen will clone the entire repo with all files for all branches.
-	// If false (default), Evergreen will only clone the GH merge queue branch or PR branch.
+	// If false (default), Evergreen will only clone the GH merge queue branch, PR branch or
+	// mainline branch.
 	FullClone bool `mapstructure:"full_clone"`
 
 	CommitterName string `mapstructure:"committer_name"`
