@@ -308,20 +308,23 @@ func (c *gitFetchProject) buildSourceCloneCommand(ctx context.Context, comm clie
 		fmt.Sprintf("rm -rf %s", c.Directory),
 	}
 
-	// This sets the branch option for the clone command based on requester.
-	// This allows the full clone to be used for PRs and merge requests.
-	switch conf.Task.Requester {
-	// TODO: (DEVPROD-6795) Include Git tracking information
-	// inside of the patch document so we can use it here for other requesters.
-	case evergreen.GithubMergeRequester:
-		// If this is a GH merge queue task, we can track
-		// the branch from the merge request.
-		opts.branch = conf.GithubMergeData.HeadBranch
-	case evergreen.GithubPRRequester:
-		// If this is a PR task, we can track the branch from the PR.
-		opts.branch = conf.GithubPatchData.HeadBranch
-		opts.owner = conf.GithubPatchData.HeadOwner
-		opts.repo = conf.GithubPatchData.HeadRepo
+	// This sets the branch option for the clone command based on requester only if
+	// this is not a full clone. If this is a full clone, we should clone everything
+	// and fallback.
+	if !opts.fullClone {
+		switch conf.Task.Requester {
+		// TODO: (DEVPROD-6795) Include Git tracking information
+		// inside of the patch document so we can use it here for other requesters.
+		case evergreen.GithubMergeRequester:
+			// If this is a GH merge queue task, we can track
+			// the branch from the merge request.
+			opts.branch = conf.GithubMergeData.HeadBranch
+		case evergreen.GithubPRRequester:
+			// If this is a PR task, we can track the branch from the PR.
+			opts.branch = conf.GithubPatchData.HeadBranch
+			opts.owner = conf.GithubPatchData.HeadOwner
+			opts.repo = conf.GithubPatchData.HeadRepo
+		}
 	}
 
 	cloneCmd, err := opts.buildGitCloneCommand()
