@@ -172,34 +172,34 @@ func (u *DBUser) UpdateParsleySettings(settings parsley.Settings) error {
 // the global per-user hourly task scheduling limit, and updates relevant timestamp and counter info used
 // to track the user's hourly scheduling usage. The numTasksActivated parameter being negative signifies
 // the user is deactivating tasks, which frees up space in their scheduling limit.
-func (u *DBUser) CheckAndUpdateSchedulingLimit(settings *evergreen.Settings, numTasksActivated int) error {
+func (u *DBUser) CheckAndUpdateSchedulingLimit(settings *evergreen.Settings, numTasksModified int) error {
 	var update bson.M
 	maxScheduledTasks := settings.TaskLimits.MaxHourlyPatchTasks
 	if maxScheduledTasks == 0 {
 		return nil
 	}
-	if numTasksActivated > maxScheduledTasks {
-		return errors.Errorf("cannot schedule %d tasks, maxumum hourly per-user limit is %d", numTasksActivated, maxScheduledTasks)
+	if numTasksModified > maxScheduledTasks {
+		return errors.Errorf("cannot schedule %d tasks, maxumum hourly per-user limit is %d", numTasksModified, maxScheduledTasks)
 	}
 	now := time.Now()
 	oneHourAgo := now.Add(-1 * time.Hour)
 	// If the last time the user scheduled patch tasks was within the hour, increment the number
-	// of activated tasks to the user's counter, erroring if the global limit is breached. If numTasksActivated
+	// of activated tasks to the user's counter, erroring if the global limit is breached. If numTasksModified
 	// is negative, the counter is decremented.
 	if u.LastScheduledTasksAt.After(oneHourAgo) {
 		update = bson.M{
-			"$set": bson.M{NumScheduledPatchTasksKey: getNewCounter(u.NumScheduledPatchTasks, numTasksActivated)},
+			"$set": bson.M{NumScheduledPatchTasksKey: getNewCounter(u.NumScheduledPatchTasks, numTasksModified)},
 		}
-		if (numTasksActivated + u.NumScheduledPatchTasks) >= maxScheduledTasks {
+		if (numTasksModified + u.NumScheduledPatchTasks) >= maxScheduledTasks {
 			minutesRemaining := 60 - int(now.Sub(u.LastScheduledTasksAt).Minutes())
 			return errors.Errorf("user '%s' has scheduled %d out of %d allowed tasks in the past hour, limit refreshes in %d minutes", u.Id, u.NumScheduledPatchTasks, maxScheduledTasks, minutesRemaining)
 		}
 	} else {
 		// Otherwise, if the user has not scheduled any patch tasks within the past hour, reset the last scheduled tasks
-		// timestamp to now, and reset the number of schedule tasks to the number of activated tasks passed in here. If we are dea
+		// timestamp to now, and reset the number of schedule tasks to the number of activated tasks passed in here.
 		update = bson.M{
 			"$set": bson.M{
-				NumScheduledPatchTasksKey: getNewCounter(0, numTasksActivated),
+				NumScheduledPatchTasksKey: getNewCounter(0, numTasksModified),
 				LastScheduledTasksAtKey:   time.Now(),
 			},
 		}
