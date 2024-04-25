@@ -355,6 +355,8 @@ func (c *gitFetchProject) buildSourceCloneCommand(ctx context.Context, comm clie
 			localBranchName = fmt.Sprintf("evg-merge-test-%s", utility.RandomString())
 			remoteBranchName = fmt.Sprintf("pull/%d", conf.GithubPatchData.PRNumber)
 		}
+		// If the branch is not set, that means either the branch information was empty or
+		// fullClone = true, so we need to fallback.
 		if opts.branch == "" {
 			if conf.Task.Requester == evergreen.GithubPRRequester {
 				// Github creates a ref called refs/pull/[pr number]/head
