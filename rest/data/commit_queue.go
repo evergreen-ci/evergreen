@@ -290,7 +290,7 @@ func EnqueuePRToCommitQueue(ctx context.Context, env evergreen.Environment, sc C
 			// projects have their own workflow that use the `evergreen merge`
 			// PR comment to trigger their own custom commit queue logic, and
 			// want this handler to no-op.
-			catcher.Wrap(sendGitHubCommitQueueError(ctx, env, sc, pr, NewUserRepoInfo(info), err), "propagating GitHub errors back to PR")
+			catcher.Wrap(sendGitHubCommitQueueError(ctx, sc, pr, NewUserRepoInfo(info), err), "propagating GitHub errors back to PR")
 		}
 		return nil, err
 	}
@@ -456,7 +456,7 @@ func tryEnqueueItemForPR(ctx context.Context, sc Connector, projectRef *model.Pr
 
 // sendGitHubCommitQueueError posts a comment to the PR
 // after an error has occurred related to the commit queue.
-func sendGitHubCommitQueueError(ctx context.Context, env evergreen.Environment, sc Connector, pr *github.PullRequest, userRepo UserRepoInfo, err error) error {
+func sendGitHubCommitQueueError(ctx context.Context, sc Connector, pr *github.PullRequest, userRepo UserRepoInfo, err error) error {
 	if err == nil {
 		return nil
 	}
