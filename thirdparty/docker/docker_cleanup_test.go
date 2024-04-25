@@ -7,7 +7,6 @@ import (
 
 	"github.com/docker/docker/api/types"
 	"github.com/docker/docker/api/types/container"
-	"github.com/docker/docker/api/types/system"
 	"github.com/docker/docker/api/types/volume"
 	"github.com/docker/docker/client"
 	"github.com/mongodb/grip"
@@ -36,8 +35,8 @@ func TestCleanup(t *testing.T) {
 				Image: imageName,
 			}, nil, nil, nil, "")
 			require.NoError(t, err)
-			require.NoError(t, dockerClient.ContainerStart(ctx, resp.ID, container.StartOptions{}))
-			var info system.Info
+			require.NoError(t, dockerClient.ContainerStart(ctx, resp.ID, types.ContainerStartOptions{}))
+			var info types.Info
 			info, err = dockerClient.Info(ctx)
 			require.NoError(t, err)
 			require.True(t, info.ContainersRunning > 0)
@@ -51,7 +50,7 @@ func TestCleanup(t *testing.T) {
 		"cleanImages": func(*testing.T) {
 			assert.NoError(t, cleanImages(context.Background(), dockerClient))
 
-			var info system.Info
+			var info types.Info
 			info, err = dockerClient.Info(ctx)
 			assert.NoError(t, err)
 			assert.Equal(t, 0, info.Images)
@@ -74,7 +73,7 @@ func TestCleanup(t *testing.T) {
 				Image: imageName,
 			}, nil, nil, nil, "")
 			require.NoError(t, err)
-			require.NoError(t, dockerClient.ContainerStart(ctx, resp.ID, container.StartOptions{}))
+			require.NoError(t, dockerClient.ContainerStart(ctx, resp.ID, types.ContainerStartOptions{}))
 			info, err := dockerClient.Info(ctx)
 			require.NoError(t, err)
 			require.True(t, info.ContainersRunning > 0)

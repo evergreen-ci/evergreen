@@ -10,7 +10,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/docker/docker/api/types/container"
+	"github.com/docker/docker/api/types"
 	"github.com/evergreen-ci/birch"
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/apimodels"
@@ -471,7 +471,7 @@ func TestGetDockerLogs(t *testing.T) {
 
 	// valid Run
 	cloudClient := cloud.GetMockClient()
-	logs, err := cloudClient.GetDockerLogs(nil, "containerId", handler.host, container.LogsOptions{})
+	logs, err := cloudClient.GetDockerLogs(nil, "containerId", handler.host, types.ContainerLogsOptions{})
 	assert.NoError(err)
 	buf := new(strings.Builder)
 	_, err = io.Copy(buf, logs)
