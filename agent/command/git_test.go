@@ -680,8 +680,8 @@ func (s *GitGetProjectSuite) TestBuildModuleCommand() {
 	s.NoError(err)
 	s.Require().Len(cmds, 8)
 	s.True(utility.ContainsOrderedSubset(cmds, []string{
-		"echo \"git clone https://[redacted oauth token]:x-oauth-basic@github.com/evergreen-ci/sample.git 'module' --single-branch --filter=tree:0\"",
-		"git clone https://PROJECTTOKEN:x-oauth-basic@github.com/evergreen-ci/sample.git 'module' --single-branch --filter=tree:0",
+		"echo \"git clone https://[redacted oauth token]:x-oauth-basic@github.com/evergreen-ci/sample.git 'module'\"",
+		"git clone https://PROJECTTOKEN:x-oauth-basic@github.com/evergreen-ci/sample.git 'module'",
 	}))
 
 	conf = s.taskConfig4
@@ -701,7 +701,7 @@ func (s *GitGetProjectSuite) TestBuildModuleCommand() {
 	s.True(utility.StringSliceContainsOrderedPrefixSubset(cmds, []string{
 		"set -o xtrace",
 		"set -o errexit",
-		"git clone https://x-access-token:PROJECTTOKEN@github.com/evergreen-ci/sample.git 'module' --single-branch --filter=tree:0",
+		"git clone https://x-access-token:PROJECTTOKEN@github.com/evergreen-ci/sample.git 'module'",
 		"cd module",
 		"git fetch origin \"pull/1234/merge:evg-merge-test-",
 		"git checkout 'evg-merge-test-",
