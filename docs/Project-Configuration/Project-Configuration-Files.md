@@ -582,10 +582,6 @@ tasks:
           sleep 1000
 ```
 
-```yaml
-exec_timeout_secs: 60
-```
-
 ### Limiting When a Task Will Run
 
 To limit the conditions when a task will run, the following settings can be
