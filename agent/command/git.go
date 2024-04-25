@@ -78,11 +78,9 @@ type gitFetchProject struct {
 
 	RecurseSubmodules bool `mapstructure:"recurse_submodules"`
 
-	// FullClone when set to true, forces Evergreen to clone the full tree of the
-	// repository and all branches.
-	// When set to false (by default), Evergreen will clone the repository without
-	// the full tree and will only clone the target.
-	// This will fallback to a full clone if there is no clear target branch.
+	// FullClone only affects GH merge queue and PR tasks.
+	// If true, Evergreen will clone the entire repo with all files for all branches.
+	// If false (default), Evergreen will only clone the GH merge queue branch or PR branch.
 	FullClone bool `mapstructure:"full_clone"`
 
 	CommitterName string `mapstructure:"committer_name"`
@@ -324,6 +322,9 @@ func (c *gitFetchProject) buildSourceCloneCommand(ctx context.Context, comm clie
 			opts.branch = conf.GithubPatchData.HeadBranch
 			opts.owner = conf.GithubPatchData.HeadOwner
 			opts.repo = conf.GithubPatchData.HeadRepo
+		case evergreen.RepotrackerVersionRequester:
+		default:
+			opts.fullClone = true
 		}
 	}
 
