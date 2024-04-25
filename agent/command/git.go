@@ -83,7 +83,7 @@ type gitFetchProject struct {
 	// When set to false (by default), Evergreen will clone the repository without
 	// the full tree and will only clone the target.
 	// This will fallback to a full clone if there is no clear target branch.
-	FullClone bool `mapstructure:"full_tree_clone"`
+	FullClone bool `mapstructure:"full_clone"`
 
 	CommitterName string `mapstructure:"committer_name"`
 
