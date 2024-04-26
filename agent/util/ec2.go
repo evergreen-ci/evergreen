@@ -30,11 +30,23 @@ func GetEC2InstanceID(ctx context.Context) (string, error) {
 		return "", errors.Wrap(err, "creating metadata request")
 	}
 
-	resp, err := c.Do(req)
-	if err != nil {
-		return "", errors.Wrapf(err, "making metadata request")
+	const (
+		maxAttempts = 20
+		minDelay    = time.Second
+		maxDelay    = 10 * time.Second
+	)
+	resp, err := utility.RetryRequest(ctx, req, utility.RetryOptions{
+		MaxAttempts: maxAttempts,
+		MinDelay:    minDelay,
+		MaxDelay:    maxDelay,
+	})
+	if resp != nil {
+		defer resp.Body.Close()
 	}
-	defer resp.Body.Close()
+	if err != nil {
+		return "", errors.Wrap(err, "requesting EC2 instance ID from metadata endpoint")
+	}
+
 	instanceID, err := io.ReadAll(resp.Body)
 	if err != nil {
 		return "", errors.Wrap(err, "reading response body")
