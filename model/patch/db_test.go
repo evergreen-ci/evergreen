@@ -76,129 +76,143 @@ func TestMostRecentByUserAndProject(t *testing.T) {
 	assert.Equal(t, p.Id, previousPatch.Id)
 }
 func TestByPatchNameStatusesCommitQueuePaginatedRequestersOption(t *testing.T) {
-	ctx, cancel := context.WithCancel(context.Background())
-	defer cancel()
-	assert.NoError(t, db.ClearCollections(Collection))
-	ghPRPatch := Patch{
-		Id:          bson.NewObjectId(),
-		Project:     "evergreen",
-		Description: "GH PR Patch",
-		GithubPatchData: thirdparty.GithubPatch{
-			HeadOwner: "me", // indicates github_pull_request requester
+	for tName, tCase := range map[string]func(ctx context.Context, t *testing.T){
+		"EmptyRequestersList": func(ctx context.Context, t *testing.T) {
+			opts := ByPatchNameStatusesCommitQueuePaginatedOptions{
+				Project:    utility.ToStringPtr("evergreen"),
+				Requesters: []string{evergreen.PatchVersionRequester},
+			}
+
+			patches, count, err := ByPatchNameStatusesCommitQueuePaginated(ctx, opts)
+			assert.NoError(t, err)
+			assert.Equal(t, 1, count)
+			require.Equal(t, 1, len(patches))
+			assert.Equal(t, "Patch Request Patch", patches[0].Description)
 		},
-	}
-	assert.NoError(t, ghPRPatch.Insert())
-	ghMergePatch := Patch{
-		Id:          bson.NewObjectId(),
-		Project:     "evergreen",
-		Description: "GH Merge Patch",
-		GithubMergeData: thirdparty.GithubMergeGroup{
-			HeadSHA: "head_sha_value", // indicates github_merge_test requester
+		"GithubPRRequester": func(ctx context.Context, t *testing.T) {
+			opts := ByPatchNameStatusesCommitQueuePaginatedOptions{
+				Project:    utility.ToStringPtr("evergreen"),
+				Requesters: []string{evergreen.GithubPRRequester},
+			}
+			patches, count, err := ByPatchNameStatusesCommitQueuePaginated(ctx, opts)
+			assert.NoError(t, err)
+			assert.Equal(t, 1, count)
+			require.Equal(t, 1, len(patches))
+			assert.Equal(t, "GH PR Patch", patches[0].Description)
 		},
-	}
-	assert.NoError(t, ghMergePatch.Insert())
-	mergeTestPatchAlias := Patch{
-		Id:          bson.NewObjectId(),
-		Project:     "evergreen",
-		Description: "Merge Test Patch - Alias",
-		Alias:       evergreen.CommitQueueAlias, // indicates merge_test requester
-	}
-	assert.NoError(t, mergeTestPatchAlias.Insert())
-	mergeTestPatchPR := Patch{
-		Id:          bson.NewObjectId(),
-		Project:     "evergreen",
-		Description: "Merge Test Patch - PR",
-		Alias:       "fake alias",
-		GithubPatchData: thirdparty.GithubPatch{
-			MergeCommitSHA: "merge_commit_sha_value", // indicates merge_test requester
+		"GithubMergeRequester": func(ctx context.Context, t *testing.T) {
+			opts := ByPatchNameStatusesCommitQueuePaginatedOptions{
+				Project:    utility.ToStringPtr("evergreen"),
+				Requesters: []string{evergreen.GithubMergeRequester},
+			}
+			patches, count, err := ByPatchNameStatusesCommitQueuePaginated(ctx, opts)
+			assert.NoError(t, err)
+			assert.Equal(t, 1, count)
+			require.Equal(t, 1, len(patches))
+			assert.Equal(t, "GH Merge Patch", patches[0].Description)
 		},
-	}
-	assert.NoError(t, mergeTestPatchPR.Insert())
-	patchRequestPatch := Patch{
-		Id:          bson.NewObjectId(),
-		Project:     "evergreen",
-		Description: "Patch Request Patch", // patch_request requester
-	}
-	assert.NoError(t, patchRequestPatch.Insert())
+		"MergeTestRequester": func(ctx context.Context, t *testing.T) {
+			opts := ByPatchNameStatusesCommitQueuePaginatedOptions{
+				Project:    utility.ToStringPtr("evergreen"),
+				Requesters: []string{evergreen.MergeTestRequester},
+			}
+			patches, count, err := ByPatchNameStatusesCommitQueuePaginated(ctx, opts)
+			assert.NoError(t, err)
+			assert.Equal(t, 2, count)
+			require.Equal(t, 2, len(patches))
+			assert.Equal(t, "Merge Test Patch - Alias", patches[0].Description)
+			assert.Equal(t, "Merge Test Patch - PR", patches[1].Description)
+		},
+		"PatchVersionRequester": func(ctx context.Context, t *testing.T) {
+			opts := ByPatchNameStatusesCommitQueuePaginatedOptions{
+				Project:    utility.ToStringPtr("evergreen"),
+				Requesters: []string{evergreen.PatchVersionRequester},
+			}
+			patches, count, err := ByPatchNameStatusesCommitQueuePaginated(ctx, opts)
+			assert.NoError(t, err)
+			assert.Equal(t, 1, count)
+			require.Equal(t, 1, len(patches))
+			assert.Equal(t, "Patch Request Patch", patches[0].Description)
+		},
+		"MultipleRequesters": func(ctx context.Context, t *testing.T) {
+			opts := ByPatchNameStatusesCommitQueuePaginatedOptions{
+				Project:    utility.ToStringPtr("evergreen"),
+				Requesters: []string{evergreen.PatchVersionRequester, evergreen.GithubMergeRequester},
+			}
+			patches, count, err := ByPatchNameStatusesCommitQueuePaginated(ctx, opts)
+			assert.NoError(t, err)
+			assert.Equal(t, 2, count)
+			require.Equal(t, 2, len(patches))
+			assert.Equal(t, "GH Merge Patch", patches[0].Description)
+			assert.Equal(t, "Patch Request Patch", patches[1].Description)
+		},
+		"NoRequestersList": func(ctx context.Context, t *testing.T) {
+			opts := ByPatchNameStatusesCommitQueuePaginatedOptions{
+				Project: utility.ToStringPtr("evergreen"),
+			}
+			patches, count, err := ByPatchNameStatusesCommitQueuePaginated(ctx, opts)
+			assert.NoError(t, err)
+			assert.Equal(t, 5, count)
+			require.Equal(t, 5, len(patches))
 
-	opts := ByPatchNameStatusesCommitQueuePaginatedOptions{
-		Project:    utility.ToStringPtr("evergreen"),
-		Requesters: []string{evergreen.PatchVersionRequester},
+			opts = ByPatchNameStatusesCommitQueuePaginatedOptions{
+				Project:    utility.ToStringPtr("evergreen"),
+				Requesters: []string{},
+			}
+			patches, count, err = ByPatchNameStatusesCommitQueuePaginated(ctx, opts)
+			assert.NoError(t, err)
+			assert.Equal(t, 5, count)
+			require.Equal(t, 5, len(patches))
+		},
+	} {
+		t.Run(tName, func(t *testing.T) {
+			ctx, cancel := context.WithCancel(context.Background())
+			defer cancel()
+			assert.NoError(t, db.ClearCollections(Collection))
+			ghPRPatch := Patch{
+				Id:          bson.NewObjectId(),
+				Project:     "evergreen",
+				Description: "GH PR Patch",
+				GithubPatchData: thirdparty.GithubPatch{
+					HeadOwner: "me", // indicates github_pull_request requester
+				},
+			}
+			assert.NoError(t, ghPRPatch.Insert())
+			ghMergePatch := Patch{
+				Id:          bson.NewObjectId(),
+				Project:     "evergreen",
+				Description: "GH Merge Patch",
+				GithubMergeData: thirdparty.GithubMergeGroup{
+					HeadSHA: "head_sha_value", // indicates github_merge_test requester
+				},
+			}
+			assert.NoError(t, ghMergePatch.Insert())
+			mergeTestPatchAlias := Patch{
+				Id:          bson.NewObjectId(),
+				Project:     "evergreen",
+				Description: "Merge Test Patch - Alias",
+				Alias:       evergreen.CommitQueueAlias, // indicates merge_test requester
+			}
+			assert.NoError(t, mergeTestPatchAlias.Insert())
+			mergeTestPatchPR := Patch{
+				Id:          bson.NewObjectId(),
+				Project:     "evergreen",
+				Description: "Merge Test Patch - PR",
+				Alias:       "fake alias",
+				GithubPatchData: thirdparty.GithubPatch{
+					MergeCommitSHA: "merge_commit_sha_value", // indicates merge_test requester
+				},
+			}
+			assert.NoError(t, mergeTestPatchPR.Insert())
+			patchRequestPatch := Patch{
+				Id:          bson.NewObjectId(),
+				Project:     "evergreen",
+				Description: "Patch Request Patch", // patch_request requester
+			}
+			assert.NoError(t, patchRequestPatch.Insert())
+			tCase(ctx, t)
+		})
 	}
-	patches, count, err := ByPatchNameStatusesCommitQueuePaginated(ctx, opts)
-	assert.NoError(t, err)
-	assert.Equal(t, 1, count)
-	require.Equal(t, 1, len(patches))
-	assert.Equal(t, "Patch Request Patch", patches[0].Description)
-
-	opts = ByPatchNameStatusesCommitQueuePaginatedOptions{
-		Project:    utility.ToStringPtr("evergreen"),
-		Requesters: []string{evergreen.GithubPRRequester},
-	}
-	patches, count, err = ByPatchNameStatusesCommitQueuePaginated(ctx, opts)
-	assert.NoError(t, err)
-	assert.Equal(t, 1, count)
-	require.Equal(t, 1, len(patches))
-	assert.Equal(t, "GH PR Patch", patches[0].Description)
-
-	opts = ByPatchNameStatusesCommitQueuePaginatedOptions{
-		Project:    utility.ToStringPtr("evergreen"),
-		Requesters: []string{evergreen.GithubMergeRequester},
-	}
-	patches, count, err = ByPatchNameStatusesCommitQueuePaginated(ctx, opts)
-	assert.NoError(t, err)
-	assert.Equal(t, 1, count)
-	require.Equal(t, 1, len(patches))
-	assert.Equal(t, "GH Merge Patch", patches[0].Description)
-
-	opts = ByPatchNameStatusesCommitQueuePaginatedOptions{
-		Project:    utility.ToStringPtr("evergreen"),
-		Requesters: []string{evergreen.MergeTestRequester},
-	}
-	patches, count, err = ByPatchNameStatusesCommitQueuePaginated(ctx, opts)
-	assert.NoError(t, err)
-	assert.Equal(t, 2, count)
-	require.Equal(t, 2, len(patches))
-	assert.Equal(t, "Merge Test Patch - Alias", patches[0].Description)
-	assert.Equal(t, "Merge Test Patch - PR", patches[1].Description)
-
-	opts = ByPatchNameStatusesCommitQueuePaginatedOptions{
-		Project:    utility.ToStringPtr("evergreen"),
-		Requesters: []string{evergreen.PatchVersionRequester},
-	}
-	patches, count, err = ByPatchNameStatusesCommitQueuePaginated(ctx, opts)
-	assert.NoError(t, err)
-	assert.Equal(t, 1, count)
-	require.Equal(t, 1, len(patches))
-	assert.Equal(t, "Patch Request Patch", patches[0].Description)
-
-	opts = ByPatchNameStatusesCommitQueuePaginatedOptions{
-		Project:    utility.ToStringPtr("evergreen"),
-		Requesters: []string{evergreen.PatchVersionRequester, evergreen.GithubMergeRequester},
-	}
-	patches, count, err = ByPatchNameStatusesCommitQueuePaginated(ctx, opts)
-	assert.NoError(t, err)
-	assert.Equal(t, 2, count)
-	require.Equal(t, 2, len(patches))
-	assert.Equal(t, "GH Merge Patch", patches[0].Description)
-	assert.Equal(t, "Patch Request Patch", patches[1].Description)
-
-	opts = ByPatchNameStatusesCommitQueuePaginatedOptions{
-		Project: utility.ToStringPtr("evergreen"),
-	}
-	patches, count, err = ByPatchNameStatusesCommitQueuePaginated(ctx, opts)
-	assert.NoError(t, err)
-	assert.Equal(t, 5, count)
-	require.Equal(t, 5, len(patches))
-
-	opts = ByPatchNameStatusesCommitQueuePaginatedOptions{
-		Project:    utility.ToStringPtr("evergreen"),
-		Requesters: []string{},
-	}
-	patches, count, err = ByPatchNameStatusesCommitQueuePaginated(ctx, opts)
-	assert.NoError(t, err)
-	assert.Equal(t, 5, count)
-	require.Equal(t, 5, len(patches))
 }
 func TestByPatchNameStatusesCommitQueuePaginated(t *testing.T) {
 	assert.NoError(t, db.ClearCollections(Collection))
