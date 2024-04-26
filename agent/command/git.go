@@ -324,6 +324,8 @@ func (c *gitFetchProject) buildSourceCloneCommand(ctx context.Context, comm clie
 			opts.owner = conf.GithubPatchData.HeadOwner
 			opts.repo = conf.GithubPatchData.HeadRepo
 		case evergreen.RepotrackerVersionRequester:
+			// If this is a repotracker task, the branch is populated and we can use
+			// it to not clone the entire repo.
 		default:
 			opts.fullClone = true
 		}
