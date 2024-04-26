@@ -22,7 +22,8 @@ post:
       remote_file: evergreen/${task_id}/app_server.log
       bucket: mciuploads
       content_type: text/plain
-      permissions: signed
+      permissions: private
+      visibility: private
       display_name: Evergreen smoke test application server logs
   - command: s3.put
     display_name: Upload smoke test agent logs to S3
@@ -35,7 +36,8 @@ post:
       remote_file: evergreen/${task_id}/
       bucket: mciuploads
       content_type: text/plain
-      permissions: signed
+      permissions: private
+      visibility: private
       display_name: (Evergreen smoke test agent logs)
 
 #######################################
