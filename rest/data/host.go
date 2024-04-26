@@ -328,7 +328,7 @@ func fixProvisioningIntentHost(ctx context.Context, h *host.Host, instanceID str
 	case evergreen.HostBuildingFailed, evergreen.HostTerminated:
 		return errors.Wrap(transitionIntentHostToDecommissioned(ctx, env, h, instanceID), "decommissioning intent host")
 	default:
-		return errors.Errorf("logical error: intent host is in state '%s', which should be impossible when the agent is running", h.Status)
+		return errors.Errorf("logical error: intent host is in state '%s', which should be impossible when host is up and provisioning", h.Status)
 	}
 }
 

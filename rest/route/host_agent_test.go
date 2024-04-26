@@ -82,10 +82,6 @@ func TestHostNextTask(t *testing.T) {
 	newServiceFlags := *originalServiceFlags
 	require.NoError(t, newServiceFlags.Set(ctx))
 
-	generateFakeEC2InstanceID := func() string {
-		return "i-" + utility.RandomString()
-	}
-
 	for tName, tCase := range map[string]func(ctx context.Context, t *testing.T, rh *hostAgentNextTask){
 		"ShouldSucceedAndSetAgentStartTime": func(ctx context.Context, t *testing.T, rh *hostAgentNextTask) {
 			resp := rh.Run(ctx)
