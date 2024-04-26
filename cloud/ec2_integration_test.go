@@ -101,7 +101,7 @@ func TestSpawnEC2InstanceOnDemand(t *testing.T) {
 
 	status, err := m.GetInstanceStatus(ctx, h)
 	assert.NoError(err)
-	assert.NotContains(t, []CloudStatus{StatusRunning, StatusStopping, StatusStopped}, status)
+	assert.NotContains([]CloudStatus{StatusRunning, StatusStopping, StatusStopped}, status)
 }
 
 func (s *EC2Suite) TestGetInstanceInfoFailsEarlyForIntentHosts() {
