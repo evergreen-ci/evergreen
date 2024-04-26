@@ -297,7 +297,7 @@ func (s *UserTestSuite) TestCheckAndUpdateSchedulingLimit() {
 	u.LastScheduledTasksAt = time.Now().Add(-1 * time.Hour)
 	err = u.CheckAndUpdateSchedulingLimit(settings, 101)
 	s.Require().Error(err)
-	s.Contains(err.Error(), fmt.Sprintf("cannot schedule %d tasks, maxumum hourly per-user limit is %d", 101, 100))
+	s.Contains(err.Error(), fmt.Sprintf("cannot schedule %d tasks, maximum hourly per-user limit is %d", 101, 100))
 	u, err = FindOne(ById(u.Id))
 	s.Require().NoError(err)
 	s.Require().NotNil(u)

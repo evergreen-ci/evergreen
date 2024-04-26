@@ -179,7 +179,7 @@ func (u *DBUser) CheckAndUpdateSchedulingLimit(settings *evergreen.Settings, num
 		return nil
 	}
 	if numTasksModified > maxScheduledTasks {
-		return errors.Errorf("cannot schedule %d tasks, maxumum hourly per-user limit is %d", numTasksModified, maxScheduledTasks)
+		return errors.Errorf("cannot schedule %d tasks, maximum hourly per-user limit is %d", numTasksModified, maxScheduledTasks)
 	}
 	now := time.Now()
 	oneHourAgo := now.Add(-1 * time.Hour)
