@@ -30,7 +30,7 @@ const (
 	expiringHostSlackAttachmentTitle = "Spawn Host Page"
 
 	idleHostEmailSubject     = `{{.Distro}} idle stopped host notice`
-	idleStoppedHostEmailBody = `Your {{.Distro}} host '{{.Name}}' has been stopped for at least three months.
+	idleStoppedHostEmailBody = `Your stopped {{.Distro}} host '{{.Name}}' has been idle for at least three months.
 In order to be responsible about resource consumption (as stopped instances still have EBS volumes attached and thus still incur costs), 
 please consider terminating from the <a href={{.URL}}>spawnhost page</a> if the host is no longer in use.`
 )

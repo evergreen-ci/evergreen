@@ -95,8 +95,8 @@ func (s *hostSuite) TestEmailMessage() {
 
 	email, err = s.testData.hostEmailPayload(idleHostEmailSubject, idleStoppedHostEmailBody, s.t.Attributes())
 	s.NoError(err)
-	s.Equal("myDistro idle host notice", email.Subject)
-	s.Contains(email.Body, "Your stopped myDistro host 'hostName' has been idle since")
+	s.Equal("myDistro idle stopped host notice", email.Subject)
+	s.Contains(email.Body, "Your stopped myDistro host 'hostName' has been idle for at least three months")
 }
 
 func (s *hostSuite) TestSlackMessage() {
