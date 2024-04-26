@@ -306,10 +306,11 @@ func fixProvisioningIntentHost(ctx context.Context, h *host.Host, instanceID str
 		// instance ID, there's nothing that can be done to fix it here.
 
 		// TODO (DEVPROD-6752): should log and return an error once all hosts
-		// roll over from the deploy. All intent hosts should be sending their
-		// EC2 instance ID. If they don't, it should fail provisioning and
-		// should not start the agent.
-		// msg := "intent host is running, but it did not provide an EC2 instance ID, which is required"
+		// roll over from the deploy and are providing their EC2 instance ID to
+		// this route. All intent hosts should be sending their EC2 instance ID.
+		// If they don't, it should fail provisioning and should not start the
+		// agent.
+		// msg := "intent host is up, but it did not provide an EC2 instance ID, which is required"
 		// grip.Warning(message.Fields{
 		//     "message":     msg,
 		//     "host_id":     h.Id,
