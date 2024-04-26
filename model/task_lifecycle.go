@@ -819,17 +819,14 @@ func MarkEnd(ctx context.Context, settings *evergreen.Settings, t *task.Task, ca
 		"duration_secs": time.Since(startPhaseAt).Seconds(),
 	})
 
+	// If the error is from marking the task as finished, we want to
+	// return early as every functionality depends on this succeeding.
 	if err != nil {
-		catcher.Wrap(err, "marking task finished")
+		return errors.Wrapf(err, "marking task '%s' finished", t.Id)
 	}
 
-	if err = UpdateBlockedDependencies(ctx, t); err != nil {
-		catcher.Wrap(err, "updating blocked dependencies")
-	}
-
-	if err = t.MarkDependenciesFinished(ctx, true); err != nil {
-		catcher.Wrap(err, "updating dependency met status")
-	}
+	catcher.Wrap(UpdateBlockedDependencies(ctx, t), "updating blocked dependencies")
+	catcher.Wrap(t.MarkDependenciesFinished(ctx, true), "updating dependency met status")
 
 	status := t.GetDisplayStatus()
 
@@ -860,24 +857,8 @@ func MarkEnd(ctx context.Context, settings *evergreen.Settings, t *task.Task, ca
 		catcher.Wrap(checkResetSingleHostTaskGroup(ctx, t, caller), "resetting single host task group")
 	}
 
-	// activate/deactivate other task if this is not a patch request's task
-	if !evergreen.IsPatchRequester(t.Requester) {
-		if t.IsPartOfDisplay() {
-			_, err = t.GetDisplayTask()
-			if err != nil {
-				err = errors.Wrap(err, "getting display task")
-			} else {
-				err = evalStepback(ctx, t.DisplayTask, status)
-			}
-		} else {
-			err = evalStepback(ctx, t, status)
-		}
-		grip.Error(message.WrapError(err, message.Fields{
-			"message": "evaluating stepback",
-			"project": t.Project,
-			"task_id": t.Id,
-		}))
-	}
+	// Stepback is non-essential and handles activation/logging internally.
+	attemptStepback(ctx, t, status)
 
 	// Deactivate previous occurrences of the same task if this one passed on mainline commits.
 	if t.Status == evergreen.TaskSucceeded && deactivatePrevious && t.Requester == evergreen.RepotrackerVersionRequester && t.ActivatedBy != evergreen.StepbackTaskActivator {
@@ -910,6 +891,27 @@ func markEndDisplayTask(ctx context.Context, settings *evergreen.Settings, t *ta
 		return errors.Wrap(err, "getting display task")
 	}
 	return errors.Wrap(checkResetDisplayTask(ctx, settings, dt), "checking display task reset")
+}
+
+func attemptStepback(ctx context.Context, t *task.Task, status string) {
+	var err error
+	if !evergreen.IsPatchRequester(t.Requester) {
+		if t.IsPartOfDisplay() {
+			_, err = t.GetDisplayTask()
+			if err != nil {
+				err = errors.Wrap(err, "getting display task")
+			} else {
+				err = evalStepback(ctx, t.DisplayTask, status)
+			}
+		} else {
+			err = evalStepback(ctx, t, status)
+		}
+		grip.Error(message.WrapError(err, message.Fields{
+			"message": "evaluating stepback",
+			"project": t.Project,
+			"task_id": t.Id,
+		}))
+	}
 }
 
 // logTaskEndStats logs information a task after it
