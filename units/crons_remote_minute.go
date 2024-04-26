@@ -58,7 +58,6 @@ func (j *cronsRemoteMinuteJob) Run(ctx context.Context) {
 		"periodic notification":      periodicNotificationJobs,
 		"user data done":             userDataDoneJobs,
 		"pod termination":            podTerminationJobs,
-		"sleep scheduler":            sleepSchedulerJobs,
 	}
 
 	var allJobs []amboy.Job
@@ -83,6 +82,7 @@ func (j *cronsRemoteMinuteJob) Run(ctx context.Context) {
 	catcher.Add(populateQueueGroup(ctx, j.env, createHostQueueGroup, hostCreationJobs, ts))
 	catcher.Add(populateQueueGroup(ctx, j.env, commitQueueQueueGroup, commitQueueJobs, ts))
 	catcher.Add(populateQueueGroup(ctx, j.env, eventNotifierQueueGroup, eventNotifierJobs, ts))
+	catcher.Add(populateQueueGroup(ctx, j.env, spawnHostModificationQueueGroup, sleepSchedulerJobs, ts))
 
 	// Add generate tasks fallbacks to their versions' queues.
 	catcher.Add(enqueueFallbackGenerateTasksJobs(ctx, j.env, ts))

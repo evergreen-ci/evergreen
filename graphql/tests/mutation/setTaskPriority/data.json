@@ -1,0 +1,18 @@
+{
+  "project_ref": [
+    {
+      "_id": "evergreen",
+      "owner_name": "evergreen-ci",
+      "repo_name": "evergreen"
+    },
+    {
+      "_id": "happyAbyssinian",
+      "identifier": "happyAbyssinian",
+      "display_name": "Happy Abyssinian"
+    }
+  ],
+  "tasks": [
+    { "_id": "task_id", "branch": "happyAbyssinian" },
+    { "_id": "no_permissions", "branch": "evergreen" }
+  ]
+}

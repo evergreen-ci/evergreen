@@ -7,8 +7,6 @@ import (
 
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/agent/globals"
-	"github.com/mongodb/grip"
-	"github.com/mongodb/grip/message"
 	"github.com/mongodb/grip/recovery"
 )
 
@@ -48,14 +46,6 @@ func (a *Agent) startHeartbeat(ctx context.Context, preAndMainCancel context.Can
 				timeoutOpts := tc.getHeartbeatTimeout()
 				timeout := timeoutOpts.getTimeout()
 				msg := fmt.Sprintf("Heartbeat has hit maximum allowed '%s' timeout of %s; task is at risk of timing out if it runs for much longer.", timeoutOpts.kind, timeout.String())
-				grip.Alert(message.Fields{
-					"message":        msg,
-					"task_id":        tc.taskConfig.Task.Id,
-					"task_execution": tc.taskConfig.Task.Execution,
-					"timeout_type":   timeoutOpts.kind,
-					"timeout_start":  timeoutOpts.startAt,
-					"timeout_secs":   timeout.Seconds(),
-				})
 				tc.logger.Task().Errorf(msg)
 				if !hasSentAbort {
 					preAndMainCancel()

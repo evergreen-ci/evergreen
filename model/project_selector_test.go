@@ -139,7 +139,7 @@ func TestTaskSelectorEvaluation(t *testing.T) {
 			})
 
 			Convey("should evaluate multi-tag selectors properly", func() {
-				tagSelectorShouldEval(tse, ".warm .cool", nil)
+				tagSelectorShouldEval(tse, ".warm .cool", []string{})
 				tagSelectorShouldEval(tse, ".cool .primary", []string{"blue"})
 				tagSelectorShouldEval(tse, ".warm .secondary", []string{"orange"})
 			})

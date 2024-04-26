@@ -37,7 +37,6 @@
         }
       },
       "clone_method": "legacy-ssh",
-      "ssh_key": "mci",
       "ssh_options": [
         "StrictHostKeyChecking=no",
         "BatchMode=yes",
@@ -151,7 +150,6 @@
         "resource_limits": {}
       },
       "clone_method": "oauth",
-      "ssh_key": "mci",
       "ssh_options": [
         "StrictHostKeyChecking=no",
         "BatchMode=yes",
@@ -227,14 +225,6 @@
         "format_command": ""
       },
       "icecream_settings": {}
-    }
-  ],
-  "admin": [
-    {
-      "_id": "global",
-      "keys": {
-        "mci": "key"
-      }
     }
   ]
 }

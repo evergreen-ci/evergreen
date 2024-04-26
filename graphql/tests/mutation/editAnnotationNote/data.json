@@ -5,7 +5,7 @@
         "$oid": "5e4aa5abe3c3317e35201abc"
       },
       "task_id": "task-1234",
-      "task_execution": 0,
+      "task_execution": 1,
       "issues": [
         {
           "url": "https://link.com",
@@ -36,13 +36,40 @@
         "$oid": "5e3aa5bbe3c3317e35206abc"
       },
       "task_id": "task-5678",
-      "task_execution": 0,
+      "task_execution": 1,
       "note": {
         "message": "my other message",
         "source": {
           "author": "annie.black"
         }
       }
+    }
+  ],
+  "tasks": [
+    {
+      "_id": "task-1234",
+      "execution": 1,
+      "branch": "sandbox_project_id"
+    },
+    {
+      "_id": "task-5678",
+      "execution": 1,
+      "branch": "sandbox_project_id"
+    },
+    {
+      "_id": "no_permissions",
+      "execution": 1,
+      "branch": "evergreen"
+    }
+  ],
+  "project_ref": [
+    {
+      "_id": "evergreen",
+      "identifier": "evergreen"
+    },
+    {
+      "_id": "sandbox_project_id",
+      "identifier": "sandbox"
     }
   ]
 }

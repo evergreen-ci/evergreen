@@ -180,17 +180,19 @@ func getDisplayStatus(v *model.Version) (string, error) {
 	return patch.GetCollectiveStatusFromPatchStatuses(allStatuses), nil
 }
 
-func hasEnqueuePatchPermission(u *user.DBUser, existingPatch *restModel.APIPatch) bool {
-	if u == nil || existingPatch == nil {
+// userCanModifyPatch checks if a user can make changes to a given patch. This is mainly to prevent
+// users from modifying other users' patches.
+func userCanModifyPatch(u *user.DBUser, patch patch.Patch) bool {
+	if u == nil {
 		return false
 	}
 
-	// patch owner
-	if utility.FromStringPtr(existingPatch.Author) == u.Username() {
+	// Check if user is patch owner.
+	if patch.Author == u.Username() {
 		return true
 	}
 
-	// superuser
+	// Check if user is superuser.
 	permissions := gimlet.PermissionOpts{
 		Resource:      evergreen.SuperUserPermissionsID,
 		ResourceType:  evergreen.SuperUserResourceType,
@@ -201,12 +203,25 @@ func hasEnqueuePatchPermission(u *user.DBUser, existingPatch *restModel.APIPatch
 		return true
 	}
 
-	return u.HasPermission(gimlet.PermissionOpts{
-		Resource:      utility.FromStringPtr(existingPatch.ProjectId),
+	// Check if user is project admin.
+	permissions = gimlet.PermissionOpts{
+		Resource:      patch.Project,
 		ResourceType:  evergreen.ProjectResourceType,
 		Permission:    evergreen.PermissionProjectSettings,
 		RequiredLevel: evergreen.ProjectSettingsEdit.Value,
-	})
+	}
+	if u.HasPermission(permissions) {
+		return true
+	}
+
+	// Check if user has patch admin permissions.
+	permissions = gimlet.PermissionOpts{
+		Resource:      patch.Project,
+		ResourceType:  evergreen.ProjectResourceType,
+		Permission:    evergreen.PermissionPatches,
+		RequiredLevel: evergreen.PatchSubmitAdmin.Value,
+	}
+	return u.HasPermission(permissions)
 }
 
 // getPatchProjectVariantsAndTasksForUI gets the variants and tasks for a project for a patch id
@@ -398,13 +413,13 @@ func generateBuildVariants(ctx context.Context, versionId string, buildVariantOp
 }
 
 // modifyVersionHandler handles the boilerplate code for performing a modify version action, i.e. schedule, unschedule, restart and set priority
-func modifyVersionHandler(ctx context.Context, patchID string, modification model.VersionModification) error {
-	v, err := model.VersionFindOneId(patchID)
+func modifyVersionHandler(ctx context.Context, versionID string, modification model.VersionModification) error {
+	v, err := model.VersionFindOneId(versionID)
 	if err != nil {
-		return ResourceNotFound.Send(ctx, fmt.Sprintf("error finding version %s: %s", patchID, err.Error()))
+		return ResourceNotFound.Send(ctx, fmt.Sprintf("error finding version %s: %s", versionID, err.Error()))
 	}
 	if v == nil {
-		return ResourceNotFound.Send(ctx, fmt.Sprintf("Unable to find version with id: `%s`", patchID))
+		return ResourceNotFound.Send(ctx, fmt.Sprintf("Unable to find version with id: `%s`", versionID))
 	}
 	user := mustHaveUser(ctx)
 	httpStatus, err := model.ModifyVersion(ctx, *v, *user, modification)
@@ -1259,4 +1274,45 @@ func getProjectPermissionLevel(projectPermission ProjectPermission, access Acces
 	}
 
 	return permission, level, nil
+}
+
+func canModifyAnnotation(ctx context.Context, obj *restModel.APITask) (bool, error) {
+	authUser := gimlet.GetUser(ctx)
+	permissions := gimlet.PermissionOpts{
+		Resource:      *obj.ProjectId,
+		ResourceType:  evergreen.ProjectResourceType,
+		Permission:    evergreen.PermissionAnnotations,
+		RequiredLevel: evergreen.AnnotationsModify.Value,
+	}
+	if authUser.HasPermission(permissions) {
+		return true, nil
+	}
+	if utility.StringSliceContains(evergreen.PatchRequesters, utility.FromStringPtr(obj.Requester)) {
+		p, err := patch.FindOneId(utility.FromStringPtr(obj.Version))
+		if err != nil {
+			return false, InternalServerError.Send(ctx, fmt.Sprintf("finding patch for task: %s", err.Error()))
+		}
+		if p == nil {
+			return false, InternalServerError.Send(ctx, "patch for task doesn't exist")
+		}
+		if p.Author == authUser.Username() {
+			return true, nil
+		}
+	}
+	return false, nil
+}
+
+func annotationPermissionHelper(ctx context.Context, taskID string, execution *int) error {
+	t, err := getTask(ctx, taskID, execution, "")
+	if err != nil {
+		return err
+	}
+	canModify, err := canModifyAnnotation(ctx, t)
+	if err != nil {
+		return err
+	}
+	if !canModify {
+		return Forbidden.Send(ctx, "insufficient permission for modifying annotation")
+	}
+	return nil
 }

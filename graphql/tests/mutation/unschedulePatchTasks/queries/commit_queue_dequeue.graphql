@@ -1,3 +1,0 @@
-mutation {
-  unschedulePatchTasks(patchId: "123456789012345678901234", abort: false)
-}

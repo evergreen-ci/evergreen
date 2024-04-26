@@ -228,7 +228,7 @@ func (uis *UIServer) modifyBuild(w http.ResponseWriter, r *http.Request) {
 		if projCtx.Build.Requester == evergreen.MergeTestRequester && putParams.Active {
 			http.Error(w, "commit queue merges cannot be manually scheduled", http.StatusBadRequest)
 		}
-		err = model.ActivateBuildsAndTasks([]string{projCtx.Build.Id}, putParams.Active, user.Id)
+		err = model.ActivateBuildsAndTasks(r.Context(), []string{projCtx.Build.Id}, putParams.Active, user.Id)
 		if err != nil {
 			http.Error(w, fmt.Sprintf("Error marking build %v as activated=%v", projCtx.Build.Id, putParams.Active),
 				http.StatusInternalServerError)

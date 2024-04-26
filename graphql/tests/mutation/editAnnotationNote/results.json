@@ -11,19 +11,34 @@
     {
       "query_file": "edit_note_invalid.graphql",
       "result": {
+        "data": null,
         "errors": [
           {
             "message": "couldn't update note: note is out of sync, please try again",
-            "path": [
-              "editAnnotationNote"
-            ],
+            "path": ["editAnnotationNote"],
             "extensions": {
               "code": "INTERNAL_SERVER_ERROR"
             }
           }
-        ],
-        "data": null
+        ]
       }
+    },
+    {
+      "query_file": "no_permissions.graphql",
+      "result": {
+        "data": null,
+        "errors": [
+          {
+            "message": "insufficient permission for modifying annotation",
+            "path": [
+              "editAnnotationNote"
+            ],
+            "extensions": {
+              "code": "FORBIDDEN"
+            }
+          }
+        ]
+      } 
     }
   ]
 }

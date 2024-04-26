@@ -80,8 +80,6 @@ func TestConvertHostToNewProvisioningJob(t *testing.T) {
 			require.NoError(t, env.Configure(tctx))
 			mgr := &jmock.Manager{}
 			env.JasperProcessManager = mgr
-			sshKeyName, sshKeyValue := "foo", "bar"
-			env.Settings().Keys = map[string]string{sshKeyName: sshKeyValue}
 			env.Settings().HostJasper = evergreen.HostJasperConfig{
 				BinaryName:       "binary",
 				DownloadFileName: "download",
@@ -108,8 +106,7 @@ func TestConvertHostToNewProvisioningJob(t *testing.T) {
 						JasperBinaryDir:       "/jasper_dir",
 						JasperCredentialsPath: "/jasper_credentials_path",
 					},
-					SSHKey: sshKeyName,
-					Arch:   evergreen.ArchLinuxAmd64,
+					Arch: evergreen.ArchLinuxAmd64,
 				},
 				Host: "localhost",
 				User: evergreen.User,

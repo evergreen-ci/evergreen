@@ -185,7 +185,7 @@ func (b *buildChangeStatusHandler) Run(ctx context.Context) gimlet.Responder {
 	}
 
 	if b.Activated != nil {
-		if err = serviceModel.ActivateBuildsAndTasks([]string{b.buildId}, *b.Activated, user.Username()); err != nil {
+		if err = serviceModel.ActivateBuildsAndTasks(ctx, []string{b.buildId}, *b.Activated, user.Username()); err != nil {
 			return gimlet.MakeJSONInternalErrorResponder(errors.Wrap(err, "setting build activation"))
 		}
 	}

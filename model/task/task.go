@@ -287,6 +287,10 @@ type Task struct {
 	// GeneratedTasksToActivate is only populated if we want to override activation for these generated tasks, because of stepback.
 	// Maps the build variant to a list of task names.
 	GeneratedTasksToActivate map[string][]string `bson:"generated_tasks_to_stepback,omitempty" json:"generated_tasks_to_stepback,omitempty"`
+	// NumGeneratedTasks is the number of tasks that this task has generated.
+	NumGeneratedTasks int `bson:"num_generated_tasks,omitempty" json:"num_generated_tasks,omitempty"`
+	// NumActivatedGeneratedTasks is the number of tasks that this task has generated and activated.
+	NumActivatedGeneratedTasks int `bson:"num_activated_generated_tasks,omitempty" json:"num_activated_generated_tasks,omitempty"`
 
 	// Fields set if triggered by an upstream build
 	TriggerID    string `bson:"trigger_id,omitempty" json:"trigger_id,omitempty"`
@@ -2279,20 +2283,20 @@ func (t *Task) displayTaskPriority() int {
 }
 
 // Reset sets the task state to a state in which it is scheduled to re-run.
-func (t *Task) Reset(ctx context.Context) error {
+func (t *Task) Reset(ctx context.Context, caller string) error {
 	return UpdateOneContext(ctx,
 		bson.M{
 			IdKey:       t.Id,
 			StatusKey:   bson.M{"$in": evergreen.TaskCompletedStatuses},
 			CanResetKey: true,
 		},
-		resetTaskUpdate(t),
+		resetTaskUpdate(t, caller),
 	)
 }
 
 // ResetTasks performs the same DB updates as (*Task).Reset, but resets many
 // tasks instead of a single one.
-func ResetTasks(tasks []Task) error {
+func ResetTasks(tasks []Task, caller string) error {
 	if len(tasks) == 0 {
 		return nil
 	}
@@ -2307,7 +2311,7 @@ func ResetTasks(tasks []Task) error {
 			StatusKey:   bson.M{"$in": evergreen.TaskCompletedStatuses},
 			CanResetKey: true,
 		},
-		resetTaskUpdate(nil),
+		resetTaskUpdate(nil, caller),
 	); err != nil {
 		return err
 	}
@@ -2315,12 +2319,13 @@ func ResetTasks(tasks []Task) error {
 	return nil
 }
 
-func resetTaskUpdate(t *Task) []bson.M {
+func resetTaskUpdate(t *Task, caller string) []bson.M {
 	newSecret := utility.RandomString()
 	now := time.Now()
 	if t != nil {
 		t.Activated = true
 		t.ActivatedTime = now
+		t.ActivatedBy = caller
 		t.Secret = newSecret
 		t.HostId = ""
 		t.PodID = ""
@@ -2352,6 +2357,7 @@ func resetTaskUpdate(t *Task) []bson.M {
 			"$set": bson.M{
 				ActivatedKey:                   true,
 				ActivatedTimeKey:               now,
+				ActivatedByKey:                 caller,
 				SecretKey:                      newSecret,
 				StatusKey:                      evergreen.TaskUndispatched,
 				DispatchTimeKey:                utility.ZeroTime,
@@ -2403,6 +2409,34 @@ func (t *Task) UpdateHeartbeat() error {
 		bson.M{
 			"$set": bson.M{
 				LastHeartbeatKey: t.LastHeartbeat,
+			},
+		},
+	)
+}
+
+// SetNumGeneratedTasks sets the number of generated tasks to the given value.
+func (t *Task) SetNumGeneratedTasks(numGeneratedTasks int) error {
+	return UpdateOne(
+		bson.M{
+			IdKey: t.Id,
+		},
+		bson.M{
+			"$set": bson.M{
+				NumGeneratedTasksKey: numGeneratedTasks,
+			},
+		},
+	)
+}
+
+// SetNumActivatedGeneratedTasks sets the number of activated generated tasks to the given value.
+func (t *Task) SetNumActivatedGeneratedTasks(numActivatedGeneratedTasks int) error {
+	return UpdateOne(
+		bson.M{
+			IdKey: t.Id,
+		},
+		bson.M{
+			"$set": bson.M{
+				NumActivatedGeneratedTasksKey: numActivatedGeneratedTasks,
 			},
 		},
 	)

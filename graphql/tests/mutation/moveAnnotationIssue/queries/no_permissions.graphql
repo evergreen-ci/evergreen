@@ -1,0 +1,8 @@
+mutation {
+  moveAnnotationIssue(
+    taskId: "no_permissions"
+    execution: 1
+    apiIssue: { url: "https://link.com", issueKey: "EVG-2121" }
+    isIssue: false
+  )
+}

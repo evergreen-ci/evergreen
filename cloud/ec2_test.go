@@ -580,6 +580,17 @@ func (s *EC2Suite) TestModifyHost() {
 	s.Zero(found.PersistentDNSName, "persistent DNS name should be removed once host is expirable")
 	s.Zero(found.PublicIPv4)
 
+	// modifying host to have no expiration when it's currently stopped
+	s.NoError(s.h.SetStatus(ctx, evergreen.HostStopped, "user", ""))
+	changes = host.HostModifyOptions{NoExpiration: utility.TruePtr()}
+	s.NoError(s.onDemandManager.ModifyHost(ctx, s.h, changes))
+	found, err = host.FindOne(ctx, host.ById(s.h.Id))
+	s.NoError(err)
+	s.Require().NotZero(found)
+	s.True(found.NoExpiration)
+	s.NotZero(found.PersistentDNSName, "persistent DNS name should not be assigned to stopped host")
+	s.NotZero(found.PublicIPv4)
+
 	// attaching a volume to host
 	volumeToMount := host.Volume{
 		ID:               "thang",

@@ -4,11 +4,13 @@
       "_id": "task1",
       "build_id": "build1",
       "status": "success",
-      "version": "version1"
+      "version": "version1",
+      "branch": "sandbox_project_id"
     },
     {
       "_id": "task2",
-      "status": "success"
+      "status": "success",
+      "branch": "sandbox_project_id"
     },
     {
       "_id": "task3",
@@ -17,22 +19,29 @@
       "status": "success",
       "display_only": true,
       "execution": 0,
-      "execution_tasks": [
-        "execution_task_1",
-        "execution_task_2"
-      ]
+      "execution_tasks": ["execution_task_1", "execution_task_2"],
+      "branch": "sandbox_project_id"
     },
     {
       "_id": "execution_task_1",
       "execution": 0,
       "status": "failed",
-      "latest_parent_execution": 0
+      "latest_parent_execution": 0,
+      "branch": "sandbox_project_id"
     },
     {
       "_id": "execution_task_2",
       "execution": 0,
       "status": "success",
-      "latest_parent_execution": 0
+      "latest_parent_execution": 0,
+      "branch": "sandbox_project_id"
+    },
+    {
+      "_id": "no_permissions",
+      "build_id": "build1",
+      "status": "success",
+      "version": "version1",
+      "branch": "evergreen"
     }
   ],
   "builds": [
@@ -45,6 +54,16 @@
   "versions": [
     {
       "_id": "version1"
+    }
+  ],
+  "project_ref": [
+    {
+      "_id": "sandbox_project_id",
+      "identifier": "sandbox"
+    },
+    {
+      "_id": "evergreen",
+      "identifier": "evergreen"
     }
   ]
 }
