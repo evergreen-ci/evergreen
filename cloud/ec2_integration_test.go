@@ -17,12 +17,6 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-const (
-	running  = 16
-	stopping = 64
-	stopped  = 80
-)
-
 func fetchTestDistro() distro.Distro {
 	return distro.Distro{
 		Id:       "test_distro",
