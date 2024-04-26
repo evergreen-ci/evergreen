@@ -855,23 +855,9 @@ func MarkEnd(ctx context.Context, settings *evergreen.Settings, t *task.Task, ca
 	})
 
 	if t.IsPartOfDisplay() {
-		// TODO: make errors in catcher
-		if err = UpdateDisplayTaskForTask(t); err != nil {
-			return errors.Wrap(err, "updating display task")
-		}
-		dt, err := t.GetDisplayTask()
-		if err != nil {
-			return errors.Wrap(err, "getting display task")
-		}
-		if err = checkResetDisplayTask(ctx, settings, dt); err != nil {
-			return errors.Wrap(err, "checking display task reset")
-		}
-	} else {
-		if t.IsPartOfSingleHostTaskGroup() {
-			if err = checkResetSingleHostTaskGroup(ctx, t, caller); err != nil {
-				return errors.Wrap(err, "resetting task group")
-			}
-		}
+		catcher.Add(markEndDisplayTask(ctx, settings, t))
+	} else if t.IsPartOfSingleHostTaskGroup() {
+		catcher.Wrap(checkResetSingleHostTaskGroup(ctx, t, caller), "resetting single host task group")
 	}
 
 	// activate/deactivate other task if this is not a patch request's task
@@ -900,23 +886,30 @@ func MarkEnd(ctx context.Context, settings *evergreen.Settings, t *task.Task, ca
 		}))
 	}
 
-	if err = UpdateBuildAndVersionStatusForTask(ctx, t); err != nil {
-		return errors.Wrap(err, "updating build/version status")
-	}
+	catcher.Wrap(UpdateBuildAndVersionStatusForTask(ctx, t), "updating build/version status")
 
-	if err = logTaskEndStats(ctx, t); err != nil {
-		return errors.Wrap(err, "logging task end stats")
-	}
+	catcher.Wrap(logTaskEndStats(ctx, t), "logging task end stats")
 
 	if (t.ResetWhenFinished || t.ResetFailedWhenFinished) && !t.IsPartOfDisplay() && !t.IsPartOfSingleHostTaskGroup() {
 		requester := evergreen.APIServerTaskActivator
 		if t.IsAutomaticRestart {
 			requester = evergreen.AutoRestartActivator
 		}
-		return TryResetTask(ctx, settings, t.Id, requester, "", detail)
+		catcher.Wrap(TryResetTask(ctx, settings, t.Id, requester, "", detail), "automatically resetting task")
 	}
 
-	return nil
+	return errors.Wrapf(catcher.Resolve(), "marking task '%s' as finished", t.Id)
+}
+
+func markEndDisplayTask(ctx context.Context, settings *evergreen.Settings, t *task.Task) error {
+	if err := UpdateDisplayTaskForTask(t); err != nil {
+		return errors.Wrap(err, "updating display task")
+	}
+	dt, err := t.GetDisplayTask()
+	if err != nil {
+		return errors.Wrap(err, "getting display task")
+	}
+	return errors.Wrap(checkResetDisplayTask(ctx, settings, dt), "checking display task reset")
 }
 
 // logTaskEndStats logs information a task after it
