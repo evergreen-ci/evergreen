@@ -13,8 +13,6 @@ import (
 	"github.com/mongodb/amboy"
 	"github.com/mongodb/amboy/job"
 	"github.com/mongodb/amboy/registry"
-	"github.com/mongodb/grip"
-	"github.com/mongodb/grip/message"
 	"github.com/pkg/errors"
 )
 
@@ -113,14 +111,7 @@ func tryIdleSpawnHostNotification(h *host.Host) error {
 	if err = subscription.Upsert(); err != nil {
 		return errors.Wrap(err, "upserting idle spawn host subscription")
 	}
-	grip.Info(message.Fields{
-		"message":                 "sending idle host notification",
-		"host_id":                 h.Id,
-		"owner":                   h.StartedBy,
-		"last_communication_time": h.LastCommunicationTime,
-		"status":                  h.Status,
-		"email":                   usr.Email(),
-	})
+
 	event.LogSpawnHostIdleNotification(h.Id)
 	return nil
 }

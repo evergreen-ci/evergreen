@@ -29,8 +29,8 @@ const (
 	expiringHostSlackBody            = `Your {{.Distro}} host '{{.Name}}' will be terminated at {{.ExpirationTime}}. Visit the <{{.URL}}|spawnhost page> to extend its lifetime.`
 	expiringHostSlackAttachmentTitle = "Spawn Host Page"
 
-	idleHostEmailSubject     = `{{.Distro}} idle host notice`
-	idleStoppedHostEmailBody = `Your stopped {{.Distro}} host '{{.Name}}' has been idle since {{.LastCommunicationTime}}.
+	idleHostEmailSubject     = `{{.Distro}} idle stopped host notice`
+	idleStoppedHostEmailBody = `Your {{.Distro}} host '{{.Name}}' has been stopped for at lesat three months.
 In order to be responsible about resource consumption (as stopped instances still have EBS volumes attached and thus still incur costs), 
 please consider terminating from the <a href={{.URL}}>spawnhost page</a> if the host is no longer in use.`
 )
@@ -77,12 +77,11 @@ func (t *hostBase) Attributes() event.Attributes {
 }
 
 type hostTemplateData struct {
-	ID                    string
-	Name                  string
-	Distro                string
-	ExpirationTime        string
-	LastCommunicationTime string
-	URL                   string
+	ID             string
+	Name           string
+	Distro         string
+	ExpirationTime string
+	URL            string
 }
 
 func makeHostTriggers() eventHandler {
@@ -223,6 +222,5 @@ func (t *hostTriggers) spawnHostIdle(sub *event.Subscription) (*notification.Not
 	if !shouldNotify {
 		return nil, nil
 	}
-	t.templateData.LastCommunicationTime = t.host.LastCommunicationTime.Format(time.RFC1123)
 	return t.generateIdleSpawnHost(sub, idleStoppedHostEmailBody)
 }

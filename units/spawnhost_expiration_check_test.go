@@ -74,9 +74,6 @@ func TestTryIdleSpawnHostNotification(t *testing.T) {
 				birch.EC.String("region", "test-region"),
 			)},
 		},
-		SleepSchedule: host.SleepScheduleInfo{
-			ShouldKeepOff: true,
-		},
 		NoExpiration:   true,
 		ExpirationTime: time.Now(),
 		StartedBy:      "me",

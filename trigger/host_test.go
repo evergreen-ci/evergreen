@@ -143,7 +143,7 @@ func (s *hostSuite) TestAllTriggers() {
 	}
 
 	// A running host should not trigger a notification.
-	s.Require().NoError(host.UpdateOne(context.Background(), host.ById(s.t.host.Id), bson.M{
+	s.Require().NoError(host.UpdateOne(s.ctx, host.ById(s.t.host.Id), bson.M{
 		"$set": bson.M{
 			host.NoExpirationKey: true,
 			host.StatusKey:       evergreen.HostRunning,
@@ -154,7 +154,7 @@ func (s *hostSuite) TestAllTriggers() {
 	s.Require().Len(n, 0)
 
 	// A stopped host with no stopped event should trigger a notification.
-	s.Require().NoError(host.UpdateOne(context.Background(), host.ById(s.t.host.Id), bson.M{
+	s.Require().NoError(host.UpdateOne(s.ctx, host.ById(s.t.host.Id), bson.M{
 		"$set": bson.M{
 			host.StatusKey: evergreen.HostStopped,
 		},
@@ -212,7 +212,6 @@ func (s *hostSuite) TestHostExpiration() {
 func (s *hostSuite) TestSpawnHostIdle() {
 	s.t.host.NoExpiration = true
 	s.t.host.Status = evergreen.HostStopped
-	s.t.host.SleepSchedule.ShouldKeepOff = true
 	n, err := s.t.spawnHostIdle(&s.subs[1])
 	s.NoError(err)
 	s.NotNil(n)
