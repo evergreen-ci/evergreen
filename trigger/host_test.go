@@ -11,7 +11,9 @@ import (
 	"github.com/evergreen-ci/evergreen/model/alertrecord"
 	"github.com/evergreen-ci/evergreen/model/event"
 	"github.com/evergreen-ci/evergreen/model/host"
+	"github.com/mongodb/grip/message"
 	"github.com/stretchr/testify/suite"
+	"go.mongodb.org/mongo-driver/bson"
 )
 
 func TestHostTriggers(t *testing.T) {
@@ -42,6 +44,7 @@ func (s *hostSuite) SetupTest() {
 	s.t.host = &host.Host{
 		Id:             "host",
 		ExpirationTime: time.Now().Add(12 * time.Hour),
+		Status:         evergreen.HostRunning,
 	}
 	s.NoError(s.t.host.Insert(s.ctx))
 
@@ -54,6 +57,10 @@ func (s *hostSuite) SetupTest() {
 
 	s.subs = []event.Subscription{
 		event.NewSubscriptionByID(event.ResourceTypeHost, event.TriggerExpiration, s.t.host.Id, event.Subscriber{
+			Type:   event.EmailSubscriberType,
+			Target: "foo@bar.com",
+		}),
+		event.NewSubscriptionByID(event.ResourceTypeHost, event.TriggerSpawnHostIdle, s.t.host.Id, event.Subscriber{
 			Type:   event.EmailSubscriberType,
 			Target: "foo@bar.com",
 		}),
@@ -81,14 +88,19 @@ func (s *hostSuite) TearDownTest() {
 }
 
 func (s *hostSuite) TestEmailMessage() {
-	email, err := s.testData.hostExpirationEmailPayload(expiringHostEmailSubject, expiringHostEmailBody, s.t.Attributes())
+	email, err := s.testData.hostEmailPayload(expiringHostEmailSubject, expiringHostEmailBody, s.t.Attributes())
 	s.NoError(err)
 	s.Equal("myDistro host termination reminder", email.Subject)
 	s.Contains(email.Body, "Your myDistro host 'hostName' will be terminated at")
+
+	email, err = s.testData.hostEmailPayload(idleHostEmailSubject, idleStoppedHostEmailBody, s.t.Attributes())
+	s.NoError(err)
+	s.Equal("myDistro idle stopped host notice", email.Subject)
+	s.Contains(email.Body, "Your stopped myDistro host 'hostName' has been idle for at least three months")
 }
 
 func (s *hostSuite) TestSlackMessage() {
-	msg, err := s.testData.hostExpirationSlackPayload(expiringHostSlackBody, "linkTitle")
+	msg, err := s.testData.hostSlackPayload(expiringHostSlackBody, "linkTitle")
 	s.NoError(err)
 	s.Contains(msg.Body, "Your myDistro host 'hostName' will be terminated at")
 }
@@ -98,17 +110,109 @@ func (s *hostSuite) TestFetch() {
 	s.NoError(triggers.Fetch(s.ctx, s.t.event))
 	s.Equal(s.t.host.Id, triggers.templateData.ID)
 	s.Equal(fmt.Sprintf("%s/spawn#?resourcetype=hosts&id=%s", s.uiConfig.Url, s.t.host.Id), triggers.templateData.URL)
+
+	s.t.event = &event.EventLogEntry{
+		ResourceType: event.ResourceTypeHost,
+		EventType:    event.EventSpawnHostIdleNotification,
+		ResourceId:   s.t.host.Id,
+		Data:         &event.HostEventData{},
+	}
+	s.NoError(triggers.Fetch(s.ctx, s.t.event))
+	s.Equal(s.t.host.Id, triggers.templateData.ID)
+	s.Equal(fmt.Sprintf("%s/spawn#?resourcetype=hosts&id=%s", s.uiConfig.Url, s.t.host.Id), triggers.templateData.URL)
 }
 
 func (s *hostSuite) TestAllTriggers() {
-	// valid event should trigger a notification
+	// Valid event should trigger a notification
 	n, err := NotificationsFromEvent(s.ctx, s.t.event)
 	s.NoError(err)
-	s.Len(n, 1)
+	s.Require().Len(n, 1)
+	email, ok := n[0].Payload.(*message.Email)
+	s.True(ok)
+	s.Contains(email.Body, "will be terminated")
+
+	s.t.event = &event.EventLogEntry{
+		ID:           "idleEvent",
+		ResourceType: event.ResourceTypeHost,
+		EventType:    event.EventSpawnHostIdleNotification,
+		ResourceId:   s.t.host.Id,
+		Data:         &event.HostEventData{},
+		ProcessedAt:  time.Date(1, time.January, 1, 0, 0, 0, 0, time.UTC),
+		Timestamp:    time.Date(2024, time.April, 18, 17, 1, 13, 384000000, time.Local),
+		Expirable:    true,
+	}
+
+	// A running host should not trigger a notification.
+	s.Require().NoError(host.UpdateOne(s.ctx, host.ById(s.t.host.Id), bson.M{
+		"$set": bson.M{
+			host.NoExpirationKey: true,
+			host.StatusKey:       evergreen.HostRunning,
+		},
+	}))
+	n, err = NotificationsFromEvent(s.ctx, s.t.event)
+	s.NoError(err)
+	s.Require().Len(n, 0)
+
+	// A stopped host with no stopped event should trigger a notification.
+	s.Require().NoError(host.UpdateOne(s.ctx, host.ById(s.t.host.Id), bson.M{
+		"$set": bson.M{
+			host.StatusKey: evergreen.HostStopped,
+		},
+	}))
+
+	n, err = NotificationsFromEvent(s.ctx, s.t.event)
+	s.NoError(err)
+	s.Require().Len(n, 1)
+	email, ok = n[0].Payload.(*message.Email)
+	s.True(ok)
+	s.Contains(email.Body, "has been idle")
+
+	// A four-month stopped host should trigger a notification.
+	stoppedEvent := &event.EventLogEntry{
+		ID:           "stoppedEvent",
+		ResourceType: event.ResourceTypeHost,
+		EventType:    event.EventHostStopped,
+		ResourceId:   s.t.host.Id,
+		Data:         &event.HostEventData{},
+		Timestamp:    time.Now().Add(-time.Hour * 24 * 31 * 4),
+		Expirable:    true,
+	}
+	s.NoError(db.Insert(event.EventCollection, stoppedEvent))
+	n, err = NotificationsFromEvent(s.ctx, s.t.event)
+	s.NoError(err)
+	s.Require().Len(n, 1)
+	email, ok = n[0].Payload.(*message.Email)
+	s.True(ok)
+	s.Contains(email.Body, "has been idle")
+
+	// A one-month idle stopped host should not trigger a notification.
+	stoppedEvent = &event.EventLogEntry{
+		ID:           "recentStoppedEvent",
+		ResourceType: event.ResourceTypeHost,
+		EventType:    event.EventHostStopped,
+		ResourceId:   s.t.host.Id,
+		Data:         &event.HostEventData{},
+		Timestamp:    time.Now().Add(-time.Hour * 24 * 31),
+		Expirable:    true,
+	}
+	s.NoError(db.Insert(event.EventCollection, stoppedEvent))
+
+	n, err = NotificationsFromEvent(s.ctx, s.t.event)
+	s.NoError(err)
+	s.Require().Len(n, 0)
 }
 
 func (s *hostSuite) TestHostExpiration() {
+	s.t.host.NoExpiration = false
 	n, err := s.t.hostExpiration(&s.subs[0])
+	s.NoError(err)
+	s.NotNil(n)
+}
+
+func (s *hostSuite) TestSpawnHostIdle() {
+	s.t.host.NoExpiration = true
+	s.t.host.Status = evergreen.HostStopped
+	n, err := s.t.spawnHostIdle(&s.subs[1])
 	s.NoError(err)
 	s.NotNil(n)
 }

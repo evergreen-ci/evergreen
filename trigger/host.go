@@ -18,6 +18,8 @@ import (
 
 func init() {
 	registry.registerEventHandler(event.ResourceTypeHost, event.EventHostExpirationWarningSent, makeHostTriggers)
+	registry.registerEventHandler(event.ResourceTypeHost, event.EventSpawnHostIdleNotification, makeHostTriggers)
+
 }
 
 const (
@@ -26,6 +28,11 @@ const (
 	expiringHostEmailBody            = `Your {{.Distro}} host '{{.Name}}' will be terminated at {{.ExpirationTime}}. Visit the <a href={{.URL}}>spawnhost page</a> to extend its lifetime.`
 	expiringHostSlackBody            = `Your {{.Distro}} host '{{.Name}}' will be terminated at {{.ExpirationTime}}. Visit the <{{.URL}}|spawnhost page> to extend its lifetime.`
 	expiringHostSlackAttachmentTitle = "Spawn Host Page"
+
+	idleHostEmailSubject     = `{{.Distro}} idle stopped host notice`
+	idleStoppedHostEmailBody = `Your stopped {{.Distro}} host '{{.Name}}' has been idle for at least three months.
+In order to be responsible about resource consumption (as stopped instances still have EBS volumes attached and thus still incur costs), 
+please consider terminating from the <a href={{.URL}}>spawnhost page</a> if the host is no longer in use.`
 )
 
 type hostBase struct {
@@ -80,7 +87,8 @@ type hostTemplateData struct {
 func makeHostTriggers() eventHandler {
 	t := &hostTriggers{}
 	t.hostBase.base.triggers = map[string]trigger{
-		event.TriggerExpiration: t.hostExpiration,
+		event.TriggerExpiration:    t.hostExpiration,
+		event.TriggerSpawnHostIdle: t.spawnHostIdle,
 	}
 
 	return t
@@ -111,14 +119,14 @@ func (t *hostTriggers) Fetch(ctx context.Context, e *event.EventLogEntry) error 
 	return nil
 }
 
-func (t *hostTriggers) generate(sub *event.Subscription) (*notification.Notification, error) {
+func (t *hostTriggers) generateExpiration(sub *event.Subscription) (*notification.Notification, error) {
 	var payload interface{}
 	var err error
 	switch sub.Subscriber.Type {
 	case event.EmailSubscriberType:
-		payload, err = t.templateData.hostExpirationEmailPayload(expiringHostEmailSubject, expiringHostEmailBody, t.Attributes())
+		payload, err = t.templateData.hostEmailPayload(expiringHostEmailSubject, expiringHostEmailBody, t.Attributes())
 	case event.SlackSubscriberType:
-		payload, err = t.templateData.hostExpirationSlackPayload(expiringHostSlackBody, expiringHostSlackAttachmentTitle)
+		payload, err = t.templateData.hostSlackPayload(expiringHostSlackBody, expiringHostSlackAttachmentTitle)
 	default:
 		return nil, nil
 	}
@@ -129,7 +137,15 @@ func (t *hostTriggers) generate(sub *event.Subscription) (*notification.Notifica
 	return notification.New(t.event.ID, sub.Trigger, &sub.Subscriber, payload)
 }
 
-func (t *hostTemplateData) hostExpirationEmailPayload(subjectString, bodyString string, attributes event.Attributes) (*message.Email, error) {
+func (t *hostTriggers) generateIdleSpawnHost(sub *event.Subscription, body string) (*notification.Notification, error) {
+	payload, err := t.templateData.hostEmailPayload(idleHostEmailSubject, body, t.Attributes())
+	if err != nil {
+		return nil, errors.Wrapf(err, "creating idle spawn host template for host '%s'", sub.ID)
+	}
+	return notification.New(t.event.ID, sub.Trigger, &sub.Subscriber, payload)
+}
+
+func (t *hostTemplateData) hostEmailPayload(subjectString, bodyString string, attributes event.Attributes) (*message.Email, error) {
 	subjectBuf := &bytes.Buffer{}
 	subjectTemplate, err := template.New("subject").Parse(subjectString)
 	if err != nil {
@@ -156,7 +172,7 @@ func (t *hostTemplateData) hostExpirationEmailPayload(subjectString, bodyString 
 	}, nil
 }
 
-func (t *hostTemplateData) hostExpirationSlackPayload(messageString string, linkTitle string) (*notification.SlackPayload, error) {
+func (t *hostTemplateData) hostSlackPayload(messageString string, linkTitle string) (*notification.SlackPayload, error) {
 	messageTemplate, err := template.New("subject").Parse(messageString)
 	if err != nil {
 		return nil, errors.Wrap(err, "parsing Slack template")
@@ -178,6 +194,9 @@ func (t *hostTemplateData) hostExpirationSlackPayload(messageString string, link
 }
 
 func (t *hostTriggers) hostExpiration(sub *event.Subscription) (*notification.Notification, error) {
+	if t.host.NoExpiration {
+		return nil, nil
+	}
 	timeZone := time.Local
 	if sub.OwnerType == event.OwnerTypePerson {
 		userTimeZone, err := getUserTimeZone(sub.Owner)
@@ -192,5 +211,16 @@ func (t *hostTriggers) hostExpiration(sub *event.Subscription) (*notification.No
 		}
 	}
 	t.templateData.ExpirationTime = t.host.ExpirationTime.In(timeZone).Format(time.RFC1123)
-	return t.generate(sub)
+	return t.generateExpiration(sub)
+}
+
+func (t *hostTriggers) spawnHostIdle(sub *event.Subscription) (*notification.Notification, error) {
+	shouldNotify, err := t.host.ShouldNotifyStoppedSpawnHostIdle()
+	if err != nil {
+		return nil, err
+	}
+	if !shouldNotify {
+		return nil, nil
+	}
+	return t.generateIdleSpawnHost(sub, idleStoppedHostEmailBody)
 }
