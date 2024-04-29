@@ -1406,12 +1406,12 @@ func UnsafeReplace(ctx context.Context, env evergreen.Environment, idToRemove st
 	}
 
 	grip.Info(message.Fields{
-		"message":              "successfully replaced host document",
-		"host_id":              toInsert.Id,
-		"host_tag":             toInsert.Tag,
-		"distro":               toInsert.Distro.Id,
-		"old_host_id":          idToRemove,
-		"transaction_duration": time.Since(txnStart),
+		"message":                   "successfully replaced host document",
+		"host_id":                   toInsert.Id,
+		"host_tag":                  toInsert.Tag,
+		"distro":                    toInsert.Distro.Id,
+		"old_host_id":               idToRemove,
+		"transaction_duration_secs": time.Since(txnStart).Seconds(),
 	})
 
 	return nil
