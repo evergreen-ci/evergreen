@@ -3,6 +3,7 @@ package route
 import (
 	"context"
 	"net/http"
+	"time"
 
 	"github.com/evergreen-ci/evergreen/model/task"
 	"github.com/evergreen-ci/evergreen/rest/data"
@@ -53,7 +54,7 @@ func (tbh *tasksByBuildHandler) Factory() gimlet.RouteHandler {
 	}
 }
 
-func (tbh *tasksByBuildHandler) Parse(ctx context.Context, r *http.Request) error {
+func (tbh *tasksByBuildHandler) Parse(ctex context.Context, r *http.Request) error {
 	vals := r.URL.Query()
 	tbh.buildId = gimlet.GetVars(r)["build_id"]
 	if tbh.buildId == "" {
@@ -105,17 +106,20 @@ func (tbh *tasksByBuildHandler) Run(ctx context.Context) gimlet.Responder {
 
 	tasks = tasks[:lastIndex]
 	for i := range tasks {
+		taskCtx, cancel := context.WithTimeout(ctx, 10*time.Second)
 		taskModel := &model.APITask{}
 
-		if err = taskModel.BuildFromService(ctx, &tasks[i], &model.APITaskArgs{
+		if err = taskModel.BuildFromService(taskCtx, &tasks[i], &model.APITaskArgs{
 			IncludeAMI:               true,
 			IncludeArtifacts:         true,
 			IncludeProjectIdentifier: true,
 			LogURL:                   tbh.url,
 			ParsleyLogURL:            tbh.parsleyURL,
 		}); err != nil {
+			cancel()
 			return gimlet.MakeJSONInternalErrorResponder(errors.Wrapf(err, "converting task '%s' to API model", tasks[i].Id))
 		}
+		cancel()
 
 		if tbh.fetchAllExecutions {
 			var oldTasks []task.Task
