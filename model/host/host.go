@@ -595,8 +595,17 @@ func (h *Host) IdleTime() time.Duration {
 		}
 	}
 
-	// The host isn't ready to run tasks yet so it's not idle.
+	// The host isn't ready to run tasks yet, so it's not idle.
 	return 0
+}
+
+// ShouldNotifyStoppedSpawnHostIdle returns true if the stopped spawn host has been idle long enough to notify the user.
+func (h *Host) ShouldNotifyStoppedSpawnHostIdle() (bool, error) {
+	if !h.NoExpiration || h.Status != evergreen.HostStopped {
+		return false, nil
+	}
+	timeToNotifyForStoppedHosts := time.Now().Add(-time.Hour * 24 * evergreen.SpawnHostExpireDays * 3)
+	return event.HasNoRecentStoppedHostEvent(h.Id, timeToNotifyForStoppedHosts)
 }
 
 // WastedComputeTime returns the duration of compute we've paid for that

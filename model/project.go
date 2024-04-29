@@ -413,6 +413,10 @@ type BuildVariant struct {
 	// all of the tasks/groups to be run on the build variant, compile through tests.
 	Tasks        []BuildVariantTaskUnit `yaml:"tasks,omitempty" bson:"tasks"`
 	DisplayTasks []patch.DisplayTask    `yaml:"display_tasks,omitempty" bson:"display_tasks,omitempty"`
+
+	// EmptyTaskSelectors stores task selectors that don't target any tasks for this build variant.
+	// This is only for validation purposes.
+	EmptyTaskSelectors []string `yaml:"-" bson:"-"`
 }
 
 // CheckRun is used to provide information about a github check run.

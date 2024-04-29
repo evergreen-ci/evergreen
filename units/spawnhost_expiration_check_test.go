@@ -10,7 +10,9 @@ import (
 	"github.com/evergreen-ci/evergreen/cloud"
 	"github.com/evergreen-ci/evergreen/db"
 	"github.com/evergreen-ci/evergreen/model/distro"
+	"github.com/evergreen-ci/evergreen/model/event"
 	"github.com/evergreen-ci/evergreen/model/host"
+	"github.com/evergreen-ci/evergreen/model/user"
 	"github.com/evergreen-ci/evergreen/testutil"
 	"github.com/evergreen-ci/utility"
 	"github.com/stretchr/testify/assert"
@@ -57,4 +59,46 @@ func TestSpawnhostExpirationCheckJob(t *testing.T) {
 	assert.NoError(t, err)
 	require.NotNil(t, found)
 	assert.True(t, found.ExpirationTime.Sub(h.ExpirationTime) > 0)
+}
+
+func TestTryIdleSpawnHostNotification(t *testing.T) {
+	assert.NoError(t, db.ClearCollections(event.SubscriptionsCollection, event.EventCollection, user.Collection))
+	h := &host.Host{
+		Id:       "test-host",
+		Status:   evergreen.HostStopped,
+		UserHost: true,
+		Provider: evergreen.ProviderNameMock,
+		Distro: distro.Distro{
+			Provider: evergreen.ProviderNameMock,
+			ProviderSettingsList: []*birch.Document{birch.NewDocument(
+				birch.EC.String("region", "test-region"),
+			)},
+		},
+		NoExpiration:   true,
+		ExpirationTime: time.Now(),
+		StartedBy:      "me",
+	}
+	u := &user.DBUser{
+		Id:           "me",
+		EmailAddress: "me.ee@ee.com",
+	}
+	assert.NoError(t, u.Insert())
+	assert.NoError(t, tryIdleSpawnHostNotification(h))
+
+	fetchedSubs := []event.Subscription{}
+	assert.NoError(t, db.FindAllQ(event.SubscriptionsCollection, db.Q{}, &fetchedSubs))
+	require.Len(t, fetchedSubs, 1)
+	assert.Equal(t, u.EmailAddress, utility.FromStringPtr(fetchedSubs[0].Subscriber.Target.(*string)))
+	assert.Equal(t, event.EmailSubscriberType, fetchedSubs[0].Subscriber.Type)
+	assert.Contains(t, fetchedSubs[0].ID, h.Id)
+
+	// Trying to re-insert the subscription doesn't create a new subscription.
+	assert.NoError(t, tryIdleSpawnHostNotification(h))
+	fetchedSubs = []event.Subscription{}
+	assert.NoError(t, db.FindAllQ(event.SubscriptionsCollection, db.Q{}, &fetchedSubs))
+	require.Len(t, fetchedSubs, 1)
+
+	events, err := event.FindAllByResourceID(h.Id)
+	assert.NoError(t, err)
+	assert.Len(t, events, 2)
 }
