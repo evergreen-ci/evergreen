@@ -511,20 +511,6 @@ func (pss *parserStringSlice) UnmarshalYAML(unmarshal func(interface{}) error) e
 	return nil
 }
 
-// HasSpecificActivation returns if the build variant task specifies an activation condition that
-// overrides the default, such as cron/batchtime, disabling the task, or explicitly deactivating it.
-func (bvt *parserBVTaskUnit) hasSpecificActivation() bool {
-	return bvt.BatchTime != nil || bvt.CronBatchTime != "" ||
-		!utility.FromBoolTPtr(bvt.Activate) || utility.FromBoolPtr(bvt.Disable)
-}
-
-// HasSpecificActivation returns if the build variant specifies an activation condition that
-// overrides the default, such as cron/batchtime, disabling the task, or explicitly deactivating it.
-func (bv *parserBV) hasSpecificActivation() bool {
-	return bv.BatchTime != nil || bv.CronBatchTime != "" ||
-		!utility.FromBoolTPtr(bv.Activate) || utility.FromBoolPtr(bv.Disable)
-}
-
 // FindAndTranslateProjectForPatch translates a parser project for a patch into
 // a project. This assumes that the version may not exist yet (i.e. the patch is
 // unfinalized); otherwise FindAndTranslateProjectForVersion is equivalent.

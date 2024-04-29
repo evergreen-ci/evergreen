@@ -356,7 +356,7 @@ func (g *GeneratedProject) GetNewTasksAndActivationInfo(ctx context.Context, v *
 	if g.NewTVPairs != nil && g.ActivationInfo != nil {
 		return g.NewTVPairs, g.ActivationInfo
 	}
-	activationInfo := g.findTasksAndVariantsWithSpecificActivations(v.Requester)
+	activationInfo := g.findTasksAndVariantsWithSpecificActivations(p, v.Requester)
 	newTasks := g.getNewTasksWithDependencies(ctx, v, p, &activationInfo)
 	g.NewTVPairs = &newTasks
 	g.ActivationInfo = &activationInfo
@@ -500,10 +500,6 @@ func (g *GeneratedProject) filterInactiveTasks(ctx context.Context, tasks TVPair
 			if !utility.FromBoolTPtr(projectBV.Activate) {
 				continue
 			}
-		} else if activationInfo.variantHasSpecificActivation(bv) {
-			// New builds with specific activation are activated later by ActivateElapsedBuildsAndTasks.
-			// Skip simulating their dependencies because the builds and their tasks are not activated now so will not be adding dependencies.
-			continue
 		}
 
 		for _, t := range tasks {
@@ -518,9 +514,8 @@ func (g *GeneratedProject) filterInactiveTasks(ctx context.Context, tasks TVPair
 }
 
 type specificActivationInfo struct {
-	stepbackTasks      map[string][]specificStepbackInfo // tasks by variant that are being stepped back
-	activationTasks    map[string][]string               // tasks by variant that have batchtime or activate specified
-	activationVariants []string                          // variants that have batchtime or activate specified
+	stepbackTasks   map[string][]specificStepbackInfo // tasks by variant that are being stepped back
+	activationTasks map[string][]string               // tasks by variant that have batchtime or activate specified
 }
 
 type specificStepbackInfo struct {
@@ -529,14 +524,9 @@ type specificStepbackInfo struct {
 
 func newSpecificActivationInfo() specificActivationInfo {
 	return specificActivationInfo{
-		stepbackTasks:      map[string][]specificStepbackInfo{},
-		activationTasks:    map[string][]string{},
-		activationVariants: []string{},
+		stepbackTasks:   map[string][]specificStepbackInfo{},
+		activationTasks: map[string][]string{},
 	}
-}
-
-func (b *specificActivationInfo) variantHasSpecificActivation(variant string) bool {
-	return utility.StringSliceContains(b.activationVariants, variant)
 }
 
 func (b *specificActivationInfo) getActivationTasks(variant string) []string {
@@ -557,28 +547,20 @@ func (b *specificActivationInfo) isStepbackTask(variant, task string) bool {
 }
 
 func (b *specificActivationInfo) taskHasSpecificActivation(variant, task string) bool {
-	return utility.StringSliceContains(b.activationTasks[variant], task)
-}
-
-func (b *specificActivationInfo) taskOrVariantHasSpecificActivation(variant, task string) bool {
 	if b == nil {
 		return false
 	}
-	return b.taskHasSpecificActivation(variant, task) || b.variantHasSpecificActivation(variant)
+	return utility.StringSliceContains(b.activationTasks[variant], task)
 }
 
-func (g *GeneratedProject) findTasksAndVariantsWithSpecificActivations(requester string) specificActivationInfo {
+func (g *GeneratedProject) findTasksAndVariantsWithSpecificActivations(p *Project, requester string) specificActivationInfo {
 	res := newSpecificActivationInfo()
-	for _, bv := range g.BuildVariants {
+	for _, bv := range p.BuildVariants {
 		// Only consider batchtime for mainline builds. A task/BV will have
 		// specific activation if activate is explicitly set to false;
 		// otherwise, if it's explicitly set to true, activate it immediately.
-		if evergreen.ShouldConsiderBatchtime(requester) && bv.hasSpecificActivation() {
-			res.activationVariants = append(res.activationVariants, bv.name())
-		} else if !utility.FromBoolTPtr(bv.Activate) {
-			res.activationVariants = append(res.activationVariants, bv.name())
-		}
-		// Regardless of whether the build variant has batchtime, there may be tasks with different batchtime
+		// The tasks already have their BV/task levels of precedence computed for
+		// batch time and activation fields.
 		batchTimeTasks := []string{}
 		for _, bvt := range bv.Tasks {
 			if isStepbackTask(g.Task, bv.Name, bvt.Name) {
@@ -586,14 +568,14 @@ func (g *GeneratedProject) findTasksAndVariantsWithSpecificActivations(requester
 				res.stepbackTasks[bv.Name] = append(res.stepbackTasks[bv.Name], stepbackInfo)
 				continue // Don't consider batchtime/activation if we're stepping back this generated task
 			}
-			if evergreen.ShouldConsiderBatchtime(requester) && bvt.hasSpecificActivation() {
+			if evergreen.ShouldConsiderBatchtime(requester) && bvt.HasSpecificActivation() {
 				batchTimeTasks = append(batchTimeTasks, bvt.Name)
 			} else if !utility.FromBoolTPtr(bvt.Activate) {
 				batchTimeTasks = append(batchTimeTasks, bvt.Name)
 			}
 		}
 		if len(batchTimeTasks) > 0 {
-			res.activationTasks[bv.name()] = batchTimeTasks
+			res.activationTasks[bv.Name] = batchTimeTasks
 		}
 	}
 	return res

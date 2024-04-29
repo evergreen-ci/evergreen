@@ -123,7 +123,7 @@ func (di *dependencyIncluder) handle(pair TVPair, activationInfo *specificActiva
 	// that need to be included as dependencies, but are not in the generated project.
 	// If all the task / variant pairs that spawn these dependencies are inactive, we
 	// also mark this newly generated dependency as inactive.
-	pairSpecifiesActivation := activationInfo.taskOrVariantHasSpecificActivation(pair.Variant, pair.TaskName)
+	pairSpecifiesActivation := activationInfo.taskHasSpecificActivation(pair.Variant, pair.TaskName)
 	catcher := grip.NewBasicCatcher()
 	for _, dep := range deps {
 		// Since the only tasks that have activation info set are the initial unexpanded dependencies, we only need

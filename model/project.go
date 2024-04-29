@@ -1398,7 +1398,7 @@ func FindLatestVersionWithValidProject(projectId string, preGeneration bool) (*V
 // HasSpecificActivation returns if the build variant task specifies an activation condition that
 // overrides the default, such as cron/batchtime, disabling the task, or explicitly activating it.
 func (bvt *BuildVariantTaskUnit) HasSpecificActivation() bool {
-	return bvt.CronBatchTime != "" || bvt.BatchTime != nil || bvt.Activate != nil || bvt.IsDisabled()
+	return bvt.CronBatchTime != "" || bvt.BatchTime != nil || !utility.FromBoolTPtr(bvt.Activate) || bvt.IsDisabled()
 }
 
 // HasCheckRun returns if the build variant task specifies a checkrun
