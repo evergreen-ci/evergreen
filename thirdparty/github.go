@@ -152,7 +152,6 @@ type GithubPatch struct {
 	HeadOwner      string `bson:"head_owner"`
 	HeadRepo       string `bson:"head_repo"`
 	HeadHash       string `bson:"head_hash"`
-	HeadBranch     string `bson:"head_branch"`
 	Author         string `bson:"author"`
 	AuthorUID      int    `bson:"author_uid"`
 	MergeCommitSHA string `bson:"merge_commit_sha"`
