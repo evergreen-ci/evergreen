@@ -1436,6 +1436,12 @@ Parameters:
     not exist, it is ignored. In case of conflicting environment
     variables defined by `env` or `add_expansions_to_env`, this has
     highest priority.
+-   `add_to_path`: specify one or more paths to prepend to the command `PATH`,
+    which has the following effects:
+    - If `PATH` is explicitly set in `env`, that `PATH` is ignored.
+    - The command automatically inherits the runtime environment's `PATH`
+      environment variable. Then, any paths specified in `add_to_path` are
+      prepended in the given order.
 -   `background`: if set to true, the script runs in the background
     instead of the foreground. `shell.exec` starts the script but
     does not wait for the script to exit before running the next command. 
