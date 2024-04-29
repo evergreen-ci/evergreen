@@ -558,6 +558,15 @@ func TestFindHostsScheduledToStop(t *testing.T) {
 				require.NoError(t, h.Insert(ctx))
 			}
 
+			oldServiceFlags, err := evergreen.GetServiceFlags(ctx)
+			require.NoError(t, err)
+			newServiceFlags := *oldServiceFlags
+			newServiceFlags.SleepScheduleBetaTestDisabled = true
+			require.NoError(t, evergreen.SetServiceFlags(ctx, newServiceFlags))
+			defer func() {
+				assert.NoError(t, evergreen.SetServiceFlags(ctx, *oldServiceFlags))
+			}()
+
 			foundHosts, err := FindHostsScheduledToStop(ctx)
 			require.NoError(t, err)
 			assert.Len(t, foundHosts, len(tCase.expectedHosts))
@@ -771,6 +780,15 @@ func TestFindHostsScheduledToStart(t *testing.T) {
 			for _, h := range tCase.hosts {
 				require.NoError(t, h.Insert(ctx))
 			}
+
+			oldServiceFlags, err := evergreen.GetServiceFlags(ctx)
+			require.NoError(t, err)
+			newServiceFlags := *oldServiceFlags
+			newServiceFlags.SleepScheduleBetaTestDisabled = true
+			require.NoError(t, evergreen.SetServiceFlags(ctx, newServiceFlags))
+			defer func() {
+				assert.NoError(t, evergreen.SetServiceFlags(ctx, *oldServiceFlags))
+			}()
 
 			foundHosts, err := FindHostsScheduledToStart(ctx)
 			require.NoError(t, err)
