@@ -408,8 +408,9 @@ func (j *patchIntentProcessor) finishPatch(ctx context.Context, patchDoc *patch.
 	patchDoc.ProjectStorageMethod = ppStorageMethod
 
 	if err = patchDoc.Insert(); err != nil {
-		// If this is GH merge queue, sometimes the patch gets sent again and because
-		// some processed failed (i.e. context cancelling early from deploy).
+		// If this is GH merge queue and the patch gets tried again
+		// the document may be already inserted in the DB but
+		// failed later (i.e. context cancelling early from deploy).
 		// And it's not easy to unstuck the merge queue, so we should continue on
 		// duplicate key errors, otherwise, return the error.
 		if !(mongo.IsDuplicateKeyError(err) && patchDoc.IsGithubMergePatch()) {
