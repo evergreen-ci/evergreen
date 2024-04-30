@@ -10,3 +10,5 @@ updates:
     open-pull-requests-limit: 5
     commit-message:
       prefix: "CHORE: "
+    ignore:
+      - dependency-name: "gonum" 
