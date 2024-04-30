@@ -46,7 +46,8 @@ type Query {
 
   # project
   githubProjectConflicts(projectId: String! @requireProjectAccess(permission: SETTINGS, access: VIEW)): GithubProjectConflicts!
-  ### Must use more general TASKS permission because we surface many key fields (e.g. patches and banners) from this resolver.
+  ### The project query must use TASKS permission because we surface many key fields (e.g. patches and banners) from this resolver.
+  ### May be updated after completion of DEVPROD-6882.
   project(projectIdentifier: String! @requireProjectAccess(permission: TASKS, access: VIEW)): Project!
   projects: [GroupedProjects]!
   projectEvents(
