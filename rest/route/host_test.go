@@ -362,7 +362,8 @@ func (s *HostSuite) TestBuildFromServiceHost() {
 	apiHost := model.APIHost{}
 	apiHost.BuildFromService(host, nil)
 	s.Equal(apiHost.Id, utility.ToStringPtr(host.Id))
-	s.Equal(apiHost.HostURL, utility.ToStringPtr(host.Host))
+	s.Equal(apiHost.HostURL, utility.ToStringPtr(host.Host), "should use ephemeral DNS name as host URL if persistent DNS name is not set")
+	s.Zero(apiHost.PersistentDNSName)
 	s.Equal(apiHost.Provisioned, host.Provisioned)
 	s.Equal(apiHost.StartedBy, utility.ToStringPtr(host.StartedBy))
 	s.Equal(apiHost.Provider, utility.ToStringPtr(host.Provider))
@@ -372,6 +373,17 @@ func (s *HostSuite) TestBuildFromServiceHost() {
 	s.Equal(apiHost.Distro.Id, utility.ToStringPtr(host.Distro.Id))
 	s.Equal(apiHost.Distro.Provider, utility.ToStringPtr(host.Distro.Provider))
 	s.Equal(apiHost.Distro.ImageId, utility.ToStringPtr(""))
+}
+
+func (s *HostSuite) TestBuildFromServiceHostForUnexpirableHostWithPersistentDNSName() {
+	h := host.Host{
+		Id:                "host_id",
+		PersistentDNSName: "example0.com",
+		Host:              "example1.com",
+	}
+	var apiHost model.APIHost
+	apiHost.BuildFromService(&h, nil)
+	s.Equal("example0.com", utility.FromStringPtr(apiHost.HostURL), "should prefer persistent DNS name over ephemeral DNS name if set")
 }
 
 ////////////////////////////////////////////////////////////////////////

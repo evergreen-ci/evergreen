@@ -635,6 +635,7 @@ Examples:
 				return errors.New("host is not running")
 			}
 			user := utility.FromStringPtr(h.User)
+			// kim: TODO: manually test
 			url := utility.FromStringPtr(h.HostURL)
 			if user == "" || url == "" {
 				return errors.New("unable to ssh into host without user or DNS name")
@@ -1086,6 +1087,7 @@ func hostList() cli.Command {
 }
 
 func printHosts(hosts []*restModel.APIHost) {
+	// kim: TODO: manually test
 	for _, h := range hosts {
 		grip.Infof("ID: %s; Name: %s; Distro: %s; Status: %s; Host name: %s; User: %s; Availability Zone: %s",
 			utility.FromStringPtr(h.Id),
@@ -1504,6 +1506,7 @@ Examples:
 			var user, host string
 			if !remoteIsLocal {
 				hostID := c.String(hostFlagName)
+				// kim: TODO: manual test this still works
 				user, host, err = getUserAndHostname(ctx, c.String(hostFlagName), c.Parent().Parent().String(confFlagName))
 				if err != nil {
 					return errors.Wrapf(err, "could not get username and host for host ID '%s'", hostID)
