@@ -1021,6 +1021,7 @@ func (s *PatchIntentUnitsSuite) TestProcessMergeGroupIntent() {
 	}
 
 	// Attempting to finalize again should result in no errors
+	patchDoc.Version = ""
 	s.NoError(j.finishPatch(s.ctx, patchDoc))
 
 	s.NoError(j.Error())
