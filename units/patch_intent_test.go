@@ -1019,6 +1019,12 @@ func (s *PatchIntentUnitsSuite) TestProcessMergeGroupIntent() {
 	for _, subscription := range out {
 		s.Equal("github_merge", subscription.Subscriber.Type)
 	}
+
+	// Attempting to finalize again should result in no errors
+	s.NoError(j.finishPatch(s.ctx, patchDoc))
+
+	s.NoError(j.Error())
+	s.False(j.HasErrors())
 }
 
 func (s *PatchIntentUnitsSuite) TestProcessGitHubIntentWithMergeBase() {

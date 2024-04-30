@@ -26,6 +26,7 @@ import (
 	"github.com/mongodb/grip/sometimes"
 	"github.com/pkg/errors"
 	"go.mongodb.org/mongo-driver/bson"
+	"go.mongodb.org/mongo-driver/mongo"
 )
 
 const (
@@ -407,7 +408,13 @@ func (j *patchIntentProcessor) finishPatch(ctx context.Context, patchDoc *patch.
 	patchDoc.ProjectStorageMethod = ppStorageMethod
 
 	if err = patchDoc.Insert(); err != nil {
-		return errors.Wrapf(err, "inserting patch '%s'", patchDoc.Id.Hex())
+		// If this is GH merge queue, sometimes the patch gets sent again and because
+		// some processed failed (i.e. context cancelling early from deploy).
+		// And it's not easy to unstuck the merge queue, so we should continue on
+		// duplicate key errors, otherwise, return the error.
+		if !(mongo.IsDuplicateKeyError(err) && patchDoc.IsGithubMergePatch()) {
+			return errors.Wrapf(err, "inserting patch '%s'", patchDoc.Id.Hex())
+		}
 	}
 
 	if err = ProcessTriggerAliases(ctx, patchDoc, pref, j.env, patchDoc.Triggers.Aliases); err != nil {
