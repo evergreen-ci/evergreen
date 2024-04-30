@@ -1087,7 +1087,6 @@ func hostList() cli.Command {
 }
 
 func printHosts(hosts []*restModel.APIHost) {
-	// kim: TODO: manually test
 	for _, h := range hosts {
 		hostname := getHostname(h)
 		grip.Infof("ID: %s; Name: %s; Distro: %s; Status: %s; Host name: %s; User: %s; Availability Zone: %s",
@@ -1508,7 +1507,6 @@ Examples:
 			var user, host string
 			if !remoteIsLocal {
 				hostID := c.String(hostFlagName)
-				// kim: TODO: manual test this still works
 				user, host, err = getUserAndHostname(ctx, c.String(hostFlagName), c.Parent().Parent().String(confFlagName))
 				if err != nil {
 					return errors.Wrapf(err, "could not get username and host for host ID '%s'", hostID)
