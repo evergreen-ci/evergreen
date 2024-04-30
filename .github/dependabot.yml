@@ -11,4 +11,4 @@ updates:
     commit-message:
       prefix: "CHORE: "
     ignore:
-      - dependency-name: "gonum" 
+      - dependency-name: "gonum" # TODO: (DEVPROD-6962) Remove this ignore once we upgrade to minimum golang version 1.21
