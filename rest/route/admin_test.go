@@ -348,8 +348,7 @@ func (s *AdminRouteSuite) TestRestartVersionsRoute() {
 	projectRef := &model.ProjectRef{
 		Id: "my-project",
 		CommitQueue: model.CommitQueueParams{
-			Enabled:    utility.TruePtr(),
-			MergeQueue: model.MergeQueueEvergreen,
+			Enabled: utility.TruePtr(),
 		},
 		Enabled: true,
 		Owner:   "me",
