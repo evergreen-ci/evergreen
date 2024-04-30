@@ -635,8 +635,7 @@ Examples:
 				return errors.New("host is not running")
 			}
 			user := utility.FromStringPtr(h.User)
-			var url string
-			url = getHostname(h)
+			url := getHostname(h)
 			if user == "" || url == "" {
 				return errors.New("unable to ssh into host without user or DNS name")
 			}
