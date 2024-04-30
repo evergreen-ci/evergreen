@@ -635,8 +635,8 @@ Examples:
 				return errors.New("host is not running")
 			}
 			user := utility.FromStringPtr(h.User)
-			// kim: TODO: manually test
-			url := utility.FromStringPtr(h.HostURL)
+			var url string
+			url = getHostname(h)
 			if user == "" || url == "" {
 				return errors.New("unable to ssh into host without user or DNS name")
 			}
@@ -1089,12 +1089,13 @@ func hostList() cli.Command {
 func printHosts(hosts []*restModel.APIHost) {
 	// kim: TODO: manually test
 	for _, h := range hosts {
+		hostname := getHostname(h)
 		grip.Infof("ID: %s; Name: %s; Distro: %s; Status: %s; Host name: %s; User: %s; Availability Zone: %s",
 			utility.FromStringPtr(h.Id),
 			utility.FromStringPtr(h.DisplayName),
 			utility.FromStringPtr(h.Distro.Id),
 			utility.FromStringPtr(h.Status),
-			utility.FromStringPtr(h.HostURL),
+			hostname,
 			utility.FromStringPtr(h.User),
 			utility.FromStringPtr(h.AvailabilityZone))
 	}
@@ -1112,12 +1113,13 @@ func printHostsJSON(hosts []*restModel.APIHost) {
 	}
 	hostResults := []hostResult{}
 	for _, h := range hosts {
+		hostname := getHostname(h)
 		hostResults = append(hostResults, hostResult{
 			Id:               utility.FromStringPtr(h.Id),
 			Name:             utility.FromStringPtr(h.DisplayName),
 			Distro:           utility.FromStringPtr(h.Distro.Id),
 			Status:           utility.FromStringPtr(h.Status),
-			HostName:         utility.FromStringPtr(h.HostURL),
+			HostName:         hostname,
 			User:             utility.FromStringPtr(h.User),
 			AvailabilityZone: utility.FromStringPtr(h.AvailabilityZone),
 		})
@@ -1665,12 +1667,21 @@ func getUserAndHostname(ctx context.Context, hostID, confPath string) (user, hos
 			catcher := grip.NewBasicCatcher()
 			user = utility.FromStringPtr(h.User)
 			catcher.ErrorfWhen(user == "", "could not find login user for host '%s'", hostID)
-			hostname = utility.FromStringPtr(h.HostURL)
+			hostname = getHostname(h)
 			catcher.ErrorfWhen(hostname == "", "could not find hostname for host '%s'", hostID)
 			return user, hostname, catcher.Resolve()
 		}
 	}
 	return "", "", errors.Errorf("could not find host '%s' in user's spawn hosts", hostID)
+}
+
+// getHostname returns the primary hostname for the host. If it has a persistent
+// DNS name, that one is preferred.
+func getHostname(h *restModel.APIHost) string {
+	if persistentDNSName := utility.FromStringPtr(h.PersistentDNSName); persistentDNSName != "" {
+		return persistentDNSName
+	}
+	return utility.FromStringPtr(h.HostURL)
 }
 
 // verifyRsync performs some basic validation for the common case in

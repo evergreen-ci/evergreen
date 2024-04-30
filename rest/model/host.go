@@ -14,8 +14,7 @@ import (
 // APIHost is the model to be returned by the API whenever hosts are fetched.
 type APIHost struct {
 	// Unique identifier of a specific host
-	Id *string `json:"host_id"`
-	// kim: TODO: test effect on Spruce UI
+	Id                *string `json:"host_id"`
 	HostURL           *string `json:"host_url"`
 	PersistentDNSName *string `json:"persistent_dns_name"`
 	Tag               *string `json:"tag"`
@@ -117,11 +116,7 @@ func (apiHost *APIHost) buildFromHostStruct(h *host.Host) {
 		return
 	}
 	apiHost.Id = utility.ToStringPtr(h.Id)
-	if h.PersistentDNSName != "" {
-		apiHost.HostURL = utility.ToStringPtr(h.PersistentDNSName)
-	} else {
-		apiHost.HostURL = utility.ToStringPtr(h.Host)
-	}
+	apiHost.HostURL = utility.ToStringPtr(h.Host)
 	apiHost.PersistentDNSName = utility.ToStringPtr(h.PersistentDNSName)
 	apiHost.Tag = utility.ToStringPtr(h.Tag)
 	apiHost.Provisioned = h.Provisioned
