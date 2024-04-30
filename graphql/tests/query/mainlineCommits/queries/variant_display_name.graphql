@@ -1,10 +1,13 @@
 {
-  mainlineCommits(options: { projectIdentifier: "evergreen" }, buildVariantOptions: {variants: ["Ubuntu 16.04"]}) {
+  mainlineCommits(
+    options: { projectIdentifier: "spruce" }
+    buildVariantOptions: { variants: ["Ubuntu 16.04"] }
+  ) {
     versions {
       version {
         id
         author
-        buildVariants(options: { variants: ["Ubuntu 16.04"]}) {
+        buildVariants(options: { variants: ["Ubuntu 16.04"] }) {
           variant
           displayName
           tasks {

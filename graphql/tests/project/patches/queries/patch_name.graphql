@@ -1,5 +1,5 @@
 {
-  project(projectIdentifier: "evergreen") {
+  project(projectIdentifier: "spruce") {
     patches(patchesInput: { patchName: "22", onlyCommitQueue: false }) {
       patches {
         id

@@ -7,6 +7,24 @@
       "githash": "123",
       "branch": "spruce",
       "author": "bob.smith"
+    },
+    {
+      "_id": {
+        "$oid": "5e6bb9e23066155a993efff1"
+      },
+      "githash": "123",
+      "branch": "evergreen",
+      "author": "bob.smith"
+    }
+  ],
+  "project_ref": [
+    {
+      "_id": "spruce",
+      "identifier": "spruce"
+    },
+    {
+      "_id": "evergreen",
+      "identifier": "evergreen"
     }
   ]
 }

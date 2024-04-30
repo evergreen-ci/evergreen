@@ -1,0 +1,7 @@
+{
+  patch(patchId: "invalid_id") {
+    id
+    author
+    githash
+  }
+}

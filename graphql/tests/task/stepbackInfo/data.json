@@ -32,9 +32,7 @@
       "distro": "macos-1014",
       "execution": 1,
       "host_id": "host2",
-      "execution_tasks": [
-        "execution_task"
-      ],
+      "execution_tasks": ["execution_task"],
       "stepback_info": {
         "last_failing_stepback_task_id": "f1",
         "last_passing_stepback_task_id": "p1",
@@ -55,6 +53,12 @@
       "distro": "macos-1014",
       "execution": 1,
       "host_id": "host2"
+    }
+  ],
+  "project_ref": [
+    {
+      "_id": "spruce",
+      "identifier": "spruce"
     }
   ]
 }

@@ -3,6 +3,7 @@
     {
       "_id": "mongodb_mongo_v3.0.11_osx_108_ssl_compile_336e39e76e7a65af1ec534f28e69f568ca97695c_16_06_13_21_07_12",
       "version": "5e4ff3abe3c3317e352062e4",
+      "branch": "spruce",
       "revision": "5e823e1f28baeaa22ae00823d83e03082cd148ab",
       "build_variant": "osx-108-ssl",
       "display_name": "compile",
@@ -15,11 +16,18 @@
     {
       "_id": "evergreen_ubuntu1604_test_model_task_5e823e1f28baeaa22ae00823d83e03082cd148ab_20_02_20_20_37_06",
       "version": "5e4ff3abe3c3317e352062e4",
+      "branch": "spruce",
       "revision": "5e823e1f28baeaa22ae00823d83e03082cd148ab",
       "build_variant": "ubuntu1604",
       "display_name": "test-cloud",
       "r": "github_pull_request",
       "status": "failed"
+    }
+  ],
+  "project_ref": [
+    {
+      "_id": "spruce",
+      "identifier": "spruce"
     }
   ],
   "task_queues": [

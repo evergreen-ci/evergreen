@@ -5,7 +5,7 @@
       "result": {
         "data": {
           "commitQueue": {
-            "projectId": "mongodb-mongo-master",
+            "projectId": "sandbox_project_id",
             "message": "this is a message",
             "owner": "",
             "repo": "",
@@ -31,7 +31,7 @@
       "result": {
         "data": {
           "commitQueue": {
-            "projectId": "mongodb-evergreen-spruce",
+            "projectId": "spruce",
             "owner": "evergreen",
             "repo": "spruce",
             "queue": [
@@ -57,10 +57,25 @@
         "data": null,
         "errors": [
           {
-            "message": "error finding commit queue for no_queue: commit queue not found for project 'no_queue'",
+            "message": "error finding commit queue for happyAbyssinian: commit queue not found for project 'happyAbyssinian'",
             "path": ["commitQueue"],
             "extensions": {
               "code": "RESOURCE_NOT_FOUND"
+            }
+          }
+        ]
+      }
+    },
+    {
+      "query_file": "no_permissions.graphql",
+      "result": {
+        "data": null,
+        "errors": [
+          {
+            "message": "user 'testuser' does not have permission to access 'tasks' for the project 'evergreen'",
+            "path": ["commitQueue", "projectIdentifier"],
+            "extensions": {
+              "code": "FORBIDDEN"
             }
           }
         ]
