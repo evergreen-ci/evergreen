@@ -1,36 +1,9 @@
 {
-  "patches": [
-    {
-      "_id": {
-        "$oid": "5e4ff3abe3c3317e352062e4"
-      },
-      "patch_number": 1234,
-      "author": "arjun",
-      "githash": "ca82a6dff817ec66f44342007202690a93763949",
-      "branch": "spruce"
-    },
-    {
-      "_id": {
-        "$oid": "1e4ff3abe3c3317e352062e4"
-      },
-      "branch": "spruce"
-    },
-    {
-      "_id": {
-        "$oid": "5e4ff3abe3c3317e352062e5"
-      },
-      "branch": "spruce"
-    },
-    {
-      "_id": {
-        "$oid": "9e4ff3abe3c3317e352062e4"
-      },
-      "branch": "evergreen"
-    }
-  ],
   "versions": [
+    { "_id": "9e4ff3abe3c3317e352062e4", "identifier": "evergreen" },
+    { "_id": "5e4ff3abe3c3317e352062e5", "identifier": "spruce" },
     {
-      "_id": "5e4ff3abe3c3317e352062e4",
+      "_id": "spruce_5e4ff3abe3c3317e352062e4",
       "create_time": {
         "$date": "2020-02-21T15:13:48.801Z"
       },
@@ -56,19 +29,19 @@
         {
           "build_variant": "ubuntu1604",
           "activated": true,
-          "build_id": "evergreen_ubuntu1604_patch_5e823e1f28baeaa22ae00823d83e03082cd148ab_5e4ff3abe3c3317e352062e4_20_02_21_15_13_48"
+          "build_id": "evergreen_ubuntu1604_patch_5e823e1f28baeaa22ae00823d83e03082cd148ab_spruce_5e4ff3abe3c3317e352062e4_20_02_21_15_13_48"
         },
         {
           "build_variant": "lint",
           "activated": true,
-          "build_id": "evergreen_lint_patch_5e823e1f28baeaa22ae00823d83e03082cd148ab_5e4ff3abe3c3317e352062e4_20_02_21_15_13_48"
+          "build_id": "evergreen_lint_patch_5e823e1f28baeaa22ae00823d83e03082cd148ab_spruce_5e4ff3abe3c3317e352062e4_20_02_21_15_13_48"
         }
       ],
       "builds": [
-        "evergreen_ubuntu1604_patch_5e823e1f28baeaa22ae00823d83e03082cd148ab_5e4ff3abe3c3317e352062e4_20_02_21_15_13_48",
-        "evergreen_lint_patch_5e823e1f28baeaa22ae00823d83e03082cd148ab_5e4ff3abe3c3317e352062e4_20_02_21_15_13_48"
+        "evergreen_ubuntu1604_patch_5e823e1f28baeaa22ae00823d83e03082cd148ab_spruce_5e4ff3abe3c3317e352062e4_20_02_21_15_13_48",
+        "evergreen_lint_patch_5e823e1f28baeaa22ae00823d83e03082cd148ab_spruce_5e4ff3abe3c3317e352062e4_20_02_21_15_13_48"
       ],
-      "identifier": "evergreen",
+      "identifier": "spruce",
       "remote": false,
       "remote_path": "",
       "r": "github_pull_request",
@@ -319,7 +292,7 @@
     },
     {
       "_id": "some_task_2",
-      "version": "5e4ff3abe3c3317e352062e4",
+      "version": "spruce_5e4ff3abe3c3317e352062e4",
       "revision": "5e823e1f28baeaa22ae00823d83e03082cd148ab",
       "build_variant": "ubuntu1604",
       "display_name": "test-thirdparty-docker",
@@ -333,7 +306,7 @@
     {
       "_id": "2",
       "time_taken": 30000000000000,
-      "version": "5e4ff3abe3c3317e352062e4",
+      "version": "spruce_5e4ff3abe3c3317e352062e4",
       "revision": "5e823e1f28baeaa22ae00823d83e03082cd148ab",
       "build_variant": "ubuntu1604",
       "display_name": "test-cloud",
@@ -374,7 +347,7 @@
       "create_time": "2019-07-10T22:05:08.973Z",
       "start_time": "2019-07-21T00:39:42.274Z",
       "finish_time": "0001-01-01T00:00:00Z",
-      "version": "5e4ff3abe3c3317e352062e4",
+      "version": "spruce_5e4ff3abe3c3317e352062e4",
       "branch": "mci",
       "gitspec": "",
       "build_variant": "osx",
@@ -415,7 +388,7 @@
       "create_time": "2019-07-10T22:05:08.973Z",
       "start_time": "2019-07-21T00:39:42.274Z",
       "finish_time": "0001-01-01T00:00:00Z",
-      "version": "5e4ff3abe3c3317e352062e4",
+      "version": "spruce_5e4ff3abe3c3317e352062e4",
       "branch": "mci",
       "gitspec": "",
       "build_variant": "windows",
@@ -456,7 +429,7 @@
       "create_time": "2019-07-10T22:05:08.973Z",
       "start_time": "2019-07-21T00:39:42.274Z",
       "finish_time": "0001-01-01T00:00:00Z",
-      "version": "5e4ff3abe3c3317e352062e4",
+      "version": "spruce_5e4ff3abe3c3317e352062e4",
       "branch": "mci",
       "gitspec": "",
       "build_variant": "ubuntu1604",

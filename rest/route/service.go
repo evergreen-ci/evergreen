@@ -167,6 +167,7 @@ func AttachHandler(app *gimlet.APIApp, opts HandlerOpts) {
 	app.AddRoute("/hosts/{host_id}/terminate").Version(2).Post().Wrap(requireUser).RouteHandler(makeTerminateHostRoute())
 	app.AddRoute("/hosts/{host_id}/attach").Version(2).Post().Wrap(requireUser).RouteHandler(makeAttachVolume(env))
 	app.AddRoute("/hosts/{host_id}/detach").Version(2).Post().Wrap(requireUser).RouteHandler(makeDetachVolume(env))
+	app.AddRoute("/hosts/{host_id}/is_up").Version(2).Post().Wrap(requireHost).RouteHandler(makeHostIsUpPostHandler())
 	app.AddRoute("/hosts/{host_id}/provisioning_options").Version(2).Get().Wrap(requireHost).RouteHandler(makeHostProvisioningOptionsGetHandler(env))
 	app.AddRoute("/hosts/ip_address/{ip_address}").Version(2).Get().Wrap(requireUser).RouteHandler(makeGetHostByIpAddress())
 	app.AddRoute("/volumes").Version(2).Get().Wrap(requireUser).RouteHandler(makeGetVolumes())

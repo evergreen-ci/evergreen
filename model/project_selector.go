@@ -172,9 +172,6 @@ func (tse *tagSelectorEvaluator) evalSelector(s Selector) ([]string, error) {
 			results = utility.StringSliceIntersection(results, names)
 		}
 	}
-	if len(results) == 0 {
-		return nil, errors.Errorf("nothing satisfies selector '%v'", s)
-	}
 	return results, nil
 }
 

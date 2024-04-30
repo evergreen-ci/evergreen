@@ -408,6 +408,35 @@ func (rh *hostProvisioningOptionsGetHandler) Run(ctx context.Context) gimlet.Res
 	return gimlet.NewJSONResponse(apiOpts)
 }
 
+// GET /hosts/{host_id}/is_up
+
+type hostIsUpPostHandler struct {
+	params model.APIHostIsUpOptions
+}
+
+func makeHostIsUpPostHandler() gimlet.RouteHandler {
+	return &hostIsUpPostHandler{}
+}
+
+func (rh *hostIsUpPostHandler) Factory() gimlet.RouteHandler {
+	return &hostIsUpPostHandler{}
+}
+
+func (rh *hostIsUpPostHandler) Parse(ctx context.Context, r *http.Request) error {
+	if err := utility.ReadJSON(r.Body, &rh.params); err != nil {
+		return errors.Wrap(err, "reading host is up parameters from JSON request body")
+	}
+	return nil
+}
+
+func (rh *hostIsUpPostHandler) Run(ctx context.Context) gimlet.Responder {
+	apiHost, err := data.PostHostIsUp(ctx, rh.params)
+	if err != nil {
+		return gimlet.MakeJSONErrorResponder(err)
+	}
+	return gimlet.NewJSONResponse(apiHost)
+}
+
 // //////////////////////////////////////////////////////////////////////
 //
 // POST /rest/v2/hosts/{host_id}/disable

@@ -325,6 +325,8 @@ func (h *hostAgentNextTask) prepareHostForAgentExit(ctx context.Context, params 
 // fixIntentHostRunningAgent handles an exceptional case in which an ephemeral
 // host is still believed to be an intent host but somehow the agent is running
 // on an EC2 instance associated with that intent host.
+// TODO (DEVPROD-6752): remove this once hosts have all transitioned to using
+// new route.
 func (h *hostAgentNextTask) fixIntentHostRunningAgent(ctx context.Context, host *host.Host, instanceID string) error {
 	if !evergreen.IsEc2Provider(host.Provider) {
 		// Intent host issues only affect ephemeral (i.e. EC2) hosts.
@@ -360,6 +362,8 @@ func (h *hostAgentNextTask) fixIntentHostRunningAgent(ctx context.Context, host 
 // transitionIntentHostToStarting converts an intent host to a real host
 // because it's alive in the cloud. It is marked as starting to indicate that
 // the host has started and can run tasks.
+// TODO (DEVPROD-6752): remove this once hosts have transitioned to using new
+// route.
 func (h *hostAgentNextTask) transitionIntentHostToStarting(ctx context.Context, hostToStart *host.Host, instanceID string) error {
 	grip.Notice(message.Fields{
 		"message":     "DB-EC2 state mismatch - found EC2 instance running an agent, but Evergreen believes the host still an intent host",
@@ -385,6 +389,8 @@ func (h *hostAgentNextTask) transitionIntentHostToStarting(ctx context.Context, 
 // transitionIntentHostToDecommissioned converts an intent host to a real
 // host because it's alive in the cloud. It is marked as decommissioned to
 // indicate that the host is not valid and should be terminated.
+// TODO (DEVPROD-6752): remove this once hosts have transitioned to using new
+// route.
 func (h *hostAgentNextTask) transitionIntentHostToDecommissioned(ctx context.Context, hostToDecommission *host.Host, instanceID string) error {
 	grip.Notice(message.Fields{
 		"message":     "DB-EC2 state mismatch - found EC2 instance running an agent, but Evergreen believes the host is a stale building intent host",

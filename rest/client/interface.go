@@ -124,6 +124,9 @@ type Communicator interface {
 	// Evergreen binary for a given distro.
 	GetClientURLs(ctx context.Context, distroID string) ([]string, error)
 
+	// PostHostIsUp indicates to the app server that the task host is up and
+	// running.
+	PostHostIsUp(ctx context.Context, hostID, hostSecret, instanceID string) (*restmodel.APIHost, error)
 	// GetHostProvisioningOptions gets the options to provision a host.
 	GetHostProvisioningOptions(ctx context.Context, hostID, hostSecret string) (*restmodel.APIHostProvisioningOptions, error)
 

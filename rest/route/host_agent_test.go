@@ -82,6 +82,10 @@ func TestHostNextTask(t *testing.T) {
 	newServiceFlags := *originalServiceFlags
 	require.NoError(t, newServiceFlags.Set(ctx))
 
+	generateFakeEC2InstanceID := func() string {
+		return "i-" + utility.RandomString()
+	}
+
 	for tName, tCase := range map[string]func(ctx context.Context, t *testing.T, rh *hostAgentNextTask){
 		"ShouldSucceedAndSetAgentStartTime": func(ctx context.Context, t *testing.T, rh *hostAgentNextTask) {
 			resp := rh.Run(ctx)
@@ -231,6 +235,8 @@ func TestHostNextTask(t *testing.T) {
 				})
 			}
 		},
+		// TODO (DEVPROD-6752): delete once the hosts are fully migrated to the
+		// new route.
 		"IntentHost": func(ctx context.Context, t *testing.T, rh *hostAgentNextTask) {
 			for testName, testCase := range map[string]func(ctx context.Context, t *testing.T, handler hostAgentNextTask){
 				"ConvertsBuildingIntentHostToStartingRealHost": func(ctx context.Context, t *testing.T, handler hostAgentNextTask) {
@@ -322,31 +328,6 @@ func TestHostNextTask(t *testing.T) {
 					require.NotNil(t, realHost)
 					assert.Equal(t, realHost.Status, evergreen.HostDecommissioned)
 				},
-				"ClearsSecretOfUnresponsiveQuarantinedHost": func(ctx context.Context, t *testing.T, handler hostAgentNextTask) {
-					intentHost, err := host.FindOneId(ctx, "intentHost")
-					require.NoError(t, err)
-					require.NotZero(t, intentHost)
-					require.NoError(t, intentHost.SetStatus(ctx, evergreen.HostQuarantined, evergreen.User, ""))
-					intentHost.NeedsReprovision = host.ReprovisionToLegacy
-					intentHost.NumAgentCleanupFailures = hostAgentCleanupLimit
-					rh.host = intentHost
-					rh.details = &apimodels.GetNextTaskDetails{
-						AgentRevision: evergreen.AgentVersion,
-					}
-					resp := rh.Run(ctx)
-
-					assert.NotNil(t, resp)
-					assert.Equal(t, resp.Status(), http.StatusOK)
-					taskResp, ok := resp.Data().(apimodels.NextTaskResponse)
-					require.True(t, ok, resp.Data())
-					assert.True(t, taskResp.ShouldExit)
-					assert.Empty(t, taskResp.TaskId)
-
-					dbHost, err := host.FindOneId(ctx, "intentHost")
-					require.NoError(t, err)
-					require.NotNil(t, dbHost)
-					assert.Equal(t, "", dbHost.Secret)
-				},
 			} {
 				t.Run(testName, func(t *testing.T) {
 					require.NoError(t, db.ClearCollections(host.Collection, distro.Collection))
@@ -411,6 +392,32 @@ func TestHostNextTask(t *testing.T) {
 				require.NotZero(t, dbHost)
 				assert.Equal(t, status, dbHost.Status)
 			}
+		},
+		"ClearsSecretOfUnresponsiveQuarantinedHost": func(ctx context.Context, t *testing.T, rh *hostAgentNextTask) {
+			h := host.Host{
+				Id:     "host_id",
+				Status: evergreen.HostQuarantined,
+			}
+			h.NeedsReprovision = host.ReprovisionToLegacy
+			h.NumAgentCleanupFailures = hostAgentCleanupLimit
+			require.NoError(t, h.Insert(ctx))
+			rh.host = &h
+			rh.details = &apimodels.GetNextTaskDetails{
+				AgentRevision: evergreen.AgentVersion,
+			}
+			resp := rh.Run(ctx)
+
+			assert.NotNil(t, resp)
+			assert.Equal(t, resp.Status(), http.StatusOK)
+			taskResp, ok := resp.Data().(apimodels.NextTaskResponse)
+			require.True(t, ok, resp.Data())
+			assert.True(t, taskResp.ShouldExit)
+			assert.Empty(t, taskResp.TaskId)
+
+			dbHost, err := host.FindOneId(ctx, h.Id)
+			require.NoError(t, err)
+			require.NotNil(t, dbHost)
+			assert.Equal(t, "", dbHost.Secret)
 		},
 		"NonLegacyHostWithOldAgentRevision": func(ctx context.Context, t *testing.T, rh *hostAgentNextTask) {
 			for testName, testCase := range map[string]func(ctx context.Context, t *testing.T, handler hostAgentNextTask){
@@ -734,10 +741,6 @@ func TestHostNextTask(t *testing.T) {
 			tCase(ctx, t, r)
 		})
 	}
-}
-
-func generateFakeEC2InstanceID() string {
-	return "i-" + utility.RandomString()
 }
 
 func TestTaskLifecycleEndpoints(t *testing.T) {
