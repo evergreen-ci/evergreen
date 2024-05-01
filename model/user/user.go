@@ -170,15 +170,15 @@ func (u *DBUser) UpdateParsleySettings(settings parsley.Settings) error {
 
 // CheckAndUpdateSchedulingLimit checks if the number of tasks to be activated by the user is allowed given
 // the global per-user hourly task scheduling limit, and updates relevant timestamp and counter info used
-// to track the user's hourly scheduling usage. The numTasksActivated parameter being negative signifies
+// to track the user's hourly scheduling usage. The activated parameter being false signifies
 // the user is deactivating tasks, which frees up space in their scheduling limit.
-func (u *DBUser) CheckAndUpdateSchedulingLimit(settings *evergreen.Settings, numTasksModified int) error {
+func (u *DBUser) CheckAndUpdateSchedulingLimit(settings *evergreen.Settings, numTasksModified int, activated bool) error {
 	var update bson.M
 	maxScheduledTasks := settings.TaskLimits.MaxHourlyPatchTasks
 	if maxScheduledTasks == 0 {
 		return nil
 	}
-	if numTasksModified > maxScheduledTasks {
+	if activated && numTasksModified > maxScheduledTasks {
 		return errors.Errorf("cannot schedule %d tasks, maximum hourly per-user limit is %d", numTasksModified, maxScheduledTasks)
 	}
 	now := time.Now()
@@ -188,9 +188,9 @@ func (u *DBUser) CheckAndUpdateSchedulingLimit(settings *evergreen.Settings, num
 	// is negative, the counter is decremented.
 	if u.LastScheduledTasksAt.After(oneHourAgo) {
 		update = bson.M{
-			"$set": bson.M{NumScheduledPatchTasksKey: getNewCounter(u.NumScheduledPatchTasks, numTasksModified)},
+			"$set": bson.M{NumScheduledPatchTasksKey: getNewNumScheduledTasksCounter(u.NumScheduledPatchTasks, numTasksModified, activated)},
 		}
-		if (numTasksModified + u.NumScheduledPatchTasks) >= maxScheduledTasks {
+		if activated && (numTasksModified+u.NumScheduledPatchTasks) >= maxScheduledTasks {
 			minutesRemaining := 60 - int(now.Sub(u.LastScheduledTasksAt).Minutes())
 			return errors.Errorf("user '%s' has scheduled %d out of %d allowed tasks in the past hour, limit refreshes in %d minutes", u.Id, u.NumScheduledPatchTasks, maxScheduledTasks, minutesRemaining)
 		}
@@ -199,7 +199,7 @@ func (u *DBUser) CheckAndUpdateSchedulingLimit(settings *evergreen.Settings, num
 		// timestamp to now, and reset the number of schedule tasks to the number of activated tasks passed in here.
 		update = bson.M{
 			"$set": bson.M{
-				NumScheduledPatchTasksKey: getNewCounter(0, numTasksModified),
+				NumScheduledPatchTasksKey: getNewNumScheduledTasksCounter(0, numTasksModified, activated),
 				LastScheduledTasksAtKey:   time.Now(),
 			},
 		}
@@ -207,12 +207,18 @@ func (u *DBUser) CheckAndUpdateSchedulingLimit(settings *evergreen.Settings, num
 	return UpdateOne(bson.M{IdKey: u.Id}, update)
 }
 
-func getNewCounter(currentCounter, numTasksActivated int) int {
-	sum := currentCounter + numTasksActivated
-	if sum < 0 {
+// getNewNumScheduledTasksCounter takes in the current number of tasks a user has scheduled within the
+// last hour and updates it with the number of tasks that have been activated or deactivated, indicated
+// by the activated parameter.
+func getNewNumScheduledTasksCounter(currentCounter, numTasksModified int, activated bool) int {
+	if activated {
+		return currentCounter + numTasksModified
+	}
+	subtraction := currentCounter - numTasksModified
+	if subtraction < 0 {
 		return 0
 	}
-	return sum
+	return subtraction
 }
 
 func (u *DBUser) AddPublicKey(keyName, keyValue string) error {

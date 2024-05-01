@@ -1841,7 +1841,7 @@ func ActivateTasks(tasks []Task, activationTime time.Time, updateDependencies bo
 		}
 		if u != nil {
 			settings := evergreen.GetEnvironment().Settings()
-			if err = u.CheckAndUpdateSchedulingLimit(settings, len(taskIDs)+len(depTaskIDsToUpdate)); err != nil {
+			if err = u.CheckAndUpdateSchedulingLimit(settings, len(taskIDs)+len(depTaskIDsToUpdate), true); err != nil {
 				return errors.Wrapf(err, "checking task scheduling limit for user '%s'", u.Id)
 			}
 		}
@@ -2086,7 +2086,7 @@ func DeactivateTasks(tasks []Task, updateDependencies bool, caller string) error
 		}
 		if u != nil {
 			settings := evergreen.GetEnvironment().Settings()
-			if err = u.CheckAndUpdateSchedulingLimit(settings, -1*(len(taskIDs)+len(depTaskIDsToUpdate))); err != nil {
+			if err = u.CheckAndUpdateSchedulingLimit(settings, len(taskIDs)+len(depTaskIDsToUpdate), false); err != nil {
 				return errors.Wrapf(err, "checking task scheduling limit for user '%s'", u.Id)
 			}
 		}
