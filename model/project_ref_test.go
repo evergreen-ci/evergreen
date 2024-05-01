@@ -1948,7 +1948,8 @@ func TestFindProjectRefIdsWithCommitQueueEnabled(t *testing.T) {
 	repoRef := RepoRef{ProjectRef{
 		Id: "my_repo",
 		CommitQueue: CommitQueueParams{
-			Enabled: utility.TruePtr(),
+			Enabled:    utility.TruePtr(),
+			MergeQueue: MergeQueueEvergreen,
 		},
 	}}
 	assert.NoError(repoRef.Upsert())
@@ -1961,7 +1962,8 @@ func TestFindProjectRefIdsWithCommitQueueEnabled(t *testing.T) {
 		Id:         "mci1",
 		RepoRefId:  repoRef.Id,
 		CommitQueue: CommitQueueParams{
-			Enabled: utility.TruePtr(),
+			Enabled:    utility.TruePtr(),
+			MergeQueue: MergeQueueEvergreen,
 		},
 	}
 	require.NoError(doc.Insert())
@@ -1974,6 +1976,13 @@ func TestFindProjectRefIdsWithCommitQueueEnabled(t *testing.T) {
 	doc.Repo = "grip"
 	doc.Id = "mci3"
 	doc.CommitQueue.Enabled = utility.FalsePtr()
+	require.NoError(doc.Insert())
+
+	doc.Identifier = "merge"
+	doc.Repo = "merge"
+	doc.Id = "mci4"
+	doc.CommitQueue.Enabled = utility.TruePtr()
+	doc.CommitQueue.MergeQueue = MergeQueueGitHub
 	require.NoError(doc.Insert())
 
 	res, err = FindProjectRefIdsWithCommitQueueEnabled()
