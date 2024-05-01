@@ -127,6 +127,7 @@ func (h *hostModifyHandler) Run(ctx context.Context) gimlet.Responder {
 
 	// Validate host modify request
 	catcher := grip.NewBasicCatcher()
+	catcher.ErrorfWhen(h.options.ExtendTemporaryExemption < 0, "cannot reduce temporary exemption duration by %s", (-h.options.ExtendTemporaryExemption).String())
 	if len(h.options.AddInstanceTags) > 0 || len(h.options.DeleteInstanceTags) > 0 {
 		catcher.Add(checkInstanceTagsCanBeModified(foundHost, h.options.AddInstanceTags, h.options.DeleteInstanceTags))
 	}
@@ -141,6 +142,12 @@ func (h *hostModifyHandler) Run(ctx context.Context) gimlet.Responder {
 	}
 	if catcher.HasErrors() {
 		return gimlet.MakeJSONErrorResponder(errors.Wrap(catcher.Resolve(), "invalid host modify request"))
+	}
+
+	if h.options.ExtendTemporaryExemption > 0 {
+		if err := data.ExtendTemporaryExemption(ctx, foundHost, user, h.options.ExtendTemporaryExemption); err != nil {
+			return gimlet.MakeJSONInternalErrorResponder(errors.Wrap(err, "extending temporary exemption"))
+		}
 	}
 
 	if _, err := data.ModifySpawnHost(ctx, h.env, user, foundHost, *h.options); err != nil {
@@ -1187,56 +1194,56 @@ func (h *hostExtendExpirationHandler) Run(ctx context.Context) gimlet.Responder 
 //
 // PATCH /rest/v2/hosts/{host_id}/temporary_exemption
 
-type hostTemporaryExemptionHandler struct {
-	hostID              string
-	additionalExemption time.Duration
-}
-
-func makeHostTemporaryExemption() gimlet.RouteHandler {
-	return &hostTemporaryExemptionHandler{}
-}
-
-// Factory creates an instance of the handler.
+// type hostTemporaryExemptionHandler struct {
+//     hostID              string
+//     additionalExemption time.Duration
+// }
 //
-//	@Summary		Create or extend a temporary exemption from an host sleep schedule.
-//	@Description	Create a new exemption or extend the temporary exemption from the sleep schedule for a host with a given ID. Users may only add temporary exemptions for hosts which were created by them, unless the user is a super-user. The temporary exemption of a host may not be more than 1 month in the future. Furthermore, the lifetime of an expirable host can be extended at most 30 days past host creation.  A response code of 200 OK indicates that the host's expiration was successfully extended.  Attempt to extend the expiration time of a terminated host will result in an error All other response codes indicate errors; the response body can be parsed as a rest.APIError.
-//	@Tags			hosts
-//	@Router			/hosts/{host_id}/temporary_exemption [post]
-//	@Security		Api-User || Api-Key
-//	@Param			host_id		path	string									true	"the host ID"
-//	@Param			{object}	body	model.APISpawnHostTemporaryExemption	true	"Set add_temporary_exemption_hours to extend the temporary exemption; cannot exceed 1 month"
-//	@Success		200
-func (rh *hostTemporaryExemptionHandler) Factory() gimlet.RouteHandler {
-	return &hostTemporaryExemptionHandler{}
-}
-
-func (rh *hostTemporaryExemptionHandler) Parse(ctx context.Context, r *http.Request) error {
-	var err error
-	rh.hostID, err = validateID(gimlet.GetVars(r)["host_id"])
-	if err != nil {
-		return err
-	}
-
-	var opts model.APISpawnHostTemporaryExemptionOptions
-	if err := utility.ReadJSON(utility.NewRequestReader(r), &opts); err != nil {
-		return err
-	}
-
-	rh.additionalExemption = time.Duration(utility.FromIntPtr(opts.AddTemporaryExemptionHours)) * time.Hour
-	if rh.additionalExemption <= 0 {
-		return errors.Errorf("number of additional hours to exempt (%d) must be greater than 0", opts.AddTemporaryExemptionHours)
-	}
-
-	return nil
-}
-
-func (rh *hostTemporaryExemptionHandler) Run(ctx context.Context) gimlet.Responder {
-	u := MustHaveUser(ctx)
-	if err := data.ExtendHostTemporaryExemption(ctx, rh.hostID, u, rh.additionalExemption); err != nil {
-		return gimlet.MakeJSONInternalErrorResponder(err)
-	}
-	return gimlet.NewJSONResponse(struct{}{})
-}
+// func makeHostTemporaryExemption() gimlet.RouteHandler {
+//     return &hostTemporaryExemptionHandler{}
+// }
+//
+// // Factory creates an instance of the handler.
+// //
+// //	@Summary		Create or extend a temporary exemption from an host sleep schedule.
+// //	@Description	Create a new exemption or extend the temporary exemption from the sleep schedule for a host with a given ID. Users may only add temporary exemptions for hosts which were created by them, unless the user is a super-user. The temporary exemption of a host may not be more than 1 month in the future. Furthermore, the lifetime of an expirable host can be extended at most 30 days past host creation.  A response code of 200 OK indicates that the host's expiration was successfully extended.  Attempt to extend the expiration time of a terminated host will result in an error All other response codes indicate errors; the response body can be parsed as a rest.APIError.
+// //	@Tags			hosts
+// //	@Router			/hosts/{host_id}/temporary_exemption [post]
+// //	@Security		Api-User || Api-Key
+// //	@Param			host_id		path	string									true	"the host ID"
+// //	@Param			{object}	body	model.APISpawnHostTemporaryExemption	true	"Set add_temporary_exemption_hours to extend the temporary exemption; cannot exceed 1 month"
+// //	@Success		200
+// func (rh *hostTemporaryExemptionHandler) Factory() gimlet.RouteHandler {
+//     return &hostTemporaryExemptionHandler{}
+// }
+//
+// func (rh *hostTemporaryExemptionHandler) Parse(ctx context.Context, r *http.Request) error {
+//     var err error
+//     rh.hostID, err = validateID(gimlet.GetVars(r)["host_id"])
+//     if err != nil {
+//         return err
+//     }
+//
+//     var opts model.APISpawnHostTemporaryExemptionOptions
+//     if err := utility.ReadJSON(utility.NewRequestReader(r), &opts); err != nil {
+//         return err
+//     }
+//
+//     rh.additionalExemption = time.Duration(utility.FromIntPtr(opts.AddTemporaryExemptionHours)) * time.Hour
+//     if rh.additionalExemption <= 0 {
+//         return errors.Errorf("number of additional hours to exempt (%d) must be greater than 0", opts.AddTemporaryExemptionHours)
+//     }
+//
+//     return nil
+// }
+//
+// func (rh *hostTemporaryExemptionHandler) Run(ctx context.Context) gimlet.Responder {
+//     u := MustHaveUser(ctx)
+//     if err := data.ExtendTemporaryExemption(ctx, rh.hostID, u, rh.additionalExemption); err != nil {
+//         return gimlet.MakeJSONInternalErrorResponder(err)
+//     }
+//     return gimlet.NewJSONResponse(struct{}{})
+// }
 
 // //////////////////////////////////////////////////////////////////////
 //

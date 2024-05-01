@@ -56,6 +56,7 @@ type Communicator interface {
 	TerminateSpawnHost(context.Context, string) error
 	ChangeSpawnHostPassword(context.Context, string, string) error
 	ExtendSpawnHostExpiration(context.Context, string, int) error
+	// ExtendSpawnHostTemporaryExemption(context.Context, string, int) error
 	GetHosts(context.Context, restmodel.APIHostParams) ([]*restmodel.APIHost, error)
 	AttachVolume(context.Context, string, *host.VolumeAttachment) error
 	DetachVolume(context.Context, string, string) error

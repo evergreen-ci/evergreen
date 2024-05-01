@@ -392,20 +392,10 @@ func transitionIntentHostToDecommissioned(ctx context.Context, env evergreen.Env
 	return nil
 }
 
-// ExtendHostTemporaryExemption creates a temporary exemption from a host's
+// ExtendTemporaryExemption creates a temporary exemption from a host's
 // sleep schedule or extends a host's existing temporary exemption by the given
 // duration.
-func ExtendHostTemporaryExemption(ctx context.Context, hostID string, u *user.DBUser, extendBy time.Duration) error {
-	h, err := FindHostByIdWithOwner(ctx, hostID, u)
-	if err != nil {
-		return err
-	}
-	if h.Status == evergreen.HostTerminated {
-		return gimlet.ErrorResponse{
-			StatusCode: http.StatusBadRequest,
-			Message:    "cannot set a temporary exemption on a terminated host",
-		}
-	}
+func ExtendTemporaryExemption(ctx context.Context, h *host.Host, u *user.DBUser, extendBy time.Duration) error {
 	if !h.NoExpiration {
 		return gimlet.ErrorResponse{
 			StatusCode: http.StatusBadRequest,
