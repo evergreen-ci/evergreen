@@ -21,11 +21,20 @@ type TaskLimitsConfig struct {
 	// MaxIncludesPerVersion is the maximum number of includes that a single
 	// version can have.
 	MaxIncludesPerVersion int `bson:"max_includes_per_version" json:"max_includes_per_version" yaml:"max_includes_per_version"`
+
+	// MaxPendingGeneratedTasks is the maximum number of tasks that can be created
+	// by all generated task at once.
+	MaxPendingGeneratedTasks int `bson:"max_pending_generated_tasks" json:"max_pending_generated_tasks" yaml:"max_pending_generated_tasks"`
+
+	// MaxGenerateTaskJSONSize is the maximum size of a JSON file in MB that can be specified in the GenerateTasks command.
+	MaxGenerateTaskJSONSize int `bson:"max_generate_task_json_size" json:"max_generate_task_json_size" yaml:"max_generate_task_json_size"`
 }
 
 var (
 	maxTasksPerVersionKey    = bsonutil.MustHaveTag(TaskLimitsConfig{}, "MaxTasksPerVersion")
 	maxIncludesPerVersionKey = bsonutil.MustHaveTag(TaskLimitsConfig{}, "MaxIncludesPerVersion")
+	maxPendingGeneratedTasks = bsonutil.MustHaveTag(TaskLimitsConfig{}, "MaxPendingGeneratedTasks")
+	maxGenerateTaskJSONSize  = bsonutil.MustHaveTag(TaskLimitsConfig{}, "MaxGenerateTaskJSONSize")
 )
 
 func (c *TaskLimitsConfig) SectionId() string { return "task_limits" }
@@ -52,6 +61,8 @@ func (c *TaskLimitsConfig) Set(ctx context.Context) error {
 		"$set": bson.M{
 			maxTasksPerVersionKey:    c.MaxTasksPerVersion,
 			maxIncludesPerVersionKey: c.MaxIncludesPerVersion,
+			maxPendingGeneratedTasks: c.MaxPendingGeneratedTasks,
+			maxGenerateTaskJSONSize:  c.MaxGenerateTaskJSONSize,
 		},
 	}, options.Update().SetUpsert(true))
 

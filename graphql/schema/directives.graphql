@@ -1,12 +1,26 @@
 """
 requireProjectAdmin is used to restrict certain actions to admins.
 """
-directive @requireProjectAdmin on ARGUMENT_DEFINITION 
+directive @requireProjectAdmin on ARGUMENT_DEFINITION
 
 """
-requireProjectAccess is used to restrict view and edit access for project settings.
+requireProjectAccess is used to restrict admin, view, and edit access for projects.
 """
-directive @requireProjectAccess(access: ProjectSettingsAccess!) on ARGUMENT_DEFINITION | INPUT_FIELD_DEFINITION | FIELD_DEFINITION
+directive @requireProjectAccess(permission: ProjectPermission!, access: AccessLevel!) on ARGUMENT_DEFINITION | INPUT_FIELD_DEFINITION | FIELD_DEFINITION
+
+enum ProjectPermission {
+  SETTINGS
+  TASKS
+  ANNOTATIONS
+  PATCHES
+  LOGS
+}
+
+enum AccessLevel {
+  ADMIN
+  EDIT
+  VIEW
+}
 
 """
 requireProjectSettingsAccess is used to restrict view access for fields accessed within ProjectSettings (or RepoSettings) structs.
@@ -18,6 +32,13 @@ requireDistroAccess is used to restrict view, edit, admin, and create access for
 """
 directive @requireDistroAccess(access: DistroSettingsAccess!) on ARGUMENT_DEFINITION | INPUT_FIELD_DEFINITION
 
+enum DistroSettingsAccess {
+  ADMIN
+  CREATE
+  EDIT
+  VIEW
+}
+
 """
 requireCommitQueueItemOwner is used to restrict changes to commit queue patches.
 """
@@ -27,3 +48,4 @@ directive @requireCommitQueueItemOwner on ARGUMENT_DEFINITION
 redactSecrets is used to mark input fields that should not be logged or exposed in any way and should be redacted.
 """
 directive @redactSecrets on INPUT_FIELD_DEFINITION | ARGUMENT_DEFINITION | INPUT_OBJECT
+

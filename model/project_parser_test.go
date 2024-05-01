@@ -647,7 +647,7 @@ func TestTranslateBuildVariants(t *testing.T) {
 	})
 }
 
-func parserTaskSelectorTaskEval(tse *taskSelectorEvaluator, tasks parserBVTaskUnits, taskDefs []parserTask, expected []BuildVariantTaskUnit) {
+func parserTaskSelectorTaskEval(tse *taskSelectorEvaluator, tsge *tagSelectorEvaluator, tasks parserBVTaskUnits, taskDefs []parserTask, expected []BuildVariantTaskUnit, expectedEmptySelectors []string) {
 	names := []string{}
 	exp := []string{}
 	for _, t := range tasks {
@@ -660,7 +660,7 @@ func parserTaskSelectorTaskEval(tse *taskSelectorEvaluator, tasks parserBVTaskUn
 	Convey(fmt.Sprintf("tasks [%v] should evaluate to [%v]",
 		strings.Join(names, ", "), strings.Join(exp, ", ")), func() {
 		pbv := parserBV{Name: "build-variant-wow", Tasks: tasks}
-		ts, errs := evaluateBVTasks(tse, nil, vse, pbv, taskDefs)
+		ts, es, errs := evaluateBVTasks(tse, tsge, vse, pbv, taskDefs)
 		if expected != nil {
 			So(errs, ShouldBeNil)
 		} else {
@@ -674,6 +674,16 @@ func parserTaskSelectorTaskEval(tse *taskSelectorEvaluator, tasks parserBVTaskUn
 					exists = true
 				}
 				So(t.Variant, ShouldEqual, pbv.Name)
+			}
+			So(exists, ShouldBeTrue)
+		}
+		So(len(es), ShouldEqual, len(expectedEmptySelectors))
+		for _, expectedEmptySelector := range expectedEmptySelectors {
+			exists := false
+			for _, emptySelector := range es {
+				if emptySelector == expectedEmptySelector {
+					exists = true
+				}
 			}
 			So(exists, ShouldBeTrue)
 		}
@@ -696,22 +706,23 @@ func TestParserTaskSelectorEvaluation(t *testing.T) {
 
 		Convey("a project parser", func() {
 			tse := NewParserTaskSelectorEvaluator(taskDefs)
+			tgse := newTaskGroupSelectorEvaluator([]parserTaskGroup{})
 			Convey("should evaluate valid tasks pointers properly", func() {
-				parserTaskSelectorTaskEval(tse,
+				parserTaskSelectorTaskEval(tse, tgse,
 					parserBVTaskUnits{{Name: "white"}},
 					taskDefs,
-					[]BuildVariantTaskUnit{{Name: "white"}})
-				parserTaskSelectorTaskEval(tse,
+					[]BuildVariantTaskUnit{{Name: "white"}}, nil)
+				parserTaskSelectorTaskEval(tse, tgse,
 					parserBVTaskUnits{{Name: "red", Priority: 500}, {Name: ".secondary"}},
 					taskDefs,
-					[]BuildVariantTaskUnit{{Name: "red", Priority: 500}, {Name: "orange"}, {Name: "purple"}, {Name: "green"}})
-				parserTaskSelectorTaskEval(tse,
+					[]BuildVariantTaskUnit{{Name: "red", Priority: 500}, {Name: "orange"}, {Name: "purple"}, {Name: "green"}}, nil)
+				parserTaskSelectorTaskEval(tse, tgse,
 					parserBVTaskUnits{
 						{Name: "orange", Distros: []string{"d1"}},
 						{Name: ".warm .secondary", Distros: []string{"d1"}}},
 					taskDefs,
-					[]BuildVariantTaskUnit{{Name: "orange", RunOn: []string{"d1"}}})
-				parserTaskSelectorTaskEval(tse,
+					[]BuildVariantTaskUnit{{Name: "orange", RunOn: []string{"d1"}}}, nil)
+				parserTaskSelectorTaskEval(tse, tgse,
 					parserBVTaskUnits{
 						{Name: "orange", Distros: []string{"d1"}},
 						{Name: "!.warm .secondary", Distros: []string{"d1"}}},
@@ -719,16 +730,16 @@ func TestParserTaskSelectorEvaluation(t *testing.T) {
 					[]BuildVariantTaskUnit{
 						{Name: "orange", RunOn: []string{"d1"}},
 						{Name: "purple", RunOn: []string{"d1"}},
-						{Name: "green", RunOn: []string{"d1"}}})
-				parserTaskSelectorTaskEval(tse,
+						{Name: "green", RunOn: []string{"d1"}}}, nil)
+				parserTaskSelectorTaskEval(tse, tgse,
 					parserBVTaskUnits{{Name: "*"}},
 					taskDefs,
 					[]BuildVariantTaskUnit{
 						{Name: "red"}, {Name: "blue"}, {Name: "yellow"},
 						{Name: "orange"}, {Name: "purple"}, {Name: "green"},
 						{Name: "brown"}, {Name: "white"}, {Name: "black"},
-					})
-				parserTaskSelectorTaskEval(tse,
+					}, nil)
+				parserTaskSelectorTaskEval(tse, tgse,
 					parserBVTaskUnits{
 						{Name: "red", Priority: 100},
 						{Name: "!.warm .secondary", Priority: 100}},
@@ -736,7 +747,23 @@ func TestParserTaskSelectorEvaluation(t *testing.T) {
 					[]BuildVariantTaskUnit{
 						{Name: "red", Priority: 100},
 						{Name: "purple", Priority: 100},
-						{Name: "green", Priority: 100}})
+						{Name: "green", Priority: 100}}, nil)
+			})
+			Convey("should ignore selectors that do not select any tasks if another does select a task", func() {
+				parserTaskSelectorTaskEval(tse, tgse,
+					parserBVTaskUnits{{Name: ".warm .cool"}, {Name: "white"}},
+					taskDefs,
+					[]BuildVariantTaskUnit{{Name: "white"}}, []string{".warm .cool"})
+			})
+			Convey("should error when all selectors combined do not select any tasks", func() {
+				parserTaskSelectorTaskEval(tse, tgse,
+					parserBVTaskUnits{{Name: ".warm .cool"}},
+					taskDefs,
+					nil, []string{".warm .cool"})
+				parserTaskSelectorTaskEval(tse, tgse,
+					parserBVTaskUnits{{Name: ".warm .cool"}, {Name: ".secondary .primary"}},
+					taskDefs,
+					nil, []string{".warm .cool", ".secondary .primary"})
 			})
 		})
 	})
@@ -2508,6 +2535,7 @@ func TestMergeUnique(t *testing.T) {
 		CommandType:       utility.ToStringPtr("type"),
 		CallbackTimeout:   utility.ToIntPtr(1),
 		ExecTimeoutSecs:   utility.ToIntPtr(1),
+		TimeoutSecs:       utility.ToIntPtr(1),
 	}
 
 	err := main.mergeUnique(add)
@@ -2522,6 +2550,7 @@ func TestMergeUnique(t *testing.T) {
 	assert.NotNil(t, main.CommandType)
 	assert.NotNil(t, main.CallbackTimeout)
 	assert.NotNil(t, main.ExecTimeoutSecs)
+	assert.NotNil(t, main.TimeoutSecs)
 }
 
 func TestMergeUniqueFail(t *testing.T) {
@@ -2549,6 +2578,7 @@ func TestMergeUniqueFail(t *testing.T) {
 		CommandType:       utility.ToStringPtr("type"),
 		CallbackTimeout:   utility.ToIntPtr(1),
 		ExecTimeoutSecs:   utility.ToIntPtr(1),
+		TimeoutSecs:       utility.ToIntPtr(1),
 	}
 
 	err := main.mergeUnique(add)
@@ -2562,6 +2592,7 @@ func TestMergeUniqueFail(t *testing.T) {
 	assert.Contains(t, err.Error(), "command type can only be defined in one YAML")
 	assert.Contains(t, err.Error(), "callback timeout can only be defined in one YAML")
 	assert.Contains(t, err.Error(), "exec timeout secs can only be defined in one YAML")
+	assert.Contains(t, err.Error(), "timeout secs can only be defined in one YAML")
 }
 
 func TestMergeBuildVariant(t *testing.T) {

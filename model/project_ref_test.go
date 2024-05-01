@@ -529,7 +529,8 @@ func TestAttachToNewRepo(t *testing.T) {
 	installation := evergreen.GitHubAppInstallation{
 		Owner:          pRef.Owner,
 		Repo:           pRef.Repo,
-		InstallationID: 1234,
+		AppID:          1234,
+		InstallationID: 5678,
 	}
 	assert.NoError(t, installation.Upsert(ctx))
 
@@ -542,7 +543,8 @@ func TestAttachToNewRepo(t *testing.T) {
 	newInstallation := evergreen.GitHubAppInstallation{
 		Owner:          pRef.Owner,
 		Repo:           pRef.Repo,
-		InstallationID: 1234,
+		AppID:          1234,
+		InstallationID: 5678,
 	}
 	assert.NoError(t, newInstallation.Upsert(ctx))
 	assert.NoError(t, pRef.AttachToNewRepo(u))
@@ -642,7 +644,8 @@ func TestAttachToRepo(t *testing.T) {
 	installation := evergreen.GitHubAppInstallation{
 		Owner:          pRef.Owner,
 		Repo:           pRef.Repo,
-		InstallationID: 1234,
+		AppID:          1234,
+		InstallationID: 5678,
 	}
 	assert.NoError(t, installation.Upsert(ctx))
 
@@ -1358,6 +1361,87 @@ func TestFindProjectRefsByRepoAndBranch(t *testing.T) {
 	assert.Len(projectRefs, 2)
 }
 
+func TestSetGithubAppCredentials(t *testing.T) {
+	for name, test := range map[string]func(t *testing.T, p *ProjectRef){
+		"NoCredentialsWhenNoneExist": func(t *testing.T, p *ProjectRef) {
+			hasApp, err := HasGithubAppAuth(p.Id)
+			require.NoError(t, err)
+			assert.False(t, hasApp)
+		},
+		"CredentialsCanBeSet": func(t *testing.T, p *ProjectRef) {
+			require.NoError(t, p.SetGithubAppCredentials(10, []byte("private_key")))
+			hasApp, err := HasGithubAppAuth(p.Id)
+			require.NoError(t, err)
+			assert.True(t, hasApp)
+		},
+		"CredentialsCanBeRemovedByEmptyAppIDAndEmptyPrivateKey": func(t *testing.T, p *ProjectRef) {
+			// Add credentials.
+			require.NoError(t, p.SetGithubAppCredentials(10, []byte("private_key")))
+			hasApp, err := HasGithubAppAuth(p.Id)
+			require.NoError(t, err)
+			assert.True(t, hasApp)
+
+			// Remove credentials.
+			require.NoError(t, p.SetGithubAppCredentials(0, []byte("")))
+			hasApp, err = HasGithubAppAuth(p.Id)
+			require.NoError(t, err)
+			assert.False(t, hasApp)
+		},
+		"CredentialsCanBeRemovedByEmptyAppIDAndNilPrivateKey": func(t *testing.T, p *ProjectRef) {
+			// Add credentials.
+			require.NoError(t, p.SetGithubAppCredentials(10, []byte("private_key")))
+			hasApp, err := HasGithubAppAuth(p.Id)
+			require.NoError(t, err)
+			assert.True(t, hasApp)
+
+			// Remove credentials.
+			require.NoError(t, p.SetGithubAppCredentials(0, nil))
+			hasApp, err = HasGithubAppAuth(p.Id)
+			require.NoError(t, err)
+			assert.False(t, hasApp)
+		},
+		"CredentialsCannotBeRemovedByOnlyEmptyPrivateKey": func(t *testing.T, p *ProjectRef) {
+			// Add credentials.
+			require.NoError(t, p.SetGithubAppCredentials(10, []byte("private_key")))
+			hasApp, err := HasGithubAppAuth(p.Id)
+			require.NoError(t, err)
+			assert.True(t, hasApp)
+
+			// Remove credentials.
+			require.Error(t, p.SetGithubAppCredentials(10, []byte("")), "both app ID and private key must be provided")
+		},
+		"CredentialsCannotBeRemovedByOnlyNilPrivateKey": func(t *testing.T, p *ProjectRef) {
+			// Add credentials.
+			require.NoError(t, p.SetGithubAppCredentials(10, []byte("private_key")))
+			hasApp, err := HasGithubAppAuth(p.Id)
+			require.NoError(t, err)
+			assert.True(t, hasApp)
+
+			// Remove credentials.
+			require.Error(t, p.SetGithubAppCredentials(10, nil), "both app ID and private key must be provided")
+		},
+		"CredentialsCannotBeRemovedByOnlyEmptyAppID": func(t *testing.T, p *ProjectRef) {
+			// Add credentials.
+			require.NoError(t, p.SetGithubAppCredentials(10, []byte("private_key")))
+			hasApp, err := HasGithubAppAuth(p.Id)
+			require.NoError(t, err)
+			assert.True(t, hasApp)
+
+			// Remove credentials.
+			require.Error(t, p.SetGithubAppCredentials(0, []byte("private_key")), "both app ID and private key must be provided")
+		},
+	} {
+		t.Run(name, func(t *testing.T) {
+			require.NoError(t, db.ClearCollections(ProjectRefCollection, GitHubAppAuthCollection))
+			p := &ProjectRef{
+				Id: "id1",
+			}
+			require.NoError(t, p.Insert())
+			test(t, p)
+		})
+	}
+}
+
 func TestCreateNewRepoRef(t *testing.T) {
 	assert.NoError(t, db.ClearCollections(ProjectRefCollection, RepoRefCollection, user.Collection,
 		evergreen.ScopeCollection, ProjectVarsCollection, ProjectAliasCollection, evergreen.GitHubAppCollection))
@@ -1407,7 +1491,8 @@ func TestCreateNewRepoRef(t *testing.T) {
 	installation := evergreen.GitHubAppInstallation{
 		Owner:          "mongodb",
 		Repo:           "mongo",
-		InstallationID: 1234,
+		AppID:          1234,
+		InstallationID: 5678,
 	}
 	assert.NoError(t, installation.Upsert(ctx))
 
@@ -3378,4 +3463,45 @@ func TestSetContainerSecrets(t *testing.T) {
 		require.NotZero(t, dbProjRef)
 		assert.Empty(t, dbProjRef.RepotrackerError)
 	})
+}
+
+func TestGetActivationTimeForVariant(t *testing.T) {
+	assert := assert.New(t)
+	require.NoError(t, db.ClearCollections(ProjectRefCollection, VersionCollection))
+	projectRef := &ProjectRef{
+		Owner:      "mongodb",
+		Repo:       "mci",
+		Branch:     "main",
+		Enabled:    true,
+		Id:         "ident",
+		Identifier: "identifier",
+	}
+	assert.Nil(projectRef.Insert())
+
+	// set based on last activation time when no version is found
+	activationTime, err := projectRef.GetActivationTimeForVariant(&BuildVariant{Name: "bv"})
+	assert.NoError(err)
+	assert.NotZero(activationTime)
+
+	// set based on last activation time with a version
+	version := &Version{
+		Id:                  "v1",
+		Identifier:          "ident",
+		RevisionOrderNumber: 10,
+		Requester:           evergreen.RepotrackerVersionRequester,
+		BuildVariants: []VersionBuildStatus{
+			{
+				BuildVariant: "bv",
+				BuildId:      "build",
+				ActivationStatus: ActivationStatus{
+					Activated: true,
+				},
+			},
+		},
+	}
+	assert.Nil(version.Insert())
+
+	activationTime, err = projectRef.GetActivationTimeForVariant(&BuildVariant{Name: "bv"})
+	assert.NoError(err)
+	assert.NotZero(activationTime)
 }

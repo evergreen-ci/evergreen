@@ -26,8 +26,14 @@
         "$oid": "5c74085f32f41738270aeba8"
       },
       "desc": "PATCH ON COMMIT QUEUE",
-      "branch": "mongodb-mongo-master",
+      "branch": "spruce",
       "alias": "__commit_queue"
+    }
+  ],
+  "project_ref": [
+    {
+      "_id": "spruce",
+      "identifier": "spruce"
     }
   ]
 }

@@ -148,12 +148,7 @@ type APIDispatcherSettings struct {
 
 // BuildFromService converts from service level distro.DispatcherSettings to an APIDispatcherSettings
 func (s *APIDispatcherSettings) BuildFromService(settings distro.DispatcherSettings) {
-	if settings.Version == "" {
-		s.Version = utility.ToStringPtr(evergreen.DispatcherVersionRevised)
-	} else {
-		s.Version = utility.ToStringPtr(settings.Version)
-	}
-
+	s.Version = utility.ToStringPtr(evergreen.DispatcherVersionRevisedWithDependencies)
 }
 
 // ToService returns a service layer distro.DispatcherSettings using the data from APIDispatcherSettings
@@ -162,7 +157,7 @@ func (s *APIDispatcherSettings) ToService() distro.DispatcherSettings {
 		Version: utility.FromStringPtr(s.Version),
 	}
 	if settings.Version == "" {
-		settings.Version = evergreen.DispatcherVersionRevised
+		settings.Version = evergreen.DispatcherVersionRevisedWithDependencies
 	}
 
 	return settings
@@ -351,8 +346,6 @@ type APIDistro struct {
 	Setup                 *string                  `json:"setup"`
 	User                  *string                  `json:"user"`
 	BootstrapSettings     APIBootstrapSettings     `json:"bootstrap_settings"`
-	CloneMethod           *string                  `json:"clone_method"`
-	SSHKey                *string                  `json:"ssh_key"`
 	SSHOptions            []string                 `json:"ssh_options"`
 	AuthorizedKeysFile    *string                  `json:"authorized_keys_file"`
 	Expansions            []APIExpansion           `json:"expansions"`
@@ -368,6 +361,7 @@ type APIDistro struct {
 	IsVirtualWorkstation  bool                     `json:"is_virtual_workstation"`
 	IsCluster             bool                     `json:"is_cluster"`
 	Note                  *string                  `json:"note"`
+	WarningNote           *string                  `json:"warning_note"`
 	ValidProjects         []*string                `json:"valid_projects"`
 	Mountpoints           []string                 `json:"mountpoints"`
 }
@@ -385,18 +379,13 @@ func (apiDistro *APIDistro) BuildFromService(d distro.Distro) {
 	apiDistro.SetupAsSudo = d.SetupAsSudo
 	apiDistro.Setup = utility.ToStringPtr(d.Setup)
 	apiDistro.User = utility.ToStringPtr(d.User)
-
-	if d.CloneMethod == "" {
-		d.CloneMethod = evergreen.CloneMethodLegacySSH
-	}
-	apiDistro.CloneMethod = utility.ToStringPtr(d.CloneMethod)
-	apiDistro.SSHKey = utility.ToStringPtr(d.SSHKey)
 	apiDistro.SSHOptions = d.SSHOptions
 	apiDistro.AuthorizedKeysFile = utility.ToStringPtr(d.AuthorizedKeysFile)
 	apiDistro.Disabled = d.Disabled
 	apiDistro.ContainerPool = utility.ToStringPtr(d.ContainerPool)
 	apiDistro.DisableShallowClone = d.DisableShallowClone
 	apiDistro.Note = utility.ToStringPtr(d.Note)
+	apiDistro.WarningNote = utility.ToStringPtr(d.WarningNote)
 	apiDistro.ValidProjects = utility.ToStringPtrSlice(d.ValidProjects)
 	apiDistro.Mountpoints = d.Mountpoints
 	if d.Expansions != nil {
@@ -452,11 +441,6 @@ func (apiDistro *APIDistro) ToService() *distro.Distro {
 	d.Setup = utility.FromStringPtr(apiDistro.Setup)
 	d.User = utility.FromStringPtr(apiDistro.User)
 	d.BootstrapSettings = apiDistro.BootstrapSettings.ToService()
-	d.CloneMethod = utility.FromStringPtr(apiDistro.CloneMethod)
-	if d.CloneMethod == "" {
-		d.CloneMethod = evergreen.CloneMethodLegacySSH
-	}
-	d.SSHKey = utility.FromStringPtr(apiDistro.SSHKey)
 	d.SSHOptions = apiDistro.SSHOptions
 	d.AuthorizedKeysFile = utility.FromStringPtr(apiDistro.AuthorizedKeysFile)
 	d.SpawnAllowed = apiDistro.UserSpawnAllowed
@@ -477,6 +461,7 @@ func (apiDistro *APIDistro) ToService() *distro.Distro {
 
 	d.DisableShallowClone = apiDistro.DisableShallowClone
 	d.Note = utility.FromStringPtr(apiDistro.Note)
+	d.WarningNote = utility.FromStringPtr(apiDistro.WarningNote)
 	d.ValidProjects = utility.FromStringPtrSlice(apiDistro.ValidProjects)
 
 	d.IsVirtualWorkstation = apiDistro.IsVirtualWorkstation

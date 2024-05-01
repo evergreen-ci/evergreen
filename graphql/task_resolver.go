@@ -11,7 +11,6 @@ import (
 	"github.com/evergreen-ci/evergreen/model/annotations"
 	"github.com/evergreen-ci/evergreen/model/build"
 	"github.com/evergreen-ci/evergreen/model/host"
-	"github.com/evergreen-ci/evergreen/model/patch"
 	"github.com/evergreen-ci/evergreen/model/task"
 	"github.com/evergreen-ci/evergreen/rest/data"
 	restModel "github.com/evergreen-ci/evergreen/rest/model"
@@ -165,29 +164,7 @@ func (r *taskResolver) CanDisable(ctx context.Context, obj *restModel.APITask) (
 
 // CanModifyAnnotation is the resolver for the canModifyAnnotation field.
 func (r *taskResolver) CanModifyAnnotation(ctx context.Context, obj *restModel.APITask) (bool, error) {
-	authUser := gimlet.GetUser(ctx)
-	permissions := gimlet.PermissionOpts{
-		Resource:      *obj.ProjectId,
-		ResourceType:  evergreen.ProjectResourceType,
-		Permission:    evergreen.PermissionAnnotations,
-		RequiredLevel: evergreen.AnnotationsModify.Value,
-	}
-	if authUser.HasPermission(permissions) {
-		return true, nil
-	}
-	if utility.StringSliceContains(evergreen.PatchRequesters, utility.FromStringPtr(obj.Requester)) {
-		p, err := patch.FindOneId(utility.FromStringPtr(obj.Version))
-		if err != nil {
-			return false, InternalServerError.Send(ctx, fmt.Sprintf("error finding patch for task: %s", err.Error()))
-		}
-		if p == nil {
-			return false, InternalServerError.Send(ctx, "patch for task doesn't exist")
-		}
-		if p.Author == authUser.Username() {
-			return true, nil
-		}
-	}
-	return false, nil
+	return canModifyAnnotation(ctx, obj)
 }
 
 // CanOverrideDependencies is the resolver for the canOverrideDependencies field.

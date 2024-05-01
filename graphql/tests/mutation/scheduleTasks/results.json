@@ -10,7 +10,7 @@
             }
           ]
         }
-      } 
+      }
     },
     {
       "query_file": "schedule_tasks_failure.graphql",
@@ -18,12 +18,40 @@
         "data": null,
         "errors": [
           {
-            "message": "Failed to schedule tasks : input: tasks not found",
-            "path": [
-              "scheduleTasks"
-            ],
+            "message": "tasks not found",
+            "path": ["scheduleTasks"],
             "extensions": {
-              "code": "INTERNAL_SERVER_ERROR"
+              "code": "RESOURCE_NOT_FOUND"
+            }
+          }
+        ]
+      }
+    },
+    {
+      "query_file": "unmatching_version.graphql",
+      "result": {
+        "data": null,
+        "errors": [
+          {
+            "message": "task 'wuzzup' does not belong to version 'unmatching_version'",
+            "path": ["scheduleTasks"],
+            "extensions": {
+              "code": "INPUT_VALIDATION_ERROR"
+            }
+          }
+        ]
+      }
+    },
+    {
+      "query_file": "no_permissions.graphql",
+      "result": {
+        "data": null,
+        "errors": [
+          {
+            "message": "user 'testuser' does not have permission to access 'tasks' for the project 'evergreen'",
+            "path": ["scheduleTasks", "versionId"],
+            "extensions": {
+              "code": "FORBIDDEN"
             }
           }
         ]

@@ -15,6 +15,23 @@
           "addAnnotationIssue": true
         }
       }
+    },
+    {
+      "query_file": "no_permissions.graphql",
+      "result": {
+        "data": null,
+        "errors": [
+          {
+            "message": "insufficient permission for modifying annotation",
+            "path": [
+              "addAnnotationIssue"
+            ],
+            "extensions": {
+              "code": "FORBIDDEN"
+            }
+          }
+        ]
+      }
     }
   ]
 }

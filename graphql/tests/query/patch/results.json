@@ -1,0 +1,46 @@
+{
+  "tests": [
+    {
+      "query_file": "patch.graphql",
+      "result": {
+        "data": {
+          "patch": {
+            "id": "5dd2e89cd1fe07048e43bc8f",
+            "author": "bob.smith",
+            "githash": "123"
+          }
+        }
+      }
+    },
+    {
+      "query_file": "invalid_id.graphql",
+      "result": {
+        "data": null,
+        "errors": [
+          {
+            "message": "not a valid patch ID",
+            "path": ["patch", "patchId"],
+            "extensions": {
+              "code": "INPUT_VALIDATION_ERROR"
+            }
+          }
+        ]
+      }
+    },
+    {
+      "query_file": "no_permissions.graphql",
+      "result": {
+        "data": null,
+        "errors": [
+          {
+            "message": "user 'testuser' does not have permission to access 'tasks' for the project 'evergreen'",
+            "path": ["patch", "patchId"],
+            "extensions": {
+              "code": "FORBIDDEN"
+            }
+          }
+        ]
+      }
+    }
+  ]
+}

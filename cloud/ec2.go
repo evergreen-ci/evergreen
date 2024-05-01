@@ -195,9 +195,9 @@ const (
 )
 
 const (
-	checkSuccessAttempts   = 12
+	checkSuccessAttempts   = 10
 	checkSuccessInitPeriod = 2 * time.Second
-	checkSuccessMaxDelay   = 2 * time.Minute
+	checkSuccessMaxDelay   = time.Minute
 )
 
 const (
@@ -595,25 +595,22 @@ func (m *ec2Manager) setNoExpiration(ctx context.Context, h *host.Host, noExpira
 	}
 
 	if noExpiration {
-		instance, err := m.client.GetInstanceInfo(ctx, h.Id)
+		if err := h.MarkShouldNotExpire(ctx, expireOnValue); err != nil {
+			return errors.Wrapf(err, "marking host should not expire in DB for host '%s'", h.Id)
+		}
+
+		// Use GetInstanceStatus to add/update the cached host data (including
+		// unexpirable host information like persistent DNS names and IP
+		// addrseses) if the unexpirable host is running.
+		_, err := m.GetInstanceStatus(ctx, h)
 		grip.Error(message.WrapError(err, message.Fields{
-			"message":    "could not get instance info for assigning persistent DNS name",
+			"message":    "could not get instance info to assign persistent DNS name",
 			"dashboard":  "evergreen sleep schedule health",
 			"host_id":    h.Id,
 			"started_by": h.StartedBy,
 		}))
-		if instance != nil {
-			grip.Error(message.WrapError(setHostPersistentDNSName(ctx, m.env, h, utility.FromStringPtr(instance.PublicIpAddress), m.client), message.Fields{
-				"message":         "could not update host's persistent DNS name",
-				"op":              "upsert",
-				"dashboard":       "evergreen sleep schedule health",
-				"host_id":         h.Id,
-				"started_by":      h.StartedBy,
-				"instance_status": ec2StatusToEvergreenStatus(instance.State.Name),
-			}))
-		}
 
-		return errors.Wrapf(h.MarkShouldNotExpire(ctx, expireOnValue), "marking host should not expire in DB for host '%s'", h.Id)
+		return nil
 	}
 
 	grip.Error(message.WrapError(deleteHostPersistentDNSName(ctx, m.env, h, m.client), message.Fields{
@@ -780,12 +777,6 @@ func (m *ec2Manager) GetInstanceStatus(ctx context.Context, h *host.Host) (Cloud
 		if isEC2InstanceNotFound(err) {
 			return StatusNonExistent, nil
 		}
-		grip.Error(message.WrapError(err, message.Fields{
-			"message":       "error getting instance info",
-			"host_id":       h.Id,
-			"host_provider": h.Distro.Provider,
-			"distro":        h.Distro.Id,
-		}))
 		return status, err
 	}
 	status = ec2StatusToEvergreenStatus(instance.State.Name)
@@ -903,7 +894,7 @@ func (m *ec2Manager) TerminateInstance(ctx context.Context, h *host.Host, user, 
 }
 
 // StopInstance stops a running EC2 instance.
-func (m *ec2Manager) StopInstance(ctx context.Context, h *host.Host, user string) error {
+func (m *ec2Manager) StopInstance(ctx context.Context, h *host.Host, shouldKeepOff bool, user string) error {
 	if !utility.StringSliceContains(evergreen.StoppableHostStatuses, h.Status) {
 		return errors.Errorf("host cannot be stopped because its status ('%s') is not a stoppable state", h.Status)
 	}
@@ -940,7 +931,7 @@ func (m *ec2Manager) StopInstance(ctx context.Context, h *host.Host, user string
 				"host_id":       h.Id,
 				"distro":        h.Distro.Id,
 			})
-			return errors.Wrap(h.SetStopped(ctx, user), "marking DB host as stopped")
+			return errors.Wrap(h.SetStopped(ctx, shouldKeepOff, user), "marking DB host as stopped")
 		default:
 			return errors.Errorf("instance is in unexpected state '%s'", status)
 		}
@@ -983,7 +974,7 @@ func (m *ec2Manager) StopInstance(ctx context.Context, h *host.Host, user string
 		"distro":        h.Distro.Id,
 	})
 
-	return errors.Wrap(h.SetStopped(ctx, user), "marking DB host as stopped")
+	return errors.Wrap(h.SetStopped(ctx, shouldKeepOff, user), "marking DB host as stopped")
 }
 
 // StartInstance starts a stopped EC2 instance.
@@ -1020,6 +1011,7 @@ func (m *ec2Manager) StartInstance(ctx context.Context, h *host.Host, user strin
 		}, utility.RetryOptions{
 			MaxAttempts: checkSuccessAttempts,
 			MinDelay:    checkSuccessInitPeriod,
+			MaxDelay:    checkSuccessMaxDelay,
 		})
 
 	if err != nil {

@@ -1,0 +1,8 @@
+mutation {
+  editAnnotationNote(
+    taskId: "no_permissions"
+    execution: 1
+    originalMessage: "my message"
+    newMessage: "my new message"
+  )
+}

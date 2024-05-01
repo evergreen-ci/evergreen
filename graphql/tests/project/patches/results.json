@@ -68,16 +68,16 @@
     {
       "query_file": "nonexistent_user.graphql",
       "result": {
+        "data": null,
         "errors": [
           {
-            "message": "Error finding project by id not a real project: 404 (Not Found): project 'not a real project' not found",
-            "path": ["project"],
+            "message": "project 'not a real project' not found",
+            "path": ["project", "projectIdentifier"],
             "extensions": {
-              "code": "INTERNAL_SERVER_ERROR"
+              "code": "RESOURCE_NOT_FOUND"
             }
           }
-        ],
-        "data": null
+        ]
       }
     },
     {
@@ -155,6 +155,21 @@
             }
           }
         }
+      }
+    },
+    {
+      "query_file": "no_permissions.graphql",
+      "result": {
+        "data": null,
+        "errors": [
+          {
+            "message": "user 'testuser' does not have permission to access 'tasks' for the project 'evergreen'",
+            "path": ["project", "projectIdentifier"],
+            "extensions": {
+              "code": "FORBIDDEN"
+            }
+          }
+        ]
       }
     }
   ]

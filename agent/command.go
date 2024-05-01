@@ -217,7 +217,7 @@ func (a *Agent) runCommandOrFunc(ctx context.Context, tc *taskContext, commandIn
 			commandSpan.SetStatus(codes.Error, "running command")
 			commandSpan.RecordError(err, trace.WithAttributes(tc.taskConfig.TaskAttributes()...))
 			commandSpan.End()
-			if commandInfo.RetryOnFailure {
+			if cmd.RetryOnFailure() {
 				logger.Task().Infof("Command is set to automatically restart on completion, this can be done %d total times per task.", evergreen.MaxAutomaticRestarts)
 				if restartErr := a.comm.MarkFailedTaskToRestart(ctx, tc.task); restartErr != nil {
 					logger.Task().Errorf("Encountered error marking task to restart upon completion: %s", restartErr)
@@ -267,7 +267,7 @@ func (a *Agent) runCommand(ctx context.Context, tc *taskContext, logger client.L
 		// Only set the idle timeout in cases where the idle timeout is actually
 		// respected. In all other blocks, setting the idle timeout should have
 		// no effect.
-		tc.setCurrentIdleTimeout(cmd, options.block)
+		tc.setCurrentIdleTimeout(cmd)
 	}
 	a.comm.UpdateLastMessageTime()
 
@@ -303,6 +303,9 @@ func (a *Agent) runCommand(ctx context.Context, tc *taskContext, logger client.L
 	case err := <-cmdChan:
 		if err != nil {
 			tc.logger.Task().Errorf("Command %s failed: %s.", cmd.FullDisplayName(), err)
+			if options.block == command.PostBlock {
+				tc.setPostErrored(true)
+			}
 			if options.canFailTask ||
 				(cmd.Name() == "git.get_project" && tc.taskConfig.Task.Requester == evergreen.MergeTestRequester) {
 				// any git.get_project in the commit queue should fail

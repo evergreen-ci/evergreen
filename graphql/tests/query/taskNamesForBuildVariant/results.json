@@ -1,11 +1,29 @@
 {
-    "tests": [
-      {
-          "query_file": "task_names_for_build_variant.graphql",
-          "result": {
-            "data": {"taskNamesForBuildVariant":["dist", "test-agent", "test-graphql"]}
-          }
+  "tests": [
+    {
+      "query_file": "task_names_for_build_variant.graphql",
+      "result": {
+        "data": {
+          "taskNamesForBuildVariant": ["dist", "test-agent", "test-graphql"]
         }
-    ]
+      }
+    },
+    {
+      "query_file": "no_permissions.graphql",
+      "result": {
+        "data": {
+          "taskNamesForBuildVariant": null
+        },
+        "errors": [
+          {
+            "message": "user 'testuser' does not have permission to access 'tasks' for the project 'evergreen'",
+            "path": ["taskNamesForBuildVariant", "projectIdentifier"],
+            "extensions": {
+              "code": "FORBIDDEN"
+            }
+          }
+        ]
+      }
+    }
+  ]
 }
-  

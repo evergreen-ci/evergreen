@@ -301,7 +301,7 @@ Fields:
     will check that task once per day. If the most recent mainline commit is
     inactive, Evergreen will activate it. In this way, cron is tied more closely
     to project commit activity. To run something on a regular schedule
-    regardless of commit activity, consider using [periodic builds](Project-and-Distro-Settings.md#periodic-builds)
+    regardless of commit activity, consider using [periodic builds](Project-and-Distro-Settings#periodic-builds)
     instead.
 -   `task_group`: a [task
     group](#task-groups)
@@ -328,7 +328,7 @@ from larger, more powerful machines.
 ### Version Controlled Project Settings
 Project configurations can version control some select project settings (e.g. aliases, plugins) directly within the yaml
 rather than on the project page UI, for better accessibility and maintainability. Read more
-[here](Project-and-Distro-Settings.md#version-control).
+[here](Project-and-Distro-Settings#version-control).
 
 ## Advanced Features
 
@@ -343,7 +343,7 @@ includes. This will accept a list of filenames and module names. If the
 include isn't given, we will only use the main project configuration
 file.
 
-Note: included files do not support [version-controlled project settings configuration](Project-and-Distro-Settings.md#version-control)
+Note: included files do not support [version-controlled project settings configuration](Project-and-Distro-Settings#version-control)
 
 ``` yaml
 include: 
@@ -409,7 +409,7 @@ Manifest" will contain details on how the modules were parsed from YAML and
 which git revisions are being used. If no modules have been defined, the
 "Version Manifest" will not appear at all in the Spruce UI.
 
-For mainline commits and [trigger versions](Project-and-Distro-Settings.md#project-triggers), a new 
+For mainline commits and [trigger versions](Project-and-Distro-Settings#project-triggers), a new 
 manifest will be created that uses the latest revision available for each module.
 
 For manual patches and GitHub PRs, by default, the git revisions in the
@@ -421,7 +421,7 @@ latest revision available for a module. The full hierarchy of how
 module revisions are determined is available in the [git.get_project](Project-Commands/#module-hash-hierarchy)
 docs.
 
-Module fields support the expansion of variables defined in the [Variables](Project-and-Distro-Settings.md#variables)
+Module fields support the expansion of variables defined in the [Variables](Project-and-Distro-Settings#variables)
 tab of the Spruce project settings. These fields are expanded at the time of version creation, at which point 
 the "Version Manifest" shown in the Spruce UI should show module configurations including the expanded variables.
 
@@ -464,7 +464,9 @@ All projects can have a `pre` and `post` field which define a list of commands
 to run at the start and end of every task that isn't in a task group. For task
 groups, `setup_task` and `teardown_task` will run instead of `pre` and `post`
 (see [task groups](#task-groups) for more information). These are incredibly
-useful as a place for results commands or for task setup and cleanup.
+useful as a place for results commands or for task setup and cleanup. Note: If a 
+host runs into an issue and needs to exit it will exit without running the post 
+task commands. 
 
 ``` yaml
 pre_error_fails_task: true
@@ -531,20 +533,20 @@ Parameters:
 **Exec timeout: exec_timeout_secs**
 You can customize the points at which the "timeout" conditions are
 triggered. To cause a task to stop (and fail) if it doesn't complete
-within an allotted time, set the key `exec_timeout_secs` on the project
-or task to the maximum allowed length of execution time. Exec timeout only
+within an allotted time, set the key `exec_timeout_secs` on the overall project
+or on a specific task to set the maximum allowed length of execution time. Exec timeout only
 applies to commands that run in `pre`, `setup_group`, `setup_task`, and the main
 task commands; it does not apply to the `post`, `teardown_task`, and
 `teardown_group` blocks. This timeout defaults to 6 hours. `exec_timeout_secs`
 can only be set on the project or on a task as seen in below example. 
 It cannot be set on functions or build variant tasks.
 
-You can also set `exec_timeout_secs` using [timeout.update](Project-Commands.md#timeoutupdate).
+You can also set `exec_timeout_secs` using [timeout.update](Project-Commands#timeoutupdate).
 
 **Idle timeout: timeout_secs**
 You may also force a specific command to trigger a failure if it does not appear
 to generate any output on `stdout`/`stderr` for more than a certain threshold,
-using the `timeout_secs` setting on the command. As long as the command produces
+using the `timeout_secs` setting on the command, or the overall project. As long as the command produces
 output to `stdout`/`stderr`, it will be allowed to continue, but if it does not
 write any output for longer than `timeout_secs` then the command will time out.
 If this timeout is hit, the task will stop (and fail). Idle timeout only applies
@@ -553,12 +555,14 @@ commands; it does not apply to the `post`, `teardown_task`, and `teardown_group`
 blocks. This timeout defaults to 2 hours.
 
 You can also overwrite the default `timeout_secs` for all later commands using
-[timeout.update](Project-Commands.md#timeoutupdate).
+[timeout.update](Project-Commands#timeoutupdate).
 
 Example:
 
 ``` yaml
 exec_timeout_secs: 60 ## automatically fail any task if it takes longer than a minute to finish.
+timeout_secs: 120 ## force all commands to fail if they stay "idle" for 120 seconds or more by default
+
 buildvariants:
 - name: osx-108
   display_name: OSX
@@ -571,15 +575,11 @@ tasks:
   name: compile
   commands:
     - command: shell.exec
-      timeout_secs: 10 ## force this command to fail if it stays "idle" for 10 seconds or more
-      exec_timeout_secs: 20 ## will override the project level exec_timeout defined above for this task
+      timeout_secs: 10 ## override the project level timeout_secs defined above and force this command to fail if it stays "idle" for 10 seconds or more
+      exec_timeout_secs: 20 ## will override the project level exec_timeout_secs defined above for this task
       params:
         script: |
           sleep 1000
-```
-
-```yaml
-exec_timeout_secs: 60
 ```
 
 ### Limiting When a Task Will Run
@@ -646,7 +646,7 @@ run for any requester. If you specify an empty `allowed_requesters` list (i.e.
 If `allowed_requesters` is specified and a conflicting project setting is also
 specified, `allowed_requesters` will take higher precedence. For example, if the
 project settings configure a [GitHub PR patch
-definition](Project-and-Distro-Settings.md#github-pull-request-testing) to run
+definition](Project-and-Distro-Settings#github-pull-request-testing) to run
 tasks A and B but task A has `allowed_requesters: ["commit"]`, then GitHub PR
 patches will only run task B.
 
@@ -790,11 +790,11 @@ Every task has some expansions available by default:
 -   `${otel_trace_id}` is the OTel trace ID this task is running under.
     Include the trace ID in your task's spans so they'll be hooked
     in under the task's trace.
-    See [Hooking tests into command spans](Task_Traces.md#hooking-tests-into-command-spans) for more information.
+    See [Hooking tests into command spans](Task_Traces#hooking-tests-into-command-spans) for more information.
 -   `${otel_parent_id}` is the OTel span ID of the current command.
     Include this ID in your test's root spans so it'll be hooked
     in under the command's trace.
-    See [Hooking tests into command spans](Task_Traces.md#hooking-tests-into-command-spans) for more information.
+    See [Hooking tests into command spans](Task_Traces#hooking-tests-into-command-spans) for more information.
 -   `${__project_aws_ssh_key_name}` is the unique key name for the ssh key 
     pair generated by Evergreen. 
 -   `${__project_aws_ssh_key_value}` is the unencrypted PEM encoded PKCS#1 private key 
@@ -832,7 +832,7 @@ given module
 -   `${<module_name>_owner}` is the Github repo owner for the evergreen
     module associated with this task
 
-In the [Github merge queue](Merge-Queue.md), a single additional expansion
+In the [Github merge queue](Merge-Queue), a single additional expansion
 called `${github_head_branch}` is available. This is the name of the temporary
 branch that GitHub creates for this merge group item. It looks something like
 "gh-readonly-queue/main/pr-515-9cd8a2532bcddf58369aa82eb66ba88e2323c056". In the
@@ -879,7 +879,8 @@ buildvariants:
 ```
 
 Tags can be referenced in variant definitions to quickly include groups
-of tasks.
+of tasks. If no tasks are selected in the build variant, it will generate
+an error.
 
 ``` yaml
 buildvariants:
@@ -1007,7 +1008,7 @@ oom_tracker: false
 ### Matrix Variant Definition
 
 The matrix syntax is deprecated in favor of the
-[generate.tasks](Project-Commands.md#generatetasks)
+[generate.tasks](Project-Commands#generatetasks)
 command. **Evergreen is unlikely to do further development on matrix
 variant definitions.** The documentation is here for completeness, but
 please do not add new matrix variant definitions. It is typically
@@ -1425,8 +1426,9 @@ Parameters:
     commands run once per host that's running the task group tasks. Note that
     `post` does not run for task group tasks.
 -   `teardown_group_timeout_secs`: set a timeout for the `teardown_group`.
-    Defaults to 15 minutes. Hitting this timeout will stop the `teardown_task`
-    commands but will not cause the task to fail.
+    The maximum and the default is 3 minutes. If it's not set or if it's set to a 
+    number higher than the maximum, it will default to 3 minutes. Hitting this timeout 
+    will stop the `teardown_group` commands but will not cause the task to fail. 
 -   `setup_task`: commands to run prior to running each task in the task group.
     Note that `pre` does not run for task group tasks.
 -   `setup_task_can_fail_task`: if true, task will fail if a command in
@@ -1501,6 +1503,15 @@ If a task in a multi-host task group is restarted:
   a new task group, so it will run the teardown group commands, clear the task
   directory, and re-run the setup group commands.
 
+#### Teardown task and teardown group reliability 
+Both `teardown_task` and `teardown_group` are not 100% guaranteed to run. If a 
+host runs into an issue and needs to exit before it ran the `teardown_task` 
+or `teardown_group`, it will exit without running them. 
+
+Additionally, `teardown_group` has a max timeout of 3 minutes. Even if the 
+timeout is manually set higher with `teardown_group_timeout_secs`, a three minute 
+timeout will be enforced.  
+
 ### Task Dependencies
 
 A task can be made to depend on other tasks by adding the depended on
@@ -1519,7 +1530,7 @@ parameters are available:
     not be automatically pulled in to the version.
 -   `omit_generated_tasks` - boolean (default: false). If true and the
     dependency is a generator task (i.e. it generates tasks via the
-    [`generate.tasks`](Project-Commands.md#generatetasks) command), then generated tasks will not be included
+    [`generate.tasks`](Project-Commands#generatetasks) command), then generated tasks will not be included
     as dependencies.
 
 So, for example:
@@ -1630,15 +1641,32 @@ This is only recommended for commands that are known to be flaky, or fail interm
 **In order to prevent overuse of this feature, the number of times a single
 task can be automatically restarted on failure is limited to 1 time.**
 
-An example is:
+In the example below, both `task1` and `task2` will retry automatically:
 
 ``` yaml
-- command: shell.exec
-  retry_on_failure: true
-  params:
-    working_dir: src
-    script: |
-      exit 1
+functions:
+  my_function:
+     - command: shell.exec
+       params:
+         script: echo "hello"
+     - command: shell.exec
+       retry_on_failure: true
+       params:
+         script: exit 1
+
+tasks:
+  - name: task1
+    commands:
+    - command: shell.exec
+      retry_on_failure: true
+      params:
+       working_dir: src
+       script: |
+        exit 1
+        
+  - name: task2
+    commands:
+    - func: my_function
 ```
 
 ### Customizing Logging

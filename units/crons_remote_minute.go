@@ -68,7 +68,7 @@ func (j *cronsRemoteMinuteJob) Run(ctx context.Context) {
 		if ctx.Err() != nil {
 			j.AddError(errors.New("operation aborted"))
 		}
-		jobs, err := op(ctx, ts)
+		jobs, err := op(ctx, j.env, ts)
 		if err != nil {
 			catcher.Wrapf(err, "getting '%s' jobs", name)
 			continue
@@ -76,12 +76,13 @@ func (j *cronsRemoteMinuteJob) Run(ctx context.Context) {
 		allJobs = append(allJobs, jobs...)
 	}
 	catcher.Wrap(amboy.EnqueueManyUniqueJobs(ctx, j.env.RemoteQueue(), allJobs), "populating main queue")
-	catcher.Add(enqueueHostSetupJobs(ctx, j.env.RemoteQueue(), ts))
+	catcher.Add(enqueueHostSetupJobs(ctx, j.env, j.env.RemoteQueue(), ts))
 
 	// Create dedicated queues for host creation, event notifier, and commit queue jobs.
 	catcher.Add(populateQueueGroup(ctx, j.env, createHostQueueGroup, hostCreationJobs, ts))
 	catcher.Add(populateQueueGroup(ctx, j.env, commitQueueQueueGroup, commitQueueJobs, ts))
 	catcher.Add(populateQueueGroup(ctx, j.env, eventNotifierQueueGroup, eventNotifierJobs, ts))
+	catcher.Add(populateQueueGroup(ctx, j.env, spawnHostModificationQueueGroup, sleepSchedulerJobs, ts))
 
 	// Add generate tasks fallbacks to their versions' queues.
 	catcher.Add(enqueueFallbackGenerateTasksJobs(ctx, j.env, ts))

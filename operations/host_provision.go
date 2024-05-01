@@ -6,10 +6,15 @@ import (
 	"path/filepath"
 	"runtime"
 
+	"github.com/evergreen-ci/evergreen"
+	agentutil "github.com/evergreen-ci/evergreen/agent/util"
+	"github.com/evergreen-ci/evergreen/cloud"
 	"github.com/evergreen-ci/evergreen/rest/client"
+	restmodel "github.com/evergreen-ci/evergreen/rest/model"
 	"github.com/evergreen-ci/evergreen/util"
 	"github.com/evergreen-ci/utility"
 	"github.com/mongodb/grip"
+	"github.com/mongodb/grip/message"
 	"github.com/mongodb/jasper"
 	"github.com/pkg/errors"
 	"github.com/urfave/cli"
@@ -17,11 +22,12 @@ import (
 
 func hostProvision() cli.Command {
 	const (
-		hostIDFlagName       = "host_id"
-		hostSecretFlagName   = "host_secret"
-		workingDirFlagName   = "working_dir"
-		apiServerURLFlagName = "api_server"
-		shellPathFlagName    = "shell_path"
+		hostIDFlagName        = "host_id"
+		hostSecretFlagName    = "host_secret"
+		cloudProviderFlagName = "provider"
+		workingDirFlagName    = "working_dir"
+		apiServerURLFlagName  = "api_server"
+		shellPathFlagName     = "shell_path"
 	)
 	return cli.Command{
 		Name:  "provision",
@@ -34,6 +40,10 @@ func hostProvision() cli.Command {
 			cli.StringFlag{
 				Name:  hostSecretFlagName,
 				Usage: "the host secret",
+			},
+			cli.StringFlag{
+				Name:  cloudProviderFlagName,
+				Usage: "the cloud provider that manages this host",
 			},
 			cli.StringFlag{
 				Name:  workingDirFlagName,
@@ -64,7 +74,23 @@ func hostProvision() cli.Command {
 			}
 			defer comm.Close()
 
-			opts, err := comm.GetHostProvisioningOptions(ctx, c.String(hostIDFlagName), c.String(hostSecretFlagName))
+			hostID := c.String(hostIDFlagName)
+			hostSecret := c.String(hostSecretFlagName)
+			cloudProvider := c.String(cloudProviderFlagName)
+			h, err := postHostIsUp(ctx, comm, hostID, hostSecret, cloudProvider)
+			if err != nil {
+				return errors.Wrap(err, "posting that the host is up")
+			}
+			if h != nil {
+				// If the host was an intent host when it was first started up,
+				// the host ID can change. Use the most up-to-date host ID when
+				// starting the agent.
+				if updatedHostID := utility.FromStringPtr(h.Id); updatedHostID != "" {
+					hostID = updatedHostID
+				}
+			}
+
+			opts, err := comm.GetHostProvisioningOptions(ctx, hostID, hostSecret)
 			if err != nil {
 				return errors.Wrap(err, "getting host provisioning script")
 			}
@@ -85,6 +111,29 @@ func hostProvision() cli.Command {
 			return nil
 		},
 	}
+}
+
+func postHostIsUp(ctx context.Context, comm client.Communicator, hostID, hostSecret, cloudProvider string) (*restmodel.APIHost, error) {
+	var ec2InstanceID string
+	if cloud.IsEC2InstanceID(hostID) {
+		ec2InstanceID = hostID
+	} else if cloudProvider != "" && evergreen.IsEc2Provider(cloudProvider) {
+		var err error
+		ec2InstanceID, err = agentutil.GetEC2InstanceID(ctx)
+		if err != nil {
+			grip.Error(message.WrapError(err, message.Fields{
+				"message":        "could not fetch EC2 instance ID dynamically",
+				"host_id":        hostID,
+				"cloud_provider": cloudProvider,
+			}))
+		}
+	}
+
+	h, err := comm.PostHostIsUp(ctx, hostID, hostSecret, ec2InstanceID)
+	if err != nil {
+		return nil, errors.Wrap(err, "posting that the host is up")
+	}
+	return h, nil
 }
 
 // makeHostProvisioningScriptFile creates the working directory with the host

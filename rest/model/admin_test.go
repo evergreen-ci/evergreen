@@ -70,10 +70,6 @@ func TestModelConversion(t *testing.T) {
 		assert.Contains(apiSettings.Expansions, k)
 		assert.Equal(v, apiSettings.Expansions[k])
 	}
-	for k, v := range testSettings.Keys {
-		assert.Contains(apiSettings.Keys, k)
-		assert.Equal(v, apiSettings.Keys[k])
-	}
 	for k, v := range testSettings.Plugins {
 		assert.Contains(apiSettings.Plugins, k)
 		for k2, v2 := range v {
@@ -91,7 +87,6 @@ func TestModelConversion(t *testing.T) {
 
 	assert.EqualValues(testSettings.Amboy.Name, utility.FromStringPtr(apiSettings.Amboy.Name))
 	assert.EqualValues(testSettings.Amboy.DBConnection.URL, utility.FromStringPtr(apiSettings.Amboy.DBConnection.URL))
-	assert.EqualValues(testSettings.Amboy.DBConnection.KanopyURL, utility.FromStringPtr(apiSettings.Amboy.DBConnection.KanopyURL))
 	assert.EqualValues(testSettings.Amboy.DBConnection.Database, utility.FromStringPtr(apiSettings.Amboy.DBConnection.Database))
 	assert.EqualValues(testSettings.Amboy.LocalStorage, apiSettings.Amboy.LocalStorage)
 	assert.EqualValues(testSettings.Amboy.GroupDefaultWorkers, apiSettings.Amboy.GroupDefaultWorkers)
@@ -215,6 +210,7 @@ func TestModelConversion(t *testing.T) {
 	assert.EqualValues(testSettings.ServiceFlags.SystemFailedTaskRestartDisabled, apiSettings.ServiceFlags.SystemFailedTaskRestartDisabled)
 	assert.EqualValues(testSettings.Slack.Level, utility.FromStringPtr(apiSettings.Slack.Level))
 	assert.EqualValues(testSettings.Slack.Options.Channel, utility.FromStringPtr(apiSettings.Slack.Options.Channel))
+	assert.ElementsMatch(testSettings.SleepSchedule.PermanentlyExemptHosts, apiSettings.SleepSchedule.PermanentlyExemptHosts)
 	assert.EqualValues(testSettings.Splunk.SplunkConnectionInfo.Channel, utility.FromStringPtr(apiSettings.Splunk.SplunkConnectionInfo.Channel))
 	assert.EqualValues(testSettings.TaskLimits.MaxTasksPerVersion, utility.FromIntPtr(apiSettings.TaskLimits.MaxTasksPerVersion))
 	assert.EqualValues(testSettings.Triggers.GenerateTaskDistro, utility.FromStringPtr(apiSettings.Triggers.GenerateTaskDistro))
@@ -326,6 +322,7 @@ func TestModelConversion(t *testing.T) {
 	}
 	assert.EqualValues(testSettings.Slack.Level, dbSettings.Slack.Level)
 	assert.EqualValues(testSettings.Slack.Options.Channel, dbSettings.Slack.Options.Channel)
+	assert.ElementsMatch(testSettings.SleepSchedule.PermanentlyExemptHosts, apiSettings.SleepSchedule.PermanentlyExemptHosts)
 	assert.EqualValues(testSettings.Splunk.SplunkConnectionInfo.Channel, dbSettings.Splunk.SplunkConnectionInfo.Channel)
 	assert.EqualValues(testSettings.TaskLimits.MaxTasksPerVersion, dbSettings.TaskLimits.MaxTasksPerVersion)
 	assert.EqualValues(testSettings.Triggers.GenerateTaskDistro, dbSettings.Triggers.GenerateTaskDistro)

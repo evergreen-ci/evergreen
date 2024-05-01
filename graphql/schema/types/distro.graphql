@@ -1,11 +1,4 @@
 ###### ENUMS ######
-enum DistroSettingsAccess {
-  ADMIN
-  CREATE
-  EDIT
-  VIEW
-}
-
 enum DistroOnSaveOperation {
   DECOMMISSION
   RESTART_JASPER
@@ -33,7 +26,6 @@ enum Provider {
 }
 
 enum DispatcherVersion {
-  REVISED
   REVISED_WITH_DEPENDENCIES
 }
 
@@ -140,13 +132,13 @@ input DistroInput {
   isCluster: Boolean!
   isVirtualWorkStation: Boolean!
   name: String! @requireDistroAccess(access: EDIT)
+  warningNote: String
   note: String!
   plannerSettings: PlannerSettingsInput!
   provider: Provider!
   providerSettingsList: [Map!]!
   setup: String!
   setupAsSudo: Boolean!
-  sshKey: String!
   sshOptions: [String!]!
   user: String!
   userSpawnAllowed: Boolean!
@@ -290,12 +282,12 @@ type Distro {
   isVirtualWorkStation: Boolean!
   name: String!
   note: String!
+  warningNote: String!
   plannerSettings: PlannerSettings!
   provider: Provider!
   providerSettingsList: [Map!]!
   setup: String!
   setupAsSudo: Boolean!
-  sshKey: String!
   sshOptions: [String!]!
   user: String!
   userSpawnAllowed: Boolean!

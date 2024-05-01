@@ -1017,6 +1017,7 @@ func (s *GenerateSuite) TestSaveNewTasksWithDependencies() {
 			Version:     "version_that_called_generate_task",
 			BuildId:     "sample_build",
 			DisplayName: "say-hi",
+			Activated:   true,
 		},
 		{
 			Id:          "say-bye-task-id",
@@ -1089,6 +1090,12 @@ func (s *GenerateSuite) TestSaveNewTasksWithDependencies() {
 	for taskID, expect := range expected {
 		s.True(expect, fmt.Sprintf("%s should be a dependency but wasn't", taskID))
 	}
+
+	generatorTask, err := task.FindOneId(tasksThatExist[0].Id)
+	s.NoError(err)
+	s.Require().NotNil(generatorTask)
+	s.Equal(1, generatorTask.NumActivatedGeneratedTasks)
+	s.Equal(4, generatorTask.NumGeneratedTasks)
 }
 
 func (s *GenerateSuite) TestSaveNewTasksInNewVariantWithCrossVariantDependencyOnExistingUnscheduledTaskInExistingVariant() {

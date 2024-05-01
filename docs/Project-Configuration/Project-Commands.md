@@ -339,9 +339,9 @@ Parameters:
 This command calls the aws assumeRole API and returns credentials as
 these expansions:
 
--   `AWS_ACCESS_KEY_ID` (not accessible by expansion.write)
--   `AWS_SECRET_ACCESS_KEY` (not accessible by expansion.write)
--   `AWS_SESSION_TOKEN` (not accessible by expansion.write)
+-   `AWS_ACCESS_KEY_ID` (not accessible by expansions.write)
+-   `AWS_SECRET_ACCESS_KEY` (not accessible by expansions.write)
+-   `AWS_SESSION_TOKEN` (not accessible by expansions.write)
 -   `AWS_ROLE_EXPIRATION`
 
 See
@@ -526,12 +526,12 @@ Parameters:
 
 -   `dir`: the directory to clone into
 -   `revisions`: For commit builds, each module should be passed as
-    `<module_name> : ${<module_name>_rev}` (these are loaded from the [manifest](../API/REST-V2-Usage.md#manifest) 
+    `<module_name> : ${<module_name>_rev}` (these are loaded from the [manifest](../API/REST-V2-Usage#manifest) 
     at the beginning of the command). 
     For patch builds, the hash
     must be passed directly as `<module_name> : <hash>`. Note that this
     means that for patch builds, editing the
-    ["modules"](Project-Configuration-Files.md#modules)
+    ["modules"](Project-Configuration-Files#modules)
     section of the project config will not change the checked out hash.
 -   `token`: Use a token to clone instead of the ssh key on the host.
     Since this is a secret, it should be provided as a project
@@ -656,8 +656,6 @@ EC2 Parameters:
 -   `userdata_file` - Path to file to load as EC2 user data on boot. May
     set if `distro` is set, which will override the value from the
     distro configuration. May set if distro is not set.
--   `vpc_id` - EC2 VPC. Must set if `ami` is set. May set if `distro` is
-    set, which will override the value from the distro configuration.
 
 Docker Parameters:
 
@@ -770,7 +768,6 @@ tasks:
           security_group_ids:
             - ${security_group_id}
           subnet_id: ${subnet_id}
-          vpc_id: ${vpc_id}
       - command: host.list
         params:
           num_hosts: 1
@@ -785,7 +782,7 @@ Note:
 **user** field set for the command's distro, which can be inspected [on Evergreen's distro page](https://evergreen.mongodb.com/distros).
 This is not a default expansion, so it must be set manually.
 - The mcipacker.pem key file was created by echoing the value of the
-`${__project_aws_ssh_key_value}` expansion (which gets populated automatically with the ssh public key value) into the file. This
+`${__project_aws_ssh_key_value}` expansion (which gets populated automatically with the ssh private key value) into the file. This
 expansion is automatically set by Evergreen when the host is spawned.
 
 ## host.list
@@ -904,6 +901,48 @@ Parameters:
 -   `key`: name of the value to increment. Evergreen tracks these
     internally.
 -   `destination`: expansion name to save the value to.
+
+## papertrail.trace
+
+This command traces artifact releases with the Papertrail service. It is owned
+by the Release Infrastructure team, and you may receive assistance with it in
+#ask-devprod-release-tools.
+
+``` yaml
+- command: papertrail.trace
+  params:
+    key_id: ${papertrail_key_id}
+    secret_key: ${papertrail_secret_key}
+    product: mongosh
+    version: 1.0.0
+    filenames:
+        - mongosh-linux-amd64.tar.gz
+        - mongosh-linux-arm64.tar.gz
+        - *.zip
+```
+
+Parameters:
+
+-   `work_dir`: The directory used to search for filenames
+-   `key_id`: your Papertrail key ID (use private variables to keep this a
+    secret).
+-   `secret_key`: your Papertrail secret key (use private variables to keep this
+    a secret).
+-   `product`: The name of the product these filenames belong to (e.g. mongosh,
+    compass, java-driver).
+-   `version`: The version of the product these filenames belong to (e.g.
+    1.0.1).
+-   `filenames`: A list of filename paths to pass to the service. You may use
+    full filepaths in this parameter, the command will label the file with its
+    basename only when sent to the service. Wildcard globs are supported within
+    a single directory path. For example, the filename `dist/*.zip` would
+    locate each zip file within the `dist` directory and individually trace
+    those files. Double star globs like `dist/**/*.zip` are not supported. If
+    a filename is matched multiple times in the same call to `papertrail.trace`,
+    the command will throw an error before any tracing occurs. Note that this
+    means that each basename must be unique, regardless of their path on the
+    filesystem. For example, `./build-a/file.zip` and `./build-b/file.zip` would
+    not be allowed as filenames in the same `papertrail.trace` command. If at least one file cannot be found while using wildcard globs, the command will return an error.
 
 ## perf.send
 
@@ -1275,7 +1314,7 @@ s3.push is restarted, it will replace the existing one.
 Users also have the option to inspect the task working directory after
 it has finished pushing (e.g. for debugging a failed task). This can be
 achieved by either pulling the task working directory from S3 onto a
-spawn host (from the UI) or their local machines (using [evergreen pull](../CLI.md#pull)).
+spawn host (from the UI) or their local machines (using [evergreen pull](../CLI#pull)).
 
 The working directory is put in a private S3 bucket shared between all
 projects. Any other logged in user can pull and view the directory
@@ -1364,7 +1403,7 @@ Parameters:
 
 ## shell.exec
 
-This command runs a shell script. To follow [Evergreen best practices](Best-Practices.md#subprocessexec), we recommend using [subprocess.exec](#subprocess.exec).
+This command runs a shell script. To follow [Evergreen best practices](Best-Practices#subprocessexec), we recommend using [subprocess.exec](#subprocess.exec).
 
 ``` yaml
 - command: shell.exec
@@ -1536,6 +1575,6 @@ Parameters:
 Both parameters are optional. If not set, the task will use the
 definition from the project config.
 
-Commands can also be configured to run if timeout occurs, as documented [here](Project-Configuration-Files.md#timeout-handler).
+Commands can also be configured to run if timeout occurs, as documented [here](Project-Configuration-Files#timeout-handler).
 
 Note: CLI tools that run on Evergreen (such as DSI) might also have their own timeout configurations. Please check the documentation of the CLI tools you use for more details.

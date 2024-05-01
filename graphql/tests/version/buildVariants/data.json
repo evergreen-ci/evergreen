@@ -27,19 +27,19 @@
         {
           "build_variant": "ubuntu1604",
           "activated": true,
-          "build_id": "evergreen_ubuntu1604_patch_5e823e1f28baeaa22ae00823d83e03082cd148ab_5e4ff3abe3c3317e352062e4_20_02_21_15_13_48"
+          "build_id": "spruce_ubuntu1604_patch_5e823e1f28baeaa22ae00823d83e03082cd148ab_5e4ff3abe3c3317e352062e4_20_02_21_15_13_48"
         },
         {
           "build_variant": "lint",
           "activated": true,
-          "build_id": "evergreen_lint_patch_5e823e1f28baeaa22ae00823d83e03082cd148ab_5e4ff3abe3c3317e352062e4_20_02_21_15_13_48"
+          "build_id": "spruce_lint_patch_5e823e1f28baeaa22ae00823d83e03082cd148ab_5e4ff3abe3c3317e352062e4_20_02_21_15_13_48"
         }
       ],
       "builds": [
-        "evergreen_ubuntu1604_patch_5e823e1f28baeaa22ae00823d83e03082cd148ab_5e4ff3abe3c3317e352062e4_20_02_21_15_13_48",
-        "evergreen_lint_patch_5e823e1f28baeaa22ae00823d83e03082cd148ab_5e4ff3abe3c3317e352062e4_20_02_21_15_13_48"
+        "spruce_ubuntu1604_patch_5e823e1f28baeaa22ae00823d83e03082cd148ab_5e4ff3abe3c3317e352062e4_20_02_21_15_13_48",
+        "spruce_lint_patch_5e823e1f28baeaa22ae00823d83e03082cd148ab_5e4ff3abe3c3317e352062e4_20_02_21_15_13_48"
       ],
-      "identifier": "evergreen",
+      "identifier": "spruce",
       "remote": false,
       "remote_path": "",
       "r": "github_pull_request",
@@ -49,7 +49,7 @@
   ],
   "builds": [
     {
-      "_id": "evergreen_lint_patch_5e823e1f28baeaa22ae00823d83e03082cd148ab_5e4ff3abe3c3317e352062e4_20_02_21_15_13_48",
+      "_id": "spruce_lint_patch_5e823e1f28baeaa22ae00823d83e03082cd148ab_5e4ff3abe3c3317e352062e4_20_02_21_15_13_48",
       "create_time": {
         "$date": {
           "$numberLong": "1582298028801"
@@ -66,7 +66,7 @@
         }
       },
       "version": "5e4ff3abe3c3317e352062e4",
-      "branch": "evergreen",
+      "branch": "spruce",
       "gitspec": "5e823e1f28baeaa22ae00823d83e03082cd148ab",
       "build_variant": "lint",
       "build_number": "8903",
@@ -81,7 +81,7 @@
       "order": 2567,
       "tasks": [
         {
-          "id": "evergreen_lint_generate_lint_patch_5e823e1f28baeaa22ae00823d83e03082cd148ab_5e4ff3abe3c3317e352062e4_20_02_21_15_13_48",
+          "id": "spruce_lint_generate_lint_patch_5e823e1f28baeaa22ae00823d83e03082cd148ab_5e4ff3abe3c3317e352062e4_20_02_21_15_13_48",
           "d": "generate-lint",
           "s": "success",
           "ed": {
@@ -99,7 +99,7 @@
           "a": true
         },
         {
-          "id": "evergreen_lint_lint_service_patch_5e823e1f28baeaa22ae00823d83e03082cd148ab_5e4ff3abe3c3317e352062e4_20_02_21_15_13_48",
+          "id": "spruce_lint_lint_service_patch_5e823e1f28baeaa22ae00823d83e03082cd148ab_5e4ff3abe3c3317e352062e4_20_02_21_15_13_48",
           "d": "lint-service",
           "s": "failed",
           "ed": {
@@ -131,7 +131,7 @@
       "r": "github_pull_request"
     },
     {
-      "_id": "evergreen_ubuntu1604_patch_5e823e1f28baeaa22ae00823d83e03082cd148ab_5e4ff3abe3c3317e352062e4_20_02_21_15_13_48",
+      "_id": "spruce_ubuntu1604_patch_5e823e1f28baeaa22ae00823d83e03082cd148ab_5e4ff3abe3c3317e352062e4_20_02_21_15_13_48",
       "create_time": {
         "$date": {
           "$numberLong": "1582298028801"
@@ -148,7 +148,7 @@
         }
       },
       "version": "5e4ff3abe3c3317e352062e4",
-      "branch": "evergreen",
+      "branch": "spruce",
       "gitspec": "5e823e1f28baeaa22ae00823d83e03082cd148ab",
       "build_variant": "ubuntu1604",
       "build_number": "53533",
@@ -163,7 +163,7 @@
       "order": 2567,
       "tasks": [
         {
-          "id": "evergreen_ubuntu1604_js_test_patch_5e823e1f28baeaa22ae00823d83e03082cd148ab_5e4ff3abe3c3317e352062e4_20_02_21_15_13_48",
+          "id": "spruce_ubuntu1604_js_test_patch_5e823e1f28baeaa22ae00823d83e03082cd148ab_5e4ff3abe3c3317e352062e4_20_02_21_15_13_48",
           "d": "test-thirdparty-docker",
           "s": "success",
           "ed": {
@@ -182,7 +182,7 @@
           "a": true
         },
         {
-          "id": "evergreen_ubuntu1604_test_agent_patch_5e823e1f28baeaa22ae00823d83e03082cd148ab_5e4ff3abe3c3317e352062e4_20_02_21_15_13_48",
+          "id": "spruce_ubuntu1604_test_agent_patch_5e823e1f28baeaa22ae00823d83e03082cd148ab_5e4ff3abe3c3317e352062e4_20_02_21_15_13_48",
           "d": "test-db",
           "s": "setup-failed",
           "ed": {
@@ -201,7 +201,7 @@
           "a": true
         },
         {
-          "id": "evergreen_ubuntu1604_test_auth_patch_5e823e1f28baeaa22ae00823d83e03082cd148ab_5e4ff3abe3c3317e352062e4_20_02_21_15_13_48",
+          "id": "spruce_ubuntu1604_test_auth_patch_5e823e1f28baeaa22ae00823d83e03082cd148ab_5e4ff3abe3c3317e352062e4_20_02_21_15_13_48",
           "d": "test-agent",
           "s": "undispatched",
           "ed": {
@@ -220,7 +220,7 @@
           "a": true
         },
         {
-          "id": "evergreen_ubuntu1604_test_cloud_patch_5e823e1f28baeaa22ae00823d83e03082cd148ab_5e4ff3abe3c3317e352062e4_20_02_21_15_13_48",
+          "id": "spruce_ubuntu1604_test_cloud_patch_5e823e1f28baeaa22ae00823d83e03082cd148ab_5e4ff3abe3c3317e352062e4_20_02_21_15_13_48",
           "d": "test-cloud",
           "s": "failed",
           "ed": {
@@ -262,8 +262,8 @@
       "display_name": "test-thirdparty-docker",
       "r": "github_pull_request",
       "status": "success",
-      "branch": "evergreen",
-      "build_id": "evergreen_ubuntu1604_patch_5e823e1f28baeaa22ae00823d83e03082cd148ab_5e4ff3abe3c3317e352062e4_20_02_21_15_13_48",
+      "branch": "spruce",
+      "build_id": "spruce_ubuntu1604_patch_5e823e1f28baeaa22ae00823d83e03082cd148ab_5e4ff3abe3c3317e352062e4_20_02_21_15_13_48",
       "display_task_id": ""
     },
     {
@@ -275,7 +275,7 @@
       "display_name": "test-cloud",
       "r": "github_pull_request",
       "status": "failed",
-      "build_id": "evergreen_ubuntu1604_patch_5e823e1f28baeaa22ae00823d83e03082cd148ab_5e4ff3abe3c3317e352062e4_20_02_21_15_13_48",
+      "build_id": "spruce_ubuntu1604_patch_5e823e1f28baeaa22ae00823d83e03082cd148ab_5e4ff3abe3c3317e352062e4_20_02_21_15_13_48",
       "display_task_id": ""
     },
     {
@@ -287,7 +287,7 @@
       "display_name": "generate-lint",
       "r": "github_pull_request",
       "status": "success",
-      "build_id": "evergreen_lint_patch_5e823e1f28baeaa22ae00823d83e03082cd148ab_5e4ff3abe3c3317e352062e4_20_02_21_15_13_48",
+      "build_id": "spruce_lint_patch_5e823e1f28baeaa22ae00823d83e03082cd148ab_5e4ff3abe3c3317e352062e4_20_02_21_15_13_48",
       "display_task_id": ""
     },
     {
@@ -299,7 +299,7 @@
       "display_name": "lint-service",
       "r": "github_pull_request",
       "status": "failed",
-      "build_id": "evergreen_lint_patch_5e823e1f28baeaa22ae00823d83e03082cd148ab_5e4ff3abe3c3317e352062e4_20_02_21_15_13_48",
+      "build_id": "spruce_lint_patch_5e823e1f28baeaa22ae00823d83e03082cd148ab_5e4ff3abe3c3317e352062e4_20_02_21_15_13_48",
       "display_task_id": ""
     },
     {
@@ -311,7 +311,7 @@
       "display_name": "test-db",
       "r": "github_pull_request",
       "status": "setup-failed",
-      "build_id": "evergreen_ubuntu1604_patch_5e823e1f28baeaa22ae00823d83e03082cd148ab_5e4ff3abe3c3317e352062e4_20_02_21_15_13_48",
+      "build_id": "spruce_ubuntu1604_patch_5e823e1f28baeaa22ae00823d83e03082cd148ab_5e4ff3abe3c3317e352062e4_20_02_21_15_13_48",
       "display_task_id": ""
     },
     {
@@ -323,8 +323,14 @@
       "display_name": "test-agent",
       "r": "github_pull_request",
       "status": "undispatched",
-      "build_id": "evergreen_ubuntu1604_patch_5e823e1f28baeaa22ae00823d83e03082cd148ab_5e4ff3abe3c3317e352062e4_20_02_21_15_13_48",
+      "build_id": "spruce_ubuntu1604_patch_5e823e1f28baeaa22ae00823d83e03082cd148ab_5e4ff3abe3c3317e352062e4_20_02_21_15_13_48",
       "display_task_id": ""
+    }
+  ],
+  "project_ref": [
+    {
+      "_id": "spruce",
+      "identifier": "spruce"
     }
   ]
 }

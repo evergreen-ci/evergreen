@@ -479,12 +479,39 @@ func (h *userPermissionsGetHandler) Run(ctx context.Context) gimlet.Responder {
 	if !h.includeAll {
 		rolesToSearch, _ = utility.StringSliceSymmetricDifference(u.SystemRoles, evergreen.GeneralAccessRoles)
 	}
-	// filter out the roles that everybody has automatically
+	// Filter out the roles that everybody has automatically
 	permissions, err := rolemanager.PermissionSummaryForRoles(ctx, rolesToSearch, h.rm)
 	if err != nil {
 		return gimlet.NewJSONInternalErrorResponse(errors.Wrapf(err, "getting permissions for user '%s'", h.userID))
 	}
+	// Hidden projects are not meant to be exposed to the user, so we remove them from the response here.
+	if err = removeHiddenProjects(permissions); err != nil {
+		return gimlet.MakeJSONInternalErrorResponder(err)
+	}
 	return gimlet.NewJSONResponse(permissions)
+}
+
+func removeHiddenProjects(permissions []rolemanager.PermissionSummary) error {
+	var projectIDs []string
+	var projectResourceIndex int
+	for i, permission := range permissions {
+		if permission.Type == evergreen.ProjectResourceType {
+			projectResourceIndex = i
+			for projectID := range permission.Permissions {
+				projectIDs = append(projectIDs, projectID)
+			}
+		}
+	}
+	projectRefs, err := serviceModel.FindProjectRefsByIds(projectIDs...)
+	if err != nil {
+		return errors.Wrapf(err, "getting projects")
+	}
+	for _, projectRef := range projectRefs {
+		if utility.FromBoolPtr(projectRef.Hidden) {
+			delete(permissions[projectResourceIndex].Permissions, projectRef.Id)
+		}
+	}
+	return nil
 }
 
 type rolesPostRequest struct {
@@ -770,7 +797,7 @@ type renameUserHandler struct {
 // Factory creates an instance of the handler.
 //
 //	@Summary		Rename user
-//	@Description	.
+//	@Description	Migrate a user to a new username. Note that this may overwrite settings on the new user if it already exists.
 //	@Tags			users
 //	@Router			/users/rename_user [post]
 //	@Security		Api-User || Api-Key
@@ -783,9 +810,10 @@ func (h renameUserHandler) Factory() gimlet.RouteHandler {
 }
 
 type renameUserInfo struct {
-	// the email of the user
+	// The old email of the user
 	Email string `json:"email" bson:"email" validate:"required"`
 
+	// The new email of the user
 	NewEmail string `json:"new_email" bson:"new_email" validate:"required"`
 }
 

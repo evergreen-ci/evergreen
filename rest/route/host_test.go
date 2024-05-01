@@ -6,6 +6,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"net/http"
+	"os"
 	"testing"
 	"time"
 
@@ -17,6 +18,7 @@ import (
 	"github.com/evergreen-ci/evergreen/model/host"
 	"github.com/evergreen-ci/evergreen/model/user"
 	"github.com/evergreen-ci/evergreen/rest/model"
+	restmodel "github.com/evergreen-ci/evergreen/rest/model"
 	"github.com/evergreen-ci/gimlet"
 	"github.com/evergreen-ci/utility"
 	"github.com/mongodb/grip"
@@ -531,8 +533,6 @@ func TestHostChangeRDPPasswordHandler(t *testing.T) {
 	require.NoError(t, env.Configure(ctx))
 	s.env = env
 
-	s.env.Settings().Keys["ssh_key_name"] = "ssh_key"
-
 	setupMockHostsConnector(t, s.env)
 
 	suite.Run(t, s)
@@ -540,6 +540,10 @@ func TestHostChangeRDPPasswordHandler(t *testing.T) {
 
 func (s *hostChangeRDPPasswordHandlerSuite) SetupTest() {
 	s.rm = makeHostChangePassword(s.env)
+
+	keyFile, err := os.CreateTemp(s.T().TempDir(), "")
+	s.Require().NoError(err)
+	s.env.(*mock.Environment).EvergreenSettings.KanopySSHKeyPath = keyFile.Name()
 }
 
 func (s *hostChangeRDPPasswordHandlerSuite) TestExecuteWithNoUserPanics() {
@@ -836,7 +840,6 @@ func setupMockHostsConnector(t *testing.T, env evergreen.Environment) {
 		Id:       "windows",
 		Arch:     "windows_amd64",
 		Provider: evergreen.ProviderNameMock,
-		SSHKey:   "ssh_key_name",
 	}
 	users := []user.DBUser{
 		{
@@ -1004,6 +1007,155 @@ func TestDisableHostHandler(t *testing.T) {
 	foundHost, err := host.FindOneId(ctx, hostID)
 	assert.NoError(t, err)
 	assert.Equal(t, evergreen.HostDecommissioned, foundHost.Status)
+}
+
+func TestHostIsUpPostHandler(t *testing.T) {
+	defer func() {
+		assert.NoError(t, db.ClearCollections(host.Collection))
+	}()
+
+	generateFakeEC2InstanceID := func() string {
+		return "i-" + utility.RandomString()
+	}
+
+	for tName, tCase := range map[string]func(ctx context.Context, t *testing.T, rh *hostIsUpPostHandler, h *host.Host){
+		"ConvertsBuildingIntentHostToStartingRealHost": func(ctx context.Context, t *testing.T, rh *hostIsUpPostHandler, h *host.Host) {
+			require.NoError(t, h.Insert(ctx))
+			instanceID := generateFakeEC2InstanceID()
+
+			rh.params = restmodel.APIHostIsUpOptions{
+				HostID:        h.Id,
+				EC2InstanceID: instanceID,
+			}
+			resp := rh.Run(ctx)
+
+			require.NotZero(t, resp)
+			assert.Equal(t, resp.Status(), http.StatusOK)
+			apiHost, ok := resp.Data().(*restmodel.APIHost)
+			require.True(t, ok, resp.Data())
+			require.NotZero(t, apiHost)
+			assert.Equal(t, instanceID, utility.FromStringPtr(apiHost.Id))
+
+			dbIntentHost, err := host.FindOneId(ctx, h.Id)
+			require.NoError(t, err)
+			assert.Zero(t, dbIntentHost)
+
+			realHost, err := host.FindOneId(ctx, instanceID)
+			require.NoError(t, err)
+			require.NotZero(t, realHost)
+			assert.Equal(t, realHost.Status, evergreen.HostStarting, "intent host should be converted to real host when it's up")
+		},
+		"ConvertsFailedIntentHostToDecommissionedRealHost": func(ctx context.Context, t *testing.T, rh *hostIsUpPostHandler, h *host.Host) {
+			h.Status = evergreen.HostBuildingFailed
+			require.NoError(t, h.Insert(ctx))
+
+			instanceID := generateFakeEC2InstanceID()
+
+			rh.params = restmodel.APIHostIsUpOptions{
+				HostID:        h.Id,
+				EC2InstanceID: instanceID,
+			}
+
+			resp := rh.Run(ctx)
+
+			require.NotZero(t, resp)
+			assert.Equal(t, resp.Status(), http.StatusOK)
+			apiHost, ok := resp.Data().(*restmodel.APIHost)
+			require.True(t, ok, resp.Data())
+			require.NotZero(t, apiHost)
+			assert.Equal(t, instanceID, utility.FromStringPtr(apiHost.Id))
+			assert.NotZero(t, resp)
+			assert.Equal(t, resp.Status(), http.StatusOK)
+
+			dbIntentHost, err := host.FindOneId(ctx, h.Id)
+			require.NoError(t, err)
+			assert.Zero(t, dbIntentHost)
+
+			realHost, err := host.FindOneId(ctx, instanceID)
+			require.NoError(t, err)
+			require.NotZero(t, realHost)
+			assert.Equal(t, evergreen.HostDecommissioned, realHost.Status, "host that fails to build should be decommissioned when it comes up")
+		},
+		"ConvertsTerminatedHostIntoDecommissionedRealHost": func(ctx context.Context, t *testing.T, rh *hostIsUpPostHandler, h *host.Host) {
+			h.Status = evergreen.HostTerminated
+			require.NoError(t, h.Insert(ctx))
+
+			instanceID := generateFakeEC2InstanceID()
+			rh.params = restmodel.APIHostIsUpOptions{
+				HostID:        h.Id,
+				EC2InstanceID: instanceID,
+			}
+
+			resp := rh.Run(ctx)
+
+			require.NotZero(t, resp)
+			assert.Equal(t, resp.Status(), http.StatusOK)
+			apiHost, ok := resp.Data().(*restmodel.APIHost)
+			require.True(t, ok, resp.Data())
+			require.NotZero(t, apiHost)
+			assert.Equal(t, instanceID, utility.FromStringPtr(apiHost.Id))
+			assert.NotZero(t, resp)
+			assert.Equal(t, resp.Status(), http.StatusOK)
+
+			dbIntentHost, err := host.FindOneId(ctx, h.Id)
+			require.NoError(t, err)
+			assert.Zero(t, dbIntentHost)
+
+			realHost, err := host.FindOneId(ctx, instanceID)
+			require.NoError(t, err)
+			require.NotZero(t, realHost)
+			assert.Equal(t, realHost.Status, evergreen.HostDecommissioned, "already-terminated intent host should be decommissioned when it's up")
+		},
+		"NoopsForNonIntentHost": func(ctx context.Context, t *testing.T, rh *hostIsUpPostHandler, h *host.Host) {
+			instanceID := generateFakeEC2InstanceID()
+			h.Id = instanceID
+			h.Status = evergreen.HostStarting
+			require.NoError(t, h.Insert(ctx))
+
+			rh.params = restmodel.APIHostIsUpOptions{
+				HostID:        instanceID,
+				EC2InstanceID: instanceID,
+			}
+
+			resp := rh.Run(ctx)
+
+			require.NotZero(t, resp)
+			assert.Equal(t, resp.Status(), http.StatusOK)
+			apiHost, ok := resp.Data().(*restmodel.APIHost)
+			require.True(t, ok, resp.Data())
+			require.NotZero(t, apiHost)
+			assert.Equal(t, instanceID, utility.FromStringPtr(apiHost.Id))
+			assert.NotZero(t, resp)
+			assert.Equal(t, resp.Status(), http.StatusOK)
+
+			dbHost, err := host.FindOneId(ctx, instanceID)
+			require.NoError(t, err)
+			require.NotZero(t, dbHost)
+			assert.Equal(t, evergreen.HostStarting, dbHost.Status, "host should not be modified if it's not an intent host")
+		},
+	} {
+		t.Run(tName, func(t *testing.T) {
+			ctx, cancel := context.WithCancel(context.Background())
+			defer cancel()
+
+			require.NoError(t, db.ClearCollections(host.Collection))
+
+			rh, ok := makeHostIsUpPostHandler().(*hostIsUpPostHandler)
+			require.True(t, ok)
+
+			h := &host.Host{
+				Id:       "evg-12345",
+				Status:   evergreen.HostBuilding,
+				Provider: evergreen.ProviderNameEc2Fleet,
+				Distro: distro.Distro{
+					Id:       "distro_id",
+					Provider: evergreen.ProviderNameEc2Fleet,
+				},
+			}
+
+			tCase(ctx, t, rh, h)
+		})
+	}
 }
 
 func TestHostProvisioningOptionsGetHandler(t *testing.T) {

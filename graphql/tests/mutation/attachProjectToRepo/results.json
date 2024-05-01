@@ -16,11 +16,8 @@
         "data": null,
         "errors": [
           {
-            "message": "Could not find project with projectId: nonexistent",
-            "path": [
-              "attachProjectToRepo",
-              "projectId"
-            ],
+            "message": "project 'nonexistent' not found",
+            "path": ["attachProjectToRepo", "projectId"],
             "extensions": {
               "code": "RESOURCE_NOT_FOUND"
             }

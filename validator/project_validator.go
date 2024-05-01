@@ -11,8 +11,8 @@ import (
 	"time"
 
 	"github.com/evergreen-ci/evergreen"
-	"github.com/evergreen-ci/evergreen/agent"
 	"github.com/evergreen-ci/evergreen/agent/command"
+	"github.com/evergreen-ci/evergreen/agent/globals"
 	"github.com/evergreen-ci/evergreen/model"
 	"github.com/evergreen-ci/evergreen/model/distro"
 	"github.com/evergreen-ci/evergreen/model/task"
@@ -40,11 +40,15 @@ type ValidationErrorLevel int64
 const (
 	Error ValidationErrorLevel = iota
 	Warning
-	unauthorizedCharacters                  = "|"
 	EC2HostCreateTotalLimit                 = 1000
 	DockerHostCreateTotalLimit              = 200
 	HostCreateLimitPerTask                  = 3
 	maxTaskSyncCommandsForDependenciesCheck = 300 // this should take about one second
+)
+
+var (
+	// Not a regex because these characters could be valid if unicoded.
+	unauthorizedCharacters = []string{"|", "&", ";", "$", "`", "'", "*", "?", "#", "%", "^", "@", "{", "}", "(", ")", "<", ">"}
 )
 
 func (vel ValidationErrorLevel) String() string {
@@ -536,7 +540,15 @@ func constructAliasWarnings(aliasMap map[string]model.ProjectAlias, aliasNeedsVa
 		case evergreen.GithubChecksAlias:
 			msgComponents = append(msgComponents, "GitHub check alias")
 		default:
-			msgComponents = append(msgComponents, "Patch alias")
+			msgComponents = append(msgComponents, fmt.Sprintf("Patch alias '%s'", a.Alias))
+		}
+		switch a.Source {
+		case model.AliasSourceConfig:
+			msgComponents = append(msgComponents, "(from the yaml)")
+		case model.AliasSourceProject:
+			msgComponents = append(msgComponents, "(from the project page)")
+		case model.AliasSourceRepo:
+			msgComponents = append(msgComponents, "(from the repo page)")
 		}
 		if len(a.VariantTags) > 0 {
 			msgComponents = append(msgComponents, fmt.Sprintf("matching variant tags '%v'", a.VariantTags))
@@ -974,10 +986,11 @@ func validateIncludeLimits(_ context.Context, settings *evergreen.Settings, proj
 }
 
 func validateProjectLimits(_ context.Context, settings *evergreen.Settings, project *model.Project, _ *model.ProjectRef, _ bool) ValidationErrors {
+	bvTasks := project.FindAllBuildVariantTasks()
 	errs := ValidationErrors{}
-	if settings.TaskLimits.MaxTasksPerVersion > 0 && len(project.Tasks) > settings.TaskLimits.MaxTasksPerVersion {
+	if settings.TaskLimits.MaxTasksPerVersion > 0 && len(bvTasks) > settings.TaskLimits.MaxTasksPerVersion {
 		errs = append(errs, ValidationError{
-			Message: fmt.Sprintf("project's total number of tasks (%d) exceeds maximum limit (%d)", len(project.Tasks), settings.TaskLimits.MaxTasksPerVersion),
+			Message: fmt.Sprintf("project's total number of tasks (%d) exceeds maximum limit (%d)", len(bvTasks), settings.TaskLimits.MaxTasksPerVersion),
 			Level:   Error,
 		})
 	}
@@ -986,14 +999,16 @@ func validateProjectLimits(_ context.Context, settings *evergreen.Settings, proj
 
 // validateTaskNames ensures the task names do not contain unauthorized characters.
 func validateTaskNames(project *model.Project) ValidationErrors {
-	unauthorizedTaskCharacters := unauthorizedCharacters + " "
 	errs := ValidationErrors{}
+
 	for _, task := range project.Tasks {
-		if strings.ContainsAny(strings.TrimSpace(task.Name), unauthorizedTaskCharacters) {
+		// Add space to the list of unauthorized characters to prevent task names from containing spaces.
+		if strings.ContainsAny(strings.TrimSpace(task.Name), strings.Join(unauthorizedCharacters, " ")) {
 			errs = append(errs,
 				ValidationError{
-					Message: fmt.Sprintf("task name '%s' contains unauthorized characters ('%s')",
-						task.Name, unauthorizedTaskCharacters),
+					Message: fmt.Sprintf("task name '%s' contains unauthorized characters (%s)",
+						task.Name, unauthorizedCharacters),
+					Level: Error,
 				})
 		}
 	}
@@ -1120,7 +1135,7 @@ func validateBVNames(project *model.Project) ValidationErrors {
 			})
 		}
 
-		if strings.ContainsAny(buildVariant.Name, unauthorizedCharacters) {
+		if strings.ContainsAny(buildVariant.Name, strings.Join(unauthorizedCharacters, "")) {
 			errs = append(errs,
 				ValidationError{
 					Message: fmt.Sprintf("buildvariant name '%s' contains unauthorized characters (%s)",
@@ -1767,6 +1782,13 @@ func checkTaskGroups(p *model.Project) ValidationErrors {
 		}
 	}
 	for _, tg := range taskGroups {
+		// validate that teardown group timeout is not over MaxTeardownGroupTimeout
+		if tg.TeardownGroupTimeoutSecs > int(globals.MaxTeardownGroupTimeout.Seconds()) {
+			errs = append(errs, ValidationError{
+				Message: fmt.Sprintf("task group '%s' has a teardown task timeout of %d seconds, which exceeds the maximum of %d seconds", tg.Name, tg.TeardownGroupTimeoutSecs, int(globals.MaxTeardownGroupTimeout.Seconds())),
+				Level:   Warning,
+			})
+		}
 		if _, ok := names[tg.Name]; ok {
 			errs = append(errs, ValidationError{
 				Level:   Warning,
@@ -2301,7 +2323,7 @@ func checkTasks(project *model.Project) ValidationErrors {
 				ValidationError{
 					Message: fmt.Sprintf("no exec_timeout_secs defined at the top-level or on one or more tasks; "+
 						"these tasks will default to a timeout of %d hours",
-						int(agent.DefaultExecTimeout.Hours())),
+						int(globals.DefaultExecTimeout.Hours())),
 					Level: Warning,
 				},
 			)
@@ -2338,6 +2360,16 @@ func checkBuildVariants(project *model.Project) ValidationErrors {
 				},
 			)
 		}
+
+		if len(buildVariant.EmptyTaskSelectors) > 0 {
+			errs = append(errs,
+				ValidationError{
+					Message: fmt.Sprintf("buildvariant '%s' has task names/tags that do not match any tasks: '%s'", buildVariant.Name, strings.Join(buildVariant.EmptyTaskSelectors, "', '")),
+					Level:   Warning,
+				},
+			)
+		}
+
 		errs = append(errs, checkBVNames(&buildVariant)...)
 		errs = append(errs, checkBVBatchTimes(&buildVariant)...)
 	}
@@ -2353,5 +2385,6 @@ func checkBuildVariants(project *model.Project) ValidationErrors {
 
 		}
 	}
+
 	return errs
 }

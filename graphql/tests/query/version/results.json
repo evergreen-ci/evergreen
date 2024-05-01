@@ -10,7 +10,9 @@
             "author": "Fake User",
             "branch": "main",
             "createTime": "2020-12-22T17:01:40-05:00",
-            "errors": ["tasks section in 'send email' function: function 'send email' not found in project functions"],
+            "errors": [
+              "tasks section in 'send email' function: function 'send email' not found in project functions"
+            ],
             "finishTime": "2020-12-22T20:46:43.817-05:00",
             "ignored": true,
             "message": "EVG-13229: Project Patches Page (#555)",
@@ -21,6 +23,21 @@
             "startTime": "2020-12-22T17:04:51.38-05:00"
           }
         }
+      }
+    },
+    {
+      "query_file": "no_permissions.graphql",
+      "result": {
+        "data": null,
+        "errors": [
+          {
+            "message": "user 'testuser' does not have permission to access 'tasks' for the project 'evergreen'",
+            "path": ["version", "versionId"],
+            "extensions": {
+              "code": "FORBIDDEN"
+            }
+          }
+        ]
       }
     }
   ]

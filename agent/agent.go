@@ -12,7 +12,9 @@ import (
 
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/agent/command"
+	"github.com/evergreen-ci/evergreen/agent/globals"
 	"github.com/evergreen-ci/evergreen/agent/internal/client"
+	"github.com/evergreen-ci/evergreen/agent/internal/redactor"
 	"github.com/evergreen-ci/evergreen/agent/internal/taskoutput"
 	agentutil "github.com/evergreen-ci/evergreen/agent/util"
 	"github.com/evergreen-ci/evergreen/apimodels"
@@ -61,7 +63,7 @@ type Agent struct {
 // Options contains startup options for an Agent.
 type Options struct {
 	// Mode determines which mode the agent will run in.
-	Mode Mode
+	Mode globals.Mode
 	// HostID and HostSecret only apply in host mode.
 	HostID     string
 	HostSecret string
@@ -70,7 +72,7 @@ type Options struct {
 	PodSecret              string
 	StatusPort             int
 	LogPrefix              string
-	LogOutput              LogOutputType
+	LogOutput              globals.LogOutputType
 	WorkingDirectory       string
 	HeartbeatInterval      time.Duration
 	Cleanup                bool
@@ -86,7 +88,7 @@ type timeoutInfo struct {
 	// idleTimeoutDuration maintains the current idle timeout in the task context;
 	// the exec timeout is maintained in the project data structure
 	idleTimeoutDuration time.Duration
-	timeoutType         timeoutType
+	timeoutType         globals.TimeoutType
 	hadTimeout          bool
 	// exceededDuration is the length of the timeout that was extended, if the task timed out
 	exceededDuration time.Duration
@@ -100,7 +102,7 @@ type timeoutInfo struct {
 type heartbeatTimeoutOptions struct {
 	startAt    time.Time
 	getTimeout func() time.Duration
-	kind       timeoutType
+	kind       globals.TimeoutType
 }
 
 // New creates a new Agent with some Options and a client.Communicator. Call the
@@ -109,9 +111,9 @@ type heartbeatTimeoutOptions struct {
 func New(ctx context.Context, opts Options, serverURL string) (*Agent, error) {
 	var comm client.Communicator
 	switch opts.Mode {
-	case HostMode:
+	case globals.HostMode:
 		comm = client.NewHostCommunicator(serverURL, opts.HostID, opts.HostSecret)
-	case PodMode:
+	case globals.PodMode:
 		comm = client.NewPodCommunicator(serverURL, opts.PodID, opts.PodSecret)
 	default:
 		return nil, errors.Errorf("unrecognized agent mode '%s'", opts.Mode)
@@ -203,6 +205,8 @@ func (a *Agent) Start(ctx context.Context) error {
 // populateEC2InstanceID sets the agent's instance ID based on the EC2 instance
 // metadata service if it's an EC2 instance. If it's not an EC2 instance or the
 // EC2 instance ID has already been populated, this is a no-op.
+// TODO (DEVPROD-6752): remove this logic once agents have rolled over to using
+// the new route.
 func (a *Agent) populateEC2InstanceID(ctx context.Context) {
 	if a.ec2InstanceID != "" || !utility.StringSliceContains(evergreen.ProviderEc2Type, a.opts.CloudProvider) {
 		return
@@ -224,7 +228,7 @@ func (a *Agent) populateEC2InstanceID(ctx context.Context) {
 // loop is responsible for continually polling for new tasks and processing them.
 // and then tries again.
 func (a *Agent) loop(ctx context.Context) error {
-	agentSleepInterval := minAgentSleepInterval
+	agentSleepInterval := globals.MinAgentSleepInterval
 
 	timer := time.NewTimer(0)
 	defer timer.Stop()
@@ -250,7 +254,7 @@ func (a *Agent) loop(ctx context.Context) error {
 			err := utility.Retry(ctx, func() (bool, error) {
 				_, err := a.comm.GetCedarGRPCConn(ctx)
 				return true, err
-			}, utility.RetryOptions{MaxAttempts: 5, MaxDelay: minAgentSleepInterval})
+			}, utility.RetryOptions{MaxAttempts: 5, MaxDelay: globals.MinAgentSleepInterval})
 			if err != nil {
 				if ctx.Err() != nil {
 					// We don't want to return an error if
@@ -291,13 +295,13 @@ func (a *Agent) loop(ctx context.Context) error {
 				grip.Debugf("Agent found no task to run, sleeping %s.", jitteredSleep)
 				timer.Reset(jitteredSleep)
 				agentSleepInterval = agentSleepInterval * 2
-				if agentSleepInterval > maxAgentSleepInterval {
-					agentSleepInterval = maxAgentSleepInterval
+				if agentSleepInterval > globals.MaxAgentSleepInterval {
+					agentSleepInterval = globals.MaxAgentSleepInterval
 				}
 				continue
 			}
 			timer.Reset(0)
-			agentSleepInterval = minAgentSleepInterval
+			agentSleepInterval = globals.MinAgentSleepInterval
 
 		}
 	}
@@ -471,11 +475,9 @@ func (a *Agent) setupTask(agentCtx, setupCtx context.Context, initialTC *taskCon
 
 	// Set up a new task output directory regardless if the task is part of
 	// a task group.
-	tc.taskConfig.TaskOutputDir = taskoutput.NewDirectory(tc.taskConfig.WorkDir, &tc.taskConfig.Task, tc.logger)
+	tc.taskConfig.TaskOutputDir = taskoutput.NewDirectory(tc.taskConfig.WorkDir, &tc.taskConfig.Task, redactor.RedactionOptions{Expansions: tc.taskConfig.NewExpansions, Redacted: tc.taskConfig.Redacted}, tc.logger)
 	if err := tc.taskConfig.TaskOutputDir.Setup(); err != nil {
-		if err != nil {
-			return a.handleSetupError(setupCtx, tc, errors.Wrap(err, "creating task output directory"))
-		}
+		return a.handleSetupError(setupCtx, tc, errors.Wrap(err, "creating task output directory"))
 	}
 
 	// We are only calling this again to get the log for the current command after logging has been set up.
@@ -534,7 +536,7 @@ func shouldRunSetupGroup(nextTask *apimodels.NextTaskResponse, tc *taskContext) 
 		return true
 	} else if nextTask.TaskGroup != previousTaskGroup { // The next task has a different task group.
 		return true
-	} else if nextTask.TaskExecution != tc.taskConfig.Task.Execution { // The previous and next task are in the same task group but the next task has a different execution number.
+	} else if nextTask.TaskExecution > tc.taskConfig.Task.Execution { // The previous and next task are in the same task group but the next task has a higher execution number.
 		return true
 	}
 	return false
@@ -694,20 +696,20 @@ func (a *Agent) runPreAndMain(ctx context.Context, tc *taskContext) (status stri
 	defer execTimeoutCancel()
 	timeoutOpts := timeoutWatcherOptions{
 		tc:                    tc,
-		kind:                  execTimeout,
+		kind:                  globals.ExecTimeout,
 		getTimeout:            tc.getExecTimeout,
 		canMarkTimeoutFailure: true,
 	}
 	go a.startTimeoutWatcher(timeoutWatcherCtx, execTimeoutCancel, timeoutOpts)
 
-	tc.logger.Execution().Infof("Setting heartbeat timeout to type '%s'.", execTimeout)
+	tc.logger.Execution().Infof("Setting heartbeat timeout to type '%s'.", globals.ExecTimeout)
 	tc.setHeartbeatTimeout(heartbeatTimeoutOptions{
 		startAt:    time.Now(),
 		getTimeout: tc.getExecTimeout,
-		kind:       execTimeout,
+		kind:       globals.ExecTimeout,
 	})
 	defer func() {
-		tc.logger.Execution().Infof("Resetting heartbeat timeout from type '%s' back to default.", execTimeout)
+		tc.logger.Execution().Infof("Resetting heartbeat timeout from type '%s' back to default.", globals.ExecTimeout)
 		tc.setHeartbeatTimeout(heartbeatTimeoutOptions{})
 	}()
 
@@ -715,7 +717,7 @@ func (a *Agent) runPreAndMain(ctx context.Context, tc *taskContext) (status stri
 	statsCollector := NewSimpleStatsCollector(
 		tc.logger,
 		a.jasper,
-		defaultStatsInterval,
+		globals.DefaultStatsInterval,
 		"uptime",
 		"df -h",
 		"${ps|ps}",
@@ -914,7 +916,7 @@ func (a *Agent) runEndTaskSync(ctx context.Context, tc *taskContext, detail *api
 	taskSync := commandBlock{
 		block:       command.TaskSyncBlock,
 		commands:    taskSyncCmds,
-		timeoutKind: taskSyncTimeout,
+		timeoutKind: globals.TaskSyncTimeout,
 		getTimeout: func() time.Duration {
 			return timeout
 		},
@@ -942,7 +944,7 @@ func (a *Agent) handleTaskResponse(ctx context.Context, tc *taskContext, status 
 	return false, errors.WithStack(err)
 }
 
-func (a *Agent) handleTimeoutAndOOM(ctx context.Context, tc *taskContext, status string) {
+func (a *Agent) handleTimeoutAndOOM(ctx context.Context, tc *taskContext, detail *apimodels.TaskEndDetail, status string) {
 	if tc.hadTimedOut() && ctx.Err() == nil {
 		status = evergreen.TaskFailed
 		a.runTaskTimeoutCommands(ctx, tc)
@@ -953,9 +955,13 @@ func (a *Agent) handleTimeoutAndOOM(ctx context.Context, tc *taskContext, status
 		oomCtx, oomCancel := context.WithTimeout(ctx, 10*time.Second)
 		defer oomCancel()
 		tc.logger.Execution().Error(errors.Wrap(tc.oomTracker.Check(oomCtx), "checking for OOM killed processes"))
-		if lines, _ := tc.oomTracker.Report(); len(lines) > 0 {
+		if lines, pids := tc.oomTracker.Report(); len(lines) > 0 {
 			tc.logger.Execution().Debugf("Found an OOM kill (in %.3f seconds).", time.Since(startTime).Seconds())
 			tc.logger.Execution().Debug(strings.Join(lines, "\n"))
+			detail.OOMTracker = &apimodels.OOMTrackerInfo{
+				Detected: true,
+				Pids:     pids,
+			}
 		} else {
 			tc.logger.Execution().Debugf("Found no OOM kill (in %.3f seconds).", time.Since(startTime).Seconds())
 		}
@@ -968,20 +974,22 @@ func (a *Agent) finishTask(ctx context.Context, tc *taskContext, status string, 
 	detail := a.endTaskResponse(ctx, tc, status, systemFailureDescription)
 	switch detail.Status {
 	case evergreen.TaskSucceeded:
-		a.handleTimeoutAndOOM(ctx, tc, status)
+		a.handleTimeoutAndOOM(ctx, tc, detail, status)
 		tc.logger.Task().Info("Task completed - SUCCESS.")
 		if err := a.runPostOrTeardownTaskCommands(ctx, tc); err != nil {
 			tc.logger.Task().Info("Post task completed - FAILURE. Overall task status changed to FAILED.")
 			setEndTaskFailureDetails(tc, detail, evergreen.TaskFailed, "", "")
 		}
+		detail.PostErrored = tc.getPostErrored()
 		a.runEndTaskSync(ctx, tc, detail)
 	case evergreen.TaskFailed:
-		a.handleTimeoutAndOOM(ctx, tc, status)
+		a.handleTimeoutAndOOM(ctx, tc, detail, status)
 		tc.logger.Task().Info("Task completed - FAILURE.")
 		// If the post commands error, ignore the error. runCommandsInBlock
 		// already logged the error, and the post commands cannot cause the
 		// task to fail since the task already failed.
 		_ = a.runPostOrTeardownTaskCommands(ctx, tc)
+		detail.PostErrored = tc.getPostErrored()
 		a.runEndTaskSync(ctx, tc, detail)
 	case evergreen.TaskSystemFailed:
 		// This is a special status indicating that the agent failed for reasons
@@ -1015,17 +1023,18 @@ func (a *Agent) finishTask(ctx context.Context, tc *taskContext, status string, 
 		grip.Error(errors.Wrap(tc.logger.Flush(flushCtx), "flushing logs"))
 	}
 
-	err := a.upsertCheckRun(ctx, tc)
-	if err != nil {
-		grip.Error(errors.Wrap(err, "upserting checkrun"))
-	}
-
 	grip.Infof("Sending final task status: '%s'.", detail.Status)
 	resp, err := a.comm.EndTask(ctx, detail, tc.task)
 	if err != nil {
 		return nil, errors.Wrap(err, "marking task complete")
 	}
 	grip.Infof("Successfully sent final task status: '%s'.", detail.Status)
+
+	err = a.upsertCheckRun(ctx, tc)
+	if err != nil {
+		grip.Error(errors.Wrap(err, "upserting check run"))
+		tc.logger.Task().Errorf("Error upserting check run: '%s'", err.Error())
+	}
 
 	span := trace.SpanFromContext(ctx)
 	span.SetAttributes(attribute.String(evergreen.TaskStatusOtelAttribute, detail.Status))
@@ -1067,13 +1076,23 @@ func buildCheckRun(ctx context.Context, tc *taskContext) (*apimodels.CheckRunOut
 	fileName := utility.FromStringPtr(fileNamePointer)
 	checkRunOutput := apimodels.CheckRunOutput{}
 	if fileName == "" {
-		tc.logger.Task().Infof("Upserting checkRun with no output file specified.")
+		tc.logger.Task().Infof("Upserting check run with no output file specified.")
 		return &checkRunOutput, nil
 	}
 
-	_, err := os.Stat(fileName)
+	fileName, err := tc.taskConfig.Expansions.ExpandString(fileName)
+	if err != nil {
+		return nil, errors.New("Error expanding check run output file")
+	}
+
+	fileName = command.GetWorkingDirectory(tc.taskConfig, fileName)
+
+	_, err = os.Stat(fileName)
 	if os.IsNotExist(err) {
-		return nil, errors.Errorf("file '%s' does not exist", fileName)
+		checkRunOutput.Title = "Error getting check run output"
+		checkRunOutput.Summary = "Evergreen couldn't find the check run output file"
+		tc.logger.Task().Errorf("Attempting to create check run but file '%s' does not exist", fileName)
+		return &checkRunOutput, errors.Wrap(err, "getting check run output")
 	}
 
 	err = utility.ReadJSONFile(fileName, &checkRunOutput)
@@ -1082,7 +1101,7 @@ func buildCheckRun(ctx context.Context, tc *taskContext) (*apimodels.CheckRunOut
 	}
 
 	if err := util.ExpandValues(&checkRunOutput, &tc.taskConfig.Expansions); err != nil {
-		return nil, errors.Wrap(err, "applying expansions")
+		return nil, errors.New("Error expanding values for check run output")
 	}
 
 	return &checkRunOutput, nil
@@ -1101,8 +1120,8 @@ func (a *Agent) endTaskResponse(ctx context.Context, tc *taskContext, status str
 		} else {
 			status = userEndTaskResp.Status
 
-			if len(userEndTaskResp.Description) > endTaskMessageLimit {
-				tc.logger.Task().Warningf("Description from endpoint is too long to set (%d character limit), using default description.", endTaskMessageLimit)
+			if len(userEndTaskResp.Description) > globals.EndTaskMessageLimit {
+				tc.logger.Task().Warningf("Description from endpoint is too long to set (%d character limit), using default description.", globals.EndTaskMessageLimit)
 			} else {
 				highestPriorityDescription = userEndTaskResp.Description
 			}
@@ -1116,7 +1135,6 @@ func (a *Agent) endTaskResponse(ctx context.Context, tc *taskContext, status str
 	}
 
 	detail := &apimodels.TaskEndDetail{
-		OOMTracker:  tc.getOomTrackerInfo(),
 		TraceID:     tc.traceID,
 		DiskDevices: tc.diskDevices,
 	}
@@ -1189,10 +1207,10 @@ func (a *Agent) killProcs(ctx context.Context, tc *taskContext, ignoreTaskGroupC
 
 	// Agents running in containers don't have Docker available, so skip
 	// Docker cleanup for them.
-	if a.opts.Mode != PodMode {
+	if a.opts.Mode != globals.PodMode {
 		logger.Info("Cleaning up Docker artifacts.")
 		var cancel context.CancelFunc
-		ctx, cancel = context.WithTimeout(ctx, dockerTimeout)
+		ctx, cancel = context.WithTimeout(ctx, globals.DockerTimeout)
 		defer cancel()
 		if err := docker.Cleanup(ctx, logger); err != nil {
 			logger.Critical(errors.Wrap(err, "cleaning up Docker artifacts"))

@@ -14,6 +14,7 @@ import (
 	"github.com/stretchr/testify/suite"
 	"go.mongodb.org/mongo-driver/bson"
 	"go.mongodb.org/mongo-driver/mongo/options"
+	"go.opentelemetry.io/otel/trace/noop"
 )
 
 const (
@@ -134,7 +135,7 @@ func TestAdminSuite(t *testing.T) {
 	originalSettings, err := GetConfig(ctx)
 	require.NoError(t, err)
 
-	env, err := NewEnvironment(ctx, configFile, "", nil)
+	env, err := NewEnvironment(ctx, configFile, "", nil, noop.NewTracerProvider())
 	require.NoError(t, err)
 
 	s := new(AdminSuite)
@@ -195,7 +196,6 @@ func (s *AdminSuite) TestBaseConfig() {
 		Expansions:          map[string]string{"k2": "v2"},
 		GithubPRCreatorOrg:  "org",
 		GithubOrgs:          []string{"evergreen-ci"},
-		Keys:                map[string]string{"k3": "v3"},
 		LogPath:             "logpath",
 		Plugins:             map[string]map[string]interface{}{"k4": {"k5": "v5"}},
 		PprofPort:           "port",
@@ -220,7 +220,6 @@ func (s *AdminSuite) TestBaseConfig() {
 	s.Equal(config.Expansions, settings.Expansions)
 	s.Equal(config.GithubPRCreatorOrg, settings.GithubPRCreatorOrg)
 	s.Equal(config.GithubOrgs, settings.GithubOrgs)
-	s.Equal(config.Keys, settings.Keys)
 	s.Equal(config.LogPath, settings.LogPath)
 	s.Equal(config.Plugins, settings.Plugins)
 	s.Equal(config.PprofPort, settings.PprofPort)
@@ -273,9 +272,8 @@ func (s *AdminSuite) TestAmboyConfig() {
 		Name:       "amboy",
 		SingleName: "single",
 		DBConnection: AmboyDBConfig{
-			URL:       "mongodb://localhost:27017",
-			KanopyURL: "mongodb://localhost:27018",
-			Database:  "db",
+			URL:      "mongodb://localhost:27017",
+			Database: "db",
 		},
 		PoolSizeLocal:                         10,
 		PoolSizeRemote:                        20,
@@ -593,9 +591,6 @@ func (s *AdminSuite) TestKeyValPairsToMap() {
 		ExpansionsNew: util.KeyValuePairSlice{
 			{Key: "exp1key", Value: "exp1val"},
 		},
-		KeysNew: util.KeyValuePairSlice{
-			{Key: "key1key", Value: "key1val"},
-		},
 		PluginsNew: util.KeyValuePairSlice{
 			{Key: "myPlugin", Value: util.KeyValuePairSlice{
 				{Key: "pluginKey", Value: "pluginVal"},
@@ -608,11 +603,9 @@ func (s *AdminSuite) TestKeyValPairsToMap() {
 	s.NoError(dbConfig.Get(ctx))
 	s.Len(dbConfig.CredentialsNew, 1)
 	s.Len(dbConfig.ExpansionsNew, 1)
-	s.Len(dbConfig.KeysNew, 1)
 	s.Len(dbConfig.PluginsNew, 1)
 	s.Equal(config.CredentialsNew[0].Value, dbConfig.Credentials[config.CredentialsNew[0].Key])
 	s.Equal(config.ExpansionsNew[0].Value, dbConfig.Expansions[config.ExpansionsNew[0].Key])
-	s.Equal(config.KeysNew[0].Value, dbConfig.Keys[config.KeysNew[0].Key])
 	pluginMap := dbConfig.Plugins[config.PluginsNew[0].Key]
 	s.NotNil(pluginMap)
 	s.Equal("pluginVal", pluginMap["pluginKey"])
@@ -807,6 +800,26 @@ func (s *AdminSuite) TestHostJasperConfig() {
 	s.Require().NoError(err)
 
 	s.Equal(config, settings.HostJasper)
+}
+
+func (s *AdminSuite) TestSleepScheduleConfig() {
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
+	emptyConfig := SleepScheduleConfig{}
+	s.NoError(emptyConfig.ValidateAndDefault())
+
+	config := SleepScheduleConfig{
+		PermanentlyExemptHosts: []string{"host0", "host1"},
+	}
+
+	s.NoError(config.ValidateAndDefault())
+	s.NoError(config.Set(ctx))
+
+	settings, err := GetConfig(ctx)
+	s.Require().NoError(err)
+
+	s.Equal(config, settings.SleepSchedule)
 }
 
 func (s *AdminSuite) TestAddEC2RegionToSSHKey() {

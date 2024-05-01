@@ -8,6 +8,7 @@ import (
 	"github.com/evergreen-ci/evergreen/rest/data"
 	"github.com/evergreen-ci/gimlet"
 	"github.com/evergreen-ci/gimlet/acl"
+	"github.com/gorilla/handlers"
 	"github.com/mongodb/amboy"
 )
 
@@ -59,6 +60,7 @@ func AttachHandler(app *gimlet.APIApp, opts HandlerOpts) {
 	editDistroSettings := RequiresDistroPermission(evergreen.PermissionDistroSettings, evergreen.DistroSettingsEdit)
 	removeDistroSettings := RequiresDistroPermission(evergreen.PermissionDistroSettings, evergreen.DistroSettingsAdmin)
 	editHosts := RequiresDistroPermission(evergreen.PermissionHosts, evergreen.HostsEdit)
+	compress := gimlet.WrapperHandlerMiddleware(handlers.CompressHandler)
 
 	app.AddWrapper(gimlet.WrapperMiddleware(allowCORS))
 
@@ -165,6 +167,7 @@ func AttachHandler(app *gimlet.APIApp, opts HandlerOpts) {
 	app.AddRoute("/hosts/{host_id}/terminate").Version(2).Post().Wrap(requireUser).RouteHandler(makeTerminateHostRoute())
 	app.AddRoute("/hosts/{host_id}/attach").Version(2).Post().Wrap(requireUser).RouteHandler(makeAttachVolume(env))
 	app.AddRoute("/hosts/{host_id}/detach").Version(2).Post().Wrap(requireUser).RouteHandler(makeDetachVolume(env))
+	app.AddRoute("/hosts/{host_id}/is_up").Version(2).Post().Wrap(requireHost).RouteHandler(makeHostIsUpPostHandler())
 	app.AddRoute("/hosts/{host_id}/provisioning_options").Version(2).Get().Wrap(requireHost).RouteHandler(makeHostProvisioningOptionsGetHandler(env))
 	app.AddRoute("/hosts/ip_address/{ip_address}").Version(2).Get().Wrap(requireUser).RouteHandler(makeGetHostByIpAddress())
 	app.AddRoute("/volumes").Version(2).Get().Wrap(requireUser).RouteHandler(makeGetVolumes())
@@ -218,6 +221,7 @@ func AttachHandler(app *gimlet.APIApp, opts HandlerOpts) {
 	app.AddRoute("/roles").Version(2).Post().Wrap(requireUser).RouteHandler(acl.NewUpdateRoleHandler(env.RoleManager()))
 	app.AddRoute("/roles/{role_id}/users").Version(2).Get().Wrap(requireUser).RouteHandler(makeGetUsersWithRole())
 	app.AddRoute("/scheduler/compare_tasks").Version(2).Post().Wrap(requireUser).RouteHandler(makeCompareTasksRoute())
+	app.AddRoute("/select/tests").Version(2).Post().Wrap(requireUser).RouteHandler(makeSelectTestsHandler())
 	app.AddRoute("/status/cli_version").Version(2).Get().Wrap(requireUser).RouteHandler(makeFetchCLIVersionRoute(env))
 	app.AddRoute("/status/hosts/distros").Version(2).Get().Wrap(requireUser).RouteHandler(makeHostStatusByDistroRoute())
 	app.AddRoute("/status/notifications").Version(2).Get().Wrap(requireUser).RouteHandler(makeFetchNotifcationStatusRoute())
@@ -238,8 +242,8 @@ func AttachHandler(app *gimlet.APIApp, opts HandlerOpts) {
 	app.AddRoute("/tasks/{task_id}/tests/count").Version(2).Get().Wrap(addProject, viewTasks).RouteHandler(makeFetchTestCountForTask())
 	app.AddRoute("/tasks/{task_id}/sync_path").Version(2).Get().Wrap(requireUser).RouteHandler(makeTaskSyncPathGetHandler())
 	app.AddRoute("/tasks/{task_id}/generated_tasks").Version(2).Get().Wrap(requireUser, viewTasks).RouteHandler(makeGetGeneratedTasks())
-	app.AddRoute("/tasks/{task_id}/build/TaskLogs").Version(2).Get().Wrap(requireUser, viewTasks).RouteHandler(makeGetTaskLogs(opts.URL))
-	app.AddRoute("/tasks/{task_id}/build/TestLogs/{path}").Version(2).Get().Wrap(requireUser, viewTasks).RouteHandler(makeGetTestLogs(opts.URL))
+	app.AddRoute("/tasks/{task_id}/build/TaskLogs").Version(2).Get().Wrap(requireUser, viewTasks, compress).RouteHandler(makeGetTaskLogs(opts.URL))
+	app.AddRoute("/tasks/{task_id}/build/TestLogs/{path}").Version(2).Get().Wrap(requireUser, viewTasks, compress).RouteHandler(makeGetTestLogs(opts.URL))
 	app.AddRoute("/task/sync_read_credentials").Version(2).Get().Wrap(requireUser).RouteHandler(makeTaskSyncReadCredentialsGetHandler())
 	app.AddRoute("/user/settings").Version(2).Get().Wrap(requireUser).RouteHandler(makeFetchUserConfig())
 	app.AddRoute("/user/settings").Version(2).Post().Wrap(requireUser).RouteHandler(makeSetUserConfig())

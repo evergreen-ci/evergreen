@@ -36,6 +36,7 @@ type DBUser struct {
 	FavoriteProjects []string         `bson:"favorite_projects"`
 	OnlyAPI          bool             `bson:"only_api,omitempty"`
 	ParsleyFilters   []parsley.Filter `bson:"parsley_filters"`
+	ParsleySettings  parsley.Settings `bson:"parsley_settings"`
 }
 
 func (u *DBUser) MarshalBSON() ([]byte, error)  { return mgobson.Marshal(u) }
@@ -149,9 +150,19 @@ func (u *DBUser) UpdateAPIKey(newKey string) error {
 func (u *DBUser) UpdateSettings(settings UserSettings) error {
 	update := bson.M{"$set": bson.M{SettingsKey: settings}}
 	if err := UpdateOne(bson.M{IdKey: u.Id}, update); err != nil {
-		return errors.Wrapf(err, "saving user settings for user'%s'", u.Id)
+		return errors.Wrapf(err, "saving user settings for user '%s'", u.Id)
 	}
 	u.Settings = settings
+	return nil
+}
+
+// UpdateParsleySettings updates the user's settings for Parsley.
+func (u *DBUser) UpdateParsleySettings(settings parsley.Settings) error {
+	update := bson.M{"$set": bson.M{ParsleySettingsKey: settings}}
+	if err := UpdateOne(bson.M{IdKey: u.Id}, update); err != nil {
+		return errors.Wrapf(err, "saving Parsley settings for user '%s'", u.Id)
+	}
+	u.ParsleySettings = settings
 	return nil
 }
 
@@ -339,18 +350,32 @@ func (u *DBUser) RemoveRole(role string) error {
 	return event.LogUserEvent(u.Id, event.UserEventTypeRolesUpdate, before, u.SystemRoles)
 }
 
-// GetViewableProjects returns the lists of projects/repos the user can view.
+// GetViewableProjects returns the lists of projects/repos the user can view settings for.
 func (u *DBUser) GetViewableProjectSettings(ctx context.Context) ([]string, error) {
 	if evergreen.PermissionsDisabledForTests() {
 		return nil, nil
 	}
 	roleManager := evergreen.GetEnvironment().RoleManager()
 
-	viewProjects, err := rolemanager.FindAllowedResources(ctx, roleManager, u.Roles(), evergreen.ProjectResourceType, evergreen.PermissionProjectSettings, evergreen.ProjectSettingsView.Value)
+	viewableProjects, err := rolemanager.FindAllowedResources(ctx, roleManager, u.Roles(), evergreen.ProjectResourceType, evergreen.PermissionProjectSettings, evergreen.ProjectSettingsView.Value)
 	if err != nil {
 		return nil, err
 	}
-	return viewProjects, nil
+	return viewableProjects, nil
+}
+
+// GetViewableProjects returns the lists of projects the user can view.
+func (u *DBUser) GetViewableProjects(ctx context.Context) ([]string, error) {
+	if evergreen.PermissionsDisabledForTests() {
+		return nil, nil
+	}
+	roleManager := evergreen.GetEnvironment().RoleManager()
+
+	viewableProjects, err := rolemanager.FindAllowedResources(ctx, roleManager, u.Roles(), evergreen.ProjectResourceType, evergreen.PermissionTasks, evergreen.TasksView.Value)
+	if err != nil {
+		return nil, err
+	}
+	return viewableProjects, nil
 }
 
 func (u *DBUser) HasPermission(opts gimlet.PermissionOpts) bool {

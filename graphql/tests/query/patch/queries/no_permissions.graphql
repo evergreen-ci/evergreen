@@ -1,0 +1,7 @@
+{
+  patch(patchId: "5e6bb9e23066155a993efff1") {
+    id
+    author
+    githash
+  }
+}

@@ -154,8 +154,6 @@ func (h *Host) GetSSHOptions(settings *evergreen.Settings) ([]string, error) {
 
 	if _, err := os.Stat(settings.KanopySSHKeyPath); err == nil {
 		keyPaths = append(keyPaths, settings.KanopySSHKeyPath)
-	} else if defaultKeyPath := settings.Keys[h.Distro.SSHKey]; defaultKeyPath != "" {
-		keyPaths = append(keyPaths, defaultKeyPath)
 	}
 	if len(keyPaths) == 0 {
 		return nil, errors.New("no SSH identity files available")
@@ -1238,6 +1236,11 @@ func (h *Host) GenerateFetchProvisioningScriptUserData(ctx context.Context, env 
 		fmt.Sprintf("--api_server=%s", env.Settings().ApiUrl),
 		fmt.Sprintf("--host_id=%s", h.Id),
 		fmt.Sprintf("--host_secret=%s", h.Secret),
+		// TODO (DEVPROD-6752): set this flag once all the
+		// currently-provisioning hosts from before the deploy have all
+		// finished. This is intentionally not yet set to maintain temporary
+		// backward compatibility.
+		// fmt.Sprintf("--provider=%s", h.Distro.Provider),
 		fmt.Sprintf("--working_dir=%s", h.Distro.AbsPathNotCygwinCompatible(h.Distro.BootstrapSettings.JasperBinaryDir)),
 		fmt.Sprintf("--shell_path=%s", h.Distro.ShellBinary()),
 	}, " ")

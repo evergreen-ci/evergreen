@@ -180,17 +180,19 @@ func getDisplayStatus(v *model.Version) (string, error) {
 	return patch.GetCollectiveStatusFromPatchStatuses(allStatuses), nil
 }
 
-func hasEnqueuePatchPermission(u *user.DBUser, existingPatch *restModel.APIPatch) bool {
-	if u == nil || existingPatch == nil {
+// userCanModifyPatch checks if a user can make changes to a given patch. This is mainly to prevent
+// users from modifying other users' patches.
+func userCanModifyPatch(u *user.DBUser, patch patch.Patch) bool {
+	if u == nil {
 		return false
 	}
 
-	// patch owner
-	if utility.FromStringPtr(existingPatch.Author) == u.Username() {
+	// Check if user is patch owner.
+	if patch.Author == u.Username() {
 		return true
 	}
 
-	// superuser
+	// Check if user is superuser.
 	permissions := gimlet.PermissionOpts{
 		Resource:      evergreen.SuperUserPermissionsID,
 		ResourceType:  evergreen.SuperUserResourceType,
@@ -201,12 +203,25 @@ func hasEnqueuePatchPermission(u *user.DBUser, existingPatch *restModel.APIPatch
 		return true
 	}
 
-	return u.HasPermission(gimlet.PermissionOpts{
-		Resource:      utility.FromStringPtr(existingPatch.ProjectId),
+	// Check if user is project admin.
+	permissions = gimlet.PermissionOpts{
+		Resource:      patch.Project,
 		ResourceType:  evergreen.ProjectResourceType,
 		Permission:    evergreen.PermissionProjectSettings,
 		RequiredLevel: evergreen.ProjectSettingsEdit.Value,
-	})
+	}
+	if u.HasPermission(permissions) {
+		return true
+	}
+
+	// Check if user has patch admin permissions.
+	permissions = gimlet.PermissionOpts{
+		Resource:      patch.Project,
+		ResourceType:  evergreen.ProjectResourceType,
+		Permission:    evergreen.PermissionPatches,
+		RequiredLevel: evergreen.PatchSubmitAdmin.Value,
+	}
+	return u.HasPermission(permissions)
 }
 
 // getPatchProjectVariantsAndTasksForUI gets the variants and tasks for a project for a patch id
@@ -398,13 +413,13 @@ func generateBuildVariants(ctx context.Context, versionId string, buildVariantOp
 }
 
 // modifyVersionHandler handles the boilerplate code for performing a modify version action, i.e. schedule, unschedule, restart and set priority
-func modifyVersionHandler(ctx context.Context, patchID string, modification model.VersionModification) error {
-	v, err := model.VersionFindOneId(patchID)
+func modifyVersionHandler(ctx context.Context, versionID string, modification model.VersionModification) error {
+	v, err := model.VersionFindOneId(versionID)
 	if err != nil {
-		return ResourceNotFound.Send(ctx, fmt.Sprintf("error finding version %s: %s", patchID, err.Error()))
+		return ResourceNotFound.Send(ctx, fmt.Sprintf("error finding version %s: %s", versionID, err.Error()))
 	}
 	if v == nil {
-		return ResourceNotFound.Send(ctx, fmt.Sprintf("Unable to find version with id: `%s`", patchID))
+		return ResourceNotFound.Send(ctx, fmt.Sprintf("Unable to find version with id: `%s`", versionID))
 	}
 	user := mustHaveUser(ctx)
 	httpStatus, err := model.ModifyVersion(ctx, *v, *user, modification)
@@ -771,29 +786,6 @@ func groupProjects(projects []model.ProjectRef, onlyDefaultedToRepo bool) ([]*Gr
 		return groupsArr[i].GroupDisplayName < groupsArr[j].GroupDisplayName
 	})
 	return groupsArr, nil
-}
-
-// getProjectIdFromArgs extracts a project ID from the requireProjectAccess directive args.
-func getProjectIdFromArgs(ctx context.Context, args map[string]interface{}) (res string, err error) {
-	// id should always be a repo ID.
-	if id, hasId := args["id"].(string); hasId {
-		return id, nil
-	}
-	if projectId, hasProjectId := args["projectId"].(string); hasProjectId {
-		pid, err := model.GetIdForProject(projectId)
-		if err != nil {
-			return "", ResourceNotFound.Send(ctx, fmt.Sprintf("Could not find project with projectId: %s", projectId))
-		}
-		return pid, nil
-	}
-	if identifier, hasIdentifier := args["identifier"].(string); hasIdentifier {
-		pid, err := model.GetIdForProject(identifier)
-		if err != nil {
-			return "", ResourceNotFound.Send(ctx, fmt.Sprintf("Could not find project with identifier: %s", identifier))
-		}
-		return pid, nil
-	}
-	return "", ResourceNotFound.Send(ctx, "Could not find project")
 }
 
 // getValidTaskStatusesFilter returns a slice of task statuses that are valid and are searchable.
@@ -1223,4 +1215,104 @@ func collapseCommit(ctx context.Context, mainlineCommits MainlineCommits, mainli
 	} else {
 		mainlineCommitVersion.RolledUpVersions = []*restModel.APIVersion{&apiVersion}
 	}
+}
+
+// getProjectPermissionLevel takes in ProjectPermission and AccessLevel (GraphQL-specific variables) and returns
+// the equivalent Evergreen permission constants defined in globals.go.
+func getProjectPermissionLevel(projectPermission ProjectPermission, access AccessLevel) (requiredPermission string, requiredLevel int, err error) {
+	var permission string
+	var level int
+
+	switch projectPermission {
+	case ProjectPermissionSettings:
+		permission = evergreen.PermissionProjectSettings
+		if access == AccessLevelEdit {
+			level = evergreen.ProjectSettingsEdit.Value
+		} else if access == AccessLevelView {
+			level = evergreen.ProjectSettingsView.Value
+		} else {
+			return "", 0, errors.Errorf("invalid access level for %s", evergreen.PermissionProjectSettings)
+		}
+	case ProjectPermissionPatches:
+		permission = evergreen.PermissionPatches
+		if access == AccessLevelAdmin {
+			level = evergreen.PatchSubmitAdmin.Value
+		} else if access == AccessLevelEdit {
+			level = evergreen.PatchSubmit.Value
+		} else {
+			return "", 0, errors.Errorf("invalid access level for %s", evergreen.PermissionPatches)
+		}
+	case ProjectPermissionTasks:
+		permission = evergreen.PermissionTasks
+		if access == AccessLevelAdmin {
+			level = evergreen.TasksAdmin.Value
+		} else if access == AccessLevelEdit {
+			level = evergreen.TasksBasic.Value
+		} else if access == AccessLevelView {
+			level = evergreen.TasksView.Value
+		} else {
+			return "", 0, errors.Errorf("invalid access level for %s", evergreen.PermissionTasks)
+		}
+	case ProjectPermissionAnnotations:
+		permission = evergreen.PermissionAnnotations
+		if access == AccessLevelEdit {
+			level = evergreen.AnnotationsModify.Value
+		} else if access == AccessLevelView {
+			level = evergreen.AnnotationsView.Value
+		} else {
+			return "", 0, errors.Errorf("invalid access level for %s", evergreen.PermissionAnnotations)
+		}
+	case ProjectPermissionLogs:
+		permission = evergreen.PermissionLogs
+		if access == AccessLevelView {
+			level = evergreen.LogsView.Value
+		} else {
+			return "", 0, errors.Errorf("invalid access level for %s", evergreen.PermissionLogs)
+		}
+	default:
+		return "", 0, errors.New("invalid project permission")
+	}
+
+	return permission, level, nil
+}
+
+func canModifyAnnotation(ctx context.Context, obj *restModel.APITask) (bool, error) {
+	authUser := gimlet.GetUser(ctx)
+	permissions := gimlet.PermissionOpts{
+		Resource:      *obj.ProjectId,
+		ResourceType:  evergreen.ProjectResourceType,
+		Permission:    evergreen.PermissionAnnotations,
+		RequiredLevel: evergreen.AnnotationsModify.Value,
+	}
+	if authUser.HasPermission(permissions) {
+		return true, nil
+	}
+	if utility.StringSliceContains(evergreen.PatchRequesters, utility.FromStringPtr(obj.Requester)) {
+		p, err := patch.FindOneId(utility.FromStringPtr(obj.Version))
+		if err != nil {
+			return false, InternalServerError.Send(ctx, fmt.Sprintf("finding patch for task: %s", err.Error()))
+		}
+		if p == nil {
+			return false, InternalServerError.Send(ctx, "patch for task doesn't exist")
+		}
+		if p.Author == authUser.Username() {
+			return true, nil
+		}
+	}
+	return false, nil
+}
+
+func annotationPermissionHelper(ctx context.Context, taskID string, execution *int) error {
+	t, err := getTask(ctx, taskID, execution, "")
+	if err != nil {
+		return err
+	}
+	canModify, err := canModifyAnnotation(ctx, t)
+	if err != nil {
+		return err
+	}
+	if !canModify {
+		return Forbidden.Send(ctx, "insufficient permission for modifying annotation")
+	}
+	return nil
 }

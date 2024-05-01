@@ -312,16 +312,36 @@ func TestGetUserPermissions(t *testing.T) {
 	defer cancel()
 
 	env := testutil.NewEnvironment(ctx, t)
-	require.NoError(t, db.ClearCollections(user.Collection, evergreen.ScopeCollection, evergreen.RoleCollection))
+	require.NoError(t, db.ClearCollections(user.Collection, evergreen.ScopeCollection, evergreen.RoleCollection, model.ProjectRefCollection))
 	rm := env.RoleManager()
 	require.NoError(t, db.CreateCollections(evergreen.ScopeCollection))
 	u := user.DBUser{
 		Id:          "user",
-		SystemRoles: []string{"role1", evergreen.BasicProjectAccessRole, evergreen.BasicDistroAccessRole},
+		SystemRoles: []string{"role1", "role2", "role3", evergreen.BasicProjectAccessRole, evergreen.BasicDistroAccessRole},
+	}
+	projectRefs := []model.ProjectRef{
+		{
+			Id: "resource1",
+		},
+		{
+			Id:     "resource2",
+			Hidden: utility.TruePtr(),
+		},
+		{
+			Id: "resource3",
+		},
+	}
+	for _, projectRef := range projectRefs {
+		require.NoError(t, projectRef.Upsert())
 	}
 	require.NoError(t, u.Insert())
 	require.NoError(t, rm.AddScope(gimlet.Scope{ID: "scope1", Resources: []string{"resource1"}, Type: "project"}))
+	require.NoError(t, rm.AddScope(gimlet.Scope{ID: "scope2", Resources: []string{"resource2"}, Type: "project"}))
+	require.NoError(t, rm.AddScope(gimlet.Scope{ID: "scope3", Resources: []string{"resource3"}, Type: "project"}))
 	require.NoError(t, rm.UpdateRole(gimlet.Role{ID: "role1", Scope: "scope1", Permissions: gimlet.Permissions{evergreen.PermissionProjectSettings: evergreen.ProjectSettingsEdit.Value}}))
+	require.NoError(t, rm.UpdateRole(gimlet.Role{ID: "role2", Scope: "scope2", Permissions: gimlet.Permissions{evergreen.PermissionProjectSettings: evergreen.ProjectSettingsEdit.Value}}))
+	require.NoError(t, rm.UpdateRole(gimlet.Role{ID: "role3", Scope: "scope3", Permissions: gimlet.Permissions{evergreen.PermissionProjectSettings: evergreen.ProjectSettingsEdit.Value}}))
+
 	handler := userPermissionsGetHandler{rm: rm, userID: u.Id}
 
 	resp := handler.Run(context.Background())
@@ -329,7 +349,10 @@ func TestGetUserPermissions(t *testing.T) {
 	data := resp.Data().([]rolemanager.PermissionSummary)
 	assert.Len(t, data, 1)
 	assert.Equal(t, "project", data[0].Type)
+	require.Len(t, data[0].Permissions, 2)
 	assert.Equal(t, evergreen.ProjectSettingsEdit.Value, data[0].Permissions["resource1"][evergreen.PermissionProjectSettings])
+	assert.Nil(t, data[0].Permissions["resource2"])
+	assert.Equal(t, evergreen.ProjectSettingsEdit.Value, data[0].Permissions["resource3"][evergreen.PermissionProjectSettings])
 }
 
 func TestPostUserRoles(t *testing.T) {
@@ -489,6 +512,65 @@ func TestGetUsersForRole(t *testing.T) {
 	assert.Len(t, usersWithRole.Users, 2)
 	assert.Contains(t, utility.FromStringPtr(usersWithRole.Users[0]), u1.Id)
 	assert.Contains(t, utility.FromStringPtr(usersWithRole.Users[1]), u2.Id)
+}
+
+func TestRemoveHiddenProjects(t *testing.T) {
+	require.NoError(t, db.ClearCollections(model.ProjectRefCollection))
+	projectRefs := []model.ProjectRef{
+		{
+			Id:     "project1",
+			Hidden: utility.TruePtr(),
+		},
+		{
+			Id: "project2",
+		},
+		{
+			Id:     "project3",
+			Hidden: utility.TruePtr(),
+		},
+		{
+			Id: "project4",
+		},
+	}
+	for _, projectRef := range projectRefs {
+		require.NoError(t, projectRef.Upsert())
+	}
+
+	permissions := []rolemanager.PermissionSummary{
+		{
+			Type: evergreen.ProjectResourceType,
+			Permissions: rolemanager.PermissionsForResources{
+				"project1": gimlet.Permissions{
+					"project_settings": 10,
+				},
+				"project2": gimlet.Permissions{
+					"project_settings": 10,
+				},
+				"project3": gimlet.Permissions{
+					"project_settings": 10,
+				},
+				"project4": gimlet.Permissions{
+					"project_settings": 10,
+				},
+			},
+		},
+		{
+			Type: evergreen.DistroResourceType,
+			Permissions: rolemanager.PermissionsForResources{
+				"distro1": gimlet.Permissions{
+					"distro_settings": 10,
+				},
+			},
+		},
+	}
+
+	assert.NoError(t, removeHiddenProjects(permissions))
+	require.Len(t, permissions, 2)
+	require.Len(t, permissions[0].Permissions, 2)
+	require.Nil(t, permissions[0].Permissions["project1"])
+	require.NotNil(t, permissions[0].Permissions["project2"])
+	require.Nil(t, permissions[0].Permissions["project3"])
+	require.NotNil(t, permissions[0].Permissions["project4"])
 }
 
 func TestGetUsersForResourceId(t *testing.T) {

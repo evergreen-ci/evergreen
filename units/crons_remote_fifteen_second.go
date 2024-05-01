@@ -62,7 +62,7 @@ func (j *cronsRemoteFifteenSecondJob) Run(ctx context.Context) {
 			j.AddError(errors.New("operation aborted"))
 			return
 		}
-		jobs, err := op(ctx, ts)
+		jobs, err := op(ctx, j.env, ts)
 		if err != nil {
 			catcher.Wrapf(err, "getting '%s' jobs", name)
 			continue

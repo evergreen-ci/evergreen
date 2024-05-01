@@ -1,0 +1,34 @@
+{
+  "tests": [
+    {
+      "query_file": "no_preferences_defined.graphql",
+      "result": {
+        "data": {
+          "user": {
+            "displayName": "Jane Smith",
+            "userId": "jane.smith",
+            "parsleySettings": {
+              "sectionsEnabled": true,
+              "jumpToFailingLineEnabled": true
+            }
+          }
+        }
+      }
+    },
+    {
+      "query_file": "preferences_defined.graphql",
+      "result": {
+        "data": {
+          "user": {
+            "displayName": "Bob Smith",
+            "userId": "bob.smith",
+            "parsleySettings": {
+              "sectionsEnabled": false,
+              "jumpToFailingLineEnabled": false
+            }
+          }
+        }
+      }
+    }
+  ]
+}

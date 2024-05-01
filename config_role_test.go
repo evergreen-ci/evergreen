@@ -6,11 +6,12 @@ import (
 	"testing"
 
 	"github.com/stretchr/testify/require"
+	"go.opentelemetry.io/otel/trace/noop"
 )
 
 func TestLDAPRoleMapAddAndRemove(t *testing.T) {
 	originalEnv := GetEnvironment()
-	env, err := NewEnvironment(context.Background(), filepath.Join("config_test", "evg_settings.yml"), "", nil)
+	env, err := NewEnvironment(context.Background(), filepath.Join("config_test", "evg_settings.yml"), "", nil, noop.NewTracerProvider())
 	require.NoError(t, err)
 	SetEnvironment(env)
 	defer func() {

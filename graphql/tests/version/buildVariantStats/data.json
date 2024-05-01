@@ -39,7 +39,7 @@
         "evergreen_ubuntu1604_patch_5e823e1f28baeaa22ae00823d83e03082cd148ab_5e4ff3abe3c3317e352062e4_20_02_21_15_13_48",
         "evergreen_lint_patch_5e823e1f28baeaa22ae00823d83e03082cd148ab_5e4ff3abe3c3317e352062e4_20_02_21_15_13_48"
       ],
-      "identifier": "evergreen",
+      "identifier": "spruce",
       "remote": false,
       "remote_path": "",
       "r": "github_pull_request",
@@ -66,7 +66,7 @@
         }
       },
       "version": "5e4ff3abe3c3317e352062e4",
-      "branch": "evergreen",
+      "branch": "spruce",
       "gitspec": "5e823e1f28baeaa22ae00823d83e03082cd148ab",
       "build_variant": "lint",
       "build_number": "8903",
@@ -148,7 +148,7 @@
         }
       },
       "version": "5e4ff3abe3c3317e352062e4",
-      "branch": "evergreen",
+      "branch": "spruce",
       "gitspec": "5e823e1f28baeaa22ae00823d83e03082cd148ab",
       "build_variant": "ubuntu1604",
       "build_number": "53533",
@@ -325,6 +325,12 @@
       "status": "undispatched",
       "build_id": "evergreen_ubuntu1604_patch_5e823e1f28baeaa22ae00823d83e03082cd148ab_5e4ff3abe3c3317e352062e4_20_02_21_15_13_48",
       "display_task_id": ""
+    }
+  ],
+  "project_ref": [
+    {
+      "_id": "spruce",
+      "identifier": "spruce"
     }
   ]
 }

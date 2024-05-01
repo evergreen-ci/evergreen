@@ -12,6 +12,7 @@ import (
 const (
 	confFlagName              = "conf"
 	versionIDFlagName         = "version_id"
+	traceEndpointFlagName     = "trace_endpoint"
 	overwriteConfFlagName     = "overwrite"
 	pathFlagName              = "path"
 	projectFlagName           = "project"

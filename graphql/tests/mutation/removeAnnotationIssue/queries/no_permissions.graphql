@@ -1,0 +1,8 @@
+mutation {
+  removeAnnotationIssue(
+    taskId: "no_permissions"
+    execution: 1
+    apiIssue: { url: "https://link.com", issueKey: "EVG-2018" }
+    isIssue: false
+  )
+}

@@ -580,6 +580,17 @@ func (s *EC2Suite) TestModifyHost() {
 	s.Zero(found.PersistentDNSName, "persistent DNS name should be removed once host is expirable")
 	s.Zero(found.PublicIPv4)
 
+	// modifying host to have no expiration when it's currently stopped
+	s.NoError(s.h.SetStatus(ctx, evergreen.HostStopped, "user", ""))
+	changes = host.HostModifyOptions{NoExpiration: utility.TruePtr()}
+	s.NoError(s.onDemandManager.ModifyHost(ctx, s.h, changes))
+	found, err = host.FindOne(ctx, host.ById(s.h.Id))
+	s.NoError(err)
+	s.Require().NotZero(found)
+	s.True(found.NoExpiration)
+	s.NotZero(found.PersistentDNSName, "persistent DNS name should not be assigned to stopped host")
+	s.NotZero(found.PublicIPv4)
+
 	// attaching a volume to host
 	volumeToMount := host.Volume{
 		ID:               "thang",
@@ -667,7 +678,7 @@ func (s *EC2Suite) TestStopInstance() {
 		s.Require().NoError(h.Insert(ctx))
 	}
 	for _, h := range unstoppableHosts {
-		s.Error(s.onDemandManager.StopInstance(ctx, h, evergreen.User))
+		s.Error(s.onDemandManager.StopInstance(ctx, h, false, evergreen.User))
 	}
 
 	stoppableHosts := []*host.Host{
@@ -690,10 +701,42 @@ func (s *EC2Suite) TestStopInstance() {
 	}
 
 	for _, h := range stoppableHosts {
-		s.NoError(s.onDemandManager.StopInstance(ctx, h, evergreen.User))
+		s.NoError(s.onDemandManager.StopInstance(ctx, h, false, evergreen.User))
 		found, err := host.FindOne(ctx, host.ById(h.Id))
 		s.NoError(err)
 		s.Equal(evergreen.HostStopped, found.Status)
+	}
+}
+
+func (s *EC2Suite) TestStopInstanceAndShouldKeepOff() {
+	ctx, cancel := context.WithCancel(s.ctx)
+	defer cancel()
+
+	stoppableHosts := []*host.Host{
+		{
+			Id:     "host-stopping",
+			Status: evergreen.HostStopping,
+		},
+		{
+			Id:     "host-running",
+			Status: evergreen.HostRunning,
+		},
+		{
+			Id:     "host-stopped",
+			Status: evergreen.HostStopped,
+		},
+	}
+	for _, h := range stoppableHosts {
+		h.Distro = s.distro
+		s.Require().NoError(h.Insert(ctx))
+	}
+
+	for _, h := range stoppableHosts {
+		s.NoError(s.onDemandManager.StopInstance(ctx, h, true, evergreen.User))
+		found, err := host.FindOne(ctx, host.ById(h.Id))
+		s.NoError(err)
+		s.Equal(evergreen.HostStopped, found.Status)
+		s.True(found.SleepSchedule.ShouldKeepOff)
 	}
 }
 
@@ -727,10 +770,11 @@ func (s *EC2Suite) TestStartInstance() {
 			Status: evergreen.HostRunning,
 		},
 		{
-			Id:     "host-stopped",
-			Status: evergreen.HostStopped,
-			Host:   "old_dns_name",
-			IPv4:   "1.1.1.1",
+			Id:            "host-stopped",
+			Status:        evergreen.HostStopped,
+			Host:          "old_dns_name",
+			IPv4:          "1.1.1.1",
+			SleepSchedule: host.SleepScheduleInfo{ShouldKeepOff: true},
 		},
 	}
 	for _, h := range startableHosts {
@@ -745,6 +789,7 @@ func (s *EC2Suite) TestStartInstance() {
 		s.Equal(evergreen.HostRunning, found.Status)
 		s.Equal("public_dns_name", found.Host)
 		s.Equal("12.34.56.78", found.IPv4)
+		s.False(found.SleepSchedule.ShouldKeepOff)
 	}
 }
 

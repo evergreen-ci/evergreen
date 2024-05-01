@@ -1410,11 +1410,29 @@ func TestValidateProjectLimits(t *testing.T) {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 
-	makeProjectWithNumTasks := func(numTasks int) *model.Project {
+	makeProjectWithDoubleNumTasks := func(numTasks int) *model.Project {
 		var project model.Project
+		project.BuildVariants = []model.BuildVariant{
+			{
+				Name: "bv1",
+			},
+			{
+				Name: "bv2",
+			},
+		}
+
 		for i := 0; i < numTasks; i++ {
-			project.Tasks = append(project.Tasks, model.ProjectTask{
+			t := model.ProjectTask{
 				Name: fmt.Sprintf("task-%d", i),
+			}
+			project.Tasks = append(project.Tasks, t)
+			project.BuildVariants[0].Tasks = append(project.BuildVariants[0].Tasks, model.BuildVariantTaskUnit{
+				Name:    t.Name,
+				Variant: project.BuildVariants[0].Name,
+			})
+			project.BuildVariants[1].Tasks = append(project.BuildVariants[1].Tasks, model.BuildVariantTaskUnit{
+				Name:    t.Name,
+				Variant: project.BuildVariants[1].Name,
 			})
 		}
 		return &project
@@ -1426,7 +1444,7 @@ func TestValidateProjectLimits(t *testing.T) {
 				MaxTasksPerVersion: 10,
 			},
 		}
-		project := makeProjectWithNumTasks(5)
+		project := makeProjectWithDoubleNumTasks(3)
 		assert.Empty(t, validateProjectLimits(ctx, settings, project, &model.ProjectRef{}, false))
 	})
 	t.Run("FailsWithTasksExceedingLimit", func(t *testing.T) {
@@ -1435,15 +1453,15 @@ func TestValidateProjectLimits(t *testing.T) {
 				MaxTasksPerVersion: 10,
 			},
 		}
-		project := makeProjectWithNumTasks(50)
+		project := makeProjectWithDoubleNumTasks(50)
 		errs := validateProjectLimits(ctx, settings, project, &model.ProjectRef{}, false)
 		require.Len(t, errs, 1)
 		assert.Equal(t, Error, errs[0].Level)
-		assert.Contains(t, "project's total number of tasks (50) exceeds maximum limit (10)", errs[0].Message)
+		assert.Contains(t, "project's total number of tasks (100) exceeds maximum limit (10)", errs[0].Message)
 	})
 	t.Run("SucceedsWithNoMaxTaskLimit", func(t *testing.T) {
 		settings := &evergreen.Settings{}
-		project := makeProjectWithNumTasks(50)
+		project := makeProjectWithDoubleNumTasks(50)
 		assert.Empty(t, validateProjectLimits(ctx, settings, project, &model.ProjectRef{}, false))
 	})
 }
@@ -1456,11 +1474,24 @@ func TestValidateTaskNames(t *testing.T) {
 				{Name: "|task"},
 				{Name: "ta|sk"},
 				{Name: "this is my task"},
-				{Name: "task"},
+				{Name: "task()<"},
+				{Name: "task'"},
+				{Name: "task{}"},
 			},
 		}
 		validationResults := validateTaskNames(project)
-		So(len(validationResults), ShouldEqual, 4)
+		So(len(validationResults), ShouldEqual, len(project.Tasks))
+	})
+	Convey("When a task name is valid, no error should be returned", t, func() {
+		project := &model.Project{
+			Tasks: []model.ProjectTask{
+				{Name: "task"},
+				{Name: "unittest--[a-z]"},
+				{Name: `check:sasl=Cyrus\_\u2022\_tls=LibreSSL\_\u2022\_test_mongocxx_ref=r3.9.0`},
+			},
+		}
+		validationResults := validateTaskNames(project)
+		So(len(validationResults), ShouldEqual, 0)
 	})
 	Convey("A warning should be returned when a task name", t, func() {
 		Convey("Contains commas", func() {
@@ -1594,6 +1625,17 @@ func TestValidateBVNames(t *testing.T) {
 			So(validationResults, ShouldNotResemble, ValidationErrors{})
 			So(len(validationResults), ShouldEqual, 3)
 			So(validationResults[0].Level, ShouldEqual, Error)
+		})
+
+		Convey("if any variant has task selectors that don't target anything, an warning should be returned", func() {
+			project := &model.Project{
+				BuildVariants: []model.BuildVariant{
+					{Name: "linux", EmptyTaskSelectors: []string{".task1"}},
+				},
+			}
+			validationResults := checkBuildVariants(project)
+
+			So(validationResults.String(), ShouldContainSubstring, "WARNING: buildvariant 'linux' has task names/tags that do not match any tasks: '.task1'")
 		})
 
 		Convey("if two variants have the same display name, a warning should be returned, but no errors", func() {
@@ -2041,12 +2083,14 @@ func TestValidateAliasCoverage(t *testing.T) {
 				Alias:       evergreen.CommitQueueAlias,
 				VariantTags: []string{"notTheVariantTag"},
 				TaskTags:    []string{"taskTag1", "taskTag2"},
+				Source:      model.AliasSourceConfig,
 			}
 			alias2 := model.ProjectAlias{
 				ID:      mgobson.NewObjectId(),
 				Alias:   evergreen.CommitQueueAlias,
 				Variant: "nonsense",
 				Task:    ".*",
+				Source:  model.AliasSourceConfig,
 			}
 			aliasMap := map[string]model.ProjectAlias{
 				"alias1": alias1,
@@ -2066,8 +2110,10 @@ func TestValidateAliasCoverage(t *testing.T) {
 			errs := validateAliasCoverage(p, model.ProjectAliases{alias1, alias2})
 			require.Len(t, errs, 2)
 			assert.Contains(t, errs[0].Message, "Commit queue alias")
+			assert.Contains(t, errs[0].Message, "(from the yaml)")
 			assert.Contains(t, errs[0].Message, "has no matching variants")
 			assert.Contains(t, errs[1].Message, "Commit queue alias")
+			assert.Contains(t, errs[1].Message, "(from the yaml)")
 			assert.Contains(t, errs[1].Message, "has no matching variants")
 			assert.NotContains(t, errs[0].Message, "tasks")
 			assert.NotContains(t, errs[1].Message, "tasks")
@@ -2109,11 +2155,13 @@ func TestValidateAliasCoverage(t *testing.T) {
 				ID:          mgobson.NewObjectId(),
 				Alias:       evergreen.CommitQueueAlias,
 				VariantTags: []string{"variantTag"},
+				Source:      model.AliasSourceProject,
 			}
 			alias2 := model.ProjectAlias{
 				ID:      mgobson.NewObjectId(),
 				Alias:   evergreen.CommitQueueAlias,
 				Variant: "badRegex",
+				Source:  model.AliasSourceProject,
 			}
 			aliasMap := map[string]model.ProjectAlias{
 				"alias1": alias1,
@@ -2132,9 +2180,11 @@ func TestValidateAliasCoverage(t *testing.T) {
 			errs := validateAliasCoverage(p, model.ProjectAliases{alias1, alias2})
 			require.Len(t, errs, 2)
 			assert.Contains(t, errs[0].Message, "Commit queue alias")
+			assert.Contains(t, errs[0].Message, "(from the project page)")
 			assert.Contains(t, errs[0].Message, "has no matching variants")
 			assert.NotContains(t, errs[0].Message, "matching task regexp")
 			assert.Contains(t, errs[1].Message, "Commit queue alias")
+			assert.Contains(t, errs[1].Message, "(from the project page)")
 			assert.Contains(t, errs[1].Message, "has no matching tasks")
 			assert.Contains(t, errs[1].Message, "variant tags")
 			assert.Contains(t, errs[1].Message, "matching task regexp")
@@ -2246,6 +2296,7 @@ func TestValidateAliasCoverage(t *testing.T) {
 				Alias:    "alias",
 				Variant:  "bvWithTag",
 				TaskTags: []string{"taskTag1 taskTag2 nonexistent"},
+				Source:   model.AliasSourceRepo,
 			}
 			aliases := map[string]model.ProjectAlias{a.Alias: a}
 			needsVariants, needsTasks, err := getAliasCoverage(p, aliases)
@@ -2260,6 +2311,8 @@ func TestValidateAliasCoverage(t *testing.T) {
 			}
 			errs := validateAliasCoverage(p, model.ProjectAliases{a})
 			assert.Len(t, errs, 1)
+			assert.Contains(t, errs[0].Message, "(from the repo page)")
+			assert.Contains(t, errs[0].Message, "Patch alias 'alias'")
 		},
 	} {
 		t.Run(testName, func(t *testing.T) {
@@ -3616,6 +3669,41 @@ buildvariants:
 	assert.Contains(validationErrs[1].Message, "task group 'inline_task_group' has max number of hosts 3 greater than the number of tasks 2")
 	assert.Equal(validationErrs[0].Level, Warning)
 	assert.Equal(validationErrs[1].Level, Warning)
+
+	overMaxTimeoutYml := `
+tasks:
+- name: example_task_1
+task_groups:
+- name: example_task_group
+  max_hosts: 4
+  teardown_group_timeout_secs: 1800
+  tasks:
+  - example_task_1
+buildvariants:
+- name: "bv"
+  display_name: "bv_display"
+  tasks:
+    - name: example_task_group
+    - name: inline_task_group
+      task_group:
+        share_processes: true
+        teardown_group:
+        - command: shell.exec
+        - command: shell.exec
+          params:
+           script: "echo teardown_group"
+        tasks:
+        - example_task_1
+`
+	pp, err = model.LoadProjectInto(ctx, []byte(overMaxTimeoutYml), nil, "", &proj)
+	require.NotNil(t, proj)
+	assert.NotNil(pp)
+	assert.NoError(err)
+
+	validationErrs = checkTaskGroups(&proj)
+	require.Len(t, validationErrs, 1)
+	assert.Contains(validationErrs[0].Message, "task group 'example_task_group' has a teardown task timeout of 1800 seconds, which exceeds the maximum of 180 seconds")
+	assert.Equal(validationErrs[0].Level, Warning)
 }
 
 func TestTaskGroupTeardownValidation(t *testing.T) {

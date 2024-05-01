@@ -143,6 +143,19 @@ func MostRecentPaginatedHostEvents(id string, tag string, limit, page int) ([]Ev
 	return FindPaginatedWithTotalCount(recentHostsQuery, limit, page)
 }
 
+// HasNoRecentStoppedHostEvent returns true if no host event exists that is more recent than the passed in time stamp.
+func HasNoRecentStoppedHostEvent(id string, ts time.Time) (bool, error) {
+	filter := ResourceTypeKeyIs(ResourceTypeHost)
+	filter[ResourceIdKey] = id
+	filter[eventTypeKey] = EventHostStopped
+	filter[TimestampKey] = bson.M{"$gte": ts}
+	count, err := db.CountQ(EventCollection, db.Query(filter))
+	if err != nil {
+		return false, errors.Wrap(err, "fetching count of stopped host events")
+	}
+	return count == 0, nil
+}
+
 // Task Events
 func TaskEventsForId(id string) db.Q {
 	filter := ResourceTypeKeyIs(ResourceTypeTask)

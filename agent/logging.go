@@ -6,8 +6,9 @@ import (
 	"os"
 	"path/filepath"
 
-	"github.com/evergreen-ci/evergreen/agent/command"
+	"github.com/evergreen-ci/evergreen/agent/globals"
 	"github.com/evergreen-ci/evergreen/agent/internal/client"
+	"github.com/evergreen-ci/evergreen/agent/internal/redactor"
 	"github.com/evergreen-ci/evergreen/model"
 	"github.com/evergreen-ci/pail"
 	"github.com/mongodb/grip"
@@ -43,7 +44,7 @@ func getInc() int { return <-idSource }
 
 // GetSender configures the agent's local logging, which can go to Splunk, a
 // file, or stdout.
-func (a *Agent) GetSender(ctx context.Context, output LogOutputType, prefix string, taskID string, taskExecution int) (send.Sender, error) {
+func (a *Agent) GetSender(ctx context.Context, output globals.LogOutputType, prefix string, taskID string, taskExecution int) (send.Sender, error) {
 	var senders []send.Sender
 
 	splunkInfo := send.SplunkConnectionInfo{
@@ -64,7 +65,7 @@ func (a *Agent) GetSender(ctx context.Context, output LogOutputType, prefix stri
 	}
 
 	switch output {
-	case LogOutputStdout:
+	case globals.LogOutputStdout:
 		sender, err := send.NewNativeLogger("evergreen.agent", send.LevelInfo{Default: level.Info, Threshold: level.Debug})
 		if err != nil {
 			return nil, errors.Wrap(err, "creating native console logger")
@@ -113,12 +114,17 @@ func (a *Agent) prepLogger(tc *taskContext, c *model.LoggerConfig, commandName s
 		logDir = filepath.Join(logDir, commandName)
 		grip.Error(errors.Wrapf(os.MkdirAll(logDir, os.ModeDir|os.ModePerm), "making log directory '%s' for command '%s'", logDir, commandName))
 	}
+	redactorExpansions := tc.taskConfig.NewExpansions
+	// Add the host's secret to the internal agent expansions, so it can be redacted by our redacting logger later.
+	redactorExpansions.Put(globals.HostSecret, a.opts.HostSecret)
 	config := client.LoggerConfig{
 		SendToGlobalSender: a.opts.SendTaskLogsToGlobalSender,
 		AWSCredentials:     pail.CreateAWSCredentials(tc.taskConfig.TaskSync.Key, tc.taskConfig.TaskSync.Secret, ""),
+		RedactorOpts: redactor.RedactionOptions{
+			Expansions: redactorExpansions,
+			Redacted:   tc.taskConfig.Redacted,
+		},
 	}
-	config.Expansions = tc.taskConfig.NewExpansions
-	config.ExpansionsToRedact = getExpansionsToRedact(tc.taskConfig.Redacted)
 
 	defaultLogger := model.EvergreenLogSender
 	if len(c.Agent) == 0 {
@@ -163,16 +169,4 @@ func (a *Agent) prepSingleLogger(tc *taskContext, in model.LogOpts, logDir, file
 		SplunkToken:     splunkToken,
 		Filepath:        filepath.Join(logDir, fileName),
 	}
-}
-
-// getExpansionsToRedact returns the full list of expansion keys whose values
-// should get redacted from task logs.
-func getExpansionsToRedact(redacted map[string]bool) []string {
-	var expansionsToRedact []string
-	for key := range redacted {
-		expansionsToRedact = append(expansionsToRedact, key)
-	}
-	expansionsToRedact = append(expansionsToRedact, command.ExpansionsToRedact...)
-
-	return expansionsToRedact
 }

@@ -6,6 +6,7 @@ import (
 	"testing"
 
 	"github.com/evergreen-ci/evergreen"
+	"github.com/evergreen-ci/evergreen/agent/globals"
 	"github.com/evergreen-ci/evergreen/agent/internal"
 	"github.com/evergreen-ci/evergreen/agent/internal/client"
 	agentutil "github.com/evergreen-ci/evergreen/agent/util"
@@ -90,13 +91,11 @@ func TestExpansionWriter(t *testing.T) {
 			"password":                           "hunter2",
 			evergreen.GlobalGitHubTokenExpansion: "sample_token",
 			evergreen.GithubAppToken:             "app_token",
-			AWSAccessKeyId:                       "aws_key_id",
-			AWSSecretAccessKey:                   "aws_secret_key",
-			AWSSessionToken:                      "aws_token",
+			globals.AWSAccessKeyId:               "aws_key_id",
+			globals.AWSSecretAccessKey:           "aws_secret_key",
+			globals.AWSSessionToken:              "aws_token",
 		},
-		Redacted: map[string]bool{
-			"password": true,
-		},
+		Redacted: []string{"password"},
 	}
 	f, err := os.CreateTemp("", t.Name())
 	require.NoError(t, err)

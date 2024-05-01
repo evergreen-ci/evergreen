@@ -1,0 +1,30 @@
+mutation {
+  schedulePatch(
+    patchId: "5e4ff3abe3c3317e352062e4"
+    configure: {
+      description: "test meee"
+      variantsTasks: [
+        { variant: "ubuntu1604", tasks: ["test-graphql"], displayTasks: [] }
+      ]
+      parameters: [
+        { key: "key1", value: "value1" }
+        { key: "key2", value: "value2" }
+        { key: "key3", value: "value3" }
+      ]
+    }
+  ) {
+    id
+    status
+    activated
+    tasks
+    variants
+    variantsTasks {
+      name
+      tasks
+    }
+    parameters {
+      key
+      value
+    }
+  }
+}

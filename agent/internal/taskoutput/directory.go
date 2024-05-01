@@ -22,6 +22,7 @@ import (
 	"sync"
 
 	"github.com/evergreen-ci/evergreen/agent/internal/client"
+	"github.com/evergreen-ci/evergreen/agent/internal/redactor"
 	"github.com/evergreen-ci/evergreen/model/task"
 	"github.com/evergreen-ci/evergreen/taskoutput"
 	"github.com/mongodb/grip"
@@ -43,7 +44,7 @@ type Directory struct {
 
 // NewDirectory returns a new task output directory with the specified root for
 // the given task.
-func NewDirectory(root string, tsk *task.Task, logger client.LoggerProducer) *Directory {
+func NewDirectory(root string, tsk *task.Task, redactorOpts redactor.RedactionOptions, logger client.LoggerProducer) *Directory {
 	output := tsk.TaskOutputInfo
 	taskOpts := taskoutput.TaskOptions{
 		ProjectID: tsk.Project,
@@ -55,7 +56,7 @@ func NewDirectory(root string, tsk *task.Task, logger client.LoggerProducer) *Di
 	handlers := map[string]directoryHandler{}
 	for name, factory := range directoryHandlerFactories {
 		dir := filepath.Join(root, name)
-		handlers[dir] = factory(dir, output, taskOpts, logger)
+		handlers[dir] = factory(dir, output, taskOpts, redactorOpts, logger)
 	}
 
 	return &Directory{
@@ -106,4 +107,4 @@ type directoryHandler interface {
 }
 
 // directoryHandlerFactory abstracts the creation of a directory handler.
-type directoryHandlerFactory func(string, *taskoutput.TaskOutput, taskoutput.TaskOptions, client.LoggerProducer) directoryHandler
+type directoryHandlerFactory func(string, *taskoutput.TaskOutput, taskoutput.TaskOptions, redactor.RedactionOptions, client.LoggerProducer) directoryHandler

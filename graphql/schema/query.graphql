@@ -1,8 +1,8 @@
 # This file lists all of the queries. The query definitions can be found in the corresponding files in the resolvers folder.
 type Query {
   # annotations
-  bbGetCreatedTickets(taskId: String!): [JiraTicket!]!
-  buildBaron(taskId: String!, execution: Int!): BuildBaron!
+  bbGetCreatedTickets(taskId: String! @requireProjectAccess(permission: ANNOTATIONS, access: VIEW)): [JiraTicket!]!
+  buildBaron(taskId: String! @requireProjectAccess(permission: ANNOTATIONS, access: VIEW), execution: Int!): BuildBaron!
 
   # config
   awsRegions: [String!]
@@ -13,7 +13,7 @@ type Query {
 
   # distros
   distro(distroId: String! @requireDistroAccess(access: VIEW)): Distro
-  distroEvents(opts: DistroEventsInput!): DistroEventsPayload!
+  distroEvents(opts: DistroEventsInput!): DistroEventsPayload! # Has directive on DistroEventsInput.
   distros(onlySpawnable: Boolean!): [Distro]!
   distroTaskQueue(distroId: String!): [TaskQueueItem!]!
 
@@ -42,26 +42,22 @@ type Query {
   pod(podId: String!): Pod!
   
   # patch
-  patch(id: String!): Patch!
+  patch(patchId: String! @requireProjectAccess(permission: TASKS, access: VIEW)): Patch!
 
   # project
-  githubProjectConflicts(projectId: String!): GithubProjectConflicts!
-  project(projectIdentifier: String!): Project!
+  githubProjectConflicts(projectId: String! @requireProjectAccess(permission: SETTINGS, access: VIEW)): GithubProjectConflicts!
+  ### The project query must use TASKS permission because we surface many key fields (e.g. patches and banners) from it.
+  ### Can be updated after completion of DEVPROD-6882.
+  project(projectIdentifier: String! @requireProjectAccess(permission: TASKS, access: VIEW)): Project!
   projects: [GroupedProjects]!
   projectEvents(
-    identifier: String!
+    identifier: String! @requireProjectAccess(permission: SETTINGS, access: VIEW)
     limit: Int = 0
     before: Time
-    @requireProjectAccess(access: VIEW)
   ): ProjectEvents!
-  projectSettings(identifier: String! @requireProjectAccess(access: VIEW)): ProjectSettings!
-  repoEvents(
-    id: String!
-    limit: Int = 0
-    before: Time
-    @requireProjectAccess(access: VIEW)
-  ): ProjectEvents!
-  repoSettings(id: String! @requireProjectAccess(access: VIEW)): RepoSettings!
+  projectSettings(identifier: String! @requireProjectAccess(permission: SETTINGS, access: VIEW)): ProjectSettings!
+  repoEvents(repoId: String! @requireProjectAccess(permission: SETTINGS, access: VIEW), limit: Int = 0, before: Time): ProjectEvents!
+  repoSettings(repoId: String! @requireProjectAccess(permission: SETTINGS, access: VIEW)): RepoSettings!
   viewableProjectRefs: [GroupedProjects]!
 
   # spawn
@@ -72,10 +68,11 @@ type Query {
   logkeeperBuildMetadata(buildId: String!): LogkeeperBuild!
 
   # task
-  task(taskId: String!, execution: Int): Task
-  taskAllExecutions(taskId: String!): [Task!]!
+  task(taskId: String! @requireProjectAccess(permission: TASKS, access: VIEW), execution: Int): Task
+  taskAllExecutions(taskId: String! @requireProjectAccess(permission: TASKS, access: VIEW)): [Task!]!
   taskTestSample(
-    tasks: [String!]!
+    versionId: String! @requireProjectAccess(permission: TASKS, access: VIEW)
+    taskIds: [String!]!
     filters: [TestFilter!]!
   ): [TaskTestResultSample!]
 
@@ -86,14 +83,14 @@ type Query {
   userSettings: UserSettings
 
   # commit queue
-  commitQueue(projectIdentifier: String!): CommitQueue!
+  commitQueue(projectIdentifier: String! @requireProjectAccess(permission: TASKS, access: VIEW)): CommitQueue!
 
   # mainline commits
-  buildVariantsForTaskName(projectIdentifier: String!, taskName: String!): [BuildVariantTuple]
-  mainlineCommits(options: MainlineCommitsOptions!, buildVariantOptions: BuildVariantOptions): MainlineCommits
-  taskNamesForBuildVariant(projectIdentifier: String!, buildVariant: String!): [String!]
+  buildVariantsForTaskName(projectIdentifier: String! @requireProjectAccess(permission: TASKS, access: VIEW), taskName: String!): [BuildVariantTuple]
+  mainlineCommits(options: MainlineCommitsOptions!, buildVariantOptions: BuildVariantOptions): MainlineCommits # Has directive on MainlineCommitsOptions.
+  taskNamesForBuildVariant(projectIdentifier: String! @requireProjectAccess(permission: TASKS, access: VIEW), buildVariant: String!): [String!]
 
   # version
-  hasVersion(id: String!): Boolean!
-  version(id: String!): Version!
+  hasVersion(patchId: String!): Boolean!
+  version(versionId: String! @requireProjectAccess(permission: TASKS, access: VIEW)): Version!
 }

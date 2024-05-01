@@ -148,7 +148,7 @@ func setup(ctx context.Context, t *testing.T, state *AtomicGraphQLState) {
 		{Name: "a", Key: "aKey", CreatedAt: time.Time{}},
 		{Name: "b", Key: "bKey", CreatedAt: time.Time{}},
 	}
-	systemRoles := []string{"unrestrictedTaskAccess", "modify_host", "modify_project_tasks", "superuser", "project_grumpyCat", "project_happyAbyssinian", "superuser_distro_access"}
+	systemRoles := []string{"unrestrictedTaskAccess", "modify_host", "superuser", "project_grumpyCat", "project_happyAbyssinian", "superuser_distro_access", "project_spruce", "project_sandbox"}
 	env := evergreen.GetEnvironment()
 	require.NoError(t, env.DB().Drop(ctx))
 
@@ -196,6 +196,26 @@ func setup(ctx context.Context, t *testing.T, state *AtomicGraphQLState) {
 	require.NoError(t, err)
 	require.Len(t, roles, 0)
 
+	unrestrictedProjectScope := gimlet.Scope{
+		ID:        evergreen.UnrestrictedProjectsScope,
+		Name:      "unrestricted projects",
+		Type:      evergreen.ProjectResourceType,
+		Resources: []string{"mci"},
+	}
+	err = roleManager.AddScope(unrestrictedProjectScope)
+	require.NoError(t, err)
+
+	basicProjectAccessRole := gimlet.Role{
+		ID:          evergreen.BasicProjectAccessRole,
+		Name:        "basic access",
+		Scope:       evergreen.UnrestrictedProjectsScope,
+		Permissions: map[string]int{"project_tasks": 20, "project_patches": 10, "project_logs": 10, "project_task_annotations": 10},
+	}
+	err = roleManager.UpdateRole(basicProjectAccessRole)
+	require.NoError(t, err)
+	err = usr.AddRole(evergreen.BasicProjectAccessRole)
+	require.NoError(t, err)
+
 	distroScope := gimlet.Scope{
 		ID:        evergreen.AllDistrosScope,
 		Name:      "modify host scope",
@@ -225,24 +245,6 @@ func setup(ctx context.Context, t *testing.T, state *AtomicGraphQLState) {
 	err = roleManager.UpdateRole(modifyHostRole)
 	require.NoError(t, err)
 
-	modifyProjectTasks := gimlet.Scope{
-		ID:        "modify_tasks_scope",
-		Name:      "modify tasks scope",
-		Type:      evergreen.ProjectResourceType,
-		Resources: []string{"spruce"},
-	}
-	err = roleManager.AddScope(modifyProjectTasks)
-	require.NoError(t, err)
-
-	modifyProjectTaskRole := gimlet.Role{
-		ID:          "modify_project_tasks",
-		Name:        evergreen.TasksAdmin.Description,
-		Scope:       modifyProjectTasks.ID,
-		Permissions: map[string]int{evergreen.PermissionTasks: evergreen.TasksAdmin.Value},
-	}
-	err = roleManager.UpdateRole(modifyProjectTaskRole)
-	require.NoError(t, err)
-
 	superUserRole := gimlet.Role{
 		ID:          "superuser",
 		Name:        "superuser",
@@ -262,6 +264,56 @@ func setup(ctx context.Context, t *testing.T, state *AtomicGraphQLState) {
 	require.NoError(t, err)
 
 	// Scopes and roles for testing viewable projects for testuser
+	projectSpruceScope := gimlet.Scope{
+		ID:        "project_spruce_scope",
+		Name:      "spruce",
+		Type:      evergreen.ProjectResourceType,
+		Resources: []string{"spruce"},
+	}
+	err = roleManager.AddScope(projectSpruceScope)
+	require.NoError(t, err)
+
+	projectSpruceRole := gimlet.Role{
+		ID:    "project_spruce",
+		Name:  "spruce",
+		Scope: projectSpruceScope.ID,
+		Permissions: map[string]int{
+			evergreen.PermissionProjectSettings: evergreen.ProjectSettingsEdit.Value,
+			evergreen.PermissionAnnotations:     evergreen.AnnotationsModify.Value,
+			evergreen.PermissionTasks:           evergreen.TasksAdmin.Value,
+			evergreen.PermissionPatches:         evergreen.PatchSubmitAdmin.Value,
+			evergreen.PermissionLogs:            evergreen.LogsView.Value,
+		},
+		Owners: []string{"testuser"},
+	}
+	err = roleManager.UpdateRole(projectSpruceRole)
+	require.NoError(t, err)
+
+	projectSandboxScope := gimlet.Scope{
+		ID:        "project_sandbox_scope",
+		Name:      "sandbox",
+		Type:      evergreen.ProjectResourceType,
+		Resources: []string{"sandbox_project_id"},
+	}
+	err = roleManager.AddScope(projectSandboxScope)
+	require.NoError(t, err)
+
+	projectSandboxRole := gimlet.Role{
+		ID:    "project_sandbox",
+		Name:  "sandbox",
+		Scope: projectSandboxScope.ID,
+		Permissions: map[string]int{
+			evergreen.PermissionProjectSettings: evergreen.ProjectSettingsEdit.Value,
+			evergreen.PermissionAnnotations:     evergreen.AnnotationsModify.Value,
+			evergreen.PermissionTasks:           evergreen.TasksAdmin.Value,
+			evergreen.PermissionPatches:         evergreen.PatchSubmitAdmin.Value,
+			evergreen.PermissionLogs:            evergreen.LogsView.Value,
+		},
+		Owners: []string{"testuser"},
+	}
+	err = roleManager.UpdateRole(projectSandboxRole)
+	require.NoError(t, err)
+
 	projectGrumpyCatScope := gimlet.Scope{
 		ID:        "project_grumpyCat_scope",
 		Name:      "grumpyCat",
@@ -272,11 +324,17 @@ func setup(ctx context.Context, t *testing.T, state *AtomicGraphQLState) {
 	require.NoError(t, err)
 
 	projectGrumpyCatRole := gimlet.Role{
-		ID:          "project_grumpyCat",
-		Name:        "grumpyCat",
-		Scope:       projectGrumpyCatScope.ID,
-		Permissions: map[string]int{"project_settings": 20, "project_tasks": 30, "project_patches": 10, "project_logs": 10},
-		Owners:      []string{"testuser"},
+		ID:    "project_grumpyCat",
+		Name:  "grumpyCat",
+		Scope: projectGrumpyCatScope.ID,
+		Permissions: map[string]int{
+			evergreen.PermissionProjectSettings: evergreen.ProjectSettingsEdit.Value,
+			evergreen.PermissionAnnotations:     evergreen.AnnotationsModify.Value,
+			evergreen.PermissionTasks:           evergreen.TasksAdmin.Value,
+			evergreen.PermissionPatches:         evergreen.PatchSubmitAdmin.Value,
+			evergreen.PermissionLogs:            evergreen.LogsView.Value,
+		},
+		Owners: []string{"testuser"},
 	}
 	err = roleManager.UpdateRole(projectGrumpyCatRole)
 	require.NoError(t, err)
@@ -291,11 +349,18 @@ func setup(ctx context.Context, t *testing.T, state *AtomicGraphQLState) {
 	require.NoError(t, err)
 
 	projectHappyAbyssinianRole := gimlet.Role{
-		ID:          "project_happyAbyssinian",
-		Name:        "happyAbyssinian",
-		Scope:       projectHappyAbyssinianScope.ID,
-		Permissions: map[string]int{"project_settings": 20, "project_tasks": 30, "project_patches": 10, "project_logs": 10},
-		Owners:      []string{"testuser"},
+		ID:    "project_happyAbyssinian",
+		Name:  "happyAbyssinian",
+		Scope: projectHappyAbyssinianScope.ID,
+		Permissions: map[string]int{
+			evergreen.PermissionProjectSettings: evergreen.ProjectSettingsEdit.Value,
+			evergreen.PermissionAnnotations:     evergreen.AnnotationsModify.Value,
+			// Note: this project only gives basic, not admin, task permissions.
+			evergreen.PermissionTasks:   evergreen.TasksBasic.Value,
+			evergreen.PermissionPatches: evergreen.PatchSubmitAdmin.Value,
+			evergreen.PermissionLogs:    evergreen.LogsView.Value,
+		},
+		Owners: []string{"testuser"},
 	}
 	err = roleManager.UpdateRole(projectHappyAbyssinianRole)
 	require.NoError(t, err)
@@ -471,7 +536,6 @@ func spawnTestHostAndVolume(t *testing.T) {
 		IP:                 "",
 		ExternalIdentifier: "",
 		DisplayName:        "",
-		Project:            "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
 		Zone:               "us-east-1a",
 		Provisioned:        true,
 	}

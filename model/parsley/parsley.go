@@ -1,10 +1,28 @@
 package parsley
 
 import (
+	"reflect"
 	"regexp"
 
+	"github.com/evergreen-ci/evergreen/util"
 	"github.com/mongodb/grip"
 )
+
+// Settings represents settings that can be configured for the Parsley log viewer.
+type Settings struct {
+	SectionsEnabled          *bool `bson:"sections_enabled,omitempty" json:"sections_enabled,omitempty"`
+	JumpToFailingLineEnabled *bool `bson:"jump_to_failing_line_enabled,omitempty" json:"jump_to_failing_line_enabled,omitempty"`
+}
+
+// MergeExistingParsleySettings returns the merged result of oldSettings and newSettings.
+// newSettings can be a subset of fields, so we populate the unset fields using the
+// user's oldSettings.
+func MergeExistingParsleySettings(oldSettings Settings, newSettings Settings) Settings {
+	reflectOldSettings := reflect.ValueOf(&oldSettings).Elem()
+	reflectNewSettings := reflect.ValueOf(&newSettings).Elem()
+	util.RecursivelySetUndefinedFields(reflectNewSettings, reflectOldSettings)
+	return newSettings
+}
 
 // Filter represents a filter for the Parsley log viewer. Parsley filters can be defined at
 // the project-level and at the user-level.

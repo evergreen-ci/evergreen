@@ -11,6 +11,7 @@ import (
 	"github.com/mongodb/grip/message"
 	"github.com/mongodb/grip/send"
 	"github.com/stretchr/testify/require"
+	"go.opentelemetry.io/otel/trace/noop"
 )
 
 var ExecutionEnvironmentType = "production"
@@ -42,7 +43,7 @@ func Setup() {
 		ctx := context.Background()
 
 		path := filepath.Join(evergreen.FindEvergreenHome(), TestDir, TestSettings)
-		env, err := evergreen.NewEnvironment(ctx, path, "", nil)
+		env, err := evergreen.NewEnvironment(ctx, path, "", nil, noop.NewTracerProvider())
 
 		grip.EmergencyPanic(message.WrapError(err, message.Fields{
 			"message": "could not initialize test environment",
@@ -54,7 +55,7 @@ func Setup() {
 }
 
 func NewEnvironment(ctx context.Context, t *testing.T) evergreen.Environment {
-	env, err := evergreen.NewEnvironment(ctx, filepath.Join(evergreen.FindEvergreenHome(), TestDir, TestSettings), "", nil)
+	env, err := evergreen.NewEnvironment(ctx, filepath.Join(evergreen.FindEvergreenHome(), TestDir, TestSettings), "", nil, noop.NewTracerProvider())
 	require.NoError(t, err)
 	return env
 }
@@ -89,9 +90,8 @@ func MockConfig() *evergreen.Settings {
 			Name:       "amboy",
 			SingleName: "single",
 			DBConnection: evergreen.AmboyDBConfig{
-				Database:  "db",
-				URL:       "mongodb://localhost:27017",
-				KanopyURL: "mongodb://localhost:27018",
+				Database: "db",
+				URL:      "mongodb://localhost:27017",
 			},
 			PoolSizeLocal:                         10,
 			PoolSizeRemote:                        20,
@@ -223,7 +223,6 @@ func MockConfig() *evergreen.Settings {
 			},
 			DefaultProject: "proj",
 		},
-		Keys: map[string]string{"k3": "v3"},
 		TaskLimits: evergreen.TaskLimitsConfig{
 			MaxTasksPerVersion: 1000,
 		},
@@ -383,6 +382,9 @@ func MockConfig() *evergreen.Settings {
 			LegacyUIPublicAccessDisabled:    true,
 			SleepScheduleDisabled:           true,
 			SystemFailedTaskRestartDisabled: true,
+		},
+		SleepSchedule: evergreen.SleepScheduleConfig{
+			PermanentlyExemptHosts: []string{"host0", "host1"},
 		},
 		SSHKeyDirectory: "/ssh_key_directory",
 		SSHKeyPairs: []evergreen.SSHKeyPair{

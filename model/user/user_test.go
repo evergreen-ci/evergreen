@@ -8,6 +8,7 @@ import (
 
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/db"
+	"github.com/evergreen-ci/evergreen/model/parsley"
 	"github.com/evergreen-ci/evergreen/testutil"
 	"github.com/evergreen-ci/gimlet"
 	"github.com/evergreen-ci/utility"
@@ -753,6 +754,77 @@ func TestGeneralSubscriptionIDs(t *testing.T) {
 	}, u.GeneralSubscriptionIDs())
 }
 
+func TestViewableProject(t *testing.T) {
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+	env := testutil.NewEnvironment(ctx, t)
+	rm := env.RoleManager()
+
+	assert.NoError(t, db.ClearCollections(evergreen.RoleCollection, evergreen.ScopeCollection, Collection))
+
+	restrictedProjectScope := gimlet.Scope{
+		ID:        "restricted_project_scope",
+		Name:      "restricted projects",
+		Resources: []string{"parsley"},
+		Type:      evergreen.ProjectResourceType,
+	}
+	err := rm.AddScope(restrictedProjectScope)
+	assert.NoError(t, err)
+
+	parsleyAccessRoleId := "parsley_access"
+	parsleyAccessRole := gimlet.Role{
+		ID:          parsleyAccessRoleId,
+		Name:        "parsley access",
+		Scope:       "restricted_project_scope",
+		Permissions: map[string]int{evergreen.PermissionTasks: 20, evergreen.PermissionPatches: 10, evergreen.PermissionLogs: 10, evergreen.PermissionAnnotations: 10},
+	}
+	err = rm.UpdateRole(parsleyAccessRole)
+	assert.NoError(t, err)
+
+	unrestrictedProjectScope := gimlet.Scope{
+		ID:        evergreen.UnrestrictedProjectsScope,
+		Name:      "unrestricted projects",
+		Type:      evergreen.ProjectResourceType,
+		Resources: []string{"mci", "spruce"},
+	}
+	err = rm.AddScope(unrestrictedProjectScope)
+	assert.NoError(t, err)
+
+	basicProjectAccessRole := gimlet.Role{
+		ID:          evergreen.BasicProjectAccessRole,
+		Name:        "basic access",
+		Scope:       evergreen.UnrestrictedProjectsScope,
+		Permissions: map[string]int{evergreen.PermissionTasks: 20, evergreen.PermissionPatches: 10, evergreen.PermissionLogs: 10, evergreen.PermissionAnnotations: 10},
+	}
+	err = rm.UpdateRole(basicProjectAccessRole)
+	assert.NoError(t, err)
+
+	myUser := DBUser{
+		Id: "me",
+	}
+	assert.NoError(t, myUser.Insert())
+	err = myUser.AddRole(evergreen.BasicProjectAccessRole)
+	assert.NoError(t, err)
+
+	// assert that viewable projects contains the edit projects and the view projects
+	projects, err := myUser.GetViewableProjects(ctx)
+	assert.NoError(t, err)
+	assert.Len(t, projects, 2)
+	assert.Contains(t, projects, "mci")
+	assert.Contains(t, projects, "spruce")
+
+	// assert that adding a role to the user allows them to view the restricted project they didn't have access to before
+	err = myUser.AddRole(parsleyAccessRoleId)
+	assert.NoError(t, err)
+
+	projects, err = myUser.GetViewableProjects(ctx)
+	assert.NoError(t, err)
+	assert.Len(t, projects, 3)
+	assert.Contains(t, projects, "mci")
+	assert.Contains(t, projects, "spruce")
+	assert.Contains(t, projects, "parsley")
+}
+
 func TestViewableProjectSettings(t *testing.T) {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
@@ -819,6 +891,27 @@ func TestViewableProjectSettings(t *testing.T) {
 	assert.Contains(t, projects, "edit2")
 	assert.Contains(t, projects, "view1")
 	assert.NotContains(t, projects, "other")
+}
+
+func TestUpdateParsleySettings(t *testing.T) {
+	require.NoError(t, db.ClearCollections(Collection))
+
+	usr := DBUser{
+		Id: "me",
+	}
+	require.NoError(t, usr.Insert())
+
+	newSettings := parsley.Settings{
+		SectionsEnabled: utility.FalsePtr(),
+	}
+	err := usr.UpdateParsleySettings(newSettings)
+	require.NoError(t, err)
+	assert.Equal(t, utility.FromBoolPtr(usr.ParsleySettings.SectionsEnabled), false)
+
+	dbUser, err := FindOneById(usr.Id)
+	require.NoError(t, err)
+	require.NotNil(t, dbUser)
+	assert.Equal(t, utility.FromBoolPtr(dbUser.ParsleySettings.SectionsEnabled), false)
 }
 
 func (s *UserTestSuite) TestClearUser() {

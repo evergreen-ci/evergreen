@@ -25,7 +25,6 @@ func NewConfigModel() *APIAdminSettings {
 		HostJasper:        &APIHostJasperConfig{},
 		Jira:              &APIJiraConfig{},
 		JIRANotifications: &APIJIRANotificationsConfig{},
-		Keys:              map[string]string{},
 		LDAPRoleMap:       &APILDAPRoleMap{},
 		LoggerConfig:      &APILoggerConfig{},
 		NewRelic:          &APINewRelicConfig{},
@@ -38,6 +37,7 @@ func NewConfigModel() *APIAdminSettings {
 		Scheduler:         &APISchedulerConfig{},
 		ServiceFlags:      &APIServiceFlags{},
 		Slack:             &APISlackConfig{},
+		SleepSchedule:     &APISleepScheduleConfig{},
 		Splunk:            &APISplunkConfig{},
 		TaskLimits:        &APITaskLimitsConfig{},
 		Triggers:          &APITriggerConfig{},
@@ -73,7 +73,6 @@ type APIAdminSettings struct {
 	HostJasper          *APIHostJasperConfig              `json:"host_jasper,omitempty"`
 	Jira                *APIJiraConfig                    `json:"jira,omitempty"`
 	JIRANotifications   *APIJIRANotificationsConfig       `json:"jira_notifications,omitempty"`
-	Keys                map[string]string                 `json:"keys,omitempty"`
 	KanopySSHKeyPath    *string                           `json:"kanopy_ssh_key_path,omitempty"`
 	LDAPRoleMap         *APILDAPRoleMap                   `json:"ldap_role_map,omitempty"`
 	LoggerConfig        *APILoggerConfig                  `json:"logger_config,omitempty"`
@@ -89,6 +88,7 @@ type APIAdminSettings struct {
 	Scheduler           *APISchedulerConfig               `json:"scheduler,omitempty"`
 	ServiceFlags        *APIServiceFlags                  `json:"service_flags,omitempty"`
 	Slack               *APISlackConfig                   `json:"slack,omitempty"`
+	SleepSchedule       *APISleepScheduleConfig           `json:"sleep_schedule,omitempty"`
 	SSHKeyDirectory     *string                           `json:"ssh_key_directory,omitempty"`
 	SSHKeyPairs         []APISSHKeyPair                   `json:"ssh_key_pairs,omitempty"`
 	Splunk              *APISplunkConfig                  `json:"splunk,omitempty"`
@@ -113,6 +113,8 @@ func (as *APIAdminSettings) BuildFromService(h interface{}) error {
 		for i := 0; i < apiModelReflect.NumField(); i++ {
 			propName := apiModelReflect.Type().Field(i).Name
 			val := apiModelReflect.FieldByName(propName)
+			if strings.ToLower(propName) == "sleepscheduleconfig" {
+			}
 			if val.IsNil() {
 				continue
 			}
@@ -142,7 +144,6 @@ func (as *APIAdminSettings) BuildFromService(h interface{}) error {
 		as.PprofPort = &v.PprofPort
 		as.Credentials = v.Credentials
 		as.Expansions = v.Expansions
-		as.Keys = v.Keys
 		as.KanopySSHKeyPath = utility.ToStringPtr(v.KanopySSHKeyPath)
 		as.GithubOrgs = v.GithubOrgs
 		as.DisabledGQLQueries = v.DisabledGQLQueries
@@ -202,7 +203,6 @@ func (as *APIAdminSettings) ToService() (interface{}, error) {
 	settings := evergreen.Settings{
 		Credentials:        map[string]string{},
 		Expansions:         map[string]string{},
-		Keys:               map[string]string{},
 		Plugins:            evergreen.PluginConfig{},
 		GithubOrgs:         as.GithubOrgs,
 		DisabledGQLQueries: as.DisabledGQLQueries,
@@ -265,9 +265,6 @@ func (as *APIAdminSettings) ToService() (interface{}, error) {
 	}
 	for k, v := range as.Expansions {
 		settings.Expansions[k] = v
-	}
-	for k, v := range as.Keys {
-		settings.Keys[k] = v
 	}
 	settings.KanopySSHKeyPath = utility.FromStringPtr(as.KanopySSHKeyPath)
 	for k, v := range as.Plugins {
@@ -409,18 +406,16 @@ func (a *APIAmboyConfig) ToService() (interface{}, error) {
 }
 
 type APIAmboyDBConfig struct {
-	URL       *string `json:"url"`
-	KanopyURL *string `json:"kanopy_url"`
-	Database  *string `json:"database"`
-	Username  *string `json:"username"`
-	Password  *string `json:"password"`
+	URL      *string `json:"url"`
+	Database *string `json:"database"`
+	Username *string `json:"username"`
+	Password *string `json:"password"`
 }
 
 func (a *APIAmboyDBConfig) BuildFromService(h interface{}) error {
 	switch v := h.(type) {
 	case evergreen.AmboyDBConfig:
 		a.URL = utility.ToStringPtr(v.URL)
-		a.KanopyURL = utility.ToStringPtr(v.KanopyURL)
 		a.Database = utility.ToStringPtr(v.Database)
 		return nil
 	default:
@@ -430,9 +425,8 @@ func (a *APIAmboyDBConfig) BuildFromService(h interface{}) error {
 
 func (a *APIAmboyDBConfig) ToService() (interface{}, error) {
 	return evergreen.AmboyDBConfig{
-		URL:       utility.FromStringPtr(a.URL),
-		KanopyURL: utility.FromStringPtr(a.KanopyURL),
-		Database:  utility.FromStringPtr(a.Database),
+		URL:      utility.FromStringPtr(a.URL),
+		Database: utility.FromStringPtr(a.Database),
 	}, nil
 }
 
@@ -681,16 +675,18 @@ func (a *APIBucketsConfig) ToService() (interface{}, error) {
 }
 
 type APICedarConfig struct {
-	BaseURL *string `json:"base_url"`
-	RPCPort *string `json:"rpc_port"`
-	User    *string `json:"user"`
-	APIKey  *string `json:"api_key"`
+	BaseURL     *string `json:"base_url"`
+	GRPCBaseURL *string `json:"grpc_base_url"`
+	RPCPort     *string `json:"rpc_port"`
+	User        *string `json:"user"`
+	APIKey      *string `json:"api_key"`
 }
 
 func (a *APICedarConfig) BuildFromService(h interface{}) error {
 	switch v := h.(type) {
 	case evergreen.CedarConfig:
 		a.BaseURL = utility.ToStringPtr(v.BaseURL)
+		a.GRPCBaseURL = utility.ToStringPtr(v.GRPCBaseURL)
 		a.RPCPort = utility.ToStringPtr(v.RPCPort)
 		a.User = utility.ToStringPtr(v.User)
 		a.APIKey = utility.ToStringPtr(v.APIKey)
@@ -702,10 +698,11 @@ func (a *APICedarConfig) BuildFromService(h interface{}) error {
 
 func (a *APICedarConfig) ToService() (interface{}, error) {
 	return evergreen.CedarConfig{
-		BaseURL: utility.FromStringPtr(a.BaseURL),
-		RPCPort: utility.FromStringPtr(a.RPCPort),
-		User:    utility.FromStringPtr(a.User),
-		APIKey:  utility.FromStringPtr(a.APIKey),
+		BaseURL:     utility.FromStringPtr(a.BaseURL),
+		GRPCBaseURL: utility.FromStringPtr(a.GRPCBaseURL),
+		RPCPort:     utility.FromStringPtr(a.RPCPort),
+		User:        utility.FromStringPtr(a.User),
+		APIKey:      utility.FromStringPtr(a.APIKey),
 	}, nil
 }
 
@@ -2275,6 +2272,29 @@ func (a *APISlackOptions) ToService() (interface{}, error) {
 	}, nil
 }
 
+type APISleepScheduleConfig struct {
+	PermanentlyExemptHosts []string `json:"permanently_exempt_hosts"`
+}
+
+func (a *APISleepScheduleConfig) BuildFromService(h interface{}) error {
+	switch v := h.(type) {
+	case evergreen.SleepScheduleConfig:
+		a.PermanentlyExemptHosts = v.PermanentlyExemptHosts
+	default:
+		return errors.Errorf("programmatic error: expected sleep schedule config but got type %T", h)
+	}
+	return nil
+}
+
+func (a *APISleepScheduleConfig) ToService() (interface{}, error) {
+	if a == nil {
+		return evergreen.SleepScheduleConfig{}, nil
+	}
+	return evergreen.SleepScheduleConfig{
+		PermanentlyExemptHosts: a.PermanentlyExemptHosts,
+	}, nil
+}
+
 type APISplunkConfig struct {
 	SplunkConnectionInfo *APISplunkConnectionInfo `json:"splunk_connection_info"`
 }
@@ -2797,8 +2817,10 @@ func (c *APIGitHubCheckRunConfig) ToService() (interface{}, error) {
 }
 
 type APITaskLimitsConfig struct {
-	MaxTasksPerVersion    *int `json:"max_tasks_per_version"`
-	MaxIncludesPerVersion *int `json:"max_includes_per_version"`
+	MaxTasksPerVersion       *int `json:"max_tasks_per_version"`
+	MaxIncludesPerVersion    *int `json:"max_includes_per_version"`
+	MaxPendingGeneratedTasks *int `json:"max_pending_generated_tasks"`
+	MaxGenerateTaskJSONSize  *int `json:"max_generate_task_json_size"`
 }
 
 func (c *APITaskLimitsConfig) BuildFromService(h interface{}) error {
@@ -2806,6 +2828,8 @@ func (c *APITaskLimitsConfig) BuildFromService(h interface{}) error {
 	case evergreen.TaskLimitsConfig:
 		c.MaxTasksPerVersion = utility.ToIntPtr(v.MaxTasksPerVersion)
 		c.MaxIncludesPerVersion = utility.ToIntPtr(v.MaxIncludesPerVersion)
+		c.MaxPendingGeneratedTasks = utility.ToIntPtr(v.MaxPendingGeneratedTasks)
+		c.MaxGenerateTaskJSONSize = utility.ToIntPtr(v.MaxGenerateTaskJSONSize)
 		return nil
 	default:
 		return errors.Errorf("programmatic error: expected task limits config but got type %T", h)
@@ -2814,7 +2838,9 @@ func (c *APITaskLimitsConfig) BuildFromService(h interface{}) error {
 
 func (c *APITaskLimitsConfig) ToService() (interface{}, error) {
 	return evergreen.TaskLimitsConfig{
-		MaxTasksPerVersion:    utility.FromIntPtr(c.MaxTasksPerVersion),
-		MaxIncludesPerVersion: utility.FromIntPtr(c.MaxIncludesPerVersion),
+		MaxTasksPerVersion:       utility.FromIntPtr(c.MaxTasksPerVersion),
+		MaxIncludesPerVersion:    utility.FromIntPtr(c.MaxIncludesPerVersion),
+		MaxPendingGeneratedTasks: utility.FromIntPtr(c.MaxPendingGeneratedTasks),
+		MaxGenerateTaskJSONSize:  utility.FromIntPtr(c.MaxGenerateTaskJSONSize),
 	}, nil
 }

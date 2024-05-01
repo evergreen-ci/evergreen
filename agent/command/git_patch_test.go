@@ -9,7 +9,6 @@ import (
 	"github.com/evergreen-ci/evergreen/agent/internal"
 	"github.com/evergreen-ci/evergreen/agent/internal/client"
 	agentutil "github.com/evergreen-ci/evergreen/agent/internal/testutil"
-	"github.com/evergreen-ci/evergreen/apimodels"
 	"github.com/evergreen-ci/evergreen/db"
 	"github.com/evergreen-ci/evergreen/model"
 	"github.com/evergreen-ci/evergreen/model/patch"
@@ -48,7 +47,6 @@ func TestPatchPluginAPI(t *testing.T) {
 		taskConfig, err := agentutil.MakeTaskConfigFromModelData(ctx, settings, modelData)
 		require.NoError(t, err)
 		taskConfig.Expansions = *util.NewExpansions(settings.Credentials)
-		taskConfig.Distro = &apimodels.DistroView{CloneMethod: evergreen.CloneMethodOAuth}
 
 		err = setupTestPatchData(modelData, patchFile, t)
 		require.NoError(t, err)
@@ -119,7 +117,6 @@ func TestPatchPlugin(t *testing.T) {
 		taskConfig, err := agentutil.MakeTaskConfigFromModelData(ctx, settings, modelData)
 		require.NoError(t, err)
 		taskConfig.Expansions = *util.NewExpansions(settings.Credentials)
-		taskConfig.Distro = &apimodels.DistroView{CloneMethod: evergreen.CloneMethodOAuth}
 
 		err = setupTestPatchData(modelData, patchFile, t)
 		require.NoError(t, err)

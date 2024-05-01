@@ -1,6 +1,7 @@
 query {
   taskTestSample(
-    tasks: ["display_task_5e4ff3abe3c3317e352062e4_20_02_21_15_13_48"],
+    versionId: "5e4ff3abe3c3317e352062e4",
+    taskIds: ["display_task_5e4ff3abe3c3317e352062e4_20_02_21_15_13_48"],
     filters: [{
         testName: "TestHostTaskAuditing"
         testStatus: "failed"

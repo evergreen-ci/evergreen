@@ -97,6 +97,7 @@ Admin Settings
 						<li class="link" ng-click="scrollTo('host_jasper')">Host Jasper</li>
 						<li class="link" ng-click="scrollTo('jira_notifications')">JIRA Custom Field Mappings</li>
 						<li class="link" ng-click="scrollTo('spawnhosts')">Spawn Hosts</li>
+						<li class="link" ng-click="scrollTo('sleep_schedule')">Sleep Schedules</li>
 						<li class="link" ng-click="scrollTo('tracer')">Tracer Config</li>
 						<li class="link" ng-click="scrollTo('project_creation')">Project Creation</li>
 						<li class="link" ng-click="scrollTo('github_check_run')">GitHub Check Run</li>
@@ -604,6 +605,14 @@ Admin Settings
 									<md-input-container class="control" style="width:45%;">
 										<label>Max Includes per Version</label>
 										<input type="number" ng-model="Settings.task_limits.max_includes_per_version">
+									</md-input-container>
+									<md-input-container class="control" style="width:45%;">
+										<label>Max Pending Generated Tasks</label>
+										<input type="number" ng-model="Settings.task_limits.max_pending_generated_tasks">
+									</md-input-container>
+									<md-input-container class="control" style="width:45%;">
+										<label>Generate Task JSON Limit (MB)</label>
+										<input type="number" ng-model="Settings.task_limits.max_generate_task_json_size">
 									</md-input-container>
 								</md-card-content>
 							</md-card>
@@ -1417,8 +1426,12 @@ Admin Settings
 								</md-card-title>
 								<md-card-content>
 									<md-input-container class="control" style="width:45%;">
-										<label>Base URL</label>
+										<label>HTTP Base URL</label>
 										<input type="text" ng-model="Settings.cedar.base_url">
+									</md-input-container>
+									<md-input-container class="control" style="width:45%;">
+										<label>GRPC Base URL</label>
+										<input type="text" ng-model="Settings.cedar.grpc_base_url">
 									</md-input-container>
 									<md-input-container class="control" style="width:45%;">
 										<label>RPC Port</label>
@@ -1458,10 +1471,6 @@ Admin Settings
 									<md-input-container class="control" style="width:45%;">
 										<label>DB URL</label>
 										<input type="text" ng-model="Settings.amboy.db_connection.url">
-									</md-input-container>
-									<md-input-container class="control" style="width:45%;">
-										<label>Kanopy DB URL</label>
-										<input type="text" ng-model="Settings.amboy.db_connection.kanopy_url">
 									</md-input-container>
 									<md-input-container class="control" style="width:45%;">
 										<label>DB name</label>
@@ -2427,9 +2436,28 @@ Admin Settings
 										<label>Unexpirable Spawn Hosts per user</label>
 										<input type="number" ng-model="Settings.spawnhost.unexpirable_hosts_per_user">
 									</md-input-container>
-									<md-input-container class="control" style="width:45%; margin-left:50px;">
+									<md-input-container class="control" style="width:45%;">
 										<label>Unexpirable Volumes per user</label>
 										<input type="number" ng-model="Settings.spawnhost.unexpirable_volumes_per_user">
+									</md-input-container>
+								</md-card-content>
+							</md-card>
+						</section>
+						<section layout="row" flex>
+							<md-card flex=50 id="sleep_schedule">
+								<md-card-title>
+									<md-card-title-text>
+										<span>Sleep Schedules</span>
+									</md-card-title-text>
+									<md-button ng-click="clearSection('sleep_schedule')">
+										<i class="fa fa-trash"></i>
+									</md-button>
+								</md-card-title>
+								<md-card-content>
+									<md-input-container class="control" style="width:45%;">
+										<label>Permanently Exempt Hosts</label>
+										<textarea ng-model="Settings.sleep_schedule.permanently_exempt_hosts" ng-list="&#10;" ng-trim="false" rows="3"
+											md-select-on-focus></textarea>
 									</md-input-container>
 								</md-card-content>
 							</md-card>
@@ -2547,9 +2575,6 @@ Admin Settings
 									</md-button>
 								</md-card-title>
 								<md-card-content>
-										<div class="small" style="height:25px;">
-											This is being used as a feature flag. Do not set to 10 or above unless you are sure you want to enable this feature.
-										</div>
 									<md-input-container class="control" style="width:45%;">
 										<label>Check Run Limit per Patch</label>
 										<input type="number" ng-model="Settings.github_check_run.check_run_limit">

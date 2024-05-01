@@ -137,16 +137,6 @@ func CreateDistro(ctx context.Context, u *user.DBUser, newDistroId string) error
 		User:     "ubuntu",
 	}
 
-	// Get default SSH key by taking the first key encountered.
-	settings, err := evergreen.GetConfig(ctx)
-	if err != nil {
-		return errors.Wrap(err, "getting admin settings")
-	}
-	for keyName := range settings.Keys {
-		defaultDistro.SSHKey = keyName
-		break
-	}
-
 	return newDistro(ctx, defaultDistro, u)
 }
 

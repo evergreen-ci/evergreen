@@ -6,8 +6,7 @@ import (
 	"time"
 
 	"github.com/evergreen-ci/evergreen"
-	"github.com/mongodb/grip"
-	"github.com/mongodb/grip/message"
+	"github.com/evergreen-ci/evergreen/agent/globals"
 	"github.com/mongodb/grip/recovery"
 )
 
@@ -26,7 +25,7 @@ import (
 //     as repeatedly failing to heartbeat.
 func (a *Agent) startHeartbeat(ctx context.Context, preAndMainCancel context.CancelFunc, tc *taskContext) {
 	defer recovery.LogStackTraceAndContinue("heartbeat background process")
-	heartbeatInterval := defaultHeartbeatInterval
+	heartbeatInterval := globals.DefaultHeartbeatInterval
 	if a.opts.HeartbeatInterval != 0 {
 		heartbeatInterval = a.opts.HeartbeatInterval
 	}
@@ -47,14 +46,6 @@ func (a *Agent) startHeartbeat(ctx context.Context, preAndMainCancel context.Can
 				timeoutOpts := tc.getHeartbeatTimeout()
 				timeout := timeoutOpts.getTimeout()
 				msg := fmt.Sprintf("Heartbeat has hit maximum allowed '%s' timeout of %s; task is at risk of timing out if it runs for much longer.", timeoutOpts.kind, timeout.String())
-				grip.Alert(message.Fields{
-					"message":        msg,
-					"task_id":        tc.taskConfig.Task.Id,
-					"task_execution": tc.taskConfig.Task.Execution,
-					"timeout_type":   timeoutOpts.kind,
-					"timeout_start":  timeoutOpts.startAt,
-					"timeout_secs":   timeout.Seconds(),
-				})
 				tc.logger.Task().Errorf(msg)
 				if !hasSentAbort {
 					preAndMainCancel()
@@ -74,7 +65,7 @@ func (a *Agent) startHeartbeat(ctx context.Context, preAndMainCancel context.Can
 				// signal to the app server that post tasks are still running.
 				// This is a best-effort attempt, since there's no graceful way
 				// to handle heartbeat failures when abort was already sent.
-				if numRepeatedFailures == maxHeartbeats {
+				if numRepeatedFailures == globals.MaxHeartbeats {
 					tc.logger.Task().Error("Hit max heartbeat attempts when task is already aborted; task is at risk of timing out if it runs for much longer.")
 				}
 				continue
@@ -85,7 +76,7 @@ func (a *Agent) startHeartbeat(ctx context.Context, preAndMainCancel context.Can
 				hasSentAbort = true
 				continue
 			}
-			if numRepeatedFailures == maxHeartbeats {
+			if numRepeatedFailures == globals.MaxHeartbeats {
 				tc.logger.Task().Error("Hit max heartbeat attempts, aborting task.")
 				preAndMainCancel()
 				hasSentAbort = true
@@ -130,7 +121,7 @@ func (a *Agent) startIdleTimeoutWatcher(ctx context.Context, cancel context.Canc
 
 			if timeSinceLastMessage > timeout {
 				tc.logger.Task().Errorf("Hit idle timeout (no message on stdout/stderr for more than %s).", timeout)
-				tc.reachTimeOut(idleTimeout, timeout)
+				tc.reachTimeOut(globals.IdleTimeout, timeout)
 				return
 			}
 		}
@@ -142,7 +133,7 @@ type timeoutWatcherOptions struct {
 	// tc is the task context for the current running task.
 	tc *taskContext
 	// kind is the kind of timeout that's being waited for.
-	kind timeoutType
+	kind globals.TimeoutType
 	// getTimeout returns the timeout.
 	getTimeout func() time.Duration
 	// canMarkTimeoutFailure indicates whether the timeout watcher can mark the

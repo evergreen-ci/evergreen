@@ -23,6 +23,7 @@ import (
 	"github.com/mongodb/grip/sometimes"
 	"github.com/pkg/errors"
 	"go.mongodb.org/mongo-driver/mongo"
+	"go.opentelemetry.io/otel/attribute"
 )
 
 // if a host encounters more than this number of system failures, then it should be disabled.
@@ -97,6 +98,10 @@ func (h *hostAgentNextTask) Run(ctx context.Context) gimlet.Responder {
 	begin := time.Now()
 
 	setAgentFirstContactTime(ctx, h.host)
+
+	if err := h.host.UnsetTaskGroupTeardownStartTime(ctx); err != nil {
+		return gimlet.MakeJSONInternalErrorResponder(err)
+	}
 
 	grip.Error(message.WrapError(h.host.SetUserDataHostProvisioned(ctx), message.Fields{
 		"message":      "failed to mark host as done provisioning with user data",
@@ -243,6 +248,10 @@ func (h *hostAgentNextTask) Run(ctx context.Context) gimlet.Responder {
 				"message": "host task group finished, not assigning task",
 				"host_id": h.host.Id,
 			})
+			err = h.host.SetTaskGroupTeardownStartTime(ctx)
+			if err != nil {
+				return gimlet.MakeJSONErrorResponder(err)
+			}
 			nextTaskResponse.ShouldTeardownGroup = true
 		} else {
 			// if the task is empty, still send it with a status ok and check it on the other side
@@ -316,6 +325,8 @@ func (h *hostAgentNextTask) prepareHostForAgentExit(ctx context.Context, params 
 // fixIntentHostRunningAgent handles an exceptional case in which an ephemeral
 // host is still believed to be an intent host but somehow the agent is running
 // on an EC2 instance associated with that intent host.
+// TODO (DEVPROD-6752): remove this once hosts have all transitioned to using
+// new route.
 func (h *hostAgentNextTask) fixIntentHostRunningAgent(ctx context.Context, host *host.Host, instanceID string) error {
 	if !evergreen.IsEc2Provider(host.Provider) {
 		// Intent host issues only affect ephemeral (i.e. EC2) hosts.
@@ -351,6 +362,8 @@ func (h *hostAgentNextTask) fixIntentHostRunningAgent(ctx context.Context, host 
 // transitionIntentHostToStarting converts an intent host to a real host
 // because it's alive in the cloud. It is marked as starting to indicate that
 // the host has started and can run tasks.
+// TODO (DEVPROD-6752): remove this once hosts have transitioned to using new
+// route.
 func (h *hostAgentNextTask) transitionIntentHostToStarting(ctx context.Context, hostToStart *host.Host, instanceID string) error {
 	grip.Notice(message.Fields{
 		"message":     "DB-EC2 state mismatch - found EC2 instance running an agent, but Evergreen believes the host still an intent host",
@@ -376,6 +389,8 @@ func (h *hostAgentNextTask) transitionIntentHostToStarting(ctx context.Context, 
 // transitionIntentHostToDecommissioned converts an intent host to a real
 // host because it's alive in the cloud. It is marked as decommissioned to
 // indicate that the host is not valid and should be terminated.
+// TODO (DEVPROD-6752): remove this once hosts have transitioned to using new
+// route.
 func (h *hostAgentNextTask) transitionIntentHostToDecommissioned(ctx context.Context, hostToDecommission *host.Host, instanceID string) error {
 	grip.Notice(message.Fields{
 		"message":     "DB-EC2 state mismatch - found EC2 instance running an agent, but Evergreen believes the host is a stale building intent host",
@@ -476,6 +491,7 @@ func assignNextAvailableTask(ctx context.Context, env evergreen.Environment, tas
 	// continues until the task queue is empty. This means that every
 	// continue must be preceded by dequeueing the current task from the
 	// queue to prevent an infinite loop.
+
 	for taskQueue.Length() != 0 {
 		if err = ctx.Err(); err != nil {
 			return nil, false, errors.WithStack(err)
@@ -483,13 +499,13 @@ func assignNextAvailableTask(ctx context.Context, env evergreen.Environment, tas
 
 		var queueItem *model.TaskQueueItem
 		switch d.DispatcherSettings.Version {
-		case evergreen.DispatcherVersionRevised, evergreen.DispatcherVersionRevisedWithDependencies:
+		case evergreen.DispatcherVersionRevisedWithDependencies:
 			queueItem, err = dispatcher.RefreshFindNextTask(ctx, d.Id, spec, amiUpdatedTime)
 			if err != nil {
 				return nil, false, errors.Wrap(err, "problem getting next task")
 			}
 		default:
-			queueItem, _ = taskQueue.FindNextTask(ctx, spec)
+			return nil, false, errors.Errorf("invalid dispatcher version '%s' for host '%s'", d.DispatcherSettings.Version, currentHost.Id)
 		}
 
 		if queueItem == nil {
@@ -682,6 +698,13 @@ func assignNextAvailableTask(ctx context.Context, env evergreen.Environment, tas
 		}))
 
 		return nextTask, false, nil
+	}
+
+	if taskQueue.Length() == 0 && details.TaskGroup != "" {
+		// if we have reached the end of the queue and the previous task was part of a task group,
+		// the current task group is finished and needs to be torn down.
+		return nil, true, nil
+
 	}
 
 	return nil, false, nil
@@ -1226,6 +1249,13 @@ func (h *hostAgentEndTask) Parse(ctx context.Context, r *http.Request) error {
 // If the task is a patch, it will alert the users based on failures
 // It also updates the expected task duration of the task for scheduling.
 func (h *hostAgentEndTask) Run(ctx context.Context) gimlet.Responder {
+	ctx = utility.ContextWithAttributes(ctx, []attribute.KeyValue{
+		attribute.String(evergreen.HostIDOtelAttribute, h.hostID),
+		attribute.String(evergreen.TaskIDOtelAttribute, h.taskID),
+	})
+	ctx, span := tracer.Start(ctx, "host-agent-end-task")
+	defer span.End()
+
 	finishTime := time.Now()
 
 	t, err := task.FindOneId(h.taskID)
@@ -1238,6 +1268,11 @@ func (h *hostAgentEndTask) Run(ctx context.Context) gimlet.Responder {
 			Message:    fmt.Sprintf("task '%s' not found", h.taskID),
 		})
 	}
+	span.SetAttributes(attribute.Int(evergreen.TaskExecutionOtelAttribute, t.Execution))
+	ctx = utility.ContextWithAttributes(ctx, []attribute.KeyValue{
+		attribute.Int(evergreen.TaskExecutionOtelAttribute, t.Execution),
+	})
+
 	currentHost, err := host.FindOneId(ctx, h.hostID)
 	if err != nil {
 		return gimlet.MakeJSONInternalErrorResponder(errors.Wrap(err, "getting host"))

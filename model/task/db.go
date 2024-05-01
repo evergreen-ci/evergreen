@@ -111,6 +111,8 @@ var (
 	GeneratedJSONStorageMethodKey = bsonutil.MustHaveTag(Task{}, "GeneratedJSONStorageMethod")
 	GenerateTasksErrorKey         = bsonutil.MustHaveTag(Task{}, "GenerateTasksError")
 	GeneratedTasksToActivateKey   = bsonutil.MustHaveTag(Task{}, "GeneratedTasksToActivate")
+	NumGeneratedTasksKey          = bsonutil.MustHaveTag(Task{}, "NumGeneratedTasks")
+	NumActivatedGeneratedTasksKey = bsonutil.MustHaveTag(Task{}, "NumActivatedGeneratedTasks")
 	ResetWhenFinishedKey          = bsonutil.MustHaveTag(Task{}, "ResetWhenFinished")
 	ResetFailedWhenFinishedKey    = bsonutil.MustHaveTag(Task{}, "ResetFailedWhenFinished")
 	NumAutomaticRestartsKey       = bsonutil.MustHaveTag(Task{}, "NumAutomaticRestarts")
@@ -130,6 +132,9 @@ var (
 	LastPassingStepbackTaskIdKey = bsonutil.MustHaveTag(StepbackInfo{}, "LastPassingStepbackTaskId")
 	NextStepbackTaskIdKey        = bsonutil.MustHaveTag(StepbackInfo{}, "NextStepbackTaskId")
 	PreviousStepbackTaskIdKey    = bsonutil.MustHaveTag(StepbackInfo{}, "PreviousStepbackTaskId")
+	GeneratedStepbackInfoKey     = bsonutil.MustHaveTag(StepbackInfo{}, "GeneratedStepbackInfo")
+	StepbackInfoDisplayNameKey   = bsonutil.MustHaveTag(StepbackInfo{}, "DisplayName")
+	StepbackInfoBuildVariantKey  = bsonutil.MustHaveTag(StepbackInfo{}, "BuildVariant")
 )
 
 var (

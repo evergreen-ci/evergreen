@@ -20,6 +20,8 @@ type ProjectSettings struct {
 	Vars               ProjectVars          `bson:"vars" json:"vars"`
 	Aliases            []ProjectAlias       `bson:"aliases" json:"aliases"`
 	Subscriptions      []event.Subscription `bson:"subscriptions" json:"subscriptions"`
+	// HasGithubApp indicates if a user has saved an app key and secret for a github app
+	HasGitHubApp bool `bson:"has_github_app" json:"has_github_app"`
 }
 
 type ProjectSettingsEvent struct {
@@ -108,10 +110,34 @@ func (p *ProjectChangeEvents) RedactPrivateVars() {
 		if !isChangeEvent {
 			continue
 		}
+		modifiedPrivateVarKeys := findModifiedPrivateVars(changeEvent)
 		changeEvent.After.Vars = *changeEvent.After.Vars.RedactPrivateVars()
 		changeEvent.Before.Vars = *changeEvent.Before.Vars.RedactPrivateVars()
+		// Here we need to change the after value of modified private variables to
+		// {REDACTED} so the event log will show that the private variable
+		// has been changed in the UI. This is necessary because the above RedactPrivateVars
+		// function redacts private variables to an empty string, which will not get picked up
+		// by the UI as it relies on the before / after diff.
+		for _, privateVarKey := range modifiedPrivateVarKeys {
+			changeEvent.After.Vars.Vars[privateVarKey] = "{REDACTED_AFTER}"
+			changeEvent.Before.Vars.Vars[privateVarKey] = "{REDACTED_BEFORE}"
+		}
 		event.EventLogEntry.Data = changeEvent
 	}
+}
+
+// findModifiedPrivateVars returns a list of private variables that have had
+// their values modified.
+func findModifiedPrivateVars(changeEvent *ProjectChangeEvent) []string {
+	modifiedPrivateVarKeys := []string{}
+	for key, afterVal := range changeEvent.After.Vars.Vars {
+		isPrivateVar := changeEvent.After.Vars.PrivateVars[key]
+		beforeVal, exists := changeEvent.Before.Vars.Vars[key]
+		if isPrivateVar && exists && afterVal != beforeVal {
+			modifiedPrivateVarKeys = append(modifiedPrivateVarKeys, key)
+		}
+	}
+	return modifiedPrivateVarKeys
 }
 
 type ProjectChangeEventEntry struct {
