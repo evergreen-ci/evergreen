@@ -510,17 +510,17 @@ type ContainersOnParents struct {
 }
 
 type HostModifyOptions struct {
-	AddInstanceTags          []Tag
-	DeleteInstanceTags       []string
-	InstanceType             string
-	NoExpiration             *bool         // whether host should never expire
-	AddHours                 time.Duration // duration to extend expiration
-	AttachVolume             string
-	DetachVolume             string
-	SubscriptionType         string
-	NewName                  string
-	AddKey                   string
-	ExtendTemporaryExemption time.Duration
+	AddInstanceTags            []Tag
+	DeleteInstanceTags         []string
+	InstanceType               string
+	NoExpiration               *bool         // whether host should never expire
+	AddHours                   time.Duration // duration to extend expiration
+	AttachVolume               string
+	DetachVolume               string
+	SubscriptionType           string
+	NewName                    string
+	AddKey                     string
+	AddTemporaryExemptionHours int
 }
 
 type SpawnHostUsage struct {

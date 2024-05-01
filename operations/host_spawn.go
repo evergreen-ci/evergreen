@@ -275,14 +275,14 @@ func hostModify() cli.Command {
 			}
 
 			hostChanges := host.HostModifyOptions{
-				AddInstanceTags:          addTags,
-				DeleteInstanceTags:       deleteTagSlice,
-				InstanceType:             instanceType,
-				AddHours:                 time.Duration(extension) * time.Hour,
-				ExtendTemporaryExemption: time.Duration(temporaryExemptionHours) * time.Hour,
-				SubscriptionType:         subscriptionType,
-				NewName:                  displayName,
-				AddKey:                   publicKey,
+				AddInstanceTags:            addTags,
+				DeleteInstanceTags:         deleteTagSlice,
+				InstanceType:               instanceType,
+				AddHours:                   time.Duration(extension) * time.Hour,
+				AddTemporaryExemptionHours: temporaryExemptionHours,
+				SubscriptionType:           subscriptionType,
+				NewName:                    displayName,
+				AddKey:                     publicKey,
 			}
 
 			if noExpire {
@@ -294,10 +294,6 @@ func hostModify() cli.Command {
 			} else {
 				hostChanges.NoExpiration = nil
 			}
-
-			// if temporaryExemptionHours != 0 {
-			//     client.ExtendSpawnHostTemporaryExemption(ctx, hostID, temporaryExemptionHours)
-			// }
 
 			err = client.ModifySpawnHost(ctx, hostID, hostChanges)
 			if err != nil {

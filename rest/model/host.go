@@ -260,13 +260,6 @@ type APISpawnHostModify struct {
 	NewName      *string    `json:"new_name"`
 }
 
-// APISpawnHostTemporaryExemptionOptions provides input for creating or
-// extending a temporary exemption from a host's sleep schedule.
-type APISpawnHostTemporaryExemptionOptions struct {
-	// Number of hours to add to the temporary exemption.
-	AddTemporaryExemptionHours *int `json:"add_temporary_exemption_hours"`
-}
-
 type APIVolumeModify struct {
 	Action     *string    `json:"action"`
 	HostID     *string    `json:"host_id"`

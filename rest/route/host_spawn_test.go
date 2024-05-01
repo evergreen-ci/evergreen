@@ -284,64 +284,19 @@ func TestHostModifyHandlers(t *testing.T) {
 
 			checkSpawnHostModifyQueueGroup(ctx, t, env, 1)
 		},
-		// "ModifyHandlerSetsTemporaryExemption": func(ctx context.Context, t *testing.T, env *mock.Environment, hosts []host.Host) {
-		//     hostID := hosts[0].Id
-		//     rh := &hostModifyHandler{
-		//         env: env,
-		//         options: &host.HostModifyOptions{
-		//             ExtendTemporaryExemption: time.Hour,
-		//         },
-		//         hostID: hostID,
-		//     }
-		//     resp := rh.Run(ctx)
-		//     require.NotZero(t, resp)
-		//     assert.Equal(t, http.StatusOK, resp.Status(), resp.Data())
-		//
-		//     dbHost, err := host.FindOneId(ctx, hostID)
-		//     require.NoError(t, err)
-		//     require.NotZero(t, dbHost)
-		//     assert.WithinDuration(t, time.Now().Add(rh.options.ExtendTemporaryExemption), dbHost.SleepSchedule.TemporarilyExemptUntil, time.Minute)
-		// },
-		// "ModifyHandlerFailsWithNonexistentHost": func(ctx context.Context, t *testing.T, env *mock.Environment, hosts []host.Host) {
-		//     rh := &hostModifyHandler{
-		//         env: env,
-		//         options: &host.HostModifyOptions{
-		//             ExtendTemporaryExemption: time.Hour,
-		//         },
-		//         hostID: "nonexistent",
-		//     }
-		//
-		//     resp := rh.Run(ctx)
-		//     require.NotZero(t, resp)
-		//     assert.Equal(t, http.StatusNotFound, resp.Status())
-		// },
-		// "ModifyHandlerFailsWithTerminatedHost": func(ctx context.Context, t *testing.T, env *mock.Environment, hosts []host.Host) {
-		//     require.NoError(t, hosts[0].SetStatus(evergreen.HostTerminated))
-		//     rh := &hostModifyHandler{
-		//         env: env,
-		//         options: &host.HostModifyOptions{
-		//             ExtendTemporaryExemption: time.Hour,
-		//         },
-		//         hostID: hosts[0].Id,
-		//     }
-		//
-		//     resp := rh.Run(ctx)
-		//     require.NotZero(t, resp)
-		//     assert.Equal(t, http.StatusBadRequest, resp.Status())
-		// },
-		// "ModifyHandlerFailsWithVeryLongTemporaryExemption": func(ctx context.Context, t *testing.T, env *mock.Environment, hosts []host.Host) {
-		//     rh := &hostModifyHandler{
-		//         env: env,
-		//         options: &host.HostModifyOptions{
-		//             ExtendTemporaryExemption: time.Hour,
-		//         },
-		//         hostID: hosts[0].Id,
-		//     }
-		//
-		//     resp := rh.Run(ctx)
-		//     require.NotZero(t, resp)
-		//     assert.Equal(t, http.StatusBadRequest, resp.Status())
-		// },
+		"ModifyHandlerFailsWithVeryLongTemporaryExemption": func(ctx context.Context, t *testing.T, env *mock.Environment, hosts []host.Host) {
+			rh := &hostModifyHandler{
+				env: env,
+				options: &host.HostModifyOptions{
+					AddTemporaryExemptionHours: 1000000,
+				},
+				hostID: hosts[0].Id,
+			}
+
+			resp := rh.Run(ctx)
+			require.NotZero(t, resp)
+			assert.Equal(t, http.StatusBadRequest, resp.Status())
+		},
 	} {
 		t.Run(tName, func(t *testing.T) {
 			require.NoError(t, db.ClearCollections(host.Collection, host.VolumesCollection, event.SubscriptionsCollection))
