@@ -1158,6 +1158,7 @@ func evaluateBuildVariants(tse *taskSelectorEvaluator, tgse *tagSelectorEvaluato
 	pbvs []parserBV, tasks []parserTask, tgs []TaskGroup) ([]BuildVariant, []error) {
 	bvs := []BuildVariant{}
 	var emptyTaskSelectors []string
+	var unmatchedTags []string
 	var evalErrs, errs []error
 	for _, pbv := range pbvs {
 		bv := BuildVariant{
@@ -1178,13 +1179,12 @@ func evaluateBuildVariants(tse *taskSelectorEvaluator, tgse *tagSelectorEvaluato
 			Tags:           pbv.Tags,
 		}
 		bv.AllowedRequesters = pbv.AllowedRequesters
-		bv.Tasks, emptyTaskSelectors, errs = evaluateBVTasks(tse, tgse, vse, pbv, tasks)
+		bv.Tasks, emptyTaskSelectors, unmatchedTags, errs = evaluateBVTasks(tse, tgse, vse, pbv, tasks)
 		if len(emptyTaskSelectors) > 0 {
 			bv.TranslationWarnings = append(bv.TranslationWarnings, fmt.Sprintf("buildvariant '%s' has task names/tags that do not match any tasks: '%s'", pbv.Name, strings.Join(emptyTaskSelectors, "', '")))
 		}
-		if len(tse.tagEval.unmatchedTagNames) > 0 {
-			bv.TranslationWarnings = append(bv.TranslationWarnings, fmt.Sprintf("buildvariant '%s' uses tags that do not match any tasks: '%s'", pbv.Name, strings.Join(tse.tagEval.unmatchedTagNames, "', '")))
-			tse.tagEval.unmatchedTagNames = []string{}
+		if len(unmatchedTags) > 0 {
+			bv.TranslationWarnings = append(bv.TranslationWarnings, fmt.Sprintf("buildvariant '%s' uses tags that do not match any tasks: '%s'", pbv.Name, strings.Join(unmatchedTags, "', '")))
 		}
 
 		// evaluate any rules passed in during matrix construction
@@ -1219,7 +1219,7 @@ func evaluateBuildVariants(tse *taskSelectorEvaluator, tgse *tagSelectorEvaluato
 
 				var added []BuildVariantTaskUnit
 				pbv.Tasks = r.AddTasks
-				added, _, errs = evaluateBVTasks(tse, tgse, vse, pbv, tasks)
+				added, _, _, errs = evaluateBVTasks(tse, tgse, vse, pbv, tasks)
 				evalErrs = append(evalErrs, errs...)
 				// check for conflicting duplicates
 				for _, t := range added {
@@ -1304,11 +1304,15 @@ func evaluateBuildVariants(tse *taskSelectorEvaluator, tgse *tagSelectorEvaluato
 // tasks.
 // For task units that represent task groups, the resulting BuildVariantTaskUnit
 // represents the task group itself, not the individual tasks in the task group.
+// Returns the list of BuildVariantTaskUnits, the list of selectors that did not
+// match anything, the list of task names/tags that did not match any tasks, and
+// any errors encountered during evaluation.
 func evaluateBVTasks(tse *taskSelectorEvaluator, tgse *tagSelectorEvaluator, vse *variantSelectorEvaluator,
-	pbv parserBV, tasks []parserTask) ([]BuildVariantTaskUnit, []string, []error) {
+	pbv parserBV, tasks []parserTask) ([]BuildVariantTaskUnit, []string, []string, []error) {
 	var evalErrs, errs []error
 	ts := []BuildVariantTaskUnit{}
 	emptySelectors := []string{}
+	unmatchedTagNames := []string{}
 	taskUnitsByName := map[string]BuildVariantTaskUnit{}
 	tasksByName := map[string]parserTask{}
 	for _, t := range tasks {
@@ -1346,6 +1350,12 @@ func evaluateBVTasks(tse *taskSelectorEvaluator, tgse *tagSelectorEvaluator, vse
 		if len(names) == 0 {
 			emptySelectors = append(emptySelectors, pbvt.Name)
 		}
+		for _, tag := range tse.tagEval.unmatchedTagNames {
+			if !utility.StringSliceContains(names, tag) {
+				unmatchedTagNames = append(unmatchedTagNames, tag)
+			}
+		}
+		tse.tagEval.unmatchedTagNames = []string{}
 		// create new task definitions--duplicates must have the same status requirements
 		for _, name := range names {
 			parserTask := tasksByName[name]
@@ -1388,7 +1398,7 @@ func evaluateBVTasks(tse *taskSelectorEvaluator, tgse *tagSelectorEvaluator, vse
 		evalErrs = append(evalErrs, errors.Errorf("task selectors for build variant '%s' did not match any tasks", pbv.Name))
 
 	}
-	return ts, emptySelectors, evalErrs
+	return ts, emptySelectors, unmatchedTagNames, evalErrs
 }
 
 // getParserBuildVariantTaskUnit combines the parser project's build variant
