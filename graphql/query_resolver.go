@@ -406,7 +406,7 @@ func (r *queryResolver) Patch(ctx context.Context, patchID string) (*restModel.A
 }
 
 // GithubProjectConflicts is the resolver for the githubProjectConflicts field.
-func (r *queryResolver) GithubProjectConflicts(ctx context.Context, projectID string) (*model.GithubProjectConflicts, error) {
+func (r *queryResolver) GithubConflicts(ctx context.Context, projectID string) (*model.GithubProjectConflicts, error) {
 	pRef, err := model.FindMergedProjectRef(projectID, "", false)
 	if err != nil {
 		return nil, InternalServerError.Send(ctx, fmt.Sprintf("error getting project: %v", err.Error()))
