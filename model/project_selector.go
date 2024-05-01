@@ -198,6 +198,8 @@ func (tse *tagSelectorEvaluator) evalCriterion(sc selectCriterion) ([]string, er
 				return nil, errors.Errorf("nothing named '%v'", sc.name)
 			}
 			tse.unmatchedTagNames = append(tse.unmatchedTagNames, sc.name)
+			// If the item is not found, we match no items and should return an empty slice.
+			return []string{}, nil
 		}
 		return []string{item.name()}, nil
 
