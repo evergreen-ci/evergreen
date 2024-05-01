@@ -47,13 +47,13 @@
       },
       "status": "started",
       "desc": "PATCH ON COMMIT QUEUE",
-      "branch": "mongodb-mongo-master",
+      "branch": "sandbox_project_id",
       "alias": "__commit_queue"
     }
   ],
   "commit_queue": [
     {
-      "_id": "mongodb-mongo-master",
+      "_id": "sandbox_project_id",
       "processing": true,
       "queue": [
         {
@@ -75,8 +75,8 @@
       "identifier": "spruce"
     },
     {
-      "_id": "mongodb-mongo-master",
-      "identifier": "mongodb-mongo-master"
+      "_id": "sandbox_project_id",
+      "identifier": "sandbox"
     }
   ]
 }

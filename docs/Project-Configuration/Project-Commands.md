@@ -923,6 +923,7 @@ by the Release Infrastructure team, and you may receive assistance with it in
 
 Parameters:
 
+-   `work_dir`: The directory used to search for filenames
 -   `key_id`: your Papertrail key ID (use private variables to keep this a
     secret).
 -   `secret_key`: your Papertrail secret key (use private variables to keep this

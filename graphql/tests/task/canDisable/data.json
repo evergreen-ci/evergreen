@@ -27,5 +27,11 @@
       "status": "undispatched",
       "branch": "spruce"
     }
+  ],
+  "project_ref": [
+    {
+      "_id": "spruce",
+      "identifier": "spruce"
+    }
   ]
 }

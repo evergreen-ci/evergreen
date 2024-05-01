@@ -45,5 +45,11 @@
       "status": "failed",
       "order": 1
     }
+  ],
+  "project_ref": [
+    {
+      "_id": "spruce",
+      "identifier": "spruce"
+    }
   ]
 }

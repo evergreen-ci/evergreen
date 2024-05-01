@@ -1,149 +1,153 @@
 {
-    "versions": [
-        {
-            "_id": "evergreen_version1",
-            "gitspec": "revision1",
-            "identifier": "evergreen",
-            "r": "gitter_request",
-            "activated": true,
-            "author": "mohamed.khelif",
-            "status": "success",
-            "order": 1
-        },
-        {
-            "_id": "evergreen_version2",
-            "gitspec": "2c9056df66d42fb1908d52eed096750a91f1f089",
-            "identifier": "evergreen",
-            "r": "gitter_request",
-            "activated": true,
-            "author": "mohamed.khelif",
-            "status": "success",
-            "order": 2
-        },
-        {
-            "_id": "evergreen_version3",
-            "gitspec": "revision3",
-            "identifier": "evergreen",
-            "r": "gitter_request",
-            "activated": false,
-            "author": "mohamed.khelif",
-            "status": "created",
-            "order": 3
-        },
-        {
-            "_id": "evergreen_version4",
-            "gitspec": "revision4",
-            "identifier": "evergreen",
-            "r": "gitter_request",
-            "activated": false,
-            "author": "mohamed.khelif",
-            "status": "created",
-            "order": 4
-        },
-        {
-            "_id": "evergreen_version5",
-            "gitspec": "revision5",
-            "identifier": "evergreen",
-            "r": "gitter_request",
-            "activated": true,
-            "author": "mohamed.khelif",
-            "status": "created",
-            "order": 5
-        }
-    ],
-    "tasks": [
-        {
-            "_id": "task_1",
-            "version": "evergreen_version1",
-            "status": "success",
-            "display_name": "Some Task",
-            "activated": true,
-            "build_variant": "enterprise-ubuntu1604-64",
-            "build_variant_display_name": "Ubuntu 16.04",
-            "build_id": "evergreen_version1_build",
-            "create_time": {
-                "$date": "2020-01-01T00:00:05Z"
-            },
-            "display_task_id": ""
-        },
-        {
-            "_id": "task_2",
-            "version": "evergreen_version1",
-            "status": "success",
-            "display_name": "Some Other Task",
-            "activated": true,
-            "build_variant": "enterprise-ubuntu1604-64",
-            "build_variant_display_name": "Ubuntu 16.04",
-            "build_id": "evergreen_version1_build",
-            "create_time": {
-                "$date": "2020-01-01T00:00:05Z"
-            },
-            "display_task_id": ""
-        },
-        {
-            "_id": "task_3",
-            "version": "evergreen_version2",
-            "status": "failed",
-            "display_name": "Some Task",
-            "activated": true,
-            "build_variant": "enterprise-ubuntu1604-64",
-            "build_variant_display_name": "Ubuntu 16.04",
-            "build_id": "evergreen_version2_build",
-            "create_time": {
-                "$date": "2020-01-01T00:00:05Z"
-            },
-            "display_task_id": ""
-        },
-        {
-            "_id": "task_4",
-            "version": "evergreen_version2",
-            "status": "success",
-            "display_name": "Some Other Task",
-            "activated": true,
-            "build_variant": "enterprise-ubuntu1604-64",
-            "build_variant_display_name": "Ubuntu 16.04",
-            "build_id": "evergreen_version2_build",
-            "create_time": {
-                "$date": "2020-01-01T00:00:05Z"
-            },
-            "display_task_id": ""
-        },
-        {
-            "_id": "task_5",
-            "version": "evergreen_version5",
-            "status": "success",
-            "display_name": "Some Other Task",
-            "activated": true,
-            "build_variant": "enterprise-ubuntu1604-64",
-            "build_variant_display_name": "Ubuntu 16.04",
-            "build_id": "evergreen_version5_build",
-            "create_time": {
-                "$date": "2020-01-01T00:00:05Z"
-            },
-            "display_task_id": ""
-        }
-    ],
-    "project_ref": [
-        {
-            "_id": "evergreen",
-            "identifier": "evergreen"
-        }
-    ],
-    "builds": [
-        {
-            "_id": "evergreen_version1_build",
-            "build_variant": "enterprise-ubuntu1604-64",
-            "display_name": "Ubuntu 16.04"
-        },
-        {
-            "_id": "evergreen_version2_build",
-            "build_variant": "enterprise-ubuntu1604-64",
-            "display_name": "Ubuntu 16.04"
-        },
-        {
-            "_id": "evergreen_version5_build",
-            "build_variant": "enterprise-ubuntu1604-64",
-            "display_name": "Ubuntu 16.04"
-        }
-    ]
+  "versions": [
+    {
+      "_id": "evergreen_version1",
+      "gitspec": "revision1",
+      "identifier": "spruce",
+      "r": "gitter_request",
+      "activated": true,
+      "author": "mohamed.khelif",
+      "status": "success",
+      "order": 1
+    },
+    {
+      "_id": "evergreen_version2",
+      "gitspec": "2c9056df66d42fb1908d52eed096750a91f1f089",
+      "identifier": "spruce",
+      "r": "gitter_request",
+      "activated": true,
+      "author": "mohamed.khelif",
+      "status": "success",
+      "order": 2
+    },
+    {
+      "_id": "evergreen_version3",
+      "gitspec": "revision3",
+      "identifier": "spruce",
+      "r": "gitter_request",
+      "activated": false,
+      "author": "mohamed.khelif",
+      "status": "created",
+      "order": 3
+    },
+    {
+      "_id": "evergreen_version4",
+      "gitspec": "revision4",
+      "identifier": "spruce",
+      "r": "gitter_request",
+      "activated": false,
+      "author": "mohamed.khelif",
+      "status": "created",
+      "order": 4
+    },
+    {
+      "_id": "evergreen_version5",
+      "gitspec": "revision5",
+      "identifier": "spruce",
+      "r": "gitter_request",
+      "activated": true,
+      "author": "mohamed.khelif",
+      "status": "created",
+      "order": 5
+    }
+  ],
+  "tasks": [
+    {
+      "_id": "task_1",
+      "version": "evergreen_version1",
+      "status": "success",
+      "display_name": "Some Task",
+      "activated": true,
+      "build_variant": "enterprise-ubuntu1604-64",
+      "build_variant_display_name": "Ubuntu 16.04",
+      "build_id": "evergreen_version1_build",
+      "create_time": {
+        "$date": "2020-01-01T00:00:05Z"
+      },
+      "display_task_id": ""
+    },
+    {
+      "_id": "task_2",
+      "version": "evergreen_version1",
+      "status": "success",
+      "display_name": "Some Other Task",
+      "activated": true,
+      "build_variant": "enterprise-ubuntu1604-64",
+      "build_variant_display_name": "Ubuntu 16.04",
+      "build_id": "evergreen_version1_build",
+      "create_time": {
+        "$date": "2020-01-01T00:00:05Z"
+      },
+      "display_task_id": ""
+    },
+    {
+      "_id": "task_3",
+      "version": "evergreen_version2",
+      "status": "failed",
+      "display_name": "Some Task",
+      "activated": true,
+      "build_variant": "enterprise-ubuntu1604-64",
+      "build_variant_display_name": "Ubuntu 16.04",
+      "build_id": "evergreen_version2_build",
+      "create_time": {
+        "$date": "2020-01-01T00:00:05Z"
+      },
+      "display_task_id": ""
+    },
+    {
+      "_id": "task_4",
+      "version": "evergreen_version2",
+      "status": "success",
+      "display_name": "Some Other Task",
+      "activated": true,
+      "build_variant": "enterprise-ubuntu1604-64",
+      "build_variant_display_name": "Ubuntu 16.04",
+      "build_id": "evergreen_version2_build",
+      "create_time": {
+        "$date": "2020-01-01T00:00:05Z"
+      },
+      "display_task_id": ""
+    },
+    {
+      "_id": "task_5",
+      "version": "evergreen_version5",
+      "status": "success",
+      "display_name": "Some Other Task",
+      "activated": true,
+      "build_variant": "enterprise-ubuntu1604-64",
+      "build_variant_display_name": "Ubuntu 16.04",
+      "build_id": "evergreen_version5_build",
+      "create_time": {
+        "$date": "2020-01-01T00:00:05Z"
+      },
+      "display_task_id": ""
+    }
+  ],
+  "project_ref": [
+    {
+      "_id": "spruce",
+      "identifier": "spruce"
+    },
+    {
+      "_id": "evergreen",
+      "identifier": "evergreen"
+    }
+  ],
+  "builds": [
+    {
+      "_id": "evergreen_version1_build",
+      "build_variant": "enterprise-ubuntu1604-64",
+      "display_name": "Ubuntu 16.04"
+    },
+    {
+      "_id": "evergreen_version2_build",
+      "build_variant": "enterprise-ubuntu1604-64",
+      "display_name": "Ubuntu 16.04"
+    },
+    {
+      "_id": "evergreen_version5_build",
+      "build_variant": "enterprise-ubuntu1604-64",
+      "display_name": "Ubuntu 16.04"
+    }
+  ]
 }

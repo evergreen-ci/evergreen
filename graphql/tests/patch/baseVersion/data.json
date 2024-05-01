@@ -16,7 +16,7 @@
     },
     {
       "_id": "5d7288d91f8c8a403bc34a7d",
-      "identifier": "spruce",
+      "identifier": "sandbox_project_id",
       "r": "gitter_request",
       "requester": "gitter_request"
     }
@@ -26,7 +26,7 @@
       "_id": {
         "$oid": "5e4ff3abe3c3317e352062e4"
       },
-      "branch": "evergreen",
+      "branch": "spruce",
       "version": "5e4ff3abe3c3317e352062e4",
       "activated": true,
       "githash": "5e823e1f28baeaa22ae00823d83e03082cd148ab"
@@ -37,7 +37,17 @@
       },
       "version": "5d7288d91f8c8a403bc34a7d",
       "desc": "NO BASE COMMIT PATCH",
-      "branch": "mongodb-mongo-master"
+      "branch": "sandbox_project_id"
+    }
+  ],
+  "project_ref": [
+    {
+      "_id": "spruce",
+      "identifier": "spruce"
+    },
+    {
+      "_id": "sandbox_project_id",
+      "identifier": "sandbox"
     }
   ]
 }

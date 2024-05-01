@@ -1,6 +1,9 @@
 query {
-    buildVariantsForTaskName(projectIdentifier: "evergreen", taskName: "test-agent"){
-        displayName
-        buildVariant
-    }
+  buildVariantsForTaskName(
+    projectIdentifier: "sandbox_project_id"
+    taskName: "test-agent"
+  ) {
+    displayName
+    buildVariant
+  }
 }

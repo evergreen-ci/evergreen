@@ -16,7 +16,7 @@ Its fields determine what mainline commits we fetch for a given projectID.
 """
 input MainlineCommitsOptions {
   limit: Int = 7
-  projectIdentifier: String!
+  projectIdentifier: String! @requireProjectAccess(permission: TASKS, access: VIEW)
   requesters: [String!]
   revision: String
   shouldCollapse: Boolean = false # used to determine if unmatching active versions should be collapsed
