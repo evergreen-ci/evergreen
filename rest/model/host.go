@@ -248,17 +248,23 @@ func (apiVolume *APIVolume) ToService() (host.Volume, error) {
 }
 
 type APISpawnHostModify struct {
-	Action                     *string    `json:"action"`
-	HostID                     *string    `json:"host_id"`
-	VolumeID                   *string    `json:"volume_id"`
-	RDPPwd                     *string    `json:"rdp_pwd"`
-	AddHours                   *string    `json:"add_hours"`
-	Expiration                 *time.Time `json:"expiration"`
-	InstanceType               *string    `json:"instance_type"`
-	AddTags                    []*string  `json:"tags_to_add"`
-	DeleteTags                 []*string  `json:"tags_to_delete"`
-	NewName                    *string    `json:"new_name"`
-	AddTemporaryExemptionHours *int       `json:"add_temporary_exemption_hours"`
+	Action       *string    `json:"action"`
+	HostID       *string    `json:"host_id"`
+	VolumeID     *string    `json:"volume_id"`
+	RDPPwd       *string    `json:"rdp_pwd"`
+	AddHours     *string    `json:"add_hours"`
+	Expiration   *time.Time `json:"expiration"`
+	InstanceType *string    `json:"instance_type"`
+	AddTags      []*string  `json:"tags_to_add"`
+	DeleteTags   []*string  `json:"tags_to_delete"`
+	NewName      *string    `json:"new_name"`
+}
+
+// APISpawnHostTemporaryExemptionOptions provides input for creating or
+// extending a temporary exemption from a host's sleep schedule.
+type APISpawnHostTemporaryExemptionOptions struct {
+	// Number of hours to add to the temporary exemption.
+	AddTemporaryExemptionHours *int `json:"add_temporary_exemption_hours"`
 }
 
 type APIVolumeModify struct {

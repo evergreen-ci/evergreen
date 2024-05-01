@@ -3674,7 +3674,9 @@ func (h *Host) SetSleepScheduleBetaTester(ctx context.Context, isBetaTester bool
 	return nil
 }
 
-const maxTemporaryExemptionDuration = 32 * utility.Day
+// MaxTemporaryExemptionDuration is how long after now that an unexpirable host
+// can be exempt from the sleep schedule.
+const MaxTemporaryExemptionDuration = 32 * utility.Day
 
 // SetTemporaryExemption sets a temporary exemption from the host's sleep
 // schedule.
@@ -3683,8 +3685,11 @@ func (h *Host) SetTemporaryExemption(ctx context.Context, exemptUntil time.Time)
 		return nil
 	}
 
-	if time.Now().Add(maxTemporaryExemptionDuration).Before(exemptUntil) {
-		return errors.Errorf("temporary exemption until '%s' is longer than max temporary exemption duration of '%s'", exemptUntil, maxTemporaryExemptionDuration.String())
+	if time.Now().Add(MaxTemporaryExemptionDuration).Before(exemptUntil) {
+		return gimlet.ErrorResponse{
+			StatusCode: http.StatusBadRequest,
+			Message:    fmt.Sprintf("temporary exemption until %s is longer than max temporary exemption duration of '%s'", exemptUntil, MaxTemporaryExemptionDuration.String()),
+		}
 	}
 
 	temporarilyExemptUntilKey := bsonutil.GetDottedKeyName(SleepScheduleKey, SleepScheduleTemporarilyExemptUntilKey)

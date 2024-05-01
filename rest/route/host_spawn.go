@@ -1183,7 +1183,7 @@ func (h *hostExtendExpirationHandler) Run(ctx context.Context) gimlet.Responder 
 	return gimlet.NewJSONResponse(struct{}{})
 }
 
-// ////////////////////////////////////////////////
+/////////////////////////////////////////////////////
 //
 // PATCH /rest/v2/hosts/{host_id}/temporary_exemption
 
@@ -1203,14 +1203,13 @@ func makeHostTemporaryExemption() gimlet.RouteHandler {
 //	@Tags			hosts
 //	@Router			/hosts/{host_id}/temporary_exemption [post]
 //	@Security		Api-User || Api-Key
-//	@Param			host_id		path	string						true	"the host ID"
-//	@Param			{object}	body	model.APISpawnHostModify	true	"Set add_temporary_exemption_hours to extend the temporary exemption; cannot exceed 1 month"
+//	@Param			host_id		path	string									true	"the host ID"
+//	@Param			{object}	body	model.APISpawnHostTemporaryExemption	true	"Set add_temporary_exemption_hours to extend the temporary exemption; cannot exceed 1 month"
 //	@Success		200
 func (rh *hostTemporaryExemptionHandler) Factory() gimlet.RouteHandler {
 	return &hostTemporaryExemptionHandler{}
 }
 
-// kim: TODO: add test
 func (rh *hostTemporaryExemptionHandler) Parse(ctx context.Context, r *http.Request) error {
 	var err error
 	rh.hostID, err = validateID(gimlet.GetVars(r)["host_id"])
@@ -1218,26 +1217,24 @@ func (rh *hostTemporaryExemptionHandler) Parse(ctx context.Context, r *http.Requ
 		return err
 	}
 
-	hostModify := model.APISpawnHostModify{}
-	if err := utility.ReadJSON(utility.NewRequestReader(r), &hostModify); err != nil {
+	var opts model.APISpawnHostTemporaryExemptionOptions
+	if err := utility.ReadJSON(utility.NewRequestReader(r), &opts); err != nil {
 		return err
 	}
 
-	rh.additionalExemption = time.Duration(utility.FromIntPtr(hostModify.AddTemporaryExemptionHours)) * time.Hour
+	rh.additionalExemption = time.Duration(utility.FromIntPtr(opts.AddTemporaryExemptionHours)) * time.Hour
 	if rh.additionalExemption <= 0 {
-		return errors.Errorf("add_temporary_exemption_hours (%d) must be greater than 0", hostModify.AddTemporaryExemptionHours)
+		return errors.Errorf("number of additional hours to exempt (%d) must be greater than 0", opts.AddTemporaryExemptionHours)
 	}
 
 	return nil
 }
 
-// kim: TODO: add test
 func (rh *hostTemporaryExemptionHandler) Run(ctx context.Context) gimlet.Responder {
 	u := MustHaveUser(ctx)
 	if err := data.ExtendHostTemporaryExemption(ctx, rh.hostID, u, rh.additionalExemption); err != nil {
 		return gimlet.MakeJSONInternalErrorResponder(err)
 	}
-
 	return gimlet.NewJSONResponse(struct{}{})
 }
 

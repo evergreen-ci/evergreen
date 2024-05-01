@@ -413,14 +413,16 @@ func ExtendHostTemporaryExemption(ctx context.Context, hostID string, u *user.DB
 		}
 	}
 
-	// kim: TODO: add logic to actually extend the host temporary exemption.
-	// Depends on DEVPROD-4693 being merged.
-	// var exemptUntil time.Time
-	// if !utility.IsZeroTime(h.SleepSchedule.TemporarilyExemptUntil) {
-	//     exemptUntil = h.SleepSchedule.TemporarilyExemptUntil.Add(rh.additionalExemption)
-	// } else {
-	//     exemptUntil = time.Now().Add(rh.additionalExemption)
-	// }
+	var exemptUntil time.Time
+	if !utility.IsZeroTime(h.SleepSchedule.TemporarilyExemptUntil) {
+		exemptUntil = h.SleepSchedule.TemporarilyExemptUntil.Add(extendBy)
+	} else {
+		exemptUntil = time.Now().Add(extendBy)
+	}
+
+	if err := h.SetTemporaryExemption(ctx, exemptUntil); err != nil {
+		return errors.Wrap(err, "setting temporary exemption")
+	}
 
 	return nil
 }
