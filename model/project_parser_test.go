@@ -647,59 +647,6 @@ func TestTranslateBuildVariants(t *testing.T) {
 	})
 }
 
-func parserTaskSelectorTaskEval(tse *taskSelectorEvaluator, tsge *tagSelectorEvaluator, tasks parserBVTaskUnits, taskDefs []parserTask, expected []BuildVariantTaskUnit, expectedEmptySelectors, expectedUnmatchedTags []string) {
-	names := []string{}
-	exp := []string{}
-	for _, t := range tasks {
-		names = append(names, t.Name)
-	}
-	for _, e := range expected {
-		exp = append(exp, e.Name)
-	}
-	vse := NewVariantSelectorEvaluator([]parserBV{}, nil)
-	Convey(fmt.Sprintf("tasks [%v] should evaluate to [%v]",
-		strings.Join(names, ", "), strings.Join(exp, ", ")), func() {
-		pbv := parserBV{Name: "build-variant-wow", Tasks: tasks}
-		taskUnit, emptySelectors, unmatchedTags, errs := evaluateBVTasks(tse, tsge, vse, pbv, taskDefs)
-		if expected != nil {
-			So(errs, ShouldBeNil)
-		} else {
-			So(errs, ShouldNotBeNil)
-		}
-		So(len(taskUnit), ShouldEqual, len(expected))
-		for _, e := range expected {
-			exists := false
-			for _, t := range taskUnit {
-				if t.Name == e.Name && t.Priority == e.Priority && len(t.DependsOn) == len(e.DependsOn) {
-					exists = true
-				}
-				So(t.Variant, ShouldEqual, pbv.Name)
-			}
-			So(exists, ShouldBeTrue)
-		}
-		So(len(emptySelectors), ShouldEqual, len(expectedEmptySelectors))
-		for _, expectedEmptySelector := range expectedEmptySelectors {
-			exists := false
-			for _, emptySelector := range emptySelectors {
-				if emptySelector == expectedEmptySelector {
-					exists = true
-				}
-			}
-			So(exists, ShouldBeTrue)
-		}
-		So(len(unmatchedTags), ShouldEqual, len(expectedUnmatchedTags))
-		for _, expectedUnmatchedTag := range expectedUnmatchedTags {
-			exists := false
-			for _, unmatchedTag := range unmatchedTags {
-				if unmatchedTag == expectedUnmatchedTag {
-					exists = true
-				}
-			}
-			So(exists, ShouldBeTrue)
-		}
-	})
-}
-
 func TestParserTaskSelectorEvaluation(t *testing.T) {
 	Convey("With a colorful set of ProjectTasks", t, func() {
 		taskDefs := []parserTask{
@@ -775,7 +722,66 @@ func TestParserTaskSelectorEvaluation(t *testing.T) {
 					taskDefs,
 					nil, []string{".warm .cool", ".secondary .primary"}, nil)
 			})
+			Convey("should warn when some selectors do not exist", func() {
+				parserTaskSelectorTaskEval(tse, tgse,
+					parserBVTaskUnits{{Name: ".warm .doesnt-exist"}, {Name: "white"}},
+					taskDefs,
+					[]BuildVariantTaskUnit{{Name: "white"}}, []string{".warm .doesnt-exist"}, []string{"doesnt-exist"})
+			})
 		})
+	})
+}
+
+func parserTaskSelectorTaskEval(tse *taskSelectorEvaluator, tsge *tagSelectorEvaluator, tasks parserBVTaskUnits, taskDefs []parserTask, expected []BuildVariantTaskUnit, expectedEmptySelectors, expectedUnmatchedTags []string) {
+	names := []string{}
+	exp := []string{}
+	for _, t := range tasks {
+		names = append(names, t.Name)
+	}
+	for _, e := range expected {
+		exp = append(exp, e.Name)
+	}
+	vse := NewVariantSelectorEvaluator([]parserBV{}, nil)
+	Convey(fmt.Sprintf("tasks [%v] should evaluate to [%v]",
+		strings.Join(names, ", "), strings.Join(exp, ", ")), func() {
+		pbv := parserBV{Name: "build-variant-wow", Tasks: tasks}
+		taskUnit, emptySelectors, unmatchedTags, errs := evaluateBVTasks(tse, tsge, vse, pbv, taskDefs)
+		if expected != nil {
+			So(errs, ShouldBeNil)
+		} else {
+			So(errs, ShouldNotBeNil)
+		}
+		So(len(taskUnit), ShouldEqual, len(expected))
+		for _, e := range expected {
+			exists := false
+			for _, t := range taskUnit {
+				if t.Name == e.Name && t.Priority == e.Priority && len(t.DependsOn) == len(e.DependsOn) {
+					exists = true
+				}
+				So(t.Variant, ShouldEqual, pbv.Name)
+			}
+			So(exists, ShouldBeTrue)
+		}
+		So(len(emptySelectors), ShouldEqual, len(expectedEmptySelectors))
+		for _, expectedEmptySelector := range expectedEmptySelectors {
+			exists := false
+			for _, emptySelector := range emptySelectors {
+				if emptySelector == expectedEmptySelector {
+					exists = true
+				}
+			}
+			So(exists, ShouldBeTrue)
+		}
+		So(len(unmatchedTags), ShouldEqual, len(expectedUnmatchedTags))
+		for _, expectedUnmatchedTag := range expectedUnmatchedTags {
+			exists := false
+			for _, unmatchedTag := range unmatchedTags {
+				if unmatchedTag == expectedUnmatchedTag {
+					exists = true
+				}
+			}
+			So(exists, ShouldBeTrue)
+		}
 	})
 }
 
