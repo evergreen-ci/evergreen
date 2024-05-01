@@ -1140,7 +1140,7 @@ func evaluateTaskUnits(tse *taskSelectorEvaluator, tgse *tagSelectorEvaluator, v
 		// expand, validate that tasks defined in a group are listed in the project tasks
 		var taskNames []string
 		for _, taskName := range ptg.Tasks {
-			names, err := tse.evalSelector(ParseSelector(taskName))
+			names, err := tse.evalSelector(ParseSelector(taskName), false)
 			if err != nil {
 				evalErrs = append(evalErrs, err)
 			}
@@ -1157,6 +1157,7 @@ func evaluateTaskUnits(tse *taskSelectorEvaluator, tgse *tagSelectorEvaluator, v
 func evaluateBuildVariants(tse *taskSelectorEvaluator, tgse *tagSelectorEvaluator, vse *variantSelectorEvaluator,
 	pbvs []parserBV, tasks []parserTask, tgs []TaskGroup) ([]BuildVariant, []error) {
 	bvs := []BuildVariant{}
+	var emptyTaskSelectors []string
 	var evalErrs, errs []error
 	for _, pbv := range pbvs {
 		bv := BuildVariant{
@@ -1177,7 +1178,14 @@ func evaluateBuildVariants(tse *taskSelectorEvaluator, tgse *tagSelectorEvaluato
 			Tags:           pbv.Tags,
 		}
 		bv.AllowedRequesters = pbv.AllowedRequesters
-		bv.Tasks, bv.EmptyTaskSelectors, errs = evaluateBVTasks(tse, tgse, vse, pbv, tasks)
+		bv.Tasks, emptyTaskSelectors, errs = evaluateBVTasks(tse, tgse, vse, pbv, tasks)
+		if len(emptyTaskSelectors) > 0 {
+			bv.TranslationWarnings = append(bv.TranslationWarnings, fmt.Sprintf("buildvariant '%s' has task names/tags that do not match any tasks: '%s'", pbv.Name, strings.Join(emptyTaskSelectors, "', '")))
+		}
+		if len(tse.tagEval.unmatchedTagNames) > 0 {
+			bv.TranslationWarnings = append(bv.TranslationWarnings, fmt.Sprintf("buildvariant '%s' has tags that do not match any tasks: '%s'", pbv.Name, strings.Join(tse.tagEval.unmatchedTagNames, "', '")))
+			tse.tagEval.unmatchedTagNames = []string{}
+		}
 
 		// evaluate any rules passed in during matrix construction
 		for _, r := range pbv.MatrixRules {
@@ -1186,7 +1194,7 @@ func evaluateBuildVariants(tse *taskSelectorEvaluator, tgse *tagSelectorEvaluato
 				prunedTasks := []BuildVariantTaskUnit{}
 				toRemove := []string{}
 				for _, t := range r.RemoveTasks {
-					removed, err := tse.evalSelector(ParseSelector(t))
+					removed, err := tse.evalSelector(ParseSelector(t), false)
 					if err != nil {
 						evalErrs = append(evalErrs, errors.Wrap(err, "remove rule"))
 						continue
@@ -1319,7 +1327,7 @@ func evaluateBVTasks(tse *taskSelectorEvaluator, tgse *tagSelectorEvaluator, vse
 		} else {
 			var err1, err2 error
 			if tse != nil {
-				temp, err1 = tse.evalSelector(ParseSelector(pbvt.Name))
+				temp, err1 = tse.evalSelector(ParseSelector(pbvt.Name), true)
 				names = append(names, temp...)
 			}
 			if tgse != nil {

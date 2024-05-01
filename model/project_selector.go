@@ -130,6 +130,9 @@ type tagSelectorEvaluator struct {
 	items  []tagged
 	byName map[string]tagged
 	byTag  map[string][]tagged
+
+	ignoreUnmatchedTags bool
+	unmatchedTagNames   []string
 }
 
 // newTagSelectorEvaluator returns a new taskSelectorEvaluator.
@@ -191,14 +194,20 @@ func (tse *tagSelectorEvaluator) evalCriterion(sc selectCriterion) ([]string, er
 	case !sc.tagged && !sc.negated: // just a regular name
 		item := tse.byName[sc.name]
 		if item == nil {
-			return nil, errors.Errorf("nothing named '%v'", sc.name)
+			if !tse.ignoreUnmatchedTags {
+				return nil, errors.Errorf("nothing named '%v'", sc.name)
+			}
+			tse.unmatchedTagNames = append(tse.unmatchedTagNames, sc.name)
 		}
 		return []string{item.name()}, nil
 
 	case sc.tagged && !sc.negated: // expand a tag
 		taggedItems := tse.byTag[sc.name]
 		if len(taggedItems) == 0 {
-			return nil, errors.Errorf("nothing has the tag '%v'", sc.name)
+			if !tse.ignoreUnmatchedTags {
+				return nil, errors.Errorf("nothing has the tag '%v'", sc.name)
+			}
+			tse.unmatchedTagNames = append(tse.unmatchedTagNames, sc.name)
 		}
 		names := make([]string, len(taggedItems))
 		for i, item := range taggedItems {
@@ -208,8 +217,11 @@ func (tse *tagSelectorEvaluator) evalCriterion(sc selectCriterion) ([]string, er
 
 	case !sc.tagged && sc.negated: // everything *but* a specific item
 		if tse.byName[sc.name] == nil {
-			// we want to treat this as an error for better usability
-			return nil, errors.Errorf("nothing named '%v'", sc.name)
+			if !tse.ignoreUnmatchedTags {
+				// we want to treat this as an error for better usability
+				return nil, errors.Errorf("nothing named '%v'", sc.name)
+			}
+			tse.unmatchedTagNames = append(tse.unmatchedTagNames, sc.name)
 		}
 		names := []string{}
 		for _, item := range tse.items {
@@ -222,8 +234,11 @@ func (tse *tagSelectorEvaluator) evalCriterion(sc selectCriterion) ([]string, er
 	case sc.tagged && sc.negated: // everything *but* a tag
 		items := tse.byTag[sc.name]
 		if len(items) == 0 {
-			// we want to treat this as an error for better usability
-			return nil, errors.Errorf("nothing has the tag '%v'", sc.name)
+			if !tse.ignoreUnmatchedTags {
+				// we want to treat this as an error for better usability
+				return nil, errors.Errorf("nothing has the tag '%v'", sc.name)
+			}
+			tse.unmatchedTagNames = append(tse.unmatchedTagNames, sc.name)
 		}
 		illegalItems := map[string]bool{}
 		for _, item := range items {
@@ -264,7 +279,8 @@ func NewParserTaskSelectorEvaluator(tasks []parserTask) *taskSelectorEvaluator {
 }
 
 // evalSelector returns all tasks selected by a selector.
-func (t *taskSelectorEvaluator) evalSelector(s Selector) ([]string, error) {
+func (t *taskSelectorEvaluator) evalSelector(s Selector, ignoreUnmatchedTags bool) ([]string, error) {
+	t.tagEval.ignoreUnmatchedTags = ignoreUnmatchedTags
 	results, err := t.tagEval.evalSelector(s)
 	if err != nil {
 		return nil, errors.Wrap(err, "evaluating task selector")

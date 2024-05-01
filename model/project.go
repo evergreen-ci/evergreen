@@ -417,6 +417,11 @@ type BuildVariant struct {
 	// EmptyTaskSelectors stores task selectors that don't target any tasks for this build variant.
 	// This is only for validation purposes.
 	EmptyTaskSelectors []string `yaml:"-" bson:"-"`
+
+	// TranslationWarnings are warnings that are only detectable during project translation.
+	// e.g. task selectors that don't target any tasks in a build variant but the build
+	// variant still has tasks.
+	TranslationWarnings []string `yaml:"-" bson:"-"`
 }
 
 // CheckRun is used to provide information about a github check run.
