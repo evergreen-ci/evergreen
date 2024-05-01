@@ -6,7 +6,7 @@ import (
 	"net/http"
 	"testing"
 
-	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 )
 
 func TestSelectTestsHandler(t *testing.T) {
@@ -22,16 +22,16 @@ func TestSelectTestsHandler(t *testing.T) {
 	}`)
 	req, _ := http.NewRequest(http.MethodPost, "/select/tests", bytes.NewBuffer(j))
 	sth := makeSelectTestsHandler()
-	assert.NoError(t, sth.Parse(ctx, req))
+	require.NoError(t, sth.Parse(ctx, req), "request should parse successfully")
 
 	result := sth.Run(ctx)
 	selectRequest := result.Data().(SelectTestsRequest)
-	assert.Equal(t, "my-project", selectRequest.Project)
-	assert.Equal(t, "patch", selectRequest.Requester)
-	assert.Equal(t, "variant", selectRequest.BuildVariant)
-	assert.Equal(t, "my-task-1234", selectRequest.TaskID)
-	assert.Equal(t, "my-task", selectRequest.TaskName)
-	assert.Equal(t, []string{"test1", "test2", "test3"}, selectRequest.Tests)
+	require.Equal(t, "my-project", selectRequest.Project)
+	require.Equal(t, "patch", selectRequest.Requester)
+	require.Equal(t, "variant", selectRequest.BuildVariant)
+	require.Equal(t, "my-task-1234", selectRequest.TaskID)
+	require.Equal(t, "my-task", selectRequest.TaskName)
+	require.Equal(t, []string{"test1", "test2", "test3"}, selectRequest.Tests)
 
 	j = []byte(`{
 		"project": "",
@@ -43,7 +43,7 @@ func TestSelectTestsHandler(t *testing.T) {
 	}`)
 	req, _ = http.NewRequest(http.MethodPost, "/select/tests", bytes.NewBuffer(j))
 	sth = makeSelectTestsHandler()
-	assert.Error(t, sth.Parse(ctx, req))
+	require.Error(t, sth.Parse(ctx, req), "request should fail to parse when project is missing")
 
 	j = []byte(`{
 		"project": "my-project",
@@ -55,7 +55,7 @@ func TestSelectTestsHandler(t *testing.T) {
 	}`)
 	req, _ = http.NewRequest(http.MethodPost, "/select/tests", bytes.NewBuffer(j))
 	sth = makeSelectTestsHandler()
-	assert.Error(t, sth.Parse(ctx, req))
+	require.Error(t, sth.Parse(ctx, req), "request should fail to parse when requester is missing")
 
 	j = []byte(`{
 		"project": "my-project",
@@ -67,7 +67,7 @@ func TestSelectTestsHandler(t *testing.T) {
 	}`)
 	req, _ = http.NewRequest(http.MethodPost, "/select/tests", bytes.NewBuffer(j))
 	sth = makeSelectTestsHandler()
-	assert.Error(t, sth.Parse(ctx, req))
+	require.Error(t, sth.Parse(ctx, req))
 
 	j = []byte(`{
 		"project": "my-project",
@@ -79,7 +79,7 @@ func TestSelectTestsHandler(t *testing.T) {
 	}`)
 	req, _ = http.NewRequest(http.MethodPost, "/select/tests", bytes.NewBuffer(j))
 	sth = makeSelectTestsHandler()
-	assert.Error(t, sth.Parse(ctx, req))
+	require.Error(t, sth.Parse(ctx, req), "request should fail to parse when task ID is missing")
 
 	j = []byte(`{
 		"project": "my-project",
@@ -91,7 +91,7 @@ func TestSelectTestsHandler(t *testing.T) {
 	}`)
 	req, _ = http.NewRequest(http.MethodPost, "/select/tests", bytes.NewBuffer(j))
 	sth = makeSelectTestsHandler()
-	assert.Error(t, sth.Parse(ctx, req))
+	require.Error(t, sth.Parse(ctx, req), "request should fail to parse when task name is missing")
 
 	j = []byte(`{
 		"project": "my-project",
@@ -103,5 +103,5 @@ func TestSelectTestsHandler(t *testing.T) {
 	}`)
 	req, _ = http.NewRequest(http.MethodPost, "/select/tests", bytes.NewBuffer(j))
 	sth = makeSelectTestsHandler()
-	assert.Error(t, sth.Parse(ctx, req))
+	require.Error(t, sth.Parse(ctx, req), "request should fail to parse when tests are empty")
 }

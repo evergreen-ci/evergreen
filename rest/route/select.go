@@ -16,6 +16,25 @@ type selectTestsHandler struct {
 	selectTests SelectTestsRequest
 }
 
+// SelectTestsRequest represents a request to return a filtered set of tests to
+// run. It deliberately includes information that could be looked up in the
+// database in order to bypass database lookups. This allows Evergreen to pass
+// this information directly to the test selector without a database lookup.
+type SelectTestsRequest struct {
+	// Project is the project identifier.
+	Project string `json:"project" bson:"project"`
+	// Requester is the Evergreen requester type.
+	Requester string `json:"requester" bson:"requester"`
+	// BuildVariant is the Evergreen build variant.
+	BuildVariant string `json:"build_variant" bson:"build_variant"`
+	// TaskID is the Evergreen task ID.
+	TaskID string `json:"task_id" bson:"task_id"`
+	// TaskName is the Evergreen task name.
+	TaskName string `json:"task_name" bson:"task_name"`
+	// Tests is a list of test names.
+	Tests []string `json:"tests" bson:"tests"`
+}
+
 func makeSelectTestsHandler() gimlet.RouteHandler {
 	return &selectTestsHandler{}
 }
@@ -54,19 +73,4 @@ func (t *selectTestsHandler) Parse(ctx context.Context, r *http.Request) error {
 
 func (t *selectTestsHandler) Run(ctx context.Context) gimlet.Responder {
 	return gimlet.NewJSONResponse(t.selectTests)
-}
-
-type SelectTestsRequest struct {
-	// Project is the project identifier.
-	Project string `json:"project" bson:"project"`
-	// Requester is the Evergreen requester type.
-	Requester string `json:"requester" bson:"requester"`
-	// BuildVariant is the Evergreen build variant.
-	BuildVariant string `json:"build_variant" bson:"build_variant"`
-	// TaskID is the Evergreen task ID.
-	TaskID string `json:"task_id" bson:"task_id"`
-	// TaskName is the Evergreen task name.
-	TaskName string `json:"task_name" bson:"task_name"`
-	// Tests is a list of test names.
-	Tests []string `json:"tests" bson:"tests"`
 }
