@@ -108,7 +108,6 @@ func (m *ec2FleetManager) SpawnHost(ctx context.Context, h *host.Host) (*host.Ho
 	if err := m.client.Create(ctx, m.region); err != nil {
 		return nil, errors.Wrap(err, "creating client")
 	}
-	defer m.client.Close()
 
 	ec2Settings := &EC2ProviderSettings{}
 	if err := ec2Settings.FromDistroSettings(h.Distro, ""); err != nil {
@@ -162,7 +161,6 @@ func (m *ec2FleetManager) GetInstanceStatuses(ctx context.Context, hosts []host.
 	if err := m.client.Create(ctx, m.region); err != nil {
 		return nil, errors.Wrap(err, "creating client")
 	}
-	defer m.client.Close()
 
 	describeInstancesOutput, err := m.client.DescribeInstances(ctx, &ec2.DescribeInstancesInput{
 		InstanceIds: instanceIDs,
@@ -217,7 +215,6 @@ func (m *ec2FleetManager) GetInstanceStatus(ctx context.Context, h *host.Host) (
 	if err := m.client.Create(ctx, m.region); err != nil {
 		return status, errors.Wrap(err, "creating client")
 	}
-	defer m.client.Close()
 
 	instance, err := m.client.GetInstanceInfo(ctx, h.Id)
 	if err != nil {
@@ -260,7 +257,6 @@ func (m *ec2FleetManager) CheckInstanceType(ctx context.Context, instanceType st
 	if err := m.client.Create(ctx, m.region); err != nil {
 		return errors.Wrap(err, "creating client")
 	}
-	defer m.client.Close()
 	output, err := m.client.DescribeInstanceTypeOfferings(ctx, &ec2.DescribeInstanceTypeOfferingsInput{})
 	if err != nil {
 		return errors.Wrapf(err, "describing instance types offered for region '%s", m.region)
@@ -282,7 +278,6 @@ func (m *ec2FleetManager) TerminateInstance(ctx context.Context, h *host.Host, u
 	if err := m.client.Create(ctx, m.region); err != nil {
 		return errors.Wrap(err, "creating client")
 	}
-	defer m.client.Close()
 
 	resp, err := m.client.TerminateInstances(ctx, &ec2.TerminateInstancesInput{
 		InstanceIds: []string{h.Id},
@@ -336,7 +331,6 @@ func (m *ec2FleetManager) Cleanup(ctx context.Context) error {
 	if err := m.client.Create(ctx, m.region); err != nil {
 		return errors.Wrap(err, "creating client")
 	}
-	defer m.client.Close()
 
 	launchTemplates, err := m.client.GetLaunchTemplates(ctx, &ec2.DescribeLaunchTemplatesInput{
 		Filters: []types.Filter{
@@ -397,7 +391,6 @@ func (m *ec2FleetManager) GetDNSName(ctx context.Context, h *host.Host) (string,
 	if err := m.client.Create(ctx, m.region); err != nil {
 		return "", errors.Wrap(err, "creating client")
 	}
-	defer m.client.Close()
 
 	return m.client.GetPublicDNSName(ctx, h)
 }
@@ -571,7 +564,6 @@ func (m *ec2FleetManager) AddSSHKey(ctx context.Context, pair evergreen.SSHKeyPa
 	if err := m.client.Create(ctx, m.region); err != nil {
 		return errors.Wrap(err, "creating client")
 	}
-	defer m.client.Close()
 
 	return errors.Wrap(addSSHKey(ctx, m.client, pair), "adding public SSH key")
 }
