@@ -75,8 +75,7 @@ func RequestS3Creds(ctx context.Context, projectIdentifier, userEmail string) er
 		Description: description,
 		Reporter:    userEmail,
 		Fields: map[string]interface{}{
-			// We assign service because it's a required field, but keep it general to prevent this from getting out of sync with service naming too quickly.
-			evergreen.DevProdServiceField: []map[string]string{{"value": evergreen.DevProdServiceId}},
+			evergreen.DevProdServiceFieldName: evergreen.DevProdJiraServiceField,
 		},
 	}
 	grip.Info(message.Fields{

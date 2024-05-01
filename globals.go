@@ -870,10 +870,17 @@ func (k SenderKey) String() string {
 	}
 }
 
-// DevProd Service is a required field for DEVPROD tickets, which we sometimes auto-generate.
+// DevProdJiraServiceField defines a required field for DEVPROD tickets, which we sometimes auto-generate.
+// Using "Other" prevents this from getting out of sync with service naming too quickly.
+var DevProdJiraServiceField = map[string]string{
+	"id":    devProdServiceId,
+	"value": devProdServiceValue,
+}
+
 const (
-	DevProdServiceField = "customfield_24158"
-	DevProdServiceId    = "27020"
+	DevProdServiceFieldName = "customfield_24158"
+	devProdServiceId        = "27020"
+	devProdServiceValue     = "Other"
 )
 
 // Recognized Evergreen agent CPU architectures, which should be in the form

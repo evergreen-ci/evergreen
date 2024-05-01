@@ -135,8 +135,7 @@ func (j *decoHostNotifyJob) Run(_ context.Context) {
 		Type:        "Bug",
 		Description: strings.Join(descParts, "\n"),
 		Fields: map[string]interface{}{
-			// We assign service because it's a required field, but keep it general to prevent this from getting out of sync with service naming too quickly.
-			evergreen.DevProdServiceField: []map[string]string{{"id": evergreen.DevProdServiceId}},
+			evergreen.DevProdServiceFieldName: evergreen.DevProdJiraServiceField,
 		},
 	}
 
