@@ -1183,7 +1183,7 @@ func evaluateBuildVariants(tse *taskSelectorEvaluator, tgse *tagSelectorEvaluato
 			bv.TranslationWarnings = append(bv.TranslationWarnings, fmt.Sprintf("buildvariant '%s' has task names/tags that do not match any tasks: '%s'", pbv.Name, strings.Join(emptyTaskSelectors, "', '")))
 		}
 		if len(tse.tagEval.unmatchedTagNames) > 0 {
-			bv.TranslationWarnings = append(bv.TranslationWarnings, fmt.Sprintf("buildvariant '%s' has tags that do not match any tasks: '%s'", pbv.Name, strings.Join(tse.tagEval.unmatchedTagNames, "', '")))
+			bv.TranslationWarnings = append(bv.TranslationWarnings, fmt.Sprintf("buildvariant '%s' uses tags that do not match any tasks: '%s'", pbv.Name, strings.Join(tse.tagEval.unmatchedTagNames, "', '")))
 			tse.tagEval.unmatchedTagNames = []string{}
 		}
 
