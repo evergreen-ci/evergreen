@@ -54,6 +54,7 @@ type Distro struct {
 	HomeVolumeSettings    HomeVolumeSettings    `bson:"home_volume_settings" json:"home_volume_settings" mapstructure:"home_volume_settings"`
 	IceCreamSettings      IceCreamSettings      `bson:"icecream_settings,omitempty" json:"icecream_settings,omitempty" mapstructure:"icecream_settings,omitempty"`
 	Mountpoints           []string              `bson:"mountpoints,omitempty" json:"mountpoints,omitempty" mapstructure:"mountpoints,omitempty"`
+	ImageId               string                `bson:"image_id,omitempty" json:"image_id,omitempty" mapstructure:"image_id,omitempty"`
 }
 
 // DistroData is the same as a distro, with the only difference being that all
