@@ -4,7 +4,6 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
-	"os"
 	"strconv"
 	"strings"
 	"time"
@@ -417,106 +416,6 @@ func updateRoleCmd() cli.Command {
 			}
 
 			return ac.UpdateRole(&role)
-		},
-	}
-}
-
-func adminDistroExecute() cli.Command {
-	const (
-		distroFlagName            = "distro"
-		scriptPathFlagName        = "file"
-		scriptFlagName            = "script"
-		includeSpawnHostsFlagName = "include_spawn_hosts"
-		includeTaskHostsFlagName  = "include_task_hosts"
-		sudoFlagName              = "sudo"
-		sudoUserFlagName          = "sudo_user"
-	)
-	return cli.Command{
-		Name:  "distro-execute",
-		Usage: "run a shell script on selected hosts in a distro",
-		Flags: []cli.Flag{
-			cli.StringFlag{
-				Name:  distroFlagName,
-				Usage: "the distro to run the script on",
-			},
-			cli.StringFlag{
-				Name:  scriptFlagName,
-				Usage: "the script to run",
-			},
-			cli.StringFlag{
-				Name:  scriptPathFlagName,
-				Usage: "the file containing the script to run",
-			},
-			cli.BoolTFlag{
-				Name:  includeTaskHostsFlagName,
-				Usage: "run the script on hosts running tasks",
-			},
-			cli.BoolFlag{
-				Name:  includeSpawnHostsFlagName,
-				Usage: "run the script on spawn hosts",
-			},
-			cli.BoolFlag{
-				Name:  sudoFlagName,
-				Usage: "run the script with sudo",
-			},
-			cli.StringFlag{
-				Name:  sudoUserFlagName,
-				Usage: "run the script as a user",
-			},
-		},
-		Before: mergeBeforeFuncs(
-			requireStringFlag(distroFlagName),
-			mutuallyExclusiveArgs(true, scriptFlagName, scriptPathFlagName),
-		),
-		Action: func(c *cli.Context) error {
-			distro := c.String(distroFlagName)
-			includeTaskHosts := c.BoolT(includeTaskHostsFlagName)
-			includeSpawnHosts := c.Bool(includeSpawnHostsFlagName)
-			script := c.String(scriptFlagName)
-			sudo := c.Bool(sudoFlagName)
-			sudoUser := c.String(sudoUserFlagName)
-			if sudoUser != "" {
-				sudo = true
-			}
-			if script == "" {
-				scriptPath := c.String(scriptPathFlagName)
-				b, err := os.ReadFile(scriptPath)
-				if err != nil {
-					return errors.Wrapf(err, "reading script file '%s'", scriptPath)
-				}
-				script = string(b)
-			}
-
-			confPath := c.Parent().Parent().String(confFlagName)
-			conf, err := NewClientSettings(confPath)
-			if err != nil {
-				return errors.Wrap(err, "loading configuration")
-			}
-			ctx, cancel := context.WithCancel(context.Background())
-			defer cancel()
-			client, err := conf.setupRestCommunicator(ctx, false)
-			if err != nil {
-				return errors.Wrap(err, "setting up REST communicator")
-			}
-			defer client.Close()
-
-			hostIDs, err := client.ExecuteOnDistro(ctx, distro, model.APIDistroScriptOptions{
-				Script:            script,
-				IncludeTaskHosts:  includeTaskHosts,
-				IncludeSpawnHosts: includeSpawnHosts,
-				Sudo:              sudo,
-				SudoUser:          sudoUser,
-			})
-			if err != nil {
-				return errors.Wrapf(err, "executing script on hosts of distro '%s'", distro)
-			}
-			if len(hostIDs) != 0 {
-				fmt.Printf("Running script on the following hosts:\n%s\n", strings.Join(hostIDs, "\n"))
-			} else {
-				fmt.Println("No hosts matched, so not running script on any hosts.")
-			}
-
-			return nil
 		},
 	}
 }
