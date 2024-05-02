@@ -289,8 +289,8 @@ func githubShouldRetry(caller string, config retryConfig) utility.HTTPRetryFunct
 
 // getGithubClient returns a client that provides the given token, retries requests,
 // caches responses, and creates a span for each request.
-// Couple this with a defered call with Close() to clean up the client.
-func getGithubClient(token, caller string, config retryConfig) *evergreen.WrappedGitHubClient {
+// Couple this with a deferred call with Close() to clean up the client.
+func getGithubClient(token, caller string, config retryConfig) *evergreen.GitHubClient {
 	grip.Info(message.Fields{
 		"ticket":  GithubInvestigation,
 		"message": "called getGithubClient",
@@ -319,7 +319,7 @@ func getGithubClient(token, caller string, config retryConfig) *evergreen.Wrappe
 		httpClient,
 	)
 
-	githubClient := evergreen.WrappedGitHubClient{Client: github.NewClient(client)}
+	githubClient := evergreen.GitHubClient{Client: github.NewClient(client)}
 	return &githubClient
 }
 

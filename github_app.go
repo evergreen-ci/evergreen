@@ -205,14 +205,14 @@ func getInstallationIDFromCache(ctx context.Context, app int64, owner, repo stri
 	return installation.InstallationID, nil
 }
 
-// WrappedGitHubClient adds a Close method to the GitHub client that
+// GitHubClient adds a Close method to the GitHub client that
 // puts the underlying HTTP client back into the pool.
-type WrappedGitHubClient struct {
+type GitHubClient struct {
 	*github.Client
 }
 
 // Close puts the underlying HTTP client back into the pool.
-func (g *WrappedGitHubClient) Close() {
+func (g *GitHubClient) Close() {
 	if g == nil {
 		return
 	}
@@ -224,7 +224,7 @@ func (g *WrappedGitHubClient) Close() {
 // getGitHubClientForAuth returns a GitHub client with the GitHub app's private key.
 // This function cannot be moved to thirdparty because it is needed to set up the environment.
 // Couple this with a defered call with Close() to clean up the client.
-func getGitHubClientForAuth(authFields *githubAppAuth) (*WrappedGitHubClient, error) {
+func getGitHubClientForAuth(authFields *githubAppAuth) (*GitHubClient, error) {
 	retryConf := utility.NewDefaultHTTPRetryConf()
 	retryConf.MaxDelay = GitHubRetryMaxDelay
 	retryConf.BaseDelay = GitHubRetryMinDelay
@@ -239,7 +239,7 @@ func getGitHubClientForAuth(authFields *githubAppAuth) (*WrappedGitHubClient, er
 	itr := ghinstallation.NewAppsTransportFromPrivateKey(httpClient.Transport, authFields.appId, key)
 	httpClient.Transport = itr
 	client := github.NewClient(httpClient)
-	wrappedClient := WrappedGitHubClient{Client: client}
+	wrappedClient := GitHubClient{Client: client}
 	return &wrappedClient, nil
 }
 
