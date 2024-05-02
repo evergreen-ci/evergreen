@@ -1915,34 +1915,6 @@ buildvariants:
 	assert.Nil(t, proj.BuildVariants[2].Tasks[0].GitTagOnly)
 }
 
-func TestLoggerConfig(t *testing.T) {
-	assert := assert.New(t)
-	yml := `
-loggers:
-  agent:
-    - type: something
-      splunk_token: idk
-    - type: somethingElse
-tasks:
-- name: task_1
-  commands:
-  - command: myCommand
-    loggers:
-      system:
-        - type: commandLogger
-`
-
-	proj := &Project{}
-	ctx := context.Background()
-	_, err := LoadProjectInto(ctx, []byte(yml), nil, "id", proj)
-	assert.NotNil(proj)
-	assert.Nil(err)
-	assert.Equal("something", proj.Loggers.Agent[0].Type)
-	assert.Equal("idk", proj.Loggers.Agent[0].SplunkToken)
-	assert.Equal("somethingElse", proj.Loggers.Agent[1].Type)
-	assert.Equal("commandLogger", proj.Tasks[0].Commands[0].Loggers.System[0].Type)
-}
-
 func TestParseOomTracker(t *testing.T) {
 	yml := `
 tasks:

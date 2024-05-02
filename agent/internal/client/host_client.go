@@ -11,9 +11,6 @@ const (
 	defaultTimeoutStart = time.Second * 2
 	defaultTimeoutMax   = time.Minute * 10
 	heartbeatTimeout    = time.Minute * 1
-
-	defaultLogBufferTime = 15 * time.Second
-	defaultLogBufferSize = 1000
 )
 
 // hostCommunicator implements Communicator and makes requests to API endpoints

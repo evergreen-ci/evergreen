@@ -318,21 +318,6 @@ func (a *Agent) runCommand(ctx context.Context, tc *taskContext, logger client.L
 	return nil
 }
 
-// getCommandNameForFileLogger gets the name of the command that should be used
-// when the file logger is being used.
-func getCommandNameForFileLogger(commandInfo model.PluginCommandConf) string {
-	if commandInfo.DisplayName != "" {
-		return commandInfo.DisplayName
-	}
-	if commandInfo.Function != "" {
-		return commandInfo.Function
-	}
-	if commandInfo.Command != "" {
-		return commandInfo.Command
-	}
-	return "unknown function"
-}
-
 // endTaskSyncCommands returns the commands to sync the task to S3 if it was
 // requested when the task completes.
 func endTaskSyncCommands(tc *taskContext, detail *apimodels.TaskEndDetail) *model.YAMLCommandSet {

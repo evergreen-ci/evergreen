@@ -413,7 +413,7 @@ func (c *baseCommunicator) makeSender(ctx context.Context, tsk *task.Task, confi
 	if logType == taskoutput.TaskLogTypeTask {
 		sender = makeTimeoutLogSender(sender, c)
 	}
-
+	senders = append(senders, sender)
 	return send.NewConfiguredMultiSender(senders...), nil
 }
 
