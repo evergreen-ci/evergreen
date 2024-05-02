@@ -133,14 +133,6 @@ func MockConfig() *evergreen.Settings {
 		},
 		ApiUrl: "api",
 		AuthConfig: evergreen.AuthConfig{
-			LDAP: &evergreen.LDAPConfig{
-				URL:                "url",
-				Port:               "port",
-				UserPath:           "path",
-				ServicePath:        "bot",
-				Group:              "group",
-				ExpireAfterMinutes: "60",
-			},
 			Okta: &evergreen.OktaConfig{
 				ClientID:           "id",
 				ClientSecret:       "secret",
@@ -159,10 +151,8 @@ func MockConfig() *evergreen.Settings {
 				Organization: "ghorg",
 			},
 			Multi: &evergreen.MultiAuthConfig{
-				ReadWrite: []string{evergreen.AuthLDAPKey},
-				ReadOnly:  []string{evergreen.AuthNaiveKey},
+				ReadOnly: []string{evergreen.AuthNaiveKey},
 			},
-			PreferredType:           evergreen.AuthLDAPKey,
 			BackgroundReauthMinutes: 60,
 		},
 		AWSInstanceRole: "role",

@@ -316,14 +316,6 @@ func (s *AdminSuite) TestAuthConfig() {
 	defer cancel()
 
 	config := AuthConfig{
-		LDAP: &LDAPConfig{
-			URL:                "url",
-			Port:               "port",
-			UserPath:           "path",
-			ServicePath:        "bot",
-			Group:              "group",
-			ExpireAfterMinutes: "60",
-		},
 		Okta: &OktaConfig{
 			ClientID:           "id",
 			ClientSecret:       "secret",
@@ -343,9 +335,8 @@ func (s *AdminSuite) TestAuthConfig() {
 			AppId:        1234,
 		},
 		Multi: &MultiAuthConfig{
-			ReadWrite: []string{AuthGithubKey, AuthLDAPKey},
+			ReadWrite: []string{AuthGithubKey},
 		},
-		PreferredType:           AuthLDAPKey,
 		BackgroundReauthMinutes: 60,
 	}
 
