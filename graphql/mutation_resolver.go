@@ -305,6 +305,18 @@ func (r *mutationResolver) EnqueuePatch(ctx context.Context, patchID string, com
 		return nil, InternalServerError.Send(ctx, fmt.Sprintf("error getting patch '%s'", patchID))
 	}
 
+	projectID := utility.FromStringPtr(existingPatch.ProjectId)
+	proj, err := data.FindProjectById(projectID, false, false)
+	if err != nil {
+		return nil, InternalServerError.Send(ctx, fmt.Sprintf("error getting project '%s': %s", projectID, err.Error()))
+	}
+	if proj == nil {
+		return nil, ResourceNotFound.Send(ctx, fmt.Sprintf("project '%s' not found", projectID))
+	}
+	if proj.CommitQueue.MergeQueue == model.MergeQueueGitHub {
+		return nil, Forbidden.Send(ctx, "Can't enqueue patches for projects with GitHub merge queue. Click the merge button on the PR instead.")
+	}
+
 	patch, err := existingPatch.ToService()
 	if err != nil {
 		return nil, InternalServerError.Send(ctx, fmt.Sprintf("converting APIPatch to patch '%s'", patchID))
@@ -315,21 +327,6 @@ func (r *mutationResolver) EnqueuePatch(ctx context.Context, patchID string, com
 
 	if commitMessage == nil {
 		commitMessage = existingPatch.Description
-	}
-
-	if utility.FromStringPtr(existingPatch.Requester) == evergreen.GithubPRRequester {
-		info := commitqueue.EnqueuePRInfo{
-			PR:            existingPatch.GithubPatchData.PRNumber,
-			Repo:          utility.FromStringPtr(existingPatch.GithubPatchData.BaseRepo),
-			Owner:         utility.FromStringPtr(existingPatch.GithubPatchData.BaseOwner),
-			CommitMessage: utility.FromStringPtr(commitMessage),
-			Username:      utility.FromStringPtr(existingPatch.GithubPatchData.Author),
-		}
-		newPatch, err := data.EnqueuePRToCommitQueue(ctx, evergreen.GetEnvironment(), r.sc, info)
-		if err != nil {
-			return nil, InternalServerError.Send(ctx, fmt.Sprintf("enqueueing patch '%s': %s", patchID, err.Error()))
-		}
-		return newPatch, nil
 	}
 
 	newPatch, err := data.CreatePatchForMerge(ctx, evergreen.GetEnvironment().Settings(), patchID, utility.FromStringPtr(commitMessage))

@@ -479,6 +479,17 @@ func CreatePatchForMerge(ctx context.Context, settings *evergreen.Settings, exis
 		return nil, errors.Errorf("patch '%s' not found", existingPatchID)
 	}
 
+	proj, err := FindProjectById(existingPatch.Project, false, false)
+	if err != nil {
+		return nil, errors.Wrapf(err, "getting project '%s'", existingPatch.Project)
+	}
+	if proj == nil {
+		return nil, errors.Errorf("project '%s' not found", existingPatch.Project)
+	}
+	if proj.CommitQueue.MergeQueue == model.MergeQueueGitHub {
+		return nil, errors.New("Can't enqueue patches for projects with GitHub merge queue. Click the merge button on the PR instead.")
+	}
+
 	newPatch, err := model.MakeMergePatchFromExisting(ctx, settings, existingPatch, commitMessage)
 	if err != nil {
 		return nil, errors.Wrapf(err, "creating new patch from existing patch '%s'", existingPatchID)
