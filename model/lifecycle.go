@@ -14,7 +14,6 @@ import (
 	"github.com/evergreen-ci/evergreen/model/event"
 	"github.com/evergreen-ci/evergreen/model/patch"
 	"github.com/evergreen-ci/evergreen/model/task"
-	"github.com/evergreen-ci/evergreen/model/user"
 	"github.com/evergreen-ci/evergreen/util"
 	"github.com/evergreen-ci/utility"
 	"github.com/mongodb/anser/bsonutil"
@@ -866,10 +865,6 @@ func createTasksForBuild(creationInfo TaskCreationInfo) (task.Tasks, error) {
 		tasks = append(tasks, t)
 	}
 
-	if err := checkUsersPatchTaskLimit(creationInfo.Version.Requester, creationInfo.Version.Author, false, tasks.Export()...); err != nil {
-		return nil, errors.Wrap(err, "updating patch task limit for user")
-	}
-
 	// Set the NumDependents field
 	// Existing tasks in the db and tasks in other builds are not updated
 	setNumDeps(tasks)
@@ -885,7 +880,7 @@ func createTasksForBuild(creationInfo TaskCreationInfo) (task.Tasks, error) {
 // will be incremented accordingly. The addExecutionTasks parameter indicates that execution tasks are included
 // as part of the input tasks param, otherwise we need to account for them.
 func checkUsersPatchTaskLimit(requester, username string, addExecutionTasks bool, tasks ...task.Task) error {
-	// we only care about patch tasks that are to be activated by an actual person
+	// we only care about patch tasks that are to be activated by an actual user
 	if !evergreen.IsPatchRequester(requester) || evergreen.IsSystemActivator(username) {
 		return nil
 	}
@@ -902,15 +897,7 @@ func checkUsersPatchTaskLimit(requester, username string, addExecutionTasks bool
 			numTasksToActivate++
 		}
 	}
-	u, err := user.FindOneById(username)
-	if err != nil {
-		return errors.Wrap(err, "getting user")
-	}
-	if u != nil {
-		s := evergreen.GetEnvironment().Settings()
-		return errors.Wrapf(u.CheckAndUpdateSchedulingLimit(s, numTasksToActivate, true), "checking task scheduling limit for user '%s'", u.Id)
-	}
-	return nil
+	return task.FetchUserAndUpdateSchedulingLimit(username, requester, numTasksToActivate, true)
 }
 
 // addSingleHostTaskGroupDependencies adds dependencies to any tasks in a single-host task group
@@ -1664,7 +1651,9 @@ func addNewBuilds(ctx context.Context, creationInfo TaskCreationInfo, existingBu
 			},
 		)
 	}
-
+	if err = task.FetchUserAndUpdateSchedulingLimit(creationInfo.Version.Author, creationInfo.Version.Requester, len(newActivatedTaskIds), true); err != nil {
+		return nil, errors.Wrapf(err, "fetching user '%s' and updating their scheduling limit", creationInfo.Version.Author)
+	}
 	grip.Error(message.WrapError(batchTimeCatcher.Resolve(), message.Fields{
 		"message": "unable to get all activation times",
 		"runner":  "addNewBuilds",
@@ -1768,6 +1757,9 @@ func addNewTasksToExistingBuilds(ctx context.Context, creationInfo TaskCreationI
 		if !wasActivated && b.Activated {
 			buildIdsToActivate = append(buildIdsToActivate, b.Id)
 		}
+	}
+	if err = checkUsersPatchTaskLimit(creationInfo.Version.Requester, creationInfo.Version.Author, false, activatedTasks...); err != nil {
+		return nil, errors.Wrap(err, "updating patch task limit for user")
 	}
 	if len(buildIdsToActivate) > 0 {
 		if err := build.UpdateActivation(buildIdsToActivate, true, caller); err != nil {

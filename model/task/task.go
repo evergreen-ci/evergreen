@@ -1820,6 +1820,9 @@ func (t *Task) HasResults() bool {
 
 // ActivateTasks sets all given tasks to active, logs them as activated, and proceeds to activate any dependencies that were deactivated.
 func ActivateTasks(tasks []Task, activationTime time.Time, updateDependencies bool, caller string) error {
+	if len(tasks) == 0 {
+		return nil
+	}
 	tasksToActivate := make([]Task, 0, len(tasks))
 	taskIDs := make([]string, 0, len(tasks))
 	for _, t := range tasks {
@@ -1834,17 +1837,10 @@ func ActivateTasks(tasks []Task, activationTime time.Time, updateDependencies bo
 	if err != nil {
 		return errors.Wrap(err, "getting dependency tasks to activate")
 	}
-	if !evergreen.IsSystemActivator(caller) {
-		u, err := user.FindOneById(caller)
-		if err != nil {
-			return errors.Wrapf(err, "finding user '%s'", caller)
-		}
-		if u != nil {
-			settings := evergreen.GetEnvironment().Settings()
-			if err = u.CheckAndUpdateSchedulingLimit(settings, len(taskIDs)+len(depTaskIDsToUpdate), true); err != nil {
-				return errors.Wrapf(err, "checking task scheduling limit for user '%s'", u.Id)
-			}
-		}
+	// Tasks passed into this function will all be from the same version or build, so we can assume
+	// all tasks also share the same requester field.
+	if err = FetchUserAndUpdateSchedulingLimit(caller, tasks[0].Requester, len(taskIDs)+len(depTaskIDsToUpdate), true); err != nil {
+		return err
 	}
 	err = activateTasks(taskIDs, caller, activationTime)
 	if err != nil {
@@ -1862,6 +1858,23 @@ func ActivateTasks(tasks []Task, activationTime time.Time, updateDependencies bo
 
 	if len(depTaskIDsToUpdate) > 0 {
 		return activateDeactivatedDependencies(depTasksToUpdate, depTaskIDsToUpdate, caller)
+	}
+	return nil
+}
+
+// FetchUserAndUpdateSchedulingLimit retrieves a user from the DB and updates their hourly scheduling limit info
+// if they are not a service user.
+func FetchUserAndUpdateSchedulingLimit(username, requester string, numTasksModified int, activated bool) error {
+	if evergreen.IsSystemActivator(username) || !evergreen.IsPatchRequester(requester) {
+		return nil
+	}
+	u, err := user.FindOneById(username)
+	if err != nil {
+		return errors.Wrap(err, "getting user")
+	}
+	if u != nil && !u.OnlyAPI {
+		s := evergreen.GetEnvironment().Settings()
+		return errors.Wrapf(u.CheckAndUpdateSchedulingLimit(s, numTasksModified, activated), "checking task scheduling limit for user '%s'", u.Id)
 	}
 	return nil
 }
@@ -2062,6 +2075,9 @@ func topologicalSort(tasks []Task) ([]Task, error) {
 }
 
 func DeactivateTasks(tasks []Task, updateDependencies bool, caller string) error {
+	if len(tasks) == 0 {
+		return nil
+	}
 	taskIDs := make([]string, 0, len(tasks))
 	for _, t := range tasks {
 		// Deactivating a deactivated task is a noop.
@@ -2079,17 +2095,10 @@ func DeactivateTasks(tasks []Task, updateDependencies bool, caller string) error
 		return errors.Wrap(err, "retrieving dependency tasks to deactivate")
 	}
 
-	if !evergreen.IsSystemActivator(caller) {
-		u, err := user.FindOneById(caller)
-		if err != nil {
-			return errors.Wrapf(err, "finding user '%s'", caller)
-		}
-		if u != nil {
-			settings := evergreen.GetEnvironment().Settings()
-			if err = u.CheckAndUpdateSchedulingLimit(settings, len(taskIDs)+len(depTaskIDsToUpdate), false); err != nil {
-				return errors.Wrapf(err, "checking task scheduling limit for user '%s'", u.Id)
-			}
-		}
+	// Tasks passed into this function will all be from the same version or build, so we can assume
+	// all tasks also share the same requester field.
+	if err = FetchUserAndUpdateSchedulingLimit(caller, tasks[0].Requester, len(taskIDs)+len(depTaskIDsToUpdate), false); err != nil {
+		return err
 	}
 
 	_, err = UpdateAll(

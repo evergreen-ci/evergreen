@@ -742,6 +742,15 @@ func FinalizePatch(ctx context.Context, p *patch.Patch, requester string, github
 			},
 		)
 	}
+	numActivatedTasks := 0
+	for _, t := range tasksToInsert {
+		if t.Activated {
+			numActivatedTasks++
+		}
+	}
+	if err = task.FetchUserAndUpdateSchedulingLimit(creationInfo.Version.Author, creationInfo.Version.Requester, numActivatedTasks, true); err != nil {
+		return nil, errors.Wrapf(err, "fetching user '%s' and updating their scheduling limit", creationInfo.Version.Author)
+	}
 
 	patchVersion.ProjectStorageMethod = p.ProjectStorageMethod
 

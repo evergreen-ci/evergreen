@@ -851,7 +851,7 @@ func MarkEnd(ctx context.Context, settings *evergreen.Settings, t *task.Task, ca
 		"pod_id":             t.PodID,
 		"execution_platform": t.ExecutionPlatform,
 	})
-	requester := evergreen.APIServerTaskActivator
+	origin := evergreen.APIServerTaskActivator
 	if t.IsPartOfDisplay() {
 		if err = UpdateDisplayTaskForTask(t); err != nil {
 			return errors.Wrap(err, "updating display task")
@@ -860,7 +860,7 @@ func MarkEnd(ctx context.Context, settings *evergreen.Settings, t *task.Task, ca
 		if err != nil {
 			return errors.Wrap(err, "getting display task")
 		}
-		if err = checkResetDisplayTask(ctx, settings, requester, "", dt); err != nil {
+		if err = checkResetDisplayTask(ctx, settings, caller, origin, dt); err != nil {
 			return errors.Wrap(err, "checking display task reset")
 		}
 	} else {
@@ -906,9 +906,9 @@ func MarkEnd(ctx context.Context, settings *evergreen.Settings, t *task.Task, ca
 
 	if (t.ResetWhenFinished || t.ResetFailedWhenFinished) && !t.IsPartOfDisplay() && !t.IsPartOfSingleHostTaskGroup() {
 		if t.IsAutomaticRestart {
-			requester = evergreen.AutoRestartActivator
+			caller = evergreen.AutoRestartActivator
 		}
-		return TryResetTask(ctx, settings, t.Id, requester, "", detail)
+		return TryResetTask(ctx, settings, t.Id, caller, "", detail)
 	}
 
 	return nil
@@ -2098,17 +2098,16 @@ func MarkOneTaskReset(ctx context.Context, t *task.Task, caller string) error {
 func findExecTasksToReset(t *task.Task) ([]string, error) {
 	if !t.ResetFailedWhenFinished {
 		return t.ExecutionTasks, nil
-	} else {
-		failedExecTasks, err := task.FindWithFields(task.FailedTasksByIds(t.ExecutionTasks), task.IdKey)
-		if err != nil {
-			return nil, errors.Wrap(err, "retrieving failed execution tasks")
-		}
-		failedExecTaskIds := []string{}
-		for _, et := range failedExecTasks {
-			failedExecTaskIds = append(failedExecTaskIds, et.Id)
-		}
-		return failedExecTaskIds, nil
 	}
+	failedExecTasks, err := task.FindWithFields(task.FailedTasksByIds(t.ExecutionTasks), task.IdKey)
+	if err != nil {
+		return nil, errors.Wrap(err, "retrieving failed execution tasks")
+	}
+	failedExecTaskIds := []string{}
+	for _, et := range failedExecTasks {
+		failedExecTaskIds = append(failedExecTaskIds, et.Id)
+	}
+	return failedExecTaskIds, nil
 }
 
 // MarkTasksReset resets many tasks by their IDs. For execution tasks, this also
