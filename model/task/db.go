@@ -204,9 +204,7 @@ var (
 			"branches": []bson.M{
 				{
 					"case": bson.M{
-						"$or": []bson.M{
-							{"$eq": []interface{}{"$" + HasAnnotationsKey, true}},
-						},
+						"$eq": []interface{}{"$" + HasAnnotationsKey, true},
 					},
 					"then": evergreen.TaskKnownIssue,
 				},
