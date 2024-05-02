@@ -4879,6 +4879,7 @@ func TestReset(t *testing.T) {
 			ResetFailedWhenFinished: true,
 			OverrideDependencies:    true,
 			CanReset:                true,
+			HasAnnotations:          true,
 			AgentVersion:            "a1",
 			HostId:                  "h",
 			PodID:                   "p",
@@ -4896,6 +4897,7 @@ func TestReset(t *testing.T) {
 		assert.False(t, dbTask.IsAutomaticRestart)
 		assert.False(t, dbTask.ResetFailedWhenFinished)
 		assert.False(t, dbTask.OverrideDependencies)
+		assert.False(t, dbTask.HasAnnotations)
 		assert.False(t, dbTask.CanReset)
 		assert.Equal(t, "", dbTask.AgentVersion)
 		assert.Equal(t, "", dbTask.HostId)
