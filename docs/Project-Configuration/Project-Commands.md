@@ -513,7 +513,7 @@ by a patch submission.
 ```
 
 ``` yaml
-- modules: 
+modules: 
   - name: example
     owner: 10gen
     repo: mongo-example-modules
