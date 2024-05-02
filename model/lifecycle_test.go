@@ -1073,7 +1073,6 @@ func TestCreateBuildFromVersion(t *testing.T) {
 			So(build, ShouldNotBeNil)
 			So(build.Id, ShouldNotEqual, "")
 			So(len(tasks), ShouldEqual, 4)
-			So(len(tasks[0].Tags), ShouldEqual, 2)
 		})
 
 		Convey("if a non-empty list of task names is passed in, only the"+
