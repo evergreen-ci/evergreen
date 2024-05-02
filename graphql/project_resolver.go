@@ -46,6 +46,8 @@ func (r *projectResolver) Patches(ctx context.Context, obj *restModel.APIProject
 		if err != nil {
 			return nil, InternalServerError.Send(ctx, fmt.Sprintf("problem building APIPatch from service for patch: %s : %s", p.Id.Hex(), err.Error()))
 		}
+		// Only show the enqueue button if the project uses the Evergreen commit queue.
+		apiPatch.CanEnqueueToCommitQueue = obj.CommitQueue.MergeQueue == model.MergeQueueEvergreen
 		apiPatches = append(apiPatches, &apiPatch)
 	}
 	return &Patches{Patches: apiPatches, FilteredPatchCount: count}, nil
