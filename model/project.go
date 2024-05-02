@@ -64,7 +64,6 @@ type Project struct {
 	Tasks              []ProjectTask              `yaml:"tasks,omitempty" bson:"tasks"`
 	ExecTimeoutSecs    int                        `yaml:"exec_timeout_secs,omitempty" bson:"exec_timeout_secs"`
 	TimeoutSecs        int                        `yaml:"timeout_secs,omitempty" bson:"timeout_secs"`
-	Loggers            *LoggerConfig              `yaml:"loggers,omitempty" bson:"loggers,omitempty"`
 
 	// Flag that indicates a project as requiring user authentication
 	Private bool `yaml:"private,omitempty" bson:"private"`
@@ -549,8 +548,6 @@ type PluginCommandConf struct {
 
 	// RetryOnFailure indicates whether the task should be retried if this command fails.
 	RetryOnFailure bool `yaml:"retry_on_failure,omitempty" bson:"retry_on_failure,omitempty"`
-
-	Loggers *LoggerConfig `yaml:"loggers,omitempty" bson:"loggers,omitempty"`
 }
 
 func (c *PluginCommandConf) resolveParams() error {
@@ -579,7 +576,6 @@ func (c *PluginCommandConf) UnmarshalYAML(unmarshal func(interface{}) error) err
 		ParamsYAML     string                 `yaml:"params_yaml,omitempty" bson:"params_yaml,omitempty"`
 		Vars           map[string]string      `yaml:"vars,omitempty" bson:"vars,omitempty"`
 		RetryOnFailure bool                   `yaml:"retry_on_failure,omitempty" bson:"retry_on_failure,omitempty"`
-		Loggers        *LoggerConfig          `yaml:"loggers,omitempty" bson:"loggers,omitempty"`
 	}{}
 
 	if err := unmarshal(&temp); err != nil {
@@ -592,7 +588,6 @@ func (c *PluginCommandConf) UnmarshalYAML(unmarshal func(interface{}) error) err
 	c.Variants = temp.Variants
 	c.TimeoutSecs = temp.TimeoutSecs
 	c.Vars = temp.Vars
-	c.Loggers = temp.Loggers
 	c.ParamsYAML = temp.ParamsYAML
 	c.Params = temp.Params
 	c.RetryOnFailure = temp.RetryOnFailure
@@ -748,79 +743,9 @@ type ProjectTask struct {
 	MustHaveResults   *bool                     `yaml:"must_have_test_results,omitempty" bson:"must_have_test_results,omitempty"`
 }
 
-type LoggerConfig struct {
-	Agent  []LogOpts `yaml:"agent,omitempty" bson:"agent,omitempty"`
-	System []LogOpts `yaml:"system,omitempty" bson:"system,omitempty"`
-	Task   []LogOpts `yaml:"task,omitempty" bson:"task,omitempty"`
-}
-
-type LogOpts struct {
-	Type         string `yaml:"type,omitempty" bson:"type,omitempty"`
-	SplunkServer string `yaml:"splunk_server,omitempty" bson:"splunk_server,omitempty"`
-	SplunkToken  string `yaml:"splunk_token,omitempty" bson:"splunk_token,omitempty"`
-	LogDirectory string `yaml:"log_directory,omitempty" bson:"log_directory,omitempty"`
-}
-
-func (c *LoggerConfig) IsValid() error {
-	if c == nil {
-		return nil
-	}
-	catcher := grip.NewBasicCatcher()
-	for _, opts := range c.Agent {
-		catcher.Wrap(opts.IsValid(), "invalid agent logger config")
-	}
-	for _, opts := range c.System {
-		catcher.Wrap(opts.IsValid(), "invalid system logger config")
-		if opts.Type == FileLogSender {
-			catcher.New("file logger is disallowed for system logs; will use Evergreen logger")
-		}
-	}
-	for _, opts := range c.Task {
-		catcher.Wrap(opts.IsValid(), "invalid task logger config")
-	}
-
-	return catcher.Resolve()
-}
-
-func (o *LogOpts) IsValid() error {
-	catcher := grip.NewBasicCatcher()
-	if !utility.StringSliceContains(ValidLogSenders, o.Type) {
-		catcher.Errorf("'%s' is not a valid log sender", o.Type)
-	}
-	if o.Type == SplunkLogSender && o.SplunkServer == "" {
-		catcher.New("Splunk logger requires a server URL")
-	}
-	if o.Type == SplunkLogSender && o.SplunkToken == "" {
-		catcher.New("Splunk logger requires a token")
-	}
-
-	return catcher.Resolve()
-}
-
-func mergeAllLogs(main, add *LoggerConfig) *LoggerConfig {
-	if main == nil {
-		return add
-	} else if add == nil {
-		return main
-	} else {
-		main.Agent = append(main.Agent, add.Agent...)
-		main.System = append(main.System, add.System...)
-		main.Task = append(main.Task, add.Task...)
-	}
-	return main
-}
-
 const (
 	EvergreenLogSender = "evergreen"
-	FileLogSender      = "file"
-	SplunkLogSender    = "splunk"
 )
-
-var ValidLogSenders = []string{
-	EvergreenLogSender,
-	FileLogSender,
-	SplunkLogSender,
-}
 
 // TaskIdTable is a map of [variant, task display name]->[task id].
 type TaskIdTable map[TVPair]string

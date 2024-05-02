@@ -85,18 +85,8 @@ func TestAgentFileLogging(t *testing.T) {
 								"shell":  "bash",
 								"script": "echo 'hello world'",
 							},
-							Loggers: &model.LoggerConfig{
-								Agent:  []model.LogOpts{{Type: model.FileLogSender}},
-								System: []model.LogOpts{{Type: model.FileLogSender}},
-								Task:   []model.LogOpts{{Type: model.FileLogSender}},
-							},
 						},
 					}},
-				},
-				Loggers: &model.LoggerConfig{
-					Agent:  []model.LogOpts{{Type: model.FileLogSender}},
-					System: []model.LogOpts{{Type: model.FileLogSender}},
-					Task:   []model.LogOpts{{Type: model.FileLogSender}},
 				},
 				BuildVariants: model.BuildVariants{
 					{Name: "bv", Tasks: []model.BuildVariantTaskUnit{{Name: "task1", Variant: "bv"}}},
@@ -149,18 +139,10 @@ func TestStartLogging(t *testing.T) {
 	require.NoError(t, err)
 	tc.taskConfig = config
 
-	assert.EqualValues(t, model.EvergreenLogSender, tc.taskConfig.Project.Loggers.Agent[0].Type)
-	assert.EqualValues(t, model.SplunkLogSender, tc.taskConfig.Project.Loggers.System[0].Type)
-	assert.EqualValues(t, model.FileLogSender, tc.taskConfig.Project.Loggers.Task[0].Type)
-
 	require.NoError(t, agt.startLogging(ctx, tc))
 	tc.logger.Execution().Info("foo")
 	assert.NoError(t, tc.logger.Close())
 	lines := agt.comm.(*client.Mock).GetTaskLogs(tc.taskConfig.Task.Id)
 	require.Len(t, lines, 1)
 	assert.Equal(t, "foo", lines[0].Data)
-
-	// Check that expansions are correctly populated.
-	logConfig := agt.prepLogger(tc, tc.taskConfig.Project.Loggers, "")
-	assert.Equal(t, "bar", logConfig.System[0].SplunkToken)
 }

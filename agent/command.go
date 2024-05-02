@@ -165,24 +165,6 @@ func (a *Agent) blockToLegacyName(block command.BlockType) string {
 func (a *Agent) runCommandOrFunc(ctx context.Context, tc *taskContext, commandInfo model.PluginCommandConf,
 	cmds []command.Command, options runCommandsOptions) error {
 
-	var err error
-	var logger client.LoggerProducer
-	// if there is a command-specific logger, make it here otherwise use the task-level logger
-	if commandInfo.Loggers == nil {
-		logger = tc.logger
-	} else {
-		logger, err = a.makeLoggerProducer(ctx, tc, commandInfo.Loggers, getCommandNameForFileLogger(commandInfo))
-		if err != nil {
-			return errors.Wrap(err, "making command logger")
-		}
-		defer func() {
-			// If the logger is a command-specific logger, when the command
-			// finishes, the loggers should have no more logs to send. Closing
-			// it ensure that the command logger flushes all logs and cleans up.
-			grip.Error(errors.Wrap(logger.Close(), "closing command logger"))
-		}()
-	}
-
 	if commandInfo.Function != "" {
 		var commandSetSpan trace.Span
 		ctx, commandSetSpan = a.tracer.Start(ctx, "function", trace.WithAttributes(
@@ -213,14 +195,14 @@ func (a *Agent) runCommandOrFunc(ctx context.Context, tc *taskContext, commandIn
 
 		cmd.SetJasperManager(a.jasper)
 
-		if err := a.runCommand(ctx, tc, logger, commandInfo, cmd, options); err != nil {
+		if err := a.runCommand(ctx, tc, tc.logger, commandInfo, cmd, options); err != nil {
 			commandSpan.SetStatus(codes.Error, "running command")
 			commandSpan.RecordError(err, trace.WithAttributes(tc.taskConfig.TaskAttributes()...))
 			commandSpan.End()
 			if cmd.RetryOnFailure() {
-				logger.Task().Infof("Command is set to automatically restart on completion, this can be done %d total times per task.", evergreen.MaxAutomaticRestarts)
+				tc.logger.Task().Infof("Command is set to automatically restart on completion, this can be done %d total times per task.", evergreen.MaxAutomaticRestarts)
 				if restartErr := a.comm.MarkFailedTaskToRestart(ctx, tc.task); restartErr != nil {
-					logger.Task().Errorf("Encountered error marking task to restart upon completion: %s", restartErr)
+					tc.logger.Task().Errorf("Encountered error marking task to restart upon completion: %s", restartErr)
 				}
 			}
 			return errors.Wrap(err, "running command")

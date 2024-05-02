@@ -2423,28 +2423,15 @@ func TestMergeUnordered(t *testing.T) {
 		Ignore: parserStringSlice{
 			"a",
 		},
-		Loggers: &LoggerConfig{
-			Agent:  []LogOpts{{Type: EvergreenLogSender}},
-			System: []LogOpts{{Type: EvergreenLogSender}},
-			Task:   []LogOpts{{Type: EvergreenLogSender}},
-		},
 	}
 
 	add := &ParserProject{
 		Ignore: parserStringSlice{
 			"b",
 		},
-		Loggers: &LoggerConfig{
-			Agent:  []LogOpts{{LogDirectory: "a"}},
-			System: []LogOpts{{LogDirectory: "a"}},
-			Task:   []LogOpts{{LogDirectory: "a"}},
-		},
 	}
 	main.mergeUnordered(add)
 	assert.Equal(t, len(main.Ignore), 2)
-	assert.Equal(t, len(main.Loggers.Agent), 2)
-	assert.Equal(t, len(main.Loggers.System), 2)
-	assert.Equal(t, len(main.Loggers.Task), 2)
 }
 
 func TestMergeOrderedUnique(t *testing.T) {

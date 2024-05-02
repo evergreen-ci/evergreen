@@ -365,116 +365,56 @@ func (c *baseCommunicator) GetCedarGRPCConn(ctx context.Context) (*grpc.ClientCo
 }
 
 func (c *baseCommunicator) GetLoggerProducer(ctx context.Context, tsk *task.Task, config *LoggerConfig) (LoggerProducer, error) {
-	if config == nil {
-		config = &LoggerConfig{
-			Agent:  []LogOpts{{Sender: model.EvergreenLogSender}},
-			System: []LogOpts{{Sender: model.EvergreenLogSender}},
-			Task:   []LogOpts{{Sender: model.EvergreenLogSender}},
-		}
-	}
-	underlying := []send.Sender{}
-
-	exec, senders, err := c.makeSender(ctx, tsk, config.Agent, config, taskoutput.TaskLogTypeAgent)
+	exec, err := c.makeSender(ctx, tsk, config, taskoutput.TaskLogTypeAgent)
 	if err != nil {
 		return nil, errors.Wrap(err, "making agent logger")
 	}
-	underlying = append(underlying, senders...)
-	task, senders, err := c.makeSender(ctx, tsk, config.Task, config, taskoutput.TaskLogTypeTask)
+	task, err := c.makeSender(ctx, tsk, config, taskoutput.TaskLogTypeTask)
 	if err != nil {
 		return nil, errors.Wrap(err, "making task logger")
 	}
-	underlying = append(underlying, senders...)
-	system, senders, err := c.makeSender(ctx, tsk, config.System, config, taskoutput.TaskLogTypeSystem)
+	system, err := c.makeSender(ctx, tsk, config, taskoutput.TaskLogTypeSystem)
 	if err != nil {
 		return nil, errors.Wrap(err, "making system logger")
 	}
-	underlying = append(underlying, senders...)
 
 	return &logHarness{
-		execution:                 logging.MakeGrip(exec),
-		task:                      logging.MakeGrip(task),
-		system:                    logging.MakeGrip(system),
-		underlyingBufferedSenders: underlying,
+		execution: logging.MakeGrip(exec),
+		task:      logging.MakeGrip(task),
+		system:    logging.MakeGrip(system),
 	}, nil
 }
 
-func (c *baseCommunicator) makeSender(ctx context.Context, tsk *task.Task, opts []LogOpts, config *LoggerConfig, logType taskoutput.TaskLogType) (send.Sender, []send.Sender, error) {
+func (c *baseCommunicator) makeSender(ctx context.Context, tsk *task.Task, config *LoggerConfig, logType taskoutput.TaskLogType) (send.Sender, error) {
 	levelInfo := send.LevelInfo{Default: level.Info, Threshold: level.Debug}
 	var senders []send.Sender
 	if config.SendToGlobalSender {
 		senders = append(senders, grip.GetSender())
 	}
-	underlyingBufferedSenders := []send.Sender{}
 
-	for _, opt := range opts {
-		var sender send.Sender
-		var err error
-		bufferDuration := defaultLogBufferTime
-		if opt.BufferDuration > 0 {
-			bufferDuration = opt.BufferDuration
-		}
-		bufferSize := defaultLogBufferSize
-		if opt.BufferSize > 0 {
-			bufferSize = opt.BufferSize
-		}
-		bufferedSenderOpts := send.BufferedSenderOptions{FlushInterval: bufferDuration, BufferSize: bufferSize}
+	var sender send.Sender
+	var err error
 
-		// Disallow sending system logs to S3 for security reasons.
-		if logType == taskoutput.TaskLogTypeSystem && opt.Sender == model.FileLogSender {
-			opt.Sender = model.EvergreenLogSender
-		}
-
-		switch opt.Sender {
-		case model.FileLogSender:
-			sender, err = send.NewPlainFileLogger(string(logType), opt.Filepath, levelInfo)
-			if err != nil {
-				return nil, nil, errors.Wrap(err, "creating file logger")
-			}
-
-			underlyingBufferedSenders = append(underlyingBufferedSenders, sender)
-			sender, err = send.NewBufferedSender(ctx, sender, bufferedSenderOpts)
-			if err != nil {
-				return nil, nil, errors.Wrap(err, "creating buffered file logger")
-			}
-			grip.Error(sender.SetFormatter(send.MakeDefaultFormatter()))
-		case model.SplunkLogSender:
-			info := send.SplunkConnectionInfo{
-				ServerURL: opt.SplunkServerURL,
-				Token:     opt.SplunkToken,
-			}
-			sender, err = send.NewSplunkLogger(string(logType), info, levelInfo)
-			if err != nil {
-				return nil, nil, errors.Wrap(err, "creating Splunk logger")
-			}
-			underlyingBufferedSenders = append(underlyingBufferedSenders, sender)
-			sender, err = send.NewBufferedSender(ctx, newAnnotatedWrapper(tsk.Id, string(logType), sender), bufferedSenderOpts)
-			if err != nil {
-				return nil, nil, errors.Wrap(err, "creating buffered Splunk logger")
-			}
-		default:
-			taskOpts := taskoutput.TaskOptions{
-				ProjectID: tsk.Project,
-				TaskID:    tsk.Id,
-				Execution: tsk.Execution,
-			}
-			senderOpts := taskoutput.EvergreenSenderOptions{
-				LevelInfo:     levelInfo,
-				FlushInterval: time.Minute,
-			}
-			sender, err = tsk.TaskOutputInfo.TaskLogs.NewSender(ctx, taskOpts, senderOpts, logType)
-			if err != nil {
-				return nil, nil, errors.Wrap(err, "creating Evergreen task log sender")
-			}
-		}
-
-		sender = redactor.NewRedactingSender(sender, config.RedactorOpts)
-		if logType == taskoutput.TaskLogTypeTask {
-			sender = makeTimeoutLogSender(sender, c)
-		}
-		senders = append(senders, sender)
+	taskOpts := taskoutput.TaskOptions{
+		ProjectID: tsk.Project,
+		TaskID:    tsk.Id,
+		Execution: tsk.Execution,
+	}
+	senderOpts := taskoutput.EvergreenSenderOptions{
+		LevelInfo:     levelInfo,
+		FlushInterval: time.Minute,
+	}
+	sender, err = tsk.TaskOutputInfo.TaskLogs.NewSender(ctx, taskOpts, senderOpts, logType)
+	if err != nil {
+		return nil, errors.Wrap(err, "creating Evergreen task log sender")
 	}
 
-	return send.NewConfiguredMultiSender(senders...), underlyingBufferedSenders, nil
+	sender = redactor.NewRedactingSender(sender, config.RedactorOpts)
+	if logType == taskoutput.TaskLogTypeTask {
+		sender = makeTimeoutLogSender(sender, c)
+	}
+
+	return send.NewConfiguredMultiSender(senders...), nil
 }
 
 func (c *baseCommunicator) GetPullRequestInfo(ctx context.Context, taskData TaskData, prNum int, owner, repo string, lastAttempt bool) (*apimodels.PullRequestInfo, error) {
