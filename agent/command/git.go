@@ -777,17 +777,22 @@ func (c *gitFetchProject) fetchModuleSource(ctx context.Context,
 		// return early and will stop waiting for the command to exit. In the
 		// context error case, this thread and the still-running command may race to
 		// read/write the buffer, so the buffer has to be thread-safe.
+		stdOut := utility.MakeSafeBuffer(bytes.Buffer{})
 		stdErr := utility.MakeSafeBuffer(bytes.Buffer{})
 		err = jpm.CreateCommand(ctx).Add([]string{"bash", "-c", strings.Join(moduleCmds, "\n")}).
 			Directory(filepath.ToSlash(GetWorkingDirectory(conf, c.Directory))).
-			SetOutputSender(level.Info, logger.Task().GetSender()).SetErrorWriter(stdErr).Run(ctx)
+			SetOutputWriter(stdOut).SetErrorWriter(stdErr).Run(ctx)
+
+		// Prefix every line of the output with the module name.
+		output := strings.ReplaceAll(stdOut.String(), "\n", fmt.Sprintf("\n%s: ", module.Name))
+		logger.Execution().Info(output)
 
 		errOutput := stdErr.String()
 		if errOutput != "" {
 			if opts.token != "" {
 				errOutput = strings.Replace(errOutput, opts.token, "[redacted oauth token]", -1)
 			}
-			logger.Execution().Error(errOutput)
+			logger.Execution().Error(fmt.Sprintf("%s: %s", module.Name, errOutput))
 		}
 		return err
 	})
