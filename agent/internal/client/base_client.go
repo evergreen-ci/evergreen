@@ -365,6 +365,14 @@ func (c *baseCommunicator) GetCedarGRPCConn(ctx context.Context) (*grpc.ClientCo
 }
 
 func (c *baseCommunicator) GetLoggerProducer(ctx context.Context, tsk *task.Task, config *LoggerConfig) (LoggerProducer, error) {
+	if config == nil {
+		config = &LoggerConfig{
+			Agent:  []LogOpts{{Sender: model.EvergreenLogSender}},
+			System: []LogOpts{{Sender: model.EvergreenLogSender}},
+			Task:   []LogOpts{{Sender: model.EvergreenLogSender}},
+		}
+	}
+
 	exec, err := c.makeSender(ctx, tsk, config, taskoutput.TaskLogTypeAgent)
 	if err != nil {
 		return nil, errors.Wrap(err, "making agent logger")
