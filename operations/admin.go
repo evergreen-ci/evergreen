@@ -34,7 +34,6 @@ func Admin() cli.Command {
 			fromMdbForLocal(),
 			toMdbForLocal(),
 			updateRoleCmd(),
-			adminDistroExecute(),
 			updateServiceUser(),
 			getServiceUsers(),
 			deleteServiceUser(),
