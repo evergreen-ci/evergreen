@@ -59,7 +59,6 @@ func AttachHandler(app *gimlet.APIApp, opts HandlerOpts) {
 	editProjectSettings := RequiresProjectPermission(evergreen.PermissionProjectSettings, evergreen.ProjectSettingsEdit)
 	editDistroSettings := RequiresDistroPermission(evergreen.PermissionDistroSettings, evergreen.DistroSettingsEdit)
 	removeDistroSettings := RequiresDistroPermission(evergreen.PermissionDistroSettings, evergreen.DistroSettingsAdmin)
-	editHosts := RequiresDistroPermission(evergreen.PermissionHosts, evergreen.HostsEdit)
 	compress := gimlet.WrapperHandlerMiddleware(handlers.CompressHandler)
 
 	app.AddWrapper(gimlet.WrapperMiddleware(allowCORS))
