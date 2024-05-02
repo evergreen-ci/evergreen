@@ -159,7 +159,7 @@ func (apiPatch *APIPatch) BuildFromService(p patch.Patch, args *APIPatchArgs) er
 	if err != nil {
 		return errors.Wrapf(err, "finding project ref '%s'", projectIdentifier)
 	}
-	if proj != nil {
+	if proj == nil {
 		return errors.Errorf("project ref '%s' not found", projectIdentifier)
 	}
 	// Projects that use the GitHub merge queue cannot enqueue to the commit queue.
