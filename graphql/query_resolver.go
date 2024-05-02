@@ -380,14 +380,14 @@ func (r *queryResolver) Patch(ctx context.Context, patchID string) (*restModel.A
 	}
 
 	if evergreen.IsFinishedVersionStatus(*patch.Status) {
-		statuses, err := task.GetTaskStatusesByVersion(ctx, patchID, false)
+		statuses, err := task.GetTaskStatusesByVersion(ctx, patchID)
 		if err != nil {
 			return nil, InternalServerError.Send(ctx, fmt.Sprintf("fetching task statuses for patch: %s", err.Error()))
 		}
 
 		if len(patch.ChildPatches) > 0 {
 			for _, cp := range patch.ChildPatches {
-				childPatchStatuses, err := task.GetTaskStatusesByVersion(ctx, *cp.Id, false)
+				childPatchStatuses, err := task.GetTaskStatusesByVersion(ctx, *cp.Id)
 				if err != nil {
 					return nil, InternalServerError.Send(ctx, fmt.Sprintf("fetching task statuses for child patch: %s", err.Error()))
 				}

@@ -24,8 +24,6 @@ const (
 	OldCollection = "old_tasks"
 )
 
-var annotationLookupDeprecationTime = time.Date(2024, time.January, 28, 23, 0, 0, 0, time.UTC)
-
 var (
 	ActivatedTasksByDistroIndex = bson.D{
 		{Key: DistroIdKey, Value: 1},
@@ -2054,6 +2052,9 @@ func GetTasksByVersion(ctx context.Context, versionID string, opts GetTasksByVer
 
 	env := evergreen.GetEnvironment()
 	cursor, err := env.DB().Collection(Collection).Aggregate(ctx, pipeline)
+	if err != nil {
+		return nil, 0, err
+	}
 
 	var results []Task
 	var count int
@@ -2092,14 +2093,13 @@ func GetTasksByVersion(ctx context.Context, versionID string, opts GetTasksByVer
 }
 
 // GetTaskStatusesByVersion gets all unique task display statuses for a specific version
-func GetTaskStatusesByVersion(ctx context.Context, versionID string, useSlowAnnotationLookup bool) ([]string, error) {
+func GetTaskStatusesByVersion(ctx context.Context, versionID string) ([]string, error) {
 	ctx = utility.ContextWithAttributes(ctx, []attribute.KeyValue{attribute.String(evergreen.AggregationNameOtelAttribute, "GetTaskStatusesByVersion")})
 
 	opts := GetTasksByVersionOptions{
 		FieldsToProject:            []string{DisplayStatusKey},
 		IncludeNeverActivatedTasks: true,
 		IncludeExecutionTasks:      false,
-		UseSlowAnnotationsLookup:   useSlowAnnotationLookup,
 	}
 	pipeline, err := getTasksByVersionPipeline(versionID, opts)
 
@@ -2139,10 +2139,6 @@ func GetTaskStatusesByVersion(ctx context.Context, versionID string, useSlowAnno
 	err = cursor.All(ctx, &results)
 
 	if err != nil {
-		// If the pipeline stage is too large we should use the slow annotations lookup
-		if db.IsErrorCode(err, db.FacetPipelineStageTooLargeCode) && !useSlowAnnotationLookup {
-			return GetTaskStatusesByVersion(ctx, versionID, true)
-		}
 		return nil, err
 	}
 	if len(results) == 0 {
@@ -2236,11 +2232,6 @@ func GetTaskStatsByVersion(ctx context.Context, versionID string, opts GetTasksB
 	env := evergreen.GetEnvironment()
 	cursor, err := env.DB().Collection(Collection).Aggregate(ctx, pipeline)
 	if err != nil {
-		// If the pipeline stage is too large we should use the slow annotations lookup
-		if db.IsErrorCode(err, db.FacetPipelineStageTooLargeCode) && !opts.UseSlowAnnotationsLookup {
-			opts.UseSlowAnnotationsLookup = true
-			return GetTaskStatsByVersion(ctx, versionID, opts)
-		}
 		return nil, errors.Wrap(err, "aggregating task stats for version")
 	}
 	if err := cursor.All(ctx, &taskStats); err != nil {
@@ -2345,11 +2336,6 @@ func GetGroupedTaskStatsByVersion(ctx context.Context, versionID string, opts Ge
 	env := evergreen.GetEnvironment()
 	cursor, err := env.DB().Collection(Collection).Aggregate(ctx, pipeline)
 	if err != nil {
-		// If the pipeline stage is too large we should use the slow annotations lookup
-		if db.IsErrorCode(err, db.FacetPipelineStageTooLargeCode) && !opts.UseSlowAnnotationsLookup {
-			opts.UseSlowAnnotationsLookup = true
-			return GetGroupedTaskStatsByVersion(ctx, versionID, opts)
-		}
 		return nil, errors.Wrap(err, "aggregating task stats")
 	}
 	err = cursor.All(ctx, &result)
@@ -2445,7 +2431,6 @@ func HasMatchingTasks(ctx context.Context, versionID string, opts HasMatchingTas
 		Variants:                   opts.Variants,
 		Statuses:                   opts.Statuses,
 		IncludeNeverActivatedTasks: !opts.IncludeNeverActivatedTasks,
-		UseSlowAnnotationsLookup:   opts.UseSlowAnnotationsLookup,
 	}
 	pipeline, err := getTasksByVersionPipeline(versionID, options)
 	if err != nil {
@@ -2488,7 +2473,6 @@ type GetTasksByVersionOptions struct {
 	IncludeExecutionTasks      bool
 	IncludeNeverActivatedTasks bool // NeverActivated tasks are tasks that lack an activation time
 	BaseVersionID              string
-	UseSlowAnnotationsLookup   bool // In some cases, where there are many tasks, we can hit the 104mb limit on the aggregation pipeline. This flag allows us to use a slower lookup method to avoid this limit.
 }
 
 func getTasksByVersionPipeline(versionID string, opts GetTasksByVersionOptions) ([]bson.M, error) {
