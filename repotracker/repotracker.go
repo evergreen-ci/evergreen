@@ -681,13 +681,14 @@ func CreateVersionFromConfig(ctx context.Context, projectInfo *model.ProjectInfo
 // ShellVersionFromRevision populates a new Version with metadata from a model.Revision.
 // Does not populate its config or store anything in the database.
 func ShellVersionFromRevision(ref *model.ProjectRef, metadata model.VersionMetadata) (*model.Version, error) {
-	var u *user.DBUser
-	var err error
 	if metadata.Revision.AuthorGithubUID != 0 {
-		u, err = user.FindByGithubUID(metadata.Revision.AuthorGithubUID)
+		u, err := user.FindByGithubUID(metadata.Revision.AuthorGithubUID)
 		grip.Error(message.WrapError(err, message.Fields{
 			"message": fmt.Sprintf("failed to fetch Evergreen user with GitHub UID %d", metadata.Revision.AuthorGithubUID),
 		}))
+		if err == nil {
+			metadata.User = u
+		}
 	}
 
 	number, err := model.GetNewRevisionOrderNumber(ref.Id)
@@ -752,10 +753,10 @@ func ShellVersionFromRevision(ref *model.ProjectRef, metadata model.VersionMetad
 	} else {
 		v.Id = makeVersionId(ref.Identifier, metadata.Revision.Revision)
 	}
-	if u != nil {
-		v.AuthorID = u.Id
-		v.Author = u.DisplayName()
-		v.AuthorEmail = u.Email()
+	if metadata.User != nil {
+		v.AuthorID = metadata.User.Id
+		v.Author = metadata.User.DisplayName()
+		v.AuthorEmail = metadata.User.Email()
 	}
 	return v, nil
 }

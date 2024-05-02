@@ -5,15 +5,15 @@ import (
 	"testing"
 	"time"
 
-	"github.com/evergreen-ci/evergreen/model/user"
-
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/db"
 	"github.com/evergreen-ci/evergreen/model"
 	"github.com/evergreen-ci/evergreen/model/build"
 	"github.com/evergreen-ci/evergreen/model/task"
+	"github.com/evergreen-ci/evergreen/model/user"
 	"github.com/evergreen-ci/evergreen/testutil"
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 )
 
 func TestPeriodicBuildsJob(t *testing.T) {
@@ -67,6 +67,7 @@ func TestPeriodicBuildsJob(t *testing.T) {
 	assert.Equal(prevVersion.Revision, createdVersion.Revision)
 	tasks, err := task.Find(task.ByVersion(createdVersion.Id))
 	assert.NoError(err)
+	require.Len(t, tasks, 1)
 	assert.True(tasks[0].Activated)
 	dbProject, err := model.FindBranchProjectRef(sampleProject.Id)
 	assert.NoError(err)

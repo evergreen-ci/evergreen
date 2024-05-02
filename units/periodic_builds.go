@@ -106,6 +106,7 @@ func (j *periodicBuildJob) Run(ctx context.Context) {
 			"project": j.ProjectID,
 		}))
 	}
+
 	metadata := model.VersionMetadata{
 		IsAdHoc:         true,
 		Activate:        true,
