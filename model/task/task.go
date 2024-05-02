@@ -132,14 +132,10 @@ type Task struct {
 	// associated with a task. This is used for running tasks in case there are
 	// idle hosts in a distro with an empty primary queue. This is a distinct concept
 	// from distro aliases (i.e. alternative distro names).
-	// Tags refer to outdated naming; maintained for compatibility.
 	SecondaryDistros []string `bson:"distro_aliases,omitempty" json:"distro_aliases,omitempty"`
 
 	// Human-readable name
 	DisplayName string `bson:"display_name" json:"display_name"`
-
-	// Tags that describe the task
-	Tags []string `bson:"tags,omitempty" json:"tags,omitempty"`
 
 	// The host the task was run on. This value is only set for host tasks.
 	HostId string `bson:"host_id,omitempty" json:"host_id"`
