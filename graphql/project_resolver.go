@@ -42,12 +42,12 @@ func (r *projectResolver) Patches(ctx context.Context, obj *restModel.APIProject
 	apiPatches := []*restModel.APIPatch{}
 	for _, p := range patches {
 		apiPatch := restModel.APIPatch{}
-		err = apiPatch.BuildFromService(p, nil) // Injecting DB info into APIPatch is handled by the resolvers.
+		err = apiPatch.BuildFromService(p, &restModel.APIPatchArgs{
+			UsesGitHubMergeQueue: obj.CommitQueue.MergeQueue == model.MergeQueueGitHub,
+		}) // Injecting DB info into APIPatch is handled by the resolvers.
 		if err != nil {
 			return nil, InternalServerError.Send(ctx, fmt.Sprintf("problem building APIPatch from service for patch: %s : %s", p.Id.Hex(), err.Error()))
 		}
-		// Only show the enqueue button if the project uses the Evergreen commit queue.
-		apiPatch.CanEnqueueToCommitQueue = obj.CommitQueue.MergeQueue == model.MergeQueueEvergreen
 		apiPatches = append(apiPatches, &apiPatch)
 	}
 	return &Patches{Patches: apiPatches, FilteredPatchCount: count}, nil

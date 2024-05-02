@@ -147,6 +147,7 @@ type APIPatchArgs struct {
 	IncludeProjectIdentifier   bool
 	IncludeCommitQueuePosition bool
 	IncludeChildPatches        bool
+	UsesGitHubMergeQueue       bool
 }
 
 // BuildFromService converts from service level structs to an APIPatch.
@@ -156,6 +157,9 @@ func (apiPatch *APIPatch) BuildFromService(p patch.Patch, args *APIPatchArgs) er
 
 	projectIdentifier := p.Project
 	if args != nil {
+		// Projects that use the GitHub merge queue cannot enqueue to the commit queue.
+		apiPatch.CanEnqueueToCommitQueue = (p.HasValidGitInfo() || p.IsGithubPRPatch()) && !args.UsesGitHubMergeQueue
+
 		if args.IncludeProjectIdentifier && p.Project != "" {
 			apiPatch.GetIdentifier()
 			if apiPatch.ProjectIdentifier != nil {
@@ -272,7 +276,6 @@ func (apiPatch *APIPatch) buildBasePatch(p patch.Patch) {
 	}
 
 	apiPatch.ProjectStorageMethod = utility.ToStringPtr(string(p.ProjectStorageMethod))
-	apiPatch.CanEnqueueToCommitQueue = p.HasValidGitInfo() || p.IsGithubPRPatch()
 	apiPatch.GithubPatchData.BuildFromService(p.GithubPatchData)
 }
 
