@@ -1,0 +1,10 @@
+{
+  project(projectIdentifier: "evergreen") {
+    patches(patchesInput: {}) {
+      patches {
+        id
+      }
+      filteredPatchCount
+    }
+  }
+}

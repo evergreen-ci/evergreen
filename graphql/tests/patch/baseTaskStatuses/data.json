@@ -22,14 +22,14 @@
       "owner_name": "",
       "repo_name": "",
       "branch_name": "main",
-      "identifier": "evergreen",
+      "identifier": "spruce",
       "remote": false,
       "remote_path": "",
       "r": "github_pull_request",
       "author_id": "brian.samek"
     },
     {
-      "_id": "evergreen_5e823e1f28baeaa22ae00823d83e03082cd148ab",
+      "_id": "spruce_5e823e1f28baeaa22ae00823d83e03082cd148ab",
       "create_time": {
         "$date": "2020-02-20T20:37:06Z"
       },
@@ -48,10 +48,10 @@
       "config_number": 1,
       "ignored": false,
       "owner_name": "evergreen-ci",
-      "repo_name": "evergreen",
+      "repo_name": "spruce",
       "branch_name": "main",
       "repo_kind": "github",
-      "identifier": "evergreen",
+      "identifier": "spruce",
       "remote": false,
       "remote_path": "self-tests.yml",
       "r": "gitter_request",
@@ -121,7 +121,7 @@
     },
     {
       "_id": "base-task-1",
-      "version": "evergreen_5e823e1f28baeaa22ae00823d83e03082cd148ab",
+      "version": "spruce_5e823e1f28baeaa22ae00823d83e03082cd148ab",
       "gitspec": "5e823e1f28baeaa22ae00823d83e03082cd148ab",
       "build_variant": "ubuntu1604",
       "display_name": "test-thirdparty-docker",
@@ -131,7 +131,7 @@
     },
     {
       "_id": "base-task-2",
-      "version": "evergreen_5e823e1f28baeaa22ae00823d83e03082cd148ab",
+      "version": "spruce_5e823e1f28baeaa22ae00823d83e03082cd148ab",
       "gitspec": "5e823e1f28baeaa22ae00823d83e03082cd148ab",
       "build_variant": "ubuntu1604",
       "display_name": "test-cloud",
@@ -141,7 +141,7 @@
     },
     {
       "_id": "base-task-3",
-      "version": "evergreen_5e823e1f28baeaa22ae00823d83e03082cd148ab",
+      "version": "spruce_5e823e1f28baeaa22ae00823d83e03082cd148ab",
       "gitspec": "5e823e1f28baeaa22ae00823d83e03082cd148ab",
       "build_variant": "windows",
       "display_name": "lint",
@@ -151,7 +151,7 @@
     },
     {
       "_id": "base-task-4",
-      "version": "evergreen_5e823e1f28baeaa22ae00823d83e03082cd148ab",
+      "version": "spruce_5e823e1f28baeaa22ae00823d83e03082cd148ab",
       "gitspec": "5e823e1f28baeaa22ae00823d83e03082cd148ab",
       "build_variant": "windows",
       "display_name": "compile",
@@ -220,10 +220,6 @@
     {
       "_id": "spruce",
       "identifier": "spruce"
-    },
-    {
-      "_id": "evergreen",
-      "identifier": "evergreen"
     }
   ]
 }

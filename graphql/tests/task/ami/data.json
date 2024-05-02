@@ -13,7 +13,7 @@
       "distro": "macos-1014",
       "execution": 1,
       "host_id": "host2"
-    }, 
+    },
     {
       "_id": "some_task_2",
       "version": "5e4ff3abe3c3317e352062e4",
@@ -45,9 +45,7 @@
             "ami": "ami-049df09df40fc2c1c",
             "docker_registry_pw": "",
             "region": "us-east-1",
-            "security_group_ids": [
-              "sg-601a6c13"
-            ],
+            "security_group_ids": ["sg-601a6c13"],
             "curator_dir": "/usr/local/bin",
             "mount_points": [
               {
@@ -64,6 +62,12 @@
           }
         ]
       }
+    }
+  ],
+  "project_ref": [
+    {
+      "_id": "spruce",
+      "identifier": "spruce"
     }
   ]
 }

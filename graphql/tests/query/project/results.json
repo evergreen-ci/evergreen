@@ -1,0 +1,42 @@
+{
+  "tests": [
+    {
+      "query_file": "project.graphql",
+      "result": {
+        "data": {
+          "project": {
+            "id": "sandbox_project_id",
+            "identifier": "sandbox",
+            "branch": "main",
+            "parsleyFilters": [
+              {
+                "expression": "filter1"
+              },
+              {
+                "expression": "filter2"
+              }
+            ],
+            "repotrackerError": {
+              "invalidRevision": "invalid_revision"
+            }
+          }
+        }
+      }
+    },
+    {
+      "query_file": "no_permissions.graphql",
+      "result": {
+        "data": null,
+        "errors": [
+          {
+            "message": "user 'testuser' does not have permission to access 'tasks' for the project 'evergreen'",
+            "path": ["project", "projectIdentifier"],
+            "extensions": {
+              "code": "FORBIDDEN"
+            }
+          }
+        ]
+      }
+    }
+  ]
+}

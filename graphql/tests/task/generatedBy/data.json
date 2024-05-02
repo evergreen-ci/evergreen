@@ -2,11 +2,19 @@
   "tasks": [
     {
       "_id": "generated_task",
+      "branch": "spruce",
       "generated_by": "generator_task"
     },
     {
       "_id": "generator_task",
+      "branch": "spruce",
       "display_name": "i am a generator"
+    }
+  ],
+  "project_ref": [
+    {
+      "_id": "spruce",
+      "identifier": "spruce"
     }
   ]
 }

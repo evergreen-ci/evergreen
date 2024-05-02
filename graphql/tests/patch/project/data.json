@@ -1,7 +1,7 @@
 {
   "parser_projects": [
     {
-      "_id": "evergreen_5e823e1f28baeaa22ae00823d83e03082cd148ab",
+      "_id": "spruce_5e823e1f28baeaa22ae00823d83e03082cd148ab",
       "stepback": true,
       "command_type": "test",
       "ignore": ["*.md", ".github/*"],
@@ -85,9 +85,9 @@
   ],
   "versions": [
     {
-      "_id": "evergreen_5e823e1f28baeaa22ae00823d83e03082cd148ab",
+      "_id": "spruce_5e823e1f28baeaa22ae00823d83e03082cd148ab",
       "gitspec": "5e823e1f28baeaa22ae00823d83e03082cd148ab",
-      "identifier": "evergreen",
+      "identifier": "spruce",
       "r": "gitter_request"
     }
   ],
@@ -101,7 +101,7 @@
       "githash": "6cf2ca4c009f93285cf986b6de0100c1cbe54092",
       "patch_number": 561,
       "author": "trey.granderson",
-      "version": "evergreen_5e823e1f28baeaa22ae00823d83e03082cd148ab",
+      "version": "spruce_5e823e1f28baeaa22ae00823d83e03082cd148ab",
       "status": "unscheduled",
       "create_time": {
         "$date": "2020-04-13T20:12:39Z"

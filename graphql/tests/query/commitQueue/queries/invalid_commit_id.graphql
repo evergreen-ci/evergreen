@@ -1,5 +1,5 @@
 {
-  commitQueue(projectIdentifier: "no_queue") {
+  commitQueue(projectIdentifier: "happyAbyssinian") {
     projectId
     queue {
       issue

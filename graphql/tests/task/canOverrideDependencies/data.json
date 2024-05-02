@@ -19,5 +19,11 @@
       "build_variant": "windows",
       "status": "failed"
     }
+  ],
+  "project_ref": [
+    {
+      "_id": "spruce",
+      "identifier": "spruce"
+    }
   ]
 }

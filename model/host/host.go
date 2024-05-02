@@ -3674,6 +3674,36 @@ func (h *Host) SetSleepScheduleBetaTester(ctx context.Context, isBetaTester bool
 	return nil
 }
 
+const maxTemporaryExemptionDuration = 32 * utility.Day
+
+// SetTemporaryExemption sets a temporary exemption from the host's sleep
+// schedule.
+func (h *Host) SetTemporaryExemption(ctx context.Context, exemptUntil time.Time) error {
+	if h.SleepSchedule.TemporarilyExemptUntil.Equal(exemptUntil) {
+		return nil
+	}
+
+	if time.Now().Add(maxTemporaryExemptionDuration).Before(exemptUntil) {
+		return errors.Errorf("temporary exemption until '%s' is longer than max temporary exemption duration of '%s'", exemptUntil, maxTemporaryExemptionDuration.String())
+	}
+
+	temporarilyExemptUntilKey := bsonutil.GetDottedKeyName(SleepScheduleKey, SleepScheduleTemporarilyExemptUntilKey)
+	update := bson.M{}
+	if utility.IsZeroTime(exemptUntil) {
+		update["$unset"] = bson.M{temporarilyExemptUntilKey: 1}
+	} else {
+		update["$set"] = bson.M{temporarilyExemptUntilKey: exemptUntil}
+	}
+
+	if err := UpdateOne(ctx, bson.M{IdKey: h.Id}, update); err != nil {
+		return err
+	}
+
+	h.SleepSchedule.TemporarilyExemptUntil = exemptUntil
+
+	return nil
+}
+
 // IsSleepScheduleEnabled returns whether or not a sleep schedule is enabled
 // for the host.
 func (h *Host) IsSleepScheduleEnabled() bool {
