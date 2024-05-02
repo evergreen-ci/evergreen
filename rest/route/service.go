@@ -135,13 +135,10 @@ func AttachHandler(app *gimlet.APIApp, opts HandlerOpts) {
 	app.AddRoute("/commit_queue/{patch_id}").Version(2).Put().Wrap(requireUser, addProject, requireCommitQueueItemOwner, editTasks).RouteHandler(makeCommitQueueEnqueueItem())
 	app.AddRoute("/commit_queue/{patch_id}/message").Version(2).Get().Wrap(requireUser).RouteHandler(makecqMessageForPatch())
 	app.AddRoute("/distros").Version(2).Get().Wrap(requireUser).RouteHandler(makeDistroRoute())
-	app.AddRoute("/distros/settings").Version(2).Patch().Wrap(createDistro).RouteHandler(makeModifyDistrosSettings())
 	app.AddRoute("/distros/{distro_id}").Version(2).Get().Wrap(editDistroSettings).RouteHandler(makeGetDistroByID())
 	app.AddRoute("/distros/{distro_id}").Version(2).Patch().Wrap(editDistroSettings).RouteHandler(makePatchDistroByID())
 	app.AddRoute("/distros/{distro_id}").Version(2).Delete().Wrap(removeDistroSettings).RouteHandler(makeDeleteDistroByID())
 	app.AddRoute("/distros/{distro_id}").Version(2).Put().Wrap(createDistro).RouteHandler(makePutDistro())
-	app.AddRoute("/distros/{distro_id}/execute").Version(2).Patch().Wrap(editHosts).RouteHandler(makeDistroExecute(env))
-	app.AddRoute("/distros/{distro_id}/icecream_config").Version(2).Patch().Wrap(editHosts).RouteHandler(makeDistroIcecreamConfig(env))
 	app.AddRoute("/distros/{distro_id}/setup").Version(2).Get().Wrap(editDistroSettings).RouteHandler(makeGetDistroSetup())
 	app.AddRoute("/distros/{distro_id}/setup").Version(2).Patch().Wrap(editDistroSettings).RouteHandler(makeChangeDistroSetup())
 	// client_urls is used by the agent monitor deploy job which does not pass in user info
