@@ -241,15 +241,21 @@ func TestPatchAbortSuite(t *testing.T) {
 }
 
 func (s *PatchAbortSuite) SetupSuite() {
-	s.NoError(db.ClearCollections(patch.Collection, task.Collection, serviceModel.VersionCollection, build.Collection))
+	s.NoError(db.ClearCollections(serviceModel.ProjectRefCollection, patch.Collection, task.Collection, serviceModel.VersionCollection, build.Collection))
 	s.objIds = []string{"aabbccddeeff001122334455", "aabbccddeeff001122334456", "aabbccddeeff001122334457"}
 	version1 := "version1"
 	version2 := "version2"
 
+	projectRef := serviceModel.ProjectRef{
+		Id:         "project_id",
+		Identifier: "project_identifier",
+	}
+	s.NoError(projectRef.Insert())
+
 	patches := []patch.Patch{
-		{Id: patch.NewId(s.objIds[0]), Version: version1, Activated: true},
-		{Id: patch.NewId(s.objIds[1]), Version: version2, Activated: true},
-		{Id: patch.NewId(s.objIds[2]), Activated: true},
+		{Id: patch.NewId(s.objIds[0]), Version: version1, Activated: true, Project: projectRef.Id},
+		{Id: patch.NewId(s.objIds[1]), Version: version2, Activated: true, Project: projectRef.Id},
+		{Id: patch.NewId(s.objIds[2]), Activated: true, Project: projectRef.Id},
 	}
 	versions := []*serviceModel.Version{
 		{Id: version1},
@@ -480,7 +486,14 @@ func TestPatchesByUserSuite(t *testing.T) {
 }
 
 func (s *PatchesByUserSuite) SetupTest() {
-	s.NoError(db.ClearCollections(patch.Collection))
+	s.NoError(db.ClearCollections(patch.Collection, serviceModel.ProjectRefCollection))
+
+	projectRef := serviceModel.ProjectRef{
+		Id:         "project_id",
+		Identifier: "project_identifier",
+	}
+	s.NoError(projectRef.Insert())
+
 	s.route = &patchesByUserHandler{
 		url: "http://evergreen.example.net/",
 	}
@@ -493,12 +506,12 @@ func (s *PatchesByUserSuite) SetupTest() {
 	nowPlus8 := s.now.Add(time.Second * 8)
 	nowPlus10 := s.now.Add(time.Second * 10)
 	patches := []patch.Patch{
-		{Author: user1, CreateTime: s.now},
-		{Author: user2, CreateTime: nowPlus2},
-		{Author: user1, CreateTime: nowPlus4},
-		{Author: user1, CreateTime: nowPlus6},
-		{Author: user2, CreateTime: nowPlus8},
-		{Author: user1, CreateTime: nowPlus10},
+		{Author: user1, CreateTime: s.now, Project: projectRef.Id},
+		{Author: user2, CreateTime: nowPlus2, Project: projectRef.Id},
+		{Author: user1, CreateTime: nowPlus4, Project: projectRef.Id},
+		{Author: user1, CreateTime: nowPlus6, Project: projectRef.Id},
+		{Author: user2, CreateTime: nowPlus8, Project: projectRef.Id},
+		{Author: user1, CreateTime: nowPlus10, Project: projectRef.Id},
 	}
 	for _, p := range patches {
 		s.NoError(p.Insert())
