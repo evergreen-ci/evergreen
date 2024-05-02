@@ -3,6 +3,7 @@ package units
 import (
 	"context"
 	"fmt"
+	"time"
 
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/model/event"
@@ -111,11 +112,16 @@ func (j *hostSetupScriptJob) Run(ctx context.Context) {
 	j.AddError(errors.Wrap(runSpawnHostSetupScript(ctx, j.env, j.host), "executing spawn host setup script"))
 }
 
+const maxSpawnHostSetupScriptDuration = 30 * time.Minute
+
 func runSpawnHostSetupScript(ctx context.Context, env evergreen.Environment, h *host.Host) error {
+	timeoutCtx, timeoutCancel := context.WithTimeout(ctx, maxSpawnHostSetupScriptDuration)
+	defer timeoutCancel()
+
 	script := fmt.Sprintf("cd %s\n%s", h.Distro.HomeDir(), h.ProvisionOptions.SetupScript)
 	ts := utility.RoundPartOfMinute(0).Format(TSFormat)
 	j := NewHostExecuteJob(env, *h, script, false, "", ts)
-	j.Run(ctx)
+	j.Run(timeoutCtx)
 
 	return errors.Wrapf(j.Error(), "running setup script for spawn host")
 }
