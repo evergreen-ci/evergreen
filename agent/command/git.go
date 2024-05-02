@@ -787,7 +787,7 @@ func (c *gitFetchProject) fetchModuleSource(ctx context.Context,
 			if opts.token != "" {
 				errOutput = strings.Replace(errOutput, opts.token, "[redacted oauth token]", -1)
 			}
-			logger.Execution().Info(errOutput)
+			logger.Execution().Error(errOutput)
 		}
 		return err
 	})
