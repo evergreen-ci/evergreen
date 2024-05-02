@@ -753,7 +753,4 @@ task_annotation_settings:
   web_hook:
     endpoint: "/api/route"
     secret: ""
-  jira_custom_fields:
-  - field: "created_by"
-    display_text: "owner"
 ```
