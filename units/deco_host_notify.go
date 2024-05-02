@@ -57,7 +57,6 @@ func NewDecoHostNotifyJob(env evergreen.Environment, h *host.Host, err error, me
 	}
 
 	j.SetID(fmt.Sprintf("%s.%s.%s", decoHostNotifyJobName, h.Id, utility.RoundPartOfHour(10)))
-	j.SetPriority(-1)
 	return j
 }
 
