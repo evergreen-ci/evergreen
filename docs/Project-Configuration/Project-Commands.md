@@ -533,6 +533,7 @@ Parameters:
     means that for patch builds, editing the
     ["modules"](Project-Configuration-Files#modules)
     section of the project config will not change the checked out hash.
+    If you do not specify any revisions, all of them will be cloned.
 -   `token`: Use a token to clone instead of the ssh key on the host.
     Since this is a secret, it should be provided as a project
     expansion. For example, you could provide an expansion called
