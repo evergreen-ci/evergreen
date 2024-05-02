@@ -468,8 +468,9 @@ func fileNameWithIndex(filename string, index int) string {
 	if len(parts) == 1 {
 		return fmt.Sprintf("%s_(%d)", filename, index-1)
 	}
+
 	// If the file has an extension, add _N (index) just before the extension.
-	return fmt.Sprintf("%s_(%d).%s", parts[0], index-1, strings.Join(parts[1:], "."))
+	return fmt.Sprintf("%s_(%d).%s", strings.Join(parts[:len(parts)-1], "."), index-1, parts[len(parts)-1])
 }
 
 // truncateFilename truncates the filename (minus any extensions) so the entire filename length is less than the max
@@ -551,6 +552,7 @@ func downloadUrls(root string, urls chan artifactDownload, workers int) error {
 						}
 						// something else went wrong.
 						errs <- errors.Wrapf(err, "checking if file '%s' exists", testFileName)
+						fileNamesUsed.Unlock()
 						return
 					}
 				}
@@ -578,7 +580,6 @@ func downloadUrls(root string, urls chan artifactDownload, workers int) error {
 
 				// If we can get the info, determine the file size so that the human can get an
 				// idea of how long the file might take to download.
-				// TODO: progress bars.
 				length, _ := strconv.Atoi(resp.Header.Get(evergreen.ContentLengthHeader))
 				sizeLog := ""
 				if length > 0 {
