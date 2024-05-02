@@ -413,6 +413,15 @@ func TestSleepSchedulerJob(t *testing.T) {
 			env := &mock.Environment{}
 			require.NoError(t, env.Configure(ctx))
 
+			oldServiceFlags, err := evergreen.GetServiceFlags(ctx)
+			require.NoError(t, err)
+			newServiceFlags := *oldServiceFlags
+			newServiceFlags.SleepScheduleBetaTestDisabled = true
+			require.NoError(t, evergreen.SetServiceFlags(ctx, newServiceFlags))
+			defer func() {
+				assert.NoError(t, evergreen.SetServiceFlags(ctx, *oldServiceFlags))
+			}()
+
 			j, ok := NewSleepSchedulerJob(env, "ts").(*sleepSchedulerJob)
 			require.True(t, ok)
 
