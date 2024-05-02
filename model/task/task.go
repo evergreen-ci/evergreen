@@ -2365,6 +2365,7 @@ func resetTaskUpdate(t *Task, caller string) []bson.M {
 		t.NumNextTaskDispatches = 0
 		t.CanReset = false
 		t.IsAutomaticRestart = false
+		t.HasAnnotations = false
 	}
 	update := []bson.M{
 		{
@@ -2407,6 +2408,7 @@ func resetTaskUpdate(t *Task, caller string) []bson.M {
 				HostCreateDetailsKey,
 				OverrideDependenciesKey,
 				CanResetKey,
+				HasAnnotationsKey,
 			},
 		},
 	}
