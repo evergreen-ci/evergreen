@@ -81,10 +81,10 @@ type Options struct {
 	SendTaskLogsToGlobalSender bool
 }
 
-// SetLoggableInfo is a helper to add relevant information about the agent
+// AddLoggableInfo is a helper to add relevant information about the agent
 // runtime to the log message. This is typically to make high priority error
 // logs more informative.
-func (o *Options) SetLoggableInfo(msg message.Fields) message.Fields {
+func (o *Options) AddLoggableInfo(msg message.Fields) message.Fields {
 	if o.HostID != "" {
 		msg["host_id"] = o.HostID
 	}
@@ -1238,7 +1238,7 @@ func (a *Agent) logPanic(tc *taskContext, pErr, originalErr error, op string) er
 		"message":   "programmatic error: Evergreen agent hit panic",
 		"operation": op,
 	}
-	logMsg = a.opts.SetLoggableInfo(logMsg)
+	logMsg = a.opts.AddLoggableInfo(logMsg)
 	if tc.logger != nil && !tc.logger.Closed() {
 		tc.logger.Task().Error(logMsg)
 	}
