@@ -421,7 +421,13 @@ func TestPatchRestartSuite(t *testing.T) {
 }
 
 func (s *PatchRestartSuite) SetupSuite() {
-	s.NoError(db.ClearCollections(patch.Collection, serviceModel.VersionCollection, task.Collection))
+	s.NoError(db.ClearCollections(patch.Collection, serviceModel.VersionCollection, task.Collection, serviceModel.ProjectRefCollection))
+	projectRef := serviceModel.ProjectRef{
+		Id:         "project_id",
+		Identifier: "project_identifier",
+	}
+	s.NoError(projectRef.Insert())
+
 	s.objIds = []string{"aabbccddeeff001122334455", "aabbccddeeff001122334456"}
 	version1 := "version1"
 
@@ -440,8 +446,8 @@ func (s *PatchRestartSuite) SetupSuite() {
 		},
 	}
 	patches := []patch.Patch{
-		{Id: patch.NewId(s.objIds[0]), Version: version1},
-		{Id: patch.NewId(s.objIds[1])},
+		{Id: patch.NewId(s.objIds[0]), Version: version1, Project: projectRef.Id},
+		{Id: patch.NewId(s.objIds[1]), Project: projectRef.Id},
 	}
 	for _, p := range patches {
 		s.NoError(p.Insert())
