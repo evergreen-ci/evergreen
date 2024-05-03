@@ -51,6 +51,9 @@ type Build struct {
 	ActualMakespan      time.Duration `bson:"actual_makespan" json:"actual_makespan,omitempty"`
 	Aborted             bool          `bson:"aborted" json:"aborted,omitempty"`
 
+	// Tags that describe the variant
+	Tags []string `bson:"tags,omitempty" json:"tags,omitempty"`
+
 	// The status of the subset of the build that's used for github checks
 	GithubCheckStatus string `bson:"github_check_status,omitempty" json:"github_check_status,omitempty"`
 	// does the build contain tasks considered for mainline github checks
