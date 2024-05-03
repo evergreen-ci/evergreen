@@ -852,7 +852,15 @@ func (r *mutationResolver) RemoveVolume(ctx context.Context, volumeID string) (b
 }
 
 // UpdateSpawnHostStatus is the resolver for the updateSpawnHostStatus field.
-func (r *mutationResolver) UpdateSpawnHostStatus(ctx context.Context, hostID string, action SpawnHostStatusActions) (*restModel.APIHost, error) {
+func (r *mutationResolver) UpdateSpawnHostStatus(ctx context.Context, hostID string, action SpawnHostStatusActions, updateSpawnHostStatusInput *UpdateSpawnHostStatusInput) (*restModel.APIHost, error) {
+	shouldKeepOff := false
+	// TODO: Use input object throughout resolver once deprecated fields are removed
+	if updateSpawnHostStatusInput != nil {
+		hostID = updateSpawnHostStatusInput.HostID
+		action = updateSpawnHostStatusInput.Action
+		shouldKeepOff = *updateSpawnHostStatusInput.ShouldKeepOff
+
+	}
 	h, err := host.FindOneByIdOrTag(ctx, hostID)
 	if err != nil {
 		return nil, ResourceNotFound.Send(ctx, fmt.Sprintf("Error finding host by id: %s", err))
@@ -869,7 +877,7 @@ func (r *mutationResolver) UpdateSpawnHostStatus(ctx context.Context, hostID str
 	case SpawnHostStatusActionsStart:
 		httpStatus, err = data.StartSpawnHost(ctx, env, usr, h)
 	case SpawnHostStatusActionsStop:
-		httpStatus, err = data.StopSpawnHost(ctx, env, usr, h, false)
+		httpStatus, err = data.StopSpawnHost(ctx, env, usr, h, shouldKeepOff)
 	case SpawnHostStatusActionsTerminate:
 		httpStatus, err = data.TerminateSpawnHost(ctx, env, usr, h)
 	default:

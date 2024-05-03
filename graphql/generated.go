@@ -677,7 +677,7 @@ type ComplexityRoot struct {
 		UpdateHostStatus              func(childComplexity int, hostIds []string, status string, notes *string) int
 		UpdateParsleySettings         func(childComplexity int, opts UpdateParsleySettingsInput) int
 		UpdatePublicKey               func(childComplexity int, targetKeyName string, updateInfo PublicKeyInput) int
-		UpdateSpawnHostStatus         func(childComplexity int, hostID string, action SpawnHostStatusActions) int
+		UpdateSpawnHostStatus         func(childComplexity int, hostID string, action SpawnHostStatusActions, updateSpawnHostStatusInput *UpdateSpawnHostStatusInput) int
 		UpdateUserSettings            func(childComplexity int, userSettings *model.APIUserSettings) int
 		UpdateVolume                  func(childComplexity int, updateVolumeInput UpdateVolumeInput) int
 	}
@@ -1693,7 +1693,7 @@ type MutationResolver interface {
 	SpawnHost(ctx context.Context, spawnHostInput *SpawnHostInput) (*model.APIHost, error)
 	SpawnVolume(ctx context.Context, spawnVolumeInput SpawnVolumeInput) (bool, error)
 	RemoveVolume(ctx context.Context, volumeID string) (bool, error)
-	UpdateSpawnHostStatus(ctx context.Context, hostID string, action SpawnHostStatusActions) (*model.APIHost, error)
+	UpdateSpawnHostStatus(ctx context.Context, hostID string, action SpawnHostStatusActions, updateSpawnHostStatusInput *UpdateSpawnHostStatusInput) (*model.APIHost, error)
 	UpdateVolume(ctx context.Context, updateVolumeInput UpdateVolumeInput) (bool, error)
 	AbortTask(ctx context.Context, taskID string) (*model.APITask, error)
 	OverrideTaskDependencies(ctx context.Context, taskID string) (*model.APITask, error)
@@ -4869,7 +4869,7 @@ func (e *executableSchema) Complexity(typeName, field string, childComplexity in
 			return 0, false
 		}
 
-		return e.complexity.Mutation.UpdateSpawnHostStatus(childComplexity, args["hostId"].(string), args["action"].(SpawnHostStatusActions)), true
+		return e.complexity.Mutation.UpdateSpawnHostStatus(childComplexity, args["hostId"].(string), args["action"].(SpawnHostStatusActions), args["updateSpawnHostStatusInput"].(*UpdateSpawnHostStatusInput)), true
 
 	case "Mutation.updateUserSettings":
 		if e.complexity.Mutation.UpdateUserSettings == nil {
@@ -9705,6 +9705,7 @@ func (e *executableSchema) Exec(ctx context.Context) graphql.ResponseHandler {
 		ec.unmarshalInputTestSortOptions,
 		ec.unmarshalInputTriggerAliasInput,
 		ec.unmarshalInputUpdateParsleySettingsInput,
+		ec.unmarshalInputUpdateSpawnHostStatusInput,
 		ec.unmarshalInputUpdateVolumeInput,
 		ec.unmarshalInputUseSpruceOptionsInput,
 		ec.unmarshalInputUserSettingsInput,
@@ -11575,6 +11576,15 @@ func (ec *executionContext) field_Mutation_updateSpawnHostStatus_args(ctx contex
 		}
 	}
 	args["action"] = arg1
+	var arg2 *UpdateSpawnHostStatusInput
+	if tmp, ok := rawArgs["updateSpawnHostStatusInput"]; ok {
+		ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("updateSpawnHostStatusInput"))
+		arg2, err = ec.unmarshalOUpdateSpawnHostStatusInput2ᚖgithubᚗcomᚋevergreenᚑciᚋevergreenᚋgraphqlᚐUpdateSpawnHostStatusInput(ctx, tmp)
+		if err != nil {
+			return nil, err
+		}
+	}
+	args["updateSpawnHostStatusInput"] = arg2
 	return args, nil
 }
 
@@ -30301,7 +30311,7 @@ func (ec *executionContext) _Mutation_updateSpawnHostStatus(ctx context.Context,
 	}()
 	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
 		ctx = rctx // use context from middleware stack in children
-		return ec.resolvers.Mutation().UpdateSpawnHostStatus(rctx, fc.Args["hostId"].(string), fc.Args["action"].(SpawnHostStatusActions))
+		return ec.resolvers.Mutation().UpdateSpawnHostStatus(rctx, fc.Args["hostId"].(string), fc.Args["action"].(SpawnHostStatusActions), fc.Args["updateSpawnHostStatusInput"].(*UpdateSpawnHostStatusInput))
 	})
 	if err != nil {
 		ec.Error(ctx, err)
@@ -72270,6 +72280,47 @@ func (ec *executionContext) unmarshalInputUpdateParsleySettingsInput(ctx context
 	return it, nil
 }
 
+func (ec *executionContext) unmarshalInputUpdateSpawnHostStatusInput(ctx context.Context, obj interface{}) (UpdateSpawnHostStatusInput, error) {
+	var it UpdateSpawnHostStatusInput
+	asMap := map[string]interface{}{}
+	for k, v := range obj.(map[string]interface{}) {
+		asMap[k] = v
+	}
+
+	fieldsInOrder := [...]string{"action", "hostId", "shouldKeepOff"}
+	for _, k := range fieldsInOrder {
+		v, ok := asMap[k]
+		if !ok {
+			continue
+		}
+		switch k {
+		case "action":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("action"))
+			data, err := ec.unmarshalNSpawnHostStatusActions2githubᚗcomᚋevergreenᚑciᚋevergreenᚋgraphqlᚐSpawnHostStatusActions(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.Action = data
+		case "hostId":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("hostId"))
+			data, err := ec.unmarshalNString2string(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.HostID = data
+		case "shouldKeepOff":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("shouldKeepOff"))
+			data, err := ec.unmarshalOBoolean2ᚖbool(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.ShouldKeepOff = data
+		}
+	}
+
+	return it, nil
+}
+
 func (ec *executionContext) unmarshalInputUpdateVolumeInput(ctx context.Context, obj interface{}) (UpdateVolumeInput, error) {
 	var it UpdateVolumeInput
 	asMap := map[string]interface{}{}
@@ -94364,6 +94415,14 @@ func (ec *executionContext) marshalOUpdateParsleySettingsPayload2ᚖgithubᚗcom
 		return graphql.Null
 	}
 	return ec._UpdateParsleySettingsPayload(ctx, sel, v)
+}
+
+func (ec *executionContext) unmarshalOUpdateSpawnHostStatusInput2ᚖgithubᚗcomᚋevergreenᚑciᚋevergreenᚋgraphqlᚐUpdateSpawnHostStatusInput(ctx context.Context, v interface{}) (*UpdateSpawnHostStatusInput, error) {
+	if v == nil {
+		return nil, nil
+	}
+	res, err := ec.unmarshalInputUpdateSpawnHostStatusInput(ctx, v)
+	return &res, graphql.ErrorOnPath(ctx, err)
 }
 
 func (ec *executionContext) marshalOUpstreamProject2ᚖgithubᚗcomᚋevergreenᚑciᚋevergreenᚋgraphqlᚐUpstreamProject(ctx context.Context, sel ast.SelectionSet, v *UpstreamProject) graphql.Marshaler {
