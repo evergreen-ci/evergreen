@@ -286,7 +286,6 @@ func (at *APITask) buildTask(t *task.Task) error {
 		DisplayName:                 utility.ToStringPtr(t.DisplayName),
 		HostId:                      utility.ToStringPtr(t.HostId),
 		PodID:                       utility.ToStringPtr(t.PodID),
-		Tags:                        utility.ToStringPtrSlice(t.Tags),
 		Execution:                   t.Execution,
 		Order:                       t.RevisionOrderNumber,
 		Status:                      utility.ToStringPtr(t.Status),

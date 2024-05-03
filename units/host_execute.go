@@ -57,7 +57,6 @@ func NewHostExecuteJob(env evergreen.Environment, h host.Host, script string, su
 	j.Script = script
 	j.Sudo = sudo
 	j.SudoUser = sudoUser
-	j.SetPriority(1)
 	j.SetID(fmt.Sprintf("%s.%s.%s", hostExecuteJobName, j.HostID, id))
 	return j
 }

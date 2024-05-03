@@ -294,7 +294,6 @@ func (s *TaskFinderComparisonSuite) SetupTest() {
 	s.NotEmpty(s.tasks)
 	for _, task := range s.tasks {
 		task.BuildVariant = "aBuildVariant"
-		task.Tags = []string{"tag1", "tag2"}
 		s.NoError(task.Insert())
 	}
 
@@ -350,19 +349,15 @@ func (s *TaskFinderComparisonSuite) TestFindRunnableHostsIsIdentical() {
 func (s *TaskFinderComparisonSuite) TestCheckThatTaskIsPopulated() {
 	for _, task := range s.oldRunnableTasks {
 		s.Equal(task.BuildVariant, "aBuildVariant")
-		s.Equal(task.Tags, []string{"tag1", "tag2"})
 	}
 	for _, task := range s.newRunnableTasks {
 		s.Equal(task.BuildVariant, "aBuildVariant")
-		s.Equal(task.Tags, []string{"tag1", "tag2"})
 	}
 	for _, task := range s.altRunnableTasks {
 		s.Equal(task.BuildVariant, "aBuildVariant")
-		s.Equal(task.Tags, []string{"tag1", "tag2"})
 	}
 	for _, task := range s.pllRunnableTasks {
 		s.Equal(task.BuildVariant, "aBuildVariant")
-		s.Equal(task.Tags, []string{"tag1", "tag2"})
 	}
 }
 
