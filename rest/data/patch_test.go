@@ -10,6 +10,7 @@ import (
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/db"
 	mgobson "github.com/evergreen-ci/evergreen/db/mgo/bson"
+	"github.com/evergreen-ci/evergreen/model"
 	dbModel "github.com/evergreen-ci/evergreen/model"
 	"github.com/evergreen-ci/evergreen/model/patch"
 	"github.com/evergreen-ci/evergreen/model/task"
@@ -189,8 +190,14 @@ func TestPatchConnectorFetchByIdSuite(t *testing.T) {
 }
 
 func (s *PatchConnectorFetchByIdSuite) SetupSuite() {
-	s.NoError(db.ClearCollections(patch.Collection, dbModel.ProjectRefCollection, dbModel.VersionCollection))
+	s.NoError(db.ClearCollections(patch.Collection, dbModel.ProjectRefCollection, dbModel.VersionCollection, model.ProjectRefCollection))
 	s.setup = func() error {
+		projectRef := model.ProjectRef{
+			Id:         "project_id",
+			Identifier: "project_identifier",
+		}
+		s.NoError(projectRef.Insert())
+
 		version := dbModel.Version{
 			Id: "version1",
 		}
@@ -198,8 +205,8 @@ func (s *PatchConnectorFetchByIdSuite) SetupSuite() {
 
 		s.obj_ids = []string{"aabbccddeeff001122334455", "aabbccddeeff001122334456"}
 		patches := []patch.Patch{
-			{Id: patch.NewId(s.obj_ids[0])},
-			{Id: patch.NewId(s.obj_ids[1])},
+			{Id: patch.NewId(s.obj_ids[0]), Project: projectRef.Id},
+			{Id: patch.NewId(s.obj_ids[1]), Project: projectRef.Id},
 		}
 
 		for _, p := range patches {
@@ -258,8 +265,13 @@ func TestPatchConnectorAbortByIdSuite(t *testing.T) {
 }
 
 func (s *PatchConnectorAbortByIdSuite) SetupSuite() {
-	s.NoError(db.ClearCollections(patch.Collection, dbModel.ProjectRefCollection, dbModel.VersionCollection))
+	s.NoError(db.ClearCollections(patch.Collection, dbModel.ProjectRefCollection, dbModel.VersionCollection, model.ProjectRefCollection))
 	s.setup = func() error {
+		projectRef := model.ProjectRef{
+			Id:         "project_id",
+			Identifier: "project_identifier",
+		}
+		s.NoError(projectRef.Insert())
 
 		version := dbModel.Version{
 			Id: "version1",
@@ -267,8 +279,8 @@ func (s *PatchConnectorAbortByIdSuite) SetupSuite() {
 		s.NoError(version.Insert())
 		s.obj_ids = []string{"aabbccddeeff001122334455", "aabbccddeeff001122334456"}
 		patches := []patch.Patch{
-			{Id: patch.NewId(s.obj_ids[0]), Version: version.Id},
-			{Id: patch.NewId(s.obj_ids[1])},
+			{Id: patch.NewId(s.obj_ids[0]), Version: version.Id, Project: projectRef.Id},
+			{Id: patch.NewId(s.obj_ids[1]), Project: projectRef.Id},
 		}
 		for _, p := range patches {
 			s.NoError(p.Insert())
@@ -381,13 +393,19 @@ func TestPatchConnectorChangeStatusSuite(t *testing.T) {
 }
 
 func (s *PatchConnectorChangeStatusSuite) SetupSuite() {
-	s.NoError(db.ClearCollections(patch.Collection, dbModel.ProjectRefCollection, task.Collection, dbModel.VersionCollection))
+	s.NoError(db.ClearCollections(patch.Collection, dbModel.ProjectRefCollection, task.Collection, dbModel.VersionCollection, model.ProjectRefCollection))
 	s.setup = func() error {
 		s.obj_ids = []string{"aabbccddeeff001122334455", "aabbccddeeff001122334456"}
 
+		projectRef := model.ProjectRef{
+			Id:         "project_id",
+			Identifier: "project_identifier",
+		}
+		s.NoError(projectRef.Insert())
+
 		patches := []*patch.Patch{
-			{Id: patch.NewId(s.obj_ids[0]), Version: s.obj_ids[0]},
-			{Id: patch.NewId(s.obj_ids[1]), Version: s.obj_ids[1]},
+			{Id: patch.NewId(s.obj_ids[0]), Version: s.obj_ids[0], Project: projectRef.Id},
+			{Id: patch.NewId(s.obj_ids[1]), Version: s.obj_ids[1], Project: projectRef.Id},
 		}
 		task := task.Task{
 			Id:      "t1",
@@ -454,7 +472,13 @@ func TestPatchConnectorFetchByUserSuite(t *testing.T) {
 }
 
 func (s *PatchConnectorFetchByUserSuite) SetupSuite() {
-	s.NoError(db.ClearCollections(patch.Collection))
+	s.NoError(db.ClearCollections(patch.Collection, model.ProjectRefCollection))
+	projectRef := model.ProjectRef{
+		Id:         "project_id",
+		Identifier: "project_identifier",
+	}
+	s.NoError(projectRef.Insert())
+
 	s.time = time.Date(2009, time.November, 10, 23, 0, 0, 0, time.Local)
 	user1 := "user1"
 	user2 := "user2"
@@ -464,12 +488,12 @@ func (s *PatchConnectorFetchByUserSuite) SetupSuite() {
 	nowPlus8 := s.time.Add(time.Second * 8)
 	nowPlus10 := s.time.Add(time.Second * 10)
 	patches := []patch.Patch{
-		{Author: user1, CreateTime: s.time},
-		{Author: user2, CreateTime: nowPlus2},
-		{Author: user1, CreateTime: nowPlus4},
-		{Author: user1, CreateTime: nowPlus6},
-		{Author: user2, CreateTime: nowPlus8},
-		{Author: user1, CreateTime: nowPlus10},
+		{Author: user1, CreateTime: s.time, Project: projectRef.Id},
+		{Author: user2, CreateTime: nowPlus2, Project: projectRef.Id},
+		{Author: user1, CreateTime: nowPlus4, Project: projectRef.Id},
+		{Author: user1, CreateTime: nowPlus6, Project: projectRef.Id},
+		{Author: user2, CreateTime: nowPlus8, Project: projectRef.Id},
+		{Author: user1, CreateTime: nowPlus10, Project: projectRef.Id},
 	}
 	for _, p := range patches {
 		s.NoError(p.Insert())
