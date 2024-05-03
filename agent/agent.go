@@ -81,6 +81,19 @@ type Options struct {
 	SendTaskLogsToGlobalSender bool
 }
 
+// SetLoggableInfo is a helper to add relevant information about the agent
+// runtime to the log message. This is typically to make high priority error
+// logs more informative.
+func (o *Options) SetLoggableInfo(msg message.Fields) message.Fields {
+	if o.HostID != "" {
+		msg["host_id"] = o.HostID
+	}
+	if o.PodID != "" {
+		msg["pod_id"] = o.PodID
+	}
+	return msg
+}
+
 type timeoutInfo struct {
 	// idleTimeoutDuration maintains the current idle timeout in the task context;
 	// the exec timeout is maintained in the project data structure
@@ -126,7 +139,9 @@ func newWithCommunicator(ctx context.Context, opts Options, comm client.Communic
 	}
 
 	setupData, err := comm.GetAgentSetupData(ctx)
-	grip.Alert(errors.Wrap(err, "getting agent setup data"))
+	grip.Alert(message.WrapError(err, message.Fields{
+		"message": "error getting agent setup data",
+	}))
 	if setupData != nil {
 		opts.SetupData = *setupData
 		opts.TraceCollectorEndpoint = setupData.TraceCollectorEndpoint
@@ -1223,13 +1238,8 @@ func (a *Agent) logPanic(tc *taskContext, pErr, originalErr error, op string) er
 		"message":   "programmatic error: Evergreen agent hit panic",
 		"operation": op,
 	}
+	logMsg = a.opts.SetLoggableInfo(logMsg)
 	if tc.logger != nil && !tc.logger.Closed() {
-		if a.opts.HostID != "" {
-			logMsg["host_id"] = a.opts.HostID
-		}
-		if a.opts.PodID != "" {
-			logMsg["pod_id"] = a.opts.PodID
-		}
 		tc.logger.Task().Error(logMsg)
 	}
 	logMsg["task_id"] = tc.task.ID
