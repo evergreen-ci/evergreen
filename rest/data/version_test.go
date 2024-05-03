@@ -323,7 +323,6 @@ func TestCreateVersionFromConfig(t *testing.T) {
 
 	ppStorage, err := model.GetParserProjectStorage(ctx, env.Settings(), newVersion.ProjectStorageMethod)
 	require.NoError(t, err)
-	defer ppStorage.Close(ctx)
 
 	pp, err = ppStorage.FindOneByID(ctx, newVersion.Id)
 	assert.NoError(err)
