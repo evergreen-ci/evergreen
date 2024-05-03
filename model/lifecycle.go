@@ -871,12 +871,12 @@ func createTasksForBuild(creationInfo TaskCreationInfo) (task.Tasks, error) {
 }
 
 // checkUsersPatchTaskLimit takes in an input list of tasks that is set to get activated, and checks if they're
-// patch tasks, and that the request has been submitted by a user. If so, the maximum hourly patch tasks counter
+// non commit-queue patch tasks, and that the request has been submitted by a user. If so, the maximum hourly patch tasks counter
 // will be incremented accordingly. The addExecutionTasks parameter indicates that execution tasks are included
 // as part of the input tasks param, otherwise we need to account for them.
 func checkUsersPatchTaskLimit(requester, username string, addExecutionTasks bool, tasks ...task.Task) error {
 	// we only care about patch tasks that are to be activated by an actual user
-	if !evergreen.IsPatchRequester(requester) || evergreen.IsSystemActivator(username) {
+	if !(requester == evergreen.PatchVersionRequester || requester == evergreen.GithubPRRequester) || evergreen.IsSystemActivator(username) {
 		return nil
 	}
 	numTasksToActivate := 0
@@ -892,7 +892,7 @@ func checkUsersPatchTaskLimit(requester, username string, addExecutionTasks bool
 			numTasksToActivate++
 		}
 	}
-	return task.FetchUserAndUpdateSchedulingLimit(username, requester, numTasksToActivate, true)
+	return task.UpdateSchedulingLimit(username, requester, numTasksToActivate, true)
 }
 
 // addSingleHostTaskGroupDependencies adds dependencies to any tasks in a single-host task group
@@ -1646,7 +1646,7 @@ func addNewBuilds(ctx context.Context, creationInfo TaskCreationInfo, existingBu
 			},
 		)
 	}
-	if err = task.FetchUserAndUpdateSchedulingLimit(creationInfo.Version.Author, creationInfo.Version.Requester, len(newActivatedTaskIds), true); err != nil {
+	if err = task.UpdateSchedulingLimit(creationInfo.Version.Author, creationInfo.Version.Requester, len(newActivatedTaskIds), true); err != nil {
 		return nil, errors.Wrapf(err, "fetching user '%s' and updating their scheduling limit", creationInfo.Version.Author)
 	}
 	grip.Error(message.WrapError(batchTimeCatcher.Resolve(), message.Fields{

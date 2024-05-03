@@ -1849,7 +1849,7 @@ func ActivateTasks(tasks []Task, activationTime time.Time, updateDependencies bo
 	}
 	// Tasks passed into this function will all be from the same version or build, so we can assume
 	// all tasks also share the same requester field.
-	if err = FetchUserAndUpdateSchedulingLimit(caller, tasks[0].Requester, len(taskIDs)+len(depTaskIDsToUpdate), true); err != nil {
+	if err = UpdateSchedulingLimit(caller, tasks[0].Requester, len(taskIDs)+len(depTaskIDsToUpdate), true); err != nil {
 		return err
 	}
 	err = activateTasks(taskIDs, caller, activationTime)
@@ -1872,9 +1872,9 @@ func ActivateTasks(tasks []Task, activationTime time.Time, updateDependencies bo
 	return nil
 }
 
-// FetchUserAndUpdateSchedulingLimit retrieves a user from the DB and updates their hourly scheduling limit info
+// UpdateSchedulingLimit retrieves a user from the DB and updates their hourly scheduling limit info
 // if they are not a service user.
-func FetchUserAndUpdateSchedulingLimit(username, requester string, numTasksModified int, activated bool) error {
+func UpdateSchedulingLimit(username, requester string, numTasksModified int, activated bool) error {
 	if evergreen.IsSystemActivator(username) || !evergreen.IsPatchRequester(requester) {
 		return nil
 	}
@@ -2107,7 +2107,7 @@ func DeactivateTasks(tasks []Task, updateDependencies bool, caller string) error
 
 	// Tasks passed into this function will all be from the same version or build, so we can assume
 	// all tasks also share the same requester field.
-	if err = FetchUserAndUpdateSchedulingLimit(caller, tasks[0].Requester, len(taskIDs)+len(depTaskIDsToUpdate), false); err != nil {
+	if err = UpdateSchedulingLimit(caller, tasks[0].Requester, len(taskIDs)+len(depTaskIDsToUpdate), false); err != nil {
 		return err
 	}
 
