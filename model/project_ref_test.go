@@ -1641,6 +1641,80 @@ func TestCreateNewRepoRef(t *testing.T) {
 	assert.NotContains(t, scope.Resources, doc1.Id)
 }
 
+func TestGitHubDynamicTokenPermissions(t *testing.T) {
+	perms := GitHubDynamicTokenPermissions{
+		GitHubDynamicTokenPermission{
+			Requesters: []string{"requester1", "requester2"},
+			Permissions: map[string]string{
+				"checks": "write",
+				"issues": "read",
+			},
+		},
+		GitHubDynamicTokenPermission{
+			Requesters: []string{"requester3"},
+			Permissions: map[string]string{
+				"content": "read",
+				"fake":    "write",
+			},
+		},
+	}
+
+	t.Run("Invalid requester specified", func(t *testing.T) {
+		assert.Nil(t, perms.Get("requester0"))
+	})
+
+	t.Run("Valid requester specified", func(t *testing.T) {
+		perm := perms.Get("requester1")
+		require.NotNil(t, perm)
+		assert.Equal(t, "write", perm.Permissions["checks"])
+		assert.Equal(t, "read", perm.Permissions["issues"])
+
+		perm = perms.Get("requester2")
+		require.NotNil(t, perm)
+		assert.Equal(t, "write", perm.Permissions["checks"])
+		assert.Equal(t, "read", perm.Permissions["issues"])
+
+		perm = perms.Get("requester3")
+		require.NotNil(t, perm)
+		assert.Equal(t, "read", perm.Permissions["content"])
+		assert.Equal(t, "write", perm.Permissions["fake"])
+	})
+}
+
+func TestGitHubDynamicTokenPermission(t *testing.T) {
+	t.Run("Valid permissions", func(t *testing.T) {
+		perm := GitHubDynamicTokenPermission{
+			Requesters: []string{"requester1", "requester2"},
+			Permissions: map[string]string{
+				"checks": "write",
+				"issues": "read",
+			},
+		}
+
+		githubPerms, err := perm.AsGitHubInstallationPermissions()
+		require.NoError(t, err)
+		require.NotNil(t, githubPerms.Checks)
+		assert.Equal(t, "write", *githubPerms.Checks)
+		require.NotNil(t, githubPerms.Issues)
+		assert.Equal(t, "read", *githubPerms.Issues)
+	})
+
+	t.Run("With some invalid permissions", func(t *testing.T) {
+		perm := GitHubDynamicTokenPermission{
+			Requesters: []string{"requester3"},
+			Permissions: map[string]string{
+				"contents": "read",
+				"fake":     "write",
+			},
+		}
+
+		githubPerms, err := perm.AsGitHubInstallationPermissions()
+		require.NoError(t, err)
+		require.NotNil(t, githubPerms.Contents)
+		assert.Equal(t, "read", *githubPerms.Contents)
+	})
+}
+
 func TestFindOneProjectRefByRepoAndBranchWithPRTesting(t *testing.T) {
 	assert := assert.New(t)   //nolint
 	require := require.New(t) //nolint
@@ -3277,6 +3351,29 @@ func TestSaveProjectPageForSection(t *testing.T) {
 	assert.Equal(projectRef.ProjectHealthView, ProjectHealthViewAll)
 	assert.True(utility.FromBoolPtr(projectRef.Restricted))
 	assert.True(utility.FromBoolPtr(projectRef.Private))
+
+	// Test GitHub token permissions by requester being set
+	update = &ProjectRef{
+		GitHubTokenPermissionByRequester: GitHubDynamicTokenPermissions{
+			GitHubDynamicTokenPermission{
+				Requesters: []string{evergreen.PatchVersionRequester},
+				Permissions: map[string]string{
+					"contents": "read",
+				},
+			},
+		},
+	}
+	_, err = SaveProjectPageForSection("iden_", update, ProjectPageGithubAndCQSection, false)
+	assert.NoError(err)
+
+	projectRef, err = FindBranchProjectRef("iden_")
+	require.NoError(t, err)
+	assert.NotNil(t, projectRef)
+	assert.Len(projectRef.GitHubTokenPermissionByRequester, 1)
+	perms, err := projectRef.GitHubTokenPermissionByRequester.Get(evergreen.PatchVersionRequester).AsGitHubInstallationPermissions()
+	require.NoError(t, err)
+	require.NotNil(t, perms.Contents)
+	assert.Equal("read", *perms.Contents)
 }
 
 func TestValidateOwnerAndRepo(t *testing.T) {
