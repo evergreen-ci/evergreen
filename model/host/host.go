@@ -1788,6 +1788,8 @@ func (h *Host) UpdateRunningTaskWithContext(ctx context.Context, env evergreen.E
 		},
 	}
 
+	// kim: TODO: check num matched in result to ensure it actually updates the
+	// host document.
 	if _, err := env.DB().Collection(Collection).UpdateOne(ctx, query, update); err != nil {
 		grip.DebugWhen(db.IsDuplicateKey(err), message.WrapError(err, message.Fields{
 			"message": "found duplicate running task",
