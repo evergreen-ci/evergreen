@@ -408,12 +408,13 @@ func (j *patchIntentProcessor) finishPatch(ctx context.Context, patchDoc *patch.
 	patchDoc.ProjectStorageMethod = ppStorageMethod
 
 	if err = patchDoc.Insert(); err != nil {
-		// If this is GH merge queue and the patch gets tried again
-		// the document may be already inserted in the DB but
-		// failed later (i.e. context cancelling early from deploy).
-		// And it's not easy to unstuck the merge queue, so we should continue on
-		// duplicate key errors, otherwise, return the error.
-		if !(mongo.IsDuplicateKeyError(err) && patchDoc.IsGithubMergePatch()) {
+		// If this is a duplicate key error, we already inserted the patch
+		// in to the DB but it failed later in the patch intent job (i.e.
+		// context cancelling early from deploy). To reduce stuck patches,
+		// we continue on duplicate key errors. Since the workaround is a new
+		// patch, GH merge queue patches getting stuck do not have an
+		// easy workaround.
+		if !mongo.IsDuplicateKeyError(err) {
 			return errors.Wrapf(err, "inserting patch '%s'", patchDoc.Id.Hex())
 		}
 	}
