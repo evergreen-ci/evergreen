@@ -60,7 +60,6 @@ func NewHostCreateJob(env evergreen.Environment, h host.Host, id string, current
 	j.host = &h
 	j.HostID = h.Id
 	j.env = env
-	j.SetPriority(1)
 	j.SetID(fmt.Sprintf("%s.%s.%s", createHostJobName, h.Id, id))
 	j.SetScopes([]string{fmt.Sprintf("%s.%s", createHostJobName, h.Id)})
 	j.SetEnqueueAllScopes(true)

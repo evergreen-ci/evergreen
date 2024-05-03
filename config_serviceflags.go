@@ -39,6 +39,7 @@ type ServiceFlags struct {
 	LegacyUIPublicAccessDisabled    bool `bson:"legacy_ui_public_access_disabled" json:"legacy_ui_public_access_disabled"`
 	GlobalGitHubTokenDisabled       bool `bson:"global_github_token_disabled" json:"global_github_token_disabled"`
 	SleepScheduleDisabled           bool `bson:"sleep_schedule_disabled" json:"sleep_schedule_disabled"`
+	SleepScheduleBetaTestDisabled   bool `bson:"sleep_schedule_beta_test_disabled" json:"sleep_schedule_beta_test_disabled"`
 	SystemFailedTaskRestartDisabled bool `bson:"system_failed_task_restart_disabled" json:"system_failed_task_restart_disabled"`
 
 	// Notification Flags
@@ -105,6 +106,7 @@ func (c *ServiceFlags) Set(ctx context.Context) error {
 			globalGitHubTokenDisabledKey:       c.GlobalGitHubTokenDisabled,
 			unrecognizedPodCleanupDisabledKey:  c.UnrecognizedPodCleanupDisabled,
 			sleepScheduleDisabledKey:           c.SleepScheduleDisabled,
+			sleepScheduleBetaTestDisabledKey:   c.SleepScheduleBetaTestDisabled,
 			systemFailedTaskRestartDisabledKey: c.SystemFailedTaskRestartDisabled,
 		},
 	}, options.Update().SetUpsert(true))

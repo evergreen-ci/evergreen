@@ -51,5 +51,15 @@
         }
       ]
     }
+  ],
+  "project_ref": [
+    {
+      "_id": "evergreen",
+      "identifier": "evergreen",
+      "owner_name": "evergreen-ci",
+      "repo_name": "evergreen",
+      "enabled": true,
+      "repoRefId": "something"
+    }
   ]
 }

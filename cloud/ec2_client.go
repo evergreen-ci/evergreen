@@ -3,7 +3,6 @@ package cloud
 import (
 	"context"
 	"fmt"
-	"net/http"
 	"strings"
 	"time"
 
@@ -33,9 +32,6 @@ var noReservationError = errors.New("no reservation returned for instance")
 type AWSClient interface {
 	// Create a new aws-sdk-client or mock if one does not exist, otherwise no-op.
 	Create(context.Context, string) error
-
-	// Close an aws-sdk-client or mock.
-	Close()
 
 	// RunInstances is a wrapper for ec2.RunInstances.
 	RunInstances(context.Context, *ec2.RunInstancesInput) (*ec2.RunInstancesOutput, error)
@@ -128,10 +124,8 @@ type AWSClient interface {
 
 // awsClientImpl wraps ec2.EC2.
 type awsClientImpl struct { //nolint:all
-	config     *aws.Config
-	httpClient *http.Client
-	client     *ec2.Client
-	r53Client  *route53.Client
+	ec2Client *ec2.Client
+	r53Client *route53.Client
 }
 
 type generateDeviceNameOptions struct {
@@ -151,34 +145,29 @@ func awsClientDefaultRetryOptions() utility.RetryOptions {
 	}
 }
 
+var configCache map[string]*aws.Config = make(map[string]*aws.Config)
+
 // Create a new aws-sdk-client if one does not exist, otherwise no-op.
 func (c *awsClientImpl) Create(ctx context.Context, region string) error {
 	if region == "" {
 		return errors.New("region must not be empty")
 	}
-	if c.config == nil {
-		c.httpClient = utility.GetHTTPClient()
+
+	if configCache[region] == nil {
 		config, err := config.LoadDefaultConfig(ctx,
 			config.WithRegion(region),
-			config.WithHTTPClient(c.httpClient),
 		)
 		if err != nil {
 			return errors.Wrap(err, "loading config")
 		}
 		otelaws.AppendMiddlewares(&config.APIOptions)
 
-		c.config = &config
+		configCache[region] = &config
 	}
-	c.client = ec2.NewFromConfig(*c.config)
-	c.r53Client = route53.NewFromConfig(*c.config)
-	return nil
-}
 
-func (c *awsClientImpl) Close() {
-	if c.httpClient != nil {
-		utility.PutHTTPClient(c.httpClient)
-		c.httpClient = nil
-	}
+	c.ec2Client = ec2.NewFromConfig(*configCache[region])
+	c.r53Client = route53.NewFromConfig(*configCache[region])
+	return nil
 }
 
 // RunInstances is a wrapper for ec2.RunInstances.
@@ -191,7 +180,7 @@ func (c *awsClientImpl) RunInstances(ctx context.Context, input *ec2.RunInstance
 		ctx,
 		func() (bool, error) {
 			msg := makeAWSLogMessage("RunInstances", fmt.Sprintf("%T", c), input)
-			output, err = c.client.RunInstances(ctx, input)
+			output, err = c.ec2Client.RunInstances(ctx, input)
 			if err != nil {
 				var apiErr smithy.APIError
 				if errors.As(err, &apiErr) {
@@ -219,7 +208,7 @@ func (c *awsClientImpl) DescribeInstances(ctx context.Context, input *ec2.Descri
 		ctx,
 		func() (bool, error) {
 			msg := makeAWSLogMessage("DescribeInstances", fmt.Sprintf("%T", c), input)
-			output, err = c.client.DescribeInstances(ctx, input)
+			output, err = c.ec2Client.DescribeInstances(ctx, input)
 			if err != nil {
 				var apiErr smithy.APIError
 				if errors.As(err, &apiErr) {
@@ -243,7 +232,7 @@ func (c *awsClientImpl) ModifyInstanceAttribute(ctx context.Context, input *ec2.
 		ctx,
 		func() (bool, error) {
 			msg := makeAWSLogMessage("ModifyInstanceAttribute", fmt.Sprintf("%T", c), input)
-			output, err = c.client.ModifyInstanceAttribute(ctx, input)
+			output, err = c.ec2Client.ModifyInstanceAttribute(ctx, input)
 			if err != nil {
 				var apiErr smithy.APIError
 				if errors.As(err, &apiErr) {
@@ -267,7 +256,7 @@ func (c *awsClientImpl) DescribeInstanceTypeOfferings(ctx context.Context, input
 		ctx,
 		func() (bool, error) {
 			msg := makeAWSLogMessage("DescribeInstanceTypeOfferings", fmt.Sprintf("%T", c), input)
-			output, err = c.client.DescribeInstanceTypeOfferings(ctx, input)
+			output, err = c.ec2Client.DescribeInstanceTypeOfferings(ctx, input)
 			if err != nil {
 				var apiErr smithy.APIError
 				if errors.As(err, &apiErr) {
@@ -292,7 +281,7 @@ func (c *awsClientImpl) CreateTags(ctx context.Context, input *ec2.CreateTagsInp
 		ctx,
 		func() (bool, error) {
 			msg := makeAWSLogMessage("CreateTags", fmt.Sprintf("%T", c), input)
-			output, err = c.client.CreateTags(ctx, input)
+			output, err = c.ec2Client.CreateTags(ctx, input)
 			if err != nil {
 				var apiErr smithy.APIError
 				if errors.As(err, &apiErr) {
@@ -317,7 +306,7 @@ func (c *awsClientImpl) DeleteTags(ctx context.Context, input *ec2.DeleteTagsInp
 		ctx,
 		func() (bool, error) {
 			msg := makeAWSLogMessage("DeleteTags", fmt.Sprintf("%T", c), input)
-			output, err = c.client.DeleteTags(ctx, input)
+			output, err = c.ec2Client.DeleteTags(ctx, input)
 			if err != nil {
 				var apiErr smithy.APIError
 				if errors.As(err, &apiErr) {
@@ -342,7 +331,7 @@ func (c *awsClientImpl) TerminateInstances(ctx context.Context, input *ec2.Termi
 		ctx,
 		func() (bool, error) {
 			msg := makeAWSLogMessage("TerminateInstances", fmt.Sprintf("%T", c), input)
-			output, err = c.client.TerminateInstances(ctx, input)
+			output, err = c.ec2Client.TerminateInstances(ctx, input)
 			if err != nil {
 				var apiErr smithy.APIError
 				if errors.As(err, &apiErr) {
@@ -377,7 +366,7 @@ func (c *awsClientImpl) StopInstances(ctx context.Context, input *ec2.StopInstan
 		ctx,
 		func() (bool, error) {
 			msg := makeAWSLogMessage("StopInstances", fmt.Sprintf("%T", c), input)
-			output, err = c.client.StopInstances(ctx, input)
+			output, err = c.ec2Client.StopInstances(ctx, input)
 			if err != nil {
 				var apiErr smithy.APIError
 				if errors.As(err, &apiErr) {
@@ -402,7 +391,7 @@ func (c *awsClientImpl) StartInstances(ctx context.Context, input *ec2.StartInst
 		ctx,
 		func() (bool, error) {
 			msg := makeAWSLogMessage("StartInstances", fmt.Sprintf("%T", c), input)
-			output, err = c.client.StartInstances(ctx, input)
+			output, err = c.ec2Client.StartInstances(ctx, input)
 			if err != nil {
 				var apiErr smithy.APIError
 				if errors.As(err, &apiErr) {
@@ -428,7 +417,7 @@ func (c *awsClientImpl) CreateVolume(ctx context.Context, input *ec2.CreateVolum
 		ctx,
 		func() (bool, error) {
 			msg := makeAWSLogMessage("CreateVolume", fmt.Sprintf("%T", c), input)
-			output, err = c.client.CreateVolume(ctx, input)
+			output, err = c.ec2Client.CreateVolume(ctx, input)
 			if err != nil {
 				var apiErr smithy.APIError
 				if errors.As(err, &apiErr) {
@@ -457,7 +446,7 @@ func (c *awsClientImpl) DeleteVolume(ctx context.Context, input *ec2.DeleteVolum
 		ctx,
 		func() (bool, error) {
 			msg := makeAWSLogMessage("DeleteVolume", fmt.Sprintf("%T", c), input)
-			output, err = c.client.DeleteVolume(ctx, input)
+			output, err = c.ec2Client.DeleteVolume(ctx, input)
 			if err != nil {
 				var apiErr smithy.APIError
 				if errors.As(err, &apiErr) {
@@ -486,7 +475,7 @@ func (c *awsClientImpl) ModifyVolume(ctx context.Context, input *ec2.ModifyVolum
 		ctx,
 		func() (bool, error) {
 			msg := makeAWSLogMessage("ModifyVolume", fmt.Sprintf("%T", c), input)
-			output, err = c.client.ModifyVolume(ctx, input)
+			output, err = c.ec2Client.ModifyVolume(ctx, input)
 			if err != nil {
 				var apiErr smithy.APIError
 				if errors.As(err, &apiErr) {
@@ -515,7 +504,7 @@ func (c *awsClientImpl) AttachVolume(ctx context.Context, input *ec2.AttachVolum
 		ctx,
 		func() (bool, error) {
 			msg := makeAWSLogMessage("AttachVolume", fmt.Sprintf("%T", c), input)
-			output, err = c.client.AttachVolume(ctx, input)
+			output, err = c.ec2Client.AttachVolume(ctx, input)
 			if err != nil {
 				var apiErr smithy.APIError
 				if errors.As(err, &apiErr) {
@@ -544,7 +533,7 @@ func (c *awsClientImpl) DetachVolume(ctx context.Context, input *ec2.DetachVolum
 		ctx,
 		func() (bool, error) {
 			msg := makeAWSLogMessage("DetachVolume", fmt.Sprintf("%T", c), input)
-			output, err = c.client.DetachVolume(ctx, input)
+			output, err = c.ec2Client.DetachVolume(ctx, input)
 			if err != nil {
 				var apiErr smithy.APIError
 				if errors.As(err, &apiErr) {
@@ -571,7 +560,7 @@ func (c *awsClientImpl) DescribeVolumes(ctx context.Context, input *ec2.Describe
 		ctx,
 		func() (bool, error) {
 			msg := makeAWSLogMessage("DescribeVolumes", fmt.Sprintf("%T", c), input)
-			output, err = c.client.DescribeVolumes(ctx, input)
+			output, err = c.ec2Client.DescribeVolumes(ctx, input)
 			if err != nil {
 				var apiErr smithy.APIError
 				if errors.As(err, &apiErr) {
@@ -596,7 +585,7 @@ func (c *awsClientImpl) DescribeSubnets(ctx context.Context, input *ec2.Describe
 		ctx,
 		func() (bool, error) {
 			msg := makeAWSLogMessage("DescribeSubnets", fmt.Sprintf("%T", c), input)
-			output, err = c.client.DescribeSubnets(ctx, input)
+			output, err = c.ec2Client.DescribeSubnets(ctx, input)
 			if err != nil {
 				var apiErr smithy.APIError
 				if errors.As(err, &apiErr) {
@@ -621,7 +610,7 @@ func (c *awsClientImpl) DescribeVpcs(ctx context.Context, input *ec2.DescribeVpc
 		ctx,
 		func() (bool, error) {
 			msg := makeAWSLogMessage("DescribeVpcs", fmt.Sprintf("%T", c), input)
-			output, err = c.client.DescribeVpcs(ctx, input)
+			output, err = c.ec2Client.DescribeVpcs(ctx, input)
 			if err != nil {
 				var apiErr smithy.APIError
 				if errors.As(err, &apiErr) {
@@ -642,7 +631,7 @@ func (c *awsClientImpl) GetInstanceInfo(ctx context.Context, id string) (*types.
 	if host.IsIntentHostId(id) {
 		return nil, errors.Errorf("host ID '%s' is for an intent host", id)
 	}
-	resp, err := c.client.DescribeInstances(ctx, &ec2.DescribeInstancesInput{
+	resp, err := c.ec2Client.DescribeInstances(ctx, &ec2.DescribeInstancesInput{
 		InstanceIds: []string{id},
 	})
 	if err != nil {
@@ -671,7 +660,7 @@ func (c *awsClientImpl) CreateKeyPair(ctx context.Context, input *ec2.CreateKeyP
 		ctx,
 		func() (bool, error) {
 			msg := makeAWSLogMessage("CreateKeyPair", fmt.Sprintf("%T", c), input)
-			output, err = c.client.CreateKeyPair(ctx, input)
+			output, err = c.ec2Client.CreateKeyPair(ctx, input)
 			if err != nil {
 				var apiErr smithy.APIError
 				if errors.As(err, &apiErr) {
@@ -694,7 +683,7 @@ func (c *awsClientImpl) ImportKeyPair(ctx context.Context, input *ec2.ImportKeyP
 	err = utility.Retry(
 		ctx, func() (bool, error) {
 			msg := makeAWSLogMessage("ImportKeyPair", fmt.Sprintf("%T", c), input)
-			output, err = c.client.ImportKeyPair(ctx, input)
+			output, err = c.ec2Client.ImportKeyPair(ctx, input)
 			if err != nil {
 				var apiErr smithy.APIError
 				if errors.As(err, &apiErr) {
@@ -723,7 +712,7 @@ func (c *awsClientImpl) DeleteKeyPair(ctx context.Context, input *ec2.DeleteKeyP
 		ctx,
 		func() (bool, error) {
 			msg := makeAWSLogMessage("DeleteKeyPair", fmt.Sprintf("%T", c), input)
-			output, err = c.client.DeleteKeyPair(ctx, input)
+			output, err = c.ec2Client.DeleteKeyPair(ctx, input)
 			if err != nil {
 				var apiErr smithy.APIError
 				if errors.As(err, &apiErr) {
@@ -749,7 +738,7 @@ func (c *awsClientImpl) CreateLaunchTemplate(ctx context.Context, input *ec2.Cre
 		ctx,
 		func() (bool, error) {
 			msg := makeAWSLogMessage("CreateLaunchTemplate", fmt.Sprintf("%T", c), input)
-			output, err = c.client.CreateLaunchTemplate(ctx, input)
+			output, err = c.ec2Client.CreateLaunchTemplate(ctx, input)
 			if err != nil {
 				var apiErr smithy.APIError
 				if errors.As(err, &apiErr) {
@@ -778,7 +767,7 @@ func (c *awsClientImpl) GetLaunchTemplates(ctx context.Context, input *ec2.Descr
 		func() (bool, error) {
 			templates = []types.LaunchTemplate{}
 			msg := makeAWSLogMessage("DescribeLaunchTemplates", fmt.Sprintf("%T", c), input)
-			paginator := ec2.NewDescribeLaunchTemplatesPaginator(c.client, input)
+			paginator := ec2.NewDescribeLaunchTemplatesPaginator(c.ec2Client, input)
 			for paginator.HasMorePages() {
 				output, err := paginator.NextPage(ctx)
 				if err != nil {
@@ -807,7 +796,7 @@ func (c *awsClientImpl) DeleteLaunchTemplate(ctx context.Context, input *ec2.Del
 		ctx,
 		func() (bool, error) {
 			msg := makeAWSLogMessage("DeleteLaunchTemplate", fmt.Sprintf("%T", c), input)
-			output, err = c.client.DeleteLaunchTemplate(ctx, input)
+			output, err = c.ec2Client.DeleteLaunchTemplate(ctx, input)
 			if err != nil {
 				var apiErr smithy.APIError
 				if errors.As(err, &apiErr) {
@@ -833,7 +822,7 @@ func (c *awsClientImpl) CreateFleet(ctx context.Context, input *ec2.CreateFleetI
 		ctx,
 		func() (bool, error) {
 			msg := makeAWSLogMessage("CreateFleet", fmt.Sprintf("%T", c), input)
-			output, err = c.client.CreateFleet(ctx, input)
+			output, err = c.ec2Client.CreateFleet(ctx, input)
 			if err != nil {
 				var apiErr smithy.APIError
 				if errors.As(err, &apiErr) {
@@ -1067,8 +1056,6 @@ type awsClientMock struct { //nolint
 func (c *awsClientMock) Create(ctx context.Context, region string) error {
 	return nil
 }
-
-func (c *awsClientMock) Close() {}
 
 // RunInstances is a mock for ec2.RunInstances.
 func (c *awsClientMock) RunInstances(ctx context.Context, input *ec2.RunInstancesInput) (*ec2.RunInstancesOutput, error) {

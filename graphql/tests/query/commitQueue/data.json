@@ -207,6 +207,10 @@
       "commit_queue": {
         "enabled": false
       }
+    },
+        {
+      "_id": "mongodb-mongo-master",
+      "identifier": "mongodb-mongo-master"
     }
   ]
 }

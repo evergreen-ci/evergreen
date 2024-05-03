@@ -624,7 +624,6 @@ func CreateBuildFromVersionNoInsert(creationInfo TaskCreationInfo) (*build.Build
 		TriggerID:           creationInfo.Version.TriggerID,
 		TriggerType:         creationInfo.Version.TriggerType,
 		TriggerEvent:        creationInfo.Version.TriggerEvent,
-		Tags:                buildVariant.Tags,
 	}
 
 	// create all the necessary tasks for the build
@@ -755,10 +754,6 @@ func createTasksForBuild(creationInfo TaskCreationInfo) (task.Tasks, error) {
 			return nil, errors.Wrapf(err, "creating task '%s'", id)
 		}
 
-		projectTask := creationInfo.Project.FindProjectTask(t.Name)
-		if projectTask != nil {
-			newTask.Tags = projectTask.Tags
-		}
 		newTask.DependsOn = makeDeps(t.DependsOn, newTask, execTable)
 		newTask.GeneratedBy = creationInfo.GeneratedBy
 		if generatorIsGithubCheck {

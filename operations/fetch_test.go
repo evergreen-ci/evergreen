@@ -1,6 +1,7 @@
 package operations
 
 import (
+	"path/filepath"
 	"strings"
 	"testing"
 
@@ -96,4 +97,25 @@ func TestTruncateName(t *testing.T) {
 	newName = truncateFilename(fileName)
 	assert.Len(t, newName, 250)
 	assert.Equal(t, strings.Repeat("a", 250), newName)
+}
+
+func TestFileNameWithIndex(t *testing.T) {
+	t.Run("JustFilename", func(t *testing.T) {
+		assert.Equal(t, "file_(4).txt", fileNameWithIndex("file.txt", 5))
+	})
+	t.Run("DirectoryAndFilename", func(t *testing.T) {
+		assert.Equal(t, filepath.Join("path", "to", "file_(4).txt"), fileNameWithIndex(filepath.Join("path", "to", "file.txt"), 5))
+	})
+	t.Run("FilenameWithoutExtensions", func(t *testing.T) {
+		assert.Equal(t, "file_(4)", fileNameWithIndex("file", 5))
+	})
+	t.Run("DirectoryAndFilenameWithoutExtensions", func(t *testing.T) {
+		assert.Equal(t, filepath.Join("path", "to", "file_(4)"), fileNameWithIndex(filepath.Join("path", "to", "file"), 5))
+	})
+	t.Run("DirectoryAndFilenameWithMultipleExtensions", func(t *testing.T) {
+		assert.Equal(t, filepath.Join("path", "to", "file_(4).tar.gz"), fileNameWithIndex(filepath.Join("path", "to", "file.tar.gz"), 5))
+	})
+	t.Run("DirectoryWithPeriodsAndFilenameWithExtension", func(t *testing.T) {
+		assert.Equal(t, filepath.Join("path.with.dots", "to", "file_(4).tar.gz"), fileNameWithIndex(filepath.Join("path.with.dots", "to", "file.tar.gz"), 5))
+	})
 }
