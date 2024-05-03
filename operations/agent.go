@@ -197,7 +197,7 @@ func Agent() cli.Command {
 				msg := message.Fields{
 					"message": "agent is exiting due to unrecoverable error",
 				}
-				msg = opts.SetLoggableInfo(msg)
+				msg = opts.AddLoggableInfo(msg)
 				grip.Emergency(message.WrapError(err, msg))
 				return err
 			}

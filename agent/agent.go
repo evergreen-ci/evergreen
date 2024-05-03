@@ -139,9 +139,12 @@ func newWithCommunicator(ctx context.Context, opts Options, comm client.Communic
 	}
 
 	setupData, err := comm.GetAgentSetupData(ctx)
-	grip.Alert(message.WrapError(err, message.Fields{
-		"message": "error getting agent setup data",
-	}))
+	if err != nil {
+		msg := opts.AddLoggableInfo(message.Fields{
+			"message": "error getting agent setup data",
+		})
+		grip.Alert(message.WrapError(err, msg))
+	}
 	if setupData != nil {
 		opts.SetupData = *setupData
 		opts.TraceCollectorEndpoint = setupData.TraceCollectorEndpoint
@@ -1234,11 +1237,10 @@ func (a *Agent) logPanic(tc *taskContext, pErr, originalErr error, op string) er
 	catcher := grip.NewBasicCatcher()
 	catcher.Add(originalErr)
 	catcher.Add(pErr)
-	logMsg := message.Fields{
+	logMsg := a.opts.AddLoggableInfo(message.Fields{
 		"message":   "programmatic error: Evergreen agent hit panic",
 		"operation": op,
-	}
-	logMsg = a.opts.AddLoggableInfo(logMsg)
+	})
 	if tc.logger != nil && !tc.logger.Closed() {
 		tc.logger.Task().Error(logMsg)
 	}
