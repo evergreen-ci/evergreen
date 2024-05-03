@@ -235,12 +235,23 @@ func runningHostsQuery(distroID string) bson.M {
 }
 
 // byRunningStatusQuery produces a query that returns all hosts
-// with the running status that belong to the given distro.
+// with the running status that belong to the given distro and are
+// started by Evergreen.
 func byRunningStatusQuery(distroID string) bson.M {
 	distroIDKey := bsonutil.GetDottedKeyName(DistroKey, distro.IdKey)
+	bootstrapKey := bsonutil.GetDottedKeyName(DistroKey, distro.BootstrapSettingsKey, distro.BootstrapSettingsMethodKey)
 	return bson.M{
-		distroIDKey: distroID,
-		StatusKey:   evergreen.HostRunning,
+		distroIDKey:  distroID,
+		StartedByKey: evergreen.User,
+		"$or": []bson.M{
+			{
+				StatusKey: evergreen.HostRunning,
+			},
+			{
+				StatusKey:    evergreen.HostStarting,
+				bootstrapKey: distro.BootstrapMethodUserData,
+			},
+		},
 	}
 }
 
@@ -275,6 +286,8 @@ func CountRunningHosts(ctx context.Context, distroID string) (int, error) {
 	return num, errors.Wrap(err, "counting running hosts")
 }
 
+// CountRunningStatusHosts counts the number of hosts running for a particular distro
+// and is surfaced on the task queue.
 func CountRunningStatusHosts(ctx context.Context, distroID string) (int, error) {
 	num, err := Count(ctx, byRunningStatusQuery(distroID))
 	return num, errors.Wrap(err, "counting running status hosts")
