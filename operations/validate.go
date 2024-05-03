@@ -126,7 +126,7 @@ func validateFile(path string, ac *legacyClient, quiet, includeLong, errorOnWarn
 	if !quiet {
 		opts.UnmarshalStrict = true
 	}
-	pp, pc, validationErrs := loadProjectIntoWithValidation(ctx, confFile, opts, errorOnWarnings, project)
+	pp, pc, validationErrs := loadProjectIntoWithValidation(ctx, confFile, opts, project)
 	grip.Info(validationErrs)
 	if validationErrs.HasError() {
 		return errors.Errorf("%s is an invalid configuration", path)
@@ -163,7 +163,7 @@ func validateFile(path string, ac *legacyClient, quiet, includeLong, errorOnWarn
 }
 
 // loadProjectIntoWithValidation returns a warning (instead of an error) if there's an error with unmarshalling strictly
-func loadProjectIntoWithValidation(ctx context.Context, data []byte, opts *model.GetProjectOpts, errorOnWarnings bool,
+func loadProjectIntoWithValidation(ctx context.Context, data []byte, opts *model.GetProjectOpts,
 	project *model.Project) (*model.ParserProject, *model.ProjectConfig, validator.ValidationErrors) {
 	errs := validator.ValidationErrors{}
 	// We validate the project config regardless if version control is disabled for the project
@@ -179,7 +179,7 @@ func loadProjectIntoWithValidation(ctx context.Context, data []byte, opts *model
 	if err != nil {
 		// If the error came from unmarshalling strict, try it again without strict to verify if
 		// it's a legitimate unmarshal error or just an error from strict (which should be a warning)
-		if !errorOnWarnings && strings.Contains(err.Error(), util.UnmarshalStrictError) {
+		if strings.Contains(err.Error(), util.UnmarshalStrictError) {
 			opts.UnmarshalStrict = false
 			pp, err2 := model.LoadProjectInto(ctx, data, opts, "", project)
 			if err2 == nil {
