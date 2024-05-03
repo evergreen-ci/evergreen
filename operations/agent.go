@@ -199,9 +199,10 @@ func Agent() cli.Command {
 				}
 				msg = opts.SetLoggableInfo(msg)
 				grip.Emergency(message.WrapError(err, msg))
+				return err
 			}
 
-			return err
+			return nil
 		},
 	}
 }
