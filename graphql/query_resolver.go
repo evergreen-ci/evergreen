@@ -443,7 +443,7 @@ func (r *queryResolver) Projects(ctx context.Context) ([]*GroupedProjects, error
 	if err != nil {
 		return nil, InternalServerError.Send(ctx, fmt.Sprintf("error getting viewable projects for '%s': '%s'", usr.DispName, err.Error()))
 	}
-	allProjects, err := model.FindMergedTrackedProjectRefsByIds(viewableProjectIds...)
+	allProjects, err := model.FindMergedEnabledProjectRefsByIds(viewableProjectIds...)
 	if err != nil {
 		return nil, ResourceNotFound.Send(ctx, err.Error())
 	}

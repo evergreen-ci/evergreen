@@ -1419,10 +1419,9 @@ func FindMergedProjectRefsByIds(ids ...string) ([]ProjectRef, error) {
 	}, true)
 }
 
-// FindMergedTrackedProjectRefsByIds returns all project refs for the provided ids
-// that are currently being tracked (i.e. their project files
-// still exist and the project is not hidden).
-func FindMergedTrackedProjectRefsByIds(ids ...string) ([]ProjectRef, error) {
+// FindMergedEnabledProjectRefsByIds returns all project refs for the provided ids
+// that are currently enabled.
+func FindMergedEnabledProjectRefsByIds(ids ...string) ([]ProjectRef, error) {
 	if len(ids) == 0 {
 		return nil, nil
 	}
@@ -1430,7 +1429,7 @@ func FindMergedTrackedProjectRefsByIds(ids ...string) ([]ProjectRef, error) {
 		ProjectRefIdKey: bson.M{
 			"$in": ids,
 		},
-		ProjectRefHiddenKey: bson.M{"$ne": true},
+		ProjectRefEnabledKey: true,
 	}, true)
 }
 
