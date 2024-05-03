@@ -661,13 +661,11 @@ func (m *ec2Manager) ModifyHost(ctx context.Context, h *host.Host, opts host.Hos
 	}
 	if opts.AddTemporaryExemptionHours > 0 {
 		extendBy := time.Duration(opts.AddTemporaryExemptionHours) * time.Hour
-		var exemptUntil time.Time
-		if !utility.IsZeroTime(h.SleepSchedule.TemporarilyExemptUntil) {
-			exemptUntil = h.SleepSchedule.TemporarilyExemptUntil.Add(extendBy)
-		} else {
-			exemptUntil = time.Now().Add(extendBy)
+		exemptUntil, err := h.GetTemporaryExemption(extendBy)
+		catcher.Wrap(err, "getting temporary exemption")
+		if err == nil {
+			catcher.Wrap(h.SetTemporaryExemption(ctx, exemptUntil), "setting temporary exemption")
 		}
-		catcher.Add(h.SetTemporaryExemption(ctx, exemptUntil))
 	}
 	if opts.NewName != "" {
 		catcher.Add(h.SetDisplayName(ctx, opts.NewName))

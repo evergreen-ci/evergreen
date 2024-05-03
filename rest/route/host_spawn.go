@@ -165,19 +165,14 @@ func checkTemporaryExemption(h *host.Host, hoursToAdd int) error {
 	if hoursToAdd == 0 {
 		return nil
 	}
-	if hoursToAdd < 0 {
-		return errors.Errorf("cannot reduce temporary exemption duration by %d hours", -hoursToAdd)
-	}
 
 	extendBy := time.Duration(hoursToAdd) * time.Hour
-	var exemptUntil time.Time
-	if !utility.IsZeroTime(h.SleepSchedule.TemporarilyExemptUntil) {
-		exemptUntil = h.SleepSchedule.TemporarilyExemptUntil.Add(extendBy)
-	} else {
-		exemptUntil = time.Now().Add(extendBy)
-	}
-	if time.Now().Add(host.MaxTemporaryExemptionDuration).Before(exemptUntil) {
-		return errors.Errorf("temporary exemption until %s is longer than max temporary exemption duration of '%s'", exemptUntil, host.MaxTemporaryExemptionDuration.String())
+	_, err := h.GetTemporaryExemption(extendBy)
+	if err != nil {
+		return gimlet.ErrorResponse{
+			StatusCode: http.StatusBadRequest,
+			Message:    err.Error(),
+		}
 	}
 
 	return nil
