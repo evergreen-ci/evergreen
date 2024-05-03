@@ -677,7 +677,7 @@ type ComplexityRoot struct {
 		UpdateHostStatus              func(childComplexity int, hostIds []string, status string, notes *string) int
 		UpdateParsleySettings         func(childComplexity int, opts UpdateParsleySettingsInput) int
 		UpdatePublicKey               func(childComplexity int, targetKeyName string, updateInfo PublicKeyInput) int
-		UpdateSpawnHostStatus         func(childComplexity int, hostID string, action SpawnHostStatusActions, updateSpawnHostStatusInput *UpdateSpawnHostStatusInput) int
+		UpdateSpawnHostStatus         func(childComplexity int, hostID *string, action *SpawnHostStatusActions, updateSpawnHostStatusInput *UpdateSpawnHostStatusInput) int
 		UpdateUserSettings            func(childComplexity int, userSettings *model.APIUserSettings) int
 		UpdateVolume                  func(childComplexity int, updateVolumeInput UpdateVolumeInput) int
 	}
@@ -1693,7 +1693,7 @@ type MutationResolver interface {
 	SpawnHost(ctx context.Context, spawnHostInput *SpawnHostInput) (*model.APIHost, error)
 	SpawnVolume(ctx context.Context, spawnVolumeInput SpawnVolumeInput) (bool, error)
 	RemoveVolume(ctx context.Context, volumeID string) (bool, error)
-	UpdateSpawnHostStatus(ctx context.Context, hostID string, action SpawnHostStatusActions, updateSpawnHostStatusInput *UpdateSpawnHostStatusInput) (*model.APIHost, error)
+	UpdateSpawnHostStatus(ctx context.Context, hostID *string, action *SpawnHostStatusActions, updateSpawnHostStatusInput *UpdateSpawnHostStatusInput) (*model.APIHost, error)
 	UpdateVolume(ctx context.Context, updateVolumeInput UpdateVolumeInput) (bool, error)
 	AbortTask(ctx context.Context, taskID string) (*model.APITask, error)
 	OverrideTaskDependencies(ctx context.Context, taskID string) (*model.APITask, error)
@@ -4869,7 +4869,7 @@ func (e *executableSchema) Complexity(typeName, field string, childComplexity in
 			return 0, false
 		}
 
-		return e.complexity.Mutation.UpdateSpawnHostStatus(childComplexity, args["hostId"].(string), args["action"].(SpawnHostStatusActions), args["updateSpawnHostStatusInput"].(*UpdateSpawnHostStatusInput)), true
+		return e.complexity.Mutation.UpdateSpawnHostStatus(childComplexity, args["hostId"].(*string), args["action"].(*SpawnHostStatusActions), args["updateSpawnHostStatusInput"].(*UpdateSpawnHostStatusInput)), true
 
 	case "Mutation.updateUserSettings":
 		if e.complexity.Mutation.UpdateUserSettings == nil {
@@ -11558,19 +11558,19 @@ func (ec *executionContext) field_Mutation_updatePublicKey_args(ctx context.Cont
 func (ec *executionContext) field_Mutation_updateSpawnHostStatus_args(ctx context.Context, rawArgs map[string]interface{}) (map[string]interface{}, error) {
 	var err error
 	args := map[string]interface{}{}
-	var arg0 string
+	var arg0 *string
 	if tmp, ok := rawArgs["hostId"]; ok {
 		ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("hostId"))
-		arg0, err = ec.unmarshalNString2string(ctx, tmp)
+		arg0, err = ec.unmarshalOString2ᚖstring(ctx, tmp)
 		if err != nil {
 			return nil, err
 		}
 	}
 	args["hostId"] = arg0
-	var arg1 SpawnHostStatusActions
+	var arg1 *SpawnHostStatusActions
 	if tmp, ok := rawArgs["action"]; ok {
 		ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("action"))
-		arg1, err = ec.unmarshalNSpawnHostStatusActions2githubᚗcomᚋevergreenᚑciᚋevergreenᚋgraphqlᚐSpawnHostStatusActions(ctx, tmp)
+		arg1, err = ec.unmarshalOSpawnHostStatusActions2ᚖgithubᚗcomᚋevergreenᚑciᚋevergreenᚋgraphqlᚐSpawnHostStatusActions(ctx, tmp)
 		if err != nil {
 			return nil, err
 		}
@@ -30311,7 +30311,7 @@ func (ec *executionContext) _Mutation_updateSpawnHostStatus(ctx context.Context,
 	}()
 	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
 		ctx = rctx // use context from middleware stack in children
-		return ec.resolvers.Mutation().UpdateSpawnHostStatus(rctx, fc.Args["hostId"].(string), fc.Args["action"].(SpawnHostStatusActions), fc.Args["updateSpawnHostStatusInput"].(*UpdateSpawnHostStatusInput))
+		return ec.resolvers.Mutation().UpdateSpawnHostStatus(rctx, fc.Args["hostId"].(*string), fc.Args["action"].(*SpawnHostStatusActions), fc.Args["updateSpawnHostStatusInput"].(*UpdateSpawnHostStatusInput))
 	})
 	if err != nil {
 		ec.Error(ctx, err)
@@ -93799,6 +93799,22 @@ func (ec *executionContext) unmarshalOSpawnHostInput2ᚖgithubᚗcomᚋevergreen
 	}
 	res, err := ec.unmarshalInputSpawnHostInput(ctx, v)
 	return &res, graphql.ErrorOnPath(ctx, err)
+}
+
+func (ec *executionContext) unmarshalOSpawnHostStatusActions2ᚖgithubᚗcomᚋevergreenᚑciᚋevergreenᚋgraphqlᚐSpawnHostStatusActions(ctx context.Context, v interface{}) (*SpawnHostStatusActions, error) {
+	if v == nil {
+		return nil, nil
+	}
+	var res = new(SpawnHostStatusActions)
+	err := res.UnmarshalGQL(v)
+	return res, graphql.ErrorOnPath(ctx, err)
+}
+
+func (ec *executionContext) marshalOSpawnHostStatusActions2ᚖgithubᚗcomᚋevergreenᚑciᚋevergreenᚋgraphqlᚐSpawnHostStatusActions(ctx context.Context, sel ast.SelectionSet, v *SpawnHostStatusActions) graphql.Marshaler {
+	if v == nil {
+		return graphql.Null
+	}
+	return v
 }
 
 func (ec *executionContext) marshalOSpruceConfig2ᚖgithubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐAPIAdminSettings(ctx context.Context, sel ast.SelectionSet, v *model.APIAdminSettings) graphql.Marshaler {
