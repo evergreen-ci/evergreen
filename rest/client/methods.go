@@ -675,34 +675,6 @@ func (c *communicatorImpl) RevertSettings(ctx context.Context, guid string) erro
 	return nil
 }
 
-func (c *communicatorImpl) ExecuteOnDistro(ctx context.Context, distro string, opts model.APIDistroScriptOptions) (hostIDs []string, err error) {
-	info := requestInfo{
-		method: http.MethodPatch,
-		path:   fmt.Sprintf("/distros/%s/execute", distro),
-	}
-
-	var result struct {
-		HostIDs []string `json:"host_ids"`
-	}
-	resp, err := c.request(ctx, info, opts)
-	if err != nil {
-		return nil, errors.Wrapf(err, "sending request to execute script on hosts in distro '%s'", distro)
-	}
-	defer resp.Body.Close()
-
-	if resp.StatusCode == http.StatusUnauthorized {
-		return nil, util.RespErrorf(resp, AuthError)
-	}
-	if resp.StatusCode != http.StatusOK {
-		return nil, util.RespErrorf(resp, "running script on hosts in distro '%s'", distro)
-	}
-
-	if err = utility.ReadJSON(resp.Body, &result); err != nil {
-		return nil, errors.Wrap(err, "problem reading response")
-	}
-	return result.HostIDs, nil
-}
-
 func (c *communicatorImpl) GetServiceUsers(ctx context.Context) ([]model.APIDBUser, error) {
 	info := requestInfo{
 		method: http.MethodGet,
@@ -1509,6 +1481,40 @@ func (c *communicatorImpl) GetClientURLs(ctx context.Context, distroID string) (
 	}
 
 	return urls, nil
+}
+
+func (c *communicatorImpl) PostHostIsUp(ctx context.Context, hostID, hostSecret, ec2InstanceID string) (*restmodel.APIHost, error) {
+	info := requestInfo{
+		method: http.MethodPost,
+		path:   fmt.Sprintf("/hosts/%s/is_up", hostID),
+	}
+	opts := restmodel.APIHostIsUpOptions{
+		HostID:        hostID,
+		EC2InstanceID: ec2InstanceID,
+	}
+	r, err := c.createRequest(info, opts)
+	if err != nil {
+		return nil, errors.Wrap(err, "creating request")
+	}
+	r.Header.Add(evergreen.HostHeader, hostID)
+	r.Header.Add(evergreen.HostSecretHeader, hostSecret)
+	resp, err := utility.RetryRequest(ctx, r, utility.RetryOptions{
+		MaxAttempts: c.maxAttempts,
+		MinDelay:    c.timeoutStart,
+		MaxDelay:    c.timeoutMax,
+	})
+	if err != nil {
+		return nil, util.RespErrorf(resp, "sending request to indicate host '%s' is up", hostID)
+	}
+	defer resp.Body.Close()
+	if resp.StatusCode != http.StatusOK {
+		return nil, util.RespErrorf(resp, "posting that host '%s' is up", hostID)
+	}
+	var h restmodel.APIHost
+	if err = utility.ReadJSON(resp.Body, &h); err != nil {
+		return nil, errors.Wrap(err, "reading JSON response body")
+	}
+	return &h, nil
 }
 
 func (c *communicatorImpl) GetHostProvisioningOptions(ctx context.Context, hostID, hostSecret string) (*restmodel.APIHostProvisioningOptions, error) {

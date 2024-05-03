@@ -1,0 +1,21 @@
+{
+  commitQueue(projectIdentifier: "evergreen") {
+    projectId
+    owner
+    repo
+    queue {
+      issue
+      version
+      enqueueTime
+      patch {
+        id
+        author
+        githash
+      }
+      modules {
+        module
+        issue
+      }
+    }
+  }
+}

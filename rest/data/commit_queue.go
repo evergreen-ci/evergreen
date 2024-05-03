@@ -290,7 +290,7 @@ func EnqueuePRToCommitQueue(ctx context.Context, env evergreen.Environment, sc C
 			// projects have their own workflow that use the `evergreen merge`
 			// PR comment to trigger their own custom commit queue logic, and
 			// want this handler to no-op.
-			catcher.Wrap(sendGitHubCommitQueueError(ctx, env, sc, pr, NewUserRepoInfo(info), err), "propagating GitHub errors back to PR")
+			catcher.Wrap(sendGitHubCommitQueueError(ctx, sc, pr, NewUserRepoInfo(info), err), "propagating GitHub errors back to PR")
 		}
 		return nil, err
 	}
@@ -454,20 +454,15 @@ func tryEnqueueItemForPR(ctx context.Context, sc Connector, projectRef *model.Pr
 	return patchDoc, nil
 }
 
-// sendGitHubCommitQueueError updates the GitHub status and posts a comment
+// sendGitHubCommitQueueError posts a comment to the PR
 // after an error has occurred related to the commit queue.
-func sendGitHubCommitQueueError(ctx context.Context, env evergreen.Environment, sc Connector, pr *github.PullRequest, userRepo UserRepoInfo, err error) error {
+func sendGitHubCommitQueueError(ctx context.Context, sc Connector, pr *github.PullRequest, userRepo UserRepoInfo, err error) error {
 	if err == nil {
 		return nil
 	}
 
-	catcher := grip.NewBasicCatcher()
-	catcher.Wrap(thirdparty.SendCommitQueueGithubStatus(ctx, env, pr, message.GithubStateFailure, err.Error(), ""), "sending GitHub status update")
-
 	comment := fmt.Sprintf("Evergreen could not enqueue your PR in the commit queue. The error:\n%s", err)
-	catcher.Wrap(sc.AddCommentToPR(ctx, userRepo.Owner, userRepo.Repo, pr.GetNumber(), comment), "writing error comment back to PR")
-
-	return catcher.Resolve()
+	return errors.Wrap(sc.AddCommentToPR(ctx, userRepo.Owner, userRepo.Repo, pr.GetNumber(), comment), "writing error comment back to PR")
 }
 
 // CreatePatchForMerge creates a merge patch from an existing patch and enqueues
@@ -479,6 +474,17 @@ func CreatePatchForMerge(ctx context.Context, settings *evergreen.Settings, exis
 	}
 	if existingPatch == nil {
 		return nil, errors.Errorf("patch '%s' not found", existingPatchID)
+	}
+
+	proj, err := FindProjectById(existingPatch.Project, false, false)
+	if err != nil {
+		return nil, errors.Wrapf(err, "getting project '%s'", existingPatch.Project)
+	}
+	if proj == nil {
+		return nil, errors.Errorf("project '%s' not found", existingPatch.Project)
+	}
+	if proj.CommitQueue.MergeQueue == model.MergeQueueGitHub {
+		return nil, errors.New("Can't enqueue patches for projects with GitHub merge queue. Click the merge button on the PR instead.")
 	}
 
 	newPatch, err := model.MakeMergePatchFromExisting(ctx, settings, existingPatch, commitMessage)

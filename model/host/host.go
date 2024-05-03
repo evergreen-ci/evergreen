@@ -382,6 +382,10 @@ type SleepScheduleInfo struct {
 	// NextStartTime is the next time that the host should start for its sleep
 	// schedule.
 	NextStartTime time.Time `bson:"next_start_time,omitempty" json:"next_start_time,omitempty"`
+
+	// IsBetaTester is a temporary flag to allow users to opt into beta testing
+	// the sleep schedule.
+	IsBetaTester bool `bson:"is_beta_tester,omitempty" json:"is_beta_tester,omitempty"`
 }
 
 // Validate checks that the sleep schedule provided by the user is valid.
@@ -492,7 +496,8 @@ func (i SleepScheduleInfo) IsZero() bool {
 		utility.IsZeroTime(i.NextStartTime) &&
 		utility.IsZeroTime(i.TemporarilyExemptUntil) &&
 		!i.PermanentlyExempt &&
-		!i.ShouldKeepOff
+		!i.ShouldKeepOff &&
+		!i.IsBetaTester
 }
 
 type newParentsNeededParams struct {
@@ -595,8 +600,17 @@ func (h *Host) IdleTime() time.Duration {
 		}
 	}
 
-	// The host isn't ready to run tasks yet so it's not idle.
+	// The host isn't ready to run tasks yet, so it's not idle.
 	return 0
+}
+
+// ShouldNotifyStoppedSpawnHostIdle returns true if the stopped spawn host has been idle long enough to notify the user.
+func (h *Host) ShouldNotifyStoppedSpawnHostIdle() (bool, error) {
+	if !h.NoExpiration || h.Status != evergreen.HostStopped {
+		return false, nil
+	}
+	timeToNotifyForStoppedHosts := time.Now().Add(-time.Hour * 24 * evergreen.SpawnHostExpireDays * 3)
+	return event.HasNoRecentStoppedHostEvent(h.Id, timeToNotifyForStoppedHosts)
 }
 
 // WastedComputeTime returns the duration of compute we've paid for that
@@ -3630,6 +3644,62 @@ func (h *Host) UpdateSleepSchedule(ctx context.Context, schedule SleepScheduleIn
 		}
 	}
 	h.SleepSchedule = schedule
+
+	return nil
+}
+
+// SetSleepScheduleBetaTester enables or disables sleep schedule beta testing
+// for this host.
+func (h *Host) SetSleepScheduleBetaTester(ctx context.Context, isBetaTester bool) error {
+	if err := h.SleepSchedule.Validate(); err != nil {
+		return gimlet.ErrorResponse{
+			StatusCode: http.StatusBadRequest,
+			Message:    errors.Wrap(err, "cannot opt into sleep schedule with invalid sleep schedule").Error(),
+		}
+	}
+
+	sleepScheduleIsBetaTesterKey := bsonutil.GetDottedKeyName(SleepScheduleKey, SleepScheduleIsBetaTesterKey)
+	if err := UpdateOne(ctx,
+		bson.M{IdKey: h.Id},
+		bson.M{"$set": bson.M{sleepScheduleIsBetaTesterKey: isBetaTester}},
+	); err != nil {
+		return gimlet.ErrorResponse{
+			StatusCode: http.StatusInternalServerError,
+			Message:    errors.Wrap(err, "enabling/disabling sleep schedule beta test").Error(),
+		}
+	}
+
+	h.SleepSchedule.IsBetaTester = isBetaTester
+
+	return nil
+}
+
+const maxTemporaryExemptionDuration = 32 * utility.Day
+
+// SetTemporaryExemption sets a temporary exemption from the host's sleep
+// schedule.
+func (h *Host) SetTemporaryExemption(ctx context.Context, exemptUntil time.Time) error {
+	if h.SleepSchedule.TemporarilyExemptUntil.Equal(exemptUntil) {
+		return nil
+	}
+
+	if time.Now().Add(maxTemporaryExemptionDuration).Before(exemptUntil) {
+		return errors.Errorf("temporary exemption until '%s' is longer than max temporary exemption duration of '%s'", exemptUntil, maxTemporaryExemptionDuration.String())
+	}
+
+	temporarilyExemptUntilKey := bsonutil.GetDottedKeyName(SleepScheduleKey, SleepScheduleTemporarilyExemptUntilKey)
+	update := bson.M{}
+	if utility.IsZeroTime(exemptUntil) {
+		update["$unset"] = bson.M{temporarilyExemptUntilKey: 1}
+	} else {
+		update["$set"] = bson.M{temporarilyExemptUntilKey: exemptUntil}
+	}
+
+	if err := UpdateOne(ctx, bson.M{IdKey: h.Id}, update); err != nil {
+		return err
+	}
+
+	h.SleepSchedule.TemporarilyExemptUntil = exemptUntil
 
 	return nil
 }

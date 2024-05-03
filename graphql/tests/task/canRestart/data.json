@@ -28,9 +28,7 @@
       "distro": "macos-1014",
       "execution": 1,
       "host_id": "host2",
-      "execution_tasks": [
-        "execution_task"
-      ]
+      "execution_tasks": ["execution_task"]
     },
     {
       "_id": "blocked_display_task",
@@ -46,9 +44,7 @@
       "host_id": "host2",
       "status": "undispatched",
       "display_only": true,
-      "execution_tasks": [
-        "execution_task"
-      ],
+      "execution_tasks": ["execution_task"],
       "depends_on": [
         {
           "_id": "dep1",
@@ -100,6 +96,12 @@
       "execution": 1,
       "host_id": "host2",
       "abort": true
+    }
+  ],
+  "project_ref": [
+    {
+      "_id": "spruce",
+      "identifier": "spruce"
     }
   ]
 }

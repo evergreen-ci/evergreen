@@ -1,0 +1,5 @@
+query {
+  taskAllExecutions(taskId: "no_permissions") {
+    id
+  }
+}

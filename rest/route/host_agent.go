@@ -8,7 +8,6 @@ import (
 
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/apimodels"
-	"github.com/evergreen-ci/evergreen/cloud"
 	"github.com/evergreen-ci/evergreen/db"
 	"github.com/evergreen-ci/evergreen/model"
 	"github.com/evergreen-ci/evergreen/model/distro"
@@ -135,23 +134,9 @@ func (h *hostAgentNextTask) Run(ctx context.Context) gimlet.Responder {
 	}
 
 	if checkHostHealth(h.host) {
-		if err := h.fixIntentHostRunningAgent(ctx, h.host, h.details.EC2InstanceID); err != nil {
-			grip.Error(message.WrapError(err, message.Fields{
-				"message":       "could not fix intent host that is running an agent",
-				"host_id":       h.host.Id,
-				"host_status":   h.host.Status,
-				"operation":     "next_task",
-				"revision":      evergreen.BuildRevision,
-				"agent":         evergreen.AgentVersion,
-				"current_agent": h.host.AgentRevision,
-			}))
-			return gimlet.NewJSONResponse(nextTaskResponse)
-		}
-
 		shouldExit, err := h.prepareHostForAgentExit(ctx, agentExitParams{
-			host:          h.host,
-			remoteAddr:    h.remoteAddr,
-			ec2InstanceID: h.details.EC2InstanceID,
+			host:       h.host,
+			remoteAddr: h.remoteAddr,
 		})
 		if err != nil {
 			grip.Error(message.WrapError(err, message.Fields{
@@ -309,9 +294,6 @@ func (h *hostAgentNextTask) prepareHostForAgentExit(ctx context.Context, params 
 				"remote":     params.remoteAddr,
 				"request_id": gimlet.GetRequestID(ctx),
 			}
-			if evergreen.IsEc2Provider(params.host.Distro.Provider) {
-				msg["ec2_instance_id"] = params.ec2InstanceID
-			}
 			grip.Warning(msg)
 		}
 		return true, nil
@@ -322,101 +304,9 @@ func (h *hostAgentNextTask) prepareHostForAgentExit(ctx context.Context, params 
 	}
 }
 
-// fixIntentHostRunningAgent handles an exceptional case in which an ephemeral
-// host is still believed to be an intent host but somehow the agent is running
-// on an EC2 instance associated with that intent host.
-func (h *hostAgentNextTask) fixIntentHostRunningAgent(ctx context.Context, host *host.Host, instanceID string) error {
-	if !evergreen.IsEc2Provider(host.Provider) {
-		// Intent host issues only affect ephemeral (i.e. EC2) hosts.
-		return nil
-	}
-	if cloud.IsEC2InstanceID(host.Id) {
-		// If the host already has an instance ID, it's not an intent host.
-		return nil
-	}
-	if instanceID == "" {
-		// If the host is an intent host but the agent does not send the EC2
-		// instance ID, there's nothing that can be done to fix it here.
-		grip.Warning(message.Fields{
-			"message":     "intent host has started an agent, but the agent did not provide an instance ID for the real host",
-			"host_id":     host.Id,
-			"host_status": host.Status,
-			"provider":    host.Provider,
-			"distro":      host.Distro.Id,
-		})
-		return nil
-	}
-
-	switch host.Status {
-	case evergreen.HostBuilding:
-		return errors.Wrap(h.transitionIntentHostToStarting(ctx, host, instanceID), "starting intent host that actually succeeded")
-	case evergreen.HostBuildingFailed, evergreen.HostTerminated:
-		return errors.Wrap(h.transitionIntentHostToDecommissioned(ctx, host, instanceID), "decommissioning intent host")
-	default:
-		return errors.Errorf("logical error: intent host is in state '%s', which should be impossible when the agent is running", host.Status)
-	}
-}
-
-// transitionIntentHostToStarting converts an intent host to a real host
-// because it's alive in the cloud. It is marked as starting to indicate that
-// the host has started and can run tasks.
-func (h *hostAgentNextTask) transitionIntentHostToStarting(ctx context.Context, hostToStart *host.Host, instanceID string) error {
-	grip.Notice(message.Fields{
-		"message":     "DB-EC2 state mismatch - found EC2 instance running an agent, but Evergreen believes the host still an intent host",
-		"host_id":     hostToStart.Id,
-		"host_tag":    hostToStart.Tag,
-		"distro":      hostToStart.Distro.Id,
-		"instance_id": instanceID,
-		"host_status": hostToStart.Status,
-	})
-
-	intentHostID := hostToStart.Id
-	hostToStart.Id = instanceID
-	hostToStart.Status = evergreen.HostStarting
-	if err := host.UnsafeReplace(ctx, h.env, intentHostID, hostToStart); err != nil {
-		return errors.Wrap(err, "replacing intent host with real host")
-	}
-
-	event.LogHostStartSucceeded(hostToStart.Id)
-
-	return nil
-}
-
-// transitionIntentHostToDecommissioned converts an intent host to a real
-// host because it's alive in the cloud. It is marked as decommissioned to
-// indicate that the host is not valid and should be terminated.
-func (h *hostAgentNextTask) transitionIntentHostToDecommissioned(ctx context.Context, hostToDecommission *host.Host, instanceID string) error {
-	grip.Notice(message.Fields{
-		"message":     "DB-EC2 state mismatch - found EC2 instance running an agent, but Evergreen believes the host is a stale building intent host",
-		"host_id":     hostToDecommission.Id,
-		"instance_id": instanceID,
-		"host_status": hostToDecommission.Status,
-	})
-
-	intentHostID := hostToDecommission.Id
-	hostToDecommission.Id = instanceID
-	oldStatus := hostToDecommission.Status
-	hostToDecommission.Status = evergreen.HostDecommissioned
-	if err := host.UnsafeReplace(ctx, h.env, intentHostID, hostToDecommission); err != nil {
-		return errors.Wrap(err, "replacing intent host with real host")
-	}
-
-	event.LogHostStatusChanged(hostToDecommission.Id, oldStatus, hostToDecommission.Status, evergreen.User, "host started agent but intent host is already considered a failure")
-	grip.Info(message.Fields{
-		"message":    "intent host decommissioned",
-		"host_id":    hostToDecommission.Id,
-		"host_tag":   hostToDecommission.Tag,
-		"distro":     hostToDecommission.Distro.Id,
-		"old_status": oldStatus,
-	})
-
-	return nil
-}
-
 type agentExitParams struct {
-	host          *host.Host
-	remoteAddr    string
-	ec2InstanceID string
+	host       *host.Host
+	remoteAddr string
 }
 
 // assignNextAvailableTask gets the next task from the queue and sets the running task field
@@ -1478,9 +1368,6 @@ func prepareHostForAgentExit(ctx context.Context, params agentExitParams, env ev
 				"distro":     params.host.Distro.Id,
 				"remote":     params.remoteAddr,
 				"request_id": gimlet.GetRequestID(ctx),
-			}
-			if evergreen.IsEc2Provider(params.host.Distro.Provider) {
-				msg["ec2_instance_id"] = params.ec2InstanceID
 			}
 			grip.Warning(msg)
 		}

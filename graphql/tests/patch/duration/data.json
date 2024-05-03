@@ -4,6 +4,7 @@
       "_id": {
         "$oid": "9a1f8ab8834b87d7b5d251a5"
       },
+      "branch": "spruce",
       "create_time": {
         "$date": "2020-02-12T16:58:19Z"
       }
@@ -12,6 +13,7 @@
       "_id": {
         "$oid": "9e4ff3abe3c3317e352062e4"
       },
+      "branch": "spruce",
       "create_time": {
         "$date": "2019-11-18T18:53:15Z"
       },
@@ -95,7 +97,7 @@
       "time_taken": 69532
     },
     {
-      "_id": "evergreen_lint_generate_lint_5e823e1f28baeaa22ae00823d83e03082cd148ab_20_02_20_20_37_06",
+      "_id": "spruce_generate_lint_5e823e1f28baeaa22ae00823d83e03082cd148ab_20_02_20_20_37_06",
       "create_time": {
         "$date": "2020-02-20T20:37:06.000Z"
       },
@@ -118,10 +120,16 @@
         "$date": "2020-02-20T20:37:13.179Z"
       },
       "version": "9e4ff3abe3c3317e352062e4",
-      "branch": "evergreen",
+      "branch": "spruce",
       "time_taken": {
         "$numberLong": "96946217733"
       }
+    }
+  ],
+  "project_ref": [
+    {
+      "_id": "spruce",
+      "identifier": "spruce"
     }
   ]
 }

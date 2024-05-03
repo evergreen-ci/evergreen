@@ -1236,6 +1236,7 @@ func (h *Host) GenerateFetchProvisioningScriptUserData(ctx context.Context, env 
 		fmt.Sprintf("--api_server=%s", env.Settings().ApiUrl),
 		fmt.Sprintf("--host_id=%s", h.Id),
 		fmt.Sprintf("--host_secret=%s", h.Secret),
+		fmt.Sprintf("--provider=%s", h.Distro.Provider),
 		fmt.Sprintf("--working_dir=%s", h.Distro.AbsPathNotCygwinCompatible(h.Distro.BootstrapSettings.JasperBinaryDir)),
 		fmt.Sprintf("--shell_path=%s", h.Distro.ShellBinary()),
 	}, " ")

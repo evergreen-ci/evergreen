@@ -51,9 +51,9 @@ var (
 	// bson fields for the event struct
 	idKey           = bsonutil.MustHaveTag(EventLogEntry{}, "ID")
 	TimestampKey    = bsonutil.MustHaveTag(EventLogEntry{}, "Timestamp")
-	ExpirableKey    = bsonutil.MustHaveTag(EventLogEntry{}, "Expirable")
 	ResourceIdKey   = bsonutil.MustHaveTag(EventLogEntry{}, "ResourceId")
 	ResourceTypeKey = bsonutil.MustHaveTag(EventLogEntry{}, "ResourceType")
+	eventTypeKey    = bsonutil.MustHaveTag(EventLogEntry{}, "EventType")
 	processedAtKey  = bsonutil.MustHaveTag(EventLogEntry{}, "ProcessedAt")
 	TypeKey         = bsonutil.MustHaveTag(EventLogEntry{}, "EventType")
 	DataKey         = bsonutil.MustHaveTag(EventLogEntry{}, "Data")

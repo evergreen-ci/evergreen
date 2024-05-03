@@ -440,6 +440,17 @@ Admin Settings
 												</td>
 											</tr>
 											<tr>
+												<td>Unexpirable host sleep schedule beta test</td>
+												<td colspan="2">
+													<md-radio-group
+														data-ng-model="Settings.service_flags.sleep_schedule_beta_test_disabled"
+														layout="row">
+														<md-radio-button data-ng-value="false"></md-radio-button>
+														<md-radio-button data-ng-value="true"></md-radio-button>
+													</md-radio-group>
+												</td>
+											</tr>
+											<tr>
 												<td>&nbsp;</td>
 											</tr>
 											<tr>
@@ -600,6 +611,7 @@ Admin Settings
 								<md-card-content>
 									<md-input-container class="control" style="width:45%;">
 										<label>Max Tasks per Version</label>
+										<div class="muted small" style="height:25px;">This includes both selected and unselected tasks</div>
 										<input type="number" ng-model="Settings.task_limits.max_tasks_per_version">
 									</md-input-container>
 									<md-input-container class="control" style="width:45%;">

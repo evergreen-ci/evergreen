@@ -1306,7 +1306,7 @@ func TestBulkInsert(t *testing.T) {
 	}
 }
 
-func TestFindMidwayTask(t *testing.T) {
+func TestByBeforeMidwayTaskFromIds(t *testing.T) {
 	assert := assert.New(t)
 	assert.NoError(db.ClearCollections(Collection))
 	displayName := "cool-task-9000"
@@ -1326,88 +1326,138 @@ func TestFindMidwayTask(t *testing.T) {
 		assert.NoError(task.Insert())
 		tasks = append(tasks, task)
 	}
-	t10, err := findMidwayTask(tasks[0], tasks[19])
+	t10, err := ByBeforeMidwayTaskFromIds(tasks[0].Id, tasks[19].Id)
 	assert.NoError(err)
 	require.NotNil(t, t10)
 	assert.Equal(10, t10.RevisionOrderNumber)
 
-	t5, err := findMidwayTask(tasks[0], tasks[9])
+	t5, err := ByBeforeMidwayTaskFromIds(tasks[0].Id, tasks[9].Id)
 	assert.NoError(err)
 	require.NotNil(t, t5)
 	assert.Equal(5, t5.RevisionOrderNumber, 5)
 
-	t15, err := findMidwayTask(tasks[10], tasks[19])
+	t15, err := ByBeforeMidwayTaskFromIds(tasks[10].Id, tasks[19].Id)
 	assert.NoError(err)
 	require.NotNil(t, t15)
 	assert.Equal(15, t15.RevisionOrderNumber)
 
-	t19, err := findMidwayTask(tasks[17], tasks[19])
+	t19, err := ByBeforeMidwayTaskFromIds(tasks[17].Id, tasks[19].Id)
 	assert.NoError(err)
 	require.NotNil(t, t19)
 	assert.Equal(19, t19.RevisionOrderNumber)
 
-	t4, err := findMidwayTask(tasks[6], tasks[0])
+	t4, err := ByBeforeMidwayTaskFromIds(tasks[6].Id, tasks[0].Id)
 	assert.NoError(err)
 	require.NotNil(t, t4)
 	assert.Equal(4, t4.RevisionOrderNumber)
 
-	t12, err := findMidwayTask(tasks[11], tasks[11])
+	t12, err := ByBeforeMidwayTaskFromIds(tasks[11].Id, tasks[11].Id)
 	assert.NoError(err)
 	require.NotNil(t, t12)
 	assert.Equal(12, t12.RevisionOrderNumber)
 
-	t16, err := findMidwayTask(tasks[15], tasks[16])
+	t16, err := ByBeforeMidwayTaskFromIds(tasks[15].Id, tasks[16].Id)
 	assert.NoError(err)
 	require.NotNil(t, t16)
 	assert.Equal(16, t16.RevisionOrderNumber)
 
-	otherDisplayName := Task{
-		Id:           "otherTaskDisplayName",
-		DisplayName:  "Other display name",
-		BuildVariant: buildVarient,
-		Requester:    requester,
-		Project:      project,
-	}
-	assert.NoError(otherDisplayName.Insert())
-	task, err := findMidwayTask(tasks[0], otherDisplayName)
-	assert.Error(err)
-	assert.Nil(task)
+	t.Run("IncompatibleTasks", func(t *testing.T) {
+		otherDisplayName := Task{
+			Id:           "otherTaskDisplayName",
+			DisplayName:  "Other display name",
+			BuildVariant: buildVarient,
+			Requester:    requester,
+			Project:      project,
+		}
+		assert.NoError(otherDisplayName.Insert())
+		task, err := ByBeforeMidwayTaskFromIds(tasks[0].Id, otherDisplayName.Id)
+		assert.Error(err)
+		assert.Nil(task)
 
-	otherBuildVariant := Task{
-		Id:           "otherTaskBuildVariant",
-		DisplayName:  displayName,
-		BuildVariant: "Other Build Variant",
-		Requester:    requester,
-		Project:      project,
-	}
-	assert.NoError(otherBuildVariant.Insert())
-	task, err = findMidwayTask(tasks[0], otherBuildVariant)
-	assert.Error(err)
-	assert.Nil(task)
+		otherBuildVariant := Task{
+			Id:           "otherTaskBuildVariant",
+			DisplayName:  displayName,
+			BuildVariant: "Other Build Variant",
+			Requester:    requester,
+			Project:      project,
+		}
+		assert.NoError(otherBuildVariant.Insert())
+		task, err = ByBeforeMidwayTaskFromIds(tasks[0].Id, otherBuildVariant.Id)
+		assert.Error(err)
+		assert.Nil(task)
 
-	otherRequester := Task{
-		Id:           "otherTaskRequester",
-		DisplayName:  displayName,
-		BuildVariant: buildVarient,
-		Requester:    "Other Requester",
-		Project:      project,
-	}
-	assert.NoError(otherRequester.Insert())
-	task, err = findMidwayTask(tasks[0], otherRequester)
-	assert.Error(err)
-	assert.Nil(task)
+		otherRequester := Task{
+			Id:           "otherTaskRequester",
+			DisplayName:  displayName,
+			BuildVariant: buildVarient,
+			Requester:    "Other Requester",
+			Project:      project,
+		}
+		assert.NoError(otherRequester.Insert())
+		task, err = ByBeforeMidwayTaskFromIds(tasks[0].Id, otherRequester.Id)
+		assert.Error(err)
+		assert.Nil(task)
 
-	otherProject := Task{
-		Id:           "otherTaskProject",
-		DisplayName:  displayName,
-		BuildVariant: buildVarient,
-		Requester:    requester,
-		Project:      "Other project",
-	}
-	assert.NoError(otherProject.Insert())
-	task, err = findMidwayTask(tasks[0], otherProject)
-	assert.Error(err)
-	assert.Nil(task)
+		otherProject := Task{
+			Id:           "otherTaskProject",
+			DisplayName:  displayName,
+			BuildVariant: buildVarient,
+			Requester:    requester,
+			Project:      "Other project",
+		}
+		assert.NoError(otherProject.Insert())
+		task, err = ByBeforeMidwayTaskFromIds(tasks[0].Id, otherProject.Id)
+		assert.Error(err)
+		assert.Nil(task)
+	})
+
+	// Usually, the midway task will be found- but if what would be the midway
+	// task is from a version (like periodic builds) that does not have the task
+	// we should get the task from earlier versions.
+	t.Run("MissingTasks", func(t *testing.T) {
+		assert.NoError(db.ClearCollections(Collection))
+		// tasks 7-13 are missing.
+		for i := 1; i <= 20; i++ {
+			if i > 6 && i < 14 {
+				continue
+			}
+			task := Task{
+				Id:                  "t" + fmt.Sprint(i),
+				DisplayName:         displayName,
+				BuildVariant:        buildVarient,
+				Requester:           requester,
+				Project:             project,
+				RevisionOrderNumber: i,
+			}
+			assert.NoError(task.Insert())
+		}
+
+		// The midway task would be t10, but since tasks 7-13 are missing
+		// it gets the next task earliest task that is not missing, which is t6.
+		t6, err := ByBeforeMidwayTaskFromIds("t1", "t20")
+		assert.NoError(err)
+		require.NotNil(t, t6)
+		assert.Equal(6, t6.RevisionOrderNumber)
+
+		t6, err = ByBeforeMidwayTaskFromIds("t5", "t20")
+		assert.NoError(err)
+		require.NotNil(t, t6)
+		assert.Equal(6, t6.RevisionOrderNumber)
+
+		t6, err = ByBeforeMidwayTaskFromIds("t5", "t16")
+		assert.NoError(err)
+		require.NotNil(t, t6)
+		assert.Equal(6, t6.RevisionOrderNumber)
+
+		t6, err = ByBeforeMidwayTaskFromIds("t6", "t14")
+		assert.NoError(err)
+		require.NotNil(t, t6)
+		assert.Equal(6, t6.RevisionOrderNumber)
+
+		// Using a task that doesn't exist should return an error.
+		_, err = ByBeforeMidwayTaskFromIds("t7", "t20")
+		assert.Error(err)
+	})
 }
 
 func TestUnscheduleStaleUnderwaterHostTasksNoDistro(t *testing.T) {
@@ -4831,6 +4881,7 @@ func TestReset(t *testing.T) {
 			ResetFailedWhenFinished: true,
 			OverrideDependencies:    true,
 			CanReset:                true,
+			HasAnnotations:          true,
 			AgentVersion:            "a1",
 			HostId:                  "h",
 			PodID:                   "p",
@@ -4848,6 +4899,7 @@ func TestReset(t *testing.T) {
 		assert.False(t, dbTask.IsAutomaticRestart)
 		assert.False(t, dbTask.ResetFailedWhenFinished)
 		assert.False(t, dbTask.OverrideDependencies)
+		assert.False(t, dbTask.HasAnnotations)
 		assert.False(t, dbTask.CanReset)
 		assert.Equal(t, "", dbTask.AgentVersion)
 		assert.Equal(t, "", dbTask.HostId)

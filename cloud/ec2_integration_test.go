@@ -17,12 +17,6 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-const (
-	running  = 16
-	stopping = 64
-	stopped  = 80
-)
-
 func fetchTestDistro() distro.Distro {
 	return distro.Distro{
 		Id:       "test_distro",
@@ -105,9 +99,9 @@ func TestSpawnEC2InstanceOnDemand(t *testing.T) {
 	assert.NoError(err)
 	require.Len(foundHosts, 1)
 
-	instance, err := m.client.GetInstanceInfo(ctx, h.Id)
+	status, err := m.GetInstanceStatus(ctx, h)
 	assert.NoError(err)
-	assert.NotContains([]int64{running, stopping, stopped}, *instance.State.Code)
+	assert.NotContains([]CloudStatus{StatusRunning, StatusStopping, StatusStopped}, status)
 }
 
 func (s *EC2Suite) TestGetInstanceInfoFailsEarlyForIntentHosts() {

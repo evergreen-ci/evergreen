@@ -125,7 +125,6 @@ func (apiBuild *APIBuild) BuildFromService(v build.Build, pp *model.ParserProjec
 	apiBuild.DisplayName = utility.ToStringPtr(v.DisplayName)
 	apiBuild.PredictedMakespan = NewAPIDuration(v.PredictedMakespan)
 	apiBuild.ActualMakespan = NewAPIDuration(v.ActualMakespan)
-	apiBuild.Tags = utility.ToStringPtrSlice(v.Tags)
 	var origin string
 	switch v.Requester {
 	case evergreen.RepotrackerVersionRequester:

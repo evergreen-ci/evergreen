@@ -4,12 +4,14 @@ import (
 	"context"
 	"fmt"
 	"net/http"
+	"time"
 
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/cloud"
 	"github.com/evergreen-ci/evergreen/model/event"
 	"github.com/evergreen-ci/evergreen/model/host"
 	"github.com/evergreen-ci/evergreen/model/user"
+	"github.com/evergreen-ci/evergreen/rest/model"
 	restmodel "github.com/evergreen-ci/evergreen/rest/model"
 	"github.com/evergreen-ci/evergreen/units"
 	"github.com/evergreen-ci/gimlet"
@@ -260,4 +262,132 @@ func makeSpawnOptions(options *restmodel.HostRequestOptions, user *user.DBUser) 
 		},
 	}
 	return &spawnOptions, nil
+}
+
+// PostHostIsUp indicates to the app server that a host is up.
+func PostHostIsUp(ctx context.Context, params restmodel.APIHostIsUpOptions) (*restmodel.APIHost, error) {
+	h, err := host.FindOneByIdOrTag(ctx, params.HostID)
+	if err != nil {
+		return nil, gimlet.ErrorResponse{
+			StatusCode: http.StatusInternalServerError,
+			Message:    errors.Wrapf(err, "finding host '%s'", params.HostID).Error(),
+		}
+	}
+	if h == nil {
+		return nil, gimlet.ErrorResponse{
+			StatusCode: http.StatusNotFound,
+			Message:    fmt.Sprintf("host '%s' not found", params.HostID),
+		}
+	}
+
+	if err := fixProvisioningIntentHost(ctx, h, params.EC2InstanceID); err != nil {
+		return nil, gimlet.ErrorResponse{
+			StatusCode: http.StatusInternalServerError,
+			Message:    errors.Wrap(err, "fixing intent host").Error(),
+		}
+	}
+
+	var apiHost model.APIHost
+	apiHost.BuildFromService(h, nil)
+	return &apiHost, nil
+}
+
+// fixProvisioningIntentHost fixes a special case in which Evergreen believes a
+// host is still an intent host but the host is already running and trying to
+// provision in preparation to run tasks.
+func fixProvisioningIntentHost(ctx context.Context, h *host.Host, instanceID string) error {
+	if !evergreen.IsEc2Provider(h.Distro.Provider) {
+		// Intent host issues only affect ephemeral (i.e. EC2) hosts.
+		return nil
+	}
+	if cloud.IsEC2InstanceID(h.Id) {
+		// If the host already has an instance ID, it's not an intent host.
+		return nil
+	}
+	if instanceID == "" {
+		// If the host is an intent host but the agent does not send the EC2
+		// instance ID, there's nothing that can be done to fix it here.
+
+		msg := "intent host is up, but it did not provide an EC2 instance ID, which is required"
+		grip.Warning(message.Fields{
+			"message":     msg,
+			"host_id":     h.Id,
+			"host_status": h.Status,
+			"provider":    h.Distro.Provider,
+			"distro":      h.Distro.Id,
+		})
+		// TODO (DEVPROD-6752): should return an error once all hosts roll over
+		// from the deploy and are providing their EC2 instance ID to this
+		// route. All intent hosts should be sending their EC2 instance ID. If
+		// they don't, it should fail provisioning and should not start the
+		// agent.
+		return nil
+	}
+
+	env := evergreen.GetEnvironment()
+	switch h.Status {
+	case evergreen.HostBuilding:
+		return errors.Wrap(transitionIntentHostToStarting(ctx, env, h, instanceID), "starting intent host that actually succeeded")
+	case evergreen.HostBuildingFailed, evergreen.HostDecommissioned, evergreen.HostTerminated:
+		return errors.Wrap(transitionIntentHostToDecommissioned(ctx, env, h, instanceID), "decommissioning intent host")
+	default:
+		return errors.Errorf("logical error: intent host is in state '%s', which should be impossible when host is up and provisioning", h.Status)
+	}
+}
+
+// transitionIntentHostToStarting converts an intent host to a real host because
+// it's up and running. It is marked as starting to indicate that the host has
+// started and can run tasks.
+func transitionIntentHostToStarting(ctx context.Context, env evergreen.Environment, hostToStart *host.Host, instanceID string) error {
+	grip.Notice(message.Fields{
+		"message":     "DB-EC2 state mismatch - EC2 instance started but Evergreen still has it stored as an intent host, fixing now",
+		"old_host_id": hostToStart.Id,
+		"new_host_id": instanceID,
+		"host_tag":    hostToStart.Tag,
+		"distro":      hostToStart.Distro.Id,
+		"host_status": hostToStart.Status,
+	})
+
+	intentHostID := hostToStart.Id
+	hostToStart.Id = instanceID
+	hostToStart.Status = evergreen.HostStarting
+	hostToStart.StartTime = time.Now()
+	if err := host.UnsafeReplace(ctx, env, intentHostID, hostToStart); err != nil {
+		return errors.Wrap(err, "replacing intent host with real host")
+	}
+
+	event.LogHostStartSucceeded(hostToStart.Id)
+
+	return nil
+}
+
+// transitionIntentHostToDecommissioned converts an intent host to a real
+// host because it's up and running. It is marked as decommissioned to
+// indicate that the host is not valid anymore and should be terminated.
+func transitionIntentHostToDecommissioned(ctx context.Context, env evergreen.Environment, hostToDecommission *host.Host, instanceID string) error {
+	grip.Notice(message.Fields{
+		"message":     "DB-EC2 state mismatch - EC2 instance started but Evergreen already gave up on this host, fixing now",
+		"host_id":     hostToDecommission.Id,
+		"instance_id": instanceID,
+		"host_status": hostToDecommission.Status,
+	})
+
+	intentHostID := hostToDecommission.Id
+	hostToDecommission.Id = instanceID
+	oldStatus := hostToDecommission.Status
+	hostToDecommission.Status = evergreen.HostDecommissioned
+	if err := host.UnsafeReplace(ctx, env, intentHostID, hostToDecommission); err != nil {
+		return errors.Wrap(err, "replacing intent host with real host")
+	}
+
+	event.LogHostStatusChanged(hostToDecommission.Id, oldStatus, hostToDecommission.Status, evergreen.User, "host started agent but intent host is already considered a failure")
+	grip.Info(message.Fields{
+		"message":    "intent host decommissioned",
+		"host_id":    hostToDecommission.Id,
+		"host_tag":   hostToDecommission.Tag,
+		"distro":     hostToDecommission.Distro.Id,
+		"old_status": oldStatus,
+	})
+
+	return nil
 }

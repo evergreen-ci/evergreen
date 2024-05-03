@@ -39,7 +39,7 @@
         "evergreen_ubuntu1604_patch_5e823e1f28baeaa22ae00823d83e03082cd148ab_5e4ff3abe3c3317e352062e4_20_02_21_15_13_48",
         "evergreen_lint_patch_5e823e1f28baeaa22ae00823d83e03082cd148ab_5e4ff3abe3c3317e352062e4_20_02_21_15_13_48"
       ],
-      "identifier": "evergreen",
+      "identifier": "spruce",
       "remote": false,
       "remote_path": "",
       "r": "github_pull_request",
@@ -171,7 +171,7 @@
         "evergreen_ubuntu1604_arm64_5e823e1f28baeaa22ae00823d83e03082cd148ab_20_02_20_20_37_06",
         "evergreen_windows_5e823e1f28baeaa22ae00823d83e03082cd148ab_20_02_20_20_37_06"
       ],
-      "identifier": "evergreen",
+      "identifier": "spruce",
       "remote": false,
       "remote_path": "self-tests.yml",
       "r": "gitter_request",
@@ -208,9 +208,7 @@
       "display_name": "compile",
       "r": "github_pull_request",
       "display_only": true,
-      "execution_tasks": [
-        "execution_task"
-      ],
+      "execution_tasks": ["execution_task"],
       "status": "failed",
       "details": {
         "status": "failed",
@@ -410,6 +408,12 @@
     {
       "_id": "bv_build",
       "displayName": "Build variant"
+    }
+  ],
+  "project_ref": [
+    {
+      "_id": "spruce",
+      "identifier": "spruce"
     }
   ]
 }

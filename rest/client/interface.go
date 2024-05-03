@@ -42,7 +42,6 @@ type Communicator interface {
 	UpdateSettings(context.Context, *restmodel.APIAdminSettings) (*restmodel.APIAdminSettings, error)
 	GetEvents(context.Context, time.Time, int) ([]interface{}, error)
 	RevertSettings(context.Context, string) error
-	ExecuteOnDistro(ctx context.Context, distro string, opts restmodel.APIDistroScriptOptions) (hostIDs []string, err error)
 	GetServiceUsers(ctx context.Context) ([]restmodel.APIDBUser, error)
 	UpdateServiceUser(context.Context, string, string, []string) error
 	DeleteServiceUser(context.Context, string) error
@@ -124,6 +123,9 @@ type Communicator interface {
 	// Evergreen binary for a given distro.
 	GetClientURLs(ctx context.Context, distroID string) ([]string, error)
 
+	// PostHostIsUp indicates to the app server that the task host is up and
+	// running.
+	PostHostIsUp(ctx context.Context, hostID, hostSecret, instanceID string) (*restmodel.APIHost, error)
 	// GetHostProvisioningOptions gets the options to provision a host.
 	GetHostProvisioningOptions(ctx context.Context, hostID, hostSecret string) (*restmodel.APIHostProvisioningOptions, error)
 

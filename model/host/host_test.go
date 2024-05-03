@@ -6374,6 +6374,64 @@ func TestUpdateSleepSchedule(t *testing.T) {
 	}
 }
 
+func TestSetTemporaryExemption(t *testing.T) {
+	defer func() {
+		assert.NoError(t, db.ClearCollections(Collection))
+	}()
+
+	for tName, tCase := range map[string]func(ctx context.Context, t *testing.T, h *Host){
+		"SetsTemporaryExemption": func(ctx context.Context, t *testing.T, h *Host) {
+			require.NoError(t, h.Insert(ctx))
+
+			now := utility.BSONTime(time.Now())
+			exemptUntil := utility.BSONTime(now.Add(2 * utility.Day))
+			require.NoError(t, h.SetTemporaryExemption(ctx, exemptUntil))
+
+			dbHost, err := FindOneId(ctx, h.Id)
+			require.NoError(t, err)
+			require.NotZero(t, dbHost)
+			assert.True(t, dbHost.SleepSchedule.TemporarilyExemptUntil.Equal(exemptUntil), "should set temporary exemption time to '%s'", exemptUntil)
+		},
+		"FailsWithVeryLongTemporaryExemption": func(ctx context.Context, t *testing.T, h *Host) {
+			require.NoError(t, h.Insert(ctx))
+
+			now := utility.BSONTime(time.Now())
+			exemptUntil := utility.BSONTime(now.Add(1000 * utility.Day))
+			assert.Error(t, h.SetTemporaryExemption(ctx, exemptUntil))
+		},
+		"OverwritesExistingTemporaryExemption": func(ctx context.Context, t *testing.T, h *Host) {
+			now := utility.BSONTime(time.Now())
+			h.SleepSchedule.TemporarilyExemptUntil = utility.BSONTime(now.Add(time.Hour))
+			require.NoError(t, h.Insert(ctx))
+
+			exemptUntil := utility.BSONTime(now.Add(2 * utility.Day))
+			require.NoError(t, h.SetTemporaryExemption(ctx, exemptUntil))
+
+			dbHost, err := FindOneId(ctx, h.Id)
+			require.NoError(t, err)
+			require.NotZero(t, dbHost)
+			assert.True(t, dbHost.SleepSchedule.TemporarilyExemptUntil.Equal(exemptUntil), "should update temporary exemption time to '%s'", exemptUntil)
+		},
+	} {
+		t.Run(tName, func(t *testing.T) {
+			ctx, cancel := context.WithCancel(context.Background())
+			defer cancel()
+			require.NoError(t, db.ClearCollections(Collection))
+			h := &Host{
+				Id:           "host_id",
+				NoExpiration: true,
+				StartedBy:    "me",
+				SleepSchedule: SleepScheduleInfo{
+					TimeZone:       time.Local.String(),
+					DailyStartTime: "10:00",
+					DailyStopTime:  "18:00",
+				},
+			}
+			tCase(ctx, t, h)
+		})
+	}
+}
+
 func TestGetNextScheduledStopTime(t *testing.T) {
 	const easternTZ = "America/New_York"
 	easternTZLoc, err := time.LoadLocation(easternTZ)

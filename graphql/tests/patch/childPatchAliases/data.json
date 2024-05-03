@@ -4,7 +4,7 @@
       "_id": {
         "$oid": "5e4ff3abe3c3317e352062e4"
       },
-      "branch": "evergreen",
+      "branch": "spruce",
       "version": "5e4ff3abe3c3317e352062e4",
       "activated": true,
       "githash": "5e823e1f28baeaa22ae00823d83e03082cd148ab"
@@ -13,7 +13,7 @@
       "_id": {
         "$oid": "5e4ff3abe3c3317e352062e1"
       },
-      "branch": "evergreen",
+      "branch": "spruce",
       "version": "5e4ff3abe3c3317e352062e1",
       "activated": true,
       "githash": "5e823e1f28baeaa22ae00823d83e03082cd148ab",
@@ -25,10 +25,8 @@
   ],
   "project_ref": [
     {
-      "_id": "evergreen",
-      "identifier": "evergreenIdentifier",
-      "owner_name": "evergreen-ci",
-      "repo_name": "evergreen",
+      "_id": "spruce",
+      "identifier": "spruce",
       "patch_trigger_aliases": [
         {
           "alias": "test-alias",

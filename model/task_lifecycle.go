@@ -607,9 +607,9 @@ func doBisectStepback(ctx context.Context, t *task.Task) error {
 	}
 
 	// The midway task is our next stepback target.
-	nextTask, err := task.FindMidwayTaskFromIds(s.LastFailingStepbackTaskId, s.LastPassingStepbackTaskId)
+	nextTask, err := task.ByBeforeMidwayTaskFromIds(s.LastFailingStepbackTaskId, s.LastPassingStepbackTaskId)
 	if err != nil {
-		return errors.Wrapf(err, "finding midway task between tasks '%s' and '%s'", s.LastFailingStepbackTaskId, s.LastPassingStepbackTaskId)
+		return errors.Wrap(err, "finding previous task")
 	}
 	if nextTask == nil {
 		return errors.Errorf("midway task could not be found for tasks '%s' '%s'", s.LastFailingStepbackTaskId, s.LastPassingStepbackTaskId)
@@ -707,7 +707,7 @@ func doBisectStepbackForGeneratedTask(ctx context.Context, generator *task.Task,
 	}
 
 	// The midway task is our next stepback target.
-	nextTask, err := task.FindMidwayTaskFromIds(s.LastFailingStepbackTaskId, s.LastPassingStepbackTaskId)
+	nextTask, err := task.ByBeforeMidwayTaskFromIds(s.LastFailingStepbackTaskId, s.LastPassingStepbackTaskId)
 	if err != nil {
 		return errors.Wrapf(err, "finding midway task between tasks '%s' and '%s'", s.LastFailingStepbackTaskId, s.LastPassingStepbackTaskId)
 	}
@@ -772,6 +772,7 @@ func MarkEnd(ctx context.Context, settings *evergreen.Settings, t *task.Task, ca
 	deactivatePrevious bool) error {
 	ctx, span := tracer.Start(ctx, "mark-end")
 	defer span.End()
+	catcher := grip.NewBasicCatcher()
 
 	const slowThreshold = time.Second
 
@@ -817,17 +818,14 @@ func MarkEnd(ctx context.Context, settings *evergreen.Settings, t *task.Task, ca
 		"duration_secs": time.Since(startPhaseAt).Seconds(),
 	})
 
+	// If the error is from marking the task as finished, we want to
+	// return early as every functionality depends on this succeeding.
 	if err != nil {
-		return errors.Wrap(err, "marking task finished")
+		return errors.Wrapf(err, "marking task '%s' finished", t.Id)
 	}
 
-	if err = UpdateBlockedDependencies(ctx, t); err != nil {
-		return errors.Wrap(err, "updating blocked dependencies")
-	}
-
-	if err = t.MarkDependenciesFinished(ctx, true); err != nil {
-		return errors.Wrap(err, "updating dependency met status")
-	}
+	catcher.Wrap(UpdateBlockedDependencies(ctx, t), "updating blocked dependencies")
+	catcher.Wrap(t.MarkDependenciesFinished(ctx, true), "updating dependency met status")
 
 	status := t.GetDisplayStatus()
 
@@ -853,41 +851,13 @@ func MarkEnd(ctx context.Context, settings *evergreen.Settings, t *task.Task, ca
 	})
 	origin := evergreen.APIServerTaskActivator
 	if t.IsPartOfDisplay() {
-		if err = UpdateDisplayTaskForTask(t); err != nil {
-			return errors.Wrap(err, "updating display task")
-		}
-		dt, err := t.GetDisplayTask()
-		if err != nil {
-			return errors.Wrap(err, "getting display task")
-		}
-		if err = checkResetDisplayTask(ctx, settings, caller, origin, dt); err != nil {
-			return errors.Wrap(err, "checking display task reset")
-		}
-	} else {
-		if t.IsPartOfSingleHostTaskGroup() {
-			if err = checkResetSingleHostTaskGroup(ctx, t, caller); err != nil {
-				return errors.Wrap(err, "resetting task group")
-			}
-		}
+		catcher.Add(markEndDisplayTask(ctx, settings, t, caller, origin))
+	} else if t.IsPartOfSingleHostTaskGroup() {
+		catcher.Wrap(checkResetSingleHostTaskGroup(ctx, t, caller), "resetting single host task group")
 	}
 
-	// activate/deactivate other task if this is not a patch request's task
-	if !evergreen.IsPatchRequester(t.Requester) {
-		if t.IsPartOfDisplay() {
-			_, err = t.GetDisplayTask()
-			if err != nil {
-				return errors.Wrap(err, "getting display task")
-			}
-			err = evalStepback(ctx, t.DisplayTask, status)
-		} else {
-			err = evalStepback(ctx, t, status)
-		}
-		grip.Error(message.WrapError(err, message.Fields{
-			"message": "evaluating stepback",
-			"project": t.Project,
-			"task_id": t.Id,
-		}))
-	}
+	// Stepback is non-essential and handles activation/logging internally.
+	attemptStepback(ctx, t, status)
 
 	// Deactivate previous occurrences of the same task if this one passed on mainline commits.
 	if t.Status == evergreen.TaskSucceeded && deactivatePrevious && t.Requester == evergreen.RepotrackerVersionRequester && t.ActivatedBy != evergreen.StepbackTaskActivator {
@@ -896,13 +866,9 @@ func MarkEnd(ctx context.Context, settings *evergreen.Settings, t *task.Task, ca
 		}))
 	}
 
-	if err = UpdateBuildAndVersionStatusForTask(ctx, t); err != nil {
-		return errors.Wrap(err, "updating build/version status")
-	}
+	catcher.Wrap(UpdateBuildAndVersionStatusForTask(ctx, t), "updating build/version status")
 
-	if err = logTaskEndStats(ctx, t); err != nil {
-		return errors.Wrap(err, "logging task end stats")
-	}
+	catcher.Wrap(logTaskEndStats(ctx, t), "logging task end stats")
 
 	if (t.ResetWhenFinished || t.ResetFailedWhenFinished) && !t.IsPartOfDisplay() && !t.IsPartOfSingleHostTaskGroup() {
 		if t.IsAutomaticRestart {
@@ -912,6 +878,38 @@ func MarkEnd(ctx context.Context, settings *evergreen.Settings, t *task.Task, ca
 	}
 
 	return nil
+}
+
+func markEndDisplayTask(ctx context.Context, settings *evergreen.Settings, t *task.Task, caller, origin string) error {
+	if err := UpdateDisplayTaskForTask(t); err != nil {
+		return errors.Wrap(err, "updating display task")
+	}
+	dt, err := t.GetDisplayTask()
+	if err != nil {
+		return errors.Wrap(err, "getting display task")
+	}
+	return errors.Wrap(checkResetDisplayTask(ctx, settings, caller, origin, dt), "checking display task reset")
+}
+
+func attemptStepback(ctx context.Context, t *task.Task, status string) {
+	var err error
+	if !evergreen.IsPatchRequester(t.Requester) {
+		if t.IsPartOfDisplay() {
+			_, err = t.GetDisplayTask()
+			if err != nil {
+				err = errors.Wrap(err, "getting display task")
+			} else {
+				err = evalStepback(ctx, t.DisplayTask, status)
+			}
+		} else {
+			err = evalStepback(ctx, t, status)
+		}
+		grip.Error(message.WrapError(err, message.Fields{
+			"message": "evaluating stepback",
+			"project": t.Project,
+			"task_id": t.Id,
+		}))
+	}
 }
 
 // logTaskEndStats logs information a task after it
@@ -1014,6 +1012,7 @@ func getVersionCtxForTracing(ctx context.Context, v *Version, project string) (c
 		attribute.String(evergreen.VersionIDOtelAttribute, v.Id),
 		attribute.String(evergreen.VersionRequesterOtelAttribute, v.Requester),
 		attribute.String(evergreen.ProjectIDOtelAttribute, project),
+		attribute.String(evergreen.ProjectIdentifierOtelAttribute, v.Identifier),
 		attribute.String(evergreen.VersionStatusOtelAttribute, v.Status),
 		attribute.String(evergreen.VersionCreateTimeOtelAttribute, v.CreateTime.String()),
 		attribute.String(evergreen.VersionStartTimeOtelAttribute, v.StartTime.String()),
