@@ -52,7 +52,6 @@ func TestGeneratedJSONStorage(t *testing.T) {
 				"FindReturnsNilErrorAndResultForTaskWithNoGeneratedJSON": func(ctx context.Context, t *testing.T, env *mock.Environment, tsk *Task) {
 					filesStorage, err := GetGeneratedJSONFileStorage(env.Settings(), storageMethod)
 					require.NoError(t, err)
-					defer filesStorage.Close(ctx)
 
 					files, err := filesStorage.Find(ctx, tsk)
 					assert.NoError(t, err)
@@ -61,7 +60,6 @@ func TestGeneratedJSONStorage(t *testing.T) {
 				"InsertStoresGeneratedJSONFiles": func(ctx context.Context, t *testing.T, env *mock.Environment, tsk *Task) {
 					fileStorage, err := GetGeneratedJSONFileStorage(env.Settings(), storageMethod)
 					require.NoError(t, err)
-					defer fileStorage.Close(ctx)
 
 					files := GeneratedJSONFiles{`{"key0": "value0"}`, `{"key1": "value1"}`}
 					assert.NoError(t, fileStorage.Insert(ctx, tsk, files))
@@ -74,7 +72,6 @@ func TestGeneratedJSONStorage(t *testing.T) {
 				"InsertNoopsForExistingGeneratedJSONFiles": func(ctx context.Context, t *testing.T, env *mock.Environment, tsk *Task) {
 					fileStorage, err := GetGeneratedJSONFileStorage(env.Settings(), storageMethod)
 					require.NoError(t, err)
-					defer fileStorage.Close(ctx)
 
 					files := GeneratedJSONFiles{`{"key": "value"}`}
 					assert.NoError(t, fileStorage.Insert(ctx, tsk, files))

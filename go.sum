@@ -235,8 +235,8 @@ github.com/evergreen-ci/negroni v1.0.1-0.20211028183800-67b6d7c2c035 h1:oVU/ni/s
 github.com/evergreen-ci/negroni v1.0.1-0.20211028183800-67b6d7c2c035/go.mod h1:pvK7NM0ZC+sfTLuIiJN4BgM1S9S5Oo79PJReAFFph18=
 github.com/evergreen-ci/pail v0.0.0-20211018155204-833e3187cfe7/go.mod h1:5gJ3srLW+mTEtewtmEs5qdnFiKFtwoggc/U3oFCVAdc=
 github.com/evergreen-ci/pail v0.0.0-20220405154537-920afff49d92/go.mod h1:Vne1WBTeJaI2zRTv3forHzliSSQmr1zCogZIcpjFsUo=
-github.com/evergreen-ci/pail v0.0.0-20240408143903-e5e256a7ef30 h1:qhQjz4osMb5A34PPtvu+oOYshFnNAhJ0fRt05Q8Mgnk=
-github.com/evergreen-ci/pail v0.0.0-20240408143903-e5e256a7ef30/go.mod h1:ddlI3t2hibi2yKaOuHT5YMFRS1MRMuoArI6lWU10a44=
+github.com/evergreen-ci/pail v0.0.0-20240503141904-b600c21b5f20 h1:p76qYBvgaJP7m1oxqyEeR4NQDnyghjy321yZTMqQ6n4=
+github.com/evergreen-ci/pail v0.0.0-20240503141904-b600c21b5f20/go.mod h1:ddlI3t2hibi2yKaOuHT5YMFRS1MRMuoArI6lWU10a44=
 github.com/evergreen-ci/plank v0.0.0-20230207190607-5f47f8a30da1 h1:KkCHAMVyiM3/JHccjC9tAXE0KM80p19hlXJhaiggAdQ=
 github.com/evergreen-ci/plank v0.0.0-20230207190607-5f47f8a30da1/go.mod h1:v8BYoLFIhvElWTc1xtP7aHPBEwTC3dh308PgFBbROaI=
 github.com/evergreen-ci/poplar v0.0.0-20211028170046-0999224b53df/go.mod h1:xiggfkrlxlu2C2e58tvk0WAYFetgNC7U9ONqcP29xZs=
@@ -302,8 +302,9 @@ github.com/go-playground/locales v0.12.1/go.mod h1:IUMDtCfWo/w/mtMfIE/IG2K+Ey3yg
 github.com/go-playground/universal-translator v0.16.0/go.mod h1:1AnU7NaIRDWWzGEKwgtJRd2xk99HeFyHw3yid4rvQIY=
 github.com/go-stack/stack v1.8.0/go.mod h1:v0f6uXyyMGvRgIKkXu+yp6POWl0qKG85gN/melR3HDY=
 github.com/go-stack/stack v1.8.1/go.mod h1:dcoOX6HbPZSZptuspn9bctJ+N/CnF5gGygcUP3XYfe4=
-github.com/go-test/deep v1.0.4 h1:u2CU3YKy9I2pmu9pX0eq50wCgjfGIt539SqR7FbHiho=
 github.com/go-test/deep v1.0.4/go.mod h1:wGDj63lr65AM2AQyKZd/NYHGb0R+1RLqB8NKt3aSFNA=
+github.com/go-test/deep v1.1.0 h1:WOcxcdHcvdgThNXjw0t76K42FXTU7HpNQWHpA2HHNlg=
+github.com/go-test/deep v1.1.0/go.mod h1:5C2ZWiW0ErCdrYzpqxLbTX7MG14M9iiw8DgHncVwcsE=
 github.com/gobuffalo/attrs v0.0.0-20190224210810-a9411de4debd/go.mod h1:4duuawTqi2wkkpB4ePgWMaai6/Kc6WEz83bhFwpHzj0=
 github.com/gobuffalo/depgen v0.0.0-20190329151759-d478694a28d3/go.mod h1:3STtPUQYuzV0gBVOY3vy6CfMm/ljR4pABfrTeHNLHUY=
 github.com/gobuffalo/depgen v0.1.0/go.mod h1:+ifsuy7fhi15RWncXQQKjWS9JPkdah5sZvtHc2RXGlg=
