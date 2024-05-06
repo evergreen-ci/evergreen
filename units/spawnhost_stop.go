@@ -70,9 +70,8 @@ func (j *spawnhostStopJob) Run(ctx context.Context) {
 
 	defer func() {
 		if j.HasErrors() && (!j.RetryInfo().ShouldRetry() || j.RetryInfo().GetRemainingAttempts() == 0) {
-			// Only log an error if the job is ending in failure and is not
-			// giong to attempt to stop the host again. Otherwise, it may retry
-			// and succeed on the next attempt.
+			// Only log an error if the final job attempt errors. Otherwise, it
+			// may retry and succeed on the next attempt.
 			event.LogHostStopError(j.HostID, string(j.Source), j.Error().Error())
 		}
 	}()
