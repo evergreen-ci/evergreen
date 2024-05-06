@@ -234,10 +234,9 @@ func runningHostsQuery(distroID string) bson.M {
 	return query
 }
 
-// byRunningStatusQuery produces a query that returns all hosts
-// with the running status that belong to the given distro and are
-// started by Evergreen.
-func byRunningStatusQuery(distroID string) bson.M {
+// hostsCanRunTasksQuery produces a query that returns all hosts
+// that are capable of accepting and running tasks.
+func hostsCanRunTasksQuery(distroID string) bson.M {
 	distroIDKey := bsonutil.GetDottedKeyName(DistroKey, distro.IdKey)
 	bootstrapKey := bsonutil.GetDottedKeyName(DistroKey, distro.BootstrapSettingsKey, distro.BootstrapSettingsMethodKey)
 	return bson.M{
@@ -286,11 +285,12 @@ func CountRunningHosts(ctx context.Context, distroID string) (int, error) {
 	return num, errors.Wrap(err, "counting running hosts")
 }
 
-// CountRunningStatusHosts counts the number of hosts running for a particular distro
-// and is surfaced on the task queue.
-func CountRunningStatusHosts(ctx context.Context, distroID string) (int, error) {
-	num, err := Count(ctx, byRunningStatusQuery(distroID))
-	return num, errors.Wrap(err, "counting running status hosts")
+// CountHostsCanRunTasks returns the number of hosts that can accept
+// and run tasks for a given distro. This number is surfaced on the
+// task queue.
+func CountHostsCanRunTasks(ctx context.Context, distroID string) (int, error) {
+	num, err := Count(ctx, hostsCanRunTasksQuery(distroID))
+	return num, errors.Wrap(err, "counting hosts that can run tasks")
 }
 
 func CountAllRunningDynamicHosts(ctx context.Context) (int, error) {

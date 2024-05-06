@@ -800,13 +800,10 @@ func TestFindHostsScheduledToStart(t *testing.T) {
 	}
 }
 
-func TestCountRunningStatusHosts(t *testing.T) {
+func TestCountHostsCanRunTasks(t *testing.T) {
 	assert.NoError(t, db.ClearCollections(Collection))
 	d1 := distro.Distro{
 		Id: "d1",
-		BootstrapSettings: distro.BootstrapSettings{
-			Method: distro.BootstrapMethodUserData,
-		},
 	}
 	h1 := Host{
 		Id:        "h1",
@@ -857,8 +854,13 @@ func TestCountRunningStatusHosts(t *testing.T) {
 		StartedBy: evergreen.User,
 	}
 	h9 := Host{
-		Id:        "h9",
-		Distro:    d1,
+		Id: "h9",
+		Distro: distro.Distro{
+			Id: "d1",
+			BootstrapSettings: distro.BootstrapSettings{
+				Method: distro.BootstrapMethodUserData,
+			},
+		},
 		Status:    evergreen.HostStarting,
 		StartedBy: evergreen.User,
 	}
@@ -877,7 +879,7 @@ func TestCountRunningStatusHosts(t *testing.T) {
 	assert.NoError(t, db.InsertMany(Collection, h1, h2, h3, h4, h5, h6, h7, h8, h9, h10))
 
 	ctx := context.TODO()
-	count, err := CountRunningStatusHosts(ctx, "d1")
+	count, err := CountHostsCanRunTasks(ctx, "d1")
 	require.NoError(t, err)
 	assert.Equal(t, 2, count)
 }
