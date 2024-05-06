@@ -28,15 +28,10 @@ type ParserProjectStorage interface {
 	// same ID already exists. If it does not exist yet, it inserts a new parser
 	// project.
 	UpsertOne(ctx context.Context, pp *ParserProject) error
-	// Close cleans up the accessor to the parser project storage. Users of
-	// ParserProjectStorage implementations must call Close once they are
-	// finished using it.
-	Close(ctx context.Context) error
 }
 
 // GetParserProjectStorage returns the parser project storage mechanism to
-// access the persistent copy of it. Users of the returned ParserProjectStorage
-// must call Close once they are finished using it.
+// access the persistent copy of it.
 func GetParserProjectStorage(ctx context.Context, settings *evergreen.Settings, method evergreen.ParserProjectStorageMethod) (ParserProjectStorage, error) {
 	switch method {
 	case "", evergreen.ProjectStorageMethodDB:
@@ -62,7 +57,6 @@ func ParserProjectFindOneByID(ctx context.Context, settings *evergreen.Settings,
 	if err != nil {
 		return nil, errors.Wrap(err, "getting parser project storage")
 	}
-	defer ppStorage.Close(ctx)
 	return ppStorage.FindOneByID(ctx, id)
 }
 
@@ -73,7 +67,6 @@ func ParserProjectUpsertOne(ctx context.Context, settings *evergreen.Settings, m
 	if err != nil {
 		return errors.Wrap(err, "getting parser project storage")
 	}
-	defer ppStorage.Close(ctx)
 	return ppStorage.UpsertOne(ctx, pp)
 }
 

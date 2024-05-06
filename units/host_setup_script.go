@@ -53,7 +53,6 @@ func NewHostSetupScriptJob(env evergreen.Environment, h *host.Host) amboy.Job {
 	j.env = env
 	j.host = h
 	j.HostID = h.Id
-	j.SetPriority(1)
 	j.SetScopes([]string{fmt.Sprintf("%s.%s", hostSetupScriptJobName, h.Id)})
 	j.SetEnqueueAllScopes(true)
 	j.UpdateRetryInfo(amboy.JobRetryOptions{

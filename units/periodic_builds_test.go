@@ -10,6 +10,7 @@ import (
 	"github.com/evergreen-ci/evergreen/model"
 	"github.com/evergreen-ci/evergreen/model/build"
 	"github.com/evergreen-ci/evergreen/model/task"
+	"github.com/evergreen-ci/evergreen/model/user"
 	"github.com/evergreen-ci/evergreen/testutil"
 	"github.com/stretchr/testify/assert"
 )
@@ -21,7 +22,7 @@ func TestPeriodicBuildsJob(t *testing.T) {
 
 	assert := assert.New(t)
 	now := time.Now().Truncate(time.Second)
-	assert.NoError(db.ClearCollections(model.VersionCollection, model.ProjectRefCollection, build.Collection, task.Collection))
+	assert.NoError(db.ClearCollections(model.VersionCollection, model.ProjectRefCollection, build.Collection, task.Collection, user.Collection))
 	j := makePeriodicBuildsJob()
 	env := evergreen.GetEnvironment()
 	_ = env.DB().RunCommand(nil, map[string]string{"create": model.VersionCollection})
@@ -52,6 +53,10 @@ func TestPeriodicBuildsJob(t *testing.T) {
 	}
 	assert.NoError(prevVersion.Insert())
 
+	usr := user.DBUser{
+		Id: evergreen.PeriodicBuildUser,
+	}
+	assert.NoError(usr.Insert())
 	// test that a version is created when the job runs
 	j.Run(ctx)
 	assert.NoError(j.Error())
@@ -65,4 +70,5 @@ func TestPeriodicBuildsJob(t *testing.T) {
 	dbProject, err := model.FindBranchProjectRef(sampleProject.Id)
 	assert.NoError(err)
 	assert.True(sampleProject.PeriodicBuilds[0].NextRunTime.Add(time.Hour).Equal(dbProject.PeriodicBuilds[0].NextRunTime))
+	assert.Equal(usr.Id, createdVersion.AuthorID)
 }

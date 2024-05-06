@@ -18,8 +18,6 @@ import (
 )
 
 const decoHostNotifyJobName = "deco-host-notify"
-const fieldAssignedTeams = "customfield_12751"
-const runtimeEnvironmentsId = "25626"
 
 func init() {
 	registry.AddJobType(decoHostNotifyJobName, func() amboy.Job { return makeDecoHostsNotifyJob() })
@@ -57,7 +55,6 @@ func NewDecoHostNotifyJob(env evergreen.Environment, h *host.Host, err error, me
 	}
 
 	j.SetID(fmt.Sprintf("%s.%s.%s", decoHostNotifyJobName, h.Id, utility.RoundPartOfHour(10)))
-	j.SetPriority(-1)
 	return j
 }
 
@@ -134,11 +131,10 @@ func (j *decoHostNotifyJob) Run(_ context.Context) {
 	issue := message.JiraIssue{
 		Project:     conf.Jira.DefaultProject,
 		Summary:     fmt.Sprintf("investigate automatically decommissioned host '%s'", j.Host.Id),
-		Type:        "Incident",
+		Type:        "Bug",
 		Description: strings.Join(descParts, "\n"),
-		Components:  []string{"Static Host Management"},
 		Fields: map[string]interface{}{
-			fieldAssignedTeams: []map[string]string{{"id": runtimeEnvironmentsId}}, // Assigned Teams: Runtime Environments
+			evergreen.DevProdServiceFieldName: evergreen.DevProdJiraServiceField,
 		},
 	}
 
