@@ -3683,10 +3683,13 @@ const maxTemporaryExemptionDuration = 32 * utility.Day
 // host's sleep schedule.
 func (h *Host) GetTemporaryExemption(extendBy time.Duration) (time.Time, error) {
 	var exemptUntil time.Time
-	if !utility.IsZeroTime(h.SleepSchedule.TemporarilyExemptUntil) {
+	now := time.Now()
+	if h.SleepSchedule.TemporarilyExemptUntil.After(now) {
+		// Extend the existing temporary exemption if it's set and not already
+		// expired.
 		exemptUntil = h.SleepSchedule.TemporarilyExemptUntil.Add(extendBy)
 	} else {
-		exemptUntil = time.Now().Add(extendBy)
+		exemptUntil = now.Add(extendBy)
 	}
 
 	if err := validateTemporaryExemption(exemptUntil); err != nil {
