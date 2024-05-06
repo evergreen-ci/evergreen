@@ -609,7 +609,7 @@ func (s *EC2Suite) TestModifyHost() {
 	s.Require().NoError(s.h.Remove(ctx))
 }
 
-func (s *EC2Suite) TestModifyHostWithTemporaryExemption() {
+func (s *EC2Suite) TestModifyHostWithNewTemporaryExemption() {
 	s.h.Status = evergreen.HostRunning
 	s.Require().NoError(s.h.Insert(s.ctx))
 	const hours = 5
@@ -618,7 +618,34 @@ func (s *EC2Suite) TestModifyHostWithTemporaryExemption() {
 	dbHost, err := host.FindOneId(s.ctx, s.h.Id)
 	s.Require().NoError(err)
 	s.Require().NotZero(dbHost)
-	s.WithinDuration(time.Now().Add(hours*time.Hour), dbHost.SleepSchedule.TemporarilyExemptUntil, time.Minute)
+	s.WithinDuration(time.Now().Add(hours*time.Hour), dbHost.SleepSchedule.TemporarilyExemptUntil, time.Minute, "should create new temporary exemption")
+}
+
+func (s *EC2Suite) TestModifyHostWithExistingTemporaryExemption() {
+	s.h.Status = evergreen.HostRunning
+	s.h.SleepSchedule.TemporarilyExemptUntil = utility.BSONTime(time.Now().Add(time.Hour))
+	const hours = 5
+	extendedExemption := s.h.SleepSchedule.TemporarilyExemptUntil.Add(hours * time.Hour)
+	s.Require().NoError(s.h.Insert(s.ctx))
+	s.NoError(s.onDemandManager.ModifyHost(s.ctx, s.h, host.HostModifyOptions{AddTemporaryExemptionHours: hours}))
+
+	dbHost, err := host.FindOneId(s.ctx, s.h.Id)
+	s.Require().NoError(err)
+	s.Require().NotZero(dbHost)
+	s.True(extendedExemption.Equal(dbHost.SleepSchedule.TemporarilyExemptUntil), "should extend existing temporary exemption")
+}
+
+func (s *EC2Suite) TestModifyHostWithExpiredTemporaryExemption() {
+	s.h.Status = evergreen.HostRunning
+	s.h.SleepSchedule.TemporarilyExemptUntil = utility.BSONTime(time.Now().Add(-time.Hour))
+	s.Require().NoError(s.h.Insert(s.ctx))
+	const hours = 5
+	s.NoError(s.onDemandManager.ModifyHost(s.ctx, s.h, host.HostModifyOptions{AddTemporaryExemptionHours: hours}))
+
+	dbHost, err := host.FindOneId(s.ctx, s.h.Id)
+	s.Require().NoError(err)
+	s.Require().NotZero(dbHost)
+	s.WithinDuration(time.Now().Add(hours*time.Hour), dbHost.SleepSchedule.TemporarilyExemptUntil, time.Minute, "should create new temporary exemption rather than extend the expired one")
 }
 
 func (s *EC2Suite) TestGetInstanceStatus() {
