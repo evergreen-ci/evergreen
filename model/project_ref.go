@@ -1419,6 +1419,20 @@ func FindMergedProjectRefsByIds(ids ...string) ([]ProjectRef, error) {
 	}, true)
 }
 
+// FindMergedEnabledProjectRefsByIds returns all project refs for the provided ids
+// that are currently enabled.
+func FindMergedEnabledProjectRefsByIds(ids ...string) ([]ProjectRef, error) {
+	if len(ids) == 0 {
+		return nil, nil
+	}
+	return findProjectRefsQ(bson.M{
+		ProjectRefIdKey: bson.M{
+			"$in": ids,
+		},
+		ProjectRefEnabledKey: true,
+	}, true)
+}
+
 func FindProjectRefsByIds(ids ...string) ([]ProjectRef, error) {
 	if len(ids) == 0 {
 		return nil, nil
