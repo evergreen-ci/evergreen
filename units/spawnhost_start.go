@@ -89,7 +89,7 @@ func (j *spawnhostStartJob) Run(ctx context.Context) {
 		}
 
 		if err := mgr.StartInstance(ctx, h, user); err != nil {
-			event.LogHostStartError(h.Id, err.Error())
+			event.LogHostStartError(h.Id, string(j.Source), err.Error())
 			grip.Error(message.WrapError(err, message.Fields{
 				"message":  "error starting spawn host",
 				"host_id":  h.Id,
@@ -100,7 +100,7 @@ func (j *spawnhostStartJob) Run(ctx context.Context) {
 			return errors.Wrap(err, "starting spawn host")
 		}
 
-		event.LogHostStartSucceeded(h.Id)
+		event.LogHostStartSucceeded(h.Id, string(j.Source))
 		grip.Info(message.Fields{
 			"message":  "started spawn host",
 			"host_id":  h.Id,

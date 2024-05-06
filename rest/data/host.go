@@ -356,7 +356,7 @@ func transitionIntentHostToStarting(ctx context.Context, env evergreen.Environme
 		return errors.Wrap(err, "replacing intent host with real host")
 	}
 
-	event.LogHostStartSucceeded(hostToStart.Id)
+	event.LogHostStartSucceeded(hostToStart.Id, evergreen.User)
 
 	return nil
 }

@@ -106,7 +106,7 @@ func (j *spawnhostStopJob) Run(ctx context.Context) {
 		}
 
 		if err := mgr.StopInstance(ctx, h, j.ShouldKeepOff, user); err != nil {
-			event.LogHostStopError(h.Id, err.Error())
+			event.LogHostStopError(h.Id, string(j.Source), err.Error())
 			grip.Error(message.WrapError(err, message.Fields{
 				"message":  "error stopping spawn host",
 				"host_id":  h.Id,
@@ -117,7 +117,7 @@ func (j *spawnhostStopJob) Run(ctx context.Context) {
 			return errors.Wrap(err, "stopping spawn host")
 		}
 
-		event.LogHostStopSucceeded(h.Id)
+		event.LogHostStopSucceeded(h.Id, string(j.Source))
 		grip.Info(message.Fields{
 			"message":    "stopped spawn host",
 			"host_id":    h.Id,
