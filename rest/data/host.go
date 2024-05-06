@@ -391,28 +391,3 @@ func transitionIntentHostToDecommissioned(ctx context.Context, env evergreen.Env
 
 	return nil
 }
-
-// ExtendTemporaryExemption creates a temporary exemption from a host's
-// sleep schedule or extends a host's existing temporary exemption by the given
-// duration.
-func ExtendTemporaryExemption(ctx context.Context, h *host.Host, u *user.DBUser, extendBy time.Duration) error {
-	if !h.NoExpiration {
-		return gimlet.ErrorResponse{
-			StatusCode: http.StatusBadRequest,
-			Message:    "cannot set a temporary exemption on an expirable host",
-		}
-	}
-
-	var exemptUntil time.Time
-	if !utility.IsZeroTime(h.SleepSchedule.TemporarilyExemptUntil) {
-		exemptUntil = h.SleepSchedule.TemporarilyExemptUntil.Add(extendBy)
-	} else {
-		exemptUntil = time.Now().Add(extendBy)
-	}
-
-	if err := h.SetTemporaryExemption(ctx, exemptUntil); err != nil {
-		return errors.Wrap(err, "setting temporary exemption")
-	}
-
-	return nil
-}
