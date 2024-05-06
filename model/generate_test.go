@@ -879,9 +879,8 @@ func (s *GenerateSuite) TestSaveNewBuildsAndTasksWithBatchtime() {
 	s.Require().Len(v.BuildVariants[1].BatchTimeTasks, 1)
 	s.InDelta(time.Now().Add(15*time.Minute).Unix(), v.BuildVariants[1].BatchTimeTasks[0].ActivateAt.Unix(), 1)
 
-	ppStorage, err := GetParserProjectStorage(s.ctx, s.env.Settings(), v.ProjectStorageMethod)
+	_, err = GetParserProjectStorage(s.ctx, s.env.Settings(), v.ProjectStorageMethod)
 	s.Require().NoError(err)
-	defer ppStorage.Close(s.ctx)
 	pp, err = ParserProjectFindOneByID(s.ctx, s.env.Settings(), v.ProjectStorageMethod, v.Id)
 	s.NoError(err)
 	s.Require().NotNil(pp)

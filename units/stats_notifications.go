@@ -48,7 +48,6 @@ func makeNotificationsStatsCollector() *notificationsStatsCollector {
 func NewNotificationStatsCollector(id string) amboy.Job {
 	j := makeNotificationsStatsCollector()
 	j.SetID(fmt.Sprintf("%s-%s", notificationsStatsCollectorJobName, id))
-	j.SetPriority(-1)
 	j.UpdateTimeInfo(amboy.JobTimeInfo{
 		MaxTime: time.Minute,
 	})

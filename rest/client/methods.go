@@ -675,34 +675,6 @@ func (c *communicatorImpl) RevertSettings(ctx context.Context, guid string) erro
 	return nil
 }
 
-func (c *communicatorImpl) ExecuteOnDistro(ctx context.Context, distro string, opts model.APIDistroScriptOptions) (hostIDs []string, err error) {
-	info := requestInfo{
-		method: http.MethodPatch,
-		path:   fmt.Sprintf("/distros/%s/execute", distro),
-	}
-
-	var result struct {
-		HostIDs []string `json:"host_ids"`
-	}
-	resp, err := c.request(ctx, info, opts)
-	if err != nil {
-		return nil, errors.Wrapf(err, "sending request to execute script on hosts in distro '%s'", distro)
-	}
-	defer resp.Body.Close()
-
-	if resp.StatusCode == http.StatusUnauthorized {
-		return nil, util.RespErrorf(resp, AuthError)
-	}
-	if resp.StatusCode != http.StatusOK {
-		return nil, util.RespErrorf(resp, "running script on hosts in distro '%s'", distro)
-	}
-
-	if err = utility.ReadJSON(resp.Body, &result); err != nil {
-		return nil, errors.Wrap(err, "problem reading response")
-	}
-	return result.HostIDs, nil
-}
-
 func (c *communicatorImpl) GetServiceUsers(ctx context.Context) ([]model.APIDBUser, error) {
 	info := requestInfo{
 		method: http.MethodGet,

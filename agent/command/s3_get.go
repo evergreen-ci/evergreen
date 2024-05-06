@@ -245,7 +245,7 @@ func (c *s3get) getWithRetry(ctx context.Context, logger client.LoggerProducer) 
 				return nil
 			}
 
-			logger.Execution().Errorf("Problem getting remote file '%s' from S3 bucket, retrying: %s",
+			logger.Task().Errorf("Problem getting remote file '%s' from S3 bucket, retrying: %s",
 				c.RemoteFile, err)
 			timer.Reset(backoffCounter.Duration())
 		}
