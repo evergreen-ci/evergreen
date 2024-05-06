@@ -178,7 +178,7 @@ func hostModify() cli.Command {
 		noExpireFlagName           = "no-expire"
 		expireFlagName             = "expire"
 		extendFlagName             = "extend"
-		temporaryExemptionFlagName = "temporary-exemption"
+		temporaryExemptionFlagName = "extend-temporary-exemption"
 		addSSHKeyFlag              = "add-ssh-key"
 		addSSHKeyNameFlag          = "add-ssh-key-name"
 	)
