@@ -707,6 +707,9 @@ type DBSettings struct {
 	WriteConcernSettings WriteConcern `yaml:"write_concern"`
 	ReadConcernSettings  ReadConcern  `yaml:"read_concern"`
 	AWSAuthEnabled       bool         `yaml:"aws_auth_enabled"`
+	// TODO (DEVPROD-6951): remove static auth once IRSA auth is reliable again.
+	Username string `yaml:"username"`
+	Password string `yaml:"password"`
 }
 
 // supported banner themes in Evergreen
