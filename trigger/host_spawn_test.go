@@ -186,3 +186,11 @@ func (s *spawnHostTriggersSuite) TestSpawnHostStateChange() {
 	s.Nil(n)
 	s.Error(err)
 }
+
+func (s *spawnHostTriggersSuite) TestSpawnHostSuccessfulStopForSleepSchedule() {
+	// kim: TODO: fill in test
+}
+
+func (s *spawnHostTriggersSuite) TestSpawnHostUnsuccessfulStopForSleepSchedule() {
+	// kim: TODO: fill in test
+}
