@@ -56,7 +56,6 @@ func makeIdleHostJob() *idleHostJob {
 func NewIdleHostTerminationJob(env evergreen.Environment, id string) amboy.Job {
 	j := makeIdleHostJob()
 	j.env = env
-	j.SetPriority(2)
 	j.SetID(fmt.Sprintf("%s.%s", idleHostJobName, id))
 	return j
 }

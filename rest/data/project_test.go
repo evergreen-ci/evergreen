@@ -593,7 +593,6 @@ func TestRequestS3Creds(t *testing.T) {
 	assert.Equal(t, "BUILD", payload.Project)
 	assert.Equal(t, summary, payload.Summary)
 	assert.Equal(t, description, payload.Description)
-	assert.Equal(t, []string{"Access"}, payload.Components)
 	assert.Equal(t, "user@email.com", payload.Reporter)
 }
 

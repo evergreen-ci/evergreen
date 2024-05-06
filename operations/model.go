@@ -274,6 +274,9 @@ func (s *ClientSettings) setModulePath(project, moduleName, modulePath string) {
 		"To disable automatic defaulting, set 'disable_auto_defaulting' to true.", moduleName, modulePath)
 	for i, p := range s.Projects {
 		if p.Name == project {
+			if s.Projects[i].ModulePaths == nil {
+				s.Projects[i].ModulePaths = map[string]string{}
+			}
 			s.Projects[i].ModulePaths[moduleName] = modulePath
 			return
 		}

@@ -2067,7 +2067,8 @@ func TestFindProjectRefIdsWithCommitQueueEnabled(t *testing.T) {
 	repoRef := RepoRef{ProjectRef{
 		Id: "my_repo",
 		CommitQueue: CommitQueueParams{
-			Enabled: utility.TruePtr(),
+			Enabled:    utility.TruePtr(),
+			MergeQueue: MergeQueueEvergreen,
 		},
 	}}
 	assert.NoError(repoRef.Upsert())
@@ -2080,13 +2081,15 @@ func TestFindProjectRefIdsWithCommitQueueEnabled(t *testing.T) {
 		Id:         "mci1",
 		RepoRefId:  repoRef.Id,
 		CommitQueue: CommitQueueParams{
-			Enabled: utility.TruePtr(),
+			Enabled:    utility.TruePtr(),
+			MergeQueue: MergeQueueEvergreen,
 		},
 	}
 	require.NoError(doc.Insert())
 
 	doc.Branch = "fix"
 	doc.Id = "mci2"
+	doc.CommitQueue.MergeQueue = "" // legacy behavior is unpopulated
 	require.NoError(doc.Insert())
 
 	doc.Identifier = "grip"
@@ -2095,12 +2098,21 @@ func TestFindProjectRefIdsWithCommitQueueEnabled(t *testing.T) {
 	doc.CommitQueue.Enabled = utility.FalsePtr()
 	require.NoError(doc.Insert())
 
+	doc.Identifier = "merge"
+	doc.Repo = "merge"
+	doc.Id = "mci4"
+	doc.CommitQueue.Enabled = utility.TruePtr()
+	doc.CommitQueue.MergeQueue = MergeQueueGitHub
+	require.NoError(doc.Insert())
+
+	// Should find two projects, both enabled at the branch level.
 	res, err = FindProjectRefIdsWithCommitQueueEnabled()
 	assert.NoError(err)
 	require.Len(res, 2)
 	assert.Equal("mci1", res[0])
 	assert.Equal("mci2", res[1])
 
+	// Should find three projects, because this new project defaults to repo.
 	doc.Id = "commit_queue_setting_from_repo"
 	doc.CommitQueue.Enabled = nil
 	assert.NoError(doc.Insert())
@@ -2108,6 +2120,7 @@ func TestFindProjectRefIdsWithCommitQueueEnabled(t *testing.T) {
 	assert.NoError(err)
 	assert.Len(res, 3)
 
+	// Should find two projects again now that the repo isn't enabled.
 	repoRef.CommitQueue.Enabled = utility.FalsePtr()
 	assert.NoError(repoRef.Upsert())
 	res, err = FindProjectRefIdsWithCommitQueueEnabled()

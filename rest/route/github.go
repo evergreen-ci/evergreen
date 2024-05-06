@@ -1079,7 +1079,7 @@ func (gh *githubHookApi) createVersionForTag(ctx context.Context, pRef model.Pro
 			Revision: revision,
 			GitTag:   tag,
 		}
-		stubVersion, dbErr := repotracker.ShellVersionFromRevision(ctx, &pRef, metadata)
+		stubVersion, dbErr := repotracker.ShellVersionFromRevision(&pRef, metadata)
 		if dbErr != nil {
 			grip.Error(message.WrapError(dbErr, message.Fields{
 				"message":            "error creating shell version",

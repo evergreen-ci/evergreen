@@ -14,8 +14,10 @@ import (
 	mgobson "github.com/evergreen-ci/evergreen/db/mgo/bson"
 	"github.com/evergreen-ci/evergreen/mock"
 	"github.com/evergreen-ci/evergreen/model"
+	"github.com/evergreen-ci/evergreen/model/build"
 	"github.com/evergreen-ci/evergreen/model/distro"
 	"github.com/evergreen-ci/evergreen/model/event"
+	"github.com/evergreen-ci/evergreen/model/manifest"
 	"github.com/evergreen-ci/evergreen/model/patch"
 	"github.com/evergreen-ci/evergreen/model/task"
 	"github.com/evergreen-ci/evergreen/model/user"
@@ -1019,6 +1021,16 @@ func (s *PatchIntentUnitsSuite) TestProcessMergeGroupIntent() {
 	for _, subscription := range out {
 		s.Equal("github_merge", subscription.Subscriber.Type)
 	}
+
+	// Attempting to finalize again should result in no errors
+	// The below is to clear what is set in a transaction.
+	s.NoError(db.ClearCollections(model.VersionCollection, model.ProjectConfigCollection, manifest.Collection, build.Collection,
+		task.Collection))
+	patchDoc.Version = ""
+	s.NoError(j.finishPatch(s.ctx, patchDoc))
+
+	s.NoError(j.Error())
+	s.False(j.HasErrors())
 }
 
 func (s *PatchIntentUnitsSuite) TestProcessGitHubIntentWithMergeBase() {

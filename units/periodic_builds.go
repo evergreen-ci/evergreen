@@ -5,6 +5,8 @@ import (
 	"encoding/base64"
 	"fmt"
 
+	"github.com/evergreen-ci/evergreen/model/user"
+
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/model"
 	"github.com/evergreen-ci/evergreen/model/event"
@@ -92,26 +94,37 @@ func (j *periodicBuildJob) Run(ctx context.Context) {
 		}))
 	}()
 
-	mostRecentRevision, err := model.FindLatestRevisionForProject(j.ProjectID)
+	mostRecentRevision, authorID, err := model.FindLatestRevisionAndAuthorForProject(j.ProjectID)
 	if err != nil {
 		j.AddError(err)
 		return
 	}
-	versionErr := j.addVersion(ctx, *definition, mostRecentRevision)
+	usr, err := user.GetPeriodicBuildUser(authorID)
+	if err != nil {
+		grip.Error(message.WrapError(err, message.Fields{
+			"message": "problem getting periodic build user",
+			"project": j.ProjectID,
+		}))
+	}
+
+	metadata := model.VersionMetadata{
+		IsAdHoc:         true,
+		Activate:        true,
+		Message:         definition.Message,
+		PeriodicBuildID: definition.ID,
+		Alias:           definition.Alias,
+		Revision: model.Revision{
+			Revision: mostRecentRevision,
+		},
+		User: usr,
+	}
+	versionErr := j.addVersion(ctx, metadata, definition.ConfigFile)
 
 	if versionErr != nil {
 		// If the version fails to be added, create a stub version and
 		// log an event so users can get notified when notifications are configured
-		metadata := model.VersionMetadata{
-			IsAdHoc:         true,
-			Message:         definition.Message,
-			PeriodicBuildID: definition.ID,
-			Alias:           definition.Alias,
-			Revision: model.Revision{
-				Revision: mostRecentRevision,
-			},
-		}
-		stubVersion, dbErr := repotracker.ShellVersionFromRevision(ctx, j.project, metadata)
+		metadata.Activate = false
+		stubVersion, dbErr := repotracker.ShellVersionFromRevision(j.project, metadata)
 		if dbErr != nil {
 			grip.Error(message.WrapError(dbErr, message.Fields{
 				"message":            "error creating stub version for periodic build",
@@ -143,13 +156,13 @@ func (j *periodicBuildJob) Run(ctx context.Context) {
 	}
 }
 
-func (j *periodicBuildJob) addVersion(ctx context.Context, definition model.PeriodicBuildDefinition, mostRecentRevision string) error {
+func (j *periodicBuildJob) addVersion(ctx context.Context, metadata model.VersionMetadata, configFilePath string) error {
 	token, err := j.env.Settings().GetGithubOauthToken()
 	if err != nil {
 		return errors.Wrap(err, "getting GitHub OAuth token")
 	}
 
-	configFile, err := thirdparty.GetGithubFile(ctx, token, j.project.Owner, j.project.Repo, definition.ConfigFile, mostRecentRevision)
+	configFile, err := thirdparty.GetGithubFile(ctx, token, j.project.Owner, j.project.Repo, configFilePath, metadata.Revision.Revision)
 	if err != nil {
 		return errors.Wrap(err, "getting config file from GitHub")
 	}
@@ -160,7 +173,7 @@ func (j *periodicBuildJob) addVersion(ctx context.Context, definition model.Peri
 	proj := &model.Project{}
 	opts := &model.GetProjectOpts{
 		Ref:          j.project,
-		Revision:     mostRecentRevision,
+		Revision:     metadata.Revision.Revision,
 		Token:        token,
 		ReadFileFrom: model.ReadFromGithub,
 	}
@@ -174,16 +187,6 @@ func (j *periodicBuildJob) addVersion(ctx context.Context, definition model.Peri
 		if err != nil {
 			return errors.Wrap(err, "parsing project config")
 		}
-	}
-	metadata := model.VersionMetadata{
-		IsAdHoc:         true,
-		Activate:        true,
-		Message:         definition.Message,
-		PeriodicBuildID: definition.ID,
-		Alias:           definition.Alias,
-		Revision: model.Revision{
-			Revision: mostRecentRevision,
-		},
 	}
 
 	projectInfo := &model.ProjectInfo{

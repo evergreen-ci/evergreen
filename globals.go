@@ -14,10 +14,11 @@ const (
 	// User is the generic user representing the Evergreen application as a
 	// whole entity. If there's a more specific user performing an operation,
 	// prefer to use that instead.
-	User            = "mci"
-	GithubPatchUser = "github_pull_request"
-	GithubMergeUser = "github_merge_queue"
-	ParentPatchUser = "parent_patch"
+	User              = "mci"
+	GithubPatchUser   = "github_pull_request"
+	GithubMergeUser   = "github_merge_queue"
+	PeriodicBuildUser = "periodic_build_user"
+	ParentPatchUser   = "parent_patch"
 
 	HostRunning       = "running"
 	HostTerminated    = "terminated"
@@ -869,6 +870,19 @@ func (k SenderKey) String() string {
 		return "<error:unknown>"
 	}
 }
+
+// DevProdJiraServiceField defines a required field for DEVPROD tickets, which we sometimes auto-generate.
+// Using "Other" prevents this from getting out of sync with service naming too quickly.
+var DevProdJiraServiceField = map[string]string{
+	"id":    devProdServiceId,
+	"value": devProdServiceValue,
+}
+
+const (
+	DevProdServiceFieldName = "customfield_24158"
+	devProdServiceId        = "27020"
+	devProdServiceValue     = "Other"
+)
 
 // Recognized Evergreen agent CPU architectures, which should be in the form
 // ${GOOS}_${GOARCH}.
