@@ -21,8 +21,12 @@ const (
 	hostSetupScriptJobName = "host-setup-script"
 	setupScriptRetryLimit  = 5
 
+	// maxSpawnHostSetupScriptCheckDuration is the total amount of time that the
+	// spawn host setup script job can poll to see if the task data is loaded.
 	maxSpawnHostSetupScriptCheckDuration = 10 * time.Minute
-	maxSpawnHostSetupScriptDuration      = 30 * time.Minute
+	// maxSpawnHostSetupScriptDuration is the total amount of time that the
+	// spawn host setup script can run after task data is loaded.
+	maxSpawnHostSetupScriptDuration = 30 * time.Minute
 )
 
 func init() {
