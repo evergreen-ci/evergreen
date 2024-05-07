@@ -237,6 +237,30 @@ func TestSleepSchedulerJob(t *testing.T) {
 			assert.NotZero(t, dbHost.SleepSchedule.NextStopTime)
 			assert.True(t, dbHost.SleepSchedule.NextStopTime.After(now), "next stop time should be in the future")
 		},
+		"ClearsExpiredTemporaryExemptionAndSetsNextStopAndStartTimesForHost": func(ctx context.Context, t *testing.T, env *mock.Environment, j *sleepSchedulerJob) {
+			now := utility.BSONTime(time.Now())
+			h := host.Host{
+				Id:           "host_missing_sleep_schedule_times",
+				Status:       evergreen.HostRunning,
+				NoExpiration: true,
+				SleepSchedule: host.SleepScheduleInfo{
+					TimeZone:               "America/New_York",
+					WholeWeekdaysOff:       []time.Weekday{time.Saturday, time.Sunday},
+					TemporarilyExemptUntil: now.Add(-time.Hour),
+				},
+			}
+			require.NoError(t, h.Insert(ctx))
+
+			j.Run(ctx)
+			assert.NoError(t, j.Error())
+
+			dbHost, err := host.FindOneId(ctx, h.Id)
+			require.NoError(t, err)
+			require.NotZero(t, dbHost)
+			assert.Zero(t, dbHost.SleepSchedule.TemporarilyExemptUntil, "temporary exemption should be cleared")
+			assert.True(t, dbHost.SleepSchedule.NextStartTime.After(now), "next start time should be in the future")
+			assert.True(t, dbHost.SleepSchedule.NextStopTime.After(now), "next stop time should be in the future")
+		},
 		"DoesNotAddNextSleepScheduleTimesForPermanentlyExemptHost": func(ctx context.Context, t *testing.T, env *mock.Environment, j *sleepSchedulerJob) {
 			originalSettings, err := evergreen.GetConfig(ctx)
 			require.NoError(t, err)

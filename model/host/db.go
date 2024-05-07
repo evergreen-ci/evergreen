@@ -1663,6 +1663,30 @@ func FindExceedsSleepScheduleTimeout(ctx context.Context) ([]Host, error) {
 	return Find(ctx, q)
 }
 
+// ClearExpiredTemporaryExemptions clears all temporary exemptions from the
+// sleep schedule that have expired.
+func ClearExpiredTemporaryExemptions(ctx context.Context) error {
+	sleepScheduleTemporarilyExemptUntilKey := bsonutil.GetDottedKeyName(SleepScheduleKey, SleepScheduleTemporarilyExemptUntilKey)
+
+	res, err := evergreen.GetEnvironment().DB().Collection(Collection).UpdateMany(ctx, isSleepScheduleApplicable(bson.M{
+		sleepScheduleTemporarilyExemptUntilKey: bson.M{"$lte": time.Now()},
+	}), bson.M{
+		"$unset": bson.M{
+			sleepScheduleTemporarilyExemptUntilKey: 1,
+		},
+	})
+	if err != nil {
+		return err
+	}
+
+	grip.InfoWhen(res.ModifiedCount > 0, message.Fields{
+		"message":   "cleared expired temporary exemptions from hosts",
+		"num_hosts": res.ModifiedCount,
+	})
+
+	return nil
+}
+
 // SyncPermanentExemptions finds two sets of unexpirable hosts based
 // on the authoritative list of permanently exempt hosts. The function returns:
 //  1. Hosts that are on the list of permanent exemptions but are not marked as
