@@ -102,11 +102,13 @@ func (j *spawnhostStartJob) Run(ctx context.Context) {
 
 		event.LogHostStartSucceeded(h.Id)
 		grip.Info(message.Fields{
-			"message":  "started spawn host",
-			"host_id":  h.Id,
-			"host_tag": h.Tag,
-			"distro":   h.Distro.Id,
-			"job":      j.ID(),
+			"message":    "started spawn host",
+			"host_id":    h.Id,
+			"started_by": h.StartedBy,
+			"host_tag":   h.Tag,
+			"distro":     h.Distro.Id,
+			"source":     j.Source,
+			"job":        j.ID(),
 		})
 
 		if j.Source == evergreen.ModifySpawnHostSleepSchedule {
