@@ -330,7 +330,7 @@ func (s *execCmdSuite) TestCommandFallsBackToSearchingPathFromEnvForBinaryExecut
 		// we can test executing it when it's not in the PATH by default.
 		Binary:     executableName,
 		WorkingDir: workingDir,
-		Path:       []string{filepath.Join(workingDir, "clients", fmt.Sprintf("%s_%s", runtime.GOOS, runtime.GOARCH))},
+		AddToPath:  []string{filepath.Join(workingDir, "clients", fmt.Sprintf("%s_%s", runtime.GOOS, runtime.GOARCH))},
 	}
 	cmd.SetJasperManager(s.jasper)
 	s.NoError(cmd.ParseParams(map[string]interface{}{}))
@@ -375,7 +375,7 @@ func (s *execCmdSuite) TestCommandDoesNotFallBackToSearchingPathFromEnvWhenBinar
 		// we can test executing it when it's not in the PATH by default.
 		Binary:     executableName,
 		WorkingDir: workingDir,
-		Path:       []string{filepath.Join(workingDir, "clients", fmt.Sprintf("%s_%s", runtime.GOOS, runtime.GOARCH))},
+		AddToPath:  []string{filepath.Join(workingDir, "clients", fmt.Sprintf("%s_%s", runtime.GOOS, runtime.GOARCH))},
 	}
 	cmd.SetJasperManager(s.jasper)
 	s.NoError(cmd.ParseParams(map[string]interface{}{}))
@@ -397,15 +397,15 @@ func (s *execCmdSuite) TestExpansionsForEnv() {
 	s.Equal("one", cmd.Env["one"])
 }
 
-func (s *execCmdSuite) TestExpansionsForPath() {
+func (s *execCmdSuite) TestExpansionsForAddToPath() {
 	cmd := &subprocessExec{
-		Path:       []string{"${my_path}", "another_path"},
+		AddToPath:  []string{"${my_path}", "another_path"},
 		WorkingDir: testutil.GetDirectoryOfFile(),
 	}
 
 	s.NoError(cmd.doExpansions(util.NewExpansions(map[string]string{"my_path": "/my/expanded/path"})))
-	s.Require().Len(cmd.Path, 2)
-	s.Equal([]string{"/my/expanded/path", "another_path"}, cmd.Path)
+	s.Require().Len(cmd.AddToPath, 2)
+	s.Equal([]string{"/my/expanded/path", "another_path"}, cmd.AddToPath)
 }
 
 func (s *execCmdSuite) TestEnvIsSetAndDefaulted() {
@@ -667,7 +667,7 @@ func TestDefaultAndApplyExpansionsToEnv(t *testing.T) {
 		},
 		"AddToPathPrependsToInheritedPATH": func(t *testing.T, exp util.Expansions) {
 			opts := modifyEnvOptions{
-				addToPath: []string{"foo", "bar"},
+				addToPath: []string{"/first/path", "/second/path"},
 			}
 			env := defaultAndApplyExpansionsToEnv(map[string]string{}, opts)
 
@@ -675,6 +675,8 @@ func TestDefaultAndApplyExpansionsToEnv(t *testing.T) {
 			path := env["PATH"]
 			assert.NotEmpty(t, path)
 			assert.Len(t, filepath.SplitList(path), len(filepath.SplitList(inheritedPath))+len(opts.addToPath))
+			assert.Contains(t, path, "/first/path")
+			assert.Contains(t, path, "/second/path")
 		},
 		"AddToPathOverwritesExplicitPATHEnvVar": func(t *testing.T, exp util.Expansions) {
 			const expectedPath = "overwrite_the_path_with_this"
