@@ -124,6 +124,7 @@ func (j *spawnhostStopJob) Run(ctx context.Context) {
 			"started_by": h.StartedBy,
 			"host_tag":   h.Tag,
 			"distro":     h.Distro.Id,
+			"source":     j.Source,
 			"job":        j.ID(),
 		})
 
