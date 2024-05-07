@@ -161,6 +161,8 @@ func (h *hostModifyHandler) Run(ctx context.Context) gimlet.Responder {
 	return gimlet.NewJSONResponse(struct{}{})
 }
 
+// checkTemporaryExemption validates whether it's allowed to extend the
+// temporary exemption from the sleep schedule by the given number of hours.
 func checkTemporaryExemption(h *host.Host, hoursToAdd int) error {
 	if hoursToAdd == 0 {
 		return nil
