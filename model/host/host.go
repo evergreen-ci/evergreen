@@ -3707,11 +3707,11 @@ func validateTemporaryExemption(exemptUntil time.Time) error {
 	}
 
 	if exemptUntil.Before(time.Now()) {
-		return errors.Errorf("cannot set a temporary exemption to %s because that is in the past", exemptUntil.String())
+		return errors.Errorf("cannot set a temporary exemption to %s because that is in the past", exemptUntil.Format(time.RFC3339))
 	}
 	maxTemporaryExemptionTime := time.Now().Add(maxTemporaryExemptionDuration)
 	if maxTemporaryExemptionTime.Before(exemptUntil) {
-		return errors.Errorf("temporary exemption cannot be extended to %s because temporary exemptions cannot be extended past %s (%s in the future)", exemptUntil.String(), maxTemporaryExemptionTime.String(), maxTemporaryExemptionDuration.String())
+		return errors.Errorf("temporary exemption cannot be extended to %s because temporary exemptions cannot be extended past %s (%s in the future)", exemptUntil.Format(time.RFC3339), maxTemporaryExemptionTime.Format(time.RFC3339), maxTemporaryExemptionDuration.String())
 	}
 
 	return nil
@@ -3727,6 +3727,15 @@ func (h *Host) SetTemporaryExemption(ctx context.Context, exemptUntil time.Time)
 	if err := validateTemporaryExemption(exemptUntil); err != nil {
 		return err
 	}
+
+	grip.Info(message.Fields{
+		"message":       "creating/extending temporary exemption from the sleep schedule",
+		"host_id":       h.Id,
+		"distro_id":     h.Distro.Id,
+		"exempt_until":  exemptUntil.Format(time.RFC3339),
+		"exemption_hrs": exemptUntil.Sub(time.Now()).Hours(),
+		"dashboard":     "evergreen sleep schedule health",
+	})
 
 	temporarilyExemptUntilKey := bsonutil.GetDottedKeyName(SleepScheduleKey, SleepScheduleTemporarilyExemptUntilKey)
 	update := bson.M{}
