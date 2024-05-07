@@ -3729,12 +3729,22 @@ func (h *Host) SetTemporaryExemption(ctx context.Context, exemptUntil time.Time)
 	}
 
 	temporarilyExemptUntilKey := bsonutil.GetDottedKeyName(SleepScheduleKey, SleepScheduleTemporarilyExemptUntilKey)
+	sleepScheduleStartKey := bsonutil.GetDottedKeyName(SleepScheduleKey, SleepScheduleNextStartTimeKey)
+	sleepScheduleStopKey := bsonutil.GetDottedKeyName(SleepScheduleKey, SleepScheduleNextStopTimeKey)
 	update := bson.M{}
+	// kim: TODO: double check $unset makes sense for next start/stop. I
+	// believe the sleep schedule will be lenient and it'll just work, even if
+	// it possibly is letting a host stay awake for the whole day.
+	unset := bson.M{
+		sleepScheduleStartKey: 1,
+		sleepScheduleStopKey:  1,
+	}
 	if utility.IsZeroTime(exemptUntil) {
-		update["$unset"] = bson.M{temporarilyExemptUntilKey: 1}
+		unset[temporarilyExemptUntilKey] = 1
 	} else {
 		update["$set"] = bson.M{temporarilyExemptUntilKey: exemptUntil}
 	}
+	update["$unset"] = unset
 
 	if err := UpdateOne(ctx, bson.M{IdKey: h.Id}, update); err != nil {
 		return err
@@ -3776,14 +3786,18 @@ func (s *SleepScheduleInfo) GetNextScheduledStopTime(now time.Time) (time.Time, 
 	}
 
 	var calculateTimeAfter time.Time
-	if !utility.IsZeroTime(s.TemporarilyExemptUntil) {
+	// kim: TODO: update tests to reflect temporary exemption only applies if
+	// it's in the future.
+	if s.TemporarilyExemptUntil.After(now) {
+		// Calculate the next stop time based on the temporary exemption time,
+		// which is in the future.
 		calculateTimeAfter = s.TemporarilyExemptUntil
-	} else if !utility.IsZeroTime(s.NextStartTime) {
-		// If the next start time is known, do not try to stop the host again
-		// until after it's scheduled to start back up. This is a necessary
-		// safeguard against a rare edge case where the host is stopped for the
-		// sleep schedule but the user manually starts the host back up again in
-		// between a daily stop time and a whole weekday off.
+	} else if s.NextStartTime.After(now) {
+		// If the next start time is known and is in the future, do not try to
+		// stop the host again until after it's scheduled to start back up. This
+		// is a necessary safeguard against a rare edge case where the host is
+		// stopped for the sleep schedule but the user manually starts the host
+		// back up again in between a daily stop time and a whole weekday off.
 		//
 		// As an illustrative example, say the user sets a schedule to stop
 		// every day from 10 pm to 6 am, and also has Saturday and Sunday off.
@@ -3883,7 +3897,9 @@ func (s *SleepScheduleInfo) GetNextScheduledStartTime(now time.Time) (time.Time,
 	}
 
 	var calculateTimeAfter time.Time
-	if !utility.IsZeroTime(s.TemporarilyExemptUntil) {
+	if s.TemporarilyExemptUntil.After(now) {
+		// Calculate the next stop time based on the temporary exemption time,
+		// which is in the future.
 		calculateTimeAfter = s.TemporarilyExemptUntil
 	} else {
 		calculateTimeAfter = now
