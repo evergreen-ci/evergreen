@@ -1914,6 +1914,7 @@ func UpdateBuildAndVersionStatusForTask(ctx context.Context, t *task.Task) error
 			if err != nil {
 				return errors.Wrap(err, "getting context for tracing")
 			}
+			// use a new root span so that it logs it every time instead of only logging a small sample set as an http call span
 			_, span := tracer.Start(traceContext, "version-completion", trace.WithNewRoot())
 			defer span.End()
 
