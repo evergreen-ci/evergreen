@@ -73,7 +73,7 @@ require (
 	golang.org/x/tools v0.19.0 // indirect
 	gonum.org/v1/gonum v0.14.0
 	google.golang.org/grpc v1.63.2
-	google.golang.org/protobuf v1.33.0
+	google.golang.org/protobuf v1.34.0
 	gopkg.in/yaml.v2 v2.4.0
 )
 
