@@ -1888,7 +1888,7 @@ func UpdateSchedulingLimit(username, requester string, numTasksModified int, act
 		return errors.Wrap(err, "getting user")
 	}
 	if u != nil && !u.OnlyAPI {
-		return errors.Wrapf(u.CheckAndUpdateSchedulingLimit(s, numTasksModified, activated), "checking task scheduling limit for user '%s'", u.Id)
+		return errors.Wrapf(u.CheckAndUpdateSchedulingLimit(maxScheduledTasks, numTasksModified, activated), "checking task scheduling limit for user '%s'", u.Id)
 	}
 	return nil
 }
