@@ -269,6 +269,7 @@ type ComplexityRoot struct {
 		HomeVolumeSettings    func(childComplexity int) int
 		HostAllocatorSettings func(childComplexity int) int
 		IcecreamSettings      func(childComplexity int) int
+		ImageID               func(childComplexity int) int
 		IsCluster             func(childComplexity int) int
 		IsVirtualWorkstation  func(childComplexity int) int
 		Mountpoints           func(childComplexity int) int
@@ -2708,6 +2709,13 @@ func (e *executableSchema) Complexity(typeName, field string, childComplexity in
 		}
 
 		return e.complexity.Distro.IcecreamSettings(childComplexity), true
+
+	case "Distro.imageId":
+		if e.complexity.Distro.ImageID == nil {
+			break
+		}
+
+		return e.complexity.Distro.ImageID(childComplexity), true
 
 	case "Distro.isCluster":
 		if e.complexity.Distro.IsCluster == nil {
@@ -17338,6 +17346,47 @@ func (ec *executionContext) fieldContext_Distro_iceCreamSettings(ctx context.Con
 				return ec.fieldContext_IceCreamSettings_schedulerHost(ctx, field)
 			}
 			return nil, fmt.Errorf("no field named %q was found under type IceCreamSettings", field.Name)
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _Distro_imageId(ctx context.Context, field graphql.CollectedField, obj *model.APIDistro) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_Distro_imageId(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.ImageID, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		return graphql.Null
+	}
+	res := resTmp.(*string)
+	fc.Result = res
+	return ec.marshalOString2ᚖstring(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_Distro_imageId(ctx context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "Distro",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type String does not have child fields")
 		},
 	}
 	return fc, nil
@@ -43415,6 +43464,8 @@ func (ec *executionContext) fieldContext_Query_distro(ctx context.Context, field
 				return ec.fieldContext_Distro_hostAllocatorSettings(ctx, field)
 			case "iceCreamSettings":
 				return ec.fieldContext_Distro_iceCreamSettings(ctx, field)
+			case "imageId":
+				return ec.fieldContext_Distro_imageId(ctx, field)
 			case "isCluster":
 				return ec.fieldContext_Distro_isCluster(ctx, field)
 			case "isVirtualWorkStation":
@@ -43593,6 +43644,8 @@ func (ec *executionContext) fieldContext_Query_distros(ctx context.Context, fiel
 				return ec.fieldContext_Distro_hostAllocatorSettings(ctx, field)
 			case "iceCreamSettings":
 				return ec.fieldContext_Distro_iceCreamSettings(ctx, field)
+			case "imageId":
+				return ec.fieldContext_Distro_imageId(ctx, field)
 			case "isCluster":
 				return ec.fieldContext_Distro_isCluster(ctx, field)
 			case "isVirtualWorkStation":
@@ -49308,6 +49361,8 @@ func (ec *executionContext) fieldContext_SaveDistroPayload_distro(ctx context.Co
 				return ec.fieldContext_Distro_hostAllocatorSettings(ctx, field)
 			case "iceCreamSettings":
 				return ec.fieldContext_Distro_iceCreamSettings(ctx, field)
+			case "imageId":
+				return ec.fieldContext_Distro_imageId(ctx, field)
 			case "isCluster":
 				return ec.fieldContext_Distro_isCluster(ctx, field)
 			case "isVirtualWorkStation":
@@ -68390,7 +68445,7 @@ func (ec *executionContext) unmarshalInputDistroInput(ctx context.Context, obj i
 		asMap[k] = v
 	}
 
-	fieldsInOrder := [...]string{"adminOnly", "aliases", "arch", "authorizedKeysFile", "bootstrapSettings", "containerPool", "disabled", "disableShallowClone", "dispatcherSettings", "expansions", "finderSettings", "homeVolumeSettings", "hostAllocatorSettings", "iceCreamSettings", "isCluster", "isVirtualWorkStation", "name", "warningNote", "note", "plannerSettings", "provider", "providerSettingsList", "setup", "setupAsSudo", "sshOptions", "user", "userSpawnAllowed", "validProjects", "workDir", "mountpoints"}
+	fieldsInOrder := [...]string{"adminOnly", "aliases", "arch", "authorizedKeysFile", "bootstrapSettings", "containerPool", "disabled", "disableShallowClone", "dispatcherSettings", "expansions", "finderSettings", "homeVolumeSettings", "hostAllocatorSettings", "iceCreamSettings", "imageId", "isCluster", "isVirtualWorkStation", "name", "warningNote", "note", "plannerSettings", "provider", "providerSettingsList", "setup", "setupAsSudo", "sshOptions", "user", "userSpawnAllowed", "validProjects", "workDir", "mountpoints"}
 	for _, k := range fieldsInOrder {
 		v, ok := asMap[k]
 		if !ok {
@@ -68497,6 +68552,13 @@ func (ec *executionContext) unmarshalInputDistroInput(ctx context.Context, obj i
 				return it, err
 			}
 			it.IcecreamSettings = data
+		case "imageId":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("imageId"))
+			data, err := ec.unmarshalOString2ᚖstring(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.ImageID = data
 		case "isCluster":
 			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("isCluster"))
 			data, err := ec.unmarshalNBoolean2bool(ctx, v)
@@ -73983,6 +74045,8 @@ func (ec *executionContext) _Distro(ctx context.Context, sel ast.SelectionSet, o
 			if out.Values[i] == graphql.Null {
 				atomic.AddUint32(&out.Invalids, 1)
 			}
+		case "imageId":
+			out.Values[i] = ec._Distro_imageId(ctx, field, obj)
 		case "isCluster":
 			out.Values[i] = ec._Distro_isCluster(ctx, field, obj)
 			if out.Values[i] == graphql.Null {
