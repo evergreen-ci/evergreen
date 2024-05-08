@@ -879,6 +879,10 @@ func checkUsersPatchTaskLimit(requester, username string, addExecutionTasks bool
 	if !(requester == evergreen.PatchVersionRequester || requester == evergreen.GithubPRRequester) || evergreen.IsSystemActivator(username) {
 		return nil
 	}
+	s := evergreen.GetEnvironment().Settings()
+	if s.TaskLimits.MaxHourlyPatchTasks == 0 {
+		return nil
+	}
 	numTasksToActivate := 0
 	for _, t := range tasks {
 		if t.Activated {
