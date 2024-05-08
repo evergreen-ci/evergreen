@@ -3770,7 +3770,7 @@ func (h *Host) IsSleepScheduleEnabled() bool {
 
 // IsExempt returns whether or not the sleep schedule has an exemption.
 func (s *SleepScheduleInfo) IsExempt(now time.Time) bool {
-	return s.PermanentlyExempt || s.ShouldKeepOff || s.TemporarilyExemptUntil.After(time.Now())
+	return s.PermanentlyExempt || s.ShouldKeepOff || s.TemporarilyExemptUntil.After(now)
 }
 
 // GetNextScheduledStopTime returns the next time a host should be
