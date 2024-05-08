@@ -269,7 +269,7 @@ type ComplexityRoot struct {
 		HomeVolumeSettings    func(childComplexity int) int
 		HostAllocatorSettings func(childComplexity int) int
 		IcecreamSettings      func(childComplexity int) int
-		ImageId               func(childComplexity int) int
+		ImageID               func(childComplexity int) int
 		IsCluster             func(childComplexity int) int
 		IsVirtualWorkstation  func(childComplexity int) int
 		Mountpoints           func(childComplexity int) int
@@ -2711,11 +2711,11 @@ func (e *executableSchema) Complexity(typeName, field string, childComplexity in
 		return e.complexity.Distro.IcecreamSettings(childComplexity), true
 
 	case "Distro.imageId":
-		if e.complexity.Distro.ImageId == nil {
+		if e.complexity.Distro.ImageID == nil {
 			break
 		}
 
-		return e.complexity.Distro.ImageId(childComplexity), true
+		return e.complexity.Distro.ImageID(childComplexity), true
 
 	case "Distro.isCluster":
 		if e.complexity.Distro.IsCluster == nil {
@@ -17365,7 +17365,7 @@ func (ec *executionContext) _Distro_imageId(ctx context.Context, field graphql.C
 	}()
 	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
 		ctx = rctx // use context from middleware stack in children
-		return obj.ImageId, nil
+		return obj.ImageID, nil
 	})
 	if err != nil {
 		ec.Error(ctx, err)
@@ -68558,7 +68558,7 @@ func (ec *executionContext) unmarshalInputDistroInput(ctx context.Context, obj i
 			if err != nil {
 				return it, err
 			}
-			it.ImageId = data
+			it.ImageID = data
 		case "isCluster":
 			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("isCluster"))
 			data, err := ec.unmarshalNBoolean2bool(ctx, v)

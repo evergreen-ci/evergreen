@@ -42,8 +42,8 @@ var (
 	IsVirtualWorkstationKey  = bsonutil.MustHaveTag(Distro{}, "IsVirtualWorkstation")
 	IsClusterKey             = bsonutil.MustHaveTag(Distro{}, "IsCluster")
 	IceCreamSettingsKey      = bsonutil.MustHaveTag(Distro{}, "IceCreamSettings")
-	// ImageId is not equivalent to AMI. It is the identifier of the base image for the distro.
-	ImageIdKey = bsonutil.MustHaveTag(Distro{}, "ImageId")
+	// ImageID is not equivalent to AMI. It is the identifier of the base image for the distro.
+	ImageIDKey = bsonutil.MustHaveTag(Distro{}, "ImageID")
 )
 
 var (
