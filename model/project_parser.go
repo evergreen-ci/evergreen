@@ -1471,9 +1471,17 @@ func getParserBuildVariantTaskUnit(name string, pt parserTask, bvt parserBVTaskU
 	if len(res.AllowedRequesters) == 0 {
 		res.AllowedRequesters = bv.AllowedRequesters
 	}
-
 	if res.Disable == nil {
 		res.Disable = bv.Disable
+	}
+	if res.CronBatchTime == "" {
+		res.CronBatchTime = bv.CronBatchTime
+	}
+	if res.BatchTime == nil {
+		res.BatchTime = bv.BatchTime
+	}
+	if res.Activate == nil {
+		res.Activate = bv.Activate
 	}
 
 	return res

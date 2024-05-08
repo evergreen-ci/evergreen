@@ -1687,6 +1687,8 @@ func (p *Project) tasksFromGroup(bvTaskGroup BuildVariantTaskUnit) []BuildVarian
 			Stepback:          bvTaskGroup.Stepback,
 			Activate:          bvTaskGroup.Activate,
 			CommitQueueMerge:  bvTaskGroup.CommitQueueMerge,
+			BatchTime:         bvTaskGroup.BatchTime,
+			CronBatchTime:     bvTaskGroup.CronBatchTime,
 		}
 		// Default to project task settings when unspecified
 		bvt.Populate(taskMap[t], *bv)

@@ -817,6 +817,14 @@ func (s *GenerateSuite) TestSaveNewBuildsAndTasksWithBatchtime() {
 							ActivateAt: time.Now().Add(-time.Minute * 15), // 15 minutes ago
 						},
 					},
+					{
+						TaskId:   "prev_task_group",
+						TaskName: "example_task_group",
+						ActivationStatus: ActivationStatus{
+							Activated:  true,
+							ActivateAt: time.Now().Add(-time.Minute * 30), // 30 minutes ago
+						},
+					},
 				},
 			},
 		},
@@ -874,10 +882,10 @@ func (s *GenerateSuite) TestSaveNewBuildsAndTasksWithBatchtime() {
 	s.InDelta(time.Now().Unix(), v.BuildVariants[0].BatchTimeTasks[0].ActivateAt.Unix(), 1)
 
 	// new build added correctly
-	s.False(v.BuildVariants[1].Activated)
-	s.InDelta(time.Now().Add(60*time.Minute).Unix(), v.BuildVariants[1].ActivateAt.Unix(), 1)
-	s.Require().Len(v.BuildVariants[1].BatchTimeTasks, 1)
-	s.InDelta(time.Now().Add(15*time.Minute).Unix(), v.BuildVariants[1].BatchTimeTasks[0].ActivateAt.Unix(), 1)
+	s.True(v.BuildVariants[1].Activated)
+	s.Require().Len(v.BuildVariants[1].BatchTimeTasks, 2)
+	s.InDelta(time.Now().Add(30*time.Minute).Unix(), v.BuildVariants[1].BatchTimeTasks[0].ActivateAt.Unix(), 1)
+	s.InDelta(time.Now().Add(15*time.Minute).Unix(), v.BuildVariants[1].BatchTimeTasks[1].ActivateAt.Unix(), 1)
 
 	_, err = GetParserProjectStorage(s.ctx, s.env.Settings(), v.ProjectStorageMethod)
 	s.Require().NoError(err)
@@ -1798,8 +1806,11 @@ func TestFilterInactiveTasks(t *testing.T) {
 		assert.NoError(t, db.ClearCollections(build.Collection))
 	}()
 
-	for tName, tCase := range map[string]func(ctx context.Context, t *testing.T, g GeneratedProject, v *Version){
-		"DoesNotFilterActiveNewBuild": func(ctx context.Context, t *testing.T, g GeneratedProject, v *Version) {
+	env := &mock.Environment{}
+	require.NoError(t, env.Configure(ctx))
+
+	for tName, tCase := range map[string]func(ctx context.Context, t *testing.T, g GeneratedProject, v *Version, pp *ParserProject){
+		"DoesNotFilterActiveNewBuild": func(ctx context.Context, t *testing.T, g GeneratedProject, v *Version, pp *ParserProject) {
 			tasks, err := g.filterInactiveTasks(ctx, TVPairSet{{
 				TaskName: g.BuildVariants[0].Tasks[0].Name,
 				Variant:  g.BuildVariants[0].Name,
@@ -1808,66 +1819,83 @@ func TestFilterInactiveTasks(t *testing.T) {
 			assert.NoError(t, err)
 			assert.Len(t, tasks, 1)
 		},
-		"DoesNotFilterExplicitlyActiveNewBuild": func(ctx context.Context, t *testing.T, g GeneratedProject, v *Version) {
+		"DoesNotFilterExplicitlyActiveNewBuild": func(ctx context.Context, t *testing.T, g GeneratedProject, v *Version, pp *ParserProject) {
 			g.BuildVariants[0].Activate = utility.TruePtr()
+			pp.BuildVariants[0].Activate = utility.TruePtr()
 
+			p, err := TranslateProject(pp)
+			require.NoError(t, err)
 			tasks, err := g.filterInactiveTasks(ctx, TVPairSet{{
 				TaskName: g.BuildVariants[0].Tasks[0].Name,
 				Variant:  g.BuildVariants[0].Name,
-			}}, v, &Project{})
+			}}, v, p)
 
 			assert.NoError(t, err)
 			assert.Len(t, tasks, 1)
 		},
-		"FiltersInactiveNewBuild": func(ctx context.Context, t *testing.T, g GeneratedProject, v *Version) {
+		"FiltersInactiveNewBuild": func(ctx context.Context, t *testing.T, g GeneratedProject, v *Version, pp *ParserProject) {
 			g.BuildVariants[0].Activate = utility.FalsePtr()
+			pp.BuildVariants[0].Activate = utility.FalsePtr()
 
+			p, err := TranslateProject(pp)
+			require.NoError(t, err)
 			tasks, err := g.filterInactiveTasks(ctx, TVPairSet{{
 				TaskName: g.BuildVariants[0].Tasks[0].Name,
 				Variant:  g.BuildVariants[0].Name,
-			}}, v, &Project{})
+			}}, v, p)
 
 			assert.NoError(t, err)
 			assert.Empty(t, tasks)
 		},
-		"FiltersNewBuildsWithBatchTime": func(ctx context.Context, t *testing.T, g GeneratedProject, v *Version) {
+		"FiltersNewBuildsWithBatchTime": func(ctx context.Context, t *testing.T, g GeneratedProject, v *Version, pp *ParserProject) {
 			g.BuildVariants[0].BatchTime = utility.ToIntPtr(10)
+			pp.BuildVariants[0].BatchTime = utility.ToIntPtr(10)
 
+			p, err := TranslateProject(pp)
+			require.NoError(t, err)
 			tasks, err := g.filterInactiveTasks(ctx, TVPairSet{{
 				TaskName: g.BuildVariants[0].Tasks[0].Name,
 				Variant:  g.BuildVariants[0].Name,
-			}}, v, &Project{})
+			}}, v, p)
 
 			assert.NoError(t, err)
 			assert.Empty(t, tasks)
 		},
-		"DoesNotFilterNewBuildWithBatchTimeForPatch": func(ctx context.Context, t *testing.T, g GeneratedProject, v *Version) {
+		"DoesNotFilterNewBuildWithBatchTimeForPatch": func(ctx context.Context, t *testing.T, g GeneratedProject, v *Version, pp *ParserProject) {
 			v.Requester = evergreen.PatchVersionRequester
 			g.BuildVariants[0].BatchTime = utility.ToIntPtr(10)
+			pp.BuildVariants[0].BatchTime = utility.ToIntPtr(10)
 
+			p, err := TranslateProject(pp)
+			require.NoError(t, err)
 			tasks, err := g.filterInactiveTasks(ctx, TVPairSet{{
 				TaskName: g.BuildVariants[0].Tasks[0].Name,
 				Variant:  g.BuildVariants[0].Name,
-			}}, v, &Project{})
+			}}, v, p)
 
 			assert.NoError(t, err)
 			assert.Len(t, tasks, 1)
 		},
-		"FiltersExplicitlyActiveNewBuildWithBatchTime": func(ctx context.Context, t *testing.T, g GeneratedProject, v *Version) {
+		"FiltersExplicitlyActiveNewBuildWithBatchTime": func(ctx context.Context, t *testing.T, g GeneratedProject, v *Version, pp *ParserProject) {
 			// When activate and batchtime are both defined on the build
 			// variant, batchtime takes priority.
 			g.BuildVariants[0].Activate = utility.TruePtr()
 			g.BuildVariants[0].BatchTime = utility.ToIntPtr(10)
 
+			pp.BuildVariants[0].Activate = utility.TruePtr()
+			pp.BuildVariants[0].BatchTime = utility.ToIntPtr(10)
+			p, err := TranslateProject(pp)
+			require.NoError(t, err)
+
 			tasks, err := g.filterInactiveTasks(ctx, TVPairSet{{
 				TaskName: g.BuildVariants[0].Tasks[0].Name,
 				Variant:  g.BuildVariants[0].Name,
-			}}, v, &Project{})
+			}}, v, p)
 
 			assert.NoError(t, err)
 			assert.Empty(t, tasks)
 		},
-		"FiltersExplicitlyActiveNewBuildWithBatchTimeAndActivateAtDifferentLevels": func(ctx context.Context, t *testing.T, g GeneratedProject, v *Version) {
+		"FiltersExplicitlyActiveNewBuildWithBatchTimeAndActivateAtDifferentLevels": func(ctx context.Context, t *testing.T, g GeneratedProject, v *Version, pp *ParserProject) {
 			// TODO (EVG-20904): When activate and batchtime are defined at
 			// different levels and furthermore, activate is defined at a more
 			// specific level, the variant-level batchtime still takes priority
@@ -1878,76 +1906,11 @@ func TestFilterInactiveTasks(t *testing.T) {
 			// the task will activate immediately.
 			g.BuildVariants[0].Tasks[0].Activate = utility.TruePtr()
 			g.BuildVariants[0].BatchTime = utility.ToIntPtr(10)
+			pp.BuildVariants[0].Tasks[0].Activate = utility.TruePtr()
+			pp.BuildVariants[0].BatchTime = utility.ToIntPtr(10)
 
-			tasks, err := g.filterInactiveTasks(ctx, TVPairSet{{
-				TaskName: g.BuildVariants[0].Tasks[0].Name,
-				Variant:  g.BuildVariants[0].Name,
-			}}, v, &Project{})
-
-			assert.NoError(t, err)
-			assert.Empty(t, tasks)
-		},
-		"DoesNotFilterActiveExistingBuild": func(ctx context.Context, t *testing.T, g GeneratedProject, v *Version) {
-			b := &build.Build{
-				BuildVariant: g.BuildVariants[0].Name,
-				Version:      v.Id,
-			}
-			assert.NoError(t, b.Insert())
-
-			p := &Project{
-				BuildVariants: []BuildVariant{
-					{Name: g.BuildVariants[0].Name},
-				},
-			}
-
-			tasks, err := g.filterInactiveTasks(ctx, TVPairSet{{
-				TaskName: g.BuildVariants[0].Tasks[0].Name,
-				Variant:  g.BuildVariants[0].Name,
-			}}, v, p)
-
-			assert.NoError(t, err)
-			assert.Len(t, tasks, 1)
-		},
-		"DoesNotFilterExplicitlyActiveExistingBuild": func(ctx context.Context, t *testing.T, g GeneratedProject, v *Version) {
-			b := &build.Build{
-				BuildVariant: g.BuildVariants[0].Name,
-				Version:      v.Id,
-			}
-			assert.NoError(t, b.Insert())
-
-			p := &Project{
-				BuildVariants: []BuildVariant{
-					{
-						Name:     g.BuildVariants[0].Name,
-						Activate: utility.TruePtr(),
-					},
-				},
-			}
-
-			tasks, err := g.filterInactiveTasks(ctx, TVPairSet{{
-				TaskName: g.BuildVariants[0].Tasks[0].Name,
-				Variant:  g.BuildVariants[0].Name,
-			}}, v, p)
-
-			assert.NoError(t, err)
-			assert.Len(t, tasks, 1)
-		},
-		"FiltersInactiveExistingBuild": func(ctx context.Context, t *testing.T, g GeneratedProject, v *Version) {
-			b := &build.Build{
-				BuildVariant: g.BuildVariants[0].Name,
-				Version:      v.Id,
-			}
-			assert.NoError(t, b.Insert())
-
-			p := &Project{
-				BuildVariants: []BuildVariant{
-					{
-						Name:     g.BuildVariants[0].Name,
-						Activate: utility.FalsePtr(),
-					},
-				},
-			}
-
+			p, err := TranslateProject(pp)
+			require.NoError(t, err)
 			tasks, err := g.filterInactiveTasks(ctx, TVPairSet{{
 				TaskName: g.BuildVariants[0].Tasks[0].Name,
 				Variant:  g.BuildVariants[0].Name,
@@ -1956,24 +1919,84 @@ func TestFilterInactiveTasks(t *testing.T) {
 			assert.NoError(t, err)
 			assert.Empty(t, tasks)
 		},
-		"DoesNotFilterExplicitlyActiveTask": func(ctx context.Context, t *testing.T, g GeneratedProject, v *Version) {
+		"DoesNotFilterActiveExistingBuild": func(ctx context.Context, t *testing.T, g GeneratedProject, v *Version, pp *ParserProject) {
+			b := &build.Build{
+				BuildVariant: g.BuildVariants[0].Name,
+				Version:      v.Id,
+			}
+			assert.NoError(t, b.Insert())
+
+			p, err := TranslateProject(pp)
+			require.NoError(t, err)
+			tasks, err := g.filterInactiveTasks(ctx, TVPairSet{{
+				TaskName: g.BuildVariants[0].Tasks[0].Name,
+				Variant:  g.BuildVariants[0].Name,
+			}}, v, p)
+
+			assert.NoError(t, err)
+			assert.Len(t, tasks, 1)
+		},
+		"DoesNotFilterExplicitlyActiveExistingBuild": func(ctx context.Context, t *testing.T, g GeneratedProject, v *Version, pp *ParserProject) {
+			b := &build.Build{
+				BuildVariant: g.BuildVariants[0].Name,
+				Version:      v.Id,
+			}
+			assert.NoError(t, b.Insert())
+
+			pp.BuildVariants[0].Activate = utility.TruePtr()
+
+			p, err := TranslateProject(pp)
+			require.NoError(t, err)
+			tasks, err := g.filterInactiveTasks(ctx, TVPairSet{{
+				TaskName: g.BuildVariants[0].Tasks[0].Name,
+				Variant:  g.BuildVariants[0].Name,
+			}}, v, p)
+
+			assert.NoError(t, err)
+			assert.Len(t, tasks, 1)
+		},
+		"FiltersInactiveExistingBuild": func(ctx context.Context, t *testing.T, g GeneratedProject, v *Version, pp *ParserProject) {
+			b := &build.Build{
+				BuildVariant: g.BuildVariants[0].Name,
+				Version:      v.Id,
+			}
+			assert.NoError(t, b.Insert())
+			pp.BuildVariants[0].Activate = utility.FalsePtr()
+
+			p, err := TranslateProject(pp)
+			require.NoError(t, err)
+			tasks, err := g.filterInactiveTasks(ctx, TVPairSet{{
+				TaskName: g.BuildVariants[0].Tasks[0].Name,
+				Variant:  g.BuildVariants[0].Name,
+			}}, v, p)
+
+			assert.NoError(t, err)
+			assert.Empty(t, tasks)
+		},
+		"DoesNotFilterExplicitlyActiveTask": func(ctx context.Context, t *testing.T, g GeneratedProject, v *Version, pp *ParserProject) {
 			g.BuildVariants[0].Tasks[0].Activate = utility.TruePtr()
+			pp.BuildVariants[0].Tasks[0].Activate = utility.TruePtr()
 
+			p, err := TranslateProject(pp)
+			require.NoError(t, err)
 			tasks, err := g.filterInactiveTasks(ctx, TVPairSet{{
 				TaskName: g.BuildVariants[0].Tasks[0].Name,
 				Variant:  g.BuildVariants[0].Name,
-			}}, v, &Project{})
+			}}, v, p)
 
 			assert.NoError(t, err)
 			assert.Len(t, tasks, 1)
 		},
-		"FiltersInactiveTask": func(ctx context.Context, t *testing.T, g GeneratedProject, v *Version) {
+		"FiltersInactiveTask": func(ctx context.Context, t *testing.T, g GeneratedProject, v *Version, pp *ParserProject) {
 			g.BuildVariants[0].Tasks[0].Activate = utility.FalsePtr()
+			pp.BuildVariants[0].Tasks[0].Activate = utility.FalsePtr()
 
+			p, err := TranslateProject(pp)
+			require.NoError(t, err)
 			tasks, err := g.filterInactiveTasks(ctx, TVPairSet{{
 				TaskName: g.BuildVariants[0].Tasks[0].Name,
 				Variant:  g.BuildVariants[0].Name,
-			}}, v, &Project{})
+			}}, v, p)
 
 			assert.NoError(t, err)
 			assert.Empty(t, tasks)
@@ -1997,8 +2020,20 @@ func TestFilterInactiveTasks(t *testing.T) {
 				Task: &task.Task{},
 			}
 			v := &Version{Id: "version_id", Requester: evergreen.RepotrackerVersionRequester}
-
-			tCase(tctx, t, g, v)
+			pp := &ParserProject{
+				BuildVariants: []parserBV{
+					{
+						Name: g.BuildVariants[0].Name,
+						Tasks: []parserBVTaskUnit{
+							{
+								Name: "generated",
+							},
+						},
+					},
+				},
+				Tasks: []parserTask{{Name: "generated"}},
+			}
+			tCase(tctx, t, g, v, pp)
 		})
 	}
 }

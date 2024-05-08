@@ -568,9 +568,12 @@ func (g *GeneratedProject) findTasksAndVariantsWithSpecificActivations(p *Projec
 				res.stepbackTasks[bv.Name] = append(res.stepbackTasks[bv.Name], stepbackInfo)
 				continue // Don't consider batchtime/activation if we're stepping back this generated task
 			}
-			if evergreen.ShouldConsiderBatchtime(requester) && bvt.HasSpecificActivation() {
-				batchTimeTasks = append(batchTimeTasks, bvt.Name)
-			} else if !utility.FromBoolTPtr(bvt.Activate) {
+			if (evergreen.ShouldConsiderBatchtime(requester) && bvt.HasSpecificActivation()) || !utility.FromBoolTPtr(bvt.Activate) {
+				if bvt.IsGroup {
+					for _, tgTask := range p.tasksFromGroup(bvt) {
+						batchTimeTasks = append(batchTimeTasks, tgTask.Name)
+					}
+				}
 				batchTimeTasks = append(batchTimeTasks, bvt.Name)
 			}
 		}
