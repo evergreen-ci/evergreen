@@ -1473,6 +1473,8 @@ The following constraints apply:
 -   Tasks within a task group will be dispatched in order declared.
 -   Any task (including members of task groups), can depend on specific
     tasks within a task group using [task dependencies](#task-dependencies).
+-   Task groups cannot have tags applied to them and cannot be selected by
+    tags.
 
 Tasks in a group will be displayed as
 separate tasks. Users can use display tasks if they wish to group the

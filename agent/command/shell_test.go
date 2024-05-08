@@ -183,6 +183,17 @@ func (s *shellExecuteCommandSuite) TestCancellingContextShouldCancelCommand() {
 	s.True(utility.IsContextError(errors.Cause(err)))
 }
 
+func (s *shellExecuteCommandSuite) TestExpansionsForAddToPath() {
+	cmd := &shellExec{
+		AddToPath:  []string{"${my_path}", "another_path"},
+		WorkingDir: testutil.GetDirectoryOfFile(),
+	}
+
+	s.NoError(cmd.doExpansions(util.NewExpansions(map[string]string{"my_path": "/my/expanded/path"})))
+	s.Require().Len(cmd.AddToPath, 2)
+	s.Equal([]string{"/my/expanded/path", "another_path"}, cmd.AddToPath)
+}
+
 func (s *shellExecuteCommandSuite) TestEnvIsSetAndDefaulted() {
 	cmd := &shellExec{
 		Script:     "echo hello world",

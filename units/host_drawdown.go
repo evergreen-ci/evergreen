@@ -64,7 +64,6 @@ func NewHostDrawdownJob(env evergreen.Environment, drawdownInfo DrawdownInfo, ts
 	jobID := fmt.Sprintf("%s.%s.%s", hostDrawdownJobName, drawdownInfo.DistroID, ts)
 	j.SetID(jobID)
 	j.SetScopes([]string{jobID})
-	j.SetPriority(2)
 	return j
 }
 

@@ -55,11 +55,12 @@ func updateTestDepTasks(t *testing.T) {
 func TestGetDisplayStatusAndColorSort(t *testing.T) {
 	require.NoError(t, db.ClearCollections(Collection, annotations.Collection))
 	t1 := Task{
-		Id:            "t1",
-		Version:       "v1",
-		Execution:     3,
-		Status:        evergreen.TaskFailed,
-		DisplayTaskId: utility.ToStringPtr(""),
+		Id:             "t1",
+		Version:        "v1",
+		Execution:      3,
+		Status:         evergreen.TaskFailed,
+		DisplayTaskId:  utility.ToStringPtr(""),
+		HasAnnotations: true,
 	}
 	t2 := Task{
 		Id:            "t2",
@@ -158,16 +159,8 @@ func TestGetDisplayStatusAndColorSort(t *testing.T) {
 		Execution:     1,
 		DisplayTaskId: utility.ToStringPtr(""),
 	}
-	a := annotations.TaskAnnotation{
-		Id:            "myAnnotation",
-		TaskId:        t1.Id,
-		TaskExecution: t1.Execution,
-		Issues: []annotations.IssueLink{
-			{IssueKey: "EVG-12345"},
-		},
-	}
+
 	assert.NoError(t, db.InsertMany(Collection, t1, t2, t3, t4, t5, t6, t7, t8, t9, t10, t11))
-	assert.NoError(t, a.Upsert())
 
 	pipeline, err := getTasksByVersionPipeline("v1", GetTasksByVersionOptions{})
 	require.NoError(t, err)
@@ -4879,6 +4872,7 @@ func TestReset(t *testing.T) {
 			ResetFailedWhenFinished: true,
 			OverrideDependencies:    true,
 			CanReset:                true,
+			HasAnnotations:          true,
 			AgentVersion:            "a1",
 			HostId:                  "h",
 			PodID:                   "p",
@@ -4896,6 +4890,7 @@ func TestReset(t *testing.T) {
 		assert.False(t, dbTask.IsAutomaticRestart)
 		assert.False(t, dbTask.ResetFailedWhenFinished)
 		assert.False(t, dbTask.OverrideDependencies)
+		assert.False(t, dbTask.HasAnnotations)
 		assert.False(t, dbTask.CanReset)
 		assert.Equal(t, "", dbTask.AgentVersion)
 		assert.Equal(t, "", dbTask.HostId)

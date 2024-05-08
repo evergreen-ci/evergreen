@@ -534,11 +534,6 @@ type ComplexityRoot struct {
 		Host  func(childComplexity int) int
 	}
 
-	JiraField struct {
-		DisplayText func(childComplexity int) int
-		Field       func(childComplexity int) int
-	}
-
 	JiraIssueSubscriber struct {
 		IssueType func(childComplexity int) int
 		Project   func(childComplexity int) int
@@ -678,7 +673,7 @@ type ComplexityRoot struct {
 		UpdateHostStatus              func(childComplexity int, hostIds []string, status string, notes *string) int
 		UpdateParsleySettings         func(childComplexity int, opts UpdateParsleySettingsInput) int
 		UpdatePublicKey               func(childComplexity int, targetKeyName string, updateInfo PublicKeyInput) int
-		UpdateSpawnHostStatus         func(childComplexity int, hostID string, action SpawnHostStatusActions) int
+		UpdateSpawnHostStatus         func(childComplexity int, hostID *string, action *SpawnHostStatusActions, updateSpawnHostStatusInput *UpdateSpawnHostStatusInput) int
 		UpdateUserSettings            func(childComplexity int, userSettings *model.APIUserSettings) int
 		UpdateVolume                  func(childComplexity int, updateVolumeInput UpdateVolumeInput) int
 	}
@@ -1279,7 +1274,6 @@ type ComplexityRoot struct {
 
 	TaskAnnotationSettings struct {
 		FileTicketWebhook func(childComplexity int) int
-		JiraCustomFields  func(childComplexity int) int
 	}
 
 	TaskContainerCreationOpts struct {
@@ -1694,7 +1688,7 @@ type MutationResolver interface {
 	SpawnHost(ctx context.Context, spawnHostInput *SpawnHostInput) (*model.APIHost, error)
 	SpawnVolume(ctx context.Context, spawnVolumeInput SpawnVolumeInput) (bool, error)
 	RemoveVolume(ctx context.Context, volumeID string) (bool, error)
-	UpdateSpawnHostStatus(ctx context.Context, hostID string, action SpawnHostStatusActions) (*model.APIHost, error)
+	UpdateSpawnHostStatus(ctx context.Context, hostID *string, action *SpawnHostStatusActions, updateSpawnHostStatusInput *UpdateSpawnHostStatusInput) (*model.APIHost, error)
 	UpdateVolume(ctx context.Context, updateVolumeInput UpdateVolumeInput) (bool, error)
 	AbortTask(ctx context.Context, taskID string) (*model.APITask, error)
 	OverrideTaskDependencies(ctx context.Context, taskID string) (*model.APITask, error)
@@ -3864,20 +3858,6 @@ func (e *executableSchema) Complexity(typeName, field string, childComplexity in
 
 		return e.complexity.JiraConfig.Host(childComplexity), true
 
-	case "JiraField.displayText":
-		if e.complexity.JiraField.DisplayText == nil {
-			break
-		}
-
-		return e.complexity.JiraField.DisplayText(childComplexity), true
-
-	case "JiraField.field":
-		if e.complexity.JiraField.Field == nil {
-			break
-		}
-
-		return e.complexity.JiraField.Field(childComplexity), true
-
 	case "JiraIssueSubscriber.issueType":
 		if e.complexity.JiraIssueSubscriber.IssueType == nil {
 			break
@@ -4877,7 +4857,7 @@ func (e *executableSchema) Complexity(typeName, field string, childComplexity in
 			return 0, false
 		}
 
-		return e.complexity.Mutation.UpdateSpawnHostStatus(childComplexity, args["hostId"].(string), args["action"].(SpawnHostStatusActions)), true
+		return e.complexity.Mutation.UpdateSpawnHostStatus(childComplexity, args["hostId"].(*string), args["action"].(*SpawnHostStatusActions), args["updateSpawnHostStatusInput"].(*UpdateSpawnHostStatusInput)), true
 
 	case "Mutation.updateUserSettings":
 		if e.complexity.Mutation.UpdateUserSettings == nil {
@@ -8099,13 +8079,6 @@ func (e *executableSchema) Complexity(typeName, field string, childComplexity in
 
 		return e.complexity.TaskAnnotationSettings.FileTicketWebhook(childComplexity), true
 
-	case "TaskAnnotationSettings.jiraCustomFields":
-		if e.complexity.TaskAnnotationSettings.JiraCustomFields == nil {
-			break
-		}
-
-		return e.complexity.TaskAnnotationSettings.JiraCustomFields(childComplexity), true
-
 	case "TaskContainerCreationOpts.arch":
 		if e.complexity.TaskContainerCreationOpts.Arch == nil {
 			break
@@ -9670,7 +9643,6 @@ func (e *executableSchema) Exec(ctx context.Context) graphql.ResponseHandler {
 		ec.unmarshalInputIceCreamSettingsInput,
 		ec.unmarshalInputInstanceTagInput,
 		ec.unmarshalInputIssueLinkInput,
-		ec.unmarshalInputJiraFieldInput,
 		ec.unmarshalInputJiraIssueSubscriberInput,
 		ec.unmarshalInputMainlineCommitsOptions,
 		ec.unmarshalInputMetadataLinkInput,
@@ -9713,6 +9685,7 @@ func (e *executableSchema) Exec(ctx context.Context) graphql.ResponseHandler {
 		ec.unmarshalInputTestSortOptions,
 		ec.unmarshalInputTriggerAliasInput,
 		ec.unmarshalInputUpdateParsleySettingsInput,
+		ec.unmarshalInputUpdateSpawnHostStatusInput,
 		ec.unmarshalInputUpdateVolumeInput,
 		ec.unmarshalInputUseSpruceOptionsInput,
 		ec.unmarshalInputUserSettingsInput,
@@ -11565,24 +11538,33 @@ func (ec *executionContext) field_Mutation_updatePublicKey_args(ctx context.Cont
 func (ec *executionContext) field_Mutation_updateSpawnHostStatus_args(ctx context.Context, rawArgs map[string]interface{}) (map[string]interface{}, error) {
 	var err error
 	args := map[string]interface{}{}
-	var arg0 string
+	var arg0 *string
 	if tmp, ok := rawArgs["hostId"]; ok {
 		ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("hostId"))
-		arg0, err = ec.unmarshalNString2string(ctx, tmp)
+		arg0, err = ec.unmarshalOString2ᚖstring(ctx, tmp)
 		if err != nil {
 			return nil, err
 		}
 	}
 	args["hostId"] = arg0
-	var arg1 SpawnHostStatusActions
+	var arg1 *SpawnHostStatusActions
 	if tmp, ok := rawArgs["action"]; ok {
 		ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("action"))
-		arg1, err = ec.unmarshalNSpawnHostStatusActions2githubᚗcomᚋevergreenᚑciᚋevergreenᚋgraphqlᚐSpawnHostStatusActions(ctx, tmp)
+		arg1, err = ec.unmarshalOSpawnHostStatusActions2ᚖgithubᚗcomᚋevergreenᚑciᚋevergreenᚋgraphqlᚐSpawnHostStatusActions(ctx, tmp)
 		if err != nil {
 			return nil, err
 		}
 	}
 	args["action"] = arg1
+	var arg2 *UpdateSpawnHostStatusInput
+	if tmp, ok := rawArgs["updateSpawnHostStatusInput"]; ok {
+		ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("updateSpawnHostStatusInput"))
+		arg2, err = ec.unmarshalOUpdateSpawnHostStatusInput2ᚖgithubᚗcomᚋevergreenᚑciᚋevergreenᚋgraphqlᚐUpdateSpawnHostStatusInput(ctx, tmp)
+		if err != nil {
+			return nil, err
+		}
+	}
+	args["updateSpawnHostStatusInput"] = arg2
 	return args, nil
 }
 
@@ -25061,94 +25043,6 @@ func (ec *executionContext) fieldContext_JiraConfig_host(ctx context.Context, fi
 	return fc, nil
 }
 
-func (ec *executionContext) _JiraField_displayText(ctx context.Context, field graphql.CollectedField, obj *model.APIJiraField) (ret graphql.Marshaler) {
-	fc, err := ec.fieldContext_JiraField_displayText(ctx, field)
-	if err != nil {
-		return graphql.Null
-	}
-	ctx = graphql.WithFieldContext(ctx, fc)
-	defer func() {
-		if r := recover(); r != nil {
-			ec.Error(ctx, ec.Recover(ctx, r))
-			ret = graphql.Null
-		}
-	}()
-	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
-		ctx = rctx // use context from middleware stack in children
-		return obj.DisplayText, nil
-	})
-	if err != nil {
-		ec.Error(ctx, err)
-		return graphql.Null
-	}
-	if resTmp == nil {
-		if !graphql.HasFieldError(ctx, fc) {
-			ec.Errorf(ctx, "must not be null")
-		}
-		return graphql.Null
-	}
-	res := resTmp.(*string)
-	fc.Result = res
-	return ec.marshalNString2ᚖstring(ctx, field.Selections, res)
-}
-
-func (ec *executionContext) fieldContext_JiraField_displayText(ctx context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
-	fc = &graphql.FieldContext{
-		Object:     "JiraField",
-		Field:      field,
-		IsMethod:   false,
-		IsResolver: false,
-		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
-			return nil, errors.New("field of type String does not have child fields")
-		},
-	}
-	return fc, nil
-}
-
-func (ec *executionContext) _JiraField_field(ctx context.Context, field graphql.CollectedField, obj *model.APIJiraField) (ret graphql.Marshaler) {
-	fc, err := ec.fieldContext_JiraField_field(ctx, field)
-	if err != nil {
-		return graphql.Null
-	}
-	ctx = graphql.WithFieldContext(ctx, fc)
-	defer func() {
-		if r := recover(); r != nil {
-			ec.Error(ctx, ec.Recover(ctx, r))
-			ret = graphql.Null
-		}
-	}()
-	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
-		ctx = rctx // use context from middleware stack in children
-		return obj.Field, nil
-	})
-	if err != nil {
-		ec.Error(ctx, err)
-		return graphql.Null
-	}
-	if resTmp == nil {
-		if !graphql.HasFieldError(ctx, fc) {
-			ec.Errorf(ctx, "must not be null")
-		}
-		return graphql.Null
-	}
-	res := resTmp.(*string)
-	fc.Result = res
-	return ec.marshalNString2ᚖstring(ctx, field.Selections, res)
-}
-
-func (ec *executionContext) fieldContext_JiraField_field(ctx context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
-	fc = &graphql.FieldContext{
-		Object:     "JiraField",
-		Field:      field,
-		IsMethod:   false,
-		IsResolver: false,
-		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
-			return nil, errors.New("field of type String does not have child fields")
-		},
-	}
-	return fc, nil
-}
-
 func (ec *executionContext) _JiraIssueSubscriber_issueType(ctx context.Context, field graphql.CollectedField, obj *model.APIJIRAIssueSubscriber) (ret graphql.Marshaler) {
 	fc, err := ec.fieldContext_JiraIssueSubscriber_issueType(ctx, field)
 	if err != nil {
@@ -30350,7 +30244,7 @@ func (ec *executionContext) _Mutation_updateSpawnHostStatus(ctx context.Context,
 	}()
 	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
 		ctx = rctx // use context from middleware stack in children
-		return ec.resolvers.Mutation().UpdateSpawnHostStatus(rctx, fc.Args["hostId"].(string), fc.Args["action"].(SpawnHostStatusActions))
+		return ec.resolvers.Mutation().UpdateSpawnHostStatus(rctx, fc.Args["hostId"].(*string), fc.Args["action"].(*SpawnHostStatusActions), fc.Args["updateSpawnHostStatusInput"].(*UpdateSpawnHostStatusInput))
 	})
 	if err != nil {
 		ec.Error(ctx, err)
@@ -40897,8 +40791,6 @@ func (ec *executionContext) fieldContext_Project_taskAnnotationSettings(ctx cont
 			switch field.Name {
 			case "fileTicketWebhook":
 				return ec.fieldContext_TaskAnnotationSettings_fileTicketWebhook(ctx, field)
-			case "jiraCustomFields":
-				return ec.fieldContext_TaskAnnotationSettings_jiraCustomFields(ctx, field)
 			}
 			return nil, fmt.Errorf("no field named %q was found under type TaskAnnotationSettings", field.Name)
 		},
@@ -48203,8 +48095,6 @@ func (ec *executionContext) fieldContext_RepoRef_taskAnnotationSettings(ctx cont
 			switch field.Name {
 			case "fileTicketWebhook":
 				return ec.fieldContext_TaskAnnotationSettings_fileTicketWebhook(ctx, field)
-			case "jiraCustomFields":
-				return ec.fieldContext_TaskAnnotationSettings_jiraCustomFields(ctx, field)
 			}
 			return nil, fmt.Errorf("no field named %q was found under type TaskAnnotationSettings", field.Name)
 		},
@@ -55689,53 +55579,6 @@ func (ec *executionContext) fieldContext_TaskAnnotationSettings_fileTicketWebhoo
 				return ec.fieldContext_Webhook_secret(ctx, field)
 			}
 			return nil, fmt.Errorf("no field named %q was found under type Webhook", field.Name)
-		},
-	}
-	return fc, nil
-}
-
-func (ec *executionContext) _TaskAnnotationSettings_jiraCustomFields(ctx context.Context, field graphql.CollectedField, obj *model.APITaskAnnotationSettings) (ret graphql.Marshaler) {
-	fc, err := ec.fieldContext_TaskAnnotationSettings_jiraCustomFields(ctx, field)
-	if err != nil {
-		return graphql.Null
-	}
-	ctx = graphql.WithFieldContext(ctx, fc)
-	defer func() {
-		if r := recover(); r != nil {
-			ec.Error(ctx, ec.Recover(ctx, r))
-			ret = graphql.Null
-		}
-	}()
-	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
-		ctx = rctx // use context from middleware stack in children
-		return obj.JiraCustomFields, nil
-	})
-	if err != nil {
-		ec.Error(ctx, err)
-		return graphql.Null
-	}
-	if resTmp == nil {
-		return graphql.Null
-	}
-	res := resTmp.([]model.APIJiraField)
-	fc.Result = res
-	return ec.marshalOJiraField2ᚕgithubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐAPIJiraFieldᚄ(ctx, field.Selections, res)
-}
-
-func (ec *executionContext) fieldContext_TaskAnnotationSettings_jiraCustomFields(ctx context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
-	fc = &graphql.FieldContext{
-		Object:     "TaskAnnotationSettings",
-		Field:      field,
-		IsMethod:   false,
-		IsResolver: false,
-		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
-			switch field.Name {
-			case "displayText":
-				return ec.fieldContext_JiraField_displayText(ctx, field)
-			case "field":
-				return ec.fieldContext_JiraField_field(ctx, field)
-			}
-			return nil, fmt.Errorf("no field named %q was found under type JiraField", field.Name)
 		},
 	}
 	return fc, nil
@@ -69407,40 +69250,6 @@ func (ec *executionContext) unmarshalInputIssueLinkInput(ctx context.Context, ob
 	return it, nil
 }
 
-func (ec *executionContext) unmarshalInputJiraFieldInput(ctx context.Context, obj interface{}) (model.APIJiraField, error) {
-	var it model.APIJiraField
-	asMap := map[string]interface{}{}
-	for k, v := range obj.(map[string]interface{}) {
-		asMap[k] = v
-	}
-
-	fieldsInOrder := [...]string{"displayText", "field"}
-	for _, k := range fieldsInOrder {
-		v, ok := asMap[k]
-		if !ok {
-			continue
-		}
-		switch k {
-		case "displayText":
-			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("displayText"))
-			data, err := ec.unmarshalNString2ᚖstring(ctx, v)
-			if err != nil {
-				return it, err
-			}
-			it.DisplayText = data
-		case "field":
-			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("field"))
-			data, err := ec.unmarshalNString2ᚖstring(ctx, v)
-			if err != nil {
-				return it, err
-			}
-			it.Field = data
-		}
-	}
-
-	return it, nil
-}
-
 func (ec *executionContext) unmarshalInputJiraIssueSubscriberInput(ctx context.Context, obj interface{}) (model.APIJIRAIssueSubscriber, error) {
 	var it model.APIJIRAIssueSubscriber
 	asMap := map[string]interface{}{}
@@ -71881,7 +71690,7 @@ func (ec *executionContext) unmarshalInputTaskAnnotationSettingsInput(ctx contex
 		asMap[k] = v
 	}
 
-	fieldsInOrder := [...]string{"fileTicketWebhook", "jiraCustomFields"}
+	fieldsInOrder := [...]string{"fileTicketWebhook"}
 	for _, k := range fieldsInOrder {
 		v, ok := asMap[k]
 		if !ok {
@@ -71895,13 +71704,6 @@ func (ec *executionContext) unmarshalInputTaskAnnotationSettingsInput(ctx contex
 				return it, err
 			}
 			it.FileTicketWebhook = data
-		case "jiraCustomFields":
-			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("jiraCustomFields"))
-			data, err := ec.unmarshalOJiraFieldInput2ᚕgithubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐAPIJiraFieldᚄ(ctx, v)
-			if err != nil {
-				return it, err
-			}
-			it.JiraCustomFields = data
 		}
 	}
 
@@ -72326,6 +72128,47 @@ func (ec *executionContext) unmarshalInputUpdateParsleySettingsInput(ctx context
 				return it, err
 			}
 			it.ParsleySettings = data
+		}
+	}
+
+	return it, nil
+}
+
+func (ec *executionContext) unmarshalInputUpdateSpawnHostStatusInput(ctx context.Context, obj interface{}) (UpdateSpawnHostStatusInput, error) {
+	var it UpdateSpawnHostStatusInput
+	asMap := map[string]interface{}{}
+	for k, v := range obj.(map[string]interface{}) {
+		asMap[k] = v
+	}
+
+	fieldsInOrder := [...]string{"action", "hostId", "shouldKeepOff"}
+	for _, k := range fieldsInOrder {
+		v, ok := asMap[k]
+		if !ok {
+			continue
+		}
+		switch k {
+		case "action":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("action"))
+			data, err := ec.unmarshalNSpawnHostStatusActions2githubᚗcomᚋevergreenᚑciᚋevergreenᚋgraphqlᚐSpawnHostStatusActions(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.Action = data
+		case "hostId":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("hostId"))
+			data, err := ec.unmarshalNString2string(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.HostID = data
+		case "shouldKeepOff":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("shouldKeepOff"))
+			data, err := ec.unmarshalOBoolean2ᚖbool(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.ShouldKeepOff = data
 		}
 	}
 
@@ -76459,50 +76302,6 @@ func (ec *executionContext) _JiraConfig(ctx context.Context, sel ast.SelectionSe
 			out.Values[i] = ec._JiraConfig_email(ctx, field, obj)
 		case "host":
 			out.Values[i] = ec._JiraConfig_host(ctx, field, obj)
-		default:
-			panic("unknown field " + strconv.Quote(field.Name))
-		}
-	}
-	out.Dispatch(ctx)
-	if out.Invalids > 0 {
-		return graphql.Null
-	}
-
-	atomic.AddInt32(&ec.deferred, int32(len(deferred)))
-
-	for label, dfs := range deferred {
-		ec.processDeferredGroup(graphql.DeferredGroup{
-			Label:    label,
-			Path:     graphql.GetPath(ctx),
-			FieldSet: dfs,
-			Context:  ctx,
-		})
-	}
-
-	return out
-}
-
-var jiraFieldImplementors = []string{"JiraField"}
-
-func (ec *executionContext) _JiraField(ctx context.Context, sel ast.SelectionSet, obj *model.APIJiraField) graphql.Marshaler {
-	fields := graphql.CollectFields(ec.OperationContext, sel, jiraFieldImplementors)
-
-	out := graphql.NewFieldSet(fields)
-	deferred := make(map[string]*graphql.FieldSet)
-	for i, field := range fields {
-		switch field.Name {
-		case "__typename":
-			out.Values[i] = graphql.MarshalString("JiraField")
-		case "displayText":
-			out.Values[i] = ec._JiraField_displayText(ctx, field, obj)
-			if out.Values[i] == graphql.Null {
-				out.Invalids++
-			}
-		case "field":
-			out.Values[i] = ec._JiraField_field(ctx, field, obj)
-			if out.Values[i] == graphql.Null {
-				out.Invalids++
-			}
 		default:
 			panic("unknown field " + strconv.Quote(field.Name))
 		}
@@ -84127,8 +83926,6 @@ func (ec *executionContext) _TaskAnnotationSettings(ctx context.Context, sel ast
 			if out.Values[i] == graphql.Null {
 				out.Invalids++
 			}
-		case "jiraCustomFields":
-			out.Values[i] = ec._TaskAnnotationSettings_jiraCustomFields(ctx, field, obj)
 		default:
 			panic("unknown field " + strconv.Quote(field.Name))
 		}
@@ -88973,15 +88770,6 @@ func (ec *executionContext) unmarshalNIssueLinkInput2githubᚗcomᚋevergreenᚑ
 	return res, graphql.ErrorOnPath(ctx, err)
 }
 
-func (ec *executionContext) marshalNJiraField2githubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐAPIJiraField(ctx context.Context, sel ast.SelectionSet, v model.APIJiraField) graphql.Marshaler {
-	return ec._JiraField(ctx, sel, &v)
-}
-
-func (ec *executionContext) unmarshalNJiraFieldInput2githubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐAPIJiraField(ctx context.Context, v interface{}) (model.APIJiraField, error) {
-	res, err := ec.unmarshalInputJiraFieldInput(ctx, v)
-	return res, graphql.ErrorOnPath(ctx, err)
-}
-
 func (ec *executionContext) marshalNJiraStatus2ᚖgithubᚗcomᚋevergreenᚑciᚋevergreenᚋthirdpartyᚐJiraStatus(ctx context.Context, sel ast.SelectionSet, v *thirdparty.JiraStatus) graphql.Marshaler {
 	if v == nil {
 		if !graphql.HasFieldError(ctx, graphql.GetFieldContext(ctx)) {
@@ -92935,73 +92723,6 @@ func (ec *executionContext) marshalOJiraConfig2ᚖgithubᚗcomᚋevergreenᚑci�
 	return ec._JiraConfig(ctx, sel, v)
 }
 
-func (ec *executionContext) marshalOJiraField2ᚕgithubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐAPIJiraFieldᚄ(ctx context.Context, sel ast.SelectionSet, v []model.APIJiraField) graphql.Marshaler {
-	if v == nil {
-		return graphql.Null
-	}
-	ret := make(graphql.Array, len(v))
-	var wg sync.WaitGroup
-	isLen1 := len(v) == 1
-	if !isLen1 {
-		wg.Add(len(v))
-	}
-	for i := range v {
-		i := i
-		fc := &graphql.FieldContext{
-			Index:  &i,
-			Result: &v[i],
-		}
-		ctx := graphql.WithFieldContext(ctx, fc)
-		f := func(i int) {
-			defer func() {
-				if r := recover(); r != nil {
-					ec.Error(ctx, ec.Recover(ctx, r))
-					ret = nil
-				}
-			}()
-			if !isLen1 {
-				defer wg.Done()
-			}
-			ret[i] = ec.marshalNJiraField2githubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐAPIJiraField(ctx, sel, v[i])
-		}
-		if isLen1 {
-			f(i)
-		} else {
-			go f(i)
-		}
-
-	}
-	wg.Wait()
-
-	for _, e := range ret {
-		if e == graphql.Null {
-			return graphql.Null
-		}
-	}
-
-	return ret
-}
-
-func (ec *executionContext) unmarshalOJiraFieldInput2ᚕgithubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐAPIJiraFieldᚄ(ctx context.Context, v interface{}) ([]model.APIJiraField, error) {
-	if v == nil {
-		return nil, nil
-	}
-	var vSlice []interface{}
-	if v != nil {
-		vSlice = graphql.CoerceList(v)
-	}
-	var err error
-	res := make([]model.APIJiraField, len(vSlice))
-	for i := range vSlice {
-		ctx := graphql.WithPathContext(ctx, graphql.NewPathWithIndex(i))
-		res[i], err = ec.unmarshalNJiraFieldInput2githubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐAPIJiraField(ctx, vSlice[i])
-		if err != nil {
-			return nil, err
-		}
-	}
-	return res, nil
-}
-
 func (ec *executionContext) marshalOJiraIssueSubscriber2ᚖgithubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐAPIJIRAIssueSubscriber(ctx context.Context, sel ast.SelectionSet, v *model.APIJIRAIssueSubscriber) graphql.Marshaler {
 	if v == nil {
 		return graphql.Null
@@ -93814,6 +93535,22 @@ func (ec *executionContext) unmarshalOSpawnHostInput2ᚖgithubᚗcomᚋevergreen
 	return &res, graphql.ErrorOnPath(ctx, err)
 }
 
+func (ec *executionContext) unmarshalOSpawnHostStatusActions2ᚖgithubᚗcomᚋevergreenᚑciᚋevergreenᚋgraphqlᚐSpawnHostStatusActions(ctx context.Context, v interface{}) (*SpawnHostStatusActions, error) {
+	if v == nil {
+		return nil, nil
+	}
+	var res = new(SpawnHostStatusActions)
+	err := res.UnmarshalGQL(v)
+	return res, graphql.ErrorOnPath(ctx, err)
+}
+
+func (ec *executionContext) marshalOSpawnHostStatusActions2ᚖgithubᚗcomᚋevergreenᚑciᚋevergreenᚋgraphqlᚐSpawnHostStatusActions(ctx context.Context, sel ast.SelectionSet, v *SpawnHostStatusActions) graphql.Marshaler {
+	if v == nil {
+		return graphql.Null
+	}
+	return v
+}
+
 func (ec *executionContext) marshalOSpruceConfig2ᚖgithubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐAPIAdminSettings(ctx context.Context, sel ast.SelectionSet, v *model.APIAdminSettings) graphql.Marshaler {
 	if v == nil {
 		return graphql.Null
@@ -94428,6 +94165,14 @@ func (ec *executionContext) marshalOUpdateParsleySettingsPayload2ᚖgithubᚗcom
 		return graphql.Null
 	}
 	return ec._UpdateParsleySettingsPayload(ctx, sel, v)
+}
+
+func (ec *executionContext) unmarshalOUpdateSpawnHostStatusInput2ᚖgithubᚗcomᚋevergreenᚑciᚋevergreenᚋgraphqlᚐUpdateSpawnHostStatusInput(ctx context.Context, v interface{}) (*UpdateSpawnHostStatusInput, error) {
+	if v == nil {
+		return nil, nil
+	}
+	res, err := ec.unmarshalInputUpdateSpawnHostStatusInput(ctx, v)
+	return &res, graphql.ErrorOnPath(ctx, err)
 }
 
 func (ec *executionContext) marshalOUpstreamProject2ᚖgithubᚗcomᚋevergreenᚑciᚋevergreenᚋgraphqlᚐUpstreamProject(ctx context.Context, sel ast.SelectionSet, v *UpstreamProject) graphql.Marshaler {

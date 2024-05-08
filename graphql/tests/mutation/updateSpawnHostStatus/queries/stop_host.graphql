@@ -1,0 +1,12 @@
+mutation {
+  updateSpawnHostStatus(
+    updateSpawnHostStatusInput: {
+      hostId: "i-085085e236d598a60",
+      action: STOP,
+      shouldKeepOff: true
+    }
+  ) {
+    id
+    status
+  }
+}

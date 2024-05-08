@@ -3,6 +3,7 @@ package units
 import (
 	"context"
 	"fmt"
+	"time"
 
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/model/event"
@@ -19,6 +20,13 @@ import (
 const (
 	hostSetupScriptJobName = "host-setup-script"
 	setupScriptRetryLimit  = 5
+
+	// maxSpawnHostSetupScriptCheckDuration is the total amount of time that the
+	// spawn host setup script job can poll to see if the task data is loaded.
+	maxSpawnHostSetupScriptCheckDuration = 10 * time.Minute
+	// maxSpawnHostSetupScriptDuration is the total amount of time that the
+	// spawn host setup script can run after task data is loaded.
+	maxSpawnHostSetupScriptDuration = 30 * time.Minute
 )
 
 func init() {
@@ -52,12 +60,14 @@ func NewHostSetupScriptJob(env evergreen.Environment, h *host.Host) amboy.Job {
 	j.env = env
 	j.host = h
 	j.HostID = h.Id
-	j.SetPriority(1)
 	j.SetScopes([]string{fmt.Sprintf("%s.%s", hostSetupScriptJobName, h.Id)})
 	j.SetEnqueueAllScopes(true)
 	j.UpdateRetryInfo(amboy.JobRetryOptions{
 		Retryable:   utility.TruePtr(),
 		MaxAttempts: utility.ToIntPtr(setupScriptRetryLimit),
+	})
+	j.SetTimeInfo(amboy.JobTimeInfo{
+		MaxTime: maxSpawnHostSetupScriptCheckDuration + maxSpawnHostSetupScriptDuration,
 	})
 	j.SetID(fmt.Sprintf("%s.%s", hostSetupScriptJobName, j.HostID))
 	return j
@@ -100,7 +110,9 @@ func (j *hostSetupScriptJob) Run(ctx context.Context) {
 	}
 
 	if j.host.ProvisionOptions.TaskId != "" {
-		if err := j.host.CheckTaskDataFetched(ctx, j.env); err != nil {
+		checkCtx, checkCancel := context.WithTimeout(ctx, maxSpawnHostSetupScriptCheckDuration)
+		defer checkCancel()
+		if err := j.host.CheckTaskDataFetched(checkCtx, j.env); err != nil {
 			j.AddRetryableError(errors.Wrap(err, "checking if task data is fetched yet"))
 			return
 		}
@@ -112,10 +124,13 @@ func (j *hostSetupScriptJob) Run(ctx context.Context) {
 }
 
 func runSpawnHostSetupScript(ctx context.Context, env evergreen.Environment, h *host.Host) error {
+	timeoutCtx, timeoutCancel := context.WithTimeout(ctx, maxSpawnHostSetupScriptDuration)
+	defer timeoutCancel()
+
 	script := fmt.Sprintf("cd %s\n%s", h.Distro.HomeDir(), h.ProvisionOptions.SetupScript)
 	ts := utility.RoundPartOfMinute(0).Format(TSFormat)
 	j := NewHostExecuteJob(env, *h, script, false, "", ts)
-	j.Run(ctx)
+	j.Run(timeoutCtx)
 
 	return errors.Wrapf(j.Error(), "running setup script for spawn host")
 }

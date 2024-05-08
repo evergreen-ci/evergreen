@@ -373,7 +373,13 @@ func (e *envState) initDB(ctx context.Context, settings DBSettings, tracer trace
 		SetConnectTimeout(5 * time.Second).
 		SetMonitor(apm.NewMonitor(apm.WithCommandAttributeDisabled(false), apm.WithCommandAttributeTransformer(redactSensitiveCollections)))
 
-	if settings.AWSAuthEnabled {
+	// TODO (DEVPROD-6951): remove static auth once IRSA auth is reliable again.
+	if settings.Username != "" && settings.Password != "" {
+		opts.SetAuth(options.Credential{
+			Username: settings.Username,
+			Password: settings.Password,
+		})
+	} else if settings.AWSAuthEnabled {
 		opts.SetAuth(options.Credential{
 			AuthMechanism: awsAuthMechanism,
 			AuthSource:    mongoExternalAuthSource,
@@ -406,7 +412,13 @@ func (e *envState) createRemoteQueues(ctx context.Context, tracer trace.Tracer) 
 		SetWriteConcern(e.settings.Database.WriteConcernSettings.Resolve()).
 		SetMonitor(apm.NewMonitor(apm.WithCommandAttributeDisabled(false)))
 
-	if e.settings.Database.AWSAuthEnabled {
+	// TODO (DEVPROD-6951): remove static auth once IRSA auth is reliable again.
+	if e.settings.Database.Username != "" && e.settings.Database.Password != "" {
+		opts.SetAuth(options.Credential{
+			Username: e.settings.Database.Username,
+			Password: e.settings.Database.Password,
+		})
+	} else if e.settings.Database.AWSAuthEnabled {
 		opts.SetAuth(options.Credential{
 			AuthMechanism: awsAuthMechanism,
 			AuthSource:    mongoExternalAuthSource,
@@ -1077,17 +1089,8 @@ type BuildBaronSettings struct {
 }
 
 type AnnotationsSettings struct {
-	// a list of jira fields the user wants to display in addition to state assignee and priority
-	JiraCustomFields []JiraField `mapstructure:"jira_custom_fields" bson:"jira_custom_fields" json:"jira_custom_fields" yaml:"jira_custom_fields"`
 	// the endpoint that the user would like to send data to when the file ticket button is clicked
 	FileTicketWebhook WebHook `mapstructure:"web_hook" bson:"web_hook" json:"web_hook" yaml:"file_ticket_webhook"`
-}
-
-type JiraField struct {
-	// the name that jira calls the field
-	Field string `mapstructure:"field" bson:"field" json:"field" yaml:"field"`
-	// the name the user would like to call it in the UI
-	DisplayText string `mapstructure:"display_text" bson:"display_text" json:"display_text" yaml:"display_text"`
 }
 
 type WebHook struct {

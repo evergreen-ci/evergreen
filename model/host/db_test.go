@@ -558,6 +558,15 @@ func TestFindHostsScheduledToStop(t *testing.T) {
 				require.NoError(t, h.Insert(ctx))
 			}
 
+			oldServiceFlags, err := evergreen.GetServiceFlags(ctx)
+			require.NoError(t, err)
+			newServiceFlags := *oldServiceFlags
+			newServiceFlags.SleepScheduleBetaTestDisabled = true
+			require.NoError(t, evergreen.SetServiceFlags(ctx, newServiceFlags))
+			defer func() {
+				assert.NoError(t, evergreen.SetServiceFlags(ctx, *oldServiceFlags))
+			}()
+
 			foundHosts, err := FindHostsScheduledToStop(ctx)
 			require.NoError(t, err)
 			assert.Len(t, foundHosts, len(tCase.expectedHosts))
@@ -772,6 +781,15 @@ func TestFindHostsScheduledToStart(t *testing.T) {
 				require.NoError(t, h.Insert(ctx))
 			}
 
+			oldServiceFlags, err := evergreen.GetServiceFlags(ctx)
+			require.NoError(t, err)
+			newServiceFlags := *oldServiceFlags
+			newServiceFlags.SleepScheduleBetaTestDisabled = true
+			require.NoError(t, evergreen.SetServiceFlags(ctx, newServiceFlags))
+			defer func() {
+				assert.NoError(t, evergreen.SetServiceFlags(ctx, *oldServiceFlags))
+			}()
+
 			foundHosts, err := FindHostsScheduledToStart(ctx)
 			require.NoError(t, err)
 			assert.Len(t, foundHosts, len(tCase.expectedHosts))
@@ -782,57 +800,86 @@ func TestFindHostsScheduledToStart(t *testing.T) {
 	}
 }
 
-func TestCountRunningStatusHosts(t *testing.T) {
+func TestCountHostsCanRunTasks(t *testing.T) {
 	assert.NoError(t, db.ClearCollections(Collection))
 	d1 := distro.Distro{
 		Id: "d1",
 	}
 	h1 := Host{
-		Id:     "h1",
-		Distro: d1,
-		Status: evergreen.HostRunning,
+		Id:        "h1",
+		Distro:    d1,
+		Status:    evergreen.HostRunning,
+		StartedBy: evergreen.User,
 	}
 	h2 := Host{
-		Id:     "h2",
-		Distro: d1,
-		Status: evergreen.HostTerminated,
+		Id:        "h2",
+		Distro:    d1,
+		Status:    evergreen.HostTerminated,
+		StartedBy: evergreen.User,
 	}
 	h3 := Host{
-		Id:     "h3",
-		Distro: d1,
-		Status: evergreen.HostStopping,
+		Id:        "h3",
+		Distro:    d1,
+		Status:    evergreen.HostStopping,
+		StartedBy: evergreen.User,
 	}
 	h4 := Host{
-		Id:     "h4",
-		Distro: d1,
-		Status: evergreen.HostRunning,
+		Id:        "h4",
+		Distro:    d1,
+		Status:    evergreen.HostRunning,
+		StartedBy: "testuser",
 	}
 	h5 := Host{
-		Id:     "h5",
-		Distro: d1,
-		Status: evergreen.HostBuilding,
+		Id:        "h5",
+		Distro:    d1,
+		Status:    evergreen.HostBuilding,
+		StartedBy: evergreen.User,
 	}
 	h6 := Host{
-		Id:     "h6",
-		Distro: d1,
-		Status: evergreen.HostProvisionFailed,
+		Id:        "h6",
+		Distro:    d1,
+		Status:    evergreen.HostProvisionFailed,
+		StartedBy: evergreen.User,
 	}
 	h7 := Host{
-		Id:     "h7",
-		Distro: d1,
-		Status: evergreen.HostStopped,
+		Id:        "h7",
+		Distro:    d1,
+		Status:    evergreen.HostStopped,
+		StartedBy: evergreen.User,
 	}
 	h8 := Host{
-		Id:     "h8",
-		Distro: d1,
-		Status: evergreen.HostProvisioning,
+		Id:        "h8",
+		Distro:    d1,
+		Status:    evergreen.HostProvisioning,
+		StartedBy: evergreen.User,
+	}
+	h9 := Host{
+		Id: "h9",
+		Distro: distro.Distro{
+			Id: "d1",
+			BootstrapSettings: distro.BootstrapSettings{
+				Method: distro.BootstrapMethodUserData,
+			},
+		},
+		Status:    evergreen.HostStarting,
+		StartedBy: evergreen.User,
+	}
+	h10 := Host{
+		Id: "h10",
+		Distro: distro.Distro{
+			Id: "d1",
+			BootstrapSettings: distro.BootstrapSettings{
+				Method: distro.BootstrapMethodSSH,
+			},
+		},
+		Status:    evergreen.HostStarting,
+		StartedBy: evergreen.User,
 	}
 
-	assert.NoError(t, db.InsertMany(Collection, h1, h2, h3, h4, h5, h6, h7, h8))
+	assert.NoError(t, db.InsertMany(Collection, h1, h2, h3, h4, h5, h6, h7, h8, h9, h10))
 
 	ctx := context.TODO()
-	count, err := CountRunningStatusHosts(ctx, "d1")
-	assert.NoError(t, err)
+	count, err := CountHostsCanRunTasks(ctx, "d1")
+	require.NoError(t, err)
 	assert.Equal(t, 2, count)
-
 }

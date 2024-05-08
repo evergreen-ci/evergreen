@@ -305,6 +305,18 @@ func (r *mutationResolver) EnqueuePatch(ctx context.Context, patchID string, com
 		return nil, InternalServerError.Send(ctx, fmt.Sprintf("error getting patch '%s'", patchID))
 	}
 
+	projectID := utility.FromStringPtr(existingPatch.ProjectId)
+	proj, err := data.FindProjectById(projectID, false, false)
+	if err != nil {
+		return nil, InternalServerError.Send(ctx, fmt.Sprintf("error getting project '%s': %s", projectID, err.Error()))
+	}
+	if proj == nil {
+		return nil, ResourceNotFound.Send(ctx, fmt.Sprintf("project '%s' not found", projectID))
+	}
+	if proj.CommitQueue.MergeQueue == model.MergeQueueGitHub {
+		return nil, Forbidden.Send(ctx, "Can't enqueue patches for projects with GitHub merge queue. Click the merge button on the PR instead.")
+	}
+
 	patch, err := existingPatch.ToService()
 	if err != nil {
 		return nil, InternalServerError.Send(ctx, fmt.Sprintf("converting APIPatch to patch '%s'", patchID))
@@ -852,8 +864,16 @@ func (r *mutationResolver) RemoveVolume(ctx context.Context, volumeID string) (b
 }
 
 // UpdateSpawnHostStatus is the resolver for the updateSpawnHostStatus field.
-func (r *mutationResolver) UpdateSpawnHostStatus(ctx context.Context, hostID string, action SpawnHostStatusActions) (*restModel.APIHost, error) {
-	h, err := host.FindOneByIdOrTag(ctx, hostID)
+func (r *mutationResolver) UpdateSpawnHostStatus(ctx context.Context, hostID *string, action *SpawnHostStatusActions, updateSpawnHostStatusInput *UpdateSpawnHostStatusInput) (*restModel.APIHost, error) {
+	shouldKeepOff := false
+	// TODO: Use input object throughout resolver once deprecated fields are removed
+	if updateSpawnHostStatusInput != nil {
+		hostID = &updateSpawnHostStatusInput.HostID
+		action = &updateSpawnHostStatusInput.Action
+		shouldKeepOff = utility.FromBoolPtr(updateSpawnHostStatusInput.ShouldKeepOff)
+
+	}
+	h, err := host.FindOneByIdOrTag(ctx, *hostID)
 	if err != nil {
 		return nil, ResourceNotFound.Send(ctx, fmt.Sprintf("Error finding host by id: %s", err))
 	}
@@ -865,11 +885,11 @@ func (r *mutationResolver) UpdateSpawnHostStatus(ctx context.Context, hostID str
 	}
 
 	var httpStatus int
-	switch action {
+	switch *action {
 	case SpawnHostStatusActionsStart:
 		httpStatus, err = data.StartSpawnHost(ctx, env, usr, h)
 	case SpawnHostStatusActionsStop:
-		httpStatus, err = data.StopSpawnHost(ctx, env, usr, h, false)
+		httpStatus, err = data.StopSpawnHost(ctx, env, usr, h, shouldKeepOff)
 	case SpawnHostStatusActionsTerminate:
 		httpStatus, err = data.TerminateSpawnHost(ctx, env, usr, h)
 	default:

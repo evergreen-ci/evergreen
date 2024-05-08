@@ -495,13 +495,3 @@ func (e *APIExpansion) ToService() distro.Expansion {
 
 	return d
 }
-
-// APIDistroScriptOptions provides a model to execute scripts on hosts in a
-// distro.
-type APIDistroScriptOptions struct {
-	Script            string `json:"script"`
-	IncludeTaskHosts  bool   `json:"include_task_hosts"`
-	IncludeSpawnHosts bool   `json:"include_spawn_hosts"`
-	Sudo              bool   `json:"sudo"`
-	SudoUser          string `json:"sudo_user"`
-}

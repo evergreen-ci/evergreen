@@ -127,6 +127,7 @@ func (h *hostModifyHandler) Run(ctx context.Context) gimlet.Responder {
 
 	// Validate host modify request
 	catcher := grip.NewBasicCatcher()
+	catcher.Wrap(checkTemporaryExemption(foundHost, h.options.AddTemporaryExemptionHours), "checking temporary exemption")
 	if len(h.options.AddInstanceTags) > 0 || len(h.options.DeleteInstanceTags) > 0 {
 		catcher.Add(checkInstanceTagsCanBeModified(foundHost, h.options.AddInstanceTags, h.options.DeleteInstanceTags))
 	}
@@ -158,6 +159,25 @@ func (h *hostModifyHandler) Run(ctx context.Context) gimlet.Responder {
 	}
 
 	return gimlet.NewJSONResponse(struct{}{})
+}
+
+// checkTemporaryExemption validates whether it's allowed to extend the
+// temporary exemption from the sleep schedule by the given number of hours.
+func checkTemporaryExemption(h *host.Host, hoursToAdd int) error {
+	if hoursToAdd == 0 {
+		return nil
+	}
+
+	extendBy := time.Duration(hoursToAdd) * time.Hour
+	_, err := h.GetTemporaryExemption(extendBy)
+	if err != nil {
+		return gimlet.ErrorResponse{
+			StatusCode: http.StatusBadRequest,
+			Message:    err.Error(),
+		}
+	}
+
+	return nil
 }
 
 // checkInstanceTagsCanBeModified checks whether the tags to be modified allow modifications.

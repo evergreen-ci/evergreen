@@ -106,8 +106,3 @@ func (s ParserProjectDBStorage) FindOneByIDWithFields(_ context.Context, id stri
 func (s ParserProjectDBStorage) UpsertOne(ctx context.Context, pp *ParserProject) error {
 	return parserProjectUpsertOne(bson.M{ParserProjectIdKey: pp.Id}, pp)
 }
-
-// Close is a no-op.
-func (s ParserProjectDBStorage) Close(ctx context.Context) error {
-	return nil
-}
