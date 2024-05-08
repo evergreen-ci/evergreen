@@ -1089,17 +1089,8 @@ type BuildBaronSettings struct {
 }
 
 type AnnotationsSettings struct {
-	// a list of jira fields the user wants to display in addition to state assignee and priority
-	JiraCustomFields []JiraField `mapstructure:"jira_custom_fields" bson:"jira_custom_fields" json:"jira_custom_fields" yaml:"jira_custom_fields"`
 	// the endpoint that the user would like to send data to when the file ticket button is clicked
 	FileTicketWebhook WebHook `mapstructure:"web_hook" bson:"web_hook" json:"web_hook" yaml:"file_ticket_webhook"`
-}
-
-type JiraField struct {
-	// the name that jira calls the field
-	Field string `mapstructure:"field" bson:"field" json:"field" yaml:"field"`
-	// the name the user would like to call it in the UI
-	DisplayText string `mapstructure:"display_text" bson:"display_text" json:"display_text" yaml:"display_text"`
 }
 
 type WebHook struct {

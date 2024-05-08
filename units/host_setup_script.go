@@ -20,6 +20,13 @@ import (
 const (
 	hostSetupScriptJobName = "host-setup-script"
 	setupScriptRetryLimit  = 5
+
+	// maxSpawnHostSetupScriptCheckDuration is the total amount of time that the
+	// spawn host setup script job can poll to see if the task data is loaded.
+	maxSpawnHostSetupScriptCheckDuration = 10 * time.Minute
+	// maxSpawnHostSetupScriptDuration is the total amount of time that the
+	// spawn host setup script can run after task data is loaded.
+	maxSpawnHostSetupScriptDuration = 30 * time.Minute
 )
 
 func init() {
@@ -58,6 +65,9 @@ func NewHostSetupScriptJob(env evergreen.Environment, h *host.Host) amboy.Job {
 	j.UpdateRetryInfo(amboy.JobRetryOptions{
 		Retryable:   utility.TruePtr(),
 		MaxAttempts: utility.ToIntPtr(setupScriptRetryLimit),
+	})
+	j.SetTimeInfo(amboy.JobTimeInfo{
+		MaxTime: maxSpawnHostSetupScriptCheckDuration + maxSpawnHostSetupScriptDuration,
 	})
 	j.SetID(fmt.Sprintf("%s.%s", hostSetupScriptJobName, j.HostID))
 	return j
@@ -100,7 +110,9 @@ func (j *hostSetupScriptJob) Run(ctx context.Context) {
 	}
 
 	if j.host.ProvisionOptions.TaskId != "" {
-		if err := j.host.CheckTaskDataFetched(ctx, j.env); err != nil {
+		checkCtx, checkCancel := context.WithTimeout(ctx, maxSpawnHostSetupScriptCheckDuration)
+		defer checkCancel()
+		if err := j.host.CheckTaskDataFetched(checkCtx, j.env); err != nil {
 			j.AddRetryableError(errors.Wrap(err, "checking if task data is fetched yet"))
 			return
 		}
@@ -110,8 +122,6 @@ func (j *hostSetupScriptJob) Run(ctx context.Context) {
 	// guarantee that the script is idempotent.
 	j.AddError(errors.Wrap(runSpawnHostSetupScript(ctx, j.env, j.host), "executing spawn host setup script"))
 }
-
-const maxSpawnHostSetupScriptDuration = 30 * time.Minute
 
 func runSpawnHostSetupScript(ctx context.Context, env evergreen.Environment, h *host.Host) error {
 	timeoutCtx, timeoutCancel := context.WithTimeout(ctx, maxSpawnHostSetupScriptDuration)

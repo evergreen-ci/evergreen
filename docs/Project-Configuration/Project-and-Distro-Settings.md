@@ -526,8 +526,6 @@ Options:
 
 -   Webhook: A custom setup for creating failure tickets,
     specifying an endpoint an optional secret.
--   JIRA custom fields: Custom field and display test allowing for the
-    creation of a specific field when displaying jira links.
 
 
 ### Metadata Links
@@ -753,7 +751,4 @@ task_annotation_settings:
   web_hook:
     endpoint: "/api/route"
     secret: ""
-  jira_custom_fields:
-  - field: "created_by"
-    display_text: "owner"
 ```

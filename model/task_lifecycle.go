@@ -24,6 +24,7 @@ import (
 	"github.com/pkg/errors"
 	"go.mongodb.org/mongo-driver/bson"
 	"go.opentelemetry.io/otel/attribute"
+	"go.opentelemetry.io/otel/trace"
 )
 
 type StatusChanges struct {
@@ -1913,7 +1914,8 @@ func UpdateBuildAndVersionStatusForTask(ctx context.Context, t *task.Task) error
 			if err != nil {
 				return errors.Wrap(err, "getting context for tracing")
 			}
-			_, span := tracer.Start(traceContext, "version-completion")
+			// use a new root span so that it logs it every time instead of only logging a small sample set as an http call span
+			_, span := tracer.Start(traceContext, "version-completion", trace.WithNewRoot())
 			defer span.End()
 
 			return nil
@@ -1953,7 +1955,7 @@ func UpdateBuildAndVersionStatusForTask(ctx context.Context, t *task.Task) error
 			if err != nil {
 				return errors.Wrap(err, "getting context for tracing")
 			}
-			_, span := tracer.Start(traceContext, "version-completion")
+			_, span := tracer.Start(traceContext, "version-completion", trace.WithNewRoot())
 			defer span.End()
 		}
 

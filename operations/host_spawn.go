@@ -171,15 +171,16 @@ func hostCreate() cli.Command {
 
 func hostModify() cli.Command {
 	const (
-		addTagFlagName       = "tag"
-		deleteTagFlagName    = "delete-tag"
-		instanceTypeFlagName = "type"
-		displayNameFlagName  = "name"
-		noExpireFlagName     = "no-expire"
-		expireFlagName       = "expire"
-		extendFlagName       = "extend"
-		addSSHKeyFlag        = "add-ssh-key"
-		addSSHKeyNameFlag    = "add-ssh-key-name"
+		addTagFlagName             = "tag"
+		deleteTagFlagName          = "delete-tag"
+		instanceTypeFlagName       = "type"
+		displayNameFlagName        = "name"
+		noExpireFlagName           = "no-expire"
+		expireFlagName             = "expire"
+		extendFlagName             = "extend"
+		temporaryExemptionFlagName = "extend-temporary-exemption"
+		addSSHKeyFlag              = "add-ssh-key"
+		addSSHKeyNameFlag          = "add-ssh-key-name"
 	)
 
 	return cli.Command{
@@ -206,6 +207,10 @@ func hostModify() cli.Command {
 				Name:  extendFlagName,
 				Usage: "extend the expiration of a spawn host by `HOURS`",
 			},
+			cli.IntFlag{
+				Name:  temporaryExemptionFlagName,
+				Usage: "create or extend a temporary exemption from the host's sleep schedule by `HOURS`",
+			},
 			cli.BoolFlag{
 				Name:  noExpireFlagName,
 				Usage: "make host never expire",
@@ -226,7 +231,7 @@ func hostModify() cli.Command {
 		Before: mergeBeforeFuncs(
 			setPlainLogger,
 			requireHostFlag,
-			requireAtLeastOneFlag(addTagFlagName, deleteTagFlagName, instanceTypeFlagName, expireFlagName, noExpireFlagName, extendFlagName, addSSHKeyFlag, addSSHKeyNameFlag),
+			requireAtLeastOneFlag(addTagFlagName, deleteTagFlagName, instanceTypeFlagName, expireFlagName, noExpireFlagName, extendFlagName, temporaryExemptionFlagName, addSSHKeyFlag, addSSHKeyNameFlag),
 			mutuallyExclusiveArgs(false, noExpireFlagName, extendFlagName),
 			mutuallyExclusiveArgs(false, noExpireFlagName, expireFlagName),
 			mutuallyExclusiveArgs(false, addSSHKeyFlag, addSSHKeyNameFlag),
@@ -241,6 +246,7 @@ func hostModify() cli.Command {
 			displayName := c.String(displayNameFlagName)
 			expire := c.Bool(expireFlagName)
 			extension := c.Int(extendFlagName)
+			temporaryExemptionHours := c.Int(temporaryExemptionFlagName)
 			subscriptionType := c.String(subscriptionTypeFlag)
 			publicKeyFile := c.String(addSSHKeyFlag)
 			publicKeyName := c.String(addSSHKeyNameFlag)
@@ -269,13 +275,14 @@ func hostModify() cli.Command {
 			}
 
 			hostChanges := host.HostModifyOptions{
-				AddInstanceTags:    addTags,
-				DeleteInstanceTags: deleteTagSlice,
-				InstanceType:       instanceType,
-				AddHours:           time.Duration(extension) * time.Hour,
-				SubscriptionType:   subscriptionType,
-				NewName:            displayName,
-				AddKey:             publicKey,
+				AddInstanceTags:            addTags,
+				DeleteInstanceTags:         deleteTagSlice,
+				InstanceType:               instanceType,
+				AddHours:                   time.Duration(extension) * time.Hour,
+				AddTemporaryExemptionHours: temporaryExemptionHours,
+				SubscriptionType:           subscriptionType,
+				NewName:                    displayName,
+				AddKey:                     publicKey,
 			}
 
 			if noExpire {

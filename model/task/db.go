@@ -9,7 +9,6 @@ import (
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/apimodels"
 	"github.com/evergreen-ci/evergreen/db"
-	"github.com/evergreen-ci/evergreen/model/annotations"
 	"github.com/evergreen-ci/evergreen/model/distro"
 	"github.com/evergreen-ci/utility"
 	"github.com/mongodb/anser/bsonutil"
@@ -24,8 +23,6 @@ const (
 	Collection    = "tasks"
 	OldCollection = "old_tasks"
 )
-
-var annotationLookupDeprecationTime = time.Date(2024, time.January, 28, 23, 0, 0, 0, time.UTC)
 
 var (
 	ActivatedTasksByDistroIndex = bson.D{
@@ -205,15 +202,7 @@ var (
 			"branches": []bson.M{
 				{
 					"case": bson.M{
-						"$or": []bson.M{
-							{"$eq": []interface{}{"$" + HasAnnotationsKey, true}},
-							// TODO: DEVPROD-3994 remove this case
-							{"$ne": []interface{}{
-								bson.M{
-									"$size": bson.M{"$ifNull": []interface{}{"$annotation_docs", []bson.M{}}},
-								}, 0,
-							}},
-						},
+						"$eq": []interface{}{"$" + HasAnnotationsKey, true},
 					},
 					"then": evergreen.TaskKnownIssue,
 				},
@@ -299,99 +288,6 @@ var (
 				},
 			},
 			"default": "$" + StatusKey,
-		},
-	}
-
-	// AddAnnotations adds the annotations to the task document.
-	// TODO: DEVPROD-3994 remove this pipeline
-	AddAnnotations = []bson.M{
-		{
-			"$facet": bson.M{
-				// We skip annotation lookup for non-failed tasks, because these can't have annotations
-				"not_failed": []bson.M{
-					{
-						"$match": bson.M{
-							StatusKey: bson.M{"$nin": evergreen.TaskFailureStatuses},
-						},
-					},
-				},
-				// for failed tasks, get any annotation that has at least one issue
-				"failed": []bson.M{
-					{
-						"$match": bson.M{
-							StatusKey: bson.M{"$in": evergreen.TaskFailureStatuses},
-						},
-					},
-					{
-						"$lookup": bson.M{
-							"from": annotations.Collection,
-							"let":  bson.M{"task_annotation_id": "$" + IdKey, "task_annotation_execution": "$" + ExecutionKey},
-							"pipeline": []bson.M{
-								{
-									"$match": bson.M{
-										"$expr": bson.M{
-											"$and": []bson.M{
-												{
-													"$eq": []string{"$" + annotations.TaskIdKey, "$$task_annotation_id"},
-												},
-												{
-													"$eq": []string{"$" + annotations.TaskExecutionKey, "$$task_annotation_execution"},
-												},
-												{
-													"$ne": []interface{}{
-														bson.M{
-															"$size": bson.M{"$ifNull": []interface{}{"$" + annotations.IssuesKey, []bson.M{}}},
-														}, 0,
-													},
-												},
-											},
-										},
-									}}},
-							"as": "annotation_docs",
-						},
-					},
-				},
-			},
-		},
-		{"$project": bson.M{
-			"tasks": bson.M{
-				"$setUnion": []string{"$not_failed", "$failed"},
-			}},
-		},
-		{"$unwind": "$tasks"},
-		{"$replaceRoot": bson.M{"newRoot": "$tasks"}},
-	}
-
-	// AddAnnotationsSlowLookup adds the annotations to the task document. This is a slower version of AddAnnotations that does not use a facet and does not run into the 104mb pipeline stage limit.
-	// TODO: DEVPROD-3994 remove this pipeline
-	AddAnnotationsSlowLookup = []bson.M{
-		{
-			"$lookup": bson.M{
-				"from": annotations.Collection,
-				"let":  bson.M{"task_annotation_id": "$" + IdKey, "task_annotation_execution": "$" + ExecutionKey},
-				"pipeline": []bson.M{
-					{
-						"$match": bson.M{
-							"$expr": bson.M{
-								"$and": []bson.M{
-									{
-										"$eq": []string{"$" + annotations.TaskIdKey, "$$task_annotation_id"},
-									},
-									{
-										"$eq": []string{"$" + annotations.TaskExecutionKey, "$$task_annotation_execution"},
-									},
-									{
-										"$ne": []interface{}{
-											bson.M{
-												"$size": bson.M{"$ifNull": []interface{}{"$" + annotations.IssuesKey, []bson.M{}}},
-											}, 0,
-										},
-									},
-								},
-							},
-						}}},
-				"as": "annotation_docs",
-			},
 		},
 	}
 )
@@ -2156,14 +2052,7 @@ func GetTasksByVersion(ctx context.Context, versionID string, opts GetTasksByVer
 
 	env := evergreen.GetEnvironment()
 	cursor, err := env.DB().Collection(Collection).Aggregate(ctx, pipeline)
-
-	// TODO: DEVPROD-3994 Remove this case
 	if err != nil {
-		// If the pipeline stage is too large we should use the slow annotations lookup
-		if db.IsErrorCode(err, db.FacetPipelineStageTooLargeCode) && !opts.UseSlowAnnotationsLookup {
-			opts.UseSlowAnnotationsLookup = true
-			return GetTasksByVersion(ctx, versionID, opts)
-		}
 		return nil, 0, err
 	}
 
@@ -2204,14 +2093,13 @@ func GetTasksByVersion(ctx context.Context, versionID string, opts GetTasksByVer
 }
 
 // GetTaskStatusesByVersion gets all unique task display statuses for a specific version
-func GetTaskStatusesByVersion(ctx context.Context, versionID string, useSlowAnnotationLookup bool) ([]string, error) {
+func GetTaskStatusesByVersion(ctx context.Context, versionID string) ([]string, error) {
 	ctx = utility.ContextWithAttributes(ctx, []attribute.KeyValue{attribute.String(evergreen.AggregationNameOtelAttribute, "GetTaskStatusesByVersion")})
 
 	opts := GetTasksByVersionOptions{
 		FieldsToProject:            []string{DisplayStatusKey},
 		IncludeNeverActivatedTasks: true,
 		IncludeExecutionTasks:      false,
-		UseSlowAnnotationsLookup:   useSlowAnnotationLookup,
 	}
 	pipeline, err := getTasksByVersionPipeline(versionID, opts)
 
@@ -2251,10 +2139,6 @@ func GetTaskStatusesByVersion(ctx context.Context, versionID string, useSlowAnno
 	err = cursor.All(ctx, &results)
 
 	if err != nil {
-		// If the pipeline stage is too large we should use the slow annotations lookup
-		if db.IsErrorCode(err, db.FacetPipelineStageTooLargeCode) && !useSlowAnnotationLookup {
-			return GetTaskStatusesByVersion(ctx, versionID, true)
-		}
 		return nil, err
 	}
 	if len(results) == 0 {
@@ -2348,11 +2232,6 @@ func GetTaskStatsByVersion(ctx context.Context, versionID string, opts GetTasksB
 	env := evergreen.GetEnvironment()
 	cursor, err := env.DB().Collection(Collection).Aggregate(ctx, pipeline)
 	if err != nil {
-		// If the pipeline stage is too large we should use the slow annotations lookup
-		if db.IsErrorCode(err, db.FacetPipelineStageTooLargeCode) && !opts.UseSlowAnnotationsLookup {
-			opts.UseSlowAnnotationsLookup = true
-			return GetTaskStatsByVersion(ctx, versionID, opts)
-		}
 		return nil, errors.Wrap(err, "aggregating task stats for version")
 	}
 	if err := cursor.All(ctx, &taskStats); err != nil {
@@ -2457,11 +2336,6 @@ func GetGroupedTaskStatsByVersion(ctx context.Context, versionID string, opts Ge
 	env := evergreen.GetEnvironment()
 	cursor, err := env.DB().Collection(Collection).Aggregate(ctx, pipeline)
 	if err != nil {
-		// If the pipeline stage is too large we should use the slow annotations lookup
-		if db.IsErrorCode(err, db.FacetPipelineStageTooLargeCode) && !opts.UseSlowAnnotationsLookup {
-			opts.UseSlowAnnotationsLookup = true
-			return GetGroupedTaskStatsByVersion(ctx, versionID, opts)
-		}
 		return nil, errors.Wrap(err, "aggregating task stats")
 	}
 	err = cursor.All(ctx, &result)
@@ -2557,7 +2431,6 @@ func HasMatchingTasks(ctx context.Context, versionID string, opts HasMatchingTas
 		Variants:                   opts.Variants,
 		Statuses:                   opts.Statuses,
 		IncludeNeverActivatedTasks: !opts.IncludeNeverActivatedTasks,
-		UseSlowAnnotationsLookup:   opts.UseSlowAnnotationsLookup,
 	}
 	pipeline, err := getTasksByVersionPipeline(versionID, options)
 	if err != nil {
@@ -2600,7 +2473,6 @@ type GetTasksByVersionOptions struct {
 	IncludeExecutionTasks      bool
 	IncludeNeverActivatedTasks bool // NeverActivated tasks are tasks that lack an activation time
 	BaseVersionID              string
-	UseSlowAnnotationsLookup   bool // In some cases, where there are many tasks, we can hit the 104mb limit on the aggregation pipeline. This flag allows us to use a slower lookup method to avoid this limit.
 }
 
 func getTasksByVersionPipeline(versionID string, opts GetTasksByVersionOptions) ([]bson.M, error) {
@@ -2655,22 +2527,6 @@ func getTasksByVersionPipeline(versionID string, opts GetTasksByVersionOptions) 
 			},
 		}
 		pipeline = append(pipeline, bson.M{"$match": match})
-	}
-
-	// TODO: DEVPROD-3994 Remove this conditional and annotation lookup pipelines
-	// Pull one task, any task associated with this versionID. A task's CreateTime is
-	// derived from the version commit time or the patch creation time, allowing us to treat it
-	// as a proxy for the version creation time.
-	dbTask, err := FindOne(db.Query(bson.M{VersionKey: versionID}).WithFields(CreateTimeKey))
-	if err != nil {
-		return nil, errors.Wrapf(err, "finding one task from version '%s'", versionID)
-	}
-	if dbTask != nil && dbTask.CreateTime.Before(annotationLookupDeprecationTime) {
-		if opts.UseSlowAnnotationsLookup {
-			pipeline = append(pipeline, AddAnnotationsSlowLookup...)
-		} else {
-			pipeline = append(pipeline, AddAnnotations...)
-		}
 	}
 
 	// Add a field for the display status of each task
