@@ -75,12 +75,6 @@
                 "ticketCreateIssueType": ""
               },
               "taskAnnotationSettings": {
-                "jiraCustomFields": [
-                  {
-                    "displayText": "description",
-                    "field": "sample_field"
-                  }
-                ],
                 "fileTicketWebhook": {
                   "endpoint": "endpoint",
                   "secret": "shh"

@@ -1,90 +1,94 @@
 {
-        "project_ref": [
-      {
-        "_id": "mci",
-        "owner_name": "evergreen-ci",
-        "repo_name": "evergreen",
-        "branch_name": "main",
-        "enabled": true,
-        "pr_testing_enabled": false,
-        "commit_queue": {
-          "enabled": false
-        },
-        "github_checks_enabled": true
+  "project_ref": [
+    {
+      "_id": "spruce",
+      "owner_name": "evergreen-ci",
+      "repo_name": "spruce",
+      "branch_name": "main",
+      "enabled": true,
+      "pr_testing_enabled": false,
+      "commit_queue": {
+        "enabled": false
       },
-      {
-        "_id": "mci-copy",
-        "identifier": "some-features-enabled",
-        "owner_name": "evergreen-ci",
-        "repo_name": "evergreen",
-        "branch_name": "main",
-        "enabled": true,
-        "pr_testing_enabled": false,
-        "commit_queue": {
-          "enabled": true
-        },
-        "github_checks_enabled": true
+      "github_checks_enabled": true
+    },
+    {
+      "_id": "spruce-copy",
+      "identifier": "some-features-enabled",
+      "owner_name": "evergreen-ci",
+      "repo_name": "spruce",
+      "branch_name": "main",
+      "enabled": true,
+      "pr_testing_enabled": false,
+      "commit_queue": {
+        "enabled": true
       },
-      {
-        "_id": "not-enabled",
-        "identifier": "not-enabled",
-        "owner_name": "evergreen-ci",
-        "repo_name": "evergreen",
-        "branch_name": "main",
-        "enabled": false,
-        "pr_testing_enabled": true,
-        "commit_queue": {
-          "enabled": true
-        },
-        "github_checks_enabled": true
+      "github_checks_enabled": true
+    },
+    {
+      "_id": "not-enabled",
+      "identifier": "not-enabled",
+      "owner_name": "evergreen-ci",
+      "repo_name": "spruce",
+      "branch_name": "main",
+      "enabled": false,
+      "pr_testing_enabled": true,
+      "commit_queue": {
+        "enabled": true
       },
-      {
-        "_id": "features-not-enabled",
-        "identifier": "features-not-enabled",
-        "owner_name": "evergreen-ci",
-        "repo_name": "evergreen",
-        "branch_name": "main",
-        "enabled": true,
-        "pr_testing_enabled": false,
-        "commit_queue": {
-          "enabled": false
-        },
-        "github_checks_enabled": false
+      "github_checks_enabled": true
+    },
+    {
+      "_id": "features-not-enabled",
+      "identifier": "features-not-enabled",
+      "owner_name": "evergreen-ci",
+      "repo_name": "spruce",
+      "branch_name": "main",
+      "enabled": true,
+      "pr_testing_enabled": false,
+      "commit_queue": {
+        "enabled": false
       },
-      {
-        "_id": "1234",
-        "identifier": "enabled_on_repo",
-        "owner_name": "evergreen-ci",
-        "repo_name": "evergreen",
-        "branch_name": "",
-        "enabled": true,
-        "repo_ref_id": "mci-repo"
+      "github_checks_enabled": false
+    },
+    {
+      "_id": "1234",
+      "identifier": "enabled_on_repo",
+      "owner_name": "evergreen-ci",
+      "repo_name": "spruce",
+      "branch_name": "",
+      "enabled": true,
+      "repo_ref_id": "spruce-repo"
+    },
+    {
+      "_id": "sandbox_project_id",
+      "identifier": "sandbox",
+      "owner_name": "evergreen-ci",
+      "repo_name": "sandbox",
+      "branch_name": "main",
+      "enabled": true,
+      "pr_testing_enabled": true,
+      "commit_queue": {
+        "enabled": true
       },
-      {
-        "_id": "wrong-repo",
-        "identifier": "wrong-repo",
-        "owner_name": "evergreen-ci",
-        "repo_name": "logkeeper",
-        "branch_name": "main",
-        "enabled": true,
-        "pr_testing_enabled": true,
-        "commit_queue": {
-          "enabled": true
-        },
-        "github_checks_enabled": true
-      }
-    ],
-    "repo_ref": [
-      {
-        "_id": "mci-repo",
-        "owner_name": "evergreen-ci",
-        "repo_name": "evergreen",
-        "branch_name": "main",
-        "pr_testing_enabled": true,
-        "commit_queue": {
-          "enabled": true
-        },
-        "github_checks_enabled": true
-      }
-    ]
+      "github_checks_enabled": true
+    },
+    {
+      "_id": "evergreen",
+      "identifier": "evergreen"
+    }
+  ],
+  "repo_ref": [
+    {
+      "_id": "spruce-repo",
+      "owner_name": "evergreen-ci",
+      "repo_name": "spruce",
+      "branch_name": "main",
+      "pr_testing_enabled": true,
+      "commit_queue": {
+        "enabled": true
+      },
+      "github_checks_enabled": true
+    }
+  ]
 }

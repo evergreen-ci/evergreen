@@ -23,7 +23,7 @@
       "repo_name": "",
       "branch_name": "main",
       "repo_kind": "",
-      "identifier": "evergreen",
+      "identifier": "spruce",
       "remote": false,
       "remote_path": "",
       "r": "github_pull_request",
@@ -146,6 +146,12 @@
         "author_uid": 15262143,
         "merge_commit_sha": ""
       }
+    }
+  ],
+  "project_ref": [
+    {
+      "_id": "spruce",
+      "identifier": "spruce"
     }
   ]
 }

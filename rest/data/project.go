@@ -73,9 +73,12 @@ func RequestS3Creds(ctx context.Context, projectIdentifier, userEmail string) er
 		Project:     settings.ProjectCreation.JiraProject,
 		Summary:     summary,
 		Description: description,
-		Components:  []string{"Access"},
 		Reporter:    userEmail,
+		Fields: map[string]interface{}{
+			evergreen.DevProdServiceFieldName: evergreen.DevProdJiraServiceField,
+		},
 	}
+
 	sub := event.Subscriber{
 		Type: event.JIRAIssueSubscriberType,
 		Target: event.JIRAIssueSubscriber{

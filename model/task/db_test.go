@@ -1023,7 +1023,11 @@ func TestGetTasksByVersionExecTasks(t *testing.T) {
 
 	ctx := context.TODO()
 	// execution tasks have been filtered outs
-	opts := GetTasksByVersionOptions{}
+	opts := GetTasksByVersionOptions{
+		Sorts: []TasksSortOrder{
+			{Key: IdKey, Order: 1},
+		},
+	}
 	tasks, count, err := GetTasksByVersion(ctx, "v1", opts)
 	assert.NoError(t, err)
 	assert.Equal(t, count, 2)
@@ -1068,11 +1072,12 @@ func TestGetTasksByVersionAnnotations(t *testing.T) {
 		DisplayTaskId: utility.ToStringPtr(""),
 	}
 	t2 := Task{
-		Id:            "t2",
-		Version:       "v1",
-		Execution:     3,
-		Status:        evergreen.TaskFailed,
-		DisplayTaskId: utility.ToStringPtr(""),
+		Id:             "t2",
+		Version:        "v1",
+		Execution:      3,
+		Status:         evergreen.TaskFailed,
+		DisplayTaskId:  utility.ToStringPtr(""),
+		HasAnnotations: true,
 	}
 	t3 := Task{
 		Id:            "t3",
@@ -1082,16 +1087,6 @@ func TestGetTasksByVersionAnnotations(t *testing.T) {
 		DisplayTaskId: utility.ToStringPtr(""),
 	}
 	assert.NoError(t, db.InsertMany(Collection, t1, t2, t3))
-
-	a := annotations.TaskAnnotation{
-		Id:            "myAnnotation",
-		TaskId:        t2.Id,
-		TaskExecution: t2.Execution,
-		Issues: []annotations.IssueLink{
-			{IssueKey: "EVG-1212"},
-		},
-	}
-	assert.NoError(t, a.Upsert())
 
 	ctx := context.TODO()
 
@@ -1302,7 +1297,7 @@ func TestGetTaskStatusesByVersion(t *testing.T) {
 	}
 	assert.NoError(t, db.InsertMany(Collection, t1, t2, t3, t4))
 	ctx := context.TODO()
-	tasks, err := GetTaskStatusesByVersion(ctx, "v1", false)
+	tasks, err := GetTaskStatusesByVersion(ctx, "v1")
 	assert.NoError(t, err)
 	assert.Len(t, tasks, 4)
 	assert.Equal(t, []string{evergreen.TaskFailed, evergreen.TaskSetupFailed, evergreen.TaskStarted, evergreen.TaskSucceeded}, tasks)

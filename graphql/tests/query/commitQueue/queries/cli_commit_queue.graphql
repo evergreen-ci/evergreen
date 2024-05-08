@@ -1,5 +1,5 @@
 {
-  commitQueue(projectIdentifier: "mongodb-mongo-master") {
+  commitQueue(projectIdentifier: "sandbox") {
     projectId
     owner
     repo

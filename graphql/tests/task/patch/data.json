@@ -4,6 +4,7 @@
       "_id": {
         "$oid": "5e4ff3abe3c3317e352062e4"
       },
+      "branch": "spruce",
       "patch_number": 1234,
       "author": "arjun",
       "githash": "ca82a6dff817ec66f44342007202690a93763949"
@@ -17,7 +18,14 @@
       "host_id": "i-0bb70e2ac4c1a9ac8",
       "distro": "archlinux-small",
       "r": "github_pull_request",
-      "execution": 0
+      "execution": 0,
+      "branch": "spruce"
+    }
+  ],
+  "project_ref": [
+    {
+      "_id": "spruce",
+      "identifier": "spruce"
     }
   ]
 }

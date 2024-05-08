@@ -57,5 +57,11 @@
       },
       "is_base": true
     }
+  ],
+  "project_ref": [
+    {
+      "_id": "spruce",
+      "identifier": "spruce"
+    }
   ]
 }

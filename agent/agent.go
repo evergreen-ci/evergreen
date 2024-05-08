@@ -48,9 +48,6 @@ type Agent struct {
 	jasper        jasper.Manager
 	opts          Options
 	defaultLogger send.Sender
-	// ec2InstanceID is the instance ID from the instance metadata. This only
-	// applies to EC2 hosts.
-	ec2InstanceID string
 	// setEndTaskResp sets the explicit task status, which can be set by the
 	// user to override the final task status that would otherwise be used.
 	setEndTaskResp      func(*triggerEndTaskResp)
@@ -82,6 +79,19 @@ type Options struct {
 	// SendTaskLogsToGlobalSender indicates whether task logs should also be
 	// sent to the global agent file log.
 	SendTaskLogsToGlobalSender bool
+}
+
+// AddLoggableInfo is a helper to add relevant information about the agent
+// runtime to the log message. This is typically to make high priority error
+// logs more informative.
+func (o *Options) AddLoggableInfo(msg message.Fields) message.Fields {
+	if o.HostID != "" {
+		msg["host_id"] = o.HostID
+	}
+	if o.PodID != "" {
+		msg["pod_id"] = o.PodID
+	}
+	return msg
 }
 
 type timeoutInfo struct {
@@ -129,7 +139,12 @@ func newWithCommunicator(ctx context.Context, opts Options, comm client.Communic
 	}
 
 	setupData, err := comm.GetAgentSetupData(ctx)
-	grip.Alert(errors.Wrap(err, "getting agent setup data"))
+	if err != nil {
+		msg := opts.AddLoggableInfo(message.Fields{
+			"message": "error getting agent setup data",
+		})
+		grip.Alert(message.WrapError(err, msg))
+	}
 	if setupData != nil {
 		opts.SetupData = *setupData
 		opts.TraceCollectorEndpoint = setupData.TraceCollectorEndpoint
@@ -202,29 +217,6 @@ func (a *Agent) Start(ctx context.Context) error {
 	return errors.Wrap(a.loop(ctx), "executing main agent loop")
 }
 
-// populateEC2InstanceID sets the agent's instance ID based on the EC2 instance
-// metadata service if it's an EC2 instance. If it's not an EC2 instance or the
-// EC2 instance ID has already been populated, this is a no-op.
-// TODO (DEVPROD-6752): remove this logic once agents have rolled over to using
-// the new route.
-func (a *Agent) populateEC2InstanceID(ctx context.Context) {
-	if a.ec2InstanceID != "" || !utility.StringSliceContains(evergreen.ProviderEc2Type, a.opts.CloudProvider) {
-		return
-	}
-
-	instanceID, err := agentutil.GetEC2InstanceID(ctx)
-	if err != nil {
-		grip.Error(message.WrapError(err, message.Fields{
-			"message":        "could not get EC2 instance ID",
-			"host_id":        a.opts.HostID,
-			"cloud_provider": a.opts.CloudProvider,
-		}))
-		return
-	}
-
-	a.ec2InstanceID = instanceID
-}
-
 // loop is responsible for continually polling for new tasks and processing them.
 // and then tries again.
 func (a *Agent) loop(ctx context.Context) error {
@@ -264,7 +256,6 @@ func (a *Agent) loop(ctx context.Context) error {
 				return errors.Wrap(err, "connecting to Cedar")
 			}
 
-			a.populateEC2InstanceID(ctx)
 			var previousTaskGroup string
 			if tc.taskConfig != nil && tc.taskConfig.TaskGroup != nil {
 				previousTaskGroup = tc.taskConfig.TaskGroup.Name
@@ -272,7 +263,6 @@ func (a *Agent) loop(ctx context.Context) error {
 			nextTask, err := a.comm.GetNextTask(ctx, &apimodels.GetNextTaskDetails{
 				TaskGroup:     previousTaskGroup,
 				AgentRevision: evergreen.AgentVersion,
-				EC2InstanceID: a.ec2InstanceID,
 			})
 			if err != nil {
 				return errors.Wrap(err, "getting next task")
@@ -1247,17 +1237,11 @@ func (a *Agent) logPanic(tc *taskContext, pErr, originalErr error, op string) er
 	catcher := grip.NewBasicCatcher()
 	catcher.Add(originalErr)
 	catcher.Add(pErr)
-	logMsg := message.Fields{
+	logMsg := a.opts.AddLoggableInfo(message.Fields{
 		"message":   "programmatic error: Evergreen agent hit panic",
 		"operation": op,
-	}
+	})
 	if tc.logger != nil && !tc.logger.Closed() {
-		if a.opts.HostID != "" {
-			logMsg["host_id"] = a.opts.HostID
-		}
-		if a.opts.PodID != "" {
-			logMsg["pod_id"] = a.opts.PodID
-		}
 		tc.logger.Task().Error(logMsg)
 	}
 	logMsg["task_id"] = tc.task.ID

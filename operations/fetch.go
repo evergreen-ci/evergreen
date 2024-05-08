@@ -459,17 +459,23 @@ func getUrlsChannel(rc *legacyClient, seed *service.RestTask, shallow bool) (cha
 	return urls, nil
 }
 
-func fileNameWithIndex(filename string, index int) string {
+func fileNameWithIndex(fullFilepath string, index int) string {
 	if index-1 == 0 {
-		return filename
+		return fullFilepath
 	}
-	parts := strings.Split(filename, ".")
-	// If the file has no extension, just append the number with _
-	if len(parts) == 1 {
-		return fmt.Sprintf("%s_(%d)", filename, index-1)
+
+	dir, filename := filepath.Split(fullFilepath)
+	filenameParts := strings.Split(filename, ".")
+	if len(filenameParts) == 1 {
+		// If the file has no extension, just append _N (index) to the filename.
+		indexedFilename := fmt.Sprintf("%s_(%d)", filename, index-1)
+		return filepath.Join(dir, indexedFilename)
 	}
-	// If the file has an extension, add _N (index) just before the extension.
-	return fmt.Sprintf("%s_(%d).%s", parts[0], index-1, strings.Join(parts[1:], "."))
+
+	// If the file has an extension (or multiple extensions), add _N (index)
+	// before the extensions begin.
+	indexedFilename := fmt.Sprintf("%s_(%d).%s", filenameParts[0], index-1, strings.Join(filenameParts[1:], "."))
+	return filepath.Join(dir, indexedFilename)
 }
 
 // truncateFilename truncates the filename (minus any extensions) so the entire filename length is less than the max
@@ -525,7 +531,7 @@ func downloadUrls(root string, urls chan artifactDownload, workers int) error {
 				folder := filepath.Join(root, u.path)
 				// As a backup plan in case we can't figure out the file name from the URL,
 				// the file name will just be named after the worker ID and file index.
-				justFile := fmt.Sprintf("%v_%v", workerId, counter)
+				justFile := fmt.Sprintf("%d_%d", workerId, counter)
 				parsedUrl, err := url.Parse(u.url)
 				if err == nil {
 					// under normal operation, the file name written to disk will match the name
@@ -551,6 +557,7 @@ func downloadUrls(root string, urls chan artifactDownload, workers int) error {
 						}
 						// something else went wrong.
 						errs <- errors.Wrapf(err, "checking if file '%s' exists", testFileName)
+						fileNamesUsed.Unlock()
 						return
 					}
 				}
@@ -578,7 +585,6 @@ func downloadUrls(root string, urls chan artifactDownload, workers int) error {
 
 				// If we can get the info, determine the file size so that the human can get an
 				// idea of how long the file might take to download.
-				// TODO: progress bars.
 				length, _ := strconv.Atoi(resp.Header.Get(evergreen.ContentLengthHeader))
 				sizeLog := ""
 				if length > 0 {

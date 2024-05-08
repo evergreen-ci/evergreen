@@ -81,7 +81,6 @@ func makeGithubStatusUpdateJob() *githubStatusUpdateJob {
 			},
 		},
 	}
-	j.SetPriority(1)
 	return j
 }
 

@@ -158,9 +158,6 @@ func (c *Mock) GetEvents(ctx context.Context, ts time.Time, limit int) ([]interf
 	return nil, nil
 }
 func (c *Mock) RevertSettings(ctx context.Context, guid string) error { return nil }
-func (c *Mock) ExecuteOnDistro(context.Context, string, model.APIDistroScriptOptions) ([]string, error) {
-	return nil, nil
-}
 
 func (c *Mock) GetDistrosList(ctx context.Context) ([]model.APIDistro, error) {
 	mockDistros := []model.APIDistro{

@@ -26,5 +26,11 @@
       "branch": "spruce",
       "host_id": "host1"
     }
+  ],
+  "project_ref": [
+    {
+      "_id": "spruce",
+      "identifier": "spruce"
+    }
   ]
 }

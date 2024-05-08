@@ -1,0 +1,7 @@
+query {
+  githubProjectConflicts(projectId: "evergreen") {
+    commitQueueIdentifiers
+    prTestingIdentifiers
+    commitCheckIdentifiers
+  }
+}

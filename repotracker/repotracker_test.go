@@ -1297,7 +1297,7 @@ func TestShellVersionFromRevisionGitTags(t *testing.T) {
 		GitTagVersionsEnabled: utility.TruePtr(),
 	}
 	assert.NoError(t, evergreen.UpdateConfig(ctx, testutil.TestConfig()))
-	v, err := ShellVersionFromRevision(context.TODO(), pRef, metadata)
+	v, err := ShellVersionFromRevision(pRef, metadata)
 	assert.NoError(t, err)
 	require.NotNil(t, v)
 	assert.Equal(t, evergreen.GitTagRequester, v.Requester)

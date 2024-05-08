@@ -193,9 +193,16 @@ func Agent() cli.Command {
 			agt.SetDefaultLogger(sender)
 
 			err = agt.Start(ctx)
-			grip.Emergency(err)
+			if err != nil {
+				msg := message.Fields{
+					"message": "agent is exiting due to unrecoverable error",
+				}
+				msg = opts.AddLoggableInfo(msg)
+				grip.Emergency(message.WrapError(err, msg))
+				return err
+			}
 
-			return err
+			return nil
 		},
 	}
 }

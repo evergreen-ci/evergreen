@@ -5,26 +5,37 @@
       "version": "5e4ff3abe3c3317e352062e4",
       "display_name": "dep1",
       "build_variant": "ubuntu",
-      "host_id": "host1"
+      "host_id": "host1",
+      "branch": "spruce"
     },
     {
       "_id": "task2",
       "version": "5e4ff3abe3c3317e352062e4",
-      "host_id": "host2"
+      "host_id": "host2",
+      "branch": "spruce"
     },
     {
       "_id": "task3",
       "version": "5e4ff3abe3c3317e352062e4",
-      "host_id": "host3"
+      "host_id": "host3",
+      "branch": "spruce"
     },
     {
       "_id": "task4",
       "version": "5e4ff3abe3c3317e352062e4",
-      "host_id": "host4"
+      "host_id": "host4",
+      "branch": "spruce"
     },
     {
       "_id": "task5",
-      "version": "1e4ff3abe3c3317e352062e4"
+      "version": "1e4ff3abe3c3317e352062e4",
+      "branch": "spruce"
+    }
+  ],
+  "project_ref": [
+    {
+      "_id": "spruce",
+      "identifier": "spruce"
     }
   ],
   "hosts": [
@@ -45,9 +56,7 @@
             "ami": "ami-049df09df40fc2c1c",
             "docker_registry_pw": "",
             "region": "us-east-1",
-            "security_group_ids": [
-              "sg-601a6c13"
-            ],
+            "security_group_ids": ["sg-601a6c13"],
             "curator_dir": "/usr/local/bin",
             "mount_points": [
               {
@@ -93,10 +102,7 @@
   "distro": [
     {
       "_id": "archlinux-small",
-      "aliases": [
-        "archlinux",
-        "archlinux-test"
-      ],
+      "aliases": ["archlinux", "archlinux-test"],
       "arch": "linux_amd64",
       "work_dir": "/data/mci",
       "provider": "ec2-fleet",
@@ -111,9 +117,7 @@
           "ami": "ami-049df09df40fc2c1c",
           "docker_registry_pw": "",
           "region": "us-east-1",
-          "security_group_ids": [
-            "sg-601a6c13"
-          ],
+          "security_group_ids": ["sg-601a6c13"],
           "curator_dir": "/usr/local/bin",
           "mount_points": [
             {

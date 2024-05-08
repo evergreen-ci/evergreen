@@ -140,7 +140,7 @@
   ],
   "commit_queue": [
     {
-      "_id": "mongodb-mongo-master",
+      "_id": "sandbox_project_id",
       "processing": true,
       "queue": [
         {
@@ -154,7 +154,7 @@
       "processing_updated_time": { "$date": "2020-04-13T19:52:10.216Z" }
     },
     {
-      "_id": "mongodb-evergreen-spruce",
+      "_id": "spruce",
       "processing": true,
       "queue": [
         {
@@ -166,33 +166,13 @@
         }
       ],
       "processing_updated_time": { "$date": "2020-04-13T19:52:10.216Z" }
-    },
-    {
-      "_id": "cli-queue",
-      "processing": true,
-      "queue": [
-        {
-          "issue": "5e6bb9e23066155a993effff",
-          "patch_id": "5e6bb9e23066155a993effff",
-          "enqueue_time": { "$date": "2020-05-12T19:52:00.182Z" }
-        }
-      ]
-    },
-    {
-      "_id": "pr-queue",
-      "processing": true,
-      "queue": [
-        {
-          "issue": "5678",
-          "patch_id": "5e6bb9e23066155a993efff1",
-          "enqueue_time": { "$date": "2020-05-12T19:52:00.182Z" }
-        }
-      ]
     }
   ],
   "project_ref": [
     {
-      "_id": "mongodb-evergreen-spruce",
+      "_id": "spruce",
+      "identifier": "spruce",
+      "display_name": "Spruce",
       "owner_name": "evergreen",
       "repo_name": "spruce",
       "branch_name": "NOBRANCH",
@@ -201,8 +181,6 @@
       "private": false,
       "batch_time": 0,
       "remote_path": ".docker-test.yaml",
-      "identifier": "mongodb-evergreen-spruce",
-      "display_name": "evergreen-spruce",
       "local_config": "",
       "deactivate_previous": false,
       "hidden": false,
@@ -212,8 +190,8 @@
       }
     },
     {
-      "_id": "mongodb-mongo-master",
-      "identifier": "mongodb-mongo-master",
+      "_id": "sandbox_project_id",
+      "identifier": "sandbox",
       "commit_queue": {
         "enabled": true,
         "message": "this is a message"
@@ -224,25 +202,15 @@
       "identifier": "evergreen"
     },
     {
-      "_id": "cli-queue",
-      "identifier": "cli-queue",
-      "commit_queue": {
-        "enabled": true
-      }
-    },
-    {
-      "_id": "pr-queue",
-      "identifier": "pr-queue",
-      "commit_queue": {
-        "enabled": true
-      }
-    },
-    {
-      "_id": "no_queue",
-      "identifier": "no_queue",
+      "_id": "happyAbyssinian",
+      "identifier": "happyAbyssinian",
       "commit_queue": {
         "enabled": false
       }
+    },
+        {
+      "_id": "mongodb-mongo-master",
+      "identifier": "mongodb-mongo-master"
     }
   ]
 }

@@ -619,7 +619,7 @@
     {
       "_id": "patch_task",
       "r": "github_pull_request",
-      "branch": "evergreen",
+      "branch": "spruce",
       "gitspec": "patch-revision",
       "build_variant": "ubuntu1604",
       "status": "success",
@@ -630,7 +630,7 @@
     {
       "_id": "multi_exec_task",
       "r": "github_pull_request",
-      "branch": "evergreen",
+      "branch": "spruce",
       "gitspec": "patch-revision",
       "build_variant": "ubuntu1604",
       "status": "success",
@@ -641,7 +641,7 @@
     {
       "_id": "patch_task_base",
       "r": "gitter_request",
-      "branch": "evergreen",
+      "branch": "spruce",
       "gitspec": "patch-revision",
       "build_variant": "ubuntu1604",
       "status": "success",
@@ -654,7 +654,7 @@
     {
       "_id": "commit_task",
       "r": "gitter_request",
-      "branch": "evergreen",
+      "branch": "spruce",
       "gitspec": "commit-revision",
       "build_variant": "ubuntu1604",
       "status": "success",
@@ -666,7 +666,7 @@
     {
       "_id": "commit_task_base",
       "r": "gitter_request",
-      "branch": "evergreen",
+      "branch": "spruce",
       "gitspec": "commit-revision-base",
       "build_variant": "ubuntu1604",
       "status": "success",
@@ -679,7 +679,7 @@
     {
       "_id": "periodic_build_task",
       "r": "ad_hoc",
-      "branch": "evergreen",
+      "branch": "spruce",
       "gitspec": "commit-revision",
       "build_variant": "ubuntu1604",
       "status": "success",
@@ -691,7 +691,7 @@
     {
       "_id": "trigger_task",
       "r": "trigger_request",
-      "branch": "evergreen",
+      "branch": "spruce",
       "gitspec": "commit-revision",
       "build_variant": "ubuntu1604",
       "status": "success",
@@ -725,7 +725,7 @@
         "$date": "2020-02-21T15:13:48.838Z"
       },
       "version": "5e4ff3abe3c3317e352062e4",
-      "branch": "evergreen",
+      "branch": "spruce",
       "gitspec": "5e823e1f28baeaa22ae00823d83e03082cd148ab",
       "priority": {
         "$numberLong": "0"
@@ -740,14 +740,9 @@
       "distro": "ubuntu1604-build",
       "build_variant": "ubuntu1604",
       "depends_on": [],
-      "distro_aliases": [
-        "ubuntu1604-build"
-      ],
+      "distro_aliases": ["ubuntu1604-build"],
       "display_name": "test-model",
-      "tags": [
-        "db",
-        "test"
-      ],
+      "tags": ["db", "test"],
       "host_id": "i-092593689871a50dc",
       "restarts": 0,
       "execution": 0,
@@ -819,7 +814,7 @@
         "$date": "2020-02-21T15:13:48.838Z"
       },
       "version": "5e4ff3abe3c3317e352062e4",
-      "branch": "evergreen",
+      "branch": "spruce",
       "gitspec": "5e823e1f28baeaa22ae00823d83e03082cd148ab",
       "priority": {
         "$numberLong": "0"
@@ -834,14 +829,9 @@
       "distro": "ubuntu1604-build",
       "build_variant": "ubuntu1604",
       "depends_on": [],
-      "distro_aliases": [
-        "ubuntu1604-build"
-      ],
+      "distro_aliases": ["ubuntu1604-build"],
       "display_name": "test-model",
-      "tags": [
-        "db",
-        "test"
-      ],
+      "tags": ["db", "test"],
       "host_id": "i-092593689871a50dc",
       "restarts": 0,
       "execution": 0,
@@ -887,7 +877,7 @@
     {
       "_id": "multi_exec_task_0",
       "r": "github_pull_request",
-      "branch": "evergreen",
+      "branch": "spruce",
       "gitspec": "patch-revision",
       "build_variant": "ubuntu1604",
       "status": "success",
@@ -896,6 +886,12 @@
       "results_service": "local",
       "old_task_id": "multi_exec_task",
       "archived": true
+    }
+  ],
+  "project_ref": [
+    {
+      "_id": "spruce",
+      "identifier": "spruce"
     }
   ]
 }

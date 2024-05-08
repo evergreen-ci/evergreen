@@ -1,6 +1,6 @@
 {
-  project(projectIdentifier: "evergreen") {
-    patches(patchesInput: {limit: 1}) {
+  project(projectIdentifier: "spruce") {
+    patches(patchesInput: { limit: 1 }) {
       patches {
         id
         author
