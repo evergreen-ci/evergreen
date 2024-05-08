@@ -1878,12 +1878,16 @@ func UpdateSchedulingLimit(username, requester string, numTasksModified int, act
 	if evergreen.IsSystemActivator(username) || !evergreen.IsPatchRequester(requester) {
 		return nil
 	}
+	s := evergreen.GetEnvironment().Settings()
+	maxScheduledTasks := s.TaskLimits.MaxHourlyPatchTasks
+	if maxScheduledTasks == 0 {
+		return nil
+	}
 	u, err := user.FindOneById(username)
 	if err != nil {
 		return errors.Wrap(err, "getting user")
 	}
 	if u != nil && !u.OnlyAPI {
-		s := evergreen.GetEnvironment().Settings()
 		return errors.Wrapf(u.CheckAndUpdateSchedulingLimit(s, numTasksModified, activated), "checking task scheduling limit for user '%s'", u.Id)
 	}
 	return nil

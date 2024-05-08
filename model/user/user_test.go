@@ -229,37 +229,33 @@ func (s *UserTestSuite) TestAddKey() {
 
 func (s *UserTestSuite) TestCheckAndUpdateSchedulingLimit() {
 	u := s.users[0]
-	settings := &evergreen.Settings{
-		TaskLimits: evergreen.TaskLimitsConfig{
-			MaxHourlyPatchTasks: 100,
-		},
-	}
+	maxScheduledTasks := 100
 
 	// Should not be able to go to a negative counter
-	s.Require().NoError(u.CheckAndUpdateSchedulingLimit(settings, 100, false))
+	s.Require().NoError(u.CheckAndUpdateSchedulingLimit(maxScheduledTasks, 100, false))
 	u, err := FindOne(ById(u.Id))
 	s.Require().NoError(err)
 	s.Require().NotNil(u)
 	s.Equal(u.NumScheduledPatchTasks, 0)
 
 	// Confirm scheduling tasks less than the limit is allowed
-	s.Require().NoError(u.CheckAndUpdateSchedulingLimit(settings, 99, true))
+	s.Require().NoError(u.CheckAndUpdateSchedulingLimit(maxScheduledTasks, 99, true))
 	u, err = FindOne(ById(u.Id))
 	s.Require().NoError(err)
 	s.Require().NotNil(u)
 	s.Equal(u.NumScheduledPatchTasks, 99)
 
 	// Confirm NumScheduledPatchTasks is unchanged and we receive an error after breaching the limit
-	err = u.CheckAndUpdateSchedulingLimit(settings, 1, true)
+	err = u.CheckAndUpdateSchedulingLimit(maxScheduledTasks, 1, true)
 	s.Require().Error(err)
-	s.Contains(err.Error(), fmt.Sprintf("user '%s' has scheduled %d out of %d allowed tasks in the past hour", u.Id, u.NumScheduledPatchTasks, settings.TaskLimits.MaxHourlyPatchTasks))
+	s.Contains(err.Error(), fmt.Sprintf("user '%s' has scheduled %d out of %d allowed tasks in the past hour", u.Id, u.NumScheduledPatchTasks, maxScheduledTasks))
 	u, err = FindOne(ById(u.Id))
 	s.Require().NoError(err)
 	s.Require().NotNil(u)
 	s.Equal(u.NumScheduledPatchTasks, 99)
 
 	// Confirm unscheduling one task brings the count-down to 98
-	err = u.CheckAndUpdateSchedulingLimit(settings, 1, false)
+	err = u.CheckAndUpdateSchedulingLimit(maxScheduledTasks, 1, false)
 	s.Require().NoError(err)
 	u, err = FindOne(ById(u.Id))
 	s.Require().NoError(err)
@@ -267,7 +263,7 @@ func (s *UserTestSuite) TestCheckAndUpdateSchedulingLimit() {
 	s.Equal(u.NumScheduledPatchTasks, 98)
 
 	// Confirm that scheduling one more task is now possible
-	err = u.CheckAndUpdateSchedulingLimit(settings, 1, true)
+	err = u.CheckAndUpdateSchedulingLimit(maxScheduledTasks, 1, true)
 	s.Require().NoError(err)
 	u, err = FindOne(ById(u.Id))
 	s.Require().NoError(err)
@@ -277,7 +273,7 @@ func (s *UserTestSuite) TestCheckAndUpdateSchedulingLimit() {
 	// When the last time the user has scheduled tasks falls out of the hour, we should reset the
 	// counter, and we should not be able to go negative
 	u.LastScheduledTasksAt = time.Now().Add(-1 * time.Hour)
-	err = u.CheckAndUpdateSchedulingLimit(settings, 5, true)
+	err = u.CheckAndUpdateSchedulingLimit(maxScheduledTasks, 5, true)
 	s.Require().NoError(err)
 	u, err = FindOne(ById(u.Id))
 	s.Require().NoError(err)
@@ -287,7 +283,7 @@ func (s *UserTestSuite) TestCheckAndUpdateSchedulingLimit() {
 	// When the last time the user has scheduled tasks falls out of the hour, we should reset the
 	// counter, and we should not be able to go negative
 	u.LastScheduledTasksAt = time.Now().Add(-1 * time.Hour)
-	err = u.CheckAndUpdateSchedulingLimit(settings, 5, false)
+	err = u.CheckAndUpdateSchedulingLimit(maxScheduledTasks, 5, false)
 	s.Require().NoError(err)
 	u, err = FindOne(ById(u.Id))
 	s.Require().NoError(err)
@@ -296,7 +292,7 @@ func (s *UserTestSuite) TestCheckAndUpdateSchedulingLimit() {
 
 	// Confirm you cannot schedule more tasks than the limit, even if your counter is zero
 	u.LastScheduledTasksAt = time.Now().Add(-1 * time.Hour)
-	err = u.CheckAndUpdateSchedulingLimit(settings, 101, true)
+	err = u.CheckAndUpdateSchedulingLimit(maxScheduledTasks, 101, true)
 	s.Require().Error(err)
 	s.Contains(err.Error(), fmt.Sprintf("cannot schedule %d tasks, maximum hourly per-user limit is %d", 101, 100))
 	u, err = FindOne(ById(u.Id))
@@ -309,7 +305,7 @@ func (s *UserTestSuite) TestCheckAndUpdateSchedulingLimit() {
 	u.NumScheduledPatchTasks = 120
 	update := bson.M{"$set": bson.M{NumScheduledPatchTasksKey: 120}}
 	s.Require().NoError(UpdateOne(bson.M{IdKey: u.Id}, update))
-	err = u.CheckAndUpdateSchedulingLimit(settings, 10, false)
+	err = u.CheckAndUpdateSchedulingLimit(maxScheduledTasks, 10, false)
 	s.Require().NoError(err)
 	u, err = FindOne(ById(u.Id))
 	s.Require().NoError(err)

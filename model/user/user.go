@@ -172,12 +172,8 @@ func (u *DBUser) UpdateParsleySettings(settings parsley.Settings) error {
 // the global per-user hourly task scheduling limit, and updates relevant timestamp and counter info used
 // to track the user's hourly scheduling usage. The activated parameter being false signifies
 // the user is deactivating tasks, which frees up space in their scheduling limit.
-func (u *DBUser) CheckAndUpdateSchedulingLimit(settings *evergreen.Settings, numTasksModified int, activated bool) error {
+func (u *DBUser) CheckAndUpdateSchedulingLimit(maxScheduledTasks, numTasksModified int, activated bool) error {
 	var update bson.M
-	maxScheduledTasks := settings.TaskLimits.MaxHourlyPatchTasks
-	if maxScheduledTasks == 0 {
-		return nil
-	}
 	if activated && numTasksModified > maxScheduledTasks {
 		return errors.Errorf("cannot schedule %d tasks, maximum hourly per-user limit is %d", numTasksModified, maxScheduledTasks)
 	}
