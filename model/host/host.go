@@ -3728,13 +3728,20 @@ func (h *Host) SetTemporaryExemption(ctx context.Context, exemptUntil time.Time)
 		return err
 	}
 
+	var extendedBy time.Duration
+	now := time.Now()
+	if h.SleepSchedule.TemporarilyExemptUntil.After(now) {
+		extendedBy = exemptUntil.Sub(h.SleepSchedule.TemporarilyExemptUntil)
+	} else {
+		extendedBy = exemptUntil.Sub(now)
+	}
 	grip.Info(message.Fields{
-		"message":       "creating/extending temporary exemption from the sleep schedule",
-		"host_id":       h.Id,
-		"distro_id":     h.Distro.Id,
-		"exempt_until":  exemptUntil.Format(time.RFC3339),
-		"exemption_hrs": exemptUntil.Sub(time.Now()).Hours(),
-		"dashboard":     "evergreen sleep schedule health",
+		"message":                  "creating/extending temporary exemption from the sleep schedule",
+		"host_id":                  h.Id,
+		"distro_id":                h.Distro.Id,
+		"exempt_until":             exemptUntil.Format(time.RFC3339),
+		"additional_exemption_hrs": extendedBy.Hours(),
+		"dashboard":                "evergreen sleep schedule health",
 	})
 
 	temporarilyExemptUntilKey := bsonutil.GetDottedKeyName(SleepScheduleKey, SleepScheduleTemporarilyExemptUntilKey)
