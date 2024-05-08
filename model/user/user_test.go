@@ -2,6 +2,7 @@ package user
 
 import (
 	"context"
+	"fmt"
 	"strconv"
 	"testing"
 	"time"
@@ -15,6 +16,7 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"github.com/stretchr/testify/suite"
+	"go.mongodb.org/mongo-driver/bson"
 )
 
 func init() {
@@ -60,6 +62,7 @@ func (s *UserTestSuite) SetupTest() {
 				Token:        "1234",
 				TTL:          time.Now(),
 			},
+			LastScheduledTasksAt: time.Now().Add(-30 * time.Minute),
 		},
 		{
 			Id: "Test2",
@@ -222,6 +225,92 @@ func (s *UserTestSuite) TestAddKey() {
 
 	s.Equal(u.PubKeys[0].Name, "key1")
 	s.Equal(u.PubKeys[0].Key, "ssh-mock 67890")
+}
+
+func (s *UserTestSuite) TestCheckAndUpdateSchedulingLimit() {
+	u := s.users[0]
+	maxScheduledTasks := 100
+
+	// Should not be able to go to a negative counter
+	s.Require().NoError(u.CheckAndUpdateSchedulingLimit(maxScheduledTasks, 100, false))
+	u, err := FindOne(ById(u.Id))
+	s.Require().NoError(err)
+	s.Require().NotNil(u)
+	s.Equal(u.NumScheduledPatchTasks, 0)
+
+	// Confirm scheduling tasks less than the limit is allowed
+	s.Require().NoError(u.CheckAndUpdateSchedulingLimit(maxScheduledTasks, 99, true))
+	u, err = FindOne(ById(u.Id))
+	s.Require().NoError(err)
+	s.Require().NotNil(u)
+	s.Equal(u.NumScheduledPatchTasks, 99)
+
+	// Confirm NumScheduledPatchTasks is unchanged and we receive an error after breaching the limit
+	err = u.CheckAndUpdateSchedulingLimit(maxScheduledTasks, 1, true)
+	s.Require().Error(err)
+	s.Contains(err.Error(), fmt.Sprintf("user '%s' has scheduled %d out of %d allowed tasks in the past hour", u.Id, u.NumScheduledPatchTasks, maxScheduledTasks))
+	u, err = FindOne(ById(u.Id))
+	s.Require().NoError(err)
+	s.Require().NotNil(u)
+	s.Equal(u.NumScheduledPatchTasks, 99)
+
+	// Confirm unscheduling one task brings the count-down to 98
+	err = u.CheckAndUpdateSchedulingLimit(maxScheduledTasks, 1, false)
+	s.Require().NoError(err)
+	u, err = FindOne(ById(u.Id))
+	s.Require().NoError(err)
+	s.Require().NotNil(u)
+	s.Equal(u.NumScheduledPatchTasks, 98)
+
+	// Confirm that scheduling one more task is now possible
+	err = u.CheckAndUpdateSchedulingLimit(maxScheduledTasks, 1, true)
+	s.Require().NoError(err)
+	u, err = FindOne(ById(u.Id))
+	s.Require().NoError(err)
+	s.Require().NotNil(u)
+	s.Equal(u.NumScheduledPatchTasks, 99)
+
+	// When the last time the user has scheduled tasks falls out of the hour, we should reset the
+	// counter, and we should not be able to go negative
+	u.LastScheduledTasksAt = time.Now().Add(-1 * time.Hour)
+	err = u.CheckAndUpdateSchedulingLimit(maxScheduledTasks, 5, true)
+	s.Require().NoError(err)
+	u, err = FindOne(ById(u.Id))
+	s.Require().NoError(err)
+	s.Require().NotNil(u)
+	s.Equal(u.NumScheduledPatchTasks, 5)
+
+	// When the last time the user has scheduled tasks falls out of the hour, we should reset the
+	// counter, and we should not be able to go negative
+	u.LastScheduledTasksAt = time.Now().Add(-1 * time.Hour)
+	err = u.CheckAndUpdateSchedulingLimit(maxScheduledTasks, 5, false)
+	s.Require().NoError(err)
+	u, err = FindOne(ById(u.Id))
+	s.Require().NoError(err)
+	s.Require().NotNil(u)
+	s.Equal(u.NumScheduledPatchTasks, 0)
+
+	// Confirm you cannot schedule more tasks than the limit, even if your counter is zero
+	u.LastScheduledTasksAt = time.Now().Add(-1 * time.Hour)
+	err = u.CheckAndUpdateSchedulingLimit(maxScheduledTasks, 101, true)
+	s.Require().Error(err)
+	s.Contains(err.Error(), fmt.Sprintf("cannot schedule %d tasks, maximum hourly per-user limit is %d", 101, 100))
+	u, err = FindOne(ById(u.Id))
+	s.Require().NoError(err)
+	s.Require().NotNil(u)
+	s.Equal(u.NumScheduledPatchTasks, 0)
+
+	// Confirm you can deactivate tasks even if you're already past the limit
+	u.LastScheduledTasksAt = time.Now().Add(-1 * time.Minute)
+	u.NumScheduledPatchTasks = 120
+	update := bson.M{"$set": bson.M{NumScheduledPatchTasksKey: 120}}
+	s.Require().NoError(UpdateOne(bson.M{IdKey: u.Id}, update))
+	err = u.CheckAndUpdateSchedulingLimit(maxScheduledTasks, 10, false)
+	s.Require().NoError(err)
+	u, err = FindOne(ById(u.Id))
+	s.Require().NoError(err)
+	s.Require().NotNil(u)
+	s.Equal(u.NumScheduledPatchTasks, 110)
 }
 
 func (s *UserTestSuite) TestAddDuplicateKeyFails() {
