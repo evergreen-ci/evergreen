@@ -414,7 +414,7 @@ type BuildVariant struct {
 	Tasks        []BuildVariantTaskUnit `yaml:"tasks,omitempty" bson:"tasks"`
 	DisplayTasks []patch.DisplayTask    `yaml:"display_tasks,omitempty" bson:"display_tasks,omitempty"`
 
-	// TranslationWarnings are warnings that are only detectable during project translation.
+	// TranslationWarnings are validation warnings that are only detectable during project translation.
 	// e.g. task selectors that don't target any tasks in a build variant but the build
 	// variant still has tasks.
 	TranslationWarnings []string `yaml:"-" bson:"-"`
